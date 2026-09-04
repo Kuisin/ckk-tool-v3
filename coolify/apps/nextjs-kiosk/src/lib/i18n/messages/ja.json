@@ -109,7 +109,8 @@
     "complete": {
       "title": "工程を完了",
       "noneNote": "この工程は数量記録なしで完了します（通過数 {n} 本）",
-      "submit": "完了する"
+      "submit": "完了する",
+      "blockedByInspection": "検査表を保存するまで完了できません"
     },
     "quantity": {
       "FLOW": {
@@ -256,7 +257,8 @@
       "NO_PERMISSION": "この操作の権限がありません",
       "UNKNOWN": "処理に失敗しました",
       "STAGE_ALREADY_RECORDED": "この段は既に記録されています",
-      "STAGE_OUT_OF_ORDER": "前の段を先に記録してください"
+      "STAGE_OUT_OF_ORDER": "前の段を先に記録してください",
+      "INSPECTION_REQUIRED": "検査記録が未入力の検査表があります。検査表を保存してから完了してください"
     },
     "finalInspection": {
       "title": "最終検査・出荷前確認",

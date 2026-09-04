@@ -846,6 +846,66 @@ export async function updateTemplateItem(
   }
 }
 
+/**
+ * 検査項目の 必須 / 任意 だけを切り替える（一覧の行から直接押せるように）。
+ *
+ * 項目の編集モーダルを開かなくても切り替えられるようにするための細い口。
+ * 必須かどうかは**検査表を保存できるかどうか**を決める値（未入力の必須項目が
+ * あると記録を保存できない）で、検査表が保存されているかどうかは工程完了の
+ * 門が見る（lib/inspection-core.ts missingInspectionSheets）。2 段構え。
+ *
+ * バージョンロックは他の項目編集と同じ規則で効かせる — 使用済みの検査表を
+ * 後から緩めると、既に保存された記録の前提が変わってしまうため。
+ */
+export async function setTemplateItemRequired(
+  itemId: number,
+  isRequired: boolean,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    const prior = await prisma.inspectionTemplateItem.findUnique({
+      where: { id: itemId },
+      select: { templateId: true, itemName: true, isRequired: true },
+    });
+    if (!prior) {
+      return actionError(
+        tr("master.inspectionTemplateActions.targetItemNotFound"),
+      );
+    }
+    if (await isTemplateLocked(prior.templateId)) {
+      return actionError(tr("master.inspectionTemplateActions.versionLocked"));
+    }
+    await prisma.inspectionTemplateItem.update({
+      where: { id: itemId },
+      data: { isRequired },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "inspection_templates",
+      recordId: String(prior.templateId),
+      before: { isRequired: prior.isRequired },
+      after: {
+        isRequired,
+        note: tr("master.inspectionTemplateActions.itemUpdated", {
+          name: localized(prior.itemName as LocalizedText | null),
+        }),
+      },
+    });
+    revalidate(prior.templateId);
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.inspectionTemplateActions.updateItemFailed"),
+        tr,
+      ),
+    );
+  }
+}
+
 export async function deleteTemplateItem(
   itemId: number,
 ): Promise<ActionResult> {

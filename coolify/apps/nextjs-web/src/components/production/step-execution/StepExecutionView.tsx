@@ -31,6 +31,7 @@ import {
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import {
+  IconAlertTriangle,
   IconArrowBackUp,
   IconCalendar,
   IconCheck,
@@ -63,6 +64,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { missingInspectionSheets } from "@/lib/inspection-core";
 import { localizedQuantityLabels } from "@/lib/workflow-core-labels";
 import type { StepExecutionData } from "./model";
 import { StepInspectionSheetModal } from "./StepInspectionSheetModal";
@@ -109,6 +111,20 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
     data.workOrderStatus === "APPROVED" ||
     data.workOrderStatus === "IN_PROGRESS";
   const canOperate = woExecutable && !lockedByOther;
+
+  // 検査表が割り当てられている工程は、その検査表それぞれに記録が 1 件
+  // 無いと完了できない（サーバー側の completeStepExecution と同じ規則。
+  // ここは押す前に理由を見せるためだけの写し）。
+  const missingSheets = missingInspectionSheets(
+    data.templates.map((t) => ({ id: t.id, name: t.name })),
+    data.stepRecords.map((r) => ({ templateId: r.templateId })),
+  );
+  const completeBlockedReason =
+    missingSheets.length > 0
+      ? tr("production.stepExecution.completeBlockedByInspection", {
+          sheets: missingSheets.map((m) => m.name).join(" / "),
+        })
+      : null;
 
   const notifyResult = (
     result: { ok: boolean; errors?: string[] },
@@ -396,9 +412,18 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 この工程は数量記録なしで完了します（通過数{" "}
                 {step.inputQuantity ?? data.expectedInputQuantity ?? "—"}）
               </Text>
+              {completeBlockedReason && (
+                <Alert
+                  color="orange"
+                  icon={<IconAlertTriangle size={16} />}
+                  variant="light"
+                >
+                  {completeBlockedReason}
+                </Alert>
+              )}
               <Button
                 color="green"
-                disabled={!canOperate}
+                disabled={!canOperate || completeBlockedReason != null}
                 leftSection={<IconCheck size={16} />}
                 loading={isPending}
                 onClick={handleCompleteWithoutQuantities}
@@ -409,6 +434,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           </Paper>
         ) : (
           <StepQuantityForm
+            blockedReason={completeBlockedReason}
             defectTypeOptions={data.defectTypeOptions}
             disabled={!canOperate}
             inputQuantity={step.inputQuantity ?? data.expectedInputQuantity}

@@ -109,7 +109,8 @@
     "complete": {
       "title": "Complete step",
       "noneNote": "This step completes without quantity input ({n} pcs passed through)",
-      "submit": "Complete"
+      "submit": "Complete",
+      "blockedByInspection": "Cannot complete until the inspection sheet is saved"
     },
     "quantity": {
       "FLOW": {
@@ -256,7 +257,8 @@
       "NO_PERMISSION": "You do not have permission for this action",
       "UNKNOWN": "The operation failed",
       "STAGE_ALREADY_RECORDED": "This stage is already recorded",
-      "STAGE_OUT_OF_ORDER": "Record the previous stage first"
+      "STAGE_OUT_OF_ORDER": "Record the previous stage first",
+      "INSPECTION_REQUIRED": "Some inspection sheets have no record yet. Save them before completing the step"
     },
     "finalInspection": {
       "title": "Final inspection and pre-shipment checks",

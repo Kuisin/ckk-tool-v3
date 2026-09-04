@@ -2734,7 +2734,8 @@
       "returnsAnInProgressStepTo": "Returns an in-progress step to not started. Quantities being entered are not saved.",
       "returnsACompletedStepToNot": "Returns a completed step to not started and clears the recorded quantities. It cannot be rolled back if a following step has started.",
       "thereAreNoSteps": "There are no steps.",
-      "filterByStepNameOrCode": "Filter by step name or code…"
+      "filterByStepNameOrCode": "Filter by step name or code…",
+      "completeBlockedByInspection": "Some inspection sheets have no record yet ({sheets}). This step cannot be completed until they are saved."
     },
     "workflowBuilder": {
       "plannedQuantityMustBeAtLeast1": "Planned quantity must be at least 1",
@@ -4981,7 +4982,10 @@
       "noRelatedStep": "No related step",
       "referenceImageHelp": "Diagrams of measurement points, reference photos, etc. Once set, it also prints on the blank and completed sheet PDFs ({ext}, up to 5MB).",
       "reselect": "Reselect",
-      "templateCountValue": "{count} inspection sheet(s)"
+      "templateCountValue": "{count} inspection sheet(s)",
+      "toggleRequiredFor": "Toggle required / optional for {name}",
+      "markedRequired": "Marked as required",
+      "markedOptional": "Marked as optional"
     },
     "materialNumbering": {
       "theComponentWasAdded": "The component was added",
@@ -7818,7 +7822,8 @@
     "notABranchSeriesStep": "This is not a branch series step",
     "cannotDeleteBranchWithStartedSteps": "Cannot delete a branch that includes a step that has already started",
     "auditBranchDeleted": "Deleted a branch ({count} steps)",
-    "auditBranchUpdated": "Updated the branch (quantity {quantity}, {termination})"
+    "auditBranchUpdated": "Updated the branch (quantity {quantity}, {termination})",
+    "inspectionSheetsNotRecorded": "Some inspection sheets have no record yet ({sheets}). Save the inspection sheet before completing the step"
   },
   "aiKeywords": {
     "enterANameBeforeRunning": "Enter a name before running this",

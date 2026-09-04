@@ -153,6 +153,8 @@ Once you start a step, the 「**数量・不良**」 (quantity and defects) boxe
   - Details (required) … describe in words what the defect was
 - Finally, press 「**工程完了**」 (Complete step).
 
+> ⚠️ **A step that has inspection sheets assigned to it cannot be completed until those sheets are saved.** While a sheet is still unsaved, 「工程完了」 is disabled and the names of the missing sheets are shown next to it. A sheet itself cannot be saved while any of its **required** items is empty, so the order is: required items filled → the sheet can be saved → the step can be completed.
+
 On inspection steps, the boxes are named differently, such as 「**検査数**」 (number inspected), 「**合格数**」 (number passed), 「**不合格（半製品）**」 (failed — semi-finished), and 「**不合格（工程分岐）**」 (failed — step branch). On steps where no quantity is recorded, no boxes appear; the screen shows something like 「この工程は数量記録なしで完了します（通過数 51）」 (this step finishes without recording a quantity — 51 pieces passing through) and you can simply complete it.
 
 > ⚠️ If the defects add up to more than the received quantity, you see 「**不良の合計（55）が受入数（51）を超えています**」 (the defect total, 55, is more than the received quantity, 51) and you cannot complete the step. Please check the numbers again. Also, if a defect line is missing its defect type or details, you see 「**不良の各行に種類と詳細を入力してください**」 (enter a type and details on every defect line). Fill in every line before completing the step.

@@ -2734,7 +2734,8 @@
       "returnsAnInProgressStepTo": "将进行中的工序退回未开始。正在输入的数量不会保存。",
       "returnsACompletedStepToNot": "将已完成的工序退回未开始并清除已记录的数量。后续工序已开工时无法回退。",
       "thereAreNoSteps": "没有工序。",
-      "filterByStepNameOrCode": "按工序名称或编号筛选…"
+      "filterByStepNameOrCode": "按工序名称或编号筛选…",
+      "completeBlockedByInspection": "有检查表尚未填写记录（{sheets}）。保存之前无法完成该工序。"
     },
     "workflowBuilder": {
       "plannedQuantityMustBeAtLeast1": "计划数量必须为 1 以上",
@@ -4981,7 +4982,10 @@
       "noRelatedStep": "无关联工序",
       "referenceImageHelp": "测量位置图解、实物照片等。设置后也会打印在空白表和已填写表的 PDF 上（{ext}，最大 5MB）。",
       "reselect": "重新选择",
-      "templateCountValue": "{count} 份检查表"
+      "templateCountValue": "{count} 份检查表",
+      "toggleRequiredFor": "切换{name}的必填 / 可选",
+      "markedRequired": "已设为必填",
+      "markedOptional": "已设为可选"
     },
     "materialNumbering": {
       "theComponentWasAdded": "已添加构成要素",
@@ -7818,7 +7822,8 @@
     "notABranchSeriesStep": "该工序不属于分支序列",
     "cannotDeleteBranchWithStartedSteps": "包含已开始工序的分支无法删除",
     "auditBranchDeleted": "已删除分支（{count} 道工序）",
-    "auditBranchUpdated": "已更新分支（数量 {quantity}，{termination}）"
+    "auditBranchUpdated": "已更新分支（数量 {quantity}，{termination}）",
+    "inspectionSheetsNotRecorded": "有检查表尚未填写记录（{sheets}）。请先保存检查表再完成工序"
   },
   "aiKeywords": {
     "enterANameBeforeRunning": "请先输入名称再执行",

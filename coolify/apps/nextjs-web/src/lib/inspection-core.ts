@@ -543,3 +543,31 @@ export function sampleLabel(
   // i18n-ignore — PDF 専用 ja 固定（画面は inspection-labels.ts）
   return `製品 ${index + 1}`;
 }
+
+// ── 工程完了の門（検査表が埋まっているか） ───────────────────────────────────
+
+/** 完了判定に必要な検査表 1 枚ぶん。 */
+export interface AssignedInspectionSheet {
+  id: number;
+  /** 表示名（足りないものを人に伝えるためだけに使う）。 */
+  name: string;
+}
+
+/**
+ * まだ検査記録が 1 件も無い検査表を返す（空 = 完了してよい）。
+ *
+ * **「検査表が埋まっている」= 割り当てられた検査表それぞれに記録が 1 件以上ある**、
+ * と定義する。項目の必須（`is_required`）が埋まっているかは、記録を保存する
+ * 時点で既に検証済み（`isEntryStarted` を必須項目全てに要求している）なので、
+ * ここで項目まで数え直さない — 同じ規則を 2 か所に書くと必ず食い違う。
+ *
+ * つまり「行ごとの 必須 / 任意」は**検査表を保存できるかどうか**を決め、
+ * この関数は**保存された検査表が揃っているかどうか**を決める。2 段構え。
+ */
+export function missingInspectionSheets(
+  assigned: readonly AssignedInspectionSheet[],
+  records: readonly { templateId: number }[],
+): AssignedInspectionSheet[] {
+  const recorded = new Set(records.map((r) => r.templateId));
+  return assigned.filter((a) => !recorded.has(a.id));
+}

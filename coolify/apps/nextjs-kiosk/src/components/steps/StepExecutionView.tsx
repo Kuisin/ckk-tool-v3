@@ -41,6 +41,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { fillMessage } from "@/lib/i18n";
+import { missingInspectionSheets } from "@/lib/inspection-core";
 import { QR_KINDS, qrKeyOfKind } from "@/lib/qr-payload";
 import { playLogoutSound, playWarnSound } from "@/lib/sound";
 import type { StepRecordingData } from "@/lib/step-records";
@@ -123,6 +124,14 @@ export function StepExecutionView({
     locationGate.enforced &&
     locationGate.restricted &&
     !locationGate.deviceAllowed;
+
+  // 検査表が割り当てられている工程は、その検査表それぞれに記録が 1 件無いと
+  // 完了できない（API 側が最終判定 — ここは押す前に理由を見せるためだけの写し）。
+  const inspectionBlocked =
+    missingInspectionSheets(
+      recording.templates.map((t) => ({ id: t.id, name: t.name })),
+      recording.inspectionRecords.map((r) => ({ templateId: r.templateId })),
+    ).length > 0;
 
   // 完了時の受入数は開始時に確定した値で固定（未記録なら想定/予定へフォールバック）
   const completeInput =
@@ -491,12 +500,13 @@ export function StepExecutionView({
                     <Button
                       color="green"
                       disabled={
-                        !isNone &&
-                        !isQuantityFormValid(
-                          defects,
-                          completeInput,
-                          step.quantityMode,
-                        )
+                        inspectionBlocked ||
+                        (!isNone &&
+                          !isQuantityFormValid(
+                            defects,
+                            completeInput,
+                            step.quantityMode,
+                          ))
                       }
                       leftSection={<IconCheck size={20} />}
                       loading={busy}
@@ -508,41 +518,52 @@ export function StepExecutionView({
                   </Group>
                 </>
               ) : (
-                <Group grow>
-                  {working ? (
-                    <Button
+                <Stack gap="md">
+                  {inspectionBlocked && (
+                    <Alert
                       color="orange"
-                      leftSection={<IconPlayerPause size={20} />}
-                      loading={busy}
-                      onClick={doPause}
-                      size="lg"
-                      variant="light"
+                      icon={<IconAlertTriangle size={20} />}
                     >
-                      {m.steps.actions.pause}
-                    </Button>
-                  ) : (
-                    <Button
-                      disabled={locationBlocked}
-                      leftSection={<IconPlayerPlay size={20} />}
-                      loading={busy}
-                      onClick={doResume}
-                      size="lg"
-                    >
-                      {m.steps.actions.resume}
-                    </Button>
+                      {m.steps.complete.blockedByInspection}
+                    </Alert>
                   )}
-                  <Button
-                    color="green"
-                    leftSection={<IconCheck size={20} />}
-                    onClick={() => {
-                      setDefects([]);
-                      setPhase("COMPLETING");
-                    }}
-                    size="lg"
-                  >
-                    {m.steps.actions.complete}
-                  </Button>
-                </Group>
+                  <Group grow>
+                    {working ? (
+                      <Button
+                        color="orange"
+                        leftSection={<IconPlayerPause size={20} />}
+                        loading={busy}
+                        onClick={doPause}
+                        size="lg"
+                        variant="light"
+                      >
+                        {m.steps.actions.pause}
+                      </Button>
+                    ) : (
+                      <Button
+                        disabled={locationBlocked}
+                        leftSection={<IconPlayerPlay size={20} />}
+                        loading={busy}
+                        onClick={doResume}
+                        size="lg"
+                      >
+                        {m.steps.actions.resume}
+                      </Button>
+                    )}
+                    <Button
+                      color="green"
+                      disabled={inspectionBlocked}
+                      leftSection={<IconCheck size={20} />}
+                      onClick={() => {
+                        setDefects([]);
+                        setPhase("COMPLETING");
+                      }}
+                      size="lg"
+                    >
+                      {m.steps.actions.complete}
+                    </Button>
+                  </Group>
+                </Stack>
               )}
             </Stack>
           </Paper>

@@ -2734,7 +2734,8 @@
       "returnsAnInProgressStepTo": "進行中の工程を未着手へ戻します。入力中の数量は保存されません。",
       "returnsACompletedStepToNot": "完了済みの工程を未着手へ戻し、記録済みの数量をクリアします。後続工程が着手済みの場合は巻き戻せません。",
       "thereAreNoSteps": "工程がありません。",
-      "filterByStepNameOrCode": "工程名・コードで絞り込み..."
+      "filterByStepNameOrCode": "工程名・コードで絞り込み...",
+      "completeBlockedByInspection": "検査記録が未入力の検査表があります（{sheets}）。この工程は検査表を保存するまで完了できません。"
     },
     "workflowBuilder": {
       "plannedQuantityMustBeAtLeast1": "予定数量は1以上",
@@ -4981,7 +4982,10 @@
       "noRelatedStep": "関連工程なし",
       "referenceImageHelp": "測定位置の図解・現物写真など。設定すると空欄シート・記入済みシートの PDF にも印刷されます（{ext} / 5MB まで）。",
       "reselect": "選び直す",
-      "templateCountValue": "{count}件の検査表"
+      "templateCountValue": "{count}件の検査表",
+      "toggleRequiredFor": "{name} の 必須 / 任意 を切り替える",
+      "markedRequired": "必須にしました",
+      "markedOptional": "任意にしました"
     },
     "materialNumbering": {
       "theComponentWasAdded": "構成要素を追加しました",
@@ -7818,7 +7822,8 @@
     "notABranchSeriesStep": "分岐系列の工程ではありません",
     "cannotDeleteBranchWithStartedSteps": "着手済みの工程を含む分岐は削除できません",
     "auditBranchDeleted": "分岐を削除（{count} 工程）",
-    "auditBranchUpdated": "分岐を更新（数量 {quantity}, {termination}）"
+    "auditBranchUpdated": "分岐を更新（数量 {quantity}, {termination}）",
+    "inspectionSheetsNotRecorded": "検査記録が未入力の検査表があります（{sheets}）。検査表を保存してから完了してください"
   },
   "aiKeywords": {
     "enterANameBeforeRunning": "名称を入力してから実行してください",
