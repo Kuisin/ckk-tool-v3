@@ -3,7 +3,7 @@
 -- 前提: shared-db イメージに pg_cron が入っており（coolify/common/shared-db/
 -- Dockerfile）、compose の command に shared_preload_libraries=pg_cron と
 -- cron.database_name=ckk が設定済みであること。イメージ/コマンド変更の
--- 反映後に `pnpm cron:remote`（shared-db/）で適用する。冪等 — 再実行可。
+-- 反映後は db-migrate（coolify/apps/db-migrate/entrypoint.sh）が毎デプロイで再適用する。手動適用の経路は無い。冪等 — 再実行可。
 --
 -- ジョブ（毎分・postgres として DB ckk 内で実行）:
 --   kiosk_offline_sweep       — kiosk アプリ全停止などで WS サーバーの遷移ログが
