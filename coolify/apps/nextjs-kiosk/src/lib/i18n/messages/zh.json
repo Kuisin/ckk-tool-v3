@@ -258,7 +258,9 @@
       "UNKNOWN": "处理失败",
       "STAGE_ALREADY_RECORDED": "该阶段已记录",
       "STAGE_OUT_OF_ORDER": "请先记录上一阶段",
-      "INSPECTION_REQUIRED": "有检查表尚未填写记录。请先保存检查表再完成工序"
+      "INSPECTION_REQUIRED": "有检查表尚未填写记录。请先保存检查表再完成工序",
+      "INSPECTION_NOT_PASS": "只有合格的检查记录才能批准",
+      "NOT_APPROVER": "您不是该检查表的批准人"
     },
     "finalInspection": {
       "title": "最终检查与出货前确认",
@@ -284,6 +286,16 @@
       "checkedMeta": "{at} {by}",
       "markOk": "{item}：无问题",
       "markNg": "{item}：有问题"
+    },
+    "approval": {
+      "title": "检查批准",
+      "empty": "没有可批准的检查记录",
+      "approve": "批准",
+      "approved": "已批准",
+      "notApprover": "您不是该检查表的批准人",
+      "onlyPass": "只有合格的检查记录才能批准",
+      "recordedBy": "记录 {at} {by}",
+      "approvedMeta": "批准 {at} {by}"
     }
   },
   "deviceError": {

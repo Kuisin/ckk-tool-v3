@@ -8273,7 +8273,8 @@
     "finalInspectionShelved": "Pre-shipment check: recorded shelved by",
     "finalInspectionDeliveryNoteIssued": "Pre-shipment check: recorded delivery note issued by",
     "finalInspectionShipmentAuthorized": "Pre-shipment check: recorded shipment authorized by",
-    "finalInspectionShipDefectReviewed": "Recorded the checked-by stamp for defects at shipping"
+    "finalInspectionShipDefectReviewed": "Recorded the checked-by stamp for defects at shipping",
+    "inspectionApproved": "Approved the inspection record"
   },
   "workflowCore": {
     "quantityLabels": {

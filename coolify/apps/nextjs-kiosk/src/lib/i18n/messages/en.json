@@ -258,7 +258,9 @@
       "UNKNOWN": "The operation failed",
       "STAGE_ALREADY_RECORDED": "This stage is already recorded",
       "STAGE_OUT_OF_ORDER": "Record the previous stage first",
-      "INSPECTION_REQUIRED": "Some inspection sheets have no record yet. Save them before completing the step"
+      "INSPECTION_REQUIRED": "Some inspection sheets have no record yet. Save them before completing the step",
+      "INSPECTION_NOT_PASS": "Only records that passed can be approved",
+      "NOT_APPROVER": "You are not an approver for this inspection sheet"
     },
     "finalInspection": {
       "title": "Final inspection and pre-shipment checks",
@@ -284,6 +286,16 @@
       "checkedMeta": "{at} {by}",
       "markOk": "{item}: OK",
       "markNg": "{item}: not OK"
+    },
+    "approval": {
+      "title": "Inspection approval",
+      "empty": "There is no inspection record to approve",
+      "approve": "Approve",
+      "approved": "Approved",
+      "notApprover": "You are not an approver for this inspection sheet",
+      "onlyPass": "Only records that passed can be approved",
+      "recordedBy": "Recorded {at} {by}",
+      "approvedMeta": "Approved {at} {by}"
     }
   },
   "deviceError": {

@@ -23,6 +23,7 @@ import {
   recordFinalShipmentStage,
   recordFinalSpareStock,
 } from "@/lib/final-inspection";
+import { approveInspectionRecord } from "@/lib/inspection-approval";
 import { getSession } from "@/lib/kiosk-auth";
 import {
   allowedWorkLocationIdsForStep,
@@ -57,6 +58,7 @@ const bodySchema = z.object({
     "COMPLETE",
     "INSPECTION",
     "INSPECTION_CONFIRM",
+    "INSPECTION_APPROVE",
     "DEFECTS",
     "SET_LOCATION",
     "FINAL_CHECK",
@@ -195,6 +197,19 @@ export async function POST(
     const result = await runWithActor(
       actor,
       () => recordInspection(stepId, actor, templateId, items),
+      device,
+    );
+    return NextResponse.json(result);
+  }
+  // 検査承認（PASS → APPROVED）。承認できる人かは inspection-approval.ts が
+  // 検査表の設定（承認グループ / 名指し）から解く。
+  if (action === "INSPECTION_APPROVE") {
+    if (recordId == null) {
+      return NextResponse.json({ error: "invalid request" }, { status: 400 });
+    }
+    const result = await runWithActor(
+      actor,
+      () => approveInspectionRecord(stepId, actor, recordId),
       device,
     );
     return NextResponse.json(result);

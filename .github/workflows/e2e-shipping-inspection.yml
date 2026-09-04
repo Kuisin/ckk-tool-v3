@@ -1,0 +1,101 @@
+# 出荷・検査の通し確認（Playwright）— **手動実行のみ**。
+#
+# 使い捨て Postgres（tools/docs-screenshots の docs:seed）に本番ビルドを
+# つないで、画面を実際に操作して確かめる。tools/docs-screenshots/README の
+# 「通し確認」を CI で回せるようにしたもの。
+#
+# ■ なぜ pull_request で自動実行しないのか
+#   1. **重い。** DB を立てて全シードを流し、nextjs-web を本番ビルドしてから
+#      ブラウザを動かすので 10 分前後かかる。PR 1 本ごとに払う値段ではない。
+#   2. **データに依存する。** 見ているのは「デモシードで作った状態」なので、
+#      シードを触った PR は本質と関係なく落ちる。落ちたことが情報にならない
+#      検査は、そのうち誰も読まなくなる。
+#   3. 同じ理由で smoke-flows.ts も CI に載せていない（README 参照）。
+#
+# ■ 自動実行に切り替えたくなったら
+#   下の `on:` に `pull_request: { branches: [dev] }` を足すだけ。そのときは
+#   上の 2 を先に解決すること（シード変更時に落ちる問題）。
+name: e2e — 出荷・検査（手動）
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "確認したいブランチ / コミット（既定: 実行時に選んだもの）"
+        required: false
+        type: string
+
+concurrency:
+  group: e2e-shipping-inspection-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: 通し確認（使い捨て DB + 本番ビルド）
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install (frozen lockfile, workspace root)
+        run: pnpm install --frozen-lockfile
+
+      # shared-db と tools/docs-screenshots はワークスペースの外にある独立
+      # パッケージ。--ignore-workspace が無いと素の install がルートの
+      # ワークスペースを掴んで「Done」と言い、node_modules を作らない。
+      - name: Install (shared-db / docs-screenshots)
+        run: |
+          pnpm --dir shared-db install --frozen-lockfile --ignore-workspace
+          pnpm --dir tools/docs-screenshots install --ignore-workspace
+
+      - name: Prisma client (web + kiosk)
+        run: |
+          pnpm --dir coolify/apps/nextjs-web db:sync-schema
+          pnpm --dir coolify/apps/nextjs-web db:generate
+
+      - name: Playwright (chromium)
+        run: pnpm --dir tools/docs-screenshots exec playwright install --with-deps chromium
+
+      # 使い捨て Postgres を起動し、マイグレーション + 全デモシードを流す。
+      # ここでマイグレーションが新品の DB に当たることも確かめている。
+      - name: Seed disposable DB
+        run: pnpm --dir tools/docs-screenshots docs:seed
+
+      - name: Fixtures（この通し確認が要る状態を作る）
+        run: |
+          docker exec -i ckk-shots-db psql -U postgres -d ckk -v ON_ERROR_STOP=1 \
+            -f - < tools/docs-screenshots/e2e-fixtures.sql
+
+      - name: Build nextjs-web
+        run: pnpm --dir coolify/apps/nextjs-web build
+
+      - name: Start nextjs-web (:3100)
+        run: |
+          pnpm --dir coolify/apps/nextjs-web exec next start -p 3100 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:3100/login && exit 0
+            sleep 2
+          done
+          echo "app did not come up" >&2
+          exit 1
+        env:
+          DATABASE_URL: postgresql://postgres:shots@127.0.0.1:55432/ckk
+          AUTH_SECRET: docs-screenshots-fixed-secret-not-production
+          AUTH_URL: http://localhost:3100
+          NODE_ENV: production
+
+      - name: Run e2e
+        run: pnpm --dir tools/docs-screenshots exec tsx e2e-shipping-and-final-inspection.ts
+        env:
+          APP_URL: http://localhost:3100

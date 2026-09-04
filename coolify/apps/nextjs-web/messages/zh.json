@@ -8273,7 +8273,8 @@
     "finalInspectionShelved": "出货前确认：已记录上架人员",
     "finalInspectionDeliveryNoteIssued": "出货前确认：已记录送货单开具人",
     "finalInspectionShipmentAuthorized": "出货前确认：已记录出货批准人",
-    "finalInspectionShipDefectReviewed": "已记录出货时不良内容确认人印"
+    "finalInspectionShipDefectReviewed": "已记录出货时不良内容确认人印",
+    "inspectionApproved": "已批准检查记录"
   },
   "workflowCore": {
     "quantityLabels": {
