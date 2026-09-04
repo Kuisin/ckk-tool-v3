@@ -15,6 +15,7 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { countMasterReferences } from "@/lib/master-refs";
 import {
   type ActionResult,
   actionError,
@@ -31,6 +32,35 @@ import {
 type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
 const BASE_PATH = "/master/work-locations";
+
+/**
+ * 作業場所の使用状況を人が読む形に（グループ削除・場所削除で同じ数え方）。
+ * lib/master-refs の WorkLocation の関連 5 本すべてに 1 行ずつ対応させる —
+ * total > 0 なのに文言が空、という取りこぼしを作らない。
+ */
+function workLocationUsage(tr: Tr, byTable: Record<string, number>): string[] {
+  const used: string[] = [];
+  const add = (key: string, text: (count: number) => string) => {
+    const count = byTable[key] ?? 0;
+    if (count > 0) used.push(text(count));
+  };
+  add("WorkOrderStepPlan.workLocationId", (count) =>
+    tr("master.workLocationsActions.usedByStepPlans", { count }),
+  );
+  add("WorkOrderStepActual.workLocationId", (count) =>
+    tr("master.workLocationsActions.usedByStepActuals", { count }),
+  );
+  add("KioskDevice.defaultWorkLocationId", (count) =>
+    tr("master.workLocationsActions.usedByKioskDevices", { count }),
+  );
+  add("OrderAcceptance.shippingWorkLocationId", (count) =>
+    tr("master.workLocationsActions.usedByOrderAcceptances", { count }),
+  );
+  add("ProcessStepWorkLocation.workLocationId", (count) =>
+    tr("master.workLocationsActions.usedByProcessSteps", { count }),
+  );
+  return used;
+}
 
 const codePattern = /^[A-Za-z0-9_-]+$/;
 
@@ -185,7 +215,18 @@ export async function deleteWorkLocationGroup(
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
   try {
-    // 配下の場所は onDelete: Cascade。計画が参照する場所があると P2003 で拒否。
+    // 配下の場所は onDelete: Cascade で一緒に消える。場所を参照する列は SET NULL
+    // （計画・実績・端末の既定・注文請書の出荷作業場所）/ CASCADE（工程の許可
+    // 場所）で DB は止めない — 場所単体の削除と同じ数え方で、配下をまとめて拒否。
+    const refs = await countMasterReferences("workLocationGroup", [id]);
+    const used = workLocationUsage(tr, refs.byTable);
+    if (used.length > 0) {
+      return actionError(
+        tr("master.workLocationsActions.locationInUseCannotDelete", {
+          details: used.join(" / "),
+        }),
+      );
+    }
     await prisma.workLocationGroup.delete({ where: { id } });
     await recordAudit({
       action: "DELETE",
@@ -314,42 +355,21 @@ export async function updateWorkLocation(
 
 export async function deleteWorkLocation(id: number): Promise<ActionResult> {
   const tr = await getTranslations();
-  const authz = await checkPermission("master", "UPDATE");
+  // 削除は DELETE 権限（グループ削除・他マスタの削除と同じ。以前は UPDATE で通していた）
+  const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.workLocation.findUnique({
       where: { id },
-      select: {
-        groupId: true,
-        name: true,
-        _count: {
-          select: { stepPlans: true, stepActuals: true, kioskDevices: true },
-        },
-      },
+      select: { groupId: true, name: true },
     });
     if (!prior)
       return actionError(tr("master.workLocationsActions.locationNotFound"));
-    // FK は SET NULL なので DB は削除を止めない — 使用中はここで拒否する
-    // （計画・実績の記録を黙って失わせない。端末の既定作業場所も同様）。
-    const used: string[] = [];
-    if (prior._count.stepPlans > 0)
-      used.push(
-        tr("master.workLocationsActions.usedByStepPlans", {
-          count: prior._count.stepPlans,
-        }),
-      );
-    if (prior._count.stepActuals > 0)
-      used.push(
-        tr("master.workLocationsActions.usedByStepActuals", {
-          count: prior._count.stepActuals,
-        }),
-      );
-    if (prior._count.kioskDevices > 0)
-      used.push(
-        tr("master.workLocationsActions.usedByKioskDevices", {
-          count: prior._count.kioskDevices,
-        }),
-      );
+    // FK は SET NULL / CASCADE なので DB は削除を止めない — 使用中はここで拒否する
+    // （計画・実績の記録を黙って失わせない。端末の既定作業場所・注文請書の出荷
+    // 作業場所・工程の許可場所も同様）。数え方はグループ削除と同じ lib/master-refs。
+    const refs = await countMasterReferences("workLocation", [id]);
+    const used = workLocationUsage(tr, refs.byTable);
     if (used.length > 0) {
       return actionError(
         tr("master.workLocationsActions.locationInUseCannotDelete", {

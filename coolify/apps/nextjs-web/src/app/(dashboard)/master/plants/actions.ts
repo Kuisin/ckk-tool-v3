@@ -13,6 +13,7 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
+import { countMasterReferences } from "@/lib/master-refs";
 import {
   type ActionResult,
   actionError,
@@ -364,9 +365,13 @@ export async function deletePlants(ids: number[]): Promise<ActionResult> {
   if (ids.length === 0)
     return actionError(tr("master.plantActions.noTargetSelected"));
   try {
-    // Guard: 現時点で拠点を参照するテーブルは未実装（在庫・工程ステップは後続）。
-    // 参照テーブルが増えたら products と同様の count ガードを追加する。
-    // FK 違反は P2003 として prismaErrorMessage が日本語メッセージに変換する。
+    // Guard: 拠点を参照する列（在庫・工程・端末・注文請書の担当拠点・作業場所
+    // グループなど）はほぼ SET NULL で DB が止めない — lib/master-refs で数える。
+    // 所属ユーザー・保管場所・フロアマップは RESTRICT（P2003 → prismaErrorMessage）。
+    const refs = await countMasterReferences("plant", ids);
+    if (refs.total > 0) {
+      return actionError(tr("master.plantActions.referencedCannotDelete"));
+    }
     await prisma.plant.deleteMany({ where: { id: { in: ids } } });
     for (const id of ids) {
       await recordAudit({

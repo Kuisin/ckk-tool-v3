@@ -15,6 +15,7 @@ import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
 import { normalizeKeywords } from "@/lib/master-keywords";
+import { countMasterReferences } from "@/lib/master-refs";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   getProductItemDefs,
@@ -327,13 +328,10 @@ export async function deleteProducts(ids: number[]): Promise<ActionResult> {
   if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
-    // Guard: refuse when sales documents still reference one of the products.
-    const where = { productId: { in: ids } };
-    const [priceListEntries, quoteItems] = await Promise.all([
-      prisma.priceListEntry.count({ where }),
-      prisma.quoteItem.count({ where }),
-    ]);
-    if (priceListEntries + quoteItems > 0) {
+    // Guard: 参照があれば消させない。省略可能な関連（注文明細・設計・価格試算・
+    // 検査表）は ON DELETE SET NULL なので DB は止めない — lib/master-refs で数える。
+    const refs = await countMasterReferences("product", ids);
+    if (refs.total > 0) {
       return actionError(tr("master.productsActions.referencedCannotDelete"));
     }
     await prisma.product.deleteMany({ where: { id: { in: ids } } });

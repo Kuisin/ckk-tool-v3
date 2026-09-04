@@ -16,6 +16,7 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { findDependencyCycle } from "@/lib/process-step-dependency-core";
 import {
   type ActionResult,
   actionError,
@@ -159,6 +160,35 @@ async function validateDependencies(
     });
     if (found !== targetIds.length) {
       return tr("master.processStepsActions.unknownDependencyTarget");
+    }
+  }
+  if (selfId != null && deps.execDependencies.length > 0) {
+    // 実行依存の循環（A→B→A）を作らせない — 輪に入った工程はどれも開始条件を
+    // 満たせなくなる。保存後の全辺（他工程の既存辺 + いま保存する自分の辺）で、
+    // 自分を通る輪だけを探す（新規はまだ誰からも依存されないので輪は閉じない）。
+    const others = await prisma.processStepExecDependency.findMany({
+      where: { stepId: { not: selfId } },
+      select: { stepId: true, dependsOnStepId: true },
+    });
+    const cycle = findDependencyCycle(
+      [
+        ...deps.execDependencies.map((d) => ({
+          stepId: selfId,
+          dependsOnStepId: d.dependsOnStepId,
+        })),
+        ...others,
+      ],
+      selfId,
+    );
+    if (cycle) {
+      const codes = await prisma.processStepCatalog.findMany({
+        where: { id: { in: cycle } },
+        select: { id: true, code: true },
+      });
+      const codeOf = new Map(codes.map((c) => [c.id, c.code]));
+      return tr("master.processStepsActions.execDependencyCycle", {
+        path: cycle.map((id) => codeOf.get(id) ?? String(id)).join(" → "),
+      });
     }
   }
   return null;

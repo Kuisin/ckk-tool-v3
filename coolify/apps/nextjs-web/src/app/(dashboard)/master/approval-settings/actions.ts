@@ -20,6 +20,7 @@ import { z } from "zod";
 import { validateConditions } from "@/lib/approval-conditions";
 import { validateFlowSteps } from "@/lib/approval-flow";
 import {
+  effectiveMemberWhere,
   isMemberEffective,
   validateMemberPeriod,
 } from "@/lib/approval-membership";
@@ -32,6 +33,8 @@ import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
+import { jstEndOfDay, jstStartOfDay } from "@/lib/jst-day-range";
+import { countMasterReferences } from "@/lib/master-refs";
 import {
   type ActionResult,
   actionError,
@@ -208,8 +211,17 @@ export async function deleteApprovalGroups(
   if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
-    // メンバーは onDelete: Cascade で一括削除。将来 承認依頼・代理設定が
-    // グループを参照するようになると P2003 で拒否される。
+    // メンバー・代理設定は onDelete: Cascade で一括削除。承認フロー・条件付き
+    // フロー・フォームの段は RESTRICT（P2003 → prismaErrorMessage）。検査表
+    // テンプレートの承認グループ（inspection_templates.approval_group_id）は
+    // SET NULL で DB が止めない — lib/master-refs で数えて拒否する（承認依頼は
+    // 依頼時点の flow_snapshot を持つ履歴なので、意図して数えない）。
+    const refs = await countMasterReferences("approvalGroup", ids);
+    if (refs.total > 0) {
+      return actionError(
+        tr("master.approvalSettingsActions.groupReferencedCannotDelete"),
+      );
+    }
     await prisma.approvalGroup.deleteMany({ where: { id: { in: ids } } });
     for (const id of ids) {
       await recordAudit({
@@ -375,7 +387,7 @@ export type ApprovalDelegateInput = z.infer<
 
 /**
  * 代理設定の追加。原承認者はグループの有効メンバーであること。
- * 期間は日付単位（開始日 00:00 〜 終了日 23:59:59.999、サーバーローカル時刻）。
+ * 期間は日付単位（開始日 00:00 〜 終了日 23:59:59.999、JST — lib/jst-day-range）。
  */
 export async function addDelegate(
   groupId: number,
@@ -411,8 +423,10 @@ export async function addDelegate(
         groupId,
         delegatorId: v.delegatorId,
         delegateId: v.delegateId,
-        validFrom: new Date(`${v.validFrom}T00:00:00`),
-        validUntil: new Date(`${v.validUntil}T23:59:59.999`),
+        // JST の日付境界に固定する（オフセット無しの ISO 文字列はサーバーの
+        // ローカル TZ = Docker では UTC で解釈され、9/5 の朝は範囲外になっていた）
+        validFrom: jstStartOfDay(v.validFrom),
+        validUntil: jstEndOfDay(v.validUntil),
         reason: v.reason?.trim() || null,
         createdBy: actor,
       },
@@ -586,6 +600,11 @@ export async function saveApprovalFlow(
     tr,
   );
   if (issues.length > 0) return actionError(issues[0]);
+  const groupIssue = await validateStepGroups(
+    tr,
+    v.steps.map((s) => s.groupId),
+  );
+  if (groupIssue) return actionError(groupIssue);
 
   try {
     const actor = await getCurrentActorId();
@@ -740,6 +759,42 @@ export type ApprovalFlowRuleInput = Omit<
   "targetType"
 >;
 
+/**
+ * 段の宛先グループが「今、承認できる」状態か。無効化されたグループや、実効
+ * メンバー（lib/approval-membership の isMemberEffective と同じ条件を DB 側で
+ * 表した effectiveMemberWhere）が 0 人のグループを段に置くと、そこで止まった
+ * 依頼を誰も押せない。既定フロー・条件付きフローの保存で共通に弾く。
+ * 問題があれば文言（段番号入り）、無ければ null。
+ */
+async function validateStepGroups(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+  groupIds: ReadonlyArray<number | null | undefined>,
+): Promise<string | null> {
+  const ids = [...new Set(groupIds.filter((g): g is number => g != null))];
+  if (ids.length === 0) return null;
+  const groups = await prisma.approvalGroup.findMany({
+    where: { id: { in: ids } },
+    select: {
+      id: true,
+      isActive: true,
+      _count: {
+        select: { members: { where: effectiveMemberWhere(new Date()) } },
+      },
+    },
+  });
+  const byId = new Map(groups.map((g) => [g.id, g]));
+  const badSteps: number[] = [];
+  groupIds.forEach((g, i) => {
+    if (g == null) return;
+    const row = byId.get(g);
+    if (!row || !row.isActive || row._count.members === 0) badSteps.push(i + 1);
+  });
+  if (badSteps.length === 0) return null;
+  return tr("master.approvalSettingsActions.stepGroupNotEffective", {
+    steps: badSteps.join(", "),
+  });
+}
+
 function revalidateFlow(targetType: string) {
   revalidatePath(BASE_PATH);
   revalidatePath(`${BASE_PATH}/flows/${targetType}`);
@@ -772,6 +827,11 @@ export async function saveApprovalFlowRule(
     tr,
   );
   if (stepIssues.length > 0) return actionError(stepIssues[0]);
+  const groupIssue = await validateStepGroups(
+    tr,
+    v.steps.map((s) => s.groupId),
+  );
+  if (groupIssue) return actionError(groupIssue);
   const condIssues = validateConditions(v.targetType, v.conditions, locale, tr);
   if (condIssues.length > 0) return actionError(condIssues[0]);
 
