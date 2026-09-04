@@ -7,7 +7,8 @@ headless Playwright. Replaces the previous Excel-driven scripts in
 (`_automation/bpo_sakura`) — those scripts are vendored under `app/sakura/` and
 reused, now driven by the DB instead of `email-list.xlsx`.
 
-Deployed on `docker-mac-pro` at `~/stacks/admintools`.
+Deployed as two Coolify apps (`admintools-dev` / `admintools-main`) — see
+**Deploy** below. The old `~/stacks/admintools` compose is gone.
 
 - **WebUI/LAN:** <http://192.168.50.15:8090>
 - **`admintools-db`:** internal Postgres storing `mail_accounts`.
@@ -60,10 +61,14 @@ remove it.
 - **Env vars are managed in Coolify** (Application → Environment Variables), not
   in a `.env`/`env_file`. Required keys: `DATABASE_URL`
   (`postgresql+psycopg://admintools:<pw>@ckk-db-main:5432/ckk`), `ADMINTOOLS_API_KEY`,
-  `SAKURA_ID`, `SAKURA_PW`, `DEFAULT_DOMAIN`, `KOT_DB_URL`, the `LDAP_*` set (same
+  `SAKURA_ID`, `SAKURA_PW`, `DEFAULT_DOMAIN`, `KOT_DB_URL`
+  (`postgresql://kot:<pw>@ckk-db-main:5432/ckk` on main, `@ckk-db-dev:` on dev —
+  the `kot` schema lives in the per-environment DB since 2026-08-24; a URL still
+  pointing at the retired `shared-db` host makes the 勤怠インポートログ page fail
+  with `Temporary failure in name resolution`), the `LDAP_*` set (same
   values as `vpn-ldap/ldap.env`), and `RESTORE_AGENT_URL` /
   `RESTORE_AGENT_TOKEN` (for the 復元 tool; token must match the db-backup
-  `restore-agent`). Reachability to `shared-db`, `vpn-ldap`, `restore-agent`,
+  `restore-agent`). Reachability to `ckk-db-*`, `vpn-ldap`, `restore-agent`,
   `gotenberg`, `seaweedfs` is by container name over the **`coolify`** network
   (those services are attached to it).
 
