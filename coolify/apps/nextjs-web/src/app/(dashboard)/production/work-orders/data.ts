@@ -50,6 +50,7 @@ import {
   fetchWorkLocationOptions,
 } from "@/lib/work-locations";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
+import { shippableQuantity } from "@/lib/work-order-shipping-core";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import {
   canStartStep,
@@ -568,6 +569,29 @@ export async function fetchWorkOrder(
   // ctx は上で承認・開始可否のために既にロード済みなので引き直さない。
   const finishedQuantity = computeFinishedQuantity(ctx.steps, ctx.links);
 
+  // まだ出荷書へ載せられる数量。**出荷書フォームと同じ数え方**にすること —
+  // フォーム（addSourceGroups）は明細ごとに「受注数 − 出荷済 ≤ 0 なら
+  // 出荷済みとしてスキップ」する。完成数やロット単位の出荷で数えると、
+  // カードは「作れます」と言うのにフォームは「出荷済みです」と返す。
+  // 出荷済みは order_line_id で数える（lot_number は任意列で、在庫保管の行や
+  // ロット未指定の行では空になる）。
+  const woLineIds = r.orderLineLinks.map((l) => l.orderLine.id);
+  const shippedByLine = woLineIds.length
+    ? await prisma.deliveryOrderItem.groupBy({
+        by: ["orderLineId"],
+        where: { orderLineId: { in: woLineIds } },
+        _sum: { quantity: true },
+      })
+    : [];
+  const shippable = shippableQuantity(
+    r.orderLineLinks.map((l) => ({
+      quantity: l.orderLine.quantity,
+      shippedQuantity:
+        shippedByLine.find((s) => s.orderLineId === l.orderLine.id)?._sum
+          .quantity ?? 0,
+    })),
+  );
+
   const shipmentItems = await prisma.deliveryOrderItem.findMany({
     where: { lotNumber: r.workOrderNumber },
     select: {
@@ -595,16 +619,7 @@ export async function fetchWorkOrder(
       quantity: it.quantity,
     })),
     finishedQuantity,
-    // 下書きの出荷書も「もう手配済み」として数える（未処理出荷書 SH03 と
-    // 同じ規約）— 二重に出荷書を起こさないため。ロット未指定で載せた行は
-    // ここに数えない（lot_number は任意列）ので、その場合は残数を多めに
-    // 見積もる。多めに出す側の誤差なので「出せるのに導線が出ない」には
-    // ならない — 実際に出せるかはフォームが明細ごとに再計算する。
-    unshippedQuantity: Math.max(
-      0,
-      finishedQuantity -
-        shipmentItems.reduce((sum, it) => sum + it.quantity, 0),
-    ),
+    shippableQuantity: shippable,
     type: r.type,
     plannedQuantity: r.plannedQuantity,
     notes: r.notes,

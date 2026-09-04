@@ -2369,10 +2369,10 @@
       "andNMoreOrderLines": "{first} 等 {count} 件",
       "andNMoreCustomers": "{first} 等 {count} 家",
       "nextStepCreateADeliveryOrder": "下一步：创建出货单",
-      "openDeliveryOrderFormForThisLot": "用已完成的 {quantity} 支中尚未列入出货单的部分创建出货单。也可一并加入同一订单确认书的其他明细。",
+      "openDeliveryOrderFormForThisLot": "用尚未出货的 {quantity} 支创建出货单。也可一并加入同一订单确认书的其他明细。",
       "deliveryOrderNeedsCompletedWorkOrder": "仅可从已完成的工单创建",
       "deliveryOrderNeedsOrderLine": "未关联订单明细的工单无法创建",
-      "deliveryOrderAlreadyArranged": "完成数量已全部列入出货单"
+      "deliveryOrderAlreadyArranged": "该工单的订单明细均已安排出货"
     },
     "addBranchModal": {
       "theBranchWasAdded": "已添加分支",
@@ -2565,7 +2565,10 @@
       "itemRecorded": "已记录「{item}」",
       "shelvedBy": "上架人员",
       "shipmentAuthorizedBy": "出货批准人",
-      "stageRecorded": "已记录{stage}"
+      "stageRecorded": "已记录{stage}",
+      "markOk": "{item}：无问题",
+      "markNg": "{item}：有问题",
+      "recordPriorStageFirst": "请先记录{label}"
     },
     "workOrderStepsPanel": {
       "deleteTheBranch": "删除分支",

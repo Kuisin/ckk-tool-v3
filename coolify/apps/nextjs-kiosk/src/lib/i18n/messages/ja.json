@@ -279,7 +279,9 @@
       "shipDefectPlaceholder": "出荷前検査での不良内容等（任意）",
       "shipDefectConfirm": "確認する",
       "saved": "記録しました",
-      "checkedMeta": "{at} {by}"
+      "checkedMeta": "{at} {by}",
+      "markOk": "{item}: 問題なし",
+      "markNg": "{item}: 問題あり"
     }
   },
   "deviceError": {

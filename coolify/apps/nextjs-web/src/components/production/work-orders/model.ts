@@ -203,8 +203,16 @@ export interface WorkOrderView {
    * 未完了の指示書でも計算はできるが、意味を持つのは COMPLETED のときだけ。
    */
   finishedQuantity: number;
-  /** 完成数のうち、まだどの出荷書にも載っていない数量（0 未満にはしない）。 */
-  unshippedQuantity: number;
+  /**
+   * この指示書の注文明細に、まだ出荷書へ載せられる数量が残っているか
+   * （Σ 明細ごと max(0, 受注数 − 出荷済)）。
+   *
+   * **出荷書フォームと同じ数え方でなければならない** — フォームは
+   * 「受注数 − 出荷済 ≤ 0 なら出荷済みとしてスキップ」なので、指示書側が
+   * 完成数とロット単位の出荷で数えていると、カードは「作れます」と言うのに
+   * フォームは「出荷済みです」と言う、という食い違いになる（実際になった）。
+   */
+  shippableQuantity: number;
   type: string;
   plannedQuantity: number;
   notes: string | null;

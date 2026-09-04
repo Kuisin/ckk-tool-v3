@@ -2369,10 +2369,10 @@
       "andNMoreOrderLines": "{first} and {count} more",
       "andNMoreCustomers": "{first} and {count} more",
       "nextStepCreateADeliveryOrder": "Next step: create a delivery order",
-      "openDeliveryOrderFormForThisLot": "Opens the delivery order form for the finished quantity ({quantity}) that is not on a delivery order yet. Other lines of the same order acceptance can be added too.",
+      "openDeliveryOrderFormForThisLot": "Opens the delivery order form for the {quantity} piece(s) not shipped yet. Other lines of the same order acceptance can be added too.",
       "deliveryOrderNeedsCompletedWorkOrder": "You can create it only from a completed work order",
       "deliveryOrderNeedsOrderLine": "You cannot create it from a work order with no order line",
-      "deliveryOrderAlreadyArranged": "The whole finished quantity is already on delivery orders"
+      "deliveryOrderAlreadyArranged": "Every order line of this work order is already arranged for shipping"
     },
     "addBranchModal": {
       "theBranchWasAdded": "The branch was added",
@@ -2565,7 +2565,10 @@
       "itemRecorded": "Recorded \"{item}\"",
       "shelvedBy": "Shelved by",
       "shipmentAuthorizedBy": "Shipment authorized by",
-      "stageRecorded": "Recorded {stage}"
+      "stageRecorded": "Recorded {stage}",
+      "markOk": "{item}: OK",
+      "markNg": "{item}: not OK",
+      "recordPriorStageFirst": "Record {label} first"
     },
     "workOrderStepsPanel": {
       "deleteTheBranch": "Delete the branch",
