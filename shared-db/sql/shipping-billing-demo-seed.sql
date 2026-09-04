@@ -74,8 +74,13 @@ ON CONFLICT (year_month, seq) DO NOTHING;
 
 -- 明細（ロット = 指示書番号。DOR-1 は完了指示書 9004 のロットを出荷する想定）。
 -- どの注文明細を出荷したかは order_line_id で行ごとに持つ:
---   -01（製品 9001）… DOR-1 / DOR-2 / DOR-202606-1
---   -02（製品 9002）… DOR-3（在庫保管）
+--   -01（製品 9001）… DOR-1 / DOR-2 / DOR-202606-1  合計 100 本
+--   -02（製品 9002）… DOR-3（在庫保管）             合計 50 本
+--
+-- ★ **合計は必ず注文明細の受注数量以下にすること。** -01 は受注 150 本
+--   （production-demo-seed）なので 100 本出荷 + 残 50 本。超えると
+--   未処理出荷書 SH03 から消え、指示書の「次のステップ: 出荷書の作成」と
+--   出荷書フォームの判定が食い違う（フォームは 受注数 − 出荷済 で数える）。
 INSERT INTO app.delivery_order_items (id, delivery_order_year_month, delivery_order_seq,
   order_line_id, product_id, lot_number, quantity, notes, sort_order)
 VALUES
