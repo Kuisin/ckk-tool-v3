@@ -141,7 +141,7 @@ const nextConfig: NextConfig = {
         destination: "/settings/kiosk-devices",
         permanent: true,
       },
-      // 旧 承認管理 (PD03) → 一般カテゴリの 承認・予定 (CM01)。
+      // 旧 承認管理 (PD03) → 一般カテゴリの 未処理一覧 (CM01)。
       // 詳細 URL は指示書詳細へ（承認カードは指示書詳細に出る）。
       {
         source: "/production/approvals",

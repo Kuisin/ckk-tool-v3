@@ -108,7 +108,7 @@ export type DesignRequestUpdateInput = z.infer<
 
 function revalidate(number?: string) {
   revalidatePath(BASE_PATH);
-  // 承認依頼は承認・予定 (CM01) にも横断表示される。
+  // 承認依頼は未処理一覧 (CM01) にも横断表示される。
   revalidatePath(APPROVALS_PATH);
   if (number) {
     revalidatePath(`${BASE_PATH}/${number}`);

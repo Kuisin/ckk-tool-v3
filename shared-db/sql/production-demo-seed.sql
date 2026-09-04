@@ -1,4 +1,4 @@
--- production-demo-seed.sql — 生産アプリ（PD02 指示書 / CM01 承認・予定 / PD04 在庫管理）
+-- production-demo-seed.sql — 生産アプリ（PD02 指示書 / CM01 未処理一覧 / PD04 在庫管理）
 -- のマニュアル撮影用デモデータ。
 --
 -- tools/docs-screenshots のローカル一時 DB に流す（orchestrate.ts SEED_FILES_POST —
@@ -27,12 +27,12 @@ BEGIN;
 
 -- ── 撮影用フラグ ────────────────────────────────────────────────────────────
 -- 撮影は APP_ENV=main。これらは main 未公開のため撮影 DB に限り有効化。
--- 旧 承認管理 (PD03, key `approvals`) は 承認・予定 (CM01, key `my-tasks`) へ
+-- 旧 承認管理 (PD03, key `approvals`) は 未処理一覧 (CM01, key `my-tasks`) へ
 -- 移設済み。旧キーのままだと画面が「この機能は現在利用できません」になり、
 -- approval-list-01 が 60 秒待って落ちる。
 INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:work-orders:main', true, '指示書（マニュアル撮影用）', now()),
-  ('app:my-tasks:main',    true, '承認・予定（マニュアル撮影用）', now()),
+  ('app:my-tasks:main',    true, '未処理一覧（マニュアル撮影用）', now()),
   ('app:inventory:main',   true, '在庫管理（マニュアル撮影用）', now())
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
@@ -74,8 +74,14 @@ INSERT INTO app.order_lines (id, acceptance_year_month, acceptance_seq, branch,
   delivery_date, status, lot_number, is_locked, end_user_bp_id, confirmed_at,
   created_at, updated_at)
 VALUES
+  -- 受注 150 本。**出荷実績の合計より多くしてあること**（下の shipping seed が
+  -- 3 回に分けて 100 本出荷している）。50 本にしていた頃は 受注 50 に対して
+  -- 出荷 100 という行になり、(a) 未処理出荷書 SH03 から消え、(b) 指示書の
+  -- 「次のステップ: 出荷書の作成」が出るのに出荷書フォームは「受注数量まで
+  -- 出荷済みです」と断る、という食い違いをデモデータ自身が作っていた。
+  -- 割当（work_order_order_lines）の合計 110 本も受注数以下に収まる。
   ('e0000000-0000-4000-8000-000000000001'::uuid, '202607', 3, 1, 1,
-   9001, NULL, 'PRODUCTION'::app."ORDER_TYPE", 50, 3220, 161000,
+   9001, NULL, 'PRODUCTION'::app."ORDER_TYPE", 150, 3220, 483000,
    '2026-08-20', 'IN_PRODUCTION'::app."ORDER_LINE_STATUS", 9001, false, NULL,
    '2026-07-14T09:30:00+09',
    '2026-07-14T09:30:00+09', '2026-07-16T08:30:00+09'),

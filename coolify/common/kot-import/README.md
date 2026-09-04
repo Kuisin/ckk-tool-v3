@@ -5,12 +5,17 @@ last N days of daily attendance CSV, and upserts it into Postgres (`hr_records`)
 on a schedule. Replicates `kuisin/ckk-tool-compose` `_automation/bpo_kot`
 (`export_daily_csv.py` + `db.py` vendored under `kot/`).
 
-Deployed on `docker-mac-pro` at `~/stacks/kot-import`.
+**Coolify-managed** — app `kot-import` in project ckk, environment `common`, follows
+`main`; env vars (`KOT_ID` / `KOT_PW` / `DB_PASSWORD`) live in Coolify. Do **not**
+run `deploy-stack.sh kot-import` (it would start a second importer). Data goes to
+**`ckk-db-main`** (db `ckk`, schema `kot`) — there is no separate `kot-db` any more,
+and dev has no importer of its own. The run log is read by admintools
+(`/kot`, via its `KOT_DB_URL`).
 
 | Service | Role |
 |---------|------|
 | `kot-import` | scheduler: every `KOT_INTERVAL_SECONDS`, run the Playwright export + DB load |
-| `kot-db` | Postgres — `hr_records` (attendance) + `employees` (code→username map) |
+| (data) | `ckk-db-main` schema `kot`: `hr_records` (attendance), `employees` (code→username map), `kot_employees` (roster), `kot_match_review`, `import_runs` |
 
 ## Setup
 

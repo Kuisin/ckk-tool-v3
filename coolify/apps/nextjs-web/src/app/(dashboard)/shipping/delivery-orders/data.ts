@@ -7,10 +7,11 @@
  */
 
 import { plantWhere, rowInScope } from "@ckk/authz-core";
-import type {
-  DeliveryOrder,
-  DeliveryOrderStatus,
-  DeliveryOrderType,
+import {
+  type DeliveryOrder,
+  type DeliveryOrderStatus,
+  type DeliveryOrderType,
+  previewAutoDeliveryNotes,
 } from "@/components/shipping/delivery-orders/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
@@ -42,10 +43,17 @@ const DELIVERY_ORDER_INCLUDE = {
           acceptanceYearMonth: true,
           acceptanceSeq: true,
           branch: true,
+          // 実効エンドユーザー = 明細の指定 ?? 注文請書ヘッダの既定。
+          endUserBpId: true,
+          endUserBp: { select: { name: true } },
           // 営業担当は書類に保存せず、注文請書ヘッダから導出する。
+          // 配送方法・エンドユーザーも同じくヘッダが持つ（確定時の納品書自動作成の入力）。
           acceptance: {
             select: {
               salesRep: { select: { id: true, displayName: true } },
+              deliveryMethod: true,
+              endUserBpId: true,
+              endUserBp: { select: { name: true } },
             },
           },
         },
@@ -76,6 +84,38 @@ function productLabel(p: {
   const code = formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
   return code ? `${name} ${code}` : name;
+}
+
+/**
+ * 確定したときに自動作成される納品書の予告（確定モーダル用）。
+ *
+ * 入力の取り方は confirmDeliveryOrder の planDeliveryOrderNotes と同じ —
+ * 発送 (DISPATCH) かつ明細ありのときだけ作られ、配送方法・エンドユーザーは
+ * combinabilityError が全明細で揃えているので先頭行から読む。
+ */
+function autoDeliveryNotePreview(r: DeliveryOrderRow) {
+  const customerName = localized(r.customerBp.name as LocalizedText | null);
+  const first = r.items[0]?.orderLine;
+  if (r.type !== "DISPATCH" || !first)
+    return { notes: [], endUserMissing: false };
+  const endUserBpId = first.endUserBpId ?? first.acceptance.endUserBpId ?? null;
+  const endUserBp = first.endUserBp ?? first.acceptance.endUserBp ?? null;
+  return previewAutoDeliveryNotes(
+    {
+      customerBpId: r.customerBpId,
+      customerBranchBpId: r.customerBranchBpId,
+      deliveryMethod: first.acceptance.deliveryMethod,
+      endUserBpId,
+    },
+    {
+      customer: r.customerBranchBp
+        ? `${customerName} / ${localized(r.customerBranchBp.name as LocalizedText | null)}`
+        : customerName,
+      endUser: endUserBp
+        ? localized(endUserBp.name as LocalizedText | null)
+        : null,
+    },
+  );
 }
 
 function mapDeliveryOrder(r: DeliveryOrderRow): DeliveryOrder {
@@ -137,6 +177,7 @@ function mapDeliveryOrder(r: DeliveryOrderRow): DeliveryOrder {
       status: dn.status,
       deliveredAt: dn.deliveredAt?.toISOString() ?? null,
     })),
+    autoDeliveryNotes: autoDeliveryNotePreview(r),
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -181,4 +222,66 @@ export async function fetchDeliveryOrder(
     return null;
   }
   return mapDeliveryOrder(row);
+}
+
+/**
+ * `?workOrder=` で出荷書フォームを開くときの種（指示書詳細 PD22 の
+ * 「次のステップ: 出荷書の作成」から来る）。
+ *
+ * 出荷書の明細は**注文明細**を単位に組み立てるので（フォームの
+ * addSourceGroups と未処理出荷書 SH03 が同じ単位）、指示書はまず自分が
+ * 割り当てられている注文明細へ変換する。同じ注文請書の**他の**明細は
+ * フォーム側が `fetchDeliveryAcceptanceSourceInfo` で引き直して
+ * 「まとめて出荷しますか」と聞く — ここでは聞く相手（注文請書）だけを返す。
+ *
+ * 在庫向けの独立指示書（割当ゼロ）は注文明細を持たないので null を返す。
+ */
+export async function fetchWorkOrderDeliverySeed(
+  workOrderNumber: number,
+): Promise<{
+  workOrderNumber: number;
+  /** この指示書が充当している注文明細（確定済み = 枝番ありのみ）。 */
+  orderLineIds: string[];
+  /** 上の明細が属する注文請書の番号（重複なし・昇順）。 */
+  acceptanceNumbers: string[];
+} | null> {
+  const authz = await checkPermission("delivery_order", "READ");
+  if (!authz.ok) return null;
+  const wo = await prisma.workOrder.findUnique({
+    where: { workOrderNumber },
+    select: {
+      orderLineLinks: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          orderLine: {
+            select: {
+              id: true,
+              branch: true,
+              acceptanceYearMonth: true,
+              acceptanceSeq: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!wo) return null;
+  const lines = wo.orderLineLinks
+    .map((l) => l.orderLine)
+    .filter((l) => l.branch != null);
+  if (lines.length === 0) return null;
+  return {
+    workOrderNumber,
+    orderLineIds: lines.map((l) => l.id),
+    acceptanceNumbers: [
+      ...new Set(
+        lines.map((l) =>
+          formatDocNumber("ORD", {
+            yearMonth: l.acceptanceYearMonth,
+            seq: l.acceptanceSeq,
+          }),
+        ),
+      ),
+    ].sort(),
+  };
 }

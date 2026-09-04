@@ -51,11 +51,11 @@ export interface AppEntry {
 export const appList: AppEntry[] = [
   // ─── 一般 ──────────────────────────────────────────────────────────────────
   {
-    // 承認・予定 — 自分の作業予定（work_order_step_plans）と、承認依頼中の
+    // 未処理一覧 — 自分の作業予定（work_order_step_plans）と、承認依頼中の
     // 承認依頼（旧 承認管理 PD03 の横断一覧）をまとめた個人のやることアプリ。
     // 承認セクションは approve 権限がある人にだけ出る（ページ側で判定）。
     key: "my-tasks",
-    label: "承認・予定",
+    label: "未処理一覧",
     operationCode: "CM01",
     href: "/general/tasks",
     icon: "IconClipboardList",
@@ -205,7 +205,7 @@ export const appList: AppEntry[] = [
     requiredPermission: "work_order",
   },
   // 旧 承認管理 (PD03, /production/approvals) は廃止 — 承認依頼中の横断一覧は
-  // 一般カテゴリの 承認・予定 (CM01, /general/tasks) に移った。
+  // 一般カテゴリの 未処理一覧 (CM01, /general/tasks) に移った。
   {
     // 在庫管理 — 旧 製品在庫 (PD04) / 素材在庫 (PD05) を統合した単一アプリ。
     // 製品・素材・仕掛品・ロケーション（保管場所×棚）+ 在庫移動。
@@ -674,7 +674,7 @@ export const CATEGORY_COLORS: Record<AppCategory, string> = {
  * `categoryLabel(category, locale)` を使うこと。
  */
 export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
-  "my-tasks": { en: "Approvals & schedule", zh: "审批与计划" },
+  "my-tasks": { en: "Pending list", zh: "未处理列表" },
   forms: { en: "Forms", zh: "表单" },
   "internal-pages": { en: "Internal documents", zh: "内部文档" },
   "trial-estimates": { en: "Price estimate", zh: "价格试算" },

@@ -8,6 +8,8 @@
  * 構成: 工程アイデンティティ Paper → セッションロック Alert →
  * [PENDING] 開始可否 + 工程開始 → [IN_PROGRESS] 数量入力 + 検査記録 +
  * 不良記録 + 中断（巻き戻し）→ [COMPLETED] 数量サマリ + 巻き戻し。
+ * 最終検査工程（カタログの印）では 最終検査・出荷前確認 もここで記録する
+ * （指示書 1 件に 1 行 — 以前は指示書詳細に常設していた）。
  * 外注工程は 依頼日 / 入荷予定日 / 入荷日 を編集できる。
  */
 
@@ -29,6 +31,7 @@ import {
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import {
+  IconAlertTriangle,
   IconArrowBackUp,
   IconCalendar,
   IconCheck,
@@ -55,11 +58,13 @@ import {
 } from "@/components/production/InspectionRecordForm";
 import { StepPlanActualPanel } from "@/components/production/StepPlanActualPanel";
 import { StepQuantityForm } from "@/components/production/StepQuantityForm";
+import { WorkOrderFinalInspectionPanel } from "@/components/production/WorkOrderFinalInspectionPanel";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { missingInspectionSheets } from "@/lib/inspection-core";
 import { localizedQuantityLabels } from "@/lib/workflow-core-labels";
 import type { StepExecutionData } from "./model";
 import { StepInspectionSheetModal } from "./StepInspectionSheetModal";
@@ -106,6 +111,20 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
     data.workOrderStatus === "APPROVED" ||
     data.workOrderStatus === "IN_PROGRESS";
   const canOperate = woExecutable && !lockedByOther;
+
+  // 検査表が割り当てられている工程は、その検査表それぞれに記録が 1 件
+  // 無いと完了できない（サーバー側の completeStepExecution と同じ規則。
+  // ここは押す前に理由を見せるためだけの写し）。
+  const missingSheets = missingInspectionSheets(
+    data.templates.map((t) => ({ id: t.id, name: t.name })),
+    data.stepRecords.map((r) => ({ templateId: r.templateId })),
+  );
+  const completeBlockedReason =
+    missingSheets.length > 0
+      ? tr("production.stepExecution.completeBlockedByInspection", {
+          sheets: missingSheets.map((m) => m.name).join(" / "),
+        })
+      : null;
 
   const notifyResult = (
     result: { ok: boolean; errors?: string[] },
@@ -239,6 +258,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
               {step.isApprovalStep && (
                 <Badge color="teal" size="sm" variant="light">
                   {tr("common.inspectionApproval")}
+                </Badge>
+              )}
+              {step.isFinalInspection && (
+                <Badge color="orange" size="sm" variant="light">
+                  {tr("common.finalInspection")}
                 </Badge>
               )}
             </Group>
@@ -388,9 +412,18 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 この工程は数量記録なしで完了します（通過数{" "}
                 {step.inputQuantity ?? data.expectedInputQuantity ?? "—"}）
               </Text>
+              {completeBlockedReason && (
+                <Alert
+                  color="orange"
+                  icon={<IconAlertTriangle size={16} />}
+                  variant="light"
+                >
+                  {completeBlockedReason}
+                </Alert>
+              )}
               <Button
                 color="green"
-                disabled={!canOperate}
+                disabled={!canOperate || completeBlockedReason != null}
                 leftSection={<IconCheck size={16} />}
                 loading={isPending}
                 onClick={handleCompleteWithoutQuantities}
@@ -401,6 +434,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           </Paper>
         ) : (
           <StepQuantityForm
+            blockedReason={completeBlockedReason}
             defectTypeOptions={data.defectTypeOptions}
             disabled={!canOperate}
             inputQuantity={step.inputQuantity ?? data.expectedInputQuantity}
@@ -563,6 +597,19 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             workOrderNumber={workOrderNumber}
           />
         )
+      )}
+
+      {/* ── 最終検査・出荷前確認（カタログの印が付いた工程だけ。
+             記録は指示書 1 件に 1 行） ── */}
+      {step.isFinalInspection && (
+        <WorkOrderFinalInspectionPanel
+          canRecord={
+            canOperate &&
+            (step.status === "IN_PROGRESS" || step.status === "COMPLETED")
+          }
+          finalInspection={data.finalInspection}
+          workOrderNumber={workOrderNumber}
+        />
       )}
 
       {/* ── 作業計画 / 実績（分割記録・担当者・日付/時刻） ── */}

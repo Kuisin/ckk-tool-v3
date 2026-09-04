@@ -217,7 +217,7 @@
     "tier": "段階",
     "requester": "依頼者",
     "requestedAt": "依頼日時",
-    "approvalsSchedule": "承認・予定",
+    "pendingList": "未処理一覧",
     "save2": "保存",
     "profile": "プロフィール",
     "newGroup": "新しいグループ",
@@ -798,7 +798,8 @@
     "selectARole": "ロールを選択",
     "cannotChangeRoles": "ロールを変更できません",
     "cannotChangeOwnRoles": "自分のロールは変更できません",
-    "cannotRemoveLastAdminRole": "最後の管理者から管理者ロールを外すことはできません"
+    "cannotRemoveLastAdminRole": "最後の管理者から管理者ロールを外すことはできません",
+    "finalInspection": "最終検査"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -1593,7 +1594,7 @@
       },
       "approve": {
         "label": "承認管理",
-        "summary": "承認依頼中の一覧（承認・予定）を見られます。実際に承認できるかどうかは、この権限ではなく承認設定（MS0B）で決まります。"
+        "summary": "承認依頼中の一覧（未処理一覧）を見られます。実際に承認できるかどうかは、この権限ではなく承認設定（MS0B）で決まります。"
       },
       "form": {
         "label": "フォーム",
@@ -1907,6 +1908,31 @@
     },
     "stamp": {
       "companySeal": "社印"
+    },
+    "PORTAL_GUIDE": {
+      "title": "取引先ポータル ご利用案内",
+      "onchu": "御中",
+      "attnSuffix": "様",
+      "personalStrip": "このご案内は {name} さま専用です。QR コードには {name} さまのログイン用アドレスが入っています。",
+      "howToTitle": "ご利用の手順",
+      "step1": "携帯電話のカメラで QR コードを読み取ってください（下の URL を直接開いても同じです）。",
+      "step2": "ご登録のメールアドレス宛に、{length} 文字の確認コードをお送りします（有効期限 {minutes} 分）。",
+      "step3": "届いた確認コードを入力すると、ポータルにログインできます。パスワードはありません。",
+      "scopeTitle": "ご覧いただけるもの",
+      "scopeDocuments": "自社宛の書類（見積書・注文請書・納品書・請求書）と、ご注文の進捗",
+      "scopeBranches": "支店宛の書類も含みます",
+      "scopeAsEndUser": "需要家・出荷先としての書類も含みます",
+      "scopeSingleDocuments": "個別に共有された書類 {count} 件",
+      "scopeForms": "フォーム: {names}",
+      "urlLabel": "ポータルの URL",
+      "emailLabel": "ログインに使うアドレス",
+      "qrCaption": "読み取ってログイン",
+      "noticeTitle": "ご注意",
+      "noticeSecret": "確認コードは他の方に教えないでください。当社からお電話やメールで確認コードをお伺いすることはありません。",
+      "noticeIdle": "{hours} 時間ほど操作がないと自動的にログアウトします。同じ手順でもう一度お入りください。",
+      "noticeNoMail": "メールが届かないときは、迷惑メールフォルダをご確認のうえ、下記までご連絡ください。",
+      "contactTitle": "お問い合わせ",
+      "contactFallback": "担当営業までご連絡ください。"
     }
   },
   "billing": {
@@ -2040,7 +2066,9 @@
       "leaveAtLeastOne": "少なくとも 1 枚は残してください。"
     },
     "tasksView": {
-      "thereIsNoWorkAssignedTo": "割り当てられた作業予定はありません"
+      "thereIsNoWorkAssignedTo": "割り当てられた作業予定はありません",
+      "privilegedDecidedInSy0g": "決裁は特権アクセス (SY0G) で行います。",
+      "decide": "決裁する"
     },
     "formsActions": {
       "addAtLeastOneField": "項目を 1 つ以上追加してください",
@@ -2364,7 +2392,12 @@
       "flowChangeDescription": "{summary}｜依頼: {requestedBy}｜{stepLabel}。{note}",
       "flowChangeNotAppliedYet": "承認されるまで工程は変わりません。",
       "andNMoreOrderLines": "{first} ほか{count}件",
-      "andNMoreCustomers": "{first} ほか{count}社"
+      "andNMoreCustomers": "{first} ほか{count}社",
+      "nextStepCreateADeliveryOrder": "次のステップ: 出荷書の作成",
+      "openDeliveryOrderFormForThisLot": "まだ出荷していない {quantity} 本で出荷書を作ります。同じ注文請書の他の明細もまとめられます。",
+      "deliveryOrderNeedsCompletedWorkOrder": "完了した指示書からのみ作成できます",
+      "deliveryOrderNeedsOrderLine": "注文明細に紐づいていない指示書からは作成できません",
+      "deliveryOrderAlreadyArranged": "この指示書の注文明細はすべて出荷手配済みです"
     },
     "addBranchModal": {
       "theBranchWasAdded": "分岐を追加しました",
@@ -2557,7 +2590,10 @@
       "itemRecorded": "「{item}」を記録しました",
       "shelvedBy": "棚包担当者",
       "shipmentAuthorizedBy": "出荷許可者",
-      "stageRecorded": "{stage}を記録しました"
+      "stageRecorded": "{stage}を記録しました",
+      "markOk": "{item}: 問題なし",
+      "markNg": "{item}: 問題あり",
+      "recordPriorStageFirst": "{label}を先に記録してください"
     },
     "workOrderStepsPanel": {
       "deleteTheBranch": "分岐の削除",
@@ -2698,7 +2734,8 @@
       "returnsAnInProgressStepTo": "進行中の工程を未着手へ戻します。入力中の数量は保存されません。",
       "returnsACompletedStepToNot": "完了済みの工程を未着手へ戻し、記録済みの数量をクリアします。後続工程が着手済みの場合は巻き戻せません。",
       "thereAreNoSteps": "工程がありません。",
-      "filterByStepNameOrCode": "工程名・コードで絞り込み..."
+      "filterByStepNameOrCode": "工程名・コードで絞り込み...",
+      "completeBlockedByInspection": "検査記録が未入力の検査表があります（{sheets}）。この工程は検査表を保存するまで完了できません。"
     },
     "workflowBuilder": {
       "plannedQuantityMustBeAtLeast1": "予定数量は1以上",
@@ -2745,7 +2782,8 @@
       "theStepWasAborted": "工程を中断しました",
       "abort": "中断する",
       "viewInspectionSheet": "検査表を見る",
-      "noInspectionSheetAssigned": "検査表が割り当てられていません"
+      "noInspectionSheetAssigned": "検査表が割り当てられていません",
+      "finalInspectionIsRecordedOnThisStep": "この工程で最終検査・出荷前確認を記録します（指示書 1 件に 1 行）。"
     },
     "workOrderLinksCard": {
       "quantityPiecesWithCount": "{count} 本",
@@ -2795,7 +2833,8 @@
       "spareStockUsed": "予備在庫使用",
       "stageAlreadyRecorded": "{label}は既に記録されています",
       "stageRecordedNote": "{label}を記録",
-      "woNotFound": "指示書が見つかりません"
+      "woNotFound": "指示書が見つかりません",
+      "noFinalInspectionStep": "この指示書には最終検査工程がありません"
     },
     "stepExecutionActions": {
       "invalidLotSlipCode": "ロット/伝票コードの入力が不正です",
@@ -3973,7 +4012,17 @@
       "issuedLinks": "発行済みのリンク",
       "revoked": "失効済み",
       "linkSummary": "{email} / {count} 回 / {date} まで",
-      "verified": "本人確認あり"
+      "verified": "本人確認あり",
+      "sharingScope": "共有範囲",
+      "noSharingYet": "共有範囲はまだありません（この人には何も見えません）。",
+      "includesBranches": "支店宛を含む",
+      "includesEndUserDocuments": "需要家・出荷先としての書類を含む",
+      "revokingSharingHidesThoseDocuments": "失効させると、この共有範囲の書類はこの人に見えなくなります。",
+      "noLinksIssuedYet": "発行済みのリンクはありません。",
+      "revokingTheLinkClosesTheSession": "失効させると、そのリンクで開いているセッションも終わります。",
+      "viewingHistory": "閲覧記録",
+      "nothingHasBeenViewedYet": "まだ何も閲覧されていません。",
+      "ipAddress": "IP アドレス"
     },
     "privileged": {
       "pendingApproval": "（承認依頼中）",
@@ -4463,6 +4512,15 @@
     "kioskSettings": {
       "stepExecution": "工程実行",
       "workOrderScan": "指示書スキャン"
+    },
+    "portalGuide": {
+      "guide": "案内",
+      "guideForThisContact": "この方の案内 PDF",
+      "guideForAllContacts": "取引先ぶんをまとめて",
+      "accountNotFound": "アカウントが見つかりません。",
+      "activateBeforeIssuing": "有効化してから発行してください（未有効化のアカウントではログインできません）。",
+      "noActiveAccounts": "この取引先には有効なポータルアカウントがありません。",
+      "couldNotIssueTheGuide": "案内を発行できませんでした。"
     }
   },
   "portal": {
@@ -4473,14 +4531,22 @@
     },
     "documents": {
       "document": "書類",
-      "noneToShow": "表示できる{document}はありません。"
+      "noneToShow": "表示できる{document}はありません。",
+      "dueDate": "支払期限",
+      "taxAmount": "消費税",
+      "noLineItems": "明細はありません。",
+      "priceOmitted": "この納品書には価格を記載していません。"
     },
     "forms": {
       "thereAreNoResponsesToShow": "表示できる回答はありません。",
-      "noFormsAreSharedWithYou": "共有されているフォームはありません。"
+      "noFormsAreSharedWithYou": "共有されているフォームはありません。",
+      "noAnswerFields": "表示できる項目はありません。",
+      "rowNumber": "{row} 行目",
+      "responseCount": "{count} 件"
     },
     "orders": {
-      "thereAreNoOrdersToShow": "表示できる注文はありません。"
+      "thereAreNoOrdersToShow": "表示できる注文はありません。",
+      "cancelledNotice": "この注文明細はキャンセルされています。"
     },
     "page": {
       "youCanViewDocumentsAddressedTo": "自社宛の書類をご覧いただけます。",
@@ -4510,6 +4576,19 @@
     "loginActions": {
       "backupCodeInvalid": "バックアップコードが正しくありません。",
       "issueMessage": "入力されたアドレスが登録されていれば、確認コードを送信しました。10 分以内に入力してください。届かない場合は迷惑メールをご確認のうえ、担当営業へご連絡ください。"
+    },
+    "common": {
+      "relatedDocuments": "関連書類"
+    },
+    "home": {
+      "greeting": "{name} 様",
+      "activeOrders": "進行中の注文",
+      "recentDocuments": "最近の書類",
+      "viewAll": "すべて見る",
+      "nothingToShow": "表示できるものはまだありません。"
+    },
+    "nav": {
+      "menu": "メニュー"
     }
   },
   "master": {
@@ -4903,7 +4982,10 @@
       "noRelatedStep": "関連工程なし",
       "referenceImageHelp": "測定位置の図解・現物写真など。設定すると空欄シート・記入済みシートの PDF にも印刷されます（{ext} / 5MB まで）。",
       "reselect": "選び直す",
-      "templateCountValue": "{count}件の検査表"
+      "templateCountValue": "{count}件の検査表",
+      "toggleRequiredFor": "{name} の 必須 / 任意 を切り替える",
+      "markedRequired": "必須にしました",
+      "markedOptional": "任意にしました"
     },
     "materialNumbering": {
       "theComponentWasAdded": "構成要素を追加しました",
@@ -5095,7 +5177,10 @@
       "enabled": "工程「{name}」を有効化しました",
       "executionLocationRequired": "実施場所を選択してください",
       "sortOrderInteger": "表示順は整数で入力してください",
-      "stepUpdated": "工程を更新しました"
+      "stepUpdated": "工程を更新しました",
+      "finalInspectionStep": "最終検査工程",
+      "theFinalInspectionChecklistIsRecorded": "最終検査・出荷前確認（3項目の確認・予備在庫・棚包→納品書発行→出荷許可）をこの工程の実行画面で記録します。記録は指示書 1 件に 1 行で、印の付いた工程を工程リストに入れない指示書には最終検査がありません。",
+      "approvalStepsHaveNoQuantity": "検査承認工程は数量を持ちません（数量管理は「なし」になります）。前の工程の検査表を見て承認する工程で、物を加工する工程ではないためです。"
     },
     "products": {
       "specification": "仕様",
@@ -6123,7 +6208,7 @@
       "useAnApprovalFlow": "承認フローを使う",
       "aSettingForWhenAnApprover": "承認者が「ここを直して」と言う場面のための設定。1 人でも承認したら締まります（差し戻しは設定に関係なく直せます）",
       "evenWhilePendingTheRespondentCan": "承認依頼中でも、最初の承認が下りるまでは回答者が直せる",
-      "whoIsToldOnCompletionAll": "完了（承認フローを使うなら全段の承認、使わないなら提出）したときの\n            通知先は、「共有」タブで共有先ごとに「完了通知」を付けて決めます。\n            通知を受け取った人は、承認・予定 (CM01) の「完了した申請」でも\n            一覧を見られます。",
+      "whoIsToldOnCompletionAll": "完了（承認フローを使うなら全段の承認、使わないなら提出）したときの\n            通知先は、「共有」タブで共有先ごとに「完了通知」を付けて決めます。\n            通知を受け取った人は、未処理一覧 (CM01) の「完了した申請」でも\n            一覧を見られます。",
       "allowOnlyOneResponsePerPerson": "1 人 1 回だけ回答できるようにする",
       "openPeriod": "受付期間",
       "ifEmptyItOpensTheMoment": "空なら公開した時点から受け付けます",
@@ -6352,7 +6437,7 @@
       "searchUsers": "ユーザーを検索",
       "removeAShare": "共有先を削除",
       "aFormWithNoSharesSet": "共有先を 1\n        つも設定していないフォームは、作成者と管理者にしか見えません。 URL\n        を知っていても開けません。",
-      "sharesWithCompletionNoticeTickedAre": "「完了通知」を付けた共有先には、申請・報告が完了したとき（承認フローを\n          使うなら全段の承認、使わないなら提出）に通知が届き、承認・予定 (CM01)\n          の「完了した申請」に並びます。条件を付けた共有先には、その条件に\n          当てはまる回答の完了だけが届きます。",
+      "sharesWithCompletionNoticeTickedAre": "「完了通知」を付けた共有先には、申請・報告が完了したとき（承認フローを\n          使うなら全段の承認、使わないなら提出）に通知が届き、未処理一覧 (CM01)\n          の「完了した申請」に並びます。条件を付けた共有先には、その条件に\n          当てはまる回答の完了だけが届きます。",
       "narrowWhichResponsesAreShownApplies": "見せる回答を絞る（この共有先だけに効きます）",
       "addAShare": "共有先を追加"
     },
@@ -6631,6 +6716,7 @@
       "viewTheBreakdown": "内訳を見る",
       "didYouMean": "もしかして",
       "selectACustomer": "顧客を選択してください",
+      "shipToOnlyForNormalDelivery": "ユーザー直送では使いません（届け先はエンドユーザー）",
       "createADraft": "下書きを作成",
       "createAnOrderAcceptanceByHand": "注文請書 手入力作成",
       "createsTheOrderAcceptanceDirectlyWithout": "注文書の自動取込を使わずに注文請書を直接作成します（下書きとして保存）。",
@@ -7370,6 +7456,10 @@
       "storedToStock": "保管（在庫へ）",
       "deliveryNoteNote": "{status}・{recipient}",
       "confirmConfirmBody": "出荷書 {number} を確定します。確定後は編集できません。",
+      "autoNotesHeading": "確定すると次の納品書が自動で作成されます",
+      "autoNoteWithPrice": "価格記載あり",
+      "autoNoteWithoutPrice": "価格記載なし",
+      "autoNotesEndUserMissing": "エンドユーザーが特定できないため、価格記載なしの納品書は作成されません。注文請書のエンドユーザーを確認してください。",
       "confirmedBody": "出荷書 {number} を確定しました",
       "confirmShipBodyDispatch": "出荷書 {number} を出荷済みにします。注文明細の出荷状態も再計算されます。",
       "confirmShipBodyStock": "出荷書 {number} を出荷済みにします（在庫保管のため注文明細の出荷状態は変わりません）。",
@@ -7381,8 +7471,13 @@
       "onlySameDeliveryMethodCanBeCombined": "1 つの出荷書には同じ配送方法（通常配送 / ユーザー直送）の注文明細だけを載せられます",
       "stockStorageHasNoDeliveryNote": "在庫保管は納品書を作成しません",
       "onlySameEndUserCanBeCombined": "1 つの出荷書には同じ届け先（最終需要家）の注文明細だけを載せられます",
-      "confirmConfirmBodyDispatch": "出荷書 {number} を確定します。確定後は編集できません。納品書が自動で作成されます（ユーザー直送は価格記載なし・ありの 2 通）。",
-      "confirmedBodyDispatch": "出荷書 {number} を確定し、納品書を作成しました"
+      "confirmedBodyDispatch": "出荷書 {number} を確定し、納品書を作成しました",
+      "coveredOrderAcceptances": "対象の注文請書",
+      "shipTogetherTitle": "同じ注文請書の他の明細もまとめますか",
+      "shipTogetherBody": "同じ注文請書に、まだ出荷していない明細が {count} 件あります。この出荷書にまとめる明細を選んでください。",
+      "unshippedWithLots": "未出荷 {quantity} / ロット {lots}",
+      "justThisWorkOrder": "この指示書だけ",
+      "addSelectedLines": "選んだ明細を追加"
     },
     "pendingShipments": {
       "completedLots": "完了ロット",
@@ -7415,7 +7510,8 @@
       "shippedQuantityLabel": "出荷済 {quantity}",
       "completedQuantityLabel": "完成 {quantity}（完了指示書 {count} 件）",
       "exceedsRemainingLabel": "受注残 {remaining} を超えています（出荷 {total}）",
-      "partialShipmentLabel": "一部出荷（出荷 {total} / 受注残 {remaining}）"
+      "partialShipmentLabel": "一部出荷（出荷 {total} / 受注残 {remaining}）",
+      "couldNotAddWorkOrderLines": "指示書 #{workOrderNumber} の注文明細を読み込めませんでした（未確定・製品未特定の可能性があります）"
     },
     "deliveryNoteForm": {
       "editWithNumber": "納品書 編集 {noteId}"
@@ -7727,7 +7823,8 @@
     "notABranchSeriesStep": "分岐系列の工程ではありません",
     "cannotDeleteBranchWithStartedSteps": "着手済みの工程を含む分岐は削除できません",
     "auditBranchDeleted": "分岐を削除（{count} 工程）",
-    "auditBranchUpdated": "分岐を更新（数量 {quantity}, {termination}）"
+    "auditBranchUpdated": "分岐を更新（数量 {quantity}, {termination}）",
+    "inspectionSheetsNotRecorded": "検査記録が未入力の検査表があります（{sheets}）。検査表を保存してから完了してください"
   },
   "aiKeywords": {
     "enterANameBeforeRunning": "名称を入力してから実行してください",
@@ -7751,6 +7848,14 @@
   "privilegedAccessGate": {
     "unknownOperation": "未知の特権操作です: {key}（lib/privileged-operations.ts に登録してください）",
     "operationRequiresApprovalSy0g": "この操作には承認が必要です（{label}）。特権アクセス（SY0G）から申請してください"
+  },
+  "privilegedNotify": {
+    "requestTitle": "特権アクセスの承認依頼: {subject}",
+    "requestMessage": "{name} / 理由: {reason}",
+    "approvedTitle": "特権アクセスの申請が承認されました: {subject}",
+    "rejectedTitle": "特権アクセスの申請が差し戻されました: {subject}",
+    "revokedTitle": "特権アクセスの付与が取り消されました: {subject}",
+    "approvedButNotApplied": "承認されましたが、変更を当てられませんでした: {error}"
   },
   "audit": {
     "emptyArray": "（なし）",
@@ -8157,7 +8262,20 @@
     "inspectionRecordedPass": "検査記録を保存（合格 / {count} 項目）",
     "inspectionRecordedFail": "検査記録を保存（不合格 / {count} 項目）",
     "deviceUnlinkedFromDevice": "端末側からリンク解除（設定コード認証）",
-    "deviceWorkLocationChangedFromDevice": "端末側から作業場所設定を変更（設定コード認証）"
+    "deviceWorkLocationChangedFromDevice": "端末側から作業場所設定を変更（設定コード認証）",
+    "inspectionConfirmed": "検査表確認を記録",
+    "finalInspectionDrawingLabel": "最終検査: 図面・ラベル・膜厚・寸法 → {mark}",
+    "finalInspectionProtectiveCap": "最終検査: 保護キャップ → {mark}",
+    "finalInspectionFinishedQuantity": "最終検査: 完成本数 → {mark}",
+    "finalInspectionSpareStockUsedOn": "最終検査: 予備在庫使用 あり",
+    "finalInspectionSpareStockUsedOff": "最終検査: 予備在庫使用 なし",
+    "finalInspectionSpareStockReceivedOn": "最終検査: 予備在庫入庫 あり",
+    "finalInspectionSpareStockReceivedOff": "最終検査: 予備在庫入庫 なし",
+    "finalInspectionShelved": "出荷前確認: 棚包担当者を記録",
+    "finalInspectionDeliveryNoteIssued": "出荷前確認: 納品書発行者を記録",
+    "finalInspectionShipmentAuthorized": "出荷前確認: 出荷許可者を記録",
+    "finalInspectionShipDefectReviewed": "出荷時不良内容確認者印を記録",
+    "inspectionApproved": "検査記録を承認"
   },
   "workflowCore": {
     "quantityLabels": {
@@ -8291,7 +8409,7 @@
       },
       "shipTo": {
         "label": "出荷先",
-        "summary": "製品の届け先です。注文をくれたお客様と別の会社・支店に届けるときに選びます。空のままなら、お客様へ届けるという意味です。"
+        "summary": "製品の届け先です。注文をくれたお客様と別の会社・支店に届けるときに選びます。空のままなら、お客様へ届けるという意味です。通常配送のときだけの欄で、ユーザー直送では選べません（届け先はエンドユーザーになります）。"
       },
       "deliveryMethod": {
         "label": "配送方法",

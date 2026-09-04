@@ -20,21 +20,26 @@
 
 import { recordAudit } from "./audit";
 import { prisma } from "./db";
+import {
+  type FinalInspectionView,
+  getFinalInspection,
+} from "./final-inspection";
 import type { LocalizedText } from "./format";
 import { localized } from "./format";
-import { getMessages, type Locale } from "./i18n";
+import type { Locale } from "./i18n";
 import {
-  type BoolLabels,
-  formatCounts,
-  formatSampleValue,
+  type ApprovableInspectionRecord,
+  getWorkOrderInspectionRecords,
+} from "./inspection-approval";
+import {
   type InspectionItemSpec,
   type InspectionSampleValue,
   isSampleEmpty,
   itemSpecFromRow,
-  parseStoredSamples,
   resolveItemPass,
   samplingSpecFromRow,
 } from "./inspection-core";
+import { inspectionValueLabel } from "./inspection-value-label";
 import { encodeInventoryNote } from "./inventory-note-core";
 import type { StepActionResult, StepErrorCode } from "./step-execution";
 import { inspectionOutcome } from "./steps-core";
@@ -44,13 +49,6 @@ const fail = (code: StepErrorCode, ...errors: string[]): StepActionResult => ({
   codes: [code],
   errors: errors.length > 0 ? errors : undefined,
 });
-
-/** 実測値表示のはい/いいえ（ロケール別）。 */
-const BOOL_LABELS: Record<Locale, BoolLabels> = {
-  ja: { yes: "はい", no: "いいえ" },
-  en: { yes: "Yes", no: "No" },
-  zh: { yes: "是", no: "否" },
-};
 
 // ── 読み取り（実行画面に出すデータ） ─────────────────────────────────────────
 
@@ -68,15 +66,26 @@ export interface InspectionTemplateView {
   samplingMode: "ALL" | "PERCENT" | "COUNT";
   samplingValue: number | null;
   recordStyle: "VALUES" | "COUNTS";
+  /**
+   * VALUES のサンプル呼称（製品1,2,3… / 初品・中間品・最終品）。
+   * ページ見出しがこれで決まる — 呼称を無視すると、紙の検査表が「初品」と
+   * 呼んでいる 1 枚目が画面では「製品 1」になり、突き合わせられない。
+   */
+  sampleNaming: "GENERIC" | "INITIAL_MID_FINAL";
   items: InspectionTemplateItemView[];
 }
 
 export interface InspectionRecordView {
   id: string;
+  /** どの検査表の記録か（完了の門が割当と突き合わせるのに使う）。 */
+  templateId: number;
   templateName: string;
   status: string;
   recordedAt: string | null;
   recordedByName: string | null;
+  /** 検査表確認（旧帳票の確認欄 — 記録者・承認者とは別ロール）。 */
+  confirmedAt: string | null;
+  confirmedByName: string | null;
   items: {
     itemName: string;
     /** 実測値の表示文字列（複数サンプルは " / " 連結。未入力は null）。 */
@@ -101,6 +110,21 @@ export interface DefectRecordView {
 export interface StepRecordingData {
   /** 検査工程か（カタログ is_inspection）。 */
   isInspection: boolean;
+  /** 検査承認工程か（カタログ is_approval_step）。 */
+  isApprovalStep: boolean;
+  /**
+   * 承認対象の検査記録（**指示書全体**）。検査承認工程にだけ渡る。
+   * 承認は「この指示書の検査がひととおり終わったか」を見る仕事なので、
+   * 自分の工程の記録だけでは足りない。
+   */
+  approvableRecords: ApprovableInspectionRecord[];
+  /** 最終検査工程か（カタログ is_final_inspection）。 */
+  isFinalInspection: boolean;
+  /**
+   * 最終検査・出荷前確認（指示書 1 件に 1 行）。
+   * 最終検査工程にだけ渡る — 他の工程では null。
+   */
+  finalInspection: FinalInspectionView | null;
   /** この工程に割り当てられた検査表テンプレート（工程単位の割当）。 */
   templates: InspectionTemplateView[];
   /** この工程の既存検査記録（新しい順）。 */
@@ -118,6 +142,8 @@ function asText(value: unknown): LocalizedText | null {
 /** 実行画面の検査・不良セクションに必要なデータをまとめて引く。 */
 export async function getStepRecordingData(
   stepId: string,
+  /** 承認できるかどうかは人によって違うので、閲覧者を受け取る。 */
+  actorId: string,
   locale: Locale,
 ): Promise<StepRecordingData | null> {
   const step = await prisma.workOrderStep.findUnique({
@@ -125,12 +151,25 @@ export async function getStepRecordingData(
     select: {
       workOrderId: true,
       processStepId: true,
-      processStep: { select: { isInspection: true } },
+      processStep: {
+        select: {
+          isInspection: true,
+          isFinalInspection: true,
+          isApprovalStep: true,
+        },
+      },
     },
   });
   if (!step) return null;
 
-  const [templateLinks, records, defectTypes, defects] = await Promise.all([
+  const [
+    templateLinks,
+    records,
+    finalInspection,
+    approvableRecords,
+    defectTypes,
+    defects,
+  ] = await Promise.all([
     prisma.workOrderStepInspectionTemplate.findMany({
       where: { stepId },
       include: {
@@ -147,6 +186,12 @@ export async function getStepRecordingData(
       },
       orderBy: { recordedAt: "desc" },
     }),
+    step.processStep.isFinalInspection
+      ? getFinalInspection(step.workOrderId)
+      : Promise.resolve(null),
+    step.processStep.isApprovalStep
+      ? getWorkOrderInspectionRecords(stepId, actorId, locale)
+      : Promise.resolve([]),
     prisma.defectType.findMany({
       where: { isActive: true },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
@@ -164,6 +209,7 @@ export async function getStepRecordingData(
     ...new Set(
       [
         ...records.map((r) => r.recordedBy),
+        ...records.map((r) => r.confirmedBy),
         ...defects.map((d) => d.recordedBy),
       ].filter((id): id is string => id != null),
     ),
@@ -177,37 +223,23 @@ export async function getStepRecordingData(
   const nameOf = (id: string | null) =>
     id ? (users.find((u) => u.id === id)?.displayName ?? null) : null;
 
-  const bool = BOOL_LABELS[locale];
-
-  // 実測値の表示（合格数のみ → 合格 n/m、新形式 measured_values は型別
-  // フォーマット、旧形式は生値）
-  const passLabel = getMessages(locale).steps.inspection.pass;
-  const valueLabel = (it: {
-    measuredValue: string | null;
-    measuredValues: unknown;
-    inspectedCount: number | null;
-    passedCount: number | null;
-    templateItem: Parameters<typeof itemSpecFromRow>[0];
-  }): string | null => {
-    if (it.inspectedCount != null || it.passedCount != null) {
-      return formatCounts(it.inspectedCount, it.passedCount, passLabel);
-    }
-    const samples = parseStoredSamples(it.measuredValues);
-    if (samples.length === 0) return it.measuredValue;
-    const spec = itemSpecFromRow(it.templateItem);
-    return samples
-      .map((s) => formatSampleValue(spec, s, locale, bool))
-      .join(" / ");
-  };
+  // 実測値の表示は検査承認側と同じものを使う（承認する人が見る値と記録した
+  // 人が見る値が違ったら承認の意味がない — inspection-value-label.ts）。
+  const valueLabel = inspectionValueLabel(locale);
 
   return {
     isInspection: step.processStep.isInspection,
+    isApprovalStep: step.processStep.isApprovalStep,
+    approvableRecords,
+    isFinalInspection: step.processStep.isFinalInspection,
+    finalInspection,
     // この工程に割り当てられたテンプレート（工程単位 — web 側と同じ規則）
     templates: templateLinks.map((t) => ({
       id: t.inspectionTemplate.id,
       code: t.inspectionTemplate.code,
       version: t.inspectionTemplate.version,
       name: localized(asText(t.inspectionTemplate.name), locale),
+      sampleNaming: t.inspectionTemplate.sampleNaming,
       ...samplingSpecFromRow(t.inspectionTemplate),
       items: t.inspectionTemplate.items.map((it) => ({
         name: localized(asText(it.itemName), locale),
@@ -216,10 +248,13 @@ export async function getStepRecordingData(
     })),
     inspectionRecords: records.map((r) => ({
       id: r.id,
+      templateId: r.templateId,
       templateName: localized(asText(r.template.name), locale),
       status: r.status,
       recordedAt: r.recordedAt?.toISOString() ?? null,
       recordedByName: nameOf(r.recordedBy),
+      confirmedAt: r.confirmedAt?.toISOString() ?? null,
+      confirmedByName: nameOf(r.confirmedBy),
       items: r.items.map((it) => ({
         itemName: localized(asText(it.templateItem.itemName), locale),
         valueLabel: valueLabel(it),
@@ -395,6 +430,41 @@ export async function recordInspection(
         { count: items.length },
       ),
     },
+  });
+  return { ok: true };
+}
+
+/**
+ * 検査表確認 — 旧帳票の「検査表確認」欄。記録者（recordedBy）とも承認者
+ * （approvedBy = 検査承認工程）とも別ロールのスタンプで、合否に関わらず押せる
+ * （第三者が記入内容を確認したという記録であって、承認そのものではない）。
+ * **承認（APPROVED への遷移）はキオスクに持たない** — web の管理画面のみ。
+ */
+export async function confirmInspectionRecord(
+  stepId: string,
+  actorId: string,
+  recordId: string,
+): Promise<StepActionResult> {
+  const found = await findRecordableStep(stepId, actorId);
+  if (found.error) return found.error;
+  const step = found.step;
+
+  // この工程の記録だけ — 他の工程の記録に別画面から印は押させない。
+  const record = await prisma.inspectionRecord.findFirst({
+    where: { id: recordId, workOrderStepId: stepId },
+    select: { id: true },
+  });
+  if (!record) return fail("NOT_FOUND", "検査記録が見つかりません"); // i18n-ignore
+
+  await prisma.inspectionRecord.update({
+    where: { id: recordId },
+    data: { confirmedBy: actorId, confirmedAt: new Date() },
+  });
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "work_orders",
+    recordId: String(step.workOrder.workOrderNumber),
+    after: { note: encodeInventoryNote("inspectionConfirmed") },
   });
   return { ok: true };
 }

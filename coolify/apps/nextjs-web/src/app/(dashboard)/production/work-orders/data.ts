@@ -19,6 +19,7 @@ import type {
 } from "@/components/production/step-execution/model";
 import type {
   StepAssigneeView,
+  WorkOrderFinalInspectionView,
   WorkOrderRow,
   WorkOrderView,
 } from "@/components/production/work-orders/model";
@@ -49,9 +50,11 @@ import {
   fetchWorkLocationOptions,
 } from "@/lib/work-locations";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
+import { shippableQuantity } from "@/lib/work-order-shipping-core";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import {
   canStartStep,
+  computeFinishedQuantity,
   effectiveLotInputMode,
   expectedInput,
 } from "@/lib/workflow-core";
@@ -179,10 +182,87 @@ const WO_INCLUDE = {
     orderBy: { sortOrder: "asc" as const },
   },
   stepLinks: true,
-  finalInspection: true,
 };
 
 const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
+
+/** 最終検査行に載っている確認者 uuid（表示名解決のために集める）。 */
+export function finalInspectionActorIds(
+  fi: WorkOrderFinalInspectionRow | null | undefined,
+): string[] {
+  return [
+    fi?.drawingLabelCheckedBy,
+    fi?.protectiveCapCheckedBy,
+    fi?.finishedQuantityCheckedBy,
+    fi?.shelvedBy,
+    fi?.deliveryNoteIssuedBy,
+    fi?.shipmentAuthorizedBy,
+    fi?.shipDefectReviewedBy,
+  ].filter((id): id is string => id != null);
+}
+
+/**
+ * 最終検査行の読み取り面（Prisma の行をそのまま渡せる構造型）。
+ * 生成物の型に依存しないので、select を絞ったクエリの結果も渡せる。
+ */
+type WorkOrderFinalInspectionRow = {
+  drawingLabelOk: boolean | null;
+  drawingLabelCheckedBy: string | null;
+  drawingLabelCheckedAt: Date | null;
+  protectiveCapOk: boolean | null;
+  protectiveCapCheckedBy: string | null;
+  protectiveCapCheckedAt: Date | null;
+  finishedQuantityOk: boolean | null;
+  finishedQuantityCheckedBy: string | null;
+  finishedQuantityCheckedAt: Date | null;
+  spareStockUsed: boolean;
+  spareStockReceived: boolean;
+  shelvedBy: string | null;
+  shelvedAt: Date | null;
+  deliveryNoteIssuedBy: string | null;
+  deliveryNoteIssuedAt: Date | null;
+  shipmentAuthorizedBy: string | null;
+  shipmentAuthorizedAt: Date | null;
+  shipDefectReviewedBy: string | null;
+  shipDefectReviewedAt: Date | null;
+  shipDefectNotes: string | null;
+};
+
+/**
+ * 最終検査・出荷前確認（work_order_final_inspections の 1 行）→ view model。
+ * 指示書詳細と工程実行画面の両方が同じ形を読む — 記入口は最終検査工程
+ * （process_step_catalog.is_final_inspection）の実行画面だけだが、
+ * 表示は指示書側でも使える。
+ */
+export function mapFinalInspection(
+  fi: WorkOrderFinalInspectionRow | null | undefined,
+  nameOf: (id: string | null | undefined) => string | null,
+): WorkOrderFinalInspectionView | null {
+  if (!fi) return null;
+  const by = (id: string | null) => (id ? nameOf(id) : null);
+  return {
+    drawingLabelOk: fi.drawingLabelOk,
+    drawingLabelCheckedByName: by(fi.drawingLabelCheckedBy),
+    drawingLabelCheckedAt: iso(fi.drawingLabelCheckedAt),
+    protectiveCapOk: fi.protectiveCapOk,
+    protectiveCapCheckedByName: by(fi.protectiveCapCheckedBy),
+    protectiveCapCheckedAt: iso(fi.protectiveCapCheckedAt),
+    finishedQuantityOk: fi.finishedQuantityOk,
+    finishedQuantityCheckedByName: by(fi.finishedQuantityCheckedBy),
+    finishedQuantityCheckedAt: iso(fi.finishedQuantityCheckedAt),
+    spareStockUsed: fi.spareStockUsed,
+    spareStockReceived: fi.spareStockReceived,
+    shelvedByName: by(fi.shelvedBy),
+    shelvedAt: iso(fi.shelvedAt),
+    deliveryNoteIssuedByName: by(fi.deliveryNoteIssuedBy),
+    deliveryNoteIssuedAt: iso(fi.deliveryNoteIssuedAt),
+    shipmentAuthorizedByName: by(fi.shipmentAuthorizedBy),
+    shipmentAuthorizedAt: iso(fi.shipmentAuthorizedAt),
+    shipDefectReviewedByName: by(fi.shipDefectReviewedBy),
+    shipDefectReviewedAt: iso(fi.shipDefectReviewedAt),
+    shipDefectNotes: fi.shipDefectNotes,
+  };
+}
 
 /**
  * 作業計画の割当ユーザー → 担当者一覧（重複排除・計画日順）。
@@ -474,18 +554,6 @@ export async function fetchWorkOrder(
   const userIds = new Set<string>();
   for (const h of historyRaw) if (h.user) userIds.add(h.user);
   for (const s of r.steps) if (s.completedBy) userIds.add(s.completedBy);
-  const fi = r.finalInspection;
-  for (const id of [
-    fi?.drawingLabelCheckedBy,
-    fi?.protectiveCapCheckedBy,
-    fi?.finishedQuantityCheckedBy,
-    fi?.shelvedBy,
-    fi?.deliveryNoteIssuedBy,
-    fi?.shipmentAuthorizedBy,
-    fi?.shipDefectReviewedBy,
-  ]) {
-    if (id) userIds.add(id);
-  }
   const users = userIds.size
     ? await prisma.user.findMany({
         where: { id: { in: [...userIds] } },
@@ -497,6 +565,33 @@ export async function fetchWorkOrder(
 
   // この指示書のロットが載った出荷書（手続き状況の「次の書類へ」）。
   // 出荷書 ↔ 指示書は明細のロット番号（= 指示書番号）でつながる。
+  // 完成数 = 工程 DAG の終端集計（不良で減った分は出荷対象にならない）。
+  // ctx は上で承認・開始可否のために既にロード済みなので引き直さない。
+  const finishedQuantity = computeFinishedQuantity(ctx.steps, ctx.links);
+
+  // まだ出荷書へ載せられる数量。**出荷書フォームと同じ数え方**にすること —
+  // フォーム（addSourceGroups）は明細ごとに「受注数 − 出荷済 ≤ 0 なら
+  // 出荷済みとしてスキップ」する。完成数やロット単位の出荷で数えると、
+  // カードは「作れます」と言うのにフォームは「出荷済みです」と返す。
+  // 出荷済みは order_line_id で数える（lot_number は任意列で、在庫保管の行や
+  // ロット未指定の行では空になる）。
+  const woLineIds = r.orderLineLinks.map((l) => l.orderLine.id);
+  const shippedByLine = woLineIds.length
+    ? await prisma.deliveryOrderItem.groupBy({
+        by: ["orderLineId"],
+        where: { orderLineId: { in: woLineIds } },
+        _sum: { quantity: true },
+      })
+    : [];
+  const shippable = shippableQuantity(
+    r.orderLineLinks.map((l) => ({
+      quantity: l.orderLine.quantity,
+      shippedQuantity:
+        shippedByLine.find((s) => s.orderLineId === l.orderLine.id)?._sum
+          .quantity ?? 0,
+    })),
+  );
+
   const shipmentItems = await prisma.deliveryOrderItem.findMany({
     where: { lotNumber: r.workOrderNumber },
     select: {
@@ -523,6 +618,8 @@ export async function fetchWorkOrder(
       status: it.deliveryOrder.status,
       quantity: it.quantity,
     })),
+    finishedQuantity,
+    shippableQuantity: shippable,
     type: r.type,
     plannedQuantity: r.plannedQuantity,
     notes: r.notes,
@@ -592,6 +689,7 @@ export async function fetchWorkOrder(
       catalogExecution: s.processStep.executionLocation,
       isInspection: s.processStep.isInspection,
       isApprovalStep: s.processStep.isApprovalStep,
+      isFinalInspection: s.processStep.isFinalInspection,
       isSyncCapable: s.processStep.isSyncCapable,
       quantityTracking: s.processStep.quantityTracking,
       sortOrder: s.sortOrder,
@@ -642,42 +740,6 @@ export async function fetchWorkOrder(
       at: h.at,
       notes: h.notes ?? null,
     })),
-    finalInspection: fi
-      ? {
-          drawingLabelOk: fi.drawingLabelOk,
-          drawingLabelCheckedByName: fi.drawingLabelCheckedBy
-            ? nameOf(fi.drawingLabelCheckedBy)
-            : null,
-          drawingLabelCheckedAt: iso(fi.drawingLabelCheckedAt),
-          protectiveCapOk: fi.protectiveCapOk,
-          protectiveCapCheckedByName: fi.protectiveCapCheckedBy
-            ? nameOf(fi.protectiveCapCheckedBy)
-            : null,
-          protectiveCapCheckedAt: iso(fi.protectiveCapCheckedAt),
-          finishedQuantityOk: fi.finishedQuantityOk,
-          finishedQuantityCheckedByName: fi.finishedQuantityCheckedBy
-            ? nameOf(fi.finishedQuantityCheckedBy)
-            : null,
-          finishedQuantityCheckedAt: iso(fi.finishedQuantityCheckedAt),
-          spareStockUsed: fi.spareStockUsed,
-          spareStockReceived: fi.spareStockReceived,
-          shelvedByName: fi.shelvedBy ? nameOf(fi.shelvedBy) : null,
-          shelvedAt: iso(fi.shelvedAt),
-          deliveryNoteIssuedByName: fi.deliveryNoteIssuedBy
-            ? nameOf(fi.deliveryNoteIssuedBy)
-            : null,
-          deliveryNoteIssuedAt: iso(fi.deliveryNoteIssuedAt),
-          shipmentAuthorizedByName: fi.shipmentAuthorizedBy
-            ? nameOf(fi.shipmentAuthorizedBy)
-            : null,
-          shipmentAuthorizedAt: iso(fi.shipmentAuthorizedAt),
-          shipDefectReviewedByName: fi.shipDefectReviewedBy
-            ? nameOf(fi.shipDefectReviewedBy)
-            : null,
-          shipDefectReviewedAt: iso(fi.shipDefectReviewedAt),
-          shipDefectNotes: fi.shipDefectNotes,
-        }
-      : null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -696,6 +758,7 @@ export interface StepNavItem {
   supplierName: string | null;
   isInspection: boolean;
   isApprovalStep: boolean;
+  isFinalInspection: boolean;
   /** 数量サマリ（指示書詳細のカードと同じ内訳を一覧にも出す）。 */
   inputQuantity: number | null;
   outputSuccessQuantity: number | null;
@@ -746,6 +809,7 @@ export async function fetchWorkOrderStepNav(
               name: true,
               isInspection: true,
               isApprovalStep: true,
+              isFinalInspection: true,
             },
           },
           plant: { select: { name: true } },
@@ -775,6 +839,7 @@ export async function fetchWorkOrderStepNav(
         : null,
       isInspection: s.processStep.isInspection,
       isApprovalStep: s.processStep.isApprovalStep,
+      isFinalInspection: s.processStep.isFinalInspection,
       inputQuantity: s.inputQuantity,
       outputSuccessQuantity: s.outputSuccessQuantity,
       outputDefectSemiFinished: s.outputDefectSemiFinished,
@@ -817,6 +882,9 @@ export async function fetchStepExecution(
       plannedQuantity: true,
       createdBy: true,
       steps: { select: { plantId: true } },
+      // 最終検査・出荷前確認（指示書 1 件に 1 行）— 記入口は
+      // is_final_inspection が立った工程の実行画面だけ。
+      finalInspection: true,
     },
   });
   if (!wo) return null;
@@ -936,6 +1004,9 @@ export async function fetchStepExecution(
   }
   for (const d of step.defectRecords) {
     if (d.recordedBy) userIds.add(d.recordedBy);
+  }
+  for (const id of finalInspectionActorIds(wo.finalInspection)) {
+    userIds.add(id);
   }
   const users = userIds.size
     ? await prisma.user.findMany({
@@ -1088,6 +1159,7 @@ export async function fetchStepExecution(
       category: step.processStep.category,
       isInspection: step.processStep.isInspection,
       isApprovalStep: step.processStep.isApprovalStep,
+      isFinalInspection: step.processStep.isFinalInspection,
       quantityTracking: step.processStep.quantityTracking,
       lotInputMode: effectiveLotInputMode(
         step.lotInputMode,
@@ -1130,6 +1202,10 @@ export async function fetchStepExecution(
     templates,
     templateOptions,
     stepRecords: step.inspectionRecords.map((r) => mapRecord(r, null)),
+    // 印の付いていない工程には渡さない — 記入口を 1 つに保つため。
+    finalInspection: step.processStep.isFinalInspection
+      ? mapFinalInspection(wo.finalInspection, nameOf)
+      : null,
     workOrderRecords: woRecordsRaw.map((r) =>
       mapRecord(r, localized(r.step.processStep.name as LocalizedText | null)),
     ),

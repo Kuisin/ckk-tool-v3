@@ -37,7 +37,11 @@ export default async function StepExecutionPage({
   if (!step) notFound();
 
   // 検査・不良セクションのデータ（割り当てゲートは getMyStep が通過済み）
-  const recording = await getStepRecordingData(step.stepId, session.locale);
+  const recording = await getStepRecordingData(
+    step.stepId,
+    session.userId,
+    session.locale,
+  );
   if (!recording) notFound();
 
   // 工程マスタの許可作業場所 × この端末（表示用 — 権威は API 側）

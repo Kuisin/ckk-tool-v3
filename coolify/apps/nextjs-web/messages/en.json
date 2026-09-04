@@ -217,7 +217,7 @@
     "tier": "Tier",
     "requester": "Requester",
     "requestedAt": "Requested at",
-    "approvalsSchedule": "Approvals & schedule",
+    "pendingList": "Pending list",
     "save2": "Save",
     "profile": "Profile",
     "newGroup": "New group",
@@ -798,7 +798,8 @@
     "selectARole": "Select a role",
     "cannotChangeRoles": "Cannot change the roles",
     "cannotChangeOwnRoles": "You cannot change your own roles",
-    "cannotRemoveLastAdminRole": "The admin role cannot be removed from the last admin"
+    "cannotRemoveLastAdminRole": "The admin role cannot be removed from the last admin",
+    "finalInspection": "Final inspection"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -1907,6 +1908,31 @@
     },
     "stamp": {
       "companySeal": "Company seal"
+    },
+    "PORTAL_GUIDE": {
+      "title": "Partner portal — how to sign in",
+      "onchu": "",
+      "attnSuffix": "",
+      "personalStrip": "This guide is for {name}. The QR code carries the sign-in address registered for {name}.",
+      "howToTitle": "How to sign in",
+      "step1": "Scan the QR code with your phone's camera, or open the URL below.",
+      "step2": "A verification code ({length} characters) is sent to your registered email address. It is valid for {minutes} minutes.",
+      "step3": "Enter that code to sign in. There is no password.",
+      "scopeTitle": "What you can see",
+      "scopeDocuments": "Documents addressed to your company (quotes, order acceptances, delivery notes, invoices) and order progress",
+      "scopeBranches": "Includes documents addressed to your branches",
+      "scopeAsEndUser": "Includes documents where your company is the end user or ship-to",
+      "scopeSingleDocuments": "{count} individually shared documents",
+      "scopeForms": "Forms: {names}",
+      "urlLabel": "Portal URL",
+      "emailLabel": "Sign-in address",
+      "qrCaption": "Scan to sign in",
+      "noticeTitle": "Please note",
+      "noticeSecret": "Never share the verification code. We will never ask you for it by phone or email.",
+      "noticeIdle": "You are signed out automatically after about {hours} hours of inactivity. Just sign in again the same way.",
+      "noticeNoMail": "If the email does not arrive, check your spam folder and then contact us below.",
+      "contactTitle": "Contact",
+      "contactFallback": "Please contact your sales representative."
     }
   },
   "billing": {
@@ -2040,7 +2066,9 @@
       "leaveAtLeastOne": "Leave at least one."
     },
     "tasksView": {
-      "thereIsNoWorkAssignedTo": "There is no work assigned to you"
+      "thereIsNoWorkAssignedTo": "There is no work assigned to you",
+      "privilegedDecidedInSy0g": "Decisions are made in Privileged access (SY0G).",
+      "decide": "Decide"
     },
     "formsActions": {
       "addAtLeastOneField": "Add at least one field",
@@ -2364,7 +2392,12 @@
       "flowChangeDescription": "{summary} | Requested by: {requestedBy} | {stepLabel}. {note}",
       "flowChangeNotAppliedYet": "The steps will not change until approved.",
       "andNMoreOrderLines": "{first} and {count} more",
-      "andNMoreCustomers": "{first} and {count} more"
+      "andNMoreCustomers": "{first} and {count} more",
+      "nextStepCreateADeliveryOrder": "Next step: create a delivery order",
+      "openDeliveryOrderFormForThisLot": "Opens the delivery order form for the {quantity} piece(s) not shipped yet. Other lines of the same order acceptance can be added too.",
+      "deliveryOrderNeedsCompletedWorkOrder": "You can create it only from a completed work order",
+      "deliveryOrderNeedsOrderLine": "You cannot create it from a work order with no order line",
+      "deliveryOrderAlreadyArranged": "Every order line of this work order is already arranged for shipping"
     },
     "addBranchModal": {
       "theBranchWasAdded": "The branch was added",
@@ -2557,7 +2590,10 @@
       "itemRecorded": "Recorded \"{item}\"",
       "shelvedBy": "Shelved by",
       "shipmentAuthorizedBy": "Shipment authorized by",
-      "stageRecorded": "Recorded {stage}"
+      "stageRecorded": "Recorded {stage}",
+      "markOk": "{item}: OK",
+      "markNg": "{item}: not OK",
+      "recordPriorStageFirst": "Record {label} first"
     },
     "workOrderStepsPanel": {
       "deleteTheBranch": "Delete the branch",
@@ -2698,7 +2734,8 @@
       "returnsAnInProgressStepTo": "Returns an in-progress step to not started. Quantities being entered are not saved.",
       "returnsACompletedStepToNot": "Returns a completed step to not started and clears the recorded quantities. It cannot be rolled back if a following step has started.",
       "thereAreNoSteps": "There are no steps.",
-      "filterByStepNameOrCode": "Filter by step name or code…"
+      "filterByStepNameOrCode": "Filter by step name or code…",
+      "completeBlockedByInspection": "Some inspection sheets have no record yet ({sheets}). This step cannot be completed until they are saved."
     },
     "workflowBuilder": {
       "plannedQuantityMustBeAtLeast1": "Planned quantity must be at least 1",
@@ -2745,7 +2782,8 @@
       "theStepWasAborted": "The step was aborted",
       "abort": "Abort",
       "viewInspectionSheet": "View inspection sheet",
-      "noInspectionSheetAssigned": "No inspection sheet assigned"
+      "noInspectionSheetAssigned": "No inspection sheet assigned",
+      "finalInspectionIsRecordedOnThisStep": "The final inspection and pre-shipment checks are recorded on this step (one record per work order)."
     },
     "workOrderLinksCard": {
       "quantityPiecesWithCount": "{count} pcs",
@@ -2795,7 +2833,8 @@
       "spareStockUsed": "Spare stock used",
       "stageAlreadyRecorded": "{label} has already been recorded",
       "stageRecordedNote": "Recorded {label}",
-      "woNotFound": "Work order not found"
+      "woNotFound": "Work order not found",
+      "noFinalInspectionStep": "This work order has no final inspection step"
     },
     "stepExecutionActions": {
       "invalidLotSlipCode": "Invalid lot/slip code",
@@ -3973,7 +4012,17 @@
       "issuedLinks": "Issued links",
       "revoked": "Revoked",
       "linkSummary": "{email} / {count} uses / until {date}",
-      "verified": "Verified"
+      "verified": "Verified",
+      "sharingScope": "Sharing scope",
+      "noSharingYet": "Nothing is shared yet (this person can see nothing).",
+      "includesBranches": "Includes branches",
+      "includesEndUserDocuments": "Includes documents as end user or ship-to",
+      "revokingSharingHidesThoseDocuments": "After revoking, the documents in this scope are hidden from this person.",
+      "noLinksIssuedYet": "No links have been issued.",
+      "revokingTheLinkClosesTheSession": "Revoking also ends any session opened with that link.",
+      "viewingHistory": "Viewing history",
+      "nothingHasBeenViewedYet": "Nothing has been viewed yet.",
+      "ipAddress": "IP address"
     },
     "privileged": {
       "pendingApproval": "(pending approval)",
@@ -4463,6 +4512,15 @@
     "kioskSettings": {
       "stepExecution": "Step execution",
       "workOrderScan": "Work order scan"
+    },
+    "portalGuide": {
+      "guide": "Guide",
+      "guideForThisContact": "Guide for this contact",
+      "guideForAllContacts": "Guide for all contacts",
+      "accountNotFound": "The account was not found.",
+      "activateBeforeIssuing": "Enable the account first — a disabled account cannot sign in.",
+      "noActiveAccounts": "This partner has no enabled portal accounts.",
+      "couldNotIssueTheGuide": "Could not issue the guide."
     }
   },
   "portal": {
@@ -4473,14 +4531,22 @@
     },
     "documents": {
       "document": "Document",
-      "noneToShow": "There are no {document} to show."
+      "noneToShow": "There are no {document} to show.",
+      "dueDate": "Payment due",
+      "taxAmount": "Tax",
+      "noLineItems": "There are no line items.",
+      "priceOmitted": "This delivery note does not show prices."
     },
     "forms": {
       "thereAreNoResponsesToShow": "There are no responses to show.",
-      "noFormsAreSharedWithYou": "No forms are shared with you."
+      "noFormsAreSharedWithYou": "No forms are shared with you.",
+      "noAnswerFields": "There are no fields to show.",
+      "rowNumber": "Row {row}",
+      "responseCount": "{count} responses"
     },
     "orders": {
-      "thereAreNoOrdersToShow": "There are no orders to show."
+      "thereAreNoOrdersToShow": "There are no orders to show.",
+      "cancelledNotice": "This order line has been cancelled."
     },
     "page": {
       "youCanViewDocumentsAddressedTo": "You can view documents addressed to your company.",
@@ -4510,6 +4576,19 @@
     "loginActions": {
       "backupCodeInvalid": "The backup code is incorrect.",
       "issueMessage": "If the email address you entered is registered, a verification code has been sent. Enter it within 10 minutes. If it does not arrive, check your spam folder and contact your sales representative."
+    },
+    "common": {
+      "relatedDocuments": "Related documents"
+    },
+    "home": {
+      "greeting": "Hello, {name}",
+      "activeOrders": "Orders in progress",
+      "recentDocuments": "Recent documents",
+      "viewAll": "View all",
+      "nothingToShow": "There is nothing to show yet."
+    },
+    "nav": {
+      "menu": "Menu"
     }
   },
   "master": {
@@ -4903,7 +4982,10 @@
       "noRelatedStep": "No related step",
       "referenceImageHelp": "Diagrams of measurement points, reference photos, etc. Once set, it also prints on the blank and completed sheet PDFs ({ext}, up to 5MB).",
       "reselect": "Reselect",
-      "templateCountValue": "{count} inspection sheet(s)"
+      "templateCountValue": "{count} inspection sheet(s)",
+      "toggleRequiredFor": "Toggle required / optional for {name}",
+      "markedRequired": "Marked as required",
+      "markedOptional": "Marked as optional"
     },
     "materialNumbering": {
       "theComponentWasAdded": "The component was added",
@@ -5095,7 +5177,10 @@
       "enabled": "Enabled step \"{name}\"",
       "executionLocationRequired": "Select an execution location",
       "sortOrderInteger": "Enter an integer for the sort order",
-      "stepUpdated": "Step updated"
+      "stepUpdated": "Step updated",
+      "finalInspectionStep": "Final inspection step",
+      "theFinalInspectionChecklistIsRecorded": "The final inspection and pre-shipment checks (3 checks, spare stock, packing → delivery note → shipping approval) are recorded on this step's execution screen. There is one record per work order, and a work order whose step list has no flagged step has no final inspection.",
+      "approvalStepsHaveNoQuantity": "An inspection approval step carries no quantity (quantity tracking is set to none). It approves the inspection sheet of an earlier step rather than working on the pieces."
     },
     "products": {
       "specification": "Specification",
@@ -6123,7 +6208,7 @@
       "useAnApprovalFlow": "Use an approval flow",
       "aSettingForWhenAnApprover": "A setting for when an approver says \"fix this\". It closes as soon as anyone approves (sending back always allows edits)",
       "evenWhilePendingTheRespondentCan": "Even while pending, the respondent can fix it until the first approval",
-      "whoIsToldOnCompletionAll": "Who is told on completion (all steps approved if an approval flow is used, otherwise submission) is set per share by ticking \"completion notice\" on the Sharing tab. Recipients can also see the list under \"Completed requests\" in Approvals & schedule (CM01).",
+      "whoIsToldOnCompletionAll": "Who is told on completion (all steps approved if an approval flow is used, otherwise submission) is set per share by ticking \"completion notice\" on the Sharing tab. Recipients can also see the list under \"Completed requests\" in Pending list (CM01).",
       "allowOnlyOneResponsePerPerson": "Allow only one response per person",
       "openPeriod": "Open period",
       "ifEmptyItOpensTheMoment": "If empty, it opens the moment it is published",
@@ -6352,7 +6437,7 @@
       "searchUsers": "Search users",
       "removeAShare": "Remove a share",
       "aFormWithNoSharesSet": "A form with no shares set is visible only to its author and administrators. Knowing the URL does not help.",
-      "sharesWithCompletionNoticeTickedAre": "Shares with \"completion notice\" ticked are told when a request or report completes (all steps approved with an approval flow, otherwise on submission), and it appears under \"Completed requests\" in Approvals & schedule (CM01). Shares with a condition only hear about completions matching it.",
+      "sharesWithCompletionNoticeTickedAre": "Shares with \"completion notice\" ticked are told when a request or report completes (all steps approved with an approval flow, otherwise on submission), and it appears under \"Completed requests\" in Pending list (CM01). Shares with a condition only hear about completions matching it.",
       "narrowWhichResponsesAreShownApplies": "Narrow which responses are shown (applies to this share only)",
       "addAShare": "Add a share"
     },
@@ -6631,6 +6716,7 @@
       "viewTheBreakdown": "View the breakdown",
       "didYouMean": "Did you mean",
       "selectACustomer": "Select a customer",
+      "shipToOnlyForNormalDelivery": "Not used for direct-to-end-user (the end user is the destination)",
       "createADraft": "Create a draft",
       "createAnOrderAcceptanceByHand": "Create an order acceptance by hand",
       "createsTheOrderAcceptanceDirectlyWithout": "Creates the order acceptance directly, without automatic order intake (saved as a draft).",
@@ -7370,6 +7456,10 @@
       "storedToStock": "Stored (to stock)",
       "deliveryNoteNote": "{status} · {recipient}",
       "confirmConfirmBody": "This confirms delivery order {number}. It cannot be edited after confirming.",
+      "autoNotesHeading": "Confirming creates these delivery notes automatically",
+      "autoNoteWithPrice": "With prices",
+      "autoNoteWithoutPrice": "Without prices",
+      "autoNotesEndUserMissing": "The end user cannot be resolved, so the delivery note without prices will not be created. Check the end user on the order acceptance.",
       "confirmedBody": "Confirmed delivery order {number}",
       "confirmShipBodyDispatch": "This marks delivery order {number} as shipped. The order line's shipping status will also be recalculated.",
       "confirmShipBodyStock": "This marks delivery order {number} as shipped (the order line's shipping status will not change, since this is stock storage).",
@@ -7381,8 +7471,13 @@
       "onlySameDeliveryMethodCanBeCombined": "A delivery order can only combine order lines with the same delivery method (standard / direct to end user)",
       "stockStorageHasNoDeliveryNote": "Stock-storage delivery orders don't get a delivery note",
       "onlySameEndUserCanBeCombined": "A delivery order can only combine order lines with the same end user",
-      "confirmConfirmBodyDispatch": "This confirms delivery order {number}. It cannot be edited afterward. Delivery note(s) will be created automatically (direct-to-end-user creates two — one without prices and one with).",
-      "confirmedBodyDispatch": "Confirmed delivery order {number} and created the delivery note(s)"
+      "confirmedBodyDispatch": "Confirmed delivery order {number} and created the delivery note(s)",
+      "coveredOrderAcceptances": "Covered order acceptances",
+      "shipTogetherTitle": "Ship other lines of the same order acceptance too?",
+      "shipTogetherBody": "The same order acceptance has {count} line(s) not yet shipped. Choose which ones to put on this delivery order.",
+      "unshippedWithLots": "Unshipped {quantity} / lots {lots}",
+      "justThisWorkOrder": "Just this work order",
+      "addSelectedLines": "Add selected lines"
     },
     "pendingShipments": {
       "completedLots": "Completed lots",
@@ -7415,7 +7510,8 @@
       "shippedQuantityLabel": "Shipped {quantity}",
       "completedQuantityLabel": "Completed {quantity} (from {count} completed work orders)",
       "exceedsRemainingLabel": "Exceeds the remaining order of {remaining} (shipping {total})",
-      "partialShipmentLabel": "Partial shipment (shipping {total} / remaining {remaining})"
+      "partialShipmentLabel": "Partial shipment (shipping {total} / remaining {remaining})",
+      "couldNotAddWorkOrderLines": "Could not load the order lines of work order #{workOrderNumber} (they may be unconfirmed or have no product)"
     },
     "deliveryNoteForm": {
       "editWithNumber": "Edit delivery note {noteId}"
@@ -7727,7 +7823,8 @@
     "notABranchSeriesStep": "This is not a branch series step",
     "cannotDeleteBranchWithStartedSteps": "Cannot delete a branch that includes a step that has already started",
     "auditBranchDeleted": "Deleted a branch ({count} steps)",
-    "auditBranchUpdated": "Updated the branch (quantity {quantity}, {termination})"
+    "auditBranchUpdated": "Updated the branch (quantity {quantity}, {termination})",
+    "inspectionSheetsNotRecorded": "Some inspection sheets have no record yet ({sheets}). Save the inspection sheet before completing the step"
   },
   "aiKeywords": {
     "enterANameBeforeRunning": "Enter a name before running this",
@@ -7751,6 +7848,14 @@
   "privilegedAccessGate": {
     "unknownOperation": "Unknown privileged operation: {key} (register it in lib/privileged-operations.ts)",
     "operationRequiresApprovalSy0g": "This operation requires approval ({label}). Request it from Privileged access (SY0G)"
+  },
+  "privilegedNotify": {
+    "requestTitle": "Privileged access request: {subject}",
+    "requestMessage": "{name} / Reason: {reason}",
+    "approvedTitle": "Your privileged access request was approved: {subject}",
+    "rejectedTitle": "Your privileged access request was sent back: {subject}",
+    "revokedTitle": "Your privileged access grant was revoked: {subject}",
+    "approvedButNotApplied": "Approved, but the change could not be applied: {error}"
   },
   "audit": {
     "emptyArray": "(None)",
@@ -8157,7 +8262,20 @@
     "inspectionRecordedPass": "Saved inspection record (Pass / {count} items)",
     "inspectionRecordedFail": "Saved inspection record (Fail / {count} items)",
     "deviceUnlinkedFromDevice": "Unlinked from the device itself (device settings code)",
-    "deviceWorkLocationChangedFromDevice": "Changed the default work location from the device itself (device settings code)"
+    "deviceWorkLocationChangedFromDevice": "Changed the default work location from the device itself (device settings code)",
+    "inspectionConfirmed": "Recorded the inspection sheet check",
+    "finalInspectionDrawingLabel": "Final inspection: drawing, label, coating thickness, dimensions → {mark}",
+    "finalInspectionProtectiveCap": "Final inspection: protective cap → {mark}",
+    "finalInspectionFinishedQuantity": "Final inspection: finished quantity → {mark}",
+    "finalInspectionSpareStockUsedOn": "Final inspection: spare stock used",
+    "finalInspectionSpareStockUsedOff": "Final inspection: spare stock not used",
+    "finalInspectionSpareStockReceivedOn": "Final inspection: received into spare stock",
+    "finalInspectionSpareStockReceivedOff": "Final inspection: not received into spare stock",
+    "finalInspectionShelved": "Pre-shipment check: recorded shelved by",
+    "finalInspectionDeliveryNoteIssued": "Pre-shipment check: recorded delivery note issued by",
+    "finalInspectionShipmentAuthorized": "Pre-shipment check: recorded shipment authorized by",
+    "finalInspectionShipDefectReviewed": "Recorded the checked-by stamp for defects at shipping",
+    "inspectionApproved": "Approved the inspection record"
   },
   "workflowCore": {
     "quantityLabels": {
@@ -8291,7 +8409,7 @@
       },
       "shipTo": {
         "label": "Ship-to",
-        "summary": "The delivery destination for the product. Select this when delivering to a different company or branch than the customer who placed the order. Leaving it blank means delivery to the customer."
+        "summary": "The delivery destination for the product. Select this when delivering to a different company or branch than the customer who placed the order. Leaving it blank means delivery to the customer. It applies to standard delivery only — with direct-to-end-user it is disabled, because the end user is the destination."
       },
       "deliveryMethod": {
         "label": "Delivery method",

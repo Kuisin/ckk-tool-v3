@@ -3,12 +3,14 @@
  *
  * 絞り込みは share-grants-core.ts の responseInScope を再利用する
  * （共有条件の規則を二重に書かない）。共有されていなければ 404。
+ * 行を押すと回答 1 件の中身へ。
  */
 
-import { Stack, Table, Text, Title } from "@mantine/core";
+import { Stack, Title } from "@mantine/core";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { PortalFormResponseTable } from "@/components/portal/PortalFormResponseTable";
 import { recordPortalAccess } from "@/lib/portal-access-log";
 import { listPortalFormResponses } from "@/lib/portal-forms";
 import { requirePortalView } from "@/lib/portal-page";
@@ -43,34 +45,7 @@ export default async function PortalFormPage({
   return (
     <Stack gap="md">
       <Title order={3}>{tr("common.formResponses")}</Title>
-      {rows.length === 0 ? (
-        <Text c="dimmed" size="sm">
-          {tr("portal.forms.thereAreNoResponsesToShow")}
-        </Text>
-      ) : (
-        <Table highlightOnHover striped withTableBorder>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>{tr("common.responseNumber")}</Table.Th>
-              <Table.Th>{tr("common.submittedOn")}</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {rows.map((r) => (
-              <Table.Tr key={r.responseNumber}>
-                <Table.Td>
-                  <Text ff="monospace" size="sm">
-                    {r.responseNumber}
-                  </Text>
-                </Table.Td>
-                <Table.Td>
-                  <Text size="sm">{r.submittedOn ?? "—"}</Text>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      )}
+      <PortalFormResponseTable code={decoded} rows={rows} />
     </Stack>
   );
 }

@@ -8,6 +8,12 @@
  * requirePortalView() でも見ているが、レイアウトは全ページの唯一の親なので
  * 二重に置く。main では**この面が存在しない**（404）という扱い。
  *
+ * ■ 行き先を出すかどうかはここで決める
+ * ヘッダーの行き先（書類・注文の進捗・フォーム）は**通常ログインのセッション**
+ * を持つ人にだけ出す。リンク限定セッション（/portal/d/<token> 経由）が見て
+ * よいのはその書類 1 件だけで、一覧も進捗も空になるため、空の画面へ誘う導線を
+ * 置かない。ログイン画面（セッション無し）でも同じ理由で出さない。
+ *
  * ■ NextIntlClientProvider はマウントしない
  * i18n の locale は app.users から引くので、社内セッションを持たない
  * ポータルでは意味が無い。root へ上げると /manual の静的レンダリングが
@@ -17,6 +23,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { PortalShell } from "@/components/portal/PortalShell";
+import { getPortalSession } from "@/lib/portal-auth";
 import { requirePortalFeature } from "@/lib/portal-page";
 
 export const metadata: Metadata = {
@@ -24,7 +31,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function PortalLayout({ children }: { children: ReactNode }) {
+export default async function PortalLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   requirePortalFeature();
-  return <PortalShell>{children}</PortalShell>;
+  const session = await getPortalSession();
+  return <PortalShell nav={!!session?.accountId}>{children}</PortalShell>;
 }

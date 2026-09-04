@@ -109,7 +109,8 @@
     "complete": {
       "title": "工程を完了",
       "noneNote": "この工程は数量記録なしで完了します（通過数 {n} 本）",
-      "submit": "完了する"
+      "submit": "完了する",
+      "blockedByInspection": "検査表を保存するまで完了できません"
     },
     "quantity": {
       "FLOW": {
@@ -184,7 +185,6 @@
       "passedCount": "合格数",
       "failCount": "不合格 {n}",
       "countsOver": "合格数が検査数を超えています",
-      "productPage": "製品 {i} / {n}",
       "prevProduct": "前の製品",
       "nextProduct": "次の製品",
       "addProduct": "製品を追加",
@@ -194,7 +194,15 @@
         "PASS": "合格",
         "FAIL": "不合格",
         "APPROVED": "承認済"
-      }
+      },
+      "sampleInitial": "初品",
+      "sampleMid": "中間品",
+      "sampleFinal": "最終品",
+      "samplePage": "{label} / {n}",
+      "confirmSheet": "検査表確認",
+      "confirmedMeta": "検査表確認 {at} {by}",
+      "confirmed": "検査表確認を記録しました",
+      "sampleGeneric": "製品 {n}"
     },
     "location": {
       "label": "作業場所",
@@ -247,7 +255,60 @@
       "DEVICE_LOCATION_BLOCKED": "この端末の作業場所ではこの工程を実行できません（許可された場所の端末を使用してください）",
       "NO_OPEN_SESSION": "作業セッションがありません（再開してから読み取ってください）",
       "NO_PERMISSION": "この操作の権限がありません",
-      "UNKNOWN": "処理に失敗しました"
+      "UNKNOWN": "処理に失敗しました",
+      "STAGE_ALREADY_RECORDED": "この段は既に記録されています",
+      "STAGE_OUT_OF_ORDER": "前の段を先に記録してください",
+      "INSPECTION_REQUIRED": "検査記録が未入力の検査表があります。検査表を保存してから完了してください",
+      "INSPECTION_NOT_PASS": "合格した検査記録だけ承認できます",
+      "NOT_APPROVER": "この検査表の承認者ではありません"
+    },
+    "finalInspection": {
+      "title": "最終検査・出荷前確認",
+      "subtitle": "この指示書に 1 件だけ記録します。",
+      "readOnly": "作業中／一時停止中のみ記録できます。",
+      "checkDrawingLabel": "図面・ラベル・膜厚・寸法と間違いがないか",
+      "checkProtectiveCap": "保護キャップ使用しているか（φ0.6以下）",
+      "checkFinishedQuantity": "完成本数は合っているか",
+      "notChecked": "未確認",
+      "spareStockTitle": "予備在庫",
+      "useSpareStock": "予備在庫使用",
+      "receiveIntoSpareStock": "予備在庫入庫",
+      "shipmentTitle": "出荷前確認（棚包 → 納品書発行 → 出荷許可）",
+      "shelvedBy": "棚包担当者",
+      "deliveryNoteIssuedBy": "納品書発行者",
+      "shipmentAuthorizedBy": "出荷許可者",
+      "record": "記録する",
+      "waitingPriorStage": "前の段が済んでから",
+      "shipDefectTitle": "出荷時不良内容確認者印",
+      "shipDefectPlaceholder": "出荷前検査での不良内容等（任意）",
+      "shipDefectConfirm": "確認する",
+      "saved": "記録しました",
+      "checkedMeta": "{at} {by}",
+      "markOk": "{item}: 問題なし",
+      "markNg": "{item}: 問題あり"
+    },
+    "approval": {
+      "title": "検査承認",
+      "remaining": "承認待ち {n} 件",
+      "allDone": "すべて承認しました",
+      "empty": "承認する検査記録がありません",
+      "approve": "承認する",
+      "approved": "承認しました",
+      "othersToggle": "承認済み・対象外（{n} 件）",
+      "othersHide": "閉じる",
+      "notApprover": "承認者ではありません",
+      "onlyPass": "不合格のため承認できません",
+      "recordedBy": "記録 {at} {by}",
+      "approvedMeta": "承認 {at} {by}",
+      "sheetOf": "{step} の {sheet}",
+      "viewSheet": "検査表を見る",
+      "sheetTitle": "検査表",
+      "close": "閉じる",
+      "item": "検査項目",
+      "value": "実測値",
+      "verdict": "合否",
+      "noItems": "記入された項目がありません",
+      "checkThenApprove": "中身を確かめてから承認してください"
     }
   },
   "deviceError": {

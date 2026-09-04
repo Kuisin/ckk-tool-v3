@@ -63,6 +63,8 @@ export interface WorkOrderStepView {
   catalogExecution: string;
   isInspection: boolean;
   isApprovalStep: boolean;
+  /** 最終検査・出荷前確認をこの工程で記録する（カタログの印）。 */
+  isFinalInspection: boolean;
   isSyncCapable: boolean;
   /** 数量管理モード（NONE = 記録なしパススルー / FLOW / INSPECTION）。 */
   quantityTracking: "NONE" | "FLOW" | "INSPECTION";
@@ -196,6 +198,21 @@ export interface WorkOrderView {
   completedAt: string | null;
   /** この指示書のロットが載った出荷書（次の書類への受け渡し状況）。 */
   shipments: WorkOrderShipmentView[];
+  /**
+   * 完成数（工程 DAG の終端集計 — 予定数量ではなく実際の出来高）。
+   * 未完了の指示書でも計算はできるが、意味を持つのは COMPLETED のときだけ。
+   */
+  finishedQuantity: number;
+  /**
+   * この指示書の注文明細に、まだ出荷書へ載せられる数量が残っているか
+   * （Σ 明細ごと max(0, 受注数 − 出荷済)）。
+   *
+   * **出荷書フォームと同じ数え方でなければならない** — フォームは
+   * 「受注数 − 出荷済 ≤ 0 なら出荷済みとしてスキップ」なので、指示書側が
+   * 完成数とロット単位の出荷で数えていると、カードは「作れます」と言うのに
+   * フォームは「出荷済みです」と言う、という食い違いになる（実際になった）。
+   */
+  shippableQuantity: number;
   type: string;
   plannedQuantity: number;
   notes: string | null;
@@ -235,7 +252,6 @@ export interface WorkOrderView {
   stepLinks: StepLinkView[];
   rejectReason: string | null;
   history: WorkOrderHistoryView[];
-  finalInspection: WorkOrderFinalInspectionView | null;
   createdAt: string;
   updatedAt: string;
 }

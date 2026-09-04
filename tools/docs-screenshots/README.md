@@ -72,7 +72,7 @@ docker rm -f ckk-shots-db              # 後始末
 いま見ているもの:
 
 - タブ（`AppTabs`）が幅に収まらないときだけドロップダウンへ畳み、広げると戻る
-- 承認・予定 (CM01) のタブ表示設定が保存され、隠したタブの URL でも空にならない
+- 未処理一覧 (CM01) のタブ表示設定が保存され、隠したタブの URL でも空にならない
 - 申請・報告フォームの完了通知 — 共有設定で「完了通知」を付ける → 別の人が提出 →
   CM01「完了した申請」に未読で出る → 開くと既読になる
 - 多言語の名称欄（`LocalizedTextInput`）— 打った文字がそのまま欄に入り、日本語も
@@ -163,3 +163,14 @@ metabase-demo-build.py` の `cards_spec` を直接書き換える。本番の実
   ホルダになる（fumadocs の processed markdown 仕様 — 画像はビルド時に静的
   import へ変換されるため）。LLM 用途ではテキストが主なので許容。
 - en/zh のマニュアルページも同じ ja UI のスクリーンショットを参照する。
+
+## 通し確認を CI で回す（手動実行）
+
+同じ手順を GitHub Actions からも回せる（`.github/workflows/e2e-shipping-inspection.yml`）。
+**手動実行 (`workflow_dispatch`) のみ** — PR ごとに自動では走らない。理由は
+ワークフローの先頭に書いてある（重い / デモシードに依存するので、シードを
+触った PR が本質と関係なく落ちる）。
+
+```
+gh workflow run "e2e — 出荷・検査（手動）" --ref <branch>
+```

@@ -621,7 +621,7 @@ export const shots: Shot[] = [
   {
     id: "approval-list-01",
     docPage: "operations/production/approval/user",
-    // 旧 承認管理 (PD03 /production/approvals) は 承認・予定 (CM01) へ移設され、
+    // 旧 承認管理 (PD03 /production/approvals) は 未処理一覧 (CM01) へ移設され、
     // 旧パスは 308 リダイレクト。リダイレクト先を直に撮る（旧パスのままだと
     // 「9002」が無い画面で 60 秒待って落ちる）。
     path: "/general/tasks?tab=approvals",
@@ -883,15 +883,9 @@ export const shots: Shot[] = [
     },
   },
   {
-    id: "delivery-note-new-01",
-    docPage: "operations/shipping/delivery-note/user",
-    path: "/shipping/delivery-notes/new?deliveryOrder=DOR-202607-00002",
-    steps: async (page) => {
-      await page.getByText("納品方法").first().waitFor();
-    },
-  },
-  {
-    // 価格を載せない納品書（単価・金額の列が無い）
+    // 価格を載せない納品書（単価・金額の列が無い）— ユーザー直送の
+    // 最終需要家宛の 1 通。納品書は出荷書の確定で自動でできるので、
+    // 新規作成フォームの shot は無い（画面ごと廃止された）。
     id: "delivery-note-detail-noprice-01",
     docPage: "operations/shipping/delivery-note/user",
     path: "/shipping/delivery-notes/DRN-202607-00002",
@@ -900,11 +894,11 @@ export const shots: Shot[] = [
     },
   },
   {
+    // 下書きの編集画面 — ユーザー直送では最終需要家が必須で出る
     id: "delivery-note-direct-01",
     docPage: "operations/shipping/delivery-note/user",
-    path: "/shipping/delivery-notes/new?deliveryOrder=DOR-202607-00002",
+    path: "/shipping/delivery-notes/DRN-202607-00002/edit",
     steps: async (page) => {
-      await page.getByText("ユーザー直送").first().click();
       await page.getByText("最終需要家").first().waitFor();
     },
   },
@@ -2253,16 +2247,14 @@ export const shots: Shot[] = [
     highlight: [{ role: "menuitem", name: "出荷" }],
   },
   {
-    // 納品書の新規フォーム — 納品方法の選択を強調
-    // （radiogroup にアクセシブル名が無いため name なしで解決 — フォーム先頭の
-    //   radiogroup = 納品方法）
+    // 確定した出荷書の「納品書」タブ — 自動でできた納品書の一覧。
+    // ユーザー直送なので 2 通（価格記載なし=最終需要家宛 / あり=顧客宛）。
     id: "flow-delivery-note-01",
     docPage: "process/default-flow",
-    path: "/shipping/delivery-notes/new?deliveryOrder=DOR-202607-00002",
+    path: "/shipping/delivery-orders/DOR-202607-00002?tab=delivery-notes",
     steps: async (page) => {
-      await page.getByText("納品方法").first().waitFor();
+      await page.getByText("DRN-202607-00003").first().waitFor();
     },
-    highlight: [{ role: "radiogroup" }],
   },
   {
     // 発行の確認モーダル — モーダル内の発行ボタンを強調

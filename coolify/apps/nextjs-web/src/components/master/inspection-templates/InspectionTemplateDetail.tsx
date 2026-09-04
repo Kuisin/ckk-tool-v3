@@ -16,11 +16,13 @@ import {
   Group,
   ScrollArea,
   Stack,
+  Switch,
   Table,
   Tabs,
   Text,
   Tooltip,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import {
   IconCircleMinus,
   IconEdit,
@@ -35,7 +37,8 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { setTemplateItemRequired } from "@/app/(dashboard)/master/inspection-templates/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { AppTabs } from "@/components/ui/AppTabs";
@@ -178,11 +181,39 @@ export function InspectionTemplateDetail({
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("info");
 
+  // 行から必須 / 任意を切り替えている最中の項目（その行だけ止める）。
+  const [requiredBusyId, setRequiredBusyId] = useState<number | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [toggleOpen, setToggleOpen] = useState(false);
   const [versionOpen, setVersionOpen] = useState(false);
   const [approvalGroupOpen, setApprovalGroupOpen] = useState(false);
   const [itemModalOpen, setItemModalOpen] = useState(false);
+  const [, startRequiredTransition] = useTransition();
+
+  /** 行の 必須 / 任意 を切り替える（失敗したら通知して元の表示へ戻す）。 */
+  const toggleRequired = (id: number, name: string, next: boolean) => {
+    setRequiredBusyId(id);
+    startRequiredTransition(async () => {
+      const result = await setTemplateItemRequired(id, next);
+      setRequiredBusyId(null);
+      if (result.ok) {
+        notifications.show({
+          title: next
+            ? tr("master.inspectionTemplates.markedRequired")
+            : tr("master.inspectionTemplates.markedOptional"),
+          message: name,
+          color: "green",
+        });
+        router.refresh();
+      } else {
+        notifications.show({
+          title: tr("common.error2"),
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
   const [editItem, setEditItem] = useState<InspectionTemplateItemRow | null>(
     null,
   );
@@ -500,14 +531,40 @@ export function InspectionTemplateDetail({
                             </Text>
                           </Table.Td>
                           <Table.Td>
-                            {item.isRequired ? (
-                              <Badge color="blue" variant="light">
-                                {tr("common.required2")}
+                            {/* 行から直接切り替える — 必須かどうかを見直すのに
+                                項目の編集モーダルを開かせない。使用済み
+                                （バージョンロック）の検査表では表示だけ。 */}
+                            {record.isLocked ? (
+                              <Badge
+                                color={item.isRequired ? "blue" : "gray"}
+                                variant="light"
+                              >
+                                {item.isRequired
+                                  ? tr("common.required2")
+                                  : tr("common.optional")}
                               </Badge>
                             ) : (
-                              <Badge color="gray" variant="light">
-                                {tr("common.optional")}
-                              </Badge>
+                              <Switch
+                                aria-label={tr(
+                                  "master.inspectionTemplates.toggleRequiredFor",
+                                  { name: item.itemNameJa },
+                                )}
+                                checked={item.isRequired}
+                                disabled={requiredBusyId === item.id}
+                                label={
+                                  item.isRequired
+                                    ? tr("common.required2")
+                                    : tr("common.optional")
+                                }
+                                onChange={(e) =>
+                                  toggleRequired(
+                                    item.id,
+                                    item.itemNameJa,
+                                    e.currentTarget.checked,
+                                  )
+                                }
+                                size="sm"
+                              />
                             )}
                           </Table.Td>
                           <Table.Td>

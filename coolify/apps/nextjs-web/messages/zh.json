@@ -217,7 +217,7 @@
     "tier": "档",
     "requester": "申请人",
     "requestedAt": "申请时间",
-    "approvalsSchedule": "审批与计划",
+    "pendingList": "未处理列表",
     "save2": "保存",
     "profile": "个人资料",
     "newGroup": "新分组",
@@ -798,7 +798,8 @@
     "selectARole": "选择角色",
     "cannotChangeRoles": "无法变更角色",
     "cannotChangeOwnRoles": "无法变更自己的角色",
-    "cannotRemoveLastAdminRole": "无法从最后一名管理员移除管理员角色"
+    "cannotRemoveLastAdminRole": "无法从最后一名管理员移除管理员角色",
+    "finalInspection": "最终检查"
   },
   "shell": {
     "appsLabel": "应用",
@@ -1907,6 +1908,31 @@
     },
     "stamp": {
       "companySeal": "公司印章"
+    },
+    "PORTAL_GUIDE": {
+      "title": "客户门户 使用指南",
+      "onchu": "",
+      "attnSuffix": "",
+      "personalStrip": "本指南供 {name} 使用。二维码中包含为 {name} 登记的登录地址。",
+      "howToTitle": "使用步骤",
+      "step1": "请用手机相机扫描二维码（也可直接打开下方网址）。",
+      "step2": "系统会向您登记的邮箱发送 {length} 位验证码（有效期 {minutes} 分钟）。",
+      "step3": "输入收到的验证码即可登录。无需密码。",
+      "scopeTitle": "可查看的内容",
+      "scopeDocuments": "贵公司的单据（报价单・订单确认书・送货单・请款单）与订单进度",
+      "scopeBranches": "包含发给贵公司分公司的单据",
+      "scopeAsEndUser": "包含贵公司作为最终用户・送货对象的单据",
+      "scopeSingleDocuments": "单独共享的单据 {count} 件",
+      "scopeForms": "表单：{names}",
+      "urlLabel": "门户网址",
+      "emailLabel": "登录地址",
+      "qrCaption": "扫码登录",
+      "noticeTitle": "注意事项",
+      "noticeSecret": "请勿将验证码告知他人。本公司不会通过电话或邮件向您索取验证码。",
+      "noticeIdle": "约 {hours} 小时无操作将自动退出登录。请按相同步骤重新登录。",
+      "noticeNoMail": "如未收到邮件，请先查看垃圾邮件文件夹，然后与下方联系人联系。",
+      "contactTitle": "联系方式",
+      "contactFallback": "请联系您的销售负责人。"
     }
   },
   "billing": {
@@ -2040,7 +2066,9 @@
       "leaveAtLeastOne": "请至少保留 1 张。"
     },
     "tasksView": {
-      "thereIsNoWorkAssignedTo": "没有分配的作业计划"
+      "thereIsNoWorkAssignedTo": "没有分配的作业计划",
+      "privilegedDecidedInSy0g": "决裁在特权访问 (SY0G) 中进行。",
+      "decide": "决裁"
     },
     "formsActions": {
       "addAtLeastOneField": "请至少添加一个项目",
@@ -2364,7 +2392,12 @@
       "flowChangeDescription": "{summary}｜申请人：{requestedBy}｜{stepLabel}。{note}",
       "flowChangeNotAppliedYet": "在获批之前，工序不会改变。",
       "andNMoreOrderLines": "{first} 等 {count} 件",
-      "andNMoreCustomers": "{first} 等 {count} 家"
+      "andNMoreCustomers": "{first} 等 {count} 家",
+      "nextStepCreateADeliveryOrder": "下一步：创建出货单",
+      "openDeliveryOrderFormForThisLot": "用尚未出货的 {quantity} 支创建出货单。也可一并加入同一订单确认书的其他明细。",
+      "deliveryOrderNeedsCompletedWorkOrder": "仅可从已完成的工单创建",
+      "deliveryOrderNeedsOrderLine": "未关联订单明细的工单无法创建",
+      "deliveryOrderAlreadyArranged": "该工单的订单明细均已安排出货"
     },
     "addBranchModal": {
       "theBranchWasAdded": "已添加分支",
@@ -2557,7 +2590,10 @@
       "itemRecorded": "已记录「{item}」",
       "shelvedBy": "上架人员",
       "shipmentAuthorizedBy": "出货批准人",
-      "stageRecorded": "已记录{stage}"
+      "stageRecorded": "已记录{stage}",
+      "markOk": "{item}：无问题",
+      "markNg": "{item}：有问题",
+      "recordPriorStageFirst": "请先记录{label}"
     },
     "workOrderStepsPanel": {
       "deleteTheBranch": "删除分支",
@@ -2698,7 +2734,8 @@
       "returnsAnInProgressStepTo": "将进行中的工序退回未开始。正在输入的数量不会保存。",
       "returnsACompletedStepToNot": "将已完成的工序退回未开始并清除已记录的数量。后续工序已开工时无法回退。",
       "thereAreNoSteps": "没有工序。",
-      "filterByStepNameOrCode": "按工序名称或编号筛选…"
+      "filterByStepNameOrCode": "按工序名称或编号筛选…",
+      "completeBlockedByInspection": "有检查表尚未填写记录（{sheets}）。保存之前无法完成该工序。"
     },
     "workflowBuilder": {
       "plannedQuantityMustBeAtLeast1": "计划数量必须为 1 以上",
@@ -2745,7 +2782,8 @@
       "theStepWasAborted": "工序已中断",
       "abort": "中断",
       "viewInspectionSheet": "查看检查表",
-      "noInspectionSheetAssigned": "尚未分配检查表"
+      "noInspectionSheetAssigned": "尚未分配检查表",
+      "finalInspectionIsRecordedOnThisStep": "在该工序记录最终检查与出货前确认（每张工单一条记录）。"
     },
     "workOrderLinksCard": {
       "quantityPiecesWithCount": "{count} 支",
@@ -2795,7 +2833,8 @@
       "spareStockUsed": "使用备用库存",
       "stageAlreadyRecorded": "{label}已记录",
       "stageRecordedNote": "记录了{label}",
-      "woNotFound": "未找到工单"
+      "woNotFound": "未找到工单",
+      "noFinalInspectionStep": "该工单没有最终检查工序"
     },
     "stepExecutionActions": {
       "invalidLotSlipCode": "批次/单据编号输入无效",
@@ -3973,7 +4012,17 @@
       "issuedLinks": "已发行的链接",
       "revoked": "已失效",
       "linkSummary": "{email} / {count} 次 / 至 {date}",
-      "verified": "已验证"
+      "verified": "已验证",
+      "sharingScope": "共享范围",
+      "noSharingYet": "尚未共享（此人看不到任何内容）。",
+      "includesBranches": "包含分公司",
+      "includesEndUserDocuments": "包含作为最终用户・送货对象的单据",
+      "revokingSharingHidesThoseDocuments": "失效后，此共享范围内的单据将对该人隐藏。",
+      "noLinksIssuedYet": "尚未发行链接。",
+      "revokingTheLinkClosesTheSession": "失效后，使用该链接打开的会话也会结束。",
+      "viewingHistory": "浏览记录",
+      "nothingHasBeenViewedYet": "尚未浏览任何内容。",
+      "ipAddress": "IP 地址"
     },
     "privileged": {
       "pendingApproval": "（审批中）",
@@ -4463,6 +4512,15 @@
     "kioskSettings": {
       "stepExecution": "工序执行",
       "workOrderScan": "工单扫描"
+    },
+    "portalGuide": {
+      "guide": "指南",
+      "guideForThisContact": "此联系人的指南",
+      "guideForAllContacts": "该客户全部联系人",
+      "accountNotFound": "未找到该账号。",
+      "activateBeforeIssuing": "请先启用账号（未启用的账号无法登录）。",
+      "noActiveAccounts": "该客户没有已启用的门户账号。",
+      "couldNotIssueTheGuide": "无法发行指南。"
     }
   },
   "portal": {
@@ -4473,14 +4531,22 @@
     },
     "documents": {
       "document": "单据",
-      "noneToShow": "没有可显示的{document}。"
+      "noneToShow": "没有可显示的{document}。",
+      "dueDate": "付款期限",
+      "taxAmount": "税额",
+      "noLineItems": "没有明细。",
+      "priceOmitted": "本送货单不显示价格。"
     },
     "forms": {
       "thereAreNoResponsesToShow": "没有可显示的回答。",
-      "noFormsAreSharedWithYou": "没有共享的表单。"
+      "noFormsAreSharedWithYou": "没有共享的表单。",
+      "noAnswerFields": "没有可显示的项目。",
+      "rowNumber": "第 {row} 行",
+      "responseCount": "{count} 条回答"
     },
     "orders": {
-      "thereAreNoOrdersToShow": "没有可显示的订单。"
+      "thereAreNoOrdersToShow": "没有可显示的订单。",
+      "cancelledNotice": "此订单明细已取消。"
     },
     "page": {
       "youCanViewDocumentsAddressedTo": "您可以查看寄给贵公司的单据。",
@@ -4510,6 +4576,19 @@
     "loginActions": {
       "backupCodeInvalid": "备用码不正确。",
       "issueMessage": "如果您输入的邮箱地址已注册，验证码已发送。请在 10 分钟内输入。如未收到，请检查垃圾邮件文件夹，并联系您的销售负责人。"
+    },
+    "common": {
+      "relatedDocuments": "关联单据"
+    },
+    "home": {
+      "greeting": "{name} 您好",
+      "activeOrders": "进行中的订单",
+      "recentDocuments": "最近的单据",
+      "viewAll": "查看全部",
+      "nothingToShow": "暂无可显示的内容。"
+    },
+    "nav": {
+      "menu": "菜单"
     }
   },
   "master": {
@@ -4903,7 +4982,10 @@
       "noRelatedStep": "无关联工序",
       "referenceImageHelp": "测量位置图解、实物照片等。设置后也会打印在空白表和已填写表的 PDF 上（{ext}，最大 5MB）。",
       "reselect": "重新选择",
-      "templateCountValue": "{count} 份检查表"
+      "templateCountValue": "{count} 份检查表",
+      "toggleRequiredFor": "切换{name}的必填 / 可选",
+      "markedRequired": "已设为必填",
+      "markedOptional": "已设为可选"
     },
     "materialNumbering": {
       "theComponentWasAdded": "已添加构成要素",
@@ -5095,7 +5177,10 @@
       "enabled": "已启用工序“{name}”",
       "executionLocationRequired": "请选择实施场所",
       "sortOrderInteger": "请输入整数作为显示顺序",
-      "stepUpdated": "已更新工序"
+      "stepUpdated": "已更新工序",
+      "finalInspectionStep": "最终检查工序",
+      "theFinalInspectionChecklistIsRecorded": "在该工序的执行画面记录最终检查与出货前确认（3 项确认、备用库存、包装 → 发行送货单 → 出货批准）。每张工单一条记录；工序清单中没有带此标记工序的工单即没有最终检查。",
+      "approvalStepsHaveNoQuantity": "检查审批工序不带数量（数量管理设为「无」）。它是查看前道工序的检查表并审批的工序，而不是加工工序。"
     },
     "products": {
       "specification": "规格",
@@ -6123,7 +6208,7 @@
       "useAnApprovalFlow": "使用审批流程",
       "aSettingForWhenAnApprover": "用于审批人说「请修改这里」的场景。只要有 1 人批准即截止（退回时无论设置如何均可修改）",
       "evenWhilePendingTheRespondentCan": "即使在审批中，首次批准前回答人仍可修改",
-      "whoIsToldOnCompletionAll": "完成（使用审批流程时为全部级别批准，不使用时为提交）时的通知对象，在「共享」标签页按共享对象勾选「完成通知」来确定。收到通知的人也可在审批与计划 (CM01) 的「已完成的申请」中查看列表。",
+      "whoIsToldOnCompletionAll": "完成（使用审批流程时为全部级别批准，不使用时为提交）时的通知对象，在「共享」标签页按共享对象勾选「完成通知」来确定。收到通知的人也可在未处理列表 (CM01) 的「已完成的申请」中查看列表。",
       "allowOnlyOneResponsePerPerson": "每人仅可回答一次",
       "openPeriod": "受理期间",
       "ifEmptyItOpensTheMoment": "留空则从发布时起受理",
@@ -6352,7 +6437,7 @@
       "searchUsers": "搜索用户",
       "removeAShare": "删除共享对象",
       "aFormWithNoSharesSet": "未设置任何共享对象的表单仅创建者和管理员可见。即使知道 URL 也无法打开。",
-      "sharesWithCompletionNoticeTickedAre": "勾选了「完成通知」的共享对象，将在申请・报告完成时（使用审批流程时为全部级别批准，不使用时为提交）收到通知，并列在审批与计划 (CM01) 的「已完成的申请」中。设置了条件的共享对象仅会收到符合该条件的回答的完成通知。",
+      "sharesWithCompletionNoticeTickedAre": "勾选了「完成通知」的共享对象，将在申请・报告完成时（使用审批流程时为全部级别批准，不使用时为提交）收到通知，并列在未处理列表 (CM01) 的「已完成的申请」中。设置了条件的共享对象仅会收到符合该条件的回答的完成通知。",
       "narrowWhichResponsesAreShownApplies": "限定显示的回答（仅对此共享对象生效）",
       "addAShare": "添加共享对象"
     },
@@ -6631,6 +6716,7 @@
       "viewTheBreakdown": "查看明细",
       "didYouMean": "您是否要找",
       "selectACustomer": "请选择客户",
+      "shipToOnlyForNormalDelivery": "直送最终用户时不使用（送达对象为最终用户）",
       "createADraft": "创建草稿",
       "createAnOrderAcceptanceByHand": "手动创建订单确认书",
       "createsTheOrderAcceptanceDirectlyWithout": "不使用订单自动导入，直接创建订单确认书（保存为草稿）。",
@@ -7370,6 +7456,10 @@
       "storedToStock": "保管（入库）",
       "deliveryNoteNote": "{status}・{recipient}",
       "confirmConfirmBody": "将确认出货单 {number}。确认后将无法编辑。",
+      "autoNotesHeading": "确认后将自动创建以下送货单",
+      "autoNoteWithPrice": "含价格",
+      "autoNoteWithoutPrice": "无价格",
+      "autoNotesEndUserMissing": "无法确定最终用户，因此不会创建无价格的送货单。请确认订单确认书的最终用户。",
       "confirmedBody": "已确认出货单 {number}",
       "confirmShipBodyDispatch": "将出货单 {number} 标记为已出货。订单明细的出货状态也会重新计算。",
       "confirmShipBodyStock": "将出货单 {number} 标记为已出货（因为是库存保管，订单明细的出货状态不会改变）。",
@@ -7381,8 +7471,13 @@
       "onlySameDeliveryMethodCanBeCombined": "一张出货单只能合并同一配送方式（常规配送 / 直送最终用户）的订单明细",
       "stockStorageHasNoDeliveryNote": "库存保管出货单不会创建送货单",
       "onlySameEndUserCanBeCombined": "一张出货单只能合并同一最终用户的订单明细",
-      "confirmConfirmBodyDispatch": "将确认出货单 {number}。确认后无法编辑。系统会自动创建送货单（直送最终用户会创建两份 — 一份无价格、一份含价格）。",
-      "confirmedBodyDispatch": "已确认出货单 {number} 并创建送货单"
+      "confirmedBodyDispatch": "已确认出货单 {number} 并创建送货单",
+      "coveredOrderAcceptances": "对象订单确认书",
+      "shipTogetherTitle": "是否一并出货同一订单确认书的其他明细？",
+      "shipTogetherBody": "同一订单确认书还有 {count} 条明细尚未出货。请选择要放入本出货单的明细。",
+      "unshippedWithLots": "未出货 {quantity} / 批次 {lots}",
+      "justThisWorkOrder": "仅此工单",
+      "addSelectedLines": "添加所选明细"
     },
     "pendingShipments": {
       "completedLots": "完成批次",
@@ -7415,7 +7510,8 @@
       "shippedQuantityLabel": "已出货 {quantity}",
       "completedQuantityLabel": "完成 {quantity}（来自 {count} 个已完成工单）",
       "exceedsRemainingLabel": "超过剩余订单量 {remaining}（出货 {total}）",
-      "partialShipmentLabel": "部分出货（出货 {total} / 剩余 {remaining}）"
+      "partialShipmentLabel": "部分出货（出货 {total} / 剩余 {remaining}）",
+      "couldNotAddWorkOrderLines": "无法读取工单 #{workOrderNumber} 的订单明细（可能未确定或未指定产品）"
     },
     "deliveryNoteForm": {
       "editWithNumber": "编辑送货单 {noteId}"
@@ -7727,7 +7823,8 @@
     "notABranchSeriesStep": "该工序不属于分支序列",
     "cannotDeleteBranchWithStartedSteps": "包含已开始工序的分支无法删除",
     "auditBranchDeleted": "已删除分支（{count} 道工序）",
-    "auditBranchUpdated": "已更新分支（数量 {quantity}，{termination}）"
+    "auditBranchUpdated": "已更新分支（数量 {quantity}，{termination}）",
+    "inspectionSheetsNotRecorded": "有检查表尚未填写记录（{sheets}）。请先保存检查表再完成工序"
   },
   "aiKeywords": {
     "enterANameBeforeRunning": "请先输入名称再执行",
@@ -7751,6 +7848,14 @@
   "privilegedAccessGate": {
     "unknownOperation": "未知的特权操作：{key}（请在 lib/privileged-operations.ts 中注册）",
     "operationRequiresApprovalSy0g": "此操作需要审批（{label}）。请从特权访问（SY0G）提交申请"
+  },
+  "privilegedNotify": {
+    "requestTitle": "特权访问的审批申请：{subject}",
+    "requestMessage": "{name} / 理由：{reason}",
+    "approvedTitle": "特权访问的申请已批准：{subject}",
+    "rejectedTitle": "特权访问的申请已退回：{subject}",
+    "revokedTitle": "特权访问的授权已撤销：{subject}",
+    "approvedButNotApplied": "已批准，但未能应用该变更：{error}"
   },
   "audit": {
     "emptyArray": "（无）",
@@ -8157,7 +8262,20 @@
     "inspectionRecordedPass": "已保存检查记录（合格 / {count} 项）",
     "inspectionRecordedFail": "已保存检查记录（不合格 / {count} 项）",
     "deviceUnlinkedFromDevice": "已从终端本身解除关联（设备设置码）",
-    "deviceWorkLocationChangedFromDevice": "已从终端本身变更作业场所设置（设备设置码）"
+    "deviceWorkLocationChangedFromDevice": "已从终端本身变更作业场所设置（设备设置码）",
+    "inspectionConfirmed": "已记录检查表确认",
+    "finalInspectionDrawingLabel": "最终检查：图纸、标签、膜厚、尺寸 → {mark}",
+    "finalInspectionProtectiveCap": "最终检查：保护帽 → {mark}",
+    "finalInspectionFinishedQuantity": "最终检查：完成数量 → {mark}",
+    "finalInspectionSpareStockUsedOn": "最终检查：使用备用库存",
+    "finalInspectionSpareStockUsedOff": "最终检查：未使用备用库存",
+    "finalInspectionSpareStockReceivedOn": "最终检查：备用库存入库",
+    "finalInspectionSpareStockReceivedOff": "最终检查：未入备用库存",
+    "finalInspectionShelved": "出货前确认：已记录上架人员",
+    "finalInspectionDeliveryNoteIssued": "出货前确认：已记录送货单开具人",
+    "finalInspectionShipmentAuthorized": "出货前确认：已记录出货批准人",
+    "finalInspectionShipDefectReviewed": "已记录出货时不良内容确认人印",
+    "inspectionApproved": "已批准检查记录"
   },
   "workflowCore": {
     "quantityLabels": {
@@ -8291,7 +8409,7 @@
       },
       "shipTo": {
         "label": "送货对象",
-        "summary": "产品的送达地点。当需要送达至下单客户以外的公司或分公司时选择。留空则表示送达至该客户本身。"
+        "summary": "产品的送达地点。当需要送达至下单客户以外的公司或分公司时选择。留空则表示送达至该客户本身。仅用于常规配送 —— 直送最终用户时无法选择（送达对象为最终用户）。"
       },
       "deliveryMethod": {
         "label": "配送方式",

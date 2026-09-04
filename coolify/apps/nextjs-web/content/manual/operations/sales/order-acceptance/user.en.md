@@ -183,7 +183,7 @@ Every field on the order acceptance screen. What the AI read from the order land
 | [Customer order no.](#field-customer-order-ref) | Optional | The number on the customer's own order |
 | [Quote](#field-quote-number) | Optional | The quote it came from |
 | [Order date](#field-order-date) | Optional | The date the customer ordered |
-| [Ship-to](#field-ship-to) | Optional | Where the products are delivered |
+| [Ship-to](#field-ship-to) | Optional (standard delivery only) | Where the products are delivered |
 | [Delivery method](#field-delivery-method) | Required | Normal delivery / direct to end user |
 | [End user](#field-end-user) | Required for direct | Where a direct shipment goes (the end user) |
 | [Assigned plant](#field-assigned-plant) | Optional | The site that handles this order |
@@ -221,6 +221,8 @@ The date the customer placed the order, as printed on their document.
 ### Ship-to [#field-ship-to]
 
 Where the products are delivered. Choose it **when they go to a different company or branch** from the customer who ordered. Left empty, it means they go to the customer.
+
+This field is for **standard delivery only**. Switch the delivery method to direct-to-end-user and it greys out — the destination of a direct shipment is the [end user](#field-end-user), and a document must not carry two destinations. Switching to direct clears whatever ship-to was chosen.
 
 ### Delivery method [#field-delivery-method]
 

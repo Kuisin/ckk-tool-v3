@@ -57,6 +57,7 @@ export function StepQuantityForm({
   inputQuantity,
   defectTypeOptions,
   disabled,
+  blockedReason,
   mode = "FLOW",
 }: {
   workOrderNumber: number;
@@ -66,6 +67,11 @@ export function StepQuantityForm({
   /** 不良種類（理由の候補）。 */
   defectTypeOptions: SelectOption[];
   disabled?: boolean;
+  /**
+   * 完了できない理由（検査表が未記録など）。渡すと完了ボタンを止め、
+   * 理由をその場に出す。サーバー側でも同じ規則で弾く（こちらは説明用）。
+   */
+  blockedReason?: string | null;
   mode?: QuantityTrackingMode;
 }) {
   const tr = useTranslations();
@@ -306,10 +312,20 @@ export function StepQuantityForm({
           </Alert>
         )}
 
+        {blockedReason && (
+          <Alert
+            color="orange"
+            icon={<IconAlertTriangle size={16} />}
+            variant="light"
+          >
+            {blockedReason}
+          </Alert>
+        )}
+
         <Group justify="center" mt="sm">
           <Button
             color="green"
-            disabled={disabled || issue != null}
+            disabled={disabled || issue != null || blockedReason != null}
             leftSection={<IconCheck size={20} />}
             loading={isPending}
             onClick={handleComplete}

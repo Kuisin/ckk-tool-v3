@@ -1,6 +1,6 @@
 ---
-title: "Approvals & schedule — User guide"
-description: "A single screen for your own work: schedule, pending approvals, unanswered forms, completed requests, and document comments."
+title: "Pending list — User guide"
+description: "A single screen for your own work: schedule, pending approvals, privileged access requests, unanswered forms, completed requests, and document comments."
 ---
 A single screen for the things you personally need to do. The operation code is `CM01`. It used to be a separate app called "Approval management" (`PD03`), which has been merged with the work schedule here.
 
@@ -10,6 +10,7 @@ Tabs bring together:
 
 - **Work schedule** — your assigned work steps that are not yet finished.
 - **Pending approval** — documents waiting for your approval (shown only if you have approval permission).
+- **Privileged access** — privileged access requests waiting for your decision (shown only if you can decide them).
 - **Unanswered forms** — forms shared with you that you have not submitted yet.
 - **Submitted forms** — your own form responses.
 - **Completed requests** — completion notices addressed to you.
@@ -88,6 +89,16 @@ The reason you're sending the document back. **The requester sees it exactly as 
 
 Each approval or send-back is recorded below "Progress" as an **approval record** — who acted, when, at which step, approve or send back, and any comment. Actions taken by a delegate show "(Delegate for: original approver)".
 
+## Privileged access
+
+Lists the [privileged access](/manual/en/operations/system/privileged-access/user) (`SY0G`) requests waiting for your decision. **The tab is hidden if you cannot decide any of them.**
+
+A notification also goes out to everyone who can decide the request (bell, email, device push — see [User settings](/manual/en/user-settings)). Notifications get missed, so this screen lets you see **how many are still open** at any time.
+
+You only read them here — **the decision itself is not made on this screen**. "**Decide**" opens the "To approve" tab of Privileged access (`SY0G`); act there. Keeping a single place for the action avoids an approval screen that exists twice and only gets fixed once.
+
+Only requests you hold the approval permission for are listed, and **your own requests never appear** (you cannot approve yourself). Decided requests drop off this list and stay readable on the "History" tab of SY0G.
+
 ## Unanswered forms / Submitted forms
 
 Lists [forms](/manual/en/operations/general/forms/user) (`CM02`) shared with you that you can still answer (soonest deadline first), and the responses you've submitted. Even for forms that hide the respondent from others, your own response is always visible to you (never to others). If still within the edit window, open it from the Submitted tab to change it.
@@ -104,6 +115,9 @@ Collects unresolved line comments on documents you created or edited. Comments y
 
 **Q. I don't see a "Pending approval" tab.**
 A. You don't have approval permission. To approve, you need to be in the approval group for the relevant step — ask an administrator.
+
+**Q. I don't see a "Privileged access" tab.**
+A. You do not have permission to decide privileged access requests. Only someone holding the approval permission for that request's code (shared-device secrets, devices, cards, personal data, user administration) can decide it. Ask an administrator.
 
 **Q. A tab shows nothing.**
 A. There is nothing pending right now in that category. Items disappear automatically once handled.

@@ -17,6 +17,7 @@ import {
   SimpleGrid,
   Stack,
   Switch,
+  Text,
   Textarea,
   TextInput,
 } from "@mantine/core";
@@ -103,6 +104,7 @@ const processStepSchema = (tr: (key: string) => string) =>
       isSyncCapable: z.boolean(),
       isInspection: z.boolean(),
       isApprovalStep: z.boolean(),
+      isFinalInspection: z.boolean(),
       approvalMinRank: z.string(),
       quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
       lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]),
@@ -144,6 +146,7 @@ export interface ProcessStepFormInitial {
   isSyncCapable: boolean;
   isInspection: boolean;
   isApprovalStep: boolean;
+  isFinalInspection: boolean;
   approvalMinRank: string;
   quantityTracking: string;
   lotInputMode: string;
@@ -211,6 +214,7 @@ export function ProcessStepForm({
       isSyncCapable: initial?.isSyncCapable ?? false,
       isInspection: initial?.isInspection ?? false,
       isApprovalStep: initial?.isApprovalStep ?? false,
+      isFinalInspection: initial?.isFinalInspection ?? false,
       approvalMinRank: initial?.approvalMinRank ?? "",
       quantityTracking:
         initial?.quantityTracking === "NONE" ||
@@ -282,6 +286,7 @@ export function ProcessStepForm({
       isSyncCapable: values.isSyncCapable,
       isInspection: values.isInspection,
       isApprovalStep: values.isApprovalStep,
+      isFinalInspection: values.isFinalInspection,
       approvalMinRank: values.approvalMinRank,
       quantityTracking: values.quantityTracking,
       lotInputMode: values.lotInputMode,
@@ -552,7 +557,20 @@ export function ProcessStepForm({
               />
             }
             {...form.getInputProps("isApprovalStep", { type: "checkbox" })}
+            onChange={(event) => {
+              const checked = event.currentTarget.checked;
+              form.setFieldValue("isApprovalStep", checked);
+              // 検査承認は「前工程の検査表を見て印を押す」ゲートで、物を
+              // 加工する工程ではない。数量を持たせると、承認するだけの工程を
+              // 完了するのに前工程と同じ数を打ち直すことになる。
+              if (checked) form.setFieldValue("quantityTracking", "NONE");
+            }}
           />
+          {form.values.isApprovalStep && (
+            <Text c="dimmed" size="xs">
+              {tr("master.processSteps.approvalStepsHaveNoQuantity")}
+            </Text>
+          )}
           {form.values.isApprovalStep && (
             <TextInput
               description={tr("master.processSteps.theLowestRankThatCanRun")}
@@ -563,6 +581,15 @@ export function ProcessStepForm({
               {...form.getInputProps("approvalMinRank")}
             />
           )}
+          {/* 最終検査は指示書 1 件に 1 行なので、印を付けた工程の実行画面が
+              唯一の記入口になる（印の付いた工程を入れない指示書 = 最終検査なし）。 */}
+          <Switch
+            description={tr(
+              "master.processSteps.theFinalInspectionChecklistIsRecorded",
+            )}
+            label={tr("master.processSteps.finalInspectionStep")}
+            {...form.getInputProps("isFinalInspection", { type: "checkbox" })}
+          />
           <Switch
             label={
               <HelpLabel

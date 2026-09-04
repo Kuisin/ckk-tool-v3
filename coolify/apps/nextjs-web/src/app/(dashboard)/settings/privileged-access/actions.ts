@@ -13,13 +13,18 @@
  */
 
 import { revalidatePath } from "next/cache";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { validateRequestWindow } from "@/lib/privileged-access-core";
 import {
+  notifyPrivilegedDecided,
+  notifyPrivilegedRequested,
+} from "@/lib/privileged-notify";
+import {
+  ELEVATION_CODE_LABEL,
   ELEVATION_CODES,
   findOperation,
   operationLabel,
@@ -38,6 +43,17 @@ import {
 } from "@/lib/user-change-requests";
 
 const BASE_PATH = "/settings/privileged-access";
+
+/**
+ * 通知の件名にする「何の申請か」。方式 A は権限コードの表示名 1 行で足りる
+ * （どの操作を求めたかは SY0G を開けば読める。通知に全部並べると端末側で切れる）。
+ */
+async function codeSubject(code: string): Promise<string> {
+  const locale = await getLocale();
+  const label = ELEVATION_CODE_LABEL[code as keyof typeof ELEVATION_CODE_LABEL];
+  if (!label) return code;
+  return locale === "en" ? label.en : locale === "zh" ? label.zh : label.ja;
+}
 
 // 方式 B（ユーザー変更依頼）の決裁。実装は lib/user-change-requests.ts —
 // 変更の適用処理はユーザー管理側に置いておきたいので、ここは薄い入口だけ。
@@ -158,6 +174,13 @@ export async function requestPrivilegedAccess(
         durationMinutes: v.durationMinutes,
       },
     });
+    // 決裁できる人へ通知（失敗しても申請は成立している）。
+    await notifyPrivilegedRequested({
+      code: v.code,
+      requestedBy: userId,
+      subject: await codeSubject(v.code),
+      reason: v.reason,
+    });
     revalidatePath(BASE_PATH);
     return actionOk({ id: row.id });
   } catch (e) {
@@ -270,6 +293,13 @@ export async function approvePrivilegedAccess(
     before: { status: "PENDING", requested: [...requested] },
     after: { status: "APPROVED", granted },
   });
+  await notifyPrivilegedDecided({
+    requestedBy: req.requestedBy,
+    decidedBy: actorId,
+    subject: await codeSubject(req.code),
+    outcome: "APPROVED",
+    comment: v.comment,
+  });
   revalidatePath(BASE_PATH);
   return actionOk();
 }
@@ -319,6 +349,13 @@ export async function rejectPrivilegedAccess(
     recordId: id,
     before: { status: "PENDING" },
     after: { status: "REJECTED", reason: reason.trim() },
+  });
+  await notifyPrivilegedDecided({
+    requestedBy: req.requestedBy,
+    decidedBy: actorId,
+    subject: await codeSubject(req.code),
+    outcome: "REJECTED",
+    comment: reason,
   });
   revalidatePath(BASE_PATH);
   return actionOk();
@@ -372,6 +409,13 @@ export async function revokePrivilegedAccess(
     recordId: id,
     before: { status: "APPROVED" },
     after: { status: "REVOKED", reason: reason.trim() },
+  });
+  await notifyPrivilegedDecided({
+    requestedBy: req.requestedBy,
+    decidedBy: actorId,
+    subject: await codeSubject(req.code),
+    outcome: "REVOKED",
+    comment: reason,
   });
   revalidatePath(BASE_PATH);
   return actionOk();

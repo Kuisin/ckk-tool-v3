@@ -72,6 +72,7 @@ export interface ProcessStepRow {
   isSyncCapable: boolean;
   isInspection: boolean;
   isApprovalStep: boolean;
+  isFinalInspection: boolean;
   quantityTracking: string;
   /** 実行時のロット入力の既定（REQUIRED/OPTIONAL/NONE）。 */
   lotInputMode: string;
@@ -296,6 +297,21 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
       ),
     },
     {
+      key: "isFinalInspection",
+      header: tr("common.finalInspection"),
+      sortable: true,
+      hideable: true,
+      width: 96,
+      sortValue: (r) => (r.isFinalInspection ? 1 : 0),
+      render: (r) => (
+        <FlagBadge
+          color="orange"
+          label={tr("common.finalInspection")}
+          on={r.isFinalInspection}
+        />
+      ),
+    },
+    {
       key: "quantityTracking",
       header: tr("common.quantityTracking"),
       sortable: true,
@@ -439,6 +455,11 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
                   {r.isApprovalStep && (
                     <Badge color="green" size="xs" variant="light">
                       {tr("common.approve")}
+                    </Badge>
+                  )}
+                  {r.isFinalInspection && (
+                    <Badge color="orange" size="xs" variant="light">
+                      {tr("common.finalInspection")}
                     </Badge>
                   )}
                 </Group>

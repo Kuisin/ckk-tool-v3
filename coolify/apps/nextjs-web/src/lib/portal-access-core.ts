@@ -32,6 +32,23 @@ export function isPortalResourceType(v: string): v is PortalResourceType {
   return (PORTAL_RESOURCE_TYPES as readonly string[]).includes(v);
 }
 
+/**
+ * 閲覧記録（portal_access_logs.resource_type）に載る値。
+ *
+ * **付与できるもの（PORTAL_RESOURCE_TYPES）より広い。** 付与の語彙を広げると
+ * 「その種別の grant を作れるのに、認可側が解釈できない」行が作れてしまうので、
+ * 2 つは分けてある。ここに増えるのは「見られた対象」で、認可の単位ではない
+ * ものが入る:
+ *   form_responses … 回答 1 件。認可はフォーム（forms）の付与が決める。
+ */
+export const PORTAL_ACCESS_RESOURCE_TYPES = [
+  ...PORTAL_RESOURCE_TYPES,
+  "form_responses",
+] as const;
+
+export type PortalAccessResourceType =
+  (typeof PORTAL_ACCESS_RESOURCE_TYPES)[number];
+
 export const PORTAL_GRANT_KINDS = ["BP_SCOPE", "DOCUMENT", "FORM"] as const;
 export type PortalGrantKind = (typeof PORTAL_GRANT_KINDS)[number];
 
@@ -93,8 +110,14 @@ const DENY = (reason: PortalDenyReason): PortalAccess => ({
   responseScope: { all: false, conditions: [] },
 });
 
-/** 有効な行か（期限切れ・失効を落とす）。 */
-function isLive(now: Date, row: PortalGrantRow): boolean {
+/**
+ * 有効な行か（期限切れ・失効を落とす）。
+ *
+ * 判定（resolvePortalAccess）と表示（案内 PDF の「ご覧いただけるもの」）が
+ * **同じ規則で数える**ように export している —— 紙に「見られます」と書いた
+ * ものが実際には期限切れ、が起きないため。
+ */
+export function isLivePortalGrant(now: Date, row: PortalGrantRow): boolean {
   if (row.revokedAt) return false;
   if (row.expiresAt && now.getTime() >= row.expiresAt.getTime()) return false;
   return true;
@@ -164,7 +187,7 @@ export function resolvePortalAccess(
   for (const row of grants) {
     const known = (PORTAL_GRANT_KINDS as readonly string[]).includes(row.kind);
     if (known) sawKnownKind = true;
-    if (!isLive(now, row)) continue;
+    if (!isLivePortalGrant(now, row)) continue;
     sawLiveRow = true;
     if (!known) continue;
     if (!matches(row, target)) continue;
@@ -215,7 +238,7 @@ export function portalScopeBpIds(
   const documents = new Map<PortalResourceType, Set<string>>();
 
   for (const row of grants) {
-    if (!isLive(now, row)) continue;
+    if (!isLivePortalGrant(now, row)) continue;
     if (row.kind === "BP_SCOPE") {
       for (const id of row.bpIds ?? []) {
         customer.add(id);

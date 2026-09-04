@@ -60,6 +60,7 @@ export interface ProcessStepDetailData {
   isSyncCapable: boolean;
   isInspection: boolean;
   isApprovalStep: boolean;
+  isFinalInspection: boolean;
   approvalMinRank: string | null;
   quantityTracking: string;
   lotInputMode: string;
@@ -196,9 +197,15 @@ export function ProcessStepDetail({
           {tr("common.inspectionApproval")}
         </Badge>
       )}
+      {record.isFinalInspection && (
+        <Badge color="orange" size="xs" variant="light">
+          {tr("common.finalInspection")}
+        </Badge>
+      )}
       {!record.isSyncCapable &&
         !record.isInspection &&
         !record.isApprovalStep &&
+        !record.isFinalInspection &&
         "—"}
     </Group>
   );

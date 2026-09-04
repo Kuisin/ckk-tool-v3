@@ -8,12 +8,15 @@ import { fetchInboxComments } from "./comments-data";
 import { fetchCompletedRequests } from "./completions-data";
 import { fetchMyPendingPlans } from "./data";
 import { fetchFormTasks } from "./forms-data";
+import { fetchPrivilegedApprovals } from "./privileged-data";
 
 export const dynamic = "force-dynamic";
 
 /**
- * 承認・予定 (CM01) — 個人の「やること」: 自分の作業予定（未完了の作業計画）と
- * 承認依頼中の承認依頼の横断一覧（旧 承認管理 PD03。approve 権限がある人のみ）。
+ * 未処理一覧 (CM01) — 個人の「やること」: 自分の作業予定（未完了の作業計画）と
+ * 承認依頼中の承認依頼の横断一覧（旧 承認管理 PD03。approve 権限がある人のみ）、
+ * それに自分が決裁できる特権アクセスの申請（通知は届くが、見落としたときの
+ * ために毎日開くこの画面にも出す）。
  */
 export default async function GeneralTasksPage() {
   const denied = await requireAppRead("my-tasks");
@@ -21,15 +24,23 @@ export default async function GeneralTasksPage() {
 
   const approveAuthz = await checkPermission("approve", "READ");
   const userId = await sessionUserId();
-  const [plans, approvals, forms, comments, completions, tabSetting] =
-    await Promise.all([
-      fetchMyPendingPlans(),
-      approveAuthz.ok ? fetchPendingApprovalRequests() : Promise.resolve(null),
-      fetchFormTasks(),
-      fetchInboxComments(),
-      fetchCompletedRequests(),
-      readViewSetting(userId, TASK_TABS_SETTING_KEY),
-    ]);
+  const [
+    plans,
+    approvals,
+    privileged,
+    forms,
+    comments,
+    completions,
+    tabSetting,
+  ] = await Promise.all([
+    fetchMyPendingPlans(),
+    approveAuthz.ok ? fetchPendingApprovalRequests() : Promise.resolve(null),
+    fetchPrivilegedApprovals(),
+    fetchFormTasks(),
+    fetchInboxComments(),
+    fetchCompletedRequests(),
+    readViewSetting(userId, TASK_TABS_SETTING_KEY),
+  ]);
 
   return (
     <TasksView
@@ -39,6 +50,7 @@ export default async function GeneralTasksPage() {
       forms={forms}
       hiddenTabs={sanitizeHiddenTabs(tabSetting)}
       plans={plans}
+      privileged={privileged}
     />
   );
 }

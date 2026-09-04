@@ -47,6 +47,7 @@ import {
 } from "@/lib/order-acceptance-cancel";
 import {
   acceptanceReadiness,
+  normalizeShipToBpId,
   readinessSummary,
 } from "@/lib/order-acceptance-readiness";
 import { linesReplaceBlockReason, nextBranches } from "@/lib/order-line-core";
@@ -203,7 +204,11 @@ async function headerRefsError(
     shippingWorkLocationId?: number | null;
   },
 ): Promise<string | null> {
-  const shipToBpId = trimOrNull(v.shipToBpId);
+  // 直送では出荷先は保存時に落とすので（normalizeShipToBpId）、ここでも見ない。
+  const shipToBpId = normalizeShipToBpId(
+    v.deliveryMethod ?? "NORMAL",
+    trimOrNull(v.shipToBpId),
+  );
   if (shipToBpId) {
     const bp = await prisma.businessPartner.findUnique({
       where: { id: shipToBpId },
@@ -430,7 +435,12 @@ export async function saveDraft(
     const creates = buildItemCreates(
       await applyPriceListPrices(customerBpId, v.items, tr),
     );
-    const shipToBpId = trimOrNull(v.shipToBpId);
+    // 出荷先は通常配送だけの欄 — 直送では落とす（画面も灰色にしているが、
+    // 古いタブや API 直叩きを信用しないため保存側でも落とす）。
+    const shipToBpId = normalizeShipToBpId(
+      v.deliveryMethod,
+      trimOrNull(v.shipToBpId),
+    );
     // エンドユーザーは配送方法に依らず保持できる（直送では必須 —
     // headerRefsError。通常配送でも記録用に任意で持てる）。
     const endUserBpId = trimOrNull(v.endUserBpId);
@@ -973,7 +983,11 @@ export async function createManualAcceptance(
   try {
     const refsError = await headerRefsError(tr, v);
     if (refsError) return actionError(refsError);
-    const shipToBpId = trimOrNull(v.shipToBpId);
+    // 出荷先は通常配送だけの欄 — 直送では落とす（saveDraft と同じ規則）。
+    const shipToBpId = normalizeShipToBpId(
+      v.deliveryMethod,
+      trimOrNull(v.shipToBpId),
+    );
     // エンドユーザーは配送方法に依らず保持できる（直送では必須）。
     const endUserBpId = trimOrNull(v.endUserBpId);
     const assignedPlantId = v.assignedPlantId ?? null;

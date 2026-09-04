@@ -184,6 +184,11 @@ model ProcessStepCatalog {
   isSyncCapable     Boolean          @default(false) @map("is_sync_capable") // 他工程と同時実施・記録可
   isInspection      Boolean          @default(false) @map("is_inspection") // 検査工程
   isApprovalStep    Boolean          @default(false) @map("is_approval_step") // 検査承認工程
+  // 最終検査・出荷前確認（旧帳票「■最終検査」欄）をこの工程で記録する。
+  // 指示書 1 件に 1 行（work_order_final_inspections）で、この印が付いた工程の
+  // 実行画面がその唯一の記入口。印の付いた工程を工程リストに入れなければ
+  // 最終検査そのものが無い（= 任意）。既定は出荷前検査 PRE_SHIP_INSPECTION。
+  isFinalInspection Boolean          @default(false) @map("is_final_inspection")
   approvalMinRank   String?          @map("approval_min_rank") // 係長以上等
   quantityTracking  QuantityTracking @default(FLOW) @map("quantity_tracking")
   lotInputMode      LotInputMode     @default(NONE) @map("lot_input_mode") // 実行時のロット入力の既定（工程リスト/指示書で上書き可）

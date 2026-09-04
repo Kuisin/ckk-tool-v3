@@ -2,11 +2,17 @@
 
 /**
  * StepExecutionView.tsx — 工程の実行画面
- * （開始・一時停止・再開・完了 + 検査記録・不良記録）。
+ * （開始・一時停止・再開・完了 + 検査記録・不良記録・最終検査）。
  *
- * 分岐追加・中断（PENDING へ戻す）・巻き戻し・検査承認は nextjs-web 側の
- * 管理画面に残す。検査記録は検査工程（is_inspection）でのみ、不良記録は
- * すべての工程で、作業中 / 一時停止中に記録できる。
+ * 分岐追加・中断（PENDING へ戻す）・巻き戻しは nextjs-web 側の管理画面に残す。
+ * 検査記録は検査工程（is_inspection）でのみ、検査承認は検査承認工程
+ * （is_approval_step）でのみ、最終検査・出荷前確認は最終検査工程
+ * （is_final_inspection）でのみ、不良記録はすべての工程で、
+ * 作業中 / 一時停止中に記録できる。
+ *
+ * 検査表確認（confirmedBy）も検査承認（approvedBy）もここで押せる。
+ * 承認できる人かどうかは検査表の設定（承認グループ / 名指し）で決まり、
+ * サーバーが記録ごとに解いて渡す — 画面は判断しない。
  *
  * 一時停止は STEP_STATUS を変えず、ロックを解放して作業セッションを閉じる。
  * そのため「一時停止中」は他の端末からも再開でき、累計作業時間は
@@ -37,6 +43,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { fillMessage } from "@/lib/i18n";
+import { missingInspectionSheets } from "@/lib/inspection-core";
 import { QR_KINDS, qrKeyOfKind } from "@/lib/qr-payload";
 import { playLogoutSound, playWarnSound } from "@/lib/sound";
 import type { StepRecordingData } from "@/lib/step-records";
@@ -52,6 +59,8 @@ import { QrScannerView } from "../QrScannerView";
 import { LiveElapsed } from "./LiveElapsed";
 import { NumberStepper } from "./NumberStepper";
 import { StepDefectForm } from "./StepDefectForm";
+import { StepFinalInspectionForm } from "./StepFinalInspectionForm";
+import { StepInspectionApprovalPanel } from "./StepInspectionApprovalPanel";
 import { StepInspectionForm } from "./StepInspectionForm";
 import { isQuantityFormValid, StepQuantityForm } from "./StepQuantityForm";
 import {
@@ -118,6 +127,14 @@ export function StepExecutionView({
     locationGate.enforced &&
     locationGate.restricted &&
     !locationGate.deviceAllowed;
+
+  // 検査表が割り当てられている工程は、その検査表それぞれに記録が 1 件無いと
+  // 完了できない（API 側が最終判定 — ここは押す前に理由を見せるためだけの写し）。
+  const inspectionBlocked =
+    missingInspectionSheets(
+      recording.templates.map((t) => ({ id: t.id, name: t.name })),
+      recording.inspectionRecords.map((r) => ({ templateId: r.templateId })),
+    ).length > 0;
 
   // 完了時の受入数は開始時に確定した値で固定（未記録なら想定/予定へフォールバック）
   const completeInput =
@@ -449,7 +466,56 @@ export function StepExecutionView({
           </Paper>
         )}
 
-        {/* 進行中 / 一時停止中 — 完了フォームと操作 */}
+        {/* ── その工程の「仕事」を先に置く ──────────────────────────────
+            開始・一時停止・完了より**上**にあるのが要点。以前は完了ボタンの
+            下に検査記録・検査承認が並んでいたので、現場は完了ボタンを通り
+            過ぎて仕事をし、また上へ戻る必要があった（10 インチのタブレットで
+            は 1 画面に収まらない）。上から順に「やること → 終わったら完了」と
+            読める並びにする。 */}
+
+        {/* 検査記録 — 検査工程のみ（既存記録があれば読み取り専用でも表示） */}
+        {(recording.isInspection || recording.inspectionRecords.length > 0) && (
+          <StepInspectionForm
+            canRecord={recording.isInspection && (working || paused)}
+            lotQuantity={
+              step.inputQuantity ??
+              step.expectedInputQuantity ??
+              step.workOrderPlannedQuantity
+            }
+            records={recording.inspectionRecords}
+            stepId={step.stepId}
+            templates={recording.templates}
+          />
+        )}
+
+        {/* 検査承認 — 検査承認工程のみ。指示書**全体**の検査記録を並べる
+            （承認は「この指示書の検査がひととおり終わったか」を見る仕事）。 */}
+        {recording.isApprovalStep && (
+          <StepInspectionApprovalPanel
+            canApprove={working || paused}
+            records={recording.approvableRecords}
+            stepId={step.stepId}
+          />
+        )}
+
+        {/* 最終検査・出荷前確認 — 最終検査工程のみ（指示書 1 件に 1 行）。
+            工程リストに最終検査工程が無い指示書には最終検査そのものが無い。 */}
+        {recording.isFinalInspection && recording.finalInspection && (
+          <StepFinalInspectionForm
+            canRecord={working || paused}
+            finalInspection={recording.finalInspection}
+            stepId={step.stepId}
+          />
+        )}
+
+        {/* 不良記録 — 全工程で任意（既存記録があれば読み取り専用でも表示） */}
+        <StepDefectForm
+          canRecord={working || paused}
+          defectTypes={recording.defectTypes}
+          records={recording.defectRecords}
+          stepId={step.stepId}
+        />
+        {/* 進行中 / 一時停止中 — 完了フォームと操作。**仕事のあと**に置く。 */}
         {(working || paused) && (
           <Paper p="md" radius="md" withBorder>
             <Stack gap="md">
@@ -486,12 +552,13 @@ export function StepExecutionView({
                     <Button
                       color="green"
                       disabled={
-                        !isNone &&
-                        !isQuantityFormValid(
-                          defects,
-                          completeInput,
-                          step.quantityMode,
-                        )
+                        inspectionBlocked ||
+                        (!isNone &&
+                          !isQuantityFormValid(
+                            defects,
+                            completeInput,
+                            step.quantityMode,
+                          ))
                       }
                       leftSection={<IconCheck size={20} />}
                       loading={busy}
@@ -503,68 +570,56 @@ export function StepExecutionView({
                   </Group>
                 </>
               ) : (
-                <Group grow>
-                  {working ? (
-                    <Button
+                <Stack gap="md">
+                  {inspectionBlocked && (
+                    <Alert
                       color="orange"
-                      leftSection={<IconPlayerPause size={20} />}
-                      loading={busy}
-                      onClick={doPause}
-                      size="lg"
-                      variant="light"
+                      icon={<IconAlertTriangle size={20} />}
                     >
-                      {m.steps.actions.pause}
-                    </Button>
-                  ) : (
-                    <Button
-                      disabled={locationBlocked}
-                      leftSection={<IconPlayerPlay size={20} />}
-                      loading={busy}
-                      onClick={doResume}
-                      size="lg"
-                    >
-                      {m.steps.actions.resume}
-                    </Button>
+                      {m.steps.complete.blockedByInspection}
+                    </Alert>
                   )}
-                  <Button
-                    color="green"
-                    leftSection={<IconCheck size={20} />}
-                    onClick={() => {
-                      setDefects([]);
-                      setPhase("COMPLETING");
-                    }}
-                    size="lg"
-                  >
-                    {m.steps.actions.complete}
-                  </Button>
-                </Group>
+                  <Group grow>
+                    {working ? (
+                      <Button
+                        color="orange"
+                        leftSection={<IconPlayerPause size={20} />}
+                        loading={busy}
+                        onClick={doPause}
+                        size="lg"
+                        variant="light"
+                      >
+                        {m.steps.actions.pause}
+                      </Button>
+                    ) : (
+                      <Button
+                        disabled={locationBlocked}
+                        leftSection={<IconPlayerPlay size={20} />}
+                        loading={busy}
+                        onClick={doResume}
+                        size="lg"
+                      >
+                        {m.steps.actions.resume}
+                      </Button>
+                    )}
+                    <Button
+                      color="green"
+                      disabled={inspectionBlocked}
+                      leftSection={<IconCheck size={20} />}
+                      onClick={() => {
+                        setDefects([]);
+                        setPhase("COMPLETING");
+                      }}
+                      size="lg"
+                    >
+                      {m.steps.actions.complete}
+                    </Button>
+                  </Group>
+                </Stack>
               )}
             </Stack>
           </Paper>
         )}
-
-        {/* 検査記録 — 検査工程のみ（既存記録があれば読み取り専用でも表示） */}
-        {(recording.isInspection || recording.inspectionRecords.length > 0) && (
-          <StepInspectionForm
-            canRecord={recording.isInspection && (working || paused)}
-            lotQuantity={
-              step.inputQuantity ??
-              step.expectedInputQuantity ??
-              step.workOrderPlannedQuantity
-            }
-            records={recording.inspectionRecords}
-            stepId={step.stepId}
-            templates={recording.templates}
-          />
-        )}
-
-        {/* 不良記録 — 全工程で任意（既存記録があれば読み取り専用でも表示） */}
-        <StepDefectForm
-          canRecord={working || paused}
-          defectTypes={recording.defectTypes}
-          records={recording.defectRecords}
-          stepId={step.stepId}
-        />
       </Stack>
     </Box>
   );

@@ -3,8 +3,11 @@
 # させる補助バックアップ。毎日 03時台に /backups/aux/YYYY-MM-DD/ へ:
 #
 #   1) 周辺 PostgreSQL の論理 dump（docker exec pg_dump -Fc — パスワード/ネットワーク
-#      配線不要）: authentik（SSO 設定・ユーザー）/ coolify（デプロイ定義）/
-#      metabase（BI ダッシュボード）/ ckk-legacy（旧システム アーカイブ）
+#      配線不要）: coolify（デプロイ定義）/ metabase（BI ダッシュボード）/
+#      ckk-legacy（旧システム アーカイブ）
+#      ★ Coolify 管理のものはコンテナ名が <service>-<appUUID>-<連番> に化けるため、
+#        素の名前では当たらない（実際 metabase-db / ckk-legacy-db が毎回 FAIL して
+#        いた）。resolve_container() が接頭辞で解決する。
 #   2) Grafana データ（ダッシュボード等; monitoring_grafana-data ボリューム）の tar
 #   3) サーバー限定シークレットの暗号化 tar（~/stacks/*/.env・ldap.env・vpn 設定・
 #      Coolify の .env / .api-token）。AES-256-CBC + PBKDF2。パスフレーズ
@@ -24,22 +27,37 @@ AUX_MONTHLY_KEEP=${AUX_MONTHLY_KEEP:-12}
 RUN_HOUR=${AUX_RUN_HOUR:-03}
 
 # 対象 DB（コンテナ名:ユーザー:DB名）。環境変数で上書き可。
-AUX_DBS=${AUX_DBS:-"authentik-postgresql-1:authentik:authentik coolify-db:coolify:coolify metabase-db:metabase:metabase ckk-legacy-db:ckk_admin:ckk_system"}
+# （authentik は 2026-08-25 に撤去済みのため対象外）
+AUX_DBS=${AUX_DBS:-"coolify-db:coolify:coolify metabase-db:metabase:metabase ckk-legacy-db:ckk_admin:ckk_system"}
 
 log() { echo "[aux-backup] $*"; }
 
+# Coolify はコンテナ名を <service>-<appUUID>-<連番> に書き換える（安定するのは
+# ネットワーク別名だけ）。素の名前で当たらなければ接頭辞で解決する。
+# 稼働中のものだけを返す — 停止中の残骸に pg_dump を当てても失敗するだけ。
+resolve_container() {
+  local want="$1" hit
+  if docker ps --format '{{.Names}}' | grep -qx "$want"; then echo "$want"; return 0; fi
+  hit=$(docker ps --format '{{.Names}}' | grep -E "^${want}-[a-z0-9]{20,}-[0-9]+$" | head -1)
+  [ -n "$hit" ] && { echo "$hit"; return 0; }
+  return 1
+}
+
 run_backup() {
-  local day dir ts ok=0 fail=0
+  local day dir ts ok=0 fail=0 skip=0
   day=$(date +%F)
   dir="$BACKUP_ROOT/aux/$day"
   mkdir -p "$dir"
 
   # 1) 周辺 DB dump（コンテナが無い/停止中はスキップして続行）
   for spec in $AUX_DBS; do
-    local c u d out
+    local c u d out cid
     c=${spec%%:*}; u=$(echo "$spec" | cut -d: -f2); d=${spec##*:}
+    if ! cid=$(resolve_container "$c"); then
+      log "skip: $c — 稼働中のコンテナが無い"; skip=$((skip+1)); continue
+    fi
     out="$dir/${c}.dump"
-    if docker exec "$c" pg_dump -U "$u" -Fc "$d" > "$out" 2>/tmp/aux-err; then
+    if docker exec "$cid" pg_dump -U "$u" -Fc "$d" > "$out" 2>/tmp/aux-err; then
       log "dump ok: $c ($(du -h "$out" | cut -f1))"; ok=$((ok+1))
     else
       log "dump FAIL: $c — $(head -c 200 /tmp/aux-err)"; rm -f "$out"; fail=$((fail+1))
@@ -83,12 +101,14 @@ run_backup() {
   ls -1d "$BACKUP_ROOT"/aux-monthly/*/ 2>/dev/null | sort | head -n -"$AUX_MONTHLY_KEEP" | xargs -r rm -rf
 
   # ステータス（監視用）
+  # backup.sh が latest-status を**ファイル**として使っているので、その下に
+  # ディレクトリを掘ろうとすると毎回失敗する（実際そうなっていた）。別名で書く。
   ts=$(date -Iseconds)
-  mkdir -p "$BACKUP_ROOT/latest-status"
-  printf '{"at":"%s","ok":%d,"fail":%d,"secrets":%s}\n' \
-    "$ts" "$ok" "$fail" "$([ -n "${ENV_SNAPSHOT_PASSPHRASE:-}" ] && echo true || echo false)" \
-    > "$BACKUP_ROOT/latest-status/aux.json"
-  log "done: ok=$ok fail=$fail"
+  printf '{"at":"%s","ok":%d,"fail":%d,"skip":%d,"secrets":%s}\n' \
+    "$ts" "$ok" "$fail" "$skip" \
+    "$([ -n "${ENV_SNAPSHOT_PASSPHRASE:-}" ] && echo true || echo false)" \
+    > "$BACKUP_ROOT/aux-status.json"
+  log "done: ok=$ok fail=$fail skip=$skip"
 }
 
 # ワンショット実行（初回検証用）: 実行して終了する（常駐しない）

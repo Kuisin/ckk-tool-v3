@@ -28,6 +28,7 @@ import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { acceptanceDeliveryMethodOptions } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
+import { shipToApplies } from "@/lib/order-acceptance-readiness";
 import {
   type ItemRowForm,
   newItemRow,
@@ -192,9 +193,16 @@ export function OrderAcceptanceCreateForm({
             onChange={setSalesRepId}
             value={salesRepId}
           />
-          {/* 出荷先は顧客と異なり得る（直送・支店渡しなど）— 任意。 */}
+          {/* 出荷先は顧客と異なり得る（支店渡しなど）— 通常配送のときだけの欄。
+              ユーザー直送の届け先はエンドユーザーなので灰色にする。 */}
           <SearchSelect
             clearable
+            description={
+              shipToApplies(deliveryMethod)
+                ? undefined
+                : tr("sales.orderAcceptances.shipToOnlyForNormalDelivery")
+            }
+            disabled={!shipToApplies(deliveryMethod)}
             label={
               <HelpLabel {...fieldHelp(tr, "orderAcceptance", "shipTo")} />
             }
@@ -214,8 +222,12 @@ export function OrderAcceptanceCreateForm({
               />
             }
             onChange={(v) => {
-              setDeliveryMethod((v as "NORMAL" | "DIRECT_TO_USER") ?? "NORMAL");
-              if (v !== "DIRECT_TO_USER") setEndUserError(null);
+              const next = (v as "NORMAL" | "DIRECT_TO_USER") ?? "NORMAL";
+              setDeliveryMethod(next);
+              // 直送に切り替えたら出荷先は捨てる（欄が灰色のまま値だけ残ると、
+              // 画面に出ていない届け先を持った書類になる）。
+              if (!shipToApplies(next)) setShipToBpId(null);
+              if (next !== "DIRECT_TO_USER") setEndUserError(null);
             }}
             value={deliveryMethod}
             withAsterisk

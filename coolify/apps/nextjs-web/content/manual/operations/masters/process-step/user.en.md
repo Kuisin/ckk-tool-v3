@@ -75,6 +75,7 @@ When you turn on the 「**検査工程**」 (inspection step) switch, 「数量�
 - **同期可** (can run in parallel) … turn it on for a step that can be done at the same time as another step.
 - **検査工程** (inspection step) … turn it on for a step that carries out an inspection.
 - **検査承認工程** (inspection approval step) … turn it on for a step where a supervisor checks the inspection result. When you turn it on, the 「**承認必要役職**」 (required approver rank) box appears, so enter something like 係長以上 (section chief or above).
+- **最終検査工程** (final inspection step) … turn it on to record the pre-shipment checks on this step (drawing and label check, protective cap, finished quantity, spare stock, packing → delivery note → shipping approval, and the checked-by stamp for defects at shipping). It is on for 「**出荷前検査**」 (pre-shipment inspection) by default. There is one record per work order, and a work order whose step list has no flagged step has no final inspection at all.
 - **有効** (active) … turn it off and the step can no longer be chosen on work orders and elsewhere.
 
 ## Set the order rules for steps
@@ -188,6 +189,8 @@ Whether the step can proceed alongside other steps.
 ### Inspection / inspection approval [#field-inspection]
 
 Whether the step performs inspection, or approves inspection results. **Inspection steps allow an inspection sheet to be recorded during execution.**
+
+Turning on 「**最終検査工程**」 (final inspection step) lets that step's execution screen record the pre-shipment checks (the three checks, spare stock, packing → delivery note → shipping approval, and the checked-by stamp for defects at shipping). It is on for 「出荷前検査」 (pre-shipment inspection) by default.
 
 ### Approval rank required [#field-approval-rank]
 

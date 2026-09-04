@@ -453,7 +453,7 @@ export async function resolveRelatedRecords(
   }
 }
 
-// ─── CM01 承認・予定 のセクション用 ──────────────────────────────────────────
+// ─── CM01 未処理一覧 のセクション用 ──────────────────────────────────────────
 
 export interface PendingFormRow {
   code: string;

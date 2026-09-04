@@ -153,6 +153,8 @@ Once you start a step, the 「**数量・不良**」 (quantity and defects) boxe
   - Details (required) … describe in words what the defect was
 - Finally, press 「**工程完了**」 (Complete step).
 
+> ⚠️ **A step that has inspection sheets assigned to it cannot be completed until those sheets are saved.** While a sheet is still unsaved, 「工程完了」 is disabled and the names of the missing sheets are shown next to it. A sheet itself cannot be saved while any of its **required** items is empty, so the order is: required items filled → the sheet can be saved → the step can be completed.
+
 On inspection steps, the boxes are named differently, such as 「**検査数**」 (number inspected), 「**合格数**」 (number passed), 「**不合格（半製品）**」 (failed — semi-finished), and 「**不合格（工程分岐）**」 (failed — step branch). On steps where no quantity is recorded, no boxes appear; the screen shows something like 「この工程は数量記録なしで完了します（通過数 51）」 (this step finishes without recording a quantity — 51 pieces passing through) and you can simply complete it.
 
 > ⚠️ If the defects add up to more than the received quantity, you see 「**不良の合計（55）が受入数（51）を超えています**」 (the defect total, 55, is more than the received quantity, 51) and you cannot complete the step. Please check the numbers again. Also, if a defect line is missing its defect type or details, you see 「**不良の各行に種類と詳細を入力してください**」 (enter a type and details on every defect line). Fill in every line before completing the step.
@@ -160,7 +162,12 @@ On inspection steps, the boxes are named differently, such as 「**検査数**�
 ### Other things you can record
 
 - **検査表の確認・付け替え** (view / reassign the inspection sheet) … on inspection steps, 「**検査表を見る**」 (view inspection sheet) shows the sheets assigned to that step. You can also change them here — press 「**編集**」 (edit), pick the sheets, and press 「**保存**」 (save). There is no need to go back to the work-order edit screen. A step with nothing assigned says 「**検査表が割り当てられていません**」 (no inspection sheet assigned). On a cancelled work order or step it is view-only.
-- **検査記録** (inspection record) … on inspection steps, you enter the measured value for each item on the inspection sheet. Pass or fail is judged automatically according to the type of item. For sampling inspections, where you do not measure everything, the number to inspect is decided by the sample size rules. On inspection approval steps, you can approve inspection records that passed.
+- **検査記録** (inspection record) … on inspection steps, you enter the measured value for each item on the inspection sheet. Pass or fail is judged automatically according to the type of item. For sampling inspections, where you do not measure everything, the number to inspect is decided by the sample size rules. On inspection approval steps, you can approve inspection records that passed (**this can also be done from a shared device on the floor**). The approval screen lists the inspection records of the **whole work order**, because approving is about whether the inspection of that work order is finished as a whole. Only records that **passed** can be approved, and if the inspection sheet names an approval group or specific approvers, only those people can press it. When you cannot press it, the screen says whether it is because the record did not pass or because you are not an approver.
+
+Pressing 「**検査表を見る**」 (view the sheet) opens **the inspection sheet as it was filled in on the earlier step** — items, measured values and pass/fail. You can check it and approve from that same screen. **There is no way to stamp an approval without seeing what you are approving.**
+
+**An inspection approval step does not ask for quantities.** It approves the inspection sheet of an earlier step rather than working on the pieces, so the quantity passes straight through.
+- **最終検査・出荷前確認** (final inspection and pre-shipment checks) … on a step flagged as a 「**最終検査工程**」 (final inspection step) — 「出荷前検査」 (pre-shipment inspection) by default — you record the three checks (drawing and label, protective cap, finished quantity) plus spare stock, packing → delivery note → shipping approval, and the checked-by stamp for defects at shipping. The packing → delivery note → shipping approval chain follows the order on paper: you cannot record a stage until the previous one is recorded. **There is one record per work order**, so a work order whose step list has no flagged step has no final inspection at all.
 - **不良記録（任意）** (defect record, optional) … you can write down the defect type and what happened.
 - **作業計画 / 作業実績** (work plan / work result) … you can record who, when, where, and how many pieces will be done (or were done), using the person in charge, date, time, quantity, and work place (see "Work plans and work actuals" below).
 - **外注日程** (outsourcing schedule) … on outsourced steps, you can record 「依頼日」 (sent date), 「入荷予定日」 (expected return date), 「入荷日」 (return date), and 「外注費」 (outsourcing cost).
@@ -217,6 +224,14 @@ When all the steps are finished, the work order automatically becomes 「**完�
 - The material that was set aside is taken out of stock as material used.
 
 You can check stock in [inventory management](/manual/en/operations/production/product-inventory/user) (PD04). Pieces still being made are shown on the 「**仕掛品**」 (work in progress) tab of the same app.
+
+### Next step: make a delivery order
+
+When a finished work order still has pieces that are not on any delivery order, 「**次のステップ: 出荷書の作成**」 (next step: create a delivery order) appears at the top of its detail screen. Pressing it opens the [delivery order](/manual/en/operations/shipping/delivery-order/user) form with this work order's order lines already filled in.
+
+**If the same order acceptance has other lines that have not shipped yet, you are asked whether to ship them together.** Tick the ones you want and press 「**選んだ明細を追加**」 (add selected lines) to put them on one delivery order, or press 「**この指示書だけ**」 (just this work order) to keep it to this one. You can always add more later with the order acceptance box, so you do not have to decide it here.
+
+You cannot make one from a for-stock work order (one with no order line). In that case start from the delivery order side and pick the order acceptance there.
 
 ## Other things you can do
 

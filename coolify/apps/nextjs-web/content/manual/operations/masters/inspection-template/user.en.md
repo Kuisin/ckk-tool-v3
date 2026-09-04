@@ -96,6 +96,8 @@ On the detail screen that opens after saving, open the 「**検査項目**」 (i
 
 The items you registered are listed in a table. The columns are **項目名** (item name) / **種別** (type) / **合格基準** (pass rule) / **目標** (target) / **必須** (required) / **表示順** (display order). Use the icons at the right of a row to edit or delete it.
 
+The 「**必須**」 (required) column is a switch, so you can **turn required / optional on and off right on the row** — no need to open the item's edit screen. An inspection sheet cannot be saved while any required item is still empty, so this switch means "the inspection does not count as done without this item". On a version that is already in use the switch is replaced by a plain required / optional label.
+
 ### How to set the pass rule
 
 What you enter changes with the type.

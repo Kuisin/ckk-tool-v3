@@ -112,9 +112,15 @@ jobs:
       # 監査 C1: 認証の門（next の proxy / next-auth の authorized）に公開済みの
       # advisory が出たまま 2 版滞留していた。本番依存の high 以上で止める。
       # dev 専用の CLI（prisma の mysql2 / deepmerge-ts）は --prod で外れる。
+      #
+      # 素の `pnpm audit` ではなくラッパーを通す — npm の監査エンドポイントが
+      # 落ちている間（2026-09-04 に数十分続いた）は脆弱性ゼロでも
+      # ERR_SOCKET_TIMEOUT で赤になり、開いていた PR と昇格 PR を全部止めた。
+      # ラッパーは「届かなかった」を ::warning:: にして通し、脆弱性が
+      # 見つかったときだけ従来どおり落とす。
       - name: Dependency audit (prod, high+)
         working-directory: .
-        run: pnpm audit --prod --audit-level=high
+        run: bash tools/ci/dependency-audit.sh
 
       # 英語・中国語対応は段階的に進める（数千箇所が未着手のまま残る）。
       # 全部訳し終わっていなくても落とさない — 見るのは **後戻り** だけで、

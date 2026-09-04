@@ -24,6 +24,7 @@ import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { recordAudit } from "./audit";
 import { prisma } from "./db";
 import { jstDateOnly } from "./format";
+import { missingInspectionSheets } from "./inspection-core";
 import { encodeInventoryNote } from "./inventory-note-core";
 import {
   canStartStep,
@@ -79,7 +80,15 @@ export type StepErrorCode =
   | "LOCATION_NOT_FOUND"
   | "LOCATION_NOT_ALLOWED"
   | "DEVICE_LOCATION_BLOCKED"
-  | "NO_OPEN_SESSION";
+  | "NO_OPEN_SESSION"
+  // 最終検査の出荷前チェーン（棚包 → 納品書発行 → 出荷許可）は紙の記入順
+  | "STAGE_ALREADY_RECORDED"
+  | "STAGE_OUT_OF_ORDER"
+  // 割り当てられた検査表に記録が無いまま完了しようとした
+  | "INSPECTION_REQUIRED"
+  // 検査承認: 合格していない記録を承認しようとした / 承認者ではない
+  | "INSPECTION_NOT_PASS"
+  | "NOT_APPROVER";
 
 export interface StepActionResult {
   ok: boolean;
@@ -607,6 +616,9 @@ export async function completeStepExecution(
       workOrder: true,
       outgoingLinks: true,
       processStep: { select: { quantityTracking: true } },
+      // 検査表が埋まっているかの判定に使う（割当と記録の突き合わせ）。
+      inspectionTemplates: { select: { inspectionTemplateId: true } },
+      inspectionRecords: { select: { templateId: true } },
     },
   });
   if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません"); // i18n-ignore
@@ -615,6 +627,22 @@ export async function completeStepExecution(
   }
   if (stepRow.sessionLockedBy && stepRow.sessionLockedBy !== actorId) {
     return fail("LOCK_HELD_BY_OTHER", "別のユーザーがセッション中です"); // i18n-ignore
+  }
+
+  // 検査表が割り当てられている工程は、**その検査表それぞれに記録が 1 件**
+  // 無いと完了できない（nextjs-web の completeStepExecution と同じ規則。
+  // 判定は twin file の missingInspectionSheets が唯一の定義元）。
+  // 端末には名前を返さない — 画面が自分の言語で出す（i18n の作法）。
+  if (
+    missingInspectionSheets(
+      stepRow.inspectionTemplates.map((t) => ({
+        id: t.inspectionTemplateId,
+        name: "",
+      })),
+      stepRow.inspectionRecords,
+    ).length > 0
+  ) {
+    return fail("INSPECTION_REQUIRED");
   }
 
   const mode = stepRow.processStep.quantityTracking;
