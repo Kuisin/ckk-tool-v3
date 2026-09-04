@@ -13,7 +13,9 @@
  *                     止めないが、承認者には見せる（何を承認するのかが変わる）。
  *
  * 製品未特定・顧客未特定は未解決であって差異ではない。価格表なし（unpriced）も
- * 差異ではない — 単価は自由入力になる。
+ * 差異ではない — 単価は自由入力になる。ただし **価格表はあるのに数量を覆う
+ * 数量段階が無い行（noTier）は差異と同じ扱い** — 価格表の外の単価を確認なしに
+ * 通さない（以前は「価格表なし」に混ざって黙って自由入力になっていた）。
  *
  * 保存時点ではなく読み出し / 依頼時に計算するため、常に最新の保存内容と
  * 現在の価格表で照合される（lib/intake.ts は不変更）。
@@ -28,8 +30,9 @@ import {
   type AcceptancePriceState,
   acceptancePriceCounts,
   acceptancePriceState,
+  requiresPriceAcknowledgement,
 } from "@/lib/order-acceptance-price-core";
-import { loadCustomerPriceEntries, priceListUnitPrice } from "./price-resolve";
+import { loadCustomerPriceEntries, priceListLookup } from "./price-resolve";
 
 /** 明細 1 行の照合結果。 */
 export interface AcceptancePriceCheckLine {
@@ -37,18 +40,25 @@ export interface AcceptancePriceCheckLine {
   itemId: string;
   /** 1 始まりの行番号（sortOrder 順）。 */
   row: number;
+  /** 明細の数量（数量段階なしの文言に出す）。 */
+  quantity: number;
   /** 価格表から解決した期待単価。未解決（製品未特定/価格表なし）は null。 */
   expected: number | null;
   /** 明細の入力単価。未入力は null。 */
   actual: number | null;
   /** 行の状態（lib/order-acceptance-price-core）。 */
   state: AcceptancePriceState;
-  /** 説明のつかない差異（= state === "diff"）。承認依頼を止める。 */
+  /**
+   * 承認依頼の前に確認が要る行（= diff または noTier）。承認依頼を止める。
+   * 表示は noTier を見て文言を分ける（expected が無いので「≠ 価格表 ¥…」は出せない）。
+   */
   diff: boolean;
   /** 人が宣言した上書き（= state === "override"）。止めない。 */
   overridden: boolean;
-  /** 製品突合済みだが価格表エントリ/段階なし（差異ではない）。 */
+  /** 製品突合済みだが価格表エントリが無い（差異ではない）。 */
   unpriced: boolean;
+  /** 価格表はあるが数量を覆う段階が無い（= state === "noTier"）。 */
+  noTier: boolean;
 }
 
 /** 注文請書 1 件の照合結果。 */
@@ -100,7 +110,7 @@ export async function checkAcceptancePrices(
   const lines: AcceptancePriceCheckLine[] = acceptance.items.map((it, i) => {
     const productId = it.productId != null ? String(it.productId) : null;
     const actual = it.unitPrice != null ? Number(it.unitPrice) : null;
-    const expected = priceListUnitPrice(
+    const { expected, missReason } = priceListLookup(
       entries,
       customerBpId,
       { productId, orderType: it.orderType, quantity: it.quantity },
@@ -112,16 +122,19 @@ export async function checkAcceptancePrices(
       expected,
       actual,
       overridden: it.priceOverridden,
+      missReason,
     });
     return {
       itemId: it.id,
       row: i + 1,
+      quantity: it.quantity,
       expected,
       actual,
       state,
-      diff: state === "diff",
+      diff: requiresPriceAcknowledgement(state),
       overridden: state === "override",
       unpriced: state === "unpriced",
+      noTier: state === "noTier",
     };
   });
 
@@ -133,7 +146,10 @@ export async function checkAcceptancePrices(
   };
 }
 
-/** 差異行の表示文字列（例: `行2 ¥1,200 ≠ 価格表 ¥1,000`）。 */
+/**
+ * 確認が要る行の表示文字列（例: `行2 ¥1,200 ≠ 価格表 ¥1,000` /
+ * `行3 数量 500 に該当する価格表の数量段階なし`）。
+ */
 export function priceDiffSummary(
   check: AcceptancePriceCheck,
   tr: Awaited<ReturnType<typeof getTranslations>>,
@@ -141,11 +157,16 @@ export function priceDiffSummary(
   return check.lines
     .filter((l) => l.diff)
     .map((l) =>
-      tr("sales.orderAcceptances.priceDiffLine", {
-        row: l.row,
-        actual: formatMoney(l.actual),
-        expected: formatMoney(l.expected),
-      }),
+      l.noTier
+        ? tr("sales.orderAcceptances.priceNoTierLine", {
+            row: l.row,
+            quantity: l.quantity,
+          })
+        : tr("sales.orderAcceptances.priceDiffLine", {
+            row: l.row,
+            actual: formatMoney(l.actual),
+            expected: formatMoney(l.expected),
+          }),
     );
 }
 

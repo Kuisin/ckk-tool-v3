@@ -22,6 +22,7 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { Option } from "@/lib/mock";
 import { statusOptions } from "@/lib/status-map";
+import { isoDateJst } from "../price-lists/model";
 import { type Quote, quoteDisplayStatus, quoteTotals } from "./model";
 
 const BASE_PATH = "/sales/quotes";
@@ -50,8 +51,9 @@ export function QuoteTable({
   };
 
   // EXPIRED は保存しない派生状態 — 一覧の絞り込み・表示は 1 回だけ計算した
-  // today を全行で共有する（KioskCardsTable と同じ約束）。
-  const today = new Date().toISOString().slice(0, 10);
+  // today を全行で共有する（KioskCardsTable と同じ約束）。暦日は JST で取る
+  // （UTC の日付だと JST の早朝は前日扱いになる）。
+  const today = isoDateJst(new Date());
 
   const filtered = rows.filter((q) => {
     const matchesSearch =

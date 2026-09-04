@@ -4,6 +4,7 @@ import { parseDocKey } from "@/lib/doc-number";
 import { fetchCustomerOptions } from "../../trial-estimates/data";
 import {
   fetchBranchesByCustomer,
+  fetchCustomerTaxTypes,
   fetchEntriesForCustomer,
   fetchQuote,
 } from "../data";
@@ -34,12 +35,13 @@ export default async function SalesQuotesNewPage({
   const sp = await searchParams;
   const fromKey = sp.from ? parseDocKey(sp.from, "QOT") : null;
 
-  const [customerOptions, branchesByCustomer, entries, source] =
+  const [customerOptions, branchesByCustomer, entries, source, taxTypes] =
     await Promise.all([
       fetchCustomerOptions(),
       fetchBranchesByCustomer(),
       fetchEntriesForCustomer(),
       fromKey ? fetchQuote(fromKey) : null,
+      fetchCustomerTaxTypes(),
     ]);
 
   const prefill = sp.customer
@@ -63,6 +65,7 @@ export default async function SalesQuotesNewPage({
       mode="create"
       prefill={prefill}
       quote={duplicated}
+      taxTypeByCustomer={taxTypes}
     />
   );
 }

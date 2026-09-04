@@ -20,6 +20,7 @@ import {
   orderTypeLabelLocalized,
   pdfAttnLine,
   quotePdfLabels,
+  taxLabelLocalized,
 } from "@/lib/pdf-labels";
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
@@ -85,7 +86,11 @@ export async function GET(request: Request): Promise<Response> {
   // （_specs/i18n-glossary.md §2.7・決定 10 — 閲覧者の表示設定ではない）。
   const lang = normalizeLocale(quote.recipientDocumentLocale);
   const validUntilStr = documentFormatters.date(quote.validUntil);
-  const labels = quotePdfLabels(lang, validUntilStr);
+  const labels = {
+    ...quotePdfLabels(lang, validUntilStr),
+    // 消費税の見出しは顧客の課税区分で変わる（請求書と同じ taxLabelLocalized）。
+    tax: taxLabelLocalized(quote.customerTaxType, lang),
+  };
 
   const data = {
     lang,

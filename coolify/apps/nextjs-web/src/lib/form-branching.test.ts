@@ -13,6 +13,7 @@ import {
   fieldsOnPath,
   formConditionFieldOptions,
   parseFormSections,
+  pruneAnswersToPath,
   resolveNextSection,
   SECTION_SUBMIT,
 } from "./form-branching";
@@ -210,6 +211,26 @@ describe("fieldsOnPath", () => {
   it("excludes fields belonging to an unvisited section", () => {
     const relevant = fieldsOnPath(fields, sections, ["s1", "s3"]);
     expect(relevant.map((f) => f.key)).toEqual(["kind", "note1", "note3"]);
+  });
+});
+
+describe("pruneAnswersToPath", () => {
+  it("通らなかったセクションの回答と、定義に無いキーを落とす", () => {
+    const relevant = fieldsOnPath(fields, sections, ["s1", "s3"]);
+    const pruned = pruneAnswersToPath(relevant, {
+      kind: "a",
+      note1: "x",
+      note2: "skipped section",
+      note3: "z",
+      ghost: "not a field",
+    });
+    expect(pruned).toEqual({ kind: "a", note1: "x", note3: "z" });
+  });
+
+  it("平らなフォームでは全項目の回答が残る", () => {
+    const all = fieldsOnPath(fields, [], []);
+    const answers = Object.fromEntries(fields.map((f) => [f.key, "v"]));
+    expect(pruneAnswersToPath(all, answers)).toEqual(answers);
   });
 });
 

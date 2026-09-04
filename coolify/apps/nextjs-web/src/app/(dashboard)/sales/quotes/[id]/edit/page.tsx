@@ -6,6 +6,7 @@ import { parseDocKey } from "@/lib/doc-number";
 import { fetchCustomerOptions } from "../../../trial-estimates/data";
 import {
   fetchBranchesByCustomer,
+  fetchCustomerTaxTypes,
   fetchEntriesForCustomer,
   fetchQuote,
 } from "../../data";
@@ -29,12 +30,13 @@ export default async function SalesQuotesEditPage({
   const key = parseDocKey(id, "QOT");
   if (!key) notFound();
 
-  const [quote, customerOptions, branchesByCustomer, entries] =
+  const [quote, customerOptions, branchesByCustomer, entries, taxTypes] =
     await Promise.all([
       fetchQuote(key),
       fetchCustomerOptions(),
       fetchBranchesByCustomer(),
       fetchEntriesForCustomer(),
+      fetchCustomerTaxTypes(),
     ]);
   if (!quote) notFound();
   if (!isEditable(quote)) {
@@ -48,6 +50,7 @@ export default async function SalesQuotesEditPage({
       entries={entries}
       mode="edit"
       quote={quote}
+      taxTypeByCustomer={taxTypes}
     />
   );
 }

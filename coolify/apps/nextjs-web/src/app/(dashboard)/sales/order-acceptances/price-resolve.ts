@@ -16,10 +16,11 @@
 
 import type { getTranslations } from "next-intl/server";
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
-import { resolveUnitPriceFromEntries } from "@/components/sales/quotes/model";
+import { resolvePriceFromEntries } from "@/components/sales/quotes/model";
 import {
   effectiveUnitPrice,
   normalizeOverride,
+  type PriceMissReason,
 } from "@/lib/order-acceptance-price-core";
 import { fetchEntriesForCustomer } from "../quotes/data";
 
@@ -44,28 +45,51 @@ export async function loadCustomerPriceEntries(
   return fetchEntriesForCustomer(customerBpId);
 }
 
+/** 1 行の価格表単価と、引けなかったときの理由。 */
+export interface PriceListLookup {
+  /** 価格表から解決した単価。null = 引けない。 */
+  expected: number | null;
+  /** expected が null の理由（顧客・製品未特定なら null）。 */
+  missReason: PriceMissReason | null;
+}
+
 /**
- * 1 行の価格表単価（¥）。引けなければ null。
+ * 1 行の価格表単価（¥）と理由。
  * 値引きはここでは見ない — 注文請書の単価は価格表の段階単価そのもの
  * （値引きは見積書の金額計算の話で、受注単価は顧客の注文書と突き合わせる）。
+ *
+ * 理由を返すのは、照合（price-check）が「価格表なし」と「価格表はあるのに
+ * 数量段階が無い」を分けるため — 後者は差異と同じく確認を要求する。
  */
+export function priceListLookup(
+  entries: PriceListEntry[],
+  customerBpId: string | null,
+  item: PriceResolvableItem,
+  tr: Tr,
+): PriceListLookup {
+  if (!customerBpId || !item.productId)
+    return { expected: null, missReason: null };
+  const r = resolvePriceFromEntries(
+    entries,
+    customerBpId,
+    item.productId,
+    item.orderType,
+    item.quantity,
+    tr,
+  );
+  return r.ok
+    ? { expected: r.price.unitPrice, missReason: null }
+    : { expected: null, missReason: r.reason };
+}
+
+/** `priceListLookup` の単価だけ版。引けなければ null。 */
 export function priceListUnitPrice(
   entries: PriceListEntry[],
   customerBpId: string | null,
   item: PriceResolvableItem,
   tr: Tr,
 ): number | null {
-  if (!customerBpId || !item.productId) return null;
-  return (
-    resolveUnitPriceFromEntries(
-      entries,
-      customerBpId,
-      item.productId,
-      item.orderType,
-      item.quantity,
-      tr,
-    )?.unitPrice ?? null
-  );
+  return priceListLookup(entries, customerBpId, item, tr).expected;
 }
 
 /** 保存する明細 1 行（入力の形 — actions.ts の zod 出力の部分集合）。 */

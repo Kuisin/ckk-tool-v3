@@ -9,7 +9,7 @@ import {
 import { FormStateScreen } from "@/components/forms/FormStateScreen";
 import { ResponseActionRow } from "@/components/forms/ResponseActionRow";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { hasAnyApproval } from "@/lib/approvals";
+import { hasApprovalInCurrentRound } from "@/lib/approvals";
 import { sessionUserId } from "@/lib/authz";
 import { canEditResponse, formAvailability } from "@/lib/form-schema";
 import {
@@ -97,7 +97,11 @@ export default async function MyResponsePage({
   const now = new Date();
   const firstApprovalDone =
     row.status === "REQUESTED" &&
-    (await hasAnyApproval("form_responses", row.responseNumber, row.createdAt));
+    (await hasApprovalInCurrentRound(
+      "form_responses",
+      row.responseNumber,
+      row.createdAt,
+    ));
   const editable =
     isOwner && canEditResponse(row.form, row, userId, now, firstApprovalDone);
   const isDraft = row.status === "DRAFT";

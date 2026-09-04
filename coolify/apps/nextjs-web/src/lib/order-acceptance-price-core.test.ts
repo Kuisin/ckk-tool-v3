@@ -4,6 +4,7 @@ import {
   acceptancePriceState,
   effectiveUnitPrice,
   normalizeOverride,
+  requiresPriceAcknowledgement,
 } from "./order-acceptance-price-core";
 
 const line = (o: Partial<Parameters<typeof acceptancePriceState>[0]> = {}) => ({
@@ -25,6 +26,20 @@ describe("acceptancePriceState", () => {
     expect(acceptancePriceState(line({ expected: null, actual: 800 }))).toBe(
       "unpriced",
     );
+  });
+
+  it("価格表はあるが数量段階が無い行は noTier（自由入力だが確認が要る）", () => {
+    expect(
+      acceptancePriceState(
+        line({ expected: null, actual: 800, missReason: "no-tier" }),
+      ),
+    ).toBe("noTier");
+    // 他の理由（価格表なし・無効・期間外）は従来どおり unpriced
+    expect(
+      acceptancePriceState(
+        line({ expected: null, actual: 800, missReason: "expired" }),
+      ),
+    ).toBe("unpriced");
   });
 
   it("価格表があって単価未入力は未入力として出す", () => {
@@ -106,6 +121,22 @@ describe("acceptancePriceCounts", () => {
         "unresolved",
         "unset",
       ]),
-    ).toEqual({ diffCount: 2, overrideCount: 1, unpricedCount: 1 });
+    ).toEqual({
+      diffCount: 2,
+      overrideCount: 1,
+      unpricedCount: 1,
+      noTierCount: 0,
+    });
+  });
+
+  it("数量段階なしは差異と同じく diffCount に入る", () => {
+    expect(acceptancePriceCounts(["noTier", "diff", "unpriced"])).toEqual({
+      diffCount: 2,
+      overrideCount: 0,
+      unpricedCount: 1,
+      noTierCount: 1,
+    });
+    expect(requiresPriceAcknowledgement("noTier")).toBe(true);
+    expect(requiresPriceAcknowledgement("unpriced")).toBe(false);
   });
 });

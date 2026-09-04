@@ -4,7 +4,7 @@ import { ResponseDetail } from "@/components/forms/ResponseDetail";
 import {
   fetchApprovalState,
   fetchApprovalTrail,
-  hasAnyApproval,
+  hasApprovalInCurrentRound,
   isApproverOf,
 } from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
@@ -71,7 +71,7 @@ export default async function ResponseDetailPage({
 
   const firstApprovalDone =
     response.status === "REQUESTED" &&
-    (await hasAnyApproval("form_responses", id, response.createdAt));
+    (await hasApprovalInCurrentRound("form_responses", id, response.createdAt));
 
   const attachments = hideIdentity
     ? rawAttachments.map((a) => ({ ...a, uploadedBy: "—" }))

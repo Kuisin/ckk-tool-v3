@@ -21,7 +21,7 @@ import {
   appendHistory,
   assertFormFlowConfigured,
   type HistoryEntry,
-  hasAnyApproval,
+  hasApprovalInCurrentRound,
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
@@ -37,8 +37,10 @@ import {
   type FormSectionDef,
   fieldsOnPath,
   parseFormSections,
+  pruneAnswersToPath,
 } from "@/lib/form-branching";
 import { notifyFormCompletion } from "@/lib/form-completion";
+import { applyLookupLabels } from "@/lib/form-lookup-resolve";
 import {
   canEditResponse,
   type FormAnswerValue,
@@ -752,6 +754,9 @@ export async function submitResponse(
     );
   }
 
+  // 保存する回答。提出では通った経路の項目だけに刈り、lookup のラベルは
+  // マスタから引き直す。下書きはそのまま（まだ出していない途中の状態）。
+  let stored = answers;
   if (!asDraft) {
     // どのセクションを実際に通ったかは、回答者の申告ではなくここで
     // 独自に再計算する（クライアントの画面遷移を信用しない）。スキップした
@@ -761,6 +766,14 @@ export async function submitResponse(
     const errors = validateAnswers(relevant, answers, tr);
     const first = Object.values(errors)[0];
     if (first) return actionError(first);
+    // 通らなかったセクションの回答は保存しない（詳細・出力・集計に出さない）。
+    const looked = await applyLookupLabels(
+      relevant,
+      pruneAnswersToPath(relevant, answers),
+      tr,
+    );
+    if (!looked.ok) return actionError(looked.error);
+    stored = looked.answers;
   }
 
   // 1 人 1 回の事前確認（読める理由を早く返すため）。最終判定は下の tx 内 —
@@ -776,7 +789,7 @@ export async function submitResponse(
 
   try {
     const responseNumber = await nextDocumentNumber("FORM_RESPONSE");
-    const plainText = toPlainAnswers(fields, answers);
+    const plainText = toPlainAnswers(fields, stored);
 
     const created = await prisma.$transaction(async (tx) => {
       // フォーム内の連番。UPDATE ... RETURNING 相当で行ロックを取るので競合しない。
@@ -805,7 +818,7 @@ export async function submitResponse(
           formId: form.id,
           version: form.currentVersion,
           status: asDraft ? "DRAFT" : "SUBMITTED",
-          answers: answers as unknown as object,
+          answers: stored as unknown as object,
           plainText,
           submittedBy: userId,
           submittedAt: asDraft ? null : new Date(),
@@ -879,7 +892,11 @@ export async function updateResponse(
   // 編集 URL を直接叩かれても、ここで同じ規則を通す。
   const firstApprovalDone =
     row.status === "REQUESTED" &&
-    (await hasAnyApproval("form_responses", responseNumber, row.createdAt));
+    (await hasApprovalInCurrentRound(
+      "form_responses",
+      responseNumber,
+      row.createdAt,
+    ));
   if (!canEditResponse(row.form, row, userId, new Date(), firstApprovalDone)) {
     return actionError(tr("general.formsActions.responseNotEditable"));
   }
@@ -904,6 +921,8 @@ export async function updateResponse(
   if (asDraft && !wasDraft)
     return actionError(tr("general.formsActions.cannotRevertToDraft"));
 
+  // 保存する回答（submitResponse と同じ: 提出では経路の項目だけ + ラベル引き直し）。
+  let stored = answers;
   if (!asDraft) {
     // submitResponse と同じ規則: 実際に通ったセクションだけを検証する
     // （回答者の申告ではなく、この回答自体からサーバー側で再計算する）。
@@ -912,6 +931,13 @@ export async function updateResponse(
     const errors = validateAnswers(relevant, answers, tr);
     const first = Object.values(errors)[0];
     if (first) return actionError(first);
+    const looked = await applyLookupLabels(
+      relevant,
+      pruneAnswersToPath(relevant, answers),
+      tr,
+    );
+    if (!looked.ok) return actionError(looked.error);
+    stored = looked.answers;
   }
 
   // 下書きを提出に切り替える瞬間だけ、新規提出と同じ関門を通す。
@@ -961,8 +987,8 @@ export async function updateResponse(
       await tx.formResponse.update({
         where: { responseNumber },
         data: {
-          answers: answers as unknown as object,
-          plainText: toPlainAnswers(fieldsParsed.fields, answers),
+          answers: stored as unknown as object,
+          plainText: toPlainAnswers(fieldsParsed.fields, stored),
           ...(wasDraft && !asDraft
             ? { status: "SUBMITTED" as const, submittedAt: new Date() }
             : {}),
