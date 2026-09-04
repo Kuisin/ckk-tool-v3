@@ -193,7 +193,7 @@ function designRequestScope(
   return { OR: [{ createdBy: userId }, { assigneeId: userId }] };
 }
 
-function designRequestInScope(
+export function designRequestInScope(
   access: Parameters<typeof designRequestScope>[0],
   row: { createdBy: string | null; assigneeId: string | null },
   userId: string,
