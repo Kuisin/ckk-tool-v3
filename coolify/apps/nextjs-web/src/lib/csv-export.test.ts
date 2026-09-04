@@ -41,6 +41,12 @@ describe("buildYayoiCsv", () => {
     expect(row).toContain(",売掛金,1235,売上高,1235,");
   });
 
+  it("仕訳日付は JST の暦日（UTC 前日 15 時以降は翌日）", () => {
+    const csv = buildYayoiCsv({ ...base, date: "2026-07-31T15:30:00.000Z" });
+    const row = csv.slice(YAYOI_CSV_BOM.length).trimEnd().split("\r\n")[1];
+    expect(row.startsWith("2026/08/01,")).toBe(true);
+  });
+
   it("taxAmount 指定時は 売上高（税抜）+ 仮受消費税 の 2 行に分離する", () => {
     const csv = buildYayoiCsv({
       ...base,

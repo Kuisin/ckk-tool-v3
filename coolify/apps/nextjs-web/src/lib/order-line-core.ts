@@ -113,6 +113,34 @@ export function isLineCancellable(
   return line.status !== "SHIPPED" && line.status !== "CANCELLED";
 }
 
+/**
+ * 発送（DISPATCH）の出荷書に載せてよい明細か — 確定済みで、まだ取り消されて
+ * いないもの。DRAFT は枝番も金額も無く、CANCELLED はもう出荷しない。
+ * 出荷書の作成・更新・出荷（shipDeliveryOrder）が同じ判定を通る。
+ */
+export function isLineShippable(
+  line: Pick<LineLockState, "status" | "branch">,
+): boolean {
+  return (
+    line.branch != null &&
+    line.status !== "DRAFT" &&
+    line.status !== "CANCELLED"
+  );
+}
+
+/**
+ * 注文明細の残数を**消費する**出荷書の条件 — 発送（DISPATCH）なら下書き・確定・
+ * 出荷済のすべて。下書きに載せた時点で「もう手配済み」なので、SHIPPED だけを
+ * 数えると同じ明細を複数の出荷書に二重に載せられてしまう。在庫保管
+ * （STOCK_STORAGE）は請求フロー外で明細の進捗に影響しないため数えない。
+ * 過出荷ガード（validateLineRemaining）と未処理出荷書（SH03）の未手配数が
+ * 同じ条件を見る。
+ */
+export const LINE_CONSUMING_DELIVERY_ORDER_WHERE: {
+  type: "DISPATCH";
+  status: { in: ("DRAFT" | "CONFIRMED" | "SHIPPED")[] };
+} = { type: "DISPATCH", status: { in: ["DRAFT", "CONFIRMED", "SHIPPED"] } };
+
 /** 在庫照合できるか — 確定済みかつ製造着手前のみ。 */
 export function isLineStockCheckable(
   line: Pick<LineLockState, "status">,

@@ -19,7 +19,7 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import {
   addDays,
-  monthStart,
+  billingPeriodStart,
   parseYearMonth,
 } from "@/components/billing/closings/model";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
@@ -171,10 +171,12 @@ export async function processClosing(
     const paymentTermsDays =
       closing.customerBp.customerAttrs?.paymentTermsDays ??
       DEFAULT_PAYMENT_TERMS_DAYS;
-    // 請求期間 = 月初〜締日（簡易; 前締日ベースの厳密期間は将来対応）。
-    const periodFrom = monthStart(
+    // 請求期間 = 前回締日の翌日〜締日（対象出荷の収集と同じ区切り —
+    // fetchBillableShipmentsForClosing / billingWindowFor）。
+    const periodFrom = billingPeriodStart(
       closingDate.getUTCFullYear(),
       closingDate.getUTCMonth() + 1,
+      closing.customerBp.customerAttrs?.closingDay ?? null,
     );
     const dueDate = addDays(closingDate, paymentTermsDays);
     // 支店: 対象出荷に共通の支店があれば引き継ぐ。
