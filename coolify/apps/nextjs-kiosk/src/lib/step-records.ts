@@ -32,6 +32,7 @@ import {
   getWorkOrderInspectionRecords,
 } from "./inspection-approval";
 import {
+  entriesBlockingSave,
   type InspectionItemSpec,
   type InspectionSampleValue,
   isSampleEmpty,
@@ -382,6 +383,27 @@ export async function recordInspection(
     ) {
       return fail("ITEMS_REQUIRED", "合格数が検査数を超えています"); // i18n-ignore
     }
+  }
+  // 必須 + 手動上書き不可の項目は入力が無いと保存できない — フォームと同じ
+  // 規則（inspection-core.entriesBlockingSave）をサーバーでも通す。テンプレート
+  // の項目を基準に見るので、項目ごと送られてこなくてもすり抜けない。
+  const entryByItem = new Map(
+    items.map((i) => [
+      i.templateItemId,
+      {
+        samples: i.values,
+        inspectedCount: style === "COUNTS" ? i.inspectedCount : null,
+        passedCount: style === "COUNTS" ? i.passedCount : null,
+      },
+    ]),
+  );
+  const blocking = entriesBlockingSave(
+    link.inspectionTemplate.items,
+    (id) => entryByItem.get(id),
+    style,
+  );
+  if (blocking.length > 0) {
+    return fail("ITEMS_REQUIRED", "必須項目の実測値を入力してください"); // i18n-ignore
   }
 
   // 合否はサーバーでも解決 — 上書き不可の項目はクライアント値を無視して

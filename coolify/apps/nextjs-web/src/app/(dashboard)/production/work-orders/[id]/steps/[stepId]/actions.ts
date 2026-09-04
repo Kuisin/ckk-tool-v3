@@ -17,7 +17,9 @@ import { resolveApprover } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { type LocalizedText, localized } from "@/lib/format";
 import {
+  entriesBlockingSave,
   isSampleEmpty,
   itemSpecFromRow,
   resolveItemPass,
@@ -661,6 +663,37 @@ export async function saveInspectionRecord(
           ],
         };
       }
+    }
+    // 必須 + 手動上書き不可の項目は入力が無いと保存できない — フォームと同じ
+    // 規則（inspection-core.entriesBlockingSave）をサーバーでも通す。テンプレート
+    // の項目を基準に見るので、項目ごと送られてこなくてもすり抜けない。
+    const entryByItem = new Map(
+      v.items.map((i) => [
+        i.templateItemId,
+        {
+          samples: i.values,
+          inspectedCount: style === "COUNTS" ? i.inspectedCount : null,
+          passedCount: style === "COUNTS" ? i.passedCount : null,
+        },
+      ]),
+    );
+    const blocking = entriesBlockingSave(
+      link.inspectionTemplate.items,
+      (id) => entryByItem.get(id),
+      style,
+    );
+    if (blocking.length > 0) {
+      const names = link.inspectionTemplate.items
+        .filter((it) => blocking.includes(it.id))
+        .map((it) => localized(it.itemName as LocalizedText | null));
+      return {
+        ok: false,
+        errors: [
+          tr("production.inspectionRecordForm.enterTheRequiredItems", {
+            items: names.join(tr("common.s1")),
+          }),
+        ],
+      };
     }
     const actor = await getCurrentActorId();
     // 合否はサーバーでも解決 — 上書き不可の項目はクライアント値を無視して

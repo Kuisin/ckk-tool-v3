@@ -239,6 +239,31 @@ describe("validateAllocations", () => {
         tr,
       ),
     ).toMatch(/^production\.workOrderActions\.orderLineNotAllocatable /);
+    expect(
+      validateAllocations(
+        {
+          type: "MANUFACTURE",
+          plannedQuantity: 10,
+          allocations: [{ orderLineId: "L1", quantity: 10 }],
+          lines: [line({ status: "SHIPPED" })],
+        },
+        tr,
+      ),
+    ).toMatch(/^production\.workOrderActions\.orderLineNotAllocatable /);
+  });
+
+  it("未確定（DRAFT）の明細は拒否 — 確定前は枝番も金額も無く割当の前提が動く", () => {
+    expect(
+      validateAllocations(
+        {
+          type: "MANUFACTURE",
+          plannedQuantity: 10,
+          allocations: [{ orderLineId: "L1", quantity: 10 }],
+          lines: [line({ status: "DRAFT" })],
+        },
+        tr,
+      ),
+    ).toMatch(/^production\.workOrderActions\.orderLineNotAllocatable /);
   });
 
   it("製品未特定の明細は拒否", () => {

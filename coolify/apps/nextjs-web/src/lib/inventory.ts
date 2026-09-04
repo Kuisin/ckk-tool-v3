@@ -624,6 +624,38 @@ export async function releaseOrderLineReservations(
 }
 
 /**
+ * 指示書キャンセル時の予約解放: この指示書（work_order_id）が持つ生きている
+ * 予約（承認時の素材予約など）を全量 RELEASE し、reserved_quantity キャッシュも
+ * 戻す。CONFIRMED は全工程完了時にしか付かず、完了済みはキャンセルできないので
+ * RESERVED だけを見る。tx 内で呼ぶ。
+ */
+export async function releaseWorkOrderReservations(
+  tx: Tx,
+  workOrderId: string,
+  reason: string,
+): Promise<number> {
+  const reservations = await tx.inventoryReservation.findMany({
+    where: { workOrderId, status: "RESERVED" },
+  });
+  for (const r of reservations) {
+    await applyTransaction(tx, {
+      inventoryType: r.inventoryType,
+      inventoryId: r.inventoryId,
+      transactionType: "RELEASE",
+      quantity: Number(r.quantity),
+      referenceType: "work_order",
+      referenceId: workOrderId,
+      notes: reason,
+    });
+    await tx.inventoryReservation.update({
+      where: { id: r.id },
+      data: { status: "RELEASED", releasedAt: new Date() },
+    });
+  }
+  return reservations.length;
+}
+
+/**
  * 素材入荷フック: 入荷拠点の素材在庫へ入庫。
  *
  * `tx` を渡すと**その同じトランザクションで**計上する — 入荷行の作成と在庫の
