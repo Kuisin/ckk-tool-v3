@@ -13,6 +13,7 @@ export type StepAction =
   | "COMPLETE"
   | "INSPECTION"
   | "INSPECTION_CONFIRM"
+  | "INSPECTION_APPROVE"
   | "DEFECTS"
   | "SET_LOCATION"
   // 最終検査・出荷前確認（最終検査工程のみ — final-inspection.ts）

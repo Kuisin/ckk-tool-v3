@@ -28,6 +28,10 @@ import type { LocalizedText } from "./format";
 import { localized } from "./format";
 import { getMessages, type Locale } from "./i18n";
 import {
+  type ApprovableInspectionRecord,
+  getWorkOrderInspectionRecords,
+} from "./inspection-approval";
+import {
   type BoolLabels,
   formatCounts,
   formatSampleValue,
@@ -116,6 +120,14 @@ export interface DefectRecordView {
 export interface StepRecordingData {
   /** 検査工程か（カタログ is_inspection）。 */
   isInspection: boolean;
+  /** 検査承認工程か（カタログ is_approval_step）。 */
+  isApprovalStep: boolean;
+  /**
+   * 承認対象の検査記録（**指示書全体**）。検査承認工程にだけ渡る。
+   * 承認は「この指示書の検査がひととおり終わったか」を見る仕事なので、
+   * 自分の工程の記録だけでは足りない。
+   */
+  approvableRecords: ApprovableInspectionRecord[];
   /** 最終検査工程か（カタログ is_final_inspection）。 */
   isFinalInspection: boolean;
   /**
@@ -140,6 +152,8 @@ function asText(value: unknown): LocalizedText | null {
 /** 実行画面の検査・不良セクションに必要なデータをまとめて引く。 */
 export async function getStepRecordingData(
   stepId: string,
+  /** 承認できるかどうかは人によって違うので、閲覧者を受け取る。 */
+  actorId: string,
   locale: Locale,
 ): Promise<StepRecordingData | null> {
   const step = await prisma.workOrderStep.findUnique({
@@ -148,44 +162,57 @@ export async function getStepRecordingData(
       workOrderId: true,
       processStepId: true,
       processStep: {
-        select: { isInspection: true, isFinalInspection: true },
+        select: {
+          isInspection: true,
+          isFinalInspection: true,
+          isApprovalStep: true,
+        },
       },
     },
   });
   if (!step) return null;
 
-  const [templateLinks, records, finalInspection, defectTypes, defects] =
-    await Promise.all([
-      prisma.workOrderStepInspectionTemplate.findMany({
-        where: { stepId },
-        include: {
-          inspectionTemplate: {
-            include: { items: { orderBy: { sortOrder: "asc" } } },
-          },
+  const [
+    templateLinks,
+    records,
+    finalInspection,
+    approvableRecords,
+    defectTypes,
+    defects,
+  ] = await Promise.all([
+    prisma.workOrderStepInspectionTemplate.findMany({
+      where: { stepId },
+      include: {
+        inspectionTemplate: {
+          include: { items: { orderBy: { sortOrder: "asc" } } },
         },
-      }),
-      prisma.inspectionRecord.findMany({
-        where: { workOrderStepId: stepId },
-        include: {
-          template: { select: { name: true } },
-          items: { include: { templateItem: true } },
-        },
-        orderBy: { recordedAt: "desc" },
-      }),
-      step.processStep.isFinalInspection
-        ? getFinalInspection(step.workOrderId)
-        : Promise.resolve(null),
-      prisma.defectType.findMany({
-        where: { isActive: true },
-        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-        select: { id: true, name: true },
-      }),
-      prisma.defectRecord.findMany({
-        where: { workOrderStepId: stepId },
-        include: { defectType: { select: { name: true } } },
-        orderBy: { recordedAt: "desc" },
-      }),
-    ]);
+      },
+    }),
+    prisma.inspectionRecord.findMany({
+      where: { workOrderStepId: stepId },
+      include: {
+        template: { select: { name: true } },
+        items: { include: { templateItem: true } },
+      },
+      orderBy: { recordedAt: "desc" },
+    }),
+    step.processStep.isFinalInspection
+      ? getFinalInspection(step.workOrderId)
+      : Promise.resolve(null),
+    step.processStep.isApprovalStep
+      ? getWorkOrderInspectionRecords(stepId, actorId, locale)
+      : Promise.resolve([]),
+    prisma.defectType.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      select: { id: true, name: true },
+    }),
+    prisma.defectRecord.findMany({
+      where: { workOrderStepId: stepId },
+      include: { defectType: { select: { name: true } } },
+      orderBy: { recordedAt: "desc" },
+    }),
+  ]);
 
   // recorded_by の表示名解決（キオスクユーザーも同じ app.users 空間）
   const userIds = [
@@ -231,6 +258,8 @@ export async function getStepRecordingData(
 
   return {
     isInspection: step.processStep.isInspection,
+    isApprovalStep: step.processStep.isApprovalStep,
+    approvableRecords,
     isFinalInspection: step.processStep.isFinalInspection,
     finalInspection,
     // この工程に割り当てられたテンプレート（工程単位 — web 側と同じ規則）

@@ -258,7 +258,9 @@
       "UNKNOWN": "処理に失敗しました",
       "STAGE_ALREADY_RECORDED": "この段は既に記録されています",
       "STAGE_OUT_OF_ORDER": "前の段を先に記録してください",
-      "INSPECTION_REQUIRED": "検査記録が未入力の検査表があります。検査表を保存してから完了してください"
+      "INSPECTION_REQUIRED": "検査記録が未入力の検査表があります。検査表を保存してから完了してください",
+      "INSPECTION_NOT_PASS": "合格した検査記録だけ承認できます",
+      "NOT_APPROVER": "この検査表の承認者ではありません"
     },
     "finalInspection": {
       "title": "最終検査・出荷前確認",
@@ -282,6 +284,16 @@
       "shipDefectConfirm": "確認する",
       "saved": "記録しました",
       "checkedMeta": "{at} {by}"
+    },
+    "approval": {
+      "title": "検査承認",
+      "empty": "承認する検査記録がありません",
+      "approve": "承認",
+      "approved": "承認しました",
+      "notApprover": "この検査表の承認者ではありません",
+      "onlyPass": "合格した検査記録だけ承認できます",
+      "recordedBy": "記録 {at} {by}",
+      "approvedMeta": "承認 {at} {by}"
     }
   },
   "deviceError": {

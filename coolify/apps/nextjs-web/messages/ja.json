@@ -8193,7 +8193,8 @@
     "finalInspectionShelved": "出荷前確認: 棚包担当者を記録",
     "finalInspectionDeliveryNoteIssued": "出荷前確認: 納品書発行者を記録",
     "finalInspectionShipmentAuthorized": "出荷前確認: 出荷許可者を記録",
-    "finalInspectionShipDefectReviewed": "出荷時不良内容確認者印を記録"
+    "finalInspectionShipDefectReviewed": "出荷時不良内容確認者印を記録",
+    "inspectionApproved": "検査記録を承認"
   },
   "workflowCore": {
     "quantityLabels": {

@@ -85,7 +85,10 @@ export type StepErrorCode =
   | "STAGE_ALREADY_RECORDED"
   | "STAGE_OUT_OF_ORDER"
   // 割り当てられた検査表に記録が無いまま完了しようとした
-  | "INSPECTION_REQUIRED";
+  | "INSPECTION_REQUIRED"
+  // 検査承認: 合格していない記録を承認しようとした / 承認者ではない
+  | "INSPECTION_NOT_PASS"
+  | "NOT_APPROVER";
 
 export interface StepActionResult {
   ok: boolean;
