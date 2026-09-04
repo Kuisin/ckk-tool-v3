@@ -7456,7 +7456,7 @@
       "storedToStock": "Stored (to stock)",
       "deliveryNoteNote": "{status} · {recipient}",
       "confirmConfirmBody": "This confirms delivery order {number}. It cannot be edited after confirming.",
-      "autoNotesHeading": "Confirming creates these delivery notes automatically",
+      "autoNotesHeading": "Confirming creates these delivery notes automatically as issued (they cannot be edited afterwards)",
       "autoNoteWithPrice": "With prices",
       "autoNoteWithoutPrice": "Without prices",
       "autoNotesEndUserMissing": "The end user cannot be resolved, so the delivery note without prices will not be created. Check the end user on the order acceptance.",
@@ -7471,7 +7471,7 @@
       "onlySameDeliveryMethodCanBeCombined": "A delivery order can only combine order lines with the same delivery method (standard / direct to end user)",
       "stockStorageHasNoDeliveryNote": "Stock-storage delivery orders don't get a delivery note",
       "onlySameEndUserCanBeCombined": "A delivery order can only combine order lines with the same end user",
-      "confirmedBodyDispatch": "Confirmed delivery order {number} and created the delivery note(s)",
+      "confirmedBodyDispatch": "Confirmed delivery order {number} and issued the delivery note(s)",
       "coveredOrderAcceptances": "Covered order acceptances",
       "shipTogetherTitle": "Ship other lines of the same order acceptance too?",
       "shipTogetherBody": "The same order acceptance has {count} line(s) not yet shipped. Choose which ones to put on this delivery order.",
@@ -7553,7 +7553,7 @@
       "shippedNotificationTitle": "Delivery order {number} has shipped",
       "specifyAConfirmedOrderLine": "Specify a confirmed order line",
       "updateFailed": "Could not update the delivery order",
-      "autoCreatedNote": "Auto-created when the delivery order was confirmed"
+      "autoCreatedNote": "Auto-created (issued) when the delivery order was confirmed"
     }
   },
   "ui": {

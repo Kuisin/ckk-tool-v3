@@ -9,7 +9,6 @@ import {
   type RequiredApproverState,
   remainingApprovers,
   stepFromSnapshot,
-  stepperActive,
   stepsFromSnapshot,
   validateFlowSteps,
 } from "./approval-flow";
@@ -114,22 +113,6 @@ describe("decideAfterApproval", () => {
         stepCount: 1,
       }),
     ).toEqual({ stepClosed: true, flowCompleted: true, nextStepNo: null });
-  });
-});
-
-describe("stepperActive", () => {
-  it("PENDING は現在段を指す（0 起点）", () => {
-    expect(stepperActive(3, 1, "PENDING")).toBe(0);
-    expect(stepperActive(3, 2, "PENDING")).toBe(1);
-  });
-
-  it("APPROVED は全段の先", () => {
-    expect(stepperActive(3, 3, "APPROVED")).toBe(3);
-  });
-
-  it("NONE / REJECTED はどの段もアクティブにしない", () => {
-    expect(stepperActive(3, 1, "NONE")).toBe(-1);
-    expect(stepperActive(3, 2, "REJECTED")).toBe(-1);
   });
 });
 

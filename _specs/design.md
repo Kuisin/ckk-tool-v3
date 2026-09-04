@@ -1252,6 +1252,9 @@ Paper (withBorder, p="lg")
 差し戻し中 = red + 再承認依頼）。操作が無い状態では何も描画しない。
 
 **ApprovalStatusPanel** — フローと記録の**表示のみ**（操作ボタンは持たない）。
+段は `ApprovalStepper` が `ProcedureStepper`（§12.10）で描くので、状態の見た目は
+手続き状況と同じ（済 = チェック / 待ち = スピナー / 未 = 番号 / 差し戻しで
+閉じた先 = 横棒）。
 指示書はこれではなく `WorkOrderProcedurePanel`（= §12.10 ProcedurePanel に
 承認段を流し込んだもの）を使う。承認だけを見せたい画面のために残してある。
 
@@ -1285,16 +1288,32 @@ Paper (withBorder, p="md", radius="md")
 ├── Title order={5} "手続き状況"   ← 見出しは全書類で同じ。書類ごとに変えない
 ├── [if cancelled] Alert color="red" "キャンセル済み" + cancelledNote
 ├── [if sourceGroups] "前の書類から" — どこから来たか（見積書 ← / 出荷書 ← …）
-├── Stepper (active, size="sm", orientation={isMobile ? "vertical" : "horizontal"})
-│   └── Stepper.Step × N ← stages（key / label / description / color / loading）
-│       color・loading は **現在段（i === active）にだけ**効く
+├── ProcedureStepper ← stages（key / label / description / color / **state**）
+│   └── Stepper.Step × N — 見た目は **段の state だけ**で決まる
 ├── [if handoffGroups] "次の書類へ" — どこへ渡ったか（済/未 バッジ付き）
 └── children — 承認記録（ApprovalTrailList）・遷移履歴など
 ```
 
-- `active` = **達成済みの段数**（Mantine Stepper の規約。active 番目の段が
-  「現在進行中」として描かれる）。段の組み立てと `active` の算出は書類ごとの
-  呼び出し側が純関数で持ち、このパネルは表示だけを担う。
+**段は自分の状態を名乗る。** 4 つの状態に 1 つずつ見た目を割り当ててあり、
+重ねない（`lib/procedure-stage.ts` — 純ロジック・試験あり）:
+
+| state | 見た目 | 意味 |
+|-------|--------|------|
+| `done` | チェック（青） | 済んだ段 |
+| `current` | スピナー（青） | いま留まっている段。**1 書類に 1 つだけ** |
+| `pending` | 段番号（灰） | まだ来ていない段 |
+| `skipped` | 横棒（灰） | もう通らない段（キャンセル済みの残りなど） |
+
+- 段は `procedureStages(defs, current, { stopped })` で組み立てる。`current` は
+  **いま留まっている段の index** — 「済んだ段の数」ではない。全段完了は
+  `defs.length`、まだどの段にも入っていないときは `-1`。`stopped`（キャンセル・
+  差し戻しで閉じた）を渡すと `current` 以降が `pending` ではなく `skipped` になる。
+- **「その状態にある段」と「その状態へ進む段」を取り違えないこと。** 納品書の
+  発行済みは「発行」が**済んだ**段で、留まっているのは「納品済」。ここを
+  1 つずらして書いていたため、発行済みの納品書がいつまでも「発行中」の
+  スピナーを出していた（見積書 / 価格試算 / 請求書 / 締日処理も同じ形だった）。
+  以前は呼び出し側が `active`（達成済みの段数）を渡し、パネルが index の大小
+  から状態を逆算していたので、同じ数に 2 通りの読み方が生まれていた。
 - `HandoffItem.done` は **optional**。`undefined` なら 済/未 バッジを出さない —
   上流（前の書類）は「済/未」で語る対象ではないため。
 - 承認を持つ書類の「承認」段は `approvalStage(approval, { approvedAt, fmtDate })`
@@ -1302,7 +1321,11 @@ Paper (withBorder, p="md", radius="md")
   `lib/approval-flow.ts` の `approvalStepDescription` が唯一の定義 — 段数は
   承認設定 (MS0B) が書類種別ごとに決めるので固定文言にできない。
 - 差し戻し・却下・期限切れは**段を増やさず色で示す**（§9 の REJECTED = red /
-  EXPIRED = orange）。
+  EXPIRED = orange）。`color` は**状態に依らず効く** — 済んだ段にも印を付けられる
+  （発行済みだが期限切れ、など）。
+- 段の列を描くのは `ProcedureStepper`（同ファイル）1 か所だけ。承認だけを見せる
+  `ApprovalStepper`（§12.4）もこれを通すので、済んだ段のアイコンが画面によって
+  違って見えることがない。
 
 ### 12.5 InspectionRecordForm
 

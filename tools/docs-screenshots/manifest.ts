@@ -894,25 +894,6 @@ export const shots: Shot[] = [
     },
   },
   {
-    // 下書きの編集画面 — ユーザー直送では最終需要家が必須で出る
-    id: "delivery-note-direct-01",
-    docPage: "operations/shipping/delivery-note/user",
-    path: "/shipping/delivery-notes/DRN-202607-00002/edit",
-    steps: async (page) => {
-      await page.getByText("最終需要家").first().waitFor();
-    },
-  },
-  {
-    id: "delivery-note-issue-01",
-    docPage: "operations/shipping/delivery-note/user",
-    path: "/shipping/delivery-notes/DRN-202607-00002",
-    steps: async (page) => {
-      await page.getByRole("button", { name: "操作メニュー" }).first().click();
-      await page.getByRole("menuitem", { name: "発行" }).first().click();
-      await page.getByText("発行の確認").first().waitFor();
-    },
-  },
-  {
     id: "invoice-items-01",
     docPage: "operations/billing/invoice/user",
     path: "/billing/invoices/INV-202606-00001",
@@ -2255,18 +2236,6 @@ export const shots: Shot[] = [
     steps: async (page) => {
       await page.getByText("DRN-202607-00003").first().waitFor();
     },
-  },
-  {
-    // 発行の確認モーダル — モーダル内の発行ボタンを強調
-    id: "flow-delivery-note-issue-01",
-    docPage: "process/default-flow",
-    path: "/shipping/delivery-notes/DRN-202607-00002",
-    steps: async (page) => {
-      await page.getByRole("button", { name: "操作メニュー" }).first().click();
-      await page.getByRole("menuitem", { name: "発行" }).first().click();
-      await page.getByText("発行の確認").first().waitFor();
-    },
-    highlight: [{ role: "button", name: "発行", exact: true, inDialog: true }],
   },
   {
     // 締日処理の一覧 — 「締日処理を実行」ボタンを強調（モーダルは開かない —

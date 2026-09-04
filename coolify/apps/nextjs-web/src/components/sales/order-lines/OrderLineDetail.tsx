@@ -52,7 +52,7 @@ import { NextStepCard } from "@/components/ui/NextStepCard";
 import {
   type HandoffGroup,
   ProcedurePanel,
-  type ProcedureStage,
+  procedureStages,
 } from "@/components/ui/ProcedurePanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -85,55 +85,61 @@ function OrderLineProcedurePanel({
   fmtDate: (v: string | null) => string;
 }) {
   const tr = useTranslations();
-  const stages: ProcedureStage[] = [
-    {
-      key: "created",
-      label: tr("common.create2"),
-      description: fmtDate(order.createdAt),
-    },
-    { key: "confirmed", label: tr("common.confirmed"), description: null },
-    {
-      key: "production",
-      label: tr("common.manufacture"),
-      description:
-        order.workOrders.length > 0
-          ? tr("sales.orderLineDetail.workOrdersCount", {
-              count: order.workOrders.length,
-            })
-          : null,
-      loading:
-        order.status === "IN_PRODUCTION" || order.status === "PARTIAL_SHIPPED",
-    },
-    {
-      key: "shipped",
-      label: tr("common.shipping"),
-      description:
-        order.status === "PARTIAL_SHIPPED"
-          ? tr("sales.orderLineDetail.partiallyShippedProgress", {
-              shipped: order.shippedQuantity,
-              quantity: order.quantity,
-            })
-          : order.status === "SHIPPED"
-            ? tr("common.quantityPcs", { quantity: order.shippedQuantity })
-            : null,
-    },
-  ];
-  const active = (() => {
+  const cancelled = order.status === "CANCELLED";
+  // 製造中は「製造」に留まっている（その先の出荷はまだ）。一部出荷まで来たら
+  // 製造は済んだ段で、留まっているのは出荷。
+  const current = (() => {
     switch (order.status) {
       case "DRAFT":
         return 1;
       case "CONFIRMED":
         return 2;
       case "IN_PRODUCTION":
+        return 2;
       case "PARTIAL_SHIPPED":
         return 3;
       case "SHIPPED":
-        return stages.length;
+        return 4;
       default:
-        // CANCELLED — 進んだところまで
-        return order.workOrders.length > 0 ? 3 : 1;
+        // CANCELLED — 進んだところまで。以降は skipped（もう通らない）。
+        return order.workOrders.length > 0 ? 2 : 1;
     }
   })();
+  const stages = procedureStages(
+    [
+      {
+        key: "created",
+        label: tr("common.create2"),
+        description: fmtDate(order.createdAt),
+      },
+      { key: "confirmed", label: tr("common.confirmed"), description: null },
+      {
+        key: "production",
+        label: tr("common.manufacture"),
+        description:
+          order.workOrders.length > 0
+            ? tr("sales.orderLineDetail.workOrdersCount", {
+                count: order.workOrders.length,
+              })
+            : null,
+      },
+      {
+        key: "shipped",
+        label: tr("common.shipping"),
+        description:
+          order.status === "PARTIAL_SHIPPED"
+            ? tr("sales.orderLineDetail.partiallyShippedProgress", {
+                shipped: order.shippedQuantity,
+                quantity: order.quantity,
+              })
+            : order.status === "SHIPPED"
+              ? tr("common.quantityPcs", { quantity: order.shippedQuantity })
+              : null,
+      },
+    ],
+    current,
+    { stopped: cancelled },
+  );
 
   // 上流 = この明細が載っている注文請書と、その見積元。
   const sourceGroups: HandoffGroup[] = [
@@ -229,8 +235,7 @@ function OrderLineProcedurePanel({
 
   return (
     <ProcedurePanel
-      active={active}
-      cancelled={order.status === "CANCELLED"}
+      cancelled={cancelled}
       handoffGroups={handoffGroups}
       sourceGroups={sourceGroups}
       stages={stages}

@@ -97,6 +97,11 @@ table per screen (page/size/sort in the URL); never on a sub-table in a detail t
   いた。前後関係は `sourceGroups`（前の書類から）/ `handoffGroups`（次の書類へ）で
   渡す。承認段は `approvalStage()` を使い、文言は `lib/approval-flow.ts` の
   `approvalStepDescription` が唯一の定義（段数は承認設定 MS0B が決めるため）。
+  段は **`procedureStages(defs, current, { stopped })`**（`lib/procedure-stage.ts`）
+  で組み立て、各段が `done` / `current` / `pending` / `skipped` を名乗る。
+  `current` は**いま留まっている段の index**で「済んだ段の数」ではない —
+  発行済みの納品書なら「発行」は `done` で、留まっているのは「納品済」。
+  ここをずらすと済んだ段にスピナーが出る（実際に 5 書類で出ていた）。
 - Rich text: `MemoPanel` を詳細画面の Tabs に 1 枚差すだけで社内メモ
   （`mode="memo"` = 1 文書 1 件）またはコメントスレッド（`mode="comment"`）が付く。
   データは `lib/document-memos.listMemos(ownerType, ownerId)` を `page.tsx` で

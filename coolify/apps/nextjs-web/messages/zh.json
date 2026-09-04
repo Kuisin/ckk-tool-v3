@@ -7456,7 +7456,7 @@
       "storedToStock": "保管（入库）",
       "deliveryNoteNote": "{status}・{recipient}",
       "confirmConfirmBody": "将确认出货单 {number}。确认后将无法编辑。",
-      "autoNotesHeading": "确认后将自动创建以下送货单",
+      "autoNotesHeading": "确认后将自动创建以下送货单（已发行状态，之后不能编辑）",
       "autoNoteWithPrice": "含价格",
       "autoNoteWithoutPrice": "无价格",
       "autoNotesEndUserMissing": "无法确定最终用户，因此不会创建无价格的送货单。请确认订单确认书的最终用户。",
@@ -7471,7 +7471,7 @@
       "onlySameDeliveryMethodCanBeCombined": "一张出货单只能合并同一配送方式（常规配送 / 直送最终用户）的订单明细",
       "stockStorageHasNoDeliveryNote": "库存保管出货单不会创建送货单",
       "onlySameEndUserCanBeCombined": "一张出货单只能合并同一最终用户的订单明细",
-      "confirmedBodyDispatch": "已确认出货单 {number} 并创建送货单",
+      "confirmedBodyDispatch": "已确认出货单 {number} 并发行送货单",
       "coveredOrderAcceptances": "对象订单确认书",
       "shipTogetherTitle": "是否一并出货同一订单确认书的其他明细？",
       "shipTogetherBody": "同一订单确认书还有 {count} 条明细尚未出货。请选择要放入本出货单的明细。",
@@ -7553,7 +7553,7 @@
       "shippedNotificationTitle": "出货单 {number} 已出货",
       "specifyAConfirmedOrderLine": "请指定已确定的订单明细",
       "updateFailed": "出货单更新失败",
-      "autoCreatedNote": "出货单确认时自动创建"
+      "autoCreatedNote": "出货单确认时自动创建（已发行）"
     }
   },
   "ui": {

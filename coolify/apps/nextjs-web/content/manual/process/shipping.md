@@ -7,7 +7,6 @@ screenshots:
     flow-delivery-order-confirm-01,
     flow-delivery-order-ship-01,
     flow-delivery-note-01,
-    flow-delivery-note-issue-01,
     flow-delivery-note-delivered-01,
   ]
 ---
@@ -25,8 +24,8 @@ screenshots:
 | 1. 出荷書を作る | 注文請書を選び、出す明細とロットを決める | 出荷担当 | [出荷書](/manual/ja/operations/shipping/delivery-order/user)（`SH01`） |
 | 2. 確定する | 内容を確定する。**納品書はここで自動でできる** | 出荷担当 | [出荷書](/manual/ja/operations/shipping/delivery-order/user)（`SH01`） |
 | 3. 出荷する | 実際に送り出す。在庫が減る | 出荷担当 | [出荷書](/manual/ja/operations/shipping/delivery-order/user)（`SH01`） |
-| 4. 納品書を確認する | 自動でできた納品書の中身（届け先・価格記載）を確かめ、必要なら下書きのうちに直す | 出荷担当 | [納品書](/manual/ja/operations/shipping/delivery-note/user)（`SH02`） |
-| 5. 発行・納品 | PDF を発行し、届いたら納品済にする | 出荷担当 | [納品書](/manual/ja/operations/shipping/delivery-note/user)（`SH02`） |
+| 4. 納品書を確認する | 自動でできた納品書の中身（届け先・価格記載）を確かめる。できた時点で発行済で、直す操作は無い | 出荷担当 | [納品書](/manual/ja/operations/shipping/delivery-note/user)（`SH02`） |
+| 5. 納品 | PDF を印刷して同梱し、届いたら納品済にする | 出荷担当 | [納品書](/manual/ja/operations/shipping/delivery-note/user)（`SH02`） |
 
 ## それぞれの段階でおきること
 
@@ -58,11 +57,9 @@ screenshots:
 
 届け先（最終需要家）は注文請書のエンドユーザー欄から決まる（注文請書側でユーザー直送を選ぶとエンドユーザーは必須である）。1 つの出荷書に束ねられるのは**同じエンドユーザー**の注文明細だけで、これは自動作成が届け先を 1 件に決められるようにするための条件でもある。
 
-できた納品書は「下書き」なので、**発行する前なら**納品方法・最終需要家・価格記載・数量・単価・備考を直せる（出荷書と納品先は変えられない）。発行すると PDF が保存される。届いたら「納品済」にする。ここまでが済んだ出荷が、[請求の流れ](/manual/ja/process/billing)の対象になる（操作手順 … [標準フロー §10](/manual/ja/process/default-flow#stage-10)）。
+できた納品書は**その時点で発行済**で、納品書側で内容を直す操作は無い（納品方法・最終需要家・価格記載・数量・単価はすべて注文請書と出荷書から引き継がれる）。間違いがあれば正しい注文請書・出荷書から作り直す。PDF はすぐに見られる。届いたら「納品済」にする。ここまでが済んだ出荷が、[請求の流れ](/manual/ja/process/billing)の対象になる（操作手順 … [標準フロー §10](/manual/ja/process/default-flow#stage-10)）。
 
 ![確定した出荷書の納品書タブ。自動でできた 2 通が並んでいる](../assets/screenshots/flow-delivery-note-01.png)
-
-![発行の確認モーダル。発行ボタンが赤枠で強調されている](../assets/screenshots/flow-delivery-note-issue-01.png)
 
 ![発行済み納品書の操作メニュー。納品済みにするが赤枠で強調されている](../assets/screenshots/flow-delivery-note-delivered-01.png)
 
@@ -71,7 +68,7 @@ screenshots:
 | 書類 | 状態の移り変わり |
 |------|-----------------|
 | 出荷書 | 下書き → 確定 → 出荷済 |
-| 納品書 | 下書き → 発行済 → 納品済 |
+| 納品書 | 発行済 → 納品済（できた時点で発行済） |
 
 ## 止まりやすいところ
 
@@ -85,7 +82,7 @@ screenshots:
 出荷書が「確定」までで止まっていないかを確認する。在庫は出荷の記録で減る。
 
 **納品書に金額を出したくない**
-下書きのうちに納品書の「価格記載」を外す。ユーザー直送では、金額なしの 1 通が最終需要家宛に自動でできているので、通常はそちらを渡す。
+価格記載は注文請書の配送方法で決まり、納品書側では変えられない。ユーザー直送では、金額なしの 1 通が最終需要家宛に自動でできているので、そちらを渡す。通常配送の納品書は価格記載ありの 1 通だけになる。
 
 **納品書ができていない**
 出荷書を確定したかを確認する（納品書は確定と同時にできる）。種別が「在庫保管」の出荷書は納品書を作らない。

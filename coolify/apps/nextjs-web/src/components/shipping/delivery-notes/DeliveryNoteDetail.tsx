@@ -8,8 +8,10 @@
  * 注文明細 ← / 請求書 →）+ 明細テーブル（製品 / 数量 / 単価 / 金額 —
  * 価格記載ありのみ）+ Tabs: 概要 / 履歴。
  *
- * Actions: 編集（DRAFT のみ）/ PDF（/api/pdf/delivery-note?id=DRN-…）/
- * 発行（DRAFT → ISSUED）/ 納品済み（ISSUED → DELIVERED + deliveredAt）。
+ * Actions: PDF（/api/pdf/delivery-note?id=DRN-…）/
+ * 納品済み（ISSUED → DELIVERED + deliveredAt）。
+ * 編集・発行は DRAFT のときだけ出るが、出荷書の確定で自動作成される納品書は
+ * 最初から ISSUED なので、通常は現れない（DRAFT は SQL 由来の行だけ）。
  */
 
 import {
@@ -54,7 +56,7 @@ import {
 import {
   type HandoffGroup,
   ProcedurePanel,
-  type ProcedureStage,
+  procedureStages,
 } from "@/components/ui/ProcedurePanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -131,31 +133,33 @@ export function DeliveryNoteDetail({
     `/api/pdf/delivery-note?id=${encodeURIComponent(note.id)}${extra}`;
 
   // ── 手続き状況（下書き → 発行 → 納品済）─────────────────────────────────
-  const stages: ProcedureStage[] = [
-    {
-      key: "draft",
-      label: tr("common.draft"),
-      description: fmt.date(note.createdAt),
-      loading: note.status === "DRAFT",
-    },
-    {
-      key: "issued",
-      label: tr("common.issue"),
-      description:
-        note.status === "DRAFT"
-          ? tr("billing.invoices.issueThePdf")
-          : tr("common.issued2"),
-      loading: note.status === "ISSUED",
-    },
-    {
-      key: "delivered",
-      label: tr("shipping.deliveryNotes.delivered"),
-      description: note.deliveredAt
-        ? fmt.date(note.deliveredAt)
-        : tr("shipping.deliveryNotes.confirmDelivery"),
-    },
-  ];
-  const active = note.status === "DRAFT" ? 0 : note.status === "ISSUED" ? 1 : 3;
+  // 発行済みは「発行」が**済んだ**段。待っているのは納品なので現在段は 2。
+  // 出荷書の確定で作った納品書は最初から発行済みなので、下書きは通らない。
+  const stages = procedureStages(
+    [
+      {
+        key: "draft",
+        label: tr("common.draft"),
+        description: fmt.date(note.createdAt),
+      },
+      {
+        key: "issued",
+        label: tr("common.issue"),
+        description:
+          note.status === "DRAFT"
+            ? tr("billing.invoices.issueThePdf")
+            : tr("common.issued2"),
+      },
+      {
+        key: "delivered",
+        label: tr("shipping.deliveryNotes.delivered"),
+        description: note.deliveredAt
+          ? fmt.date(note.deliveredAt)
+          : tr("shipping.deliveryNotes.confirmDelivery"),
+      },
+    ],
+    note.status === "DRAFT" ? 0 : note.status === "ISSUED" ? 2 : 3,
+  );
 
   // 上流 = 出荷書（1 件）と、そこに束ねられた注文明細。
   const sourceGroups: HandoffGroup[] = [
@@ -414,7 +418,6 @@ export function DeliveryNoteDetail({
       </SummaryGrid>
 
       <ProcedurePanel
-        active={active}
         handoffGroups={handoffGroups}
         sourceGroups={sourceGroups}
         stages={stages}
