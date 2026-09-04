@@ -204,6 +204,16 @@ OFFSITE_REMOTE=r2crypt:
 > （`security find-generic-password -s ckk-r2-crypt-password -w`）。
 > **パスワードマネージャにも入れること**（Keychain ごと失う場合に備える）。
 
+### 送信頻度は「対象が変わったときだけ」
+
+`inotify` は **`OFFSITE_INCLUDE` の対象ディレクトリだけ**を見る。`/backups` を
+丸ごと見張ると `hourly/`・`daily/`（送らないもの）の書き込みにも毎回反応し、
+実測 31 回/日のトリガーが発生していた（各回が全 5,588 件との比較 = HEAD 5,588
+回相当）。送る対象（`logical/`・`aux/`・`aux-monthly/`・`seaweedfs/`）は
+それぞれ日 1 回しか書かれない（`logical-dump.sh` 02:30 / `seaweed-backup.sh`
+03:00 / `aux-backup.sh` 03時台）ので、絞った後は **~3〜4 回/日**に収まる
+（2026-09-04 実測・修正確認済み）。
+
 ### 無料枠から出さない
 
 **Cloudflare には R2 の支払い上限（ハードキャップ）が無い。** 長く要望が出ている

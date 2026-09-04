@@ -95,15 +95,30 @@ mirror() {
 }
 
 build_filter
+# inotify は OFFSITE_INCLUDE の対象ディレクトリだけを見る。/backups を丸ごと
+# 見ると hourly/・daily/（送らないもの）の書き込みにも毎回反応し、5,588 件との
+# 全比較（実測 HEAD 5,588 回 = R2 Class B）を無駄に繰り返す。送る対象は
+# logical/・aux/・aux-monthly/・seaweedfs/ が日 1 回書くだけなので、それ以外を
+# 見張る理由が無い（実測: 監視を絞る前は 31 トリガー/日 → Class B 使用率
+# 月 52%、絞った後は ~3〜4 トリガー/日 → 月 6% 程度に収まる）。
+WATCH_PATHS=""
+for pat in $OFFSITE_INCLUDE; do
+  top="${pat%%/*}"
+  case " $WATCH_PATHS " in *" $SRC/$top "*) ;; *) [ -e "$SRC/$top" ] && WATCH_PATHS="$WATCH_PATHS $SRC/$top" ;; esac
+done
+[ -z "$WATCH_PATHS" ] && WATCH_PATHS="$SRC"  # 対象ディレクトリが1つも無ければ安全側で全体監視
+
 echo "[offsite] enabled → ${REMOTE}（作成即 copy ＋ 04時台に日次 mirror, TZ=${TZ:-UTC}）"
 echo "[offsite] 対象: ${OFFSITE_INCLUDE}"
+echo "[offsite] 監視: ${WATCH_PATHS}"
 push  # 起動時キャッチアップ
 
 last_mirror=""
 while :; do
   # 新規バックアップの書き込み完了 / 移動 / 作成で起床。何もなくても 30 分で 1 周
   # （取りこぼし・新規サブディレクトリのフォールバック）。
-  inotifywait -r -q -e close_write -e moved_to -e create --timeout 1800 "$SRC" >/dev/null 2>&1 || true
+  # shellcheck disable=SC2086 — WATCH_PATHS は意図的な複数パス展開
+  inotifywait -r -q -e close_write -e moved_to -e create --timeout 1800 $WATCH_PATHS >/dev/null 2>&1 || true
   sleep 8  # 1 回のバックアップ実行で複数ファイルが出るのをまとめる（デバウンス）
   push
   # 1 日 1 回、04時台にミラーして保持世代をリモートへ反映
