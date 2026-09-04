@@ -21,6 +21,24 @@ import {
 
 export const PAGE_OWNER_TYPE = "internal_pages";
 
+/**
+ * 公開申請が「どの版を出したか」を approval_requests.notes に残す形（`rev:12`）。
+ *
+ * 承認は申請時点の版に対して下りるので、承認後に公開するのは latest ではなく
+ * この版。CM01 の一覧には備考としてそのまま出るので、人が読めて機械でも
+ * 読み戻せる短い形にしてある。読み戻せない（旧データ・空）ときは null。
+ */
+export function publishRevisionNote(revision: number): string {
+  return `rev:${revision}`;
+}
+
+export function parsePublishRevisionNote(
+  notes: string | null | undefined,
+): number | null {
+  const m = /^rev:(\d+)$/.exec(notes?.trim() ?? "");
+  return m ? Number(m[1]) : null;
+}
+
 export interface PageRow {
   pageNumber: string;
   title: string;

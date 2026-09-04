@@ -204,6 +204,24 @@ export function elevationAuditNote(
 }
 
 /**
+ * useElevation の**前段**: 素の権限（decide(code, action)）だけを見て、時計は
+ * 動かさない。入力の検証と対象の存在確認を昇格より先に置くとき、権限の無い人に
+ * 「その ID は存在する / しない」を教えないために、その手前で呼ぶ。
+ *
+ * 順序は 検証 → これ → 対象の確認 → useElevation → 実処理。不正な入力や存在しない
+ * 対象で useElevation を呼ぶと、何もしていないのに申請者の持ち時間が減り
+ * use_count が増える（以前はそうなっていた）。
+ */
+export async function checkOperationPermission(
+  operationKey: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const tr = await getTranslations();
+  const op = requireOperation(operationKey, tr);
+  const authz = await checkPermission(op.code, op.action);
+  return authz.ok ? { ok: true } : { ok: false, error: authz.error };
+}
+
+/**
  * 特権操作を 1 回実行してよいかを判定し、**初回なら時計を動かす**。
  *
  * 実際に操作を行うサーバーアクション（またはルートハンドラ）の先頭で呼ぶ。

@@ -2178,6 +2178,7 @@
       "commentRequired": "请输入评论",
       "commentTooLong": "评论过长",
       "createFailed": "创建失败",
+      "editBlockedWhilePending": "发布审批中无法编辑正文（请先退回后再编辑，或等待决裁）",
       "editPermissionDenied": "没有权限编辑此文档",
       "invalidShareSettings": "共享设置无效",
       "loginRequired": "请登录",
@@ -4411,7 +4412,8 @@
       "selectAtLeastOneOperationToGrant": "请至少选择一项要许可的操作（若全部取消请改为退回）",
       "specifyEndDateTime": "请指定结束日期时间",
       "specifyStartDateTime": "请指定开始日期时间",
-      "unknownOperation": "包含未知操作（{key}）"
+      "unknownOperation": "包含未知操作（{key}）",
+      "windowAlreadyEnded": "申请的有效期已结束（批准后也无法使用，请重新申请并修改期间）"
     },
     "productItemActions": {
       "assignedItemNotFound": "“{name}”分配的项目不存在：{key}",

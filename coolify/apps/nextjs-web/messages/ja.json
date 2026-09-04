@@ -2178,6 +2178,7 @@
       "commentRequired": "コメントを入力してください",
       "commentTooLong": "コメントが長すぎます",
       "createFailed": "作成に失敗しました",
+      "editBlockedWhilePending": "公開の承認依頼中は本文を編集できません（差し戻してから編集するか、決裁を待ってください）",
       "editPermissionDenied": "この文書を編集する権限がありません",
       "invalidShareSettings": "共有設定が不正です",
       "loginRequired": "ログインしてください",
@@ -4411,7 +4412,8 @@
       "selectAtLeastOneOperationToGrant": "許可する操作を 1 つ以上選んでください（すべて外す場合は差し戻してください）",
       "specifyEndDateTime": "終了日時を指定してください",
       "specifyStartDateTime": "開始日時を指定してください",
-      "unknownOperation": "未知の操作が含まれています（{key}）"
+      "unknownOperation": "未知の操作が含まれています（{key}）",
+      "windowAlreadyEnded": "承認された期間がすでに終わっています（承認しても使えないので、期間を直して申請し直してください）"
     },
     "productItemActions": {
       "assignedItemNotFound": "「{name}」の割り当て項目が存在しません: {key}",

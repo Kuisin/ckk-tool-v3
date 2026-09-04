@@ -72,6 +72,13 @@ import {
 import { isShareConditionFieldType } from "@/lib/share-grants-core";
 
 const BASE_PATH = "/general/forms";
+
+/**
+ * 「1 人 1 回」のフォームで、同じ人の提出が既にあった（トランザクション内の
+ * 判定）。読んでから書く 2 手にすると同時提出が両方通るので、フォーム行を
+ * ロックした後にもう一度数え、あれば tx ごと戻すための印。
+ */
+class AlreadyRespondedError extends Error {}
 const TASKS_PATH = "/general/tasks";
 const FORM_OWNER_TYPE = "forms";
 
@@ -756,6 +763,8 @@ export async function submitResponse(
     if (first) return actionError(first);
   }
 
+  // 1 人 1 回の事前確認（読める理由を早く返すため）。最終判定は下の tx 内 —
+  // ここだけだと 2 つの提出が同時に通る。
   if (!form.allowMultiple && !asDraft) {
     const existing = await prisma.formResponse.findFirst({
       where: { formId: form.id, submittedBy: userId, status: { not: "DRAFT" } },
@@ -776,6 +785,19 @@ export async function submitResponse(
         data: { recordSeq: { increment: 1 } },
         select: { recordSeq: true },
       });
+      // フォーム行のロックを取った後に数え直す。先に提出した側が commit して
+      // いれば、ここで見えて負ける（READ COMMITTED で文ごとに最新を読む）。
+      if (!form.allowMultiple && !asDraft) {
+        const dup = await tx.formResponse.findFirst({
+          where: {
+            formId: form.id,
+            submittedBy: userId,
+            status: { not: "DRAFT" },
+          },
+          select: { id: true },
+        });
+        if (dup) throw new AlreadyRespondedError();
+      }
       return tx.formResponse.create({
         data: {
           responseNumber,
@@ -822,6 +844,8 @@ export async function submitResponse(
     revalidate(code, created.responseNumber);
     return actionOk({ responseNumber: created.responseNumber });
   } catch (e) {
+    if (e instanceof AlreadyRespondedError)
+      return actionError(tr("general.formsActions.alreadyResponded"));
     return actionError(
       prismaErrorMessage(e, tr("general.formsActions.responseSaveFailed"), tr),
     );
@@ -916,16 +940,35 @@ export async function updateResponse(
   const action = asDraft ? "DRAFT" : wasDraft ? "SUBMIT" : "UPDATE";
   const nextHistory = appendHistory(row.history, entry(action, userId));
   try {
-    await prisma.formResponse.update({
-      where: { responseNumber },
-      data: {
-        answers: answers as unknown as object,
-        plainText: toPlainAnswers(fieldsParsed.fields, answers),
-        ...(wasDraft && !asDraft
-          ? { status: "SUBMITTED" as const, submittedAt: new Date() }
-          : {}),
-        history: nextHistory as unknown as object,
-      },
+    await prisma.$transaction(async (tx) => {
+      if (wasDraft && !asDraft && !row.form.allowMultiple) {
+        // 下書きの提出も新規提出（submitResponse の recordSeq 更新）と同じ
+        // フォーム行のロックで直列化し、取った後に「1 人 1 回」を数え直す。
+        await tx.$queryRaw`
+          SELECT id FROM app.forms
+          WHERE id = ${row.formId}::uuid
+          FOR UPDATE`;
+        const dup = await tx.formResponse.findFirst({
+          where: {
+            formId: row.formId,
+            submittedBy: userId,
+            status: { not: "DRAFT" },
+          },
+          select: { id: true },
+        });
+        if (dup) throw new AlreadyRespondedError();
+      }
+      await tx.formResponse.update({
+        where: { responseNumber },
+        data: {
+          answers: answers as unknown as object,
+          plainText: toPlainAnswers(fieldsParsed.fields, answers),
+          ...(wasDraft && !asDraft
+            ? { status: "SUBMITTED" as const, submittedAt: new Date() }
+            : {}),
+          history: nextHistory as unknown as object,
+        },
+      });
     });
     await recordAudit({
       action: "UPDATE",
@@ -956,6 +999,8 @@ export async function updateResponse(
     revalidate(row.form.code, responseNumber);
     return actionOk();
   } catch (e) {
+    if (e instanceof AlreadyRespondedError)
+      return actionError(tr("general.formsActions.alreadyResponded"));
     return actionError(
       prismaErrorMessage(
         e,
