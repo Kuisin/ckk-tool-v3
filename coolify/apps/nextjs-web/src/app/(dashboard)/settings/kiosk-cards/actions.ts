@@ -18,7 +18,11 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { generateCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
-import { useElevation } from "@/lib/privileged-access";
+import {
+  checkOperationPermission,
+  elevationAuditNote,
+  useElevation,
+} from "@/lib/privileged-access";
 import {
   type ActionResult,
   actionError,
@@ -42,6 +46,14 @@ function revalidate(cardId?: string) {
   revalidatePath(BASE_PATH);
   if (cardId) revalidatePath(`${BASE_PATH}/${cardId}`);
 }
+
+/**
+ * 特権操作の順序は **検証 → 素の権限 → 対象の確認 → useElevation → 実処理**。
+ * useElevation は初回に申請者の時計を動かし use_count を増やすので、入力が不正
+ * だったり対象が無かったりする呼び出しで先に呼んではいけない（何もしていない
+ * のに持ち時間が減る）。素の権限を対象の確認より前に見るのは、権限の無い人に
+ * カード ID の有無を教えないため。
+ */
 
 /**
  * 有効期間の入力（ISO 日時文字列 / null = 無期限）。クライアントが
@@ -88,12 +100,13 @@ export async function issueCards(raw: {
   count: number;
 }): Promise<ActionResult<{ ids: string[] }>> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_card.issue");
-  if (!gate.ok) return actionError(gate.error);
   const parsed = issueInput.safeParse(raw);
   if (!parsed.success)
     return actionError(tr("settings.kiosk.setTheNumberOfCardsBetween"));
   const { count } = parsed.data;
+  // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+  const gate = await useElevation("kiosk_card.issue");
+  if (!gate.ok) return actionError(gate.error);
 
   try {
     const ids: string[] = [];
@@ -128,6 +141,7 @@ export async function issueCards(raw: {
         note: tr("settings.kioskCardActions.auditCardsIssued", {
           count: ids.length,
         }),
+        ...elevationAuditNote(gate, "kiosk_card.issue"),
       },
     });
     revalidate();
@@ -159,14 +173,14 @@ export async function assignCard(raw: {
   validity?: { validFrom: string | null; validUntil: string | null };
 }): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_card.assign");
-  if (!gate.ok) return actionError(gate.error);
   const parsed = assignInput(tr).safeParse(raw);
   if (!parsed.success)
     return actionError(
       parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
     );
   const { cardId, userId, validity } = parsed.data;
+  const pre = await checkOperationPermission("kiosk_card.assign");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const card = await prisma.kioskCard.findUnique({ where: { id: cardId } });
@@ -197,6 +211,9 @@ export async function assignCard(raw: {
         tr("settings.kioskCardActions.userAlreadyHasAssignedCardLong"),
       );
     }
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_card.assign");
+    if (!gate.ok) return actionError(gate.error);
     await prisma.kioskCard.update({
       where: { id: cardId },
       data: {
@@ -218,6 +235,7 @@ export async function assignCard(raw: {
         user: user.displayName,
         validFrom: validity?.validFrom?.toISOString() ?? null,
         validUntil: validity?.validUntil?.toISOString() ?? null,
+        ...elevationAuditNote(gate, "kiosk_card.assign"),
       },
     });
     revalidate(cardId);
@@ -305,10 +323,10 @@ export async function resumeCard(cardId: string): Promise<ActionResult> {
 /** カードを取り消す（復元不可）。オープン中のキオスクセッションも失効させる。 */
 export async function revokeCard(cardId: string): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_card.revoke");
-  if (!gate.ok) return actionError(gate.error);
   const parsed = cardIdSchema(tr).safeParse(cardId);
   if (!parsed.success) return actionError(tr("common.invalidInput"));
+  const pre = await checkOperationPermission("kiosk_card.revoke");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const card = await prisma.kioskCard.findUnique({
@@ -318,6 +336,9 @@ export async function revokeCard(cardId: string): Promise<ActionResult> {
     if (card.status === "REVOKED") {
       return actionError(tr("settings.kioskCardActions.cardAlreadyRevoked"));
     }
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_card.revoke");
+    if (!gate.ok) return actionError(gate.error);
     const now = new Date();
     await prisma.$transaction([
       prisma.kioskCard.update({
@@ -338,7 +359,10 @@ export async function revokeCard(cardId: string): Promise<ActionResult> {
       tableName: "kiosk_cards",
       recordId: parsed.data,
       before: { status: card.status },
-      after: { status: "REVOKED" },
+      after: {
+        status: "REVOKED",
+        ...elevationAuditNote(gate, "kiosk_card.revoke"),
+      },
     });
     revalidate(parsed.data);
     return actionOk();
@@ -368,14 +392,14 @@ export async function updateCardValidity(raw: {
   validity: { validFrom: string | null; validUntil: string | null };
 }): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_card.update_validity");
-  if (!gate.ok) return actionError(gate.error);
   const parsed = updateValidityInput(tr).safeParse(raw);
   if (!parsed.success)
     return actionError(
       parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
     );
   const { cardId, validity } = parsed.data;
+  const pre = await checkOperationPermission("kiosk_card.update_validity");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const card = await prisma.kioskCard.findUnique({
@@ -388,6 +412,9 @@ export async function updateCardValidity(raw: {
         tr("settings.kioskCardActions.revokedCardCannotBeChanged"),
       );
     }
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_card.update_validity");
+    if (!gate.ok) return actionError(gate.error);
     await prisma.kioskCard.update({
       where: { id: cardId },
       data: {
@@ -406,6 +433,7 @@ export async function updateCardValidity(raw: {
       after: {
         validFrom: validity.validFrom?.toISOString() ?? null,
         validUntil: validity.validUntil?.toISOString() ?? null,
+        ...elevationAuditNote(gate, "kiosk_card.update_validity"),
       },
     });
     revalidate(cardId);
@@ -447,14 +475,14 @@ export async function updateCardSessionLimit(raw: {
   maxActiveSessions: number;
 }): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_card.update_session_limit");
-  if (!gate.ok) return actionError(gate.error);
   const parsed = updateSessionLimitInput(tr).safeParse(raw);
   if (!parsed.success)
     return actionError(
       parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
     );
   const { cardId, maxActiveSessions } = parsed.data;
+  const pre = await checkOperationPermission("kiosk_card.update_session_limit");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const card = await prisma.kioskCard.findUnique({
@@ -467,6 +495,9 @@ export async function updateCardSessionLimit(raw: {
         tr("settings.kioskCardActions.revokedCardCannotBeChanged"),
       );
     }
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_card.update_session_limit");
+    if (!gate.ok) return actionError(gate.error);
     await prisma.kioskCard.update({
       where: { id: cardId },
       data: { maxActiveSessions },
@@ -476,7 +507,10 @@ export async function updateCardSessionLimit(raw: {
       tableName: "kiosk_cards",
       recordId: cardId,
       before: { maxActiveSessions: card.maxActiveSessions },
-      after: { maxActiveSessions },
+      after: {
+        maxActiveSessions,
+        ...elevationAuditNote(gate, "kiosk_card.update_session_limit"),
+      },
     });
     revalidate(cardId);
     return actionOk();
@@ -496,10 +530,10 @@ export async function updateCardSessionLimit(raw: {
 /** PIN をリセットする（次回ログインで再設定必須）。 */
 export async function resetPin(cardId: string): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_card.reset_pin");
-  if (!gate.ok) return actionError(gate.error);
   const parsed = cardIdSchema(tr).safeParse(cardId);
   if (!parsed.success) return actionError(tr("common.invalidInput"));
+  const pre = await checkOperationPermission("kiosk_card.reset_pin");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const card = await prisma.kioskCard.findUnique({
@@ -507,6 +541,9 @@ export async function resetPin(cardId: string): Promise<ActionResult> {
       select: { status: true },
     });
     if (!card) return actionError(tr("settings.kioskCardActions.cardNotFound"));
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_card.reset_pin");
+    if (!gate.ok) return actionError(gate.error);
     await prisma.kioskCard.update({
       where: { id: parsed.data },
       data: {
@@ -521,7 +558,10 @@ export async function resetPin(cardId: string): Promise<ActionResult> {
       action: "UPDATE",
       tableName: "kiosk_cards",
       recordId: parsed.data,
-      after: { note: tr("settings.kioskCardActions.auditPinReset") },
+      after: {
+        note: tr("settings.kioskCardActions.auditPinReset"),
+        ...elevationAuditNote(gate, "kiosk_card.reset_pin"),
+      },
     });
     revalidate(parsed.data);
     return actionOk();
@@ -535,10 +575,10 @@ export async function resetPin(cardId: string): Promise<ActionResult> {
 /** PIN 連続失敗ロックを解除する（PIN 自体は保持）。 */
 export async function unlockPin(cardId: string): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_card.unlock_pin");
-  if (!gate.ok) return actionError(gate.error);
   const parsed = cardIdSchema(tr).safeParse(cardId);
   if (!parsed.success) return actionError(tr("common.invalidInput"));
+  const pre = await checkOperationPermission("kiosk_card.unlock_pin");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const card = await prisma.kioskCard.findUnique({
@@ -546,6 +586,9 @@ export async function unlockPin(cardId: string): Promise<ActionResult> {
       select: { status: true },
     });
     if (!card) return actionError(tr("settings.kioskCardActions.cardNotFound"));
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_card.unlock_pin");
+    if (!gate.ok) return actionError(gate.error);
     await prisma.kioskCard.update({
       where: { id: parsed.data },
       data: { pinFailedAttempts: 0, pinLockedUntil: null },
@@ -554,7 +597,10 @@ export async function unlockPin(cardId: string): Promise<ActionResult> {
       action: "UPDATE",
       tableName: "kiosk_cards",
       recordId: parsed.data,
-      after: { note: tr("settings.kioskCardActions.auditPinUnlocked") },
+      after: {
+        note: tr("settings.kioskCardActions.auditPinUnlocked"),
+        ...elevationAuditNote(gate, "kiosk_card.unlock_pin"),
+      },
     });
     revalidate(parsed.data);
     return actionOk();

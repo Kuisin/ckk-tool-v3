@@ -2178,6 +2178,7 @@
       "commentRequired": "Enter a comment",
       "commentTooLong": "The comment is too long",
       "createFailed": "Could not create",
+      "editBlockedWhilePending": "The body cannot be edited while a publish approval is pending (have it sent back first, or wait for the decision)",
       "editPermissionDenied": "You do not have permission to edit this document",
       "invalidShareSettings": "Invalid sharing settings",
       "loginRequired": "Please log in",
@@ -4407,7 +4408,8 @@
       "selectAtLeastOneOperationToGrant": "Select at least one operation to grant (send it back if you want to grant none)",
       "specifyEndDateTime": "Specify an end date and time",
       "specifyStartDateTime": "Specify a start date and time",
-      "unknownOperation": "Includes an unknown operation ({key})"
+      "unknownOperation": "Includes an unknown operation ({key})",
+      "windowAlreadyEnded": "The requested window has already ended (approving it would grant nothing — ask for a new request with a later window)"
     },
     "productItemActions": {
       "assignedItemNotFound": "The item assigned to \"{name}\" does not exist: {key}",

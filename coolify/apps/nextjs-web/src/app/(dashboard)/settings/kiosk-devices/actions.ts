@@ -20,6 +20,7 @@
  *   名称・拠点・場所・フロアマップのピンを保ったまま再リンクできる。
  */
 
+import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
@@ -36,7 +37,11 @@ import {
   listKioskPresence,
 } from "@/lib/kiosk-admin";
 import { mintMonitorToken } from "@/lib/kiosk-ws-token";
-import { elevationAuditNote, useElevation } from "@/lib/privileged-access";
+import {
+  checkOperationPermission,
+  elevationAuditNote,
+  useElevation,
+} from "@/lib/privileged-access";
 import {
   type ActionResult,
   actionError,
@@ -148,8 +153,9 @@ export async function createDeviceProfile(
   raw: CreateDeviceProfileInput,
 ): Promise<ActionResult<{ id: string }>> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_device.create_profile");
-  if (!gate.ok) return actionError(gate.error);
+  // 特権操作の順序は 検証 → 素の権限 → 対象の確認 → useElevation → 実処理。
+  // useElevation は初回に申請者の時計を動かし use_count を増やすので、不正な
+  // 入力や存在しない対象で先に呼ばない（何もしていないのに持ち時間が減る）。
   const parsed = createProfileInputSchema(tr).safeParse(raw);
   if (!parsed.success) {
     return actionError(
@@ -157,6 +163,8 @@ export async function createDeviceProfile(
     );
   }
   const v = parsed.data;
+  const pre = await checkOperationPermission("kiosk_device.create_profile");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const plant = await prisma.plant.findUnique({
@@ -166,6 +174,9 @@ export async function createDeviceProfile(
     if (!plant || !plant.isActive) {
       return actionError(tr("settings.kioskDevicesActions.plantNotFound"));
     }
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_device.create_profile");
+    if (!gate.ok) return actionError(gate.error);
     const name = localizedInput(v.nameJa, undefined, v.nameTranslations);
     const created = await prisma.kioskDevice.create({
       data: {
@@ -185,6 +196,7 @@ export async function createDeviceProfile(
         name,
         plantId: v.plantId,
         location: v.location?.trim() || null,
+        ...elevationAuditNote(gate, "kiosk_device.create_profile"),
       },
     });
     revalidate();
@@ -209,14 +221,14 @@ export async function linkDeviceToProfile(
   code: string,
 ): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_device.link");
-  if (!gate.ok) return actionError(gate.error);
   const parsedId = uuidSchema(tr).safeParse(profileId);
   if (!parsedId.success) return actionError(tr("common.invalidInput"));
   const normalized = normalizeCode(code);
   if (normalized.length !== 12) {
     return actionError(tr("settings.kiosk.enterA12CharacterCode"));
   }
+  const pre = await checkOperationPermission("kiosk_device.link");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const device = await prisma.kioskDevice.findUnique({
@@ -240,12 +252,18 @@ export async function linkDeviceToProfile(
         tr("settings.kioskDevicesActions.codeInvalidOrExpired"),
       );
     }
-    await prisma.$transaction([
-      prisma.kioskLinkRequest.update({
-        where: { id: request.id },
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_device.link");
+    if (!gate.ok) return actionError(gate.error);
+    // コードの「まだ誰にも結ばれていない」は読んだ瞬間の話。同じコードを 2 人が
+    // 同時に読み取ると両方が通るので、結ぶのは条件付き UPDATE にして 0 件なら負け。
+    const bound = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.kioskLinkRequest.updateMany({
+        where: { id: request.id, deviceId: null },
         data: { deviceId: parsedId.data },
-      }),
-      prisma.kioskDevice.update({
+      });
+      if (claimed.count === 0) return false;
+      await tx.kioskDevice.update({
         where: { id: parsedId.data },
         data: {
           status: "LINKED",
@@ -253,8 +271,14 @@ export async function linkDeviceToProfile(
           userAgent: request.userAgent,
           lastIpAddress: request.lastIpAddress,
         },
-      }),
-    ]);
+      });
+      return true;
+    });
+    if (!bound) {
+      return actionError(
+        tr("settings.kioskDevicesActions.codeInvalidOrExpired"),
+      );
+    }
     await recordAudit({
       action: "UPDATE",
       tableName: "kiosk_devices",
@@ -263,6 +287,7 @@ export async function linkDeviceToProfile(
       after: {
         status: "LINKED",
         note: tr("settings.kioskDevicesActions.auditLinkedTablet"),
+        ...elevationAuditNote(gate, "kiosk_device.link"),
       },
     });
     revalidate();
@@ -281,10 +306,10 @@ export async function linkDeviceToProfile(
  */
 export async function unlinkDevice(id: string): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_device.unlink");
-  if (!gate.ok) return actionError(gate.error);
   const parsed = uuidSchema(tr).safeParse(id);
   if (!parsed.success) return actionError(tr("common.invalidInput"));
+  const pre = await checkOperationPermission("kiosk_device.unlink");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const device = await prisma.kioskDevice.findUnique({
@@ -302,6 +327,9 @@ export async function unlinkDevice(id: string): Promise<ActionResult> {
         tr("settings.kioskDevicesActions.cannotUnlinkInThisState"),
       );
     }
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_device.unlink");
+    if (!gate.ok) return actionError(gate.error);
     const now = new Date();
     const openSessions = await prisma.kioskSession.findMany({
       where: { deviceId: parsed.data, revokedAt: null },
@@ -346,6 +374,7 @@ export async function unlinkDevice(id: string): Promise<ActionResult> {
       after: {
         status: "PENDING",
         note: tr("settings.kioskDevicesActions.auditUnlinked"),
+        ...elevationAuditNote(gate, "kiosk_device.unlink"),
       },
     });
     revalidate();
@@ -415,10 +444,10 @@ export async function activateDevice(
   id: string,
 ): Promise<ActionResult<{ id: string }>> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_device.activate");
-  if (!gate.ok) return actionError(gate.error);
   const parsed = uuidSchema(tr).safeParse(id);
   if (!parsed.success) return actionError(tr("common.invalidInput"));
+  const pre = await checkOperationPermission("kiosk_device.activate");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const device = await prisma.kioskDevice.findUnique({
@@ -440,6 +469,9 @@ export async function activateDevice(
         tr("settings.kioskDevicesActions.cannotActivateInThisState"),
       );
     }
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_device.activate");
+    if (!gate.ok) return actionError(gate.error);
     await prisma.kioskDevice.update({
       where: { id: parsed.data },
       data: {
@@ -453,7 +485,10 @@ export async function activateDevice(
       tableName: "kiosk_devices",
       recordId: parsed.data,
       before: { status: "LINKED" },
-      after: { status: "ACTIVE" },
+      after: {
+        status: "ACTIVE",
+        ...elevationAuditNote(gate, "kiosk_device.activate"),
+      },
     });
     revalidate();
     return actionOk({ id: parsed.data });
@@ -580,10 +615,10 @@ async function transitionDevice(
   to: "ACTIVE" | "DISABLED",
   note: string,
 ): Promise<ActionResult> {
-  const gate = await useElevation("kiosk_device.set_enabled");
-  if (!gate.ok) return actionError(gate.error);
   const parsed = uuidSchema(tr).safeParse(id);
   if (!parsed.success) return actionError(tr("common.invalidInput"));
+  const pre = await checkOperationPermission("kiosk_device.set_enabled");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const device = await prisma.kioskDevice.findUnique({
@@ -598,6 +633,9 @@ async function transitionDevice(
         }),
       );
     }
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_device.set_enabled");
+    if (!gate.ok) return actionError(gate.error);
     await prisma.kioskDevice.update({
       where: { id: parsed.data },
       data: { status: to },
@@ -607,7 +645,10 @@ async function transitionDevice(
       tableName: "kiosk_devices",
       recordId: parsed.data,
       before: { status: device.status },
-      after: { status: to },
+      after: {
+        status: to,
+        ...elevationAuditNote(gate, "kiosk_device.set_enabled"),
+      },
     });
     revalidate();
     return actionOk();
@@ -643,10 +684,10 @@ export async function enableDevice(id: string): Promise<ActionResult> {
 /** 端末を取り消す（トークン破棄・再登録が必要）。オープン中のセッションも失効。 */
 export async function revokeDevice(id: string): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_device.revoke");
-  if (!gate.ok) return actionError(gate.error);
   const parsed = uuidSchema(tr).safeParse(id);
   if (!parsed.success) return actionError(tr("common.invalidInput"));
+  const pre = await checkOperationPermission("kiosk_device.revoke");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const device = await prisma.kioskDevice.findUnique({
@@ -657,6 +698,9 @@ export async function revokeDevice(id: string): Promise<ActionResult> {
     if (device.status === "REVOKED") {
       return actionError(tr("settings.kioskDevicesActions.alreadyRevoked"));
     }
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_device.revoke");
+    if (!gate.ok) return actionError(gate.error);
     const now = new Date();
     const openSessions = await prisma.kioskSession.findMany({
       where: { deviceId: parsed.data, revokedAt: null },
@@ -695,7 +739,10 @@ export async function revokeDevice(id: string): Promise<ActionResult> {
       tableName: "kiosk_devices",
       recordId: parsed.data,
       before: { status: device.status },
-      after: { status: "REVOKED" },
+      after: {
+        status: "REVOKED",
+        ...elevationAuditNote(gate, "kiosk_device.revoke"),
+      },
     });
     revalidate();
     return actionOk();
@@ -718,10 +765,12 @@ export async function regenerateSettingsCode(
   id: string,
 ): Promise<ActionResult<{ code: string }>> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_secret.regenerate_settings_code");
-  if (!gate.ok) return actionError(gate.error);
   const parsed = uuidSchema(tr).safeParse(id);
   if (!parsed.success) return actionError(tr("common.invalidInput"));
+  const pre = await checkOperationPermission(
+    "kiosk_secret.regenerate_settings_code",
+  );
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const device = await prisma.kioskDevice.findUnique({
@@ -730,7 +779,11 @@ export async function regenerateSettingsCode(
     });
     if (!device)
       return actionError(tr("settings.kioskDevicesActions.deviceNotFound"));
-    const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_secret.regenerate_settings_code");
+    if (!gate.ok) return actionError(gate.error);
+    // 解錠コードは秘密なので CSPRNG から引く（Math.random は予測できる）。
+    const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
     await prisma.kioskDevice.update({
       where: { id: parsed.data },
       data: { settingsCode: code },
@@ -741,6 +794,7 @@ export async function regenerateSettingsCode(
       recordId: parsed.data,
       after: {
         note: tr("settings.kioskDevicesActions.auditSettingsCodeRegenerated"),
+        ...elevationAuditNote(gate, "kiosk_secret.regenerate_settings_code"),
       },
     });
     revalidate();
@@ -769,25 +823,27 @@ export async function revealKioskPin(input: {
   const tr = await getTranslations();
   // 開示するものが違えば別の操作。設定コード（端末 1 台の解錠）と退出 PIN
   // （全端末共通）では影響範囲が桁で違うので、まとめて 1 つの承認にしない。
-  const gate = await useElevation(
-    input.kind === "settings"
-      ? "kiosk_secret.reveal_settings_code"
-      : "kiosk_secret.reveal_unlock_pin",
-  );
-  if (!gate.ok) return actionError(gate.error);
   try {
     if (input.kind === "settings") {
+      // 端末の指定と存在を先に確かめる — 不正な呼び出しで時計を動かさない。
       const parsed = uuidSchema(tr).safeParse(input.deviceId);
       if (!parsed.success)
         return actionError(
           tr("settings.kioskDevicesActions.deviceNotSpecified"),
         );
+      const pre = await checkOperationPermission(
+        "kiosk_secret.reveal_settings_code",
+      );
+      if (!pre.ok) return actionError(pre.error);
       const device = await prisma.kioskDevice.findUnique({
         where: { id: parsed.data },
         select: { settingsCode: true },
       });
       if (!device)
         return actionError(tr("settings.kioskDevicesActions.deviceNotFound"));
+      // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+      const gate = await useElevation("kiosk_secret.reveal_settings_code");
+      if (!gate.ok) return actionError(gate.error);
       await recordAudit({
         action: "VIEW",
         tableName: "kiosk_devices",
@@ -799,6 +855,9 @@ export async function revealKioskPin(input: {
       });
       return actionOk({ value: device.settingsCode });
     }
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_secret.reveal_unlock_pin");
+    if (!gate.ok) return actionError(gate.error);
     const row = await prisma.systemSetting.findUnique({
       where: { key: "kiosk.unlock_pin" },
     });
@@ -924,11 +983,11 @@ export async function revealDeviceUnlockPin(
   deviceId: string,
 ): Promise<ActionResult<DeviceUnlockPinInfo>> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_secret.reveal_device_pin");
-  if (!gate.ok) return actionError(gate.error);
   const parsed = uuidSchema(tr).safeParse(deviceId);
   if (!parsed.success)
     return actionError(tr("settings.kioskDevicesActions.deviceNotSpecified"));
+  const pre = await checkOperationPermission("kiosk_secret.reveal_device_pin");
+  if (!pre.ok) return actionError(pre.error);
   try {
     const device = await prisma.kioskDevice.findUnique({
       where: { id: parsed.data },
@@ -936,6 +995,9 @@ export async function revealDeviceUnlockPin(
     });
     if (!device)
       return actionError(tr("settings.kioskDevicesActions.deviceNotFound"));
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_secret.reveal_device_pin");
+    if (!gate.ok) return actionError(gate.error);
 
     await recordAudit({
       action: "VIEW",
@@ -984,10 +1046,10 @@ export async function revealDeviceUnlockPin(
 /** アテステーション鍵をリセット（次回ラッパー接続時に再束縛 = TOFU）。 */
 export async function resetDeviceKey(id: string): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_secret.reset_device_key");
-  if (!gate.ok) return actionError(gate.error);
   const parsed = uuidSchema(tr).safeParse(id);
   if (!parsed.success) return actionError(tr("common.invalidInput"));
+  const pre = await checkOperationPermission("kiosk_secret.reset_device_key");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const device = await prisma.kioskDevice.findUnique({
@@ -996,6 +1058,9 @@ export async function resetDeviceKey(id: string): Promise<ActionResult> {
     });
     if (!device)
       return actionError(tr("settings.kioskDevicesActions.deviceNotFound"));
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_secret.reset_device_key");
+    if (!gate.ok) return actionError(gate.error);
     await prisma.kioskDevice.update({
       where: { id: parsed.data },
       data: { devicePublicKey: null, fingerprint: null },
@@ -1005,7 +1070,10 @@ export async function resetDeviceKey(id: string): Promise<ActionResult> {
       tableName: "kiosk_devices",
       recordId: parsed.data,
       before: { fingerprint: device.fingerprint },
-      after: { fingerprint: null },
+      after: {
+        fingerprint: null,
+        ...elevationAuditNote(gate, "kiosk_secret.reset_device_key"),
+      },
     });
     revalidate();
     return actionOk();

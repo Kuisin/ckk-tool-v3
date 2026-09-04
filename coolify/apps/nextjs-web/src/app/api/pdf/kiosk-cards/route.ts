@@ -16,6 +16,7 @@
  */
 
 import { getTranslations } from "next-intl/server";
+import { recordAudit } from "@/lib/audit";
 import { formatCode } from "@/lib/crockford";
 import { escapeHtml } from "@/lib/format";
 import {
@@ -29,7 +30,11 @@ import {
 } from "@/lib/kiosk-card-sheet";
 import { renderPdf } from "@/lib/pdf";
 import { withPrintPreferences } from "@/lib/pdf-print-prefs";
-import { useElevation } from "@/lib/privileged-access";
+import {
+  checkOperationPermission,
+  elevationAuditNote,
+  useElevation,
+} from "@/lib/privileged-access";
 import { qrSvg } from "@/lib/qr";
 
 export const dynamic = "force-dynamic";
@@ -93,13 +98,10 @@ export async function GET(request: Request): Promise<Response> {
   const tr = await getTranslations();
   // 台紙の PDF は QR（= 認証情報そのもの）をファイルとして手元に残す操作。
   // 一覧を見るのとは重さが違うので、承認された期間だけに絞る。
-  const gate = await useElevation("kiosk_card.print");
-  if (!gate.ok) {
-    return Response.json(
-      { error: gate.error },
-      { status: gate.needsElevation ? 403 : 401 },
-    );
-  }
+  // 順序は 検証 → 素の権限 → 対象の確認 → useElevation → 生成: useElevation は
+  // 初回に申請者の時計を動かすので、空の ids や存在しないカードで先に呼ばない。
+  const pre = await checkOperationPermission("kiosk_card.print");
+  if (!pre.ok) return Response.json({ error: pre.error }, { status: 403 });
 
   const params = new URL(request.url).searchParams;
   const ids = (params.get("ids") ?? "")
@@ -118,6 +120,14 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json(
       { error: tr("settings.kioskCardActions.noCardsToPrint") },
       { status: 404 },
+    );
+  }
+  // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+  const gate = await useElevation("kiosk_card.print");
+  if (!gate.ok) {
+    return Response.json(
+      { error: gate.error },
+      { status: gate.needsElevation ? 403 : 401 },
     );
   }
 
@@ -141,6 +151,17 @@ export async function GET(request: Request): Promise<Response> {
     console.error("[pdf/kiosk-cards]", err);
     return Response.json({ error: "PDF generation failed" }, { status: 502 });
   }
+
+  // 誰がどのカードを何枚刷ったか、どの承認で通ったか（grantId / bypass）を残す。
+  await recordAudit({
+    action: "EXPORT",
+    tableName: "kiosk_cards",
+    recordId: cards.map((c) => c.id).join(","),
+    after: {
+      count: cards.length,
+      ...elevationAuditNote(gate, "kiosk_card.print"),
+    },
+  });
 
   const stamp = timestampJst();
   const asciiName = `qr-cards_${stamp}.pdf`;
