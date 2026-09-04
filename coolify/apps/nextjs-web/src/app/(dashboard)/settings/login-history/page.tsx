@@ -5,6 +5,12 @@ import {
   getLoginAttemptSummary,
   listLoginAttempts,
 } from "@/lib/login-attempts";
+import {
+  parseDeviceOwnership,
+  parseLoginHistoryDays,
+  parseLoginOutcome,
+  parseLoginSurface,
+} from "@/lib/login-history-filter-core";
 
 export const dynamic = "force-dynamic";
 
@@ -30,16 +36,17 @@ export default async function LoginHistoryPage({
     return s && s.length > 0 ? s : null;
   };
 
-  const days = Number(one("days") ?? "7");
+  // enum 列に落ちる値はクエリをそのまま信用せず許可リストで濾す — 外れた値を
+  // Prisma に渡すと PrismaClientValidationError で 500 になる（days と同じ扱い）。
   const filter = {
-    days: Number.isFinite(days) && days > 0 && days <= 400 ? days : 7,
-    outcome: one("outcome") as "SUCCESS" | "FAILURE" | null,
+    days: parseLoginHistoryDays(one("days")),
+    outcome: parseLoginOutcome(one("outcome")),
     // 「アプリ」の絞り込みは面（Web / 共有端末 / 取引先ポータル）。
     // ポータルは app 列では区別できない（nextjs-web が配信しているので WEB）。
-    surface: one("app") as "WEB" | "KIOSK" | "PORTAL" | null,
+    surface: parseLoginSurface(one("app")),
     ip: one("ip"),
     fingerprint: one("fp"),
-    ownership: one("own") as never,
+    ownership: parseDeviceOwnership(one("own")),
     reason: one("reason"),
   };
 

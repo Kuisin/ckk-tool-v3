@@ -7,7 +7,8 @@
  * 行・オブジェクトのどちらかが無ければ 404。
  */
 
-import { requirePermissionResponse } from "@/lib/authz";
+import { rowInScope } from "@ckk/authz-core";
+import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { contentTypeForKey, getObject } from "@/lib/storage";
 
@@ -20,8 +21,11 @@ export async function GET(
   { params }: Params,
 ): Promise<Response> {
   // 取込元ファイルの閲覧 — GET なので CREATE ではなく READ でゲート（判断メモ）。
-  const denied = await requirePermissionResponse("order_acceptance", "READ");
-  if (denied) return denied;
+  const authz = await checkPermission("order_acceptance", "READ");
+  if (!authz.ok) {
+    const status = (await sessionUserId()) ? 403 : 401;
+    return Response.json({ error: authz.error }, { status });
+  }
   const { yearMonth, seq } = await params;
   const seqNum = Number(seq);
   if (!/^\d{6}$/.test(yearMonth) || !Number.isInteger(seqNum) || seqNum < 1) {
@@ -32,12 +36,21 @@ export async function GET(
     .findUnique({
       where: { yearMonth_seq: { yearMonth, seq: seqNum } },
       select: {
+        createdBy: true,
         sourceFile: {
           select: { storageKey: true, filename: true, mimeType: true },
         },
       },
     })
     .catch(() => null);
+  // OWN スコープの利用者は自分が取り込んだ行だけ（/api/intake/queue と同じ規則）。
+  // スコープ外は不存在と区別しない（404）。
+  if (
+    row &&
+    !rowInScope(authz.access, { createdBy: row.createdBy }, authz.userId)
+  ) {
+    return new Response("Not found", { status: 404 });
+  }
   const file = row?.sourceFile;
   if (!file) return new Response("Not found", { status: 404 });
 
