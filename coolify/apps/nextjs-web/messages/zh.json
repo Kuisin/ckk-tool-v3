@@ -2369,10 +2369,10 @@
       "andNMoreOrderLines": "{first} 等 {count} 件",
       "andNMoreCustomers": "{first} 等 {count} 家",
       "nextStepCreateADeliveryOrder": "下一步：创建出货单",
-      "openDeliveryOrderFormForThisLot": "用已完成的 {quantity} 支中尚未列入出货单的部分创建出货单。也可一并加入同一订单确认书的其他明细。",
+      "openDeliveryOrderFormForThisLot": "用尚未出货的 {quantity} 支创建出货单。也可一并加入同一订单确认书的其他明细。",
       "deliveryOrderNeedsCompletedWorkOrder": "仅可从已完成的工单创建",
       "deliveryOrderNeedsOrderLine": "未关联订单明细的工单无法创建",
-      "deliveryOrderAlreadyArranged": "完成数量已全部列入出货单"
+      "deliveryOrderAlreadyArranged": "该工单的订单明细均已安排出货"
     },
     "addBranchModal": {
       "theBranchWasAdded": "已添加分支",
@@ -2565,7 +2565,10 @@
       "itemRecorded": "已记录「{item}」",
       "shelvedBy": "上架人员",
       "shipmentAuthorizedBy": "出货批准人",
-      "stageRecorded": "已记录{stage}"
+      "stageRecorded": "已记录{stage}",
+      "markOk": "{item}：无问题",
+      "markNg": "{item}：有问题",
+      "recordPriorStageFirst": "请先记录{label}"
     },
     "workOrderStepsPanel": {
       "deleteTheBranch": "删除分支",
@@ -3984,7 +3987,17 @@
       "issuedLinks": "已发行的链接",
       "revoked": "已失效",
       "linkSummary": "{email} / {count} 次 / 至 {date}",
-      "verified": "已验证"
+      "verified": "已验证",
+      "sharingScope": "共享范围",
+      "noSharingYet": "尚未共享（此人看不到任何内容）。",
+      "includesBranches": "包含分公司",
+      "includesEndUserDocuments": "包含作为最终用户・送货对象的单据",
+      "revokingSharingHidesThoseDocuments": "失效后，此共享范围内的单据将对该人隐藏。",
+      "noLinksIssuedYet": "尚未发行链接。",
+      "revokingTheLinkClosesTheSession": "失效后，使用该链接打开的会话也会结束。",
+      "viewingHistory": "浏览记录",
+      "nothingHasBeenViewedYet": "尚未浏览任何内容。",
+      "ipAddress": "IP 地址"
     },
     "privileged": {
       "pendingApproval": "（审批中）",
@@ -4484,14 +4497,22 @@
     },
     "documents": {
       "document": "单据",
-      "noneToShow": "没有可显示的{document}。"
+      "noneToShow": "没有可显示的{document}。",
+      "dueDate": "付款期限",
+      "taxAmount": "税额",
+      "noLineItems": "没有明细。",
+      "priceOmitted": "本送货单不显示价格。"
     },
     "forms": {
       "thereAreNoResponsesToShow": "没有可显示的回答。",
-      "noFormsAreSharedWithYou": "没有共享的表单。"
+      "noFormsAreSharedWithYou": "没有共享的表单。",
+      "noAnswerFields": "没有可显示的项目。",
+      "rowNumber": "第 {row} 行",
+      "responseCount": "{count} 条回答"
     },
     "orders": {
-      "thereAreNoOrdersToShow": "没有可显示的订单。"
+      "thereAreNoOrdersToShow": "没有可显示的订单。",
+      "cancelledNotice": "此订单明细已取消。"
     },
     "page": {
       "youCanViewDocumentsAddressedTo": "您可以查看寄给贵公司的单据。",
@@ -4521,6 +4542,19 @@
     "loginActions": {
       "backupCodeInvalid": "备用码不正确。",
       "issueMessage": "如果您输入的邮箱地址已注册，验证码已发送。请在 10 分钟内输入。如未收到，请检查垃圾邮件文件夹，并联系您的销售负责人。"
+    },
+    "common": {
+      "relatedDocuments": "关联单据"
+    },
+    "home": {
+      "greeting": "{name} 您好",
+      "activeOrders": "进行中的订单",
+      "recentDocuments": "最近的单据",
+      "viewAll": "查看全部",
+      "nothingToShow": "暂无可显示的内容。"
+    },
+    "nav": {
+      "menu": "菜单"
     }
   },
   "master": {
@@ -7386,6 +7420,10 @@
       "storedToStock": "保管（入库）",
       "deliveryNoteNote": "{status}・{recipient}",
       "confirmConfirmBody": "将确认出货单 {number}。确认后将无法编辑。",
+      "autoNotesHeading": "确认后将自动创建以下送货单",
+      "autoNoteWithPrice": "含价格",
+      "autoNoteWithoutPrice": "无价格",
+      "autoNotesEndUserMissing": "无法确定最终用户，因此不会创建无价格的送货单。请确认订单确认书的最终用户。",
       "confirmedBody": "已确认出货单 {number}",
       "confirmShipBodyDispatch": "将出货单 {number} 标记为已出货。订单明细的出货状态也会重新计算。",
       "confirmShipBodyStock": "将出货单 {number} 标记为已出货（因为是库存保管，订单明细的出货状态不会改变）。",
@@ -7397,7 +7435,6 @@
       "onlySameDeliveryMethodCanBeCombined": "一张出货单只能合并同一配送方式（常规配送 / 直送最终用户）的订单明细",
       "stockStorageHasNoDeliveryNote": "库存保管出货单不会创建送货单",
       "onlySameEndUserCanBeCombined": "一张出货单只能合并同一最终用户的订单明细",
-      "confirmConfirmBodyDispatch": "将确认出货单 {number}。确认后无法编辑。系统会自动创建送货单（直送最终用户会创建两份 — 一份无价格、一份含价格）。",
       "confirmedBodyDispatch": "已确认出货单 {number} 并创建送货单",
       "coveredOrderAcceptances": "对象订单确认书",
       "shipTogetherTitle": "是否一并出货同一订单确认书的其他明细？",
@@ -7775,6 +7812,14 @@
   "privilegedAccessGate": {
     "unknownOperation": "未知的特权操作：{key}（请在 lib/privileged-operations.ts 中注册）",
     "operationRequiresApprovalSy0g": "此操作需要审批（{label}）。请从特权访问（SY0G）提交申请"
+  },
+  "privilegedNotify": {
+    "requestTitle": "特权访问的审批申请：{subject}",
+    "requestMessage": "{name} / 理由：{reason}",
+    "approvedTitle": "特权访问的申请已批准：{subject}",
+    "rejectedTitle": "特权访问的申请已退回：{subject}",
+    "revokedTitle": "特权访问的授权已撤销：{subject}",
+    "approvedButNotApplied": "已批准，但未能应用该变更：{error}"
   },
   "audit": {
     "emptyArray": "（无）",

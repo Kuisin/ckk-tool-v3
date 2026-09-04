@@ -283,7 +283,9 @@
       "shipDefectPlaceholder": "出货前检查的不良内容等（可选）",
       "shipDefectConfirm": "确认",
       "saved": "已记录",
-      "checkedMeta": "{at} {by}"
+      "checkedMeta": "{at} {by}",
+      "markOk": "{item}：无问题",
+      "markNg": "{item}：有问题"
     },
     "approval": {
       "title": "检查批准",

@@ -17,6 +17,7 @@
  */
 
 import type { Tr } from "./i18n";
+import type { PortalDocumentType } from "./portal-documents-core";
 
 /** 社外に見せる進捗。**工程の粒度は出さない**（どこの誰が何をしたかは社内の話）。 */
 export const PORTAL_PROGRESS = [
@@ -128,3 +129,198 @@ export const PORTAL_DOCUMENT_DTO_KEYS: readonly (keyof PortalDocumentDto)[] = [
   "number",
   "totalAmount",
 ];
+
+/**
+ * 書類・注文明細の「明細 1 行」。見積書・注文請書・納品書・請求書で形が違う
+ * （製品名 / 摘要）ので、**社外に出す時点で 1 つの形に畳む**。
+ *
+ * label は製品名（見積・注文請書・納品書）か摘要（請求書）。どちらも
+ * 「何に対する行か」を人が読む欄で、内部 id は入らない。
+ */
+export interface PortalLineItemDto {
+  label: string;
+  quantity: number;
+  /** 納品書は include_price=false のとき null（価格を載せない納品書に出さない）。 */
+  unitPrice: string | null;
+  amount: string | null;
+  deliveryDate: string | null;
+}
+
+export const PORTAL_LINE_ITEM_DTO_KEYS: readonly (keyof PortalLineItemDto)[] = [
+  "amount",
+  "deliveryDate",
+  "label",
+  "quantity",
+  "unitPrice",
+];
+
+/**
+ * 「この書類に関係する別の書類」への参照。
+ *
+ * **番号だけを持つ**。ここに載るのは、その相手も同じ判定
+ * （portalAccessFor）を通って見えると確認できたものだけで、見えない書類は
+ * 行ごと落とす —— 番号を出すだけでも「その書類は在る」を教えてしまうため。
+ */
+export interface PortalRelatedDocumentDto {
+  type: PortalDocumentType;
+  number: string;
+  issuedOn: string | null;
+}
+
+export const PORTAL_RELATED_DOCUMENT_DTO_KEYS: readonly (keyof PortalRelatedDocumentDto)[] =
+  ["issuedOn", "number", "type"];
+
+export interface PortalDocumentDetailDto extends PortalDocumentDto {
+  type: PortalDocumentType;
+  /** PDF を引くための file id（アクセスを証明した後にだけ返す）。 */
+  pdfFileId: string | null;
+  currency: string;
+  /**
+   * 単価・金額を出してよい書類か。
+   *
+   * **納品書の include_price をそのまま運ぶ。** 「明細が全部 null なら価格
+   * 無しの書類だろう」と推測すると、単価を入れ忘れただけの書類にまで
+   * 「価格を記載していません」と書いてしまう（意図と欠落は別物）。
+   */
+  showsPrices: boolean;
+  /** 明細。**社外に出してよい 5 欄だけ**に畳んである（PortalLineItemDto）。 */
+  lineItems: PortalLineItemDto[];
+  /**
+   * 関連書類。**相手も見えると確認できたものだけ**が入る
+   * （番号を出すだけでも「その書類は在る」を教えてしまうため）。
+   */
+  related: PortalRelatedDocumentDto[];
+
+  // ── 種別ごとの補足（無い種別では null のまま）───────────────────────────
+  /** 見積書: 有効期限。 */
+  validUntil: string | null;
+  /** 注文請書: 取引先自身の注文書番号（自分のどの注文かを照合する手掛かり）。 */
+  customerOrderRef: string | null;
+  /** 注文請書: 注文日。 */
+  orderedOn: string | null;
+  /** 納品書: 納品日。 */
+  deliveredOn: string | null;
+  /** 請求書: 請求期間・支払期限・内訳。 */
+  billingPeriodFrom: string | null;
+  billingPeriodTo: string | null;
+  dueDate: string | null;
+  subtotal: string | null;
+  taxAmount: string | null;
+}
+
+export const PORTAL_DOCUMENT_DETAIL_DTO_KEYS: readonly (keyof PortalDocumentDetailDto)[] =
+  [
+    "billingPeriodFrom",
+    "billingPeriodTo",
+    "currency",
+    "customerOrderRef",
+    "deliveredOn",
+    "dueDate",
+    "hasPdf",
+    "issuedOn",
+    "lineItems",
+    "number",
+    "orderedOn",
+    "pdfFileId",
+    "related",
+    "showsPrices",
+    "subtotal",
+    "taxAmount",
+    "totalAmount",
+    "type",
+    "validUntil",
+  ];
+
+/**
+ * 注文明細 1 件の詳細。一覧の行（PortalOrderLineDto）に、その 1 件を開いた
+ * ときだけ出すものを足したもの。
+ *
+ * customerOrderRef は**取引先自身の注文書番号**なので社外に出してよい
+ * （むしろ「自分のどの注文か」を照合する唯一の手掛かり）。
+ */
+export interface PortalOrderLineDetailDto extends PortalOrderLineDto {
+  acceptanceNumber: string;
+  customerOrderRef: string | null;
+  orderedOn: string | null;
+  related: PortalRelatedDocumentDto[];
+}
+
+export const PORTAL_ORDER_LINE_DETAIL_DTO_KEYS: readonly (keyof PortalOrderLineDetailDto)[] =
+  [
+    ...PORTAL_ORDER_LINE_DTO_KEYS,
+    "acceptanceNumber",
+    "customerOrderRef",
+    "orderedOn",
+    "related",
+  ].sort() as (keyof PortalOrderLineDetailDto)[];
+
+/**
+ * 進捗を「どこまで進んだか」の段として読むための順序。
+ *
+ * CANCELLED は段ではない（進行の外）ので入らない —— 呼び出し側は
+ * `portalProgressStepIndex` が -1 を返したら段ではなく警告として描く。
+ */
+export const PORTAL_PROGRESS_STEPS = [
+  "RECEIVED",
+  "IN_PRODUCTION",
+  "READY",
+  "SHIPPED",
+  "DELIVERED",
+] as const satisfies readonly PortalProgress[];
+
+/** 段の番号（0 始まり）。進行の外（CANCELLED）は -1。 */
+export function portalProgressStepIndex(progress: PortalProgress): number {
+  return (PORTAL_PROGRESS_STEPS as readonly string[]).indexOf(progress);
+}
+/**
+ * 注文明細 1 件（`ORD-YYYYMM-NNNNN-NN`）を分解する。
+ *
+ * 一覧の行から詳細へ渡るのはこの文字列だけ（内部 id は社外へ出さない）ので、
+ * 受け取り側は必ずここで検証する。
+ */
+export function parsePortalOrderLineNumber(
+  value: string,
+): { yearMonth: string; seq: number; branch: number } | null {
+  const m = /^ORD-(\d{6})-(\d{5})-(\d{1,3})$/.exec(value.trim().toUpperCase());
+  if (!m) return null;
+  return { yearMonth: m[1], seq: Number(m[2]), branch: Number(m[3]) };
+}
+
+/** 表示番号（`ORD-YYYYMM-NNNNN-NN`）。枝番未採番の行は番号を持たない。 */
+export function portalOrderLineNumber(
+  acceptanceNumber: string,
+  branch: number | null,
+): string | null {
+  return branch == null
+    ? null
+    : `${acceptanceNumber}-${String(branch).padStart(2, "0")}`;
+}
+
+/**
+ * ホーム（/portal）に出す件数。
+ *
+ * 「いま何件動いているか」だけを数える —— 一覧を丸ごと読ませずに、
+ * 見に行く価値があるかを 1 目で判らせるため。
+ */
+export interface PortalOrderSummary {
+  total: number;
+  byProgress: Record<PortalProgress, number>;
+  /** 進行中（納品済み・キャンセル以外）の件数。 */
+  active: number;
+}
+
+export function summarizePortalOrders(
+  rows: readonly { progress: PortalProgress }[],
+): PortalOrderSummary {
+  const byProgress = Object.fromEntries(
+    PORTAL_PROGRESS.map((p) => [p, 0]),
+  ) as Record<PortalProgress, number>;
+  for (const r of rows) byProgress[r.progress] += 1;
+  return {
+    total: rows.length,
+    byProgress,
+    active: rows.filter(
+      (r) => r.progress !== "DELIVERED" && r.progress !== "CANCELLED",
+    ).length,
+  };
+}

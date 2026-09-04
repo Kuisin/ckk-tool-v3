@@ -15,8 +15,8 @@ export const dynamic = "force-dynamic";
 /**
  * 未処理一覧 (CM01) — 個人の「やること」: 自分の作業予定（未完了の作業計画）と
  * 承認依頼中の承認依頼の横断一覧（旧 承認管理 PD03。approve 権限がある人のみ）、
- * それに自分が決裁できる特権アクセスの申請（SY0G は通知を出さないので、
- * 毎日開くこの画面にも出す）。
+ * それに自分が決裁できる特権アクセスの申請（通知は届くが、見落としたときの
+ * ために毎日開くこの画面にも出す）。
  */
 export default async function GeneralTasksPage() {
   const denied = await requireAppRead("my-tasks");

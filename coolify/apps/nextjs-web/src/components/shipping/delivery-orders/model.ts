@@ -74,6 +74,11 @@ export interface DeliveryOrder {
   /** 明細数量の合計。 */
   totalQuantity: number;
   deliveryNotes: DeliveryOrderDeliveryNoteRef[];
+  /**
+   * 確定 (DRAFT → CONFIRMED) したときに自動作成される納品書の予告
+   * （planAutoDeliveryNotes をサーバー側で解決したもの — 確定モーダルで見せる）。
+   */
+  autoDeliveryNotes: AutoDeliveryNotePreview;
   createdAt: string;
   updatedAt: string;
 }
@@ -205,6 +210,47 @@ export function planAutoDeliveryNotes(
     includePrice: true,
   });
   return notes;
+}
+
+/** 予告 1 行 = 自動作成される納品書 1 通（宛先の表示名 + 価格記載の有無）。 */
+export interface AutoDeliveryNotePreviewNote {
+  recipientName: string;
+  includePrice: boolean;
+}
+
+export interface AutoDeliveryNotePreview {
+  notes: AutoDeliveryNotePreviewNote[];
+  /**
+   * ユーザー直送なのにエンドユーザーが解決できない = 価格記載なしの 1 通が
+   * 作られない（planAutoDeliveryNotes の但し書き）。確定する前に人へ知らせる
+   * ための印で、確定そのものは止めない。
+   */
+  endUserMissing: boolean;
+}
+
+/**
+ * planAutoDeliveryNotes の結果を「宛先の名前」に直した予告
+ * （確定モーダルで「これから何が作られるか」を見せるためだけのもの）。
+ *
+ * 作られる通数と宛先の規則は planAutoDeliveryNotes が唯一の定義元 — ここは
+ * その戻り値を名前に写すだけで、条件を書き足さない（書き足すと予告と実際の
+ * 作成がずれる）。
+ */
+export function previewAutoDeliveryNotes(
+  input: AutoDeliveryNotePlanInput,
+  names: { customer: string; endUser: string | null },
+): AutoDeliveryNotePreview {
+  return {
+    notes: planAutoDeliveryNotes(input).map((n) => ({
+      recipientName:
+        n.recipientBpId === input.customerBpId
+          ? names.customer
+          : (names.endUser ?? ""),
+      includePrice: n.includePrice,
+    })),
+    endUserMissing:
+      input.deliveryMethod === "DIRECT_TO_USER" && !input.endUserBpId,
+  };
 }
 
 // ── 出荷数量の自動割付（フォームの既定行） ──────────────────────────────────

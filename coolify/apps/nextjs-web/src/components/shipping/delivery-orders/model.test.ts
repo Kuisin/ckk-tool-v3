@@ -6,6 +6,7 @@ import {
   allocateLotUsage,
   combinabilityError,
   planAutoDeliveryNotes,
+  previewAutoDeliveryNotes,
 } from "./model";
 
 // biome-ignore lint/suspicious/noExplicitAny: next-intl's messages type is too wide for a plain JSON import here
@@ -159,6 +160,81 @@ describe("planAutoDeliveryNotes — 出荷書確定時の納品書自動作成�
         endUserBpId: null,
         includePrice: true,
       },
+    ]);
+  });
+});
+
+describe("previewAutoDeliveryNotes — 確定モーダルの予告", () => {
+  const names = { customer: "顧客A / 東京支店", endUser: "需要家B" };
+
+  it("通常配送は顧客宛・価格記載ありの 1 通", () => {
+    expect(
+      previewAutoDeliveryNotes(
+        {
+          customerBpId: "cust-1",
+          customerBranchBpId: "branch-1",
+          deliveryMethod: "NORMAL",
+          endUserBpId: null,
+        },
+        names,
+      ),
+    ).toEqual({
+      notes: [{ recipientName: "顧客A / 東京支店", includePrice: true }],
+      endUserMissing: false,
+    });
+  });
+
+  it("ユーザー直送は最終需要家(価格なし)+顧客(価格あり)の順で 2 通", () => {
+    expect(
+      previewAutoDeliveryNotes(
+        {
+          customerBpId: "cust-1",
+          customerBranchBpId: null,
+          deliveryMethod: "DIRECT_TO_USER",
+          endUserBpId: "eu-1",
+        },
+        names,
+      ),
+    ).toEqual({
+      notes: [
+        { recipientName: "需要家B", includePrice: false },
+        { recipientName: "顧客A / 東京支店", includePrice: true },
+      ],
+      endUserMissing: false,
+    });
+  });
+
+  it("ユーザー直送でエンドユーザー未解決なら顧客宛 1 通 + 印を立てる", () => {
+    expect(
+      previewAutoDeliveryNotes(
+        {
+          customerBpId: "cust-1",
+          customerBranchBpId: null,
+          deliveryMethod: "DIRECT_TO_USER",
+          endUserBpId: null,
+        },
+        { customer: "顧客A", endUser: null },
+      ),
+    ).toEqual({
+      notes: [{ recipientName: "顧客A", includePrice: true }],
+      endUserMissing: true,
+    });
+  });
+
+  it("顧客自身がエンドユーザーでも宛先は顧客の表示名になる", () => {
+    expect(
+      previewAutoDeliveryNotes(
+        {
+          customerBpId: "cust-1",
+          customerBranchBpId: null,
+          deliveryMethod: "DIRECT_TO_USER",
+          endUserBpId: "cust-1",
+        },
+        { customer: "顧客A", endUser: "顧客A" },
+      ).notes,
+    ).toEqual([
+      { recipientName: "顧客A", includePrice: false },
+      { recipientName: "顧客A", includePrice: true },
     ]);
   });
 });

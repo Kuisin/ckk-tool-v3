@@ -5,7 +5,9 @@
  * users.id への FK なので、別途スキーマ変更が要る）。
  */
 
-import { Anchor, Card, Group, Stack, Text, Title } from "@mantine/core";
+import { Card, Group, Stack, Text, Title, UnstyledButton } from "@mantine/core";
+import { IconChevronRight } from "@tabler/icons-react";
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { listPortalForms } from "@/lib/portal-forms";
 import { requirePortalView } from "@/lib/portal-page";
@@ -28,18 +30,28 @@ export default async function PortalFormsPage() {
         </Text>
       ) : (
         forms.map((f) => (
-          <Card key={f.code} padding="md" radius="md" withBorder>
-            <Group justify="space-between">
-              <Anchor href={`/portal/forms/${encodeURIComponent(f.code)}`}>
-                <Text fw={600} size="sm">
+          // カード全体を押せるようにする（狭い画面で題名の文字だけを狙わせない）。
+          <UnstyledButton
+            component={Link}
+            href={`/portal/forms/${encodeURIComponent(f.code)}`}
+            key={f.code}
+          >
+            <Card padding="md" radius="md" withBorder>
+              <Group gap="sm" justify="space-between" wrap="nowrap">
+                <Text fw={600} size="sm" style={{ minWidth: 0 }} truncate>
                   {f.title}
                 </Text>
-              </Anchor>
-              <Text c="dimmed" size="xs">
-                {f.responseCount} 件
-              </Text>
-            </Group>
-          </Card>
+                <Group gap={4} style={{ flexShrink: 0 }} wrap="nowrap">
+                  <Text c="dimmed" size="xs">
+                    {tr("portal.forms.responseCount", {
+                      count: f.responseCount,
+                    })}
+                  </Text>
+                  <IconChevronRight size={14} />
+                </Group>
+              </Group>
+            </Card>
+          </UnstyledButton>
         ))
       )}
     </Stack>

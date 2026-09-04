@@ -283,7 +283,9 @@
       "shipDefectPlaceholder": "Defects found at the pre-shipment check, etc. (optional)",
       "shipDefectConfirm": "Check",
       "saved": "Recorded",
-      "checkedMeta": "{at} {by}"
+      "checkedMeta": "{at} {by}",
+      "markOk": "{item}: OK",
+      "markNg": "{item}: not OK"
     },
     "approval": {
       "title": "Inspection approval",

@@ -2369,10 +2369,10 @@
       "andNMoreOrderLines": "{first} and {count} more",
       "andNMoreCustomers": "{first} and {count} more",
       "nextStepCreateADeliveryOrder": "Next step: create a delivery order",
-      "openDeliveryOrderFormForThisLot": "Opens the delivery order form for the finished quantity ({quantity}) that is not on a delivery order yet. Other lines of the same order acceptance can be added too.",
+      "openDeliveryOrderFormForThisLot": "Opens the delivery order form for the {quantity} piece(s) not shipped yet. Other lines of the same order acceptance can be added too.",
       "deliveryOrderNeedsCompletedWorkOrder": "You can create it only from a completed work order",
       "deliveryOrderNeedsOrderLine": "You cannot create it from a work order with no order line",
-      "deliveryOrderAlreadyArranged": "The whole finished quantity is already on delivery orders"
+      "deliveryOrderAlreadyArranged": "Every order line of this work order is already arranged for shipping"
     },
     "addBranchModal": {
       "theBranchWasAdded": "The branch was added",
@@ -2565,7 +2565,10 @@
       "itemRecorded": "Recorded \"{item}\"",
       "shelvedBy": "Shelved by",
       "shipmentAuthorizedBy": "Shipment authorized by",
-      "stageRecorded": "Recorded {stage}"
+      "stageRecorded": "Recorded {stage}",
+      "markOk": "{item}: OK",
+      "markNg": "{item}: not OK",
+      "recordPriorStageFirst": "Record {label} first"
     },
     "workOrderStepsPanel": {
       "deleteTheBranch": "Delete the branch",
@@ -3984,7 +3987,17 @@
       "issuedLinks": "Issued links",
       "revoked": "Revoked",
       "linkSummary": "{email} / {count} uses / until {date}",
-      "verified": "Verified"
+      "verified": "Verified",
+      "sharingScope": "Sharing scope",
+      "noSharingYet": "Nothing is shared yet (this person can see nothing).",
+      "includesBranches": "Includes branches",
+      "includesEndUserDocuments": "Includes documents as end user or ship-to",
+      "revokingSharingHidesThoseDocuments": "After revoking, the documents in this scope are hidden from this person.",
+      "noLinksIssuedYet": "No links have been issued.",
+      "revokingTheLinkClosesTheSession": "Revoking also ends any session opened with that link.",
+      "viewingHistory": "Viewing history",
+      "nothingHasBeenViewedYet": "Nothing has been viewed yet.",
+      "ipAddress": "IP address"
     },
     "privileged": {
       "pendingApproval": "(pending approval)",
@@ -4484,14 +4497,22 @@
     },
     "documents": {
       "document": "Document",
-      "noneToShow": "There are no {document} to show."
+      "noneToShow": "There are no {document} to show.",
+      "dueDate": "Payment due",
+      "taxAmount": "Tax",
+      "noLineItems": "There are no line items.",
+      "priceOmitted": "This delivery note does not show prices."
     },
     "forms": {
       "thereAreNoResponsesToShow": "There are no responses to show.",
-      "noFormsAreSharedWithYou": "No forms are shared with you."
+      "noFormsAreSharedWithYou": "No forms are shared with you.",
+      "noAnswerFields": "There are no fields to show.",
+      "rowNumber": "Row {row}",
+      "responseCount": "{count} responses"
     },
     "orders": {
-      "thereAreNoOrdersToShow": "There are no orders to show."
+      "thereAreNoOrdersToShow": "There are no orders to show.",
+      "cancelledNotice": "This order line has been cancelled."
     },
     "page": {
       "youCanViewDocumentsAddressedTo": "You can view documents addressed to your company.",
@@ -4521,6 +4542,19 @@
     "loginActions": {
       "backupCodeInvalid": "The backup code is incorrect.",
       "issueMessage": "If the email address you entered is registered, a verification code has been sent. Enter it within 10 minutes. If it does not arrive, check your spam folder and contact your sales representative."
+    },
+    "common": {
+      "relatedDocuments": "Related documents"
+    },
+    "home": {
+      "greeting": "Hello, {name}",
+      "activeOrders": "Orders in progress",
+      "recentDocuments": "Recent documents",
+      "viewAll": "View all",
+      "nothingToShow": "There is nothing to show yet."
+    },
+    "nav": {
+      "menu": "Menu"
     }
   },
   "master": {
@@ -7386,6 +7420,10 @@
       "storedToStock": "Stored (to stock)",
       "deliveryNoteNote": "{status} · {recipient}",
       "confirmConfirmBody": "This confirms delivery order {number}. It cannot be edited after confirming.",
+      "autoNotesHeading": "Confirming creates these delivery notes automatically",
+      "autoNoteWithPrice": "With prices",
+      "autoNoteWithoutPrice": "Without prices",
+      "autoNotesEndUserMissing": "The end user cannot be resolved, so the delivery note without prices will not be created. Check the end user on the order acceptance.",
       "confirmedBody": "Confirmed delivery order {number}",
       "confirmShipBodyDispatch": "This marks delivery order {number} as shipped. The order line's shipping status will also be recalculated.",
       "confirmShipBodyStock": "This marks delivery order {number} as shipped (the order line's shipping status will not change, since this is stock storage).",
@@ -7397,7 +7435,6 @@
       "onlySameDeliveryMethodCanBeCombined": "A delivery order can only combine order lines with the same delivery method (standard / direct to end user)",
       "stockStorageHasNoDeliveryNote": "Stock-storage delivery orders don't get a delivery note",
       "onlySameEndUserCanBeCombined": "A delivery order can only combine order lines with the same end user",
-      "confirmConfirmBodyDispatch": "This confirms delivery order {number}. It cannot be edited afterward. Delivery note(s) will be created automatically (direct-to-end-user creates two — one without prices and one with).",
       "confirmedBodyDispatch": "Confirmed delivery order {number} and created the delivery note(s)",
       "coveredOrderAcceptances": "Covered order acceptances",
       "shipTogetherTitle": "Ship other lines of the same order acceptance too?",
@@ -7775,6 +7812,14 @@
   "privilegedAccessGate": {
     "unknownOperation": "Unknown privileged operation: {key} (register it in lib/privileged-operations.ts)",
     "operationRequiresApprovalSy0g": "This operation requires approval ({label}). Request it from Privileged access (SY0G)"
+  },
+  "privilegedNotify": {
+    "requestTitle": "Privileged access request: {subject}",
+    "requestMessage": "{name} / Reason: {reason}",
+    "approvedTitle": "Your privileged access request was approved: {subject}",
+    "rejectedTitle": "Your privileged access request was sent back: {subject}",
+    "revokedTitle": "Your privileged access grant was revoked: {subject}",
+    "approvedButNotApplied": "Approved, but the change could not be applied: {error}"
   },
   "audit": {
     "emptyArray": "(None)",

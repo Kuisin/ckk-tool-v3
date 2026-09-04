@@ -147,13 +147,13 @@ export function WorkOrderDetail({
   const doCreatable =
     wo.status === "COMPLETED" &&
     wo.orderLines.length > 0 &&
-    wo.unshippedQuantity > 0;
+    wo.shippableQuantity > 0;
   const doDisabledReason =
     wo.status !== "COMPLETED"
       ? tr("production.workOrders.deliveryOrderNeedsCompletedWorkOrder")
       : wo.orderLines.length === 0
         ? tr("production.workOrders.deliveryOrderNeedsOrderLine")
-        : wo.unshippedQuantity <= 0
+        : wo.shippableQuantity <= 0
           ? tr("production.workOrders.deliveryOrderAlreadyArranged")
           : undefined;
 
@@ -450,7 +450,7 @@ export function WorkOrderDetail({
           buttonLabel={tr("common.createADeliveryOrder")}
           description={tr(
             "production.workOrders.openDeliveryOrderFormForThisLot",
-            { quantity: wo.unshippedQuantity },
+            { quantity: wo.shippableQuantity },
           )}
           href={doCreateHref}
           icon={<IconTruck size={20} />}

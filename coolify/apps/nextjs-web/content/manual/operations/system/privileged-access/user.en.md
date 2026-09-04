@@ -37,7 +37,9 @@ Reserving a long window costs nothing while unused, but the window's end never m
 
 Approvers see an **Approve** tab. Your own requests never appear there — the requester and the approver must be different people.
 
-No notification is sent when a request arrives. Requests waiting for your decision also appear on the "Privileged access" tab of [Pending list](/manual/en/operations/general/my-tasks/user) (`CM01`), so you notice them without opening this screen (the decision is still made here).
+A **notification is sent** to everyone who can decide the request. Requests waiting for your decision also appear on the "Privileged access" tab of [Pending list](/manual/en/operations/general/my-tasks/user) (`CM01`), so nothing is lost if a notification is missed (the decision is still made here).
+
+When you decide, the outcome (approved / sent back / revoked) is **notified to the requester**.
 
 1. Read what is being asked: who, what, why, for how long.
 2. Press **Approve** to open the operation list.

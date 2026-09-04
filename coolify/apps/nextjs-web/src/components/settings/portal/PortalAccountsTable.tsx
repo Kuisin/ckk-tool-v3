@@ -8,6 +8,7 @@
 
 import {
   Alert,
+  Anchor,
   Badge,
   Button,
   Card,
@@ -24,6 +25,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPlus } from "@tabler/icons-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
@@ -133,7 +135,14 @@ export function PortalAccountsTable({
                     <Text size="sm">{a.bpName}</Text>
                   </Table.Td>
                   <Table.Td>
-                    <Text size="sm">{a.displayName}</Text>
+                    {/* 共有範囲・閲覧記録・発行済みリンクは詳細で読む。 */}
+                    <Anchor
+                      component={Link}
+                      href={`/settings/portal/${a.id}`}
+                      size="sm"
+                    >
+                      {a.displayName}
+                    </Anchor>
                   </Table.Td>
                   <Table.Td>
                     <Text c="dimmed" ff="monospace" size="xs">
@@ -146,7 +155,9 @@ export function PortalAccountsTable({
                       size="sm"
                       variant="light"
                     >
-                      {a.isActive ? "有効" : tr("common.disabled3")}
+                      {a.isActive
+                        ? tr("common.enabled")
+                        : tr("common.disabled3")}
                     </Badge>
                   </Table.Td>
                   <Table.Td>

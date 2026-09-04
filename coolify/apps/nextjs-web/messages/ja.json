@@ -2369,10 +2369,10 @@
       "andNMoreOrderLines": "{first} ほか{count}件",
       "andNMoreCustomers": "{first} ほか{count}社",
       "nextStepCreateADeliveryOrder": "次のステップ: 出荷書の作成",
-      "openDeliveryOrderFormForThisLot": "完成した {quantity} 本のうち、まだ出荷書に載っていない分で出荷書を作ります。同じ注文請書の他の明細もまとめられます。",
+      "openDeliveryOrderFormForThisLot": "まだ出荷していない {quantity} 本で出荷書を作ります。同じ注文請書の他の明細もまとめられます。",
       "deliveryOrderNeedsCompletedWorkOrder": "完了した指示書からのみ作成できます",
       "deliveryOrderNeedsOrderLine": "注文明細に紐づいていない指示書からは作成できません",
-      "deliveryOrderAlreadyArranged": "完成分はすべて出荷書に載っています"
+      "deliveryOrderAlreadyArranged": "この指示書の注文明細はすべて出荷手配済みです"
     },
     "addBranchModal": {
       "theBranchWasAdded": "分岐を追加しました",
@@ -2565,7 +2565,10 @@
       "itemRecorded": "「{item}」を記録しました",
       "shelvedBy": "棚包担当者",
       "shipmentAuthorizedBy": "出荷許可者",
-      "stageRecorded": "{stage}を記録しました"
+      "stageRecorded": "{stage}を記録しました",
+      "markOk": "{item}: 問題なし",
+      "markNg": "{item}: 問題あり",
+      "recordPriorStageFirst": "{label}を先に記録してください"
     },
     "workOrderStepsPanel": {
       "deleteTheBranch": "分岐の削除",
@@ -3984,7 +3987,17 @@
       "issuedLinks": "発行済みのリンク",
       "revoked": "失効済み",
       "linkSummary": "{email} / {count} 回 / {date} まで",
-      "verified": "本人確認あり"
+      "verified": "本人確認あり",
+      "sharingScope": "共有範囲",
+      "noSharingYet": "共有範囲はまだありません（この人には何も見えません）。",
+      "includesBranches": "支店宛を含む",
+      "includesEndUserDocuments": "需要家・出荷先としての書類を含む",
+      "revokingSharingHidesThoseDocuments": "失効させると、この共有範囲の書類はこの人に見えなくなります。",
+      "noLinksIssuedYet": "発行済みのリンクはありません。",
+      "revokingTheLinkClosesTheSession": "失効させると、そのリンクで開いているセッションも終わります。",
+      "viewingHistory": "閲覧記録",
+      "nothingHasBeenViewedYet": "まだ何も閲覧されていません。",
+      "ipAddress": "IP アドレス"
     },
     "privileged": {
       "pendingApproval": "（承認依頼中）",
@@ -4484,14 +4497,22 @@
     },
     "documents": {
       "document": "書類",
-      "noneToShow": "表示できる{document}はありません。"
+      "noneToShow": "表示できる{document}はありません。",
+      "dueDate": "支払期限",
+      "taxAmount": "消費税",
+      "noLineItems": "明細はありません。",
+      "priceOmitted": "この納品書には価格を記載していません。"
     },
     "forms": {
       "thereAreNoResponsesToShow": "表示できる回答はありません。",
-      "noFormsAreSharedWithYou": "共有されているフォームはありません。"
+      "noFormsAreSharedWithYou": "共有されているフォームはありません。",
+      "noAnswerFields": "表示できる項目はありません。",
+      "rowNumber": "{row} 行目",
+      "responseCount": "{count} 件"
     },
     "orders": {
-      "thereAreNoOrdersToShow": "表示できる注文はありません。"
+      "thereAreNoOrdersToShow": "表示できる注文はありません。",
+      "cancelledNotice": "この注文明細はキャンセルされています。"
     },
     "page": {
       "youCanViewDocumentsAddressedTo": "自社宛の書類をご覧いただけます。",
@@ -4521,6 +4542,19 @@
     "loginActions": {
       "backupCodeInvalid": "バックアップコードが正しくありません。",
       "issueMessage": "入力されたアドレスが登録されていれば、確認コードを送信しました。10 分以内に入力してください。届かない場合は迷惑メールをご確認のうえ、担当営業へご連絡ください。"
+    },
+    "common": {
+      "relatedDocuments": "関連書類"
+    },
+    "home": {
+      "greeting": "{name} 様",
+      "activeOrders": "進行中の注文",
+      "recentDocuments": "最近の書類",
+      "viewAll": "すべて見る",
+      "nothingToShow": "表示できるものはまだありません。"
+    },
+    "nav": {
+      "menu": "メニュー"
     }
   },
   "master": {
@@ -7386,6 +7420,10 @@
       "storedToStock": "保管（在庫へ）",
       "deliveryNoteNote": "{status}・{recipient}",
       "confirmConfirmBody": "出荷書 {number} を確定します。確定後は編集できません。",
+      "autoNotesHeading": "確定すると次の納品書が自動で作成されます",
+      "autoNoteWithPrice": "価格記載あり",
+      "autoNoteWithoutPrice": "価格記載なし",
+      "autoNotesEndUserMissing": "エンドユーザーが特定できないため、価格記載なしの納品書は作成されません。注文請書のエンドユーザーを確認してください。",
       "confirmedBody": "出荷書 {number} を確定しました",
       "confirmShipBodyDispatch": "出荷書 {number} を出荷済みにします。注文明細の出荷状態も再計算されます。",
       "confirmShipBodyStock": "出荷書 {number} を出荷済みにします（在庫保管のため注文明細の出荷状態は変わりません）。",
@@ -7397,7 +7435,6 @@
       "onlySameDeliveryMethodCanBeCombined": "1 つの出荷書には同じ配送方法（通常配送 / ユーザー直送）の注文明細だけを載せられます",
       "stockStorageHasNoDeliveryNote": "在庫保管は納品書を作成しません",
       "onlySameEndUserCanBeCombined": "1 つの出荷書には同じ届け先（最終需要家）の注文明細だけを載せられます",
-      "confirmConfirmBodyDispatch": "出荷書 {number} を確定します。確定後は編集できません。納品書が自動で作成されます（ユーザー直送は価格記載なし・ありの 2 通）。",
       "confirmedBodyDispatch": "出荷書 {number} を確定し、納品書を作成しました",
       "coveredOrderAcceptances": "対象の注文請書",
       "shipTogetherTitle": "同じ注文請書の他の明細もまとめますか",
@@ -7775,6 +7812,14 @@
   "privilegedAccessGate": {
     "unknownOperation": "未知の特権操作です: {key}（lib/privileged-operations.ts に登録してください）",
     "operationRequiresApprovalSy0g": "この操作には承認が必要です（{label}）。特権アクセス（SY0G）から申請してください"
+  },
+  "privilegedNotify": {
+    "requestTitle": "特権アクセスの承認依頼: {subject}",
+    "requestMessage": "{name} / 理由: {reason}",
+    "approvedTitle": "特権アクセスの申請が承認されました: {subject}",
+    "rejectedTitle": "特権アクセスの申請が差し戻されました: {subject}",
+    "revokedTitle": "特権アクセスの付与が取り消されました: {subject}",
+    "approvedButNotApplied": "承認されましたが、変更を当てられませんでした: {error}"
   },
   "audit": {
     "emptyArray": "（なし）",
