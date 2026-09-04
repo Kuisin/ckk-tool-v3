@@ -39,9 +39,11 @@ The screen is split into an upper and a lower half.
 
 ## Choosing the apps that appear on the tablets
 
-1. Find the app you want in 「**ランチャーに表示するアプリ**」.
-2. Press the switch on the right to turn it on or off.
-3. Press 「**保存**」 (Save).
+**This list opens read-only.** It just shows which apps are currently on or off — there are no switches until you start editing.
+
+1. Press 「**編集**」 (Edit) at the top right of 「**ランチャーに表示するアプリ**」.
+2. Find the app you want and press the switch on the right to turn it on or off.
+3. Press 「**保存**」 (Save) — or 「キャンセル」 (Cancel) to drop the changes.
 
 ![Apps shown on the launcher](../../../assets/screenshots/kiosk-settings-apps-01.png)
 
@@ -53,7 +55,7 @@ Right now there are 2 apps available on the tablets: 「**工程実行**」 (Ste
 
 Under each app name you will see text such as 「**権限コード: work_order**」 (Permission code: work_order). This tells you which permission a person needs in order to use that app. Even if the switch is on, the app will not appear for a person who does not have that permission.
 
-> 💡 Nothing changes until you press 「保存」. Please be careful not to forget it.
+> 💡 Nothing changes until you press 「保存」. Please be careful not to forget it. Saving returns the panel to the read-only view.
 
 ## Checking the login rules
 

@@ -33,7 +33,7 @@ When you open the app, you see a list of the quotes made so far.
 ![Quote list screen](../../../assets/screenshots/quote-list-01.png)
 
 - **見積番号 (quote number)** … a number starting with `QOT-`. The system adds it for you.
-- **状態 (status)** … a colored badge shows where the quote stands. Gray is 「下書き」(draft), blue is 「発行済」(issued), green is 「受諾済」(accepted).
+- **状態 (status)** … a colored badge shows where the quote stands. Gray is 「下書き」(draft), blue is 「発行済」(issued), orange is 「期限切れ」(expired — issued and past its valid-until date).
 - Type a quote number or a customer name in the search box at the top to narrow down the list.
 - Click a row to open the detail screen for that quote.
 
@@ -88,16 +88,13 @@ Open the PDF tab to view the finished quote, or download it and print it. After 
 
 ## Recording what happens after issuing
 
-When the customer replies, change the status of the quote to keep a record.
+**There is nothing to record on the quote itself.** A quote has only two states: 「下書き」(draft) and 「発行済」(issued).
 
-1. Press「**編集**」(edit) at the top right.
-2. Choose a new value in the「**状態**」(status) field.
-   - You received the order → 「**受諾済**」(accepted)
-   - The customer declined → 「**却下**」(rejected)
-   - The date has passed → 「**期限切れ**」(expired)
-3. Press「**保存**」(save).
+- **Whether you won the order** … when you create an [order acceptance](/manual/en/operations/sales/order-acceptance/user) and pick this quote, the order acceptance appears under 「**手続き状況**」(progress) → 「**次の書類へ**」(to). The existence of that order acceptance *is* the record, so nothing needs to be marked on the quote.
+- **If the customer declines** … do nothing. No order acceptance is created, and the quote turns 「期限切れ」(expired) once its valid-until date passes.
+- **When the date passes** … this is not something you set. An issued quote past its valid-until date shows as 「**期限切れ**」(expired) from that day on.
 
-> 💡 If you enter this quote number while working on an [order acceptance](/manual/en/operations/sales/order-acceptance/user), the quote becomes 「受諾済」(accepted) automatically. You do not need to change it by hand.
+> 💡 **An issued quote cannot be edited.** To change it, duplicate it and make a new one (see "Making a similar quote" below). A quote already in the customer's hands must not change underneath them.
 
 ## Making a similar quote
 
@@ -142,11 +139,11 @@ Your company's sales person in charge of this quote. Choosing the customer fills
 
 ### Valid until [#field-valid-until]
 
-The last day this quote is valid. Past that date the quote can be treated as expired in the list. It may be left empty.
+The last day this quote is valid. **An issued quote past this date shows as 「期限切れ」(expired) automatically**, in the list and on the detail screen — nobody has to act. It may be left empty, in which case the quote never expires.
 
 ### Status [#field-status]
 
-Where the quote stands now. A new quote starts as a draft. To make it ready for the customer, use **Issue** on the screen rather than changing this field.
+Where the quote stands now. **It is not a field you choose.** A new quote starts as a draft and becomes issued when you press **Issue**. Only those two are stored; 「期限切れ」(expired) is derived from the valid-until date.
 
 ### Product [#field-product]
 
@@ -187,14 +184,17 @@ A. The price list for that customer and that product is not registered yet. Firs
 **Q. I changed the customer and the amount changed.**
 A. That is normal. Prices are decided per customer, so when you change the customer, the amounts are calculated again with that customer's price list.
 
-**Q. The valid-until date has passed but the status is still「発行済」(issued).**
-A. The status does not change by itself when the date passes. Use「編集」(edit) to change it to「期限切れ」(expired).
+**Q. What happens to a quote once its valid-until date passes?**
+A. It shows as 「**期限切れ**」(expired) from that day on. Nothing to do — expiry is worked out from the date every time it is displayed, so it becomes correct the moment the deadline passes.
 
 **Q. I increased the quantity and the unit price went down.**
 A. That is normal. If the price list is set so that a larger order makes each piece cheaper, the unit price changes with the quantity.
 
 **Q. I issued a quote by mistake.**
-A. There is no way to undo an issue. If the contents are wrong, make a new quote with the correct contents (duplicating is handy) and set the wrong one to「却下」(rejected) so it is easy to tell apart.
+A. There is no way to undo an issue, and **an issued quote cannot be edited either**. Use 「複製」(duplicate) from the「…」menu at the top right to make a corrected quote and send that one instead. The wrong one turns 「期限切れ」(expired) once its valid-until date passes. A note in 備考 (notes) helps whoever reads it later.
+
+**Q. There is no「編集」(edit) button on an issued quote.**
+A. That is intended. A quote already sent to the customer must not change underneath them. Duplicate it and make a new one.
 
 <!-- permissions:start -->
 ## Permissions required

@@ -149,7 +149,7 @@ Once approved, the card at the very top of the screen says「**確定できま�
 
 One 注文明細 (order line) is made per line item. The numbers follow the order acceptance number with `-01`, `-02` and so on. You can open the order lines that were made from the「**生成された注文明細**」(generated order lines) links on the screen, or from「**注文明細一覧**」(order line list) at the top right of the list screen.
 
-If you chose a quote, that [quote](/manual/en/operations/sales/quote/user) becomes 「受諾済」(accepted) automatically if it is 「発行済」(issued) — a quote still in draft is left unchanged.
+If you chose a quote, this order acceptance appears on that [quote](/manual/en/operations/sales/quote/user) under 「**手続き状況**」(progress) → 「**次の書類へ**」(to). The quote's own status does not change — whether you won the order is read from whether an order acceptance exists.
 
 After deployment, a card 「**次のステップ: 出荷書の作成**」 (next step: create the delivery order) appears at the top. Pressing 「**出荷書を作成**」 opens the [delivery order](/manual/en/operations/shipping/delivery-order/user) form with this order acceptance's shippable lines already loaded.
 
@@ -212,7 +212,7 @@ The number printed on the customer's own order document. It is what you search b
 
 ### Quote [#field-quote-number]
 
-The quote this order came from. Search for it and choose it (with a customer chosen, only that customer's quotes are listed). If it is set, that quote becomes 「受諾済」(accepted) automatically on deployment, provided it is 「発行済」(issued).
+The quote this order came from. Search for it and choose it (with a customer chosen, only that customer's quotes are listed). Setting it lets you reach this order acceptance from that quote's 「手続き状況」(progress) panel.
 
 ### Order date [#field-order-date]
 

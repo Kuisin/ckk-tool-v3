@@ -46,6 +46,8 @@ Settings for your own account. Open them from the avatar menu (top right) → **
 
 Use **Home Screen Settings** in the avatar menu to customize your home screen layout.
 
+**This screen opens read-only.** It lists your current favorites and display mode; press 「**編集**」(edit) at the top right to change them. Pressing save returns it to the read-only view.
+
 - **Favorite apps** — click the cards to select apps; they appear together as "Favorites" at the top of the home screen, in the order you selected them.
 - **Display mode** — switch between **Standard (by category)** and **Custom (by group)**. In custom mode, apps are arranged by the groups you create; apps not assigned to any group are collected under "Other".
 - **Custom groups** — type a name into "New group" to add one. Each group can be renamed, moved up/down, or deleted, and you choose which apps belong to it (an app can belong to at most one group; apps already in another group cannot be selected).
@@ -55,6 +57,8 @@ Use **Home Screen Settings** in the avatar menu to customize your home screen la
 ## Display settings
 
 Use **Display Settings** in the avatar menu to change the language, how dates and times are shown, and how large text is. These apply to **your account only** — language and date/time also apply to the shop-floor tablets (kiosk), while text size and bold text are web only.
+
+This screen also opens read-only. Press 「**編集**」(edit) at the top right to reveal the fields and the preview.
 
 - **Language** — 日本語 / English / 中文.
 - **Date format** — `2026/03/05`, `2026-03-05`, `05/03/2026` or `03/05/2026`.
@@ -71,9 +75,11 @@ Your choices appear immediately in the **Preview** below, so you can check them 
 
 > 💡 **Leave the page without saving and the text size returns to what it was**, so you can try a size before committing to it.
 
-### Some screens are still in Japanese
+### Changing the language switches every screen
 
-Even with English or 中文 selected, **screens that are not translated yet stay in Japanese** — this is expected, not a fault. Today the top-right menu, the notification panel and this display-settings screen switch. The date, time and time-zone settings apply to every screen from the start.
+The interface text of both the web app and the shop-floor tablets (kiosk) is **complete in all three languages**. The date, time and time-zone settings apply to every screen as well.
+
+What is *not* translated is **the data you enter in the master screens** — product names, business partner names, process names, role names and so on appear in the language they were registered in. Each master screen has a 「多言語」(translations) button for entering them per language.
 
 ### PDFs do not follow these settings
 
