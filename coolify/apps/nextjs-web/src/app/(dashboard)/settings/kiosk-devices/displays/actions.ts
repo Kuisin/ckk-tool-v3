@@ -439,7 +439,15 @@ export async function updateDisplay(raw: {
     await prisma.displayDevice.update({
       where: { id },
       data: {
-        name: localizedInput(nameJa, nameEn),
+        // 名前だけ直す画面（詳細）は nameEn を送らない。そのとき英名を ja で
+        // 上書きしてしまわないよう、渡されなかった言語は今の値を残す。
+        name:
+          nameEn === undefined
+            ? {
+                ...((before.name as Record<string, string> | null) ?? {}),
+                ja: nameJa,
+              }
+            : localizedInput(nameJa, nameEn),
         location: location || null,
         plantId: plantId ?? null,
         ...content,

@@ -456,7 +456,7 @@ export function codeForOperation(key: string): ElevationCode | null {
 /** 表示用（承認画面・履歴）。未知のキーはキーをそのまま出す — 空白より読める。 */
 export function operationLabel(
   key: string,
-  locale: "ja" | "en" = "ja",
+  locale: "ja" | "en" | "zh" = "ja",
 ): string {
   const op = findOperation(key);
   return op ? op.label[locale] : key;

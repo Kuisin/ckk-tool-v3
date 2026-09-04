@@ -18,6 +18,7 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { normalizeLocale } from "@/lib/i18n";
 import { validateRequestWindow } from "@/lib/privileged-access-core";
 import {
   notifyPrivilegedDecided,
@@ -122,7 +123,7 @@ export async function requestPrivilegedAccess(
     if (op.code !== v.code) {
       return actionError(
         tr("settings.privilegedAccessActions.mixedPermissionsInOneRequest", {
-          label: op.label.ja,
+          label: op.label[normalizeLocale(await getLocale())],
         }),
       );
     }
@@ -130,7 +131,7 @@ export async function requestPrivilegedAccess(
     if (!authz.ok) {
       return actionError(
         tr("settings.privilegedAccessActions.operationCannotBeRequested", {
-          label: op.label.ja,
+          label: op.label[normalizeLocale(await getLocale())],
         }),
       );
     }
