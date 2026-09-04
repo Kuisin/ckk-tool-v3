@@ -19,6 +19,7 @@ import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatOrderLineNumber, formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { LINE_CONSUMING_DELIVERY_ORDER_WHERE } from "@/lib/order-line-core";
 import { distributeFinished } from "@/lib/work-order-alloc-core";
 import {
   computeFinishedQuantity,
@@ -107,7 +108,11 @@ export async function fetchUnshippedOrderLines(): Promise<
         orderBy: { workOrder: { workOrderNumber: "asc" } },
       },
       // 出荷書に載っている数量（下書きも「もう手配済み」として数える）。
-      deliveryItems: { select: { quantity: true } },
+      // 条件は出荷書の過出荷ガードと同じ（LINE_CONSUMING_DELIVERY_ORDER_WHERE）。
+      deliveryItems: {
+        where: { deliveryOrder: LINE_CONSUMING_DELIVERY_ORDER_WHERE },
+        select: { quantity: true },
+      },
     },
     orderBy: [
       { acceptanceYearMonth: "desc" },

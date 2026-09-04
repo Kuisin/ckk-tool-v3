@@ -1993,7 +1993,8 @@
       "exportedAtLabel": "エクスポート済・{dateTime}",
       "taxLabelReduced": "消費税（8%）",
       "taxLabelExempt": "消費税（非課税）",
-      "taxLabelStandard": "消費税（10%）"
+      "taxLabelStandard": "消費税（10%）",
+      "yayoiAccountingCsvAgain": "弥生会計CSV（再出力）"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "請求書 {invoiceNumber} を発行します。発行日は本日で記録されます。",
@@ -7534,7 +7535,8 @@
       "productNotInShipment": "{label} は出荷書に含まれていません",
       "quantityMustBeAtLeastOne": "数量は1以上",
       "selectEndUserForDirectToUser": "ユーザー直送では最終需要家を選択してください",
-      "updateFailed": "納品書の更新に失敗しました"
+      "updateFailed": "納品書の更新に失敗しました",
+      "deliveryOrderNotShipped": "出荷書が出荷済みになるまで納品済みにできません"
     },
     "deliveryOrderActions": {
       "cancelFailed": "キャンセルに失敗しました",
@@ -7556,7 +7558,9 @@
       "shippedNotificationTitle": "出荷書 {number} を出荷しました",
       "specifyAConfirmedOrderLine": "確定済みの注文明細を指定してください",
       "updateFailed": "出荷書の更新に失敗しました",
-      "autoCreatedNote": "出荷書の確定により自動作成（発行済）"
+      "autoCreatedNote": "出荷書の確定により自動作成（発行済）",
+      "orderLineNotShippable": "注文明細 {number} は出荷できる状態ではありません（確定済みでキャンセルされていない明細のみ）",
+      "productMismatch": "明細 {line} 行目: 製品が注文明細 {number} の製品と一致しません"
     }
   },
   "ui": {

@@ -2,11 +2,13 @@
  * closing.ts — 締日処理のバッチコア（監査 P2-4）。server-only.
  *
  * UI の runClosing（権限チェック付き Server Action）と、instrumentation の
- * 日次スケジューラ（CLOSING_AUTORUN=1 のとき JST 06 時台に当月分を実行）
+ * 日次スケジューラ（CLOSING_AUTORUN=1 のとき JST 06 時台に当月分を実行。
+ * 月初 3 日間は前月分も実行する — 月末の 06 時以降の出荷を拾うため）
  * の両方から使う。冪等 — 既処理（PENDING 以外）の締日はスキップ。
  */
 
 import { collectClosingCandidates } from "@/app/(dashboard)/billing/closings/data";
+import { autorunTargetMonths } from "@/components/billing/closings/model";
 import { recordAudit } from "./audit";
 import { prisma } from "./db";
 
@@ -87,7 +89,8 @@ let lastAutorunDate: string | null = null;
 
 /**
  * 日次オートラン判定 + 実行（instrumentation から毎時呼ばれる）。
- * JST 06 時台に 1 日 1 回、当月分を実行。CLOSING_AUTORUN=1 のときのみ。
+ * JST 06 時台に 1 日 1 回、当月分（月初 3 日間は前月分も）を実行。
+ * CLOSING_AUTORUN=1 のときのみ。
  */
 export async function maybeRunDailyClosing(): Promise<void> {
   if (process.env.CLOSING_AUTORUN !== "1") return;
@@ -104,13 +107,17 @@ export async function maybeRunDailyClosing(): Promise<void> {
   if (get("hour") !== "06" || lastAutorunDate === today) return;
   lastAutorunDate = today;
   try {
-    const result = await runClosingBatch(
+    const targets = autorunTargetMonths(
       Number(get("year")),
       Number(get("month")),
+      Number(get("day")),
     );
-    console.log(
-      `[closing] 日次オートラン ${today}: 作成 ${result.created} / 更新 ${result.updated} / スキップ ${result.skipped}`, // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
-    );
+    for (const t of targets) {
+      const result = await runClosingBatch(t.year, t.month);
+      console.log(
+        `[closing] 日次オートラン ${today} 対象 ${t.year}-${String(t.month).padStart(2, "0")}: 作成 ${result.created} / 更新 ${result.updated} / スキップ ${result.skipped}`, // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
+      );
+    }
   } catch (e) {
     console.error("[closing] 日次オートラン失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
   }

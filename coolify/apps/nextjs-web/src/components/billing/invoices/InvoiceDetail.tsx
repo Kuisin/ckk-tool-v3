@@ -304,13 +304,23 @@ export function InvoiceDetail({
                   },
                 ]
               : []),
-            {
-              label: tr("billing.invoices.yayoiAccountingCsv"),
-              icon: <IconFileSpreadsheet size={14} />,
-              divider: true,
-              // 実アンカーで別タブへ（PWA でもアプリ内ブラウザで開く）。
-              href: `/api/export/yayoi?invoice=${invoice.invoiceNumber}`,
-            },
+            // 弥生 CSV は発行後のみ（下書きはルートも 409）。エクスポート済みは
+            // 再出力と明示し、ルートの二重出力ガードを force=1 で通す。
+            ...(invoice.status !== "DRAFT"
+              ? [
+                  {
+                    label: invoice.yayoiExportedAt
+                      ? tr("billing.invoices.yayoiAccountingCsvAgain")
+                      : tr("billing.invoices.yayoiAccountingCsv"),
+                    icon: <IconFileSpreadsheet size={14} />,
+                    divider: true,
+                    // 実アンカーで別タブへ（PWA でもアプリ内ブラウザで開く）。
+                    href: `/api/export/yayoi?invoice=${invoice.invoiceNumber}${
+                      invoice.yayoiExportedAt ? "&force=1" : ""
+                    }`,
+                  },
+                ]
+              : []),
           ]}
           pdf={canViewPdf ? { href: pdfUrl() } : undefined}
         />

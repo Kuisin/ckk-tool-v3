@@ -91,3 +91,98 @@ export function closingDateFor(
 export function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 86_400_000);
 }
+
+// ── 請求期間（前回締日, 今回締日] ───────────────────────────────────────────
+//
+// 顧客の請求期間は暦月ではなく **前回の締日の翌日 〜 今回の締日** で切る。
+// 「月初〜締日」で切ると、締日より後の出荷はその月にも翌月（翌月も月初から
+// 数える）にも入らず、どの締めにも拾われないまま請求されない。
+//
+// 締日は暦日（@db.Date = UTC 0 時の Date）で持つが、shipped_at は時刻を持つ
+// タイムスタンプなので、境界は **JST の 0 時**（= UTC 前日 15:00）に置く。
+// UTC 0 時で切ると JST 0〜9 時の出荷が前日の側に落ちる。
+
+/** JST（UTC+9）— 帳票・締日の暦日を決める時計。 */
+const JST_OFFSET_MS = 9 * 3_600_000;
+
+/** 暦日（UTC 0 時の Date）→ その暦日の JST 0 時を表す瞬間。 */
+export function jstMidnightOf(calendarDate: Date): Date {
+  return new Date(calendarDate.getTime() - JST_OFFSET_MS);
+}
+
+/** 前月の締日（暦日）。1 月なら前年 12 月。月末指定（31/null）は前月の月末。 */
+export function previousClosingDate(
+  year: number,
+  month: number,
+  closingDay: number | null | undefined,
+): Date {
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevMonth = month === 1 ? 12 : month - 1;
+  return closingDateFor(prevYear, prevMonth, closingDay);
+}
+
+/** 請求期間の開始日（暦日）= 前回締日の翌日。invoices.billing_period_from。 */
+export function billingPeriodStart(
+  year: number,
+  month: number,
+  closingDay: number | null | undefined,
+): Date {
+  return addDays(previousClosingDate(year, month, closingDay), 1);
+}
+
+export interface BillingWindow {
+  /** 今回の締日（暦日）。 */
+  closingDate: Date;
+  /** shipped_at の下限（含む）= 前回締日の翌日 JST 0 時。 */
+  gte: Date;
+  /** shipped_at の上限（含まない）= 今回締日の翌日 JST 0 時。 */
+  lt: Date;
+}
+
+/**
+ * 顧客 × 対象月の請求期間 — shipped_at が [gte, lt) なら今回の締めに入る。
+ * closingDay は顧客の締日設定（1–31、31/null = 月末）。
+ */
+export function billingWindowFor(
+  year: number,
+  month: number,
+  closingDay: number | null | undefined,
+): BillingWindow {
+  const closingDate = closingDateFor(year, month, closingDay);
+  return {
+    closingDate,
+    gte: jstMidnightOf(billingPeriodStart(year, month, closingDay)),
+    lt: jstMidnightOf(addDays(closingDate, 1)),
+  };
+}
+
+/** shipped_at が請求期間に入るか。 */
+export function inBillingWindow(
+  shippedAt: Date,
+  window: Pick<BillingWindow, "gte" | "lt">,
+): boolean {
+  return shippedAt >= window.gte && shippedAt < window.lt;
+}
+
+/**
+ * 月初の何日目までは日次オートランで前月分も走らせるか。締日当日（月末）の
+ * 06 時以降に出荷された分は当日のオートランに間に合わないので、翌月に入って
+ * から前月の締めをもう一度集計して拾う（PROCESSED 済みの締日はスキップされる）。
+ */
+export const PREVIOUS_MONTH_GRACE_DAYS = 3;
+
+/** その日の日次オートランが走らせる対象月（前月 → 当月の順）。 */
+export function autorunTargetMonths(
+  year: number,
+  month: number,
+  day: number,
+): { year: number; month: number }[] {
+  const targets: { year: number; month: number }[] = [];
+  if (day <= PREVIOUS_MONTH_GRACE_DAYS) {
+    targets.push(
+      month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 },
+    );
+  }
+  targets.push({ year, month });
+  return targets;
+}

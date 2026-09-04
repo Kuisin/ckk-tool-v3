@@ -1993,7 +1993,8 @@
       "exportedAtLabel": "已导出・{dateTime}",
       "taxLabelReduced": "消费税（8%）",
       "taxLabelExempt": "消费税（免税）",
-      "taxLabelStandard": "消费税（10%）"
+      "taxLabelStandard": "消费税（10%）",
+      "yayoiAccountingCsvAgain": "弥生会计 CSV（重新导出）"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "将发行请款单 {invoiceNumber}，发行日期记为今天。",
@@ -7534,7 +7535,8 @@
       "productNotInShipment": "{label} 不在出货单中",
       "quantityMustBeAtLeastOne": "数量须为 1 以上",
       "selectEndUserForDirectToUser": "直送最终用户时请选择最终用户",
-      "updateFailed": "送货单更新失败"
+      "updateFailed": "送货单更新失败",
+      "deliveryOrderNotShipped": "出货单变为已出货之前，无法标记为已交货"
     },
     "deliveryOrderActions": {
       "cancelFailed": "取消失败",
@@ -7556,7 +7558,9 @@
       "shippedNotificationTitle": "出货单 {number} 已出货",
       "specifyAConfirmedOrderLine": "请指定已确定的订单明细",
       "updateFailed": "出货单更新失败",
-      "autoCreatedNote": "出货单确认时自动创建（已发行）"
+      "autoCreatedNote": "出货单确认时自动创建（已发行）",
+      "orderLineNotShippable": "订单明细 {number} 不在可出货状态（仅限已确定且未取消的明细）",
+      "productMismatch": "第 {line} 行：产品与订单明细 {number} 的产品不一致"
     }
   },
   "ui": {

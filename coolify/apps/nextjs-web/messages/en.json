@@ -1993,7 +1993,8 @@
       "exportedAtLabel": "Exported at {dateTime}",
       "taxLabelReduced": "Consumption tax (8%)",
       "taxLabelExempt": "Consumption tax (exempt)",
-      "taxLabelStandard": "Consumption tax (10%)"
+      "taxLabelStandard": "Consumption tax (10%)",
+      "yayoiAccountingCsvAgain": "Yayoi accounting CSV (export again)"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "This issues invoice {invoiceNumber}. The issue date is recorded as today.",
@@ -7534,7 +7535,8 @@
       "productNotInShipment": "{label} is not included in the delivery order",
       "quantityMustBeAtLeastOne": "Quantity must be 1 or more",
       "selectEndUserForDirectToUser": "Select an end user for direct-to-user delivery",
-      "updateFailed": "Could not update the delivery note"
+      "updateFailed": "Could not update the delivery note",
+      "deliveryOrderNotShipped": "The delivery order must be shipped before the note can be marked delivered"
     },
     "deliveryOrderActions": {
       "cancelFailed": "Could not cancel",
@@ -7556,7 +7558,9 @@
       "shippedNotificationTitle": "Delivery order {number} has shipped",
       "specifyAConfirmedOrderLine": "Specify a confirmed order line",
       "updateFailed": "Could not update the delivery order",
-      "autoCreatedNote": "Auto-created (issued) when the delivery order was confirmed"
+      "autoCreatedNote": "Auto-created (issued) when the delivery order was confirmed",
+      "orderLineNotShippable": "Order line {number} cannot be shipped (only confirmed, non-cancelled lines)",
+      "productMismatch": "Line {line}: the product does not match order line {number}"
     }
   },
   "ui": {

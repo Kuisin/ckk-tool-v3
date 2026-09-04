@@ -12,6 +12,8 @@
  * 文字化け防止も兼ねる）。改行は CRLF。
  */
 
+import { documentFormatters } from "./format";
+
 /** UTF-8 BOM — 出力 CSV の先頭に必ず付与する。 */
 export const YAYOI_CSV_BOM = "﻿";
 
@@ -55,10 +57,13 @@ export function csvField(value: string | number): string {
   return s;
 }
 
-/** ISO 文字列 / Date → 弥生の日付形式 `yyyy/mm/dd`。 */
+/**
+ * ISO 文字列 / Date → 弥生の日付形式 `yyyy/mm/dd`（**JST の暦日**）。
+ * 帳票と同じ固定フォーマッタ（documentFormatters）を通す — ISO 文字列を
+ * 切り出すと UTC の日付になり、JST 0〜9 時の発行が前日の仕訳になる。
+ */
 function yayoiDate(date: string | Date): string {
-  const iso = date instanceof Date ? date.toISOString() : date;
-  return iso.slice(0, 10).replace(/-/g, "/");
+  return documentFormatters.date(date);
 }
 
 /**
