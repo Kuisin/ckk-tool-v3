@@ -158,6 +158,3 @@ async function main() {
   process.exit(fails ? 1 : 0);
 }
 main();
-
-import { chromium, type Page } from "@playwright/test";
-
