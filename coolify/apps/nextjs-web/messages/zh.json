@@ -6711,6 +6711,7 @@
       "viewTheBreakdown": "查看明细",
       "didYouMean": "您是否要找",
       "selectACustomer": "请选择客户",
+      "shipToOnlyForNormalDelivery": "直送最终用户时不使用（送达对象为最终用户）",
       "createADraft": "创建草稿",
       "createAnOrderAcceptanceByHand": "手动创建订单确认书",
       "createsTheOrderAcceptanceDirectlyWithout": "不使用订单自动导入，直接创建订单确认书（保存为草稿）。",
@@ -8401,7 +8402,7 @@
       },
       "shipTo": {
         "label": "送货对象",
-        "summary": "产品的送达地点。当需要送达至下单客户以外的公司或分公司时选择。留空则表示送达至该客户本身。"
+        "summary": "产品的送达地点。当需要送达至下单客户以外的公司或分公司时选择。留空则表示送达至该客户本身。仅用于常规配送 —— 直送最终用户时无法选择（送达对象为最终用户）。"
       },
       "deliveryMethod": {
         "label": "配送方式",

@@ -185,7 +185,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 | [顧客注文書番号](#field-customer-order-ref) | 任意 | お客様側の注文書の番号 |
 | [見積書](#field-quote-number) | 任意 | もとになった見積書 |
 | [注文日](#field-order-date) | 任意 | お客様が注文した日 |
-| [出荷先](#field-ship-to) | 任意 | 製品の届け先 |
+| [出荷先](#field-ship-to) | 任意（通常配送のみ） | 製品の届け先 |
 | [配送方法](#field-delivery-method) | 必須 | 通常配送 / ユーザー直送 |
 | [エンドユーザー](#field-end-user) | 直送時必須 | ユーザー直送の届け先（最終需要家） |
 | [担当拠点](#field-assigned-plant) | 任意 | この注文を処理する拠点 |
@@ -223,6 +223,8 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 ### 出荷先 [#field-ship-to]
 
 製品の届け先です。注文をくれたお客様と**別の会社・支店に届けるとき**に選びます。空のままなら、お客様へ届けるという意味です。
+
+**通常配送のときだけ**の欄です。配送方法を「ユーザー直送」にすると灰色になり、選べません — 直送の届け先は[エンドユーザー](#field-end-user)だからです（届け先が 2 つある書類を作らないため。直送に切り替えると、それまで選んでいた出荷先は消えます）。
 
 ### 配送方法 [#field-delivery-method]
 
