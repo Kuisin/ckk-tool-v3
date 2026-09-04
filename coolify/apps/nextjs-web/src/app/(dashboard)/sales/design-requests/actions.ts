@@ -48,6 +48,7 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { designRequestInScope } from "./data";
 
 const BASE_PATH = "/sales/design-requests";
 const APPROVALS_PATH = "/general/tasks";
@@ -265,6 +266,22 @@ async function notifySafe(input: {
  * 出すだけで、**保存する値を決めるのは createDesignRequest / updateDesignRequest
  * の中の detectDesignKind**（画面の表示と保存が食い違っても、保存側が正）。
  */
+
+/**
+ * 書き込み側の行スコープ（読み側 data.ts と同じ規則: ALL は素通し、それ以外は
+ * 起票者か担当者だけ）。番号は連番で推測できるので、権限コードだけでは
+ * 自分に見えない依頼を更新・完了・キャンセルできてしまう。
+ */
+function deniedByScope<T = void>(
+  authz: { access: Parameters<typeof designRequestInScope>[0]; userId: string },
+  row: { createdBy: string | null; assigneeId: string | null },
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): ActionResult<T> | null {
+  return designRequestInScope(authz.access, row, authz.userId)
+    ? null
+    : actionError(tr("common.scopeDenied"));
+}
+
 export async function fetchKindContextAction(
   productId: string,
   customerBpId: string | null = null,
@@ -400,12 +417,15 @@ export async function updateDesignRequest(
       select: {
         productId: true,
         assigneeId: true,
+        createdBy: true,
         description: true,
         kind: true,
         history: true,
       },
     });
     if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
+    const scoped = deniedByScope(authz, prior, tr);
+    if (scoped) return scoped;
     // 製品や受注元が変われば区分を判定し直す。編集できるのは承認に出す前だけ
     // なので、ここで動いても承認済みのルートと食い違わない。
     const customerBpId = trimOrNull(v.customerBpId);
@@ -503,9 +523,11 @@ export async function setDesignAssignee(
     const actor = await getCurrentActorId();
     const prior = await prisma.designRequest.findUnique({
       where: { requestNumber: number },
-      select: { assigneeId: true, history: true },
+      select: { assigneeId: true, createdBy: true, history: true },
     });
     if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
+    const scoped = deniedByScope(authz, prior, tr);
+    if (scoped) return scoped;
     const updated = await prisma.designRequest.updateMany({
       where: {
         requestNumber: number,
@@ -568,6 +590,8 @@ export async function requestDesignApproval(
       where: { requestNumber: number },
     });
     if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
+    const scoped = deniedByScope(authz, prior, tr);
+    if (scoped) return scoped;
     if (prior.status !== "DRAFT" && prior.status !== "REJECTED") {
       return actionError(
         tr("sales.designRequestActions.onlyDraftOrRejectedCanRequestApproval"),
@@ -770,6 +794,8 @@ export async function cancelDesign(
       where: { requestNumber: number },
     });
     if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
+    const scoped = deniedByScope(authz, prior, tr);
+    if (scoped) return scoped;
     if (prior.status === "COMPLETED" || prior.status === "CANCELLED") {
       return actionError(
         tr("sales.designRequestActions.onlyBeforeCompletionCanBeCancelled"),
@@ -836,9 +862,11 @@ export async function startDesign(number: string): Promise<ActionResult> {
     const actor = await getCurrentActorId();
     const prior = await prisma.designRequest.findUnique({
       where: { requestNumber: number },
-      select: { createdBy: true, history: true },
+      select: { createdBy: true, assigneeId: true, history: true },
     });
     if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
+    const scoped = deniedByScope(authz, prior, tr);
+    if (scoped) return scoped;
     const updated = await prisma.designRequest.updateMany({
       where: { requestNumber: number, status: "PENDING" },
       data: {
@@ -902,6 +930,7 @@ export async function completeDesign(number: string): Promise<ActionResult> {
       select: {
         id: true,
         createdBy: true,
+        assigneeId: true,
         history: true,
         kind: true,
         baseDesignFileId: true,
@@ -909,6 +938,8 @@ export async function completeDesign(number: string): Promise<ActionResult> {
       },
     });
     if (!request) return actionError(tr("sales.designRequestActions.notFound"));
+    const scoped = deniedByScope(authz, request, tr);
+    if (scoped) return scoped;
 
     // 成果物（この依頼から出来た版）。1 版に複数ファイルが載るので、
     // 版番号の種類数で「何版ぶんか」を数える。
@@ -1022,9 +1053,11 @@ export async function reopenDesign(number: string): Promise<ActionResult> {
     const actor = await getCurrentActorId();
     const prior = await prisma.designRequest.findUnique({
       where: { requestNumber: number },
-      select: { assigneeId: true, history: true },
+      select: { assigneeId: true, createdBy: true, history: true },
     });
     if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
+    const scoped = deniedByScope(authz, prior, tr);
+    if (scoped) return scoped;
     const updated = await prisma.designRequest.updateMany({
       where: { requestNumber: number, status: "COMPLETED" },
       data: {
