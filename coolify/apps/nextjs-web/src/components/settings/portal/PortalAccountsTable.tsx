@@ -35,6 +35,7 @@ import {
   deactivatePortalAccount,
   issueBackupCodes,
 } from "@/app/(dashboard)/settings/portal/actions";
+import { PortalGuideButton } from "@/components/settings/portal/PortalGuideButton";
 import type { PortalAccountRow } from "@/lib/portal-admin";
 
 type Option = { value: string; label: string };
@@ -212,6 +213,13 @@ export function PortalAccountsTable({
                           {tr("settings.portal.enable")}
                         </Button>
                       )}
+                      {a.isActive ? (
+                        <PortalGuideButton
+                          accountId={a.id}
+                          compact
+                          label={tr("settings.portalGuide.guide")}
+                        />
+                      ) : null}
                       <Button
                         disabled={!canIssueBackup}
                         loading={pending}

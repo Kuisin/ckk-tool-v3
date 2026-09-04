@@ -110,8 +110,14 @@ const DENY = (reason: PortalDenyReason): PortalAccess => ({
   responseScope: { all: false, conditions: [] },
 });
 
-/** 有効な行か（期限切れ・失効を落とす）。 */
-function isLive(now: Date, row: PortalGrantRow): boolean {
+/**
+ * 有効な行か（期限切れ・失効を落とす）。
+ *
+ * 判定（resolvePortalAccess）と表示（案内 PDF の「ご覧いただけるもの」）が
+ * **同じ規則で数える**ように export している —— 紙に「見られます」と書いた
+ * ものが実際には期限切れ、が起きないため。
+ */
+export function isLivePortalGrant(now: Date, row: PortalGrantRow): boolean {
   if (row.revokedAt) return false;
   if (row.expiresAt && now.getTime() >= row.expiresAt.getTime()) return false;
   return true;
@@ -181,7 +187,7 @@ export function resolvePortalAccess(
   for (const row of grants) {
     const known = (PORTAL_GRANT_KINDS as readonly string[]).includes(row.kind);
     if (known) sawKnownKind = true;
-    if (!isLive(now, row)) continue;
+    if (!isLivePortalGrant(now, row)) continue;
     sawLiveRow = true;
     if (!known) continue;
     if (!matches(row, target)) continue;
@@ -232,7 +238,7 @@ export function portalScopeBpIds(
   const documents = new Map<PortalResourceType, Set<string>>();
 
   for (const row of grants) {
-    if (!isLive(now, row)) continue;
+    if (!isLivePortalGrant(now, row)) continue;
     if (row.kind === "BP_SCOPE") {
       for (const id of row.bpIds ?? []) {
         customer.add(id);
