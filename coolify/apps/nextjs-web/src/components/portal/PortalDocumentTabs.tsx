@@ -1,12 +1,30 @@
 "use client";
 
-import { Anchor, Badge, Table, Tabs, Text } from "@mantine/core";
+/**
+ * 書類の一覧（種別ごとのタブ）。
+ *
+ * タブは `AppTabs` を通す（design.md §10.11）—— 4 種別あるので、狭い画面では
+ * 横並びをやめてドロップダウンになる。横スクロールにすると、いま開いている
+ * タブが画面の外に隠れる。
+ */
+
+import { Badge, Tabs, Text } from "@mantine/core";
 import { useTranslations } from "next-intl";
+import {
+  PortalList,
+  type PortalListColumn,
+} from "@/components/portal/PortalList";
+import { AppTabs } from "@/components/ui/AppTabs";
+import { formatMoney } from "@/lib/format";
 import type { PortalDocumentListItem } from "@/lib/portal-documents";
 import {
   type PortalDocumentType,
   portalDocumentLabel,
 } from "@/lib/portal-documents-core";
+
+function href(type: PortalDocumentType, number: string): string {
+  return `/portal/documents/${type}/${encodeURIComponent(number)}`;
+}
 
 export function PortalDocumentTabs({
   groups,
@@ -14,9 +32,38 @@ export function PortalDocumentTabs({
   groups: { type: PortalDocumentType; items: PortalDocumentListItem[] }[];
 }) {
   const tr = useTranslations();
+  // 中身のあるタブを最初に開く（空のタブで迎えない）。
   const first = groups.find((g) => g.items.length > 0)?.type ?? groups[0]?.type;
+
+  const columns: PortalListColumn<PortalDocumentListItem>[] = [
+    {
+      key: "number",
+      header: tr("common.documentNumber"),
+      render: (d) => (
+        <Text ff="monospace" size="sm">
+          {d.number}
+        </Text>
+      ),
+    },
+    {
+      key: "issuedOn",
+      header: tr("common.date"),
+      render: (d) => <Text size="sm">{d.issuedOn?.slice(0, 10) ?? "—"}</Text>,
+    },
+    {
+      key: "amount",
+      header: tr("common.amount"),
+      align: "right",
+      render: (d) => (
+        <Text size="sm">
+          {d.totalAmount ? formatMoney(Number(d.totalAmount)) : "—"}
+        </Text>
+      ),
+    },
+  ];
+
   return (
-    <Tabs defaultValue={first}>
+    <AppTabs defaultValue={first}>
       <Tabs.List>
         {groups.map((g) => (
           <Tabs.Tab
@@ -37,51 +84,30 @@ export function PortalDocumentTabs({
 
       {groups.map((g) => (
         <Tabs.Panel key={g.type} pt="md" value={g.type}>
-          {g.items.length === 0 ? (
-            <Text c="dimmed" size="sm">
-              {tr("portal.documents.noneToShow", {
-                document: portalDocumentLabel(g.type, tr),
-              })}
-            </Text>
-          ) : (
-            <Table highlightOnHover striped withTableBorder>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>{tr("common.documentNumber")}</Table.Th>
-                  <Table.Th>{tr("common.date")}</Table.Th>
-                  <Table.Th ta="right">{tr("common.amount")}</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {g.items.map((d) => (
-                  <Table.Tr key={d.number}>
-                    <Table.Td>
-                      <Anchor
-                        href={`/portal/documents/${g.type}/${encodeURIComponent(d.number)}`}
-                        size="sm"
-                      >
-                        <Text ff="monospace" size="sm">
-                          {d.number}
-                        </Text>
-                      </Anchor>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm">{d.issuedOn?.slice(0, 10) ?? "—"}</Text>
-                    </Table.Td>
-                    <Table.Td ta="right">
-                      <Text size="sm">
-                        {d.totalAmount
-                          ? `¥${Number(d.totalAmount).toLocaleString("ja-JP")}`
-                          : "—"}
-                      </Text>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          )}
+          <PortalList
+            columns={columns}
+            empty={tr("portal.documents.noneToShow", {
+              document: portalDocumentLabel(g.type, tr),
+            })}
+            href={(d) => href(g.type, d.number)}
+            mobile={(d) => (
+              <>
+                <Text ff="monospace" fw={600} size="sm">
+                  {d.number}
+                </Text>
+                <Text c="dimmed" size="xs">
+                  {d.issuedOn?.slice(0, 10) ?? "—"}
+                  {d.totalAmount
+                    ? ` · ${formatMoney(Number(d.totalAmount))}`
+                    : ""}
+                </Text>
+              </>
+            )}
+            rowKey={(d) => d.number}
+            rows={g.items}
+          />
         </Tabs.Panel>
       ))}
-    </Tabs>
+    </AppTabs>
   );
 }

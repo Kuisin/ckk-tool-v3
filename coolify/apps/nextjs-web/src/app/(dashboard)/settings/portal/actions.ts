@@ -42,6 +42,17 @@ import {
 const BASE_PATH = "/settings/portal";
 
 /**
+ * 一覧とアカウント詳細（/settings/portal/[id]）の両方を作り直す。
+ *
+ * `revalidatePath(BASE_PATH)` だけだと**その 1 ページしか**無効化されないので、
+ * 詳細を開いたまま共有範囲を失効させても画面は古いまま残る。第 2 引数の
+ * "layout" でこの下の木ごと落とす。
+ */
+function revalidatePortal(): void {
+  revalidatePath(BASE_PATH, "layout");
+}
+
+/**
  * 機能そのものが有効か（src/config/dev-features.json）。
  *
  * AppAvailabilityGuard は**クライアント表示の速路**なので、サーバー側でも見る。
@@ -111,7 +122,7 @@ export async function createPortalAccount(
         isActive: false,
       },
     });
-    revalidatePath(BASE_PATH);
+    revalidatePortal();
     return actionOk({ id: row.id });
   } catch (e) {
     return actionError(
@@ -151,7 +162,7 @@ export async function activatePortalAccount(
         ...elevationAuditNote(gate, "portal_admin.activate_account"),
       },
     });
-    revalidatePath(BASE_PATH);
+    revalidatePortal();
     return actionOk(null);
   } catch (e) {
     return actionError(
@@ -199,7 +210,7 @@ export async function deactivatePortalAccount(
       before: { isActive: true },
       after: { isActive: false, reason: reason.trim() || null },
     });
-    revalidatePath(BASE_PATH);
+    revalidatePortal();
     return actionOk(null);
   } catch (e) {
     return actionError(
@@ -249,7 +260,7 @@ export async function addPortalBpScope(
       recordId: v.portalAccountId,
       after: v,
     });
-    revalidatePath(BASE_PATH);
+    revalidatePortal();
     return actionOk(null);
   } catch (e) {
     return actionError(
@@ -278,7 +289,7 @@ export async function revokePortalGrant(
       recordId: grantId,
       after: { revoked: true },
     });
-    revalidatePath(BASE_PATH);
+    revalidatePortal();
     return actionOk(null);
   } catch (e) {
     return actionError(
@@ -319,7 +330,7 @@ export async function issueBackupCodes(
         ...elevationAuditNote(gate, "portal_admin.issue_backup_codes"),
       },
     });
-    revalidatePath(BASE_PATH);
+    revalidatePortal();
     return actionOk({ codes });
   } catch (e) {
     return actionError(
@@ -450,7 +461,7 @@ async function mintLink(
       ...note,
     },
   });
-  revalidatePath(BASE_PATH);
+  revalidatePortal();
   return actionOk({
     url: result.link.url,
     expiresAt: result.link.expiresAt.toISOString(),
@@ -476,7 +487,7 @@ export async function revokeLink(linkId: string): Promise<ActionResult<null>> {
       recordId: linkId,
       after: { revoked: true },
     });
-    revalidatePath(BASE_PATH);
+    revalidatePortal();
     return actionOk(null);
   } catch (e) {
     return actionError(

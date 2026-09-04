@@ -15,7 +15,7 @@
 import "server-only";
 
 import { prisma } from "./db";
-import type { PortalResourceType } from "./portal-access-core";
+import type { PortalAccessResourceType } from "./portal-access-core";
 import type { PortalSession } from "./portal-auth";
 
 export type PortalAccessAction = "VIEW" | "DOWNLOAD";
@@ -23,7 +23,7 @@ export type PortalAccessAction = "VIEW" | "DOWNLOAD";
 /** 1 件残す。**失敗しても呼び出し側に伝播させない**（閲覧を止めない）。 */
 export async function recordPortalAccess(input: {
   session: PortalSession;
-  resourceType: PortalResourceType;
+  resourceType: PortalAccessResourceType;
   resourceId: string;
   action: PortalAccessAction;
   ipAddress?: string | null;

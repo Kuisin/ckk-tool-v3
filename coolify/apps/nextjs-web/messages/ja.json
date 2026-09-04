@@ -3986,7 +3986,17 @@
       "issuedLinks": "発行済みのリンク",
       "revoked": "失効済み",
       "linkSummary": "{email} / {count} 回 / {date} まで",
-      "verified": "本人確認あり"
+      "verified": "本人確認あり",
+      "sharingScope": "共有範囲",
+      "noSharingYet": "共有範囲はまだありません（この人には何も見えません）。",
+      "includesBranches": "支店宛を含む",
+      "includesEndUserDocuments": "需要家・出荷先としての書類を含む",
+      "revokingSharingHidesThoseDocuments": "失効させると、この共有範囲の書類はこの人に見えなくなります。",
+      "noLinksIssuedYet": "発行済みのリンクはありません。",
+      "revokingTheLinkClosesTheSession": "失効させると、そのリンクで開いているセッションも終わります。",
+      "viewingHistory": "閲覧記録",
+      "nothingHasBeenViewedYet": "まだ何も閲覧されていません。",
+      "ipAddress": "IP アドレス"
     },
     "privileged": {
       "pendingApproval": "（承認依頼中）",
@@ -4486,14 +4496,22 @@
     },
     "documents": {
       "document": "書類",
-      "noneToShow": "表示できる{document}はありません。"
+      "noneToShow": "表示できる{document}はありません。",
+      "dueDate": "支払期限",
+      "taxAmount": "消費税",
+      "noLineItems": "明細はありません。",
+      "priceOmitted": "この納品書には価格を記載していません。"
     },
     "forms": {
       "thereAreNoResponsesToShow": "表示できる回答はありません。",
-      "noFormsAreSharedWithYou": "共有されているフォームはありません。"
+      "noFormsAreSharedWithYou": "共有されているフォームはありません。",
+      "noAnswerFields": "表示できる項目はありません。",
+      "rowNumber": "{row} 行目",
+      "responseCount": "{count} 件"
     },
     "orders": {
-      "thereAreNoOrdersToShow": "表示できる注文はありません。"
+      "thereAreNoOrdersToShow": "表示できる注文はありません。",
+      "cancelledNotice": "この注文明細はキャンセルされています。"
     },
     "page": {
       "youCanViewDocumentsAddressedTo": "自社宛の書類をご覧いただけます。",
@@ -4523,6 +4541,19 @@
     "loginActions": {
       "backupCodeInvalid": "バックアップコードが正しくありません。",
       "issueMessage": "入力されたアドレスが登録されていれば、確認コードを送信しました。10 分以内に入力してください。届かない場合は迷惑メールをご確認のうえ、担当営業へご連絡ください。"
+    },
+    "common": {
+      "relatedDocuments": "関連書類"
+    },
+    "home": {
+      "greeting": "{name} 様",
+      "activeOrders": "進行中の注文",
+      "recentDocuments": "最近の書類",
+      "viewAll": "すべて見る",
+      "nothingToShow": "表示できるものはまだありません。"
+    },
+    "nav": {
+      "menu": "メニュー"
     }
   },
   "master": {
