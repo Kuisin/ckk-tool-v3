@@ -153,7 +153,13 @@ async function ensureProductInventory(
   }
 }
 
-/** 素材在庫行の取得 or 作成（保管場所×棚は未割当バケット固定 — 同上）。 */
+/**
+ * 素材在庫行の取得 or 作成（保管場所×棚は未割当バケット固定 — 同上）。
+ *
+ * 既存バケットの単位と入庫の単位が違うときは**足さずに失敗する** — 「本」の
+ * 台帳に「kg」を足すと数量の意味が消える。message は構造化ノート
+ * （unitMismatch）で、呼び出し側が自分の言語に翻訳する。
+ */
 export async function ensureMaterialInventory(
   tx: Tx,
   data: { materialId: number; plantId: number | null; unit: string },
@@ -164,11 +170,22 @@ export async function ensureMaterialInventory(
     storageLocationId: null,
     shelfId: null,
   };
+  const assertUnit = (row: { id: string; unit: string }): string => {
+    if (row.unit !== data.unit) {
+      throw new Error(
+        encodeInventoryNote("unitMismatch", {
+          expected: row.unit,
+          actual: data.unit,
+        }),
+      );
+    }
+    return row.id;
+  };
   const existing = await tx.materialInventory.findFirst({
     where: bucket,
-    select: { id: true },
+    select: { id: true, unit: true },
   });
-  if (existing) return existing.id;
+  if (existing) return assertUnit(existing);
   try {
     const row = await tx.materialInventory.create({
       data: { ...data },
@@ -179,9 +196,9 @@ export async function ensureMaterialInventory(
     if ((e as { code?: string }).code === "P2002") {
       const again = await tx.materialInventory.findFirst({
         where: bucket,
-        select: { id: true },
+        select: { id: true, unit: true },
       });
-      if (again) return again.id;
+      if (again) return assertUnit(again);
     }
     throw e;
   }
@@ -606,26 +623,54 @@ export async function releaseOrderLineReservations(
   return reservations.length;
 }
 
-/** 素材入荷フック: 入荷拠点の素材在庫へ入庫。 */
-export async function onMaterialReceipt(receiptId: string): Promise<void> {
-  const r = await prisma.materialReceipt.findUniqueOrThrow({
+/**
+ * 素材入荷フック: 入荷拠点の素材在庫へ入庫。
+ *
+ * `tx` を渡すと**その同じトランザクションで**計上する — 入荷行の作成と在庫の
+ * 計上が別 tx だと、間で落ちたときに「入荷はあるのに在庫が無い」が残る
+ * （onWorkOrderCompletedTx と同じ理由）。省略時は自前の tx を開く（後追いの
+ * 再計上用）。
+ *
+ * 冪等: 同じ入荷（referenceType material_receipt / referenceId = 入荷 id）の
+ * IN が既に台帳にあれば何もしない — 再実行やリトライで二重計上しない。
+ */
+export async function onMaterialReceipt(
+  receiptId: string,
+  tx?: Tx,
+): Promise<void> {
+  if (tx) return onMaterialReceiptTx(tx, receiptId);
+  await prisma.$transaction(async (t) => {
+    await onMaterialReceiptTx(t, receiptId);
+  });
+}
+
+async function onMaterialReceiptTx(tx: Tx, receiptId: string): Promise<void> {
+  const r = await tx.materialReceipt.findUniqueOrThrow({
     where: { id: receiptId },
   });
-  await prisma.$transaction(async (tx) => {
-    const invId = await ensureMaterialInventory(tx, {
-      materialId: r.materialId,
-      plantId: r.plantId,
-      unit: r.unit,
-    });
-    await applyTransaction(tx, {
+  const posted = await tx.inventoryTransaction.findFirst({
+    where: {
       inventoryType: "MATERIAL",
-      inventoryId: invId,
       transactionType: "IN",
-      quantity: Number(r.quantity),
       referenceType: "material_receipt",
       referenceId: r.id,
-      notes: encodeInventoryNote("materialReceived"),
-    });
+    },
+    select: { id: true },
+  });
+  if (posted) return;
+  const invId = await ensureMaterialInventory(tx, {
+    materialId: r.materialId,
+    plantId: r.plantId,
+    unit: r.unit,
+  });
+  await applyTransaction(tx, {
+    inventoryType: "MATERIAL",
+    inventoryId: invId,
+    transactionType: "IN",
+    quantity: Number(r.quantity),
+    referenceType: "material_receipt",
+    referenceId: r.id,
+    notes: encodeInventoryNote("materialReceived"),
   });
 }
 

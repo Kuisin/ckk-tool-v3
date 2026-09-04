@@ -13,9 +13,10 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
+import { checkPermission, targetPlantsInScope } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { onMaterialReceipt } from "@/lib/inventory";
+import { decodeInventoryNote } from "@/lib/inventory-note-core";
 import {
   type ActionResult,
   actionError,
@@ -61,26 +62,46 @@ export async function createMaterialReceipt(
     );
   }
   const v = parsed.data;
+  const plantId = v.plantId ? Number(v.plantId) : null;
+  // 入荷先拠点は自分の拠点集合の中（読み取り側 data.ts と同じ PLANT ∪ OWN 規則）。
+  if (!targetPlantsInScope(authz.access, authz.userId, [plantId])) {
+    return actionError(tr("common.scopeDenied"));
+  }
   try {
-    const actor = await getCurrentActorId();
-    const receipt = await prisma.materialReceipt.create({
-      data: {
-        materialId: Number(v.materialId),
-        supplierBpId: v.supplierBpId,
-        // 直接調達 — 発注明細には紐付けない。
-        purchaseOrderItemId: null,
-        plantId: v.plantId ? Number(v.plantId) : null,
-        quantity: v.quantity,
-        unit: v.unit,
-        receivedAt: new Date(v.receivedAt),
-        notes: v.notes.trim() || null,
-        createdBy: actor,
-      },
-      select: { id: true },
+    // 単位は素材マスタの単位で固定 — 「本」の台帳へ「kg」を足させない
+    // （lib/inventory ensureMaterialInventory も同じ理由で不一致を拒む）。
+    const material = await prisma.material.findUnique({
+      where: { id: Number(v.materialId) },
+      select: { unit: true },
     });
-
-    // 素材在庫への入庫（在庫台帳 + キャッシュ数量）。
-    await onMaterialReceipt(receipt.id);
+    if (!material) return actionError(tr("common.targetRecordNotFound"));
+    if (v.unit !== material.unit) {
+      return actionError(
+        tr("purchase.materialReceipts.unitMismatch", { unit: material.unit }),
+      );
+    }
+    const actor = await getCurrentActorId();
+    // 入荷行の作成と在庫への計上（台帳 + キャッシュ数量）は同じ tx — 途中で
+    // 落ちれば入荷行ごと戻る（入荷はあるのに在庫が無い、を作らない）。
+    const receipt = await prisma.$transaction(async (tx) => {
+      const created = await tx.materialReceipt.create({
+        data: {
+          materialId: Number(v.materialId),
+          supplierBpId: v.supplierBpId,
+          // 直接調達 — 発注明細には紐付けない。
+          purchaseOrderItemId: null,
+          plantId,
+          quantity: v.quantity,
+          unit: v.unit,
+          receivedAt: new Date(v.receivedAt),
+          notes: v.notes.trim() || null,
+          createdBy: actor,
+        },
+        select: { id: true },
+      });
+      await onMaterialReceipt(created.id, tx);
+      return created;
+    });
 
     await recordAudit({
       action: "CREATE",
@@ -89,7 +110,7 @@ export async function createMaterialReceipt(
       after: {
         materialId: Number(v.materialId),
         supplierBpId: v.supplierBpId,
-        plantId: v.plantId ? Number(v.plantId) : null,
+        plantId,
         quantity: v.quantity,
         unit: v.unit,
         receivedAt: v.receivedAt,
@@ -102,6 +123,16 @@ export async function createMaterialReceipt(
     revalidatePath("/production/inventory");
     return actionOk({ id: receipt.id });
   } catch (e) {
+    // 在庫ガード（lib/inventory）の業務エラーは構造化ノート（鍵 + パラメータ）
+    // なので、ここで自分の言語に翻訳して返す。
+    if (e instanceof Error) {
+      const decoded = decodeInventoryNote(e.message);
+      if (decoded) {
+        return actionError(
+          tr(`inventoryNote.${decoded.key}`, decoded.params ?? {}),
+        );
+      }
+    }
     return actionError(
       prismaErrorMessage(
         e,

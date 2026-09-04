@@ -15,6 +15,7 @@
  *   生成する。仕入先は変換時に指定、単価は 0 で複写（発注側で入力）。
  */
 
+import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
@@ -26,7 +27,11 @@ import {
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
-import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
+import {
+  checkApprovalDocAccess,
+  checkPermission,
+  targetPlantsInScope,
+} from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
@@ -119,6 +124,32 @@ function buildItemCreates(items: PurchaseRequestInput["items"]) {
   }));
 }
 
+/** スコープ判定に要る明細（入荷先拠点だけ）。prior の findUnique に足す。 */
+const SCOPE_ITEMS = { items: { select: { plantId: true } } } as const;
+
+/**
+ * 対象の依頼がスコープ内か（PLANT = 明細の入荷先拠点 ∪ OWN = 起票者）。
+ * 読み取り側（data.ts）と同じ規則 — 見えない行は触れない。
+ */
+function requestInScope(
+  access: Access,
+  userId: string,
+  row: { createdBy: string | null; items: { plantId: number | null }[] },
+): boolean {
+  return rowInScope(
+    access,
+    { plantIds: row.items.map((it) => it.plantId), createdBy: row.createdBy },
+    userId,
+  );
+}
+
+/** 入力明細の入荷先拠点（作成・更新の門 targetPlantsInScope へ渡す）。 */
+function payloadPlantIds(
+  items: PurchaseRequestInput["items"],
+): (number | null)[] {
+  return items.map((it) => (it.plantId ? Number(it.plantId) : null));
+}
+
 // ── 作成 / 更新 ──────────────────────────────────────────────────────────────
 
 export async function createPurchaseRequest(
@@ -134,6 +165,11 @@ export async function createPurchaseRequest(
     );
   }
   const v = parsed.data;
+  if (
+    !targetPlantsInScope(authz.access, authz.userId, payloadPlantIds(v.items))
+  ) {
+    return actionError(tr("common.scopeDenied"));
+  }
   try {
     const actor = await getCurrentActorId();
     const requestNumber = await nextDocumentNumber("PURCHASE_REQUEST");
@@ -189,14 +225,23 @@ export async function updatePurchaseRequest(
     );
   }
   const v = parsed.data;
+  if (
+    !targetPlantsInScope(authz.access, authz.userId, payloadPlantIds(v.items))
+  ) {
+    return actionError(tr("common.scopeDenied"));
+  }
   try {
     const prior = await prisma.purchaseRequest.findUnique({
       where: { requestNumber },
+      include: SCOPE_ITEMS,
     });
     if (!prior)
       return actionError(
         tr("purchase.purchaseRequestActions.targetRequestNotFound"),
       );
+    if (!requestInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
     if (prior.status !== "DRAFT" && prior.status !== "REJECTED") {
       return actionError(
         tr("purchase.purchaseRequestActions.onlyDraftOrRejectedCanEdit"),
@@ -258,11 +303,15 @@ export async function requestPurchaseRequestApproval(
   try {
     const prior = await prisma.purchaseRequest.findUnique({
       where: { requestNumber },
+      include: SCOPE_ITEMS,
     });
     if (!prior)
       return actionError(
         tr("purchase.purchaseRequestActions.targetRequestNotFound"),
       );
+    if (!requestInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
     if (prior.status !== "DRAFT" && prior.status !== "REJECTED") {
       return actionError(
         tr(
@@ -274,8 +323,17 @@ export async function requestPurchaseRequestApproval(
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
     const flowError = await assertFlowConfigured("purchase_requests");
     if (flowError) return actionError(flowError);
-    await prisma.purchaseRequest.update({
-      where: { id: prior.id },
+    // 1 段目の承認依頼を**先に**作る（PD03 横断表示・承認記録の紐付け先 +
+    // その段の承認グループへの自動通知）。依頼が作れなければ状態は動かさない。
+    const started = await startApprovalFlow({
+      targetType: "purchase_requests",
+      targetId: requestNumber,
+    });
+    if (!started.ok)
+      return actionError(started.error ?? tr("common.approvalRequestFailed"));
+    // 状態は「読んだときのまま」のときだけ動かす（同時操作で二重に進めない）。
+    const flipped = await prisma.purchaseRequest.updateMany({
+      where: { id: prior.id, status: prior.status },
       data: {
         status: "REQUESTED",
         requestedAt: new Date(),
@@ -285,14 +343,9 @@ export async function requestPurchaseRequestApproval(
         ),
       },
     });
-    // 1 段目の承認依頼を作る（PD03 横断表示・承認記録の紐付け先 +
-    // その段の承認グループへの自動通知）。
-    const started = await startApprovalFlow({
-      targetType: "purchase_requests",
-      targetId: requestNumber,
-    });
-    if (!started.ok)
-      return actionError(started.error ?? tr("common.approvalRequestFailed"));
+    if (flipped.count === 0) {
+      return actionError(tr("purchase.purchaseRequestActions.stateChanged"));
+    }
     await recordAudit({
       action: "UPDATE",
       tableName: "purchase_requests",
@@ -321,11 +374,15 @@ export async function approvePurchaseRequest(
   try {
     const prior = await prisma.purchaseRequest.findUnique({
       where: { requestNumber },
+      include: SCOPE_ITEMS,
     });
     if (!prior)
       return actionError(
         tr("purchase.purchaseRequestActions.targetRequestNotFound"),
       );
+    if (!requestInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
     if (prior.status !== "REQUESTED") {
       return actionError(
         tr("purchase.purchaseRequestActions.notPendingApproval"),
@@ -357,8 +414,8 @@ export async function approvePurchaseRequest(
       revalidate(requestNumber);
       return actionOk();
     }
-    await prisma.purchaseRequest.update({
-      where: { id: prior.id },
+    const flipped = await prisma.purchaseRequest.updateMany({
+      where: { id: prior.id, status: "REQUESTED" },
       data: {
         status: "APPROVED",
         approvedAt: new Date(),
@@ -368,6 +425,9 @@ export async function approvePurchaseRequest(
         ),
       },
     });
+    if (flipped.count === 0) {
+      return actionError(tr("purchase.purchaseRequestActions.stateChanged"));
+    }
     await recordAudit({
       action: "UPDATE",
       tableName: "purchase_requests",
@@ -397,11 +457,15 @@ export async function rejectPurchaseRequest(
   try {
     const prior = await prisma.purchaseRequest.findUnique({
       where: { requestNumber },
+      include: SCOPE_ITEMS,
     });
     if (!prior)
       return actionError(
         tr("purchase.purchaseRequestActions.targetRequestNotFound"),
       );
+    if (!requestInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
     if (prior.status !== "REQUESTED") {
       return actionError(
         tr("purchase.purchaseRequestActions.notPendingApproval"),
@@ -418,8 +482,8 @@ export async function rejectPurchaseRequest(
       return actionError(acted.error ?? tr("common.noSendBackPermission"));
     }
     const actor = await getCurrentActorId();
-    await prisma.purchaseRequest.update({
-      where: { id: prior.id },
+    const flipped = await prisma.purchaseRequest.updateMany({
+      where: { id: prior.id, status: "REQUESTED" },
       data: {
         status: "REJECTED",
         history: toHistoryJson(
@@ -427,6 +491,9 @@ export async function rejectPurchaseRequest(
         ),
       },
     });
+    if (flipped.count === 0) {
+      return actionError(tr("purchase.purchaseRequestActions.stateChanged"));
+    }
     await recordAudit({
       action: "UPDATE",
       tableName: "purchase_requests",
@@ -456,11 +523,15 @@ export async function cancelPurchaseRequest(
   try {
     const prior = await prisma.purchaseRequest.findUnique({
       where: { requestNumber },
+      include: SCOPE_ITEMS,
     });
     if (!prior)
       return actionError(
         tr("purchase.purchaseRequestActions.targetRequestNotFound"),
       );
+    if (!requestInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
     if (
       prior.status !== "DRAFT" &&
       prior.status !== "REQUESTED" &&
@@ -472,9 +543,11 @@ export async function cancelPurchaseRequest(
       );
     }
     const actor = await getCurrentActorId();
-    await prisma.$transaction([
-      prisma.purchaseRequest.update({
-        where: { id: prior.id },
+    await prisma.$transaction(async (tx) => {
+      // 読んだときの状態から動いていなければキャンセル（同時操作で発注書へ
+      // 変換済みになったものを取り消さない）。
+      const flipped = await tx.purchaseRequest.updateMany({
+        where: { id: prior.id, status: prior.status },
         data: {
           status: "CANCELLED",
           cancelledAt: new Date(),
@@ -484,17 +557,22 @@ export async function cancelPurchaseRequest(
             appendHistory(prior.history, entry("CANCEL", actor, trimmed)),
           ),
         },
-      }),
+      });
+      if (flipped.count === 0) {
+        throw new Error(
+          `GUARD:${tr("purchase.purchaseRequestActions.stateChanged")}`,
+        );
+      }
       // 承認依頼中のキャンセル: 未処理の承認依頼行を取り下げる（記録なしの
       // PENDING 行のみ — PD03 の横断一覧に残さない）。
-      prisma.approvalRequest.deleteMany({
+      await tx.approvalRequest.deleteMany({
         where: {
           targetType: "purchase_requests",
           targetId: requestNumber,
           status: "PENDING",
         },
-      }),
-    ]);
+      });
+    });
     await recordAudit({
       action: "UPDATE",
       tableName: "purchase_requests",
@@ -505,6 +583,9 @@ export async function cancelPurchaseRequest(
     revalidate(requestNumber);
     return actionOk();
   } catch (e) {
+    if (e instanceof Error && e.message.startsWith("GUARD:")) {
+      return actionError(e.message.slice("GUARD:".length));
+    }
     return actionError(
       prismaErrorMessage(
         e,
@@ -541,6 +622,9 @@ export async function convertToPurchaseOrder(
       return actionError(
         tr("purchase.purchaseRequestActions.targetRequestNotFound"),
       );
+    if (!requestInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
     if (prior.status !== "APPROVED") {
       return actionError(
         tr("purchase.purchaseRequestActions.onlyApprovedCanConvert"),
@@ -591,8 +675,11 @@ export async function convertToPurchaseOrder(
         },
         select: { id: true },
       });
-      await tx.purchaseRequest.update({
-        where: { id: prior.id },
+      // 依頼が**まだ APPROVED のとき**だけ ORDERED へ。同時に 2 人が変換すると
+      // 2 通目はここで 0 件になり、上で作った発注書ごと巻き戻る（発注書の
+      // 二重生成を作らない）。
+      const flipped = await tx.purchaseRequest.updateMany({
+        where: { id: prior.id, status: "APPROVED" },
         data: {
           status: "ORDERED",
           orderedAt: now,
@@ -603,6 +690,11 @@ export async function convertToPurchaseOrder(
           ),
         },
       });
+      if (flipped.count !== 1) {
+        throw new Error(
+          `GUARD:${tr("purchase.purchaseRequestActions.stateChanged")}`,
+        );
+      }
     });
 
     await recordAudit({
@@ -628,6 +720,9 @@ export async function convertToPurchaseOrder(
     revalidatePath(`${PO_PATH}/${poNumber}`);
     return actionOk({ poNumber });
   } catch (e) {
+    if (e instanceof Error && e.message.startsWith("GUARD:")) {
+      return actionError(e.message.slice("GUARD:".length));
+    }
     return actionError(
       prismaErrorMessage(
         e,

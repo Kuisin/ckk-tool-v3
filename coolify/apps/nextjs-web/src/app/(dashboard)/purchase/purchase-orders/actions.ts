@@ -16,6 +16,7 @@
  *   onMaterialReceipt で素材在庫へ入庫する。
  */
 
+import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
@@ -27,9 +28,14 @@ import {
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
-import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
+import {
+  checkApprovalDocAccess,
+  checkPermission,
+  targetPlantsInScope,
+} from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { onMaterialReceipt } from "@/lib/inventory";
+import { decodeInventoryNote } from "@/lib/inventory-note-core";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -129,6 +135,64 @@ function buildItemCreates(items: PurchaseOrderInput["items"]) {
   }));
 }
 
+/** スコープ判定に要る明細（入荷先拠点だけ）。prior の findUnique に足す。 */
+const SCOPE_ITEMS = { items: { select: { plantId: true } } } as const;
+
+/**
+ * 対象の発注書がスコープ内か（PLANT = 明細の入荷先拠点 ∪ OWN = 作成者）。
+ * 読み取り側（data.ts fetchPurchaseOrder）と同じ規則 — 見えない行は触れない。
+ */
+function poInScope(
+  access: Access,
+  userId: string,
+  row: { createdBy: string | null; items: { plantId: number | null }[] },
+): boolean {
+  return rowInScope(
+    access,
+    { plantIds: row.items.map((it) => it.plantId), createdBy: row.createdBy },
+    userId,
+  );
+}
+
+/** 入力明細の入荷先拠点（作成・更新の門 targetPlantsInScope へ渡す）。 */
+function payloadPlantIds(
+  items: PurchaseOrderInput["items"],
+): (number | null)[] {
+  return items.map((it) => (it.plantId ? Number(it.plantId) : null));
+}
+
+/**
+ * JST の今日（@db.Date 列用）。コンテナ TZ=UTC のまま toISOString() で日付を
+ * 切ると JST 0:00〜8:59 の入荷が前日になる — lib/numbering.ts の
+ * currentYearMonthJst と同じく Asia/Tokyo で明示的に導出する。
+ */
+function todayJst(): Date {
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const part = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return new Date(`${part("year")}-${part("month")}-${part("day")}`);
+}
+
+/**
+ * 在庫ガード（lib/inventory）の業務エラーを自分の言語で返す。message は
+ * 構造化ノート（lib/inventory-note-core.ts）— 単位不一致など。
+ */
+function inventoryErrorMessage(
+  e: unknown,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): string | null {
+  if (!(e instanceof Error)) return null;
+  const decoded = decodeInventoryNote(e.message);
+  return decoded
+    ? tr(`inventoryNote.${decoded.key}`, decoded.params ?? {})
+    : null;
+}
+
 // ── 作成 / 更新 ──────────────────────────────────────────────────────────────
 
 export async function createPurchaseOrder(
@@ -144,6 +208,11 @@ export async function createPurchaseOrder(
     );
   }
   const v = parsed.data;
+  if (
+    !targetPlantsInScope(authz.access, authz.userId, payloadPlantIds(v.items))
+  ) {
+    return actionError(tr("common.scopeDenied"));
+  }
   try {
     const actor = await getCurrentActorId();
     const poNumber = await nextDocumentNumber("PURCHASE");
@@ -206,12 +275,21 @@ export async function updatePurchaseOrder(
     );
   }
   const v = parsed.data;
+  if (
+    !targetPlantsInScope(authz.access, authz.userId, payloadPlantIds(v.items))
+  ) {
+    return actionError(tr("common.scopeDenied"));
+  }
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
       where: { poNumber },
+      include: SCOPE_ITEMS,
     });
     if (!prior)
       return actionError(tr("purchase.purchaseOrderActions.poNotFound"));
+    if (!poInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
     if (prior.status !== "DRAFT") {
       return actionError(tr("purchase.purchaseOrderActions.onlyDraftEditable"));
     }
@@ -281,9 +359,13 @@ export async function requestPurchaseApproval(
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
       where: { poNumber },
+      include: SCOPE_ITEMS,
     });
     if (!prior)
       return actionError(tr("purchase.purchaseOrderActions.poNotFound"));
+    if (!poInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
     if (prior.status !== "DRAFT") {
       return actionError(
         tr("purchase.purchaseOrderActions.onlyDraftCanRequestApproval"),
@@ -293,8 +375,20 @@ export async function requestPurchaseApproval(
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
     const flowError = await assertFlowConfigured("material_purchase_orders");
     if (flowError) return actionError(flowError);
-    await prisma.materialPurchaseOrder.update({
-      where: { id: prior.id },
+    // 1 段目の承認依頼を**先に**作る（PD03 横断表示・承認記録の紐付け先）。
+    // 依頼が作れなければ状態は動かさない — 「承認依頼中なのに依頼が無い」を
+    // 作らないため。
+    const started = await startApprovalFlow({
+      targetType: "material_purchase_orders",
+      targetId: poNumber,
+    });
+    if (!started.ok)
+      return actionError(
+        started.error ?? tr("purchase.purchaseOrderActions.requestFailed"),
+      );
+    // 状態は「まだ DRAFT のとき」だけ動かす（同時操作で二重に進めない）。
+    const flipped = await prisma.materialPurchaseOrder.updateMany({
+      where: { id: prior.id, status: "DRAFT" },
       data: {
         status: "REQUESTED",
         requestedAt: new Date(),
@@ -304,15 +398,9 @@ export async function requestPurchaseApproval(
         ),
       },
     });
-    // 1 段目の承認依頼を作る（PD03 横断表示・承認記録の紐付け先）。
-    const started = await startApprovalFlow({
-      targetType: "material_purchase_orders",
-      targetId: poNumber,
-    });
-    if (!started.ok)
-      return actionError(
-        started.error ?? tr("purchase.purchaseOrderActions.requestFailed"),
-      );
+    if (flipped.count === 0) {
+      return actionError(tr("purchase.purchaseOrderActions.stateChanged"));
+    }
     await recordAudit({
       action: "UPDATE",
       tableName: "material_purchase_orders",
@@ -345,9 +433,13 @@ export async function approvePurchaseOrder(
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
       where: { poNumber },
+      include: SCOPE_ITEMS,
     });
     if (!prior)
       return actionError(tr("purchase.purchaseOrderActions.poNotFound"));
+    if (!poInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
     if (prior.status !== "REQUESTED") {
       return actionError(
         tr("purchase.purchaseOrderActions.notPendingApproval"),
@@ -381,8 +473,8 @@ export async function approvePurchaseOrder(
       revalidate(poNumber);
       return actionOk();
     }
-    await prisma.materialPurchaseOrder.update({
-      where: { id: prior.id },
+    const flipped = await prisma.materialPurchaseOrder.updateMany({
+      where: { id: prior.id, status: "REQUESTED" },
       data: {
         status: "APPROVED",
         approvedAt: new Date(),
@@ -392,6 +484,9 @@ export async function approvePurchaseOrder(
         ),
       },
     });
+    if (flipped.count === 0) {
+      return actionError(tr("purchase.purchaseOrderActions.stateChanged"));
+    }
     await recordAudit({
       action: "UPDATE",
       tableName: "material_purchase_orders",
@@ -421,9 +516,13 @@ export async function rejectPurchaseOrder(
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
       where: { poNumber },
+      include: SCOPE_ITEMS,
     });
     if (!prior)
       return actionError(tr("purchase.purchaseOrderActions.poNotFound"));
+    if (!poInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
     if (prior.status !== "REQUESTED") {
       return actionError(
         tr("purchase.purchaseOrderActions.notPendingApproval"),
@@ -442,8 +541,8 @@ export async function rejectPurchaseOrder(
       );
     }
     const actor = await getCurrentActorId();
-    await prisma.materialPurchaseOrder.update({
-      where: { id: prior.id },
+    const flipped = await prisma.materialPurchaseOrder.updateMany({
+      where: { id: prior.id, status: "REQUESTED" },
       data: {
         status: "DRAFT",
         requestedAt: null,
@@ -453,6 +552,9 @@ export async function rejectPurchaseOrder(
         ),
       },
     });
+    if (flipped.count === 0) {
+      return actionError(tr("purchase.purchaseOrderActions.stateChanged"));
+    }
     await recordAudit({
       action: "UPDATE",
       tableName: "material_purchase_orders",
@@ -482,9 +584,13 @@ export async function orderPurchaseOrder(
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
       where: { poNumber },
+      include: SCOPE_ITEMS,
     });
     if (!prior)
       return actionError(tr("purchase.purchaseOrderActions.poNotFound"));
+    if (!poInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
     if (prior.status !== "APPROVED") {
       return actionError(
         tr("purchase.purchaseOrderActions.onlyApprovedCanOrder"),
@@ -492,8 +598,8 @@ export async function orderPurchaseOrder(
     }
     const actor = await getCurrentActorId();
     const now = new Date();
-    await prisma.materialPurchaseOrder.update({
-      where: { id: prior.id },
+    const flipped = await prisma.materialPurchaseOrder.updateMany({
+      where: { id: prior.id, status: "APPROVED" },
       data: {
         status: "ORDERED",
         orderedAt: now,
@@ -505,6 +611,9 @@ export async function orderPurchaseOrder(
         ),
       },
     });
+    if (flipped.count === 0) {
+      return actionError(tr("purchase.purchaseOrderActions.stateChanged"));
+    }
     await recordAudit({
       action: "UPDATE",
       tableName: "material_purchase_orders",
@@ -562,6 +671,9 @@ export async function receivePurchaseOrderItems(
     });
     if (!prior)
       return actionError(tr("purchase.purchaseOrderActions.poNotFound"));
+    if (!poInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
     if (prior.status !== "ORDERED") {
       return actionError(
         tr("purchase.purchaseOrderActions.onlyOrderedCanReceive"),
@@ -569,7 +681,7 @@ export async function receivePurchaseOrderItems(
     }
     const actor = await getCurrentActorId();
     const now = new Date();
-    const receivedAt = new Date(now.toISOString().slice(0, 10));
+    const receivedAt = todayJst();
 
     const result = await prisma.$transaction(async (tx) => {
       const ids: string[] = [];
@@ -610,6 +722,9 @@ export async function receivePurchaseOrderItems(
           },
           select: { id: true },
         });
+        // 在庫への計上は入荷行と**同じ tx** — 途中で落ちれば入荷行ごと戻る
+        // （入荷はあるのに在庫が無い、を作らない）。
+        await onMaterialReceipt(receipt.id, tx);
         ids.push(receipt.id);
       }
       // 全明細が発注数量に達したら COMPLETED
@@ -623,8 +738,10 @@ export async function receivePurchaseOrderItems(
       });
       let completed = false;
       if (remaining === 0) {
-        await tx.materialPurchaseOrder.update({
-          where: { id: prior.id },
+        // 同時分納で両方が「残 0」を見ても、ORDERED → COMPLETED を実際に
+        // 動かせたのは 1 回だけ。動かせなかった側の入荷は成立している。
+        const flipped = await tx.materialPurchaseOrder.updateMany({
+          where: { id: prior.id, status: "ORDERED" },
           data: {
             status: "COMPLETED",
             completedAt: now,
@@ -634,13 +751,12 @@ export async function receivePurchaseOrderItems(
             ),
           },
         });
-        completed = true;
+        completed = flipped.count === 1;
       }
       return { ids, completed };
     });
 
     for (const id of result.ids) {
-      await onMaterialReceipt(id);
       await recordAudit({
         action: "CREATE",
         tableName: "material_receipts",
@@ -682,6 +798,8 @@ export async function receivePurchaseOrderItems(
     if (e instanceof Error && e.message.startsWith("GUARD:")) {
       return actionError(e.message.slice("GUARD:".length));
     }
+    const inventoryError = inventoryErrorMessage(e, tr);
+    if (inventoryError) return actionError(inventoryError);
     return actionError(
       prismaErrorMessage(
         e,
@@ -706,6 +824,9 @@ export async function completePurchaseOrder(
     });
     if (!prior)
       return actionError(tr("purchase.purchaseOrderActions.poNotFound"));
+    if (!poInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
     if (prior.status !== "ORDERED") {
       return actionError(
         tr("purchase.purchaseOrderActions.onlyOrderedCanComplete"),
@@ -747,9 +868,13 @@ export async function cancelPurchaseOrder(
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
       where: { poNumber },
+      include: SCOPE_ITEMS,
     });
     if (!prior)
       return actionError(tr("purchase.purchaseOrderActions.poNotFound"));
+    if (!poInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
     if (
       prior.status !== "DRAFT" &&
       prior.status !== "REQUESTED" &&
@@ -760,9 +885,11 @@ export async function cancelPurchaseOrder(
       );
     }
     const actor = await getCurrentActorId();
-    await prisma.$transaction([
-      prisma.materialPurchaseOrder.update({
-        where: { id: prior.id },
+    await prisma.$transaction(async (tx) => {
+      // 読んだときの状態から動いていなければキャンセル（同時操作で発注済みに
+      // なったものを取り消さない）。
+      const flipped = await tx.materialPurchaseOrder.updateMany({
+        where: { id: prior.id, status: prior.status },
         data: {
           status: "CANCELLED",
           cancelledAt: new Date(),
@@ -772,17 +899,22 @@ export async function cancelPurchaseOrder(
             appendHistory(prior.history, entry("CANCEL", actor, trimmed)),
           ),
         },
-      }),
+      });
+      if (flipped.count === 0) {
+        throw new Error(
+          `GUARD:${tr("purchase.purchaseOrderActions.stateChanged")}`,
+        );
+      }
       // 承認依頼中のキャンセル: 未処理の承認依頼行を取り下げる（記録なしの
       // PENDING 行のみ — PD03 の横断一覧に残さない）。
-      prisma.approvalRequest.deleteMany({
+      await tx.approvalRequest.deleteMany({
         where: {
           targetType: "material_purchase_orders",
           targetId: poNumber,
           status: "PENDING",
         },
-      }),
-    ]);
+      });
+    });
     await recordAudit({
       action: "UPDATE",
       tableName: "material_purchase_orders",
@@ -793,6 +925,9 @@ export async function cancelPurchaseOrder(
     revalidate(poNumber);
     return actionOk();
   } catch (e) {
+    if (e instanceof Error && e.message.startsWith("GUARD:")) {
+      return actionError(e.message.slice("GUARD:".length));
+    }
     return actionError(
       prismaErrorMessage(
         e,
