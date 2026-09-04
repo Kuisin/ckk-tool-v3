@@ -30,6 +30,7 @@ import {
   revokeLink,
   revokePortalGrant,
 } from "@/app/(dashboard)/settings/portal/actions";
+import { PortalGuideButton } from "@/components/settings/portal/PortalGuideButton";
 import { DangerButton } from "@/components/ui/buttons";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { PortalAccountDetail } from "@/lib/portal-admin";
@@ -145,6 +146,21 @@ export function PortalAccountDetailView({
 
   return (
     <Stack gap="lg">
+      {/* 案内 PDF — この 1 名ぶんと、同じ取引先の全員ぶん。未有効化の
+          アカウントは発行できない（案内を渡してもログインできない）。 */}
+      {account.isActive ? (
+        <Group gap="xs" wrap="wrap">
+          <PortalGuideButton
+            accountId={account.id}
+            label={tr("settings.portalGuide.guideForThisContact")}
+          />
+          <PortalGuideButton
+            bpId={account.bpId}
+            label={tr("settings.portalGuide.guideForAllContacts")}
+          />
+        </Group>
+      ) : null}
+
       <Card padding="lg" radius="md" withBorder>
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
           <Field label={tr("common.contactName")} value={account.displayName} />

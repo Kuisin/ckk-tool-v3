@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{labels.title}}</title>
+  <link rel="stylesheet" href="base.css" />
+  <style>
+    /*
+     * ご担当者 1 名 = 1 ページ。最後の 1 枚のあとに空白ページを作らないよう、
+     * 改ページは「次のページの前」に入れる。
+     */
+    .guide-page + .guide-page {
+      page-break-before: always;
+    }
+
+    /*
+     * 見出しは base.css の 22pt（「納品書」のような 3 文字の題を想定）だと
+     * この題名（12 文字 / en では 30 文字超）が 2 行に折れて発行元とぶつかる。
+     * この紙だけ小さくし、発行元は縮ませない（社名が途中で折れていた）。
+     */
+    .doc-title {
+      font-size: 14pt;
+      letter-spacing: 0.02em;
+      line-height: 1.3;
+    }
+    .issuer {
+      flex-shrink: 0;
+      max-width: 230pt;
+    }
+    /* 社名は途中で折らない（住所・電話は折れてよい）。 */
+    .issuer strong {
+      white-space: nowrap;
+    }
+
+    /* 手順・注意は番号付きの短い文。行間を詰めすぎない（読んで操作する紙）。 */
+    .steps {
+      margin: 0 0 0 14pt;
+      font-size: 9.5pt;
+      line-height: 1.7;
+    }
+    .steps li + li {
+      margin-top: 2pt;
+    }
+
+    /*
+     * 中黒は**ぶら下げる**（折り返した 2 行目を字下げする）。既定のままだと
+     * 長い行が中黒の下まで戻ってきて、どこで 1 項目が終わるのか読めない
+     * — en の「Documents addressed to your company (…)」で実際にそうなった。
+     */
+    .scope-list {
+      list-style: none;
+      font-size: 9.5pt;
+      line-height: 1.7;
+    }
+    .scope-list li {
+      padding-left: 1.1em;
+      text-indent: -1.1em;
+    }
+    .scope-list li::before {
+      content: '・';
+      margin-right: 2pt;
+    }
+
+    /*
+     * QR は**読み取れることが仕事**なので、書類 QR（20mm）より大きく取る。
+     * 相手は自分の携帯で、暗い事務所の机の上から読む。
+     */
+    .guide-qr {
+      width: 34mm;
+      height: 34mm;
+      margin: 0 auto;
+    }
+    .guide-qr svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .qr-box {
+      text-align: center;
+    }
+    .qr-caption {
+      font-size: 8pt;
+      color: #888;
+      margin-top: 4pt;
+    }
+
+    /* URL は折り返して全部見せる（省略すると打ち込めない）。 */
+    .url-value {
+      font-size: 9pt;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+
+  {{#each pages}}
+  <div class="guide-page">
+
+    <div class="header">
+      <div class="brand">
+        <img class="brand-logo" src="logo.svg" alt="{{issuer.name}}" />
+        <div class="doc-title">{{labels.title}}</div>
+      </div>
+      <div class="issuer">
+        <strong>{{issuer.name}}</strong><br>
+        {{issuer.address}}<br>
+        {{issuer.tel}}
+      </div>
+    </div>
+
+    <div class="meta-row">
+      <div class="recipient-block">
+        <div class="recipient-name">{{partner_name}}　<span class="onchu">{{labels.onchu}}</span></div>
+        <div class="recipient-meta">{{contact_name}}　{{labels.attnSuffix}}</div>
+      </div>
+      <div class="doc-info">
+        <div class="qr-box">
+          <!-- 案内 QR = ログイン URL（宛先アドレスの前埋め付き）。
+               書類 QR と違って URL を入れる — 社外の人が携帯で開くため。 -->
+          <div class="guide-qr">{{{qr}}}</div>
+          <div class="qr-caption">{{labels.qrCaption}}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="strip">
+      {{labels.personalStrip}}
+    </div>
+
+    <div class="card-grid cols-2">
+      <div class="card">
+        <h4>{{labels.howToTitle}}</h4>
+        <ol class="steps">
+          <li>{{labels.step1}}</li>
+          <li>{{labels.step2}}</li>
+          <li>{{labels.step3}}</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h4>{{labels.scopeTitle}}</h4>
+        <!-- scope_html: 当てはまる行だけをルート側で組み立てる
+             （テンプレートエンジンに条件分岐が無い）。 -->
+        <ul class="scope-list">{{{scope_html}}}</ul>
+      </div>
+    </div>
+
+    <div class="card-grid cols-2">
+      <div class="card">
+        <h4>{{labels.urlLabel}}</h4>
+        <div class="url-value">{{login_url}}</div>
+      </div>
+      <div class="card">
+        <h4>{{labels.emailLabel}}</h4>
+        <div class="url-value">{{email}}</div>
+      </div>
+    </div>
+
+    <div class="section-title">{{labels.noticeTitle}}</div>
+    <ul class="scope-list">
+      <li>{{labels.noticeSecret}}</li>
+      <li>{{labels.noticeIdle}}</li>
+      <li>{{labels.noticeNoMail}}</li>
+    </ul>
+
+    <div class="section-title">{{labels.contactTitle}}</div>
+    <!-- contact_html: 担当営業が居れば氏名（+ アドレス）、居なければ定型文。 -->
+    <div class="notes">{{{contact_html}}}</div>
+
+  </div>
+  {{/each}}
+
+  <div class="footer">
+    {{issuer.name}}
+  </div>
+
+</body>
+</html>

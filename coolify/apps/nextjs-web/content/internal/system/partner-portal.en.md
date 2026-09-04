@@ -48,6 +48,28 @@ A new account **sees nothing**. It can only sign in once you activate it.
 > access stopped would defeat the point. Deactivating also ends any session that
 > person currently has open.
 
+## Handing over the sign-in guide
+
+Once the account is active, issue the **guide PDF from Partner portal (`SY0H`)**
+and give it to the contact. One sheet carries the QR code, the steps, what they
+can see and who to contact — enough to get started without any other document.
+
+- **One page per contact.** "Guide" on a row prints that one person; "Guide for
+  all contacts" on the account page prints everyone at that partner
+- **The QR carries that person's sign-in address.** Scanning it opens the login
+  screen with the address already filled in, so nobody types a long address on a
+  phone
+- **It cannot be issued before the account is active** — so you never hand
+  someone a guide they cannot use
+- The sheet is printed in the **partner's language** (the language on the partner
+  master), not in the language of the employee looking at the screen
+
+> **Backup codes are not on this sheet.** Those let someone in just by holding
+> them, so hand them over separately and directly.
+
+What the guide says about sharing and the sales contact is **a copy taken when it
+was issued**. Re-issue it if you change what is shared.
+
 ## When they cannot receive e-mail
 
 ### Backup codes

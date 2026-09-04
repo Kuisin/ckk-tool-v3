@@ -164,6 +164,93 @@ export function invoicePdfLabels(
   };
 }
 
+/**
+ * 取引先ポータルのご利用案内（api/pdf/portal-guide）。
+ *
+ * 3 帳票と違って**税務書類ではない**ので登録番号・御中まわりの共通ラベルは
+ * 使わない（`CommonPdfLabels` を継がない）。宛名の「御中 / 様」だけ要る。
+ *
+ * 手順の文には**桁数と有効時間を変数で差し込む** — `PORTAL_OTP_LENGTH` や
+ * `PORTAL_IDLE_TIMEOUT_MS` を変えたときに紙だけが古いままにならないように、
+ * 訳文には数を書かない。
+ */
+export interface PortalGuidePdfLabels {
+  title: string;
+  onchu: string;
+  attnSuffix: string;
+  personalStrip: string;
+  howToTitle: string;
+  step1: string;
+  step2: string;
+  step3: string;
+  scopeTitle: string;
+  scopeDocuments: string;
+  scopeBranches: string;
+  scopeAsEndUser: string;
+  scopeSingleDocuments: string;
+  scopeForms: string;
+  urlLabel: string;
+  emailLabel: string;
+  qrCaption: string;
+  noticeTitle: string;
+  noticeSecret: string;
+  noticeIdle: string;
+  noticeNoMail: string;
+  contactTitle: string;
+  contactFallback: string;
+}
+
+export function portalGuidePdfLabels(
+  locale: Locale,
+  vars: {
+    contactName: string;
+    codeLength: number;
+    codeMinutes: number;
+    idleHours: number;
+    singleDocuments: number;
+    formNames: string;
+  },
+): PortalGuidePdfLabels {
+  return {
+    title: label("pdf.PORTAL_GUIDE.title", locale),
+    onchu: label("pdf.PORTAL_GUIDE.onchu", locale),
+    attnSuffix: label("pdf.PORTAL_GUIDE.attnSuffix", locale),
+    personalStrip: labelWith("pdf.PORTAL_GUIDE.personalStrip", locale, {
+      name: vars.contactName,
+    }),
+    howToTitle: label("pdf.PORTAL_GUIDE.howToTitle", locale),
+    step1: label("pdf.PORTAL_GUIDE.step1", locale),
+    step2: labelWith("pdf.PORTAL_GUIDE.step2", locale, {
+      length: vars.codeLength,
+      minutes: vars.codeMinutes,
+    }),
+    step3: label("pdf.PORTAL_GUIDE.step3", locale),
+    scopeTitle: label("pdf.PORTAL_GUIDE.scopeTitle", locale),
+    scopeDocuments: label("pdf.PORTAL_GUIDE.scopeDocuments", locale),
+    scopeBranches: label("pdf.PORTAL_GUIDE.scopeBranches", locale),
+    scopeAsEndUser: label("pdf.PORTAL_GUIDE.scopeAsEndUser", locale),
+    scopeSingleDocuments: labelWith(
+      "pdf.PORTAL_GUIDE.scopeSingleDocuments",
+      locale,
+      { count: vars.singleDocuments },
+    ),
+    scopeForms: labelWith("pdf.PORTAL_GUIDE.scopeForms", locale, {
+      names: vars.formNames,
+    }),
+    urlLabel: label("pdf.PORTAL_GUIDE.urlLabel", locale),
+    emailLabel: label("pdf.PORTAL_GUIDE.emailLabel", locale),
+    qrCaption: label("pdf.PORTAL_GUIDE.qrCaption", locale),
+    noticeTitle: label("pdf.PORTAL_GUIDE.noticeTitle", locale),
+    noticeSecret: label("pdf.PORTAL_GUIDE.noticeSecret", locale),
+    noticeIdle: labelWith("pdf.PORTAL_GUIDE.noticeIdle", locale, {
+      hours: vars.idleHours,
+    }),
+    noticeNoMail: label("pdf.PORTAL_GUIDE.noticeNoMail", locale),
+    contactTitle: label("pdf.PORTAL_GUIDE.contactTitle", locale),
+    contactFallback: label("pdf.PORTAL_GUIDE.contactFallback", locale),
+  };
+}
+
 /** 注文種別 — 帳票の中だけで使う小さな閉じた表。 */
 export function orderTypeLabelLocalized(
   orderType: string,

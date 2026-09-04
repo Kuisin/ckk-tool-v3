@@ -240,10 +240,13 @@ describe("messages/*.json", () => {
    * 足すときは**なぜ空が正しいのか**を必ず書くこと。書けないなら、それは
    * 訳し忘れ。
    */
+  // 日本の商習慣の敬称（御中 / 様）は en / zh には無いので、意図して空にする。
   const INTENTIONALLY_EMPTY = (key: string) =>
     key.endsWith("pdf.QUOTE.onchu") ||
     key.endsWith("pdf.DELIVERY_NOTE.onchu") ||
-    key.endsWith("pdf.INVOICE.onchu");
+    key.endsWith("pdf.INVOICE.onchu") ||
+    key.endsWith("pdf.PORTAL_GUIDE.onchu") ||
+    key.endsWith("pdf.PORTAL_GUIDE.attnSuffix");
 
   it("空文字の翻訳が無い（未翻訳の取りこぼし検出）", () => {
     const empties = (o: object, prefix = ""): string[] =>
