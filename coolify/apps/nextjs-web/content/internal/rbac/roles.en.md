@@ -17,10 +17,12 @@ A permission answers "**who** (role) may do **what** (action) to **which area**
 
 - **Permission code** — one business area. Not necessarily one app (`master`
   covers all 12 master-data apps; `order_acceptance` covers both SA04 and SA05).
-- **Action** — R=read / C=create / U=update / D=delete / E=export /
-  ◎=ADMIN (every action on that code). Approval is not an action — who can
-  approve is decided solely by approval-group membership in **MS0B approval
-  settings**.
+- **Action** — R=read / C=create / U=update / D=delete / E=export / A=approve /
+  ◎=ADMIN (every action on that code). **Approving a document is not an action** —
+  who can approve is decided solely by approval-group membership in **MS0B
+  approval settings**. A appears only for **privileged-access decisions**
+  (SY0G), on the five privileged codes (`kiosk_secret`, `kiosk_device`,
+  `kiosk_card`, `personal_data`, `user_admin`) and `portal_admin`.
 - **Scope** — how far the action reaches. Blank means **ALL** (every row).
   - **OWN** — only rows the user created
   - **PLANT** — only rows of the user's assigned plants (set in SY01)
@@ -33,7 +35,7 @@ When several roles grant the same code, the **widest scope wins** (PLANT + ALL
 
 | Role | rolename | Purpose |
 |---|---|---|
-| Administrator | `admin` | Everything. The only role that can touch system admin (SY01+) and kiosk admin (SY08+) |
+| Administrator | `admin` | Everything. The only role that passes the privileged-access gates without an approval |
 | Manager | `manager` | Read and export across every area — for cross-department approvers (whether they can approve is decided by MS0B group membership) |
 | Sales manager | `sales_manager` | Full control of sales data + read everywhere |
 | Sales | `sales` | Create and edit sales data, **own records only** (OWN) |
@@ -51,72 +53,123 @@ When several roles grant the same code, the **widest scope wins** (PLANT + ALL
 | Viewer | `viewer` | Read-only across every area (executives, audit) |
 | Staff | `staff` | Transitional catch-all — everything except system and kiosk. **Replace with department roles in production** |
 
+### Privileged roles (assigned separately from business roles)
+
+System-critical operations are not "you hold the grant, so you may". They are
+**requested, approved by someone else, and usable only for a bounded time**
+(privileged access, SY0G). **Requesting and approving are always separate
+roles** — so that even when one person holds both, it is visible in the role
+list that they cannot approve their own request.
+
+| Role | rolename | Purpose |
+|---|---|---|
+| Kiosk operator | `kiosk_operator` | Looks after shared devices and QR cards. Revealing a PIN, enrolling a device, issuing a card must be requested and approved |
+| Kiosk approver | `kiosk_approver` | Approves device and card operations. **Cannot perform them** |
+| User operator | `user_operator` | Account handling for joiners and leavers. Suspend, restore, change plants or roles go through a change request |
+| User approver | `user_approver` | Approves user change requests and personal-data access. **Cannot perform them** |
+| Security auditor | `security_auditor` | Investigates login history and the activity log. Detail views and cross-document search need approval |
+| Privileged operator | `privileged_operator` | Older role that can request every privileged code at once. Prefer the five role-specific ones above |
+| Privileged approver | `privileged_approver` | The same, for approving |
+
+> These are **not granted to business roles** (`manager`, `*_manager`, `viewer`
+> and friends). "Someone who approves a department's work" and "someone who may
+> decide a PIN can be shown" are different judgements, so approvers are named
+> explicitly.
+
 ## Permission codes and their apps
 
 | Code | Name | Apps |
 |---|---|---|
-| `price_list` | Price list | SA01 Trial pricing / SA02 Price lists |
+| `price_list` | Price list | SA01 Price estimate / SA02 Price lists |
 | `quote` | Quote | SA03 Quotes |
-| `order_acceptance` | Order acceptance | SA04 Order acceptances / SA05 Order lines |
+| `order_acceptance` | Order acceptance / order lines | SA04 Order acceptances / SA05 Order lines |
 | `design_request` | Design request | SA06 Design requests |
-| `purchase_order` | Purchasing | PU01 Purchase requests / PU02 Material purchase orders |
+| `design_file` | Drawing | PD06 Drawings |
+| `purchase_order` | Material purchase / purchase request | PU01 Purchase requests / PU02 Material purchase orders |
 | `material_receipt` | Material receipt | PU03 Material receipts |
 | `outsource_order` | Outsource order | PU04 Outsource orders |
-| `work_order` | Work order | PD02 Work orders / PD05 Pending work orders (also kiosk step execution and work-order scan) |
-| `approve` | Approvals | PD03 Approvals |
+| `work_order` | Work order | PD02 Work orders / PD05 Pending work orders (also the kiosk's step execution and WO scan) |
+| `approve` | Approval | **No app** (formerly PD03; CM01 Approvals & schedule needs no permission) |
 | `inventory` | Inventory | PD04 Inventory |
-| `delivery_order` | Shipping order | SH01 Shipping orders / SH03 Pending shipments |
+| `delivery_order` | Delivery order | SH01 Delivery orders / SH03 Pending shipments |
 | `delivery_note` | Delivery note | SH02 Delivery notes |
 | `invoice` | Invoice | BL01 Invoices |
-| `billing_closing` | Billing closing | BL02 Monthly closing (Yayoi CSV export is E) |
-| `master` | Master data | All 12 master apps, MS01–MS0E |
+| `billing_closing` | Billing closing | BL02 Billing closing (the Yayoi CSV export is E) |
+| `master` | Master data | All 12 master apps, MS01 and MS04–MS0E |
+| `form` | Forms | **The app itself needs no permission** (CM02 opens for anyone). C / U are needed to create or edit a form |
+| `internal_page` | Internal documents | CM03 Internal documents |
 | `admin_manual` | Admin manual | DC02 Admin manual (this page) |
-| `kiosk` | Kiosk admin | SY08 QR cards / SY09 Devices / SY0A Kiosk settings |
-| `system` | System admin | All system apps, SY01–SY0C |
+| `system` | System admin | SY02 Price estimate engine / SY03 Product items / SY04 Product types / SY05 Apps / SY0B Links / SY0C Order intake / SY0E AI provider / SY0F Notification email |
+| `kiosk` | Shared device admin | SY09 Devices / SY0A Shared device settings |
+| `kiosk_secret` | Shared device secrets | Revealing the exit PIN, PIN history, device setup code (**privileged**) |
+| `kiosk_device` | Granting device access | Enrolling and revoking devices (**privileged**) |
+| `kiosk_card` | QR card issue / PIN | SY08 QR cards (**privileged**) |
+| `personal_data` | Personal data access | SY07 Activity log / SY0D Login history (**privileged**) |
+| `user_admin` | User and permission changes | SY01 Users (**privileged**) |
+| `portal_admin` | Partner portal admin | SY0H Partner portal |
 
-## Matrix — sales and purchasing
+**Some apps need no permission at all**: CM01 Approvals & schedule, CM02 Forms
+(the app itself), DC01 Manual, SY06 Files, SY0G Privileged access. They are built
+to show only what concerns you, so the door is left open.
 
-| Role | Price list | Quote | Order acc. | Design req. | Purchasing | Receipt | Outsource |
-|---|---|---|---|---|---|---|---|
-| **Administrator**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
-| **Manager**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE |
-| **Sales manager**<br/>`sales_manager` | RCUDE | RCUDE | RCUDE | RCUDE | — | — | — |
-| **Sales**<br/>`sales` | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | — | — | — |
-| **Sales assistant**<br/>`sales_assistant` | R | R | R | R | — | — | — |
-| **Purchasing manager**<br/>`purchasing_manager` | R | R | R | R | RCUDE | RCUDE | RCUDE |
-| **Purchasing**<br/>`purchasing` | — | — | — | — | RCUDE | RCUDE | RCUD |
-| **Production manager**<br/>`production_manager` | R | R | R | R | R | R | RCUDE |
-| **Production**<br/>`production` | — | — | RU | — | R | R | RU |
-| **Quality manager**<br/>`quality_manager` | R | R | R | R | R | R | R |
-| **Quality**<br/>`quality` | — | — | R | — | — | — | — |
-| **Shipping manager**<br/>`shipping_manager` | R | R | R | R | R | R | R |
-| **Shipping**<br/>`shipping` | — | — | R | — | — | — | — |
-| **Accounting manager**<br/>`accounting_manager` | R | R | R | R | R | R | R |
-| **Accounting**<br/>`accounting` | R | R | R | — | — | — | — |
-| **Viewer**<br/>`viewer` | R | R | R | R | R | R | R |
-| **Staff**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE |
+## Permission matrix
 
-## Matrix — production, shipping, billing, admin
+### Sales and purchasing
 
-| Role | Work order | Approvals | Inventory | Shipping | Delivery | Invoice | Closing | Master | Admin manual | Kiosk | System |
+| Role | Price list | Quote | Order acceptance | Design request | Drawing | Purchasing | Receipt | Outsourcing |
+|---|---|---|---|---|---|---|---|---|
+| **Administrator**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
+| **Manager (approver)**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE | RE |
+| **Sales manager**<br/>`sales_manager` | RCUDE | RCUDE | RCUDE | RCUDE | R | — | — | — |
+| **Sales**<br/>`sales` | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | R | — | — | — |
+| **Sales assistant**<br/>`sales_assistant` | R | R | R | R | R | — | — | — |
+| **Purchasing manager**<br/>`purchasing_manager` | R | R | R | R | R | RCUDE | RCUDE | RCUDE |
+| **Purchasing**<br/>`purchasing` | — | — | — | — | R | RCUDE | RCUDE | RCUD |
+| **Production manager**<br/>`production_manager` | R | R | R | R | RCU | R | R | RCUDE |
+| **Production**<br/>`production` | — | — | RU | RU | RCU | R | R | RU |
+| **Quality manager**<br/>`quality_manager` | R | R | R | R | R | R | R | R |
+| **Quality**<br/>`quality` | — | — | R | — | R | — | — | — |
+| **Shipping manager**<br/>`shipping_manager` | R | R | R | R | R | R | R | R |
+| **Shipping**<br/>`shipping` | — | — | R | — | R | — | — | — |
+| **Accounting manager**<br/>`accounting_manager` | R | R | R | R | R | R | R | R |
+| **Accounting**<br/>`accounting` | R | R | R | — | R | — | — | — |
+| **Viewer**<br/>`viewer` | R | R | R | R | R | R | R | R |
+| **Staff**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE |
+
+### Production, shipping, billing, shared
+
+| Role | Work order | Approval | Inventory | Delivery order | Delivery note | Invoice | Closing | Master data | Forms | Internal docs | Admin manual |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | **Administrator**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
-| **Manager**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE | RE | RE | — | — |
+| **Manager (approver)**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE | RE | RE | RE | RE |
 | **Sales manager**<br/>`sales_manager` | — | R | — | — | — | — | — | R | — | — | — |
 | **Sales**<br/>`sales` | — | — | — | — | — | — | — | R | — | — | — |
 | **Sales assistant**<br/>`sales_assistant` | — | — | — | — | — | — | — | R | — | — | — |
-| **Purchasing manager**<br/>`purchasing_manager` | R | R | R | R | R | R | R | R | R | — | — |
+| **Purchasing manager**<br/>`purchasing_manager` | R | R | R | R | R | R | R | R | R | R | R |
 | **Purchasing**<br/>`purchasing` | R | R | R | — | — | — | — | R | — | — | — |
-| **Production manager**<br/>`production_manager` | RCUDE | R | RCUDE | R | R | R | R | R | R | — | — |
+| **Production manager**<br/>`production_manager` | RCUDE | R | RCUDE | R | R | R | R | R | R | R | R |
 | **Production**<br/>`production` | RCUDE<br/>PLANT | R | RCUE<br/>PLANT | R | — | — | — | R | — | — | — |
-| **Quality manager**<br/>`quality_manager` | RCUDE | R | R | R | R | R | R | R | R | — | — |
+| **Quality manager**<br/>`quality_manager` | RCUDE | R | R | R | R | R | R | R | R | R | R |
 | **Quality**<br/>`quality` | RU<br/>PLANT | R | R | — | — | — | — | R | — | — | — |
-| **Shipping manager**<br/>`shipping_manager` | R | R | RCUDE | RCUDE | RCUDE | R | R | R | R | — | — |
+| **Shipping manager**<br/>`shipping_manager` | R | R | RCUDE | RCUDE | RCUDE | R | R | R | R | R | R |
 | **Shipping**<br/>`shipping` | R | — | RU<br/>PLANT | RCUDE<br/>PLANT | RCUDE | — | — | R | — | — | — |
-| **Accounting manager**<br/>`accounting_manager` | R | R | R | R | R | RCUDE | RCUDE | R | R | — | — |
+| **Accounting manager**<br/>`accounting_manager` | R | R | R | R | R | RCUDE | RCUDE | R | R | R | R |
 | **Accounting**<br/>`accounting` | — | — | — | R | R | RCUDE | RCUE | R | — | — | — |
-| **Viewer**<br/>`viewer` | R | R | R | R | R | R | R | R | R | — | — |
-| **Staff**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | — | — | — |
+| **Viewer**<br/>`viewer` | R | R | R | R | R | R | R | R | R | R | R |
+| **Staff**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | — |
+
+### Privileged and system (never given to business roles)
+
+| Role | System | Shared device | Device secrets | Device access | QR cards | Personal data | User admin | Portal |
+|---|---|---|---|---|---|---|---|---|
+| **Administrator**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | — |
+| **Kiosk operator**<br/>`kiosk_operator` | — | RU | RU | RCU | RCU | — | — | — |
+| **Kiosk approver**<br/>`kiosk_approver` | — | — | A | A | A | — | — | — |
+| **User operator**<br/>`user_operator` | — | — | — | — | — | — | RU | — |
+| **User approver**<br/>`user_approver` | — | — | — | — | — | A | A | — |
+| **Security auditor**<br/>`security_auditor` | — | — | — | — | — | R | — | — |
+| **Privileged operator**<br/>`privileged_operator` | — | R | RU | RCU | RCU | R | RU | RCU |
+| **Privileged approver**<br/>`privileged_approver` | — | — | A | A | A | A | A | A |
 
 ## How to read this
 
@@ -124,8 +177,8 @@ When several roles grant the same code, the **widest scope wins** (PLANT + ALL
 
 Who can approve is managed **only in approval settings (MS0B)**. The RBAC
 requirement for pressing approve / reject is simply being able to **read (R) or
-update (U)** the document — there is no approve-action grant any more (the old
-A=approve grants were removed entirely). A user who can open the document and
+update (U)** the document — there is no approve-action grant for documents (A survives only for
+privileged-access decisions). A user who can open the document and
 is a member (or in-period stand-in) of the step's approval group can approve.
 This is why assigning a manager role alone does not let someone approve.
 
@@ -136,15 +189,30 @@ Launcher visibility in production is decided separately (SY05 App management /
 feature flags), so an app can be hidden in production even for someone with the
 permission. In dev everything is shown by default.
 
-### System and kiosk admin are administrator-only
+### Getting into a screen and being allowed to act are different
 
-`system` and `kiosk` are deliberately not granted to any business role. User
-management, app management, activity log, QR cards and device management are
-reachable by the **administrator role only**.
-File management (SY06) is the exception — it **opens for anyone, no permission
-required**: what is visible is decided by folder grants (individual) and by the
-business apps the user can read (the PDFs those apps generated), so without
-either it simply shows up empty.
+The coarse `system` / `kiosk` codes were split into **five privileged codes**
+(`kiosk_secret`, `kiosk_device`, `kiosk_card`, `personal_data`, `user_admin`).
+Holding one is **not enough to act** — the operation has to be requested in SY0G
+Privileged access and approved by someone else, and it only works for a bounded
+time (the clock starts on **first use**, not on approval).
+
+- Viewing lists and details, renaming, moving floor-map pins … still just `kiosk`.
+- Revealing secrets, enrolling/revoking devices, issuing cards or PINs,
+  cross-document history search, suspending a user or changing their roles …
+  these need an approval.
+- **Administrators (`system` ◎) pass straight through** — the user's call. It is
+  also the only anti-lockout path, which is why no self-approval exists. The
+  bypass is recorded in the audit row as `bypass:"admin"`, so it stays
+  distinguishable from an approved run.
+
+None of this is granted to business roles: `system`, `kiosk` and the five
+privileged codes are all excluded from the bulk grant in `roles-seed.sql`.
+
+File management (SY06) **opens for anyone, no permission required**: what is
+visible is decided by folder grants (individual) and by the business apps the
+user can read (the PDFs those apps generated), so without either it simply shows
+up empty.
 
 ## Assigning roles
 
@@ -158,8 +226,14 @@ either it simply shows up empty.
 The role contents (which code gets which action) live in SQL seeds, which are the
 source of truth:
 
-- `shared-db/sql/rbac-seed.sql` — the 18 permission codes + `admin` / `staff`
-- `shared-db/sql/roles-seed.sql` — the permission matrix for the 15 operational roles
+- `shared-db/sql/rbac-seed.sql` — the 27 permission codes + `admin` / `staff`
+- `shared-db/sql/roles-seed.sql` — the permission matrix for the 15 business roles
+- migration `20260920090000_privileged_roles` — the 5 privileged roles
+
+> **Adding a code means checking the exclusion lists in both seeds.**
+> `roles-seed.sql` grants `manager` / `viewer` / the six `*_manager` roles with
+> `CROSS JOIN app.permissions`, so a new code goes to all of them unless you
+> exclude it (this actually happened once, with `kiosk`).
 
 After editing, apply them (both are idempotent) and rebuild the Excel version:
 

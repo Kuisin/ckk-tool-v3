@@ -16,9 +16,11 @@ description: "系统中所有角色与权限代码的一览：谁能做什么，
 
 - **权限代码** … 一个业务领域，未必等于一个应用（`master` 覆盖 12 个主数据应用，
   `order_acceptance` 同时覆盖 SA04 与 SA05）。
-- **动作** … R=查看 / C=新建 / U=修改 / D=删除 / E=导出 /
-  ◎=ADMIN（该代码的全部动作）。审批不是动作 — 谁能审批仅由
-  **MS0B 审批设定** 的审批组成员资格决定。
+- **动作** … R=查看 / C=新建 / U=修改 / D=删除 / E=导出 / A=审批 /
+  ◎=ADMIN（该代码的全部动作）。**单据的审批不是动作** — 谁能审批仅由
+  **MS0B 审批设定** 的审批组成员资格决定。带 A 的只有**特权访问（SY0G）的
+  决裁**，对象仅限下面的 5 个特权代码（`kiosk_secret` / `kiosk_device` /
+  `kiosk_card` / `personal_data` / `user_admin`）与 `portal_admin`。
 - **作用域** … 操作可及的范围。留空表示 **ALL（全部数据）**。
   - **OWN** … 仅本人创建的数据
   - **PLANT** … 仅本人所属基地的数据（在 SY01 中设置所属基地）
@@ -30,7 +32,7 @@ description: "系统中所有角色与权限代码的一览：谁能做什么，
 
 | 角色 | rolename | 用途 |
 |---|---|---|
-| 管理员 | `admin` | 全部权限。唯一可以使用系统管理（SY01～）与终端管理（SY08～）的角色 |
+| 管理员 | `admin` | 全部权限。唯一无需审批即可通过特权访问关卡的角色 |
 | 管理层（审批人） | `manager` | 全业务的查看・导出，面向跨部门审批者（能否审批由 MS0B 审批组成员资格决定） |
 | 销售部长 | `sales_manager` | 销售数据全量完整操作 + 全业务查看 |
 | 销售 | `sales` | 销售数据 **仅限本人创建的部分** 新建・修改（OWN） |
@@ -48,72 +50,120 @@ description: "系统中所有角色与权限代码的一览：谁能做什么，
 | 只读 | `viewer` | 全业务仅查看（面向管理层・审计） |
 | 通用 | `staff` | 过渡期的临时角色，除系统与终端外均可操作。**生产环境建议改用部门角色** |
 
+### 特权角色（与业务角色分开分配）
+
+系统上重要的操作不是「拥有就能用」，而是**提出申请、由他人审批、并且只在限定
+时间内可用**（特权访问 SY0G）。**申请方与审批方必定是不同的角色** — 即使一个人
+同时拥有两者，从角色一览也能看出他无法审批自己的申请。
+
+| 角色 | rolename | 用途 |
+|---|---|---|
+| 终端运维（申请） | `kiosk_operator` | 负责共用终端与二维码卡。公开 PIN、登记终端、发行卡片都需申请并获批 |
+| 终端运维（审批） | `kiosk_approver` | 审批终端与卡片的特权操作。**本人无法执行** |
+| 用户运维（申请） | `user_operator` | 入职离职相关的账号运维。停用・恢复・变更所属基地或角色需提交变更申请 |
+| 用户运维（审批） | `user_approver` | 审批用户变更申请与个人数据查看。**本人无法执行** |
+| 审计（历史查看） | `security_auditor` | 调查登录历史与操作历史。详情与跨单据检索需申请并获批 |
+| 特权操作（申请） | `privileged_operator` | 可一次性申请全部特权代码的旧角色。推荐使用上面按职责细分的 5 个 |
+| 特权操作（审批） | `privileged_approver` | 同上，用于审批 |
+
+> 这些**不会分配给业务角色**（`manager` / `*_manager` / `viewer` 等）。
+> 「审批部门业务的人」与「能判断可否公开 PIN 的人」是两回事，因此审批者需要
+> 明确地分配这些角色。
+
 ## 权限代码与对应应用
 
 | 权限代码 | 名称 | 对应应用 |
 |---|---|---|
-| `price_list` | 价格表 | SA01 试算 / SA02 价格表 |
+| `price_list` | 价格表 | SA01 价格试算 / SA02 价格表 |
 | `quote` | 报价单 | SA03 报价单 |
-| `order_acceptance` | 订单受理・订单明细 | SA04 订单受理 / SA05 订单明细 |
+| `order_acceptance` | 订单确认书・订单明细 | SA04 订单确认书 / SA05 订单明细 |
 | `design_request` | 设计委托 | SA06 设计委托单 |
-| `purchase_order` | 材料订购・采购申请 | PU01 采购申请 / PU02 材料订购单 |
-| `material_receipt` | 材料入库 | PU03 材料入库 |
-| `outsource_order` | 外协委托 | PU04 外协委托 |
-| `work_order` | 工单 | PD02 工单 / PD05 未处理工单（终端的工序执行・工单扫描使用同一代码） |
-| `approve` | 审批管理 | PD03 审批管理 |
+| `design_file` | 图纸 | PD06 图纸 |
+| `purchase_order` | 材料采购・采购申请 | PU01 采购申请 / PU02 材料采购单 |
+| `material_receipt` | 材料到货 | PU03 材料到货 |
+| `outsource_order` | 外协委托 | PU04 外协委托单 |
+| `work_order` | 工单 | PD02 工单 / PD05 未处理工单（共用终端的工序执行・工单扫描也用此代码） |
+| `approve` | 审批 | **无对应应用**（原 PD03。审批与计划 CM01 无需权限即可打开） |
 | `inventory` | 库存 | PD04 库存管理 |
-| `delivery_order` | 出货单 | SH01 出货单 / SH03 未处理出货单 |
+| `delivery_order` | 出货单 | SH01 出货单 / SH03 未处理出货 |
 | `delivery_note` | 送货单 | SH02 送货单 |
-| `invoice` | 发票 | BL01 发票 |
+| `invoice` | 请款单 | BL01 请款单 |
 | `billing_closing` | 结算处理 | BL02 结算处理（弥生 CSV 导出为 E） |
-| `master` | 主数据管理 | MS01～MS0E 全部 12 个主数据应用 |
+| `master` | 主数据管理 | MS01・MS04〜MS0E 共 12 个主数据应用 |
+| `form` | 表单 | **入口无需权限**（CM02 任何人都能打开）。创建・修改表单需要 C / U |
+| `internal_page` | 内部文档 | CM03 内部文档 |
 | `admin_manual` | 管理手册 | DC02 管理手册（本页） |
-| `kiosk` | 终端管理 | SY08 二维码卡 / SY09 终端管理 / SY0A 终端设置 |
-| `system` | 系统管理 | SY01～SY0C 全部系统应用 |
+| `system` | 系统管理 | SY02 价格试算计算 / SY03 产品项目 / SY04 产品类别 / SY05 应用管理 / SY0B 链接管理 / SY0C 订单导入 / SY0E AI 服务商 / SY0F 通知邮件 |
+| `kiosk` | 共用终端管理 | SY09 终端管理 / SY0A 共用终端设置 |
+| `kiosk_secret` | 共用终端的机密 | 公开退出 PIN・PIN 历史・终端设置代码（**特权**） |
+| `kiosk_device` | 终端访问的授予 | 登记・失效终端（**特权**） |
+| `kiosk_card` | 二维码卡发行・PIN | SY08 二维码卡管理（**特权**） |
+| `personal_data` | 个人数据的查看 | SY07 操作历史 / SY0D 登录历史（**特权**） |
+| `user_admin` | 用户・权限的变更 | SY01 用户管理（**特权**） |
+| `portal_admin` | 客户门户的管理 | SY0H 客户门户 |
 
-## 权限矩阵（销售・采购）
+**也有无需权限的应用**：CM01 审批与计划 / CM02 表单（入口） / DC01 操作手册 /
+SY06 文件管理 / SY0G 特权访问。它们的内容本身只显示与本人相关的部分，因此入口
+是开放的。
 
-| 角色 | 价格表 | 报价单 | 订单受理 | 设计委托 | 采购 | 入库 | 外协 |
-|---|---|---|---|---|---|---|---|
-| **管理员**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
-| **管理层（审批人）**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE |
-| **销售部长**<br/>`sales_manager` | RCUDE | RCUDE | RCUDE | RCUDE | — | — | — |
-| **销售**<br/>`sales` | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | — | — | — |
-| **销售助理**<br/>`sales_assistant` | R | R | R | R | — | — | — |
-| **采购部长**<br/>`purchasing_manager` | R | R | R | R | RCUDE | RCUDE | RCUDE |
-| **采购**<br/>`purchasing` | — | — | — | — | RCUDE | RCUDE | RCUD |
-| **制造部长**<br/>`production_manager` | R | R | R | R | R | R | RCUDE |
-| **制造・生产管理**<br/>`production` | — | — | RU | — | R | R | RU |
-| **品质部长**<br/>`quality_manager` | R | R | R | R | R | R | R |
-| **品质・检查**<br/>`quality` | — | — | R | — | — | — | — |
-| **出货部长**<br/>`shipping_manager` | R | R | R | R | R | R | R |
-| **出货**<br/>`shipping` | — | — | R | — | — | — | — |
-| **会计部长**<br/>`accounting_manager` | R | R | R | R | R | R | R |
-| **会计**<br/>`accounting` | R | R | R | — | — | — | — |
-| **只读**<br/>`viewer` | R | R | R | R | R | R | R |
-| **通用**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE |
+## 权限矩阵
 
-## 权限矩阵（生产・出货・结算・管理）
+### 销售・采购
 
-| 角色 | 工单 | 审批管理 | 库存 | 出货单 | 送货单 | 发票 | 结算 | 主数据 | 管理手册 | 终端 | 系统 |
+| 角色 | 价格表 | 报价单 | 订单确认书 | 设计委托 | 图纸 | 采购 | 到货 | 外协 |
+|---|---|---|---|---|---|---|---|---|
+| **管理员**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
+| **管理职（审批人）**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE | RE |
+| **营业部长**<br/>`sales_manager` | RCUDE | RCUDE | RCUDE | RCUDE | R | — | — | — |
+| **营业**<br/>`sales` | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | R | — | — | — |
+| **营业助理**<br/>`sales_assistant` | R | R | R | R | R | — | — | — |
+| **采购部长**<br/>`purchasing_manager` | R | R | R | R | R | RCUDE | RCUDE | RCUDE |
+| **采购**<br/>`purchasing` | — | — | — | — | R | RCUDE | RCUDE | RCUD |
+| **制造部长**<br/>`production_manager` | R | R | R | R | RCU | R | R | RCUDE |
+| **制造・生产管理**<br/>`production` | — | — | RU | RU | RCU | R | R | RU |
+| **品质部长**<br/>`quality_manager` | R | R | R | R | R | R | R | R |
+| **品质・检查**<br/>`quality` | — | — | R | — | R | — | — | — |
+| **出货部长**<br/>`shipping_manager` | R | R | R | R | R | R | R | R |
+| **出货**<br/>`shipping` | — | — | R | — | R | — | — | — |
+| **会计部长**<br/>`accounting_manager` | R | R | R | R | R | R | R | R |
+| **会计**<br/>`accounting` | R | R | R | — | R | — | — | — |
+| **查看**<br/>`viewer` | R | R | R | R | R | R | R | R |
+| **一般**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE |
+
+### 生产・出货・请款・公共
+
+| 角色 | 工单 | 审批 | 库存 | 出货单 | 送货单 | 请款单 | 结算 | 主数据 | 表单 | 内部文档 | 管理手册 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | **管理员**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
-| **管理层（审批人）**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE | RE | RE | — | — |
-| **销售部长**<br/>`sales_manager` | — | R | — | — | — | — | — | R | — | — | — |
-| **销售**<br/>`sales` | — | — | — | — | — | — | — | R | — | — | — |
-| **销售助理**<br/>`sales_assistant` | — | — | — | — | — | — | — | R | — | — | — |
-| **采购部长**<br/>`purchasing_manager` | R | R | R | R | R | R | R | R | R | — | — |
+| **管理职（审批人）**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE | RE | RE | RE | RE |
+| **营业部长**<br/>`sales_manager` | — | R | — | — | — | — | — | R | — | — | — |
+| **营业**<br/>`sales` | — | — | — | — | — | — | — | R | — | — | — |
+| **营业助理**<br/>`sales_assistant` | — | — | — | — | — | — | — | R | — | — | — |
+| **采购部长**<br/>`purchasing_manager` | R | R | R | R | R | R | R | R | R | R | R |
 | **采购**<br/>`purchasing` | R | R | R | — | — | — | — | R | — | — | — |
-| **制造部长**<br/>`production_manager` | RCUDE | R | RCUDE | R | R | R | R | R | R | — | — |
+| **制造部长**<br/>`production_manager` | RCUDE | R | RCUDE | R | R | R | R | R | R | R | R |
 | **制造・生产管理**<br/>`production` | RCUDE<br/>PLANT | R | RCUE<br/>PLANT | R | — | — | — | R | — | — | — |
-| **品质部长**<br/>`quality_manager` | RCUDE | R | R | R | R | R | R | R | R | — | — |
+| **品质部长**<br/>`quality_manager` | RCUDE | R | R | R | R | R | R | R | R | R | R |
 | **品质・检查**<br/>`quality` | RU<br/>PLANT | R | R | — | — | — | — | R | — | — | — |
-| **出货部长**<br/>`shipping_manager` | R | R | RCUDE | RCUDE | RCUDE | R | R | R | R | — | — |
+| **出货部长**<br/>`shipping_manager` | R | R | RCUDE | RCUDE | RCUDE | R | R | R | R | R | R |
 | **出货**<br/>`shipping` | R | — | RU<br/>PLANT | RCUDE<br/>PLANT | RCUDE | — | — | R | — | — | — |
-| **会计部长**<br/>`accounting_manager` | R | R | R | R | R | RCUDE | RCUDE | R | R | — | — |
+| **会计部长**<br/>`accounting_manager` | R | R | R | R | R | RCUDE | RCUDE | R | R | R | R |
 | **会计**<br/>`accounting` | — | — | — | R | R | RCUDE | RCUE | R | — | — | — |
-| **只读**<br/>`viewer` | R | R | R | R | R | R | R | R | R | — | — |
-| **通用**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | — | — | — |
+| **查看**<br/>`viewer` | R | R | R | R | R | R | R | R | R | R | R |
+| **一般**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | — |
+
+### 特权・系统（不发给业务角色）
+
+| 角色 | 系统 | 共用终端 | 终端机密 | 终端访问 | 二维码卡 | 个人数据 | 用户权限 | 门户 |
+|---|---|---|---|---|---|---|---|---|
+| **管理员**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | — |
+| **终端运维（申请）**<br/>`kiosk_operator` | — | RU | RU | RCU | RCU | — | — | — |
+| **终端运维（审批）**<br/>`kiosk_approver` | — | — | A | A | A | — | — | — |
+| **用户运维（申请）**<br/>`user_operator` | — | — | — | — | — | — | RU | — |
+| **用户运维（审批）**<br/>`user_approver` | — | — | — | — | — | A | A | — |
+| **审计（历史查看）**<br/>`security_auditor` | — | — | — | — | — | R | — | — |
+| **特权操作（申请）**<br/>`privileged_operator` | — | R | RU | RCU | RCU | R | RU | RCU |
+| **特权操作（审批）**<br/>`privileged_approver` | — | — | A | A | A | A | A | A |
 
 ## 阅读时的注意事项
 
@@ -130,13 +180,27 @@ description: "系统中所有角色与权限代码的一览：谁能做什么，
 显示由另一套机制（SY05 应用管理 / feature flags）决定，即使有权限，未发布的应用
 在生产环境也不会出现。dev 环境默认全部显示。
 
-### 系统管理与终端管理仅限管理员
+### 「能进入画面」与「能执行操作」是两回事
 
-`system` 与 `kiosk` 不分配给任何业务角色。用户管理・应用管理・操作履历・
-二维码卡・终端管理 **仅管理员角色** 可以使用。
-另外文件管理（SY06）是例外，**无需权限，任何人都能打开** — 可见范围由
-文件夹权限（单独授予）与业务应用的查看权限（该应用生成的 PDF）决定，
-没有权限时只会显示为空。
+原本粗放的 `system` / `kiosk` 已按重要操作拆成 **5 个特权代码**
+（`kiosk_secret` / `kiosk_device` / `kiosk_card` / `personal_data` /
+`user_admin`）。**仅仅持有这些代码还不能执行** — 需要在 SY0G 特权访问中提出
+申请、由他人审批，并且只在限定时间内有效（计时从**首次使用**开始，而不是从
+审批开始）。
+
+- 查看一览与详情、修改名称、拖动平面图上的标记 … 仍然只需 `kiosk`。
+- 公开机密、登记/失效终端、发行卡片或 PIN、跨单据检索历史、停用用户或变更其
+  角色 … 都需要审批。
+- **管理员（`system` 的 ◎）直接通过**（由使用方决定）。这也是唯一的防锁死通道，
+  因此不必再开自我审批的口子。直接通过会在审计记录中留下 `bypass:"admin"`，
+  与经过审批的执行可以区分。
+
+以上都不会分配给业务角色：`system`、`kiosk` 与 5 个特权代码，都已从
+`roles-seed.sql` 的批量授予中排除。
+
+另外文件管理（SY06）**无需权限，任何人都能打开** — 可见范围由文件夹权限
+（单独授予）与业务应用的查看权限（该应用生成的 PDF）决定，没有权限时只会
+显示为空。
 
 ## 为用户分配角色
 
@@ -149,8 +213,14 @@ description: "系统中所有角色与权限代码的一览：谁能做什么，
 
 角色的内容（哪个代码授予哪些动作）以 SQL 种子文件为准：
 
-- `shared-db/sql/rbac-seed.sql` … 18 个权限代码 + `admin` / `staff`
-- `shared-db/sql/roles-seed.sql` … 15 个运营角色的权限矩阵
+- `shared-db/sql/rbac-seed.sql` … 27 个权限代码 + `admin` / `staff`
+- `shared-db/sql/roles-seed.sql` … 15 个业务角色的权限矩阵
+- 迁移 `20260920090000_privileged_roles` … 5 个特权角色
+
+> **新增代码时，必须同时检查两个种子文件的排除列表。**
+> `roles-seed.sql` 通过 `CROSS JOIN app.permissions` 向 `manager` / `viewer` /
+> 6 个 `*_manager` 授予权限，不排除的话新代码会发给所有人（`kiosk` 就曾实际
+> 发生过）。
 
 修改后需应用到数据库（均为幂等），并重新生成 Excel 版：
 
