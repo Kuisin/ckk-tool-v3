@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import signal
 import sys
 import time
@@ -87,6 +88,19 @@ def process_message(
     return (accepted, saved, failed)
 
 
+# 生存の印。巡回のたび（成功・失敗を問わず）と無効待機中に更新し、Dockerfile の
+# HEALTHCHECK がこの mtime を見る。IMAP が半開で固まるとここが止まる → unhealthy。
+ALIVE_STAMP = os.environ.get("INTAKE_ALIVE_STAMP", "/tmp/intake-gateway-alive")
+
+
+def touch_alive() -> None:
+    try:
+        with open(ALIVE_STAMP, "a"):
+            os.utime(ALIVE_STAMP, None)
+    except OSError:
+        log.debug("生存の印を更新できませんでした: %s", ALIVE_STAMP)
+
+
 def poll_once(cfg: config.Config) -> tuple[int, int]:
     """1 巡。戻り値 (見たメール数, 置いたファイル数)。"""
     messages = 0
@@ -149,6 +163,7 @@ def main() -> int:
         # 終了せず待つ — Coolify の restart ループでログが流れるのを避ける。
         log.warning("メール取込は無効です（%s）。設定されるまで何もしません", reason)
         while not _stop:
+            touch_alive()
             time.sleep(60)
         return 0
 
@@ -170,6 +185,7 @@ def main() -> int:
                 log.info("巡回完了: %d 通 / %d ファイル", messages, files)
         except Exception:
             log.exception("巡回に失敗しました（次回再試行します）")
+        touch_alive()
         # 停止要求に素早く反応するため小刻みに眠る
         for _ in range(cfg.poll_seconds):
             if _stop:
