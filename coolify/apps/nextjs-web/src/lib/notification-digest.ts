@@ -150,14 +150,27 @@ async function sweep(): Promise<DigestRunResult> {
     });
     // 0 件 = ローリングデプロイ中の旧コンテナなど、別の掃き出しが先に取った。
     if (claimed.count === 0) continue;
+    // 一部だけ取れた（相手が先に何件か印を付けた）ときは、**自分が取れた分だけ**
+    // 送る。全件を送ると取れなかった分が相手からも届いて二重になる。
+    let mine = items;
+    if (claimed.count !== ids.length) {
+      const got = await prisma.notification.findMany({
+        where: { id: { in: ids }, emailSentAt: now },
+        select: { id: true },
+      });
+      const gotIds = new Set(got.map((g) => g.id));
+      mine = items.filter((i) => gotIds.has(i.id));
+      if (mine.length === 0) continue;
+    }
+    const mineIds = mine.map((i) => i.id);
 
-    const { shown, omittedCount } = splitDigestItems(items, settings);
+    const { shown, omittedCount } = splitDigestItems(mine, settings);
     const base = appBaseUrl();
     // 受取人（この人）の言語で送る — 見積書等の書類と同じ「宛先の言語」の原則。
     const locale = normalizeLocale(items[0]?.user.locale);
     const ok = await sendNotificationDigestMail({
       to: email,
-      subject: digestSubject(items.length),
+      subject: digestSubject(mine.length, locale),
       omittedCount,
       allUrl: `${base}/notifications`,
       locale,
@@ -172,13 +185,13 @@ async function sweep(): Promise<DigestRunResult> {
     });
     if (!ok) {
       await prisma.notification.updateMany({
-        where: { id: { in: ids }, emailSentAt: now },
+        where: { id: { in: mineIds }, emailSentAt: now },
         data: { emailSentAt: null },
       });
       continue;
     }
     sentUsers += 1;
-    sentNotifications += items.length;
+    sentNotifications += mine.length;
   }
   return { users: sentUsers, notifications: sentNotifications };
 }

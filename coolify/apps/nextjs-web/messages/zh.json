@@ -4384,7 +4384,8 @@
       "grantSaveFailed": "权限保存失败",
       "grantDeleteFailed": "权限删除失败",
       "uploadPermissionDenied": "没有上传到此文件夹的权限",
-      "deletePermissionDenied": "没有删除此文件的权限"
+      "deletePermissionDenied": "没有删除此文件的权限",
+      "uploadTooLarge": "文件过大（上限 20 MB）"
     },
     "notificationEmailActions": {
       "saveFailedLog": "[notification-email] 保存失败"

@@ -1,4 +1,4 @@
-import base64, io, json, os, re, time
+import base64, io, json, os, re, threading, time
 from dataclasses import dataclass
 from datetime import date
 import fitz  # PyMuPDF
@@ -355,6 +355,10 @@ def _resolve_ai(raw: str | None) -> AIConfig:
     if p not in PROVIDERS:
         raise AIError("not_configured", f"unknown provider '{p}'")
     base = (cfg.get("baseUrl") or "").strip().rstrip("/")
+    # 接続先は http(s) の URL だけ。管理者しか設定できないが、ここが緩いと
+    # SY0E から任意のホスト:ポートへ POST できる口になる（SSRF）。
+    if base and not re.match(r"^https?://[^\s/]+", base):
+        raise AIError("not_configured", f"baseUrl must be an http(s) URL: {base!r}")
     vision = (cfg.get("visionModel") or "").strip()
     struct = (cfg.get("structModel") or "").strip() or vision
     key = (cfg.get("apiKey") or "").strip() or None
@@ -362,6 +366,8 @@ def _resolve_ai(raw: str | None) -> AIConfig:
         max_out = int(cfg.get("maxOutputTokens") or 8192)
     except (TypeError, ValueError):
         max_out = 8192
+    # 上限なしだと 1 リクエストで GPU を占有し続ける。
+    max_out = max(256, min(max_out, 32768))
     if p == "ollama":
         # ローカルは env の既定で埋める（認証付き ollama もあり得るので key は通す）。
         return AIConfig(p, base or OLLAMA_URL, key,
@@ -749,7 +755,19 @@ def _reconcile(obj):
     return obj
 
 # ── Pipeline: (1) OCR + (2) vision read → (3) text LLM builds JSON ────────
+# 同時に走らせる抽出の数。ollama は 1 GPU セットを dev/main で共有していて、
+# 10 件同時に来ると全部が queue で待ち、各 600 秒 × 3 段のタイムアウトと
+# nextjs-web 側の「10 分で再投入」が重なって雪崩になる。
+PIPELINE_CONCURRENCY = max(1, int(os.environ.get("PIPELINE_CONCURRENCY", "2")))
+_pipeline_slots = threading.BoundedSemaphore(PIPELINE_CONCURRENCY)
+
+
 def _pipeline(cfg: AIConfig, file: UploadFile, fmt: dict, hint: str):
+    with _pipeline_slots:
+        return _pipeline_inner(cfg, file, fmt, hint)
+
+
+def _pipeline_inner(cfg: AIConfig, file: UploadFile, fmt: dict, hint: str):
     pages = _page_pngs(file)
     images = [base64.b64encode(p).decode() for p in pages]
 

@@ -25,6 +25,9 @@ import {
   storageReachable,
 } from "@/lib/storage";
 
+/** SY06 のアップロード上限（20 MB — 証憑の MAX_ATTACHMENT_BYTES と同じ）。 */
+const MAX_ADMIN_UPLOAD_BYTES = 20 * 1024 * 1024;
+
 export const dynamic = "force-dynamic";
 
 /** Reject keys that could escape the intended object space. */
@@ -71,6 +74,15 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   // 系統的なリネーム（一意 + 判別可能）: {yyyymmdd-HHmmss}_{rand}_{元名}
+  // 明示の上限。無いと proxyClientMaxBodySize（24MB）で**黙って切られ**、
+  // 壊れた 24MB のオブジェクトが { ok: true } で保存される。
+  if (file.size > MAX_ADMIN_UPLOAD_BYTES) {
+    const tr = await getTranslations();
+    return Response.json(
+      { error: tr("settings.filesActions.uploadTooLarge") },
+      { status: 413 },
+    );
+  }
   const key = `${prefix}/${systematicFileName(file.name || "upload.bin")}`;
   const bytes = await file.arrayBuffer();
   const ok = await putObject(

@@ -136,7 +136,8 @@ export async function updateTrialPricingSettings(
   try {
     const before = await getTrialPricingSettings();
     // criteria は現状 DB 値を維持（criteria の保存は updateCriteria が担当）。
-    await saveTrialPricingSettings({ ...before, ...parsed.data });
+    // 触ったキーだけ書く（他の節を同時に編集している人の値を潰さない）。
+    await saveTrialPricingSettings(parsed.data);
     await recordAudit({
       action: "UPDATE",
       tableName: "system_settings",
@@ -176,7 +177,7 @@ export async function updateCriteria(
     const before = await getTrialPricingSettings();
     const invalid = validateCriteria(parsed.data, before.toolTypes, tr);
     if (invalid) return actionError(invalid);
-    await saveTrialPricingSettings({ ...before, criteria: parsed.data });
+    await saveTrialPricingSettings({ criteria: parsed.data });
     await recordAudit({
       action: "UPDATE",
       tableName: "system_settings",
@@ -225,7 +226,7 @@ async function persistToolTypes(
   const invalid = validateCriteria(next.criteria, next.toolTypes, tr);
   if (invalid) return actionError(invalid);
   try {
-    await saveTrialPricingSettings({ ...before, ...next });
+    await saveTrialPricingSettings(next);
     await recordAudit({
       action: "UPDATE",
       tableName: "system_settings",
@@ -441,7 +442,7 @@ async function persistLookupTables(
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<ActionResult> {
   try {
-    await saveTrialPricingSettings({ ...before, lookupTables: next });
+    await saveTrialPricingSettings({ lookupTables: next });
     await recordAudit({
       action: "UPDATE",
       tableName: "system_settings",

@@ -130,16 +130,24 @@ export async function getTrialPricingSettings(): Promise<TrialPricingSettings> {
   return out;
 }
 
-/** 全キーを upsert（Server Action から呼ぶ）。 */
+/**
+ * **渡されたキーだけ**を upsert（Server Action から呼ぶ）。
+ *
+ * 以前は 9 キー全部を書いていたので、二人が別の節（判定基準とルックアップ表
+ * など）を同時に編集すると、後に保存した側が読んだ時点の古い値で相手の節を
+ * 上書きしていた（lost update）。触った節だけ書けば衝突しない。
+ */
 export async function saveTrialPricingSettings(
-  s: TrialPricingSettings,
+  patch: Partial<TrialPricingSettings>,
 ): Promise<void> {
   const entries: Record<string, unknown> = {};
   for (const [field, key] of Object.entries(KEY_MAP) as [
     keyof TrialPricingSettings,
     string,
   ][]) {
-    entries[key] = s[field];
+    if (field in patch && patch[field] !== undefined)
+      entries[key] = patch[field];
   }
+  if (Object.keys(entries).length === 0) return;
   await writeConfigValues(entries);
 }
