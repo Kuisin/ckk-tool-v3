@@ -253,6 +253,26 @@ function toRow(r: AttemptRow): LoginAttemptRow {
 }
 
 /**
+ * 他画面に埋め込むための**薄い**行（SY01 ユーザー詳細・SY09 端末詳細）。
+ * IP・UA・端末シグネチャ・相関キーは個人データで、SY0D では `personal_data` +
+ * 特権操作 `login_history_detail` の承認を経て初めて見せる。同じ値が
+ * `user_admin` / `kiosk` だけで読める場所に出ていては門の意味が無いので、
+ * 埋め込み用は結果・方式・理由・時刻・端末名だけに落とす。
+ */
+export function toEmbeddedLoginAttemptRow(
+  row: LoginAttemptRow,
+): LoginAttemptRow {
+  return {
+    ...row,
+    identifierRef: null,
+    ipAddress: null,
+    userAgent: null,
+    fingerprint: null,
+    ownershipSource: null,
+  };
+}
+
+/**
  * 認証イベントの一覧。id 降順のカーソルページング。
  *
  * IP は CIDR でも絞れる（`192.168.50.0/24`）。inet の `<<=` に落とすので

@@ -1,6 +1,11 @@
 -- roles-seed.sql — 本番運用ロール一式（権限マトリクス付き・冪等）。
 --
--- 適用: cd shared-db && pnpm remote sh -c 'psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/roles-seed.sql'
+-- 適用: db-migrate は流さない（撮影用 DB のシード: tools/docs-screenshots が読む）。
+-- 本番・dev の DB に手で流すことは想定していない — 2026-09-03 以降、form /
+-- internal_page / admin_manual / design_file / 特権コード / portal_admin の grant は
+-- マイグレーション（20260903 / 20260920 / 20260921 / 20260925）が持ち主で、この
+-- ファイルは知らない。それでも流されたときに消してしまわないよう、下の DELETE は
+-- それらのコードを除外し、INSERT は ON CONFLICT DO NOTHING で重複を無視する。
 --
 -- 前提: rbac-seed.sql（permissions 18 コード + admin/staff ロール）適用済み。
 -- 本番ではここで定義するロールを実ユーザーへ割り当てる（user_role_relation）。
@@ -76,7 +81,9 @@ WHERE role_id IN (
     'purchasing_manager','production_manager','quality_manager',
     'shipping_manager','accounting_manager'
   )
-);
+)
+  -- ↓ 2026-09-03 以降にマイグレーションが配った grant はここでは消さない（下記ヘッダ）
+  AND permission_code NOT IN ('form','internal_page','admin_manual','design_file','kiosk_secret','kiosk_device','kiosk_card','personal_data','user_admin','portal_admin');
 -- privileged_operator / privileged_approver は **この一覧に入れない**。
 -- グラントは migration 20260919090000 が入れており、ここで消すと承認者が
 -- 空になって申請が誰にも決裁できなくなる。
@@ -112,7 +119,9 @@ ON CONFLICT DO NOTHING;
 --
 --   既存の権限を作り直すため DELETE してから INSERT（冪等・スコープ変更も反映）。
 DELETE FROM app.role_permission_relation
-WHERE role_id = (SELECT id FROM app.roles WHERE rolename = 'sales');
+WHERE role_id = (SELECT id FROM app.roles WHERE rolename = 'sales')
+  -- ↓ 2026-09-03 以降にマイグレーションが配った grant はここでは消さない（下記ヘッダ）
+  AND permission_code NOT IN ('form','internal_page','admin_manual','design_file','kiosk_secret','kiosk_device','kiosk_card','personal_data','user_admin','portal_admin');
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, c.code, a.action::app."ACTION", 'OWN'::app."SCOPE"
 FROM app.roles r
@@ -212,7 +221,9 @@ ON CONFLICT DO NOTHING;
 -- sales_assistant（営業補佐）: 営業データ（試算/見積・価格表・受注請書・設計依頼）を
 --   全件 READ のみ。参照マスタも READ。作成・編集・削除・承認は一切不可。
 DELETE FROM app.role_permission_relation
-WHERE role_id = (SELECT id FROM app.roles WHERE rolename = 'sales_assistant');
+WHERE role_id = (SELECT id FROM app.roles WHERE rolename = 'sales_assistant')
+  -- ↓ 2026-09-03 以降にマイグレーションが配った grant はここでは消さない（下記ヘッダ）
+  AND permission_code NOT IN ('form','internal_page','admin_manual','design_file','kiosk_secret','kiosk_device','kiosk_card','personal_data','user_admin','portal_admin');
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, g.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
@@ -229,7 +240,9 @@ ON CONFLICT DO NOTHING;
 --   全件フル（R・C・U・D・E, scope ALL — 他者データの閲覧含む） +
 --   参照マスタ READ + 承認閲覧。
 DELETE FROM app.role_permission_relation
-WHERE role_id = (SELECT id FROM app.roles WHERE rolename = 'sales_manager');
+WHERE role_id = (SELECT id FROM app.roles WHERE rolename = 'sales_manager')
+  -- ↓ 2026-09-03 以降にマイグレーションが配った grant はここでは消さない（下記ヘッダ）
+  AND permission_code NOT IN ('form','internal_page','admin_manual','design_file','kiosk_secret','kiosk_device','kiosk_card','personal_data','user_admin','portal_admin');
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, c.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r

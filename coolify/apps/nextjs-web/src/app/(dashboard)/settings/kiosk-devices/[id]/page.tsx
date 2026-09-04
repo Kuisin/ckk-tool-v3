@@ -2,7 +2,10 @@ import { notFound } from "next/navigation";
 import { KioskDeviceDetailView } from "@/components/settings/kiosk/KioskDeviceDetailView";
 import { requireAppRead } from "@/lib/authz-page";
 import { getKioskDevice, listRecentDeviceUsers } from "@/lib/kiosk-admin";
-import { listLoginAttempts } from "@/lib/login-attempts";
+import {
+  listLoginAttempts,
+  toEmbeddedLoginAttemptRow,
+} from "@/lib/login-attempts";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +38,7 @@ export default async function KioskDeviceDetailPage({
   ]);
   return (
     <KioskDeviceDetailView
-      authFailures={failures.rows}
+      authFailures={failures.rows.map(toEmbeddedLoginAttemptRow)}
       device={device}
       recentUsers={recentUsers}
     />
