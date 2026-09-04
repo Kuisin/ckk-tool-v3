@@ -37,6 +37,51 @@ jobs:
       - name: Check applied migrations are untouched
         run: bash shared-db/scripts/check-applied-migrations.sh "origin/${{ github.event.pull_request.base.ref }}"
 
+  # まっさらな DB に本当に当ててみる。差分検査（上）は「触っていないか」しか
+  # 見ないので、壊れた新規マイグレーションは merge 後に db-migrate-dev が
+  # 止まって初めて分かっていた（b322e9db / 5eabb53b で実際に 2 回）。
+  # db-migrate の entrypoint.sh と同じ順（migrate deploy → grants → analytics）
+  # で流し、最後に schema と DB の差分が空であることも確かめる。
+  # DB 名は grants.sql が `IN DATABASE ckk` を決め打ちしているので ckk。
+  # pg_cron は preload されていないので cron 系 SQL は entrypoint と同様に飛ぶ。
+  migrate-deploy:
+    name: shared-db — まっさらな DB へ migrate deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: groonga/pgroonga:4.0.6-alpine-17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ckk
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ckk"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:55432/ckk
+    defaults:
+      run:
+        working-directory: shared-db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: shared-db/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install (shared-db は workspace 外 — 自前の lockfile)
+        run: pnpm install --frozen-lockfile --ignore-workspace
+      - name: prisma migrate deploy
+        run: pnpm exec prisma migrate deploy
+      - name: grants.sql / analytics-views.sql（entrypoint.sh と同じ順）
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/grants.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/analytics-views.sql
+      - name: schema と DB の差分が空であること
+        run: pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema --exit-code
+
   authz-core:
     name: authz-core — lint & test
     runs-on: ubuntu-latest

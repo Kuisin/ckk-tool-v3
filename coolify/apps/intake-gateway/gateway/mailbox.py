@@ -21,6 +21,9 @@ from typing import Iterator
 
 from .config import Config
 
+# IMAP のソケット待ち上限（秒）。1 回の巡回が最大でもこの数倍で必ず戻る。
+SOCKET_TIMEOUT_SEC = 60
+
 log = logging.getLogger(__name__)
 
 # IMAP の SEARCH は日付を DD-Mon-YYYY で書く（ロケール非依存にするため自前で組む）。
@@ -88,9 +91,11 @@ def connect(cfg: Config) -> Iterator[imaplib.IMAP4]:
     """接続 → メールボックス選択 → 必ず logout。"""
     client: imaplib.IMAP4
     if cfg.ssl:
-        client = imaplib.IMAP4_SSL(cfg.host, cfg.port)
+        # timeout が無いと半開の TCP で永遠に待つ。プロセスは「動いている」ので
+        # Coolify は再起動せず、取込だけが無音で止まる。
+        client = imaplib.IMAP4_SSL(cfg.host, cfg.port, timeout=SOCKET_TIMEOUT_SEC)
     else:
-        client = imaplib.IMAP4(cfg.host, cfg.port)
+        client = imaplib.IMAP4(cfg.host, cfg.port, timeout=SOCKET_TIMEOUT_SEC)
         try:
             client.starttls()
         except Exception as e:
