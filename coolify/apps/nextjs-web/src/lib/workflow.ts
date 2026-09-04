@@ -191,6 +191,7 @@ export async function validateAndOrderSteps(
 // セッションロックの獲得は updateMany の WHERE 句による原子的クレーム。
 
 import { getCurrentActorId, recordAudit } from "./audit";
+import { missingInspectionSheets } from "./inspection-core";
 import {
   type BranchStockDisposition,
   branchableQuantity,
@@ -437,6 +438,11 @@ export async function completeStepExecution(
       workOrder: true,
       outgoingLinks: true,
       processStep: { select: { quantityTracking: true } },
+      // 検査表が埋まっているかの判定に使う（割当と記録の突き合わせ）。
+      inspectionTemplates: {
+        include: { inspectionTemplate: { select: { id: true, name: true } } },
+      },
+      inspectionRecords: { select: { templateId: true } },
     },
   });
   if (stepRow.status !== "IN_PROGRESS") {
@@ -446,6 +452,27 @@ export async function completeStepExecution(
     return {
       ok: false,
       errors: [tr("production.stepExecution.anotherUserHasThisSessionOpen")],
+    };
+  }
+
+  // 検査表が割り当てられている工程は、**その検査表それぞれに記録が 1 件**
+  // 無いと完了できない。割当は「この工程でこの検査をする」という宣言なので、
+  // 記録が無いまま完了できると宣言だけが残る。割当が無い工程は素通り。
+  const missingSheets = missingInspectionSheets(
+    stepRow.inspectionTemplates.map((t) => ({
+      id: t.inspectionTemplate.id,
+      name: localized(t.inspectionTemplate.name as LocalizedText | null),
+    })),
+    stepRow.inspectionRecords,
+  );
+  if (missingSheets.length > 0) {
+    return {
+      ok: false,
+      errors: [
+        tr("workflowActions.inspectionSheetsNotRecorded", {
+          sheets: missingSheets.map((m) => m.name).join(" / "),
+        }),
+      ],
     };
   }
 

@@ -16,6 +16,7 @@ import {
   type InspectionItemSpec,
   isEntryStarted,
   isSampleEmpty,
+  missingInspectionSheets,
   missingRequiredEntries,
   parseSelectOptions,
   parseStoredSamples,
@@ -382,5 +383,32 @@ describe("parsers", () => {
     expect(isSampleEmpty([])).toBe(true);
     expect(isSampleEmpty("x")).toBe(false);
     expect(isSampleEmpty(["x"])).toBe(false);
+  });
+});
+
+describe("missingInspectionSheets", () => {
+  const A = { id: 1, name: "円筒検査" };
+  const B = { id: 2, name: "外観検査" };
+
+  it("割当が無ければ何も要求しない（検査工程でない工程を止めない）", () => {
+    expect(missingInspectionSheets([], [])).toEqual([]);
+  });
+
+  it("記録が 1 件も無ければ全部返す", () => {
+    expect(missingInspectionSheets([A, B], [])).toEqual([A, B]);
+  });
+
+  it("記録のある検査表は外す", () => {
+    expect(missingInspectionSheets([A, B], [{ templateId: 1 }])).toEqual([B]);
+  });
+
+  it("同じ検査表の記録が何件あっても 1 件以上なら足りている", () => {
+    expect(
+      missingInspectionSheets([A], [{ templateId: 1 }, { templateId: 1 }]),
+    ).toEqual([]);
+  });
+
+  it("割り当てられていない検査表の記録は数に入れない", () => {
+    expect(missingInspectionSheets([A], [{ templateId: 99 }])).toEqual([A]);
   });
 });

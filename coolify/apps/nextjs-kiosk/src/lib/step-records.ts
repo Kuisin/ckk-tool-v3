@@ -83,6 +83,8 @@ export interface InspectionTemplateView {
 
 export interface InspectionRecordView {
   id: string;
+  /** どの検査表の記録か（完了の門が割当と突き合わせるのに使う）。 */
+  templateId: number;
   templateName: string;
   status: string;
   recordedAt: string | null;
@@ -246,6 +248,7 @@ export async function getStepRecordingData(
     })),
     inspectionRecords: records.map((r) => ({
       id: r.id,
+      templateId: r.templateId,
       templateName: localized(asText(r.template.name), locale),
       status: r.status,
       recordedAt: r.recordedAt?.toISOString() ?? null,

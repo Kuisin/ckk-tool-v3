@@ -109,7 +109,8 @@
     "complete": {
       "title": "完成工序",
       "noneNote": "该工序不记录数量即可完成（通过 {n} 支）",
-      "submit": "完成"
+      "submit": "完成",
+      "blockedByInspection": "保存检查表之前无法完成"
     },
     "quantity": {
       "FLOW": {
@@ -256,7 +257,8 @@
       "NO_PERMISSION": "您没有此操作的权限",
       "UNKNOWN": "处理失败",
       "STAGE_ALREADY_RECORDED": "该阶段已记录",
-      "STAGE_OUT_OF_ORDER": "请先记录上一阶段"
+      "STAGE_OUT_OF_ORDER": "请先记录上一阶段",
+      "INSPECTION_REQUIRED": "有检查表尚未填写记录。请先保存检查表再完成工序"
     },
     "finalInspection": {
       "title": "最终检查与出货前确认",
