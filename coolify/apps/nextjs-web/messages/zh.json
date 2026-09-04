@@ -798,7 +798,8 @@
     "selectARole": "选择角色",
     "cannotChangeRoles": "无法变更角色",
     "cannotChangeOwnRoles": "无法变更自己的角色",
-    "cannotRemoveLastAdminRole": "无法从最后一名管理员移除管理员角色"
+    "cannotRemoveLastAdminRole": "无法从最后一名管理员移除管理员角色",
+    "finalInspection": "最终检查"
   },
   "shell": {
     "appsLabel": "应用",
@@ -2745,7 +2746,8 @@
       "theStepWasAborted": "工序已中断",
       "abort": "中断",
       "viewInspectionSheet": "查看检查表",
-      "noInspectionSheetAssigned": "尚未分配检查表"
+      "noInspectionSheetAssigned": "尚未分配检查表",
+      "finalInspectionIsRecordedOnThisStep": "在该工序记录最终检查与出货前确认（每张工单一条记录）。"
     },
     "workOrderLinksCard": {
       "quantityPiecesWithCount": "{count} 支",
@@ -2795,7 +2797,8 @@
       "spareStockUsed": "使用备用库存",
       "stageAlreadyRecorded": "{label}已记录",
       "stageRecordedNote": "记录了{label}",
-      "woNotFound": "未找到工单"
+      "woNotFound": "未找到工单",
+      "noFinalInspectionStep": "该工单没有最终检查工序"
     },
     "stepExecutionActions": {
       "invalidLotSlipCode": "批次/单据编号输入无效",
@@ -5095,7 +5098,9 @@
       "enabled": "已启用工序“{name}”",
       "executionLocationRequired": "请选择实施场所",
       "sortOrderInteger": "请输入整数作为显示顺序",
-      "stepUpdated": "已更新工序"
+      "stepUpdated": "已更新工序",
+      "finalInspectionStep": "最终检查工序",
+      "theFinalInspectionChecklistIsRecorded": "在该工序的执行画面记录最终检查与出货前确认（3 项确认、备用库存、包装 → 发行送货单 → 出货批准）。每张工单一条记录；工序清单中没有带此标记工序的工单即没有最终检查。"
     },
     "products": {
       "specification": "规格",
@@ -8157,7 +8162,19 @@
     "inspectionRecordedPass": "已保存检查记录（合格 / {count} 项）",
     "inspectionRecordedFail": "已保存检查记录（不合格 / {count} 项）",
     "deviceUnlinkedFromDevice": "已从终端本身解除关联（设备设置码）",
-    "deviceWorkLocationChangedFromDevice": "已从终端本身变更作业场所设置（设备设置码）"
+    "deviceWorkLocationChangedFromDevice": "已从终端本身变更作业场所设置（设备设置码）",
+    "inspectionConfirmed": "已记录检查表确认",
+    "finalInspectionDrawingLabel": "最终检查：图纸、标签、膜厚、尺寸 → {mark}",
+    "finalInspectionProtectiveCap": "最终检查：保护帽 → {mark}",
+    "finalInspectionFinishedQuantity": "最终检查：完成数量 → {mark}",
+    "finalInspectionSpareStockUsedOn": "最终检查：使用备用库存",
+    "finalInspectionSpareStockUsedOff": "最终检查：未使用备用库存",
+    "finalInspectionSpareStockReceivedOn": "最终检查：备用库存入库",
+    "finalInspectionSpareStockReceivedOff": "最终检查：未入备用库存",
+    "finalInspectionShelved": "出货前确认：已记录上架人员",
+    "finalInspectionDeliveryNoteIssued": "出货前确认：已记录送货单开具人",
+    "finalInspectionShipmentAuthorized": "出货前确认：已记录出货批准人",
+    "finalInspectionShipDefectReviewed": "已记录出货时不良内容确认人印"
   },
   "workflowCore": {
     "quantityLabels": {

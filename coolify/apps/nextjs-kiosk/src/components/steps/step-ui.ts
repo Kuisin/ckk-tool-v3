@@ -12,8 +12,14 @@ export type StepAction =
   | "RESUME"
   | "COMPLETE"
   | "INSPECTION"
+  | "INSPECTION_CONFIRM"
   | "DEFECTS"
-  | "SET_LOCATION";
+  | "SET_LOCATION"
+  // 最終検査・出荷前確認（最終検査工程のみ — final-inspection.ts）
+  | "FINAL_CHECK"
+  | "FINAL_SPARE_STOCK"
+  | "FINAL_SHIPMENT_STAGE"
+  | "FINAL_SHIP_DEFECT";
 
 export interface StepActionRequest {
   action: StepAction;
@@ -51,6 +57,18 @@ export interface StepActionRequest {
   }[];
   /** DEFECTS のみ */
   defects?: { defectTypeId: number; description: string }[];
+  /** FINAL_CHECK のみ: ■最終検査の 3 項目（○ / ×）。 */
+  checkField?: "drawingLabel" | "protectiveCap" | "finishedQuantity";
+  checkOk?: boolean;
+  /** FINAL_SPARE_STOCK のみ: 予備在庫の使用 / 入庫。 */
+  spareStockField?: "spareStockUsed" | "spareStockReceived";
+  spareStockValue?: boolean;
+  /** FINAL_SHIPMENT_STAGE のみ: 出荷前チェーンのどの段を押したか。 */
+  shipmentStage?: "shelved" | "deliveryNoteIssued" | "shipmentAuthorized";
+  /** FINAL_SHIP_DEFECT のみ: 出荷時不良内容（任意メモ）。 */
+  shipDefectNotes?: string;
+  /** INSPECTION_CONFIRM のみ: 検査表確認を押す対象の記録。 */
+  recordId?: string;
 }
 
 export interface StepActionResponse {

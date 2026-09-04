@@ -63,6 +63,8 @@ export interface WorkOrderStepView {
   catalogExecution: string;
   isInspection: boolean;
   isApprovalStep: boolean;
+  /** 最終検査・出荷前確認をこの工程で記録する（カタログの印）。 */
+  isFinalInspection: boolean;
   isSyncCapable: boolean;
   /** 数量管理モード（NONE = 記録なしパススルー / FLOW / INSPECTION）。 */
   quantityTracking: "NONE" | "FLOW" | "INSPECTION";
@@ -235,7 +237,6 @@ export interface WorkOrderView {
   stepLinks: StepLinkView[];
   rejectReason: string | null;
   history: WorkOrderHistoryView[];
-  finalInspection: WorkOrderFinalInspectionView | null;
   createdAt: string;
   updatedAt: string;
 }

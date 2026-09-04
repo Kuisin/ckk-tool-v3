@@ -141,6 +141,11 @@ export function StepCard({
               {tr("common.approve")}
             </Badge>
           )}
+          {step.isFinalInspection && (
+            <Badge color="orange" size="xs" variant="light">
+              {tr("common.finalInspection")}
+            </Badge>
+          )}
         </Group>
         <Group gap="xs" wrap="nowrap">
           {locationName && (

@@ -71,6 +71,11 @@ export function StepListPane({
                       {tr("common.approve")}
                     </Badge>
                   )}
+                  {s.isFinalInspection && (
+                    <Badge color="orange" size="xs" variant="light">
+                      {tr("common.finalInspection")}
+                    </Badge>
+                  )}
                 </Group>
               ),
               description: (

@@ -798,7 +798,8 @@
     "selectARole": "ロールを選択",
     "cannotChangeRoles": "ロールを変更できません",
     "cannotChangeOwnRoles": "自分のロールは変更できません",
-    "cannotRemoveLastAdminRole": "最後の管理者から管理者ロールを外すことはできません"
+    "cannotRemoveLastAdminRole": "最後の管理者から管理者ロールを外すことはできません",
+    "finalInspection": "最終検査"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -2745,7 +2746,8 @@
       "theStepWasAborted": "工程を中断しました",
       "abort": "中断する",
       "viewInspectionSheet": "検査表を見る",
-      "noInspectionSheetAssigned": "検査表が割り当てられていません"
+      "noInspectionSheetAssigned": "検査表が割り当てられていません",
+      "finalInspectionIsRecordedOnThisStep": "この工程で最終検査・出荷前確認を記録します（指示書 1 件に 1 行）。"
     },
     "workOrderLinksCard": {
       "quantityPiecesWithCount": "{count} 本",
@@ -2795,7 +2797,8 @@
       "spareStockUsed": "予備在庫使用",
       "stageAlreadyRecorded": "{label}は既に記録されています",
       "stageRecordedNote": "{label}を記録",
-      "woNotFound": "指示書が見つかりません"
+      "woNotFound": "指示書が見つかりません",
+      "noFinalInspectionStep": "この指示書には最終検査工程がありません"
     },
     "stepExecutionActions": {
       "invalidLotSlipCode": "ロット/伝票コードの入力が不正です",
@@ -5095,7 +5098,9 @@
       "enabled": "工程「{name}」を有効化しました",
       "executionLocationRequired": "実施場所を選択してください",
       "sortOrderInteger": "表示順は整数で入力してください",
-      "stepUpdated": "工程を更新しました"
+      "stepUpdated": "工程を更新しました",
+      "finalInspectionStep": "最終検査工程",
+      "theFinalInspectionChecklistIsRecorded": "最終検査・出荷前確認（3項目の確認・予備在庫・棚包→納品書発行→出荷許可）をこの工程の実行画面で記録します。記録は指示書 1 件に 1 行で、印の付いた工程を工程リストに入れない指示書には最終検査がありません。"
     },
     "products": {
       "specification": "仕様",
@@ -8157,7 +8162,19 @@
     "inspectionRecordedPass": "検査記録を保存（合格 / {count} 項目）",
     "inspectionRecordedFail": "検査記録を保存（不合格 / {count} 項目）",
     "deviceUnlinkedFromDevice": "端末側からリンク解除（設定コード認証）",
-    "deviceWorkLocationChangedFromDevice": "端末側から作業場所設定を変更（設定コード認証）"
+    "deviceWorkLocationChangedFromDevice": "端末側から作業場所設定を変更（設定コード認証）",
+    "inspectionConfirmed": "検査表確認を記録",
+    "finalInspectionDrawingLabel": "最終検査: 図面・ラベル・膜厚・寸法 → {mark}",
+    "finalInspectionProtectiveCap": "最終検査: 保護キャップ → {mark}",
+    "finalInspectionFinishedQuantity": "最終検査: 完成本数 → {mark}",
+    "finalInspectionSpareStockUsedOn": "最終検査: 予備在庫使用 あり",
+    "finalInspectionSpareStockUsedOff": "最終検査: 予備在庫使用 なし",
+    "finalInspectionSpareStockReceivedOn": "最終検査: 予備在庫入庫 あり",
+    "finalInspectionSpareStockReceivedOff": "最終検査: 予備在庫入庫 なし",
+    "finalInspectionShelved": "出荷前確認: 棚包担当者を記録",
+    "finalInspectionDeliveryNoteIssued": "出荷前確認: 納品書発行者を記録",
+    "finalInspectionShipmentAuthorized": "出荷前確認: 出荷許可者を記録",
+    "finalInspectionShipDefectReviewed": "出荷時不良内容確認者印を記録"
   },
   "workflowCore": {
     "quantityLabels": {

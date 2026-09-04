@@ -345,6 +345,11 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 同期可 | Sync capable | 可同步 | |
 | 材料準備 / 加工 / コーティング | Material prep / Machining / Coating | 材料准备 / 加工 / 涂层 | 工程カテゴリ |
 | 検査 / 検査承認 | Inspection / Inspection approval | 检查 / 检查批准 | 工程カテゴリ |
+| 出荷前検査 | Pre-shipment inspection | 发货前检查 | 工程カタログの PRE_SHIP_INSPECTION。最終検査を記録する既定の工程 |
+| 最終検査 | Final inspection | 最终检查 | 旧帳票「■最終検査」欄。指示書 1 件に 1 件 |
+| 最終検査工程 | Final inspection step | 最终检查工序 | 工程カタログの印（is_final_inspection） |
+| 出荷前確認 | Pre-shipment checks | 出货前确认 | 棚包 → 納品書発行 → 出荷許可 |
+| 検査表確認 | Inspection sheet check | 检查表确认 | 記録者・承認者とは別ロールのスタンプ |
 | 予定数量 | Planned quantity | 计划数量 | |
 | 受入数 / 良品数 | Received / Good | 接收数 / 良品数 | |
 | 不良 / 不良種類 | Defect / Defect type | 不良 / 不良类别 | |

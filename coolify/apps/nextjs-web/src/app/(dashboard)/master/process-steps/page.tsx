@@ -25,6 +25,7 @@ export default async function MasterProcessStepsPage() {
     isSyncCapable: r.isSyncCapable,
     isInspection: r.isInspection,
     isApprovalStep: r.isApprovalStep,
+    isFinalInspection: r.isFinalInspection,
     quantityTracking: r.quantityTracking,
     lotInputMode: r.lotInputMode,
     sortOrder: r.sortOrder,

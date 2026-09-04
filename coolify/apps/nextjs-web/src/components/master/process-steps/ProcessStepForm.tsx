@@ -103,6 +103,7 @@ const processStepSchema = (tr: (key: string) => string) =>
       isSyncCapable: z.boolean(),
       isInspection: z.boolean(),
       isApprovalStep: z.boolean(),
+      isFinalInspection: z.boolean(),
       approvalMinRank: z.string(),
       quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
       lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]),
@@ -144,6 +145,7 @@ export interface ProcessStepFormInitial {
   isSyncCapable: boolean;
   isInspection: boolean;
   isApprovalStep: boolean;
+  isFinalInspection: boolean;
   approvalMinRank: string;
   quantityTracking: string;
   lotInputMode: string;
@@ -211,6 +213,7 @@ export function ProcessStepForm({
       isSyncCapable: initial?.isSyncCapable ?? false,
       isInspection: initial?.isInspection ?? false,
       isApprovalStep: initial?.isApprovalStep ?? false,
+      isFinalInspection: initial?.isFinalInspection ?? false,
       approvalMinRank: initial?.approvalMinRank ?? "",
       quantityTracking:
         initial?.quantityTracking === "NONE" ||
@@ -282,6 +285,7 @@ export function ProcessStepForm({
       isSyncCapable: values.isSyncCapable,
       isInspection: values.isInspection,
       isApprovalStep: values.isApprovalStep,
+      isFinalInspection: values.isFinalInspection,
       approvalMinRank: values.approvalMinRank,
       quantityTracking: values.quantityTracking,
       lotInputMode: values.lotInputMode,
@@ -563,6 +567,15 @@ export function ProcessStepForm({
               {...form.getInputProps("approvalMinRank")}
             />
           )}
+          {/* 最終検査は指示書 1 件に 1 行なので、印を付けた工程の実行画面が
+              唯一の記入口になる（印の付いた工程を入れない指示書 = 最終検査なし）。 */}
+          <Switch
+            description={tr(
+              "master.processSteps.theFinalInspectionChecklistIsRecorded",
+            )}
+            label={tr("master.processSteps.finalInspectionStep")}
+            {...form.getInputProps("isFinalInspection", { type: "checkbox" })}
+          />
           <Switch
             label={
               <HelpLabel

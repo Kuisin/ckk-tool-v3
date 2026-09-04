@@ -184,7 +184,6 @@
       "passedCount": "Passed",
       "failCount": "{n} failed",
       "countsOver": "Passed count exceeds inspected count",
-      "productPage": "Product {i} / {n}",
       "prevProduct": "Previous",
       "nextProduct": "Next",
       "addProduct": "Add product",
@@ -194,7 +193,15 @@
         "PASS": "Pass",
         "FAIL": "Fail",
         "APPROVED": "Approved"
-      }
+      },
+      "sampleInitial": "First piece",
+      "sampleMid": "Middle piece",
+      "sampleFinal": "Last piece",
+      "samplePage": "{label} / {n}",
+      "confirmSheet": "Inspection sheet check",
+      "confirmedMeta": "Sheet checked {at} {by}",
+      "confirmed": "The inspection sheet check was recorded",
+      "sampleGeneric": "Product {n}"
     },
     "location": {
       "label": "Work location",
@@ -247,7 +254,32 @@
       "DEVICE_LOCATION_BLOCKED": "This step cannot run at this device's work location (use a device at an allowed location)",
       "NO_OPEN_SESSION": "No active work session (resume the step, then scan)",
       "NO_PERMISSION": "You do not have permission for this action",
-      "UNKNOWN": "The operation failed"
+      "UNKNOWN": "The operation failed",
+      "STAGE_ALREADY_RECORDED": "This stage is already recorded",
+      "STAGE_OUT_OF_ORDER": "Record the previous stage first"
+    },
+    "finalInspection": {
+      "title": "Final inspection and pre-shipment checks",
+      "subtitle": "One record is kept per work order.",
+      "readOnly": "Can only be recorded while working or paused.",
+      "checkDrawingLabel": "Drawing, label, coating thickness, and dimensions are correct",
+      "checkProtectiveCap": "Protective cap is used (φ0.6 or less)",
+      "checkFinishedQuantity": "Finished quantity is correct",
+      "notChecked": "Not checked",
+      "spareStockTitle": "Spare stock",
+      "useSpareStock": "Use spare stock",
+      "receiveIntoSpareStock": "Receive into spare stock",
+      "shipmentTitle": "Pre-shipment checks (packing → delivery note → shipping approval)",
+      "shelvedBy": "Shelved by",
+      "deliveryNoteIssuedBy": "Delivery note issued by",
+      "shipmentAuthorizedBy": "Shipment authorized by",
+      "record": "Record",
+      "waitingPriorStage": "After the previous stage",
+      "shipDefectTitle": "Checked-by stamp for defects at shipping",
+      "shipDefectPlaceholder": "Defects found at the pre-shipment check, etc. (optional)",
+      "shipDefectConfirm": "Check",
+      "saved": "Recorded",
+      "checkedMeta": "{at} {by}"
     }
   },
   "deviceError": {
