@@ -101,6 +101,8 @@ A shipping order moves through three stages: 「下書き」 (Draft) → 「確�
 
 Once confirmed, **you can no longer edit it**. A dispatch shipping order **automatically gets its delivery note(s)** at confirmation — direct-to-end-user creates **two**: one without prices (for the end user) and one with prices (for the customer). Stock-storage shipping orders don't get one.
 
+The check window lists **the recipient of each delivery note about to be created, and whether it carries prices**. Read it before you confirm.
+
 ### 2. When you have really sent it (Ship)
 
 1. Press 「**…**」 at the top right.
