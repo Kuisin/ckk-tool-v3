@@ -577,6 +577,20 @@ export async function requestDesignApproval(
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
     const flowError = await assertFlowConfigured("design_requests");
     if (flowError) return actionError(flowError);
+    // 1 段目の承認依頼を作る（CM01 横断表示・承認記録の紐付け先 +
+    // その段の承認グループへの自動通知）。
+    // **状態より先に依頼を作る** — 逆順だと依頼の作成が失敗したとき、書類だけが
+    // 承認依頼中のまま誰の承認一覧にも出ない。依頼だけが残った側は
+    // startApprovalFlow が二重依頼を成功として吸収するので、再依頼で追いつく。
+    const started = await startApprovalFlow({
+      targetType: "design_requests",
+      targetId: number,
+    });
+    if (!started.ok) {
+      return actionError(
+        started.error ?? tr("sales.designRequestActions.approvalRequestFailed"),
+      );
+    }
     await prisma.designRequest.update({
       where: { id: prior.id },
       data: {
@@ -588,17 +602,6 @@ export async function requestDesignApproval(
         ),
       },
     });
-    // 1 段目の承認依頼を作る（CM01 横断表示・承認記録の紐付け先 +
-    // その段の承認グループへの自動通知）。
-    const started = await startApprovalFlow({
-      targetType: "design_requests",
-      targetId: number,
-    });
-    if (!started.ok) {
-      return actionError(
-        started.error ?? tr("sales.designRequestActions.approvalRequestFailed"),
-      );
-    }
     await recordAudit({
       action: "UPDATE",
       tableName: "design_requests",

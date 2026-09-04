@@ -76,6 +76,13 @@ function identitySchema(tr: Tr) {
 }
 
 const tierSchema = z.object({
+  /**
+   * price_list_tiers.id — 保存済みの段階（編集フォームが送る）。null / 省略 =
+   * 新規。更新時は id で突き合わせて **行を残す** — quote_items.price_list_tier_id
+   * が参照しているので、消して作り直すと過去の見積書の適用段階が全部 null に
+   * なる（ON DELETE SET NULL）。
+   */
+  id: z.string().nullable().optional(),
   minQuantity: z.number().int().min(1),
   maxQuantity: z.number().int().nullable(),
   multiplier: z.number().min(0.01),
@@ -182,14 +189,18 @@ async function resolveEstimateSource(
   return { ok: true, key, needsLock: estimate.status === "CONFIRMED" };
 }
 
-function tierCreates(tiers: z.infer<typeof tierSchema>[]) {
-  return tiers.map((t, i) => ({
+function tierData(t: z.infer<typeof tierSchema>, sortOrder: number) {
+  return {
     minQuantity: t.minQuantity,
     maxQuantity: t.maxQuantity,
     multiplier: t.multiplier,
     priceOverride: t.priceOverride,
-    sortOrder: i,
-  }));
+    sortOrder,
+  };
+}
+
+function tierCreates(tiers: z.infer<typeof tierSchema>[]) {
+  return tiers.map((t, i) => tierData(t, i));
 }
 
 /** 価格表作成フォーム用 — 製品にリンクされた価格試算（基準単価ソース候補）。 */
@@ -396,6 +407,29 @@ export async function updatePriceEntry(
     }
     const removedIds = [...existingIds].filter((id) => !keptIds.has(id));
 
+    // 既存バリアントの段階は id で差分を取る（残す / 直す / 消す / 足す）。
+    // 送られてきた id はそのバリアントの段階でなければ弾く（別の価格表の
+    // 段階を書き換えさせない）。
+    const existingTiers = keptIds.size
+      ? await prisma.priceListTier.findMany({
+          where: { variantId: { in: [...keptIds] } },
+          select: { id: true, variantId: true },
+        })
+      : [];
+    const tierOwner = new Map(existingTiers.map((t) => [t.id, t.variantId]));
+    const keptTierIds = new Set<string>();
+    for (const variant of v.variants) {
+      for (const t of variant.tiers) {
+        if (!t.id) continue;
+        if (!variant.id || tierOwner.get(t.id) !== variant.id)
+          return actionError(tr("sales.priceListsActions.invalidTier"));
+        keptTierIds.add(t.id);
+      }
+    }
+    const removedTierIds = existingTiers
+      .map((t) => t.id)
+      .filter((id) => !keptTierIds.has(id));
+
     // 新規バリアントの価格試算ソースを検証（既存バリアントのリンクは不変）。
     const locks: { number: string; key: DocKey }[] = [];
     const estimateKeys = new Map<string, DocKey>();
@@ -431,14 +465,20 @@ export async function updatePriceEntry(
             }),
           ]
         : []),
-      // 既存バリアント: 値のみ更新 + tier セット差し替え
-      // (quote_items keep history via ON DELETE SET NULL).
+      // 既存バリアント: 値を更新し、段階は id で差分更新する。
+      // 消して作り直すと quote_items.price_list_tier_id（ON DELETE SET NULL）が
+      // 過去の見積書ぶん全部 null になり「適用価格表」が読めなくなる — 実際に
+      // そうなっていた。残る id は update、消えた id だけ delete、id なしは create。
+      ...(removedTierIds.length
+        ? [
+            prisma.priceListTier.deleteMany({
+              where: { id: { in: removedTierIds } },
+            }),
+          ]
+        : []),
       ...v.variants
         .filter((x): x is typeof x & { id: string } => !!x.id)
         .flatMap((variant) => [
-          prisma.priceListTier.deleteMany({
-            where: { variantId: variant.id },
-          }),
           prisma.priceListVariant.update({
             where: { id: variant.id },
             data: {
@@ -448,9 +488,23 @@ export async function updatePriceEntry(
                 ? new Date(variant.validUntil)
                 : null,
               isActive: variant.isActive,
-              tiers: { create: tierCreates(variant.tiers) },
+              tiers: {
+                create: variant.tiers
+                  .map((t, i) => (t.id ? null : tierData(t, i)))
+                  .filter((x) => x != null),
+              },
             },
           }),
+          ...variant.tiers.flatMap((t, i) =>
+            t.id
+              ? [
+                  prisma.priceListTier.update({
+                    where: { id: t.id },
+                    data: tierData(t, i),
+                  }),
+                ]
+              : [],
+          ),
         ]),
       // 新規バリアント
       ...v.variants

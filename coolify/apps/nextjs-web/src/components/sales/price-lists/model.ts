@@ -193,6 +193,35 @@ export function validPeriod(
   return `${fmt.date(from)} 〜 ${until ? fmt.date(until) : tr("common.noEndDate")}`;
 }
 
+// ── 日付（有効期間の判定） ────────────────────────────────────────────────────
+
+/**
+ * `date` を JST の YYYY-MM-DD にする。価格表の有効期間（validFrom / validUntil）は
+ * 日付で持つので、「いま有効か」は**日本の暦日**で比べる — コンテナの TZ は UTC
+ * なので `toISOString()` だと JST 0:00〜8:59 が前日扱いになり、開始日の朝に
+ * まだ価格が引けない / 終了日の翌朝にまだ引ける、が起きる（採番の
+ * `currentYearMonthJst` と同じ理由）。
+ */
+export function isoDateJst(date: Date): string {
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+/** 有効期間（YYYY-MM-DD、終了日 null = 無期限）が `iso` の日を含むか。 */
+export function isWithinValidity(
+  iso: string,
+  validFrom: string,
+  validUntil: string | null,
+): boolean {
+  return iso >= validFrom && (validUntil == null || iso <= validUntil);
+}
+
 // ── 値引きルール解決 ──────────────────────────────────────────────────────────
 
 /** "5%" / "¥100/本" — 値引きルールの値表示. */
@@ -222,14 +251,13 @@ export function findApplicableDiscount(
   baseUnitPrice: number,
   date: Date = new Date(),
 ): PriceDiscount | null {
-  const iso = date.toISOString().slice(0, 10);
+  const iso = isoDateJst(date);
   const candidates = variant.discounts.filter(
     (d) =>
       d.isActive &&
       quantity >= d.minQuantity &&
       (d.maxQuantity == null || quantity <= d.maxQuantity) &&
-      iso >= d.validFrom &&
-      (d.validUntil == null || iso <= d.validUntil),
+      isWithinValidity(iso, d.validFrom, d.validUntil),
   );
   if (candidates.length === 0) return null;
   return candidates.reduce((best, d) =>

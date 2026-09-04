@@ -89,6 +89,32 @@ describe("normalizeExtraction", () => {
     expect(out.items[1].notes).toContain("要確認");
   });
 
+  it("0 以下の数量は読めなかった扱い（1 + 元の値を備考に）", () => {
+    const out = normalizeExtraction({
+      items: [
+        { product_name: "A", quantity: 0 },
+        { product_name: "B", quantity: -3 },
+        { product_name: "C", quantity: 1 },
+      ],
+    });
+    expect(out.items.map((it) => it.quantity)).toEqual([1, 1, 1]);
+    expect(out.items[0].notes).toContain("0");
+    expect(out.items[0].notes).toContain("要確認");
+    expect(out.items[1].notes).toContain("-3");
+    expect(out.items[2].notes).toBeNull();
+  });
+
+  it("負の単価は未入力（null）にする", () => {
+    const out = normalizeExtraction({
+      items: [
+        { product_name: "A", quantity: 1, unit_price: -100 },
+        { product_name: "B", quantity: 1, unit_price: 0 },
+      ],
+    });
+    expect(out.items[0].unitPrice).toBeNull();
+    expect(out.items[1].unitPrice).toBe(0);
+  });
+
   it("完全な欠損にも耐える", () => {
     const out = normalizeExtraction(null);
     expect(out.items).toEqual([]);

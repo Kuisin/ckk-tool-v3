@@ -7284,6 +7284,7 @@
       "onlyConfirmedEstimateUsable": "Only a confirmed price estimate can be used in a price list",
       "fetchEstimateSourcesFailed": "Could not fetch the price estimates",
       "invalidVariant": "Invalid variant",
+      "invalidTier": "Invalid quantity tier",
       "createFailed": "Could not create the price list",
       "duplicateEntry": "A price list for this customer and product already exists. Edit the existing price list instead.",
       "invalidEntryNumber": "Invalid price list number",
@@ -7380,6 +7381,8 @@
       "noLineItems": "There are no line items",
       "lineProductNotIdentified": "Line {rows}: Product not identified",
       "lineUnitPriceNotEntered": "Line {rows}: Unit price not entered",
+      "lineQuantityInvalid": "Line {rows}: Quantity must be at least 1",
+      "lineUnitPriceNegative": "Line {rows}: Unit price is negative",
       "andNMore": "and {count} more"
     },
     "orderLineCore": {
@@ -8057,7 +8060,8 @@
     "noItems": "{code}: There are no inspection items"
   },
   "intakeCore": {
-    "quantityNotReadableNote": "Quantity not readable — needs review"
+    "quantityNotReadableNote": "Quantity not readable — needs review",
+    "quantityInvalidNote": "Quantity invalid ({value}) — needs review"
   },
   "notificationEmail": {
     "digestSubject": "[CKK] {total} unread notifications"
