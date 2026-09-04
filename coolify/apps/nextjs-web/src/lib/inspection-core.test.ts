@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
   acceptLabel,
+  entriesBlockingSave,
   evaluateCounts,
   evaluateItem,
   evaluateSample,
@@ -13,6 +14,7 @@ import {
   formatSampleValue,
   goalLabel,
   hasAcceptCriteria,
+  type InspectionItemEntryData,
   type InspectionItemSpec,
   isEntryStarted,
   isSampleEmpty,
@@ -266,6 +268,51 @@ describe("missingRequiredEntries", () => {
     ).toEqual([3]);
     expect(missingRequiredEntries(items, {})).toEqual([1, 3]);
     expect(missingRequiredEntries(items, { 1: [["a"]], 3: [[]] })).toEqual([3]);
+  });
+});
+
+describe("entriesBlockingSave", () => {
+  const items = [
+    { id: 1, isRequired: true, allowManualOverride: true },
+    { id: 2, isRequired: false, allowManualOverride: true },
+    { id: 3, isRequired: false, allowManualOverride: false },
+  ];
+  const entries = (
+    map: Record<number, InspectionItemEntryData | undefined>,
+  ) => {
+    return (id: number) => map[id];
+  };
+  const filled = { samples: ["8.0"], inspectedCount: null, passedCount: null };
+  const blank = {
+    samples: ["", "  "],
+    inspectedCount: null,
+    passedCount: null,
+  };
+
+  it("必須で未入力の項目を返す（任意で上書き可は空でもよい）", () => {
+    expect(
+      entriesBlockingSave(items, entries({ 1: blank, 3: filled }), "VALUES"),
+    ).toEqual([1]);
+    expect(
+      entriesBlockingSave(items, entries({ 1: filled, 3: filled }), "VALUES"),
+    ).toEqual([]);
+  });
+
+  it("手動上書き不可の項目は任意でも入力が無いと保存できない", () => {
+    expect(
+      entriesBlockingSave(items, entries({ 1: filled, 3: blank }), "VALUES"),
+    ).toEqual([3]);
+  });
+
+  it("エントリが送られてこない項目は未入力とみなす", () => {
+    expect(entriesBlockingSave(items, entries({}), "VALUES")).toEqual([1, 3]);
+  });
+
+  it("COUNTS は検査数・合格数のどちらかが入っていれば入力あり", () => {
+    const counts = { samples: [], inspectedCount: 5, passedCount: null };
+    expect(
+      entriesBlockingSave(items, entries({ 1: counts, 3: blank }), "COUNTS"),
+    ).toEqual([3]);
   });
 });
 

@@ -138,7 +138,15 @@ export function WorkOrderDetail({
   const woLabel = wo.docNumber;
   const isApproval = variant === "approval";
   const canEdit = wo.status === "DRAFT";
-  const canCancel = wo.status === "DRAFT" || wo.status === "PENDING_APPROVAL";
+  // 着手前まで（サーバー側 cancelWorkOrder と同じ規則）— 承認済みでも工程が
+  // 1 つも動いていなければキャンセルできる。
+  const canCancel =
+    wo.status === "DRAFT" ||
+    wo.status === "PENDING_APPROVAL" ||
+    (wo.status === "APPROVED" &&
+      wo.steps.every(
+        (s) => s.status !== "IN_PROGRESS" && s.status !== "COMPLETED",
+      ));
 
   // 次のステップ = 出荷書の作成。完了した指示書で、注文明細に紐づいていて、
   // 完成数がまだ出荷書に載りきっていないときだけ進める。在庫向けの独立指示書

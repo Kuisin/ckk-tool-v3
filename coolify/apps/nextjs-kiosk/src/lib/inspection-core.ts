@@ -352,6 +352,39 @@ export function missingRequiredEntries(
     .map((it) => it.id);
 }
 
+/**
+ * 入力が無いままでは**保存できない**項目の id 列（空 = 保存してよい）。
+ *
+ * 2 種類の項目が該当する:
+ * - 必須（`isRequired`）— 検査表の作り手が「必ず測る」と決めた項目。
+ * - 手動上書き不可（`allowManualOverride = false`）— 合否は自動判定だけで
+ *   決まる項目。入力が無いと自動判定が出ず（`evaluateEntry` = null）、
+ *   `resolveItemPass` はクライアントの言う合否か既定の「合格」に落ちる —
+ *   つまり**誰も判定していない合否**が記録される。それを塞ぐには入力を
+ *   要求するしかない（任意でも、この型の項目は空のまま保存できない）。
+ *
+ * エントリが渡されない項目（`entryOf` が undefined）は未入力とみなす —
+ * クライアントが項目ごと送らなければ必須チェックをすり抜ける、という穴を
+ * 作らないため。web / kiosk のフォームとサーバー保存の両方がこの 1 つを使う
+ * （`missingInspectionSheets` の 2 段構えの、前段がこれ）。
+ */
+export function entriesBlockingSave(
+  items: readonly Pick<
+    InspectionItemSpec,
+    "id" | "isRequired" | "allowManualOverride"
+  >[],
+  entryOf: (itemId: number) => InspectionItemEntryData | undefined,
+  style: InspectionRecordStyle,
+): number[] {
+  return items
+    .filter((it) => {
+      if (!it.isRequired && it.allowManualOverride) return false;
+      const entry = entryOf(it.id);
+      return entry == null || !isEntryStarted(entry, style);
+    })
+    .map((it) => it.id);
+}
+
 // ── 表示ラベル ───────────────────────────────────────────────────────────────
 
 /**

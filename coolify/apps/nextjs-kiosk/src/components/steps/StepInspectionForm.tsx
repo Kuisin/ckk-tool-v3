@@ -47,6 +47,7 @@ import { fillMessage, type KioskMessages } from "@/lib/i18n";
 import {
   acceptLabel,
   type BoolLabels,
+  entriesBlockingSave,
   evaluateEntry,
   evaluateSample,
   goalLabel,
@@ -428,10 +429,17 @@ export function StepInspectionForm({
     const style = template.recordStyle;
     setError(null);
     setSavedTemplate(null);
-    const missing = template.items.some((it) => {
-      const entry = entryOf(template, it);
-      return it.isRequired && !isEntryStarted(entry, style);
-    });
+    // 必須 + 手動上書き不可の項目は入力が無いと保存できない（規則は
+    // inspection-core.entriesBlockingSave — サーバー保存も同じ関数で拒む）。
+    const missing =
+      entriesBlockingSave(
+        template.items,
+        (id) => {
+          const it = template.items.find((x) => x.id === id);
+          return it ? entryOf(template, it) : undefined;
+        },
+        style,
+      ).length > 0;
     if (missing) {
       setError(m.steps.inspection.requiredMissing);
       return;
