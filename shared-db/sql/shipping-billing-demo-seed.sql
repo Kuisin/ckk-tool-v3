@@ -95,10 +95,10 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 納品書（DRN-202607-00001〜00003）────────────────────────────────────────
--- 納品書は出荷書の確定時に自動でできる（手動作成の口は無い）。ここでは
--- その結果の形をそのまま置く:
+-- 納品書は出荷書の確定時に自動でできる（手動作成の口は無い）。できた時点で
+-- **発行済（ISSUED）** — 下書きは経由しない。ここではその結果の形をそのまま置く:
 --   DRN-1: 通常納品（DOR-1 由来）・発行済・価格記載あり — 顧客宛の 1 通
---   DRN-2/3: ユーザー直送（DOR-2 由来）の **2 通 1 組**
+--   DRN-2/3: ユーザー直送（DOR-2 由来）の **2 通 1 組**（どちらも発行済）
 --     DRN-2 … 価格記載なし・宛先は最終需要家（現物に同梱して渡す分）
 --     DRN-3 … 価格記載あり・宛先は顧客（請求関係のある相手。届け先を meta に持つ）
 INSERT INTO app.delivery_notes (year_month, seq, delivery_order_year_month, delivery_order_seq,
@@ -113,13 +113,13 @@ VALUES
   ('202607', 2, '202607', 2,
    'DIRECT_TO_USER'::app."DELIVERY_METHOD",
    (SELECT id FROM app.business_partners WHERE bp_code = 'BP-90005'), NULL, NULL,
-   false, NULL, 'DRAFT'::app."DELIVERY_STATUS", NULL, NULL,
+   false, NULL, 'ISSUED'::app."DELIVERY_STATUS", NULL, NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-13T15:00:00+09', '2026-07-13T15:00:00+09'),
   ('202607', 3, '202607', 2,
    'DIRECT_TO_USER'::app."DELIVERY_METHOD",
    'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
    (SELECT id FROM app.business_partners WHERE bp_code = 'BP-90005'),
-   true, NULL, 'DRAFT'::app."DELIVERY_STATUS", NULL, NULL,
+   true, NULL, 'ISSUED'::app."DELIVERY_STATUS", NULL, NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-13T15:00:00+09', '2026-07-13T15:00:00+09')
 ON CONFLICT (year_month, seq) DO NOTHING;
 

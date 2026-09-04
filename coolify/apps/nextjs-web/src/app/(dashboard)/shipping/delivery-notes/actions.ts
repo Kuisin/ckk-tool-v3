@@ -8,9 +8,14 @@
  * （通常配送は 1 通、ユーザー直送は 2 通 — 価格記載なしを最終需要家へ・
  * 価格記載ありを顧客へ。lib 側の計画は
  * components/shipping/delivery-orders/model.ts の planAutoDeliveryNotes）。
- * ここは下書きの編集（明細は全置換）とライフサイクル操作だけを持つ。
+ * **自動作成された納品書は最初から ISSUED** — 内容は出荷書・注文請書から
+ * 機械的に決まるので、人が書き換える下書きの段階を置かない。
+ * ここはライフサイクル操作（納品済み）を持つ。
  *
- * ステータス遷移: DRAFT →(発行)→ ISSUED →(納品)→ DELIVERED。
+ * ステータス遷移: ISSUED →(納品)→ DELIVERED。
+ * DRAFT の編集・発行（updateDeliveryNote / issueDeliveryNote）は残してあるが、
+ * アプリ内で DRAFT の納品書が生まれる経路は無い — SQL で入れた行（デモ
+ * シード等）のためだけに通る。
  */
 
 import { type Access, rowInScope } from "@ckk/authz-core";

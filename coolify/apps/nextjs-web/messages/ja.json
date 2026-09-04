@@ -7456,7 +7456,7 @@
       "storedToStock": "保管（在庫へ）",
       "deliveryNoteNote": "{status}・{recipient}",
       "confirmConfirmBody": "出荷書 {number} を確定します。確定後は編集できません。",
-      "autoNotesHeading": "確定すると次の納品書が自動で作成されます",
+      "autoNotesHeading": "確定すると次の納品書が発行済として自動で作成されます（あとから編集できません）",
       "autoNoteWithPrice": "価格記載あり",
       "autoNoteWithoutPrice": "価格記載なし",
       "autoNotesEndUserMissing": "エンドユーザーが特定できないため、価格記載なしの納品書は作成されません。注文請書のエンドユーザーを確認してください。",
@@ -7471,7 +7471,7 @@
       "onlySameDeliveryMethodCanBeCombined": "1 つの出荷書には同じ配送方法（通常配送 / ユーザー直送）の注文明細だけを載せられます",
       "stockStorageHasNoDeliveryNote": "在庫保管は納品書を作成しません",
       "onlySameEndUserCanBeCombined": "1 つの出荷書には同じ届け先（最終需要家）の注文明細だけを載せられます",
-      "confirmedBodyDispatch": "出荷書 {number} を確定し、納品書を作成しました",
+      "confirmedBodyDispatch": "出荷書 {number} を確定し、納品書を発行しました",
       "coveredOrderAcceptances": "対象の注文請書",
       "shipTogetherTitle": "同じ注文請書の他の明細もまとめますか",
       "shipTogetherBody": "同じ注文請書に、まだ出荷していない明細が {count} 件あります。この出荷書にまとめる明細を選んでください。",
@@ -7553,7 +7553,7 @@
       "shippedNotificationTitle": "出荷書 {number} を出荷しました",
       "specifyAConfirmedOrderLine": "確定済みの注文明細を指定してください",
       "updateFailed": "出荷書の更新に失敗しました",
-      "autoCreatedNote": "出荷書の確定により自動作成"
+      "autoCreatedNote": "出荷書の確定により自動作成（発行済）"
     }
   },
   "ui": {

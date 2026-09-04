@@ -8,8 +8,10 @@
  * 注文明細 ← / 請求書 →）+ 明細テーブル（製品 / 数量 / 単価 / 金額 —
  * 価格記載ありのみ）+ Tabs: 概要 / 履歴。
  *
- * Actions: 編集（DRAFT のみ）/ PDF（/api/pdf/delivery-note?id=DRN-…）/
- * 発行（DRAFT → ISSUED）/ 納品済み（ISSUED → DELIVERED + deliveredAt）。
+ * Actions: PDF（/api/pdf/delivery-note?id=DRN-…）/
+ * 納品済み（ISSUED → DELIVERED + deliveredAt）。
+ * 編集・発行は DRAFT のときだけ出るが、出荷書の確定で自動作成される納品書は
+ * 最初から ISSUED なので、通常は現れない（DRAFT は SQL 由来の行だけ）。
  */
 
 import {
