@@ -586,7 +586,13 @@ export async function completeStepExecution(
   // 完了クレームは条件付き更新 — 同時完了はどちらか一方だけ成立し、
   // 在庫の二重計上を防ぐ（監査 P0-7/#5）。
   const claimed = await prisma.workOrderStep.updateMany({
-    where: { id: stepId, status: "IN_PROGRESS" },
+    where: {
+      id: stepId,
+      status: "IN_PROGRESS",
+      // 開始と同じ規則 — 他者のセッションロック中は完了できない。事前チェック
+      // と更新の間にロックが移っても WHERE で弾く。
+      OR: [{ sessionLockedBy: null }, { sessionLockedBy: actor }],
+    },
     data: {
       status: "COMPLETED",
       inputQuantity: persisted.inputQuantity,
@@ -602,21 +608,40 @@ export async function completeStepExecution(
     },
   });
   if (claimed.count !== 1) {
+    // 進行中のまま他者がロックを持っている = ロック、それ以外 = 先に完了した。
+    const now = await prisma.workOrderStep.findUnique({
+      where: { id: stepId },
+      select: { status: true, sessionLockedBy: true },
+    });
+    if (
+      now?.status === "IN_PROGRESS" &&
+      now.sessionLockedBy &&
+      now.sessionLockedBy !== actor
+    ) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecution.anotherUserHasThisSessionOpen")],
+      };
+    }
     return { ok: false, errors: [tr("workflowActions.stepAlreadyCompleted")] };
   }
 
   // 全工程完了 → 指示書完了 + 在庫計上（完成品ロット入庫・半製品入庫・予約確定）。
   // WO の COMPLETED 遷移も条件付き — 勝者 1 リクエストだけが在庫計上する。
+  // 遷移と計上は**1 トランザクション** — 計上が失敗したら COMPLETED も巻き戻る
+  // （COMPLETED なのに在庫が無く、巻き戻しも拒否される状態を作らない）。
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
   if (isWorkOrderComplete(ctx)) {
-    const flipped = await prisma.workOrder.updateMany({
-      where: { id: stepRow.workOrderId, status: { not: "COMPLETED" } },
-      data: { status: "COMPLETED", completedAt: new Date() },
+    await prisma.$transaction(async (tx) => {
+      const flipped = await tx.workOrder.updateMany({
+        where: { id: stepRow.workOrderId, status: { not: "COMPLETED" } },
+        data: { status: "COMPLETED", completedAt: new Date() },
+      });
+      if (flipped.count === 1) {
+        const { onWorkOrderCompletedTx } = await import("./inventory");
+        await onWorkOrderCompletedTx(tx, stepRow.workOrderId);
+      }
     });
-    if (flipped.count === 1) {
-      const { onWorkOrderCompleted } = await import("./inventory");
-      await onWorkOrderCompleted(stepRow.workOrderId);
-    }
   }
   await recordAudit({
     action: "UPDATE",
@@ -639,23 +664,48 @@ export async function abortStepExecution(
   reason: string,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
+  const actor = await getCurrentActorId();
   const stepRow = await prisma.workOrderStep.findUniqueOrThrow({
     where: { id: stepId },
     include: { workOrder: true },
   });
   if (stepRow.status !== "IN_PROGRESS")
     return { ok: false, errors: [tr("workflowActions.stepNotInProgress")] };
-  await prisma.workOrderStep.update({
-    where: { id: stepId },
+  if (stepRow.sessionLockedBy && stepRow.sessionLockedBy !== actor) {
+    return {
+      ok: false,
+      errors: [tr("production.stepExecution.anotherUserHasThisSessionOpen")],
+    };
+  }
+  // 完了と同じ規則で原子的に — 他者のセッションを横から中断できない。
+  // 理由は cancel_reason に残す（notes は工程の備考で、上書きしない）。
+  const released = await prisma.workOrderStep.updateMany({
+    where: {
+      id: stepId,
+      status: "IN_PROGRESS",
+      OR: [{ sessionLockedBy: null }, { sessionLockedBy: actor }],
+    },
     data: {
       status: "PENDING",
       sessionLockedBy: null,
       sessionLockedAt: null,
       startedAt: null,
       startedBy: null,
-      notes: reason || undefined,
+      cancelReason: reason || undefined,
     },
   });
+  if (released.count !== 1) {
+    const now = await prisma.workOrderStep.findUnique({
+      where: { id: stepId },
+      select: { status: true },
+    });
+    if (now?.status !== "IN_PROGRESS")
+      return { ok: false, errors: [tr("workflowActions.stepNotInProgress")] };
+    return {
+      ok: false,
+      errors: [tr("production.stepExecution.anotherUserHasThisSessionOpen")],
+    };
+  }
   await recordAudit({
     action: "UPDATE",
     tableName: "work_orders",

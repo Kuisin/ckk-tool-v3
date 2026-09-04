@@ -763,7 +763,13 @@ export async function completeStepExecution(
   // 在庫の二重計上を防ぐ（監査 P0-7/#5）。作業セッションも同 tx で閉じる。
   const claimed = await prisma.$transaction(async (tx) => {
     const c = await tx.workOrderStep.updateMany({
-      where: { id: stepId, status: "IN_PROGRESS" },
+      where: {
+        id: stepId,
+        status: "IN_PROGRESS",
+        // 開始と同じ規則 — 他者のセッションロック中は完了できない。事前チェック
+        // と更新の間にロックが移っても WHERE で弾く。
+        OR: [{ sessionLockedBy: null }, { sessionLockedBy: actorId }],
+      },
       data: {
         status: "COMPLETED",
         inputQuantity: persisted.inputQuantity,
@@ -795,21 +801,37 @@ export async function completeStepExecution(
     return c.count;
   });
   if (claimed !== 1) {
+    // 進行中のまま他者がロックを持っている = ロック、それ以外 = 先に完了した。
+    const cur = await prisma.workOrderStep.findUnique({
+      where: { id: stepId },
+      select: { status: true, sessionLockedBy: true },
+    });
+    if (
+      cur?.status === "IN_PROGRESS" &&
+      cur.sessionLockedBy &&
+      cur.sessionLockedBy !== actorId
+    ) {
+      return fail("LOCK_HELD_BY_OTHER", "別のユーザーがセッション中です"); // i18n-ignore
+    }
     return fail("ALREADY_COMPLETED", "この工程は既に完了しています"); // i18n-ignore
   }
 
   // 全工程完了 → 指示書完了 + 在庫計上（完成品ロット入庫・半製品入庫・予約確定）。
   // WO の COMPLETED 遷移も条件付き — 勝者 1 リクエストだけが在庫計上する。
+  // 遷移と計上は**1 トランザクション** — 計上が失敗したら COMPLETED も巻き戻る
+  // （nextjs-web completeStepExecution と同じ規則）。
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
   if (isWorkOrderComplete(ctx)) {
-    const flipped = await prisma.workOrder.updateMany({
-      where: { id: stepRow.workOrderId, status: { not: "COMPLETED" } },
-      data: { status: "COMPLETED", completedAt: now },
+    await prisma.$transaction(async (tx) => {
+      const flipped = await tx.workOrder.updateMany({
+        where: { id: stepRow.workOrderId, status: { not: "COMPLETED" } },
+        data: { status: "COMPLETED", completedAt: now },
+      });
+      if (flipped.count === 1) {
+        const { onWorkOrderCompletedTx } = await import("./inventory");
+        await onWorkOrderCompletedTx(tx, stepRow.workOrderId);
+      }
     });
-    if (flipped.count === 1) {
-      const { onWorkOrderCompleted } = await import("./inventory");
-      await onWorkOrderCompleted(stepRow.workOrderId);
-    }
   }
 
   await recordAudit({
