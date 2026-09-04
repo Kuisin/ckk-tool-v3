@@ -177,6 +177,23 @@ services:
       - RCLONE_CONFIG_R2_ACCESS_KEY_ID=${RCLONE_CONFIG_R2_ACCESS_KEY_ID:-}
       - RCLONE_CONFIG_R2_SECRET_ACCESS_KEY=${RCLONE_CONFIG_R2_SECRET_ACCESS_KEY:-}
       - RCLONE_CONFIG_R2_ENDPOINT=${RCLONE_CONFIG_R2_ENDPOINT:-}
+      # object 権限だけのトークンは CreateBucket できない。rclone は既定で
+      # アップロード前にバケットの存在確認（無ければ作成）をするため、これを
+      # 止めないと毎回 403 AccessDenied になる（実際に踏んだ）。
+      - RCLONE_CONFIG_R2_NO_CHECK_BUCKET=${RCLONE_CONFIG_R2_NO_CHECK_BUCKET:-}
+      # crypt リモート — R2 の上に被せてクライアント側で暗号化する。
+      # バックアップには業務文書と個人情報（login_attempts の IP・端末シグネチャ、
+      # 従業員マスタ）が入るので、平文でクラウドへ置かない。事業者が持つのは
+      # 暗号文だけになるため、越境移転の判断も単純になる。
+      # ★ RCLONE_CONFIG_R2CRYPT_PASSWORD/_PASSWORD2 は `rclone obscure` した値。
+      #   平文パスフレーズは**サーバー外**（Keychain / パスワードマネージャ）にも
+      #   必ず置く — これを失うとバックアップは永久に復号できない。
+      - RCLONE_CONFIG_R2CRYPT_TYPE=${RCLONE_CONFIG_R2CRYPT_TYPE:-}
+      - RCLONE_CONFIG_R2CRYPT_REMOTE=${RCLONE_CONFIG_R2CRYPT_REMOTE:-}
+      - RCLONE_CONFIG_R2CRYPT_PASSWORD=${RCLONE_CONFIG_R2CRYPT_PASSWORD:-}
+      - RCLONE_CONFIG_R2CRYPT_PASSWORD2=${RCLONE_CONFIG_R2CRYPT_PASSWORD2:-}
+      # 送る対象（空白区切り）。既定は offsite-sync.sh 内の最小集合。
+      - OFFSITE_INCLUDE=${OFFSITE_INCLUDE:-}
 
 volumes:
   # Grafana は Coolify 管理になったのでボリューム名にアプリ UUID が入る。

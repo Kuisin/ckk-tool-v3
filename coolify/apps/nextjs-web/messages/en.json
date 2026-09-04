@@ -1908,6 +1908,31 @@
     },
     "stamp": {
       "companySeal": "Company seal"
+    },
+    "PORTAL_GUIDE": {
+      "title": "Partner portal — how to sign in",
+      "onchu": "",
+      "attnSuffix": "",
+      "personalStrip": "This guide is for {name}. The QR code carries the sign-in address registered for {name}.",
+      "howToTitle": "How to sign in",
+      "step1": "Scan the QR code with your phone's camera, or open the URL below.",
+      "step2": "A verification code ({length} characters) is sent to your registered email address. It is valid for {minutes} minutes.",
+      "step3": "Enter that code to sign in. There is no password.",
+      "scopeTitle": "What you can see",
+      "scopeDocuments": "Documents addressed to your company (quotes, order acceptances, delivery notes, invoices) and order progress",
+      "scopeBranches": "Includes documents addressed to your branches",
+      "scopeAsEndUser": "Includes documents where your company is the end user or ship-to",
+      "scopeSingleDocuments": "{count} individually shared documents",
+      "scopeForms": "Forms: {names}",
+      "urlLabel": "Portal URL",
+      "emailLabel": "Sign-in address",
+      "qrCaption": "Scan to sign in",
+      "noticeTitle": "Please note",
+      "noticeSecret": "Never share the verification code. We will never ask you for it by phone or email.",
+      "noticeIdle": "You are signed out automatically after about {hours} hours of inactivity. Just sign in again the same way.",
+      "noticeNoMail": "If the email does not arrive, check your spam folder and then contact us below.",
+      "contactTitle": "Contact",
+      "contactFallback": "Please contact your sales representative."
     }
   },
   "billing": {
@@ -4487,6 +4512,15 @@
     "kioskSettings": {
       "stepExecution": "Step execution",
       "workOrderScan": "Work order scan"
+    },
+    "portalGuide": {
+      "guide": "Guide",
+      "guideForThisContact": "Guide for this contact",
+      "guideForAllContacts": "Guide for all contacts",
+      "accountNotFound": "The account was not found.",
+      "activateBeforeIssuing": "Enable the account first — a disabled account cannot sign in.",
+      "noActiveAccounts": "This partner has no enabled portal accounts.",
+      "couldNotIssueTheGuide": "Could not issue the guide."
     }
   },
   "portal": {
@@ -6681,6 +6715,7 @@
       "viewTheBreakdown": "View the breakdown",
       "didYouMean": "Did you mean",
       "selectACustomer": "Select a customer",
+      "shipToOnlyForNormalDelivery": "Not used for direct-to-end-user (the end user is the destination)",
       "createADraft": "Create a draft",
       "createAnOrderAcceptanceByHand": "Create an order acceptance by hand",
       "createsTheOrderAcceptanceDirectlyWithout": "Creates the order acceptance directly, without automatic order intake (saved as a draft).",
@@ -8373,7 +8408,7 @@
       },
       "shipTo": {
         "label": "Ship-to",
-        "summary": "The delivery destination for the product. Select this when delivering to a different company or branch than the customer who placed the order. Leaving it blank means delivery to the customer."
+        "summary": "The delivery destination for the product. Select this when delivering to a different company or branch than the customer who placed the order. Leaving it blank means delivery to the customer. It applies to standard delivery only — with direct-to-end-user it is disabled, because the end user is the destination."
       },
       "deliveryMethod": {
         "label": "Delivery method",

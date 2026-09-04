@@ -34,12 +34,20 @@ import {
 
 type Mode = "email" | "code" | "backup";
 
-export function PortalLoginForm() {
+export function PortalLoginForm({
+  /**
+   * ご利用案内 PDF の QR（`?e=`）から来た宛先。**検証済みの値だけ**が渡る
+   * （page.tsx が `isPlausibleEmail` で弾く）。空なら従来どおり空欄。
+   */
+  initialEmail = "",
+}: {
+  initialEmail?: string;
+}) {
   const tr = useTranslations();
   const router = useRouter();
   const [pending, start] = useTransition();
   const [mode, setMode] = useState<Mode>("email");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState("");
   const [challengeRef, setChallengeRef] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);

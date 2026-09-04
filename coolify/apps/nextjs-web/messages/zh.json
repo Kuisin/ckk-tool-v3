@@ -1908,6 +1908,31 @@
     },
     "stamp": {
       "companySeal": "公司印章"
+    },
+    "PORTAL_GUIDE": {
+      "title": "客户门户 使用指南",
+      "onchu": "",
+      "attnSuffix": "",
+      "personalStrip": "本指南供 {name} 使用。二维码中包含为 {name} 登记的登录地址。",
+      "howToTitle": "使用步骤",
+      "step1": "请用手机相机扫描二维码（也可直接打开下方网址）。",
+      "step2": "系统会向您登记的邮箱发送 {length} 位验证码（有效期 {minutes} 分钟）。",
+      "step3": "输入收到的验证码即可登录。无需密码。",
+      "scopeTitle": "可查看的内容",
+      "scopeDocuments": "贵公司的单据（报价单・订单确认书・送货单・请款单）与订单进度",
+      "scopeBranches": "包含发给贵公司分公司的单据",
+      "scopeAsEndUser": "包含贵公司作为最终用户・送货对象的单据",
+      "scopeSingleDocuments": "单独共享的单据 {count} 件",
+      "scopeForms": "表单：{names}",
+      "urlLabel": "门户网址",
+      "emailLabel": "登录地址",
+      "qrCaption": "扫码登录",
+      "noticeTitle": "注意事项",
+      "noticeSecret": "请勿将验证码告知他人。本公司不会通过电话或邮件向您索取验证码。",
+      "noticeIdle": "约 {hours} 小时无操作将自动退出登录。请按相同步骤重新登录。",
+      "noticeNoMail": "如未收到邮件，请先查看垃圾邮件文件夹，然后与下方联系人联系。",
+      "contactTitle": "联系方式",
+      "contactFallback": "请联系您的销售负责人。"
     }
   },
   "billing": {
@@ -4487,6 +4512,15 @@
     "kioskSettings": {
       "stepExecution": "工序执行",
       "workOrderScan": "工单扫描"
+    },
+    "portalGuide": {
+      "guide": "指南",
+      "guideForThisContact": "此联系人的指南",
+      "guideForAllContacts": "该客户全部联系人",
+      "accountNotFound": "未找到该账号。",
+      "activateBeforeIssuing": "请先启用账号（未启用的账号无法登录）。",
+      "noActiveAccounts": "该客户没有已启用的门户账号。",
+      "couldNotIssueTheGuide": "无法发行指南。"
     }
   },
   "portal": {
@@ -6681,6 +6715,7 @@
       "viewTheBreakdown": "查看明细",
       "didYouMean": "您是否要找",
       "selectACustomer": "请选择客户",
+      "shipToOnlyForNormalDelivery": "直送最终用户时不使用（送达对象为最终用户）",
       "createADraft": "创建草稿",
       "createAnOrderAcceptanceByHand": "手动创建订单确认书",
       "createsTheOrderAcceptanceDirectlyWithout": "不使用订单自动导入，直接创建订单确认书（保存为草稿）。",
@@ -8373,7 +8408,7 @@
       },
       "shipTo": {
         "label": "送货对象",
-        "summary": "产品的送达地点。当需要送达至下单客户以外的公司或分公司时选择。留空则表示送达至该客户本身。"
+        "summary": "产品的送达地点。当需要送达至下单客户以外的公司或分公司时选择。留空则表示送达至该客户本身。仅用于常规配送 —— 直送最终用户时无法选择（送达对象为最终用户）。"
       },
       "deliveryMethod": {
         "label": "配送方式",
