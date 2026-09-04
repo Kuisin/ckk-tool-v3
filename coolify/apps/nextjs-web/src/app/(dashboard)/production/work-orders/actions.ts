@@ -66,7 +66,17 @@ import {
   addWorkOrderLink as addWoLink,
   removeWorkOrderLink as removeWoLink,
 } from "@/lib/work-order-links";
-import { type OrderedStepCreate, validateAndOrderSteps } from "@/lib/workflow";
+import {
+  type OrderedStepCreate,
+  type StepCompositionInput,
+  validateAndOrderSteps,
+} from "@/lib/workflow";
+import {
+  isOffMainline,
+  STEP_LINK_STATE_SELECT,
+  STEP_STATE_SELECT,
+  toStepState,
+} from "@/lib/workflow-core";
 import { fetchOrderLineRef, type OrderLineRef } from "./data";
 
 const BASE_PATH = "/production/work-orders";
@@ -791,12 +801,49 @@ export async function copyWorkOrder(
       include: {
         steps: {
           orderBy: { sortOrder: "asc" },
-          include: { inspectionTemplates: true },
+          select: {
+            ...STEP_STATE_SELECT,
+            executionLocation: true,
+            plantId: true,
+            supplierBpId: true,
+            plannedWorkHours: true,
+            lotInputMode: true,
+            inspectionTemplates: { select: { inspectionTemplateId: true } },
+          },
         },
+        stepLinks: { select: STEP_LINK_STATE_SELECT },
       },
     });
     if (!source)
       return actionError(tr("production.workOrderActions.copySourceNotFound"));
+    // 複写するのは**メインラインの生きている工程だけ**。分岐系列（オフメイン
+    // ライン）は実行中に不良へ対して足したもので、キャンセル済みは構成から外れて
+    // いる — どちらも新しい下書きには持ち込まない（分岐リンクも複写しない）。
+    // そのうえで新規作成と同じ検証・並び（validateAndOrderSteps）を通し、
+    // 複写が不正な下書きにならないようにする。
+    const srcCtx = {
+      plannedQuantity: source.plannedQuantity,
+      steps: source.steps.map(toStepState),
+      links: source.stepLinks,
+      execDeps: [],
+    };
+    const composition: StepCompositionInput[] = source.steps
+      .filter((s) => s.status !== "CANCELLED" && !isOffMainline(s.id, srcCtx))
+      .map((s) => ({
+        processStepId: s.processStepId,
+        executionLocation: s.executionLocation,
+        plantId: s.plantId,
+        supplierBpId: s.supplierBpId,
+        workHours:
+          s.plannedWorkHours == null ? null : Number(s.plannedWorkHours),
+        // ロット入力の上書きは複写する（lot_text は実績なので複写しない）
+        lotInputMode: s.lotInputMode,
+        inspectionTemplateIds: s.inspectionTemplates.map(
+          (t) => t.inspectionTemplateId,
+        ),
+      }));
+    const built = await validateAndOrderSteps(composition, source.type);
+    if (!built.ok) return actionError(built.error);
     if (!targetOrderLineId && source.type === "FROM_STOCK") {
       return actionError(
         tr("production.workOrderActions.stockOrderRequiresOrderLine"),
@@ -888,23 +935,7 @@ export async function copyWorkOrder(
               }),
             ),
           ]),
-          steps: {
-            create: source.steps.map((s) => ({
-              processStepId: s.processStepId,
-              sortOrder: s.sortOrder,
-              executionLocation: s.executionLocation,
-              plantId: s.plantId,
-              supplierBpId: s.supplierBpId,
-              plannedWorkHours: s.plannedWorkHours,
-              // ロット入力の上書きは複写する（lot_text は実績なので複写しない）
-              lotInputMode: s.lotInputMode,
-              inspectionTemplates: {
-                create: s.inspectionTemplates.map((t) => ({
-                  inspectionTemplateId: t.inspectionTemplateId,
-                })),
-              },
-            })),
-          },
+          steps: { create: toWorkOrderStepCreates(built.creates) },
         },
       });
       await assignLotNumbersTx(
@@ -924,7 +955,7 @@ export async function copyWorkOrder(
         sourceWorkOrderNumber,
         type: source.type,
         plannedQuantity,
-        stepCount: source.steps.length,
+        stepCount: built.creates.length,
       },
     });
     revalidate(workOrderNumber, docNumber);
