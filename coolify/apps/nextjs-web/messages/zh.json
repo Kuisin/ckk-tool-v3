@@ -7284,6 +7284,7 @@
       "onlyConfirmedEstimateUsable": "只有已确定的价格试算可用于价格表",
       "fetchEstimateSourcesFailed": "价格试算获取失败",
       "invalidVariant": "变体无效",
+      "invalidTier": "数量档无效",
       "createFailed": "价格表创建失败",
       "duplicateEntry": "该客户与产品的价格表已存在。请编辑现有价格表。",
       "invalidEntryNumber": "价格表编号无效",
@@ -7380,6 +7381,8 @@
       "noLineItems": "没有任何明细",
       "lineProductNotIdentified": "第 {rows} 行明细：产品未确定",
       "lineUnitPriceNotEntered": "第 {rows} 行明细：单价未输入",
+      "lineQuantityInvalid": "第 {rows} 行明细：数量不足 1",
+      "lineUnitPriceNegative": "第 {rows} 行明细：单价为负数",
       "andNMore": "其他 {count} 件"
     },
     "orderLineCore": {
@@ -8057,7 +8060,8 @@
     "noItems": "{code}：没有任何检查项目"
   },
   "intakeCore": {
-    "quantityNotReadableNote": "数量未读取・需确认"
+    "quantityNotReadableNote": "数量未读取・需确认",
+    "quantityInvalidNote": "数量无效（{value}）・需确认"
   },
   "notificationEmail": {
     "digestSubject": "【CKK】{total} 条未读通知"

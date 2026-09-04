@@ -7284,6 +7284,7 @@
       "onlyConfirmedEstimateUsable": "確定済みの価格試算のみ価格表に使用できます",
       "fetchEstimateSourcesFailed": "価格試算の取得に失敗しました",
       "invalidVariant": "バリアントが不正です",
+      "invalidTier": "段階が不正です",
       "createFailed": "価格表の作成に失敗しました",
       "duplicateEntry": "同一の顧客・製品の価格表が既に存在します。既存の価格表を編集してください。",
       "invalidEntryNumber": "価格表番号が不正です",
@@ -7380,6 +7381,8 @@
       "noLineItems": "明細が 1 件もありません",
       "lineProductNotIdentified": "明細 {rows} 行目: 製品が未特定です",
       "lineUnitPriceNotEntered": "明細 {rows} 行目: 単価が未入力です",
+      "lineQuantityInvalid": "明細 {rows} 行目: 数量が 1 以上ではありません",
+      "lineUnitPriceNegative": "明細 {rows} 行目: 単価が負の値です",
       "andNMore": "ほか {count} 件"
     },
     "orderLineCore": {
@@ -8057,7 +8060,8 @@
     "noItems": "{code}: 検査項目が 1 つもありません"
   },
   "intakeCore": {
-    "quantityNotReadableNote": "数量未読取・要確認"
+    "quantityNotReadableNote": "数量未読取・要確認",
+    "quantityInvalidNote": "数量が不正（{value}）・要確認"
   },
   "notificationEmail": {
     "digestSubject": "【CKK】未読の通知 {total} 件"

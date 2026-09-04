@@ -584,7 +584,7 @@ export async function submitForApproval(
         endUserBpId: true,
         items: {
           orderBy: { sortOrder: "asc" },
-          select: { productId: true, unitPrice: true },
+          select: { productId: true, quantity: true, unitPrice: true },
         },
       },
     });
@@ -605,6 +605,7 @@ export async function submitForApproval(
         endUserBpId: prior.endUserBpId,
         items: prior.items.map((it) => ({
           productId: it.productId,
+          quantity: it.quantity,
           unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
         })),
       },
@@ -633,17 +634,21 @@ export async function submitForApproval(
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
     const flowError = await assertFlowConfigured("order_acceptances");
     if (flowError) return actionError(flowError);
-    await prisma.orderAcceptance.update({
-      where: { yearMonth_seq: key },
-      data: { status: "REQUESTED" },
-    });
     // 1 段目の承認依頼を作る（PD03 横断表示・承認記録の紐付け先）。
+    // **状態より先に依頼を作る** — 逆順だと依頼の作成が失敗したとき、書類だけが
+    // 承認依頼中のまま誰の承認一覧にも出ない（承認も差し戻しもできず動かせない）。
+    // 依頼だけが残った側は startApprovalFlow が二重依頼を成功として吸収するので、
+    // もう一度依頼を押せば状態が追いつく。
     const started = await startApprovalFlow({
       targetType: "order_acceptances",
       targetId: number,
     });
     if (!started.ok)
       return actionError(started.error ?? tr("common.approvalRequestFailed"));
+    await prisma.orderAcceptance.update({
+      where: { yearMonth_seq: key },
+      data: { status: "REQUESTED" },
+    });
     await recordAudit({
       action: "UPDATE",
       tableName: "order_acceptances",
@@ -836,6 +841,7 @@ export async function confirmOrderLines(
         endUserBpId: prior.endUserBpId,
         items: prior.items.map((it) => ({
           productId: it.productId,
+          quantity: it.quantity,
           unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
         })),
       },

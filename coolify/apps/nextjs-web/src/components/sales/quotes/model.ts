@@ -17,6 +17,8 @@
 import {
   discountValueLabel,
   findApplicableDiscount,
+  isoDateJst,
+  isWithinValidity,
   type PriceListEntry,
   type PriceTier,
   tierUnitPrice,
@@ -41,10 +43,15 @@ export interface ResolvedPrice {
 }
 
 /**
- * Resolve 単価 + 値引き from the 価格表 for (顧客 × 製品 × 注文種別 × 数量),
- * pure over `entries`. Entry は顧客×製品で一意、注文種別はその中の variant を
- * 選ぶ。Returns null when no entry/variant/tier matches — the line cannot be
- * quoted.
+ * Resolve 単価 + 値引き from the 価格表 for (顧客 × 製品 × 注文種別 × 数量 ×
+ * 日付), pure over `entries`. Entry は顧客×製品で一意、注文種別はその中の
+ * variant を選ぶ。Returns null when no entry/variant/tier matches — the line
+ * cannot be quoted.
+ *
+ * **価格を出せるのは、有効なエントリの有効なバリアントで、`date`（JST の暦日）
+ * が有効期間に入っているものだけ。** 無効化された価格表・期限切れ / 開始前の
+ * バリアントは「価格表なし」と同じ扱い（null）— 以前はここを見ておらず、
+ * 終了日を過ぎたテスト価格が見積書・注文請書にそのまま載っていた。
  */
 export function resolveUnitPriceFromEntries(
   entries: PriceListEntry[],
@@ -58,8 +65,13 @@ export function resolveUnitPriceFromEntries(
   const entry = entries.find(
     (e) => e.customerId === customerId && e.productId === productId,
   );
-  const variant = entry?.variants.find((v) => v.orderType === orderType);
-  if (!variant) return null;
+  if (!entry?.isActive) return null;
+  const variant = entry.variants.find((v) => v.orderType === orderType);
+  if (!variant?.isActive) return null;
+  if (
+    !isWithinValidity(isoDateJst(date), variant.validFrom, variant.validUntil)
+  )
+    return null;
   const tier = variant.tiers.find(
     (t) =>
       quantity >= t.minQuantity &&

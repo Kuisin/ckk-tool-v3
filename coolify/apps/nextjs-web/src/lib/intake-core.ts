@@ -112,7 +112,10 @@ export function normalizeDate(raw: unknown): string | null {
 
 /**
  * 抽出 JSON（OrderRequest 形。欠損・型ゆれに耐性）→ 正規化。
- * 数量が取れない行は数量 1 として取り込み、備考に印を付ける。
+ * 数量が取れない行は数量 1 として取り込み、備考に印を付ける。**0 以下の数量も
+ * 「読めなかった」扱い**（注文明細の数量は 1 以上なので、0 や負は OCR の
+ * 読み違い — そのまま通すと数量 0 の明細が確定まで進む）。元の値は備考に残す。
+ * 負の単価は null（未入力）にする — 単価は人が価格表 / 注文書から入れ直す。
  */
 export function normalizeExtraction(raw: unknown): NormalizedExtraction {
   const r = (raw ?? {}) as Record<string, unknown>;
@@ -123,18 +126,25 @@ export function normalizeExtraction(raw: unknown): NormalizedExtraction {
       const productText = s(i.product_name);
       const productCode = s(i.product_code);
       if (!productText && !productCode) return null;
-      const qty = n(i.quantity);
+      const qtyRaw = n(i.quantity);
+      const qty = qtyRaw != null && qtyRaw >= 1 ? qtyRaw : null;
+      const price = n(i.unit_price);
       const noteParts = [s(i.notes), s(i.customization)].filter(
         (x): x is string => x != null,
       );
-      if (qty == null)
+      if (qtyRaw == null) {
         noteParts.push(label("intakeCore.quantityNotReadableNote", "ja"));
+      } else if (qty == null) {
+        noteParts.push(
+          label("intakeCore.quantityInvalidNote", "ja", "", { value: qtyRaw }),
+        );
+      }
       return {
         productText,
         productCode,
         orderType: normalizeOrderType(i.order_type),
         quantity: qty ?? 1,
-        unitPrice: n(i.unit_price),
+        unitPrice: price != null && price >= 0 ? price : null,
         deliveryDate: normalizeDate(i.delivery_date),
         notes: noteParts.length > 0 ? noteParts.join(" / ") : null,
       };
