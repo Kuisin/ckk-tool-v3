@@ -6711,7 +6711,8 @@
       "priceOverrideLine": "行{row} {actual}（価格表 {expected}）",
       "hideTheDocumentPane": "書類を畳む",
       "showTheDocumentPane": "書類を開く",
-      "hideTheDocument": "隠す"
+      "hideTheDocument": "隠す",
+      "customerProvidesDeliveryNote": "顧客提供の納品書"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "この明細の親書類",
@@ -7318,31 +7319,30 @@
       "markedAsDelivered": "納品済みにしました",
       "selectAnEndUser": "最終需要家を選択してください",
       "theDeliveryNoteWasUpdated": "納品書を更新しました",
-      "newDeliveryNote": "納品書 新規作成",
-      "chooseAConfirmedOrShippedDelivery": "確定済み・出荷済みの出荷書を選択",
       "shipToForDirectToUser": "ユーザー直送の届け先（配送完了書に価格なし・納品書別送）",
       "searchEndUsers": "最終需要家を検索",
       "showPricesPrintUnitPriceAnd": "価格記載（納品書に単価・金額を記載する）",
-      "choosingADeliveryOrderPrefillsThe": "出荷書を選択すると明細が既定生成されます（単価は注文明細の単価）。価格記載 OFF のときは単価・金額を保存しません。",
       "searchByDeliveryNoteNumberDelivery": "納品番号・出荷書番号・納品先で検索",
       "thereAreNoDeliveryNotes": "納品書がありません",
       "invoiceNote": "{status}・{amount}",
       "confirmIssueBody": "納品書 {number} を発行します。発行後は編集できません。",
       "issuedBody": "納品書 {number} を発行しました",
       "confirmDeliveredBody": "納品書 {number} を納品済みにします。納品日は本日で記録されます。",
-      "deliveredBody": "納品書 {number} を納品済みにしました"
+      "deliveredBody": "納品書 {number} を納品済みにしました",
+      "directToUserPriceWarning": "この納品書には価格が記載されています。エンドユーザー（最終需要家）へは渡さないでください — 顧客宛の書類です。",
+      "confirmOpenWithPriceTitle": "価格記載ありの納品書です",
+      "confirmOpenWithPriceBody": "ユーザー直送の、価格記載ありの納品書です。エンドユーザーへは渡さず、顧客宛にのみお使いください。"
     },
     "deliveryOrders": {
       "stockStorageSoNotTiedTo": "—（在庫保管のため注文明細に紐づかない）",
       "shipmentNotTiedToAnOrder": "—（注文明細に紐づかない出荷）",
       "whereTheShippedLotWasMade": "出荷ロットの製造元",
       "noDeliveryNoteHasBeenCreated": "納品書は未作成です",
-      "notCreatedTheDeliveryNoteIs": "未作成（出荷後に納品書を作成します）",
+      "notCreatedTheDeliveryNoteIs": "未作成（確定すると自動で作成されます）",
       "fromSite": "出荷元拠点",
       "workOrderLinkedAtHeader": "指示書（ヘッダ紐付け）",
-      "createADeliveryNote": "納品書を作成",
       "thereIsNoDeliveryNoteFor": "この出荷書の納品書はまだありません",
-      "youCanCreateTheDeliveryNote": "納品書は確定後に作成できます",
+      "youCanCreateTheDeliveryNote": "納品書は出荷書の確定時に自動で作成されます",
       "ship": "出荷する",
       "shipped": "出荷しました",
       "confirmTheShipment": "出荷の確認",
@@ -7378,7 +7378,11 @@
       "deletedBody": "出荷書 {number} を削除しました",
       "onlySameCustomerCanBeCombined": "1 つの出荷書には同じ顧客の注文明細だけを載せられます",
       "onlySameShipToCanBeCombined": "1 つの出荷書には同じ出荷先の注文明細だけを載せられます",
-      "onlySameDeliveryMethodCanBeCombined": "1 つの出荷書には同じ配送方法（通常配送 / ユーザー直送）の注文明細だけを載せられます"
+      "onlySameDeliveryMethodCanBeCombined": "1 つの出荷書には同じ配送方法（通常配送 / ユーザー直送）の注文明細だけを載せられます",
+      "stockStorageHasNoDeliveryNote": "在庫保管は納品書を作成しません",
+      "onlySameEndUserCanBeCombined": "1 つの出荷書には同じ届け先（最終需要家）の注文明細だけを載せられます",
+      "confirmConfirmBodyDispatch": "出荷書 {number} を確定します。確定後は編集できません。納品書が自動で作成されます（ユーザー直送は価格記載なし・ありの 2 通）。",
+      "confirmedBodyDispatch": "出荷書 {number} を確定し、納品書を作成しました"
     },
     "pendingShipments": {
       "completedLots": "完了ロット",
@@ -7414,23 +7418,17 @@
       "partialShipmentLabel": "一部出荷（出荷 {total} / 受注残 {remaining}）"
     },
     "deliveryNoteForm": {
-      "selectADeliveryOrder": "出荷書を選択してください",
-      "createdWithNumber": "納品書 {number} を作成しました",
       "editWithNumber": "納品書 編集 {noteId}"
     },
     "deliveryNoteTable": {
       "destinationLabel": "届け先: {name}"
     },
     "deliveryNoteActions": {
-      "createFailed": "納品書の作成に失敗しました",
       "deliverFailed": "納品処理に失敗しました",
-      "deliveryOrderMustBeConfirmedOrShipped": "確定済み・出荷済みの出荷書のみ納品書を作成できます",
-      "deliveryOrderNotFound": "対象の出荷書が見つかりません",
       "draftOnlyCanEdit": "下書きの納品書のみ編集できます",
       "draftOnlyCanIssue": "下書きの納品書のみ発行できます",
       "exceedsShippedQuantity": "{label} の数量 {quantity} が出荷数量 {shipped} を超えています",
       "invalidDeliveryNoteNumber": "納品番号が不正です",
-      "invalidDeliveryOrderNumber": "出荷書番号が不正です",
       "issueFailed": "発行に失敗しました",
       "issuedOnlyCanDeliver": "発行済みの納品書のみ納品済みにできます",
       "productFallbackLabel": "製品 #{id}",
@@ -7458,7 +7456,8 @@
       "shipFailed": "出荷処理に失敗しました",
       "shippedNotificationTitle": "出荷書 {number} を出荷しました",
       "specifyAConfirmedOrderLine": "確定済みの注文明細を指定してください",
-      "updateFailed": "出荷書の更新に失敗しました"
+      "updateFailed": "出荷書の更新に失敗しました",
+      "autoCreatedNote": "出荷書の確定により自動作成"
     }
   },
   "ui": {
@@ -8309,6 +8308,10 @@
       "shippingWorkLocation": {
         "label": "出荷作業場所",
         "summary": "出荷の作業（梱包・積み込みなど）を行う場所です。作業場所マスタから選びます。"
+      },
+      "customerProvidesDeliveryNote": {
+        "label": "顧客提供の納品書",
+        "summary": "顧客が自前の納品書（バーコード印字など）を用意しているときに付けます。自社発行の納品書にそれを同梱してお届けする運用の目印です。自動作成される納品書の通数や宛先は変わりません。"
       },
       "notes": {
         "label": "備考",

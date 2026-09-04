@@ -12,7 +12,7 @@ This app creates a **shipping order** (出荷書) — a document that records **
 - Make a shipping order that lists the products and the number of pieces you are sending.
 - Just pick an order acceptance, and **the not-yet-shipped quantities are filled in for you** (no need to type them again).
 - When you record a shipment, **the stock goes down automatically**.
-- Make a [delivery note](/manual/en/operations/shipping/delivery-note/user) from a shipping order.
+- **Confirming** a shipping order **automatically creates** the [delivery note](/manual/en/operations/shipping/delivery-note/user) — you never make one by hand.
 - Also record items you keep in-house instead of sending (for example, spare pieces you made).
 
 The shipping order is an important document — it is the source used later when an [invoice](/manual/en/operations/billing/invoice/user) is made.
@@ -88,7 +88,7 @@ A shipping order moves through three stages: 「下書き」 (Draft) → 「確�
 
 ![Confirm check window](../../../assets/screenshots/delivery-order-confirm-01.png)
 
-Once confirmed, **you can no longer edit it**, but you can now make a delivery note.
+Once confirmed, **you can no longer edit it**. A dispatch shipping order **automatically gets its delivery note(s)** at confirmation — direct-to-end-user creates **two**: one without prices (for the end user) and one with prices (for the customer). Stock-storage shipping orders don't get one.
 
 ### 2. When you have really sent it (Ship)
 
@@ -111,15 +111,17 @@ When you keep pieces in-house instead of sending them to the customer — for ex
 
 When you choose 「在庫保管」 in Type, an explanation appears on the screen.
 
-## Making a delivery note
+## How the delivery note is made
 
-1. On the shipping order screen, open the 「**納品書**」 (Delivery notes) tab.
-2. Press 「**納品書を作成**」 (Create delivery note).
-3. The [delivery note](/manual/en/operations/shipping/delivery-note/user) creation screen opens with the shipping order already chosen.
+You never make a delivery note by hand. A dispatch shipping order gets one **automatically as soon as it is confirmed**.
+
+- Normal delivery: **one** priced delivery note.
+- Direct to end user: **two** — one without prices (to the end user) and one with prices (to the customer). **Be careful never to hand the priced one to the end user** (the [delivery note](/manual/en/operations/shipping/delivery-note/user) screen warns you before you open or print it).
+- Stock-storage shipping orders don't get a delivery note.
+
+The 「**納品書**」 (Delivery notes) tab on the shipping order screen lists the delivery notes made from this shipping order (delivery number, delivery destination, method, status, delivery date).
 
 ![Delivery notes tab](../../../assets/screenshots/delivery-order-delivery-notes-01.png)
-
-This tab also lists the delivery notes made from this shipping order (delivery number, delivery destination, method, status, delivery date).
 
 ## Input fields
 

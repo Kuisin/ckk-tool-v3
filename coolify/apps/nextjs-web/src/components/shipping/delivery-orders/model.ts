@@ -83,11 +83,6 @@ export function isEditable(o: Pick<DeliveryOrder, "status">) {
   return o.status === "DRAFT";
 }
 
-/** 納品書を作成できるか — 確定済み・出荷済みの出荷書のみ。 */
-export function canCreateDeliveryNote(o: Pick<DeliveryOrder, "status">) {
-  return o.status === "CONFIRMED" || o.status === "SHIPPED";
-}
-
 // ── 束ね可否（1 出荷書に載せられる注文明細の条件） ──────────────────────────
 
 /** 束ね可否の判定に使う注文明細の属性（注文請書ヘッダ由来）。 */
@@ -97,14 +92,22 @@ export interface CombinableLineRef {
   shipToBpId: string | null;
   /** 配送方法（通常配送 / ユーザー直送）。 */
   deliveryMethod: string;
+  /**
+   * 実効エンドユーザー（明細の行ごと指定 ?? 注文請書ヘッダの既定）。
+   * 出荷書確定時の納品書自動作成（planAutoDeliveryNotes）が「届け先 1 件」を
+   * 前提にするため、ユーザー直送の明細どうしはここも揃っている必要がある。
+   * 通常配送では無視する（省略可）。
+   */
+  endUserBpId?: string | null;
 }
 
 /**
  * 1 出荷書に束ねられるのは **同一顧客 × 同一出荷先 × 同一配送方法** の
- * 注文明細だけ。顧客が違うと請求の顧客判定と納品書の宛先が壊れ、出荷先・
- * 配送方法が違うと物理的に 1 つの荷物にならない。クライアント
- * （グループ追加時の通知）とサーバー（作成・更新の検証）が同じ判定を使う。
- * 違反していれば人が読むエラー文、問題なければ null。
+ * 注文明細だけ（ユーザー直送はさらに **同一エンドユーザー** も要る —
+ * 納品書自動作成が届け先を 1 件に決め打つため）。顧客が違うと請求の顧客判定と
+ * 納品書の宛先が壊れ、出荷先・配送方法が違うと物理的に 1 つの荷物にならない。
+ * クライアント（グループ追加時の通知）とサーバー（作成・更新の検証）が同じ
+ * 判定を使う。違反していれば人が読むエラー文、問題なければ null。
  */
 export function combinabilityError(
   refs: CombinableLineRef[],
@@ -128,7 +131,80 @@ export function combinabilityError(
   if (refs.some((r) => r.deliveryMethod !== first.deliveryMethod)) {
     return tr("shipping.deliveryOrders.onlySameDeliveryMethodCanBeCombined");
   }
+  if (
+    first.deliveryMethod === "DIRECT_TO_USER" &&
+    refs.some((r) => (r.endUserBpId ?? null) !== (first.endUserBpId ?? null))
+  ) {
+    return tr("shipping.deliveryOrders.onlySameEndUserCanBeCombined");
+  }
   return null;
+}
+
+// ── 納品書の自動作成（出荷書確定時） ─────────────────────────────────────
+
+/** 納品書 1 通ぶんの計画（出荷書確定時に自動作成する）。 */
+export interface AutoDeliveryNotePlan {
+  recipientBpId: string;
+  recipientBranchBpId: string | null;
+  /** DIRECT_TO_USER の「届け先」メタ欄（宛先そのものではない）。 */
+  endUserBpId: string | null;
+  includePrice: boolean;
+}
+
+export interface AutoDeliveryNotePlanInput {
+  customerBpId: string;
+  customerBranchBpId: string | null;
+  deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
+  /**
+   * 実効エンドユーザー — combinabilityError が全明細で揃っていることを
+   * 保証しているので、DIRECT_TO_USER では非 null が前提（呼び出し側は
+   * 出荷書確定より前の注文請書側バリデーションで endUserBpId 必須を強制済み）。
+   */
+  endUserBpId: string | null;
+}
+
+/**
+ * 出荷書確定 (DRAFT → CONFIRMED) 時に自動作成する納品書の内訳。
+ *
+ * 通常配送 = 1 通（顧客宛・価格記載あり、従来の手動作成の既定と同じ）。
+ * ユーザー直送 = 2 通 — ①価格記載なしを最終需要家（現物に同梱して手渡す
+ * 相手）へ、②価格記載ありを顧客（請求関係のある相手）へ。顧客に価格を、
+ * 最終需要家に価格の付いた書類を渡してしまう事故を構造で防ぐ
+ * （①の宛先を最終需要家そのものにすることで、価格記載ありの書類が
+ * 最終需要家の手に渡る経路自体を作らない）。
+ *
+ * endUserBpId が解決できない（データ不整合）ときは ① を作らず ② のみ返す —
+ * 呼び出し側はこの場合を検知して人に確認を促すこと。
+ */
+export function planAutoDeliveryNotes(
+  input: AutoDeliveryNotePlanInput,
+): AutoDeliveryNotePlan[] {
+  if (input.deliveryMethod !== "DIRECT_TO_USER") {
+    return [
+      {
+        recipientBpId: input.customerBpId,
+        recipientBranchBpId: input.customerBranchBpId,
+        endUserBpId: null,
+        includePrice: true,
+      },
+    ];
+  }
+  const notes: AutoDeliveryNotePlan[] = [];
+  if (input.endUserBpId) {
+    notes.push({
+      recipientBpId: input.endUserBpId,
+      recipientBranchBpId: null,
+      endUserBpId: null,
+      includePrice: false,
+    });
+  }
+  notes.push({
+    recipientBpId: input.customerBpId,
+    recipientBranchBpId: input.customerBranchBpId,
+    endUserBpId: input.endUserBpId,
+    includePrice: true,
+  });
+  return notes;
 }
 
 // ── 出荷数量の自動割付（フォームの既定行） ──────────────────────────────────
