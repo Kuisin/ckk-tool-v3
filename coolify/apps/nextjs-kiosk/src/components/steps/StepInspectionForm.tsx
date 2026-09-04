@@ -9,7 +9,14 @@
  * - COUNTS: 項目ごとに検査数・合格数のみ
  * 合否は自動判定を初期値に、項目の「手動上書き許可」に応じて上書き。
  * 未入力の間は合否コントロールを選択なし（グレー）にする。
- * タブレット向け縦積み・size="lg"。検査承認はキオスクに持たない — 記録のみ。
+ * ページ見出しはテンプレートのサンプル呼称（製品N / 初品・中間品・最終品）に
+ * 従う — 紙の検査表が「初品」と呼ぶ 1 枚目を画面が「製品 1」と呼ぶと
+ * 突き合わせられないため。
+ * タブレット向け縦積み・size="lg"。
+ *
+ * 検査表確認（confirmedBy — 記入内容を第三者が見たという印）はここで押せる。
+ * **検査承認（APPROVED への遷移）はキオスクに持たない** — 別ロールなので
+ * web の管理画面のみ。
  */
 
 import {
@@ -95,19 +102,46 @@ function samplingLabel(
   }
 }
 
+/**
+ * サンプルページの見出し（製品 N / 初品・中間品・最終品）。
+ * inspection-core（twin file）の sampleLabel は ja 固定なので、キオスクは
+ * 自分の辞書から同じ規則で組み立てる（web の inspection-labels.ts と同じ形）。
+ */
+function sampleLabel(
+  m: KioskMessages,
+  index: number,
+  naming: InspectionTemplateView["sampleNaming"],
+): string {
+  if (naming === "INITIAL_MID_FINAL") {
+    if (index === 0) return m.steps.inspection.sampleInitial;
+    if (index === 1) return m.steps.inspection.sampleMid;
+    if (index === 2) return m.steps.inspection.sampleFinal;
+  }
+  return fillMessage(m.steps.inspection.sampleGeneric, { n: index + 1 });
+}
+
 /** 既存の検査記録 1 件の読み取り専用表示。 */
-function RecordSummary({ record }: { record: InspectionRecordView }) {
+function RecordSummary({
+  record,
+  onConfirm,
+  busy,
+}: {
+  record: InspectionRecordView;
+  /** 検査表確認ボタンを出す（未確認かつ記録できるときだけ）。 */
+  onConfirm?: () => void;
+  busy?: boolean;
+}) {
   const { m, locale } = useI18n();
   const statusTable = m.steps.inspection.status as Record<string, string>;
-  const at = record.recordedAt
-    ? new Intl.DateTimeFormat(locale === "en" ? "en-US" : "ja-JP", {
-        timeZone: "Asia/Tokyo",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(new Date(record.recordedAt))
-    : "";
+  const fmtAt = (iso: string) =>
+    new Intl.DateTimeFormat(locale === "en" ? "en-US" : "ja-JP", {
+      timeZone: "Asia/Tokyo",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(iso));
+  const at = record.recordedAt ? fmtAt(record.recordedAt) : "";
   return (
     <Paper p="sm" radius="sm" withBorder>
       <Group gap="sm" wrap="wrap">
@@ -123,6 +157,25 @@ function RecordSummary({ record }: { record: InspectionRecordView }) {
             by: record.recordedByName ?? "",
           })}
         </Text>
+        {record.confirmedAt ? (
+          <Text c="dimmed" size="xs">
+            {fillMessage(m.steps.inspection.confirmedMeta, {
+              at: fmtAt(record.confirmedAt),
+              by: record.confirmedByName ?? "",
+            })}
+          </Text>
+        ) : (
+          onConfirm && (
+            <Button
+              loading={busy}
+              onClick={onConfirm}
+              size="compact-md"
+              variant="light"
+            >
+              {m.steps.inspection.confirmSheet}
+            </Button>
+          )
+        )}
       </Group>
       {record.items.length > 0 && (
         <Group gap="xs" mt="xs" wrap="wrap">
@@ -436,6 +489,23 @@ export function StepInspectionForm({
     router.refresh();
   };
 
+  /** 検査表確認（記入内容を第三者が見たという印 — 承認ではない）。 */
+  const confirmSheet = async (recordId: string) => {
+    setError(null);
+    setSavedTemplate(null);
+    setBusy(true);
+    const res = await callStepAction(stepId, {
+      action: "INSPECTION_CONFIRM",
+      recordId,
+    });
+    setBusy(false);
+    if (!res.ok) {
+      setError(translateError(m, res));
+      return;
+    }
+    router.refresh();
+  };
+
   if (templates.length === 0 && records.length === 0) return null;
 
   return (
@@ -446,7 +516,12 @@ export function StepInspectionForm({
         {records.length > 0 && (
           <Stack gap="xs">
             {records.map((r) => (
-              <RecordSummary key={r.id} record={r} />
+              <RecordSummary
+                busy={busy}
+                key={r.id}
+                onConfirm={canRecord ? () => confirmSheet(r.id) : undefined}
+                record={r}
+              />
             ))}
           </Stack>
         )}
@@ -606,8 +681,12 @@ export function StepInspectionForm({
                           </Button>
                           <Group gap="xs" wrap="nowrap">
                             <Text className="tabular-nums" fw={600}>
-                              {fillMessage(m.steps.inspection.productPage, {
-                                i: page + 1,
+                              {fillMessage(m.steps.inspection.samplePage, {
+                                label: sampleLabel(
+                                  m,
+                                  page,
+                                  template.sampleNaming,
+                                ),
                                 n: pages,
                               })}
                             </Text>

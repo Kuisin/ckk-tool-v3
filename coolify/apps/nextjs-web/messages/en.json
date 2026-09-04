@@ -798,7 +798,8 @@
     "selectARole": "Select a role",
     "cannotChangeRoles": "Cannot change the roles",
     "cannotChangeOwnRoles": "You cannot change your own roles",
-    "cannotRemoveLastAdminRole": "The admin role cannot be removed from the last admin"
+    "cannotRemoveLastAdminRole": "The admin role cannot be removed from the last admin",
+    "finalInspection": "Final inspection"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -2745,7 +2746,8 @@
       "theStepWasAborted": "The step was aborted",
       "abort": "Abort",
       "viewInspectionSheet": "View inspection sheet",
-      "noInspectionSheetAssigned": "No inspection sheet assigned"
+      "noInspectionSheetAssigned": "No inspection sheet assigned",
+      "finalInspectionIsRecordedOnThisStep": "The final inspection and pre-shipment checks are recorded on this step (one record per work order)."
     },
     "workOrderLinksCard": {
       "quantityPiecesWithCount": "{count} pcs",
@@ -2795,7 +2797,8 @@
       "spareStockUsed": "Spare stock used",
       "stageAlreadyRecorded": "{label} has already been recorded",
       "stageRecordedNote": "Recorded {label}",
-      "woNotFound": "Work order not found"
+      "woNotFound": "Work order not found",
+      "noFinalInspectionStep": "This work order has no final inspection step"
     },
     "stepExecutionActions": {
       "invalidLotSlipCode": "Invalid lot/slip code",
@@ -5095,7 +5098,9 @@
       "enabled": "Enabled step \"{name}\"",
       "executionLocationRequired": "Select an execution location",
       "sortOrderInteger": "Enter an integer for the sort order",
-      "stepUpdated": "Step updated"
+      "stepUpdated": "Step updated",
+      "finalInspectionStep": "Final inspection step",
+      "theFinalInspectionChecklistIsRecorded": "The final inspection and pre-shipment checks (3 checks, spare stock, packing → delivery note → shipping approval) are recorded on this step's execution screen. There is one record per work order, and a work order whose step list has no flagged step has no final inspection."
     },
     "products": {
       "specification": "Specification",
@@ -8157,7 +8162,19 @@
     "inspectionRecordedPass": "Saved inspection record (Pass / {count} items)",
     "inspectionRecordedFail": "Saved inspection record (Fail / {count} items)",
     "deviceUnlinkedFromDevice": "Unlinked from the device itself (device settings code)",
-    "deviceWorkLocationChangedFromDevice": "Changed the default work location from the device itself (device settings code)"
+    "deviceWorkLocationChangedFromDevice": "Changed the default work location from the device itself (device settings code)",
+    "inspectionConfirmed": "Recorded the inspection sheet check",
+    "finalInspectionDrawingLabel": "Final inspection: drawing, label, coating thickness, dimensions → {mark}",
+    "finalInspectionProtectiveCap": "Final inspection: protective cap → {mark}",
+    "finalInspectionFinishedQuantity": "Final inspection: finished quantity → {mark}",
+    "finalInspectionSpareStockUsedOn": "Final inspection: spare stock used",
+    "finalInspectionSpareStockUsedOff": "Final inspection: spare stock not used",
+    "finalInspectionSpareStockReceivedOn": "Final inspection: received into spare stock",
+    "finalInspectionSpareStockReceivedOff": "Final inspection: not received into spare stock",
+    "finalInspectionShelved": "Pre-shipment check: recorded shelved by",
+    "finalInspectionDeliveryNoteIssued": "Pre-shipment check: recorded delivery note issued by",
+    "finalInspectionShipmentAuthorized": "Pre-shipment check: recorded shipment authorized by",
+    "finalInspectionShipDefectReviewed": "Recorded the checked-by stamp for defects at shipping"
   },
   "workflowCore": {
     "quantityLabels": {

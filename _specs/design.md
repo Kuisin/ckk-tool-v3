@@ -1195,6 +1195,17 @@ unallocated 工程分岐数 (良品+工程分岐 for terminal steps) — `branch
 
 Field-operation page. Optimized for tablet — all interactive elements `size="lg"`, min touch target 44px.
 
+**最終検査・出荷前確認は「最終検査工程」のここに出る。** 工程カタログの印
+`is_final_inspection`（既定は `PRE_SHIP_INSPECTION` = 出荷前検査）が立った工程の
+実行画面にだけ `WorkOrderFinalInspectionPanel` が出る — 3 項目の確認 + 予備在庫 +
+棚包 → 納品書発行 → 出荷許可 + 出荷時不良内容確認者印。記録は
+`work_order_final_inspections` に**指示書 1 件 = 1 行**で、印の付いた工程を工程
+リストに入れなければ最終検査そのものが無い（= 任意）。以前は指示書詳細 (§8.2) の
+概要タブに常設していたが、それだとその指示書で最終検査をやるのかどうかが画面から
+読み取れなかった。記録できるのは工程が進行中・完了のとき（棚包以降は現場の作業
+セッションより後に事務側で続くので、完了で締め切らない）。共有端末側は
+`nextjs-kiosk` の `StepFinalInspectionForm` が同じものを持つ（進行中・一時停止中のみ）。
+
 ```
 Stack (gap="md", p="md")
 ├── Paper (withBorder, p="lg") — step identity

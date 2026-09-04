@@ -184,7 +184,6 @@
       "passedCount": "合格数",
       "failCount": "不合格 {n}",
       "countsOver": "合格数超过检查数",
-      "productPage": "产品 {i} / {n}",
       "prevProduct": "上一件",
       "nextProduct": "下一件",
       "addProduct": "添加产品",
@@ -194,7 +193,15 @@
         "PASS": "合格",
         "FAIL": "不合格",
         "APPROVED": "已批准"
-      }
+      },
+      "sampleInitial": "首件",
+      "sampleMid": "中间件",
+      "sampleFinal": "末件",
+      "samplePage": "{label} / {n}",
+      "confirmSheet": "检查表确认",
+      "confirmedMeta": "检查表确认 {at} {by}",
+      "confirmed": "已记录检查表确认",
+      "sampleGeneric": "产品 {n}"
     },
     "location": {
       "label": "作业场所",
@@ -247,7 +254,32 @@
       "DEVICE_LOCATION_BLOCKED": "该终端所在的作业场所无法执行此工序（请使用允许场所的终端）",
       "NO_OPEN_SESSION": "没有进行中的作业会话（请先恢复工序再扫描）",
       "NO_PERMISSION": "您没有此操作的权限",
-      "UNKNOWN": "处理失败"
+      "UNKNOWN": "处理失败",
+      "STAGE_ALREADY_RECORDED": "该阶段已记录",
+      "STAGE_OUT_OF_ORDER": "请先记录上一阶段"
+    },
+    "finalInspection": {
+      "title": "最终检查与出货前确认",
+      "subtitle": "每张工单仅记录一条。",
+      "readOnly": "仅在作业中或已暂停时可记录。",
+      "checkDrawingLabel": "图纸、标签、膜厚、尺寸是否无误",
+      "checkProtectiveCap": "是否使用了保护帽（φ0.6 以下）",
+      "checkFinishedQuantity": "完成数量是否正确",
+      "notChecked": "未确认",
+      "spareStockTitle": "备用库存",
+      "useSpareStock": "使用备用库存",
+      "receiveIntoSpareStock": "备用库存入库",
+      "shipmentTitle": "出货前确认（包装 → 发行送货单 → 出货批准）",
+      "shelvedBy": "上架人员",
+      "deliveryNoteIssuedBy": "送货单开具人",
+      "shipmentAuthorizedBy": "出货批准人",
+      "record": "记录",
+      "waitingPriorStage": "需先完成上一阶段",
+      "shipDefectTitle": "出货时不良内容确认人印",
+      "shipDefectPlaceholder": "出货前检查的不良内容等（可选）",
+      "shipDefectConfirm": "确认",
+      "saved": "已记录",
+      "checkedMeta": "{at} {by}"
     }
   },
   "deviceError": {

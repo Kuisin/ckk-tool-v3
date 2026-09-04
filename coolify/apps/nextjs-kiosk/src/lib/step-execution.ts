@@ -79,7 +79,10 @@ export type StepErrorCode =
   | "LOCATION_NOT_FOUND"
   | "LOCATION_NOT_ALLOWED"
   | "DEVICE_LOCATION_BLOCKED"
-  | "NO_OPEN_SESSION";
+  | "NO_OPEN_SESSION"
+  // 最終検査の出荷前チェーン（棚包 → 納品書発行 → 出荷許可）は紙の記入順
+  | "STAGE_ALREADY_RECORDED"
+  | "STAGE_OUT_OF_ORDER";
 
 export interface StepActionResult {
   ok: boolean;

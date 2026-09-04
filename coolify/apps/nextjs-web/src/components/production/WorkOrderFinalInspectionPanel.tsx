@@ -9,6 +9,12 @@
  * 次段は押せない）+ 出荷時不良内容確認者印（任意メモ）。
  * 権限は work_order:UPDATE — サーバー側（final-inspection-actions.ts）で
  * 判定し、拒否はエラー通知で表す（他の工程実行ボタンと同じ扱い）。
+ *
+ * **記入口は最終検査工程（process_step_catalog.is_final_inspection）の実行画面
+ * だけ**。以前は指示書詳細に常設だったので、その指示書で最終検査をやるのか
+ * どうかが画面から読み取れなかった。印の付いた工程を工程リストに入れなければ
+ * 最終検査は無い（= 任意）。記録そのものは指示書 1 件に 1 行のままなので、
+ * 印の付いた工程が 2 つあっても同じ 1 行を編集する。
  */
 
 import {
@@ -62,9 +68,15 @@ const EMPTY: WorkOrderFinalInspectionView = {
 export function WorkOrderFinalInspectionPanel({
   workOrderNumber,
   finalInspection,
+  canRecord,
 }: {
   workOrderNumber: number;
   finalInspection: WorkOrderFinalInspectionView | null;
+  /**
+   * 記録できるか（工程が進行中 + セッションが自分 — 検査記録と同じ条件）。
+   * false は読み取り専用。押せないボタンを並べるのではなく操作ごと隠す。
+   */
+  canRecord: boolean;
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -125,9 +137,16 @@ export function WorkOrderFinalInspectionPanel({
   return (
     <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
-        <Title order={4}>
-          {tr("production.workOrderFinalInspectionPanel.finalInspection")}
-        </Title>
+        <Stack gap={2}>
+          <Title order={4}>
+            {tr("production.workOrderFinalInspectionPanel.finalInspection")}
+          </Title>
+          <Text c="dimmed" size="xs">
+            {tr(
+              "production.stepExecutionView.finalInspectionIsRecordedOnThisStep",
+            )}
+          </Text>
+        </Stack>
 
         <Stack gap="xs">
           {CHECK_ITEMS.map(({ field, label }) => {
@@ -144,52 +163,67 @@ export function WorkOrderFinalInspectionPanel({
                       {checkedByName ? `（${checkedByName}）` : ""}
                     </Text>
                   )}
-                  <SecondaryButton
-                    color={ok === true ? "green" : undefined}
-                    loading={isPending}
-                    onClick={() =>
-                      startTransition(async () => {
-                        const result = await setFinalInspectionCheck(
-                          workOrderNumber,
-                          field,
-                          true,
-                        );
-                        afterResult(
-                          result,
-                          tr(
-                            "production.workOrderFinalInspectionPanel.itemRecorded",
-                            { item: label },
-                          ),
-                        );
-                      })
-                    }
-                    size="xs"
-                  >
-                    ○
-                  </SecondaryButton>
-                  <SecondaryButton
-                    color={ok === false ? "red" : undefined}
-                    loading={isPending}
-                    onClick={() =>
-                      startTransition(async () => {
-                        const result = await setFinalInspectionCheck(
-                          workOrderNumber,
-                          field,
-                          false,
-                        );
-                        afterResult(
-                          result,
-                          tr(
-                            "production.workOrderFinalInspectionPanel.itemRecorded",
-                            { item: label },
-                          ),
-                        );
-                      })
-                    }
-                    size="xs"
-                  >
-                    ×
-                  </SecondaryButton>
+                  {!canRecord && (
+                    <Badge
+                      color={
+                        ok === true ? "green" : ok === false ? "red" : "gray"
+                      }
+                      size="sm"
+                      variant="light"
+                    >
+                      {ok === true ? "○" : ok === false ? "×" : "—"}
+                    </Badge>
+                  )}
+                  {canRecord && (
+                    <SecondaryButton
+                      color={ok === true ? "green" : undefined}
+                      loading={isPending}
+                      onClick={() =>
+                        startTransition(async () => {
+                          const result = await setFinalInspectionCheck(
+                            workOrderNumber,
+                            field,
+                            true,
+                          );
+                          afterResult(
+                            result,
+                            tr(
+                              "production.workOrderFinalInspectionPanel.itemRecorded",
+                              { item: label },
+                            ),
+                          );
+                        })
+                      }
+                      size="xs"
+                    >
+                      ○
+                    </SecondaryButton>
+                  )}
+                  {canRecord && (
+                    <SecondaryButton
+                      color={ok === false ? "red" : undefined}
+                      loading={isPending}
+                      onClick={() =>
+                        startTransition(async () => {
+                          const result = await setFinalInspectionCheck(
+                            workOrderNumber,
+                            field,
+                            false,
+                          );
+                          afterResult(
+                            result,
+                            tr(
+                              "production.workOrderFinalInspectionPanel.itemRecorded",
+                              { item: label },
+                            ),
+                          );
+                        })
+                      }
+                      size="xs"
+                    >
+                      ×
+                    </SecondaryButton>
+                  )}
                 </Group>
               </Group>
             );
@@ -199,6 +233,7 @@ export function WorkOrderFinalInspectionPanel({
         <Group gap="lg" wrap="wrap">
           <Checkbox
             checked={fi.spareStockUsed}
+            disabled={!canRecord}
             label={tr("production.workOrderFinalInspectionPanel.useSpareStock")}
             onChange={(e) =>
               startTransition(async () => {
@@ -218,6 +253,7 @@ export function WorkOrderFinalInspectionPanel({
           />
           <Checkbox
             checked={fi.spareStockReceived}
+            disabled={!canRecord}
             label={tr(
               "production.workOrderFinalInspectionPanel.receiveIntoSpareStock",
             )}
@@ -263,6 +299,10 @@ export function WorkOrderFinalInspectionPanel({
                       <Badge color="green" size="sm" variant="light">
                         {byName}・{fmt.dateTime(at)}
                       </Badge>
+                    ) : !canRecord ? (
+                      <Text c="dimmed" size="xs">
+                        —
+                      </Text>
                     ) : (
                       <GhostButton
                         disabled={!priorDone}
@@ -308,35 +348,43 @@ export function WorkOrderFinalInspectionPanel({
                 : ""}
             </Text>
           )}
-          <Textarea
-            minRows={2}
-            onChange={(e) => setNotes(e.currentTarget.value)}
-            placeholder={tr(
-              "production.workOrderFinalInspectionPanel.defectsFoundAtThePreShipment",
-            )}
-            value={notes}
-          />
-          <Group justify="flex-end">
-            <SecondaryButton
-              loading={isPending}
-              onClick={() =>
-                startTransition(async () => {
-                  const result = await recordShipDefectReview(
-                    workOrderNumber,
-                    notes,
-                  );
-                  afterResult(
-                    result,
-                    tr(
-                      "production.workOrderFinalInspectionPanel.theShippingDefectCheckStampWas",
-                    ),
-                  );
-                })
-              }
-            >
-              {tr("production.workOrderFinalInspectionPanel.check")}
-            </SecondaryButton>
-          </Group>
+          {canRecord ? (
+            <Textarea
+              minRows={2}
+              onChange={(e) => setNotes(e.currentTarget.value)}
+              placeholder={tr(
+                "production.workOrderFinalInspectionPanel.defectsFoundAtThePreShipment",
+              )}
+              value={notes}
+            />
+          ) : (
+            <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+              {fi.shipDefectNotes || "—"}
+            </Text>
+          )}
+          {canRecord && (
+            <Group justify="flex-end">
+              <SecondaryButton
+                loading={isPending}
+                onClick={() =>
+                  startTransition(async () => {
+                    const result = await recordShipDefectReview(
+                      workOrderNumber,
+                      notes,
+                    );
+                    afterResult(
+                      result,
+                      tr(
+                        "production.workOrderFinalInspectionPanel.theShippingDefectCheckStampWas",
+                      ),
+                    );
+                  })
+                }
+              >
+                {tr("production.workOrderFinalInspectionPanel.check")}
+              </SecondaryButton>
+            </Group>
+          )}
         </Stack>
       </Stack>
     </Paper>

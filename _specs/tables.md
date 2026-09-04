@@ -786,6 +786,11 @@ Table process_step_catalog {
   is_sync_capable boolean [not null, default: false]
   is_inspection   boolean [not null, default: false]  // 検査工程か
   is_approval_step boolean [not null, default: false] // 検査承認工程か
+  // 最終検査・出荷前確認（旧帳票「■最終検査」欄）をこの工程で記録する。
+  // 記録は指示書 1 件に 1 行（work_order_final_inspections）で、**印の付いた
+  // 工程の実行画面が唯一の記入口**。印の付いた工程を工程リストに入れなければ
+  // 最終検査そのものが無い（= 任意）。既定は出荷前検査 PRE_SHIP_INSPECTION。
+  is_final_inspection boolean [not null, default: false]
   approval_min_rank varchar                            // 承認必要役職（係長以上等）
   sort_order      int [not null, default: 0]
   is_active       boolean [not null, default: true]

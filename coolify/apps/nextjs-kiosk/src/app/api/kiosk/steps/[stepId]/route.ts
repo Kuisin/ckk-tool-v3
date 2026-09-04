@@ -1,6 +1,6 @@
 /**
  * POST /api/kiosk/steps/[stepId] — 工程の開始・一時停止・再開・完了・
- * 検査記録・不良記録。
+ * 検査記録・不良記録・最終検査（最終検査工程のみ）。
  *
  * キオスク内で完結する（nextjs-web の内部 API は叩かない）。
  * 門は 4 段で、すべて fail-closed:
@@ -17,6 +17,12 @@ import { z } from "zod";
 import { runWithActor } from "@/lib/audit";
 import { hasPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import {
+  recordFinalCheck,
+  recordFinalShipDefect,
+  recordFinalShipmentStage,
+  recordFinalSpareStock,
+} from "@/lib/final-inspection";
 import { getSession } from "@/lib/kiosk-auth";
 import {
   allowedWorkLocationIdsForStep,
@@ -29,7 +35,11 @@ import {
   setStepWorkLocation,
   startStepExecution,
 } from "@/lib/step-execution";
-import { recordDefects, recordInspection } from "@/lib/step-records";
+import {
+  confirmInspectionRecord,
+  recordDefects,
+  recordInspection,
+} from "@/lib/step-records";
 
 const quantitiesSchema = z.object({
   inputQuantity: z.number().int().min(0),
@@ -46,8 +56,13 @@ const bodySchema = z.object({
     "RESUME",
     "COMPLETE",
     "INSPECTION",
+    "INSPECTION_CONFIRM",
     "DEFECTS",
     "SET_LOCATION",
+    "FINAL_CHECK",
+    "FINAL_SPARE_STOCK",
+    "FINAL_SHIPMENT_STAGE",
+    "FINAL_SHIP_DEFECT",
   ]),
   /** START のみ: 作業者が実際に受け取った本数（未指定は想定受入数） */
   inputQuantity: z.number().int().min(0).nullable().optional(),
@@ -105,6 +120,19 @@ const bodySchema = z.object({
     )
     .max(50)
     .optional(),
+  /** FINAL_* のみ — 対象は最終検査工程だけ（final-inspection.ts が検証）。 */
+  checkField: z
+    .enum(["drawingLabel", "protectiveCap", "finishedQuantity"])
+    .optional(),
+  checkOk: z.boolean().optional(),
+  spareStockField: z.enum(["spareStockUsed", "spareStockReceived"]).optional(),
+  spareStockValue: z.boolean().optional(),
+  shipmentStage: z
+    .enum(["shelved", "deliveryNoteIssued", "shipmentAuthorized"])
+    .optional(),
+  shipDefectNotes: z.string().max(2000).optional(),
+  /** INSPECTION_CONFIRM のみ: 検査表確認を押す対象の記録。 */
+  recordId: z.string().uuid().optional(),
 });
 
 export async function POST(
@@ -147,6 +175,13 @@ export async function POST(
     templateId,
     items,
     defects,
+    checkField,
+    checkOk,
+    spareStockField,
+    spareStockValue,
+    shipmentStage,
+    shipDefectNotes,
+    recordId,
   } = parsed.data;
   const actor = session.userId;
   // 監査ログに「どの端末で」を残す（session.deviceId = この共有タブレット）。
@@ -164,6 +199,17 @@ export async function POST(
     );
     return NextResponse.json(result);
   }
+  if (action === "INSPECTION_CONFIRM") {
+    if (recordId == null) {
+      return NextResponse.json({ error: "invalid request" }, { status: 400 });
+    }
+    const result = await runWithActor(
+      actor,
+      () => confirmInspectionRecord(stepId, actor, recordId),
+      device,
+    );
+    return NextResponse.json(result);
+  }
   if (action === "DEFECTS") {
     if (defects == null) {
       return NextResponse.json({ error: "invalid request" }, { status: 400 });
@@ -171,6 +217,51 @@ export async function POST(
     const result = await runWithActor(
       actor,
       () => recordDefects(stepId, actor, defects),
+      device,
+    );
+    return NextResponse.json(result);
+  }
+
+  // 最終検査・出荷前確認 — 記録は指示書 1 件に 1 行。工程が最終検査工程で
+  // あることと進行中であることは final-inspection.ts 側が門になる。
+  if (action === "FINAL_CHECK") {
+    if (checkField == null || checkOk == null) {
+      return NextResponse.json({ error: "invalid request" }, { status: 400 });
+    }
+    const result = await runWithActor(
+      actor,
+      () => recordFinalCheck(stepId, actor, checkField, checkOk),
+      device,
+    );
+    return NextResponse.json(result);
+  }
+  if (action === "FINAL_SPARE_STOCK") {
+    if (spareStockField == null || spareStockValue == null) {
+      return NextResponse.json({ error: "invalid request" }, { status: 400 });
+    }
+    const result = await runWithActor(
+      actor,
+      () =>
+        recordFinalSpareStock(stepId, actor, spareStockField, spareStockValue),
+      device,
+    );
+    return NextResponse.json(result);
+  }
+  if (action === "FINAL_SHIPMENT_STAGE") {
+    if (shipmentStage == null) {
+      return NextResponse.json({ error: "invalid request" }, { status: 400 });
+    }
+    const result = await runWithActor(
+      actor,
+      () => recordFinalShipmentStage(stepId, actor, shipmentStage),
+      device,
+    );
+    return NextResponse.json(result);
+  }
+  if (action === "FINAL_SHIP_DEFECT") {
+    const result = await runWithActor(
+      actor,
+      () => recordFinalShipDefect(stepId, actor, shipDefectNotes ?? ""),
       device,
     );
     return NextResponse.json(result);

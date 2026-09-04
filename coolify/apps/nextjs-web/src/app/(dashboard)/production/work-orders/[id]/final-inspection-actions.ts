@@ -23,6 +23,8 @@ const BASE_PATH = "/production/work-orders";
 function revalidate(workOrderNumber: number) {
   revalidatePath(BASE_PATH);
   revalidatePath(`${BASE_PATH}/${workOrderNumber}`);
+  // 記入口は最終検査工程の実行画面なので、そこも必ず出し直す。
+  revalidatePath(`${BASE_PATH}/${workOrderNumber}/steps`, "layout");
 }
 
 async function deniedPermission(): Promise<ActionResult | null> {
@@ -30,14 +32,31 @@ async function deniedPermission(): Promise<ActionResult | null> {
   return authz.ok ? null : actionError(authz.error);
 }
 
-async function findWorkOrderId(
+/**
+ * 最終検査を書いてよい指示書か。
+ *
+ * 記入口は最終検査工程（process_step_catalog.is_final_inspection）の実行画面
+ * だけなので、その工程を持たない指示書には行を作らせない — 画面から辿れない
+ * 記録が残ると、あとで「この指示書は最終検査をしたのか」が読めなくなる。
+ * 印の付いた工程を工程リストに入れないこと自体が「最終検査なし」の表明。
+ */
+async function findFinalInspectionWorkOrderId(
   workOrderNumber: number,
-): Promise<string | null> {
+): Promise<{ id: string } | { error: "notFound" | "noStep" }> {
   const wo = await prisma.workOrder.findUnique({
     where: { workOrderNumber },
     select: { id: true },
   });
-  return wo?.id ?? null;
+  if (!wo) return { error: "notFound" };
+  const step = await prisma.workOrderStep.findFirst({
+    where: {
+      workOrderId: wo.id,
+      status: { not: "CANCELLED" },
+      processStep: { isFinalInspection: true },
+    },
+    select: { id: true },
+  });
+  return step ? { id: wo.id } : { error: "noStep" };
 }
 
 const CHECKLIST_FIELDS = [
@@ -70,9 +89,15 @@ export async function setFinalInspectionCheck(
   if (denied) return denied;
   if (!CHECKLIST_FIELDS.includes(field))
     return actionError(tr("production.finalInspectionActions.invalidField"));
-  const workOrderId = await findWorkOrderId(workOrderNumber);
-  if (!workOrderId)
-    return actionError(tr("production.finalInspectionActions.woNotFound"));
+  const target = await findFinalInspectionWorkOrderId(workOrderNumber);
+  if ("error" in target) {
+    return actionError(
+      target.error === "notFound"
+        ? tr("production.finalInspectionActions.woNotFound")
+        : tr("production.finalInspectionActions.noFinalInspectionStep"),
+    );
+  }
+  const workOrderId = target.id;
   const actor = await getCurrentActorId();
   const now = new Date();
   try {
@@ -136,9 +161,15 @@ export async function setFinalInspectionSpareStock(
   if (denied) return denied;
   if (!SPARE_STOCK_FIELDS.includes(field))
     return actionError(tr("production.finalInspectionActions.invalidField"));
-  const workOrderId = await findWorkOrderId(workOrderNumber);
-  if (!workOrderId)
-    return actionError(tr("production.finalInspectionActions.woNotFound"));
+  const target = await findFinalInspectionWorkOrderId(workOrderNumber);
+  if ("error" in target) {
+    return actionError(
+      target.error === "notFound"
+        ? tr("production.finalInspectionActions.woNotFound")
+        : tr("production.finalInspectionActions.noFinalInspectionStep"),
+    );
+  }
+  const workOrderId = target.id;
   try {
     await prisma.workOrderFinalInspection.upsert({
       where: { workOrderId },
@@ -203,9 +234,15 @@ export async function advanceShipmentStage(
   const stageIndex = SHIPMENT_STAGES.indexOf(stage);
   if (stageIndex < 0)
     return actionError(tr("production.finalInspectionActions.invalidStage"));
-  const workOrderId = await findWorkOrderId(workOrderNumber);
-  if (!workOrderId)
-    return actionError(tr("production.finalInspectionActions.woNotFound"));
+  const target = await findFinalInspectionWorkOrderId(workOrderNumber);
+  if ("error" in target) {
+    return actionError(
+      target.error === "notFound"
+        ? tr("production.finalInspectionActions.woNotFound")
+        : tr("production.finalInspectionActions.noFinalInspectionStep"),
+    );
+  }
+  const workOrderId = target.id;
   try {
     const existing = await prisma.workOrderFinalInspection.findUnique({
       where: { workOrderId },
@@ -278,9 +315,15 @@ export async function recordShipDefectReview(
   const tr = await getTranslations();
   const denied = await deniedPermission();
   if (denied) return denied;
-  const workOrderId = await findWorkOrderId(workOrderNumber);
-  if (!workOrderId)
-    return actionError(tr("production.finalInspectionActions.woNotFound"));
+  const target = await findFinalInspectionWorkOrderId(workOrderNumber);
+  if ("error" in target) {
+    return actionError(
+      target.error === "notFound"
+        ? tr("production.finalInspectionActions.woNotFound")
+        : tr("production.finalInspectionActions.noFinalInspectionStep"),
+    );
+  }
+  const workOrderId = target.id;
   const parsed = z.string().max(2000).safeParse(notes);
   if (!parsed.success) return actionError(tr("common.invalidInput"));
   const actor = await getCurrentActorId();

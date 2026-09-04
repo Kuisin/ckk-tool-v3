@@ -2,11 +2,15 @@
 
 /**
  * StepExecutionView.tsx — 工程の実行画面
- * （開始・一時停止・再開・完了 + 検査記録・不良記録）。
+ * （開始・一時停止・再開・完了 + 検査記録・不良記録・最終検査）。
  *
- * 分岐追加・中断（PENDING へ戻す）・巻き戻し・検査承認は nextjs-web 側の
- * 管理画面に残す。検査記録は検査工程（is_inspection）でのみ、不良記録は
+ * 分岐追加・中断（PENDING へ戻す）・巻き戻し・**検査承認**は nextjs-web 側の
+ * 管理画面に残す。検査記録は検査工程（is_inspection）でのみ、最終検査・
+ * 出荷前確認は最終検査工程（is_final_inspection）でのみ、不良記録は
  * すべての工程で、作業中 / 一時停止中に記録できる。
+ *
+ * 検査表確認（confirmedBy — 記入内容を第三者が見たという印）は記録側なので
+ * ここで押せる。承認（APPROVED への遷移）は押せない — 別ロールなので。
  *
  * 一時停止は STEP_STATUS を変えず、ロックを解放して作業セッションを閉じる。
  * そのため「一時停止中」は他の端末からも再開でき、累計作業時間は
@@ -52,6 +56,7 @@ import { QrScannerView } from "../QrScannerView";
 import { LiveElapsed } from "./LiveElapsed";
 import { NumberStepper } from "./NumberStepper";
 import { StepDefectForm } from "./StepDefectForm";
+import { StepFinalInspectionForm } from "./StepFinalInspectionForm";
 import { StepInspectionForm } from "./StepInspectionForm";
 import { isQuantityFormValid, StepQuantityForm } from "./StepQuantityForm";
 import {
@@ -555,6 +560,16 @@ export function StepExecutionView({
             records={recording.inspectionRecords}
             stepId={step.stepId}
             templates={recording.templates}
+          />
+        )}
+
+        {/* 最終検査・出荷前確認 — 最終検査工程のみ（指示書 1 件に 1 行）。
+            工程リストに最終検査工程が無い指示書には最終検査そのものが無い。 */}
+        {recording.isFinalInspection && recording.finalInspection && (
+          <StepFinalInspectionForm
+            canRecord={working || paused}
+            finalInspection={recording.finalInspection}
+            stepId={step.stepId}
           />
         )}
 

@@ -8,6 +8,7 @@
  */
 
 import type { InspectionItemSpec } from "@/lib/inspection-core";
+import type { WorkOrderFinalInspectionView } from "../work-orders/model";
 
 export interface SelectOption {
   value: string;
@@ -114,6 +115,8 @@ export interface StepExecutionStepView {
   category: string;
   isInspection: boolean;
   isApprovalStep: boolean;
+  /** 最終検査・出荷前確認をこの工程で記録する（カタログの印）。 */
+  isFinalInspection: boolean;
   /** 数量管理モード（NONE = 記録なしパススルー / FLOW / INSPECTION）。 */
   quantityTracking: "NONE" | "FLOW" | "INSPECTION";
   /** ロット/伝票コード入力の実効モード（上書き → カタログ既定）。 */
@@ -167,6 +170,12 @@ export interface StepExecutionData {
   templateOptions: SelectOption[];
   /** この工程の検査記録。 */
   stepRecords: InspectionRecordView[];
+  /**
+   * 最終検査・出荷前確認（指示書 1 件に 1 行）。
+   * 印の付いた工程（step.isFinalInspection）にだけ渡る — 他の工程では null。
+   * 行が 1 度も作られていなければ印の付いた工程でも null（未記入）。
+   */
+  finalInspection: WorkOrderFinalInspectionView | null;
   /** 指示書全体の検査記録（承認工程での承認対象）。 */
   workOrderRecords: InspectionRecordView[];
   /** この工程の不良記録。 */
