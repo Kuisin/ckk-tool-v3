@@ -18,8 +18,11 @@ description: "システムのロール（職務セット）と権限コードの
 - **権限コード** … 業務のまとまり 1 つ。アプリ 1 個とは限りません（例: `master`
   はマスタ管理 12 アプリ全部、`order_acceptance` は注文請書と注文明細の 2 つ）。
 - **アクション** … R=閲覧 / C=作成 / U=更新 / D=削除 / E=エクスポート /
-  ◎=ADMIN（そのコードの全アクション）。承認はアクションではありません —
-  誰が承認できるかは **MS0B 承認設定** の承認グループ所属で決まります。
+  A=承認 / ◎=ADMIN（そのコードの全アクション）。**書類の承認はアクションでは
+  ありません** — 誰が承認できるかは **MS0B 承認設定** の承認グループ所属で
+  決まります。A が付くのは**特権アクセス（SY0G）の決裁**だけで、対象は下の
+  特権コード 5 つ（`kiosk_secret` / `kiosk_device` / `kiosk_card` /
+  `personal_data` / `user_admin`）と `portal_admin` に限られます。
 - **スコープ** … その操作が及ぶ範囲。無印は **ALL（全件）**。
   - **OWN** … 自分が作成した行だけ
   - **PLANT** … 自分の所属拠点の行だけ（所属は SY01 ユーザー管理で設定）
@@ -50,6 +53,27 @@ description: "システムのロール（職務セット）と権限コードの
 | 閲覧 | `viewer` | 全業務の閲覧のみ（役員・監査向け） |
 | 一般 | `staff` | 移行期の暫定ロール。システム・キオスク以外を全部できるので、**本番では部門ロールへの置き換えを推奨** |
 
+### 特権ロール（業務ロールとは別に割り当てる）
+
+システム上重要な操作は「持っているから使える」ではなく、**申請して別の人が
+承認した期間だけ使える**（特権アクセス SY0G）。**申請する側と承認する側は必ず
+別のロール**に分けてあります — 1 人に両方を割り当てても自分の申請を自分で
+承認できないことが、ロールの並びからも読めるようにするためです。
+
+| ロール | rolename | 用途 |
+|---|---|---|
+| 端末運用（申請） | `kiosk_operator` | 共有端末と QR カードの面倒を見る。PIN の開示・端末の登録・カードの発行は申請して承認を受ける |
+| 端末運用（承認） | `kiosk_approver` | 端末とカードの特権操作を承認する。**自分では実行できない** |
+| ユーザー運用（申請） | `user_operator` | 入退社に伴うアカウント運用。利用停止・復帰・所属拠点やロールの変更は変更依頼を出して承認を受ける |
+| ユーザー運用（承認） | `user_approver` | ユーザーの変更依頼と個人データ閲覧を承認する。**自分では実行できない** |
+| 監査（履歴閲覧） | `security_auditor` | ログイン履歴・操作履歴を調べる。詳細と横断検索は申請して承認を受ける |
+| 特権操作（申請） | `privileged_operator` | 特権コードを一式まとめて申請できる旧ロール。役目ごとに分けた上の 5 つを推奨 |
+| 特権操作（承認） | `privileged_approver` | 同じく一式まとめて承認できる旧ロール |
+
+> これらは **業務ロール（`manager` / `*_manager` / `viewer` など）には配って
+> いません。** 「部門の業務を承認できる人」と「PIN を見せてよいと判断できる人」
+> は別だからです。承認者は明示的にこのロールを割り当てて決めます。
+
 ## 権限コードと対象アプリ
 
 | 権限コード | 名称 | 対象アプリ |
@@ -58,64 +82,92 @@ description: "システムのロール（職務セット）と権限コードの
 | `quote` | 見積書 | SA03 見積書 |
 | `order_acceptance` | 注文請書・注文明細 | SA04 注文請書 / SA05 注文明細 |
 | `design_request` | 設計依頼 | SA06 設計依頼書 |
+| `design_file` | 設計図 | PD06 設計図 |
 | `purchase_order` | 素材発注・購買依頼 | PU01 購買依頼 / PU02 素材発注書 |
 | `material_receipt` | 素材入荷 | PU03 素材入荷 |
 | `outsource_order` | 外注依頼 | PU04 外注依頼 |
-| `work_order` | 指示書 | PD02 指示書 / PD05 未処理指示書（キオスクの工程実行・指示書スキャンも同じコード） |
-| `approve` | 承認管理 | PD03 承認管理 |
+| `work_order` | 指示書 | PD02 指示書 / PD05 未処理指示書（共有端末の工程実行・指示書スキャンも同じコード） |
+| `approve` | 承認管理 | **対象アプリなし**（旧 PD03。承認・予定 CM01 は権限不要で開ける） |
 | `inventory` | 在庫 | PD04 在庫管理 |
 | `delivery_order` | 出荷書 | SH01 出荷書 / SH03 未処理出荷書 |
 | `delivery_note` | 納品書 | SH02 納品書 |
 | `invoice` | 請求書 | BL01 請求書 |
 | `billing_closing` | 締日処理 | BL02 締日処理（弥生 CSV の書き出しは E） |
-| `master` | マスタ管理 | MS01〜MS0E のマスタ 12 アプリすべて |
+| `master` | マスタ管理 | MS01・MS04〜MS0E のマスタ 12 アプリすべて |
+| `form` | フォーム | **入口は権限不要**（CM02 は誰でも開ける）。フォームを作る・直すのに C / U が要る |
+| `internal_page` | 社内文書 | CM03 社内文書 |
 | `admin_manual` | 管理マニュアル | DC02 管理マニュアル（このページ） |
-| `kiosk` | キオスク管理 | SY08 QRカード管理 / SY09 端末管理 / SY0A 共有端末設定 |
-| `system` | システム管理 | SY01〜SY0C のシステムアプリすべて |
+| `system` | システム管理 | SY02 価格試算計算 / SY03 製品項目 / SY04 製品種別 / SY05 アプリ管理 / SY0B リンク管理 / SY0C 注文書取込 / SY0E AI プロバイダ / SY0F 通知メール |
+| `kiosk` | 共有端末管理 | SY09 端末管理 / SY0A 共有端末設定 |
+| `kiosk_secret` | 共有端末の秘密 | 退出 PIN・PIN 履歴・端末設定コードの開示（**特権**） |
+| `kiosk_device` | 端末アクセスの付与 | 端末の登録・失効（**特権**） |
+| `kiosk_card` | QRカードの発行・PIN | SY08 QRカード管理（**特権**） |
+| `personal_data` | 個人データの閲覧 | SY07 操作履歴 / SY0D ログイン履歴（**特権**） |
+| `user_admin` | ユーザー・権限の変更 | SY01 ユーザー管理（**特権**） |
+| `portal_admin` | 取引先ポータルの管理 | SY0H 取引先ポータル |
 
-## 権限マトリクス（販売・購買）
+**権限が要らないアプリ**もあります: CM01 承認・予定 / CM02 フォーム（入口） /
+DC01 マニュアル / SY06 ファイル管理 / SY0G 特権アクセス。中身は「自分に関係
+するものだけ」が出る作りなので、入口は開けてあります。
 
-| ロール | 価格表 | 見積書 | 注文請書 | 設計依頼 | 購買 | 入荷 | 外注 |
-|---|---|---|---|---|---|---|---|
-| **管理者**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
-| **管理職（承認者）**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE |
-| **営業部長**<br/>`sales_manager` | RCUDE | RCUDE | RCUDE | RCUDE | — | — | — |
-| **営業**<br/>`sales` | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | — | — | — |
-| **営業補佐**<br/>`sales_assistant` | R | R | R | R | — | — | — |
-| **購買部長**<br/>`purchasing_manager` | R | R | R | R | RCUDE | RCUDE | RCUDE |
-| **購買**<br/>`purchasing` | — | — | — | — | RCUDE | RCUDE | RCUD |
-| **製造部長**<br/>`production_manager` | R | R | R | R | R | R | RCUDE |
-| **製造・生産管理**<br/>`production` | — | — | RU | — | R | R | RU |
-| **品質部長**<br/>`quality_manager` | R | R | R | R | R | R | R |
-| **品質・検査**<br/>`quality` | — | — | R | — | — | — | — |
-| **出荷部長**<br/>`shipping_manager` | R | R | R | R | R | R | R |
-| **出荷**<br/>`shipping` | — | — | R | — | — | — | — |
-| **経理部長**<br/>`accounting_manager` | R | R | R | R | R | R | R |
-| **経理**<br/>`accounting` | R | R | R | — | — | — | — |
-| **閲覧**<br/>`viewer` | R | R | R | R | R | R | R |
-| **一般**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE |
+## 権限マトリクス
 
-## 権限マトリクス（生産・出荷・請求・管理）
+### 販売・購買
 
-| ロール | 指示書 | 承認管理 | 在庫 | 出荷書 | 納品書 | 請求書 | 締日 | マスタ | 社内文書 | キオスク | システム |
+| ロール | 価格表 | 見積書 | 注文請書 | 設計依頼 | 設計図 | 購買 | 入荷 | 外注 |
+|---|---|---|---|---|---|---|---|---|
+| **管理者**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
+| **管理職（承認者）**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE | RE |
+| **営業部長**<br/>`sales_manager` | RCUDE | RCUDE | RCUDE | RCUDE | R | — | — | — |
+| **営業**<br/>`sales` | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | RCU<br/>OWN | R | — | — | — |
+| **営業補佐**<br/>`sales_assistant` | R | R | R | R | R | — | — | — |
+| **購買部長**<br/>`purchasing_manager` | R | R | R | R | R | RCUDE | RCUDE | RCUDE |
+| **購買**<br/>`purchasing` | — | — | — | — | R | RCUDE | RCUDE | RCUD |
+| **製造部長**<br/>`production_manager` | R | R | R | R | RCU | R | R | RCUDE |
+| **製造・生産管理**<br/>`production` | — | — | RU | RU | RCU | R | R | RU |
+| **品質部長**<br/>`quality_manager` | R | R | R | R | R | R | R | R |
+| **品質・検査**<br/>`quality` | — | — | R | — | R | — | — | — |
+| **出荷部長**<br/>`shipping_manager` | R | R | R | R | R | R | R | R |
+| **出荷**<br/>`shipping` | — | — | R | — | R | — | — | — |
+| **経理部長**<br/>`accounting_manager` | R | R | R | R | R | R | R | R |
+| **経理**<br/>`accounting` | R | R | R | — | R | — | — | — |
+| **閲覧**<br/>`viewer` | R | R | R | R | R | R | R | R |
+| **一般**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE |
+
+### 生産・出荷・請求・共通
+
+| ロール | 指示書 | 承認 | 在庫 | 出荷書 | 納品書 | 請求書 | 締日 | マスタ | フォーム | 社内文書 | 管理マニュアル |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | **管理者**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ |
-| **管理職（承認者）**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE | RE | RE | — | — |
+| **管理職（承認者）**<br/>`manager` | RE | RE | RE | RE | RE | RE | RE | RE | RE | RE | RE |
 | **営業部長**<br/>`sales_manager` | — | R | — | — | — | — | — | R | — | — | — |
 | **営業**<br/>`sales` | — | — | — | — | — | — | — | R | — | — | — |
 | **営業補佐**<br/>`sales_assistant` | — | — | — | — | — | — | — | R | — | — | — |
-| **購買部長**<br/>`purchasing_manager` | R | R | R | R | R | R | R | R | R | — | — |
+| **購買部長**<br/>`purchasing_manager` | R | R | R | R | R | R | R | R | R | R | R |
 | **購買**<br/>`purchasing` | R | R | R | — | — | — | — | R | — | — | — |
-| **製造部長**<br/>`production_manager` | RCUDE | R | RCUDE | R | R | R | R | R | R | — | — |
+| **製造部長**<br/>`production_manager` | RCUDE | R | RCUDE | R | R | R | R | R | R | R | R |
 | **製造・生産管理**<br/>`production` | RCUDE<br/>PLANT | R | RCUE<br/>PLANT | R | — | — | — | R | — | — | — |
-| **品質部長**<br/>`quality_manager` | RCUDE | R | R | R | R | R | R | R | R | — | — |
+| **品質部長**<br/>`quality_manager` | RCUDE | R | R | R | R | R | R | R | R | R | R |
 | **品質・検査**<br/>`quality` | RU<br/>PLANT | R | R | — | — | — | — | R | — | — | — |
-| **出荷部長**<br/>`shipping_manager` | R | R | RCUDE | RCUDE | RCUDE | R | R | R | R | — | — |
+| **出荷部長**<br/>`shipping_manager` | R | R | RCUDE | RCUDE | RCUDE | R | R | R | R | R | R |
 | **出荷**<br/>`shipping` | R | — | RU<br/>PLANT | RCUDE<br/>PLANT | RCUDE | — | — | R | — | — | — |
-| **経理部長**<br/>`accounting_manager` | R | R | R | R | R | RCUDE | RCUDE | R | R | — | — |
+| **経理部長**<br/>`accounting_manager` | R | R | R | R | R | RCUDE | RCUDE | R | R | R | R |
 | **経理**<br/>`accounting` | — | — | — | R | R | RCUDE | RCUE | R | — | — | — |
-| **閲覧**<br/>`viewer` | R | R | R | R | R | R | R | R | R | — | — |
-| **一般**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | — | — | — |
+| **閲覧**<br/>`viewer` | R | R | R | R | R | R | R | R | R | R | R |
+| **一般**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | — |
+
+### 特権・システム（業務ロールには配らない）
+
+| ロール | システム | 共有端末 | 端末の秘密 | 端末アクセス | QRカード | 個人データ | ユーザー権限 | ポータル |
+|---|---|---|---|---|---|---|---|---|
+| **管理者**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | — |
+| **端末運用（申請）**<br/>`kiosk_operator` | — | RU | RU | RCU | RCU | — | — | — |
+| **端末運用（承認）**<br/>`kiosk_approver` | — | — | A | A | A | — | — | — |
+| **ユーザー運用（申請）**<br/>`user_operator` | — | — | — | — | — | — | RU | — |
+| **ユーザー運用（承認）**<br/>`user_approver` | — | — | — | — | — | A | A | — |
+| **監査（履歴閲覧）**<br/>`security_auditor` | — | — | — | — | — | R | — | — |
+| **特権操作（申請）**<br/>`privileged_operator` | — | R | RU | RCU | RCU | R | RU | RCU |
+| **特権操作（承認）**<br/>`privileged_approver` | — | — | A | A | A | A | A | A |
 
 ## 読むときの注意
 
@@ -123,7 +175,7 @@ description: "システムのロール（職務セット）と権限コードの
 
 承認できる人の管理は **承認設定（MS0B）だけ**で行います。承認・差し戻しを
 押すのに必要な権限は、その書類の **閲覧（R）または更新（U）** だけで、
-「承認」というアクションのグラントはありません（旧 A=承認 は全廃済み）。
+「承認」というアクションのグラントはありません（書類の承認に A は使いません。A が残っているのは特権アクセスの決裁だけです）。
 つまり「その書類を開ける + その段の承認グループのメンバー（または期間内の
 代理）」が揃えば承認できます。部長ロールを付けただけでは承認できない、
 というのはこのためです。
@@ -135,13 +187,28 @@ description: "システムのロール（職務セット）と権限コードの
 決めていて、権限があっても未公開のアプリは本番に出ません。dev では既定で全部
 出ます。
 
-### システム管理とキオスク管理は管理者だけ
+### 画面に入れることと、操作できることは別
 
-`system` と `kiosk` は業務ロールには配っていません。ユーザー管理・アプリ管理・
-操作履歴・QRカード・端末管理は **管理者ロールのみ** が触れます。
-なおファイル管理（SY06）は例外で、**権限不要で誰でも開けます** — 見える範囲は
-フォルダ権限（個別付与）と業務アプリの閲覧権限（そのアプリが作った PDF）で
-決まり、権限が無ければ空表示になるだけです。
+粗かった `system` / `kiosk` は、システム上重要な操作ごとに **5 つの特権コード**
+（`kiosk_secret` / `kiosk_device` / `kiosk_card` / `personal_data` /
+`user_admin`）へ割ってあります。これらのコードを持っていても**それだけでは
+実行できません** — SY0G 特権アクセスで申請し、別の人の承認を受けた期間だけ
+通ります（時計は承認ではなく**初回使用**から動きます）。
+
+- 一覧・詳細を見る、名称を直す、フロアマップのピンを動かす … 従来どおり
+  `kiosk` で足ります。
+- 秘密の開示・端末の登録/失効・カードの発行/PIN・履歴の横断検索・利用停止や
+  ロールの変更 … 承認が要ります。
+- **管理者（`system` の ◎）は素通しします**（利用者の判断）。これが唯一の
+  締め出し回避路でもあるため、自己承認の抜け道を作らずに済んでいます。素通しは
+  監査行に `bypass:"admin"` として残り、承認を経た実行と区別できます。
+
+これらの業務ロールへの不配布は変わりません。`system` / `kiosk` と特権 5 コードは
+`roles-seed.sql` の一括付与から除外してあります。
+
+なおファイル管理（SY06）は**権限不要で誰でも開けます** — 見える範囲はフォルダ
+権限（個別付与）と業務アプリの閲覧権限（そのアプリが作った PDF）で決まり、
+権限が無ければ空表示になるだけです。
 
 ## ユーザーへの割り当て
 
@@ -155,8 +222,14 @@ description: "システムのロール（職務セット）と権限コードの
 
 ロールの中身（どのコードにどのアクションを与えるか）は SQL のシードが正です。
 
-- `shared-db/sql/rbac-seed.sql` … 権限コード 18 個 + `admin` / `staff`
-- `shared-db/sql/roles-seed.sql` … 運用ロール 15 個の権限マトリクス
+- `shared-db/sql/rbac-seed.sql` … 権限コード 27 個 + `admin` / `staff`
+- `shared-db/sql/roles-seed.sql` … 業務ロール 15 個の権限マトリクス
+- マイグレーション `20260920090000_privileged_roles` … 特権ロール 5 個
+
+> **コードを足したら 2 つのシードの除外リストを両方見ること。**
+> `roles-seed.sql` は `manager` / `viewer` / 6 つの `*_manager` へ
+> `CROSS JOIN app.permissions` で配るので、除外しないと新しいコードが
+> 全員に渡ります（`kiosk` で一度実際に起きました）。
 
 編集したら DB へ適用し（どちらも冪等）、Excel 版を作り直します。
 

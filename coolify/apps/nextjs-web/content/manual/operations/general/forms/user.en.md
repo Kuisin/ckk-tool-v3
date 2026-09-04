@@ -9,6 +9,7 @@ Build your own survey or request/report sheets and collect the answers. The oper
 
 - Lay out your own questions to build a **form**.
 - Share the form's **URL** so people in the company can answer it.
+- Split a long form into **sections (pages)** and change which page comes next based on the answers.
 - View all answers in a list, or **export them to Excel**.
 - Print a single answer as a **PDF**, or print a whole batch at once.
 - See "how many people chose what" on the **summary** screen.
@@ -20,6 +21,8 @@ Build your own survey or request/report sheets and collect the answers. The oper
 - **Response** … one submission. If one person submits twice, that is two responses.
 - **Survey / Request-report** … the two kinds of form. A request-report goes to approvers once submitted.
 - **Form code** … an 8-character code given to each form. You use it to filter in Metabase.
+- **Section** … one page of a form that has been split into several. Leave it alone and the form stays a single page.
+- **Branching rule** … a rule that says "when the answer is this, go to that section next".
 - **Sharing** … who may see or answer this form. **With no sharing set, only you and administrators can see it.**
 
 ## Before you start
@@ -41,6 +44,42 @@ The detail screen is split into tabs.
 - **History** … who did what, and when.
 
 > 💡 Tabs open in read-only mode. Press **Edit** at the top right of a tab to change it, then press Save.
+
+## Splitting questions into pages and branching on answers [#sections]
+
+A form with many questions can be split into **sections**, answered one page at a time. **Leave it unsplit and it stays a single page**, so existing forms look exactly as before.
+
+### Splitting into pages
+
+1. On the form's 「項目」(fields) tab, press 「**編集**」(edit).
+2. Turn on 「**セクションに分ける**」(split into sections). Your current fields are gathered into "Section 1".
+3. Press 「**＋ セクションを追加**」(add a section) for each further page and give it a title.
+4. Drag a field into the section it belongs to (press and hold first on a phone). Sections themselves can be dragged to reorder.
+5. Press 「**保存**」(save).
+
+> 💡 A section that still holds fields cannot be deleted — you are told to move or delete the fields first.
+
+### Changing the next page based on an answer
+
+Each section can carry **branching rules**.
+
+1. Under 「**分岐ルール**」(branching rules) for that section, press 「**ルールを追加**」(add a rule).
+2. Press 「**条件を追加**」(add a condition) and choose a field, an operator and a value.
+3. In 「**遷移先**」(go to), choose the section to jump to when the condition matches. Choosing **submit** ends the response there.
+4. Press 「**保存**」(save).
+
+Rules are read **top to bottom and the first match wins**. If nothing matches, the respondent simply continues to the next section in order — which is also what happens when there are no rules at all.
+
+- Only 「**ドロップダウン（1つ選択）**」(dropdown) and 「**数値**」(number) fields can be used in a condition. Other types do not appear.
+- Only fields asked **at or before that section** can be used. Fields further down the form are not offered.
+
+### What the respondent sees
+
+A sectioned form shows **one section at a time**, with 「**次へ**」(next) to advance and 「**戻る**」(back) to retrace the pages already visited.
+
+> 💡 **Required fields in a skipped section never block submission.** You cannot end up unable to submit because of a question you were never asked.
+
+> 💡 Import and export carry the sections too. A file exported before sections existed loads as "no sections".
 
 ## Export answers to Excel [#export-excel]
 

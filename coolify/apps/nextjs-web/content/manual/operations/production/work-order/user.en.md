@@ -53,7 +53,7 @@ When you open the app, you see a list of the work orders made so far.
 4. To make other order lines of the same product at the same time (a combined lot), press 「**明細を追加（統合ロット）**」 (add order line — combined lot) and add rows. Order lines for different products cannot go on the same work order.
 5. In 「**種別**」 (type), choose 「在庫分」 (from stock) or 「製造分」 (to make). A from-stock work order can have only one order line. **A from-stock work order has a fixed step set — 「製品出し（在庫）」 (product issue from stock) plus, if needed, 「出荷前検査」 (pre-ship inspection) — and does not use a step list**, so steps 10–12 below apply to made-to-order work orders only.
 6. Enter how many pieces to make in 「**予定数量**」 (planned quantity). The total of the allocations is filled in automatically and you cannot enter less than that. Adding extra as spares for defects is up to you.
-7. If you chose 「製造分」 (to make), choose the 「**使用素材**」 (material to use).
+7. If you chose 「製造分」 (to make), choose the 「**使用素材**」 (material to use). **If a material matches the product's assumed material type (type × diameter), it is already filled in.** The field shows 「製品の想定材種: …」 (assumed material type) underneath, so if that is right you need not touch it.
 8. If you already know where the finished products will be kept, choose the 「**保管場所**」 (storage location). It can stay empty.
 9. 「**検査表**」 (inspection sheets) are assigned **per inspection step**. When you pick a step, the sheets that name it as their related step are chosen automatically; add more in each step's selector if any are missing.
 10. Choose the 「**工程リスト**」 (step list). See the next section (made-to-order only).
@@ -159,6 +159,7 @@ On inspection steps, the boxes are named differently, such as 「**検査数**�
 
 ### Other things you can record
 
+- **検査表の確認・付け替え** (view / reassign the inspection sheet) … on inspection steps, 「**検査表を見る**」 (view inspection sheet) shows the sheets assigned to that step. You can also change them here — press 「**編集**」 (edit), pick the sheets, and press 「**保存**」 (save). There is no need to go back to the work-order edit screen. A step with nothing assigned says 「**検査表が割り当てられていません**」 (no inspection sheet assigned). On a cancelled work order or step it is view-only.
 - **検査記録** (inspection record) … on inspection steps, you enter the measured value for each item on the inspection sheet. Pass or fail is judged automatically according to the type of item. For sampling inspections, where you do not measure everything, the number to inspect is decided by the sample size rules. On inspection approval steps, you can approve inspection records that passed.
 - **不良記録（任意）** (defect record, optional) … you can write down the defect type and what happened.
 - **作業計画 / 作業実績** (work plan / work result) … you can record who, when, where, and how many pieces will be done (or were done), using the person in charge, date, time, quantity, and work place (see "Work plans and work actuals" below).
@@ -267,6 +268,8 @@ How many pieces to make. Enter **at least the total of the allocations** (adding
 ### Material [#field-material]
 
 The material used. When the work order is approved, **this material is reserved from stock.**
+
+Choosing the product fills in **a material matching that product's assumed material type (type × diameter)**, and 「製品の想定材種: …」 is shown beneath the field. Pick something else and you get 「**選択中の素材は製品の想定材種（…）と異なります**」 (the chosen material differs from the product's assumed type) — a warning only, **it does not stop you**. Substitute materials are a normal thing; if you meant it, carry on.
 
 ### Drawing to use [#field-design-file]
 
