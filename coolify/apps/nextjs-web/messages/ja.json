@@ -4379,7 +4379,8 @@
       "grantSaveFailed": "権限の保存に失敗しました",
       "grantDeleteFailed": "権限の削除に失敗しました",
       "uploadPermissionDenied": "このフォルダへのアップロード権限がありません",
-      "deletePermissionDenied": "このファイルの削除権限がありません"
+      "deletePermissionDenied": "このファイルの削除権限がありません",
+      "uploadTooLarge": "ファイルが大きすぎます（上限 20 MB）"
     },
     "notificationEmailActions": {
       "saveFailedLog": "[notification-email] 保存に失敗"

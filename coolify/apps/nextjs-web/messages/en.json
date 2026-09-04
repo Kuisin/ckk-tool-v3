@@ -4379,7 +4379,8 @@
       "grantSaveFailed": "Could not save the permission",
       "grantDeleteFailed": "Could not delete the permission",
       "uploadPermissionDenied": "You do not have permission to upload to this folder",
-      "deletePermissionDenied": "You do not have permission to delete this file"
+      "deletePermissionDenied": "You do not have permission to delete this file",
+      "uploadTooLarge": "The file is too large (limit 20 MB)"
     },
     "notificationEmailActions": {
       "saveFailedLog": "[notification-email] Failed to save"
