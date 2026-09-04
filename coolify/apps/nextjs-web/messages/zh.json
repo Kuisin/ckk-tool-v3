@@ -7754,6 +7754,14 @@
     "unknownOperation": "未知的特权操作：{key}（请在 lib/privileged-operations.ts 中注册）",
     "operationRequiresApprovalSy0g": "此操作需要审批（{label}）。请从特权访问（SY0G）提交申请"
   },
+  "privilegedNotify": {
+    "requestTitle": "特权访问的审批申请：{subject}",
+    "requestMessage": "{name} / 理由：{reason}",
+    "approvedTitle": "特权访问的申请已批准：{subject}",
+    "rejectedTitle": "特权访问的申请已退回：{subject}",
+    "revokedTitle": "特权访问的授权已撤销：{subject}",
+    "approvedButNotApplied": "已批准，但未能应用该变更：{error}"
+  },
   "audit": {
     "emptyArray": "（无）",
     "fieldLabels": {
