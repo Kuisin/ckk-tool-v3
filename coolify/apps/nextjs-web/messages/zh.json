@@ -3074,6 +3074,8 @@
       "newMaterialReceipt": "新登记材料到货",
       "registersADirectPurchaseAReceipt": "登记直接采购（不经采购单的到货）。登记的同时将入库到到货据点的材料库存。采购到货由材料采购单的「入库完成」自动登记。",
       "receiptInformation": "到货信息",
+      "unitFromMaterial": "按材料主数据的单位登记",
+      "unitMismatch": "单位与材料主数据的单位（{unit}）不一致",
       "selectASupplierOptional": "选择供应商（可选）",
       "youCanAttachDeliveryNoteCopies": "可添加送货单副本・验收单等附件（PDF / PNG / JPG / WEBP / HEIC / XLSX / CSV，各不超过 20MB）。将在到货登记完成后上传。",
       "supportingDocumentOptional": "凭证（可选）",
@@ -3194,6 +3196,7 @@
       "onlyDraftOrRejectedCanRequestApproval": "只有草稿或已退回的采购申请才能申请审批",
       "onlyPreConversionCanCancel": "只有尚未转换为采购单的采购申请才能取消",
       "quantityPositive": "数量须大于 0",
+      "stateChanged": "采购申请的状态已变更（已处理或已被其他用户更新）。请重新加载页面",
       "targetRequestNotFound": "未找到目标采购申请",
       "unitRequired": "请输入单位",
       "updateFailed": "更新采购申请失败"
@@ -3225,6 +3228,7 @@
       "receiptFailed": "到货处理失败",
       "receivedQuantityMinOne": "到货数量请输入 1 以上",
       "requestFailed": "审批申请失败",
+      "stateChanged": "材料采购单的状态已变更（已处理或已被其他用户更新）。请重新加载页面",
       "unitPriceMinZero": "单价须为 0 以上",
       "updateFailed": "材料采购单更新失败"
     }
@@ -8259,6 +8263,7 @@
     "stockStorage": "库存保管 {ref}",
     "shippedReservationReleased": "因出货解除预留 {ref}",
     "materialReceived": "材料到货",
+    "unitMismatch": "材料库存的单位（{expected}）与入库单位（{actual}）不一致",
     "reservedByStockCheck": "库存核对分配预留（§4）",
     "stockCheckReservedAndShortage": "库存核对：已分配 {reservedNow} / 缺口 {shortage}",
     "stepStarted": "开始工序（工序 {sortOrder}・接收 {input}）",

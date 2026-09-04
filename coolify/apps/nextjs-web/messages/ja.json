@@ -3074,6 +3074,8 @@
       "newMaterialReceipt": "素材入荷 新規登録",
       "registersADirectPurchaseAReceipt": "直接調達（発注書を経由しない入荷）を登録します。登録と同時に入荷先拠点の素材在庫へ入庫されます。発注入荷は素材発注書の「入荷完了」から自動登録されます。",
       "receiptInformation": "入荷情報",
+      "unitFromMaterial": "素材マスタの単位で登録します",
+      "unitMismatch": "単位が素材マスタの単位（{unit}）と一致しません",
       "selectASupplierOptional": "仕入先を選択（任意）",
       "youCanAttachDeliveryNoteCopies": "納品書控え・検収書等を添付できます（PDF / PNG / JPG / WEBP / HEIC / XLSX / CSV、各 20MB まで）。入荷登録の完了後にアップロードされます。",
       "supportingDocumentOptional": "証憑（任意）",
@@ -3194,6 +3196,7 @@
       "onlyDraftOrRejectedCanRequestApproval": "下書き・差し戻しの購買依頼のみ承認依頼できます",
       "onlyPreConversionCanCancel": "発注書へ変換前の購買依頼のみキャンセルできます",
       "quantityPositive": "数量は0より大きい値",
+      "stateChanged": "購買依頼の状態が変わっています（既に処理済みか、他の利用者が更新しました）。画面を再読み込みしてください",
       "targetRequestNotFound": "対象の購買依頼が見つかりません",
       "unitRequired": "単位を入力してください",
       "updateFailed": "購買依頼の更新に失敗しました"
@@ -3225,6 +3228,7 @@
       "receiptFailed": "入荷処理に失敗しました",
       "receivedQuantityMinOne": "入荷数量は 1 以上で入力してください",
       "requestFailed": "承認依頼に失敗しました",
+      "stateChanged": "素材発注書の状態が変わっています（既に処理済みか、他の利用者が更新しました）。画面を再読み込みしてください",
       "unitPriceMinZero": "単価は0以上",
       "updateFailed": "素材発注書の更新に失敗しました"
     }
@@ -8259,6 +8263,7 @@
     "stockStorage": "在庫保管 {ref}",
     "shippedReservationReleased": "出荷による予約解除 {ref}",
     "materialReceived": "素材入荷",
+    "unitMismatch": "素材在庫の単位（{expected}）と入庫の単位（{actual}）が一致しません",
     "reservedByStockCheck": "§4 在庫照合による引当予約",
     "stockCheckReservedAndShortage": "在庫照合: 引当 {reservedNow} / 不足 {shortage}",
     "stepStarted": "工程を開始（step {sortOrder}・受入 {input}）",

@@ -3074,6 +3074,8 @@
       "newMaterialReceipt": "New material receipt",
       "registersADirectPurchaseAReceipt": "Registers a direct purchase (a receipt with no purchase order). It enters the receiving site's material stock on registration. Receipts against orders are registered automatically when the purchase order is completed.",
       "receiptInformation": "Receipt information",
+      "unitFromMaterial": "Registered in the material's unit",
+      "unitMismatch": "The unit does not match the material's unit ({unit})",
       "selectASupplierOptional": "Select a supplier (optional)",
       "youCanAttachDeliveryNoteCopies": "You can attach delivery note copies, acceptance certificates and so on (PDF / PNG / JPG / WEBP / HEIC / XLSX / CSV, up to 20MB each). They upload after the receipt is registered.",
       "supportingDocumentOptional": "Supporting document (optional)",
@@ -3194,6 +3196,7 @@
       "onlyDraftOrRejectedCanRequestApproval": "Only draft or sent-back purchase requests can request approval",
       "onlyPreConversionCanCancel": "Only purchase requests not yet converted to a purchase order can be cancelled",
       "quantityPositive": "The quantity must be greater than 0",
+      "stateChanged": "The purchase request's status has changed (already processed or updated by someone else). Reload the page",
       "targetRequestNotFound": "The target purchase request was not found",
       "unitRequired": "Enter the unit",
       "updateFailed": "Could not update the purchase request"
@@ -3225,6 +3228,7 @@
       "receiptFailed": "Could not process the receipt",
       "receivedQuantityMinOne": "Enter a received quantity of 1 or more",
       "requestFailed": "Could not request approval",
+      "stateChanged": "The material purchase order's status has changed (already processed or updated by someone else). Reload the page",
       "unitPriceMinZero": "Unit price must be 0 or more",
       "updateFailed": "Could not update the material purchase order"
     }
@@ -8259,6 +8263,7 @@
     "stockStorage": "Stock storage {ref}",
     "shippedReservationReleased": "Reservation released by shipment {ref}",
     "materialReceived": "Material received",
+    "unitMismatch": "The stock unit ({expected}) does not match the receipt unit ({actual})",
     "reservedByStockCheck": "Reserved by stock check (§4)",
     "stockCheckReservedAndShortage": "Stock check: reserved {reservedNow} / short {shortage}",
     "stepStarted": "Started the step (step {sortOrder} · received {input})",
