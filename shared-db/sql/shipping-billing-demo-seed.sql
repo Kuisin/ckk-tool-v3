@@ -89,9 +89,13 @@ VALUES
    'e0000000-0000-4000-8000-000000000001'::uuid, 9001, NULL, 50, NULL, 0)
 ON CONFLICT (id) DO NOTHING;
 
--- ── 納品書（DRN-202607-00001〜00002）────────────────────────────────────────
--- DRN-1: 通常納品・発行済・価格記載あり（明細に単価/金額 + 合計が写る）
--- DRN-2: ユーザー直送・下書き・価格記載なし（最終需要家 = デモ電子工業、単価/金額は保存しない）
+-- ── 納品書（DRN-202607-00001〜00003）────────────────────────────────────────
+-- 納品書は出荷書の確定時に自動でできる（手動作成の口は無い）。ここでは
+-- その結果の形をそのまま置く:
+--   DRN-1: 通常納品（DOR-1 由来）・発行済・価格記載あり — 顧客宛の 1 通
+--   DRN-2/3: ユーザー直送（DOR-2 由来）の **2 通 1 組**
+--     DRN-2 … 価格記載なし・宛先は最終需要家（現物に同梱して渡す分）
+--     DRN-3 … 価格記載あり・宛先は顧客（請求関係のある相手。届け先を meta に持つ）
 INSERT INTO app.delivery_notes (year_month, seq, delivery_order_year_month, delivery_order_seq,
   delivery_method, recipient_bp_id, recipient_branch_bp_id, end_user_bp_id,
   include_price, pdf_file_id, status, delivered_at, notes, created_by, created_at, updated_at)
@@ -103,9 +107,14 @@ VALUES
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-10T11:00:00+09', '2026-07-10T11:30:00+09'),
   ('202607', 2, '202607', 2,
    'DIRECT_TO_USER'::app."DELIVERY_METHOD",
+   (SELECT id FROM app.business_partners WHERE bp_code = 'BP-90005'), NULL, NULL,
+   false, NULL, 'DRAFT'::app."DELIVERY_STATUS", NULL, NULL,
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-13T15:00:00+09', '2026-07-13T15:00:00+09'),
+  ('202607', 3, '202607', 2,
+   'DIRECT_TO_USER'::app."DELIVERY_METHOD",
    'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
    (SELECT id FROM app.business_partners WHERE bp_code = 'BP-90005'),
-   false, NULL, 'DRAFT'::app."DELIVERY_STATUS", NULL, NULL,
+   true, NULL, 'DRAFT'::app."DELIVERY_STATUS", NULL, NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-13T15:00:00+09', '2026-07-13T15:00:00+09')
 ON CONFLICT (year_month, seq) DO NOTHING;
 
@@ -114,8 +123,10 @@ INSERT INTO app.delivery_note_items (id, delivery_note_year_month, delivery_note
 VALUES
   -- DRN-1: 価格記載あり — 単価 = 注文請書の受注単価 ¥3,220
   ('dd000000-0000-4000-8000-000000000021'::uuid, '202607', 1, 9001, 30, 3220, 96600, NULL, 0),
-  -- DRN-2: 価格記載なし — 単価・金額は NULL（フォームの挙動と同じ）
-  ('dd000000-0000-4000-8000-000000000022'::uuid, '202607', 2, 9001, 20, NULL, NULL, NULL, 0)
+  -- DRN-2: 価格記載なし — 単価・金額は NULL（最終需要家へ渡す分）
+  ('dd000000-0000-4000-8000-000000000022'::uuid, '202607', 2, 9001, 20, NULL, NULL, NULL, 0),
+  -- DRN-3: 同じ出荷の顧客宛（価格記載あり）
+  ('dd000000-0000-4000-8000-000000000023'::uuid, '202607', 3, 9001, 20, 3220, 64400, NULL, 0)
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 請求書（INV-202606-00001 — 6月分・発行済）───────────────────────────────
