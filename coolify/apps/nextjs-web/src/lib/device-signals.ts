@@ -40,9 +40,13 @@ export function digest(input: string): string {
   return createHash("sha256").update(input, "utf8").digest("hex");
 }
 
-/** Cookie 署名鍵。未設定なら AUTH_SECRET を流用（attestSecret と同じ姿勢）。 */
+/**
+ * Cookie 署名鍵。**AUTH_SECRET へは退避しない** — この鍵が漏れたときに
+ * セッション署名鍵まで同じ価値になってしまう。未設定なら Cookie を出さない
+ * だけで、他の機能は動く（CLAUDE.md「degrade rather than crash」）。
+ */
 function signalsSecret(): string | null {
-  return process.env.DEVICE_SIGNALS_SECRET || process.env.AUTH_SECRET || null;
+  return process.env.DEVICE_SIGNALS_SECRET || null;
 }
 
 interface CookiePayload {

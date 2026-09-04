@@ -130,6 +130,9 @@ function recordFailure(
   });
 }
 
+/** users.is_active を見直す間隔（JWT セッション）。 */
+const ACTIVE_RECHECK_MS = 60_000;
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   // AUTH_DEBUG=true で OAuth フロー（cookie/state/token/profile）を詳細ログ出力。
@@ -203,6 +206,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     ...authConfig.callbacks,
+    // JWT は自己完結なので、利用停止（SY01 / user-suspension-cron）が
+    // セッションに届かない。1 分に 1 回だけ users.is_active を見直し、
+    // 停止されていれば token を捨てる（= 次のリクエストから未ログイン扱い）。
+    // proxy 側（auth.config.ts）は Prisma を持てないので、この見直しは
+    // サーバー側の auth() 呼び出し（レイアウト・Server Action・API）で効く。
+    async jwt(params) {
+      const base = await authConfig.callbacks.jwt(params);
+      if (!base) return base;
+      const uid = base.uid;
+      if (typeof uid !== "string" || uid.length === 0) return base;
+      const checkedAt =
+        typeof base.activeCheckedAt === "number" ? base.activeCheckedAt : 0;
+      const now = Date.now();
+      if (params.user || now - checkedAt > ACTIVE_RECHECK_MS) {
+        const row = await prisma.user.findUnique({
+          where: { id: uid },
+          select: { isActive: true },
+        });
+        if (!row?.isActive) return null;
+        base.activeCheckedAt = now;
+      }
+      return base;
+    },
     // 初回 SSO ログイン: profile から app.users を照合・自動作成し、内部 id を差し替える。
     async signIn({ user, account, profile }) {
       if (account?.provider !== "authentik") return true;
