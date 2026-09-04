@@ -411,7 +411,17 @@ export async function resolveRelatedRecords(
     );
 
     const rows = await prisma.formResponse.findMany({
-      where: { formId: target.id, status: { not: "DRAFT" } },
+      where: {
+        formId: target.id,
+        status: { not: "DRAFT" },
+        // 突合キーは **DB 側で**絞る。以前は最新 N 件を取ってから絞っていたので、
+        // 一致する古い回答が N 件の外に落ちて表に出なかった。値は文字列
+        // （select など）か lookup の { id, label } のどちらか。
+        OR: [
+          { answers: { path: [cfg.targetFieldKey], equals: key } },
+          { answers: { path: [cfg.targetFieldKey, "id"], equals: key } },
+        ],
+      },
       orderBy: { recordNo: "desc" },
       take: Math.min(cfg.limit, 100),
       select: { responseNumber: true, answers: true },

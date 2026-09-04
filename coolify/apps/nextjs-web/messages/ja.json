@@ -799,7 +799,10 @@
     "cannotChangeRoles": "ロールを変更できません",
     "cannotChangeOwnRoles": "自分のロールは変更できません",
     "cannotRemoveLastAdminRole": "最後の管理者から管理者ロールを外すことはできません",
-    "finalInspection": "最終検査"
+    "finalInspection": "最終検査",
+    "noPriceListTier": "数量段階なし",
+    "priceListInactive": "価格表が無効",
+    "priceListExpired": "価格表の有効期間外"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -2162,7 +2165,8 @@
       "transferHeaderNote1": "このファイルは「フォームの作り」だけを含みます。回答と共有設定は含みません",
       "transferHeaderNote2": "（共有先は環境ごとに違うため、取り込んだフォームは非公開で始まります）。",
       "transferHeaderNote3": "取り込みは フォーム > 取り込み から、このファイルを選ぶか中身を貼り付けます。",
-      "transferHeaderNote4": "以下の JSON は編集しないでください（壊れると取り込めません）。"
+      "transferHeaderNote4": "以下の JSON は編集しないでください（壊れると取り込めません）。",
+      "lookupValueNotFound": "{label}: 選んだ業務データが見つかりません。もう一度選んでください"
     },
     "tasksActions": {
       "loginRequired": "ログインしてください",
@@ -6812,7 +6816,8 @@
       "hideTheDocumentPane": "書類を畳む",
       "showTheDocumentPane": "書類を開く",
       "hideTheDocument": "隠す",
-      "customerProvidesDeliveryNote": "顧客提供の納品書"
+      "customerProvidesDeliveryNote": "顧客提供の納品書",
+      "priceNoTierLine": "行{row} 数量 {quantity} に該当する価格表の数量段階なし"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "この明細の親書類",
@@ -7150,7 +7155,8 @@
       "priceOverrideCount": "単価の上書き {count} 件",
       "lineOverrideText": "行{row}: {actual}（価格表 {expected}）",
       "priceOverridden": "上書き",
-      "priceOverriddenFromList": "上書き（価格表 {expected}）"
+      "priceOverriddenFromList": "上書き（価格表 {expected}）",
+      "lineNoTierText": "行{row}: 数量 {quantity} に該当する価格表の数量段階がありません"
     },
     "orderAcceptanceIntakeTable": {
       "addedQueuedForExtraction": "{count} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます",
@@ -7282,7 +7288,12 @@
       "quantityMinOne": "数量は1以上",
       "quoteNotFound": "対象の見積書が見つかりません",
       "scopeDenied": "この操作の権限がありません（対象範囲外）",
-      "updateFailed": "見積書の更新に失敗しました"
+      "updateFailed": "見積書の更新に失敗しました",
+      "noPriceListTier": "明細{line}: 数量 {quantity} に該当する価格表の数量段階がありません（数量を見直すか、価格表に数量段階を追加してください）",
+      "priceListInactive": "明細{line}: 価格表が無効化されています",
+      "priceListExpired": "明細{line}: 価格表の有効期間外です",
+      "validUntilRequired": "有効期限を入力してください",
+      "validUntilInPast": "有効期限は本日以降の日付にしてください"
     },
     "orderLinesActions": {
       "invalidOrderLine": "注文明細が不正です",

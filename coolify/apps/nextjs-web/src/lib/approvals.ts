@@ -189,6 +189,31 @@ export async function hasAnyApproval(
 }
 
 /**
+ * **いまの承認ラウンド**の中で承認が 1 つでも下りているか。
+ *
+ * 差し戻し → 直して再提出 で新しいラウンドが始まる（startApprovalFlow は必ず
+ * step_no = 1 の依頼から作る）。書類の作成時刻を起点に数えると前のラウンドの
+ * 承認まで拾い、誰も承認していない再提出が「承認済みなので直せない」になる。
+ * 起点 = 作成以降で最新の 1 段目の依頼。無ければ作成時刻（= hasAnyApproval）。
+ */
+export async function hasApprovalInCurrentRound(
+  targetType: ApprovalTargetType,
+  targetId: string,
+  createdAt: Date,
+): Promise<boolean> {
+  const roundStart = await prisma.approvalRequest.findFirst({
+    where: { targetType, targetId, stepNo: 1, requestedAt: { gte: createdAt } },
+    orderBy: { requestedAt: "desc" },
+    select: { requestedAt: true },
+  });
+  return hasAnyApproval(
+    targetType,
+    targetId,
+    roundStart?.requestedAt ?? createdAt,
+  );
+}
+
+/**
  * その人がこの書類の承認枠に入っている（入っていた）か。
  *
  * 承認を頼まれた人は、**その書類を読めなければ承認しようがない**。共有設定が

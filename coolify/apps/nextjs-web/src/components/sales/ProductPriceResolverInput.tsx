@@ -24,7 +24,11 @@ import { useIsMobile } from "@/hooks/useViewport";
 import { formatMoney } from "@/lib/format";
 import { ORDER_TYPE_OPTIONS } from "@/lib/mock";
 import type { PriceListEntry } from "./price-lists/model";
-import { resolveUnitPriceFromEntries } from "./quotes/model";
+import {
+  type PriceMissReason,
+  resolvePriceFromEntries,
+  resolveUnitPriceFromEntries,
+} from "./quotes/model";
 
 /** The slice of a quote line this control owns — 価格は全て自動解決値. */
 export interface ResolverValue {
@@ -88,6 +92,34 @@ export function ProductPriceResolverInput({
     value.unitPrice * value.quantity - value.discountAmount,
   );
   const unresolved = Boolean(value.productId) && value.priceTierId == null;
+  // 引けない理由（価格表なし / 無効 / 有効期間外 / 数量段階なし）— 「価格表なし」
+  // の一言だと、数量を直せば通る行と価格表の登録が要る行の区別がつかない。
+  const missReason: PriceMissReason | null =
+    unresolved && customerId && value.productId
+      ? (() => {
+          const r = resolvePriceFromEntries(
+            entries,
+            customerId,
+            value.productId,
+            value.orderType,
+            value.quantity,
+            tr,
+          );
+          return r.ok ? null : r.reason;
+        })()
+      : null;
+  const missReasonLabel = (() => {
+    switch (missReason) {
+      case "no-tier":
+        return tr("common.noPriceListTier");
+      case "inactive":
+        return tr("common.priceListInactive");
+      case "expired":
+        return tr("common.priceListExpired");
+      default:
+        return tr("common.noPriceList");
+    }
+  })();
 
   return (
     <Group align="flex-end" gap="sm" wrap={isMobile ? "wrap" : "nowrap"}>
@@ -145,9 +177,9 @@ export function ProductPriceResolverInput({
         {unresolved ? (
           <Stack align={isMobile ? "flex-start" : "flex-end"} gap={0}>
             <Text c="orange" fw={600} size="xs">
-              {tr("common.noPriceList")}
+              {missReasonLabel}
             </Text>
-            {designRequestHref && (
+            {designRequestHref && missReason !== "no-tier" && (
               <Anchor
                 href={designRequestHref(value.productId)}
                 size="xs"

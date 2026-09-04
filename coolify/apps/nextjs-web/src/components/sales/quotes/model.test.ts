@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
 import type { Tr } from "@/lib/i18n";
-import { resolveUnitPriceFromEntries } from "./model";
+import { resolvePriceFromEntries, resolveUnitPriceFromEntries } from "./model";
 
 /** テスト用の最小 tr — key と params をそのまま文字列化する。 */
 const tr = ((key: string, params?: Record<string, unknown>) =>
@@ -191,5 +191,79 @@ describe("resolveUnitPriceFromEntries — 有効期間・状態", () => {
         IN_WINDOW,
       ),
     ).toBeNull();
+  });
+});
+
+describe("resolvePriceFromEntries — 引けなかった理由", () => {
+  const reason = (
+    entries: PriceListEntry[],
+    orderType: string,
+    qty: number,
+    date = IN_WINDOW,
+  ) => {
+    const r = resolvePriceFromEntries(
+      entries,
+      CUSTOMER,
+      PRODUCT,
+      orderType,
+      qty,
+      tr,
+      date,
+    );
+    return r.ok ? null : r.reason;
+  };
+
+  it("エントリ・バリアントが無ければ no-entry", () => {
+    expect(reason([], "PRODUCTION", 5)).toBe("no-entry");
+    expect(reason([entry()], "SAMPLE", 5)).toBe("no-entry");
+  });
+
+  it("無効化されたエントリ / バリアントは inactive", () => {
+    expect(reason([entry({ isActive: false })], "PRODUCTION", 5)).toBe(
+      "inactive",
+    );
+    expect(reason([entry()], "TEST", 1)).toBe("inactive");
+  });
+
+  it("有効期間外は expired", () => {
+    expect(
+      reason([entry()], "PRODUCTION", 5, new Date("2026-10-01T03:00:00Z")),
+    ).toBe("expired");
+  });
+
+  it("価格表はあるが数量を覆う段階が無ければ no-tier（価格表なしとは区別する）", () => {
+    expect(reason([entry()], "PRODUCTION", 100)).toBe("no-tier");
+  });
+
+  it("引けたときは価格を返す（値引きは明細金額を超えない）", () => {
+    const withDiscount = entry();
+    withDiscount.variants[0].discounts = [
+      {
+        id: "d-1",
+        label: "特価",
+        discountType: "AMOUNT",
+        value: 5000,
+        minQuantity: 1,
+        maxQuantity: null,
+        validFrom: "2026-01-01",
+        validUntil: null,
+        isActive: true,
+      },
+    ];
+    const r = resolvePriceFromEntries(
+      [withDiscount],
+      CUSTOMER,
+      PRODUCT,
+      "PRODUCTION",
+      2,
+      tr,
+      IN_WINDOW,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.price.unitPrice).toBe(1000);
+      // 1 本 5,000 円引き × 2 本 = 10,000 > 明細金額 2,000 → 2,000 で止まる
+      expect(r.price.discountAmount).toBe(2000);
+    }
   });
 });

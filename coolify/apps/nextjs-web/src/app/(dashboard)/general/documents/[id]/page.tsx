@@ -47,6 +47,12 @@ export default async function DocumentPage({
     collectMarkdownLinks(page.publishedBody ?? ""),
   );
 
+  // 未公開の下書き（draftBody / draftTitle）は編集できる人にだけ渡す。
+  // 公開版を読めるだけの人にも client props として届いていた。
+  const visiblePage = access.canEdit
+    ? page
+    : { ...page, draftBody: page.publishedBody ?? "", draftTitle: page.title };
+
   return (
     <DocumentDetail
       auditEntries={auditEntries}
@@ -64,7 +70,7 @@ export default async function DocumentPage({
         return result.ok ? { ok: true } : { ok: false, error: result.error };
       }}
       openComments={openComments}
-      page={page}
+      page={visiblePage}
       roleOptions={roleOptions}
     />
   );

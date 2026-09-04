@@ -46,8 +46,9 @@ import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
 import type { Option } from "@/lib/mock";
+import { taxRateFor } from "@/lib/tax-rate";
 import type { PriceListEntry } from "../price-lists/model";
-import { type Quote, resolveUnitPriceFromEntries, TAX_RATE } from "./model";
+import { type Quote, resolveUnitPriceFromEntries } from "./model";
 
 /**
  * バリデーションメッセージが訳を必要とするため、スキーマはコンポーネント内で
@@ -186,6 +187,7 @@ export function QuoteForm({
   customerOptions,
   branchesByCustomer,
   entries,
+  taxTypeByCustomer,
 }: {
   mode: "create" | "edit";
   /** Edit / 複製: the source quote (server-fetched view-model). */
@@ -196,6 +198,11 @@ export function QuoteForm({
   branchesByCustomer: Record<string, Option[]>;
   /** 全顧客の価格表エントリ — 行のライブ解決に使用。 */
   entries: PriceListEntry[];
+  /**
+   * 顧客 BP id → 課税区分（tax_type）。消費税のライブ計算に使う（lib/tax-rate）。
+   * 載っていない顧客は課税扱い。保存側の合計は quoteTotals が同じ表で出す。
+   */
+  taxTypeByCustomer?: Record<string, string | null>;
 }) {
   const tr = useTranslations();
   const router = useRouter();
@@ -242,7 +249,9 @@ export function QuoteForm({
       sum + Math.max(0, it.unitPrice * it.quantity - it.discountAmount),
     0,
   );
-  const tax = Math.round(subtotal * TAX_RATE);
+  const tax = Math.round(
+    subtotal * taxRateFor(taxTypeByCustomer?.[form.values.customerId]),
+  );
   const grandTotal = subtotal + tax;
 
   const handleSubmit = (values: QuoteFormValues) => {

@@ -23,7 +23,8 @@ import { ENTRY_INCLUDE, mapEntry } from "../price-lists/data";
 const LIST_FETCH_CAP = 1000;
 
 const QUOTE_INCLUDE = {
-  customerBp: true,
+  // 課税区分（消費税率）は顧客属性から — 見積書の税額を請求書と同じ表で出す。
+  customerBp: { include: { customerAttrs: { select: { taxType: true } } } },
   customerBranchBp: true,
   salesRep: { select: { id: true, displayName: true } },
   createdByUser: { select: { displayName: true } },
@@ -55,6 +56,7 @@ export function mapQuote(r: QuoteRow): Quote {
       : null,
     recipientDocumentLocale:
       r.customerBranchBp?.documentLocale ?? r.customerBp.documentLocale ?? null,
+    customerTaxType: r.customerBp.customerAttrs?.taxType ?? null,
     status: r.status,
     validUntil: r.validUntil?.toISOString().slice(0, 10) ?? null,
     notes: r.notes,
@@ -153,6 +155,19 @@ export async function fetchEntriesForCustomer(
     include: ENTRY_INCLUDE,
   });
   return rows.map(mapEntry);
+}
+
+/**
+ * 顧客 BP id → 課税区分（bp_customer_attrs.tax_type）。見積フォームのライブ
+ * 消費税計算用 — 属性の無い顧客は載せない（呼び出し側は課税扱いに倒す）。
+ */
+export async function fetchCustomerTaxTypes(): Promise<
+  Record<string, string | null>
+> {
+  const rows = await prisma.bpCustomerAttrs.findMany({
+    select: { bpId: true, taxType: true },
+  });
+  return Object.fromEntries(rows.map((r) => [r.bpId, r.taxType ?? null]));
 }
 
 /** 支店 options per 顧客 — bp.business_partners の親子関係から。 */

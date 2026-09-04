@@ -36,23 +36,15 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { taxRateFor } from "@/lib/tax-rate";
 import { fetchBillableShipmentsForClosing, shipmentAmount } from "./data";
 
 const BASE_PATH = "/billing/closings";
 const INVOICES_PATH = "/billing/invoices";
 
-/**
- * 消費税率 — 顧客属性 tax_type から導出（監査 P0-5: 10% 固定を廃止）。
- * TAXABLE=10% / REDUCED=8% / EXEMPT=0%。税額 = round(小計 × 税率)。
- */
-const TAX_RATES: Record<string, number> = {
-  TAXABLE: 0.1,
-  REDUCED: 0.08,
-  EXEMPT: 0,
-};
-function taxRateFor(taxType: string | null | undefined): number {
-  return TAX_RATES[taxType ?? "TAXABLE"] ?? 0.1;
-}
+// 消費税率 — 顧客属性 tax_type から導出（監査 P0-5: 10% 固定を廃止）。
+// 表は lib/tax-rate.ts（見積書の税額計算も同じ表を見る）。
+
 /** 支払サイト既定値（日）— BpCustomerAttrs.paymentTermsDays 未設定時。 */
 const DEFAULT_PAYMENT_TERMS_DAYS = 30;
 

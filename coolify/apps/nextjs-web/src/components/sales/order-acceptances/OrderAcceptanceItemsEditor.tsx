@@ -34,7 +34,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import type { OrderAcceptanceDraftInput } from "@/app/(dashboard)/sales/order-acceptances/actions";
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
-import { resolveUnitPriceFromEntries } from "@/components/sales/quotes/model";
+import { resolvePriceFromEntries } from "@/components/sales/quotes/model";
 import { GhostButton } from "@/components/ui/buttons";
 import { productF4 } from "@/components/ui/f4-presets";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -111,9 +111,9 @@ export function rowPrice(
   ctx: ItemPriceContext,
   tr: Tr,
 ): RowPrice {
-  const resolved =
+  const resolution =
     ctx.customerBpId && row.productId
-      ? resolveUnitPriceFromEntries(
+      ? resolvePriceFromEntries(
           ctx.priceEntries,
           ctx.customerBpId,
           row.productId,
@@ -122,7 +122,10 @@ export function rowPrice(
           tr,
         )
       : null;
+  const resolved = resolution?.ok ? resolution.price : null;
   const expected = resolved?.unitPrice ?? null;
+  // 引けなかった理由 — 「価格表はあるが数量段階が無い」は差異と同じ扱いにする。
+  const missReason = resolution && !resolution.ok ? resolution.reason : null;
   const overridden = normalizeOverride({
     expected,
     overridden: row.priceOverridden,
@@ -143,6 +146,7 @@ export function rowPrice(
       expected,
       actual: effective,
       overridden,
+      missReason,
     }),
   };
 }
@@ -268,6 +272,11 @@ export function OrderAcceptanceItemsEditor({
               {price.state === "unpriced" && (
                 <Badge color="gray" size="xs" variant="light">
                   {tr("common.noPriceList")}
+                </Badge>
+              )}
+              {price.state === "noTier" && (
+                <Badge color="orange" size="xs" variant="light">
+                  {tr("common.noPriceListTier")}
                 </Badge>
               )}
               {price.locked && (

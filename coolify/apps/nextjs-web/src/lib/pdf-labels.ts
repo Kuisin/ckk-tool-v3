@@ -43,7 +43,10 @@ export interface QuotePdfLabels extends CommonPdfLabels {
   unitPrice: string;
   amount: string;
   deliveryDate: string;
-  /** 消費税（10%）— 見積の税率は固定（lib/pricing/model.ts TAX_RATE）。 */
+  /**
+   * 消費税の見出し。既定は「消費税（10%）」だが、ルート側が顧客の課税区分で
+   * `taxLabelLocalized` の値に差し替える（見積書の税率は lib/tax-rate.ts）。
+   */
   tax: string;
   validityStrip: string;
 }

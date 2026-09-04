@@ -799,7 +799,10 @@
     "cannotChangeRoles": "无法变更角色",
     "cannotChangeOwnRoles": "无法变更自己的角色",
     "cannotRemoveLastAdminRole": "无法从最后一名管理员移除管理员角色",
-    "finalInspection": "最终检查"
+    "finalInspection": "最终检查",
+    "noPriceListTier": "无数量档",
+    "priceListInactive": "价格表已停用",
+    "priceListExpired": "价格表不在有效期"
   },
   "shell": {
     "appsLabel": "应用",
@@ -2162,7 +2165,8 @@
       "transferHeaderNote1": "此文件仅包含表单的结构，不包含回答与共享设置",
       "transferHeaderNote2": "（共享对象因环境而异，导入的表单以未发布状态开始。）",
       "transferHeaderNote3": "导入请从 表单 > 导入 中选择此文件，或粘贴其内容。",
-      "transferHeaderNote4": "请勿编辑以下 JSON（一旦损坏将无法导入）。"
+      "transferHeaderNote4": "请勿编辑以下 JSON（一旦损坏将无法导入）。",
+      "lookupValueNotFound": "{label}：找不到所选的业务数据，请重新选择"
     },
     "tasksActions": {
       "loginRequired": "请登录",
@@ -6812,7 +6816,8 @@
       "hideTheDocumentPane": "折叠单据",
       "showTheDocumentPane": "展开单据",
       "hideTheDocument": "隐藏",
-      "customerProvidesDeliveryNote": "客户自备送货单"
+      "customerProvidesDeliveryNote": "客户自备送货单",
+      "priceNoTierLine": "第 {row} 行：没有覆盖数量 {quantity} 的价格表数量档"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "此明细的父单据",
@@ -7150,7 +7155,8 @@
       "priceOverrideCount": "单价覆盖 {count} 件",
       "lineOverrideText": "第 {row} 行：{actual}（价格表 {expected}）",
       "priceOverridden": "已覆盖",
-      "priceOverriddenFromList": "已覆盖（价格表 {expected}）"
+      "priceOverriddenFromList": "已覆盖（价格表 {expected}）",
+      "lineNoTierText": "第 {row} 行：没有覆盖数量 {quantity} 的价格表数量档"
     },
     "orderAcceptanceIntakeTable": {
       "addedQueuedForExtraction": "已将 {count} 项添加到列表。AI 提取将随后依次执行",
@@ -7282,7 +7288,12 @@
       "quantityMinOne": "数量须为 1 以上",
       "quoteNotFound": "未找到目标报价单",
       "scopeDenied": "没有此操作的权限（超出范围）",
-      "updateFailed": "报价单更新失败"
+      "updateFailed": "报价单更新失败",
+      "noPriceListTier": "明细 {line}：没有覆盖数量 {quantity} 的价格表数量档（请调整数量或在价格表中添加数量档）",
+      "priceListInactive": "明细 {line}：价格表已停用",
+      "priceListExpired": "明细 {line}：价格表不在有效期内",
+      "validUntilRequired": "请输入有效期",
+      "validUntilInPast": "有效期必须为今天或之后的日期"
     },
     "orderLinesActions": {
       "invalidOrderLine": "订单明细无效",

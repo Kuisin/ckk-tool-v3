@@ -12,7 +12,11 @@ import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
-import { resolveUnitPriceFromEntries } from "@/components/sales/quotes/model";
+import { isoDateJst } from "@/components/sales/price-lists/model";
+import {
+  type PriceMissReason,
+  resolvePriceFromEntries,
+} from "@/components/sales/quotes/model";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -91,8 +95,33 @@ function revalidate(number?: string) {
 }
 
 /**
+ * 価格表から引けなかった理由 → 利用者向けの文言。「価格表なし」の一言だと、
+ * 価格表はあるのに数量段階が無いだけの行（数量を直せば通る）と、価格表そのものが
+ * 無い行（価格試算から登録が要る）の区別がつかなかった。
+ */
+function lineResolveMessage(
+  reason: PriceMissReason,
+  line: number,
+  quantity: number,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): string {
+  switch (reason) {
+    case "no-tier":
+      return tr("sales.quoteActions.noPriceListTier", { line, quantity });
+    case "inactive":
+      return tr("sales.quoteActions.priceListInactive", { line });
+    case "expired":
+      return tr("sales.quoteActions.priceListExpired", { line });
+    default:
+      return tr("sales.quoteActions.noPriceListEntry", { line });
+  }
+}
+
+/**
  * 明細の単価・値引きを価格表からサーバー側で再解決する。
  * 未解決の行（価格表なし）はエラー — 見積書は価格表からのみ作成できる。
+ * 値引きは解決側（resolvePriceFromEntries）が明細金額を上限に丸めるので、
+ * discount_amount が unit_price × quantity を超えて保存されることはない。
  */
 async function resolveItems(
   v: QuoteInput,
@@ -100,7 +129,7 @@ async function resolveItems(
 ) {
   const entries = await fetchEntriesForCustomer(v.customerBpId);
   const resolved = v.items.map((it, i) => {
-    const r = resolveUnitPriceFromEntries(
+    const resolution = resolvePriceFromEntries(
       entries,
       v.customerBpId,
       it.productId,
@@ -108,11 +137,12 @@ async function resolveItems(
       it.quantity,
       tr,
     );
-    if (!r) {
+    if (!resolution.ok) {
       throw new LineItemResolveError(
-        tr("sales.quoteActions.noPriceListEntry", { line: i + 1 }),
+        lineResolveMessage(resolution.reason, i + 1, it.quantity, tr),
       );
     }
+    const r = resolution.price;
     return {
       productId: Number(it.productId),
       orderType: it.orderType,
@@ -280,6 +310,25 @@ export async function updateQuote(
   }
 }
 
+/**
+ * 発行時の有効期限 — 必須で、**本日（JST の暦日）以降**。
+ * 過去日で発行すると、発行した瞬間から「期限切れ」の見積書ができる。
+ * 暦日の比較は quoteDisplayStatus と同じ `isoDateJst`（UTC の日付だと JST の
+ * 早朝に前日扱いになる）。
+ */
+function issueValidUntilSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, tr("common.invalidInput"))
+    .refine((d) => !Number.isNaN(Date.parse(d)), tr("common.invalidInput"))
+    .refine(
+      (d) => d >= isoDateJst(new Date()),
+      tr("sales.quoteActions.validUntilInPast"),
+    );
+}
+
 /** 発行 (DRAFT → ISSUED)。PDF 生成は /api/pdf/quote（呼び出し側）が担う。 */
 export async function issueQuote(
   number: string,
@@ -288,6 +337,15 @@ export async function issueQuote(
   const tr = await getTranslations();
   const key = parseDocKey(number, "QOT");
   if (!key) return actionError(tr("sales.quoteActions.invalidQuoteNumber"));
+  if (validUntil == null || validUntil === "") {
+    return actionError(tr("sales.quoteActions.validUntilRequired"));
+  }
+  const parsedValidUntil = issueValidUntilSchema(tr).safeParse(validUntil);
+  if (!parsedValidUntil.success) {
+    return actionError(
+      parsedValidUntil.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
+  }
   const authz = await checkPermission("quote", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await quoteInScope(authz.access, authz.userId, key))) {
@@ -298,7 +356,7 @@ export async function issueQuote(
       where: { yearMonth: key.yearMonth, seq: key.seq, status: "DRAFT" },
       data: {
         status: "ISSUED",
-        validUntil: validUntil ? new Date(validUntil) : null,
+        validUntil: new Date(parsedValidUntil.data),
       },
     });
     if (updated.count === 0) {

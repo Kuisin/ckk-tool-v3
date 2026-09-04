@@ -799,7 +799,10 @@
     "cannotChangeRoles": "Cannot change the roles",
     "cannotChangeOwnRoles": "You cannot change your own roles",
     "cannotRemoveLastAdminRole": "The admin role cannot be removed from the last admin",
-    "finalInspection": "Final inspection"
+    "finalInspection": "Final inspection",
+    "noPriceListTier": "No quantity tier",
+    "priceListInactive": "Price list disabled",
+    "priceListExpired": "Price list out of valid period"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -2162,7 +2165,8 @@
       "transferHeaderNote1": "This file contains only the form definition. Responses and sharing settings are not included",
       "transferHeaderNote2": "(sharing targets differ per environment, so an imported form starts unpublished).",
       "transferHeaderNote3": "To import it, go to Forms > Import and either select this file or paste its contents.",
-      "transferHeaderNote4": "Do not edit the JSON below (the import fails if it is broken)."
+      "transferHeaderNote4": "Do not edit the JSON below (the import fails if it is broken).",
+      "lookupValueNotFound": "{label}: the selected business data was not found. Select it again"
     },
     "tasksActions": {
       "loginRequired": "Please log in",
@@ -6812,7 +6816,8 @@
       "hideTheDocumentPane": "Collapse the document",
       "showTheDocumentPane": "Expand the document",
       "hideTheDocument": "Hide",
-      "customerProvidesDeliveryNote": "Customer-supplied delivery note"
+      "customerProvidesDeliveryNote": "Customer-supplied delivery note",
+      "priceNoTierLine": "Line {row}: no price list quantity tier covers quantity {quantity}"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",
@@ -7150,7 +7155,8 @@
       "priceOverrideCount": "{count} overridden unit price(s)",
       "lineOverrideText": "Line {row}: {actual} (price list {expected})",
       "priceOverridden": "Overridden",
-      "priceOverriddenFromList": "Overridden (price list {expected})"
+      "priceOverriddenFromList": "Overridden (price list {expected})",
+      "lineNoTierText": "Line {row}: no price list quantity tier covers quantity {quantity}"
     },
     "orderAcceptanceIntakeTable": {
       "addedQueuedForExtraction": "Added {count} item(s) to the list. AI extraction will run in order after this",
@@ -7282,7 +7288,12 @@
       "quantityMinOne": "Quantity must be 1 or more",
       "quoteNotFound": "Quote not found",
       "scopeDenied": "You do not have permission for this operation (out of scope)",
-      "updateFailed": "Could not update the quote"
+      "updateFailed": "Could not update the quote",
+      "noPriceListTier": "Line {line}: no price list quantity tier covers quantity {quantity} (adjust the quantity or add a tier to the price list)",
+      "priceListInactive": "Line {line}: the price list is disabled",
+      "priceListExpired": "Line {line}: the price list is outside its valid period",
+      "validUntilRequired": "Enter the valid-until date",
+      "validUntilInPast": "The valid-until date must be today or later"
     },
     "orderLinesActions": {
       "invalidOrderLine": "Invalid order line",

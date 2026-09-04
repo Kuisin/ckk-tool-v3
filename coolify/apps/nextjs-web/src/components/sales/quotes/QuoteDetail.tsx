@@ -415,7 +415,11 @@ export function QuoteDetail({
                 <Table.Tr>
                   <Table.Td colSpan={5} ta="right">
                     <Text c="dimmed" size="sm">
-                      {tr("sales.quotes.tax10")}
+                      {quote.customerTaxType === "REDUCED"
+                        ? tr("billing.invoices.taxLabelReduced")
+                        : quote.customerTaxType === "EXEMPT"
+                          ? tr("billing.invoices.taxLabelExempt")
+                          : tr("sales.quotes.tax10")}
                     </Text>
                   </Table.Td>
                   <Table.Td ta="right">
