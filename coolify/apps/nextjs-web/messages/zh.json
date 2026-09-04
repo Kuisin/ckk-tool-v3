@@ -5632,7 +5632,8 @@
       "regionNotFound": "未找到目标地区",
       "regionUpdateFailed": "地区更新失败",
       "statusUpdateFailed": "状态更新失败",
-      "updateFailed": "据点更新失败"
+      "updateFailed": "据点更新失败",
+      "referencedCannotDelete": "此据点被其他数据（库存、工序、终端、订单确认书等）引用，无法删除。请考虑停用。"
     },
     "processStepsActions": {
       "selectDependencyStep": "请选择依赖的工序",
@@ -5651,14 +5652,15 @@
       "updateFailed": "工序更新失败",
       "referencedByOtherStepsCannotDelete": "由于其他工序依赖此工序，无法删除。请考虑改为停用。",
       "referencedByTemplateCannotDelete": "由于存在关联此工序的检查表模板，无法删除。请考虑改为停用。",
-      "deleteFailed": "工序删除失败"
+      "deleteFailed": "工序删除失败",
+      "execDependencyCycle": "执行依赖形成了循环（{path}）"
     },
     "productsActions": {
       "diameterRange": "请输入 {min}〜{max}mm 之间的直径",
       "lengthRange": "请输入 {min}〜{max}mm 之间的全长",
       "createFailed": "产品创建失败",
       "updateFailed": "产品更新失败",
-      "referencedCannotDelete": "由于存在引用此产品的数据（价格表、报价单），无法删除。请考虑改为停用。",
+      "referencedCannotDelete": "此产品被其他数据（价格表、报价单、订单明细、图纸、检查表等）引用，无法删除。请考虑停用。",
       "deleteFailed": "产品删除失败"
     },
     "workLocationsActions": {
@@ -5684,7 +5686,9 @@
       "saveTypesFailed": "类别保存失败",
       "auditWorkLocationAdded": "已添加作业场所「{name}」",
       "auditWorkLocationUpdated": "已更新作业场所「{name}」",
-      "auditWorkLocationDeleted": "已删除作业场所"
+      "auditWorkLocationDeleted": "已删除作业场所",
+      "usedByOrderAcceptances": "订单确认书的出货作业场所 {count} 件",
+      "usedByProcessSteps": "工序的允许作业场所 {count} 件"
     },
     "storageLocationActions": {
       "codeFormat": "编号请使用字母、数字、连字符和下划线",
@@ -5719,13 +5723,13 @@
       "updateFailed": "材料更新失败",
       "statusUpdateFailed": "状态更新失败",
       "deleteFailed": "材料删除失败",
-      "noTargetsSelected": "未选择对象"
+      "noTargetsSelected": "未选择对象",
+      "referencedCannotDelete": "此材料被其他数据（工单、采购单、到货、库存）引用，无法删除。请考虑停用。"
     },
     "businessPartnerActions": {
       "bpNotFound": "未找到目标业务伙伴",
       "branchCreateFailed": "分公司创建失败",
       "branchDeleteFailed": "分公司删除失败",
-      "branchInUseByQuotes": "由于存在引用此分公司的报价单，无法删除。请考虑改为停用。",
       "branchNotFound": "未找到目标分公司",
       "branchUpdateFailed": "分公司更新失败",
       "createFailed": "业务伙伴创建失败",
@@ -5782,7 +5786,9 @@
       "toggleFailed": "切换失败",
       "stepMissingName": "第 {steps} 级：请输入名称",
       "stepMissingGroupIndividual": "第 {steps} 级：请选择审批组，或至少选择 1 位审批人",
-      "stepMissingGroup": "第 {steps} 级：请选择审批组"
+      "stepMissingGroup": "第 {steps} 级：请选择审批组",
+      "groupReferencedCannotDelete": "此审批组被检查表模板引用，无法删除。请考虑停用。",
+      "stepGroupNotEffective": "第 {steps} 级的审批组已停用，或当前没有可审批的成员"
     },
     "approvalConditions": {
       "totalAmount": "合计金额",

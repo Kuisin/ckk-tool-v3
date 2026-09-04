@@ -5632,7 +5632,8 @@
       "regionNotFound": "Region not found",
       "regionUpdateFailed": "Could not update the region",
       "statusUpdateFailed": "Could not update the status",
-      "updateFailed": "Could not update the site"
+      "updateFailed": "Could not update the site",
+      "referencedCannotDelete": "This site is referenced by other data (stock, steps, devices, order acceptances) and cannot be deleted. Consider disabling it instead."
     },
     "processStepsActions": {
       "selectDependencyStep": "Select the dependency step",
@@ -5651,14 +5652,15 @@
       "updateFailed": "Could not update the step",
       "referencedByOtherStepsCannotDelete": "Cannot delete because other steps depend on this step. Consider disabling it instead.",
       "referencedByTemplateCannotDelete": "Cannot delete because an inspection template is linked to this step. Consider disabling it instead.",
-      "deleteFailed": "Could not delete the step"
+      "deleteFailed": "Could not delete the step",
+      "execDependencyCycle": "Execution dependencies form a cycle ({path})"
     },
     "productsActions": {
       "diameterRange": "Enter a diameter between {min} and {max} mm",
       "lengthRange": "Enter an overall length between {min} and {max} mm",
       "createFailed": "Could not create the product",
       "updateFailed": "Could not update the product",
-      "referencedCannotDelete": "Cannot delete because data referencing this product exists (price lists, quotes). Consider disabling it instead.",
+      "referencedCannotDelete": "This product is referenced by other data (price lists, quotes, order lines, drawings, inspection templates) and cannot be deleted. Consider disabling it instead.",
       "deleteFailed": "Could not delete the product"
     },
     "workLocationsActions": {
@@ -5684,7 +5686,9 @@
       "saveTypesFailed": "Could not save the types",
       "auditWorkLocationAdded": "Added work location \"{name}\"",
       "auditWorkLocationUpdated": "Updated work location \"{name}\"",
-      "auditWorkLocationDeleted": "Deleted work location"
+      "auditWorkLocationDeleted": "Deleted work location",
+      "usedByOrderAcceptances": "Shipping work location on {count} order acceptances",
+      "usedByProcessSteps": "Allowed work location on {count} process steps"
     },
     "storageLocationActions": {
       "codeFormat": "Use letters, numbers, hyphens, and underscores for the code",
@@ -5719,13 +5723,13 @@
       "updateFailed": "Could not update the material",
       "statusUpdateFailed": "Could not update the status",
       "deleteFailed": "Could not delete the material",
-      "noTargetsSelected": "No targets selected"
+      "noTargetsSelected": "No targets selected",
+      "referencedCannotDelete": "This material is referenced by other data (work orders, purchase orders, receipts, stock) and cannot be deleted. Consider disabling it instead."
     },
     "businessPartnerActions": {
       "bpNotFound": "The business partner was not found",
       "branchCreateFailed": "Could not create the branch",
       "branchDeleteFailed": "Could not delete the branch",
-      "branchInUseByQuotes": "Cannot delete because quotes reference this branch. Consider disabling it instead.",
       "branchNotFound": "The branch was not found",
       "branchUpdateFailed": "Could not update the branch",
       "createFailed": "Could not create the business partner",
@@ -5782,7 +5786,9 @@
       "toggleFailed": "Could not toggle",
       "stepMissingName": "Step {steps}: Enter a name",
       "stepMissingGroupIndividual": "Step {steps}: Select an approval group, or choose at least one approver",
-      "stepMissingGroup": "Step {steps}: Select an approval group"
+      "stepMissingGroup": "Step {steps}: Select an approval group",
+      "groupReferencedCannotDelete": "This approval group is referenced by inspection templates and cannot be deleted. Consider disabling it instead.",
+      "stepGroupNotEffective": "The approval group in step {steps} is disabled or has no members who can approve now"
     },
     "approvalConditions": {
       "totalAmount": "Total amount",

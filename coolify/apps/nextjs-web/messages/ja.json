@@ -5632,7 +5632,8 @@
       "regionNotFound": "対象の地域が見つかりません",
       "regionUpdateFailed": "地域の更新に失敗しました",
       "statusUpdateFailed": "状態の更新に失敗しました",
-      "updateFailed": "拠点の更新に失敗しました"
+      "updateFailed": "拠点の更新に失敗しました",
+      "referencedCannotDelete": "この拠点を参照するデータ（在庫・工程・端末・注文請書など）が存在するため削除できません。無効化を検討してください。"
     },
     "processStepsActions": {
       "selectDependencyStep": "依存先の工程を選択してください",
@@ -5651,14 +5652,15 @@
       "updateFailed": "工程の更新に失敗しました",
       "referencedByOtherStepsCannotDelete": "他の工程がこの工程に依存しているため削除できません。無効化を検討してください。",
       "referencedByTemplateCannotDelete": "この工程に関連する検査表テンプレートが存在するため削除できません。無効化を検討してください。",
-      "deleteFailed": "工程の削除に失敗しました"
+      "deleteFailed": "工程の削除に失敗しました",
+      "execDependencyCycle": "実行依存が循環しています（{path}）"
     },
     "productsActions": {
       "diameterRange": "直径は {min}〜{max}mm で入力してください",
       "lengthRange": "全長は {min}〜{max}mm で入力してください",
       "createFailed": "製品の作成に失敗しました",
       "updateFailed": "製品の更新に失敗しました",
-      "referencedCannotDelete": "この製品を参照するデータ（価格表・見積書）が存在するため削除できません。無効化を検討してください。",
+      "referencedCannotDelete": "この製品を参照するデータ（価格表・見積書・注文明細・設計・検査表など）が存在するため削除できません。無効化を検討してください。",
       "deleteFailed": "製品の削除に失敗しました"
     },
     "workLocationsActions": {
@@ -5684,7 +5686,9 @@
       "saveTypesFailed": "種別の保存に失敗しました",
       "auditWorkLocationAdded": "作業場所「{name}」を追加",
       "auditWorkLocationUpdated": "作業場所「{name}」を更新",
-      "auditWorkLocationDeleted": "作業場所を削除"
+      "auditWorkLocationDeleted": "作業場所を削除",
+      "usedByOrderAcceptances": "注文請書の出荷作業場所 {count} 件",
+      "usedByProcessSteps": "工程の許可作業場所 {count} 件"
     },
     "storageLocationActions": {
       "codeFormat": "コードは英数字・ハイフン・アンダースコアで入力",
@@ -5719,13 +5723,13 @@
       "updateFailed": "素材の更新に失敗しました",
       "statusUpdateFailed": "状態の更新に失敗しました",
       "deleteFailed": "素材の削除に失敗しました",
-      "noTargetsSelected": "対象が選択されていません"
+      "noTargetsSelected": "対象が選択されていません",
+      "referencedCannotDelete": "この素材を参照するデータ（指示書・発注・入荷・在庫）が存在するため削除できません。無効化を検討してください。"
     },
     "businessPartnerActions": {
       "bpNotFound": "対象の取引先が見つかりません",
       "branchCreateFailed": "支店の作成に失敗しました",
       "branchDeleteFailed": "支店の削除に失敗しました",
-      "branchInUseByQuotes": "この支店を参照する見積書が存在するため削除できません。無効化を検討してください。",
       "branchNotFound": "対象の支店が見つかりません",
       "branchUpdateFailed": "支店の更新に失敗しました",
       "createFailed": "取引先の作成に失敗しました",
@@ -5782,7 +5786,9 @@
       "toggleFailed": "切り替えに失敗しました",
       "stepMissingName": "{steps} 段目: 名称を入力してください",
       "stepMissingGroupIndividual": "{steps} 段目: 承認グループを選ぶか、承認者を 1 人以上選んでください",
-      "stepMissingGroup": "{steps} 段目: 承認グループを選択してください"
+      "stepMissingGroup": "{steps} 段目: 承認グループを選択してください",
+      "groupReferencedCannotDelete": "この承認グループを参照する検査表テンプレートが存在するため削除できません。無効化を検討してください。",
+      "stepGroupNotEffective": "第 {steps} 段の承認グループは無効、または今承認できるメンバーがいません"
     },
     "approvalConditions": {
       "totalAmount": "合計金額",
