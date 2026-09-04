@@ -466,7 +466,56 @@ export function StepExecutionView({
           </Paper>
         )}
 
-        {/* 進行中 / 一時停止中 — 完了フォームと操作 */}
+        {/* ── その工程の「仕事」を先に置く ──────────────────────────────
+            開始・一時停止・完了より**上**にあるのが要点。以前は完了ボタンの
+            下に検査記録・検査承認が並んでいたので、現場は完了ボタンを通り
+            過ぎて仕事をし、また上へ戻る必要があった（10 インチのタブレットで
+            は 1 画面に収まらない）。上から順に「やること → 終わったら完了」と
+            読める並びにする。 */}
+
+        {/* 検査記録 — 検査工程のみ（既存記録があれば読み取り専用でも表示） */}
+        {(recording.isInspection || recording.inspectionRecords.length > 0) && (
+          <StepInspectionForm
+            canRecord={recording.isInspection && (working || paused)}
+            lotQuantity={
+              step.inputQuantity ??
+              step.expectedInputQuantity ??
+              step.workOrderPlannedQuantity
+            }
+            records={recording.inspectionRecords}
+            stepId={step.stepId}
+            templates={recording.templates}
+          />
+        )}
+
+        {/* 検査承認 — 検査承認工程のみ。指示書**全体**の検査記録を並べる
+            （承認は「この指示書の検査がひととおり終わったか」を見る仕事）。 */}
+        {recording.isApprovalStep && (
+          <StepInspectionApprovalPanel
+            canApprove={working || paused}
+            records={recording.approvableRecords}
+            stepId={step.stepId}
+          />
+        )}
+
+        {/* 最終検査・出荷前確認 — 最終検査工程のみ（指示書 1 件に 1 行）。
+            工程リストに最終検査工程が無い指示書には最終検査そのものが無い。 */}
+        {recording.isFinalInspection && recording.finalInspection && (
+          <StepFinalInspectionForm
+            canRecord={working || paused}
+            finalInspection={recording.finalInspection}
+            stepId={step.stepId}
+          />
+        )}
+
+        {/* 不良記録 — 全工程で任意（既存記録があれば読み取り専用でも表示） */}
+        <StepDefectForm
+          canRecord={working || paused}
+          defectTypes={recording.defectTypes}
+          records={recording.defectRecords}
+          stepId={step.stepId}
+        />
+        {/* 進行中 / 一時停止中 — 完了フォームと操作。**仕事のあと**に置く。 */}
         {(working || paused) && (
           <Paper p="md" radius="md" withBorder>
             <Stack gap="md">
@@ -571,49 +620,6 @@ export function StepExecutionView({
             </Stack>
           </Paper>
         )}
-
-        {/* 検査記録 — 検査工程のみ（既存記録があれば読み取り専用でも表示） */}
-        {(recording.isInspection || recording.inspectionRecords.length > 0) && (
-          <StepInspectionForm
-            canRecord={recording.isInspection && (working || paused)}
-            lotQuantity={
-              step.inputQuantity ??
-              step.expectedInputQuantity ??
-              step.workOrderPlannedQuantity
-            }
-            records={recording.inspectionRecords}
-            stepId={step.stepId}
-            templates={recording.templates}
-          />
-        )}
-
-        {/* 検査承認 — 検査承認工程のみ。指示書**全体**の検査記録を並べる
-            （承認は「この指示書の検査がひととおり終わったか」を見る仕事）。 */}
-        {recording.isApprovalStep && (
-          <StepInspectionApprovalPanel
-            canApprove={working || paused}
-            records={recording.approvableRecords}
-            stepId={step.stepId}
-          />
-        )}
-
-        {/* 最終検査・出荷前確認 — 最終検査工程のみ（指示書 1 件に 1 行）。
-            工程リストに最終検査工程が無い指示書には最終検査そのものが無い。 */}
-        {recording.isFinalInspection && recording.finalInspection && (
-          <StepFinalInspectionForm
-            canRecord={working || paused}
-            finalInspection={recording.finalInspection}
-            stepId={step.stepId}
-          />
-        )}
-
-        {/* 不良記録 — 全工程で任意（既存記録があれば読み取り専用でも表示） */}
-        <StepDefectForm
-          canRecord={working || paused}
-          defectTypes={recording.defectTypes}
-          records={recording.defectRecords}
-          stepId={step.stepId}
-        />
       </Stack>
     </Box>
   );

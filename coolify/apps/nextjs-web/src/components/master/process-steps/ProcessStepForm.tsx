@@ -17,6 +17,7 @@ import {
   SimpleGrid,
   Stack,
   Switch,
+  Text,
   Textarea,
   TextInput,
 } from "@mantine/core";
@@ -556,7 +557,20 @@ export function ProcessStepForm({
               />
             }
             {...form.getInputProps("isApprovalStep", { type: "checkbox" })}
+            onChange={(event) => {
+              const checked = event.currentTarget.checked;
+              form.setFieldValue("isApprovalStep", checked);
+              // 検査承認は「前工程の検査表を見て印を押す」ゲートで、物を
+              // 加工する工程ではない。数量を持たせると、承認するだけの工程を
+              // 完了するのに前工程と同じ数を打ち直すことになる。
+              if (checked) form.setFieldValue("quantityTracking", "NONE");
+            }}
           />
+          {form.values.isApprovalStep && (
+            <Text c="dimmed" size="xs">
+              {tr("master.processSteps.approvalStepsHaveNoQuantity")}
+            </Text>
+          )}
           {form.values.isApprovalStep && (
             <TextInput
               description={tr("master.processSteps.theLowestRankThatCanRun")}

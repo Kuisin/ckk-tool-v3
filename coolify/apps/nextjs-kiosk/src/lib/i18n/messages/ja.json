@@ -289,13 +289,26 @@
     },
     "approval": {
       "title": "検査承認",
+      "remaining": "承認待ち {n} 件",
+      "allDone": "すべて承認しました",
       "empty": "承認する検査記録がありません",
-      "approve": "承認",
+      "approve": "承認する",
       "approved": "承認しました",
-      "notApprover": "この検査表の承認者ではありません",
-      "onlyPass": "合格した検査記録だけ承認できます",
+      "othersToggle": "承認済み・対象外（{n} 件）",
+      "othersHide": "閉じる",
+      "notApprover": "承認者ではありません",
+      "onlyPass": "不合格のため承認できません",
       "recordedBy": "記録 {at} {by}",
-      "approvedMeta": "承認 {at} {by}"
+      "approvedMeta": "承認 {at} {by}",
+      "sheetOf": "{step} の {sheet}",
+      "viewSheet": "検査表を見る",
+      "sheetTitle": "検査表",
+      "close": "閉じる",
+      "item": "検査項目",
+      "value": "実測値",
+      "verdict": "合否",
+      "noItems": "記入された項目がありません",
+      "checkThenApprove": "中身を確かめてから承認してください"
     }
   },
   "deviceError": {

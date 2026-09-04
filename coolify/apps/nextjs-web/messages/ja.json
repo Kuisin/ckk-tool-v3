@@ -5179,7 +5179,8 @@
       "sortOrderInteger": "表示順は整数で入力してください",
       "stepUpdated": "工程を更新しました",
       "finalInspectionStep": "最終検査工程",
-      "theFinalInspectionChecklistIsRecorded": "最終検査・出荷前確認（3項目の確認・予備在庫・棚包→納品書発行→出荷許可）をこの工程の実行画面で記録します。記録は指示書 1 件に 1 行で、印の付いた工程を工程リストに入れない指示書には最終検査がありません。"
+      "theFinalInspectionChecklistIsRecorded": "最終検査・出荷前確認（3項目の確認・予備在庫・棚包→納品書発行→出荷許可）をこの工程の実行画面で記録します。記録は指示書 1 件に 1 行で、印の付いた工程を工程リストに入れない指示書には最終検査がありません。",
+      "approvalStepsHaveNoQuantity": "検査承認工程は数量を持ちません（数量管理は「なし」になります）。前の工程の検査表を見て承認する工程で、物を加工する工程ではないためです。"
     },
     "products": {
       "specification": "仕様",

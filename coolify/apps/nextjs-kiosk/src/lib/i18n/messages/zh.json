@@ -289,13 +289,26 @@
     },
     "approval": {
       "title": "检查批准",
+      "remaining": "待批准 {n} 件",
+      "allDone": "已全部批准",
       "empty": "没有可批准的检查记录",
       "approve": "批准",
       "approved": "已批准",
-      "notApprover": "您不是该检查表的批准人",
-      "onlyPass": "只有合格的检查记录才能批准",
+      "othersToggle": "已批准・不适用（{n} 件）",
+      "othersHide": "关闭",
+      "notApprover": "您不是批准人",
+      "onlyPass": "不合格，无法批准",
       "recordedBy": "记录 {at} {by}",
-      "approvedMeta": "批准 {at} {by}"
+      "approvedMeta": "批准 {at} {by}",
+      "sheetOf": "{step} 的 {sheet}",
+      "viewSheet": "查看检查表",
+      "sheetTitle": "检查表",
+      "close": "关闭",
+      "item": "检查项目",
+      "value": "实测值",
+      "verdict": "合否",
+      "noItems": "没有已填写的项目",
+      "checkThenApprove": "请确认内容后再批准"
     }
   },
   "deviceError": {
