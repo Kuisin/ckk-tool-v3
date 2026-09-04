@@ -7,10 +7,11 @@
  */
 
 import { plantWhere, rowInScope } from "@ckk/authz-core";
-import type {
-  DeliveryOrder,
-  DeliveryOrderStatus,
-  DeliveryOrderType,
+import {
+  type DeliveryOrder,
+  type DeliveryOrderStatus,
+  type DeliveryOrderType,
+  previewAutoDeliveryNotes,
 } from "@/components/shipping/delivery-orders/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
@@ -42,10 +43,17 @@ const DELIVERY_ORDER_INCLUDE = {
           acceptanceYearMonth: true,
           acceptanceSeq: true,
           branch: true,
+          // 実効エンドユーザー = 明細の指定 ?? 注文請書ヘッダの既定。
+          endUserBpId: true,
+          endUserBp: { select: { name: true } },
           // 営業担当は書類に保存せず、注文請書ヘッダから導出する。
+          // 配送方法・エンドユーザーも同じくヘッダが持つ（確定時の納品書自動作成の入力）。
           acceptance: {
             select: {
               salesRep: { select: { id: true, displayName: true } },
+              deliveryMethod: true,
+              endUserBpId: true,
+              endUserBp: { select: { name: true } },
             },
           },
         },
@@ -76,6 +84,38 @@ function productLabel(p: {
   const code = formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
   return code ? `${name} ${code}` : name;
+}
+
+/**
+ * 確定したときに自動作成される納品書の予告（確定モーダル用）。
+ *
+ * 入力の取り方は confirmDeliveryOrder の planDeliveryOrderNotes と同じ —
+ * 発送 (DISPATCH) かつ明細ありのときだけ作られ、配送方法・エンドユーザーは
+ * combinabilityError が全明細で揃えているので先頭行から読む。
+ */
+function autoDeliveryNotePreview(r: DeliveryOrderRow) {
+  const customerName = localized(r.customerBp.name as LocalizedText | null);
+  const first = r.items[0]?.orderLine;
+  if (r.type !== "DISPATCH" || !first)
+    return { notes: [], endUserMissing: false };
+  const endUserBpId = first.endUserBpId ?? first.acceptance.endUserBpId ?? null;
+  const endUserBp = first.endUserBp ?? first.acceptance.endUserBp ?? null;
+  return previewAutoDeliveryNotes(
+    {
+      customerBpId: r.customerBpId,
+      customerBranchBpId: r.customerBranchBpId,
+      deliveryMethod: first.acceptance.deliveryMethod,
+      endUserBpId,
+    },
+    {
+      customer: r.customerBranchBp
+        ? `${customerName} / ${localized(r.customerBranchBp.name as LocalizedText | null)}`
+        : customerName,
+      endUser: endUserBp
+        ? localized(endUserBp.name as LocalizedText | null)
+        : null,
+    },
+  );
 }
 
 function mapDeliveryOrder(r: DeliveryOrderRow): DeliveryOrder {
@@ -137,6 +177,7 @@ function mapDeliveryOrder(r: DeliveryOrderRow): DeliveryOrder {
       status: dn.status,
       deliveredAt: dn.deliveredAt?.toISOString() ?? null,
     })),
+    autoDeliveryNotes: autoDeliveryNotePreview(r),
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };

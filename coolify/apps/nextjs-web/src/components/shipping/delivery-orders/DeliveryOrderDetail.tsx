@@ -12,7 +12,18 @@
  * キャンセル（DRAFT のみ hard delete, 確認モーダル・赤）。
  */
 
-import { Anchor, Paper, Stack, Table, Tabs, Text, Title } from "@mantine/core";
+import {
+  Alert,
+  Anchor,
+  Badge,
+  Group,
+  Paper,
+  Stack,
+  Table,
+  Tabs,
+  Text,
+  Title,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconReceipt, IconTruck, IconX } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -52,6 +63,44 @@ import { DeliveryOrderTypeBadge } from "./DeliveryOrderTable";
 import { type DeliveryOrder, isEditable } from "./model";
 
 const BASE_PATH = "/shipping/delivery-orders";
+
+/**
+ * 確定モーダルの予告 — 確定すると納品書が自動で作られることを、宛先まで
+ * 具体的に見せる（何通・誰宛・価格記載の有無）。作られない出荷書
+ * （在庫保管・明細ゼロ）では何も出さない。
+ */
+function AutoDeliveryNotesPreview({ order }: { order: DeliveryOrder }) {
+  const tr = useTranslations();
+  const { notes } = order.autoDeliveryNotes;
+  if (notes.length === 0) return null;
+  return (
+    <Alert color="blue" icon={<IconReceipt size={16} />} variant="light">
+      <Stack gap={6}>
+        <Text fw={600} size="sm">
+          {tr("shipping.deliveryOrders.autoNotesHeading")}
+        </Text>
+        {notes.map((n) => (
+          <Group
+            gap="xs"
+            key={`${n.recipientName}:${n.includePrice}`}
+            wrap="nowrap"
+          >
+            <Text size="sm">{n.recipientName}</Text>
+            <Badge
+              color={n.includePrice ? "blue" : "gray"}
+              size="xs"
+              variant="light"
+            >
+              {n.includePrice
+                ? tr("shipping.deliveryOrders.autoNoteWithPrice")
+                : tr("shipping.deliveryOrders.autoNoteWithoutPrice")}
+            </Badge>
+          </Group>
+        ))}
+      </Stack>
+    </Alert>
+  );
+}
 
 /** 手続き状況（作成 → 確定 → 出荷）+ 前後の書類への受け渡し。 */
 function DeliveryOrderProcedurePanel({
@@ -489,13 +538,11 @@ export function DeliveryOrderDetail({
       <ConfirmModal
         confirmColor="blue"
         confirmLabel={tr("common.confirmed")}
+        details={<AutoDeliveryNotesPreview order={order} />}
         loading={isPending}
-        message={tr(
-          order.type === "DISPATCH"
-            ? "shipping.deliveryOrders.confirmConfirmBodyDispatch"
-            : "shipping.deliveryOrders.confirmConfirmBody",
-          { number: order.deliveryOrderNumber },
-        )}
+        message={tr("shipping.deliveryOrders.confirmConfirmBody", {
+          number: order.deliveryOrderNumber,
+        })}
         onClose={() => setConfirmOpen(false)}
         onConfirm={() =>
           run(
@@ -511,6 +558,11 @@ export function DeliveryOrderDetail({
         }
         opened={confirmOpen}
         title={tr("common.confirm")}
+        warning={
+          order.autoDeliveryNotes.endUserMissing
+            ? tr("shipping.deliveryOrders.autoNotesEndUserMissing")
+            : undefined
+        }
       />
       <ConfirmModal
         confirmColor="blue"

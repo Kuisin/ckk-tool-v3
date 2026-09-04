@@ -178,6 +178,7 @@ export function ConfirmModal({
   confirmLabel,
   confirmColor = "red",
   loading,
+  details,
   warning,
   onConfirm,
 }: ModalBaseProps & {
@@ -186,6 +187,11 @@ export function ConfirmModal({
   confirmLabel?: string;
   confirmColor?: string;
   loading?: boolean;
+  /**
+   * 本文の下に置く補足（実行すると何が起きるかの内訳など）。message は
+   * <Text> の中なので、箇条書きなどブロックを出したいときはこちらへ。
+   */
+  details?: ReactNode;
   warning?: ReactNode;
   /** Action to run on confirm. The modal closes afterwards (preview default: close only). */
   onConfirm?: () => void;
@@ -207,6 +213,7 @@ export function ConfirmModal({
       title={title}
     >
       <Text size="sm">{message}</Text>
+      {details}
       {warning && (
         <Alert
           color="red"
