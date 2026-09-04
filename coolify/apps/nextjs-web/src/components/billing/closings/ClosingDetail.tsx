@@ -39,7 +39,7 @@ import { ConfirmModal } from "@/components/ui/modals";
 import {
   type HandoffGroup,
   ProcedurePanel,
-  type ProcedureStage,
+  procedureStages,
 } from "@/components/ui/ProcedurePanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -99,29 +99,30 @@ export function ClosingDetail({
   const totalAmount = closing.shipments.reduce((sum, s) => sum + s.amount, 0);
 
   // ── 手続き状況（未処理 → 請求書生成 → エクスポート済）─────────────────
-  const stages: ProcedureStage[] = [
-    {
-      key: "pending",
-      label: tr("billing.closings.unprocessed"),
-      description: `${tr("billing.closings.shipmentsCovered")} ${tr("common.itemsCount", { count: closing.shipments.length })}`,
-      loading: closing.status === "PENDING",
-    },
-    {
-      key: "processed",
-      label: tr("billing.closings.generateInvoices"),
-      description: closing.processedAt
-        ? fmt.date(closing.processedAt)
-        : tr("billing.closings.createAnInvoice"),
-      loading: closing.status === "PROCESSED",
-    },
-    {
-      key: "exported",
-      label: tr("billing.closings.exported"),
-      description: tr("billing.closings.yayoiAccountingCsv"),
-    },
-  ];
-  const active =
-    closing.status === "PENDING" ? 0 : closing.status === "PROCESSED" ? 1 : 3;
+  // 請求書を作り終えたら「請求書生成」は済んだ段で、待っているのは
+  // 弥生への書き出し（2）。
+  const stages = procedureStages(
+    [
+      {
+        key: "pending",
+        label: tr("billing.closings.unprocessed"),
+        description: `${tr("billing.closings.shipmentsCovered")} ${tr("common.itemsCount", { count: closing.shipments.length })}`,
+      },
+      {
+        key: "processed",
+        label: tr("billing.closings.generateInvoices"),
+        description: closing.processedAt
+          ? fmt.date(closing.processedAt)
+          : tr("billing.closings.createAnInvoice"),
+      },
+      {
+        key: "exported",
+        label: tr("billing.closings.exported"),
+        description: tr("billing.closings.yayoiAccountingCsv"),
+      },
+    ],
+    closing.status === "PENDING" ? 0 : closing.status === "PROCESSED" ? 2 : 3,
+  );
 
   // 上流 = 請求対象として集計した出荷書。
   const sourceGroups: HandoffGroup[] = [
@@ -236,7 +237,6 @@ export function ClosingDetail({
       </SummaryGrid>
 
       <ProcedurePanel
-        active={active}
         handoffGroups={handoffGroups}
         sourceGroups={sourceGroups}
         stages={stages}

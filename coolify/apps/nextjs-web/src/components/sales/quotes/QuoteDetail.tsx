@@ -42,7 +42,7 @@ import {
 import {
   type HandoffGroup,
   ProcedurePanel,
-  type ProcedureStage,
+  procedureStages,
 } from "@/components/ui/ProcedurePanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -119,32 +119,34 @@ export function QuoteDetail({
   // 受諾したかどうかは注文請書側の状態から読む（下の handoffGroups の
   // 「次の書類へ」）。期限切れは段を増やさず色で示す
   // （_specs/design.md §9 の EXPIRED = orange）。
-  const stages: ProcedureStage[] = [
-    {
-      key: "draft",
-      label: tr("common.draft"),
-      description: fmt.date(quote.createdAt),
-      loading: status === "DRAFT",
-    },
-    {
-      key: "issued",
-      label: tr("common.issue"),
-      description: isExpired
-        ? tr("sales.quoteDetail.expiredOn", {
-            date: fmt.date(quote.validUntil),
-          })
-        : status === "DRAFT"
-          ? tr("sales.quoteDetail.issuePdfDesc")
-          : quote.validUntil
-            ? tr("sales.quoteDetail.validUntilLabel", {
-                date: fmt.date(quote.validUntil),
-              })
-            : tr("common.issued2"),
-      loading: status === "ISSUED" && !isExpired,
-      color: isExpired ? "orange" : undefined,
-    },
-  ];
-  const active = status === "DRAFT" ? 0 : 1;
+  // 発行したら段は全部済み（受諾は注文請書側の話）。期限切れは段を増やさず
+  // 「発行」を橙で示す — 済んだ段にも色は効く。
+  const stages = procedureStages(
+    [
+      {
+        key: "draft",
+        label: tr("common.draft"),
+        description: fmt.date(quote.createdAt),
+      },
+      {
+        key: "issued",
+        label: tr("common.issue"),
+        description: isExpired
+          ? tr("sales.quoteDetail.expiredOn", {
+              date: fmt.date(quote.validUntil),
+            })
+          : status === "DRAFT"
+            ? tr("sales.quoteDetail.issuePdfDesc")
+            : quote.validUntil
+              ? tr("sales.quoteDetail.validUntilLabel", {
+                  date: fmt.date(quote.validUntil),
+                })
+              : tr("common.issued2"),
+        color: isExpired ? "orange" : undefined,
+      },
+    ],
+    status === "DRAFT" ? 0 : 2,
+  );
 
   // 上流 = 明細の単価を引いた価格表（見積書は価格表からしか値を持たない）。
   const sourceGroups: HandoffGroup[] | undefined =
@@ -303,7 +305,6 @@ export function QuoteDetail({
       </SummaryGrid>
 
       <ProcedurePanel
-        active={active}
         handoffGroups={handoffGroups}
         sourceGroups={sourceGroups}
         stages={stages}

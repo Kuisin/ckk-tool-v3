@@ -60,7 +60,7 @@ import {
   approvalStage,
   type HandoffGroup,
   ProcedurePanel,
-  type ProcedureStage,
+  procedureStages,
 } from "@/components/ui/ProcedurePanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -86,9 +86,16 @@ interface Option {
   label: string;
 }
 
-/** status → Stepper の active index（依頼 / 承認 / 発注書へ変換）。 */
-function stepperActive(status: string): number {
-  switch (status) {
+/**
+ * status → いま留まっている段（依頼 / 承認 / 発注書へ変換）。
+ * キャンセルは**進んだところまで**を返す（残りは skipped で描く）。
+ */
+function currentStage(rq: {
+  status: string;
+  requestedAt: string | null;
+  approvedAt: string | null;
+}): number {
+  switch (rq.status) {
     case "DRAFT":
     case "REJECTED":
       return 0;
@@ -99,7 +106,10 @@ function stepperActive(status: string): number {
     case "ORDERED":
       return 3;
     default:
-      return -1; // CANCELLED
+      // CANCELLED
+      if (rq.approvedAt) return 2;
+      if (rq.requestedAt) return 1;
+      return 0;
   }
 }
 
@@ -208,31 +218,33 @@ export function PurchaseRequestDetail({
   const lastReject = records.find((h) => h.action === "REJECT");
 
   // ── 手続き状況（依頼 → 承認 → 発注書へ変換）─────────────────────────────
-  const stages: ProcedureStage[] = [
-    {
-      key: "requested",
-      label: tr("common.request"),
-      description: rq.requestedAt
-        ? fmt.date(rq.requestedAt)
-        : tr("common.draft"),
-      // 差し戻し中は赤（_specs/design.md §9 REJECTED = red）。
-      color: rq.status === "REJECTED" ? "red" : undefined,
-      loading: rq.status === "DRAFT",
-    },
-    approvalStage(approval, {
-      approvedAt: rq.approvedAt,
-      fmtDate: (v) => fmt.date(v),
-      tr,
-    }),
-    {
-      key: "ordered",
-      label: tr("purchase.purchaseRequests.convertToAPurchaseOrder"),
-      description: rq.orderedAt
-        ? fmt.date(rq.orderedAt)
-        : tr("purchase.purchaseRequests.specifyASupplier"),
-      loading: rq.status === "APPROVED",
-    },
-  ];
+  const stages = procedureStages(
+    [
+      {
+        key: "requested",
+        label: tr("common.request"),
+        description: rq.requestedAt
+          ? fmt.date(rq.requestedAt)
+          : tr("common.draft"),
+        // 差し戻し中は赤（_specs/design.md §9 REJECTED = red）。
+        color: rq.status === "REJECTED" ? "red" : undefined,
+      },
+      approvalStage(approval, {
+        approvedAt: rq.approvedAt,
+        fmtDate: (v) => fmt.date(v),
+        tr,
+      }),
+      {
+        key: "ordered",
+        label: tr("purchase.purchaseRequests.convertToAPurchaseOrder"),
+        description: rq.orderedAt
+          ? fmt.date(rq.orderedAt)
+          : tr("purchase.purchaseRequests.specifyASupplier"),
+      },
+    ],
+    currentStage(rq),
+    { stopped: rq.status === "CANCELLED" },
+  );
 
   // 下流 = 変換で生成した素材発注書（1 依頼 = 1 発注書）。
   const handoffGroups: HandoffGroup[] = [
@@ -375,7 +387,6 @@ export function PurchaseRequestDetail({
       </SummaryGrid>
 
       <ProcedurePanel
-        active={stepperActive(rq.status)}
         cancelled={rq.status === "CANCELLED"}
         cancelledNote={rq.cancelReason}
         handoffGroups={handoffGroups}

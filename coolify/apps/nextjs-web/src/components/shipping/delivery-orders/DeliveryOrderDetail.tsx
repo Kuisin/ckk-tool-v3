@@ -45,7 +45,7 @@ import { ConfirmModal } from "@/components/ui/modals";
 import {
   type HandoffGroup,
   ProcedurePanel,
-  type ProcedureStage,
+  procedureStages,
 } from "@/components/ui/ProcedurePanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -112,23 +112,24 @@ function DeliveryOrderProcedurePanel({
 }) {
   const tr = useTranslations();
   const isStock = order.type === "STOCK_STORAGE";
-  const stages: ProcedureStage[] = [
-    {
-      key: "created",
-      label: tr("common.create2"),
-      description: fmtDate(order.createdAt),
-    },
-    { key: "confirmed", label: tr("common.confirmed"), description: null },
-    {
-      key: "shipped",
-      label: isStock
-        ? tr("shipping.deliveryOrders.storedToStock")
-        : tr("common.shipping"),
-      description: order.shippedAt ? fmtDate(order.shippedAt) : null,
-    },
-  ];
-  const active =
-    order.status === "DRAFT" ? 1 : order.status === "CONFIRMED" ? 2 : 3;
+  const stages = procedureStages(
+    [
+      {
+        key: "created",
+        label: tr("common.create2"),
+        description: fmtDate(order.createdAt),
+      },
+      { key: "confirmed", label: tr("common.confirmed"), description: null },
+      {
+        key: "shipped",
+        label: isStock
+          ? tr("shipping.deliveryOrders.storedToStock")
+          : tr("common.shipping"),
+        description: order.shippedAt ? fmtDate(order.shippedAt) : null,
+      },
+    ],
+    order.status === "DRAFT" ? 1 : order.status === "CONFIRMED" ? 2 : 3,
+  );
 
   // 上流 = 束ねた注文明細（在庫保管はゼロ件もあり得る）と、ヘッダ紐付けの指示書。
   const sourceGroups: HandoffGroup[] = [
@@ -197,7 +198,6 @@ function DeliveryOrderProcedurePanel({
 
   return (
     <ProcedurePanel
-      active={active}
       handoffGroups={handoffGroups}
       sourceGroups={sourceGroups}
       stages={stages}

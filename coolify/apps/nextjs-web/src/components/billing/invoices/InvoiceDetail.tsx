@@ -55,7 +55,7 @@ import {
 import {
   type HandoffGroup,
   ProcedurePanel,
-  type ProcedureStage,
+  procedureStages,
 } from "@/components/ui/ProcedurePanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -113,45 +113,45 @@ export function InvoiceDetail({
     `/api/pdf/invoice?id=${encodeURIComponent(invoice.id)}${extra}`;
 
   // ── 手続き状況（下書き → 発行 → 送付 → 入金）───────────────────────────
-  const stages: ProcedureStage[] = [
-    {
-      key: "draft",
-      label: tr("common.draft"),
-      description: fmt.date(invoice.createdAt),
-      loading: invoice.status === "DRAFT",
-    },
-    {
-      key: "issued",
-      label: tr("common.issue"),
-      description: invoice.issuedAt
-        ? fmt.date(invoice.issuedAt)
-        : tr("billing.invoices.issueThePdf"),
-      loading: invoice.status === "ISSUED",
-    },
-    {
-      key: "sent",
-      label: tr("billing.invoices.send"),
-      description: invoice.sentAt
-        ? fmt.date(invoice.sentAt)
-        : tr("billing.invoices.sendToTheCustomer"),
-      loading: invoice.status === "SENT",
-    },
-    {
-      key: "paid",
-      label: tr("billing.invoices.payment"),
-      description: invoice.dueDate
-        ? `${tr("billing.invoices.paymentDue")} ${fmt.date(invoice.dueDate)}`
-        : tr("billing.invoices.confirmPayment"),
-    },
-  ];
-  const active =
+  // 現在段は「次にやること」を指す — 発行済みなら発行は済んでいて、
+  // 待っているのは送付（2）。
+  const stages = procedureStages(
+    [
+      {
+        key: "draft",
+        label: tr("common.draft"),
+        description: fmt.date(invoice.createdAt),
+      },
+      {
+        key: "issued",
+        label: tr("common.issue"),
+        description: invoice.issuedAt
+          ? fmt.date(invoice.issuedAt)
+          : tr("billing.invoices.issueThePdf"),
+      },
+      {
+        key: "sent",
+        label: tr("billing.invoices.send"),
+        description: invoice.sentAt
+          ? fmt.date(invoice.sentAt)
+          : tr("billing.invoices.sendToTheCustomer"),
+      },
+      {
+        key: "paid",
+        label: tr("billing.invoices.payment"),
+        description: invoice.dueDate
+          ? `${tr("billing.invoices.paymentDue")} ${fmt.date(invoice.dueDate)}`
+          : tr("billing.invoices.confirmPayment"),
+      },
+    ],
     invoice.status === "DRAFT"
       ? 0
       : invoice.status === "ISSUED"
-        ? 1
+        ? 2
         : invoice.status === "SENT"
-          ? 2
-          : 4;
+          ? 3
+          : 4,
+  );
 
   // 上流 = 明細の由来（出荷書 / 納品書）。1 請求書は複数の出荷を束ねるので
   // 明細から重複を除いて集める。
@@ -381,7 +381,6 @@ export function InvoiceDetail({
       </SummaryGrid>
 
       <ProcedurePanel
-        active={active}
         handoffGroups={handoffGroups}
         sourceGroups={sourceGroups}
         stages={stages}

@@ -98,21 +98,6 @@ export function decideAfterApproval(input: {
   };
 }
 
-/**
- * Mantine Stepper の active index（0 起点）。
- * PENDING は現在段を指し、APPROVED は全段の先（= 完了）を指す。
- * NONE / REJECTED はどの段もアクティブにしない。
- */
-export function stepperActive(
-  stepCount: number,
-  currentStepNo: number,
-  phase: ApprovalPhase,
-): number {
-  if (phase === "APPROVED") return stepCount;
-  if (phase === "PENDING") return Math.max(0, currentStepNo - 1);
-  return -1;
-}
-
 /** フロー編集の 1 行（画面の state と Server Action の入力が同じ形）。 */
 export interface FlowStepDraft {
   nameJa: string;

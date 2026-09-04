@@ -65,7 +65,7 @@ import {
   approvalStage,
   type HandoffGroup,
   ProcedurePanel,
-  type ProcedureStage,
+  procedureStages,
 } from "@/components/ui/ProcedurePanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -85,9 +85,17 @@ import {
 
 const BASE_PATH = "/purchase/purchase-orders";
 
-/** status → Stepper の active index（依頼 / 承認 / 発注 / 入荷完了）。 */
-function stepperActive(status: string): number {
-  switch (status) {
+/**
+ * status → いま留まっている段（依頼 / 承認 / 発注 / 入荷完了）。
+ * キャンセルは**進んだところまで**を返す（残りは skipped で描く）。
+ */
+function currentStage(po: {
+  status: string;
+  requestedAt: string | null;
+  approvedAt: string | null;
+  orderedAt: string | null;
+}): number {
+  switch (po.status) {
     case "DRAFT":
       return 0;
     case "REQUESTED":
@@ -99,7 +107,11 @@ function stepperActive(status: string): number {
     case "COMPLETED":
       return 4;
     default:
-      return -1; // CANCELLED
+      // CANCELLED
+      if (po.orderedAt) return 3;
+      if (po.approvedAt) return 2;
+      if (po.requestedAt) return 1;
+      return 0;
   }
 }
 
@@ -176,37 +188,38 @@ export function PurchaseOrderDetail({
   const records = [...po.history].reverse();
 
   // ── 手続き状況（依頼 → 承認 → 発注 → 入荷完了）─────────────────────────
-  const stages: ProcedureStage[] = [
-    {
-      key: "requested",
-      label: tr("common.request"),
-      description: po.requestedAt
-        ? fmt.date(po.requestedAt)
-        : tr("common.draft"),
-      loading: po.status === "DRAFT",
-    },
-    approvalStage(approval, {
-      approvedAt: po.approvedAt,
-      fmtDate: (v) => fmt.date(v),
-      tr,
-    }),
-    {
-      key: "ordered",
-      label: tr("purchase.purchaseOrders.order"),
-      description: po.orderedAt
-        ? fmt.date(po.orderedAt)
-        : tr("purchase.purchaseOrders.toExpectedReceipts"),
-      loading: po.status === "APPROVED",
-    },
-    {
-      key: "completed",
-      label: tr("purchase.purchaseOrders.received"),
-      description: po.completedAt
-        ? fmt.date(po.completedAt)
-        : tr("purchase.purchaseOrders.receiveIntoStock"),
-      loading: po.status === "ORDERED",
-    },
-  ];
+  const stages = procedureStages(
+    [
+      {
+        key: "requested",
+        label: tr("common.request"),
+        description: po.requestedAt
+          ? fmt.date(po.requestedAt)
+          : tr("common.draft"),
+      },
+      approvalStage(approval, {
+        approvedAt: po.approvedAt,
+        fmtDate: (v) => fmt.date(v),
+        tr,
+      }),
+      {
+        key: "ordered",
+        label: tr("purchase.purchaseOrders.order"),
+        description: po.orderedAt
+          ? fmt.date(po.orderedAt)
+          : tr("purchase.purchaseOrders.toExpectedReceipts"),
+      },
+      {
+        key: "completed",
+        label: tr("purchase.purchaseOrders.received"),
+        description: po.completedAt
+          ? fmt.date(po.completedAt)
+          : tr("purchase.purchaseOrders.receiveIntoStock"),
+      },
+    ],
+    currentStage(po),
+    { stopped: po.status === "CANCELLED" },
+  );
 
   // 上流 = 変換元の購買依頼（直接起票した発注書には無い）。
   const sourceGroups: HandoffGroup[] | undefined = po.sourceRequestNumber
@@ -394,7 +407,6 @@ export function PurchaseOrderDetail({
       </SummaryGrid>
 
       <ProcedurePanel
-        active={stepperActive(po.status)}
         cancelled={po.status === "CANCELLED"}
         cancelledNote={po.cancelReason}
         handoffGroups={handoffGroups}

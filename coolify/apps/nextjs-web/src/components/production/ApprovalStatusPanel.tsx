@@ -46,7 +46,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   type HandoffGroup,
   ProcedurePanel,
-  type ProcedureStage,
+  procedureStages,
 } from "@/components/ui/ProcedurePanel";
 import { workOrderHistoryActionLabel } from "@/lib/enum-labels";
 import { statusLabel } from "@/lib/status-map";
@@ -136,53 +136,10 @@ export function WorkOrderProcedurePanel({
   const n = approvalSteps.length;
   const rejected = approval.phase === "REJECTED";
 
-  const stages: ProcedureStage[] = [
-    {
-      key: "created",
-      label: tr("common.create2"),
-      description: fmt.date(wo.createdAt),
-    },
-    ...approvalSteps.map((s, i) => ({
-      key: `approval-${s.stepNo}`,
-      label:
-        s.label ||
-        tr("production.approvalStatusPanel.stepNumberApproval", {
-          step: s.stepNo,
-        }),
-      description:
-        rejected && s.stepNo === approval.stepNo
-          ? tr("common.reject")
-          : i === n - 1 && wo.approvedAt && wo.status !== "DRAFT"
-            ? fmt.date(wo.approvedAt)
-            : s.groupLabel
-              ? s.mode === "ALL"
-                ? tr("production.approvalStatusPanel.allMembersApproval", {
-                    group: s.groupLabel,
-                  })
-                : s.groupLabel
-              : null,
-      color: rejected && s.stepNo === approval.stepNo ? "red" : undefined,
-    })),
-    {
-      key: "production",
-      label: tr("common.manufacture"),
-      description: wo.startedAt
-        ? tr("production.approvalStatusPanel.startedOn", {
-            date: fmt.date(wo.startedAt),
-          })
-        : wo.status === "APPROVED"
-          ? tr("production.approvalStatusPanel.awaitingStart")
-          : null,
-      loading: wo.status === "IN_PROGRESS",
-    },
-    {
-      key: "done",
-      label: tr("common.completed"),
-      description: wo.completedAt ? fmt.date(wo.completedAt) : null,
-    },
-  ];
-
-  const active = (() => {
+  // 段は 作成(1) + 承認段(n) + 製造 + 完了。いま留まっている段を先に決めて
+  // から組み立てる（段数が承認フローの段数で変わるため）。
+  const cancelled = wo.status === "CANCELLED";
+  const current = (() => {
     switch (wo.status) {
       case "DRAFT":
         // 差し戻しは止まっている段、依頼前は先頭の承認段が現在
@@ -193,12 +150,61 @@ export function WorkOrderProcedurePanel({
       case "IN_PROGRESS":
         return 1 + n;
       case "COMPLETED":
-        return stages.length;
+        return n + 3;
       default:
         // CANCELLED — 進んだところまで（開始済み > 承認済み > 依頼済み > 作成）
-        return wo.startedAt ? 1 + n : wo.approvedAt ? 1 + n : 1;
+        return wo.startedAt || wo.approvedAt ? 1 + n : 1;
     }
   })();
+
+  const stages = procedureStages(
+    [
+      {
+        key: "created",
+        label: tr("common.create2"),
+        description: fmt.date(wo.createdAt),
+      },
+      ...approvalSteps.map((s, i) => ({
+        key: `approval-${s.stepNo}`,
+        label:
+          s.label ||
+          tr("production.approvalStatusPanel.stepNumberApproval", {
+            step: s.stepNo,
+          }),
+        description:
+          rejected && s.stepNo === approval.stepNo
+            ? tr("common.reject")
+            : i === n - 1 && wo.approvedAt && wo.status !== "DRAFT"
+              ? fmt.date(wo.approvedAt)
+              : s.groupLabel
+                ? s.mode === "ALL"
+                  ? tr("production.approvalStatusPanel.allMembersApproval", {
+                      group: s.groupLabel,
+                    })
+                  : s.groupLabel
+                : null,
+        color: rejected && s.stepNo === approval.stepNo ? "red" : undefined,
+      })),
+      {
+        key: "production",
+        label: tr("common.manufacture"),
+        description: wo.startedAt
+          ? tr("production.approvalStatusPanel.startedOn", {
+              date: fmt.date(wo.startedAt),
+            })
+          : wo.status === "APPROVED"
+            ? tr("production.approvalStatusPanel.awaitingStart")
+            : null,
+      },
+      {
+        key: "done",
+        label: tr("common.completed"),
+        description: wo.completedAt ? fmt.date(wo.completedAt) : null,
+      },
+    ],
+    current,
+    { stopped: cancelled },
+  );
 
   // ── 前の書類から: 割り当てられた注文明細 + 前段の指示書 ──────────────────
   // 割当ゼロ = 在庫向けの独立指示書（_specs/tables.md work_order_order_lines）。
@@ -325,8 +331,7 @@ export function WorkOrderProcedurePanel({
 
   return (
     <ProcedurePanel
-      active={active}
-      cancelled={wo.status === "CANCELLED"}
+      cancelled={cancelled}
       handoffGroups={handoffGroups}
       sourceGroups={sourceGroups}
       stages={stages}

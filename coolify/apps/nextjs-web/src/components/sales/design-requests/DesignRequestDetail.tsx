@@ -88,7 +88,7 @@ import {
   approvalStage,
   type HandoffGroup,
   ProcedurePanel,
-  type ProcedureStage,
+  procedureStages,
 } from "@/components/ui/ProcedurePanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -131,9 +131,14 @@ interface Option {
   label: string;
 }
 
-/** status → Stepper の active index（依頼 / 承認 / 着手 / 完了）。 */
-function stepperActive(status: DesignRequest["status"]): number {
-  switch (status) {
+/**
+ * status → いま留まっている段（依頼 / 承認 / 着手 / 完了）。
+ *
+ * キャンセルは「どの段にも居ない」ではなく**進んだところまで**を返す —
+ * 残りは skipped（もう通らない）として描くので、どこで止まったかが読める。
+ */
+function currentStage(request: DesignRequest): number {
+  switch (request.status) {
     case "DRAFT":
     case "REJECTED":
       return 0;
@@ -146,7 +151,11 @@ function stepperActive(status: DesignRequest["status"]): number {
     case "COMPLETED":
       return 4;
     default:
-      return -1; // CANCELLED
+      // CANCELLED
+      if (request.startedAt) return 3;
+      if (request.approvedAt) return 2;
+      if (request.requestedAt) return 1;
+      return 0;
   }
 }
 
@@ -322,39 +331,40 @@ export function DesignRequestDetail({
   const records = [...request.history].reverse();
 
   // ── 手続き状況（依頼 → 承認 → 着手 → 完了）───────────────────────────────
-  const stages: ProcedureStage[] = [
-    {
-      key: "requested",
-      label: tr("common.request"),
-      description: request.requestedAt
-        ? fmt.date(request.requestedAt)
-        : tr("common.draft"),
-      // 差し戻し中は赤（_specs/design.md §9 REJECTED = red）。
-      color: request.status === "REJECTED" ? "red" : undefined,
-      loading: request.status === "DRAFT",
-    },
-    approvalStage(approval, {
-      approvedAt: request.approvedAt,
-      fmtDate: (v) => fmt.date(v),
-      tr,
-    }),
-    {
-      key: "started",
-      label: tr("sales.designRequests.start"),
-      description: request.startedAt
-        ? fmt.date(request.startedAt)
-        : (request.assigneeName ?? tr("common.assignee")),
-      loading: request.status === "PENDING",
-    },
-    {
-      key: "completed",
-      label: tr("common.completed"),
-      description: request.completedAt
-        ? fmt.date(request.completedAt)
-        : tr("sales.designRequests.registerADrawing"),
-      loading: request.status === "IN_PROGRESS",
-    },
-  ];
+  const stages = procedureStages(
+    [
+      {
+        key: "requested",
+        label: tr("common.request"),
+        description: request.requestedAt
+          ? fmt.date(request.requestedAt)
+          : tr("common.draft"),
+        // 差し戻し中は赤（_specs/design.md §9 REJECTED = red）。
+        color: request.status === "REJECTED" ? "red" : undefined,
+      },
+      approvalStage(approval, {
+        approvedAt: request.approvedAt,
+        fmtDate: (v) => fmt.date(v),
+        tr,
+      }),
+      {
+        key: "started",
+        label: tr("sales.designRequests.start"),
+        description: request.startedAt
+          ? fmt.date(request.startedAt)
+          : (request.assigneeName ?? tr("common.assignee")),
+      },
+      {
+        key: "completed",
+        label: tr("common.completed"),
+        description: request.completedAt
+          ? fmt.date(request.completedAt)
+          : tr("sales.designRequests.registerADrawing"),
+      },
+    ],
+    currentStage(request),
+    { stopped: request.status === "CANCELLED" },
+  );
 
   // 上流 = 依頼のきっかけ（見積時 / 受注時）。単独依頼は両方 null。
   const sourceItems = [
@@ -728,7 +738,6 @@ export function DesignRequestDetail({
       </SummaryGrid>
 
       <ProcedurePanel
-        active={stepperActive(request.status)}
         cancelled={request.status === "CANCELLED"}
         cancelledNote={request.cancelReason}
         handoffGroups={handoffGroups}
