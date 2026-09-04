@@ -30,6 +30,7 @@ import {
   IconCopy,
   IconPrinter,
   IconRuler2,
+  IconTruck,
   IconX,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -61,6 +62,7 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { ModalShell, openConfirm } from "@/components/ui/modals";
+import { NextStepCard } from "@/components/ui/NextStepCard";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -137,6 +139,23 @@ export function WorkOrderDetail({
   const isApproval = variant === "approval";
   const canEdit = wo.status === "DRAFT";
   const canCancel = wo.status === "DRAFT" || wo.status === "PENDING_APPROVAL";
+
+  // 次のステップ = 出荷書の作成。完了した指示書で、注文明細に紐づいていて、
+  // 完成数がまだ出荷書に載りきっていないときだけ進める。在庫向けの独立指示書
+  // （割当ゼロ）は出荷書の顧客が決まらないのでここからは作れない。
+  const doCreateHref = `/shipping/delivery-orders/new?workOrder=${wo.workOrderNumber}`;
+  const doCreatable =
+    wo.status === "COMPLETED" &&
+    wo.orderLines.length > 0 &&
+    wo.unshippedQuantity > 0;
+  const doDisabledReason =
+    wo.status !== "COMPLETED"
+      ? tr("production.workOrders.deliveryOrderNeedsCompletedWorkOrder")
+      : wo.orderLines.length === 0
+        ? tr("production.workOrders.deliveryOrderNeedsOrderLine")
+        : wo.unshippedQuantity <= 0
+          ? tr("production.workOrders.deliveryOrderAlreadyArranged")
+          : undefined;
 
   // 図面の固定 / 解除。任意の操作なので、失敗しても指示書側は何も変えない。
   const onToggleDesignPin = (designFileId: string | null) => {
@@ -353,6 +372,13 @@ export function WorkOrderDetail({
                 onClick: () => setCopyOpen(true),
               },
               {
+                label: tr("common.createADeliveryOrder"),
+                icon: <IconTruck size={14} />,
+                disabled: !doCreatable,
+                disabledReason: doDisabledReason,
+                onClick: () => router.push(doCreateHref),
+              },
+              {
                 // 帯（最小要約 + QR）を別タブで開いてブラウザ印刷する。
                 // QR は CKK:WO:<番号> — 将来キオスクで読んで工程へ飛ぶ。
                 label: tr("production.workOrders.printStrips"),
@@ -417,6 +443,20 @@ export function WorkOrderDetail({
     >
       {/* 「いまやること」カードは常に最上部。承認画面は承認状況もサマリより上 */}
       {approvalCard}
+      {/* 次のステップ — 完了して出荷待ちの分が残っているときだけ。承認カードと
+          同時に出ることはない（承認カードは完了前の状態でしか出ない）。 */}
+      {!isApproval && doCreatable && (
+        <NextStepCard
+          buttonLabel={tr("common.createADeliveryOrder")}
+          description={tr(
+            "production.workOrders.openDeliveryOrderFormForThisLot",
+            { quantity: wo.unshippedQuantity },
+          )}
+          href={doCreateHref}
+          icon={<IconTruck size={20} />}
+          title={tr("production.workOrders.nextStepCreateADeliveryOrder")}
+        />
+      )}
       {/* 事後承認（POST）で差し戻されたが適用済みの変更 — 人が直すまで出続ける */}
       {rejectedAppliedFlowChange && (
         <Alert

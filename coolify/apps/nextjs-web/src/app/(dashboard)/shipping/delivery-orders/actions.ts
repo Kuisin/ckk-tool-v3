@@ -193,6 +193,13 @@ export interface StockLotRef {
 export interface DeliverySourceInfo {
   orderLineId: string;
   orderLineNumber: string;
+  /**
+   * この明細が属する注文請書の番号（ORD-YYYYMM-NNNNN）。
+   * フォームの「対象の注文請書」表示はこれを集めて作る — 注文請書ピッカーは
+   * 追加専用で選択値を保持しないので、いま何の注文請書に対する出荷書なのかは
+   * 載っている明細から導くしかない。
+   */
+  acceptanceNumber: string;
   /** 出荷書ヘッダの顧客を決めるのに使う（1 出荷書 = 1 顧客の検証にも）。 */
   customerBpId: string | null;
   customerName: string;
@@ -304,6 +311,10 @@ export async function fetchDeliverySourceInfo(
         yearMonth: so.acceptanceYearMonth,
         seq: so.acceptanceSeq,
         branch: so.branch,
+      }),
+      acceptanceNumber: formatDocNumber("ORD", {
+        yearMonth: so.acceptanceYearMonth,
+        seq: so.acceptanceSeq,
       }),
       customerBpId: so.acceptance.customerBpId,
       customerName: localized(

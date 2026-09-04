@@ -219,6 +219,14 @@ When all the steps are finished, the work order automatically becomes 「**完�
 
 You can check stock in [inventory management](/manual/en/operations/production/product-inventory/user) (PD04). Pieces still being made are shown on the 「**仕掛品**」 (work in progress) tab of the same app.
 
+### Next step: make a delivery order
+
+When a finished work order still has pieces that are not on any delivery order, 「**次のステップ: 出荷書の作成**」 (next step: create a delivery order) appears at the top of its detail screen. Pressing it opens the [delivery order](/manual/en/operations/shipping/delivery-order/user) form with this work order's order lines already filled in.
+
+**If the same order acceptance has other lines that have not shipped yet, you are asked whether to ship them together.** Tick the ones you want and press 「**選んだ明細を追加**」 (add selected lines) to put them on one delivery order, or press 「**この指示書だけ**」 (just this work order) to keep it to this one. You can always add more later with the order acceptance box, so you do not have to decide it here.
+
+You cannot make one from a for-stock work order (one with no order line). In that case start from the delivery order side and pick the order acceptance there.
+
 ## Other things you can do
 
 - **編集** (edit) … only while it is 「下書き」 (draft). Press 「**編集**」 (Edit) at the top right of the screen.

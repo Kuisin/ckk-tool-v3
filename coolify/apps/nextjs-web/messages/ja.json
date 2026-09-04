@@ -2365,7 +2365,12 @@
       "flowChangeDescription": "{summary}｜依頼: {requestedBy}｜{stepLabel}。{note}",
       "flowChangeNotAppliedYet": "承認されるまで工程は変わりません。",
       "andNMoreOrderLines": "{first} ほか{count}件",
-      "andNMoreCustomers": "{first} ほか{count}社"
+      "andNMoreCustomers": "{first} ほか{count}社",
+      "nextStepCreateADeliveryOrder": "次のステップ: 出荷書の作成",
+      "openDeliveryOrderFormForThisLot": "完成した {quantity} 本のうち、まだ出荷書に載っていない分で出荷書を作ります。同じ注文請書の他の明細もまとめられます。",
+      "deliveryOrderNeedsCompletedWorkOrder": "完了した指示書からのみ作成できます",
+      "deliveryOrderNeedsOrderLine": "注文明細に紐づいていない指示書からは作成できません",
+      "deliveryOrderAlreadyArranged": "完成分はすべて出荷書に載っています"
     },
     "addBranchModal": {
       "theBranchWasAdded": "分岐を追加しました",
@@ -7387,7 +7392,13 @@
       "stockStorageHasNoDeliveryNote": "在庫保管は納品書を作成しません",
       "onlySameEndUserCanBeCombined": "1 つの出荷書には同じ届け先（最終需要家）の注文明細だけを載せられます",
       "confirmConfirmBodyDispatch": "出荷書 {number} を確定します。確定後は編集できません。納品書が自動で作成されます（ユーザー直送は価格記載なし・ありの 2 通）。",
-      "confirmedBodyDispatch": "出荷書 {number} を確定し、納品書を作成しました"
+      "confirmedBodyDispatch": "出荷書 {number} を確定し、納品書を作成しました",
+      "coveredOrderAcceptances": "対象の注文請書",
+      "shipTogetherTitle": "同じ注文請書の他の明細もまとめますか",
+      "shipTogetherBody": "同じ注文請書に、まだ出荷していない明細が {count} 件あります。この出荷書にまとめる明細を選んでください。",
+      "unshippedWithLots": "未出荷 {quantity} / ロット {lots}",
+      "justThisWorkOrder": "この指示書だけ",
+      "addSelectedLines": "選んだ明細を追加"
     },
     "pendingShipments": {
       "completedLots": "完了ロット",
@@ -7420,7 +7431,8 @@
       "shippedQuantityLabel": "出荷済 {quantity}",
       "completedQuantityLabel": "完成 {quantity}（完了指示書 {count} 件）",
       "exceedsRemainingLabel": "受注残 {remaining} を超えています（出荷 {total}）",
-      "partialShipmentLabel": "一部出荷（出荷 {total} / 受注残 {remaining}）"
+      "partialShipmentLabel": "一部出荷（出荷 {total} / 受注残 {remaining}）",
+      "couldNotAddWorkOrderLines": "指示書 #{workOrderNumber} の注文明細を読み込めませんでした（未確定・製品未特定の可能性があります）"
     },
     "deliveryNoteForm": {
       "editWithNumber": "納品書 編集 {noteId}"

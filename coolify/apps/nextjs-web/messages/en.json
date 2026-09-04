@@ -2365,7 +2365,12 @@
       "flowChangeDescription": "{summary} | Requested by: {requestedBy} | {stepLabel}. {note}",
       "flowChangeNotAppliedYet": "The steps will not change until approved.",
       "andNMoreOrderLines": "{first} and {count} more",
-      "andNMoreCustomers": "{first} and {count} more"
+      "andNMoreCustomers": "{first} and {count} more",
+      "nextStepCreateADeliveryOrder": "Next step: create a delivery order",
+      "openDeliveryOrderFormForThisLot": "Opens the delivery order form for the finished quantity ({quantity}) that is not on a delivery order yet. Other lines of the same order acceptance can be added too.",
+      "deliveryOrderNeedsCompletedWorkOrder": "You can create it only from a completed work order",
+      "deliveryOrderNeedsOrderLine": "You cannot create it from a work order with no order line",
+      "deliveryOrderAlreadyArranged": "The whole finished quantity is already on delivery orders"
     },
     "addBranchModal": {
       "theBranchWasAdded": "The branch was added",
@@ -7387,7 +7392,13 @@
       "stockStorageHasNoDeliveryNote": "Stock-storage delivery orders don't get a delivery note",
       "onlySameEndUserCanBeCombined": "A delivery order can only combine order lines with the same end user",
       "confirmConfirmBodyDispatch": "This confirms delivery order {number}. It cannot be edited afterward. Delivery note(s) will be created automatically (direct-to-end-user creates two — one without prices and one with).",
-      "confirmedBodyDispatch": "Confirmed delivery order {number} and created the delivery note(s)"
+      "confirmedBodyDispatch": "Confirmed delivery order {number} and created the delivery note(s)",
+      "coveredOrderAcceptances": "Covered order acceptances",
+      "shipTogetherTitle": "Ship other lines of the same order acceptance too?",
+      "shipTogetherBody": "The same order acceptance has {count} line(s) not yet shipped. Choose which ones to put on this delivery order.",
+      "unshippedWithLots": "Unshipped {quantity} / lots {lots}",
+      "justThisWorkOrder": "Just this work order",
+      "addSelectedLines": "Add selected lines"
     },
     "pendingShipments": {
       "completedLots": "Completed lots",
@@ -7420,7 +7431,8 @@
       "shippedQuantityLabel": "Shipped {quantity}",
       "completedQuantityLabel": "Completed {quantity} (from {count} completed work orders)",
       "exceedsRemainingLabel": "Exceeds the remaining order of {remaining} (shipping {total})",
-      "partialShipmentLabel": "Partial shipment (shipping {total} / remaining {remaining})"
+      "partialShipmentLabel": "Partial shipment (shipping {total} / remaining {remaining})",
+      "couldNotAddWorkOrderLines": "Could not load the order lines of work order #{workOrderNumber} (they may be unconfirmed or have no product)"
     },
     "deliveryNoteForm": {
       "editWithNumber": "Edit delivery note {noteId}"

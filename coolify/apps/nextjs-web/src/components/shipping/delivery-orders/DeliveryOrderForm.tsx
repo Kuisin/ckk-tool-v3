@@ -8,6 +8,12 @@
  * 注文明細（SO）は m:n のまま（1 注文明細は複数の出荷書へ分割出荷できる）。
  * 既定行は未出荷数量を関連ロットへ自動割付した結果（allocateLotUsage）。
  *
+ * ピッカーの表示値は**いま載っている明細から導く**（自前の state を持たない）。
+ * 注文明細・指示書・注文請書のどこから作りはじめても、その明細の親の注文請書が
+ * そのまま欄に入る — 利用者が自分で選び直さなくてよい。複数の注文請書を
+ * 束ねたときは先頭が欄に入り、全体はすぐ下の「**対象の注文請書**」に並ぶ
+ * （欄は 1 つしか値を持てないので、束ねた事実はそちらが正）。
+ *
  * 指示書（ロット）は**その行の注文明細に紐づく完了指示書**から選ぶ —
  * グループごとに取得した stockLots が選択肢で、他の受注のロットは出ない
  * （他ロットを充てたいときは先に FROM_STOCK の在庫引当指示書で紐づける）。
@@ -20,7 +26,9 @@
 import {
   ActionIcon,
   Alert,
+  Badge,
   Box,
+  Checkbox,
   Divider,
   Group,
   Input,
@@ -29,6 +37,7 @@ import {
   SegmentedControl,
   Select,
   SimpleGrid,
+  Stack,
   Text,
   Textarea,
   TextInput,
@@ -56,6 +65,7 @@ import { GhostButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { productF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
+import { ModalShell } from "@/components/ui/modals";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
@@ -63,6 +73,7 @@ import { deliveryMethodLabel, deliveryOrderTypeLabel } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { Option } from "@/lib/mock";
+import type { RecentOption } from "@/lib/recents";
 import {
   allocateLotUsage,
   combinabilityError,
@@ -180,6 +191,7 @@ export function DeliveryOrderForm({
   plantOptions,
   initialOrderLine,
   initialAcceptance,
+  initialWorkOrder,
 }: {
   mode: "create" | "edit";
   /** 編集時: 対象出荷書（サーバー取得の view-model）。 */
@@ -197,6 +209,18 @@ export function DeliveryOrderForm({
    * 同じ経路で、出荷できる注文明細すべてをグループとして追加する。
    */
   initialAcceptance?: string | null;
+  /**
+   * 新規時に `?workOrder=` でプリセレクトする指示書（指示書詳細 PD22 の
+   * 「次のステップ: 出荷書の作成」から来たとき）。その指示書が充当している
+   * 注文明細を追加したあと、**同じ注文請書に他にも出せる明細があれば**
+   * 「まとめて出荷しますか」と確認する（勝手にまとめない — 束ねるかどうかは
+   * 荷姿の判断で、画面がそれを決めてよい類のものではない）。
+   */
+  initialWorkOrder?: {
+    workOrderNumber: number;
+    orderLineIds: string[];
+    acceptanceNumbers: string[];
+  } | null;
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -211,8 +235,20 @@ export function DeliveryOrderForm({
     Record<string, DeliverySourceInfo>
   >({});
 
-  // 注文請書ピッカー（グループ追加用）の選択値（ORD-…）— 追加後は空へ戻す。
-  const [pickedLineId, setPickedLineId] = useState<string>("");
+  /**
+   * 注文請書ピッカーで**選びかけ**の値（ORD-…）。確定した表示値は
+   * coveredOptions（= 載っている明細から導く）なので、ここは追加が終わるまでの
+   * 一時的な見た目のためだけに持つ。追加に失敗したら null に戻し、実際に
+   * 載っているものへ表示を戻す。
+   */
+  const [pendingPick, setPendingPick] = useState<RecentOption | null>(null);
+
+  // `?workOrder=` で来たとき、同じ注文請書に残っている出荷できる明細。
+  // 空でなければ「まとめて出荷しますか」のモーダルを出す（既定は全部チェック）。
+  const [siblingCandidates, setSiblingCandidates] = useState<
+    DeliverySourceInfo[]
+  >([]);
+  const [siblingPicked, setSiblingPicked] = useState<string[]>([]);
 
   const loadInfo = (lineId: string) => {
     fetchDeliverySourceInfo(lineId).then((info) => {
@@ -264,11 +300,17 @@ export function DeliveryOrderForm({
     // だけを 1 出荷書に載せられる。既に載っているグループの属性
     // （infoByLine — 追加時 / 編集時のシードでロード済み）と比較する。
     // サーバー（validateCombinable）も同じ判定で最終ガードする。
+    //
+    // **追加する明細どうしも突き合わせる**（以前は先頭 1 件だけだった）。
+    // 同じ注文請書の中でも実効エンドユーザーは明細ごとに違い得るので
+    // （endUserBpId = 明細の指定 ?? ヘッダの既定）、まとめて足すときに
+    // 先頭しか見ないと、ユーザー直送で届け先の違う明細が同じ出荷書に載り、
+    // 保存時にサーバーで初めて弾かれていた。
     const existingRefs = form.values.items
       .map((it) => (it.orderLineId ? infoByLine[it.orderLineId] : null))
       .filter((i): i is DeliverySourceInfo => Boolean(i));
     const combineError = combinabilityError(
-      [...existingRefs, first],
+      [...existingRefs, ...infos],
       tr,
       form.values.customerBpId || undefined,
     );
@@ -374,10 +416,23 @@ export function DeliveryOrderForm({
     }
   };
 
-  /** 注文請書を選ぶ → 出荷できる注文明細すべてをグループとして追加する。 */
-  const onAcceptancePick = (acceptanceNumber: string | null) => {
-    setPickedLineId(acceptanceNumber ?? "");
-    if (!acceptanceNumber) return;
+  /**
+   * 注文請書を選ぶ → 出荷できる注文明細すべてをグループとして追加する。
+   * 追加が終わったら pendingPick を落とし、表示は coveredOptions（実際に
+   * 載っているもの）に任せる — 足せなかったときに欄だけ変わって見える、
+   * という食い違いを作らないため。
+   */
+  const onAcceptancePick = (
+    acceptanceNumber: string | null,
+    option?: RecentOption,
+  ) => {
+    if (!acceptanceNumber) {
+      setPendingPick(null);
+      return;
+    }
+    setPendingPick(
+      option ?? { value: acceptanceNumber, label: acceptanceNumber },
+    );
     fetchDeliveryAcceptanceSourceInfo(acceptanceNumber).then((infos) => {
       if (infos.length === 0) {
         notifications.show({
@@ -385,27 +440,83 @@ export function DeliveryOrderForm({
           message: tr("shipping.deliveryOrders.thereAreNoOrderLinesReady"),
           color: "red",
         });
+        setPendingPick(null);
         return;
       }
       addSourceGroups(infos);
-      setPickedLineId("");
+      setPendingPick(null);
     });
   };
 
-  // 新規 + `?orderLine=` — 未処理出荷書（SH03）の「出荷書作成」から来たとき、
-  // その注文明細 1 件だけを注文請書ピッカーと同じ経路で 1 度だけ追加する。
-  // 依存配列を持たない（毎レンダー実行）代わりに ref で 1 回に絞る — form も
-  // addSourceGroups も毎レンダー作り直されるので依存に載せられないため。
+  /**
+   * `?workOrder=` の続き — 同じ注文請書に残っている出荷できる明細を集めて、
+   * あれば確認モーダルを開く。`added` は今まさに追加した明細（state はまだ
+   * 反映されていないので、引数で受け取って除外する）。
+   */
+  const offerSiblings = (
+    acceptanceNumbers: string[],
+    added: DeliverySourceInfo[],
+  ) => {
+    const addedIds = new Set(added.map((i) => i.orderLineId));
+    Promise.all(acceptanceNumbers.map(fetchDeliveryAcceptanceSourceInfo)).then(
+      (lists) => {
+        const seen = new Set<string>();
+        const rest: DeliverySourceInfo[] = [];
+        for (const info of lists.flat()) {
+          if (addedIds.has(info.orderLineId) || seen.has(info.orderLineId)) {
+            continue;
+          }
+          // 残数ゼロ（全量出荷済み）は候補にしない — 追加しても
+          // addSourceGroups が「出荷済み」として弾くだけなので。
+          if (info.quantity - info.shippedQuantity <= 0) continue;
+          seen.add(info.orderLineId);
+          rest.push(info);
+        }
+        if (rest.length === 0) return;
+        setSiblingCandidates(rest);
+        setSiblingPicked(rest.map((i) => i.orderLineId));
+      },
+    );
+  };
+
+  // 新規 + `?orderLine=` / `?acceptance=` / `?workOrder=` — 一覧や前の書類の
+  // 「出荷書を作成」から来たとき、注文請書ピッカーと同じ経路で 1 度だけ
+  // 明細を追加する。依存配列を持たない（毎レンダー実行）代わりに ref で 1 回に
+  // 絞る — form も addSourceGroups も毎レンダー作り直されるので依存に
+  // 載せられないため。
   const seeded = useRef(false);
   useEffect(() => {
     if (
       mode !== "create" ||
-      (!initialOrderLine && !initialAcceptance) ||
+      (!initialOrderLine && !initialAcceptance && !initialWorkOrder) ||
       seeded.current
     )
       return;
     seeded.current = true;
-    if (initialOrderLine) {
+    if (initialWorkOrder) {
+      // 指示書 → その指示書が充当している注文明細を追加し、同じ注文請書に
+      // 他にも出せる明細が残っていれば「まとめますか」と聞く。
+      Promise.all(
+        initialWorkOrder.orderLineIds.map(fetchDeliverySourceInfo),
+      ).then((infos) => {
+        const found = infos.filter((i): i is DeliverySourceInfo => i != null);
+        if (found.length === 0) {
+          notifications.show({
+            title: tr("shipping.deliveryOrders.couldNotLoadTheOrderLines"),
+            message: tr(
+              "shipping.deliveryOrderForm.couldNotAddWorkOrderLines",
+              {
+                workOrderNumber: initialWorkOrder.workOrderNumber,
+              },
+            ),
+            color: "red",
+          });
+          return;
+        }
+        addSourceGroups(found);
+        offerSiblings(initialWorkOrder.acceptanceNumbers, found);
+      });
+    } else if (initialOrderLine) {
       fetchDeliverySourceInfo(initialOrderLine.id).then((info) => {
         if (info) {
           addSourceGroups([info]);
@@ -440,6 +551,29 @@ export function DeliveryOrderForm({
     (sum, it) => sum + it.quantity,
     0,
   );
+
+  /**
+   * いま載っている明細が属する注文請書（重複なし・並び順は追加順）。
+   *
+   * **注文請書の欄はここから導く** — 自前の選択 state を持たないので、
+   * 注文明細・指示書・注文請書のどこから作りはじめても、その明細の親の
+   * 注文請書がそのまま欄に入る（新規のプリセレクトでも編集でも同じ）。
+   * 束ねたときは先頭が欄に入り、全体は欄の下にバッジで並ぶ。
+   * infoByLine がまだ読めていない行は出さない（読めた時点で増える —
+   * 空欄よりは途中経過のほうがましなため）。
+   */
+  const coveredOptions: RecentOption[] = [];
+  for (const item of form.values.items) {
+    const info = item.orderLineId ? infoByLine[item.orderLineId] : null;
+    if (!info) continue;
+    if (coveredOptions.some((o) => o.value === info.acceptanceNumber)) continue;
+    coveredOptions.push({
+      value: info.acceptanceNumber,
+      label: `${info.acceptanceNumber} ${info.customerName}`,
+    });
+  }
+  // 欄に出す値 — 選びかけがあればそれ、無ければ実際に載っている先頭。
+  const pickerOption = pendingPick ?? coveredOptions[0] ?? null;
 
   const groups = groupItems(form.values.items);
 
@@ -728,20 +862,42 @@ export function DeliveryOrderForm({
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           {/* 注文請書ピッカー — 選ぶたびに、その注文請書の出荷できる
               注文明細がグループとして**追加**される（m:n）。 */}
-          <SearchSelect
-            error={form.errors.customerBpId}
-            label={
-              <HelpLabel {...fieldHelp(tr, "deliveryOrder", "orderLine")} />
-            }
-            onChange={onAcceptancePick}
-            onSearch={searchShippableAcceptanceOptions}
-            placeholder={tr(
-              "shipping.deliveryOrders.searchOrderAcceptancesAndAddLines",
+          <Stack gap={4}>
+            <SearchSelect
+              // 値は載っている明細から導くので、空にできても意味が無い
+              // （消しても次のレンダーで戻る = 壊れて見える）。注文請書を
+              // 外すのは、その明細の行を消すこと。
+              clearable={false}
+              error={form.errors.customerBpId}
+              initialOption={pickerOption}
+              label={
+                <HelpLabel {...fieldHelp(tr, "deliveryOrder", "orderLine")} />
+              }
+              onChange={onAcceptancePick}
+              onSearch={searchShippableAcceptanceOptions}
+              placeholder={tr(
+                "shipping.deliveryOrders.searchOrderAcceptancesAndAddLines",
+              )}
+              storageKey="order-acceptance"
+              value={pickerOption?.value ?? null}
+              withAsterisk={mode === "create"}
+            />
+            {/* 欄は 1 つしか値を持てない。2 つ以上の注文請書を束ねたときだけ、
+                束ねた事実を全部並べて出す（1 つのときは欄と同じ内容なので
+                出さない — 同じものを 2 度読ませない）。 */}
+            {coveredOptions.length > 1 && (
+              <Group gap={6} wrap="wrap">
+                <Text c="dimmed" size="xs">
+                  {tr("shipping.deliveryOrders.coveredOrderAcceptances")}
+                </Text>
+                {coveredOptions.map((o) => (
+                  <Badge key={o.value} size="sm" variant="light">
+                    <DocNumber>{o.value}</DocNumber>
+                  </Badge>
+                ))}
+              </Group>
             )}
-            storageKey="order-acceptance"
-            value={pickedLineId || null}
-            withAsterisk={mode === "create"}
-          />
+          </Stack>
           <Input.Wrapper
             label={<HelpLabel {...fieldHelp(tr, "deliveryOrder", "type")} />}
             withAsterisk
@@ -949,6 +1105,64 @@ export function DeliveryOrderForm({
           </Text>
         </Group>
       </FormSection>
+
+      {/* 同じ注文請書の他の明細もまとめるか（`?workOrder=` から来たときだけ）。
+          既定は全部チェックだが、**閉じても何も追加しない** — 束ねるかどうかは
+          荷姿の判断なので、黙って足さない。 */}
+      <ModalShell
+        cancelLabel={tr("shipping.deliveryOrders.justThisWorkOrder")}
+        confirmDisabled={siblingPicked.length === 0}
+        confirmLabel={tr("shipping.deliveryOrders.addSelectedLines")}
+        onClose={() => setSiblingCandidates([])}
+        onConfirm={() => {
+          const chosen = siblingCandidates.filter((i) =>
+            siblingPicked.includes(i.orderLineId),
+          );
+          setSiblingCandidates([]);
+          if (chosen.length > 0) addSourceGroups(chosen);
+        }}
+        opened={siblingCandidates.length > 0}
+        size="lg"
+        title={tr("shipping.deliveryOrders.shipTogetherTitle")}
+      >
+        <Stack gap="sm">
+          <Text size="sm">
+            {tr("shipping.deliveryOrders.shipTogetherBody", {
+              count: siblingCandidates.length,
+            })}
+          </Text>
+          <Checkbox.Group onChange={setSiblingPicked} value={siblingPicked}>
+            <Stack gap="xs">
+              {siblingCandidates.map((info) => {
+                const remaining = info.quantity - info.shippedQuantity;
+                const lots = info.completedWorkOrders
+                  .map((wo) => wo.workOrderNumber)
+                  .join(", ");
+                return (
+                  <Checkbox
+                    key={info.orderLineId}
+                    label={
+                      <Stack gap={0}>
+                        <Group gap="xs" wrap="wrap">
+                          <DocNumber>{info.orderLineNumber}</DocNumber>
+                          <Text size="sm">{info.productName}</Text>
+                        </Group>
+                        <Text c="dimmed" size="xs">
+                          {tr("shipping.deliveryOrders.unshippedWithLots", {
+                            quantity: remaining,
+                            lots: lots || "—",
+                          })}
+                        </Text>
+                      </Stack>
+                    }
+                    value={info.orderLineId}
+                  />
+                );
+              })}
+            </Stack>
+          </Checkbox.Group>
+        </Stack>
+      </ModalShell>
     </FormShell>
   );
 }

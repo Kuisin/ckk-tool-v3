@@ -198,6 +198,13 @@ export interface WorkOrderView {
   completedAt: string | null;
   /** この指示書のロットが載った出荷書（次の書類への受け渡し状況）。 */
   shipments: WorkOrderShipmentView[];
+  /**
+   * 完成数（工程 DAG の終端集計 — 予定数量ではなく実際の出来高）。
+   * 未完了の指示書でも計算はできるが、意味を持つのは COMPLETED のときだけ。
+   */
+  finishedQuantity: number;
+  /** 完成数のうち、まだどの出荷書にも載っていない数量（0 未満にはしない）。 */
+  unshippedQuantity: number;
   type: string;
   plannedQuantity: number;
   notes: string | null;

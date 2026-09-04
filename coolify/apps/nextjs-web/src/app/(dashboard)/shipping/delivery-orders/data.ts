@@ -182,3 +182,65 @@ export async function fetchDeliveryOrder(
   }
   return mapDeliveryOrder(row);
 }
+
+/**
+ * `?workOrder=` で出荷書フォームを開くときの種（指示書詳細 PD22 の
+ * 「次のステップ: 出荷書の作成」から来る）。
+ *
+ * 出荷書の明細は**注文明細**を単位に組み立てるので（フォームの
+ * addSourceGroups と未処理出荷書 SH03 が同じ単位）、指示書はまず自分が
+ * 割り当てられている注文明細へ変換する。同じ注文請書の**他の**明細は
+ * フォーム側が `fetchDeliveryAcceptanceSourceInfo` で引き直して
+ * 「まとめて出荷しますか」と聞く — ここでは聞く相手（注文請書）だけを返す。
+ *
+ * 在庫向けの独立指示書（割当ゼロ）は注文明細を持たないので null を返す。
+ */
+export async function fetchWorkOrderDeliverySeed(
+  workOrderNumber: number,
+): Promise<{
+  workOrderNumber: number;
+  /** この指示書が充当している注文明細（確定済み = 枝番ありのみ）。 */
+  orderLineIds: string[];
+  /** 上の明細が属する注文請書の番号（重複なし・昇順）。 */
+  acceptanceNumbers: string[];
+} | null> {
+  const authz = await checkPermission("delivery_order", "READ");
+  if (!authz.ok) return null;
+  const wo = await prisma.workOrder.findUnique({
+    where: { workOrderNumber },
+    select: {
+      orderLineLinks: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          orderLine: {
+            select: {
+              id: true,
+              branch: true,
+              acceptanceYearMonth: true,
+              acceptanceSeq: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!wo) return null;
+  const lines = wo.orderLineLinks
+    .map((l) => l.orderLine)
+    .filter((l) => l.branch != null);
+  if (lines.length === 0) return null;
+  return {
+    workOrderNumber,
+    orderLineIds: lines.map((l) => l.id),
+    acceptanceNumbers: [
+      ...new Set(
+        lines.map((l) =>
+          formatDocNumber("ORD", {
+            yearMonth: l.acceptanceYearMonth,
+            seq: l.acceptanceSeq,
+          }),
+        ),
+      ),
+    ].sort(),
+  };
+}
