@@ -6,7 +6,11 @@ import { UserSuspensionPanel } from "@/components/settings/UserSuspensionPanel";
 import { checkPermission, sessionUserId } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { bootstrapAdminState } from "@/lib/bootstrap-admin-core";
-import { listLoginAttempts, listUserDevices } from "@/lib/login-attempts";
+import {
+  listLoginAttempts,
+  listUserDevices,
+  toEmbeddedLoginAttemptRow,
+} from "@/lib/login-attempts";
 import {
   getAdminCoverage,
   getAdminUser,
@@ -88,7 +92,7 @@ export default async function UserDetailPage({
         // 自分のロールは自分で変えられない（canUpdateRoles と同じ条件）。
         // ここで編集ボタンごと出さないのは、押せない操作を置かないため。
         canEditRoles={canChangeUser && actorId !== user.id}
-        loginAttempts={attempts.rows}
+        loginAttempts={attempts.rows.map(toEmbeddedLoginAttemptRow)}
         plantOptions={plantOptions}
         requiresApproval={requiresApproval}
         roleGuard={{
