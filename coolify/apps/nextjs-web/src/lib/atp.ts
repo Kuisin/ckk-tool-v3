@@ -53,9 +53,7 @@ export async function materialAtp(
       if (!(remaining > 0)) return [];
       return [
         {
-          date: it.expectedAt
-            ? it.expectedAt.toISOString().slice(0, 10)
-            : null,
+          date: it.expectedAt ? it.expectedAt.toISOString().slice(0, 10) : null,
           quantity: remaining,
           ref: it.purchaseOrder.poNumber,
         },
