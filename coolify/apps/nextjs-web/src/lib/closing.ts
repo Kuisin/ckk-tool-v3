@@ -9,6 +9,7 @@
 
 import { collectClosingCandidates } from "@/app/(dashboard)/billing/closings/data";
 import { autorunTargetMonths } from "@/components/billing/closings/model";
+import { PERIODIC_LOCKS, withAdvisoryLock } from "./advisory-lock";
 import { recordAudit } from "./audit";
 import { prisma } from "./db";
 
@@ -85,12 +86,23 @@ export async function runClosingBatch(
   return { created, updated, skipped };
 }
 
+/**
+ * 今日はもう走ったか。**プロセス内の覚えなので、これだけでは足りない** —
+ * コンテナが 2 つあれば 2 回走る。跨プロセスの排他は下の advisory lock が持つ。
+ * こちらは残してある（同じプロセス内で 10 分ごとの判定が二重に動くのを、
+ * DB へ問い合わせずに弾けるため）。
+ */
 let lastAutorunDate: string | null = null;
 
 /**
  * 日次オートラン判定 + 実行（instrumentation から毎時呼ばれる）。
  * JST 06 時台に 1 日 1 回、当月分（月初 3 日間は前月分も）を実行。
  * CLOSING_AUTORUN=1 のときのみ。
+ *
+ * ★ **ローリングデプロイ中は新旧 2 つのコンテナが同時に走る。**
+ * `lastAutorunDate` はプロセス内の変数なので、新しいコンテナには「今日はもう
+ * 走った」が伝わらず、同じ締めが二重に作られる。跨プロセスの排他は
+ * `withAdvisoryLock`（DB のアドバイザリロック）が持つ。
  */
 export async function maybeRunDailyClosing(): Promise<void> {
   if (process.env.CLOSING_AUTORUN !== "1") return;
@@ -107,17 +119,19 @@ export async function maybeRunDailyClosing(): Promise<void> {
   if (get("hour") !== "06" || lastAutorunDate === today) return;
   lastAutorunDate = today;
   try {
-    const targets = autorunTargetMonths(
-      Number(get("year")),
-      Number(get("month")),
-      Number(get("day")),
-    );
-    for (const t of targets) {
-      const result = await runClosingBatch(t.year, t.month);
-      console.log(
-        `[closing] 日次オートラン ${today} 対象 ${t.year}-${String(t.month).padStart(2, "0")}: 作成 ${result.created} / 更新 ${result.updated} / スキップ ${result.skipped}`, // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
+    await withAdvisoryLock(PERIODIC_LOCKS.closingAutorun, async () => {
+      const targets = autorunTargetMonths(
+        Number(get("year")),
+        Number(get("month")),
+        Number(get("day")),
       );
-    }
+      for (const t of targets) {
+        const result = await runClosingBatch(t.year, t.month);
+        console.log(
+          `[closing] 日次オートラン ${today} 対象 ${t.year}-${String(t.month).padStart(2, "0")}: 作成 ${result.created} / 更新 ${result.updated} / スキップ ${result.skipped}`, // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
+        );
+      }
+    });
   } catch (e) {
     console.error("[closing] 日次オートラン失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
   }

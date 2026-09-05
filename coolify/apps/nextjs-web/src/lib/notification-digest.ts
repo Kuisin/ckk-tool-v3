@@ -16,6 +16,7 @@ import "server-only";
  * DB とメールの都合だけを見る。
  */
 
+import { PERIODIC_LOCKS, withAdvisoryLock } from "./advisory-lock";
 import { prisma } from "./db";
 import { notificationTypeLabel } from "./enum-labels";
 import { documentFormatters } from "./format";
@@ -40,7 +41,11 @@ import { notificationOpenPath } from "./notifications-core";
  */
 const SWEEP_LIMIT = 2_000;
 
-/** 同時実行を防ぐ（周期が短いときや、前回が長引いたときの重なり）。 */
+/**
+ * 同時実行を防ぐ（周期が短いときや、前回が長引いたときの重なり）。
+ * **プロセス内だけの印**なので、コンテナが 2 つあるときは効かない —
+ * 跨プロセスの排他は下の advisory lock が持つ。
+ */
 let running = false;
 
 export interface DigestRunResult {
@@ -53,6 +58,11 @@ export interface DigestRunResult {
 /**
  * 掃き出しを 1 回走らせる。ベストエフォート — 失敗しても例外は投げない
  * （呼び出し元は定期タイマー）。
+ *
+ * ★ **ローリングデプロイ中は新旧 2 つのコンテナが同時に走る。** 印は
+ * `notifications.email_sent_at` の 1 列だけなので、2 本が同じ未読を同時に
+ * 読むと**同じ通知が 2 通飛ぶ**。プロセス内の `running` では防げないので、
+ * DB のアドバイザリロックで 1 プロセスに絞る。
  */
 export async function runNotificationDigest(): Promise<DigestRunResult> {
   const empty = { users: 0, notifications: 0 };
@@ -65,7 +75,12 @@ export async function runNotificationDigest(): Promise<DigestRunResult> {
   if (!isMailerConfigured()) return empty;
   running = true;
   try {
-    return await sweep();
+    const outcome = await withAdvisoryLock(
+      PERIODIC_LOCKS.notificationDigest,
+      sweep,
+    );
+    // 取れなかった = 別のコンテナが掃き出している。次のティックで見直す。
+    return outcome.result ?? empty;
   } catch (e) {
     console.error("[notification-digest] 掃き出しに失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     return empty;

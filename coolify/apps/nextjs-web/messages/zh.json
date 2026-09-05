@@ -8157,6 +8157,7 @@
       "SSO_USER_INACTIVE": "SSO：用户已停用",
       "SSO_UPSERT_FAILED": "SSO：用户注册失败",
       "SSO_CALLBACK_ERROR": "SSO：回调失败",
+      "SSO_LOCAL_ACCOUNT_CONFLICT": "SSO：与本地账号冲突",
       "DEVICE_NO_COOKIE": "无终端 Cookie",
       "DEVICE_NOT_FOUND": "未注册的终端",
       "DEVICE_EXPIRED": "终端令牌已过期",

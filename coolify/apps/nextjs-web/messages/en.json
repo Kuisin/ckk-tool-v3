@@ -8157,6 +8157,7 @@
       "SSO_USER_INACTIVE": "SSO: user is inactive",
       "SSO_UPSERT_FAILED": "SSO: failed to register user",
       "SSO_CALLBACK_ERROR": "SSO: callback failed",
+      "SSO_LOCAL_ACCOUNT_CONFLICT": "SSO: conflicts with a local account",
       "DEVICE_NO_COOKIE": "No device cookie",
       "DEVICE_NOT_FOUND": "Unregistered device",
       "DEVICE_EXPIRED": "Device token expired",
