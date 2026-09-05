@@ -36,10 +36,15 @@ export interface BpMatchable extends BpSearchable {
   /** 画面表示用の名称（通常は名称 ja）。 */
   label: string;
   /**
-   * 顧客ロールを持つか。注文請書の顧客に**自動で**入れてよいのは顧客だけ
-   * （ピッカーが出すのも顧客のみ）。仕入先しか当たらなかった場合は候補に留める。
+   * その場面で期待されるロール（顧客 / 仕入先）を持つか。**自動で**欄へ
+   * 入れてよいのはそのロールを持つ取引先だけ（ピッカーが出すのも同じ集合）。
+   * 別のロールしか持たない取引先が当たった場合は候補に留める。
+   *
+   * 既定は true（未指定 = 制約なし）。注文請書は顧客ロール、購買側の取込は
+   * 仕入先ロールを期待する — プールを作る側（lib/intake の
+   * `loadBpMatchPool(role)`）が決める。
    */
-  isCustomer?: boolean;
+  hasExpectedRole?: boolean;
 }
 
 export interface BpMatchCandidate {
@@ -153,7 +158,7 @@ export function matchBusinessPartnerName(
     id: bp.id,
     label: bp.label,
     keys: bpKeys(bp),
-    autoConfirmable: bp.isCustomer !== false,
+    autoConfirmable: bp.hasExpectedRole !== false,
   }));
   const r = matchText(read, targets, BP_RULES);
   const toCandidate = (h: {

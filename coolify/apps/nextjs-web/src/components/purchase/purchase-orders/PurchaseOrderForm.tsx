@@ -122,15 +122,45 @@ function toFormValues(po: PurchaseOrderView): FormValues {
   };
 }
 
+/**
+ * 新規作成の初期値（AI 取込が渡す）。**編集時は使わない。**
+ * 明細は「素材が空のまま」でもよい — 突合できなかった行を落とさずに見せる
+ * ためで、保存はこのフォームの検証（素材必須）が止める。
+ */
+export interface PurchaseOrderFormPrefill {
+  supplierBpId: string;
+  purchaseDate: string | null;
+  notes: string;
+  items: {
+    materialId: string;
+    materialLabel: string;
+    quantity: number;
+    unit: string;
+    unitPrice: number;
+    expectedAt: string | null;
+    notes: string;
+  }[];
+}
+
 export function PurchaseOrderForm({
   mode,
   purchaseOrder,
+  prefill,
+  onCreated,
   supplierOptions,
   plantOptions,
 }: {
   mode: "create" | "edit";
   /** 編集時: 対象発注書（サーバー取得の view-model）。 */
   purchaseOrder?: PurchaseOrderView | null;
+  /** 新規作成時の初期値（AI 取込）。差し替えるときは key ごと入れ替える。 */
+  prefill?: PurchaseOrderFormPrefill | null;
+  /**
+   * 作成に成功した直後（詳細へ遷移する前）に呼ぶ。原本の添付と学習の保存に
+   * 使う。**best-effort** — ここで失敗しても発注書は作成済みなので、
+   * 呼び出し側が握り潰して遷移まで進めること。
+   */
+  onCreated?: (poNumber: string) => Promise<void>;
   /** 仕入先（VENDOR ロールの有効 BP）。value = uuid。 */
   supplierOptions: Option[];
   /** 入荷先拠点（有効のみ）。value = String(内部 id)。 */
@@ -147,12 +177,26 @@ export function PurchaseOrderForm({
     initialValues:
       mode === "edit" && purchaseOrder
         ? toFormValues(purchaseOrder)
-        : {
-            supplierBpId: "",
-            purchaseDate: null,
-            notes: "",
-            items: [emptyItem()],
-          },
+        : prefill
+          ? {
+              supplierBpId: prefill.supplierBpId,
+              purchaseDate: prefill.purchaseDate,
+              notes: prefill.notes,
+              items:
+                prefill.items.length > 0
+                  ? prefill.items.map((it) => ({
+                      ...emptyItem(),
+                      ...it,
+                      plantId: null,
+                    }))
+                  : [emptyItem()],
+            }
+          : {
+              supplierBpId: "",
+              purchaseDate: null,
+              notes: "",
+              items: [emptyItem()],
+            },
   });
 
   const total = form.values.items.reduce(
@@ -224,6 +268,11 @@ export function PurchaseOrderForm({
                 }),
           color: "green",
         });
+        // 作成直後の後始末（原本の添付・学習）。best-effort — ここで失敗しても
+        // 発注書は作成済みなので、必ず詳細まで進める。
+        if (mode !== "edit") {
+          await onCreated?.(result.data.poNumber).catch(() => {});
+        }
         router.push(`${BASE_PATH}/${result.data.poNumber}`);
       } else {
         notifications.show({

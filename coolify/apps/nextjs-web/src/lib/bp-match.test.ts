@@ -20,7 +20,7 @@ const bp = (
   nameJa: label,
   matchNames,
   matchNamesAuto,
-  isCustomer: true,
+  hasExpectedRole: true,
 });
 
 const POOL: BpMatchable[] = [
@@ -138,8 +138,10 @@ describe("matchBusinessPartnerName", () => {
     expect(r.candidates).toHaveLength(2);
   });
 
-  it("顧客ロールが無い取引先は自動確定しない（候補には出す）", () => {
-    const pool = [{ ...bp("v", "仕入商事", ["仕入商事"]), isCustomer: false }];
+  it("期待するロールを持たない取引先は自動確定しない（候補には出す）", () => {
+    const pool = [
+      { ...bp("v", "仕入商事", ["仕入商事"]), hasExpectedRole: false },
+    ];
     const r = matchBusinessPartnerName("仕入商事", pool);
     expect(r.matched).toBeNull();
     expect(r.candidates.map((c) => c.id)).toEqual(["v"]);
