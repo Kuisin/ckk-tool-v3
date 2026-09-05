@@ -2873,7 +2873,7 @@
       "noDefectRecords": "不良記録がありません",
       "auditDefectsAdded": "不良記録を追加（{count} 件）",
       "notAnOutsourceStep": "外注工程ではありません",
-      "notifyOutsourceReceived": "指示書 #{workOrderNumber} の外注工程が入荷しました",
+      "notifyOutsourceReceived": "指示書 {workOrderNumber} の外注工程が入荷しました",
       "outsourceNotifyFailedLog": "[outsource] 入荷通知に失敗: ",
       "auditOutsourceCostSuffix": " / 外注費 ¥{amount}",
       "auditOutsourceUpdated": "外注日程を更新（依頼 {requested} / 入荷予定 {expected} / 入荷 {received}{cost}）",
