@@ -21,3 +21,19 @@ __pycache__/
 # 雛形は各スタックの .env.example（こちらはコミットする）。
 .env
 !.env.example
+
+# Ruflo local secrets and runtime data
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+.claude-flow/metrics/
+.claude-flow/security/
+.claude-flow/policy/
+.claude-flow/harness-active-policy.json
+.swarm/
+ruvector.db
+ruvector.db-*
+.claude/proven-config.json
+.claude/.proven-config-version
