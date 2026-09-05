@@ -56,11 +56,36 @@ export async function GET(request: Request): Promise<Response> {
   });
 
   // エクスポート日時を刻む（best-effort — 失敗してもダウンロードは返す）。
+  //
+  // 併せて、その請求書を生んだ締日を EXPORTED へ進める（§9 — 締日の
+  // 最終状態。これまで誰も書いていないので ClosingDetail の「エクスポート
+  // 済」に到達しなかった）。締日 → 請求書は billing_closings の
+  // (invoice_year_month, invoice_seq) が 1 対 1 で持つので、この請求書の
+  // エクスポート = その締日の全請求書のエクスポート。請求書の刻印と
+  // 同じトランザクションで進めて、片方だけ立つ状態を作らない。
   const exportedAt = new Date();
+  let exportedClosingId: string | null = null;
   try {
-    await prisma.invoice.update({
-      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
-      data: { yayoiExportedAt: exportedAt },
+    exportedClosingId = await prisma.$transaction(async (tx) => {
+      await tx.invoice.update({
+        where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+        data: { yayoiExportedAt: exportedAt },
+      });
+      // PROCESSED のものだけを進める（未処理・二重実行を where で弾く）。
+      const closing = await tx.billingClosing.findFirst({
+        where: {
+          invoiceYearMonth: key.yearMonth,
+          invoiceSeq: key.seq,
+          status: "PROCESSED",
+        },
+        select: { id: true },
+      });
+      if (!closing) return null;
+      const updated = await tx.billingClosing.updateMany({
+        where: { id: closing.id, status: "PROCESSED" },
+        data: { status: "EXPORTED" },
+      });
+      return updated.count === 1 ? closing.id : null;
     });
     await recordAudit({
       action: "UPDATE",
@@ -69,6 +94,15 @@ export async function GET(request: Request): Promise<Response> {
       before: { yayoiExportedAt: invoice.yayoiExportedAt },
       after: { yayoiExportedAt: exportedAt.toISOString() },
     });
+    if (exportedClosingId) {
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "billing_closings",
+        recordId: exportedClosingId,
+        before: { status: "PROCESSED" },
+        after: { status: "EXPORTED", invoiceNumber: invoice.invoiceNumber },
+      });
+    }
   } catch (e) {
     console.error("[export/yayoi] failed to stamp yayoiExportedAt", e);
   }

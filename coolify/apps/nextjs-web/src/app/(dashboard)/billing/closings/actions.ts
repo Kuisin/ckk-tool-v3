@@ -28,6 +28,7 @@ import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { label } from "@/lib/messages";
+import { lineAmountYen, totalsYen } from "@/lib/money";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
@@ -37,7 +38,7 @@ import {
   prismaErrorMessage,
 } from "@/lib/server-action";
 import { taxRateFor } from "@/lib/tax-rate";
-import { fetchBillableShipmentsForClosing, shipmentAmount } from "./data";
+import { fetchBillableShipmentsForClosing } from "./data";
 
 const BASE_PATH = "/billing/closings";
 const INVOICES_PATH = "/billing/invoices";
@@ -148,16 +149,26 @@ export async function processClosing(
           description: { ja, en },
           quantity: it.quantity,
           unitPrice,
-          amount: it.quantity * unitPrice,
+          // 円未満は**行の段階で 1 回だけ**落とす（丸めの方針は lib/money.ts）。
+          amount: lineAmountYen(unitPrice, it.quantity),
           sortOrder: sortOrder++,
         };
       });
     });
 
-    const subtotal = shipments.reduce((sum, s) => sum + shipmentAmount(s), 0);
-    const taxRate = taxRateFor(closing.customerBp.customerAttrs?.taxType);
-    const taxAmount = Math.round(subtotal * taxRate);
-    const totalAmount = subtotal + taxAmount;
+    // 小計は**明細に印字される金額の和**（lib/money.ts の方針）。出荷書側で
+    // 合算してから丸めると「小計 ≠ 明細の合計」になり、PDF と弥生 CSV も
+    // 食い違う（両者が別々にもう一度丸めていたため）。
+    //
+    // 課税区分は顧客マスタから読むが、**その値をここで請求書へ写す** —
+    // 顧客を後から EXEMPT に変えても、発行済みの請求書は当時の区分で刷られる
+    // （税額だけ凍結して根拠を凍結しないと「非課税」の隣に 10% の額が並ぶ）。
+    const taxType = closing.customerBp.customerAttrs?.taxType ?? null;
+    const taxRate = taxRateFor(taxType);
+    const { subtotal, taxAmount, totalAmount } = totalsYen(
+      items.map((it) => it.amount),
+      taxRate,
+    );
 
     const closingDate = closing.closingDate;
     const paymentTermsDays =
@@ -208,6 +219,9 @@ export async function processClosing(
           subtotal,
           taxAmount,
           totalAmount,
+          // 税額の根拠のスナップショット（顧客マスタの現在値ではなく発行時点）
+          taxType,
+          taxRate,
           status: "DRAFT",
           dueDate,
           createdBy: actorId,
@@ -242,6 +256,8 @@ export async function processClosing(
         subtotal,
         taxAmount,
         totalAmount,
+        taxType,
+        taxRate,
         status: "DRAFT",
         dueDate: dueDate.toISOString(),
         itemCount: items.length,

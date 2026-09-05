@@ -51,11 +51,21 @@ function provenanceNumber(
   return formatDocNumber(prefix, { yearMonth, seq });
 }
 
-function mapInvoice(r: InvoiceRow): Invoice {
+/**
+ * @param forDocument 取引先に出す帳票（PDF）用に読むときは true。
+ *   摘要・取引先名を**受取先の言語**（business_partners.document_locale）で
+ *   解決する（§17.4 / i18n-glossary 決定 10 — 書類は受取先の言語で出す。
+ *   閲覧者の設定では変わらない）。画面は false のまま = 従来どおり。
+ */
+function mapInvoice(r: InvoiceRow, forDocument = false): Invoice {
   const number = formatDocNumber("INV", { yearMonth: r.yearMonth, seq: r.seq });
+  const recipientDocumentLocale =
+    r.customerBranchBp?.documentLocale ?? r.customerBp.documentLocale ?? null;
+  // 帳票のときだけ受取先の言語。null（未設定）は localized 側で ja へ落ちる。
+  const loc = forDocument ? (recipientDocumentLocale ?? "ja") : "ja";
   const items: InvoiceItem[] = r.items.map((it) => ({
     id: it.id,
-    description: localized(it.description as LocalizedText | null),
+    description: localized(it.description as LocalizedText | null, loc),
     quantity: it.quantity,
     unitPrice: Number(it.unitPrice),
     amount: Number(it.amount),
@@ -74,12 +84,11 @@ function mapInvoice(r: InvoiceRow): Invoice {
     id: number,
     invoiceNumber: number,
     customerBpId: r.customerBpId,
-    customerName: localized(r.customerBp.name as LocalizedText | null),
+    customerName: localized(r.customerBp.name as LocalizedText | null, loc),
     customerBranchName: r.customerBranchBp
-      ? localized(r.customerBranchBp.name as LocalizedText | null)
+      ? localized(r.customerBranchBp.name as LocalizedText | null, loc)
       : null,
-    recipientDocumentLocale:
-      r.customerBranchBp?.documentLocale ?? r.customerBp.documentLocale ?? null,
+    recipientDocumentLocale,
     salesRepId: r.salesRep?.id ?? null,
     salesRepName: r.salesRep?.displayName ?? null,
     createdByName: r.createdByUser?.displayName ?? null,
@@ -87,7 +96,10 @@ function mapInvoice(r: InvoiceRow): Invoice {
     billingPeriodTo: r.billingPeriodTo.toISOString(),
     subtotal: Number(r.subtotal),
     taxAmount: Number(r.taxAmount),
-    taxType: r.customerBp.customerAttrs?.taxType ?? null,
+    // 発行時点のスナップショットが正。無い（このマイグレーション以前の）行だけ
+    // 顧客マスタの現在の区分へ落とす — 顧客を後から EXEMPT に変えても、
+    // 発行済みの請求書のラベルは 10% のままでなければならない。
+    taxType: r.taxType ?? r.customerBp.customerAttrs?.taxType ?? null,
     totalAmount: Number(r.totalAmount),
     status: r.status as InvoiceStatus,
     issuedAt: r.issuedAt?.toISOString() ?? null,
@@ -121,7 +133,8 @@ export async function fetchInvoices(): Promise<Invoice[]> {
     include: INVOICE_INCLUDE,
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
   });
-  return rows.map(mapInvoice);
+  // 引数付きで渡さない（`map(mapInvoice)` は添字が第 2 引数に入るため）。
+  return rows.map((r) => mapInvoice(r));
 }
 
 /** 1件取得 — 未存在・スコープ外は null（呼び出し側の notFound / 404 に乗せる）。 */
@@ -134,6 +147,24 @@ export async function fetchInvoice(key: DocKey): Promise<Invoice | null> {
     return null;
   }
   return mapInvoice(row);
+}
+
+/**
+ * 帳票用の 1 件取得 — 摘要・取引先名を**受取先の言語**で解決する。
+ * PDF ルート（api/pdf/invoice）と弥生 CSV から使う。権限・スコープの扱いは
+ * fetchInvoice と同じ。
+ */
+export async function fetchInvoiceForDocument(
+  key: DocKey,
+): Promise<Invoice | null> {
+  const authz = await checkPermission("invoice", "READ");
+  if (!authz.ok) return null;
+  const row = await findRow(key);
+  if (!row) return null;
+  if (!rowInScope(authz.access, { createdBy: row.createdBy }, authz.userId)) {
+    return null;
+  }
+  return mapInvoice(row, true);
 }
 
 /**

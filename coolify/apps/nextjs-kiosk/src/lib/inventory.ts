@@ -13,6 +13,7 @@
 import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
+import { allocateFromBuckets } from "./inventory-availability-core";
 import { encodeInventoryNote } from "./inventory-note-core";
 import {
   computeBranchSemiFinishedQuantity,
@@ -483,7 +484,7 @@ export async function onDeliveryOrderShippedTx(
           lotNumber: item.lotNumber,
           isSemiFinished: false,
         },
-        select: { id: true, quantity: true },
+        select: { id: true, quantity: true, reservedQuantity: true },
         orderBy: { quantity: "desc" },
       });
       if (invRows.length === 0) {
@@ -494,29 +495,51 @@ export async function onDeliveryOrderShippedTx(
           }),
         );
       }
-      let remaining = item.quantity;
-      for (const inv of invRows) {
-        if (remaining <= 0) break;
-        const take = Math.min(inv.quantity, remaining);
-        if (take <= 0) continue;
-        await applyTransaction(tx, {
-          inventoryType: "PRODUCT",
-          inventoryId: inv.id,
-          transactionType: "OUT",
-          quantity: take,
-          referenceType: "delivery_order",
-          referenceId: ref,
-          notes: encodeInventoryNote("shipped", { ref }),
+      // 引ける数は **quantity ではなく「予約を除いた分 + 自分の予約」**。
+      // quantity をそのまま取ると、他の注文明細（FROM_STOCK の引当など）が
+      // 押さえている在庫を先に出荷したほうが食べてしまい、あとから相手が
+      // 在庫不足で出せなくなる。判定は lib/inventory-availability-core.ts。
+      const ownReserved = new Map<string, number>();
+      if (item.orderLineId) {
+        const mine = await tx.inventoryReservation.groupBy({
+          by: ["inventoryId"],
+          where: {
+            orderLineId: item.orderLineId,
+            inventoryType: "PRODUCT",
+            status: { in: ["RESERVED", "CONFIRMED"] },
+            inventoryId: { in: invRows.map((r) => r.id) },
+          },
+          _sum: { quantity: true },
         });
-        remaining -= take;
+        for (const m of mine) {
+          ownReserved.set(m.inventoryId, Number(m._sum.quantity ?? 0));
+        }
       }
-      if (remaining > 0) {
+      const { steps, shortfall } = allocateFromBuckets(
+        invRows,
+        item.quantity,
+        ownReserved,
+      );
+      // 足りないときは 1 件も出庫せずに失敗させる（部分出庫してから落ちると
+      // 台帳だけ減って出荷が立たない）。
+      if (shortfall > 0) {
         throw new Error(
           encodeInventoryNote("outOfStockOnShip", {
             quantity: item.quantity,
             lotNumber: item.lotNumber ?? "-",
           }),
         );
+      }
+      for (const step of steps) {
+        await applyTransaction(tx, {
+          inventoryType: "PRODUCT",
+          inventoryId: step.bucketId,
+          transactionType: "OUT",
+          quantity: step.take,
+          referenceType: "delivery_order",
+          referenceId: ref,
+          notes: encodeInventoryNote("shipped", { ref }),
+        });
       }
     } else {
       // STOCK_STORAGE: 保管拠点へ入庫（請求フロー外の予備分）
