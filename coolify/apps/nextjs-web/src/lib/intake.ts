@@ -352,8 +352,15 @@ async function ingestFile(input: {
  * 配列列（match_names）の**部分一致は Prisma の where で書けない**し、
  * 表記ゆれの吸収は SQL より JS の方が素直に書ける。有効な取引先は数百件なので、
  * 1 通の取込につき 1 回この全件読みで十分（顧客ピッカーも同じやり方）。
+ *
+ * `expectedRole` は「その場面で自動確定してよいのはどのロールか」。注文請書は
+ * 顧客（既定）、購買側の取込（lib/purchase-intake）は仕入先。**プールから
+ * 落とすのではなく自動確定だけを止める** — 顧客ロールしか無い相手が仕入先
+ * として印字されていることは実際にあるので、候補には出して人に選ばせる。
  */
-export async function loadBpMatchPool(): Promise<BpMatchable[]> {
+export async function loadBpMatchPool(
+  expectedRole: "CUSTOMER" | "VENDOR" = "CUSTOMER",
+): Promise<BpMatchable[]> {
   // 学習した表記（人が結び付けた実績）も照合キーに混ぜる。取引先は数百件
   // なので、まとめて 1 回引いて突き合わせる。
   const learned = await aliasesByTarget("business_partners");
@@ -368,7 +375,7 @@ export async function loadBpMatchPool(): Promise<BpMatchable[]> {
       matchNames: true,
       matchNamesAuto: true,
       roleAssignments: {
-        where: { role: "CUSTOMER", isActive: true },
+        where: { role: expectedRole, isActive: true },
         select: { role: true },
       },
     },
@@ -383,7 +390,7 @@ export async function loadBpMatchPool(): Promise<BpMatchable[]> {
     // 人が登録した別名 + 学習した表記。どちらも「この会社の書かれ方」。
     matchNames: [...r.matchNames, ...(learned.get(r.id) ?? [])],
     matchNamesAuto: r.matchNamesAuto,
-    isCustomer: r.roleAssignments.length > 0,
+    hasExpectedRole: r.roleAssignments.length > 0,
   }));
 }
 

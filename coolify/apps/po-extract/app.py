@@ -129,13 +129,46 @@ SCHEMAS = {
         items=ARR(OBJ(product_name=STR, product_code=STR, quantity=INT, unit=STR)),
         notes=STR,
     ),
+    # 購買側の 1 枚目 — 仕入先が出してきた見積書 / 注文請書 / 発注書控え。
+    # 素材発注書 (PU02) の下書きを作るために読む。向きは order-request の
+    # ちょうど裏返しで、supplier_name は**相手（払う先）**。
     "purchase-order": OBJ(
-        supplier_name=STR, po_number=STR, order_date=STR,
-        items=ARR(OBJ(material_name=STR, material_code=STR, quantity=NUM, unit=STR,
-                      unit_price=NUM, amount=NUM, expected_date=STR)),
-        total_amount=NUM, notes=STR,
+        supplier_name=STR, supplier_contact=STR,
+        document_number=STR, po_number=STR,
+        order_date=STR, valid_until=STR, currency=STR,
+        items=ARR(OBJ(material_name=STR, material_code=STR,
+                      maker=STR, grade=STR, diameter_mm=NUM, length_mm=NUM,
+                      quantity=NUM, unit=STR,
+                      unit_price=NUM, amount=NUM, expected_date=STR, notes=STR)),
+        subtotal=NUM, tax_amount=NUM, total_amount=NUM, notes=STR,
+    ),
+    # 購買側の 2 枚目 — 素材が実際に届いたときの納品書。素材入荷 (PU03) の
+    # 行を作るために読む。金額欄は見ない（入荷は「何が何本届いたか」だけ）。
+    "material-delivery": OBJ(
+        supplier_name=STR, delivery_number=STR, delivery_date=STR, po_number=STR,
+        items=ARR(OBJ(material_name=STR, material_code=STR,
+                      maker=STR, grade=STR, diameter_mm=NUM, length_mm=NUM,
+                      quantity=NUM, unit=STR, lot_number=STR, notes=STR)),
+        notes=STR,
     ),
 }
+
+# 購買側の 2 種類が共有する読み方（素材の書かれ方・向き）。同じ言葉を 2 回
+# 書くと片方だけ直って割れるので 1 本にまとめる。
+_MATERIAL_ITEM_RULES = (
+    "- Each item line is a piece of BAR STOCK (超硬丸棒 / carbide rod) we buy.\n"
+    "- material_name: the item name exactly as printed (品名/品目/材料名), verbatim.\n"
+    "- material_code: the supplier's or our own item code printed on the line "
+    "(品番/型番/材料コード/品目コード). Ours looks like B01A0001-A060-310. Do not "
+    "build a code out of the other columns — return null when none is printed.\n"
+    "- maker: the material maker (メーカー — e.g. 冨士ダイス, AFC, GESAC, Ceratizit), "
+    "when the line or the header names one.\n"
+    "- grade: the material grade / class (材質/材種/グレード — e.g. K10UF, K40UF).\n"
+    "- diameter_mm / length_mm: the rod's diameter and overall length in MILLIMETRES "
+    "as plain numbers (φ8.3×330 → diameter_mm 8.3, length_mm 330). Convert only "
+    "units, never guess a missing dimension.\n"
+    "- quantity: as printed, in the printed unit. unit: 本/kg/m … as printed.\n"
+)
 
 PROMPTS = {
     "order-request": (
@@ -169,7 +202,61 @@ PROMPTS = {
     "quote": "This is a price quotation (見積書).",
     "invoice": "This is an invoice (請求書).",
     "delivery-note": "This is a delivery note (納品書).",
-    "purchase-order": "This is a material purchase order (発注書).",
+    # order-request の裏返し。あちらは「相手が買う」書類、こちらは
+    # 「我々が買う」書類なので、向きを取り違えると supplier_name に自社名が
+    # 入り、突合が VENDOR プールで一切当たらなくなる（沈黙して失敗する）。
+    "purchase-order": (
+        "This is a document about MATERIALS WE BUY: a supplier's quotation "
+        "(見積書), their order acknowledgement (注文請書), or our own purchase "
+        "order (発注書/注文書控え) for bar stock. Read the two sides carefully — "
+        "they are printed the opposite way round from a customer's order.\n"
+        f"- WE are the BUYER. Our company is {OWN_COMPANY}. On a supplier's "
+        "quotation we appear at the top next to 「御中」/「様」 or after "
+        "宛先/送付先/お客様/得意先; on our own purchase order we appear in the "
+        "issuer block (発注元/購入者) with our seal. NEVER return our own company "
+        "in supplier_name — if the name you are about to return matches ours, you "
+        "picked the wrong side.\n"
+        "- supplier_name is the OTHER party: the vendor who supplies the material "
+        "and will be PAID. It is printed near 発行元/仕入先/供給者/御見積者/"
+        "販売店/Supplier/Vendor/From, or in the block with the company seal (印/"
+        "社判), address and phone. Return that company's full legal name as printed.\n"
+        "- supplier_contact is that supplier's contact person (担当/担当者), if printed.\n"
+        "- document_number is the number the document carries in its own header "
+        "(見積番号/注文番号/伝票番号). po_number is the purchase-order number when "
+        "the document quotes one separately (発注番号/注文番号 of OUR order); if "
+        "only one number is printed, put it in document_number and leave po_number "
+        "null.\n"
+        "- order_date is the document's own date (発行日/見積日/注文日). "
+        "valid_until is the quotation's expiry (有効期限), if printed.\n"
+        + _MATERIAL_ITEM_RULES +
+        "- unit_price / amount: as printed, without the currency symbol. "
+        "currency: the ISO code of the printed currency (JPY for 円/¥, USD for $, "
+        "EUR for €); null when nothing indicates one.\n"
+        "- expected_date per item: the promised delivery date for that line "
+        "(納期/納入予定日). notes per item: any remark printed on the line, verbatim."
+    ),
+    "material-delivery": (
+        "This is a delivery note (納品書/納入明細書/受領書) that a SUPPLIER sent "
+        "US together with material they delivered. It records what physically "
+        "ARRIVED, not what was ordered.\n"
+        f"- WE are the RECIPIENT. Our company is {OWN_COMPANY}, printed at the top "
+        "next to 「御中」/「様」 or after 納入先/届け先/お客様. NEVER return our own "
+        "company in supplier_name.\n"
+        "- supplier_name is the OTHER party: the vendor who shipped the material. "
+        "It is printed near 発行元/納入業者/仕入先/Supplier, or in the block with "
+        "the company seal (印/社判), address and phone.\n"
+        "- delivery_number is this delivery note's own number (納品書番号/伝票番号). "
+        "po_number is OUR purchase-order number when the note quotes one "
+        "(発注番号/注文番号/ご注文番号).\n"
+        "- delivery_date is the date of delivery (納品日/納入日/出荷日).\n"
+        + _MATERIAL_ITEM_RULES +
+        "- quantity is the quantity that ACTUALLY ARRIVED — read the 納品数/数量 "
+        "column, never the ordered quantity (発注数) when both are printed.\n"
+        "- lot_number per item: the supplier's lot / heat / charge number "
+        "(ロット番号/ロットNo/製造番号), verbatim, if printed.\n"
+        "- notes per item: any remark printed on the line, verbatim.\n"
+        "- Ignore price columns — this document type has no money fields."
+    ),
 }
 
 # ── Text tasks (no document) ─────────────────────────────────────────────

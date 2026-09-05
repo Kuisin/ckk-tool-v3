@@ -17,8 +17,15 @@
 import { bpMatchKey } from "./bp-match";
 import { productMatchKey } from "./product-match";
 
-/** 学習対象のマスタ（テーブル名 — audit と同じ多態規約）。 */
-export type MatchAliasTarget = "business_partners" | "products";
+/**
+ * 学習対象のマスタ（テーブル名 — audit と同じ多態規約）。
+ *
+ * `materials` は購買側の取込（仕入先の見積書・納品書）が使う。素材コードと
+ * 素材名は製品と同じ揺れ方（寸法記号・全角半角）をするので、正規化は
+ * `productMatchKey` を共用する — 別の鍵にすると同じ表記が 2 通りに落ちて、
+ * 覚えたのに引けない状態になる。
+ */
+export type MatchAliasTarget = "business_partners" | "products" | "materials";
 
 /** 学習する 1 件。 */
 export interface AliasLearning {
@@ -37,7 +44,11 @@ export interface AliasLearning {
  */
 const MIN_ALIAS_LEN = 2;
 
-/** 対象ごとの正規化（突合で使うものと同じ関数を使う — ずれると引けない）。 */
+/**
+ * 対象ごとの正規化（突合で使うものと同じ関数を使う — ずれると引けない）。
+ * products / materials は同じ `productMatchKey`（lib/material-match も同じ
+ * 鍵で突合する）。
+ */
 export function aliasKeyFor(targetType: MatchAliasTarget, raw: string): string {
   return targetType === "business_partners"
     ? bpMatchKey(raw)

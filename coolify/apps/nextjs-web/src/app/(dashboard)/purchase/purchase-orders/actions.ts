@@ -37,6 +37,7 @@ import { prisma } from "@/lib/db";
 import { onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
 import { nextDocumentNumber } from "@/lib/numbering";
+import { learnPurchaseAliases } from "@/lib/purchase-intake";
 import {
   type ActionResult,
   actionError,
@@ -936,4 +937,32 @@ export async function cancelPurchaseOrder(
       ),
     );
   }
+}
+
+/**
+ * 取込（AI 読み取り）で作った発注書の**学習**を貯める。
+ *
+ * 「この表記はこの仕入先・この素材のことだ」を `app.match_aliases` に残し、
+ * 次に同じ仕入先から同じ書式が来たとき自動で当たるようにする。作成そのものは
+ * `createPurchaseOrder` が済ませているので、ここは**成功したあとの副産物**
+ * — 失敗しても発注書は残る（画面もエラーを出さない）。
+ */
+export async function learnMaterialOrderAliases(payload: {
+  extractedSupplierName: string | null;
+  supplierBpId: string | null;
+  lines: {
+    materialText: string | null;
+    materialCode: string | null;
+    materialId: string | null;
+  }[];
+}): Promise<ActionResult> {
+  const authz = await checkPermission("purchase_order", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
+  await learnPurchaseAliases({
+    extractedSupplierName: payload.extractedSupplierName,
+    supplierBpId: payload.supplierBpId,
+    lines: payload.lines,
+    actorId: await getCurrentActorId(),
+  });
+  return actionOk();
 }

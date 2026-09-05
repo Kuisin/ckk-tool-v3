@@ -17,11 +17,16 @@ import {
   Text,
   TextInput,
 } from "@mantine/core";
-import { IconPackageImport, IconSearch } from "@tabler/icons-react";
+import {
+  IconFileImport,
+  IconPackageImport,
+  IconSearch,
+} from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
@@ -148,7 +153,18 @@ export function MaterialReceiptTable({
 
   return (
     <ListShell
-      action={<NewButton href={`${BASE_PATH}/new`} />}
+      action={
+        <Group gap="xs" wrap="nowrap">
+          {/* 納品書 1 枚から複数行をまとめて登録する入口（AI 読み取り）。 */}
+          <SecondaryButton
+            href={`${BASE_PATH}/intake`}
+            leftSection={<IconFileImport size={14} />}
+          >
+            {tr("purchase.intake.fromDeliveryNote")}
+          </SecondaryButton>
+          <NewButton href={`${BASE_PATH}/new`} />
+        </Group>
+      }
       breadcrumbs={[tr("common.purchasing"), tr("common.materialReceipt")]}
       filters={
         <Select
