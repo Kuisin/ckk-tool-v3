@@ -1,5 +1,15 @@
 # Structure
 
+> **この文書は配置の設計意図**であり、**実装の正ではない**。実装の正は
+> `coolify/apps/nextjs-web/src/` の実ツリーで、画面の登録簿は
+> `src/lib/app-list.ts`。機能を足したり移したりしたときは、ここも直すか、
+> 直さないなら「実装の正はツリー」であることを思い出すこと。
+> 既知のずれ（2026-09-05 時点）:
+> - `lib/journal.ts` は**存在しない**。仕訳の組み立ては `lib/csv-export.ts`
+>   の中にあり、弥生 CSV の生成と一体になっている。
+> - `production/approvals/` は 一般カテゴリの `general/tasks`（CM01）へ移設済み。
+> - システム設定は `settings/*` 配下（`admin/*` は旧パス）。
+
 ```
 src/
 ├── app/
@@ -236,7 +246,7 @@ src/
 ├── lib/
 │   ├── db.ts                                       # Prisma client
 │   ├── auth.ts                                     # Auth.js v5 設定
-│   ├── journal.ts                                  # 仕訳エンジン（弥生連携用）
+│   ├── journal.ts                                  # ⚠️ 未実装 — 仕訳の組み立ては csv-export.ts の中
 │   ├── csv-export.ts                               # 弥生会計 Next CSV 生成
 │   ├── inventory.ts                                # 在庫引当・予約ロジック
 │   ├── pricing.ts                                  # 価格試算原価計算・価格表解決・見積自動生成・値引き計算

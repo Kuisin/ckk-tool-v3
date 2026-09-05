@@ -14,7 +14,7 @@
 |----|-------------|-------------------------------|-------------------------------|-----------------|
 | 1  | nextjs      | node:24-slim (standalone)     | App (BFF + UI + API)          | 3000            |
 | 2  | postgresql  | groonga/pgroonga:4.0.6-alpine-17 | Primary DB + PGroonga      | 5432            |
-| 3  | valkey      | valkey/valkey:8.1             | Cache / Pub/Sub / BullMQ      | 6379            |
+| ~~3~~ | ~~valkey~~ | ~~valkey/valkey:8.1~~ | **未導入** — Pub/Sub は Postgres LISTEN/NOTIFY、ジョブは setInterval + pg_cron | — |
 | 4  | gotenberg   | gotenberg/gotenberg:8.17      | PDF generation API            | 3100            |
 | 5  | loki        | grafana/loki:3.7              | Log storage                   | 3101            |
 | 6  | alloy       | grafana/alloy:1.8             | Log collector (Nginx/Docker)  | 12345           |
@@ -23,7 +23,7 @@
 | 10 | portainer   | portainer/portainer-ce:lts    | Docker GUI（旧 dockge。`dockge` 別名のまま） | 9000 |
 | 11 | seaweedfs   | chrislusf/seaweedfs:latest    | File storage (S3 API)         | 8333, 9333      |
 
-Total: 11 containers
+Total: 10 containers（valkey は未導入）
 
 ### Details
 ```
@@ -56,9 +56,12 @@ Database:       PostgreSQL 17
 
 # Realtime
 Transport:      SSE（Next.js Route Handler）
-Pub/Sub:        Valkey
-Presence:       Valkey Keys + TTL
-Comments:       PostgreSQL + Valkey Pub/Sub
+Pub/Sub:        PostgreSQL LISTEN/NOTIFY（lib/realtime.ts）
+                ※ Valkey は**入れていない**。通知の配信はアプリ 1 プロセス内の
+                  購読 + Postgres の通知で足りており、依存を 1 つ減らしている
+Presence:       共有端末は WebSocket 接続（nextjs-kiosk src/server.ts）+
+                kiosk_devices.last_activity_at。pg_cron が取りこぼしを掃除する
+Comments:       PostgreSQL（document_memos）+ 上記 SSE
 
 # Auth / Security
 Auth:           Auth.js v5（NextAuth後継）
@@ -92,7 +95,7 @@ Container:      Docker Compose
 Git:            Github
 Runtime:        Node standalone (Next build output)
 Reverse Proxy:  Nginx
-GUI:            Dockge
+GUI:            Portainer（旧 Dockge。`dockge` の別名だけ残っている）
 Deploy:         Coolify（nextjs-webのみ; dev/mainブランチ別ビルド＋ロールバック）
                 他スタックは rsync + docker compose up -d --build
 
@@ -130,14 +133,16 @@ AI補助タスク:    同じ po-extract の /generate/<task>（紙なし・LLM 1
                 自前スキーマを渡す /generate も可。アプリ側は
                 nextjs-web の lib/po-extract.ts 経由。
 Notification:   nodemailer + Nextcloud API + SSE
-Job Runner:     BullMQ
-Cache:          Valkey
+Job Runner:     instrumentation.ts の setInterval（取込ポーラー・通知ダイジェスト・
+                締日オートラン）+ pg_cron（DB 側の定期処理）。
+                ※ BullMQ は**入れていない**（package.json にも無い）
+Cache:          なし（React Server Components + Next.js のキャッシュのみ）
 Search Engine:  PGroonga
 Docs:           Markdown + Git管理
 
 # Data Integration
 Accounting:     弥生会計 Next（CSV export）
-HR:             Samba AD sync（BullMQ repeatable job）
+HR:             Samba AD sync（ldap-sync コンテナ + pg_cron の日次ジョブ）
 ```
 
 Side system features are documented in `_specs/feature.md`.
