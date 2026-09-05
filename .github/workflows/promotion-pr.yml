@@ -14,6 +14,11 @@
 # 補足: GITHUB_TOKEN が作成した PR は他 workflow（Promotion Guard 等）を
 # 自動起動しない。Guard は、運用担当が同期などで dev を人手で push した時点
 # （pull_request synchronize）に走る。昇格直前には必ず dev を更新するため実害はない。
+#
+# レビュー依頼: 昇格の可否を判断するのは常に運用担当（PROMOTION_REVIEWER）
+# 本人なので、新規作成時に必ずレビュアーとして指名する。既に PR が開いている
+# ときも（誰かが依頼を外した場合に備えて）毎回付け直す — べき等（既にレビュー
+# 依頼済みの人を指名し直しても GitHub 側でエラーにならない）。
 
 name: Auto Promotion PR
 
@@ -37,6 +42,8 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       PR_TITLE: "promote: dev → main"
+      # 昇格 PR のレビュアー（GitHub ユーザー名）。常にこの人を指名する。
+      PROMOTION_REVIEWER: "Kuisin"
       PR_BODY: |
         **本番昇格 PR（dev → main）** — dev が更新されるたびに GitHub Actions が自動で作成/維持します（`.github/workflows/promotion-pr.yml`）。dev の新しい差分はこの PR に自動反映されます。
 
@@ -65,8 +72,10 @@ jobs:
             --json number --jq '.[0].number // empty')
           if [ -n "${existing}" ]; then
             echo "昇格 PR #${existing} は既に開いています（dev の更新は自動反映）。"
+            gh pr edit "${existing}" --add-reviewer "${PROMOTION_REVIEWER}"
             exit 0
           fi
 
           echo "昇格 PR を新規作成します。"
-          gh pr create --base main --head dev --title "${PR_TITLE}" --body "${PR_BODY}"
+          gh pr create --base main --head dev --title "${PR_TITLE}" --body "${PR_BODY}" \
+            --reviewer "${PROMOTION_REVIEWER}"
