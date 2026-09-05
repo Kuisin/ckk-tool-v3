@@ -60,6 +60,13 @@ jobs:
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
+  # 昇格 PR は promotion-pr.yml が github-actions[bot] として作るので、
+  # `opened` の actor は必ず Bot になる。claude-code-action は既定で
+  # 非人間の actor を弾く（"Workflow initiated by non-human actor"）ため、
+  # allowed_bots で github-actions だけを明示的に許可しないとこのジョブは
+  # 昇格 PR 作成時に必ず落ちる（PR #832 で実際に落ちた）。
+  # dev への push で走る `synchronize` は actor が人間なので通っていた —
+  # つまり「PR を開いた 1 回目だけ赤い」という形で表に出る。
   full-review:
     if: github.event.pull_request.base.ref == 'main'
 
@@ -84,6 +91,9 @@ jobs:
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          # このリポジトリ自身の workflow が作る昇格 PR だけを許可する。
+          # '*' にしない（外部 App に prompt を握られる余地を残さないため）。
+          allowed_bots: 'github-actions'
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
