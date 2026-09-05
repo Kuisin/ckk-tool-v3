@@ -507,6 +507,21 @@ export async function approveUserChangeRequest(
     return actionError(tr("common.cannotApproveOwnRequest"));
   }
 
+  // 先に行を「自分が決裁した」状態へ条件付き UPDATE で倒し（PENDING のときだけ）、
+  // それから適用する。読んでから書くと、同時に来た却下・取り下げ・もう 1 人の
+  // 承認と競合して、決裁済みの依頼を二度当てたり REJECTED を上書きしたりする。
+  const claimed = await prisma.userChangeRequest.updateMany({
+    where: { id, status: "PENDING" },
+    data: {
+      status: "APPROVED",
+      decidedBy: actorId,
+      decidedAt: new Date(),
+      decisionComment: comment?.trim() || null,
+    },
+  });
+  if (claimed.count === 0)
+    return actionError(tr("common.requestAlreadyDecided"));
+
   const applied = await applyUserChange(
     req.kind,
     actorId,
@@ -517,10 +532,6 @@ export async function approveUserChangeRequest(
   await prisma.userChangeRequest.update({
     where: { id },
     data: {
-      status: "APPROVED",
-      decidedBy: actorId,
-      decidedAt: new Date(),
-      decisionComment: comment?.trim() || null,
       appliedAt: applied.ok ? new Date() : null,
       applyError: applied.ok
         ? null
@@ -580,8 +591,8 @@ export async function rejectUserChangeRequest(
     return actionError(tr("common.cannotDecideOwnRequest"));
   }
 
-  await prisma.userChangeRequest.update({
-    where: { id },
+  const res = await prisma.userChangeRequest.updateMany({
+    where: { id, status: "PENDING" },
     data: {
       status: "REJECTED",
       decidedBy: actorId,
@@ -589,6 +600,7 @@ export async function rejectUserChangeRequest(
       decisionComment: reason.trim(),
     },
   });
+  if (res.count === 0) return actionError(tr("common.requestAlreadyDecided"));
   await recordAudit({
     action: "UPDATE",
     tableName: "user_change_requests",
@@ -627,10 +639,11 @@ export async function cancelUserChangeRequest(
   if (req.status !== "PENDING")
     return actionError(tr("common.requestAlreadyDecided"));
 
-  await prisma.userChangeRequest.update({
-    where: { id },
+  const res = await prisma.userChangeRequest.updateMany({
+    where: { id, status: "PENDING" },
     data: { status: "CANCELLED" },
   });
+  if (res.count === 0) return actionError(tr("common.requestAlreadyDecided"));
   await recordAudit({
     action: "UPDATE",
     tableName: "user_change_requests",

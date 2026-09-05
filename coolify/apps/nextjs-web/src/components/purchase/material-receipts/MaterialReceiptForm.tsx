@@ -6,6 +6,8 @@
  * 直接調達（発注書を経由しない外部調達）の入荷登録。
  * 素材 SearchSelect（必須）/ 仕入先 Select（任意）/ 入荷先拠点 Select（任意）/
  * 数量 + 単位 / 入荷日（既定: 今日）/ 備考 / 証憑（任意・複数可）。
+ * 単位は**素材マスタの単位で固定**（読み取り専用 — 選んだ素材から引く）。
+ * 台帳（material_inventory）の単位と揃えるためで、サーバー側も不一致を拒む。
  * 保存で material_receipts を作成し onMaterialReceipt で在庫入庫。証憑を
  * 選択していれば作成後に /api/attachments/upload へ順次 POST（進捗通知付き・
  * 失敗しても登録自体は成立）してから詳細へ遷移する。
@@ -23,16 +25,20 @@ import {
   Stack,
   Text,
   Textarea,
+  TextInput,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPaperclip, IconX } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
+import { useRef, useState, useTransition } from "react";
 import { z } from "zod";
-import { searchMaterialOptions } from "@/app/(dashboard)/_shared/option-search";
+import {
+  fetchMaterialUnit,
+  searchMaterialOptions,
+} from "@/app/(dashboard)/_shared/option-search";
 import { createMaterialReceipt } from "@/app/(dashboard)/purchase/material-receipts/actions";
 import {
   ATTACHMENT_ACCEPT,
@@ -42,7 +48,6 @@ import { SecondaryButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 
@@ -85,7 +90,6 @@ export function MaterialReceiptForm({
   plantOptions: Option[];
 }) {
   const tr = useTranslations();
-  const locale = useLocale();
   const schema = buildSchema(tr);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -188,11 +192,28 @@ export function MaterialReceiptForm({
       supplierBpId: null,
       plantId: null,
       quantity: 1,
-      unit: tr("common.pcs"),
+      unit: "",
       receivedAt: today(),
       notes: "",
     },
   });
+
+  // 素材を選んだらその単位を引いて固定する（最近使用の候補は単位を持たない
+  // ので毎回サーバーへ聞く）。選び直しが重なったら最後の選択だけを採用する。
+  const unitSeq = useRef(0);
+  const selectMaterial = (materialId: string | null) => {
+    form.setFieldValue("materialId", materialId ?? "");
+    form.setFieldValue("unit", "");
+    const seq = ++unitSeq.current;
+    if (!materialId) return;
+    fetchMaterialUnit(materialId)
+      .then((unit) => {
+        if (seq === unitSeq.current) form.setFieldValue("unit", unit ?? "");
+      })
+      .catch(() => {
+        /* 単位が引けなければ空のまま — 送信時の必須検証で止まる */
+      });
+  };
 
   const handleSubmit = (values: FormValues) => {
     startTransition(async () => {
@@ -254,7 +275,7 @@ export function MaterialReceiptForm({
             label={
               <HelpLabel {...fieldHelp(tr, "materialReceipt", "material")} />
             }
-            onChange={(v) => form.setFieldValue("materialId", v ?? "")}
+            onChange={selectMaterial}
             onSearch={searchMaterialOptions}
             placeholder={tr("common.searchMaterials")}
             storageKey="material"
@@ -300,9 +321,10 @@ export function MaterialReceiptForm({
             withAsterisk
             {...form.getInputProps("quantity")}
           />
-          <Select
-            data={unitOptions(locale)}
+          <TextInput
+            description={tr("purchase.materialReceipts.unitFromMaterial")}
             label={tr("common.unit")}
+            readOnly
             withAsterisk
             {...form.getInputProps("unit")}
           />

@@ -361,9 +361,10 @@ function mapRow(
 
 /**
  * 指示書のスコープ where 断片（PLANT = 工程の実施拠点経由 ∪ OWN = 作成者）。
- * ALL は {} — 従来通り全件。
+ * ALL は {} — 従来通り全件。指示書番号で引く帳票ルート（検査表 PDF 等）も
+ * これを AND して、スコープ外を「見つからない」に落とす。
  */
-function workOrderScopeWhere(
+export function workOrderScopeWhere(
   access: Access,
   userId: string,
 ): Prisma.WorkOrderWhereInput {

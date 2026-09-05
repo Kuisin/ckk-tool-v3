@@ -186,6 +186,25 @@ export function fieldsOnPath(
   return fields.filter((f) => !f.sectionKey || visited.has(f.sectionKey));
 }
 
+/**
+ * 通った経路にある項目の回答だけを残す（提出時に保存する形）。
+ *
+ * 分岐で**通らなかった**セクションに、途中まで入れた回答が残っていることがある
+ * （A を選んで B 節を書き、A を戻して C 節へ進んだ、など）。検証は
+ * `fieldsOnPath` の項目だけを見るので提出は通るが、そのまま保存すると、通って
+ * いない節の回答が詳細・エクスポート・集計に出てしまう。定義に無いキーも
+ * ここで落ちる（項目を消したあとの古いキー、細工した payload）。
+ */
+export function pruneAnswersToPath(
+  relevant: readonly FormFieldDef[],
+  answers: Record<string, FormAnswerValue>,
+): Record<string, FormAnswerValue> {
+  const keep = new Set(relevant.map((f) => f.key));
+  return Object.fromEntries(
+    Object.entries(answers).filter(([key]) => keep.has(key)),
+  );
+}
+
 // ─── 検証（保存時） ──────────────────────────────────────────────────────────
 
 function isSelectValueValid(field: FormFieldDef, value: string): boolean {

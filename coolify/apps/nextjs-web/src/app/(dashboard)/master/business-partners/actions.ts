@@ -21,6 +21,7 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import type { Tr } from "@/lib/i18n";
+import { countMasterReferences } from "@/lib/master-refs";
 import { nextSerialCode } from "@/lib/numbering";
 import { syncCustomerSalesReps } from "@/lib/sales-rep";
 import {
@@ -344,15 +345,11 @@ export async function deleteBranch(
     if (!branch || branch.parentId !== parentId) {
       return actionError(tr("master.businessPartnerActions.branchNotFound"));
     }
-    const quotes = await prisma.quote.count({
-      where: {
-        OR: [{ customerBranchBpId: branchId }, { customerBpId: branchId }],
-      },
-    });
-    if (quotes > 0) {
-      return actionError(
-        tr("master.businessPartnerActions.branchInUseByQuotes"),
-      );
+    // 支店も取引先なので参照の集合は取引先と同じ — 見積書だけでなく注文請書・
+    // 出荷書・納品書・請求書の支店列（いずれも SET NULL で DB は止めない）も数える。
+    const refs = await countMasterReferences("branch", [branchId]);
+    if (refs.total > 0) {
+      return actionError(tr("master.bpActions.referencedCannotDelete"));
     }
     await prisma.$transaction([
       prisma.bpContact.deleteMany({ where: { bpId: branchId } }),

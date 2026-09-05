@@ -62,7 +62,7 @@
 - 請求書採番: `INV-YYYYMM-NNNNN`（`lib/numbering.ts`）
 - 請求書 PDF 生成: `app/api/pdf/invoice/route.ts` → Gotenberg
 - 弥生会計 Next CSV エクスポート: `app/api/export/yayoi/route.ts` → `lib/csv-export.ts`
-- 仕訳生成: `lib/journal.ts`（弥生連携用）
+- 仕訳生成: `lib/csv-export.ts`（弥生 CSV の生成と一体。独立した `lib/journal.ts` は無い）
 - 請求書ステータス: `DRAFT → ISSUED → SENT → PAID`
 - 締日処理ステータス: `PENDING → PROCESSED → EXPORTED`
 

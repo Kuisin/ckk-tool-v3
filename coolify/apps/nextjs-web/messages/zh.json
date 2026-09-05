@@ -799,7 +799,10 @@
     "cannotChangeRoles": "无法变更角色",
     "cannotChangeOwnRoles": "无法变更自己的角色",
     "cannotRemoveLastAdminRole": "无法从最后一名管理员移除管理员角色",
-    "finalInspection": "最终检查"
+    "finalInspection": "最终检查",
+    "noPriceListTier": "无数量档",
+    "priceListInactive": "价格表已停用",
+    "priceListExpired": "价格表不在有效期"
   },
   "shell": {
     "appsLabel": "应用",
@@ -1993,7 +1996,8 @@
       "exportedAtLabel": "已导出・{dateTime}",
       "taxLabelReduced": "消费税（8%）",
       "taxLabelExempt": "消费税（免税）",
-      "taxLabelStandard": "消费税（10%）"
+      "taxLabelStandard": "消费税（10%）",
+      "yayoiAccountingCsvAgain": "弥生会计 CSV（重新导出）"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "将发行请款单 {invoiceNumber}，发行日期记为今天。",
@@ -2161,7 +2165,8 @@
       "transferHeaderNote1": "此文件仅包含表单的结构，不包含回答与共享设置",
       "transferHeaderNote2": "（共享对象因环境而异，导入的表单以未发布状态开始。）",
       "transferHeaderNote3": "导入请从 表单 > 导入 中选择此文件，或粘贴其内容。",
-      "transferHeaderNote4": "请勿编辑以下 JSON（一旦损坏将无法导入）。"
+      "transferHeaderNote4": "请勿编辑以下 JSON（一旦损坏将无法导入）。",
+      "lookupValueNotFound": "{label}：找不到所选的业务数据，请重新选择"
     },
     "tasksActions": {
       "loginRequired": "请登录",
@@ -2177,6 +2182,7 @@
       "commentRequired": "请输入评论",
       "commentTooLong": "评论过长",
       "createFailed": "创建失败",
+      "editBlockedWhilePending": "发布审批中无法编辑正文（请先退回后再编辑，或等待决裁）",
       "editPermissionDenied": "没有权限编辑此文档",
       "invalidShareSettings": "共享设置无效",
       "loginRequired": "请登录",
@@ -2867,7 +2873,7 @@
       "noDefectRecords": "没有不良记录",
       "auditDefectsAdded": "已添加不良记录（{count} 条）",
       "notAnOutsourceStep": "这不是外协工序",
-      "notifyOutsourceReceived": "工单 #{workOrderNumber} 的外协工序已到货",
+      "notifyOutsourceReceived": "工单 {workOrderNumber} 的外协工序已到货",
       "outsourceNotifyFailedLog": "[outsource] 到货通知发送失败：",
       "auditOutsourceCostSuffix": " / 外协费 ¥{amount}",
       "auditOutsourceUpdated": "已更新外协日程（委托 {requested} / 预计到货 {expected} / 到货 {received}{cost}）",
@@ -2892,7 +2898,9 @@
       "couldNotDeleteActual": "删除作业实绩失败",
       "inspectionSheetNotFound": "未找到指定的检查表",
       "auditInspectionSheetsSet": "已变更工序的检查表分配（{count} 项）",
-      "couldNotSaveInspectionSheets": "检查表分配保存失败"
+      "couldNotSaveInspectionSheets": "检查表分配保存失败",
+      "requestedAfterExpected": "预计到货日需在委托日当天或之后",
+      "requestedAfterReceived": "到货日需在委托日当天或之后"
     },
     "workOrderActions": {
       "acknowledgeFailed": "确认记录失败",
@@ -2902,6 +2910,8 @@
       "approvedNextStepNote": "已批准（进入下一环节）",
       "approvedRemainingNote": "已批准（此环节还剩 {remaining} 人）",
       "cancelFailed": "取消失败",
+      "cancelReleaseNote": "因取消工单 #{number} 解除预留",
+      "cancellableOnlyBeforeStart": "只有草稿、审批中，或尚未开始任何工序的已批准工单可以取消",
       "copiedFromNote": "复制自 #{number}",
       "copyFailed": "工单复制失败",
       "copySourceNotFound": "未找到复制来源工单",
@@ -2912,7 +2922,6 @@
       "designFileWrongProduct": "此图纸不属于此工单的产品",
       "draftOnlyCanEdit": "只有草稿工单可以编辑",
       "draftOnlyCanRequestApproval": "只有草稿工单可以申请审批",
-      "draftOrPendingOnlyCanCancel": "只有草稿或审批中的工单可以取消",
       "flowChangeAcknowledgedNote": "已确认被退回的工序流程变更",
       "flowChangeApplyFailedFallback": "变更应用失败",
       "flowChangeNotFound": "未找到目标变更",
@@ -3073,6 +3082,8 @@
       "newMaterialReceipt": "新登记材料到货",
       "registersADirectPurchaseAReceipt": "登记直接采购（不经采购单的到货）。登记的同时将入库到到货据点的材料库存。采购到货由材料采购单的「入库完成」自动登记。",
       "receiptInformation": "到货信息",
+      "unitFromMaterial": "按材料主数据的单位登记",
+      "unitMismatch": "单位与材料主数据的单位（{unit}）不一致",
       "selectASupplierOptional": "选择供应商（可选）",
       "youCanAttachDeliveryNoteCopies": "可添加送货单副本・验收单等附件（PDF / PNG / JPG / WEBP / HEIC / XLSX / CSV，各不超过 20MB）。将在到货登记完成后上传。",
       "supportingDocumentOptional": "凭证（可选）",
@@ -3113,7 +3124,6 @@
       "notReceivedArrivesAfterOrdering": "未到货（下单后到货）",
       "onceOrderedTheLinesAppearAs": "下单后明细将反映到材料 ATP 的预计到货中",
       "readyToOrder": "可以下单",
-      "completingTheReceiptRecordsEachLine": "入库完成后按明细记录到货并入材料库存",
       "waitingForTheGoods": "等待到货",
       "receiptCompletedOn": "入库完成日",
       "convertedFromPurchaseRequest": "转换来源（采购申请）",
@@ -3131,10 +3141,25 @@
       "thereAreNoMaterialPurchaseOrders": "没有材料采购单",
       "receiptsSummary": "{count} 件・合计 {total} {unit}",
       "receiptNote": "{quantity} {unit}・{date}",
-      "receivedSoFar": "已入库 {count}",
       "confirmCancelBody": "将取消材料采购单 {number}。此操作无法撤销。",
       "confirmOrderBody": "将材料采购单 {number} 标记为已下单。明细将反映到材料库存的预计到货（ATP）中。",
-      "confirmCompleteBody": "将 {count} 条明细登记为全部到货的材料入库，并计入到货据点的材料库存。如需分批到货，请直接在材料到货（PU03）中登记。"
+      "confirmCompleteBody": "将 {count} 条明细登记为全部到货的材料入库，并计入到货据点的材料库存。如需分批到货，请直接在材料到货（PU03）中登记。",
+      "receiveActionsDescription": "到货完成将一次性接收剩余数量。仅部分到货时使用分批到货；剩余不会到货时选择未到货直接完成。",
+      "partialReceipt": "分批到货",
+      "confirmPartialReceipt": "登记分批到货",
+      "partialReceiptBody": "按明细输入本次到货数量。为 0 的明细不做到货。所有明细达到订货数后即为到货完成。",
+      "recordTheReceipt": "登记到货",
+      "recordedTheReceipt": "已登记到货",
+      "enterAtLeastOneQuantity": "请至少在一条明细上输入数量",
+      "orderedQuantity": "订货数",
+      "receivedQuantity": "已到货",
+      "remainingQuantity": "剩余",
+      "thisDelivery": "本次到货",
+      "closeShort": "未到货直接完成",
+      "closedShort": "已未到货直接完成",
+      "confirmCloseShort": "未到货直接完成的确认",
+      "confirmCloseShortBody": "未到货的 {count} 条明细将不做到货，材料采购单 {number} 标记为到货完成。未到货部分不计入库存，也将从预计到货（ATP）中移除。此操作无法撤销。",
+      "closeShortReason": "结束理由"
     },
     "purchaseRequests": {
       "selectASupplier": "请选择供应商",
@@ -3193,6 +3218,7 @@
       "onlyDraftOrRejectedCanRequestApproval": "只有草稿或已退回的采购申请才能申请审批",
       "onlyPreConversionCanCancel": "只有尚未转换为采购单的采购申请才能取消",
       "quantityPositive": "数量须大于 0",
+      "stateChanged": "采购申请的状态已变更（已处理或已被其他用户更新）。请重新加载页面",
       "targetRequestNotFound": "未找到目标采购申请",
       "unitRequired": "请输入单位",
       "updateFailed": "更新采购申请失败"
@@ -3201,7 +3227,9 @@
       "approvedNextStep": "已批准（进入下一级）",
       "approvedRemaining": "已批准（本级还剩 {count} 人）",
       "cancelFailed": "取消失败",
+      "closeShortFailed": "未到货直接完成的处理失败",
       "createFailed": "材料采购单创建失败",
+      "enterCloseShortReason": "请输入结束剩余数量的理由",
       "enterUnit": "请输入单位",
       "lineItemNotFound": "未找到明细",
       "lineItemOverReceived": "明细（{itemId}）的到货数量超过下单数量",
@@ -3212,6 +3240,7 @@
       "onlyApprovedCanOrder": "只有已批准的材料采购单可以下单",
       "onlyDraftCanRequestApproval": "只有草稿状态的材料采购单可以申请审批",
       "onlyDraftEditable": "只有草稿状态的材料采购单可以编辑",
+      "onlyOrderedCanCloseShort": "仅已下单的材料采购单可未到货直接完成",
       "onlyOrderedCanComplete": "只有已下单的材料采购单可以标记为到货完成",
       "onlyOrderedCanReceive": "只有已下单的材料采购单可以到货",
       "onlyPreOrderCanCancel": "只有下单前的材料采购单可以取消",
@@ -3224,8 +3253,57 @@
       "receiptFailed": "到货处理失败",
       "receivedQuantityMinOne": "到货数量请输入 1 以上",
       "requestFailed": "审批申请失败",
+      "stateChanged": "材料采购单的状态已变更（已处理或已被其他用户更新）。请重新加载页面",
+      "unitMismatch": "明细（{code}）的单位与材料主数据的单位（{unit}）不一致",
       "unitPriceMinZero": "单价须为 0 以上",
       "updateFailed": "材料采购单更新失败"
+    },
+    "intake": {
+      "title": "AI 读取",
+      "orderDescription": "读取供应商的报价单、订单确认书或采购单存根，并填入下方的采购单。填入后保存前仍可修改。",
+      "orderUploadHint": "PDF 或图片（PNG / JPEG / WebP）。每次读取一份。",
+      "deliveryDescription": "读取供应商的送货单，批量登记到货的材料。",
+      "deliveryUploadHint": "PDF 或图片（PNG / JPEG / WebP）。不读取金额栏。",
+      "selectDocument": "选择单据",
+      "clearFile": "重新选择",
+      "read": "AI 读取",
+      "readingHint": "读取可能需要 1 分钟左右。",
+      "extractFailed": "读取失败",
+      "notRetryable": "未修正设置前，再试一次也是同样的结果。",
+      "fileRequired": "请选择文件",
+      "unsupportedFileType": "请选择 PDF 或图片（PNG / JPEG / WebP）",
+      "aiConfigHint": "请在 系统 → AI 服务商（SY0E）重新设置令牌",
+      "lines": "读取到的明细",
+      "noLines": "未能读取到明细。请手动输入。",
+      "extractedAs": "读取内容：{text}",
+      "supplierNotRead": "未能读取供应商",
+      "didYouMean": "您是否想找",
+      "pickMaterial": "请选择材料",
+      "expectedDate": "预计到货日",
+      "lotNumber": "批次号：{lot}",
+      "state": {
+        "matched": "一致",
+        "picked": "已选择",
+        "guess": "推定",
+        "unmatched": "未确定"
+      },
+      "unmatchedWarning": "有 {count} 行尚未确定材料。保存前请先选择。",
+      "unmatchedBlocks": "有 {count} 行尚未确定材料。请选择，或将该行排除。",
+      "applyToForm": "填入表单",
+      "applied": "已填入读取的内容",
+      "appliedMessage": "已填入 {count} 条明细。保存前请确认。",
+      "attachmentLabel": "导入原件",
+      "attachFailed": "原件附加失败",
+      "attachFailedMessage": "登记已完成。可在详情页重新附加。",
+      "fromDeliveryNote": "从送货单登记",
+      "receiptPageTitle": "从送货单登记到货",
+      "receiptLinesDescription": "不登记的行请勾选「不登记此行」。单位以材料主数据的单位为准。",
+      "appliesToAllLines": "应用于所有行",
+      "skipLine": "不登记此行",
+      "registerSelected": "登记已选的 {count} 条",
+      "registeredMessage": "已登记 {count} 条材料到货",
+      "selectAtLeastOneLine": "请至少选择 1 行进行登记",
+      "tooManyLines": "一次可登记的行数已超出上限"
     }
   },
   "settings": {
@@ -4378,7 +4456,8 @@
       "grantSaveFailed": "权限保存失败",
       "grantDeleteFailed": "权限删除失败",
       "uploadPermissionDenied": "没有上传到此文件夹的权限",
-      "deletePermissionDenied": "没有删除此文件的权限"
+      "deletePermissionDenied": "没有删除此文件的权限",
+      "uploadTooLarge": "文件过大（上限 20 MB）"
     },
     "notificationEmailActions": {
       "saveFailedLog": "[notification-email] 保存失败"
@@ -4406,7 +4485,8 @@
       "selectAtLeastOneOperationToGrant": "请至少选择一项要许可的操作（若全部取消请改为退回）",
       "specifyEndDateTime": "请指定结束日期时间",
       "specifyStartDateTime": "请指定开始日期时间",
-      "unknownOperation": "包含未知操作（{key}）"
+      "unknownOperation": "包含未知操作（{key}）",
+      "windowAlreadyEnded": "申请的有效期已结束（批准后也无法使用，请重新申请并修改期间）"
     },
     "productItemActions": {
       "assignedItemNotFound": "“{name}”分配的项目不存在：{key}",
@@ -5631,7 +5711,8 @@
       "regionNotFound": "未找到目标地区",
       "regionUpdateFailed": "地区更新失败",
       "statusUpdateFailed": "状态更新失败",
-      "updateFailed": "据点更新失败"
+      "updateFailed": "据点更新失败",
+      "referencedCannotDelete": "此据点被其他数据（库存、工序、终端、订单确认书等）引用，无法删除。请考虑停用。"
     },
     "processStepsActions": {
       "selectDependencyStep": "请选择依赖的工序",
@@ -5650,14 +5731,15 @@
       "updateFailed": "工序更新失败",
       "referencedByOtherStepsCannotDelete": "由于其他工序依赖此工序，无法删除。请考虑改为停用。",
       "referencedByTemplateCannotDelete": "由于存在关联此工序的检查表模板，无法删除。请考虑改为停用。",
-      "deleteFailed": "工序删除失败"
+      "deleteFailed": "工序删除失败",
+      "execDependencyCycle": "执行依赖形成了循环（{path}）"
     },
     "productsActions": {
       "diameterRange": "请输入 {min}〜{max}mm 之间的直径",
       "lengthRange": "请输入 {min}〜{max}mm 之间的全长",
       "createFailed": "产品创建失败",
       "updateFailed": "产品更新失败",
-      "referencedCannotDelete": "由于存在引用此产品的数据（价格表、报价单），无法删除。请考虑改为停用。",
+      "referencedCannotDelete": "此产品被其他数据（价格表、报价单、订单明细、图纸、检查表等）引用，无法删除。请考虑停用。",
       "deleteFailed": "产品删除失败"
     },
     "workLocationsActions": {
@@ -5683,7 +5765,9 @@
       "saveTypesFailed": "类别保存失败",
       "auditWorkLocationAdded": "已添加作业场所「{name}」",
       "auditWorkLocationUpdated": "已更新作业场所「{name}」",
-      "auditWorkLocationDeleted": "已删除作业场所"
+      "auditWorkLocationDeleted": "已删除作业场所",
+      "usedByOrderAcceptances": "订单确认书的出货作业场所 {count} 件",
+      "usedByProcessSteps": "工序的允许作业场所 {count} 件"
     },
     "storageLocationActions": {
       "codeFormat": "编号请使用字母、数字、连字符和下划线",
@@ -5718,13 +5802,13 @@
       "updateFailed": "材料更新失败",
       "statusUpdateFailed": "状态更新失败",
       "deleteFailed": "材料删除失败",
-      "noTargetsSelected": "未选择对象"
+      "noTargetsSelected": "未选择对象",
+      "referencedCannotDelete": "此材料被其他数据（工单、采购单、到货、库存）引用，无法删除。请考虑停用。"
     },
     "businessPartnerActions": {
       "bpNotFound": "未找到目标业务伙伴",
       "branchCreateFailed": "分公司创建失败",
       "branchDeleteFailed": "分公司删除失败",
-      "branchInUseByQuotes": "由于存在引用此分公司的报价单，无法删除。请考虑改为停用。",
       "branchNotFound": "未找到目标分公司",
       "branchUpdateFailed": "分公司更新失败",
       "createFailed": "业务伙伴创建失败",
@@ -5781,7 +5865,9 @@
       "toggleFailed": "切换失败",
       "stepMissingName": "第 {steps} 级：请输入名称",
       "stepMissingGroupIndividual": "第 {steps} 级：请选择审批组，或至少选择 1 位审批人",
-      "stepMissingGroup": "第 {steps} 级：请选择审批组"
+      "stepMissingGroup": "第 {steps} 级：请选择审批组",
+      "groupReferencedCannotDelete": "此审批组被检查表模板引用，无法删除。请考虑停用。",
+      "stepGroupNotEffective": "第 {steps} 级的审批组已停用，或当前没有可审批的成员"
     },
     "approvalConditions": {
       "totalAmount": "合计金额",
@@ -6798,7 +6884,8 @@
       "hideTheDocumentPane": "折叠单据",
       "showTheDocumentPane": "展开单据",
       "hideTheDocument": "隐藏",
-      "customerProvidesDeliveryNote": "客户自备送货单"
+      "customerProvidesDeliveryNote": "客户自备送货单",
+      "priceNoTierLine": "第 {row} 行：没有覆盖数量 {quantity} 的价格表数量档"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "此明细的父单据",
@@ -7136,7 +7223,8 @@
       "priceOverrideCount": "单价覆盖 {count} 件",
       "lineOverrideText": "第 {row} 行：{actual}（价格表 {expected}）",
       "priceOverridden": "已覆盖",
-      "priceOverriddenFromList": "已覆盖（价格表 {expected}）"
+      "priceOverriddenFromList": "已覆盖（价格表 {expected}）",
+      "lineNoTierText": "第 {row} 行：没有覆盖数量 {quantity} 的价格表数量档"
     },
     "orderAcceptanceIntakeTable": {
       "addedQueuedForExtraction": "已将 {count} 项添加到列表。AI 提取将随后依次执行",
@@ -7268,7 +7356,12 @@
       "quantityMinOne": "数量须为 1 以上",
       "quoteNotFound": "未找到目标报价单",
       "scopeDenied": "没有此操作的权限（超出范围）",
-      "updateFailed": "报价单更新失败"
+      "updateFailed": "报价单更新失败",
+      "noPriceListTier": "明细 {line}：没有覆盖数量 {quantity} 的价格表数量档（请调整数量或在价格表中添加数量档）",
+      "priceListInactive": "明细 {line}：价格表已停用",
+      "priceListExpired": "明细 {line}：价格表不在有效期内",
+      "validUntilRequired": "请输入有效期",
+      "validUntilInPast": "有效期必须为今天或之后的日期"
     },
     "orderLinesActions": {
       "invalidOrderLine": "订单明细无效",
@@ -7284,6 +7377,7 @@
       "onlyConfirmedEstimateUsable": "只有已确定的价格试算可用于价格表",
       "fetchEstimateSourcesFailed": "价格试算获取失败",
       "invalidVariant": "变体无效",
+      "invalidTier": "数量档无效",
       "createFailed": "价格表创建失败",
       "duplicateEntry": "该客户与产品的价格表已存在。请编辑现有价格表。",
       "invalidEntryNumber": "价格表编号无效",
@@ -7380,6 +7474,8 @@
       "noLineItems": "没有任何明细",
       "lineProductNotIdentified": "第 {rows} 行明细：产品未确定",
       "lineUnitPriceNotEntered": "第 {rows} 行明细：单价未输入",
+      "lineQuantityInvalid": "第 {rows} 行明细：数量不足 1",
+      "lineUnitPriceNegative": "第 {rows} 行明细：单价为负数",
       "andNMore": "其他 {count} 件"
     },
     "orderLineCore": {
@@ -7531,7 +7627,8 @@
       "productNotInShipment": "{label} 不在出货单中",
       "quantityMustBeAtLeastOne": "数量须为 1 以上",
       "selectEndUserForDirectToUser": "直送最终用户时请选择最终用户",
-      "updateFailed": "送货单更新失败"
+      "updateFailed": "送货单更新失败",
+      "deliveryOrderNotShipped": "出货单变为已出货之前，无法标记为已交货"
     },
     "deliveryOrderActions": {
       "cancelFailed": "取消失败",
@@ -7553,7 +7650,9 @@
       "shippedNotificationTitle": "出货单 {number} 已出货",
       "specifyAConfirmedOrderLine": "请指定已确定的订单明细",
       "updateFailed": "出货单更新失败",
-      "autoCreatedNote": "出货单确认时自动创建（已发行）"
+      "autoCreatedNote": "出货单确认时自动创建（已发行）",
+      "orderLineNotShippable": "订单明细 {number} 不在可出货状态（仅限已确定且未取消的明细）",
+      "productMismatch": "第 {line} 行：产品与订单明细 {number} 的产品不一致"
     }
   },
   "ui": {
@@ -8057,7 +8156,8 @@
     "noItems": "{code}：没有任何检查项目"
   },
   "intakeCore": {
-    "quantityNotReadableNote": "数量未读取・需确认"
+    "quantityNotReadableNote": "数量未读取・需确认",
+    "quantityInvalidNote": "数量无效（{value}）・需确认"
   },
   "notificationEmail": {
     "digestSubject": "【CKK】{total} 条未读通知"
@@ -8104,6 +8204,7 @@
       "SSO_USER_INACTIVE": "SSO：用户已停用",
       "SSO_UPSERT_FAILED": "SSO：用户注册失败",
       "SSO_CALLBACK_ERROR": "SSO：回调失败",
+      "SSO_LOCAL_ACCOUNT_CONFLICT": "SSO：与本地账号冲突",
       "DEVICE_NO_COOKIE": "无终端 Cookie",
       "DEVICE_NOT_FOUND": "未注册的终端",
       "DEVICE_EXPIRED": "终端令牌已过期",
@@ -8251,6 +8352,7 @@
     "stockStorage": "库存保管 {ref}",
     "shippedReservationReleased": "因出货解除预留 {ref}",
     "materialReceived": "材料到货",
+    "unitMismatch": "材料库存的单位（{expected}）与入库单位（{actual}）不一致",
     "reservedByStockCheck": "库存核对分配预留（§4）",
     "stockCheckReservedAndShortage": "库存核对：已分配 {reservedNow} / 缺口 {shortage}",
     "stepStarted": "开始工序（工序 {sortOrder}・接收 {input}）",

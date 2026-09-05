@@ -1,10 +1,10 @@
 import { IconLock } from "@tabler/icons-react";
 import { getTranslations } from "next-intl/server";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { checkPermission } from "@/lib/authz";
 import { formatCode } from "@/lib/crockford";
 import { fetchKioskCardsForPrint } from "@/lib/kiosk-admin";
 import { A4, CARD_SHEET, CARDS_PER_PAGE } from "@/lib/kiosk-card-sheet";
+import { useElevation } from "@/lib/privileged-access";
 import { qrSvg } from "@/lib/qr";
 import { encodeQrPayload, QR_KINDS } from "@/lib/qr-payload";
 import { kioskCardPrintStyles } from "./print-styles";
@@ -51,9 +51,12 @@ export default async function KioskCardsPrintPage({
   searchParams: Promise<{ ids?: string }>;
 }) {
   const tr = await getTranslations();
-  const authz = await checkPermission("kiosk", "READ");
-  if (!authz.ok) {
-    return <EmptyState icon={<IconLock size={28} />} message={authz.error} />;
+  // QR = 認証情報そのものを紙にする操作。/api/pdf/kiosk-cards と同じ門
+  // （kiosk_card READ + 特権操作 kiosk_card.print の承認）を通す — 描画 1 回 =
+  // useElevation 1 回で、PDF ルートの使用回数の数え方と揃える。
+  const gate = await useElevation("kiosk_card.print");
+  if (!gate.ok) {
+    return <EmptyState icon={<IconLock size={28} />} message={gate.error} />;
   }
 
   const { ids: idsRaw } = await searchParams;

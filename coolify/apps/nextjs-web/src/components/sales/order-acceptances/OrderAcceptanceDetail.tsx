@@ -780,11 +780,16 @@ export function OrderAcceptanceDetail({
                   </Text>
                   {diffLines.map((l) => (
                     <Text key={l.itemId} size="sm">
-                      {tr("sales.orderAcceptanceDetail.lineDiffText", {
-                        row: l.row,
-                        actual: formatMoney(l.actual),
-                        expected: formatMoney(l.expected),
-                      })}
+                      {l.noTier
+                        ? tr("sales.orderAcceptanceDetail.lineNoTierText", {
+                            row: l.row,
+                            quantity: l.quantity,
+                          })
+                        : tr("sales.orderAcceptanceDetail.lineDiffText", {
+                            row: l.row,
+                            actual: formatMoney(l.actual),
+                            expected: formatMoney(l.expected),
+                          })}
                     </Text>
                   ))}
                 </Stack>
@@ -1141,10 +1146,16 @@ export function OrderAcceptanceDetail({
                                       size="xs"
                                       variant="light"
                                     >
-                                      {tr(
-                                        "sales.orderAcceptanceDetail.priceMismatchExpected",
-                                        { expected: formatMoney(lc.expected) },
-                                      )}
+                                      {lc.noTier
+                                        ? tr("common.noPriceListTier")
+                                        : tr(
+                                            "sales.orderAcceptanceDetail.priceMismatchExpected",
+                                            {
+                                              expected: formatMoney(
+                                                lc.expected,
+                                              ),
+                                            },
+                                          )}
                                     </Badge>
                                   )}
                                   {/*

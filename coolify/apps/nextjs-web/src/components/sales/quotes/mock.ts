@@ -113,6 +113,7 @@ const TIERED_QUOTE: Quote = {
   customerBranchId: "bp-001-t",
   customerBranchName: "東京本社",
   recipientDocumentLocale: null,
+  customerTaxType: null,
   status: "ISSUED",
   validUntil: "2026-05-16",
   notes:
@@ -189,6 +190,7 @@ const SINGLE_QUOTE: Quote = {
   customerBranchId: null,
   customerBranchName: null,
   recipientDocumentLocale: null,
+  customerTaxType: null,
   status: "DRAFT",
   validUntil: "2026-06-30",
   notes: null,

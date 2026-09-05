@@ -13,6 +13,7 @@ import { getTranslations } from "next-intl/server";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { countMasterReferences } from "@/lib/master-refs";
 import {
   type ActionResult,
   actionError,
@@ -70,101 +71,20 @@ export async function deleteBps(ids: string[]): Promise<ActionResult> {
   if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
-    // Guard: どのロールで使われていても参照があれば消させない
-    // （顧客・支店としての販売書類 / 需要家 / 仕入先・外注先としての購買・工程）。
-    const [
-      estimates,
-      priceListEntries,
-      quotes,
-      acceptances,
-      orderLines,
-      deliveryOrders,
-      deliveryNotes,
-      invoices,
-      billingClosings,
-      purchaseOrders,
-      materialReceipts,
-      workOrderSteps,
-      routeSteps,
-      branches,
-    ] = await Promise.all([
-      prisma.estimate.count({ where: { customerBpId: { in: ids } } }),
-      prisma.priceListEntry.count({ where: { customerBpId: { in: ids } } }),
-      prisma.quote.count({
-        where: {
-          OR: [
-            { customerBpId: { in: ids } },
-            { customerBranchBpId: { in: ids } },
-          ],
-        },
-      }),
-      prisma.orderAcceptance.count({
-        where: {
-          OR: [
-            { customerBpId: { in: ids } },
-            { customerBranchBpId: { in: ids } },
-          ],
-        },
-      }),
-      // 注文明細の顧客はヘッダ（注文請書）側で数えているので、ここは最終需要家のみ
-      prisma.orderLine.count({ where: { endUserBpId: { in: ids } } }),
-      prisma.deliveryOrder.count({
-        where: {
-          OR: [
-            { customerBpId: { in: ids } },
-            { customerBranchBpId: { in: ids } },
-          ],
-        },
-      }),
-      prisma.deliveryNote.count({
-        where: {
-          OR: [
-            { recipientBpId: { in: ids } },
-            { recipientBranchBpId: { in: ids } },
-            { endUserBpId: { in: ids } },
-          ],
-        },
-      }),
-      prisma.invoice.count({
-        where: {
-          OR: [
-            { customerBpId: { in: ids } },
-            { customerBranchBpId: { in: ids } },
-          ],
-        },
-      }),
-      prisma.billingClosing.count({ where: { customerBpId: { in: ids } } }),
-      prisma.materialPurchaseOrder.count({
-        where: { supplierBpId: { in: ids } },
-      }),
-      prisma.materialReceipt.count({ where: { supplierBpId: { in: ids } } }),
-      prisma.workOrderStep.count({ where: { supplierBpId: { in: ids } } }),
-      prisma.productProcessRouteVersionStep.count({
-        where: { supplierBpId: { in: ids } },
-      }),
-      prisma.businessPartner.count({
-        where: { parentId: { in: ids } },
-      }),
-    ]);
-    const referenced =
-      estimates +
-      priceListEntries +
-      quotes +
-      acceptances +
-      orderLines +
-      deliveryOrders +
-      deliveryNotes +
-      invoices +
-      billingClosings +
-      purchaseOrders +
-      materialReceipts +
-      workOrderSteps +
-      routeSteps;
-    if (referenced > 0) {
-      return actionError(tr("master.bpActions.referencedCannotDelete"));
-    }
+    // Guard: 支店があれば先に別文言で止める（支店を消してからでないと消せない）。
+    const branches = await prisma.businessPartner.count({
+      where: { parentId: { in: ids } },
+    });
     if (branches > 0) {
       return actionError(tr("master.bpActions.branchesExistCannotDelete"));
+    }
+    // Guard: どのロールで使われていても参照があれば消させない
+    // （顧客・支店としての販売書類 / 需要家 / 仕入先・外注先としての購買・工程 /
+    //  設計・工程ルート・請求先・ポータル）。多くは SET NULL で DB が止めない
+    // ので、数える関連は lib/master-refs が 1 か所で持つ。
+    const refs = await countMasterReferences("businessPartner", ids);
+    if (refs.total > 0) {
+      return actionError(tr("master.bpActions.referencedCannotDelete"));
     }
     const targets = await prisma.businessPartner.findMany({
       where: { id: { in: ids } },

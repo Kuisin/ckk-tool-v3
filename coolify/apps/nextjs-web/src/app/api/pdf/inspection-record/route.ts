@@ -10,7 +10,8 @@
  * オンデマンド生成（SeaweedFS には保存しない）。権限: work_order READ。
  */
 
-import { requirePermissionResponse } from "@/lib/authz";
+import { workOrderScopeWhere } from "@/app/(dashboard)/production/work-orders/data";
+import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { fetchFinalInspectionPdfData } from "@/lib/final-inspection-data";
 import { documentFormatters } from "@/lib/format";
@@ -57,8 +58,11 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export async function GET(request: Request): Promise<Response> {
-  const denied = await requirePermissionResponse("work_order", "READ");
-  if (denied) return denied;
+  const authz = await checkPermission("work_order", "READ");
+  if (!authz.ok) {
+    const status = (await sessionUserId()) ? 403 : 401;
+    return Response.json({ error: authz.error }, { status });
+  }
 
   const url = new URL(request.url);
   const id = url.searchParams.get("id");
@@ -67,8 +71,12 @@ export async function GET(request: Request): Promise<Response> {
     return new Response('Missing "id" query parameter', { status: 400 });
   }
 
-  const record = await prisma.inspectionRecord.findUnique({
-    where: { id },
+  // 指示書のスコープ外（他拠点・他人の指示書）の記録は不存在と同じ 404。
+  const record = await prisma.inspectionRecord.findFirst({
+    where: {
+      id,
+      step: { workOrder: workOrderScopeWhere(authz.access, authz.userId) },
+    },
     include: {
       template: { include: { relatedProcessStep: true } },
       step: {

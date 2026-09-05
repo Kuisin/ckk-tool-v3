@@ -277,8 +277,6 @@ export interface KioskDeviceRow {
   /** リンクした時点のスナップショット（以後不変）。 */
   linkedUserAgent: string | null;
   linkedIpAddress: string | null;
-  /** 端末設定画面（5タップ）の解錠コード（6桁）。編集モーダルで表示。 */
-  settingsCode: string;
   /** サーバー計算の初期オンライン判定（WS 未接続時のフォールバック）。 */
   initialOnline: boolean;
   /** 現在ログイン中のユーザー（ライブセッション。WS 未接続時のフォールバック）。 */
@@ -358,7 +356,6 @@ function toDeviceRow(r: DeviceWithIncludes, now: number): KioskDeviceRow {
     lastIpAddress: r.lastIpAddress,
     linkedUserAgent: r.linkedUserAgent,
     linkedIpAddress: r.linkedIpAddress,
-    settingsCode: r.settingsCode,
     initialOnline:
       r.status === "ACTIVE" &&
       r.lastActivityAt != null &&

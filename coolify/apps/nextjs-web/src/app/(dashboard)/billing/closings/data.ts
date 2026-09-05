@@ -4,6 +4,9 @@
  * 請求対象 = SHIPPED × DISPATCH の出荷書のうち「未請求」のもの。
  * 未請求判定は invoice_items の由来キー（delivery_order_year_month/seq）に
  * その出荷書が現れないこと（STOCK_STORAGE は請求フロー外なので対象外）。
+ * 請求期間は顧客ごとに **(前回締日, 今回締日]**（境界は JST 0 時 —
+ * model.ts billingWindowFor）。暦月で切ると締日より後の出荷がどの締めにも
+ * 入らず請求されない。
  * runClosing / processClosing (actions.ts) と詳細画面がここを共用する。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  */
@@ -12,13 +15,17 @@ import {
   addDays,
   type BillingClosing,
   type BillingClosingDetail,
+  billingPeriodStart,
+  billingWindowFor,
   type ClosingShipmentRow,
   type ClosingStatus,
-  closingDateFor,
+  inBillingWindow,
+  jstMidnightOf,
 } from "@/components/billing/closings/model";
 import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { lineAmountYen } from "@/lib/money";
 
 // ── 締日処理行のマッピング ───────────────────────────────────────────────────
 
@@ -114,15 +121,25 @@ export async function fetchUninvoicedShipments(range: { gte: Date; lt: Date }) {
   return rows.filter((r) => !invoicedSet.has(`${r.yearMonth}-${r.seq}`));
 }
 
-/** 顧客 × 締日の請求対象出荷 — 月初〜締日（両端含む）。processClosing と共用。 */
+/**
+ * 顧客 × 締日の請求対象出荷 — (前回締日, 締日]（JST）。processClosing と共用。
+ * 前回締日は顧客の締日設定（BpCustomerAttrs.closingDay）から引く。上限は
+ * この締日行の closingDate そのもの（設定が後から変わっても行の締日は動かない）。
+ */
 export async function fetchBillableShipmentsForClosing(
   customerBpId: string,
   closingDate: Date,
 ): Promise<BillableShipment[]> {
+  const attrs = await prisma.bpCustomerAttrs.findUnique({
+    where: { bpId: customerBpId },
+    select: { closingDay: true },
+  });
   const year = closingDate.getUTCFullYear();
   const month = closingDate.getUTCMonth() + 1;
-  const gte = new Date(Date.UTC(year, month - 1, 1));
-  const lt = addDays(closingDate, 1); // 締日当日を含む（排他的上限）
+  const gte = jstMidnightOf(
+    billingPeriodStart(year, month, attrs?.closingDay ?? null),
+  );
+  const lt = jstMidnightOf(addDays(closingDate, 1)); // 締日当日を含む（排他的上限）
   const rows = await fetchUninvoicedShipments({ gte, lt });
   return rows.filter((r) => r.customerBpId === customerBpId);
 }
@@ -133,8 +150,11 @@ export async function fetchBillableShipmentsForClosing(
  * 単一単価では誤請求になる。
  */
 export function shipmentAmount(s: BillableShipment): number {
+  // 行ごとに円へ丸めてから足す（lib/money.ts の方針）— 締日処理が作る請求書の
+  // 明細と同じ丸め方なので、締日画面の予定額と発行後の請求額がずれない。
   return s.items.reduce(
-    (sum, it) => sum + it.quantity * Number(it.orderLine?.unitPrice ?? 0),
+    (sum, it) =>
+      sum + lineAmountYen(Number(it.orderLine?.unitPrice ?? 0), it.quantity),
     0,
   );
 }
@@ -239,26 +259,30 @@ export interface CustomerClosingCandidate {
 
 /**
  * 対象月の未請求出荷を顧客ごとにまとめ、締日（BpCustomerAttrs.closingDay、
- * 既定 = 月末）と合計金額を確定する。締日より後に出荷された分は翌月扱いで除外。
+ * 既定 = 月末）と合計金額を確定する。顧客の請求期間は (前回締日, 今回締日]
+ * — 締日より後の出荷は翌月の締めに入る（billingWindowFor）。
  */
 export async function collectClosingCandidates(
   year: number,
   month: number,
 ): Promise<CustomerClosingCandidate[]> {
-  const gte = new Date(Date.UTC(year, month - 1, 1));
-  const lt = new Date(Date.UTC(year, month, 1));
+  // 全顧客の請求期間の和集合を 1 回で引く: 最も早い前回締日（1 日）の翌日 〜
+  // 最も遅い締日（月末）の翌日。顧客ごとの絞り込みは下のループで行う。
+  const gte = jstMidnightOf(billingPeriodStart(year, month, 1));
+  const { lt } = billingWindowFor(year, month, 31);
   const shipments = await fetchUninvoicedShipments({ gte, lt });
 
   const byCustomer = new Map<string, CustomerClosingCandidate>();
   for (const s of shipments) {
     const customer = s.customerBp;
-    const closingDate = closingDateFor(
+    const window = billingWindowFor(
       year,
       month,
       customer.customerAttrs?.closingDay ?? null,
     );
-    // 締日より後の出荷は今回の締めに含めない（翌月分）。
-    if (s.shippedAt && s.shippedAt >= addDays(closingDate, 1)) continue;
+    // 前回締日以前（前回の締め）・締日より後（翌月の締め）は今回に含めない。
+    if (!s.shippedAt || !inBillingWindow(s.shippedAt, window)) continue;
+    const closingDate = window.closingDate;
 
     const cur = byCustomer.get(customer.id) ?? {
       customerBpId: customer.id,

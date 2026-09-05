@@ -24,6 +24,7 @@
 
 import { z } from "zod";
 import type { Tr } from "./i18n";
+import { isEmptyDoc, parseRichText } from "./rich-text-core";
 
 // ─── 項目型 ──────────────────────────────────────────────────────────────────
 
@@ -581,10 +582,16 @@ export function validateFieldValue(
       }
       return null;
     }
-    case "richtext":
-      // 本文の妥当性は lib/rich-text-core.ts parseRichText がサーバ側で見る。
-      // ここでは「空でないこと」までを担当する。
+    case "richtext": {
+      // ノード・マーク・リンク・深さ・長さの規則は lib/rich-text-core.ts が持つ。
+      // ここで通しておかないと、空段落だけの doc（エディタの初期値）が
+      // 「値がある」扱いになり、必須の項目が空のまま提出できてしまう。
+      const parsed = parseRichText(value);
+      if (!parsed.ok) return e("fieldInvalidFormat");
+      if (isEmptyDoc(parsed.doc))
+        return field.required ? e("fieldRequired") : null;
       return null;
+    }
     default: {
       // text / textarea
       if (typeof value !== "string") return e("fieldEnterValue");

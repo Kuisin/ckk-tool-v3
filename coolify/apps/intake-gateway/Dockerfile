@@ -26,4 +26,9 @@ USER intake
 # 無いとポーリングの失敗が docker logs に出ない（ldap-sync で踏んだ罠）。
 ENV PYTHONUNBUFFERED=1
 
+# 生存の印（runner.touch_alive）が 15 分更新されなければ unhealthy。IMAP が
+# 半開で固まってもプロセス自体は生きているので、これが無いと誰も気付かない。
+HEALTHCHECK --interval=60s --timeout=5s --start-period=90s --retries=3 \
+  CMD python -c "import os,sys,time; p=os.environ.get('INTAKE_ALIVE_STAMP','/tmp/intake-gateway-alive'); sys.exit(0 if os.path.exists(p) and time.time()-os.stat(p).st_mtime < 900 else 1)"
+
 CMD ["python", "-m", "gateway.runner"]

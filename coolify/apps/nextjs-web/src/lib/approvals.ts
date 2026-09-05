@@ -37,7 +37,7 @@ import { effectiveMemberWhere } from "./approval-membership";
 import { APPROVAL_TARGET, type ApprovalTargetType } from "./approval-targets";
 import { getCurrentActorId } from "./audit";
 import { prisma } from "./db";
-import { parseDocKey } from "./doc-number";
+import { formatDocNumber, parseDocKey } from "./doc-number";
 import { type LocalizedText, localized } from "./format";
 import { notify, notifyApprovalGroup } from "./notifications";
 
@@ -186,6 +186,31 @@ export async function hasAnyApproval(
     },
   });
   return count > 0;
+}
+
+/**
+ * **いまの承認ラウンド**の中で承認が 1 つでも下りているか。
+ *
+ * 差し戻し → 直して再提出 で新しいラウンドが始まる（startApprovalFlow は必ず
+ * step_no = 1 の依頼から作る）。書類の作成時刻を起点に数えると前のラウンドの
+ * 承認まで拾い、誰も承認していない再提出が「承認済みなので直せない」になる。
+ * 起点 = 作成以降で最新の 1 段目の依頼。無ければ作成時刻（= hasAnyApproval）。
+ */
+export async function hasApprovalInCurrentRound(
+  targetType: ApprovalTargetType,
+  targetId: string,
+  createdAt: Date,
+): Promise<boolean> {
+  const roundStart = await prisma.approvalRequest.findFirst({
+    where: { targetType, targetId, stepNo: 1, requestedAt: { gte: createdAt } },
+    orderBy: { requestedAt: "desc" },
+    select: { requestedAt: true },
+  });
+  return hasAnyApproval(
+    targetType,
+    targetId,
+    roundStart?.requestedAt ?? createdAt,
+  );
 }
 
 /**
@@ -652,6 +677,61 @@ async function targetCreatedAt(
 }
 
 /**
+ * 通知に載せる「人が読める番号」。承認は書類を **業務キー**（targetId）で
+ * 指す（audit と同じ規約）が、その業務キーが必ずしも画面に出す表示番号と
+ * 一致しない書類が 3 種類ある:
+ *
+ *   - 指示書（work_orders）: 業務キーはロット番号（int の通し連番。QR・監査・
+ *     kiosk が使う）で、画面の表示番号は書類番号 WOR-YYYYMM-NNNNN
+ *     （structure.md 「ロット番号は…／WO 番号は表示用」）。両者は別物。
+ *   - 工程フロー変更依頼 / 注文請書キャンセル依頼: 業務キーは依頼行自体の
+ *     uuid（対象書類ではなく依頼そのものを指す）。人が知りたいのは
+ *     紐づく指示書・注文請書の番号で、uuid ではない。
+ *
+ * それ以外の書類種別は業務キーそのものが既に表示番号（ORD-/PO-/PRQ-/DSG-/
+ * FRM-/DOC- …）なので、そのまま返す。解決できないとき（行が既に削除済み等）
+ * は targetId をそのまま返す — 通知が「(不明)」になるより、後で意味を失う
+ * かもしれない番号でも出しておくほうが読める。
+ */
+async function targetDisplayNumber(
+  targetType: ApprovalTargetType,
+  targetId: string,
+): Promise<string> {
+  switch (targetType) {
+    case "work_orders": {
+      const workOrderNumber = Number(targetId);
+      if (!Number.isInteger(workOrderNumber)) return targetId;
+      const row = await prisma.workOrder.findUnique({
+        where: { workOrderNumber },
+        select: { yearMonth: true, seq: true },
+      });
+      return row ? formatDocNumber("WOR", row) : targetId;
+    }
+    case "work_order_flow_changes": {
+      const row = await prisma.workOrderFlowChange.findUnique({
+        where: { id: targetId },
+        select: { workOrder: { select: { yearMonth: true, seq: true } } },
+      });
+      return row ? formatDocNumber("WOR", row.workOrder) : targetId;
+    }
+    case "order_acceptance_cancel_requests": {
+      const row = await prisma.orderAcceptanceCancelRequest.findUnique({
+        where: { id: targetId },
+        select: { acceptanceYearMonth: true, acceptanceSeq: true },
+      });
+      return row
+        ? formatDocNumber("ORD", {
+            yearMonth: row.acceptanceYearMonth,
+            seq: row.acceptanceSeq,
+          })
+        : targetId;
+    }
+    default:
+      return targetId;
+  }
+}
+
+/**
  * 「この書類の依頼」を選ぶ where 句。書類が引けなかったときは番号だけで
  * 絞る（従来どおり）— 絞り込みを増やすだけで、正常系の見え方は変わらない。
  */
@@ -825,11 +905,12 @@ async function notifyStepStart(
       select: { requestedByUser: { select: { displayName: true } } },
     });
     const requesterName = request?.requestedByUser?.displayName;
+    const displayNumber = await targetDisplayNumber(targetType, targetId);
     const payload = {
       type: "APPROVAL_REQUEST" as const,
       title: tr("approvals.engine.approvalRequestTitle", {
         doc: APPROVAL_TARGET[targetType].label,
-        targetId,
+        targetId: displayNumber,
         stepName: localized(step.name),
       }),
       message: requesterName
@@ -1119,6 +1200,10 @@ export async function actOnCurrentStep(input: {
   const finished = input.action === "REJECTED" || outcome.flowCompleted;
   if (finished && request.requestedBy && request.requestedBy !== actor) {
     try {
+      const displayNumber = await targetDisplayNumber(
+        input.targetType,
+        input.targetId,
+      );
       await notify({
         userIds: [request.requestedBy],
         type: "APPROVAL_RESULT",
@@ -1126,11 +1211,11 @@ export async function actOnCurrentStep(input: {
           input.action === "APPROVED"
             ? tr("approvals.engine.resultApprovedTitle", {
                 doc: APPROVAL_TARGET[input.targetType].label,
-                targetId: input.targetId,
+                targetId: displayNumber,
               })
             : tr("approvals.engine.resultRejectedTitle", {
                 doc: APPROVAL_TARGET[input.targetType].label,
-                targetId: input.targetId,
+                targetId: displayNumber,
               }),
         message: input.comment ?? undefined,
         linkPath: APPROVAL_TARGET[input.targetType].href(input.targetId),

@@ -799,7 +799,10 @@
     "cannotChangeRoles": "ロールを変更できません",
     "cannotChangeOwnRoles": "自分のロールは変更できません",
     "cannotRemoveLastAdminRole": "最後の管理者から管理者ロールを外すことはできません",
-    "finalInspection": "最終検査"
+    "finalInspection": "最終検査",
+    "noPriceListTier": "数量段階なし",
+    "priceListInactive": "価格表が無効",
+    "priceListExpired": "価格表の有効期間外"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -1993,7 +1996,8 @@
       "exportedAtLabel": "エクスポート済・{dateTime}",
       "taxLabelReduced": "消費税（8%）",
       "taxLabelExempt": "消費税（非課税）",
-      "taxLabelStandard": "消費税（10%）"
+      "taxLabelStandard": "消費税（10%）",
+      "yayoiAccountingCsvAgain": "弥生会計CSV（再出力）"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "請求書 {invoiceNumber} を発行します。発行日は本日で記録されます。",
@@ -2161,7 +2165,8 @@
       "transferHeaderNote1": "このファイルは「フォームの作り」だけを含みます。回答と共有設定は含みません",
       "transferHeaderNote2": "（共有先は環境ごとに違うため、取り込んだフォームは非公開で始まります）。",
       "transferHeaderNote3": "取り込みは フォーム > 取り込み から、このファイルを選ぶか中身を貼り付けます。",
-      "transferHeaderNote4": "以下の JSON は編集しないでください（壊れると取り込めません）。"
+      "transferHeaderNote4": "以下の JSON は編集しないでください（壊れると取り込めません）。",
+      "lookupValueNotFound": "{label}: 選んだ業務データが見つかりません。もう一度選んでください"
     },
     "tasksActions": {
       "loginRequired": "ログインしてください",
@@ -2177,6 +2182,7 @@
       "commentRequired": "コメントを入力してください",
       "commentTooLong": "コメントが長すぎます",
       "createFailed": "作成に失敗しました",
+      "editBlockedWhilePending": "公開の承認依頼中は本文を編集できません（差し戻してから編集するか、決裁を待ってください）",
       "editPermissionDenied": "この文書を編集する権限がありません",
       "invalidShareSettings": "共有設定が不正です",
       "loginRequired": "ログインしてください",
@@ -2867,7 +2873,7 @@
       "noDefectRecords": "不良記録がありません",
       "auditDefectsAdded": "不良記録を追加（{count} 件）",
       "notAnOutsourceStep": "外注工程ではありません",
-      "notifyOutsourceReceived": "指示書 #{workOrderNumber} の外注工程が入荷しました",
+      "notifyOutsourceReceived": "指示書 {workOrderNumber} の外注工程が入荷しました",
       "outsourceNotifyFailedLog": "[outsource] 入荷通知に失敗: ",
       "auditOutsourceCostSuffix": " / 外注費 ¥{amount}",
       "auditOutsourceUpdated": "外注日程を更新（依頼 {requested} / 入荷予定 {expected} / 入荷 {received}{cost}）",
@@ -2892,7 +2898,9 @@
       "couldNotDeleteActual": "作業実績の削除に失敗しました",
       "inspectionSheetNotFound": "指定した検査表が見つかりません",
       "auditInspectionSheetsSet": "工程の検査表割当を変更（{count} 件）",
-      "couldNotSaveInspectionSheets": "検査表の割当に失敗しました"
+      "couldNotSaveInspectionSheets": "検査表の割当に失敗しました",
+      "requestedAfterExpected": "入荷予定日は依頼日以降の日付にしてください",
+      "requestedAfterReceived": "入荷日は依頼日以降の日付にしてください"
     },
     "workOrderActions": {
       "acknowledgeFailed": "確認の記録に失敗しました",
@@ -2902,6 +2910,8 @@
       "approvedNextStepNote": "承認（次の段へ）",
       "approvedRemainingNote": "承認（この段の残り {remaining} 名）",
       "cancelFailed": "キャンセルに失敗しました",
+      "cancelReleaseNote": "指示書 #{number} キャンセルによる予約解放",
+      "cancellableOnlyBeforeStart": "キャンセルできるのは下書き・承認依頼中、または工程が未着手の承認済みの指示書だけです",
       "copiedFromNote": "#{number} からコピー",
       "copyFailed": "指示書のコピーに失敗しました",
       "copySourceNotFound": "コピー元の指示書が見つかりません",
@@ -2912,7 +2922,6 @@
       "designFileWrongProduct": "この指示書の製品の設計図ではありません",
       "draftOnlyCanEdit": "下書きの指示書のみ編集できます",
       "draftOnlyCanRequestApproval": "下書きの指示書のみ承認依頼できます",
-      "draftOrPendingOnlyCanCancel": "下書き・承認依頼中の指示書のみキャンセルできます",
       "flowChangeAcknowledgedNote": "差し戻された工程フロー変更を確認済みにした",
       "flowChangeApplyFailedFallback": "変更の適用に失敗しました",
       "flowChangeNotFound": "対象の変更が見つかりません",
@@ -3073,6 +3082,8 @@
       "newMaterialReceipt": "素材入荷 新規登録",
       "registersADirectPurchaseAReceipt": "直接調達（発注書を経由しない入荷）を登録します。登録と同時に入荷先拠点の素材在庫へ入庫されます。発注入荷は素材発注書の「入荷完了」から自動登録されます。",
       "receiptInformation": "入荷情報",
+      "unitFromMaterial": "素材マスタの単位で登録します",
+      "unitMismatch": "単位が素材マスタの単位（{unit}）と一致しません",
       "selectASupplierOptional": "仕入先を選択（任意）",
       "youCanAttachDeliveryNoteCopies": "納品書控え・検収書等を添付できます（PDF / PNG / JPG / WEBP / HEIC / XLSX / CSV、各 20MB まで）。入荷登録の完了後にアップロードされます。",
       "supportingDocumentOptional": "証憑（任意）",
@@ -3113,7 +3124,6 @@
       "notReceivedArrivesAfterOrdering": "未入荷（発注後に入荷します）",
       "onceOrderedTheLinesAppearAs": "発注すると明細が素材 ATP の入荷予定に反映されます",
       "readyToOrder": "発注できます",
-      "completingTheReceiptRecordsEachLine": "入荷完了で明細ごとに入荷を記録し、素材在庫へ入庫します",
       "waitingForTheGoods": "入荷を待っています",
       "receiptCompletedOn": "入荷完了日",
       "convertedFromPurchaseRequest": "変換元（購買依頼）",
@@ -3131,10 +3141,25 @@
       "thereAreNoMaterialPurchaseOrders": "素材発注書がありません",
       "receiptsSummary": "{count} 件・合計 {total} {unit}",
       "receiptNote": "{quantity} {unit}・{date}",
-      "receivedSoFar": "入荷済 {count}",
       "confirmCancelBody": "素材発注書 {number} をキャンセルします。この操作は取り消せません。",
       "confirmOrderBody": "素材発注書 {number} を発注済にします。明細は素材在庫の入荷予定（ATP）に反映されます。",
-      "confirmCompleteBody": "明細 {count} 件を全量入荷として素材入荷を登録し、入荷先拠点の素材在庫へ入庫します。分納（部分入荷）が必要な場合は素材入荷 (PU03) から直接登録してください。"
+      "confirmCompleteBody": "明細 {count} 件を全量入荷として素材入荷を登録し、入荷先拠点の素材在庫へ入庫します。分納（部分入荷）が必要な場合は素材入荷 (PU03) から直接登録してください。",
+      "receiveActionsDescription": "入荷完了は残数量をまとめて入荷します。一部だけ届いたときは分割入荷、残りが届かないときは未入荷のまま完了にしてください。",
+      "partialReceipt": "分割入荷",
+      "confirmPartialReceipt": "分割入荷の登録",
+      "partialReceiptBody": "今回入荷した数量を明細ごとに入力します。0 の明細は入荷しません。すべての明細が発注数に達すると入荷完了になります。",
+      "recordTheReceipt": "入荷を登録する",
+      "recordedTheReceipt": "入荷を登録しました",
+      "enterAtLeastOneQuantity": "入荷する数量を 1 件以上入力してください",
+      "orderedQuantity": "発注数",
+      "receivedQuantity": "入荷済",
+      "remainingQuantity": "残",
+      "thisDelivery": "今回入荷",
+      "closeShort": "未入荷のまま完了",
+      "closedShort": "未入荷のまま完了にしました",
+      "confirmCloseShort": "未入荷のまま完了にする確認",
+      "confirmCloseShortBody": "未入荷の {count} 件は入荷せずに、素材発注書 {number} を入荷完了にします。未入荷分は在庫に計上されず、入荷予定（ATP）からも外れます。この操作は取り消せません。",
+      "closeShortReason": "締め切る理由"
     },
     "purchaseRequests": {
       "selectASupplier": "仕入先を選択してください",
@@ -3193,6 +3218,7 @@
       "onlyDraftOrRejectedCanRequestApproval": "下書き・差し戻しの購買依頼のみ承認依頼できます",
       "onlyPreConversionCanCancel": "発注書へ変換前の購買依頼のみキャンセルできます",
       "quantityPositive": "数量は0より大きい値",
+      "stateChanged": "購買依頼の状態が変わっています（既に処理済みか、他の利用者が更新しました）。画面を再読み込みしてください",
       "targetRequestNotFound": "対象の購買依頼が見つかりません",
       "unitRequired": "単位を入力してください",
       "updateFailed": "購買依頼の更新に失敗しました"
@@ -3201,7 +3227,9 @@
       "approvedNextStep": "承認（次の段へ）",
       "approvedRemaining": "承認（この段の残り {count} 名）",
       "cancelFailed": "キャンセルに失敗しました",
+      "closeShortFailed": "未入荷のまま完了にする処理に失敗しました",
       "createFailed": "素材発注書の作成に失敗しました",
+      "enterCloseShortReason": "未入荷分を締め切る理由を入力してください",
       "enterUnit": "単位を入力してください",
       "lineItemNotFound": "明細が見つかりません",
       "lineItemOverReceived": "明細（{itemId}）の入荷数量が発注数量を超えます",
@@ -3212,6 +3240,7 @@
       "onlyApprovedCanOrder": "承認済の素材発注書のみ発注できます",
       "onlyDraftCanRequestApproval": "下書きの素材発注書のみ承認依頼できます",
       "onlyDraftEditable": "下書きの素材発注書のみ編集できます",
+      "onlyOrderedCanCloseShort": "発注済の素材発注書のみ未入荷のまま完了にできます",
       "onlyOrderedCanComplete": "発注済の素材発注書のみ入荷完了にできます",
       "onlyOrderedCanReceive": "発注済の素材発注書のみ入荷できます",
       "onlyPreOrderCanCancel": "発注前の素材発注書のみキャンセルできます",
@@ -3224,8 +3253,57 @@
       "receiptFailed": "入荷処理に失敗しました",
       "receivedQuantityMinOne": "入荷数量は 1 以上で入力してください",
       "requestFailed": "承認依頼に失敗しました",
+      "stateChanged": "素材発注書の状態が変わっています（既に処理済みか、他の利用者が更新しました）。画面を再読み込みしてください",
+      "unitMismatch": "明細（{code}）の単位が素材マスタの単位（{unit}）と一致しません",
       "unitPriceMinZero": "単価は0以上",
       "updateFailed": "素材発注書の更新に失敗しました"
+    },
+    "intake": {
+      "title": "AI で読み取る",
+      "orderDescription": "仕入先の見積書・注文請書・発注書控えを読み取って、下の発注書に反映します。反映した内容は保存前に直せます。",
+      "orderUploadHint": "PDF または画像（PNG / JPEG / WebP）。1 通ずつ読み取ります。",
+      "deliveryDescription": "仕入先の納品書を読み取って、届いた素材をまとめて入荷登録します。",
+      "deliveryUploadHint": "PDF または画像（PNG / JPEG / WebP）。金額欄は読み取りません。",
+      "selectDocument": "書類を選択",
+      "clearFile": "選び直す",
+      "read": "AI で読み取る",
+      "readingHint": "読み取りに 1 分ほどかかることがあります。",
+      "extractFailed": "読み取りに失敗しました",
+      "notRetryable": "設定を直さないと、もう一度試しても同じ結果になります。",
+      "fileRequired": "ファイルを選択してください",
+      "unsupportedFileType": "PDF または画像（PNG / JPEG / WebP）を選択してください",
+      "aiConfigHint": "システム設定 → AI プロバイダ（SY0E）でトークンを設定し直してください",
+      "lines": "読み取った明細",
+      "noLines": "明細を読み取れませんでした。手入力で登録してください。",
+      "extractedAs": "読み取り: {text}",
+      "supplierNotRead": "仕入先を読み取れませんでした",
+      "didYouMean": "もしかして",
+      "pickMaterial": "素材を選択してください",
+      "expectedDate": "入荷予定日",
+      "lotNumber": "ロット番号: {lot}",
+      "state": {
+        "matched": "一致",
+        "picked": "選択済",
+        "guess": "推定",
+        "unmatched": "未特定"
+      },
+      "unmatchedWarning": "素材が特定できていない行が {count} 件あります。保存する前に選んでください。",
+      "unmatchedBlocks": "素材が特定できていない行が {count} 件あります。選ぶか、その行を登録対象から外してください。",
+      "applyToForm": "フォームに反映",
+      "applied": "読み取った内容を反映しました",
+      "appliedMessage": "明細 {count} 件を反映しました。保存する前に確認してください。",
+      "attachmentLabel": "取込元（原本）",
+      "attachFailed": "原本の添付に失敗しました",
+      "attachFailedMessage": "登録は完了しています。詳細画面から添付し直せます。",
+      "fromDeliveryNote": "納品書から登録",
+      "receiptPageTitle": "納品書から入荷登録",
+      "receiptLinesDescription": "登録しない行は「この行を登録しない」を選んでください。単位は素材マスタの単位で固定です。",
+      "appliesToAllLines": "全行に反映します",
+      "skipLine": "この行を登録しない",
+      "registerSelected": "選択した {count} 件を登録",
+      "registeredMessage": "{count} 件の入荷を登録しました",
+      "selectAtLeastOneLine": "登録する行を 1 件以上選んでください",
+      "tooManyLines": "1 度に登録できる行数を超えています"
     }
   },
   "settings": {
@@ -4378,7 +4456,8 @@
       "grantSaveFailed": "権限の保存に失敗しました",
       "grantDeleteFailed": "権限の削除に失敗しました",
       "uploadPermissionDenied": "このフォルダへのアップロード権限がありません",
-      "deletePermissionDenied": "このファイルの削除権限がありません"
+      "deletePermissionDenied": "このファイルの削除権限がありません",
+      "uploadTooLarge": "ファイルが大きすぎます（上限 20 MB）"
     },
     "notificationEmailActions": {
       "saveFailedLog": "[notification-email] 保存に失敗"
@@ -4406,7 +4485,8 @@
       "selectAtLeastOneOperationToGrant": "許可する操作を 1 つ以上選んでください（すべて外す場合は差し戻してください）",
       "specifyEndDateTime": "終了日時を指定してください",
       "specifyStartDateTime": "開始日時を指定してください",
-      "unknownOperation": "未知の操作が含まれています（{key}）"
+      "unknownOperation": "未知の操作が含まれています（{key}）",
+      "windowAlreadyEnded": "承認された期間がすでに終わっています（承認しても使えないので、期間を直して申請し直してください）"
     },
     "productItemActions": {
       "assignedItemNotFound": "「{name}」の割り当て項目が存在しません: {key}",
@@ -5631,7 +5711,8 @@
       "regionNotFound": "対象の地域が見つかりません",
       "regionUpdateFailed": "地域の更新に失敗しました",
       "statusUpdateFailed": "状態の更新に失敗しました",
-      "updateFailed": "拠点の更新に失敗しました"
+      "updateFailed": "拠点の更新に失敗しました",
+      "referencedCannotDelete": "この拠点を参照するデータ（在庫・工程・端末・注文請書など）が存在するため削除できません。無効化を検討してください。"
     },
     "processStepsActions": {
       "selectDependencyStep": "依存先の工程を選択してください",
@@ -5650,14 +5731,15 @@
       "updateFailed": "工程の更新に失敗しました",
       "referencedByOtherStepsCannotDelete": "他の工程がこの工程に依存しているため削除できません。無効化を検討してください。",
       "referencedByTemplateCannotDelete": "この工程に関連する検査表テンプレートが存在するため削除できません。無効化を検討してください。",
-      "deleteFailed": "工程の削除に失敗しました"
+      "deleteFailed": "工程の削除に失敗しました",
+      "execDependencyCycle": "実行依存が循環しています（{path}）"
     },
     "productsActions": {
       "diameterRange": "直径は {min}〜{max}mm で入力してください",
       "lengthRange": "全長は {min}〜{max}mm で入力してください",
       "createFailed": "製品の作成に失敗しました",
       "updateFailed": "製品の更新に失敗しました",
-      "referencedCannotDelete": "この製品を参照するデータ（価格表・見積書）が存在するため削除できません。無効化を検討してください。",
+      "referencedCannotDelete": "この製品を参照するデータ（価格表・見積書・注文明細・設計・検査表など）が存在するため削除できません。無効化を検討してください。",
       "deleteFailed": "製品の削除に失敗しました"
     },
     "workLocationsActions": {
@@ -5683,7 +5765,9 @@
       "saveTypesFailed": "種別の保存に失敗しました",
       "auditWorkLocationAdded": "作業場所「{name}」を追加",
       "auditWorkLocationUpdated": "作業場所「{name}」を更新",
-      "auditWorkLocationDeleted": "作業場所を削除"
+      "auditWorkLocationDeleted": "作業場所を削除",
+      "usedByOrderAcceptances": "注文請書の出荷作業場所 {count} 件",
+      "usedByProcessSteps": "工程の許可作業場所 {count} 件"
     },
     "storageLocationActions": {
       "codeFormat": "コードは英数字・ハイフン・アンダースコアで入力",
@@ -5718,13 +5802,13 @@
       "updateFailed": "素材の更新に失敗しました",
       "statusUpdateFailed": "状態の更新に失敗しました",
       "deleteFailed": "素材の削除に失敗しました",
-      "noTargetsSelected": "対象が選択されていません"
+      "noTargetsSelected": "対象が選択されていません",
+      "referencedCannotDelete": "この素材を参照するデータ（指示書・発注・入荷・在庫）が存在するため削除できません。無効化を検討してください。"
     },
     "businessPartnerActions": {
       "bpNotFound": "対象の取引先が見つかりません",
       "branchCreateFailed": "支店の作成に失敗しました",
       "branchDeleteFailed": "支店の削除に失敗しました",
-      "branchInUseByQuotes": "この支店を参照する見積書が存在するため削除できません。無効化を検討してください。",
       "branchNotFound": "対象の支店が見つかりません",
       "branchUpdateFailed": "支店の更新に失敗しました",
       "createFailed": "取引先の作成に失敗しました",
@@ -5781,7 +5865,9 @@
       "toggleFailed": "切り替えに失敗しました",
       "stepMissingName": "{steps} 段目: 名称を入力してください",
       "stepMissingGroupIndividual": "{steps} 段目: 承認グループを選ぶか、承認者を 1 人以上選んでください",
-      "stepMissingGroup": "{steps} 段目: 承認グループを選択してください"
+      "stepMissingGroup": "{steps} 段目: 承認グループを選択してください",
+      "groupReferencedCannotDelete": "この承認グループを参照する検査表テンプレートが存在するため削除できません。無効化を検討してください。",
+      "stepGroupNotEffective": "第 {steps} 段の承認グループは無効、または今承認できるメンバーがいません"
     },
     "approvalConditions": {
       "totalAmount": "合計金額",
@@ -6798,7 +6884,8 @@
       "hideTheDocumentPane": "書類を畳む",
       "showTheDocumentPane": "書類を開く",
       "hideTheDocument": "隠す",
-      "customerProvidesDeliveryNote": "顧客提供の納品書"
+      "customerProvidesDeliveryNote": "顧客提供の納品書",
+      "priceNoTierLine": "行{row} 数量 {quantity} に該当する価格表の数量段階なし"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "この明細の親書類",
@@ -7136,7 +7223,8 @@
       "priceOverrideCount": "単価の上書き {count} 件",
       "lineOverrideText": "行{row}: {actual}（価格表 {expected}）",
       "priceOverridden": "上書き",
-      "priceOverriddenFromList": "上書き（価格表 {expected}）"
+      "priceOverriddenFromList": "上書き（価格表 {expected}）",
+      "lineNoTierText": "行{row}: 数量 {quantity} に該当する価格表の数量段階がありません"
     },
     "orderAcceptanceIntakeTable": {
       "addedQueuedForExtraction": "{count} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます",
@@ -7268,7 +7356,12 @@
       "quantityMinOne": "数量は1以上",
       "quoteNotFound": "対象の見積書が見つかりません",
       "scopeDenied": "この操作の権限がありません（対象範囲外）",
-      "updateFailed": "見積書の更新に失敗しました"
+      "updateFailed": "見積書の更新に失敗しました",
+      "noPriceListTier": "明細{line}: 数量 {quantity} に該当する価格表の数量段階がありません（数量を見直すか、価格表に数量段階を追加してください）",
+      "priceListInactive": "明細{line}: 価格表が無効化されています",
+      "priceListExpired": "明細{line}: 価格表の有効期間外です",
+      "validUntilRequired": "有効期限を入力してください",
+      "validUntilInPast": "有効期限は本日以降の日付にしてください"
     },
     "orderLinesActions": {
       "invalidOrderLine": "注文明細が不正です",
@@ -7284,6 +7377,7 @@
       "onlyConfirmedEstimateUsable": "確定済みの価格試算のみ価格表に使用できます",
       "fetchEstimateSourcesFailed": "価格試算の取得に失敗しました",
       "invalidVariant": "バリアントが不正です",
+      "invalidTier": "段階が不正です",
       "createFailed": "価格表の作成に失敗しました",
       "duplicateEntry": "同一の顧客・製品の価格表が既に存在します。既存の価格表を編集してください。",
       "invalidEntryNumber": "価格表番号が不正です",
@@ -7380,6 +7474,8 @@
       "noLineItems": "明細が 1 件もありません",
       "lineProductNotIdentified": "明細 {rows} 行目: 製品が未特定です",
       "lineUnitPriceNotEntered": "明細 {rows} 行目: 単価が未入力です",
+      "lineQuantityInvalid": "明細 {rows} 行目: 数量が 1 以上ではありません",
+      "lineUnitPriceNegative": "明細 {rows} 行目: 単価が負の値です",
       "andNMore": "ほか {count} 件"
     },
     "orderLineCore": {
@@ -7531,7 +7627,8 @@
       "productNotInShipment": "{label} は出荷書に含まれていません",
       "quantityMustBeAtLeastOne": "数量は1以上",
       "selectEndUserForDirectToUser": "ユーザー直送では最終需要家を選択してください",
-      "updateFailed": "納品書の更新に失敗しました"
+      "updateFailed": "納品書の更新に失敗しました",
+      "deliveryOrderNotShipped": "出荷書が出荷済みになるまで納品済みにできません"
     },
     "deliveryOrderActions": {
       "cancelFailed": "キャンセルに失敗しました",
@@ -7553,7 +7650,9 @@
       "shippedNotificationTitle": "出荷書 {number} を出荷しました",
       "specifyAConfirmedOrderLine": "確定済みの注文明細を指定してください",
       "updateFailed": "出荷書の更新に失敗しました",
-      "autoCreatedNote": "出荷書の確定により自動作成（発行済）"
+      "autoCreatedNote": "出荷書の確定により自動作成（発行済）",
+      "orderLineNotShippable": "注文明細 {number} は出荷できる状態ではありません（確定済みでキャンセルされていない明細のみ）",
+      "productMismatch": "明細 {line} 行目: 製品が注文明細 {number} の製品と一致しません"
     }
   },
   "ui": {
@@ -8057,7 +8156,8 @@
     "noItems": "{code}: 検査項目が 1 つもありません"
   },
   "intakeCore": {
-    "quantityNotReadableNote": "数量未読取・要確認"
+    "quantityNotReadableNote": "数量未読取・要確認",
+    "quantityInvalidNote": "数量が不正（{value}）・要確認"
   },
   "notificationEmail": {
     "digestSubject": "【CKK】未読の通知 {total} 件"
@@ -8104,6 +8204,7 @@
       "SSO_USER_INACTIVE": "SSO: ユーザーが無効",
       "SSO_UPSERT_FAILED": "SSO: ユーザー登録に失敗",
       "SSO_CALLBACK_ERROR": "SSO: コールバック失敗",
+      "SSO_LOCAL_ACCOUNT_CONFLICT": "SSO: ローカルアカウントと衝突",
       "DEVICE_NO_COOKIE": "端末Cookieなし",
       "DEVICE_NOT_FOUND": "未登録の端末",
       "DEVICE_EXPIRED": "端末トークン期限切れ",
@@ -8251,6 +8352,7 @@
     "stockStorage": "在庫保管 {ref}",
     "shippedReservationReleased": "出荷による予約解除 {ref}",
     "materialReceived": "素材入荷",
+    "unitMismatch": "素材在庫の単位（{expected}）と入庫の単位（{actual}）が一致しません",
     "reservedByStockCheck": "§4 在庫照合による引当予約",
     "stockCheckReservedAndShortage": "在庫照合: 引当 {reservedNow} / 不足 {shortage}",
     "stepStarted": "工程を開始（step {sortOrder}・受入 {input}）",

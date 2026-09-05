@@ -26,7 +26,11 @@ import {
   sessionUserId,
 } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { PAGE_OWNER_TYPE } from "@/lib/internal-pages";
+import {
+  PAGE_OWNER_TYPE,
+  parsePublishRevisionNote,
+  publishRevisionNote,
+} from "@/lib/internal-pages";
 import {
   diffStats,
   lineCountOf,
@@ -47,6 +51,14 @@ import { replaceShareGrants, shareAccessFor } from "@/lib/share-grants";
 
 const BASE_PATH = "/general/documents";
 const TASKS_PATH = "/general/tasks";
+
+/**
+ * 公開の承認依頼中（status = PENDING）に本文を積もうとした。
+ * 承認は申請時点の版に対して下りるので、その間に版を進めさせない
+ * （進めると「見ていない版が承認済みとして公開される」ことになる）。
+ * トランザクション内の条件付き UPDATE が 0 件だったときの印。
+ */
+class EditBlockedWhilePendingError extends Error {}
 
 function revalidate(pageNumber?: string) {
   revalidatePath(BASE_PATH);
@@ -241,6 +253,15 @@ export async function savePageBody(
     );
   }
 
+  // 承認依頼中は編集を止める（読める理由を先に返す。最終防衛線は下の tx 内）。
+  const current = await prisma.internalPage.findUnique({
+    where: { id: gate.page.id },
+    select: { status: true },
+  });
+  if (current?.status === "PENDING") {
+    return actionError(tr("general.documentActions.editBlockedWhilePending"));
+  }
+
   try {
     const actor = await getCurrentActorId();
     const pageId = gate.page.id;
@@ -325,15 +346,18 @@ export async function savePageBody(
         await tx.internalPageLineBlame.createMany({ data: rows });
       }
 
-      await tx.internalPage.update({
-        where: { id: pageId },
+      // 公開版より新しい編集が入ったので下書きへ戻す（公開版はそのまま残る）。
+      // ただし承認依頼中（PENDING）なら戻さない — 上の事前確認と publishPage の
+      // 間に割り込まれても、ここの条件付き UPDATE が 0 件になって tx ごと戻る。
+      const moved = await tx.internalPage.updateMany({
+        where: { id: pageId, status: { not: "PENDING" } },
         data: {
           title: parsed.data.title,
           updatedBy: actor,
-          // 公開版より新しい編集が入ったので下書きへ戻す（公開版はそのまま残る）。
           status: "DRAFT",
         },
       });
+      if (moved.count === 0) throw new EditBlockedWhilePendingError();
       return next;
     });
 
@@ -361,6 +385,9 @@ export async function savePageBody(
     revalidate(pageNumber);
     return actionOk({ revision });
   } catch (e) {
+    if (e instanceof EditBlockedWhilePendingError) {
+      return actionError(tr("general.documentActions.editBlockedWhilePending"));
+    }
     return actionError(prismaErrorMessage(e, tr("common.saveFailed"), tr));
   }
 }
@@ -423,9 +450,12 @@ export async function publishPage(pageNumber: string): Promise<ActionResult> {
     if (page.approvalRequired) {
       const missing = await assertFlowConfigured("internal_pages");
       if (missing) return actionError(missing);
+      // どの版の公開を頼んだかを依頼行に残す。承認後に公開するのはこの版で、
+      // 承認中に本文が進んでいても latest を出さない（actOnPage）。
       const started = await startApprovalFlow({
         targetType: "internal_pages",
         targetId: pageNumber,
+        notes: publishRevisionNote(latest.revision),
       });
       if (!started.ok)
         return actionError(
@@ -492,6 +522,15 @@ async function actOnPage(
   if (page.status !== "PENDING")
     return actionError(tr("general.documentActions.pageNotPendingApproval"));
 
+  // 申請時に頼まれた版。1 段目の依頼行にだけ notes が載る（次段へは複写されない）
+  // ので、この文書の最新の 1 段目を読む。無い（旧データ）なら latest に落ちる。
+  const firstStep = await prisma.approvalRequest.findFirst({
+    where: { targetType: "internal_pages", targetId: pageNumber, stepNo: 1 },
+    orderBy: { requestedAt: "desc" },
+    select: { notes: true },
+  });
+  const requestedRevision = parsePublishRevisionNote(firstStep?.notes);
+
   const result = await actOnCurrentStep({
     targetType: "internal_pages",
     targetId: pageNumber,
@@ -501,6 +540,7 @@ async function actOnPage(
   if (!result.ok)
     return actionError(result.error ?? tr("common.theOperationFailed"));
 
+  let publishedRevision: number | null = null;
   try {
     if (action === "REJECTED") {
       await prisma.internalPage.update({
@@ -508,16 +548,33 @@ async function actOnPage(
         data: { status: "DRAFT" },
       });
     } else if (result.flowCompleted) {
-      const latest = await prisma.internalPageRevision.findFirst({
-        where: { pageId: page.id },
-        orderBy: { revision: "desc" },
-        select: { revision: true },
-      });
+      // 承認されたのは申請時点の版。その版が実在すればそれを公開し、
+      // 依頼行に版が無い旧データだけ latest に落ちる。
+      const requested =
+        requestedRevision == null
+          ? null
+          : await prisma.internalPageRevision.findUnique({
+              where: {
+                pageId_revision: {
+                  pageId: page.id,
+                  revision: requestedRevision,
+                },
+              },
+              select: { revision: true },
+            });
+      const target =
+        requested ??
+        (await prisma.internalPageRevision.findFirst({
+          where: { pageId: page.id },
+          orderBy: { revision: "desc" },
+          select: { revision: true },
+        }));
+      publishedRevision = target?.revision ?? null;
       await prisma.internalPage.update({
         where: { id: page.id },
         data: {
           status: "PUBLISHED",
-          publishedRevision: latest?.revision ?? null,
+          publishedRevision,
         },
       });
     }
@@ -534,6 +591,7 @@ async function actOnPage(
             : tr("general.documentActions.publishRejectedNote", {
                 reason: comment ?? "",
               }),
+        ...(publishedRevision != null ? { revision: publishedRevision } : {}),
       },
     });
     revalidate(pageNumber);

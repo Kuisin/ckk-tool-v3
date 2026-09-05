@@ -162,7 +162,14 @@ export async function POST(req: Request) {
 
   recordKioskSuccess(ctx, { method: "ATTEST" });
   const res = NextResponse.json({ state: "OK" });
-  res.cookies.set(ATTEST_COOKIE, mintAttestCookie(secret, device.device.id), {
+  // 束縛済みの鍵の fingerprint を MAC に含める（row.devicePublicKey と一致済み
+  // なので fingerprintOf(publicKey) = 行の fingerprint）。鍵リセットで無効化される。
+  const cookie = mintAttestCookie(
+    secret,
+    device.device.id,
+    fingerprintOf(publicKey),
+  );
+  res.cookies.set(ATTEST_COOKIE, cookie, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

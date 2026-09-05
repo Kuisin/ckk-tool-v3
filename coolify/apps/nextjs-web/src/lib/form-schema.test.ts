@@ -130,6 +130,33 @@ describe("validateFieldValue", () => {
     );
   });
 
+  it("リッチテキストは空の doc を未入力として扱い、構造も見る", () => {
+    const f = field({ type: "richtext", required: true });
+    const empty = { type: "doc", content: [{ type: "paragraph" }] };
+    const spaces = {
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "  " }] }],
+    };
+    const filled = {
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "a" }] }],
+    };
+    expect(validateFieldValue(f, empty, tr)).toMatch("必須");
+    expect(validateFieldValue(f, spaces, tr)).toMatch("必須");
+    expect(validateFieldValue(f, filled, tr)).toBeNull();
+    expect(
+      validateFieldValue(field({ type: "richtext" }), empty, tr),
+    ).toBeNull();
+    // 許可リスト外のノードは形式エラー（必須でなくても通さない）
+    expect(
+      validateFieldValue(
+        field({ type: "richtext" }),
+        { type: "doc", content: [{ type: "script" }] },
+        tr,
+      ),
+    ).toMatch("形式");
+  });
+
   it("関連レコード一覧は表示専用なので必須にしても通す", () => {
     const f = field({ type: "related", required: true });
     expect(validateFieldValue(f, null, tr)).toBeNull();

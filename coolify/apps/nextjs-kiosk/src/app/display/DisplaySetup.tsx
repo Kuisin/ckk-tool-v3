@@ -80,7 +80,17 @@ function reasonNote(
 type SetupState =
   | { phase: "loading" }
   | { phase: "showing"; code: string; expiresAt: number }
-  | { phase: "linked"; deviceId: string; deviceName: string | null }
+  /**
+   * リンク成立 → 有効化待ち。**表示したリンクコードを持ち続ける** —
+   * confirm でトークンを受け取るときの所持の証明に要る（deviceId は
+   * 秘密ではないので、それだけでは発行されない）。
+   */
+  | {
+      phase: "linked";
+      deviceId: string;
+      deviceName: string | null;
+      code: string;
+    }
   | { phase: "expired" }
   | { phase: "error"; message: string };
 
@@ -211,6 +221,7 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
             phase: "linked",
             deviceId: data.deviceId,
             deviceName: data.deviceName ?? null,
+            code: state.code,
           });
         } else if (data.status === "EXPIRED" || data.status === "NOT_FOUND") {
           setState({ phase: "expired" });
@@ -248,6 +259,8 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             deviceId: state.deviceId,
+            // code = この画面が表示したリンクコード（所持の証明）。
+            code: state.code,
             machineId: hint.machineId,
             screenIndex: hint.screenIndex,
           }),
@@ -256,6 +269,13 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
           status?: string;
         } | null;
 
+        if (data?.status === "PROOF_REQUIRED") {
+          // コードがもう通らない（別のプロファイルに結ばれた等）。
+          // リンクからやり直す — 黙って待ち続けない。
+          localStorage.removeItem(storageKey);
+          void begin();
+          return;
+        }
         if (data?.status === "CONFIRMED") {
           window.location.reload();
           return;

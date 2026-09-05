@@ -19,7 +19,7 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import {
   addDays,
-  monthStart,
+  billingPeriodStart,
   parseYearMonth,
 } from "@/components/billing/closings/model";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
@@ -28,6 +28,7 @@ import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { label } from "@/lib/messages";
+import { lineAmountYen, totalsYen } from "@/lib/money";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
@@ -36,23 +37,15 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
-import { fetchBillableShipmentsForClosing, shipmentAmount } from "./data";
+import { taxRateFor } from "@/lib/tax-rate";
+import { fetchBillableShipmentsForClosing } from "./data";
 
 const BASE_PATH = "/billing/closings";
 const INVOICES_PATH = "/billing/invoices";
 
-/**
- * 消費税率 — 顧客属性 tax_type から導出（監査 P0-5: 10% 固定を廃止）。
- * TAXABLE=10% / REDUCED=8% / EXEMPT=0%。税額 = round(小計 × 税率)。
- */
-const TAX_RATES: Record<string, number> = {
-  TAXABLE: 0.1,
-  REDUCED: 0.08,
-  EXEMPT: 0,
-};
-function taxRateFor(taxType: string | null | undefined): number {
-  return TAX_RATES[taxType ?? "TAXABLE"] ?? 0.1;
-}
+// 消費税率 — 顧客属性 tax_type から導出（監査 P0-5: 10% 固定を廃止）。
+// 表は lib/tax-rate.ts（見積書の税額計算も同じ表を見る）。
+
 /** 支払サイト既定値（日）— BpCustomerAttrs.paymentTermsDays 未設定時。 */
 const DEFAULT_PAYMENT_TERMS_DAYS = 30;
 
@@ -156,25 +149,37 @@ export async function processClosing(
           description: { ja, en },
           quantity: it.quantity,
           unitPrice,
-          amount: it.quantity * unitPrice,
+          // 円未満は**行の段階で 1 回だけ**落とす（丸めの方針は lib/money.ts）。
+          amount: lineAmountYen(unitPrice, it.quantity),
           sortOrder: sortOrder++,
         };
       });
     });
 
-    const subtotal = shipments.reduce((sum, s) => sum + shipmentAmount(s), 0);
-    const taxRate = taxRateFor(closing.customerBp.customerAttrs?.taxType);
-    const taxAmount = Math.round(subtotal * taxRate);
-    const totalAmount = subtotal + taxAmount;
+    // 小計は**明細に印字される金額の和**（lib/money.ts の方針）。出荷書側で
+    // 合算してから丸めると「小計 ≠ 明細の合計」になり、PDF と弥生 CSV も
+    // 食い違う（両者が別々にもう一度丸めていたため）。
+    //
+    // 課税区分は顧客マスタから読むが、**その値をここで請求書へ写す** —
+    // 顧客を後から EXEMPT に変えても、発行済みの請求書は当時の区分で刷られる
+    // （税額だけ凍結して根拠を凍結しないと「非課税」の隣に 10% の額が並ぶ）。
+    const taxType = closing.customerBp.customerAttrs?.taxType ?? null;
+    const taxRate = taxRateFor(taxType);
+    const { subtotal, taxAmount, totalAmount } = totalsYen(
+      items.map((it) => it.amount),
+      taxRate,
+    );
 
     const closingDate = closing.closingDate;
     const paymentTermsDays =
       closing.customerBp.customerAttrs?.paymentTermsDays ??
       DEFAULT_PAYMENT_TERMS_DAYS;
-    // 請求期間 = 月初〜締日（簡易; 前締日ベースの厳密期間は将来対応）。
-    const periodFrom = monthStart(
+    // 請求期間 = 前回締日の翌日〜締日（対象出荷の収集と同じ区切り —
+    // fetchBillableShipmentsForClosing / billingWindowFor）。
+    const periodFrom = billingPeriodStart(
       closingDate.getUTCFullYear(),
       closingDate.getUTCMonth() + 1,
+      closing.customerBp.customerAttrs?.closingDay ?? null,
     );
     const dueDate = addDays(closingDate, paymentTermsDays);
     // 支店: 対象出荷に共通の支店があれば引き継ぐ。
@@ -214,6 +219,9 @@ export async function processClosing(
           subtotal,
           taxAmount,
           totalAmount,
+          // 税額の根拠のスナップショット（顧客マスタの現在値ではなく発行時点）
+          taxType,
+          taxRate,
           status: "DRAFT",
           dueDate,
           createdBy: actorId,
@@ -248,6 +256,8 @@ export async function processClosing(
         subtotal,
         taxAmount,
         totalAmount,
+        taxType,
+        taxRate,
         status: "DRAFT",
         dueDate: dueDate.toISOString(),
         itemCount: items.length,

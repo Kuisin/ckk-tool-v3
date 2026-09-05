@@ -18,6 +18,7 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { normalizeLocale } from "@/lib/i18n";
 import { validateRequestWindow } from "@/lib/privileged-access-core";
 import {
   notifyPrivilegedDecided,
@@ -122,7 +123,7 @@ export async function requestPrivilegedAccess(
     if (op.code !== v.code) {
       return actionError(
         tr("settings.privilegedAccessActions.mixedPermissionsInOneRequest", {
-          label: op.label.ja,
+          label: op.label[normalizeLocale(await getLocale())],
         }),
       );
     }
@@ -130,7 +131,7 @@ export async function requestPrivilegedAccess(
     if (!authz.ok) {
       return actionError(
         tr("settings.privilegedAccessActions.operationCannotBeRequested", {
-          label: op.label.ja,
+          label: op.label[normalizeLocale(await getLocale())],
         }),
       );
     }
@@ -266,25 +267,39 @@ export async function approvePrivilegedAccess(
     );
   }
 
-  await prisma.$transaction([
-    prisma.privilegedAccessRequestOperation.updateMany({
-      where: { requestId: v.id },
-      data: { granted: false },
-    }),
-    prisma.privilegedAccessRequestOperation.updateMany({
-      where: { requestId: v.id, operation: { in: granted } },
-      data: { granted: true },
-    }),
-    prisma.privilegedAccessRequest.update({
-      where: { id: v.id },
+  // 窓がもう閉じている申請を承認しても、使えない APPROVED 行が残るだけ。
+  const now = new Date();
+  if (req.windowEndsAt <= now) {
+    return actionError(
+      tr("settings.privilegedAccessActions.windowAlreadyEnded"),
+    );
+  }
+
+  // 状態遷移は条件付き UPDATE で 1 手にする（読んでから書く間に却下・取り下げが
+  // 割り込むと REJECTED → APPROVED に戻ってしまう）。0 件 = 先に決裁済み。
+  const claimed = await prisma.$transaction(async (tx) => {
+    const res = await tx.privilegedAccessRequest.updateMany({
+      where: { id: v.id, status: "PENDING" },
       data: {
         status: "APPROVED",
         decidedBy: actorId,
-        decidedAt: new Date(),
+        decidedAt: now,
         decisionComment: v.comment?.trim() || null,
       },
-    }),
-  ]);
+    });
+    if (res.count === 0) return false;
+    await tx.privilegedAccessRequestOperation.updateMany({
+      where: { requestId: v.id },
+      data: { granted: false },
+    });
+    await tx.privilegedAccessRequestOperation.updateMany({
+      where: { requestId: v.id, operation: { in: granted } },
+      data: { granted: true },
+    });
+    return true;
+  });
+  if (!claimed)
+    return actionError(tr("settings.privilegedAccessActions.alreadyDecided"));
 
   await recordAudit({
     action: "UPDATE",
@@ -334,8 +349,8 @@ export async function rejectPrivilegedAccess(
     );
   }
 
-  await prisma.privilegedAccessRequest.update({
-    where: { id },
+  const res = await prisma.privilegedAccessRequest.updateMany({
+    where: { id, status: "PENDING" },
     data: {
       status: "REJECTED",
       decidedBy: actorId,
@@ -343,6 +358,8 @@ export async function rejectPrivilegedAccess(
       decisionComment: reason.trim(),
     },
   });
+  if (res.count === 0)
+    return actionError(tr("settings.privilegedAccessActions.alreadyDecided"));
   await recordAudit({
     action: "UPDATE",
     tableName: "privileged_access_requests",
@@ -394,8 +411,8 @@ export async function revokePrivilegedAccess(
       tr("settings.privilegedAccessActions.revokePermissionDenied"),
     );
 
-  await prisma.privilegedAccessRequest.update({
-    where: { id },
+  const res = await prisma.privilegedAccessRequest.updateMany({
+    where: { id, status: "APPROVED" },
     data: {
       status: "REVOKED",
       revokedBy: actorId,
@@ -403,6 +420,11 @@ export async function revokePrivilegedAccess(
       revokeReason: reason.trim(),
     },
   });
+  if (res.count === 0) {
+    return actionError(
+      tr("settings.privilegedAccessActions.onlyActiveGrantsCanBeRevoked"),
+    );
+  }
   await recordAudit({
     action: "UPDATE",
     tableName: "privileged_access_requests",
@@ -443,10 +465,12 @@ export async function cancelPrivilegedAccess(
   if (req.status !== "PENDING")
     return actionError(tr("settings.privilegedAccessActions.alreadyDecided"));
 
-  await prisma.privilegedAccessRequest.update({
-    where: { id },
+  const res = await prisma.privilegedAccessRequest.updateMany({
+    where: { id, status: "PENDING" },
     data: { status: "CANCELLED" },
   });
+  if (res.count === 0)
+    return actionError(tr("settings.privilegedAccessActions.alreadyDecided"));
   await recordAudit({
     action: "UPDATE",
     tableName: "privileged_access_requests",

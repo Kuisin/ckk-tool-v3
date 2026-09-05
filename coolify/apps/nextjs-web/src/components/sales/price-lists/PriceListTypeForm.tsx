@@ -74,6 +74,8 @@ import {
  */
 function buildSchema(tr: ReturnType<typeof useTranslations>) {
   const tierSchema = z.object({
+    /** 保存済みの段階の id（新規は null）— 更新時に行を残すために送る. */
+    id: z.string().nullable(),
     minQuantity: z
       .number()
       .int()
@@ -146,6 +148,7 @@ type TierForm = VariantForm["tiers"][number];
 const BASE_PATH = "/sales/price-lists";
 
 const emptyTier = (): TierForm => ({
+  id: null,
   minQuantity: 1,
   maxQuantity: null,
   multiplier: 1,
@@ -191,6 +194,7 @@ function buildInitial(args: {
           validUntil: v.validUntil,
           isActive: v.isActive,
           tiers: v.tiers.map((t) => ({
+            id: t.id,
             minQuantity: t.minQuantity,
             maxQuantity: t.maxQuantity,
             multiplier: t.multiplier,

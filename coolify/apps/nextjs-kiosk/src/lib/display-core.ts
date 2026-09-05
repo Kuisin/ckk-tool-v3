@@ -141,6 +141,24 @@ export function machineHint(
   };
 }
 
+/**
+ * 手掛かりのうち**読めたものだけ**を更新に載せる。
+ *
+ * 読めなかった側（null）を書くと、以前に config が書いた値を消してしまう。
+ * heartbeat は body に手掛かりを載せない APK / 旧スクリプトからも来るので、
+ * null を「消せ」ではなく「言っていない」として扱う。実際に値が変わったとき
+ * （Pi の差し替え・画面の並び替え）は新しい値が来るので、上書きはそれで足りる。
+ */
+export function machineHintUpdate(hint: MachineHint): {
+  machineId?: string;
+  screenIndex?: number;
+} {
+  return {
+    ...(hint.machineId !== null ? { machineId: hint.machineId } : {}),
+    ...(hint.screenIndex !== null ? { screenIndex: hint.screenIndex } : {}),
+  };
+}
+
 /** デバイストークンの有効判定。 */
 export function isDisplayTokenAlive(
   now: Date,

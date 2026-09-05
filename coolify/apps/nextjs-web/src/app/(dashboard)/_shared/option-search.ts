@@ -852,3 +852,21 @@ export async function searchMaterialOptions(
     label: `${r.code}（${localized(r.name as LocalizedText | null)}）`,
   }));
 }
+
+/**
+ * 素材 1 件の単位（素材入荷 PU13 の単位既定値）。入荷の単位は素材マスタの
+ * 単位で固定する — 台帳（material_inventory）の単位と揃えるため。
+ * 最近使用（localStorage）の候補は単位を持たないので、選択時に引き直す。
+ */
+export async function fetchMaterialUnit(
+  materialId: string,
+): Promise<string | null> {
+  if (!(await requireAnyRead(MATERIAL_PICKER_CODES)).ok) return null;
+  const id = Number(materialId);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  const row = await prisma.material.findUnique({
+    where: { id },
+    select: { unit: true },
+  });
+  return row?.unit ?? null;
+}

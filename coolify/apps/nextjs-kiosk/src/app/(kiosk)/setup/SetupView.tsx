@@ -36,7 +36,17 @@ const POLL_INTERVAL_MS = 3000;
 type SetupState =
   | { phase: "loading" }
   | { phase: "showing"; code: string; expiresAt: number }
-  | { phase: "linked"; deviceId: string; deviceName: string | null }
+  /**
+   * リンク成立 → 有効化待ち。**表示したリンクコードを持ち続ける** —
+   * confirm でトークンを受け取るときの所持の証明に要る（deviceId は
+   * 秘密ではないので、それだけでは発行されない）。
+   */
+  | {
+      phase: "linked";
+      deviceId: string;
+      deviceName: string | null;
+      code: string;
+    }
   /** Cookie 消失からの復帰: 端末設定コードの入力待ち（署名の道が無いとき）。 */
   | { phase: "reactivate"; deviceId: string; lockedUntil: string | null }
   | { phase: "expired" }
@@ -234,6 +244,7 @@ export function SetupView() {
             phase: "linked",
             deviceId: data.deviceId,
             deviceName: data.deviceName ?? null,
+            code: state.code,
           });
         } else if (data.status === "EXPIRED" || data.status === "NOT_FOUND") {
           setState({ phase: "expired" });
@@ -260,9 +271,17 @@ export function SetupView() {
         const res = await fetch("/api/kiosk/setup/confirm", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deviceId: state.deviceId }),
+          // code = この端末が表示したリンクコード（所持の証明）。
+          body: JSON.stringify({ deviceId: state.deviceId, code: state.code }),
         });
         const data = (await res.json()) as { status: string };
+        if (data.status === "PROOF_REQUIRED") {
+          // コードがもう通らない（別のプロファイルに結ばれた等）。
+          // リンクからやり直す — 黙って待ち続けない。
+          localStorage.removeItem(DEVICE_ID_KEY);
+          void begin();
+          return;
+        }
         if (data.status === "CONFIRMED") {
           window.location.replace("/login");
         } else if (data.status === "ALREADY_CONFIRMED") {

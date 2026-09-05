@@ -1,15 +1,25 @@
 /**
  * portal-rate-limit-core.ts — 未認証エンドポイントのレート制限（純ロジック）。
  *
- * auth.ts のインメモリ Map は「単一コンテナ運用では十分」という但し書きつきで
- * 成立している。その前提は**インターネットに面した未認証の口**では成立しない:
- * プロセス再起動で消えるし、呼び出し側が識別子（メールアドレス）を自由に選べる。
- * なので状態は DB（app.portal_rate_limits）に置き、判定式だけをここに置く。
+ * インメモリの Map は「単一コンテナ運用では十分」という但し書きつきでしか
+ * 成立しない: プロセス再起動で消えるし、呼び出し側が識別子（メールアドレス・
+ * ユーザー名）を自由に選べる。なので状態は DB（app.portal_rate_limits）に
+ * 置き、判定式だけをここに置く。
+ *
+ * **名前は portal_ で始まるが、対象はポータルに限らない**（社内ログインの
+ * WEB_LOGIN_* も同じ表を使う）。表は「未認証の口の失敗カウンタ」という
+ * 一般の道具で、bucket は VarChar なので種類を足すのに migration は要らない。
  *
  * 形は kiosk の nextPinFailureState（kiosk-auth-core.ts）に合わせてある。
  */
 
 export const PORTAL_LIMIT_BUCKETS = [
+  /** 社内ログインの失敗（ユーザー名単位）。 */
+  "WEB_LOGIN_USER",
+  /** 社内ログインの失敗（送信元 IP 単位）。ユーザー名を変えながらの
+   *  password spraying を止める — 名前ごとに数えるだけでは、名前を変え続ける
+   *  攻撃が無制限に通る。 */
+  "WEB_LOGIN_IP",
   /** OTP の発行（アドレス単位）。**登録の有無に関わらず数える** — 数え方の差が
    *  そのままアカウント存在のオラクルになるため。 */
   "OTP_ISSUE_EMAIL",
@@ -35,6 +45,14 @@ export interface PortalLimitConfig {
 }
 
 export const PORTAL_LIMITS: Record<PortalLimitBucket, PortalLimitConfig> = {
+  // 社内ログイン。以前は auth.ts のインメモリ Map が**ユーザー名だけ**を数えて
+  // いたので、(a) 名前を変えながらの spraying が無制限に通り、(b) コンテナが
+  // 入れ替わるたびにカウンタが消えていた。両方ともここへ移して解消する。
+  WEB_LOGIN_USER: { max: 5, windowMs: 15 * 60_000, lockMs: 15 * 60_000 },
+  // IP 側は**緩くする**。事務所は 1 つのグローバル IP を共有していることが
+  // 多く、きつくすると打ち間違いが数回続いただけで全員が閉め出される。
+  // 狙いは「1 回線から名前を変えて撃ち続ける」を止めることだけ。
+  WEB_LOGIN_IP: { max: 30, windowMs: 15 * 60_000, lockMs: 15 * 60_000 },
   // 発行はメールを送る = 迷惑メールの増幅器になりうるので、照合より厳しくする。
   OTP_ISSUE_EMAIL: { max: 5, windowMs: 60 * 60_000, lockMs: 60 * 60_000 },
   // 1 つの回線から複数の取引先が入ることはある（同じ会社の複数人）ので緩め。

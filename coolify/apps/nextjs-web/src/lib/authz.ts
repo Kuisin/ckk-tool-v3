@@ -27,6 +27,7 @@ import {
   type PermissionAction,
   type PermissionSet,
   readableCodes,
+  rowInScope,
   type ScopeContext,
   visibleAppKeys,
 } from "@ckk/authz-core";
@@ -203,4 +204,25 @@ export async function getVisibleAppKeys<T extends AppPermissionRef>(
   const set = await getPermissionSet();
   if (!set) return new Set<string>();
   return visibleAppKeys(set, apps);
+}
+
+/**
+ * 作成・更新の**入力**がスコープ内か（書類を起こす側の門）。
+ *
+ * 読み取り（rowInScope）は「明細のどれかの拠点が自分の拠点 ∪ 自分が作成者」で
+ * 見せるが、書く側はそれでは足りない — OWN を持つ人が他拠点あての明細を
+ * 混ぜて起こせてしまう。なので (1) 指定された拠点は**すべて**自分の拠点集合に
+ * 入っていること、(2) その結果できる行が自分に見えること（拠点未指定の明細
+ * だけで OWN も無ければ fail-closed）の両方を要求する。ALL は素通し。
+ */
+export function targetPlantsInScope(
+  access: Access,
+  userId: string,
+  plantIds: readonly (number | null)[],
+): boolean {
+  if (access.kind === "ALL") return true;
+  if (plantIds.some((id) => id !== null && !access.plantIds.has(id))) {
+    return false;
+  }
+  return rowInScope(access, { plantIds, createdBy: userId }, userId);
 }

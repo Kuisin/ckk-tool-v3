@@ -14,6 +14,8 @@ import {
   resolveLatestFile,
   resolveSeriesCustomer,
   sameSeries,
+  usedVersionKeys,
+  versionKey,
 } from "./design-files-core";
 import type { Tr } from "./i18n";
 
@@ -199,6 +201,39 @@ describe("編集・削除の可否", () => {
     expect(
       describeLock({ usedByWorkOrder: true, designRequestId: "r" }, tr),
     ).toBe("指示書で使用中のため変更できません");
+  });
+});
+
+describe("usedVersionKeys — 使用中は版（系列 × 版番号）単位", () => {
+  it("図面データが使われていれば同じ版の参考資料も使用中", () => {
+    const used = usedVersionKeys([
+      { customerBpId: A, version: 2, workOrderCount: 1 },
+      { customerBpId: A, version: 2, workOrderCount: 0 }, // 同じ版の参考資料
+      { customerBpId: A, version: 1, workOrderCount: 0 },
+    ]);
+    expect(used.has(versionKey({ customerBpId: A, version: 2 }))).toBe(true);
+    expect(used.has(versionKey({ customerBpId: A, version: 1 }))).toBe(false);
+  });
+
+  it("別の系列（受注元）の同じ版番号は混ざらない", () => {
+    const used = usedVersionKeys([
+      { customerBpId: A, version: 1, workOrderCount: 1 },
+      { customerBpId: B, version: 1, workOrderCount: 0 },
+      { customerBpId: null, version: 1, workOrderCount: 0 },
+    ]);
+    expect(used.has(versionKey({ customerBpId: A, version: 1 }))).toBe(true);
+    expect(used.has(versionKey({ customerBpId: B, version: 1 }))).toBe(false);
+    expect(used.has(versionKey({ customerBpId: null, version: 1 }))).toBe(
+      false,
+    );
+  });
+
+  it("何も使われていなければ空", () => {
+    expect(usedVersionKeys([]).size).toBe(0);
+    expect(
+      usedVersionKeys([{ customerBpId: null, version: 3, workOrderCount: 0 }])
+        .size,
+    ).toBe(0);
   });
 });
 

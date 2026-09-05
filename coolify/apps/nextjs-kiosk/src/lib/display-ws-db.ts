@@ -5,12 +5,13 @@
  * 含み、カスタムサーバーの CJS ビルドに載らない）。
  */
 
-import { Client, Pool } from "pg";
+import { Pool } from "pg";
 import {
   DISPLAY_CHANNEL,
   type DisplayEvent,
   decodeDisplayEvent,
 } from "./display-events";
+import { subscribeChannel } from "./pg-listen";
 
 let pool: Pool | undefined;
 
@@ -120,10 +121,7 @@ export async function getDisplayPresence(
 //
 // nextjs-web は別プロセスなので、WS ブリッジを直接呼べない。両者が繋いでいる
 // 唯一の共有物（DB）を経由して合図だけを受け取る（display-events.ts 参照）。
-// 接続は 1 プロセス 1 本。切れたら指数バックオフで張り直す。
-
-const LISTEN_RETRY_BASE_MS = 1_000;
-const LISTEN_RETRY_MAX_MS = 30_000;
+// 接続の張り方・再試行は pg-listen.ts（端末側 ws-db.ts と共用）。
 
 /**
  * ディスプレイ宛の合図を購読する。戻り値は購読解除。
@@ -133,52 +131,8 @@ const LISTEN_RETRY_MAX_MS = 30_000;
 export function subscribeDisplayEvents(
   handler: (event: DisplayEvent) => void,
 ): () => void {
-  let closed = false;
-  let client: Client | undefined;
-  let retryMs = LISTEN_RETRY_BASE_MS;
-  let timer: NodeJS.Timeout | undefined;
-
-  const connect = async (): Promise<void> => {
-    if (closed) return;
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) return;
-    const c = new Client({ connectionString });
-    client = c;
-    c.on("error", () => scheduleRetry());
-    c.on("end", () => scheduleRetry());
-    c.on("notification", (msg) => {
-      if (msg.channel !== DISPLAY_CHANNEL || !msg.payload) return;
-      const event = decodeDisplayEvent(msg.payload);
-      if (event) handler(event);
-    });
-    try {
-      await c.connect();
-      await c.query(`LISTEN ${DISPLAY_CHANNEL}`);
-      retryMs = LISTEN_RETRY_BASE_MS;
-    } catch {
-      scheduleRetry();
-    }
-  };
-
-  const scheduleRetry = (): void => {
-    if (closed || timer) return;
-    client?.removeAllListeners();
-    void client?.end().catch(() => undefined);
-    client = undefined;
-    timer = setTimeout(() => {
-      timer = undefined;
-      void connect();
-    }, retryMs);
-    timer.unref?.();
-    retryMs = Math.min(retryMs * 2, LISTEN_RETRY_MAX_MS);
-  };
-
-  void connect();
-
-  return () => {
-    closed = true;
-    if (timer) clearTimeout(timer);
-    client?.removeAllListeners();
-    void client?.end().catch(() => undefined);
-  };
+  return subscribeChannel(DISPLAY_CHANNEL, (payload) => {
+    const event = decodeDisplayEvent(payload);
+    if (event) handler(event);
+  });
 }

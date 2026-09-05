@@ -67,6 +67,37 @@ export function sameSeries(
   return (a ?? null) === (b ?? null);
 }
 
+/** 版のキー（系列 × 版番号）。同じ版のファイルは role が違うだけで運命を共にする。 */
+export function versionKey(f: {
+  customerBpId: string | null;
+  version: number;
+}): string {
+  return `${seriesKey(f.customerBpId)}#${f.version}`;
+}
+
+/**
+ * 指示書に使われている**版**のキー集合。
+ *
+ * 指示書のピン留め（`work_orders.design_file_id`）は版の 1 行（ふつうは
+ * 図面データ）を指すが、「使われた」のは版そのものなので、同じ版の
+ * プレビュー・参考資料も一緒に動かせない — 1 行ずつ数えると、図面データが
+ * 使用中でも同じ版の参考資料だけ消せてしまい、何を見て作ったかの一部が
+ * 欠ける。行の `workOrderCount` を版ごとに合算して判定する。
+ */
+export function usedVersionKeys(
+  files: readonly {
+    customerBpId: string | null;
+    version: number;
+    workOrderCount: number;
+  }[],
+): Set<string> {
+  const used = new Set<string>();
+  for (const f of files) {
+    if (f.workOrderCount > 0) used.add(versionKey(f));
+  }
+  return used;
+}
+
 /** その系列の次の版番号。系列が空なら 1。 */
 export function nextDesignVersion(
   files: readonly DesignFileLike[],

@@ -12,6 +12,9 @@
  * 文字化け防止も兼ねる）。改行は CRLF。
  */
 
+import { documentFormatters } from "./format";
+import { roundYen } from "./money";
+
 /** UTF-8 BOM — 出力 CSV の先頭に必ず付与する。 */
 export const YAYOI_CSV_BOM = "﻿";
 
@@ -55,10 +58,13 @@ export function csvField(value: string | number): string {
   return s;
 }
 
-/** ISO 文字列 / Date → 弥生の日付形式 `yyyy/mm/dd`。 */
+/**
+ * ISO 文字列 / Date → 弥生の日付形式 `yyyy/mm/dd`（**JST の暦日**）。
+ * 帳票と同じ固定フォーマッタ（documentFormatters）を通す — ISO 文字列を
+ * 切り出すと UTC の日付になり、JST 0〜9 時の発行が前日の仕訳になる。
+ */
 function yayoiDate(date: string | Date): string {
-  const iso = date instanceof Date ? date.toISOString() : date;
-  return iso.slice(0, 10).replace(/-/g, "/");
+  return documentFormatters.date(date);
 }
 
 /**
@@ -66,8 +72,11 @@ function yayoiDate(date: string | Date): string {
  * ヘッダ行 + 仕訳 1 行（売掛金 / 売上高）。UTF-8 with BOM・CRLF。
  */
 export function buildYayoiCsv(invoice: YayoiInvoiceInput): string {
-  const amount = Math.round(invoice.totalAmount);
-  const tax = Math.round(invoice.taxAmount ?? 0);
+  // 丸めは `lib/money.ts` の方針 1 本（請求書の作成時に既に整数円で確定して
+  // いるので、ここは念のための同じ丸め = 値は動かない）。以前はここだけが
+  // 独自に `Math.round` していて、合計を丸めていない PDF と 1 円ずれ得た。
+  const amount = roundYen(invoice.totalAmount);
+  const tax = roundYen(invoice.taxAmount ?? 0);
   const header = [
     "日付",
     "借方勘定科目",

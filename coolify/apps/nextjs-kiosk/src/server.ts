@@ -64,17 +64,22 @@ async function authenticateUpgrade(
   const raw = parseCookies(req).kiosk_device;
   if (!raw) return null;
   const hash = createHash("sha256").update(raw).digest("hex");
-  const deviceId = await findActiveDeviceByTokenHash(hash);
-  if (!deviceId) return null;
-  // KIOSK_ATTESTATION=required: WS もアテスト Cookie（12h）を要求
+  const device = await findActiveDeviceByTokenHash(hash);
+  if (!device) return null;
+  // KIOSK_ATTESTATION=required: WS もアテスト Cookie（12h）を要求。
+  // fingerprint を照合に含めるので、鍵リセット後の古い Cookie は通らない。
   if (attestationRequired()) {
     const secret = attestSecret();
     const attest = parseCookies(req).kiosk_attest;
-    if (!secret || !attest || !verifyAttestCookie(secret, attest, deviceId)) {
+    if (
+      !secret ||
+      !attest ||
+      !verifyAttestCookie(secret, attest, device.id, device.fingerprint)
+    ) {
       return null;
     }
   }
-  return { kind: "device", deviceId };
+  return { kind: "device", deviceId: device.id };
 }
 
 /** /api/display/ws の upgrade 認証（ckk_display Cookie か モニタートークン）。 */
@@ -108,7 +113,22 @@ async function authenticateDisplayUpgrade(
   return displayId ? { kind: "display", displayId } : null;
 }
 
+/**
+ * アテステーション必須なのに専用シークレットが無い構成を起動時に 1 度だけ言う。
+ * attestSecret() は KIOSK_WS_SECRET へ黙って落ちる（互換のため変えない）が、
+ * 2 つの秘密が同じ値になっていることは運用者に見えていてほしい。
+ */
+function warnAttestSecretFallback(): void {
+  if (!attestationRequired() || process.env.KIOSK_ATTEST_SECRET) return;
+  console.warn(
+    process.env.KIOSK_WS_SECRET
+      ? "[attest] KIOSK_ATTESTATION=required ですが KIOSK_ATTEST_SECRET が未設定です。KIOSK_WS_SECRET を流用します（専用の値を設定してください）" // i18n-ignore — サーバーログのみ
+      : "[attest] KIOSK_ATTESTATION=required ですが KIOSK_ATTEST_SECRET も KIOSK_WS_SECRET も未設定です。端末のアテステーションを検証できず、端末 API は全て拒否されます", // i18n-ignore — サーバーログのみ
+  );
+}
+
 async function main(): Promise<void> {
+  warnAttestSecretFallback();
   const app = next({ dev, dir: process.cwd() });
   await app.prepare();
   const handle = app.getRequestHandler();

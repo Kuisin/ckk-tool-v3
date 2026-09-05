@@ -41,9 +41,13 @@ export function remainingAllocatable(info: {
   return Math.max(0, info.lineQuantity - info.otherAllocated);
 }
 
-/** 割当を受け付ける明細ステータス（キャンセル・出荷済は不可）。 */
+/**
+ * 割当を受け付ける明細ステータス（未確定・キャンセル・出荷済は不可）。
+ * DRAFT（注文請書が未確定）は含めない — 枝番も金額も無く、確定時に行が
+ * 消える・数量が変わることがあるので、指示書を先に紐付けると割当の前提が
+ * 崩れる。
+ */
 export const ALLOCATABLE_LINE_STATUSES = [
-  "DRAFT",
   "CONFIRMED",
   "IN_PRODUCTION",
   "PARTIAL_SHIPPED",

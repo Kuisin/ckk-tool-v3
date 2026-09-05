@@ -28,6 +28,17 @@ describe("aliasKeyFor", () => {
       aliasKeyFor("products", "カッター 8.3x330"),
     );
   });
+
+  it("素材は製品と同じ鍵（購買側の取込が同じ表記を引けるように）", () => {
+    // 覚えるのは lib/purchase-intake、引くのは lib/material-match。
+    // 鍵が割れると「覚えたのに次から当たらない」になる。
+    expect(aliasKeyFor("materials", "丸棒 Φ６．０×310")).toBe(
+      aliasKeyFor("products", "丸棒 6.0x310"),
+    );
+    expect(aliasKeyFor("materials", "B01A0001-A060-310")).toBe(
+      aliasKeyFor("materials", "b01a0001-a060-310"),
+    );
+  });
 });
 
 describe("aliasLearning", () => {
@@ -49,6 +60,16 @@ describe("aliasLearning", () => {
   it("マスタ・表記が欠けていれば学習しない", () => {
     expect(aliasLearning("products", null, "ドリル")).toBeNull();
     expect(aliasLearning("products", "12", "   ")).toBeNull();
+  });
+
+  it("素材も同じ規則で組み立てる", () => {
+    expect(aliasLearning("materials", "7", " 超硬丸棒 φ6.0 ")).toEqual({
+      targetType: "materials",
+      targetId: "7",
+      alias: "超硬丸棒 φ6.0",
+      aliasKey: aliasKeyFor("materials", "超硬丸棒 φ6.0"),
+    });
+    expect(aliasLearning("materials", "7", "A")).toBeNull();
   });
 });
 

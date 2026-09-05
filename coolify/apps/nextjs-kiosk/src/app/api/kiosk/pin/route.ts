@@ -121,15 +121,23 @@ export async function POST(req: Request) {
   }
 
   if (!verifyPin(pin, card.pinHash)) {
-    const next = nextPinFailureState(now, card.pinFailedAttempts);
-    await prisma.kioskCard.update({
+    // 失敗回数は DB 側で加算する。読んだ値 +1 を書き戻す形だと、同時に来た
+    // 誤入力が 1 回にしか数えられず、5 回ロックが実質的に緩んでいた。
+    const bumped = await prisma.kioskCard.update({
       where: { id: card.id },
-      data: {
-        pinFailedAttempts: next.failedAttempts,
-        pinLockedUntil: next.lockedUntil,
-      },
+      data: { pinFailedAttempts: { increment: 1 } },
+      select: { pinFailedAttempts: true },
     });
+    // nextPinFailureState は「加算前の値」を取るので、加算後の値から 1 戻す
+    const next = nextPinFailureState(now, bumped.pinFailedAttempts - 1);
     if (next.lockedUntil) {
+      await prisma.kioskCard.update({
+        where: { id: card.id },
+        data: {
+          pinFailedAttempts: next.failedAttempts,
+          pinLockedUntil: next.lockedUntil,
+        },
+      });
       // 5 連続失敗の到達点。理由は LOCKED だが、直前の 5 行が PIN_MISMATCH
       // として残っているので、後から経緯が追える。
       return deny(ctx, "LOCKED", 429, detail, { until: next.lockedUntil });

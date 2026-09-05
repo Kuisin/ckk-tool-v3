@@ -11,7 +11,7 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { FormStateScreen } from "@/components/forms/FormStateScreen";
 import { RespondFormClient } from "@/components/forms/RespondFormClient";
-import { hasAnyApproval } from "@/lib/approvals";
+import { hasApprovalInCurrentRound } from "@/lib/approvals";
 import { sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { myDraftsOf, resolveRespondState } from "@/lib/form-respond-state";
@@ -76,7 +76,7 @@ export async function RespondScreen({
     : null;
   const firstApprovalDone =
     editTarget?.status === "REQUESTED" && form
-      ? await hasAnyApproval(
+      ? await hasApprovalInCurrentRound(
           "form_responses",
           editTarget.responseNumber,
           (

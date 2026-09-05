@@ -32,7 +32,11 @@ import {
 import { type LocalizedText, localized } from "@/lib/format";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
 import { allocateDocumentKey } from "@/lib/numbering";
-import { lineShipStatus } from "@/lib/order-line-core";
+import {
+  isLineShippable,
+  LINE_CONSUMING_DELIVERY_ORDER_WHERE,
+  lineShipStatus,
+} from "@/lib/order-line-core";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
@@ -501,7 +505,65 @@ async function shippedQuantityForLine(orderLineId: string): Promise<number> {
 }
 
 /**
+ * DISPATCH 明細の各行が参照する注文明細と整合しているか（作成・更新時）:
+ * 行の製品 = 注文明細の製品、かつ注文明細が出荷できる状態（確定済み・
+ * 未キャンセル — isLineShippable）。別製品の行を注文明細に紐づけると、
+ * 出荷時にその明細の出荷済数量として数えられ、請求もその明細の単価で立つ。
+ */
+async function validateLineProducts(
+  items: { orderLineId: string | null; productId: string }[],
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Promise<string | null> {
+  const ids = [
+    ...new Set(
+      items
+        .map((it) => it.orderLineId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  if (ids.length === 0) return null;
+  const lines = await prisma.orderLine.findMany({
+    where: { id: { in: ids } },
+    select: {
+      id: true,
+      productId: true,
+      status: true,
+      acceptanceYearMonth: true,
+      acceptanceSeq: true,
+      branch: true,
+    },
+  });
+  const byId = new Map(lines.map((l) => [l.id, l]));
+  for (const [i, it] of items.entries()) {
+    if (!it.orderLineId) continue;
+    const line = byId.get(it.orderLineId);
+    if (!line || line.branch == null) {
+      return tr("shipping.deliveryOrderActions.specifyAConfirmedOrderLine");
+    }
+    const number = formatOrderLineNumber({
+      yearMonth: line.acceptanceYearMonth,
+      seq: line.acceptanceSeq,
+      branch: line.branch,
+    });
+    if (!isLineShippable(line)) {
+      return tr("shipping.deliveryOrderActions.orderLineNotShippable", {
+        number,
+      });
+    }
+    if (line.productId == null || Number(it.productId) !== line.productId) {
+      return tr("shipping.deliveryOrderActions.productMismatch", {
+        line: i + 1,
+        number,
+      });
+    }
+  }
+  return null;
+}
+
+/**
  * 明細が参照する注文明細の残数を超えていないか（作成・更新時の fail-fast）。
+ * 残数を消費する出荷書は LINE_CONSUMING_DELIVERY_ORDER_WHERE（DISPATCH の
+ * 下書き・確定・出荷済すべて — SH03 の未手配数と同じ条件）。
  * 確定的なガードは shipDeliveryOrder 側（出荷時点で数え直す）。
  */
 async function validateLineRemaining(
@@ -527,13 +589,13 @@ async function validateLineRemaining(
     if (!line || line.branch == null) {
       return tr("shipping.deliveryOrderActions.specifyAConfirmedOrderLine");
     }
-    // 自分自身の未出荷ぶんは累計に含まれない（SHIPPED のみ数える）が、
+    // 他の出荷書に載っているぶん（下書き・確定・出荷済）を全部数える。
     // 編集時に同じ出荷書の行を二重に数えないよう除外キーを見る。
     const agg = await prisma.deliveryOrderItem.aggregate({
       _sum: { quantity: true },
       where: {
         orderLineId,
-        deliveryOrder: { type: "DISPATCH", status: "SHIPPED" },
+        deliveryOrder: LINE_CONSUMING_DELIVERY_ORDER_WHERE,
         ...(excludeKey
           ? {
               NOT: {
@@ -615,6 +677,9 @@ export async function createDeliveryOrder(
     if (v.type === "DISPATCH") {
       const lotError = await validateDispatchLots(v.items, tr);
       if (lotError) return actionError(lotError);
+      // 行の製品 = 注文明細の製品、かつ出荷できる状態の明細であること
+      const productError = await validateLineProducts(v.items, tr);
+      if (productError) return actionError(productError);
       const remainingError = await validateLineRemaining(v.items, tr);
       if (remainingError) return actionError(remainingError);
       const combineError = await validateCombinable(
@@ -720,6 +785,9 @@ export async function updateDeliveryOrder(
     if (v.type === "DISPATCH") {
       const lotError = await validateDispatchLots(v.items, tr);
       if (lotError) return actionError(lotError);
+      // 行の製品 = 注文明細の製品、かつ出荷できる状態の明細であること
+      const productError = await validateLineProducts(v.items, tr);
+      if (productError) return actionError(productError);
       // 受注残の過出荷ガード（作成時と同じ。自出荷書の行は除外して数える）
       const remainingError = await validateLineRemaining(v.items, tr, key);
       if (remainingError) return actionError(remainingError);
@@ -1041,6 +1109,14 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
         ),
       ];
       for (const lineId of lineIds) {
+        // 注文明細の行をロック（FOR UPDATE）— 同じ明細を載せた出荷書を同時に
+        // 出荷したとき、両方が「まだ残っている」と読んで過出荷になるのを防ぐ
+        // （lib/inventory.ts reserveProductStock と同じ流儀）。ロック取得後に
+        // 読む累計が確定値になる。
+        await tx.$queryRaw`
+          SELECT id FROM app.order_lines
+          WHERE id = ${lineId}::uuid
+          FOR UPDATE`;
         const line = await tx.orderLine.findUnique({
           where: { id: lineId },
           select: {
@@ -1051,8 +1127,23 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
             status: true,
           },
         });
-        if (!line || line.status === "CANCELLED" || line.branch == null) {
-          continue;
+        // 確定前・キャンセル済みの明細は出荷できない。ここで黙って飛ばすと
+        // ガードを素通りしたまま在庫の出庫と shippedAt だけが進んでしまう。
+        if (!line || line.branch == null) {
+          throw new Error(
+            `GUARD:${tr("shipping.deliveryOrderActions.specifyAConfirmedOrderLine")}`,
+          );
+        }
+        if (!isLineShippable(line)) {
+          throw new Error(
+            `GUARD:${tr("shipping.deliveryOrderActions.orderLineNotShippable", {
+              number: formatOrderLineNumber({
+                yearMonth: line.acceptanceYearMonth,
+                seq: line.acceptanceSeq,
+                branch: line.branch,
+              }),
+            })}`,
+          );
         }
 
         const agg = await tx.deliveryOrderItem.aggregate({

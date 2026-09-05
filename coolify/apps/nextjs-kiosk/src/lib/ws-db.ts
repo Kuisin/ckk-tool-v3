@@ -8,6 +8,12 @@
 
 import { Pool } from "pg";
 import { IDLE_TIMEOUT_MS } from "./kiosk-auth-core";
+import {
+  decodeKioskEvent,
+  KIOSK_CHANNEL,
+  type KioskEvent,
+} from "./kiosk-events";
+import { subscribeChannel } from "./pg-listen";
 
 let pool: Pool | undefined;
 
@@ -57,18 +63,25 @@ function toPresenceUser(row: {
     : null;
 }
 
-/** upgrade 認証: トークンハッシュ → ACTIVE + 期限内の端末 id。 */
+/**
+ * upgrade 認証: トークンハッシュ → ACTIVE + 期限内の端末。
+ * fingerprint はアテスト Cookie の照合に要る（attest-core.ts）。
+ */
 export async function findActiveDeviceByTokenHash(
   tokenHash: string,
-): Promise<string | null> {
-  const res = await getPool().query<{ id: string }>(
-    `SELECT id FROM app.kiosk_devices
+): Promise<{ id: string; fingerprint: string | null } | null> {
+  const res = await getPool().query<{
+    id: string;
+    fingerprint: string | null;
+  }>(
+    `SELECT id, fingerprint FROM app.kiosk_devices
      WHERE device_token_hash = $1
        AND status = 'ACTIVE'
        AND device_token_expires_at > now()`,
     [tokenHash],
   );
-  return res.rows[0]?.id ?? null;
+  const row = res.rows[0];
+  return row ? { id: row.id, fingerprint: row.fingerprint } : null;
 }
 
 /** WS 接続時に lastActivity を刻む。 */
@@ -83,6 +96,10 @@ export async function touchDeviceActivity(deviceId: string): Promise<void> {
  * WS 接続中の端末の lastActivity をまとめて刻む（30s ごとのハートビート）。
  * これにより「WS 接続中 ⇒ last_activity_at は 30s 以内」が保証され、
  * 5分窓の判定（SY09 のフォールバック含む）がソケットの有無を知らずに済む。
+ *
+ * **ACTIVE 以外は刻まない。** 取り消し・無効化の合図（subscribeKioskEvents）を
+ * 取りこぼしてソケットが残っても、止めた端末の活動時刻が伸び続けて
+ * 「オンライン」に見え続けることは無い（5 分窓で自然に落ちる）。
  */
 export async function touchConnectedDevices(
   deviceIds: string[],
@@ -90,7 +107,8 @@ export async function touchConnectedDevices(
   if (deviceIds.length === 0) return;
   await getPool().query(
     `UPDATE app.kiosk_devices SET last_activity_at = now()
-     WHERE id = ANY($1::uuid[])`,
+     WHERE id = ANY($1::uuid[])
+       AND status = 'ACTIVE'`,
     [deviceIds],
   );
 }
@@ -138,6 +156,21 @@ export async function getDeviceActivity(deviceId: string): Promise<{
   return row
     ? { lastActivityAt: row.last_activity_at, user: toPresenceUser(row) }
     : null;
+}
+
+/**
+ * 管理画面（nextjs-web = 別プロセス）からの合図を購読する。戻り値は購読解除。
+ * 取り消し・無効化・リンク解除・鍵リセットで届く（kiosk-events.ts）。
+ * 届かなくても touchConnectedDevices が ACTIVE 以外を刻まないので、遅くとも
+ * 5 分窓でオフラインに落ちる — ここは「早く気付く」ための経路。
+ */
+export function subscribeKioskEvents(
+  handler: (event: KioskEvent) => void,
+): () => void {
+  return subscribeChannel(KIOSK_CHANNEL, (payload) => {
+    const event = decodeKioskEvent(payload);
+    if (event) handler(event);
+  });
 }
 
 /**

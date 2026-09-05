@@ -396,6 +396,16 @@ export async function markDelivered(number: string): Promise<ActionResult> {
     return actionError(tr("common.scopeDenied"));
   }
   try {
+    // 出荷書がまだ出ていない納品書を納品済みにはできない（出荷 → 納品の順）。
+    const note = await prisma.deliveryNote.findUnique({
+      where: { yearMonth_seq: key },
+      select: { deliveryOrder: { select: { status: true } } },
+    });
+    if (note && note.deliveryOrder.status !== "SHIPPED") {
+      return actionError(
+        tr("shipping.deliveryNoteActions.deliveryOrderNotShipped"),
+      );
+    }
     const updated = await prisma.deliveryNote.updateMany({
       where: { ...key, status: "ISSUED" },
       data: { status: "DELIVERED", deliveredAt: new Date() },

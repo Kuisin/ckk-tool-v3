@@ -8,6 +8,17 @@
  * 締日オートラン・取込ポーラーと同じ setInterval に揃える）。
  */
 
+/**
+ * 環境変数のミリ秒を読む。数値でない・1 秒未満なら既定値へ倒す —
+ * `setInterval(fn, NaN)` は約 1ms ごとに走り、DB を叩き続けるため。
+ */
+function intervalMs(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw == null || raw === "") return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 1_000 ? n : fallback;
+}
+
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
@@ -26,9 +37,7 @@ export async function register() {
   // 毎回 SY0F の設定（間隔・猶予）を読んで決めるので、設定を変えても
   // 再起動が要らない。既定 5 分刻み（NOTIFICATION_DIGEST_TICK_MS）。
   const { runNotificationDigest } = await import("./lib/notification-digest");
-  const digestTick = Number(
-    process.env.NOTIFICATION_DIGEST_TICK_MS ?? 5 * 60_000,
-  );
+  const digestTick = intervalMs("NOTIFICATION_DIGEST_TICK_MS", 5 * 60_000);
   const digestTimer = setInterval(() => {
     runNotificationDigest().catch((e) =>
       console.error("[notification-digest] tick", e),
@@ -47,7 +56,7 @@ export async function register() {
   if (!process.env.INTAKE_DIR) return;
 
   const { scanIntakeFolder } = await import("./lib/intake");
-  const interval = Number(process.env.INTAKE_POLL_MS ?? 60_000);
+  const interval = intervalMs("INTAKE_POLL_MS", 60_000);
 
   console.log(
     `[intake] watcher started: dir=${process.env.INTAKE_DIR} every ${interval}ms`,

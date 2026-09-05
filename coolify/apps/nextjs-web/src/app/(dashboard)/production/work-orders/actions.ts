@@ -66,7 +66,17 @@ import {
   addWorkOrderLink as addWoLink,
   removeWorkOrderLink as removeWoLink,
 } from "@/lib/work-order-links";
-import { type OrderedStepCreate, validateAndOrderSteps } from "@/lib/workflow";
+import {
+  type OrderedStepCreate,
+  type StepCompositionInput,
+  validateAndOrderSteps,
+} from "@/lib/workflow";
+import {
+  isOffMainline,
+  STEP_LINK_STATE_SELECT,
+  STEP_STATE_SELECT,
+  toStepState,
+} from "@/lib/workflow-core";
 import { fetchOrderLineRef, type OrderLineRef } from "./data";
 
 const BASE_PATH = "/production/work-orders";
@@ -604,6 +614,8 @@ export async function updateWorkOrder(
     if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
     const materialId = v.type === "MANUFACTURE" ? v.materialId : null;
+    let plansKept = 0;
+    let plansDropped = 0;
 
     const routeVersionId = await prisma.$transaction(async (tx) => {
       const resolvedRouteVersionId = await resolveRouteVersionTx(
@@ -617,12 +629,49 @@ export async function updateWorkOrder(
           number: workOrderNumber,
         }),
       );
-      // 工程の作り直し — 工程単位の検査表割当は FK CASCADE で一緒に消える
+      // 工程の作り直し — 工程単位の検査表割当は FK CASCADE で一緒に消える。
+      // 作業計画・実績（work_order_step_plans / _actuals）も同じ CASCADE で
+      // 消えるので、先に控えて作り直した工程へ processStepId で付け直す
+      // （工程構成は同じ工程の重複を許さないので 1:1 に写せる）。構成から
+      // 外れた工程の計画は落ちる — 件数を監査行に残す。
+      const priorSteps = await tx.workOrderStep.findMany({
+        where: { workOrderId: prior.id },
+        select: {
+          processStepId: true,
+          plans: {
+            select: {
+              userId: true,
+              plannedDate: true,
+              plannedStartAt: true,
+              plannedEndAt: true,
+              quantity: true,
+              workLocationId: true,
+              notes: true,
+              createdBy: true,
+              createdAt: true,
+            },
+          },
+          actuals: {
+            select: {
+              userId: true,
+              workedDate: true,
+              startedAt: true,
+              endedAt: true,
+              quantity: true,
+              workLocationId: true,
+              concurrentCount: true,
+              notes: true,
+              createdBy: true,
+              createdAt: true,
+            },
+          },
+        },
+      });
       await tx.workOrderStep.deleteMany({ where: { workOrderId: prior.id } });
       await tx.workOrderOrderLine.deleteMany({
         where: { workOrderId: prior.id },
       });
-      await tx.workOrder.update({
+      const updated = await tx.workOrder.update({
         where: { id: prior.id },
         data: {
           productId,
@@ -645,7 +694,28 @@ export async function updateWorkOrder(
           },
           steps: { create: toWorkOrderStepCreates(built.creates) },
         },
+        select: { steps: { select: { id: true, processStepId: true } } },
       });
+      const newStepIdByProcess = new Map(
+        updated.steps.map((s) => [s.processStepId, s.id]),
+      );
+      const planRows = priorSteps.flatMap((s) => {
+        const stepId = newStepIdByProcess.get(s.processStepId);
+        return stepId ? s.plans.map((p) => ({ ...p, stepId })) : [];
+      });
+      const actualRows = priorSteps.flatMap((s) => {
+        const stepId = newStepIdByProcess.get(s.processStepId);
+        return stepId ? s.actuals.map((a) => ({ ...a, stepId })) : [];
+      });
+      if (planRows.length > 0) {
+        await tx.workOrderStepPlan.createMany({ data: planRows });
+      }
+      if (actualRows.length > 0) {
+        await tx.workOrderStepActual.createMany({ data: actualRows });
+      }
+      plansKept = planRows.length;
+      plansDropped =
+        priorSteps.reduce((n, s) => n + s.plans.length, 0) - planRows.length;
       await assignLotNumbersTx(
         tx,
         v.allocations.map((a) => a.orderLineId),
@@ -674,6 +744,8 @@ export async function updateWorkOrder(
         storageLocationId: v.storageLocationId,
         routeVersionId,
         stepCount: built.creates.length,
+        plansKept,
+        plansDropped,
       },
     });
     const docNumber = formatDocNumber("WOR", {
@@ -791,12 +863,49 @@ export async function copyWorkOrder(
       include: {
         steps: {
           orderBy: { sortOrder: "asc" },
-          include: { inspectionTemplates: true },
+          select: {
+            ...STEP_STATE_SELECT,
+            executionLocation: true,
+            plantId: true,
+            supplierBpId: true,
+            plannedWorkHours: true,
+            lotInputMode: true,
+            inspectionTemplates: { select: { inspectionTemplateId: true } },
+          },
         },
+        stepLinks: { select: STEP_LINK_STATE_SELECT },
       },
     });
     if (!source)
       return actionError(tr("production.workOrderActions.copySourceNotFound"));
+    // 複写するのは**メインラインの生きている工程だけ**。分岐系列（オフメイン
+    // ライン）は実行中に不良へ対して足したもので、キャンセル済みは構成から外れて
+    // いる — どちらも新しい下書きには持ち込まない（分岐リンクも複写しない）。
+    // そのうえで新規作成と同じ検証・並び（validateAndOrderSteps）を通し、
+    // 複写が不正な下書きにならないようにする。
+    const srcCtx = {
+      plannedQuantity: source.plannedQuantity,
+      steps: source.steps.map(toStepState),
+      links: source.stepLinks,
+      execDeps: [],
+    };
+    const composition: StepCompositionInput[] = source.steps
+      .filter((s) => s.status !== "CANCELLED" && !isOffMainline(s.id, srcCtx))
+      .map((s) => ({
+        processStepId: s.processStepId,
+        executionLocation: s.executionLocation,
+        plantId: s.plantId,
+        supplierBpId: s.supplierBpId,
+        workHours:
+          s.plannedWorkHours == null ? null : Number(s.plannedWorkHours),
+        // ロット入力の上書きは複写する（lot_text は実績なので複写しない）
+        lotInputMode: s.lotInputMode,
+        inspectionTemplateIds: s.inspectionTemplates.map(
+          (t) => t.inspectionTemplateId,
+        ),
+      }));
+    const built = await validateAndOrderSteps(composition, source.type);
+    if (!built.ok) return actionError(built.error);
     if (!targetOrderLineId && source.type === "FROM_STOCK") {
       return actionError(
         tr("production.workOrderActions.stockOrderRequiresOrderLine"),
@@ -888,23 +997,7 @@ export async function copyWorkOrder(
               }),
             ),
           ]),
-          steps: {
-            create: source.steps.map((s) => ({
-              processStepId: s.processStepId,
-              sortOrder: s.sortOrder,
-              executionLocation: s.executionLocation,
-              plantId: s.plantId,
-              supplierBpId: s.supplierBpId,
-              plannedWorkHours: s.plannedWorkHours,
-              // ロット入力の上書きは複写する（lot_text は実績なので複写しない）
-              lotInputMode: s.lotInputMode,
-              inspectionTemplates: {
-                create: s.inspectionTemplates.map((t) => ({
-                  inspectionTemplateId: t.inspectionTemplateId,
-                })),
-              },
-            })),
-          },
+          steps: { create: toWorkOrderStepCreates(built.creates) },
         },
       });
       await assignLotNumbersTx(
@@ -924,7 +1017,7 @@ export async function copyWorkOrder(
         sourceWorkOrderNumber,
         type: source.type,
         plannedQuantity,
-        stepCount: source.steps.length,
+        stepCount: built.creates.length,
       },
     });
     revalidate(workOrderNumber, docNumber);
@@ -950,52 +1043,99 @@ export async function cancelWorkOrder(
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
-      include: { orderLineLinks: { select: { orderLineId: true } } },
+      include: {
+        orderLineLinks: { select: { orderLineId: true } },
+        steps: { select: { status: true } },
+      },
     });
     if (!prior)
       return actionError(tr("production.workOrderActions.workOrderNotFound"));
-    if (prior.status !== "DRAFT" && prior.status !== "PENDING_APPROVAL") {
+    // キャンセルできるのは着手前まで — 下書き・承認依頼中、それに承認済みで
+    // 工程が 1 つも動いていないもの。工程が動いた（IN_PROGRESS / COMPLETED）
+    // 指示書には実績と数量が付いているので取り消さない（巻き戻しで対応）。
+    const approvedNotStarted =
+      prior.status === "APPROVED" &&
+      prior.steps.every(
+        (s) => s.status !== "IN_PROGRESS" && s.status !== "COMPLETED",
+      );
+    if (
+      prior.status !== "DRAFT" &&
+      prior.status !== "PENDING_APPROVAL" &&
+      !approvedNotStarted
+    ) {
       return actionError(
-        tr("production.workOrderActions.draftOrPendingOnlyCanCancel"),
+        tr("production.workOrderActions.cancellableOnlyBeforeStart"),
       );
     }
     const actor = await getCurrentActorId();
     const linkedLineIds = prior.orderLineLinks.map((l) => l.orderLineId);
-    await prisma.$transaction([
-      prisma.workOrder.update({
-        where: { id: prior.id },
-        data: {
-          status: "CANCELLED",
-          approvalStatus: "NONE",
-          history: toHistoryJson(
-            appendHistory(prior.history, entry("CANCEL", actor)),
-          ),
-        },
-      }),
-      ...(linkedLineIds.length > 0
-        ? [
-            prisma.orderLine.updateMany({
-              where: { id: { in: linkedLineIds } },
-              data: { isLocked: false },
-            }),
-          ]
-        : []),
-      // 承認依頼中のキャンセル: 未処理の承認依頼行を取り下げる（記録なしの
-      // PENDING 行のみ — PD03 の横断一覧に残さない）。
-      prisma.approvalRequest.deleteMany({
-        where: {
-          targetType: "work_orders",
-          targetId: String(workOrderNumber),
-          status: "PENDING",
-        },
-      }),
-    ]);
+    const { releasedReservations, lotCleared } = await prisma.$transaction(
+      async (tx) => {
+        // 遷移は条件付き — 読んだあとに承認・開始が走っていたら負ける側に倒す
+        // （着手済みの指示書を「未着手だった」前提でキャンセルしない）。
+        const flipped = await tx.workOrder.updateMany({
+          where: { id: prior.id, status: prior.status },
+          data: {
+            status: "CANCELLED",
+            approvalStatus: "NONE",
+            history: toHistoryJson(
+              appendHistory(prior.history, entry("CANCEL", actor)),
+            ),
+          },
+        });
+        if (flipped.count !== 1) {
+          throw new Error(
+            tr("production.workOrderActions.cancellableOnlyBeforeStart"),
+          );
+        }
+        if (linkedLineIds.length > 0) {
+          await tx.orderLine.updateMany({
+            where: { id: { in: linkedLineIds } },
+            data: { isLocked: false },
+          });
+        }
+        // 承認依頼中のキャンセル: 未処理の承認依頼行を取り下げる（記録なしの
+        // PENDING 行のみ — PD03 の横断一覧に残さない）。
+        await tx.approvalRequest.deleteMany({
+          where: {
+            targetType: "work_orders",
+            targetId: String(workOrderNumber),
+            status: "PENDING",
+          },
+        });
+        // 承認時に取った予約（素材など）を解放する — 残すと使われない予約が
+        // 台帳の空き数量を食い続ける。
+        const { releaseWorkOrderReservations } = await import(
+          "@/lib/inventory"
+        );
+        const releasedReservations = await releaseWorkOrderReservations(
+          tx,
+          prior.id,
+          tr("production.workOrderActions.cancelReleaseNote", {
+            number: workOrderNumber,
+          }),
+        );
+        // ロット番号 = この指示書番号 を持つ明細からロットを外す（ロットは
+        // 消えた）。番号は指示書ごとに一意なので、他の生きている指示書が同じ
+        // ロットを共有していることは無い。
+        const lot = await tx.orderLine.updateMany({
+          where: { lotNumber: workOrderNumber },
+          data: { lotNumber: null },
+        });
+        return { releasedReservations, lotCleared: lot.count };
+      },
+    );
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(workOrderNumber),
       before: { status: prior.status, approvalStatus: prior.approvalStatus },
-      after: { status: "CANCELLED", approvalStatus: "NONE" },
+      after: {
+        status: "CANCELLED",
+        approvalStatus: "NONE",
+        releasedReservations,
+        lotCleared,
+      },
     });
     revalidate(workOrderNumber);
     return actionOk();

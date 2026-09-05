@@ -38,8 +38,16 @@
  * ような直らない失敗は 1 回で諦める。人からの再抽出は回数を 1 から数え直す。
  */
 
-import { mkdir, readdir, readFile, rename, stat } from "node:fs/promises";
+import {
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  stat,
+  utimes,
+} from "node:fs/promises";
 import path from "node:path";
+import { PERIODIC_LOCKS, withAdvisoryLock } from "./advisory-lock";
 import { AiProviderConfigError, aiConfigHeaders } from "./ai-provider";
 import { APPROVAL_TARGET } from "./approval-targets";
 import { firstStepGroupId } from "./approvals";
@@ -345,8 +353,15 @@ async function ingestFile(input: {
  * 配列列（match_names）の**部分一致は Prisma の where で書けない**し、
  * 表記ゆれの吸収は SQL より JS の方が素直に書ける。有効な取引先は数百件なので、
  * 1 通の取込につき 1 回この全件読みで十分（顧客ピッカーも同じやり方）。
+ *
+ * `expectedRole` は「その場面で自動確定してよいのはどのロールか」。注文請書は
+ * 顧客（既定）、購買側の取込（lib/purchase-intake）は仕入先。**プールから
+ * 落とすのではなく自動確定だけを止める** — 顧客ロールしか無い相手が仕入先
+ * として印字されていることは実際にあるので、候補には出して人に選ばせる。
  */
-export async function loadBpMatchPool(): Promise<BpMatchable[]> {
+export async function loadBpMatchPool(
+  expectedRole: "CUSTOMER" | "VENDOR" = "CUSTOMER",
+): Promise<BpMatchable[]> {
   // 学習した表記（人が結び付けた実績）も照合キーに混ぜる。取引先は数百件
   // なので、まとめて 1 回引いて突き合わせる。
   const learned = await aliasesByTarget("business_partners");
@@ -361,7 +376,7 @@ export async function loadBpMatchPool(): Promise<BpMatchable[]> {
       matchNames: true,
       matchNamesAuto: true,
       roleAssignments: {
-        where: { role: "CUSTOMER", isActive: true },
+        where: { role: expectedRole, isActive: true },
         select: { role: true },
       },
     },
@@ -376,7 +391,7 @@ export async function loadBpMatchPool(): Promise<BpMatchable[]> {
     // 人が登録した別名 + 学習した表記。どちらも「この会社の書かれ方」。
     matchNames: [...r.matchNames, ...(learned.get(r.id) ?? [])],
     matchNamesAuto: r.matchNamesAuto,
-    isCustomer: r.roleAssignments.length > 0,
+    hasExpectedRole: r.roleAssignments.length > 0,
   }));
 }
 
@@ -1218,112 +1233,127 @@ export async function scanIntakeFolder(): Promise<void> {
   if (!dir || scanning) return;
   scanning = true;
   try {
-    const processedDir = path.join(dir, "processed");
-    const failedDir = path.join(dir, "failed");
-    await mkdir(processedDir, { recursive: true });
-    await mkdir(failedDir, { recursive: true });
-
-    const entries = await readdir(dir);
-
-    // 孤児 .processing の回収（監査 P1-7: 抽出中にコンテナが差し替わると
-    // クレームされたまま永久に放置される）。10 分より古いものは元の名前に
-    // 戻して再スキャン対象にする。名前に番号が焼き込まれていれば
-    // （＝採番済み）scanTargetFor が同じ行の続きとして拾うので、
-    // 回収で番号が増えることはない。
-    const ORPHAN_MS = 10 * 60_000;
-    for (const name of entries) {
-      if (!name.endsWith(".processing")) continue;
-      const full = path.join(dir, name);
-      const info = await stat(full).catch(() => null);
-      if (!info?.isFile()) continue;
-      if (Date.now() - info.mtimeMs < ORPHAN_MS) continue;
-      const original = full.slice(0, -".processing".length);
-      await rename(full, original).catch(() => {});
-      console.warn(
-        L(
-          "settings.orderIntake.pipeline.orphanRecoveredLog",
-          "[intake] 孤児 .processing を回収: {name}", // i18n-ignore
-          { name },
-        ),
-      );
-    }
-
-    for (const name of entries) {
-      const ext = path.extname(name).toLowerCase();
-      if (!ALLOWED_EXT.has(ext)) continue;
-      const full = path.join(dir, name);
-      const info = await stat(full).catch(() => null);
-      if (!info?.isFile()) continue;
-      // 書き込み途中のファイルを避ける（最終更新から 5 秒待つ）
-      if (Date.now() - info.mtimeMs < 5_000) continue;
-
-      let claimed = `${full}.processing`;
-      try {
-        await rename(full, claimed); // 原子的クレーム
-      } catch {
-        continue; // 他プロセスが先に取った
-      }
-      // 移動先で使う名前（採番後は ORD-… 付き）。失敗時の退避にも使う。
-      let filed = name;
-      try {
-        const target = await scanTargetFor(name);
-        if (target.kind === "done") {
-          // 既に引き取られた注文請書。取り込み直すと二重になるので置くだけ。
-          await rename(claimed, path.join(processedDir, name));
-          console.log(
-            L(
-              "settings.orderIntake.pipeline.alreadyImportedSkipLog",
-              "[intake] {name} → {number} (取込済み・スキップ)", // i18n-ignore
-              { name, number: target.number },
-            ),
-          );
-          continue;
-        }
-
-        let key: ExtractionKey;
-        if (target.kind === "resume") {
-          key = target.key;
-        } else {
-          const bytes = await readFile(claimed);
-          const ingested = await ingestIntakeFile({
-            filename: name,
-            bytes,
-            contentType: MIME_BY_EXT[ext] ?? "application/octet-stream",
-            source: "FOLDER",
-          });
-          key = { yearMonth: ingested.yearMonth, seq: ingested.seq };
-          // 抽出の前に番号を名前へ焼き込む — ここで落ちても続きから再開できる。
-          const numbered = intakeFileName(ingested.number, name);
-          const renamed = path.join(dir, `${numbered}.processing`);
-          try {
-            await rename(claimed, renamed);
-            claimed = renamed;
-            filed = numbered;
-          } catch (err) {
-            // 改名できなくても取込は続ける。ただし番号が名前に乗らないので、
-            // この 1 件は孤児回収で新規として拾われ得る（要調査のため警告）。
-            console.warn(
-              L(
-                "settings.orderIntake.pipeline.numberBurnFailedLog",
-                "[intake] 番号の焼き込みに失敗: {name}", // i18n-ignore
-                { name },
-              ),
-              err,
-            );
-          }
-        }
-
-        const result = await runExtractionSerialized(key);
-        const dest = result.status === "DRAFT" ? processedDir : failedDir;
-        await rename(claimed, path.join(dest, filed));
-        console.log(`[intake] ${name} → ${result.number} (${result.status})`);
-      } catch (e) {
-        console.error(`[intake] ${name} failed`, e);
-        // 番号付きの名前で退避する（再取込が同じ行の続きとして走るように）。
-        await rename(claimed, path.join(failedDir, filed)).catch(() => {});
-      }
-    }
+    // 跨プロセスの排他。ローリングデプロイ中は新旧 2 つのコンテナが
+    // 同時にこのフォルダを見るので、プロセス内の `scanning` では足りない。
+    await withAdvisoryLock(PERIODIC_LOCKS.intakeScan, () =>
+      scanIntakeFolderOnce(dir),
+    );
   } finally {
     scanning = false;
+  }
+}
+
+/** スキャンの実体。呼ぶのは scanIntakeFolder だけ（排他はそちらが持つ）。 */
+async function scanIntakeFolderOnce(dir: string): Promise<void> {
+  const processedDir = path.join(dir, "processed");
+  const failedDir = path.join(dir, "failed");
+  await mkdir(processedDir, { recursive: true });
+  await mkdir(failedDir, { recursive: true });
+
+  const entries = await readdir(dir);
+
+  // 孤児 .processing の回収（監査 P1-7: 抽出中にコンテナが差し替わると
+  // クレームされたまま永久に放置される）。10 分より古いものは元の名前に
+  // 戻して再スキャン対象にする。名前に番号が焼き込まれていれば
+  // （＝採番済み）scanTargetFor が同じ行の続きとして拾うので、
+  // 回収で番号が増えることはない。
+  const ORPHAN_MS = 10 * 60_000;
+  for (const name of entries) {
+    if (!name.endsWith(".processing")) continue;
+    const full = path.join(dir, name);
+    const info = await stat(full).catch(() => null);
+    if (!info?.isFile()) continue;
+    if (Date.now() - info.mtimeMs < ORPHAN_MS) continue;
+    const original = full.slice(0, -".processing".length);
+    await rename(full, original).catch(() => {});
+    console.warn(
+      L(
+        "settings.orderIntake.pipeline.orphanRecoveredLog",
+        "[intake] 孤児 .processing を回収: {name}", // i18n-ignore
+        { name },
+      ),
+    );
+  }
+
+  for (const name of entries) {
+    const ext = path.extname(name).toLowerCase();
+    if (!ALLOWED_EXT.has(ext)) continue;
+    const full = path.join(dir, name);
+    const info = await stat(full).catch(() => null);
+    if (!info?.isFile()) continue;
+    // 書き込み途中のファイルを避ける（最終更新から 5 秒待つ）
+    if (Date.now() - info.mtimeMs < 5_000) continue;
+
+    let claimed = `${full}.processing`;
+    try {
+      await rename(full, claimed); // 原子的クレーム
+    } catch {
+      continue; // 他プロセスが先に取った
+    }
+    // rename は mtime を更新しない。10 分以上待たされたファイルをクレーム
+    // した直後に、隣のコンテナの孤児回収（上）が「古い .processing」と見て
+    // 元の名前に戻してしまうと同じ PDF が 2 回登録される。クレーム時刻を
+    // mtime に刻んで、回収の判定を「クレームからの経過」にする。
+    const now = new Date();
+    await utimes(claimed, now, now).catch(() => {});
+    // 移動先で使う名前（採番後は ORD-… 付き）。失敗時の退避にも使う。
+    let filed = name;
+    try {
+      const target = await scanTargetFor(name);
+      if (target.kind === "done") {
+        // 既に引き取られた注文請書。取り込み直すと二重になるので置くだけ。
+        await rename(claimed, path.join(processedDir, name));
+        console.log(
+          L(
+            "settings.orderIntake.pipeline.alreadyImportedSkipLog",
+            "[intake] {name} → {number} (取込済み・スキップ)", // i18n-ignore
+            { name, number: target.number },
+          ),
+        );
+        continue;
+      }
+
+      let key: ExtractionKey;
+      if (target.kind === "resume") {
+        key = target.key;
+      } else {
+        const bytes = await readFile(claimed);
+        const ingested = await ingestIntakeFile({
+          filename: name,
+          bytes,
+          contentType: MIME_BY_EXT[ext] ?? "application/octet-stream",
+          source: "FOLDER",
+        });
+        key = { yearMonth: ingested.yearMonth, seq: ingested.seq };
+        // 抽出の前に番号を名前へ焼き込む — ここで落ちても続きから再開できる。
+        const numbered = intakeFileName(ingested.number, name);
+        const renamed = path.join(dir, `${numbered}.processing`);
+        try {
+          await rename(claimed, renamed);
+          claimed = renamed;
+          filed = numbered;
+        } catch (err) {
+          // 改名できなくても取込は続ける。ただし番号が名前に乗らないので、
+          // この 1 件は孤児回収で新規として拾われ得る（要調査のため警告）。
+          console.warn(
+            L(
+              "settings.orderIntake.pipeline.numberBurnFailedLog",
+              "[intake] 番号の焼き込みに失敗: {name}", // i18n-ignore
+              { name },
+            ),
+            err,
+          );
+        }
+      }
+
+      const result = await runExtractionSerialized(key);
+      const dest = result.status === "DRAFT" ? processedDir : failedDir;
+      await rename(claimed, path.join(dest, filed));
+      console.log(`[intake] ${name} → ${result.number} (${result.status})`);
+    } catch (e) {
+      console.error(`[intake] ${name} failed`, e);
+      // 番号付きの名前で退避する（再取込が同じ行の続きとして走るように）。
+      await rename(claimed, path.join(failedDir, filed)).catch(() => {});
+    }
   }
 }

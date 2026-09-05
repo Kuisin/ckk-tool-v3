@@ -18,6 +18,7 @@ import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import { normalizeKeywords } from "@/lib/master-keywords";
+import { countMasterReferences } from "@/lib/master-refs";
 import {
   composeMaterialCode,
   diameterCodeFromMm,
@@ -380,7 +381,12 @@ export async function deleteMaterials(ids: number[]): Promise<ActionResult> {
   }
   try {
     // 参照ガード: 製品は材種参照へ移行済み（products.material_id は廃止）。
-    // 指示書・発注明細・入荷・在庫などの実参照は P2003 → prismaErrorMessage。
+    // 発注明細・入荷・在庫は RESTRICT なので P2003 → prismaErrorMessage で止まるが、
+    // 指示書（work_orders.material_id）は SET NULL で DB が止めない — ここで数える。
+    const refs = await countMasterReferences("material", ids);
+    if (refs.total > 0) {
+      return actionError(tr("master.materialActions.referencedCannotDelete"));
+    }
     await prisma.material.deleteMany({ where: { id: { in: ids } } });
     for (const id of ids) {
       await recordAudit({

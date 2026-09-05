@@ -59,6 +59,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   acceptLabel,
   type BoolLabels,
+  entriesBlockingSave,
   evaluateEntry,
   evaluateSample,
   goalLabel,
@@ -445,10 +446,19 @@ export function InspectionRecordForm({
 
   const handleSave = (template: InspectionTemplateView) => {
     const style = template.recordStyle;
-    const missing = template.items.filter((it) => {
-      const entry = entryOf(template, it);
-      return it.isRequired && !isEntryStarted(entry, style);
-    });
+    // 必須 + 手動上書き不可の項目は入力が無いと保存できない（規則は
+    // inspection-core.entriesBlockingSave — サーバー保存も同じ関数で拒む）。
+    const blocking = new Set(
+      entriesBlockingSave(
+        template.items,
+        (id) => {
+          const it = template.items.find((x) => x.id === id);
+          return it ? entryOf(template, it) : undefined;
+        },
+        style,
+      ),
+    );
+    const missing = template.items.filter((it) => blocking.has(it.id));
     if (missing.length > 0) {
       notifications.show({
         title: tr("common.missingInput"),

@@ -17,7 +17,12 @@ import type {
   ProductDesignFile,
 } from "@/components/production/design-files/model";
 import { prisma } from "@/lib/db";
-import { groupBySeries, resolveSeriesCustomer } from "@/lib/design-files-core";
+import {
+  groupBySeries,
+  resolveSeriesCustomer,
+  usedVersionKeys,
+  versionKey,
+} from "@/lib/design-files-core";
 import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
@@ -83,6 +88,15 @@ export async function fetchDesignFilesForProduct(
     // 20 だと系列がいくつかあるだけで古い版が黙って消えるため広めに取る。
     take: 200,
   });
+  // 使用中は**版**単位（同じ版のプレビュー・参考資料も一緒に凍る）—
+  // 削除の Server Action と同じ規則（usedVersionKeys）。
+  const used = usedVersionKeys(
+    rows.map((f) => ({
+      customerBpId: f.customerBpId,
+      version: f.version,
+      workOrderCount: f._count.workOrders,
+    })),
+  );
   return rows.map((f) => ({
     id: f.id,
     version: f.version,
@@ -94,7 +108,7 @@ export async function fetchDesignFilesForProduct(
     designRequestId: f.designRequestId,
     customerBpId: f.customerBpId,
     customerName: localized(f.customerBp?.name as LocalizedText | null) || null,
-    usedByWorkOrder: f._count.workOrders > 0,
+    usedByWorkOrder: used.has(versionKey(f)),
     notes: f.notes,
     createdAt: f.createdAt.toISOString(),
   }));

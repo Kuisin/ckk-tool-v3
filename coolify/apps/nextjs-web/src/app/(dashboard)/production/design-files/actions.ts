@@ -21,6 +21,8 @@ import {
   canDeleteDesignFile,
   canEditDesignFile,
   describeLock,
+  usedVersionKeys,
+  versionKey,
 } from "@/lib/design-files-core";
 import {
   type ActionResult,
@@ -37,19 +39,46 @@ const notesInput = z.object({
   notes: z.string().max(2000).nullable(),
 });
 
-/** 版の現在の状態 + 使用中か（可否判定に要るものだけ）。 */
+/**
+ * 版の現在の状態 + 使用中か（可否判定に要るものだけ）。
+ *
+ * 「使用中」は**版**（製品 × 受注元 × 版番号）で見る — 指示書のピン留めは
+ * 版の 1 行（ふつうは図面データ）を指すが、使われたのは版そのものなので、
+ * 同じ版のプレビュー・参考資料も一緒に凍る（`usedVersionKeys`）。
+ */
 async function loadRow(id: string) {
-  return prisma.designFile.findUnique({
+  const row = await prisma.designFile.findUnique({
     where: { id },
     select: {
       id: true,
       productId: true,
+      customerBpId: true,
       version: true,
       designRequestId: true,
       file: { select: { id: true, storageKey: true } },
+    },
+  });
+  if (!row) return null;
+  const siblings = await prisma.designFile.findMany({
+    where: {
+      productId: row.productId,
+      customerBpId: row.customerBpId,
+      version: row.version,
+    },
+    select: {
+      customerBpId: true,
+      version: true,
       _count: { select: { workOrders: true } },
     },
   });
+  const used = usedVersionKeys(
+    siblings.map((s) => ({
+      customerBpId: s.customerBpId,
+      version: s.version,
+      workOrderCount: s._count.workOrders,
+    })),
+  );
+  return { ...row, usedByWorkOrder: used.has(versionKey(row)) };
 }
 
 export async function updateDesignFileNotes(
@@ -65,7 +94,7 @@ export async function updateDesignFileNotes(
     const row = await loadRow(parsed.data.id);
     if (!row) return actionError(tr("production.designFileActions.notFound"));
     const state = {
-      usedByWorkOrder: row._count.workOrders > 0,
+      usedByWorkOrder: row.usedByWorkOrder,
       designRequestId: row.designRequestId,
     };
     if (!canEditDesignFile(state)) {
@@ -114,7 +143,7 @@ export async function deleteDesignFile(id: string): Promise<ActionResult> {
     const row = await loadRow(id);
     if (!row) return actionError(tr("production.designFileActions.notFound"));
     const state = {
-      usedByWorkOrder: row._count.workOrders > 0,
+      usedByWorkOrder: row.usedByWorkOrder,
       designRequestId: row.designRequestId,
     };
     if (!canDeleteDesignFile(state)) {

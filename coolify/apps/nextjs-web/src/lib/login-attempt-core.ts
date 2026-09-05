@@ -51,6 +51,9 @@ export const LOGIN_FAILURE_REASONS = [
   "SSO_USER_INACTIVE",
   "SSO_UPSERT_FAILED",
   "SSO_CALLBACK_ERROR",
+  // IdP の名前が、パスワードを持つ既存アカウント（ローカル作成）と衝突した。
+  // 乗っ取りになるので通さない（auth.ts の signIn コールバック参照）。
+  "SSO_LOCAL_ACCOUNT_CONFLICT",
   // ── キオスク: 端末 ─────────────────────────────────────────────────────
   "DEVICE_NO_COOKIE",
   "DEVICE_NOT_FOUND",

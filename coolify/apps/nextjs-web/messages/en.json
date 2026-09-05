@@ -799,7 +799,10 @@
     "cannotChangeRoles": "Cannot change the roles",
     "cannotChangeOwnRoles": "You cannot change your own roles",
     "cannotRemoveLastAdminRole": "The admin role cannot be removed from the last admin",
-    "finalInspection": "Final inspection"
+    "finalInspection": "Final inspection",
+    "noPriceListTier": "No quantity tier",
+    "priceListInactive": "Price list disabled",
+    "priceListExpired": "Price list out of valid period"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -1993,7 +1996,8 @@
       "exportedAtLabel": "Exported at {dateTime}",
       "taxLabelReduced": "Consumption tax (8%)",
       "taxLabelExempt": "Consumption tax (exempt)",
-      "taxLabelStandard": "Consumption tax (10%)"
+      "taxLabelStandard": "Consumption tax (10%)",
+      "yayoiAccountingCsvAgain": "Yayoi accounting CSV (export again)"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "This issues invoice {invoiceNumber}. The issue date is recorded as today.",
@@ -2161,7 +2165,8 @@
       "transferHeaderNote1": "This file contains only the form definition. Responses and sharing settings are not included",
       "transferHeaderNote2": "(sharing targets differ per environment, so an imported form starts unpublished).",
       "transferHeaderNote3": "To import it, go to Forms > Import and either select this file or paste its contents.",
-      "transferHeaderNote4": "Do not edit the JSON below (the import fails if it is broken)."
+      "transferHeaderNote4": "Do not edit the JSON below (the import fails if it is broken).",
+      "lookupValueNotFound": "{label}: the selected business data was not found. Select it again"
     },
     "tasksActions": {
       "loginRequired": "Please log in",
@@ -2177,6 +2182,7 @@
       "commentRequired": "Enter a comment",
       "commentTooLong": "The comment is too long",
       "createFailed": "Could not create",
+      "editBlockedWhilePending": "The body cannot be edited while a publish approval is pending (have it sent back first, or wait for the decision)",
       "editPermissionDenied": "You do not have permission to edit this document",
       "invalidShareSettings": "Invalid sharing settings",
       "loginRequired": "Please log in",
@@ -2867,7 +2873,7 @@
       "noDefectRecords": "There are no defect records",
       "auditDefectsAdded": "Added defect records ({count})",
       "notAnOutsourceStep": "This is not an outsourced step",
-      "notifyOutsourceReceived": "Work order #{workOrderNumber}'s outsourced step has arrived",
+      "notifyOutsourceReceived": "Work order {workOrderNumber}'s outsourced step has arrived",
       "outsourceNotifyFailedLog": "[outsource] Failed to send arrival notification: ",
       "auditOutsourceCostSuffix": " / Outsourcing cost ¥{amount}",
       "auditOutsourceUpdated": "Updated the outsourcing schedule (requested {requested} / expected {expected} / received {received}{cost})",
@@ -2892,7 +2898,9 @@
       "couldNotDeleteActual": "Could not delete the work actual",
       "inspectionSheetNotFound": "The specified inspection sheet was not found",
       "auditInspectionSheetsSet": "Changed the step's inspection sheet assignment ({count})",
-      "couldNotSaveInspectionSheets": "Could not save the inspection sheet assignment"
+      "couldNotSaveInspectionSheets": "Could not save the inspection sheet assignment",
+      "requestedAfterExpected": "The expected date must be on or after the request date",
+      "requestedAfterReceived": "The received date must be on or after the request date"
     },
     "workOrderActions": {
       "acknowledgeFailed": "Could not record the acknowledgement",
@@ -2902,6 +2910,8 @@
       "approvedNextStepNote": "Approved (to the next step)",
       "approvedRemainingNote": "Approved ({remaining} remaining at this step)",
       "cancelFailed": "Could not cancel it",
+      "cancelReleaseNote": "Reservation released by cancelling work order #{number}",
+      "cancellableOnlyBeforeStart": "Only a draft, pending-approval, or approved work order with no started step can be cancelled",
       "copiedFromNote": "Copied from #{number}",
       "copyFailed": "Could not copy the work order",
       "copySourceNotFound": "The source work order was not found",
@@ -2912,7 +2922,6 @@
       "designFileWrongProduct": "This drawing is not for this work order's product",
       "draftOnlyCanEdit": "Only a draft work order can be edited",
       "draftOnlyCanRequestApproval": "Only a draft work order can request approval",
-      "draftOrPendingOnlyCanCancel": "Only a draft or pending-approval work order can be cancelled",
       "flowChangeAcknowledgedNote": "Acknowledged the sent-back process flow change",
       "flowChangeApplyFailedFallback": "Could not apply the change",
       "flowChangeNotFound": "The change was not found",
@@ -3073,6 +3082,8 @@
       "newMaterialReceipt": "New material receipt",
       "registersADirectPurchaseAReceipt": "Registers a direct purchase (a receipt with no purchase order). It enters the receiving site's material stock on registration. Receipts against orders are registered automatically when the purchase order is completed.",
       "receiptInformation": "Receipt information",
+      "unitFromMaterial": "Registered in the material's unit",
+      "unitMismatch": "The unit does not match the material's unit ({unit})",
       "selectASupplierOptional": "Select a supplier (optional)",
       "youCanAttachDeliveryNoteCopies": "You can attach delivery note copies, acceptance certificates and so on (PDF / PNG / JPG / WEBP / HEIC / XLSX / CSV, up to 20MB each). They upload after the receipt is registered.",
       "supportingDocumentOptional": "Supporting document (optional)",
@@ -3113,7 +3124,6 @@
       "notReceivedArrivesAfterOrdering": "Not received (arrives after ordering)",
       "onceOrderedTheLinesAppearAs": "Once ordered, the lines appear as expected receipts in material ATP",
       "readyToOrder": "Ready to order",
-      "completingTheReceiptRecordsEachLine": "Completing the receipt records each line and takes it into material stock",
       "waitingForTheGoods": "Waiting for the goods",
       "receiptCompletedOn": "Receipt completed on",
       "convertedFromPurchaseRequest": "Converted from (purchase request)",
@@ -3131,10 +3141,25 @@
       "thereAreNoMaterialPurchaseOrders": "There are no material purchase orders",
       "receiptsSummary": "{count} · total {total} {unit}",
       "receiptNote": "{quantity} {unit} · {date}",
-      "receivedSoFar": "Received {count}",
       "confirmCancelBody": "This cancels material purchase order {number}. This cannot be undone.",
       "confirmOrderBody": "This marks material purchase order {number} as ordered. The lines will be reflected in expected material stock (ATP).",
-      "confirmCompleteBody": "Registers all {count} lines as fully received material receipts and adds them to material stock at the receiving site. For partial receipts, register directly from Material receipt (PU03)."
+      "confirmCompleteBody": "Registers all {count} lines as fully received material receipts and adds them to material stock at the receiving site. For partial receipts, register directly from Material receipt (PU03).",
+      "receiveActionsDescription": "Marking the receipt complete receives the whole remaining quantity. Use partial receipt when only part arrived, or close without receiving when the rest will not come.",
+      "partialReceipt": "Partial receipt",
+      "confirmPartialReceipt": "Record a partial receipt",
+      "partialReceiptBody": "Enter the quantity received this time for each line. A line left at 0 is skipped. The order is marked received once every line reaches its ordered quantity.",
+      "recordTheReceipt": "Record the receipt",
+      "recordedTheReceipt": "Recorded the receipt",
+      "enterAtLeastOneQuantity": "Enter a quantity on at least one line",
+      "orderedQuantity": "Ordered",
+      "receivedQuantity": "Received",
+      "remainingQuantity": "Remaining",
+      "thisDelivery": "This delivery",
+      "closeShort": "Close without receiving",
+      "closedShort": "Closed without receiving the rest",
+      "confirmCloseShort": "Confirm closing without receiving",
+      "confirmCloseShortBody": "The {count} unreceived line(s) will not be received and material purchase order {number} is marked received. The unreceived quantity is not posted to stock and drops out of the expected receipts (ATP). This cannot be undone.",
+      "closeShortReason": "Reason for closing"
     },
     "purchaseRequests": {
       "selectASupplier": "Select a supplier",
@@ -3193,6 +3218,7 @@
       "onlyDraftOrRejectedCanRequestApproval": "Only draft or sent-back purchase requests can request approval",
       "onlyPreConversionCanCancel": "Only purchase requests not yet converted to a purchase order can be cancelled",
       "quantityPositive": "The quantity must be greater than 0",
+      "stateChanged": "The purchase request's status has changed (already processed or updated by someone else). Reload the page",
       "targetRequestNotFound": "The target purchase request was not found",
       "unitRequired": "Enter the unit",
       "updateFailed": "Could not update the purchase request"
@@ -3201,7 +3227,9 @@
       "approvedNextStep": "Approved (to next step)",
       "approvedRemaining": "Approved ({count} remaining at this step)",
       "cancelFailed": "Could not cancel",
+      "closeShortFailed": "Could not close the purchase order without receiving",
       "createFailed": "Could not create the material purchase order",
+      "enterCloseShortReason": "Enter a reason for closing the remaining quantity",
       "enterUnit": "Enter a unit",
       "lineItemNotFound": "Line item not found",
       "lineItemOverReceived": "The received quantity for line item ({itemId}) exceeds the ordered quantity",
@@ -3212,6 +3240,7 @@
       "onlyApprovedCanOrder": "Only an approved material purchase order can be ordered",
       "onlyDraftCanRequestApproval": "Only a draft material purchase order can request approval",
       "onlyDraftEditable": "Only a draft material purchase order can be edited",
+      "onlyOrderedCanCloseShort": "Only an ordered material purchase order can be closed without receiving",
       "onlyOrderedCanComplete": "Only an ordered material purchase order can be marked received",
       "onlyOrderedCanReceive": "Only an ordered material purchase order can receive",
       "onlyPreOrderCanCancel": "Only a pre-order material purchase order can be cancelled",
@@ -3224,8 +3253,57 @@
       "receiptFailed": "Could not process the receipt",
       "receivedQuantityMinOne": "Enter a received quantity of 1 or more",
       "requestFailed": "Could not request approval",
+      "stateChanged": "The material purchase order's status has changed (already processed or updated by someone else). Reload the page",
+      "unitMismatch": "The unit on line {code} does not match the material's unit ({unit})",
       "unitPriceMinZero": "Unit price must be 0 or more",
       "updateFailed": "Could not update the material purchase order"
+    },
+    "intake": {
+      "title": "Read with AI",
+      "orderDescription": "Read a supplier's quote, order acknowledgement or purchase order copy and fill in the form below. You can edit everything before saving.",
+      "orderUploadHint": "PDF or image (PNG / JPEG / WebP). One document at a time.",
+      "deliveryDescription": "Read a supplier's delivery note and register the delivered materials in one go.",
+      "deliveryUploadHint": "PDF or image (PNG / JPEG / WebP). Price columns are not read.",
+      "selectDocument": "Select a document",
+      "clearFile": "Choose another",
+      "read": "Read with AI",
+      "readingHint": "Reading can take about a minute.",
+      "extractFailed": "Could not read the document",
+      "notRetryable": "Trying again gives the same result until the setting is fixed.",
+      "fileRequired": "Select a file",
+      "unsupportedFileType": "Select a PDF or an image (PNG / JPEG / WebP)",
+      "aiConfigHint": "Set the token again in System → AI provider (SY0E)",
+      "lines": "Extracted line items",
+      "noLines": "No line items could be read. Enter them by hand.",
+      "extractedAs": "Read as: {text}",
+      "supplierNotRead": "The supplier could not be read",
+      "didYouMean": "Did you mean",
+      "pickMaterial": "Select a material",
+      "expectedDate": "Expected date",
+      "lotNumber": "Lot number: {lot}",
+      "state": {
+        "matched": "Matched",
+        "picked": "Selected",
+        "guess": "Guess",
+        "unmatched": "Not identified"
+      },
+      "unmatchedWarning": "{count} lines have no material yet. Pick one before you save.",
+      "unmatchedBlocks": "{count} lines have no material yet. Pick one, or leave those lines out.",
+      "applyToForm": "Fill in the form",
+      "applied": "The extracted content was applied",
+      "appliedMessage": "{count} line items were filled in. Check them before saving.",
+      "attachmentLabel": "Source document",
+      "attachFailed": "Could not attach the source document",
+      "attachFailedMessage": "The record was saved. You can attach it again from the detail page.",
+      "fromDeliveryNote": "From a delivery note",
+      "receiptPageTitle": "Receipt from a delivery note",
+      "receiptLinesDescription": "Tick “Do not register this line” for lines you want to leave out. The unit comes from the material master.",
+      "appliesToAllLines": "Applies to all lines",
+      "skipLine": "Do not register this line",
+      "registerSelected": "Register {count} selected",
+      "registeredMessage": "{count} material receipts were registered",
+      "selectAtLeastOneLine": "Select at least one line to register",
+      "tooManyLines": "Too many lines to register at once"
     }
   },
   "settings": {
@@ -4378,7 +4456,8 @@
       "grantSaveFailed": "Could not save the permission",
       "grantDeleteFailed": "Could not delete the permission",
       "uploadPermissionDenied": "You do not have permission to upload to this folder",
-      "deletePermissionDenied": "You do not have permission to delete this file"
+      "deletePermissionDenied": "You do not have permission to delete this file",
+      "uploadTooLarge": "The file is too large (limit 20 MB)"
     },
     "notificationEmailActions": {
       "saveFailedLog": "[notification-email] Failed to save"
@@ -4406,7 +4485,8 @@
       "selectAtLeastOneOperationToGrant": "Select at least one operation to grant (send it back if you want to grant none)",
       "specifyEndDateTime": "Specify an end date and time",
       "specifyStartDateTime": "Specify a start date and time",
-      "unknownOperation": "Includes an unknown operation ({key})"
+      "unknownOperation": "Includes an unknown operation ({key})",
+      "windowAlreadyEnded": "The requested window has already ended (approving it would grant nothing — ask for a new request with a later window)"
     },
     "productItemActions": {
       "assignedItemNotFound": "The item assigned to \"{name}\" does not exist: {key}",
@@ -5631,7 +5711,8 @@
       "regionNotFound": "Region not found",
       "regionUpdateFailed": "Could not update the region",
       "statusUpdateFailed": "Could not update the status",
-      "updateFailed": "Could not update the site"
+      "updateFailed": "Could not update the site",
+      "referencedCannotDelete": "This site is referenced by other data (stock, steps, devices, order acceptances) and cannot be deleted. Consider disabling it instead."
     },
     "processStepsActions": {
       "selectDependencyStep": "Select the dependency step",
@@ -5650,14 +5731,15 @@
       "updateFailed": "Could not update the step",
       "referencedByOtherStepsCannotDelete": "Cannot delete because other steps depend on this step. Consider disabling it instead.",
       "referencedByTemplateCannotDelete": "Cannot delete because an inspection template is linked to this step. Consider disabling it instead.",
-      "deleteFailed": "Could not delete the step"
+      "deleteFailed": "Could not delete the step",
+      "execDependencyCycle": "Execution dependencies form a cycle ({path})"
     },
     "productsActions": {
       "diameterRange": "Enter a diameter between {min} and {max} mm",
       "lengthRange": "Enter an overall length between {min} and {max} mm",
       "createFailed": "Could not create the product",
       "updateFailed": "Could not update the product",
-      "referencedCannotDelete": "Cannot delete because data referencing this product exists (price lists, quotes). Consider disabling it instead.",
+      "referencedCannotDelete": "This product is referenced by other data (price lists, quotes, order lines, drawings, inspection templates) and cannot be deleted. Consider disabling it instead.",
       "deleteFailed": "Could not delete the product"
     },
     "workLocationsActions": {
@@ -5683,7 +5765,9 @@
       "saveTypesFailed": "Could not save the types",
       "auditWorkLocationAdded": "Added work location \"{name}\"",
       "auditWorkLocationUpdated": "Updated work location \"{name}\"",
-      "auditWorkLocationDeleted": "Deleted work location"
+      "auditWorkLocationDeleted": "Deleted work location",
+      "usedByOrderAcceptances": "Shipping work location on {count} order acceptances",
+      "usedByProcessSteps": "Allowed work location on {count} process steps"
     },
     "storageLocationActions": {
       "codeFormat": "Use letters, numbers, hyphens, and underscores for the code",
@@ -5718,13 +5802,13 @@
       "updateFailed": "Could not update the material",
       "statusUpdateFailed": "Could not update the status",
       "deleteFailed": "Could not delete the material",
-      "noTargetsSelected": "No targets selected"
+      "noTargetsSelected": "No targets selected",
+      "referencedCannotDelete": "This material is referenced by other data (work orders, purchase orders, receipts, stock) and cannot be deleted. Consider disabling it instead."
     },
     "businessPartnerActions": {
       "bpNotFound": "The business partner was not found",
       "branchCreateFailed": "Could not create the branch",
       "branchDeleteFailed": "Could not delete the branch",
-      "branchInUseByQuotes": "Cannot delete because quotes reference this branch. Consider disabling it instead.",
       "branchNotFound": "The branch was not found",
       "branchUpdateFailed": "Could not update the branch",
       "createFailed": "Could not create the business partner",
@@ -5781,7 +5865,9 @@
       "toggleFailed": "Could not toggle",
       "stepMissingName": "Step {steps}: Enter a name",
       "stepMissingGroupIndividual": "Step {steps}: Select an approval group, or choose at least one approver",
-      "stepMissingGroup": "Step {steps}: Select an approval group"
+      "stepMissingGroup": "Step {steps}: Select an approval group",
+      "groupReferencedCannotDelete": "This approval group is referenced by inspection templates and cannot be deleted. Consider disabling it instead.",
+      "stepGroupNotEffective": "The approval group in step {steps} is disabled or has no members who can approve now"
     },
     "approvalConditions": {
       "totalAmount": "Total amount",
@@ -6798,7 +6884,8 @@
       "hideTheDocumentPane": "Collapse the document",
       "showTheDocumentPane": "Expand the document",
       "hideTheDocument": "Hide",
-      "customerProvidesDeliveryNote": "Customer-supplied delivery note"
+      "customerProvidesDeliveryNote": "Customer-supplied delivery note",
+      "priceNoTierLine": "Line {row}: no price list quantity tier covers quantity {quantity}"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",
@@ -7136,7 +7223,8 @@
       "priceOverrideCount": "{count} overridden unit price(s)",
       "lineOverrideText": "Line {row}: {actual} (price list {expected})",
       "priceOverridden": "Overridden",
-      "priceOverriddenFromList": "Overridden (price list {expected})"
+      "priceOverriddenFromList": "Overridden (price list {expected})",
+      "lineNoTierText": "Line {row}: no price list quantity tier covers quantity {quantity}"
     },
     "orderAcceptanceIntakeTable": {
       "addedQueuedForExtraction": "Added {count} item(s) to the list. AI extraction will run in order after this",
@@ -7268,7 +7356,12 @@
       "quantityMinOne": "Quantity must be 1 or more",
       "quoteNotFound": "Quote not found",
       "scopeDenied": "You do not have permission for this operation (out of scope)",
-      "updateFailed": "Could not update the quote"
+      "updateFailed": "Could not update the quote",
+      "noPriceListTier": "Line {line}: no price list quantity tier covers quantity {quantity} (adjust the quantity or add a tier to the price list)",
+      "priceListInactive": "Line {line}: the price list is disabled",
+      "priceListExpired": "Line {line}: the price list is outside its valid period",
+      "validUntilRequired": "Enter the valid-until date",
+      "validUntilInPast": "The valid-until date must be today or later"
     },
     "orderLinesActions": {
       "invalidOrderLine": "Invalid order line",
@@ -7284,6 +7377,7 @@
       "onlyConfirmedEstimateUsable": "Only a confirmed price estimate can be used in a price list",
       "fetchEstimateSourcesFailed": "Could not fetch the price estimates",
       "invalidVariant": "Invalid variant",
+      "invalidTier": "Invalid quantity tier",
       "createFailed": "Could not create the price list",
       "duplicateEntry": "A price list for this customer and product already exists. Edit the existing price list instead.",
       "invalidEntryNumber": "Invalid price list number",
@@ -7380,6 +7474,8 @@
       "noLineItems": "There are no line items",
       "lineProductNotIdentified": "Line {rows}: Product not identified",
       "lineUnitPriceNotEntered": "Line {rows}: Unit price not entered",
+      "lineQuantityInvalid": "Line {rows}: Quantity must be at least 1",
+      "lineUnitPriceNegative": "Line {rows}: Unit price is negative",
       "andNMore": "and {count} more"
     },
     "orderLineCore": {
@@ -7531,7 +7627,8 @@
       "productNotInShipment": "{label} is not included in the delivery order",
       "quantityMustBeAtLeastOne": "Quantity must be 1 or more",
       "selectEndUserForDirectToUser": "Select an end user for direct-to-user delivery",
-      "updateFailed": "Could not update the delivery note"
+      "updateFailed": "Could not update the delivery note",
+      "deliveryOrderNotShipped": "The delivery order must be shipped before the note can be marked delivered"
     },
     "deliveryOrderActions": {
       "cancelFailed": "Could not cancel",
@@ -7553,7 +7650,9 @@
       "shippedNotificationTitle": "Delivery order {number} has shipped",
       "specifyAConfirmedOrderLine": "Specify a confirmed order line",
       "updateFailed": "Could not update the delivery order",
-      "autoCreatedNote": "Auto-created (issued) when the delivery order was confirmed"
+      "autoCreatedNote": "Auto-created (issued) when the delivery order was confirmed",
+      "orderLineNotShippable": "Order line {number} cannot be shipped (only confirmed, non-cancelled lines)",
+      "productMismatch": "Line {line}: the product does not match order line {number}"
     }
   },
   "ui": {
@@ -8057,7 +8156,8 @@
     "noItems": "{code}: There are no inspection items"
   },
   "intakeCore": {
-    "quantityNotReadableNote": "Quantity not readable — needs review"
+    "quantityNotReadableNote": "Quantity not readable — needs review",
+    "quantityInvalidNote": "Quantity invalid ({value}) — needs review"
   },
   "notificationEmail": {
     "digestSubject": "[CKK] {total} unread notifications"
@@ -8104,6 +8204,7 @@
       "SSO_USER_INACTIVE": "SSO: user is inactive",
       "SSO_UPSERT_FAILED": "SSO: failed to register user",
       "SSO_CALLBACK_ERROR": "SSO: callback failed",
+      "SSO_LOCAL_ACCOUNT_CONFLICT": "SSO: conflicts with a local account",
       "DEVICE_NO_COOKIE": "No device cookie",
       "DEVICE_NOT_FOUND": "Unregistered device",
       "DEVICE_EXPIRED": "Device token expired",
@@ -8251,6 +8352,7 @@
     "stockStorage": "Stock storage {ref}",
     "shippedReservationReleased": "Reservation released by shipment {ref}",
     "materialReceived": "Material received",
+    "unitMismatch": "The stock unit ({expected}) does not match the receipt unit ({actual})",
     "reservedByStockCheck": "Reserved by stock check (§4)",
     "stockCheckReservedAndShortage": "Stock check: reserved {reservedNow} / short {shortage}",
     "stepStarted": "Started the step (step {sortOrder} · received {input})",

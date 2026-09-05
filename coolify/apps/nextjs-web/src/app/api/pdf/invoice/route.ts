@@ -11,7 +11,7 @@
  * 小計 / 消費税（10%）/ 合計金額（税込）の 3 行。
  */
 
-import { fetchInvoice } from "@/app/(dashboard)/billing/invoices/data";
+import { fetchInvoiceForDocument } from "@/app/(dashboard)/billing/invoices/data";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
@@ -62,7 +62,7 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const key = parseDocKey(id, "INV");
-  const invoice = key ? await fetchInvoice(key) : null;
+  const invoice = key ? await fetchInvoiceForDocument(key) : null;
   if (!invoice) {
     return new Response(`Invoice not found: ${id}`, { status: 404 });
   }

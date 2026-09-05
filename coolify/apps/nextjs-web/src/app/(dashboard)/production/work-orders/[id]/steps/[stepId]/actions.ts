@@ -9,6 +9,7 @@
  * recordId = String(workOrderNumber) に記録 — 指示書詳細の履歴タブに載せる）。
  */
 
+import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
@@ -16,7 +17,10 @@ import { resolveApprover } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { formatDocNumber } from "@/lib/doc-number";
+import { type LocalizedText, localized } from "@/lib/format";
 import {
+  entriesBlockingSave,
   isSampleEmpty,
   itemSpecFromRow,
   resolveItemPass,
@@ -46,12 +50,49 @@ function failed(e: unknown, fallback: string): StepActionResult {
   return { ok: false, errors: [fallback] };
 }
 
-/** RBAC ゲート — 拒否時は StepActionResult 形のエラー、許可時は null。 */
+/**
+ * 対象指示書がスコープ内か（PLANT = 工程の実施拠点 ∪ OWN = 作成者）。
+ * work-orders/actions.ts の workOrderInScope と同じ規則。ALL は素通し。
+ * 不存在は true — 既存の stepNotFound / workOrderNotFound 系に委ねる。
+ */
+async function workOrderInScope(
+  access: Access,
+  userId: string,
+  workOrderNumber: number,
+): Promise<boolean> {
+  if (access.kind === "ALL") return true;
+  const row = await prisma.workOrder.findUnique({
+    where: { workOrderNumber },
+    select: { createdBy: true, steps: { select: { plantId: true } } },
+  });
+  if (!row) return true;
+  return rowInScope(
+    access,
+    { plantIds: row.steps.map((s) => s.plantId), createdBy: row.createdBy },
+    userId,
+  );
+}
+
+/**
+ * RBAC ゲート — 拒否時は StepActionResult 形のエラー、許可時は null。
+ * workOrderNumber を渡すと行スコープも見る（権限があっても対象範囲外なら拒否）。
+ * payload 形のアクションは zod 検証の前に権限だけ見て、番号が確定した後に
+ * もう一度スコープ付きで呼ぶ（checkPermission は cache() 済みなので安い）。
+ */
 async function deniedStepPermission(
   action: PermissionAction,
+  workOrderNumber?: number,
 ): Promise<StepActionResult | null> {
   const authz = await checkPermission("work_order", action);
-  return authz.ok ? null : { ok: false, errors: [authz.error] };
+  if (!authz.ok) return { ok: false, errors: [authz.error] };
+  if (
+    workOrderNumber != null &&
+    !(await workOrderInScope(authz.access, authz.userId, workOrderNumber))
+  ) {
+    const tr = await getTranslations();
+    return { ok: false, errors: [tr("common.scopeDenied")] };
+  }
+  return null;
 }
 
 /** 工程が指示書に属することの検証（URL 直叩き対策）。 */
@@ -71,7 +112,7 @@ export async function startStep(
   lotText?: string | null,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   const parsedLot = z
     .string()
@@ -109,7 +150,7 @@ export async function updateStepLot(
   lotText: string,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   const parsedLot = z.string().trim().max(100).safeParse(lotText);
   if (!parsedLot.success) {
@@ -195,7 +236,7 @@ export async function completeStep(
   defectReasons?: z.infer<typeof defectReasonsInput>,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   const parsed = quantitiesInput.nullable().safeParse(quantities);
   if (!parsed.success) {
@@ -238,7 +279,7 @@ export async function abortStep(
   reason: string,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   if (!reason.trim()) {
     return {
@@ -269,7 +310,7 @@ export async function rollbackStep(
   reason: string,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   try {
     const step = await findStep(workOrderNumber, stepId);
@@ -337,6 +378,8 @@ export async function addBranch(
     };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   try {
     const wo = await prisma.workOrder.findUnique({
       where: { workOrderNumber: v.workOrderNumber },
@@ -403,6 +446,8 @@ export async function updateBranch(
     };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   try {
     const wo = await prisma.workOrder.findUnique({
       where: { workOrderNumber: v.workOrderNumber },
@@ -451,6 +496,8 @@ export async function removeBranch(
     return { ok: false, errors: [tr("common.invalidInput")] };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   try {
     const wo = await prisma.workOrder.findUnique({
       where: { workOrderNumber: v.workOrderNumber },
@@ -528,6 +575,8 @@ export async function saveInspectionRecord(
     };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   try {
     const step = await findStep(v.workOrderNumber, v.stepId);
     if (!step) {
@@ -616,6 +665,37 @@ export async function saveInspectionRecord(
         };
       }
     }
+    // 必須 + 手動上書き不可の項目は入力が無いと保存できない — フォームと同じ
+    // 規則（inspection-core.entriesBlockingSave）をサーバーでも通す。テンプレート
+    // の項目を基準に見るので、項目ごと送られてこなくてもすり抜けない。
+    const entryByItem = new Map(
+      v.items.map((i) => [
+        i.templateItemId,
+        {
+          samples: i.values,
+          inspectedCount: style === "COUNTS" ? i.inspectedCount : null,
+          passedCount: style === "COUNTS" ? i.passedCount : null,
+        },
+      ]),
+    );
+    const blocking = entriesBlockingSave(
+      link.inspectionTemplate.items,
+      (id) => entryByItem.get(id),
+      style,
+    );
+    if (blocking.length > 0) {
+      const names = link.inspectionTemplate.items
+        .filter((it) => blocking.includes(it.id))
+        .map((it) => localized(it.itemName as LocalizedText | null));
+      return {
+        ok: false,
+        errors: [
+          tr("production.inspectionRecordForm.enterTheRequiredItems", {
+            items: names.join(tr("common.s1")),
+          }),
+        ],
+      };
+    }
     const actor = await getCurrentActorId();
     // 合否はサーバーでも解決 — 上書き不可の項目はクライアント値を無視して
     // 自動判定を強制する（resolveItemPass — フォームと同一規則）。
@@ -688,7 +768,7 @@ export async function approveInspectionRecord(
   //   （承認設定 MS0B の approval_groups）— 設定されていれば、そのグループの
   //   実効メンバー（本人 or 期間内の代理）だけが承認できる。未設定の
   //   テンプレートは従来どおり誰でも承認できる。
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   try {
     const record = await prisma.inspectionRecord.findFirst({
@@ -781,7 +861,7 @@ export async function confirmInspectionRecord(
   recordId: string,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   try {
     const record = await prisma.inspectionRecord.findFirst({
@@ -860,6 +940,8 @@ export async function saveDefectRecords(
     };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   try {
     const step = await findStep(v.workOrderNumber, v.stepId);
     if (!step) {
@@ -899,17 +981,55 @@ export async function saveDefectRecords(
 
 // ── 外注日程 ─────────────────────────────────────────────────────────────────
 
-const outsourceDatesInput = z.object({
-  workOrderNumber: z.number().int().positive(),
-  stepId: z.string().min(1),
-  requestedAt: z.string().nullable(), // YYYY-MM-DD
-  expectedAt: z.string().nullable(),
-  receivedAt: z.string().nullable(),
-  // 外注コスト（円・任意 — 監査 P2-6）
-  outsourceCost: z.number().nonnegative().nullable().optional(),
-});
+/**
+ * 外注日程の入力。日付は `new Date(s)` に素で渡していたため、"2026-13-45" や
+ * "きのう" のような文字列がそのまま Invalid Date として列に入り得た（DB は
+ * 落ちるが、落ち方が Prisma の内部エラーになって利用者には何も伝わらない）。
+ * 作業計画・実績と同じ `YYYY-MM-DD` の形で受け、順序も見る —
+ * 依頼日が入荷予定日・入荷日より後になっている外注工程は入力ミスしかない。
+ */
+function outsourceDatesInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  const day = () =>
+    z
+      .string()
+      .regex(datePattern, tr("production.stepPlanActualPanel.selectADate"))
+      .nullable();
+  return (
+    z
+      .object({
+        workOrderNumber: z.number().int().positive(),
+        stepId: z.string().min(1),
+        requestedAt: day(), // YYYY-MM-DD
+        expectedAt: day(),
+        receivedAt: day(),
+        // 外注コスト（円・任意 — 監査 P2-6）
+        outsourceCost: z.number().nonnegative().nullable().optional(),
+      })
+      // YYYY-MM-DD は辞書順 = 日付順なので、文字列のまま比べてよい。
+      .refine(
+        (v) =>
+          !(v.requestedAt && v.expectedAt) || v.requestedAt <= v.expectedAt,
+        {
+          message: tr("production.stepExecutionActions.requestedAfterExpected"),
+          path: ["expectedAt"],
+        },
+      )
+      .refine(
+        (v) =>
+          !(v.requestedAt && v.receivedAt) || v.requestedAt <= v.receivedAt,
+        {
+          message: tr("production.stepExecutionActions.requestedAfterReceived"),
+          path: ["receivedAt"],
+        },
+      )
+  );
+}
 
-export type OutsourceDatesInput = z.infer<typeof outsourceDatesInput>;
+export type OutsourceDatesInput = z.infer<
+  ReturnType<typeof outsourceDatesInputSchema>
+>;
 
 /** 外注工程の 依頼日 / 入荷予定日 / 入荷日 の保存。 */
 export async function saveOutsourceDates(
@@ -918,11 +1038,16 @@ export async function saveOutsourceDates(
   const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
-  const parsed = outsourceDatesInput.safeParse(payload);
+  const parsed = outsourceDatesInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return { ok: false, errors: [tr("common.invalidInput")] };
+    return {
+      ok: false,
+      errors: [parsed.error.issues[0]?.message ?? tr("common.invalidInput")],
+    };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   try {
     const step = await findStep(v.workOrderNumber, v.stepId);
     if (!step) {
@@ -955,7 +1080,7 @@ export async function saveOutsourceDates(
       try {
         const wo = await prisma.workOrder.findUnique({
           where: { workOrderNumber: v.workOrderNumber },
-          select: { id: true, createdBy: true },
+          select: { id: true, createdBy: true, yearMonth: true, seq: true },
         });
         if (wo?.createdBy) {
           const { notify } = await import("@/lib/notifications");
@@ -965,7 +1090,9 @@ export async function saveOutsourceDates(
             title: tr(
               "production.stepExecutionActions.notifyOutsourceReceived",
               {
-                workOrderNumber: v.workOrderNumber,
+                // 通知は書類番号（WOR-YYYYMM-NNNNN）で読ませる — ロット番号
+                // （v.workOrderNumber）は業務キーであって表示番号ではない。
+                workOrderNumber: formatDocNumber("WOR", wo),
               },
             ),
             linkPath: `/production/work-orders/${wo.id}`,
@@ -1114,6 +1241,8 @@ export async function addStepPlan(
     };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   const rangeError = validateTimeRange(v, tr);
   if (rangeError) return { ok: false, errors: [rangeError] };
   try {
@@ -1190,7 +1319,7 @@ export async function deleteStepPlan(
   planId: string,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   try {
     const step = await findStep(workOrderNumber, stepId);
@@ -1237,6 +1366,8 @@ export async function addStepActual(
     };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   const rangeError = validateTimeRange(v, tr);
   if (rangeError) return { ok: false, errors: [rangeError] };
   try {
@@ -1313,7 +1444,7 @@ export async function deleteStepActual(
   actualId: string,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   try {
     const step = await findStep(workOrderNumber, stepId);
@@ -1375,7 +1506,7 @@ export async function updateStepInspectionTemplates(
   templateIds: number[],
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   const ids = [...new Set(templateIds)].filter(
     (id) => Number.isInteger(id) && id > 0,
