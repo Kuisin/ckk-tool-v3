@@ -7,6 +7,10 @@
  * （素材 SearchSelect / 入荷先拠点 Select / 数量 + 単位 / 単価 / 金額自動 /
  * 入荷予定日 / 備考）。金額・合計はサーバー側で再計算する（表示は参考値）。
  *
+ * 単位は選べない — 素材マスタの単位を引いて読み取り専用で出す（素材入荷 PU13
+ * と同じ）。選ばせると在庫台帳（material_inventory）と違う単位の明細が作れて
+ * しまい、その明細は入荷しようとした瞬間に弾かれる = 入荷できない発注になる。
+ *
  * 編集は DRAFT のみ（サーバー側でもガード）。保存後は詳細ページへ遷移する。
  */
 
@@ -27,10 +31,13 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
-import { useTransition } from "react";
+import { useTranslations } from "next-intl";
+import { useRef, useTransition } from "react";
 import { z } from "zod";
-import { searchMaterialOptions } from "@/app/(dashboard)/_shared/option-search";
+import {
+  fetchMaterialUnit,
+  searchMaterialOptions,
+} from "@/app/(dashboard)/_shared/option-search";
 import {
   createPurchaseOrder,
   updatePurchaseOrder,
@@ -40,7 +47,6 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
@@ -90,7 +96,8 @@ const emptyItem = (): ItemForm => ({
   materialLabel: "",
   plantId: null,
   quantity: 1,
-  unit: "本", // i18n-ignore — DB データの既定値（単位）。対象外（_specs/i18n-glossary.md §1）
+  // 素材を選ぶと素材マスタの単位で埋まる（人は選べない）。
+  unit: "",
   unitPrice: 0,
   expectedAt: null,
   notes: "",
@@ -130,7 +137,6 @@ export function PurchaseOrderForm({
   plantOptions: Option[];
 }) {
   const tr = useTranslations();
-  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const poNumber = mode === "edit" ? purchaseOrder?.poNumber : undefined;
@@ -153,6 +159,37 @@ export function PurchaseOrderForm({
     (sum, it) => sum + it.quantity * it.unitPrice,
     0,
   );
+
+  /**
+   * 素材を選んだらその単位を引いて固定する（最近使用の候補は単位を持たない
+   * ので毎回サーバーへ聞く）。行ごとに世代を数え、選び直しが重なったら最後の
+   * 選択だけを採用する — 遅れて返ってきた前の素材の単位で上書きしない。
+   */
+  const unitSeq = useRef<Record<string, number>>({});
+  const selectMaterial = (
+    ri: number,
+    rowId: string,
+    materialId: string | null,
+    label: string,
+  ) => {
+    form.setFieldValue(`items.${ri}.materialId`, materialId ?? "");
+    form.setFieldValue(`items.${ri}.materialLabel`, label);
+    form.setFieldValue(`items.${ri}.unit`, "");
+    const seq = (unitSeq.current[rowId] ?? 0) + 1;
+    unitSeq.current[rowId] = seq;
+    if (!materialId) return;
+    fetchMaterialUnit(materialId)
+      .then((unit) => {
+        // 行は並べ替え・削除で位置が変わるので、書き戻す先は rowId で引き直す。
+        const at = form.values.items.findIndex((it) => it.rowId === rowId);
+        if (at >= 0 && unitSeq.current[rowId] === seq) {
+          form.setFieldValue(`items.${at}.unit`, unit ?? "");
+        }
+      })
+      .catch(() => {
+        /* 単位が引けなければ空のまま — 送信時の必須検証で止まる */
+      });
+  };
 
   const handleSubmit = (values: FormValues) => {
     startTransition(async () => {
@@ -294,13 +331,9 @@ export function PurchaseOrderForm({
                         : null
                     }
                     label={tr("common.materials")}
-                    onChange={(v, opt) => {
-                      form.setFieldValue(`items.${ri}.materialId`, v ?? "");
-                      form.setFieldValue(
-                        `items.${ri}.materialLabel`,
-                        opt?.label ?? "",
-                      );
-                    }}
+                    onChange={(v, opt) =>
+                      selectMaterial(ri, item.rowId, v, opt?.label ?? "")
+                    }
                     onSearch={searchMaterialOptions}
                     placeholder={tr("common.searchMaterials")}
                     storageKey="material"
@@ -326,10 +359,14 @@ export function PurchaseOrderForm({
                     {...form.getInputProps(`items.${ri}.quantity`)}
                     withAsterisk
                   />
-                  <Select
-                    data={unitOptions(locale)}
+                  <TextInput
+                    description={tr(
+                      "purchase.materialReceipts.unitFromMaterial",
+                    )}
+                    error={form.errors[`items.${ri}.unit`]}
                     label={tr("common.unit")}
-                    maw={90}
+                    maw={110}
+                    readOnly
                     withAsterisk
                     {...form.getInputProps(`items.${ri}.unit`)}
                   />

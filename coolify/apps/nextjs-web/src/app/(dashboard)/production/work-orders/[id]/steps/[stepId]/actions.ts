@@ -980,17 +980,55 @@ export async function saveDefectRecords(
 
 // ── 外注日程 ─────────────────────────────────────────────────────────────────
 
-const outsourceDatesInput = z.object({
-  workOrderNumber: z.number().int().positive(),
-  stepId: z.string().min(1),
-  requestedAt: z.string().nullable(), // YYYY-MM-DD
-  expectedAt: z.string().nullable(),
-  receivedAt: z.string().nullable(),
-  // 外注コスト（円・任意 — 監査 P2-6）
-  outsourceCost: z.number().nonnegative().nullable().optional(),
-});
+/**
+ * 外注日程の入力。日付は `new Date(s)` に素で渡していたため、"2026-13-45" や
+ * "きのう" のような文字列がそのまま Invalid Date として列に入り得た（DB は
+ * 落ちるが、落ち方が Prisma の内部エラーになって利用者には何も伝わらない）。
+ * 作業計画・実績と同じ `YYYY-MM-DD` の形で受け、順序も見る —
+ * 依頼日が入荷予定日・入荷日より後になっている外注工程は入力ミスしかない。
+ */
+function outsourceDatesInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  const day = () =>
+    z
+      .string()
+      .regex(datePattern, tr("production.stepPlanActualPanel.selectADate"))
+      .nullable();
+  return (
+    z
+      .object({
+        workOrderNumber: z.number().int().positive(),
+        stepId: z.string().min(1),
+        requestedAt: day(), // YYYY-MM-DD
+        expectedAt: day(),
+        receivedAt: day(),
+        // 外注コスト（円・任意 — 監査 P2-6）
+        outsourceCost: z.number().nonnegative().nullable().optional(),
+      })
+      // YYYY-MM-DD は辞書順 = 日付順なので、文字列のまま比べてよい。
+      .refine(
+        (v) =>
+          !(v.requestedAt && v.expectedAt) || v.requestedAt <= v.expectedAt,
+        {
+          message: tr("production.stepExecutionActions.requestedAfterExpected"),
+          path: ["expectedAt"],
+        },
+      )
+      .refine(
+        (v) =>
+          !(v.requestedAt && v.receivedAt) || v.requestedAt <= v.receivedAt,
+        {
+          message: tr("production.stepExecutionActions.requestedAfterReceived"),
+          path: ["receivedAt"],
+        },
+      )
+  );
+}
 
-export type OutsourceDatesInput = z.infer<typeof outsourceDatesInput>;
+export type OutsourceDatesInput = z.infer<
+  ReturnType<typeof outsourceDatesInputSchema>
+>;
 
 /** 外注工程の 依頼日 / 入荷予定日 / 入荷日 の保存。 */
 export async function saveOutsourceDates(
@@ -999,9 +1037,12 @@ export async function saveOutsourceDates(
   const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
-  const parsed = outsourceDatesInput.safeParse(payload);
+  const parsed = outsourceDatesInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return { ok: false, errors: [tr("common.invalidInput")] };
+    return {
+      ok: false,
+      errors: [parsed.error.issues[0]?.message ?? tr("common.invalidInput")],
+    };
   }
   const v = parsed.data;
   const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);

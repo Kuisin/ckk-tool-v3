@@ -11,13 +11,16 @@
  *   DRAFT: 承認依頼 + 編集 / キャンセル
  *   REQUESTED: 承認（isApprover("FIRST") ゲート）/ 差し戻し（理由必須 → DRAFT）
  *   APPROVED: 発注（→ ORDERED — 明細が素材 ATP の入荷予定に反映）/ キャンセル
- *   ORDERED: 入荷完了（明細ごとに全量入荷の MaterialReceipt を作成し在庫入庫）
+ *   ORDERED: 入荷完了（残数量を全量入荷）/ 分割入荷（明細ごとに今回ぶんだけ）/
+ *            未入荷のまま完了（欠品で残りが来ないときに理由付きで締め切る）
  */
 
 import {
   Badge,
   Divider,
   Group,
+  NumberInput,
+  Paper,
   Stack,
   Table,
   Tabs,
@@ -25,7 +28,12 @@ import {
   Textarea,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPackageImport, IconTruck, IconX } from "@tabler/icons-react";
+import {
+  IconPackageExport,
+  IconPackageImport,
+  IconTruck,
+  IconX,
+} from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -33,8 +41,10 @@ import { type ReactNode, useState, useTransition } from "react";
 import {
   approvePurchaseOrder,
   cancelPurchaseOrder,
+  closeShortPurchaseOrder,
   completePurchaseOrder,
   orderPurchaseOrder,
+  receivePurchaseOrderItems,
   rejectPurchaseOrder,
   requestPurchaseApproval,
 } from "@/app/(dashboard)/purchase/purchase-orders/actions";
@@ -55,7 +65,11 @@ import {
   AttachmentsPanel,
   type AttachmentView,
 } from "@/components/ui/AttachmentsPanel";
-import { ApproveButton, PrimaryButton } from "@/components/ui/buttons";
+import {
+  ApproveButton,
+  PrimaryButton,
+  SecondaryButton,
+} from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
@@ -145,8 +159,29 @@ export function PurchaseOrderDetail({
   const [cancelReason, setCancelReason] = useState("");
   const [orderOpen, setOrderOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [closeShortOpen, setCloseShortOpen] = useState(false);
+  const [closeShortReason, setCloseShortReason] = useState("");
 
   const po = purchaseOrder;
+
+  // 入荷の進み具合（発注済・入荷完了でだけ意味を持つ）。
+  const remainingOf = (it: { quantity: number; receivedQuantity: number }) =>
+    Math.max(0, it.quantity - it.receivedQuantity);
+  const unreceivedItems = po.items.filter((it) => remainingOf(it) > 0);
+  const showReceiptColumns =
+    po.status === "ORDERED" || po.status === "COMPLETED";
+
+  /** 分割入荷の入力（明細 id → 今回入荷する数量）。既定は残数量。 */
+  const [receiveQuantities, setReceiveQuantities] = useState<
+    Record<string, number>
+  >({});
+  const openReceive = () => {
+    setReceiveQuantities(
+      Object.fromEntries(po.items.map((it) => [it.id, remainingOf(it)])),
+    );
+    setReceiveOpen(true);
+  };
 
   /** history Json の action → 表示ラベル。 */
   const historyActionLabel: Record<string, string> = {
@@ -157,10 +192,13 @@ export function PurchaseOrderDetail({
     REJECT: tr("common.reject"),
     ORDER: tr("purchase.purchaseOrders.order"),
     COMPLETE: tr("purchase.purchaseOrders.received"),
+    CLOSE_SHORT: tr("purchase.purchaseOrders.closeShort"),
     CANCEL: tr("common.cancel"),
   };
 
-  const run = (action: () => Promise<ActionResult>, done: string) => {
+  // data の形は行き先ごとに違う（分割入荷は completed を返す）。ここでは
+  // ok / error しか見ないので unknown で受ける。
+  const run = (action: () => Promise<ActionResult<unknown>>, done: string) => {
     startTransition(async () => {
       const result = await action();
       if (result.ok) {
@@ -173,6 +211,9 @@ export function PurchaseOrderDetail({
         setCancelReason("");
         setOrderOpen(false);
         setCompleteOpen(false);
+        setReceiveOpen(false);
+        setCloseShortOpen(false);
+        setCloseShortReason("");
         router.refresh();
       } else {
         notifications.show({
@@ -312,17 +353,33 @@ export function PurchaseOrderDetail({
     actionCard = (
       <ActionCard
         actions={
-          <ApproveButton
-            leftSection={<IconPackageImport size={14} />}
-            loading={isPending}
-            onClick={() => setCompleteOpen(true)}
-          >
-            {tr("purchase.purchaseOrders.received")}
-          </ApproveButton>
+          <>
+            <ApproveButton
+              leftSection={<IconPackageImport size={14} />}
+              loading={isPending}
+              onClick={() => setCompleteOpen(true)}
+            >
+              {tr("purchase.purchaseOrders.received")}
+            </ApproveButton>
+            <SecondaryButton
+              leftSection={<IconPackageImport size={14} />}
+              loading={isPending}
+              onClick={openReceive}
+            >
+              {tr("purchase.purchaseOrders.partialReceipt")}
+            </SecondaryButton>
+            {/* 欠品で残りが来ないときの逃げ道 — 入荷せずに締め切る（理由必須）。
+                閉じないと未入荷分が入荷予定（ATP）に残り続ける。 */}
+            <SecondaryButton
+              leftSection={<IconPackageExport size={14} />}
+              loading={isPending}
+              onClick={() => setCloseShortOpen(true)}
+            >
+              {tr("purchase.purchaseOrders.closeShort")}
+            </SecondaryButton>
+          </>
         }
-        description={tr(
-          "purchase.purchaseOrders.completingTheReceiptRecordsEachLine",
-        )}
+        description={tr("purchase.purchaseOrders.receiveActionsDescription")}
         icon={<IconPackageImport size={20} />}
         title={tr("purchase.purchaseOrders.waitingForTheGoods")}
         tone="action"
@@ -468,6 +525,16 @@ export function PurchaseOrderDetail({
                   <Table.Th>{tr("common.materials")}</Table.Th>
                   <Table.Th>{tr("common.receivingSite")}</Table.Th>
                   <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
+                  {showReceiptColumns && (
+                    <>
+                      <Table.Th ta="right">
+                        {tr("purchase.purchaseOrders.receivedQuantity")}
+                      </Table.Th>
+                      <Table.Th ta="right">
+                        {tr("purchase.purchaseOrders.remainingQuantity")}
+                      </Table.Th>
+                    </>
+                  )}
                   <Table.Th ta="right">{tr("common.unitPrice")}</Table.Th>
                   <Table.Th ta="right">{tr("common.amount")}</Table.Th>
                   <Table.Th>{tr("common.expectedDate")}</Table.Th>
@@ -488,21 +555,27 @@ export function PurchaseOrderDetail({
                     <Table.Td>{it.plantName ?? "—"}</Table.Td>
                     <Table.Td className="tabular-nums" ta="right">
                       {it.quantity} {it.unit}
-                      {po.status === "ORDERED" || po.status === "COMPLETED" ? (
-                        <Text
-                          c={
-                            it.receivedQuantity >= it.quantity
-                              ? "green"
-                              : "dimmed"
-                          }
-                          size="xs"
-                        >
-                          {tr("purchase.purchaseOrders.receivedSoFar", {
-                            count: it.receivedQuantity,
-                          })}
-                        </Text>
-                      ) : null}
                     </Table.Td>
+                    {showReceiptColumns && (
+                      <>
+                        <Table.Td className="tabular-nums" ta="right">
+                          <Text
+                            c={remainingOf(it) === 0 ? "green" : undefined}
+                            size="sm"
+                          >
+                            {it.receivedQuantity} {it.unit}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td className="tabular-nums" ta="right">
+                          <Text
+                            c={remainingOf(it) > 0 ? "orange" : "dimmed"}
+                            size="sm"
+                          >
+                            {remainingOf(it)} {it.unit}
+                          </Text>
+                        </Table.Td>
+                      </>
+                    )}
                     <Table.Td ta="right">
                       <MoneyText value={it.unitPrice} />
                     </Table.Td>
@@ -650,6 +723,143 @@ export function PurchaseOrderDetail({
             count: po.items.length,
           })}
         </Text>
+      </ModalShell>
+
+      {/* 分割入荷 — 明細ごとに今回ぶんだけ入荷する（0 は入荷しない）。
+          表ではなく 1 明細 = 1 枚のカードにしてあるのは、狭い画面で列が
+          潰れると何の明細に何を入れているのか読めなくなるため（§20.2）。 */}
+      <ModalShell
+        confirmLabel={tr("purchase.purchaseOrders.recordTheReceipt")}
+        loading={isPending}
+        onClose={() => setReceiveOpen(false)}
+        onConfirm={() => {
+          const lines = po.items
+            .map((it) => ({
+              itemId: it.id,
+              quantity: Math.min(
+                Math.max(0, receiveQuantities[it.id] ?? 0),
+                remainingOf(it),
+              ),
+            }))
+            .filter((l) => l.quantity > 0);
+          if (lines.length === 0) {
+            notifications.show({
+              title: tr("common.error2"),
+              message: tr("purchase.purchaseOrders.enterAtLeastOneQuantity"),
+              color: "red",
+            });
+            return;
+          }
+          run(
+            () => receivePurchaseOrderItems(po.poNumber, lines),
+            tr("purchase.purchaseOrders.recordedTheReceipt"),
+          );
+        }}
+        opened={receiveOpen}
+        title={tr("purchase.purchaseOrders.confirmPartialReceipt")}
+      >
+        <Text c="dimmed" size="sm">
+          {tr("purchase.purchaseOrders.partialReceiptBody")}
+        </Text>
+        <Stack gap="xs">
+          {po.items.map((it) => {
+            const remaining = remainingOf(it);
+            return (
+              <Paper key={it.id} p="sm" radius="sm" withBorder>
+                <Stack gap="xs">
+                  <div>
+                    <Text ff="mono" size="sm">
+                      {it.materialCode}
+                    </Text>
+                    <Text c="dimmed" size="xs">
+                      {it.materialName}
+                    </Text>
+                  </div>
+                  <Group gap="md" wrap="wrap">
+                    <Text c="dimmed" className="tabular-nums" size="xs">
+                      {tr("purchase.purchaseOrders.orderedQuantity")}{" "}
+                      {it.quantity} {it.unit}
+                    </Text>
+                    <Text c="dimmed" className="tabular-nums" size="xs">
+                      {tr("purchase.purchaseOrders.receivedQuantity")}{" "}
+                      {it.receivedQuantity} {it.unit}
+                    </Text>
+                    <Text
+                      c={remaining > 0 ? "orange" : "dimmed"}
+                      className="tabular-nums"
+                      size="xs"
+                    >
+                      {tr("purchase.purchaseOrders.remainingQuantity")}{" "}
+                      {remaining} {it.unit}
+                    </Text>
+                  </Group>
+                  <NumberInput
+                    decimalScale={3}
+                    disabled={remaining === 0}
+                    label={tr("purchase.purchaseOrders.thisDelivery")}
+                    max={remaining}
+                    min={0}
+                    onChange={(value) =>
+                      setReceiveQuantities((prev) => ({
+                        ...prev,
+                        [it.id]:
+                          typeof value === "number"
+                            ? value
+                            : Number(value) || 0,
+                      }))
+                    }
+                    suffix={` ${it.unit}`}
+                    value={receiveQuantities[it.id] ?? 0}
+                  />
+                </Stack>
+              </Paper>
+            );
+          })}
+        </Stack>
+      </ModalShell>
+
+      {/* 未入荷のまま完了 — 欠品で残りが来ないときに理由を書いて締め切る。
+          入荷は起こさないので、未入荷分は在庫にも入荷予定にも載らない。 */}
+      <ModalShell
+        confirmColor="red"
+        confirmLabel={tr("purchase.purchaseOrders.closeShort")}
+        loading={isPending}
+        onClose={() => setCloseShortOpen(false)}
+        onConfirm={() => {
+          if (!closeShortReason.trim()) {
+            notifications.show({
+              title: tr("common.error2"),
+              message: tr(
+                "purchase.purchaseOrderActions.enterCloseShortReason",
+              ),
+              color: "red",
+            });
+            return;
+          }
+          run(
+            () => closeShortPurchaseOrder(po.poNumber, closeShortReason),
+            tr("purchase.purchaseOrders.closedShort"),
+          );
+        }}
+        opened={closeShortOpen}
+        size="sm"
+        title={tr("purchase.purchaseOrders.confirmCloseShort")}
+      >
+        <Text size="sm">
+          {tr("purchase.purchaseOrders.confirmCloseShortBody", {
+            count: unreceivedItems.length,
+            number: po.poNumber,
+          })}
+        </Text>
+        <Textarea
+          autosize
+          label={tr("purchase.purchaseOrders.closeShortReason")}
+          minRows={3}
+          onChange={(e) => setCloseShortReason(e.currentTarget.value)}
+          placeholder={tr("common.enterAReason")}
+          value={closeShortReason}
+          withAsterisk
+        />
       </ModalShell>
     </DetailShell>
   );

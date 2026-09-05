@@ -2898,7 +2898,9 @@
       "couldNotDeleteActual": "Could not delete the work actual",
       "inspectionSheetNotFound": "The specified inspection sheet was not found",
       "auditInspectionSheetsSet": "Changed the step's inspection sheet assignment ({count})",
-      "couldNotSaveInspectionSheets": "Could not save the inspection sheet assignment"
+      "couldNotSaveInspectionSheets": "Could not save the inspection sheet assignment",
+      "requestedAfterExpected": "The expected date must be on or after the request date",
+      "requestedAfterReceived": "The received date must be on or after the request date"
     },
     "workOrderActions": {
       "acknowledgeFailed": "Could not record the acknowledgement",
@@ -3122,7 +3124,6 @@
       "notReceivedArrivesAfterOrdering": "Not received (arrives after ordering)",
       "onceOrderedTheLinesAppearAs": "Once ordered, the lines appear as expected receipts in material ATP",
       "readyToOrder": "Ready to order",
-      "completingTheReceiptRecordsEachLine": "Completing the receipt records each line and takes it into material stock",
       "waitingForTheGoods": "Waiting for the goods",
       "receiptCompletedOn": "Receipt completed on",
       "convertedFromPurchaseRequest": "Converted from (purchase request)",
@@ -3140,10 +3141,25 @@
       "thereAreNoMaterialPurchaseOrders": "There are no material purchase orders",
       "receiptsSummary": "{count} · total {total} {unit}",
       "receiptNote": "{quantity} {unit} · {date}",
-      "receivedSoFar": "Received {count}",
       "confirmCancelBody": "This cancels material purchase order {number}. This cannot be undone.",
       "confirmOrderBody": "This marks material purchase order {number} as ordered. The lines will be reflected in expected material stock (ATP).",
-      "confirmCompleteBody": "Registers all {count} lines as fully received material receipts and adds them to material stock at the receiving site. For partial receipts, register directly from Material receipt (PU03)."
+      "confirmCompleteBody": "Registers all {count} lines as fully received material receipts and adds them to material stock at the receiving site. For partial receipts, register directly from Material receipt (PU03).",
+      "receiveActionsDescription": "Marking the receipt complete receives the whole remaining quantity. Use partial receipt when only part arrived, or close without receiving when the rest will not come.",
+      "partialReceipt": "Partial receipt",
+      "confirmPartialReceipt": "Record a partial receipt",
+      "partialReceiptBody": "Enter the quantity received this time for each line. A line left at 0 is skipped. The order is marked received once every line reaches its ordered quantity.",
+      "recordTheReceipt": "Record the receipt",
+      "recordedTheReceipt": "Recorded the receipt",
+      "enterAtLeastOneQuantity": "Enter a quantity on at least one line",
+      "orderedQuantity": "Ordered",
+      "receivedQuantity": "Received",
+      "remainingQuantity": "Remaining",
+      "thisDelivery": "This delivery",
+      "closeShort": "Close without receiving",
+      "closedShort": "Closed without receiving the rest",
+      "confirmCloseShort": "Confirm closing without receiving",
+      "confirmCloseShortBody": "The {count} unreceived line(s) will not be received and material purchase order {number} is marked received. The unreceived quantity is not posted to stock and drops out of the expected receipts (ATP). This cannot be undone.",
+      "closeShortReason": "Reason for closing"
     },
     "purchaseRequests": {
       "selectASupplier": "Select a supplier",
@@ -3211,7 +3227,9 @@
       "approvedNextStep": "Approved (to next step)",
       "approvedRemaining": "Approved ({count} remaining at this step)",
       "cancelFailed": "Could not cancel",
+      "closeShortFailed": "Could not close the purchase order without receiving",
       "createFailed": "Could not create the material purchase order",
+      "enterCloseShortReason": "Enter a reason for closing the remaining quantity",
       "enterUnit": "Enter a unit",
       "lineItemNotFound": "Line item not found",
       "lineItemOverReceived": "The received quantity for line item ({itemId}) exceeds the ordered quantity",
@@ -3222,6 +3240,7 @@
       "onlyApprovedCanOrder": "Only an approved material purchase order can be ordered",
       "onlyDraftCanRequestApproval": "Only a draft material purchase order can request approval",
       "onlyDraftEditable": "Only a draft material purchase order can be edited",
+      "onlyOrderedCanCloseShort": "Only an ordered material purchase order can be closed without receiving",
       "onlyOrderedCanComplete": "Only an ordered material purchase order can be marked received",
       "onlyOrderedCanReceive": "Only an ordered material purchase order can receive",
       "onlyPreOrderCanCancel": "Only a pre-order material purchase order can be cancelled",
@@ -3235,6 +3254,7 @@
       "receivedQuantityMinOne": "Enter a received quantity of 1 or more",
       "requestFailed": "Could not request approval",
       "stateChanged": "The material purchase order's status has changed (already processed or updated by someone else). Reload the page",
+      "unitMismatch": "The unit on line {code} does not match the material's unit ({unit})",
       "unitPriceMinZero": "Unit price must be 0 or more",
       "updateFailed": "Could not update the material purchase order"
     }

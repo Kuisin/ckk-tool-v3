@@ -2898,7 +2898,9 @@
       "couldNotDeleteActual": "作業実績の削除に失敗しました",
       "inspectionSheetNotFound": "指定した検査表が見つかりません",
       "auditInspectionSheetsSet": "工程の検査表割当を変更（{count} 件）",
-      "couldNotSaveInspectionSheets": "検査表の割当に失敗しました"
+      "couldNotSaveInspectionSheets": "検査表の割当に失敗しました",
+      "requestedAfterExpected": "入荷予定日は依頼日以降の日付にしてください",
+      "requestedAfterReceived": "入荷日は依頼日以降の日付にしてください"
     },
     "workOrderActions": {
       "acknowledgeFailed": "確認の記録に失敗しました",
@@ -3122,7 +3124,6 @@
       "notReceivedArrivesAfterOrdering": "未入荷（発注後に入荷します）",
       "onceOrderedTheLinesAppearAs": "発注すると明細が素材 ATP の入荷予定に反映されます",
       "readyToOrder": "発注できます",
-      "completingTheReceiptRecordsEachLine": "入荷完了で明細ごとに入荷を記録し、素材在庫へ入庫します",
       "waitingForTheGoods": "入荷を待っています",
       "receiptCompletedOn": "入荷完了日",
       "convertedFromPurchaseRequest": "変換元（購買依頼）",
@@ -3140,10 +3141,25 @@
       "thereAreNoMaterialPurchaseOrders": "素材発注書がありません",
       "receiptsSummary": "{count} 件・合計 {total} {unit}",
       "receiptNote": "{quantity} {unit}・{date}",
-      "receivedSoFar": "入荷済 {count}",
       "confirmCancelBody": "素材発注書 {number} をキャンセルします。この操作は取り消せません。",
       "confirmOrderBody": "素材発注書 {number} を発注済にします。明細は素材在庫の入荷予定（ATP）に反映されます。",
-      "confirmCompleteBody": "明細 {count} 件を全量入荷として素材入荷を登録し、入荷先拠点の素材在庫へ入庫します。分納（部分入荷）が必要な場合は素材入荷 (PU03) から直接登録してください。"
+      "confirmCompleteBody": "明細 {count} 件を全量入荷として素材入荷を登録し、入荷先拠点の素材在庫へ入庫します。分納（部分入荷）が必要な場合は素材入荷 (PU03) から直接登録してください。",
+      "receiveActionsDescription": "入荷完了は残数量をまとめて入荷します。一部だけ届いたときは分割入荷、残りが届かないときは未入荷のまま完了にしてください。",
+      "partialReceipt": "分割入荷",
+      "confirmPartialReceipt": "分割入荷の登録",
+      "partialReceiptBody": "今回入荷した数量を明細ごとに入力します。0 の明細は入荷しません。すべての明細が発注数に達すると入荷完了になります。",
+      "recordTheReceipt": "入荷を登録する",
+      "recordedTheReceipt": "入荷を登録しました",
+      "enterAtLeastOneQuantity": "入荷する数量を 1 件以上入力してください",
+      "orderedQuantity": "発注数",
+      "receivedQuantity": "入荷済",
+      "remainingQuantity": "残",
+      "thisDelivery": "今回入荷",
+      "closeShort": "未入荷のまま完了",
+      "closedShort": "未入荷のまま完了にしました",
+      "confirmCloseShort": "未入荷のまま完了にする確認",
+      "confirmCloseShortBody": "未入荷の {count} 件は入荷せずに、素材発注書 {number} を入荷完了にします。未入荷分は在庫に計上されず、入荷予定（ATP）からも外れます。この操作は取り消せません。",
+      "closeShortReason": "締め切る理由"
     },
     "purchaseRequests": {
       "selectASupplier": "仕入先を選択してください",
@@ -3211,7 +3227,9 @@
       "approvedNextStep": "承認（次の段へ）",
       "approvedRemaining": "承認（この段の残り {count} 名）",
       "cancelFailed": "キャンセルに失敗しました",
+      "closeShortFailed": "未入荷のまま完了にする処理に失敗しました",
       "createFailed": "素材発注書の作成に失敗しました",
+      "enterCloseShortReason": "未入荷分を締め切る理由を入力してください",
       "enterUnit": "単位を入力してください",
       "lineItemNotFound": "明細が見つかりません",
       "lineItemOverReceived": "明細（{itemId}）の入荷数量が発注数量を超えます",
@@ -3222,6 +3240,7 @@
       "onlyApprovedCanOrder": "承認済の素材発注書のみ発注できます",
       "onlyDraftCanRequestApproval": "下書きの素材発注書のみ承認依頼できます",
       "onlyDraftEditable": "下書きの素材発注書のみ編集できます",
+      "onlyOrderedCanCloseShort": "発注済の素材発注書のみ未入荷のまま完了にできます",
       "onlyOrderedCanComplete": "発注済の素材発注書のみ入荷完了にできます",
       "onlyOrderedCanReceive": "発注済の素材発注書のみ入荷できます",
       "onlyPreOrderCanCancel": "発注前の素材発注書のみキャンセルできます",
@@ -3235,6 +3254,7 @@
       "receivedQuantityMinOne": "入荷数量は 1 以上で入力してください",
       "requestFailed": "承認依頼に失敗しました",
       "stateChanged": "素材発注書の状態が変わっています（既に処理済みか、他の利用者が更新しました）。画面を再読み込みしてください",
+      "unitMismatch": "明細（{code}）の単位が素材マスタの単位（{unit}）と一致しません",
       "unitPriceMinZero": "単価は0以上",
       "updateFailed": "素材発注書の更新に失敗しました"
     }

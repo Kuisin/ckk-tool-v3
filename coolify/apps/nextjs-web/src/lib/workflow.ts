@@ -1081,6 +1081,11 @@ function describeTermination(t: BranchTermination, tr: Tr): string {
  * ガード:
  * - 数量は系列の全工程が未着手のときだけ（流し始めた後に受入数は動かさない）。
  * - 終端は終端工程が未着手のときだけ（完了後に行き先を変えると入庫が狂う）。
+ *
+ * addBranchSeries と同じく、**検証と書き込みは 1 トランザクションに閉じ、
+ * 先に指示書行を FOR UPDATE でロックしてから読む**。外で読んで中で書くと、
+ * 読んだ後・書く前に工程が着手されたり分岐可能数が変わっても気づけない
+ * （「全工程が未着手」を読んだ直後に着手された系列の受入数を書き換えられた）。
  */
 export async function updateBranchSeries(input: {
   workOrderId: string;
@@ -1090,136 +1095,156 @@ export async function updateBranchSeries(input: {
   termination: BranchTermination;
 }): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const wo = await prisma.workOrder.findUniqueOrThrow({
-    where: { id: input.workOrderId },
-    include: {
-      steps: { select: STEP_STATE_SELECT },
-      // 合流エッジの張り替え（update/deleteMany）にリンク行の id も要る。
-      stepLinks: { select: { id: true, ...STEP_LINK_STATE_SELECT } },
-    },
-  });
-  const ctx = ctxFromWorkOrder(wo);
-  const series = branchSeriesList(ctx).find(
-    (b) => b.headId === input.headStepId,
-  );
-  if (!series)
-    return {
-      ok: false,
-      errors: [tr("workflowActions.branchSeriesNotFound")],
-    };
+  const outcome = await prisma.$transaction(
+    async (
+      tx,
+    ): Promise<
+      StepActionResult | { workOrderNumber: number; nextQuantity: number }
+    > => {
+      await tx.$queryRaw`
+      SELECT id FROM app.work_orders
+      WHERE id = ${input.workOrderId}::uuid
+      FOR UPDATE`;
+      const wo = await tx.workOrder.findUniqueOrThrow({
+        where: { id: input.workOrderId },
+        include: {
+          steps: { select: STEP_STATE_SELECT },
+          // 合流エッジの張り替え（update/deleteMany）にリンク行の id も要る。
+          stepLinks: { select: { id: true, ...STEP_LINK_STATE_SELECT } },
+        },
+      });
+      // 完了（= 在庫計上済み）・キャンセル済みの指示書の分岐は動かせない。
+      if (wo.status !== "APPROVED" && wo.status !== "IN_PROGRESS") {
+        return {
+          ok: false,
+          errors: [tr("workflowActions.workOrderNotApprovedOrInProgress")],
+        };
+      }
+      const ctx = ctxFromWorkOrder(wo);
+      const series = branchSeriesList(ctx).find(
+        (b) => b.headId === input.headStepId,
+      );
+      if (!series)
+        return {
+          ok: false,
+          errors: [tr("workflowActions.branchSeriesNotFound")],
+        };
 
-  const stepById = new Map(wo.steps.map((s) => [s.id, s]));
-  const seriesSteps = series.stepIds
-    .map((id) => stepById.get(id))
-    .filter((s): s is NonNullable<typeof s> => s != null);
-  const terminal = stepById.get(series.terminalId);
-  if (!terminal)
-    return {
-      ok: false,
-      errors: [tr("workflowActions.branchTerminalStepNotFound")],
-    };
+      const stepById = new Map(wo.steps.map((s) => [s.id, s]));
+      const seriesSteps = series.stepIds
+        .map((id) => stepById.get(id))
+        .filter((s): s is NonNullable<typeof s> => s != null);
+      const terminal = stepById.get(series.terminalId);
+      if (!terminal)
+        return {
+          ok: false,
+          errors: [tr("workflowActions.branchTerminalStepNotFound")],
+        };
 
-  const errors: string[] = [];
+      const errors: string[] = [];
 
-  // 数量: 変更があるときだけ検証（同じ値の再送は素通し）
-  const headLink = wo.stepLinks.find(
-    (l) =>
-      l.targetStepId === series.headId && l.sourceStepId === series.sourceId,
-  );
-  const currentQuantity = headLink?.routedQuantity ?? 0;
-  const nextQuantity = input.routedQuantity ?? currentQuantity;
-  if (nextQuantity !== currentQuantity) {
-    if (!seriesSteps.every((s) => s.status === "PENDING"))
-      errors.push(tr("workflowActions.branchQuantityLockedAfterStart"));
-    if (nextQuantity <= 0)
-      errors.push(tr("production.stepExecutionActions.branchQuantityMin"));
-    if (series.sourceId) {
-      // 分岐可能数は「現在の分岐分」を戻した上で見る（自分自身は差し引かない）。
-      const available = branchableQuantity(series.sourceId, ctx);
-      const room = (available ?? 0) + currentQuantity;
-      if (nextQuantity > room)
-        errors.push(
-          tr("workflowActions.branchQuantityExceedsAvailable", {
-            quantity: nextQuantity,
-            available: room,
-          }),
-        );
-    }
-  }
+      // 数量: 変更があるときだけ検証（同じ値の再送は素通し）
+      const headLink = wo.stepLinks.find(
+        (l) =>
+          l.targetStepId === series.headId &&
+          l.sourceStepId === series.sourceId,
+      );
+      const currentQuantity = headLink?.routedQuantity ?? 0;
+      const nextQuantity = input.routedQuantity ?? currentQuantity;
+      if (nextQuantity !== currentQuantity) {
+        if (!seriesSteps.every((s) => s.status === "PENDING"))
+          errors.push(tr("workflowActions.branchQuantityLockedAfterStart"));
+        if (nextQuantity <= 0)
+          errors.push(tr("production.stepExecutionActions.branchQuantityMin"));
+        if (series.sourceId) {
+          // 分岐可能数は「現在の分岐分」を戻した上で見る（自分自身は差し引かない）。
+          const available = branchableQuantity(series.sourceId, ctx);
+          const room = (available ?? 0) + currentQuantity;
+          if (nextQuantity > room)
+            errors.push(
+              tr("workflowActions.branchQuantityExceedsAvailable", {
+                quantity: nextQuantity,
+                available: room,
+              }),
+            );
+        }
+      }
 
-  // 終端: 変更があるときだけ検証
-  const sameTermination =
-    input.termination.kind === "MERGE"
-      ? series.mergeTargetId === input.termination.mergeTargetStepId
-      : series.stockDisposition === input.termination.disposition &&
-        series.mergeTargetId == null;
-  if (!sameTermination && terminal.status !== "PENDING")
-    errors.push(tr("workflowActions.terminationChangeOnlyWhilePending"));
-  if (input.termination.kind === "MERGE") {
-    const merge = stepById.get(input.termination.mergeTargetStepId);
-    if (!merge) errors.push(tr("workflowActions.mergeTargetStepNotFound"));
-    else {
-      if (merge.status !== "PENDING")
-        errors.push(tr("workflowActions.mergeTargetNotPending"));
-      if (isOffMainline(merge.id, ctx))
-        errors.push(tr("workflowActions.mergeTargetCannotBeBranchStep"));
-    }
-  }
-  if (errors.length > 0) return { ok: false, errors };
+      // 終端: 変更があるときだけ検証
+      const sameTermination =
+        input.termination.kind === "MERGE"
+          ? series.mergeTargetId === input.termination.mergeTargetStepId
+          : series.stockDisposition === input.termination.disposition &&
+            series.mergeTargetId == null;
+      if (!sameTermination && terminal.status !== "PENDING")
+        errors.push(tr("workflowActions.terminationChangeOnlyWhilePending"));
+      if (input.termination.kind === "MERGE") {
+        const merge = stepById.get(input.termination.mergeTargetStepId);
+        if (!merge) errors.push(tr("workflowActions.mergeTargetStepNotFound"));
+        else {
+          if (merge.status !== "PENDING")
+            errors.push(tr("workflowActions.mergeTargetNotPending"));
+          if (isOffMainline(merge.id, ctx))
+            errors.push(tr("workflowActions.mergeTargetCannotBeBranchStep"));
+        }
+      }
+      if (errors.length > 0) return { ok: false, errors };
 
-  await prisma.$transaction(async (tx) => {
-    if (nextQuantity !== currentQuantity) {
-      if (headLink) {
-        await tx.workOrderStepLink.update({
-          where: { id: headLink.id },
-          data: { routedQuantity: nextQuantity },
+      if (nextQuantity !== currentQuantity) {
+        if (headLink) {
+          await tx.workOrderStepLink.update({
+            where: { id: headLink.id },
+            data: { routedQuantity: nextQuantity },
+          });
+        }
+        await tx.workOrderStep.update({
+          where: { id: series.headId },
+          data: { inputQuantity: nextQuantity },
+        });
+      }
+
+      // 旧・合流エッジ（終端 → 本流）を落としてから張り直す。
+      const oldMergeLinks = wo.stepLinks.filter(
+        (l) =>
+          l.sourceStepId === series.terminalId &&
+          !series.stepIds.includes(l.targetStepId),
+      );
+      if (oldMergeLinks.length > 0) {
+        await tx.workOrderStepLink.deleteMany({
+          where: { id: { in: oldMergeLinks.map((l) => l.id) } },
+        });
+      }
+      if (input.termination.kind === "MERGE") {
+        await tx.workOrderStepLink.create({
+          data: {
+            workOrderId: input.workOrderId,
+            sourceStepId: series.terminalId,
+            targetStepId: input.termination.mergeTargetStepId,
+            routedQuantity: 0,
+          },
         });
       }
       await tx.workOrderStep.update({
-        where: { id: series.headId },
-        data: { inputQuantity: nextQuantity },
-      });
-    }
-
-    // 旧・合流エッジ（終端 → 本流）を落としてから張り直す。
-    const oldMergeLinks = wo.stepLinks.filter(
-      (l) =>
-        l.sourceStepId === series.terminalId &&
-        !series.stepIds.includes(l.targetStepId),
-    );
-    if (oldMergeLinks.length > 0) {
-      await tx.workOrderStepLink.deleteMany({
-        where: { id: { in: oldMergeLinks.map((l) => l.id) } },
-      });
-    }
-    if (input.termination.kind === "MERGE") {
-      await tx.workOrderStepLink.create({
+        where: { id: series.terminalId },
         data: {
-          workOrderId: input.workOrderId,
-          sourceStepId: series.terminalId,
-          targetStepId: input.termination.mergeTargetStepId,
-          routedQuantity: 0,
+          branchStockDisposition:
+            input.termination.kind === "STOCK"
+              ? input.termination.disposition
+              : null,
         },
       });
-    }
-    await tx.workOrderStep.update({
-      where: { id: series.terminalId },
-      data: {
-        branchStockDisposition:
-          input.termination.kind === "STOCK"
-            ? input.termination.disposition
-            : null,
-      },
-    });
-  });
+      return { workOrderNumber: wo.workOrderNumber, nextQuantity };
+    },
+  );
+  if (!("workOrderNumber" in outcome)) return outcome;
 
   await recordAudit({
     action: "UPDATE",
     tableName: "work_orders",
-    recordId: String(wo.workOrderNumber),
+    recordId: String(outcome.workOrderNumber),
     after: {
       note: tr("workflowActions.auditBranchUpdated", {
-        quantity: nextQuantity,
+        quantity: outcome.nextQuantity,
         termination: describeTermination(input.termination, tr),
       }),
     },
@@ -1231,83 +1256,115 @@ export async function updateBranchSeries(input: {
  * 分岐系列の削除: 先頭工程から流出エッジをオフメインライン工程づたいに辿って
  * 系列を収集し（合流先 = メインライン工程で停止。入れ子の分岐も含む）、
  * 全工程が PENDING の場合のみ削除する。リンクは FK cascade で消える。
+ *
+ * addBranchSeries / updateBranchSeries と同じく、**系列の収集も判定も削除も
+ * 1 トランザクションの中で、指示書行を FOR UPDATE でロックしてから**行う。
+ * 外で DAG を読むと、読んだ後・消す前に足された分岐（= 収集した series に
+ * 入っていない工程）が取り残されて、親を失った系列が残る。
  */
 export async function removeBranchSeries(input: {
   workOrderId: string;
   headStepId: string;
 }): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const wo = await prisma.workOrder.findUniqueOrThrow({
-    where: { id: input.workOrderId },
-    include: {
-      steps: { select: STEP_STATE_SELECT },
-      stepLinks: { select: STEP_LINK_STATE_SELECT },
-    },
-  });
-  const ctx = ctxFromWorkOrder(wo);
-  const head = wo.steps.find((s) => s.id === input.headStepId);
-  if (!head)
-    return {
-      ok: false,
-      errors: [tr("workflowActions.branchHeadStepNotFound")],
-    };
-  if (!isOffMainline(head.id, ctx))
-    return { ok: false, errors: [tr("workflowActions.notABranchSeriesStep")] };
-
-  const series: string[] = [];
-  const seen = new Set<string>();
-  const queue = [head.id];
-  while (queue.length > 0) {
-    const id = queue.pop();
-    if (id == null || seen.has(id)) continue;
-    seen.add(id);
-    if (!isOffMainline(id, ctx)) continue; // 合流先（メインライン）で停止
-    series.push(id);
-    for (const l of ctx.links) {
-      if (l.sourceStepId === id) queue.push(l.targetStepId);
-    }
-  }
-  const rows = wo.steps.filter((s) => series.includes(s.id));
-  if (rows.some((r) => r.status !== "PENDING")) {
-    return {
-      ok: false,
-      errors: [tr("workflowActions.cannotDeleteBranchWithStartedSteps")],
-    };
-  }
-
+  let outcome: StepActionResult | { workOrderNumber: number; count: number };
   try {
-    await prisma.$transaction(async (tx) => {
-      // 条件付き削除 — 読み取り後に着手された行があれば全体をロールバック
-      const res = await tx.workOrderStep.deleteMany({
-        where: {
-          id: { in: series },
-          workOrderId: input.workOrderId,
-          status: "PENDING",
-        },
-      });
-      if (res.count !== series.length)
-        throw new Error(
-          tr("workflowActions.cannotDeleteBranchWithStartedSteps"),
-        );
-    });
+    outcome = await prisma.$transaction(
+      async (
+        tx,
+      ): Promise<
+        StepActionResult | { workOrderNumber: number; count: number }
+      > => {
+        await tx.$queryRaw`
+      SELECT id FROM app.work_orders
+      WHERE id = ${input.workOrderId}::uuid
+      FOR UPDATE`;
+        const wo = await tx.workOrder.findUniqueOrThrow({
+          where: { id: input.workOrderId },
+          include: {
+            steps: { select: STEP_STATE_SELECT },
+            stepLinks: { select: STEP_LINK_STATE_SELECT },
+          },
+        });
+        // 完了（= 在庫計上済み）・キャンセル済みの指示書からは消せない。
+        if (wo.status !== "APPROVED" && wo.status !== "IN_PROGRESS") {
+          return {
+            ok: false,
+            errors: [tr("workflowActions.workOrderNotApprovedOrInProgress")],
+          };
+        }
+        const ctx = ctxFromWorkOrder(wo);
+        const head = wo.steps.find((s) => s.id === input.headStepId);
+        if (!head)
+          return {
+            ok: false,
+            errors: [tr("workflowActions.branchHeadStepNotFound")],
+          };
+        if (!isOffMainline(head.id, ctx))
+          return {
+            ok: false,
+            errors: [tr("workflowActions.notABranchSeriesStep")],
+          };
+
+        const series: string[] = [];
+        const seen = new Set<string>();
+        const queue = [head.id];
+        while (queue.length > 0) {
+          const id = queue.pop();
+          if (id == null || seen.has(id)) continue;
+          seen.add(id);
+          if (!isOffMainline(id, ctx)) continue; // 合流先（メインライン）で停止
+          series.push(id);
+          for (const l of ctx.links) {
+            if (l.sourceStepId === id) queue.push(l.targetStepId);
+          }
+        }
+        const rows = wo.steps.filter((s) => series.includes(s.id));
+        if (rows.some((r) => r.status !== "PENDING")) {
+          return {
+            ok: false,
+            errors: [tr("workflowActions.cannotDeleteBranchWithStartedSteps")],
+          };
+        }
+
+        // 条件付き削除 — ロック下でも status は最後にもう一度確かめる
+        const res = await tx.workOrderStep.deleteMany({
+          where: {
+            id: { in: series },
+            workOrderId: input.workOrderId,
+            status: "PENDING",
+          },
+        });
+        if (res.count !== series.length)
+          throw new Error(
+            `GUARD:${tr("workflowActions.cannotDeleteBranchWithStartedSteps")}`,
+          );
+        return { workOrderNumber: wo.workOrderNumber, count: series.length };
+      },
+    );
   } catch (e) {
+    // 業務ガードだけ本文を見せる。読み取りの失敗（指示書が消えた等）まで
+    // 素の Prisma エラーで出すと、利用者に読めない文字列が並ぶ。
+    const guard =
+      e instanceof Error && e.message.startsWith("GUARD:")
+        ? e.message.slice("GUARD:".length)
+        : null;
     return {
       ok: false,
       errors: [
-        e instanceof Error
-          ? e.message
-          : tr("production.workOrderStepsPanel.couldNotDeleteTheBranch"),
+        guard ?? tr("production.workOrderStepsPanel.couldNotDeleteTheBranch"),
       ],
     };
   }
+  if (!("workOrderNumber" in outcome)) return outcome;
 
   await recordAudit({
     action: "UPDATE",
     tableName: "work_orders",
-    recordId: String(wo.workOrderNumber),
+    recordId: String(outcome.workOrderNumber),
     after: {
       note: tr("workflowActions.auditBranchDeleted", {
-        count: series.length,
+        count: outcome.count,
       }),
     },
   });

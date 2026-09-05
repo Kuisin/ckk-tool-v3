@@ -193,6 +193,34 @@ function inventoryErrorMessage(
     : null;
 }
 
+/**
+ * 明細の単位を素材マスタの単位と突き合わせる（不一致ならエラー文言を返す）。
+ * 素材入荷 (PU03) と同じ規則をここでも当てる — 発注のときに違う単位を通すと、
+ * その明細は入荷しようとした瞬間に在庫台帳（material_inventory）の単位と
+ * ぶつかって**永久に入荷できない発注**になる。単位は発注の時点で閉じる。
+ */
+async function unitMismatchMessage(
+  items: PurchaseOrderInput["items"],
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Promise<string | null> {
+  const ids = [...new Set(items.map((it) => Number(it.materialId)))];
+  const materials = await prisma.material.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, code: true, unit: true },
+  });
+  for (const it of items) {
+    const m = materials.find((x) => x.id === Number(it.materialId));
+    if (!m) return tr("common.targetRecordNotFound");
+    if (it.unit !== m.unit) {
+      return tr("purchase.purchaseOrderActions.unitMismatch", {
+        code: m.code,
+        unit: m.unit,
+      });
+    }
+  }
+  return null;
+}
+
 // ── 作成 / 更新 ──────────────────────────────────────────────────────────────
 
 export async function createPurchaseOrder(
@@ -214,6 +242,8 @@ export async function createPurchaseOrder(
     return actionError(tr("common.scopeDenied"));
   }
   try {
+    const unitError = await unitMismatchMessage(v.items, tr);
+    if (unitError) return actionError(unitError);
     const actor = await getCurrentActorId();
     const poNumber = await nextDocumentNumber("PURCHASE");
     const creates = buildItemCreates(v.items);
@@ -293,6 +323,8 @@ export async function updatePurchaseOrder(
     if (prior.status !== "DRAFT") {
       return actionError(tr("purchase.purchaseOrderActions.onlyDraftEditable"));
     }
+    const unitError = await unitMismatchMessage(v.items, tr);
+    if (unitError) return actionError(unitError);
     const actor = await getCurrentActorId();
     const creates = buildItemCreates(v.items);
     const totalAmount = creates.reduce((sum, it) => sum + it.amount, 0);
@@ -849,6 +881,86 @@ export async function completePurchaseOrder(
       prismaErrorMessage(
         e,
         tr("purchase.purchaseOrderActions.receiptCompleteFailed"),
+        tr,
+      ),
+    );
+  }
+}
+
+/**
+ * 未入荷のまま完了 — ORDERED → COMPLETED（理由必須・入荷は起こさない）。
+ *
+ * 仕入先が欠品して残りを送ってこないとき、発注書は行き場を失っていた:
+ * cancelPurchaseOrder は ORDERED を受け付けず、completePurchaseOrder は
+ * 残数量を**全部入荷したことにして**しまう。そのままにすると ORDERED の
+ * 未入荷分（lib/atp.ts の quantity - receivedQuantity）が入荷予定として
+ * 永久に在庫を水増しし続ける。
+ *
+ * ここは「残りは来ない」と人が決める操作なので、在庫へは一切計上せず
+ * （MaterialReceipt も作らない）、理由を history と監査に残して閉じるだけ。
+ * 既に入荷済みの数量はそのまま — 締め切るのは未入荷分だけ。
+ */
+export async function closeShortPurchaseOrder(
+  poNumber: string,
+  reason: string,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("purchase_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const trimmed = reason.trim();
+  if (!trimmed) {
+    return actionError(
+      tr("purchase.purchaseOrderActions.enterCloseShortReason"),
+    );
+  }
+  try {
+    const prior = await prisma.materialPurchaseOrder.findUnique({
+      where: { poNumber },
+      include: SCOPE_ITEMS,
+    });
+    if (!prior)
+      return actionError(tr("purchase.purchaseOrderActions.poNotFound"));
+    if (!poInScope(authz.access, authz.userId, prior)) {
+      return actionError(tr("common.scopeDenied"));
+    }
+    if (prior.status !== "ORDERED") {
+      return actionError(
+        tr("purchase.purchaseOrderActions.onlyOrderedCanCloseShort"),
+      );
+    }
+    const actor = await getCurrentActorId();
+    // 他の遷移と同じく条件付き更新 — 読んでから今までに分納で COMPLETED まで
+    // 到達していたら、こちらは何もしない。
+    const flipped = await prisma.materialPurchaseOrder.updateMany({
+      where: { id: prior.id, status: "ORDERED" },
+      data: {
+        status: "COMPLETED",
+        completedAt: new Date(),
+        completedBy: actor,
+        history: toHistoryJson(
+          appendHistory(prior.history, entry("CLOSE_SHORT", actor, trimmed)),
+        ),
+      },
+    });
+    if (flipped.count === 0) {
+      return actionError(tr("purchase.purchaseOrderActions.stateChanged"));
+    }
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "material_purchase_orders",
+      recordId: poNumber,
+      before: { status: "ORDERED" },
+      after: { status: "COMPLETED", closeShortReason: trimmed },
+    });
+    revalidate(poNumber);
+    // 未入荷分が入荷予定（ATP）から外れるので在庫ページも再検証する。
+    revalidatePath("/production/inventory");
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("purchase.purchaseOrderActions.closeShortFailed"),
         tr,
       ),
     );
