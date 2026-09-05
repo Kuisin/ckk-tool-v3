@@ -17,6 +17,7 @@ import { resolveApprover } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
   entriesBlockingSave,
@@ -1079,7 +1080,7 @@ export async function saveOutsourceDates(
       try {
         const wo = await prisma.workOrder.findUnique({
           where: { workOrderNumber: v.workOrderNumber },
-          select: { id: true, createdBy: true },
+          select: { id: true, createdBy: true, yearMonth: true, seq: true },
         });
         if (wo?.createdBy) {
           const { notify } = await import("@/lib/notifications");
@@ -1089,7 +1090,9 @@ export async function saveOutsourceDates(
             title: tr(
               "production.stepExecutionActions.notifyOutsourceReceived",
               {
-                workOrderNumber: v.workOrderNumber,
+                // 通知は書類番号（WOR-YYYYMM-NNNNN）で読ませる — ロット番号
+                // （v.workOrderNumber）は業務キーであって表示番号ではない。
+                workOrderNumber: formatDocNumber("WOR", wo),
               },
             ),
             linkPath: `/production/work-orders/${wo.id}`,
