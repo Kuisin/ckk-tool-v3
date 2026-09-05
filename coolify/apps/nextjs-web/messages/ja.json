@@ -8137,6 +8137,7 @@
       "SSO_USER_INACTIVE": "SSO: ユーザーが無効",
       "SSO_UPSERT_FAILED": "SSO: ユーザー登録に失敗",
       "SSO_CALLBACK_ERROR": "SSO: コールバック失敗",
+      "SSO_LOCAL_ACCOUNT_CONFLICT": "SSO: ローカルアカウントと衝突",
       "DEVICE_NO_COOKIE": "端末Cookieなし",
       "DEVICE_NOT_FOUND": "未登録の端末",
       "DEVICE_EXPIRED": "端末トークン期限切れ",

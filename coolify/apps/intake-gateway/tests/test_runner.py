@@ -16,6 +16,7 @@ from unittest import mock
 from gateway import mailbox as mailbox_mod
 from gateway import runner
 from gateway.config import Config
+from gateway.seen import SeenStore
 
 PDF_B64 = "JVBERi0xLjQK"
 
@@ -110,7 +111,8 @@ class TestPolicy(unittest.TestCase):
         self.assertEqual((messages, files), (1, 1))
         # 順序が命 — 既読が先。移動に失敗しても再処理されない。
         self.assertEqual(calls, [("seen", "7"), ("move", "Processed")])
-        written = os.listdir(self.dir)
+        # .gateway（取込済み台帳）は取込対象ではないので数えない
+        written = [n for n in os.listdir(self.dir) if not n.startswith(".")]
         self.assertEqual(len(written), 1)
         self.assertTrue(written[0].endswith("order.pdf"), written)
         self.assertIn("mail_tanaka-at-example.co.jp", written[0])
@@ -156,6 +158,76 @@ class TestPolicy(unittest.TestCase):
             (messages, files), calls = self._run(ONE_PDF)
         self.assertEqual(files, 0)
         self.assertEqual(calls, [("seen", "7"), ("move", "Failed")])
+
+
+class TestRedelivery(unittest.TestCase):
+    """`\\Seen` を打つ前に IMAP が切れた場合の再配達。
+
+    同じメールがもう一度未読で降ってくるが、**同じ注文書を二度採番させない**。
+    """
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = self._tmp.name
+        self.cfg = cfg_for(self.dir)
+        self.msg = message_from_string(ONE_PDF)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def _written(self) -> list[str]:
+        # .gateway（台帳）は取込対象ではないので数えない
+        return [n for n in os.listdir(self.dir) if not n.startswith(".")]
+
+    def test_同じメールが再配達されても二度は置かない(self):
+        seen = SeenStore(self.dir)
+        first = runner.process_message(self.cfg, self.msg, "7", seen)
+        self.assertEqual(first, (1, 1, 0))
+
+        second = runner.process_message(self.cfg, self.msg, "7", seen)
+        # 受理 1（＝一度扱った）だが保存はしない。失敗でもない。
+        self.assertEqual(second, (1, 0, 0))
+        self.assertEqual(len(self._written()), 1, self._written())
+
+    def test_全部が再配達でも既読にして処理済みへ送る(self):
+        # 失敗ゼロなので失敗フォルダへ行かない。受信箱にも残さない。
+        seen = SeenStore(self.dir)
+        runner.process_message(self.cfg, self.msg, "7", seen)
+        accepted, saved, failed = runner.process_message(
+            self.cfg, self.msg, "7", seen
+        )
+        self.assertGreater(accepted, 0)  # → elif accepted: 処理済みへ
+        self.assertEqual((saved, failed), (0, 0))
+
+    def test_再起動をまたいでも二度は置かない(self):
+        # 台帳はファイルなので、コンテナが入れ替わっても効く
+        runner.process_message(self.cfg, self.msg, "7", SeenStore(self.dir))
+        runner.process_message(self.cfg, self.msg, "7", SeenStore(self.dir))
+        self.assertEqual(len(self._written()), 1, self._written())
+
+    def test_uidが違えば同じ添付でも置く(self):
+        # 同じ注文書を客が本当に 2 通送ってくることがある = 別の取込
+        seen = SeenStore(self.dir)
+        runner.process_message(self.cfg, self.msg, "7", seen)
+        runner.process_message(self.cfg, self.msg, "8", seen)
+        self.assertEqual(len(self._written()), 2, self._written())
+
+    def test_書けなかった添付は覚えない(self):
+        # 半分成功の残りを次に取りこぼさないため（記録は保存できた分だけ）
+        seen = SeenStore(self.dir)
+        with mock.patch.object(
+            runner, "write_to_intake", side_effect=runner.IntakeWriteError("boom")
+        ):
+            self.assertEqual(
+                runner.process_message(self.cfg, self.msg, "7", seen), (1, 0, 1)
+            )
+        self.assertFalse(seen.entries)
+
+    def test_台帳を渡さなければ従来どおり(self):
+        # seen=None は導入前と同じ挙動（毎回置く）
+        runner.process_message(self.cfg, self.msg, "7")
+        runner.process_message(self.cfg, self.msg, "7")
+        self.assertEqual(len(self._written()), 2, self._written())
 
 
 class TestSenderAllowed(unittest.TestCase):
