@@ -2873,7 +2873,7 @@
       "noDefectRecords": "没有不良记录",
       "auditDefectsAdded": "已添加不良记录（{count} 条）",
       "notAnOutsourceStep": "这不是外协工序",
-      "notifyOutsourceReceived": "工单 #{workOrderNumber} 的外协工序已到货",
+      "notifyOutsourceReceived": "工单 {workOrderNumber} 的外协工序已到货",
       "outsourceNotifyFailedLog": "[outsource] 到货通知发送失败：",
       "auditOutsourceCostSuffix": " / 外协费 ¥{amount}",
       "auditOutsourceUpdated": "已更新外协日程（委托 {requested} / 预计到货 {expected} / 到货 {received}{cost}）",

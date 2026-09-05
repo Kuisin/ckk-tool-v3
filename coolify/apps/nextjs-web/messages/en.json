@@ -2873,7 +2873,7 @@
       "noDefectRecords": "There are no defect records",
       "auditDefectsAdded": "Added defect records ({count})",
       "notAnOutsourceStep": "This is not an outsourced step",
-      "notifyOutsourceReceived": "Work order #{workOrderNumber}'s outsourced step has arrived",
+      "notifyOutsourceReceived": "Work order {workOrderNumber}'s outsourced step has arrived",
       "outsourceNotifyFailedLog": "[outsource] Failed to send arrival notification: ",
       "auditOutsourceCostSuffix": " / Outsourcing cost ¥{amount}",
       "auditOutsourceUpdated": "Updated the outsourcing schedule (requested {requested} / expected {expected} / received {received}{cost})",
