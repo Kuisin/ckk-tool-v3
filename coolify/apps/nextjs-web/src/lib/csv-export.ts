@@ -13,6 +13,7 @@
  */
 
 import { documentFormatters } from "./format";
+import { roundYen } from "./money";
 
 /** UTF-8 BOM — 出力 CSV の先頭に必ず付与する。 */
 export const YAYOI_CSV_BOM = "﻿";
@@ -71,8 +72,11 @@ function yayoiDate(date: string | Date): string {
  * ヘッダ行 + 仕訳 1 行（売掛金 / 売上高）。UTF-8 with BOM・CRLF。
  */
 export function buildYayoiCsv(invoice: YayoiInvoiceInput): string {
-  const amount = Math.round(invoice.totalAmount);
-  const tax = Math.round(invoice.taxAmount ?? 0);
+  // 丸めは `lib/money.ts` の方針 1 本（請求書の作成時に既に整数円で確定して
+  // いるので、ここは念のための同じ丸め = 値は動かない）。以前はここだけが
+  // 独自に `Math.round` していて、合計を丸めていない PDF と 1 円ずれ得た。
+  const amount = roundYen(invoice.totalAmount);
+  const tax = roundYen(invoice.taxAmount ?? 0);
   const header = [
     "日付",
     "借方勘定科目",

@@ -25,6 +25,7 @@ import {
 import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { lineAmountYen } from "@/lib/money";
 
 // ── 締日処理行のマッピング ───────────────────────────────────────────────────
 
@@ -149,8 +150,11 @@ export async function fetchBillableShipmentsForClosing(
  * 単一単価では誤請求になる。
  */
 export function shipmentAmount(s: BillableShipment): number {
+  // 行ごとに円へ丸めてから足す（lib/money.ts の方針）— 締日処理が作る請求書の
+  // 明細と同じ丸め方なので、締日画面の予定額と発行後の請求額がずれない。
   return s.items.reduce(
-    (sum, it) => sum + it.quantity * Number(it.orderLine?.unitPrice ?? 0),
+    (sum, it) =>
+      sum + lineAmountYen(Number(it.orderLine?.unitPrice ?? 0), it.quantity),
     0,
   );
 }

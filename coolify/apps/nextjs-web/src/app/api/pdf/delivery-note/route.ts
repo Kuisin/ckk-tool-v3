@@ -13,7 +13,7 @@
  * DIRECT_TO_USER（ユーザー直送）は届け先（最終需要家）を宛先メタに表示する。
  */
 
-import { fetchDeliveryNote } from "@/app/(dashboard)/shipping/delivery-notes/data";
+import { fetchDeliveryNoteForDocument } from "@/app/(dashboard)/shipping/delivery-notes/data";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
@@ -63,7 +63,7 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const key = parseDocKey(id, "DRN");
-  const note = key ? await fetchDeliveryNote(key) : null;
+  const note = key ? await fetchDeliveryNoteForDocument(key) : null;
   if (!note) {
     return new Response(`Delivery note not found: ${id}`, { status: 404 });
   }

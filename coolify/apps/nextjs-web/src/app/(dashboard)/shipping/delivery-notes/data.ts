@@ -64,25 +64,39 @@ function findRow(key: DocKey) {
 }
 
 /** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
-function productLabel(p: {
-  name: unknown;
-  yearMonth: string | null;
-  seq: number | null;
-}): string {
+function productLabel(
+  p: {
+    name: unknown;
+    yearMonth: string | null;
+    seq: number | null;
+  },
+  locale = "ja",
+): string {
   const code = formatProductNumber(p.yearMonth, p.seq);
-  const name = localized(p.name as LocalizedText | null);
+  const name = localized(p.name as LocalizedText | null, locale);
   return code ? `${name} ${code}` : name;
 }
 
-function mapDeliveryNote(r: DeliveryNoteRow): DeliveryNote {
+/**
+ * @param forDocument 取引先に出す帳票（PDF）用に読むときは true。製品名・
+ *   取引先名を**受取先の言語**（business_partners.document_locale）で解決する
+ *   （§17.4 / i18n-glossary 決定 10）。画面は false のまま = 従来どおり。
+ */
+function mapDeliveryNote(
+  r: DeliveryNoteRow,
+  forDocument = false,
+): DeliveryNote {
   const number = formatDocNumber("DRN", {
     yearMonth: r.yearMonth,
     seq: r.seq,
   });
+  const recipientDocumentLocale =
+    r.recipientBranchBp?.documentLocale ?? r.recipientBp.documentLocale ?? null;
+  const loc = forDocument ? (recipientDocumentLocale ?? "ja") : "ja";
   const items = r.items.map((it) => ({
     id: it.id,
     productId: String(it.productId),
-    productName: productLabel(it.product),
+    productName: productLabel(it.product, loc),
     quantity: it.quantity,
     unitPrice: it.unitPrice != null ? Number(it.unitPrice) : null,
     amount: it.amount != null ? Number(it.amount) : null,
@@ -104,18 +118,15 @@ function mapDeliveryNote(r: DeliveryNoteRow): DeliveryNote {
     ],
     deliveryMethod: r.deliveryMethod as DeliveryMethod,
     recipientId: r.recipientBpId,
-    recipientName: localized(r.recipientBp.name as LocalizedText | null),
+    recipientName: localized(r.recipientBp.name as LocalizedText | null, loc),
     recipientBranchId: r.recipientBranchBpId,
     recipientBranchName: r.recipientBranchBp
-      ? localized(r.recipientBranchBp.name as LocalizedText | null)
+      ? localized(r.recipientBranchBp.name as LocalizedText | null, loc)
       : null,
-    recipientDocumentLocale:
-      r.recipientBranchBp?.documentLocale ??
-      r.recipientBp.documentLocale ??
-      null,
+    recipientDocumentLocale,
     endUserId: r.endUserBpId,
     endUserName: r.endUserBp
-      ? localized(r.endUserBp.name as LocalizedText | null)
+      ? localized(r.endUserBp.name as LocalizedText | null, loc)
       : null,
     salesRepId: r.salesRep?.id ?? null,
     salesRepName: r.salesRep?.displayName ?? null,
@@ -149,12 +160,30 @@ export async function fetchDeliveryNotes(): Promise<DeliveryNote[]> {
     include: DELIVERY_NOTE_INCLUDE,
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
   });
-  return rows.map(mapDeliveryNote);
+  // 引数付きで渡さない（`map(mapDeliveryNote)` は添字が第 2 引数に入るため）。
+  return rows.map((r) => mapDeliveryNote(r));
 }
 
 /** 1件取得 — 未存在・スコープ外は null。 */
 export async function fetchDeliveryNote(
   key: DocKey,
+): Promise<DeliveryNote | null> {
+  return fetchDeliveryNoteRow(key, false);
+}
+
+/**
+ * 帳票用の 1 件取得 — 製品名・取引先名を**受取先の言語**で解決する。
+ * PDF ルート（api/pdf/delivery-note）から使う。権限・スコープは同じ。
+ */
+export async function fetchDeliveryNoteForDocument(
+  key: DocKey,
+): Promise<DeliveryNote | null> {
+  return fetchDeliveryNoteRow(key, true);
+}
+
+async function fetchDeliveryNoteRow(
+  key: DocKey,
+  forDocument: boolean,
 ): Promise<DeliveryNote | null> {
   const authz = await checkPermission("delivery_note", "READ");
   if (!authz.ok) return null;
@@ -169,5 +198,5 @@ export async function fetchDeliveryNote(
   ) {
     return null;
   }
-  return mapDeliveryNote(row);
+  return mapDeliveryNote(row, forDocument);
 }
