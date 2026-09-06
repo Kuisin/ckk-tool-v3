@@ -73,11 +73,15 @@ export function LoginHistoryView({
   const t = useTranslations("loginHistory");
   const [openId, setOpenId] = useState<string | null>(null);
 
-  const [days, setDays] = useUrlSelectState("days");
-  const [outcome, setOutcome] = useUrlSelectState("outcome");
-  const [app, setApp] = useUrlSelectState("app");
-  const [ownership, setOwnership] = useUrlSelectState("own");
-  const [ip, setIp] = useUrlStringState("ip");
+  // これらはサーバー側の絞り込み（page.tsx が searchParams を読んで
+  // listLoginAttempts に渡す）を動かすパラメータ — "server" モードで
+  // router.replace しないと URL だけ変わって RSC が再取得されず、
+  // フィルタを変えても表示が動かない（SY07 と同じ穴が実際にここにもあった）。
+  const [days, setDays] = useUrlSelectState("days", "server");
+  const [outcome, setOutcome] = useUrlSelectState("outcome", "server");
+  const [app, setApp] = useUrlSelectState("app", "server");
+  const [ownership, setOwnership] = useUrlSelectState("own", "server");
+  const [ip, setIp] = useUrlStringState("ip", "", "server");
 
   const reset = () => {
     setDays(null);

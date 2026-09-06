@@ -3,70 +3,97 @@
 /**
  * ActivityLog — 操作履歴 一覧（管理者向け・全レコード横断）。
  *
- * audit_logs をサーバーで取得し（listAuditEntries）、クライアント側で
- * 検索・操作種別・対象で絞り込む。各詳細画面の「履歴」タブと同じデータ源。
+ * 絞り込み・ページング・並べ替えは**サーバー側**（`queryAuditEntries`）で
+ * 行う — 以前は最新 300 件をクライアントへ持ってきて絞っていたので、
+ * 300 件より古い履歴には絞り込みようがなかった（SY0D ログイン履歴と同じ
+ * 理由で直した）。フィルタは URL search params に "server" モードで保持し、
+ * 変えるたびにこの RSC 経由のページ（`app/(dashboard)/settings/activity/
+ * page.tsx`）を再取得する。
  */
 
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
+import { DatePickerInput } from "@mantine/dates";
+import { useDebouncedValue } from "@mantine/hooks";
 import { IconDeviceTablet, IconHistory, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
-import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
+import {
+  useUrlSelectState,
+  useUrlStringState,
+  useUrlTableState,
+} from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { ActivityEntry } from "@/lib/audit";
+import type { AuditQuery } from "@/lib/audit-filter-core";
+import { labelKeys } from "@/lib/messages";
 
-export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
+interface Props {
+  entries: ActivityEntry[];
+  total: number;
+  query: AuditQuery;
+  /** 絞り込みバーの「操作者」選択肢（全ユーザー — audit_logs の distinct ではない）。 */
+  actors: { value: string; label: string }[];
+}
+
+export function ActivityLog({ entries, total, actors }: Props) {
   const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
-  // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
-  const [search, setSearch] = useUrlStringState("q");
-  const [action, setAction] = useUrlSelectState("action");
-  const [table, setTable] = useUrlSelectState("table");
+  const [, startTransition] = useTransition();
 
-  const actionOptions = useMemo(
-    () =>
-      [...new Set(entries.map((e) => e.action))].map((v) => ({
-        value: v,
-        label: v,
-      })),
-    [entries],
-  );
-  const tableOptions = useMemo(
-    () =>
-      [
-        ...new Map(entries.map((e) => [e.tableName, e.tableLabel])).entries(),
-      ].map(([value, label]) => ({ value, label })),
-    [entries],
-  );
+  // すべて "server" モード — URL を書き換えるたびにこの一覧の RSC を
+  // 再取得する（SY0D と同じ理由。以前はここが client モードのままで、
+  // フィルタを変えても表示が動かないという同じ穴があった）。
+  const [search, setSearch] = useUrlStringState("q", "", "server");
+  const [action, setAction] = useUrlSelectState("action", "server");
+  const [table, setTable] = useUrlSelectState("table", "server");
+  const [user, setUser] = useUrlSelectState("user", "server");
+  const [from, setFrom] = useUrlSelectState("from", "server");
+  const [to, setTo] = useUrlSelectState("to", "server");
+  const urlTable = useUrlTableState("server");
+
+  // 検索ボックスはキー入力のたびに RSC 往復させない — 入力を一旦ローカルに
+  // 持って 400ms 落ち着いてから URL へ反映する。
+  const [searchInput, setSearchInput] = useState(search);
+  const [debouncedSearch] = useDebouncedValue(searchInput, 400);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: search（URL の現在値）・setSearch を意図的に外す — 外から search が変わったとき（reset 等）には追従しない一方向の同期
+  useEffect(() => {
+    if (debouncedSearch !== search) {
+      startTransition(() => setSearch(debouncedSearch || null));
+    }
+  }, [debouncedSearch]);
+
+  const actionOptions = labelKeys("audit.action").map((v) => ({
+    value: v,
+    label: tr(`audit.action.${v}`),
+  }));
+  const tableOptions = labelKeys("audit.table")
+    .map((v) => ({ value: v, label: tr(`audit.table.${v}`) }))
+    .sort((a, b) => a.label.localeCompare(b.label, "ja"));
 
   const reset = () => {
-    setSearch(null);
-    setAction(null);
-    setTable(null);
+    setSearchInput("");
+    startTransition(() => {
+      setSearch(null);
+      setAction(null);
+      setTable(null);
+      setUser(null);
+      setFrom(null);
+      setTo(null);
+      urlTable.setPage(1);
+      urlTable.setSort(null);
+    });
   };
-
-  const filtered = entries.filter((e) => {
-    const q = search.trim();
-    const matchesSearch =
-      !q ||
-      (e.recordId?.includes(q) ?? false) ||
-      e.user.includes(q) ||
-      (e.device ?? "").toLowerCase().includes(q) ||
-      (typeof e.detail === "string" && e.detail.includes(q));
-    const matchesAction = !action || e.action === action;
-    const matchesTable = !table || e.tableName === table;
-    return matchesSearch && matchesAction && matchesTable;
-  });
 
   const columns: Column<ActivityEntry>[] = [
     {
       key: "at",
       header: tr("common.dateAndTime"),
       width: 150,
+      // サーバー側で並べ替えに対応するのは created_at だけ（索引がある列）。
       sortable: true,
       render: (e) => (
         <Text c="dimmed" className="tabular-nums" size="xs">
@@ -78,14 +105,12 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
       key: "action",
       header: tr("common.actions"),
       width: 80,
-      sortable: true,
       render: (e) => <Text size="sm">{e.action}</Text>,
     },
     {
       key: "tableLabel",
       header: tr("common.target"),
       width: 100,
-      sortable: true,
       render: (e) => <Text size="sm">{e.tableLabel}</Text>,
     },
     {
@@ -102,7 +127,6 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
       key: "user",
       header: tr("common.user"),
       width: 150,
-      sortable: true,
       render: (e) => (
         <Stack gap={2}>
           <Text size="sm">{e.user}</Text>
@@ -121,11 +145,11 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
       ),
     },
     {
-      key: "detail",
+      key: "summary",
       header: tr("common.whatChanges"),
       render: (e) => (
         <Text c="dimmed" size="xs">
-          {e.detail}
+          {e.summary}
         </Text>
       ),
     },
@@ -136,23 +160,56 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
       breadcrumbs={[tr("common.system"), tr("common.activityLog")]}
       filters={
         <>
+          <DatePickerInput
+            clearable
+            flex={isMobile ? 1 : undefined}
+            maxDate={to ?? undefined}
+            onChange={(v) => startTransition(() => setFrom(v))}
+            placeholder={tr("common.dateFrom")}
+            type="default"
+            value={from}
+            valueFormat="YYYY/MM/DD"
+            w={isMobile ? undefined : 160}
+          />
+          <DatePickerInput
+            clearable
+            flex={isMobile ? 1 : undefined}
+            minDate={from ?? undefined}
+            onChange={(v) => startTransition(() => setTo(v))}
+            placeholder={tr("common.dateTo")}
+            type="default"
+            value={to}
+            valueFormat="YYYY/MM/DD"
+            w={isMobile ? undefined : 160}
+          />
           <Select
             clearable
             data={actionOptions}
             flex={isMobile ? 1 : undefined}
-            onChange={setAction}
+            onChange={(v) => startTransition(() => setAction(v))}
             placeholder={tr("common.actions")}
             value={action}
-            w={isMobile ? undefined : 120}
+            w={isMobile ? undefined : 130}
           />
           <Select
             clearable
             data={tableOptions}
             flex={isMobile ? 1 : undefined}
-            onChange={setTable}
+            onChange={(v) => startTransition(() => setTable(v))}
             placeholder={tr("common.target")}
+            searchable
             value={table}
-            w={isMobile ? undefined : 140}
+            w={isMobile ? undefined : 160}
+          />
+          <Select
+            clearable
+            data={actors}
+            flex={isMobile ? 1 : undefined}
+            onChange={(v) => startTransition(() => setUser(v))}
+            placeholder={tr("common.user")}
+            searchable
+            value={user}
+            w={isMobile ? undefined : 160}
           />
         </>
       }
@@ -160,17 +217,16 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
       search={
         <TextInput
           leftSection={<IconSearch size={14} />}
-          onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder={tr("admin.activityLog.searchByRecordUserOrContents")}
-          value={search}
+          onChange={(e) => setSearchInput(e.currentTarget.value)}
+          placeholder={tr("admin.activityLog.searchByRecordOrUser")}
+          value={searchInput}
         />
       }
       title={tr("common.activityLog")}
     >
       <DataTable
         columns={columns}
-        data={filtered}
-        defaultSort={{ key: "at", dir: "desc" }}
+        data={entries}
         emptyIcon={<IconHistory size={24} />}
         emptyMessage={tr("admin.activityLog.thereIsNoActivity")}
         getRowId={(e) => String(e.id)}
@@ -190,7 +246,7 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
                 {e.recordId ?? "—"}
               </Text>
               <Text c="dimmed" size="xs">
-                {e.detail}
+                {e.summary}
               </Text>
             </div>
             <div className="shrink-0 text-right">
@@ -212,6 +268,8 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
             </div>
           </Group>
         )}
+        totalCount={total}
+        urlMode="server"
         urlState
       />
     </ListShell>

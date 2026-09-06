@@ -802,7 +802,9 @@
     "finalInspection": "最终检查",
     "noPriceListTier": "无数量档",
     "priceListInactive": "价格表已停用",
-    "priceListExpired": "价格表不在有效期"
+    "priceListExpired": "价格表不在有效期",
+    "dateFrom": "起始日期",
+    "dateTo": "结束日期"
   },
   "shell": {
     "appsLabel": "应用",
@@ -6008,8 +6010,8 @@
   },
   "admin": {
     "activityLog": {
-      "searchByRecordUserOrContents": "按记录、用户或内容搜索",
-      "thereIsNoActivity": "没有操作历史"
+      "thereIsNoActivity": "没有操作历史",
+      "searchByRecordOrUser": "按记录或用户搜索"
     },
     "activityLogDetail": {
       "openApplabel": "打开 {appLabel}",
@@ -6023,7 +6025,8 @@
       "suffixStorageLocation": "（存放位置）",
       "suffixFloorMap": "（地图）",
       "suffixDisplay": "（显示屏）",
-      "formResponsesLabel": "表单回答"
+      "formResponsesLabel": "表单回答",
+      "actionWithRaw": "{label}（{raw}）"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "已在 {env} 中将 {label} 设为{v2}",
@@ -8139,7 +8142,38 @@
       "portal_grants": "门户共享范围",
       "portal_document_links": "门户单据链接",
       "portal_backup_codes": "门户备用码",
-      "system": "系统"
+      "system": "系统",
+      "approval_flow_rules": "条件审批规则",
+      "design_files": "图纸",
+      "inspection_template_groups": "检查表模板分组",
+      "kiosk_unlock_pins": "退出PIN历史",
+      "link_blacklist": "链接黑名单",
+      "login_attempts": "登录历史",
+      "material_type_prices": "材料类别默认单价",
+      "privileged_access_requests": "特权访问申请",
+      "product_process_routes": "产品工序路线",
+      "regions": "地区",
+      "system_settings": "系统设置",
+      "user_change_requests": "用户变更申请",
+      "user_plants": "所属据点",
+      "user_role_relation": "角色分配",
+      "users": "用户"
+    },
+    "change": {
+      "pair": "{label}: {before} → {after}",
+      "more": "其他 {count} 项"
+    },
+    "sentence": {
+      "create": "{actor} 创建了{target}「{record}」",
+      "createNoRecord": "{actor} 创建了{target}",
+      "delete": "{actor} 删除了{target}「{record}」",
+      "view": "{actor} 查看了{target}「{record}」",
+      "export": "{actor} 导出了{target}「{record}」",
+      "updateNone": "{actor} 更新了{target}「{record}」",
+      "updateOne": "{actor} 将{target}「{record}」的{field}从 {before} 改为 {after}",
+      "updateMany": "{actor} 修改了{target}「{record}」的{field}等 {rest} 项",
+      "note": "{actor}：{note}",
+      "fallback": "{actor} 对{target}「{record}」执行了{action}"
     }
   },
   "inspectionTemplateIo": {

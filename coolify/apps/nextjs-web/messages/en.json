@@ -802,7 +802,9 @@
     "finalInspection": "Final inspection",
     "noPriceListTier": "No quantity tier",
     "priceListInactive": "Price list disabled",
-    "priceListExpired": "Price list out of valid period"
+    "priceListExpired": "Price list out of valid period",
+    "dateFrom": "From date",
+    "dateTo": "To date"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -6008,8 +6010,8 @@
   },
   "admin": {
     "activityLog": {
-      "searchByRecordUserOrContents": "Search by record, user or contents",
-      "thereIsNoActivity": "There is no activity"
+      "thereIsNoActivity": "There is no activity",
+      "searchByRecordOrUser": "Search by record or user"
     },
     "activityLogDetail": {
       "openApplabel": "Open {appLabel}",
@@ -6023,7 +6025,8 @@
       "suffixStorageLocation": " (storage location)",
       "suffixFloorMap": " (map)",
       "suffixDisplay": " (display)",
-      "formResponsesLabel": "Form responses"
+      "formResponsesLabel": "Form responses",
+      "actionWithRaw": "{label} ({raw})"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "{label} was set to {v2} in {env}",
@@ -8139,7 +8142,38 @@
       "portal_grants": "Portal sharing scopes",
       "portal_document_links": "Portal document links",
       "portal_backup_codes": "Portal backup codes",
-      "system": "System"
+      "system": "System",
+      "approval_flow_rules": "Conditional approval rules",
+      "design_files": "Drawings",
+      "inspection_template_groups": "Inspection template groups",
+      "kiosk_unlock_pins": "Unlock PIN history",
+      "link_blacklist": "Link blacklist",
+      "login_attempts": "Login history",
+      "material_type_prices": "Material type default prices",
+      "privileged_access_requests": "Privileged access requests",
+      "product_process_routes": "Product process routes",
+      "regions": "Regions",
+      "system_settings": "System settings",
+      "user_change_requests": "User change requests",
+      "user_plants": "Assigned sites",
+      "user_role_relation": "Role assignments",
+      "users": "Users"
+    },
+    "change": {
+      "pair": "{label}: {before} → {after}",
+      "more": "+{count} more"
+    },
+    "sentence": {
+      "create": "{actor} created {target} “{record}”",
+      "createNoRecord": "{actor} created a {target}",
+      "delete": "{actor} deleted {target} “{record}”",
+      "view": "{actor} viewed {target} “{record}”",
+      "export": "{actor} exported {target} “{record}”",
+      "updateNone": "{actor} updated {target} “{record}”",
+      "updateOne": "{actor} changed {field} on {target} “{record}” from {before} to {after}",
+      "updateMany": "{actor} changed {field} and {rest} more fields on {target} “{record}”",
+      "note": "{actor}: {note}",
+      "fallback": "{actor} performed {action} on {target} “{record}”"
     }
   },
   "inspectionTemplateIo": {
