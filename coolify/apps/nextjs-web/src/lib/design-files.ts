@@ -80,10 +80,21 @@ const VERSION_LOCK_NS = 0x0de5_1;
  * 連番」で、系列が (製品 × 受注元) の組で無数に増えるため — キーを 1 行ずつ
  * 作る形に馴染まない。
  */
+export interface CreateVersionResult {
+  version: number;
+  /**
+   * この版の BLUEPRINT 行の uuid（監査ログの安定キー用 — 1.5 で
+   * `String(productId)` を渡していたバグを直す）。図面データが 1 枚も
+   * 無い呼び出しでは代わりに作成した最初の行の id、行が 1 つも無ければ
+   * null（起こらないはずだが、監査の解決は null に落ちるだけで安全）。
+   */
+  blueprintId: string | null;
+}
+
 export async function createVersionInTx(
   tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
   input: CreateVersionInput,
-): Promise<number> {
+): Promise<CreateVersionResult> {
   await tx.$executeRaw`
     SELECT pg_advisory_xact_lock(
       ${VERSION_LOCK_NS}::int,
@@ -132,7 +143,22 @@ export async function createVersionInTx(
       createdBy: input.actor,
     })),
   });
-  return version;
+
+  // createMany は作成した行を返さないので、監査キー用に 1 回だけ引き直す。
+  // version はこの呼び出しの中で（advisory lock 下で）新規採番したばかりで
+  // この系列に一意なので、created は必ずこの呼び出しが作った行だけになる。
+  const created = await tx.designFile.findMany({
+    where: {
+      productId: input.productId,
+      customerBpId: input.customerBpId,
+      version,
+    },
+    select: { id: true, role: true },
+  });
+  const blueprintId =
+    created.find((f) => f.role === "BLUEPRINT")?.id ?? created[0]?.id ?? null;
+
+  return { version, blueprintId };
 }
 
 /** アップロード 1 枚 → files 行。失敗したら storage も片付ける。 */
@@ -280,7 +306,7 @@ export async function uploadDesignVersion(
 
   try {
     const actor = await getCurrentActorId();
-    const version = await prisma.$transaction((tx) =>
+    const { version, blueprintId } = await prisma.$transaction((tx) =>
       createVersionInTx(tx, {
         productId: input.productId,
         customerBpId: input.customerBpId,
@@ -297,7 +323,10 @@ export async function uploadDesignVersion(
     await recordAudit({
       action: "CREATE",
       tableName: "design_files",
-      recordId: String(input.productId),
+      // 版は複数行（プレビュー/図面データ/参考資料）から成るので、この版を
+      // 代表する 1 つの id として BLUEPRINT 行の uuid を使う（1.5 —
+      // 以前は productId を渡していて design_files の PK と食い違っていた）。
+      recordId: blueprintId ?? String(input.productId),
       after: {
         note: tr(
           input.designRequestId

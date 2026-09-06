@@ -820,6 +820,9 @@ export async function reserveProductStock(
       action: "UPDATE",
       tableName: "order_lines",
       recordId: `ORD-${so.acceptanceYearMonth}-${String(so.acceptanceSeq).padStart(5, "0")}-${String(so.branch).padStart(2, "0")}`,
+      // so は findUniqueOrThrow 済みの行 — PK が既に手元にあるので直接渡す
+      // （キオスク側にはこのテーブル向けの解決レジストリが無いため必須）。
+      recordKey: so.id,
       after: {
         note: encodeInventoryNote("stockCheckReservedAndShortage", {
           reservedNow,

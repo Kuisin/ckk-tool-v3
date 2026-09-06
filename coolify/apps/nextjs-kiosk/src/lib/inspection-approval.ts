@@ -265,6 +265,7 @@ export async function approveInspectionRecord(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(step.workOrder.workOrderNumber),
+    recordKey: step.workOrderId,
     after: { note: encodeInventoryNote("inspectionApproved") },
   });
   return { ok: true };

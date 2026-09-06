@@ -12,12 +12,14 @@
 import { getTranslations } from "next-intl/server";
 import type { AuditEntry } from "@/components/ui/shells";
 import { auditFieldDiffs, formatAuditValue } from "@/lib/audit-field-labels";
+import { resolveAuditRecordKey } from "@/lib/audit-record-key";
 import { avatarUrl } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 import type { Formatters } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
 import { inventoryNoteLabel } from "@/lib/inventory-note-labels";
 import { getServerFormatters } from "@/lib/user-preferences";
+import type { Prisma } from "../../generated/client/client";
 
 export type AuditAction =
   | "CREATE"
@@ -40,8 +42,15 @@ export interface RecordAuditInput {
   action: AuditAction;
   /** DB テーブル名（@@map 値）。例: "quotes" / "price_list_entries" / "products" */
   tableName: string;
-  /** 業務識別子（文書番号・エントリキー・id） */
+  /** 業務識別子（文書番号・エントリキー・id。表示用 — 従来どおり） */
   recordId: string;
+  /**
+   * レコードの安定キー（省略可）。呼び出し元が更新直後の行を持っていて
+   * PK が既に手元にあるときはここへ渡すと `audit-record-key.ts` の解決
+   * クエリを省ける。省略時は `tableName`/`recordId` から自動解決する
+   * （`lib/audit-record-key-core.ts` の登録簿）。
+   */
+  recordKey?: string;
   /** 変更前スナップショット（プレーンな JSON 相当のみ）。CREATE では省略。 */
   before?: unknown;
   /** 変更後スナップショット。DELETE では省略。 */
@@ -93,47 +102,31 @@ function toJson(value: unknown): object | undefined {
 /**
  * 監査ログを 1 件記録する。best-effort — 失敗しても例外は投げない
  * （業務 mutation を監査ログの失敗で巻き戻さない）。
+ *
+ * `record_key`（安定キー）は `input.recordKey` が渡されていればそれを使い、
+ * 無ければ `resolveAuditRecordKey` で自動解決する。解決に失敗しても
+ * （＝ null でも）監査行そのものは必ず書く — キーは読みやすさのための
+ * 付加情報であって、無いことが書き込みを止める理由にはならない。
  */
 export async function recordAudit(input: RecordAuditInput): Promise<void> {
   try {
     const userId = await getCurrentActorId();
+    const recordKey =
+      input.recordKey ??
+      (await resolveAuditRecordKey(input.tableName, input.recordId)).key;
     await prisma.auditLog.create({
       data: {
         userId,
         action: input.action,
         tableName: input.tableName,
         recordId: input.recordId,
+        recordKey,
         beforeData: toJson(input.before),
         afterData: toJson(input.after),
       },
     });
   } catch (e) {
     console.error("recordAudit failed", e);
-  }
-}
-
-/**
- * システム操作（seed / force-migration 等）を履歴に記録する。
- * actor は常にシステムユーザー。`note` が履歴の「変更内容」に表示される。
- */
-export async function recordSystemEvent(input: {
-  action: "SEED" | "MIGRATE";
-  tableName?: string;
-  recordId?: string;
-  note: string;
-}): Promise<void> {
-  try {
-    await prisma.auditLog.create({
-      data: {
-        userId: SYSTEM_USER_ID,
-        action: input.action,
-        tableName: input.tableName ?? "system",
-        recordId: input.recordId ?? null,
-        afterData: { note: input.note },
-      },
-    });
-  } catch (e) {
-    console.error("recordSystemEvent failed", e);
   }
 }
 
@@ -178,6 +171,7 @@ type AuditRow = {
   action: string;
   tableName: string;
   recordId: string | null;
+  recordKey: string | null;
   beforeData: unknown;
   afterData: unknown;
   createdAt: Date;
@@ -237,18 +231,43 @@ export function actorAvatarUrl(user: {
   return null;
 }
 
-/** 1 レコードの履歴（詳細画面「履歴」タブ）。失敗時は空配列（画面を壊さない）。 */
+/**
+ * 1 レコードの履歴（詳細画面「履歴」タブ）。失敗時は空配列（画面を壊さない）。
+ *
+ * `record_key` で突き合わせるのが基本だが、以下の行を拾い漏らさないよう
+ * `record_key IS NULL` の行にも `record_id` 一致でフォールバックする:
+ *   - backfill が届かなかった行（サイズが大きく別ジョブへ切り出した場合 等）
+ *   - migration とコードのデプロイの間に旧コードが書いた行
+ * フォールバックには対象書類の `created_at` 以降という境界を付ける
+ * （`resolveAuditRecordKey` の `since`）— 番号が再利用されていても、
+ * 削除済みの前の世代の行を新しい書類の履歴に混ぜない。
+ * キーを解決できない表（intake_folder 等）は従来どおり record_id だけで引く。
+ */
 export async function fetchAuditEntries(
   tableName: string,
   recordId: string,
 ): Promise<AuditEntry[]> {
   try {
-    const [fmt, tr] = await Promise.all([
+    const [fmt, tr, resolved] = await Promise.all([
       getServerFormatters(),
       getTranslations(),
+      resolveAuditRecordKey(tableName, recordId, { needSince: true }),
     ]);
+    const where: Prisma.AuditLogWhereInput = resolved.key
+      ? {
+          tableName,
+          OR: [
+            { recordKey: resolved.key },
+            {
+              recordKey: null,
+              recordId,
+              ...(resolved.since ? { createdAt: { gte: resolved.since } } : {}),
+            },
+          ],
+        }
+      : { tableName, recordId };
     const rows = await prisma.auditLog.findMany({
-      where: { tableName, recordId },
+      where,
       orderBy: { createdAt: "desc" },
       include: {
         user: {
@@ -274,6 +293,8 @@ export interface ActivityEntry extends AuditEntry {
   tableName: string;
   tableLabel: string;
   recordId: string | null;
+  /** レコードの安定キー（表示はしない — デバッグ・突合用）。 */
+  recordKey: string | null;
 }
 
 /** 操作履歴 詳細（SY07 詳細ページ用）— 一覧行 + 生データ・ユーザー id。 */
@@ -321,6 +342,7 @@ export async function getActivityEntry(
       tableName: row.tableName,
       tableLabel: auditTableLabel(row.tableName, tr),
       recordId: row.recordId,
+      recordKey: row.recordKey,
       userId: row.user?.id ?? null,
       actionRaw: row.action,
       beforeData: row.beforeData ?? null,
@@ -363,6 +385,7 @@ export async function listAuditEntries(
       tableName: row.tableName,
       tableLabel: auditTableLabel(row.tableName, tr),
       recordId: row.recordId,
+      recordKey: row.recordKey,
     }));
   } catch (e) {
     console.error("listAuditEntries failed", e);

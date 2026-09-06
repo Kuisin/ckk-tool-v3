@@ -372,6 +372,7 @@ export async function startStepExecution(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
+    recordKey: stepRow.workOrder.id,
     after: {
       note: encodeInventoryNote("stepStarted", {
         sortOrder: stepRow.sortOrder,
@@ -393,7 +394,7 @@ export async function pauseStepExecution(
 ): Promise<StepActionResult> {
   const stepRow = await prisma.workOrderStep.findUnique({
     where: { id: stepId },
-    include: { workOrder: { select: { workOrderNumber: true } } },
+    include: { workOrder: { select: { id: true, workOrderNumber: true } } },
   });
   if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません"); // i18n-ignore
   if (stepRow.status !== "IN_PROGRESS") {
@@ -423,6 +424,7 @@ export async function pauseStepExecution(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
+    recordKey: stepRow.workOrder.id,
     after: {
       note: encodeInventoryNote("stepPaused", {
         sortOrder: stepRow.sortOrder,
@@ -444,7 +446,9 @@ export async function resumeStepExecution(
 ): Promise<StepActionResult> {
   const stepRow = await prisma.workOrderStep.findUnique({
     where: { id: stepId },
-    include: { workOrder: { select: { workOrderNumber: true, status: true } } },
+    include: {
+      workOrder: { select: { id: true, workOrderNumber: true, status: true } },
+    },
   });
   if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません"); // i18n-ignore
   if (stepRow.status !== "IN_PROGRESS") {
@@ -496,6 +500,7 @@ export async function resumeStepExecution(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
+    recordKey: stepRow.workOrder.id,
     after: {
       note: encodeInventoryNote("stepResumed", {
         sortOrder: stepRow.sortOrder,
@@ -561,7 +566,7 @@ export async function setStepWorkLocation(
 ): Promise<StepActionResult> {
   const stepRow = await prisma.workOrderStep.findUnique({
     where: { id: stepId },
-    include: { workOrder: { select: { workOrderNumber: true } } },
+    include: { workOrder: { select: { id: true, workOrderNumber: true } } },
   });
   if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません"); // i18n-ignore
   if (stepRow.status !== "IN_PROGRESS") {
@@ -581,6 +586,7 @@ export async function setStepWorkLocation(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
+    recordKey: stepRow.workOrder.id,
     after: {
       note: encodeInventoryNote("workLocationChanged", {
         sortOrder: stepRow.sortOrder,
@@ -838,6 +844,7 @@ export async function completeStepExecution(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
+    recordKey: stepRow.workOrder.id,
     after: {
       note: encodeInventoryNote("stepCompleted", {
         success: persisted.outputSuccessQuantity,

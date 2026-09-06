@@ -141,7 +141,16 @@ model AuditLog {
   userId     String?  @map("user_id") @db.Uuid
   action     String // CREATE / UPDATE / DELETE
   tableName  String   @map("table_name") // quotes / estimates / price_list_entries / products …
-  recordId   String?  @map("record_id") // 業務識別子（文書番号・エントリキー・id）
+  recordId   String?  @map("record_id") // 業務識別子（文書番号・エントリキー・id。表示用）
+  // レコードの安定キー（record_id とは別物 — こちらは機械用）。uuid / int /
+  // 文字列 PK はそのまま、複合 PK は "YYYYMM:seq"。record_id は表示用の
+  // 業務識別子（QOT-… / ロット番号）のまま残す。採番リセットで番号が
+  // 再利用されても、この列は別の書類を指す（approval_requests で実際に
+  // 起きた穴と同じ考え方を audit_logs にも入れる）。
+  // null 可 — 解決できない行（intake_folder のファイル名、削除済み書類の
+  // 孤児行、この列を足す前に書かれた行）は null のままにする。解決方法は
+  // nextjs-web の lib/audit-record-key-core.ts が唯一の定義元。
+  recordKey  String?  @map("record_key")
   beforeData Json?    @map("before_data")
   afterData  Json?    @map("after_data")
   // 操作元のキオスク端末（共有タブレットからの操作のみ。Web からは null）。
@@ -154,7 +163,10 @@ model AuditLog {
   kioskDevice KioskDevice? @relation("AuditLogKioskDevice", fields: [kioskDeviceId], references: [id], onDelete: SetNull)
 
   @@index([tableName, recordId])
+  @@index([tableName, recordKey])
   @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([tableName, createdAt])
   @@index([kioskDeviceId])
   @@map("audit_logs")
   @@schema("app")
