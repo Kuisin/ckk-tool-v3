@@ -34,8 +34,17 @@ export interface RecordAuditInput {
   action: AuditAction;
   /** DB テーブル名（@@map 値）。例: "work_orders" */
   tableName: string;
-  /** 業務識別子（文書番号・id） */
+  /** 業務識別子（文書番号・id。表示用） */
   recordId: string;
+  /**
+   * レコードの安定キー（省略可）。nextjs-web 側は表名ごとの解決レジストリ
+   * （lib/audit-record-key-core.ts）を持つが、キオスクの書き込み先は
+   * work_orders / order_lines / kiosk_devices の 3 種だけで、どの呼び出し元も
+   * 更新直後の行を手元に持っている — レジストリを移植するより、呼び出し元が
+   * 直接 PK を渡すほうが単純で正しい。省略時は record_key が null のまま
+   * 書かれ、nextjs-web 側の migration backfill が拾う。
+   */
+  recordKey?: string;
   before?: unknown;
   after?: unknown;
 }
@@ -94,6 +103,7 @@ export async function recordAudit(input: RecordAuditInput): Promise<void> {
         action: input.action,
         tableName: input.tableName,
         recordId: input.recordId,
+        recordKey: input.recordKey ?? null,
         beforeData: toJson(input.before),
         afterData: toJson(input.after),
         // 共有タブレットからの操作は端末も残す（Web からの操作は null）。

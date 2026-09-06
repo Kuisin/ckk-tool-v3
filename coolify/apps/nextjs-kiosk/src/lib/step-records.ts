@@ -446,6 +446,7 @@ export async function recordInspection(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(step.workOrder.workOrderNumber),
+    recordKey: step.workOrderId,
     after: {
       note: encodeInventoryNote(
         status === "PASS" ? "inspectionRecordedPass" : "inspectionRecordedFail",
@@ -486,6 +487,7 @@ export async function confirmInspectionRecord(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(step.workOrder.workOrderNumber),
+    recordKey: step.workOrderId,
     after: { note: encodeInventoryNote("inspectionConfirmed") },
   });
   return { ok: true };
@@ -530,6 +532,7 @@ export async function recordDefects(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(step.workOrder.workOrderNumber),
+    recordKey: step.workOrderId,
     after: {
       note: encodeInventoryNote("defectsRecorded", { count: defects.length }),
     },

@@ -92,7 +92,7 @@ export function AuditDetailModal({
 
           {/* 変更点と生データは共通部品（SY07 の詳細と同じ見せ方）。 */}
           <AuditChangeTable
-            action={entry.action}
+            actionRaw={entry.actionRaw ?? entry.action}
             after={entry.after}
             before={entry.before}
             emptyMessage={

@@ -58,9 +58,10 @@ export function useUrlPatcher(mode: "client" | "server" = "client") {
 export function useUrlStringState(
   key: string,
   defaultValue = "",
+  mode: "client" | "server" = "client",
 ): [string, (v: string | null) => void] {
   const searchParams = useSearchParams();
-  const patch = useUrlPatcher();
+  const patch = useUrlPatcher(mode);
   const value = searchParams.get(key) ?? defaultValue;
   const set = useCallback(
     (v: string | null) => {
@@ -74,9 +75,10 @@ export function useUrlStringState(
 /** useUrlStringState の Select 向け別名（null 許容の値をそのまま渡せる）。 */
 export function useUrlSelectState(
   key: string,
+  mode: "client" | "server" = "client",
 ): [string | null, (v: string | null) => void] {
   const searchParams = useSearchParams();
-  const patch = useUrlPatcher();
+  const patch = useUrlPatcher(mode);
   const value = searchParams.get(key);
   const set = useCallback(
     (v: string | null) => patch({ [key]: v, page: null }),
@@ -118,9 +120,11 @@ export interface UrlTableState {
  * DataTable のページ・ページサイズ・ソートを URL に保持
  * （`?page=2&size=50&sort=updatedAt.desc`）。既定値はパラメータ省略。
  */
-export function useUrlTableState(): UrlTableState {
+export function useUrlTableState(
+  mode: "client" | "server" = "client",
+): UrlTableState {
   const searchParams = useSearchParams();
-  const patch = useUrlPatcher();
+  const patch = useUrlPatcher(mode);
 
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const sizeRaw = Number(searchParams.get("size"));

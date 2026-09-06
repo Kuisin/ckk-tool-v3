@@ -62,7 +62,8 @@ export async function saveDisplayPreferences(
   await recordAudit({
     action: "UPDATE",
     tableName: "users",
-    recordId: "self",
+    // "self" は解決できるキーが無い（1.5）— 自分の行の uuid をそのまま渡す。
+    recordId: saved.userId,
     before: saved.before,
     after: saved.after,
   });

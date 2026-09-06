@@ -506,6 +506,12 @@ export function FormSection({
 export interface AuditEntry {
   id: string | number;
   action: string;
+  /**
+   * 生の操作種別（CREATE / UPDATE / DELETE / …）。`action` は表示用に翻訳済み
+   * なので、`=== "DELETE"` のような分岐には必ずこちらを使うこと
+   * （AuditChangeTable の actionRaw prop 参照）。
+   */
+  actionRaw?: string;
   user: string;
   /** 操作者の顔写真（小）。未設定・システム操作なら null → イニシャル。 */
   avatarUrl?: string | null;

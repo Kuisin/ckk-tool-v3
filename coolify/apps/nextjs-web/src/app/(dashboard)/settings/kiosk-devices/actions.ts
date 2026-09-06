@@ -935,8 +935,12 @@ export async function listUnlockPinHistory(): Promise<
       take: 400,
     });
     await recordAudit({
+      // これは kiosk_unlock_pins の行ではなく system_settings の値
+      // (kiosk.unlock_pin) を見た記録 — 表名を実体に合わせる（1.5）。
+      // kiosk_unlock_pins の PK は履歴行ごとの BigInt で、この操作が指す
+      // 対象（現行の設定値）とは別物のため解決できるキーが無かった。
       action: "VIEW",
-      tableName: "kiosk_unlock_pins",
+      tableName: "system_settings",
       recordId: "kiosk.unlock_pin",
       after: {
         note: tr("settings.kioskDevicesActions.auditUnlockPinHistoryRevealed"),

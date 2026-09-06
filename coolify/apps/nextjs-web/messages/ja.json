@@ -802,7 +802,9 @@
     "finalInspection": "最終検査",
     "noPriceListTier": "数量段階なし",
     "priceListInactive": "価格表が無効",
-    "priceListExpired": "価格表の有効期間外"
+    "priceListExpired": "価格表の有効期間外",
+    "dateFrom": "開始日",
+    "dateTo": "終了日"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -6008,8 +6010,8 @@
   },
   "admin": {
     "activityLog": {
-      "searchByRecordUserOrContents": "レコード・ユーザー・内容で検索",
-      "thereIsNoActivity": "操作履歴がありません"
+      "thereIsNoActivity": "操作履歴がありません",
+      "searchByRecordOrUser": "レコード・ユーザーで検索"
     },
     "activityLogDetail": {
       "openApplabel": "{appLabel}を開く",
@@ -6023,7 +6025,8 @@
       "suffixStorageLocation": "（保管場所）",
       "suffixFloorMap": "（マップ）",
       "suffixDisplay": "（ディスプレイ）",
-      "formResponsesLabel": "フォーム回答"
+      "formResponsesLabel": "フォーム回答",
+      "actionWithRaw": "{label}（{raw}）"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "{label} を {env} で{v2}にしました",
@@ -8139,7 +8142,38 @@
       "portal_grants": "ポータル共有範囲",
       "portal_document_links": "ポータル書類リンク",
       "portal_backup_codes": "ポータルバックアップコード",
-      "system": "システム"
+      "system": "システム",
+      "approval_flow_rules": "条件付き承認ルール",
+      "design_files": "設計図",
+      "inspection_template_groups": "検査表テンプレートグループ",
+      "kiosk_unlock_pins": "退出PIN履歴",
+      "link_blacklist": "リンク拒否リスト",
+      "login_attempts": "ログイン履歴",
+      "material_type_prices": "材種既定単価",
+      "privileged_access_requests": "特権アクセス申請",
+      "product_process_routes": "製品工程ルート",
+      "regions": "地域",
+      "system_settings": "システム設定",
+      "user_change_requests": "ユーザー変更依頼",
+      "user_plants": "所属拠点",
+      "user_role_relation": "ロール割当",
+      "users": "ユーザー"
+    },
+    "change": {
+      "pair": "{label}: {before} → {after}",
+      "more": "ほか {count} 件"
+    },
+    "sentence": {
+      "create": "{actor} が {target}「{record}」を作成しました",
+      "createNoRecord": "{actor} が {target} を作成しました",
+      "delete": "{actor} が {target}「{record}」を削除しました",
+      "view": "{actor} が {target}「{record}」を閲覧しました",
+      "export": "{actor} が {target}「{record}」を書き出しました",
+      "updateNone": "{actor} が {target}「{record}」を更新しました",
+      "updateOne": "{actor} が {target}「{record}」の{field}を {before} → {after} に変更しました",
+      "updateMany": "{actor} が {target}「{record}」の{field}ほか {rest} 件を変更しました",
+      "note": "{actor}: {note}",
+      "fallback": "{actor} が {target}「{record}」を操作しました（{action}）"
     }
   },
   "inspectionTemplateIo": {
