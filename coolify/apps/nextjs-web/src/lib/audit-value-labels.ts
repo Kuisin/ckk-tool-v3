@@ -61,11 +61,22 @@ const STATUS_ENTITY_BY_TABLE: Partial<Record<string, StatusEntity>> = {
  * 通常配送/ユーザー直送）と `delivery_notes`（DELIVERY_METHOD_LABEL: 通常納品/…）
  * で別の enum。`executionLocation` も同様に `process_step_catalog`
  * （ProcessExecution: INTERNAL/INTERNAL_OR_OUTSOURCE）と
- * `work_order_steps`（StepExecution: INTERNAL/OUTSOURCE）で別の enum —
- * 後者には `enum.*` の訳が無い（StepCard は自前の固定バッジ文言を持つ）ので
- * ここには登録しない = raw のまま出す（正しい失敗の仕方）。
- * `type` / `mode` / `role` / `relation` のような 1 語の列名は対象の表を
- * 確認できないぶんは登録しない。
+ * `work_order_steps` / `product_process_route_version_steps`
+ * （StepExecution: INTERNAL/OUTSOURCE）で別の enum — 後者の訳
+ * （STEP_EXECUTION_LABEL）は用意したが、`recordAudit` がこの列名を
+ * 監査ペイロードへそのまま書いている箇所が現状無い（work_order_steps 自体を
+ * 監査する呼び出しが無く、変更は親の work_orders 側へまとめて記録される）ので
+ * 未配線のまま — 実在しない対応を推測で足すより、確認できたら足す。
+ *
+ * `kind` も表を跨いで 3 通りに意味が変わる: `design_requests`
+ * （DesignKind: 新規/改訂）・`forms`（FormKind: アンケート/申請・報告）・
+ * `user_change_requests`（UserChangeKind: 利用停止/復帰/…）。すべて
+ * `<table>.kind` で登録し、bare `kind` は登録しない。
+ *
+ * `type` / `mode` / `role` のような 1 語の列名は対象の表を確認できない
+ * ぶんは登録しない（`relation` は `process_step_use_dependencies` /
+ * `process_step_exec_dependencies` の 2 表でしか使われておらず、どちらも
+ * 同じ DependencyRelation（AND/OR）なので衝突が無い — bare で登録できる）。
  */
 const ENUM_MAP_BY_FIELD: Record<string, string> = {
   taxType: "TAX_TYPE_LABEL",
@@ -74,12 +85,18 @@ const ENUM_MAP_BY_FIELD: Record<string, string> = {
   quantityTracking: "QUANTITY_TRACKING_LABEL",
   lotInputMode: "LOT_INPUT_MODE_LABEL",
   orderType: "ORDER_TYPE_LABEL",
+  relation: "DEPENDENCY_RELATION_LABEL",
   "order_acceptances.deliveryMethod": "ACCEPTANCE_DELIVERY_METHOD_LABEL",
   "delivery_notes.deliveryMethod": "DELIVERY_METHOD_LABEL",
   "process_step_catalog.executionLocation": "PROCESS_EXECUTION_LABEL",
   "process_step_catalog.category": "PROCESS_CATEGORY_LABEL",
   "work_orders.type": "WORK_ORDER_TYPE_LABEL",
   "delivery_orders.type": "DELIVERY_ORDER_TYPE_LABEL",
+  "design_requests.trigger": "DESIGN_TRIGGER_LABEL",
+  "design_requests.kind": "DESIGN_KIND_LABEL",
+  "design_requests.priority": "DESIGN_PRIORITY_LABEL",
+  "forms.kind": "FORM_KIND_LABEL",
+  "user_change_requests.kind": "USER_CHANGE_KIND_LABEL",
 };
 
 /**
