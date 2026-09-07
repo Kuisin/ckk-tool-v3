@@ -11,6 +11,7 @@
 
 import { getTranslations } from "next-intl/server";
 import type { AuditEntry } from "@/components/ui/shells";
+import { entityNameOf, resolveEntityNames } from "@/lib/audit-entity-name";
 import { auditFieldDiffs, formatAuditValue } from "@/lib/audit-field-labels";
 import type { AuditQuery } from "@/lib/audit-filter-core";
 import { resolveAuditRecordKey } from "@/lib/audit-record-key";
@@ -204,8 +205,15 @@ function auditSentence(
   },
   actor: string,
   target: string,
+  /**
+   * マスタ系の表（`audit-entity-name-core.ts` が名前を持つと登録している
+   * 表）では番号（`42`）ではなく名前（`M6 ボルト`）で語る — 呼び出し元が
+   * `resolveEntityNames`/`entityNameOf` で解決したもの。名前が引けない表
+   * （書類系）では undefined のままで、その場合は record_id をそのまま使う。
+   */
+  entityName: string | undefined,
 ): string {
-  const record = row.recordId ?? "";
+  const record = entityName ?? row.recordId ?? "";
   const note = (row.afterData as { note?: unknown } | null)?.note;
   if (typeof note === "string" && note) {
     return tr("audit.sentence.note", {
@@ -445,6 +453,9 @@ export async function getActivityEntry(
     });
     if (!row) return null;
     const tableLabel = auditTableLabel(row.tableName, tr);
+    const names = await resolveEntityNames([
+      { tableName: row.tableName, recordKey: row.recordKey },
+    ]);
     return {
       ...mapAudit(fmt, tr, row),
       tableName: row.tableName,
@@ -457,6 +468,12 @@ export async function getActivityEntry(
         row,
         row.user?.displayName ?? tr("common.system"),
         tableLabel,
+        entityNameOf(
+          names,
+          row.tableName,
+          row.recordKey,
+          row.afterData ?? row.beforeData,
+        ),
       ),
       userId: row.user?.id ?? null,
       actionRaw: row.action,
@@ -553,6 +570,14 @@ export async function queryAuditEntries(query: AuditQuery): Promise<AuditPage> {
       }),
       prisma.auditLog.count({ where }),
     ]);
+    // 表ごとに 1 クエリへ束ねる — 1 ページ (最大 100 行) ぶんの名前を
+    // 行ごとに引くと、名前を持つ表が多いページで数十クエリになる。
+    const names = await resolveEntityNames(
+      rows.map((row) => ({
+        tableName: row.tableName,
+        recordKey: row.recordKey,
+      })),
+    );
     return {
       total,
       rows: rows.map((row) => {
@@ -569,6 +594,12 @@ export async function queryAuditEntries(query: AuditQuery): Promise<AuditPage> {
             row,
             row.user?.displayName ?? tr("common.system"),
             tableLabel,
+            entityNameOf(
+              names,
+              row.tableName,
+              row.recordKey,
+              row.afterData ?? row.beforeData,
+            ),
           ),
         };
       }),
