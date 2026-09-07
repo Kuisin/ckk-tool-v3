@@ -60,9 +60,10 @@ describe("auditValueLabel", () => {
     ).toBe("ユーザー直送");
   });
 
-  it("同じ列名でも表が違えば意味が変わる enum は登録しない（executionLocation）", () => {
-    // work_order_steps の executionLocation（StepExecution: INTERNAL/
-    // OUTSOURCE）には enum.* の訳が無いので raw のまま。
+  it("訳は用意しても、監査されていない表・列は配線しない（executionLocation）", () => {
+    // STEP_EXECUTION_LABEL 自体は存在するが、work_order_steps を直接監査する
+    // 呼び出しが無い（変更は親の work_orders 側へ記録される）ので未配線 —
+    // 実在しない対応を推測で足さない。
     expect(
       auditValueLabel(
         "executionLocation",
@@ -76,7 +77,7 @@ describe("auditValueLabel", () => {
     ).toBeUndefined();
   });
 
-  it("表を跨いで意味が変わりうる 1 語の列名（type/mode/role/relation）は登録しない", () => {
+  it("表を跨いで意味が変わりうる 1 語の列名（type/mode/role）は登録しない", () => {
     expect(auditValueLabel("type", "MANUFACTURE", "work_orders", "ja")).toBe(
       // work_orders.type だけは個別に table-qualified で登録してある
       "製造分",
@@ -87,6 +88,38 @@ describe("auditValueLabel", () => {
     expect(
       auditValueLabel("mode", "ANY", "approval_groups", "ja"),
     ).toBeUndefined();
+  });
+
+  it("relation は衝突が無いので bare で登録してある（DependencyRelation）", () => {
+    expect(
+      auditValueLabel("relation", "OR", "process_step_use_dependencies", "ja"),
+    ).toBe("OR（いずれか）");
+    expect(auditValueLabel("relation", "AND", undefined, "ja")).toBe(
+      "AND（すべて）",
+    );
+  });
+
+  it("kind は表ごとに 3 通りの enum に分かれる（design_requests/forms/user_change_requests）", () => {
+    expect(auditValueLabel("kind", "REVISION", "design_requests", "ja")).toBe(
+      "改訂",
+    );
+    expect(auditValueLabel("kind", "SURVEY", "forms", "ja")).toBe("アンケート");
+    expect(
+      auditValueLabel("kind", "UPDATE_ROLES", "user_change_requests", "ja"),
+    ).toBe("ロール割当の変更");
+    // bare（表が分からない）は登録していない — 3 通りのうちどれか判定できない。
+    expect(
+      auditValueLabel("kind", "REVISION", undefined, "ja"),
+    ).toBeUndefined();
+  });
+
+  it("design_requests の trigger / priority も引ける", () => {
+    expect(
+      auditValueLabel("trigger", "SALES_ORDER", "design_requests", "ja"),
+    ).toBe("受注時");
+    expect(auditValueLabel("priority", "HIGH", "design_requests", "ja")).toBe(
+      "急ぎ",
+    );
   });
 
   it("未知の値・未登録の列は undefined（生の値を出させる）", () => {
