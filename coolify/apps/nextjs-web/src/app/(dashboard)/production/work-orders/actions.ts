@@ -1093,6 +1093,27 @@ export async function cancelWorkOrder(
             where: { id: { in: linkedLineIds } },
             data: { isLocked: false },
           });
+          // 承認時に CONFIRMED → IN_PRODUCTION へ進めた明細は戻す。ただし
+          // 生きている別の指示書がまだ付いている明細は製造中のまま。戻さないと
+          // 「未手配なのに在庫照合できない（DRAFT/CONFIRMED 限定）」明細が残る。
+          const stillAllocated = await tx.workOrderOrderLine.findMany({
+            where: {
+              orderLineId: { in: linkedLineIds },
+              workOrder: {
+                id: { not: prior.id },
+                status: { not: "CANCELLED" },
+              },
+            },
+            select: { orderLineId: true },
+          });
+          const keep = new Set(stillAllocated.map((l) => l.orderLineId));
+          const revertIds = linkedLineIds.filter((id) => !keep.has(id));
+          if (revertIds.length > 0) {
+            await tx.orderLine.updateMany({
+              where: { id: { in: revertIds }, status: "IN_PRODUCTION" },
+              data: { status: "CONFIRMED" },
+            });
+          }
         }
         // 承認依頼中のキャンセル: 未処理の承認依頼行を取り下げる（記録なしの
         // PENDING 行のみ — PD03 の横断一覧に残さない）。
@@ -1177,9 +1198,22 @@ export async function requestApproval(
     const actor = await getCurrentActorId();
     const now = new Date();
     const linkedLineIds = prior.orderLineLinks.map((l) => l.orderLineId);
+    // 先にフロー（1 段目の承認依頼行）を作り、成功してから状態を動かす。
+    // 逆順だと、フロー開始が失敗したとき（段ゼロ・再利用番号の古い PENDING 行）
+    // に PENDING_APPROVAL + 明細ロックだけが残って承認も編集も通らなくなる
+    // — 注文請書・設計依頼書・素材発注書と同じ順序（前回点検 P3）。
+    const started = await startApprovalFlow({
+      targetType: "work_orders",
+      targetId: String(workOrderNumber),
+    });
+    if (!started.ok)
+      return actionError(
+        started.error ??
+          tr("production.workOrderActions.requestApprovalFailed"),
+      );
     await prisma.$transaction([
-      prisma.workOrder.update({
-        where: { id: prior.id },
+      prisma.workOrder.updateMany({
+        where: { id: prior.id, status: prior.status },
         data: {
           status: "PENDING_APPROVAL",
           approvalStatus: "PENDING",
@@ -1202,16 +1236,6 @@ export async function requestApproval(
           ]
         : []),
     ]);
-    // 1 段目の承認依頼を作る（PD03 横断表示・承認記録の紐付け先）。
-    const started = await startApprovalFlow({
-      targetType: "work_orders",
-      targetId: String(workOrderNumber),
-    });
-    if (!started.ok)
-      return actionError(
-        started.error ??
-          tr("production.workOrderActions.requestApprovalFailed"),
-      );
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",

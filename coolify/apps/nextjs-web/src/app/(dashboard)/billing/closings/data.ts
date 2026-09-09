@@ -16,6 +16,7 @@ import {
   type BillingClosing,
   type BillingClosingDetail,
   billingPeriodStart,
+  billingPeriodStartFrom,
   billingWindowFor,
   type ClosingShipmentRow,
   type ClosingStatus,
@@ -122,6 +123,37 @@ export async function fetchUninvoicedShipments(range: { gte: Date; lt: Date }) {
 }
 
 /**
+ * 請求期間の始点（暦日）。**前回処理した締日の翌日**が正で、処理済みの行が
+ * 無いときだけ顧客の締日設定から逆算する（model.ts billingPeriodStartFrom）。
+ * processClosing と fetchBillableShipmentsForClosing の両方がこれを通る。
+ */
+export async function resolveBillingPeriodStart(
+  customerBpId: string,
+  closingDate: Date,
+): Promise<Date> {
+  const [attrs, previous] = await Promise.all([
+    prisma.bpCustomerAttrs.findUnique({
+      where: { bpId: customerBpId },
+      select: { closingDay: true },
+    }),
+    prisma.billingClosing.findFirst({
+      where: {
+        customerBpId,
+        closingDate: { lt: closingDate },
+        status: { in: ["PROCESSED", "EXPORTED"] },
+      },
+      orderBy: { closingDate: "desc" },
+      select: { closingDate: true },
+    }),
+  ]);
+  return billingPeriodStartFrom(
+    closingDate,
+    attrs?.closingDay ?? null,
+    previous?.closingDate ?? null,
+  );
+}
+
+/**
  * 顧客 × 締日の請求対象出荷 — (前回締日, 締日]（JST）。processClosing と共用。
  * 前回締日は顧客の締日設定（BpCustomerAttrs.closingDay）から引く。上限は
  * この締日行の closingDate そのもの（設定が後から変わっても行の締日は動かない）。
@@ -130,14 +162,8 @@ export async function fetchBillableShipmentsForClosing(
   customerBpId: string,
   closingDate: Date,
 ): Promise<BillableShipment[]> {
-  const attrs = await prisma.bpCustomerAttrs.findUnique({
-    where: { bpId: customerBpId },
-    select: { closingDay: true },
-  });
-  const year = closingDate.getUTCFullYear();
-  const month = closingDate.getUTCMonth() + 1;
   const gte = jstMidnightOf(
-    billingPeriodStart(year, month, attrs?.closingDay ?? null),
+    await resolveBillingPeriodStart(customerBpId, closingDate),
   );
   const lt = jstMidnightOf(addDays(closingDate, 1)); // 締日当日を含む（排他的上限）
   const rows = await fetchUninvoicedShipments({ gte, lt });

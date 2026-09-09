@@ -19,9 +19,10 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import {
   addDays,
-  billingPeriodStart,
+  closingDateReached,
   parseYearMonth,
 } from "@/components/billing/closings/model";
+import { isoDateJst } from "@/components/sales/price-lists/model";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -38,7 +39,10 @@ import {
   prismaErrorMessage,
 } from "@/lib/server-action";
 import { taxRateFor } from "@/lib/tax-rate";
-import { fetchBillableShipmentsForClosing } from "./data";
+import {
+  fetchBillableShipmentsForClosing,
+  resolveBillingPeriodStart,
+} from "./data";
 
 const BASE_PATH = "/billing/closings";
 const INVOICES_PATH = "/billing/invoices";
@@ -106,6 +110,11 @@ export async function processClosing(
       return actionError(tr("billing.closingActions.closingNotFound"));
     if (closing.status !== "PENDING") {
       return actionError(tr("billing.closingActions.pendingOnly"));
+    }
+    // 締日の翌日から。締日前に処理すると、残りの出荷がどの窓にも入らない
+    // （画面の isProcessable と同じ判定 — model.ts）。
+    if (!closingDateReached(closing.closingDate, isoDateJst(new Date()))) {
+      return actionError(tr("billing.closingActions.closingDateNotReached"));
     }
 
     const shipments = await fetchBillableShipmentsForClosing(
@@ -176,10 +185,9 @@ export async function processClosing(
       DEFAULT_PAYMENT_TERMS_DAYS;
     // 請求期間 = 前回締日の翌日〜締日（対象出荷の収集と同じ区切り —
     // fetchBillableShipmentsForClosing / billingWindowFor）。
-    const periodFrom = billingPeriodStart(
-      closingDate.getUTCFullYear(),
-      closingDate.getUTCMonth() + 1,
-      closing.customerBp.customerAttrs?.closingDay ?? null,
+    const periodFrom = await resolveBillingPeriodStart(
+      closing.customerBpId,
+      closingDate,
     );
     const dueDate = addDays(closingDate, paymentTermsDays);
     // 支店: 対象出荷に共通の支店があれば引き継ぐ。

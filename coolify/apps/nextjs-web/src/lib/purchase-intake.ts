@@ -345,15 +345,23 @@ export interface PurchaseAliasLine {
   materialCode: string | null;
   /** 保存された素材 id（未選択は null）。 */
   materialId: string | null;
+  /**
+   * 突合が下書きに入れていた素材 id（自動一致。無ければ null）。渡されたときは
+   * **保存値がこれと違う行だけ**を学習する — 人が直した組み合わせだけを覚える。
+   */
+  draftMaterialId?: string | null;
 }
 
 /**
  * 保存できたあとに「この表記はこのマスタのことだ」を貯める（best-effort）。
  *
- * 販売側（match-alias-core の `aliasLearnings`）と違って**保存前後の比較は
- * しない**。購買側の取込は下書きを作るだけで「前の状態」が DB に無く、
- * 人はフォームを保存する時点で必ず 1 回は目を通しているため、保存された
- * 組み合わせをそのまま人の判断として扱ってよい。
+ * 販売側（match-alias-core の `aliasLearnings`）と同じく**人の訂正だけ**を
+ * 覚える。呼び出し側が下書きの自動一致（`draftMaterialId` /
+ * `draftSupplierBpId`）を渡してきたときは、保存値がそれと違う行だけが対象。
+ * 以前は保存された組み合わせを丸ごと覚えていたので、曖昧一致（φ8.3×330 と
+ * 8.3x300）を人が見落として保存すると、その誤りが次回から**自動確定**に
+ * 昇格していた。学習した別名は推測より先に当たるため、間違いを覚える害は
+ * 覚えない損より大きい。
  *
  * 品名と品番の両方を覚える — 次に同じ仕入先から同じ書式が来たとき、どちらで
  * 引いても当たるようにするため。**1 表記 = 1 マスタ**なので、後から別の素材へ
@@ -366,16 +374,23 @@ export async function learnPurchaseAliases(input: {
   extractedSupplierName: string | null;
   /** 保存された仕入先 id。 */
   supplierBpId: string | null;
+  /** 突合が下書きに入れていた仕入先 id。渡されたときは保存値と違うときだけ学習。 */
+  draftSupplierBpId?: string | null;
   lines: readonly PurchaseAliasLine[];
   actorId: string | null;
 }): Promise<void> {
   const learnings: AliasLearning[] = [];
 
-  const supplier = aliasLearning(
-    "business_partners",
-    input.supplierBpId,
-    input.extractedSupplierName,
-  );
+  const supplierChanged =
+    input.draftSupplierBpId === undefined ||
+    input.supplierBpId !== input.draftSupplierBpId;
+  const supplier = supplierChanged
+    ? aliasLearning(
+        "business_partners",
+        input.supplierBpId,
+        input.extractedSupplierName,
+      )
+    : null;
   if (supplier) learnings.push(supplier);
 
   // 同じ表記が別々の素材に結ばれている書類は、どちらを覚えるべきか決められない
@@ -383,6 +398,12 @@ export async function learnPurchaseAliases(input: {
   const byText = new Map<string, string | null>();
   for (const line of input.lines) {
     if (!line.materialId) continue;
+    // 自動一致のまま保存された行は覚えない（人の判断ではない）。
+    if (
+      line.draftMaterialId !== undefined &&
+      line.draftMaterialId === line.materialId
+    )
+      continue;
     for (const raw of [line.materialText, line.materialCode]) {
       const text = raw?.trim();
       if (!text) continue;

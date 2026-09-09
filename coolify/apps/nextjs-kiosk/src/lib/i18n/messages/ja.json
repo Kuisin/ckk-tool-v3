@@ -289,7 +289,7 @@
     },
     "approval": {
       "title": "検査承認",
-      "remaining": "承認待ち {n} 件",
+      "remaining": "承認依頼中 {n} 件",
       "allDone": "すべて承認しました",
       "empty": "承認する検査記録がありません",
       "approve": "承認する",

@@ -1101,13 +1101,15 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
       // この出荷書が触る注文明細ごとに、累計出荷を数え直して判定する。
       // 出荷書単位で合算すると、複数明細を束ねた瞬間に別の受注の数量まで
       // 巻き込んで過出荷ガードが誤作動する。
+      // ロックは**必ず同じ順**（id 昇順）で取る — A,B と B,A の 2 枚を同時に
+      // 出荷するとデッドロックで片方が落ちる。
       const lineIds = [
         ...new Set(
           row.items
             .map((it) => it.orderLineId)
             .filter((id): id is string => Boolean(id)),
         ),
-      ];
+      ].sort();
       for (const lineId of lineIds) {
         // 注文明細の行をロック（FOR UPDATE）— 同じ明細を載せた出荷書を同時に
         // 出荷したとき、両方が「まだ残っている」と読んで過出荷になるのを防ぐ

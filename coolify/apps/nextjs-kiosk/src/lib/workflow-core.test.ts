@@ -12,6 +12,7 @@ import {
   defaultOrder,
   isBlockingIssue,
   requiredCompanions,
+  resolveReceivedQuantity,
   stepPrerequisites,
   stepSelectBlockers,
   type UseDep,
@@ -1086,5 +1087,41 @@ describe("effectiveLotInputMode（上書き → カタログ既定 → NONE）",
   it("両方無ければ NONE", () => {
     expect(effectiveLotInputMode(null, null)).toBe("NONE");
     expect(effectiveLotInputMode(undefined, undefined)).toBe("NONE");
+  });
+});
+
+describe("resolveReceivedQuantity", () => {
+  it("想定受入が確定していればそれが権威（クライアント値は無視）", () => {
+    expect(
+      resolveReceivedQuantity({
+        expectedAtCompletion: 90,
+        startedWith: 100,
+        client: 5,
+      }),
+    ).toBe(90);
+  });
+
+  it("想定が無ければ開始時の値、それも無ければクライアント値", () => {
+    expect(
+      resolveReceivedQuantity({
+        expectedAtCompletion: null,
+        startedWith: 100,
+        client: 5,
+      }),
+    ).toBe(100);
+    expect(
+      resolveReceivedQuantity({
+        expectedAtCompletion: null,
+        startedWith: null,
+        client: 5,
+      }),
+    ).toBe(5);
+    expect(
+      resolveReceivedQuantity({
+        expectedAtCompletion: null,
+        startedWith: null,
+        client: undefined,
+      }),
+    ).toBe(0);
   });
 });
