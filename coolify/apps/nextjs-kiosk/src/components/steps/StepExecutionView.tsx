@@ -334,7 +334,7 @@ export function StepExecutionView({
                     <Button
                       leftSection={<IconQrcode size={18} />}
                       onClick={() => setLocationScanOpen((v) => !v)}
-                      size="sm"
+                      size="lg"
                       variant="light"
                     >
                       {locationScanOpen

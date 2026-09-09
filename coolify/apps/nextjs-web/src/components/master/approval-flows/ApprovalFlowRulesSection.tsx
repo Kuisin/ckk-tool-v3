@@ -309,6 +309,7 @@ export function ApprovalFlowRulesSection({
       (def.optionsKey ? (dynamicOptions[def.optionsKey] ?? []) : []);
     return (
       <Select
+        aria-label={tr("common.select")}
         data={options}
         flex={1}
         onChange={(v) =>
@@ -492,6 +493,7 @@ export function ApprovalFlowRulesSection({
               return (
                 <Group align="flex-start" gap="xs" key={c.key} wrap="nowrap">
                   <Select
+                    aria-label={tr("common.item")}
                     data={fieldOptions}
                     onChange={(v) =>
                       setConditions((prev) =>

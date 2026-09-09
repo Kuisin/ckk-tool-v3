@@ -141,10 +141,14 @@ export function ProductInventoryDetail({
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="reservations">
-            予約（{record.reservations.length}）
+            {tr("production.inventory.reservationsCount", {
+              count: record.reservations.length,
+            })}
           </Tabs.Tab>
           <Tabs.Tab value="transactions">
-            取引履歴（{record.transactions.length}）
+            {tr("production.inventory.transactionsCount", {
+              count: record.transactions.length,
+            })}
           </Tabs.Tab>
         </Tabs.List>
 

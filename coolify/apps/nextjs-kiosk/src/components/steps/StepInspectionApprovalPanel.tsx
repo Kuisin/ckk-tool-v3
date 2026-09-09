@@ -191,7 +191,7 @@ export function StepInspectionApprovalPanel({
                   <IconChevronDown size={20} />
                 )
               }
-              size="md"
+              size="lg"
               variant="subtle"
             >
               {othersOpen

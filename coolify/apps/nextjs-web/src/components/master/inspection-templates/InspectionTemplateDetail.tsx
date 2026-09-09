@@ -252,7 +252,9 @@ export function InspectionTemplateDetail({
               onClick: () => setApprovalGroupOpen(true),
             },
             {
-              label: record.isActive ? "無効化" : tr("common.enable"),
+              label: record.isActive
+                ? tr("common.disable")
+                : tr("common.enable"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
@@ -305,7 +307,15 @@ export function InspectionTemplateDetail({
         />
         <FieldValue
           label={tr("common.version")}
-          value={`v${record.version}${record.isLatestVersion ? "（最新）" : ""}`}
+          value={
+            record.isLatestVersion
+              ? tr("master.inspectionTemplates.versionLatest", {
+                  version: record.version,
+                })
+              : tr("master.inspectionTemplates.version", {
+                  version: record.version,
+                })
+          }
         />
         <FieldValue label={tr("common.name2")} value={record.nameJa} />
         <FieldValue
@@ -668,7 +678,7 @@ export function InspectionTemplateDetail({
                       </Table.Td>
                       <Table.Td>
                         <Text className="tabular-nums" size="sm">
-                          {v.itemCount}件
+                          {tr("common.itemsCount", { count: v.itemCount })}
                         </Text>
                       </Table.Td>
                       <Table.Td>

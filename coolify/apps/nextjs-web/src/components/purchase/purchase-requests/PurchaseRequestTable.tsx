@@ -132,6 +132,7 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
       breadcrumbs={[tr("common.purchasing"), tr("common.purchaseRequest")]}
       filters={
         <Select
+          aria-label={tr("common.status")}
           clearable
           data={statusOptions("PurchaseRequest")}
           flex={isMobile ? 1 : undefined}

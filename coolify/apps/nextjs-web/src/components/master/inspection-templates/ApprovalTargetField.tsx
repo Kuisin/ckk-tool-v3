@@ -68,6 +68,7 @@ export function ApprovalTargetField({
         />
         {mode === "group" ? (
           <Select
+            aria-label={tr("common.select")}
             clearable
             data={groupOptions}
             onChange={onGroupChange}

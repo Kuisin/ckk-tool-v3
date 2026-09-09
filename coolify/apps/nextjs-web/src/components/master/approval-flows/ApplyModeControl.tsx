@@ -14,6 +14,7 @@ import { notifications } from "@mantine/notifications";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { setApprovalApplyMode } from "@/app/(dashboard)/master/approval-settings/actions";
+import { useIsMobile } from "@/hooks/useViewport";
 
 export function ApplyModeControl({
   targetType,
@@ -23,6 +24,7 @@ export function ApplyModeControl({
   initialMode: string;
 }) {
   const tr = useTranslations();
+  const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const [mode, setMode] = useState(initialMode === "POST" ? "POST" : "PRE");
 
@@ -78,8 +80,9 @@ export function ApplyModeControl({
           ]}
           disabled={isPending}
           onChange={handleChange}
+          orientation={isMobile ? "vertical" : "horizontal"}
           value={mode}
-          w="fit-content"
+          w={isMobile ? "100%" : "fit-content"}
         />
       </Stack>
     </Paper>

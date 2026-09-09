@@ -141,6 +141,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
       filters={
         <>
           <Select
+            aria-label={tr("common.method2")}
             clearable
             data={deliveryMethodOptions(locale)}
             flex={isMobile ? 1 : undefined}
@@ -150,6 +151,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
             w={isMobile ? undefined : 150}
           />
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={statusOptions("DeliveryNote")}
             flex={isMobile ? 1 : undefined}

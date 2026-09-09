@@ -150,7 +150,12 @@ export function AppTabs({
   return (
     <Tabs {...rest} onChange={handleChange} value={active}>
       {list && (
-        <div className="app-tabs-bar" ref={containerRef}>
+        <div
+          className={
+            collapsed ? "app-tabs-bar app-tabs-bar-collapsed" : "app-tabs-bar"
+          }
+          ref={containerRef}
+        >
           <div
             className={collapsed ? "app-tabs-measure" : undefined}
             ref={listRef}

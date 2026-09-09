@@ -273,6 +273,7 @@ export function PendingShipmentBoard({
         <>
           {!isUnshipped && (
             <Select
+              aria-label={tr("common.type2")}
               clearable
               data={deliveryOrderTypeOptions(locale)}
               flex={isMobile ? 1 : undefined}
@@ -283,6 +284,7 @@ export function PendingShipmentBoard({
             />
           )}
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={
               isUnshipped

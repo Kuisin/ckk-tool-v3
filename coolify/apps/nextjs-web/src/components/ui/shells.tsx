@@ -314,6 +314,7 @@ export function DetailShell({
   createdAt?: string;
   updatedAt?: string;
 }) {
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   return (
     <Stack gap="md">
@@ -331,12 +332,12 @@ export function DetailShell({
           <Group gap="xl">
             {createdAt && (
               <Text c="dimmed" size="xs">
-                作成: {createdAt}
+                {tr("ui.detailShell.created", { value: createdAt })}
               </Text>
             )}
             {updatedAt && (
               <Text c="dimmed" size="xs">
-                更新: {updatedAt}
+                {tr("ui.detailShell.updated", { value: updatedAt })}
               </Text>
             )}
           </Group>

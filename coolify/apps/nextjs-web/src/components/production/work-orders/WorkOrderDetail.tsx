@@ -285,7 +285,10 @@ export function WorkOrderDetail({
                     <DocNumber c="blue">{l.number}</DocNumber>
                   </Anchor>
                   <Text c="dimmed" size="xs">
-                    割当 {l.allocatedQuantity} / 受注 {l.lineQuantity}
+                    {tr("production.workOrderDetail.allocatedOfOrdered", {
+                      allocated: l.allocatedQuantity,
+                      ordered: l.lineQuantity,
+                    })}
                   </Text>
                 </Group>
               ))}
@@ -605,7 +608,13 @@ export function WorkOrderDetail({
               <Box maw={360}>
                 <DesignFileThumb
                   target={{
-                    caption: `v${designFile.version}${designPinned ? "" : "（最新）"}`,
+                    caption: designPinned
+                      ? tr("production.workOrderDetail.version", {
+                          version: designFile.version,
+                        })
+                      : tr("production.workOrderDetail.versionLatest", {
+                          version: designFile.version,
+                        }),
                     filename: designFile.filename,
                     mimeType: designFile.mimeType,
                     src: `/api/design-files/${encodeURIComponent(designFile.id)}`,
@@ -658,7 +667,10 @@ export function WorkOrderDetail({
                         <DocNumber c="blue">{l.number}</DocNumber>
                       </Anchor>
                       <Text c="dimmed" size="xs">
-                        割当 {l.allocatedQuantity} / 受注 {l.lineQuantity}
+                        {tr("production.workOrderDetail.allocatedOfOrdered", {
+                          allocated: l.allocatedQuantity,
+                          ordered: l.lineQuantity,
+                        })}
                         {l.customerName ? ` / ${l.customerName}` : ""}
                       </Text>
                     </Group>
@@ -748,9 +760,9 @@ export function WorkOrderDetail({
               icon={<IconAlertTriangle size={16} />}
               variant="light"
             >
-              新しい版が存在します（#
-              {wo.copies.map((c) => c.workOrderNumber).join(", #")}）。
-              最新版のコピーを検討してください。
+              {tr("production.workOrderDetail.newerVersionsExist", {
+                numbers: wo.copies.map((c) => c.workOrderNumber).join(", #"),
+              })}
             </Alert>
           )}
           <SearchSelect

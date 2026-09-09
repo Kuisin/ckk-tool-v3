@@ -213,6 +213,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
       breadcrumbs={[tr("common.billing"), tr("common.billingClosing")]}
       filters={
         <Select
+          aria-label={tr("common.status")}
           clearable
           data={statusOptions("BillingClosing")}
           flex={isMobile ? 1 : undefined}
@@ -225,6 +226,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("billing.closings.searchByCustomer")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("billing.closings.searchByCustomer")}

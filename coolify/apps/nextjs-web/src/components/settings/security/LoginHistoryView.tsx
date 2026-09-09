@@ -246,6 +246,7 @@ export function LoginHistoryView({
         filters={
           <>
             <Select
+              aria-label={tr("common.period")}
               data={DAY_OPTIONS}
               flex={isMobile ? 1 : undefined}
               onChange={setDays}
@@ -254,6 +255,7 @@ export function LoginHistoryView({
               w={isMobile ? undefined : 110}
             />
             <Select
+              aria-label={tr("settings.security.result")}
               clearable
               data={OUTCOME_OPTIONS}
               flex={isMobile ? 1 : undefined}
@@ -263,6 +265,7 @@ export function LoginHistoryView({
               w={isMobile ? undefined : 100}
             />
             <Select
+              aria-label={tr("common.apps")}
               clearable
               data={APP_OPTIONS}
               flex={isMobile ? 1 : undefined}
@@ -272,6 +275,7 @@ export function LoginHistoryView({
               w={isMobile ? undefined : 110}
             />
             <Select
+              aria-label={tr("common.deviceType")}
               clearable
               data={ownershipOptions(tr)}
               flex={isMobile ? 1 : undefined}
@@ -285,9 +289,10 @@ export function LoginHistoryView({
         onReset={reset}
         search={
           <TextInput
+            aria-label={tr("settings.security.iPCidrEG192168")}
             leftSection={<IconSearch size={14} />}
-            onChange={(e) => setIp(e.currentTarget.value)}
             // CIDR をそのまま受ける（サーバー側で inet の <<= に落とす）
+            onChange={(e) => setIp(e.currentTarget.value)}
             placeholder={tr("settings.security.iPCidrEG192168")}
             value={ip}
           />

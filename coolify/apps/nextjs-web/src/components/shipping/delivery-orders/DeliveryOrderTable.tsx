@@ -136,6 +136,7 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
       filters={
         <>
           <Select
+            aria-label={tr("common.type2")}
             clearable
             data={deliveryOrderTypeOptions(locale)}
             flex={isMobile ? 1 : undefined}
@@ -145,6 +146,7 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
             w={isMobile ? undefined : 140}
           />
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={statusOptions("DeliveryOrder")}
             flex={isMobile ? 1 : undefined}

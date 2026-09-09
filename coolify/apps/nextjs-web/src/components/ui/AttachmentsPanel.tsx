@@ -221,7 +221,7 @@ export function AttachmentsPanel({
           {title}
           {attachments.length > 0 && (
             <Text c="dimmed" className="tabular-nums" ml={6} size="sm" span>
-              {attachments.length} 件
+              {tr("common.itemsCount", { count: attachments.length })}
             </Text>
           )}
         </Title>

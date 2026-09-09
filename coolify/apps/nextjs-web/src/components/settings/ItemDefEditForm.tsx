@@ -277,6 +277,7 @@ export function ItemDefEditForm({
               // biome-ignore lint/suspicious/noArrayIndexKey: option rows have no stable id
               <Group gap="xs" key={i} wrap="nowrap">
                 <TextInput
+                  aria-label={tr("common.value")}
                   onChange={(e) =>
                     setOptions(
                       (def.options ?? []).map((x, j) =>
@@ -289,6 +290,7 @@ export function ItemDefEditForm({
                   value={o.value}
                 />
                 <TextInput
+                  aria-label={tr("settings.itemDefEditForm.displayLabel")}
                   onChange={(e) =>
                     setOptions(
                       (def.options ?? []).map((x, j) =>

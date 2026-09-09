@@ -404,6 +404,7 @@ export function UnifiedInventory({
         tab === "products" || tab === "materials" ? (
           <>
             <Select
+              aria-label={tr("common.site")}
               clearable
               data={plantOptions}
               flex={isMobile ? 1 : undefined}
@@ -414,6 +415,7 @@ export function UnifiedInventory({
             />
             {tab === "products" && (
               <Select
+                aria-label={tr("common.type")}
                 clearable
                 data={KIND_OPTIONS}
                 flex={isMobile ? 1 : undefined}

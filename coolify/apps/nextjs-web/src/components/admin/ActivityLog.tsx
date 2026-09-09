@@ -183,6 +183,7 @@ export function ActivityLog({ entries, total, actors }: Props) {
             w={isMobile ? undefined : 160}
           />
           <Select
+            aria-label={tr("common.actions")}
             clearable
             data={actionOptions}
             flex={isMobile ? 1 : undefined}
@@ -192,6 +193,7 @@ export function ActivityLog({ entries, total, actors }: Props) {
             w={isMobile ? undefined : 130}
           />
           <Select
+            aria-label={tr("common.target")}
             clearable
             data={tableOptions}
             flex={isMobile ? 1 : undefined}
@@ -202,6 +204,7 @@ export function ActivityLog({ entries, total, actors }: Props) {
             w={isMobile ? undefined : 160}
           />
           <Select
+            aria-label={tr("common.user")}
             clearable
             data={actors}
             flex={isMobile ? 1 : undefined}
@@ -216,6 +219,7 @@ export function ActivityLog({ entries, total, actors }: Props) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("admin.activityLog.searchByRecordOrUser")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearchInput(e.currentTarget.value)}
           placeholder={tr("admin.activityLog.searchByRecordOrUser")}

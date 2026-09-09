@@ -184,6 +184,7 @@ function UserRolesEditor({
   return (
     <>
       <MultiSelect
+        aria-label={value.length === 0 ? tr("common.selectARole") : undefined}
         clearable
         data={options}
         onChange={setValue}
@@ -405,6 +406,7 @@ function UserPlantsEditor({
   return (
     <>
       <MultiSelect
+        aria-label={value.length === 0 ? tr("common.selectASite") : undefined}
         clearable
         data={options}
         onChange={setValue}

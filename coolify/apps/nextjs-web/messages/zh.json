@@ -868,6 +868,7 @@
     "clearFilter": "清除筛选",
     "guest": "访客",
     "homeSettingsForm": {
+      "selectApps": "选择应用",
       "enterAGroupName": "请输入分组名称",
       "theHomeLayoutWasUpdated": "已更新首页设置",
       "homeLayout": "首页设置",
@@ -2039,6 +2040,7 @@
       "markPaidFailed": "标记为已付款失败"
     },
     "closingActions": {
+      "closingDateNotReached": "结算日之前无法处理（从结算日次日起）",
       "closingNotFound": "未找到目标结算处理",
       "generateInvoiceFailed": "请款单生成失败",
       "invalidYearMonth": "目标月份格式无效（YYYYMM）",
@@ -2546,6 +2548,17 @@
       "site": "据点"
     },
     "stepCard": {
+      "othersCount": "另有 {count} 人",
+      "lot": "批次 {lot}",
+      "requestedOn": "委托：{date}",
+      "expectedOn": "预计到货：{date}",
+      "completedOn": "完成：{date}",
+      "completedOnBy": "完成：{date}（{name}）",
+      "planActualCount": "计划 {plans} 件 / 实绩 {actuals} 件",
+      "passThrough": "通过 {count}（不记录数量）",
+      "semiFinished": "半成品 {count}",
+      "scrapped": "报废 {count}",
+      "processBranch": "工序分支 {count}",
       "stepMenu": "工序菜单",
       "addABranch": "添加分支",
       "assignedTo": "负责",
@@ -2672,6 +2685,8 @@
       "deleteTheDrawing": "删除图纸"
     },
     "inventory": {
+      "reservationsCount": "预留（{count}）",
+      "transactionsCount": "交易记录（{count}）",
       "thereIsNoTransactionHistory": "没有交易历史",
       "couldNotTransferTheStock": "库存调拨失败",
       "theStockWasTransferred": "已调拨库存",
@@ -2722,6 +2737,16 @@
       "thereAreNoWorkOrdersIn": "没有进行中的工单"
     },
     "stepExecution": {
+      "workOrderLabel": "工单 {number}",
+      "executionSite": "实施场所：{site}",
+      "plannedQuantity": "计划数量：{count}",
+      "plannedWorkHours": "计划作业时间：{hours} h",
+      "startedOn": "开始：{date}",
+      "startedOnBy": "开始：{date}（{name}）",
+      "completedOn": "完成：{date}",
+      "completedOnBy": "完成：{date}（{name}）",
+      "lockedByUser": "{name} 正在操作此工序。在完成或中止之前无法操作。",
+      "completesWithoutQuantity": "此工序不记录数量即可完成（通过数 {count}）",
       "theStepWasStarted": "已开始工序",
       "couldNotStartTheStep": "开始工序失败",
       "theLotSlipCodeWasSaved": "已保存批次／单据编号",
@@ -2775,6 +2800,10 @@
       "stepFallbackWithId": "工序 #{id}"
     },
     "workOrderDetail": {
+      "allocatedOfOrdered": "分配 {allocated} / 订购 {ordered}",
+      "version": "v{version}",
+      "versionLatest": "v{version}（最新）",
+      "newerVersionsExist": "存在更新的版本（#{numbers}）。请考虑复制最新版本。",
       "pinned": "已固定",
       "workOrderWasCreatedWithDoc": "工单 {docNumber} 已创建",
       "cancelWorkOrderWithLabel": "作废工单 {label}。此操作无法撤销。",
@@ -3742,6 +3771,8 @@
       "importCsv": "导入 CSV",
       "text": "文本",
       "number": "数值",
+      "keyCell": "第 {row} 行的键列 {col}",
+      "valueCell": "第 {row} 行的值",
       "exactMatch": "完全匹配",
       "geTakeTheSmallest": "≥ 以上取最小（直径×长度）",
       "leTakeTheLargest": "≤ 以下取最大（LD/折扣）",
@@ -4119,6 +4150,9 @@
       "ipAddress": "IP 地址"
     },
     "privileged": {
+      "approveTab": "批准",
+      "approveTabWithCount": "批准（{count}）",
+      "reasonLabel": "理由：{reason}",
       "pendingApproval": "（审批中）",
       "theClockStartsFromTheFirst": "持有时间从首次操作时开始计算。",
       "theseOperationsNeedApproval": "这些操作需要审批。",
@@ -4244,6 +4278,11 @@
       "screenNumber": "第 {n} 屏"
     },
     "kioskFloorMapView": {
+      "unnamed": "（未设置）",
+      "inUseBy": "使用中：{name}",
+      "deviceCount": "{count} 台",
+      "thisFloor": "本楼层（{count}）",
+      "otherDevices": "其他终端（{count}）",
       "thisSiteHasNoFloorMaps": "该据点没有平面图。",
       "deleteFloorNameCannotIfDevices": "将删除楼层「{name}」。如果已放置终端则无法删除。",
       "floorMapName": "平面图：{name}",
@@ -4962,6 +5001,8 @@
       "sortOrderValue": "显示顺序 {value}"
     },
     "inspectionTemplates": {
+      "version": "v{version}",
+      "versionLatest": "v{version}（最新）",
       "theTargetCanBeAnApproval": "对象可选审批组，或仅此检查表的审批人（自定义・可多名）。未设置 = 任何人均可验收",
       "changeTheInspectionApprovalRecipient": "更改检查批准对象",
       "blankSheet": "空白表",
@@ -5431,6 +5472,8 @@
       "disableTitle": "停用不良类别"
     },
     "inspectionTemplateTable": {
+      "allVersions": "共 {count}",
+      "itemCount": "{count} 项",
       "bulkEnabled": "已启用 {count} 个检查表模板",
       "bulkDisabled": "已停用 {count} 个检查表模板",
       "bulkDeleteConfirm": "将删除已选中的 {count} 个检查表模板。此操作无法撤销。",
@@ -6533,6 +6576,8 @@
       "theConditionIsNotSavedUntil": "在选择 1 个以上的值之前，条件不会被保存（保持全部可见的状态）"
     },
     "shareGrantsPanel": {
+      "notifyOnComplete": "完成后通知",
+      "recipientN": "共享对象 {n}",
       "companyWideEveryoneWhoCanLog": "全公司（全体登录用户）",
       "theSharingSettingsWereSaved": "已保存共享设置",
       "selectARole": "选择角色",
@@ -6696,6 +6741,10 @@
       "stopsPushNotificationsToDevice": "将停止向“{device}”发送推送通知。"
     },
     "profileView": {
+      "registeredOn": "登记：{date}",
+      "change": "更改",
+      "removeDeviceTitle": "解除通知终端",
+      "removeDeviceMessage": "将停止向此终端推送通知。如需再次接收，请在终端上重新启用通知。",
       "theProfilePhotoWasUpdated": "已更新个人头像",
       "theProfilePhotoWasRemoved": "已删除个人头像",
       "theEmailAddressWasUpdatedNotification": "已更新电子邮箱（将作为通知邮件的收件地址）",
@@ -6943,6 +6992,10 @@
       "thereAreNoOrderLinesThey": "没有订单明细（确定订单确认书后创建）"
     },
     "priceLists": {
+      "copyDescription": "将“{product}”的全部订单类别（{types}）复制到目标。请设置目标的有效期（所有类别共用）。",
+      "selectACustomerError": "请选择客户",
+      "selectAProductError": "请选择产品",
+      "endDateRequiredForTestSample": "因包含试制、样品类别，失效日为必填",
       "enterTheDestinationCustomerProductAnd": "请输入复制目标的客户、产品和有效期（开始・结束）",
       "enterTheDestinationCustomerProductAnd2": "请输入复制目标的客户、产品和生效日",
       "thePriceListWasCopiedTo": "已将价格表复制到其他客户・产品",
@@ -7703,11 +7756,19 @@
       "operationDetails": "操作详情",
       "thereAreNoDetails": "没有详情"
     },
+    "detailShell": {
+      "created": "创建：{value}",
+      "updated": "更新：{value}"
+    },
     "dataTable": {
       "clearSelection": "取消选择",
       "columns": "列显示",
       "selectAll": "全选",
       "selectRows": "选择行",
+      "firstPage": "第一页",
+      "previousPage": "上一页",
+      "nextPage": "下一页",
+      "lastPage": "最后一页",
       "rowsToShow": "显示条数",
       "noData": "暂无数据",
       "selectedCount": "已选择 {count} 项",

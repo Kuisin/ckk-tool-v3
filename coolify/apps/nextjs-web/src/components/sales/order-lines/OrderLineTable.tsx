@@ -144,6 +144,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
       filters={
         <>
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={statusOptions("OrderLine")}
             flex={isMobile ? 1 : undefined}
@@ -153,6 +154,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
             w={isMobile ? undefined : 140}
           />
           <Select
+            aria-label={tr("common.orderType")}
             clearable
             data={orderTypeOptions(locale)}
             flex={isMobile ? 1 : undefined}
@@ -166,6 +168,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("common.searchByOrderLineNumberCustomer")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("common.searchByOrderLineNumberCustomer")}

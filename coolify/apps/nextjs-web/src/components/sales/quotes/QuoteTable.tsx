@@ -132,6 +132,7 @@ export function QuoteTable({
       filters={
         <>
           <Select
+            aria-label={tr("common.customer")}
             clearable
             data={customerOptions}
             flex={isMobile ? 1 : undefined}
@@ -142,6 +143,7 @@ export function QuoteTable({
             w={isMobile ? undefined : 180}
           />
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={statusOptions("Quote")}
             flex={isMobile ? 1 : undefined}
@@ -155,6 +157,7 @@ export function QuoteTable({
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("sales.quotes.searchByQuoteNumberOrCustomer")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("sales.quotes.searchByQuoteNumberOrCustomer")}

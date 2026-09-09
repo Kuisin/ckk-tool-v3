@@ -147,6 +147,7 @@ export function MaterialTypePriceGrid({
           if (colIndex === 0) {
             return (
               <Select
+                aria-label={tr("common.diameter")}
                 data={diameterOptions}
                 onChange={(v) => setDiameter(rowIndex, v ?? "")}
                 placeholder={tr("common.diameter")}

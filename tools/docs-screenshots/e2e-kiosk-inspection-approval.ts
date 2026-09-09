@@ -73,7 +73,7 @@ async function main() {
   );
 
   // 2. 承認待ちの件数が出る
-  check("承認待ち件数が出る", (await p.getByText("承認待ち 1 件").count()) > 0);
+  check("承認依頼中の件数が出る", (await p.getByText("承認依頼中 1 件").count()) > 0);
 
   // 3. 押せる的の大きさ（現場は手袋。44px 以上が最低線）
   const btn = await p.getByRole("button", { name: "承認する" }).boundingBox();

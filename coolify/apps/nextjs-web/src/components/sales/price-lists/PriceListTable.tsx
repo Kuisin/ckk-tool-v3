@@ -301,6 +301,7 @@ export function PriceListTable({
       filters={
         <>
           <Select
+            aria-label={tr("common.customer")}
             clearable
             data={customerOptions}
             flex={isMobile ? 1 : undefined}
@@ -311,6 +312,7 @@ export function PriceListTable({
             w={isMobile ? undefined : 180}
           />
           <Select
+            aria-label={tr("common.product")}
             clearable
             data={productOptions}
             flex={isMobile ? 1 : undefined}
@@ -321,6 +323,7 @@ export function PriceListTable({
             w={isMobile ? undefined : 180}
           />
           <Select
+            aria-label={tr("common.orderType")}
             clearable
             data={ORDER_TYPE_OPTIONS}
             flex={isMobile ? 1 : undefined}
@@ -334,6 +337,7 @@ export function PriceListTable({
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("sales.priceLists.searchByCustomerOrProduct")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("sales.priceLists.searchByCustomerOrProduct")}

@@ -40,6 +40,7 @@ import {
   type CroppedImages,
   ImageCropModal,
 } from "@/components/ui/ImageCropModal";
+import { useConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -118,6 +119,10 @@ export function ProfileView({ user }: { user: ProfileData }) {
   const [devices, setDevices] = useState(user.devices);
   const [emailPending, startEmail] = useTransition();
   const [pwPending, startPw] = useTransition();
+  const [devicePending, startDevice] = useTransition();
+  const [removingDeviceId, setRemovingDeviceId] = useState<string | null>(null);
+  // 通知端末の解除は取り消せない（端末側で入れ直す）ので確認を挟む（§16.2）。
+  const confirm = useConfirm();
 
   /**
    * 写真の設定・削除は /api/avatars（Route Handler）へ。Server Action は
@@ -291,7 +296,9 @@ export function ProfileView({ user }: { user: ProfileData }) {
                 onClick={() => photoInputRef.current?.click()}
                 size="xs"
               >
-                {avatarUrl ? "変更" : tr("profile.profileView.setAPhoto")}
+                {avatarUrl
+                  ? tr("profile.profileView.change")
+                  : tr("profile.profileView.setAPhoto")}
               </GhostButton>
               {avatarUrl && (
                 <GhostButton
@@ -362,6 +369,7 @@ export function ProfileView({ user }: { user: ProfileData }) {
           </Text>
           <Group align="flex-end" gap="sm">
             <TextInput
+              aria-label="user@example.co.jp"
               className="flex-1"
               maw={360}
               onChange={(e) => setEmail(e.currentTarget.value)}
@@ -443,11 +451,26 @@ export function ProfileView({ user }: { user: ProfileData }) {
                   <Stack gap={0}>
                     <Text size="sm">{deviceLabel(d.userAgent, tr)}</Text>
                     <Text c="dimmed" size="xs">
-                      登録: {formatTs(d.createdAt)}
+                      {tr("profile.profileView.registeredOn", {
+                        date: formatTs(d.createdAt),
+                      })}
                     </Text>
                   </Stack>
                 </Group>
-                <DangerButton onClick={() => removeDevice(d.id)}>
+                <DangerButton
+                  loading={devicePending && removingDeviceId === d.id}
+                  onClick={() =>
+                    confirm({
+                      title: tr("profile.profileView.removeDeviceTitle"),
+                      message: tr("profile.profileView.removeDeviceMessage"),
+                      confirmLabel: tr("common.release"),
+                      onConfirm: () => {
+                        setRemovingDeviceId(d.id);
+                        startDevice(() => removeDevice(d.id));
+                      },
+                    })
+                  }
+                >
                   {tr("common.release")}
                 </DangerButton>
               </Group>

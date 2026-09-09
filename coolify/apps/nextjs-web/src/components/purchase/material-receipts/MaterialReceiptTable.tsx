@@ -168,6 +168,7 @@ export function MaterialReceiptTable({
       breadcrumbs={[tr("common.purchasing"), tr("common.materialReceipt")]}
       filters={
         <Select
+          aria-label={tr("purchase.materialReceipts.receiptType")}
           clearable
           data={SOURCE_OPTIONS}
           flex={isMobile ? 1 : undefined}

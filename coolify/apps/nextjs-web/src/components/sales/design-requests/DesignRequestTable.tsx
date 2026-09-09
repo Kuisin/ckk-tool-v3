@@ -208,6 +208,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
       filters={
         <>
           <Select
+            aria-label={tr("common.type")}
             clearable
             data={designKindOptions(locale)}
             flex={isMobile ? 1 : undefined}
@@ -217,6 +218,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
             w={isMobile ? undefined : 120}
           />
           <Select
+            aria-label={tr("common.trigger")}
             clearable
             data={designTriggerOptions(locale)}
             flex={isMobile ? 1 : undefined}
@@ -226,6 +228,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
             w={isMobile ? undefined : 130}
           />
           <Select
+            aria-label={tr("common.assignee")}
             clearable
             data={assigneeOptions}
             flex={isMobile ? 1 : undefined}
@@ -236,6 +239,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
             w={isMobile ? undefined : 140}
           />
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={statusOptions("DesignRequest")}
             flex={isMobile ? 1 : undefined}

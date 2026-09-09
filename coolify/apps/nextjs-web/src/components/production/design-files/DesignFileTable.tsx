@@ -189,6 +189,7 @@ export function DesignFileTable({
       filters={
         <>
           <Select
+            aria-label={tr("common.orderingCustomer")}
             clearable
             data={SERIES_OPTIONS}
             flex={isMobile ? 1 : undefined}
@@ -198,6 +199,7 @@ export function DesignFileTable({
             w={isMobile ? undefined : 120}
           />
           <Select
+            aria-label={tr("production.designFiles.source")}
             clearable
             data={SOURCE_OPTIONS}
             flex={isMobile ? 1 : undefined}

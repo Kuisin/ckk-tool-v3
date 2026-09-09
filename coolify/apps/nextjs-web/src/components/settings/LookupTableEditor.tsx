@@ -444,6 +444,10 @@ export function LookupTableEditor({
           renderCell={(r, ri, ci) =>
             ci < table.keyColumns.length ? (
               <TextInput
+                aria-label={tr("settings.lookupTableEditor.keyCell", {
+                  row: ri + 1,
+                  col: ci + 1,
+                })}
                 onChange={(e) =>
                   setRows(
                     table.rows.map((x, j) =>
@@ -463,6 +467,9 @@ export function LookupTableEditor({
               />
             ) : (
               <TextInput
+                aria-label={tr("settings.lookupTableEditor.valueCell", {
+                  row: ri + 1,
+                })}
                 onChange={(e) =>
                   setRows(
                     table.rows.map((x, j) =>

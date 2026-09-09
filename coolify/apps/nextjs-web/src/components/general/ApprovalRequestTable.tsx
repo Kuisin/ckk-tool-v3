@@ -217,6 +217,7 @@ export function ApprovalRequestTable({
       breadcrumbs={[tr("common.general"), tr("common.pendingList")]}
       embedded={embedded}
       filters=<Select
+        aria-label={tr("common.type2")}
         clearable
         data={TARGET_TYPE_OPTIONS}
         flex={isMobile ? 1 : undefined}

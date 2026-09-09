@@ -372,6 +372,7 @@ function SortableSection({
             {index + 1}
           </Badge>
           <TextInput
+            aria-label={tr("forms.formBuilder.sectionTitlePlaceholder")}
             flex={1}
             onChange={(e) => onTitleChange(e.currentTarget.value)}
             placeholder={tr("forms.formBuilder.sectionTitlePlaceholder")}
