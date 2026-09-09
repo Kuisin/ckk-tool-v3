@@ -976,7 +976,10 @@ Paper (withBorder, p="md", radius="md")
 - 制御・非制御のどちらでも使える（`value`+`onChange` / `defaultValue`）。
 - 畳んでも `Tabs.List` は**消さずに隠す**（`visibility: hidden`）。自然な幅を測り
   続けて広くなったら横並びへ戻すためと、`Tabs.Panel` の `aria-labelledby` が指す
-  タブの id を残すため。
+  タブの id を残すため。**ただし包含ブロック（`.app-tabs-bar-collapsed`）で横方向を
+  `overflow: clip` する** — 隠したタブ列は絶対配置・`width: max-content` なので、
+  切らないと見えないままページの横幅を押し広げ、スマホでタブが 5 枚ある画面が
+  全部横スクロールになる（2026-09 の実機巡回で 20 画面がこれだった）。
 - 畳む / 戻すの判定は `lib/tab-overflow.ts`（純関数・試験あり）。戻すときだけ余白を
   要求して、境界幅での往復を止めている。
 
