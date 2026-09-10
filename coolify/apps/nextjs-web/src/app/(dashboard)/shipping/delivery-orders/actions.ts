@@ -1172,6 +1172,10 @@ async function guardVarianceOnConfirm(
     },
   });
   if (!row) return actionError(tr("shipping.deliveryOrderActions.notFound"));
+  // 下書き以外は確定そのものが通らない。ここで抜けないと、確定済みの出荷書に
+  // 「確定」を押しただけで承認依頼が 1 件生えてしまう（実際の確定は下の
+  // updateMany が status で弾くので、依頼だけが宙に浮く）。
+  if (row.status !== "DRAFT") return null;
   // 在庫保管は受注数量と独立 — 過不足という概念が無い。
   if (row.type !== "DISPATCH") return null;
 
@@ -1205,6 +1209,12 @@ async function guardVarianceOnConfirm(
 
   if (!summary.approvalRequired) return null;
   if (row.approvalStatus === "APPROVED") return null;
+  // 依頼中に押し直しても依頼は増やさない。startApprovalFlow は二重依頼を
+  // 成功として吸収するので黙って通ってしまうが、押した人には「まだ決裁待ち」と
+  // 言うほうが正しい（承認されれば同じボタンが確定になる）。
+  if (row.approvalStatus === "PENDING") {
+    return actionError(tr("shipping.deliveryOrderActions.awaitingApproval"));
+  }
 
   // 段が無ければ素通し（NONE のまま。依頼も作らない）。
   if (await assertFlowConfigured("delivery_orders")) return null;

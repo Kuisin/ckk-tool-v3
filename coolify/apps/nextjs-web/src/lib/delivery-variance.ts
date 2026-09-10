@@ -141,75 +141,16 @@ export async function evaluateDeliveryOrderVariance(input: {
   if (byLine.size === 0) return empty;
 
   const tolerance = await loadDeliveryTolerance(input.customerBpId);
-  const lines: DeliveryVarianceLine[] = [];
 
-  for (const [orderLineId, thisQuantity] of byLine) {
-    const line = await prisma.orderLine.findUnique({
-      where: { id: orderLineId },
-      select: {
-        quantity: true,
-        acceptanceYearMonth: true,
-        acceptanceSeq: true,
-        branch: true,
-      },
-    });
-    if (!line) continue;
-
-    const [agg, workOrders] = await Promise.all([
-      prisma.deliveryOrderItem.aggregate({
-        _sum: { quantity: true },
-        where: {
-          orderLineId,
-          deliveryOrder: LINE_CONSUMING_DELIVERY_ORDER_WHERE,
-          ...(input.excludeKey
-            ? {
-                NOT: {
-                  deliveryOrderYearMonth: input.excludeKey.yearMonth,
-                  deliveryOrderSeq: input.excludeKey.seq,
-                },
-              }
-            : {}),
-        },
-      }),
-      // キャンセルされた指示書の許可は数えない — 取り消したロットの都合で
-      // 過不足が通ってはいけない。
-      prisma.workOrder.findMany({
-        where: {
-          orderLineLinks: { some: { orderLineId } },
-          status: { not: "CANCELLED" },
-        },
-        select: { allowQuantityVariance: true },
-      }),
-    ]);
-
-    const otherQuantity = agg._sum?.quantity ?? 0;
-    const deliveredQuantity = thisQuantity + otherQuantity;
-    const verdict = evaluateDeliveryVariance({
-      orderedQuantity: line.quantity,
-      deliveredQuantity,
-      tolerance,
-    });
-    lines.push({
-      orderLineId,
-      orderLineNumber:
-        line.branch != null
-          ? formatOrderLineNumber({
-              yearMonth: line.acceptanceYearMonth,
-              seq: line.acceptanceSeq,
-              branch: line.branch,
-            })
-          : "",
-      orderedQuantity: line.quantity,
-      thisQuantity,
-      otherQuantity,
-      deliveredQuantity,
-      variancePermitted: lineVariancePermitted(workOrders),
-      verdict,
-      isVarianceEvent:
-        verdict.kind === "OVER" ||
-        (verdict.kind === "SHORT" && input.closesOrderLines),
-    });
-  }
+  // 明細ごとに 3 本引くので、行数ぶん直列にすると詳細画面 1 枚で往復が積み上がる。
+  // 明細どうしは互いに依存しないので並行に投げる。
+  const lines = (
+    await Promise.all(
+      [...byLine].map(async ([orderLineId, thisQuantity]) =>
+        evaluateOneLine(orderLineId, thisQuantity, tolerance, input),
+      ),
+    )
+  ).filter((l): l is DeliveryVarianceLine => l != null);
 
   const events = lines.filter((l) => l.isVarianceEvent);
   return {
@@ -225,5 +166,82 @@ export async function evaluateDeliveryOrderVariance(input: {
         input.closesOrderLines &&
         !l.variancePermitted,
     ),
+  };
+}
+
+/** 注文明細 1 件ぶんの評価。消えた明細（参照切れ）は null。 */
+async function evaluateOneLine(
+  orderLineId: string,
+  thisQuantity: number,
+  tolerance: DeliveryTolerance,
+  input: {
+    closesOrderLines: boolean;
+    excludeKey?: DocKey;
+  },
+): Promise<DeliveryVarianceLine | null> {
+  const line = await prisma.orderLine.findUnique({
+    where: { id: orderLineId },
+    select: {
+      quantity: true,
+      acceptanceYearMonth: true,
+      acceptanceSeq: true,
+      branch: true,
+    },
+  });
+  if (!line) return null;
+
+  const [agg, workOrders] = await Promise.all([
+    prisma.deliveryOrderItem.aggregate({
+      _sum: { quantity: true },
+      where: {
+        orderLineId,
+        deliveryOrder: LINE_CONSUMING_DELIVERY_ORDER_WHERE,
+        ...(input.excludeKey
+          ? {
+              NOT: {
+                deliveryOrderYearMonth: input.excludeKey.yearMonth,
+                deliveryOrderSeq: input.excludeKey.seq,
+              },
+            }
+          : {}),
+      },
+    }),
+    // キャンセルされた指示書の許可は数えない — 取り消したロットの都合で
+    // 過不足が通ってはいけない。
+    prisma.workOrder.findMany({
+      where: {
+        orderLineLinks: { some: { orderLineId } },
+        status: { not: "CANCELLED" },
+      },
+      select: { allowQuantityVariance: true },
+    }),
+  ]);
+
+  const otherQuantity = agg._sum?.quantity ?? 0;
+  const deliveredQuantity = thisQuantity + otherQuantity;
+  const verdict = evaluateDeliveryVariance({
+    orderedQuantity: line.quantity,
+    deliveredQuantity,
+    tolerance,
+  });
+  return {
+    orderLineId,
+    orderLineNumber:
+      line.branch != null
+        ? formatOrderLineNumber({
+            yearMonth: line.acceptanceYearMonth,
+            seq: line.acceptanceSeq,
+            branch: line.branch,
+          })
+        : "",
+    orderedQuantity: line.quantity,
+    thisQuantity,
+    otherQuantity,
+    deliveredQuantity,
+    variancePermitted: lineVariancePermitted(workOrders),
+    verdict,
+    isVarianceEvent:
+      verdict.kind === "OVER" ||
+      (verdict.kind === "SHORT" && input.closesOrderLines),
   };
 }

@@ -148,17 +148,11 @@ export function isLineStockCheckable(
   return line.status === "DRAFT" || line.status === "CONFIRMED";
 }
 
-/**
- * 出荷累計 → 明細ステータス。変化させるべきでないときは null。
- * 受注数量を超える出荷は呼び出し側で弾く（ここは判定しない）。
- */
-export function lineShipStatus(
-  orderedQuantity: number,
-  shippedQuantity: number,
-): "SHIPPED" | "PARTIAL_SHIPPED" | null {
-  if (shippedQuantity <= 0) return null;
-  return shippedQuantity >= orderedQuantity ? "SHIPPED" : "PARTIAL_SHIPPED";
-}
+// 出荷累計 → 明細ステータスの判定は `lib/delivery-variance-core.ts` の
+// `deliveredLineStatus` にある（過不足納品 §8）。ここにあった
+// `lineShipStatus` は「不足 = 常に一部出荷」を前提にしていて、締めの宣言
+// （delivery_orders.closes_order_lines）を受け取れなかったので消した。
+// 同じ規則が 2 か所にあると、片方だけ直して食い違う。
 
 /**
  * 確定時の枝番採番。既存の最大枝番の次から count 個。

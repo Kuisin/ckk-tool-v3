@@ -1,3 +1,10 @@
+-- allow-destructive: 落とすのは approval_flows_target_type_check の 1 本だけで、
+--   同じマイグレーションの中で 'delivery_orders' を**足した**版を張り直している
+--   （値の集合は広がるだけ・狭まらない）。旧アプリはこの CHECK に触れないし、
+--   承認対象が 1 種類増えたことも知らないので、どちらが先に着いても壊れない。
+--   前例: 20260910090100_design_request_approval / 20260905090000_internal_pages。
+--   それ以外の DDL はすべて列・型・索引の追加。
+
 -- 過不足納品（§8）— 受注数量ちょうどでなくても出荷できるようにする。
 --
 -- これまで出荷は受注数量が上限で（validateLineRemaining / 過出荷ガード）、
