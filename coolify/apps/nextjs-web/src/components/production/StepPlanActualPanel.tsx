@@ -4,8 +4,9 @@
  * StepPlanActualPanel — 工程の作業計画 / 実績 (§7 分割記録)。
  *
  * 1 工程に複数行の計画・実績を記録できる（担当者ごと・日付ごとの分割）。
- * 計画は 日付 + 作業場所 が必須で、開始/終了時刻は任意（承認前に「誰が・いつ・
- * どこで」まで決める — lib/work-plan-core.ts）。実績も同形だが作業場所は任意。
+ * 計画の必須項目は工程マスタが決め（lib/work-plan-core.ts requiredPlanFields）、
+ * 画面は**赤い必須印だけ**で示す —「（任意）」と書き添えない。印の無い欄が任意。
+ * 実績は起きたことの記録なので必須は 担当者・日付 だけ。
  * 担当者は従業員検索（searchUserOptions）。計画は未完了の工程で、実績は
  * 進行中の工程で編集できる。
  */
@@ -348,22 +349,14 @@ function RecordSection({
                 withAsterisk
               />
               <TimeInput
-                label={
-                  timeRequired
-                    ? tr("production.stepPlanActualPanel.start")
-                    : tr("production.stepPlanActualPanel.startOptional")
-                }
+                label={tr("production.stepPlanActualPanel.start")}
                 onChange={(e) => setStartTime(e.currentTarget.value)}
                 value={startTime}
                 w={110}
                 withAsterisk={timeRequired}
               />
               <TimeInput
-                label={
-                  timeRequired
-                    ? tr("production.stepPlanActualPanel.end")
-                    : tr("production.stepPlanActualPanel.endOptional")
-                }
+                label={tr("production.stepPlanActualPanel.end")}
                 onChange={(e) => setEndTime(e.currentTarget.value)}
                 value={endTime}
                 w={110}
@@ -371,11 +364,7 @@ function RecordSection({
               />
               <NumberInput
                 allowNegative={false}
-                label={
-                  quantityRequired
-                    ? tr("common.quantity")
-                    : tr("production.stepPlanActualPanel.quantityOptional")
-                }
+                label={tr("common.quantity")}
                 min={1}
                 onChange={(v) => setQuantity(typeof v === "number" ? v : "")}
                 placeholder={
@@ -391,13 +380,7 @@ function RecordSection({
                 <Select
                   clearable={!locationRequired}
                   data={workLocationOptions}
-                  label={
-                    locationRequired
-                      ? tr("production.stepPlanActualPanel.workLocation")
-                      : tr(
-                          "production.stepPlanActualPanel.workLocationOptional",
-                        )
-                  }
+                  label={tr("production.stepPlanActualPanel.workLocation")}
                   onChange={setWorkLocationId}
                   placeholder={tr("production.stepPlanActualPanel.machineArea")}
                   searchable
