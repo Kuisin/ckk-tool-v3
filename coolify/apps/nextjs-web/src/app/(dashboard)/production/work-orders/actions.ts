@@ -236,11 +236,11 @@ function workOrderInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
       // 製造分は必須。在庫分（FROM_STOCK）は固定構成のため工程リストを使わない。
       route: routeInputSchema(tr).nullable(),
       /**
-       * 準備工程リスト（共通）。null = 使わない（版の中に準備工程が混ざっている
-       * 移行前の製造リスト、または手組み）。工程そのものは steps に混ざって
-       * 来るので、保存時に種別で分けて版へ写す（resolveRouteVersionsTx）。
+       * 準備工程リスト（共通）の id。版は指定できない — 指示書は常に最新版を
+       * 使い、準備工程はその版の並びに置き換える（applyLatestPrepRoute）。
+       * 有効な準備工程リストが 1 本でもあれば製造分は必須。
        */
-      prepRoute: routeInputSchema(tr).nullable().optional(),
+      prepRouteId: z.number().int().positive().nullable().optional(),
       plans: z.array(planInputSchema(tr)),
     })
     .superRefine((v, refCtx) => {
@@ -459,18 +459,102 @@ export interface LineAllocStatus {
 
 // ── 作成 / 更新 / コピー / キャンセル ────────────────────────────────────────
 
+type StepInput = z.infer<typeof stepInput>;
+
 /**
- * 指示書の工程構成 → 製造 / 準備 それぞれのルートバージョンを解決する。
+ * 準備工程リスト（共通）の最新版を指示書に当てる。
  *
- * 工程は 2 本のリストを合わせたもの（§7）なので、保存するときは種別で分けて
- * それぞれの版へ写す。どちらに属するかは isPrepStep（workflow-core）だけが
- * 決める — ここで別の基準を作ると、製品側の編集画面と食い違う。
+ * 準備工程リストは全製品で共通なので、指示書ごとに版は選べない — 常に最新版で、
+ * 画面から来た準備工程は捨ててその版の並びに置き換える（古い画面を開いたまま
+ * 保存しても最新が入る）。指示書から準備工程リストの新版は作らない: 1 枚の
+ * 指示書の都合で共通のリストを書き換えると、次の指示書全部が巻き込まれる。
+ * 直すときは工程マスタの準備工程リストで版を作る（履歴は版として残る）。
+ *
+ * どの工程が準備工程かは isPrepStep（workflow-core）だけが決める。在庫分
+ * （FROM_STOCK）は固定構成（製品出し + 出荷系）なので触らない — 製品出しは
+ * 材料準備カテゴリだが準備工程リストの対象ではない。
+ */
+async function applyLatestPrepRoute(
+  steps: readonly StepInput[],
+  type: "FROM_STOCK" | "MANUFACTURE",
+  prepRouteId: number | null | undefined,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Promise<
+  | { ok: false; error: string }
+  | { ok: true; steps: StepInput[]; prepRouteVersionId: string | null }
+> {
+  if (type === "FROM_STOCK") {
+    return { ok: true, steps: [...steps], prepRouteVersionId: null };
+  }
+  const catalog = await loadCatalog();
+  const prepStepIds = new Set(
+    catalog.steps.filter(isPrepStep).map((c) => c.id),
+  );
+  const mfgSteps = steps.filter((s) => !prepStepIds.has(s.processStepId));
+  if (prepRouteId == null) {
+    // 共通のリストがあるのに使わない指示書は作らない（〇〇出しの無い指示書に
+    // なる）。1 本も無い環境（移行前・新規 DB）だけは製造工程のみで通す。
+    const anyActive = await prisma.productProcessRoute.count({
+      where: { kind: "PREP", isActive: true },
+    });
+    if (anyActive > 0) {
+      return {
+        ok: false,
+        error: tr("production.workOrderActions.prepRouteRequired"),
+      };
+    }
+    return { ok: true, steps: mfgSteps, prepRouteVersionId: null };
+  }
+  const route = await prisma.productProcessRoute.findUnique({
+    where: { id: prepRouteId },
+    select: {
+      kind: true,
+      isActive: true,
+      versions: {
+        orderBy: { version: "desc" },
+        take: 1,
+        select: { id: true, steps: { orderBy: { sortOrder: "asc" } } },
+      },
+    },
+  });
+  const latest = route?.versions[0];
+  if (!route || route.kind !== "PREP" || !route.isActive || !latest) {
+    return {
+      ok: false,
+      error: tr("production.workOrderActions.prepRouteNotFound"),
+    };
+  }
+  const prepSteps: StepInput[] = latest.steps
+    .filter((s) => prepStepIds.has(s.processStepId))
+    .map((s) => ({
+      processStepId: s.processStepId,
+      executionLocation: s.executionLocation,
+      plantId: s.plantId,
+      supplierBpId: s.supplierBpId,
+      workHours: s.workHours == null ? null : Number(s.workHours),
+      lotInputMode: s.lotInputMode,
+      inspectionTemplateIds: [],
+    }));
+  return {
+    ok: true,
+    steps: [...prepSteps, ...mfgSteps],
+    prepRouteVersionId: latest.id,
+  };
+}
+
+/**
+ * 指示書の工程構成 → 製造工程リストの版を解決する。
+ *
+ * 工程は 2 本のリストを合わせたもの（§7）。製造側だけをここで版へ写す —
+ * 準備側は applyLatestPrepRoute が最新版に固定済みで、指示書から新版は作らない。
+ * どちらに属するかは isPrepStep（workflow-core）だけが決める — ここで別の
+ * 基準を作ると、製品側の編集画面と食い違う。
  */
 async function resolveRouteVersionsTx(
   tx: Parameters<typeof resolveRouteVersionTx>[0],
   input: {
     route: RouteResolveInput;
-    prepRoute: RouteResolveInput;
+    prepRouteVersionId: string | null;
     steps: readonly RouteStepSnapshot[];
     actor: string | null;
     productId: number;
@@ -485,7 +569,6 @@ async function resolveRouteVersionsTx(
   const prepStepIds = new Set(
     catalog.steps.filter(isPrepStep).map((c) => c.id),
   );
-  const prepSteps = input.steps.filter((s) => prepStepIds.has(s.processStepId));
   const mfgSteps = input.steps.filter((s) => !prepStepIds.has(s.processStepId));
   const routeVersionId = await resolveRouteVersionTx(
     tx,
@@ -497,17 +580,7 @@ async function resolveRouteVersionsTx(
     input.note,
     { kind: "MANUFACTURING", prepStepIds },
   );
-  const prepRouteVersionId = await resolveRouteVersionTx(
-    tx,
-    input.prepRoute,
-    prepSteps,
-    input.actor,
-    input.productId,
-    input.tr,
-    input.note,
-    { kind: "PREP", prepStepIds },
-  );
-  return { routeVersionId, prepRouteVersionId };
+  return { routeVersionId, prepRouteVersionId: input.prepRouteVersionId };
 }
 
 export async function createWorkOrder(
@@ -524,7 +597,9 @@ export async function createWorkOrder(
   }
   const v = parsed.data;
   try {
-    const built = await validateAndOrderSteps(v.steps, v.type);
+    const prep = await applyLatestPrepRoute(v.steps, v.type, v.prepRouteId, tr);
+    if (!prep.ok) return actionError(prep.error);
+    const built = await validateAndOrderSteps(prep.steps, v.type);
     if (!built.ok) return actionError(built.error);
     const target = await resolveWorkOrderTarget(v, tr);
     if (typeof target === "string") return actionError(target);
@@ -543,7 +618,7 @@ export async function createWorkOrder(
       // 工程構成 → ルートバージョン解決（変更があれば新バージョンを自動保存）
       const resolved = await resolveRouteVersionsTx(tx, {
         route: v.type === "FROM_STOCK" ? null : v.route,
-        prepRoute: v.type === "FROM_STOCK" ? null : (v.prepRoute ?? null),
+        prepRouteVersionId: prep.prepRouteVersionId,
         steps: built.creates,
         actor,
         productId,
@@ -685,7 +760,9 @@ export async function updateWorkOrder(
     if (prior.status !== "DRAFT") {
       return actionError(tr("production.workOrderActions.draftOnlyCanEdit"));
     }
-    const built = await validateAndOrderSteps(v.steps, v.type);
+    const prep = await applyLatestPrepRoute(v.steps, v.type, v.prepRouteId, tr);
+    if (!prep.ok) return actionError(prep.error);
+    const built = await validateAndOrderSteps(prep.steps, v.type);
     if (!built.ok) return actionError(built.error);
     const target = await resolveWorkOrderTarget(v, tr, workOrderNumber);
     if (typeof target === "string") return actionError(target);
@@ -702,7 +779,7 @@ export async function updateWorkOrder(
     const resolvedVersions = await prisma.$transaction(async (tx) => {
       const resolved = await resolveRouteVersionsTx(tx, {
         route: v.type === "FROM_STOCK" ? null : v.route,
-        prepRoute: v.type === "FROM_STOCK" ? null : (v.prepRoute ?? null),
+        prepRouteVersionId: prep.prepRouteVersionId,
         steps: built.creates,
         actor,
         productId,

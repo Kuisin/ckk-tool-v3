@@ -40,9 +40,11 @@
 >   製造工程リスト（製品 × 受注元。従来のもの）。指示書は 2 本の版を合わせて工程を作り、
 >   `work_orders.route_version_id`（製造）と `.prep_route_version_id`（準備）で両方を指す。
 >   どの工程がどちらかは DB では決めず、`lib/workflow-core.ts` `isPrepStep`
->   （カタログの category = MATERIAL_PREP）が唯一の定義。移行前の製造リストの版には
->   準備工程が混ざったまま残る（使用済み指示書の出所なので消さない）— 版の比較・保存は
->   種別の部分だけで行う（`lib/product-routes.ts` `resolveRouteVersionTx`）
+>   （カタログの category = MATERIAL_PREP）が唯一の定義。準備工程リストは共通なので
+>   **指示書ごとに版は選べない** — 常に最新版を使い、指示書から新版は作らない
+>   （`applyLatestPrepRoute`）。製造側の版に準備工程は含まない（移行前に混ざっていた分は
+>   20261019 で取り除いた。版の行は履歴として残す）— 版の比較・保存は種別の部分だけで
+>   行う（`lib/product-routes.ts` `resolveRouteVersionTx`）
 > - `production-master.prisma`: `work_location_groups` / `work_locations`
 > - `production.prisma`: `work_order_step_actuals` / `work_order_step_plans`（`work_order_order_lines` は本書に記載済み）
 >   — 作業計画は**承認前に揃える**（§7）: 社内工程ごとに `planned_date` + `work_location_id`

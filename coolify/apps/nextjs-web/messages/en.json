@@ -2840,7 +2840,7 @@
       "dedicatedToCustomerWithName": "Dedicated to {name}",
       "thisCustomer": "This customer",
       "stepFallbackWithId": "Step #{id}",
-      "prepRouteHelp": "The issue/handoff and material-prep steps (shared). Combined with the manufacturing list to form the work order.",
+      "prepRouteHelp": "The order of issue/hand-off and material prep steps (shared by every product). A work order always uses the latest version; the version cannot be chosen per work order. To change the order, create a new version under Process steps › Preparation step lists.",
       "noPrepRouteRegistered": "No preparation step list is registered (create one under process steps)",
       "showOtherCustomers": "Also show other customers' step lists for this product",
       "showOtherCustomersHelp": "By default only this customer's and generic lists are shown. Select another customer's list to copy it to this customer.",
@@ -2855,7 +2855,11 @@
       "workLocationRequiredPlaceholder": "Work location (required)",
       "timeQuantityInPanelLater": "This step's plan also needs times / quantity — add them in the step's plan panel after creating the work order",
       "assigneeRequiredPlaceholder": "Assignee (required)",
-      "planNeedsAssignee": "These steps require an assignee: {steps}"
+      "planNeedsAssignee": "These steps require an assignee: {steps}",
+      "prepRouteUsesLatest": "Uses the latest, v{version} ({date})",
+      "prepStepsReadOnly": "Preparation steps come from the shared preparation step list and cannot be edited here — only manufacturing steps are edited",
+      "editPrepRoutes": "Edit preparation step lists (process steps)",
+      "selectAPrepRoute": "Select a preparation step list"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "Allocated {allocated} / Ordered {ordered}",
@@ -3072,7 +3076,9 @@
       "stockPlannedQuantityMustMatchAllocation": "For a from-stock work order, the planned quantity must match the allocated quantity",
       "plannedQuantityBelowAllocationTotal": "The planned quantity is below the total allocation of {total} (you may add extra for defect margin, but it must be at least the total allocation)",
       "plansRequiredBeforeApproval": "Add a work plan (date + work location) before requesting approval: {steps}",
-      "copyRouteFailed": "Could not copy the step list"
+      "copyRouteFailed": "Could not copy the step list",
+      "prepRouteRequired": "Select a preparation step list",
+      "prepRouteNotFound": "The selected preparation step list was not found or is disabled"
     },
     "designFileActions": {
       "cannotDelete": "Cannot delete",

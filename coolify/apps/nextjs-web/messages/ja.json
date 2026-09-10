@@ -2840,7 +2840,7 @@
       "dedicatedToCustomerWithName": "{name} 専用",
       "thisCustomer": "この顧客",
       "stepFallbackWithId": "工程#{id}",
-      "prepRouteHelp": "〇〇出し・受渡し と 材料準備の並び（共通）。製造工程リストと合わせて指示書の工程になります。",
+      "prepRouteHelp": "〇〇出し・受渡し と 材料準備の並び（全製品で共通）。指示書は常に最新の版を使い、指示書ごとに版は選べません。並びを直すときは工程マスタの準備工程リストで新しい版を作ります。",
       "noPrepRouteRegistered": "準備工程リストは未登録です（工程マスタで作成）",
       "showOtherCustomers": "同じ製品の他の受注元の工程リストも表示する",
       "showOtherCustomersHelp": "既定はこの受注元のリストと汎用だけ。他の受注元のリストは選んでから「この受注元に複製」できます。",
@@ -2855,7 +2855,11 @@
       "workLocationRequiredPlaceholder": "作業場所（必須）",
       "timeQuantityInPanelLater": "この工程の計画には時刻・数量も必要です — 作成後に工程の計画パネルで入れてください",
       "assigneeRequiredPlaceholder": "担当者（必須）",
-      "planNeedsAssignee": "担当者が必要な工程があります: {steps}"
+      "planNeedsAssignee": "担当者が必要な工程があります: {steps}",
+      "prepRouteUsesLatest": "最新 v{version}（{date}）を使います",
+      "prepStepsReadOnly": "準備工程は共通の準備工程リストから入ります — この画面では編集できません（製造工程だけを編集します）",
+      "editPrepRoutes": "準備工程リストを編集（工程マスタ）",
+      "selectAPrepRoute": "準備工程リストを選択してください"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "割当 {allocated} / 受注 {ordered}",
@@ -3072,7 +3076,9 @@
       "stockPlannedQuantityMustMatchAllocation": "在庫分の指示書は予定数量と割当数量を一致させてください",
       "plannedQuantityBelowAllocationTotal": "予定数量が割当合計 {total} を下回っています（不良予備分の上乗せは自由ですが、割当合計以上にしてください）",
       "plansRequiredBeforeApproval": "承認依頼の前に作業計画（日付 + 作業場所）を入れてください: {steps}",
-      "copyRouteFailed": "工程リストの複製に失敗しました"
+      "copyRouteFailed": "工程リストの複製に失敗しました",
+      "prepRouteRequired": "準備工程リストを選択してください",
+      "prepRouteNotFound": "選択された準備工程リストが見つからないか、無効です"
     },
     "designFileActions": {
       "cannotDelete": "削除できません",
