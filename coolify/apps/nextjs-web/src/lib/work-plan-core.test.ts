@@ -34,6 +34,18 @@ describe("requiredPlanFields", () => {
     ).toEqual(["TIME", "QUANTITY"]);
   });
 
+  it("担当者は既定で任意 — 工程マスタで立てたときだけ要る", () => {
+    expect(
+      requiredPlanFields({ executionLocation: "INTERNAL" }, cfg),
+    ).not.toContain("ASSIGNEE");
+    expect(
+      requiredPlanFields(
+        { executionLocation: "INTERNAL", planAssigneeRequired: true },
+        cfg,
+      ),
+    ).toEqual(["ASSIGNEE", "WORK_LOCATION"]);
+  });
+
   it("外注工程は何も要らない / 作業場所マスタが空なら作業場所は要らない", () => {
     expect(
       requiredPlanFields(
@@ -175,5 +187,42 @@ describe("planReadiness", () => {
       cfg,
     );
     expect(r.gaps.map((g) => g.stepId)).toEqual(["z", "a"]);
+  });
+});
+
+describe("planReadiness — 担当者", () => {
+  it("担当者なしの計画でも 日付 + 作業場所 が揃っていれば承認に出せる", () => {
+    const r = planReadiness(
+      [
+        step({
+          stepId: "a",
+          plans: [
+            { userId: null, plannedDate: "2026-09-10", workLocationId: 1 },
+          ],
+        }),
+      ],
+      cfg,
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("工程マスタで担当者を要求した工程は、担当者の無い行だけでは足りない", () => {
+    const r = planReadiness(
+      [
+        step({
+          stepId: "a",
+          planAssigneeRequired: true,
+          plans: [
+            { userId: null, plannedDate: "2026-09-10", workLocationId: 1 },
+          ],
+        }),
+      ],
+      cfg,
+    );
+    expect(r.ok).toBe(false);
+    expect(r.gaps[0]).toMatchObject({
+      reason: "INCOMPLETE",
+      missing: ["ASSIGNEE"],
+    });
   });
 });

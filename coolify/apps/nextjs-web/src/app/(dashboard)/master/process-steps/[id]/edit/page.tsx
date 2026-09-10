@@ -82,6 +82,7 @@ export default async function MasterProcessStepsEditPage({
         isFinalInspection: r.isFinalInspection,
         workLocationRequired: r.workLocationRequired,
         planTimeRequired: r.planTimeRequired,
+        planAssigneeRequired: r.planAssigneeRequired,
         planQuantityRequired: r.planQuantityRequired,
         approvalMinRank: r.approvalMinRank ?? "",
         quantityTracking: r.quantityTracking,

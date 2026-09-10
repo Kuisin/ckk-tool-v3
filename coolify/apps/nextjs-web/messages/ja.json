@@ -2504,7 +2504,8 @@
       "planField": {
         "WORK_LOCATION": "作業場所",
         "TIME": "時刻",
-        "QUANTITY": "数量"
+        "QUANTITY": "数量",
+        "ASSIGNEE": "担当者"
       }
     },
     "defectRecordForm": {
@@ -2852,7 +2853,9 @@
       "allowQuantityVariance": "不足 / 超過分も納品してよい",
       "allowQuantityVarianceHelp": "このロットを受注数量ちょうどでなくても出荷できるようにする。どこまでずれてよいかと承認の要否は取引先マスタが決める。",
       "workLocationRequiredPlaceholder": "作業場所（必須）",
-      "timeQuantityInPanelLater": "この工程の計画には時刻・数量も必要です — 作成後に工程の計画パネルで入れてください"
+      "timeQuantityInPanelLater": "この工程の計画には時刻・数量も必要です — 作成後に工程の計画パネルで入れてください",
+      "assigneeRequiredPlaceholder": "担当者（必須）",
+      "planNeedsAssignee": "担当者が必要な工程があります: {steps}"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "割当 {allocated} / 受注 {ordered}",
@@ -3004,7 +3007,8 @@
       "workLocationRequiredForPlan": "作業計画には作業場所が必要です",
       "planLockedByWorkOrderStatus": "承認依頼中・完了・キャンセルの指示書では作業計画を変更できません",
       "timeRequiredForPlan": "この工程の作業計画には開始・終了時刻が必要です",
-      "quantityRequiredForPlan": "この工程の作業計画には数量が必要です"
+      "quantityRequiredForPlan": "この工程の作業計画には数量が必要です",
+      "assigneeRequiredForPlan": "この工程の作業計画には担当者が必要です"
     },
     "workOrderActions": {
       "acknowledgeFailed": "確認の記録に失敗しました",
@@ -5397,7 +5401,7 @@
       "workLocationRequired": "作業計画に作業場所が必要",
       "workLocationRequiredHelp": "承認依頼の前に、この工程の作業計画へ作業場所を入れることを求めます。在庫を動かすだけの工程など、場所に意味の無い工程では外してください。使える場所の範囲は下の「許可作業場所」で決めます。",
       "planRequiredFields": "作業計画の必須項目",
-      "planRequiredFieldsHelp": "承認依頼の前に、この工程の作業計画に何が入っている必要があるか。担当者と計画日は常に必須です。",
+      "planRequiredFieldsHelp": "承認依頼の前に、この工程の作業計画に何が入っている必要があるか。計画日は常に必須です。",
       "planTimeRequired": "作業計画に開始・終了時刻が必要",
       "planTimeRequiredHelp": "時間帯まで決めてから承認に出す工程で立てます。",
       "planQuantityRequired": "作業計画に数量が必要",
@@ -5411,7 +5415,10 @@
       "planRequiredShort": "計画必須",
       "planFieldLocationShort": "場所",
       "planFieldTimeShort": "時刻",
-      "planFieldQuantityShort": "数量"
+      "planFieldQuantityShort": "数量",
+      "planAssigneeRequired": "作業計画に担当者が必要",
+      "planAssigneeRequiredHelp": "承認依頼の前に担当者まで決めてから出す工程で立てます。既定では担当者は任意で、承認後に現場で決められます。",
+      "planFieldAssigneeShort": "担当"
     },
     "products": {
       "specification": "仕様",

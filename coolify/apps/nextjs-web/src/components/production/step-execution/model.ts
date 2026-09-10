@@ -88,8 +88,9 @@ export interface StepDefectReasonView {
 
 export interface StepPlanView {
   id: string;
-  userId: string;
-  userName: string;
+  /** 担当者（計画は任意 — 未割当は null。実績は常に入る）。 */
+  userId: string | null;
+  userName: string | null;
   /** YYYY-MM-DD（JST）。 */
   date: string;
   /** HH:mm（JST）— 時刻指定なしは null。 */

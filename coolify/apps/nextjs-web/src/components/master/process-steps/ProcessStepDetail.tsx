@@ -64,6 +64,7 @@ export interface ProcessStepDetailData {
   isFinalInspection: boolean;
   workLocationRequired: boolean;
   planTimeRequired: boolean;
+  planAssigneeRequired: boolean;
   planQuantityRequired: boolean;
   approvalMinRank: string | null;
   quantityTracking: string;
@@ -305,7 +306,7 @@ export function ProcessStepDetail({
         <FieldValue
           label={tr("master.processSteps.planRequiredFields")}
           value={[
-            tr("common.assignee"),
+            ...(record.planAssigneeRequired ? [tr("common.assignee")] : []),
             tr("common.date"),
             ...(record.workLocationRequired
               ? [tr("production.stepPlanActualPanel.workLocation")]

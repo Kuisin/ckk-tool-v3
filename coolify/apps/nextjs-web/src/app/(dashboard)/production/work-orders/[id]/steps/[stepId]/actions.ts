@@ -1153,9 +1153,12 @@ function planActualBaseShape(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return {
     workOrderNumber: z.number().int().positive(),
     stepId: z.string().min(1),
+    // 担当者。計画は任意（工程マスタ plan_assignee_required で要求）、実績は
+    // 必須 — stepActualInputSchema が上書きする。
     userId: z
       .string()
-      .min(1, tr("production.stepPlanActualPanel.selectAnAssignee")),
+      .min(1, tr("production.stepPlanActualPanel.selectAnAssignee"))
+      .nullable(),
     date: z
       .string()
       .regex(datePattern, tr("production.stepPlanActualPanel.selectADate")),
@@ -1186,7 +1189,12 @@ function stepPlanInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
 function stepActualInputSchema(
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ) {
-  return z.object(planActualBaseShape(tr));
+  return z.object({
+    ...planActualBaseShape(tr),
+    userId: z
+      .string()
+      .min(1, tr("production.stepPlanActualPanel.selectAnAssignee")),
+  });
 }
 
 export type StepPlanInput = z.infer<ReturnType<typeof stepPlanInputSchema>>;
@@ -1296,6 +1304,7 @@ export async function addStepPlan(
       select: {
         workLocationRequired: true,
         planTimeRequired: true,
+        planAssigneeRequired: true,
         planQuantityRequired: true,
       },
     });
@@ -1306,6 +1315,12 @@ export async function addStepPlan(
           (await prisma.workLocation.count({ where: { isActive: true } })) > 0,
       },
     );
+    if (required.includes("ASSIGNEE") && v.userId == null) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.assigneeRequiredForPlan")],
+      };
+    }
     if (required.includes("WORK_LOCATION") && v.workLocationId == null) {
       return {
         ok: false,

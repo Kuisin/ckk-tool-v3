@@ -95,7 +95,9 @@ function RecordTable({
         {rows.map((r) => (
           <Table.Tr key={r.id}>
             <Table.Td>
-              <Text size="sm">{r.userName}</Text>
+              <Text c={r.userName == null ? "dimmed" : undefined} size="sm">
+                {r.userName ?? tr("common.unassigned")}
+              </Text>
             </Table.Td>
             <Table.Td>
               <Text size="sm">{fmt.date(r.date)}</Text>
@@ -199,9 +201,11 @@ function RecordSection({
   const locationRequired = req("WORK_LOCATION") && showLocation;
   const timeRequired = req("TIME");
   const quantityRequired = req("QUANTITY");
+  // 担当者: 計画は工程マスタが要求したときだけ、実績は常に（誰がやったかの記録）。
+  const assigneeRequired = kind === "actual" || req("ASSIGNEE");
 
   const handleAdd = () => {
-    if (!userId) {
+    if (assigneeRequired && !userId) {
       notifications.show({
         title: tr("common.missingInput"),
         message: tr("production.stepPlanActualPanel.selectAnAssignee"),
@@ -259,7 +263,8 @@ function RecordSection({
       const result =
         kind === "plan"
           ? await addStepPlan(payload)
-          : await addStepActual(payload);
+          : // 実績は上で担当者を確かめている（空は届かない。サーバーも弾く）
+            await addStepActual({ ...payload, userId: userId ?? "" });
       if (result.ok) {
         notifications.show({
           title: tr("common.added"),
@@ -333,7 +338,7 @@ function RecordSection({
                   placeholder={tr(
                     "production.stepPlanActualPanel.searchEmployees",
                   )}
-                  required
+                  required={assigneeRequired}
                   storageKey={`step-${kind}-user`}
                   value={userId}
                 />

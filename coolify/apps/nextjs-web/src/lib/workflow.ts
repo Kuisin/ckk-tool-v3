@@ -44,6 +44,7 @@ export async function loadCatalog(): Promise<WorkflowCatalog> {
         s.defaultWorkHours == null ? null : Number(s.defaultWorkHours),
       workLocationRequired: s.workLocationRequired,
       planTimeRequired: s.planTimeRequired,
+      planAssigneeRequired: s.planAssigneeRequired,
       planQuantityRequired: s.planQuantityRequired,
       sortOrder: s.sortOrder,
     })),

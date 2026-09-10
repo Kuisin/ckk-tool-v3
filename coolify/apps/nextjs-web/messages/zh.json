@@ -2504,7 +2504,8 @@
       "planField": {
         "WORK_LOCATION": "作业场所",
         "TIME": "时间",
-        "QUANTITY": "数量"
+        "QUANTITY": "数量",
+        "ASSIGNEE": "负责人"
       }
     },
     "defectRecordForm": {
@@ -2852,7 +2853,9 @@
       "allowQuantityVariance": "允许交付不足或超出的数量",
       "allowQuantityVarianceHelp": "允许该批次即使与订货数量不一致也能出货。可偏离的范围与是否需要审批由业务伙伴主数据决定。",
       "workLocationRequiredPlaceholder": "作业场所（必填）",
-      "timeQuantityInPanelLater": "本工序的计划还需要时间・数量 — 创建后请在工序的计划面板中填写"
+      "timeQuantityInPanelLater": "本工序的计划还需要时间・数量 — 创建后请在工序的计划面板中填写",
+      "assigneeRequiredPlaceholder": "负责人（必填）",
+      "planNeedsAssignee": "以下工序需要负责人：{steps}"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "分配 {allocated} / 订购 {ordered}",
@@ -3004,7 +3007,8 @@
       "workLocationRequiredForPlan": "作业计划需要作业场所",
       "planLockedByWorkOrderStatus": "审批中、已完成或已取消的工单无法修改作业计划",
       "timeRequiredForPlan": "本工序的作业计划需要开始・结束时间",
-      "quantityRequiredForPlan": "本工序的作业计划需要数量"
+      "quantityRequiredForPlan": "本工序的作业计划需要数量",
+      "assigneeRequiredForPlan": "此工序的作业计划需要负责人"
     },
     "workOrderActions": {
       "acknowledgeFailed": "确认记录失败",
@@ -5397,7 +5401,7 @@
       "workLocationRequired": "作业计划需要作业场所",
       "workLocationRequiredHelp": "申请审批前，要求本工序的作业计划填写作业场所。对仅移动库存等场所无意义的工序请关闭。可使用的场所范围在下方「允许的作业场所」中设置。",
       "planRequiredFields": "作业计划必填项",
-      "planRequiredFieldsHelp": "申请审批前，本工序的作业计划必须包含哪些内容。负责人与计划日始终必填。",
+      "planRequiredFieldsHelp": "提交审批前，此工序的作业计划必须包含哪些内容。计划日始终为必填。",
       "planTimeRequired": "作业计划需要开始・结束时间",
       "planTimeRequiredHelp": "需在审批前确定时间段的工序请开启。",
       "planQuantityRequired": "作业计划需要数量",
@@ -5411,7 +5415,10 @@
       "planRequiredShort": "计划必填",
       "planFieldLocationShort": "场所",
       "planFieldTimeShort": "时间",
-      "planFieldQuantityShort": "数量"
+      "planFieldQuantityShort": "数量",
+      "planAssigneeRequired": "作业计划需要负责人",
+      "planAssigneeRequiredHelp": "在需要先确定负责人再提交审批的工序上启用。默认负责人为可选，可在审批后由现场决定。",
+      "planFieldAssigneeShort": "负责人"
     },
     "products": {
       "specification": "规格",

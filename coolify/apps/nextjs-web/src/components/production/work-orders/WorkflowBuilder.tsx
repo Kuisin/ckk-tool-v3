@@ -371,6 +371,17 @@ export function WorkflowBuilder({
       day: "2-digit",
     }).format(new Date()),
   );
+  // 作成時に計画行を作る工程 = 担当者・計画日・作業場所のどれかを触った工程。
+  // 担当者は任意なので「人を入れた工程だけ」ではない（日付 + 場所だけの計画も立つ）。
+  const hasPlanRow = (
+    p:
+      | {
+          userIds: string[];
+          date: string | null;
+          workLocationId: string | null;
+        }
+      | undefined,
+  ) => (p?.userIds.length ?? 0) > 0 || p?.date != null || !!p?.workLocationId;
   const [stepPlans, setStepPlans] = useState<
     Record<
       number,
@@ -1095,7 +1106,7 @@ export function WorkflowBuilder({
       });
       return;
     }
-    // 作業計画は 日付 + 作業場所 が要る（§7）。担当を入れた工程で作業場所が
+    // 作業計画は 日付 + 作業場所 が要る（§7）。計画を立てた工程で作業場所が
     // 空なら止める — 承認依頼で必ず弾かれるものを、ここで保存させない。
     // 作業場所マスタが空の環境では要求しない（lib/work-plan-core と同じ）。
     if (mode === "create" && workLocationOptions.length > 0) {
@@ -1103,7 +1114,7 @@ export function WorkflowBuilder({
         const plan = stepPlans[s.processStepId];
         const cat = catalogSteps.find((c) => c.id === s.processStepId);
         return (
-          (plan?.userIds.length ?? 0) > 0 &&
+          hasPlanRow(plan) &&
           !plan?.workLocationId &&
           cat?.workLocationRequired !== false &&
           (locations[s.processStepId]?.executionLocation ?? "INTERNAL") ===
@@ -1119,6 +1130,37 @@ export function WorkflowBuilder({
                 (s) =>
                   catalogSteps.find((c) => c.id === s.processStepId)?.nameJa ??
                   "",
+              )
+              .join(tr("common.s1")),
+          }),
+          color: "red",
+        });
+        return;
+      }
+    }
+    // 担当者は既定で任意だが、工程マスタで要求した工程は人が居ないと承認で
+    // 止まる — 計画を立てた工程で担当者が空なら、ここで止める。
+    if (mode === "create") {
+      const missing = currentSnapshots.filter((s) => {
+        const plan = stepPlans[s.processStepId];
+        const cat = catalogSteps.find((c) => c.id === s.processStepId);
+        return (
+          hasPlanRow(plan) &&
+          (plan?.userIds.length ?? 0) === 0 &&
+          cat?.planAssigneeRequired === true &&
+          (locations[s.processStepId]?.executionLocation ?? "INTERNAL") ===
+            "INTERNAL"
+        );
+      });
+      if (missing.length > 0) {
+        notifications.show({
+          title: tr("common.missingInput"),
+          message: tr("production.workflowBuilder.planNeedsAssignee", {
+            steps: missing
+              .map(
+                (s) =>
+                  catalogSteps.find((c) => c.id === s.processStepId)?.nameJa ??
+                  String(s.processStepId),
               )
               .join(tr("common.s1")),
           }),
@@ -1224,20 +1266,27 @@ export function WorkflowBuilder({
       })),
       route,
       prepRoute: prepRouteInput,
-      // 作成時の作業計画（担当者 × 計画日 × 作業場所）。編集では送らない（計画の
+      // 作成時の作業計画（計画日 × 作業場所 × 担当者（任意））。担当者が複数なら
+      // 1 人 1 行、誰も入れなければ担当者なしの 1 行。編集では送らない（計画の
       // 管理は工程実行画面の計画パネル — ここで送ると既存計画と二重になる）。
       plans:
         mode === "create"
-          ? currentSnapshots.flatMap((s) =>
-              (stepPlans[s.processStepId]?.userIds ?? []).map((userId) => ({
+          ? currentSnapshots.flatMap((s) => {
+              const plan = stepPlans[s.processStepId];
+              if (!hasPlanRow(plan)) return [];
+              const base = {
                 processStepId: s.processStepId,
-                userId,
-                date: stepPlans[s.processStepId]?.date ?? todayStr,
-                workLocationId: stepPlans[s.processStepId]?.workLocationId
-                  ? Number(stepPlans[s.processStepId]?.workLocationId)
+                date: plan?.date ?? todayStr,
+                workLocationId: plan?.workLocationId
+                  ? Number(plan.workLocationId)
                   : null,
-              })),
-            )
+              };
+              const userIds: (string | null)[] =
+                (plan?.userIds.length ?? 0) > 0
+                  ? (plan?.userIds ?? [])
+                  : [null];
+              return userIds.map((userId) => ({ ...base, userId }));
+            })
           : [],
     };
     startTransition(async () => {
@@ -1930,6 +1979,7 @@ export function WorkflowBuilder({
                     locations[s.processStepId]?.executionLocation ?? "INTERNAL",
                   workLocationRequired: cat.workLocationRequired,
                   planTimeRequired: cat.planTimeRequired,
+                  planAssigneeRequired: cat.planAssigneeRequired,
                   planQuantityRequired: cat.planQuantityRequired,
                 },
                 { workLocationsConfigured: workLocationOptions.length > 0 },
@@ -1971,7 +2021,11 @@ export function WorkflowBuilder({
                       placeholder={
                         (plan?.userIds.length ?? 0) > 0
                           ? undefined
-                          : tr("common.assignee")
+                          : required.includes("ASSIGNEE")
+                            ? tr(
+                                "production.workflowBuilder.assigneeRequiredPlaceholder",
+                              )
+                            : tr("common.assignee")
                       }
                       searchable
                       size="xs"
@@ -1979,7 +2033,6 @@ export function WorkflowBuilder({
                       value={plan?.userIds ?? []}
                     />
                     <DatePickerInput
-                      disabled={(plan?.userIds.length ?? 0) === 0}
                       onChange={(v) =>
                         setStepPlan(s.processStepId, { date: v })
                       }
@@ -2006,7 +2059,6 @@ export function WorkflowBuilder({
                                 )
                               : workLocationOptions
                           }
-                          disabled={(plan?.userIds.length ?? 0) === 0}
                           onChange={(v) =>
                             setStepPlan(s.processStepId, { workLocationId: v })
                           }

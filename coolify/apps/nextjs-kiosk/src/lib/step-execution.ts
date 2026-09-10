@@ -198,9 +198,11 @@ async function fetchIncomingWoLinks(workOrderId: string): Promise<{
  * 操作できるのは次のいずれか:
  *   (a) 自分に計画（work_order_step_plans）が割り当てられている
  *   (b) 自分がセッションロックを保持している
- *   (c) 工程に計画が 1 行も無い（**未計画の工程は開放** — 指示書スキャン
- *       /wo-scan の運用判断: 紙の指示書を持つ作業者が計画なしのアドホック
- *       作業を進められる。誰かに計画された工程はその担当者だけが操作できる）
+ *   (c) 工程に **担当者付きの** 計画が 1 行も無い（**未計画の工程は開放** —
+ *       指示書スキャン /wo-scan の運用判断: 紙の指示書を持つ作業者が計画なしの
+ *       アドホック作業を進められる。誰かに計画された工程はその担当者だけが
+ *       操作できる。担当者なしの計画（いつ・どこで だけ決めた行）は誰も
+ *       縛らない — 人を決めていないのだから、誰が来ても開放と同じ）
  */
 export async function canOperateStep(
   stepId: string,
@@ -218,8 +220,9 @@ export async function canOperateStep(
   ]);
   if (plan != null || locked != null) return true;
   // (c) 未計画の工程 — 誰の計画も無ければ permission 保持者に開放
+  //     （担当者なしの計画行は「誰かの計画」ではない）
   const anyPlan = await prisma.workOrderStepPlan.findFirst({
-    where: { stepId },
+    where: { stepId, userId: { not: null } },
     select: { id: true },
   });
   return anyPlan == null;

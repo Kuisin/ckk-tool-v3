@@ -202,9 +202,13 @@
   要求しない。**計画は下書きのうちに入れる** — 工程実行画面の計画パネルは指示書が
   下書き / 承認済 / 進行中のとき編集でき（実績は承認後のみ）、承認依頼中・完了・
   キャンセルでは閉じる（サーバー側 addStepPlan / deleteStepPlan も同じ判定）。
-  **作業計画の必須項目は工程マスタが決める**（`requiredPlanFields`）: 担当者・計画日は
-  常に必須、作業場所 / 開始・終了時刻 / 数量 は工程ごと（`work_location_required` /
-  `plan_time_required` / `plan_quantity_required`）。計画パネルの必須印（赤 *）は
+  **作業計画の必須項目は工程マスタが決める**（`requiredPlanFields`）: 計画日は
+  常に必須、担当者 / 作業場所 / 開始・終了時刻 / 数量 は工程ごと
+  （`plan_assignee_required` / `work_location_required` / `plan_time_required` /
+  `plan_quantity_required`）。**担当者は既定で任意** — 計画の最小単位は
+  「いつ・どこで」で、人は承認後に現場で決めてよい（`work_order_step_plans.user_id`
+  は nullable。担当者なしの計画は指示書詳細の担当欄に出ず、共有端末の行レベル判定
+  でも誰も縛らない = 未計画と同じ扱い）。計画パネルの必須印（赤 *）は
   この集合の写しで、ゲートと同じ相手を見る。作業場所が要るかは**工程ごと**に切れる（工程マスタ
   `work_location_required`、既定 true — 在庫を動かすだけの工程で外す）。使える場所の
   範囲は従来どおり工程マスタの許可作業場所リスト（種別 or 個別）が決め、計画・実績の

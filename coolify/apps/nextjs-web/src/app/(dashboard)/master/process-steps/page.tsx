@@ -30,6 +30,7 @@ export default async function MasterProcessStepsPage() {
     lotInputMode: r.lotInputMode,
     workLocationRequired: r.workLocationRequired,
     planTimeRequired: r.planTimeRequired,
+    planAssigneeRequired: r.planAssigneeRequired,
     planQuantityRequired: r.planQuantityRequired,
     sortOrder: r.sortOrder,
     isActive: r.isActive,

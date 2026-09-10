@@ -356,7 +356,7 @@ model WorkOrderStep {
 model WorkOrderStepPlan {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   stepId         String    @map("work_order_step_id") @db.Uuid
-  userId         String    @map("user_id") @db.Uuid // 担当者（従業員）
+  userId         String?   @map("user_id") @db.Uuid // 担当者（従業員）— 任意。工程マスタ plan_assignee_required で必須にできる
   plannedDate    DateTime  @map("planned_date") @db.Date
   plannedStartAt DateTime? @map("planned_start_at") @db.Timestamptz(6)
   plannedEndAt   DateTime? @map("planned_end_at") @db.Timestamptz(6)
@@ -367,7 +367,7 @@ model WorkOrderStepPlan {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   step          WorkOrderStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
-  user          User          @relation("StepPlanUser", fields: [userId], references: [id])
+  user          User?         @relation("StepPlanUser", fields: [userId], references: [id], onDelete: Restrict)
   createdByUser User?         @relation("StepPlanCreatedBy", fields: [createdBy], references: [id])
   workLocation  WorkLocation? @relation("StepPlanWorkLocation", fields: [workLocationId], references: [id])
 
