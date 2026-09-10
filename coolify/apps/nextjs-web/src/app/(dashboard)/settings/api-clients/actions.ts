@@ -63,19 +63,20 @@ function revalidate(): void {
   revalidatePath(BASE_PATH, "layout");
 }
 
-const nameSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(120)
-  .regex(/^[\w .:@/-]+$/u, "名前に使えない文字が含まれています");
-
-const createSchema = z.object({
-  name: nameSchema,
-  description: z.string().trim().max(2000).optional().nullable(),
-  allowedCidrs: z.string().optional(),
-  expiresAt: z.string().optional().nullable(),
-});
+/** 検証の文言は翻訳カタログから引く（他の画面と同じ作り）。 */
+function createSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    name: z
+      .string()
+      .trim()
+      .min(1)
+      .max(120)
+      .regex(/^[\w .:@/-]+$/u, tr("apiClients.invalidNameChars")),
+    description: z.string().trim().max(2000).optional().nullable(),
+    allowedCidrs: z.string().optional(),
+    expiresAt: z.string().optional().nullable(),
+  });
+}
 
 function parseExpiry(value: string | null | undefined): Date | null {
   if (!value) return null;
@@ -83,14 +84,17 @@ function parseExpiry(value: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export async function createApiClientAction(
-  input: z.input<typeof createSchema>,
-): Promise<ActionResult<{ id: string }>> {
+export async function createApiClientAction(input: {
+  name: string;
+  description?: string | null;
+  allowedCidrs?: string;
+  expiresAt?: string | null;
+}): Promise<ActionResult<{ id: string }>> {
   const tr = await getTranslations();
   const authz = await checkPermission("api_client", "CREATE");
   if (!authz.ok) return actionError(authz.error);
 
-  const parsed = createSchema.safeParse(input);
+  const parsed = createSchema(tr).safeParse(input);
   if (!parsed.success) {
     return actionError(
       parsed.error.issues[0]?.message ?? tr("common.invalidInput"),

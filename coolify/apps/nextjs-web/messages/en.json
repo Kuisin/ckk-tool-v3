@@ -8385,7 +8385,9 @@
       "user_change_requests": "User change requests",
       "user_plants": "Assigned sites",
       "user_role_relation": "Role assignments",
-      "users": "Users"
+      "users": "Users",
+      "api_clients": "API client",
+      "api_client_tokens": "API token"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -9708,6 +9710,7 @@
     "shownOnce": "This value will not be shown again. Copy it now.",
     "tooManyActiveTokens": "At most two tokens can be active. Revoke one first.",
     "clientNotFound": "That client was not found",
-    "featureDisabled": "The external API is disabled in this environment"
+    "featureDisabled": "The external API is disabled in this environment",
+    "invalidNameChars": "The name contains characters that are not allowed"
   }
 }

@@ -8385,7 +8385,9 @@
       "user_change_requests": "ユーザー変更依頼",
       "user_plants": "所属拠点",
       "user_role_relation": "ロール割当",
-      "users": "ユーザー"
+      "users": "ユーザー",
+      "api_clients": "API クライアント",
+      "api_client_tokens": "API トークン"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -9708,6 +9710,7 @@
     "shownOnce": "この値はもう二度と表示されません。いま控えてください。",
     "tooManyActiveTokens": "有効なトークンは 2 本までです。先にどれかを失効してください。",
     "clientNotFound": "対象のクライアントが見つかりません",
-    "featureDisabled": "この環境では外部 API は無効です"
+    "featureDisabled": "この環境では外部 API は無効です",
+    "invalidNameChars": "名前に使えない文字が含まれています"
   }
 }
