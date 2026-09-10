@@ -41,6 +41,29 @@ type LoginState =
   | { phase: "locked"; until: string | null }
   | { phase: "attest_blocked"; outcome: AttestOutcome };
 
+/**
+ * ログイン成功後の遷移。**文書ごと読み直す**（router.replace ではない）。
+ *
+ * ヘッダーの利用者名はサーバーの (kiosk)/layout.tsx が getSession() で解決して
+ * props で降ろすが、その layout は /login と成功後の遷移先で**共有される
+ * セグメント**なので、クライアント遷移では再描画されない — props はログイン前の
+ * null を保ったままで、ヘッダーが「未ログイン」のまま入ってしまう。
+ *
+ * router.refresh() を足して打ち消す手もあり QR 経路はそうしていたが、
+ * replace と同じ tick で撃つ順序はトランジションの巻き取り方に依存するうえ、
+ * **PIN 経路はそもそも refresh を呼んでいなかった**。共有端末では PIN 経路の
+ * ほうが普通（needsPinVerify — 同じ端末で 48 時間ぶり、または 2 週間ごと）なので、
+ * 「ログインしても未ログインのまま」に見えていた。
+ *
+ * ログインは 1 シフトに 1 回の操作なので、ここは確実さを取る。アテスト Cookie と
+ * 端末判定もまっさらな状態から評価され、layout の分岐を推論する必要が無くなる。
+ */
+function enterAfterLogin(userId: string | undefined): void {
+  // 最後に開いていたページへ直行（端末ローカル復元）。localStorage への
+  // 記録は同期的に済むので、この行が返った時点で追跡は始まっている。
+  window.location.assign(userId ? beginUserPageTracking(userId) : "/");
+}
+
 export function LoginView() {
   const router = useRouter();
   const { m } = useI18n();
@@ -116,13 +139,7 @@ export function LoginView() {
         switch (data.state) {
           case "OK":
             playLoginSound();
-            // このユーザーが最後に開いていたページへ直行（端末ローカル復元）
-            router.replace(
-              data.userId ? beginUserPageTracking(data.userId) : "/",
-            );
-            // ヘッダーの利用者名を出すため layout を作り直す（replace だけでは
-            // 同じ layout が使い回され、「未ログイン」のまま入ってしまう）
-            router.refresh();
+            enterAfterLogin(data.userId);
             return;
           case "PIN_SETUP_REQUIRED":
             setState({ phase: "pin_setup", ticket: data.ticket ?? "" });
@@ -205,9 +222,7 @@ export function LoginView() {
         switch (data.state) {
           case "OK":
             playLoginSound();
-            router.replace(
-              data.userId ? beginUserPageTracking(data.userId) : "/",
-            );
+            enterAfterLogin(data.userId);
             return;
           case "PIN_MISMATCH":
             notifications.show({
@@ -263,7 +278,7 @@ export function LoginView() {
         setBusy(false);
       }
     },
-    [router, m],
+    [m],
   );
 
   return (
