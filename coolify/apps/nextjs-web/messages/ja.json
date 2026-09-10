@@ -5402,7 +5402,16 @@
       "planTimeRequiredHelp": "時間帯まで決めてから承認に出す工程で立てます。",
       "planQuantityRequired": "作業計画に数量が必要",
       "planQuantityRequiredHelp": "計画を数量で分割する工程（担当者ごとに何本、など）で立てます。",
-      "planTime": "開始・終了時刻"
+      "planTime": "開始・終了時刻",
+      "routeKind": "工程リスト",
+      "routeKindPrep": "準備",
+      "routeKindManufacturing": "製造",
+      "routeKindPrepHelp": "材料準備カテゴリの工程は共通の準備工程リストに入ります（製品ごとの製造工程リストには入りません）。",
+      "routeKindManufacturingHelp": "このカテゴリの工程は製品 × 受注元ごとの製造工程リストに入ります。",
+      "planRequiredShort": "計画必須",
+      "planFieldLocationShort": "場所",
+      "planFieldTimeShort": "時刻",
+      "planFieldQuantityShort": "数量"
     },
     "products": {
       "specification": "仕様",

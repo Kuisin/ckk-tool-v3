@@ -52,6 +52,7 @@ import {
 } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
+import { isPrepStep } from "@/lib/workflow-core";
 
 const BASE_PATH = "/master/process-steps";
 
@@ -492,6 +493,14 @@ export function ProcessStepForm({
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
           <Select
             data={processCategoryOptions(locale)}
+            // カテゴリで所属する工程リストが決まる（準備 = 材料準備のみ）。
+            description={
+              form.values.category
+                ? isPrepStep({ category: form.values.category })
+                  ? tr("master.processSteps.routeKindPrepHelp")
+                  : tr("master.processSteps.routeKindManufacturingHelp")
+                : undefined
+            }
             label={<HelpLabel {...fieldHelp(tr, "processStep", "category")} />}
             withAsterisk
             {...form.getInputProps("category")}

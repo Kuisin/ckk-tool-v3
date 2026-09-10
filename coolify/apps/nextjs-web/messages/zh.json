@@ -5402,7 +5402,16 @@
       "planTimeRequiredHelp": "需在审批前确定时间段的工序请开启。",
       "planQuantityRequired": "作业计划需要数量",
       "planQuantityRequiredHelp": "按数量拆分计划的工序（如每人多少支）请开启。",
-      "planTime": "开始・结束时间"
+      "planTime": "开始・结束时间",
+      "routeKind": "工序清单",
+      "routeKindPrep": "准备",
+      "routeKindManufacturing": "制造",
+      "routeKindPrepHelp": "材料准备类别的工序属于公共的准备工序清单（不属于各产品的制造工序清单）。",
+      "routeKindManufacturingHelp": "该类别的工序属于按产品 × 订货方的制造工序清单。",
+      "planRequiredShort": "计划必填",
+      "planFieldLocationShort": "场所",
+      "planFieldTimeShort": "时间",
+      "planFieldQuantityShort": "数量"
     },
     "products": {
       "specification": "规格",

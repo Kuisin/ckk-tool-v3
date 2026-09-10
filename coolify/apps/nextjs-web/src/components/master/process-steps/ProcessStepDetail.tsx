@@ -32,6 +32,7 @@ import {
   processExecutionLabel,
   quantityTrackingLabel,
 } from "@/lib/enum-labels";
+import { isPrepStep } from "@/lib/workflow-core";
 import {
   DeleteProcessStepModal,
   ToggleProcessStepActiveModal,
@@ -264,6 +265,19 @@ export function ProcessStepDetail({
               variant="light"
             >
               {processCategoryLabel(record.category, locale) ?? record.category}
+            </Badge>
+          }
+        />
+        <FieldValue
+          label={tr("master.processSteps.routeKind")}
+          value={
+            <Badge
+              color={isPrepStep(record) ? "teal" : "indigo"}
+              variant="light"
+            >
+              {isPrepStep(record)
+                ? tr("master.processSteps.routeKindPrep")
+                : tr("master.processSteps.routeKindManufacturing")}
             </Badge>
           }
         />
