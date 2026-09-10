@@ -186,6 +186,13 @@ pnpm exec tsx audit-crawl.ts            # 両方。--web / --kiosk で片方だ�
 結果は標準出力の要約と `/tmp/audit-crawl-{web,kiosk}.json`。Gotenberg / SeaweedFS が
 無いので PDF プレビューと図面サムネイルの 502/404 は出る（環境）。
 
+**通し確認 3 本（検査承認 / 出荷+最終検査 / smoke-flows）は「1 回の種に 1 回だけ」。**
+2 回目は状態が残って落ちる — 検査承認は 1 回目で承認を消費し、出荷は工程を進め、
+smoke-flows は列設定を保存する。落ちたら中身を疑う前に
+`docker rm -f ckk-shots-db` → `pnpm docs:seed` から作り直すこと。
+`e2e-shipping-and-final-inspection.ts` は `e2e-fixtures.sql`、
+`e2e-kiosk-inspection-approval.ts` は `e2e-kiosk-fixtures.sql` が**必須**。
+
 ## 通し確認を CI で回す（手動実行）
 
 同じ手順を GitHub Actions からも回せる（`.github/workflows/e2e-shipping-inspection.yml`）。
