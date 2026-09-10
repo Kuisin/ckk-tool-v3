@@ -2840,7 +2840,7 @@
       "dedicatedToCustomerWithName": "{name} 专用",
       "thisCustomer": "该客户",
       "stepFallbackWithId": "工序 #{id}",
-      "prepRouteHelp": "〇〇出库・交接 与 材料准备的顺序（公共）。与制造工序清单合并后构成工单的工序。",
+      "prepRouteHelp": "出库・交接与材料准备工序的顺序（所有产品共用）。工单始终使用最新版本，不能按工单选择版本。要修改顺序，请在工序主数据的准备工序清单中创建新版本。",
       "noPrepRouteRegistered": "尚未登记准备工序清单（请在工序主数据中创建）",
       "showOtherCustomers": "同时显示本产品其他订货方的工序清单",
       "showOtherCustomersHelp": "默认仅显示本订货方与通用清单。可选择其他订货方的清单后「复制到本订货方」。",
@@ -2855,7 +2855,11 @@
       "workLocationRequiredPlaceholder": "作业场所（必填）",
       "timeQuantityInPanelLater": "本工序的计划还需要时间・数量 — 创建后请在工序的计划面板中填写",
       "assigneeRequiredPlaceholder": "负责人（必填）",
-      "planNeedsAssignee": "以下工序需要负责人：{steps}"
+      "planNeedsAssignee": "以下工序需要负责人：{steps}",
+      "prepRouteUsesLatest": "使用最新的 v{version}（{date}）",
+      "prepStepsReadOnly": "准备工序来自共用的准备工序清单，此画面不能编辑 — 只编辑制造工序",
+      "editPrepRoutes": "编辑准备工序清单（工序主数据）",
+      "selectAPrepRoute": "请选择准备工序清单"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "分配 {allocated} / 订购 {ordered}",
@@ -3072,7 +3076,9 @@
       "stockPlannedQuantityMustMatchAllocation": "库存分工单的计划数量必须与分配数量一致",
       "plannedQuantityBelowAllocationTotal": "计划数量低于分配合计 {total}（可自由追加不良品余量，但需不低于分配合计）",
       "plansRequiredBeforeApproval": "申请审批前请填写作业计划（日期 + 作业场所）：{steps}",
-      "copyRouteFailed": "复制工序清单失败"
+      "copyRouteFailed": "复制工序清单失败",
+      "prepRouteRequired": "请选择准备工序清单",
+      "prepRouteNotFound": "所选的准备工序清单不存在或已停用"
     },
     "designFileActions": {
       "cannotDelete": "无法删除",
