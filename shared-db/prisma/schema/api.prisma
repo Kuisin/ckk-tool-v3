@@ -1,0 +1,193 @@
+// ===========================
+// 外部 API（/api/v1）— 機械向けの読み取り口
+// ===========================
+//
+// 社外のシステムが業務データを機械的に読むための資格情報。設計の全体は
+// `_specs/api.md`。ここには**あとから効いてくる判断**だけを書く。
+//
+// ■ 主体は app.users の行（group = SYSTEM）
+//
+// api_clients の 1 行が users の 1 行と 1:1 で対応する。主体がユーザーそのもの
+// なので、user_permissions → decide() → Access（拠点スコープ）→ audit_logs.user_id
+// が**全部そのまま効く**。認可の仕組みを 2 つ目に増やさずに済むのが、この形を
+// 選んだ唯一の理由。
+//
+// 取引先ポータル（portal_accounts）とは**逆の判断**である点に注意。あちらの主体は
+// 社外の人で app.users では表現できない（社員ではない）から別立てにした。
+// こちらは機械だが「社内の権限体系の中の 1 主体」として素直に表現できる。
+//
+// ■ その代金 — 3 つ、いずれも黙って効く
+//
+//   1. **共有（share_grants）の EVERYONE 行が当たる。** 主体が本物のユーザー
+//      なので lib/share-grants.ts はそのまま一致させる。form / internal_page の
+//      READ を与えると「全員に共有された文書」が見える。仕様であって不具合では
+//      ないが、要らないならその 2 コードを与えないこと。
+//   2. **社員ピッカーに混ざる。** users を group で絞らずに引いている箇所
+//      （共有先の選択・全員通知・フォルダ権限・フォーム共有）は、この行を
+//      「人」として並べてしまう。該当箇所には group: "EMPLOYEE" を入れてある —
+//      新しくユーザーを引く画面を書くときは同じことを考えること。
+//   3. **監査の actor になる。** audit.ts の recordAudit は actorId を受け取る
+//      ので、API 由来の書き込み（Phase 4）はこのユーザーとして残る。
+//
+// ■ Auth.js には相乗りしない
+//
+// lib/portal-auth.ts の冒頭が書いている通り、sessionUserId() が非 null を返すと
+// auth.config.ts の authorized / requireAppRead / shareAccessFor /
+// getCurrentActorId が全部「社員がログインしている」と解釈する。API は Cookie を
+// 一切設定せず auth() を一度も呼ばないので、この 4 つは**1 行も触らずに
+// fail-closed になる**。
+//
+// ■ 秘密の守り方は 3 点セット（login_attempts / portal と同じ）
+//   画面を権限で閉じる（SY0I・api_client コード）/ metabase_ro から剥がす
+//   （sql/grants.sql）/ 期間を切る（sql/api-cron.sql）。1 つでも外すなら設計から。
+
+/// 外部システム 1 つ = 1 行。権限は backing user（group = SYSTEM）のロールが決める。
+model ApiClient {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 運用上の識別名（一意）。「どの外部システムか」を人が読むための名前。
+  name        String  @unique @db.VarChar(120)
+  description String?
+
+  /// 権限の主体。1 クライアント = 1 ユーザー（@unique）— 2 つのクライアントが
+  /// 同じロールを黙って共有する状態を作らせない。
+  userId String @unique @map("user_id") @db.Uuid
+
+  /// **既定 false。** 作っただけでは何も通らない（portal_accounts と同じ姿勢）。
+  /// 有効化は特権操作 api_client.activate を通る。
+  isActive Boolean @default(false) @map("is_active")
+
+  /// クライアント自体の期限。null = 無期限。トークン個別の期限とは別で、
+  /// 短い方が勝つ（判定は lib/api-auth-core.ts の 1 か所）。
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  /// 送信元 IP の制限。**空配列 = 制限なし**（空を「全部拒否」にすると
+  /// 最初の 1 件目で必ず締め出される）。判定は lib/cidr-core.ts ipInAnyCidr。
+  /// IP が判らないとき（XFF 不備）は、リストが空でなければ拒否＝fail-closed。
+  allowedCidrs String[] @default([]) @map("allowed_cidrs")
+
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  lastUsedIp String?   @map("last_used_ip") @db.Inet
+
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedBy     String?   @map("revoked_by") @db.Uuid
+  revokedReason String?   @map("revoked_reason")
+
+  user          User  @relation("ApiClientUser", fields: [userId], references: [id])
+  createdByUser User? @relation("ApiClientCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  revokedByUser User? @relation("ApiClientRevokedBy", fields: [revokedBy], references: [id], onDelete: SetNull)
+
+  tokens     ApiClientToken[]
+  accessLogs ApiAccessLog[]
+
+  @@index([isActive])
+  @@map("api_clients")
+  @@schema("app")
+}
+
+/// トークンは**子表**。1 クライアントに有効 2 本まで（差し替えを無停止でやるため）。
+///
+/// 2 列（token_hash_a / _b）にしなかった理由:
+///   - 引き当てが `findUnique({ tokenHash })` の 1 索引で済む。OR 2 列だと
+///     どちらに当たったかで TS 側が分岐し、そこが認証の最も熱い経路になる。
+///   - 期限・失効・発行者・last4 が**トークンごと**に要る。2 列だと 7 列 ×2。
+///   - 「9/3 に使われたのはどのトークンか」に答えられる（失効しても行が残る）。
+///   - 「有効は N 本まで」は方針であって schema の事実ではない。部分 unique では
+///     表現できないので、どのみち発行アクションが守る（唯一の発行口なので十分）。
+///
+/// 生値は発行時の応答に 1 度だけ現れ、DB にもログにも監査行にも残らない。
+model ApiClientToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId  String    @map("client_id") @db.Uuid
+  /// sha256(生値) の 16 進。索引はこれ 1 本。
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  /// 画面に `●●●●●●ab3x` を出すための下 4 桁（平文）。復元はできない。
+  last4     String    @map("last4") @db.Char(4)
+  /// 「2026-09 差し替え」など、人が見分けるための覚え書き。
+  label     String?   @db.VarChar(60)
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  useCount   Int       @default(0) @map("use_count")
+
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedBy String?   @map("revoked_by") @db.Uuid
+
+  client        ApiClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdByUser User?     @relation("ApiTokenCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  revokedByUser User?     @relation("ApiTokenRevokedBy", fields: [revokedBy], references: [id], onDelete: SetNull)
+
+  @@index([clientId, revokedAt])
+  @@index([expiresAt])
+  @@map("api_client_tokens")
+  @@schema("app")
+}
+
+/// 全リクエストの記録（成功も失敗も）。
+///
+/// audit_logs には入れられない。あちらは user_id を app.users に FK した
+/// 「actor 前提の台帳」で、**認証に失敗した要求には actor が居ない**。
+/// login_attempts を別表にしたのとまったく同じ理由。
+///
+/// そして機械向けの口で知りたいのは「どの呼び出しが、なぜ弾かれたか」なので、
+/// 変更だけでなく**全部**を残す。deny_reason は**ここにしか無い** — 応答は
+/// どの理由でも同一の 401 で、外からは区別できない（_specs/api.md §2.3）。
+model ApiAccessLog {
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 認証に失敗した要求では null（どのクライアントか判らないため）。
+  clientId String? @map("client_id") @db.Uuid
+  tokenId  String? @map("token_id") @db.Uuid
+
+  method String @db.VarChar(8)
+  /// pathname のみ。**クエリ文字列は入れない** — 誤用でトークンが載りうる。
+  path   String @db.VarChar(256)
+  status Int
+
+  /// 拒否理由（lib/api-auth-core.ts の ApiAuthDenyReason）。サーバー側にだけ残す。
+  denyReason String? @map("deny_reason") @db.VarChar(32)
+  /// 403 の調査用。要求した権限コード×アクション。
+  permissionCode String? @map("permission_code") @db.VarChar(64)
+
+  durationMs Int?    @map("duration_ms")
+  ipAddress  String? @map("ip_address") @db.Inet
+  /// x-forwarded-for の生チェーン。TRUSTED_PROXY_HOPS の段数をあとから検算する
+  /// ため（login_attempts.ip_chain と同じ目的）。
+  forwardedFor String? @map("forwarded_for") @db.VarChar(200)
+  userAgent    String? @map("user_agent") @db.VarChar(512)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  client ApiClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([clientId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@index([denyReason, createdAt(sort: Desc)])
+  @@map("api_access_logs")
+  @@schema("app")
+}
+
+/// 認証失敗のレート制限（送信元 IP ごと）。portal_rate_limits と同じ形。
+///
+/// lib/action-rate-limit.ts（インメモリ）は**未認証の口には使わない**と
+/// あちら自身が書いている。ここは公開のベアラ口なので DB 側で数える。
+/// キーは必ず HMAC/ハッシュを通す — 生の IP をカウンタ表に置かない。
+model ApiRateLimit {
+  /// いまは "API_AUTH_IP" の 1 つだけ。増やすときは lib/api-rate-limit-core.ts に。
+  bucket String @db.VarChar(24)
+  keyRef String @map("key_ref") @db.Char(64)
+
+  failures        Int      @default(0)
+  windowStartedAt DateTime @default(now()) @map("window_started_at") @db.Timestamptz(6)
+  lockedUntil     DateTime? @map("locked_until") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@id([bucket, keyRef])
+  @@index([updatedAt])
+  @@map("api_rate_limits")
+  @@schema("app")
+}

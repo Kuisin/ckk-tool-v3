@@ -2,7 +2,7 @@
 --
 -- 適用: db-migrate は流さない（撮影用 DB のシード: tools/docs-screenshots が読む）。
 -- 本番・dev の DB に手で流すことは想定していない — 2026-09-03 以降、form /
--- internal_page / admin_manual / design_file / 特権コード / portal_admin の grant は
+-- internal_page / admin_manual / design_file / 特権コード / portal_admin / api_client の grant は
 -- マイグレーション（20260903 / 20260920 / 20260921 / 20260925）が持ち主で、この
 -- ファイルは知らない。それでも流されたときに消してしまわないよう、下の DELETE は
 -- それらのコードを除外し、INSERT は ON CONFLICT DO NOTHING で重複を無視する。
@@ -83,7 +83,7 @@ WHERE role_id IN (
   )
 )
   -- ↓ 2026-09-03 以降にマイグレーションが配った grant はここでは消さない（下記ヘッダ）
-  AND permission_code NOT IN ('form','internal_page','admin_manual','design_file','kiosk_secret','kiosk_device','kiosk_card','personal_data','user_admin','portal_admin');
+  AND permission_code NOT IN ('form','internal_page','admin_manual','design_file','kiosk_secret','kiosk_device','kiosk_card','personal_data','user_admin','portal_admin','api_client');
 -- privileged_operator / privileged_approver は **この一覧に入れない**。
 -- グラントは migration 20260919090000 が入れており、ここで消すと承認者が
 -- 空になって申請が誰にも決裁できなくなる。
@@ -95,7 +95,8 @@ FROM app.roles r
 CROSS JOIN app.permissions p
 CROSS JOIN (VALUES ('READ'),('EXPORT')) AS a(action)
 WHERE r.rolename = 'manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
-                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin')
+                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin',
+                    'api_client')
 ON CONFLICT DO NOTHING;
 
 -- viewer: 全業務コード（system 以外）に R
@@ -103,7 +104,8 @@ INSERT INTO app.role_permission_relation (role_id, permission_code, action, scop
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'viewer' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
-                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin')
+                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin',
+                    'api_client')
 ON CONFLICT DO NOTHING;
 
 -- sales（営業メンバー）: 自分の 試算/見積(quote)・価格表(price_list)・受注請書
@@ -121,7 +123,7 @@ ON CONFLICT DO NOTHING;
 DELETE FROM app.role_permission_relation
 WHERE role_id = (SELECT id FROM app.roles WHERE rolename = 'sales')
   -- ↓ 2026-09-03 以降にマイグレーションが配った grant はここでは消さない（下記ヘッダ）
-  AND permission_code NOT IN ('form','internal_page','admin_manual','design_file','kiosk_secret','kiosk_device','kiosk_card','personal_data','user_admin','portal_admin');
+  AND permission_code NOT IN ('form','internal_page','admin_manual','design_file','kiosk_secret','kiosk_device','kiosk_card','personal_data','user_admin','portal_admin','api_client');
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, c.code, a.action::app."ACTION", 'OWN'::app."SCOPE"
 FROM app.roles r
@@ -223,7 +225,7 @@ ON CONFLICT DO NOTHING;
 DELETE FROM app.role_permission_relation
 WHERE role_id = (SELECT id FROM app.roles WHERE rolename = 'sales_assistant')
   -- ↓ 2026-09-03 以降にマイグレーションが配った grant はここでは消さない（下記ヘッダ）
-  AND permission_code NOT IN ('form','internal_page','admin_manual','design_file','kiosk_secret','kiosk_device','kiosk_card','personal_data','user_admin','portal_admin');
+  AND permission_code NOT IN ('form','internal_page','admin_manual','design_file','kiosk_secret','kiosk_device','kiosk_card','personal_data','user_admin','portal_admin','api_client');
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, g.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
@@ -242,7 +244,7 @@ ON CONFLICT DO NOTHING;
 DELETE FROM app.role_permission_relation
 WHERE role_id = (SELECT id FROM app.roles WHERE rolename = 'sales_manager')
   -- ↓ 2026-09-03 以降にマイグレーションが配った grant はここでは消さない（下記ヘッダ）
-  AND permission_code NOT IN ('form','internal_page','admin_manual','design_file','kiosk_secret','kiosk_device','kiosk_card','personal_data','user_admin','portal_admin');
+  AND permission_code NOT IN ('form','internal_page','admin_manual','design_file','kiosk_secret','kiosk_device','kiosk_card','personal_data','user_admin','portal_admin','api_client');
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, c.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
@@ -272,7 +274,8 @@ INSERT INTO app.role_permission_relation (role_id, permission_code, action, scop
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'purchasing_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
-                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin')
+                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin',
+                    'api_client')
 ON CONFLICT DO NOTHING;
 
 -- production_manager: 自部門フル（RCUDE） + 全業務 READ
@@ -288,7 +291,8 @@ INSERT INTO app.role_permission_relation (role_id, permission_code, action, scop
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'production_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
-                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin')
+                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin',
+                    'api_client')
 ON CONFLICT DO NOTHING;
 
 -- production_manager は製造部門なので図面も登録できる（READ は直上で配布済み）。
@@ -313,7 +317,8 @@ INSERT INTO app.role_permission_relation (role_id, permission_code, action, scop
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'quality_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
-                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin')
+                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin',
+                    'api_client')
 ON CONFLICT DO NOTHING;
 
 -- shipping_manager: 自部門フル（RCUDE） + 全業務 READ
@@ -329,7 +334,8 @@ INSERT INTO app.role_permission_relation (role_id, permission_code, action, scop
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'shipping_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
-                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin')
+                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin',
+                    'api_client')
 ON CONFLICT DO NOTHING;
 
 -- accounting_manager: 自部門フル（RCUDE） + 全業務 READ
@@ -345,7 +351,8 @@ INSERT INTO app.role_permission_relation (role_id, permission_code, action, scop
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'accounting_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
-                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin')
+                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin',
+                    'api_client')
 ON CONFLICT DO NOTHING;
 
 COMMIT;

@@ -230,6 +230,22 @@ GRANT SELECT (id, bp_id, display_name, locale, is_active, disabled_at,
               last_login_at, created_at, updated_at)
   ON app.portal_accounts TO metabase_ro;  -- 隠す: email, email_ref, bp_contact_id, disabled_reason, disabled_by, created_by
 
+-- 外部 API（/api/v1・機械向け）。生きた資格情報とその使われ方が並ぶ。
+-- 閲覧は SY0I に閉じる（login_attempts / portal と同じ 3 点セットの 1 つ目）。
+REVOKE SELECT ON app.api_client_tokens FROM metabase_ro;  -- トークンハッシュ（有効中）
+REVOKE SELECT ON app.api_rate_limits   FROM metabase_ro;  -- 相関キー（IP 由来のハッシュ）
+-- どの呼び出しがなぜ弾かれたか + 送信元 IP。portal_access_logs と同じ扱い。
+REVOKE SELECT ON app.api_access_logs   FROM metabase_ro;
+
+-- api_clients は「どの外部システムに何を許しているか」の棚卸しに使えるので
+-- 列単位で許す。**allowed_cidrs は出さない** — 社内ネットワークの構成そのもので、
+-- BI から読めて嬉しいものではない。
+REVOKE SELECT ON app.api_clients FROM metabase_ro;
+GRANT SELECT (id, name, description, user_id, is_active, expires_at,
+              last_used_at, created_at, updated_at, revoked_at)
+  ON app.api_clients TO metabase_ro;  -- 隠す: allowed_cidrs, last_used_ip, created_by, revoked_by, revoked_reason
+-- ★ 列を足したらここにも足すこと（列単位の GRANT なので、書かない列は見えない）。
+
 -- ── fx_rates: 為替レート日次更新（shared-db スタックの fx-rates コンテナ） ──
 -- app.currencies の rate_per_100_jpy / updated_at だけを UPDATE できる最小権限。
 -- 通貨の追加・削除・名称変更はできない（それはマスタ管理の仕事）。
