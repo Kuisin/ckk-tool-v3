@@ -37,7 +37,11 @@ import {
 } from "@/lib/display-events";
 import { LOCALES } from "@/lib/i18n";
 import { mintMonitorToken } from "@/lib/kiosk-ws-token";
-import { useElevation } from "@/lib/privileged-access";
+import {
+  checkOperationPermission,
+  elevationAuditNote,
+  useElevation,
+} from "@/lib/privileged-access";
 import {
   type ActionResult,
   actionError,
@@ -230,8 +234,9 @@ export async function linkDisplayToProfile(
   code: string,
 ): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_device.pair_display");
-  if (!gate.ok) return actionError(gate.error);
+  // 特権操作の順序は 検証 → 素の権限 → 対象の確認 → useElevation → 実処理
+  // （kiosk-devices/actions.ts と同じ）。useElevation は初回に申請者の時計を
+  // 動かし use_count を増やすので、不正な入力や存在しない対象で先に呼ばない。
   if (!uuidSchema.safeParse(displayId).success) {
     return actionError(tr("common.invalidInput"));
   }
@@ -243,6 +248,8 @@ export async function linkDisplayToProfile(
       }),
     );
   }
+  const pre = await checkOperationPermission("kiosk_device.pair_display");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const device = await prisma.displayDevice.findUnique({
@@ -271,6 +278,9 @@ export async function linkDisplayToProfile(
       );
     }
 
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_device.pair_display");
+    if (!gate.ok) return actionError(gate.error);
     await prisma.$transaction([
       prisma.displayLinkRequest.update({
         where: { id: request.id },
@@ -294,8 +304,7 @@ export async function linkDisplayToProfile(
       before: { status: "PENDING" },
       after: {
         status: "LINKED",
-        bypass: gate.viaAdmin ? "admin" : undefined,
-        grantId: gate.grantId ?? undefined,
+        ...elevationAuditNote(gate, "kiosk_device.pair_display"),
       },
     });
     revalidate();
@@ -315,10 +324,11 @@ export async function linkDisplayToProfile(
  */
 export async function activateDisplay(id: string): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_device.pair_display");
-  if (!gate.ok) return actionError(gate.error);
+  // 順序は 検証 → 素の権限 → 対象の確認 → useElevation → 実処理。
   if (!uuidSchema.safeParse(id).success)
     return actionError(tr("common.invalidInput"));
+  const pre = await checkOperationPermission("kiosk_device.pair_display");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const device = await prisma.displayDevice.findUnique({
@@ -337,6 +347,9 @@ export async function activateDisplay(id: string): Promise<ActionResult> {
       return actionError(tr("settings.displaysActions.notActivatable"));
     }
 
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_device.pair_display");
+    if (!gate.ok) return actionError(gate.error);
     await prisma.displayDevice.update({
       where: { id },
       data: {
@@ -352,8 +365,7 @@ export async function activateDisplay(id: string): Promise<ActionResult> {
       before: { status: "LINKED" },
       after: {
         status: "ACTIVE",
-        bypass: gate.viaAdmin ? "admin" : undefined,
-        grantId: gate.grantId ?? undefined,
+        ...elevationAuditNote(gate, "kiosk_device.pair_display"),
       },
     });
     revalidate();
@@ -551,10 +563,11 @@ export async function setDisplayEnabled(
  */
 export async function unlinkDisplay(id: string): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_device.revoke_display");
-  if (!gate.ok) return actionError(gate.error);
+  // 順序は 検証 → 素の権限 → 対象の確認 → useElevation → 実処理。
   if (!uuidSchema.safeParse(id).success)
     return actionError(tr("common.invalidInput"));
+  const pre = await checkOperationPermission("kiosk_device.revoke_display");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const before = await prisma.displayDevice.findUnique({
@@ -567,6 +580,9 @@ export async function unlinkDisplay(id: string): Promise<ActionResult> {
       return actionError(tr("settings.displaysActions.notLinkedYet"));
     }
 
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_device.revoke_display");
+    if (!gate.ok) return actionError(gate.error);
     await prisma.$transaction([
       prisma.displayDevice.update({
         where: { id },
@@ -592,8 +608,7 @@ export async function unlinkDisplay(id: string): Promise<ActionResult> {
       before: { status: before.status },
       after: {
         status: "PENDING",
-        bypass: gate.viaAdmin ? "admin" : undefined,
-        grantId: gate.grantId ?? undefined,
+        ...elevationAuditNote(gate, "kiosk_device.revoke_display"),
       },
     });
     await notifyDisplayRevoked(id);
@@ -609,10 +624,11 @@ export async function unlinkDisplay(id: string): Promise<ActionResult> {
 /** 失効。次の再読込で登録画面に戻る。**現場に行かずに取り上げられる**。 */
 export async function revokeDisplay(id: string): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_device.revoke_display");
-  if (!gate.ok) return actionError(gate.error);
+  // 順序は 検証 → 素の権限 → 対象の確認 → useElevation → 実処理。
   if (!uuidSchema.safeParse(id).success)
     return actionError(tr("common.invalidInput"));
+  const pre = await checkOperationPermission("kiosk_device.revoke_display");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const before = await prisma.displayDevice.findUnique({
@@ -622,6 +638,9 @@ export async function revokeDisplay(id: string): Promise<ActionResult> {
     if (!before)
       return actionError(tr("settings.displaysActions.displayNotFound"));
 
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_device.revoke_display");
+    if (!gate.ok) return actionError(gate.error);
     await prisma.displayDevice.update({
       where: { id },
       data: {
@@ -637,8 +656,7 @@ export async function revokeDisplay(id: string): Promise<ActionResult> {
       before: { status: before.status },
       after: {
         status: "REVOKED",
-        bypass: gate.viaAdmin ? "admin" : undefined,
-        grantId: gate.grantId ?? undefined,
+        ...elevationAuditNote(gate, "kiosk_device.revoke_display"),
       },
     });
     await notifyDisplayRevoked(id);
@@ -654,10 +672,11 @@ export async function revokeDisplay(id: string): Promise<ActionResult> {
 /** プロファイルごと消す（オープン or 失効済みのときだけ）。 */
 export async function deleteDisplay(id: string): Promise<ActionResult> {
   const tr = await getTranslations();
-  const gate = await useElevation("kiosk_device.revoke_display");
-  if (!gate.ok) return actionError(gate.error);
+  // 順序は 検証 → 素の権限 → 対象の確認 → useElevation → 実処理。
   if (!uuidSchema.safeParse(id).success)
     return actionError(tr("common.invalidInput"));
+  const pre = await checkOperationPermission("kiosk_device.revoke_display");
+  if (!pre.ok) return actionError(pre.error);
 
   try {
     const before = await prisma.displayDevice.findUnique({
@@ -671,12 +690,18 @@ export async function deleteDisplay(id: string): Promise<ActionResult> {
         tr("settings.displaysActions.mustUnlinkOrRevokeFirst"),
       );
     }
+    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+    const gate = await useElevation("kiosk_device.revoke_display");
+    if (!gate.ok) return actionError(gate.error);
     await prisma.displayDevice.delete({ where: { id } });
     await recordAudit({
       action: "DELETE",
       tableName: "display_devices",
       recordId: id,
       before,
+      // 「どの承認で消したのか」を残す。ここだけ手書きの grantId/bypass すら
+      // 無く、承認を経た削除と管理者の素通しが区別できなかった。
+      after: elevationAuditNote(gate, "kiosk_device.revoke_display"),
     });
     revalidate();
     return actionOk();

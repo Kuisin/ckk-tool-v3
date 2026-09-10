@@ -14,6 +14,7 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
+import { countMasterReferences } from "@/lib/master-refs";
 import { composeMaterialTypeCode, formatKindSerial } from "@/lib/material-code";
 import {
   type ActionResult,
@@ -276,10 +277,11 @@ export async function deleteMaterialTypes(
   if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError(tr("common.targetNotSelected"));
   try {
-    // Guard: refuse when any material still references one of the types.
-    const used = await prisma.material.count({
-      where: { materialTypeId: { in: ids } },
-    });
+    // 参照があれば消さない。素材（RESTRICT）だけを見ていたので、素材が 1 本も
+    // 無い材種は「消せる」ように見えたが、製品・価格試算の材種列は SET NULL、
+    // 既定単価マトリクスは CASCADE — つまり黙って null 化・消滅していた。
+    // 何を数えるかは lib/master-refs.ts が唯一の定義（他のマスタと同じ）。
+    const used = (await countMasterReferences("materialType", ids)).total;
     if (used > 0) {
       return actionError(tr("master.materialTypeActions.cannotDeleteInUse"));
     }

@@ -28,7 +28,12 @@ import {
   fingerprintOfSignals,
   type NormalizedSignals,
 } from "@/lib/device-signals-core";
-import { clientIpOf, forwardedChainOf, userAgentOf } from "@/lib/request-ip";
+import {
+  clientIpOf,
+  forwardedChainOf,
+  rateLimitIpOf,
+  userAgentOf,
+} from "@/lib/request-ip";
 
 export const DEVICE_SIGNALS_COOKIE = "ckk_dev";
 /** Cookie の寿命。ログイン 1 回ぶんの往復に足りればよい。 */
@@ -126,6 +131,12 @@ export function computeSignals(raw: unknown): {
 
 export interface DeviceContext {
   ip: string | null;
+  /**
+   * レート制限のバケットを分けるためだけの IP（request-ip.ts rateLimitIpOf）。
+   * **記録には使わない** — 保存する住所は上の `ip`（clientIpOf）のまま。
+   * cf-connecting-ip 由来なので自己申告であり、身元の証拠にはならない。
+   */
+  rateLimitIp: string | null;
   ipChain: string | null;
   userAgent: string | null;
   fingerprint: string | null;
@@ -170,6 +181,7 @@ export function resolveDeviceContext(req: Request): DeviceContext {
   });
   return {
     ip,
+    rateLimitIp: rateLimitIpOf(req),
     ipChain: forwardedChainOf(req),
     userAgent: userAgentOf(req),
     fingerprint: payload?.fp ?? null,
@@ -184,6 +196,7 @@ export function resolveDeviceContext(req: Request): DeviceContext {
 /** 文脈が取れないときの既定値（cron・ビルド時など）。 */
 export const EMPTY_DEVICE_CONTEXT: DeviceContext = {
   ip: null,
+  rateLimitIp: null,
   ipChain: null,
   userAgent: null,
   fingerprint: null,

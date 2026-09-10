@@ -5837,7 +5837,7 @@
       "floorMapPlantMismatch": "平面图与所选据点不一致",
       "createFailed": "存放位置创建失败",
       "locationNotFound": "未找到该存放位置",
-      "locationHasInventoryRefs": "因有库存引用此存放位置，无法删除（请通过库存移动清空，或改为停用）",
+      "locationHasInventoryRefs": "由于存在引用此存放位置的数据（库存、工单），无法删除（请通过库存移动清空，或改为停用）",
       "updateFailed": "存放位置更新失败",
       "deleteFailed": "存放位置删除失败",
       "floorMapLocationMismatch": "平面图与存放位置的据点不一致",
@@ -5875,7 +5875,7 @@
       "updateFailed": "业务伙伴更新失败"
     },
     "materialTypeActions": {
-      "cannotDeleteInUse": "由于存在关联此材料类别的材料，无法删除。请考虑改为停用。",
+      "cannotDeleteInUse": "由于存在引用此材料类别的数据（材料、产品、价格试算、默认单价），无法删除。请考虑改为停用。",
       "createFailed": "材料类别创建失败",
       "deleteFailed": "材料类别删除失败",
       "duplicateDiameterFinishRow": "存在相同直径 × 表面处理的重复行",

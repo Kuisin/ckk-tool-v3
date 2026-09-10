@@ -5837,7 +5837,7 @@
       "floorMapPlantMismatch": "フロアマップが選択した拠点と一致しません",
       "createFailed": "保管場所の作成に失敗しました",
       "locationNotFound": "対象の保管場所が見つかりません",
-      "locationHasInventoryRefs": "この保管場所を参照する在庫があるため削除できません（在庫移動で空にするか、無効化してください）",
+      "locationHasInventoryRefs": "この保管場所を参照するデータ（在庫・指示書）が存在するため削除できません（在庫移動で空にするか、無効化してください）",
       "updateFailed": "保管場所の更新に失敗しました",
       "deleteFailed": "保管場所の削除に失敗しました",
       "floorMapLocationMismatch": "フロアマップが保管場所の拠点と一致しません",
@@ -5875,7 +5875,7 @@
       "updateFailed": "取引先の更新に失敗しました"
     },
     "materialTypeActions": {
-      "cannotDeleteInUse": "この材種に紐づく素材が存在するため削除できません。無効化を検討してください。",
+      "cannotDeleteInUse": "この材種を参照するデータ（素材・製品・価格試算・既定単価）が存在するため削除できません。無効化を検討してください。",
       "createFailed": "材種の作成に失敗しました",
       "deleteFailed": "材種の削除に失敗しました",
       "duplicateDiameterFinishRow": "同一の直径 × 黒皮/研磨 の行が重複しています",

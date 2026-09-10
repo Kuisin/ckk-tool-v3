@@ -29,6 +29,8 @@ export type MasterTarget =
   | "BusinessPartner"
   | "Plant"
   | "Material"
+  | "MaterialType"
+  | "StorageLocation"
   | "WorkLocation"
   | "ApprovalGroup";
 
@@ -45,6 +47,8 @@ export type MasterKind =
   | "branch"
   | "plant"
   | "material"
+  | "materialType"
+  | "storageLocation"
   | "workLocation"
   | "workLocationGroup"
   | "approvalGroup";
@@ -55,6 +59,8 @@ export const KIND_TARGET: Record<MasterKind, MasterTarget> = {
   branch: "BusinessPartner",
   plant: "Plant",
   material: "Material",
+  materialType: "MaterialType",
+  storageLocation: "StorageLocation",
   workLocation: "WorkLocation",
   workLocationGroup: "WorkLocation",
   approvalGroup: "ApprovalGroup",
@@ -131,6 +137,25 @@ export const MASTER_REFERENCES: Record<
     ref("DisplayDevice", "plantId"),
   ],
   Material: [ref("WorkOrder", "materialId")],
+  MaterialType: [
+    ref("Material", "materialTypeId"), // RESTRICT（従来からの唯一のガード）
+    // SET NULL — 製品の材種・価格試算の材種が黙って「未設定」に化ける。
+    // 価格試算は input/result の JSON に材料原価を焼き込んであるので、
+    // 列が null になっても金額は残る = 画面上は正しく見えたまま辿れなくなる。
+    ref("Product", "materialTypeId"),
+    ref("Estimate", "materialTypeId"),
+    // CASCADE — 材種の既定単価マトリクス（¥/1000mm）が丸ごと消える。
+    // 仕入実績が無いときの材料原価はここしか無いので、消すなら人が先に
+    // マトリクスを空にする（明示的な操作）ことを求める。
+    ref("MaterialTypePrice", "materialTypeId"),
+  ],
+  StorageLocation: [
+    ref("ProductInventory", "storageLocationId"),
+    ref("MaterialInventory", "storageLocationId"),
+    // SET NULL — 完成品の保管場所。在庫行だけ見て消すと、指示書側の
+    // 「どこへ入れる予定だったか」が黙って消える。
+    ref("WorkOrder", "storageLocationId"),
+  ],
   WorkLocation: [
     ref("WorkOrderStepPlan", "workLocationId"),
     ref("WorkOrderStepActual", "workLocationId"),

@@ -5837,7 +5837,7 @@
       "floorMapPlantMismatch": "The floor map does not match the selected site",
       "createFailed": "Could not create the storage location",
       "locationNotFound": "Storage location not found",
-      "locationHasInventoryRefs": "Cannot delete because inventory still references this storage location (empty it with a stock transfer, or disable it instead)",
+      "locationHasInventoryRefs": "Cannot delete because data references this storage location (stock, work orders) — empty it with a stock transfer, or disable it instead",
       "updateFailed": "Could not update the storage location",
       "deleteFailed": "Could not delete the storage location",
       "floorMapLocationMismatch": "The floor map does not match the storage location's site",
@@ -5875,7 +5875,7 @@
       "updateFailed": "Could not update the business partner"
     },
     "materialTypeActions": {
-      "cannotDeleteInUse": "Cannot delete because materials reference this material type. Consider disabling it instead.",
+      "cannotDeleteInUse": "Cannot delete because data references this material type (materials, products, price estimates, default prices). Consider disabling it instead.",
       "createFailed": "Could not create the material type",
       "deleteFailed": "Could not delete the material type",
       "duplicateDiameterFinishRow": "Duplicate rows for the same diameter × surface finish",

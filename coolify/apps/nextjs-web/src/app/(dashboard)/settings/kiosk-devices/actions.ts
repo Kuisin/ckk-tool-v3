@@ -60,6 +60,15 @@ function uuidSchema(tr: Tr) {
   return z.string().uuid(tr("settings.kioskDevicesActions.invalidTarget"));
 }
 
+/**
+ * 端末設定コード（6 桁）。**CSPRNG から引く** — 端末設定画面の解錠鍵であり、
+ * 端末を作り直すときの本人確認材料でもあるので、予測できてはいけない。
+ * 作成時も再発行時もここ 1 本を通す（片方だけ弱い、が起きないように）。
+ */
+function newSettingsCode(): string {
+  return String(randomInt(0, 1_000_000)).padStart(6, "0");
+}
+
 function revalidate() {
   revalidatePath(BASE_PATH);
   revalidatePath(`${BASE_PATH}/map`);
@@ -185,6 +194,12 @@ export async function createDeviceProfile(
         name,
         plantId: v.plantId,
         location: v.location?.trim() || null,
+        // 設定コードは端末設定画面の解錠鍵（= 秘密）なので、作る時点から
+        // CSPRNG で引く。列の DB 既定（random()）は Postgres の非暗号 PRNG で、
+        // 同じシードの並びから次の値が読める — 作り直したときの
+        // regenerateSettingsCode は randomInt を使っていたのに、**最初の 1 本**
+        // だけが弱いままだった。既定は消さない（保険として残す）。
+        settingsCode: newSettingsCode(),
       },
       select: { id: true },
     });
@@ -793,8 +808,7 @@ export async function regenerateSettingsCode(
     // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
     const gate = await useElevation("kiosk_secret.regenerate_settings_code");
     if (!gate.ok) return actionError(gate.error);
-    // 解錠コードは秘密なので CSPRNG から引く（Math.random は予測できる）。
-    const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    const code = newSettingsCode();
     await prisma.kioskDevice.update({
       where: { id: parsed.data },
       data: { settingsCode: code },

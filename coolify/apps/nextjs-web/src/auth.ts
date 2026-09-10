@@ -107,6 +107,11 @@ const authentikProvider: OAuthConfig<AuthentikProfile> = {
  *   きつくすると打ち間違いが数回続いただけで全員が閉め出される。IP の budget を
  *   使い切っても**アカウントは止まらない**（別回線からは通常どおり入れる）。
  *
+ * ★ **IP 側の鍵は記録用の IP とは別物**（lib/request-ip.ts `rateLimitIpOf`）。
+ *   記録は clientIpOf のままだが、その値は既定でプロキシの住所に潰れるので、
+ *   バケットの鍵としては社外の全員が 1 つになってしまう。鍵にだけ
+ *   cf-connecting-ip を優先する（偽装できるので、身元の根拠には使わない）。
+ *
  * ★ **DB が落ちたら制限は素通し（fail open）。** checkPortalLimit /
  *   recordPortalLimitFailure は内部で握り潰すので、表が読めないことを理由に
  *   全社がログインできなくなることはない。どのみち DB が無ければ
@@ -115,10 +120,19 @@ const authentikProvider: OAuthConfig<AuthentikProfile> = {
 const LOGIN_USER_BUCKET = "WEB_LOGIN_USER" as const;
 const LOGIN_IP_BUCKET = "WEB_LOGIN_IP" as const;
 
-/** 失敗を数える（await しない — ログイン応答を遅らせない）。 */
-function countLoginFailure(username: string, ip: string | null): void {
-  void recordPortalLimitFailure(LOGIN_USER_BUCKET, username);
-  if (ip) void recordPortalLimitFailure(LOGIN_IP_BUCKET, ip);
+/**
+ * 失敗を数える。**await する** — 数え終わる前に null を返すと、同時に来た
+ * 試行が全部「まだ 0 回」を読んでしまい、5 回の予算が事実上無くなる
+ * （キオスクの PIN カウンタが先に同じ穴を塞いでいる）。
+ */
+async function countLoginFailure(
+  username: string,
+  ip: string | null,
+): Promise<void> {
+  await Promise.all([
+    recordPortalLimitFailure(LOGIN_USER_BUCKET, username),
+    ip ? recordPortalLimitFailure(LOGIN_IP_BUCKET, ip) : Promise.resolve(),
+  ]);
 }
 
 /** 記録用の端末文脈（リクエスト外から呼ばれたら空の文脈）。 */
@@ -172,15 +186,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           recordFailure("PASSWORD", "EMPTY_INPUT", username || null);
           return null;
         }
-        // 送信元 IP は route.ts が AsyncLocalStorage で運んだ端末文脈から取る
-        // （resolveDeviceContext の中身は request-ip.ts の clientIpOf）。
-        const ip = deviceContext().ip;
+        // レート制限の鍵は **rateLimitIp**（cf-connecting-ip 優先）を使う。
+        // 記録に残す住所（login_attempts.ip_address = clientIpOf）は従来のまま
+        // で、両者はわざと別物 — 理由は lib/request-ip.ts の rateLimitIpOf。
+        // 要点だけ再掲: 既定（TRUSTED_PROXY_HOPS=0）の clientIpOf は XFF の
+        // 右端 = 手前のプロキシの住所なので、社外の利用者が 1 つの値に潰れ、
+        // 誰か 1 人の打ち間違い 30 回で社外全員が閉め出される。
+        const limitIp = deviceContext().rateLimitIp;
         // ユーザー名と IP のどちらかが尽きていたら、パスワードを照合せずに
         // 断る（照合そのものが scrypt で重いので、ここで切るのが要点）。
         const [userLimit, ipLimit] = await Promise.all([
           checkPortalLimit(LOGIN_USER_BUCKET, username),
-          ip
-            ? checkPortalLimit(LOGIN_IP_BUCKET, ip)
+          limitIp
+            ? checkPortalLimit(LOGIN_IP_BUCKET, limitIp)
             : Promise.resolve({ locked: false }),
         ]);
         if (userLimit.locked || ipLimit.locked) {
@@ -195,29 +213,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // 未知のユーザー名は生値を残さない（打ち間違いのパスワードが
           // 混ざりうる）。相関キー（identifier_ref）だけが残る。
           recordFailure("PASSWORD", "UNKNOWN_USER", username);
-          countLoginFailure(username, ip);
+          await countLoginFailure(username, limitIp);
           return null;
         }
         if (!user.isActive) {
           recordFailure("PASSWORD", "USER_INACTIVE", username, user.id);
-          countLoginFailure(username, ip);
+          await countLoginFailure(username, limitIp);
           return null;
         }
         if (!user.passwordHash) {
           recordFailure("PASSWORD", "NO_PASSWORD_SET", username, user.id);
-          countLoginFailure(username, ip);
+          await countLoginFailure(username, limitIp);
           return null;
         }
         if (!(await verifyPassword(password, user.passwordHash))) {
           recordFailure("PASSWORD", "BAD_PASSWORD", username, user.id);
-          countLoginFailure(username, ip);
+          await countLoginFailure(username, limitIp);
           return null;
         }
         // 成功したので両方の budget を戻す。IP 側も戻すのは、事務所の共有
         // 回線で「誰かが打ち間違えた ぶん」が積み上がったまま残らないように
         // するため（入れた時点で、その回線を止める意味はもう無い）。
         void clearPortalLimit(LOGIN_USER_BUCKET, username);
-        if (ip) void clearPortalLimit(LOGIN_IP_BUCKET, ip);
+        if (limitIp) void clearPortalLimit(LOGIN_IP_BUCKET, limitIp);
         await prisma.user.update({
           where: { id: user.id },
           data: { lastLoginAt: new Date() },
