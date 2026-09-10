@@ -200,6 +200,9 @@ model ProcessStepCatalog {
   // 「何を入れれば計画が揃ったか」は工程マスタだけが決める（lib/work-plan-core.ts）。
   planTimeRequired     Boolean       @default(false) @map("plan_time_required")
   planQuantityRequired Boolean       @default(false) @map("plan_quantity_required")
+  // 担当者。既定は任意 — 承認後に現場で決めてよい工程が多く、計画の最小単位は
+  // 「いつ・どこで」。人まで決めてから承認に出す工程だけ立てる。
+  planAssigneeRequired Boolean       @default(false) @map("plan_assignee_required")
   approvalMinRank   String?          @map("approval_min_rank") // 係長以上等
   quantityTracking  QuantityTracking @default(FLOW) @map("quantity_tracking")
   lotInputMode      LotInputMode     @default(NONE) @map("lot_input_mode") // 実行時のロット入力の既定（工程リスト/指示書で上書き可）

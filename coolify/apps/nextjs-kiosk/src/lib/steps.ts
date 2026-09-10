@@ -1,8 +1,8 @@
 /**
  * steps.ts — 「自分の工程」の読み取り。server-only.
  *
- * 割り当ての実体は `app.work_order_step_plans.user_id`（担当者・必須、
- * index (user_id, planned_date)）。キオスクのセッションユーザーは同じ
+ * 割り当ての実体は `app.work_order_step_plans.user_id`（担当者。任意 —
+ * 工程マスタで要求した工程だけ必須。index (user_id, planned_date)）。キオスクのセッションユーザーは同じ
  * `app.users.id` 空間なので直接引ける。
  *
  * ただし計画行だけを見ると「昨日始めて終わっていない工程」が迷子になるので、
@@ -496,9 +496,10 @@ export async function getMyStep(
     }),
   ]);
   if (!plan && !locked) {
-    // 未計画の工程だけ開放（誰かの計画がある工程は担当者のみ）
+    // 未計画の工程だけ開放（誰かの計画がある工程は担当者のみ。担当者なしの
+    // 計画行は誰も縛らない — step-execution.ts canOperateStep と同じ規則）
     const anyPlan = await prisma.workOrderStepPlan.findFirst({
-      where: { stepId },
+      where: { stepId, userId: { not: null } },
       select: { id: true },
     });
     if (anyPlan) return null;
@@ -595,7 +596,8 @@ export async function getWorkOrderOverview(
       if (!myPlansByStep.has(p.stepId)) myPlansByStep.set(p.stepId, p);
     }
     const names = assigneesByStep.get(p.stepId) ?? [];
-    if (!names.includes(p.user.displayName)) names.push(p.user.displayName);
+    if (p.user && !names.includes(p.user.displayName))
+      names.push(p.user.displayName);
     assigneesByStep.set(p.stepId, names);
   }
 

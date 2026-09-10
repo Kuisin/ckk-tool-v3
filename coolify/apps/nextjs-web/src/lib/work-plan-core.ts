@@ -7,10 +7,12 @@
  * 承認依頼を出す時点で計画を要求するのはそのため。
  *
  * **何を入れれば「揃った」かは工程マスタだけが決める**（§7）:
- *   - 担当者 と 計画日 は常に必須（列が NOT NULL — 計画の最小単位）
- *   - 作業場所 / 開始・終了時刻 / 数量 は工程ごとに 要る / 要らない
- *     （process_step_catalog の work_location_required / plan_time_required /
- *     plan_quantity_required）
+ *   - 計画日 は常に必須（列が NOT NULL — 計画の最小単位は「いつ・どこで」）
+ *   - 担当者 / 作業場所 / 開始・終了時刻 / 数量 は工程ごとに 要る / 要らない
+ *     （process_step_catalog の plan_assignee_required / work_location_required /
+ *     plan_time_required / plan_quantity_required）。担当者は既定で任意 —
+ *     承認後に現場で決めてよい工程が多く、承認を出すためだけに仮の人を
+ *     入れる運用を作らないため。
  * 社内工程（execution_location = INTERNAL）ごとに、それらの揃った計画が 1 行以上。
  * 外注工程は対象外 — 作業場所は社内の機械/エリアで、外注先には当てはまらない
  * （外注は 依頼日 / 入荷予定日 を別に持つ）。キャンセル済みの工程も対象外。
@@ -24,10 +26,11 @@
  */
 
 /** 工程ごとに要否を切れる計画の項目。 */
-export type PlanField = "WORK_LOCATION" | "TIME" | "QUANTITY";
+export type PlanField = "ASSIGNEE" | "WORK_LOCATION" | "TIME" | "QUANTITY";
 
 /** 工程マスタが持つ計画の必須項目の印。 */
 export interface PlanRequirementFlags {
+  planAssigneeRequired?: boolean;
   workLocationRequired?: boolean;
   planTimeRequired?: boolean;
   planQuantityRequired?: boolean;
@@ -43,6 +46,7 @@ export function requiredPlanFields(
 ): PlanField[] {
   if (step.executionLocation !== "INTERNAL") return [];
   const out: PlanField[] = [];
+  if (step.planAssigneeRequired) out.push("ASSIGNEE");
   if (options.workLocationsConfigured && step.workLocationRequired !== false)
     out.push("WORK_LOCATION");
   if (step.planTimeRequired) out.push("TIME");
@@ -51,6 +55,8 @@ export function requiredPlanFields(
 }
 
 export interface PlanReadinessPlan {
+  /** 担当者（任意 — 工程マスタで要求した工程だけ判定に効く）。 */
+  userId?: string | null;
   /** 計画日（無い行は無い — DB は NOT NULL だが型の都合で任意に受ける）。 */
   plannedDate: string | Date | null;
   workLocationId: number | null;
@@ -90,6 +96,7 @@ export function missingPlanFields(
   const out: PlanField[] = [];
   if (plan.plannedDate == null) out.push("TIME"); // 日付が無い行は時刻も無い扱い
   for (const f of required) {
+    if (f === "ASSIGNEE" && plan.userId == null) out.push(f);
     if (f === "WORK_LOCATION" && plan.workLocationId == null) out.push(f);
     if (
       f === "TIME" &&

@@ -188,7 +188,8 @@ function allocationInputSchema(
 function planInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
     processStepId: z.number().int().positive(),
-    userId: z.string().min(1),
+    /** 担当者（任意 — 工程マスタで要求した工程は承認依頼のゲートで止まる）。 */
+    userId: z.string().min(1).nullable(),
     /** 計画日（YYYY-MM-DD, JST）。 */
     date: z
       .string()
@@ -584,7 +585,7 @@ export async function createWorkOrder(
           steps: { select: { id: true, processStepId: true } },
         },
       });
-      // 作成時の作業計画（工程 × 担当者 × 計画日）。工程 id は作成結果から
+      // 作成時の作業計画（工程 × 計画日 × 作業場所、担当者は任意）。工程 id は作成結果から
       // 引き直す — 選択に無い工程の計画は黙って捨てる（UI 側で作れない形）。
       if (v.plans.length > 0) {
         const stepIdByProcess = new Map(
@@ -1293,11 +1294,13 @@ export async function requestApproval(
             name: true,
             workLocationRequired: true,
             planTimeRequired: true,
+            planAssigneeRequired: true,
             planQuantityRequired: true,
           },
         },
         plans: {
           select: {
+            userId: true,
             plannedDate: true,
             workLocationId: true,
             plannedStartAt: true,
@@ -1315,6 +1318,7 @@ export async function requestApproval(
         status: st.status,
         workLocationRequired: st.processStep.workLocationRequired,
         planTimeRequired: st.processStep.planTimeRequired,
+        planAssigneeRequired: st.processStep.planAssigneeRequired,
         planQuantityRequired: st.processStep.planQuantityRequired,
         plans: st.plans,
       })),

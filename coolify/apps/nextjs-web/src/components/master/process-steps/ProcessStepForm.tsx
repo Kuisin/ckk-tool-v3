@@ -108,6 +108,7 @@ const processStepSchema = (tr: (key: string) => string) =>
       isFinalInspection: z.boolean(),
       workLocationRequired: z.boolean(),
       planTimeRequired: z.boolean(),
+      planAssigneeRequired: z.boolean(),
       planQuantityRequired: z.boolean(),
       approvalMinRank: z.string(),
       quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
@@ -154,6 +155,7 @@ export interface ProcessStepFormInitial {
   /** 作業計画に作業場所が要るか（承認前の揃い）。 */
   workLocationRequired: boolean;
   planTimeRequired: boolean;
+  planAssigneeRequired: boolean;
   planQuantityRequired: boolean;
   approvalMinRank: string;
   quantityTracking: string;
@@ -225,6 +227,7 @@ export function ProcessStepForm({
       isFinalInspection: initial?.isFinalInspection ?? false,
       workLocationRequired: initial?.workLocationRequired ?? true,
       planTimeRequired: initial?.planTimeRequired ?? false,
+      planAssigneeRequired: initial?.planAssigneeRequired ?? false,
       planQuantityRequired: initial?.planQuantityRequired ?? false,
       approvalMinRank: initial?.approvalMinRank ?? "",
       quantityTracking:
@@ -300,6 +303,7 @@ export function ProcessStepForm({
       isFinalInspection: values.isFinalInspection,
       workLocationRequired: values.workLocationRequired,
       planTimeRequired: values.planTimeRequired,
+      planAssigneeRequired: values.planAssigneeRequired,
       planQuantityRequired: values.planQuantityRequired,
       approvalMinRank: values.approvalMinRank,
       quantityTracking: values.quantityTracking,
@@ -625,6 +629,13 @@ export function ProcessStepForm({
               {tr("master.processSteps.planRequiredFieldsHelp")}
             </Text>
           </Stack>
+          <Switch
+            description={tr("master.processSteps.planAssigneeRequiredHelp")}
+            label={tr("master.processSteps.planAssigneeRequired")}
+            {...form.getInputProps("planAssigneeRequired", {
+              type: "checkbox",
+            })}
+          />
           <Switch
             description={tr("master.processSteps.workLocationRequiredHelp")}
             label={tr("master.processSteps.workLocationRequired")}

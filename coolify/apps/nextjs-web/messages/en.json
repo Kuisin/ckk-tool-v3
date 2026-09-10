@@ -2504,7 +2504,8 @@
       "planField": {
         "WORK_LOCATION": "work location",
         "TIME": "time",
-        "QUANTITY": "quantity"
+        "QUANTITY": "quantity",
+        "ASSIGNEE": "Assignee"
       }
     },
     "defectRecordForm": {
@@ -2852,7 +2853,9 @@
       "allowQuantityVariance": "Allow delivering short or excess quantity",
       "allowQuantityVarianceHelp": "Lets this lot ship even when it does not match the ordered quantity. How far it may differ, and whether that needs approval, is set on the business partner.",
       "workLocationRequiredPlaceholder": "Work location (required)",
-      "timeQuantityInPanelLater": "This step's plan also needs times / quantity — add them in the step's plan panel after creating the work order"
+      "timeQuantityInPanelLater": "This step's plan also needs times / quantity — add them in the step's plan panel after creating the work order",
+      "assigneeRequiredPlaceholder": "Assignee (required)",
+      "planNeedsAssignee": "These steps require an assignee: {steps}"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "Allocated {allocated} / Ordered {ordered}",
@@ -3004,7 +3007,8 @@
       "workLocationRequiredForPlan": "A work plan requires a work location",
       "planLockedByWorkOrderStatus": "Work plans cannot be changed while the work order is pending approval, completed or cancelled",
       "timeRequiredForPlan": "A work plan for this step requires start and end times",
-      "quantityRequiredForPlan": "A work plan for this step requires a quantity"
+      "quantityRequiredForPlan": "A work plan for this step requires a quantity",
+      "assigneeRequiredForPlan": "This step's work plan requires an assignee"
     },
     "workOrderActions": {
       "acknowledgeFailed": "Could not record the acknowledgement",
@@ -5397,7 +5401,7 @@
       "workLocationRequired": "Work plan requires a work location",
       "workLocationRequiredHelp": "Requires a work location on this step's work plan before approval can be requested. Turn it off for steps where a location is meaningless (e.g. stock moves). Which locations may be used is set under \"Allowed work locations\" below.",
       "planRequiredFields": "Required work-plan fields",
-      "planRequiredFieldsHelp": "What a work plan for this step must contain before approval can be requested. Assignee and planned date are always required.",
+      "planRequiredFieldsHelp": "What this step's work plan must contain before requesting approval. The planned date is always required.",
       "planTimeRequired": "Work plan requires start and end times",
       "planTimeRequiredHelp": "Turn on for steps that must be scheduled to a time slot before approval.",
       "planQuantityRequired": "Work plan requires a quantity",
@@ -5411,7 +5415,10 @@
       "planRequiredShort": "Plan requires",
       "planFieldLocationShort": "Location",
       "planFieldTimeShort": "Time",
-      "planFieldQuantityShort": "Qty"
+      "planFieldQuantityShort": "Qty",
+      "planAssigneeRequired": "Work plan requires an assignee",
+      "planAssigneeRequiredHelp": "Turn on for steps where the assignee must be decided before requesting approval. By default the assignee is optional and can be decided on the floor after approval.",
+      "planFieldAssigneeShort": "Assignee"
     },
     "products": {
       "specification": "Specification",

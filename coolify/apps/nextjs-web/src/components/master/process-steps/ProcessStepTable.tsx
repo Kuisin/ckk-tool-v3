@@ -81,6 +81,7 @@ export interface ProcessStepRow {
   /** 作業計画の必須項目（工程ごと — lib/work-plan-core.ts）。 */
   workLocationRequired: boolean;
   planTimeRequired: boolean;
+  planAssigneeRequired: boolean;
   planQuantityRequired: boolean;
   sortOrder: number;
   isActive: boolean;
@@ -360,13 +361,16 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
         ),
     },
     {
-      // 作業計画の必須項目（担当者・日付は常に必須なので出さない）
+      // 作業計画の必須項目（日付は常に必須なので出さない）
       key: "planRequired",
       header: tr("master.processSteps.planRequiredShort"),
       hideable: true,
       width: 130,
       render: (r) => {
         const parts = [
+          r.planAssigneeRequired
+            ? tr("master.processSteps.planFieldAssigneeShort")
+            : null,
           r.workLocationRequired
             ? tr("master.processSteps.planFieldLocationShort")
             : null,

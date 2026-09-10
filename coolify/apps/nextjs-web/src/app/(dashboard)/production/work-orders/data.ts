@@ -312,13 +312,14 @@ function stepAssignees(
       displayName: string | null;
       avatarFileId: string | null;
       avatarThumbFileId: string | null;
-    };
+    } | null;
   }[],
 ): StepAssigneeView[] {
   const seen = new Set<string>();
   const out: StepAssigneeView[] = [];
   for (const p of plans) {
-    if (seen.has(p.user.id)) continue;
+    // 担当者なしの計画（いつ・どこで だけ決めた行）は担当欄に出ない
+    if (p.user == null || seen.has(p.user.id)) continue;
     seen.add(p.user.id);
     const fileId = p.user.avatarThumbFileId ?? p.user.avatarFileId;
     out.push({
@@ -714,6 +715,7 @@ export async function fetchWorkOrder(
         status: s.status,
         workLocationRequired: s.processStep.workLocationRequired,
         planTimeRequired: s.processStep.planTimeRequired,
+        planAssigneeRequired: s.processStep.planAssigneeRequired,
         planQuantityRequired: s.processStep.planQuantityRequired,
         plans: s.plans,
       })),
@@ -1021,6 +1023,7 @@ export async function fetchStepExecution(
       select: {
         workLocationRequired: true,
         planTimeRequired: true,
+        planAssigneeRequired: true,
         planQuantityRequired: true,
       },
     }),
@@ -1178,8 +1181,8 @@ export async function fetchStepExecution(
       : null;
   const mapPlanRow = (r: {
     id: string;
-    userId: string;
-    user: { displayName: string };
+    userId: string | null;
+    user: { displayName: string } | null;
     date: Date;
     start: Date | null;
     end: Date | null;
@@ -1189,7 +1192,7 @@ export async function fetchStepExecution(
   }): StepPlanView => ({
     id: r.id,
     userId: r.userId,
-    userName: r.user.displayName,
+    userName: r.user?.displayName ?? null,
     date: r.date.toISOString().slice(0, 10),
     startTime: jstTime(r.start),
     endTime: jstTime(r.end),
@@ -1298,6 +1301,7 @@ export async function fetchStepExecution(
         executionLocation: step.executionLocation,
         workLocationRequired: stepCatalog?.workLocationRequired,
         planTimeRequired: stepCatalog?.planTimeRequired,
+        planAssigneeRequired: stepCatalog?.planAssigneeRequired,
         planQuantityRequired: stepCatalog?.planQuantityRequired,
       },
       { workLocationsConfigured: allOptions.length > 0 },
