@@ -31,6 +31,7 @@ export const APPROVAL_TARGET_TYPES = [
   "form_responses",
   "internal_pages",
   "design_requests",
+  "delivery_orders",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -162,6 +163,15 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     appKey: "design-requests",
     approvePermission: "design_request",
   },
+  // 出荷書は**過不足納品のときだけ**承認を通る（§8）。数量ちょうどの出荷は
+  // これまでどおり依頼を作らないので、フローを組んでも通常の出荷は止まらない。
+  delivery_orders: {
+    label: label("common.deliveryOrder", "ja"),
+    color: "orange",
+    href: (id) => `/shipping/delivery-orders/${id}`,
+    appKey: "delivery-orders",
+    approvePermission: "delivery_order",
+  },
 };
 
 export function isApprovalTargetType(v: string): v is ApprovalTargetType {
@@ -179,6 +189,7 @@ const TARGET_LABEL_KEY: Record<ApprovalTargetType, string> = {
   internal_pages: "common.internalDocuments",
   purchase_requests: "common.purchaseRequest",
   design_requests: "common.designRequest2",
+  delivery_orders: "common.deliveryOrder",
 };
 
 /**

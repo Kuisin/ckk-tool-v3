@@ -7,6 +7,10 @@
  * 明細を nested create で一括作成する。表示番号 DOR-YYYYMM-NNNNN は導出。
  *
  * ステータス遷移: DRAFT →(確定)→ CONFIRMED →(出荷)→ SHIPPED。
+ * 過不足納品（§8）のときは確定の手前に承認が挟まりうる:
+ *   DRAFT →(確定を押す)→ DRAFT + approvalStatus=PENDING →(承認)→ APPROVED
+ *   → もう一度「確定」で CONFIRMED。要否は顧客マスタの設定が決め、
+ *   判定は lib/delivery-variance-core.ts が唯一の定義元。
  * 出荷時（DISPATCH のみ）は注文明細の出荷進捗を再計算し、注文明細ステータスを
  * PARTIAL_SHIPPED / SHIPPED へ更新する（STOCK_STORAGE は請求フロー外のため
  * 注文明細ステータスに影響しない）。削除（キャンセル）は下書きのみ hard delete。
@@ -17,12 +21,31 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import {
+  loadCustomerPriceEntries,
+  priceListUnitPrice,
+} from "@/app/(dashboard)/sales/order-acceptances/price-resolve";
+import {
   combinabilityError,
   planAutoDeliveryNotes,
 } from "@/components/shipping/delivery-orders/model";
+import {
+  actOnCurrentStep,
+  assertFlowConfigured,
+  startApprovalFlow,
+} from "@/lib/approvals";
 import { recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
+import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import {
+  type DeliveryVarianceSummary,
+  evaluateDeliveryOrderVariance,
+  loadDeliveryTolerance,
+} from "@/lib/delivery-variance";
+import {
+  deliveredLineStatus,
+  lineVariancePermitted,
+  toleranceAllowance,
+} from "@/lib/delivery-variance-core";
 import {
   type DocKey,
   formatDocNumber,
@@ -35,7 +58,6 @@ import { allocateDocumentKey } from "@/lib/numbering";
 import {
   isLineShippable,
   LINE_CONSUMING_DELIVERY_ORDER_WHERE,
-  lineShipStatus,
 } from "@/lib/order-line-core";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
@@ -86,6 +108,15 @@ function itemInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   });
 }
 
+/**
+ * 過不足納品の 2 つの設定（出荷書ヘッダ）。既定は従来の挙動 —
+ * 締めない（不足は一部出荷のまま）/ 請求単価は受注時のまま。
+ */
+const varianceFieldsSchema = {
+  billingPriceMode: z.enum(["ORIGINAL", "PRICE_LIST"]).default("ORIGINAL"),
+  closesOrderLines: z.boolean().default(false),
+} as const;
+
 function createInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z
     .object({
@@ -96,6 +127,7 @@ function createInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
       type: z.enum(["DISPATCH", "STOCK_STORAGE"]),
       fromPlantId: z.string().nullable(),
       notes: z.string().nullable(),
+      ...varianceFieldsSchema,
       items: z
         .array(itemInputSchema(tr))
         .min(1, tr("common.addAtLeastOneLineItem")),
@@ -127,6 +159,7 @@ function updateInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
       type: z.enum(["DISPATCH", "STOCK_STORAGE"]),
       fromPlantId: z.string().nullable(),
       notes: z.string().nullable(),
+      ...varianceFieldsSchema,
       items: z
         .array(itemInputSchema(tr))
         .min(1, tr("common.addAtLeastOneLineItem")),
@@ -227,6 +260,16 @@ export interface DeliverySourceInfo {
   productName: string;
   quantity: number;
   status: string;
+  /**
+   * 過不足納品（§8）が許されている明細か = 関連する指示書のどれかが
+   * 「不足/超過分も納品してよい」と言っている。false なら従来どおり
+   * 受注数量が上限で、不足で締めることもできない。
+   */
+  variancePermitted: boolean;
+  /** 超過側で**許容範囲に収まる**幅（本数・切り捨て）。超えると決裁が要りうる。 */
+  toleranceOver: number;
+  /** 不足側で**許容範囲に収まる**幅（本数・切り捨て）。 */
+  toleranceUnder: number;
   completedWorkOrders: CompletedWorkOrderRef[];
   /** この注文明細に紐づく完了指示書のロット（現物あり）。 */
   stockLots: StockLotRef[];
@@ -254,44 +297,55 @@ export async function fetchDeliverySourceInfo(
     // 確定前（枝番なし・製品未特定）の明細は出荷対象にならない。
     if (!so || so.branch == null || so.productId == null) return null;
     const productId = so.productId;
-    const [workOrders, inventories] = await Promise.all([
-      prisma.workOrder.findMany({
-        where: {
-          orderLineLinks: { some: { orderLineId } },
-          status: "COMPLETED",
-        },
-        // エンジンが読む列だけ（STEP_STATE_SELECT — workflow-core 参照）。
-        // 全列 SELECT は列追加のたび migration 前の DB で P2022 に落ちる。
-        select: {
-          workOrderNumber: true,
-          plannedQuantity: true,
-          steps: { select: STEP_STATE_SELECT },
-          stepLinks: { select: STEP_LINK_STATE_SELECT },
-          // 統合ロットの出来高配分（distributeFinished）に使う
-          orderLineLinks: {
-            select: { orderLineId: true, quantity: true },
-            orderBy: { sortOrder: "asc" },
+    const [workOrders, inventories, allWorkOrders, tolerance] =
+      await Promise.all([
+        prisma.workOrder.findMany({
+          where: {
+            orderLineLinks: { some: { orderLineId } },
+            status: "COMPLETED",
           },
-        },
-        orderBy: { workOrderNumber: "asc" },
-      }),
-      // 在庫ロットの現物数量 — この注文明細に紐づく指示書のロットだけを
-      // ピッカーに出す（指示書は関連 SO 文書から選ぶ、が本画面の規約。
-      // 他の受注のロットを充てるときは先に FROM_STOCK の在庫引当指示書で
-      // この明細へ紐づける）。
-      prisma.productInventory.findMany({
-        where: {
-          productId,
-          isSemiFinished: false,
-          lotNumber: { not: null },
-        },
-        select: {
-          lotNumber: true,
-          quantity: true,
-          reservedQuantity: true,
-        },
-      }),
-    ]);
+          // エンジンが読む列だけ（STEP_STATE_SELECT — workflow-core 参照）。
+          // 全列 SELECT は列追加のたび migration 前の DB で P2022 に落ちる。
+          select: {
+            workOrderNumber: true,
+            plannedQuantity: true,
+            steps: { select: STEP_STATE_SELECT },
+            stepLinks: { select: STEP_LINK_STATE_SELECT },
+            // 統合ロットの出来高配分（distributeFinished）に使う
+            orderLineLinks: {
+              select: { orderLineId: true, quantity: true },
+              orderBy: { sortOrder: "asc" },
+            },
+          },
+          orderBy: { workOrderNumber: "asc" },
+        }),
+        // 在庫ロットの現物数量 — この注文明細に紐づく指示書のロットだけを
+        // ピッカーに出す（指示書は関連 SO 文書から選ぶ、が本画面の規約。
+        // 他の受注のロットを充てるときは先に FROM_STOCK の在庫引当指示書で
+        // この明細へ紐づける）。
+        prisma.productInventory.findMany({
+          where: {
+            productId,
+            isSemiFinished: false,
+            lotNumber: { not: null },
+          },
+          select: {
+            lotNumber: true,
+            quantity: true,
+            reservedQuantity: true,
+          },
+        }),
+        // 過不足の許可は**完了に限らない**全指示書から見る（上の workOrders は
+        // 出荷できるロットを出すための COMPLETED 限定なので使えない）。
+        prisma.workOrder.findMany({
+          where: {
+            orderLineLinks: { some: { orderLineId } },
+            status: { not: "CANCELLED" },
+          },
+          select: { allowQuantityVariance: true },
+        }),
+        loadDeliveryTolerance(so.acceptance.customerBpId),
+      ]);
     const soLots = new Set(workOrders.map((wo) => wo.workOrderNumber));
     const byLot = new Map<number, { quantity: number; reserved: number }>();
     for (const inv of inventories) {
@@ -339,6 +393,13 @@ export async function fetchDeliverySourceInfo(
       productName: localized(so.product?.name as LocalizedText | null),
       quantity: so.quantity,
       status: so.status,
+      variancePermitted: lineVariancePermitted(allWorkOrders),
+      toleranceOver: Math.floor(
+        toleranceAllowance(so.quantity, tolerance, "over"),
+      ),
+      toleranceUnder: Math.floor(
+        toleranceAllowance(so.quantity, tolerance, "under"),
+      ),
       completedWorkOrders: workOrders.map((wo) => {
         // 出来高 = グラフ終端集計（分岐合流 DAG でも正しい残良品）。
         // toStepState 経由なので branchStock も渡り、半製品在庫で終わる
@@ -561,67 +622,55 @@ async function validateLineProducts(
 }
 
 /**
- * 明細が参照する注文明細の残数を超えていないか（作成・更新時の fail-fast）。
- * 残数を消費する出荷書は LINE_CONSUMING_DELIVERY_ORDER_WHERE（DISPATCH の
- * 下書き・確定・出荷済すべて — SH03 の未手配数と同じ条件）。
- * 確定的なガードは shipDeliveryOrder 側（出荷時点で数え直す）。
+ * 過不足の検査（作成・更新時の fail-fast）。確定的なガードは
+ * `confirmDeliveryOrder` / `shipDeliveryOrder` 側（そのときの数で数え直す）。
+ *
+ * 拒むのは 2 つだけ:
+ *   - 指示書の許可が無いのに**受注数を超える**（従来の過出荷ガードそのもの）
+ *   - 指示書の許可が無いのに**不足で締めようとする**
+ *
+ * 許可があるときは範囲外でも保存を通す — 範囲外は「禁止」ではなく「決裁が要る」で、
+ * その決裁は確定のときに求める。ここで止めると、決裁に出す下書きすら作れない。
+ *
+ * 残数を消費する出荷書の範囲は LINE_CONSUMING_DELIVERY_ORDER_WHERE（DISPATCH の
+ * 下書き・確定・出荷済 — SH03 の未手配数と同じ条件）。
  */
-async function validateLineRemaining(
-  items: { orderLineId: string | null; quantity: number }[],
+async function validateVariance(
+  customerBpId: string | null,
+  items: readonly { orderLineId: string | null; quantity: number }[],
+  closesOrderLines: boolean,
   tr: Awaited<ReturnType<typeof getTranslations>>,
   excludeKey?: DocKey,
-): Promise<string | null> {
-  const byLine = new Map<string, number>();
-  for (const it of items) {
-    if (!it.orderLineId) continue;
-    byLine.set(it.orderLineId, (byLine.get(it.orderLineId) ?? 0) + it.quantity);
+): Promise<{ error: string | null; summary: DeliveryVarianceSummary }> {
+  const summary = await evaluateDeliveryOrderVariance({
+    customerBpId,
+    items,
+    closesOrderLines,
+    excludeKey,
+  });
+  const over = summary.overWithoutPermission[0];
+  if (over) {
+    return {
+      error: tr("shipping.deliveryOrderActions.exceedsLineRemaining", {
+        number: over.orderLineNumber,
+        remaining: Math.max(0, over.orderedQuantity - over.otherQuantity),
+        requested: over.thisQuantity,
+      }),
+      summary,
+    };
   }
-  for (const [orderLineId, requested] of byLine) {
-    const line = await prisma.orderLine.findUnique({
-      where: { id: orderLineId },
-      select: {
-        quantity: true,
-        acceptanceYearMonth: true,
-        acceptanceSeq: true,
-        branch: true,
-      },
-    });
-    if (!line || line.branch == null) {
-      return tr("shipping.deliveryOrderActions.specifyAConfirmedOrderLine");
-    }
-    // 他の出荷書に載っているぶん（下書き・確定・出荷済）を全部数える。
-    // 編集時に同じ出荷書の行を二重に数えないよう除外キーを見る。
-    const agg = await prisma.deliveryOrderItem.aggregate({
-      _sum: { quantity: true },
-      where: {
-        orderLineId,
-        deliveryOrder: LINE_CONSUMING_DELIVERY_ORDER_WHERE,
-        ...(excludeKey
-          ? {
-              NOT: {
-                deliveryOrderYearMonth: excludeKey.yearMonth,
-                deliveryOrderSeq: excludeKey.seq,
-              },
-            }
-          : {}),
-      },
-    });
-    const shipped = agg._sum?.quantity ?? 0;
-    const remaining = line.quantity - shipped;
-    if (requested > remaining) {
-      const number = formatOrderLineNumber({
-        yearMonth: line.acceptanceYearMonth,
-        seq: line.acceptanceSeq,
-        branch: line.branch,
-      });
-      return tr("shipping.deliveryOrderActions.exceedsLineRemaining", {
-        number,
-        remaining,
-        requested,
-      });
-    }
+  const short = summary.shortCloseWithoutPermission[0];
+  if (short) {
+    return {
+      error: tr("shipping.deliveryOrderActions.cannotCloseShortLine", {
+        number: short.orderLineNumber,
+        ordered: short.orderedQuantity,
+        delivered: short.deliveredQuantity,
+      }),
+      summary,
+    };
   }
-  return null;
+  return { error: null, summary };
 }
 
 /**
@@ -680,8 +729,13 @@ export async function createDeliveryOrder(
       // 行の製品 = 注文明細の製品、かつ出荷できる状態の明細であること
       const productError = await validateLineProducts(v.items, tr);
       if (productError) return actionError(productError);
-      const remainingError = await validateLineRemaining(v.items, tr);
-      if (remainingError) return actionError(remainingError);
+      const variance = await validateVariance(
+        v.customerBpId,
+        v.items,
+        v.closesOrderLines,
+        tr,
+      );
+      if (variance.error) return actionError(variance.error);
       const combineError = await validateCombinable(
         v.items,
         v.customerBpId,
@@ -700,6 +754,8 @@ export async function createDeliveryOrder(
         workOrderId,
         type: v.type,
         fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
+        billingPriceMode: v.billingPriceMode,
+        closesOrderLines: v.closesOrderLines,
         notes: trimOrNull(v.notes),
         createdBy: authz.userId,
         items: {
@@ -724,6 +780,8 @@ export async function createDeliveryOrder(
         type: v.type,
         fromPlantId: v.fromPlantId,
         status: "DRAFT",
+        billingPriceMode: v.billingPriceMode,
+        closesOrderLines: v.closesOrderLines,
         notes: trimOrNull(v.notes),
         items: v.items,
       },
@@ -769,6 +827,8 @@ export async function updateDeliveryOrder(
         customerBpId: true,
         type: true,
         fromPlantId: true,
+        billingPriceMode: true,
+        closesOrderLines: true,
         notes: true,
         items: {
           orderBy: { sortOrder: "asc" },
@@ -788,9 +848,15 @@ export async function updateDeliveryOrder(
       // 行の製品 = 注文明細の製品、かつ出荷できる状態の明細であること
       const productError = await validateLineProducts(v.items, tr);
       if (productError) return actionError(productError);
-      // 受注残の過出荷ガード（作成時と同じ。自出荷書の行は除外して数える）
-      const remainingError = await validateLineRemaining(v.items, tr, key);
-      if (remainingError) return actionError(remainingError);
+      // 過不足の検査（作成時と同じ。自出荷書の行は除外して数える）
+      const variance = await validateVariance(
+        prior?.customerBpId ?? null,
+        v.items,
+        v.closesOrderLines,
+        tr,
+        key,
+      );
+      if (variance.error) return actionError(variance.error);
       // 束ね可否（同一顧客 × 同一出荷先 × 同一配送方法）— 作成時と同じ
       if (prior?.customerBpId) {
         const combineError = await validateCombinable(
@@ -810,7 +876,20 @@ export async function updateDeliveryOrder(
           type: v.type,
           workOrderId,
           fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
+          billingPriceMode: v.billingPriceMode,
+          closesOrderLines: v.closesOrderLines,
           notes: trimOrNull(v.notes),
+          // 差し戻し後に内容を直したら、承認は取り直す（前の決裁は別の中身
+          // に対するもの）。承認済みの出荷書は編集できない状態ではないので、
+          // ここを消さないと「承認された数量とは違う数量が確定できる」。
+          approvalStatus: "NONE",
+          requestedAt: null,
+          requestedBy: null,
+          approvedAt: null,
+          approvedBy: null,
+          rejectedAt: null,
+          rejectedBy: null,
+          rejectReason: null,
         },
       });
       if (updated.count === 0) {
@@ -846,6 +925,8 @@ export async function updateDeliveryOrder(
       after: {
         type: v.type,
         fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
+        billingPriceMode: v.billingPriceMode,
+        closesOrderLines: v.closesOrderLines,
         notes: trimOrNull(v.notes),
         items: v.items,
       },
@@ -866,13 +947,115 @@ export async function updateDeliveryOrder(
   }
 }
 
+// ── 請求単価の確定（出荷書の確定時に 1 回だけ焼き込む） ──────────────────────
+
+/**
+ * 出荷書明細ごとの請求単価を決める。
+ *
+ * ORIGINAL（既定）… 受注時の単価をそのまま。従来の挙動と 1 円も変わらない。
+ * PRICE_LIST     … **実際に納めた数**で価格表を引き直す。100 本の段階で受注して
+ *                  80 本しか納めないなら 80 本の段階単価にする、という運用のため。
+ *
+ * 引き直しに使う数量は**その注文明細の累計納品数**（他の出荷書のぶんを含む）で、
+ * この出荷書 1 通の数ではない。段階単価は顧客が受け取る総量に対する約束なので、
+ * 分割出荷の 2 通目だけを見て段を決めると、同じ受注が便ごとに別の単価になる。
+ *
+ * 価格表を引けない（顧客 × 製品のエントリが無い・数量段階が無い）ときは受注時の
+ * 単価へ落ちる。ここで 0 円にしたり保存を止めたりはしない — 請求できない出荷を
+ * 作るより、受注時の約束で請求するほうが正しい。
+ *
+ * 戻り値は「明細 id → 単価」。焼き込んだあとは価格表を直しても発行済みの
+ * 納品書・請求書は動かない（invoices.tax_rate と同じ考え方）。
+ */
+async function resolveBillingUnitPrices(
+  key: DocKey,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Promise<Map<string, number>> {
+  const row = await prisma.deliveryOrder.findUnique({
+    where: { yearMonth_seq: key },
+    select: {
+      type: true,
+      customerBpId: true,
+      billingPriceMode: true,
+      items: {
+        select: {
+          id: true,
+          orderLineId: true,
+          orderLine: {
+            select: { unitPrice: true, productId: true, orderType: true },
+          },
+        },
+      },
+    },
+  });
+  const prices = new Map<string, number>();
+  if (!row) return prices;
+
+  const originalOf = (it: (typeof row.items)[number]) =>
+    Number(it.orderLine?.unitPrice ?? 0);
+
+  if (row.type !== "DISPATCH" || row.billingPriceMode === "ORIGINAL") {
+    for (const it of row.items) prices.set(it.id, originalOf(it));
+    return prices;
+  }
+
+  const entries = await loadCustomerPriceEntries(row.customerBpId);
+  // 注文明細ごとの累計納品数（この出荷書のぶんを含む — 確定の時点で既に
+  // 明細行は保存されているので、除外せずそのまま数えれば累計になる）。
+  const deliveredByLine = new Map<string, number>();
+  for (const it of row.items) {
+    if (!it.orderLineId || deliveredByLine.has(it.orderLineId)) continue;
+    const agg = await prisma.deliveryOrderItem.aggregate({
+      _sum: { quantity: true },
+      where: {
+        orderLineId: it.orderLineId,
+        deliveryOrder: LINE_CONSUMING_DELIVERY_ORDER_WHERE,
+      },
+    });
+    deliveredByLine.set(it.orderLineId, agg._sum?.quantity ?? 0);
+  }
+
+  for (const it of row.items) {
+    const original = originalOf(it);
+    const line = it.orderLine;
+    const delivered = it.orderLineId
+      ? (deliveredByLine.get(it.orderLineId) ?? 0)
+      : 0;
+    if (!line || line.productId == null || delivered <= 0) {
+      prices.set(it.id, original);
+      continue;
+    }
+    const resolved = priceListUnitPrice(
+      entries,
+      row.customerBpId,
+      {
+        productId: String(line.productId),
+        orderType: line.orderType,
+        quantity: delivered,
+      },
+      tr,
+    );
+    prices.set(it.id, resolved ?? original);
+  }
+  return prices;
+}
+
 /** 確定 (DRAFT → CONFIRMED)。 */
 /**
  * 確定 (DRAFT → CONFIRMED) 時に自動作成する納品書の材料を集める
  * （DISPATCH のみ・明細ゼロは対象外）。営業担当は明細 → 注文請書ヘッダの
  * 導出値が 1 人に定まるときだけ引き継ぐ（無ければ顧客の主担当）。
  */
-async function planDeliveryOrderNotes(key: DocKey): Promise<{
+async function planDeliveryOrderNotes(
+  key: DocKey,
+  /**
+   * 確定と同じトランザクションで焼き込む請求単価（resolveBillingUnitPrices）。
+   * **納品書はこの値で作る** — 焼き込みより先にここを読むので、保存済みの
+   * unit_price（この時点ではまだ null）を当てにすると、納品書だけが受注時の
+   * 単価のまま残り、あとから作る請求書と食い違う。
+   */
+  unitPrices: Map<string, number>,
+): Promise<{
   customerBpId: string;
   customerBranchBpId: string | null;
   deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
@@ -889,8 +1072,12 @@ async function planDeliveryOrderNotes(key: DocKey): Promise<{
       items: {
         orderBy: { sortOrder: "asc" },
         select: {
+          id: true,
           productId: true,
           quantity: true,
+          // 確定時に焼き込んだ請求単価が先。null は確定前 or 移行前のデータで、
+          // そのときだけ注文明細の単価に落ちる（従来の経路）。
+          unitPrice: true,
           orderLine: {
             select: {
               unitPrice: true,
@@ -937,7 +1124,9 @@ async function planDeliveryOrderNotes(key: DocKey): Promise<{
     items: row.items.map((it) => ({
       productId: it.productId,
       quantity: it.quantity,
-      unitPrice: Number(it.orderLine?.unitPrice ?? 0),
+      unitPrice:
+        unitPrices.get(it.id) ??
+        Number(it.unitPrice ?? it.orderLine?.unitPrice ?? 0),
     })),
     notes: planAutoDeliveryNotes({
       customerBpId: row.customerBpId,
@@ -946,6 +1135,249 @@ async function planDeliveryOrderNotes(key: DocKey): Promise<{
       endUserBpId,
     }),
   };
+}
+
+// ── 過不足の承認（§8） ──────────────────────────────────────────────────────
+
+/**
+ * 確定を押したときの過不足ゲート。通してよければ null、止めるなら
+ * `ActionResult`（エラー or 「承認依頼を出した」の成功）を返す。
+ *
+ * 流れは 4 通りしかない:
+ *   1. 過不足なし / 承認不要      → null（そのまま確定へ）
+ *   2. 保存が許されない過不足     → エラー（指示書の許可が無い）
+ *   3. 承認が要る & まだ承認前     → 依頼を作って PENDING で止める
+ *   4. 承認が要る & 承認済み       → null（決裁を通ったので確定へ）
+ *
+ * ★ **承認設定 (MS0B) に段が 1 つも無ければ素通し**（工程フロー変更と同じ規約）。
+ *   段を組んでいない環境で出荷が止まると、過不足を許した瞬間に現場が詰まる。
+ *   「決裁を挟む」と決めたのに段を組み忘れている状態は、出荷を止めるより
+ *   通してしまうほうが害が小さい — 監査行には過不足の中身が残る。
+ */
+async function guardVarianceOnConfirm(
+  key: DocKey,
+  number: string,
+  actorId: string,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Promise<ActionResult | null> {
+  const row = await prisma.deliveryOrder.findUnique({
+    where: { yearMonth_seq: key },
+    select: {
+      type: true,
+      status: true,
+      customerBpId: true,
+      closesOrderLines: true,
+      approvalStatus: true,
+      items: { select: { orderLineId: true, quantity: true } },
+    },
+  });
+  if (!row) return actionError(tr("shipping.deliveryOrderActions.notFound"));
+  // 下書き以外は確定そのものが通らない。ここで抜けないと、確定済みの出荷書に
+  // 「確定」を押しただけで承認依頼が 1 件生えてしまう（実際の確定は下の
+  // updateMany が status で弾くので、依頼だけが宙に浮く）。
+  if (row.status !== "DRAFT") return null;
+  // 在庫保管は受注数量と独立 — 過不足という概念が無い。
+  if (row.type !== "DISPATCH") return null;
+
+  const summary = await evaluateDeliveryOrderVariance({
+    customerBpId: row.customerBpId,
+    items: row.items,
+    closesOrderLines: row.closesOrderLines,
+    excludeKey: key,
+  });
+
+  const over = summary.overWithoutPermission[0];
+  if (over) {
+    return actionError(
+      tr("shipping.deliveryOrderActions.exceedsOrderedQuantity", {
+        number: over.orderLineNumber,
+        quantity: over.orderedQuantity,
+        shipped: over.deliveredQuantity,
+      }),
+    );
+  }
+  const short = summary.shortCloseWithoutPermission[0];
+  if (short) {
+    return actionError(
+      tr("shipping.deliveryOrderActions.cannotCloseShortLine", {
+        number: short.orderLineNumber,
+        ordered: short.orderedQuantity,
+        delivered: short.deliveredQuantity,
+      }),
+    );
+  }
+
+  if (!summary.approvalRequired) return null;
+  if (row.approvalStatus === "APPROVED") return null;
+  // 依頼中に押し直しても依頼は増やさない。startApprovalFlow は二重依頼を
+  // 成功として吸収するので黙って通ってしまうが、押した人には「まだ決裁待ち」と
+  // 言うほうが正しい（承認されれば同じボタンが確定になる）。
+  if (row.approvalStatus === "PENDING") {
+    return actionError(tr("shipping.deliveryOrderActions.awaitingApproval"));
+  }
+
+  // 段が無ければ素通し（NONE のまま。依頼も作らない）。
+  if (await assertFlowConfigured("delivery_orders")) return null;
+
+  // **依頼を先に作る** — 逆順だと依頼の作成に失敗したとき、出荷書だけが
+  // 承認依頼中のまま誰の承認一覧にも出ない。二重依頼は startApprovalFlow が
+  // 成功として吸収するので、押し直しで追いつく（design_requests と同じ作法）。
+  const started = await startApprovalFlow({
+    targetType: "delivery_orders",
+    targetId: number,
+  });
+  if (!started.ok) {
+    return actionError(
+      started.error ??
+        tr("shipping.deliveryOrderActions.approvalRequestFailed"),
+    );
+  }
+  await prisma.deliveryOrder.update({
+    where: { yearMonth_seq: key },
+    data: {
+      approvalStatus: "PENDING",
+      requestedAt: new Date(),
+      requestedBy: actorId,
+      rejectedAt: null,
+      rejectedBy: null,
+      rejectReason: null,
+    },
+  });
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "delivery_orders",
+    recordId: number,
+    before: { approvalStatus: row.approvalStatus },
+    after: {
+      approvalStatus: "PENDING",
+      variance: summary.lines
+        .filter((l) => l.isVarianceEvent)
+        .map((l) => ({
+          orderLine: l.orderLineNumber,
+          ordered: l.orderedQuantity,
+          delivered: l.deliveredQuantity,
+          kind: l.verdict.kind,
+          withinTolerance: l.verdict.withinTolerance,
+        })),
+    },
+  });
+  revalidate(number);
+  return actionOk();
+}
+
+/** 承認 — 全段通過で APPROVED。以後もう一度「確定」を押せば確定できる。 */
+export async function approveDeliveryOrder(
+  number: string,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  // 承認グループ所属（本人 or 代理）は actOnCurrentStep が検証する。
+  const authz = await checkApprovalDocAccess("delivery_order");
+  if (!authz.ok) return actionError(authz.error);
+  const key = parseDocKey(number, "DOR");
+  if (!key)
+    return actionError(tr("shipping.deliveryOrderActions.invalidNumber"));
+  try {
+    const prior = await prisma.deliveryOrder.findUnique({
+      where: { yearMonth_seq: key },
+      select: { approvalStatus: true },
+    });
+    if (!prior)
+      return actionError(tr("shipping.deliveryOrderActions.notFound"));
+    if (prior.approvalStatus !== "PENDING") {
+      return actionError(
+        tr("shipping.deliveryOrderActions.notPendingApproval"),
+      );
+    }
+    const acted = await actOnCurrentStep({
+      targetType: "delivery_orders",
+      targetId: number,
+      action: "APPROVED",
+    });
+    if (!acted.ok) {
+      return actionError(acted.error ?? tr("common.couldNotApprove"));
+    }
+    // 途中の段は PENDING のまま進む。全段を通ってはじめて APPROVED。
+    if (!acted.flowCompleted) {
+      revalidate(number);
+      return actionOk();
+    }
+    await prisma.deliveryOrder.update({
+      where: { yearMonth_seq: key },
+      data: {
+        approvalStatus: "APPROVED",
+        approvedAt: new Date(),
+        approvedBy: authz.userId,
+      },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "delivery_orders",
+      recordId: number,
+      before: { approvalStatus: "PENDING" },
+      after: { approvalStatus: "APPROVED" },
+    });
+    revalidate(number);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
+  }
+}
+
+/** 差し戻し（理由必須）— 出荷書は下書きのままなので、直して出し直せる。 */
+export async function rejectDeliveryOrder(
+  number: string,
+  reason: string,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkApprovalDocAccess("delivery_order");
+  if (!authz.ok) return actionError(authz.error);
+  const trimmed = reason.trim();
+  if (!trimmed) return actionError(tr("common.enterAReasonForSendingIt"));
+  const key = parseDocKey(number, "DOR");
+  if (!key)
+    return actionError(tr("shipping.deliveryOrderActions.invalidNumber"));
+  try {
+    const prior = await prisma.deliveryOrder.findUnique({
+      where: { yearMonth_seq: key },
+      select: { approvalStatus: true },
+    });
+    if (!prior)
+      return actionError(tr("shipping.deliveryOrderActions.notFound"));
+    if (prior.approvalStatus !== "PENDING") {
+      return actionError(
+        tr("shipping.deliveryOrderActions.notPendingApproval"),
+      );
+    }
+    const acted = await actOnCurrentStep({
+      targetType: "delivery_orders",
+      targetId: number,
+      action: "REJECTED",
+      comment: trimmed,
+    });
+    if (!acted.ok) {
+      return actionError(acted.error ?? tr("common.couldNotApprove"));
+    }
+    await prisma.deliveryOrder.update({
+      where: { yearMonth_seq: key },
+      data: {
+        approvalStatus: "REJECTED",
+        rejectedAt: new Date(),
+        rejectedBy: authz.userId,
+        rejectReason: trimmed,
+      },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "delivery_orders",
+      recordId: number,
+      before: { approvalStatus: "PENDING" },
+      after: { approvalStatus: "REJECTED", rejectReason: trimmed },
+    });
+    revalidate(number);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
+  }
 }
 
 export async function confirmDeliveryOrder(
@@ -961,7 +1393,14 @@ export async function confirmDeliveryOrder(
     return actionError(tr("common.outOfScope"));
   }
   try {
-    const plan = await planDeliveryOrderNotes(key);
+    // ── 過不足のゲート ──────────────────────────────────────────────────
+    // 確定はここが最後の関門 — 下書きを作ったあとに他の出荷書が増えていれば
+    // 累計は変わっているので、保存時ではなくいま数え直す。
+    const gate = await guardVarianceOnConfirm(key, number, authz.userId, tr);
+    if (gate) return gate;
+
+    const unitPrices = await resolveBillingUnitPrices(key, tr);
+    const plan = await planDeliveryOrderNotes(key, unitPrices);
     // 採番は $transaction の外で行う（既存の全書類共通の作法 — allocateDocumentKey
     // 参照。gap は許容し、番号の一意性だけを守る）。
     const noteKeys = plan
@@ -978,6 +1417,14 @@ export async function confirmDeliveryOrder(
         throw new Error(
           `GUARD:${tr("shipping.deliveryOrderActions.onlyDraftCanBeConfirmed")}`,
         );
+      }
+      // 請求単価を焼き込む。確定より後に価格表を直しても、発行済みの
+      // 納品書・請求書は動かない。
+      for (const [itemId, unitPrice] of unitPrices) {
+        await tx.deliveryOrderItem.update({
+          where: { id: itemId },
+          data: { unitPrice },
+        });
       }
       if (!plan) return;
       // 納品書は**発行済（ISSUED）で作る** — 下書きを経由しない。内容は
@@ -1073,10 +1520,30 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
       where: { yearMonth_seq: key },
       select: {
         type: true,
-        items: { select: { orderLineId: true } },
+        customerBpId: true,
+        closesOrderLines: true,
+        items: { select: { orderLineId: true, quantity: true } },
       },
     });
     if (!row) return actionError(tr("shipping.deliveryOrderActions.notFound"));
+
+    // 過不足が許されている注文明細（累計が受注数を超えてよい行）を先に洗い出す。
+    // 出荷の tx の中では明細ごとに「超えていないか」を数え直すが、その閾値が
+    // 行ごとに違うので、どの行が許されているかだけ tx の外で引いておく。
+    const variancePermittedLines = new Set(
+      row.type === "DISPATCH"
+        ? (
+            await evaluateDeliveryOrderVariance({
+              customerBpId: row.customerBpId,
+              items: row.items,
+              closesOrderLines: row.closesOrderLines,
+              excludeKey: key,
+            })
+          ).lines
+            .filter((l) => l.variancePermitted)
+            .map((l) => l.orderLineId)
+        : [],
+    );
 
     // 注文明細ステータス変更の監査用（トランザクション後に記録）。
     // 1 出荷書が複数の注文明細を束ねるため、行ごとに 1 件ずつ積む。
@@ -1156,13 +1623,14 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
           },
         });
         const shipped = agg._sum?.quantity ?? 0;
-        // 累計出荷が受注数量を超える出荷を禁止（監査 P0-4 過出荷ガード）
         const lineNumber = formatOrderLineNumber({
           yearMonth: line.acceptanceYearMonth,
           seq: line.acceptanceSeq,
           branch: line.branch,
         });
-        if (shipped > line.quantity) {
+        // 累計出荷が受注数量を超える出荷を禁止（監査 P0-4 過出荷ガード）。
+        // 指示書が過不足納品を許しているロットだけがこの線を越えられる。
+        if (shipped > line.quantity && !variancePermittedLines.has(lineId)) {
           throw new Error(
             `GUARD:${tr(
               "shipping.deliveryOrderActions.exceedsOrderedQuantity",
@@ -1174,7 +1642,13 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
             )}`,
           );
         }
-        const next = lineShipStatus(line.quantity, shipped);
+        // 不足で締めるかどうかは出荷書の宣言が決める（一部出荷と数量では
+        // 見分けが付かない）。判定は lib/delivery-variance-core.ts に 1 本化。
+        const next = deliveredLineStatus(
+          line.quantity,
+          shipped,
+          row.closesOrderLines,
+        );
         if (next && next !== line.status) {
           await tx.orderLine.update({
             where: { id: lineId },

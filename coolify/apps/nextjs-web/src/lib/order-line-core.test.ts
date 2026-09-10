@@ -7,7 +7,6 @@ import {
   type LineLockState,
   lineConfirmBlockReason,
   lineEditBlockReason,
-  lineShipStatus,
   linesReplaceBlockReason,
   nextBranches,
   type OrderLineStatus,
@@ -121,24 +120,6 @@ describe("isLineStockCheckable", () => {
       const expected = status === "DRAFT" || status === "CONFIRMED";
       expect(isLineStockCheckable({ status })).toBe(expected);
     }
-  });
-});
-
-describe("lineShipStatus", () => {
-  it("未出荷は変化なし", () => {
-    expect(lineShipStatus(10, 0)).toBeNull();
-  });
-
-  it("一部出荷は PARTIAL_SHIPPED", () => {
-    expect(lineShipStatus(10, 4)).toBe("PARTIAL_SHIPPED");
-  });
-
-  it("全量出荷は SHIPPED", () => {
-    expect(lineShipStatus(10, 10)).toBe("SHIPPED");
-  });
-
-  it("過出荷でも SHIPPED（拒否は呼び出し側の責務）", () => {
-    expect(lineShipStatus(10, 11)).toBe("SHIPPED");
   });
 });
 

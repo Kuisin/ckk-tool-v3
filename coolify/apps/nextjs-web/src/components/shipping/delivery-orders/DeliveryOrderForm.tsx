@@ -69,7 +69,11 @@ import { ModalShell } from "@/components/ui/modals";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { deliveryMethodLabel, deliveryOrderTypeLabel } from "@/lib/enum-labels";
+import {
+  deliveryBillingPriceModeLabel,
+  deliveryMethodLabel,
+  deliveryOrderTypeLabel,
+} from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { Option } from "@/lib/mock";
@@ -84,6 +88,7 @@ import {
 const BASE_PATH = "/shipping/delivery-orders";
 
 const DELIVERY_ORDER_TYPES = ["DISPATCH", "STOCK_STORAGE"] as const;
+const BILLING_PRICE_MODES = ["ORIGINAL", "PRICE_LIST"] as const;
 
 function buildSchema(tr: ReturnType<typeof useTranslations>) {
   const itemSchema = z.object({
@@ -107,6 +112,10 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
       .min(1, tr("shipping.deliveryOrderForm.selectAnOrderAcceptance")),
     type: z.enum(DELIVERY_ORDER_TYPES),
     fromPlantId: z.string().nullable(),
+    /** 請求単価の出どころ（過不足納品 §8）。 */
+    billingPriceMode: z.enum(BILLING_PRICE_MODES),
+    /** この出荷で注文明細を締めるか（不足分をもう出荷しない宣言）。 */
+    closesOrderLines: z.boolean(),
     notes: z.string(),
     items: z.array(itemSchema).min(1, tr("common.addAtLeastOneLineItem")),
   });
@@ -141,6 +150,8 @@ function toFormValues(order: DeliveryOrder): FormValues {
     customerBpId: order.customerId,
     type: order.type,
     fromPlantId: order.fromPlantId,
+    billingPriceMode: order.billingPriceMode,
+    closesOrderLines: order.closesOrderLines,
     notes: order.notes ?? "",
     items: order.items.map((it) => ({
       rowId: newRowId(),
@@ -265,6 +276,9 @@ export function DeliveryOrderForm({
             customerBpId: "",
             type: "DISPATCH",
             fromPlantId: null,
+            // 既定は従来の挙動 — 締めない / 受注時の単価のまま。
+            billingPriceMode: "ORIGINAL",
+            closesOrderLines: false,
             notes: "",
             items: [],
           },
@@ -600,7 +614,21 @@ export function DeliveryOrderForm({
                 ?.quantity ?? 0,
           })),
         ).reduce((sum, u) => sum + u.quantity, 0);
-        return [{ number: info.orderLineNumber, total, remaining, coverable }];
+        return [
+          {
+            number: info.orderLineNumber,
+            total,
+            remaining,
+            coverable,
+            ordered: info.quantity,
+            // 累計 = 他の出荷書に載っているぶん + この出荷書のぶん。
+            // 過不足の判定はこの数で行う（サーバーと同じ）。
+            delivered: info.shippedQuantity + total,
+            variancePermitted: info.variancePermitted,
+            toleranceOver: info.toleranceOver,
+            toleranceUnder: info.toleranceUnder,
+          },
+        ];
       });
 
   const doSubmit = (values: FormValues) => {
@@ -608,6 +636,10 @@ export function DeliveryOrderForm({
       const payload = {
         type: values.type,
         fromPlantId: values.fromPlantId,
+        billingPriceMode: values.billingPriceMode,
+        // 在庫保管は受注数量と無関係なので締めようがない（サーバーも見ない）。
+        closesOrderLines:
+          values.type === "DISPATCH" ? values.closesOrderLines : false,
         notes: values.notes || null,
         items: values.items.map((it) => ({
           orderLineId: it.orderLineId,
@@ -657,8 +689,12 @@ export function DeliveryOrderForm({
       return;
     }
     const checks = groupQuantityChecks();
-    // 受注残を超える出荷はブロック（サーバー側 validateLineRemaining と同じ規則）
-    const over = checks.filter((c) => c.total > c.remaining);
+    // 受注数を超える出荷は、指示書が過不足納品を許していなければブロック
+    // （サーバー側 validateVariance と同じ規則）。許されていれば通し、
+    // 決裁が要るかどうかは確定のときにサーバーが判定する。
+    const over = checks.filter(
+      (c) => c.total > c.remaining && !c.variancePermitted,
+    );
     if (over.length > 0) {
       notifications.show({
         title: tr("shipping.deliveryOrders.itExceedsTheOrderedQuantity"),
@@ -680,10 +716,47 @@ export function DeliveryOrderForm({
       });
       return;
     }
-    // 一部出荷（受注残に満たない）/ 完成品不足は警告 + 確認してから保存
-    const partial = checks.filter((c) => c.total < c.remaining);
+    // 締めるなら不足は「過不足納品」— 指示書の許可が無ければブロック。
+    const shortClose = values.closesOrderLines
+      ? checks.filter((c) => c.delivered < c.ordered && !c.variancePermitted)
+      : [];
+    if (shortClose.length > 0) {
+      notifications.show({
+        title: tr("shipping.deliveryOrderForm.cannotCloseShort"),
+        message: shortClose
+          .map((c) =>
+            tr("shipping.deliveryOrderForm.cannotCloseShortLine", {
+              number: c.number,
+              ordered: c.ordered,
+              delivered: c.delivered,
+            }),
+          )
+          .join("、"),
+        color: "red",
+      });
+      return;
+    }
+
+    // 一部出荷（受注残に満たない）/ 完成品不足は警告 + 確認してから保存。
+    // 締める宣言があるときは「一部出荷」ではなく**不足納品**なので、
+    // 同じ数量でも見せる文言と行き先（決裁の要否）が変わる。
+    const partial = values.closesOrderLines
+      ? []
+      : checks.filter((c) => c.total < c.remaining);
     const notReady = checks.filter((c) => c.coverable < c.remaining);
-    if (partial.length === 0 && notReady.length === 0) {
+    // 許容範囲の外に出る行 = 確定のときに決裁を求められうる行。
+    const outOfTolerance = checks.filter((c) => {
+      const variance = c.delivered - c.ordered;
+      if (variance > 0) return variance > c.toleranceOver;
+      if (variance < 0 && values.closesOrderLines)
+        return -variance > c.toleranceUnder;
+      return false;
+    });
+    if (
+      partial.length === 0 &&
+      notReady.length === 0 &&
+      outOfTolerance.length === 0
+    ) {
       doSubmit(values);
       return;
     }
@@ -709,8 +782,19 @@ export function DeliveryOrderForm({
               })}
             </Text>
           ))}
+          {outOfTolerance.map((c) => (
+            <Text c="orange" key={`ot-${c.number}`} size="sm">
+              {tr("shipping.deliveryOrderForm.outOfToleranceLine", {
+                number: c.number,
+                ordered: c.ordered,
+                delivered: c.delivered,
+              })}
+            </Text>
+          ))}
           <Text c="dimmed" mt="xs" size="sm">
-            {tr("shipping.deliveryOrders.savingAsItIsMakesThis")}
+            {outOfTolerance.length > 0
+              ? tr("shipping.deliveryOrderForm.outOfToleranceNeedsApproval")
+              : tr("shipping.deliveryOrders.savingAsItIsMakesThis")}
           </Text>
         </Box>
       ),
@@ -944,6 +1028,40 @@ export function DeliveryOrderForm({
         )}
       </FormSection>
 
+      {/* 過不足納品（§8）— 在庫保管には受注数量という相手が無いので出さない。 */}
+      {form.values.type === "DISPATCH" && (
+        <FormSection
+          description={tr("shipping.deliveryOrderForm.varianceSectionHelp")}
+          title={tr("shipping.deliveryOrderForm.varianceSectionTitle")}
+        >
+          <Checkbox
+            description={tr("shipping.deliveryOrderForm.closesOrderLinesHelp")}
+            label={tr("shipping.deliveryOrderForm.closesOrderLines")}
+            {...form.getInputProps("closesOrderLines", { type: "checkbox" })}
+          />
+          <Input.Wrapper
+            description={tr("shipping.deliveryOrderForm.billingPriceModeHelp")}
+            label={tr("shipping.deliveryOrderForm.billingPriceMode")}
+            mt="sm"
+          >
+            <SegmentedControl
+              data={BILLING_PRICE_MODES.map((m) => ({
+                value: m,
+                label: deliveryBillingPriceModeLabel(m, locale),
+              }))}
+              fullWidth
+              onChange={(v) =>
+                form.setFieldValue(
+                  "billingPriceMode",
+                  v as FormValues["billingPriceMode"],
+                )
+              }
+              value={form.values.billingPriceMode}
+            />
+          </Input.Wrapper>
+        </FormSection>
+      )}
+
       <FormSection
         description={tr(
           "shipping.deliveryOrders.choosingAnOrderAcceptanceAddsA",
@@ -1026,23 +1144,68 @@ export function DeliveryOrderForm({
                           );
                           const remaining =
                             info.quantity - info.shippedQuantity;
+                          const delivered = info.shippedQuantity + total;
                           if (total > remaining) {
+                            // 許可が無ければ赤（保存できない）。あれば橙で
+                            // 「超過納品になる」— 範囲外なら決裁が要りうる。
+                            const outside =
+                              delivered - info.quantity > info.toleranceOver;
                             return (
-                              <Text c="red" fw={600} size="xs">
-                                {tr(
-                                  "shipping.deliveryOrderForm.exceedsRemainingLabel",
-                                  { remaining, total },
-                                )}
+                              <Text
+                                c={info.variancePermitted ? "orange" : "red"}
+                                fw={600}
+                                size="xs"
+                              >
+                                {info.variancePermitted
+                                  ? tr(
+                                      outside
+                                        ? "shipping.deliveryOrderForm.overDeliveryOutsideLabel"
+                                        : "shipping.deliveryOrderForm.overDeliveryLabel",
+                                      {
+                                        ordered: info.quantity,
+                                        delivered,
+                                      },
+                                    )
+                                  : tr(
+                                      "shipping.deliveryOrderForm.exceedsRemainingLabel",
+                                      { remaining, total },
+                                    )}
                               </Text>
                             );
                           }
                           if (total < remaining) {
+                            // 締めるなら不足納品、締めないならただの一部出荷。
+                            if (!form.values.closesOrderLines) {
+                              return (
+                                <Text c="orange" size="xs">
+                                  {tr(
+                                    "shipping.deliveryOrderForm.partialShipmentLabel",
+                                    { total, remaining },
+                                  )}
+                                </Text>
+                              );
+                            }
+                            const outside =
+                              info.quantity - delivered > info.toleranceUnder;
                             return (
-                              <Text c="orange" size="xs">
-                                {tr(
-                                  "shipping.deliveryOrderForm.partialShipmentLabel",
-                                  { total, remaining },
-                                )}
+                              <Text
+                                c={info.variancePermitted ? "orange" : "red"}
+                                fw={600}
+                                size="xs"
+                              >
+                                {info.variancePermitted
+                                  ? tr(
+                                      outside
+                                        ? "shipping.deliveryOrderForm.shortDeliveryOutsideLabel"
+                                        : "shipping.deliveryOrderForm.shortDeliveryLabel",
+                                      {
+                                        ordered: info.quantity,
+                                        delivered,
+                                      },
+                                    )
+                                  : tr(
+                                      "shipping.deliveryOrderForm.cannotCloseShortLabel",
+                                    )}
                               </Text>
                             );
                           }

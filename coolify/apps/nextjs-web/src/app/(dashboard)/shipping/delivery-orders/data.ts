@@ -11,10 +11,12 @@ import {
   type DeliveryOrder,
   type DeliveryOrderStatus,
   type DeliveryOrderType,
+  type DeliveryOrderVarianceRow,
   previewAutoDeliveryNotes,
 } from "@/components/shipping/delivery-orders/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
+import { evaluateDeliveryOrderVariance } from "@/lib/delivery-variance";
 import {
   type DocKey,
   formatDocNumber,
@@ -43,6 +45,8 @@ const DELIVERY_ORDER_INCLUDE = {
           acceptanceYearMonth: true,
           acceptanceSeq: true,
           branch: true,
+          // 確定前の単価表示のフォールバック（確定後は明細側に凍る）。
+          unitPrice: true,
           // 実効エンドユーザー = 明細の指定 ?? 注文請書ヘッダの既定。
           endUserBpId: true,
           endUserBp: { select: { name: true } },
@@ -118,7 +122,41 @@ function autoDeliveryNotePreview(r: DeliveryOrderRow) {
   );
 }
 
-function mapDeliveryOrder(r: DeliveryOrderRow): DeliveryOrder {
+/**
+ * 注文明細ごとの過不足（詳細画面の表示用）。判定は
+ * lib/delivery-variance-core.ts が唯一の定義元で、ここは写しているだけ。
+ * 一覧では計算しない（1 行につき数量分の問い合わせが要るため）。
+ */
+async function varianceRows(
+  r: DeliveryOrderRow,
+): Promise<DeliveryOrderVarianceRow[]> {
+  if (r.type !== "DISPATCH") return [];
+  const summary = await evaluateDeliveryOrderVariance({
+    customerBpId: r.customerBpId,
+    items: r.items.map((it) => ({
+      orderLineId: it.orderLineId,
+      quantity: it.quantity,
+    })),
+    closesOrderLines: r.closesOrderLines,
+    excludeKey: { yearMonth: r.yearMonth, seq: r.seq },
+  });
+  return summary.lines.map((l) => ({
+    orderLineNumber: l.orderLineNumber,
+    orderedQuantity: l.orderedQuantity,
+    deliveredQuantity: l.deliveredQuantity,
+    variance: l.verdict.variance,
+    kind: l.verdict.kind,
+    withinTolerance: l.verdict.withinTolerance,
+    // 締めない不足はただの一部出荷なので、承認も過不足の印も出さない。
+    approvalRequired: l.isVarianceEvent && l.verdict.approvalRequired,
+    variancePermitted: l.variancePermitted,
+  }));
+}
+
+function mapDeliveryOrder(
+  r: DeliveryOrderRow,
+  variance: DeliveryOrderVarianceRow[] = [],
+): DeliveryOrder {
   const number = formatDocNumber("DOR", {
     yearMonth: r.yearMonth,
     seq: r.seq,
@@ -155,6 +193,11 @@ function mapDeliveryOrder(r: DeliveryOrderRow): DeliveryOrder {
     type: r.type as DeliveryOrderType,
     status: r.status as DeliveryOrderStatus,
     shippedAt: r.shippedAt?.toISOString() ?? null,
+    billingPriceMode: r.billingPriceMode,
+    closesOrderLines: r.closesOrderLines,
+    approvalStatus: r.approvalStatus,
+    rejectReason: r.rejectReason,
+    variance,
     notes: r.notes,
     items: r.items.map((it) => ({
       id: it.id,
@@ -164,6 +207,13 @@ function mapDeliveryOrder(r: DeliveryOrderRow): DeliveryOrder {
       productName: productLabel(it.product),
       lotNumber: it.lotNumber,
       quantity: it.quantity,
+      // 確定前は焼き込み前なので注文明細の単価を見せる（確定すると凍る）。
+      unitPrice:
+        it.unitPrice != null
+          ? Number(it.unitPrice)
+          : it.orderLine?.unitPrice != null
+            ? Number(it.orderLine.unitPrice)
+            : null,
       notes: it.notes,
     })),
     totalQuantity: r.items.reduce((sum, it) => sum + it.quantity, 0),
@@ -205,7 +255,8 @@ export async function fetchDeliveryOrders(
     include: DELIVERY_ORDER_INCLUDE,
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
   });
-  return rows.map(mapDeliveryOrder);
+  // 一覧では過不足を計算しない（明細ごとに問い合わせが要る）— 詳細だけ。
+  return rows.map((r) => mapDeliveryOrder(r));
 }
 
 /** 1件取得 — 未存在・スコープ外は null。 */
@@ -221,7 +272,7 @@ export async function fetchDeliveryOrder(
   ) {
     return null;
   }
-  return mapDeliveryOrder(row);
+  return mapDeliveryOrder(row, await varianceRows(row));
 }
 
 /**

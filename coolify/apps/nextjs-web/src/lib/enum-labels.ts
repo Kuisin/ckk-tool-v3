@@ -144,6 +144,18 @@ export const deliveryOrderTypeLabel = (value: string, locale: Locale) =>
 export const deliveryOrderTypeOptions = (locale: Locale) =>
   labelOptions("DELIVERY_ORDER_TYPE_LABEL", locale);
 
+/** 請求単価の出どころ（出荷書ヘッダ — 過不足納品 §8）。 */
+export const deliveryBillingPriceModeLabel = (value: string, locale: Locale) =>
+  resolveLabel("DELIVERY_BILLING_PRICE_MODE_LABEL", value, locale);
+export const deliveryBillingPriceModeOptions = (locale: Locale) =>
+  labelOptions("DELIVERY_BILLING_PRICE_MODE_LABEL", locale);
+
+/** 過不足の許容幅の尺度（顧客マスタ — 過不足納品 §8）。 */
+export const deliveryToleranceBasisLabel = (value: string, locale: Locale) =>
+  resolveLabel("DELIVERY_TOLERANCE_BASIS_LABEL", value, locale);
+export const deliveryToleranceBasisOptions = (locale: Locale) =>
+  labelOptions("DELIVERY_TOLERANCE_BASIS_LABEL", locale);
+
 export const deliveryMethodLabel = (value: string, locale: Locale) =>
   resolveLabel("DELIVERY_METHOD_LABEL", value, locale);
 export const deliveryMethodOptions = (locale: Locale) =>

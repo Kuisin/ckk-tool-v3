@@ -30,11 +30,18 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
+  approveDeliveryOrder,
   confirmDeliveryOrder,
   deleteDeliveryOrder,
+  rejectDeliveryOrder,
   shipDeliveryOrder,
 } from "@/app/(dashboard)/shipping/delivery-orders/actions";
+import {
+  ApprovalTrailList,
+  countTrailRecords,
+} from "@/components/approvals/ApprovalTrailList";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { DeliveryVarianceCard } from "@/components/shipping/delivery-orders/DeliveryVarianceCard";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -55,12 +62,16 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import type { ApprovalActionState, ApprovalTrailEntry } from "@/lib/approvals";
 import type { MemoView } from "@/lib/document-memos";
-import { deliveryMethodLabel } from "@/lib/enum-labels";
+import {
+  deliveryBillingPriceModeLabel,
+  deliveryMethodLabel,
+} from "@/lib/enum-labels";
 import type { ActionResult } from "@/lib/server-action";
 import { statusLabel } from "@/lib/status-map";
 import { DeliveryOrderTypeBadge } from "./DeliveryOrderTable";
-import { type DeliveryOrder, isEditable } from "./model";
+import { confirmNeedsApproval, type DeliveryOrder, isEditable } from "./model";
 
 const BASE_PATH = "/shipping/delivery-orders";
 
@@ -205,16 +216,102 @@ function DeliveryOrderProcedurePanel({
   );
 }
 
+/**
+ * 注文明細ごとの過不足（発送のみ・過不足のある行だけ）。
+ *
+ * 「受注 100 / 納品 98（−2）」を数字で出し、許容範囲の内 / 外をバッジで示す。
+ * 判定は lib/delivery-variance-core.ts がサーバー側で済ませてあり、ここは
+ * その結果を描くだけ — 画面で数え直さない（数え方が 2 つに割れる）。
+ */
+function DeliveryVariancePanel({ order }: { order: DeliveryOrder }) {
+  const tr = useTranslations();
+  const rows = order.variance.filter((v) => v.kind !== "EXACT");
+  if (order.type !== "DISPATCH" || rows.length === 0) return null;
+  return (
+    <Paper p="md" radius="md" withBorder>
+      <Title mb="sm" order={5}>
+        {tr("shipping.deliveryOrders.varianceTitle")}
+      </Title>
+      <Table.ScrollContainer minWidth={520}>
+        <Table highlightOnHover>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>{tr("common.orderLineNumber")}</Table.Th>
+              <Table.Th ta="right">
+                {tr("shipping.deliveryOrders.orderedQuantity")}
+              </Table.Th>
+              <Table.Th ta="right">
+                {tr("shipping.deliveryOrders.deliveredQuantity")}
+              </Table.Th>
+              <Table.Th ta="right">
+                {tr("shipping.deliveryOrders.varianceQuantity")}
+              </Table.Th>
+              <Table.Th>{tr("shipping.deliveryOrders.tolerance")}</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {rows.map((v) => (
+              <Table.Tr key={v.orderLineNumber}>
+                <Table.Td>
+                  <DocNumber>{v.orderLineNumber}</DocNumber>
+                </Table.Td>
+                <Table.Td className="tabular-nums" ta="right">
+                  {v.orderedQuantity}
+                </Table.Td>
+                <Table.Td className="tabular-nums" ta="right">
+                  {v.deliveredQuantity}
+                </Table.Td>
+                <Table.Td className="tabular-nums" ta="right">
+                  <Text
+                    c={v.kind === "OVER" ? "blue" : "orange"}
+                    fw={600}
+                    size="sm"
+                    span
+                  >
+                    {v.variance > 0 ? `+${v.variance}` : v.variance}
+                  </Text>
+                </Table.Td>
+                <Table.Td>
+                  <Badge
+                    color={v.withinTolerance ? "green" : "orange"}
+                    size="sm"
+                    variant="light"
+                  >
+                    {tr(
+                      v.withinTolerance
+                        ? "shipping.deliveryOrders.withinTolerance"
+                        : "shipping.deliveryOrders.outsideTolerance",
+                    )}
+                  </Badge>
+                </Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
+    </Paper>
+  );
+}
+
 export function DeliveryOrderDetail({
   order,
   auditEntries,
   memos,
+  approval,
+  approvalTrail,
 }: {
   order: DeliveryOrder;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos: MemoView[];
+  /**
+   * 承認の状態（過不足納品のときだけ動く — 通常の出荷では phase = NONE）。
+   * 「自分が今この段で押せるか」は canAct が持ち、画面はそれを見るだけ
+   * （実際の可否は Server Action 側の actOnCurrentStep が再判定する）。
+   */
+  approval: ApprovalActionState;
+  approvalTrail: ApprovalTrailEntry[];
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -226,6 +323,8 @@ export function DeliveryOrderDetail({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [shipOpen, setShipOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  // 「確定」を押したときに承認依頼になるか（過不足納品 §8）。
+  const needsApproval = confirmNeedsApproval(order);
 
   const run = (
     action: () => Promise<ActionResult>,
@@ -305,6 +404,15 @@ export function DeliveryOrderDetail({
       title={order.deliveryOrderNumber}
       updatedAt={fmt.dateTime(order.updatedAt)}
     >
+      {/* ヘッダー直下 = ActionCard の定位置（design.md §8.2）。
+          過不足が無ければ何も描かない。 */}
+      <DeliveryVarianceCard
+        canAct={approval.canAct}
+        onApprove={approveDeliveryOrder}
+        onReject={rejectDeliveryOrder}
+        order={order}
+      />
+
       <SummaryGrid>
         <FieldValue
           label={tr("common.deliveryOrderNumber")}
@@ -382,7 +490,24 @@ export function DeliveryOrderDetail({
             )
           }
         />
+        {order.type === "DISPATCH" && (
+          <FieldValue
+            label={tr("shipping.deliveryOrderForm.billingPriceMode")}
+            value={deliveryBillingPriceModeLabel(
+              order.billingPriceMode,
+              locale,
+            )}
+          />
+        )}
+        {order.type === "DISPATCH" && (
+          <FieldValue
+            label={tr("shipping.deliveryOrderForm.closesOrderLines")}
+            value={order.closesOrderLines ? tr("common.yes") : tr("common.no")}
+          />
+        )}
       </SummaryGrid>
+
+      <DeliveryVariancePanel order={order} />
 
       <DeliveryOrderProcedurePanel
         fmtDate={(v) => (v ? fmt.date(v) : null)}
@@ -439,9 +564,16 @@ export function DeliveryOrderDetail({
               count: order.deliveryNotes.length,
             })}
           </Tabs.Tab>
+          {countTrailRecords(approvalTrail) > 0 && (
+            <Tabs.Tab value="approval">{tr("common.approve")}</Tabs.Tab>
+          )}
           <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
+
+        <Tabs.Panel pt="md" value="approval">
+          <ApprovalTrailList trail={approvalTrail} />
+        </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
@@ -535,25 +667,39 @@ export function DeliveryOrderDetail({
         </Tabs.Panel>
       </AppTabs>
 
+      {/* 確定 — 過不足で決裁が要る出荷では、押した結果が「確定」ではなく
+          「承認依頼」になる。押す前にそう言っておく（実際の分岐はサーバーの
+          guardVarianceOnConfirm が決めるので、画面が古くても結果は変わらない）。 */}
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel={tr("common.confirmed")}
+        confirmLabel={
+          needsApproval ? tr("common.approvalRequest") : tr("common.confirmed")
+        }
         details={<AutoDeliveryNotesPreview order={order} />}
         loading={isPending}
-        message={tr("shipping.deliveryOrders.confirmConfirmBody", {
-          number: order.deliveryOrderNumber,
-        })}
+        message={tr(
+          needsApproval
+            ? "shipping.deliveryOrders.confirmNeedsApprovalBody"
+            : "shipping.deliveryOrders.confirmConfirmBody",
+          { number: order.deliveryOrderNumber },
+        )}
         onClose={() => setConfirmOpen(false)}
         onConfirm={() =>
           run(
             () => confirmDeliveryOrder(order.deliveryOrderNumber),
-            tr("common.confirmed2"),
-            tr(
-              order.type === "DISPATCH"
-                ? "shipping.deliveryOrders.confirmedBodyDispatch"
-                : "shipping.deliveryOrders.confirmedBody",
-              { number: order.deliveryOrderNumber },
-            ),
+            needsApproval
+              ? tr("common.approvalRequested")
+              : tr("common.confirmed2"),
+            needsApproval
+              ? tr("shipping.deliveryOrders.approvalRequestedBody", {
+                  number: order.deliveryOrderNumber,
+                })
+              : tr(
+                  order.type === "DISPATCH"
+                    ? "shipping.deliveryOrders.confirmedBodyDispatch"
+                    : "shipping.deliveryOrders.confirmedBody",
+                  { number: order.deliveryOrderNumber },
+                ),
           )
         }
         opened={confirmOpen}

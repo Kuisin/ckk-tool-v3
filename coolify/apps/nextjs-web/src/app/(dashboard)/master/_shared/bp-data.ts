@@ -226,6 +226,12 @@ export interface CustomerAttrs {
   taxType: string;
   invoiceMethod: string;
   isConsignment: boolean;
+  // ── 過不足納品（§8）— 出荷数量が受注数量と違ってよい範囲と承認の要否 ──
+  deliveryToleranceBasis: "PERCENT" | "QUANTITY";
+  deliveryToleranceUnder: number | null;
+  deliveryToleranceOver: number | null;
+  varianceApprovalWithin: boolean;
+  varianceApprovalOutside: boolean;
   /** 営業担当（複数可）。書類の営業担当はこの一覧から選ぶ。 */
   salesReps: SalesRepRow[];
 }
@@ -317,6 +323,17 @@ export async function fetchBpDetail(id: string): Promise<BpDetail | null> {
           taxType: c.taxType,
           invoiceMethod: c.invoiceMethod,
           isConsignment: c.isConsignment,
+          deliveryToleranceBasis: c.deliveryToleranceBasis,
+          deliveryToleranceUnder:
+            c.deliveryToleranceUnder != null
+              ? Number(c.deliveryToleranceUnder)
+              : null,
+          deliveryToleranceOver:
+            c.deliveryToleranceOver != null
+              ? Number(c.deliveryToleranceOver)
+              : null,
+          varianceApprovalWithin: c.varianceApprovalWithin,
+          varianceApprovalOutside: c.varianceApprovalOutside,
           salesReps: r.salesReps.map((s) => ({
             userId: s.user.id,
             name: s.user.displayName,

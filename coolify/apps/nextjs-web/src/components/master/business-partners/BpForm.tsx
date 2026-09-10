@@ -44,6 +44,7 @@ import { useIsMobile } from "@/hooks/useViewport";
 import {
   bankAccountTypeOptions,
   bpRoleLabel,
+  deliveryToleranceBasisOptions,
   invoiceMethodOptions,
   taxTypeOptions,
   vendorTypeOptions,
@@ -69,6 +70,12 @@ function bpFormSchema(tr: ReturnType<typeof useTranslations>) {
         taxType: z.string(),
         invoiceMethod: z.string(),
         isConsignment: z.boolean(),
+        // 過不足納品（§8）— 幅は空欄可（未設定 = その側を認めない）。
+        deliveryToleranceBasis: z.string(),
+        deliveryToleranceUnder: optionalNumber,
+        deliveryToleranceOver: optionalNumber,
+        varianceApprovalWithin: z.boolean(),
+        varianceApprovalOutside: z.boolean(),
         salesReps: z.array(
           z.object({ userId: z.string(), isPrimary: z.boolean() }),
         ),
@@ -156,6 +163,15 @@ export function BpForm({
         taxType: initial?.customer?.taxType ?? "TAXABLE",
         invoiceMethod: initial?.customer?.invoiceMethod ?? "EMAIL",
         isConsignment: initial?.customer?.isConsignment ?? false,
+        deliveryToleranceBasis:
+          initial?.customer?.deliveryToleranceBasis ?? "PERCENT",
+        deliveryToleranceUnder: initial?.customer?.deliveryToleranceUnder ?? "",
+        deliveryToleranceOver: initial?.customer?.deliveryToleranceOver ?? "",
+        varianceApprovalWithin:
+          initial?.customer?.varianceApprovalWithin ?? false,
+        // 既定は「範囲外は決裁を通す」— 未設定の顧客が最も緩くならないように。
+        varianceApprovalOutside:
+          initial?.customer?.varianceApprovalOutside ?? true,
         salesReps:
           initial?.customer?.salesReps.map((r) => ({
             userId: r.userId,
@@ -216,6 +232,18 @@ export function BpForm({
               BpInput["customer"]
             >["invoiceMethod"],
             isConsignment: values.customer.isConsignment,
+            deliveryToleranceBasis: values.customer
+              .deliveryToleranceBasis as NonNullable<
+              BpInput["customer"]
+            >["deliveryToleranceBasis"],
+            deliveryToleranceUnder: nullIfBlank(
+              values.customer.deliveryToleranceUnder,
+            ),
+            deliveryToleranceOver: nullIfBlank(
+              values.customer.deliveryToleranceOver,
+            ),
+            varianceApprovalWithin: values.customer.varianceApprovalWithin,
+            varianceApprovalOutside: values.customer.varianceApprovalOutside,
             salesReps: values.customer.salesReps,
           }
         : null,
@@ -419,6 +447,66 @@ export function BpForm({
               type: "checkbox",
             })}
           />
+        </FormSection>
+      )}
+
+      {/* 過不足納品（§8）— この顧客がどこまでのずれを受け取るか、そのとき
+          決裁を挟むか。**出せるかどうかは指示書側の許可が別に要る**ので、
+          ここを緩めただけで過不足出荷が通るようにはならない。 */}
+      {has("CUSTOMER") && (
+        <FormSection
+          description={tr("master.businessPartners.deliveryToleranceHelp")}
+          title={tr("master.businessPartners.deliveryTolerance")}
+        >
+          <SimpleGrid cols={isMobile ? 1 : 3} spacing="sm">
+            <Select
+              data={deliveryToleranceBasisOptions(locale)}
+              label={tr("master.businessPartners.toleranceBasis")}
+              {...form.getInputProps("customer.deliveryToleranceBasis")}
+            />
+            <NumberInput
+              description={tr("master.businessPartners.toleranceBlankIsZero")}
+              label={tr("master.businessPartners.toleranceUnder")}
+              min={0}
+              suffix={
+                form.values.customer.deliveryToleranceBasis === "PERCENT"
+                  ? "%"
+                  : undefined
+              }
+              {...form.getInputProps("customer.deliveryToleranceUnder")}
+            />
+            <NumberInput
+              description={tr("master.businessPartners.toleranceBlankIsZero")}
+              label={tr("master.businessPartners.toleranceOver")}
+              min={0}
+              suffix={
+                form.values.customer.deliveryToleranceBasis === "PERCENT"
+                  ? "%"
+                  : undefined
+              }
+              {...form.getInputProps("customer.deliveryToleranceOver")}
+            />
+          </SimpleGrid>
+          <Stack gap="xs" mt="sm">
+            <Checkbox
+              description={tr(
+                "master.businessPartners.varianceApprovalWithinHelp",
+              )}
+              label={tr("master.businessPartners.varianceApprovalWithin")}
+              {...form.getInputProps("customer.varianceApprovalWithin", {
+                type: "checkbox",
+              })}
+            />
+            <Checkbox
+              description={tr(
+                "master.businessPartners.varianceApprovalOutsideHelp",
+              )}
+              label={tr("master.businessPartners.varianceApprovalOutside")}
+              {...form.getInputProps("customer.varianceApprovalOutside", {
+                type: "checkbox",
+              })}
+            />
+          </Stack>
         </FormSection>
       )}
 

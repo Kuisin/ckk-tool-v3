@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { DeliveryOrderDetail } from "@/components/shipping/delivery-orders/DeliveryOrderDetail";
 import { appLabelForKey } from "@/lib/app-list";
+import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
@@ -43,15 +44,23 @@ export default async function ShippingDeliveryOrdersDetailPage({
   const key = parseDocKey(decoded, "DOR");
   if (!key) notFound();
 
-  const [order, auditEntries, memos] = await Promise.all([
-    fetchDeliveryOrder(key),
-    fetchAuditEntries("delivery_orders", formatDocNumber("DOR", key)),
-    listMemos("delivery_orders", formatDocNumber("DOR", key)),
-  ]);
+  const number = formatDocNumber("DOR", key);
+  const [order, auditEntries, memos, approval, approvalTrail] =
+    await Promise.all([
+      fetchDeliveryOrder(key),
+      fetchAuditEntries("delivery_orders", number),
+      listMemos("delivery_orders", number),
+      // 出荷書に承認が付くのは過不足納品のときだけ（§8）。依頼が無ければ
+      // phase = NONE が返るので、通常の出荷では何も表示されない。
+      fetchApprovalState("delivery_orders", number),
+      fetchApprovalTrail("delivery_orders", number),
+    ]);
   if (!order) notFound();
 
   return (
     <DeliveryOrderDetail
+      approval={approval}
+      approvalTrail={approvalTrail}
       auditEntries={auditEntries}
       memos={memos}
       order={order}

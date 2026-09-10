@@ -232,6 +232,11 @@ export interface WorkOrderView {
   materialName: string | null;
   /** 完成品の保管場所（保管場所マスタ MS0E。null = 未指定）。 */
   storageLocationId: number | null;
+  /**
+   * 不足 / 超過分もそのまま納品してよいロットか（§8 過不足納品）。
+   * false（既定）= 受注数量ちょうどでしか出荷できない。
+   */
+  allowQuantityVariance: boolean;
   /** 使用する図面の版（任意のピン留め）。null = そのつど最新を引く。 */
   designFileId: string | null;
   storageLocationName: string | null;

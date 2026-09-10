@@ -220,6 +220,12 @@ function workOrderInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
         ),
       materialId: z.number().int().positive().nullable(),
       storageLocationId: z.number().int().positive().nullable(),
+      /**
+       * 不足 / 超過分もそのまま納品してよいロットか（§8 過不足納品）。
+       * これが false のあいだは受注数量ちょうどでしか出荷できない — 顧客側の
+       * 許容幅をいくら広げても、生産の許可が無ければ過不足出荷は通らない。
+       */
+      allowQuantityVariance: z.boolean().default(false),
       /** 使用する図面の版（任意）。null = 固定しない（そのつど最新を引く）。 */
       designFileId: z.string().uuid().nullable().optional(),
       notes: z.string(),
@@ -555,6 +561,7 @@ export async function createWorkOrder(
           plannedQuantity: v.plannedQuantity,
           materialId,
           storageLocationId: v.storageLocationId,
+          allowQuantityVariance: v.allowQuantityVariance,
           designFileId: v.designFileId ?? null,
           routeVersionId: resolved.routeVersionId,
           prepRouteVersionId: resolved.prepRouteVersionId,
@@ -622,6 +629,7 @@ export async function createWorkOrder(
         plannedQuantity: v.plannedQuantity,
         materialId,
         storageLocationId: v.storageLocationId,
+        allowQuantityVariance: v.allowQuantityVariance,
         routeVersionId: resolvedVersions.routeVersionId,
         prepRouteVersionId: resolvedVersions.prepRouteVersionId,
         stepCount: built.creates.length,
@@ -752,6 +760,7 @@ export async function updateWorkOrder(
           plannedQuantity: v.plannedQuantity,
           materialId,
           storageLocationId: v.storageLocationId,
+          allowQuantityVariance: v.allowQuantityVariance,
           designFileId: v.designFileId ?? null,
           routeVersionId: resolved.routeVersionId,
           prepRouteVersionId: resolved.prepRouteVersionId,
@@ -808,6 +817,7 @@ export async function updateWorkOrder(
         plannedQuantity: prior.plannedQuantity,
         materialId: prior.materialId,
         storageLocationId: prior.storageLocationId,
+        allowQuantityVariance: prior.allowQuantityVariance,
         routeVersionId: prior.routeVersionId,
       },
       after: {
@@ -816,6 +826,7 @@ export async function updateWorkOrder(
         plannedQuantity: v.plannedQuantity,
         materialId,
         storageLocationId: v.storageLocationId,
+        allowQuantityVariance: v.allowQuantityVariance,
         routeVersionId: resolvedVersions.routeVersionId,
         prepRouteVersionId: resolvedVersions.prepRouteVersionId,
         stepCount: built.creates.length,

@@ -680,6 +680,7 @@ export async function fetchWorkOrder(
       ? localized(r.material.name as LocalizedText | null)
       : null,
     storageLocationId: r.storageLocationId,
+    allowQuantityVariance: r.allowQuantityVariance,
     designFileId: r.designFileId,
     storageLocationName: r.storageLocation
       ? `${localized(r.storageLocation.plant.name as LocalizedText | null)} / ${localized(

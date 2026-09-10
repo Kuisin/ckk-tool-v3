@@ -440,6 +440,23 @@ export async function fetchApprovalDocInfo(
         delivery_method: row.acceptance.deliveryMethod,
       };
     }
+    case "delivery_orders": {
+      const key = parseDocKey(targetId, "DOR");
+      if (!key) return null;
+      const row = await prisma.deliveryOrder.findUnique({
+        where: { yearMonth_seq: key },
+        select: {
+          fromPlantId: true,
+          items: { select: { quantity: true } },
+        },
+      });
+      if (!row) return null;
+      // キーは approval-conditions.ts の approvalConditionFields と一致必須。
+      return {
+        total_quantity: row.items.reduce((sum, it) => sum + it.quantity, 0),
+        from_plant_id: row.fromPlantId != null ? String(row.fromPlantId) : null,
+      };
+    }
   }
 }
 
@@ -672,6 +689,15 @@ async function targetCreatedAt(
         select: { requestedAt: true },
       });
       return row?.requestedAt ?? null;
+    }
+    case "delivery_orders": {
+      const key = parseDocKey(targetId, "DOR");
+      if (!key) return null;
+      const row = await prisma.deliveryOrder.findUnique({
+        where: { yearMonth_seq: key },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
     }
   }
 }
