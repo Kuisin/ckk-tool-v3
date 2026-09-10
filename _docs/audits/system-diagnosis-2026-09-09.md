@@ -156,9 +156,28 @@ Web アプリ（nextjs-web）と共有端末アプリ（nextjs-kiosk）の両方
 Server Action ゲート検査、kiosk lint / `tsc` / vitest 525 — すべて緑。twin 12 本のバイト一致。
 使い捨て DB + 本番ビルドの再巡回と通し確認の結果は末尾の「再巡回」を参照。
 
+### 再巡回（修正後・使い捨て DB + 本番ビルド）
+
+| 検査 | 修正前 | 修正後 |
+|---|---|---|
+| web 巡回の指摘（260 画面 × 2 幅） | 23,460 | 524 |
+| 横スクロール（375px） | 20 画面 | 2（`/preview` のデモ画面、価格表の新規の明細表 — §6.1） |
+| 本文の "Invalid Date" | 1 | 0 |
+| 見出しの無い画面 | 66 | 0 |
+| ラベルの無い入力欄 | 22,894 | 220 → さらに 28 個に名前を付けた（多行の placeholder。残りは SY02 の型 `Select` と式の `Textarea`、Mantine の内部 `input`） |
+| 名前の無いボタン | 458 | 282（256 は `NumberInput` の増減ボタン = Mantine 側、他は `DateTimePicker` の入力ボタンと `Pill` の × — §6.1） |
+| 共有端末 巡回（18 画面 × 2 向き） | 64 | 26（残りは 5 タップの隠しトリガー 16 / 推測 URL の 404 / 誤検知） |
+| 通し確認 | — | 共有端末の検査承認 12/12 PASS、出荷 + 最終検査 19/19 PASS（`e2e-fixtures.sql` 必須）、smoke-flows 92 PASS |
+
+`NEXT_PUBLIC_APP_VERSION` をビルドと起動で揃えたので、共有端末の React #418 は出ない。
+
 ## 6. 改善計画（残り）
 
 ### 6.1 次に直す
+- **依存の脆弱性で CI の依存監査が赤**（本 PR の変更とは無関係。同じロックファイルの dev でも次の PR から落ちる）:
+  `next` 16.2.12 → **16.3.3**（critical ×2、GHSA-p293-qw3h-jr36 / GHSA-2xp9-vwfh-vxw4。web・kiosk 両方）、
+  `@tiptap/core` → 3.30.5（GHSA-j95f-988m-3j2f）、`nodemailer` → 9.1.0（GHSA-2x7j-588g-ccc2、メジャー更新）。
+  techstack の「Next.js のセキュリティパッチは当てる」に従って別 PR で上げる（nodemailer は相談）。
 - **§4.4 の再点検**（システム・認証・共有端末の修正 PR 14 本 + 監査ログ可読化）— 今回読めていない。
 - **共有端末の完了クレームを指示書完了・在庫計上と同一 tx に**（web / kiosk 両方）。今は巻き戻しで回復できるが、現場が気づけない。
 - `startApprovalFlow` の「既存 PENDING 行」分岐でフローを再解決し、`flow_snapshot` が違えば作り直す。
