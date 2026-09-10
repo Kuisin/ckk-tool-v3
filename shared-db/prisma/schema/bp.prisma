@@ -66,7 +66,7 @@ model BusinessPartner {
   notes       String?
   createdBy   String?  @map("created_by") @db.Uuid
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   parent        BusinessPartner?  @relation("BpParent", fields: [parentId], references: [id])
   branches      BusinessPartner[] @relation("BpParent")
@@ -116,6 +116,8 @@ model BusinessPartner {
   @@index([parentId])
   // 照合名の配列検索（lib/bp-match）。GIN でないと全表走査になる。
   @@index([matchNamesAuto(ops: ArrayOps)], map: "business_partners_match_names_auto_idx", type: Gin)
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
   @@map("business_partners")
   @@schema("app")
 }
@@ -218,13 +220,15 @@ model BpContact {
   isPrimary  Boolean  @default(false) @map("is_primary")
   isActive   Boolean  @default(true) @map("is_active")
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   bp BusinessPartner @relation(fields: [bpId], references: [id])
 
   portalAccounts PortalAccount[] @relation("PortalAccountContact")
 
   @@index([bpId])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
   @@map("bp_contacts")
   @@schema("app")
 }

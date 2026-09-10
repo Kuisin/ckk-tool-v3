@@ -95,7 +95,7 @@ model OrderAcceptance {
   salesRepId  String?   @map("sales_rep_id") @db.Uuid
   createdBy   String?   @map("created_by") @db.Uuid
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   sourceFile       File?            @relation("AcceptanceSourceFile", fields: [sourceFileId], references: [id])
   customerBp       BusinessPartner? @relation("AcceptanceCustomer", fields: [customerBpId], references: [id])
@@ -114,6 +114,8 @@ model OrderAcceptance {
   @@index([status])
   // 注文明細の顧客絞り込みはヘッダ経由になるため必須
   @@index([customerBpId])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, yearMonth, seq])
   @@map("order_acceptances")
   @@schema("app")
 }
@@ -195,7 +197,7 @@ model OrderLine {
   confirmedAt DateTime?       @map("confirmed_at") @db.Timestamptz(6)
   cancelledAt DateTime?       @map("cancelled_at") @db.Timestamptz(6)
   createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   // 顧客・注文書番号・見積キー・作成者はヘッダ（acceptance）から読む —
   // 行に複写すると乖離するため持たない。
@@ -213,6 +215,8 @@ model OrderLine {
   @@index([status])
   @@index([productId])
   @@index([lotNumber])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
   @@map("order_lines")
   @@schema("app")
 }
