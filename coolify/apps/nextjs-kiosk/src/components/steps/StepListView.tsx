@@ -12,6 +12,7 @@ import {
   Box,
   Button,
   Center,
+  Checkbox,
   Group,
   Paper,
   Stack,
@@ -27,15 +28,18 @@ import {
   IconChevronUp,
   IconClipboardList,
   IconRefresh,
+  IconSquareCheck,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { fillMessage } from "@/lib/i18n";
+import { batchActionsFor } from "@/lib/step-batch-core";
 import type { MyStepView } from "@/lib/steps";
 import type { StepBucket } from "@/lib/steps-core";
 import { ActivityMonitor } from "../ActivityMonitor";
 import { useI18n } from "../I18nProvider";
 import { LiveElapsed } from "./LiveElapsed";
+import { StepBatchBar } from "./StepBatchBar";
 import { stateColor, stateLabel } from "./step-ui";
 
 type Props = {
@@ -51,6 +55,23 @@ export function StepListView({ steps, upcomingCount, completedSteps }: Props) {
   const { m } = useI18n();
   const [refreshing, setRefreshing] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
+  // 選択モードは**任意で入る**。常時チェックボックスを出すとカードのタップ的を
+  // 食う（カードを押して 1 件開くのが今も主な操作）。
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const selectedSet = new Set(selectedIds);
+  const selectedSteps = steps.filter((s) => selectedSet.has(s.stepId));
+
+  const toggle = (stepId: string) =>
+    setSelectedIds((ids) =>
+      ids.includes(stepId) ? ids.filter((i) => i !== stepId) : [...ids, stepId],
+    );
+
+  const leaveSelecting = () => {
+    setSelecting(false);
+    setSelectedIds([]);
+  };
 
   const refresh = () => {
     setRefreshing(true);
@@ -83,6 +104,17 @@ export function StepListView({ steps, upcomingCount, completedSteps }: Props) {
               <Badge color="gray" size="lg" variant="light">
                 {fillMessage(m.steps.upcoming, { n: upcomingCount })}
               </Badge>
+            )}
+            {steps.length > 1 && (
+              <Button
+                leftSection={<IconSquareCheck size={20} />}
+                onClick={() =>
+                  selecting ? leaveSelecting() : setSelecting(true)
+                }
+                variant={selecting ? "filled" : "default"}
+              >
+                {selecting ? m.steps.batch.cancelSelect : m.steps.batch.select}
+              </Button>
             )}
             <Button
               leftSection={<IconRefresh size={20} />}
@@ -118,7 +150,13 @@ export function StepListView({ steps, upcomingCount, completedSteps }: Props) {
                       : m.steps.sections.upcoming}
                 </Text>
                 {rows.map((step) => (
-                  <StepCard key={step.stepId} step={step} />
+                  <StepCard
+                    key={step.stepId}
+                    onToggle={toggle}
+                    selected={selectedSet.has(step.stepId)}
+                    selecting={selecting}
+                    step={step}
+                  />
                 ))}
               </Stack>
             );
@@ -153,28 +191,68 @@ export function StepListView({ steps, upcomingCount, completedSteps }: Props) {
               ))}
           </Stack>
         )}
+
+        {selecting && (
+          <StepBatchBar
+            onFinished={(failedIds) => {
+              // 失敗した工程は選択に残す — 直してすぐ再試行できるように
+              setSelectedIds(failedIds);
+              if (failedIds.length === 0) setSelecting(false);
+            }}
+            selected={selectedSteps}
+          />
+        )}
       </Stack>
     </Box>
   );
 }
 
-function StepCard({ step }: { step: MyStepView }) {
+function StepCard({
+  step,
+  selecting = false,
+  selected = false,
+  onToggle,
+}: {
+  step: MyStepView;
+  selecting?: boolean;
+  selected?: boolean;
+  onToggle?: (stepId: string) => void;
+}) {
   const router = useRouter();
   const { m } = useI18n();
   const openable =
     step.sessionState === "STARTABLE" ||
     step.sessionState === "WORKING" ||
     step.sessionState === "PAUSED";
-  const dimmed = !openable;
+  // 一括に載せられる状態か。**対象外の行もチェックボックスは消さない** —
+  // 無効で出しておくと「なぜ束ねられないか」が状態バッジと並んで読める。
+  const selectable = batchActionsFor(step.sessionState).length > 0;
+  const dimmed = selecting ? !selectable : !openable;
+  const disabled = selecting ? !selectable : !openable;
 
   return (
     <UnstyledButton
-      disabled={!openable}
-      onClick={() => openable && router.push(`/steps/${step.stepId}`)}
+      disabled={disabled}
+      onClick={() => {
+        if (disabled) return;
+        if (selecting) onToggle?.(step.stepId);
+        else router.push(`/steps/${step.stepId}`);
+      }}
       style={{ opacity: dimmed ? 0.6 : 1 }}
     >
       <Paper p="md" radius="md" withBorder>
         <Group align="flex-start" justify="space-between" wrap="nowrap">
+          {selecting && (
+            <Checkbox
+              checked={selected}
+              disabled={!selectable}
+              mt={4}
+              onChange={() => onToggle?.(step.stepId)}
+              size="lg"
+              style={{ flexShrink: 0 }}
+              tabIndex={-1}
+            />
+          )}
           <Stack gap={4} style={{ minWidth: 0 }}>
             <Text c="dimmed" size="sm">
               {fillMessage(m.steps.card.workOrder, { n: step.workOrderNumber })}

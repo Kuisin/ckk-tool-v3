@@ -309,6 +309,32 @@
       "verdict": "合否",
       "noItems": "記入された項目がありません",
       "checkThenApprove": "中身を確かめてから承認してください"
+    },
+    "batch": {
+      "select": "選択",
+      "cancelSelect": "選択をやめる",
+      "selectedCount": "{n} 件選択中",
+      "start": "選択した {n} 件を開始",
+      "pause": "選択した {n} 件を一時停止",
+      "complete": "選択した {n} 件を完了",
+      "mixedSelection": "開始できる工程と作業中の工程が混ざっています。どちらかに揃えてください。",
+      "confirmStart": "選択した {n} 件を開始しますか？",
+      "confirmPause": "選択した {n} 件を一時停止しますか？",
+      "confirmComplete": "選択した {n} 件を完了しますか？",
+      "expectedInputNote": "受入数は想定値で開始します。変更するには工程を個別に開いてください。",
+      "allGoodNote": "全数を良品として完了します。不良がある工程は個別に開いて内訳を入力してください。",
+      "resultStarted": "{n} 件開始しました",
+      "resultPaused": "{n} 件一時停止しました",
+      "resultCompleted": "{n} 件完了しました",
+      "resultMixed": "{ok} 件成功 / {ng} 件失敗",
+      "resultAllFailed": "{n} 件とも実行できませんでした",
+      "reasonNotSelectable": "この状態では一括操作できません",
+      "reasonLotRequired": "ロット/伝票コードが必要です。個別に開いてください",
+      "reasonInspectionRequired": "検査表の記入が必要です",
+      "open": "開く",
+      "close": "閉じる",
+      "run": "実行",
+      "cancel": "キャンセル"
     }
   },
   "deviceError": {

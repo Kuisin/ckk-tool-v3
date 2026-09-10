@@ -309,6 +309,32 @@
       "verdict": "合否",
       "noItems": "没有已填写的项目",
       "checkThenApprove": "请确认内容后再批准"
+    },
+    "batch": {
+      "select": "选择",
+      "cancelSelect": "取消选择",
+      "selectedCount": "已选 {n} 件",
+      "start": "开始所选 {n} 件",
+      "pause": "暂停所选 {n} 件",
+      "complete": "完成所选 {n} 件",
+      "mixedSelection": "可开始的工序与进行中的工序混在一起。请只选择其中一类。",
+      "confirmStart": "要开始所选的 {n} 件吗？",
+      "confirmPause": "要暂停所选的 {n} 件吗？",
+      "confirmComplete": "要完成所选的 {n} 件吗？",
+      "expectedInputNote": "以预计接收数开始。如需修改，请单独打开该工序。",
+      "allGoodNote": "全数按良品完成。有不良的工序请单独打开并录入明细。",
+      "resultStarted": "已开始 {n} 件",
+      "resultPaused": "已暂停 {n} 件",
+      "resultCompleted": "已完成 {n} 件",
+      "resultMixed": "成功 {ok} 件 / 失败 {ng} 件",
+      "resultAllFailed": "{n} 件均未能执行",
+      "reasonNotSelectable": "当前状态无法批量操作",
+      "reasonLotRequired": "需要批次/单据编号，请单独打开",
+      "reasonInspectionRequired": "需要填写检查表",
+      "open": "打开",
+      "close": "关闭",
+      "run": "执行",
+      "cancel": "取消"
     }
   },
   "deviceError": {

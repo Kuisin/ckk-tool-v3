@@ -24,6 +24,7 @@ import {
   workLocationLabel,
 } from "./format";
 import type { Locale } from "./i18n";
+import { missingInspectionSheets } from "./inspection-core";
 import { allowedWorkLocationIdsForStep } from "./step-execution";
 import {
   accumulatedWorkMs,
@@ -51,6 +52,14 @@ export interface MyStepView {
   productName: string;
   stepName: string;
   stepCode: string;
+  /**
+   * 工程マスタの id。**同じ工程をまとめる鍵はこれ**（工程名ではない） —
+   * 名前は多言語 Json を 1 言語に潰した値なので、別のカタログ行が或る言語で
+   * だけ同名になり得る。
+   */
+  processStepId: number;
+  /** 未記入の検査表がある（完了できない）。 */
+  inspectionMissing: boolean;
   plantName: string | null;
   quantityMode: QuantityTrackingMode;
   sessionState: StepSessionState;
@@ -251,6 +260,10 @@ async function hydrateSteps(
         },
         orderBy: { startedAt: "asc" },
       },
+      // 未記入の検査表の判定（完了ゲート）。関係を include に足すだけなので
+      // 追加のクエリにはならない。
+      inspectionTemplates: { select: { inspectionTemplateId: true } },
+      inspectionRecords: { select: { templateId: true } },
     },
   });
 
@@ -293,6 +306,15 @@ async function hydrateSteps(
       productName: localized(asText(r.workOrder.product.name), locale),
       stepName: localized(asText(r.processStep.name), locale),
       stepCode: r.processStep.code,
+      processStepId: r.processStepId,
+      inspectionMissing:
+        missingInspectionSheets(
+          r.inspectionTemplates.map((t) => ({
+            id: t.inspectionTemplateId,
+            name: "",
+          })),
+          r.inspectionRecords,
+        ).length > 0,
       plantName: r.plant ? localized(asText(r.plant.name), locale) : null,
       quantityMode: r.processStep.quantityTracking,
       executionLocation: r.executionLocation,
