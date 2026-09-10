@@ -117,10 +117,48 @@ Web アプリ（nextjs-web）と共有端末アプリ（nextjs-kiosk）の両方
 
 ### 4.4 システム・認証・インフラ
 
-**未実施。** 前回修正（#804/#806/#811/#813–#817/#819/#820/#827）と監査ログの可読化（#836–#839）の
-再点検は、監査エージェントが 2 度とも API の利用上限で途中終了し、本レポートの範囲では読めていない。
-静的検査（テスト・lint・型・i18n・twin・Server Action ゲートの CI スクリプト）は通っている。
-次回の点検の先頭に置く（§6.1）。
+**実施（2026-09-10）。** ほかの領域と**同じ形の「片側だけの修正」が 8 つ**見つかった。
+
+- **H** `master/material-types/actions.ts:271-287` — 材種の削除が `materials`（RESTRICT）しか数えない。
+  `products.material_type_id` と `estimates.material_type_id` は **SET NULL**、
+  `material_type_prices` は **CASCADE**。素材を先に消した材種を削ると、**製品と価格試算の材種が
+  黙って null になり、材種既定単価の表ごと消える**。#817 がまさにこの型を潰した回で、素材（MS06）と
+  製品（MS04）は `countMasterReferences` に寄せたのに材種（MS05）だけ残っていた。
+- **H** `auth.ts:176-190` + `lib/request-ip.ts:32-45` — ログインの IP レート制限（15 分 30 回で 15 分ロック）の
+  鍵が `clientIpOf`。`TRUSTED_PROXY_HOPS` は既定 0（`add-security-envs.sh`）で、0 は **XFF の右端** =
+  「最後のプロキシから見た送信元」。公開経路は cloudflared → nginx-proxy → app なので右端は
+  **全利用者で同じプロキシのアドレス**になる。つまり**誰かが 30 回打ち間違えると、社外からの
+  利用者全員が 15 分間ログインできない**（LAN からは入れる）。#827 の狙い（別回線なら通常どおり）が
+  そのまま崩れている。
+- **M** `settings/kiosk-devices/displays/actions.ts:233,318,554,612,657` — ディスプレイの特権操作 5 本が
+  `useElevation` を**入力検証と存在確認より前**に呼ぶ。#815 がカードと端末では
+  「権限 → 検証 → 存在確認 → `useElevation`」に直した並びで、ディスプレイだけ据え置き。
+  検証で落ちる操作でも承認の時計が動き出す。
+- **M** 同 `:655-681` `deleteDisplay` の監査行に `grantId` / `bypass` が無い（他の 4 本は手書きで持つ、
+  カード・端末は `elevationAuditNote()` を使う）。
+- **M** `settings/kiosk-devices/actions.ts:181` `createDeviceProfile` が `settingsCode` を渡さないので、
+  初期値が DB 既定の `random()`（非 CSPRNG）。#815 は**再生成**の側だけ `randomInt` にしていた。
+  この番号は端末設定画面の解錠と再有効化の代替証明を兼ねる。
+- **M** `master/storage-locations/actions.ts:210-233` — 保管場所の削除が `work_orders.storage_location_id`
+  （SET NULL）を数えない。MS0D 作業場所は #817 で寄せたのに MS0E だけ残っていた。
+- **M** `lib/portal-rate-limit.ts:66-116` — web のログイン失敗カウンタが read-then-write で、しかも
+  `auth.ts:98` が `void`（待たない）。#814 が共有端末の PIN で直したのと**同じ競合**が web 側に残った。
+- **M** `.github/workflows/nextjs-web-ci.yml:78-81` — #811 の CI ジョブが流すのは `grants.sql` と
+  `analytics-views.sql` だけ。実際の migrator（`db-migrate/entrypoint.sh`）は cron 系 4〜5 本も
+  `ON_ERROR_STOP` で流す。**その 4 本の構文誤りは CI を通ってしまう**（#811 が防ぎたかった事故そのもの）。
+- **L** SSE は接続時にしか `is_active` を見ない（内容は再取得の合図だけなので実害は小）／
+  SSO のローカル衝突が利用者には `AccessDenied` としか見えない（初期管理者はパスワードで入れるので
+  締め出しではない）／ po-extract の baseUrl 検査が `^https?://` だけで、`127.0.0.2` や `[::1]`、
+  10 進表記、DNS リバインドは通る（`system` 権限限定）／ リンクコードの衝突を retry しない／
+  一時カードの有効期間短縮がセッションに効かない。
+- 確認できたこと: 401 化と `proxy.ts` の除外、`jwt` が null を返すとセッションが確実に死ぬこと、
+  `DEVICE_SIGNALS_SECRET` 未設定の degrade、フォーム添付の共有スコープ再検査、特権申請の状態機械
+  （条件付き更新 + 窓の終了検査 + 同一 tx）、カード 7 / 端末 8 操作の `elevationAuditNote` 網羅、
+  カード停止で `kiosk_sessions` を同一 tx で失効させ端末側も再検査すること、`ckk_kiosk` NOTIFY、
+  attest Cookie の指紋束縛、PIN カウンタの原子性、`master-refs.ts` の 6 対象が schema の全
+  SET NULL/CASCADE を覆っていること（333 関係を突き合わせ）、`grants.sql` の列許可リスト、
+  `roles-seed.sql` の除外、advisory lock が専用接続を張ること、通知ダイジェストの部分クレーム、
+  SY02 の差分保存、公開承認の版固定、単一回答の行ロック、監査ログの後方互換と N+1 回避。
 
 ## 5. 修正の実施（本 PR）
 
@@ -151,6 +189,9 @@ Web アプリ（nextjs-web）と共有端末アプリ（nextjs-kiosk）の両方
 | 出荷 | 納品書の発行に出荷書 SHIPPED を要求、明細ロックを id 順に | `delivery-notes/actions.ts`、`delivery-orders/actions.ts` |
 | 販売 | 見積明細の円未満丸め（`lib/money.ts`）、`issueQuote` の権限→検証の順 | `quotes/actions.ts` |
 | ツール | 実機巡回スクリプト | `tools/docs-screenshots/audit-crawl.ts` + README |
+| システム | **§4.4 の 8 件**（2026-09-10）: 材種・保管場所の削除ガードを `lib/master-refs.ts` へ（SET NULL / CASCADE を網羅、schema 突き合わせ試験が見張る）／ ログイン IP レート制限の鍵を `rateLimitIpOf`（`cf-connecting-ip` 優先）にして**社外の全員が巻き添えで締め出される**のを止める（記録用 IP は従来どおり `clientIpOf`）／ ディスプレイ特権 5 本の `useElevation` を検証・存在確認の後ろへ + `elevationAuditNote` を 5 本すべてに／ 端末設定コードを作成時から CSPRNG に／ web のログイン失敗カウンタを DB の `increment` で原子化し `await`／ `sessionUserId` を `cache()` で 1 リクエスト 1 回に | 各 actions.ts、`lib/{master-refs,request-ip,device-signals,portal-rate-limit,authz}.ts`、`auth.ts` |
+| CI | **migrator が流す cron SQL 5 本を CI でも流す** — pg_cron が無い CI では丸ごと素通りしていた（#811 が防ぎたかった事故がそのまま残っていた）。`shared-db/ci/pg-cron-stub.sql`（`sql/` に置かない = 実 DB に届かない）+ `CREATE EXTENSION` の 1 行だけ落として実行。関数名・テーブル名・列名をわざと壊すと落ちることを確認済み | `.github/workflows/nextjs-web-ci.yml` |
+| CI | quick-review が 15 turn で打ち切られて必ず落ちていた（119 ファイルの差分）。上限は目標ではないので 40 へ — 小さい PR の費用は変わらない | `.github/workflows/claude-code-review.yml` |
 | 依存 | **CI の依存監査（prod・high 以上）が赤だったのを解消** — `next` 16.2.12 → **16.3.4**（critical ×2: GHSA-p293-qw3h-jr36 / GHSA-2xp9-vwfh-vxw4。web・kiosk 両方。techstack の「Next.js はセキュリティパッチを当てる」「16.x の minor 更新は可」に従う）、`@tiptap/core` → 3.31.3（GHSA-j95f-988m-3j2f。`@mantine/tiptap` の peer は `>=3.3.0` なので衝突なし）、`nodemailer` → 9.1.1（GHSA-2x7j-588g-ccc2）。caret の下限も patched 版へ上げ、**lockfile だけでなく manifest に**修正を記録した（新しく解決し直しても下回らない）。残る監査出力は moderate 7 件と既に無視指定の high 1 件（GHSA-ggr8-5vv4-36mx）で、high 以上のゲートは通る | `coolify/apps/nextjs-{web,kiosk}/package.json`、`pnpm-lock.yaml` |
 
 再検証（修正後）: web lint / `tsc` / vitest 2,078 / `i18n:keys`（10,764 鍵）/ `i18n:glossary` / 動的鍵検査 /
