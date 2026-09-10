@@ -1697,7 +1697,8 @@
       "kiosk_device": "端末アクセスの付与",
       "portal_admin": "取引先ポータルの管理",
       "kiosk_card": "QRカードの発行・PIN",
-      "personal_data": "個人データの閲覧"
+      "personal_data": "個人データの閲覧",
+      "api_client": "外部 API クライアントの管理"
     },
     "PRIVILEGED_OPERATIONS": {
       "kiosk_secret": {
@@ -1820,6 +1821,16 @@
         "mint_link_only": {
           "label": "本人確認なしリンクの発行",
           "description": "URL を持っていれば誰でも開ける書類リンクを作る。転送されればその相手も開ける（本人確認ありのリンクは対象外）"
+        }
+      },
+      "api_client": {
+        "issue_token": {
+          "label": "API トークンの発行",
+          "description": "社外のシステムが業務データを読むための鍵を刷る。刷った値がそのまま資格情報で、割り当てたロールの範囲を持ち出せる"
+        },
+        "activate": {
+          "label": "API クライアントの有効化",
+          "description": "作っただけでは何も通らないクライアントを、実際に業務データを読める状態にする"
         }
       }
     },
@@ -9613,5 +9624,29 @@
       "zoomIn": "拡大",
       "resetZoom": "元のサイズに戻す"
     }
+  },
+  "apiClients": {
+    "title": "API クライアント",
+    "intro": "社外のシステムが業務データを読むための資格情報です。何を読めるかは、ユーザー管理で割り当てたロールが決めます。",
+    "roles": "ロール",
+    "tokens": "トークン",
+    "token": "トークン",
+    "lastUsed": "最終利用",
+    "neverUsed": "未使用",
+    "issueToken": "トークンを発行",
+    "revoke": "失効",
+    "revoked": "失効済み",
+    "empty": "まだ登録がありません",
+    "noRoles": "ロール未割当",
+    "noRolesHint": "ロールが 1 つも無いので、このクライアントは何も読めません。ユーザー管理で割り当ててください。",
+    "createTitle": "API クライアントを作成",
+    "createHint": "作成した時点では無効で、トークンもありません。有効化とトークンの発行はそれぞれ承認が要ります。",
+    "allowedCidrs": "許可 IP 範囲",
+    "allowedCidrsHelp": "空欄なら制限しません。カンマ区切りで CIDR を書きます。",
+    "issuedTitle": "トークンを発行しました",
+    "shownOnce": "この値はもう二度と表示されません。いま控えてください。",
+    "tooManyActiveTokens": "有効なトークンは 2 本までです。先にどれかを失効してください。",
+    "clientNotFound": "対象のクライアントが見つかりません",
+    "featureDisabled": "この環境では外部 API は無効です"
   }
 }

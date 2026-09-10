@@ -318,6 +318,14 @@ async function lookupEntityNamesForTable(
       }
       break;
     }
+    case "api_clients": {
+      const rows = await prisma.apiClient.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, name: true },
+      });
+      for (const r of rows) out.set(r.id, r.name);
+      break;
+    }
     case "portal_accounts": {
       const rows = await prisma.portalAccount.findMany({
         where: { id: { in: ids } },

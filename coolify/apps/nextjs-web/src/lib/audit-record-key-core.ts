@@ -74,6 +74,9 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   privileged_access_requests: "identity",
   user_change_requests: "identity",
   portal_accounts: "identity",
+  // 外部 API（api.prisma）。どちらも uuid PK をそのまま record_id に入れる。
+  api_clients: "identity",
+  api_client_tokens: "identity",
   portal_grants: "identity",
   portal_document_links: "identity",
   portal_backup_codes: "identity",
