@@ -12,10 +12,6 @@
 import type { Root as PageTreeRoot } from "fumadocs-core/page-tree";
 import { defineI18nUI } from "fumadocs-ui/i18n";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
-import {
-  LanguageSelect,
-  LanguageSelectText,
-} from "fumadocs-ui/layouts/shared/slots/language-select";
 import type { ReactNode } from "react";
 import { docsI18n } from "@/lib/docs-i18n";
 import { DocsProvider } from "./DocsProvider";
@@ -60,15 +56,6 @@ export function DocsShell({
           },
         ]}
         nav={{ title }}
-        sidebar={{
-          // v16 の DocsLayout は言語スイッチャを自動では出さない —
-          // サイドバー下部に明示的に置く（onChange は DocsProvider が処理）。
-          footer: (
-            <LanguageSelect>
-              <LanguageSelectText />
-            </LanguageSelect>
-          ),
-        }}
         tree={tree}
       >
         {children}
