@@ -140,3 +140,59 @@ export async function fetchAllowedWorkLocationIds(
   }
   return ids;
 }
+
+/**
+ * 全工程の許可作業場所を一度に引く（指示書ビルダーの作業計画欄用 —
+ * 工程ごとに fetchAllowedWorkLocationIds を往復させない）。
+ * 値は fetchAllowedWorkLocationIds と同じ意味: **null = 無制限**。
+ * リンク行の無い工程はキーごと無い（= 無制限）ので、読む側は
+ * `map[stepId] ?? null` で受けること。
+ */
+export async function fetchAllowedWorkLocationMap(): Promise<
+  Record<number, number[]>
+> {
+  const links = await prisma.processStepWorkLocation.findMany({
+    select: { processStepId: true, typeKey: true, workLocationId: true },
+  });
+  if (links.length === 0) return {};
+  const typeKeys = [
+    ...new Set(
+      links.map((l) => l.typeKey).filter((k): k is string => k != null),
+    ),
+  ];
+  const byType = new Map<string, number[]>();
+  if (typeKeys.length > 0) {
+    const rows = await prisma.workLocation.findMany({
+      where: { group: { typeKey: { in: typeKeys } } },
+      select: { id: true, group: { select: { typeKey: true } } },
+    });
+    for (const r of rows) {
+      const k = r.group.typeKey;
+      if (k == null) continue;
+      byType.set(k, [...(byType.get(k) ?? []), r.id]);
+    }
+  }
+  const out: Record<number, Set<number>> = {};
+  for (const l of links) {
+    let set = out[l.processStepId];
+    if (!set) {
+      set = new Set<number>();
+      out[l.processStepId] = set;
+    }
+    if (l.workLocationId != null) set.add(l.workLocationId);
+    if (l.typeKey != null)
+      for (const id of byType.get(l.typeKey) ?? []) set.add(id);
+  }
+  return Object.fromEntries(
+    Object.entries(out).map(([k, v]) => [Number(k), [...v]]),
+  );
+}
+
+/**
+ * 作業場所マスタに有効な行が 1 つでもあるか。
+ * 作業計画の「作業場所必須」（lib/work-plan-core.ts planReadiness）は、
+ * 1 つも登録していない環境では要求しない — その判定の入力。
+ */
+export async function workLocationsConfigured(): Promise<boolean> {
+  return (await prisma.workLocation.count({ where: { isActive: true } })) > 0;
+}

@@ -33,6 +33,7 @@ import {
   setProcessStepsActive,
 } from "@/app/(dashboard)/master/process-steps/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
@@ -359,7 +360,17 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
 
   return (
     <ListShell
-      action={<NewButton href={`${BASE_PATH}/new`} />}
+      action={
+        <Group gap="xs" wrap="nowrap">
+          <SecondaryButton
+            href={`${BASE_PATH}/prep-routes`}
+            leftSection={<IconGitBranch size={14} />}
+          >
+            {tr("master.prepRoutes.title")}
+          </SecondaryButton>
+          <NewButton href={`${BASE_PATH}/new`} />
+        </Group>
+      }
       breadcrumbs={[tr("common.masterData"), tr("common.processSteps")]}
       filters={
         <>

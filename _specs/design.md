@@ -1062,7 +1062,7 @@ Timeline (active={-1}, bulletSize={28}, lineWidth={2})
 ```
 Paper (withBorder, p="md", radius="md")
 ├── Group justify="space-between" mb="sm"
-│   ├── Title order={5} "工程ワークフロー"
+│   ├── Group — Title order={5} "工程ワークフロー" + Badge 予定納期（割当明細の最早納期。過ぎて未完了なら red）
 │   └── [if APPROVED or IN_PROGRESS] Anchor "工程実行ビューを開く"
 └── Grid gap="md"  — 2 ペイン（デスクトップは余白を情報で埋める）
     ├── Grid.Col span={{ base: 12, lg: 7 }} — 工程リスト

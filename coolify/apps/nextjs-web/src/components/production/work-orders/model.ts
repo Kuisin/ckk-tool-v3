@@ -8,6 +8,7 @@
  */
 
 import type { Tr } from "@/lib/i18n";
+import type { PlanReadiness } from "@/lib/work-plan-core";
 import type { CatalogStep, CompositionIssue } from "@/lib/workflow-core";
 
 // history Json の action → 表示ラベルは lib/enum-labels.ts
@@ -145,6 +146,8 @@ export interface WorkOrderLineAllocView {
   customerName: string | null;
   status: string;
   lotNumber: number | null;
+  /** 明細の納期（ISO 日付）。工程ワークフローの見出しに「予定納期」として出す。 */
+  deliveryDate: string | null;
 }
 
 /** この指示書のロットが載った出荷書（手続き状況の「次の書類へ」）。 */
@@ -239,6 +242,19 @@ export interface WorkOrderView {
   routeId: number | null;
   routeName: string | null;
   routeVersion: number | null;
+  /** 製造工程リストの最新版番号 — 使っている版が古ければ画面で示す。 */
+  routeLatestVersion: number | null;
+  /** 準備工程リスト（共通）の出所。null = 使っていない。 */
+  prepRouteVersionId: string | null;
+  prepRouteId: number | null;
+  prepRouteName: string | null;
+  prepRouteVersion: number | null;
+  prepRouteLatestVersion: number | null;
+  /**
+   * 承認依頼を出せるか — 社内工程ごとに 日付 + 作業場所 の揃った作業計画が
+   * あるか（lib/work-plan-core.ts）。承認カードが「何が足りないか」を出す。
+   */
+  planReadiness: PlanReadiness;
   /** ロット番号 = 指示書番号（注文明細側の lot_number）。 */
   lotNumber: number | null;
   sourceWorkOrderNumber: number | null;

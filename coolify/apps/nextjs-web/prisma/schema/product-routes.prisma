@@ -1,12 +1,39 @@
-// 製品工程ルート（工程リスト）— 1 製品に複数の名前付きルート。バージョンは
-// 不変スナップショット（作成のみ・編集不可）で、指示書作成時にルートを選んで
-// 工程構成をプリフィルし、変更した場合は常に新バージョンとして保存される。
-// 最新 = max(version)（is_latest 列は持たない）。
+// 工程ルート（工程リスト）— バージョンは不変スナップショット（作成のみ・
+// 編集不可）で、指示書作成時にルートを選んで工程構成をプリフィルし、変更した
+// 場合は常に新バージョンとして保存される。最新 = max(version)（is_latest 列は
+// 持たない）。
+//
+// **2 種類ある**（kind）。指示書の工程は 準備 + 製造 の 2 本を合わせたもの:
+//   PREP           準備工程リスト — 〇〇出し・受渡し と 材料準備（切断・センタレス・
+//                  全長合わせ・C面）。**製品にも顧客にも紐づかない**（共通）。
+//                  素材をどう仕立てるかは製品ごとに変わらないので、製品ごとに
+//                  同じ並びを何百回も持たせない。
+//   MANUFACTURING  製造工程リスト — 加工・コーティング・検査・承認。製品 ×
+//                  受注元ごと（従来の工程リストそのもの）。
+// どの工程がどちらに属するかは nextjs-web lib/workflow-core.ts の isPrepStep が
+// 唯一の定義（カタログの category = MATERIAL_PREP）。
+// kind ごとの列の必須/禁止は DB の CHECK が守る（Prisma には書けない）。
+//
+// 移行前のルートは MANUFACTURING で、バージョンの中に準備工程が混ざったまま
+// 残る（消さない — 使用済みの指示書がそれを指している）。指示書ビルダーは
+// そういう版を読んだとき準備側を版から拾い、新しく保存する版からは準備工程を
+// 外す（lib/product-routes.ts resolveRouteVersionTx）。
+
+/// 工程リストの種別。
+enum ProcessRouteKind {
+  PREP
+  MANUFACTURING
+
+  @@map("PROCESS_ROUTE_KIND")
+  @@schema("app")
+}
 
 model ProductProcessRoute {
   id           Int      @id @default(autoincrement())
-  productId    Int      @map("product_id")
-  // 対象の受注元（取引先）。null = 汎用（どの顧客にも使える）。
+  kind         ProcessRouteKind @default(MANUFACTURING)
+  // PREP は null（共通）。MANUFACTURING は必須 — CHECK product_process_routes_kind_columns。
+  productId    Int?     @map("product_id")
+  // 対象の受注元（取引先）。null = 汎用（どの顧客にも使える）。PREP は常に null。
   // 指示書ビルダーは顧客一致ルートを優先し、無ければ汎用へフォールバックする
   // （選択規則は nextjs-web lib/product-routes-core.ts pickDefaultRoute）。
   customerBpId String?  @map("customer_bp_id") @db.Uuid
@@ -17,13 +44,14 @@ model ProductProcessRoute {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  product       Product          @relation(fields: [productId], references: [id])
+  product       Product?         @relation(fields: [productId], references: [id])
   customerBp    BusinessPartner? @relation("RouteCustomerBp", fields: [customerBpId], references: [id])
   createdByUser User?            @relation("RouteCreatedBy", fields: [createdBy], references: [id])
 
   versions ProductProcessRouteVersion[]
 
   @@index([productId, customerBpId])
+  @@index([kind])
   @@map("product_process_routes")
   @@schema("app")
 }
@@ -41,6 +69,8 @@ model ProductProcessRouteVersion {
 
   steps      ProductProcessRouteVersionStep[]
   workOrders WorkOrder[]
+  // この版を準備工程リストとして使った指示書（PREP の版だけが持つ）
+  prepWorkOrders WorkOrder[] @relation("WorkOrderPrepRoute")
 
   @@unique([routeId, version])
   @@map("product_process_route_versions")

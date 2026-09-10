@@ -48,9 +48,11 @@ import { sumActualWorkHours } from "@/lib/step-work-hours";
 import {
   fetchAllowedWorkLocationIds,
   fetchWorkLocationOptions,
+  workLocationsConfigured,
 } from "@/lib/work-locations";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import { shippableQuantity } from "@/lib/work-order-shipping-core";
+import { planReadiness } from "@/lib/work-plan-core";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import {
   canStartStep,
@@ -100,11 +102,40 @@ const WO_INCLUDE = {
   storageLocation: {
     select: { id: true, name: true, plant: { select: { name: true } } },
   },
+  // 使っている版と、そのルートの最新版番号（古い版で作っていれば画面で示す）。
   routeVersion: {
     select: {
       id: true,
       version: true,
-      route: { select: { id: true, name: true, productId: true } },
+      route: {
+        select: {
+          id: true,
+          name: true,
+          productId: true,
+          versions: {
+            select: { version: true },
+            orderBy: { version: "desc" as const },
+            take: 1,
+          },
+        },
+      },
+    },
+  },
+  prepRouteVersion: {
+    select: {
+      id: true,
+      version: true,
+      route: {
+        select: {
+          id: true,
+          name: true,
+          versions: {
+            select: { version: true },
+            orderBy: { version: "desc" as const },
+            take: 1,
+          },
+        },
+      },
     },
   },
   sourceWorkOrder: {
@@ -160,6 +191,9 @@ const WO_INCLUDE = {
       plans: {
         select: {
           userId: true,
+          // 承認前の計画の揃い（lib/work-plan-core.ts planReadiness）に要る
+          plannedDate: true,
+          workLocationId: true,
           user: {
             select: {
               id: true,
@@ -542,10 +576,12 @@ export async function fetchWorkOrder(
   // スコープ外の行は不可視（null → 呼び出し側の notFound に乗せる）。
   if (!workOrderRowInScope(authz.access, authz.userId, r)) return null;
 
-  // 工程ごとの開始可否（実行依存 + 分岐流入 + ロック）をサーバーで算出
-  const [{ ctx }, actorId] = await Promise.all([
+  // 工程ごとの開始可否（実行依存 + 分岐流入 + ロック）をサーバーで算出。
+  // 作業場所マスタの有無は「承認前に作業場所が要るか」の判定の入力。
+  const [{ ctx }, actorId, locationsConfigured] = await Promise.all([
     fetchWorkflowCtx(r.id),
     getCurrentActorId(),
+    workLocationsConfigured(),
   ]);
 
   // history Json + 工程 completedBy の uuid → displayName 解決
@@ -629,6 +665,7 @@ export async function fetchWorkOrder(
       number: orderLineNumberOf(l.orderLine) ?? "—",
       allocatedQuantity: l.quantity,
       lineQuantity: l.orderLine.quantity,
+      deliveryDate: iso(l.orderLine.deliveryDate),
       customerName: localized(
         l.orderLine.acceptance.customerBp?.name as LocalizedText | null,
       ),
@@ -656,6 +693,25 @@ export async function fetchWorkOrder(
       ? localized(r.routeVersion.route.name as LocalizedText | null)
       : null,
     routeVersion: r.routeVersion?.version ?? null,
+    routeLatestVersion: r.routeVersion?.route.versions[0]?.version ?? null,
+    prepRouteVersionId: r.prepRouteVersion?.id ?? null,
+    prepRouteId: r.prepRouteVersion?.route.id ?? null,
+    prepRouteName: r.prepRouteVersion
+      ? localized(r.prepRouteVersion.route.name as LocalizedText | null)
+      : null,
+    prepRouteVersion: r.prepRouteVersion?.version ?? null,
+    prepRouteLatestVersion:
+      r.prepRouteVersion?.route.versions[0]?.version ?? null,
+    planReadiness: planReadiness(
+      r.steps.map((s) => ({
+        stepId: s.id,
+        name: localized(s.processStep.name as LocalizedText | null),
+        executionLocation: s.executionLocation,
+        status: s.status,
+        plans: s.plans,
+      })),
+      { workLocationsConfigured: locationsConfigured },
+    ),
     lotNumber: r.orderLineLinks[0]?.orderLine.lotNumber ?? null,
     sourceWorkOrderNumber: r.sourceWorkOrder?.workOrderNumber ?? null,
     sourceWorkOrderDocNumber: r.sourceWorkOrder

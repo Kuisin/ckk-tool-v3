@@ -1267,6 +1267,22 @@ export async function addStepPlan(
       tr,
     );
     if (locationError) return { ok: false, errors: [locationError] };
+    // 作業計画は 日付 + 作業場所 が必須（§7 — 承認前に「どこで」まで決める）。
+    // 実績は従来どおり任意（キオスクは端末の既定作業場所を書くが、無い端末も
+    // ある）。作業場所マスタが空の環境では要求しない — 判定規則は
+    // lib/work-plan-core.ts planReadiness と同じ。
+    if (
+      v.workLocationId == null &&
+      step.executionLocation === "INTERNAL" &&
+      (await prisma.workLocation.count({ where: { isActive: true } })) > 0
+    ) {
+      return {
+        ok: false,
+        errors: [
+          tr("production.stepExecutionActions.workLocationRequiredForPlan"),
+        ],
+      };
+    }
     const actor = await getCurrentActorId();
     await prisma.workOrderStepPlan.create({
       data: {

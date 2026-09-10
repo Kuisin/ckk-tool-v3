@@ -62,9 +62,12 @@ export async function loadCatalog(): Promise<WorkflowCatalog> {
 
 import { describeIssue } from "@/components/production/work-orders/model";
 import {
+  compositionIssuesForKind,
   defaultOrder,
   isBlockingIssue,
+  isPrepStep,
   isShipStep,
+  type ProcessRouteKind,
   STOCK_ISSUE_STEP_CODE,
   validateComposition,
 } from "./workflow-core";
@@ -101,6 +104,13 @@ export interface OrderedStepCreate extends StepCompositionInput {
 export async function validateAndOrderSteps(
   steps: readonly StepCompositionInput[],
   type: "FROM_STOCK" | "MANUFACTURE" = "MANUFACTURE",
+  /**
+   * 工程リストの片方だけを保存するとき（製品の製造工程リスト / 準備工程
+   * リストの編集画面）に渡す。その種別の外を相手にした issue は落とし、
+   * 種別に合わない工程が混ざっていれば弾く。指示書（2 本を合わせた全体）は
+   * 渡さない — 全体で検証する。
+   */
+  kind?: ProcessRouteKind,
 ): Promise<
   { ok: false; error: string } | { ok: true; creates: OrderedStepCreate[] }
 > {
@@ -151,11 +161,30 @@ export async function validateAndOrderSteps(
       error: tr("workflowActions.stockIssueOnlyForFromStock"),
     };
   }
-  const blocking = validateComposition(
+  if (kind) {
+    const wrongKind = ids.filter((id) => {
+      const step = catalogById.get(id);
+      return step != null && (kind === "PREP") !== isPrepStep(step);
+    });
+    if (wrongKind.length > 0) {
+      return {
+        ok: false,
+        error: tr(
+          kind === "PREP"
+            ? "workflowActions.prepRouteOnlyPrepSteps"
+            : "workflowActions.manufacturingRouteNoPrepSteps",
+        ),
+      };
+    }
+  }
+  const allBlocking = validateComposition(
     ids,
     catalog.useDeps,
     catalog.steps,
   ).filter(isBlockingIssue);
+  const blocking = kind
+    ? compositionIssuesForKind(allBlocking, kind, catalog.steps)
+    : allBlocking;
   if (blocking.length > 0) {
     return {
       ok: false,

@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/ProcedurePanel";
 import { workOrderHistoryActionLabel } from "@/lib/enum-labels";
 import { statusLabel } from "@/lib/status-map";
+import type { PlanReadiness } from "@/lib/work-plan-core";
 import type { WorkOrderHistoryView, WorkOrderView } from "./work-orders/model";
 
 export type {
@@ -72,13 +73,34 @@ export function WorkOrderApprovalCard({
   status,
   approval,
   rejectReason,
+  planReadiness,
 }: {
   workOrderNumber: number;
   status: string;
   approval: ApprovalActionState;
   rejectReason: string | null;
+  /**
+   * 作業計画が揃っているか（lib/work-plan-core.ts）。揃っていなければ依頼
+   * ボタンを止め、足りない工程を説明に出す — サーバー側 requestApproval も
+   * 同じ関数で弾くので、押せてしまっても通らない。
+   */
+  planReadiness?: PlanReadiness;
 }) {
   const tr = useTranslations();
+  const planBlocked =
+    planReadiness && !planReadiness.ok
+      ? tr("production.approvalStatusPanel.plansMissingForSteps", {
+          steps: planReadiness.gaps
+            .map((g) =>
+              g.reason === "NO_LOCATION"
+                ? tr("production.approvalStatusPanel.stepMissingLocation", {
+                    name: g.name,
+                  })
+                : g.name,
+            )
+            .join(tr("common.s1")),
+        })
+      : null;
   return (
     <ApprovalActionCard
       approval={approval}
@@ -87,6 +109,7 @@ export function WorkOrderApprovalCard({
       onReject={(reason) => rejectWorkOrder(workOrderNumber, reason)}
       onRequest={() => requestApproval(workOrderNumber)}
       rejectReason={rejectReason}
+      requestBlockedReason={planBlocked}
       subject={tr("production.approvalStatusPanel.workOrderSubject", {
         number: workOrderNumber,
       })}

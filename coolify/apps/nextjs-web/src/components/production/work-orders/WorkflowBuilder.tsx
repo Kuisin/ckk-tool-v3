@@ -30,6 +30,7 @@ import {
   Select,
   SimpleGrid,
   Stack,
+  Switch,
   Text,
   Textarea,
   TextInput,
@@ -60,6 +61,7 @@ import {
   searchProductOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
+  copyRouteToCustomer,
   createWorkOrder,
   getDesignVersionsForProduct,
   getMaterialAtp,
@@ -80,12 +82,16 @@ import type {
 } from "@/app/(dashboard)/production/work-orders/data";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
+  RouteVersionOption,
+  routeVersionLabel,
+} from "@/components/master/products/ProductRoutesPanel";
+import {
   ProcessListEditor,
   ProcessListView,
   type StepLocation,
   toStepSnapshots,
 } from "@/components/production/ProcessListEditor";
-import { GhostButton } from "@/components/ui/buttons";
+import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
@@ -96,10 +102,17 @@ import { workOrderTypeOptions } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { RouteStepSnapshot, RouteView } from "@/lib/product-routes-core";
-import { pickDefaultRoute, routeStepsEqual } from "@/lib/product-routes-core";
+import {
+  isOtherCustomerRoute,
+  pickDefaultPrepRoute,
+  pickDefaultRoute,
+  routeStepsEqual,
+  routesVisibleForCustomer,
+} from "@/lib/product-routes-core";
 import type { CatalogStep, UseDep } from "@/lib/workflow-core";
 import {
   isBlockingIssue,
+  isPrepStep,
   isShipStep,
   STOCK_ISSUE_STEP_CODE,
   validateComposition,
@@ -279,6 +292,8 @@ export function WorkflowBuilder({
   supplierOptions,
   storageLocationOptions,
   employeeOptions,
+  workLocationOptions = [],
+  allowedWorkLocations = {},
   initialType = null,
   initialQuantity = null,
 }: {
@@ -298,6 +313,10 @@ export function WorkflowBuilder({
   supplierOptions: Option[];
   /** 保管場所（有効のみ・拠点名付き）— 完成品の保管先。 */
   storageLocationOptions: Option[];
+  /** 作業場所（有効のみ）— 作成時の作業計画の「どこで」。 */
+  workLocationOptions?: Option[];
+  /** 工程ごとの許可作業場所 id（無い工程 = 無制限）— lib/work-locations。 */
+  allowedWorkLocations?: Record<number, number[]>;
   /** 担当者候補（有効な従業員）— 作成時の作業計画 MultiSelect。 */
   employeeOptions: Option[];
 }) {
@@ -347,17 +366,25 @@ export function WorkflowBuilder({
     }).format(new Date()),
   );
   const [stepPlans, setStepPlans] = useState<
-    Record<number, { userIds: string[]; date: string | null }>
+    Record<
+      number,
+      { userIds: string[]; date: string | null; workLocationId: string | null }
+    >
   >({});
   const setStepPlan = (
     stepId: number,
-    patch: Partial<{ userIds: string[]; date: string | null }>,
+    patch: Partial<{
+      userIds: string[];
+      date: string | null;
+      workLocationId: string | null;
+    }>,
   ) => {
     setStepPlans((prev) => ({
       ...prev,
       [stepId]: {
         userIds: prev[stepId]?.userIds ?? [],
         date: prev[stepId]?.date ?? todayStr,
+        workLocationId: prev[stepId]?.workLocationId ?? null,
         ...patch,
       },
     }));
@@ -478,6 +505,8 @@ export function WorkflowBuilder({
     customerBpId: string | null;
     customerName: string | null;
     routes: RouteView[];
+    /** 準備工程リスト（共通・有効のみ）。 */
+    prepRoutes: RouteView[];
   } | null>(null);
   /** 選択中ルート id（文字列）。null = ルートを使わない。 */
   const [routeSel, setRouteSel] = useState<string | null>(
@@ -488,6 +517,24 @@ export function WorkflowBuilder({
   );
   /** 選択バージョンの工程スナップショット（変更検知の基準）。 */
   const [baseSteps, setBaseSteps] = useState<RouteStepSnapshot[] | null>(null);
+  // ── 準備工程リスト（共通）— 製造工程リストと対で選ぶ（§7） ──
+  const [prepRouteSel, setPrepRouteSel] = useState<string | null>(
+    workOrder?.prepRouteId != null ? String(workOrder.prepRouteId) : null,
+  );
+  const [prepVersionSel, setPrepVersionSel] = useState<string | null>(
+    workOrder?.prepRouteVersionId ?? null,
+  );
+  const [prepBaseSteps, setPrepBaseSteps] = useState<
+    RouteStepSnapshot[] | null
+  >(null);
+  /** 他の受注元専用の製造工程リストも見せるか（既定は自分の受注元 + 汎用）。 */
+  const [showOtherCustomers, setShowOtherCustomers] = useState(false);
+  const [copying, setCopying] = useState(false);
+  /** 準備工程の id 集合（どちらのリストに属するかは isPrepStep だけが決める）。 */
+  const prepStepIds = useMemo(
+    () => new Set(catalogSteps.filter(isPrepStep).map((c) => c.id)),
+    [catalogSteps],
+  );
   /** ルートを使わない構成を保存する場合の新ルート名（空 = 保存しない）。 */
   const [newRouteName, setNewRouteName] = useState("");
   /** 新ルートの対象顧客（customer = 明細の受注元専用 / generic = 汎用）。 */
@@ -499,28 +546,32 @@ export function WorkflowBuilder({
   const firstOrderLineId =
     allocRows.find((r) => r.orderLineId != null)?.orderLineId ?? null;
   const productIdValue = form.values.productId;
-  useEffect(() => {
-    // 対象に応じてルートを解決: 注文明細 → 明細の製品 / 在庫向け → 直接指定製品
-    const load =
+  // 対象に応じてルートを解決: 注文明細 → 明細の製品 / 在庫向け → 直接指定製品。
+  // 「この顧客に複製」のあとも同じ経路で読み直す。
+  const routeLoader = useMemo(
+    () =>
       target === "SALES_ORDER"
         ? firstOrderLineId
           ? () => getProductRoutesForOrderLine(firstOrderLineId)
           : null
         : productIdValue
           ? () => getProductRoutesForProduct(Number(productIdValue))
-          : null;
-    if (!load) {
+          : null,
+    [target, firstOrderLineId, productIdValue],
+  );
+  useEffect(() => {
+    if (!routeLoader) {
       setRoutesInfo(null);
       return;
     }
     let cancelled = false;
-    load().then((info) => {
+    routeLoader().then((info) => {
       if (!cancelled) setRoutesInfo(info);
     });
     return () => {
       cancelled = true;
     };
-  }, [target, firstOrderLineId, productIdValue]);
+  }, [routeLoader]);
 
   // 使用する図面の候補。routesInfo が製品と受注元を解決済みなので、
   // そこに相乗りする（同じものを 2 回引かない）。
@@ -559,7 +610,7 @@ export function WorkflowBuilder({
     }
   }, [designProductId]);
 
-  // 別製品の注文明細へ切り替えたらルート選択をリセット
+  // 別製品の注文明細へ切り替えたらルート選択をリセット（準備側は共通なので残る）
   useEffect(() => {
     if (routeSel == null || routesInfo == null) return;
     if (!routesInfo.routes.some((r) => String(r.id) === routeSel)) {
@@ -581,13 +632,68 @@ export function WorkflowBuilder({
       cancelled = true;
     };
   }, [mode, workOrder?.routeVersionId]);
+  useEffect(() => {
+    if (mode !== "edit" || !workOrder?.prepRouteVersionId) return;
+    let cancelled = false;
+    getRouteVersionSteps(workOrder.prepRouteVersionId).then((steps) => {
+      if (!cancelled) setPrepBaseSteps(steps);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, workOrder?.prepRouteVersionId]);
 
   const selectedRoute = useMemo(
     () => routesInfo?.routes.find((r) => String(r.id) === routeSel) ?? null,
     [routesInfo, routeSel],
   );
+  const selectedPrepRoute = useMemo(
+    () =>
+      routesInfo?.prepRoutes.find((r) => String(r.id) === prepRouteSel) ?? null,
+    [routesInfo, prepRouteSel],
+  );
 
-  /** バージョン選択 → 工程構成をプリフィルし、基準スナップショットを保存。 */
+  /**
+   * 版の工程を、いまの構成の**その種別の部分**と入れ替える。
+   *
+   * 指示書の工程は 準備 + 製造 の 2 本を合わせたもの。片方の版を選び直しても
+   * もう片方は動かさない。例外は移行前の製造リスト — 版の中に準備工程が混ざって
+   * いるので、準備工程リストを選んでいないときだけ、その準備工程も一緒に入れる
+   * （選んでいれば準備側は準備工程リストが正で、版の準備工程は捨てる）。
+   */
+  const mergeVersionSteps = useCallback(
+    (steps: RouteStepSnapshot[], kind: "PREP" | "MANUFACTURING") => {
+      const knownIds = new Set(catalogSteps.map((s) => s.id));
+      const usable = steps.filter((s) => knownIds.has(s.processStepId));
+      if (usable.length < steps.length) {
+        notifications.show({
+          title: tr("production.workOrders.someStepsWereExcluded"),
+          message: tr("production.workOrders.thisVersionContainedStepsThatAre"),
+          color: "yellow",
+        });
+      }
+      const isPrepId = (id: number) => prepStepIds.has(id);
+      const incoming =
+        kind === "PREP"
+          ? usable.filter((s) => isPrepId(s.processStepId))
+          : prepRouteSel != null
+            ? usable.filter((s) => !isPrepId(s.processStepId))
+            : usable;
+      const replacesPrep = kind === "PREP" || prepRouteSel == null;
+      const current = form.getValues().selectedStepIds;
+      const kept = current.filter((id) =>
+        kind === "PREP" ? !isPrepId(id) : replacesPrep ? false : isPrepId(id),
+      );
+      const next = [...kept, ...incoming.map((s) => s.processStepId)];
+      form.setFieldValue("selectedStepIds", [...new Set(next)]);
+      setLocations((prev) => ({ ...prev, ...snapshotLocations(incoming) }));
+      // プリフィルされた構成は閲覧モードから（誤編集で新バージョンを作らない）
+      setStepsEditing(false);
+    },
+    [catalogSteps, form, tr, prepStepIds, prepRouteSel],
+  );
+
+  /** 製造工程リストの版を選ぶ → 製造側をプリフィルし、基準を保存。 */
   const applyVersion = useCallback(
     (versionId: string | null) => {
       setVersionSel(versionId);
@@ -596,28 +702,27 @@ export function WorkflowBuilder({
         return;
       }
       getRouteVersionSteps(versionId).then((steps) => {
-        const knownIds = new Set(catalogSteps.map((s) => s.id));
-        const usable = steps.filter((s) => knownIds.has(s.processStepId));
-        if (usable.length < steps.length) {
-          notifications.show({
-            title: tr("production.workOrders.someStepsWereExcluded"),
-            message: tr(
-              "production.workOrders.thisVersionContainedStepsThatAre",
-            ),
-            color: "yellow",
-          });
-        }
         setBaseSteps(steps);
-        form.setFieldValue(
-          "selectedStepIds",
-          usable.map((s) => s.processStepId),
-        );
-        setLocations(snapshotLocations(usable));
-        // プリフィルされた構成は閲覧モードから（誤編集で新バージョンを作らない）
-        setStepsEditing(false);
+        mergeVersionSteps(steps, "MANUFACTURING");
       });
     },
-    [catalogSteps, form, tr],
+    [mergeVersionSteps],
+  );
+
+  /** 準備工程リストの版を選ぶ → 準備側をプリフィルし、基準を保存。 */
+  const applyPrepVersion = useCallback(
+    (versionId: string | null) => {
+      setPrepVersionSel(versionId);
+      if (!versionId) {
+        setPrepBaseSteps(null);
+        return;
+      }
+      getRouteVersionSteps(versionId).then((steps) => {
+        setPrepBaseSteps(steps);
+        mergeVersionSteps(steps, "PREP");
+      });
+    },
+    [mergeVersionSteps],
   );
 
   const onRouteChange = (value: string | null) => {
@@ -635,12 +740,73 @@ export function WorkflowBuilder({
     applyVersion(latest?.id ?? null);
   };
 
+  const onPrepRouteChange = (value: string | null) => {
+    setPrepRouteSel(value);
+    if (!value) {
+      setPrepVersionSel(null);
+      setPrepBaseSteps(null);
+      return;
+    }
+    const route = routesInfo?.prepRoutes.find((r) => String(r.id) === value);
+    applyPrepVersion(route?.versions[0]?.id ?? null);
+  };
+
+  /**
+   * 他の受注元専用のリストを、この受注元のリストとして複製して選ぶ。
+   * 複製した側は v1 なので、選んでいた版の中身がそのまま出発点になる。
+   */
+  const copySelectedRouteToCustomer = () => {
+    const customerBpId = routesInfo?.customerBpId;
+    if (!customerBpId || !versionSel || !routeLoader) return;
+    setCopying(true);
+    startTransition(async () => {
+      const result = await copyRouteToCustomer({
+        versionId: versionSel,
+        customerBpId,
+      });
+      if (!result.ok) {
+        notifications.show({
+          title: tr("common.error2"),
+          message: result.error,
+          color: "red",
+        });
+        setCopying(false);
+        return;
+      }
+      const info = await routeLoader();
+      setRoutesInfo(info);
+      const created = info?.routes.find((r) => r.id === result.data.routeId);
+      setRouteSel(String(result.data.routeId));
+      applyVersion(created?.versions[0]?.id ?? null);
+      setShowOtherCustomers(false);
+      setCopying(false);
+      notifications.show({
+        title: tr("common.saved2"),
+        message: tr("production.workflowBuilder.routeCopiedToCustomer", {
+          name: created?.name ?? "",
+        }),
+        color: "green",
+      });
+    });
+  };
+
   // 指示書は工程リスト必須 — ルートのある製品では既定ルートを初期選択する
   // （顧客一致 → 汎用 → 先頭の順: pickDefaultRoute が唯一の規則。create 時に
   // ルート情報のロード完了ごとに 1 回。手動クリア後は再発火しない）。
   // biome-ignore lint/correctness/useExhaustiveDependencies: routesInfo ロード時のみ発火させる
   useEffect(() => {
-    if (mode !== "create" || routesInfo == null || routeSel != null) return;
+    if (mode !== "create" || routesInfo == null) return;
+    // 準備工程リストは有効なものが 1 本のときだけ自動（pickDefaultPrepRoute）。
+    // 先に準備側を決めてから製造側を入れる — 製造側の版に準備工程が混ざって
+    // いる（移行前）とき、準備工程リストの有無で捨てるかどうかが変わるため。
+    if (prepRouteSel == null) {
+      const prep = pickDefaultPrepRoute(routesInfo.prepRoutes);
+      if (prep) {
+        setPrepRouteSel(String(prep.id));
+        applyPrepVersion(prep.versions[0]?.id ?? null);
+      }
+    }
+    if (routeSel != null) return;
     const picked = pickDefaultRoute(routesInfo.routes, routesInfo.customerBpId);
     if (picked) {
       setRouteSel(String(picked.id));
@@ -661,11 +827,42 @@ export function WorkflowBuilder({
       ),
     [currentSnapshots, catalogSteps],
   );
+  // 変更検知は種別ごと — 製造側は版の製造工程だけ、準備側は準備工程だけで比べる
+  // （移行前の製造リストには準備工程が混ざっているので、全体で比べると必ず
+  // 「変わっている」になる）。サーバー側 resolveRouteVersionTx と同じ切り方。
+  const currentPrep = useMemo(
+    () => currentSnapshots.filter((s) => prepStepIds.has(s.processStepId)),
+    [currentSnapshots, prepStepIds],
+  );
+  const currentMfg = useMemo(
+    () => currentSnapshots.filter((s) => !prepStepIds.has(s.processStepId)),
+    [currentSnapshots, prepStepIds],
+  );
   const routeModified =
     routeSel != null &&
     baseSteps != null &&
-    !routeStepsEqual(baseSteps, currentSnapshots);
+    !routeStepsEqual(
+      baseSteps.filter((s) => !prepStepIds.has(s.processStepId)),
+      currentMfg,
+    );
+  const prepRouteModified =
+    prepRouteSel != null &&
+    prepBaseSteps != null &&
+    !routeStepsEqual(
+      prepBaseSteps.filter((s) => prepStepIds.has(s.processStepId)),
+      currentPrep,
+    );
   const latestVersionOfRoute = selectedRoute?.versions[0]?.version ?? 0;
+  const latestVersionOfPrepRoute = selectedPrepRoute?.versions[0]?.version ?? 0;
+  /** 保存ペイロードの準備工程リスト（既存の版のみ — 新規作成は工程マスタ側）。 */
+  const prepRouteInput =
+    prepRouteSel != null && prepVersionSel != null
+      ? {
+          mode: "existing" as const,
+          routeId: Number(prepRouteSel),
+          baseVersionId: prepVersionSel,
+        }
+      : null;
 
   // ── 割当（分割・統合） ─────────────────────────────────────────────────────
   /** 行の残数表示（編集時は自分の既存割当分を戻す — サーバーも自分を除外）。 */
@@ -892,6 +1089,36 @@ export function WorkflowBuilder({
       });
       return;
     }
+    // 作業計画は 日付 + 作業場所 が要る（§7）。担当を入れた工程で作業場所が
+    // 空なら止める — 承認依頼で必ず弾かれるものを、ここで保存させない。
+    // 作業場所マスタが空の環境では要求しない（lib/work-plan-core と同じ）。
+    if (mode === "create" && workLocationOptions.length > 0) {
+      const missing = currentSnapshots.filter((s) => {
+        const plan = stepPlans[s.processStepId];
+        return (
+          (plan?.userIds.length ?? 0) > 0 &&
+          !plan?.workLocationId &&
+          (locations[s.processStepId]?.executionLocation ?? "INTERNAL") ===
+            "INTERNAL"
+        );
+      });
+      if (missing.length > 0) {
+        notifications.show({
+          title: tr("common.missingInput"),
+          message: tr("production.workflowBuilder.planNeedsWorkLocation", {
+            steps: missing
+              .map(
+                (s) =>
+                  catalogSteps.find((c) => c.id === s.processStepId)?.nameJa ??
+                  "",
+              )
+              .join(tr("common.s1")),
+          }),
+          color: "red",
+        });
+        return;
+      }
+    }
     const allocations = allocRows
       .filter((r) => r.orderLineId != null)
       .map((r) => ({
@@ -987,8 +1214,9 @@ export function WorkflowBuilder({
         inspectionTemplateIds: templatesFor(s.processStepId).map(Number),
       })),
       route,
-      // 作成時の作業計画（担当者 × 計画日）。編集では送らない（計画の管理は
-      // 工程実行画面の計画パネル — ここで送ると既存計画と二重になる）。
+      prepRoute: prepRouteInput,
+      // 作成時の作業計画（担当者 × 計画日 × 作業場所）。編集では送らない（計画の
+      // 管理は工程実行画面の計画パネル — ここで送ると既存計画と二重になる）。
       plans:
         mode === "create"
           ? currentSnapshots.flatMap((s) =>
@@ -996,6 +1224,9 @@ export function WorkflowBuilder({
                 processStepId: s.processStepId,
                 userId,
                 date: stepPlans[s.processStepId]?.date ?? todayStr,
+                workLocationId: stepPlans[s.processStepId]?.workLocationId
+                  ? Number(stepPlans[s.processStepId]?.workLocationId)
+                  : null,
               })),
             )
           : [],
@@ -1029,21 +1260,60 @@ export function WorkflowBuilder({
     });
   };
 
+  // 既定はこの受注元のリストと汎用だけ。他の受注元専用のリストはトグルで
+  // （routesVisibleForCustomer）。選択中のものは絞りに関わらず残す。
+  const visibleRoutes = useMemo(() => {
+    const base = routesVisibleForCustomer(
+      routesInfo?.routes ?? [],
+      routesInfo?.customerBpId ?? null,
+      showOtherCustomers,
+    );
+    if (selectedRoute && !base.some((r) => r.id === selectedRoute.id)) {
+      return [...base, selectedRoute];
+    }
+    return base;
+  }, [routesInfo, showOtherCustomers, selectedRoute]);
+  const hasOtherCustomerRoutes =
+    routesInfo?.routes.some((r) =>
+      isOtherCustomerRoute(r, routesInfo.customerBpId),
+    ) ?? false;
+  const selectedIsOtherCustomer =
+    selectedRoute != null &&
+    isOtherCustomerRoute(selectedRoute, routesInfo?.customerBpId ?? null);
   // 顧客専用ルートが混ざる一覧では対象（顧客名 / 汎用）をラベルで区別する。
-  const anyCustomerRoute =
-    routesInfo?.routes.some((r) => r.customerBpId != null) ?? false;
-  const routeOptions: Option[] =
-    routesInfo?.routes.map((r) => ({
-      value: String(r.id),
-      label: anyCustomerRoute
-        ? `${r.name}（${r.customerName ?? "汎用"}）`
-        : r.name,
-    })) ?? [];
-  const versionOptions: Option[] =
-    selectedRoute?.versions.map((v) => ({
+  const anyCustomerRoute = visibleRoutes.some((r) => r.customerBpId != null);
+  const routeOptions: Option[] = visibleRoutes.map((r) => ({
+    value: String(r.id),
+    label: anyCustomerRoute
+      ? `${r.name}（${r.customerName ?? tr("common.generic")}）`
+      : r.name,
+  }));
+  const versionOptionsOf = (route: RouteView | null): Option[] =>
+    route?.versions.map((v, i) => ({
       value: v.id,
-      label: `v${v.version}（${fmt.date(v.createdAt)}）`,
+      label: routeVersionLabel(v, i === 0, fmt.dateTime, tr("common.latest")),
     })) ?? [];
+  const versionOptions = versionOptionsOf(selectedRoute);
+  const prepVersionOptions = versionOptionsOf(selectedPrepRoute);
+  const prepRouteOptions: Option[] =
+    routesInfo?.prepRoutes.map((r) => ({
+      value: String(r.id),
+      label: r.name,
+    })) ?? [];
+  const renderVersionOption =
+    (route: RouteView | null) =>
+    ({ option }: { option: { value: string; label: string } }) => {
+      const v = route?.versions.find((x) => x.id === option.value);
+      return v ? (
+        <RouteVersionOption
+          createdAt={v.createdAt}
+          isLatest={route?.versions[0]?.id === v.id}
+          version={v.version}
+        />
+      ) : (
+        option.label
+      );
+    };
 
   return (
     <FormShell
@@ -1372,11 +1642,64 @@ export function WorkflowBuilder({
             required
             title={tr("production.workOrders.stepList")}
           >
+            {/* 準備工程リスト（共通）— 〇〇出し・受渡し と 材料準備。製品にも
+                受注元にも紐づかないので、絞り込みも複製も無い。 */}
             <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
               <Select
                 clearable
+                data={prepRouteOptions}
+                description={tr("production.workflowBuilder.prepRouteHelp")}
+                label={tr("production.workOrders.prepRoute")}
+                onChange={onPrepRouteChange}
+                placeholder={
+                  prepRouteOptions.length
+                    ? tr("production.workOrders.selectAStepList")
+                    : tr("production.workflowBuilder.noPrepRouteRegistered")
+                }
+                searchable
+                value={prepRouteSel}
+              />
+              {prepRouteSel != null && (
+                <Select
+                  allowDeselect={false}
+                  data={prepVersionOptions}
+                  label={tr("common.version")}
+                  onChange={(v) => applyPrepVersion(v)}
+                  renderOption={renderVersionOption(selectedPrepRoute)}
+                  value={prepVersionSel}
+                />
+              )}
+            </SimpleGrid>
+            {prepRouteModified && selectedPrepRoute && (
+              <Alert
+                color="blue"
+                icon={<IconInfoCircle size={16} />}
+                mt="sm"
+                p="xs"
+                variant="light"
+              >
+                {tr("production.workflowBuilder.routeModifiedNewVersion", {
+                  name: selectedPrepRoute.name,
+                  version: latestVersionOfPrepRoute + 1,
+                })}
+              </Alert>
+            )}
+            {hasOtherCustomerRoutes && (
+              <Switch
+                checked={showOtherCustomers}
+                description={tr(
+                  "production.workflowBuilder.showOtherCustomersHelp",
+                )}
+                label={tr("production.workflowBuilder.showOtherCustomers")}
+                mt="md"
+                onChange={(e) => setShowOtherCustomers(e.currentTarget.checked)}
+              />
+            )}
+            <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
+              <Select
+                clearable
                 data={routeOptions}
-                label={tr("production.workOrders.stepList")}
+                label={tr("production.workOrders.manufacturingRoute")}
                 onChange={onRouteChange}
                 placeholder={
                   routeOptions.length
@@ -1392,6 +1715,7 @@ export function WorkflowBuilder({
                   data={versionOptions}
                   label={tr("common.version")}
                   onChange={(v) => applyVersion(v)}
+                  renderOption={renderVersionOption(selectedRoute)}
                   value={versionSel}
                 />
               ) : (
@@ -1443,6 +1767,38 @@ export function WorkflowBuilder({
                   />
                 )}
             </SimpleGrid>
+            {selectedIsOtherCustomer && selectedRoute && (
+              <Alert
+                color="orange"
+                icon={<IconAlertTriangle size={16} />}
+                mt="sm"
+                p="xs"
+                variant="light"
+              >
+                <Group gap="sm" justify="space-between" wrap="wrap">
+                  <Text size="sm">
+                    {tr(
+                      "production.workflowBuilder.otherCustomerRouteSelected",
+                      {
+                        customer: selectedRoute.customerName ?? "",
+                      },
+                    )}
+                  </Text>
+                  <SecondaryButton
+                    disabled={versionSel == null}
+                    loading={copying}
+                    onClick={copySelectedRouteToCustomer}
+                    size="xs"
+                  >
+                    {tr("production.workflowBuilder.copyToThisCustomer", {
+                      name:
+                        routesInfo?.customerName ??
+                        tr("production.workflowBuilder.thisCustomer"),
+                    })}
+                  </SecondaryButton>
+                </Group>
+              </Alert>
+            )}
             {routeModified && selectedRoute && (
               <Alert
                 color="blue"
@@ -1451,9 +1807,10 @@ export function WorkflowBuilder({
                 p="xs"
                 variant="light"
               >
-                工程構成がルート「{selectedRoute.name}」の選択バージョンから
-                変更されています — 保存時に新バージョン v
-                {latestVersionOfRoute + 1} として保存されます
+                {tr("production.workflowBuilder.routeModifiedNewVersion", {
+                  name: selectedRoute.name,
+                  version: latestVersionOfRoute + 1,
+                })}
               </Alert>
             )}
           </FormSection>
@@ -1536,9 +1893,7 @@ export function WorkflowBuilder({
           が作られる。詳細な時間割・数量の計画は作成後の計画パネルで。 */}
       {mode === "create" && currentSnapshots.length > 0 && (
         <FormSection
-          description={tr(
-            "production.workOrders.assignSomeonePerStepOptionalA",
-          )}
+          description={tr("production.workflowBuilder.workPlanHelp")}
           title={tr("production.workOrders.workPlanAssignees")}
         >
           <Stack gap="xs">
@@ -1598,6 +1953,36 @@ export function WorkflowBuilder({
                       valueFormat="YYYY/MM/DD"
                       w={isMobile ? "100%" : 140}
                     />
+                    {workLocationOptions.length > 0 &&
+                      (locations[s.processStepId]?.executionLocation ??
+                        "INTERNAL") === "INTERNAL" && (
+                        <Select
+                          aria-label={tr(
+                            "production.stepPlanActualPanel.workLocation",
+                          )}
+                          clearable
+                          data={
+                            allowedWorkLocations[s.processStepId]
+                              ? workLocationOptions.filter((o) =>
+                                  allowedWorkLocations[
+                                    s.processStepId
+                                  ].includes(Number(o.value)),
+                                )
+                              : workLocationOptions
+                          }
+                          disabled={(plan?.userIds.length ?? 0) === 0}
+                          onChange={(v) =>
+                            setStepPlan(s.processStepId, { workLocationId: v })
+                          }
+                          placeholder={tr(
+                            "production.stepPlanActualPanel.workLocation",
+                          )}
+                          searchable
+                          size="xs"
+                          value={plan?.workLocationId ?? null}
+                          w={isMobile ? "100%" : 200}
+                        />
+                      )}
                   </Group>
                 </Paper>
               );

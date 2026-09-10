@@ -43,12 +43,39 @@ import { useIsMobile } from "@/hooks/useViewport";
 import { processCategoryLabel } from "@/lib/enum-labels";
 import type { RouteView } from "@/lib/product-routes-core";
 
+/** 新規 / 新バージョン ページへの行き先（製品配下 or 工程マスタ配下）。 */
+export interface RoutePanelLinks {
+  newRoute: string;
+  newVersion: (routeId: number) => string;
+}
+
+/** 製品の製造工程リスト（MS24 工程タブ）の行き先。 */
+export function productRouteLinks(productId: number): RoutePanelLinks {
+  return {
+    newRoute: `/master/products/${productId}/routes/new`,
+    newVersion: (routeId) =>
+      `/master/products/${productId}/routes/${routeId}/new-version`,
+  };
+}
+
+/** 準備工程リスト（共通 — 工程マスタ MS08 配下）の行き先。 */
+export const PREP_ROUTE_LINKS: RoutePanelLinks = {
+  newRoute: "/master/process-steps/prep-routes/new",
+  newVersion: (routeId) =>
+    `/master/process-steps/prep-routes/${routeId}/new-version`,
+};
+
 export function ProductRoutesPanel({
-  productId,
   routes,
+  links,
+  title,
+  emptyMessage,
 }: {
-  productId: number;
   routes: RouteView[];
+  links: RoutePanelLinks;
+  /** 見出し（既定: 工程リスト）。 */
+  title?: string;
+  emptyMessage?: string;
 }) {
   const tr = useTranslations();
   const router = useRouter();
@@ -57,13 +84,11 @@ export function ProductRoutesPanel({
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={600} size="sm">
-          {tr("master.products.stepListRoute")}
+          {title ?? tr("master.products.stepListRoute")}
         </Text>
         <PrimaryButton
           leftSection={<IconPlus size={14} />}
-          onClick={() =>
-            router.push(`/master/products/${productId}/routes/new`)
-          }
+          onClick={() => router.push(links.newRoute)}
         >
           {tr("master.products.newRoute")}
         </PrimaryButton>
@@ -71,22 +96,70 @@ export function ProductRoutesPanel({
       {routes.length === 0 ? (
         <EmptyState
           icon={<IconGitBranch size={24} />}
-          message={tr("master.products.noStepListIsRegisteredFor")}
+          message={
+            emptyMessage ?? tr("master.products.noStepListIsRegisteredFor")
+          }
         />
       ) : (
         routes.map((route) => (
-          <RouteCard key={route.id} productId={productId} route={route} />
+          <RouteCard key={route.id} links={links} route={route} />
         ))
       )}
     </Stack>
   );
 }
 
+/**
+ * バージョン Select の 1 行 — `v3 · 2026/09/10 13:04`。日付だけだと同じ日に
+ * 2 回直したときに見分けが付かないので時刻まで出す。最新には印を付ける —
+ * 一覧の先頭が最新とは限らない（Select は開くまで並びが見えない）。
+ */
+export function RouteVersionOption({
+  version,
+  createdAt,
+  isLatest,
+}: {
+  version: number;
+  createdAt: string;
+  isLatest: boolean;
+}) {
+  const tr = useTranslations();
+  const fmt = useFormat();
+  return (
+    <Group gap="xs" justify="space-between" w="100%" wrap="nowrap">
+      <Group gap={6} wrap="nowrap">
+        <Text fw={isLatest ? 600 : undefined} size="sm">
+          v{version}
+        </Text>
+        <Text c="dimmed" size="xs">
+          {fmt.dateTime(createdAt)}
+        </Text>
+      </Group>
+      {isLatest && (
+        <Badge color="blue" size="xs" variant="light">
+          {tr("common.latest")}
+        </Badge>
+      )}
+    </Group>
+  );
+}
+
+/** Select の閉じた状態に出す 1 行ラベル（renderOption は開いたときだけ）。 */
+export function routeVersionLabel(
+  v: { version: number; createdAt: string },
+  isLatest: boolean,
+  fmtDateTime: (iso: string) => string,
+  latestLabel: string,
+): string {
+  const base = `v${v.version} · ${fmtDateTime(v.createdAt)}`;
+  return isLatest ? `${base} — ${latestLabel}` : base;
+}
+
 function RouteCard({
-  productId,
+  links,
   route,
 }: {
-  productId: number;
+  links: RoutePanelLinks;
   route: RouteView;
 }) {
   const tr = useTranslations();
@@ -110,12 +183,14 @@ function RouteCard({
             <Text fw={600} size="sm" truncate>
               {route.name}
             </Text>
-            <Badge
-              color={route.customerBpId != null ? "blue" : "gray"}
-              variant="light"
-            >
-              {route.customerName ?? tr("common.generic")}
-            </Badge>
+            {route.kind === "MANUFACTURING" && (
+              <Badge
+                color={route.customerBpId != null ? "blue" : "gray"}
+                variant="light"
+              >
+                {route.customerName ?? tr("common.generic")}
+              </Badge>
+            )}
             <ActiveBadge active={route.isActive} />
             <Text c="dimmed" size="xs">
               {route.versions.length} バージョン
@@ -124,11 +199,7 @@ function RouteCard({
           <Group gap="xs" wrap="nowrap">
             <SecondaryButton
               leftSection={<IconPlus size={14} />}
-              onClick={() =>
-                router.push(
-                  `/master/products/${productId}/routes/${route.id}/new-version`,
-                )
-              }
+              onClick={() => router.push(links.newVersion(route.id))}
               size="xs"
             >
               {tr("master.products.newVersion")}
@@ -150,12 +221,29 @@ function RouteCard({
             allowDeselect={false}
             data={route.versions.map((v) => ({
               value: v.id,
-              label: `v${v.version}（${fmt.date(v.createdAt)}）`,
+              label: routeVersionLabel(
+                v,
+                v.id === latest?.id,
+                fmt.dateTime,
+                tr("common.latest"),
+              ),
             }))}
             onChange={setVersionId}
+            renderOption={({ option }) => {
+              const v = route.versions.find((x) => x.id === option.value);
+              return v ? (
+                <RouteVersionOption
+                  createdAt={v.createdAt}
+                  isLatest={v.id === latest?.id}
+                  version={v.version}
+                />
+              ) : (
+                option.label
+              );
+            }}
             size="xs"
             value={version?.id ?? null}
-            w={220}
+            w={300}
           />
           {version?.notes && (
             <Text c="dimmed" size="xs">

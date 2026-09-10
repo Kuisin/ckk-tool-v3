@@ -141,7 +141,7 @@ model MaterialType {
   description      Json?
   isActive         Boolean  @default(true) @map("is_active")
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   manufacturer MaterialManufacturer?      @relation(fields: [manufacturerCode], references: [code])
   grade        MaterialManufacturerGrade? @relation(fields: [manufacturerCode, gradeCode], references: [manufacturerCode, code])
@@ -153,6 +153,8 @@ model MaterialType {
   estimates      Estimate[]
 
   @@unique([manufacturerCode, gradeCode, shapeCode, kindCode])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
   @@map("material_types")
   @@schema("app")
 }
@@ -202,7 +204,7 @@ model Material {
   isActive          Boolean  @default(true) @map("is_active")
   notes             String?
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   materialType  MaterialType          @relation(fields: [materialTypeId], references: [id])
   surfaceFinish MaterialSurfaceFinish @relation(fields: [surfaceFinishCode], references: [code])
@@ -218,6 +220,8 @@ model Material {
   @@unique([materialTypeId, surfaceFinishCode, diameterCode, lengthVariantCode])
   // 照合名の配列検索。GIN でないと全表走査になる。
   @@index([matchNames(ops: ArrayOps)], map: "materials_match_names_idx", type: Gin)
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
   @@map("materials")
   @@schema("app")
 }
@@ -245,7 +249,7 @@ model Product {
   isActive   Boolean  @default(true) @map("is_active")
   notes      String?
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   materialType     MaterialType?    @relation("ProductMaterialType", fields: [materialTypeId], references: [id])
   priceListEntries PriceListEntry[]
@@ -265,6 +269,8 @@ model Product {
   @@index([materialTypeId])
   // 照合名の配列検索（lib/intake matchProduct）。GIN でないと全表走査になる。
   @@index([matchNames(ops: ArrayOps)], map: "products_match_names_idx", type: Gin)
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
   @@map("products")
   @@schema("app")
 }

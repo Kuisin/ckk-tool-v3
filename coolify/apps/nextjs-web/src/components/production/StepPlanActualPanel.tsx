@@ -4,8 +4,10 @@
  * StepPlanActualPanel — 工程の作業計画 / 実績 (§7 分割記録)。
  *
  * 1 工程に複数行の計画・実績を記録できる（担当者ごと・日付ごとの分割）。
- * 計画は日付のみ or 開始/終了時刻付き。実績も同形。担当者は従業員検索
- * （searchUserOptions）。計画は未完了の工程で、実績は進行中の工程で編集できる。
+ * 計画は 日付 + 作業場所 が必須で、開始/終了時刻は任意（承認前に「誰が・いつ・
+ * どこで」まで決める — lib/work-plan-core.ts）。実績も同形だが作業場所は任意。
+ * 担当者は従業員検索（searchUserOptions）。計画は未完了の工程で、実績は
+ * 進行中の工程で編集できる。
  */
 
 import {
@@ -201,6 +203,17 @@ function RecordSection({
       });
       return;
     }
+    // 作業計画は作業場所も必須（§7 — 承認前に「どこで」まで決める）。実績は
+    // 従来どおり任意。作業場所が 1 つも登録されていない環境では選びようが
+    // 無いので要求しない（サーバー側 addStepPlan と同じ）。
+    if (kind === "plan" && showLocation && !workLocationId) {
+      notifications.show({
+        title: tr("common.missingInput"),
+        message: tr("production.stepPlanActualPanel.selectAWorkLocation"),
+        color: "red",
+      });
+      return;
+    }
     const payload: StepPlanInput = {
       workOrderNumber,
       stepId,
@@ -330,16 +343,21 @@ function RecordSection({
               />
               {showLocation && (
                 <Select
-                  clearable
+                  clearable={kind !== "plan"}
                   data={workLocationOptions}
-                  label={tr(
-                    "production.stepPlanActualPanel.workLocationOptional",
-                  )}
+                  label={
+                    kind === "plan"
+                      ? tr("production.stepPlanActualPanel.workLocation")
+                      : tr(
+                          "production.stepPlanActualPanel.workLocationOptional",
+                        )
+                  }
                   onChange={setWorkLocationId}
                   placeholder={tr("production.stepPlanActualPanel.machineArea")}
                   searchable
                   value={workLocationId}
                   w={220}
+                  withAsterisk={kind === "plan"}
                 />
               )}
               <TextInput
