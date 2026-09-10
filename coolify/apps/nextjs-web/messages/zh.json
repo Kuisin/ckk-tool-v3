@@ -4718,7 +4718,8 @@
     },
     "kioskSettings": {
       "stepExecution": "工序执行",
-      "workOrderScan": "工单扫描"
+      "workOrderScan": "工单扫描",
+      "workLocationBoard": "作业场所工序"
     },
     "portalGuide": {
       "guide": "指南",
