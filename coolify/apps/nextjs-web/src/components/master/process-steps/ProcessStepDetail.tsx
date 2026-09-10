@@ -62,6 +62,8 @@ export interface ProcessStepDetailData {
   isApprovalStep: boolean;
   isFinalInspection: boolean;
   workLocationRequired: boolean;
+  planTimeRequired: boolean;
+  planQuantityRequired: boolean;
   approvalMinRank: string | null;
   quantityTracking: string;
   lotInputMode: string;
@@ -287,12 +289,18 @@ export function ProcessStepDetail({
           }
         />
         <FieldValue
-          label={tr("master.processSteps.workLocationRequired")}
-          value={
-            record.workLocationRequired
-              ? tr("common.required")
-              : tr("common.optional")
-          }
+          label={tr("master.processSteps.planRequiredFields")}
+          value={[
+            tr("common.assignee"),
+            tr("common.date"),
+            ...(record.workLocationRequired
+              ? [tr("production.stepPlanActualPanel.workLocation")]
+              : []),
+            ...(record.planTimeRequired
+              ? [tr("master.processSteps.planTime")]
+              : []),
+            ...(record.planQuantityRequired ? [tr("common.quantity")] : []),
+          ].join(tr("common.s1"))}
         />
         <FieldValue
           label={tr("master.processSteps.defaultWorkHours")}

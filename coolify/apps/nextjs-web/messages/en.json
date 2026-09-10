@@ -2499,7 +2499,13 @@
       "stockStorageNote": " (stock storage)",
       "workOrderSubject": "Work order #{number}",
       "plansMissingForSteps": "Work plans are incomplete: {steps}",
-      "stepMissingLocation": "{name} (no work location)"
+      "stepMissingLocation": "{name} (no work location)",
+      "stepMissingFields": "{name} (missing {fields})",
+      "planField": {
+        "WORK_LOCATION": "work location",
+        "TIME": "time",
+        "QUANTITY": "quantity"
+      }
     },
     "defectRecordForm": {
       "enterTheDefectTypeAndDetails": "Enter the defect type and details for each row",
@@ -2619,7 +2625,11 @@
       "recordsTheWorkDonePerAssignee": "Records the work done per assignee and date (addable only while in progress). Actuals from a shared device carry that device's default work location.",
       "workActuals": "Work actuals",
       "workLocation": "Work location",
-      "selectAWorkLocation": "Select a work location"
+      "selectAWorkLocation": "Select a work location",
+      "start": "Start",
+      "end": "End",
+      "enterStartAndEnd": "Enter the start and end times",
+      "enterQuantity": "Enter the quantity"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "Quantity and defects",
@@ -2840,7 +2850,9 @@
       "workPlanHelp": "Assign a person, date and work location per step. Requesting approval requires every in-house step to have a plan with a date and work location (times are optional; add them later in the plan panel).",
       "planNeedsWorkLocation": "Select a work location: {steps}",
       "allowQuantityVariance": "Allow delivering short or excess quantity",
-      "allowQuantityVarianceHelp": "Lets this lot ship even when it does not match the ordered quantity. How far it may differ, and whether that needs approval, is set on the business partner."
+      "allowQuantityVarianceHelp": "Lets this lot ship even when it does not match the ordered quantity. How far it may differ, and whether that needs approval, is set on the business partner.",
+      "workLocationRequiredPlaceholder": "Work location (required)",
+      "timeQuantityInPanelLater": "This step's plan also needs times / quantity — add them in the step's plan panel after creating the work order"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "Allocated {allocated} / Ordered {ordered}",
@@ -2990,7 +3002,9 @@
       "requestedAfterExpected": "The expected date must be on or after the request date",
       "requestedAfterReceived": "The received date must be on or after the request date",
       "workLocationRequiredForPlan": "A work plan requires a work location",
-      "planLockedByWorkOrderStatus": "Work plans cannot be changed while the work order is pending approval, completed or cancelled"
+      "planLockedByWorkOrderStatus": "Work plans cannot be changed while the work order is pending approval, completed or cancelled",
+      "timeRequiredForPlan": "A work plan for this step requires start and end times",
+      "quantityRequiredForPlan": "A work plan for this step requires a quantity"
     },
     "workOrderActions": {
       "acknowledgeFailed": "Could not record the acknowledgement",
@@ -5381,7 +5395,14 @@
       "theFinalInspectionChecklistIsRecorded": "The final inspection and pre-shipment checks (3 checks, spare stock, packing → delivery note → shipping approval) are recorded on this step's execution screen. There is one record per work order, and a work order whose step list has no flagged step has no final inspection.",
       "approvalStepsHaveNoQuantity": "An inspection approval step carries no quantity (quantity tracking is set to none). It approves the inspection sheet of an earlier step rather than working on the pieces.",
       "workLocationRequired": "Work plan requires a work location",
-      "workLocationRequiredHelp": "Requires a work location on this step's work plan before approval can be requested. Turn it off for steps where a location is meaningless (e.g. stock moves). Which locations may be used is set under \"Allowed work locations\" below."
+      "workLocationRequiredHelp": "Requires a work location on this step's work plan before approval can be requested. Turn it off for steps where a location is meaningless (e.g. stock moves). Which locations may be used is set under \"Allowed work locations\" below.",
+      "planRequiredFields": "Required work-plan fields",
+      "planRequiredFieldsHelp": "What a work plan for this step must contain before approval can be requested. Assignee and planned date are always required.",
+      "planTimeRequired": "Work plan requires start and end times",
+      "planTimeRequiredHelp": "Turn on for steps that must be scheduled to a time slot before approval.",
+      "planQuantityRequired": "Work plan requires a quantity",
+      "planQuantityRequiredHelp": "Turn on for steps whose plan is split by quantity (e.g. pieces per assignee).",
+      "planTime": "Start / end time"
     },
     "products": {
       "specification": "Specification",

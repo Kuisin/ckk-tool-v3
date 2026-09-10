@@ -649,10 +649,10 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         canOperate={canOperate}
         expectedInputQuantity={step.inputQuantity ?? data.expectedInputQuantity}
         plans={data.plans}
+        requiredPlanFields={data.requiredPlanFields}
         stepId={step.id}
         stepStatus={step.status}
         workLocationOptions={data.workLocationOptions}
-        workLocationRequired={data.workLocationRequired}
         workOrderNumber={workOrderNumber}
       />
 

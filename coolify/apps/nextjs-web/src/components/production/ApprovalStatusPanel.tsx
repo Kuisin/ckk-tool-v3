@@ -92,9 +92,14 @@ export function WorkOrderApprovalCard({
       ? tr("production.approvalStatusPanel.plansMissingForSteps", {
           steps: planReadiness.gaps
             .map((g) =>
-              g.reason === "NO_LOCATION"
-                ? tr("production.approvalStatusPanel.stepMissingLocation", {
+              g.reason === "INCOMPLETE"
+                ? tr("production.approvalStatusPanel.stepMissingFields", {
                     name: g.name,
+                    fields: g.missing
+                      .map((f) =>
+                        tr(`production.approvalStatusPanel.planField.${f}`),
+                      )
+                      .join(tr("common.s1")),
                   })
                 : g.name,
             )

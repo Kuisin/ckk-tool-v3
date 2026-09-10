@@ -27,6 +27,7 @@ import {
 } from "@/lib/inspection-core";
 import { fetchAllowedWorkLocationIds } from "@/lib/work-locations";
 import { submitFlowChange } from "@/lib/work-order-flow-changes";
+import { requiredPlanFields } from "@/lib/work-plan-core";
 import {
   abortStepExecution,
   completeStepExecution,
@@ -1288,22 +1289,41 @@ export async function addStepPlan(
     // 実績は従来どおり任意（キオスクは端末の既定作業場所を書くが、無い端末も
     // ある）。作業場所マスタが空の環境では要求しない — 判定規則は
     // lib/work-plan-core.ts planReadiness と同じ。
-    if (
-      v.workLocationId == null &&
-      step.executionLocation === "INTERNAL" &&
-      (
-        await prisma.processStepCatalog.findUnique({
-          where: { id: step.processStepId },
-          select: { workLocationRequired: true },
-        })
-      )?.workLocationRequired !== false &&
-      (await prisma.workLocation.count({ where: { isActive: true } })) > 0
-    ) {
+    // 必須項目は工程マスタが決める（lib/work-plan-core.ts requiredPlanFields —
+    // 承認依頼のゲート・計画パネルの必須印と同じ相手）。
+    const catalog = await prisma.processStepCatalog.findUnique({
+      where: { id: step.processStepId },
+      select: {
+        workLocationRequired: true,
+        planTimeRequired: true,
+        planQuantityRequired: true,
+      },
+    });
+    const required = requiredPlanFields(
+      { executionLocation: step.executionLocation, ...catalog },
+      {
+        workLocationsConfigured:
+          (await prisma.workLocation.count({ where: { isActive: true } })) > 0,
+      },
+    );
+    if (required.includes("WORK_LOCATION") && v.workLocationId == null) {
       return {
         ok: false,
         errors: [
           tr("production.stepExecutionActions.workLocationRequiredForPlan"),
         ],
+      };
+    }
+    if (required.includes("TIME") && (!v.startTime || !v.endTime)) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.timeRequiredForPlan")],
+      };
+    }
+    if (required.includes("QUANTITY") && v.quantity == null) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.quantityRequiredForPlan")],
       };
     }
     const actor = await getCurrentActorId();

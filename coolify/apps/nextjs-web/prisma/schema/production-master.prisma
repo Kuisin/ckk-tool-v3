@@ -195,6 +195,11 @@ model ProcessStepCatalog {
   // 決める。在庫を動かすだけの工程（〇〇出し）など、場所に意味の無い工程で
   // false にする。使える場所の範囲は別（process_step_work_locations の許可リスト）。
   workLocationRequired Boolean       @default(true) @map("work_location_required")
+  // 作業計画の必須項目（承認前の揃い）— 作業場所と同じく工程ごと。担当者と計画日は
+  // 常に必須（列が NOT NULL）で、ここで切れるのは 時刻（開始・終了）と 数量。
+  // 「何を入れれば計画が揃ったか」は工程マスタだけが決める（lib/work-plan-core.ts）。
+  planTimeRequired     Boolean       @default(false) @map("plan_time_required")
+  planQuantityRequired Boolean       @default(false) @map("plan_quantity_required")
   approvalMinRank   String?          @map("approval_min_rank") // 係長以上等
   quantityTracking  QuantityTracking @default(FLOW) @map("quantity_tracking")
   lotInputMode      LotInputMode     @default(NONE) @map("lot_input_mode") // 実行時のロット入力の既定（工程リスト/指示書で上書き可）

@@ -52,7 +52,7 @@ import {
 } from "@/lib/work-locations";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import { shippableQuantity } from "@/lib/work-order-shipping-core";
-import { planReadiness } from "@/lib/work-plan-core";
+import { planReadiness, requiredPlanFields } from "@/lib/work-plan-core";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import {
   canStartStep,
@@ -194,6 +194,9 @@ const WO_INCLUDE = {
           // 承認前の計画の揃い（lib/work-plan-core.ts planReadiness）に要る
           plannedDate: true,
           workLocationId: true,
+          plannedStartAt: true,
+          plannedEndAt: true,
+          quantity: true,
           user: {
             select: {
               id: true,
@@ -710,6 +713,8 @@ export async function fetchWorkOrder(
         executionLocation: s.executionLocation,
         status: s.status,
         workLocationRequired: s.processStep.workLocationRequired,
+        planTimeRequired: s.processStep.planTimeRequired,
+        planQuantityRequired: s.processStep.planQuantityRequired,
         plans: s.plans,
       })),
       { workLocationsConfigured: locationsConfigured },
@@ -1013,7 +1018,11 @@ export async function fetchStepExecution(
     // 作業計画に作業場所が要るか（工程マスタの印 — 計画フォームの必須表示）
     prisma.processStepCatalog.findUnique({
       where: { id: step.processStepId },
-      select: { workLocationRequired: true },
+      select: {
+        workLocationRequired: true,
+        planTimeRequired: true,
+        planQuantityRequired: true,
+      },
     }),
   ]);
   // 検査表割当の選択肢: 有効な検査表テンプレート全件（WorkflowBuilder の
@@ -1282,9 +1291,17 @@ export async function fetchStepExecution(
     plans,
     actuals,
     workLocationOptions,
-    workLocationRequired:
-      step.executionLocation === "INTERNAL" &&
-      (stepCatalog?.workLocationRequired ?? true),
+    // 計画の必須項目（工程マスタ × 社内工程 × 作業場所マスタの有無）— 承認
+    // 依頼のゲートと同じ関数で決める（計画パネルの必須印はこの写し）。
+    requiredPlanFields: requiredPlanFields(
+      {
+        executionLocation: step.executionLocation,
+        workLocationRequired: stepCatalog?.workLocationRequired,
+        planTimeRequired: stepCatalog?.planTimeRequired,
+        planQuantityRequired: stepCatalog?.planQuantityRequired,
+      },
+      { workLocationsConfigured: allOptions.length > 0 },
+    ),
   };
 }
 

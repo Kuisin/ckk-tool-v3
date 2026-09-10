@@ -110,6 +110,7 @@ import {
   routeStepsEqual,
   routesVisibleForCustomer,
 } from "@/lib/product-routes-core";
+import { requiredPlanFields } from "@/lib/work-plan-core";
 import type { CatalogStep, UseDep } from "@/lib/workflow-core";
 import {
   isBlockingIssue,
@@ -1921,6 +1922,21 @@ export function WorkflowBuilder({
               const cat = catalogSteps.find((c) => c.id === s.processStepId);
               if (!cat) return null;
               const plan = stepPlans[s.processStepId];
+              // 必須項目は工程マスタが決める（承認依頼のゲートと同じ集合）。
+              // 行は詰めた並びでラベルを持たないので、必須はプレースホルダに出す。
+              const required = requiredPlanFields(
+                {
+                  executionLocation:
+                    locations[s.processStepId]?.executionLocation ?? "INTERNAL",
+                  workLocationRequired: cat.workLocationRequired,
+                  planTimeRequired: cat.planTimeRequired,
+                  planQuantityRequired: cat.planQuantityRequired,
+                },
+                { workLocationsConfigured: workLocationOptions.length > 0 },
+              );
+              const needsPanel = required.some(
+                (f) => f === "TIME" || f === "QUANTITY",
+              );
               return (
                 <Paper key={s.processStepId} p="sm" radius="sm" withBorder>
                   <Group
@@ -1994,9 +2010,15 @@ export function WorkflowBuilder({
                           onChange={(v) =>
                             setStepPlan(s.processStepId, { workLocationId: v })
                           }
-                          placeholder={tr(
-                            "production.stepPlanActualPanel.workLocation",
-                          )}
+                          placeholder={
+                            required.includes("WORK_LOCATION")
+                              ? tr(
+                                  "production.workflowBuilder.workLocationRequiredPlaceholder",
+                                )
+                              : tr(
+                                  "production.stepPlanActualPanel.workLocation",
+                                )
+                          }
                           searchable
                           size="xs"
                           value={plan?.workLocationId ?? null}
@@ -2004,6 +2026,13 @@ export function WorkflowBuilder({
                         />
                       )}
                   </Group>
+                  {needsPanel && (
+                    <Text c="dimmed" mt={4} pl={28} size="xs">
+                      {tr(
+                        "production.workflowBuilder.timeQuantityInPanelLater",
+                      )}
+                    </Text>
+                  )}
                 </Paper>
               );
             })}

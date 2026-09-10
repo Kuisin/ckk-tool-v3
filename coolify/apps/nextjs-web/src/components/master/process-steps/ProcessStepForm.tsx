@@ -106,6 +106,8 @@ const processStepSchema = (tr: (key: string) => string) =>
       isApprovalStep: z.boolean(),
       isFinalInspection: z.boolean(),
       workLocationRequired: z.boolean(),
+      planTimeRequired: z.boolean(),
+      planQuantityRequired: z.boolean(),
       approvalMinRank: z.string(),
       quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
       lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]),
@@ -150,6 +152,8 @@ export interface ProcessStepFormInitial {
   isFinalInspection: boolean;
   /** 作業計画に作業場所が要るか（承認前の揃い）。 */
   workLocationRequired: boolean;
+  planTimeRequired: boolean;
+  planQuantityRequired: boolean;
   approvalMinRank: string;
   quantityTracking: string;
   lotInputMode: string;
@@ -219,6 +223,8 @@ export function ProcessStepForm({
       isApprovalStep: initial?.isApprovalStep ?? false,
       isFinalInspection: initial?.isFinalInspection ?? false,
       workLocationRequired: initial?.workLocationRequired ?? true,
+      planTimeRequired: initial?.planTimeRequired ?? false,
+      planQuantityRequired: initial?.planQuantityRequired ?? false,
       approvalMinRank: initial?.approvalMinRank ?? "",
       quantityTracking:
         initial?.quantityTracking === "NONE" ||
@@ -292,6 +298,8 @@ export function ProcessStepForm({
       isApprovalStep: values.isApprovalStep,
       isFinalInspection: values.isFinalInspection,
       workLocationRequired: values.workLocationRequired,
+      planTimeRequired: values.planTimeRequired,
+      planQuantityRequired: values.planQuantityRequired,
       approvalMinRank: values.approvalMinRank,
       quantityTracking: values.quantityTracking,
       lotInputMode: values.lotInputMode,
@@ -596,13 +604,34 @@ export function ProcessStepForm({
             label={tr("master.processSteps.finalInspectionStep")}
             {...form.getInputProps("isFinalInspection", { type: "checkbox" })}
           />
-          {/* 承認前の作業計画に「どこで」が要るか。在庫を動かすだけの工程
-              （〇〇出し）のように場所に意味の無い工程で外す。使える場所の範囲は
-              下の「許可作業場所」— こちらは 要る / 要らない だけ。 */}
+          {/* 承認前の作業計画に何が要るか（§7）。担当者・計画日は常に必須
+              （列が NOT NULL）。作業場所は在庫を動かすだけの工程（〇〇出し）の
+              ように場所に意味の無い工程で外す。使える場所の範囲は下の
+              「許可作業場所」— こちらは 要る / 要らない だけ。 */}
+          <Stack gap={4} mt="xs">
+            <Text fw={600} size="sm">
+              {tr("master.processSteps.planRequiredFields")}
+            </Text>
+            <Text c="dimmed" size="xs">
+              {tr("master.processSteps.planRequiredFieldsHelp")}
+            </Text>
+          </Stack>
           <Switch
             description={tr("master.processSteps.workLocationRequiredHelp")}
             label={tr("master.processSteps.workLocationRequired")}
             {...form.getInputProps("workLocationRequired", {
+              type: "checkbox",
+            })}
+          />
+          <Switch
+            description={tr("master.processSteps.planTimeRequiredHelp")}
+            label={tr("master.processSteps.planTimeRequired")}
+            {...form.getInputProps("planTimeRequired", { type: "checkbox" })}
+          />
+          <Switch
+            description={tr("master.processSteps.planQuantityRequiredHelp")}
+            label={tr("master.processSteps.planQuantityRequired")}
+            {...form.getInputProps("planQuantityRequired", {
               type: "checkbox",
             })}
           />
