@@ -20,7 +20,7 @@ This app is for making the document (**指示書**, work order) that decides whi
 - **注文明細** (order line) … an internal document that splits a customer's order by product and by quantity. You choose one of these to make a work order.
 - **割当** (allocation) … the link that says which order lines this work order makes pieces for, and how many. You may split one order line across several work orders (splitting), or combine several order lines of the same product into one work order (a combined lot).
 - **工程** (step) … one stage of the work, such as cutting, step machining, or inspection.
-- **工程リスト** (step list) … the order of the steps for making a product, registered in advance.
+- **工程リスト** (step list) … the order of steps, registered in advance. There are two: the **prep step list** (issue / handoff and material prep, one list shared by every product) and the **manufacturing step list** (machining onward, per product × customer). A work order combines both to build its step sequence.
 - **ロット番号** (lot number) … a serial number such as `#9001` given to a batch of products you made. It is assigned automatically when a work order is created, and is used to trace the lot through stock and shipping.
 - **受入数 / 良品数** (received quantity / good quantity) … the received quantity is how many pieces came into that step; the good quantity is how many pieces are fine to pass on.
 - **承認グループ** (approval group) … the list of people who are allowed to approve. Only people on this list can approve.
@@ -51,15 +51,17 @@ When you open the app, you see a list of the work orders made so far.
 2. In 「**注文明細の割当**」 (order line allocations), choose the order line to base it on. You can search by order line number, product, or customer. Once you choose it, the customer name, the product, the ordered quantity, and the **remaining allocatable quantity** (the ordered quantity minus what other work orders already cover) appear below.
 3. In 「**割当数量**」 (allocation quantity), enter how many pieces this work order makes for that order line. The remaining quantity is filled in automatically, so change it only when you make just a part (splitting).
 4. To make other order lines of the same product at the same time (a combined lot), press 「**明細を追加（統合ロット）**」 (add order line — combined lot) and add rows. Order lines for different products cannot go on the same work order.
-5. In 「**種別**」 (type), choose 「在庫分」 (from stock) or 「製造分」 (to make). A from-stock work order can have only one order line. **A from-stock work order has a fixed step set — 「製品出し（在庫）」 (product issue from stock) plus, if needed, 「出荷前検査」 (pre-ship inspection) — and does not use a step list**, so steps 10–12 below apply to made-to-order work orders only.
+5. In 「**種別**」 (type), choose 「在庫分」 (from stock) or 「製造分」 (to make). A from-stock work order can have only one order line. **A from-stock work order has a fixed step set — 「製品出し（在庫）」 (product issue from stock) plus, if needed, 「出荷前検査」 (pre-ship inspection) — and does not use a step list**, so steps 11–13 below (the prep step list, the manufacturing step list, and the place/lot settings) apply to made-to-order work orders only.
 6. Enter how many pieces to make in 「**予定数量**」 (planned quantity). The total of the allocations is filled in automatically and you cannot enter less than that. Adding extra as spares for defects is up to you.
 7. If you chose 「製造分」 (to make), choose the 「**使用素材**」 (material to use). **If a material matches the product's assumed material type (type × diameter), it is already filled in.** The field shows 「製品の想定材種: …」 (assumed material type) underneath, so if that is right you need not touch it.
 8. If you already know where the finished products will be kept, choose the 「**保管場所**」 (storage location). It can stay empty.
-9. 「**検査表**」 (inspection sheets) are assigned **per inspection step**. When you pick a step, the sheets that name it as their related step are chosen automatically; add more in each step's selector if any are missing.
-10. Choose the 「**工程リスト**」 (step list). See the next section (made-to-order only).
-11. For steps that can be done either in-house or outside, choose 「**社内**」 (in-house) or 「**外注**」 (outsourced) — then choose the site for in-house, or the partner company for outsourced. For each step you can also change 「**ロット入力**」 (lot input — default / lot required / lot optional / no lot) and 「**作業時間**」 (work hours — a rough estimate of the time it takes). A step set to "lot required" cannot be started on the floor without entering a lot or slip code.
-12. In 「**作業計画（担当者）**」 (work plans — assignees), you can assign a person in charge to each step (optional). Steps with an assignee get a work plan with a planned date. To set times or quantities as well, add them in each step's plan table after creating the work order.
-13. Press 「**保存**」 (Save).
+9. To allow this lot to ship even when the finished quantity does not exactly match the ordered quantity, tick 「**不足 / 超過分も納品してよい**」 (allow shipping short or over). **How far short or over is allowed, and whether it needs approval, is decided by the business partner master** — this checkbox only decides whether this work order permits that kind of shipment. Both have to allow it before a short/over delivery goes through.
+10. 「**検査表**」 (inspection sheets) are **auto-assigned per inspection step** — the sheets that name a step as their related step are chosen automatically. You cannot pick them here; to change or add one, use the inspection-sheet popup on the step execution screen after approval.
+11. Choose the 「**準備工程リスト**」 (prep step list). See the next section (made-to-order only). It is the order of issue/handoff and material prep steps, shared by every product. If only one is registered, it is chosen automatically.
+12. Choose the 「**製造工程リスト**」 (manufacturing step list). See the next section (machining onward).
+13. For steps that can be done either in-house or outside, choose 「**社内**」 (in-house) or 「**外注**」 (outsourced) — then choose the site for in-house, or the partner company for outsourced. For each step you can also change 「**ロット入力**」 (lot input — default / lot required / lot optional / no lot) and 「**作業時間**」 (work hours — a rough estimate of the time it takes). A step set to "lot required" cannot be started on the floor without entering a lot or slip code. **Prep steps cannot be edited on this screen** — the latest version of the chosen prep step list is used as it is; to change the order, create a new version on the prep step list in the process step master.
+14. In 「**作業計画（担当者）**」 (work plans — assignees), you can enter a person in charge, planned date, and (for steps that require it) a work location. **The assignee is optional unless the process step master marks it required for that step** — it can stay empty and be decided later on the floor. Steps whose master requires a time or quantity too show a note that they must be added after creating the work order, in that step's plan panel.
+15. Press 「**保存**」 (Save).
 
 ![New work order form](../../../assets/screenshots/work-order-new-01.png)
 
@@ -71,26 +73,39 @@ If there is not enough material, you see a note such as 「**素材在庫が 30 
 
 ### About the step list
 
-The order of the steps is registered per product as a 「工程リスト」 (step list). **Made-to-order work orders only** — from-stock work orders have a fixed step set and do not use one.
+The order of the steps is registered as a 「工程リスト」 (step list). **Made-to-order work orders only** — from-stock work orders have a fixed step set and do not use one. There are two step lists — the **prep step list** (shared) and the **manufacturing step list** (product × customer) — and a work order combines both into one step sequence.
+
+#### Prep step list (shared)
+
+The order of issue/handoff and material prep steps (cutting, centerless, length adjust, chamfer, and so on). **It is not tied to a product or a customer — one shared list for every product.**
+
+- **You cannot choose a version per work order.** The **latest version** of the list you chose is always used. The work order screen shows 「最新 v◯（日時）を使います」 (using the latest v◯, dated …), followed by a link to the prep step list in the process step master.
+- To change the order, do it on the **prep step list in the process step master** (open from [Process step master](/manual/en/operations/masters/process-step/user#manage-the-prep-step-list)), not on the work order — the version history is kept there only.
+- If at least one prep step list is registered, a made-to-order work order must choose one (and if there is only one, it is chosen automatically).
+
+#### Manufacturing step list (product × customer)
+
+The steps from machining onward. As before, it is registered per product × customer (business partner).
 
 - Besides 「**汎用**」 (generic) lists usable for any customer, you can also make lists **dedicated to a specific customer**. When you choose a order line, the list is chosen automatically in this order: the list dedicated to that customer → the generic list → the first one in the list. A list dedicated to a different customer is never chosen automatically (you can still pick one by hand).
 - When dedicated lists are mixed in, the choices are labelled so you can tell them apart, such as 「リスト名（お客様名）」 (list name — customer name) and 「リスト名（汎用）」 (list name — generic).
 - If you choose a different 「**バージョン**」 (version), you can use an earlier order of steps.
-- If the product has no step list yet, you see 「**この製品の工程リストは未登録です（下で新規作成）**」 (this product has no step list yet — create one below). Enter a 「**新しい工程リスト名**」 (new step list name), such as "standard steps", and saving registers it as a new list. When creating one, you can choose in 「**対象顧客**」 (target customer) between "dedicated to ◯◯" and 「**汎用（全顧客）**」 (generic — all customers). A dedicated list is chosen first on work orders for the same customer × product.
+- If the product has no manufacturing step list yet, you see 「**この製品の工程リストは未登録です（下で新規作成）**」 (this product has no step list yet — create one below). Enter a 「**新しい工程リスト名**」 (new step list name), such as "standard steps", and saving registers it as a new list. When creating one, you can choose in 「**対象顧客**」 (target customer) between "dedicated to ◯◯" and 「**汎用（全顧客）**」 (generic — all customers). A dedicated list is chosen first on work orders for the same customer × product.
 - If you add or remove steps, you see a note saying the list will be saved as a new version. The contents of work orders you used before do not change.
 
-You pick steps from a checklist. The layout and rules are:
+You pick steps from a checklist. **Only manufacturing steps can be picked here** — the prep steps are already decided by the prep step list you chose above, and are shown in the list as read-only badges. The layout and rules are:
 
-- Pick **exactly one** step from the top section 「**出し・受渡し（開始）**」 (issue / handoff — start): 素材出し, 半製品出し, 素材受渡し or 製品受渡し (picking another one replaces it). **Every step sequence starts there.**
 - A step whose prerequisite has not been picked yet is disabled (grayed out) with a hint such as 「**要: 全長合わせ**」 (requires: length adjust). The other way around, inspections and approvals a step needs are added automatically when you pick it.
 - The bottom section 「**出荷前検査（任意）**」 (pre-ship inspection — optional) can be added or left out; when added it always runs last. **Shipping itself is not a step — it is managed by the [delivery order](/manual/en/operations/shipping/delivery-order/user).**
 - If the combination has a problem, a red note appears and you cannot save (「**工程構成にエラーがあります**」 — there is an error in the step setup). Please fix the steps until the red note is gone.
 
-After saving, the work order detail screen shows 「**工程ルート**」 (step route) with the name and version of the step list used, for example "standard steps v1". You can open the product's step list from there.
+After saving, the work order detail screen shows 「**準備工程リスト**」 (prep step list) and 「**工程ルート**」 (step route, the manufacturing step list), each with the name and version used, for example "standard steps v1". If a newer version than the one used has been registered, a 「**最新 v◯ あり**」 (newer v◯ available) badge appears, so you can tell it is not reflected in this work order. You can open the prep step list in the process step master, or the product's manufacturing step list, from there.
 
 ## Getting approval
 
 Work cannot start on a work order until it is approved. **How many approval stages it goes through** is decided in the [approval settings](/manual/en/operations/masters/approval-setting/user), and the number of stages can differ depending on what is in the document. The card on the screen shows which stage it is currently on.
+
+> ⚠️ **Work plans must be complete before you can request approval.** Every in-house step needs at least one work plan with a planned date plus whatever that step requires (assignee, work location, and so on — see "Work plans and work actuals" below). If they are not complete, the 「**承認依頼**」 button is disabled and you see a note such as 「**作業計画が揃っていません: ◯◯（作業場所 なし）**」 (work plans are incomplete: ◯◯ (missing work location)) listing which steps are missing what. Outsourced steps and cancelled steps are not counted.
 
 1. On the work order screen, press 「**承認依頼**」 (Request approval) on the card at the very top.
 2. The status changes to 「**承認依頼中**」 (pending approval). From this point, the original order line can no longer be edited.
@@ -120,7 +135,7 @@ Once a preceding work order is connected, the first step here cannot start until
 
 ## Working through the steps
 
-At the bottom of the work order screen is 「**工程ワークフロー**」 (step workflow), where the steps are listed in order.
+At the bottom of the work order screen is 「**工程ワークフロー**」 (step workflow), where the steps are listed in order. Next to the heading is a 「**予定納期**」 (planned delivery) badge — the earliest delivery date among the allocated order lines (for a combined lot, whichever line is most urgent). It turns red if that date has passed and the work order is not yet finished. For a for-stock work order with no delivery date, the badge does not appear.
 
 ![Work order detail screen and step workflow](../../../assets/screenshots/work-order-detail-01.png)
 
@@ -178,7 +193,9 @@ Near the bottom of the step screen there are 「**作業計画**」 (work plans)
 
 ![The work plan and work actual tables with work locations](../../../assets/screenshots/work-order-step-records-01.png)
 
-- **作業場所（任意）** (work location, optional) … which machine or area the work happens (happened) at. For steps whose [process step](/manual/en/operations/masters/process-step/user#field-allowed-locations) restricts allowed work locations, only the allowed places can be chosen
+- **Work plans can be entered from the 「下書き」 (draft) stage.** This is because they are a condition for requesting approval (see "Getting approval" above). They can be added and removed while the work order is draft, approved, or in progress, as long as no one else is operating that step. **Work actuals can only be recorded once approved, on a step that is in progress.**
+- **Which fields are required is decided per step by the process step master.** The planned date is always required for every step. Assignee, work location, start/end time, and quantity only get a red asterisk when the [process step master](/manual/en/operations/masters/process-step/user#field-plan-required-fields) marks them required for that step. **The assignee is optional by default** — you do not need a placeholder person just to request approval; it can be decided on the floor afterwards. Work actuals, on the other hand, always require an assignee and a date, since they are a record of who did the work.
+- **作業場所（work location, required when the process step master requires it）** … which machine or area the work happens (happened) at. For steps whose [process step](/manual/en/operations/masters/process-step/user#field-allowed-locations) restricts allowed work locations, only the allowed places can be chosen. On an environment with no work locations registered at all, this field is not asked for.
 - When a step is started or resumed from a shared floor tablet, the actual row is created automatically and its work location is filled with the tablet's **default work location** (or a scanned work-location QR)
 - Actuals entered by hand here can carry a work location the same way
 - **同時作業数** (concurrent work count) … an actual where one person was working on several steps at the same time gets a 「**同時 ◯**」 (concurrent ◯) badge. The working time is counted as the elapsed time divided by the number of concurrent steps (proration) — for example, two at once counts as half each
@@ -256,12 +273,14 @@ Every field on the work order screen. The order of the steps themselves is set i
 | [Material](#field-material) | Optional | The material used |
 | [Storage location](#field-storage-location) | Optional | Where the finished products are kept |
 | [Drawing to use](#field-design-file) | Optional | Which version of the drawing to build from |
-| [Process list / version](#field-route) | Required (made-to-order) | Which sequence of steps to use |
-| [New process list name](#field-new-route-name) | Conditional | Name when creating a new list |
-| [Inspection sheets](#field-inspection-templates) | Optional | Templates per inspection step |
+| [Allow short/over delivery](#field-allow-quantity-variance) | Optional | Whether this lot may ship a quantity that does not exactly match the order |
+| [Prep step list](#field-prep-route) | Required (made-to-order) | Issue/handoff and material prep order (always the latest version) |
+| [Manufacturing step list / version](#field-route) | Required (made-to-order) | Which sequence of steps from machining onward to use |
+| [New process list name](#field-new-route-name) | Conditional | Name when creating a new manufacturing step list |
+| [Inspection sheets](#field-inspection-templates) | — | Templates auto-assigned per inspection step |
 | [Lot input](#field-lot-input-mode) | Optional | How the lot / slip code is recorded per step |
 | [Work hours](#field-step-work-hours) | Optional | A rough estimate of the time each step takes |
-| [Work plans (assignees)](#field-step-plans) | Optional | The person in charge and planned date per step |
+| [Work plans (assignees)](#field-step-plans) | Conditional | The person in charge, planned date and work location per step |
 | [Notes](#field-notes) | Optional | Notes |
 
 ### Order line allocations [#field-order-line]
@@ -302,17 +321,25 @@ Pinning and unpinning are also available on the 図面 (drawing) tab of the work
 
 Where the finished products are kept. Choose from the [storage location](/manual/en/operations/masters/storage-location/user) master. If it is not decided yet, it can stay empty.
 
-### Process list / version [#field-route]
+### Allow short/over delivery [#field-allow-quantity-variance]
 
-Which sequence of steps to use, chosen from the lists registered for that product. **Choosing a version copies that sequence as it stands** — editing the process list later does not change work orders already created. Not used for from-stock work orders (their step set is fixed).
+Whether this lot may ship a quantity that does not exactly match the order. Optional, and off by default. **How far short or over is allowed, and whether approval is required, is decided by the business partner (customer) master** — this checkbox and the customer's settings both have to allow it before a short/over shipment goes through.
+
+### Prep step list [#field-prep-route]
+
+The order of issue/handoff and material prep steps. Choose the one shared list — it is not tied to a product or a customer. **You cannot choose a version** — the latest version of the list you chose is always used. It is required whenever at least one prep step list is registered, and chosen automatically if there is only one. Not used for from-stock work orders (their step set is fixed). To change the order, create a new version on the [prep step list in the process step master](/manual/en/operations/masters/process-step/user#manage-the-prep-step-list) rather than on the work order.
+
+### Manufacturing step list / version [#field-route]
+
+The order of steps from machining onward, chosen from the manufacturing step lists registered for that product × customer. **Choosing a version copies that sequence as it stands** — editing the step list later does not change work orders already created. Not used for from-stock work orders (their step set is fixed).
 
 ### New process list name [#field-new-route-name]
 
-The name when creating a new process list here. It becomes selectable for the same product next time.
+The name when creating a new manufacturing step list here. It becomes selectable for the same product next time.
 
 ### Inspection sheets [#field-inspection-templates]
 
-The inspection templates used per inspection step. Several can be selected; picking a step auto-selects the sheets that name it as their related step, and each inspection step offers its own assigned sheets during execution.
+The inspection templates used per inspection step. **You cannot pick them on this screen** — picking a step auto-assigns the sheets that name it as their related step. To change or add one, use the inspection-sheet popup on the step execution screen after approval.
 
 ### Lot input [#field-lot-input-mode]
 
@@ -324,7 +351,7 @@ A rough estimate of the time each step takes, in hours. It is shown on the step 
 
 ### Work plans (assignees) [#field-step-plans]
 
-The person in charge and the planned date for each step (optional). Steps with an assignee get a work plan, and the work appears in the 「工程実行」 (step execution) list on that person's floor tablet. To set times or quantities as well, add them in each step's plan table after creating the work order.
+The person in charge, the planned date, and (for steps the process step master requires it) the work location for each step. **Whether each field is required is decided per step by the process step master** (the planned date alone is always required). The assignee is optional by default and can be left empty — filling it in creates a work plan, and the work appears in the 「工程実行」 (step execution) list on that person's floor tablet. To set times or quantities as well, add them in each step's plan table after creating the work order. To request approval, every in-house step needs at least one plan row with its required fields filled in (see "Getting approval" above).
 
 ### Notes [#field-notes]
 
@@ -337,6 +364,9 @@ A. That work order has not been approved yet. While the link says 「**工程ビ
 
 **Q. The approval buttons do not appear.**
 A. You are not in the approval group for that step. The screen shows 「◯◯ のメンバーのみ承認・差し戻しできます」 (Only members of that group can approve or send back). Please ask an administrator about being added to the approval group in the approval settings.
+
+**Q. I see 「作業計画が揃っていません」 (work plans are incomplete) and cannot request approval.**
+A. One of the listed steps has no work plan with the planned date, or with whatever that step's master requires (assignee, work location, and so on). Add a row for that step in the 「作業計画」 (work plans) table — you can do this from the draft stage.
 
 **Q. I see 「別のユーザーがセッション中です」 (Another user is working on this) and cannot do anything.**
 A. Someone else is working on that step. Please wait until they complete or pause it.
