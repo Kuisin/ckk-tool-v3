@@ -8385,7 +8385,9 @@
       "user_change_requests": "User change requests",
       "user_plants": "Assigned sites",
       "user_role_relation": "Role assignments",
-      "users": "Users"
+      "users": "Users",
+      "api_clients": "API client",
+      "api_client_tokens": "API token"
     },
     "change": {
       "pair": "{label}: {before} → {after}",

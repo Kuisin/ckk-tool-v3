@@ -8385,7 +8385,9 @@
       "user_change_requests": "用户变更申请",
       "user_plants": "所属据点",
       "user_role_relation": "角色分配",
-      "users": "用户"
+      "users": "用户",
+      "api_clients": "API 客户端",
+      "api_client_tokens": "API 令牌"
     },
     "change": {
       "pair": "{label}: {before} → {after}",

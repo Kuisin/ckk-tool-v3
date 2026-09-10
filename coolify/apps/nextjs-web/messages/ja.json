@@ -8385,7 +8385,9 @@
       "user_change_requests": "ユーザー変更依頼",
       "user_plants": "所属拠点",
       "user_role_relation": "ロール割当",
-      "users": "ユーザー"
+      "users": "ユーザー",
+      "api_clients": "API クライアント",
+      "api_client_tokens": "API トークン"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
