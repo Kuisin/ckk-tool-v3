@@ -2614,7 +2614,7 @@
       "quantityOptional": "Quantity (optional)",
       "workLocationOptional": "Work location (optional)",
       "machineArea": "Machine / area",
-      "youCanSplitThePlanBy": "You can split the plan by assignee and date (or time). A work location (machine or area) is optional.",
+      "youCanSplitThePlanBy": "Plans can be split by assignee and date (or time). Requesting approval needs a plan with a date and work location for every in-house step, so enter them while the work order is still a draft (whether a location is required is set per step in the process-step master).",
       "workPlan": "Work plan",
       "recordsTheWorkDonePerAssignee": "Records the work done per assignee and date (addable only while in progress). Actuals from a shared device carry that device's default work location.",
       "workActuals": "Work actuals",
@@ -2989,7 +2989,8 @@
       "couldNotSaveInspectionSheets": "Could not save the inspection sheet assignment",
       "requestedAfterExpected": "The expected date must be on or after the request date",
       "requestedAfterReceived": "The received date must be on or after the request date",
-      "workLocationRequiredForPlan": "A work plan requires a work location"
+      "workLocationRequiredForPlan": "A work plan requires a work location",
+      "planLockedByWorkOrderStatus": "Work plans cannot be changed while the work order is pending approval, completed or cancelled"
     },
     "workOrderActions": {
       "acknowledgeFailed": "Could not record the acknowledgement",

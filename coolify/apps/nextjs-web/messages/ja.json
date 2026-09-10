@@ -2614,7 +2614,7 @@
       "quantityOptional": "数量（任意）",
       "workLocationOptional": "作業場所（任意）",
       "machineArea": "機械・エリア",
-      "youCanSplitThePlanBy": "担当者・日付（または時刻）ごとに分割して計画できます。作業場所（機械・エリア）も任意で割り当てられます。",
+      "youCanSplitThePlanBy": "担当者・日付（または時刻）ごとに分割して計画できます。承認依頼には社内工程ごとに 日付 + 作業場所 の入った計画が要るので、下書きのうちに入れてください（作業場所の要否は工程マスタで工程ごとに決まります）。",
       "workPlan": "作業計画",
       "recordsTheWorkDonePerAssignee": "実施した作業を担当者・日付ごとに記録します（進行中のみ追加可）。共有端末からの実績には端末の既定作業場所が入ります。",
       "workActuals": "作業実績",
@@ -2989,7 +2989,8 @@
       "couldNotSaveInspectionSheets": "検査表の割当に失敗しました",
       "requestedAfterExpected": "入荷予定日は依頼日以降の日付にしてください",
       "requestedAfterReceived": "入荷日は依頼日以降の日付にしてください",
-      "workLocationRequiredForPlan": "作業計画には作業場所が必要です"
+      "workLocationRequiredForPlan": "作業計画には作業場所が必要です",
+      "planLockedByWorkOrderStatus": "承認依頼中・完了・キャンセルの指示書では作業計画を変更できません"
     },
     "workOrderActions": {
       "acknowledgeFailed": "確認の記録に失敗しました",
