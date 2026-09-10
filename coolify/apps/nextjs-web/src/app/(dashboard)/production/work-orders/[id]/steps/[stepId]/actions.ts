@@ -99,9 +99,18 @@ async function deniedStepPermission(
 async function findStep(workOrderNumber: number, stepId: string) {
   return prisma.workOrderStep.findFirst({
     where: { id: stepId, workOrder: { workOrderNumber } },
-    include: { workOrder: { select: { id: true, workOrderNumber: true } } },
+    include: {
+      workOrder: { select: { id: true, workOrderNumber: true, status: true } },
+    },
   });
 }
+
+/**
+ * 作業計画を触ってよい指示書の状態。下書き（承認前に計画を入れる — 承認依頼の
+ * 条件）と 承認済 / 進行中。承認依頼中は依頼した内容を裏で変えないよう閉じ、
+ * 完了・キャンセルも閉じる。実績は従来どおり 承認後 + 進行中の工程のみ。
+ */
+const PLAN_EDITABLE_WO_STATUSES = new Set(["DRAFT", "APPROVED", "IN_PROGRESS"]);
 
 // ── 実行系ラッパ ─────────────────────────────────────────────────────────────
 
@@ -1261,6 +1270,14 @@ export async function addStepPlan(
         ],
       };
     }
+    if (!PLAN_EDITABLE_WO_STATUSES.has(step.workOrder.status)) {
+      return {
+        ok: false,
+        errors: [
+          tr("production.stepExecutionActions.planLockedByWorkOrderStatus"),
+        ],
+      };
+    }
     const locationError = await invalidWorkLocation(
       v.workLocationId,
       step.processStepId,
@@ -1349,6 +1366,14 @@ export async function deleteStepPlan(
       return {
         ok: false,
         errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
+    if (!PLAN_EDITABLE_WO_STATUSES.has(step.workOrder.status)) {
+      return {
+        ok: false,
+        errors: [
+          tr("production.stepExecutionActions.planLockedByWorkOrderStatus"),
+        ],
       };
     }
     const deleted = await prisma.workOrderStepPlan.deleteMany({

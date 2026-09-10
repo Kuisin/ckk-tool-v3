@@ -2614,7 +2614,7 @@
       "quantityOptional": "数量（可选）",
       "workLocationOptional": "作业场所（可选）",
       "machineArea": "机器・区域",
-      "youCanSplitThePlanBy": "可按负责人・日期（或时刻）拆分计划。也可选择性分配作业场所（机器・区域）。",
+      "youCanSplitThePlanBy": "可按负责人、日期（或时间）拆分计划。申请审批时，每道厂内工序都需要带日期 + 作业场所的计划，请在工单仍为草稿时填写（是否需要作业场所由工序主数据按工序设定）。",
       "workPlan": "作业计划",
       "recordsTheWorkDonePerAssignee": "按负责人・日期记录已实施的作业（仅进行中可添加）。来自共用终端的实绩将填入该终端的默认作业场所。",
       "workActuals": "作业实绩",
@@ -2989,7 +2989,8 @@
       "couldNotSaveInspectionSheets": "检查表分配保存失败",
       "requestedAfterExpected": "预计到货日需在委托日当天或之后",
       "requestedAfterReceived": "到货日需在委托日当天或之后",
-      "workLocationRequiredForPlan": "作业计划需要作业场所"
+      "workLocationRequiredForPlan": "作业计划需要作业场所",
+      "planLockedByWorkOrderStatus": "审批中、已完成或已取消的工单无法修改作业计划"
     },
     "workOrderActions": {
       "acknowledgeFailed": "确认记录失败",

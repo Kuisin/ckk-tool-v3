@@ -111,6 +111,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
     data.workOrderStatus === "APPROVED" ||
     data.workOrderStatus === "IN_PROGRESS";
   const canOperate = woExecutable && !lockedByOther;
+  // 作業計画は**下書きのうちに**入れる（承認依頼の条件 — lib/work-plan-core.ts）。
+  // 工程の開始・実績は承認後だが、計画まで承認後にすると承認が出せない。
+  // 承認依頼中はロック（依頼した内容を裏で変えない）、完了・キャンセルも閉じる。
+  const canEditPlans =
+    (data.workOrderStatus === "DRAFT" || woExecutable) && !lockedByOther;
 
   // 検査表が割り当てられている工程は、その検査表それぞれに記録が 1 件
   // 無いと完了できない（サーバー側の completeStepExecution と同じ規則。
@@ -640,6 +645,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       {/* ── 作業計画 / 実績（分割記録・担当者・日付/時刻） ── */}
       <StepPlanActualPanel
         actuals={data.actuals}
+        canEditPlans={canEditPlans}
         canOperate={canOperate}
         expectedInputQuantity={step.inputQuantity ?? data.expectedInputQuantity}
         plans={data.plans}

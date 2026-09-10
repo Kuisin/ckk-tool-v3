@@ -391,6 +391,7 @@ export function StepPlanActualPanel({
   stepId,
   stepStatus,
   canOperate,
+  canEditPlans,
   plans,
   actuals,
   expectedInputQuantity,
@@ -400,8 +401,13 @@ export function StepPlanActualPanel({
   workOrderNumber: number;
   stepId: string;
   stepStatus: string;
-  /** 指示書が実行可能 & 他ユーザーのロックなし。 */
+  /** 指示書が実行可能 & 他ユーザーのロックなし（実績の追加・削除）。 */
   canOperate: boolean;
+  /**
+   * 計画の追加・削除ができるか。下書きの指示書でも true — 作業計画は承認依頼の
+   * 条件なので、承認前に入れられなければならない。省略時は canOperate。
+   */
+  canEditPlans?: boolean;
   plans: StepPlanView[];
   actuals: StepActualView[];
   expectedInputQuantity: number | null;
@@ -412,7 +418,8 @@ export function StepPlanActualPanel({
 }) {
   const tr = useTranslations();
   const planEditable =
-    canOperate && (stepStatus === "PENDING" || stepStatus === "IN_PROGRESS");
+    (canEditPlans ?? canOperate) &&
+    (stepStatus === "PENDING" || stepStatus === "IN_PROGRESS");
   const actualEditable = canOperate && stepStatus === "IN_PROGRESS";
 
   return (
