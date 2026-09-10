@@ -463,6 +463,70 @@ export async function listMySteps(
   };
 }
 
+// ── 作業中ストリップ（画面に常時出す「いま掴んでいる工程」） ────────────────
+
+/** 作業中ストリップの 1 行。 */
+export interface WorkingStepView {
+  stepId: string;
+  workOrderNumber: number;
+  stepName: string;
+  /** 自分の累計作業時間 (ms) — 同時実行セグメントは按分済み。 */
+  workedMs: number;
+  /** 自分の open セグメントの同時作業数（1 以上）。 */
+  openConcurrentCount: number;
+}
+
+/**
+ * いま自分が掴んでいる工程。**layout から毎ページ呼ぶので 1 クエリで済ませる。**
+ *
+ * 「作業中」の定義は厳密に「自分がセッションロックを保持している」で、これは
+ * listMySteps の集合 (2) と同じ。だから listMySteps（5 クエリ + hydrate 2 回）は
+ * 流用しない — あれは一覧を組み立てるための重さで、ここには要らない。
+ *
+ * 一時停止した工程は入らない（一時停止はロックを離すため）。それでよい —
+ * このストリップは「いま動いているものを行き来する」ためのもので、
+ * 止めたものを拾い直すのは /steps の仕事。
+ */
+export async function listWorkingSteps(
+  userId: string,
+  locale: Locale,
+): Promise<WorkingStepView[]> {
+  const rows = await prisma.workOrderStep.findMany({
+    where: { sessionLockedBy: userId, status: "IN_PROGRESS" },
+    select: {
+      id: true,
+      processStep: { select: { name: true } },
+      workOrder: { select: { workOrderNumber: true } },
+      actuals: {
+        where: { userId },
+        select: {
+          startedAt: true,
+          endedAt: true,
+          concurrentCount: true,
+        },
+      },
+    },
+  });
+
+  const now = new Date();
+  return rows
+    .map((r) => ({
+      stepId: r.id,
+      workOrderNumber: r.workOrder.workOrderNumber,
+      stepName: localized(asText(r.processStep.name), locale),
+      workedMs: accumulatedWorkMs(r.actuals, now),
+      openConcurrentCount: Math.max(
+        1,
+        r.actuals.find((a) => a.endedAt == null)?.concurrentCount ?? 1,
+      ),
+    }))
+    .sort(
+      (a, b) =>
+        a.workOrderNumber - b.workOrderNumber ||
+        a.stepName.localeCompare(b.stepName),
+    );
+}
+
 /**
  * 単一工程の詳細。割り当てゲートを兼ねる — 操作できない工程は null。
  * （URL 直叩きで他人の工程を開けないようにする）

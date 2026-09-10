@@ -4,10 +4,12 @@ import { I18nProvider } from "@/components/I18nProvider";
 import { KioskShell } from "@/components/KioskShell";
 import { LastPageTracker } from "@/components/LastPageTracker";
 import { LocationReporter } from "@/components/LocationReporter";
+import { WorkingStepsBar } from "@/components/steps/WorkingStepsBar";
 import { prisma } from "@/lib/db";
 import { getDeviceDefaultWorkLocationLabel } from "@/lib/device-work-location";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { getDevice, getSession } from "@/lib/kiosk-auth";
+import { listWorkingSteps, type WorkingStepView } from "@/lib/steps";
 import {
   DEFAULT_TEXT_SCALE,
   normalizeTextScale,
@@ -72,6 +74,8 @@ export default async function KioskLayout({
   // （nextjs-web と同じ列）なので、Web で決めた設定がそのまま付いてくる。
   let userName: string | null = null;
   let textScale: TextScale = DEFAULT_TEXT_SCALE;
+  // いま掴んでいる工程（画面の隅に常時出す丸薬）。ログイン中のときだけ引く。
+  let workingSteps: WorkingStepView[] = [];
   // ヘッダーの設定の窓も利用者の言語で出す。**辞書はここで配る** —
   // 以前は各ページが個別に包んでいたので、layout にあるヘッダーは
   // Provider の外側にあり、常に既定（ja）になっていた（言語の切替も
@@ -91,6 +95,7 @@ export default async function KioskLayout({
         select: { textScale: true },
       });
       textScale = normalizeTextScale(user?.textScale);
+      workingSteps = await listWorkingSteps(session.userId, locale);
     }
   } catch {
     // 端末名と同じくビルド時・DB 不通時は既定のまま
@@ -135,6 +140,9 @@ export default async function KioskLayout({
         >
           {children}
         </KioskShell>
+        {/* AppShell の外に出す — ヘッダーは 56px 固定で入らず、Main は
+            calc(100dvh - 56px - 40px) ちょうどなので流し込むと縦中央が崩れる */}
+        <WorkingStepsBar steps={workingSteps} />
       </I18nProvider>
     </>
   );
