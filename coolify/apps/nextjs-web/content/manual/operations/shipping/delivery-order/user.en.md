@@ -25,6 +25,7 @@ The shipping order is an important document — it is the source used later when
 - **Lot** … The number given to a batch of products made together. The work order number becomes the lot number.
 - **発送 / 在庫保管 (Dispatch / Keep in stock)** … "発送" means the pieces you send to the customer. "在庫保管" means the pieces you keep in-house instead of sending.
 - **明細 (line)** … One row inside the shipping order. It says "which product, how many pieces".
+- **過不足納品 (Delivery quantity variance)** … Shipping a quantity that does not exactly match what was ordered. It is only possible when the [work order](/manual/en/operations/production/work-order/user)'s permission and the [business partner](/manual/en/operations/masters/business-partner/user)'s tolerance both allow it.
 
 ## Before you start
 
@@ -63,9 +64,10 @@ You can start a delivery order from four places. They all open the same form.
 3. For every shippable order line of that acceptance, **the not-yet-shipped quantity is filled in for you**. The source of the quantity is the **finished output of the connected work orders** (the pieces made for that line), allocated to the lots in number order within the physical stock — never more than what is still needed.
 4. In 「**種別**」 (Type), choose 「**発送**」 (Dispatch) or 「**在庫保管**」 (Keep in stock). Normally you leave it as 「発送」.
 5. In 「**出荷元拠点**」 (Shipping site), choose where you are sending from.
-6. Change the 「**数量**」 (Quantity) on each line to the number of pieces you are really sending. **You cannot enter more than the order remainder (ordered − shipped)** — a red warning appears and saving is blocked.
-7. To add a row, press 「**行を追加**」 (Add row). To remove a row, press the trash-can mark at the right of the row.
-8. Press 「**保存**」 (Save). If the shipment falls short of the order remainder, or the finished pieces do not cover it, a **「一部出荷の確認」 (partial shipment confirmation)** dialog appears — check it and press 「**一部出荷として保存**」 (save as partial shipment) to save (the rest can go on a later shipping order).
+6. When 「種別」 (Type) is 「**発送**」 (Dispatch), a 「**過不足納品**」 (Delivery quantity variance) area also appears. Here you set 「この出荷で注文明細を締める」 (Close the order lines with this shipment) and 「請求単価」 (Billing unit price). You can normally leave both at their defaults — see "[Shipping with a delivery quantity variance](#shipping-with-a-delivery-quantity-variance)" below for details.
+7. Change the 「**数量**」 (Quantity) on each line to the number of pieces you are really sending. Normally **you cannot enter more than the order remainder (ordered − shipped)** — a red warning appears and saving is blocked. The only exception is a lot whose [work order](/manual/en/operations/production/work-order/user) has been allowed to ship with a variance — then you can go past the order remainder, up to the [business partner](/manual/en/operations/masters/business-partner/user)'s tolerance.
+8. To add a row, press 「**行を追加**」 (Add row). To remove a row, press the trash-can mark at the right of the row.
+9. Press 「**保存**」 (Save). If the shipment falls short of the order remainder, or the finished pieces do not cover it, a **「一部出荷の確認」 (partial shipment confirmation)** dialog appears. If the quantity is outside the tolerance, the same dialog also warns that approval may be requested when you confirm. Check it and press 「**一部出荷として保存**」 (save as partial shipment) to save (the rest can go on a later shipping order).
 
 ![New shipping order form](../../../assets/screenshots/delivery-order-new-01.png)
 
@@ -115,6 +117,38 @@ When you ship, today's date is recorded as the **出荷日 (shipping date)** and
 
 Only while it is a 「下書き」 (Draft) can you remove it, using 「**キャンセル**」 (Cancel) in the 「**…**」 menu at the top right. After it is confirmed, it cannot be removed.
 
+## Shipping with a delivery quantity variance
+
+Depending on how many pieces actually got made, you sometimes want to ship a quantity that does not exactly match the ordered quantity. This is called a **過不足納品 (delivery quantity variance)**. Whether it is possible is decided by two things together:
+
+1. **Permission on the work order side** … the [work order](/manual/en/operations/production/work-order/user) that made the lot must be marked as allowed to ship with a variance.
+2. **Tolerance on the business partner side** … the [business partner](/manual/en/operations/masters/business-partner/user)'s customer information must set how far that customer will accept a difference.
+
+Either one alone is not enough. Without the work order's permission, no matter how far the business partner's setting is relaxed, you can only ship exactly the ordered quantity.
+
+### 「この出荷で注文明細を締める」 and 「請求単価」
+
+When you set 「**種別**」 (Type) to 「**発送**」 (Dispatch) on the new or edit shipping order form, a 「**過不足納品**」 (Delivery quantity variance) area appears.
+
+- **この出荷で注文明細を締める** (Close the order lines with this shipment) … A declaration that "delivery ends here". Leave it unticked and the order remainder is treated as a partial shipment you can send later on a different shipping order. Tick it, and the order line advances all the way to 「**出荷済**」 (Shipped) even though it is short. **If you ship more than the ordered quantity, the order line becomes 「出荷済」 regardless of this checkbox** (there is no remainder left to send).
+- **請求単価** (Billing unit price) … Choose 「**受注時の単価**」 (Order unit price — the default; the price agreed at order time, unchanged) or 「**実納品数で価格表を引き直す**」 (Re-resolve from the price list using the quantity actually delivered — falling back to the order unit price if the price list can't resolve one). Whichever you choose is **frozen into the [delivery note](/manual/en/operations/shipping/delivery-note/user) and invoice the moment you confirm the shipping order** — editing the price list afterward never changes an already-confirmed document.
+
+### Confirming can require approval
+
+If the variance falls inside the range that the business partner's settings mark as needing approval, pressing 「**確定**」 (Confirm) **does not confirm it on the spot — it sends an approval request instead**. In that case the button on the confirmation dialog changes from 「確定」 (Confirm) to 「**承認依頼**」 (Request approval).
+
+1. On the shipping order screen, choose 「**…**」 → 「**確定**」 (Confirm).
+2. The dialog that appears shows the variance details. Press 「**承認依頼**」 (Request approval) to send the request. **The shipping order stays a 「下書き」 (Draft).**
+3. Once it is approved, press 「**…**」 → 「**確定**」 (Confirm) again — this time it confirms normally.
+
+If you can approve it, a green 「**承認**」 (Approve) card appears at the top of the screen, where you can approve or send it back on the spot. If you cannot, a gray 「**承認待ち**」 (Awaiting approval) card appears instead. A rejection turns the card red — 「**差し戻されました**」 (Sent back) — so fix the contents and confirm again.
+
+> 💡 Whether approval is needed comes from the business partner's settings (set separately for **inside** and **outside** the tolerance). **In an environment where no approval flow has been set up at all, no approval is requested and it confirms straight away.**
+
+### Checking it on the detail screen
+
+If any line was shipped with a quantity that differs from the order, a 「**過不足**」 (Quantity variance) table appears on the shipping order detail screen. For each order line it shows the ordered quantity, the delivered quantity (the running total), the variance, and whether it is inside or outside the tolerance.
+
 ## Keeping pieces in-house instead of sending (Keep in stock)
 
 When you keep pieces in-house instead of sending them to the customer — for example spare pieces you made — choose 「**在庫保管**」 (Keep in stock) in 「**種別**」 (Type).
@@ -149,6 +183,8 @@ Every field on the shipping order screen. The **?** next to a field in the app l
 | [Product](#field-product) | Required | The product going out |
 | [Lot (stock)](#field-lot) | Required | Which production run it comes from |
 | [Quantity](#field-quantity) | Required | How many pieces go out |
+| [Close the order lines with this shipment](#field-closes-order-lines) | Optional | Declares that a shortage is final |
+| [Billing unit price](#field-billing-price-mode) | Optional | Use the order unit price, or re-resolve from the price list |
 
 ### Order acceptance [#field-order-line]
 
@@ -185,7 +221,15 @@ Which production run (lot) it comes from. **The lot number is the same as the wo
 
 ### Quantity [#field-quantity]
 
-How many pieces go out. It cannot exceed the lot's stock, nor the **order remainder (ordered − shipped)**. Saving with less than the order remainder brings up the partial-shipment confirmation. To ship in parts, create separate shipping orders.
+How many pieces go out. It cannot exceed the lot's stock, nor the **order remainder (ordered − shipped)**. Saving with less than the order remainder brings up the partial-shipment confirmation. To ship in parts, create separate shipping orders. You can go past the order remainder, up to the business partner's tolerance, only when the work order side has allowed the lot to ship with a variance — see "[Shipping with a delivery quantity variance](#shipping-with-a-delivery-quantity-variance)".
+
+### Close the order lines with this shipment [#field-closes-order-lines]
+
+Only appears when the type is Dispatch. A declaration that "delivery ends here". See "[Shipping with a delivery quantity variance](#shipping-with-a-delivery-quantity-variance)" for details.
+
+### Billing unit price [#field-billing-price-mode]
+
+Only appears when the type is Dispatch. Whether to keep the order unit price, or re-resolve it from the price list using the quantity actually delivered. See "[Shipping with a delivery quantity variance](#shipping-with-a-delivery-quantity-variance)" for details.
 
 ## Questions and problems
 
@@ -206,6 +250,15 @@ A. You can only edit while it is a 「下書き」 (Draft). After it is confirme
 
 **Q. I shipped, but the order line does not become 「出荷済」 (Shipped).**
 A. Check whether the type is 「在庫保管」 (Keep in stock). That type is a record of pieces kept in-house, so the order line status does not change. Also, if you sent only part of the ordered pieces, it becomes 「一部出荷」 (Partly shipped).
+
+**Q. The quantity I want to ship does not match the ordered quantity. Can I ship it with a variance anyway?**
+A. Only when the [work order](/manual/en/operations/production/work-order/user) side has allowed shipping with a variance, and the [business partner](/manual/en/operations/masters/business-partner/user)'s settings allow that difference. If either one is missing, you can only ship exactly the ordered quantity.
+
+**Q. I pressed 「確定」 (Confirm), but the status is still 「下書き」 (Draft).**
+A. If the variance falls inside the range the business partner's settings mark as needing approval, an approval request is sent instead of confirming. Follow the on-screen guidance and wait for approval, then press 「確定」 (Confirm) again once it is approved.
+
+**Q. Can I change the amount after shipping and confirming?**
+A. No. The amount decided by whichever 「請求単価」 (Billing unit price) you chose at confirmation is used as-is on the delivery note and invoice. If you made a mistake, cancel the shipping order (only possible while it is a Draft) or create a new one with the correct contents.
 
 <!-- permissions:start -->
 ## Permissions required

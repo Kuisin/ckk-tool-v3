@@ -400,6 +400,9 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 請求期間 | Billing period | 请款期间 |
 | 締日処理 | Billing closing | 结算处理 |
 | 会計連携 | Accounting export | 会计对接 |
+| 過不足納品 | Delivery quantity variance | 交货数量差异 |
+| 許容の基準 / 許容範囲（過不足の） | Tolerance basis / Tolerance | 允许基准 / 允许范围 |
+| 請求単価 | Billing unit price | 请款单价 |
 
 ### 3.11 承認
 

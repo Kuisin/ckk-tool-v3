@@ -40,6 +40,7 @@ A company with no role **does not appear as a choice** on screens such as the qu
 - **締日 / 支払サイト (Closing day / Payment terms)** … the day billing or payment is put together, and the number of days until payment.
 - **標準リードタイム (Standard lead time)** … the usual number of days from placing a request to the goods arriving.
 - **AI照合名 (AI match names)** … a list of "other ways of writing" the company name. It is used to match the company name when an order document you receive is read automatically.
+- **過不足納品 (Delivery quantity variance)** … [shipping](/manual/en/operations/shipping/delivery-order/user) with a quantity that does not exactly match what was ordered. How far a customer will accept the difference is set per customer in the 「過不足納品」 area on this screen.
 
 ## Before you start
 
@@ -115,11 +116,25 @@ A 「**顧客情報**」 (Customer information) area appears.
 
 > ⚠️ Choose a company in 「**請求先（別法人の場合）**」 (Billing party, if a different company) only when the invoice goes to another company. If you leave it empty, the invoice goes to this company itself.
 
-### 4. Enter the end user information (when 最終需要家 is ticked)
+### 4. Set the delivery quantity variance tolerance (when 顧客 is ticked)
+
+A 「**過不足納品**」 (Delivery quantity variance) area appears. Here you decide whether a [shipment](/manual/en/operations/shipping/delivery-order/user) may go out with a different quantity than what was ordered, and whether that needs approval.
+
+> ⚠️ **This setting alone does not make delivery quantity variance possible.** Whether a lot can actually ship with a variance is limited to lots where the [work order](/manual/en/operations/production/work-order/user) itself has been allowed to. What you decide here is only "how far this customer is willing to accept a difference" and "whether it needs approval" for a lot that already has that permission.
+
+1. In 「**許容の基準**」 (Tolerance basis), choose whether the variance is measured in 「**パーセント（%）**」 (Percent) or 「**数量**」 (Quantity).
+2. In 「**不足の許容**」 (Under-delivery tolerance), enter how far below the ordered quantity is allowed. Leaving it empty means "no shortage is allowed at all".
+3. In 「**超過の許容**」 (Over-delivery tolerance), enter how far above the ordered quantity is allowed. Empty also means "no excess is allowed at all" here.
+4. Tick 「**許容範囲内でも承認を要求する**」 (Require approval within tolerance) if you always want a variance to go through approval before a shipping order can be confirmed, even when it is inside this range (unticked by default — a variance inside the range can be confirmed without approval).
+5. 「**許容範囲外は承認を要求する**」 (Require approval outside tolerance) is ticked by default. Unticking it lets a variance outside the range through without any approval, so leave it as is unless you have a strong reason not to.
+
+> 💡 With 「許容の基準」 (Tolerance basis) set to 「パーセント（%）」 (Percent) and 「不足の許容」 (Under-delivery tolerance) set to 「2」 for an order of 100 pieces, delivering down to 98 pieces (2 short) is within tolerance; 97 pieces or fewer is outside it.
+
+### 5. Enter the end user information (when 最終需要家 is ticked)
 
 A 「**最終需要家情報**」 (End user information) area appears. Enter the company's line of business in 「**業種**」 (Industry) — for example 自動車部品 (automotive parts). There is no fixed list; any wording your team understands is fine. You can also save it empty.
 
-### 5. Enter the supplier information and the bank account (when 仕入先・外注先 is ticked)
+### 6. Enter the supplier information and the bank account (when 仕入先・外注先 is ticked)
 
 Two areas appear — 「**仕入先・外注先情報**」 (Supplier / outsourcing partner information) and 「**振込先**」 (Bank account for transfers).
 
@@ -135,7 +150,7 @@ Two areas appear — 「**仕入先・外注先情報**」 (Supplier / outsourci
 
 > 💡 If you fill in 「**標準リードタイム（日数）**」 (Standard lead time), it is used as the guide for the expected arrival date when you create an [Outsource Order](/manual/en/operations/purchasing/outsource-order/user). If you do not know it, you can save it empty.
 
-### 6. Save
+### 7. Save
 
 Finally, press 「**保存**」 (Save). After saving, the detail screen of that business partner opens.
 
@@ -292,6 +307,9 @@ Notes. Writing down why something was decided, or anything to watch out for, hel
 | [Tax treatment](#field-tax-type) | Optional | How tax is handled |
 | [Invoice delivery method](#field-invoice-method) | Optional | How invoices reach them |
 | [Consignment](#field-consignment) | — | Whether consignment applies |
+| [Tolerance basis](#field-tolerance-basis) | Optional | Measure the variance in percent or in quantity |
+| [Under-delivery tolerance / Over-delivery tolerance](#field-tolerance-range) | Optional | How far the delivered quantity may vary from the order |
+| [Require approval within tolerance / Require approval outside tolerance](#field-variance-approval) | — | Whether a variance needs approval before confirming a shipment |
 
 ### Billing partner (if different) [#field-billing-bp]
 
@@ -316,6 +334,18 @@ Whether invoices go by email, fax, post or portal.
 ### Consignment [#field-consignment]
 
 Whether consignment selling applies. Set it only for partners you sell on consignment with.
+
+### Tolerance basis [#field-tolerance-basis]
+
+Whether the under/over [delivery quantity variance](/manual/en/operations/shipping/delivery-order/user) is measured in 「**パーセント（%）**」 (Percent) or 「**数量**」 (Quantity). Percent suits a customer whose order size varies a lot; quantity suits one who tends to order similar amounts each time.
+
+### Under-delivery tolerance / Over-delivery tolerance [#field-tolerance-range]
+
+How far the delivered quantity may vary from the ordered quantity. Shortage and excess have separate ranges, so you can allow "more is fine, but short is a problem" or the reverse. **Leaving either one empty is the same as "0 — not allowed" for that side.**
+
+### Require approval within tolerance / Require approval outside tolerance [#field-variance-approval]
+
+Whether a [shipping order](/manual/en/operations/shipping/delivery-order/user) with a quantity variance must go through approval before it can be confirmed. You set this separately for **inside** and **outside** the tolerance range. The default — no approval inside, approval required outside — is fine for most customers.
 
 ---
 
@@ -407,6 +437,12 @@ A. No. Past documents stay exactly as they were at that time.
 
 **Q. What should I write in 「業種」 (Industry)?**
 A. There is no fixed list; you can type freely. Any wording your team understands is fine (for example 自動車部品 / automotive parts, 電子部品 / electronic parts). You can also save it empty.
+
+**Q. If I loosen the 「過不足納品」 (Delivery quantity variance) settings, can a shipment go out with a different quantity than ordered?**
+A. Not by this setting alone. Whether a lot can actually ship with a variance is limited to lots where the [work order](/manual/en/operations/production/work-order/user) itself has been allowed to ship with a variance. What you decide here is only "how far this customer accepts a difference" and "whether it needs approval" for a lot that already has that permission.
+
+**Q. What happens if I leave 「不足の許容」 (Under-delivery tolerance) and 「超過の許容」 (Over-delivery tolerance) empty?**
+A. No variance is allowed at all on that side (the same as setting it to 0).
 
 <!-- permissions:start -->
 ## Permissions required
