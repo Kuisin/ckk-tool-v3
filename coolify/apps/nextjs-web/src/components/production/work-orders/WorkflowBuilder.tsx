@@ -22,6 +22,7 @@
 import {
   ActionIcon,
   Alert,
+  Checkbox,
   Group,
   MultiSelect,
   NumberInput,
@@ -137,6 +138,8 @@ const schema = (tr: (key: string) => string) =>
       .min(1, tr("production.workflowBuilder.plannedQuantityMustBeAtLeast1")),
     materialId: z.string().nullable(),
     storageLocationId: z.string().nullable(),
+    /** 不足 / 超過分もそのまま納品してよいロットか（§8 過不足納品）。 */
+    allowQuantityVariance: z.boolean(),
     /** 使用する図面の版。null = 固定しない（そのつど最新を引く）。 */
     designFileId: z.string().nullable(),
     notes: z.string(),
@@ -168,6 +171,7 @@ function initialValues(
       plannedQuantity: 1,
       materialId: null,
       storageLocationId: null,
+      allowQuantityVariance: false,
       designFileId: null,
       notes: "",
       selectedStepIds: [],
@@ -180,6 +184,7 @@ function initialValues(
     plannedQuantity: workOrder.plannedQuantity,
     materialId:
       workOrder.materialId != null ? String(workOrder.materialId) : null,
+    allowQuantityVariance: workOrder.allowQuantityVariance,
     storageLocationId:
       workOrder.storageLocationId != null
         ? String(workOrder.storageLocationId)
@@ -1201,6 +1206,7 @@ export function WorkflowBuilder({
         values.type === "MANUFACTURE" && values.materialId
           ? Number(values.materialId)
           : null,
+      allowQuantityVariance: values.allowQuantityVariance,
       storageLocationId: values.storageLocationId
         ? Number(values.storageLocationId)
         : null,
@@ -1588,6 +1594,18 @@ export function WorkflowBuilder({
             )}
             searchable={storageLocationOptions.length > 5}
             {...form.getInputProps("storageLocationId")}
+          />
+          {/* 過不足納品（§8）— 生産側の許可。**どこまでずれてよいかは
+              顧客マスタが決める**ので、ここは「出してよいか」だけ。 */}
+          <Checkbox
+            description={tr(
+              "production.workflowBuilder.allowQuantityVarianceHelp",
+            )}
+            label={tr("production.workflowBuilder.allowQuantityVariance")}
+            mt="xs"
+            {...form.getInputProps("allowQuantityVariance", {
+              type: "checkbox",
+            })}
           />
           {/* 使用する図面（任意）。固定しなければ、そのつど最新の版を引く
               ので、改訂されれば現場が見る図面も変わる。固定すると変わらない。 */}

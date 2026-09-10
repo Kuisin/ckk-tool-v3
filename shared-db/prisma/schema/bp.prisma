@@ -39,6 +39,16 @@ enum InvoiceMethod {
   @@schema("app")
 }
 
+/// 過不足納品の許容幅をどの尺度で表すか（bp_customer_attrs）。
+/// PERCENT = 受注数量に対する割合（%）/ QUANTITY = 絶対数量（受注の単位）。
+enum DeliveryToleranceBasis {
+  PERCENT
+  QUANTITY
+
+  @@map("DELIVERY_TOLERANCE_BASIS")
+  @@schema("app")
+}
+
 model BusinessPartner {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   bpCode      String?  @unique @map("bp_code")
@@ -148,6 +158,28 @@ model BpCustomerAttrs {
   taxType          TaxType       @default(TAXABLE) @map("tax_type")
   invoiceMethod    InvoiceMethod @default(EMAIL) @map("invoice_method")
   isConsignment    Boolean       @default(false) @map("is_consignment")
+
+  // ── 過不足納品（出荷数量が受注数量と違ってよい範囲）─────────────────────
+  //
+  // 「どれだけずれてよいか」は顧客が決めることなので顧客属性に置く。指示書側の
+  // allow_quantity_variance は**その ロットを過不足のまま出してよいか**の可否で、
+  // ここは**どこまでなら許されるか**の幅 — 2 つが揃って初めて過不足出荷になる。
+  //
+  // 判定の唯一の定義元は lib/delivery-variance-core.ts。列は基準 1 つ + 幅 2 つで、
+  // 幅は null = 0（その側の過不足を認めない）。基準を 1 つに絞るのは、% と数量を
+  // 同時に持たせると「どちらが効くのか」が読めなくなるため。
+  /// 許容幅の尺度（% or 数量）。
+  deliveryToleranceBasis  DeliveryToleranceBasis @default(PERCENT) @map("delivery_tolerance_basis")
+  /// 不足側の許容幅（受注数量を下回ってよい量）。null = 不足を認めない。
+  deliveryToleranceUnder  Decimal? @map("delivery_tolerance_under") @db.Decimal(8, 3)
+  /// 超過側の許容幅（受注数量を上回ってよい量）。null = 超過を認めない。
+  deliveryToleranceOver   Decimal? @map("delivery_tolerance_over") @db.Decimal(8, 3)
+  /// 許容範囲の**内側**の過不足でも承認申請を要求するか（既定 false）。
+  varianceApprovalWithin  Boolean @default(false) @map("variance_approval_within")
+  /// 許容範囲の**外側**の過不足で承認申請を要求するか（既定 true）。
+  /// false にすると範囲外でも素通りする — 範囲を無意味にする設定なので既定にしない。
+  varianceApprovalOutside Boolean @default(true) @map("variance_approval_outside")
+
   notes            String?
 
   bp        BusinessPartner  @relation("CustomerAttrsBp", fields: [bpId], references: [id])

@@ -1190,6 +1190,14 @@
       "RESTORE": "恢复使用",
       "UPDATE_PLANTS": "变更所属据点",
       "UPDATE_ROLES": "变更角色分配"
+    },
+    "DELIVERY_BILLING_PRICE_MODE_LABEL": {
+      "ORIGINAL": "接单时单价",
+      "PRICE_LIST": "按实际交货数重查价格表"
+    },
+    "DELIVERY_TOLERANCE_BASIS_LABEL": {
+      "PERCENT": "百分比（%）",
+      "QUANTITY": "数量"
     }
   },
   "status": {
@@ -2439,7 +2447,8 @@
       "deliveryOrderAlreadyArranged": "该工单的订单明细均已安排出货",
       "prepRoute": "准备工序清单",
       "manufacturingRoute": "制造工序清单",
-      "newerVersionExists": "已有最新 v{version}"
+      "newerVersionExists": "已有最新 v{version}",
+      "varianceAllowedBadge": "允许"
     },
     "addBranchModal": {
       "theBranchWasAdded": "已添加分支",
@@ -2829,7 +2838,9 @@
       "routeCopiedToCustomer": "已将工序清单「{name}」复制到本订货方（v1）",
       "routeModifiedNewVersion": "工序构成与「{name}」所选版本不同 — 保存时将作为新版本 v{version} 保存",
       "workPlanHelp": "为每道工序填写负责人、计划日与作业场所。申请审批时，所有厂内工序都需要带日期 + 作业场所的计划（时间段可选，可在创建后的计划面板中补充）。",
-      "planNeedsWorkLocation": "请选择作业场所：{steps}"
+      "planNeedsWorkLocation": "请选择作业场所：{steps}",
+      "allowQuantityVariance": "允许交付不足或超出的数量",
+      "allowQuantityVarianceHelp": "允许该批次即使与订货数量不一致也能出货。可偏离的范围与是否需要审批由业务伙伴主数据决定。"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "分配 {allocated} / 订购 {ordered}",
@@ -5016,7 +5027,21 @@
       "enterFullName": "请输入姓名",
       "roleInfoRequired": "请输入{role}信息",
       "selectASalesRep": "请选择销售负责人",
-      "billToOwnCompany": "—（本公司）"
+      "billToOwnCompany": "—（本公司）",
+      "deliveryTolerance": "交货数量差异",
+      "deliveryToleranceHelp": "交货数量可以偏离订货数量的范围，以及此时是否需要审批。实际能否差异出货还需要工单一侧的许可。",
+      "toleranceBasis": "允许基准",
+      "toleranceUnder": "不足允许范围",
+      "toleranceOver": "超出允许范围",
+      "toleranceBlankIsZero": "留空 = 不允许",
+      "toleranceNotAllowed": "不允许",
+      "tolerancePcs": "{value} 支",
+      "toleranceUnderPercentMax": "按百分比时，不足允许范围请输入 100 以下",
+      "varianceApprovalWithin": "在允许范围内也需要审批",
+      "varianceApprovalWithinHelp": "即使差异在允许范围内，出货单确定前也要经过审批。",
+      "varianceApprovalOutside": "超出允许范围时需要审批",
+      "varianceApprovalOutsideHelp": "取消后，超出范围的差异也会无需审批直接通过，允许范围将失去意义。通常保持勾选。",
+      "approvalNotRequired": "不需要"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "已创建不良类别",
@@ -5999,7 +6024,9 @@
       "enterNumberForField": "条件 {no}：请为 {label} 输入数值",
       "selectValueForField": "条件 {no}：请为 {label} 选择值",
       "numberConditionSummary": "{label}{op}{value}",
-      "selectConditionSummary": "{label}{op}“{value}”"
+      "selectConditionSummary": "{label}{op}“{value}”",
+      "deliveryTotalQuantity": "出货数量合计",
+      "fromPlant": "出货据点"
     },
     "inspectionTemplateExcel": {
       "sheetName": "检查表"
@@ -7690,7 +7717,20 @@
       "shipTogetherBody": "同一订单确认书还有 {count} 条明细尚未出货。请选择要放入本出货单的明细。",
       "unshippedWithLots": "未出货 {quantity} / 批次 {lots}",
       "justThisWorkOrder": "仅此工单",
-      "addSelectedLines": "添加所选明细"
+      "addSelectedLines": "添加所选明细",
+      "varianceTitle": "数量差异",
+      "orderedQuantity": "订货数",
+      "deliveredQuantity": "交货数（累计）",
+      "varianceQuantity": "差异",
+      "tolerance": "允许范围",
+      "withinTolerance": "范围内",
+      "outsideTolerance": "超出范围",
+      "varianceApproveHelp": "本次出货与订货数量不一致。请确认内容后批准或退回。",
+      "varianceWaitingHelp": "由于出货与订货数量不一致，正在等待审批。",
+      "varianceRejected": "已退回",
+      "varianceRejectedHelp": "请修改内容后重新确定。",
+      "confirmNeedsApprovalBody": "出货单 {number} 与订货数量不一致，确定前需要审批。此操作将提交审批申请。",
+      "approvalRequestedBody": "已为出货单 {number} 申请审批。审批通过后请再次确定。"
     },
     "pendingShipments": {
       "completedLots": "完成批次",
@@ -7724,7 +7764,22 @@
       "completedQuantityLabel": "完成 {quantity}（来自 {count} 个已完成工单）",
       "exceedsRemainingLabel": "超过剩余订单量 {remaining}（出货 {total}）",
       "partialShipmentLabel": "部分出货（出货 {total} / 剩余 {remaining}）",
-      "couldNotAddWorkOrderLines": "无法读取工单 #{workOrderNumber} 的订单明细（可能未确定或未指定产品）"
+      "couldNotAddWorkOrderLines": "无法读取工单 #{workOrderNumber} 的订单明细（可能未确定或未指定产品）",
+      "varianceSectionTitle": "交货数量差异",
+      "varianceSectionHelp": "与订货数量不一致时的处理方式。允许范围与审批要求来自业务伙伴主数据，是否允许差异由工单决定。",
+      "closesOrderLines": "以本次出货结清订单明细",
+      "closesOrderLinesHelp": "声明不足部分就此结束。不勾选时，剩余部分按后续发货的部分出货处理。",
+      "billingPriceMode": "请款单价",
+      "billingPriceModeHelp": "使用接单时的单价，还是按实际交货数量重新查价格表。确定时的数值会固定到送货单与请款单。",
+      "cannotCloseShort": "无法在不足状态下结清",
+      "cannotCloseShortLine": "{number}（订货 {ordered} / 交货 {delivered}）",
+      "cannotCloseShortLabel": "工单未允许数量差异",
+      "overDeliveryLabel": "超量交货（订货 {ordered} / 交货 {delivered}）",
+      "overDeliveryOutsideLabel": "超量交货・超出允许范围（订货 {ordered} / 交货 {delivered}）",
+      "shortDeliveryLabel": "不足交货（订货 {ordered} / 交货 {delivered}）",
+      "shortDeliveryOutsideLabel": "不足交货・超出允许范围（订货 {ordered} / 交货 {delivered}）",
+      "outOfToleranceLine": "{number}：超出允许范围（订货 {ordered} / 交货 {delivered}）",
+      "outOfToleranceNeedsApproval": "由于超出允许范围，确定出货单时可能需要审批。"
     },
     "deliveryNoteForm": {
       "editWithNumber": "编辑送货单 {noteId}"
@@ -7769,7 +7824,11 @@
       "updateFailed": "出货单更新失败",
       "autoCreatedNote": "出货单确认时自动创建（已发行）",
       "orderLineNotShippable": "订单明细 {number} 不在可出货状态（仅限已确定且未取消的明细）",
-      "productMismatch": "第 {line} 行：产品与订单明细 {number} 的产品不一致"
+      "productMismatch": "第 {line} 行：产品与订单明细 {number} 的产品不一致",
+      "cannotCloseShortLine": "{number} 无法在不足状态下结清（订货 {ordered} / 交货 {delivered}）。请先在工单允许数量差异",
+      "approvalRequestFailed": "申请审批失败",
+      "notPendingApproval": "当前不处于审批中",
+      "awaitingApproval": "正在等待审批。审批通过后即可确定"
     }
   },
   "ui": {

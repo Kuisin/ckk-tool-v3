@@ -202,6 +202,24 @@ export function approvalConditionFields(
         options: deliveryMethodOpts,
       },
     ],
+    // 出荷書 (SH01) — 依頼が出るのは過不足納品のときだけ（§8）。過不足の
+    // 大小そのものは条件に出さない: 「どこまでなら決裁が要るか」は顧客マスタの
+    // 許容幅と承認要否が決める設計で、同じ判断を MS0B にも置くと 2 か所が
+    // 食い違う。ここは「誰が決裁するか」を分ける軸だけを出す。
+    delivery_orders: [
+      {
+        key: "total_quantity",
+        label: tr("master.approvalConditions.deliveryTotalQuantity"),
+        type: "number",
+        unit: tr("master.approvalConditions.pcs"),
+      },
+      {
+        key: "from_plant_id",
+        label: tr("master.approvalConditions.fromPlant"),
+        type: "select",
+        optionsKey: "plants",
+      },
+    ],
   };
 }
 

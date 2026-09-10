@@ -367,6 +367,19 @@ export function WorkOrderDetail({
           ) : null
         }
       />
+      {/* 過不足納品（§8）— 許可されているときだけ出す。既定（不可）は
+          従来どおりの状態なので、全ての指示書に「不可」を並べても読む量が
+          増えるだけ。 */}
+      {wo.allowQuantityVariance && (
+        <FieldValue
+          label={tr("production.workflowBuilder.allowQuantityVariance")}
+          value={
+            <Badge color="orange" size="sm" variant="light">
+              {tr("production.workOrders.varianceAllowedBadge")}
+            </Badge>
+          }
+        />
+      )}
       <FieldValue
         label={tr("production.workOrders.processRoute")}
         value={

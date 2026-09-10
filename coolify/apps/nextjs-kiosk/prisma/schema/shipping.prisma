@@ -32,6 +32,35 @@ enum DeliveryOrderStatus {
   @@schema("app")
 }
 
+/// 請求単価をどこから取るか（出荷書ヘッダ — 出荷時点の判断）。
+///
+/// 過不足で納品すると「受注時に決めた単価のままでよいのか」が毎回問題になる。
+/// 100 本の段階単価で受注して 80 本しか納めないなら 80 本の段階単価が正しい、
+/// という顧客もいれば、受注時の約束を動かさない顧客もいる。どちらが正しいかは
+/// 出荷のたびに人が決めることなので、**出荷書 1 通ごと**に持つ。
+enum DeliveryBillingPriceMode {
+  /// 受注時の単価をそのまま使う（既定・従来の挙動）。
+  ORIGINAL
+  /// 実納品数で価格表を引き直す（引けなければ受注時の単価に落ちる）。
+  PRICE_LIST
+
+  @@map("DELIVERY_BILLING_PRICE_MODE")
+  @@schema("app")
+}
+
+/// 出荷書の承認状態（過不足納品のときだけ動く）。段数非依存 —
+/// 何段目かは approval_requests.step_no が持つ（work_orders と同型）。
+enum DeliveryOrderApprovalStatus {
+  /// 承認は要らない（数量ちょうど、または顧客設定が承認不要）。
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("DELIVERY_ORDER_APPROVAL_STATUS")
+  @@schema("app")
+}
+
 enum DeliveryMethod {
   DIRECT_TO_USER // ユーザー直送（完了書に価格なし、納品書別送）
   NORMAL // 通常納品（受注先へ納品書同梱）
@@ -64,6 +93,28 @@ model DeliveryOrder {
   status    DeliveryOrderStatus @default(DRAFT)
   shippedAt DateTime?           @map("shipped_at") @db.Timestamptz(6)
   notes     String?
+
+  // ── 過不足納品（§8）──────────────────────────────────────────────────────
+  /// 請求単価の出どころ（出荷時点の判断）。確定時にこの設定で
+  /// delivery_order_items.unit_price を焼き込む。
+  billingPriceMode DeliveryBillingPriceMode @default(ORIGINAL) @map("billing_price_mode")
+  /// この出荷で対象の注文明細を**締める**（不足分はもう出荷しない）。
+  ///
+  /// 不足納品は「一部出荷」と数量の上では見分けが付かない — 100 本のうち 80 本を
+  /// 積んだ出荷書が、残り 20 本を後で出すのか、80 本で終わりなのかは人しか知らない。
+  /// この 1 列がその宣言で、true のときだけ注文明細が SHIPPED まで進む。
+  closesOrderLines Boolean @default(false) @map("closes_order_lines")
+
+  // 承認（過不足が顧客設定で承認必須のときだけ動く。素通しなら NONE のまま）
+  approvalStatus DeliveryOrderApprovalStatus @default(NONE) @map("approval_status")
+  requestedAt    DateTime? @map("requested_at") @db.Timestamptz(6)
+  requestedBy    String?   @map("requested_by") @db.Uuid
+  approvedAt     DateTime? @map("approved_at") @db.Timestamptz(6)
+  approvedBy     String?   @map("approved_by") @db.Uuid
+  rejectedAt     DateTime? @map("rejected_at") @db.Timestamptz(6)
+  rejectedBy     String?   @map("rejected_by") @db.Uuid
+  rejectReason   String?   @map("reject_reason")
+
   createdBy String?             @map("created_by") @db.Uuid
   createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -73,6 +124,9 @@ model DeliveryOrder {
   workOrder        WorkOrder?       @relation(fields: [workOrderId], references: [id])
   fromPlant        Plant?           @relation(fields: [fromPlantId], references: [id])
   createdByUser    User?            @relation("DeliveryOrderCreatedBy", fields: [createdBy], references: [id])
+  requestedByUser  User?            @relation("DeliveryOrderRequestedBy", fields: [requestedBy], references: [id])
+  approvedByUser   User?            @relation("DeliveryOrderApprovedBy", fields: [approvedBy], references: [id])
+  rejectedByUser   User?            @relation("DeliveryOrderRejectedBy", fields: [rejectedBy], references: [id])
 
   items         DeliveryOrderItem[]
   deliveryNotes DeliveryNote[]
@@ -82,6 +136,7 @@ model DeliveryOrder {
   @@index([status])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, yearMonth, seq])
+  @@index([approvalStatus])
   @@map("delivery_orders")
   @@schema("app")
 }
@@ -98,6 +153,10 @@ model DeliveryOrderItem {
   productId Int     @map("product_id")
   lotNumber Int?    @map("lot_number") // ロット = 指示書番号（複数 WO を束ねる単位）
   quantity  Int
+  /// 請求単価のスナップショット（出荷書の確定時に billing_price_mode で焼き込む）。
+  /// null = 未確定 or 確定前のデータ → 読み側は注文明細の単価へ落ちる。
+  /// 納品書・請求書の単価はここが先で、注文明細の単価は後方互換のためのフォールバック。
+  unitPrice Decimal? @map("unit_price") @db.Decimal(12, 2)
   notes     String?
   sortOrder Int     @default(0) @map("sort_order")
 

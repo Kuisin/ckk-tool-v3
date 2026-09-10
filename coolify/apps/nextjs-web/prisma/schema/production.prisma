@@ -88,6 +88,16 @@ model WorkOrder {
   // 完成品の保管場所（保管場所マスタ MS0E。null = 未指定）
   storageLocationId Int? @map("storage_location_id")
 
+  /// 不足 / 超過分もそのまま納品してよいロットか（§8 過不足納品）。
+  ///
+  /// 既定は false = 受注数量ちょうどでしか出荷できない（従来の挙動）。true に
+  /// すると、この指示書のロットを載せた出荷書は受注数量を上回る数量を積めるし、
+  /// 下回る数量で注文明細を締められる。**どこまでずれてよいかはここでは決めない**
+  /// — 幅と承認の要否は顧客（bp_customer_attrs）が持つ。生産側が「このロットは
+  /// これで出してよい」と言えることと、顧客が「それを受け取る」ことは別の判断で、
+  /// 片方だけで過不足出荷が通ってはいけない。
+  allowQuantityVariance Boolean @default(false) @map("allow_quantity_variance")
+
   status         WorkOrderStatus         @default(DRAFT)
   approvalStatus WorkOrderApprovalStatus @default(NONE) @map("approval_status")
 

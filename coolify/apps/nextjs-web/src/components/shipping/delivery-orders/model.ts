@@ -15,6 +15,16 @@ import type { Tr } from "@/lib/i18n";
 
 export type DeliveryOrderStatus = "DRAFT" | "CONFIRMED" | "SHIPPED";
 
+/** 請求単価の出どころ（出荷書ヘッダ — 出荷時点の判断）。 */
+export type DeliveryBillingPriceMode = "ORIGINAL" | "PRICE_LIST";
+
+/** 出荷書の承認状態（過不足納品のときだけ動く）。 */
+export type DeliveryOrderApprovalStatus =
+  | "NONE"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED";
+
 /** DELIVERY_ORDER_TYPE — DISPATCH=発送（請求対象）/ STOCK_STORAGE=在庫保管（請求外）。 */
 export type DeliveryOrderType = "DISPATCH" | "STOCK_STORAGE";
 
@@ -30,6 +40,8 @@ export interface DeliveryOrderItem {
   /** ロット番号 = 指示書番号（任意）。 */
   lotNumber: number | null;
   quantity: number;
+  /** 確定時に焼き込んだ請求単価（未確定は null → 注文明細の単価で表示）。 */
+  unitPrice: number | null;
   notes: string | null;
 }
 
@@ -69,6 +81,20 @@ export interface DeliveryOrder {
   type: DeliveryOrderType;
   status: DeliveryOrderStatus;
   shippedAt: string | null;
+
+  // ── 過不足納品（§8）──────────────────────────────────────────────────────
+  /** 請求単価を受注時のまま使うか、実納品数で価格表を引き直すか。 */
+  billingPriceMode: DeliveryBillingPriceMode;
+  /** この出荷で対象の注文明細を締めるか（不足分をもう出荷しない宣言）。 */
+  closesOrderLines: boolean;
+  approvalStatus: DeliveryOrderApprovalStatus;
+  rejectReason: string | null;
+  /**
+   * 注文明細ごとの過不足（サーバーで評価した結果。詳細画面の表示専用）。
+   * 判定そのものは lib/delivery-variance-core.ts が持ち、ここはその写し。
+   */
+  variance: DeliveryOrderVarianceRow[];
+
   notes: string | null;
   items: DeliveryOrderItem[];
   /** 明細数量の合計。 */
@@ -83,9 +109,36 @@ export interface DeliveryOrder {
   updatedAt: string;
 }
 
+/** 詳細画面に出す過不足 1 行（注文明細ごと）。 */
+export interface DeliveryOrderVarianceRow {
+  orderLineNumber: string;
+  orderedQuantity: number;
+  /** その注文明細の累計納品数（他の出荷書のぶんを含む）。 */
+  deliveredQuantity: number;
+  variance: number;
+  kind: "EXACT" | "SHORT" | "OVER";
+  withinTolerance: boolean;
+  approvalRequired: boolean;
+  /** 指示書がこのロットの過不足納品を許しているか。 */
+  variancePermitted: boolean;
+}
+
 /** 編集可能か — 下書きの出荷書のみ。 */
 export function isEditable(o: Pick<DeliveryOrder, "status">) {
   return o.status === "DRAFT";
+}
+
+/**
+ * 確定ボタンが「確定する」なのか「承認を依頼する」なのか。
+ *
+ * 押す前に何が起きるかを言えるようにするためだけの関数で、実際の分岐は
+ * サーバー（guardVarianceOnConfirm）が決める — 画面が古くても結果は変わらない。
+ */
+export function confirmNeedsApproval(
+  o: Pick<DeliveryOrder, "approvalStatus" | "variance">,
+): boolean {
+  if (o.approvalStatus === "APPROVED") return false;
+  return o.variance.some((v) => v.approvalRequired);
 }
 
 // ── 束ね可否（1 出荷書に載せられる注文明細の条件） ──────────────────────────

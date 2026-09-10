@@ -40,6 +40,7 @@ import {
 } from "@/lib/server-action";
 import { taxRateFor } from "@/lib/tax-rate";
 import {
+  billableUnitPrice,
   fetchBillableShipmentsForClosing,
   resolveBillingPeriodStart,
 } from "./data";
@@ -130,9 +131,11 @@ export async function processClosing(
     const items = shipments.flatMap((s) => {
       const deliveryNote = s.deliveryNotes[0] ?? null;
       return s.items.map((it) => {
-        // 単価は**その行の**注文明細から取る（1 出荷書に単価の異なる
-        // 複数明細が載り得るため、出荷書単位の単一単価では誤請求になる）。
-        const unitPrice = Number(it.orderLine?.unitPrice ?? 0);
+        // 単価は**その行**から取る（1 出荷書に単価の異なる複数明細が載り得る
+        // ため、出荷書単位の単一単価では誤請求になる）。出荷書の確定時に
+        // 焼き込んだ値が先で、無ければ注文明細の単価 — billableUnitPrice が
+        // 唯一の定義元で、締日画面の予定額と同じ数え方になる。
+        const unitPrice = billableUnitPrice(it);
         const name = it.product.name as LocalizedText | null;
         const ja =
           it.lotNumber != null

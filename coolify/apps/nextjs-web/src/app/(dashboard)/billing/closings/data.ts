@@ -171,7 +171,23 @@ export async function fetchBillableShipmentsForClosing(
 }
 
 /**
- * 出荷書 1 件の請求金額 = Σ（明細数量 × **その行の**注文明細の単価）。
+ * 請求に使う単価 — **出荷書の確定時に焼き込んだ値が先**（過不足納品で
+ * 「実納品数で価格表を引き直す」を選んだ出荷はここに反映されている）。
+ * null は移行前・未確定のデータなので、そのときだけ注文明細の単価へ落ちる。
+ *
+ * 締日画面の予定額（shipmentAmount）と発行される請求書の明細が同じ関数を
+ * 通るようにしてある — 別々に読むと、片方だけ焼き込みを見落とす。
+ */
+export function billableUnitPrice(it: {
+  unitPrice: unknown;
+  orderLine?: { unitPrice: unknown } | null;
+}): number {
+  if (it.unitPrice != null) return Number(it.unitPrice);
+  return Number(it.orderLine?.unitPrice ?? 0);
+}
+
+/**
+ * 出荷書 1 件の請求金額 = Σ（明細数量 × **その行の**単価）。
  * 1 出荷書が単価の異なる複数の注文明細を束ねられるので、出荷書単位の
  * 単一単価では誤請求になる。
  */
@@ -179,8 +195,7 @@ export function shipmentAmount(s: BillableShipment): number {
   // 行ごとに円へ丸めてから足す（lib/money.ts の方針）— 締日処理が作る請求書の
   // 明細と同じ丸め方なので、締日画面の予定額と発行後の請求額がずれない。
   return s.items.reduce(
-    (sum, it) =>
-      sum + lineAmountYen(Number(it.orderLine?.unitPrice ?? 0), it.quantity),
+    (sum, it) => sum + lineAmountYen(billableUnitPrice(it), it.quantity),
     0,
   );
 }

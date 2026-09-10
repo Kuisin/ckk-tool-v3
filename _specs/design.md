@@ -881,7 +881,9 @@ Paper (withBorder, p="md", radius="md")
 | `wait` | gray | 権限が無いので待つだけ。タイトルは「承認依頼中」 |
 | `alert` | red | 差し戻しなど、対応が必要な状態 |
 
-搭載画面: 指示書 (`WorkOrderApprovalCard`) / 注文請書 / 素材発注書 / 購買依頼。
+搭載画面: 指示書 (`WorkOrderApprovalCard`) / 注文請書 / 素材発注書 / 購買依頼 /
+出荷書 (`DeliveryVarianceCard` — **過不足納品のときだけ出る**。数量ちょうどの
+出荷では何も描かない)。
 
 ### 10.10 EditablePanel
 

@@ -1190,6 +1190,14 @@
       "RESTORE": "利用停止の解除",
       "UPDATE_PLANTS": "所属拠点の変更",
       "UPDATE_ROLES": "ロール割当の変更"
+    },
+    "DELIVERY_BILLING_PRICE_MODE_LABEL": {
+      "ORIGINAL": "受注時の単価",
+      "PRICE_LIST": "実納品数で価格表を引き直す"
+    },
+    "DELIVERY_TOLERANCE_BASIS_LABEL": {
+      "PERCENT": "パーセント（%）",
+      "QUANTITY": "数量"
     }
   },
   "status": {
@@ -2439,7 +2447,8 @@
       "deliveryOrderAlreadyArranged": "この指示書の注文明細はすべて出荷手配済みです",
       "prepRoute": "準備工程リスト",
       "manufacturingRoute": "製造工程リスト",
-      "newerVersionExists": "最新 v{version} あり"
+      "newerVersionExists": "最新 v{version} あり",
+      "varianceAllowedBadge": "許可"
     },
     "addBranchModal": {
       "theBranchWasAdded": "分岐を追加しました",
@@ -2829,7 +2838,9 @@
       "routeCopiedToCustomer": "工程リスト「{name}」をこの受注元に複製しました（v1）",
       "routeModifiedNewVersion": "工程構成が「{name}」の選択バージョンから変更されています — 保存時に新バージョン v{version} として保存されます",
       "workPlanHelp": "工程ごとに担当者・計画日・作業場所を入れます。承認依頼には社内工程すべてに 日付 + 作業場所 付きの計画が必要です（時間帯は任意、作成後の計画パネルで）。",
-      "planNeedsWorkLocation": "作業場所を選んでください: {steps}"
+      "planNeedsWorkLocation": "作業場所を選んでください: {steps}",
+      "allowQuantityVariance": "不足 / 超過分も納品してよい",
+      "allowQuantityVarianceHelp": "このロットを受注数量ちょうどでなくても出荷できるようにする。どこまでずれてよいかと承認の要否は取引先マスタが決める。"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "割当 {allocated} / 受注 {ordered}",
@@ -5016,7 +5027,21 @@
       "enterFullName": "氏名を入力してください",
       "roleInfoRequired": "{role}の情報を入力してください",
       "selectASalesRep": "担当者を選択してください",
-      "billToOwnCompany": "—（自社）"
+      "billToOwnCompany": "—（自社）",
+      "deliveryTolerance": "過不足納品",
+      "deliveryToleranceHelp": "受注数量と違う数量で納品してよい範囲と、そのときの承認の要否。実際に過不足で出荷できるかは指示書側の許可も要る。",
+      "toleranceBasis": "許容の基準",
+      "toleranceUnder": "不足の許容",
+      "toleranceOver": "超過の許容",
+      "toleranceBlankIsZero": "空欄 = 認めない",
+      "toleranceNotAllowed": "認めない",
+      "tolerancePcs": "{value} 本",
+      "toleranceUnderPercentMax": "パーセント基準の不足の許容は 100 以下で入力してください",
+      "varianceApprovalWithin": "許容範囲内でも承認を要求する",
+      "varianceApprovalWithinHelp": "範囲に収まっている過不足でも、出荷書の確定前に承認を通す。",
+      "varianceApprovalOutside": "許容範囲外は承認を要求する",
+      "varianceApprovalOutsideHelp": "外すと範囲外の過不足も決裁なしで通る。範囲の設定が意味を持たなくなるので、通常は付けたままにする。",
+      "approvalNotRequired": "不要"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "不良種類を作成しました",
@@ -5999,7 +6024,9 @@
       "enterNumberForField": "条件 {no}: {label}の値を数値で入力してください",
       "selectValueForField": "条件 {no}: {label}の値を選択してください",
       "numberConditionSummary": "{label}が {value} {op}",
-      "selectConditionSummary": "{label}が「{value}」{op}"
+      "selectConditionSummary": "{label}が「{value}」{op}",
+      "deliveryTotalQuantity": "出荷数量の合計",
+      "fromPlant": "出荷元拠点"
     },
     "inspectionTemplateExcel": {
       "sheetName": "検査表"
@@ -7690,7 +7717,20 @@
       "shipTogetherBody": "同じ注文請書に、まだ出荷していない明細が {count} 件あります。この出荷書にまとめる明細を選んでください。",
       "unshippedWithLots": "未出荷 {quantity} / ロット {lots}",
       "justThisWorkOrder": "この指示書だけ",
-      "addSelectedLines": "選んだ明細を追加"
+      "addSelectedLines": "選んだ明細を追加",
+      "varianceTitle": "過不足",
+      "orderedQuantity": "受注数",
+      "deliveredQuantity": "納品数（累計）",
+      "varianceQuantity": "差",
+      "tolerance": "許容範囲",
+      "withinTolerance": "範囲内",
+      "outsideTolerance": "範囲外",
+      "varianceApproveHelp": "受注数量と違う数量の出荷です。内容を確認して承認または差し戻してください。",
+      "varianceWaitingHelp": "受注数量と違う数量の出荷のため、承認を待っています。",
+      "varianceRejected": "差し戻されました",
+      "varianceRejectedHelp": "内容を直してから、もう一度確定してください。",
+      "confirmNeedsApprovalBody": "出荷書 {number} は受注数量と違う数量の出荷です。確定の前に承認が要るため、承認依頼を出します。",
+      "approvalRequestedBody": "出荷書 {number} の承認を依頼しました。承認されたらもう一度確定してください。"
     },
     "pendingShipments": {
       "completedLots": "完了ロット",
@@ -7724,7 +7764,22 @@
       "completedQuantityLabel": "完成 {quantity}（完了指示書 {count} 件）",
       "exceedsRemainingLabel": "受注残 {remaining} を超えています（出荷 {total}）",
       "partialShipmentLabel": "一部出荷（出荷 {total} / 受注残 {remaining}）",
-      "couldNotAddWorkOrderLines": "指示書 #{workOrderNumber} の注文明細を読み込めませんでした（未確定・製品未特定の可能性があります）"
+      "couldNotAddWorkOrderLines": "指示書 #{workOrderNumber} の注文明細を読み込めませんでした（未確定・製品未特定の可能性があります）",
+      "varianceSectionTitle": "過不足納品",
+      "varianceSectionHelp": "受注数量と違う数量で納品するときの扱い。許容範囲と承認の要否は取引先マスタ、過不足を出してよいかは指示書が決める。",
+      "closesOrderLines": "この出荷で注文明細を締める",
+      "closesOrderLinesHelp": "不足したまま終わりにする宣言。付けないと残りは後から出荷する一部出荷として扱う。",
+      "billingPriceMode": "請求単価",
+      "billingPriceModeHelp": "受注時の単価をそのまま使うか、実際に納品した数で価格表を引き直すか。確定したときの値が納品書・請求書に凍結される。",
+      "cannotCloseShort": "不足のまま締められません",
+      "cannotCloseShortLine": "{number}（受注 {ordered} / 納品 {delivered}）",
+      "cannotCloseShortLabel": "指示書が過不足納品を許可していません",
+      "overDeliveryLabel": "超過納品（受注 {ordered} / 納品 {delivered}）",
+      "overDeliveryOutsideLabel": "超過納品・許容範囲外（受注 {ordered} / 納品 {delivered}）",
+      "shortDeliveryLabel": "不足納品（受注 {ordered} / 納品 {delivered}）",
+      "shortDeliveryOutsideLabel": "不足納品・許容範囲外（受注 {ordered} / 納品 {delivered}）",
+      "outOfToleranceLine": "{number}: 許容範囲外です（受注 {ordered} / 納品 {delivered}）",
+      "outOfToleranceNeedsApproval": "許容範囲を外れているため、確定のときに承認を求められることがあります。"
     },
     "deliveryNoteForm": {
       "editWithNumber": "納品書 編集 {noteId}"
@@ -7769,7 +7824,11 @@
       "updateFailed": "出荷書の更新に失敗しました",
       "autoCreatedNote": "出荷書の確定により自動作成（発行済）",
       "orderLineNotShippable": "注文明細 {number} は出荷できる状態ではありません（確定済みでキャンセルされていない明細のみ）",
-      "productMismatch": "明細 {line} 行目: 製品が注文明細 {number} の製品と一致しません"
+      "productMismatch": "明細 {line} 行目: 製品が注文明細 {number} の製品と一致しません",
+      "cannotCloseShortLine": "{number} は不足のまま締められません（受注 {ordered} / 納品 {delivered}）。指示書で過不足納品を許可してください",
+      "approvalRequestFailed": "承認依頼に失敗しました",
+      "notPendingApproval": "承認依頼中ではありません",
+      "awaitingApproval": "承認を待っています。承認されたら確定できます"
     }
   },
   "ui": {

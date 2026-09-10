@@ -1190,6 +1190,14 @@
       "RESTORE": "Restore",
       "UPDATE_PLANTS": "Change assigned sites",
       "UPDATE_ROLES": "Change role assignment"
+    },
+    "DELIVERY_BILLING_PRICE_MODE_LABEL": {
+      "ORIGINAL": "Order unit price",
+      "PRICE_LIST": "Re-resolve from price list"
+    },
+    "DELIVERY_TOLERANCE_BASIS_LABEL": {
+      "PERCENT": "Percent (%)",
+      "QUANTITY": "Quantity"
     }
   },
   "status": {
@@ -2439,7 +2447,8 @@
       "deliveryOrderAlreadyArranged": "Every order line of this work order is already arranged for shipping",
       "prepRoute": "Preparation step list",
       "manufacturingRoute": "Manufacturing step list",
-      "newerVersionExists": "Newer v{version} exists"
+      "newerVersionExists": "Newer v{version} exists",
+      "varianceAllowedBadge": "Allowed"
     },
     "addBranchModal": {
       "theBranchWasAdded": "The branch was added",
@@ -2829,7 +2838,9 @@
       "routeCopiedToCustomer": "Copied step list \"{name}\" to this customer (v1)",
       "routeModifiedNewVersion": "The steps differ from the selected version of \"{name}\" — they will be saved as new version v{version}",
       "workPlanHelp": "Assign a person, date and work location per step. Requesting approval requires every in-house step to have a plan with a date and work location (times are optional; add them later in the plan panel).",
-      "planNeedsWorkLocation": "Select a work location: {steps}"
+      "planNeedsWorkLocation": "Select a work location: {steps}",
+      "allowQuantityVariance": "Allow delivering short or excess quantity",
+      "allowQuantityVarianceHelp": "Lets this lot ship even when it does not match the ordered quantity. How far it may differ, and whether that needs approval, is set on the business partner."
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "Allocated {allocated} / Ordered {ordered}",
@@ -5016,7 +5027,21 @@
       "enterFullName": "Enter a full name",
       "roleInfoRequired": "Enter information for {role}",
       "selectASalesRep": "Select a sales rep",
-      "billToOwnCompany": "— (own company)"
+      "billToOwnCompany": "— (own company)",
+      "deliveryTolerance": "Delivery quantity variance",
+      "deliveryToleranceHelp": "How far the delivered quantity may differ from the ordered quantity, and whether that needs approval. Shipping with a variance also requires the work order to allow it.",
+      "toleranceBasis": "Tolerance basis",
+      "toleranceUnder": "Under-delivery tolerance",
+      "toleranceOver": "Over-delivery tolerance",
+      "toleranceBlankIsZero": "Blank means not allowed",
+      "toleranceNotAllowed": "Not allowed",
+      "tolerancePcs": "{value} pcs",
+      "toleranceUnderPercentMax": "With a percent basis, the under-delivery tolerance must be 100 or less",
+      "varianceApprovalWithin": "Require approval within tolerance",
+      "varianceApprovalWithinHelp": "Route the delivery order through approval before confirming, even when the variance is within tolerance.",
+      "varianceApprovalOutside": "Require approval outside tolerance",
+      "varianceApprovalOutsideHelp": "Unchecking lets a variance outside the tolerance through without any approval, which makes the tolerance meaningless. Normally leave it on.",
+      "approvalNotRequired": "Not required"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "The defect type was created",
@@ -5999,7 +6024,9 @@
       "enterNumberForField": "Condition {no}: enter a numeric value for {label}",
       "selectValueForField": "Condition {no}: select a value for {label}",
       "numberConditionSummary": "{label} {op} {value}",
-      "selectConditionSummary": "{label} {op} \"{value}\""
+      "selectConditionSummary": "{label} {op} \"{value}\"",
+      "deliveryTotalQuantity": "Total shipped quantity",
+      "fromPlant": "From site"
     },
     "inspectionTemplateExcel": {
       "sheetName": "Inspection sheet"
@@ -7690,7 +7717,20 @@
       "shipTogetherBody": "The same order acceptance has {count} line(s) not yet shipped. Choose which ones to put on this delivery order.",
       "unshippedWithLots": "Unshipped {quantity} / lots {lots}",
       "justThisWorkOrder": "Just this work order",
-      "addSelectedLines": "Add selected lines"
+      "addSelectedLines": "Add selected lines",
+      "varianceTitle": "Quantity variance",
+      "orderedQuantity": "Ordered",
+      "deliveredQuantity": "Delivered (total)",
+      "varianceQuantity": "Variance",
+      "tolerance": "Tolerance",
+      "withinTolerance": "Within",
+      "outsideTolerance": "Outside",
+      "varianceApproveHelp": "This shipment differs from the ordered quantity. Review it and either approve or send it back.",
+      "varianceWaitingHelp": "Waiting for approval because the shipment differs from the ordered quantity.",
+      "varianceRejected": "Sent back",
+      "varianceRejectedHelp": "Fix the contents and confirm it again.",
+      "confirmNeedsApprovalBody": "Delivery order {number} differs from the ordered quantity, so it needs approval before it can be confirmed. This sends an approval request.",
+      "approvalRequestedBody": "Requested approval for delivery order {number}. Confirm it again once it is approved."
     },
     "pendingShipments": {
       "completedLots": "Completed lots",
@@ -7724,7 +7764,22 @@
       "completedQuantityLabel": "Completed {quantity} (from {count} completed work orders)",
       "exceedsRemainingLabel": "Exceeds the remaining order of {remaining} (shipping {total})",
       "partialShipmentLabel": "Partial shipment (shipping {total} / remaining {remaining})",
-      "couldNotAddWorkOrderLines": "Could not load the order lines of work order #{workOrderNumber} (they may be unconfirmed or have no product)"
+      "couldNotAddWorkOrderLines": "Could not load the order lines of work order #{workOrderNumber} (they may be unconfirmed or have no product)",
+      "varianceSectionTitle": "Delivery quantity variance",
+      "varianceSectionHelp": "How to handle a shipment that differs from the ordered quantity. The tolerance and approval rules come from the business partner; whether a variance is allowed at all comes from the work order.",
+      "closesOrderLines": "Close the order lines with this shipment",
+      "closesOrderLinesHelp": "Declares that a shortage is final. Without it, the remainder is treated as a partial shipment to be sent later.",
+      "billingPriceMode": "Billing unit price",
+      "billingPriceModeHelp": "Use the unit price agreed at order time, or re-resolve it from the price list using the quantity actually delivered. The value is frozen into the delivery note and invoice when the delivery order is confirmed.",
+      "cannotCloseShort": "Cannot close short",
+      "cannotCloseShortLine": "{number} (ordered {ordered} / delivered {delivered})",
+      "cannotCloseShortLabel": "The work order does not allow a quantity variance",
+      "overDeliveryLabel": "Over-delivery (ordered {ordered} / delivered {delivered})",
+      "overDeliveryOutsideLabel": "Over-delivery outside tolerance (ordered {ordered} / delivered {delivered})",
+      "shortDeliveryLabel": "Short delivery (ordered {ordered} / delivered {delivered})",
+      "shortDeliveryOutsideLabel": "Short delivery outside tolerance (ordered {ordered} / delivered {delivered})",
+      "outOfToleranceLine": "{number}: outside the tolerance (ordered {ordered} / delivered {delivered})",
+      "outOfToleranceNeedsApproval": "Because it is outside the tolerance, approval may be required when you confirm the delivery order."
     },
     "deliveryNoteForm": {
       "editWithNumber": "Edit delivery note {noteId}"
@@ -7769,7 +7824,11 @@
       "updateFailed": "Could not update the delivery order",
       "autoCreatedNote": "Auto-created (issued) when the delivery order was confirmed",
       "orderLineNotShippable": "Order line {number} cannot be shipped (only confirmed, non-cancelled lines)",
-      "productMismatch": "Line {line}: the product does not match order line {number}"
+      "productMismatch": "Line {line}: the product does not match order line {number}",
+      "cannotCloseShortLine": "{number} cannot be closed short (ordered {ordered} / delivered {delivered}). Allow a quantity variance on the work order first",
+      "approvalRequestFailed": "Could not request approval",
+      "notPendingApproval": "It is not pending approval",
+      "awaitingApproval": "Waiting for approval. You can confirm it once it is approved"
     }
   },
   "ui": {
