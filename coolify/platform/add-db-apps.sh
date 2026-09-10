@@ -17,7 +17,8 @@
 #   push のたびに DB コンテナが作り直されるのは事故のもと。イメージを更新したい
 #   ときだけ ./deploy.sh ckk-db-dev のように明示的に流す。
 #
-# ■ migrator は自動デプロイする（watch_paths = shared-db/**）
+# ■ migrator は自動デプロイする
+#   watch_paths = shared-db/** + coolify/apps/db-migrate/**（migrator 自身）
 #   dev / main へマージ → Coolify が再ビルド → コンテナ起動時に
 #   `prisma migrate deploy` → grants.sql → kiosk-cron.sql → analytics-views.sql。
 #   どれか失敗するとコンテナは healthy にならず、デプロイが失敗として残る。
@@ -179,16 +180,28 @@ create_app ckk-db-main main production \
 set_envs "$APP_UUID" ckk-db-main "$(db_envs MAIN)"
 add_volume "$APP_UUID" ckk-db-main
 
-# ── migrator apps (auto-deploy on shared-db/** changes) ──────────────────────
+# ── migrator apps (auto-deploy) ──────────────────────────────────────────────
 # build context はリポジトリルート（shared-db/ を COPY するため）。
+#
+# ★ watch_paths には **migrator 自身のソース**も入れること。
+#   `shared-db/**` だけだと、entrypoint.sh や Dockerfile を直しても再デプロイ
+#   されず、直したはずの挙動がいつまでも反映されない（2026-09-10 に踏んだ:
+#   失敗したマイグレーションの復旧処理を足したのに、migrator が古いままだった）。
+#
+# ★ 区切りは**本物の改行**（`$'...\n...'`）。文字としての `\n` を書くと
+#   Coolify は値全体を 1 つのパターンとして扱い、**何にも一致しなくなる**
+#   ——つまり push しても一生デプロイされない。書いたあと必ず
+#   `jq '.watch_paths | split("\n") | length'` で 2 になることを確かめる。
+MIGRATE_WATCH=$'shared-db/**\ncoolify/apps/db-migrate/**'
+
 create_app db-migrate-dev dev development \
-  "/" "/coolify/apps/db-migrate/Dockerfile" "0" "shared-db/**" \
+  "/" "/coolify/apps/db-migrate/Dockerfile" "0" "$MIGRATE_WATCH" \
   "" "Applies DB migrations to ckk-db-dev on every push" true
 set_envs "$APP_UUID" db-migrate-dev \
   "[{\"key\": \"DATABASE_URL\", \"value\": \"postgresql://postgres:$(pw DEV POSTGRES)@ckk-db-dev:5432/ckk\"}]"
 
 create_app db-migrate-main main production \
-  "/" "/coolify/apps/db-migrate/Dockerfile" "0" "shared-db/**" \
+  "/" "/coolify/apps/db-migrate/Dockerfile" "0" "$MIGRATE_WATCH" \
   "" "Applies DB migrations to ckk-db-main on every push" true
 set_envs "$APP_UUID" db-migrate-main \
   "[{\"key\": \"DATABASE_URL\", \"value\": \"postgresql://postgres:$(pw MAIN POSTGRES)@ckk-db-main:5432/ckk\"}]"
