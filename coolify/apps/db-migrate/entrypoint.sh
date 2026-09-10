@@ -2,6 +2,7 @@
 # Apply the database migrations, then idle.
 #
 # Order matters:
+#   0. 失敗して止まった 1 本の復旧 — Prisma は失敗が 1 本あると先へ進まない
 #   1. prisma migrate deploy  — schema baseline + one-shot seed migrations
 #   2. grants.sql             — every deploy: new tables need privileges, and
 #                               the `app` role 500s on anything it can't read
@@ -32,6 +33,40 @@ until pg_isready -d "$DATABASE_URL" >/dev/null 2>&1; do
     exit 1
   fi
   sleep 2
+done
+
+# ── 失敗して止まったマイグレーションの復旧 ────────────────────────────────
+#
+# Prisma は**失敗した 1 本がある間、その先を一切流さない**（P3009）。
+# このリポジトリには手で当てる経路が無い（DB を更新するのはデプロイだけ）ので、
+# 復旧もここでやらないと成立しない。放っておくと、直したものを merge しても
+# 永久に当たらず、`shared-db/**` を触る全員のデプロイが止まったままになる。
+# CLAUDE.md の「直して merge し直す」を実際に成り立たせるための段。
+#
+# ■ 自動で戻してよい理由（Postgres だから成り立つ）
+# Postgres は DDL がトランザクショナルで、Prisma はマイグレーション 1 本を
+# 1 トランザクションで流す。つまり失敗した 1 本は**丸ごと巻き戻っていて、
+# DB はそれを流す前と同じ**。ロールバック済みと記録して流し直すのが正しい。
+#
+# ■ 自動で戻さない場合
+# `CONCURRENTLY` はトランザクション内で実行できないので、失敗すると途中結果
+# （無効な索引）が残りうる。それを含む 1 本は**人が見るべき状態**なので、
+# ここでは倒さずに落とす。
+#
+# 直っていなければ次も同じ場所で落ちるだけで、状態は悪化しない。
+echo "==> 失敗して止まったマイグレーションが無いか確認"
+FAILED=$(psql "$DATABASE_URL" -At -c "SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NULL AND rolled_back_at IS NULL ORDER BY started_at" 2>/dev/null || true)
+
+for name in $FAILED; do
+  file="prisma/migrations/$name/migration.sql"
+  if [ -f "$file" ] && grep -qi "CONCURRENTLY" "$file"; then
+    echo "!! $name は CONCURRENTLY を含むため自動では戻しません。" >&2
+    echo "!! トランザクション外で実行され、途中結果が残っている可能性があります。" >&2
+    echo "!! 中身を確認してから resolve してください。" >&2
+    exit 1
+  fi
+  echo "==> $name は失敗して止まっています。ロールバック済みにして流し直します"
+  pnpm exec prisma migrate resolve --rolled-back "$name"
 done
 
 echo "==> prisma migrate deploy"
