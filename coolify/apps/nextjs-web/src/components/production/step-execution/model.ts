@@ -8,6 +8,7 @@
  */
 
 import type { InspectionItemSpec } from "@/lib/inspection-core";
+import type { PlanField } from "@/lib/work-plan-core";
 import type { WorkOrderFinalInspectionView } from "../work-orders/model";
 
 export interface SelectOption {
@@ -188,8 +189,8 @@ export interface StepExecutionData {
   /** 作業場所の選択肢（計画フォーム用 —「グループ / 場所」ラベル）。 */
   workLocationOptions: SelectOption[];
   /**
-   * この工程の作業計画に作業場所が要るか（工程マスタ work_location_required ×
-   * 社内工程）。外注工程と「要らない」工程は false。
+   * この工程の作業計画で必須の項目（工程マスタの印 × 社内工程）。担当者と計画日は
+   * 常に必須なのでここには入らない。承認依頼のゲートと同じ関数で決めた写し。
    */
-  workLocationRequired: boolean;
+  requiredPlanFields: PlanField[];
 }

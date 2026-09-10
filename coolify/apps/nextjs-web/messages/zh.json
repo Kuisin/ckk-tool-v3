@@ -2499,7 +2499,13 @@
       "stockStorageNote": "（库存保管）",
       "workOrderSubject": "工单 #{number}",
       "plansMissingForSteps": "作业计划不完整：{steps}",
-      "stepMissingLocation": "{name}（无作业场所）"
+      "stepMissingLocation": "{name}（无作业场所）",
+      "stepMissingFields": "{name}（缺少 {fields}）",
+      "planField": {
+        "WORK_LOCATION": "作业场所",
+        "TIME": "时间",
+        "QUANTITY": "数量"
+      }
     },
     "defectRecordForm": {
       "enterTheDefectTypeAndDetails": "请输入各行的不良类别和内容",
@@ -2619,7 +2625,11 @@
       "recordsTheWorkDonePerAssignee": "按负责人・日期记录已实施的作业（仅进行中可添加）。来自共用终端的实绩将填入该终端的默认作业场所。",
       "workActuals": "作业实绩",
       "workLocation": "作业场所",
-      "selectAWorkLocation": "请选择作业场所"
+      "selectAWorkLocation": "请选择作业场所",
+      "start": "开始",
+      "end": "结束",
+      "enterStartAndEnd": "请输入开始与结束时间",
+      "enterQuantity": "请输入数量"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "数量与不良",
@@ -2840,7 +2850,9 @@
       "workPlanHelp": "为每道工序填写负责人、计划日与作业场所。申请审批时，所有厂内工序都需要带日期 + 作业场所的计划（时间段可选，可在创建后的计划面板中补充）。",
       "planNeedsWorkLocation": "请选择作业场所：{steps}",
       "allowQuantityVariance": "允许交付不足或超出的数量",
-      "allowQuantityVarianceHelp": "允许该批次即使与订货数量不一致也能出货。可偏离的范围与是否需要审批由业务伙伴主数据决定。"
+      "allowQuantityVarianceHelp": "允许该批次即使与订货数量不一致也能出货。可偏离的范围与是否需要审批由业务伙伴主数据决定。",
+      "workLocationRequiredPlaceholder": "作业场所（必填）",
+      "timeQuantityInPanelLater": "本工序的计划还需要时间・数量 — 创建后请在工序的计划面板中填写"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "分配 {allocated} / 订购 {ordered}",
@@ -2990,7 +3002,9 @@
       "requestedAfterExpected": "预计到货日需在委托日当天或之后",
       "requestedAfterReceived": "到货日需在委托日当天或之后",
       "workLocationRequiredForPlan": "作业计划需要作业场所",
-      "planLockedByWorkOrderStatus": "审批中、已完成或已取消的工单无法修改作业计划"
+      "planLockedByWorkOrderStatus": "审批中、已完成或已取消的工单无法修改作业计划",
+      "timeRequiredForPlan": "本工序的作业计划需要开始・结束时间",
+      "quantityRequiredForPlan": "本工序的作业计划需要数量"
     },
     "workOrderActions": {
       "acknowledgeFailed": "确认记录失败",
@@ -5381,7 +5395,14 @@
       "theFinalInspectionChecklistIsRecorded": "在该工序的执行画面记录最终检查与出货前确认（3 项确认、备用库存、包装 → 发行送货单 → 出货批准）。每张工单一条记录；工序清单中没有带此标记工序的工单即没有最终检查。",
       "approvalStepsHaveNoQuantity": "检查审批工序不带数量（数量管理设为「无」）。它是查看前道工序的检查表并审批的工序，而不是加工工序。",
       "workLocationRequired": "作业计划需要作业场所",
-      "workLocationRequiredHelp": "申请审批前，要求本工序的作业计划填写作业场所。对仅移动库存等场所无意义的工序请关闭。可使用的场所范围在下方「允许的作业场所」中设置。"
+      "workLocationRequiredHelp": "申请审批前，要求本工序的作业计划填写作业场所。对仅移动库存等场所无意义的工序请关闭。可使用的场所范围在下方「允许的作业场所」中设置。",
+      "planRequiredFields": "作业计划必填项",
+      "planRequiredFieldsHelp": "申请审批前，本工序的作业计划必须包含哪些内容。负责人与计划日始终必填。",
+      "planTimeRequired": "作业计划需要开始・结束时间",
+      "planTimeRequiredHelp": "需在审批前确定时间段的工序请开启。",
+      "planQuantityRequired": "作业计划需要数量",
+      "planQuantityRequiredHelp": "按数量拆分计划的工序（如每人多少支）请开启。",
+      "planTime": "开始・结束时间"
     },
     "products": {
       "specification": "规格",

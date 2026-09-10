@@ -1288,8 +1288,23 @@ export async function requestApproval(
         id: true,
         executionLocation: true,
         status: true,
-        processStep: { select: { name: true, workLocationRequired: true } },
-        plans: { select: { plannedDate: true, workLocationId: true } },
+        processStep: {
+          select: {
+            name: true,
+            workLocationRequired: true,
+            planTimeRequired: true,
+            planQuantityRequired: true,
+          },
+        },
+        plans: {
+          select: {
+            plannedDate: true,
+            workLocationId: true,
+            plannedStartAt: true,
+            plannedEndAt: true,
+            quantity: true,
+          },
+        },
       },
     });
     const readiness = planReadiness(
@@ -1299,6 +1314,8 @@ export async function requestApproval(
         executionLocation: st.executionLocation,
         status: st.status,
         workLocationRequired: st.processStep.workLocationRequired,
+        planTimeRequired: st.processStep.planTimeRequired,
+        planQuantityRequired: st.processStep.planQuantityRequired,
         plans: st.plans,
       })),
       { workLocationsConfigured: await workLocationsConfigured() },
