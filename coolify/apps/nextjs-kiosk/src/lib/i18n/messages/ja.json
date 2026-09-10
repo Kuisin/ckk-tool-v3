@@ -329,6 +329,13 @@
       "noItems": "記入された項目がありません",
       "checkThenApprove": "中身を確かめてから承認してください"
     },
+    "working": {
+      "count": "作業中 {n} 件",
+      "title": "作業中の工程",
+      "concurrentNote": "{n} 件同時のため、実働時間は 1/{n} で計上されます",
+      "open": "開く",
+      "close": "閉じる"
+    },
     "batch": {
       "select": "選択",
       "cancelSelect": "選択をやめる",

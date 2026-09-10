@@ -329,6 +329,13 @@
       "noItems": "没有已填写的项目",
       "checkThenApprove": "请确认内容后再批准"
     },
+    "working": {
+      "count": "进行中 {n} 件",
+      "title": "进行中的工序",
+      "concurrentNote": "同时 {n} 件，实际工时按 1/{n} 计入",
+      "open": "打开",
+      "close": "关闭"
+    },
     "batch": {
       "select": "选择",
       "cancelSelect": "取消选择",
