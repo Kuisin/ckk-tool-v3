@@ -9708,6 +9708,7 @@
     "shownOnce": "This value will not be shown again. Copy it now.",
     "tooManyActiveTokens": "At most two tokens can be active. Revoke one first.",
     "clientNotFound": "That client was not found",
-    "featureDisabled": "The external API is disabled in this environment"
+    "featureDisabled": "The external API is disabled in this environment",
+    "invalidNameChars": "The name contains characters that are not allowed"
   }
 }

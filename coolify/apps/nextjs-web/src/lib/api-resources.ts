@@ -6,6 +6,13 @@
  *
  * `api-resources.test.ts` が **実ファイル（src/app/api/v1/**）との一致**を
  * 機械で確かめる — 口を足して登録簿に書き忘れる、あるいはその逆を止める。
+ *
+ * ■ `summary` / `scope` は**英語で固定**（`// i18n-ignore`）
+ * ここは OpenAPI 文書に出る機械向けの説明で、UI 文言ではない
+ * （`_specs/i18n-glossary.md` §1 の対象外 — 誤り本文と同じ扱い）。
+ * 括弧の中に日本語の業務語を併記しているのは、連携先の担当者が
+ * `order-acceptances` と 注文請書 を対応づけられるようにするため。
+ * 閲覧者によって変わってはいけないので、翻訳の対象にはしない。
  */
 
 /** 一覧の口 1 つ。 */
@@ -31,7 +38,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "doc",
     summary:
-      "Order acceptances (注文請書). Totals are derived from the lines, not stored.",
+      "Order acceptances (注文請書). Totals are derived from the lines, not stored.", // i18n-ignore
     scope: "Creator (OWN) when the grant is scoped.",
   },
   {
@@ -40,7 +47,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Order lines (注文明細). The execution unit; created via the acceptance.",
+      "Order lines (注文明細). The execution unit; created via the acceptance.", // i18n-ignore
     scope: "Inherited from the parent acceptance's creator.",
   },
   {
@@ -48,7 +55,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     permission: "work_order",
     orderField: "updatedAt",
     tiebreak: "id",
-    summary: "Work orders (指示書). Pass ?steps=1 to embed the process steps.",
+    summary: "Work orders (指示書). Pass ?steps=1 to embed the process steps.", // i18n-ignore
     scope: "Plant of any step, or creator.",
   },
   {
@@ -57,7 +64,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "doc",
     summary:
-      "Quotes (見積書). EXPIRED is not stored — derive it from status ISSUED plus validUntil.",
+      "Quotes (見積書). EXPIRED is not stored — derive it from status ISSUED plus validUntil.", // i18n-ignore
     scope: "Creator (OWN) only; quotes have no path to a plant.",
   },
   {
@@ -66,7 +73,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "doc",
     summary:
-      "Delivery orders (出荷書) with their items. The only resource that is ever hard-deleted — poll /deletions too.",
+      "Delivery orders (出荷書) with their items. The only resource that is ever hard-deleted — poll /deletions too.", // i18n-ignore
     scope: "Shipping plant, or creator.",
   },
   {
@@ -74,7 +81,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     permission: "delivery_note",
     orderField: "updatedAt",
     tiebreak: "doc",
-    summary: "Delivery notes (納品書) with their items.",
+    summary: "Delivery notes (納品書) with their items.", // i18n-ignore
     scope: "Plant of the parent delivery order, or creator.",
   },
   {
@@ -83,7 +90,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "doc",
     summary:
-      "Invoices (請求書). taxType and taxRate are a snapshot taken at issue time.",
+      "Invoices (請求書). taxType and taxRate are a snapshot taken at issue time.", // i18n-ignore
     scope: "Creator (OWN) only.",
   },
   {
@@ -91,7 +98,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     permission: "billing_closing",
     orderField: "updatedAt",
     tiebreak: "id",
-    summary: "Billing closings (締日処理).",
+    summary: "Billing closings (締日処理).", // i18n-ignore
     scope: "Unscoped.",
   },
   {
@@ -100,7 +107,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Business partners (取引先) with their active roles. One legal entity may hold several roles.",
+      "Business partners (取引先) with their active roles. One legal entity may hold several roles.", // i18n-ignore
     scope: "Unscoped (master data).",
   },
   {
@@ -108,7 +115,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     permission: "master",
     orderField: "updatedAt",
     tiebreak: "id",
-    summary: "Products (製品).",
+    summary: "Products (製品).", // i18n-ignore
     scope: "Unscoped (master data).",
   },
   {
@@ -117,7 +124,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Materials (素材). `code` is the identifier printed on supplier documents.",
+      "Materials (素材). `code` is the identifier printed on supplier documents.", // i18n-ignore
     scope: "Unscoped (master data).",
   },
   {
@@ -125,7 +132,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     permission: "master",
     orderField: "updatedAt",
     tiebreak: "id",
-    summary: "Material types (材種).",
+    summary: "Material types (材種).", // i18n-ignore
     scope: "Unscoped (master data).",
   },
   {
@@ -133,7 +140,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     permission: "master",
     orderField: "updatedAt",
     tiebreak: "id",
-    summary: "Sites (拠点).",
+    summary: "Sites (拠点).", // i18n-ignore
     scope: "Unscoped (master data).",
   },
   {
@@ -141,7 +148,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     permission: "master",
     orderField: "updatedAt",
     tiebreak: "id",
-    summary: "Storage locations (保管場所) with their shelves.",
+    summary: "Storage locations (保管場所) with their shelves.", // i18n-ignore
     scope: "Unscoped (master data).",
   },
   {

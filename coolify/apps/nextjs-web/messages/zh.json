@@ -9708,6 +9708,7 @@
     "shownOnce": "此值不会再次显示，请立即保存。",
     "tooManyActiveTokens": "最多只能有两个有效令牌，请先撤销其中一个。",
     "clientNotFound": "未找到该客户端",
-    "featureDisabled": "此环境中外部 API 已停用"
+    "featureDisabled": "此环境中外部 API 已停用",
+    "invalidNameChars": "名称包含不允许使用的字符"
   }
 }
