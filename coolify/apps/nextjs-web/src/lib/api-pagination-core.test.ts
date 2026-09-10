@@ -26,6 +26,24 @@ describe("カーソルの往復", () => {
     expect(decodeCursor(encodeCursor(c))).toEqual(c);
   });
 
+  // ★ int の主キーを String に丸めると Prisma が
+  //   `Argument \`gt\`: Expected Int, provided String` で 500 になる。
+  it("決着キーの型を保つ（数値は数値のまま往復する）", () => {
+    const c: Cursor = { kind: "id", t: T, id: 42 };
+    const back = decodeCursor(encodeCursor(c));
+    expect(back).toEqual(c);
+    expect(typeof (back as { id: unknown }).id).toBe("number");
+  });
+
+  it("数値の決着キーはそのまま where に載る", () => {
+    expect(cursorWhere({ kind: "id", t: T, id: 42 })).toEqual({
+      OR: [
+        { updatedAt: { gt: new Date(T) } },
+        { updatedAt: new Date(T), id: { gt: 42 } },
+      ],
+    });
+  });
+
   it("不透明（URL に中身が透けない）", () => {
     expect(encodeCursor({ kind: "id", t: T, id: "abc" })).not.toContain("abc");
   });

@@ -32,7 +32,13 @@ export interface IdCursor {
   kind: "id";
   /** 順序キーの値（ISO 8601）。 */
   t: string;
-  id: string;
+  /**
+   * 決着キー。**型をそのまま保つ**（uuid は string、連番 PK は number）。
+   * ここで `String(id)` に丸めると、int の主キーを持つ表で Prisma が
+   * `Argument \`gt\`: Expected Int, provided String` で落ちる。
+   * JSON は両方の型を往復できるので、丸める理由が無い。
+   */
+  id: string | number;
 }
 
 /** 書類（複合 PK）のカーソル位置。 */
@@ -57,7 +63,8 @@ export function decodeCursor(raw: string | null | undefined): Cursor | null {
     const o = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
     if (!o || typeof o !== "object") return null;
     if (o.kind === "id") {
-      return typeof o.t === "string" && typeof o.id === "string"
+      const idOk = typeof o.id === "string" || typeof o.id === "number";
+      return typeof o.t === "string" && idOk
         ? { kind: "id", t: o.t, id: o.id }
         : null;
     }

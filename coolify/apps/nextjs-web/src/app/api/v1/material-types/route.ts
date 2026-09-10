@@ -56,7 +56,7 @@ export async function GET(request: Request): Promise<Response> {
     tiebreak: "id",
     toCursor: (r) => ({
       kind: "id",
-      id: String(r.id),
+      id: r.id,
       t: r.updatedAt.toISOString(),
     }),
     toDto: (r) => ({
