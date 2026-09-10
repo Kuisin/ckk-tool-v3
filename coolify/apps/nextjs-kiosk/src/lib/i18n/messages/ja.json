@@ -361,6 +361,23 @@
       "close": "閉じる",
       "run": "実行",
       "cancel": "キャンセル"
+    },
+    "group": {
+      "openGroup": "まとめて開く",
+      "groupCount": "{name} — {n} 件",
+      "title": "{name}（{n} 件）",
+      "back": "工程一覧へ",
+      "sectionStartable": "開始できる工程",
+      "sectionWorking": "作業中・一時停止中の工程",
+      "sectionOther": "いま操作できない工程",
+      "lotLabel": "ロット/伝票コード",
+      "lotRequired": "ロット/伝票コードを入力してください",
+      "startSelected": "選択した {n} 件を開始",
+      "completeSelected": "選択した {n} 件を完了",
+      "allGoodNote": "全数を良品として完了します。不良がある工程は「開く」から個別に入力してください。",
+      "openOne": "開く",
+      "empty": "この工程はまとめられる状態ではありません",
+      "notFound": "この工程は見つかりませんでした"
     }
   },
   "deviceError": {

@@ -361,6 +361,23 @@
       "close": "关闭",
       "run": "执行",
       "cancel": "取消"
+    },
+    "group": {
+      "openGroup": "一起打开",
+      "groupCount": "{name} — {n} 件",
+      "title": "{name}（{n} 件）",
+      "back": "返回工序列表",
+      "sectionStartable": "可开始的工序",
+      "sectionWorking": "进行中 / 已暂停",
+      "sectionOther": "当前无法操作",
+      "lotLabel": "批次/单据编号",
+      "lotRequired": "请输入批次/单据编号",
+      "startSelected": "开始所选 {n} 件",
+      "completeSelected": "完成所选 {n} 件",
+      "allGoodNote": "全数按良品完成。有不良的工序请通过「打开」单独录入。",
+      "openOne": "打开",
+      "empty": "该工序目前没有可归并的对象",
+      "notFound": "未找到该工序"
     }
   },
   "deviceError": {

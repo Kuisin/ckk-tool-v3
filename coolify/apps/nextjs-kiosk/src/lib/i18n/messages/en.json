@@ -361,6 +361,23 @@
       "close": "Close",
       "run": "Run",
       "cancel": "Cancel"
+    },
+    "group": {
+      "openGroup": "Open together",
+      "groupCount": "{name} — {n}",
+      "title": "{name} ({n})",
+      "back": "Back to steps",
+      "sectionStartable": "Steps that can start",
+      "sectionWorking": "In progress / paused",
+      "sectionOther": "Not available right now",
+      "lotLabel": "Lot / slip code",
+      "lotRequired": "Enter the lot / slip code",
+      "startSelected": "Start {n} selected",
+      "completeSelected": "Complete {n} selected",
+      "allGoodNote": "Completes with every piece as good. Use “Open” to record defects on a step.",
+      "openOne": "Open",
+      "empty": "Nothing in this step can be grouped right now",
+      "notFound": "That step was not found"
     }
   },
   "deviceError": {
