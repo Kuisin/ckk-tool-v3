@@ -1277,7 +1277,7 @@ export async function requestApproval(
         id: true,
         executionLocation: true,
         status: true,
-        processStep: { select: { name: true } },
+        processStep: { select: { name: true, workLocationRequired: true } },
         plans: { select: { plannedDate: true, workLocationId: true } },
       },
     });
@@ -1287,6 +1287,7 @@ export async function requestApproval(
         name: localized(st.processStep.name as LocalizedText | null),
         executionLocation: st.executionLocation,
         status: st.status,
+        workLocationRequired: st.processStep.workLocationRequired,
         plans: st.plans,
       })),
       { workLocationsConfigured: await workLocationsConfigured() },

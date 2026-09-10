@@ -1095,9 +1095,11 @@ export function WorkflowBuilder({
     if (mode === "create" && workLocationOptions.length > 0) {
       const missing = currentSnapshots.filter((s) => {
         const plan = stepPlans[s.processStepId];
+        const cat = catalogSteps.find((c) => c.id === s.processStepId);
         return (
           (plan?.userIds.length ?? 0) > 0 &&
           !plan?.workLocationId &&
+          cat?.workLocationRequired !== false &&
           (locations[s.processStepId]?.executionLocation ?? "INTERNAL") ===
             "INTERNAL"
         );

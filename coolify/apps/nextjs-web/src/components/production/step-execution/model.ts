@@ -187,4 +187,9 @@ export interface StepExecutionData {
   actuals: StepActualView[];
   /** 作業場所の選択肢（計画フォーム用 —「グループ / 場所」ラベル）。 */
   workLocationOptions: SelectOption[];
+  /**
+   * この工程の作業計画に作業場所が要るか（工程マスタ work_location_required ×
+   * 社内工程）。外注工程と「要らない」工程は false。
+   */
+  workLocationRequired: boolean;
 }

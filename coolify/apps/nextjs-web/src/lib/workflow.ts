@@ -42,6 +42,7 @@ export async function loadCatalog(): Promise<WorkflowCatalog> {
       lotInputMode: s.lotInputMode,
       defaultWorkHours:
         s.defaultWorkHours == null ? null : Number(s.defaultWorkHours),
+      workLocationRequired: s.workLocationRequired,
       sortOrder: s.sortOrder,
     })),
     useDeps: useDeps.map((d) => ({

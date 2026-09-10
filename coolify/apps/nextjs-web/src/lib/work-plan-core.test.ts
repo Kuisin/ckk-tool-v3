@@ -77,6 +77,25 @@ describe("planReadiness", () => {
     expect(r.gaps.map((g) => g.stepId)).toEqual(["b"]);
   });
 
+  it("工程マスタで作業場所を「要らない」にした工程は日付だけで足りる", () => {
+    const r = planReadiness(
+      [
+        step({
+          stepId: "issue",
+          workLocationRequired: false,
+          plans: [{ plannedDate: "2026-10-01", workLocationId: null }],
+        }),
+        step({
+          stepId: "cut",
+          workLocationRequired: true,
+          plans: [{ plannedDate: "2026-10-01", workLocationId: null }],
+        }),
+      ],
+      { workLocationsConfigured: true },
+    );
+    expect(r.gaps.map((g) => g.stepId)).toEqual(["cut"]);
+  });
+
   it("gaps は渡した工程順", () => {
     const r = planReadiness([step({ stepId: "z" }), step({ stepId: "a" })], {
       workLocationsConfigured: true,

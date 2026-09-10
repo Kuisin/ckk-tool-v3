@@ -708,6 +708,7 @@ export async function fetchWorkOrder(
         name: localized(s.processStep.name as LocalizedText | null),
         executionLocation: s.executionLocation,
         status: s.status,
+        workLocationRequired: s.processStep.workLocationRequired,
         plans: s.plans,
       })),
       { workLocationsConfigured: locationsConfigured },
@@ -997,6 +998,7 @@ export async function fetchStepExecution(
     allOptions,
     allowedLocationIds,
     inspectionTemplateOptions,
+    stepCatalog,
   ] = await Promise.all([
     fetchWorkflowCtx(wo.id),
     getCurrentActorId(),
@@ -1007,6 +1009,11 @@ export async function fetchStepExecution(
     fetchWorkLocationOptions(),
     fetchAllowedWorkLocationIds(step.processStepId),
     fetchInspectionTemplateOptions(),
+    // 作業計画に作業場所が要るか（工程マスタの印 — 計画フォームの必須表示）
+    prisma.processStepCatalog.findUnique({
+      where: { id: step.processStepId },
+      select: { workLocationRequired: true },
+    }),
   ]);
   // 検査表割当の選択肢: 有効な検査表テンプレート全件（WorkflowBuilder の
   // templateSelectData と同じ方針 — 関連工程はテンプレート側の任意設定
@@ -1274,6 +1281,9 @@ export async function fetchStepExecution(
     plans,
     actuals,
     workLocationOptions,
+    workLocationRequired:
+      step.executionLocation === "INTERNAL" &&
+      (stepCatalog?.workLocationRequired ?? true),
   };
 }
 

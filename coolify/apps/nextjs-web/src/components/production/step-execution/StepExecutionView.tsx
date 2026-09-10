@@ -646,6 +646,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         stepId={step.id}
         stepStatus={step.status}
         workLocationOptions={data.workLocationOptions}
+        workLocationRequired={data.workLocationRequired}
         workOrderNumber={workOrderNumber}
       />
 

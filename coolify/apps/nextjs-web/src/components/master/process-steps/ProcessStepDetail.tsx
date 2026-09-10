@@ -61,6 +61,7 @@ export interface ProcessStepDetailData {
   isInspection: boolean;
   isApprovalStep: boolean;
   isFinalInspection: boolean;
+  workLocationRequired: boolean;
   approvalMinRank: string | null;
   quantityTracking: string;
   lotInputMode: string;
@@ -283,6 +284,14 @@ export function ProcessStepDetail({
           value={
             lotInputModeLabel(record.lotInputMode, locale) ??
             record.lotInputMode
+          }
+        />
+        <FieldValue
+          label={tr("master.processSteps.workLocationRequired")}
+          value={
+            record.workLocationRequired
+              ? tr("common.required")
+              : tr("common.optional")
           }
         />
         <FieldValue

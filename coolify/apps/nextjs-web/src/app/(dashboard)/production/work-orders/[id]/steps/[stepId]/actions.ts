@@ -1274,6 +1274,12 @@ export async function addStepPlan(
     if (
       v.workLocationId == null &&
       step.executionLocation === "INTERNAL" &&
+      (
+        await prisma.processStepCatalog.findUnique({
+          where: { id: step.processStepId },
+          select: { workLocationRequired: true },
+        })
+      )?.workLocationRequired !== false &&
       (await prisma.workLocation.count({ where: { isActive: true } })) > 0
     ) {
       return {

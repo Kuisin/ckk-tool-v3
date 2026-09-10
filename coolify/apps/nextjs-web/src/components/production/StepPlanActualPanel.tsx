@@ -161,6 +161,7 @@ function RecordSection({
   stepId,
   suggestedQuantity,
   workLocationOptions = [],
+  workLocationRequired = false,
 }: {
   kind: "plan" | "actual";
   title: string;
@@ -173,6 +174,8 @@ function RecordSection({
   suggestedQuantity: number | null;
   /** 作業場所の選択肢。 */
   workLocationOptions?: { value: string; label: string }[];
+  /** 計画に作業場所が要るか（工程マスタの印 × 社内工程）。実績には効かない。 */
+  workLocationRequired?: boolean;
 }) {
   const tr = useTranslations();
   const router = useRouter();
@@ -206,7 +209,9 @@ function RecordSection({
     // 作業計画は作業場所も必須（§7 — 承認前に「どこで」まで決める）。実績は
     // 従来どおり任意。作業場所が 1 つも登録されていない環境では選びようが
     // 無いので要求しない（サーバー側 addStepPlan と同じ）。
-    if (kind === "plan" && showLocation && !workLocationId) {
+    const locationRequired =
+      kind === "plan" && showLocation && workLocationRequired;
+    if (locationRequired && !workLocationId) {
       notifications.show({
         title: tr("common.missingInput"),
         message: tr("production.stepPlanActualPanel.selectAWorkLocation"),
@@ -343,10 +348,10 @@ function RecordSection({
               />
               {showLocation && (
                 <Select
-                  clearable={kind !== "plan"}
+                  clearable={!(kind === "plan" && workLocationRequired)}
                   data={workLocationOptions}
                   label={
-                    kind === "plan"
+                    kind === "plan" && workLocationRequired
                       ? tr("production.stepPlanActualPanel.workLocation")
                       : tr(
                           "production.stepPlanActualPanel.workLocationOptional",
@@ -357,7 +362,7 @@ function RecordSection({
                   searchable
                   value={workLocationId}
                   w={220}
-                  withAsterisk={kind === "plan"}
+                  withAsterisk={kind === "plan" && workLocationRequired}
                 />
               )}
               <TextInput
@@ -390,6 +395,7 @@ export function StepPlanActualPanel({
   actuals,
   expectedInputQuantity,
   workLocationOptions,
+  workLocationRequired = true,
 }: {
   workOrderNumber: number;
   stepId: string;
@@ -401,6 +407,8 @@ export function StepPlanActualPanel({
   expectedInputQuantity: number | null;
   /** 作業場所の選択肢（計画・実績フォーム用）。 */
   workLocationOptions: { value: string; label: string }[];
+  /** 計画に作業場所が要るか（工程マスタの印 × 社内工程）。 */
+  workLocationRequired?: boolean;
 }) {
   const tr = useTranslations();
   const planEditable =
@@ -418,6 +426,7 @@ export function StepPlanActualPanel({
         suggestedQuantity={expectedInputQuantity}
         title={tr("production.stepPlanActualPanel.workPlan")}
         workLocationOptions={workLocationOptions}
+        workLocationRequired={workLocationRequired}
         workOrderNumber={workOrderNumber}
       />
       <RecordSection

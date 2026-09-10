@@ -804,6 +804,11 @@ Table process_step_catalog {
   // 工程の実行画面が唯一の記入口**。印の付いた工程を工程リストに入れなければ
   // 最終検査そのものが無い（= 任意）。既定は出荷前検査 PRE_SHIP_INSPECTION。
   is_final_inspection boolean [not null, default: false]
+  // 作業計画に作業場所が要るか（§7 承認前の揃い）。既定 true。在庫を動かすだけの
+  // 工程（〇〇出し）のように場所に意味の無い工程で false にする。使える場所の
+  // **範囲**は process_step_work_locations（許可リスト）で別に決める。
+  // 判定は lib/work-plan-core.ts planReadiness が唯一の定義。
+  work_location_required boolean [not null, default: true]
   approval_min_rank varchar                            // 承認必要役職（係長以上等）
   sort_order      int [not null, default: 0]
   is_active       boolean [not null, default: true]

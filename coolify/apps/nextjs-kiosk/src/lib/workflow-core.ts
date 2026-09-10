@@ -54,6 +54,11 @@ export interface CatalogStep {
   lotInputMode?: LotInputMode;
   /** 既定作業時間 (h) — ルート/指示書ビルダーの初期値（任意）。 */
   defaultWorkHours?: number | null;
+  /**
+   * 作業計画に作業場所が要るか（承認前の揃い — lib/work-plan-core.ts）。
+   * 未指定は true 扱い。
+   */
+  workLocationRequired?: boolean;
   sortOrder: number;
 }
 

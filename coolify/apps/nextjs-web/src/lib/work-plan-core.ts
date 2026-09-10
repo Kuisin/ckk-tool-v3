@@ -13,6 +13,11 @@
  * 外注工程は対象外 — 作業場所は社内の機械/エリアで、外注先には当てはまらない
  * （外注は 依頼日 / 入荷予定日 を別に持つ）。キャンセル済みの工程も対象外。
  *
+ * ★ 作業場所は**工程ごとに要る / 要らないを選べる**（工程マスタ
+ *   `work_location_required`、既定 true）。在庫を動かすだけの工程（〇〇出し）
+ *   のように場所に意味の無い工程で外す。使える場所の範囲は別の話
+ *   （許可作業場所リスト — 計画パネルと addStepPlan が検証する）。
+ *
  * ★ 作業場所マスタが空の環境では作業場所を要求しない。「1 つも登録していない」
  *   状態で全指示書の承認を止めるのは、設定漏れの罰としては重すぎる。判定の
  *   入力に `workLocationsConfigured` を持たせ、呼び出し側が明示的に渡す。
@@ -26,6 +31,8 @@ export interface PlanReadinessStep {
   name: string;
   executionLocation: "INTERNAL" | "OUTSOURCE";
   status: string;
+  /** 工程マスタの「作業場所が要る」。未指定は true。 */
+  workLocationRequired?: boolean;
   plans: readonly {
     /** 計画日（無い行は無い — DB は NOT NULL だが型の都合で任意に受ける）。 */
     plannedDate: string | Date | null;
@@ -72,9 +79,9 @@ export function planReadiness(
       gaps.push({ stepId: step.stepId, name: step.name, reason: "NO_PLAN" });
       continue;
     }
-    const complete = step.plans.some((p) =>
-      planComplete(p, options.workLocationsConfigured),
-    );
+    const requireLocation =
+      options.workLocationsConfigured && step.workLocationRequired !== false;
+    const complete = step.plans.some((p) => planComplete(p, requireLocation));
     if (!complete) {
       gaps.push({
         stepId: step.stepId,
