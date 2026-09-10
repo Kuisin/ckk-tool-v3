@@ -66,7 +66,7 @@ model DeliveryOrder {
   notes     String?
   createdBy String?             @map("created_by") @db.Uuid
   createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   customerBp       BusinessPartner  @relation("DeliveryOrderCustomer", fields: [customerBpId], references: [id])
   customerBranchBp BusinessPartner? @relation("DeliveryOrderCustomerBranch", fields: [customerBranchBpId], references: [id])
@@ -80,6 +80,8 @@ model DeliveryOrder {
   @@id([yearMonth, seq])
   @@index([customerBpId])
   @@index([status])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, yearMonth, seq])
   @@map("delivery_orders")
   @@schema("app")
 }
@@ -130,7 +132,7 @@ model DeliveryNote {
   salesRepId           String?        @map("sales_rep_id") @db.Uuid
   createdBy            String?        @map("created_by") @db.Uuid
   createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   salesRep          User?            @relation("DeliveryNoteSalesRep", fields: [salesRepId], references: [id])
   deliveryOrder     DeliveryOrder    @relation(fields: [deliveryOrderYearMonth, deliveryOrderSeq], references: [yearMonth, seq])
@@ -144,6 +146,8 @@ model DeliveryNote {
 
   @@id([yearMonth, seq])
   @@index([deliveryOrderYearMonth, deliveryOrderSeq])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, yearMonth, seq])
   @@map("delivery_notes")
   @@schema("app")
 }

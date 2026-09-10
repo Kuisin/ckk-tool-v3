@@ -242,6 +242,12 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
     summary: localizedLabel("permission.PERMISSIONS.portal_admin.summary"),
     group: "privileged",
   },
+  {
+    code: "api_client",
+    label: localizedLabel("permission.PERMISSIONS.api_client.label"),
+    summary: localizedLabel("permission.PERMISSIONS.api_client.summary"),
+    group: "privileged",
+  },
 ];
 
 const BY_CODE = new Map(PERMISSIONS.map((p) => [p.code, p]));

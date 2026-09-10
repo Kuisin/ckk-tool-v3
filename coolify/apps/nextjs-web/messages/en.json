@@ -1663,6 +1663,10 @@
       "portal_admin": {
         "label": "Partner portal administration",
         "summary": "Manage the accounts external partners use to view their own documents, and the per-document links. Activating an account, issuing backup codes and minting link-only URLs each need approval."
+      },
+      "api_client": {
+        "label": "API client administration",
+        "summary": "Manage the credentials external systems use to read business data programmatically. Issuing a token and activating a client each need approval. What a client can read is decided by the roles assigned to it."
       }
     },
     "PERMISSION_GROUP_LABEL": {
@@ -1694,7 +1698,8 @@
       "kiosk_device": "Shared device enrolment",
       "portal_admin": "Partner portal administration",
       "kiosk_card": "Shared device card issuance",
-      "personal_data": "Personal data access"
+      "personal_data": "Personal data access",
+      "api_client": "API client administration"
     },
     "PRIVILEGED_OPERATIONS": {
       "kiosk_secret": {
@@ -1817,6 +1822,16 @@
         "mint_link_only": {
           "label": "Mint a link-only URL",
           "description": "Creates a document URL anyone holding it can open. Verified links are not gated."
+        }
+      },
+      "api_client": {
+        "issue_token": {
+          "label": "Issue an API token",
+          "description": "Mint the key an external system uses to read business data. The minted value is the credential itself, and it carries whatever the assigned roles allow"
+        },
+        "activate": {
+          "label": "Activate an API client",
+          "description": "Turn a client that passes nothing into one that can actually read business data"
         }
       }
     },
@@ -9670,5 +9685,29 @@
       "zoomIn": "Zoom in",
       "resetZoom": "Reset zoom"
     }
+  },
+  "apiClients": {
+    "title": "API clients",
+    "intro": "Credentials external systems use to read business data. What a client can read is decided by the roles assigned to it in user administration.",
+    "roles": "Roles",
+    "tokens": "Tokens",
+    "token": "Token",
+    "lastUsed": "Last used",
+    "neverUsed": "Never used",
+    "issueToken": "Issue token",
+    "revoke": "Revoke",
+    "revoked": "Revoked",
+    "empty": "Nothing registered yet",
+    "noRoles": "No roles",
+    "noRolesHint": "This client has no roles, so it can read nothing. Assign roles in user administration.",
+    "createTitle": "Create an API client",
+    "createHint": "A new client starts disabled and has no token. Activating it and issuing a token each need approval.",
+    "allowedCidrs": "Allowed IP ranges",
+    "allowedCidrsHelp": "Leave empty for no restriction. Comma-separated CIDRs.",
+    "issuedTitle": "Token issued",
+    "shownOnce": "This value will not be shown again. Copy it now.",
+    "tooManyActiveTokens": "At most two tokens can be active. Revoke one first.",
+    "clientNotFound": "That client was not found",
+    "featureDisabled": "The external API is disabled in this environment"
   }
 }

@@ -1663,6 +1663,10 @@
       "portal_admin": {
         "label": "客户门户管理",
         "summary": "管理外部客户查看自身单据所用的账号，以及单据链接。启用账号、发放备用码、发放免验证链接均需逐项获得批准。"
+      },
+      "api_client": {
+        "label": "外部 API 客户端管理",
+        "summary": "管理外部系统以程序方式读取业务数据所用的凭据。签发令牌与启用客户端均需逐项获得批准。可读取的范围由分配给该客户端的角色决定。"
       }
     },
     "PERMISSION_GROUP_LABEL": {
@@ -1694,7 +1698,8 @@
       "kiosk_device": "终端访问授予",
       "portal_admin": "客户门户管理",
       "kiosk_card": "二维码卡发放・PIN",
-      "personal_data": "个人数据查看"
+      "personal_data": "个人数据查看",
+      "api_client": "外部 API 客户端管理"
     },
     "PRIVILEGED_OPERATIONS": {
       "kiosk_secret": {
@@ -1817,6 +1822,16 @@
         "mint_link_only": {
           "label": "发放免验证链接",
           "description": "创建任何持有链接者均可打开的单据链接。需验证的链接不在此列。"
+        }
+      },
+      "api_client": {
+        "issue_token": {
+          "label": "签发 API 令牌",
+          "description": "签发外部系统读取业务数据所用的密钥。签发的值本身即为凭据，可带出所分配角色允许的范围"
+        },
+        "activate": {
+          "label": "启用 API 客户端",
+          "description": "将新建后尚不能通行的客户端，变为可实际读取业务数据的状态"
         }
       }
     },
@@ -9670,5 +9685,29 @@
       "zoomIn": "放大",
       "resetZoom": "恢复原始大小"
     }
+  },
+  "apiClients": {
+    "title": "API 客户端",
+    "intro": "外部系统读取业务数据所用的凭据。可读取的范围由在用户管理中分配的角色决定。",
+    "roles": "角色",
+    "tokens": "令牌",
+    "token": "令牌",
+    "lastUsed": "最后使用",
+    "neverUsed": "未使用",
+    "issueToken": "签发令牌",
+    "revoke": "撤销",
+    "revoked": "已撤销",
+    "empty": "尚无登记",
+    "noRoles": "未分配角色",
+    "noRolesHint": "该客户端没有任何角色，因此无法读取任何数据。请在用户管理中分配角色。",
+    "createTitle": "创建 API 客户端",
+    "createHint": "新建时为停用状态且没有令牌。启用与签发令牌均需获得批准。",
+    "allowedCidrs": "允许的 IP 范围",
+    "allowedCidrsHelp": "留空则不限制。使用逗号分隔的 CIDR。",
+    "issuedTitle": "已签发令牌",
+    "shownOnce": "此值不会再次显示，请立即保存。",
+    "tooManyActiveTokens": "最多只能有两个有效令牌，请先撤销其中一个。",
+    "clientNotFound": "未找到该客户端",
+    "featureDisabled": "此环境中外部 API 已停用"
   }
 }

@@ -119,3 +119,4 @@ Permissions fall into four kinds. To see which you hold, open [My permissions](/
 | Personal data access | `personal_data` | Open login and activity history. Details (IP, device signature) and cross-document search need approval. Per-document history tabs are not restricted by this. |
 | User administration | `user_admin` | Open user management. Suspending, restoring and changing plants go through a per-change approval. |
 | Partner portal administration | `portal_admin` | Manage the accounts external partners use to view their own documents, and the per-document links. Activating an account, issuing backup codes and minting link-only URLs each need approval. |
+| API client administration | `api_client` | Manage the credentials external systems use to read business data programmatically. Issuing a token and activating a client each need approval. What a client can read is decided by the roles assigned to it. |

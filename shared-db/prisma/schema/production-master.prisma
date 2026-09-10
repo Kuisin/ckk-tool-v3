@@ -42,7 +42,7 @@ model Plant {
   isActive      Boolean  @default(true) @map("is_active")
   notes         String?
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   region Region? @relation("PlantRegion", fields: [regionId], references: [id])
 
@@ -63,6 +63,8 @@ model Plant {
   orderAcceptances   OrderAcceptance[]   @relation("AcceptancePlant")
 
   @@index([regionId])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
   @@map("plants")
   @@schema("app")
 }

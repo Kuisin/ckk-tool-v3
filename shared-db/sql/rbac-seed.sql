@@ -50,7 +50,9 @@ INSERT INTO app.permissions (code, display_name, description) VALUES
   ('user_admin',     '{"ja":"ユーザー・権限の変更","en":"User administration"}',
    '{"ja":"利用停止・復帰・所属拠点の変更。1 操作ごとに変更依頼を出し、承認が適用する","en":""}'),
   ('portal_admin',   '{"ja":"取引先ポータルの管理","en":"Partner portal administration"}',
-   '{"ja":"社外アカウントの作成・有効化・共有範囲、書類リンクの発行と失効","en":""}')
+   '{"ja":"社外アカウントの作成・有効化・共有範囲、書類リンクの発行と失効","en":""}'),
+  ('api_client',     '{"ja":"外部 API クライアントの管理","en":"API client administration"}',
+   '{"ja":"外部 API の資格情報の作成・有効化・トークンの発行と失効","en":""}')
 ON CONFLICT (code) DO NOTHING;
 
 -- ─── roles ───────────────────────────────────────────────────────────────────
@@ -82,7 +84,7 @@ DELETE FROM app.role_permission_relation
  WHERE action = 'APPROVE'
    AND permission_code NOT IN
        ('kiosk_secret', 'kiosk_device', 'kiosk_card', 'personal_data',
-        'user_admin', 'portal_admin');
+        'user_admin', 'portal_admin', 'api_client');
 
 -- staff: system / kiosk 以外の業務コードに実務アクション
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
@@ -95,7 +97,8 @@ CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT')) AS a(ac
 WHERE r.rolename = 'staff'
   AND p.code NOT IN ('system', 'kiosk', 'admin_manual',
                      'kiosk_secret', 'kiosk_device', 'kiosk_card',
-                     'personal_data', 'user_admin', 'portal_admin')
+                     'personal_data', 'user_admin', 'portal_admin',
+                     'api_client')
 ON CONFLICT DO NOTHING;
 
 -- ─── demo ユーザーへのロール割当 ─────────────────────────────────────────────

@@ -54,7 +54,7 @@ model StorageLocation {
   mapX       Decimal? @map("map_x") @db.Decimal(5, 2)
   mapY       Decimal? @map("map_y") @db.Decimal(5, 2)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   plant  Plant        @relation("StorageLocationPlant", fields: [plantId], references: [id])
   floorMap KioskFloorMap? @relation("StorageLocationFloorMap", fields: [floorMapId], references: [id])
@@ -65,6 +65,8 @@ model StorageLocation {
   workOrders        WorkOrder[]         @relation("WorkOrderStorageLocation")
 
   @@index([plantId])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
   @@map("storage_locations")
   @@schema("app")
 }
@@ -101,7 +103,7 @@ model ProductInventory {
   shelfId        Int?    @map("shelf_id") // 棚（null = 場所内未割当）
   location       String? // 旧フリーテキスト保管場所（表示フォールバックのみ）
   notes          String?
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   product         Product          @relation(fields: [productId], references: [id])
   plant         Plant?         @relation(fields: [plantId], references: [id])
@@ -110,6 +112,8 @@ model ProductInventory {
 
   // 一意バケット（NULLS NOT DISTINCT index — migration で置換済み）
   @@unique([productId, plantId, lotNumber, isSemiFinished, storageLocationId, shelfId], map: "product_inventory_bucket_key")
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
   @@map("product_inventory")
   @@schema("app")
 }
@@ -125,7 +129,7 @@ model MaterialInventory {
   shelfId          Int?    @map("shelf_id") // 棚（null = 場所内未割当）
   location         String? // 旧フリーテキスト保管場所（表示フォールバックのみ）
   notes            String?
-  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   material        Material         @relation(fields: [materialId], references: [id])
   plant         Plant?         @relation(fields: [plantId], references: [id])
@@ -134,6 +138,8 @@ model MaterialInventory {
 
   // 一意バケット（NULLS NOT DISTINCT index — migration で置換済み）
   @@unique([materialId, plantId, storageLocationId, shelfId], map: "material_inventory_bucket_key")
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
   @@map("material_inventory")
   @@schema("app")
 }
@@ -151,11 +157,17 @@ model InventoryReservation {
   confirmedAt   DateTime?         @map("confirmed_at") @db.Timestamptz(6)
   releasedAt    DateTime?         @map("released_at") @db.Timestamptz(6)
 
+  /// 差分同期（/api/v1 の ?updatedSince=）の順序キー。DB 側のトリガーが維持する。
+  /// 状態は RESERVED → CONFIRMED → RELEASED と動くのに、per-status の時刻列は
+  /// どれも nullable で「最後に動いた時刻」を表せなかったため足した。
+  updatedAt  DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
   orderLine  OrderLine?  @relation(fields: [orderLineId], references: [id])
   workOrder  WorkOrder?  @relation(fields: [workOrderId], references: [id])
 
   @@index([inventoryType, inventoryId, status])
   @@index([orderLineId])
+  @@index([updatedAt, id])
   @@map("inventory_reservations")
   @@schema("app")
 }
@@ -171,9 +183,11 @@ model InventoryTransaction {
   referenceId     String?         @map("reference_id")
   notes           String?
   createdBy       String?         @map("created_by") @db.Uuid
-  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
 
   @@index([inventoryType, inventoryId, createdAt])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([createdAt, id])
   @@map("inventory_transactions")
   @@schema("app")
 }

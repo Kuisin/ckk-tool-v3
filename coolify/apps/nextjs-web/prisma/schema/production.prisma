@@ -121,7 +121,7 @@ model WorkOrder {
   notes       String?
   createdBy   String?   @map("created_by") @db.Uuid
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   product         Product     @relation(fields: [productId], references: [id])
   designFile      DesignFile? @relation("WorkOrderDesignFile", fields: [designFileId], references: [id])
@@ -150,6 +150,8 @@ model WorkOrder {
   @@index([approvalStatus])
   @@index([routeVersionId])
   @@index([storageLocationId])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
   @@map("work_orders")
   @@schema("app")
 }

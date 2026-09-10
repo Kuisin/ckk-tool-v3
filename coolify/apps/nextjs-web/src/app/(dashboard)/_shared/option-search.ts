@@ -682,6 +682,8 @@ export async function searchUserOptions(
   const rows = await prisma.user.findMany({
     where: {
       isActive: true,
+      // 機械のアカウント（外部 API クライアントの主体）は人を選ぶ一覧に出さない。
+      group: { not: "SYSTEM" },
       ...(q
         ? {
             OR: [

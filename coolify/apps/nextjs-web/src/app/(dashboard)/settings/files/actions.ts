@@ -46,7 +46,8 @@ export async function fetchFolderGrants(): Promise<
       include: { user: { select: { displayName: true, username: true } } },
     }),
     prisma.user.findMany({
-      where: { isActive: true },
+      // 機械のアカウント（group: SYSTEM）はフォルダ権限の付与先にしない。
+      where: { isActive: true, group: { not: "SYSTEM" } },
       orderBy: { username: "asc" },
       select: { id: true, displayName: true, username: true },
     }),
