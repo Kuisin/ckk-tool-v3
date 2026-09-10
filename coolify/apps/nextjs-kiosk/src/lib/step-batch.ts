@@ -92,12 +92,20 @@ export interface BatchStartItem {
   stepId: string;
   /** 実績に記録する作業場所（解決済み。API 側が端末既定 or 読み取り QR から決める）。 */
   workLocationId?: number | null;
+  /**
+   * ロット/伝票コード（工程ごとに違う値）。一覧からの一括開始では渡らないので
+   * ロット必須の工程は LOT_REQUIRED で落ちる。**工程まとめ画面だけが**行ごとの
+   * 入力欄を持っていて、ここに値を載せてくる。
+   */
+  lotText?: string | null;
 }
 
 /**
  * 一括開始。受入数は**常に想定受入数**（expectedInput）で開始する — 1 件ずつ
  * 違う値を 1 つの確認画面では入れられないため。上書きしたい工程は個別に開く。
- * ロット必須の工程も同じ理由で対象外（API 側で LOT_REQUIRED を返す）。
+ *
+ * ロットは行ごとに渡せる（lotText）。渡ってこなければロット必須の工程は
+ * LOT_REQUIRED で落ちる — 一覧の一括開始にはロットの欄が無いため。
  */
 export async function startStepsBatch(
   items: readonly BatchStartItem[],
@@ -120,6 +128,8 @@ export async function startStepsBatch(
     sortOrder: number;
     input: number | null;
     workLocationId: number | null;
+    /** 記録するロット（実効モードが NONE のときは書かない）。 */
+    lotText: string | null;
   };
   const ready: Ready[] = [];
 
@@ -151,12 +161,13 @@ export async function startStepsBatch(
       results.push(failFor(item.stepId, "NOT_STARTABLE", ...check.reasons));
       continue;
     }
-    // ロット必須は一括に載せない（1 件ずつ違う値を入れる欄が無い）
+    // ロットは行ごとの入力（工程まとめ画面のみ）。無ければ必須の工程は落とす。
     const lotMode = effectiveLotInputMode(
       stepRow.lotInputMode,
       stepRow.processStep.lotInputMode,
     );
-    if (lotMode === "REQUIRED") {
+    const lot = item.lotText?.trim() || null;
+    if (lotMode === "REQUIRED" && lot == null) {
       results.push(failFor(item.stepId, "LOT_REQUIRED"));
       continue;
     }
@@ -168,6 +179,7 @@ export async function startStepsBatch(
       sortOrder: stepRow.sortOrder,
       input: expectedInput(item.stepId, ctx),
       workLocationId: item.workLocationId ?? null,
+      lotText: lotMode !== "NONE" ? lot : null,
     });
   }
 
@@ -198,6 +210,7 @@ export async function startStepsBatch(
           startedAt: now,
           startedBy: actorId,
           inputQuantity: r.input ?? undefined,
+          ...(r.lotText != null ? { lotText: r.lotText } : {}),
         },
       });
       if (c.count === 1) won.push(r);

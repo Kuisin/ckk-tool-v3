@@ -168,6 +168,8 @@ export interface BatchActionRequest {
   stepIds: string[];
   /** START のみ: 作業場所 QR の code（バッチ全体で 1 つ）。 */
   workLocationCode?: string;
+  /** START のみ: 工程 id → ロット/伝票コード（工程ごとに違う値）。 */
+  lotTexts?: Record<string, string>;
 }
 
 /** 1 件分の結果。**単一操作の応答と同じ形**なので translateError がそのまま使える。 */

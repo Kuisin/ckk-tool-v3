@@ -27,13 +27,14 @@ import {
   IconChevronDown,
   IconChevronUp,
   IconClipboardList,
+  IconLayersSubtract,
   IconRefresh,
   IconSquareCheck,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { fillMessage } from "@/lib/i18n";
-import { batchActionsFor } from "@/lib/step-batch-core";
+import { batchActionsFor, groupByProcessStep } from "@/lib/step-batch-core";
 import type { MyStepView } from "@/lib/steps";
 import type { StepBucket } from "@/lib/steps-core";
 import { ActivityMonitor } from "../ActivityMonitor";
@@ -149,6 +150,37 @@ export function StepListView({ steps, upcomingCount, completedSteps }: Props) {
                       ? m.steps.sections.today
                       : m.steps.sections.upcoming}
                 </Text>
+                {/* 同じ工程が 2 件以上あるときだけ「まとめて開く」を出す。
+                    束ねる鍵は processStepId（工程名ではない）。 */}
+                {!selecting &&
+                  groupByProcessStep(
+                    rows.filter(
+                      (s) => batchActionsFor(s.sessionState).length > 0,
+                    ),
+                  ).map((g) => (
+                    <Group
+                      gap="sm"
+                      justify="space-between"
+                      key={`g-${g.processStepId}`}
+                      wrap="nowrap"
+                    >
+                      <Text c="dimmed" size="sm" truncate>
+                        {fillMessage(m.steps.group.groupCount, {
+                          n: g.rows.length,
+                          name: g.stepName,
+                        })}
+                      </Text>
+                      <Button
+                        leftSection={<IconLayersSubtract size={18} />}
+                        onClick={() =>
+                          router.push(`/steps/group/${g.processStepId}`)
+                        }
+                        variant="light"
+                      >
+                        {m.steps.group.openGroup}
+                      </Button>
+                    </Group>
+                  ))}
                 {rows.map((step) => (
                   <StepCard
                     key={step.stepId}

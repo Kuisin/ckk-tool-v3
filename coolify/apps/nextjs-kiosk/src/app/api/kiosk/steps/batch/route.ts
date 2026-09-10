@@ -54,6 +54,12 @@ const bodySchema = z.object({
     }),
   /** 開始時に実績へ記録する作業場所（読み取った QR）。バッチ全体で 1 つ。 */
   workLocationCode: z.string().trim().min(1).max(100).optional(),
+  /**
+   * 工程 id → ロット/伝票コード（START のみ）。**工程ごとに違う値**なので
+   * バッチ全体で 1 つにはできない。欄を持つのは工程まとめ画面だけで、
+   * 一覧からの一括開始では渡ってこない（ロット必須の工程は LOT_REQUIRED）。
+   */
+  lotTexts: z.record(z.string().uuid(), z.string().trim().max(200)).optional(),
 });
 
 export async function POST(req: Request) {
@@ -66,7 +72,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid request" }, { status: 400 });
   }
-  const { action, stepIds, workLocationCode } = parsed.data;
+  const { action, stepIds, workLocationCode, lotTexts } = parsed.data;
 
   // 権限は人に付くものなので、ここはバッチ全体で落とす（単一操作と同じ意味）
   if (!(await hasPermission(session.userId, "work_order", "UPDATE"))) {
@@ -84,7 +90,11 @@ export async function POST(req: Request) {
   // 許可作業場所がある工程では許可外を記録せず、端末の「作業場所の制限」が
   // ON なら開始そのものを拒否する。**工程ごとに許可が違う**ので、ここでは
   // 工程ごとに解決して startStepsBatch へ渡す。
-  const startItems: { stepId: string; workLocationId: number | null }[] = [];
+  const startItems: {
+    stepId: string;
+    workLocationId: number | null;
+    lotText: string | null;
+  }[] = [];
   const preRejected: BatchOutcome["results"] = [];
 
   if (action === "START") {
@@ -141,7 +151,11 @@ export async function POST(req: Request) {
           });
           continue;
         }
-        startItems.push({ stepId, workLocationId: scanned.id });
+        startItems.push({
+          lotText: lotTexts?.[stepId] ?? null,
+          stepId,
+          workLocationId: scanned.id,
+        });
         continue;
       }
 
@@ -158,6 +172,7 @@ export async function POST(req: Request) {
       }
       // 許可外の既定は記録しない（制限トグル OFF でも工程マスタの制限は守る）
       startItems.push({
+        lotText: lotTexts?.[stepId] ?? null,
         stepId,
         workLocationId: deviceAllowed ? deviceDefault : null,
       });
