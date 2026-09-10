@@ -9,7 +9,9 @@ import { notFound, redirect } from "next/navigation";
 import { I18nProvider } from "@/components/I18nProvider";
 import { StepExecutionView } from "@/components/steps/StepExecutionView";
 import { readableCodes } from "@/lib/authz";
+import { resolveBoardLocationByCode } from "@/lib/device-work-location";
 import { getSession } from "@/lib/kiosk-auth";
+import { boardQuery, parseScope } from "@/lib/location-board-core";
 import { getStepRecordingData } from "@/lib/step-records";
 import { getMyStep, getStepLocationGate } from "@/lib/steps";
 
@@ -20,7 +22,7 @@ export default async function StepExecutionPage({
   searchParams,
 }: {
   params: Promise<{ stepId: string }>;
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<{ from?: string; loc?: string; scope?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -51,15 +53,45 @@ export default async function StepExecutionPage({
     session.locale,
   );
 
-  // 指示書スキャン（/wo-scan）から来たときは戻り先をその指示書にする。
-  // 任意 URL は受けない — from=wo のときだけ固定の遷移先を組み立てる。
-  const { from } = await searchParams;
-  const backTo = from === "wo" ? ("workOrder" as const) : ("list" as const);
+  // 来た経路で戻り先を決める。**任意 URL は受けない** — 決め打ちの値のときだけ
+  // 固定の遷移先を組み立て、クエリの中身もサーバー側で検証してから使う。
+  //   from=wo  → その指示書のビュー
+  //   from=loc → 作業場所の一覧（見ていた場所と広さを保つ）
+  const { from, loc, scope: rawScope } = await searchParams;
+  const backTo =
+    from === "wo"
+      ? ("workOrder" as const)
+      : from === "loc"
+        ? ("location" as const)
+        : ("list" as const);
+
+  // 一覧から持ち越した作業場所コードは**実在する有効な場所のときだけ**通す。
+  // 戻り先の組み立ても開始時の実績もこの値を使うので、生のクエリは信用しない。
+  let boardLocationCode: string | null = null;
+  if (backTo === "location") {
+    const requested = loc?.trim();
+    if (requested != null && requested !== "") {
+      const resolved = await resolveBoardLocationByCode(
+        requested,
+        session.locale,
+      );
+      boardLocationCode = resolved?.code ?? null;
+    }
+  }
+  const backParams =
+    backTo === "location"
+      ? boardQuery({
+          code: boardLocationCode,
+          scope: parseScope(rawScope ?? null),
+        })
+      : "";
 
   return (
     <I18nProvider locale={session.locale}>
       <StepExecutionView
+        backParams={backParams}
         backTo={backTo}
+        initialWorkLocationCode={boardLocationCode}
         locationGate={locationGate}
         recording={recording}
         step={step}

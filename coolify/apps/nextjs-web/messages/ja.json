@@ -4718,7 +4718,8 @@
     },
     "kioskSettings": {
       "stepExecution": "工程実行",
-      "workOrderScan": "指示書スキャン"
+      "workOrderScan": "指示書スキャン",
+      "workLocationBoard": "作業場所の工程"
     },
     "portalGuide": {
       "guide": "案内",

@@ -13,8 +13,13 @@
  *   layout は同じものが使い回されるため**再描画されない**。つまり props は
  *   前の利用者の名前を持ったまま残る。これを「いま居る画面」で打ち消す —
  *   ログイン系の画面に居るなら、誰もログインしていないことが確実だから。
- *   （併せてログイン・ログアウトの各所で router.refresh() も呼んでいる。
+ *   （併せてログアウトの各所で router.refresh() も呼んでいる。
  *     こちらは server 側の状態も正しくするためで、表示の担保はこの判定側。）
+ *
+ * ★ **逆向き（ログイン直後に「未ログイン」のまま）は遷移側で塞いである。**
+ *   同じ「layout が使い回される」性質で、今度は props が古い null のまま残る。
+ *   ログイン成功時は LoginView の enterAfterLogin() が文書ごと読み直すので、
+ *   ここには来ない。3 つ目の状態（読めなかった）は headerUserSlot を見ること。
  * フッター: 左 = アプリ識別「CKK 専用端末」/ 中央 = 会社名 + バージョン /
  *   右 = バッテリー
  * Main は flex column — 各ページは style={{flex:1}} の Center で縦中央に置ける。
@@ -71,6 +76,32 @@ export function headerUserName(
   return loggedOut ? null : userName;
 }
 
+/** ヘッダー左に出すもの。 */
+export type HeaderUserSlot = "user" | "notLoggedIn" | "hidden";
+
+/**
+ * ヘッダー左の表示を決める。**「誰も居ない」と「分からない」を混ぜない**ための
+ * 3 状態:
+ *
+ *   user        ログイン中 — 名前を出す（押すと設定の窓）
+ *   notLoggedIn 誰も居ないことが**確実** — 「未ログイン」と書く。空欄にすると
+ *               「前の人のままなのか、誰も居ないのか」が読み取れない
+ *   hidden      まだ登録の話をしている端末（registered=false）か、セッションを
+ *               読めなかった（DB 不通など）。**分からないときは黙る** — ここで
+ *               「未ログイン」と書くと、本文はログイン中のまま動いているのに
+ *               頭だけが嘘をつく
+ */
+export function headerUserSlot(
+  pathname: string,
+  userName: string | null,
+  registered: boolean,
+  sessionResolved: boolean,
+): HeaderUserSlot {
+  if (headerUserName(pathname, userName) != null) return "user";
+  if (!registered || !sessionResolved) return "hidden";
+  return "notLoggedIn";
+}
+
 // 隠し端末設定の起動ジェスチャ: この時間内に 5 タップ
 const SETTINGS_TAP_COUNT = 5;
 const SETTINGS_TAP_WINDOW_MS = 2500;
@@ -88,6 +119,12 @@ type Props = {
   workLocation?: string | null;
   /** ログイン中の利用者名（未ログインは null）。 */
   userName?: string | null;
+  /**
+   * セッションを**読めた**か。false = DB 不通などで分からなかった、の意で、
+   * 「ログインしていない」とは違う。分からないときは名前欄を空にする —
+   * 「未ログイン」と書くと、本文はログイン中のまま動いているのに頭だけが嘘をつく。
+   */
+  sessionResolved?: boolean;
   /** 文字の大きさ（設定の窓の初期値。適用自体は layout が :root へ流す）。 */
   textScale?: TextScale;
   children: ReactNode;
@@ -97,6 +134,7 @@ export function KioskShell({
   deviceName,
   registered,
   userName = null,
+  sessionResolved = true,
   workLocation = null,
   textScale = DEFAULT_TEXT_SCALE,
   children,
@@ -107,6 +145,12 @@ export function KioskShell({
   const pathname = usePathname();
   // ここに居るなら誰もログインしていない（上のコメントの理由で props は信用しない）
   const currentUser = headerUserName(pathname, userName);
+  const userSlot = headerUserSlot(
+    pathname,
+    userName,
+    registered,
+    sessionResolved,
+  );
   const tapRef = useRef<{ count: number; first: number }>({
     count: 0,
     first: 0,
@@ -146,16 +190,14 @@ export function KioskShell({
           <HeaderClock />
         </Box>
         <Group h="100%" justify="space-between" px="lg" wrap="nowrap">
-          {/* 左: ログイン中の利用者。**未ログインは「未ログイン」と出す** —
-              空欄だと「誰かのままなのか、誰も居ないのか」が読み取れない。
-              未登録端末はまだ登録の話をしている段階なので出さない。 */}
+          {/* 左: ログイン中の利用者。出し分けは headerUserSlot（純関数・試験あり）。 */}
           <Box style={{ minWidth: 0 }}>
             {currentUser ? (
               // 押すと設定の窓（文字の大きさ・言語・ログアウト）。以前は
               // ランチャー画面まで戻らないとログアウトも言語も触れなかった。
               <UserMenu textScale={textScale} userName={currentUser} />
             ) : (
-              registered && (
+              userSlot === "notLoggedIn" && (
                 <Group gap="xs" wrap="nowrap">
                   <IconUserCircle
                     color="var(--mantine-color-dimmed)"

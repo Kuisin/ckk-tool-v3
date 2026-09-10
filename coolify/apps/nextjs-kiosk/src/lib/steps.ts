@@ -25,6 +25,7 @@ import {
 } from "./format";
 import type { Locale } from "./i18n";
 import { missingInspectionSheets } from "./inspection-core";
+import { type PlanAssignee, stepOperability } from "./location-board-core";
 import { allowedWorkLocationIdsForStep } from "./step-execution";
 import {
   accumulatedWorkMs,
@@ -651,6 +652,162 @@ export async function getWorkOrderOverview(
     plannedQuantity: wo.plannedQuantity,
     steps: items,
   };
+}
+
+// ── 作業場所別の一覧（/work-location） ──────────────────────────────────────
+
+/** 作業場所別の一覧の 1 行。 */
+export interface LocationStepItem {
+  step: MyStepView;
+  /** 計画で割り当てられている担当者名（重複除去・計画順）。空 = 担当者なし。 */
+  assigneeNames: string[];
+  /** 行レベルゲート（step-execution.ts canOperateStep）を通るか。 */
+  canOperate: boolean;
+}
+
+export interface LocationStepsResult {
+  steps: LocationStepItem[];
+  /** 予定（期日前）の件数 — チップ表示のみ。 */
+  upcomingCount: number;
+}
+
+/**
+ * 作業場所（1 か所 or グループ全体）で待っている工程の一覧。
+ *
+ * listMySteps の 3 集合の和を、担当者ではなく**場所**で引き直したもの:
+ *   (A) 期日到来済み（遅延含む）の計画がこの場所にある工程 — 主役。
+ *       作業計画は担当者が任意になり計画日 + 作業場所が必須になったので
+ *       （20261015090000 / 20261017090000 / 20261018090000）、「いつ・どこで」
+ *       だけ決めた行が普通に作られる。それは userId で引く listMySteps には
+ *       **一切出てこない** — この画面が埋めるのはその穴。
+ *   (B) この場所で記録された実績を持つ進行中の工程。
+ *       **userId で絞らない**（この画面の主旨）し、**endedAt でも絞らない** —
+ *       一時停止は実績行を閉じるので、絞ると「この機械で止まっている工程」が
+ *       全部消える。
+ *   (C) 予定件数（行は引かない）。
+ *
+ * 使わないもの:
+ *   - 工程マスタの許可作業場所（allowedWorkLocationIdsForStep）。あれは
+ *     リンク 0 件が「無制限」を意味するので、所属条件にすると**無制限の工程が
+ *     全部の場所に出る**。「ここで動かしてよいか」であって「ここで待っているか」
+ *     ではない（実行画面のゲート getStepLocationGate が正しい用途）。
+ *   - work_order_steps.plant_id。同じ失敗のもっと粗い版（拠点全部の仕掛かりが
+ *     1 台の機械に出る）。
+ *
+ * 完了工程は返さない。「自分が何を終えたか」は個人の問いなので /steps にあるが、
+ * 「この機械が何を終えたか」は帳票の問いで、現場のタブレットの仕事ではない。
+ */
+export async function listStepsAtLocation(
+  locationIds: number[],
+  userId: string,
+  locale: Locale,
+): Promise<LocationStepsResult> {
+  if (locationIds.length === 0) return { steps: [], upcomingCount: 0 };
+
+  const now = new Date();
+  const today = jstDateOnly(now);
+  const todayJst = jstDateString(now);
+  const [planned, worked, upcomingCount] = await Promise.all([
+    // (A) この場所の、期日到来済みの計画
+    prisma.workOrderStepPlan.findMany({
+      where: {
+        workLocationId: { in: locationIds },
+        plannedDate: { lte: today },
+        step: {
+          status: { in: ["PENDING", "IN_PROGRESS"] },
+          workOrder: { status: { in: ["APPROVED", "IN_PROGRESS"] } },
+        },
+      },
+      select: {
+        stepId: true,
+        plannedDate: true,
+        plannedStartAt: true,
+        plannedEndAt: true,
+        quantity: true,
+        workLocation: { select: { name: true } },
+      },
+      orderBy: [{ plannedDate: "asc" }, { plannedStartAt: "asc" }],
+    }),
+    // (B) この場所で記録された実績を持つ進行中の工程
+    prisma.workOrderStepActual.findMany({
+      where: {
+        workLocationId: { in: locationIds },
+        step: {
+          status: "IN_PROGRESS",
+          workOrder: { status: { in: ["APPROVED", "IN_PROGRESS"] } },
+        },
+      },
+      select: { stepId: true },
+      distinct: ["stepId"],
+    }),
+    // (C) 予定件数（チップ表示のみ）
+    prisma.workOrderStepPlan.count({
+      where: {
+        workLocationId: { in: locationIds },
+        plannedDate: { gt: today },
+        step: {
+          status: "PENDING",
+          workOrder: { status: { in: ["APPROVED", "IN_PROGRESS"] } },
+        },
+      },
+    }),
+  ]);
+
+  // 同一工程に複数計画行がある（分割計画）場合は最も早い 1 行を代表にする。
+  // 代表はこの場所の計画 — この行が一覧に出ている理由そのものなので、
+  // 表示する計画日時・作業場所はそれで合っている。
+  const plansByStep = new Map<string, PlanRow>();
+  for (const p of planned) {
+    if (!plansByStep.has(p.stepId)) plansByStep.set(p.stepId, p);
+  }
+
+  const stepIds = [
+    ...new Set([
+      ...planned.map((p) => p.stepId),
+      ...worked.map((a) => a.stepId),
+    ]),
+  ];
+  if (stepIds.length === 0) return { steps: [], upcomingCount };
+
+  // 操作可否は「**担当者付きの**計画が他にあるか」で決まる（canOperateStep）。
+  // この場所の計画だけを見ると、別の場所で誰かに割り当てられている工程を
+  // 開放してしまうので、対象工程の**全計画**を引く。
+  const allPlans = await prisma.workOrderStepPlan.findMany({
+    where: { stepId: { in: stepIds } },
+    select: {
+      stepId: true,
+      userId: true,
+      user: { select: { displayName: true } },
+    },
+    orderBy: [{ plannedDate: "asc" }, { plannedStartAt: "asc" }],
+  });
+  const assigneesByStep = new Map<string, PlanAssignee[]>();
+  for (const p of allPlans) {
+    const list = assigneesByStep.get(p.stepId) ?? [];
+    list.push({ userId: p.userId, displayName: p.user?.displayName ?? null });
+    assigneesByStep.set(p.stepId, list);
+  }
+
+  const views = await hydrateSteps(
+    stepIds,
+    userId,
+    locale,
+    plansByStep,
+    todayJst,
+  );
+
+  const steps = views.map((step) => {
+    // sessionState === "WORKING" は「自分がロックを保持している」— canOperateStep の
+    // 条件 (b)。自分が掴んでいる工程は、誰の計画であろうと続けられる。
+    const { canOperate, assigneeNames } = stepOperability(
+      assigneesByStep.get(step.stepId) ?? [],
+      userId,
+      step.sessionState === "WORKING",
+    );
+    return { step, assigneeNames, canOperate };
+  });
+
+  return { steps, upcomingCount };
 }
 
 // ── 作業場所ゲート（工程マスタの許可作業場所 × 端末） ────────────────────────
