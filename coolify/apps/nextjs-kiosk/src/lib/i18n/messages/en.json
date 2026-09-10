@@ -328,6 +328,13 @@
       "verdict": "Result",
       "noItems": "No items were filled in",
       "checkThenApprove": "Check the contents before approving"
+    },
+    "working": {
+      "count": "{n} in progress",
+      "title": "Steps in progress",
+      "concurrentNote": "{n} at once — work time is counted at 1/{n}",
+      "open": "Open",
+      "close": "Close"
     }
   },
   "deviceError": {
