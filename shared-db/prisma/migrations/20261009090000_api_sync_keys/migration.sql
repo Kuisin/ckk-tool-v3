@@ -1,3 +1,17 @@
+-- allow-rewrite: この 1 本は dev で **P3018 で失敗して止まっている**（2026-09-10
+-- 03:33 UTC、commit 0b04e0ab）。失敗したマイグレーションがあると Prisma は
+-- その先を一切流さないので、後ろに新しい 1 本を足しても直せない
+-- （まっさらな DB でも同じ場所で止まる）。適用済みの DB は 1 つも無い
+-- ——dev は失敗してロールバック済み（索引もトリガーも入っていないことを確認）、
+-- main はここまで到達していない。よってこのファイルを直すのが唯一の直し方。
+--
+-- 失敗の原因: `ALTER COLUMN ... TYPE` は、その列に依存するビューがあると
+-- Postgres が拒む（0A000 "cannot alter type of a column used by a view or rule"、
+-- analytics.v_business_partners が updated_at に依存していた）。
+-- 使い捨て DB での検証は「migrate → analytics-views.sql」の順で流していたので
+-- ビューがまだ無く、この経路を踏めていなかった。本物の DB では前回までの
+-- デプロイでビューが既にある。**検証は本番と同じ順序でやること。**
+
 -- AlterTable
 ALTER TABLE "app"."billing_closings" ADD COLUMN     "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
@@ -116,6 +130,28 @@ BEGIN
     EXECUTE format(
       'CREATE TRIGGER touch_updated_at BEFORE UPDATE ON app.%I '
       'FOR EACH ROW EXECUTE FUNCTION app.touch_updated_at()', t);
+  END LOOP;
+END
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 依存するレポート用ビューを先に落とす
+--
+-- `analytics.*` は `sql/analytics-views.sql` が**毎デプロイ**作り直す成果物で
+-- （entrypoint.sh の順序は migrate → grants → cron → analytics-views）、
+-- Prisma の管理対象ではない。ここで落としても、同じデプロイの後段で
+-- 全部作り直される。権限も `grants.sql` の
+-- `ALTER DEFAULT PRIVILEGES IN SCHEMA analytics` が新しいビューに効くので、
+-- metabase_ro / studio_ro の読み取りは切れない。
+--
+-- 依存しているものだけを選んで落とすより、全部落として作り直させるほうが
+-- 安全: 将来ビューが増えても、この移行が黙って壊れない。
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE v record;
+BEGIN
+  FOR v IN SELECT viewname FROM pg_views WHERE schemaname = 'analytics' LOOP
+    EXECUTE format('DROP VIEW IF EXISTS analytics.%I CASCADE', v.viewname);
   END LOOP;
 END
 $$;
