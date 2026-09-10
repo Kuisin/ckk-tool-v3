@@ -78,6 +78,7 @@ export function PurchaseOrderNew({
     }
     if (prefill) {
       await learnMaterialOrderAliases({
+        poNumber,
         extractedSupplierName: prefill.extractedSupplierName,
         supplierBpId: prefill.supplierBpId,
         lines: prefill.extractedLines,

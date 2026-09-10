@@ -141,6 +141,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
           aria-autocomplete="list"
           aria-controls="app-search-listbox"
           aria-expanded={Boolean(searchResults?.length)}
+          aria-label={t("searchPlaceholder")}
           autoFocus
           flex={1}
           leftSection={<IconSearch size={14} />}

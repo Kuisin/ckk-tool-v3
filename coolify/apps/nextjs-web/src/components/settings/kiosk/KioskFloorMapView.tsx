@@ -337,9 +337,16 @@ export function KioskFloorMapView({
       <Tooltip
         events={{ hover: true, focus: true, touch: true }}
         key={d.id}
-        label={`${d.name ?? "（未設定）"}${d.location ? ` — ${d.location}` : ""}${
-          currentUser ? `｜利用中: ${currentUser}` : ""
-        }`}
+        label={[
+          `${d.name ?? tr("settings.kioskFloorMapView.unnamed")}${
+            d.location ? ` — ${d.location}` : ""
+          }`,
+          currentUser
+            ? tr("settings.kioskFloorMapView.inUseBy", { name: currentUser })
+            : null,
+        ]
+          .filter(Boolean)
+          .join("｜")}
         withinPortal
       >
         <Box
@@ -453,7 +460,9 @@ export function KioskFloorMapView({
             )}
             {currentUser && (
               <Text c="blue" size="xs" truncate>
-                利用中: {currentUser}
+                {tr("settings.kioskFloorMapView.inUseBy", {
+                  name: currentUser,
+                })}
               </Text>
             )}
           </Box>
@@ -700,13 +709,17 @@ export function KioskFloorMapView({
                       {tr("settings.kiosk.devices")}
                     </Text>
                     <Text c="dimmed" size="xs">
-                      {plantDevices.length} 台
+                      {tr("settings.kioskFloorMapView.deviceCount", {
+                        count: plantDevices.length,
+                      })}
                     </Text>
                   </Group>
                   <ScrollArea.Autosize mah={560} offsetScrollbars type="auto">
                     <Stack gap="xs">
                       <Text c="dimmed" fw={600} size="xs">
-                        このフロア（{placedDevices.length}）
+                        {tr("settings.kioskFloorMapView.thisFloor", {
+                          count: placedDevices.length,
+                        })}
                       </Text>
                       {placedDevices.length === 0 ? (
                         <Text c="dimmed" size="xs">
@@ -719,7 +732,9 @@ export function KioskFloorMapView({
                         <>
                           <Divider />
                           <Text c="dimmed" fw={600} size="xs">
-                            その他の端末（{otherDevices.length}）
+                            {tr("settings.kioskFloorMapView.otherDevices", {
+                              count: otherDevices.length,
+                            })}
                           </Text>
                           {otherDevices.map(deviceRow)}
                         </>

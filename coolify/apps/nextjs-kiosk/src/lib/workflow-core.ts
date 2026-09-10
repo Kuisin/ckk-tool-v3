@@ -1245,3 +1245,21 @@ export function downstreamStepIds(stepId: string, ctx: WorkflowCtx): string[] {
   }
   return [...seen];
 }
+
+/**
+ * 完了時の受入数の権威。**想定受入（完了時点で再計算）→ 開始時に確定した値 →
+ * クライアント値** の順。web（lib/workflow.ts）と共有端末（step-execution.ts）
+ * の両方がこれを通す — 片方だけ古い規則だと、前工程より先に始めた工程を
+ * 端末で完了したとき端末の送った受入数がそのまま良品数（最終工程なら製品
+ * 在庫）になる（2026-09 の再点検で見つかった片側だけの修正）。
+ */
+export function resolveReceivedQuantity(args: {
+  /** 前工程の良品数 + 流入エッジ（expectedInput）。null = まだ確定しない。 */
+  expectedAtCompletion: number | null;
+  /** 開始時に inputQuantity へ写した値。前工程より先に始めた工程は null。 */
+  startedWith: number | null;
+  /** クライアントが送ってきた受入数。 */
+  client: number | null | undefined;
+}): number {
+  return args.expectedAtCompletion ?? args.startedWith ?? args.client ?? 0;
+}

@@ -220,6 +220,7 @@ export function FormSectionRulesEditor({
                   wrap="nowrap"
                 >
                   <Select
+                    aria-label={tr("common.item")}
                     data={conditionFields.map((f) => ({
                       value: f.key,
                       label: f.label.ja || f.key,
@@ -248,6 +249,7 @@ export function FormSectionRulesEditor({
                     />
                   ) : (
                     <Select
+                      aria-label={tr("common.select")}
                       data={(field?.options ?? []).map((o) => ({
                         value: o.value,
                         label: o.label.ja || o.value,

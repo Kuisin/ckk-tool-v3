@@ -444,6 +444,7 @@ export function KioskCardsTable({
       breadcrumbs={[tr("common.system"), tr("common.qRCards")]}
       filters={
         <Select
+          aria-label={tr("common.status")}
           clearable
           data={statusOptions("KioskCard")}
           onChange={setStatus}
@@ -456,6 +457,7 @@ export function KioskCardsTable({
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("settings.kiosk.cardIdUser")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value || null)}
           placeholder={tr("settings.kiosk.cardIdUser")}

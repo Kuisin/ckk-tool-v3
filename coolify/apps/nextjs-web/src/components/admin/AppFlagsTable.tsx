@@ -162,6 +162,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
       breadcrumbs={[tr("common.system"), tr("admin.appFlagsTable.apps")]}
       filters={
         <Select
+          aria-label={tr("common.category")}
           clearable
           data={categoryOptions}
           onChange={setCategory}
@@ -173,6 +174,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("admin.appFlagsTable.searchByAppNameOrOperation")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("admin.appFlagsTable.searchByAppNameOrOperation")}

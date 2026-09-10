@@ -40,6 +40,34 @@ export function clientIpOf(req: Request): string | null {
   return normalizeIp(req.headers.get("x-real-ip"));
 }
 
+/**
+ * **レート制限のバケットを分けるためだけ**の IP。記録には使わない。
+ *
+ * `clientIpOf` は TRUSTED_PROXY_HOPS 段だけ遡った値を返し、既定（未設定 = 0）
+ * では XFF の**右端** = 自分に一番近いプロキシの住所になる。社外からの通信は
+ * client → cloudflared → nginx-proxy → app と流れるので、**社外の利用者は
+ * 全員が同じ 1 つの値**に潰れる。そのまま IP バケットの鍵にすると、誰か 1 人の
+ * 打ち間違いが 30 回積もった時点で社外の全員が 15 分締め出される（実際に
+ * そうなる設定で動いていた）。
+ *
+ * そこで Cloudflare がトンネル通信に付ける `cf-connecting-ip`（本物の接続元）を
+ * **優先する**。トレードオフははっきりさせておく: **このヘッダは偽装できる** —
+ * Cloudflare を通らずにアプリへ届く経路（LAN 直・社内からの curl）なら誰でも
+ * 好きな値を書ける。だから用途を「**バケットを分ける**」ことに限る:
+ *
+ *   - 身元の証拠にしない（login_attempts.ip_address は従来どおり clientIpOf）。
+ *   - 社内 CIDR 判定・所有区分にも使わない。
+ *   - 偽装できて困るのは「自分のバケットをずらして IP 制限を避ける」ことだが、
+ *     **ユーザー名側のバケット（5 回）は別に効いている**ので、それ 1 本では
+ *     password spraying は通らない。
+ */
+export function rateLimitIpOf(req: Request): string | null {
+  // Cloudflare が付ける単一の値（チェーンではない）。
+  const cf = normalizeIp(req.headers.get("cf-connecting-ip"));
+  if (cf) return cf;
+  return clientIpOf(req);
+}
+
 /** User-Agent（列長に合わせて丸める）。 */
 export function userAgentOf(req: Request): string | null {
   const ua = req.headers.get("user-agent");

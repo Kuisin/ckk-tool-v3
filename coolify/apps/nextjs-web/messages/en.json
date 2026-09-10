@@ -868,6 +868,7 @@
     "clearFilter": "Clear filter",
     "guest": "Guest",
     "homeSettingsForm": {
+      "selectApps": "Select apps",
       "enterAGroupName": "Enter a group name",
       "theHomeLayoutWasUpdated": "The home layout was updated",
       "homeLayout": "Home layout",
@@ -2039,6 +2040,7 @@
       "markPaidFailed": "Could not mark as paid"
     },
     "closingActions": {
+      "closingDateNotReached": "Cannot process until the closing date has passed (from the day after)",
       "closingNotFound": "The billing closing was not found",
       "generateInvoiceFailed": "Could not generate the invoice",
       "invalidYearMonth": "Invalid target month format (YYYYMM)",
@@ -2546,6 +2548,17 @@
       "site": "Site"
     },
     "stepCard": {
+      "othersCount": "and {count} more",
+      "lot": "Lot {lot}",
+      "requestedOn": "Requested: {date}",
+      "expectedOn": "Expected: {date}",
+      "completedOn": "Completed: {date}",
+      "completedOnBy": "Completed: {date} ({name})",
+      "planActualCount": "Planned {plans} / Actual {actuals}",
+      "passThrough": "Passed through {count} (no quantity record)",
+      "semiFinished": "Semi-finished {count}",
+      "scrapped": "Scrapped {count}",
+      "processBranch": "Process branch {count}",
       "stepMenu": "Step menu",
       "addABranch": "Add a branch",
       "assignedTo": "Assigned to",
@@ -2672,6 +2685,8 @@
       "deleteTheDrawing": "Delete the drawing"
     },
     "inventory": {
+      "reservationsCount": "Reservations ({count})",
+      "transactionsCount": "Transactions ({count})",
       "thereIsNoTransactionHistory": "There is no transaction history",
       "couldNotTransferTheStock": "Could not transfer the stock",
       "theStockWasTransferred": "The stock was transferred",
@@ -2722,6 +2737,16 @@
       "thereAreNoWorkOrdersIn": "There are no work orders in progress"
     },
     "stepExecution": {
+      "workOrderLabel": "Work order {number}",
+      "executionSite": "Execution site: {site}",
+      "plannedQuantity": "Planned quantity: {count}",
+      "plannedWorkHours": "Planned work hours: {hours} h",
+      "startedOn": "Started: {date}",
+      "startedOnBy": "Started: {date} ({name})",
+      "completedOn": "Completed: {date}",
+      "completedOnBy": "Completed: {date} ({name})",
+      "lockedByUser": "{name} is working on this step. It cannot be operated until it is completed or aborted.",
+      "completesWithoutQuantity": "This step completes without a quantity record (passed through {count})",
       "theStepWasStarted": "The step was started",
       "couldNotStartTheStep": "Could not start the step",
       "theLotSlipCodeWasSaved": "The lot / slip code was saved",
@@ -2775,6 +2800,10 @@
       "stepFallbackWithId": "Step #{id}"
     },
     "workOrderDetail": {
+      "allocatedOfOrdered": "Allocated {allocated} / Ordered {ordered}",
+      "version": "v{version}",
+      "versionLatest": "v{version} (latest)",
+      "newerVersionsExist": "Newer versions exist (#{numbers}). Consider copying the latest version.",
       "pinned": "Pinned",
       "workOrderWasCreatedWithDoc": "Work order {docNumber} was created",
       "cancelWorkOrderWithLabel": "Cancel work order {label}. This cannot be undone.",
@@ -3742,6 +3771,8 @@
       "importCsv": "Import CSV",
       "text": "Text",
       "number": "Number",
+      "keyCell": "Row {row}, key column {col}",
+      "valueCell": "Row {row}, value",
       "exactMatch": "Exact match",
       "geTakeTheSmallest": "≥ or more — takes the smallest (diameter × length)",
       "leTakeTheLargest": "≤ or less — takes the largest (LD/discount)",
@@ -4119,6 +4150,9 @@
       "ipAddress": "IP address"
     },
     "privileged": {
+      "approveTab": "Approve",
+      "approveTabWithCount": "Approve ({count})",
+      "reasonLabel": "Reason: {reason}",
       "pendingApproval": "(pending approval)",
       "theClockStartsFromTheFirst": "The clock starts from the first use.",
       "theseOperationsNeedApproval": "These operations need approval.",
@@ -4244,6 +4278,11 @@
       "screenNumber": "Screen {n}"
     },
     "kioskFloorMapView": {
+      "unnamed": "(not set)",
+      "inUseBy": "In use: {name}",
+      "deviceCount": "{count} devices",
+      "thisFloor": "This floor ({count})",
+      "otherDevices": "Other devices ({count})",
       "thisSiteHasNoFloorMaps": "This site has no floor maps.",
       "deleteFloorNameCannotIfDevices": "This deletes the floor \"{name}\". It cannot be deleted if devices are placed on it.",
       "floorMapName": "Floor map: {name}",
@@ -4962,6 +5001,8 @@
       "sortOrderValue": "Sort order {value}"
     },
     "inspectionTemplates": {
+      "version": "v{version}",
+      "versionLatest": "v{version} (latest)",
       "theTargetCanBeAnApproval": "The target can be an approval group, or approvers just for this sheet (custom, several allowed). Unset = anyone can accept",
       "changeTheInspectionApprovalRecipient": "Change the inspection approval recipient",
       "blankSheet": "Blank sheet",
@@ -5431,6 +5472,8 @@
       "disableTitle": "Disable defect type"
     },
     "inspectionTemplateTable": {
+      "allVersions": "All {count}",
+      "itemCount": "{count} items",
       "bulkEnabled": "Enabled {count} inspection template(s)",
       "bulkDisabled": "Disabled {count} inspection template(s)",
       "bulkDeleteConfirm": "This deletes the {count} selected inspection template(s). This cannot be undone.",
@@ -5794,7 +5837,7 @@
       "floorMapPlantMismatch": "The floor map does not match the selected site",
       "createFailed": "Could not create the storage location",
       "locationNotFound": "Storage location not found",
-      "locationHasInventoryRefs": "Cannot delete because inventory still references this storage location (empty it with a stock transfer, or disable it instead)",
+      "locationHasInventoryRefs": "Cannot delete because data references this storage location (stock, work orders) — empty it with a stock transfer, or disable it instead",
       "updateFailed": "Could not update the storage location",
       "deleteFailed": "Could not delete the storage location",
       "floorMapLocationMismatch": "The floor map does not match the storage location's site",
@@ -5832,7 +5875,7 @@
       "updateFailed": "Could not update the business partner"
     },
     "materialTypeActions": {
-      "cannotDeleteInUse": "Cannot delete because materials reference this material type. Consider disabling it instead.",
+      "cannotDeleteInUse": "Cannot delete because data references this material type (materials, products, price estimates, default prices). Consider disabling it instead.",
       "createFailed": "Could not create the material type",
       "deleteFailed": "Could not delete the material type",
       "duplicateDiameterFinishRow": "Duplicate rows for the same diameter × surface finish",
@@ -6533,6 +6576,8 @@
       "theConditionIsNotSavedUntil": "The condition is not saved until you pick at least one value (everything stays visible)"
     },
     "shareGrantsPanel": {
+      "notifyOnComplete": "Notify when completed",
+      "recipientN": "Recipient {n}",
       "companyWideEveryoneWhoCanLog": "Company-wide (everyone who can log in)",
       "theSharingSettingsWereSaved": "The sharing settings were saved",
       "selectARole": "Select a role",
@@ -6696,6 +6741,10 @@
       "stopsPushNotificationsToDevice": "This stops push notifications to \"{device}\"."
     },
     "profileView": {
+      "registeredOn": "Registered: {date}",
+      "change": "Change",
+      "removeDeviceTitle": "Release notification device",
+      "removeDeviceMessage": "Push notifications to this device will stop. To receive them again, enable notifications on the device again.",
       "theProfilePhotoWasUpdated": "The profile photo was updated",
       "theProfilePhotoWasRemoved": "The profile photo was removed",
       "theEmailAddressWasUpdatedNotification": "The email address was updated (notification emails go there)",
@@ -6943,6 +6992,10 @@
       "thereAreNoOrderLinesThey": "There are no order lines (they are created when the order acceptance is confirmed)"
     },
     "priceLists": {
+      "copyDescription": "Copies every order type ({types}) of \"{product}\" to the destination. Set the destination's valid period (shared by all types).",
+      "selectACustomerError": "Select a customer",
+      "selectAProductError": "Select a product",
+      "endDateRequiredForTestSample": "An end date is required because test or sample types are included",
       "enterTheDestinationCustomerProductAnd": "Enter the destination customer, product and valid period (start and end)",
       "enterTheDestinationCustomerProductAnd2": "Enter the destination customer, product and start date",
       "thePriceListWasCopiedTo": "The price list was copied to another customer or product",
@@ -7703,11 +7756,19 @@
       "operationDetails": "Operation details",
       "thereAreNoDetails": "There are no details"
     },
+    "detailShell": {
+      "created": "Created: {value}",
+      "updated": "Updated: {value}"
+    },
     "dataTable": {
       "clearSelection": "Clear selection",
       "columns": "Columns",
       "selectAll": "Select all",
       "selectRows": "Select rows",
+      "firstPage": "First page",
+      "previousPage": "Previous page",
+      "nextPage": "Next page",
+      "lastPage": "Last page",
       "rowsToShow": "Rows to show",
       "noData": "No data",
       "selectedCount": "{count} selected",

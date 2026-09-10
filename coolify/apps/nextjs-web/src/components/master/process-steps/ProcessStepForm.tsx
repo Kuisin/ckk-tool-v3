@@ -381,6 +381,7 @@ export function ProcessStepForm({
                 />
               )}
               <TextInput
+                aria-label={tr("common.notes")}
                 placeholder={tr("common.notes")}
                 style={{ flex: 1, minWidth: isMobile ? "60%" : 140 }}
                 {...form.getInputProps(`${field}.${index}.notes`)}

@@ -918,6 +918,7 @@ export function TrialEstimateForm({
               title={tr("sales.trialEstimates.priceEstimateName")}
             >
               <TextInput
+                aria-label={tr("sales.trialEstimates.eGPrecisionShaft338")}
                 maw={480}
                 onChange={(e) => setName(e.currentTarget.value)}
                 placeholder={tr("sales.trialEstimates.eGPrecisionShaft338")}

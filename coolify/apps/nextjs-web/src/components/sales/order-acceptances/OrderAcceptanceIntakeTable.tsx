@@ -449,6 +449,7 @@ export function OrderAcceptanceIntakeTable({
       breadcrumbs={[tr("common.sales"), tr("common.orderAcceptance")]}
       filters={
         <Select
+          aria-label={tr("common.status")}
           clearable
           data={statusOptions("OrderAcceptanceIntake")}
           flex={isMobile ? 1 : undefined}
@@ -461,6 +462,7 @@ export function OrderAcceptanceIntakeTable({
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("sales.orderAcceptances.searchByNumberFileNameOr")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("sales.orderAcceptances.searchByNumberFileNameOr")}

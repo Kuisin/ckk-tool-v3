@@ -4,9 +4,12 @@ import { describe, expect, it } from "vitest";
 import {
   autorunTargetMonths,
   billingPeriodStart,
+  billingPeriodStartFrom,
   billingWindowFor,
   closingDateFor,
+  closingDateReached,
   inBillingWindow,
+  isProcessable,
   jstMidnightOf,
   previousClosingDate,
 } from "./model";
@@ -119,5 +122,48 @@ describe("autorunTargetMonths", () => {
       { year: 2026, month: 12 },
       { year: 2027, month: 1 },
     ]);
+  });
+});
+
+describe("isProcessable / closingDateReached", () => {
+  it("締日当日までは処理できず、翌日から処理できる", () => {
+    const c = { status: "PENDING" as const, closingDate: "2026-08-31" };
+    expect(isProcessable(c, "2026-08-15")).toBe(false);
+    expect(isProcessable(c, "2026-08-31")).toBe(false);
+    expect(isProcessable(c, "2026-09-01")).toBe(true);
+  });
+
+  it("PENDING 以外は締日を過ぎていても処理できない", () => {
+    expect(
+      isProcessable(
+        { status: "PROCESSED" as const, closingDate: "2026-08-31" },
+        "2026-09-10",
+      ),
+    ).toBe(false);
+  });
+
+  it("Date でも文字列でも同じ判定", () => {
+    expect(
+      closingDateReached(new Date("2026-08-20T00:00:00Z"), "2026-08-21"),
+    ).toBe(true);
+    expect(closingDateReached("2026-08-20", "2026-08-20")).toBe(false);
+  });
+});
+
+describe("billingPeriodStartFrom", () => {
+  it("前回処理した締日があればその翌日", () => {
+    expect(
+      billingPeriodStartFrom(
+        new Date("2026-08-31T00:00:00Z"),
+        31,
+        new Date("2026-07-20T00:00:00Z"),
+      ).toISOString(),
+    ).toBe("2026-07-21T00:00:00.000Z");
+  });
+
+  it("無ければ締日設定から計算（従来どおり）", () => {
+    expect(
+      billingPeriodStartFrom(new Date("2026-08-31T00:00:00Z"), 31, null),
+    ).toEqual(billingPeriodStart(2026, 8, 31));
   });
 });

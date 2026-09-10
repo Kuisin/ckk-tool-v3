@@ -57,6 +57,7 @@ import {
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode, normalizeCode } from "@/lib/crockford";
 import {
@@ -139,9 +140,10 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  const [search, setSearch] = useState<string | null>(null);
-  const [plant, setPlant] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  // 絞り込みは URL に持つ（§8.1）— 端末を開いて戻っても消えない。
+  const [search, setSearch] = useUrlStringState("q");
+  const [plant, setPlant] = useUrlSelectState("plant");
+  const [status, setStatus] = useUrlSelectState("status");
   const [createOpen, setCreateOpen] = useState(false);
   const [linkTarget, setLinkTarget] = useState<DisplayRow | null>(null);
   // まとめた行ごとに「いま何枚目を見ているか」（キーは機械の識別子）
@@ -355,6 +357,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
         filters={
           <>
             <Select
+              aria-label={tr("common.site")}
               clearable
               data={plantOptions}
               onChange={setPlant}
@@ -365,6 +368,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
               w={isMobile ? undefined : 180}
             />
             <Select
+              aria-label={tr("common.status")}
               clearable
               data={statusOptions("DisplayDevice")}
               onChange={setStatus}
@@ -382,6 +386,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
         }}
         search={
           <TextInput
+            aria-label={tr("settings.displays.nameLocationContent")}
             leftSection={<IconSearch size={14} />}
             onChange={(e) => setSearch(e.currentTarget.value || null)}
             placeholder={tr("settings.displays.nameLocationContent")}

@@ -773,6 +773,14 @@ function PaginationBar({
   isMobile?: boolean;
 }) {
   const tr = useTranslations();
+  // Mantine の Pagination は矢印ボタンに名前を付けない（読み上げでは
+  // 「ボタン」としか言われない）— design.md §18.2。
+  const controlLabels = {
+    first: tr("ui.dataTable.firstPage"),
+    previous: tr("ui.dataTable.previousPage"),
+    next: tr("ui.dataTable.nextPage"),
+    last: tr("ui.dataTable.lastPage"),
+  } as const;
   return (
     <Group justify="space-between" mt={4} wrap="nowrap">
       <Text c="dimmed" className="whitespace-nowrap" size="xs">
@@ -800,6 +808,9 @@ function PaginationBar({
           />
         )}
         <Pagination
+          getControlProps={(control) => ({
+            "aria-label": controlLabels[control],
+          })}
           onChange={onPage}
           siblings={isMobile ? 0 : 1}
           size="sm"

@@ -184,6 +184,7 @@ export function ApprovalGroupTable({
       breadcrumbs={[tr("common.masterData"), tr("common.approvalSettings")]}
       embedded={embedded}
       filters=<Select
+        aria-label={tr("common.status")}
         clearable
         data={STATUS_OPTIONS}
         onChange={setStatusFilter}
@@ -195,6 +196,7 @@ export function ApprovalGroupTable({
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("master.approvalSettings.searchByName")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("master.approvalSettings.searchByName")}

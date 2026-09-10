@@ -163,3 +163,21 @@ the admintools apps were set once via
 `AUTOUPDATE=false` — upgrades are deliberate: bump the pinned tags in
 `docker-compose.yml` (compare against the `*.upstream` files for structural
 changes), rsync, `docker compose up -d`.
+
+### `NEXT_PUBLIC_APP_VERSION` はビルド時と実行時で同じ値にする
+
+`NEXT_PUBLIC_*` は**クライアント側の束にはビルド時に焼き込まれ**、サーバー側の
+描画では**実行時の env を読む**。両アプリのフッターは
+`process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0"` を client component で描くので、
+**ビルド時の値と実行時の値がずれると全画面がハイドレーション不一致（React #418）に
+なる**。画面は動いているように見えるので気づきにくい。
+
+いまは Dockerfile の `ARG NEXT_PUBLIC_APP_VERSION=0.1.0`（builder ステージ・
+`pnpm build` の前）と Coolify 側の値が一致しているため起きていない
+（`app-dev` のフッターは `v0.1.0`、ページエラー無しを 2026-09-10 に確認）。
+**Coolify の env でだけバージョンを上げると壊れる** — runner ステージはこの変数を
+持たず、Coolify の実行時 env がそのままサーバー側の値になるため。上げるときは
+**ビルド引数（Build Variable）にも同じ値を入れる**こと。
+
+ローカルで本番ビルドを動かすときも同じ — `pnpm build` と `next start` に同じ値を
+渡す（`tools/docs-screenshots` の巡回・通し確認はこれを揃えている）。

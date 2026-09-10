@@ -646,6 +646,7 @@ function ProductTypeItemInput({
       return (
         <NumberInput
           {...common}
+          aria-label={item.placeholder}
           max={item.max}
           min={item.min}
           onChange={(v) => onChange(v === "" || v == null ? "" : String(v))}
@@ -667,6 +668,7 @@ function ProductTypeItemInput({
       return (
         <Select
           {...common}
+          aria-label={item.placeholder ?? tr("common.select")}
           clearable={!item.required}
           data={(item.options ?? []).map((o) => ({
             value: o.value,
@@ -681,6 +683,7 @@ function ProductTypeItemInput({
       return (
         <TextInput
           {...common}
+          aria-label="YYYY-MM-DD"
           onChange={(e) => onChange(e.currentTarget.value)}
           placeholder="YYYY-MM-DD"
           type="date"
@@ -691,6 +694,7 @@ function ProductTypeItemInput({
       return (
         <TextInput
           {...common}
+          aria-label={item.placeholder}
           onChange={(e) => onChange(e.currentTarget.value)}
           placeholder={item.placeholder}
           value={value}

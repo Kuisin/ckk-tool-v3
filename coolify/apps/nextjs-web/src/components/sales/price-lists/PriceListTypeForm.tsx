@@ -98,7 +98,11 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
     /** 価格試算値を使わず手動の基準単価を使う（送信時に除去）. */
     customBase: z.boolean(),
     baseUnitPrice: z.number().min(0),
-    validFrom: z.string().min(1, tr("sales.priceLists.selectAStartDate")),
+    // 空は null にする — DatePickerInput に "" を渡すと「Invalid Date」と描かれる。
+    validFrom: z
+      .string()
+      .nullable()
+      .refine((v) => !!v, tr("sales.priceLists.selectAStartDate")),
     validUntil: z.string().nullable(),
     isActive: z.boolean(),
     tiers: z
@@ -161,7 +165,7 @@ const emptyVariant = (orderType: VariantForm["orderType"]): VariantForm => ({
   sourceEstimate: null,
   customBase: true,
   baseUnitPrice: 0,
-  validFrom: "",
+  validFrom: null,
   validUntil: null,
   isActive: true,
   tiers: [emptyTier()],
@@ -351,7 +355,7 @@ export function PriceListTypeForm({
           !v.customBase && estimateBase != null
             ? estimateBase
             : v.baseUnitPrice,
-        validFrom: v.validFrom,
+        validFrom: v.validFrom ?? "",
         validUntil: v.validUntil,
         isActive: v.isActive,
         estimateNumber: v.sourceEstimate,
@@ -778,6 +782,7 @@ export function PriceListTypeForm({
                       </Table.Td>
                       <Table.Td>
                         <NumberInput
+                          aria-label={tr("sales.priceLists.noMaximum")}
                           min={1}
                           placeholder={tr("sales.priceLists.noMaximum")}
                           {...form.getInputProps(
@@ -824,6 +829,9 @@ export function PriceListTypeForm({
                             }
                           />
                           <NumberInput
+                            aria-label={
+                              isCustom ? undefined : tr("common.auto")
+                            }
                             disabled={!isCustom}
                             min={0}
                             placeholder={

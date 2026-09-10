@@ -108,7 +108,15 @@ export function MasterDetailShell({
   );
 
   if (isMobile) {
-    if (!onList) return <>{children}</>;
+    // 詳細ルートでも見出しは出す — 無いと画面に h1–h3 が 1 つも無く、
+    // どのアプリの中に居るのかも読み取れない（パンくずはモバイルでは隠れる）。
+    if (!onList)
+      return (
+        <Stack gap="md">
+          {header}
+          {children}
+        </Stack>
+      );
     return (
       <Stack gap="md">
         {header}

@@ -149,6 +149,7 @@ export function AcceptanceCancelCard({
           {tr("sales.orderAcceptances.sendingItBackClosesTheRequest")}
         </Text>
         <Textarea
+          aria-label={tr("common.reasonForSendingBack")}
           minRows={3}
           onChange={(e) => setReason(e.currentTarget.value)}
           placeholder={tr("common.reasonForSendingBack")}

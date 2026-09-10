@@ -364,6 +364,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
       filters={
         <>
           <Select
+            aria-label={tr("common.category")}
             clearable
             data={processCategoryOptions(locale)}
             onChange={setCategoryFilter}
@@ -372,6 +373,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
             w={isMobile ? 130 : 150}
           />
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={STATUS_OPTIONS}
             onChange={setStatusFilter}
@@ -384,6 +386,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("common.searchByCodeOrName")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("common.searchByCodeOrName")}

@@ -167,6 +167,7 @@ export function TrialEstimateTable({
       filters={
         <>
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={statusOptions("Estimate")}
             flex={isMobile ? 1 : undefined}
@@ -176,6 +177,7 @@ export function TrialEstimateTable({
             w={isMobile ? undefined : 150}
           />
           <Select
+            aria-label={tr("common.toolType")}
             clearable
             data={resolvedToolTypeOptions}
             flex={isMobile ? 1 : undefined}
@@ -193,6 +195,9 @@ export function TrialEstimateTable({
       }}
       search={
         <TextInput
+          aria-label={tr(
+            "sales.trialEstimates.searchByPriceEstimateNumberName",
+          )}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr(

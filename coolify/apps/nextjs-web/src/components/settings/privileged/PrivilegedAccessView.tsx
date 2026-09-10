@@ -32,6 +32,7 @@ import {
   revokePrivilegedAccess,
 } from "@/app/(dashboard)/settings/privileged-access/actions";
 import { PrivilegedRequestCard } from "@/components/settings/privileged/PrivilegedRequestCard";
+import { AppTabs } from "@/components/ui/AppTabs";
 import {
   ApproveButton,
   GhostButton,
@@ -275,14 +276,18 @@ export function PrivilegedAccessView({
         </Text>
       </Alert>
 
-      <Tabs defaultValue={toApprove.length > 0 ? "approve" : "mine"}>
+      <AppTabs defaultValue={toApprove.length > 0 ? "approve" : "mine"}>
         <Tabs.List>
           <Tabs.Tab value="mine">
             {tr("settings.privileged.myRequests")}
           </Tabs.Tab>
           {canApprove && (
             <Tabs.Tab value="approve">
-              承認する{toApprove.length > 0 ? `（${toApprove.length}）` : ""}
+              {toApprove.length > 0
+                ? tr("settings.privileged.approveTabWithCount", {
+                    count: toApprove.length,
+                  })
+                : tr("settings.privileged.approveTab")}
             </Tabs.Tab>
           )}
           {canApprove && (
@@ -370,7 +375,7 @@ export function PrivilegedAccessView({
             )}
           </Tabs.Panel>
         )}
-      </Tabs>
+      </AppTabs>
 
       {/* 部分承認 — 要求された操作のうち許可するものだけを残す。 */}
       <Modal
@@ -382,7 +387,9 @@ export function PrivilegedAccessView({
           <Stack gap="sm">
             <Text size="sm">{approving.title}</Text>
             <Text c="dimmed" size="xs">
-              理由: {approving.reason}
+              {tr("settings.privileged.reasonLabel", {
+                reason: approving.reason,
+              })}
             </Text>
             <Text fw={600} size="sm">
               {tr("settings.privileged.operationsToAllow")}

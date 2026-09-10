@@ -83,6 +83,7 @@ export function FormFieldInput({
       return (
         <Textarea
           {...common}
+          aria-label={field.placeholder}
           autosize
           minRows={3}
           onChange={(e) => onChange(e.currentTarget.value)}
@@ -121,6 +122,7 @@ export function FormFieldInput({
       return (
         <NumberInput
           {...common}
+          aria-label={field.placeholder}
           max={field.max}
           min={field.min}
           onChange={(v) => onChange(v === "" ? "" : String(v))}
@@ -145,6 +147,7 @@ export function FormFieldInput({
       return (
         <TextInput
           {...common}
+          aria-label={field.placeholder ?? "HH:MM"}
           onChange={(e) => onChange(e.currentTarget.value)}
           placeholder={field.placeholder ?? "HH:MM"}
           type="time"
@@ -156,6 +159,7 @@ export function FormFieldInput({
       return (
         <Select
           {...common}
+          aria-label={field.placeholder ?? tr("common.selectOne")}
           clearable={!field.required}
           data={(field.options ?? []).map((o) => ({
             value: o.value,
@@ -172,6 +176,7 @@ export function FormFieldInput({
       return (
         <MultiSelect
           {...common}
+          aria-label={field.placeholder ?? tr("common.selectOne")}
           clearable
           data={(field.options ?? []).map((o) => ({
             value: o.value,
@@ -398,6 +403,7 @@ export function FormFieldInput({
       return (
         <TextInput
           {...common}
+          aria-label={field.placeholder}
           onChange={(e) => onChange(e.currentTarget.value)}
           placeholder={field.placeholder}
           value={asString(value)}

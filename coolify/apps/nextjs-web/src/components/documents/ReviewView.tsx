@@ -216,6 +216,7 @@ function CommentThread({
 
         <Group align="flex-end" gap="xs" wrap={isMobile ? "wrap" : "nowrap"}>
           <Textarea
+            aria-label={tr("documents.reviewView.reply")}
             autosize
             minRows={1}
             onChange={(e) => setReply(e.currentTarget.value)}
@@ -422,6 +423,10 @@ export function ReviewView({
                   >
                     <Stack gap="xs">
                       <Textarea
+                        aria-label={tr(
+                          "documents.reviewView.commentPlaceholderForLine",
+                          { n: no },
+                        )}
                         autosize
                         minRows={2}
                         onChange={(e) => setDraft(e.currentTarget.value)}

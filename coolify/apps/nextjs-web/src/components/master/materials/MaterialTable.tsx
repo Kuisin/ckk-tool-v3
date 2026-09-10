@@ -248,6 +248,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
       filters={
         <>
           <Select
+            aria-label={tr("common.materialTypes")}
             clearable
             data={typeOptions}
             onChange={setTypeFilter}
@@ -258,6 +259,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
             w={isMobile ? undefined : 200}
           />
           <Select
+            aria-label={tr("master.materials.surfaceFinish")}
             clearable
             data={finishOptions}
             onChange={setFinishFilter}
@@ -267,6 +269,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
             w={isMobile ? undefined : 130}
           />
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={STATUS_OPTIONS}
             onChange={setStatusFilter}
@@ -280,6 +283,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("master.materials.searchByMaterialCodeNameOr")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("master.materials.searchByMaterialCodeNameOr")}

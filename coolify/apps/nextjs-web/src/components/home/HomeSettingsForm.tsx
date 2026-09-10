@@ -365,6 +365,11 @@ function HomeSettingsEditor({
                         </ActionIcon>
                       </Group>
                       <MultiSelect
+                        aria-label={
+                          group.apps.length === 0
+                            ? tr("home.homeSettingsForm.selectApps")
+                            : undefined
+                        }
                         clearable
                         data={apps.map((a) => ({
                           value: a.key,
@@ -382,7 +387,9 @@ function HomeSettingsEditor({
                           )
                         }
                         placeholder={
-                          group.apps.length === 0 ? "アプリを選択" : undefined
+                          group.apps.length === 0
+                            ? tr("home.homeSettingsForm.selectApps")
+                            : undefined
                         }
                         searchable
                         value={group.apps}

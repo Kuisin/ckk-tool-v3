@@ -240,6 +240,7 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
       ]}
       filters={
         <Select
+          aria-label={tr("common.status")}
           clearable
           data={STATUS_OPTIONS}
           onChange={setStatusFilter}
@@ -251,6 +252,7 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("master.products.searchByProductCodeNameMaterial")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("master.products.searchByProductCodeNameMaterial")}

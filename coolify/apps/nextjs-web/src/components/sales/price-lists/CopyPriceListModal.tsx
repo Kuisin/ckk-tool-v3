@@ -114,15 +114,20 @@ export function CopyPriceListModal({
     >
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
         <Text size="sm">
-          「{source?.productName}
-          」の全注文種別（{orderTypeLabels}
-          ）をコピー先に複製します。コピー先の有効期間（全種別共通）を設定してください。
+          {tr("sales.priceLists.copyDescription", {
+            product: source?.productName ?? "",
+            types: orderTypeLabels,
+          })}
         </Text>
       </Alert>
 
       <Select
         data={customerOptions}
-        error={error && !customerId ? "顧客を選択してください" : undefined}
+        error={
+          error && !customerId
+            ? tr("sales.priceLists.selectACustomerError")
+            : undefined
+        }
         label={tr("sales.priceLists.copyToCustomer")}
         onChange={setCustomerId}
         placeholder={tr("common.selectACustomer")}
@@ -132,7 +137,11 @@ export function CopyPriceListModal({
       />
       <Select
         data={productOptions}
-        error={error && !productId ? "製品を選択してください" : undefined}
+        error={
+          error && !productId
+            ? tr("sales.priceLists.selectAProductError")
+            : undefined
+        }
         label={tr("sales.priceLists.copyToProduct")}
         onChange={setProductId}
         placeholder={tr("sales.priceLists.selectAProduct")}
@@ -141,7 +150,11 @@ export function CopyPriceListModal({
         withAsterisk
       />
       <DatePickerInput
-        error={error && !validFrom ? "有効開始日を選択してください" : undefined}
+        error={
+          error && !validFrom
+            ? tr("sales.priceLists.selectAStartDate")
+            : undefined
+        }
         label={tr("common.validFrom")}
         leftSection={<IconCalendar size={14} />}
         onChange={setValidFrom}
@@ -153,7 +166,9 @@ export function CopyPriceListModal({
       <DatePickerInput
         clearable={!needsEnd}
         description={
-          needsEnd ? "テスト・サンプルの種別を含むため終了日が必須" : undefined
+          needsEnd
+            ? tr("sales.priceLists.endDateRequiredForTestSample")
+            : undefined
         }
         error={
           error && needsEnd && !validUntil
@@ -164,7 +179,9 @@ export function CopyPriceListModal({
         leftSection={<IconCalendar size={14} />}
         onChange={setValidUntil}
         placeholder={
-          needsEnd ? "日付を選択" : tr("common.leaveBlankForNoEndDate")
+          needsEnd
+            ? tr("common.pickADate")
+            : tr("common.leaveBlankForNoEndDate")
         }
         value={validUntil}
         valueFormat="YYYY/MM/DD"

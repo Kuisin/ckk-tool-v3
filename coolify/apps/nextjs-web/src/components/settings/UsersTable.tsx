@@ -184,6 +184,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
       filters={
         <>
           <Select
+            aria-label={tr("common.type")}
             clearable
             data={Object.entries(userGroupLabels(tr)).map(([value, label]) => ({
               value,
@@ -195,6 +196,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
             w={140}
           />
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={[
               { value: "active", label: tr("common.enabled") },
@@ -210,6 +212,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("settings.usersTable.usernameDisplayNameEmailRole")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value || null)}
           placeholder={tr("settings.usersTable.usernameDisplayNameEmailRole")}

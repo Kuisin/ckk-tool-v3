@@ -693,6 +693,9 @@ export function ProcessListEditor({
                           />
                           {loc.executionLocation === "INTERNAL" ? (
                             <Select
+                              aria-label={tr(
+                                "production.processListEditor.site",
+                              )}
                               clearable
                               data={plantOptions}
                               onChange={(v) =>
@@ -708,6 +711,9 @@ export function ProcessListEditor({
                             />
                           ) : (
                             <Select
+                              aria-label={tr(
+                                "production.processListEditor.supplierSubcontractor",
+                              )}
                               clearable
                               data={supplierOptions}
                               onChange={(v) =>

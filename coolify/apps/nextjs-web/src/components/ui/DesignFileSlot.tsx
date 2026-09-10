@@ -88,6 +88,7 @@ export function DesignFileSlot({
       </Group>
       {onNoteChange && (
         <TextInput
+          aria-label={notePlaceholder}
           onChange={(e) => onNoteChange(e.currentTarget.value)}
           placeholder={notePlaceholder}
           size="xs"

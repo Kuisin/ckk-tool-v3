@@ -323,6 +323,7 @@ export function PendingWorkOrderBoard({
         <>
           {!isUnplanned && (
             <Select
+              aria-label={tr("common.type2")}
               clearable
               data={workOrderTypeOptions(locale)}
               flex={isMobile ? 1 : undefined}
@@ -333,6 +334,7 @@ export function PendingWorkOrderBoard({
             />
           )}
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={
               isUnplanned
@@ -361,6 +363,11 @@ export function PendingWorkOrderBoard({
       onReset={reset}
       search={
         <TextInput
+          aria-label={
+            isUnplanned
+              ? tr("common.searchByOrderLineNumberCustomer")
+              : tr("common.searchByWorkOrderNumberOrder")
+          }
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={

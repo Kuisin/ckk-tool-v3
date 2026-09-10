@@ -181,6 +181,7 @@ export function ShareGrantsPanel({
       )}
       {row.subjectType === "ROLE" && (
         <Select
+          aria-label={tr("forms.shareGrantsPanel.selectARole")}
           data={roleOptions}
           disabled={!canManage}
           onChange={(v) =>
@@ -238,7 +239,7 @@ export function ShareGrantsPanel({
         label: shareSubjectLabel(t, tr),
       }))}
       disabled={!canManage}
-      label={isMobile ? "対象" : undefined}
+      label={isMobile ? tr("common.target") : undefined}
       onChange={(v) =>
         update(i, {
           subjectType: (v as ShareSubjectType) ?? "EVERYONE",
@@ -265,7 +266,7 @@ export function ShareGrantsPanel({
     <Select
       data={levels.map((l) => ({ value: l, label: shareLevelLabel(l, tr) }))}
       disabled={!canManage}
-      label={isMobile ? "権限" : undefined}
+      label={isMobile ? tr("common.permission") : undefined}
       onChange={(v) => {
         const level = (v as ShareLevel) ?? levels[0];
         // 「回答のみ」に落としたら完了通知も外す — 開けない通知を
@@ -284,7 +285,9 @@ export function ShareGrantsPanel({
     <Checkbox
       checked={row.notifyOnComplete}
       disabled={!canManage || !canNotifyOnComplete(row.level)}
-      label={isMobile ? "完了したら通知する" : undefined}
+      label={
+        isMobile ? tr("forms.shareGrantsPanel.notifyOnComplete") : undefined
+      }
       onChange={(e) => update(i, { notifyOnComplete: e.currentTarget.checked })}
     />
   );
@@ -328,7 +331,7 @@ export function ShareGrantsPanel({
               <Stack gap="sm">
                 <Group justify="space-between">
                   <Text c="dimmed" size="xs">
-                    共有先 {i + 1}
+                    {tr("forms.shareGrantsPanel.recipientN", { n: i + 1 })}
                   </Text>
                   {removeButton(i)}
                 </Group>

@@ -778,6 +778,7 @@ export function FileManager() {
       }}
       search={
         <TextInput
+          aria-label={tr("admin.fileManager.searchByFileNameOrPath")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setQuery(e.currentTarget.value)}
           placeholder={tr("admin.fileManager.searchByFileNameOrPath")}

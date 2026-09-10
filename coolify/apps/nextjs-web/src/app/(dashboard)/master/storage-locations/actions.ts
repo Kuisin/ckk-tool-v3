@@ -14,6 +14,7 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
+import { countMasterReferences } from "@/lib/master-refs";
 import {
   type ActionResult,
   actionError,
@@ -219,11 +220,11 @@ export async function deleteStorageLocation(id: number): Promise<ActionResult> {
     if (!before) {
       return actionError(tr("master.storageLocationActions.locationNotFound"));
     }
-    const [prodRefs, matRefs] = await Promise.all([
-      prisma.productInventory.count({ where: { storageLocationId: id } }),
-      prisma.materialInventory.count({ where: { storageLocationId: id } }),
-    ]);
-    if (prodRefs + matRefs > 0) {
+    // 在庫行だけを数えていたので、指示書の完成品置き場
+    // （work_orders.storage_location_id — SET NULL）が黙って消えていた。
+    // 何を数えるかは lib/master-refs.ts が唯一の定義（他のマスタと同じ）。
+    const refs = await countMasterReferences("storageLocation", [id]);
+    if (refs.total > 0) {
       return actionError(
         tr("master.storageLocationActions.locationHasInventoryRefs"),
       );

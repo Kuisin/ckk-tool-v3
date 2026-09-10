@@ -493,11 +493,13 @@ export function ComponentCatalog() {
         <Stack gap="sm">
           <Group align="flex-end">
             <TextInput
+              aria-label="検索（デモ・未配線）"
               flex={1}
               leftSection={<IconSearch size={14} />}
               placeholder="検索（デモ・未配線）"
             />
             <Select
+              aria-label="状態"
               clearable
               data={statusOptions("Quote")}
               placeholder="状態"

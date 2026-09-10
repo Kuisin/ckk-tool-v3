@@ -32,6 +32,7 @@ import {
   effectiveLotInputMode,
   expectedInput,
   isWorkOrderComplete,
+  resolveReceivedQuantity,
   STEP_LINK_STATE_SELECT,
   STEP_STATE_SELECT,
   type StepLinkState,
@@ -652,13 +653,19 @@ export async function completeStepExecution(
   }
 
   const mode = stepRow.processStep.quantityTracking;
+  // 完了時点の想定受入数（前工程の良品数 + 流入エッジ — workflow-core.expectedInput）。
+  // 開始が前工程の完了より早かった工程（同期可能工程・先行 WO 未完了）は開始時に
+  // inputQuantity が null で、完了時に初めて確定する。web の lib/workflow.ts と
+  // 同じ規則 — こちらだけ古いままだと端末の送った受入数が良品数になり、最終工程
+  // なら製品在庫にそのまま載る。
+  const { ctx: ctxAtCompletion } = await fetchWorkflowCtx(stepRow.workOrderId);
+  const expectedAtCompletion = expectedInput(stepId, ctxAtCompletion);
   let persisted: StepQuantities;
   if (mode === "NONE") {
-    const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
     const input =
       stepRow.inputQuantity ??
-      expectedInput(stepId, ctx) ??
-      ctx.plannedQuantity;
+      expectedAtCompletion ??
+      ctxAtCompletion.plannedQuantity;
     persisted = {
       inputQuantity: input,
       outputSuccessQuantity: input,
@@ -670,9 +677,14 @@ export async function completeStepExecution(
     if (quantities == null && (defectReasons?.length ?? 0) === 0) {
       return fail("QUANTITY_REQUIRED", "数量を入力してください"); // i18n-ignore
     }
-    // 受入数は開始時に確定した値を権威とする（完了時のクライアント値は無視）。
-    const authoritativeInput =
-      stepRow.inputQuantity ?? quantities?.inputQuantity ?? 0;
+    // 受入数の権威は 想定受入（完了時点で再計算）→ 開始時に確定した値 →
+    // クライアント値 の順。クライアント値まで落ちるのは、前工程が無い
+    // （先行 WO 未完了で先頭が未確定）か前工程が未記録のときだけ。
+    const authoritativeInput = resolveReceivedQuantity({
+      expectedAtCompletion,
+      startedWith: stepRow.inputQuantity,
+      client: quantities?.inputQuantity,
+    });
     // 区分合計（半製品/廃棄/工程分岐）は**不良リストのみから導出**して権威とする。
     // リスト無しで区分数量だけが来るのは旧クライアント — 黙って受けず再入力を求める。
     const list = defectReasons ?? [];

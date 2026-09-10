@@ -29,6 +29,7 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { processClosing } from "@/app/(dashboard)/billing/closings/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { isoDateJst } from "@/components/sales/price-lists/model";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -172,7 +173,7 @@ export function ClosingDetail({
   return (
     <DetailShell
       actions={
-        isProcessable(closing) ? (
+        isProcessable(closing, isoDateJst(new Date())) ? (
           <PrimaryButton
             leftSection={<IconFileInvoice size={14} />}
             onClick={() => setProcessOpen(true)}

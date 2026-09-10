@@ -43,7 +43,6 @@ import {
   IconPlus,
   IconTrash,
 } from "@tabler/icons-react";
-import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -337,7 +336,16 @@ export function WorkflowBuilder({
   );
   // 作成時の作業計画（工程 → 担当者[] + 計画日）。担当は指示書ごとに違うので
   // 工程リストとは別に、最初から編集状態で置く。
-  const [todayStr] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  // 「今日」は表示設定のタイムゾーンで決める（端末のローカル時刻だと、設定と
+  // 違う地域から開いたとき計画日の既定が前後にずれる）。en-CA は YYYY-MM-DD。
+  const [todayStr] = useState(() =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: fmt.prefs.timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date()),
+  );
   const [stepPlans, setStepPlans] = useState<
     Record<number, { userIds: string[]; date: string | null }>
   >({});
@@ -1559,6 +1567,11 @@ export function WorkflowBuilder({
                       </Text>
                     </Group>
                     <MultiSelect
+                      aria-label={
+                        (plan?.userIds.length ?? 0) > 0
+                          ? undefined
+                          : tr("common.assignee")
+                      }
                       clearable
                       data={employeeOptions}
                       onChange={(v) =>

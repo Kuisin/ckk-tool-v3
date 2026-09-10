@@ -18,7 +18,7 @@ import { Alert, Group, Modal, Stack, Text } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { useLocale, useTranslations } from "next-intl";
-import { type ReactNode, useCallback } from "react";
+import { type ReactNode, useCallback, useEffect } from "react";
 import type { Locale } from "@/lib/i18n";
 import { CancelButton, PrimaryButton } from "./buttons";
 
@@ -41,18 +41,35 @@ const CONFIRM_DEFAULTS = {
 } satisfies Record<string, Record<Locale, string>>;
 
 /**
+ * `openConfirm` の既定言語。`ConfirmLocaleSync`（AppShell に 1 つ）が利用者の
+ * 言語を写す。以前は既定が ja 固定で、`openConfirm` を直接呼ぶ約 40 か所すべてで
+ * 英語/中国語の利用者にも「戻る」が日本語で出ていた — 呼び出し側を全部
+ * `useConfirm()` に書き換えるより、既定を正しくする方が漏れない。
+ */
+let defaultConfirmLocale: Locale = "ja";
+
+/** 利用者の言語を `openConfirm` の既定に写す（描画は何もしない）。 */
+export function ConfirmLocaleSync() {
+  const locale = useLocale() as Locale;
+  useEffect(() => {
+    defaultConfirmLocale = locale;
+  }, [locale]);
+  return null;
+}
+
+/**
  * Imperative destructive confirm — wraps `modals.openConfirmModal`
  * exactly per design.md §10.4. Requires <ModalsProvider> (app/providers.tsx).
  *
- * `locale` 省略時は ja。**画面からは `useConfirm()` を使うこと** — こちらを
- * 直に呼ぶと、利用者が英語/中国語でも既定文言が日本語のままになる。
+ * `locale` 省略時は利用者の言語（`ConfirmLocaleSync` が写した値。無ければ ja）。
+ * 画面からは `useConfirm()` でも同じ。
  */
 export function openConfirm({
   title,
   message,
   confirmLabel,
   cancelLabel,
-  locale = "ja",
+  locale = defaultConfirmLocale,
   onConfirm,
 }: {
   title: string;

@@ -50,12 +50,16 @@ function intakeInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
     /** 学習用 — 書類に印字されていた表記（そのまま）。 */
     materialText: z.string().nullable(),
     materialCode: z.string().nullable(),
+    /** 学習用 — 突合が入れていた素材 id（人の訂正だけを覚えるための比較元）。 */
+    draftMaterialId: z.string().nullable().optional(),
   });
 
   return z.object({
     supplierBpId: z.string().nullable(),
     /** 学習用 — 抽出された仕入先名（印字されたまま）。 */
     extractedSupplierName: z.string().nullable(),
+    /** 学習用 — 突合が入れていた仕入先 id。 */
+    draftSupplierBpId: z.string().nullable().optional(),
     lines: z
       .array(line)
       .min(1, tr("purchase.intake.selectAtLeastOneLine"))
@@ -156,10 +160,12 @@ export async function createReceiptsFromDelivery(
     await learnPurchaseAliases({
       extractedSupplierName: v.extractedSupplierName,
       supplierBpId: v.supplierBpId,
+      draftSupplierBpId: v.draftSupplierBpId,
       lines: v.lines.map((l) => ({
         materialText: l.materialText,
         materialCode: l.materialCode,
         materialId: l.materialId,
+        draftMaterialId: l.draftMaterialId,
       })),
       actorId: actor,
     });

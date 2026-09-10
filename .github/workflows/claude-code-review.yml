@@ -56,7 +56,11 @@ jobs:
             or history, do not report style nits or issues a linter would
             already catch. If nothing meets that bar, say so briefly instead
             of inventing findings.
-          claude_args: '--max-turns 15'
+          # 上限であって目標ではない — 数ファイルの PR は 5〜6 turn で終わるので
+          # ここを上げても普段の費用は増えない。15 のままだと**大きい PR だけが
+          # 必ず落ちる**（119 ファイルの PR #840 が error_max_turns で 2 回連続失敗）。
+          # レビューが要るのは差分が大きいときなので、そこで打ち切られては意味が無い。
+          claude_args: '--max-turns 40'
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
