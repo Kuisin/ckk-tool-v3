@@ -151,6 +151,7 @@ Web アプリ（nextjs-web）と共有端末アプリ（nextjs-kiosk）の両方
 | 出荷 | 納品書の発行に出荷書 SHIPPED を要求、明細ロックを id 順に | `delivery-notes/actions.ts`、`delivery-orders/actions.ts` |
 | 販売 | 見積明細の円未満丸め（`lib/money.ts`）、`issueQuote` の権限→検証の順 | `quotes/actions.ts` |
 | ツール | 実機巡回スクリプト | `tools/docs-screenshots/audit-crawl.ts` + README |
+| 依存 | **CI の依存監査（prod・high 以上）が赤だったのを解消** — `next` 16.2.12 → **16.3.4**（critical ×2: GHSA-p293-qw3h-jr36 / GHSA-2xp9-vwfh-vxw4。web・kiosk 両方。techstack の「Next.js はセキュリティパッチを当てる」「16.x の minor 更新は可」に従う）、`@tiptap/core` → 3.31.3（GHSA-j95f-988m-3j2f。`@mantine/tiptap` の peer は `>=3.3.0` なので衝突なし）、`nodemailer` → 9.1.1（GHSA-2x7j-588g-ccc2）。caret の下限も patched 版へ上げ、**lockfile だけでなく manifest に**修正を記録した（新しく解決し直しても下回らない）。残る監査出力は moderate 7 件と既に無視指定の high 1 件（GHSA-ggr8-5vv4-36mx）で、high 以上のゲートは通る | `coolify/apps/nextjs-{web,kiosk}/package.json`、`pnpm-lock.yaml` |
 
 再検証（修正後）: web lint / `tsc` / vitest 2,078 / `i18n:keys`（10,764 鍵）/ `i18n:glossary` / 動的鍵検査 /
 Server Action ゲート検査、kiosk lint / `tsc` / vitest 525 — すべて緑。twin 12 本のバイト一致。
@@ -174,10 +175,7 @@ Server Action ゲート検査、kiosk lint / `tsc` / vitest 525 — すべて緑
 ## 6. 改善計画（残り）
 
 ### 6.1 次に直す
-- **依存の脆弱性で CI の依存監査が赤**（本 PR の変更とは無関係。同じロックファイルの dev でも次の PR から落ちる）:
-  `next` 16.2.12 → **16.3.3**（critical ×2、GHSA-p293-qw3h-jr36 / GHSA-2xp9-vwfh-vxw4。web・kiosk 両方）、
-  `@tiptap/core` → 3.30.5（GHSA-j95f-988m-3j2f）、`nodemailer` → 9.1.0（GHSA-2x7j-588g-ccc2、メジャー更新）。
-  techstack の「Next.js のセキュリティパッチは当てる」に従って別 PR で上げる（nodemailer は相談）。
+- ~~依存の脆弱性で CI の依存監査が赤~~ — **本 PR で解消**（§5 の最終行）。
 - **§4.4 の再点検**（システム・認証・共有端末の修正 PR 14 本 + 監査ログ可読化）— 今回読めていない。
 - **共有端末の完了クレームを指示書完了・在庫計上と同一 tx に**（web / kiosk 両方）。今は巻き戻しで回復できるが、現場が気づけない。
 - `startApprovalFlow` の「既存 PENDING 行」分岐でフローを再解決し、`flow_snapshot` が違えば作り直す。
