@@ -235,6 +235,8 @@ GRANT SELECT (id, bp_id, display_name, locale, is_active, disabled_at,
 REVOKE SELECT ON app.api_client_tokens FROM metabase_ro;  -- トークンハッシュ（有効中）
 -- どの呼び出しがなぜ弾かれたか + 送信元 IP。portal_access_logs と同じ扱い。
 REVOKE SELECT ON app.api_access_logs   FROM metabase_ro;
+-- 冪等キーには**返した応答の本文がそのまま**入る（= 業務データの写し）。
+REVOKE SELECT ON app.api_idempotency_keys FROM metabase_ro;
 
 -- api_clients は「どの外部システムに何を許しているか」の棚卸しに使えるので
 -- 列単位で許す。**allowed_cidrs は出さない** — 社内ネットワークの構成そのもので、

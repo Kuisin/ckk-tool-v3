@@ -170,3 +170,38 @@ model ApiAccessLog {
   @@map("api_access_logs")
   @@schema("app")
 }
+
+/// 冪等キー（書き込みの再送を 1 回にする）。
+///
+/// ■ なぜ「あったほうがよい」ではなく**必須**なのか
+/// 採番は `lib/numbering.ts` の `allocateDocumentKey()` で、**月次リセットの
+/// 連番**。webhook の再送やタイムアウト後のリトライで同じ注文が 2 回通ると
+/// `ORD-` が 2 本立ち、後から見分ける手段が無い（番号は再利用もされる）。
+/// 在庫や請求まで二重に動くので、取り返しがつかない。
+///
+/// ■ 保存するのは「鍵 + 要求の指紋 + 返した応答」
+/// 同じ鍵で**違う本文**が来たら 422 で拒む（鍵の使い回しは呼び出し側の
+/// 不具合で、黙って古い応答を返すとその不具合が見えなくなる）。
+/// 同じ鍵で同じ本文なら、保存した応答をそのまま返す。
+///
+/// 期限は 24 時間（`api-cron.sql` が刈る）。それを過ぎた再送は新しい書き込みに
+/// なるが、常識的な再送はすべて窓の中に収まる。
+model ApiIdempotencyKey {
+  /// 呼び出し側が付けた鍵。クライアントごとに一意（他社の鍵とぶつからない）。
+  key      String @db.VarChar(255)
+  clientId String @map("client_id") @db.Uuid
+
+  /// メソッド + パス + 本文の sha256。同じ鍵で違う要求を弾くため。
+  requestHash String @map("request_hash") @db.Char(64)
+
+  /// 返した応答（本文と状態）。再送にはこれをそのまま返す。
+  responseStatus Int    @map("response_status")
+  responseBody   String @map("response_body")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@id([clientId, key])
+  @@index([createdAt])
+  @@map("api_idempotency_keys")
+  @@schema("app")
+}

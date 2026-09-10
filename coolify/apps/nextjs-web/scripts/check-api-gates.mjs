@@ -9,7 +9,9 @@
  * 画面や Server Action と違って「ログインしていないと届かない」という
  * 二重の網が無いので、機械で見る価値がここだけ突出して高い。
  *
- * 判定: 各 HTTP メソッドの export の本文に GATE_NAMES のいずれかが現れること。
+ * 判定は 2 つ:
+ *   ① 各 HTTP メソッドの export の本文に GATE_NAMES のいずれかが現れること。
+ *   ② **書き込みハンドラが prisma を直に触っていないこと**（下記）。
  * 門（requireApiAuth / requireApiPermission）は内部で isDevFeatureEnabled("api")
  * も見るので、機能フラグの検査はそれに委ねる（api-auth.ts の 1 行目）。
  */
@@ -21,11 +23,26 @@ import { fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
 const API_V1 = join(ROOT, "app", "api", "v1");
 
-const GATE_NAMES = ["requireApiPermission", "requireApiAuth"];
+// runWrite は中で requireApiPermission を呼ぶ（書き込みの口の唯一の入口）。
+// 門を「中に持っている」関数はここに挙げ、その関数自身の試験で
+// 門を通ることを固定する。
+const GATE_NAMES = ["requireApiPermission", "requireApiAuth", "runWrite"];
 const GATE_RE = new RegExp(`\\b(${GATE_NAMES.join("|")})\\s*\\(`);
 
 const METHOD_RE =
   /export\s+(?:async\s+)?function\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s*\(/g;
+
+/**
+ * 書き込みメソッド。これらのハンドラは **lib の関数**を呼ぶこと —
+ * `prisma.x.create()` などを直に書くと、画面の Server Action が持っている
+ * 業務規則（採番・在庫・監査・承認）を迂回した第 2 の書き込み経路ができる。
+ * それはこの API の設計が最も避けたいもの（_specs/api.md §8）。
+ */
+const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+/** ハンドラ本文に現れてはいけない直接書き込み。 */
+const DIRECT_WRITE_RE =
+  /\bprisma\s*\.\s*\$?\w+\s*\.\s*(create|createMany|update|updateMany|upsert|delete|deleteMany)\s*\(/;
 
 /**
  * 門が要らないルート。**理由を必ず書くこと。**
@@ -94,6 +111,15 @@ for (const file of files) {
     const body = brace < 0 ? "" : bodyAfter(src, brace);
     if (!GATE_RE.test(body)) {
       console.error(`MISSING GATE: v1/${rel}::${m[1]}`);
+      failed++;
+    }
+    if (WRITE_METHODS.has(m[1]) && DIRECT_WRITE_RE.test(body)) {
+      console.error(
+        `DIRECT PRISMA WRITE: v1/${rel}::${m[1]}` +
+          "\n  書き込みは lib の関数を呼ぶこと（画面の Server Action と同じ関数）。" +
+          "\n  ここで prisma を直に触ると、採番・在庫・監査・承認を迂回した" +
+          "\n  第 2 の書き込み経路ができる。",
+      );
       failed++;
     }
     checked++;

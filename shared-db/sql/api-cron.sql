@@ -28,6 +28,7 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 
 -- 再実行時は既存ジョブを置き換える
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'api_token_retention';
+SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'api_idempotency_cleanup';
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'api_access_log_retention';
 
 -- 失効・期限切れのトークンは 90 日残す。「そのトークンで誰が何を読んだか」を
@@ -45,4 +46,12 @@ $job$);
 SELECT cron.schedule('api_access_log_retention', '50 18 * * *', $job$
   DELETE FROM app.api_access_logs
    WHERE created_at < now() - interval '400 days'
+$job$);
+
+-- 冪等キーの窓は 24 時間。過ぎた行は次の再送を「新しい書き込み」にするので、
+-- 残しておく意味が無い（増えるだけ）。刻みを細かくするのは、書き込みの多い
+-- 環境で表が膨らむのを避けるため。
+SELECT cron.schedule('api_idempotency_cleanup', '*/30 * * * *', $job$
+  DELETE FROM app.api_idempotency_keys
+   WHERE created_at < now() - interval '24 hours'
 $job$);
