@@ -1,7 +1,8 @@
 {
   "apps": {
     "stepExecution": "工序执行",
-    "woScan": "工单扫码"
+    "woScan": "工单扫码",
+    "workLocation": "作业场所工序"
   },
   "userMenu": {
     "title": "用户",
@@ -49,6 +50,24 @@
       "COMPLETED": "已完成",
       "CANCELLED": "已取消"
     }
+  },
+  "workLocationBoard": {
+    "title": "作业场所工序",
+    "back": "返回应用列表",
+    "backToBoard": "返回作业场所",
+    "empty": "该作业场所没有等待的工序",
+    "scopeLocation": "本作业场所",
+    "scopeGroup": "整个分组",
+    "scopeGroupNamed": "整个分组（{name}）",
+    "noDefaultLocation": "本终端未设置默认作业场所。请扫描作业场所二维码。",
+    "locationUnknown": "未找到该作业场所编码",
+    "deviceDefaultMismatch": "本清单显示「{label}」。从这里开始的工序，实绩也会记录「{label}」（本终端的默认是「{deviceLabel}」）。",
+    "showingLocation": "显示中: {label}",
+    "upcoming": "预定 {n} 件",
+    "assignees": "负责人: {names}",
+    "plannedForOthers": "该工序已分配给其他人",
+    "scan": "扫描作业场所",
+    "close": "停止扫描"
   },
   "steps": {
     "title": "工序执行",

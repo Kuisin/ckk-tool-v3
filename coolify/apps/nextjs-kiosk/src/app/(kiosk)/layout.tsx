@@ -85,20 +85,34 @@ export default async function KioskLayout({
   // 無いので利用者の言語を引けない（SY09 で設定する kiosk_devices.locale。
   // ログインすればすぐ利用者本人の設定に切り替わる）。
   let locale: Locale = deviceLocale;
+  // **「セッションを読めなかった」と「ログインしていない」は別物。**
+  // 潰すと DB の一瞬の詰まりがヘッダーの「未ログイン」に化け、本文はログイン中の
+  // まま動いているのに頭だけが嘘をつく。読めなかったときは名前欄を空にする。
+  let sessionResolved = true;
   try {
     const session = await getSession();
     userName = session?.displayName ?? null;
     if (session) {
       locale = session.locale;
-      const user = await prisma.user.findUnique({
-        where: { id: session.userId },
-        select: { textScale: true },
-      });
-      textScale = normalizeTextScale(user?.textScale);
-      workingSteps = await listWorkingSteps(session.userId, locale);
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: session.userId },
+          select: { textScale: true },
+        });
+        textScale = normalizeTextScale(user?.textScale);
+      } catch {
+        // 文字の大きさが引けなくても名前は出せている — 既定の大きさで続ける
+      }
+      try {
+        workingSteps = await listWorkingSteps(session.userId, locale);
+      } catch {
+        // 丸薬は添え物。引けなければ出さないだけで、利用者名の表示は巻き込まない
+        // （外側の catch まで飛ばすと「未ログイン」に化ける）
+      }
     }
   } catch {
-    // 端末名と同じくビルド時・DB 不通時は既定のまま
+    // ビルド時（request scope 外）・DB 不通時
+    sessionResolved = false;
   }
 
   // 端末の既定作業場所をヘッダーに添える。**実績の作業場所は端末で決まる**
@@ -134,6 +148,7 @@ export default async function KioskLayout({
         <KioskShell
           deviceName={deviceName}
           registered={registered}
+          sessionResolved={sessionResolved}
           textScale={textScale}
           userName={userName}
           workLocation={workLocation}

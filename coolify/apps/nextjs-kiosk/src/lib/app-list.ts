@@ -8,7 +8,7 @@
  */
 
 import type { Icon } from "@tabler/icons-react";
-import { IconQrcode, IconSettings2 } from "@tabler/icons-react";
+import { IconMapPin, IconQrcode, IconSettings2 } from "@tabler/icons-react";
 import type { KioskMessages } from "./i18n";
 
 export type KioskAppEntry = {
@@ -33,6 +33,13 @@ export const KIOSK_APPS: KioskAppEntry[] = [
     labelKey: "woScan",
     href: "/wo-scan",
     icon: IconQrcode,
+    requiredPermission: "work_order",
+  },
+  {
+    key: "work-location",
+    labelKey: "workLocation",
+    href: "/work-location",
+    icon: IconMapPin,
     requiredPermission: "work_order",
   },
 ];

@@ -1,7 +1,8 @@
 {
   "apps": {
     "stepExecution": "Step Execution",
-    "woScan": "Work Order Scan"
+    "woScan": "Work Order Scan",
+    "workLocation": "Work Location Steps"
   },
   "userMenu": {
     "title": "User",
@@ -49,6 +50,24 @@
       "COMPLETED": "Completed",
       "CANCELLED": "Cancelled"
     }
+  },
+  "workLocationBoard": {
+    "title": "Work Location Steps",
+    "back": "Back to apps",
+    "backToBoard": "Back to work location",
+    "empty": "No steps are waiting at this work location",
+    "scopeLocation": "This location",
+    "scopeGroup": "Whole group",
+    "scopeGroupNamed": "Whole group ({name})",
+    "noDefaultLocation": "This device has no default work location. Scan a work-location QR code.",
+    "locationUnknown": "That work-location code was not found",
+    "deviceDefaultMismatch": "This list shows “{label}”. Steps started from here record “{label}” as well (this device’s default is “{deviceLabel}”).",
+    "showingLocation": "Showing: {label}",
+    "upcoming": "{n} scheduled",
+    "assignees": "Assigned: {names}",
+    "plannedForOthers": "Planned for another operator",
+    "scan": "Scan work location",
+    "close": "Stop scanning"
   },
   "steps": {
     "title": "Step Execution",

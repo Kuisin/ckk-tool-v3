@@ -10,7 +10,11 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { headerUserName, LOGGED_OUT_ROUTES } from "./KioskShell";
+import {
+  headerUserName,
+  headerUserSlot,
+  LOGGED_OUT_ROUTES,
+} from "./KioskShell";
 
 describe("headerUserName", () => {
   it("ログイン中の画面では名前を出す", () => {
@@ -41,5 +45,44 @@ describe("headerUserName", () => {
 
   it("そもそも未ログインなら null のまま", () => {
     expect(headerUserName("/", null)).toBeNull();
+  });
+});
+
+/**
+ * 「未ログイン」と書いてよいのは、誰も居ないことが**確実**なときだけ。
+ *
+ * ログイン直後にヘッダーが「未ログイン」のままだった不具合を直したときの試験。
+ * 原因は遷移側（layout が使い回されて props が古いまま）だったが、DB 不通で
+ * セッションを読めなかったときにも同じ表示になっていた — 本文はログイン中の
+ * まま動いているのに頭だけが「未ログイン」と言う状態。**分からないときは黙る**。
+ */
+describe("headerUserSlot", () => {
+  it("ログイン中は名前を出す", () => {
+    expect(headerUserSlot("/", "山田 太郎", true, true)).toBe("user");
+    expect(headerUserSlot("/steps/abc", "山田 太郎", true, true)).toBe("user");
+  });
+
+  it("誰も居ないことが確実なら「未ログイン」と書く", () => {
+    expect(headerUserSlot("/", null, true, true)).toBe("notLoggedIn");
+    // ログイン画面は、名前が取り残されていても未ログインが確実
+    expect(headerUserSlot("/login", "山田 太郎", true, true)).toBe(
+      "notLoggedIn",
+    );
+  });
+
+  // これが本体 — 読めなかったことを「誰も居ない」と言い換えない
+  it("セッションを読めなかったときは黙る", () => {
+    expect(headerUserSlot("/", null, true, false)).toBe("hidden");
+    expect(headerUserSlot("/steps", null, true, false)).toBe("hidden");
+  });
+
+  it("未登録端末はまだ登録の話をしている段階なので出さない", () => {
+    expect(headerUserSlot("/setup", null, false, true)).toBe("hidden");
+    expect(headerUserSlot("/", null, false, true)).toBe("hidden");
+  });
+
+  // 読めていて名前もあるなら、登録状態に関わらず名前が勝つ
+  it("名前が解決できていれば user が勝つ", () => {
+    expect(headerUserSlot("/", "山田", false, false)).toBe("user");
   });
 });

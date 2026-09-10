@@ -1,7 +1,8 @@
 {
   "apps": {
     "stepExecution": "工程実行",
-    "woScan": "指示書スキャン"
+    "woScan": "指示書スキャン",
+    "workLocation": "作業場所の工程"
   },
   "userMenu": {
     "title": "利用者",
@@ -49,6 +50,24 @@
       "COMPLETED": "完了",
       "CANCELLED": "キャンセル"
     }
+  },
+  "workLocationBoard": {
+    "title": "作業場所の工程",
+    "back": "アプリ一覧へ",
+    "backToBoard": "作業場所の一覧へ",
+    "empty": "この作業場所に待っている工程はありません",
+    "scopeLocation": "この作業場所",
+    "scopeGroup": "グループ全体",
+    "scopeGroupNamed": "グループ全体（{name}）",
+    "noDefaultLocation": "この端末には既定の作業場所が設定されていません。作業場所の QR コードを読み取ってください。",
+    "locationUnknown": "この作業場所コードは見つかりません",
+    "deviceDefaultMismatch": "この一覧は「{label}」を見ています。ここから開始した工程は、実績にも「{label}」が記録されます（この端末の既定は「{deviceLabel}」）。",
+    "showingLocation": "表示中: {label}",
+    "upcoming": "予定 {n} 件",
+    "assignees": "担当: {names}",
+    "plannedForOthers": "他の担当者の工程です",
+    "scan": "作業場所を読み取り",
+    "close": "読み取りをやめる"
   },
   "steps": {
     "title": "工程実行",
