@@ -341,6 +341,9 @@ export function InspectionTemplateTable({
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr(
+            "master.inspectionTemplates.searchByCodeNameOrRelated",
+          )}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr(

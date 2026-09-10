@@ -646,6 +646,7 @@ function ProductTypeItemInput({
       return (
         <NumberInput
           {...common}
+          aria-label={item.placeholder}
           max={item.max}
           min={item.min}
           onChange={(v) => onChange(v === "" || v == null ? "" : String(v))}

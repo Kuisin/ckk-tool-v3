@@ -83,6 +83,7 @@ export function FormFieldInput({
       return (
         <Textarea
           {...common}
+          aria-label={field.placeholder}
           autosize
           minRows={3}
           onChange={(e) => onChange(e.currentTarget.value)}
@@ -121,6 +122,7 @@ export function FormFieldInput({
       return (
         <NumberInput
           {...common}
+          aria-label={field.placeholder}
           max={field.max}
           min={field.min}
           onChange={(v) => onChange(v === "" ? "" : String(v))}

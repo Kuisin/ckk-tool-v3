@@ -363,6 +363,11 @@ export function PendingWorkOrderBoard({
       onReset={reset}
       search={
         <TextInput
+          aria-label={
+            isUnplanned
+              ? tr("common.searchByOrderLineNumberCustomer")
+              : tr("common.searchByWorkOrderNumberOrder")
+          }
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={

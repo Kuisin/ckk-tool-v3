@@ -195,6 +195,9 @@ export function TrialEstimateTable({
       }}
       search={
         <TextInput
+          aria-label={tr(
+            "sales.trialEstimates.searchByPriceEstimateNumberName",
+          )}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr(

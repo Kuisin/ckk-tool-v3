@@ -782,6 +782,7 @@ export function PriceListTypeForm({
                       </Table.Td>
                       <Table.Td>
                         <NumberInput
+                          aria-label={tr("sales.priceLists.noMaximum")}
                           min={1}
                           placeholder={tr("sales.priceLists.noMaximum")}
                           {...form.getInputProps(
@@ -828,6 +829,9 @@ export function PriceListTypeForm({
                             }
                           />
                           <NumberInput
+                            aria-label={
+                              isCustom ? undefined : tr("common.auto")
+                            }
                             disabled={!isCustom}
                             min={0}
                             placeholder={

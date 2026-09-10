@@ -165,6 +165,9 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr(
+            "shipping.deliveryNotes.searchByDeliveryNoteNumberDelivery",
+          )}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr(

@@ -229,6 +229,9 @@ export function ApprovalRequestTable({
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr(
+            "general.approvalRequestTable.searchByTargetNumberRequesterOr",
+          )}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr(

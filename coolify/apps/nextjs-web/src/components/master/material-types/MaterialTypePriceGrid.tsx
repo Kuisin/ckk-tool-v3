@@ -160,6 +160,7 @@ export function MaterialTypePriceGrid({
           const surf = surfaceOptions[colIndex - 1];
           return (
             <NumberInput
+              aria-label="—"
               hideControls
               min={0}
               onChange={(v) =>

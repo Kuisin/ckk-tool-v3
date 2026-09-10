@@ -253,6 +253,9 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr(
+            "sales.designRequests.searchByRequestNumberProductDetails",
+          )}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr(

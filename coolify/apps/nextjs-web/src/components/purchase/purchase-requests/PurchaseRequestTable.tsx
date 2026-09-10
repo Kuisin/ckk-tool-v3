@@ -145,6 +145,9 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr(
+            "purchase.purchaseRequests.searchByRequestNumberRequesterOr",
+          )}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr(

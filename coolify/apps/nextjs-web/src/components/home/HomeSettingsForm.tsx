@@ -365,6 +365,11 @@ function HomeSettingsEditor({
                         </ActionIcon>
                       </Group>
                       <MultiSelect
+                        aria-label={
+                          group.apps.length === 0
+                            ? tr("home.homeSettingsForm.selectApps")
+                            : undefined
+                        }
                         clearable
                         data={apps.map((a) => ({
                           value: a.key,

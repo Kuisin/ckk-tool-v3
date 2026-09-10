@@ -182,6 +182,9 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr(
+            "purchase.outsourceOrders.searchByWorkOrderNumberProduct",
+          )}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr(

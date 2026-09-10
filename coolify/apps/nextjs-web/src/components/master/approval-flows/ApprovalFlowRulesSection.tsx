@@ -290,6 +290,7 @@ export function ApprovalFlowRulesSection({
     if (def.type === "number") {
       return (
         <NumberInput
+          aria-label={tr("common.value")}
           flex={1}
           hideControls
           onChange={(v) =>

@@ -1567,6 +1567,11 @@ export function WorkflowBuilder({
                       </Text>
                     </Group>
                     <MultiSelect
+                      aria-label={
+                        (plan?.userIds.length ?? 0) > 0
+                          ? undefined
+                          : tr("common.assignee")
+                      }
                       clearable
                       data={employeeOptions}
                       onChange={(v) =>

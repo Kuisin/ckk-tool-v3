@@ -432,6 +432,13 @@ export function UnifiedInventory({
       search={
         tab === "locations" ? undefined : (
           <TextInput
+            aria-label={
+              tab === "materials"
+                ? tr("production.inventory.searchByMaterialCodeOrName")
+                : tab === "wip"
+                  ? tr("production.inventory.searchByProductNameOrWork")
+                  : tr("production.inventory.searchByProductNameOrCode")
+            }
             leftSection={<IconSearch size={14} />}
             onChange={(e) => setSearch(e.currentTarget.value)}
             placeholder={

@@ -181,6 +181,9 @@ export function MaterialReceiptTable({
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr(
+            "purchase.materialReceipts.searchByMaterialCodeNameSupplier",
+          )}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr(
