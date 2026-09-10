@@ -75,9 +75,28 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-workspace
       - name: prisma migrate deploy
         run: pnpm exec prisma migrate deploy
-      - name: grants.sql / analytics-views.sql（entrypoint.sh と同じ順）
+      - name: grants.sql / cron 系 / analytics-views.sql（entrypoint.sh と同じ順）
+        # entrypoint.sh は pg_cron が preload された DB でだけ sql/*-cron.sql を
+        # 流す。CI の postgres には pg_cron が無いので、これまで cron 系 5 本は
+        # **まるごと素通り**していた — 構文誤りや消えた列への参照が CI を通り、
+        # merge 後の db-migrate で初めて落ちる（#811 が防ぎたかった事故そのもの）。
+        #
+        # そこで CI だけ cron スキーマのスタブ（ci/pg-cron-stub.sql）を作り、
+        # `CREATE EXTENSION pg_cron` の 1 行だけ落として本体を実際に流す。
+        # ジョブ本体（$job$ … $job$）は pg_cron でも text として保存されるだけで
+        # install 時には解析されないので、ここで捕まるのは**本体の外側** —
+        # DDL・cron.job への参照・ファイル自身の構文で、実際に db-migrate を
+        # 止めてきたのはそちら。
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/grants.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f ci/pg-cron-stub.sql
+          for f in sql/kiosk-cron.sql sql/user-suspension-cron.sql \
+                   sql/security-cron.sql sql/portal-cron.sql \
+                   sql/user-provision-cron.sql; do
+            echo "==> $f"
+            sed '/CREATE EXTENSION IF NOT EXISTS pg_cron;/d' "$f" \
+              | psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q
+          done
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/analytics-views.sql
       - name: schema と DB の差分が空であること
         run: pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema --exit-code
