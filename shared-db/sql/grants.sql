@@ -233,7 +233,6 @@ GRANT SELECT (id, bp_id, display_name, locale, is_active, disabled_at,
 -- 外部 API（/api/v1・機械向け）。生きた資格情報とその使われ方が並ぶ。
 -- 閲覧は SY0I に閉じる（login_attempts / portal と同じ 3 点セットの 1 つ目）。
 REVOKE SELECT ON app.api_client_tokens FROM metabase_ro;  -- トークンハッシュ（有効中）
-REVOKE SELECT ON app.api_rate_limits   FROM metabase_ro;  -- 相関キー（IP 由来のハッシュ）
 -- どの呼び出しがなぜ弾かれたか + 送信元 IP。portal_access_logs と同じ扱い。
 REVOKE SELECT ON app.api_access_logs   FROM metabase_ro;
 

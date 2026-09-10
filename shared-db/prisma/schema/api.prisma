@@ -170,24 +170,3 @@ model ApiAccessLog {
   @@map("api_access_logs")
   @@schema("app")
 }
-
-/// 認証失敗のレート制限（送信元 IP ごと）。portal_rate_limits と同じ形。
-///
-/// lib/action-rate-limit.ts（インメモリ）は**未認証の口には使わない**と
-/// あちら自身が書いている。ここは公開のベアラ口なので DB 側で数える。
-/// キーは必ず HMAC/ハッシュを通す — 生の IP をカウンタ表に置かない。
-model ApiRateLimit {
-  /// いまは "API_AUTH_IP" の 1 つだけ。増やすときは lib/api-rate-limit-core.ts に。
-  bucket String @db.VarChar(24)
-  keyRef String @map("key_ref") @db.Char(64)
-
-  failures        Int      @default(0)
-  windowStartedAt DateTime @default(now()) @map("window_started_at") @db.Timestamptz(6)
-  lockedUntil     DateTime? @map("locked_until") @db.Timestamptz(6)
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  @@id([bucket, keyRef])
-  @@index([updatedAt])
-  @@map("api_rate_limits")
-  @@schema("app")
-}

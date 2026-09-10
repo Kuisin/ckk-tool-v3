@@ -153,6 +153,8 @@ jobs:
 
       - name: Server Action gate guard (checkPermission / requireAnyRead)
         run: node scripts/check-server-action-gates.mjs
+      - name: API gate guard (requireApiPermission / requireApiAuth)
+        run: node scripts/check-api-gates.mjs
 
       # 監査 C1: 認証の門（next の proxy / next-auth の authorized）に公開済みの
       # advisory が出たまま 2 版滞留していた。本番依存の high 以上で止める。

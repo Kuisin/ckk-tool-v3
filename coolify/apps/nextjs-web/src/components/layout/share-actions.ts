@@ -11,7 +11,6 @@
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { takeActionToken } from "@/lib/action-rate-limit";
-import { SYSTEM_USER_ID } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { notify, sanitizeLinkPath } from "@/lib/notifications";
 import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
@@ -60,7 +59,10 @@ export async function sharePageAction(
   const recipientIds = new Set<string>(input.userIds);
   if (input.everyone) {
     const all = await prisma.user.findMany({
-      where: { isActive: true, id: { not: SYSTEM_USER_ID } },
+      // group: SYSTEM を外す — 機械のアカウント（外部 API クライアントの主体）は
+      // 人ではないので、全員宛の通知に混ぜない。SYSTEM_USER_ID の単独除外では
+      // 足りない（クライアントを 1 つ作るたびに 1 人増える）。
+      where: { isActive: true, group: { not: "SYSTEM" } },
       select: { id: true },
     });
     for (const u of all) recipientIds.add(u.id);
@@ -108,7 +110,8 @@ export async function fetchShareOptionsAction(): Promise<
   if (!me) return actionError(tr("common.loginRequired"));
   const [users, groups] = await Promise.all([
     prisma.user.findMany({
-      where: { isActive: true, id: { not: SYSTEM_USER_ID } },
+      // 上と同じ理由で group: SYSTEM を外す（共有先に機械を出さない）。
+      where: { isActive: true, group: { not: "SYSTEM" } },
       orderBy: { username: "asc" },
       select: { id: true, username: true, displayName: true },
     }),

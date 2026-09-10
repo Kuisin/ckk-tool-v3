@@ -56,18 +56,6 @@ CREATE TABLE "app"."api_access_logs" (
     CONSTRAINT "api_access_logs_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "app"."api_rate_limits" (
-    "bucket" VARCHAR(24) NOT NULL,
-    "key_ref" CHAR(64) NOT NULL,
-    "failures" INTEGER NOT NULL DEFAULT 0,
-    "window_started_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "locked_until" TIMESTAMPTZ(6),
-    "updated_at" TIMESTAMPTZ(6) NOT NULL,
-
-    CONSTRAINT "api_rate_limits_pkey" PRIMARY KEY ("bucket","key_ref")
-);
-
 -- CreateIndex
 CREATE UNIQUE INDEX "api_clients_name_key" ON "app"."api_clients"("name");
 
@@ -94,9 +82,6 @@ CREATE INDEX "api_access_logs_created_at_idx" ON "app"."api_access_logs"("create
 
 -- CreateIndex
 CREATE INDEX "api_access_logs_deny_reason_created_at_idx" ON "app"."api_access_logs"("deny_reason", "created_at" DESC);
-
--- CreateIndex
-CREATE INDEX "api_rate_limits_updated_at_idx" ON "app"."api_rate_limits"("updated_at");
 
 -- AddForeignKey
 ALTER TABLE "app"."api_clients" ADD CONSTRAINT "api_clients_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "app"."users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -129,8 +114,6 @@ COMMENT ON TABLE app.api_client_tokens IS
   'API トークン。生値は発行応答に 1 度だけ現れ、DB は sha256 のみ。1 クライアントにつき有効 2 本まで（無停止の差し替え用。上限は発行アクションが守る）。';
 COMMENT ON TABLE app.api_access_logs IS
   '/api/v1 の全リクエスト記録（成功・失敗とも）。audit_logs に入れないのは、認証に失敗した要求には actor が居ないため（login_attempts と同じ理由）。deny_reason はここにしか無い — 応答はどの理由でも同一の 401。';
-COMMENT ON TABLE app.api_rate_limits IS
-  'API 認証失敗のレート制限（送信元 IP ごと）。キーは HMAC/ハッシュ済み — 生の IP は入れない。';
 
 -- ===========================================================================
 -- 権限コード api_client と、その特権ロール割当

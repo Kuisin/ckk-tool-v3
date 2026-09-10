@@ -13,6 +13,12 @@
 -- するためだけ。**この向きを逆にしてはいけない** — cron に失効させると、
 -- 遅れがそのまま「まだ使える」になる。
 --
+-- ■ レート制限のカウンタはここに無い
+-- app.portal_rate_limits を共用する（あの表は名前に反して「未認証の口の失敗
+-- カウンタ」という一般の道具で、社内ログインの WEB_LOGIN_* も既に相乗りして
+-- いる。bucket は VarChar なので種類を足すのに migration は要らない）。
+-- 掃除は portal-cron.sql の portal_rate_limit_cleanup が面倒を見る。
+--
 -- ■ 期間を切ることは設計の一部
 -- api_access_logs は「どの外部システムが、いつ、どこから、何を読んだか」と
 -- 送信元 IP を持つ。「SY0I を権限で閉じる」「metabase_ro から剥がす
@@ -21,17 +27,8 @@
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 
 -- 再実行時は既存ジョブを置き換える
-SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'api_rate_limit_cleanup';
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'api_token_retention';
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'api_access_log_retention';
-
--- レート制限のカウンタ。窓もロックも最長 1 時間なので、7 日見かけない行は捨てる。
--- **ロック中の行は消さない** — 消すとロックが解けてしまう。
-SELECT cron.schedule('api_rate_limit_cleanup', '45 18 * * *', $job$
-  DELETE FROM app.api_rate_limits
-   WHERE updated_at < now() - interval '7 days'
-     AND (locked_until IS NULL OR locked_until < now())
-$job$);
 
 -- 失効・期限切れのトークンは 90 日残す。「そのトークンで誰が何を読んだか」を
 -- api_access_logs から辿るとき、トークン行が先に消えていると

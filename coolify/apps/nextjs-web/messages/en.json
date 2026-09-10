@@ -1662,6 +1662,10 @@
       "portal_admin": {
         "label": "Partner portal administration",
         "summary": "Manage the accounts external partners use to view their own documents, and the per-document links. Activating an account, issuing backup codes and minting link-only URLs each need approval."
+      },
+      "api_client": {
+        "label": "API client administration",
+        "summary": "Manage the credentials external systems use to read business data programmatically. Issuing a token and activating a client each need approval. What a client can read is decided by the roles assigned to it."
       }
     },
     "PERMISSION_GROUP_LABEL": {

@@ -1536,6 +1536,8 @@ export async function searchFormApproverOptions(
     const users = await prisma.user.findMany({
       where: {
         isActive: true,
+        // 機械のアカウントは承認者になれない（人を選ぶ一覧に出さない）。
+        group: { not: "SYSTEM" },
         ...(q
           ? {
               OR: [

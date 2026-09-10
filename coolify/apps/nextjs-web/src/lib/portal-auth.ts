@@ -31,7 +31,6 @@
 
 import "server-only";
 
-import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "./db";
 import { isDevFeatureEnabled } from "./dev-features";
@@ -40,20 +39,17 @@ import {
   PORTAL_LINK_SESSION_TTL_MS,
   PORTAL_SESSION_TTL_MS,
 } from "./portal-auth-core";
+import { mintToken, sha256hex } from "./token-core";
 
 export const PORTAL_SESSION_COOKIE = "portal_session";
 
 /** ポータルの Cookie スコープ。内部ルートへは送信させない。 */
 export const PORTAL_COOKIE_PATH = "/portal";
 
-export function sha256hex(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-export function mintToken(): { raw: string; hash: string } {
-  const raw = randomBytes(32).toString("base64url");
-  return { raw, hash: sha256hex(raw) };
-}
+// 生成とハッシュは token-core.ts が持つ（外部 API も同じものを使うので、
+// `server-only` なこのファイルの中には置いておけなくなった）。呼び出し元を
+// 動かさずに済むよう再輸出する。
+export { mintToken, sha256hex };
 
 function cookieOptions(maxAgeMs: number) {
   return {

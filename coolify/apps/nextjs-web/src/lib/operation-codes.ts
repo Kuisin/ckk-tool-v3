@@ -502,6 +502,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "H",
   },
+  // 外部 API クライアント（社外システム向けの資格情報の発行と失効）
+  {
+    code: "SY0I",
+    label: "API クライアント",
+    href: "/settings/api-clients",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "I",
+  },
 ];
 
 const CODE_LOOKUP = new Map(

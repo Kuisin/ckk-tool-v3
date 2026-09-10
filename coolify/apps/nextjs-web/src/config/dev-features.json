@@ -8,5 +8,10 @@
     "description": "管理ディスプレイ（SY09 端末管理のディスプレイ関連タブ）",
     "environments": ["dev"],
     "appKeys": []
+  },
+  "api": {
+    "description": "外部 API（/api/v1・Bearer トークン認証の機械向け読み取り口）",
+    "environments": ["dev"],
+    "appKeys": ["api-clients"]
   }
 }

@@ -7,7 +7,7 @@
  * 置き、判定式だけをここに置く。
  *
  * **名前は portal_ で始まるが、対象はポータルに限らない**（社内ログインの
- * WEB_LOGIN_* も同じ表を使う）。表は「未認証の口の失敗カウンタ」という
+ * WEB_LOGIN_* と外部 API の API_AUTH_IP も同じ表を使う）。表は「未認証の口の失敗カウンタ」という
  * 一般の道具で、bucket は VarChar なので種類を足すのに migration は要らない。
  *
  * 形は kiosk の nextPinFailureState（kiosk-auth-core.ts）に合わせてある。
@@ -31,6 +31,10 @@ export const PORTAL_LIMIT_BUCKETS = [
   "BACKUP_VERIFY",
   /** 書類リンクの解決（トークン単位）。 */
   "LINK_RESOLVE",
+  /** 外部 API（/api/v1）の認証失敗（送信元 IP 単位）。トークンそのものでは
+   *  数えない — 当てずっぽうは毎回違う値で来るので、値ごとに数えると
+   *  カウンタが増えるだけで一度もロックがかからない。 */
+  "API_AUTH_IP",
 ] as const;
 
 export type PortalLimitBucket = (typeof PORTAL_LIMIT_BUCKETS)[number];
@@ -62,6 +66,10 @@ export const PORTAL_LIMITS: Record<PortalLimitBucket, PortalLimitConfig> = {
   // 総当たりのコストを上げる。
   BACKUP_VERIFY: { max: 5, windowMs: 15 * 60_000, lockMs: 60 * 60_000 },
   LINK_RESOLVE: { max: 30, windowMs: 15 * 60_000, lockMs: 15 * 60_000 },
+  // 外部 API は機械が叩くので、人間の打ち間違いより桁を上げてよい。狙いは
+  // 「1 回線からトークンを総当たりする」を止めること。正しく設定された
+  // クライアントは 1 度も失敗しないので、ここに触れることはない。
+  API_AUTH_IP: { max: 20, windowMs: 10 * 60_000, lockMs: 15 * 60_000 },
 };
 
 export interface PortalLimitState {
