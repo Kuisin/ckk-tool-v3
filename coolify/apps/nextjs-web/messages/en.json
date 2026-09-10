@@ -5402,7 +5402,16 @@
       "planTimeRequiredHelp": "Turn on for steps that must be scheduled to a time slot before approval.",
       "planQuantityRequired": "Work plan requires a quantity",
       "planQuantityRequiredHelp": "Turn on for steps whose plan is split by quantity (e.g. pieces per assignee).",
-      "planTime": "Start / end time"
+      "planTime": "Start / end time",
+      "routeKind": "Step list",
+      "routeKindPrep": "Preparation",
+      "routeKindManufacturing": "Manufacturing",
+      "routeKindPrepHelp": "Steps in the material-prep category belong to the shared preparation step list (not to per-product manufacturing lists).",
+      "routeKindManufacturingHelp": "Steps in this category belong to per-product × customer manufacturing step lists.",
+      "planRequiredShort": "Plan requires",
+      "planFieldLocationShort": "Location",
+      "planFieldTimeShort": "Time",
+      "planFieldQuantityShort": "Qty"
     },
     "products": {
       "specification": "Specification",

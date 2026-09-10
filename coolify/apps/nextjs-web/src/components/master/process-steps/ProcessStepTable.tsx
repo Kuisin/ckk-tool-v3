@@ -46,6 +46,7 @@ import {
   processCategoryOptions,
   processExecutionLabel,
 } from "@/lib/enum-labels";
+import { isPrepStep } from "@/lib/workflow-core";
 import {
   DeleteProcessStepModal,
   type ProcessStepModalTarget,
@@ -77,6 +78,10 @@ export interface ProcessStepRow {
   quantityTracking: string;
   /** 実行時のロット入力の既定（REQUIRED/OPTIONAL/NONE）。 */
   lotInputMode: string;
+  /** 作業計画の必須項目（工程ごと — lib/work-plan-core.ts）。 */
+  workLocationRequired: boolean;
+  planTimeRequired: boolean;
+  planQuantityRequired: boolean;
   sortOrder: number;
   isActive: boolean;
 }
@@ -239,6 +244,26 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
       ),
     },
     {
+      // 準備 / 製造 のどちらの工程リストに入るか（isPrepStep — カテゴリから決まる）
+      key: "routeKind",
+      header: tr("master.processSteps.routeKind"),
+      sortable: true,
+      hideable: true,
+      width: 80,
+      sortValue: (r) => (isPrepStep(r) ? 0 : 1),
+      render: (r) => (
+        <Badge
+          color={isPrepStep(r) ? "teal" : "indigo"}
+          size="xs"
+          variant="light"
+        >
+          {isPrepStep(r)
+            ? tr("master.processSteps.routeKindPrep")
+            : tr("master.processSteps.routeKindManufacturing")}
+        </Badge>
+      ),
+    },
+    {
       key: "executionLocation",
       header: tr("common.executionLocation"),
       sortable: true,
@@ -333,6 +358,39 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
             {QUANTITY_TRACKING_SHORT[r.quantityTracking] ?? r.quantityTracking}
           </Badge>
         ),
+    },
+    {
+      // 作業計画の必須項目（担当者・日付は常に必須なので出さない）
+      key: "planRequired",
+      header: tr("master.processSteps.planRequiredShort"),
+      hideable: true,
+      width: 130,
+      render: (r) => {
+        const parts = [
+          r.workLocationRequired
+            ? tr("master.processSteps.planFieldLocationShort")
+            : null,
+          r.planTimeRequired
+            ? tr("master.processSteps.planFieldTimeShort")
+            : null,
+          r.planQuantityRequired
+            ? tr("master.processSteps.planFieldQuantityShort")
+            : null,
+        ].filter((x): x is string => x != null);
+        return parts.length === 0 ? (
+          <Text c="dimmed" size="sm">
+            —
+          </Text>
+        ) : (
+          <Group gap={4} wrap="wrap">
+            {parts.map((label) => (
+              <Badge color="gray" key={label} size="xs" variant="light">
+                {label}
+              </Badge>
+            ))}
+          </Group>
+        );
+      },
     },
     {
       key: "sortOrder",
