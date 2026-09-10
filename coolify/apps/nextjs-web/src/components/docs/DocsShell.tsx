@@ -56,6 +56,11 @@ export function DocsShell({
           },
         ]}
         nav={{ title }}
+        // RootProvider 側で theme.enabled=false にして next-themes の
+        // ThemeProvider を外しているので、DocsLayout の既定（テーマ切替
+        // ボタンを出す）のままだと useTheme() が繋がっておらず「押しても
+        // 何も起きない」ボタンになる。ボタンごと出さない。
+        themeSwitch={{ enabled: false }}
         tree={tree}
       >
         {children}
