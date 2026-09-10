@@ -98,7 +98,7 @@ export interface StepActionResult {
   codes?: StepErrorCode[];
 }
 
-type Tx = PrismaNS.TransactionClient;
+export type Tx = PrismaNS.TransactionClient;
 
 const fail = (code: StepErrorCode, ...errors: string[]): StepActionResult => ({
   ok: false,
@@ -239,7 +239,7 @@ export async function canOperateStep(
  * accumulatedWorkMs / nextjs-web step-work-hours.ts）。
  * 必ず対象行の増減を済ませた後、同じ tx 内で呼ぶこと。
  */
-async function resegmentOpenActuals(
+export async function resegmentOpenActuals(
   tx: Tx,
   userId: string,
   now: Date,
@@ -251,12 +251,23 @@ async function resegmentOpenActuals(
       stepId: true,
       workLocationId: true,
       concurrentCount: true,
+      startedAt: true,
     },
   });
   const n = open.length;
   if (n === 0) return;
   for (const row of open) {
     if (row.concurrentCount === n) continue;
+    // まだ時間を持たない区間（この瞬間に開いたばかり）は、閉じて開き直しても
+    // 長さ 0 の行が 1 本増えるだけ。同時数をその場で直す。
+    // 一括操作で複数の工程を続けて動かすと実際に起きる。
+    if (row.startedAt != null && row.startedAt.getTime() >= now.getTime()) {
+      await tx.workOrderStepActual.update({
+        where: { id: row.id },
+        data: { concurrentCount: n },
+      });
+      continue;
+    }
     await tx.workOrderStepActual.update({
       where: { id: row.id },
       data: { endedAt: now },

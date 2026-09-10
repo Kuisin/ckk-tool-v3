@@ -335,6 +335,32 @@
       "concurrentNote": "{n} at once — work time is counted at 1/{n}",
       "open": "Open",
       "close": "Close"
+    },
+    "batch": {
+      "select": "Select",
+      "cancelSelect": "Cancel selection",
+      "selectedCount": "{n} selected",
+      "start": "Start {n} selected",
+      "pause": "Pause {n} selected",
+      "complete": "Complete {n} selected",
+      "mixedSelection": "Startable steps and in-progress steps are mixed. Select one kind only.",
+      "confirmStart": "Start the {n} selected steps?",
+      "confirmPause": "Pause the {n} selected steps?",
+      "confirmComplete": "Complete the {n} selected steps?",
+      "expectedInputNote": "Starts with the expected received quantity. Open a step individually to change it.",
+      "allGoodNote": "Completes with every piece as good. Open a step individually to record defects.",
+      "resultStarted": "Started {n}",
+      "resultPaused": "Paused {n}",
+      "resultCompleted": "Completed {n}",
+      "resultMixed": "{ok} succeeded / {ng} failed",
+      "resultAllFailed": "None of the {n} could be run",
+      "reasonNotSelectable": "Not available in this state",
+      "reasonLotRequired": "Needs a lot / slip code — open it individually",
+      "reasonInspectionRequired": "Needs the inspection sheet filled in",
+      "open": "Open",
+      "close": "Close",
+      "run": "Run",
+      "cancel": "Cancel"
     }
   },
   "deviceError": {
