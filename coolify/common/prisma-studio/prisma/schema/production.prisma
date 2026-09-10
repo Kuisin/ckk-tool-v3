@@ -94,9 +94,14 @@ model WorkOrder {
   // コピー元（バージョン警告用）
   sourceWorkOrderId String? @map("source_work_order_id") @db.Uuid
 
-  // 工程ルート出所（製品工程リストのバージョン）。ルート削除時は SetNull —
+  // 工程ルート出所（製造工程リストのバージョン）。ルート削除時は SetNull —
   // 工程は work_order_steps に実体化済みで、出所リンクだけが外れる。
   routeVersionId String? @map("route_version_id") @db.Uuid
+  // 準備工程リストのバージョン（kind = PREP）。指示書の工程は 準備 + 製造 の
+  // 2 本を合わせたもので、どちらから来た工程かは出所リンクでしか分からない。
+  // null = 準備工程リストを使わなかった（版の中に準備工程が混ざっている
+  // 移行前の製造リスト、または手組み）。
+  prepRouteVersionId String? @map("prep_route_version_id") @db.Uuid
 
   // 使用する図面の版（**任意**）。null = 固定しない → 表示のたびに製品の
   // 最新図面（受注元が一致する系列 → 無ければ汎用）を引く。
@@ -121,7 +126,7 @@ model WorkOrder {
   notes       String?
   createdBy   String?   @map("created_by") @db.Uuid
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   product         Product     @relation(fields: [productId], references: [id])
   designFile      DesignFile? @relation("WorkOrderDesignFile", fields: [designFileId], references: [id])
@@ -130,6 +135,7 @@ model WorkOrder {
   sourceWorkOrder WorkOrder? @relation("WorkOrderCopySource", fields: [sourceWorkOrderId], references: [id])
   copies          WorkOrder[] @relation("WorkOrderCopySource")
   routeVersion    ProductProcessRouteVersion? @relation(fields: [routeVersionId], references: [id], onDelete: SetNull)
+  prepRouteVersion ProductProcessRouteVersion? @relation("WorkOrderPrepRoute", fields: [prepRouteVersionId], references: [id], onDelete: SetNull)
   createdByUser   User?      @relation("WorkOrderCreatedBy", fields: [createdBy], references: [id])
 
   orderLineLinks      WorkOrderOrderLine[]
@@ -149,7 +155,10 @@ model WorkOrder {
   @@index([status])
   @@index([approvalStatus])
   @@index([routeVersionId])
+  @@index([prepRouteVersionId])
   @@index([storageLocationId])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
   @@map("work_orders")
   @@schema("app")
 }

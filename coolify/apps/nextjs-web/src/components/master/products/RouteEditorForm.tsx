@@ -1,21 +1,30 @@
 "use client";
 
 /**
- * RouteEditorForm — 製品工程ルートの新規作成 / 新バージョン作成フォーム。
+ * RouteEditorForm — 工程リストの新規作成 / 新バージョン作成フォーム。
  *
  * 工程構成エディタ（ProcessListEditor）を指示書ビルダーと共用する。
- * mode = "create": ルート名 + 構成 → createProductRoute（v1）。
+ * mode = "create": ルート名 + 構成 → createProductRoute / createPrepRoute（v1）。
  * mode = "new-version": 名前は読み取り表示、最新バージョンをプリフィルして
  * createProductRouteVersion（同一構成は server が拒否）。
+ *
+ * kind で 2 つの顔を持つ（§7 — 工程リストは 準備 / 製造 の 2 本）:
+ *   MANUFACTURING  製品 × 受注元 の製造工程リスト。準備工程はカタログから外し、
+ *                  移行前の版に混ざっていた準備工程は「準備工程リストへ移った」
+ *                  と知らせて外す。
+ *   PREP           共通の準備工程リスト。製品も受注元も持たない。準備工程だけを
+ *                  出し、開始工程（〇〇出し・受渡し）がちょうど 1 つ要る。
+ * どちらも構成の検証は片方の種別の中だけで行う（compositionIssuesForKind）。
  */
 
 import { Alert, Select, SimpleGrid, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle } from "@tabler/icons-react";
+import { IconAlertTriangle, IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import {
+  createPrepRoute,
   createProductRoute,
   createProductRouteVersion,
 } from "@/app/(dashboard)/master/products/route-actions";
@@ -28,15 +37,24 @@ import {
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { RouteStepSnapshot } from "@/lib/product-routes-core";
-import type { CatalogStep, UseDep } from "@/lib/workflow-core";
+import type {
+  CatalogStep,
+  ProcessRouteKind,
+  UseDep,
+} from "@/lib/workflow-core";
 import {
+  compositionIssuesForKind,
   isBlockingIssue,
+  isPrepStep,
   STOCK_ISSUE_STEP_CODE,
   validateComposition,
 } from "@/lib/workflow-core";
 
+const PREP_ROUTES_PATH = "/master/process-steps/prep-routes";
+
 export function RouteEditorForm({
   mode,
+  kind = "MANUFACTURING",
   productId,
   productLabel,
   routeId,
@@ -50,8 +68,11 @@ export function RouteEditorForm({
   customerOptions,
 }: {
   mode: "create" | "new-version";
-  productId: number;
-  productLabel: string;
+  /** 準備工程リスト（共通）か 製造工程リスト（製品 × 受注元）か。 */
+  kind?: ProcessRouteKind;
+  /** MANUFACTURING のみ。PREP は製品を持たない。 */
+  productId?: number;
+  productLabel?: string;
   /** new-version 時のみ。 */
   routeId?: number;
   routeName?: string;
@@ -70,13 +91,21 @@ export function RouteEditorForm({
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const [customerBpId, setCustomerBpId] = useState<string | null>(null);
-  const backPath = `/master/products/${productId}?tab=routes`;
+  const backPath =
+    kind === "PREP"
+      ? PREP_ROUTES_PATH
+      : `/master/products/${productId}?tab=routes`;
 
-  // 工程リストは製造分（MANUFACTURE）の構成 — 在庫分専用の
-  // 製品出し（在庫）は選択肢に出さない。
+  // 種別の中だけを見せる。在庫分専用の 製品出し（在庫）はどちらにも出さない
+  // （在庫分の指示書は固定構成で工程リストを使わない）。
   const manufactureCatalog = useMemo(
-    () => catalogSteps.filter((c) => c.code !== STOCK_ISSUE_STEP_CODE),
-    [catalogSteps],
+    () =>
+      catalogSteps.filter(
+        (c) =>
+          c.code !== STOCK_ISSUE_STEP_CODE &&
+          (kind === "PREP" ? isPrepStep(c) : !isPrepStep(c)),
+      ),
+    [catalogSteps, kind],
   );
 
   const knownIds = useMemo(
@@ -87,7 +116,24 @@ export function RouteEditorForm({
     () => (initialSteps ?? []).filter((s) => knownIds.has(s.processStepId)),
     [initialSteps, knownIds],
   );
-  const droppedCount = (initialSteps?.length ?? 0) - usableInitial.length;
+  // 移行前の製造工程リストの版には準備工程が混ざっている。それは「無効」では
+  // なく「準備工程リストへ移った」ので、別に数えて別の言葉で知らせる。
+  const catalogById = useMemo(
+    () => new Map(catalogSteps.map((s) => [s.id, s])),
+    [catalogSteps],
+  );
+  const movedPrepCount = useMemo(
+    () =>
+      kind === "MANUFACTURING"
+        ? (initialSteps ?? []).filter((s) => {
+            const c = catalogById.get(s.processStepId);
+            return c != null && isPrepStep(c);
+          }).length
+        : 0,
+    [initialSteps, catalogById, kind],
+  );
+  const droppedCount =
+    (initialSteps?.length ?? 0) - usableInitial.length - movedPrepCount;
 
   const [nameJa, setNameJa] = useState("");
   const [nameEn, setNameEn] = useState("");
@@ -115,10 +161,14 @@ export function RouteEditorForm({
 
   const blockers = useMemo(
     () =>
-      validateComposition(selected, useDeps, manufactureCatalog).filter(
-        isBlockingIssue,
+      compositionIssuesForKind(
+        validateComposition(selected, useDeps, manufactureCatalog).filter(
+          isBlockingIssue,
+        ),
+        kind,
+        manufactureCatalog,
       ),
-    [selected, useDeps, manufactureCatalog],
+    [selected, useDeps, manufactureCatalog, kind],
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -154,13 +204,15 @@ export function RouteEditorForm({
     startTransition(async () => {
       const result =
         mode === "create"
-          ? await createProductRoute(productId, {
-              nameJa,
-              nameEn,
-              customerBpId,
-              notes,
-              steps,
-            })
+          ? kind === "PREP"
+            ? await createPrepRoute({ nameJa, nameEn, notes, steps })
+            : await createProductRoute(productId as number, {
+                nameJa,
+                nameEn,
+                customerBpId,
+                notes,
+                steps,
+              })
           : await createProductRouteVersion(routeId as number, {
               notes,
               steps,
@@ -187,21 +239,37 @@ export function RouteEditorForm({
 
   return (
     <FormShell
-      breadcrumbs={[
-        tr("common.masterData"),
-        { label: tr("common.products"), href: "/master/products" },
-        { label: productLabel, href: backPath },
-        mode === "create"
-          ? tr("master.routeEditorForm.newRouteBreadcrumb")
-          : tr("master.products.createANewVersion"),
-      ]}
+      breadcrumbs={
+        kind === "PREP"
+          ? [
+              tr("common.masterData"),
+              {
+                label: tr("common.processSteps"),
+                href: "/master/process-steps",
+              },
+              { label: tr("master.prepRoutes.title"), href: backPath },
+              mode === "create"
+                ? tr("master.routeEditorForm.newRouteBreadcrumb")
+                : tr("master.products.createANewVersion"),
+            ]
+          : [
+              tr("common.masterData"),
+              { label: tr("common.products"), href: "/master/products" },
+              { label: productLabel ?? "", href: backPath },
+              mode === "create"
+                ? tr("master.routeEditorForm.newRouteBreadcrumb")
+                : tr("master.products.createANewVersion"),
+            ]
+      }
       isDirty={selected.length > 0 || !!nameJa}
       isPending={isPending}
       onCancel={() => router.push(backPath)}
       onSubmit={handleSubmit}
       title={
         mode === "create"
-          ? tr("master.products.newProcessRoute")
+          ? kind === "PREP"
+            ? tr("master.prepRoutes.newPrepRoute")
+            : tr("master.products.newProcessRoute")
           : tr("master.routeEditorForm.newVersionTitle", {
               name: routeName ?? "",
               version: (latestVersion ?? 0) + 1,
@@ -225,16 +293,20 @@ export function RouteEditorForm({
                 onChange={(e2) => setNameEn(e2.currentTarget.value)}
                 value={nameEn}
               />
-              <Select
-                clearable
-                data={customerOptions ?? []}
-                description={tr("master.products.settingItMakesItPreferredFor")}
-                label={tr("common.targetCustomer")}
-                onChange={setCustomerBpId}
-                placeholder={tr("common.genericAllCustomers")}
-                searchable
-                value={customerBpId}
-              />
+              {kind === "MANUFACTURING" && (
+                <Select
+                  clearable
+                  data={customerOptions ?? []}
+                  description={tr(
+                    "master.products.settingItMakesItPreferredFor",
+                  )}
+                  label={tr("common.targetCustomer")}
+                  onChange={setCustomerBpId}
+                  placeholder={tr("common.genericAllCustomers")}
+                  searchable
+                  value={customerBpId}
+                />
+              )}
             </>
           ) : (
             <TextInput
@@ -254,6 +326,19 @@ export function RouteEditorForm({
             value={notes}
           />
         </SimpleGrid>
+        {movedPrepCount > 0 && (
+          <Alert
+            color="blue"
+            icon={<IconInfoCircle size={16} />}
+            mt="sm"
+            p="xs"
+            variant="light"
+          >
+            {tr("master.routeEditorForm.prepStepsMovedToPrepRoute", {
+              count: movedPrepCount,
+            })}
+          </Alert>
+        )}
         {droppedCount > 0 && (
           <Alert
             color="yellow"
@@ -262,8 +347,20 @@ export function RouteEditorForm({
             p="xs"
             variant="light"
           >
-            最新バージョンに現在無効な工程が {droppedCount}{" "}
-            件含まれていたため除外しました
+            {tr("master.routeEditorForm.inactiveStepsExcluded", {
+              count: droppedCount,
+            })}
+          </Alert>
+        )}
+        {kind === "PREP" && (
+          <Alert
+            color="gray"
+            icon={<IconInfoCircle size={16} />}
+            mt="sm"
+            p="xs"
+            variant="light"
+          >
+            {tr("master.prepRoutes.editorHelp")}
           </Alert>
         )}
       </FormSection>
@@ -271,6 +368,7 @@ export function RouteEditorForm({
       <ProcessListEditor
         catalogSteps={manufactureCatalog}
         error={stepsError}
+        kind={kind}
         locations={locations}
         onLocationsChange={setLocations}
         onSelectedChange={setSelected}

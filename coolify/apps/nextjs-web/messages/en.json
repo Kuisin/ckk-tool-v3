@@ -2436,7 +2436,10 @@
       "openDeliveryOrderFormForThisLot": "Opens the delivery order form for the {quantity} piece(s) not shipped yet. Other lines of the same order acceptance can be added too.",
       "deliveryOrderNeedsCompletedWorkOrder": "You can create it only from a completed work order",
       "deliveryOrderNeedsOrderLine": "You cannot create it from a work order with no order line",
-      "deliveryOrderAlreadyArranged": "Every order line of this work order is already arranged for shipping"
+      "deliveryOrderAlreadyArranged": "Every order line of this work order is already arranged for shipping",
+      "prepRoute": "Preparation step list",
+      "manufacturingRoute": "Manufacturing step list",
+      "newerVersionExists": "Newer v{version} exists"
     },
     "addBranchModal": {
       "theBranchWasAdded": "The branch was added",
@@ -2485,7 +2488,9 @@
       "startedOn": "Started {date}",
       "stepNumberApproval": "Approval step {step}",
       "stockStorageNote": " (stock storage)",
-      "workOrderSubject": "Work order #{number}"
+      "workOrderSubject": "Work order #{number}",
+      "plansMissingForSteps": "Work plans are incomplete: {steps}",
+      "stepMissingLocation": "{name} (no work location)"
     },
     "defectRecordForm": {
       "enterTheDefectTypeAndDetails": "Enter the defect type and details for each row",
@@ -2604,7 +2609,8 @@
       "workPlan": "Work plan",
       "recordsTheWorkDonePerAssignee": "Records the work done per assignee and date (addable only while in progress). Actuals from a shared device carry that device's default work location.",
       "workActuals": "Work actuals",
-      "workLocation": "Work location"
+      "workLocation": "Work location",
+      "selectAWorkLocation": "Select a work location"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "Quantity and defects",
@@ -2664,7 +2670,8 @@
       "deleteBranchSeriesConfirm": "Branch series ({steps}) will be deleted. This cannot be undone.",
       "deletedNSteps": "Deleted {count} step(s)",
       "hideTheFlowDiagram": "Hide the flow diagram",
-      "openTheStepExecutionView": "Open the step execution view"
+      "openTheStepExecutionView": "Open the step execution view",
+      "plannedDeliveryWithDate": "Planned delivery {date}"
     },
     "workflowGraphCanvas": {
       "workflowDiagramBranchesAndMerges": "Workflow diagram (branches and merges)",
@@ -2812,7 +2819,17 @@
       "ifNotPinnedWithLabel": "If not pinned: {label}",
       "dedicatedToCustomerWithName": "Dedicated to {name}",
       "thisCustomer": "This customer",
-      "stepFallbackWithId": "Step #{id}"
+      "stepFallbackWithId": "Step #{id}",
+      "prepRouteHelp": "The issue/handoff and material-prep steps (shared). Combined with the manufacturing list to form the work order.",
+      "noPrepRouteRegistered": "No preparation step list is registered (create one under process steps)",
+      "showOtherCustomers": "Also show other customers' step lists for this product",
+      "showOtherCustomersHelp": "By default only this customer's and generic lists are shown. Select another customer's list to copy it to this customer.",
+      "otherCustomerRouteSelected": "This step list is dedicated to \"{customer}\". Copy it to this customer before using it.",
+      "copyToThisCustomer": "Copy to {name}",
+      "routeCopiedToCustomer": "Copied step list \"{name}\" to this customer (v1)",
+      "routeModifiedNewVersion": "The steps differ from the selected version of \"{name}\" — they will be saved as new version v{version}",
+      "workPlanHelp": "Assign a person, date and work location per step. Requesting approval requires every in-house step to have a plan with a date and work location (times are optional; add them later in the plan panel).",
+      "planNeedsWorkLocation": "Select a work location: {steps}"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "Allocated {allocated} / Ordered {ordered}",
@@ -2960,7 +2977,8 @@
       "auditInspectionSheetsSet": "Changed the step's inspection sheet assignment ({count})",
       "couldNotSaveInspectionSheets": "Could not save the inspection sheet assignment",
       "requestedAfterExpected": "The expected date must be on or after the request date",
-      "requestedAfterReceived": "The received date must be on or after the request date"
+      "requestedAfterReceived": "The received date must be on or after the request date",
+      "workLocationRequiredForPlan": "A work plan requires a work location"
     },
     "workOrderActions": {
       "acknowledgeFailed": "Could not record the acknowledgement",
@@ -3022,7 +3040,9 @@
       "allocationsMustShareProduct": "Order lines allocated to one work order must be the same product",
       "allocationExceedsRemaining": "The allocation to order line {number} exceeds the remaining balance (order quantity {lineQuantity} − already allocated {otherAllocated} = remaining {remaining})",
       "stockPlannedQuantityMustMatchAllocation": "For a from-stock work order, the planned quantity must match the allocated quantity",
-      "plannedQuantityBelowAllocationTotal": "The planned quantity is below the total allocation of {total} (you may add extra for defect margin, but it must be at least the total allocation)"
+      "plannedQuantityBelowAllocationTotal": "The planned quantity is below the total allocation of {total} (you may add extra for defect margin, but it must be at least the total allocation)",
+      "plansRequiredBeforeApproval": "Add a work plan (date + work location) before requesting approval: {steps}",
+      "copyRouteFailed": "Could not copy the step list"
     },
     "designFileActions": {
       "cannotDelete": "Cannot delete",
@@ -3110,7 +3130,8 @@
       "multipleStart": "Only one \"issue/hand-off\" step can be selected (currently selected: {related})"
     },
     "productRoutes": {
-      "theSelectedProcessRouteIsNot": "The selected process route does not belong to this product"
+      "theSelectedProcessRouteIsNot": "The selected process route does not belong to this product",
+      "copiedFromVersionNote": "Copied from \"{name}\" v{version}"
     },
     "inspectionSheetPdf": {
       "equipmentLaser": "Laser",
@@ -5332,7 +5353,9 @@
       "stepUpdated": "Step updated",
       "finalInspectionStep": "Final inspection step",
       "theFinalInspectionChecklistIsRecorded": "The final inspection and pre-shipment checks (3 checks, spare stock, packing → delivery note → shipping approval) are recorded on this step's execution screen. There is one record per work order, and a work order whose step list has no flagged step has no final inspection.",
-      "approvalStepsHaveNoQuantity": "An inspection approval step carries no quantity (quantity tracking is set to none). It approves the inspection sheet of an earlier step rather than working on the pieces."
+      "approvalStepsHaveNoQuantity": "An inspection approval step carries no quantity (quantity tracking is set to none). It approves the inspection sheet of an earlier step rather than working on the pieces.",
+      "workLocationRequired": "Work plan requires a work location",
+      "workLocationRequiredHelp": "Requires a work location on this step's work plan before approval can be requested. Turn it off for steps where a location is meaningless (e.g. stock moves). Which locations may be used is set under \"Allowed work locations\" below."
     },
     "products": {
       "specification": "Specification",
@@ -5679,7 +5702,9 @@
     },
     "routeEditorForm": {
       "newRouteBreadcrumb": "New process route",
-      "newVersionTitle": "New version of process route \"{name}\" (v{version})"
+      "newVersionTitle": "New version of process route \"{name}\" (v{version})",
+      "prepStepsMovedToPrepRoute": "{count} preparation step(s) in the latest version have moved to the preparation step list and are not included in this version.",
+      "inactiveStepsExcluded": "{count} step(s) in the latest version are no longer active and were excluded"
     },
     "branchDetail": {
       "deleteConfirmMessage": "This deletes branch \"{name} ({code})\". This cannot be undone.",
@@ -5986,6 +6011,13 @@
       "bothStartAndEndRequired": "A time-limited member requires both a start and end date/time",
       "invalidDateTimeFormat": "The date/time format is invalid",
       "endMustBeAfterStart": "The end date/time must be after the start"
+    },
+    "prepRoutes": {
+      "title": "Preparation step lists",
+      "newPrepRoute": "New preparation step list",
+      "intro": "The issue/handoff and material-prep steps (cutting, centerless, length adjustment, chamfer). Shared across products and customers; a work order combines a preparation list with the product's manufacturing list.",
+      "empty": "No preparation step list is registered",
+      "editorHelp": "Only preparation steps are offered. Exactly one start step (issue/handoff) is required. Dependencies on manufacturing steps are checked when a work order combines the two lists."
     }
   },
   "manual": {
@@ -8016,7 +8048,9 @@
     "cannotDeleteBranchWithStartedSteps": "Cannot delete a branch that includes a step that has already started",
     "auditBranchDeleted": "Deleted a branch ({count} steps)",
     "auditBranchUpdated": "Updated the branch (quantity {quantity}, {termination})",
-    "inspectionSheetsNotRecorded": "Some inspection sheets have no record yet ({sheets}). Save the inspection sheet before completing the step"
+    "inspectionSheetsNotRecorded": "Some inspection sheets have no record yet ({sheets}). Save the inspection sheet before completing the step",
+    "prepRouteOnlyPrepSteps": "A preparation step list may contain only preparation steps (issue/handoff and material prep)",
+    "manufacturingRouteNoPrepSteps": "A manufacturing step list cannot contain preparation steps (use a preparation step list)"
   },
   "aiKeywords": {
     "enterANameBeforeRunning": "Enter a name before running this",

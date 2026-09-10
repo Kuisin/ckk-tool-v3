@@ -72,6 +72,8 @@ export interface RouteVersionView {
 
 export interface RouteView {
   id: number;
+  /** 準備工程リスト（共通）か 製造工程リスト（製品 × 受注元）か。 */
+  kind: "PREP" | "MANUFACTURING";
   name: string;
   nameEn: string;
   /** 対象の受注元（取引先）。null = 汎用（どの顧客にも使える）。 */
@@ -99,4 +101,47 @@ export function pickDefaultRoute(
     if (match) return match;
   }
   return routes.find((r) => r.customerBpId == null) ?? routes[0];
+}
+
+/**
+ * 指示書ビルダーに**既定で見せる**製造工程リスト — この受注元のものと汎用だけ。
+ *
+ * 他の受注元専用のリストは、同じ製品でも顧客ごとに工程が違うから分けている
+ * もので、既定で並べると「隣の顧客のリストで作ってしまう」事故の入口になる。
+ * `showOthers` を立てたときだけ全部出す（見比べて、この顧客へ複製するため）。
+ * 受注元が無い（在庫向け）ときは絞りようがないので全部出す。
+ */
+export function routesVisibleForCustomer(
+  routes: readonly RouteView[],
+  customerBpId: string | null,
+  showOthers: boolean,
+): RouteView[] {
+  if (showOthers || customerBpId == null) return [...routes];
+  return routes.filter(
+    (r) => r.customerBpId == null || r.customerBpId === customerBpId,
+  );
+}
+
+/** 他の受注元専用のリストか（= 選んだら「この顧客へ複製」を勧める相手）。 */
+export function isOtherCustomerRoute(
+  route: Pick<RouteView, "customerBpId">,
+  customerBpId: string | null,
+): boolean {
+  return (
+    customerBpId != null &&
+    route.customerBpId != null &&
+    route.customerBpId !== customerBpId
+  );
+}
+
+/**
+ * 準備工程リストの既定選択。共通のリストなので優先規則は無い —
+ * **有効なものが 1 本だけのときだけ**自動で選ぶ。2 本以上あるのは
+ * 「素材の仕立てが複数ある」という意思表示なので、人に選ばせる。
+ */
+export function pickDefaultPrepRoute(
+  prepRoutes: readonly RouteView[],
+): RouteView | null {
+  const active = prepRoutes.filter((r) => r.isActive);
+  return active.length === 1 ? active[0] : null;
 }

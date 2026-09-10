@@ -49,8 +49,14 @@ import {
   processCategoryLabel,
 } from "@/lib/enum-labels";
 import type { RouteStepSnapshot } from "@/lib/product-routes-core";
-import type { CatalogStep, LotInputMode, UseDep } from "@/lib/workflow-core";
+import type {
+  CatalogStep,
+  LotInputMode,
+  ProcessRouteKind,
+  UseDep,
+} from "@/lib/workflow-core";
 import {
+  compositionIssuesForKind,
   defaultOrder,
   isBlockingIssue,
   isShipStep,
@@ -258,6 +264,7 @@ export function ProcessListEditor({
   plantOptions,
   supplierOptions,
   error,
+  kind,
 }: {
   selected: number[];
   onSelectedChange: (next: number[]) => void;
@@ -269,6 +276,12 @@ export function ProcessListEditor({
   supplierOptions: Option[];
   /** フォーム側の selectedStepIds エラー表示。 */
   error?: string | null;
+  /**
+   * 片方の種別だけを編集しているとき（製品の製造工程リスト / 準備工程リスト）。
+   * その種別の外だけを相手にした issue を出さない（compositionIssuesForKind）。
+   * 指示書ビルダー（2 本を合わせた全体）は渡さない。
+   */
+  kind?: ProcessRouteKind;
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -280,10 +293,10 @@ export function ProcessListEditor({
   /** 直近のチェック操作で自動追加された随伴工程（インライン通知用）。 */
   const [autoAdded, setAutoAdded] = useState<number[]>([]);
 
-  const issues = useMemo(
-    () => validateComposition(selected, useDeps, catalogSteps),
-    [selected, useDeps, catalogSteps],
-  );
+  const issues = useMemo(() => {
+    const all = validateComposition(selected, useDeps, catalogSteps);
+    return kind ? compositionIssuesForKind(all, kind, catalogSteps) : all;
+  }, [selected, useDeps, catalogSteps, kind]);
   const blockers = issues.filter(isBlockingIssue);
   const warnings = issues.filter((i) => !isBlockingIssue(i));
   const missingCompanions = useMemo(

@@ -2436,7 +2436,10 @@
       "openDeliveryOrderFormForThisLot": "用尚未出货的 {quantity} 支创建出货单。也可一并加入同一订单确认书的其他明细。",
       "deliveryOrderNeedsCompletedWorkOrder": "仅可从已完成的工单创建",
       "deliveryOrderNeedsOrderLine": "未关联订单明细的工单无法创建",
-      "deliveryOrderAlreadyArranged": "该工单的订单明细均已安排出货"
+      "deliveryOrderAlreadyArranged": "该工单的订单明细均已安排出货",
+      "prepRoute": "准备工序清单",
+      "manufacturingRoute": "制造工序清单",
+      "newerVersionExists": "已有最新 v{version}"
     },
     "addBranchModal": {
       "theBranchWasAdded": "已添加分支",
@@ -2485,7 +2488,9 @@
       "startedOn": "开始 {date}",
       "stepNumberApproval": "第 {step} 级审批",
       "stockStorageNote": "（库存保管）",
-      "workOrderSubject": "工单 #{number}"
+      "workOrderSubject": "工单 #{number}",
+      "plansMissingForSteps": "作业计划不完整：{steps}",
+      "stepMissingLocation": "{name}（无作业场所）"
     },
     "defectRecordForm": {
       "enterTheDefectTypeAndDetails": "请输入各行的不良类别和内容",
@@ -2604,7 +2609,8 @@
       "workPlan": "作业计划",
       "recordsTheWorkDonePerAssignee": "按负责人・日期记录已实施的作业（仅进行中可添加）。来自共用终端的实绩将填入该终端的默认作业场所。",
       "workActuals": "作业实绩",
-      "workLocation": "作业场所"
+      "workLocation": "作业场所",
+      "selectAWorkLocation": "请选择作业场所"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "数量与不良",
@@ -2664,7 +2670,8 @@
       "deleteBranchSeriesConfirm": "将删除分支序列（{steps}）。此操作无法撤销。",
       "deletedNSteps": "已删除 {count} 个工序",
       "hideTheFlowDiagram": "隐藏流程图",
-      "openTheStepExecutionView": "打开工序执行视图"
+      "openTheStepExecutionView": "打开工序执行视图",
+      "plannedDeliveryWithDate": "预定交期 {date}"
     },
     "workflowGraphCanvas": {
       "workflowDiagramBranchesAndMerges": "工序流程图（分支・汇合）",
@@ -2812,7 +2819,17 @@
       "ifNotPinnedWithLabel": "若不固定：{label}",
       "dedicatedToCustomerWithName": "{name} 专用",
       "thisCustomer": "该客户",
-      "stepFallbackWithId": "工序 #{id}"
+      "stepFallbackWithId": "工序 #{id}",
+      "prepRouteHelp": "〇〇出库・交接 与 材料准备的顺序（公共）。与制造工序清单合并后构成工单的工序。",
+      "noPrepRouteRegistered": "尚未登记准备工序清单（请在工序主数据中创建）",
+      "showOtherCustomers": "同时显示本产品其他订货方的工序清单",
+      "showOtherCustomersHelp": "默认仅显示本订货方与通用清单。可选择其他订货方的清单后「复制到本订货方」。",
+      "otherCustomerRouteSelected": "当前选择的是「{customer}」专用的工序清单。请先复制为本订货方的清单再使用。",
+      "copyToThisCustomer": "复制到 {name}",
+      "routeCopiedToCustomer": "已将工序清单「{name}」复制到本订货方（v1）",
+      "routeModifiedNewVersion": "工序构成与「{name}」所选版本不同 — 保存时将作为新版本 v{version} 保存",
+      "workPlanHelp": "为每道工序填写负责人、计划日与作业场所。申请审批时，所有厂内工序都需要带日期 + 作业场所的计划（时间段可选，可在创建后的计划面板中补充）。",
+      "planNeedsWorkLocation": "请选择作业场所：{steps}"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "分配 {allocated} / 订购 {ordered}",
@@ -2960,7 +2977,8 @@
       "auditInspectionSheetsSet": "已变更工序的检查表分配（{count} 项）",
       "couldNotSaveInspectionSheets": "检查表分配保存失败",
       "requestedAfterExpected": "预计到货日需在委托日当天或之后",
-      "requestedAfterReceived": "到货日需在委托日当天或之后"
+      "requestedAfterReceived": "到货日需在委托日当天或之后",
+      "workLocationRequiredForPlan": "作业计划需要作业场所"
     },
     "workOrderActions": {
       "acknowledgeFailed": "确认记录失败",
@@ -3022,7 +3040,9 @@
       "allocationsMustShareProduct": "分配给同一工单的订单明细必须是同一产品",
       "allocationExceedsRemaining": "对订单明细 {number} 的分配超过了剩余可分配量（订单数量 {lineQuantity} − 已分配 {otherAllocated} = 剩余 {remaining}）",
       "stockPlannedQuantityMustMatchAllocation": "库存分工单的计划数量必须与分配数量一致",
-      "plannedQuantityBelowAllocationTotal": "计划数量低于分配合计 {total}（可自由追加不良品余量，但需不低于分配合计）"
+      "plannedQuantityBelowAllocationTotal": "计划数量低于分配合计 {total}（可自由追加不良品余量，但需不低于分配合计）",
+      "plansRequiredBeforeApproval": "申请审批前请填写作业计划（日期 + 作业场所）：{steps}",
+      "copyRouteFailed": "复制工序清单失败"
     },
     "designFileActions": {
       "cannotDelete": "无法删除",
@@ -3110,7 +3130,8 @@
       "multipleStart": "「出料/交接」只能选择 1 个（当前已选：{related}）"
     },
     "productRoutes": {
-      "theSelectedProcessRouteIsNot": "所选的工序路线不属于该产品"
+      "theSelectedProcessRouteIsNot": "所选的工序路线不属于该产品",
+      "copiedFromVersionNote": "复制自「{name}」v{version}"
     },
     "inspectionSheetPdf": {
       "equipmentLaser": "激光",
@@ -5332,7 +5353,9 @@
       "stepUpdated": "已更新工序",
       "finalInspectionStep": "最终检查工序",
       "theFinalInspectionChecklistIsRecorded": "在该工序的执行画面记录最终检查与出货前确认（3 项确认、备用库存、包装 → 发行送货单 → 出货批准）。每张工单一条记录；工序清单中没有带此标记工序的工单即没有最终检查。",
-      "approvalStepsHaveNoQuantity": "检查审批工序不带数量（数量管理设为「无」）。它是查看前道工序的检查表并审批的工序，而不是加工工序。"
+      "approvalStepsHaveNoQuantity": "检查审批工序不带数量（数量管理设为「无」）。它是查看前道工序的检查表并审批的工序，而不是加工工序。",
+      "workLocationRequired": "作业计划需要作业场所",
+      "workLocationRequiredHelp": "申请审批前，要求本工序的作业计划填写作业场所。对仅移动库存等场所无意义的工序请关闭。可使用的场所范围在下方「允许的作业场所」中设置。"
     },
     "products": {
       "specification": "规格",
@@ -5679,7 +5702,9 @@
     },
     "routeEditorForm": {
       "newRouteBreadcrumb": "新建工序路线",
-      "newVersionTitle": "为工序路线“{name}”创建新版本（v{version}）"
+      "newVersionTitle": "为工序路线“{name}”创建新版本（v{version}）",
+      "prepStepsMovedToPrepRoute": "最新版本中包含的 {count} 个准备工序已移至准备工序清单，本版本不再包含。",
+      "inactiveStepsExcluded": "最新版本中包含 {count} 个当前已停用的工序，已排除"
     },
     "branchDetail": {
       "deleteConfirmMessage": "将删除分公司“{name}（{code}）”。此操作无法撤销。",
@@ -5986,6 +6011,13 @@
       "bothStartAndEndRequired": "期限成员必须同时输入开始和结束日期时间",
       "invalidDateTimeFormat": "日期时间格式不正确",
       "endMustBeAfterStart": "结束日期时间必须晚于开始日期时间"
+    },
+    "prepRoutes": {
+      "title": "准备工序清单",
+      "newPrepRoute": "新建准备工序清单",
+      "intro": "〇〇出库・交接 与 材料准备（切断・无心磨・全长修整・倒角）的顺序。不与产品或订货方绑定的公共清单，工单由「准备工序清单 + 产品的制造工序清单」合并生成。",
+      "empty": "尚未登记准备工序清单",
+      "editorHelp": "仅可选择准备工序。开始工序（〇〇出库・交接）必须恰好 1 个。与制造侧的依赖将在工单合并两份清单时检验。"
     }
   },
   "manual": {
@@ -8016,7 +8048,9 @@
     "cannotDeleteBranchWithStartedSteps": "包含已开始工序的分支无法删除",
     "auditBranchDeleted": "已删除分支（{count} 道工序）",
     "auditBranchUpdated": "已更新分支（数量 {quantity}，{termination}）",
-    "inspectionSheetsNotRecorded": "有检查表尚未填写记录（{sheets}）。请先保存检查表再完成工序"
+    "inspectionSheetsNotRecorded": "有检查表尚未填写记录（{sheets}）。请先保存检查表再完成工序",
+    "prepRouteOnlyPrepSteps": "准备工序清单只能包含准备工序（〇〇出库・交接 / 材料准备）",
+    "manufacturingRouteNoPrepSteps": "制造工序清单不能包含准备工序（请使用准备工序清单）"
   },
   "aiKeywords": {
     "enterANameBeforeRunning": "请先输入名称再执行",

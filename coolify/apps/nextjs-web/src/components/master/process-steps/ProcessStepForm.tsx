@@ -105,6 +105,7 @@ const processStepSchema = (tr: (key: string) => string) =>
       isInspection: z.boolean(),
       isApprovalStep: z.boolean(),
       isFinalInspection: z.boolean(),
+      workLocationRequired: z.boolean(),
       approvalMinRank: z.string(),
       quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
       lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]),
@@ -147,6 +148,8 @@ export interface ProcessStepFormInitial {
   isInspection: boolean;
   isApprovalStep: boolean;
   isFinalInspection: boolean;
+  /** 作業計画に作業場所が要るか（承認前の揃い）。 */
+  workLocationRequired: boolean;
   approvalMinRank: string;
   quantityTracking: string;
   lotInputMode: string;
@@ -215,6 +218,7 @@ export function ProcessStepForm({
       isInspection: initial?.isInspection ?? false,
       isApprovalStep: initial?.isApprovalStep ?? false,
       isFinalInspection: initial?.isFinalInspection ?? false,
+      workLocationRequired: initial?.workLocationRequired ?? true,
       approvalMinRank: initial?.approvalMinRank ?? "",
       quantityTracking:
         initial?.quantityTracking === "NONE" ||
@@ -287,6 +291,7 @@ export function ProcessStepForm({
       isInspection: values.isInspection,
       isApprovalStep: values.isApprovalStep,
       isFinalInspection: values.isFinalInspection,
+      workLocationRequired: values.workLocationRequired,
       approvalMinRank: values.approvalMinRank,
       quantityTracking: values.quantityTracking,
       lotInputMode: values.lotInputMode,
@@ -590,6 +595,16 @@ export function ProcessStepForm({
             )}
             label={tr("master.processSteps.finalInspectionStep")}
             {...form.getInputProps("isFinalInspection", { type: "checkbox" })}
+          />
+          {/* 承認前の作業計画に「どこで」が要るか。在庫を動かすだけの工程
+              （〇〇出し）のように場所に意味の無い工程で外す。使える場所の範囲は
+              下の「許可作業場所」— こちらは 要る / 要らない だけ。 */}
+          <Switch
+            description={tr("master.processSteps.workLocationRequiredHelp")}
+            label={tr("master.processSteps.workLocationRequired")}
+            {...form.getInputProps("workLocationRequired", {
+              type: "checkbox",
+            })}
           />
           <Switch
             label={

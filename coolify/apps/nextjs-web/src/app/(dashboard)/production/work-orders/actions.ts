@@ -39,8 +39,11 @@ import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { allocateDocumentKey, nextSerialNumber } from "@/lib/numbering";
 import {
+  copyRouteVersionToCustomerTx,
   fetchRouteVersionSteps,
+  listPrepRoutes,
   listProductRoutes,
+  type RouteResolveInput,
   resolveRouteVersionTx,
 } from "@/lib/product-routes";
 import type { RouteStepSnapshot, RouteView } from "@/lib/product-routes-core";
@@ -50,6 +53,7 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { workLocationsConfigured } from "@/lib/work-locations";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import {
   type AllocationInput,
@@ -66,13 +70,16 @@ import {
   addWorkOrderLink as addWoLink,
   removeWorkOrderLink as removeWoLink,
 } from "@/lib/work-order-links";
+import { planReadiness } from "@/lib/work-plan-core";
 import {
+  loadCatalog,
   type OrderedStepCreate,
   type StepCompositionInput,
   validateAndOrderSteps,
 } from "@/lib/workflow";
 import {
   isOffMainline,
+  isPrepStep,
   STEP_LINK_STATE_SELECT,
   STEP_STATE_SELECT,
   toStepState,
@@ -189,6 +196,12 @@ function planInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
         /^\d{4}-\d{2}-\d{2}$/,
         tr("production.workOrderActions.invalidPlanDate"),
       ),
+    /**
+     * 作業場所。承認依頼には社内工程ごとに 日付 + 作業場所 の揃った計画が要る
+     * （lib/work-plan-core.ts）— ここは下書きなので null を通し、揃っているかは
+     * 承認依頼のときに数える。
+     */
+    workLocationId: z.number().int().positive().nullable().default(null),
   });
 }
 
@@ -215,6 +228,12 @@ function workOrderInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
         .min(1, tr("production.workOrderActions.selectAtLeastOneStep")),
       // 製造分は必須。在庫分（FROM_STOCK）は固定構成のため工程リストを使わない。
       route: routeInputSchema(tr).nullable(),
+      /**
+       * 準備工程リスト（共通）。null = 使わない（版の中に準備工程が混ざっている
+       * 移行前の製造リスト、または手組み）。工程そのものは steps に混ざって
+       * 来るので、保存時に種別で分けて版へ写す（resolveRouteVersionsTx）。
+       */
+      prepRoute: routeInputSchema(tr).nullable().optional(),
       plans: z.array(planInputSchema(tr)),
     })
     .superRefine((v, refCtx) => {
@@ -433,6 +452,57 @@ export interface LineAllocStatus {
 
 // ── 作成 / 更新 / コピー / キャンセル ────────────────────────────────────────
 
+/**
+ * 指示書の工程構成 → 製造 / 準備 それぞれのルートバージョンを解決する。
+ *
+ * 工程は 2 本のリストを合わせたもの（§7）なので、保存するときは種別で分けて
+ * それぞれの版へ写す。どちらに属するかは isPrepStep（workflow-core）だけが
+ * 決める — ここで別の基準を作ると、製品側の編集画面と食い違う。
+ */
+async function resolveRouteVersionsTx(
+  tx: Parameters<typeof resolveRouteVersionTx>[0],
+  input: {
+    route: RouteResolveInput;
+    prepRoute: RouteResolveInput;
+    steps: readonly RouteStepSnapshot[];
+    actor: string | null;
+    productId: number;
+    tr: Awaited<ReturnType<typeof getTranslations>>;
+    note: string;
+  },
+): Promise<{
+  routeVersionId: string | null;
+  prepRouteVersionId: string | null;
+}> {
+  const catalog = await loadCatalog();
+  const prepStepIds = new Set(
+    catalog.steps.filter(isPrepStep).map((c) => c.id),
+  );
+  const prepSteps = input.steps.filter((s) => prepStepIds.has(s.processStepId));
+  const mfgSteps = input.steps.filter((s) => !prepStepIds.has(s.processStepId));
+  const routeVersionId = await resolveRouteVersionTx(
+    tx,
+    input.route,
+    mfgSteps,
+    input.actor,
+    input.productId,
+    input.tr,
+    input.note,
+    { kind: "MANUFACTURING", prepStepIds },
+  );
+  const prepRouteVersionId = await resolveRouteVersionTx(
+    tx,
+    input.prepRoute,
+    prepSteps,
+    input.actor,
+    input.productId,
+    input.tr,
+    input.note,
+    { kind: "PREP", prepStepIds },
+  );
+  return { routeVersionId, prepRouteVersionId };
+}
+
 export async function createWorkOrder(
   payload: WorkOrderInput,
 ): Promise<ActionResult<{ workOrderNumber: number; docNumber: string }>> {
@@ -462,19 +532,19 @@ export async function createWorkOrder(
     const docNumber = formatDocNumber("WOR", docKey);
     const materialId = v.type === "MANUFACTURE" ? v.materialId : null;
 
-    const routeVersionId = await prisma.$transaction(async (tx) => {
+    const resolvedVersions = await prisma.$transaction(async (tx) => {
       // 工程構成 → ルートバージョン解決（変更があれば新バージョンを自動保存）
-      const resolvedRouteVersionId = await resolveRouteVersionTx(
-        tx,
-        v.type === "FROM_STOCK" ? null : v.route,
-        built.creates,
+      const resolved = await resolveRouteVersionsTx(tx, {
+        route: v.type === "FROM_STOCK" ? null : v.route,
+        prepRoute: v.type === "FROM_STOCK" ? null : (v.prepRoute ?? null),
+        steps: built.creates,
         actor,
         productId,
         tr,
-        tr("production.workOrderActions.routeChangeNoteOnCreate", {
+        note: tr("production.workOrderActions.routeChangeNoteOnCreate", {
           number: workOrderNumber,
         }),
-      );
+      });
       const created = await tx.workOrder.create({
         data: {
           workOrderNumber,
@@ -486,7 +556,8 @@ export async function createWorkOrder(
           materialId,
           storageLocationId: v.storageLocationId,
           designFileId: v.designFileId ?? null,
-          routeVersionId: resolvedRouteVersionId,
+          routeVersionId: resolved.routeVersionId,
+          prepRouteVersionId: resolved.prepRouteVersionId,
           status: "DRAFT",
           approvalStatus: "NONE",
           notes: v.notes.trim() || null,
@@ -520,6 +591,7 @@ export async function createWorkOrder(
               stepId,
               userId: p.userId,
               plannedDate: new Date(`${p.date}T00:00:00+09:00`),
+              workLocationId: p.workLocationId,
               createdBy: actor,
             },
           ];
@@ -535,7 +607,7 @@ export async function createWorkOrder(
         v.allocations.map((a) => a.orderLineId),
         workOrderNumber,
       );
-      return resolvedRouteVersionId;
+      return resolved;
     });
 
     await recordAudit({
@@ -550,7 +622,8 @@ export async function createWorkOrder(
         plannedQuantity: v.plannedQuantity,
         materialId,
         storageLocationId: v.storageLocationId,
-        routeVersionId,
+        routeVersionId: resolvedVersions.routeVersionId,
+        prepRouteVersionId: resolvedVersions.prepRouteVersionId,
         stepCount: built.creates.length,
         inspectionTemplateCount: built.creates.reduce(
           (n, c) => n + c.inspectionTemplateIds.length,
@@ -617,18 +690,18 @@ export async function updateWorkOrder(
     let plansKept = 0;
     let plansDropped = 0;
 
-    const routeVersionId = await prisma.$transaction(async (tx) => {
-      const resolvedRouteVersionId = await resolveRouteVersionTx(
-        tx,
-        v.type === "FROM_STOCK" ? null : v.route,
-        built.creates,
+    const resolvedVersions = await prisma.$transaction(async (tx) => {
+      const resolved = await resolveRouteVersionsTx(tx, {
+        route: v.type === "FROM_STOCK" ? null : v.route,
+        prepRoute: v.type === "FROM_STOCK" ? null : (v.prepRoute ?? null),
+        steps: built.creates,
         actor,
         productId,
         tr,
-        tr("production.workOrderActions.routeChangeNoteOnUpdate", {
+        note: tr("production.workOrderActions.routeChangeNoteOnUpdate", {
           number: workOrderNumber,
         }),
-      );
+      });
       // 工程の作り直し — 工程単位の検査表割当は FK CASCADE で一緒に消える。
       // 作業計画・実績（work_order_step_plans / _actuals）も同じ CASCADE で
       // 消えるので、先に控えて作り直した工程へ processStepId で付け直す
@@ -680,7 +753,8 @@ export async function updateWorkOrder(
           materialId,
           storageLocationId: v.storageLocationId,
           designFileId: v.designFileId ?? null,
-          routeVersionId: resolvedRouteVersionId,
+          routeVersionId: resolved.routeVersionId,
+          prepRouteVersionId: resolved.prepRouteVersionId,
           notes: v.notes.trim() || null,
           history: toHistoryJson(
             appendHistory(prior.history, entry("UPDATE", actor)),
@@ -721,7 +795,7 @@ export async function updateWorkOrder(
         v.allocations.map((a) => a.orderLineId),
         workOrderNumber,
       );
-      return resolvedRouteVersionId;
+      return resolved;
     });
 
     await recordAudit({
@@ -742,7 +816,8 @@ export async function updateWorkOrder(
         plannedQuantity: v.plannedQuantity,
         materialId,
         storageLocationId: v.storageLocationId,
-        routeVersionId,
+        routeVersionId: resolvedVersions.routeVersionId,
+        prepRouteVersionId: resolvedVersions.prepRouteVersionId,
         stepCount: built.creates.length,
         plansKept,
         plansDropped,
@@ -1190,6 +1265,38 @@ export async function requestApproval(
     if (prior.status !== "DRAFT") {
       return actionError(
         tr("production.workOrderActions.draftOnlyCanRequestApproval"),
+      );
+    }
+    // 作業計画は承認前に揃える（§7）— 社内工程ごとに 日付 + 作業場所 の入った
+    // 計画が 1 行以上。判定は lib/work-plan-core.ts が唯一の定義で、詳細画面の
+    // 承認カードも同じ関数で「何が足りないか」を出している。
+    const planSteps = await prisma.workOrderStep.findMany({
+      where: { workOrderId: prior.id },
+      orderBy: { sortOrder: "asc" },
+      select: {
+        id: true,
+        executionLocation: true,
+        status: true,
+        processStep: { select: { name: true, workLocationRequired: true } },
+        plans: { select: { plannedDate: true, workLocationId: true } },
+      },
+    });
+    const readiness = planReadiness(
+      planSteps.map((st) => ({
+        stepId: st.id,
+        name: localized(st.processStep.name as LocalizedText | null),
+        executionLocation: st.executionLocation,
+        status: st.status,
+        workLocationRequired: st.processStep.workLocationRequired,
+        plans: st.plans,
+      })),
+      { workLocationsConfigured: await workLocationsConfigured() },
+    );
+    if (!readiness.ok) {
+      return actionError(
+        tr("production.workOrderActions.plansRequiredBeforeApproval", {
+          steps: readiness.gaps.map((g) => g.name).join(tr("common.s1")),
+        }),
       );
     }
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
@@ -1655,6 +1762,8 @@ export async function getProductRoutesForOrderLine(
   customerBpId: string | null;
   customerName: string | null;
   routes: RouteView[];
+  /** 準備工程リスト（共通・有効のみ）。 */
+  prepRoutes: RouteView[];
 } | null> {
   if (!(await checkPermission("work_order", "READ")).ok) return null;
   if (!orderLineId) return null;
@@ -1673,7 +1782,10 @@ export async function getProductRoutesForOrderLine(
   // 確定前の明細（製品未特定）は指示書の対象にならない。
   if (!so || so.productId == null) return null;
   const productId = so.productId;
-  const routes = await listProductRoutes(productId);
+  const [routes, prepRoutes] = await Promise.all([
+    listProductRoutes(productId),
+    listPrepRoutes(),
+  ]);
   return {
     productId,
     customerBpId: so.acceptance.customerBpId,
@@ -1681,6 +1793,7 @@ export async function getProductRoutesForOrderLine(
       ? localized(so.acceptance.customerBp.name as LocalizedText | null)
       : null,
     routes: routes.filter((r) => r.isActive),
+    prepRoutes: prepRoutes.filter((r) => r.isActive),
   };
 }
 
@@ -1690,6 +1803,8 @@ export async function getProductRoutesForProduct(productId: number): Promise<{
   customerBpId: string | null;
   customerName: string | null;
   routes: RouteView[];
+  /** 準備工程リスト（共通・有効のみ）。 */
+  prepRoutes: RouteView[];
 } | null> {
   if (!(await checkPermission("work_order", "READ")).ok) return null;
   if (!Number.isInteger(productId) || productId <= 0) return null;
@@ -1698,13 +1813,75 @@ export async function getProductRoutesForProduct(productId: number): Promise<{
     select: { id: true },
   });
   if (!product) return null;
-  const routes = await listProductRoutes(productId);
+  const [routes, prepRoutes] = await Promise.all([
+    listProductRoutes(productId),
+    listPrepRoutes(),
+  ]);
   return {
     productId,
     customerBpId: null,
     customerName: null,
     routes: routes.filter((r) => r.isActive),
+    prepRoutes: prepRoutes.filter((r) => r.isActive),
   };
+}
+
+/**
+ * 他の受注元専用の製造工程リストを、この受注元のリストとして複製する
+ * （ビルダーの「この顧客に複製」）。指示書の保存でルートを作るのと同じ
+ * work_order:CREATE で通す — マスタ権限を別途要求しない（route-actions.ts の
+ * 判断メモと同じ）。複製した版の中身は元のまま。
+ */
+export async function copyRouteToCustomer(input: {
+  versionId: string;
+  customerBpId: string;
+}): Promise<ActionResult<{ routeId: number }>> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("work_order", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = z
+    .object({ versionId: z.string().uuid(), customerBpId: z.string().uuid() })
+    .safeParse(input);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
+  try {
+    const actor = await getCurrentActorId();
+    const created = await prisma.$transaction((tx) =>
+      copyRouteVersionToCustomerTx(tx, {
+        versionId: parsed.data.versionId,
+        customerBpId: parsed.data.customerBpId,
+        actor,
+        tr,
+      }),
+    );
+    const route = await prisma.productProcessRoute.findUnique({
+      where: { id: created.routeId },
+      select: { productId: true, name: true },
+    });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "product_process_routes",
+      recordId: String(created.routeId),
+      after: {
+        copiedFromVersionId: parsed.data.versionId,
+        customerBpId: parsed.data.customerBpId,
+        productId: route?.productId ?? null,
+        nameJa: (route?.name as LocalizedText | null)?.ja ?? null,
+        version: 1,
+      },
+    });
+    if (route?.productId != null) {
+      revalidatePath(`/master/products/${route.productId}`);
+    }
+    return actionOk({ routeId: created.routeId });
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("production.workOrderActions.copyRouteFailed"),
+        tr,
+      ),
+    );
+  }
 }
 
 /** ルートバージョンの工程スナップショット（ビルダーのプリフィル・比較基準）。 */

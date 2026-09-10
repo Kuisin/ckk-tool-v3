@@ -2436,7 +2436,10 @@
       "openDeliveryOrderFormForThisLot": "まだ出荷していない {quantity} 本で出荷書を作ります。同じ注文請書の他の明細もまとめられます。",
       "deliveryOrderNeedsCompletedWorkOrder": "完了した指示書からのみ作成できます",
       "deliveryOrderNeedsOrderLine": "注文明細に紐づいていない指示書からは作成できません",
-      "deliveryOrderAlreadyArranged": "この指示書の注文明細はすべて出荷手配済みです"
+      "deliveryOrderAlreadyArranged": "この指示書の注文明細はすべて出荷手配済みです",
+      "prepRoute": "準備工程リスト",
+      "manufacturingRoute": "製造工程リスト",
+      "newerVersionExists": "最新 v{version} あり"
     },
     "addBranchModal": {
       "theBranchWasAdded": "分岐を追加しました",
@@ -2485,7 +2488,9 @@
       "startedOn": "開始 {date}",
       "stepNumberApproval": "第{step}承認",
       "stockStorageNote": "（在庫保管）",
-      "workOrderSubject": "指示書 #{number}"
+      "workOrderSubject": "指示書 #{number}",
+      "plansMissingForSteps": "作業計画が揃っていません: {steps}",
+      "stepMissingLocation": "{name}（作業場所なし）"
     },
     "defectRecordForm": {
       "enterTheDefectTypeAndDetails": "各行の不良種類と内容を入力してください",
@@ -2604,7 +2609,8 @@
       "workPlan": "作業計画",
       "recordsTheWorkDonePerAssignee": "実施した作業を担当者・日付ごとに記録します（進行中のみ追加可）。共有端末からの実績には端末の既定作業場所が入ります。",
       "workActuals": "作業実績",
-      "workLocation": "作業場所"
+      "workLocation": "作業場所",
+      "selectAWorkLocation": "作業場所を選択してください"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "数量・不良",
@@ -2664,7 +2670,8 @@
       "deleteBranchSeriesConfirm": "分岐系列（{steps}）を削除します。この操作は取り消せません。",
       "deletedNSteps": "{count} 工程を削除",
       "hideTheFlowDiagram": "フロー図を隠す",
-      "openTheStepExecutionView": "工程実行ビューを開く"
+      "openTheStepExecutionView": "工程実行ビューを開く",
+      "plannedDeliveryWithDate": "予定納期 {date}"
     },
     "workflowGraphCanvas": {
       "workflowDiagramBranchesAndMerges": "工程ワークフローのフロー図（分岐・合流）",
@@ -2812,7 +2819,17 @@
       "ifNotPinnedWithLabel": "固定しない場合: {label}",
       "dedicatedToCustomerWithName": "{name} 専用",
       "thisCustomer": "この顧客",
-      "stepFallbackWithId": "工程#{id}"
+      "stepFallbackWithId": "工程#{id}",
+      "prepRouteHelp": "〇〇出し・受渡し と 材料準備の並び（共通）。製造工程リストと合わせて指示書の工程になります。",
+      "noPrepRouteRegistered": "準備工程リストは未登録です（工程マスタで作成）",
+      "showOtherCustomers": "同じ製品の他の受注元の工程リストも表示する",
+      "showOtherCustomersHelp": "既定はこの受注元のリストと汎用だけ。他の受注元のリストは選んでから「この受注元に複製」できます。",
+      "otherCustomerRouteSelected": "「{customer}」専用の工程リストを選んでいます。この受注元のリストとして複製してから使ってください。",
+      "copyToThisCustomer": "{name} に複製",
+      "routeCopiedToCustomer": "工程リスト「{name}」をこの受注元に複製しました（v1）",
+      "routeModifiedNewVersion": "工程構成が「{name}」の選択バージョンから変更されています — 保存時に新バージョン v{version} として保存されます",
+      "workPlanHelp": "工程ごとに担当者・計画日・作業場所を入れます。承認依頼には社内工程すべてに 日付 + 作業場所 付きの計画が必要です（時間帯は任意、作成後の計画パネルで）。",
+      "planNeedsWorkLocation": "作業場所を選んでください: {steps}"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "割当 {allocated} / 受注 {ordered}",
@@ -2960,7 +2977,8 @@
       "auditInspectionSheetsSet": "工程の検査表割当を変更（{count} 件）",
       "couldNotSaveInspectionSheets": "検査表の割当に失敗しました",
       "requestedAfterExpected": "入荷予定日は依頼日以降の日付にしてください",
-      "requestedAfterReceived": "入荷日は依頼日以降の日付にしてください"
+      "requestedAfterReceived": "入荷日は依頼日以降の日付にしてください",
+      "workLocationRequiredForPlan": "作業計画には作業場所が必要です"
     },
     "workOrderActions": {
       "acknowledgeFailed": "確認の記録に失敗しました",
@@ -3022,7 +3040,9 @@
       "allocationsMustShareProduct": "1 つの指示書に割り当てる注文明細は同一製品である必要があります",
       "allocationExceedsRemaining": "注文明細 {number} への割当が受注残を超えています（受注数量 {lineQuantity} − 手配済 {otherAllocated} = 残 {remaining}）",
       "stockPlannedQuantityMustMatchAllocation": "在庫分の指示書は予定数量と割当数量を一致させてください",
-      "plannedQuantityBelowAllocationTotal": "予定数量が割当合計 {total} を下回っています（不良予備分の上乗せは自由ですが、割当合計以上にしてください）"
+      "plannedQuantityBelowAllocationTotal": "予定数量が割当合計 {total} を下回っています（不良予備分の上乗せは自由ですが、割当合計以上にしてください）",
+      "plansRequiredBeforeApproval": "承認依頼の前に作業計画（日付 + 作業場所）を入れてください: {steps}",
+      "copyRouteFailed": "工程リストの複製に失敗しました"
     },
     "designFileActions": {
       "cannotDelete": "削除できません",
@@ -3110,7 +3130,8 @@
       "multipleStart": "「出し・受渡し」は 1 つだけ選択できます（選択中: {related}）"
     },
     "productRoutes": {
-      "theSelectedProcessRouteIsNot": "選択された工程ルートがこの製品のものではありません"
+      "theSelectedProcessRouteIsNot": "選択された工程ルートがこの製品のものではありません",
+      "copiedFromVersionNote": "「{name}」v{version} から複製"
     },
     "inspectionSheetPdf": {
       "equipmentLaser": "レーザー",
@@ -5332,7 +5353,9 @@
       "stepUpdated": "工程を更新しました",
       "finalInspectionStep": "最終検査工程",
       "theFinalInspectionChecklistIsRecorded": "最終検査・出荷前確認（3項目の確認・予備在庫・棚包→納品書発行→出荷許可）をこの工程の実行画面で記録します。記録は指示書 1 件に 1 行で、印の付いた工程を工程リストに入れない指示書には最終検査がありません。",
-      "approvalStepsHaveNoQuantity": "検査承認工程は数量を持ちません（数量管理は「なし」になります）。前の工程の検査表を見て承認する工程で、物を加工する工程ではないためです。"
+      "approvalStepsHaveNoQuantity": "検査承認工程は数量を持ちません（数量管理は「なし」になります）。前の工程の検査表を見て承認する工程で、物を加工する工程ではないためです。",
+      "workLocationRequired": "作業計画に作業場所が必要",
+      "workLocationRequiredHelp": "承認依頼の前に、この工程の作業計画へ作業場所を入れることを求めます。在庫を動かすだけの工程など、場所に意味の無い工程では外してください。使える場所の範囲は下の「許可作業場所」で決めます。"
     },
     "products": {
       "specification": "仕様",
@@ -5679,7 +5702,9 @@
     },
     "routeEditorForm": {
       "newRouteBreadcrumb": "工程ルート新規作成",
-      "newVersionTitle": "工程ルート「{name}」新バージョン作成（v{version}）"
+      "newVersionTitle": "工程ルート「{name}」新バージョン作成（v{version}）",
+      "prepStepsMovedToPrepRoute": "最新バージョンに含まれていた準備工程 {count} 件は準備工程リストへ移りました。この版には含めません。",
+      "inactiveStepsExcluded": "最新バージョンに現在無効な工程が {count} 件含まれていたため除外しました"
     },
     "branchDetail": {
       "deleteConfirmMessage": "支店「{name}（{code}）」を削除します。この操作は取り消せません。",
@@ -5986,6 +6011,13 @@
       "bothStartAndEndRequired": "期間限定メンバーは開始日時と終了日時の両方を入力してください",
       "invalidDateTimeFormat": "日時の形式が正しくありません",
       "endMustBeAfterStart": "終了日時は開始日時より後にしてください"
+    },
+    "prepRoutes": {
+      "title": "準備工程リスト",
+      "newPrepRoute": "準備工程リスト 新規作成",
+      "intro": "〇〇出し・受渡し と 材料準備（切断・センタレス・全長合わせ・C面）の並び。製品にも受注元にも紐づかない共通のリストで、指示書は「準備工程リスト + 製品の製造工程リスト」を合わせて工程を作ります。",
+      "empty": "準備工程リストは未登録です",
+      "editorHelp": "準備工程だけを選びます。開始工程（〇〇出し・受渡し）はちょうど 1 つ必要です。製造側との依存は指示書で 2 本を合わせたときに検証されます。"
     }
   },
   "manual": {
@@ -8016,7 +8048,9 @@
     "cannotDeleteBranchWithStartedSteps": "着手済みの工程を含む分岐は削除できません",
     "auditBranchDeleted": "分岐を削除（{count} 工程）",
     "auditBranchUpdated": "分岐を更新（数量 {quantity}, {termination}）",
-    "inspectionSheetsNotRecorded": "検査記録が未入力の検査表があります（{sheets}）。検査表を保存してから完了してください"
+    "inspectionSheetsNotRecorded": "検査記録が未入力の検査表があります（{sheets}）。検査表を保存してから完了してください",
+    "prepRouteOnlyPrepSteps": "準備工程リストには準備工程（〇〇出し・受渡し / 材料準備）だけを入れられます",
+    "manufacturingRouteNoPrepSteps": "製造工程リストに準備工程は入れられません（準備工程リストへ）"
   },
   "aiKeywords": {
     "enterANameBeforeRunning": "名称を入力してから実行してください",

@@ -30,6 +30,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconArrowsSplit,
+  IconCalendarDue,
   IconPencil,
   IconSitemap,
   IconTrash,
@@ -45,6 +46,7 @@ import {
   useTransition,
 } from "react";
 import { removeBranch } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import {
@@ -82,6 +84,7 @@ export function WorkOrderStepsPanel({
   workOrderNumber,
   workOrderStatus,
   catalogOptions = [],
+  deliveryDate = null,
 }: {
   steps: WorkOrderStepView[];
   stepLinks?: StepLinkView[];
@@ -89,9 +92,22 @@ export function WorkOrderStepsPanel({
   workOrderStatus?: string;
   /** 分岐追加モーダル用の工程カタログ options。 */
   catalogOptions?: { value: string; label: string }[];
+  /**
+   * 予定納期（ISO 日付）— 割当明細の納期のうち最も早いもの。工程を追う人が
+   * 「いつまでに終えるか」を同じ画面で見られるように、見出しの隣に出す。
+   * null = 納期の無い明細（在庫向け）。
+   */
+  deliveryDate?: string | null;
 }) {
   const tr = useTranslations();
   const router = useRouter();
+  const fmt = useFormat();
+  // 納期を過ぎてまだ終わっていなければ赤で目立たせる（完了・キャンセルは静かに）。
+  const deliveryOverdue =
+    deliveryDate != null &&
+    workOrderStatus !== "COMPLETED" &&
+    workOrderStatus !== "CANCELLED" &&
+    new Date(deliveryDate).getTime() < Date.now() - 24 * 60 * 60 * 1000;
   const [, startTransition] = useTransition();
   const [branchSource, setBranchSource] = useState<WorkOrderStepView | null>(
     null,
@@ -392,7 +408,23 @@ export function WorkOrderStepsPanel({
   return (
     <Paper p="md" radius="md" withBorder>
       <Group justify="space-between" mb="sm" wrap="nowrap">
-        <Title order={5}>{tr("production.workOrderStepsPanel.workflow")}</Title>
+        <Group gap="sm" wrap="wrap">
+          <Title order={5}>
+            {tr("production.workOrderStepsPanel.workflow")}
+          </Title>
+          {deliveryDate != null && (
+            <Badge
+              color={deliveryOverdue ? "red" : "gray"}
+              leftSection={<IconCalendarDue size={12} />}
+              size="sm"
+              variant="light"
+            >
+              {tr("production.workOrderStepsPanel.plannedDeliveryWithDate", {
+                date: fmt.date(deliveryDate),
+              })}
+            </Badge>
+          )}
+        </Group>
         {canOpenSteps && steps.length > 0 ? (
           <Group gap="sm" wrap="nowrap">
             <Anchor

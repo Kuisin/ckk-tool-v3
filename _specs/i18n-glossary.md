@@ -338,6 +338,10 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 指示書 | Work order | 工单 | |
 | 工程 | Step | 工序 | 「工程ステップ」とは言わない。工程マスタ = Process steps / 工序主数据 |
 | 工程順 / 工程フロー | Step order / Workflow | 工序顺序 / 工序流程 | |
+| 工程リスト | Step list | 工序清单 | 製品工程ルート（product_process_routes）の画面語 |
+| 準備工程 / 製造工程 | Preparation step / Manufacturing step | 准备工序 / 制造工序 | 工程リストの 2 種別（§7）。準備 = 〇〇出し・受渡し + 材料準備 |
+| 準備工程リスト / 製造工程リスト | Preparation step list / Manufacturing step list | 准备工序清单 / 制造工序清单 | 前者は共通、後者は 製品 × 受注元 |
+| 予定納期 | Planned delivery | 预定交期 | 指示書の工程ワークフロー見出し。割当明細の納期のうち最も早いもの |
 | 分岐 / 合流 / 分岐系列 | Branch / Merge / Branch series | 分支 / 汇合 / 分支序列 | |
 | 依存関係 | Dependencies | 依赖关系 | |
 | 実施場所 | Execution location | 实施场所 | |
