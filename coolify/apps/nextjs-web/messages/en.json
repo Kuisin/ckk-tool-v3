@@ -4712,7 +4712,8 @@
     },
     "kioskSettings": {
       "stepExecution": "Step execution",
-      "workOrderScan": "Work order scan"
+      "workOrderScan": "Work order scan",
+      "workLocationBoard": "Work location steps"
     },
     "portalGuide": {
       "guide": "Guide",

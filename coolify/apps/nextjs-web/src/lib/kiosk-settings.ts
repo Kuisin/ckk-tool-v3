@@ -40,6 +40,7 @@ export interface KioskAppCatalogEntry {
 const KIOSK_APP_KEYS: readonly { key: string; permission: string }[] = [
   { key: "step-execution", permission: "work_order" },
   { key: "wo-scan", permission: "work_order" },
+  { key: "work-location", permission: "work_order" },
 ];
 
 /**
@@ -51,6 +52,7 @@ export function kioskAppCatalog(tr: Tr): KioskAppCatalogEntry[] {
   const LABEL_KEY: Record<string, string> = {
     "step-execution": "settings.kioskSettings.stepExecution",
     "wo-scan": "settings.kioskSettings.workOrderScan",
+    "work-location": "settings.kioskSettings.workLocationBoard",
   };
   return KIOSK_APP_KEYS.map((app) => ({
     key: app.key,
