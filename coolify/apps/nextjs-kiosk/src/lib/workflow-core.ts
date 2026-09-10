@@ -234,7 +234,8 @@ export function compositionIssuesForKind(
   };
   return issues.filter((issue) => {
     // 開始工程の有無は準備側の責任 — 製造側だけを見ているときは問わない。
-    if (kind === "MANUFACTURING" && issue.kind === "MISSING_START") return false;
+    if (kind === "MANUFACTURING" && issue.kind === "MISSING_START")
+      return false;
     if (issue.relatedStepIds.length === 0) return true;
     return issue.relatedStepIds.some(inKind);
   });

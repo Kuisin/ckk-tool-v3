@@ -8,6 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  type CatalogStep,
   compositionIssuesForKind,
   defaultOrder,
   isBlockingIssue,
@@ -17,7 +18,6 @@ import {
   splitStepIdsByKind,
   stepPrerequisites,
   stepSelectBlockers,
-  type CatalogStep,
   type UseDep,
   validateComposition,
 } from "./workflow-core";
@@ -1129,7 +1129,6 @@ describe("resolveReceivedQuantity", () => {
   });
 });
 
-
 // ─── 工程リストの種別（準備 / 製造）─────────────────────────────────────────
 
 describe("isPrepStep / splitStepIdsByKind", () => {
@@ -1200,7 +1199,13 @@ describe("compositionIssuesForKind", () => {
   });
 
   it("関係先の無い issue はどちらでも残す", () => {
-    const orphan = { stepId: 7, kind: "EXCLUSION" as const, relatedStepIds: [] };
-    expect(compositionIssuesForKind([orphan], "PREP", catalog)).toEqual([orphan]);
+    const orphan = {
+      stepId: 7,
+      kind: "EXCLUSION" as const,
+      relatedStepIds: [],
+    };
+    expect(compositionIssuesForKind([orphan], "PREP", catalog)).toEqual([
+      orphan,
+    ]);
   });
 });
