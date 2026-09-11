@@ -66,7 +66,7 @@ You can attach PDF, PNG, JPG, WEBP, HEIC, XLSX, and CSV files, up to 20MB each.
 
 Click a row in the list to open the detail screen for that arrival.
 
-![Detail screen of an arrival from a purchase order](../../../assets/screenshots/material-receipt-detail-01.png)
+![Detail screen of an arrival from a purchase order](../../../assets/screenshots/material-receipt-detail-01.en.png)
 
 - You can check the material, supplier, receiving site, quantity, arrival date, and notes.
 - **発注明細** (order line) … for material that came from a purchase order, a link to the original [material purchase order](/manual/en/operations/purchasing/purchase-order/user) is shown. Click it to check the order.

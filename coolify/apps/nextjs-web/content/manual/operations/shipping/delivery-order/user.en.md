@@ -37,7 +37,7 @@ The shipping order is an important document — it is the source used later when
 
 When you open the app, you see a list of the shipping orders made so far.
 
-![Shipping order list screen](../../../assets/screenshots/delivery-order-list-01.png)
+![Shipping order list screen](../../../assets/screenshots/delivery-order-list-01.en.png)
 
 - **出荷書番号 (Shipping order number)** … A number that starts with `DOR-`. The system adds it for you.
 - **種別 (Type)** … A blue 「発送」 (Dispatch) means pieces sent to the customer. A grey 「在庫保管」 (Keep in stock) means pieces kept in-house.

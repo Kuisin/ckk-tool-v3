@@ -35,7 +35,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 
 打开应用后，会显示至今创建过的指示书列表。
 
-![制造指示书列表画面](../../../assets/screenshots/work-order-list-01.png)
+![制造指示书列表画面](../../../assets/screenshots/work-order-list-01.zh.png)
 
 - **指示書番号**（指示书编号）… 类似 `WOR-202608-00001` 的编号，与其他单据（报价单、订单回执等）格式相同，每月从 1 重新编号。批次号（类似 `#9001` 的流水号）另行编号，可在详情页面确认。
 - **種別**（类别）… 分为「**在庫分**」（库存分，使用已有库存）和「**製造分**」（制造分，新制造）。
@@ -141,7 +141,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 
 审批完成后，右上角会出现「**工程実行ビューを開く**」（打开工序执行视图）的链接。点击后会打开左侧是工序列表、右侧是作业记录画面的界面。审批之前和完成之后，也可以通过「**工程ビューを開く**」（打开工序视图）打开同一画面，但**只能查看**，无法进行作业操作（链接旁边会显示「（実行は承認後）」（执行需在审批后）「（閲覧のみ）」（仅供查看））。
 
-![工序执行视图](../../../assets/screenshots/work-order-steps-01.png)
+![工序执行视图](../../../assets/screenshots/work-order-steps-01.zh.png)
 
 ### 开始作业
 

@@ -52,7 +52,7 @@ screenshots: [master-material-list-01, master-material-new-01, master-material-s
 
 打开应用后，会显示已登记材料的列表。
 
-![材料列表画面](../../../assets/screenshots/master-material-list-01.png)
+![材料列表画面](../../../assets/screenshots/master-material-list-01.zh.png)
 
 - **素材コード（材料代码）** … 用连字符连接起来的编号。
 - **材種 / 直径 / 全長 / 黒皮研磨（材种 / 直径 / 全长 / 黑皮研磨）** … 该材料的内容会分列显示。

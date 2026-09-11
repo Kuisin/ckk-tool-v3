@@ -32,7 +32,7 @@ screenshots: [inventory-materials-01, inventory-material-detail-01, inventory-ma
 
 ## 材料标签页的看法
 
-![库存管理的材料标签页](../../../assets/screenshots/inventory-materials-01.png)
+![库存管理的材料标签页](../../../assets/screenshots/inventory-materials-01.zh.png)
 
 - **素材**（材料）… 材料编码和名称。
 - **拠点**（据点）… 位于哪个据点。
@@ -73,7 +73,7 @@ screenshots: [inventory-materials-01, inventory-material-detail-01, inventory-ma
 
 这是按指示书和工序排列、显示现在有多少正在制造中的画面。
 
-![库存管理的在制品标签页](../../../assets/screenshots/inventory-wip-01.png)
+![库存管理的在制品标签页](../../../assets/screenshots/inventory-wip-01.zh.png)
 
 - 会按产品汇总，并显示「計 51」（合计 51）这样的合计数。
 - 下方会排列「**指示書番号**」（指示书编号）「**工程**」（工序）「**仕掛数**」（在制数）。

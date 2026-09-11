@@ -65,7 +65,7 @@ screenshots: [design-request-list-01, design-request-new-01, design-request-deta
 
 打开应用后，会以列表显示至今的委托。
 
-![设计委托单列表画面](../../../assets/screenshots/design-request-list-01.png)
+![设计委托单列表画面](../../../assets/screenshots/design-request-list-01.zh.png)
 
 - **「依頼番号」（委托编号）** … 以 `DSG-` 开头的编号，保存后会自动编上。
 - **「トリガー」（触发）** … 以徽章显示「見積時」（报价时）或「受注時」（接单时）。

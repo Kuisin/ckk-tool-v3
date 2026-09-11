@@ -54,7 +54,7 @@ The partners you register are used later, all the way through the [Price List](/
 
 When you open the app, a list of the registered business partners is shown.
 
-![Business partner list screen](../../../assets/screenshots/master-bp-list-01.png)
+![Business partner list screen](../../../assets/screenshots/master-bp-list-01.en.png)
 
 - **BPコード (BP code)** … a control number that starts with `BP-`. The system adds it automatically.
 - **名称 (Name)** … the company name.
@@ -208,7 +208,7 @@ The person you set as the main contact gets a 「**主担当**」 (Primary conta
 
 ![Branches tab of the business partner screen](../../../assets/screenshots/master-bp-branches-01.png)
 
-![New branch form](../../../assets/screenshots/master-bp-branch-new-01.png)
+![New branch form](../../../assets/screenshots/master-bp-branch-new-01.en.png)
 
 The BP code of a branch is added automatically. It is the number of the head office with a sub-number after it (for example `BP-00001-01`).
 

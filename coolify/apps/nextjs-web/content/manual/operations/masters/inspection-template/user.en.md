@@ -34,7 +34,7 @@ When you attach a template to an **inspection step** of a [指示書 (work order
 
 When you open the app, a list of the registered templates is shown.
 
-![List screen of the inspection sheet template](../../../assets/screenshots/master-inspection-template-list-01.png)
+![List screen of the inspection sheet template](../../../assets/screenshots/master-inspection-template-list-01.en.png)
 
 - The list columns are **コード** (code) / **Ver** (version) / **名称** (name) / **関連工程** (related step) / **項目数** (number of items) / **状態** (status).
 - The 「**Ver**」 column shows the number of the newest edition, for example `v2`. When older editions also exist, the number of editions is shown too, such as 「全2」 (2 in total).

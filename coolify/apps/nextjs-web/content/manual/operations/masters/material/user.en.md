@@ -52,7 +52,7 @@ The diameter goes in as **the number multiplied by 10**. 8.0mm becomes `080`, an
 
 When you open the app, a list of the registered materials is shown.
 
-![Material list screen](../../../assets/screenshots/master-material-list-01.png)
+![Material list screen](../../../assets/screenshots/master-material-list-01.en.png)
 
 - **素材コード (Material code)** … the number joined with hyphens.
 - **材種 / 直径 / 全長 / 黒皮研磨 (Material type / Diameter / Length / Surface finish)** … the content of that material, split into columns.

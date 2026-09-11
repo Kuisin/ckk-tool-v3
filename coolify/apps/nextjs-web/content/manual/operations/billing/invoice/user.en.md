@@ -35,7 +35,7 @@ There is no "New" button in this app. Invoices are made for you by [monthly bill
 
 When you open the app, you see a list of the invoices made so far.
 
-![Invoice list screen](../../../assets/screenshots/invoice-list-01.png)
+![Invoice list screen](../../../assets/screenshots/invoice-list-01.en.png)
 
 - **請求番号 (Invoice number)** … A number that starts with `INV-`. The system adds it for you.
 - **状態 (Status)** … Grey is 「下書き」 (Draft), blue is 「発行済」 (Issued), purple is 「送付済」 (Sent), green is 「支払済」 (Paid).

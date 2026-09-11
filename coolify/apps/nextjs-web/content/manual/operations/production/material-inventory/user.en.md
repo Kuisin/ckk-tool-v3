@@ -32,7 +32,7 @@ This page explains the 「**素材**」 (materials) tab and the 「**仕掛品**
 
 ## How to read the materials tab
 
-![Materials tab of inventory management](../../../assets/screenshots/inventory-materials-01.png)
+![Materials tab of inventory management](../../../assets/screenshots/inventory-materials-01.en.png)
 
 - **素材** (material) … the material code and name.
 - **拠点** (site) … which site it is at.
@@ -73,7 +73,7 @@ There are five types: 「**入庫**」 (in), 「**出庫**」 (out), 「**予約
 
 This screen lists how much is being made right now, by work order and by step.
 
-![Work in progress tab of inventory management](../../../assets/screenshots/inventory-wip-01.png)
+![Work in progress tab of inventory management](../../../assets/screenshots/inventory-wip-01.en.png)
 
 - Items are grouped by product, with a total such as 「計 51」 (51 in total).
 - Below that you see 「**指示書番号**」 (work order number), 「**工程**」 (step), and 「**仕掛数**」 (quantity in progress).
