@@ -48,7 +48,7 @@ The last 4 characters are a serial number inside the same maker, the same grade 
 
 When you open the app, a list of the registered material types is shown.
 
-![Material type list screen](../../../assets/screenshots/master-material-type-list-01.png)
+![Material type list screen](../../../assets/screenshots/master-material-type-list-01.en.png)
 
 - **材種コード (Material type code)** … the 8-character number.
 - **メーカー / 形状 (Maker / Shape)** … shows what you chose.

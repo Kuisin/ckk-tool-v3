@@ -48,7 +48,7 @@ screenshots: [master-material-type-list-01, master-material-type-new-01, master-
 
 打开应用后，会显示已登记材种的列表。
 
-![材种列表画面](../../../assets/screenshots/master-material-type-list-01.png)
+![材种列表画面](../../../assets/screenshots/master-material-type-list-01.zh.png)
 
 - **材種コード（材种代码）** … 8 位编号。
 - **メーカー / 形状（厂商 / 形状）** … 显示所选的内容。

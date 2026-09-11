@@ -54,7 +54,7 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 打开应用后，会显示已登记业务伙伴的列表。
 
-![业务伙伴列表画面](../../../assets/screenshots/master-bp-list-01.png)
+![业务伙伴列表画面](../../../assets/screenshots/master-bp-list-01.zh.png)
 
 - **BPコード（BP代码）** … 以 `BP-` 开头的管理编号，由系统自动生成。
 - **名称** … 公司名称。
@@ -208,7 +208,7 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 ![业务伙伴画面的分店列表标签](../../../assets/screenshots/master-bp-branches-01.png)
 
-![分店新建表单](../../../assets/screenshots/master-bp-branch-new-01.png)
+![分店新建表单](../../../assets/screenshots/master-bp-branch-new-01.zh.png)
 
 分店的 BP 代码会自动生成，形式是在总公司编号后面加上分支编号（例如 `BP-00001-01`）。
 

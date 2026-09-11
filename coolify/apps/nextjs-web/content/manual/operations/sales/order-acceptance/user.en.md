@@ -41,7 +41,7 @@ Use this when an order form arrives from a customer by fax or email.
 
 When you open the app, you see the list of the order forms that have been imported.
 
-![Order acceptance list screen](../../../assets/screenshots/order-acceptance-list-01.png)
+![Order acceptance list screen](../../../assets/screenshots/order-acceptance-list-01.en.png)
 
 - **番号 (number)** … a number starting with `ORD-`. It is added automatically when the form is imported.
 - **取込元 (source)** … how it was registered. It is one of 「監視フォルダ」(watched folder), 「優先取込」(priority import) or 「手入力」(typed in).

@@ -34,7 +34,7 @@ screenshots: [master-inspection-template-list-01, master-inspection-template-new
 
 打开应用后，会显示已登记样板的列表。
 
-![检查表模板的列表界面](../../../assets/screenshots/master-inspection-template-list-01.png)
+![检查表模板的列表界面](../../../assets/screenshots/master-inspection-template-list-01.zh.png)
 
 - 列表按 **コード**（代码）/ **Ver**（版本）/ **名称**（名称）/ **関連工程**（相关工序）/ **項目数**（项目数）/ **状態**（状态）的顺序排列。
 - 「**Ver**」列显示最新版次的编号（例 `v2`）。还有旧版次时，会一起显示版次数量，例如「全2」（共 2 个）。

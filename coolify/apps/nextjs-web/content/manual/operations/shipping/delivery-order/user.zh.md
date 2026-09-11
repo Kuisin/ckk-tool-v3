@@ -37,7 +37,7 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 
 打开应用后，会看到之前做过的出货单一览。
 
-![出货单一览界面](../../../assets/screenshots/delivery-order-list-01.png)
+![出货单一览界面](../../../assets/screenshots/delivery-order-list-01.zh.png)
 
 - **出荷書番号（出货单号）** … 以 `DOR-` 开头的编号，由系统自动编。
 - **種別（类别）** … 蓝色的「発送」（发送）是发给客户的部分，灰色的「在庫保管」（留库保管）是留在公司的部分。

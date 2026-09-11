@@ -45,7 +45,7 @@ screenshots: [purchase-request-list-01, purchase-request-new-01, purchase-reques
 
 打开应用后，会显示至今提出过的采购申请列表。
 
-![采购申请列表画面](../../../assets/screenshots/purchase-request-list-01.png)
+![采购申请列表画面](../../../assets/screenshots/purchase-request-list-01.zh.png)
 
 - **依頼番号**（申请编号）… 以 `PRQ-` 开头的编号。由系统自动编号。
 - **状態**（状态）… 用带颜色的徽章表示当前情况。灰色是「下書き」（草稿），黄色是「承認依頼中」（审批中），蓝色是「承認済」（已审批），紫色是「発注済」（已下单），红色是「差し戻し」（退回）或「キャンセル」（取消）。

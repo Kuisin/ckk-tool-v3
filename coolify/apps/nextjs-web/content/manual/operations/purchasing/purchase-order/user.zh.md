@@ -46,7 +46,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 打开应用后，会显示至今创建过的材料订购单列表。
 
-![材料订购单列表画面](../../../assets/screenshots/purchase-order-list-01.png)
+![材料订购单列表画面](../../../assets/screenshots/purchase-order-list-01.zh.png)
 
 - **発注番号**（订购编号）… 以 `PO-` 开头的编号。由系统自动编号。
 - **状態**（状态）… 用带颜色的徽章表示当前情况。灰色是「下書き」（草稿），黄色是「承認依頼中」（审批中），蓝色是「承認済」（已审批），紫色是「発注済」（已下单），绿色是「入荷完了」（到货完成），红色是「キャンセル」（取消）。

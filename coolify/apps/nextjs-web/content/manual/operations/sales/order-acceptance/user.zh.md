@@ -41,7 +41,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 
 打开应用后，会显示已导入的订单列表。
 
-![订单请书列表画面](../../../assets/screenshots/order-acceptance-list-01.png)
+![订单请书列表画面](../../../assets/screenshots/order-acceptance-list-01.zh.png)
 
 - **「番号」（编号）** … 以 `ORD-` 开头的编号，导入后会自动编上。
 - **「取込元」（导入来源）** … 是怎么登记进来的，为「監視フォルダ」（监视文件夹）、「優先取込」（优先导入）、「手入力」（手动输入）之一。

@@ -35,7 +35,7 @@ This app is for making the document (**指示書**, work order) that decides whi
 
 When you open the app, you see a list of the work orders made so far.
 
-![Work order list](../../../assets/screenshots/work-order-list-01.png)
+![Work order list](../../../assets/screenshots/work-order-list-01.en.png)
 
 - **指示書番号** (work order number) … a number such as `WOR-202608-00001`, in the same format as other documents (quotes, order acceptances, …), restarting from 1 each month. The lot number (a serial number such as `#9001`) is assigned separately and shown on the detail screen.
 - **種別** (type) … either 「**在庫分**」 (from stock — using stock you already have) or 「**製造分**」 (to make — making new pieces).
@@ -141,7 +141,7 @@ At the bottom of the work order screen is 「**工程ワークフロー**」 (st
 
 Once approval is done, a link called 「**工程実行ビューを開く**」 (Open step execution view) appears at the top right. Pressing it opens a screen with the list of steps on the left and the work recording screen on the right. Before approval and after completion, the same screen can still be opened from 「**工程ビューを開く**」 (Open step view), but it is **view only** and the work cannot be operated (the link is marked 「（実行は承認後）」 — execution after approval — or 「（閲覧のみ）」 — view only).
 
-![Step execution view](../../../assets/screenshots/work-order-steps-01.png)
+![Step execution view](../../../assets/screenshots/work-order-steps-01.en.png)
 
 ### Starting the work
 

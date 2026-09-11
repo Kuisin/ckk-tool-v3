@@ -71,7 +71,7 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 
 价格表画面有 5 个标签页。
 
-![价格表详细画面](../../../assets/screenshots/price-list-detail-01.png)
+![价格表详细画面](../../../assets/screenshots/price-list-detail-01.zh.png)
 
 - **「価格設定」（价格设置）** … 各订单类型的基准单价、有效期间、按数量的单价一览。
 - **「値引き設定」（折扣设置）** … 折扣规则一览。

@@ -46,7 +46,7 @@ Before you place the order, you can still withdraw it and make it 「**キャン
 
 When you open the app, you see a list of the material purchase orders made so far.
 
-![Material purchase order list](../../../assets/screenshots/purchase-order-list-01.png)
+![Material purchase order list](../../../assets/screenshots/purchase-order-list-01.en.png)
 
 - **発注番号** (order number) … a number starting with `PO-`. The system adds it for you.
 - **状態** (status) … a coloured badge shows the current situation. Grey is 「下書き」 (draft), yellow is 「承認依頼中」 (pending approval), blue is 「承認済」 (approved), purple is 「発注済」 (ordered), green is 「入荷完了」 (receiving complete), and red is 「キャンセル」 (cancelled).

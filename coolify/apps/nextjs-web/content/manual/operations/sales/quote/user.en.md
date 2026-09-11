@@ -30,7 +30,7 @@ If there is no price list yet, first work out the unit price in [Trial Estimate]
 
 When you open the app, you see a list of the quotes made so far.
 
-![Quote list screen](../../../assets/screenshots/quote-list-01.png)
+![Quote list screen](../../../assets/screenshots/quote-list-01.en.png)
 
 - **見積番号 (quote number)** … a number starting with `QOT-`. The system adds it for you.
 - **状態 (status)** … a colored badge shows where the quote stands. Gray is 「下書き」(draft), blue is 「発行済」(issued), orange is 「期限切れ」(expired — issued and past its valid-until date).

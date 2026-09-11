@@ -11,9 +11,26 @@
  * フラグ:
  *   --seed-only   1–2 だけ実行し、DB を起動したまま終了（手動確認用）
  *   --reuse       1–3 をスキップ（APP_URL の起動済みスタックに対して撮影）
- *   --only <id>   manifest の 1 エントリだけ撮影
+ *   --only <id>   manifest の 1 エントリだけ撮影。カンマ区切りで複数指定可
+ *                 （`--only a,b,c`）— playwright の -g へ選言として展開する。
+ *   --locale <ja|en|zh>
+ *                 撮影ユーザー（demo_shot・admin 撮影用の demo1）の表示言語。
+ *                 既定 ja（省略時は今までどおり）。**アプリの再ビルド・再起動は
+ *                 不要** — 言語は app.users.locale をリクエストごとに読むだけ
+ *                 なので（i18n/request.ts）、DB の値を書き換えて撮り直すだけで
+ *                 よい（このスクリプトが `seed()` の直後・`--reuse` の直前に
+ *                 UPDATE する）。PNG のファイル名は ja だけ `<id>.png`
+ *                 （既存 240 枚と後方互換）、en/zh は `<id>.en.png` /
+ *                 `<id>.zh.png`（screenshots.spec.ts が env SHOT_LOCALE で判断）。
+ *                 manifest.ts の `steps` 側で日本語の直書きセレクタを
+ *                 `text(currentLocale(), "ns.key")`（i18n-text.ts）へ置き換えた
+ *                 エントリだけが en/zh でも正しく要素を見つけられる —
+ *                 未対応のエントリは en/zh では失敗しうる（既知の制約。
+ *                 README 参照）。
  *   --verify      コミット済み PNG を上書きせず一時出力へ撮影し、pixelmatch で
- *                 比較（diff 比率 >= 0.1% で失敗）— 決定性の受け入れ確認
+ *                 比較（diff 比率 >= 0.1% で失敗）— 決定性の受け入れ確認。
+ *                 committed 側に無い名前（初回の en/zh 撮影など）は警告して
+ *                 スキップする（verify-diff.ts）。
  *   --skip-seed <file[,file]>
  *                 指定のデモシードを流さない（部分名一致）。データモデル変更に
  *                 追随できていないシードがあるとき、それに依存しない画面だけを
@@ -103,6 +120,33 @@ const flagValue = (f: string): string | undefined => {
   const i = args.indexOf(f);
   return i >= 0 ? args[i + 1] : undefined;
 };
+
+// ── ロケール ──────────────────────────────────────────────────────────────────
+// アプリの言語は URL ではなく app.users.locale（ログイン中ユーザーの設定）で
+// 決まる（i18n/request.ts）。next-intl のリクエスト設定は毎リクエスト DB を
+// 読むので、**アプリの再ビルド・再起動は要らない** — DB の値を書き換えて
+// 撮り直すだけで ja/en/zh を切り替えられる。
+//
+// PNG のファイル名は ja だけ従来どおり `<id>.png`（コミット済み 240 枚との
+// 後方互換）、en/zh は `<id>.en.png` / `<id>.zh.png`（screenshots.spec.ts が
+// env SHOT_LOCALE を見て決める）。
+const LOCALES = ["ja", "en", "zh"] as const;
+type Locale = (typeof LOCALES)[number];
+const LOCALE = (flagValue("--locale") ?? "ja") as Locale;
+if (!LOCALES.includes(LOCALE)) {
+  throw new Error(`--locale must be one of ${LOCALES.join("/")}, got "${LOCALE}"`);
+}
+
+/**
+ * 撮影用ユーザー（demo_shot / admin 撮影用の demo1）の表示言語を切り替える。
+ * DB が起動していればいつでも呼べる（アプリの再起動は不要）。
+ */
+function setLocale(): void {
+  log(`locale: ${LOCALE} (demo_shot, demo1)`);
+  psqlInput(
+    `UPDATE app.users SET locale = '${LOCALE}' WHERE username IN ('demo_shot', 'demo1');`,
+  );
+}
 
 function sh(cmd: string, cmdArgs: string[], opts: { cwd?: string; env?: NodeJS.ProcessEnv; input?: Buffer } = {}): string {
   return execFileSync(cmd, cmdArgs, {
@@ -353,7 +397,13 @@ function capture(outDir?: string): void {
   // を含めた文字列に当たるため、`^id$` だと 1 件も一致しない（--only が黙って
   // 「No tests found」で落ちていた）。id は manifest 内で一意なので、末尾一致で
   // 十分に絞れる。
-  if (only) pwArgs.push("-g", `${only}$`);
+  // カンマ区切りで複数 id も受ける（例: en/zh のパイロット撮影を 1 回の
+  // playwright 起動でまとめて撮る）— `(id1|id2|...)$` の選言に展開する。
+  if (only) {
+    const ids = only.split(",").map((s) => s.trim()).filter(Boolean);
+    const pattern = ids.length > 1 ? `(${ids.join("|")})$` : `${ids[0]}$`;
+    pwArgs.push("-g", pattern);
+  }
   log(only ? `capturing only: ${only}` : "capturing all manifest entries");
   execFileSync("pnpm", pwArgs, {
     cwd: HERE,
@@ -361,6 +411,7 @@ function capture(outDir?: string): void {
       ...process.env,
       APP_URL,
       KIOSK_URL,
+      SHOT_LOCALE: LOCALE,
       ...(outDir ? { PW_OUT_DIR: outDir } : {}),
     },
     stdio: "inherit",
@@ -393,12 +444,17 @@ async function main(): Promise<void> {
   if (seedOnly) {
     await startDb();
     seed();
+    setLocale();
     log(`DB left running — DATABASE_URL=${DATABASE_URL}`);
     log(`stop it with: docker rm -f ${DB_CONTAINER}`);
     return;
   }
 
   if (reuse) {
+    // DB は起動済みスタック側にある前提（--seed-only で残したもの）。
+    // ロケールはアプリ再起動なしで切り替えられるので、撮り直しのたびに
+    // 上書きするだけでよい。
+    setLocale();
     if (flag("--verify")) await verify();
     else {
       capture();
@@ -410,6 +466,7 @@ async function main(): Promise<void> {
   try {
     await startDb();
     seed();
+    setLocale();
     buildApp();
     await startApp();
     // キオスク（現場タブレット）マニュアル用。--no-kiosk で省略できる

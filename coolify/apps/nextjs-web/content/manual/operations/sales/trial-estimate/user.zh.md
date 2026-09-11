@@ -34,7 +34,7 @@ screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-
 
 打开应用后，会显示至今做过的试算列表。
 
-![试算列表画面](../../../assets/screenshots/trial-estimate-list-01.png)
+![试算列表画面](../../../assets/screenshots/trial-estimate-list-01.zh.png)
 
 - **「価格試算番号」（试算编号）** … 以 `EST-` 开头的编号，保存后会自动编上。
 - **「状態」（状态）** … 用彩色徽章显示目前的情况。灰色是「下書き」（草稿），蓝色是「確定」（确定），绿色是「価格表登録済」（已用于价格表）。

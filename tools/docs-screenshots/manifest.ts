@@ -9,9 +9,28 @@
  *  - 「今日」が見える画面（日付ピッカー既定値・当月見出し等）は clip で外すか
  *    mask に入れる。シード由来の固定日付データは問題ない。
  *  - 撮り直しの diff 判定は docs:verify（pixelmatch, 閾値 0.1%）。
+ *
+ * ロケール（en/zh 撮影）の注意:
+ *  - `steps` の `getByText`/`getByRole({ name })` は既定で**日本語の直書き**。
+ *    それは ja 撮影（既定ロケール）が壊れないための出発点であって、en/zh でも
+ *    通る保証ではない — アプリの UI 文言は `messages/{ja,en,zh}.json` の
+ *    `t("ns.key")` から出るので、en/zh では別の文字列が描画される。
+ *  - **UI の文言**（ボタン・見出し・タブ名など）を探すセレクタは
+ *    `text(currentLocale(), "ns.key")` に置き換えること — キーは
+ *    `messages/ja.json` を正として、実際にそのボタン・見出しが束縛している
+ *    `t("...")` 呼び出しをアプリのソースで確認してから書く（同じ日本語文字列が
+ *    複数のキーの下にあることがあるため、文字列からの自動逆引きは当てにしない）。
+ *    `currentLocale()` は ja のときは今までと完全に同じ文字列を返すので、
+ *    この書き換えは ja 撮影の挙動を変えない。
+ *  - **DB のデータ**（取引先名・製品名・工程名・書類番号などの demo シード値）は
+ *    `_specs/i18n-glossary.md` §1 のとおり翻訳対象外 — ロケールを変えても
+ *    同じ文字列のまま描画されるので、直書きのままでよい。
+ *  - 直していないエントリは en/zh 撮影では失敗しうる（README・
+ *    scripts/orchestrate.ts の既知の制約）。
  */
 
 import type { Page } from "@playwright/test";
+import { currentLocale, text } from "./i18n-text";
 
 /**
  * 強調（赤枠）対象。CSS セレクタ文字列 / getByRole 相当の role 指定 /
@@ -468,7 +487,10 @@ export const shots: Shot[] = [
     docPage: "operations/purchasing/material-receipt/user",
     path: "/purchase/material-receipts/db300000-0000-4000-8000-000000000001",
     steps: async (page) => {
-      await page.getByText("入荷日").first().waitFor();
+      await page
+        .getByText(text(currentLocale(), "common.receivedDate"))
+        .first()
+        .waitFor();
     },
   },
   // ── 購買: 外注依頼（PU04）──────────────────────────────────────────────────
@@ -515,7 +537,10 @@ export const shots: Shot[] = [
     docPage: "operations/purchasing/purchase-order/user",
     path: "/purchase/purchase-orders/new",
     steps: async (page) => {
-      await page.getByText("合計金額").first().waitFor();
+      await page
+        .getByText(text(currentLocale(), "common.totalAmount"))
+        .first()
+        .waitFor();
     },
   },
   {
@@ -544,7 +569,10 @@ export const shots: Shot[] = [
     docPage: "operations/purchasing/purchase-order/user",
     path: "/purchase/purchase-orders/PO-202607-00001?tab=attachments",
     steps: async (page) => {
-      await page.getByText("証憑").first().waitFor();
+      await page
+        .getByText(text(currentLocale(), "common.supportingDocument"))
+        .first()
+        .waitFor();
     },
   },
   {
@@ -605,7 +633,12 @@ export const shots: Shot[] = [
     docPage: "operations/production/work-order/user",
     path: "/production/work-orders/9001",
     steps: async (page) => {
-      await page.getByText("工程ワークフロー").first().waitFor();
+      await page
+        .getByText(
+          text(currentLocale(), "production.workOrderStepsPanel.workflow"),
+        )
+        .first()
+        .waitFor();
     },
   },
   {
@@ -636,7 +669,10 @@ export const shots: Shot[] = [
     docPage: "operations/production/approval/user",
     path: "/production/work-orders/9002",
     steps: async (page) => {
-      await page.getByText("手続き状況").first().waitFor();
+      await page
+        .getByText(text(currentLocale(), "ui.procedurePanel.title"))
+        .first()
+        .waitFor();
     },
   },
   // ── 生産: 初心者向けマニュアル用の追加撮影 ────────────────────────────────
@@ -647,7 +683,10 @@ export const shots: Shot[] = [
     docPage: "operations/production/work-order/user",
     path: "/production/work-orders/9002",
     steps: async (page) => {
-      await page.getByText("手続き状況").first().waitFor();
+      await page
+        .getByText(text(currentLocale(), "ui.procedurePanel.title"))
+        .first()
+        .waitFor();
     },
   },
   {
@@ -696,7 +735,10 @@ export const shots: Shot[] = [
     docPage: "operations/production/approval/user",
     path: "/production/approvals/9002",
     steps: async (page) => {
-      await page.getByText("手続き状況").first().waitFor();
+      await page
+        .getByText(text(currentLocale(), "ui.procedurePanel.title"))
+        .first()
+        .waitFor();
     },
   },
   {
@@ -790,7 +832,14 @@ export const shots: Shot[] = [
     docPage: "operations/shipping/delivery-order/user",
     path: "/shipping/delivery-orders/DOR-202607-00001",
     steps: async (page) => {
-      await page.getByText("明細").first().waitFor();
+      // タブ見出しは実際には「明細（{count}）」（common.lineItemsWithCount）。
+      // getByText は既定で部分一致なので、変数を含まない基底の訳
+      // （common.lineItems）で探せば en/zh でも "Line items (1)" /
+      // "明细（1）" にちゃんと当たる。
+      await page
+        .getByText(text(currentLocale(), "common.lineItems"))
+        .first()
+        .waitFor();
     },
   },
   // ── 出荷: 納品書（SH02）────────────────────────────────────────────────────
@@ -1203,7 +1252,10 @@ export const shots: Shot[] = [
     docPage: "operations/masters/business-partner/user",
     path: "/master/business-partners/d0000000-0000-4000-8000-000000000001/branches/new",
     steps: async (page) => {
-      await page.getByText("担当者名").first().waitFor();
+      await page
+        .getByText(text(currentLocale(), "common.contactName"))
+        .first()
+        .waitFor();
     },
   },
   {
@@ -1462,7 +1514,10 @@ export const shots: Shot[] = [
     docPage: "operations/masters/process-step/user",
     path: "/master/process-steps/new",
     steps: async (page) => {
-      await page.getByText("基本情報").first().waitFor();
+      await page
+        .getByText(text(currentLocale(), "common.basicInformation"))
+        .first()
+        .waitFor();
     },
   },
   {
@@ -1470,8 +1525,13 @@ export const shots: Shot[] = [
     docPage: "operations/masters/process-step/user",
     path: "/master/process-steps",
     steps: async (page) => {
+      // "円筒加工" は工程マスタのデータ（工程名）— i18n-glossary §1 の対象外で
+      // ロケールを変えても同じ文字列のまま描画されるため、直書きのままでよい。
       await page.getByText("円筒加工").first().click();
-      await page.getByText("工程フラグ").first().waitFor();
+      await page
+        .getByText(text(currentLocale(), "master.processSteps.stepFlags"))
+        .first()
+        .waitFor();
     },
   },
   {
@@ -1479,9 +1539,17 @@ export const shots: Shot[] = [
     docPage: "operations/masters/process-step/user",
     path: "/master/process-steps",
     steps: async (page) => {
+      const loc = currentLocale();
+      // "円筒加工" は工程マスタのデータ（工程名）— 直書きのままでよい（上と同じ）。
       await page.getByText("円筒加工").first().click();
-      await page.getByRole("tab", { name: "依存関係" }).first().click();
-      await page.getByText("使用依存").first().waitFor();
+      await page
+        .getByRole("tab", { name: text(loc, "master.processSteps.dependencies") })
+        .first()
+        .click();
+      await page
+        .getByText(text(loc, "master.processSteps.useDependency"))
+        .first()
+        .waitFor();
     },
   },
   {
@@ -2190,7 +2258,10 @@ export const shots: Shot[] = [
     docPage: "process/default-flow",
     path: "/production/work-orders/9002",
     steps: async (page) => {
-      await page.getByText("手続き状況").first().waitFor();
+      await page
+        .getByText(text(currentLocale(), "ui.procedurePanel.title"))
+        .first()
+        .waitFor();
     },
     highlight: [{ role: "button", name: "承認", exact: true }],
   },
