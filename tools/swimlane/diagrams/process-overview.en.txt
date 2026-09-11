@@ -1,0 +1,163 @@
+// Standard flow (from order to invoicing) — happy path only.
+// Branches/exceptions live in each domain's diagram (process-sales etc.).
+// Terminology follows _specs/design.md §17 (Order acceptance / Order line).
+
+/title/
+Standard flow — From order to invoicing
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_partner>
+label: External (customer);
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+<role_sales>
+label: Sales;
+text-color: #1e293b;
+background-color: #dbeafe;
+
+<role_support>
+label: Sales support;
+text-color: #92400e;
+background-color: #fef3c7;
+
+<role_approver>
+label: Approval / judgment;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_mfg>
+label: Production;
+text-color: #134e4a;
+background-color: #ccfbf1;
+
+<role_billing>
+label: Accounting;
+text-color: #9d174d;
+background-color: #fce7f3;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+/prop/
+
+<PRICE_LIST>
+label: Price list;
+side: right;
+
+<QUOTE>
+label: Quote;
+side: right;
+background-color: #f0f9ff;
+border-color: #2563eb;
+text-color: #1e40af;
+
+<ORDER_ACCEPT>
+label: Order acceptance;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<WORK_ORDER>
+label: Work order;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+<SHIPPING>
+label: Delivery order;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<DELIVERY>
+label: Delivery note;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<INVOICE>
+label: Invoice;
+side: right;
+background-color: #fdf2f8;
+border-color: #db2777;
+text-color: #9d174d;
+
+/line/
+
+[role_sales: Compute a unit price] <block_apply>
+label: Price estimate;
+desc: Compute an estimated unit price from material, dimensions, and machining conditions, then confirm it once finalized.;
+[role_sales: Create a price list] <block_apply>
+label: Price list;
+props: PRICE_LIST;
+desc: Set prices per customer × product. A confirmed price estimate can be used as the base price.;
+[role_sales: Issue a quote] <block_apply>
+label: Quote;
+props: QUOTE;
+desc: The unit price is auto-filled from the price list. Submit the issued PDF to the customer.;
+[role_partner: Send a purchase order] <block_neutral>
+label: Order;
+desc: A purchase order arrives by fax, PDF, etc.;
+[role_support: Check the order acceptance] <block_apply>
+label: Order acceptance;
+props: ORDER_ACCEPT;
+desc: Reading happens automatically; the price-matching result is also checked here.;
+[role_approver: Approve the order acceptance] <block_approve>
+label: Approval;
+[role_support: Confirm order lines] <block_apply>
+label: Confirm lines;
+desc: An order line is created per line item and the amount is finalized.;
+[role_support: Create a work order] <block_apply>
+label: Work order;
+props: WORK_ORDER;
+desc: Split into from-stock and to-manufacture portions; steps are arranged for the to-manufacture portion.;
+[role_approver: Approve the work order] <block_approve>
+label: Approval;
+[role_mfg: Execute the steps] <block_apply>
+label: Production;
+desc: Record start/completion and quantity/defects for each step.;
+[role_support: Ship with a delivery order] <block_apply>
+label: Shipping;
+props: SHIPPING;
+desc: Shipping reduces stock and changes the order line's status.;
+[role_support: Deliver with a delivery note] <block_apply>
+label: Delivery;
+props: DELIVERY;
+[role_billing: Close on the billing closing date] <block_apply>
+label: Billing closing;
+desc: Deliveries are aggregated by each customer's closing date.;
+[role_billing: Send the invoice] <block_apply>
+label: Billing;
+props: INVOICE;

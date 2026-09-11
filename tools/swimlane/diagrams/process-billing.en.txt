@@ -1,0 +1,87 @@
+// Billing flow — From closing to accounting export.
+
+/title/
+Billing flow — From billing closing to payment
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_billing>
+label: Accounting;
+text-color: #9d174d;
+background-color: #fce7f3;
+
+<role_system>
+label: System;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_notify>
+background-color: #e0f2fe;
+text-color: #075985;
+border-color: #0284c7;
+shape: rect;
+icon: #send;
+
+/prop/
+
+<INVOICE>
+label: Invoice;
+side: right;
+background-color: #fdf2f8;
+border-color: #db2777;
+text-color: #9d174d;
+
+/line/
+
+[role_billing: Run the billing closing] <block_apply>
+label: Billing closing;
+desc: Run on each customer's set closing date. The closing date and payment terms follow the customer master.;
+[role_system: Aggregate deliveries] <block_system>
+label: Aggregation;
+desc: Deliveries made within that period are aggregated automatically. Stock-storage shipments are not included.;
+[role_billing: Generate the invoice] <block_apply>
+label: Invoice generation;
+props: INVOICE;
+desc: Generate an invoice from the closed content, and check the line items and amounts (subtotal, tax, total).;
+[role_billing: Issue the invoice] <block_apply>
+label: Issue;
+desc: Once issued, a PDF is saved.;
+[role_billing: Mark as sent] <block_notify>
+label: Send;
+desc: Once sent to the customer, mark it "Sent".;
+[role_billing: Mark as paid] <block_approve>
+label: Payment confirmation;
+desc: Confirm the actual payment before marking it "Paid".;
+[role_billing: Export to accounting] <block_apply>
+label: Accounting export;
+desc: Export the closed items as CSV for Yayoi Kaikei. The exported billing closing becomes "Exported".;

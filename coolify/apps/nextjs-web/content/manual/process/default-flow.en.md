@@ -31,7 +31,7 @@ Branches and exceptions (price mismatches, sending back, split receiving, and so
 
 ## Overall flow
 
-![Diagram of the whole standard flow (swimlanes from price estimate to invoice)](../assets/diagrams/process-overview.svg)
+![Diagram of the whole standard flow (swimlanes from price estimate to invoice)](../assets/diagrams/process-overview.en.svg)
 
 ## Who's involved in this flow
 

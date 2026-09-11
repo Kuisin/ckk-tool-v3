@@ -1,0 +1,165 @@
+// 销售流程 — 包含分支（价格差异、审批退回）和并行的设计委托。
+// 术语遵循 _specs/design.md §17（订单确认书 / 订单明细）。
+
+/title/
+销售流程 — 从价格试算到接单确认
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 步骤;
+left-subtitle: 说明;
+
+/role/
+
+<role_partner>
+label: 外部（客户）;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+<role_sales>
+label: 销售;
+text-color: #1e293b;
+background-color: #dbeafe;
+
+<role_support>
+label: 销售支持;
+text-color: #92400e;
+background-color: #fef3c7;
+
+<role_approver>
+label: 审批 / 判断;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_system>
+label: 系统;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_condition>
+background-color: #f3e8ff;
+text-color: #6b21a8;
+border-color: #9333ea;
+shape: subroutine;
+icon: #git-branch;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_memo>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: note;
+icon: #file-text;
+
+/prop/
+
+<PRICE_LIST>
+label: 价格表;
+side: right;
+
+<QUOTE>
+label: 报价单;
+side: right;
+background-color: #f0f9ff;
+border-color: #2563eb;
+text-color: #1e40af;
+
+<ORDER_DOC>
+label: 订单;
+side: right;
+
+<ORDER_ACCEPT>
+label: 订单确认书;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+/line/
+
+[role_sales: 计算单价] <block_apply>
+label: 价格试算;
+desc: 根据材料、尺寸、加工条件计算试算单价并确认。只有已确认的价格试算才能作为价格表的基准。;
+[role_sales: 创建价格表] <block_apply>
+label: 价格表;
+props: PRICE_LIST;
+desc: 按客户 × 产品，依订单类别、数量档设定价格。;
+[role_sales: 发行报价单] <block_apply>
+label: 报价单;
+props: QUOTE;
+desc: 单价自动从价格表带入。将发行的 PDF 提交给客户。;
+[role_partner: 发送订单] <block_neutral>
+label: 订单;
+props: ORDER_DOC;
+desc: 通过传真、PDF 等方式收到订单。;
+[role_support: 确认订单确认书] <block_apply>
+label: 导入 / 确认;
+props: ORDER_ACCEPT;
+desc: 确认并修正导入的读取结果。;
+[role_system: 核对订单价格] <block_system>
+label: 价格核对;
+desc: 订单价格与报价单、价格表的价格自动进行核对。;
+if (价格差异) is (有) than #orange
+  [role_sales: 调整价格] <block_condition>
+  label: 价格调整;
+  props: QUOTE;
+  desc: 返回报价单修正价格，或在订单确认书一侧修正价格后重新核对。;
+  [loop]
+else
+  [role_support: 申请审批] <block_apply>
+  label: 审批申请;
+  desc: 内容确定后申请审批。申请审批期间无法编辑。;
+endif
+if (审批结果) is (退回) than #red
+  [role_support: 修正后重新申请] <block_reject>
+  label: 退回;
+  desc: 根据反馈修正内容，再次申请审批。;
+  [loop]
+else
+  [role_approver: 审批订单确认书] <block_approve>
+  label: 审批;
+endif
+[role_support: 确认订单明细] <block_apply>
+label: 确认明细;
+desc: 按行生成订单明细，金额随之确定。此后进入生产流程。;
+[role_sales: 提交设计委托] <block_memo>
+label: （并行）设计委托;
+desc: 没有图纸的产品，与本流程并行提交设计委托单，由生产部门制作图纸。;

@@ -1,0 +1,123 @@
+// 生产流程 — 包含库存核对分支、审批退回，以及不良品的工序分支。
+
+/title/
+生产流程 — 从接单确认到完成
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 步骤;
+left-subtitle: 说明;
+
+/role/
+
+<role_prod>
+label: 生产管理;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_support>
+label: 销售支持;
+text-color: #92400e;
+background-color: #fef3c7;
+
+<role_approver>
+label: 审批 / 判断;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_mfg>
+label: 生产;
+text-color: #134e4a;
+background-color: #ccfbf1;
+
+<role_system>
+label: 系统;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_condition>
+background-color: #f3e8ff;
+text-color: #6b21a8;
+border-color: #9333ea;
+shape: subroutine;
+icon: #git-branch;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+/prop/
+
+<WORK_ORDER>
+label: 工单;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+/line/
+
+[role_prod: 核对库存] <block_condition>
+label: 库存核对;
+desc: 拆分为可用库存出货的部分和需要新制造的部分。;
+if (产品库存) is (充足) than #green
+  [role_support: 库存部分工单] <block_apply>
+  label: 库存部分;
+  props: WORK_ORDER;
+  desc: 库存部分工单为固定结构（出库 + 可选的出货前检查）。库存随之分配。;
+else
+  [role_prod: 确认材料] <block_condition>
+  label: 材料确认;
+  desc: 确认所需材料是否充足。不足时通过采购流程调配。;
+  [role_support: 制造部分工单] <block_apply>
+  label: 制造部分;
+  props: WORK_ORDER;
+  desc: 按顺序排列工序。若存在相同客户、产品的既往工单，可以复制。;
+endif
+[role_support: 申请审批] <block_apply>
+label: 审批申请;
+desc: 审批通过前无法开始生产。审批级数由审批设置决定。;
+if (审批结果) is (退回) than #red
+  [role_support: 修正后重新申请] <block_reject>
+  label: 退回;
+  [loop]
+else
+  [role_approver: 审批工单] <block_approve>
+  label: 审批;
+endif
+[role_mfg: 执行工序] <block_apply>
+label: 工序执行;
+desc: 按工序记录开始、完成，以及接收数、良品数和不良明细。不良品可通过工序分支返工。;
+[role_mfg: 完成最终工序] <block_apply>
+label: 完成;
+[role_system: 入库到产品库存] <block_system>
+label: 入库;
+desc: 完成数量计入产品库存，订单的分配随之确定。进入出货流程。;

@@ -31,7 +31,7 @@ screenshots:
 
 ## 整体流程
 
-![标准流程整体图（从价格试算到请款的泳道图）](../assets/diagrams/process-overview.svg)
+![标准流程整体图（从价格试算到请款的泳道图）](../assets/diagrams/process-overview.zh.svg)
 
 ## 本流程涉及的人员
 

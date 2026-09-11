@@ -1,0 +1,166 @@
+// Sales flow — includes branches (price mismatch, approval send-back) and a
+// parallel design request.
+// Terminology follows _specs/design.md §17 (Order acceptance / Order line).
+
+/title/
+Sales flow — From price estimate to order confirmation
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_partner>
+label: External (customer);
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+<role_sales>
+label: Sales;
+text-color: #1e293b;
+background-color: #dbeafe;
+
+<role_support>
+label: Sales support;
+text-color: #92400e;
+background-color: #fef3c7;
+
+<role_approver>
+label: Approval / judgment;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_system>
+label: System;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_condition>
+background-color: #f3e8ff;
+text-color: #6b21a8;
+border-color: #9333ea;
+shape: subroutine;
+icon: #git-branch;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_memo>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: note;
+icon: #file-text;
+
+/prop/
+
+<PRICE_LIST>
+label: Price list;
+side: right;
+
+<QUOTE>
+label: Quote;
+side: right;
+background-color: #f0f9ff;
+border-color: #2563eb;
+text-color: #1e40af;
+
+<ORDER_DOC>
+label: Purchase order;
+side: right;
+
+<ORDER_ACCEPT>
+label: Order acceptance;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+/line/
+
+[role_sales: Compute a unit price] <block_apply>
+label: Price estimate;
+desc: Compute an estimated unit price from material, dimensions, and machining conditions, then confirm it. Only a confirmed price estimate can be used as the price list's base.;
+[role_sales: Create a price list] <block_apply>
+label: Price list;
+props: PRICE_LIST;
+desc: For each customer × product, set prices by order type and quantity tier.;
+[role_sales: Issue a quote] <block_apply>
+label: Quote;
+props: QUOTE;
+desc: The unit price is auto-filled from the price list. Submit the issued PDF to the customer.;
+[role_partner: Send a purchase order] <block_neutral>
+label: Order;
+props: ORDER_DOC;
+desc: A purchase order arrives by fax, PDF, etc.;
+[role_support: Check the order acceptance] <block_apply>
+label: Intake / check;
+props: ORDER_ACCEPT;
+desc: Check and correct the imported extraction result.;
+[role_system: Match the order price] <block_system>
+label: Price matching;
+desc: The order's price is automatically matched against the quote and price list.;
+if (Price mismatch) is (Yes) than #orange
+  [role_sales: Adjust the price] <block_condition>
+  label: Price adjustment;
+  props: QUOTE;
+  desc: Either go back to the quote to fix the price, or correct and recheck the price on the order acceptance side.;
+  [loop]
+else
+  [role_support: Request approval] <block_apply>
+  label: Approval request;
+  desc: Once the content is finalized, request approval. It cannot be edited while the request is pending.;
+endif
+if (Approval decision) is (Sent back) than #red
+  [role_support: Fix and re-request] <block_reject>
+  label: Sent back;
+  desc: Apply the feedback, fix the content, and request approval again.;
+  [loop]
+else
+  [role_approver: Approve the order acceptance] <block_approve>
+  label: Approval;
+endif
+[role_support: Confirm order lines] <block_apply>
+label: Confirm lines;
+desc: An order line is created per line item and the amount is finalized. Production flow proceeds from here.;
+[role_sales: File a design request] <block_memo>
+label: (Parallel) Design request;
+desc: For products without a drawing, a design request is filed in parallel with this flow, and production creates the drawing.;

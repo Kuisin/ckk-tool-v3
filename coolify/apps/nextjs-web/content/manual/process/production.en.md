@@ -17,7 +17,7 @@ A page covering the flow from a confirmed order, through checking stock, getting
 
 ## Overall flow
 
-![Diagram of the whole production flow (swimlanes including the stock-matching branch and approval send-back)](../assets/diagrams/process-production.svg)
+![Diagram of the whole production flow (swimlanes including the stock-matching branch and approval send-back)](../assets/diagrams/process-production.en.svg)
 
 ## Stage-by-stage roles and apps
 

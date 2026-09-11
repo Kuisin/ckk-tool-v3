@@ -17,7 +17,7 @@ screenshots:
 
 ## 整体流程
 
-![生产流程整体图（含库存核对分支・审批退回的泳道图）](../assets/diagrams/process-production.svg)
+![生产流程整体图（含库存核对分支・审批退回的泳道图）](../assets/diagrams/process-production.zh.svg)
 
 ## 各阶段的负责人与应用
 

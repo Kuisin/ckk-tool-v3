@@ -15,7 +15,7 @@ A page covering the flow from sending out finished products, through issuing the
 
 ## Overall flow
 
-![Diagram of the whole shipping flow (swimlanes including the dispatch / stock storage branch)](../assets/diagrams/process-shipping.svg)
+![Diagram of the whole shipping flow (swimlanes including the dispatch / stock storage branch)](../assets/diagrams/process-shipping.en.svg)
 
 ## Stage-by-stage roles and apps
 

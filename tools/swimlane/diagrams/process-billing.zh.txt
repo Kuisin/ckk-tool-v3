@@ -1,0 +1,87 @@
+// 请款流程 — 从结算到会计对接。
+
+/title/
+请款流程 — 从结算处理到收款
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 步骤;
+left-subtitle: 说明;
+
+/role/
+
+<role_billing>
+label: 财务;
+text-color: #9d174d;
+background-color: #fce7f3;
+
+<role_system>
+label: 系统;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_notify>
+background-color: #e0f2fe;
+text-color: #075985;
+border-color: #0284c7;
+shape: rect;
+icon: #send;
+
+/prop/
+
+<INVOICE>
+label: 请款单;
+side: right;
+background-color: #fdf2f8;
+border-color: #db2777;
+text-color: #9d174d;
+
+/line/
+
+[role_billing: 执行结算处理] <block_apply>
+label: 结算处理;
+desc: 按各客户设定的结算日执行。结算日和账期依客户主数据设置。;
+[role_system: 汇总送货数据] <block_system>
+label: 汇总;
+desc: 该期间内已送货的部分自动汇总。库存保管的出货不计入对象。;
+[role_billing: 生成请款单] <block_apply>
+label: 请款单生成;
+props: INVOICE;
+desc: 根据结算内容生成请款单，并确认明细与金额（小计、消费税、合计）。;
+[role_billing: 发行请款单] <block_apply>
+label: 发行;
+desc: 发行后保存 PDF。;
+[role_billing: 设为已寄送] <block_notify>
+label: 寄送;
+desc: 寄送给客户后设为「已寄送」。;
+[role_billing: 设为已付款] <block_approve>
+label: 收款确认;
+desc: 确认实际收款后设为「已付款」。;
+[role_billing: 导出至会计] <block_apply>
+label: 会计对接;
+desc: 将已结算部分导出为弥生会计用 CSV。导出后的结算处理变为「已导出」。;

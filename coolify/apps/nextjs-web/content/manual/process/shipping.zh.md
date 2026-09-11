@@ -15,7 +15,7 @@ screenshots:
 
 ## 整体流程
 
-![出货流程整体图（含发货／库存保管分支的泳道图）](../assets/diagrams/process-shipping.svg)
+![出货流程整体图（含发货／库存保管分支的泳道图）](../assets/diagrams/process-shipping.zh.svg)
 
 ## 各阶段的负责人与应用
 

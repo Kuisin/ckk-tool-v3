@@ -1,0 +1,91 @@
+// Shipping flow — includes the dispatch / stock storage branch.
+
+/title/
+Shipping flow — From delivery order to delivery
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_ship>
+label: Shipping;
+text-color: #9a3412;
+background-color: #ffedd5;
+
+<role_system>
+label: System;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #f4f4f5;
+text-color: #52525b;
+border-color: #71717a;
+shape: hex;
+icon: #clock;
+
+/prop/
+
+<SHIPPING>
+label: Delivery order;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<DELIVERY>
+label: Delivery note;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+/line/
+
+[role_ship: Create a delivery order] <block_apply>
+label: Delivery order;
+props: SHIPPING;
+desc: Selecting an order acceptance fills in the order lines that can be shipped. Decide the lot, quantity, and shipping site.;
+[role_ship: Confirm the delivery order] <block_apply>
+label: Confirm;
+desc: Confirm the content so it is ready to ship.;
+[role_ship: Record the shipment] <block_apply>
+label: Shipment;
+desc: Once actually sent out, mark it "Shipped".;
+[role_system: Reduce stock] <block_system>
+label: Stock update;
+desc: The shipping site's stock decreases, and the order line's status changes to "Partially shipped" or "Shipped".;
+if (Type) is (Dispatch) than #orange
+  [role_system: Issue a delivery note] <block_system>
+  label: Delivery note;
+  props: DELIVERY;
+  desc: An issued delivery note is created at the same time as confirmation. Delivery method (standard / direct to end user) and whether to show the price are inherited from the order acceptance.;
+  [role_ship: Mark as delivered] <block_apply>
+  label: Delivery;
+  desc: Once it arrives, mark it "Delivered". A shipment that reaches this point becomes eligible for billing.;
+else
+  [role_ship: Store in-house] <block_wait>
+  label: Stock storage;
+  desc: A type used to keep spare production in-house. It does not proceed to billing.;
+endif
