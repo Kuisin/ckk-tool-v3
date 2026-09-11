@@ -364,6 +364,17 @@ html {
   .app-tabs-bar {
     position: relative;
   }
+  /*
+   * 畳んでいる間は横方向を切る。.app-tabs-measure は測るためだけの絶対配置
+   * （幅 max-content）で、見えなくても**包含ブロックが切らない限りページの
+   * スクロール範囲に入る** — スマホでタブが 5 枚ある画面がすべて横スクロール
+   * していた原因。overflow: clip はスクロールコンテナを作らずに切るだけで、
+   * clip-margin で見出しボタンのフォーカスリングの逃げ場を残す。
+   */
+  .app-tabs-bar-collapsed {
+    overflow: clip;
+    overflow-clip-margin: 4px;
+  }
   .app-tabs-bar .mantine-Tabs-list {
     flex-wrap: nowrap;
     overflow: hidden;

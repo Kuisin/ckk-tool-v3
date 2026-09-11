@@ -102,6 +102,7 @@ export function WoScanView() {
             <Divider label={m.woScan.manualTitle} />
             <Group align="flex-start" wrap="nowrap">
               <TextInput
+                aria-label={m.woScan.manualPlaceholder}
                 error={manualError}
                 inputMode="numeric"
                 onChange={(e) => setManual(e.currentTarget.value)}

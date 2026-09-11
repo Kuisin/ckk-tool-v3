@@ -123,6 +123,7 @@ export function NotificationListView({
             size="sm"
           />
           <Select
+            aria-label={tr("common.type2")}
             clearable
             data={notificationTypeOptions(locale)}
             onChange={(v) => updateParams({ type: v })}

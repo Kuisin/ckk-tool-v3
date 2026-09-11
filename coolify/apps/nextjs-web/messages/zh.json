@@ -802,7 +802,9 @@
     "finalInspection": "最终检查",
     "noPriceListTier": "无数量档",
     "priceListInactive": "价格表已停用",
-    "priceListExpired": "价格表不在有效期"
+    "priceListExpired": "价格表不在有效期",
+    "dateFrom": "起始日期",
+    "dateTo": "结束日期"
   },
   "shell": {
     "appsLabel": "应用",
@@ -866,6 +868,7 @@
     "clearFilter": "清除筛选",
     "guest": "访客",
     "homeSettingsForm": {
+      "selectApps": "选择应用",
       "enterAGroupName": "请输入分组名称",
       "theHomeLayoutWasUpdated": "已更新首页设置",
       "homeLayout": "首页设置",
@@ -1173,6 +1176,28 @@
       "PREVIEW": "预览",
       "BLUEPRINT": "图纸文件",
       "REFERENCE": "参考资料"
+    },
+    "STEP_EXECUTION_LABEL": {
+      "INTERNAL": "厂内",
+      "OUTSOURCE": "外协"
+    },
+    "FORM_KIND_LABEL": {
+      "SURVEY": "问卷",
+      "REQUEST": "申请・报告"
+    },
+    "USER_CHANGE_KIND_LABEL": {
+      "SUSPEND": "停用",
+      "RESTORE": "恢复使用",
+      "UPDATE_PLANTS": "变更所属据点",
+      "UPDATE_ROLES": "变更角色分配"
+    },
+    "DELIVERY_BILLING_PRICE_MODE_LABEL": {
+      "ORIGINAL": "接单时单价",
+      "PRICE_LIST": "按实际交货数重查价格表"
+    },
+    "DELIVERY_TOLERANCE_BASIS_LABEL": {
+      "PERCENT": "百分比（%）",
+      "QUANTITY": "数量"
     }
   },
   "status": {
@@ -1646,6 +1671,10 @@
       "portal_admin": {
         "label": "客户门户管理",
         "summary": "管理外部客户查看自身单据所用的账号，以及单据链接。启用账号、发放备用码、发放免验证链接均需逐项获得批准。"
+      },
+      "api_client": {
+        "label": "外部 API 客户端管理",
+        "summary": "管理外部系统以程序方式读取业务数据所用的凭据。签发令牌与启用客户端均需逐项获得批准。可读取的范围由分配给该客户端的角色决定。"
       }
     },
     "PERMISSION_GROUP_LABEL": {
@@ -1677,7 +1706,8 @@
       "kiosk_device": "终端访问授予",
       "portal_admin": "客户门户管理",
       "kiosk_card": "二维码卡发放・PIN",
-      "personal_data": "个人数据查看"
+      "personal_data": "个人数据查看",
+      "api_client": "外部 API 客户端管理"
     },
     "PRIVILEGED_OPERATIONS": {
       "kiosk_secret": {
@@ -1800,6 +1830,16 @@
         "mint_link_only": {
           "label": "发放免验证链接",
           "description": "创建任何持有链接者均可打开的单据链接。需验证的链接不在此列。"
+        }
+      },
+      "api_client": {
+        "issue_token": {
+          "label": "签发 API 令牌",
+          "description": "签发外部系统读取业务数据所用的密钥。签发的值本身即为凭据，可带出所分配角色允许的范围"
+        },
+        "activate": {
+          "label": "启用 API 客户端",
+          "description": "将新建后尚不能通行的客户端，变为可实际读取业务数据的状态"
         }
       }
     },
@@ -2023,6 +2063,7 @@
       "markPaidFailed": "标记为已付款失败"
     },
     "closingActions": {
+      "closingDateNotReached": "结算日之前无法处理（从结算日次日起）",
       "closingNotFound": "未找到目标结算处理",
       "generateInvoiceFailed": "请款单生成失败",
       "invalidYearMonth": "目标月份格式无效（YYYYMM）",
@@ -2403,7 +2444,11 @@
       "openDeliveryOrderFormForThisLot": "用尚未出货的 {quantity} 支创建出货单。也可一并加入同一订单确认书的其他明细。",
       "deliveryOrderNeedsCompletedWorkOrder": "仅可从已完成的工单创建",
       "deliveryOrderNeedsOrderLine": "未关联订单明细的工单无法创建",
-      "deliveryOrderAlreadyArranged": "该工单的订单明细均已安排出货"
+      "deliveryOrderAlreadyArranged": "该工单的订单明细均已安排出货",
+      "prepRoute": "准备工序清单",
+      "manufacturingRoute": "制造工序清单",
+      "newerVersionExists": "已有最新 v{version}",
+      "varianceAllowedBadge": "允许"
     },
     "addBranchModal": {
       "theBranchWasAdded": "已添加分支",
@@ -2452,7 +2497,16 @@
       "startedOn": "开始 {date}",
       "stepNumberApproval": "第 {step} 级审批",
       "stockStorageNote": "（库存保管）",
-      "workOrderSubject": "工单 #{number}"
+      "workOrderSubject": "工单 #{number}",
+      "plansMissingForSteps": "作业计划不完整：{steps}",
+      "stepMissingLocation": "{name}（无作业场所）",
+      "stepMissingFields": "{name}（缺少 {fields}）",
+      "planField": {
+        "WORK_LOCATION": "作业场所",
+        "TIME": "时间",
+        "QUANTITY": "数量",
+        "ASSIGNEE": "负责人"
+      }
     },
     "defectRecordForm": {
       "enterTheDefectTypeAndDetails": "请输入各行的不良类别和内容",
@@ -2530,6 +2584,17 @@
       "site": "据点"
     },
     "stepCard": {
+      "othersCount": "另有 {count} 人",
+      "lot": "批次 {lot}",
+      "requestedOn": "委托：{date}",
+      "expectedOn": "预计到货：{date}",
+      "completedOn": "完成：{date}",
+      "completedOnBy": "完成：{date}（{name}）",
+      "planActualCount": "计划 {plans} 件 / 实绩 {actuals} 件",
+      "passThrough": "通过 {count}（不记录数量）",
+      "semiFinished": "半成品 {count}",
+      "scrapped": "报废 {count}",
+      "processBranch": "工序分支 {count}",
       "stepMenu": "工序菜单",
       "addABranch": "添加分支",
       "assignedTo": "负责",
@@ -2556,11 +2621,16 @@
       "quantityOptional": "数量（可选）",
       "workLocationOptional": "作业场所（可选）",
       "machineArea": "机器・区域",
-      "youCanSplitThePlanBy": "可按负责人・日期（或时刻）拆分计划。也可选择性分配作业场所（机器・区域）。",
+      "youCanSplitThePlanBy": "可按负责人、日期（或时间）拆分计划。申请审批时，每道厂内工序都需要带日期 + 作业场所的计划，请在工单仍为草稿时填写（是否需要作业场所由工序主数据按工序设定）。",
       "workPlan": "作业计划",
       "recordsTheWorkDonePerAssignee": "按负责人・日期记录已实施的作业（仅进行中可添加）。来自共用终端的实绩将填入该终端的默认作业场所。",
       "workActuals": "作业实绩",
-      "workLocation": "作业场所"
+      "workLocation": "作业场所",
+      "selectAWorkLocation": "请选择作业场所",
+      "start": "开始",
+      "end": "结束",
+      "enterStartAndEnd": "请输入开始与结束时间",
+      "enterQuantity": "请输入数量"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "数量与不良",
@@ -2620,7 +2690,8 @@
       "deleteBranchSeriesConfirm": "将删除分支序列（{steps}）。此操作无法撤销。",
       "deletedNSteps": "已删除 {count} 个工序",
       "hideTheFlowDiagram": "隐藏流程图",
-      "openTheStepExecutionView": "打开工序执行视图"
+      "openTheStepExecutionView": "打开工序执行视图",
+      "plannedDeliveryWithDate": "预定交期 {date}"
     },
     "workflowGraphCanvas": {
       "workflowDiagramBranchesAndMerges": "工序流程图（分支・汇合）",
@@ -2656,6 +2727,8 @@
       "deleteTheDrawing": "删除图纸"
     },
     "inventory": {
+      "reservationsCount": "预留（{count}）",
+      "transactionsCount": "交易记录（{count}）",
       "thereIsNoTransactionHistory": "没有交易历史",
       "couldNotTransferTheStock": "库存调拨失败",
       "theStockWasTransferred": "已调拨库存",
@@ -2706,6 +2779,16 @@
       "thereAreNoWorkOrdersIn": "没有进行中的工单"
     },
     "stepExecution": {
+      "workOrderLabel": "工单 {number}",
+      "executionSite": "实施场所：{site}",
+      "plannedQuantity": "计划数量：{count}",
+      "plannedWorkHours": "计划作业时间：{hours} h",
+      "startedOn": "开始：{date}",
+      "startedOnBy": "开始：{date}（{name}）",
+      "completedOn": "完成：{date}",
+      "completedOnBy": "完成：{date}（{name}）",
+      "lockedByUser": "{name} 正在操作此工序。在完成或中止之前无法操作。",
+      "completesWithoutQuantity": "此工序不记录数量即可完成（通过数 {count}）",
       "theStepWasStarted": "已开始工序",
       "couldNotStartTheStep": "开始工序失败",
       "theLotSlipCodeWasSaved": "已保存批次／单据编号",
@@ -2756,9 +2839,33 @@
       "ifNotPinnedWithLabel": "若不固定：{label}",
       "dedicatedToCustomerWithName": "{name} 专用",
       "thisCustomer": "该客户",
-      "stepFallbackWithId": "工序 #{id}"
+      "stepFallbackWithId": "工序 #{id}",
+      "prepRouteHelp": "出库・交接与材料准备工序的顺序（所有产品共用）。工单始终使用最新版本，不能按工单选择版本。要修改顺序，请在工序主数据的准备工序清单中创建新版本。",
+      "noPrepRouteRegistered": "尚未登记准备工序清单（请在工序主数据中创建）",
+      "showOtherCustomers": "同时显示本产品其他订货方的工序清单",
+      "showOtherCustomersHelp": "默认仅显示本订货方与通用清单。可选择其他订货方的清单后「复制到本订货方」。",
+      "otherCustomerRouteSelected": "当前选择的是「{customer}」专用的工序清单。请先复制为本订货方的清单再使用。",
+      "copyToThisCustomer": "复制到 {name}",
+      "routeCopiedToCustomer": "已将工序清单「{name}」复制到本订货方（v1）",
+      "routeModifiedNewVersion": "工序构成与「{name}」所选版本不同 — 保存时将作为新版本 v{version} 保存",
+      "workPlanHelp": "为每道工序填写负责人、计划日与作业场所。申请审批时，所有厂内工序都需要带日期 + 作业场所的计划（时间段可选，可在创建后的计划面板中补充）。",
+      "planNeedsWorkLocation": "请选择作业场所：{steps}",
+      "allowQuantityVariance": "允许交付不足或超出的数量",
+      "allowQuantityVarianceHelp": "允许该批次即使与订货数量不一致也能出货。可偏离的范围与是否需要审批由业务伙伴主数据决定。",
+      "workLocationRequiredPlaceholder": "作业场所（必填）",
+      "timeQuantityInPanelLater": "本工序的计划还需要时间・数量 — 创建后请在工序的计划面板中填写",
+      "assigneeRequiredPlaceholder": "负责人（必填）",
+      "planNeedsAssignee": "以下工序需要负责人：{steps}",
+      "prepRouteUsesLatest": "使用最新的 v{version}（{date}）",
+      "prepStepsReadOnly": "准备工序来自共用的准备工序清单，此画面不能编辑 — 只编辑制造工序",
+      "editPrepRoutes": "编辑准备工序清单（工序主数据）",
+      "selectAPrepRoute": "请选择准备工序清单"
     },
     "workOrderDetail": {
+      "allocatedOfOrdered": "分配 {allocated} / 订购 {ordered}",
+      "version": "v{version}",
+      "versionLatest": "v{version}（最新）",
+      "newerVersionsExist": "存在更新的版本（#{numbers}）。请考虑复制最新版本。",
       "pinned": "已固定",
       "workOrderWasCreatedWithDoc": "工单 {docNumber} 已创建",
       "cancelWorkOrderWithLabel": "作废工单 {label}。此操作无法撤销。",
@@ -2900,7 +3007,12 @@
       "auditInspectionSheetsSet": "已变更工序的检查表分配（{count} 项）",
       "couldNotSaveInspectionSheets": "检查表分配保存失败",
       "requestedAfterExpected": "预计到货日需在委托日当天或之后",
-      "requestedAfterReceived": "到货日需在委托日当天或之后"
+      "requestedAfterReceived": "到货日需在委托日当天或之后",
+      "workLocationRequiredForPlan": "作业计划需要作业场所",
+      "planLockedByWorkOrderStatus": "审批中、已完成或已取消的工单无法修改作业计划",
+      "timeRequiredForPlan": "本工序的作业计划需要开始・结束时间",
+      "quantityRequiredForPlan": "本工序的作业计划需要数量",
+      "assigneeRequiredForPlan": "此工序的作业计划需要负责人"
     },
     "workOrderActions": {
       "acknowledgeFailed": "确认记录失败",
@@ -2962,7 +3074,11 @@
       "allocationsMustShareProduct": "分配给同一工单的订单明细必须是同一产品",
       "allocationExceedsRemaining": "对订单明细 {number} 的分配超过了剩余可分配量（订单数量 {lineQuantity} − 已分配 {otherAllocated} = 剩余 {remaining}）",
       "stockPlannedQuantityMustMatchAllocation": "库存分工单的计划数量必须与分配数量一致",
-      "plannedQuantityBelowAllocationTotal": "计划数量低于分配合计 {total}（可自由追加不良品余量，但需不低于分配合计）"
+      "plannedQuantityBelowAllocationTotal": "计划数量低于分配合计 {total}（可自由追加不良品余量，但需不低于分配合计）",
+      "plansRequiredBeforeApproval": "申请审批前请填写作业计划（日期 + 作业场所）：{steps}",
+      "copyRouteFailed": "复制工序清单失败",
+      "prepRouteRequired": "请选择准备工序清单",
+      "prepRouteNotFound": "所选的准备工序清单不存在或已停用"
     },
     "designFileActions": {
       "cannotDelete": "无法删除",
@@ -3050,7 +3166,8 @@
       "multipleStart": "「出料/交接」只能选择 1 个（当前已选：{related}）"
     },
     "productRoutes": {
-      "theSelectedProcessRouteIsNot": "所选的工序路线不属于该产品"
+      "theSelectedProcessRouteIsNot": "所选的工序路线不属于该产品",
+      "copiedFromVersionNote": "复制自「{name}」v{version}"
     },
     "inspectionSheetPdf": {
       "equipmentLaser": "激光",
@@ -3726,6 +3843,8 @@
       "importCsv": "导入 CSV",
       "text": "文本",
       "number": "数值",
+      "keyCell": "第 {row} 行的键列 {col}",
+      "valueCell": "第 {row} 行的值",
       "exactMatch": "完全匹配",
       "geTakeTheSmallest": "≥ 以上取最小（直径×长度）",
       "leTakeTheLargest": "≤ 以下取最大（LD/折扣）",
@@ -4103,6 +4222,9 @@
       "ipAddress": "IP 地址"
     },
     "privileged": {
+      "approveTab": "批准",
+      "approveTabWithCount": "批准（{count}）",
+      "reasonLabel": "理由：{reason}",
       "pendingApproval": "（审批中）",
       "theClockStartsFromTheFirst": "持有时间从首次操作时开始计算。",
       "theseOperationsNeedApproval": "这些操作需要审批。",
@@ -4228,6 +4350,11 @@
       "screenNumber": "第 {n} 屏"
     },
     "kioskFloorMapView": {
+      "unnamed": "（未设置）",
+      "inUseBy": "使用中：{name}",
+      "deviceCount": "{count} 台",
+      "thisFloor": "本楼层（{count}）",
+      "otherDevices": "其他终端（{count}）",
       "thisSiteHasNoFloorMaps": "该据点没有平面图。",
       "deleteFloorNameCannotIfDevices": "将删除楼层「{name}」。如果已放置终端则无法删除。",
       "floorMapName": "平面图：{name}",
@@ -4591,7 +4718,8 @@
     },
     "kioskSettings": {
       "stepExecution": "工序执行",
-      "workOrderScan": "工单扫描"
+      "workOrderScan": "工单扫描",
+      "workLocationBoard": "作业场所工序"
     },
     "portalGuide": {
       "guide": "指南",
@@ -4925,7 +5053,21 @@
       "enterFullName": "请输入姓名",
       "roleInfoRequired": "请输入{role}信息",
       "selectASalesRep": "请选择销售负责人",
-      "billToOwnCompany": "—（本公司）"
+      "billToOwnCompany": "—（本公司）",
+      "deliveryTolerance": "交货数量差异",
+      "deliveryToleranceHelp": "交货数量可以偏离订货数量的范围，以及此时是否需要审批。实际能否差异出货还需要工单一侧的许可。",
+      "toleranceBasis": "允许基准",
+      "toleranceUnder": "不足允许范围",
+      "toleranceOver": "超出允许范围",
+      "toleranceBlankIsZero": "留空 = 不允许",
+      "toleranceNotAllowed": "不允许",
+      "tolerancePcs": "{value} 支",
+      "toleranceUnderPercentMax": "按百分比时，不足允许范围请输入 100 以下",
+      "varianceApprovalWithin": "在允许范围内也需要审批",
+      "varianceApprovalWithinHelp": "即使差异在允许范围内，出货单确定前也要经过审批。",
+      "varianceApprovalOutside": "超出允许范围时需要审批",
+      "varianceApprovalOutsideHelp": "取消后，超出范围的差异也会无需审批直接通过，允许范围将失去意义。通常保持勾选。",
+      "approvalNotRequired": "不需要"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "已创建不良类别",
@@ -4946,6 +5088,8 @@
       "sortOrderValue": "显示顺序 {value}"
     },
     "inspectionTemplates": {
+      "version": "v{version}",
+      "versionLatest": "v{version}（最新）",
       "theTargetCanBeAnApproval": "对象可选审批组，或仅此检查表的审批人（自定义・可多名）。未设置 = 任何人均可验收",
       "changeTheInspectionApprovalRecipient": "更改检查批准对象",
       "blankSheet": "空白表",
@@ -5260,7 +5404,28 @@
       "stepUpdated": "已更新工序",
       "finalInspectionStep": "最终检查工序",
       "theFinalInspectionChecklistIsRecorded": "在该工序的执行画面记录最终检查与出货前确认（3 项确认、备用库存、包装 → 发行送货单 → 出货批准）。每张工单一条记录；工序清单中没有带此标记工序的工单即没有最终检查。",
-      "approvalStepsHaveNoQuantity": "检查审批工序不带数量（数量管理设为「无」）。它是查看前道工序的检查表并审批的工序，而不是加工工序。"
+      "approvalStepsHaveNoQuantity": "检查审批工序不带数量（数量管理设为「无」）。它是查看前道工序的检查表并审批的工序，而不是加工工序。",
+      "workLocationRequired": "作业计划需要作业场所",
+      "workLocationRequiredHelp": "申请审批前，要求本工序的作业计划填写作业场所。对仅移动库存等场所无意义的工序请关闭。可使用的场所范围在下方「允许的作业场所」中设置。",
+      "planRequiredFields": "作业计划必填项",
+      "planRequiredFieldsHelp": "提交审批前，此工序的作业计划必须包含哪些内容。计划日始终为必填。",
+      "planTimeRequired": "作业计划需要开始・结束时间",
+      "planTimeRequiredHelp": "需在审批前确定时间段的工序请开启。",
+      "planQuantityRequired": "作业计划需要数量",
+      "planQuantityRequiredHelp": "按数量拆分计划的工序（如每人多少支）请开启。",
+      "planTime": "开始・结束时间",
+      "routeKind": "工序清单",
+      "routeKindPrep": "准备",
+      "routeKindManufacturing": "制造",
+      "routeKindPrepHelp": "材料准备类别的工序属于公共的准备工序清单（不属于各产品的制造工序清单）。",
+      "routeKindManufacturingHelp": "该类别的工序属于按产品 × 订货方的制造工序清单。",
+      "planRequiredShort": "计划必填",
+      "planFieldLocationShort": "场所",
+      "planFieldTimeShort": "时间",
+      "planFieldQuantityShort": "数量",
+      "planAssigneeRequired": "作业计划需要负责人",
+      "planAssigneeRequiredHelp": "在需要先确定负责人再提交审批的工序上启用。默认负责人为可选，可在审批后由现场决定。",
+      "planFieldAssigneeShort": "负责人"
     },
     "products": {
       "specification": "规格",
@@ -5415,6 +5580,8 @@
       "disableTitle": "停用不良类别"
     },
     "inspectionTemplateTable": {
+      "allVersions": "共 {count}",
+      "itemCount": "{count} 项",
       "bulkEnabled": "已启用 {count} 个检查表模板",
       "bulkDisabled": "已停用 {count} 个检查表模板",
       "bulkDeleteConfirm": "将删除已选中的 {count} 个检查表模板。此操作无法撤销。",
@@ -5605,7 +5772,9 @@
     },
     "routeEditorForm": {
       "newRouteBreadcrumb": "新建工序路线",
-      "newVersionTitle": "为工序路线“{name}”创建新版本（v{version}）"
+      "newVersionTitle": "为工序路线“{name}”创建新版本（v{version}）",
+      "prepStepsMovedToPrepRoute": "最新版本中包含的 {count} 个准备工序已移至准备工序清单，本版本不再包含。",
+      "inactiveStepsExcluded": "最新版本中包含 {count} 个当前已停用的工序，已排除"
     },
     "branchDetail": {
       "deleteConfirmMessage": "将删除分公司“{name}（{code}）”。此操作无法撤销。",
@@ -5778,7 +5947,7 @@
       "floorMapPlantMismatch": "平面图与所选据点不一致",
       "createFailed": "存放位置创建失败",
       "locationNotFound": "未找到该存放位置",
-      "locationHasInventoryRefs": "因有库存引用此存放位置，无法删除（请通过库存移动清空，或改为停用）",
+      "locationHasInventoryRefs": "由于存在引用此存放位置的数据（库存、工单），无法删除（请通过库存移动清空，或改为停用）",
       "updateFailed": "存放位置更新失败",
       "deleteFailed": "存放位置删除失败",
       "floorMapLocationMismatch": "平面图与存放位置的据点不一致",
@@ -5816,7 +5985,7 @@
       "updateFailed": "业务伙伴更新失败"
     },
     "materialTypeActions": {
-      "cannotDeleteInUse": "由于存在关联此材料类别的材料，无法删除。请考虑改为停用。",
+      "cannotDeleteInUse": "由于存在引用此材料类别的数据（材料、产品、价格试算、默认单价），无法删除。请考虑改为停用。",
       "createFailed": "材料类别创建失败",
       "deleteFailed": "材料类别删除失败",
       "duplicateDiameterFinishRow": "存在相同直径 × 表面处理的重复行",
@@ -5900,7 +6069,9 @@
       "enterNumberForField": "条件 {no}：请为 {label} 输入数值",
       "selectValueForField": "条件 {no}：请为 {label} 选择值",
       "numberConditionSummary": "{label}{op}{value}",
-      "selectConditionSummary": "{label}{op}“{value}”"
+      "selectConditionSummary": "{label}{op}“{value}”",
+      "deliveryTotalQuantity": "出货数量合计",
+      "fromPlant": "出货据点"
     },
     "inspectionTemplateExcel": {
       "sheetName": "检查表"
@@ -5912,6 +6083,13 @@
       "bothStartAndEndRequired": "期限成员必须同时输入开始和结束日期时间",
       "invalidDateTimeFormat": "日期时间格式不正确",
       "endMustBeAfterStart": "结束日期时间必须晚于开始日期时间"
+    },
+    "prepRoutes": {
+      "title": "准备工序清单",
+      "newPrepRoute": "新建准备工序清单",
+      "intro": "〇〇出库・交接 与 材料准备（切断・无心磨・全长修整・倒角）的顺序。不与产品或订货方绑定的公共清单，工单由「准备工序清单 + 产品的制造工序清单」合并生成。",
+      "empty": "尚未登记准备工序清单",
+      "editorHelp": "仅可选择准备工序。开始工序（〇〇出库・交接）必须恰好 1 个。与制造侧的依赖将在工单合并两份清单时检验。"
     }
   },
   "manual": {
@@ -6008,8 +6186,8 @@
   },
   "admin": {
     "activityLog": {
-      "searchByRecordUserOrContents": "按记录、用户或内容搜索",
-      "thereIsNoActivity": "没有操作历史"
+      "thereIsNoActivity": "没有操作历史",
+      "searchByRecordOrUser": "按记录或用户搜索"
     },
     "activityLogDetail": {
       "openApplabel": "打开 {appLabel}",
@@ -6023,7 +6201,8 @@
       "suffixStorageLocation": "（存放位置）",
       "suffixFloorMap": "（地图）",
       "suffixDisplay": "（显示屏）",
-      "formResponsesLabel": "表单回答"
+      "formResponsesLabel": "表单回答",
+      "actionWithRaw": "{label}（{raw}）"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "已在 {env} 中将 {label} 设为{v2}",
@@ -6516,6 +6695,8 @@
       "theConditionIsNotSavedUntil": "在选择 1 个以上的值之前，条件不会被保存（保持全部可见的状态）"
     },
     "shareGrantsPanel": {
+      "notifyOnComplete": "完成后通知",
+      "recipientN": "共享对象 {n}",
       "companyWideEveryoneWhoCanLog": "全公司（全体登录用户）",
       "theSharingSettingsWereSaved": "已保存共享设置",
       "selectARole": "选择角色",
@@ -6679,6 +6860,10 @@
       "stopsPushNotificationsToDevice": "将停止向“{device}”发送推送通知。"
     },
     "profileView": {
+      "registeredOn": "登记：{date}",
+      "change": "更改",
+      "removeDeviceTitle": "解除通知终端",
+      "removeDeviceMessage": "将停止向此终端推送通知。如需再次接收，请在终端上重新启用通知。",
       "theProfilePhotoWasUpdated": "已更新个人头像",
       "theProfilePhotoWasRemoved": "已删除个人头像",
       "theEmailAddressWasUpdatedNotification": "已更新电子邮箱（将作为通知邮件的收件地址）",
@@ -6926,6 +7111,10 @@
       "thereAreNoOrderLinesThey": "没有订单明细（确定订单确认书后创建）"
     },
     "priceLists": {
+      "copyDescription": "将“{product}”的全部订单类别（{types}）复制到目标。请设置目标的有效期（所有类别共用）。",
+      "selectACustomerError": "请选择客户",
+      "selectAProductError": "请选择产品",
+      "endDateRequiredForTestSample": "因包含试制、样品类别，失效日为必填",
       "enterTheDestinationCustomerProductAnd": "请输入复制目标的客户、产品和有效期（开始・结束）",
       "enterTheDestinationCustomerProductAnd2": "请输入复制目标的客户、产品和生效日",
       "thePriceListWasCopiedTo": "已将价格表复制到其他客户・产品",
@@ -7573,7 +7762,20 @@
       "shipTogetherBody": "同一订单确认书还有 {count} 条明细尚未出货。请选择要放入本出货单的明细。",
       "unshippedWithLots": "未出货 {quantity} / 批次 {lots}",
       "justThisWorkOrder": "仅此工单",
-      "addSelectedLines": "添加所选明细"
+      "addSelectedLines": "添加所选明细",
+      "varianceTitle": "数量差异",
+      "orderedQuantity": "订货数",
+      "deliveredQuantity": "交货数（累计）",
+      "varianceQuantity": "差异",
+      "tolerance": "允许范围",
+      "withinTolerance": "范围内",
+      "outsideTolerance": "超出范围",
+      "varianceApproveHelp": "本次出货与订货数量不一致。请确认内容后批准或退回。",
+      "varianceWaitingHelp": "由于出货与订货数量不一致，正在等待审批。",
+      "varianceRejected": "已退回",
+      "varianceRejectedHelp": "请修改内容后重新确定。",
+      "confirmNeedsApprovalBody": "出货单 {number} 与订货数量不一致，确定前需要审批。此操作将提交审批申请。",
+      "approvalRequestedBody": "已为出货单 {number} 申请审批。审批通过后请再次确定。"
     },
     "pendingShipments": {
       "completedLots": "完成批次",
@@ -7607,7 +7809,22 @@
       "completedQuantityLabel": "完成 {quantity}（来自 {count} 个已完成工单）",
       "exceedsRemainingLabel": "超过剩余订单量 {remaining}（出货 {total}）",
       "partialShipmentLabel": "部分出货（出货 {total} / 剩余 {remaining}）",
-      "couldNotAddWorkOrderLines": "无法读取工单 #{workOrderNumber} 的订单明细（可能未确定或未指定产品）"
+      "couldNotAddWorkOrderLines": "无法读取工单 #{workOrderNumber} 的订单明细（可能未确定或未指定产品）",
+      "varianceSectionTitle": "交货数量差异",
+      "varianceSectionHelp": "与订货数量不一致时的处理方式。允许范围与审批要求来自业务伙伴主数据，是否允许差异由工单决定。",
+      "closesOrderLines": "以本次出货结清订单明细",
+      "closesOrderLinesHelp": "声明不足部分就此结束。不勾选时，剩余部分按后续发货的部分出货处理。",
+      "billingPriceMode": "请款单价",
+      "billingPriceModeHelp": "使用接单时的单价，还是按实际交货数量重新查价格表。确定时的数值会固定到送货单与请款单。",
+      "cannotCloseShort": "无法在不足状态下结清",
+      "cannotCloseShortLine": "{number}（订货 {ordered} / 交货 {delivered}）",
+      "cannotCloseShortLabel": "工单未允许数量差异",
+      "overDeliveryLabel": "超量交货（订货 {ordered} / 交货 {delivered}）",
+      "overDeliveryOutsideLabel": "超量交货・超出允许范围（订货 {ordered} / 交货 {delivered}）",
+      "shortDeliveryLabel": "不足交货（订货 {ordered} / 交货 {delivered}）",
+      "shortDeliveryOutsideLabel": "不足交货・超出允许范围（订货 {ordered} / 交货 {delivered}）",
+      "outOfToleranceLine": "{number}：超出允许范围（订货 {ordered} / 交货 {delivered}）",
+      "outOfToleranceNeedsApproval": "由于超出允许范围，确定出货单时可能需要审批。"
     },
     "deliveryNoteForm": {
       "editWithNumber": "编辑送货单 {noteId}"
@@ -7652,7 +7869,11 @@
       "updateFailed": "出货单更新失败",
       "autoCreatedNote": "出货单确认时自动创建（已发行）",
       "orderLineNotShippable": "订单明细 {number} 不在可出货状态（仅限已确定且未取消的明细）",
-      "productMismatch": "第 {line} 行：产品与订单明细 {number} 的产品不一致"
+      "productMismatch": "第 {line} 行：产品与订单明细 {number} 的产品不一致",
+      "cannotCloseShortLine": "{number} 无法在不足状态下结清（订货 {ordered} / 交货 {delivered}）。请先在工单允许数量差异",
+      "approvalRequestFailed": "申请审批失败",
+      "notPendingApproval": "当前不处于审批中",
+      "awaitingApproval": "正在等待审批。审批通过后即可确定"
     }
   },
   "ui": {
@@ -7686,11 +7907,19 @@
       "operationDetails": "操作详情",
       "thereAreNoDetails": "没有详情"
     },
+    "detailShell": {
+      "created": "创建：{value}",
+      "updated": "更新：{value}"
+    },
     "dataTable": {
       "clearSelection": "取消选择",
       "columns": "列显示",
       "selectAll": "全选",
       "selectRows": "选择行",
+      "firstPage": "第一页",
+      "previousPage": "上一页",
+      "nextPage": "下一页",
+      "lastPage": "最后一页",
       "rowsToShow": "显示条数",
       "noData": "暂无数据",
       "selectedCount": "已选择 {count} 项",
@@ -7923,7 +8152,9 @@
     "cannotDeleteBranchWithStartedSteps": "包含已开始工序的分支无法删除",
     "auditBranchDeleted": "已删除分支（{count} 道工序）",
     "auditBranchUpdated": "已更新分支（数量 {quantity}，{termination}）",
-    "inspectionSheetsNotRecorded": "有检查表尚未填写记录（{sheets}）。请先保存检查表再完成工序"
+    "inspectionSheetsNotRecorded": "有检查表尚未填写记录（{sheets}）。请先保存检查表再完成工序",
+    "prepRouteOnlyPrepSteps": "准备工序清单只能包含准备工序（〇〇出库・交接 / 材料准备）",
+    "manufacturingRouteNoPrepSteps": "制造工序清单不能包含准备工序（请使用准备工序清单）"
   },
   "aiKeywords": {
     "enterANameBeforeRunning": "请先输入名称再执行",
@@ -8031,7 +8262,145 @@
       "fileName": "文件名",
       "storageKey": "存储键",
       "mimeType": "类型",
-      "locale": "语言"
+      "locale": "语言",
+      "admin": "管理员",
+      "allocations": "分配",
+      "allowedLocationCount": "允许的场所数",
+      "allowedLocationIdCount": "允许的场所 ID 数",
+      "allowedLocationTypeKeys": "允许的场所类型",
+      "app": "应用",
+      "applied": "已应用",
+      "applyError": "应用错误",
+      "applyMode": "应用方式",
+      "approvalMinRank": "审批所需职级",
+      "billingPeriodFrom": "请款期间（起）",
+      "billingPeriodTo": "请款期间（止）",
+      "boundEmail": "绑定邮箱",
+      "bpId": "业务伙伴",
+      "bypass": "直通",
+      "bytes": "大小（字节）",
+      "canWrite": "可写入",
+      "cancelReason": "取消原因",
+      "category": "分类",
+      "closeShortReason": "简短终止原因",
+      "closesAt": "结束受理时间",
+      "closingDate": "结算日",
+      "closingId": "结算处理",
+      "conditions": "条件",
+      "contentType": "内容类型",
+      "count": "件数",
+      "criteria": "标准",
+      "customerOrderRef": "客户订单号",
+      "customerProvidesDeliveryNote": "客户提供送货单",
+      "defaultWorkHours": "标准作业时间",
+      "defaultWorkLocationId": "默认作业场所",
+      "definitions": "定义",
+      "deliveryMethod": "配送方式",
+      "descriptionJa": "说明（日语）",
+      "designRequestId": "设计委托单",
+      "diameterCode": "直径代码",
+      "disabledReason": "停用原因",
+      "disabledUntil": "停用至",
+      "discountRule": "折扣规则",
+      "discountRuleDeleted": "折扣规则已删除",
+      "discountType": "折扣类型",
+      "displayName": "显示名称",
+      "dueDate": "到期日",
+      "durationMinutes": "有效时长（分钟）",
+      "email": "邮件",
+      "estimateSources": "价格试算来源",
+      "execDependencyCount": "执行依赖数",
+      "expiresAt": "有效期至",
+      "fingerprint": "终端指纹",
+      "floorMapId": "平面图",
+      "from": "起",
+      "gradeCode": "牌号代码",
+      "grantId": "审批授权",
+      "image": "图片",
+      "includePrice": "包含价格",
+      "inspectionTemplateCount": "检查表模板数",
+      "invoiceNumber": "请款单号",
+      "isApprovalStep": "检查审批工序",
+      "isFinalInspection": "最终检查工序",
+      "isInspection": "检查工序",
+      "isRequired": "必填",
+      "isSyncCapable": "可同步",
+      "itemCount": "明细数",
+      "items": "项目数",
+      "kind": "种类",
+      "kindCode": "种类代码",
+      "kindOverridden": "类别已手动覆盖",
+      "location": "安装位置",
+      "lookupTables": "查找表",
+      "lotInputMode": "批次录入方式",
+      "lotText": "批次文本",
+      "manufacturerCode": "制造商代码",
+      "manufacturerModel": "制造商型号",
+      "matchNames": "匹配名称",
+      "material": "材料",
+      "maxActiveSessions": "最大同时会话数",
+      "maxUses": "最大使用次数",
+      "newVersion": "新版本",
+      "nominalDiameterMm": "公称直径",
+      "opensAt": "开始受理时间",
+      "operations": "操作",
+      "orderDate": "订货日",
+      "orderLines": "订单明细",
+      "orderType": "订单类别",
+      "orderTypes": "订单类别",
+      "original": "原始值",
+      "pathPrefix": "路径前缀",
+      "planCount": "计划数",
+      "plantIds": "据点",
+      "priceListEntry": "价格表",
+      "priority": "优先度",
+      "product": "产品",
+      "purchaseDate": "采购日",
+      "purpose": "用途",
+      "quantityTracking": "数量管理",
+      "reference": "引用",
+      "refreshIntervalSec": "刷新间隔（秒）",
+      "rejectReason": "退回理由",
+      "relatedProcessStepId": "相关工序",
+      "removedVariants": "已删除的变体",
+      "requested": "已申请",
+      "resourceId": "资源 ID",
+      "resourceType": "资源类型",
+      "revoked": "已撤销",
+      "roles": "角色",
+      "routeVersionId": "工序路线版本",
+      "rows": "行",
+      "scalePercent": "显示比例",
+      "shapeCode": "形状代码",
+      "shelves": "货架",
+      "shipmentNumbers": "出货单号",
+      "shippingWorkLocationId": "出货作业场所",
+      "source": "引用来源",
+      "sourceRequest": "来源申请",
+      "stepCount": "工序数",
+      "steps": "工序",
+      "storageLocationId": "存放位置",
+      "subject": "主题",
+      "surfaceFinishCode": "表面处理代码",
+      "targetUser": "目标用户",
+      "text": "正文",
+      "title": "标题",
+      "to": "止",
+      "toolType": "刀具类别",
+      "toolTypes": "刀具类别",
+      "trigger": "触发条件",
+      "type": "类别",
+      "typeKey": "类型键",
+      "types": "类别",
+      "useDependencyCount": "使用依赖数",
+      "user": "用户",
+      "username": "用户名",
+      "value": "值",
+      "version": "版本",
+      "viewed": "已查看",
+      "windowEndsAt": "授权窗口结束",
+      "windowStartsAt": "授权窗口开始",
+      "yayoiExportedAt": "弥生导出时间"
     },
     "tableFieldLabels": {
       "kiosk_devices": {
@@ -8139,7 +8508,40 @@
       "portal_grants": "门户共享范围",
       "portal_document_links": "门户单据链接",
       "portal_backup_codes": "门户备用码",
-      "system": "系统"
+      "system": "系统",
+      "approval_flow_rules": "条件审批规则",
+      "design_files": "图纸",
+      "inspection_template_groups": "检查表模板分组",
+      "kiosk_unlock_pins": "退出PIN历史",
+      "link_blacklist": "链接黑名单",
+      "login_attempts": "登录历史",
+      "material_type_prices": "材料类别默认单价",
+      "privileged_access_requests": "特权访问申请",
+      "product_process_routes": "产品工序路线",
+      "regions": "地区",
+      "system_settings": "系统设置",
+      "user_change_requests": "用户变更申请",
+      "user_plants": "所属据点",
+      "user_role_relation": "角色分配",
+      "users": "用户",
+      "api_clients": "API 客户端",
+      "api_client_tokens": "API 令牌"
+    },
+    "change": {
+      "pair": "{label}: {before} → {after}",
+      "more": "其他 {count} 项"
+    },
+    "sentence": {
+      "create": "{actor} 创建了{target}「{record}」",
+      "createNoRecord": "{actor} 创建了{target}",
+      "delete": "{actor} 删除了{target}「{record}」",
+      "view": "{actor} 查看了{target}「{record}」",
+      "export": "{actor} 导出了{target}「{record}」",
+      "updateNone": "{actor} 更新了{target}「{record}」",
+      "updateOne": "{actor} 将{target}「{record}」的{field}从 {before} 改为 {after}",
+      "updateMany": "{actor} 修改了{target}「{record}」的{field}等 {rest} 项",
+      "note": "{actor}：{note}",
+      "fallback": "{actor} 对{target}「{record}」执行了{action}"
     }
   },
   "inspectionTemplateIo": {
@@ -9423,5 +9825,30 @@
       "zoomIn": "放大",
       "resetZoom": "恢复原始大小"
     }
+  },
+  "apiClients": {
+    "title": "API 客户端",
+    "intro": "外部系统读取业务数据所用的凭据。可读取的范围由在用户管理中分配的角色决定。",
+    "roles": "角色",
+    "tokens": "令牌",
+    "token": "令牌",
+    "lastUsed": "最后使用",
+    "neverUsed": "未使用",
+    "issueToken": "签发令牌",
+    "revoke": "撤销",
+    "revoked": "已撤销",
+    "empty": "尚无登记",
+    "noRoles": "未分配角色",
+    "noRolesHint": "该客户端没有任何角色，因此无法读取任何数据。请在用户管理中分配角色。",
+    "createTitle": "创建 API 客户端",
+    "createHint": "新建时为停用状态且没有令牌。启用与签发令牌均需获得批准。",
+    "allowedCidrs": "允许的 IP 范围",
+    "allowedCidrsHelp": "留空则不限制。使用逗号分隔的 CIDR。",
+    "issuedTitle": "已签发令牌",
+    "shownOnce": "此值不会再次显示，请立即保存。",
+    "tooManyActiveTokens": "最多只能有两个有效令牌，请先撤销其中一个。",
+    "clientNotFound": "未找到该客户端",
+    "featureDisabled": "此环境中外部 API 已停用",
+    "invalidNameChars": "名称包含不允许使用的字符"
   }
 }

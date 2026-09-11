@@ -11,6 +11,12 @@
  * 認証する機械向けの注文書投入口。**`api/intake` と書いてはいけない** —
  * それだと即座に採番する `/api/intake/upload` と `/api/intake/folder` から
  * セッション認証まで外れる。
+ * `/api/v1` も除外必須 — 機械向けの外部 API は Auth.js のセッションを持たない
+ * 別の認証系（lib/api-auth.ts の Bearer トークン）なので、ここを守ると全要求が
+ * /login へ 307 されて無言で死ぬ。**`api/v1` と素で書かず `api/v1(?:$|/)` と
+ * アンカーすること** — 素だと将来の `/api/v1beta` や `/api/v1x` まで未認証に
+ * なる（`api/intake` を広く書いて `/api/intake/upload` の認証まで外した前例と
+ * 同じ罠）。
  * `/portal` も除外必須 — 取引先ポータル（社外向け）は Auth.js のセッションを
  * 持たない別の認証系（lib/portal-auth.ts の portal_session Cookie）なので、
  * ここを守ると社外の人が必ず /login へ 307 される。**`portal` と素で書かず
@@ -38,6 +44,6 @@ export default proxy;
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/sso|api/preview|api/device-signals|api/health|api/intake/inbound|login|portal(?:$|/)|manual(?:$|/)|llms-manual(?:$|/)|_next/static|_next/image|favicon\\.ico|icon\\.svg|design-assets|manifest\\.webmanifest|icons|sw\\.js).*)",
+    "/((?!api/auth|api/sso|api/preview|api/device-signals|api/health|api/intake/inbound|api/v1(?:$|/)|login|portal(?:$|/)|manual(?:$|/)|llms-manual(?:$|/)|_next/static|_next/image|favicon\\.ico|icon\\.svg|design-assets|manifest\\.webmanifest|icons|sw\\.js).*)",
   ],
 };

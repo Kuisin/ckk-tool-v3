@@ -86,20 +86,42 @@ export type SalesRepAssignmentInput = z.infer<
 >;
 
 export function customerAttrsInput(tr: Tr) {
-  return z.object({
-    customerCode: z.string().optional(),
-    billingBpId: z.string().nullable(),
-    closingDay: z.number().int().min(1).max(31).nullable(),
-    paymentTermsDays: z.number().int().min(0).nullable(),
-    paymentDay: z.number().int().min(1).max(31).nullable(),
-    creditLimit: z.number().min(0).nullable(),
-    taxType: z.enum(["TAXABLE", "EXEMPT", "REDUCED"]),
-    invoiceMethod: z.enum(["EMAIL", "FAX", "POST", "PORTAL"]),
-    isConsignment: z.boolean(),
-    // 属性行（bp_customer_attrs）ではなく別テーブルに書くので
-    // customerAttrsData には含めない（syncCustomerSalesReps が受け持つ）。
-    salesReps: z.array(salesRepAssignmentInput(tr)).default([]),
-  });
+  return z
+    .object({
+      customerCode: z.string().optional(),
+      billingBpId: z.string().nullable(),
+      closingDay: z.number().int().min(1).max(31).nullable(),
+      paymentTermsDays: z.number().int().min(0).nullable(),
+      paymentDay: z.number().int().min(1).max(31).nullable(),
+      creditLimit: z.number().min(0).nullable(),
+      taxType: z.enum(["TAXABLE", "EXEMPT", "REDUCED"]),
+      invoiceMethod: z.enum(["EMAIL", "FAX", "POST", "PORTAL"]),
+      isConsignment: z.boolean(),
+      // ── 過不足納品（§8）──────────────────────────────────────────────────
+      // 幅は null = 未設定 = 0（その側の過不足を認めない）。% 基準の不足側だけ
+      // 100 に頭打ちがある（受注数量より多くは不足できない）— DB 側の CHECK と同じ。
+      deliveryToleranceBasis: z.enum(["PERCENT", "QUANTITY"]),
+      deliveryToleranceUnder: z.number().min(0).nullable(),
+      deliveryToleranceOver: z.number().min(0).nullable(),
+      varianceApprovalWithin: z.boolean(),
+      varianceApprovalOutside: z.boolean(),
+      // 属性行（bp_customer_attrs）ではなく別テーブルに書くので
+      // customerAttrsData には含めない（syncCustomerSalesReps が受け持つ）。
+      salesReps: z.array(salesRepAssignmentInput(tr)).default([]),
+    })
+    .superRefine((v, ctx) => {
+      if (
+        v.deliveryToleranceBasis === "PERCENT" &&
+        v.deliveryToleranceUnder != null &&
+        v.deliveryToleranceUnder > 100
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["deliveryToleranceUnder"],
+          message: tr("master.businessPartners.toleranceUnderPercentMax"),
+        });
+      }
+    });
 }
 
 export type CustomerAttrsInput = z.infer<ReturnType<typeof customerAttrsInput>>;
@@ -115,6 +137,11 @@ export function customerAttrsData(v: CustomerAttrsInput) {
     taxType: v.taxType,
     invoiceMethod: v.invoiceMethod,
     isConsignment: v.isConsignment,
+    deliveryToleranceBasis: v.deliveryToleranceBasis,
+    deliveryToleranceUnder: v.deliveryToleranceUnder,
+    deliveryToleranceOver: v.deliveryToleranceOver,
+    varianceApprovalWithin: v.varianceApprovalWithin,
+    varianceApprovalOutside: v.varianceApprovalOutside,
   };
 }
 

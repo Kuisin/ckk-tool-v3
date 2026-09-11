@@ -34,8 +34,23 @@
 >   `kiosk-cron.sql` の rotate ジョブが 1 本で行う
 > - `notification.prisma`: `notifications` / `push_subscriptions` / `user_notification_settings`
 > - `product-routes.prisma`: `product_process_route_version_steps` / `product_process_route_versions` / `product_process_routes`
+>   — 工程リスト。**2 種別ある（`kind`）**: `PREP` = 準備工程リスト（〇〇出し・受渡し +
+>   材料準備。製品にも顧客にも紐づかない共通のもの。`product_id` / `customer_bp_id` は
+>   null — DB の CHECK `product_process_routes_kind_columns`）/ `MANUFACTURING` =
+>   製造工程リスト（製品 × 受注元。従来のもの）。指示書は 2 本の版を合わせて工程を作り、
+>   `work_orders.route_version_id`（製造）と `.prep_route_version_id`（準備）で両方を指す。
+>   どの工程がどちらかは DB では決めず、`lib/workflow-core.ts` `isPrepStep`
+>   （カタログの category = MATERIAL_PREP）が唯一の定義。準備工程リストは共通なので
+>   **指示書ごとに版は選べない** — 常に最新版を使い、指示書から新版は作らない
+>   （`applyLatestPrepRoute`）。製造側の版に準備工程は含まない（移行前に混ざっていた分は
+>   20261019 で取り除いた。版の行は履歴として残す）— 版の比較・保存は種別の部分だけで
+>   行う（`lib/product-routes.ts` `resolveRouteVersionTx`）
 > - `production-master.prisma`: `work_location_groups` / `work_locations`
 > - `production.prisma`: `work_order_step_actuals` / `work_order_step_plans`（`work_order_order_lines` は本書に記載済み）
+>   — 作業計画は**承認前に揃える**（§7）: 社内工程ごとに `planned_date` + `work_location_id`
+>   の入った行が 1 行以上ないと承認依頼を出せない（開始/終了時刻は任意のまま）。判定は
+>   `lib/work-plan-core.ts` `planReadiness` が唯一の定義で、作業場所マスタが空の環境では
+>   作業場所を要求しない。DB は列を NOT NULL にしない（実績は作業場所任意で同じ形を使う）
 > - `purchase.prisma`: `purchase_request_items` / `purchase_requests`
 > - `sys.prisma`: `document_attachments` / `document_memo_revisions` / `document_memos` / `file_folder_grants` / `link_blacklist` / `link_index` / `user_home_settings`
 >
@@ -712,6 +727,12 @@ Table work_orders {
   planned_quantity int [not null]           // ≥ Σ割当（不良予備分の上乗せは自由）
   material_id     varchar [ref: > materials.id]
   storage_location_id int [ref: > storage_locations.id]  // 完成品の保管場所（MS0E）
+  // 不足 / 超過分もそのまま納品してよいロットか（§8 過不足納品）。既定 false =
+  // 受注数量ちょうどでしか出荷できない（従来の挙動）。**どこまでずれてよいかは
+  // ここでは決めない** — 幅と承認の要否は顧客（bp_customer_attrs）が持つ。
+  // 生産側が「これで出してよい」と言うことと、顧客が「それを受け取る」ことは
+  // 別の判断で、片方だけで過不足出荷が通ってはいけない。
+  allow_quantity_variance boolean [not null, default: false]
   status          WORK_ORDER_STATUS [not null, default: 'DRAFT']
   approval_status WORK_ORDER_APPROVAL_STATUS [not null, default: 'NONE']
   source_work_order_id uuid [ref: > work_orders.id]  // コピー元（バージョン警告用）
@@ -791,6 +812,21 @@ Table process_step_catalog {
   // 工程の実行画面が唯一の記入口**。印の付いた工程を工程リストに入れなければ
   // 最終検査そのものが無い（= 任意）。既定は出荷前検査 PRE_SHIP_INSPECTION。
   is_final_inspection boolean [not null, default: false]
+  // 作業計画に作業場所が要るか（§7 承認前の揃い）。既定 true。在庫を動かすだけの
+  // 工程（〇〇出し）のように場所に意味の無い工程で false にする。使える場所の
+  // **範囲**は process_step_work_locations（許可リスト）で別に決める。
+  // 判定は lib/work-plan-core.ts planReadiness が唯一の定義。
+  work_location_required boolean [not null, default: true]
+  // 同じく作業計画の必須項目（工程ごと）。計画日は列が NOT NULL で常に必須、
+  // 切れるのは 担当者・時刻（開始・終了）・数量。承認依頼のゲート・計画パネルの
+  // 必須印・addStepPlan が同じ印を読む（lib/work-plan-core.ts requiredPlanFields）。
+  // 担当者は既定で任意（work_order_step_plans.user_id は nullable — 承認後に
+  // 現場で決めてよい工程が多く、承認を出すためだけに仮の人を入れる運用を
+  // 作らない）。人まで決めてから承認に出す工程だけ plan_assignee_required を立てる。
+  // 共有端末の行レベル判定（canOperateStep）では担当者なしの計画行は誰も縛らない。
+  plan_assignee_required boolean [not null, default: false]
+  plan_time_required     boolean [not null, default: false]
+  plan_quantity_required boolean [not null, default: false]
   approval_min_rank varchar                            // 承認必要役職（係長以上等）
   sort_order      int [not null, default: 0]
   is_active       boolean [not null, default: true]
@@ -942,6 +978,9 @@ Table approval_flows {
   target_type     varchar [pk]  // work_orders / order_acceptances /
                                 // material_purchase_orders / purchase_requests /
                                 // work_order_flow_changes /
+                                // delivery_orders（出荷書 — **過不足納品のときだけ**
+                                //   依頼が出る。数量ちょうどの出荷は素通りするので、
+                                //   段を組んでも通常の出荷は止まらない）/
                                 // order_acceptance_cancel_requests（注文請書キャンセル
                                 //   — 確定済みの請書はごとキャンセルを依頼して承認を通す。
                                 //   明細単位のキャンセル操作は廃止）
@@ -1298,10 +1337,43 @@ Table delivery_orders {
   type            DELIVERY_ORDER_TYPE [not null]
   status          DELIVERY_ORDER_STATUS [not null, default: 'DRAFT']
   shipped_at      timestamp
+  // ── 過不足納品（§8）— 出荷時点でしか決められない 2 つ ────────────────────
+  // 請求単価: 受注時の単価のままか、実納品数で価格表を引き直すか。100 本の
+  //   段階で受注して 80 本しか納めないなら 80 本の段階単価が正しい、という顧客も
+  //   いれば受注時の約束を動かさない顧客もいる。**出荷書 1 通ごと**に人が決める。
+  billing_price_mode DELIVERY_BILLING_PRICE_MODE [not null, default: 'ORIGINAL']
+  // 締め: 不足納品と一部出荷は数量では見分けが付かない（100 本のうち 80 本を
+  //   積んだ出荷書が、残りを後で出すのか 80 本で終わりなのかは人しか知らない）。
+  //   この 1 列がその宣言で、true のときだけ注文明細が SHIPPED まで進む。
+  closes_order_lines boolean [not null, default: false]
+  // 承認は過不足のときだけ動く。target_type = 'delivery_orders' で
+  // approval_requests に載る（承認設定 MS0B で段を組む）。**段が 1 つも
+  // 無ければ素通し** — work_order_flow_changes と同じ規約。
+  approval_status DELIVERY_ORDER_APPROVAL_STATUS [not null, default: 'NONE']
+  requested_at    timestamp
+  requested_by    uuid [ref: > users.id]
+  approved_at     timestamp
+  approved_by     uuid [ref: > users.id]
+  rejected_at     timestamp
+  rejected_by     uuid [ref: > users.id]
+  reject_reason   text
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp
   updated_at      timestamp
+}
+
+Enum DELIVERY_BILLING_PRICE_MODE {
+  ORIGINAL    // 受注時の単価をそのまま（既定・従来の挙動）
+  PRICE_LIST  // 実納品数で価格表を引き直す（引けなければ受注時の単価に落ちる）
+}
+
+// 段数非依存 — 何段目かは approval_requests.step_no が持つ。
+Enum DELIVERY_ORDER_APPROVAL_STATUS {
+  NONE      // 承認不要（数量ちょうど、または顧客設定が承認不要）
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 Enum DELIVERY_ORDER_TYPE {
@@ -1321,6 +1393,11 @@ Table delivery_order_items {
   product_id      varchar [not null, ref: > products.id]
   lot_number      int
   quantity        int [not null]
+  // 請求単価のスナップショット（出荷書の確定時に billing_price_mode で焼き込む）。
+  // 納品書・請求書はここを先に読み、null のときだけ注文明細の単価へ落ちる
+  // （確定前・移行前のデータ）。焼き込んだあとは価格表を直しても発行済みの
+  // 書類は動かない — invoices.tax_rate と同じ考え方。
+  unit_price      numeric(12,2)
   notes           text
   sort_order      int [not null, default: 0]
 }
@@ -1695,7 +1772,27 @@ Table bp_customer_attrs {
   tax_type            TAX_TYPE        [default: 'TAXABLE']
   invoice_method      INVOICE_METHOD  [default: 'EMAIL']
   is_consignment      boolean         [default: false]  // 委託先フラグ
+  // ── 過不足納品（§8）— 受注数量と違う数量で納品してよい範囲 ──────────────
+  // 「どれだけずれてよいか」は顧客が決めることなので顧客属性に置く。指示書側の
+  // allow_quantity_variance は「このロットを過不足のまま出してよいか」の可否で、
+  // ここは「どこまでなら許されるか」の幅 — 両方が揃って初めて過不足出荷になる。
+  // 判定の唯一の定義元は lib/delivery-variance-core.ts。
+  //   基準は 1 つ（% or 数量）— % と数量を同時に持たせると
+  //   「どちらが効くのか」が読めなくなる。幅は null = 0（その側を認めない）。
+  delivery_tolerance_basis  DELIVERY_TOLERANCE_BASIS [default: 'PERCENT']
+  delivery_tolerance_under  numeric(8,3)  // 不足側の許容幅
+  delivery_tolerance_over   numeric(8,3)  // 超過側の許容幅
+  // 承認の要否は**範囲の内と外で別々**。既定は 内=不要 / 外=必要 —
+  // マスタ未設定の顧客が最も緩くならない側へ倒す。外を false にすると
+  // 範囲外も素通りする（範囲の設定が意味を失う設定なので既定にしない）。
+  variance_approval_within  boolean [default: false]
+  variance_approval_outside boolean [default: true]
   notes               text
+}
+
+Enum DELIVERY_TOLERANCE_BASIS {
+  PERCENT   // 受注数量に対する割合（%）
+  QUANTITY  // 絶対数量
 }
 
 // ─── 営業担当（CKK 側の担当者）───────────────────

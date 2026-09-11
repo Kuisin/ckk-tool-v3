@@ -3,6 +3,7 @@ import {
   createFormatters,
   documentFormatters,
   localizedTranslations,
+  zonedDayRange,
 } from "./format";
 import { DEFAULT_PREFERENCES } from "./user-preferences-core";
 
@@ -125,5 +126,41 @@ describe("localizedTranslations（多言語ポップアップの初期値）", (
   it("null/undefined は空オブジェクト", () => {
     expect(localizedTranslations(null)).toEqual({});
     expect(localizedTranslations(undefined)).toEqual({});
+  });
+});
+
+describe("zonedDayRange（日付範囲フィルタの UTC 変換）", () => {
+  it("JST は UTC 0 時と 9 時間ずれる", () => {
+    const r = zonedDayRange("2026-08-13", "Asia/Tokyo");
+    expect(r).not.toBeNull();
+    // 2026-08-13 の JST の 1 日 = UTC 2026-08-12 15:00 〜 2026-08-13 15:00
+    expect(r?.gte.toISOString()).toBe("2026-08-12T15:00:00.000Z");
+    expect(r?.lt.toISOString()).toBe("2026-08-13T15:00:00.000Z");
+  });
+
+  it("UTC はそのまま 0 時〜翌日 0 時", () => {
+    const r = zonedDayRange("2026-08-13", "UTC");
+    expect(r?.gte.toISOString()).toBe("2026-08-13T00:00:00.000Z");
+    expect(r?.lt.toISOString()).toBe("2026-08-14T00:00:00.000Z");
+  });
+
+  it("月末・年末をまたいでも翌暦日を正しく進める", () => {
+    const r = zonedDayRange("2026-12-31", "Asia/Tokyo");
+    expect(r?.gte.toISOString()).toBe("2026-12-30T15:00:00.000Z");
+    expect(r?.lt.toISOString()).toBe("2026-12-31T15:00:00.000Z");
+  });
+
+  it("DST の切り替わり日をまたいでも 24 時間とは限らない幅を正しく計算する", () => {
+    // 2026-03-08 は米国東部で夏時間開始（2:00 AM → 3:00 AM）。
+    // その日の現地 0 時〜翌日 0 時は 24 時間のまま（開始時刻が 0 時ではない
+    // ため）だが、UTC 側のオフセットは日をまたいで -5→-4 に変わる。
+    const r = zonedDayRange("2026-03-08", "America/New_York");
+    expect(r?.gte.toISOString()).toBe("2026-03-08T05:00:00.000Z"); // EST (UTC-5)
+    expect(r?.lt.toISOString()).toBe("2026-03-09T04:00:00.000Z"); // EDT (UTC-4)
+  });
+
+  it("不正な形式は null", () => {
+    expect(zonedDayRange("2026/08/13", "Asia/Tokyo")).toBeNull();
+    expect(zonedDayRange("not-a-date", "Asia/Tokyo")).toBeNull();
   });
 });

@@ -114,6 +114,7 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
       ]}
       filters={
         <Select
+          aria-label={tr("common.status")}
           clearable
           data={statusOptions("MaterialPurchaseOrder")}
           flex={isMobile ? 1 : undefined}
@@ -126,6 +127,7 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("purchase.purchaseOrders.searchByPoNumberOrSupplier")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("purchase.purchaseOrders.searchByPoNumberOrSupplier")}

@@ -12,6 +12,8 @@ In 「**工程実行**」 (Run step) on the tablet, you check the work given to 
 - You can enter how many pieces you received and any defects that came out (the good quantity is calculated automatically).
 - When defects come out, you can leave the type, the number of pieces, and the details.
 - On inspection steps, you can record the values you measured and whether they passed.
+- When several work orders share the same step, you can **start, pause, or finish them together**.
+- While you are working on more than one step at once, you can always check which ones are in progress from a widget in the corner of the screen.
 
 ## Words used on this page
 
@@ -100,6 +102,49 @@ On inspection steps, you enter the inspection record before you finish.
 3. For items that cannot be judged automatically, choose 「合格」 (pass) or 「不合格」 (fail) yourself.
 4. Press 「**検査記録を保存**」 (Save inspection record).
 
+## Recording several steps at once
+
+When one machine is running the same step for several work orders, you don't have to open each one — you can start, pause, or finish them together.
+
+### Selecting from the list and acting on them together
+
+1. When the list has two or more steps, a 「**選択**」 (Select) button appears at the top right. Press it, and checkboxes appear on the cards.
+2. Check the steps you want to act on together. A step that cannot take that action in its current state keeps a disabled checkbox (the status badge tells you why it can't be selected).
+3. A bar at the bottom of the screen shows how many you selected, along with buttons for whichever action (start, pause, complete) is **common to every step you selected**.
+4. Pressing a button opens a confirmation screen listing the steps that can be batched and the ones that cannot (with the reason). Steps that cannot be batched can be opened individually with 「**開く**」 (Open).
+5. Press 「**実行**」 (Run) to process them together.
+
+> ⚠️ **You cannot select startable steps and in-progress steps at the same time.** If you see 「開始できる工程と作業中の工程が混ざっています。どちらかに揃えてください。」 (Startable steps and in-progress steps are mixed. Select one kind only.), reselect so that only one kind is checked.
+
+> ⚠️ Completing in a batch records **the entire received quantity as good**. If a step had defects, leave it out of the batch and open it individually to enter the breakdown. Likewise, starting in a batch keeps the received quantity at the expected value carried from the previous step — if you need to change it, open that step individually too.
+
+> 💡 **Resuming from pause cannot be done in a batch.** Open each step you want to resume individually.
+
+Once run, the screen switches to a result view. Any step that failed stays selected, so you can fix it and run again right away.
+
+### Opening the same step together
+
+When the list has **the same step** two or more times, a row automatically appears above that group reading 「**{step name} — n 件**」 (n) with an 「**まとめて開く**」 (Open together) button. Pressing it opens a dedicated screen that collects only that step.
+
+This screen has something the list's batch bar does not: **you can enter a different lot / slip code per work order while starting them together.** (The list's batch start leaves out any step that requires a lot / slip code, telling you to open it individually — here, each row has its own input box.)
+
+1. In 「**開始できる工程**」 (Steps that can start), enter a lot / slip code on each row if needed.
+2. Check the rows you want to start together and press 「**選択した n 件を開始**」 (Start n selected).
+3. In-progress and paused steps appear under 「**作業中・一時停止中の工程**」 (In progress / paused). Check the rows you want to finish together and press 「**選択した n 件を完了**」 (Complete n selected) — this completion is also **all good**; open a step individually with 「**開く**」 (Open) if it has defects.
+4. Steps you cannot operate right now (waiting for the previous step, being worked by someone else, and so on) are shown for reference only, under 「**いま操作できない工程**」 (Not available right now).
+
+Press 「**工程一覧へ**」 (Back to steps) to return to the original list.
+
+## Keeping track of steps in progress
+
+While you are working on more than one step, a round 「**作業中 n件**」 (n in progress) button stays in the bottom right corner of the screen. You can always check which steps you currently hold, without going back to the list.
+
+- Press it, and the steps in progress are shown as cards, with the step name, work order number, and elapsed time.
+- Press a card to jump straight to that step's recording screen.
+- It disappears when nothing is in progress.
+
+When you have two or more running at once, you see the note 「**n 件同時のため、実働時間は 1/n で計上されます**」 (n at once — work time is counted at 1/n). This is the same time-splitting rule mentioned under "[Starting the work](#starting-the-work)".
+
 ## Input fields
 
 Which quantities you are asked for depends on the step. Steps that do not track quantity only have start and complete.
@@ -163,6 +208,15 @@ A. You cannot undo it from the tablet. Please tell the person in charge in the o
 
 **Q. The screen closed while I was working.**
 A. Your record is kept. Log in again and open the same step; it is still 「作業中」 (in progress) and you can carry on from where you were.
+
+**Q. I selected several steps, but the start or complete button did not appear.**
+A. You may have startable steps and in-progress steps mixed in your selection. Reselect so that only one kind is checked.
+
+**Q. I completed a batch of steps, and there was nowhere to enter defects.**
+A. A batch completion records the entire received quantity as good. Leave any step that had defects out of the batch, and open it individually to enter the breakdown.
+
+**Q. I got 「ロット/伝票コードが必要です」 (needs a lot / slip code) and cannot start in a batch.**
+A. A lot / slip code is different for every work order, so the list's batch start cannot handle it. Open that step individually, or, if there are several of the same step, use the 「**まとめて開く**」 (Open together) screen, which lets you enter a code on each row before starting.
 
 <!-- permissions:start -->
 ## Permissions required

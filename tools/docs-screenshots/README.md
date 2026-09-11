@@ -164,6 +164,35 @@ metabase-demo-build.py` の `cards_spec` を直接書き換える。本番の実
   import へ変換されるため）。LLM 用途ではテキストが主なので許容。
 - en/zh のマニュアルページも同じ ja UI のスクリーンショットを参照する。
 
+## 実機巡回（audit-crawl.ts）
+
+全画面を機械的に回して、**単体テストでは捕まらない種類の欠陥**を集める:
+ナビゲーションの HTTP 状態 / `pageerror`（ハイドレーション不一致など）/
+`console.error` / 横スクロール（1280px と 375px）/ 本文への "undefined・NaN・
+Invalid Date" の混入 / 名前の無いボタン / ラベルの無い入力欄 / 見出しの無い画面 /
+44px 未満の押す的（共有端末と工程実行）。2026-09-09 の診断で、畳んだ AppTabs の
+横スクロール（20 画面）と価格表の「Invalid Date」はこれでしか見つからなかった。
+
+```bash
+pnpm docs:seed
+docker exec -i ckk-shots-db psql -U postgres -d ckk -f - < e2e-kiosk-fixtures.sql
+# web :3100 / kiosk :3101 を本番ビルドで起動（上と同じ env。kiosk は
+# NEXT_PUBLIC_APP_VERSION を**ビルド時と起動時で揃える** — 揃わないと
+# フッターのバージョン文字列がサーバーとクライアントで食い違い、全画面で
+# React #418 が出る。実機では Dockerfile の ARG で揃っている）
+pnpm exec tsx audit-crawl.ts            # 両方。--web / --kiosk で片方だけ
+```
+
+結果は標準出力の要約と `/tmp/audit-crawl-{web,kiosk}.json`。Gotenberg / SeaweedFS が
+無いので PDF プレビューと図面サムネイルの 502/404 は出る（環境）。
+
+**通し確認 3 本（検査承認 / 出荷+最終検査 / smoke-flows）は「1 回の種に 1 回だけ」。**
+2 回目は状態が残って落ちる — 検査承認は 1 回目で承認を消費し、出荷は工程を進め、
+smoke-flows は列設定を保存する。落ちたら中身を疑う前に
+`docker rm -f ckk-shots-db` → `pnpm docs:seed` から作り直すこと。
+`e2e-shipping-and-final-inspection.ts` は `e2e-fixtures.sql`、
+`e2e-kiosk-inspection-approval.ts` は `e2e-kiosk-fixtures.sql` が**必須**。
+
 ## 通し確認を CI で回す（手動実行）
 
 同じ手順を GitHub Actions からも回せる（`.github/workflows/e2e-shipping-inspection.yml`）。

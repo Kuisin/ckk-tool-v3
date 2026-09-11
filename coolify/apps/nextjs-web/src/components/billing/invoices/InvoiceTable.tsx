@@ -125,6 +125,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
       breadcrumbs={[tr("common.billing"), tr("common.invoice")]}
       filters={
         <Select
+          aria-label={tr("common.status")}
           clearable
           data={statusOptions("Invoice")}
           flex={isMobile ? 1 : undefined}
@@ -137,6 +138,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("billing.invoices.searchByInvoiceNumberOrCustomer")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("billing.invoices.searchByInvoiceNumberOrCustomer")}

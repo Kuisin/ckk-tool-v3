@@ -43,15 +43,23 @@ export type AuthzResult =
   | { ok: true; userId: string; access: Access }
   | { ok: false; error: string };
 
-/** セッションのユーザー id（未ログインは null）。 */
-export async function sessionUserId(): Promise<string | null> {
+/**
+ * セッションのユーザー id（未ログインは null）。
+ *
+ * **リクエスト単位でメモ化する**（React cache）。1 リクエストで
+ * checkPermission が何十回も走る画面があり、その 1 回ごとに JWT の復号と
+ * users.is_active の再確認（auth.ts の jwt コールバック）が走っていた。
+ * 引数を取らないので cache() の鍵は「このリクエスト」だけになる。
+ * 権限の意味は変えない — 同じリクエストの中では元々同じ答えを返す。
+ */
+export const sessionUserId = cache(async (): Promise<string | null> => {
   try {
     const session = await auth();
     return (session?.user as { id?: string } | undefined)?.id ?? null;
   } catch {
     return null; // リクエスト外（ビルド・ポーラー）
   }
-}
+});
 
 /** ユーザーの権限集合（リクエスト単位でメモ化 — 1 クエリ）。 */
 const permissionSetFor = cache(

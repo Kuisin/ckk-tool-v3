@@ -46,7 +46,7 @@ import {
   DuplicateProductModal,
   ToggleProductActiveModal,
 } from "./ProductModals";
-import { ProductRoutesPanel } from "./ProductRoutesPanel";
+import { ProductRoutesPanel, productRouteLinks } from "./ProductRoutesPanel";
 
 const BASE_PATH = "/master/products";
 
@@ -265,7 +265,10 @@ export function ProductDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="routes">
-          <ProductRoutesPanel productId={record.id} routes={routes} />
+          <ProductRoutesPanel
+            links={productRouteLinks(record.id)}
+            routes={routes}
+          />
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="related">

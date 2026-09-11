@@ -45,7 +45,7 @@ If your manager returns it, it becomes "**差し戻し**" (sent back). If you wi
 
 When you open the app, you see a list of the purchase requests made so far.
 
-![Purchase request list](../../../assets/screenshots/purchase-request-list-01.png)
+![Purchase request list](../../../assets/screenshots/purchase-request-list-01.en.png)
 
 - **依頼番号** (request number) … a number starting with `PRQ-`. The system adds it for you.
 - **状態** (status) … a coloured badge shows the current situation. Grey is 「下書き」 (draft), yellow is 「承認依頼中」 (pending approval), blue is 「承認済」 (approved), purple is 「発注済」 (ordered), and red is 「差し戻し」 (sent back) or 「キャンセル」 (cancelled).

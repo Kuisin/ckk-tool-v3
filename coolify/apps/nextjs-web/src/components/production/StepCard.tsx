@@ -193,7 +193,9 @@ export function StepCard({
               ))}
               {step.assignees.length > MAX_SHOWN_ASSIGNEES && (
                 <Text c="dimmed" size="xs">
-                  ほか {step.assignees.length - MAX_SHOWN_ASSIGNEES} 名
+                  {tr("production.stepCard.othersCount", {
+                    count: step.assignees.length - MAX_SHOWN_ASSIGNEES,
+                  })}
                 </Text>
               )}
             </Group>
@@ -215,7 +217,7 @@ export function StepCard({
           )}
           {step.lotText != null && (
             <Text c="dimmed" ff="mono" size="xs">
-              ロット {step.lotText}
+              {tr("production.stepCard.lot", { lot: step.lotText })}
             </Text>
           )}
         </Group>
@@ -224,10 +226,14 @@ export function StepCard({
       {isOutsource && (
         <Group gap="xl" mt="xs" pl={28}>
           <Text c="dimmed" size="xs">
-            依頼: {fmt.date(step.outsourceRequestedAt)}
+            {tr("production.stepCard.requestedOn", {
+              date: fmt.date(step.outsourceRequestedAt),
+            })}
           </Text>
           <Text c="dimmed" size="xs">
-            入荷予定: {fmt.date(step.outsourceExpectedAt)}
+            {tr("production.stepCard.expectedOn", {
+              date: fmt.date(step.outsourceExpectedAt),
+            })}
           </Text>
         </Group>
       )}
@@ -235,8 +241,14 @@ export function StepCard({
       {step.status === "COMPLETED" && (
         <Group gap="xl" mt="xs" pl={28}>
           <Text c="dimmed" size="xs">
-            完了: {fmt.dateTime(step.completedAt)}
-            {step.completedByName ? `（${step.completedByName}）` : ""}
+            {step.completedByName
+              ? tr("production.stepCard.completedOnBy", {
+                  date: fmt.dateTime(step.completedAt),
+                  name: step.completedByName,
+                })
+              : tr("production.stepCard.completedOn", {
+                  date: fmt.dateTime(step.completedAt),
+                })}
           </Text>
         </Group>
       )}
@@ -244,7 +256,10 @@ export function StepCard({
       {(step.planCount > 0 || step.actualCount > 0) && (
         <Group gap="sm" mt="xs" pl={28}>
           <Text c="dimmed" size="xs">
-            計画 {step.planCount} 件 / 実績 {step.actualCount} 件
+            {tr("production.stepCard.planActualCount", {
+              plans: step.planCount,
+              actuals: step.actualCount,
+            })}
           </Text>
         </Group>
       )}
@@ -253,7 +268,9 @@ export function StepCard({
         (step.quantityTracking === "NONE" ? (
           <Group gap="sm" mt="xs" pl={28} wrap="wrap">
             <Text c="dimmed" size="xs">
-              通過 {step.inputQuantity}（数量記録なし）
+              {tr("production.stepCard.passThrough", {
+                count: step.inputQuantity ?? 0,
+              })}
             </Text>
           </Group>
         ) : (
@@ -274,17 +291,23 @@ export function StepCard({
             )}
             {(step.outputDefectSemiFinished ?? 0) > 0 && (
               <Badge color="orange" size="xs" variant="light">
-                半製品 {step.outputDefectSemiFinished}
+                {tr("production.stepCard.semiFinished", {
+                  count: step.outputDefectSemiFinished ?? 0,
+                })}
               </Badge>
             )}
             {(step.outputDefectScrap ?? 0) > 0 && (
               <Badge color="red" size="xs" variant="light">
-                廃棄 {step.outputDefectScrap}
+                {tr("production.stepCard.scrapped", {
+                  count: step.outputDefectScrap ?? 0,
+                })}
               </Badge>
             )}
             {(step.outputDefectRework ?? 0) > 0 && (
               <Badge color="yellow" size="xs" variant="light">
-                工程分岐 {step.outputDefectRework}
+                {tr("production.stepCard.processBranch", {
+                  count: step.outputDefectRework ?? 0,
+                })}
               </Badge>
             )}
           </Group>

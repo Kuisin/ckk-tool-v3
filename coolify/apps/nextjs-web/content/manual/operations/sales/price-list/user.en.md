@@ -71,7 +71,7 @@ When you enter a multiplier, the amount appears on the spot in「**自動計算�
 
 The price list screen has five tabs.
 
-![Price list detail screen](../../../assets/screenshots/price-list-detail-01.png)
+![Price list detail screen](../../../assets/screenshots/price-list-detail-01.en.png)
 
 - **価格設定 (price settings)** … the base unit price, the valid period, and the price per quantity, for each order type.
 - **値引き設定 (discount settings)** … the list of discount rules.

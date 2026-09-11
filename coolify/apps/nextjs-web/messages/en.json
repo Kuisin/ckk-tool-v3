@@ -802,7 +802,9 @@
     "finalInspection": "Final inspection",
     "noPriceListTier": "No quantity tier",
     "priceListInactive": "Price list disabled",
-    "priceListExpired": "Price list out of valid period"
+    "priceListExpired": "Price list out of valid period",
+    "dateFrom": "From date",
+    "dateTo": "To date"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -866,6 +868,7 @@
     "clearFilter": "Clear filter",
     "guest": "Guest",
     "homeSettingsForm": {
+      "selectApps": "Select apps",
       "enterAGroupName": "Enter a group name",
       "theHomeLayoutWasUpdated": "The home layout was updated",
       "homeLayout": "Home layout",
@@ -1173,6 +1176,28 @@
       "PREVIEW": "Preview",
       "BLUEPRINT": "Drawing file",
       "REFERENCE": "Reference"
+    },
+    "STEP_EXECUTION_LABEL": {
+      "INTERNAL": "In-house",
+      "OUTSOURCE": "Outsourced"
+    },
+    "FORM_KIND_LABEL": {
+      "SURVEY": "Survey",
+      "REQUEST": "Request or report"
+    },
+    "USER_CHANGE_KIND_LABEL": {
+      "SUSPEND": "Suspend",
+      "RESTORE": "Restore",
+      "UPDATE_PLANTS": "Change assigned sites",
+      "UPDATE_ROLES": "Change role assignment"
+    },
+    "DELIVERY_BILLING_PRICE_MODE_LABEL": {
+      "ORIGINAL": "Order unit price",
+      "PRICE_LIST": "Re-resolve from price list"
+    },
+    "DELIVERY_TOLERANCE_BASIS_LABEL": {
+      "PERCENT": "Percent (%)",
+      "QUANTITY": "Quantity"
     }
   },
   "status": {
@@ -1646,6 +1671,10 @@
       "portal_admin": {
         "label": "Partner portal administration",
         "summary": "Manage the accounts external partners use to view their own documents, and the per-document links. Activating an account, issuing backup codes and minting link-only URLs each need approval."
+      },
+      "api_client": {
+        "label": "API client administration",
+        "summary": "Manage the credentials external systems use to read business data programmatically. Issuing a token and activating a client each need approval. What a client can read is decided by the roles assigned to it."
       }
     },
     "PERMISSION_GROUP_LABEL": {
@@ -1677,7 +1706,8 @@
       "kiosk_device": "Shared device enrolment",
       "portal_admin": "Partner portal administration",
       "kiosk_card": "Shared device card issuance",
-      "personal_data": "Personal data access"
+      "personal_data": "Personal data access",
+      "api_client": "API client administration"
     },
     "PRIVILEGED_OPERATIONS": {
       "kiosk_secret": {
@@ -1800,6 +1830,16 @@
         "mint_link_only": {
           "label": "Mint a link-only URL",
           "description": "Creates a document URL anyone holding it can open. Verified links are not gated."
+        }
+      },
+      "api_client": {
+        "issue_token": {
+          "label": "Issue an API token",
+          "description": "Mint the key an external system uses to read business data. The minted value is the credential itself, and it carries whatever the assigned roles allow"
+        },
+        "activate": {
+          "label": "Activate an API client",
+          "description": "Turn a client that passes nothing into one that can actually read business data"
         }
       }
     },
@@ -2023,6 +2063,7 @@
       "markPaidFailed": "Could not mark as paid"
     },
     "closingActions": {
+      "closingDateNotReached": "Cannot process until the closing date has passed (from the day after)",
       "closingNotFound": "The billing closing was not found",
       "generateInvoiceFailed": "Could not generate the invoice",
       "invalidYearMonth": "Invalid target month format (YYYYMM)",
@@ -2403,7 +2444,11 @@
       "openDeliveryOrderFormForThisLot": "Opens the delivery order form for the {quantity} piece(s) not shipped yet. Other lines of the same order acceptance can be added too.",
       "deliveryOrderNeedsCompletedWorkOrder": "You can create it only from a completed work order",
       "deliveryOrderNeedsOrderLine": "You cannot create it from a work order with no order line",
-      "deliveryOrderAlreadyArranged": "Every order line of this work order is already arranged for shipping"
+      "deliveryOrderAlreadyArranged": "Every order line of this work order is already arranged for shipping",
+      "prepRoute": "Preparation step list",
+      "manufacturingRoute": "Manufacturing step list",
+      "newerVersionExists": "Newer v{version} exists",
+      "varianceAllowedBadge": "Allowed"
     },
     "addBranchModal": {
       "theBranchWasAdded": "The branch was added",
@@ -2452,7 +2497,16 @@
       "startedOn": "Started {date}",
       "stepNumberApproval": "Approval step {step}",
       "stockStorageNote": " (stock storage)",
-      "workOrderSubject": "Work order #{number}"
+      "workOrderSubject": "Work order #{number}",
+      "plansMissingForSteps": "Work plans are incomplete: {steps}",
+      "stepMissingLocation": "{name} (no work location)",
+      "stepMissingFields": "{name} (missing {fields})",
+      "planField": {
+        "WORK_LOCATION": "work location",
+        "TIME": "time",
+        "QUANTITY": "quantity",
+        "ASSIGNEE": "Assignee"
+      }
     },
     "defectRecordForm": {
       "enterTheDefectTypeAndDetails": "Enter the defect type and details for each row",
@@ -2530,6 +2584,17 @@
       "site": "Site"
     },
     "stepCard": {
+      "othersCount": "and {count} more",
+      "lot": "Lot {lot}",
+      "requestedOn": "Requested: {date}",
+      "expectedOn": "Expected: {date}",
+      "completedOn": "Completed: {date}",
+      "completedOnBy": "Completed: {date} ({name})",
+      "planActualCount": "Planned {plans} / Actual {actuals}",
+      "passThrough": "Passed through {count} (no quantity record)",
+      "semiFinished": "Semi-finished {count}",
+      "scrapped": "Scrapped {count}",
+      "processBranch": "Process branch {count}",
       "stepMenu": "Step menu",
       "addABranch": "Add a branch",
       "assignedTo": "Assigned to",
@@ -2556,11 +2621,16 @@
       "quantityOptional": "Quantity (optional)",
       "workLocationOptional": "Work location (optional)",
       "machineArea": "Machine / area",
-      "youCanSplitThePlanBy": "You can split the plan by assignee and date (or time). A work location (machine or area) is optional.",
+      "youCanSplitThePlanBy": "Plans can be split by assignee and date (or time). Requesting approval needs a plan with a date and work location for every in-house step, so enter them while the work order is still a draft (whether a location is required is set per step in the process-step master).",
       "workPlan": "Work plan",
       "recordsTheWorkDonePerAssignee": "Records the work done per assignee and date (addable only while in progress). Actuals from a shared device carry that device's default work location.",
       "workActuals": "Work actuals",
-      "workLocation": "Work location"
+      "workLocation": "Work location",
+      "selectAWorkLocation": "Select a work location",
+      "start": "Start",
+      "end": "End",
+      "enterStartAndEnd": "Enter the start and end times",
+      "enterQuantity": "Enter the quantity"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "Quantity and defects",
@@ -2620,7 +2690,8 @@
       "deleteBranchSeriesConfirm": "Branch series ({steps}) will be deleted. This cannot be undone.",
       "deletedNSteps": "Deleted {count} step(s)",
       "hideTheFlowDiagram": "Hide the flow diagram",
-      "openTheStepExecutionView": "Open the step execution view"
+      "openTheStepExecutionView": "Open the step execution view",
+      "plannedDeliveryWithDate": "Planned delivery {date}"
     },
     "workflowGraphCanvas": {
       "workflowDiagramBranchesAndMerges": "Workflow diagram (branches and merges)",
@@ -2656,6 +2727,8 @@
       "deleteTheDrawing": "Delete the drawing"
     },
     "inventory": {
+      "reservationsCount": "Reservations ({count})",
+      "transactionsCount": "Transactions ({count})",
       "thereIsNoTransactionHistory": "There is no transaction history",
       "couldNotTransferTheStock": "Could not transfer the stock",
       "theStockWasTransferred": "The stock was transferred",
@@ -2706,6 +2779,16 @@
       "thereAreNoWorkOrdersIn": "There are no work orders in progress"
     },
     "stepExecution": {
+      "workOrderLabel": "Work order {number}",
+      "executionSite": "Execution site: {site}",
+      "plannedQuantity": "Planned quantity: {count}",
+      "plannedWorkHours": "Planned work hours: {hours} h",
+      "startedOn": "Started: {date}",
+      "startedOnBy": "Started: {date} ({name})",
+      "completedOn": "Completed: {date}",
+      "completedOnBy": "Completed: {date} ({name})",
+      "lockedByUser": "{name} is working on this step. It cannot be operated until it is completed or aborted.",
+      "completesWithoutQuantity": "This step completes without a quantity record (passed through {count})",
       "theStepWasStarted": "The step was started",
       "couldNotStartTheStep": "Could not start the step",
       "theLotSlipCodeWasSaved": "The lot / slip code was saved",
@@ -2756,9 +2839,33 @@
       "ifNotPinnedWithLabel": "If not pinned: {label}",
       "dedicatedToCustomerWithName": "Dedicated to {name}",
       "thisCustomer": "This customer",
-      "stepFallbackWithId": "Step #{id}"
+      "stepFallbackWithId": "Step #{id}",
+      "prepRouteHelp": "The order of issue/hand-off and material prep steps (shared by every product). A work order always uses the latest version; the version cannot be chosen per work order. To change the order, create a new version under Process steps › Preparation step lists.",
+      "noPrepRouteRegistered": "No preparation step list is registered (create one under process steps)",
+      "showOtherCustomers": "Also show other customers' step lists for this product",
+      "showOtherCustomersHelp": "By default only this customer's and generic lists are shown. Select another customer's list to copy it to this customer.",
+      "otherCustomerRouteSelected": "This step list is dedicated to \"{customer}\". Copy it to this customer before using it.",
+      "copyToThisCustomer": "Copy to {name}",
+      "routeCopiedToCustomer": "Copied step list \"{name}\" to this customer (v1)",
+      "routeModifiedNewVersion": "The steps differ from the selected version of \"{name}\" — they will be saved as new version v{version}",
+      "workPlanHelp": "Assign a person, date and work location per step. Requesting approval requires every in-house step to have a plan with a date and work location (times are optional; add them later in the plan panel).",
+      "planNeedsWorkLocation": "Select a work location: {steps}",
+      "allowQuantityVariance": "Allow delivering short or excess quantity",
+      "allowQuantityVarianceHelp": "Lets this lot ship even when it does not match the ordered quantity. How far it may differ, and whether that needs approval, is set on the business partner.",
+      "workLocationRequiredPlaceholder": "Work location (required)",
+      "timeQuantityInPanelLater": "This step's plan also needs times / quantity — add them in the step's plan panel after creating the work order",
+      "assigneeRequiredPlaceholder": "Assignee (required)",
+      "planNeedsAssignee": "These steps require an assignee: {steps}",
+      "prepRouteUsesLatest": "Uses the latest, v{version} ({date})",
+      "prepStepsReadOnly": "Preparation steps come from the shared preparation step list and cannot be edited here — only manufacturing steps are edited",
+      "editPrepRoutes": "Edit preparation step lists (process steps)",
+      "selectAPrepRoute": "Select a preparation step list"
     },
     "workOrderDetail": {
+      "allocatedOfOrdered": "Allocated {allocated} / Ordered {ordered}",
+      "version": "v{version}",
+      "versionLatest": "v{version} (latest)",
+      "newerVersionsExist": "Newer versions exist (#{numbers}). Consider copying the latest version.",
       "pinned": "Pinned",
       "workOrderWasCreatedWithDoc": "Work order {docNumber} was created",
       "cancelWorkOrderWithLabel": "Cancel work order {label}. This cannot be undone.",
@@ -2900,7 +3007,12 @@
       "auditInspectionSheetsSet": "Changed the step's inspection sheet assignment ({count})",
       "couldNotSaveInspectionSheets": "Could not save the inspection sheet assignment",
       "requestedAfterExpected": "The expected date must be on or after the request date",
-      "requestedAfterReceived": "The received date must be on or after the request date"
+      "requestedAfterReceived": "The received date must be on or after the request date",
+      "workLocationRequiredForPlan": "A work plan requires a work location",
+      "planLockedByWorkOrderStatus": "Work plans cannot be changed while the work order is pending approval, completed or cancelled",
+      "timeRequiredForPlan": "A work plan for this step requires start and end times",
+      "quantityRequiredForPlan": "A work plan for this step requires a quantity",
+      "assigneeRequiredForPlan": "This step's work plan requires an assignee"
     },
     "workOrderActions": {
       "acknowledgeFailed": "Could not record the acknowledgement",
@@ -2962,7 +3074,11 @@
       "allocationsMustShareProduct": "Order lines allocated to one work order must be the same product",
       "allocationExceedsRemaining": "The allocation to order line {number} exceeds the remaining balance (order quantity {lineQuantity} − already allocated {otherAllocated} = remaining {remaining})",
       "stockPlannedQuantityMustMatchAllocation": "For a from-stock work order, the planned quantity must match the allocated quantity",
-      "plannedQuantityBelowAllocationTotal": "The planned quantity is below the total allocation of {total} (you may add extra for defect margin, but it must be at least the total allocation)"
+      "plannedQuantityBelowAllocationTotal": "The planned quantity is below the total allocation of {total} (you may add extra for defect margin, but it must be at least the total allocation)",
+      "plansRequiredBeforeApproval": "Add a work plan (date + work location) before requesting approval: {steps}",
+      "copyRouteFailed": "Could not copy the step list",
+      "prepRouteRequired": "Select a preparation step list",
+      "prepRouteNotFound": "The selected preparation step list was not found or is disabled"
     },
     "designFileActions": {
       "cannotDelete": "Cannot delete",
@@ -3050,7 +3166,8 @@
       "multipleStart": "Only one \"issue/hand-off\" step can be selected (currently selected: {related})"
     },
     "productRoutes": {
-      "theSelectedProcessRouteIsNot": "The selected process route does not belong to this product"
+      "theSelectedProcessRouteIsNot": "The selected process route does not belong to this product",
+      "copiedFromVersionNote": "Copied from \"{name}\" v{version}"
     },
     "inspectionSheetPdf": {
       "equipmentLaser": "Laser",
@@ -3726,6 +3843,8 @@
       "importCsv": "Import CSV",
       "text": "Text",
       "number": "Number",
+      "keyCell": "Row {row}, key column {col}",
+      "valueCell": "Row {row}, value",
       "exactMatch": "Exact match",
       "geTakeTheSmallest": "≥ or more — takes the smallest (diameter × length)",
       "leTakeTheLargest": "≤ or less — takes the largest (LD/discount)",
@@ -4103,6 +4222,9 @@
       "ipAddress": "IP address"
     },
     "privileged": {
+      "approveTab": "Approve",
+      "approveTabWithCount": "Approve ({count})",
+      "reasonLabel": "Reason: {reason}",
       "pendingApproval": "(pending approval)",
       "theClockStartsFromTheFirst": "The clock starts from the first use.",
       "theseOperationsNeedApproval": "These operations need approval.",
@@ -4228,6 +4350,11 @@
       "screenNumber": "Screen {n}"
     },
     "kioskFloorMapView": {
+      "unnamed": "(not set)",
+      "inUseBy": "In use: {name}",
+      "deviceCount": "{count} devices",
+      "thisFloor": "This floor ({count})",
+      "otherDevices": "Other devices ({count})",
       "thisSiteHasNoFloorMaps": "This site has no floor maps.",
       "deleteFloorNameCannotIfDevices": "This deletes the floor \"{name}\". It cannot be deleted if devices are placed on it.",
       "floorMapName": "Floor map: {name}",
@@ -4591,7 +4718,8 @@
     },
     "kioskSettings": {
       "stepExecution": "Step execution",
-      "workOrderScan": "Work order scan"
+      "workOrderScan": "Work order scan",
+      "workLocationBoard": "Work location steps"
     },
     "portalGuide": {
       "guide": "Guide",
@@ -4925,7 +5053,21 @@
       "enterFullName": "Enter a full name",
       "roleInfoRequired": "Enter information for {role}",
       "selectASalesRep": "Select a sales rep",
-      "billToOwnCompany": "— (own company)"
+      "billToOwnCompany": "— (own company)",
+      "deliveryTolerance": "Delivery quantity variance",
+      "deliveryToleranceHelp": "How far the delivered quantity may differ from the ordered quantity, and whether that needs approval. Shipping with a variance also requires the work order to allow it.",
+      "toleranceBasis": "Tolerance basis",
+      "toleranceUnder": "Under-delivery tolerance",
+      "toleranceOver": "Over-delivery tolerance",
+      "toleranceBlankIsZero": "Blank means not allowed",
+      "toleranceNotAllowed": "Not allowed",
+      "tolerancePcs": "{value} pcs",
+      "toleranceUnderPercentMax": "With a percent basis, the under-delivery tolerance must be 100 or less",
+      "varianceApprovalWithin": "Require approval within tolerance",
+      "varianceApprovalWithinHelp": "Route the delivery order through approval before confirming, even when the variance is within tolerance.",
+      "varianceApprovalOutside": "Require approval outside tolerance",
+      "varianceApprovalOutsideHelp": "Unchecking lets a variance outside the tolerance through without any approval, which makes the tolerance meaningless. Normally leave it on.",
+      "approvalNotRequired": "Not required"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "The defect type was created",
@@ -4946,6 +5088,8 @@
       "sortOrderValue": "Sort order {value}"
     },
     "inspectionTemplates": {
+      "version": "v{version}",
+      "versionLatest": "v{version} (latest)",
       "theTargetCanBeAnApproval": "The target can be an approval group, or approvers just for this sheet (custom, several allowed). Unset = anyone can accept",
       "changeTheInspectionApprovalRecipient": "Change the inspection approval recipient",
       "blankSheet": "Blank sheet",
@@ -5260,7 +5404,28 @@
       "stepUpdated": "Step updated",
       "finalInspectionStep": "Final inspection step",
       "theFinalInspectionChecklistIsRecorded": "The final inspection and pre-shipment checks (3 checks, spare stock, packing → delivery note → shipping approval) are recorded on this step's execution screen. There is one record per work order, and a work order whose step list has no flagged step has no final inspection.",
-      "approvalStepsHaveNoQuantity": "An inspection approval step carries no quantity (quantity tracking is set to none). It approves the inspection sheet of an earlier step rather than working on the pieces."
+      "approvalStepsHaveNoQuantity": "An inspection approval step carries no quantity (quantity tracking is set to none). It approves the inspection sheet of an earlier step rather than working on the pieces.",
+      "workLocationRequired": "Work plan requires a work location",
+      "workLocationRequiredHelp": "Requires a work location on this step's work plan before approval can be requested. Turn it off for steps where a location is meaningless (e.g. stock moves). Which locations may be used is set under \"Allowed work locations\" below.",
+      "planRequiredFields": "Required work-plan fields",
+      "planRequiredFieldsHelp": "What this step's work plan must contain before requesting approval. The planned date is always required.",
+      "planTimeRequired": "Work plan requires start and end times",
+      "planTimeRequiredHelp": "Turn on for steps that must be scheduled to a time slot before approval.",
+      "planQuantityRequired": "Work plan requires a quantity",
+      "planQuantityRequiredHelp": "Turn on for steps whose plan is split by quantity (e.g. pieces per assignee).",
+      "planTime": "Start / end time",
+      "routeKind": "Step list",
+      "routeKindPrep": "Preparation",
+      "routeKindManufacturing": "Manufacturing",
+      "routeKindPrepHelp": "Steps in the material-prep category belong to the shared preparation step list (not to per-product manufacturing lists).",
+      "routeKindManufacturingHelp": "Steps in this category belong to per-product × customer manufacturing step lists.",
+      "planRequiredShort": "Plan requires",
+      "planFieldLocationShort": "Location",
+      "planFieldTimeShort": "Time",
+      "planFieldQuantityShort": "Qty",
+      "planAssigneeRequired": "Work plan requires an assignee",
+      "planAssigneeRequiredHelp": "Turn on for steps where the assignee must be decided before requesting approval. By default the assignee is optional and can be decided on the floor after approval.",
+      "planFieldAssigneeShort": "Assignee"
     },
     "products": {
       "specification": "Specification",
@@ -5415,6 +5580,8 @@
       "disableTitle": "Disable defect type"
     },
     "inspectionTemplateTable": {
+      "allVersions": "All {count}",
+      "itemCount": "{count} items",
       "bulkEnabled": "Enabled {count} inspection template(s)",
       "bulkDisabled": "Disabled {count} inspection template(s)",
       "bulkDeleteConfirm": "This deletes the {count} selected inspection template(s). This cannot be undone.",
@@ -5605,7 +5772,9 @@
     },
     "routeEditorForm": {
       "newRouteBreadcrumb": "New process route",
-      "newVersionTitle": "New version of process route \"{name}\" (v{version})"
+      "newVersionTitle": "New version of process route \"{name}\" (v{version})",
+      "prepStepsMovedToPrepRoute": "{count} preparation step(s) in the latest version have moved to the preparation step list and are not included in this version.",
+      "inactiveStepsExcluded": "{count} step(s) in the latest version are no longer active and were excluded"
     },
     "branchDetail": {
       "deleteConfirmMessage": "This deletes branch \"{name} ({code})\". This cannot be undone.",
@@ -5778,7 +5947,7 @@
       "floorMapPlantMismatch": "The floor map does not match the selected site",
       "createFailed": "Could not create the storage location",
       "locationNotFound": "Storage location not found",
-      "locationHasInventoryRefs": "Cannot delete because inventory still references this storage location (empty it with a stock transfer, or disable it instead)",
+      "locationHasInventoryRefs": "Cannot delete because data references this storage location (stock, work orders) — empty it with a stock transfer, or disable it instead",
       "updateFailed": "Could not update the storage location",
       "deleteFailed": "Could not delete the storage location",
       "floorMapLocationMismatch": "The floor map does not match the storage location's site",
@@ -5816,7 +5985,7 @@
       "updateFailed": "Could not update the business partner"
     },
     "materialTypeActions": {
-      "cannotDeleteInUse": "Cannot delete because materials reference this material type. Consider disabling it instead.",
+      "cannotDeleteInUse": "Cannot delete because data references this material type (materials, products, price estimates, default prices). Consider disabling it instead.",
       "createFailed": "Could not create the material type",
       "deleteFailed": "Could not delete the material type",
       "duplicateDiameterFinishRow": "Duplicate rows for the same diameter × surface finish",
@@ -5900,7 +6069,9 @@
       "enterNumberForField": "Condition {no}: enter a numeric value for {label}",
       "selectValueForField": "Condition {no}: select a value for {label}",
       "numberConditionSummary": "{label} {op} {value}",
-      "selectConditionSummary": "{label} {op} \"{value}\""
+      "selectConditionSummary": "{label} {op} \"{value}\"",
+      "deliveryTotalQuantity": "Total shipped quantity",
+      "fromPlant": "From site"
     },
     "inspectionTemplateExcel": {
       "sheetName": "Inspection sheet"
@@ -5912,6 +6083,13 @@
       "bothStartAndEndRequired": "A time-limited member requires both a start and end date/time",
       "invalidDateTimeFormat": "The date/time format is invalid",
       "endMustBeAfterStart": "The end date/time must be after the start"
+    },
+    "prepRoutes": {
+      "title": "Preparation step lists",
+      "newPrepRoute": "New preparation step list",
+      "intro": "The issue/handoff and material-prep steps (cutting, centerless, length adjustment, chamfer). Shared across products and customers; a work order combines a preparation list with the product's manufacturing list.",
+      "empty": "No preparation step list is registered",
+      "editorHelp": "Only preparation steps are offered. Exactly one start step (issue/handoff) is required. Dependencies on manufacturing steps are checked when a work order combines the two lists."
     }
   },
   "manual": {
@@ -6008,8 +6186,8 @@
   },
   "admin": {
     "activityLog": {
-      "searchByRecordUserOrContents": "Search by record, user or contents",
-      "thereIsNoActivity": "There is no activity"
+      "thereIsNoActivity": "There is no activity",
+      "searchByRecordOrUser": "Search by record or user"
     },
     "activityLogDetail": {
       "openApplabel": "Open {appLabel}",
@@ -6023,7 +6201,8 @@
       "suffixStorageLocation": " (storage location)",
       "suffixFloorMap": " (map)",
       "suffixDisplay": " (display)",
-      "formResponsesLabel": "Form responses"
+      "formResponsesLabel": "Form responses",
+      "actionWithRaw": "{label} ({raw})"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "{label} was set to {v2} in {env}",
@@ -6516,6 +6695,8 @@
       "theConditionIsNotSavedUntil": "The condition is not saved until you pick at least one value (everything stays visible)"
     },
     "shareGrantsPanel": {
+      "notifyOnComplete": "Notify when completed",
+      "recipientN": "Recipient {n}",
       "companyWideEveryoneWhoCanLog": "Company-wide (everyone who can log in)",
       "theSharingSettingsWereSaved": "The sharing settings were saved",
       "selectARole": "Select a role",
@@ -6679,6 +6860,10 @@
       "stopsPushNotificationsToDevice": "This stops push notifications to \"{device}\"."
     },
     "profileView": {
+      "registeredOn": "Registered: {date}",
+      "change": "Change",
+      "removeDeviceTitle": "Release notification device",
+      "removeDeviceMessage": "Push notifications to this device will stop. To receive them again, enable notifications on the device again.",
       "theProfilePhotoWasUpdated": "The profile photo was updated",
       "theProfilePhotoWasRemoved": "The profile photo was removed",
       "theEmailAddressWasUpdatedNotification": "The email address was updated (notification emails go there)",
@@ -6926,6 +7111,10 @@
       "thereAreNoOrderLinesThey": "There are no order lines (they are created when the order acceptance is confirmed)"
     },
     "priceLists": {
+      "copyDescription": "Copies every order type ({types}) of \"{product}\" to the destination. Set the destination's valid period (shared by all types).",
+      "selectACustomerError": "Select a customer",
+      "selectAProductError": "Select a product",
+      "endDateRequiredForTestSample": "An end date is required because test or sample types are included",
       "enterTheDestinationCustomerProductAnd": "Enter the destination customer, product and valid period (start and end)",
       "enterTheDestinationCustomerProductAnd2": "Enter the destination customer, product and start date",
       "thePriceListWasCopiedTo": "The price list was copied to another customer or product",
@@ -7573,7 +7762,20 @@
       "shipTogetherBody": "The same order acceptance has {count} line(s) not yet shipped. Choose which ones to put on this delivery order.",
       "unshippedWithLots": "Unshipped {quantity} / lots {lots}",
       "justThisWorkOrder": "Just this work order",
-      "addSelectedLines": "Add selected lines"
+      "addSelectedLines": "Add selected lines",
+      "varianceTitle": "Quantity variance",
+      "orderedQuantity": "Ordered",
+      "deliveredQuantity": "Delivered (total)",
+      "varianceQuantity": "Variance",
+      "tolerance": "Tolerance",
+      "withinTolerance": "Within",
+      "outsideTolerance": "Outside",
+      "varianceApproveHelp": "This shipment differs from the ordered quantity. Review it and either approve or send it back.",
+      "varianceWaitingHelp": "Waiting for approval because the shipment differs from the ordered quantity.",
+      "varianceRejected": "Sent back",
+      "varianceRejectedHelp": "Fix the contents and confirm it again.",
+      "confirmNeedsApprovalBody": "Delivery order {number} differs from the ordered quantity, so it needs approval before it can be confirmed. This sends an approval request.",
+      "approvalRequestedBody": "Requested approval for delivery order {number}. Confirm it again once it is approved."
     },
     "pendingShipments": {
       "completedLots": "Completed lots",
@@ -7607,7 +7809,22 @@
       "completedQuantityLabel": "Completed {quantity} (from {count} completed work orders)",
       "exceedsRemainingLabel": "Exceeds the remaining order of {remaining} (shipping {total})",
       "partialShipmentLabel": "Partial shipment (shipping {total} / remaining {remaining})",
-      "couldNotAddWorkOrderLines": "Could not load the order lines of work order #{workOrderNumber} (they may be unconfirmed or have no product)"
+      "couldNotAddWorkOrderLines": "Could not load the order lines of work order #{workOrderNumber} (they may be unconfirmed or have no product)",
+      "varianceSectionTitle": "Delivery quantity variance",
+      "varianceSectionHelp": "How to handle a shipment that differs from the ordered quantity. The tolerance and approval rules come from the business partner; whether a variance is allowed at all comes from the work order.",
+      "closesOrderLines": "Close the order lines with this shipment",
+      "closesOrderLinesHelp": "Declares that a shortage is final. Without it, the remainder is treated as a partial shipment to be sent later.",
+      "billingPriceMode": "Billing unit price",
+      "billingPriceModeHelp": "Use the unit price agreed at order time, or re-resolve it from the price list using the quantity actually delivered. The value is frozen into the delivery note and invoice when the delivery order is confirmed.",
+      "cannotCloseShort": "Cannot close short",
+      "cannotCloseShortLine": "{number} (ordered {ordered} / delivered {delivered})",
+      "cannotCloseShortLabel": "The work order does not allow a quantity variance",
+      "overDeliveryLabel": "Over-delivery (ordered {ordered} / delivered {delivered})",
+      "overDeliveryOutsideLabel": "Over-delivery outside tolerance (ordered {ordered} / delivered {delivered})",
+      "shortDeliveryLabel": "Short delivery (ordered {ordered} / delivered {delivered})",
+      "shortDeliveryOutsideLabel": "Short delivery outside tolerance (ordered {ordered} / delivered {delivered})",
+      "outOfToleranceLine": "{number}: outside the tolerance (ordered {ordered} / delivered {delivered})",
+      "outOfToleranceNeedsApproval": "Because it is outside the tolerance, approval may be required when you confirm the delivery order."
     },
     "deliveryNoteForm": {
       "editWithNumber": "Edit delivery note {noteId}"
@@ -7652,7 +7869,11 @@
       "updateFailed": "Could not update the delivery order",
       "autoCreatedNote": "Auto-created (issued) when the delivery order was confirmed",
       "orderLineNotShippable": "Order line {number} cannot be shipped (only confirmed, non-cancelled lines)",
-      "productMismatch": "Line {line}: the product does not match order line {number}"
+      "productMismatch": "Line {line}: the product does not match order line {number}",
+      "cannotCloseShortLine": "{number} cannot be closed short (ordered {ordered} / delivered {delivered}). Allow a quantity variance on the work order first",
+      "approvalRequestFailed": "Could not request approval",
+      "notPendingApproval": "It is not pending approval",
+      "awaitingApproval": "Waiting for approval. You can confirm it once it is approved"
     }
   },
   "ui": {
@@ -7686,11 +7907,19 @@
       "operationDetails": "Operation details",
       "thereAreNoDetails": "There are no details"
     },
+    "detailShell": {
+      "created": "Created: {value}",
+      "updated": "Updated: {value}"
+    },
     "dataTable": {
       "clearSelection": "Clear selection",
       "columns": "Columns",
       "selectAll": "Select all",
       "selectRows": "Select rows",
+      "firstPage": "First page",
+      "previousPage": "Previous page",
+      "nextPage": "Next page",
+      "lastPage": "Last page",
       "rowsToShow": "Rows to show",
       "noData": "No data",
       "selectedCount": "{count} selected",
@@ -7923,7 +8152,9 @@
     "cannotDeleteBranchWithStartedSteps": "Cannot delete a branch that includes a step that has already started",
     "auditBranchDeleted": "Deleted a branch ({count} steps)",
     "auditBranchUpdated": "Updated the branch (quantity {quantity}, {termination})",
-    "inspectionSheetsNotRecorded": "Some inspection sheets have no record yet ({sheets}). Save the inspection sheet before completing the step"
+    "inspectionSheetsNotRecorded": "Some inspection sheets have no record yet ({sheets}). Save the inspection sheet before completing the step",
+    "prepRouteOnlyPrepSteps": "A preparation step list may contain only preparation steps (issue/handoff and material prep)",
+    "manufacturingRouteNoPrepSteps": "A manufacturing step list cannot contain preparation steps (use a preparation step list)"
   },
   "aiKeywords": {
     "enterANameBeforeRunning": "Enter a name before running this",
@@ -8031,7 +8262,145 @@
       "fileName": "File name",
       "storageKey": "Storage key",
       "mimeType": "Type",
-      "locale": "Language"
+      "locale": "Language",
+      "admin": "Administrator",
+      "allocations": "Allocations",
+      "allowedLocationCount": "Allowed location count",
+      "allowedLocationIdCount": "Allowed location ID count",
+      "allowedLocationTypeKeys": "Allowed location types",
+      "app": "App",
+      "applied": "Applied",
+      "applyError": "Apply error",
+      "applyMode": "Apply mode",
+      "approvalMinRank": "Minimum approval rank",
+      "billingPeriodFrom": "Billing period start",
+      "billingPeriodTo": "Billing period end",
+      "boundEmail": "Bound email",
+      "bpId": "Business partner",
+      "bypass": "Bypass",
+      "bytes": "Size (bytes)",
+      "canWrite": "Can write",
+      "cancelReason": "Cancel reason",
+      "category": "Category",
+      "closeShortReason": "Short close reason",
+      "closesAt": "Closes at",
+      "closingDate": "Closing date",
+      "closingId": "Billing closing",
+      "conditions": "Conditions",
+      "contentType": "Content type",
+      "count": "Count",
+      "criteria": "Criteria",
+      "customerOrderRef": "Customer order ref.",
+      "customerProvidesDeliveryNote": "Customer provides delivery note",
+      "defaultWorkHours": "Default work hours",
+      "defaultWorkLocationId": "Default work location",
+      "definitions": "Definitions",
+      "deliveryMethod": "Delivery method",
+      "descriptionJa": "Description (Japanese)",
+      "designRequestId": "Design request",
+      "diameterCode": "Diameter code",
+      "disabledReason": "Disabled reason",
+      "disabledUntil": "Disabled until",
+      "discountRule": "Discount rule",
+      "discountRuleDeleted": "Discount rule deleted",
+      "discountType": "Discount type",
+      "displayName": "Display name",
+      "dueDate": "Due date",
+      "durationMinutes": "Duration (minutes)",
+      "email": "Email",
+      "estimateSources": "Estimate sources",
+      "execDependencyCount": "Execution dependency count",
+      "expiresAt": "Expires at",
+      "fingerprint": "Device signature",
+      "floorMapId": "Floor map",
+      "from": "From",
+      "gradeCode": "Grade code",
+      "grantId": "Approval grant",
+      "image": "Image",
+      "includePrice": "Include price",
+      "inspectionTemplateCount": "Inspection template count",
+      "invoiceNumber": "Invoice number",
+      "isApprovalStep": "Inspection approval step",
+      "isFinalInspection": "Final inspection step",
+      "isInspection": "Inspection step",
+      "isRequired": "Required",
+      "isSyncCapable": "Sync capable",
+      "itemCount": "Item count",
+      "items": "Items",
+      "kind": "Kind",
+      "kindCode": "Kind code",
+      "kindOverridden": "Kind overridden",
+      "location": "Location",
+      "lookupTables": "Lookup tables",
+      "lotInputMode": "Lot input mode",
+      "lotText": "Lot text",
+      "manufacturerCode": "Manufacturer code",
+      "manufacturerModel": "Manufacturer model",
+      "matchNames": "Match names",
+      "material": "Material",
+      "maxActiveSessions": "Max active sessions",
+      "maxUses": "Max uses",
+      "newVersion": "New version",
+      "nominalDiameterMm": "Nominal diameter",
+      "opensAt": "Opens at",
+      "operations": "Operations",
+      "orderDate": "Order date",
+      "orderLines": "Order lines",
+      "orderType": "Order type",
+      "orderTypes": "Order types",
+      "original": "Original value",
+      "pathPrefix": "Path prefix",
+      "planCount": "Plan count",
+      "plantIds": "Sites",
+      "priceListEntry": "Price list",
+      "priority": "Priority",
+      "product": "Product",
+      "purchaseDate": "Purchase date",
+      "purpose": "Purpose",
+      "quantityTracking": "Quantity tracking",
+      "reference": "Reference",
+      "refreshIntervalSec": "Refresh interval (sec)",
+      "rejectReason": "Reason for sending back",
+      "relatedProcessStepId": "Related process step",
+      "removedVariants": "Removed variants",
+      "requested": "Requested",
+      "resourceId": "Resource ID",
+      "resourceType": "Resource type",
+      "revoked": "Revoked",
+      "roles": "Roles",
+      "routeVersionId": "Process route version",
+      "rows": "Rows",
+      "scalePercent": "Scale (%)",
+      "shapeCode": "Shape code",
+      "shelves": "Shelves",
+      "shipmentNumbers": "Delivery order numbers",
+      "shippingWorkLocationId": "Shipping work location",
+      "source": "Source",
+      "sourceRequest": "Source request",
+      "stepCount": "Step count",
+      "steps": "Steps",
+      "storageLocationId": "Storage location",
+      "subject": "Subject",
+      "surfaceFinishCode": "Surface finish code",
+      "targetUser": "Target user",
+      "text": "Text",
+      "title": "Title",
+      "to": "To",
+      "toolType": "Tool type",
+      "toolTypes": "Tool types",
+      "trigger": "Trigger",
+      "type": "Type",
+      "typeKey": "Type key",
+      "types": "Types",
+      "useDependencyCount": "Use dependency count",
+      "user": "User",
+      "username": "Username",
+      "value": "Value",
+      "version": "Version",
+      "viewed": "Viewed",
+      "windowEndsAt": "Window ends at",
+      "windowStartsAt": "Window starts at",
+      "yayoiExportedAt": "Yayoi export date"
     },
     "tableFieldLabels": {
       "kiosk_devices": {
@@ -8139,7 +8508,40 @@
       "portal_grants": "Portal sharing scopes",
       "portal_document_links": "Portal document links",
       "portal_backup_codes": "Portal backup codes",
-      "system": "System"
+      "system": "System",
+      "approval_flow_rules": "Conditional approval rules",
+      "design_files": "Drawings",
+      "inspection_template_groups": "Inspection template groups",
+      "kiosk_unlock_pins": "Unlock PIN history",
+      "link_blacklist": "Link blacklist",
+      "login_attempts": "Login history",
+      "material_type_prices": "Material type default prices",
+      "privileged_access_requests": "Privileged access requests",
+      "product_process_routes": "Product process routes",
+      "regions": "Regions",
+      "system_settings": "System settings",
+      "user_change_requests": "User change requests",
+      "user_plants": "Assigned sites",
+      "user_role_relation": "Role assignments",
+      "users": "Users",
+      "api_clients": "API client",
+      "api_client_tokens": "API token"
+    },
+    "change": {
+      "pair": "{label}: {before} → {after}",
+      "more": "+{count} more"
+    },
+    "sentence": {
+      "create": "{actor} created {target} “{record}”",
+      "createNoRecord": "{actor} created a {target}",
+      "delete": "{actor} deleted {target} “{record}”",
+      "view": "{actor} viewed {target} “{record}”",
+      "export": "{actor} exported {target} “{record}”",
+      "updateNone": "{actor} updated {target} “{record}”",
+      "updateOne": "{actor} changed {field} on {target} “{record}” from {before} to {after}",
+      "updateMany": "{actor} changed {field} and {rest} more fields on {target} “{record}”",
+      "note": "{actor}: {note}",
+      "fallback": "{actor} performed {action} on {target} “{record}”"
     }
   },
   "inspectionTemplateIo": {
@@ -9423,5 +9825,30 @@
       "zoomIn": "Zoom in",
       "resetZoom": "Reset zoom"
     }
+  },
+  "apiClients": {
+    "title": "API clients",
+    "intro": "Credentials external systems use to read business data. What a client can read is decided by the roles assigned to it in user administration.",
+    "roles": "Roles",
+    "tokens": "Tokens",
+    "token": "Token",
+    "lastUsed": "Last used",
+    "neverUsed": "Never used",
+    "issueToken": "Issue token",
+    "revoke": "Revoke",
+    "revoked": "Revoked",
+    "empty": "Nothing registered yet",
+    "noRoles": "No roles",
+    "noRolesHint": "This client has no roles, so it can read nothing. Assign roles in user administration.",
+    "createTitle": "Create an API client",
+    "createHint": "A new client starts disabled and has no token. Activating it and issuing a token each need approval.",
+    "allowedCidrs": "Allowed IP ranges",
+    "allowedCidrsHelp": "Leave empty for no restriction. Comma-separated CIDRs.",
+    "issuedTitle": "Token issued",
+    "shownOnce": "This value will not be shown again. Copy it now.",
+    "tooManyActiveTokens": "At most two tokens can be active. Revoke one first.",
+    "clientNotFound": "That client was not found",
+    "featureDisabled": "The external API is disabled in this environment",
+    "invalidNameChars": "The name contains characters that are not allowed"
   }
 }

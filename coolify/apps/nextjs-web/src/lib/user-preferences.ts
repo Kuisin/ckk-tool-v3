@@ -78,7 +78,11 @@ export async function getServerLocale(): Promise<Locale> {
  */
 export async function saveCurrentPreferences(
   prefs: DisplayPreferences,
-): Promise<{ before: DisplayPreferences; after: DisplayPreferences } | null> {
+): Promise<{
+  userId: string;
+  before: DisplayPreferences;
+  after: DisplayPreferences;
+} | null> {
   const session = await auth();
   const username = (session?.user as { username?: string } | undefined)
     ?.username;
@@ -87,6 +91,7 @@ export async function saveCurrentPreferences(
   const current = await prisma.user.findUnique({
     where: { username },
     select: {
+      id: true,
       locale: true,
       dateFormat: true,
       timeFormat: true,
@@ -110,5 +115,9 @@ export async function saveCurrentPreferences(
       fontFamily: prefs.fontFamily,
     },
   });
-  return { before: normalizePreferences(current), after: prefs };
+  return {
+    userId: current.id,
+    before: normalizePreferences(current),
+    after: prefs,
+  };
 }

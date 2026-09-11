@@ -92,6 +92,9 @@ export async function POST(req: Request) {
           action: "UPDATE",
           tableName: "kiosk_devices",
           recordId: device.id,
+          // kiosk_devices の PK がそのまま recordId（uuid）なので、安定キーも
+          // 同じ値でよい。recordAudit() を経由しない直書きなので明示する。
+          recordKey: device.id,
           beforeData: { status: device.status },
           afterData: {
             status: "PENDING",

@@ -32,6 +32,7 @@ import {
   processExecutionLabel,
   quantityTrackingLabel,
 } from "@/lib/enum-labels";
+import { isPrepStep } from "@/lib/workflow-core";
 import {
   DeleteProcessStepModal,
   ToggleProcessStepActiveModal,
@@ -61,6 +62,10 @@ export interface ProcessStepDetailData {
   isInspection: boolean;
   isApprovalStep: boolean;
   isFinalInspection: boolean;
+  workLocationRequired: boolean;
+  planTimeRequired: boolean;
+  planAssigneeRequired: boolean;
+  planQuantityRequired: boolean;
   approvalMinRank: string | null;
   quantityTracking: string;
   lotInputMode: string;
@@ -265,6 +270,19 @@ export function ProcessStepDetail({
           }
         />
         <FieldValue
+          label={tr("master.processSteps.routeKind")}
+          value={
+            <Badge
+              color={isPrepStep(record) ? "teal" : "indigo"}
+              variant="light"
+            >
+              {isPrepStep(record)
+                ? tr("master.processSteps.routeKindPrep")
+                : tr("master.processSteps.routeKindManufacturing")}
+            </Badge>
+          }
+        />
+        <FieldValue
           label={tr("common.executionLocation")}
           value={
             processExecutionLabel(record.executionLocation, locale) ??
@@ -284,6 +302,20 @@ export function ProcessStepDetail({
             lotInputModeLabel(record.lotInputMode, locale) ??
             record.lotInputMode
           }
+        />
+        <FieldValue
+          label={tr("master.processSteps.planRequiredFields")}
+          value={[
+            ...(record.planAssigneeRequired ? [tr("common.assignee")] : []),
+            tr("common.date"),
+            ...(record.workLocationRequired
+              ? [tr("production.stepPlanActualPanel.workLocation")]
+              : []),
+            ...(record.planTimeRequired
+              ? [tr("master.processSteps.planTime")]
+              : []),
+            ...(record.planQuantityRequired ? [tr("common.quantity")] : []),
+          ].join(tr("common.s1"))}
         />
         <FieldValue
           label={tr("master.processSteps.defaultWorkHours")}

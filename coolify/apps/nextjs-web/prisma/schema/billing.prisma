@@ -52,7 +52,7 @@ model Invoice {
   salesRepId          String?   @map("sales_rep_id") @db.Uuid
   createdBy           String?   @map("created_by") @db.Uuid
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   salesRep         User?           @relation("InvoiceSalesRep", fields: [salesRepId], references: [id])
   customerBp       BusinessPartner @relation("InvoiceCustomer", fields: [customerBpId], references: [id])
@@ -65,6 +65,8 @@ model Invoice {
   @@id([yearMonth, seq])
   @@index([customerBpId])
   @@index([status])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, yearMonth, seq])
   @@map("invoices")
   @@schema("app")
 }
@@ -111,11 +113,16 @@ model BillingClosing {
   processedBy  String?   @map("processed_by") @db.Uuid
   notes        String?
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// 差分同期（/api/v1 の ?updatedSince=）の順序キー。DB 側のトリガーが維持する。
+  /// 行は PENDING → PROCESSED → EXPORTED と動くが created_at は動かないので、
+  /// これが無いと状態の変化が差分同期から見えなかった。
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   customerBp BusinessPartner @relation("ClosingCustomer", fields: [customerBpId], references: [id])
 
   @@unique([customerBpId, closingDate])
   @@index([status])
+  @@index([updatedAt, id])
   @@map("billing_closings")
   @@schema("app")
 }

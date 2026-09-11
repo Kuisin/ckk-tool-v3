@@ -20,6 +20,7 @@
 | ✕ | **DB に入るデータ** | マスタ名称（製品・素材・材種・拠点・工程・検査項目）、取引先名、ロール名、権限の表示名、工具種、不良種類、製品項目の値 |
 | ✕ | 識別子 | 書類番号・接頭辞（`QOT-` `ORD-` `PO-` `DRN-` `INV-` `WOR-` `EST-` `PRC-`）、操作コード、DB の enum 値、製品コード・素材コード |
 | ✕ | 固有名詞 | 社名・人名・製品名（弥生会計 / Gotenberg など）、`LD`（社内語） |
+| ✕ | **外部 API の誤り本文** | `/api/v1` が返す RFC 9457 の `type` / `title` / `code` / `detail`（`lib/api-problem-core.ts`）。機械向けの契約なので**英語で固定**し、next-intl を通さない —閲覧者ごとに変わる文字列を契約に混ぜない（`_specs/api.md` §4） |
 
 DB データは**訳す対象ではないが、入れ物の作り方は決めてある**（§2.10）。
 
@@ -337,6 +338,10 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 指示書 | Work order | 工单 | |
 | 工程 | Step | 工序 | 「工程ステップ」とは言わない。工程マスタ = Process steps / 工序主数据 |
 | 工程順 / 工程フロー | Step order / Workflow | 工序顺序 / 工序流程 | |
+| 工程リスト | Step list | 工序清单 | 製品工程ルート（product_process_routes）の画面語 |
+| 準備工程 / 製造工程 | Preparation step / Manufacturing step | 准备工序 / 制造工序 | 工程リストの 2 種別（§7）。準備 = 〇〇出し・受渡し + 材料準備 |
+| 準備工程リスト / 製造工程リスト | Preparation step list / Manufacturing step list | 准备工序清单 / 制造工序清单 | 前者は共通、後者は 製品 × 受注元 |
+| 予定納期 | Planned delivery | 预定交期 | 指示書の工程ワークフロー見出し。割当明細の納期のうち最も早いもの |
 | 分岐 / 合流 / 分岐系列 | Branch / Merge / Branch series | 分支 / 汇合 / 分支序列 | |
 | 依存関係 | Dependencies | 依赖关系 | |
 | 実施場所 | Execution location | 实施场所 | |
@@ -395,6 +400,9 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 請求期間 | Billing period | 请款期间 |
 | 締日処理 | Billing closing | 结算处理 |
 | 会計連携 | Accounting export | 会计对接 |
+| 過不足納品 | Delivery quantity variance | 交货数量差异 |
+| 許容の基準 / 許容範囲（過不足の） | Tolerance basis / Tolerance | 允许基准 / 允许范围 |
+| 請求単価 | Billing unit price | 请款单价 |
 
 ### 3.11 承認
 
@@ -627,6 +635,21 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | ストレート / テーパー | Straight / Taper | 直身 / 锥度 |
 | 仕上げ / 粗 | Finish / Rough | 精加工 / 粗加工 |
 | 検査成績書 | Inspection certificate | 检查成绩书 |
+
+### 3.21 外部 API（SY0I）
+
+| ja | en | zh |
+|---|---|---|
+| 外部 API | External API | 外部 API |
+| API クライアント | API client | API 客户端 |
+| トークン | Token | 令牌 |
+| トークンを発行 | Issue token | 签发令牌 |
+| 失効 / 失効する | Revoke | 撤销 |
+| 有効期限 | Expires | 有效期限 |
+| 許可 IP 範囲 | Allowed IP ranges | 允许的 IP 范围 |
+| 最終利用 | Last used | 最后使用 |
+| 未使用 | Never used | 未使用 |
+| このトークンは二度と表示されません | This token will not be shown again | 此令牌不会再次显示 |
 
 ---
 

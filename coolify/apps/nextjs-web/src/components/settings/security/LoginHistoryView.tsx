@@ -73,11 +73,15 @@ export function LoginHistoryView({
   const t = useTranslations("loginHistory");
   const [openId, setOpenId] = useState<string | null>(null);
 
-  const [days, setDays] = useUrlSelectState("days");
-  const [outcome, setOutcome] = useUrlSelectState("outcome");
-  const [app, setApp] = useUrlSelectState("app");
-  const [ownership, setOwnership] = useUrlSelectState("own");
-  const [ip, setIp] = useUrlStringState("ip");
+  // これらはサーバー側の絞り込み（page.tsx が searchParams を読んで
+  // listLoginAttempts に渡す）を動かすパラメータ — "server" モードで
+  // router.replace しないと URL だけ変わって RSC が再取得されず、
+  // フィルタを変えても表示が動かない（SY07 と同じ穴が実際にここにもあった）。
+  const [days, setDays] = useUrlSelectState("days", "server");
+  const [outcome, setOutcome] = useUrlSelectState("outcome", "server");
+  const [app, setApp] = useUrlSelectState("app", "server");
+  const [ownership, setOwnership] = useUrlSelectState("own", "server");
+  const [ip, setIp] = useUrlStringState("ip", "", "server");
 
   const reset = () => {
     setDays(null);
@@ -242,6 +246,7 @@ export function LoginHistoryView({
         filters={
           <>
             <Select
+              aria-label={tr("common.period")}
               data={DAY_OPTIONS}
               flex={isMobile ? 1 : undefined}
               onChange={setDays}
@@ -250,6 +255,7 @@ export function LoginHistoryView({
               w={isMobile ? undefined : 110}
             />
             <Select
+              aria-label={tr("settings.security.result")}
               clearable
               data={OUTCOME_OPTIONS}
               flex={isMobile ? 1 : undefined}
@@ -259,6 +265,7 @@ export function LoginHistoryView({
               w={isMobile ? undefined : 100}
             />
             <Select
+              aria-label={tr("common.apps")}
               clearable
               data={APP_OPTIONS}
               flex={isMobile ? 1 : undefined}
@@ -268,6 +275,7 @@ export function LoginHistoryView({
               w={isMobile ? undefined : 110}
             />
             <Select
+              aria-label={tr("common.deviceType")}
               clearable
               data={ownershipOptions(tr)}
               flex={isMobile ? 1 : undefined}
@@ -281,9 +289,10 @@ export function LoginHistoryView({
         onReset={reset}
         search={
           <TextInput
+            aria-label={tr("settings.security.iPCidrEG192168")}
             leftSection={<IconSearch size={14} />}
-            onChange={(e) => setIp(e.currentTarget.value)}
             // CIDR をそのまま受ける（サーバー側で inet の <<= に落とす）
+            onChange={(e) => setIp(e.currentTarget.value)}
             placeholder={tr("settings.security.iPCidrEG192168")}
             value={ip}
           />

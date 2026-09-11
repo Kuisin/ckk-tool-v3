@@ -115,7 +115,9 @@ export function UserMenu({
       <Popover.Target>
         <UnstyledButton
           aria-label={m.userMenu.title}
+          mih={44}
           onClick={() => setOpened((v) => !v)}
+          px="xs"
           style={{ minWidth: 0 }}
         >
           <Group gap="xs" wrap="nowrap">

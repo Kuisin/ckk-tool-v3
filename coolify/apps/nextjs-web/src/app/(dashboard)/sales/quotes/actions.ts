@@ -21,6 +21,7 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
+import { lineAmountYen, roundYen } from "@/lib/money";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
@@ -151,7 +152,11 @@ async function resolveItems(
       priceListTierId: r.tierId,
       discountAmount: r.discountAmount,
       discountLabel: r.discountLabel,
-      amount: Math.max(0, r.unitPrice * it.quantity - r.discountAmount),
+      // 円未満は明細の段階で丸める（請求書・CSV と同じ lib/money.ts）。
+      amount: Math.max(
+        0,
+        roundYen(lineAmountYen(r.unitPrice, it.quantity) - r.discountAmount),
+      ),
       deliveryDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
       notes: it.notes,
       sortOrder: i,
@@ -337,6 +342,12 @@ export async function issueQuote(
   const tr = await getTranslations();
   const key = parseDocKey(number, "QOT");
   if (!key) return actionError(tr("sales.quoteActions.invalidQuoteNumber"));
+  // 権限 → 入力検証の順（未認証の呼び出しに検証文言を返さない）。
+  const authz = await checkPermission("quote", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await quoteInScope(authz.access, authz.userId, key))) {
+    return actionError(tr("sales.quoteActions.scopeDenied"));
+  }
   if (validUntil == null || validUntil === "") {
     return actionError(tr("sales.quoteActions.validUntilRequired"));
   }
@@ -345,11 +356,6 @@ export async function issueQuote(
     return actionError(
       parsedValidUntil.error.issues[0]?.message ?? tr("common.invalidInput"),
     );
-  }
-  const authz = await checkPermission("quote", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
-  if (!(await quoteInScope(authz.access, authz.userId, key))) {
-    return actionError(tr("sales.quoteActions.scopeDenied"));
   }
   try {
     const updated = await prisma.quote.updateMany({

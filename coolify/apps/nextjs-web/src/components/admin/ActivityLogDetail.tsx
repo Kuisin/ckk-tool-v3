@@ -3,10 +3,11 @@
 /**
  * ActivityLogDetail — 操作履歴 (SY07) 詳細。
  *
- * 1 件の audit_logs を表示: 日時・操作・対象・レコード・ユーザー・変更要約に
- * 加え、関連ドキュメント/アプリへのジャンプ（lib/audit-links）と
- * 変更前後の生データ（before/after JSON）。ユーザーはユーザー管理 (SY01) の
- * 詳細ページへリンクする。
+ * リードに「誰が・何を・どうした」の 1 文（entry.summary）を出し、
+ * その下の SummaryGrid で日時・操作・対象・レコード・ユーザーを個別に見せる。
+ * 変更点は列名と値の表（AuditChangeTable）で、生データ（before/after JSON）は
+ * その中の折りたたみで見られる。関連ドキュメント/アプリへのジャンプは
+ * lib/audit-links、ユーザーはユーザー管理 (SY01) の詳細ページへリンクする。
  */
 
 import { Anchor, Badge, Group, Paper, Stack, Text } from "@mantine/core";
@@ -54,11 +55,18 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
       status={<Badge variant="light">{entry.action}</Badge>}
       title={tr("admin.activityLogDetail.activityId", { id: entry.id })}
     >
+      {/* 「誰が・何を・どうした」の 1 文をリードに出す。SummaryGrid の各項目は
+          この文の裏付け（日時・対象・レコード…）を個別に見るためのもの。 */}
+      <Text size="lg">{entry.summary}</Text>
+
       <SummaryGrid>
         <FieldValue label={tr("common.dateAndTime")} value={entry.at} />
         <FieldValue
           label={tr("common.actions")}
-          value={`${entry.action}（${entry.actionRaw}）`}
+          value={tr("admin.activityLogDetail.actionWithRaw", {
+            label: entry.action,
+            raw: entry.actionRaw,
+          })}
         />
         <FieldValue label={tr("common.target")} value={entry.tableLabel} />
         <FieldValue
@@ -108,13 +116,6 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
         />
       </SummaryGrid>
 
-      <Paper p="md" radius="md" withBorder>
-        <Text c="dimmed" fw={600} mb="xs" size="xs">
-          {tr("admin.activityLogDetail.whatChangedSummary")}
-        </Text>
-        <Text size="sm">{entry.detail}</Text>
-      </Paper>
-
       <Stack gap="md">
         {/* 何が変わったかを**列名と値で**出す。生の JSON だけだと、
             読む人が JSON を解読する作業になっていた。元データは
@@ -124,7 +125,7 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
             {tr("common.whatChanges")}
           </Text>
           <AuditChangeTable
-            action={entry.action}
+            actionRaw={entry.actionRaw}
             after={entry.afterData}
             before={entry.beforeData}
             tableName={entry.tableName}

@@ -8,6 +8,7 @@
  */
 
 import type { InspectionItemSpec } from "@/lib/inspection-core";
+import type { PlanField } from "@/lib/work-plan-core";
 import type { WorkOrderFinalInspectionView } from "../work-orders/model";
 
 export interface SelectOption {
@@ -87,8 +88,9 @@ export interface StepDefectReasonView {
 
 export interface StepPlanView {
   id: string;
-  userId: string;
-  userName: string;
+  /** 担当者（計画は任意 — 未割当は null。実績は常に入る）。 */
+  userId: string | null;
+  userName: string | null;
   /** YYYY-MM-DD（JST）。 */
   date: string;
   /** HH:mm（JST）— 時刻指定なしは null。 */
@@ -187,4 +189,9 @@ export interface StepExecutionData {
   actuals: StepActualView[];
   /** 作業場所の選択肢（計画フォーム用 —「グループ / 場所」ラベル）。 */
   workLocationOptions: SelectOption[];
+  /**
+   * この工程の作業計画で必須の項目（工程マスタの印 × 社内工程）。担当者と計画日は
+   * 常に必須なのでここには入らない。承認依頼のゲートと同じ関数で決めた写し。
+   */
+  requiredPlanFields: PlanField[];
 }

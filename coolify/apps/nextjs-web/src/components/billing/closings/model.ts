@@ -44,9 +44,58 @@ export interface BillingClosingDetail extends BillingClosing {
   shipments: ClosingShipmentRow[];
 }
 
-/** 請求書を生成できるか — 未処理（PENDING）のみ。 */
-export function isProcessable(c: Pick<BillingClosing, "status">) {
-  return c.status === "PENDING";
+/** 暦日（UTC 起点の Date）→ "YYYY-MM-DD"。 */
+function calendarIso(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * 請求書を生成できるか — 未処理（PENDING）で、かつ**締日を過ぎている**こと。
+ * `todayIso` は JST の暦日（"YYYY-MM-DD"）。
+ *
+ * 締日より前に処理すると、そこから締日までの出荷が窓 (前回締日, 今回締日] に
+ * 入ったまま請求されず、翌月の窓は締日の翌日から始まるので**永久に未請求**に
+ * なる。月初のオートランが当月の PENDING 行を作るので、「押せる」と「押して
+ * よい」は別 — ここで閉じる。
+ */
+export function isProcessable(
+  c: Pick<BillingClosing, "status" | "closingDate">,
+  todayIso: string,
+): boolean {
+  return c.status === "PENDING" && closingDateReached(c.closingDate, todayIso);
+}
+
+/** 締日を過ぎたか（締日の翌日以降）。closingDate は "YYYY-MM-DD" か Date。 */
+export function closingDateReached(
+  closingDate: string | Date,
+  todayIso: string,
+): boolean {
+  const iso =
+    typeof closingDate === "string"
+      ? closingDate.slice(0, 10)
+      : calendarIso(closingDate);
+  return todayIso > iso;
+}
+
+/**
+ * 請求期間の始点 = **前回処理した締日の翌日**。無ければ顧客の締日設定から計算。
+ *
+ * 締日設定（closingDay）から前回締日を逆算していると、設定を変えた月に
+ * 「旧締日の翌日〜新締日の前日」の出荷がどの窓にも入らない（20 日締 → 月末締に
+ * 変えると 21 日〜前月末が落ちる）。実際に処理した行から引けば途切れない。
+ */
+export function billingPeriodStartFrom(
+  closingDate: Date,
+  closingDay: number | null | undefined,
+  previousProcessedClosingDate: Date | null,
+): Date {
+  if (previousProcessedClosingDate)
+    return addDays(previousProcessedClosingDate, 1);
+  return billingPeriodStart(
+    closingDate.getUTCFullYear(),
+    closingDate.getUTCMonth() + 1,
+    closingDay,
+  );
 }
 
 // ── 対象月・締日の pure ヘルパー ─────────────────────────────────────────────

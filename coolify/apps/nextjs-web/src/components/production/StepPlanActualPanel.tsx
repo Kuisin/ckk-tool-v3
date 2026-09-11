@@ -4,8 +4,11 @@
  * StepPlanActualPanel — 工程の作業計画 / 実績 (§7 分割記録)。
  *
  * 1 工程に複数行の計画・実績を記録できる（担当者ごと・日付ごとの分割）。
- * 計画は日付のみ or 開始/終了時刻付き。実績も同形。担当者は従業員検索
- * （searchUserOptions）。計画は未完了の工程で、実績は進行中の工程で編集できる。
+ * 計画の必須項目は工程マスタが決め（lib/work-plan-core.ts requiredPlanFields）、
+ * 画面は**赤い必須印だけ**で示す —「（任意）」と書き添えない。印の無い欄が任意。
+ * 実績は起きたことの記録なので必須は 担当者・日付 だけ。
+ * 担当者は従業員検索（searchUserOptions）。計画は未完了の工程で、実績は
+ * 進行中の工程で編集できる。
  */
 
 import {
@@ -42,6 +45,7 @@ import type {
 } from "@/components/production/step-execution/model";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { SearchSelect } from "@/components/ui/SearchSelect";
+import type { PlanField } from "@/lib/work-plan-core";
 
 function RecordTable({
   rows,
@@ -91,7 +95,9 @@ function RecordTable({
         {rows.map((r) => (
           <Table.Tr key={r.id}>
             <Table.Td>
-              <Text size="sm">{r.userName}</Text>
+              <Text c={r.userName == null ? "dimmed" : undefined} size="sm">
+                {r.userName ?? tr("common.unassigned")}
+              </Text>
             </Table.Td>
             <Table.Td>
               <Text size="sm">{fmt.date(r.date)}</Text>
@@ -159,6 +165,7 @@ function RecordSection({
   stepId,
   suggestedQuantity,
   workLocationOptions = [],
+  requiredPlanFields = [],
 }: {
   kind: "plan" | "actual";
   title: string;
@@ -171,6 +178,11 @@ function RecordSection({
   suggestedQuantity: number | null;
   /** 作業場所の選択肢。 */
   workLocationOptions?: { value: string; label: string }[];
+  /**
+   * 計画で必須の項目（工程マスタの印 × 社内工程 — lib/work-plan-core.ts
+   * requiredPlanFields）。実績には効かない（実績は起きたことの記録）。
+   */
+  requiredPlanFields?: readonly PlanField[];
 }) {
   const tr = useTranslations();
   const router = useRouter();
@@ -183,9 +195,17 @@ function RecordSection({
   const [workLocationId, setWorkLocationId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const showLocation = workLocationOptions.length > 0;
+  // 必須印と入力チェックは同じ集合を見る — 承認依頼のゲートと同じ相手。
+  const req = (f: PlanField) =>
+    kind === "plan" && requiredPlanFields.includes(f);
+  const locationRequired = req("WORK_LOCATION") && showLocation;
+  const timeRequired = req("TIME");
+  const quantityRequired = req("QUANTITY");
+  // 担当者: 計画は工程マスタが要求したときだけ、実績は常に（誰がやったかの記録）。
+  const assigneeRequired = kind === "actual" || req("ASSIGNEE");
 
   const handleAdd = () => {
-    if (!userId) {
+    if (assigneeRequired && !userId) {
       notifications.show({
         title: tr("common.missingInput"),
         message: tr("production.stepPlanActualPanel.selectAnAssignee"),
@@ -197,6 +217,33 @@ function RecordSection({
       notifications.show({
         title: tr("common.missingInput"),
         message: tr("production.stepPlanActualPanel.selectADate"),
+        color: "red",
+      });
+      return;
+    }
+    // 作業計画は作業場所も必須（§7 — 承認前に「どこで」まで決める）。実績は
+    // 従来どおり任意。作業場所が 1 つも登録されていない環境では選びようが
+    // 無いので要求しない（サーバー側 addStepPlan と同じ）。
+    if (locationRequired && !workLocationId) {
+      notifications.show({
+        title: tr("common.missingInput"),
+        message: tr("production.stepPlanActualPanel.selectAWorkLocation"),
+        color: "red",
+      });
+      return;
+    }
+    if (timeRequired && (!startTime || !endTime)) {
+      notifications.show({
+        title: tr("common.missingInput"),
+        message: tr("production.stepPlanActualPanel.enterStartAndEnd"),
+        color: "red",
+      });
+      return;
+    }
+    if (quantityRequired && quantity === "") {
+      notifications.show({
+        title: tr("common.missingInput"),
+        message: tr("production.stepPlanActualPanel.enterQuantity"),
         color: "red",
       });
       return;
@@ -216,7 +263,8 @@ function RecordSection({
       const result =
         kind === "plan"
           ? await addStepPlan(payload)
-          : await addStepActual(payload);
+          : // 実績は上で担当者を確かめている（空は届かない。サーバーも弾く）
+            await addStepActual({ ...payload, userId: userId ?? "" });
       if (result.ok) {
         notifications.show({
           title: tr("common.added"),
@@ -290,6 +338,7 @@ function RecordSection({
                   placeholder={tr(
                     "production.stepPlanActualPanel.searchEmployees",
                   )}
+                  required={assigneeRequired}
                   storageKey={`step-${kind}-user`}
                   value={userId}
                 />
@@ -302,22 +351,25 @@ function RecordSection({
                 value={date}
                 valueFormat="YYYY/MM/DD"
                 w={150}
+                withAsterisk
               />
               <TimeInput
-                label={tr("production.stepPlanActualPanel.startOptional")}
+                label={tr("production.stepPlanActualPanel.start")}
                 onChange={(e) => setStartTime(e.currentTarget.value)}
                 value={startTime}
                 w={110}
+                withAsterisk={timeRequired}
               />
               <TimeInput
-                label={tr("production.stepPlanActualPanel.endOptional")}
+                label={tr("production.stepPlanActualPanel.end")}
                 onChange={(e) => setEndTime(e.currentTarget.value)}
                 value={endTime}
                 w={110}
+                withAsterisk={timeRequired}
               />
               <NumberInput
                 allowNegative={false}
-                label={tr("production.stepPlanActualPanel.quantityOptional")}
+                label={tr("common.quantity")}
                 min={1}
                 onChange={(v) => setQuantity(typeof v === "number" ? v : "")}
                 placeholder={
@@ -327,19 +379,19 @@ function RecordSection({
                 }
                 value={quantity}
                 w={120}
+                withAsterisk={quantityRequired}
               />
               {showLocation && (
                 <Select
-                  clearable
+                  clearable={!locationRequired}
                   data={workLocationOptions}
-                  label={tr(
-                    "production.stepPlanActualPanel.workLocationOptional",
-                  )}
+                  label={tr("production.stepPlanActualPanel.workLocation")}
                   onChange={setWorkLocationId}
                   placeholder={tr("production.stepPlanActualPanel.machineArea")}
                   searchable
                   value={workLocationId}
                   w={220}
+                  withAsterisk={locationRequired}
                 />
               )}
               <TextInput
@@ -368,25 +420,35 @@ export function StepPlanActualPanel({
   stepId,
   stepStatus,
   canOperate,
+  canEditPlans,
   plans,
   actuals,
   expectedInputQuantity,
   workLocationOptions,
+  requiredPlanFields = [],
 }: {
   workOrderNumber: number;
   stepId: string;
   stepStatus: string;
-  /** 指示書が実行可能 & 他ユーザーのロックなし。 */
+  /** 指示書が実行可能 & 他ユーザーのロックなし（実績の追加・削除）。 */
   canOperate: boolean;
+  /**
+   * 計画の追加・削除ができるか。下書きの指示書でも true — 作業計画は承認依頼の
+   * 条件なので、承認前に入れられなければならない。省略時は canOperate。
+   */
+  canEditPlans?: boolean;
   plans: StepPlanView[];
   actuals: StepActualView[];
   expectedInputQuantity: number | null;
   /** 作業場所の選択肢（計画・実績フォーム用）。 */
   workLocationOptions: { value: string; label: string }[];
+  /** 計画で必須の項目（工程マスタの印 × 社内工程）。 */
+  requiredPlanFields?: readonly PlanField[];
 }) {
   const tr = useTranslations();
   const planEditable =
-    canOperate && (stepStatus === "PENDING" || stepStatus === "IN_PROGRESS");
+    (canEditPlans ?? canOperate) &&
+    (stepStatus === "PENDING" || stepStatus === "IN_PROGRESS");
   const actualEditable = canOperate && stepStatus === "IN_PROGRESS";
 
   return (
@@ -395,6 +457,7 @@ export function StepPlanActualPanel({
         canEdit={planEditable}
         description={tr("production.stepPlanActualPanel.youCanSplitThePlanBy")}
         kind="plan"
+        requiredPlanFields={requiredPlanFields}
         rows={plans}
         stepId={stepId}
         suggestedQuantity={expectedInputQuantity}

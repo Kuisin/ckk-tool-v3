@@ -28,7 +28,7 @@ import {
   Text,
 } from "@mantine/core";
 import { IconArrowRight, IconChevronDown } from "@tabler/icons-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -37,10 +37,16 @@ import {
   flattenAuditValue,
   formatAuditValue,
 } from "@/lib/audit-field-labels";
+import type { Locale } from "@/lib/i18n";
 import { GhostButton } from "./buttons";
 
 type Props = {
-  action: string;
+  /**
+   * **生の** 操作種別（CREATE / UPDATE / DELETE / …）。翻訳済みラベルを
+   * 渡さないこと — ここは `=== "DELETE"` で分岐するので、翻訳された
+   * 「削除」を渡すと分岐が死ぬ（実際そうなっていた）。
+   */
+  actionRaw: string;
   before: unknown;
   after: unknown;
   /** 列名の読み替えを表ごとに変えるため（display_devices.name = ディスプレイ名 等）。 */
@@ -50,22 +56,25 @@ type Props = {
 };
 
 export function AuditChangeTable({
-  action,
+  actionRaw,
   before,
   after,
   tableName,
   emptyMessage: emptyMessageProp,
 }: Props) {
   const tr = useTranslations();
+  const locale = useLocale() as Locale;
   const emptyMessage = emptyMessageProp ?? tr("ui.auditChangeTable.noChanges");
   const [rawOpen, setRawOpen] = useState(false);
   const isMobile = useIsMobile();
-  const diffs = auditFieldDiffs(before, after, tableName);
+  const diffs = auditFieldDiffs(before, after, tableName, locale);
 
   // CREATE / DELETE は「変わった列」という見方ができない（片側しか無い）。
   // 中身をそのまま項目一覧として出す。
   const single =
-    diffs.length === 0 ? entriesOf(action === "DELETE" ? before : after) : null;
+    diffs.length === 0
+      ? entriesOf(actionRaw === "DELETE" ? before : after)
+      : null;
 
   return (
     <Stack gap="xs">
@@ -81,14 +90,14 @@ export function AuditChangeTable({
                   </Text>
                   <Group align="center" gap="xs" wrap="nowrap">
                     <Text c="dimmed" size="sm" style={{ minWidth: 0 }}>
-                      {formatAuditValue(d.before, d.key)}
+                      {formatAuditValue(d.before, d.key, { locale, tableName })}
                     </Text>
                     <IconArrowRight
                       size={14}
                       style={{ flexShrink: 0, opacity: 0.5 }}
                     />
                     <Text fw={500} size="sm" style={{ minWidth: 0 }}>
-                      {formatAuditValue(d.after, d.key)}
+                      {formatAuditValue(d.after, d.key, { locale, tableName })}
                     </Text>
                   </Group>
                 </Stack>
@@ -112,12 +121,12 @@ export function AuditChangeTable({
                   </Table.Td>
                   <Table.Td>
                     <Text c="dimmed" size="sm">
-                      {formatAuditValue(d.before, d.key)}
+                      {formatAuditValue(d.before, d.key, { locale, tableName })}
                     </Text>
                   </Table.Td>
                   <Table.Td>
                     <Text fw={500} size="sm">
-                      {formatAuditValue(d.after, d.key)}
+                      {formatAuditValue(d.after, d.key, { locale, tableName })}
                     </Text>
                   </Table.Td>
                 </Table.Tr>
@@ -133,9 +142,11 @@ export function AuditChangeTable({
                 {i > 0 && <Divider />}
                 <Stack gap={2} py="xs">
                   <Text c="dimmed" size="xs">
-                    {auditFieldLabel(key, tableName)}
+                    {auditFieldLabel(key, tableName, locale)}
                   </Text>
-                  <Text size="sm">{formatAuditValue(value, key)}</Text>
+                  <Text size="sm">
+                    {formatAuditValue(value, key, { locale, tableName })}
+                  </Text>
                 </Stack>
               </Box>
             ))}
@@ -152,10 +163,14 @@ export function AuditChangeTable({
               {single.map(([key, value]) => (
                 <Table.Tr key={key}>
                   <Table.Td>
-                    <Text size="sm">{auditFieldLabel(key, tableName)}</Text>
+                    <Text size="sm">
+                      {auditFieldLabel(key, tableName, locale)}
+                    </Text>
                   </Table.Td>
                   <Table.Td>
-                    <Text size="sm">{formatAuditValue(value, key)}</Text>
+                    <Text size="sm">
+                      {formatAuditValue(value, key, { locale, tableName })}
+                    </Text>
                   </Table.Td>
                 </Table.Tr>
               ))}

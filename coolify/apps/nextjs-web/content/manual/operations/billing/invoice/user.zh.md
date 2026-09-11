@@ -35,7 +35,7 @@ screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu
 
 打开应用后，会看到之前做出的发票一览。
 
-![发票一览界面](../../../assets/screenshots/invoice-list-01.png)
+![发票一览界面](../../../assets/screenshots/invoice-list-01.zh.png)
 
 - **請求番号（发票号）** … 以 `INV-` 开头的编号，由系统自动编。
 - **状態（状态）** … 灰色是「下書き」（草稿），蓝色是「発行済」（已发行），紫色是「送付済」（已寄送），绿色是「支払済」（已付款）。

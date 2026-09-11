@@ -133,17 +133,22 @@ export async function issueCards(raw: {
     if (ids.length < count) {
       return actionError(tr("settings.kioskCardActions.issueFailed"));
     }
-    await recordAudit({
-      action: "CREATE",
-      tableName: "kiosk_cards",
-      recordId: ids.join(","),
-      after: {
-        note: tr("settings.kioskCardActions.auditCardsIssued", {
-          count: ids.length,
-        }),
-        ...elevationAuditNote(gate, "kiosk_card.issue"),
-      },
-    });
+    // カード 1 枚 = 監査行 1 件（1.5）。以前はカンマ結合の 1 行にまとめて
+    // いたが、それだと record_id が単一レコードの id という規約から外れ、
+    // 「どのカードを誰が刷ったか」を 1 枚単位で追えなかった。
+    for (const id of ids) {
+      await recordAudit({
+        action: "CREATE",
+        tableName: "kiosk_cards",
+        recordId: id,
+        after: {
+          note: tr("settings.kioskCardActions.auditCardsIssued", {
+            count: ids.length,
+          }),
+          ...elevationAuditNote(gate, "kiosk_card.issue"),
+        },
+      });
+    }
     revalidate();
     return actionOk({ ids });
   } catch (e) {

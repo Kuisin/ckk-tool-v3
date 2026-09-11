@@ -84,6 +84,80 @@ function formatDateWith(
 }
 
 /**
+ * `(y, mo, d)` の 00:00:00 を `timeZone` における壁時計として解釈し、
+ * UTC の瞬間に変換する。
+ *
+ * 手順: まず「その壁時計を UTC だと仮定した瞬間」を作り、その瞬間を
+ * `timeZone` で読むとどう表示されるか（= オフセット）を Intl で求め、
+ * 差分を引き戻す。DST の境目でも、対象の瞬間そのものを起点に読むので
+ * オフセットは正しく引ける（年に 1 回あるかないかの「深夜 0 時ちょうどに
+ * 移行するタイムゾーン」だけは非対応 — 実在するとしても 1 分のズレに留まる）。
+ */
+function zonedMidnightToUtc(
+  y: number,
+  mo: number,
+  d: number,
+  timeZone: string,
+): Date {
+  const guess = Date.UTC(y, mo - 1, d, 0, 0, 0);
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const get = (parts: Intl.DateTimeFormatPart[], type: string) =>
+    Number(parts.find((p) => p.type === type)?.value ?? "0");
+  const parts = dtf.formatToParts(new Date(guess));
+  const asUtc = Date.UTC(
+    get(parts, "year"),
+    get(parts, "month") - 1,
+    get(parts, "day"),
+    get(parts, "hour"),
+    get(parts, "minute"),
+    get(parts, "second"),
+  );
+  return new Date(guess - (asUtc - guess));
+}
+
+/**
+ * 表示タイムゾーンでの「その暦日」を UTC の半開区間 `[gte, lt)` にする
+ * （SY07 操作履歴などの日付範囲フィルタ用）。`day` は `"YYYY-MM-DD"`。
+ *
+ * `created_at` は DB に UTC で入っており、`time_zone` は「読み替え」だけの
+ * 設定（このファイル冒頭の注記）。それでも日付フィルタ自体は利用者の
+ * タイムゾーンでの「その日」を指すべきなので、UTC の 00:00 で単純に切ると
+ * JST 利用者にとって 9 時間ずれた範囲を検索してしまう。
+ *
+ * 不正な形式（"YYYY-MM-DD" に一致しない）は null。
+ */
+export function zonedDayRange(
+  day: string,
+  timeZone: string,
+): { gte: Date; lt: Date } | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const gte = zonedMidnightToUtc(y, mo, d, timeZone);
+  // 翌暦日は UTC の日付計算で進める（うるう年・月末の繰り上がりは
+  // Date.UTC がやってくれる）。壁時計への変換は改めて同じ関数を通す。
+  const nextCalendarDay = new Date(Date.UTC(y, mo - 1, d + 1));
+  const lt = zonedMidnightToUtc(
+    nextCalendarDay.getUTCFullYear(),
+    nextCalendarDay.getUTCMonth() + 1,
+    nextCalendarDay.getUTCDate(),
+    timeZone,
+  );
+  return { gte, lt };
+}
+
+/**
  * 暦の日付（`YYYY-MM-DD`）を表示形式に並べ替える。**タイムゾーンで読み替えない。**
  *
  * フォームの日付項目が持っているのは「2026-03-01」という**暦の日付**であって

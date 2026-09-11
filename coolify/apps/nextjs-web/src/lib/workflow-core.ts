@@ -54,6 +54,16 @@ export interface CatalogStep {
   lotInputMode?: LotInputMode;
   /** 既定作業時間 (h) — ルート/指示書ビルダーの初期値（任意）。 */
   defaultWorkHours?: number | null;
+  /**
+   * 作業計画に作業場所が要るか（承認前の揃い — lib/work-plan-core.ts）。
+   * 未指定は true 扱い。
+   */
+  workLocationRequired?: boolean;
+  /** 作業計画に 開始・終了時刻 が要るか。未指定は false。 */
+  planTimeRequired?: boolean;
+  /** 作業計画に 数量 が要るか。未指定は false。 */
+  planAssigneeRequired?: boolean;
+  planQuantityRequired?: boolean;
   sortOrder: number;
 }
 
@@ -177,6 +187,68 @@ export function isStartStep(step: Pick<CatalogStep, "code">): boolean {
 
 export function isShipStep(step: Pick<CatalogStep, "code">): boolean {
   return (SHIP_STEP_CODES as readonly string[]).includes(step.code);
+}
+
+// ─── 工程リストの種別（準備 / 製造）─────────────────────────────────────────
+//
+// 指示書の工程は **準備工程リスト（共通）+ 製造工程リスト（製品 × 受注元）** の
+// 2 本を合わせたもの。どの工程がどちらに属するかを決めるのはここだけ —
+// カタログの category = MATERIAL_PREP（〇〇出し・受渡し と 切断・センタレス・
+// 全長合わせ・C面）が準備側。開始工程（isStartStep）は全部この中に入る。
+// 製品の工程リストの編集画面・準備工程リストの編集画面・指示書ビルダーの
+// 版の保存が同じ関数で分けるので、「保存したら準備工程が消えた」のような
+// ずれは起きない。
+
+/** 工程リストの種別（app.PROCESS_ROUTE_KIND）。 */
+export type ProcessRouteKind = "PREP" | "MANUFACTURING";
+
+/** 準備工程か（= 準備工程リストに属する）。 */
+export function isPrepStep(step: Pick<CatalogStep, "category">): boolean {
+  return step.category === "MATERIAL_PREP";
+}
+
+/** 工程 id 列を 準備 / 製造 に分ける（カタログに無い id は製造側に残す）。 */
+export function splitStepIdsByKind(
+  stepIds: readonly number[],
+  catalog: readonly Pick<CatalogStep, "id" | "category">[],
+): { prep: number[]; manufacturing: number[] } {
+  const prepIds = new Set(catalog.filter(isPrepStep).map((c) => c.id));
+  return {
+    prep: stepIds.filter((id) => prepIds.has(id)),
+    manufacturing: stepIds.filter((id) => !prepIds.has(id)),
+  };
+}
+
+/**
+ * 片方の種別だけを編集しているときの構成検証。
+ *
+ * 製造工程リストだけを見ると「開始工程が無い」と必ず言われるし、準備側の工程を
+ * 相手にした依存（例: 全長合わせ ← センタレス）は満たしようがない。それらは
+ * **指示書で 2 本を合わせたとき**に初めて判定できるので、その種別の外だけを
+ * 相手にした issue はここで落とす。両方に跨る issue（関係先に自分の種別の工程が
+ * 1 つでもある）は残す — 落とすと本物の不足まで消える。
+ *
+ * 指示書ビルダー（合わせた全体）はこれを通さず validateComposition の結果を
+ * そのまま使うこと。
+ */
+export function compositionIssuesForKind(
+  issues: readonly CompositionIssue[],
+  kind: ProcessRouteKind,
+  catalog: readonly Pick<CatalogStep, "id" | "category">[],
+): CompositionIssue[] {
+  const byId = new Map(catalog.map((c) => [c.id, c]));
+  const inKind = (id: number) => {
+    const c = byId.get(id);
+    if (!c) return kind === "MANUFACTURING";
+    return kind === "PREP" ? isPrepStep(c) : !isPrepStep(c);
+  };
+  return issues.filter((issue) => {
+    // 開始工程の有無は準備側の責任 — 製造側だけを見ているときは問わない。
+    if (kind === "MANUFACTURING" && issue.kind === "MISSING_START")
+      return false;
+    if (issue.relatedStepIds.length === 0) return true;
+    return issue.relatedStepIds.some(inKind);
+  });
 }
 
 /** 並び区分: 0 = 開始 / 1 = 中間 / 2 = 出荷前検査（常に末尾）。 */
@@ -1244,4 +1316,22 @@ export function downstreamStepIds(stepId: string, ctx: WorkflowCtx): string[] {
     }
   }
   return [...seen];
+}
+
+/**
+ * 完了時の受入数の権威。**想定受入（完了時点で再計算）→ 開始時に確定した値 →
+ * クライアント値** の順。web（lib/workflow.ts）と共有端末（step-execution.ts）
+ * の両方がこれを通す — 片方だけ古い規則だと、前工程より先に始めた工程を
+ * 端末で完了したとき端末の送った受入数がそのまま良品数（最終工程なら製品
+ * 在庫）になる（2026-09 の再点検で見つかった片側だけの修正）。
+ */
+export function resolveReceivedQuantity(args: {
+  /** 前工程の良品数 + 流入エッジ（expectedInput）。null = まだ確定しない。 */
+  expectedAtCompletion: number | null;
+  /** 開始時に inputQuantity へ写した値。前工程より先に始めた工程は null。 */
+  startedWith: number | null;
+  /** クライアントが送ってきた受入数。 */
+  client: number | null | undefined;
+}): number {
+  return args.expectedAtCompletion ?? args.startedWith ?? args.client ?? 0;
 }

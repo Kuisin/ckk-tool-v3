@@ -111,6 +111,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
     data.workOrderStatus === "APPROVED" ||
     data.workOrderStatus === "IN_PROGRESS";
   const canOperate = woExecutable && !lockedByOther;
+  // 作業計画は**下書きのうちに**入れる（承認依頼の条件 — lib/work-plan-core.ts）。
+  // 工程の開始・実績は承認後だが、計画まで承認後にすると承認が出せない。
+  // 承認依頼中はロック（依頼した内容を裏で変えない）、完了・キャンセルも閉じる。
+  const canEditPlans =
+    (data.workOrderStatus === "DRAFT" || woExecutable) && !lockedByOther;
 
   // 検査表が割り当てられている工程は、その検査表それぞれに記録が 1 件
   // 無いと完了できない（サーバー側の completeStepExecution と同じ規則。
@@ -248,7 +253,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 size="sm"
                 variant="outline"
               >
-                {isOutsource ? "外注" : tr("common.inHouse")}
+                {isOutsource ? tr("common.outsourced") : tr("common.inHouse")}
               </Badge>
               {step.isInspection && (
                 <Badge color="blue" size="sm" variant="light">
@@ -267,32 +272,53 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
               )}
             </Group>
             <Link href={`${BASE_PATH}/${workOrderNumber}`}>
-              <DocNumber c="blue">指示書 {woLabel}</DocNumber>
+              <DocNumber c="blue">
+                {tr("production.stepExecution.workOrderLabel", {
+                  number: woLabel,
+                })}
+              </DocNumber>
             </Link>
           </Group>
           <Group gap="xl" wrap="wrap">
             <Text c="dimmed" size="sm">
-              実施先:{" "}
-              {(isOutsource ? step.supplierName : step.plantName) ?? "—"}
+              {tr("production.stepExecution.executionSite", {
+                site: (isOutsource ? step.supplierName : step.plantName) ?? "—",
+              })}
             </Text>
             <Text c="dimmed" size="sm">
-              予定数量: {data.plannedQuantity}
+              {tr("production.stepExecution.plannedQuantity", {
+                count: data.plannedQuantity,
+              })}
             </Text>
             {step.plannedWorkHours != null && (
               <Text c="dimmed" size="sm">
-                予定作業時間: {step.plannedWorkHours} h
+                {tr("production.stepExecution.plannedWorkHours", {
+                  hours: step.plannedWorkHours,
+                })}
               </Text>
             )}
             {step.startedAt && (
               <Text c="dimmed" size="sm">
-                開始: {fmt.dateTime(step.startedAt)}
-                {step.startedByName ? `（${step.startedByName}）` : ""}
+                {step.startedByName
+                  ? tr("production.stepExecution.startedOnBy", {
+                      date: fmt.dateTime(step.startedAt),
+                      name: step.startedByName,
+                    })
+                  : tr("production.stepExecution.startedOn", {
+                      date: fmt.dateTime(step.startedAt),
+                    })}
               </Text>
             )}
             {step.completedAt && (
               <Text c="dimmed" size="sm">
-                完了: {fmt.dateTime(step.completedAt)}
-                {step.completedByName ? `（${step.completedByName}）` : ""}
+                {step.completedByName
+                  ? tr("production.stepExecution.completedOnBy", {
+                      date: fmt.dateTime(step.completedAt),
+                      name: step.completedByName,
+                    })
+                  : tr("production.stepExecution.completedOn", {
+                      date: fmt.dateTime(step.completedAt),
+                    })}
               </Text>
             )}
           </Group>
@@ -307,9 +333,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           title={tr("production.stepExecution.anotherUserHasThisSessionOpen")}
           variant="filled"
         >
-          {step.sessionLockedByName ??
-            tr("production.stepExecution.anotherUser")}
-          がこの工程を操作しています。完了または中断されるまで操作できません。
+          {tr("production.stepExecution.lockedByUser", {
+            name:
+              step.sessionLockedByName ??
+              tr("production.stepExecution.anotherUser"),
+          })}
         </Alert>
       )}
 
@@ -409,8 +437,10 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           <Paper p="md" radius="md" withBorder>
             <Stack align="center" gap="md">
               <Text size="sm">
-                この工程は数量記録なしで完了します（通過数{" "}
-                {step.inputQuantity ?? data.expectedInputQuantity ?? "—"}）
+                {tr("production.stepExecution.completesWithoutQuantity", {
+                  count:
+                    step.inputQuantity ?? data.expectedInputQuantity ?? "—",
+                })}
               </Text>
               {completeBlockedReason && (
                 <Alert
@@ -615,9 +645,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       {/* ── 作業計画 / 実績（分割記録・担当者・日付/時刻） ── */}
       <StepPlanActualPanel
         actuals={data.actuals}
+        canEditPlans={canEditPlans}
         canOperate={canOperate}
         expectedInputQuantity={step.inputQuantity ?? data.expectedInputQuantity}
         plans={data.plans}
+        requiredPlanFields={data.requiredPlanFields}
         stepId={step.id}
         stepStatus={step.status}
         workLocationOptions={data.workLocationOptions}

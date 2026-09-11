@@ -52,6 +52,7 @@ import {
 } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
+import { isPrepStep } from "@/lib/workflow-core";
 
 const BASE_PATH = "/master/process-steps";
 
@@ -105,6 +106,10 @@ const processStepSchema = (tr: (key: string) => string) =>
       isInspection: z.boolean(),
       isApprovalStep: z.boolean(),
       isFinalInspection: z.boolean(),
+      workLocationRequired: z.boolean(),
+      planTimeRequired: z.boolean(),
+      planAssigneeRequired: z.boolean(),
+      planQuantityRequired: z.boolean(),
       approvalMinRank: z.string(),
       quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
       lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]),
@@ -147,6 +152,11 @@ export interface ProcessStepFormInitial {
   isInspection: boolean;
   isApprovalStep: boolean;
   isFinalInspection: boolean;
+  /** 作業計画に作業場所が要るか（承認前の揃い）。 */
+  workLocationRequired: boolean;
+  planTimeRequired: boolean;
+  planAssigneeRequired: boolean;
+  planQuantityRequired: boolean;
   approvalMinRank: string;
   quantityTracking: string;
   lotInputMode: string;
@@ -215,6 +225,10 @@ export function ProcessStepForm({
       isInspection: initial?.isInspection ?? false,
       isApprovalStep: initial?.isApprovalStep ?? false,
       isFinalInspection: initial?.isFinalInspection ?? false,
+      workLocationRequired: initial?.workLocationRequired ?? true,
+      planTimeRequired: initial?.planTimeRequired ?? false,
+      planAssigneeRequired: initial?.planAssigneeRequired ?? false,
+      planQuantityRequired: initial?.planQuantityRequired ?? false,
       approvalMinRank: initial?.approvalMinRank ?? "",
       quantityTracking:
         initial?.quantityTracking === "NONE" ||
@@ -287,6 +301,10 @@ export function ProcessStepForm({
       isInspection: values.isInspection,
       isApprovalStep: values.isApprovalStep,
       isFinalInspection: values.isFinalInspection,
+      workLocationRequired: values.workLocationRequired,
+      planTimeRequired: values.planTimeRequired,
+      planAssigneeRequired: values.planAssigneeRequired,
+      planQuantityRequired: values.planQuantityRequired,
       approvalMinRank: values.approvalMinRank,
       quantityTracking: values.quantityTracking,
       lotInputMode: values.lotInputMode,
@@ -381,6 +399,7 @@ export function ProcessStepForm({
                 />
               )}
               <TextInput
+                aria-label={tr("common.notes")}
                 placeholder={tr("common.notes")}
                 style={{ flex: 1, minWidth: isMobile ? "60%" : 140 }}
                 {...form.getInputProps(`${field}.${index}.notes`)}
@@ -478,6 +497,14 @@ export function ProcessStepForm({
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
           <Select
             data={processCategoryOptions(locale)}
+            // カテゴリで所属する工程リストが決まる（準備 = 材料準備のみ）。
+            description={
+              form.values.category
+                ? isPrepStep({ category: form.values.category })
+                  ? tr("master.processSteps.routeKindPrepHelp")
+                  : tr("master.processSteps.routeKindManufacturingHelp")
+                : undefined
+            }
             label={<HelpLabel {...fieldHelp(tr, "processStep", "category")} />}
             withAsterisk
             {...form.getInputProps("category")}
@@ -589,6 +616,44 @@ export function ProcessStepForm({
             )}
             label={tr("master.processSteps.finalInspectionStep")}
             {...form.getInputProps("isFinalInspection", { type: "checkbox" })}
+          />
+          {/* 承認前の作業計画に何が要るか（§7）。担当者・計画日は常に必須
+              （列が NOT NULL）。作業場所は在庫を動かすだけの工程（〇〇出し）の
+              ように場所に意味の無い工程で外す。使える場所の範囲は下の
+              「許可作業場所」— こちらは 要る / 要らない だけ。 */}
+          <Stack gap={4} mt="xs">
+            <Text fw={600} size="sm">
+              {tr("master.processSteps.planRequiredFields")}
+            </Text>
+            <Text c="dimmed" size="xs">
+              {tr("master.processSteps.planRequiredFieldsHelp")}
+            </Text>
+          </Stack>
+          <Switch
+            description={tr("master.processSteps.planAssigneeRequiredHelp")}
+            label={tr("master.processSteps.planAssigneeRequired")}
+            {...form.getInputProps("planAssigneeRequired", {
+              type: "checkbox",
+            })}
+          />
+          <Switch
+            description={tr("master.processSteps.workLocationRequiredHelp")}
+            label={tr("master.processSteps.workLocationRequired")}
+            {...form.getInputProps("workLocationRequired", {
+              type: "checkbox",
+            })}
+          />
+          <Switch
+            description={tr("master.processSteps.planTimeRequiredHelp")}
+            label={tr("master.processSteps.planTimeRequired")}
+            {...form.getInputProps("planTimeRequired", { type: "checkbox" })}
+          />
+          <Switch
+            description={tr("master.processSteps.planQuantityRequiredHelp")}
+            label={tr("master.processSteps.planQuantityRequired")}
+            {...form.getInputProps("planQuantityRequired", {
+              type: "checkbox",
+            })}
           />
           <Switch
             label={

@@ -76,6 +76,22 @@ const days = (v: number | null, tr: Tr) =>
   v == null ? "—" : tr("master.businessPartners.daySuffix", { value: v });
 
 /**
+ * 過不足の許容幅の表示。**未設定は「—」ではなく「認めない」と書く** —
+ * 空欄は「まだ決めていない」に見えるが、動きとしては 0（その側の過不足を
+ * 通さない）で確定しているので、そう読める言葉にする。
+ */
+const toleranceText = (
+  v: number | null,
+  basis: "PERCENT" | "QUANTITY",
+  tr: Tr,
+) =>
+  v == null || v <= 0
+    ? tr("master.businessPartners.toleranceNotAllowed")
+    : basis === "PERCENT"
+      ? `${v}%`
+      : tr("master.businessPartners.tolerancePcs", { value: v });
+
+/**
  * 概要タブの 1 セクション。「一般」（取引先そのものの情報）と、付与されている
  * ロールごとのセクションを同じ体裁で並べる。role を渡すと見出しにロール色の
  * ドットが付き、一覧のバッジ色と対応が取れる。
@@ -264,6 +280,51 @@ export function BpDetail({
                   mt="sm"
                   readOnly
                 />
+                {/* 過不足納品（§8）— 幅と決裁の要否。幅が両側とも未設定なら
+                    「過不足を認めない」ので、まとめて 1 行で言い切る。 */}
+                <Box mt="sm">
+                  <Text c="dimmed" mb={4} size="xs">
+                    {tr("master.businessPartners.deliveryTolerance")}
+                  </Text>
+                  <Group gap="xl" wrap="wrap">
+                    <FieldValue
+                      label={tr("master.businessPartners.toleranceUnder")}
+                      value={toleranceText(
+                        customer.deliveryToleranceUnder,
+                        customer.deliveryToleranceBasis,
+                        tr,
+                      )}
+                    />
+                    <FieldValue
+                      label={tr("master.businessPartners.toleranceOver")}
+                      value={toleranceText(
+                        customer.deliveryToleranceOver,
+                        customer.deliveryToleranceBasis,
+                        tr,
+                      )}
+                    />
+                    <FieldValue
+                      label={tr(
+                        "master.businessPartners.varianceApprovalWithin",
+                      )}
+                      value={
+                        customer.varianceApprovalWithin
+                          ? tr("common.required")
+                          : tr("master.businessPartners.approvalNotRequired")
+                      }
+                    />
+                    <FieldValue
+                      label={tr(
+                        "master.businessPartners.varianceApprovalOutside",
+                      )}
+                      value={
+                        customer.varianceApprovalOutside
+                          ? tr("common.required")
+                          : tr("master.businessPartners.approvalNotRequired")
+                      }
+                    />
+                  </Group>
+                </Box>
                 <Box mt="sm">
                   <FieldValue
                     label={tr("common.salesRep")}

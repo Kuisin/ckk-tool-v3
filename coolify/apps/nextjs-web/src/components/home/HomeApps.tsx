@@ -181,9 +181,11 @@ export function HomeApps({
             />
             <Stack gap={0} style={{ minWidth: 0 }}>
               <Group align="center" gap="xs" wrap="wrap">
-                <Text fw={600} size="sm" truncate>
+                {/* ホームの見出し（h2）。見た目は本文と同じ大きさ — 画面に
+                    h1–h3 が無いと読み上げの「見出しへ飛ぶ」が効かない。 */}
+                <Title className="truncate" fw={600} fz="sm" lh="sm" order={2}>
                   {displayName}
-                </Text>
+                </Title>
                 {effectiveUser.department && (
                   <Badge color="blue" size="xs" variant="light">
                     {effectiveUser.department}

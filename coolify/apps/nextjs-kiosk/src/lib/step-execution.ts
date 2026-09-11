@@ -32,6 +32,7 @@ import {
   effectiveLotInputMode,
   expectedInput,
   isWorkOrderComplete,
+  resolveReceivedQuantity,
   STEP_LINK_STATE_SELECT,
   STEP_STATE_SELECT,
   type StepLinkState,
@@ -97,7 +98,7 @@ export interface StepActionResult {
   codes?: StepErrorCode[];
 }
 
-type Tx = PrismaNS.TransactionClient;
+export type Tx = PrismaNS.TransactionClient;
 
 const fail = (code: StepErrorCode, ...errors: string[]): StepActionResult => ({
   ok: false,
@@ -197,9 +198,11 @@ async function fetchIncomingWoLinks(workOrderId: string): Promise<{
  * 操作できるのは次のいずれか:
  *   (a) 自分に計画（work_order_step_plans）が割り当てられている
  *   (b) 自分がセッションロックを保持している
- *   (c) 工程に計画が 1 行も無い（**未計画の工程は開放** — 指示書スキャン
- *       /wo-scan の運用判断: 紙の指示書を持つ作業者が計画なしのアドホック
- *       作業を進められる。誰かに計画された工程はその担当者だけが操作できる）
+ *   (c) 工程に **担当者付きの** 計画が 1 行も無い（**未計画の工程は開放** —
+ *       指示書スキャン /wo-scan の運用判断: 紙の指示書を持つ作業者が計画なしの
+ *       アドホック作業を進められる。誰かに計画された工程はその担当者だけが
+ *       操作できる。担当者なしの計画（いつ・どこで だけ決めた行）は誰も
+ *       縛らない — 人を決めていないのだから、誰が来ても開放と同じ）
  */
 export async function canOperateStep(
   stepId: string,
@@ -217,8 +220,9 @@ export async function canOperateStep(
   ]);
   if (plan != null || locked != null) return true;
   // (c) 未計画の工程 — 誰の計画も無ければ permission 保持者に開放
+  //     （担当者なしの計画行は「誰かの計画」ではない）
   const anyPlan = await prisma.workOrderStepPlan.findFirst({
-    where: { stepId },
+    where: { stepId, userId: { not: null } },
     select: { id: true },
   });
   return anyPlan == null;
@@ -235,7 +239,7 @@ export async function canOperateStep(
  * accumulatedWorkMs / nextjs-web step-work-hours.ts）。
  * 必ず対象行の増減を済ませた後、同じ tx 内で呼ぶこと。
  */
-async function resegmentOpenActuals(
+export async function resegmentOpenActuals(
   tx: Tx,
   userId: string,
   now: Date,
@@ -247,12 +251,23 @@ async function resegmentOpenActuals(
       stepId: true,
       workLocationId: true,
       concurrentCount: true,
+      startedAt: true,
     },
   });
   const n = open.length;
   if (n === 0) return;
   for (const row of open) {
     if (row.concurrentCount === n) continue;
+    // まだ時間を持たない区間（この瞬間に開いたばかり）は、閉じて開き直しても
+    // 長さ 0 の行が 1 本増えるだけ。同時数をその場で直す。
+    // 一括操作で複数の工程を続けて動かすと実際に起きる。
+    if (row.startedAt != null && row.startedAt.getTime() >= now.getTime()) {
+      await tx.workOrderStepActual.update({
+        where: { id: row.id },
+        data: { concurrentCount: n },
+      });
+      continue;
+    }
     await tx.workOrderStepActual.update({
       where: { id: row.id },
       data: { endedAt: now },
@@ -372,6 +387,7 @@ export async function startStepExecution(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
+    recordKey: stepRow.workOrder.id,
     after: {
       note: encodeInventoryNote("stepStarted", {
         sortOrder: stepRow.sortOrder,
@@ -393,7 +409,7 @@ export async function pauseStepExecution(
 ): Promise<StepActionResult> {
   const stepRow = await prisma.workOrderStep.findUnique({
     where: { id: stepId },
-    include: { workOrder: { select: { workOrderNumber: true } } },
+    include: { workOrder: { select: { id: true, workOrderNumber: true } } },
   });
   if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません"); // i18n-ignore
   if (stepRow.status !== "IN_PROGRESS") {
@@ -423,6 +439,7 @@ export async function pauseStepExecution(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
+    recordKey: stepRow.workOrder.id,
     after: {
       note: encodeInventoryNote("stepPaused", {
         sortOrder: stepRow.sortOrder,
@@ -444,7 +461,9 @@ export async function resumeStepExecution(
 ): Promise<StepActionResult> {
   const stepRow = await prisma.workOrderStep.findUnique({
     where: { id: stepId },
-    include: { workOrder: { select: { workOrderNumber: true, status: true } } },
+    include: {
+      workOrder: { select: { id: true, workOrderNumber: true, status: true } },
+    },
   });
   if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません"); // i18n-ignore
   if (stepRow.status !== "IN_PROGRESS") {
@@ -496,6 +515,7 @@ export async function resumeStepExecution(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
+    recordKey: stepRow.workOrder.id,
     after: {
       note: encodeInventoryNote("stepResumed", {
         sortOrder: stepRow.sortOrder,
@@ -561,7 +581,7 @@ export async function setStepWorkLocation(
 ): Promise<StepActionResult> {
   const stepRow = await prisma.workOrderStep.findUnique({
     where: { id: stepId },
-    include: { workOrder: { select: { workOrderNumber: true } } },
+    include: { workOrder: { select: { id: true, workOrderNumber: true } } },
   });
   if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません"); // i18n-ignore
   if (stepRow.status !== "IN_PROGRESS") {
@@ -581,6 +601,7 @@ export async function setStepWorkLocation(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
+    recordKey: stepRow.workOrder.id,
     after: {
       note: encodeInventoryNote("workLocationChanged", {
         sortOrder: stepRow.sortOrder,
@@ -646,13 +667,19 @@ export async function completeStepExecution(
   }
 
   const mode = stepRow.processStep.quantityTracking;
+  // 完了時点の想定受入数（前工程の良品数 + 流入エッジ — workflow-core.expectedInput）。
+  // 開始が前工程の完了より早かった工程（同期可能工程・先行 WO 未完了）は開始時に
+  // inputQuantity が null で、完了時に初めて確定する。web の lib/workflow.ts と
+  // 同じ規則 — こちらだけ古いままだと端末の送った受入数が良品数になり、最終工程
+  // なら製品在庫にそのまま載る。
+  const { ctx: ctxAtCompletion } = await fetchWorkflowCtx(stepRow.workOrderId);
+  const expectedAtCompletion = expectedInput(stepId, ctxAtCompletion);
   let persisted: StepQuantities;
   if (mode === "NONE") {
-    const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
     const input =
       stepRow.inputQuantity ??
-      expectedInput(stepId, ctx) ??
-      ctx.plannedQuantity;
+      expectedAtCompletion ??
+      ctxAtCompletion.plannedQuantity;
     persisted = {
       inputQuantity: input,
       outputSuccessQuantity: input,
@@ -664,9 +691,14 @@ export async function completeStepExecution(
     if (quantities == null && (defectReasons?.length ?? 0) === 0) {
       return fail("QUANTITY_REQUIRED", "数量を入力してください"); // i18n-ignore
     }
-    // 受入数は開始時に確定した値を権威とする（完了時のクライアント値は無視）。
-    const authoritativeInput =
-      stepRow.inputQuantity ?? quantities?.inputQuantity ?? 0;
+    // 受入数の権威は 想定受入（完了時点で再計算）→ 開始時に確定した値 →
+    // クライアント値 の順。クライアント値まで落ちるのは、前工程が無い
+    // （先行 WO 未完了で先頭が未確定）か前工程が未記録のときだけ。
+    const authoritativeInput = resolveReceivedQuantity({
+      expectedAtCompletion,
+      startedWith: stepRow.inputQuantity,
+      client: quantities?.inputQuantity,
+    });
     // 区分合計（半製品/廃棄/工程分岐）は**不良リストのみから導出**して権威とする。
     // リスト無しで区分数量だけが来るのは旧クライアント — 黙って受けず再入力を求める。
     const list = defectReasons ?? [];
@@ -838,6 +870,7 @@ export async function completeStepExecution(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
+    recordKey: stepRow.workOrder.id,
     after: {
       note: encodeInventoryNote("stepCompleted", {
         success: persisted.outputSuccessQuantity,

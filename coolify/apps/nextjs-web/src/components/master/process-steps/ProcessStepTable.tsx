@@ -33,6 +33,7 @@ import {
   setProcessStepsActive,
 } from "@/app/(dashboard)/master/process-steps/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
@@ -45,6 +46,7 @@ import {
   processCategoryOptions,
   processExecutionLabel,
 } from "@/lib/enum-labels";
+import { isPrepStep } from "@/lib/workflow-core";
 import {
   DeleteProcessStepModal,
   type ProcessStepModalTarget,
@@ -76,6 +78,11 @@ export interface ProcessStepRow {
   quantityTracking: string;
   /** 実行時のロット入力の既定（REQUIRED/OPTIONAL/NONE）。 */
   lotInputMode: string;
+  /** 作業計画の必須項目（工程ごと — lib/work-plan-core.ts）。 */
+  workLocationRequired: boolean;
+  planTimeRequired: boolean;
+  planAssigneeRequired: boolean;
+  planQuantityRequired: boolean;
   sortOrder: number;
   isActive: boolean;
 }
@@ -238,6 +245,26 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
       ),
     },
     {
+      // 準備 / 製造 のどちらの工程リストに入るか（isPrepStep — カテゴリから決まる）
+      key: "routeKind",
+      header: tr("master.processSteps.routeKind"),
+      sortable: true,
+      hideable: true,
+      width: 80,
+      sortValue: (r) => (isPrepStep(r) ? 0 : 1),
+      render: (r) => (
+        <Badge
+          color={isPrepStep(r) ? "teal" : "indigo"}
+          size="xs"
+          variant="light"
+        >
+          {isPrepStep(r)
+            ? tr("master.processSteps.routeKindPrep")
+            : tr("master.processSteps.routeKindManufacturing")}
+        </Badge>
+      ),
+    },
+    {
       key: "executionLocation",
       header: tr("common.executionLocation"),
       sortable: true,
@@ -334,6 +361,42 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
         ),
     },
     {
+      // 作業計画の必須項目（日付は常に必須なので出さない）
+      key: "planRequired",
+      header: tr("master.processSteps.planRequiredShort"),
+      hideable: true,
+      width: 130,
+      render: (r) => {
+        const parts = [
+          r.planAssigneeRequired
+            ? tr("master.processSteps.planFieldAssigneeShort")
+            : null,
+          r.workLocationRequired
+            ? tr("master.processSteps.planFieldLocationShort")
+            : null,
+          r.planTimeRequired
+            ? tr("master.processSteps.planFieldTimeShort")
+            : null,
+          r.planQuantityRequired
+            ? tr("master.processSteps.planFieldQuantityShort")
+            : null,
+        ].filter((x): x is string => x != null);
+        return parts.length === 0 ? (
+          <Text c="dimmed" size="sm">
+            —
+          </Text>
+        ) : (
+          <Group gap={4} wrap="wrap">
+            {parts.map((label) => (
+              <Badge color="gray" key={label} size="xs" variant="light">
+                {label}
+              </Badge>
+            ))}
+          </Group>
+        );
+      },
+    },
+    {
       key: "sortOrder",
       header: tr("common.sortOrder"),
       sortable: true,
@@ -359,11 +422,22 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
 
   return (
     <ListShell
-      action={<NewButton href={`${BASE_PATH}/new`} />}
+      action={
+        <Group gap="xs" wrap="nowrap">
+          <SecondaryButton
+            href={`${BASE_PATH}/prep-routes`}
+            leftSection={<IconGitBranch size={14} />}
+          >
+            {tr("master.prepRoutes.title")}
+          </SecondaryButton>
+          <NewButton href={`${BASE_PATH}/new`} />
+        </Group>
+      }
       breadcrumbs={[tr("common.masterData"), tr("common.processSteps")]}
       filters={
         <>
           <Select
+            aria-label={tr("common.category")}
             clearable
             data={processCategoryOptions(locale)}
             onChange={setCategoryFilter}
@@ -372,6 +446,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
             w={isMobile ? 130 : 150}
           />
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={STATUS_OPTIONS}
             onChange={setStatusFilter}
@@ -384,6 +459,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("common.searchByCodeOrName")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("common.searchByCodeOrName")}

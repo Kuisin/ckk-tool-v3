@@ -43,7 +43,8 @@ export default async function ProductRouteNewVersionPage({
     fetchPlantOptions(),
     fetchSupplierOptions(),
   ]);
-  if (!route) notFound();
+  // 製品 id で引いているので product は必ず居るが、型は kind = PREP のぶん nullable。
+  if (!route || !route.product) notFound();
 
   const latest = route.versions[0] ?? null;
   const productLabel =

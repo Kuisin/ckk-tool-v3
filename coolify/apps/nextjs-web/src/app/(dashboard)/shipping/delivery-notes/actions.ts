@@ -359,6 +359,18 @@ export async function issueDeliveryNote(number: string): Promise<ActionResult> {
     return actionError(tr("common.scopeDenied"));
   }
   try {
+    // 出荷が済んでいない出荷書の納品書は発行しない — 出荷の競合に負けた
+    // 出荷書（SHIPPED にならなかった側）の納品書が発行済みになると、取り消す
+    // 経路が無い。納品済みにするときと同じ条件（下の markDelivered）。
+    const note = await prisma.deliveryNote.findUnique({
+      where: { yearMonth_seq: key },
+      select: { deliveryOrder: { select: { status: true } } },
+    });
+    if (note && note.deliveryOrder.status !== "SHIPPED") {
+      return actionError(
+        tr("shipping.deliveryNoteActions.deliveryOrderNotShipped"),
+      );
+    }
     const updated = await prisma.deliveryNote.updateMany({
       where: { ...key, status: "DRAFT" },
       data: { status: "ISSUED" },

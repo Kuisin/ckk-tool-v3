@@ -42,7 +42,7 @@ model Plant {
   isActive      Boolean  @default(true) @map("is_active")
   notes         String?
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   region Region? @relation("PlantRegion", fields: [regionId], references: [id])
 
@@ -63,6 +63,8 @@ model Plant {
   orderAcceptances   OrderAcceptance[]   @relation("AcceptancePlant")
 
   @@index([regionId])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
   @@map("plants")
   @@schema("app")
 }
@@ -189,6 +191,18 @@ model ProcessStepCatalog {
   // 実行画面がその唯一の記入口。印の付いた工程を工程リストに入れなければ
   // 最終検査そのものが無い（= 任意）。既定は出荷前検査 PRE_SHIP_INSPECTION。
   isFinalInspection Boolean          @default(false) @map("is_final_inspection")
+  // 作業計画に作業場所が要るか（§7）。既定 true = 承認依頼の前に「どこで」まで
+  // 決める。在庫を動かすだけの工程（〇〇出し）など、場所に意味の無い工程で
+  // false にする。使える場所の範囲は別（process_step_work_locations の許可リスト）。
+  workLocationRequired Boolean       @default(true) @map("work_location_required")
+  // 作業計画の必須項目（承認前の揃い）— 作業場所と同じく工程ごと。担当者と計画日は
+  // 常に必須（列が NOT NULL）で、ここで切れるのは 時刻（開始・終了）と 数量。
+  // 「何を入れれば計画が揃ったか」は工程マスタだけが決める（lib/work-plan-core.ts）。
+  planTimeRequired     Boolean       @default(false) @map("plan_time_required")
+  planQuantityRequired Boolean       @default(false) @map("plan_quantity_required")
+  // 担当者。既定は任意 — 承認後に現場で決めてよい工程が多く、計画の最小単位は
+  // 「いつ・どこで」。人まで決めてから承認に出す工程だけ立てる。
+  planAssigneeRequired Boolean       @default(false) @map("plan_assignee_required")
   approvalMinRank   String?          @map("approval_min_rank") // 係長以上等
   quantityTracking  QuantityTracking @default(FLOW) @map("quantity_tracking")
   lotInputMode      LotInputMode     @default(NONE) @map("lot_input_mode") // 実行時のロット入力の既定（工程リスト/指示書で上書き可）

@@ -205,6 +205,7 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
       filters={
         <>
           <Select
+            aria-label={tr("common.role")}
             clearable
             data={bpRoleOptions(locale)}
             onChange={setRoleFilter}
@@ -213,6 +214,7 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
             w={isMobile ? 130 : 160}
           />
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={STATUS_OPTIONS}
             onChange={setStatusFilter}
@@ -225,6 +227,7 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("master.businessPartners.searchByBpCodeOrName")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("master.businessPartners.searchByBpCodeOrName")}

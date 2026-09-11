@@ -19,9 +19,10 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import {
   addDays,
-  billingPeriodStart,
+  closingDateReached,
   parseYearMonth,
 } from "@/components/billing/closings/model";
+import { isoDateJst } from "@/components/sales/price-lists/model";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -38,7 +39,11 @@ import {
   prismaErrorMessage,
 } from "@/lib/server-action";
 import { taxRateFor } from "@/lib/tax-rate";
-import { fetchBillableShipmentsForClosing } from "./data";
+import {
+  billableUnitPrice,
+  fetchBillableShipmentsForClosing,
+  resolveBillingPeriodStart,
+} from "./data";
 
 const BASE_PATH = "/billing/closings";
 const INVOICES_PATH = "/billing/invoices";
@@ -107,6 +112,11 @@ export async function processClosing(
     if (closing.status !== "PENDING") {
       return actionError(tr("billing.closingActions.pendingOnly"));
     }
+    // 締日の翌日から。締日前に処理すると、残りの出荷がどの窓にも入らない
+    // （画面の isProcessable と同じ判定 — model.ts）。
+    if (!closingDateReached(closing.closingDate, isoDateJst(new Date()))) {
+      return actionError(tr("billing.closingActions.closingDateNotReached"));
+    }
 
     const shipments = await fetchBillableShipmentsForClosing(
       closing.customerBpId,
@@ -121,9 +131,11 @@ export async function processClosing(
     const items = shipments.flatMap((s) => {
       const deliveryNote = s.deliveryNotes[0] ?? null;
       return s.items.map((it) => {
-        // 単価は**その行の**注文明細から取る（1 出荷書に単価の異なる
-        // 複数明細が載り得るため、出荷書単位の単一単価では誤請求になる）。
-        const unitPrice = Number(it.orderLine?.unitPrice ?? 0);
+        // 単価は**その行**から取る（1 出荷書に単価の異なる複数明細が載り得る
+        // ため、出荷書単位の単一単価では誤請求になる）。出荷書の確定時に
+        // 焼き込んだ値が先で、無ければ注文明細の単価 — billableUnitPrice が
+        // 唯一の定義元で、締日画面の予定額と同じ数え方になる。
+        const unitPrice = billableUnitPrice(it);
         const name = it.product.name as LocalizedText | null;
         const ja =
           it.lotNumber != null
@@ -176,10 +188,9 @@ export async function processClosing(
       DEFAULT_PAYMENT_TERMS_DAYS;
     // 請求期間 = 前回締日の翌日〜締日（対象出荷の収集と同じ区切り —
     // fetchBillableShipmentsForClosing / billingWindowFor）。
-    const periodFrom = billingPeriodStart(
-      closingDate.getUTCFullYear(),
-      closingDate.getUTCMonth() + 1,
-      closing.customerBp.customerAttrs?.closingDay ?? null,
+    const periodFrom = await resolveBillingPeriodStart(
+      closing.customerBpId,
+      closingDate,
     );
     const dueDate = addDays(closingDate, paymentTermsDays);
     // 支店: 対象出荷に共通の支店があれば引き継ぐ。

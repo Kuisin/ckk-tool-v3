@@ -32,6 +32,8 @@ import {
 import { validateAndOrderSteps } from "@/lib/workflow";
 
 const BASE_PATH = "/master/products";
+/** 準備工程リスト（共通）の管理画面 — 工程マスタ (MS08) のサブページ。 */
+const PREP_ROUTES_PATH = "/master/process-steps/prep-routes";
 
 type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
@@ -95,6 +97,69 @@ function revalidate(productId: number) {
   revalidatePath(`${BASE_PATH}/${productId}`);
 }
 
+/** ルートの種別に応じた画面を捨てる（準備 = 工程マスタ配下 / 製造 = 製品詳細）。 */
+function revalidateFor(route: { kind: string; productId: number | null }) {
+  if (route.kind === "PREP" || route.productId == null) {
+    revalidatePath(PREP_ROUTES_PATH, "layout");
+    return;
+  }
+  revalidateFor(route);
+}
+
+/**
+ * 準備工程リスト（kind = PREP）の新規作成 + v1。製品にも顧客にも紐づかない
+ * 共通のリストなので、工程マスタ配下から作る。入っていられるのは準備工程
+ * （isPrepStep）だけで、開始工程がちょうど 1 つ要る（validateAndOrderSteps）。
+ */
+export async function createPrepRoute(
+  input: ProductRouteVersionCreateInput & { nameJa: string; nameEn?: string },
+): Promise<ActionResult<{ routeId: number }>> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = routeCreateInputSchema(tr)
+    .omit({ customerBpId: true })
+    .safeParse(input);
+  if (!parsed.success) {
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
+  }
+  const v = parsed.data;
+  try {
+    const built = await validateAndOrderSteps(v.steps, "MANUFACTURE", "PREP");
+    if (!built.ok) return actionError(built.error);
+    const actor = await getCurrentActorId();
+    const created = await prisma.$transaction((tx) =>
+      createRouteWithVersionTx(tx, {
+        kind: "PREP",
+        productId: null,
+        name: localizedInput(v.nameJa, v.nameEn),
+        steps: built.creates,
+        actor,
+        notes: v.notes,
+      }),
+    );
+    await recordAudit({
+      action: "CREATE",
+      tableName: "product_process_routes",
+      recordId: String(created.routeId),
+      after: {
+        kind: "PREP",
+        nameJa: v.nameJa,
+        stepCount: built.creates.length,
+        version: 1,
+      },
+    });
+    revalidatePath(PREP_ROUTES_PATH, "layout");
+    return actionOk({ routeId: created.routeId });
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, tr("master.productRouteActions.createFailed"), tr),
+    );
+  }
+}
+
 /** ルート新規作成（v1 を同時に作成）。 */
 export async function createProductRoute(
   productId: number,
@@ -119,12 +184,18 @@ export async function createProductRoute(
       return actionError(
         tr("master.productRouteActions.targetProductNotFound"),
       );
-    const built = await validateAndOrderSteps(v.steps);
+    // 製造工程リストだけを保存する — 準備側は共通の準備工程リストが持つ。
+    const built = await validateAndOrderSteps(
+      v.steps,
+      "MANUFACTURE",
+      "MANUFACTURING",
+    );
     if (!built.ok) return actionError(built.error);
     const actor = await getCurrentActorId();
 
     const created = await prisma.$transaction((tx) =>
       createRouteWithVersionTx(tx, {
+        kind: "MANUFACTURING",
         productId,
         name: localizedInput(v.nameJa, v.nameEn),
         customerBpId: v.customerBpId ?? null,
@@ -183,7 +254,13 @@ export async function createProductRouteVersion(
     });
     if (!route)
       return actionError(tr("master.productRouteActions.targetRouteNotFound"));
-    const built = await validateAndOrderSteps(v.steps);
+    // 新しい版は種別の中身だけを持つ。移行前の製造リストの最新版に準備工程が
+    // 混ざっていても、次の版からは製造側だけになる（準備側は準備工程リストへ）。
+    const built = await validateAndOrderSteps(
+      v.steps,
+      "MANUFACTURE",
+      route.kind,
+    );
     if (!built.ok) return actionError(built.error);
 
     const latest = route.versions[0];
@@ -227,7 +304,7 @@ export async function createProductRouteVersion(
         notes: v.notes?.trim() || null,
       },
     });
-    revalidate(route.productId);
+    revalidateFor(route);
     return actionOk({ version: created.version });
   } catch (e) {
     return actionError(
@@ -258,7 +335,13 @@ export async function updateProductRoute(
   try {
     const prior = await prisma.productProcessRoute.findUnique({
       where: { id: routeId },
-      select: { productId: true, name: true, isActive: true, notes: true },
+      select: {
+        kind: true,
+        productId: true,
+        name: true,
+        isActive: true,
+        notes: true,
+      },
     });
     if (!prior)
       return actionError(tr("master.productRouteActions.targetRouteNotFound"));
@@ -285,7 +368,7 @@ export async function updateProductRoute(
         notes: v.notes?.trim() || null,
       },
     });
-    revalidate(prior.productId);
+    revalidateFor(prior);
     return actionOk();
   } catch (e) {
     return actionError(
@@ -304,7 +387,7 @@ export async function deleteProductRoute(
   try {
     const prior = await prisma.productProcessRoute.findUnique({
       where: { id: routeId },
-      select: { productId: true },
+      select: { kind: true, productId: true },
     });
     if (!prior)
       return actionError(tr("master.productRouteActions.targetRouteNotFound"));
@@ -325,7 +408,7 @@ export async function deleteProductRoute(
       tableName: "product_process_routes",
       recordId: String(routeId),
     });
-    revalidate(prior.productId);
+    revalidateFor(prior);
     return actionOk();
   } catch (e) {
     return actionError(

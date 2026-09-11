@@ -1,0 +1,124 @@
+// Production flow — includes the stock-matching branch, approval send-back,
+// and defect step branching.
+
+/title/
+Production flow — From order confirmation to completion
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_prod>
+label: Production control;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_support>
+label: Sales support;
+text-color: #92400e;
+background-color: #fef3c7;
+
+<role_approver>
+label: Approval / judgment;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_mfg>
+label: Production;
+text-color: #134e4a;
+background-color: #ccfbf1;
+
+<role_system>
+label: System;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_condition>
+background-color: #f3e8ff;
+text-color: #6b21a8;
+border-color: #9333ea;
+shape: subroutine;
+icon: #git-branch;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+/prop/
+
+<WORK_ORDER>
+label: Work order;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+/line/
+
+[role_prod: Match against stock] <block_condition>
+label: Stock matching;
+desc: Split into the portion that can ship from stock and the portion to newly manufacture.;
+if (Product stock) is (Sufficient) than #green
+  [role_support: From-stock work order] <block_apply>
+  label: From stock;
+  props: WORK_ORDER;
+  desc: A from-stock work order has a fixed structure (dispense product + optional pre-shipment inspection). Stock is allocated.;
+else
+  [role_prod: Check material] <block_condition>
+  label: Material check;
+  desc: Check whether the needed material is sufficient. If not, procure it through the purchasing flow.;
+  [role_support: Manufacture work order] <block_apply>
+  label: To manufacture;
+  props: WORK_ORDER;
+  desc: Arrange the steps in order. If a prior work order for the same customer and product exists, it can be copied.;
+endif
+[role_support: Request approval] <block_apply>
+label: Approval request;
+desc: Production cannot start until approved. The number of steps is decided by the approval settings.;
+if (Approval decision) is (Sent back) than #red
+  [role_support: Fix and re-request] <block_reject>
+  label: Sent back;
+  [loop]
+else
+  [role_approver: Approve the work order] <block_approve>
+  label: Approval;
+endif
+[role_mfg: Execute the steps] <block_apply>
+label: Step execution;
+desc: Record start/completion for each step, along with received/good quantity and the defect breakdown. Defects can be reworked via a process branch.;
+[role_mfg: Complete the final step] <block_apply>
+label: Completion;
+[role_system: Receive into product stock] <block_system>
+label: Stock receipt;
+desc: The completed quantity enters product stock, and the allocation to the order is finalized. Proceed to the shipping flow.;

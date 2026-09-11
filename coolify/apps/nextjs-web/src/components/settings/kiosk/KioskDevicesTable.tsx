@@ -669,6 +669,7 @@ export function KioskDevicesTable({
       filters={
         <>
           <Select
+            aria-label={tr("common.site")}
             clearable
             data={plantOptions}
             onChange={setPlant}
@@ -679,6 +680,7 @@ export function KioskDevicesTable({
             w={isMobile ? undefined : 180}
           />
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={statusOptions("KioskDevice")}
             onChange={setStatus}
@@ -692,6 +694,7 @@ export function KioskDevicesTable({
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("settings.kiosk.deviceNameLocationSite")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value || null)}
           placeholder={tr("settings.kiosk.deviceNameLocationSite")}

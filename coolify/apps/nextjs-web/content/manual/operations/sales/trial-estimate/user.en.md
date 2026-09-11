@@ -34,7 +34,7 @@ This is the first app you use when you decide the price of a new product.
 
 When you open the app, you see a list of the estimates made so far.
 
-![Trial estimate list screen](../../../assets/screenshots/trial-estimate-list-01.png)
+![Trial estimate list screen](../../../assets/screenshots/trial-estimate-list-01.en.png)
 
 - **価格試算番号 (estimate number)** … a number starting with `EST-`. It is added automatically when you save.
 - **状態 (status)** … a colored badge shows where the estimate stands. Gray is 「下書き」(draft), blue is 「確定」(confirmed), green is 「価格表登録済」(used in a price list).

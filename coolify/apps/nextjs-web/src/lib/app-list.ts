@@ -636,6 +636,25 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: "portal_admin",
   },
+  {
+    // 外部 API クライアント — 社外のシステムが業務データを機械的に読むための
+    // 資格情報。**SY01 ユーザー管理には混ぜない**: 一覧に並ぶのは人ではなく
+    // 機械で、寿命も操作も違う（発行・差し替え・失効）。
+    //
+    // requiredPermission は api_client。**業務ロールには配っていない**
+    // （rbac-seed.sql / roles-seed.sql の除外リスト）— トークンの発行は
+    // 「ロールを帯びた資格情報を作る」操作なので、既定で全社員に渡ってはいけない。
+    //
+    // ここで作るのは**身元**だけ。そのクライアントが何を読めるかは SY01 で
+    // ロールを割り当てて決める（発行と権限付与を別の人の別の操作に分ける）。
+    key: "api-clients",
+    label: "API クライアント",
+    operationCode: "SY0I",
+    href: "/settings/api-clients",
+    icon: "IconPlugConnected",
+    category: "システム",
+    requiredPermission: "api_client",
+  },
 ];
 
 /** Home 絞り込み（工程）で使う URL パラメータのキー。 */
@@ -730,6 +749,7 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "design-files": { en: "Drawing", zh: "图纸" },
   "privileged-access": { en: "Privileged access", zh: "特权访问" },
   "portal-admin": { en: "Partner portal", zh: "客户门户" },
+  "api-clients": { en: "API clients", zh: "API 客户端" },
 };
 
 export const CATEGORY_LABEL_I18N: Record<

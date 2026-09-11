@@ -1,7 +1,8 @@
 {
   "apps": {
     "stepExecution": "工程実行",
-    "woScan": "指示書スキャン"
+    "woScan": "指示書スキャン",
+    "workLocation": "作業場所の工程"
   },
   "userMenu": {
     "title": "利用者",
@@ -49,6 +50,24 @@
       "COMPLETED": "完了",
       "CANCELLED": "キャンセル"
     }
+  },
+  "workLocationBoard": {
+    "title": "作業場所の工程",
+    "back": "アプリ一覧へ",
+    "backToBoard": "作業場所の一覧へ",
+    "empty": "この作業場所に待っている工程はありません",
+    "scopeLocation": "この作業場所",
+    "scopeGroup": "グループ全体",
+    "scopeGroupNamed": "グループ全体（{name}）",
+    "noDefaultLocation": "この端末には既定の作業場所が設定されていません。作業場所の QR コードを読み取ってください。",
+    "locationUnknown": "この作業場所コードは見つかりません",
+    "deviceDefaultMismatch": "この一覧は「{label}」を見ています。ここから開始した工程は、実績にも「{label}」が記録されます（この端末の既定は「{deviceLabel}」）。",
+    "showingLocation": "表示中: {label}",
+    "upcoming": "予定 {n} 件",
+    "assignees": "担当: {names}",
+    "plannedForOthers": "他の担当者の工程です",
+    "scan": "作業場所を読み取り",
+    "close": "読み取りをやめる"
   },
   "steps": {
     "title": "工程実行",
@@ -289,7 +308,7 @@
     },
     "approval": {
       "title": "検査承認",
-      "remaining": "承認待ち {n} 件",
+      "remaining": "承認依頼中 {n} 件",
       "allDone": "すべて承認しました",
       "empty": "承認する検査記録がありません",
       "approve": "承認する",
@@ -309,6 +328,56 @@
       "verdict": "合否",
       "noItems": "記入された項目がありません",
       "checkThenApprove": "中身を確かめてから承認してください"
+    },
+    "working": {
+      "count": "作業中 {n} 件",
+      "title": "作業中の工程",
+      "concurrentNote": "{n} 件同時のため、実働時間は 1/{n} で計上されます",
+      "open": "開く",
+      "close": "閉じる"
+    },
+    "batch": {
+      "select": "選択",
+      "cancelSelect": "選択をやめる",
+      "selectedCount": "{n} 件選択中",
+      "start": "選択した {n} 件を開始",
+      "pause": "選択した {n} 件を一時停止",
+      "complete": "選択した {n} 件を完了",
+      "mixedSelection": "開始できる工程と作業中の工程が混ざっています。どちらかに揃えてください。",
+      "confirmStart": "選択した {n} 件を開始しますか？",
+      "confirmPause": "選択した {n} 件を一時停止しますか？",
+      "confirmComplete": "選択した {n} 件を完了しますか？",
+      "expectedInputNote": "受入数は想定値で開始します。変更するには工程を個別に開いてください。",
+      "allGoodNote": "全数を良品として完了します。不良がある工程は個別に開いて内訳を入力してください。",
+      "resultStarted": "{n} 件開始しました",
+      "resultPaused": "{n} 件一時停止しました",
+      "resultCompleted": "{n} 件完了しました",
+      "resultMixed": "{ok} 件成功 / {ng} 件失敗",
+      "resultAllFailed": "{n} 件とも実行できませんでした",
+      "reasonNotSelectable": "この状態では一括操作できません",
+      "reasonLotRequired": "ロット/伝票コードが必要です。個別に開いてください",
+      "reasonInspectionRequired": "検査表の記入が必要です",
+      "open": "開く",
+      "close": "閉じる",
+      "run": "実行",
+      "cancel": "キャンセル"
+    },
+    "group": {
+      "openGroup": "まとめて開く",
+      "groupCount": "{name} — {n} 件",
+      "title": "{name}（{n} 件）",
+      "back": "工程一覧へ",
+      "sectionStartable": "開始できる工程",
+      "sectionWorking": "作業中・一時停止中の工程",
+      "sectionOther": "いま操作できない工程",
+      "lotLabel": "ロット/伝票コード",
+      "lotRequired": "ロット/伝票コードを入力してください",
+      "startSelected": "選択した {n} 件を開始",
+      "completeSelected": "選択した {n} 件を完了",
+      "allGoodNote": "全数を良品として完了します。不良がある工程は「開く」から個別に入力してください。",
+      "openOne": "開く",
+      "empty": "この工程はまとめられる状態ではありません",
+      "notFound": "この工程は見つかりませんでした"
     }
   },
   "deviceError": {

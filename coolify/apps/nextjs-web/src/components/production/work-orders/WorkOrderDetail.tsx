@@ -252,6 +252,7 @@ export function WorkOrderDetail({
   const approvalCard = (
     <WorkOrderApprovalCard
       approval={approval}
+      planReadiness={wo.planReadiness}
       rejectReason={wo.rejectReason}
       status={wo.status}
       workOrderNumber={wo.workOrderNumber}
@@ -285,7 +286,10 @@ export function WorkOrderDetail({
                     <DocNumber c="blue">{l.number}</DocNumber>
                   </Anchor>
                   <Text c="dimmed" size="xs">
-                    割当 {l.allocatedQuantity} / 受注 {l.lineQuantity}
+                    {tr("production.workOrderDetail.allocatedOfOrdered", {
+                      allocated: l.allocatedQuantity,
+                      ordered: l.lineQuantity,
+                    })}
                   </Text>
                 </Group>
               ))}
@@ -335,17 +339,69 @@ export function WorkOrderDetail({
         label={tr("common.storageLocations")}
         value={wo.storageLocationName}
       />
+      {/* 工程リストは 準備（共通）+ 製造（製品 × 受注元）の 2 本（§7）。
+          使っている版が最新でなければ印を付ける — 直した工程リストが
+          この指示書に反映されていないことを、開いた人が気づけるように。 */}
+      <FieldValue
+        label={tr("production.workOrders.prepRoute")}
+        value={
+          wo.prepRouteName != null ? (
+            <Group gap={6} wrap="nowrap">
+              <Anchor
+                component={Link}
+                href="/master/process-steps/prep-routes"
+                size="sm"
+              >
+                {wo.prepRouteName} v{wo.prepRouteVersion}
+              </Anchor>
+              {wo.prepRouteLatestVersion != null &&
+                wo.prepRouteVersion != null &&
+                wo.prepRouteLatestVersion > wo.prepRouteVersion && (
+                  <Badge color="orange" size="xs" variant="light">
+                    {tr("production.workOrders.newerVersionExists", {
+                      version: wo.prepRouteLatestVersion,
+                    })}
+                  </Badge>
+                )}
+            </Group>
+          ) : null
+        }
+      />
+      {/* 過不足納品（§8）— 許可されているときだけ出す。既定（不可）は
+          従来どおりの状態なので、全ての指示書に「不可」を並べても読む量が
+          増えるだけ。 */}
+      {wo.allowQuantityVariance && (
+        <FieldValue
+          label={tr("production.workflowBuilder.allowQuantityVariance")}
+          value={
+            <Badge color="orange" size="sm" variant="light">
+              {tr("production.workOrders.varianceAllowedBadge")}
+            </Badge>
+          }
+        />
+      )}
       <FieldValue
         label={tr("production.workOrders.processRoute")}
         value={
           wo.routeName != null ? (
-            <Anchor
-              component={Link}
-              href={`/master/products/${wo.productId}?tab=routes`}
-              size="sm"
-            >
-              {wo.routeName} v{wo.routeVersion}
-            </Anchor>
+            <Group gap={6} wrap="nowrap">
+              <Anchor
+                component={Link}
+                href={`/master/products/${wo.productId}?tab=routes`}
+                size="sm"
+              >
+                {wo.routeName} v{wo.routeVersion}
+              </Anchor>
+              {wo.routeLatestVersion != null &&
+                wo.routeVersion != null &&
+                wo.routeLatestVersion > wo.routeVersion && (
+                  <Badge color="orange" size="xs" variant="light">
+                    {tr("production.workOrders.newerVersionExists", {
+                      version: wo.routeLatestVersion,
+                    })}
+                  </Badge>
+                )}
+            </Group>
           ) : null
         }
       />
@@ -549,6 +605,14 @@ export function WorkOrderDetail({
             )}
             <WorkOrderStepsPanel
               catalogOptions={catalogOptions}
+              // 予定納期 = 割当明細の納期のうち最も早いもの（統合ロットでは
+              // 一番急ぐ明細に合わせる）。
+              deliveryDate={
+                wo.orderLines
+                  .map((l) => l.deliveryDate)
+                  .filter((d): d is string => d != null)
+                  .sort()[0] ?? null
+              }
               stepLinks={wo.stepLinks}
               steps={wo.steps}
               workOrderNumber={wo.workOrderNumber}
@@ -605,7 +669,13 @@ export function WorkOrderDetail({
               <Box maw={360}>
                 <DesignFileThumb
                   target={{
-                    caption: `v${designFile.version}${designPinned ? "" : "（最新）"}`,
+                    caption: designPinned
+                      ? tr("production.workOrderDetail.version", {
+                          version: designFile.version,
+                        })
+                      : tr("production.workOrderDetail.versionLatest", {
+                          version: designFile.version,
+                        }),
                     filename: designFile.filename,
                     mimeType: designFile.mimeType,
                     src: `/api/design-files/${encodeURIComponent(designFile.id)}`,
@@ -658,7 +728,10 @@ export function WorkOrderDetail({
                         <DocNumber c="blue">{l.number}</DocNumber>
                       </Anchor>
                       <Text c="dimmed" size="xs">
-                        割当 {l.allocatedQuantity} / 受注 {l.lineQuantity}
+                        {tr("production.workOrderDetail.allocatedOfOrdered", {
+                          allocated: l.allocatedQuantity,
+                          ordered: l.lineQuantity,
+                        })}
                         {l.customerName ? ` / ${l.customerName}` : ""}
                       </Text>
                     </Group>
@@ -748,9 +821,9 @@ export function WorkOrderDetail({
               icon={<IconAlertTriangle size={16} />}
               variant="light"
             >
-              新しい版が存在します（#
-              {wo.copies.map((c) => c.workOrderNumber).join(", #")}）。
-              最新版のコピーを検討してください。
+              {tr("production.workOrderDetail.newerVersionsExist", {
+                numbers: wo.copies.map((c) => c.workOrderNumber).join(", #"),
+              })}
             </Alert>
           )}
           <SearchSelect

@@ -92,6 +92,10 @@ export async function submitBugReportAction(
         action: "CREATE",
         tableName: "system",
         recordId: `bug-report:${id}`,
+        // recordAudit() を経由しない唯一の直書き（失敗時にこの action 自体を
+        // 失敗させたいため）。record_key は自明（この文字列自体が一意で
+        // 不変）なので、resolveAuditRecordKey を呼ばずここで直接埋める。
+        recordKey: `bug-report:${id}`,
         afterData: {
           note: tr("layout.bugReportActions.auditNote", { excerpt }),
           bugReport: { description, diagnostics, logs },

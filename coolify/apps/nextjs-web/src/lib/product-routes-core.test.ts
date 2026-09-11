@@ -4,10 +4,13 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  isOtherCustomerRoute,
+  pickDefaultPrepRoute,
   pickDefaultRoute,
   type RouteStepSnapshot,
   type RouteView,
   routeStepsEqual,
+  routesVisibleForCustomer,
 } from "./product-routes-core";
 
 const step = (
@@ -87,6 +90,7 @@ describe("routeStepsEqual", () => {
 
 describe("pickDefaultRoute（顧客一致 → 汎用 → 先頭）", () => {
   const route = (id: number, customerBpId: string | null): RouteView => ({
+    kind: "MANUFACTURING",
     id,
     name: `route-${id}`,
     nameEn: "",
@@ -116,5 +120,71 @@ describe("pickDefaultRoute（顧客一致 → 汎用 → 先頭）", () => {
 
   it("空配列は null", () => {
     expect(pickDefaultRoute([], "bp-a")).toBeNull();
+  });
+});
+
+// ─── 受注元で絞る / 他顧客の判定 / 準備工程リストの既定 ─────────────────────
+
+const routeOf = (
+  id: number,
+  customerBpId: string | null,
+  extra: Partial<RouteView> = {},
+): RouteView => ({
+  id,
+  kind: "MANUFACTURING",
+  name: `R${id}`,
+  nameEn: `R${id}`,
+  customerBpId,
+  customerName: customerBpId,
+  isActive: true,
+  notes: null,
+  updatedAt: "",
+  versions: [],
+  ...extra,
+});
+
+describe("routesVisibleForCustomer", () => {
+  const routes = [routeOf(1, "A"), routeOf(2, null), routeOf(3, "B")];
+
+  it("既定はこの受注元のものと汎用だけ", () => {
+    expect(
+      routesVisibleForCustomer(routes, "A", false).map((r) => r.id),
+    ).toEqual([1, 2]);
+  });
+
+  it("トグルを立てると他の受注元のものも出る", () => {
+    expect(
+      routesVisibleForCustomer(routes, "A", true).map((r) => r.id),
+    ).toEqual([1, 2, 3]);
+  });
+
+  it("受注元が無い（在庫向け）なら絞りようが無いので全部", () => {
+    expect(routesVisibleForCustomer(routes, null, false)).toHaveLength(3);
+  });
+});
+
+describe("isOtherCustomerRoute", () => {
+  it("別の受注元専用のときだけ true（汎用・自分の受注元・受注元なしは false）", () => {
+    expect(isOtherCustomerRoute(routeOf(1, "B"), "A")).toBe(true);
+    expect(isOtherCustomerRoute(routeOf(1, "A"), "A")).toBe(false);
+    expect(isOtherCustomerRoute(routeOf(1, null), "A")).toBe(false);
+    expect(isOtherCustomerRoute(routeOf(1, "B"), null)).toBe(false);
+  });
+});
+
+describe("pickDefaultPrepRoute", () => {
+  const prep = (id: number, isActive = true) =>
+    routeOf(id, null, { kind: "PREP", isActive });
+
+  it("有効なものが 1 本だけなら自動で選ぶ", () => {
+    expect(pickDefaultPrepRoute([prep(1), prep(2, false)])?.id).toBe(1);
+  });
+
+  it("2 本以上あれば選ばない（人が決める）", () => {
+    expect(pickDefaultPrepRoute([prep(1), prep(2)])).toBeNull();
+  });
+
+  it("無ければ null", () => {
+    expect(pickDefaultPrepRoute([prep(1, false)])).toBeNull();
   });
 });

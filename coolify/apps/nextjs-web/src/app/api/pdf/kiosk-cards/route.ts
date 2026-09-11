@@ -153,15 +153,18 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   // 誰がどのカードを何枚刷ったか、どの承認で通ったか（grantId / bypass）を残す。
-  await recordAudit({
-    action: "EXPORT",
-    tableName: "kiosk_cards",
-    recordId: cards.map((c) => c.id).join(","),
-    after: {
-      count: cards.length,
-      ...elevationAuditNote(gate, "kiosk_card.print"),
-    },
-  });
+  // カード 1 枚 = 監査行 1 件（1.5 — 以前はカンマ結合の 1 行にまとめていた）。
+  for (const c of cards) {
+    await recordAudit({
+      action: "EXPORT",
+      tableName: "kiosk_cards",
+      recordId: c.id,
+      after: {
+        count: cards.length,
+        ...elevationAuditNote(gate, "kiosk_card.print"),
+      },
+    });
+  }
 
   const stamp = timestampJst();
   const asciiName = `qr-cards_${stamp}.pdf`;

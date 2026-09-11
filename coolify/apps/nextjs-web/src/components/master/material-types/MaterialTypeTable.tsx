@@ -232,6 +232,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
       filters={
         <>
           <Select
+            aria-label={tr("master.materialTypes.conversionStatus")}
             clearable
             data={STRUCTURED_OPTIONS}
             onChange={setStructuredFilter}
@@ -241,6 +242,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
             w={isMobile ? undefined : 140}
           />
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={STATUS_OPTIONS}
             onChange={setStatusFilter}
@@ -254,6 +256,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr("common.searchByMaterialTypeCodeOr")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr("common.searchByMaterialTypeCodeOr")}

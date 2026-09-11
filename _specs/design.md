@@ -881,7 +881,9 @@ Paper (withBorder, p="md", radius="md")
 | `wait` | gray | 権限が無いので待つだけ。タイトルは「承認依頼中」 |
 | `alert` | red | 差し戻しなど、対応が必要な状態 |
 
-搭載画面: 指示書 (`WorkOrderApprovalCard`) / 注文請書 / 素材発注書 / 購買依頼。
+搭載画面: 指示書 (`WorkOrderApprovalCard`) / 注文請書 / 素材発注書 / 購買依頼 /
+出荷書 (`DeliveryVarianceCard` — **過不足納品のときだけ出る**。数量ちょうどの
+出荷では何も描かない)。
 
 ### 10.10 EditablePanel
 
@@ -976,7 +978,10 @@ Paper (withBorder, p="md", radius="md")
 - 制御・非制御のどちらでも使える（`value`+`onChange` / `defaultValue`）。
 - 畳んでも `Tabs.List` は**消さずに隠す**（`visibility: hidden`）。自然な幅を測り
   続けて広くなったら横並びへ戻すためと、`Tabs.Panel` の `aria-labelledby` が指す
-  タブの id を残すため。
+  タブの id を残すため。**ただし包含ブロック（`.app-tabs-bar-collapsed`）で横方向を
+  `overflow: clip` する** — 隠したタブ列は絶対配置・`width: max-content` なので、
+  切らないと見えないままページの横幅を押し広げ、スマホでタブが 5 枚ある画面が
+  全部横スクロールになる（2026-09 の実機巡回で 20 画面がこれだった）。
 - 畳む / 戻すの判定は `lib/tab-overflow.ts`（純関数・試験あり）。戻すときだけ余白を
   要求して、境界幅での往復を止めている。
 
@@ -1059,7 +1064,7 @@ Timeline (active={-1}, bulletSize={28}, lineWidth={2})
 ```
 Paper (withBorder, p="md", radius="md")
 ├── Group justify="space-between" mb="sm"
-│   ├── Title order={5} "工程ワークフロー"
+│   ├── Group — Title order={5} "工程ワークフロー" + Badge 予定納期（割当明細の最早納期。過ぎて未完了なら red）
 │   └── [if APPROVED or IN_PROGRESS] Anchor "工程実行ビューを開く"
 └── Grid gap="md"  — 2 ペイン（デスクトップは余白を情報で埋める）
     ├── Grid.Col span={{ base: 12, lg: 7 }} — 工程リスト

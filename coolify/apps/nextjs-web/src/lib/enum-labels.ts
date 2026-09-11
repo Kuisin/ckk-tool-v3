@@ -144,6 +144,18 @@ export const deliveryOrderTypeLabel = (value: string, locale: Locale) =>
 export const deliveryOrderTypeOptions = (locale: Locale) =>
   labelOptions("DELIVERY_ORDER_TYPE_LABEL", locale);
 
+/** 請求単価の出どころ（出荷書ヘッダ — 過不足納品 §8）。 */
+export const deliveryBillingPriceModeLabel = (value: string, locale: Locale) =>
+  resolveLabel("DELIVERY_BILLING_PRICE_MODE_LABEL", value, locale);
+export const deliveryBillingPriceModeOptions = (locale: Locale) =>
+  labelOptions("DELIVERY_BILLING_PRICE_MODE_LABEL", locale);
+
+/** 過不足の許容幅の尺度（顧客マスタ — 過不足納品 §8）。 */
+export const deliveryToleranceBasisLabel = (value: string, locale: Locale) =>
+  resolveLabel("DELIVERY_TOLERANCE_BASIS_LABEL", value, locale);
+export const deliveryToleranceBasisOptions = (locale: Locale) =>
+  labelOptions("DELIVERY_TOLERANCE_BASIS_LABEL", locale);
+
 export const deliveryMethodLabel = (value: string, locale: Locale) =>
   resolveLabel("DELIVERY_METHOD_LABEL", value, locale);
 export const deliveryMethodOptions = (locale: Locale) =>
@@ -227,3 +239,28 @@ export const workOrderHistoryActionLabel = (value: string, locale: Locale) =>
 /** 設計依頼書の履歴（history Json の action）表示ラベル。 */
 export const designHistoryActionLabel = (value: string, locale: Locale) =>
   resolveLabel("DESIGN_HISTORY_ACTION_LABEL", value, locale);
+
+/**
+ * 工程ステップの実施場所（INTERNAL / OUTSOURCE）。`process_step_catalog` の
+ * `executionLocation`（PROCESS_EXECUTION_LABEL — INTERNAL/INTERNAL_OR_OUTSOURCE
+ * の 2 択）とは別の enum — こちらは `work_order_steps` /
+ * `product_process_route_version_steps` の実行時の値（社内/外注のどちらで
+ * 実施したか、の 2 択）。StepCard.tsx は今のところこの訳を経由せず固定文言
+ * バッジで出しているが、Select の選択肢や監査ログでの表示にはこちらを使う。
+ */
+export const stepExecutionLabel = (value: string, locale: Locale) =>
+  resolveLabel("STEP_EXECUTION_LABEL", value, locale);
+export const stepExecutionOptions = (locale: Locale) =>
+  labelOptions("STEP_EXECUTION_LABEL", locale);
+
+/** フォームの種類（アンケート / 申請・報告）。CM02 フォーム作成時の選択。 */
+export const formKindLabel = (value: string, locale: Locale) =>
+  resolveLabel("FORM_KIND_LABEL", value, locale);
+export const formKindOptions = (locale: Locale) =>
+  labelOptions("FORM_KIND_LABEL", locale);
+
+/** ユーザー変更依頼の種類（利用停止・復帰・所属拠点変更・ロール変更）。SY01。 */
+export const userChangeKindLabel = (value: string, locale: Locale) =>
+  resolveLabel("USER_CHANGE_KIND_LABEL", value, locale);
+export const userChangeKindOptions = (locale: Locale) =>
+  labelOptions("USER_CHANGE_KIND_LABEL", locale);

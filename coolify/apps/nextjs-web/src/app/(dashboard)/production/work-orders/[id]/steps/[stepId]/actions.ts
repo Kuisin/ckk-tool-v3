@@ -27,6 +27,7 @@ import {
 } from "@/lib/inspection-core";
 import { fetchAllowedWorkLocationIds } from "@/lib/work-locations";
 import { submitFlowChange } from "@/lib/work-order-flow-changes";
+import { requiredPlanFields } from "@/lib/work-plan-core";
 import {
   abortStepExecution,
   completeStepExecution,
@@ -99,9 +100,18 @@ async function deniedStepPermission(
 async function findStep(workOrderNumber: number, stepId: string) {
   return prisma.workOrderStep.findFirst({
     where: { id: stepId, workOrder: { workOrderNumber } },
-    include: { workOrder: { select: { id: true, workOrderNumber: true } } },
+    include: {
+      workOrder: { select: { id: true, workOrderNumber: true, status: true } },
+    },
   });
 }
+
+/**
+ * 作業計画を触ってよい指示書の状態。下書き（承認前に計画を入れる — 承認依頼の
+ * 条件）と 承認済 / 進行中。承認依頼中は依頼した内容を裏で変えないよう閉じ、
+ * 完了・キャンセルも閉じる。実績は従来どおり 承認後 + 進行中の工程のみ。
+ */
+const PLAN_EDITABLE_WO_STATUSES = new Set(["DRAFT", "APPROVED", "IN_PROGRESS"]);
 
 // ── 実行系ラッパ ─────────────────────────────────────────────────────────────
 
@@ -1143,9 +1153,12 @@ function planActualBaseShape(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return {
     workOrderNumber: z.number().int().positive(),
     stepId: z.string().min(1),
+    // 担当者。計画は任意（工程マスタ plan_assignee_required で要求）、実績は
+    // 必須 — stepActualInputSchema が上書きする。
     userId: z
       .string()
-      .min(1, tr("production.stepPlanActualPanel.selectAnAssignee")),
+      .min(1, tr("production.stepPlanActualPanel.selectAnAssignee"))
+      .nullable(),
     date: z
       .string()
       .regex(datePattern, tr("production.stepPlanActualPanel.selectADate")),
@@ -1176,7 +1189,12 @@ function stepPlanInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
 function stepActualInputSchema(
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ) {
-  return z.object(planActualBaseShape(tr));
+  return z.object({
+    ...planActualBaseShape(tr),
+    userId: z
+      .string()
+      .min(1, tr("production.stepPlanActualPanel.selectAnAssignee")),
+  });
 }
 
 export type StepPlanInput = z.infer<ReturnType<typeof stepPlanInputSchema>>;
@@ -1261,12 +1279,68 @@ export async function addStepPlan(
         ],
       };
     }
+    if (!PLAN_EDITABLE_WO_STATUSES.has(step.workOrder.status)) {
+      return {
+        ok: false,
+        errors: [
+          tr("production.stepExecutionActions.planLockedByWorkOrderStatus"),
+        ],
+      };
+    }
     const locationError = await invalidWorkLocation(
       v.workLocationId,
       step.processStepId,
       tr,
     );
     if (locationError) return { ok: false, errors: [locationError] };
+    // 作業計画は 日付 + 作業場所 が必須（§7 — 承認前に「どこで」まで決める）。
+    // 実績は従来どおり任意（キオスクは端末の既定作業場所を書くが、無い端末も
+    // ある）。作業場所マスタが空の環境では要求しない — 判定規則は
+    // lib/work-plan-core.ts planReadiness と同じ。
+    // 必須項目は工程マスタが決める（lib/work-plan-core.ts requiredPlanFields —
+    // 承認依頼のゲート・計画パネルの必須印と同じ相手）。
+    const catalog = await prisma.processStepCatalog.findUnique({
+      where: { id: step.processStepId },
+      select: {
+        workLocationRequired: true,
+        planTimeRequired: true,
+        planAssigneeRequired: true,
+        planQuantityRequired: true,
+      },
+    });
+    const required = requiredPlanFields(
+      { executionLocation: step.executionLocation, ...catalog },
+      {
+        workLocationsConfigured:
+          (await prisma.workLocation.count({ where: { isActive: true } })) > 0,
+      },
+    );
+    if (required.includes("ASSIGNEE") && v.userId == null) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.assigneeRequiredForPlan")],
+      };
+    }
+    if (required.includes("WORK_LOCATION") && v.workLocationId == null) {
+      return {
+        ok: false,
+        errors: [
+          tr("production.stepExecutionActions.workLocationRequiredForPlan"),
+        ],
+      };
+    }
+    if (required.includes("TIME") && (!v.startTime || !v.endTime)) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.timeRequiredForPlan")],
+      };
+    }
+    if (required.includes("QUANTITY") && v.quantity == null) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.quantityRequiredForPlan")],
+      };
+    }
     const actor = await getCurrentActorId();
     await prisma.workOrderStepPlan.create({
       data: {
@@ -1327,6 +1401,14 @@ export async function deleteStepPlan(
       return {
         ok: false,
         errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
+    if (!PLAN_EDITABLE_WO_STATUSES.has(step.workOrder.status)) {
+      return {
+        ok: false,
+        errors: [
+          tr("production.stepExecutionActions.planLockedByWorkOrderStatus"),
+        ],
       };
     }
     const deleted = await prisma.workOrderStepPlan.deleteMany({

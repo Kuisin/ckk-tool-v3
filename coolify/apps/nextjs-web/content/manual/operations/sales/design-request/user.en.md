@@ -65,7 +65,7 @@ Use this when a customer asks about a special shape and a drawing is needed.
 
 When you open the app, the requests so far are shown as a list.
 
-![Design request list screen](../../../assets/screenshots/design-request-list-01.png)
+![Design request list screen](../../../assets/screenshots/design-request-list-01.en.png)
 
 - **依頼番号 (request number)** … a number starting with `DSG-`. It is added automatically when you save.
 - **トリガー (trigger)** … 「見積時」(at quotation) or 「受注時」(at order) is shown as a badge.

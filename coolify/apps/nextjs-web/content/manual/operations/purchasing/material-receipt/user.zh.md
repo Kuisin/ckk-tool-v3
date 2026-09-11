@@ -66,7 +66,7 @@ screenshots: [material-receipt-list-01, material-receipt-new-01, material-receip
 
 在列表中点击某一行，会打开该到货的详情画面。
 
-![来自订购单的到货详情画面](../../../assets/screenshots/material-receipt-detail-01.png)
+![来自订购单的到货详情画面](../../../assets/screenshots/material-receipt-detail-01.zh.png)
 
 - 可以确认材料、供应商、收货据点、数量、到货日、备注。
 - **発注明細**（订购明细）… 来自订购单的到货，会显示指向原[材料订购单](/manual/zh/operations/purchasing/purchase-order/user)的链接。点击即可确认订购内容。

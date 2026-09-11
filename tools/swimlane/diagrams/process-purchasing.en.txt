@@ -1,0 +1,126 @@
+// Purchasing flow — includes a request-approval send-back loop and a
+// split-receipt loop.
+
+/title/
+Purchasing flow — From request to receipt completion
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_prod>
+label: Production control / floor;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_approver>
+label: Approval / judgment;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_purchase>
+label: Purchasing;
+text-color: #115e59;
+background-color: #ccfbf1;
+
+<role_receiving>
+label: Receiving;
+text-color: #155e75;
+background-color: #cffafe;
+
+<role_system>
+label: System;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_wait>
+background-color: #f4f4f5;
+text-color: #52525b;
+border-color: #71717a;
+shape: hex;
+icon: #clock;
+
+<block_memo>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: note;
+icon: #file-text;
+
+/line/
+
+[role_prod: File a purchase request] <block_apply>
+label: Purchase request;
+desc: Write the wanted material, quantity, receiving site, requested date, and the reason, then request approval.;
+if (Request approval) is (Sent back) than #red
+  [role_prod: Fix and re-request] <block_reject>
+  label: Sent back;
+  desc: Fix the reason or quantity and request again.;
+  [loop]
+else
+  [role_approver: Approve the request] <block_approve>
+  label: Request approval;
+endif
+[role_purchase: Create a purchase order] <block_apply>
+label: Purchase order;
+desc: Decide the supplier, unit price, and expected receiving date. For urgent or small-amount cases, it can be created directly without going through a request.;
+[role_approver: Approve the purchase order] <block_approve>
+label: PO approval;
+desc: Check the amount and terms before approving. If sent back, fix and request again.;
+[role_purchase: Order from the supplier] <block_apply>
+label: Order;
+desc: Once ordered, it is treated as an expected receipt.;
+[role_receiving: Record the receipt] <block_apply>
+label: Material receipt;
+desc: Record the quantity received, the date, and the receiving site.;
+[role_system: Increase the site's stock] <block_system>
+label: Stock update;
+desc: The recorded receiving site's material stock increases as of the recorded receiving date.;
+if (Gap vs. ordered qty) is (Remaining) than #orange
+  [role_receiving: Wait for the next receipt] <block_wait>
+  label: Split receipt;
+  desc: When delivered in parts, record only what arrived; the rest is recorded as a later receipt.;
+  [loop]
+else
+  [role_system: Becomes receipt completed] <block_system>
+  label: Receipt completed;
+  desc: Once the full ordered quantity has arrived, the purchase order's status becomes "Received".;
+endif
+[role_prod: Outsourcing starts from a step] <block_memo>
+label: (Reference) Outsourcing;
+desc: An outsource order is not created from purchasing — selecting "Outsourced" as a work order step's execution location makes it appear in the outsource order list.;

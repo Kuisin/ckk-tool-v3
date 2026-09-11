@@ -717,6 +717,18 @@ export async function receivePurchaseOrderItems(
     const receivedAt = todayJst();
 
     const result = await prisma.$transaction(async (tx) => {
+      // prior で見た ORDERED は tx の外の読み。短納クローズ（ORDERED → COMPLETED）
+      // と競合すると、閉じた発注書に入荷行と在庫が積まれる。行を更新して
+      // 「いまも ORDERED」を原子的に確かめる（更新は行ロックも兼ねる）。
+      const stillOrdered = await tx.materialPurchaseOrder.updateMany({
+        where: { id: prior.id, status: "ORDERED" },
+        data: { updatedAt: now },
+      });
+      if (stillOrdered.count !== 1) {
+        throw new Error(
+          `GUARD:${tr("purchase.purchaseOrderActions.onlyOrderedCanReceive")}`,
+        );
+      }
       const ids: string[] = [];
       for (const line of lines) {
         const it = prior.items.find((i) => i.id === line.itemId);
@@ -1060,8 +1072,12 @@ export async function cancelPurchaseOrder(
  * — 失敗しても発注書は残る（画面もエラーを出さない）。
  */
 export async function learnMaterialOrderAliases(payload: {
+  /** 作成できた発注書。保存された仕入先・素材はここから読む（画面の値は信用しない）。 */
+  poNumber: string;
   extractedSupplierName: string | null;
+  /** 突合が下書きに入れていた仕入先 id（自動一致）。 */
   supplierBpId: string | null;
+  /** 下書きの明細（並び順のまま）。materialId は自動一致の値。 */
   lines: {
     materialText: string | null;
     materialCode: string | null;
@@ -1070,11 +1086,32 @@ export async function learnMaterialOrderAliases(payload: {
 }): Promise<ActionResult> {
   const authz = await checkPermission("purchase_order", "CREATE");
   if (!authz.ok) return actionError(authz.error);
+  const saved = await prisma.materialPurchaseOrder.findUnique({
+    where: { poNumber: payload.poNumber },
+    select: {
+      supplierBpId: true,
+      createdBy: true,
+      items: { orderBy: { sortOrder: "asc" }, select: { materialId: true } },
+    },
+  });
+  // 自分が作った発注書でなければ何も覚えない（番号だけで他人の書類に紐づけない）。
+  const actorId = await getCurrentActorId();
+  if (!saved || saved.createdBy !== actorId) return actionOk();
+  // 下書きと保存された明細を**並び順で**突き合わせる。行を消したり足したりして
+  // 数が合わないときは、どの行がどれか決められないので覚えない（曖昧なものを
+  // 覚えるより覚えない方が安全 — 学習は推測より先に当たるため）。
+  if (saved.items.length !== payload.lines.length) return actionOk();
   await learnPurchaseAliases({
     extractedSupplierName: payload.extractedSupplierName,
-    supplierBpId: payload.supplierBpId,
-    lines: payload.lines,
-    actorId: await getCurrentActorId(),
+    supplierBpId: saved.supplierBpId,
+    draftSupplierBpId: payload.supplierBpId,
+    lines: payload.lines.map((l, i) => ({
+      materialText: l.materialText,
+      materialCode: l.materialCode,
+      materialId: String(saved.items[i]?.materialId ?? ""),
+      draftMaterialId: l.materialId,
+    })),
+    actorId,
   });
   return actionOk();
 }

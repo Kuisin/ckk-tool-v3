@@ -177,6 +177,7 @@ async function findFinalInspectionStep(stepId: string, actorId: string) {
 
 /** 監査行 1 件（鍵 + パラメータ — 読む人の言語で訳される）。 */
 async function auditNote(
+  workOrderId: string,
   workOrderNumber: number,
   key: string,
   params?: Record<string, string | number>,
@@ -185,6 +186,7 @@ async function auditNote(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(workOrderNumber),
+    recordKey: workOrderId,
     after: { note: encodeInventoryNote(key, params) },
   });
 }
@@ -211,6 +213,7 @@ export async function recordFinalCheck(
     update: stamp,
   });
   await auditNote(
+    step.workOrderId,
     step.workOrder.workOrderNumber,
     `finalInspection${field[0].toUpperCase()}${field.slice(1)}`,
     { mark: ok ? "○" : "×" },
@@ -237,6 +240,7 @@ export async function recordFinalSpareStock(
     update: { [field]: value },
   });
   await auditNote(
+    step.workOrderId,
     step.workOrder.workOrderNumber,
     `finalInspection${field[0].toUpperCase()}${field.slice(1)}${
       value ? "On" : "Off"
@@ -284,6 +288,7 @@ export async function recordFinalShipmentStage(
     update: stamp,
   });
   await auditNote(
+    step.workOrderId,
     step.workOrder.workOrderNumber,
     `finalInspection${stage[0].toUpperCase()}${stage.slice(1)}`,
   );
@@ -310,6 +315,7 @@ export async function recordFinalShipDefect(
     update: stamp,
   });
   await auditNote(
+    step.workOrderId,
     step.workOrder.workOrderNumber,
     "finalInspectionShipDefectReviewed",
   );

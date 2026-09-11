@@ -1,0 +1,125 @@
+// 采购流程 — 包含申请审批的退回循环与分批到货的循环。
+
+/title/
+采购流程 — 从申请到到货完成
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 步骤;
+left-subtitle: 说明;
+
+/role/
+
+<role_prod>
+label: 生产管理 / 现场;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_approver>
+label: 审批 / 判断;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_purchase>
+label: 采购负责人;
+text-color: #115e59;
+background-color: #ccfbf1;
+
+<role_receiving>
+label: 收货负责人;
+text-color: #155e75;
+background-color: #cffafe;
+
+<role_system>
+label: 系统;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_wait>
+background-color: #f4f4f5;
+text-color: #52525b;
+border-color: #71717a;
+shape: hex;
+icon: #clock;
+
+<block_memo>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: note;
+icon: #file-text;
+
+/line/
+
+[role_prod: 提交采购申请] <block_apply>
+label: 采购申请;
+desc: 填写所需材料、数量、到货据点、希望交期以及理由，然后申请审批。;
+if (申请审批) is (退回) than #red
+  [role_prod: 修正后重新申请] <block_reject>
+  label: 退回;
+  desc: 修正理由或数量后，再次申请。;
+  [loop]
+else
+  [role_approver: 审批申请] <block_approve>
+  label: 申请审批;
+endif
+[role_purchase: 创建采购单] <block_apply>
+label: 采购单;
+desc: 确定供应商、单价、预计到货日。紧急或小额时可不经申请直接创建。;
+[role_approver: 审批采购单] <block_approve>
+label: 采购单审批;
+desc: 确认金额与条件后审批。退回时修正后重新申请。;
+[role_purchase: 向供应商下单] <block_apply>
+label: 下单;
+desc: 下单后即视为预计到货。;
+[role_receiving: 记录到货] <block_apply>
+label: 材料到货;
+desc: 记录到货数量、到货日和接收据点。;
+[role_system: 增加据点库存] <block_system>
+label: 库存更新;
+desc: 按记录的到货日，指定据点的材料库存增加。;
+if (与下单数量差额) is (有剩余) than #orange
+  [role_receiving: 等待下次到货] <block_wait>
+  label: 分批到货;
+  desc: 分批到货时，只记录已到的部分，其余作为下一次到货记录。;
+  [loop]
+else
+  [role_system: 变为到货完成] <block_system>
+  label: 到货完成;
+  desc: 下单数量全部到货后，采购单状态变为「到货完成」。;
+endif
+[role_prod: 外协从工序开始] <block_memo>
+label: （参考）外协;
+desc: 外协委托并非从采购发起，而是在工单工序的实施场所选择「外协」后，出现在外协委托单列表中。;

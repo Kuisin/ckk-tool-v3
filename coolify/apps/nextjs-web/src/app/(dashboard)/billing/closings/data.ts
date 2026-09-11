@@ -16,6 +16,7 @@ import {
   type BillingClosing,
   type BillingClosingDetail,
   billingPeriodStart,
+  billingPeriodStartFrom,
   billingWindowFor,
   type ClosingShipmentRow,
   type ClosingStatus,
@@ -122,6 +123,37 @@ export async function fetchUninvoicedShipments(range: { gte: Date; lt: Date }) {
 }
 
 /**
+ * 請求期間の始点（暦日）。**前回処理した締日の翌日**が正で、処理済みの行が
+ * 無いときだけ顧客の締日設定から逆算する（model.ts billingPeriodStartFrom）。
+ * processClosing と fetchBillableShipmentsForClosing の両方がこれを通る。
+ */
+export async function resolveBillingPeriodStart(
+  customerBpId: string,
+  closingDate: Date,
+): Promise<Date> {
+  const [attrs, previous] = await Promise.all([
+    prisma.bpCustomerAttrs.findUnique({
+      where: { bpId: customerBpId },
+      select: { closingDay: true },
+    }),
+    prisma.billingClosing.findFirst({
+      where: {
+        customerBpId,
+        closingDate: { lt: closingDate },
+        status: { in: ["PROCESSED", "EXPORTED"] },
+      },
+      orderBy: { closingDate: "desc" },
+      select: { closingDate: true },
+    }),
+  ]);
+  return billingPeriodStartFrom(
+    closingDate,
+    attrs?.closingDay ?? null,
+    previous?.closingDate ?? null,
+  );
+}
+
+/**
  * 顧客 × 締日の請求対象出荷 — (前回締日, 締日]（JST）。processClosing と共用。
  * 前回締日は顧客の締日設定（BpCustomerAttrs.closingDay）から引く。上限は
  * この締日行の closingDate そのもの（設定が後から変わっても行の締日は動かない）。
@@ -130,14 +162,8 @@ export async function fetchBillableShipmentsForClosing(
   customerBpId: string,
   closingDate: Date,
 ): Promise<BillableShipment[]> {
-  const attrs = await prisma.bpCustomerAttrs.findUnique({
-    where: { bpId: customerBpId },
-    select: { closingDay: true },
-  });
-  const year = closingDate.getUTCFullYear();
-  const month = closingDate.getUTCMonth() + 1;
   const gte = jstMidnightOf(
-    billingPeriodStart(year, month, attrs?.closingDay ?? null),
+    await resolveBillingPeriodStart(customerBpId, closingDate),
   );
   const lt = jstMidnightOf(addDays(closingDate, 1)); // 締日当日を含む（排他的上限）
   const rows = await fetchUninvoicedShipments({ gte, lt });
@@ -145,7 +171,23 @@ export async function fetchBillableShipmentsForClosing(
 }
 
 /**
- * 出荷書 1 件の請求金額 = Σ（明細数量 × **その行の**注文明細の単価）。
+ * 請求に使う単価 — **出荷書の確定時に焼き込んだ値が先**（過不足納品で
+ * 「実納品数で価格表を引き直す」を選んだ出荷はここに反映されている）。
+ * null は移行前・未確定のデータなので、そのときだけ注文明細の単価へ落ちる。
+ *
+ * 締日画面の予定額（shipmentAmount）と発行される請求書の明細が同じ関数を
+ * 通るようにしてある — 別々に読むと、片方だけ焼き込みを見落とす。
+ */
+export function billableUnitPrice(it: {
+  unitPrice: unknown;
+  orderLine?: { unitPrice: unknown } | null;
+}): number {
+  if (it.unitPrice != null) return Number(it.unitPrice);
+  return Number(it.orderLine?.unitPrice ?? 0);
+}
+
+/**
+ * 出荷書 1 件の請求金額 = Σ（明細数量 × **その行の**単価）。
  * 1 出荷書が単価の異なる複数の注文明細を束ねられるので、出荷書単位の
  * 単一単価では誤請求になる。
  */
@@ -153,8 +195,7 @@ export function shipmentAmount(s: BillableShipment): number {
   // 行ごとに円へ丸めてから足す（lib/money.ts の方針）— 締日処理が作る請求書の
   // 明細と同じ丸め方なので、締日画面の予定額と発行後の請求額がずれない。
   return s.items.reduce(
-    (sum, it) =>
-      sum + lineAmountYen(Number(it.orderLine?.unitPrice ?? 0), it.quantity),
+    (sum, it) => sum + lineAmountYen(billableUnitPrice(it), it.quantity),
     0,
   );
 }

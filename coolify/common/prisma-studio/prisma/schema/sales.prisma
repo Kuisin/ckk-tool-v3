@@ -225,7 +225,7 @@ model Quote {
   salesRepId         String?     @map("sales_rep_id") @db.Uuid
   createdBy          String?     @map("created_by") @db.Uuid
   createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt          DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   salesRep         User?            @relation("QuoteSalesRep", fields: [salesRepId], references: [id])
   customerBp       BusinessPartner  @relation("QuoteCustomer", fields: [customerBpId], references: [id])
@@ -236,6 +236,8 @@ model Quote {
   designRequests   DesignRequest[]
 
   @@id([yearMonth, seq])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, yearMonth, seq])
   @@map("quotes")
   @@schema("app")
 }

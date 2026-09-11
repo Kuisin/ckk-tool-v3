@@ -160,3 +160,66 @@ export function stateLabel(
       return m.steps.state.cancelled;
   }
 }
+
+// ── 一括操作（/api/kiosk/steps/batch） ──────────────────────────────────────
+
+export interface BatchActionRequest {
+  action: "START" | "PAUSE" | "COMPLETE";
+  stepIds: string[];
+  /** START のみ: 作業場所 QR の code（バッチ全体で 1 つ）。 */
+  workLocationCode?: string;
+  /** START のみ: 工程 id → ロット/伝票コード（工程ごとに違う値）。 */
+  lotTexts?: Record<string, string>;
+}
+
+/** 1 件分の結果。**単一操作の応答と同じ形**なので translateError がそのまま使える。 */
+export interface BatchStepResponse extends StepActionResponse {
+  stepId: string;
+}
+
+export interface BatchActionResponse {
+  ok: boolean;
+  summary: { succeeded: number; failed: number };
+  results: BatchStepResponse[];
+}
+
+/**
+ * 一括操作を投げる。業務エラーは HTTP 200 + results なので、
+ * ここで例外にするのは通信そのものが駄目だったときだけ。
+ */
+export async function callBatchStepAction(
+  body: BatchActionRequest,
+): Promise<BatchActionResponse> {
+  const allFailed = (code: string): BatchActionResponse => ({
+    ok: false,
+    summary: { succeeded: 0, failed: body.stepIds.length },
+    results: body.stepIds.map((stepId) => ({
+      stepId,
+      ok: false,
+      codes: [code as never],
+    })),
+  });
+  try {
+    const res = await fetch("/api/kiosk/steps/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) {
+      // セッション切れ — ログインへ戻す
+      window.location.href = "/login";
+      return allFailed("OFFLINE");
+    }
+    const json = (await res.json().catch(() => null)) as
+      | BatchActionResponse
+      | { ok: false; codes: string[] }
+      | { error: string }
+      | null;
+    if (json && "results" in json) return json;
+    // 権限落ち（403）など、バッチ全体で 1 つの符号が返る形
+    if (json && "codes" in json) return allFailed(json.codes[0] ?? "UNKNOWN");
+    return allFailed("UNKNOWN");
+  } catch {
+    return allFailed("OFFLINE");
+  }
+}

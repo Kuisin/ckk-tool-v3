@@ -100,8 +100,11 @@ export async function loadProductionBoard(
       paused: s.status === "IN_PROGRESS" && s.sessionLockedBy === null,
       inputQuantity: s.inputQuantity,
       outputSuccessQuantity: s.outputSuccessQuantity,
+      // 担当者なしの計画行（いつ・どこで だけ決めた行）は名前を持たない
       assignees: [
-        ...new Set(s.plans.map((p) => p.user.displayName).filter(Boolean)),
+        ...new Set(
+          s.plans.flatMap((p) => (p.user ? [p.user.displayName] : [])),
+        ),
       ],
     }));
 

@@ -88,15 +88,30 @@ model WorkOrder {
   // 完成品の保管場所（保管場所マスタ MS0E。null = 未指定）
   storageLocationId Int? @map("storage_location_id")
 
+  /// 不足 / 超過分もそのまま納品してよいロットか（§8 過不足納品）。
+  ///
+  /// 既定は false = 受注数量ちょうどでしか出荷できない（従来の挙動）。true に
+  /// すると、この指示書のロットを載せた出荷書は受注数量を上回る数量を積めるし、
+  /// 下回る数量で注文明細を締められる。**どこまでずれてよいかはここでは決めない**
+  /// — 幅と承認の要否は顧客（bp_customer_attrs）が持つ。生産側が「このロットは
+  /// これで出してよい」と言えることと、顧客が「それを受け取る」ことは別の判断で、
+  /// 片方だけで過不足出荷が通ってはいけない。
+  allowQuantityVariance Boolean @default(false) @map("allow_quantity_variance")
+
   status         WorkOrderStatus         @default(DRAFT)
   approvalStatus WorkOrderApprovalStatus @default(NONE) @map("approval_status")
 
   // コピー元（バージョン警告用）
   sourceWorkOrderId String? @map("source_work_order_id") @db.Uuid
 
-  // 工程ルート出所（製品工程リストのバージョン）。ルート削除時は SetNull —
+  // 工程ルート出所（製造工程リストのバージョン）。ルート削除時は SetNull —
   // 工程は work_order_steps に実体化済みで、出所リンクだけが外れる。
   routeVersionId String? @map("route_version_id") @db.Uuid
+  // 準備工程リストのバージョン（kind = PREP）。指示書の工程は 準備 + 製造 の
+  // 2 本を合わせたもので、どちらから来た工程かは出所リンクでしか分からない。
+  // null = 準備工程リストを使わなかった（版の中に準備工程が混ざっている
+  // 移行前の製造リスト、または手組み）。
+  prepRouteVersionId String? @map("prep_route_version_id") @db.Uuid
 
   // 使用する図面の版（**任意**）。null = 固定しない → 表示のたびに製品の
   // 最新図面（受注元が一致する系列 → 無ければ汎用）を引く。
@@ -121,7 +136,7 @@ model WorkOrder {
   notes       String?
   createdBy   String?   @map("created_by") @db.Uuid
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   product         Product     @relation(fields: [productId], references: [id])
   designFile      DesignFile? @relation("WorkOrderDesignFile", fields: [designFileId], references: [id])
@@ -130,6 +145,7 @@ model WorkOrder {
   sourceWorkOrder WorkOrder? @relation("WorkOrderCopySource", fields: [sourceWorkOrderId], references: [id])
   copies          WorkOrder[] @relation("WorkOrderCopySource")
   routeVersion    ProductProcessRouteVersion? @relation(fields: [routeVersionId], references: [id], onDelete: SetNull)
+  prepRouteVersion ProductProcessRouteVersion? @relation("WorkOrderPrepRoute", fields: [prepRouteVersionId], references: [id], onDelete: SetNull)
   createdByUser   User?      @relation("WorkOrderCreatedBy", fields: [createdBy], references: [id])
 
   orderLineLinks      WorkOrderOrderLine[]
@@ -149,7 +165,10 @@ model WorkOrder {
   @@index([status])
   @@index([approvalStatus])
   @@index([routeVersionId])
+  @@index([prepRouteVersionId])
   @@index([storageLocationId])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
   @@map("work_orders")
   @@schema("app")
 }
@@ -337,7 +356,7 @@ model WorkOrderStep {
 model WorkOrderStepPlan {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   stepId         String    @map("work_order_step_id") @db.Uuid
-  userId         String    @map("user_id") @db.Uuid // 担当者（従業員）
+  userId         String?   @map("user_id") @db.Uuid // 担当者（従業員）— 任意。工程マスタ plan_assignee_required で必須にできる
   plannedDate    DateTime  @map("planned_date") @db.Date
   plannedStartAt DateTime? @map("planned_start_at") @db.Timestamptz(6)
   plannedEndAt   DateTime? @map("planned_end_at") @db.Timestamptz(6)
@@ -348,7 +367,7 @@ model WorkOrderStepPlan {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   step          WorkOrderStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
-  user          User          @relation("StepPlanUser", fields: [userId], references: [id])
+  user          User?         @relation("StepPlanUser", fields: [userId], references: [id], onDelete: Restrict)
   createdByUser User?         @relation("StepPlanCreatedBy", fields: [createdBy], references: [id])
   workLocation  WorkLocation? @relation("StepPlanWorkLocation", fields: [workLocationId], references: [id])
 

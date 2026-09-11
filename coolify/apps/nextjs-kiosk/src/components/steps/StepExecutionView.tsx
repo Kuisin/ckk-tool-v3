@@ -76,7 +76,18 @@ type Props = {
   /** 工程マスタの許可作業場所 × この端末（表示用 — 権威は API 側）。 */
   locationGate: StepLocationGate;
   /** 戻り先: 担当工程一覧（既定） / 指示書スキャンの指示書ビュー。 */
-  backTo?: "list" | "workOrder";
+  backTo?: "list" | "workOrder" | "location";
+  /**
+   * 作業場所の一覧（/work-location）へ戻るときのクエリ（"?loc=…&scope=group"）。
+   * **サーバー側で検証済みの値だけ**が入る — 生のクエリを href へ echo しない。
+   */
+  backParams?: string;
+  /**
+   * 作業場所の一覧から持ち越した作業場所コード（サーバーで検証済み）。
+   * 開始時の実績にこの場所を記録する（読み取った QR > 端末の既定 —
+   * 画面内で読み取ったときと同じ扱い）。
+   */
+  initialWorkLocationCode?: string | null;
 };
 
 type Phase = "IDLE" | "STARTING" | "COMPLETING";
@@ -86,15 +97,25 @@ export function StepExecutionView({
   recording,
   locationGate,
   backTo = "list",
+  backParams = "",
+  initialWorkLocationCode = null,
 }: Props) {
   const router = useRouter();
   const { m } = useI18n();
 
-  // 指示書スキャン経由なら戻り先はその指示書のビュー
+  // 指示書スキャン経由ならその指示書のビュー、作業場所の一覧経由ならその一覧へ
   const backHref =
-    backTo === "workOrder" ? `/wo-scan/${step.workOrderNumber}` : "/steps";
+    backTo === "workOrder"
+      ? `/wo-scan/${step.workOrderNumber}`
+      : backTo === "location"
+        ? `/work-location${backParams}`
+        : "/steps";
   const backLabel =
-    backTo === "workOrder" ? m.woScan.backToWorkOrder : m.steps.backToList;
+    backTo === "workOrder"
+      ? m.woScan.backToWorkOrder
+      : backTo === "location"
+        ? m.workLocationBoard.backToBoard
+        : m.steps.backToList;
 
   const [phase, setPhase] = useState<Phase>("IDLE");
   const [busy, setBusy] = useState(false);
@@ -104,7 +125,7 @@ export function StepExecutionView({
   // 開始前 = code を保持して START に同送 / 作業中 = SET_LOCATION で即時反映。
   const [locationScanOpen, setLocationScanOpen] = useState(false);
   const [pendingLocationCode, setPendingLocationCode] = useState<string | null>(
-    null,
+    initialWorkLocationCode,
   );
   const [locationNotice, setLocationNotice] = useState<string | null>(null);
 
@@ -334,7 +355,7 @@ export function StepExecutionView({
                     <Button
                       leftSection={<IconQrcode size={18} />}
                       onClick={() => setLocationScanOpen((v) => !v)}
-                      size="sm"
+                      size="lg"
                       variant="light"
                     >
                       {locationScanOpen

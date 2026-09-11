@@ -28,6 +28,7 @@ export const ELEVATION_CODES = [
   "kiosk_card",
   "personal_data",
   "portal_admin",
+  "api_client",
 ] as const;
 
 export type ElevationCode = (typeof ELEVATION_CODES)[number];
@@ -51,6 +52,7 @@ export const ELEVATION_CODE_LABEL: Record<ElevationCode, LocalizedLabel> = {
   personal_data: localizedLabel(
     "privilegedOp.ELEVATION_CODE_LABEL.personal_data",
   ),
+  api_client: localizedLabel("privilegedOp.ELEVATION_CODE_LABEL.api_client"),
 };
 
 export interface PrivilegedOperation {
@@ -431,6 +433,40 @@ export const PRIVILEGED_OPERATIONS: readonly PrivilegedOperation[] = [
       "privilegedOp.PRIVILEGED_OPERATIONS.portal_admin.mint_link_only.description",
     ),
     appKey: "portal-admin",
+  },
+
+  // ── api_client（SY0I API クライアント）───────────────────────────────────
+  //
+  // 承認が要るのは**アクセスを増やす 2 つだけ**。作成（無効・トークン無しなので
+  // 何も通らない）・説明の変更・無効化・トークンの失効・許可 IP を狭める操作は
+  // 素の api_client で足りる（アクセスを減らす操作を承認待ちにしない、という
+  // portal_admin と同じ約束）。
+  //
+  // ロールの割り当ては**ここに無い** — SY01 ユーザー管理の変更依頼（方式 B・
+  // user_admin）が持つ。身元を作る人と権限を与える人を分けるため。
+  {
+    key: "api_client.issue_token",
+    code: "api_client",
+    action: "CREATE",
+    label: localizedLabel(
+      "privilegedOp.PRIVILEGED_OPERATIONS.api_client.issue_token.label",
+    ),
+    description: localizedLabel(
+      "privilegedOp.PRIVILEGED_OPERATIONS.api_client.issue_token.description",
+    ),
+    appKey: "api-clients",
+  },
+  {
+    key: "api_client.activate",
+    code: "api_client",
+    action: "UPDATE",
+    label: localizedLabel(
+      "privilegedOp.PRIVILEGED_OPERATIONS.api_client.activate.label",
+    ),
+    description: localizedLabel(
+      "privilegedOp.PRIVILEGED_OPERATIONS.api_client.activate.description",
+    ),
+    appKey: "api-clients",
   },
 ];
 

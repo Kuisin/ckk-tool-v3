@@ -242,6 +242,7 @@ export function ToolTypeEditForm({
         title={tr("settings.toolTypeEditForm.estimatedUnitPriceUsed")}
       >
         <Select
+          aria-label={tr("settings.toolTypeEditForm.selectTheFinalCriterion")}
           data={finals.map((c) => ({
             value: c.id,
             label: c.enabled

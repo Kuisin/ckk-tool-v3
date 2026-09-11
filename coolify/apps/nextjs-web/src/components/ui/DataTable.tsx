@@ -105,6 +105,25 @@ export interface DataTableProps<T> {
    */
   urlState?: boolean;
   /**
+   * `urlState=true` のときの URL 更新モード。既定 "client"
+   * （`window.history.replaceState` — サーバー往復なし）。"server" は
+   * `router.replace` で RSC を再取得する — サーバー側でページング・絞り込み
+   * をする画面（SY07 操作履歴等）向け。`useUrlPatcher` と同じ約束
+   * （hooks/useUrlState.ts）。
+   */
+  urlMode?: "client" | "server";
+  /**
+   * サーバー側でページングした結果を渡すときの**全体の件数**。渡すと `data`
+   * を「現在のページそのもの」として扱い、内部の並べ替え・slice を行わない
+   * （並べ替え・絞り込みは呼び出し元がサーバーでやる — `sortable` は `at` の
+   * ような索引のある列だけに限ること。見えている 20 行だけを並べ替えて
+   * 全体を並べ替えたように見せるのは、並べ替えを提供しないより悪い）。
+   * 選択（selectable）は読み込み済みページ内だけが対象になる。渡さなければ
+   * 既存の全画面と同じ（このコンポーネントは常にクライアント側で
+   * 並べ替え・ページングする）。
+   */
+  totalCount?: number;
+  /**
    * 「表示する列」を覚えるときの表の名前。**同じ画面に表が 2 つ以上あるときだけ**
    * 渡す（既定は画面のパスなので、1 画面 1 表なら不要）。渡さないと 2 つの表が
    * 同じ設定を共有してしまう。
@@ -130,6 +149,8 @@ export function DataTable<T>({
   pageSize: initialPageSize = 10,
   defaultSort,
   urlState = false,
+  urlMode = "client",
+  totalCount,
   settingsKey,
   stickyHeader = true,
   emptyIcon,
@@ -141,7 +162,10 @@ export function DataTable<T>({
   const isMobile = useIsMobile();
   // URL 同期モード（urlState=true）はページ・サイズ・ソートを search params に
   // 保持し、ローカル state を使わない。フック自体は無条件に呼ぶ（React の規則）。
-  const urlTable = useUrlTableState();
+  const urlTable = useUrlTableState(urlMode);
+  // totalCount が渡されていれば、data は「サーバーが返した現在のページ」
+  // そのもの — 内部でもう一度並べ替え・slice をすると二重にページングされる。
+  const serverPaged = totalCount !== undefined;
   const [localSort, setLocalSort] = useState<{
     key: string;
     dir: SortDir;
@@ -225,6 +249,10 @@ export function DataTable<T>({
 
   // ── Sorting ────────────────────────────────────────────────────────────────
   const sorted = useMemo(() => {
+    // サーバー側でページング済みの結果を、見えている 20 行だけでもう一度
+    // 並べ替えると「全体を並べ替えたつもり」の嘘になる。並べ替えはサーバーが
+    // 既にやっている前提で data の順序をそのまま使う。
+    if (serverPaged) return data;
     if (!sort) return data;
     const col = columns.find((c) => c.key === sort.key);
     if (!col) return data;
@@ -243,14 +271,17 @@ export function DataTable<T>({
       if (av > bv) return 1 * dir;
       return 0;
     });
-  }, [data, sort, columns]);
+  }, [data, sort, columns, serverPaged]);
 
   // ── Pagination ───────────────────────────────────────────────────────────--
-  const total = sorted.length;
+  // サーバー側でページング済みなら data がそのまま「このページの行」で、
+  // 件数もサーバーが数えた totalCount を使う（sorted.length は「読み込んだ
+  // 行数」でしかなく全体の件数ではない）。
+  const total = serverPaged ? totalCount : sorted.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const safePage = Math.min(page, totalPages);
+  const safePage = serverPaged ? page : Math.min(page, totalPages);
   const start = (safePage - 1) * pageSize;
-  const pageRows = sorted.slice(start, start + pageSize);
+  const pageRows = serverPaged ? sorted : sorted.slice(start, start + pageSize);
 
   // ── Selection ───────────────────────────────────────────────────────────---
   const pageIds = pageRows.map(getRowId);
@@ -742,6 +773,14 @@ function PaginationBar({
   isMobile?: boolean;
 }) {
   const tr = useTranslations();
+  // Mantine の Pagination は矢印ボタンに名前を付けない（読み上げでは
+  // 「ボタン」としか言われない）— design.md §18.2。
+  const controlLabels = {
+    first: tr("ui.dataTable.firstPage"),
+    previous: tr("ui.dataTable.previousPage"),
+    next: tr("ui.dataTable.nextPage"),
+    last: tr("ui.dataTable.lastPage"),
+  } as const;
   return (
     <Group justify="space-between" mt={4} wrap="nowrap">
       <Text c="dimmed" className="whitespace-nowrap" size="xs">
@@ -769,6 +808,9 @@ function PaginationBar({
           />
         )}
         <Pagination
+          getControlProps={(control) => ({
+            "aria-label": controlLabels[control],
+          })}
           onChange={onPage}
           siblings={isMobile ? 0 : 1}
           size="sm"

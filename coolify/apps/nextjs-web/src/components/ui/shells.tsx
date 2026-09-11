@@ -314,6 +314,7 @@ export function DetailShell({
   createdAt?: string;
   updatedAt?: string;
 }) {
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   return (
     <Stack gap="md">
@@ -331,12 +332,12 @@ export function DetailShell({
           <Group gap="xl">
             {createdAt && (
               <Text c="dimmed" size="xs">
-                作成: {createdAt}
+                {tr("ui.detailShell.created", { value: createdAt })}
               </Text>
             )}
             {updatedAt && (
               <Text c="dimmed" size="xs">
-                更新: {updatedAt}
+                {tr("ui.detailShell.updated", { value: updatedAt })}
               </Text>
             )}
           </Group>
@@ -506,6 +507,12 @@ export function FormSection({
 export interface AuditEntry {
   id: string | number;
   action: string;
+  /**
+   * 生の操作種別（CREATE / UPDATE / DELETE / …）。`action` は表示用に翻訳済み
+   * なので、`=== "DELETE"` のような分岐には必ずこちらを使うこと
+   * （AuditChangeTable の actionRaw prop 参照）。
+   */
+  actionRaw?: string;
   user: string;
   /** 操作者の顔写真（小）。未設定・システム操作なら null → イニシャル。 */
   avatarUrl?: string | null;

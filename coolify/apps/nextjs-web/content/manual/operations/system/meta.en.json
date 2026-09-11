@@ -12,6 +12,7 @@
     "kiosk-settings",
     "link-management",
     "order-intake",
-    "privileged-access"
+    "privileged-access",
+    "external-api"
   ]
 }

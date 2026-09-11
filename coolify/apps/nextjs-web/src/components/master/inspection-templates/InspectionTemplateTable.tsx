@@ -208,7 +208,9 @@ export function InspectionTemplateTable({
           </Badge>
           {r.versionCount > 1 && (
             <Text c="dimmed" size="xs">
-              全{r.versionCount}
+              {tr("master.inspectionTemplateTable.allVersions", {
+                count: r.versionCount,
+              })}
             </Text>
           )}
         </Group>
@@ -309,6 +311,7 @@ export function InspectionTemplateTable({
       filters={
         <Group gap="xs" wrap="wrap">
           <Select
+            aria-label={tr("common.status")}
             clearable
             data={STATUS_OPTIONS}
             onChange={setStatusFilter}
@@ -318,6 +321,7 @@ export function InspectionTemplateTable({
             w={isMobile ? undefined : 120}
           />
           <Select
+            aria-label={tr("common.group")}
             clearable
             data={[
               ...groupOptions,
@@ -337,6 +341,9 @@ export function InspectionTemplateTable({
       onReset={reset}
       search={
         <TextInput
+          aria-label={tr(
+            "master.inspectionTemplates.searchByCodeNameOrRelated",
+          )}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={tr(
@@ -405,7 +412,9 @@ export function InspectionTemplateTable({
                       tr("master.inspectionTemplates.noRelatedStep")}
                   </Text>
                   <Text c="dimmed" size="xs">
-                    {r.itemCount}項目
+                    {tr("master.inspectionTemplateTable.itemCount", {
+                      count: r.itemCount,
+                    })}
                   </Text>
                 </Group>
                 {r.groupName && (

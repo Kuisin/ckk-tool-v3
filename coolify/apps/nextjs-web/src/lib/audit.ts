@@ -11,13 +11,18 @@
 
 import { getTranslations } from "next-intl/server";
 import type { AuditEntry } from "@/components/ui/shells";
+import { entityNameOf, resolveEntityNames } from "@/lib/audit-entity-name";
 import { auditFieldDiffs, formatAuditValue } from "@/lib/audit-field-labels";
+import type { AuditQuery } from "@/lib/audit-filter-core";
+import { resolveAuditRecordKey } from "@/lib/audit-record-key";
 import { avatarUrl } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 import type { Formatters } from "@/lib/format";
-import type { Tr } from "@/lib/i18n";
+import { zonedDayRange } from "@/lib/format";
+import type { Locale, Tr } from "@/lib/i18n";
 import { inventoryNoteLabel } from "@/lib/inventory-note-labels";
 import { getServerFormatters } from "@/lib/user-preferences";
+import type { Prisma } from "../../generated/client/client";
 
 export type AuditAction =
   | "CREATE"
@@ -40,8 +45,15 @@ export interface RecordAuditInput {
   action: AuditAction;
   /** DB テーブル名（@@map 値）。例: "quotes" / "price_list_entries" / "products" */
   tableName: string;
-  /** 業務識別子（文書番号・エントリキー・id） */
+  /** 業務識別子（文書番号・エントリキー・id。表示用 — 従来どおり） */
   recordId: string;
+  /**
+   * レコードの安定キー（省略可）。呼び出し元が更新直後の行を持っていて
+   * PK が既に手元にあるときはここへ渡すと `audit-record-key.ts` の解決
+   * クエリを省ける。省略時は `tableName`/`recordId` から自動解決する
+   * （`lib/audit-record-key-core.ts` の登録簿）。
+   */
+  recordKey?: string;
   /** 変更前スナップショット（プレーンな JSON 相当のみ）。CREATE では省略。 */
   before?: unknown;
   /** 変更後スナップショット。DELETE では省略。 */
@@ -93,16 +105,25 @@ function toJson(value: unknown): object | undefined {
 /**
  * 監査ログを 1 件記録する。best-effort — 失敗しても例外は投げない
  * （業務 mutation を監査ログの失敗で巻き戻さない）。
+ *
+ * `record_key`（安定キー）は `input.recordKey` が渡されていればそれを使い、
+ * 無ければ `resolveAuditRecordKey` で自動解決する。解決に失敗しても
+ * （＝ null でも）監査行そのものは必ず書く — キーは読みやすさのための
+ * 付加情報であって、無いことが書き込みを止める理由にはならない。
  */
 export async function recordAudit(input: RecordAuditInput): Promise<void> {
   try {
     const userId = await getCurrentActorId();
+    const recordKey =
+      input.recordKey ??
+      (await resolveAuditRecordKey(input.tableName, input.recordId)).key;
     await prisma.auditLog.create({
       data: {
         userId,
         action: input.action,
         tableName: input.tableName,
         recordId: input.recordId,
+        recordKey,
         beforeData: toJson(input.before),
         afterData: toJson(input.after),
       },
@@ -112,36 +133,23 @@ export async function recordAudit(input: RecordAuditInput): Promise<void> {
   }
 }
 
-/**
- * システム操作（seed / force-migration 等）を履歴に記録する。
- * actor は常にシステムユーザー。`note` が履歴の「変更内容」に表示される。
- */
-export async function recordSystemEvent(input: {
-  action: "SEED" | "MIGRATE";
-  tableName?: string;
-  recordId?: string;
-  note: string;
-}): Promise<void> {
-  try {
-    await prisma.auditLog.create({
-      data: {
-        userId: SYSTEM_USER_ID,
-        action: input.action,
-        tableName: input.tableName ?? "system",
-        recordId: input.recordId ?? null,
-        afterData: { note: input.note },
-      },
-    });
-  } catch (e) {
-    console.error("recordSystemEvent failed", e);
-  }
-}
-
 // ── read side ────────────────────────────────────────────────────────────────
 
-/** 一覧の要約に出す値。詳細表と同じ整形を使う（言葉を割らない）。 */
-function fmtValue(v: unknown, key?: string): string {
-  return formatAuditValue(v, key);
+/** 一覧・履歴タブに出す差分行を作る（表示専用の変換込み）。 */
+function changePairs(
+  before: unknown,
+  after: unknown,
+  tableName: string | undefined,
+  tr: Tr,
+  locale: Locale,
+): string[] {
+  return auditFieldDiffs(before, after, tableName, locale).map((d) =>
+    tr("audit.change.pair", {
+      label: d.label,
+      before: formatAuditValue(d.before, d.key, { locale, tableName }),
+      after: formatAuditValue(d.after, d.key, { locale, tableName }),
+    }),
+  );
 }
 
 /** UPDATE の before/after からスカラー変更点を「ラベル: 旧 → 新」で要約。 */
@@ -151,6 +159,7 @@ function describeChange(
   after: unknown,
   tableName: string | undefined,
   tr: Tr,
+  locale: Locale,
 ): string {
   // システムイベント（SEED/MIGRATE 等）は after.note に人間向け説明を持つ。
   // lib/inventory.ts などが書く note は構造化ノート（鍵+パラメータ）のことが
@@ -164,13 +173,108 @@ function describeChange(
   // 詳細表と同じ差分（入れ子は平らにして葉ごとに見る）。以前はここで
   // オブジェクトを丸ごと飛ばしていたので、設定 JSON だけが変わった操作は
   // 一覧に「更新」としか出ず、何をしたのか分からなかった。
-  const diffs = auditFieldDiffs(before, after, tableName)
-    .slice(0, 6)
-    .map(
-      (d) =>
-        `${d.label}: ${fmtValue(d.before, d.key)} → ${fmtValue(d.after, d.key)}`,
+  const all = changePairs(before, after, tableName, tr, locale);
+  if (all.length === 0) return tr("common.update");
+  // 3 件を超えたら「+N」を付ける — 以前は 6 件で無言のまま切り捨てていて、
+  // 何件省略されたか画面から分からなかった。
+  const shown = all.slice(0, 3);
+  if (all.length > shown.length) {
+    shown.push(tr("audit.change.more", { count: all.length - shown.length }));
+  }
+  return shown.join(" / ");
+}
+
+/**
+ * 「誰が・何を・どうした」の 1 文（SY07 一覧の内容列・モバイルカード・
+ * 詳細ページのリード用）。**履歴タブ（1 記録の中の複数行）には使わない** —
+ * 同じ記録の行を並べると「田中 が 見積書 QOT-… の」を毎行繰り返すことになる
+ * ため、あちらは `describeChange` の短い変更点のまま。
+ *
+ * 文は 1 キー = 1 文で組み立てる（`_specs/i18n-glossary.md` §2 — 訳文の断片を
+ * つなげない。語順は言語ごとに違うため）。
+ */
+function auditSentence(
+  tr: Tr,
+  locale: Locale,
+  row: {
+    action: string;
+    tableName: string;
+    recordId: string | null;
+    beforeData: unknown;
+    afterData: unknown;
+  },
+  actor: string,
+  target: string,
+  /**
+   * マスタ系の表（`audit-entity-name-core.ts` が名前を持つと登録している
+   * 表）では番号（`42`）ではなく名前（`M6 ボルト`）で語る — 呼び出し元が
+   * `resolveEntityNames`/`entityNameOf` で解決したもの。名前が引けない表
+   * （書類系）では undefined のままで、その場合は record_id をそのまま使う。
+   */
+  entityName: string | undefined,
+): string {
+  const record = entityName ?? row.recordId ?? "";
+  const note = (row.afterData as { note?: unknown } | null)?.note;
+  if (typeof note === "string" && note) {
+    return tr("audit.sentence.note", {
+      actor,
+      note: inventoryNoteLabel(tr, note) ?? note,
+    });
+  }
+  if (row.action === "CREATE") {
+    return record
+      ? tr("audit.sentence.create", { actor, target, record })
+      : tr("audit.sentence.createNoRecord", { actor, target });
+  }
+  if (row.action === "DELETE")
+    return tr("audit.sentence.delete", { actor, target, record });
+  if (row.action === "VIEW")
+    return tr("audit.sentence.view", { actor, target, record });
+  if (row.action === "EXPORT")
+    return tr("audit.sentence.export", { actor, target, record });
+  if (row.action === "UPDATE") {
+    const diffs = auditFieldDiffs(
+      row.beforeData,
+      row.afterData,
+      row.tableName,
+      locale,
     );
-  return diffs.length > 0 ? diffs.join(" / ") : tr("common.update");
+    if (diffs.length === 0) {
+      return tr("audit.sentence.updateNone", { actor, target, record });
+    }
+    const first = diffs[0];
+    if (diffs.length === 1) {
+      return tr("audit.sentence.updateOne", {
+        actor,
+        target,
+        record,
+        field: first.label,
+        before: formatAuditValue(first.before, first.key, {
+          locale,
+          tableName: row.tableName,
+        }),
+        after: formatAuditValue(first.after, first.key, {
+          locale,
+          tableName: row.tableName,
+        }),
+      });
+    }
+    return tr("audit.sentence.updateMany", {
+      actor,
+      target,
+      record,
+      field: first.label,
+      rest: diffs.length - 1,
+    });
+  }
+  // SEED / MIGRATE は常に note を持つので上の分岐で処理済み。ここに来るのは
+  // 未知の action だけ — 画面を壊さず「何かをした」とだけ言う。
+  return tr("audit.sentence.fallback", {
+    actor,
+    target,
+    record,
+    action: actionLabel(row.action, tr),
+  });
 }
 
 type AuditRow = {
@@ -178,6 +282,7 @@ type AuditRow = {
   action: string;
   tableName: string;
   recordId: string | null;
+  recordKey: string | null;
   beforeData: unknown;
   afterData: unknown;
   createdAt: Date;
@@ -199,6 +304,7 @@ function mapAudit(fmt: Formatters, tr: Tr, row: AuditRow): AuditEntry {
   return {
     id: row.id.toString(),
     action: actionLabel(row.action, tr),
+    actionRaw: row.action,
     // 詳細ポップアップ用の生データ（一覧では使わない）。
     tableName: row.tableName,
     tableLabel: auditTableLabel(row.tableName, tr),
@@ -217,6 +323,7 @@ function mapAudit(fmt: Formatters, tr: Tr, row: AuditRow): AuditEntry {
       row.afterData,
       row.tableName,
       tr,
+      fmt.locale,
     ),
   };
 }
@@ -237,18 +344,43 @@ export function actorAvatarUrl(user: {
   return null;
 }
 
-/** 1 レコードの履歴（詳細画面「履歴」タブ）。失敗時は空配列（画面を壊さない）。 */
+/**
+ * 1 レコードの履歴（詳細画面「履歴」タブ）。失敗時は空配列（画面を壊さない）。
+ *
+ * `record_key` で突き合わせるのが基本だが、以下の行を拾い漏らさないよう
+ * `record_key IS NULL` の行にも `record_id` 一致でフォールバックする:
+ *   - backfill が届かなかった行（サイズが大きく別ジョブへ切り出した場合 等）
+ *   - migration とコードのデプロイの間に旧コードが書いた行
+ * フォールバックには対象書類の `created_at` 以降という境界を付ける
+ * （`resolveAuditRecordKey` の `since`）— 番号が再利用されていても、
+ * 削除済みの前の世代の行を新しい書類の履歴に混ぜない。
+ * キーを解決できない表（intake_folder 等）は従来どおり record_id だけで引く。
+ */
 export async function fetchAuditEntries(
   tableName: string,
   recordId: string,
 ): Promise<AuditEntry[]> {
   try {
-    const [fmt, tr] = await Promise.all([
+    const [fmt, tr, resolved] = await Promise.all([
       getServerFormatters(),
       getTranslations(),
+      resolveAuditRecordKey(tableName, recordId, { needSince: true }),
     ]);
+    const where: Prisma.AuditLogWhereInput = resolved.key
+      ? {
+          tableName,
+          OR: [
+            { recordKey: resolved.key },
+            {
+              recordKey: null,
+              recordId,
+              ...(resolved.since ? { createdAt: { gte: resolved.since } } : {}),
+            },
+          ],
+        }
+      : { tableName, recordId };
     const rows = await prisma.auditLog.findMany({
-      where: { tableName, recordId },
+      where,
       orderBy: { createdAt: "desc" },
       include: {
         user: {
@@ -274,6 +406,10 @@ export interface ActivityEntry extends AuditEntry {
   tableName: string;
   tableLabel: string;
   recordId: string | null;
+  /** レコードの安定キー（表示はしない — デバッグ・突合用）。 */
+  recordKey: string | null;
+  /** 「誰が・何を・どうした」の 1 文（一覧の内容列・モバイルカード・詳細のリード）。 */
+  summary: string;
 }
 
 /** 操作履歴 詳細（SY07 詳細ページ用）— 一覧行 + 生データ・ユーザー id。 */
@@ -316,11 +452,29 @@ export async function getActivityEntry(
       },
     });
     if (!row) return null;
+    const tableLabel = auditTableLabel(row.tableName, tr);
+    const names = await resolveEntityNames([
+      { tableName: row.tableName, recordKey: row.recordKey },
+    ]);
     return {
       ...mapAudit(fmt, tr, row),
       tableName: row.tableName,
-      tableLabel: auditTableLabel(row.tableName, tr),
+      tableLabel,
       recordId: row.recordId,
+      recordKey: row.recordKey,
+      summary: auditSentence(
+        tr,
+        fmt.locale,
+        row,
+        row.user?.displayName ?? tr("common.system"),
+        tableLabel,
+        entityNameOf(
+          names,
+          row.tableName,
+          row.recordKey,
+          row.afterData ?? row.beforeData,
+        ),
+      ),
       userId: row.user?.id ?? null,
       actionRaw: row.action,
       beforeData: row.beforeData ?? null,
@@ -332,40 +486,148 @@ export async function getActivityEntry(
   }
 }
 
-/** 全体の操作履歴（管理者一覧）。失敗時は空配列。 */
-export async function listAuditEntries(
-  opts: { take?: number; skip?: number } = {},
-): Promise<ActivityEntry[]> {
-  const { take = 200, skip = 0 } = opts;
+export interface AuditPage {
+  rows: ActivityEntry[];
+  total: number;
+}
+
+/**
+ * `AuditQuery`（`lib/audit-filter-core.ts`）→ Prisma の `where`。
+ *
+ * `q`（自由文字列）は record_id の部分一致と、操作者の表示名からの絞り込み
+ * を両方見る。`before_data`/`after_data` は**見ない** — GIN 索引が無い
+ * jsonb を部分一致で舐めるのは高くつくうえ、そこには個人データが入る行が
+ * あり、`personal_data.activity_search` の昇格が守ろうとしている範囲を
+ * 自由文字列検索で広げてしまう。「このレコードを探す」という本来の用途は
+ * record_id で足りる。
+ */
+async function buildAuditWhere(
+  query: AuditQuery,
+  timeZone: string,
+): Promise<Prisma.AuditLogWhereInput> {
+  const where: Prisma.AuditLogWhereInput = {};
+  if (query.tableName) where.tableName = query.tableName;
+  if (query.action) where.action = query.action;
+  if (query.userId) where.userId = query.userId;
+
+  const range: { gte?: Date; lt?: Date } = {};
+  if (query.from) {
+    const r = zonedDayRange(query.from, timeZone);
+    if (r) range.gte = r.gte;
+  }
+  if (query.to) {
+    const r = zonedDayRange(query.to, timeZone);
+    if (r) range.lt = r.lt;
+  }
+  if (range.gte || range.lt) where.createdAt = range;
+
+  if (query.q) {
+    const matchingUsers = await prisma.user.findMany({
+      where: { displayName: { contains: query.q, mode: "insensitive" } },
+      select: { id: true },
+      take: 50,
+    });
+    const or: Prisma.AuditLogWhereInput[] = [
+      { recordId: { contains: query.q, mode: "insensitive" } },
+    ];
+    if (matchingUsers.length > 0) {
+      or.push({ userId: { in: matchingUsers.map((u) => u.id) } });
+    }
+    where.OR = or;
+  }
+
+  return where;
+}
+
+/**
+ * 全体の操作履歴（SY07 一覧）— 絞り込み・ページングをサーバー側で行う。
+ * 失敗時は空ページ（画面を壊さない）。
+ */
+export async function queryAuditEntries(query: AuditQuery): Promise<AuditPage> {
   try {
     const [fmt, tr] = await Promise.all([
       getServerFormatters(),
       getTranslations(),
     ]);
-    const rows = await prisma.auditLog.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        user: {
-          select: {
-            id: true,
-            displayName: true,
-            avatarThumbFileId: true,
-            avatarFileId: true,
+    const where = await buildAuditWhere(query, fmt.prefs.timeZone);
+    const [rows, total] = await prisma.$transaction([
+      prisma.auditLog.findMany({
+        where,
+        orderBy: { createdAt: query.sortDir },
+        include: {
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              avatarThumbFileId: true,
+              avatarFileId: true,
+            },
           },
+          kioskDevice: { select: { id: true, name: true } },
         },
-        kioskDevice: { select: { id: true, name: true } },
-      },
-      take,
-      skip,
-    });
-    return rows.map((row) => ({
-      ...mapAudit(fmt, tr, row),
-      tableName: row.tableName,
-      tableLabel: auditTableLabel(row.tableName, tr),
-      recordId: row.recordId,
-    }));
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+      prisma.auditLog.count({ where }),
+    ]);
+    // 表ごとに 1 クエリへ束ねる — 1 ページ (最大 100 行) ぶんの名前を
+    // 行ごとに引くと、名前を持つ表が多いページで数十クエリになる。
+    const names = await resolveEntityNames(
+      rows.map((row) => ({
+        tableName: row.tableName,
+        recordKey: row.recordKey,
+      })),
+    );
+    return {
+      total,
+      rows: rows.map((row) => {
+        const tableLabel = auditTableLabel(row.tableName, tr);
+        return {
+          ...mapAudit(fmt, tr, row),
+          tableName: row.tableName,
+          tableLabel,
+          recordId: row.recordId,
+          recordKey: row.recordKey,
+          summary: auditSentence(
+            tr,
+            fmt.locale,
+            row,
+            row.user?.displayName ?? tr("common.system"),
+            tableLabel,
+            entityNameOf(
+              names,
+              row.tableName,
+              row.recordKey,
+              row.afterData ?? row.beforeData,
+            ),
+          ),
+        };
+      }),
+    };
   } catch (e) {
-    console.error("listAuditEntries failed", e);
+    console.error("queryAuditEntries failed", e);
+    return { rows: [], total: 0 };
+  }
+}
+
+/**
+ * 絞り込みバーの「操作者」選択肢。全ユーザーの一覧（`audit_logs` の
+ * `DISTINCT user_id` ではない）— こちらは小さいテーブルの全走査で済み、
+ * 監査ログの経過で選択肢が増減しない。SY07 に到達できる人は既に
+ * `activity-log` の READ とこの昇格を持っており、SY01 でも同じ一覧が
+ * 見えるので、ここで追加の露出は生まれない。
+ */
+export async function listAuditActors(): Promise<
+  { value: string; label: string }[]
+> {
+  try {
+    const rows = await prisma.user.findMany({
+      select: { id: true, displayName: true },
+      orderBy: { displayName: "asc" },
+    });
+    return rows.map((u) => ({ value: u.id, label: u.displayName }));
+  } catch (e) {
+    console.error("listAuditActors failed", e);
     return [];
   }
 }

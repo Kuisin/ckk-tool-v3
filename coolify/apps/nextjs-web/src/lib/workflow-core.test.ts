@@ -9,9 +9,13 @@
 import { describe, expect, it } from "vitest";
 import {
   type CatalogStep,
+  compositionIssuesForKind,
   defaultOrder,
   isBlockingIssue,
+  isPrepStep,
   requiredCompanions,
+  resolveReceivedQuantity,
+  splitStepIdsByKind,
   stepPrerequisites,
   stepSelectBlockers,
   type UseDep,
@@ -1086,5 +1090,122 @@ describe("effectiveLotInputMode（上書き → カタログ既定 → NONE）",
   it("両方無ければ NONE", () => {
     expect(effectiveLotInputMode(null, null)).toBe("NONE");
     expect(effectiveLotInputMode(undefined, undefined)).toBe("NONE");
+  });
+});
+
+describe("resolveReceivedQuantity", () => {
+  it("想定受入が確定していればそれが権威（クライアント値は無視）", () => {
+    expect(
+      resolveReceivedQuantity({
+        expectedAtCompletion: 90,
+        startedWith: 100,
+        client: 5,
+      }),
+    ).toBe(90);
+  });
+
+  it("想定が無ければ開始時の値、それも無ければクライアント値", () => {
+    expect(
+      resolveReceivedQuantity({
+        expectedAtCompletion: null,
+        startedWith: 100,
+        client: 5,
+      }),
+    ).toBe(100);
+    expect(
+      resolveReceivedQuantity({
+        expectedAtCompletion: null,
+        startedWith: null,
+        client: 5,
+      }),
+    ).toBe(5);
+    expect(
+      resolveReceivedQuantity({
+        expectedAtCompletion: null,
+        startedWith: null,
+        client: undefined,
+      }),
+    ).toBe(0);
+  });
+});
+
+// ─── 工程リストの種別（準備 / 製造）─────────────────────────────────────────
+
+describe("isPrepStep / splitStepIdsByKind", () => {
+  const cat = (id: number, category: string, code = `S${id}`) => ({
+    id,
+    code,
+    nameJa: code,
+    category,
+    executionLocation: "INTERNAL",
+    isSyncCapable: false,
+    isInspection: false,
+    isApprovalStep: false,
+    quantityTracking: "FLOW" as const,
+    sortOrder: id,
+  });
+  const catalog = [
+    cat(1, "MATERIAL_PREP", "MATERIAL_ISSUE"),
+    cat(5, "MATERIAL_PREP", "CUTTING"),
+    cat(7, "MACHINING", "CYLINDER_MACHINING"),
+    cat(8, "INSPECTION", "CYLINDER_INSPECTION"),
+  ];
+
+  it("材料準備カテゴリだけが準備側（開始工程も含む）", () => {
+    expect(isPrepStep(catalog[0])).toBe(true);
+    expect(isPrepStep(catalog[1])).toBe(true);
+    expect(isPrepStep(catalog[2])).toBe(false);
+  });
+
+  it("id 列を 2 本に分ける。カタログに無い id は製造側に残す", () => {
+    expect(splitStepIdsByKind([8, 1, 99, 5, 7], catalog)).toEqual({
+      prep: [1, 5],
+      manufacturing: [8, 99, 7],
+    });
+  });
+});
+
+describe("compositionIssuesForKind", () => {
+  const catalog = [
+    { id: 1, category: "MATERIAL_PREP" },
+    { id: 6, category: "MATERIAL_PREP" },
+    { id: 7, category: "MACHINING" },
+    { id: 8, category: "INSPECTION" },
+  ];
+  const issues = [
+    // 製造側だけを見たときに必ず出る「開始工程が無い」
+    { stepId: 7, kind: "MISSING_START" as const, relatedStepIds: [1] },
+    // 製造 → 準備 を相手にした依存（合わせるまで判定できない）
+    { stepId: 7, kind: "MISSING_OR_GROUP" as const, relatedStepIds: [1, 6] },
+    // 製造 → 製造（本物の不足）
+    { stepId: 7, kind: "MISSING_AND" as const, relatedStepIds: [8] },
+    // 準備 → 製造 に跨る OR（片側に自分の種別が居るので残る）
+    { stepId: 6, kind: "MISSING_OR_GROUP" as const, relatedStepIds: [1, 8] },
+  ];
+
+  it("製造側: 開始工程の不足と、準備側だけを相手にした issue を落とす", () => {
+    expect(compositionIssuesForKind(issues, "MANUFACTURING", catalog)).toEqual([
+      issues[2],
+      issues[3],
+    ]);
+  });
+
+  it("準備側: 製造側だけを相手にした issue を落とし、開始工程の不足は残す", () => {
+    expect(compositionIssuesForKind(issues, "PREP", catalog)).toEqual([
+      issues[0],
+      issues[1],
+      issues[3],
+    ]);
+  });
+
+  it("関係先の無い issue はどちらでも残す", () => {
+    const orphan = {
+      stepId: 7,
+      kind: "EXCLUSION" as const,
+      relatedStepIds: [],
+    };
+    expect(compositionIssuesForKind([orphan], "PREP", catalog)).toEqual([
+      orphan,
+    ]);
   });
 });

@@ -42,6 +42,10 @@ export async function loadCatalog(): Promise<WorkflowCatalog> {
       lotInputMode: s.lotInputMode,
       defaultWorkHours:
         s.defaultWorkHours == null ? null : Number(s.defaultWorkHours),
+      workLocationRequired: s.workLocationRequired,
+      planTimeRequired: s.planTimeRequired,
+      planAssigneeRequired: s.planAssigneeRequired,
+      planQuantityRequired: s.planQuantityRequired,
       sortOrder: s.sortOrder,
     })),
     useDeps: useDeps.map((d) => ({
@@ -62,9 +66,12 @@ export async function loadCatalog(): Promise<WorkflowCatalog> {
 
 import { describeIssue } from "@/components/production/work-orders/model";
 import {
+  compositionIssuesForKind,
   defaultOrder,
   isBlockingIssue,
+  isPrepStep,
   isShipStep,
+  type ProcessRouteKind,
   STOCK_ISSUE_STEP_CODE,
   validateComposition,
 } from "./workflow-core";
@@ -101,6 +108,13 @@ export interface OrderedStepCreate extends StepCompositionInput {
 export async function validateAndOrderSteps(
   steps: readonly StepCompositionInput[],
   type: "FROM_STOCK" | "MANUFACTURE" = "MANUFACTURE",
+  /**
+   * 工程リストの片方だけを保存するとき（製品の製造工程リスト / 準備工程
+   * リストの編集画面）に渡す。その種別の外を相手にした issue は落とし、
+   * 種別に合わない工程が混ざっていれば弾く。指示書（2 本を合わせた全体）は
+   * 渡さない — 全体で検証する。
+   */
+  kind?: ProcessRouteKind,
 ): Promise<
   { ok: false; error: string } | { ok: true; creates: OrderedStepCreate[] }
 > {
@@ -151,11 +165,30 @@ export async function validateAndOrderSteps(
       error: tr("workflowActions.stockIssueOnlyForFromStock"),
     };
   }
-  const blocking = validateComposition(
+  if (kind) {
+    const wrongKind = ids.filter((id) => {
+      const step = catalogById.get(id);
+      return step != null && (kind === "PREP") !== isPrepStep(step);
+    });
+    if (wrongKind.length > 0) {
+      return {
+        ok: false,
+        error: tr(
+          kind === "PREP"
+            ? "workflowActions.prepRouteOnlyPrepSteps"
+            : "workflowActions.manufacturingRouteNoPrepSteps",
+        ),
+      };
+    }
+  }
+  const allBlocking = validateComposition(
     ids,
     catalog.useDeps,
     catalog.steps,
   ).filter(isBlockingIssue);
+  const blocking = kind
+    ? compositionIssuesForKind(allBlocking, kind, catalog.steps)
+    : allBlocking;
   if (blocking.length > 0) {
     return {
       ok: false,
@@ -203,6 +236,7 @@ import {
   expectedInput,
   isOffMainline,
   isWorkOrderComplete,
+  resolveReceivedQuantity,
   STEP_LINK_STATE_SELECT,
   STEP_STATE_SELECT,
   type StepLinkState,
@@ -508,11 +542,11 @@ export async function completeStepExecution(
     // 開始した工程で inputQuantity が null のまま残り、完了時のクライアント値が
     // そのまま権威になっていた。クライアント値まで落ちるのは、前工程が無い
     // （先行 WO 未完了で先頭が未確定）か前工程が未記録のときだけ。
-    const authoritativeInput =
-      expectedAtCompletion ??
-      stepRow.inputQuantity ??
-      quantities?.inputQuantity ??
-      0;
+    const authoritativeInput = resolveReceivedQuantity({
+      expectedAtCompletion,
+      startedWith: stepRow.inputQuantity,
+      client: quantities?.inputQuantity,
+    });
     // 区分合計（半製品/廃棄/工程分岐）は**不良リストのみから導出**して権威とする。
     // リスト無しで区分数量だけが来るのは旧クライアント — 黙って受けず再入力を求める。
     const list = defectReasons ?? [];

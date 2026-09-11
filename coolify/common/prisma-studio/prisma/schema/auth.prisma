@@ -99,6 +99,9 @@ model User {
   stepActualsAssigned     WorkOrderStepActual[]        @relation("StepActualUser")
   stepActualsCreated      WorkOrderStepActual[]        @relation("StepActualCreatedBy")
   deliveryOrdersCreated   DeliveryOrder[]       @relation("DeliveryOrderCreatedBy")
+  deliveryOrdersRequested DeliveryOrder[]       @relation("DeliveryOrderRequestedBy")
+  deliveryOrdersApproved  DeliveryOrder[]       @relation("DeliveryOrderApprovedBy")
+  deliveryOrdersRejected  DeliveryOrder[]       @relation("DeliveryOrderRejectedBy")
   deliveryNotesCreated    DeliveryNote[]        @relation("DeliveryNoteCreatedBy")
   invoicesCreated         Invoice[]             @relation("InvoiceCreatedBy")
   designRequestsCreated   DesignRequest[]       @relation("DesignRequestCreatedBy")
@@ -181,6 +184,15 @@ model User {
   portalLinksRevoked     PortalDocumentLink[] @relation("PortalLinkRevokedBy")
   portalBackupCodes      PortalBackupCode[]   @relation("PortalBackupCodeIssuedBy")
   userDevices   UserDevice[]   @relation("UserDeviceUser")
+
+  // 外部 API（api.prisma）。この人が「作った / 失効した / 発行した」側の関連。
+  // API の主体そのものは group = SYSTEM の別ユーザーで、apiClient がその 1:1 の
+  // 相方 — つまり同じ User モデルが両側に現れる（社員 = 操作者 / 機械 = 主体）。
+  apiClient          ApiClient?       @relation("ApiClientUser")
+  apiClientsCreated  ApiClient[]      @relation("ApiClientCreatedBy")
+  apiClientsRevoked  ApiClient[]      @relation("ApiClientRevokedBy")
+  apiTokensCreated   ApiClientToken[] @relation("ApiTokenCreatedBy")
+  apiTokensRevoked   ApiClientToken[] @relation("ApiTokenRevokedBy")
 
   // 特権アクセス（security.prisma）。申請者・決裁者・失効実行者はそれぞれ別の
   // 人になりうるので 3 本に分けてある。B の変更依頼は「対象」も人。

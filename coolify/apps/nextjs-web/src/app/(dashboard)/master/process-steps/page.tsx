@@ -28,6 +28,10 @@ export default async function MasterProcessStepsPage() {
     isFinalInspection: r.isFinalInspection,
     quantityTracking: r.quantityTracking,
     lotInputMode: r.lotInputMode,
+    workLocationRequired: r.workLocationRequired,
+    planTimeRequired: r.planTimeRequired,
+    planAssigneeRequired: r.planAssigneeRequired,
+    planQuantityRequired: r.planQuantityRequired,
     sortOrder: r.sortOrder,
     isActive: r.isActive,
   }));

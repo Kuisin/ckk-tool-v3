@@ -67,6 +67,8 @@ interface EditableLine extends PurchaseIntakeLine {
   include: boolean;
   plantId: string | null;
   receivedAt: string;
+  /** 突合が入れていた素材 id（学習の比較元 — 人が選び直した行だけ覚える）。 */
+  draftMaterialId: string | null;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -96,6 +98,8 @@ export function MaterialReceiptIntake({
     setLines(
       next.lines.map((l) => ({
         ...l,
+        // 学習の比較元（人が選び直したかどうか）— 画面の materialId は書き換わる
+        draftMaterialId: l.materialId,
         include: true,
         plantId: null,
         // 入荷日の既定は**納品書の日付**（無ければ今日）。紙に書いてある日を
@@ -141,6 +145,7 @@ export function MaterialReceiptIntake({
       const result = await createReceiptsFromDelivery({
         supplierBpId,
         extractedSupplierName: draft.supplierName,
+        draftSupplierBpId: draft.supplierBpId,
         lines: selected.map((l) => ({
           materialId: l.materialId as string,
           plantId: l.plantId,
@@ -151,6 +156,7 @@ export function MaterialReceiptIntake({
             .join(" / "),
           materialText: l.materialText,
           materialCode: l.materialCode,
+          draftMaterialId: l.draftMaterialId,
         })),
       });
       if (!result.ok) {

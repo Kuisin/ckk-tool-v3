@@ -363,6 +363,9 @@ export function WorkOrderFinalInspectionPanel({
           )}
           {canRecord ? (
             <Textarea
+              aria-label={tr(
+                "production.workOrderFinalInspectionPanel.defectsFoundAtThePreShipment",
+              )}
               minRows={2}
               onChange={(e) => setNotes(e.currentTarget.value)}
               placeholder={tr(

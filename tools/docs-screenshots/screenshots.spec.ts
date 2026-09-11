@@ -10,12 +10,20 @@
  * 切れていた。マニュアルは「画面のどこに何があるか」を示すものなので、切れて
  * いる下半分は説明できない。表示領域ぶんで撮りたい 1 枚があれば
  * `fullPage: false` を明示する（いまは 0 枚）。
+ *
+ * **ファイル名はロケールで分かれる。** env `SHOT_LOCALE`（orchestrate.ts の
+ * `--locale` が渡す。既定 ja）が "ja" のときは従来どおり `<id>.png`
+ * （コミット済み 240 枚と後方互換）、"en"/"zh" のときは `<id>.en.png` /
+ * `<id>.zh.png`。アプリの言語自体は DB の app.users.locale で決まる
+ * （orchestrate.ts が撮影ユーザーの値を切り替える）ので、ここでの分岐は
+ * 「同じ画面の言語違いを別ファイルとして残す」ことだけを担う。
  */
 
 import { mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Page, test } from "@playwright/test";
+import { currentLocale } from "./i18n-text";
 import { shots } from "./manifest";
 
 const OUT_DIR = resolve(
@@ -25,6 +33,13 @@ const OUT_DIR = resolve(
       "../../coolify/apps/nextjs-web/content/manual/assets/screenshots",
     ),
 );
+
+const LOCALE = currentLocale();
+
+/** ja は無印 `<id>.png`（既存 240 枚と後方互換）、en/zh は `<id>.<locale>.png`。 */
+function shotFilename(id: string): string {
+  return LOCALE === "ja" ? `${id}.png` : `${id}.${LOCALE}.png`;
+}
 
 /**
  * 全高で撮るときの固定要素の始末（web アプリのみ）。
@@ -229,7 +244,7 @@ for (const shot of shots.filter((s) => !s.external)) {
     await page.evaluate(() => document.fonts.ready);
 
     mkdirSync(OUT_DIR, { recursive: true });
-    const path = join(OUT_DIR, `${shot.id}.png`);
+    const path = join(OUT_DIR, shotFilename(shot.id));
     const mask = (shot.mask ?? []).map((sel) => page.locator(sel));
     // 既定のマスク色（マゼンタ）はマニュアルに載せると目を引きすぎるので、
     // 画面の地の色に近いグレーで塗る（キオスクはダークテーマ）。

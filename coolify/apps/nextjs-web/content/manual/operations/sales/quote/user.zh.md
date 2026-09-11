@@ -30,7 +30,7 @@ screenshots: [quote-list-01, quote-new-01, quote-detail-01, quote-issue-01, quot
 
 打开应用后，会显示已经做过的报价单列表。
 
-![报价单列表画面](../../../assets/screenshots/quote-list-01.png)
+![报价单列表画面](../../../assets/screenshots/quote-list-01.zh.png)
 
 - **「見積番号」（报价单编号）** … 以 `QOT-` 开头的编号，由系统自动编上。
 - **「状態」（状态）** … 用彩色徽章显示目前的情况。灰色是「下書き」（草稿），蓝色是「発行済」（已发行），橙色是「期限切れ」（已过期 — 已发行且超过有效期限）。

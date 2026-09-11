@@ -181,6 +181,7 @@ export function StorageLocationsApp({
       breadcrumbs={[tr("common.masterData"), tr("common.storageLocations")]}
       filters={
         <Select
+          aria-label={tr("master.storageLocations.selectASiteToManage")}
           clearable
           data={plantOptions}
           onChange={setPlant}
@@ -194,6 +195,7 @@ export function StorageLocationsApp({
       search={
         selected ? undefined : (
           <TextInput
+            aria-label={tr("master.storageLocations.searchByCodeNameOrSite")}
             leftSection={<IconSearch size={14} />}
             onChange={(e) => setSearch(e.currentTarget.value)}
             placeholder={tr("master.storageLocations.searchByCodeNameOrSite")}
