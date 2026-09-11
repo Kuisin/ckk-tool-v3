@@ -4,6 +4,14 @@
  *
  *   node tools/swimlane/build-diagrams.mjs
  *
+ * ロケール: `<name>.txt`（ja・既定言語・無印）に加えて
+ * `<name>.en.txt` / `<name>.zh.txt` があれば同じ基底名で処理し、
+ * `<name>.en.svg` / `<name>.zh.svg` として書き出す（`<name>.svg` はそのまま
+ * ja 用として残る — ja の `.md` はこれを参照するので、リネーム・削除しない）。
+ * `<name>.en.txt` の基底名は `<name>` で、`readdirSync` の対象は
+ * `*.txt`（`*.en.txt` / `*.zh.txt` を含む）全件 — ロケール判定は
+ * ファイル名末尾の `.en` / `.zh` の有無だけで行い、DSL の中身は見ない。
+ *
  * 失敗条件（exit 1・部分出力なし）:
  *  - DSL のパース/レンダリングエラー
  *  - 生成 SVG のルート要素に viewBox が無い
@@ -54,14 +62,18 @@ for (const file of files) {
     console.error(`✖ ${file}: SVG root is missing viewBox`);
     continue;
   }
-  results.push({ file, svg, viewBox });
+  // "process-overview.txt" → "process-overview" / "process-overview.en.txt" →
+  // "process-overview.en" — the locale suffix (if any) is already part of the
+  // basename, so no further parsing is needed; it becomes the output basename.
+  const outName = basename(file, ".txt");
+  results.push({ file, outName, svg, viewBox });
 }
 
 if (failed) process.exit(1);
 
 mkdirSync(OUT_DIR, { recursive: true });
-for (const { file, svg, viewBox } of results) {
-  const out = join(OUT_DIR, `${basename(file, ".txt")}.svg`);
+for (const { outName, svg, viewBox } of results) {
+  const out = join(OUT_DIR, `${outName}.svg`);
   writeFileSync(out, svg.endsWith("\n") ? svg : `${svg}\n`);
   const [, , w, h] = viewBox.split(/\s+/);
   console.log(`✓ ${basename(out)}  ${w}×${h}`);

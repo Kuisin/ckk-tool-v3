@@ -18,7 +18,7 @@ A page covering the flow from setting the unit price to receiving the order and 
 
 ## Overall flow
 
-![Diagram of the whole sales flow (swimlanes including the price-mismatch loop and approval send-back)](../assets/diagrams/process-sales.svg)
+![Diagram of the whole sales flow (swimlanes including the price-mismatch loop and approval send-back)](../assets/diagrams/process-sales.en.svg)
 
 For a product with no drawing, a **design request** is raised **in parallel** with this flow. It can be raised at the quote stage or once the order is taken, or **standalone** with no link to any document.
 

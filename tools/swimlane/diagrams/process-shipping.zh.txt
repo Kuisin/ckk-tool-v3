@@ -1,0 +1,91 @@
+// 出货流程 — 包含发货 / 库存保管的分支。
+
+/title/
+出货流程 — 从出货单到送货
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 步骤;
+left-subtitle: 说明;
+
+/role/
+
+<role_ship>
+label: 出货负责人;
+text-color: #9a3412;
+background-color: #ffedd5;
+
+<role_system>
+label: 系统;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #f4f4f5;
+text-color: #52525b;
+border-color: #71717a;
+shape: hex;
+icon: #clock;
+
+/prop/
+
+<SHIPPING>
+label: 出货单;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<DELIVERY>
+label: 送货单;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+/line/
+
+[role_ship: 创建出货单] <block_apply>
+label: 出货单;
+props: SHIPPING;
+desc: 选择订单确认书后，会带入可出货的订单明细。确定批次、数量和出货据点。;
+[role_ship: 确定出货单] <block_apply>
+label: 确定;
+desc: 确定内容，使其进入可出货状态。;
+[role_ship: 记录出货] <block_apply>
+label: 出货;
+desc: 实际发出后设为「已出货」。;
+[role_system: 减少库存] <block_system>
+label: 库存更新;
+desc: 出货据点的库存减少，订单明细状态变为「部分出货」或「已出货」。;
+if (类别) is (发货) than #orange
+  [role_system: 发行送货单] <block_system>
+  label: 送货单;
+  props: DELIVERY;
+  desc: 确定的同时生成已发行的送货单。送货方式（常规配送 / 直送最终用户）和是否显示价格均继承自订单确认书。;
+  [role_ship: 设为已送达] <block_apply>
+  label: 送货;
+  desc: 送达后设为「已交货」。至此的出货将纳入请款对象。;
+else
+  [role_ship: 存放公司内部] <block_wait>
+  label: 库存保管;
+  desc: 用于存放备用生产品的类别。不进入请款流程。;
+endif

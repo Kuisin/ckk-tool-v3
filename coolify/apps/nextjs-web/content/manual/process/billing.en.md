@@ -15,7 +15,7 @@ A page covering the flow from closing what has been delivered and making the inv
 
 ## Overall flow
 
-![Diagram of the whole billing flow (swimlanes from billing closing to the accounting export)](../assets/diagrams/process-billing.svg)
+![Diagram of the whole billing flow (swimlanes from billing closing to the accounting export)](../assets/diagrams/process-billing.en.svg)
 
 ## Stage-by-stage roles and apps
 

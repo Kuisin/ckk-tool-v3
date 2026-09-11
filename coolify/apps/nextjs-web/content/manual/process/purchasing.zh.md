@@ -16,7 +16,7 @@ screenshots:
 
 ## 整体流程
 
-![采购流程整体图（含审批退回・分批到货循环的泳道图）](../assets/diagrams/process-purchasing.svg)
+![采购流程整体图（含审批退回・分批到货循环的泳道图）](../assets/diagrams/process-purchasing.zh.svg)
 
 紧急时或金额较小时，也可以不经采购申请，**直接从采购单**开始。从外部采购的半成品不制作工单，只作为材料接收即可。
 
