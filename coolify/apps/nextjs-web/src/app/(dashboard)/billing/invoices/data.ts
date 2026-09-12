@@ -30,6 +30,12 @@ const INVOICE_INCLUDE = {
   salesRep: { select: { id: true, displayName: true } },
   createdByUser: { select: { displayName: true } },
   items: { orderBy: { sortOrder: "asc" as const } },
+  // 税率ごとの区分記載（適格請求書）。行が無い＝税区分マスタ以前の請求書で、
+  // その場合は読み出し側がヘッダから 1 本合成する（resolveTaxBuckets）。
+  taxSummaries: {
+    orderBy: { sortOrder: "asc" as const },
+    include: { taxCategory: { select: { name: true } } },
+  },
 };
 
 type InvoiceRow = NonNullable<Awaited<ReturnType<typeof findRow>>>;
@@ -100,6 +106,15 @@ function mapInvoice(r: InvoiceRow, forDocument = false): Invoice {
     // 顧客マスタの現在の区分へ落とす — 顧客を後から EXEMPT に変えても、
     // 発行済みの請求書のラベルは 10% のままでなければならない。
     taxType: r.taxType ?? r.customerBp.customerAttrs?.taxType ?? null,
+    taxRate: r.taxRate != null ? Number(r.taxRate) : null,
+    taxBuckets: r.taxSummaries.map((b) => ({
+      taxRate: Number(b.taxRate),
+      taxableBase: Number(b.taxableBase),
+      taxAmount: Number(b.taxAmount),
+      categoryName: b.taxCategory
+        ? localized(b.taxCategory.name as LocalizedText | null)
+        : null,
+    })),
     totalAmount: Number(r.totalAmount),
     status: r.status as InvoiceStatus,
     issuedAt: r.issuedAt?.toISOString() ?? null,

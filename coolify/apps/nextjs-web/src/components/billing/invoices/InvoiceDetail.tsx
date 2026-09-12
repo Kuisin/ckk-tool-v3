@@ -73,7 +73,8 @@ import {
   canMarkPaid,
   canMarkSent,
   type Invoice,
-  taxLabel,
+  resolveTaxBuckets,
+  taxBucketLabel,
 } from "./model";
 
 const BASE_PATH = "/billing/invoices";
@@ -101,6 +102,10 @@ export function InvoiceDetail({
   const [issueOpen, setIssueOpen] = useState(false);
   const [sentOpen, setSentOpen] = useState(false);
   const [paidOpen, setPaidOpen] = useState(false);
+
+  // 税率ごとの区分記載。税区分マスタ以前の請求書はヘッダから 1 本合成されるので、
+  // 画面の形は移行の前後で変わらない。
+  const taxBuckets = resolveTaxBuckets(invoice);
 
   // PDF は発行後のみ閲覧できる（ルート側も 403 で拒否する）。
   const canViewPdf = invoice.status !== "DRAFT";
@@ -364,10 +369,14 @@ export function InvoiceDetail({
           label={tr("common.subtotal")}
           value={<MoneyText ta="left" value={invoice.subtotal} />}
         />
-        <FieldValue
-          label={taxLabel(invoice.taxType, tr)}
-          value={<MoneyText ta="left" value={invoice.taxAmount} />}
-        />
+        {/* 税率ごとに 1 行（適格請求書の区分記載）。単一税率なら従来どおり 1 行。 */}
+        {taxBuckets.map((b) => (
+          <FieldValue
+            key={b.taxRate}
+            label={taxBucketLabel(b, tr)}
+            value={<MoneyText ta="left" value={b.taxAmount} />}
+          />
+        ))}
         <FieldValue
           label={tr("common.totalAmountInclTax")}
           value={<MoneyText ta="left" value={invoice.totalAmount} />}
@@ -476,15 +485,23 @@ export function InvoiceDetail({
                 </Table.Td>
                 <Table.Td />
               </Table.Tr>
-              <Table.Tr>
-                <Table.Td fw={700}>{taxLabel(invoice.taxType, tr)}</Table.Td>
-                <Table.Td />
-                <Table.Td />
-                <Table.Td fw={700} ta="right">
-                  <MoneyText value={invoice.taxAmount} />
-                </Table.Td>
-                <Table.Td />
-              </Table.Tr>
+              {/* 税率ごとに「対象額」と「税額」を並べる（区分記載）。
+                  単一税率のときは対象額 = 小計なので、従来と同じ 1 行に見える。 */}
+              {taxBuckets.map((b) => (
+                <Table.Tr key={b.taxRate}>
+                  <Table.Td fw={700}>{taxBucketLabel(b, tr)}</Table.Td>
+                  <Table.Td />
+                  <Table.Td c="dimmed" className="tabular-nums" ta="right">
+                    {taxBuckets.length > 1 ? (
+                      <MoneyText value={b.taxableBase} />
+                    ) : null}
+                  </Table.Td>
+                  <Table.Td fw={700} ta="right">
+                    <MoneyText value={b.taxAmount} />
+                  </Table.Td>
+                  <Table.Td />
+                </Table.Tr>
+              ))}
               <Table.Tr>
                 <Table.Td fw={700}>{tr("common.totalAmountInclTax")}</Table.Td>
                 <Table.Td />
