@@ -260,10 +260,18 @@ model QuoteItem {
   notes          String?
   sortOrder      Int       @default(0) @map("sort_order")
 
+  /// 行の税スナップショット。見積書も印刷して外に出す書類なので、発行後に税率
+  /// マスタが変わっても刷り直した PDF が動いてはいけない — unit_price /
+  /// discount_amount / price_list_tier_id と同じ凍結の規約。
+  taxCategoryId Int?     @map("tax_category_id")
+  taxRate       Decimal? @map("tax_rate") @db.Decimal(5, 4)
+
   quote         Quote          @relation(fields: [quoteYearMonth, quoteSeq], references: [yearMonth, seq])
   product       Product        @relation(fields: [productId], references: [id])
   priceListTier PriceListTier? @relation(fields: [priceListTierId], references: [id])
+  taxCategory   TaxCategory?   @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
 
+  @@index([taxCategoryId])
   @@map("quote_items")
   @@schema("app")
 }

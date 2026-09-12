@@ -61,6 +61,9 @@ model Invoice {
   createdByUser    User?            @relation("InvoiceCreatedBy", fields: [createdBy], references: [id])
 
   items InvoiceItem[]
+  /// 税率ごとの区分記載（適格請求書）。混在請求書ではヘッダの taxType / taxRate が
+  /// null になるため、税の内訳はここだけが持つ。
+  taxSummaries InvoiceTaxSummary[]
 
   @@id([yearMonth, seq])
   @@index([customerBpId])
@@ -90,11 +93,20 @@ model InvoiceItem {
   amount      Decimal @db.Decimal(12, 2)
   sortOrder   Int     @default(0) @map("sort_order")
 
-  invoice   Invoice    @relation(fields: [invoiceYearMonth, invoiceSeq], references: [yearMonth, seq], onDelete: Cascade)
-  orderLine OrderLine? @relation(fields: [orderLineId], references: [id])
+  /// 行の税スナップショット（課税区分と、その行に当たった率）。発行時に凍結する。
+  /// **税額は行に持たない** — 税は率ごとの束の単位でしか正しく丸められない
+  /// （行ごとに丸めると単一税率でも従来と 1 円ずれる）。束は
+  /// invoice_tax_summaries が持つ。このマイグレーション以前の行は null。
+  taxCategoryId Int?     @map("tax_category_id")
+  taxRate       Decimal? @map("tax_rate") @db.Decimal(5, 4)
+
+  invoice     Invoice      @relation(fields: [invoiceYearMonth, invoiceSeq], references: [yearMonth, seq], onDelete: Cascade)
+  orderLine   OrderLine?   @relation(fields: [orderLineId], references: [id])
+  taxCategory TaxCategory? @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
 
   @@index([invoiceYearMonth, invoiceSeq])
   @@index([orderLineId])
+  @@index([taxCategoryId])
   @@map("invoice_items")
   @@schema("app")
 }
