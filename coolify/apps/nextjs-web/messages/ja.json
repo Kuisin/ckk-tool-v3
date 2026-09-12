@@ -8580,7 +8580,9 @@
       "user_role_relation": "ロール割当",
       "users": "ユーザー",
       "api_clients": "API クライアント",
-      "api_client_tokens": "API トークン"
+      "api_client_tokens": "API トークン",
+      "tax_categories": "税区分",
+      "tax_category_rates": "税率"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
