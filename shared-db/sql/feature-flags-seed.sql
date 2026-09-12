@@ -36,7 +36,10 @@ INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:file-management:main',        true, 'ファイル管理 本番公開',    now()),
   ('app:activity-log:main',           true, '操作履歴 本番公開',        now()),
   ('app:links:main',                  true, 'リンク管理 本番公開',      now()),
-  ('app:kiosk-cards:main',            true, 'QRカード管理 本番公開',    now())
+  ('app:kiosk-cards:main',            true, 'QRカード管理 本番公開',    now()),
+  -- 税区分マスタ (MS0F)。製品・取引先の課税区分の定義元で、請求書と見積書の
+  -- 税額がここで決まる。本番で税率を直せないと税制改正に追従できないので公開する。
+  ('app:master-tax-categories:main',  true, '税区分 本番公開',          now())
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
 
