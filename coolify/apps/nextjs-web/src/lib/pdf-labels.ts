@@ -270,7 +270,12 @@ export function deliveryMethodLabelLocalized(
   return label(`pdf.DELIVERY_METHOD.${method}`, locale, method);
 }
 
-/** 消費税ラベル（税率・非課税）— 請求書のみ。未指定は課税扱い。 */
+/**
+ * 消費税ラベル（税率・非課税）— 請求書・見積書。未指定は課税扱い。
+ *
+ * @deprecated 税率ごとの区分記載（`taxRowLabelLocalized`）へ移行中。区分に
+ * 頼ると管理者が足した独自区分を表せず、混在請求書では区分が 1 つに定まらない。
+ */
 export function taxLabelLocalized(
   taxType: string | null | undefined,
   locale: Locale,
@@ -278,4 +283,29 @@ export function taxLabelLocalized(
   const key = taxType ?? "TAXABLE";
   const hit = label(`pdf.TAX.${key}`, locale, "");
   return hit || label("pdf.TAX.TAXABLE", locale);
+}
+
+/**
+ * 税率ごとの区分記載の見出し — 「消費税（10%）」。
+ *
+ * **率から組み立てる**（区分名ではなく）。区分名は「軽減税率」のように率を
+ * 含まないことがあり、区分記載として読めない。0% だけは「非課税」— 帳票で
+ * 「消費税（0%）」は不自然なので。
+ *
+ * 以前は % を訳文に焼き込んでいた（`"消費税（10%）"`）ので、税率が変わると
+ * 3 言語の訳文を直す必要があった。いまは `{rate}` を差し込む。
+ */
+export function taxRowLabelLocalized(taxRate: number, locale: Locale): string {
+  if (taxRate === 0) return label("pdf.TAX.EXEMPT", locale);
+  return label("pdf.TAX.RATE", locale, "", {
+    rate: String(Number((taxRate * 100).toFixed(4))),
+  });
+}
+
+/** 混在時だけ添える「対象 ¥X」。単一税率では対象額 = 小計なので出さない。 */
+export function taxBaseSuffixLocalized(
+  taxableBase: string,
+  locale: Locale,
+): string {
+  return label("pdf.TAX.BASE_SUFFIX", locale, "", { base: taxableBase });
 }

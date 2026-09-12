@@ -1932,7 +1932,9 @@
     "TAX": {
       "REDUCED": "消費税（8%）",
       "EXEMPT": "消費税（非課税）",
-      "TAXABLE": "消費税（10%）"
+      "TAXABLE": "消費税（10%）",
+      "RATE": "消費税（{rate}%）",
+      "BASE_SUFFIX": "　対象 ¥{base}"
     },
     "ATTN": {
       "withBranch": "{branchName}　ご担当者 様",
@@ -2037,7 +2039,8 @@
       "taxLabelReduced": "消費税（8%）",
       "taxLabelExempt": "消費税（非課税）",
       "taxLabelStandard": "消費税（10%）",
-      "yayoiAccountingCsvAgain": "弥生会計CSV（再出力）"
+      "yayoiAccountingCsvAgain": "弥生会計CSV（再出力）",
+      "taxLabelRate": "消費税（{rate}%）"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "請求書 {invoiceNumber} を発行します。発行日は本日で記録されます。",

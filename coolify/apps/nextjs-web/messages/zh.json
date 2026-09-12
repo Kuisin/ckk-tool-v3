@@ -1932,7 +1932,9 @@
     "TAX": {
       "REDUCED": "税额（8%）",
       "EXEMPT": "免税",
-      "TAXABLE": "税额（10%）"
+      "TAXABLE": "税额（10%）",
+      "RATE": "消费税（{rate}%）",
+      "BASE_SUFFIX": "　应税 ¥{base}"
     },
     "ATTN": {
       "withBranch": "{branchName} 收件人：经办人",
@@ -2037,7 +2039,8 @@
       "taxLabelReduced": "消费税（8%）",
       "taxLabelExempt": "消费税（免税）",
       "taxLabelStandard": "消费税（10%）",
-      "yayoiAccountingCsvAgain": "弥生会计 CSV（重新导出）"
+      "yayoiAccountingCsvAgain": "弥生会计 CSV（重新导出）",
+      "taxLabelRate": "消费税（{rate}%）"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "将发行请款单 {invoiceNumber}，发行日期记为今天。",

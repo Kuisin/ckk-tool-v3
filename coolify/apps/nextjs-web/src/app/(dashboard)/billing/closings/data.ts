@@ -80,9 +80,12 @@ const SHIPMENT_INCLUDE = {
     orderBy: { sortOrder: "asc" as const },
     include: {
       product: true,
-      // acceptance は営業担当の導出用（出荷書は担当を保存しない）。
+      // acceptance は営業担当の導出用（出荷書は担当を保存しない）と、
+      // 税率の基準日（注文日）の取得用。
       orderLine: {
-        include: { acceptance: { select: { salesRepId: true } } },
+        include: {
+          acceptance: { select: { salesRepId: true, orderDate: true } },
+        },
       },
     },
   },

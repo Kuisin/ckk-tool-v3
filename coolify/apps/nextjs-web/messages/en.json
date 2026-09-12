@@ -1932,7 +1932,9 @@
     "TAX": {
       "REDUCED": "Tax (8%)",
       "EXEMPT": "Tax exempt",
-      "TAXABLE": "Tax (10%)"
+      "TAXABLE": "Tax (10%)",
+      "RATE": "Tax ({rate}%)",
+      "BASE_SUFFIX": "  on ¥{base}"
     },
     "ATTN": {
       "withBranch": "{branchName} — Attn: Contact",
@@ -2037,7 +2039,8 @@
       "taxLabelReduced": "Consumption tax (8%)",
       "taxLabelExempt": "Consumption tax (exempt)",
       "taxLabelStandard": "Consumption tax (10%)",
-      "yayoiAccountingCsvAgain": "Yayoi accounting CSV (export again)"
+      "yayoiAccountingCsvAgain": "Yayoi accounting CSV (export again)",
+      "taxLabelRate": "Tax ({rate}%)"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "This issues invoice {invoiceNumber}. The issue date is recorded as today.",
