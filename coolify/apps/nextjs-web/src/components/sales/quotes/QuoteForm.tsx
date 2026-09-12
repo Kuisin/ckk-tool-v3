@@ -46,8 +46,9 @@ import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
 import type { Option } from "@/lib/mock";
-import { taxRateFor } from "@/lib/tax-rate";
-import type { PriceListEntry } from "../price-lists/model";
+import { totalsByRateYen } from "@/lib/money";
+import { resolveLineTax, type TaxCatalog } from "@/lib/tax-rate";
+import { isoDateJst, type PriceListEntry } from "../price-lists/model";
 import { type Quote, resolveUnitPriceFromEntries } from "./model";
 
 /**
@@ -187,7 +188,9 @@ export function QuoteForm({
   customerOptions,
   branchesByCustomer,
   entries,
-  taxTypeByCustomer,
+  taxCatalog,
+  taxCategoryByCustomer,
+  taxCategoryByProduct,
 }: {
   mode: "create" | "edit";
   /** Edit / 複製: the source quote (server-fetched view-model). */
@@ -202,7 +205,12 @@ export function QuoteForm({
    * 顧客 BP id → 課税区分（tax_type）。消費税のライブ計算に使う（lib/tax-rate）。
    * 載っていない顧客は課税扱い。保存側の合計は quoteTotals が同じ表で出す。
    */
-  taxTypeByCustomer?: Record<string, string | null>;
+  /** 税区分マスタ 1 式（サーバーが読んで渡す。クライアントは DB を見ない）。 */
+  taxCatalog: TaxCatalog;
+  /** 顧客 BP id → 課税区分 id。**null は「製品に従う」**。 */
+  taxCategoryByCustomer?: Record<string, number | null>;
+  /** 製品 id → 課税区分 id。価格表に載っている製品だけ。 */
+  taxCategoryByProduct?: Record<string, number | null>;
 }) {
   const tr = useTranslations();
   const router = useRouter();
@@ -244,15 +252,25 @@ export function QuoteForm({
     );
   };
 
-  const subtotal = form.values.items.reduce(
-    (sum, it) =>
-      sum + Math.max(0, it.unitPrice * it.quantity - it.discountAmount),
-    0,
+  // ライブ計算も保存時と**同じ関数**を通す（lib/tax-rate.ts / lib/money.ts）。
+  // 画面の合計と保存後の合計が別々の数え方になると、利用者は保存するまで
+  // どちらが正しいのか分からない。基準日は保存時と同じく「今日」。
+  const liveBasisDate = isoDateJst(new Date());
+  const customerTaxCategoryId =
+    taxCategoryByCustomer?.[form.values.customerId] ?? null;
+  const liveTotals = totalsByRateYen(
+    form.values.items.map((it) => ({
+      amount: Math.max(0, it.unitPrice * it.quantity - it.discountAmount),
+      taxRate: resolveLineTax(taxCatalog, {
+        customerTaxCategoryId,
+        productTaxCategoryId: taxCategoryByProduct?.[it.productId] ?? null,
+        basisDate: liveBasisDate,
+      }).rate,
+    })),
   );
-  const tax = Math.round(
-    subtotal * taxRateFor(taxTypeByCustomer?.[form.values.customerId]),
-  );
-  const grandTotal = subtotal + tax;
+  const subtotal = liveTotals.subtotal;
+  const tax = liveTotals.taxAmount;
+  const grandTotal = liveTotals.totalAmount;
 
   const handleSubmit = (values: QuoteFormValues) => {
     const payload = {

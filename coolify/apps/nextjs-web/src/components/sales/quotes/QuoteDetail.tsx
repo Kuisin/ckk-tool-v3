@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { issueQuote } from "@/app/(dashboard)/sales/quotes/actions";
+import { taxBucketLabel } from "@/components/billing/invoices/model";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
 import type { DesignRequestLink } from "@/components/sales/design-requests/model";
@@ -412,21 +413,24 @@ export function QuoteDetail({
                   </Table.Td>
                   <Table.Td colSpan={2} />
                 </Table.Tr>
-                <Table.Tr>
-                  <Table.Td colSpan={5} ta="right">
-                    <Text c="dimmed" size="sm">
-                      {quote.customerTaxType === "REDUCED"
-                        ? tr("billing.invoices.taxLabelReduced")
-                        : quote.customerTaxType === "EXEMPT"
-                          ? tr("billing.invoices.taxLabelExempt")
-                          : tr("sales.quotes.tax10")}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td ta="right">
-                    <MoneyText value={totals.tax} />
-                  </Table.Td>
-                  <Table.Td colSpan={2} />
-                </Table.Tr>
+                {/* 税率ごとに 1 行（請求書と同じ区分記載）。単一税率なら 1 行で
+                    従来と同じ見た目になる。 */}
+                {totals.buckets.map((b) => (
+                  <Table.Tr key={b.taxRate}>
+                    <Table.Td colSpan={5} ta="right">
+                      <Text c="dimmed" size="sm">
+                        {taxBucketLabel({ ...b, categoryName: null }, tr)}
+                        {totals.buckets.length > 1
+                          ? `（${tr("common.subtotal")} ¥${b.taxableBase.toLocaleString("ja-JP")}）`
+                          : ""}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      <MoneyText value={b.taxAmount} />
+                    </Table.Td>
+                    <Table.Td colSpan={2} />
+                  </Table.Tr>
+                ))}
                 <Table.Tr>
                   <Table.Td colSpan={5} ta="right">
                     <Text fw={700} size="sm">
