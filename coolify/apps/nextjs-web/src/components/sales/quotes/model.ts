@@ -27,6 +27,7 @@ import {
 import { formatMoney } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import { type TaxBucket, totalsByRateYen } from "@/lib/money";
 import type { PriceMissReason } from "@/lib/order-acceptance-price-core";
 import { taxRateFor } from "@/lib/tax-rate";
 
@@ -168,6 +169,12 @@ export interface QuoteItem {
   discountLabel: string | null;
   /** unit_price × quantity − discount_amount. */
   amount: number;
+  /**
+   * その行に当たった税率（0.1 = 10%）。保存時のスナップショット。
+   * 旧データ（税区分マスタ以前の見積）は null で、その場合だけ顧客の課税区分から
+   * 起こす（`quoteTotals`）。
+   */
+  taxRate: number | null;
   deliveryDate: string | null;
   notes: string | null;
 }
@@ -237,18 +244,30 @@ export interface QuoteTotals {
   subtotal: number;
   tax: number;
   grandTotal: number;
+  /** 税率ごとの区分記載。率の降順・0% の束も落とさない（請求書と同じ形）。 */
+  buckets: TaxBucket[];
 }
 
 /**
- * 消費税は**顧客の課税区分**で決まる（lib/tax-rate.ts — 請求書と同じ表）。
+ * 消費税は**明細ごとの税率**で決まる（製品ごとに課税区分が違い得る）。率は保存時に
+ * 行へ凍結してあるので、発行後に税率マスタが変わっても見積書は動かない。
+ *
+ * 税区分マスタ以前の見積（`taxRate` が null）は顧客の課税区分から起こす — そうすると
+ * 移行の前後で古い見積の金額が変わらない（請求書の `resolveTaxBuckets` と同じ考え方）。
+ *
  * 明細の金額（amount）は保存時のスナップショットのまま — ここで再計算しない。
  */
 export function quoteTotals(
   q: Pick<Quote, "items" | "customerTaxType">,
 ): QuoteTotals {
-  const subtotal = q.items.reduce((sum, it) => sum + it.amount, 0);
-  const tax = Math.round(subtotal * taxRateFor(q.customerTaxType));
-  return { subtotal, tax, grandTotal: subtotal + tax };
+  const fallbackRate = taxRateFor(q.customerTaxType);
+  const { subtotal, taxAmount, totalAmount, buckets } = totalsByRateYen(
+    q.items.map((it) => ({
+      amount: it.amount,
+      taxRate: it.taxRate ?? fallbackRate,
+    })),
+  );
+  return { subtotal, tax: taxAmount, grandTotal: totalAmount, buckets };
 }
 
 /** 注文種別ラベル（本番 / テスト …）。 */

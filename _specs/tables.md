@@ -253,6 +253,64 @@ Table plants {
 }
 
 // ===========================
+// 税区分（課税区分と税率）
+// ===========================
+//
+// **課税区分の唯一の定義元**。製品 (products.tax_category_id) と顧客
+// (bp_customer_attrs.tax_category_id) の双方がここを参照する。
+//
+// 以前は enum TAX_TYPE を顧客属性だけが 1 つ持ち、率はアプリ側の定数だった。そのため
+// 軽減税率が「何を売るか」ではなく「誰に売るか」で決まり、税制改正がデプロイになり、
+// 8% と 10% が混ざった請求書を表現できなかった。enum TAX_TYPE は
+// tax_categories.code の値としてだけ残っている（移行が 1:1 で済むように）。
+//
+// **どちらが勝つか**: 顧客の区分が入っていればそれ、**null なら「製品に従う」**。
+// 非課税の取引先に、製品の区分に関わらず 0% を通すための順序。判定の唯一の定義元は
+// nextjs-web の lib/tax-rate.ts resolveLineTax()。
+//
+// **率を引く基準日は「注文日」**（order_acceptances.order_date。null のときは
+// 出荷日 → 締日へ落ちる）。税率改正をまたぐ締日でも、引き渡しの約束をした時点の率が
+// 行ごとに付く。
+
+Table tax_categories {
+  id              serial [pk]
+  code            varchar [unique, not null]  // 旧 TAX_TYPE 値（TAXABLE / REDUCED / EXEMPT）
+  name            json [not null]             // { ja: '', en: '' }
+  short_label     json                        // 帳票の区分欄。null = 率から組み立て（"10%"）
+  is_default      boolean [not null, default: false]  // 顧客も製品も未指定のときの既定
+  sort_order      int [not null, default: 0]
+  is_active       boolean [not null, default: true]
+  notes           text
+  created_at      timestamp
+  updated_at      timestamp
+
+  // 既定の区分は 1 つだけ（部分 unique index — Prisma では表現できないので
+  // マイグレーションに直接書いてある）
+}
+
+// 税率の履歴。**終了日は持たない** — 終わりは「次に始まる行の前日」で決まる。
+// 開始と終了を両方持たせると、隙間（どの率でもない日）と重なり（2 つの率が当たる日）を
+// 作れてしまう。price_list_variants の valid_from / valid_until とは意図的に別の形。
+// 解決は「適用開始日 ≤ 基準日 の中で最も新しい 1 行」。
+//
+// 初期データは**現行率 1 本だけ**（適用開始日 1900-01-01）。5% / 8% 時代の歴史行は
+// 入れていない — 入れると注文日が古い書類の再描画で率が動くため、必要になった人が
+// 画面から足す。
+Table tax_category_rates {
+  id              serial [pk]
+  category_id     int [not null, ref: > tax_categories.id]
+  effective_from  date [not null]         // この率が有効になる JST 暦日（当日を含む）
+  rate            numeric(5,4) [not null] // 0.1000 = 10%
+  notes           text
+  created_at      timestamp
+  updated_at      timestamp
+
+  indexes {
+    (category_id, effective_from) [unique]
+  }
+}
+
+// ===========================
 // 素材・製品
 // ===========================
 //
@@ -424,6 +482,9 @@ Table products {
   length_mm       numeric(10,3)           // 全長 (mm)
   material_id     varchar [ref: > materials.id]  // 廃止予定（旧: 特定素材参照。現在は未使用）
   unit            varchar [not null, default: '本']
+  // 課税区分（tax_categories.id）。null = 税区分マスタの既定に従う。
+  // 顧客側 (bp_customer_attrs.tax_category_id) が指定されていればそちらが勝つ。
+  tax_category_id int [ref: > tax_categories.id]
   spec            json                    // 仕様（フリー構造）
   // 検索・AI 突合用のキーワード（別名・略称・読み・英字表記）。注文書の品名が
   // 名称と一致しないときの突合キー（lib/intake matchProduct）でもある。
@@ -1458,6 +1519,13 @@ Table invoices {
   subtotal        numeric(12,2) [not null]
   tax_amount      numeric(12,2) [not null]
   total_amount    numeric(12,2) [not null]
+  // 課税区分・税率のスナップショット（発行時点の根拠）。金額を凍結するなら
+  // その根拠も凍結する、という考え方。**税率が混在する請求書ではどちらも null** —
+  // ヘッダは 2 率を表せないので、内訳は invoice_tax_summaries だけが持つ。
+  // 単一税率なら従来どおり埋まる。旧行（スナップショット導入前）も null で、
+  // その場合だけ顧客マスタの現在の区分へフォールバックして表示する。
+  tax_type        TAX_TYPE
+  tax_rate        numeric(5,4)
   status          INVOICE_STATUS [not null, default: 'DRAFT']
   issued_at       timestamp
   due_date        date
@@ -1487,6 +1555,31 @@ Table invoice_items {
   unit_price      numeric(12,2) [not null]
   amount          numeric(12,2) [not null]
   sort_order      int [not null, default: 0]
+  // 行の税スナップショット（その行に当たった課税区分と率）。発行時に凍結する。
+  // **税額は行に持たない** — 税は率ごとの束の単位でしか正しく丸められないため
+  // （行ごとに丸めると単一税率でも従来と 1 円ずれる）。束は invoice_tax_summaries。
+  tax_category_id int [ref: > tax_categories.id]
+  tax_rate        numeric(5,4)
+}
+
+// 税率ごとの区分記載（適格請求書）。請求書 1 件 × **税率** 1 本。
+// 束ねる鍵は区分 id ではなく **率** — 同じ率の区分が 2 つあっても、書類に刷る
+// 区分記載は 1 行でなければならない。発行時に明細のスナップショットから集計して凍結する。
+// 不変条件: Σ taxable_base = invoices.subtotal / Σ tax_amount = invoices.tax_amount。
+// この表に行が無い請求書（税区分マスタ導入以前の発行分）は、読み出し側がヘッダから
+// 1 本の束を合成する — だから既存の請求書は表示も PDF も弥生 CSV も変わらない。
+Table invoice_tax_summaries {
+  id              uuid [pk]
+  invoice_id      uuid [not null, ref: > invoices.id]
+  tax_category_id int [ref: > tax_categories.id]  // 束の区分が一意なときだけ（ラベル用）
+  tax_rate        numeric(5,4) [not null]
+  taxable_base    numeric(12,2) [not null]        // その率の対象となる税抜金額
+  tax_amount      numeric(12,2) [not null]
+  sort_order      int [not null, default: 0]
+
+  indexes {
+    (invoice_id, tax_rate) [unique]
+  }
 }
 
 Table billing_closings {
@@ -1769,7 +1862,15 @@ Table bp_customer_attrs {
   payment_terms_days  int                               // 支払サイト（日数）
   payment_day         smallint                          // 支払日
   credit_limit        numeric(15,2)
+  // 旧・課税区分（enum）。tax_category_id と二重に持っている移行期間中の列。
+  // 置き換えが全経路で終わるまではこちらも書き続ける（ローリングデプロイ中は
+  // 旧コンテナがこの列しか知らないため）。
   tax_type            TAX_TYPE        [default: 'TAXABLE']
+  // 課税区分（tax_categories.id）。**null = 「製品に従う」** — 製品側の区分が使われる。
+  // 値が入っていれば製品より優先する（非課税の取引先に、製品の区分に関わらず 0% を
+  // 通すため）。移行時は既存の tax_type から全行を埋めたので、その時点では誰も
+  // 「製品に従う」になっていない = 請求額は動かない。
+  tax_category_id     int             [ref: > tax_categories.id]
   invoice_method      INVOICE_METHOD  [default: 'EMAIL']
   is_consignment      boolean         [default: false]  // 委託先フラグ
   // ── 過不足納品（§8）— 受注数量と違う数量で納品してよい範囲 ──────────────

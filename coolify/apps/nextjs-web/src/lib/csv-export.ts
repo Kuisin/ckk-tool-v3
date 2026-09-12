@@ -39,6 +39,24 @@ export interface YayoiInvoiceInput {
    * 省略時は従来通り税込 1 行。
    */
   taxAmount?: number;
+  /**
+   * 税率ごとの内訳（適格請求書の区分記載）。製品ごとに課税区分を持てるように
+   * なったので、1 通の請求書に 8% と 10% が同居する。指定すると**率ごとに**
+   * 売上高 + 仮受消費税 の行を出し、摘要に率を書く（会計側で税率別に集計できる）。
+   *
+   * **列は増やさない。** 6 列の並びは弥生側の取込形式なので、税区分の列を勝手に
+   * 足すと取込マッピングが壊れる。率は摘要と行の分かれ方で表す。
+   *
+   * 省略時は `taxAmount` を使った従来の出力と**1 バイトも変わらない**。
+   */
+  taxLines?: readonly TaxLineBreakdown[];
+}
+
+/** 税率 1 つ分の内訳。`taxableBase` はその率の対象となる税抜金額。 */
+export interface TaxLineBreakdown {
+  taxRate: number;
+  taxableBase: number;
+  taxAmount: number;
 }
 
 /**
@@ -88,6 +106,45 @@ export function buildYayoiCsv(invoice: YayoiInvoiceInput): string {
   const memo = `${invoice.invoiceNumber} ${invoice.customerName}`;
   const date = yayoiDate(invoice.date);
   const rows: (string | number)[][] = [];
+
+  // 税率ごとの内訳があるときは率ごとに仕訳する。
+  // **Σ借方金額 = 税込合計**（崩れると弥生の取込でエラーになる）。
+  if (invoice.taxLines && invoice.taxLines.length > 0) {
+    // 率を摘要に書くのは**混在しているときだけ**。1 率しか無い請求書に書き足すと、
+    // 既存の請求書を書き出し直したときに摘要だけが変わる（金額も行数も同じなのに
+    // 差分が出る）。混在していなければ従来と 1 バイトも変わらないのが正しい。
+    const mixed = invoice.taxLines.length > 1;
+    for (const line of invoice.taxLines) {
+      const base = roundYen(line.taxableBase);
+      const lineTax = roundYen(line.taxAmount);
+      const suffix = mixed
+        ? ` ${Number((line.taxRate * 100).toFixed(4))}%`
+        : "";
+      if (base !== 0) {
+        rows.push([
+          date,
+          YAYOI_DEBIT_ACCOUNT,
+          base,
+          YAYOI_CREDIT_ACCOUNT,
+          base,
+          `${memo}${suffix}`,
+        ]);
+      }
+      if (lineTax !== 0) {
+        rows.push([
+          date,
+          YAYOI_DEBIT_ACCOUNT,
+          lineTax,
+          YAYOI_TAX_ACCOUNT,
+          lineTax,
+          `${memo} 消費税${suffix.trim()}`,
+        ]);
+      }
+    }
+    const lines = [header, ...rows].map((cols) => cols.map(csvField).join(","));
+    return `${YAYOI_CSV_BOM}${lines.join("\r\n")}\r\n`;
+  }
+
   if (tax > 0) {
     // 売上（税抜）と仮受消費税に分離 — 借方は合計で売掛金
     rows.push([

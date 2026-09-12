@@ -30,6 +30,8 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { loadTaxCatalog } from "@/lib/tax-categories";
+import { resolveLineTax } from "@/lib/tax-rate";
 import { fetchEntriesForCustomer } from "./data";
 
 const BASE_PATH = "/sales/quotes";
@@ -118,6 +120,27 @@ function lineResolveMessage(
   }
 }
 
+/** 顧客の課税区分（null =「製品に従う」）。 */
+async function customerTaxCategoryIdOf(bpId: string): Promise<number | null> {
+  const row = await prisma.bpCustomerAttrs.findUnique({
+    where: { bpId },
+    select: { taxCategoryId: true },
+  });
+  return row?.taxCategoryId ?? null;
+}
+
+/** 製品 id → 課税区分 id（未設定は map に載らない = 既定に従う）。 */
+async function productTaxCategoryMap(
+  productIds: readonly number[],
+): Promise<Map<number, number | null>> {
+  if (productIds.length === 0) return new Map();
+  const rows = await prisma.product.findMany({
+    where: { id: { in: [...new Set(productIds)] } },
+    select: { id: true, taxCategoryId: true },
+  });
+  return new Map(rows.map((r) => [r.id, r.taxCategoryId]));
+}
+
 /**
  * 明細の単価・値引きを価格表からサーバー側で再解決する。
  * 未解決の行（価格表なし）はエラー — 見積書は価格表からのみ作成できる。
@@ -129,6 +152,18 @@ async function resolveItems(
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ) {
   const entries = await fetchEntriesForCustomer(v.customerBpId);
+  // 税は**行ごと**（製品ごとに課税区分が違い得る）。見積書は印刷して外に出す書類
+  // なので、単価・値引きと同じく保存時に凍結する — 発行後に税率マスタが変わっても
+  // 刷り直した PDF が動いてはいけない。
+  const [catalog, customerTaxCategoryId, productTaxCategoryIds] =
+    await Promise.all([
+      loadTaxCatalog(),
+      customerTaxCategoryIdOf(v.customerBpId),
+      productTaxCategoryMap(v.items.map((it) => Number(it.productId))),
+    ]);
+  // 基準日は見積の作成日（まだ注文日が無い）。
+  const basisDate = isoDateJst(new Date());
+
   const resolved = v.items.map((it, i) => {
     const resolution = resolvePriceFromEntries(
       entries,
@@ -144,12 +179,20 @@ async function resolveItems(
       );
     }
     const r = resolution.price;
+    const lineTax = resolveLineTax(catalog, {
+      customerTaxCategoryId,
+      productTaxCategoryId:
+        productTaxCategoryIds.get(Number(it.productId)) ?? null,
+      basisDate,
+    });
     return {
       productId: Number(it.productId),
       orderType: it.orderType,
       quantity: it.quantity,
       unitPrice: r.unitPrice,
       priceListTierId: r.tierId,
+      taxCategoryId: lineTax.categoryId,
+      taxRate: lineTax.rate,
       discountAmount: r.discountAmount,
       discountLabel: r.discountLabel,
       // 円未満は明細の段階で丸める（請求書・CSV と同じ lib/money.ts）。

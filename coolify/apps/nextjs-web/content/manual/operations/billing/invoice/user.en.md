@@ -20,7 +20,7 @@ There is no "New" button in this app. Invoices are made for you by [monthly bill
 
 - **請求期間 (billing period)** … The period you are billing for — "everything sent between this date and that date".
 - **小計 (subtotal)** … The amount before consumption tax is added.
-- **消費税 (consumption tax)** … The tax on the subtotal. It is worked out for you using the rule set for each customer.
+- **消費税 (consumption tax)** … The tax on the subtotal. It is worked out line by line from each **product's tax category** (standard 10% / reduced 8% / exempt). A tax category set on the business partner takes precedence over the product.
 - **合計金額（税込） (total with tax)** … The subtotal plus the tax — the amount the customer actually pays.
 - **支払期限 (payment due date)** … The date by which the customer should pay.
 - **由来 (source)** … Shows which [shipping order](/manual/en/operations/shipping/delivery-order/user) or [delivery note](/manual/en/operations/shipping/delivery-note/user) a line came from.
@@ -64,7 +64,7 @@ Below the lines there are four tabs. 「**概要**」 (Overview) shows the date 
 
 > 💡 If you want to make sure the amount is right, open the original shipping order from the "由来" (Source) link — you can check there and then how many pieces were sent and when.
 
-> 💡 The tax box shows the rate that applies to that customer — 「**消費税（10%）**」 (Consumption tax (10%)), 「**消費税（8%）**」 (8%), or 「**消費税（非課税）**」 (tax exempt). The rate comes from the customer's registered details.
+> 💡 The tax is shown **one line per rate** — 「**消費税（10%）**」 (Consumption tax (10%)), 「**消費税（8%）**」 (8%), and so on. When an invoice mixes rates, the taxable amount for each rate is shown next to it. This is what a qualified invoice requires.
 
 ## Recording from issue to payment
 
@@ -151,7 +151,10 @@ A. That invoice has already been issued. Close the screen and open it again to s
 A. A step has been skipped. Please go in order: issue → mark as sent → mark as paid.
 
 **Q. The consumption tax does not look like it was worked out at 10%.**
-A. The tax is worked out with the rule set for each customer. Customers on the reduced rate are 8%, and tax-free customers are 0%. To change the rule, fix the registered details of the [customer](/manual/en/operations/masters/business-partner/user).
+A. The tax comes from each **product's tax category**. Check the product's 「税区分」 (tax category) first. If the business partner has a tax category of its own, that wins over the product (for a tax-exempt partner, for example) — in that case look at the [business partner](/manual/en/operations/masters/business-partner/user).
+
+**Q. If I change a tax category later, does the tax on an issued invoice change?**
+A. No. The rate is written into each line when the invoice is created. Changing a product or a tax category afterwards does not move an invoice that has already been issued.
 
 **Q. I press 「弥生会計CSV」 but no file comes out.**
 A. You may not have the export permission. Please ask your administrator.

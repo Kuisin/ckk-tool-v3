@@ -96,6 +96,8 @@ function buildItem(
     discountAmount,
     discountLabel: resolved?.discountLabel ?? null,
     amount: Math.max(0, unitPrice * quantity - discountAmount),
+    // 見本は税区分マスタ以前の見積と同じ形（null = 顧客の課税区分から起こす）。
+    taxRate: null,
     deliveryDate: opts.deliveryDate ?? null,
     notes: opts.notes ?? null,
   };

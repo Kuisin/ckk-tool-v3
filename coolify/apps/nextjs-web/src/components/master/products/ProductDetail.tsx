@@ -62,6 +62,14 @@ export interface ProductDetailData {
   diameterMm: number | null;
   lengthMm: number | null;
   unit: string;
+  /**
+   * 課税区分（税区分マスタ MS0F）の表示名。null = 既定に従う。
+   * 取引先に課税区分が入っていればそちらが勝つので、ここは「この製品そのものの
+   * 区分」でしかない（判定は lib/tax-rate.ts resolveLineTax）。
+   */
+  taxCategoryName: string | null;
+  /** 課税区分の id（複製時に引き継ぐ）。 */
+  taxCategoryId: number | null;
   /** 検索・AI 突合用のキーワード（match_names）。 */
   matchNames: string[];
   isActive: boolean;
@@ -128,6 +136,7 @@ export function ProductDetail({
     diameterMm: record.diameterMm,
     lengthMm: record.lengthMm,
     unit: record.unit,
+    taxCategoryId: record.taxCategoryId,
   };
 
   return (
@@ -207,6 +216,12 @@ export function ProductDetail({
           value={record.lengthMm != null ? `${record.lengthMm} mm` : "—"}
         />
         <FieldValue label={tr("common.unit")} value={record.unit} />
+        <FieldValue
+          label={tr("master.taxCategories.title")}
+          value={
+            record.taxCategoryName ?? tr("master.taxCategories.useDefault")
+          }
+        />
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>

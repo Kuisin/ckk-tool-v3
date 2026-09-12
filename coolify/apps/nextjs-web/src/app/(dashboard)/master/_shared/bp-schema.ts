@@ -94,7 +94,15 @@ export function customerAttrsInput(tr: Tr) {
       paymentTermsDays: z.number().int().min(0).nullable(),
       paymentDay: z.number().int().min(1).max(31).nullable(),
       creditLimit: z.number().min(0).nullable(),
-      taxType: z.enum(["TAXABLE", "EXEMPT", "REDUCED"]),
+      /**
+       * 課税区分（税区分マスタ tax_categories.id を文字列で。UI の Select 値）。
+       * **null = 「製品に従う」** — 製品側の区分が使われる。値が入っていれば
+       * 製品より優先する（非課税の取引先に、製品の区分に関わらず 0% を通すため）。
+       * 判定の唯一の定義元は lib/tax-rate.ts resolveLineTax()。
+       */
+      taxCategoryId: z.string().nullable().default(null),
+      /** 旧・課税区分（enum）。移行期間中だけ二重に書く（§ 移行メモ）。 */
+      taxType: z.enum(["TAXABLE", "EXEMPT", "REDUCED"]).default("TAXABLE"),
       invoiceMethod: z.enum(["EMAIL", "FAX", "POST", "PORTAL"]),
       isConsignment: z.boolean(),
       // ── 過不足納品（§8）──────────────────────────────────────────────────
@@ -126,7 +134,23 @@ export function customerAttrsInput(tr: Tr) {
 
 export type CustomerAttrsInput = z.infer<ReturnType<typeof customerAttrsInput>>;
 
-export function customerAttrsData(v: CustomerAttrsInput) {
+/**
+ * 税区分マスタのコード → 旧 enum。移行期間中だけ使う橋渡し。
+ * enum に無いコード（管理者が足した区分）と「製品に従う」は従来の既定 TAXABLE
+ * に倒す — 旧 enum は 3 値しか表せないので、そこは正直に表現を諦める。
+ */
+function legacyTaxType(code: string | null): "TAXABLE" | "EXEMPT" | "REDUCED" {
+  return code === "EXEMPT" || code === "REDUCED" ? code : "TAXABLE";
+}
+
+export function customerAttrsData(
+  v: CustomerAttrsInput,
+  /**
+   * 選ばれた税区分のコード（サーバーが id から引く。画面の入力ではないので
+   * zod スキーマには載せない）。移行期間中に旧 enum を導くためだけに使う。
+   */
+  taxCategoryCode: string | null = null,
+) {
   return {
     customerCode: v.customerCode?.trim() || null,
     billingBpId: v.billingBpId,
@@ -134,7 +158,12 @@ export function customerAttrsData(v: CustomerAttrsInput) {
     paymentTermsDays: v.paymentTermsDays,
     paymentDay: v.paymentDay,
     creditLimit: v.creditLimit,
-    taxType: v.taxType,
+    taxCategoryId: v.taxCategoryId ? Number(v.taxCategoryId) : null,
+    // 移行期間中は旧 enum も書き続ける。**画面で選んだ区分から導く** — 締日処理は
+    // まだ tax_type を読んでいるので、ここを古い値のままにすると「画面は非課税、
+    // 請求は 10%」という食い違いがその期間だけ起きる。区分のコードが enum に無い
+    // （管理者が足した区分）ときと「製品に従う」のときは、従来の既定 TAXABLE。
+    taxType: legacyTaxType(taxCategoryCode),
     invoiceMethod: v.invoiceMethod,
     isConsignment: v.isConsignment,
     deliveryToleranceBasis: v.deliveryToleranceBasis,

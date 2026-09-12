@@ -162,6 +162,7 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 | [产品编码](#field-code) | 必填 | 产品的管理编号 |
 | [名称](#field-name) | 必填 | 产品的名称 |
 | [单位](#field-unit) | 必填 | 支・个 等 |
+| [税种](#field-tax-category) | 选填 | 消费税税种（留空 = 按默认） |
 | [产品类别](#field-product-type) | 选填 | 类别（不同类别项目不同） |
 | [材种](#field-material-type) | 选填 | 使用的材料种类 |
 | [直径 (mm) / 全长 (mm)](#field-dimensions) | 选填 | 材料的尺寸 |
@@ -180,6 +181,16 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 ### 单位 [#field-unit]
 
 计数单位。默认为「支」。
+
+### 税种 [#field-tax-category]
+
+该产品的消费税税种。报价单和请款单的税额由此决定。
+
+留空则按税种主数据（**MS0F**）的**默认值**（通常为标准税率 10%）。只有适用减免税率的产品才需要另行选择。
+
+若业务伙伴设置了自己的税种，则**以业务伙伴为准**（例如免税的业务伙伴）。
+
+> 💡 税率在生成单据时已逐行写入。之后修改税种，不会影响已发行的报价单和请款单。
 
 ### 产品类别 [#field-product-type]
 

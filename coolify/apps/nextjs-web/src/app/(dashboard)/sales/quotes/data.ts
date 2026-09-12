@@ -75,6 +75,7 @@ export function mapQuote(r: QuoteRow): Quote {
       discountAmount: Number(it.discountAmount),
       discountLabel: it.discountLabel,
       amount: Number(it.amount),
+      taxRate: it.taxRate != null ? Number(it.taxRate) : null,
       deliveryDate: it.deliveryDate?.toISOString().slice(0, 10) ?? null,
       notes: it.notes,
     })),
@@ -158,16 +159,33 @@ export async function fetchEntriesForCustomer(
 }
 
 /**
- * 顧客 BP id → 課税区分（bp_customer_attrs.tax_type）。見積フォームのライブ
- * 消費税計算用 — 属性の無い顧客は載せない（呼び出し側は課税扱いに倒す）。
+ * 顧客 BP id → 課税区分（tax_categories.id）。見積フォームのライブ消費税計算用。
+ * **null は「製品に従う」** で、属性の無い顧客は載せない（呼び出し側も同じ扱い）。
  */
-export async function fetchCustomerTaxTypes(): Promise<
-  Record<string, string | null>
+export async function fetchCustomerTaxCategories(): Promise<
+  Record<string, number | null>
 > {
   const rows = await prisma.bpCustomerAttrs.findMany({
-    select: { bpId: true, taxType: true },
+    select: { bpId: true, taxCategoryId: true },
   });
-  return Object.fromEntries(rows.map((r) => [r.bpId, r.taxType ?? null]));
+  return Object.fromEntries(rows.map((r) => [r.bpId, r.taxCategoryId ?? null]));
+}
+
+/**
+ * 製品 id → 課税区分（tax_categories.id）。**価格表に載っている製品だけ**に絞る —
+ * 見積フォームが選べるのはその製品だけなので、全製品を配ると props が無駄に太る。
+ */
+export async function fetchProductTaxCategories(
+  productIds: readonly number[],
+): Promise<Record<string, number | null>> {
+  if (productIds.length === 0) return {};
+  const rows = await prisma.product.findMany({
+    where: { id: { in: [...new Set(productIds)] } },
+    select: { id: true, taxCategoryId: true },
+  });
+  return Object.fromEntries(
+    rows.map((r) => [String(r.id), r.taxCategoryId ?? null]),
+  );
 }
 
 /** 支店 options per 顧客 — bp.business_partners の親子関係から。 */
