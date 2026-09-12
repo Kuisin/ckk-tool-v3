@@ -35,6 +35,7 @@ export default async function MasterProductsPage() {
       diameterMm: r.diameterMm != null ? Number(r.diameterMm) : null,
       lengthMm: r.lengthMm != null ? Number(r.lengthMm) : null,
       unit: r.unit,
+      taxCategoryId: r.taxCategoryId,
       isActive: r.isActive,
     };
   });

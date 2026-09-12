@@ -4994,7 +4994,8 @@
       "katakana": "Katakana",
       "missingFormatsNotice": "No {formats} spelling is registered. If an order document is written that way, it cannot be matched.",
       "needsReadingNote": "　The reading of kanji cannot be generated automatically — enter the furigana to get suggestions.",
-      "romaji": "Romaji"
+      "romaji": "Romaji",
+      "taxCategoryHint": "Left empty, the tax category of each product applies. Setting one here takes precedence over the product."
     },
     "businessPartners": {
       "branches": "Branches",
@@ -5489,7 +5490,8 @@
         "notInOptions": "Select {name} from the options",
         "notADate": "Enter {name} as a date",
         "invalidFormat": "{name} has an invalid format"
-      }
+      },
+      "taxCategoryHint": "Left empty, the default tax category applies. A tax category on the business partner takes precedence."
     },
     "storageLocations": {
       "editTheStorageLocation": "Edit the storage location",
@@ -6090,6 +6092,54 @@
       "intro": "The issue/handoff and material-prep steps (cutting, centerless, length adjustment, chamfer). Shared across products and customers; a work order combines a preparation list with the product's manufacturing list.",
       "empty": "No preparation step list is registered",
       "editorHelp": "Only preparation steps are offered. Exactly one start step (issue/handoff) is required. Dependencies on manufacturing steps are checked when a work order combines the two lists."
+    },
+    "taxCategories": {
+      "title": "Tax categories",
+      "description": "Tax categories and rates. Both products and business partners refer to these.",
+      "addCategory": "Add tax category",
+      "editCategory": "Edit tax category",
+      "deleteCategory": "Delete tax category",
+      "code": "Code",
+      "codeHint": "Letters, digits, hyphen and underscore",
+      "codePatternHint": "Use letters, digits, hyphen or underscore for the code",
+      "shortLabel": "Label on documents",
+      "shortLabelHint": "Left empty, it is built from the tax rate (e.g. 10%)",
+      "isDefault": "Default tax category",
+      "isDefaultHint": "Used when neither the business partner nor the product sets one. Only one can be the default.",
+      "defaultBadge": "Default",
+      "currentRate": "Current tax rate",
+      "noRate": "No tax rate set",
+      "rates": "Tax rate history",
+      "addRate": "Add tax rate",
+      "editRate": "Edit tax rate",
+      "deleteRate": "Delete tax rate",
+      "effectiveFrom": "Effective from",
+      "ratePercent": "Tax rate (%)",
+      "rateHint": "Enter 10 for 10%",
+      "until": "– {date}",
+      "openEnded": "current",
+      "pastRateWarning": "Adding a rate that starts in the past changes the tax rate on documents that are not yet final (draft quotes, delivery note PDFs) back to that date. Issued invoices keep the rate frozen at issue time and do not move.",
+      "usedByProducts": "{count} products",
+      "usedByCustomers": "{count} business partners",
+      "usedByDocuments": "{count} issued documents",
+      "inUse": "In use",
+      "notUsed": "Not used",
+      "categoryCreated": "Tax category added",
+      "categoryUpdated": "Tax category updated",
+      "categoryDeleted": "Tax category deleted",
+      "rateCreated": "Tax rate added",
+      "rateUpdated": "Tax rate updated",
+      "rateDeleted": "Tax rate deleted",
+      "cannotDeleteInUse": "This tax category cannot be deleted because {usage} refer to it. Turn off \"Enabled\" to stop using it.",
+      "cannotDeleteLastRate": "Billing cannot be calculated without a tax rate. Add another rate first.",
+      "cannotDeleteDefault": "The default tax category cannot be deleted. Make another category the default first.",
+      "duplicateEffectiveFrom": "A tax rate with the same effective date already exists",
+      "emptyCategories": "No tax categories yet",
+      "emptyRates": "No tax rates yet",
+      "selectEffectiveFrom": "Select an effective date",
+      "rateRange": "Enter a tax rate between 0 and 100",
+      "useDefault": "Use the default",
+      "followProduct": "Follow the product"
     }
   },
   "manual": {
@@ -8400,7 +8450,12 @@
       "viewed": "Viewed",
       "windowEndsAt": "Window ends at",
       "windowStartsAt": "Window starts at",
-      "yayoiExportedAt": "Yayoi export date"
+      "yayoiExportedAt": "Yayoi export date",
+      "isDefault": "Default",
+      "effectiveFrom": "Effective from",
+      "ratePercent": "Tax rate (%)",
+      "taxCategoryId": "Tax category",
+      "shortLabel": "Label on documents"
     },
     "tableFieldLabels": {
       "kiosk_devices": {
@@ -8525,7 +8580,9 @@
       "user_role_relation": "Role assignments",
       "users": "Users",
       "api_clients": "API client",
-      "api_client_tokens": "API token"
+      "api_client_tokens": "API token",
+      "tax_categories": "Tax category",
+      "tax_category_rates": "Tax rate"
     },
     "change": {
       "pair": "{label}: {before} → {after}",

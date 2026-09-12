@@ -411,6 +411,18 @@ export const appList: AppEntry[] = [
     requiredPermission: "master",
   },
 
+  {
+    // 税区分（課税区分と税率の履歴）。製品と取引先の双方がここを参照する。
+    // 率は適用開始日つきの行で、引くときの基準日は注文日（lib/tax-rate.ts）。
+    key: "master-tax-categories",
+    label: "税区分",
+    operationCode: "MS0F",
+    href: "/master/tax-categories",
+    icon: "IconPercentage",
+    category: "マスタ",
+    requiredPermission: "master",
+  },
+
   // ─── ドキュメント ──────────────────────────────────────────────────────────
   {
     // マニュアル（/manual・fumadocs）。公開ページだが launcher からも開ける。
@@ -729,6 +741,7 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "master-plants": { en: "Sites", zh: "据点" },
   "master-work-locations": { en: "Work locations", zh: "作业场所" },
   "master-storage-locations": { en: "Storage locations", zh: "存放位置" },
+  "master-tax-categories": { en: "Tax categories", zh: "税种" },
   docs: { en: "Manual", zh: "操作手册" },
   "admin-manual": { en: "Admin manual", zh: "管理手册" },
   "user-management": { en: "Users", zh: "用户管理" },

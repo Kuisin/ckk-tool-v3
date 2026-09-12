@@ -14,6 +14,7 @@ import "server-only";
 import { cache } from "react";
 import { prisma } from "./db";
 import { type LocalizedText, localized } from "./format";
+import type { Locale } from "./i18n";
 import {
   EMPTY_TAX_CATALOG,
   type TaxCatalog,
@@ -73,3 +74,35 @@ export const loadTaxCatalog = cache(async (): Promise<TaxCatalog> => {
     defaultCategoryId: rows.find((r) => r.isDefault)?.id ?? null,
   };
 });
+
+/** 無効化済みの区分に付ける印。Select の 1 行なので next-intl を通さず直書きする。 */
+const INACTIVE_SUFFIX: Record<string, string> = {
+  ja: "無効",
+  en: "disabled",
+  zh: "停用",
+};
+
+/**
+ * 税区分の選択肢（製品マスタ・取引先マスタ用）。
+ *
+ * **無効化した区分も残す。** 無効化は「これから新しく選ばせない」という意味で、
+ * すでにその区分を指している製品・取引先はそのまま動いている。選択肢から消すと
+ * 編集画面を開いただけで欄が空に見え、保存した瞬間に区分が外れてしまう。
+ * 代わりに「（無効）」と添えて、選ばないほうがよいことを見せる。
+ */
+export const loadTaxCategoryOptions = cache(
+  async (locale: Locale): Promise<{ value: string; label: string }[]> => {
+    const rows = await prisma.taxCategory.findMany({
+      select: { id: true, name: true, isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+    const suffix = INACTIVE_SUFFIX[locale] ?? INACTIVE_SUFFIX.ja;
+    return rows.map((r) => {
+      const name = localized(r.name as LocalizedText, locale);
+      return {
+        value: String(r.id),
+        label: r.isActive ? name : `${name}（${suffix}）`,
+      };
+    });
+  },
+);
