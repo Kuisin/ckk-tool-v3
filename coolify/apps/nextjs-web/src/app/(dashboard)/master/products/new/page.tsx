@@ -1,9 +1,12 @@
+import { getLocale } from "next-intl/server";
 import { ProductForm } from "@/components/master/products/ProductForm";
 import { requireAppRead } from "@/lib/authz-page";
+import type { Locale } from "@/lib/i18n";
 import {
   getProductItemDefs,
   getResolvedProductTypes,
 } from "@/lib/product-settings";
+import { loadTaxCategoryOptions } from "@/lib/tax-categories";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +14,17 @@ export const dynamic = "force-dynamic";
 export default async function MasterProductsNewPage() {
   const denied = await requireAppRead("master-products");
   if (denied) return denied;
-  const [productTypes, itemDefs] = await Promise.all([
+  const locale = (await getLocale()) as Locale;
+  const [productTypes, itemDefs, taxCategoryOptions] = await Promise.all([
     getResolvedProductTypes(),
     getProductItemDefs(),
+    loadTaxCategoryOptions(locale),
   ]);
-  return <ProductForm itemDefs={itemDefs} productTypes={productTypes} />;
+  return (
+    <ProductForm
+      itemDefs={itemDefs}
+      productTypes={productTypes}
+      taxCategoryOptions={taxCategoryOptions}
+    />
+  );
 }

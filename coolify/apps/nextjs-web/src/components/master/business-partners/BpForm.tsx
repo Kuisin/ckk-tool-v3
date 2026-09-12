@@ -46,7 +46,6 @@ import {
   bpRoleLabel,
   deliveryToleranceBasisOptions,
   invoiceMethodOptions,
-  taxTypeOptions,
   vendorTypeOptions,
 } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
@@ -67,6 +66,7 @@ function bpFormSchema(tr: ReturnType<typeof useTranslations>) {
         paymentTermsDays: optionalNumber,
         paymentDay: optionalNumber,
         creditLimit: optionalNumber,
+        taxCategoryId: z.string().nullable(),
         taxType: z.string(),
         invoiceMethod: z.string(),
         isConsignment: z.boolean(),
@@ -130,11 +130,14 @@ export function BpForm({
   initial,
   billingOptions,
   salesRepOptions,
+  taxCategoryOptions,
 }: {
   initial?: BpDetail;
   billingOptions: Option[];
   /** 営業担当に選べるユーザー（有効な社員アカウント）。 */
   salesRepOptions: Option[];
+  /** 税区分マスタ (MS0F) の選択肢。空欄は「製品に従う」。 */
+  taxCategoryOptions: Option[];
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -160,6 +163,10 @@ export function BpForm({
         paymentTermsDays: initial?.customer?.paymentTermsDays ?? "",
         paymentDay: initial?.customer?.paymentDay ?? "",
         creditLimit: initial?.customer?.creditLimit ?? "",
+        taxCategoryId:
+          initial?.customer?.taxCategoryId != null
+            ? String(initial.customer.taxCategoryId)
+            : null,
         taxType: initial?.customer?.taxType ?? "TAXABLE",
         invoiceMethod: initial?.customer?.invoiceMethod ?? "EMAIL",
         isConsignment: initial?.customer?.isConsignment ?? false,
@@ -225,6 +232,7 @@ export function BpForm({
             paymentTermsDays: nullIfBlank(values.customer.paymentTermsDays),
             paymentDay: nullIfBlank(values.customer.paymentDay),
             creditLimit: nullIfBlank(values.customer.creditLimit),
+            taxCategoryId: values.customer.taxCategoryId,
             taxType: values.customer.taxType as NonNullable<
               BpInput["customer"]
             >["taxType"],
@@ -415,12 +423,17 @@ export function BpForm({
               thousandSeparator=","
               {...form.getInputProps("customer.creditLimit")}
             />
+            {/* 空欄 = 「製品に従う」。値を入れるとその区分が製品より優先される
+                （非課税の取引先に、製品の区分に関わらず 0% を通すため）。 */}
             <Select
-              data={taxTypeOptions(locale)}
+              clearable
+              data={taxCategoryOptions}
+              description={tr("master.bp.taxCategoryHint")}
               label={
                 <HelpLabel {...fieldHelp(tr, "businessPartner", "taxType")} />
               }
-              {...form.getInputProps("customer.taxType")}
+              placeholder={tr("master.taxCategories.followProduct")}
+              {...form.getInputProps("customer.taxCategoryId")}
             />
             <Select
               data={invoiceMethodOptions(locale)}

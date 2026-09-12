@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getLocale } from "next-intl/server";
 import { ProductForm } from "@/components/master/products/ProductForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
@@ -8,10 +9,12 @@ import {
   localized,
   localizedTranslations,
 } from "@/lib/format";
+import type { Locale } from "@/lib/i18n";
 import {
   getProductItemDefs,
   getResolvedProductTypes,
 } from "@/lib/product-settings";
+import { loadTaxCategoryOptions } from "@/lib/tax-categories";
 
 export const dynamic = "force-dynamic";
 
@@ -44,9 +47,11 @@ export default async function MasterProductsEditPage({
     ? `${r.materialType.code ?? ""} — ${localized(r.materialType.name as LocalizedText | null)}`
     : "";
 
-  const [productTypes, itemDefs] = await Promise.all([
+  const locale = (await getLocale()) as Locale;
+  const [productTypes, itemDefs, taxCategoryOptions] = await Promise.all([
     getResolvedProductTypes(),
     getProductItemDefs(),
+    loadTaxCategoryOptions(locale),
   ]);
 
   return (
@@ -62,6 +67,7 @@ export default async function MasterProductsEditPage({
         diameterMm: r.diameterMm != null ? Number(r.diameterMm) : null,
         lengthMm: r.lengthMm != null ? Number(r.lengthMm) : null,
         unit: r.unit,
+        taxCategoryId: r.taxCategoryId,
         matchNames: r.matchNames,
         isActive: r.isActive,
         notes: r.notes ?? "",
@@ -69,6 +75,7 @@ export default async function MasterProductsEditPage({
       }}
       itemDefs={itemDefs}
       productTypes={productTypes}
+      taxCategoryOptions={taxCategoryOptions}
     />
   );
 }

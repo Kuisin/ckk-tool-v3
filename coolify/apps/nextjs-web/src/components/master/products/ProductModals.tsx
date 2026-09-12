@@ -43,6 +43,8 @@ export interface ProductModalTarget {
   diameterMm: number | null;
   lengthMm: number | null;
   unit: string;
+  /** 課税区分（tax_categories.id）。複製時にそのまま引き継ぐ。 */
+  taxCategoryId: number | null;
 }
 
 // フックを使えない素の関数なので、解決済みの `tr` を引数で受ける。
@@ -216,6 +218,10 @@ export function DuplicateProductModal({
         diameterMm: source?.diameterMm ?? null,
         lengthMm: source?.lengthMm ?? null,
         unit,
+        // 課税区分は引き継ぐ — 同じ形の製品なら税の扱いも同じであることが多く、
+        // 付け忘れると黙って既定（標準税率）で請求されてしまう。
+        taxCategoryId:
+          source?.taxCategoryId != null ? String(source.taxCategoryId) : null,
         // キーワードは複製しない — 同じ語が 2 つの製品を指すと、AI 突合が
         // どちらか決められなくなる。複製先で改めて付ける。
         matchNames: [],

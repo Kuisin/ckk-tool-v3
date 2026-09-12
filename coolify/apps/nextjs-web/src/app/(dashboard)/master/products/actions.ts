@@ -52,6 +52,12 @@ function productInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
       diameterMm: z.number().nullable(),
       lengthMm: z.number().nullable(),
       unit: z.string().min(1, tr("master.productForm.selectUnit")),
+      /**
+       * 課税区分（tax_categories.id を文字列で。UI の Select 値）。
+       * 空 = 税区分マスタの既定に従う。取引先側の課税区分が入っていれば
+       * そちらが勝つ（判定は lib/tax-rate.ts resolveLineTax）。
+       */
+      taxCategoryId: z.string().nullable().default(null),
       /** 検索・AI 突合用のキーワード（match_names）。保存時に整形する。 */
       matchNames: z.array(z.string()).default([]),
       isActive: z.boolean(),
@@ -100,6 +106,13 @@ function intIdNum(v: string | null): number | null {
 }
 
 /** 材種を外したら直径/全長も無効化して保存する（トリオで揃える）。 */
+/** UI の Select 値（文字列 id / null）→ tax_categories.id。空 = 既定に従う。 */
+function taxCategoryIdOf(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 function materialSpec(v: ProductInput) {
   const materialTypeId = intIdNum(v.materialTypeId);
   return {
@@ -179,6 +192,7 @@ export async function createProduct(
         diameterMm: spec.diameterMm,
         lengthMm: spec.lengthMm,
         unit: v.unit,
+        taxCategoryId: taxCategoryIdOf(v.taxCategoryId),
         matchNames: normalizeKeywords(v.matchNames),
         spec: specJson(v.spec) ?? undefined,
         isActive: v.isActive,
@@ -198,6 +212,7 @@ export async function createProduct(
         diameterMm: spec.diameterMm,
         lengthMm: spec.lengthMm,
         unit: v.unit,
+        taxCategoryId: taxCategoryIdOf(v.taxCategoryId),
         matchNames: normalizeKeywords(v.matchNames),
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
@@ -236,6 +251,7 @@ export async function updateProduct(
         diameterMm: true,
         lengthMm: true,
         unit: true,
+        taxCategoryId: true,
         matchNames: true,
         isActive: true,
         notes: true,
@@ -250,6 +266,7 @@ export async function updateProduct(
         diameterMm: spec.diameterMm,
         lengthMm: spec.lengthMm,
         unit: v.unit,
+        taxCategoryId: taxCategoryIdOf(v.taxCategoryId),
         matchNames: normalizeKeywords(v.matchNames),
         spec: specJson(v.spec) ?? Prisma.DbNull,
         isActive: v.isActive,
@@ -266,6 +283,7 @@ export async function updateProduct(
             diameterMm: prior.diameterMm ? Number(prior.diameterMm) : null,
             lengthMm: prior.lengthMm ? Number(prior.lengthMm) : null,
             unit: prior.unit,
+            taxCategoryId: prior.taxCategoryId,
             matchNames: prior.matchNames,
             isActive: prior.isActive,
             notes: prior.notes,
@@ -277,6 +295,7 @@ export async function updateProduct(
         diameterMm: spec.diameterMm,
         lengthMm: spec.lengthMm,
         unit: v.unit,
+        taxCategoryId: taxCategoryIdOf(v.taxCategoryId),
         matchNames: normalizeKeywords(v.matchNames),
         isActive: v.isActive,
         notes: v.notes?.trim() || null,

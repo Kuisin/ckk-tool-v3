@@ -4994,7 +4994,8 @@
       "katakana": "Katakana",
       "missingFormatsNotice": "No {formats} spelling is registered. If an order document is written that way, it cannot be matched.",
       "needsReadingNote": "　The reading of kanji cannot be generated automatically — enter the furigana to get suggestions.",
-      "romaji": "Romaji"
+      "romaji": "Romaji",
+      "taxCategoryHint": "Left empty, the tax category of each product applies. Setting one here takes precedence over the product."
     },
     "businessPartners": {
       "branches": "Branches",
@@ -5489,7 +5490,8 @@
         "notInOptions": "Select {name} from the options",
         "notADate": "Enter {name} as a date",
         "invalidFormat": "{name} has an invalid format"
-      }
+      },
+      "taxCategoryHint": "Left empty, the default tax category applies. A tax category on the business partner takes precedence."
     },
     "storageLocations": {
       "editTheStorageLocation": "Edit the storage location",
@@ -6135,7 +6137,9 @@
       "emptyCategories": "No tax categories yet",
       "emptyRates": "No tax rates yet",
       "selectEffectiveFrom": "Select an effective date",
-      "rateRange": "Enter a tax rate between 0 and 100"
+      "rateRange": "Enter a tax rate between 0 and 100",
+      "useDefault": "Use the default",
+      "followProduct": "Follow the product"
     }
   },
   "manual": {

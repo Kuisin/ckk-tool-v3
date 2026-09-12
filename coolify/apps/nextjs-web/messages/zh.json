@@ -4994,7 +4994,8 @@
       "katakana": "片假名",
       "missingFormatsNotice": "尚未登记 {formats} 写法。若订单以该形式书写，将无法匹配。",
       "needsReadingNote": "　汉字读音无法自动生成，输入假名注音后即可给出候选。",
-      "romaji": "罗马字"
+      "romaji": "罗马字",
+      "taxCategoryHint": "留空则按各产品的税种。在此设置后将优先于产品的税种。"
     },
     "businessPartners": {
       "branches": "分公司列表",
@@ -5489,7 +5490,8 @@
         "notInOptions": "请从选项中选择{name}",
         "notADate": "{name}请输入日期",
         "invalidFormat": "{name}格式不正确"
-      }
+      },
+      "taxCategoryHint": "留空则按税种主数据的默认值。若业务伙伴已设置税种，则以业务伙伴为准。"
     },
     "storageLocations": {
       "editTheStorageLocation": "编辑存放位置",
@@ -6135,7 +6137,9 @@
       "emptyCategories": "还没有税种",
       "emptyRates": "还没有税率",
       "selectEffectiveFrom": "请选择生效日",
-      "rateRange": "税率请输入 0 到 100 之间的值"
+      "rateRange": "税率请输入 0 到 100 之间的值",
+      "useDefault": "按默认",
+      "followProduct": "按产品"
     }
   },
   "manual": {

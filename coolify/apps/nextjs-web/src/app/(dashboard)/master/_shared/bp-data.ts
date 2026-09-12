@@ -223,6 +223,11 @@ export interface CustomerAttrs {
   paymentTermsDays: number | null;
   paymentDay: number | null;
   creditLimit: number | null;
+  /** 課税区分（tax_categories.id）。**null = 「製品に従う」**。 */
+  taxCategoryId: number | null;
+  /** 課税区分の表示名。null = 製品に従う。 */
+  taxCategoryName: string | null;
+  /** 旧・課税区分（enum）。移行期間中だけ残す。 */
   taxType: string;
   invoiceMethod: string;
   isConsignment: boolean;
@@ -282,7 +287,13 @@ export async function fetchBpDetail(id: string): Promise<BpDetail | null> {
     where: { id },
     include: {
       roleAssignments: true,
-      customerAttrs: { include: { billingBp: true } },
+      customerAttrs: {
+        include: {
+          billingBp: true,
+          // 課税区分は表示名だけ要る（判定は締日処理が lib/tax-rate.ts で行う）。
+          taxCategory: { select: { name: true } },
+        },
+      },
       endUserAttrs: true,
       vendorAttrs: true,
       salesReps: {
@@ -320,6 +331,10 @@ export async function fetchBpDetail(id: string): Promise<BpDetail | null> {
           paymentTermsDays: c.paymentTermsDays ?? null,
           paymentDay: c.paymentDay ?? null,
           creditLimit: c.creditLimit != null ? Number(c.creditLimit) : null,
+          taxCategoryId: c.taxCategoryId ?? null,
+          taxCategoryName: c.taxCategory
+            ? localized(c.taxCategory.name as LocalizedText | null)
+            : null,
           taxType: c.taxType,
           invoiceMethod: c.invoiceMethod,
           isConsignment: c.isConsignment,

@@ -4994,7 +4994,8 @@
       "katakana": "カタカナ",
       "missingFormatsNotice": "{formats}の表記が未登録です。注文書がその形で書かれていると突合できません。",
       "needsReadingNote": "　漢字の読みは自動で作れないため、フリガナを入れると候補を出せます。",
-      "romaji": "ローマ字"
+      "romaji": "ローマ字",
+      "taxCategoryHint": "空欄なら製品ごとの税区分に従います。ここに設定すると、製品の区分より優先されます（非課税の取引先など）。"
     },
     "businessPartners": {
       "branches": "支店一覧",
@@ -5489,7 +5490,8 @@
         "notInOptions": "{name} は選択肢から選んでください",
         "notADate": "{name} は日付で入力してください",
         "invalidFormat": "{name} は形式が正しくありません"
-      }
+      },
+      "taxCategoryHint": "空欄なら税区分マスタの既定に従います。取引先に課税区分が設定されていれば、そちらが優先されます。"
     },
     "storageLocations": {
       "editTheStorageLocation": "保管場所の編集",
@@ -6135,7 +6137,9 @@
       "emptyCategories": "税区分がまだありません",
       "emptyRates": "税率がまだありません",
       "selectEffectiveFrom": "適用開始日を選択してください",
-      "rateRange": "税率は 0 以上 100 以下で入力してください"
+      "rateRange": "税率は 0 以上 100 以下で入力してください",
+      "useDefault": "既定に従う",
+      "followProduct": "製品に従う"
     }
   },
   "manual": {

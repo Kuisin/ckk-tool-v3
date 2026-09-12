@@ -58,7 +58,6 @@ import { useIsMobile } from "@/hooks/useViewport";
 import {
   BP_ROLE_COLOR,
   invoiceMethodLabel,
-  taxTypeLabel,
   vendorTypeLabel,
 } from "@/lib/enum-labels";
 import { formatMoney } from "@/lib/format";
@@ -260,10 +259,12 @@ export function BpDetail({
                     label={tr("master.businessPartners.creditLimit")}
                     value={formatMoney(customer.creditLimit)}
                   />
+                  {/* null = 「製品に従う」— 製品ごとの区分が使われる。 */}
                   <FieldValue
                     label={tr("master.businessPartners.taxType")}
                     value={
-                      taxTypeLabel(customer.taxType, locale) ?? customer.taxType
+                      customer.taxCategoryName ??
+                      tr("master.taxCategories.followProduct")
                     }
                   />
                   <FieldValue
