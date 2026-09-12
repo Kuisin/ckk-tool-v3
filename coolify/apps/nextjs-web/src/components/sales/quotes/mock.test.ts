@@ -96,6 +96,7 @@ describe("quoteTotals — 小計 / 消費税10% / 合計", () => {
     orderType: "PRODUCTION",
     quantity: 1,
     unitPrice: 0,
+    taxRate: null,
     priceTierId: null,
     discountAmount: 0,
     discountLabel: null,
@@ -128,13 +129,56 @@ describe("quoteTotals — 小計 / 消費税10% / 合計", () => {
     const t = quoteTotals(
       quote([item({ amount: 1000 }), item({ amount: 2000 })]),
     );
-    expect(t).toEqual({ subtotal: 3000, tax: 300, grandTotal: 3300 });
+    expect(t.subtotal).toBe(3000);
+    expect(t.tax).toBe(300);
+    expect(t.grandTotal).toBe(3300);
   });
 
   it("tax rounding on odd subtotals", () => {
     const t = quoteTotals(quote([item({ amount: 1005 })]));
     expect(t.tax).toBe(Math.round(1005 * 0.1));
     expect(t.grandTotal).toBe(1005 + t.tax);
+  });
+
+  // ★ 税区分マスタ以前の見積（taxRate が null）は顧客の課税区分から起こす。
+  //   移行の前後で古い見積の金額が変わらないことの根拠。
+  it("旧データ（taxRate が null）は顧客の課税区分に落ちる", () => {
+    const reduced = {
+      ...quote([item({ amount: 10_000 })]),
+      customerTaxType: "REDUCED",
+    };
+    expect(quoteTotals(reduced).tax).toBe(800);
+    const exempt = {
+      ...quote([item({ amount: 10_000 })]),
+      customerTaxType: "EXEMPT",
+    };
+    expect(quoteTotals(exempt).tax).toBe(0);
+  });
+
+  it("行に凍結された税率が顧客の課税区分より優先される", () => {
+    // 顧客は非課税でも、保存時に 10% で凍結された行は 10% のまま
+    // （発行済みの見積書が後から動かないこと）。
+    const q = {
+      ...quote([item({ amount: 10_000, taxRate: 0.1 })]),
+      customerTaxType: "EXEMPT",
+    };
+    expect(quoteTotals(q).tax).toBe(1_000);
+  });
+
+  it("税率が混ざると束が 2 つになり、束ごとに 1 回だけ丸める", () => {
+    const t = quoteTotals(
+      quote([
+        item({ amount: 12_000, taxRate: 0.1 }),
+        item({ amount: 5_000, taxRate: 0.08 }),
+      ]),
+    );
+    expect(t.subtotal).toBe(17_000);
+    expect(t.tax).toBe(1_600);
+    expect(t.grandTotal).toBe(18_600);
+    expect(t.buckets).toEqual([
+      { taxRate: 0.1, taxableBase: 12_000, taxAmount: 1_200 },
+      { taxRate: 0.08, taxableBase: 5_000, taxAmount: 400 },
+    ]);
   });
 });
 

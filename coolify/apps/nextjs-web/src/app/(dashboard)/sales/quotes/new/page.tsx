@@ -1,11 +1,13 @@
 import { QuoteForm } from "@/components/sales/quotes/QuoteForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { parseDocKey } from "@/lib/doc-number";
+import { loadTaxCatalog } from "@/lib/tax-categories";
 import { fetchCustomerOptions } from "../../trial-estimates/data";
 import {
   fetchBranchesByCustomer,
-  fetchCustomerTaxTypes,
+  fetchCustomerTaxCategories,
   fetchEntriesForCustomer,
+  fetchProductTaxCategories,
   fetchQuote,
 } from "../data";
 
@@ -35,14 +37,25 @@ export default async function SalesQuotesNewPage({
   const sp = await searchParams;
   const fromKey = sp.from ? parseDocKey(sp.from, "QOT") : null;
 
-  const [customerOptions, branchesByCustomer, entries, source, taxTypes] =
-    await Promise.all([
-      fetchCustomerOptions(),
-      fetchBranchesByCustomer(),
-      fetchEntriesForCustomer(),
-      fromKey ? fetchQuote(fromKey) : null,
-      fetchCustomerTaxTypes(),
-    ]);
+  const [
+    customerOptions,
+    branchesByCustomer,
+    entries,
+    source,
+    taxCategoryByCustomer,
+    taxCatalog,
+  ] = await Promise.all([
+    fetchCustomerOptions(),
+    fetchBranchesByCustomer(),
+    fetchEntriesForCustomer(),
+    fromKey ? fetchQuote(fromKey) : null,
+    fetchCustomerTaxCategories(),
+    loadTaxCatalog(),
+  ]);
+  // 価格表に載っている製品だけ（フォームが選べるのはそれだけ）。
+  const taxCategoryByProduct = await fetchProductTaxCategories(
+    entries.map((e) => Number(e.productId)),
+  );
 
   const prefill = sp.customer
     ? {
@@ -65,7 +78,9 @@ export default async function SalesQuotesNewPage({
       mode="create"
       prefill={prefill}
       quote={duplicated}
-      taxTypeByCustomer={taxTypes}
+      taxCatalog={taxCatalog}
+      taxCategoryByCustomer={taxCategoryByCustomer}
+      taxCategoryByProduct={taxCategoryByProduct}
     />
   );
 }
