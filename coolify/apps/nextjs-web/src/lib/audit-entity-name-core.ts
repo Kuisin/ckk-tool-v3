@@ -41,6 +41,10 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   product_process_routes: true,
   defect_types: true,
   work_location_groups: true,
+  tax_categories: true,
+  // 率の行は「2026-10-01 から 10%」であって名前を持たない。推測で区分名を
+  // 出すと、どの行が変わったのか却って分からなくなるので正直に「無い」。
+  tax_category_rates: false,
   business_partners: true,
   material_manufacturers: true,
   material_manufacturer_grades: true, // 複合キー "parentCode/code"

@@ -188,6 +188,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | MS0C | 拠点 | Sites | 据点 |
 | MS0D | 作業場所 | Work locations | 作业场所 |
 | MS0E | 保管場所 | Storage locations | 存放位置 |
+| MS0F | 税区分 | Tax categories | 税种 |
 | DC01 | マニュアル | Manual | 操作手册 |
 | DC02 | 管理マニュアル | Admin manual | 管理手册 |
 | SY01 | ユーザー管理 | Users | 用户管理 |
@@ -267,6 +268,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 支払サイト | Payment terms | 账期 |
 | 与信限度額 | Credit limit | 信用额度 |
 | 課税 / 非課税 / 軽減税率 | Taxable / Tax exempt / Reduced tax rate | 应税 / 免税 / 减免税率 |
+| 製品に従う（顧客の課税区分） | Follow the product | 按产品 |
 | 振込先 | Bank account | 银行账户 |
 | 普通 / 当座 | Savings / Checking | 活期 / 支票 |
 | 日本 / 中国 / アメリカ / 韓国 | Japan / China / United States / Korea | 日本 / 中国 / 美国 / 韩国 |
@@ -305,6 +307,14 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 基準単価 / 単価 | Base unit price / Unit price | 基准单价 / 单价 |
 | 金額 / 合計金額 | Amount / Total amount | 金额 / 合计金额 |
 | 小計 / 消費税 | Subtotal / Tax | 小计 / 税额 |
+| 税区分 | Tax category | 税种 |
+| 税率 | Tax rate | 税率 |
+| 標準税率 | Standard tax rate | 标准税率 |
+| 適用開始日 | Effective from | 生效日 |
+| 既定の税区分 | Default tax category | 默认税种 |
+| 既定に従う | Use the default | 按默认 |
+| 税率ごとの内訳 | Breakdown by tax rate | 按税率明细 |
+| 対象額（その税率の税抜合計） | Taxable amount | 应税金额 |
 | 数量 | Quantity | 数量 |
 | 数量段階 / 倍率 | Quantity tier / Multiplier | 数量档 / 系数 |
 | 値引き / 値引き設定 | Discount / Discount rules | 折扣 / 折扣设置 |
@@ -673,6 +683,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 14 | **設計図（PD06）と設計依頼書（SA06）は別のもの**。設計図＝図面そのものの台帳、設計依頼書＝「作ってほしい」という起票。en はどちらの ja 語（図面 / 設計図）も **Drawing** で、Blueprint は使わない（同じ物に英語が 2 語できるため） | `app-list.ts` / 権限ラベル / マニュアル |
 | 15 | **決定 2（試算 → 価格試算）が効くのは「もの」を指す名詞だけ。** 動詞や複合語の中まで機械的に置き換えない — 2026-08-30 の一括置換が実際に `複製して再価格試算`・`単価を価格試算する` を作った（`再試算`・`試算する` の中の 2 文字まで置換された）。動詞側は素直な日本語にする: **複製して作り直す**（メニュー / 名前の接尾は `（作り直し）`）、**単価を算出する**（スイムレーン図）。en / zh は壊れていないので触らない（`Duplicate and re-estimate` / `复制并重新试算` のまま） | `messages/ja.json` / マニュアル 3 言語 / `tools/swimlane/diagrams/` |
 | 16 | **CM01 は「未処理一覧 / Pending list / 未处理列表」**（旧「承認・予定」）。並ぶのは承認だけではない — 作業予定・未回答のフォーム・文書のコメント・特権アクセスの決裁待ちも同じ画面に出るので、「自分がまだ処理していないもの」という 1 語にした。`未処理` は PD05 未処理指示書 / SH03 未処理出荷書 と同じ語（en `Pending` / zh `未处理`）| `app-list.ts` / `operation-codes.ts` / `messages/*.json` / マニュアル 3 言語 |
+| 17 | **税区分はマスタ（MS0F 税区分 / Tax categories / 税种）に一本化**し、製品と顧客の双方がそれを参照する。**顧客の課税区分が優先**で、顧客が未設定（null）のときだけ製品の区分が効く — その状態を画面では「**製品に従う / Follow the product / 按产品**」と呼ぶ。enum `TAX_TYPE` は `tax_categories.code` の値としてだけ残す（訳語 課税 / 非課税 / 軽減税率 は §3.4 のまま変えない）。率は DB 行で適用開始日を持ち、**引くときの基準日は注文日** | `app-list.ts` / 製品・取引先マスタ / 請求書・見積書の税表示 |
 
 ## 5. 未決
 
