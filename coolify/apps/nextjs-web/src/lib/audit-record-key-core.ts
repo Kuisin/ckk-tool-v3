@@ -68,6 +68,9 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   product_process_routes: "identity",
   defect_types: "identity",
   work_location_groups: "identity",
+  // 税区分マスタ (MS0F)。どちらも連番 int PK をそのまま record_id に入れる。
+  tax_categories: "identity",
+  tax_category_rates: "identity",
   business_partners: "identity",
   billing_closings: "identity",
   material_receipts: "identity",

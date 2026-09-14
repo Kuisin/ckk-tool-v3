@@ -75,6 +75,8 @@ function buildProductSchema(tr: Tr) {
       diameterMm: z.number().nullable(),
       lengthMm: z.number().nullable(),
       unit: z.string().min(1, tr("master.productForm.selectUnit")),
+      // 課税区分。空 = 税区分マスタの既定に従う（取引先が指定していればそちらが勝つ）。
+      taxCategoryId: z.string().nullable(),
       matchNames: z.array(z.string()),
       isActive: z.boolean(),
       notes: z.string(),
@@ -125,6 +127,7 @@ export interface ProductFormInitial {
   diameterMm: number | null;
   lengthMm: number | null;
   unit: string;
+  taxCategoryId: number | null;
   matchNames: string[];
   isActive: boolean;
   notes: string;
@@ -137,11 +140,14 @@ export function ProductForm({
   initial,
   productTypes,
   itemDefs,
+  taxCategoryOptions,
 }: {
   initial?: ProductFormInitial;
   productTypes: ResolvedProductType[];
   /** 製品項目（SY03）で定義された入力項目ライブラリ。追加項目の候補になる。 */
   itemDefs: ProductItemDef[];
+  /** 税区分マスタ (MS0F) の選択肢。先頭の「既定に従う」は画面側で足す。 */
+  taxCategoryOptions: { value: string; label: string }[];
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -224,6 +230,8 @@ export function ProductForm({
       diameterMm: initial?.diameterMm ?? null,
       lengthMm: initial?.lengthMm ?? null,
       unit: initial?.unit ?? tr("common.pcs"),
+      taxCategoryId:
+        initial?.taxCategoryId != null ? String(initial.taxCategoryId) : null,
       matchNames: initial?.matchNames ?? [],
       isActive: initial?.isActive ?? true,
       notes: initial?.notes ?? "",
@@ -428,6 +436,16 @@ export function ProductForm({
             label={<HelpLabel {...fieldHelp(tr, "product", "unit")} />}
             withAsterisk
             {...form.getInputProps("unit")}
+          />
+          {/* 空 = 税区分マスタの既定に従う。取引先が課税区分を指定していれば
+              そちらが勝つので、ここは「この製品そのものの区分」でしかない。 */}
+          <Select
+            clearable
+            data={taxCategoryOptions}
+            description={tr("master.products.taxCategoryHint")}
+            label={tr("master.taxCategories.title")}
+            placeholder={tr("master.taxCategories.useDefault")}
+            {...form.getInputProps("taxCategoryId")}
           />
         </SimpleGrid>
         <Stack gap="sm" mt="sm">

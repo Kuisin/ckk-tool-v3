@@ -72,7 +72,10 @@
   <div class="totals">
     <table>
       <tr><td>{{labels.subtotal}}</td><td>¥ {{totals.subtotal}}</td></tr>
-      <tr><td>{{labels.tax}}</td><td>¥ {{totals.tax}}</td></tr>
+      <!-- 税率ごとの区分記載。単一税率なら 1 行で従来と同じ見た目。 -->
+      {{#each tax_rows}}
+      <tr><td>{{label}}{{base_suffix}}</td><td>¥ {{tax}}</td></tr>
+      {{/each}}
       <tr class="grand-total"><td>{{labels.grandTotalTaxIncl}}</td><td>¥ {{totals.grand_total}}</td></tr>
     </table>
   </div>

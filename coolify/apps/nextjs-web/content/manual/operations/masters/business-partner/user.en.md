@@ -108,7 +108,7 @@ A 「**顧客情報**」 (Customer information) area appears.
 1. In 「**旧システムコード**」 (Old system code), enter the customer code from your previous system if there is one (it can stay empty).
 2. Enter 「**締日**」 (Closing day), 「**支払サイト（日数）**」 (Payment terms in days) and 「**支払日**」 (Payment day).
 3. Enter 「**与信限度額**」 (Credit limit) if you have one.
-4. Choose 「**課税区分**」 (Tax type) — 課税 (taxable) / 非課税 (exempt) / 軽減税率 (reduced rate).
+4. Choose 「**課税区分**」 (Tax category). Leave it empty to **follow each product's tax category** (this is usually what you want). Setting one here wins over the product — use it for a tax-exempt partner, for example.
 5. Choose how the invoice is sent in 「**請求書送付方法**」 (Invoice delivery method) — メール (email) / FAX / 郵送 (post) / ポータル (portal).
 6. If the company is a consignment partner, tick 「**委託先（委託販売の対象）**」 (Consignment partner).
 
@@ -325,7 +325,9 @@ A guide to how much may be outstanding on account.
 
 ### Tax treatment [#field-tax-type]
 
-How consumption tax is handled; used when calculating invoices.
+How consumption tax is handled; used when calculating invoices and quotes.
+
+**Empty = follow the product.** The tax category on the product master decides. Set a value here and every document for this partner uses it, whatever the product says.
 
 ### Invoice delivery method [#field-invoice-method]
 

@@ -64,6 +64,8 @@ export interface ProductRow {
   diameterMm: number | null;
   lengthMm: number | null;
   unit: string;
+  /** 課税区分の id（複製時に引き継ぐ）。 */
+  taxCategoryId: number | null;
   isActive: boolean;
 }
 

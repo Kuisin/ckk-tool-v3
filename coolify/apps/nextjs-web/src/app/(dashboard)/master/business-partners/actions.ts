@@ -88,10 +88,31 @@ async function syncRoles(tx: Tx, bpId: string, roles: BpRoleValue[]) {
   }
 }
 
+/** 税区分の id → コード。null（製品に従う）と参照切れは null。 */
+async function taxCategoryCodeOf(
+  tx: Tx,
+  taxCategoryId: string | null,
+): Promise<string | null> {
+  if (!taxCategoryId) return null;
+  const id = Number(taxCategoryId);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  const row = await tx.taxCategory.findUnique({
+    where: { id },
+    select: { code: true },
+  });
+  return row?.code ?? null;
+}
+
 /** 付与されているロールの属性行だけを書く（外したロールの行は温存）。 */
 async function syncRoleAttrs(tx: Tx, bpId: string, v: BpInput) {
   if (v.roles.includes("CUSTOMER") && v.customer) {
-    const data = customerAttrsData(v.customer);
+    // 旧 enum（tax_type）は移行期間中も書き続ける必要があり、それには選ばれた
+    // 区分の**コード**が要る。画面は id しか送らないのでここで引く。
+    const taxCategoryCode = await taxCategoryCodeOf(
+      tx,
+      v.customer.taxCategoryId,
+    );
+    const data = customerAttrsData(v.customer, taxCategoryCode);
     await tx.bpCustomerAttrs.upsert({
       where: { bpId },
       create: { bpId, ...data },

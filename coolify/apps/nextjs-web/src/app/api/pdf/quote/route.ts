@@ -20,7 +20,8 @@ import {
   orderTypeLabelLocalized,
   pdfAttnLine,
   quotePdfLabels,
-  taxLabelLocalized,
+  taxBaseSuffixLocalized,
+  taxRowLabelLocalized,
 } from "@/lib/pdf-labels";
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
@@ -86,11 +87,16 @@ export async function GET(request: Request): Promise<Response> {
   // （_specs/i18n-glossary.md §2.7・決定 10 — 閲覧者の表示設定ではない）。
   const lang = normalizeLocale(quote.recipientDocumentLocale);
   const validUntilStr = documentFormatters.date(quote.validUntil);
-  const labels = {
-    ...quotePdfLabels(lang, validUntilStr),
-    // 消費税の見出しは顧客の課税区分で変わる（請求書と同じ taxLabelLocalized）。
-    tax: taxLabelLocalized(quote.customerTaxType, lang),
-  };
+  const labels = quotePdfLabels(lang, validUntilStr);
+  // 税率ごとの区分記載（請求書と同じ形）。単一税率なら 1 行。
+  const taxRows = totals.buckets.map((b) => ({
+    label: taxRowLabelLocalized(b.taxRate, lang),
+    base_suffix:
+      totals.buckets.length > 1
+        ? taxBaseSuffixLocalized(yen(b.taxableBase), lang)
+        : "",
+    tax: yen(b.taxAmount),
+  }));
 
   const data = {
     lang,
@@ -119,6 +125,7 @@ export async function GET(request: Request): Promise<Response> {
       amount: yen(it.amount),
       delivery_date: documentFormatters.date(it.deliveryDate),
     })),
+    tax_rows: taxRows,
     totals: {
       subtotal: yen(totals.subtotal),
       tax: yen(totals.tax),

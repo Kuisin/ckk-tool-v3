@@ -155,7 +155,17 @@ model BpCustomerAttrs {
   paymentTermsDays Int?          @map("payment_terms_days")
   paymentDay       Int?          @map("payment_day") @db.SmallInt
   creditLimit      Decimal?      @map("credit_limit") @db.Decimal(15, 2)
+  /// 旧・課税区分（enum）。tax_category_id と**二重に持っている移行期間中**の列。
+  /// 置き換えが全経路で終わるまではこちらも書き続ける（ローリングデプロイ中は
+  /// 旧コンテナがこの列しか知らないため）。DROP は移行完了後の別マイグレーションで。
   taxType          TaxType       @default(TAXABLE) @map("tax_type")
+  /// 課税区分（tax_categories.id）。**null = 「製品に従う」** —
+  /// 製品側 (products.tax_category_id) の区分が使われる。
+  /// 値が入っていれば製品より優先する（非課税の取引先に、製品の区分に関わらず
+  /// 0% を通すため）。判定の唯一の定義元は nextjs-web の lib/tax-rate.ts
+  /// resolveLineTax()。既存行はマイグレーションで tax_type から埋めてあるので、
+  /// 移行の時点では誰も「製品に従う」になっていない = 請求額は 1 円も動かない。
+  taxCategoryId    Int?          @map("tax_category_id")
   invoiceMethod    InvoiceMethod @default(EMAIL) @map("invoice_method")
   isConsignment    Boolean       @default(false) @map("is_consignment")
 
@@ -182,9 +192,11 @@ model BpCustomerAttrs {
 
   notes            String?
 
-  bp        BusinessPartner  @relation("CustomerAttrsBp", fields: [bpId], references: [id])
-  billingBp BusinessPartner? @relation("CustomerAttrsBilling", fields: [billingBpId], references: [id])
+  bp          BusinessPartner  @relation("CustomerAttrsBp", fields: [bpId], references: [id])
+  billingBp   BusinessPartner? @relation("CustomerAttrsBilling", fields: [billingBpId], references: [id])
+  taxCategory TaxCategory?     @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
 
+  @@index([taxCategoryId])
   @@map("bp_customer_attrs")
   @@schema("app")
 }

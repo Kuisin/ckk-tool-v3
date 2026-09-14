@@ -162,6 +162,7 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 | [製品コード](#field-code) | 必須 | 製品の管理番号 |
 | [名称](#field-name) | 必須 | 製品の名前 |
 | [単位](#field-unit) | 必須 | 本・個 など |
+| [税区分](#field-tax-category) | 任意 | 消費税の区分（空欄 = 既定に従う） |
 | [製品種別](#field-product-type) | 任意 | 種別（種別ごとに項目が変わる） |
 | [材種](#field-material-type) | 任意 | 使う材料の種類 |
 | [直径 (mm) / 全長 (mm)](#field-dimensions) | 任意 | 素材の寸法 |
@@ -180,6 +181,16 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 ### 単位 [#field-unit]
 
 数え方の単位です。既定は「本」です。
+
+### 税区分 [#field-tax-category]
+
+その製品にかかる消費税の区分です。見積書と請求書の税額はここで決まります。
+
+空欄のままなら税区分マスタ（**MS0F**）の**既定**（ふつうは標準税率 10%）に従います。軽減税率の製品だけ選び直してください。
+
+取引先に課税区分を設定している場合は、**そちらが優先**されます（非課税のお取引先など）。
+
+> 💡 税率は書類を作った時点で 1 行ずつ書き込まれます。あとで税区分を変えても、発行済みの見積書・請求書は動きません。
 
 ### 製品種別 [#field-product-type]
 

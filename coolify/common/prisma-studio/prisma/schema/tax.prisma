@@ -1,0 +1,106 @@
+// 税区分 (_specs/tables.md §9 会計・請求): 課税区分マスタ / 税率の履歴 / 税率別内訳。
+//
+// **課税区分の唯一の定義元**。以前は enum app.TAX_TYPE を顧客属性
+// (bp_customer_attrs.tax_type) が 1 つだけ持ち、率は nextjs-web の TypeScript
+// リテラル (lib/tax-rate.ts の 10/8/0%) だった。そのため
+//   (a) 軽減税率が「何を売るか」ではなく「誰に売るか」で決まってしまい、
+//   (b) 税制改正がデプロイになり、
+//   (c) 8% と 10% が混ざった請求書をそもそも表現できなかった
+// （invoice_items に税の列が無く、invoices は率を 1 本しか持たない）。
+//
+// ここで製品と顧客の双方が同じマスタを参照し、率は適用開始日つきの行になる。
+// enum app.TAX_TYPE は tax_categories.code の値としてだけ生き残る（既存データが
+// 1:1 で移れるように）。
+
+/// 課税区分。製品 (products.tax_category_id) と顧客
+/// (bp_customer_attrs.tax_category_id) の双方が参照する。
+///
+/// **率は列で持たない** — 子表 tax_category_rates が適用開始日つきで持つ。
+/// 列にすると「いつから 10% か」が残らず、過去の書類を当時の率で読み直せない。
+model TaxCategory {
+  id Int @id @default(autoincrement())
+
+  /// 旧 enum app.TAX_TYPE の値（TAXABLE / REDUCED / EXEMPT）。移行行は 1:1。
+  /// 新しい区分を足すときの値は自由だが、帳票ラベルの分岐がこれを見る。
+  code       String  @unique
+  name       Json // { ja: '', en: '' }
+  /// 帳票の税率区分欄に刷る短いラベル。null = 率から組み立てる（"10%" など）。
+  shortLabel Json?   @map("short_label")
+  /// 顧客・製品ともに未指定のときの既定。部分 unique index で 1 行だけ true。
+  isDefault  Boolean @default(false) @map("is_default")
+  sortOrder  Int     @default(0) @map("sort_order")
+  isActive   Boolean @default(true) @map("is_active")
+  notes      String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  rates           TaxCategoryRate[]
+  products        Product[]
+  customerAttrs   BpCustomerAttrs[]
+  invoiceItems    InvoiceItem[]
+  quoteItems      QuoteItem[]
+  invoiceTaxLines InvoiceTaxSummary[]
+
+  @@index([isActive, sortOrder])
+  @@map("tax_categories")
+  @@schema("app")
+}
+
+/// 税率の履歴。
+///
+/// **終了日は持たない** — 終わりは「次に始まる行の前日」で決まる。開始と終了を
+/// 両方持たせると隙間（どの率でもない日）と重なり（2 つの率が当たる日）を作れて
+/// しまうため、price_list_variants の valid_from / valid_until とは意図的に別の形に
+/// してある。解決は「適用開始日 ≤ 基準日 の中で最も新しい 1 行」。
+model TaxCategoryRate {
+  id         Int @id @default(autoincrement())
+  categoryId Int @map("category_id")
+
+  /// この率が有効になる JST 暦日（当日を含む）。
+  effectiveFrom DateTime @map("effective_from") @db.Date
+  /// 0.1000 = 10%。invoices.tax_rate と同じ精度にしてスナップショットが丸まらない。
+  rate          Decimal  @db.Decimal(5, 4)
+  notes         String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  category TaxCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, effectiveFrom])
+  @@map("tax_category_rates")
+  @@schema("app")
+}
+
+/// 税率ごとの区分記載（適格請求書）。請求書 1 件 × **税率** 1 本。
+///
+/// 束ねる鍵は区分 id ではなく **率** — 同じ率の区分が 2 つあっても、書類に刷る
+/// 区分記載は 1 行でなければならない。発行時に明細のスナップショットから集計して
+/// 凍結する（金額を凍結するならその内訳も一緒に凍結する、という
+/// 20261006090000_invoice_tax_snapshot と同じ理屈）。
+///
+/// 不変条件: Σ taxable_base = invoices.subtotal / Σ tax_amount = invoices.tax_amount
+///
+/// この表に行が無い請求書（このマイグレーション以前に発行されたもの）は、読み出し側が
+/// ヘッダ (tax_type / tax_rate / subtotal / tax_amount) から 1 本の束を合成する。
+model InvoiceTaxSummary {
+  id               String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceYearMonth String @map("invoice_year_month") @db.Char(6)
+  invoiceSeq       Int    @map("invoice_seq")
+
+  /// 束の区分が 1 つに定まるときだけ入る（ラベル表示用）。定まらなければ null。
+  taxCategoryId Int?    @map("tax_category_id")
+  taxRate       Decimal @map("tax_rate") @db.Decimal(5, 4)
+  /// この率の対象となる税抜金額（= その率の明細の金額合計）。
+  taxableBase   Decimal @map("taxable_base") @db.Decimal(12, 2)
+  taxAmount     Decimal @map("tax_amount") @db.Decimal(12, 2)
+  sortOrder     Int     @default(0) @map("sort_order")
+
+  invoice     Invoice      @relation(fields: [invoiceYearMonth, invoiceSeq], references: [yearMonth, seq], onDelete: Cascade)
+  taxCategory TaxCategory? @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
+
+  @@unique([invoiceYearMonth, invoiceSeq, taxRate])
+  @@map("invoice_tax_summaries")
+  @@schema("app")
+}

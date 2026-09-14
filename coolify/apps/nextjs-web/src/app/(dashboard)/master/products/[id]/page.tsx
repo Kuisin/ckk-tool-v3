@@ -33,6 +33,8 @@ export default async function MasterProductsDetailPage({
         where: { id },
         include: {
           materialType: { select: { code: true, name: true } },
+          // 課税区分は表示名だけ要る（判定は締日処理が lib/tax-rate.ts で行う）。
+          taxCategory: { select: { name: true } },
           priceListEntries: {
             include: {
               customerBp: true,
@@ -80,6 +82,10 @@ export default async function MasterProductsDetailPage({
     diameterMm: r.diameterMm != null ? Number(r.diameterMm) : null,
     lengthMm: r.lengthMm != null ? Number(r.lengthMm) : null,
     unit: r.unit,
+    taxCategoryId: r.taxCategoryId,
+    taxCategoryName: r.taxCategory
+      ? localized(r.taxCategory.name as LocalizedText | null)
+      : null,
     matchNames: r.matchNames,
     isActive: r.isActive,
     notes: r.notes ?? "",

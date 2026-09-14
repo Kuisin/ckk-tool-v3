@@ -3,11 +3,13 @@ import { isEditable } from "@/components/sales/quotes/model";
 import { QuoteForm } from "@/components/sales/quotes/QuoteForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { parseDocKey } from "@/lib/doc-number";
+import { loadTaxCatalog } from "@/lib/tax-categories";
 import { fetchCustomerOptions } from "../../../trial-estimates/data";
 import {
   fetchBranchesByCustomer,
-  fetchCustomerTaxTypes,
+  fetchCustomerTaxCategories,
   fetchEntriesForCustomer,
+  fetchProductTaxCategories,
   fetchQuote,
 } from "../../data";
 
@@ -30,15 +32,26 @@ export default async function SalesQuotesEditPage({
   const key = parseDocKey(id, "QOT");
   if (!key) notFound();
 
-  const [quote, customerOptions, branchesByCustomer, entries, taxTypes] =
-    await Promise.all([
-      fetchQuote(key),
-      fetchCustomerOptions(),
-      fetchBranchesByCustomer(),
-      fetchEntriesForCustomer(),
-      fetchCustomerTaxTypes(),
-    ]);
+  const [
+    quote,
+    customerOptions,
+    branchesByCustomer,
+    entries,
+    taxCategoryByCustomer,
+    taxCatalog,
+  ] = await Promise.all([
+    fetchQuote(key),
+    fetchCustomerOptions(),
+    fetchBranchesByCustomer(),
+    fetchEntriesForCustomer(),
+    fetchCustomerTaxCategories(),
+    loadTaxCatalog(),
+  ]);
   if (!quote) notFound();
+  // 価格表に載っている製品だけ（フォームが選べるのはそれだけ）。
+  const taxCategoryByProduct = await fetchProductTaxCategories(
+    entries.map((e) => Number(e.productId)),
+  );
   if (!isEditable(quote)) {
     redirect(`/sales/quotes/${quote.quoteNumber}`);
   }
@@ -50,7 +63,9 @@ export default async function SalesQuotesEditPage({
       entries={entries}
       mode="edit"
       quote={quote}
-      taxTypeByCustomer={taxTypes}
+      taxCatalog={taxCatalog}
+      taxCategoryByCustomer={taxCategoryByCustomer}
+      taxCategoryByProduct={taxCategoryByProduct}
     />
   );
 }

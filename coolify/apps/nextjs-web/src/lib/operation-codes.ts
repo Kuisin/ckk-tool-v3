@@ -288,6 +288,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "E",
   },
+  // 税区分は単一管理画面（区分カード + 率の履歴をモーダルで）— list コードのみ
+  {
+    code: "MS0F",
+    label: "税区分",
+    href: "/master/tax-categories",
+    category: "マスタ",
+    kind: "list",
+    categoryCode: "MS",
+    mode: "0",
+    index: "F",
+  },
 
   // ─── ドキュメント (DC) ───────────────────────────────────────────────────
   // マニュアル（/manual・fumadocs）— 単一画面, list コードのみ（旧 SY03）

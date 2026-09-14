@@ -162,6 +162,7 @@ Every field on the product screen.
 | [Product code](#field-code) | Required | The product's reference number |
 | [Name](#field-name) | Required | The product name |
 | [Unit](#field-unit) | Required | Pieces and so on |
+| [Tax category](#field-tax-category) | Optional | Consumption tax category (empty = use the default) |
 | [Product type](#field-product-type) | Optional | The type, which decides the spec fields |
 | [Material type](#field-material-type) | Optional | The material grade used |
 | [Diameter / length (mm)](#field-dimensions) | Optional | Stock dimensions |
@@ -180,6 +181,16 @@ The product name, printed on documents.
 ### Unit [#field-unit]
 
 How it is counted. The default is pieces.
+
+### Tax category [#field-tax-category]
+
+The consumption tax category for this product. It decides the tax on quotes and invoices.
+
+Left empty, the **default** of the tax category master (**MS0F**) applies — normally the standard 10% rate. Only pick a category for products on the reduced rate.
+
+If the business partner has a tax category of its own, **that wins** (for a tax-exempt partner, for example).
+
+> 💡 The rate is written into each line when the document is created. Changing a tax category afterwards does not move a quote or invoice that has already been issued.
 
 ### Product type [#field-product-type]
 

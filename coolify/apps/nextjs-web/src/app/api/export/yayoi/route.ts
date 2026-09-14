@@ -10,6 +10,7 @@
  */
 
 import { fetchInvoice } from "@/app/(dashboard)/billing/invoices/data";
+import { resolveTaxBuckets } from "@/components/billing/invoices/model";
 import { recordAudit } from "@/lib/audit";
 import { requirePermissionResponse } from "@/lib/authz";
 import { buildYayoiCsv } from "@/lib/csv-export";
@@ -53,6 +54,9 @@ export async function GET(request: Request): Promise<Response> {
     date: invoice.issuedAt,
     totalAmount: invoice.totalAmount,
     taxAmount: invoice.taxAmount,
+    // 税率ごとの内訳（区分記載）。画面・PDF と同じ関数を通すので、3 つの出力が
+    // 必ず同じ数になる。旧請求書はヘッダから 1 本合成され、出力は従来のまま。
+    taxLines: resolveTaxBuckets(invoice),
   });
 
   // エクスポート日時を刻む（best-effort — 失敗してもダウンロードは返す）。

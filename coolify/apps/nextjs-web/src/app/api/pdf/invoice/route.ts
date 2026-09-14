@@ -12,6 +12,7 @@
  */
 
 import { fetchInvoiceForDocument } from "@/app/(dashboard)/billing/invoices/data";
+import { resolveTaxBuckets } from "@/components/billing/invoices/model";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
@@ -21,7 +22,8 @@ import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   invoicePdfLabels,
   pdfAttnLine,
-  taxLabelLocalized,
+  taxBaseSuffixLocalized,
+  taxRowLabelLocalized,
 } from "@/lib/pdf-labels";
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { companyStampImg } from "@/lib/pdf-stamp";
@@ -68,6 +70,10 @@ export async function GET(request: Request): Promise<Response> {
   }
   // 閲覧は発行後のみ（下書きの請求書は PDF を出さない）。
   if (!isIssued(invoice.status)) return notIssuedResponse("請求書"); // i18n-ignore
+
+  // 税率ごとの区分記載。画面（InvoiceDetail）と同じ関数を通すので、PDF と画面で
+  // 行の数も金額も必ず一致する。
+  const taxBuckets = resolveTaxBuckets(invoice);
 
   const storageKey = pdfStorageKey.invoice(invoice.invoiceNumber);
 
@@ -121,10 +127,19 @@ export async function GET(request: Request): Promise<Response> {
         .filter(Boolean)
         .join(" / "),
     })),
+    // 税率ごとの区分記載（適格請求書）。単一税率なら 1 行で、従来と同じ見た目。
+    // 税区分マスタ以前の請求書はヘッダから 1 本合成される（resolveTaxBuckets）。
+    tax_rows: taxBuckets.map((b) => ({
+      label: taxRowLabelLocalized(b.taxRate, lang),
+      // 対象額は混在時だけ添える（単一税率では 対象額 = 小計 で情報が増えない）。
+      base_suffix:
+        taxBuckets.length > 1
+          ? taxBaseSuffixLocalized(yen(b.taxableBase), lang)
+          : "",
+      tax: yen(b.taxAmount),
+    })),
     totals: {
       subtotal: yen(invoice.subtotal),
-      // 顧客の課税区分に合わせたラベル（8% / 非課税の顧客がいるため固定にしない）
-      tax_label: taxLabelLocalized(invoice.taxType, lang),
       tax: yen(invoice.taxAmount),
       grand_total: yen(invoice.totalAmount),
     },

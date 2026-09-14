@@ -243,6 +243,10 @@ model Product {
   unit       String   @default("本")
   /// 価格の通貨（currencies.code。既定 JPY）
   currency   String   @default("JPY")
+  /// 課税区分（tax_categories.id）。null = 税区分マスタの既定に従う。
+  /// 顧客側 (bp_customer_attrs.tax_category_id) が指定されていればそちらが勝つ —
+  /// 判定の唯一の定義元は nextjs-web の lib/tax-rate.ts resolveLineTax()。
+  taxCategoryId Int?  @map("tax_category_id")
   spec       Json?
   /// 検索・AI 突合用のキーワード（別名・略称・読み・英字表記）。business_partners.match_names と同じ役割。
   matchNames String[] @default([]) @map("match_names")
@@ -252,6 +256,7 @@ model Product {
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   materialType     MaterialType?    @relation("ProductMaterialType", fields: [materialTypeId], references: [id])
+  taxCategory      TaxCategory?     @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
   priceListEntries PriceListEntry[]
   estimates        Estimate[]
   quoteItems       QuoteItem[]
@@ -267,6 +272,7 @@ model Product {
 
   @@unique([yearMonth, seq])
   @@index([materialTypeId])
+  @@index([taxCategoryId])
   // 照合名の配列検索（lib/intake matchProduct）。GIN でないと全表走査になる。
   @@index([matchNames(ops: ArrayOps)], map: "products_match_names_idx", type: Gin)
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。

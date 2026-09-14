@@ -29,7 +29,7 @@ import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { label } from "@/lib/messages";
-import { lineAmountYen, totalsYen } from "@/lib/money";
+import { lineAmountYen, type TaxBucket, totalsByRateYen } from "@/lib/money";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
@@ -38,7 +38,8 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
-import { taxRateFor } from "@/lib/tax-rate";
+import { loadTaxCatalog } from "@/lib/tax-categories";
+import { billingBasisDate, resolveLineTax } from "@/lib/tax-rate";
 import {
   billableUnitPrice,
   fetchBillableShipmentsForClosing,
@@ -53,6 +54,59 @@ const INVOICES_PATH = "/billing/invoices";
 
 /** 支払サイト既定値（日）— BpCustomerAttrs.paymentTermsDays 未設定時。 */
 const DEFAULT_PAYMENT_TERMS_DAYS = 30;
+
+/** DATE / タイムスタンプ → JST 暦日 "YYYY-MM-DD"。null はそのまま。 */
+function isoDateOrNull(value: Date | null | undefined): string | null {
+  return value == null ? null : isoDateJst(value);
+}
+
+/** 旧 enum に写せる区分コードか（tax_categories は独自コードも持てる）。 */
+function asLegacyTaxType(
+  code: string | null,
+): "TAXABLE" | "EXEMPT" | "REDUCED" | null {
+  return code === "TAXABLE" || code === "EXEMPT" || code === "REDUCED"
+    ? code
+    : null;
+}
+
+/** その率の束に属する明細の課税区分が 1 つに定まるならその id、でなければ null。 */
+function bucketCategoryId(
+  items: readonly { taxRate: number; taxCategoryId: number | null }[],
+  taxRate: number,
+): number | null {
+  const ids = new Set(
+    items
+      .filter((it) => it.taxRate.toFixed(4) === taxRate.toFixed(4))
+      .map((it) => it.taxCategoryId),
+  );
+  if (ids.size !== 1) return null;
+  return ids.values().next().value ?? null;
+}
+
+/**
+ * ヘッダに焼く課税区分・税率。**単一税率のときだけ**埋める。
+ *
+ * 混在請求書は 1 率しか持てないヘッダでは表せないので、どちらも null にして
+ * 内訳を invoice_tax_summaries だけに持たせる。読み出し側は「束が無ければ
+ * ヘッダから 1 本合成する」ので、旧データとの互換もこの形で保てる。
+ */
+function headerTaxSnapshot(
+  items: readonly { taxRate: number; taxCategoryId: number | null }[],
+  buckets: readonly TaxBucket[],
+  catalog: { categories: readonly { id: number; code: string }[] },
+): {
+  taxType: "TAXABLE" | "EXEMPT" | "REDUCED" | null;
+  taxRate: number | null;
+} {
+  if (buckets.length !== 1) return { taxType: null, taxRate: null };
+  const rate = buckets[0].taxRate;
+  const categoryId = bucketCategoryId(items, rate);
+  const code =
+    categoryId == null
+      ? null
+      : (catalog.categories.find((c) => c.id === categoryId)?.code ?? null);
+  return { taxType: asLegacyTaxType(code), taxRate: rate };
+}
 
 export interface RunClosingResult {
   created: number;
@@ -126,6 +180,13 @@ export async function processClosing(
       return actionError(tr("billing.closings.thereAreNoShipmentsToBill"));
     }
 
+    // 税区分マスタは 1 回だけ読む（cache() 済みだが意図を明示する）。
+    const catalog = await loadTaxCatalog();
+    // 取引先の課税区分。**null =「製品に従う」** で、入っていれば製品より優先する
+    // （非課税の取引先に、製品の区分に関わらず 0% を通すため）。
+    const customerTaxCategoryId =
+      closing.customerBp.customerAttrs?.taxCategoryId ?? null;
+
     // 明細: 出荷書明細 1 行 = 請求明細 1 行（摘要 = 製品名 + ロット、由来キー付き）。
     let sortOrder = 0;
     const items = shipments.flatMap((s) => {
@@ -151,6 +212,18 @@ export async function processClosing(
                 lot: it.lotNumber,
               })
             : localized(name, "en");
+        // 税率は**行ごと**に決まる（製品ごとに課税区分が違い得る）。基準日は
+        // 注文日 — 税率改正をまたぐ締日でも、引き渡しの約束をした時点の率が付く。
+        // 落ち方は billingBasisDate 1 本に閉じてある。
+        const lineTax = resolveLineTax(catalog, {
+          customerTaxCategoryId,
+          productTaxCategoryId: it.product.taxCategoryId,
+          basisDate: billingBasisDate(
+            isoDateOrNull(it.orderLine?.acceptance?.orderDate),
+            isoDateOrNull(s.shippedAt),
+            isoDateJst(closing.closingDate),
+          ),
+        });
         return {
           deliveryOrderYearMonth: s.yearMonth,
           deliveryOrderSeq: s.seq,
@@ -163,6 +236,10 @@ export async function processClosing(
           unitPrice,
           // 円未満は**行の段階で 1 回だけ**落とす（丸めの方針は lib/money.ts）。
           amount: lineAmountYen(unitPrice, it.quantity),
+          // 税の根拠を行へ凍結する（金額を凍結するなら根拠も凍結する）。
+          // **税額は行に持たない** — 税は率ごとの束でしか正しく丸められない。
+          taxCategoryId: lineTax.categoryId,
+          taxRate: lineTax.rate,
           sortOrder: sortOrder++,
         };
       });
@@ -172,15 +249,15 @@ export async function processClosing(
     // 合算してから丸めると「小計 ≠ 明細の合計」になり、PDF と弥生 CSV も
     // 食い違う（両者が別々にもう一度丸めていたため）。
     //
-    // 課税区分は顧客マスタから読むが、**その値をここで請求書へ写す** —
-    // 顧客を後から EXEMPT に変えても、発行済みの請求書は当時の区分で刷られる
-    // （税額だけ凍結して根拠を凍結しないと「非課税」の隣に 10% の額が並ぶ）。
-    const taxType = closing.customerBp.customerAttrs?.taxType ?? null;
-    const taxRate = taxRateFor(taxType);
-    const { subtotal, taxAmount, totalAmount } = totalsYen(
-      items.map((it) => it.amount),
-      taxRate,
+    // 税は**率ごとの束**で数える（適格請求書の区分記載）。束ごとに 1 回だけ丸める —
+    // 行ごとに丸めると単一税率でも従来と 1 円ずれる（lib/money.ts）。
+    const { subtotal, taxAmount, totalAmount, buckets } = totalsByRateYen(
+      items.map((it) => ({ amount: it.amount, taxRate: it.taxRate })),
     );
+    // ヘッダの課税区分・税率は**単一税率のときだけ**埋める。混在請求書は 2 率を
+    // 表せないので null にし、内訳は invoice_tax_summaries だけが持つ。
+    // 区分が 1 つに定まらないとき（同率の別区分が混ざる）も null。
+    const { taxType, taxRate } = headerTaxSnapshot(items, buckets, catalog);
 
     const closingDate = closing.closingDate;
     const paymentTermsDays =
@@ -230,13 +307,25 @@ export async function processClosing(
           subtotal,
           taxAmount,
           totalAmount,
-          // 税額の根拠のスナップショット（顧客マスタの現在値ではなく発行時点）
+          // 税額の根拠のスナップショット（顧客マスタの現在値ではなく発行時点）。
+          // 混在請求書ではどちらも null — 内訳は taxSummaries が持つ。
           taxType,
           taxRate,
           status: "DRAFT",
           dueDate,
           createdBy: actorId,
           items: { create: items },
+          // 税率ごとの区分記載（適格請求書）。明細のスナップショットから集計して
+          // 凍結する。Σ taxableBase = subtotal / Σ taxAmount = taxAmount。
+          taxSummaries: {
+            create: buckets.map((b, i) => ({
+              taxCategoryId: bucketCategoryId(items, b.taxRate),
+              taxRate: b.taxRate,
+              taxableBase: b.taxableBase,
+              taxAmount: b.taxAmount,
+              sortOrder: i,
+            })),
+          },
         },
       });
       // status を where に含めた updateMany で二重処理を原子的にガードする。
@@ -269,6 +358,7 @@ export async function processClosing(
         totalAmount,
         taxType,
         taxRate,
+        taxBuckets: buckets,
         status: "DRAFT",
         dueDate: dueDate.toISOString(),
         itemCount: items.length,
