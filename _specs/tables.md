@@ -39,6 +39,19 @@
 >   なった、は出荷のときにしか決まらない。金額は行に焼き込む（マスタを直しても既に書いた行は
 >   動かない）。締日処理が出荷書側の行を請求明細へ写し、税率の基準日は製品明細と違って
 >   **出荷日**（送料は引き渡しの約束ではなく運んだ日の役務のため）。
+> - `master.prisma`: `customer_product_codes` — 顧客専用の製品コード（製品 × 顧客の別名）。
+>   相手は**自分の品番で**注文を出し、自分の品番で納品書・請求書を照合するが、こちらの
+>   製品コードも製品名も相手の書類には出てこない。`products.match_names` が「誰が書いても
+>   こう読めるはず」という全社共通の別名なのに対し、こちらは「**この顧客だけ**がこう呼ぶ」
+>   という対応で、同じ品番を別の顧客が別の製品に使っていても衝突しない（unique は顧客ごと
+>   — `(customer_bp_id, product_id)` と `(customer_bp_id, code)` の 2 本）。用途は 3 つ:
+>   (1) AI 突合 — 顧客が確定している注文書では**最優先**で当てる（学習エイリアス
+>   `match_aliases` より先。あちらは実績からの推測、こちらは人がマスタに登録した事実。
+>   曖昧なら当てない = `lib/customer-product-code-core.ts` が唯一の判定元）/
+>   (2) 納品書・請求書への印字（自社の品名は必ず残し、相手の表記は括弧で添える。請求書は
+>   摘要を**発行時に焼き込む**ので、あとで品番を直しても発行済みは動かない）/
+>   (3) 画面での検索（製品一覧・製品ピッカー）。`aliases` は旧品番などの**突合専用**で
+>   印字しない。支店は親会社の登録を引き継ぐ。管理は MS04 の「顧客品番」タブ。
 > - `display.prisma`: 管理ディスプレイ（下記 Display 節。管理は SY09 の中）
 > - `kiosk.prisma`: `kiosk_cards` / `kiosk_device_locations` / `kiosk_device_logs` / `kiosk_devices` / `kiosk_floor_maps` / `kiosk_link_requests` / `kiosk_sessions` /
 >   `kiosk_unlock_pins` — メンテナンス退出 PIN の履歴。現行値は
@@ -708,6 +721,14 @@ Table order_acceptances {
   status          ORDER_ACCEPTANCE_STATUS [not null, default: 'PENDING']
   total_amount    numeric(12,2)            // 注文明細から自動計算
   order_doc_file_id uuid [ref: > files.id] // 受領した注文書 PDF
+  // 作り直し元（キャンセル済みの注文請書）。確定済みの請書は明細を編集できない
+  // ので、直したいときの手順は「ごとキャンセル → その請書から作り直す」1 つだけ。
+  // キャンセルは配下の未着手指示書も連鎖で止めるので、作り直した側で改めて手配する。
+  // 紐付けを残すのは「あの注文はどうなったのか」を後から追えるようにするため —
+  // 無いとキャンセルした請書が、指示書も出荷も無い行き止まりに見える。
+  // **1 対 N**（unique にしない）— 1 件を 2 件に割って作り直すことがある。
+  replaces_year_month char(6)
+  replaces_seq    int
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp

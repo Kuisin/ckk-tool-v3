@@ -6188,6 +6188,24 @@
       "quantityMin1": "Enter a quantity of 1 or more",
       "enterAnAmount": "Enter an amount",
       "amountCannotBeNegative": "The amount cannot be negative"
+    },
+    "customerProductCodes": {
+      "title": "Customer part numbers",
+      "help": "What each customer calls this product. Once registered, that customer's orders match by part number in one step, and their part number is shown alongside the product name on delivery notes and invoices.",
+      "empty": "No customer part numbers are registered",
+      "code": "Customer part number",
+      "codePlaceholder": "Their part number",
+      "name": "Customer part name",
+      "namePlaceholder": "The name they use (optional)",
+      "aliases": "Alternate codes",
+      "aliasesPlaceholder": "Old part numbers (matching only, never printed)",
+      "addRow": "Add a customer",
+      "everyRowNeedsCustomerAndCode": "Enter a customer and a customer part number on every row",
+      "selectACustomer": "Select a customer",
+      "enterACustomerCode": "Enter a customer part number",
+      "duplicateCustomerRow": "The same customer appears twice. Keep one row per customer",
+      "duplicateCodeForCustomer": "Customer part number “{code}” is duplicated for the same customer",
+      "couldNotSave": "Could not save the customer part numbers"
     }
   },
   "manual": {
@@ -7168,7 +7186,16 @@
       "showTheDocumentPane": "Expand the document",
       "hideTheDocument": "Hide",
       "customerProvidesDeliveryNote": "Customer-supplied delivery note",
-      "priceNoTierLine": "Line {row}: no price list quantity tier covers quantity {quantity}"
+      "priceNoTierLine": "Line {row}: no price list quantity tier covers quantity {quantity}",
+      "recreate": "Recreate",
+      "recreateFromThis": "Recreate from this order acceptance",
+      "recreatedFrom": "Recreated from",
+      "recreatedAsTitle": "Recreated as",
+      "recreatedAs": "Recreated as {number}",
+      "theCancelledOrderAcceptance": "The cancelled order acceptance this one came from",
+      "youCanRecreateOnceCancelled": "You can only recreate from a cancelled order acceptance",
+      "confirmRecreateMessage": "This creates a draft carrying over the contents of {number}. The link between the two is kept.",
+      "alreadyRecreatedAs": "This order acceptance has already been recreated as {numbers}. Check that you are not raising it twice."
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",
@@ -7631,7 +7658,10 @@
       "takenOverManually": "Switched to manual entry without waiting for automatic extraction",
       "targetCancelRequestNotFound": "The target cancellation request was not found",
       "targetNotFound": "The target order acceptance was not found",
-      "unitPriceMin0": "The unit price must be 0 or more"
+      "unitPriceMin0": "The unit price must be 0 or more",
+      "onlyCancelledCanBeRecreated": "Only a cancelled order acceptance can be recreated",
+      "recreatedFromCancelled": "Recreated from the cancelled {number}",
+      "recreatedAs": "Recreated as {number}"
     },
     "quoteActions": {
       "createFailed": "Could not create the quote",
@@ -8503,7 +8533,8 @@
       "effectiveFrom": "Effective from",
       "ratePercent": "Tax rate (%)",
       "taxCategoryId": "Tax category",
-      "shortLabel": "Label on documents"
+      "shortLabel": "Label on documents",
+      "customerProductCodes": "Customer part numbers"
     },
     "tableFieldLabels": {
       "kiosk_devices": {

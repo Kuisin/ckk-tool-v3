@@ -122,6 +122,7 @@ model BusinessPartner {
   acceptancesAsBranch   OrderAcceptance[] @relation("AcceptanceCustomerBranch")
   acceptancesAsShipTo   OrderAcceptance[] @relation("AcceptanceShipTo")
   acceptancesAsEndUser  OrderAcceptance[] @relation("AcceptanceEndUser")
+  customerProductCodes  CustomerProductCode[] @relation("CustomerProductCodeCustomer")
 
   @@index([parentId])
   // 照合名の配列検索（lib/bp-match）。GIN でないと全表走査になる。

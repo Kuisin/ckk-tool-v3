@@ -76,6 +76,7 @@ model User {
   businessPartnersCreated BusinessPartner[]  @relation("BpCreatedBy")
   workOrderChargesCreated     WorkOrderCharge[]     @relation("WorkOrderChargeCreatedBy")
   deliveryOrderChargesCreated DeliveryOrderCharge[] @relation("DeliveryOrderChargeCreatedBy")
+  customerProductCodesCreated CustomerProductCode[] @relation("CustomerProductCodeCreatedBy")
   estimatesCreated        Estimate[]         @relation("EstimateCreatedBy")
   priceListEntriesCreated PriceListEntry[]   @relation("PriceListEntryCreatedBy")
   quotesCreated           Quote[]            @relation("QuoteCreatedBy")

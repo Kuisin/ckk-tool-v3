@@ -131,6 +131,29 @@ async function materialIdsByKeyword(
   return rows.map((r) => r.id);
 }
 
+/**
+ * 顧客品番（customer_product_codes）に probe を含む製品 id。
+ * 主品番と別表記（旧品番）の両方を見る — 探す側は古い紙を持っていることがある。
+ * 別表記は配列列なので `unnest + ILIKE`（match_names と同じ作り）。
+ */
+async function productIdsByCustomerCode(
+  q: string,
+  limit: number,
+): Promise<number[]> {
+  if (!q) return [];
+  const like = `%${likeEscape(q)}%`;
+  const rows = await prisma.$queryRaw<{ product_id: number }[]>`
+    SELECT DISTINCT product_id FROM app.customer_product_codes
+    WHERE is_active
+      AND (
+        code ILIKE ${like}
+        OR EXISTS (SELECT 1 FROM unnest(aliases) AS a WHERE a ILIKE ${like})
+      )
+    ORDER BY product_id
+    LIMIT ${limit}`;
+  return rows.map((r) => r.product_id);
+}
+
 /** id 集合を Prisma の OR 条件へ（空なら条件を足さない）。 */
 const byIds = (ids: number[]) => (ids.length > 0 ? [{ id: { in: ids } }] : []);
 
@@ -146,15 +169,23 @@ function productLabel(p: {
 }
 
 /**
- * 製品 — 名称(ja) またはキーワード（match_names）の部分一致
+ * 製品 — 名称(ja)・キーワード（match_names）・**顧客品番**の部分一致
  * （コードは未採番のレガシーが大半のため名称主体）。
+ *
+ * 顧客品番を混ぜるのは、注文書を手で起こすときに人が見ているのが相手の
+ * 品番だから — こちらの製品名を覚えていなくても辿り着ける。顧客で絞らない
+ * のは意図的で、どの顧客の品番で引いても同じ製品に行き着く（品番は顧客ごとに
+ * 一意だが、探す側はどの顧客の紙かを先に選ばない）。
  */
 export async function searchProductOptions(
   query: string,
 ): Promise<SearchOption[]> {
   if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
   const q = query.trim();
-  const keywordIds = await productIdsByKeyword(q, LIMIT);
+  const [keywordIds, customerCodeIds] = await Promise.all([
+    productIdsByKeyword(q, LIMIT),
+    productIdsByCustomerCode(q, LIMIT),
+  ]);
   const rows = await prisma.product.findMany({
     where: {
       isActive: true,
@@ -162,7 +193,7 @@ export async function searchProductOptions(
         ? {
             OR: [
               { name: { path: ["ja"], string_contains: q } },
-              ...byIds(keywordIds),
+              ...byIds([...new Set([...keywordIds, ...customerCodeIds])]),
             ],
           }
         : {}),

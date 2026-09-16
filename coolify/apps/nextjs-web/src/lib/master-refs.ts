@@ -203,6 +203,22 @@ export const IGNORED_REFERENCES: ReadonlyArray<
     field: "groupId",
     reason: "history row carrying flow_snapshot; schema declares SetNull",
   },
+  {
+    // 顧客専用の製品コードは (製品, 顧客) の組についての対応表でしかなく、
+    // 片側が消えれば意味を失う（CASCADE）。**削除を止めない** — 止めると
+    // 「誰かが顧客品番を 1 件登録した製品はもう消せない」になり、独立した
+    // 価値の無いメタデータのために業務データの整理ができなくなる。
+    target: "Product",
+    model: "CustomerProductCode",
+    field: "productId",
+    reason: "pair-only mapping (CASCADE); has no value without either side",
+  },
+  {
+    target: "BusinessPartner",
+    model: "CustomerProductCode",
+    field: "customerBpId",
+    reason: "pair-only mapping (CASCADE); has no value without either side",
+  },
 ];
 
 export interface MasterReferenceCount {

@@ -48,6 +48,7 @@ import {
   IconAlertTriangle,
   IconArchive,
   IconCalendar,
+  IconCopy,
   IconFile,
   IconInfoCircle,
   IconPencil,
@@ -71,6 +72,7 @@ import {
   approveAcceptance,
   archiveAcceptance,
   confirmOrderLines,
+  recreateFromCancelledAcceptance,
   rejectAcceptance,
   requestAcceptanceCancel,
   retryExtraction,
@@ -237,6 +239,7 @@ export function OrderAcceptanceDetail({
   const [deployOpen, setDeployOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [cancelReqOpen, setCancelReqOpen] = useState(false);
+  const [recreateOpen, setRecreateOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   /**
    * 下書きの表示モード。既定は**閲覧** — 開いた直後に入力欄が並んでいると、
@@ -303,26 +306,41 @@ export function OrderAcceptanceDetail({
     currentStage(a.status),
   );
 
-  // 上流 = 元になった見積書（FAX 直受けの注文書には無い）。
-  const sourceGroups: HandoffGroup[] | undefined = a.quoteNumber
-    ? [
+  // 上流 = 元になった見積書（FAX 直受けの注文書には無い）と、
+  // キャンセルして作り直した場合の元の請書。
+  const upstream: HandoffGroup[] = [];
+  if (a.quoteNumber) {
+    upstream.push({
+      key: "quote",
+      title: tr("common.quote"),
+      items: [
         {
-          key: "quote",
-          title: tr("common.quote"),
-          items: [
-            {
-              key: a.quoteNumber,
-              label: a.quoteNumber,
-              href: `/sales/quotes/${a.quoteNumber}`,
-              note: tr(
-                "sales.orderAcceptances.quoteThisOrderAcceptanceCameFrom",
-              ),
-            },
-          ],
-          emptyNote: "—",
+          key: a.quoteNumber,
+          label: a.quoteNumber,
+          href: `/sales/quotes/${a.quoteNumber}`,
+          note: tr("sales.orderAcceptances.quoteThisOrderAcceptanceCameFrom"),
         },
-      ]
-    : undefined;
+      ],
+      emptyNote: "—",
+    });
+  }
+  if (a.replacesNumber) {
+    upstream.push({
+      key: "replaces",
+      title: tr("sales.orderAcceptances.recreatedFrom"),
+      items: [
+        {
+          key: a.replacesNumber,
+          label: a.replacesNumber,
+          href: `${BASE_PATH}/${a.replacesNumber}`,
+          note: tr("sales.orderAcceptances.theCancelledOrderAcceptance"),
+        },
+      ],
+      emptyNote: "—",
+    });
+  }
+  const sourceGroups: HandoffGroup[] | undefined =
+    upstream.length > 0 ? upstream : undefined;
 
   // 下流 = 確定で生成された注文明細（1 明細行 = 1 注文明細）。
   const handoffGroups: HandoffGroup[] = [
@@ -346,6 +364,25 @@ export function OrderAcceptanceDetail({
           : tr("sales.orderAcceptances.notExpandedExpandedIntoOrderLines"),
     },
   ];
+  // キャンセル済みの請書は注文明細を持たないので行き止まりに見える。
+  // 作り直した先があるなら、そこへ辿れるようにする。
+  if (a.replacedByNumbers.length > 0) {
+    handoffGroups.push({
+      key: "replaced-by",
+      title: tr("sales.orderAcceptances.recreatedAsTitle"),
+      summary: tr("common.itemsCount", {
+        count: a.replacedByNumbers.length,
+      }),
+      items: a.replacedByNumbers.map((n) => ({
+        key: n,
+        label: n,
+        href: `${BASE_PATH}/${n}`,
+        done: true,
+        note: null,
+      })),
+      emptyNote: "—",
+    });
+  }
 
   // 承認依頼の可否 — 確定と同じ完成条件（サーバーの submitForApproval と
   // 同じ関数）。足りない項目があるうちはボタンを押せなくし、理由をカードに出す。
@@ -589,6 +626,18 @@ export function OrderAcceptanceDetail({
             },
             // 明細単位のキャンセルは無い — 注文請書ごと依頼して
             // 承認設定（MS0B）の「注文請書キャンセル」フローを通す。
+            {
+              // 確定済みの請書を直す唯一の道 — キャンセルしたあと、この
+              // 操作で内容を引き継いだ下書きを起こす（紐付けは残る）。
+              label: tr("sales.orderAcceptances.recreateFromThis"),
+              icon: <IconCopy size={14} />,
+              disabled: a.status !== "CANCELLED",
+              disabledReason:
+                a.status === "CANCELLED"
+                  ? undefined
+                  : tr("sales.orderAcceptances.youCanRecreateOnceCancelled"),
+              onClick: () => setRecreateOpen(true),
+            },
             {
               label: tr("sales.orderAcceptances.cancellationRequest"),
               icon: <IconX size={14} />,
@@ -1391,6 +1440,57 @@ export function OrderAcceptanceDetail({
             number: a.number,
           })}
         </Text>
+      </ModalShell>
+
+      {/* キャンセル済みからの作り直し。既に作り直した先があるときは番号を
+          並べる — 二重に起こしてしまうのが一番まずい事故なので、押す前に
+          見えるようにしておく。 */}
+      <ModalShell
+        confirmLabel={tr("sales.orderAcceptances.recreate")}
+        loading={isPending}
+        onClose={() => setRecreateOpen(false)}
+        onConfirm={() =>
+          startTransition(async () => {
+            const result = await recreateFromCancelledAcceptance(a.number);
+            if (result.ok && result.data) {
+              setRecreateOpen(false);
+              notifications.show({
+                title: tr("common.created"),
+                message: tr("sales.orderAcceptances.recreatedAs", {
+                  number: result.data.number,
+                }),
+                color: "green",
+              });
+              router.push(`${BASE_PATH}/${result.data.number}`);
+              return;
+            }
+            notifications.show({
+              title: tr("common.error"),
+              message: result.ok ? "" : result.error,
+              color: "red",
+            });
+          })
+        }
+        opened={recreateOpen}
+        size="sm"
+        title={tr("sales.orderAcceptances.recreateFromThis")}
+      >
+        <Stack gap="xs">
+          <Text size="sm">
+            {tr("sales.orderAcceptances.confirmRecreateMessage", {
+              number: a.number,
+            })}
+          </Text>
+          {a.replacedByNumbers.length > 0 && (
+            <Alert color="orange" variant="light">
+              <Text size="sm">
+                {tr("sales.orderAcceptances.alreadyRecreatedAs", {
+                  numbers: a.replacedByNumbers.join(" / "),
+                })}
+              </Text>
+            </Alert>
+          )}
+        </Stack>
       </ModalShell>
 
       {/* キャンセル依頼（理由必須）。承認設定があれば保留、無ければ即適用。 */}

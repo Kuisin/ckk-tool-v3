@@ -57,10 +57,20 @@ jobs:
             already catch. If nothing meets that bar, say so briefly instead
             of inventing findings.
           # 上限であって目標ではない — 数ファイルの PR は 5〜6 turn で終わるので
-          # ここを上げても普段の費用は増えない。15 のままだと**大きい PR だけが
-          # 必ず落ちる**（119 ファイルの PR #840 が error_max_turns で 2 回連続失敗）。
+          # ここを上げても普段の費用は増えない。低すぎると**打ち切られた PR だけが
+          # 赤くなる**（15 のとき 119 ファイルの PR #840 が error_max_turns で 2 回連続失敗、
+          # 40 のとき PR #872 / #879 / #883 が同じ形で失敗）。
           # レビューが要るのは差分が大きいときなので、そこで打ち切られては意味が無い。
-          claude_args: '--max-turns 40'
+          #
+          # **ファイル数では決まらない。** 40 で落ちた #872 は 15 ファイル (+623) で、
+          # 通った #881 は 33 ファイル (+1670) — 何 turn 使うかは調べ方のばらつきで
+          # 決まるので、上限は「普通の PR の実績 × 十分な余裕」で置く。
+          #
+          # 打ち切られると findings も出ない（"No buffered inline comments"）ため、
+          # 赤い × に情報が無い状態で merge が止まる。これがいちばん困る失敗の仕方。
+          # ここをまた上げることになったら、上げる前に「このチェックは merge を
+          # 止めるべきか（advisory にすべきか）」を先に決めること。
+          claude_args: '--max-turns 80'
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
