@@ -269,6 +269,7 @@ model Product {
   processRoutes      ProductProcessRoute[]
   workOrders         WorkOrder[]
   inspectionTemplates InspectionTemplate[]
+  customerProductCodes CustomerProductCode[] @relation("CustomerProductCodeProduct")
 
   @@unique([yearMonth, seq])
   @@index([materialTypeId])
@@ -300,5 +301,59 @@ model Currency {
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("currencies")
+  @@schema("app")
+}
+
+// ─── 顧客専用の製品コード（製品 × 顧客の別名） ───────────────────────────
+//
+// 相手は**自分の品番で**注文を出し、自分の品番で納品書・請求書を照合する。
+// こちらの製品コード（PRD-YYYYMM-NNNN）も製品名も、相手の書類には出てこない。
+// これまでその対応表はどこにも無く、注文書の突合は品名の表記ゆれ（キーワード
+// products.match_names）に頼っていた。品名は揺れるが**品番は揺れない**ので、
+// ここが埋まっている顧客の注文書は 1 発で決まる。
+//
+// products.match_names との違いは「誰の言葉か」:
+//   match_names            = 誰が書いてもこう読めるはず、という**全社共通**の別名
+//   customer_product_codes = **この顧客だけ**がこう呼ぶ、という対応
+// 同じ品番を別の顧客が別の製品に使っていても衝突しない（unique は顧客ごと）。
+//
+// 用途は 3 つ（いずれも同じ 1 行を読む）:
+//   1. AI 突合 — 顧客が確定している注文書では、この表を**最優先**で当てる
+//      （lib/customer-product-code-core.ts。学習エイリアスより先 — あちらは
+//        実績からの推測で、こちらは人がマスタに登録した事実）
+//   2. 書類への印字 — 納品書・請求書の品名欄に相手の品番/品名を併記する
+//   3. 画面での検索・表示
+model CustomerProductCode {
+  id           Int    @id @default(autoincrement())
+  customerBpId String @map("customer_bp_id") @db.Uuid
+  productId    Int    @map("product_id")
+  /// 顧客の品番。**印字・検索・突合の主表記**（1 顧客の中で一意）。
+  code         String
+  /// 顧客がその製品を呼ぶ品名。null = 併記しない（自社の製品名だけを刷る）。
+  name         String?
+  /// 旧品番など、**突合にだけ**使う追加の表記。印字には使わない —
+  /// 相手に出す書類に「昔の品番」を刷ると、どちらが現行か読めなくなる。
+  aliases      String[] @default([])
+  isActive     Boolean  @default(true) @map("is_active")
+  notes        String?
+  createdBy    String?  @map("created_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  customerBp    BusinessPartner @relation("CustomerProductCodeCustomer", fields: [customerBpId], references: [id], onDelete: Cascade)
+  product       Product         @relation("CustomerProductCodeProduct", fields: [productId], references: [id], onDelete: Cascade)
+  createdByUser User?           @relation("CustomerProductCodeCreatedBy", fields: [createdBy], references: [id])
+
+  // 1 顧客 × 1 製品 = 1 行（印字に使う表記が 2 つあってはいけない）。
+  @@unique([customerBpId, productId])
+  // 1 顧客の中で品番は一意 — でないと突合が 2 製品に当たって自動確定できない。
+  @@unique([customerBpId, code])
+  @@index([productId])
+  @@index([code])
+  // 突合の追加表記は配列なので GIN（unnest + ILIKE の全表走査を避ける）。
+  @@index([aliases(ops: ArrayOps)], map: "customer_product_codes_aliases_idx", type: Gin)
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
+  @@map("customer_product_codes")
   @@schema("app")
 }

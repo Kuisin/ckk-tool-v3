@@ -23,6 +23,19 @@
 >   書類・製品の `currency` 列（products / quotes / order_acceptances / invoices に
 >   追加。既定 'JPY'、FK なし — 既存 price_list_entries.currency と同じ規約）が指す。
 >   レートは手動更新の分析用換算（会計処理用ではない）。注文明細はヘッダから読む。
+> - `master.prisma`: `customer_product_codes` — 顧客専用の製品コード（製品 × 顧客の別名）。
+>   相手は**自分の品番で**注文を出し、自分の品番で納品書・請求書を照合するが、こちらの
+>   製品コードも製品名も相手の書類には出てこない。`products.match_names` が「誰が書いても
+>   こう読めるはず」という全社共通の別名なのに対し、こちらは「**この顧客だけ**がこう呼ぶ」
+>   という対応で、同じ品番を別の顧客が別の製品に使っていても衝突しない（unique は顧客ごと
+>   — `(customer_bp_id, product_id)` と `(customer_bp_id, code)` の 2 本）。用途は 3 つ:
+>   (1) AI 突合 — 顧客が確定している注文書では**最優先**で当てる（学習エイリアス
+>   `match_aliases` より先。あちらは実績からの推測、こちらは人がマスタに登録した事実。
+>   曖昧なら当てない = `lib/customer-product-code-core.ts` が唯一の判定元）/
+>   (2) 納品書・請求書への印字（自社の品名は必ず残し、相手の表記は括弧で添える。請求書は
+>   摘要を**発行時に焼き込む**ので、あとで品番を直しても発行済みは動かない）/
+>   (3) 画面での検索（製品一覧・製品ピッカー）。`aliases` は旧品番などの**突合専用**で
+>   印字しない。支店は親会社の登録を引き継ぐ。管理は MS04 の「顧客品番」タブ。
 > - `display.prisma`: 管理ディスプレイ（下記 Display 節。管理は SY09 の中）
 > - `kiosk.prisma`: `kiosk_cards` / `kiosk_device_locations` / `kiosk_device_logs` / `kiosk_devices` / `kiosk_floor_maps` / `kiosk_link_requests` / `kiosk_sessions` /
 >   `kiosk_unlock_pins` — メンテナンス退出 PIN の履歴。現行値は

@@ -6143,6 +6143,24 @@
       "rateRange": "Enter a tax rate between 0 and 100",
       "useDefault": "Use the default",
       "followProduct": "Follow the product"
+    },
+    "customerProductCodes": {
+      "title": "Customer part numbers",
+      "help": "What each customer calls this product. Once registered, that customer's orders match by part number in one step, and their part number is shown alongside the product name on delivery notes and invoices.",
+      "empty": "No customer part numbers are registered",
+      "code": "Customer part number",
+      "codePlaceholder": "Their part number",
+      "name": "Customer part name",
+      "namePlaceholder": "The name they use (optional)",
+      "aliases": "Alternate codes",
+      "aliasesPlaceholder": "Old part numbers (matching only, never printed)",
+      "addRow": "Add a customer",
+      "everyRowNeedsCustomerAndCode": "Enter a customer and a customer part number on every row",
+      "selectACustomer": "Select a customer",
+      "enterACustomerCode": "Enter a customer part number",
+      "duplicateCustomerRow": "The same customer appears twice. Keep one row per customer",
+      "duplicateCodeForCustomer": "Customer part number “{code}” is duplicated for the same customer",
+      "couldNotSave": "Could not save the customer part numbers"
     }
   },
   "manual": {
@@ -8458,7 +8476,8 @@
       "effectiveFrom": "Effective from",
       "ratePercent": "Tax rate (%)",
       "taxCategoryId": "Tax category",
-      "shortLabel": "Label on documents"
+      "shortLabel": "Label on documents",
+      "customerProductCodes": "Customer part numbers"
     },
     "tableFieldLabels": {
       "kiosk_devices": {
