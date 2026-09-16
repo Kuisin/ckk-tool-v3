@@ -6,6 +6,7 @@ import {
   type ProductDetailData,
 } from "@/components/master/products/ProductDetail";
 import { fetchAuditEntries } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { formatPriceListNumber, formatProductNumber } from "@/lib/doc-number";
@@ -27,7 +28,7 @@ export default async function MasterProductsDetailPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const [r, auditEntries, routes, designFiles, designRequests] =
+  const [r, auditEntries, routes, designFiles, designRequests, customerCodes] =
     await Promise.all([
       prisma.product.findUnique({
         where: { id },
@@ -50,8 +51,15 @@ export default async function MasterProductsDetailPage({
       // products 側に design_file_id 列は無い。
       fetchDesignFilesForProduct(id),
       fetchDesignRequestsForProduct(id),
+      // 顧客専用の製品コード（この製品を各顧客が何と呼ぶか）。
+      prisma.customerProductCode.findMany({
+        where: { productId: id },
+        include: { customerBp: { select: { name: true } } },
+        orderBy: { id: "asc" },
+      }),
     ]);
   if (!r) notFound();
+  const canManageMaster = (await checkPermission("master", "UPDATE")).ok;
 
   const name = r.name as LocalizedText | null;
   const spec =
@@ -110,6 +118,15 @@ export default async function MasterProductsDetailPage({
   return (
     <ProductDetail
       auditEntries={auditEntries}
+      canManage={canManageMaster}
+      customerCodes={customerCodes.map((c) => ({
+        aliases: c.aliases,
+        code: c.code,
+        customerBpId: c.customerBpId,
+        customerName: localized(c.customerBp.name as LocalizedText | null),
+        isActive: c.isActive,
+        name: c.name ?? "",
+      }))}
       designFiles={designFiles}
       designRequests={designRequests}
       record={record}

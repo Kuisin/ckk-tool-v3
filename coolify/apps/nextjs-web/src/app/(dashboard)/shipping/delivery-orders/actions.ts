@@ -34,8 +34,14 @@ import {
   assertFlowConfigured,
   startApprovalFlow,
 } from "@/lib/approvals";
-import { recordAudit } from "@/lib/audit";
+import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
+import {
+  type ChargeRowsInput,
+  chargeAuditShape,
+  chargeRowsSchema,
+  prepareChargeRows,
+} from "@/lib/charges";
 import { prisma } from "@/lib/db";
 import {
   type DeliveryVarianceSummary,
@@ -699,6 +705,160 @@ async function resolveHeaderWorkOrderId(
 // ── CRUD ─────────────────────────────────────────────────────────────────────
 
 /** 作成 — 採番1回 + ヘッダ・明細を一括作成。作成後は詳細ページへ。 */
+// ── 追加料金（送料など。§8 / §9） ───────────────────────────────────────────
+
+/**
+ * 載せたロットの指示書に書いてある追加料金（予定）を、出荷書へ複写する。
+ *
+ * **同じ指示書を 2 行以上載せても 1 回しか複写しない** — 送料は「この出荷に
+ * かかるもの」で、明細の行数ぶん増えるものではない（ロット番号で畳んでいる）。
+ *
+ * 金額は指示書の行に焼き込んであるものをそのまま持ってくる（マスタを引き直さ
+ * ない）。生産側が書いた予定をそのまま見せるのが目的で、値段を決め直すのは
+ * 出荷担当が画面でやること。
+ */
+async function copyWorkOrderCharges(
+  key: { yearMonth: string; seq: number },
+  items: ReadonlyArray<{ lotNumber?: number | null }>,
+): Promise<number> {
+  const lots = [
+    ...new Set(
+      items
+        .map((it) => it.lotNumber)
+        .filter((n): n is number => typeof n === "number"),
+    ),
+  ];
+  if (lots.length === 0) return 0;
+  const workOrders = await prisma.workOrder.findMany({
+    where: { workOrderNumber: { in: lots } },
+    select: {
+      id: true,
+      charges: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          chargeItemId: true,
+          description: true,
+          quantity: true,
+          unitPrice: true,
+          amount: true,
+        },
+      },
+    },
+  });
+  const rows = workOrders.flatMap((wo) =>
+    wo.charges.map((c) => ({ ...c, sourceWorkOrderId: wo.id })),
+  );
+  if (rows.length === 0) return 0;
+  await prisma.deliveryOrderCharge.createMany({
+    data: rows.map((r, i) => ({
+      deliveryOrderYearMonth: key.yearMonth,
+      deliveryOrderSeq: key.seq,
+      chargeItemId: r.chargeItemId,
+      sourceWorkOrderId: r.sourceWorkOrderId,
+      description: r.description,
+      quantity: r.quantity,
+      unitPrice: r.unitPrice,
+      amount: r.amount,
+      sortOrder: i,
+    })),
+  });
+  return rows.length;
+}
+
+/**
+ * 出荷書の追加料金を保存（渡された行が保存後の全部）。**請求される実体はこちら**。
+ *
+ * ★ 直せるのは**下書きのうちだけ**。確定した出荷書は請求単価を焼き込み済みで、
+ *   締日処理がその金額を請求書へ写す — あとから金額を動かすと、締日画面の
+ *   予定額と発行済みの請求額が食い違う（出荷書明細の単価と同じ扱い）。
+ */
+export async function saveDeliveryOrderCharges(
+  number: string,
+  rows: ChargeRowsInput,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("delivery_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const key = parseDocKey(number, "DOR");
+  if (!key) return actionError(tr("common.invalidInput"));
+  if (!(await deliveryOrderInScope(authz.access, authz.userId, key))) {
+    return actionError(tr("common.scopeDenied"));
+  }
+  const parsed = chargeRowsSchema.safeParse(rows);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
+
+  const order = await prisma.deliveryOrder.findUnique({
+    where: { yearMonth_seq: key },
+    select: {
+      status: true,
+      charges: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          chargeItemId: true,
+          description: true,
+          quantity: true,
+          unitPrice: true,
+          amount: true,
+        },
+      },
+    },
+  });
+  if (!order) return actionError(tr("common.targetNotFound"));
+  if (order.status !== "DRAFT") {
+    return actionError(tr("charges.deliveryOrderClosedForCharges"));
+  }
+
+  const prepared = await prepareChargeRows(parsed.data);
+  if (!prepared.ok) return actionError(tr(prepared.errorKey));
+
+  const actor = await getCurrentActorId();
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.deliveryOrderCharge.deleteMany({
+        where: {
+          deliveryOrderYearMonth: key.yearMonth,
+          deliveryOrderSeq: key.seq,
+        },
+      });
+      if (prepared.rows.length > 0) {
+        await tx.deliveryOrderCharge.createMany({
+          data: prepared.rows.map((r) => ({
+            deliveryOrderYearMonth: key.yearMonth,
+            deliveryOrderSeq: key.seq,
+            chargeItemId: r.chargeItemId,
+            description: r.description,
+            quantity: r.quantity,
+            unitPrice: r.unitPrice,
+            amount: r.amount,
+            sortOrder: r.sortOrder,
+            createdBy: actor,
+          })),
+        });
+      }
+    });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, tr("charges.couldNotSave"), tr));
+  }
+
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "delivery_orders",
+    recordId: number,
+    before: {
+      charges: chargeAuditShape(
+        order.charges.map((c) => ({
+          ...c,
+          unitPrice: Number(c.unitPrice),
+          amount: Number(c.amount),
+        })),
+      ),
+    },
+    after: { charges: chargeAuditShape(prepared.rows) },
+  });
+  revalidate(number);
+  return actionOk();
+}
+
 export async function createDeliveryOrder(
   payload: DeliveryOrderCreateInput,
 ): Promise<ActionResult<{ number: string }>> {
@@ -774,6 +934,13 @@ export async function createDeliveryOrder(
       },
     });
     const number = formatDocNumber("DOR", { yearMonth, seq });
+    // 載せたロットの指示書に書いてある追加料金（予定）を複写する。以後は
+    // **出荷書側だけを直す** — 実費・箱数・同梱で要らなくなった、は出荷の
+    // ときにしか決まらないので、指示書の予定を後から書き換えても意味が無い。
+    const copiedCharges = await copyWorkOrderCharges(
+      { yearMonth, seq },
+      v.items,
+    );
     await recordAudit({
       action: "CREATE",
       tableName: "delivery_orders",
@@ -787,6 +954,7 @@ export async function createDeliveryOrder(
         closesOrderLines: v.closesOrderLines,
         notes: trimOrNull(v.notes),
         items: v.items,
+        copiedCharges,
       },
     });
     revalidate(number);

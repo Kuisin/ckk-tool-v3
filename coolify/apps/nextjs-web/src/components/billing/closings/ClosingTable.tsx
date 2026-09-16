@@ -12,13 +12,17 @@ import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconCalendarDue,
+  IconFileInvoice,
   IconPlayerPlay,
   IconSearch,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
-import { runClosing } from "@/app/(dashboard)/billing/closings/actions";
+import {
+  processClosings,
+  runClosing,
+} from "@/app/(dashboard)/billing/closings/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
@@ -29,7 +33,7 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { statusOptions } from "@/lib/status-map";
-import type { BillingClosing } from "./model";
+import { type BillingClosing, isProcessable } from "./model";
 
 const BASE_PATH = "/billing/closings";
 
@@ -128,11 +132,19 @@ function RunClosingModal({
   );
 }
 
-export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
+export function ClosingTable({
+  rows,
+  todayIso,
+}: {
+  rows: BillingClosing[];
+  /** JST の今日（"YYYY-MM-DD"）— 締日を過ぎたかの判定に使う。サーバーが渡す。 */
+  todayIso: string;
+}) {
   const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
+  const [, startTransition] = useTransition();
 
   // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
   const [search, setSearch] = useUrlStringState("q");
@@ -149,6 +161,65 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
     const matchesStatus = !status || c.status === status;
     return matchesSearch && matchesStatus;
   });
+
+  /**
+   * 選んだ行をまとめて請求書にする。
+   *
+   * **処理できない行は先に外す**（未処理でない / 締日前）。混ざったまま投げると
+   * 「N 件中 M 件失敗」と出るだけで、何が悪かったのかは結局 1 件ずつ開いて
+   * 確かめることになる。判定は画面のボタン活性と同じ isProcessable。
+   */
+  const bulkProcess = (targets: BillingClosing[]) => {
+    const ready = targets.filter((c) => isProcessable(c, todayIso));
+    const skipped = targets.length - ready.length;
+    if (ready.length === 0) {
+      notifications.show({
+        title: tr("billing.closings.nothingToProcess"),
+        message: tr("billing.closings.selectPendingPastClosingDate"),
+        color: "orange",
+      });
+      return;
+    }
+    startTransition(async () => {
+      const result = await processClosings(ready.map((c) => c.id));
+      if (!result.ok) {
+        notifications.show({
+          title: tr("common.error2"),
+          message: result.error,
+          color: "red",
+        });
+        return;
+      }
+      const { invoiceNumbers, failures } = result.data;
+      // 失敗は理由つきで並べる（会社名まで出さないと直しようがない）。
+      if (failures.length > 0) {
+        notifications.show({
+          title: tr("billing.closings.someCouldNotBeProcessed", {
+            count: failures.length,
+          }),
+          message: failures
+            .map((f) => `${f.customerName}: ${f.error}`)
+            .join(" / "),
+          color: "red",
+          autoClose: false,
+        });
+      }
+      if (invoiceNumbers.length > 0) {
+        notifications.show({
+          title: tr("billing.closings.invoicesWereGenerated", {
+            count: invoiceNumbers.length,
+          }),
+          message:
+            invoiceNumbers.join(" / ") +
+            (skipped > 0
+              ? ` / ${tr("billing.closings.skippedNotReady", { count: skipped })}`
+              : ""),
+          color: "green",
+        });
+      }
+      router.refresh();
+    });
+  };
 
   const columns: Column<BillingClosing>[] = [
     {
@@ -236,6 +307,14 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
       title={tr("common.billingClosing")}
     >
       <DataTable
+        bulkActions={[
+          {
+            label: tr("billing.closings.generateInvoicesInBulk"),
+            icon: <IconFileInvoice size={16} />,
+            color: "blue",
+            onAction: bulkProcess,
+          },
+        ]}
         columns={columns}
         data={filtered}
         defaultSort={{ key: "closingDate", dir: "desc" }}
@@ -264,6 +343,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
             </Stack>
           </Group>
         )}
+        selectable
         urlState
       />
 

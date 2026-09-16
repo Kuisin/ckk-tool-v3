@@ -13,6 +13,8 @@ import type {
   DeliveryNoteStatus,
 } from "@/components/shipping/delivery-notes/model";
 import { checkPermission } from "@/lib/authz";
+import { customerFacingProductLabel } from "@/lib/customer-product-code-core";
+import { fetchCustomerProductLabels } from "@/lib/customer-product-codes";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
@@ -203,5 +205,24 @@ async function fetchDeliveryNoteRow(
   ) {
     return null;
   }
-  return mapDeliveryNote(row, forDocument);
+  const note = mapDeliveryNote(row, forDocument);
+  // 相手の品番を品名欄に併記する（顧客品番 — MS04）。**宛先の取引先**で引く
+  // ので、閲覧者が誰でも同じものが出る（書類の言語と同じ考え方）。登録が
+  // 無ければ自社の品名だけ = 従来どおり。1 件取得のときだけ行う — 一覧で
+  // やると 1 行ごとに引くことになる。
+  const labels = await fetchCustomerProductLabels(
+    row.recipientBpId,
+    note.items.map((it) => Number(it.productId)),
+  );
+  if (labels.size === 0) return note;
+  return {
+    ...note,
+    items: note.items.map((it) => ({
+      ...it,
+      productName: customerFacingProductLabel(
+        it.productName,
+        labels.get(Number(it.productId)),
+      ),
+    })),
+  };
 }

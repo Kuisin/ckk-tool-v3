@@ -23,6 +23,8 @@ import {
   inBillingWindow,
   jstMidnightOf,
 } from "@/components/billing/closings/model";
+import { resolveDueDate } from "@/lib/billing-terms-core";
+import { chargesTotal } from "@/lib/charge-core";
 import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -30,7 +32,21 @@ import { lineAmountYen } from "@/lib/money";
 
 // ── 締日処理行のマッピング ───────────────────────────────────────────────────
 
-const CLOSING_INCLUDE = { customerBp: true };
+const CLOSING_INCLUDE = {
+  customerBp: {
+    include: {
+      // 支払条件（支払サイト・支払日）と請求先 — 支払期日と宛先の根拠。
+      customerAttrs: {
+        select: {
+          paymentTermsDays: true,
+          paymentDay: true,
+          billingBpId: true,
+          billingBp: { select: { name: true } },
+        },
+      },
+    },
+  },
+};
 
 type ClosingRow = NonNullable<Awaited<ReturnType<typeof findClosingRow>>>;
 
@@ -92,6 +108,12 @@ const SHIPMENT_INCLUDE = {
   deliveryNotes: {
     select: { yearMonth: true, seq: true },
     orderBy: [{ yearMonth: "asc" as const }, { seq: "asc" as const }],
+  },
+  // 追加料金（送料など）。製品明細と同じく請求書へ写る — 締日画面の予定額と
+  // 発行される請求書が同じものを数えるよう、ここで一緒に読む。
+  charges: {
+    orderBy: { sortOrder: "asc" as const },
+    include: { chargeItem: { select: { name: true, taxCategoryId: true } } },
   },
 };
 
@@ -197,9 +219,13 @@ export function billableUnitPrice(it: {
 export function shipmentAmount(s: BillableShipment): number {
   // 行ごとに円へ丸めてから足す（lib/money.ts の方針）— 締日処理が作る請求書の
   // 明細と同じ丸め方なので、締日画面の予定額と発行後の請求額がずれない。
-  return s.items.reduce(
-    (sum, it) => sum + lineAmountYen(billableUnitPrice(it), it.quantity),
-    0,
+  // **追加料金（送料など）も足す** — 請求書には明細として載るので、ここで
+  // 数えないと締日画面の予定額だけが少なく出る。
+  return (
+    s.items.reduce(
+      (sum, it) => sum + lineAmountYen(billableUnitPrice(it), it.quantity),
+      0,
+    ) + chargesTotal(s.charges.map((c) => ({ amount: Number(c.amount) })))
   );
 }
 
@@ -288,7 +314,26 @@ export async function fetchClosing(
         ? await fetchShipmentsFromInvoice(row.invoiceYearMonth, row.invoiceSeq)
         : [];
 
-  return { ...closing, shipments };
+  const attrs = row.customerBp.customerAttrs;
+  return {
+    ...closing,
+    shipments,
+    // 請求先が顧客本人と同じなら出さない（全顧客の 99% は null）。
+    billingPartyName:
+      attrs?.billingBpId && attrs.billingBpId !== row.customerBpId
+        ? localized(attrs.billingBp?.name as LocalizedText | null)
+        : null,
+    paymentTermsDays: attrs?.paymentTermsDays ?? null,
+    paymentDay: attrs?.paymentDay ?? null,
+    // 画面に出す期日も請求書に刷る期日も同じ関数を通す
+    // （別々に計算すると、生成前に見えていた期日と請求書が食い違う）。
+    dueDate: resolveDueDate(row.closingDate, {
+      paymentTermsDays: attrs?.paymentTermsDays,
+      paymentDay: attrs?.paymentDay,
+    })
+      .toISOString()
+      .slice(0, 10),
+  };
 }
 
 // ── runClosing 用: 顧客ごとの締日確定 ────────────────────────────────────────

@@ -18,13 +18,18 @@
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import {
-  addDays,
   closingDateReached,
   parseYearMonth,
 } from "@/components/billing/closings/model";
 import { isoDateJst } from "@/components/sales/price-lists/model";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
+import {
+  resolveBillingPartyId,
+  resolveDueDate,
+} from "@/lib/billing-terms-core";
+import { customerFacingProductLabel } from "@/lib/customer-product-code-core";
+import { fetchCustomerProductLabels } from "@/lib/customer-product-codes";
 import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -51,9 +56,6 @@ const INVOICES_PATH = "/billing/invoices";
 
 // 消費税率 — 顧客属性 tax_type から導出（監査 P0-5: 10% 固定を廃止）。
 // 表は lib/tax-rate.ts（見積書の税額計算も同じ表を見る）。
-
-/** 支払サイト既定値（日）— BpCustomerAttrs.paymentTermsDays 未設定時。 */
-const DEFAULT_PAYMENT_TERMS_DAYS = 30;
 
 /** DATE / タイムスタンプ → JST 暦日 "YYYY-MM-DD"。null はそのまま。 */
 function isoDateOrNull(value: Date | null | undefined): string | null {
@@ -112,6 +114,25 @@ export interface RunClosingResult {
   created: number;
   updated: number;
   skipped: number;
+}
+
+/**
+ * 請求明細 1 行（製品 / 追加料金で同じ形）。`items.push` するために、
+ * flatMap の戻り値を推論に任せず明示する。
+ */
+interface InvoiceItemDraft {
+  deliveryOrderYearMonth: string;
+  deliveryOrderSeq: number;
+  deliveryNoteYearMonth: string | null;
+  deliveryNoteSeq: number | null;
+  orderLineId: string | null;
+  description: { ja: string; en: string };
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  taxCategoryId: number | null;
+  taxRate: number;
+  sortOrder: number;
 }
 
 /**
@@ -187,9 +208,17 @@ export async function processClosing(
     const customerTaxCategoryId =
       closing.customerBp.customerAttrs?.taxCategoryId ?? null;
 
+    // 相手の品番（顧客品番 — MS04）。摘要に併記して相手が照合できるようにする。
+    // **発行時に焼き込む** — 摘要は請求書が凍結する文言なので、あとで品番を
+    // 直しても発行済みの請求書は動かない（金額・税率と同じ扱い）。
+    const customerLabels = await fetchCustomerProductLabels(
+      closing.customerBpId,
+      shipments.flatMap((s) => s.items.map((it) => it.productId)),
+    );
+
     // 明細: 出荷書明細 1 行 = 請求明細 1 行（摘要 = 製品名 + ロット、由来キー付き）。
     let sortOrder = 0;
-    const items = shipments.flatMap((s) => {
+    const items: InvoiceItemDraft[] = shipments.flatMap((s) => {
       const deliveryNote = s.deliveryNotes[0] ?? null;
       return s.items.map((it) => {
         // 単価は**その行**から取る（1 出荷書に単価の異なる複数明細が載り得る
@@ -198,20 +227,25 @@ export async function processClosing(
         // 唯一の定義元で、締日画面の予定額と同じ数え方になる。
         const unitPrice = billableUnitPrice(it);
         const name = it.product.name as LocalizedText | null;
+        const customerLabel = customerLabels.get(it.productId);
+        // 顧客品番はロット番号より内側に付ける — 「製品名（相手の品番）ロット …」
+        // ではなく「製品名（相手の品番） ロット …」の順で読めるようにするため。
+        const withCode = (locale: string) =>
+          customerFacingProductLabel(localized(name, locale), customerLabel);
         const ja =
           it.lotNumber != null
             ? label("billing.closingActions.itemNameWithLot", "ja", "", {
-                name: localized(name, "ja"),
+                name: withCode("ja"),
                 lot: it.lotNumber,
               })
-            : localized(name, "ja");
+            : withCode("ja");
         const en =
           it.lotNumber != null
             ? label("billing.closingActions.itemNameWithLot", "en", "", {
-                name: localized(name, "en"),
+                name: withCode("en"),
                 lot: it.lotNumber,
               })
-            : localized(name, "en");
+            : withCode("en");
         // 税率は**行ごと**に決まる（製品ごとに課税区分が違い得る）。基準日は
         // 注文日 — 税率改正をまたぐ締日でも、引き渡しの約束をした時点の率が付く。
         // 落ち方は billingBasisDate 1 本に閉じてある。
@@ -245,6 +279,50 @@ export async function processClosing(
       });
     });
 
+    // 追加料金（送料など）— 出荷書の行をそのまま請求明細にする。
+    //
+    // 税率の基準日は製品明細と違って **出荷日**（注文日ではない）。送料は
+    // 引き渡しの約束ではなく「運んだ日の役務」なので、率が改正されたときに
+    // 効くべきなのは運んだ日の率。区分は料金マスタが持つものを使い、顧客の
+    // 指定があればそちらが勝つのは製品と同じ規約。
+    const chargeItems = shipments.flatMap((s) => {
+      const deliveryNote = s.deliveryNotes[0] ?? null;
+      return s.charges.map((c) => {
+        const name = c.chargeItem.name as LocalizedText | null;
+        const suffix = c.description ? `（${c.description}）` : "";
+        const lineTax = resolveLineTax(catalog, {
+          customerTaxCategoryId,
+          productTaxCategoryId: c.chargeItem.taxCategoryId,
+          basisDate: billingBasisDate(
+            null,
+            isoDateOrNull(s.shippedAt),
+            isoDateJst(closing.closingDate),
+          ),
+        });
+        return {
+          deliveryOrderYearMonth: s.yearMonth,
+          deliveryOrderSeq: s.seq,
+          deliveryNoteYearMonth: deliveryNote?.yearMonth ?? null,
+          deliveryNoteSeq: deliveryNote?.seq ?? null,
+          // 追加料金は注文明細に紐づかない（出荷 1 件にかかるもの）。
+          orderLineId: null,
+          description: {
+            ja: `${localized(name, "ja")}${suffix}`,
+            en: `${localized(name, "en")}${suffix}`,
+          },
+          quantity: c.quantity,
+          unitPrice: Number(c.unitPrice),
+          // 金額は出荷書の行に焼き込んだものをそのまま使う（掛け算をやり直すと
+          // 締日画面の予定額と 1 円ずれ得る）。
+          amount: Number(c.amount),
+          taxCategoryId: lineTax.categoryId,
+          taxRate: lineTax.rate,
+          sortOrder: sortOrder++,
+        };
+      });
+    });
+    items.push(...chargeItems);
+
     // 小計は**明細に印字される金額の和**（lib/money.ts の方針）。出荷書側で
     // 合算してから丸めると「小計 ≠ 明細の合計」になり、PDF と弥生 CSV も
     // 食い違う（両者が別々にもう一度丸めていたため）。
@@ -260,16 +338,26 @@ export async function processClosing(
     const { taxType, taxRate } = headerTaxSnapshot(items, buckets, catalog);
 
     const closingDate = closing.closingDate;
-    const paymentTermsDays =
-      closing.customerBp.customerAttrs?.paymentTermsDays ??
-      DEFAULT_PAYMENT_TERMS_DAYS;
     // 請求期間 = 前回締日の翌日〜締日（対象出荷の収集と同じ区切り —
     // fetchBillableShipmentsForClosing / billingWindowFor）。
     const periodFrom = await resolveBillingPeriodStart(
       closing.customerBpId,
       closingDate,
     );
-    const dueDate = addDays(closingDate, paymentTermsDays);
+    // 支払期日は取引先マスタの **支払サイト + 支払日** から決める
+    // （lib/billing-terms-core.ts が唯一の定義元）。支払日が未設定の取引先は
+    // 従来どおり 締日 + 支払サイト（未設定は 30 日）で、1 日も変わらない。
+    const dueDate = resolveDueDate(closingDate, {
+      paymentTermsDays: closing.customerBp.customerAttrs?.paymentTermsDays,
+      paymentDay: closing.customerBp.customerAttrs?.paymentDay,
+    });
+    // 請求書の宛先 — **請求先が設定されていればそちら**（別法人へまとめて
+    // 請求する取引がある）。設定が無ければ従来どおり顧客本人。
+    // 束ねはしない — 締日行は 顧客 × 締日 のままで、変わるのは宛先だけ。
+    const billingPartyId = resolveBillingPartyId(
+      closing.customerBpId,
+      closing.customerBp.customerAttrs?.billingBpId,
+    );
     // 支店: 対象出荷に共通の支店があれば引き継ぐ。
     const branchIds = new Set(shipments.map((s) => s.customerBranchBpId ?? ""));
     const customerBranchBpId =
@@ -299,8 +387,11 @@ export async function processClosing(
         data: {
           yearMonth,
           seq,
-          customerBpId: closing.customerBpId,
-          customerBranchBpId,
+          customerBpId: billingPartyId,
+          // 請求先が別法人のときは支店の引き継ぎをしない（その支店は顧客側の
+          // 組織で、請求先の支店ではないため）。
+          customerBranchBpId:
+            billingPartyId === closing.customerBpId ? customerBranchBpId : null,
           salesRepId,
           billingPeriodFrom: periodFrom,
           billingPeriodTo: closingDate,
@@ -350,7 +441,8 @@ export async function processClosing(
       tableName: "invoices",
       recordId: invoiceNumber,
       after: {
-        customerBpId: closing.customerBpId,
+        customerBpId: billingPartyId,
+        orderingCustomerBpId: closing.customerBpId,
         billingPeriodFrom: periodFrom.toISOString(),
         billingPeriodTo: closingDate.toISOString(),
         subtotal,
@@ -390,4 +482,69 @@ export async function processClosing(
       ),
     );
   }
+}
+
+// ── まとめて請求書を生成 ─────────────────────────────────────────────────────
+
+export interface BulkClosingResult {
+  /** 生成できた請求書の番号（処理した順）。 */
+  invoiceNumbers: string[];
+  /** 生成できなかった締日行と、その理由。 */
+  failures: { id: string; customerName: string; error: string }[];
+}
+
+/**
+ * 選んだ締日行をまとめて請求書にする。
+ *
+ * 月初に何十件も並ぶ PENDING を 1 件ずつ開いて押していくのは、ただの作業で
+ * しかないうえ、押し忘れた 1 件が翌月まで請求されないまま残る。
+ *
+ * ★ **1 件ずつ独立して処理する**（全体を 1 つの tx にしない）。1 社で
+ *   「対象の出荷が無い」「締日前」のような理由が出ても、他の会社の請求書は
+ *   出せたほうがよい — まとめて失敗させると、結局 1 件ずつやり直すことになる。
+ *   失敗した行は理由つきで返し、画面が並べる。
+ *
+ * ★ 請求書の中身の作り方は processClosing と**同じ関数**を通る。別に書くと、
+ *   1 件ずつ押したときとまとめて押したときで請求額が変わり得る。
+ */
+export async function processClosings(
+  ids: string[],
+): Promise<ActionResult<BulkClosingResult>> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("billing_closing", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
+
+  // 名前は失敗の説明に要る（id だけ返されても、どの会社か分からない）。
+  const rows = await prisma.billingClosing.findMany({
+    where: { id: { in: ids } },
+    select: {
+      id: true,
+      closingDate: true,
+      customerBp: { select: { name: true } },
+    },
+    orderBy: [{ closingDate: "asc" }],
+  });
+  const nameById = new Map(
+    rows.map((r) => [
+      r.id,
+      localized(r.customerBp.name as LocalizedText | null),
+    ]),
+  );
+
+  const invoiceNumbers: string[] = [];
+  const failures: BulkClosingResult["failures"] = [];
+  for (const row of rows) {
+    const result = await processClosing(row.id);
+    if (result.ok && result.data) {
+      invoiceNumbers.push(result.data.invoiceNumber);
+    } else if (!result.ok) {
+      failures.push({
+        id: row.id,
+        customerName: nameById.get(row.id) ?? row.id,
+        error: result.error,
+      });
+    }
+  }
+  return actionOk({ invoiceNumbers, failures });
 }

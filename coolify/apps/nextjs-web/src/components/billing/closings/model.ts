@@ -42,6 +42,16 @@ export interface ClosingShipmentRow {
 export interface BillingClosingDetail extends BillingClosing {
   /** 請求期間の対象出荷（PENDING: 未請求候補 / PROCESSED: 請求書由来）。 */
   shipments: ClosingShipmentRow[];
+  /**
+   * 請求書の宛先（取引先マスタの請求先。顧客本人なら null）。
+   * 「なぜこの請求書は別の会社宛なのか」を画面から読めるようにするため。
+   */
+  billingPartyName: string | null;
+  /** 支払条件（取引先マスタ）— 支払期日の根拠として出す。 */
+  paymentTermsDays: number | null;
+  paymentDay: number | null;
+  /** 支払期日（この締日で生成される請求書の期限。ISO date）。 */
+  dueDate: string;
 }
 
 /** 暦日（UTC 起点の Date）→ "YYYY-MM-DD"。 */

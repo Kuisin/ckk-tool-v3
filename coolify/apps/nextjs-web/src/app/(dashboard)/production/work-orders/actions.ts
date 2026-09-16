@@ -30,6 +30,12 @@ import {
 import { type MaterialAtp, materialAtp } from "@/lib/atp";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
+import {
+  type ChargeRowsInput,
+  chargeAuditShape,
+  chargeRowsSchema,
+  prepareChargeRows,
+} from "@/lib/charges";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   type DesignFileRole,
@@ -1195,6 +1201,101 @@ export async function copyWorkOrder(
 }
 
 /** キャンセル — DRAFT / PENDING_APPROVAL のみ。注文明細ロックも解除する。 */
+// ── 追加料金（送料など。§8 出荷 / §9 請求） ─────────────────────────────────
+
+/**
+ * 指示書の追加料金を保存（渡された行が保存後の全部）。
+ *
+ * ここは **予定** — 「このロットは送料が要る」と生産側が先に書いておく置き場で、
+ * 請求されるのは出荷書側の行。出荷書を作るときにこの行が複写される。
+ *
+ * ★ 直せるのは**完了・キャンセル前まで**。完了した指示書の予定を後から書き換えても
+ *   出荷書へはもう複写されないので、直した気になるだけの操作になる
+ *   （直したいのは出荷書側なので、そちらで直させる）。
+ */
+export async function saveWorkOrderCharges(
+  workOrderNumber: number,
+  rows: ChargeRowsInput,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
+    return actionError(tr("common.scopeDenied"));
+  }
+  const parsed = chargeRowsSchema.safeParse(rows);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
+
+  const wo = await prisma.workOrder.findUnique({
+    where: { workOrderNumber },
+    select: {
+      id: true,
+      status: true,
+      yearMonth: true,
+      seq: true,
+      charges: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          chargeItemId: true,
+          description: true,
+          quantity: true,
+          unitPrice: true,
+          amount: true,
+        },
+      },
+    },
+  });
+  if (!wo)
+    return actionError(tr("production.workOrderActions.workOrderNotFound"));
+  if (wo.status === "COMPLETED" || wo.status === "CANCELLED") {
+    return actionError(tr("charges.workOrderClosedForCharges"));
+  }
+
+  const prepared = await prepareChargeRows(parsed.data);
+  if (!prepared.ok) return actionError(tr(prepared.errorKey));
+
+  const actor = await getCurrentActorId();
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.workOrderCharge.deleteMany({ where: { workOrderId: wo.id } });
+      if (prepared.rows.length > 0) {
+        await tx.workOrderCharge.createMany({
+          data: prepared.rows.map((r) => ({
+            workOrderId: wo.id,
+            chargeItemId: r.chargeItemId,
+            description: r.description,
+            quantity: r.quantity,
+            unitPrice: r.unitPrice,
+            amount: r.amount,
+            sortOrder: r.sortOrder,
+            createdBy: actor,
+          })),
+        });
+      }
+    });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, tr("charges.couldNotSave"), tr));
+  }
+
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "work_orders",
+    recordId: String(workOrderNumber),
+    before: {
+      charges: chargeAuditShape(
+        wo.charges.map((c) => ({
+          ...c,
+          unitPrice: Number(c.unitPrice),
+          amount: Number(c.amount),
+        })),
+      ),
+    },
+    after: { charges: chargeAuditShape(prepared.rows) },
+  });
+  revalidate(workOrderNumber, formatDocNumber("WOR", wo));
+  return actionOk();
+}
+
 export async function cancelWorkOrder(
   workOrderNumber: number,
 ): Promise<ActionResult> {

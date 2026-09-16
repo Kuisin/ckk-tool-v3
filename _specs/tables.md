@@ -23,6 +23,35 @@
 >   書類・製品の `currency` 列（products / quotes / order_acceptances / invoices に
 >   追加。既定 'JPY'、FK なし — 既存 price_list_entries.currency と同じ規約）が指す。
 >   レートは手動更新の分析用換算（会計処理用ではない）。注文明細はヘッダから読む。
+> - `master.prisma`: `charge_items` — 料金マスタ（送料などの追加項目）。製品の代金以外に
+>   請求するものを表す場所がこれまで無く、備考に書いて人が請求書へ足すか単価に混ぜるしか
+>   なかった（どちらも後から「何にいくら掛かったのか」を読めない）。**金額の決まり方が
+>   2 通りある**ので `amount_mode` で分ける: FIXED = マスタの金額をそのまま使う（担当者ごとに
+>   ぶれてはいけないもの）/ VARIABLE = 使うたびに人が入れる（送料のように実費が都度違う
+>   もの）。判定の唯一の定義元は nextjs-web の `lib/charge-core.ts`（画面の入力欄の活性と
+>   サーバーの保存が同じ関数を見る）。税区分は項目自身が持つ（送料は課税・印紙代は非課税）。
+>   管理は MS0G。
+> - `production.prisma` / `shipping.prisma`: `work_order_charges` / `delivery_order_charges`
+>   — 追加料金の行。**2 つに分かれているのは意味が違うから**（作業計画と実績と同じ）:
+>   指示書側が**予定**（生産側が「このロットは送料が要る」と先に書く）、出荷書側が**確定**で
+>   請求されるのはこちら。出荷書を作るとき、載せたロットの指示書から複写する（同じ指示書を
+>   2 行以上載せても 1 回だけ）。複写後は出荷書側だけを直す — 実費・箱数・同梱で要らなく
+>   なった、は出荷のときにしか決まらない。金額は行に焼き込む（マスタを直しても既に書いた行は
+>   動かない）。締日処理が出荷書側の行を請求明細へ写し、税率の基準日は製品明細と違って
+>   **出荷日**（送料は引き渡しの約束ではなく運んだ日の役務のため）。
+> - `master.prisma`: `customer_product_codes` — 顧客専用の製品コード（製品 × 顧客の別名）。
+>   相手は**自分の品番で**注文を出し、自分の品番で納品書・請求書を照合するが、こちらの
+>   製品コードも製品名も相手の書類には出てこない。`products.match_names` が「誰が書いても
+>   こう読めるはず」という全社共通の別名なのに対し、こちらは「**この顧客だけ**がこう呼ぶ」
+>   という対応で、同じ品番を別の顧客が別の製品に使っていても衝突しない（unique は顧客ごと
+>   — `(customer_bp_id, product_id)` と `(customer_bp_id, code)` の 2 本）。用途は 3 つ:
+>   (1) AI 突合 — 顧客が確定している注文書では**最優先**で当てる（学習エイリアス
+>   `match_aliases` より先。あちらは実績からの推測、こちらは人がマスタに登録した事実。
+>   曖昧なら当てない = `lib/customer-product-code-core.ts` が唯一の判定元）/
+>   (2) 納品書・請求書への印字（自社の品名は必ず残し、相手の表記は括弧で添える。請求書は
+>   摘要を**発行時に焼き込む**ので、あとで品番を直しても発行済みは動かない）/
+>   (3) 画面での検索（製品一覧・製品ピッカー）。`aliases` は旧品番などの**突合専用**で
+>   印字しない。支店は親会社の登録を引き継ぐ。管理は MS04 の「顧客品番」タブ。
 > - `display.prisma`: 管理ディスプレイ（下記 Display 節。管理は SY09 の中）
 > - `kiosk.prisma`: `kiosk_cards` / `kiosk_device_locations` / `kiosk_device_logs` / `kiosk_devices` / `kiosk_floor_maps` / `kiosk_link_requests` / `kiosk_sessions` /
 >   `kiosk_unlock_pins` — メンテナンス退出 PIN の履歴。現行値は
@@ -692,6 +721,14 @@ Table order_acceptances {
   status          ORDER_ACCEPTANCE_STATUS [not null, default: 'PENDING']
   total_amount    numeric(12,2)            // 注文明細から自動計算
   order_doc_file_id uuid [ref: > files.id] // 受領した注文書 PDF
+  // 作り直し元（キャンセル済みの注文請書）。確定済みの請書は明細を編集できない
+  // ので、直したいときの手順は「ごとキャンセル → その請書から作り直す」1 つだけ。
+  // キャンセルは配下の未着手指示書も連鎖で止めるので、作り直した側で改めて手配する。
+  // 紐付けを残すのは「あの注文はどうなったのか」を後から追えるようにするため —
+  // 無いとキャンセルした請書が、指示書も出荷も無い行き止まりに見える。
+  // **1 対 N**（unique にしない）— 1 件を 2 件に割って作り直すことがある。
+  replaces_year_month char(6)
+  replaces_seq    int
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp
@@ -1582,6 +1619,16 @@ Table invoice_tax_summaries {
   }
 }
 
+// 支払期日は 取引先マスタの **支払サイト + 支払日** から決まる
+// （lib/billing-terms-core.ts resolveDueDate が唯一の定義元）。支払日が設定
+// されていればそれが期日を決め、「締日 + 支払サイト」は最短の期日（下限）に
+// なる — 日本の商習慣は「月末締め翌月末払い」のように日付で決まるので、
+// 日数だけの期日は実際の入金日と一致せず、入金消込の基準にならない。
+// 支払日が無い取引先は従来どおり 締日 + 支払サイト（未設定は 30 日）。
+//
+// 請求書の宛先は **請求先（bp_customer_attrs.billing_bp_id）が設定されて
+// いればそちら**。締日行は 顧客 × 締日 のままで、束ねはしない（宛先だけが
+// 変わる）。1 通に束ねるのは締日行の単位そのものを変える話。
 Table billing_closings {
   id              uuid [pk]
   customer_bp_id  uuid [not null, ref: > business_partners.id]
