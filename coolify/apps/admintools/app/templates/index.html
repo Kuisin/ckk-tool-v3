@@ -193,6 +193,16 @@
       {% if q.get('err') %}<div class="card err">{{ q.get('err') }}</div>{% endif %}
 
       <div class="card">
+        <h2>Sakura 管理者ログイン</h2>
+        <p class="muted">
+          {% if sakura.source == 'db' %}設定済み（adminTools・{{ sakura.updated_at }} 更新）
+          {% elif sakura.source == 'env' %}設定済み（環境変数 SAKURA_ID/SAKURA_PW・レガシー）
+          {% else %}<span style="color:#b91c1c">未設定 — 同期できません</span>{% endif %}
+        </p>
+        <button class="btn-sub" type="button" onclick="openSakuraSettings()">編集</button>
+      </div>
+
+      <div class="card">
         <h2>同期 (DB → さくらコントロールパネル)</h2>
         <p class="muted"><b>username@{{ domain }}</b> をメールボックスとして作成。ユーザー名とメールアドレスが異なる場合はエイリアスも作成します（2段階）。実行前に内容を確認できます。</p>
         <button class="btn-sync" type="button" onclick="openSyncPreview()" {% if sync.running %}disabled{% endif %}>{% if sync.running %}同期中…{% else %}同期内容を確認{% endif %}</button>
@@ -260,6 +270,19 @@
     <!-- ===== KOT import log app ===== -->
     <div class="app-view" id="app-kot"{% if active_app == 'kot' %} style="display:block"{% endif %}>
       <div class="crumb"><a href="/">← アプリ一覧</a> ／ 勤怠インポートログ</div>
+      {% if q.get('err') %}<div class="card err">{{ q.get('err') }}</div>{% endif %}
+
+      <div class="card">
+        <h2>King of Time 管理者ログイン</h2>
+        <p class="muted">
+          {% if kot.source == 'db' %}設定済み（adminTools・kot-import が起動時に読み込みます）
+          {% elif kot.source == 'env' %}設定済み（環境変数 KOT_ID/KOT_PW・レガシー）
+          {% else %}<span style="color:#b91c1c">未設定 — インポートは失敗します</span>{% endif %}
+        </p>
+        {% if kot and not kot.db_reachable %}<p class="muted" style="color:#b91c1c">KOT_DB_URL が未設定のため、ここから編集できません。</p>{% endif %}
+        <button class="btn-sub" type="button" onclick="openKotSettings()" {% if kot and not kot.db_reachable %}disabled{% endif %}>編集</button>
+      </div>
+
       <div class="card">
         <h2>King of Time インポートログ</h2>
         <p class="muted">kot-import コンテナの実行履歴（最新50件）。<button class="btn-sub" type="button" onclick="loadImports()">更新</button></p>
@@ -333,7 +356,59 @@
     </div>
   </div>
 
+  <!-- Sakura admin credentials modal -->
+  <div class="modal-bg" id="sakura-modal">
+    <div class="modal">
+      <h3>Sakura 管理者ログインを編集</h3>
+      <p class="muted">空欄のまま保存した項目は変更しません。値は暗号化して保存されます。</p>
+      <form method="post" action="/settings/sakura/update" onsubmit="closeSakuraSettings()">
+        <label>ドメイン名 / メールアドレス（ログインID）</label>
+        <input type="text" name="sakura_id" id="sakura-id" placeholder="変更する場合のみ入力">
+        <label>パスワード</label>
+        <input type="text" name="sakura_pw" id="sakura-pw" placeholder="変更する場合のみ入力">
+        <div class="actions">
+          <button type="button" class="btn-sub" onclick="closeSakuraSettings()">キャンセル</button>
+          <button type="submit" class="btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- KOT admin credentials modal -->
+  <div class="modal-bg" id="kot-modal">
+    <div class="modal">
+      <h3>King of Time 管理者ログインを編集</h3>
+      <p class="muted">空欄のまま保存した項目は変更しません。値は暗号化して保存され、kot-import が次回実行時に読み込みます。</p>
+      <form method="post" action="/settings/kot/update" onsubmit="closeKotSettings()">
+        <label>ログインID</label>
+        <input type="text" name="kot_id" id="kot-id" placeholder="変更する場合のみ入力">
+        <label>パスワード</label>
+        <input type="text" name="kot_pw" id="kot-pw" placeholder="変更する場合のみ入力">
+        <div class="actions">
+          <button type="button" class="btn-sub" onclick="closeKotSettings()">キャンセル</button>
+          <button type="submit" class="btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
+    function openSakuraSettings() {
+      document.getElementById('sakura-id').value = '';
+      document.getElementById('sakura-pw').value = '';
+      document.getElementById('sakura-modal').style.display = 'flex';
+    }
+    function closeSakuraSettings() { document.getElementById('sakura-modal').style.display = 'none'; }
+    document.getElementById('sakura-modal').addEventListener('click', e => { if (e.target.id === 'sakura-modal') closeSakuraSettings(); });
+
+    function openKotSettings() {
+      document.getElementById('kot-id').value = '';
+      document.getElementById('kot-pw').value = '';
+      document.getElementById('kot-modal').style.display = 'flex';
+    }
+    function closeKotSettings() { document.getElementById('kot-modal').style.display = 'none'; }
+    document.getElementById('kot-modal').addEventListener('click', e => { if (e.target.id === 'kot-modal') closeKotSettings(); });
+
     async function openSyncPreview() {
       const modal = document.getElementById('sync-modal');
       const body = document.getElementById('sync-preview-body');
@@ -344,7 +419,7 @@
         const d = await (await fetch('/sync/preview')).json();
         const esc = s => (s || '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
         let h = '';
-        if (!d.env_ok) h += '<div class="card err">SAKURA_ID / SAKURA_PW が未設定です。<code>.env</code> を設定し adminTools を再作成してください。同期できません。</div>';
+        if (!d.env_ok) h += '<div class="card err">Sakura 管理者ログインが未設定です。上の「Sakura 管理者ログイン」カードから編集するか、SAKURA_ID / SAKURA_PW を設定してください。同期できません。</div>';
         h += `<p><b>① ユーザー作成 / 更新: ${d.user_count} 件</b> <span class="muted">メールボックス <code>username@${esc(d.domain)}</code></span></p>`;
         h += `<details><summary>一覧を表示</summary><div style="max-height:150px;overflow:auto;font-size:12px;margin-top:6px">${d.users.map(u => esc(u.mailbox)).join('<br>') || '—'}</div></details>`;
         h += `<p style="margin-top:12px"><b>② エイリアス作成: ${d.alias_count} 件</b> <span class="muted">ユーザー名 ≠ メールアドレスの場合</span></p>`;

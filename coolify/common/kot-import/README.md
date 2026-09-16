@@ -6,7 +6,8 @@ on a schedule. Replicates `kuisin/ckk-tool-compose` `_automation/bpo_kot`
 (`export_daily_csv.py` + `db.py` vendored under `kot/`).
 
 **Coolify-managed** — app `kot-import` in project ckk, environment `common`, follows
-`main`; env vars (`KOT_ID` / `KOT_PW` / `DB_PASSWORD`) live in Coolify. Do **not**
+`main`; env vars (`KOT_ID` / `KOT_PW` / `DB_PASSWORD` / `CRED_ENCRYPTION_KEY` — the
+last must match adminTools', see Notes below) live in Coolify. Do **not**
 run `deploy-stack.sh kot-import` (it would start a second importer). Data goes to
 **`ckk-db-main`** (db `ckk`, schema `kot`) — there is no separate `kot-db` any more,
 and dev has no importer of its own. The run log is read by admintools
@@ -43,7 +44,13 @@ INSERT INTO employees (employee_code, username) VALUES (1001, 'k.sawada') ...;
 manually, a CSV, or a future sync.)
 
 ## Notes
-- Credentials are read from the environment (`KOT_ID`/`KOT_PW`) — no `.env` file is
-  needed inside the container. Without them the scheduler idles.
+- Credentials (`KOT_ID`/`KOT_PW`) can be edited from adminTools (`/kot` → 「King of
+  Time 管理者ログイン」→ 編集) — that writes an encrypted row into `kot_settings`
+  (same `ckk` DB, `kot` schema) which this container reads on every run
+  (`db.get_kot_credentials()`), no redeploy needed. Decrypting that row requires
+  `CRED_ENCRYPTION_KEY` to match adminTools' — without it (or the env vars/DB row
+  both absent) the env vars `KOT_ID`/`KOT_PW` are the fallback, same as before this
+  feature existed. A missing credential now fails fast and is recorded to
+  `import_runs` (visible in adminTools' `/kot` log) rather than silently idling.
 - Downloaded CSVs live in the container's `kot/downloads/` (ephemeral); the source
   of truth is the DB.
