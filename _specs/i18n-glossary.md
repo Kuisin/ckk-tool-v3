@@ -266,6 +266,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | ロール | Role | 角色 |
 | 締日 / 支払日 | Closing day / Payment day | 结算日 / 付款日 |
 | 支払サイト | Payment terms | 账期 |
+| 支払期日 | Due date | 付款期日 |
 | 与信限度額 | Credit limit | 信用额度 |
 | 課税 / 非課税 / 軽減税率 | Taxable / Tax exempt / Reduced tax rate | 应税 / 免税 / 减免税率 |
 | 製品に従う（顧客の課税区分） | Follow the product | 按产品 |

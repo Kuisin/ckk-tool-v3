@@ -1582,6 +1582,16 @@ Table invoice_tax_summaries {
   }
 }
 
+// 支払期日は 取引先マスタの **支払サイト + 支払日** から決まる
+// （lib/billing-terms-core.ts resolveDueDate が唯一の定義元）。支払日が設定
+// されていればそれが期日を決め、「締日 + 支払サイト」は最短の期日（下限）に
+// なる — 日本の商習慣は「月末締め翌月末払い」のように日付で決まるので、
+// 日数だけの期日は実際の入金日と一致せず、入金消込の基準にならない。
+// 支払日が無い取引先は従来どおり 締日 + 支払サイト（未設定は 30 日）。
+//
+// 請求書の宛先は **請求先（bp_customer_attrs.billing_bp_id）が設定されて
+// いればそちら**。締日行は 顧客 × 締日 のままで、束ねはしない（宛先だけが
+// 変わる）。1 通に束ねるのは締日行の単位そのものを変える話。
 Table billing_closings {
   id              uuid [pk]
   customer_bp_id  uuid [not null, ref: > business_partners.id]

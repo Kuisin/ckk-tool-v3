@@ -804,7 +804,8 @@
     "priceListInactive": "价格表已停用",
     "priceListExpired": "价格表不在有效期",
     "dateFrom": "起始日期",
-    "dateTo": "结束日期"
+    "dateTo": "结束日期",
+    "billTo": "请款对象"
   },
   "shell": {
     "appsLabel": "应用",
@@ -2009,7 +2010,20 @@
       "shipmentNote": "{quantity} 支・{amount}",
       "titleWithClosingDate": "{customer}（{date} 结算）",
       "shipmentsCoveredWithCount": "对象出货（{count}）",
-      "confirmGenerateBody": "将根据 {customer} 的 {date} 结算生成请款单（草稿）。对象出货的 {count} 条记录将成为明细。"
+      "confirmGenerateBody": "将根据 {customer} 的 {date} 结算生成请款单（草稿）。对象出货的 {count} 条记录将成为明细。",
+      "dueDate": "付款期日",
+      "monthEnd": "月末",
+      "dayOfMonth": "{day} 日",
+      "termsDayOnly": "结算日之后的第一个 {day} 付款",
+      "termsDaysThenDay": "结算日 + {days} 天之后的第一个 {day} 付款",
+      "termsDaysOnly": "结算日 + {days} 天（未设置付款日）",
+      "termsDefault": "结算日 + {days} 天（账期与付款日均未设置时的默认）",
+      "generateInvoicesInBulk": "批量生成请款单",
+      "nothingToProcess": "没有可处理的结算",
+      "selectPendingPastClosingDate": "请选择未处理且已过结算日的行",
+      "invoicesWereGenerated": "已生成 {count} 张请款单",
+      "someCouldNotBeProcessed": "{count} 张未能生成",
+      "skippedNotReady": "{count} 项不在对象内（已处理或尚未到结算日）"
     },
     "invoices": {
       "issueThePdf": "发行 PDF",

@@ -23,6 +23,7 @@ import {
   inBillingWindow,
   jstMidnightOf,
 } from "@/components/billing/closings/model";
+import { resolveDueDate } from "@/lib/billing-terms-core";
 import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -30,7 +31,21 @@ import { lineAmountYen } from "@/lib/money";
 
 // ── 締日処理行のマッピング ───────────────────────────────────────────────────
 
-const CLOSING_INCLUDE = { customerBp: true };
+const CLOSING_INCLUDE = {
+  customerBp: {
+    include: {
+      // 支払条件（支払サイト・支払日）と請求先 — 支払期日と宛先の根拠。
+      customerAttrs: {
+        select: {
+          paymentTermsDays: true,
+          paymentDay: true,
+          billingBpId: true,
+          billingBp: { select: { name: true } },
+        },
+      },
+    },
+  },
+};
 
 type ClosingRow = NonNullable<Awaited<ReturnType<typeof findClosingRow>>>;
 
@@ -288,7 +303,26 @@ export async function fetchClosing(
         ? await fetchShipmentsFromInvoice(row.invoiceYearMonth, row.invoiceSeq)
         : [];
 
-  return { ...closing, shipments };
+  const attrs = row.customerBp.customerAttrs;
+  return {
+    ...closing,
+    shipments,
+    // 請求先が顧客本人と同じなら出さない（全顧客の 99% は null）。
+    billingPartyName:
+      attrs?.billingBpId && attrs.billingBpId !== row.customerBpId
+        ? localized(attrs.billingBp?.name as LocalizedText | null)
+        : null,
+    paymentTermsDays: attrs?.paymentTermsDays ?? null,
+    paymentDay: attrs?.paymentDay ?? null,
+    // 画面に出す期日も請求書に刷る期日も同じ関数を通す
+    // （別々に計算すると、生成前に見えていた期日と請求書が食い違う）。
+    dueDate: resolveDueDate(row.closingDate, {
+      paymentTermsDays: attrs?.paymentTermsDays,
+      paymentDay: attrs?.paymentDay,
+    })
+      .toISOString()
+      .slice(0, 10),
+  };
 }
 
 // ── runClosing 用: 顧客ごとの締日確定 ────────────────────────────────────────

@@ -804,7 +804,8 @@
     "priceListInactive": "Price list disabled",
     "priceListExpired": "Price list out of valid period",
     "dateFrom": "From date",
-    "dateTo": "To date"
+    "dateTo": "To date",
+    "billTo": "Bill-to"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -2009,7 +2010,20 @@
       "shipmentNote": "{quantity} pcs · {amount}",
       "titleWithClosingDate": "{customer} ({date} closing)",
       "shipmentsCoveredWithCount": "Covered shipments ({count})",
-      "confirmGenerateBody": "Generates a draft invoice from {customer}'s {date} closing. The {count} covered shipments become the line items."
+      "confirmGenerateBody": "Generates a draft invoice from {customer}'s {date} closing. The {count} covered shipments become the line items.",
+      "dueDate": "Due date",
+      "monthEnd": "the last day",
+      "dayOfMonth": "day {day}",
+      "termsDayOnly": "the first {day} after the closing date",
+      "termsDaysThenDay": "the first {day} on or after the closing date + {days} days",
+      "termsDaysOnly": "closing date + {days} days (no payment day set)",
+      "termsDefault": "closing date + {days} days (the default — neither payment terms nor payment day is set)",
+      "generateInvoicesInBulk": "Generate invoices in bulk",
+      "nothingToProcess": "There is nothing to process",
+      "selectPendingPastClosingDate": "Select rows that are unprocessed and past their closing date",
+      "invoicesWereGenerated": "Generated {count} invoice(s)",
+      "someCouldNotBeProcessed": "{count} could not be generated",
+      "skippedNotReady": "{count} skipped (already processed, or before the closing date)"
     },
     "invoices": {
       "issueThePdf": "Issue the PDF",
