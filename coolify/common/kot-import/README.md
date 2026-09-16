@@ -7,7 +7,9 @@ on a schedule. Replicates `kuisin/ckk-tool-compose` `_automation/bpo_kot`
 
 **Coolify-managed** — app `kot-import` in project ckk, environment `common`, follows
 `main`; env vars (`KOT_ID` / `KOT_PW` / `DB_PASSWORD` / `CRED_ENCRYPTION_KEY` — the
-last must match adminTools', see Notes below) live in Coolify. Do **not**
+last must match adminTools' and is already provisioned on all three apps
+(2026-09-16) by `coolify/platform/add-cred-encryption-key.sh`, see Notes below)
+live in Coolify. Do **not**
 run `deploy-stack.sh kot-import` (it would start a second importer). Data goes to
 **`ckk-db-main`** (db `ckk`, schema `kot`) — there is no separate `kot-db` any more,
 and dev has no importer of its own. The run log is read by admintools

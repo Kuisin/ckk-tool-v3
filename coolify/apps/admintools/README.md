@@ -60,7 +60,9 @@ rollback), both `build_pack: dockerfile`, `base_directory: /coolify/apps/adminto
 | `admintools-dev`  | `dev`  | `:8090` | `admin-dev.ckk-tool.co.jp` |
 | `admintools-main` | `main` | `:8091` | `admin.ckk-tool.co.jp` |
 
-Both share the one `admintools` DB schema. Coolify `fqdn` is cleared (Coolify's
+Each uses the `admintools` schema **in its own environment's DB** (dev →
+`ckk-db-dev`, main → `ckk-db-main`), so they do **not** share rows — verified
+2026-09-16 from their `DATABASE_URL`s. Coolify `fqdn` is cleared (Coolify's
 proxy is unused); public access is via the Cloudflare Tunnel → the `admin-dev` /
 `admin` socat relays in the `nextjs-web` stack → the host ports. **No built-in
 auth** — both hostnames are gated by a **Cloudflare Access** allow-list; never
@@ -79,11 +81,14 @@ remove it.
   (`postgresql://kot:<pw>@ckk-db-main:5432/ckk` on main, `@ckk-db-dev:` on dev —
   the `kot` schema lives in the per-environment DB since 2026-08-24; a URL still
   pointing at the retired `shared-db` host makes the 勤怠インポートログ page fail
-  with `Temporary failure in name resolution`), `CRED_ENCRYPTION_KEY` (a Fernet
-  key — `python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
-  — **must be set to the exact same value in the `kot-import` app**, or it can't
-  decrypt a KOT_ID/PW saved here; encrypts the Sakura/KOT credentials at rest,
-  see above), the `LDAP_*` set (same
+  with `Temporary failure in name resolution`), `CRED_ENCRYPTION_KEY` (Fernet key
+  encrypting the Sakura/KOT credentials at rest, see above — **must be the exact
+  same value in `admintools-dev` / `admintools-main` / `kot-import`**, or
+  kot-import can't decrypt a KOT_ID/PW saved here. **Already provisioned on all
+  three (2026-09-16)** by `coolify/platform/add-cred-encryption-key.sh`, which is
+  idempotent and never overwrites an existing key; the value lives in
+  `/data/coolify/source/.cred-encryption-key` on the server with a Keychain backup
+  at `security find-generic-password -s ckk-cred-encryption-key -w`), the `LDAP_*` set (same
   values as `vpn-ldap/ldap.env`), and `RESTORE_AGENT_URL` /
   `RESTORE_AGENT_TOKEN` (for the 復元 tool; token must match the db-backup
   `restore-agent`). Reachability to `ckk-db-*`, `vpn-ldap`, `restore-agent`,
