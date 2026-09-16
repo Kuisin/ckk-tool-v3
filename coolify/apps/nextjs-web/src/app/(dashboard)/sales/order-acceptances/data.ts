@@ -18,6 +18,7 @@ import type {
   OrderAcceptanceView,
 } from "@/components/sales/order-acceptances/model";
 import { checkPermission } from "@/lib/authz";
+import { loadCustomerProductCodes } from "@/lib/customer-product-codes";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
@@ -137,10 +138,12 @@ export async function fetchOrderAcceptance(
   });
 
   // 製品が決まっていない行は、読み取った品名から候補を出す（1 クエリでまとめて）。
+  // 顧客が決まっていれば、その顧客の品番表（MS04 の「顧客品番」）を先に当てる。
   const productSuggestions = await suggestProducts(
     r.items
       .filter((it) => it.productId == null && it.productText)
       .map((it) => it.productText as string),
+    { customerCodes: await loadCustomerProductCodes(r.customerBpId) },
   );
 
   const items: OrderAcceptanceItemView[] = r.items.map((it) => ({

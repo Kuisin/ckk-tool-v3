@@ -297,6 +297,9 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 図面データ / プレビュー用 / 参考資料 | Drawing file / Preview / Reference | 图纸文件 / 预览 / 参考资料 |
 | 汎用（受注元を限定しない図面） | Generic | 通用 |
 | キーワード | Keywords | 关键词 |
+| 顧客品番 | Customer part number | 客户料号 |
+| 顧客品名 | Customer part name | 客户品名 |
+| 別表記（旧品番など） | Alternate codes | 其他料号 |
 
 ### 3.6 販売・価格
 

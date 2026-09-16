@@ -6143,6 +6143,24 @@
       "rateRange": "税率请输入 0 到 100 之间的值",
       "useDefault": "按默认",
       "followProduct": "按产品"
+    },
+    "customerProductCodes": {
+      "title": "客户料号",
+      "help": "各客户对该产品的称呼。登记后，该客户的订单可按料号一次匹配，并在送货单・请款单的品名栏一并显示对方的料号。",
+      "empty": "尚未登记客户料号",
+      "code": "客户料号",
+      "codePlaceholder": "对方的料号",
+      "name": "客户品名",
+      "namePlaceholder": "对方使用的品名（可选）",
+      "aliases": "其他料号",
+      "aliasesPlaceholder": "旧料号等（仅用于匹配，不打印）",
+      "addRow": "添加客户",
+      "everyRowNeedsCustomerAndCode": "请在每一行输入客户和客户料号",
+      "selectACustomer": "请选择客户",
+      "enterACustomerCode": "请输入客户料号",
+      "duplicateCustomerRow": "同一客户出现了两行。每个客户只保留一行",
+      "duplicateCodeForCustomer": "客户料号“{code}”在同一客户中重复",
+      "couldNotSave": "客户料号保存失败"
     }
   },
   "manual": {
@@ -8458,7 +8476,8 @@
       "effectiveFrom": "生效日",
       "ratePercent": "税率（%）",
       "taxCategoryId": "税种",
-      "shortLabel": "单据上的显示"
+      "shortLabel": "单据上的显示",
+      "customerProductCodes": "客户料号"
     },
     "tableFieldLabels": {
       "kiosk_devices": {

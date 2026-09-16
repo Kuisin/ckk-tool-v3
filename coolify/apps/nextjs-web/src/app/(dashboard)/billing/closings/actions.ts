@@ -25,6 +25,8 @@ import {
 import { isoDateJst } from "@/components/sales/price-lists/model";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
+import { customerFacingProductLabel } from "@/lib/customer-product-code-core";
+import { fetchCustomerProductLabels } from "@/lib/customer-product-codes";
 import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -187,6 +189,14 @@ export async function processClosing(
     const customerTaxCategoryId =
       closing.customerBp.customerAttrs?.taxCategoryId ?? null;
 
+    // 相手の品番（顧客品番 — MS04）。摘要に併記して相手が照合できるようにする。
+    // **発行時に焼き込む** — 摘要は請求書が凍結する文言なので、あとで品番を
+    // 直しても発行済みの請求書は動かない（金額・税率と同じ扱い）。
+    const customerLabels = await fetchCustomerProductLabels(
+      closing.customerBpId,
+      shipments.flatMap((s) => s.items.map((it) => it.productId)),
+    );
+
     // 明細: 出荷書明細 1 行 = 請求明細 1 行（摘要 = 製品名 + ロット、由来キー付き）。
     let sortOrder = 0;
     const items = shipments.flatMap((s) => {
@@ -198,20 +208,25 @@ export async function processClosing(
         // 唯一の定義元で、締日画面の予定額と同じ数え方になる。
         const unitPrice = billableUnitPrice(it);
         const name = it.product.name as LocalizedText | null;
+        const customerLabel = customerLabels.get(it.productId);
+        // 顧客品番はロット番号より内側に付ける — 「製品名（相手の品番）ロット …」
+        // ではなく「製品名（相手の品番） ロット …」の順で読めるようにするため。
+        const withCode = (locale: string) =>
+          customerFacingProductLabel(localized(name, locale), customerLabel);
         const ja =
           it.lotNumber != null
             ? label("billing.closingActions.itemNameWithLot", "ja", "", {
-                name: localized(name, "ja"),
+                name: withCode("ja"),
                 lot: it.lotNumber,
               })
-            : localized(name, "ja");
+            : withCode("ja");
         const en =
           it.lotNumber != null
             ? label("billing.closingActions.itemNameWithLot", "en", "", {
-                name: localized(name, "en"),
+                name: withCode("en"),
                 lot: it.lotNumber,
               })
-            : localized(name, "en");
+            : withCode("en");
         // 税率は**行ごと**に決まる（製品ごとに課税区分が違い得る）。基準日は
         // 注文日 — 税率改正をまたぐ締日でも、引き渡しの約束をした時点の率が付く。
         // 落ち方は billingBasisDate 1 本に閉じてある。

@@ -6143,6 +6143,24 @@
       "rateRange": "税率は 0 以上 100 以下で入力してください",
       "useDefault": "既定に従う",
       "followProduct": "製品に従う"
+    },
+    "customerProductCodes": {
+      "title": "顧客品番",
+      "help": "この製品を顧客が何と呼ぶか。登録すると、その顧客の注文書は品番で 1 発で突合でき、納品書・請求書の品名欄に相手の品番を併記します。",
+      "empty": "顧客品番は登録されていません",
+      "code": "顧客品番",
+      "codePlaceholder": "相手の品番",
+      "name": "顧客品名",
+      "namePlaceholder": "相手が呼ぶ品名（任意）",
+      "aliases": "別表記",
+      "aliasesPlaceholder": "旧品番など（突合のみ・印字しない）",
+      "addRow": "顧客を追加",
+      "everyRowNeedsCustomerAndCode": "各行に顧客と顧客品番を入力してください",
+      "selectACustomer": "顧客を選択してください",
+      "enterACustomerCode": "顧客品番を入力してください",
+      "duplicateCustomerRow": "同じ顧客の行が 2 つあります。1 顧客につき 1 行にしてください",
+      "duplicateCodeForCustomer": "顧客品番「{code}」が同じ顧客の中で重複しています",
+      "couldNotSave": "顧客品番の保存に失敗しました"
     }
   },
   "manual": {
@@ -8458,7 +8476,8 @@
       "effectiveFrom": "適用開始日",
       "ratePercent": "税率（%）",
       "taxCategoryId": "税区分",
-      "shortLabel": "帳票の区分表示"
+      "shortLabel": "帳票の区分表示",
+      "customerProductCodes": "顧客品番"
     },
     "tableFieldLabels": {
       "kiosk_devices": {
