@@ -184,6 +184,14 @@ export interface OrderAcceptanceView {
   /** 作成者（app.users.display_name）。 */
   createdByName: string | null;
   quoteNumber: string | null;
+  /**
+   * 作り直し元のキャンセル済み注文請書（ORD-…）。確定済みの請書は明細を
+   * 編集できないので、直したいときは ごとキャンセル → 作り直す。その 2 通を
+   * つなぐ印。
+   */
+  replacesNumber: string | null;
+  /** この（キャンセル済みの）請書を作り直した先。1 件を 2 件に割ることもある。 */
+  replacedByNumbers: string[];
   orderDate: string | null; // yyyy-mm-dd
   notes: string | null;
   items: OrderAcceptanceItemView[];

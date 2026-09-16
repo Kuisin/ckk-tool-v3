@@ -7141,7 +7141,16 @@
       "showTheDocumentPane": "書類を開く",
       "hideTheDocument": "隠す",
       "customerProvidesDeliveryNote": "顧客提供の納品書",
-      "priceNoTierLine": "行{row} 数量 {quantity} に該当する価格表の数量段階なし"
+      "priceNoTierLine": "行{row} 数量 {quantity} に該当する価格表の数量段階なし",
+      "recreate": "作り直す",
+      "recreateFromThis": "この注文請書から作り直す",
+      "recreatedFrom": "作り直し元",
+      "recreatedAsTitle": "作り直し先",
+      "recreatedAs": "{number} として作り直しました",
+      "theCancelledOrderAcceptance": "この注文請書の元になったキャンセル済みの請書",
+      "youCanRecreateOnceCancelled": "キャンセル済みの注文請書からのみ作り直せます",
+      "confirmRecreateMessage": "{number} の内容を引き継いだ下書きを作ります。紐付けは残ります。",
+      "alreadyRecreatedAs": "この注文請書はすでに {numbers} として作り直されています。二重に起こしていないか確認してください。"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "この明細の親書類",
@@ -7604,7 +7613,10 @@
       "takenOverManually": "自動抽出を待たず手入力へ切り替え",
       "targetCancelRequestNotFound": "対象のキャンセル依頼が見つかりません",
       "targetNotFound": "対象の注文請書が見つかりません",
-      "unitPriceMin0": "単価は0以上"
+      "unitPriceMin0": "単価は0以上",
+      "onlyCancelledCanBeRecreated": "作り直せるのはキャンセル済みの注文請書だけです",
+      "recreatedFromCancelled": "キャンセル済みの {number} から作り直しました",
+      "recreatedAs": "{number} として作り直しました"
     },
     "quoteActions": {
       "createFailed": "見積書の作成に失敗しました",

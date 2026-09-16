@@ -89,6 +89,19 @@ model OrderAcceptance {
   notes       String?
   completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
   archivedAt  DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  // 作り直し元（キャンセル済みの注文請書）。
+  //
+  // 確定済み（COMPLETED）の請書は明細を編集できない（lib/order-line-check.ts）。
+  // 直したいときの手順は 1 つだけ: **ごとキャンセル → その請書から作り直す**。
+  // キャンセルは配下の未着手指示書も連鎖で止める（lib/order-line-cancel.ts）ので、
+  // 作り直した側で改めて手配することになる。
+  //
+  // 紐付けを残すのは「あの注文はどうなったのか」を後から追えるようにするため —
+  // キャンセルした請書だけが残ると、指示書も出荷も無い行き止まりに見える。
+  // 1 件を 2 件に割って作り直すこともあるので **1 対 N**（unique にしない）。
+  replacesYearMonth String? @map("replaces_year_month") @db.Char(6)
+  replacesSeq       Int?    @map("replaces_seq")
   // 営業担当 — 作成時に顧客の主担当（bp_sales_reps.is_primary）を複写した
   // スナップショット。顧客側の担当が替わっても過去書類は動かない。
   // 注文明細（order_lines）は行に複写せずここから読む。
@@ -107,6 +120,11 @@ model OrderAcceptance {
   createdByUser    User?            @relation("AcceptanceCreatedBy", fields: [createdBy], references: [id])
   salesRep         User?            @relation("AcceptanceSalesRep", fields: [salesRepId], references: [id])
 
+  // 元は消えても作り直した側は残す（SetNull）— 紐付けが切れるだけで、
+  // 作り直した請書そのものは業務データとして生きている。
+  replaces   OrderAcceptance?  @relation("AcceptanceReplaces", fields: [replacesYearMonth, replacesSeq], references: [yearMonth, seq], onDelete: SetNull, onUpdate: NoAction)
+  replacedBy OrderAcceptance[] @relation("AcceptanceReplaces")
+
   items          OrderLine[]
   cancelRequests OrderAcceptanceCancelRequest[]
 
@@ -114,6 +132,7 @@ model OrderAcceptance {
   @@index([status])
   // 注文明細の顧客絞り込みはヘッダ経由になるため必須
   @@index([customerBpId])
+  @@index([replacesYearMonth, replacesSeq])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, yearMonth, seq])
   @@map("order_acceptances")

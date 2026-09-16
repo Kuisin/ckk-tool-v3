@@ -7141,7 +7141,16 @@
       "showTheDocumentPane": "Expand the document",
       "hideTheDocument": "Hide",
       "customerProvidesDeliveryNote": "Customer-supplied delivery note",
-      "priceNoTierLine": "Line {row}: no price list quantity tier covers quantity {quantity}"
+      "priceNoTierLine": "Line {row}: no price list quantity tier covers quantity {quantity}",
+      "recreate": "Recreate",
+      "recreateFromThis": "Recreate from this order acceptance",
+      "recreatedFrom": "Recreated from",
+      "recreatedAsTitle": "Recreated as",
+      "recreatedAs": "Recreated as {number}",
+      "theCancelledOrderAcceptance": "The cancelled order acceptance this one came from",
+      "youCanRecreateOnceCancelled": "You can only recreate from a cancelled order acceptance",
+      "confirmRecreateMessage": "This creates a draft carrying over the contents of {number}. The link between the two is kept.",
+      "alreadyRecreatedAs": "This order acceptance has already been recreated as {numbers}. Check that you are not raising it twice."
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",
@@ -7604,7 +7613,10 @@
       "takenOverManually": "Switched to manual entry without waiting for automatic extraction",
       "targetCancelRequestNotFound": "The target cancellation request was not found",
       "targetNotFound": "The target order acceptance was not found",
-      "unitPriceMin0": "The unit price must be 0 or more"
+      "unitPriceMin0": "The unit price must be 0 or more",
+      "onlyCancelledCanBeRecreated": "Only a cancelled order acceptance can be recreated",
+      "recreatedFromCancelled": "Recreated from the cancelled {number}",
+      "recreatedAs": "Recreated as {number}"
     },
     "quoteActions": {
       "createFailed": "Could not create the quote",

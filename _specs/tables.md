@@ -705,6 +705,14 @@ Table order_acceptances {
   status          ORDER_ACCEPTANCE_STATUS [not null, default: 'PENDING']
   total_amount    numeric(12,2)            // 注文明細から自動計算
   order_doc_file_id uuid [ref: > files.id] // 受領した注文書 PDF
+  // 作り直し元（キャンセル済みの注文請書）。確定済みの請書は明細を編集できない
+  // ので、直したいときの手順は「ごとキャンセル → その請書から作り直す」1 つだけ。
+  // キャンセルは配下の未着手指示書も連鎖で止めるので、作り直した側で改めて手配する。
+  // 紐付けを残すのは「あの注文はどうなったのか」を後から追えるようにするため —
+  // 無いとキャンセルした請書が、指示書も出荷も無い行き止まりに見える。
+  // **1 対 N**（unique にしない）— 1 件を 2 件に割って作り直すことがある。
+  replaces_year_month char(6)
+  replaces_seq    int
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp
