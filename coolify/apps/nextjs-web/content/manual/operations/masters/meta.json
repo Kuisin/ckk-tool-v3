@@ -3,6 +3,7 @@
   "pages": [
     "business-partner",
     "product",
+    "tax-category",
     "material-type",
     "material",
     "process-step",

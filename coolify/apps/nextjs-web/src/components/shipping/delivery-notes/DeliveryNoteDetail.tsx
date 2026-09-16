@@ -41,6 +41,7 @@ import {
   markDelivered,
 } from "@/app/(dashboard)/shipping/delivery-notes/actions";
 import type { InvoiceLink } from "@/components/billing/invoices/model";
+import { taxBucketLabel } from "@/components/billing/invoices/model";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
@@ -71,7 +72,7 @@ import { formatMoney } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import { statusLabel } from "@/lib/status-map";
 import { DeliveryMethodBadge } from "./DeliveryNoteTable";
-import { type DeliveryNote, isEditable } from "./model";
+import { type DeliveryNote, deliveryNoteTotals, isEditable } from "./model";
 
 const BASE_PATH = "/shipping/delivery-notes";
 
@@ -97,6 +98,11 @@ export function DeliveryNoteDetail({
   const [isPending, startTransition] = useTransition();
   const [issueOpen, setIssueOpen] = useState(false);
   const [deliverOpen, setDeliverOpen] = useState(false);
+
+  // 小計 / 税率ごとの消費税 / 合計（税込）。価格記載なしの納品書では null。
+  // 請求書とまったく同じ数え方を通すので、納品書に刷った金額と後で届く請求書が
+  // 食い違わない。
+  const totals = deliveryNoteTotals(note);
 
   // PDF は発行後のみ閲覧できる（ルート側も 403 で拒否する）。
   const canViewPdf = note.status !== "DRAFT";
@@ -406,10 +412,22 @@ export function DeliveryNoteDetail({
           value={fmt.date(note.deliveredAt)}
         />
         <FieldValue
-          label={tr("common.totalAmount")}
+          label={tr("common.subtotal")}
+          value={totals ? <MoneyText ta="left" value={totals.subtotal} /> : "—"}
+        />
+        {/* 税率ごとに 1 行（請求書と同じ区分記載）。単一税率なら 1 行。 */}
+        {totals?.buckets.map((b) => (
+          <FieldValue
+            key={b.taxRate}
+            label={taxBucketLabel({ ...b, categoryName: null }, tr)}
+            value={<MoneyText ta="left" value={b.taxAmount} />}
+          />
+        ))}
+        <FieldValue
+          label={tr("common.totalAmountInclTax")}
           value={
-            note.includePrice ? (
-              <MoneyText ta="left" value={note.totalAmount} />
+            totals ? (
+              <MoneyText ta="left" value={totals.totalAmountInclTax} />
             ) : (
               "—"
             )
@@ -467,16 +485,45 @@ export function DeliveryNoteDetail({
                 </Table.Tr>
               ))}
             </Table.Tbody>
-            {note.includePrice && (
+            {totals && (
               <Table.Tfoot>
                 <Table.Tr>
-                  <Table.Td fw={700}>{tr("common.total")}</Table.Td>
+                  <Table.Td fw={700}>{tr("common.subtotal")}</Table.Td>
                   <Table.Td className="tabular-nums" fw={700} ta="right">
                     {note.totalQuantity}
                   </Table.Td>
                   <Table.Td />
                   <Table.Td fw={700} ta="right">
-                    <MoneyText value={note.totalAmount} />
+                    <MoneyText value={totals.subtotal} />
+                  </Table.Td>
+                  <Table.Td />
+                </Table.Tr>
+                {/* 税率ごとの区分記載。対象額は混在時だけ添える。 */}
+                {totals.buckets.map((b) => (
+                  <Table.Tr key={b.taxRate}>
+                    <Table.Td fw={700}>
+                      {taxBucketLabel({ ...b, categoryName: null }, tr)}
+                    </Table.Td>
+                    <Table.Td />
+                    <Table.Td c="dimmed" className="tabular-nums" ta="right">
+                      {totals.buckets.length > 1 ? (
+                        <MoneyText value={b.taxableBase} />
+                      ) : null}
+                    </Table.Td>
+                    <Table.Td fw={700} ta="right">
+                      <MoneyText value={b.taxAmount} />
+                    </Table.Td>
+                    <Table.Td />
+                  </Table.Tr>
+                ))}
+                <Table.Tr>
+                  <Table.Td fw={700}>
+                    {tr("common.totalAmountInclTax")}
+                  </Table.Td>
+                  <Table.Td />
+                  <Table.Td />
+                  <Table.Td fw={700} ta="right">
+                    <MoneyText value={totals.totalAmountInclTax} />
                   </Table.Td>
                   <Table.Td />
                 </Table.Tr>

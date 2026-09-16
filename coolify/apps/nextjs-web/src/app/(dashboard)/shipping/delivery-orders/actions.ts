@@ -24,6 +24,7 @@ import {
   loadCustomerPriceEntries,
   priceListUnitPrice,
 } from "@/app/(dashboard)/sales/order-acceptances/price-resolve";
+import { isoDateJst } from "@/components/sales/price-lists/model";
 import {
   combinabilityError,
   planAutoDeliveryNotes,
@@ -66,6 +67,8 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { loadTaxCatalog } from "@/lib/tax-categories";
+import { billingBasisDate, resolveLineTax } from "@/lib/tax-rate";
 import { distributeFinished } from "@/lib/work-order-alloc-core";
 import {
   computeFinishedQuantity,
@@ -1060,7 +1063,14 @@ async function planDeliveryOrderNotes(
   customerBranchBpId: string | null;
   deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
   salesRepId: string | null;
-  items: { productId: number; quantity: number; unitPrice: number }[];
+  items: {
+    productId: number;
+    quantity: number;
+    unitPrice: number;
+    /** 行の税スナップショット（請求単価と同じく確定時に焼き込む）。 */
+    taxCategoryId: number | null;
+    taxRate: number;
+  }[];
   notes: ReturnType<typeof planAutoDeliveryNotes>;
 } | null> {
   const row = await prisma.deliveryOrder.findUnique({
@@ -1069,6 +1079,11 @@ async function planDeliveryOrderNotes(
       type: true,
       customerBpId: true,
       customerBranchBpId: true,
+      shippedAt: true,
+      // 顧客の課税区分（null = 「製品に従う」）。
+      customerBp: {
+        select: { customerAttrs: { select: { taxCategoryId: true } } },
+      },
       items: {
         orderBy: { sortOrder: "asc" },
         select: {
@@ -1078,6 +1093,8 @@ async function planDeliveryOrderNotes(
           // 確定時に焼き込んだ請求単価が先。null は確定前 or 移行前のデータで、
           // そのときだけ注文明細の単価に落ちる（従来の経路）。
           unitPrice: true,
+          // 税率は製品ごとの課税区分で決まる（顧客が指定していればそちらが優先）。
+          product: { select: { taxCategoryId: true } },
           orderLine: {
             select: {
               unitPrice: true,
@@ -1087,6 +1104,8 @@ async function planDeliveryOrderNotes(
                   salesRepId: true,
                   deliveryMethod: true,
                   endUserBpId: true,
+                  // 税率の基準日（注文日）。null なら出荷日 → 今日へ落ちる。
+                  orderDate: true,
                 },
               },
             },
@@ -1108,6 +1127,10 @@ async function planDeliveryOrderNotes(
     null,
   );
 
+  const catalog = await loadTaxCatalog();
+  const customerTaxCategoryId =
+    row.customerBp.customerAttrs?.taxCategoryId ?? null;
+
   // combinabilityError が全明細で揃えることを保証しているので先頭行の値でよい。
   const deliveryMethod =
     row.items[0].orderLine?.acceptance.deliveryMethod ?? "NORMAL";
@@ -1121,13 +1144,28 @@ async function planDeliveryOrderNotes(
     customerBranchBpId: row.customerBranchBpId,
     deliveryMethod,
     salesRepId,
-    items: row.items.map((it) => ({
-      productId: it.productId,
-      quantity: it.quantity,
-      unitPrice:
-        unitPrices.get(it.id) ??
-        Number(it.unitPrice ?? it.orderLine?.unitPrice ?? 0),
-    })),
+    items: row.items.map((it) => {
+      // 請求単価と**同じ場所**で税も焼き込む。基準日は注文日（請求書と同じ規則で、
+      // 落ち方も billingBasisDate 1 本に閉じる）。
+      const lineTax = resolveLineTax(catalog, {
+        customerTaxCategoryId,
+        productTaxCategoryId: it.product.taxCategoryId,
+        basisDate: billingBasisDate(
+          isoDateOrNull(it.orderLine?.acceptance.orderDate),
+          isoDateOrNull(row.shippedAt),
+          isoDateJst(new Date()),
+        ),
+      });
+      return {
+        productId: it.productId,
+        quantity: it.quantity,
+        unitPrice:
+          unitPrices.get(it.id) ??
+          Number(it.unitPrice ?? it.orderLine?.unitPrice ?? 0),
+        taxCategoryId: lineTax.categoryId,
+        taxRate: lineTax.rate,
+      };
+    }),
     notes: planAutoDeliveryNotes({
       customerBpId: row.customerBpId,
       customerBranchBpId: row.customerBranchBpId,
@@ -1135,6 +1173,11 @@ async function planDeliveryOrderNotes(
       endUserBpId,
     }),
   };
+}
+
+/** DATE / タイムスタンプ → JST 暦日 "YYYY-MM-DD"。null はそのまま。 */
+function isoDateOrNull(value: Date | null | undefined): string | null {
+  return value == null ? null : isoDateJst(value);
 }
 
 // ── 過不足の承認（§8） ──────────────────────────────────────────────────────
@@ -1456,6 +1499,9 @@ export async function confirmDeliveryOrder(
                 amount: notePlan.includePrice
                   ? it.unitPrice * it.quantity
                   : null,
+                // 価格を載せない納品書は税も出さないので、区分・率も持たせない。
+                taxCategoryId: notePlan.includePrice ? it.taxCategoryId : null,
+                taxRate: notePlan.includePrice ? it.taxRate : null,
                 sortOrder: idx,
               })),
             },

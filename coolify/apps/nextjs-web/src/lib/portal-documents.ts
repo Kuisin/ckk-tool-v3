@@ -21,6 +21,7 @@
 import "server-only";
 
 import { quoteDisplayStatus } from "@/components/sales/quotes/model";
+import { deliveryNoteTotals } from "@/components/shipping/delivery-notes/model";
 import { type Prisma, prisma } from "./db";
 import { formatDocNumber } from "./doc-number";
 import { type LocalizedTextInput, localized } from "./format";
@@ -79,6 +80,30 @@ function money(v: { toString(): string } | null | undefined): string | null {
  * 小数第 2 位までの通貨（Decimal(12,2)）なので、銭単位の整数に直してから
  * 足す —— 浮動小数のまま足すと `¥10,000.000000000002` が出る。
  */
+/**
+ * 納品書の合計は**税込**にする。同じ納品書の PDF が「合計金額（税込）」を刷るので、
+ * ポータルの一覧だけ税抜だと取引先には別の書類に見える。
+ *
+ * 金額は他の欄と同じく文字列で返す（`sumAmounts` と同じ規約）。
+ */
+function noteTotalInclTax(r: {
+  includePrice: boolean;
+  items: readonly { amount: unknown; taxRate: unknown }[];
+  deliveryOrder: {
+    customerBp: { customerAttrs: { taxType: string } | null };
+  };
+}): string | null {
+  const totals = deliveryNoteTotals({
+    includePrice: r.includePrice,
+    customerTaxType: r.deliveryOrder.customerBp.customerAttrs?.taxType ?? null,
+    items: r.items.map((it) => ({
+      amount: it.amount != null ? Number(it.amount) : null,
+      taxRate: it.taxRate != null ? Number(it.taxRate) : null,
+    })),
+  });
+  return totals == null ? null : String(totals.totalAmountInclTax);
+}
+
 function sumAmounts(
   items: readonly { amount: string | null }[],
 ): string | null {
@@ -625,12 +650,18 @@ export async function getPortalDocument(
               quantity: true,
               unitPrice: true,
               amount: true,
+              // 税率は出荷書の確定時に行へ焼き込んである。
+              taxRate: true,
               product: { select: { name: true } },
             },
             orderBy: { sortOrder: "asc" },
           },
           deliveryOrder: {
             select: {
+              // 税率を持たない旧データのフォールバック元（顧客の課税区分）。
+              customerBp: {
+                select: { customerAttrs: { select: { taxType: true } } },
+              },
               items: {
                 select: {
                   orderLine: {
@@ -691,7 +722,9 @@ export async function getPortalDocument(
       return {
         ...base,
         issuedOn: iso(r.deliveredAt ?? r.createdAt),
-        totalAmount: r.includePrice ? sumAmounts(lineItems) : null,
+        // **合計は税込**。同じ納品書の PDF が「合計金額（税込）」を刷るので、
+        // ポータルの一覧だけ税抜だと取引先には別の書類に見える。
+        totalAmount: noteTotalInclTax(r),
         hasPdf: r.pdfFileId != null,
         pdfFileId: r.pdfFileId,
         currency: "JPY",

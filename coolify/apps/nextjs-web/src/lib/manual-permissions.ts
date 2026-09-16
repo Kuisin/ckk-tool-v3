@@ -105,6 +105,10 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
   },
   { path: "operations/masters/product/user", app: "master-products" },
   {
+    path: "operations/masters/tax-category/user",
+    app: "master-tax-categories",
+  },
+  {
     path: "operations/masters/material-type/user",
     app: "master-material-types",
   },
