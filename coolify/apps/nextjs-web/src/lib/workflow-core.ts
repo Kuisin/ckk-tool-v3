@@ -61,9 +61,8 @@ export interface CatalogStep {
   workLocationRequired?: boolean;
   /** 作業計画に 開始・終了時刻 が要るか。未指定は false。 */
   planTimeRequired?: boolean;
-  /** 作業計画に 数量 が要るか。未指定は false。 */
+  /** 作業計画に 担当者 が要るか。未指定は false。 */
   planAssigneeRequired?: boolean;
-  planQuantityRequired?: boolean;
   sortOrder: number;
 }
 

@@ -31,7 +31,6 @@ export default async function MasterProcessStepsPage() {
     workLocationRequired: r.workLocationRequired,
     planTimeRequired: r.planTimeRequired,
     planAssigneeRequired: r.planAssigneeRequired,
-    planQuantityRequired: r.planQuantityRequired,
     sortOrder: r.sortOrder,
     isActive: r.isActive,
   }));

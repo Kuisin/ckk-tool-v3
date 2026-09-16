@@ -109,7 +109,6 @@ const processStepSchema = (tr: (key: string) => string) =>
       workLocationRequired: z.boolean(),
       planTimeRequired: z.boolean(),
       planAssigneeRequired: z.boolean(),
-      planQuantityRequired: z.boolean(),
       approvalMinRank: z.string(),
       quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
       lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]),
@@ -156,7 +155,6 @@ export interface ProcessStepFormInitial {
   workLocationRequired: boolean;
   planTimeRequired: boolean;
   planAssigneeRequired: boolean;
-  planQuantityRequired: boolean;
   approvalMinRank: string;
   quantityTracking: string;
   lotInputMode: string;
@@ -228,7 +226,6 @@ export function ProcessStepForm({
       workLocationRequired: initial?.workLocationRequired ?? true,
       planTimeRequired: initial?.planTimeRequired ?? false,
       planAssigneeRequired: initial?.planAssigneeRequired ?? false,
-      planQuantityRequired: initial?.planQuantityRequired ?? false,
       approvalMinRank: initial?.approvalMinRank ?? "",
       quantityTracking:
         initial?.quantityTracking === "NONE" ||
@@ -304,7 +301,6 @@ export function ProcessStepForm({
       workLocationRequired: values.workLocationRequired,
       planTimeRequired: values.planTimeRequired,
       planAssigneeRequired: values.planAssigneeRequired,
-      planQuantityRequired: values.planQuantityRequired,
       approvalMinRank: values.approvalMinRank,
       quantityTracking: values.quantityTracking,
       lotInputMode: values.lotInputMode,
@@ -647,13 +643,6 @@ export function ProcessStepForm({
             description={tr("master.processSteps.planTimeRequiredHelp")}
             label={tr("master.processSteps.planTimeRequired")}
             {...form.getInputProps("planTimeRequired", { type: "checkbox" })}
-          />
-          <Switch
-            description={tr("master.processSteps.planQuantityRequiredHelp")}
-            label={tr("master.processSteps.planQuantityRequired")}
-            {...form.getInputProps("planQuantityRequired", {
-              type: "checkbox",
-            })}
           />
           <Switch
             label={

@@ -716,7 +716,6 @@ export async function fetchWorkOrder(
         workLocationRequired: s.processStep.workLocationRequired,
         planTimeRequired: s.processStep.planTimeRequired,
         planAssigneeRequired: s.processStep.planAssigneeRequired,
-        planQuantityRequired: s.processStep.planQuantityRequired,
         plans: s.plans,
       })),
       { workLocationsConfigured: locationsConfigured },
@@ -1024,7 +1023,6 @@ export async function fetchStepExecution(
         workLocationRequired: true,
         planTimeRequired: true,
         planAssigneeRequired: true,
-        planQuantityRequired: true,
       },
     }),
   ]);
@@ -1302,7 +1300,6 @@ export async function fetchStepExecution(
         workLocationRequired: stepCatalog?.workLocationRequired,
         planTimeRequired: stepCatalog?.planTimeRequired,
         planAssigneeRequired: stepCatalog?.planAssigneeRequired,
-        planQuantityRequired: stepCatalog?.planQuantityRequired,
       },
       { workLocationsConfigured: allOptions.length > 0 },
     ),

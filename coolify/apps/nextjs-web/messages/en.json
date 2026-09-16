@@ -2632,8 +2632,7 @@
       "selectAWorkLocation": "Select a work location",
       "start": "Start",
       "end": "End",
-      "enterStartAndEnd": "Enter the start and end times",
-      "enterQuantity": "Enter the quantity"
+      "enterStartAndEnd": "Enter the start and end times"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "Quantity and defects",
@@ -3014,7 +3013,6 @@
       "workLocationRequiredForPlan": "A work plan requires a work location",
       "planLockedByWorkOrderStatus": "Work plans cannot be changed while the work order is pending approval, completed or cancelled",
       "timeRequiredForPlan": "A work plan for this step requires start and end times",
-      "quantityRequiredForPlan": "A work plan for this step requires a quantity",
       "assigneeRequiredForPlan": "This step's work plan requires an assignee"
     },
     "workOrderActions": {
@@ -5415,8 +5413,6 @@
       "planRequiredFieldsHelp": "What this step's work plan must contain before requesting approval. The planned date is always required.",
       "planTimeRequired": "Work plan requires start and end times",
       "planTimeRequiredHelp": "Turn on for steps that must be scheduled to a time slot before approval.",
-      "planQuantityRequired": "Work plan requires a quantity",
-      "planQuantityRequiredHelp": "Turn on for steps whose plan is split by quantity (e.g. pieces per assignee).",
       "planTime": "Start / end time",
       "routeKind": "Step list",
       "routeKindPrep": "Preparation",
@@ -5426,7 +5422,6 @@
       "planRequiredShort": "Plan requires",
       "planFieldLocationShort": "Location",
       "planFieldTimeShort": "Time",
-      "planFieldQuantityShort": "Qty",
       "planAssigneeRequired": "Work plan requires an assignee",
       "planAssigneeRequiredHelp": "Turn on for steps where the assignee must be decided before requesting approval. By default the assignee is optional and can be decided on the floor after approval.",
       "planFieldAssigneeShort": "Assignee"
