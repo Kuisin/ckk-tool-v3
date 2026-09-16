@@ -16,6 +16,8 @@ from typing import Any
 import psycopg2
 from dotenv import load_dotenv
 
+import secret_box
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 load_dotenv(SCRIPT_DIR / ".env")
 
@@ -31,6 +33,33 @@ def get_connection():
     if not dsn:
         raise SystemExit("Set DATABASE_URL in bpo_kot/.env")
     return psycopg2.connect(dsn)
+
+
+def get_kot_credentials() -> tuple[str, str]:
+    """(kot_id, kot_pw) — a `kot_settings` row set via adminTools' 設定 modal wins
+    (role `kot` has search_path=kot, so admintools writes the same unqualified
+    table this reads); falls back to the KOT_ID/KOT_PW env vars when absent,
+    undecryptable (wrong/missing CRED_ENCRYPTION_KEY), or the DB is unreachable —
+    so an un-migrated deployment keeps working exactly as before."""
+    try:
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT 1 FROM information_schema.tables WHERE table_name = 'kot_settings'"
+                )
+                if cur.fetchone() is not None:
+                    cur.execute("SELECT kot_id_encrypted, kot_pw_encrypted FROM kot_settings WHERE id = 1")
+                    row = cur.fetchone()
+                    if row:
+                        kot_id, kot_pw = secret_box.decrypt(row[0]), secret_box.decrypt(row[1])
+                        if kot_id and kot_pw:
+                            return kot_id, kot_pw
+        finally:
+            conn.close()
+    except Exception as e:  # noqa: BLE001
+        print(f"[kot] could not read kot_settings: {e}")
+    return os.environ.get("KOT_ID", "").strip(), os.environ.get("KOT_PW", "").strip()
 
 
 def _check_table(conn, table: str) -> None:

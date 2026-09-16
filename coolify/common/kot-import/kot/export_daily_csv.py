@@ -2,12 +2,12 @@
 """
 KING OF TIME: Login at https://login.ta.kingoftime.jp/admin, navigate to daily
 data export via UI clicks, set date range to latest 7 days, download CSV.
-Credentials from bpo_kot/.env (KOT_ID, KOT_PW).
+Credentials come from db.get_kot_credentials() — a DB row set via adminTools'
+設定 modal, falling back to the KOT_ID/KOT_PW env vars.
 """
 
 from __future__ import annotations
 
-import os
 import time
 from datetime import date, timedelta
 from pathlib import Path
@@ -15,7 +15,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 
-from db import write_to_db
+from db import get_kot_credentials, write_to_db
 
 # Load .env from script directory
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -32,10 +32,9 @@ DOWNLOADS_DIR = SCRIPT_DIR / "downloads"
 
 
 def _load_credentials() -> tuple[str, str]:
-    kot_id = os.environ.get("KOT_ID", "").strip()
-    kot_pw = os.environ.get("KOT_PW", "").strip()
+    kot_id, kot_pw = get_kot_credentials()
     if not kot_id or not kot_pw:
-        raise SystemExit("Set KOT_ID and KOT_PW in bpo_kot/.env")
+        raise SystemExit("Set KOT_ID/KOT_PW via adminTools' 設定 modal (/kot) or in the environment")
     return kot_id, kot_pw
 
 

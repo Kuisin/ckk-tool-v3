@@ -4,15 +4,14 @@ set -u
 cd /app/kot
 INTERVAL="${KOT_INTERVAL_SECONDS:-21600}"   # default 6h
 
-if [ -z "${KOT_ID:-}" ] || [ -z "${KOT_PW:-}" ]; then
-  echo "[kot-import] KOT_ID / KOT_PW not set — sleeping (set them in .env to enable)."
-fi
-
+# KOT_ID/KOT_PW may come from the env (legacy) or a kot_settings DB row set via
+# adminTools' 設定 modal — db.get_kot_credentials() resolves this every run, so
+# we always try. A missing credential now fails fast inside runner.py and gets
+# recorded to import_runs (visible in adminTools' /kot log) instead of the
+# container silently idling with no visible reason.
 while true; do
   echo "[kot-import] ===== run $(date -u +%FT%TZ) ====="
-  if [ -n "${KOT_ID:-}" ] && [ -n "${KOT_PW:-}" ]; then
-    python runner.py || echo "[kot-import] run failed"
-  fi
+  python runner.py || echo "[kot-import] run failed"
   echo "[kot-import] sleeping ${INTERVAL}s"
   sleep "$INTERVAL"
 done

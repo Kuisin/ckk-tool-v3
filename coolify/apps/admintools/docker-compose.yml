@@ -23,9 +23,13 @@ services:
     restart: unless-stopped
     environment:
       - DATABASE_URL=postgresql+psycopg://admintools:${DB_PASSWORD:?set DB_PASSWORD in .env}@ckk-db-main:5432/ckk
-      # Sakura RS control-panel login — needed only for the sync action.
+      # Sakura RS control-panel login — legacy fallback, editable in the UI
+      # (/email → Sakura 管理者ログイン) once CRED_ENCRYPTION_KEY is set.
       - SAKURA_ID=${SAKURA_ID:-}
       - SAKURA_PW=${SAKURA_PW:-}
+      # Fernet key encrypting the Sakura/KOT admin credentials saved via the UI.
+      # Must match kot-import's CRED_ENCRYPTION_KEY (it decrypts the KOT row).
+      - CRED_ENCRYPTION_KEY=${CRED_ENCRYPTION_KEY:-}
       # API key for the external read/write JSON API (X-API-Key). Empty = API off.
       - ADMINTOOLS_API_KEY=${ADMINTOOLS_API_KEY:-}
       # Default mail domain for user emails (<ldap-username>@DEFAULT_DOMAIN).

@@ -11,8 +11,11 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy import func
 
-from . import ldap_client, mail_monitor, restore_client, sync
-from .db import DEFAULT_DOMAIN, GroupMember, MailAccount, SessionLocal, init_db
+from . import ldap_client, mail_monitor, restore_client, secret_box, sync
+from .db import (
+    DEFAULT_DOMAIN, GroupMember, MailAccount, SessionLocal, init_db,
+    sakura_credentials_configured, set_sakura_credentials,
+)
 
 
 def _gen_password() -> str:
@@ -233,7 +236,7 @@ def ldap_import_group(group_dn: str = Form(...)):
     return RedirectResponse(f"/email?imported={created}&updated={updated}&removed=0#user", status_code=303)
 
 
-def _render_index(request: Request, active_app: str):
+def _render_index(request: Request, active_app: str, **extra):
     with SessionLocal() as s:
         accounts = s.query(MailAccount).order_by(MailAccount.username).all()
         counts = dict(s.query(GroupMember.group_id, func.count()).group_by(GroupMember.group_id).all())
@@ -245,6 +248,9 @@ def _render_index(request: Request, active_app: str):
         "member_counts": counts,
         "sync": sync.get_state(),
         "domain": DEFAULT_DOMAIN,
+        "sakura": None,          # only /email computes this (avoids a DB round-trip elsewhere)
+        "kot": None,             # only /kot computes this (avoids a Postgres round-trip elsewhere)
+        **extra,
     })
 
 
@@ -255,12 +261,32 @@ def index(request: Request):
 
 @app.get("/email", response_class=HTMLResponse)
 def app_email(request: Request):
-    return _render_index(request, "email")
+    return _render_index(request, "email", sakura=sakura_credentials_configured())
+
+
+def _kot_settings_status() -> dict:
+    """Where the active KOT_ID/KOT_PW come from — DB row (set via adminTools'
+    設定 modal, read by the separate kot-import container) or the legacy env vars."""
+    url = os.environ.get("KOT_DB_URL", "")
+    db_ok = False
+    if url:
+        try:
+            import psycopg
+            with psycopg.connect(url, connect_timeout=5) as c, c.cursor() as cur:
+                cur.execute("SELECT 1 FROM information_schema.tables WHERE table_name = 'kot_settings'")
+                if cur.fetchone() is not None:
+                    cur.execute("SELECT kot_id_encrypted, kot_pw_encrypted FROM kot_settings WHERE id = 1")
+                    row = cur.fetchone()
+                    db_ok = bool(row and secret_box.decrypt(row[0]) and secret_box.decrypt(row[1]))
+        except Exception:  # noqa: BLE001
+            db_ok = False
+    env_ok = bool(os.environ.get("KOT_ID", "").strip() and os.environ.get("KOT_PW", "").strip())
+    return {"source": "db" if db_ok else ("env" if env_ok else "none"), "db_reachable": bool(url)}
 
 
 @app.get("/kot", response_class=HTMLResponse)
 def app_kot(request: Request):
-    return _render_index(request, "kot")
+    return _render_index(request, "kot", kot=_kot_settings_status())
 
 
 # ---------------------------------------------------------------------------
@@ -493,6 +519,17 @@ def delete_account(account_id: int):
     return RedirectResponse("/email", status_code=303)
 
 
+@app.post("/settings/sakura/update")
+def update_sakura_settings(sakura_id: str = Form(""), sakura_pw: str = Form("")):
+    """Edit the Sakura control-panel admin login used by /sync. Blank field =
+    keep the current value; both blank is a no-op (never clears credentials)."""
+    try:
+        set_sakura_credentials(sakura_id, sakura_pw)
+    except RuntimeError as e:  # CRED_ENCRYPTION_KEY not set
+        return RedirectResponse(f"/email?err={str(e)[:120]}", status_code=303)
+    return RedirectResponse("/email", status_code=303)
+
+
 @app.get("/sync/preview")
 def sync_preview():
     """The check state shown before syncing: planned user + alias creates."""
@@ -607,6 +644,43 @@ def imports_log():
              "days": r[3], "rows": r[4], "status": r[5], "message": r[6]} for r in rows]}
     except Exception as e:  # noqa: BLE001
         return {"enabled": True, "error": str(e)[:160], "runs": []}
+
+
+@app.post("/settings/kot/update")
+def update_kot_settings(kot_id: str = Form(""), kot_pw: str = Form("")):
+    """Edit the King of Time admin login used by the separate kot-import
+    container. Written into the shared `ckk` DB's `kot` schema (KOT_DB_URL) —
+    role `kot` has search_path=kot, so the unqualified table name resolves
+    there for both this write and kot-import's own reads. Blank field = keep
+    the current value; both blank is a no-op (never clears credentials)."""
+    kot_id, kot_pw = kot_id.strip(), kot_pw.strip()
+    url = os.environ.get("KOT_DB_URL", "")
+    if not url:
+        return RedirectResponse("/kot?err=KOT_DB_URL が未設定です", status_code=303)
+    if not kot_id and not kot_pw:
+        return RedirectResponse("/kot", status_code=303)
+    try:
+        enc_id = secret_box.encrypt(kot_id) if kot_id else None
+        enc_pw = secret_box.encrypt(kot_pw) if kot_pw else None
+    except RuntimeError as e:  # CRED_ENCRYPTION_KEY not set
+        return RedirectResponse(f"/kot?err={str(e)[:120]}", status_code=303)
+    import psycopg
+    with psycopg.connect(url, connect_timeout=5) as c, c.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS kot_settings (
+                id smallint PRIMARY KEY DEFAULT 1,
+                kot_id_encrypted text NOT NULL DEFAULT '',
+                kot_pw_encrypted text NOT NULL DEFAULT '',
+                updated_at timestamptz NOT NULL DEFAULT now()
+            )
+        """)
+        cur.execute("INSERT INTO kot_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING")
+        if enc_id is not None:
+            cur.execute("UPDATE kot_settings SET kot_id_encrypted = %s, updated_at = now() WHERE id = 1", (enc_id,))
+        if enc_pw is not None:
+            cur.execute("UPDATE kot_settings SET kot_pw_encrypted = %s, updated_at = now() WHERE id = 1", (enc_pw,))
+        c.commit()
+    return RedirectResponse("/kot", status_code=303)
 
 
 # ---------------------------------------------------------------------------

@@ -18,7 +18,7 @@ Deployed as two Coolify apps (`admintools-dev` / `admintools-main`) — see
 1. **Manage accounts in the UI** — add/edit/delete mailboxes (username, password,
    email, quota GB, active). Stored in Postgres (`mail_accounts`).
 2. **Sync to Sakura** — the *今すぐ同期* button logs into the Sakura control panel
-   (`SAKURA_ID`/`SAKURA_PW`, no 2FA) and reconciles:
+   (`SAKURA_ID`/`SAKURA_PW` — editable from the UI, see below — no 2FA) and reconciles:
    - creates/updates users (password + quota), removes users not in the DB
      (except `postmaster`),
    - creates mail **aliases** for accounts where the email's local part differs
@@ -28,7 +28,20 @@ Deployed as two Coolify apps (`admintools-dev` / `admintools-main`) — see
 Only **active** accounts are pushed. Deactivating (un-checking 有効) removes the
 user/alias on the next sync.
 
-3. **バックアップ / 復元**（`/backup`）— shared-db（`ckk`）と SeaweedFS ストレージ、
+3. **管理者ログインの編集**（`/email` の「Sakura 管理者ログイン」、`/kot` の「King of
+   Time 管理者ログイン」）— どちらも 編集 モーダルから ID/パスワードを変更できる。
+   保存すると `CRED_ENCRYPTION_KEY`（Fernet 鍵、`app/secret_box.py`）で暗号化して
+   DB に保存し、次回以降はそこから読む（空欄のまま保存した項目は変更しない）。
+   **Sakura** は `app_credentials`（admintools 自身の DB、`sync.py` が直接読む）。
+   **KOT** は共有 `ckk` DB の `kot` スキーマの `kot_settings`（role `kot` は
+   `search_path=kot` なので非修飾名でそのまま通る）— 別コンテナの `kot-import`
+   が毎回そこから読む（`db.get_kot_credentials()`）ので、編集は次回の
+   スケジュール実行から反映され、再デプロイは不要。どちらも DB 行が無い/復号
+   できない場合は `SAKURA_ID`/`SAKURA_PW`・`KOT_ID`/`KOT_PW` の環境変数に
+   フォールバックする（移行前の挙動のまま動く）。`CRED_ENCRYPTION_KEY` が未設定
+   だと保存は拒否される（平文保存はしない）。
+
+4. **バックアップ / 復元**（`/backup`）— shared-db（`ckk`）と SeaweedFS ストレージ、
    さらに Coolify 上のアプリ版数を、バックアップ時点へ復元する管理ツール。UI は
    db-backup スタックの `restore-agent`（Docker ソケットを持つ非公開サービス）を
    トークン付きで呼ぶだけで、この web アプリ自身はソケット・バックアップ実体に
@@ -61,11 +74,16 @@ remove it.
 - **Env vars are managed in Coolify** (Application → Environment Variables), not
   in a `.env`/`env_file`. Required keys: `DATABASE_URL`
   (`postgresql+psycopg://admintools:<pw>@ckk-db-main:5432/ckk`), `ADMINTOOLS_API_KEY`,
-  `SAKURA_ID`, `SAKURA_PW`, `DEFAULT_DOMAIN`, `KOT_DB_URL`
+  `SAKURA_ID`, `SAKURA_PW` (legacy fallback — editable in the UI, see above),
+  `DEFAULT_DOMAIN`, `KOT_DB_URL`
   (`postgresql://kot:<pw>@ckk-db-main:5432/ckk` on main, `@ckk-db-dev:` on dev —
   the `kot` schema lives in the per-environment DB since 2026-08-24; a URL still
   pointing at the retired `shared-db` host makes the 勤怠インポートログ page fail
-  with `Temporary failure in name resolution`), the `LDAP_*` set (same
+  with `Temporary failure in name resolution`), `CRED_ENCRYPTION_KEY` (a Fernet
+  key — `python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+  — **must be set to the exact same value in the `kot-import` app**, or it can't
+  decrypt a KOT_ID/PW saved here; encrypts the Sakura/KOT credentials at rest,
+  see above), the `LDAP_*` set (same
   values as `vpn-ldap/ldap.env`), and `RESTORE_AGENT_URL` /
   `RESTORE_AGENT_TOKEN` (for the 復元 tool; token must match the db-backup
   `restore-agent`). Reachability to `ckk-db-*`, `vpn-ldap`, `restore-agent`,
