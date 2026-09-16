@@ -18,13 +18,16 @@
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import {
-  addDays,
   closingDateReached,
   parseYearMonth,
 } from "@/components/billing/closings/model";
 import { isoDateJst } from "@/components/sales/price-lists/model";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
+import {
+  resolveBillingPartyId,
+  resolveDueDate,
+} from "@/lib/billing-terms-core";
 import { customerFacingProductLabel } from "@/lib/customer-product-code-core";
 import { fetchCustomerProductLabels } from "@/lib/customer-product-codes";
 import { prisma } from "@/lib/db";
@@ -53,9 +56,6 @@ const INVOICES_PATH = "/billing/invoices";
 
 // 消費税率 — 顧客属性 tax_type から導出（監査 P0-5: 10% 固定を廃止）。
 // 表は lib/tax-rate.ts（見積書の税額計算も同じ表を見る）。
-
-/** 支払サイト既定値（日）— BpCustomerAttrs.paymentTermsDays 未設定時。 */
-const DEFAULT_PAYMENT_TERMS_DAYS = 30;
 
 /** DATE / タイムスタンプ → JST 暦日 "YYYY-MM-DD"。null はそのまま。 */
 function isoDateOrNull(value: Date | null | undefined): string | null {
@@ -338,16 +338,26 @@ export async function processClosing(
     const { taxType, taxRate } = headerTaxSnapshot(items, buckets, catalog);
 
     const closingDate = closing.closingDate;
-    const paymentTermsDays =
-      closing.customerBp.customerAttrs?.paymentTermsDays ??
-      DEFAULT_PAYMENT_TERMS_DAYS;
     // 請求期間 = 前回締日の翌日〜締日（対象出荷の収集と同じ区切り —
     // fetchBillableShipmentsForClosing / billingWindowFor）。
     const periodFrom = await resolveBillingPeriodStart(
       closing.customerBpId,
       closingDate,
     );
-    const dueDate = addDays(closingDate, paymentTermsDays);
+    // 支払期日は取引先マスタの **支払サイト + 支払日** から決める
+    // （lib/billing-terms-core.ts が唯一の定義元）。支払日が未設定の取引先は
+    // 従来どおり 締日 + 支払サイト（未設定は 30 日）で、1 日も変わらない。
+    const dueDate = resolveDueDate(closingDate, {
+      paymentTermsDays: closing.customerBp.customerAttrs?.paymentTermsDays,
+      paymentDay: closing.customerBp.customerAttrs?.paymentDay,
+    });
+    // 請求書の宛先 — **請求先が設定されていればそちら**（別法人へまとめて
+    // 請求する取引がある）。設定が無ければ従来どおり顧客本人。
+    // 束ねはしない — 締日行は 顧客 × 締日 のままで、変わるのは宛先だけ。
+    const billingPartyId = resolveBillingPartyId(
+      closing.customerBpId,
+      closing.customerBp.customerAttrs?.billingBpId,
+    );
     // 支店: 対象出荷に共通の支店があれば引き継ぐ。
     const branchIds = new Set(shipments.map((s) => s.customerBranchBpId ?? ""));
     const customerBranchBpId =
@@ -377,8 +387,11 @@ export async function processClosing(
         data: {
           yearMonth,
           seq,
-          customerBpId: closing.customerBpId,
-          customerBranchBpId,
+          customerBpId: billingPartyId,
+          // 請求先が別法人のときは支店の引き継ぎをしない（その支店は顧客側の
+          // 組織で、請求先の支店ではないため）。
+          customerBranchBpId:
+            billingPartyId === closing.customerBpId ? customerBranchBpId : null,
           salesRepId,
           billingPeriodFrom: periodFrom,
           billingPeriodTo: closingDate,
@@ -428,7 +441,8 @@ export async function processClosing(
       tableName: "invoices",
       recordId: invoiceNumber,
       after: {
-        customerBpId: closing.customerBpId,
+        customerBpId: billingPartyId,
+        orderingCustomerBpId: closing.customerBpId,
         billingPeriodFrom: periodFrom.toISOString(),
         billingPeriodTo: closingDate.toISOString(),
         subtotal,
@@ -468,4 +482,69 @@ export async function processClosing(
       ),
     );
   }
+}
+
+// ── まとめて請求書を生成 ─────────────────────────────────────────────────────
+
+export interface BulkClosingResult {
+  /** 生成できた請求書の番号（処理した順）。 */
+  invoiceNumbers: string[];
+  /** 生成できなかった締日行と、その理由。 */
+  failures: { id: string; customerName: string; error: string }[];
+}
+
+/**
+ * 選んだ締日行をまとめて請求書にする。
+ *
+ * 月初に何十件も並ぶ PENDING を 1 件ずつ開いて押していくのは、ただの作業で
+ * しかないうえ、押し忘れた 1 件が翌月まで請求されないまま残る。
+ *
+ * ★ **1 件ずつ独立して処理する**（全体を 1 つの tx にしない）。1 社で
+ *   「対象の出荷が無い」「締日前」のような理由が出ても、他の会社の請求書は
+ *   出せたほうがよい — まとめて失敗させると、結局 1 件ずつやり直すことになる。
+ *   失敗した行は理由つきで返し、画面が並べる。
+ *
+ * ★ 請求書の中身の作り方は processClosing と**同じ関数**を通る。別に書くと、
+ *   1 件ずつ押したときとまとめて押したときで請求額が変わり得る。
+ */
+export async function processClosings(
+  ids: string[],
+): Promise<ActionResult<BulkClosingResult>> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("billing_closing", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
+
+  // 名前は失敗の説明に要る（id だけ返されても、どの会社か分からない）。
+  const rows = await prisma.billingClosing.findMany({
+    where: { id: { in: ids } },
+    select: {
+      id: true,
+      closingDate: true,
+      customerBp: { select: { name: true } },
+    },
+    orderBy: [{ closingDate: "asc" }],
+  });
+  const nameById = new Map(
+    rows.map((r) => [
+      r.id,
+      localized(r.customerBp.name as LocalizedText | null),
+    ]),
+  );
+
+  const invoiceNumbers: string[] = [];
+  const failures: BulkClosingResult["failures"] = [];
+  for (const row of rows) {
+    const result = await processClosing(row.id);
+    if (result.ok && result.data) {
+      invoiceNumbers.push(result.data.invoiceNumber);
+    } else if (!result.ok) {
+      failures.push({
+        id: row.id,
+        customerName: nameById.get(row.id) ?? row.id,
+        error: result.error,
+      });
+    }
+  }
+  return actionOk({ invoiceNumbers, failures });
 }

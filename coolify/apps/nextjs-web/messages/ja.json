@@ -804,7 +804,8 @@
     "priceListInactive": "価格表が無効",
     "priceListExpired": "価格表の有効期間外",
     "dateFrom": "開始日",
-    "dateTo": "終了日"
+    "dateTo": "終了日",
+    "billTo": "請求先"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -2009,7 +2010,20 @@
       "shipmentNote": "{quantity} 本・{amount}",
       "titleWithClosingDate": "{customer}（{date} 締め）",
       "shipmentsCoveredWithCount": "対象出荷（{count}）",
-      "confirmGenerateBody": "{customer} の {date} 締め分から請求書（下書き）を生成します。対象出荷 {count} 件が明細になります。"
+      "confirmGenerateBody": "{customer} の {date} 締め分から請求書（下書き）を生成します。対象出荷 {count} 件が明細になります。",
+      "dueDate": "支払期日",
+      "monthEnd": "末日",
+      "dayOfMonth": "{day} 日",
+      "termsDayOnly": "締日後の最初の {day} 払い",
+      "termsDaysThenDay": "締日 + {days} 日以降の最初の {day} 払い",
+      "termsDaysOnly": "締日 + {days} 日（支払日の設定なし）",
+      "termsDefault": "締日 + {days} 日（支払サイト・支払日とも未設定の既定）",
+      "generateInvoicesInBulk": "まとめて請求書を生成",
+      "nothingToProcess": "処理できる締日がありません",
+      "selectPendingPastClosingDate": "未処理で、かつ締日を過ぎた行を選んでください",
+      "invoicesWereGenerated": "請求書を {count} 件生成しました",
+      "someCouldNotBeProcessed": "{count} 件は生成できませんでした",
+      "skippedNotReady": "未処理でない・締日前の {count} 件は対象外"
     },
     "invoices": {
       "issueThePdf": "PDF を発行",
