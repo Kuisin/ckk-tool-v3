@@ -1063,6 +1063,145 @@ export async function createManualAcceptance(
   }
 }
 
+// ── キャンセル済みからの作り直し ────────────────────────────────────────────
+
+/**
+ * キャンセル済みの注文請書から、内容を引き継いだ新しい下書きを作る。
+ *
+ * **確定済みの請書を直す唯一の手順**がこれ。明細は確定後は編集できない
+ * （lib/order-line-check.ts）ので、内容を変えたければ 請書ごとキャンセル →
+ * ここで作り直す、という流れになる。キャンセルは配下の未着手指示書も連鎖で
+ * 止めている（lib/order-line-cancel.ts）ので、作り直した側で改めて手配する。
+ *
+ * ★ **紐付けを残す**（replaces_year_month / replaces_seq）。これが無いと、
+ *   キャンセルした請書は指示書も出荷も無い行き止まりに見え、「あの注文は
+ *   どうなったのか」を追う手段が監査ログしか無くなる。
+ *
+ * ★ **単価は引き継いだ値をそのまま持ってくる**（価格表を引き直さない）。
+ *   作り直しは「同じ注文をもう一度起こす」操作で、値段を変える操作ではない。
+ *   価格表が動いていたら、確定時の価格差異チェックが従来どおり知らせる。
+ *   人が明示的に上書きした行（priceOverridden）も、その意図ごと引き継ぐ。
+ *
+ * 引き継がないもの: 枝番・ロット番号・金額・確定日時（未確定の下書きに戻す）、
+ * 取込元ファイルと抽出結果（原本は元の請書に付いたまま — 同じ PDF を 2 通に
+ * ぶら下げると、どちらが取込の結果なのか読めなくなる）。
+ */
+export async function recreateFromCancelledAcceptance(
+  number: string,
+): Promise<ActionResult<{ number: string }>> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("order_acceptance", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
+  const key = keyOf(number);
+  if (!key) return actionError(tr("common.invalidInput"));
+
+  const source = await prisma.orderAcceptance.findUnique({
+    where: { yearMonth_seq: key },
+    include: { items: { orderBy: { sortOrder: "asc" } } },
+  });
+  if (!source) return actionError(tr("common.targetNotFound"));
+  if (source.status !== "CANCELLED") {
+    return actionError(
+      tr("sales.orderAcceptanceActions.onlyCancelledCanBeRecreated"),
+    );
+  }
+  if (!source.customerBpId) {
+    return actionError(tr("sales.orderAcceptances.selectACustomer"));
+  }
+
+  try {
+    const actor = await getCurrentActorId();
+    const { yearMonth, seq } = await allocateDocumentKey("ORDER");
+    const newNumber = formatDocNumber("ORD", { yearMonth, seq });
+    // 顧客は変わらないので、引き継いだ担当をそのまま使う（resolveSalesRepId は
+    // 「顧客が変わったときだけ主担当を入れる」— 空で引き継いだなら空のまま）。
+    const salesRepId = await resolveSalesRepId(
+      source.salesRepId,
+      source.customerBpId,
+      source.customerBpId,
+    );
+    await prisma.orderAcceptance.create({
+      data: {
+        yearMonth,
+        seq,
+        status: "DRAFT",
+        // 原本の PDF は元の請書に残す。作り直した側は人が起こしたもの。
+        source: "MANUAL",
+        replacesYearMonth: key.yearMonth,
+        replacesSeq: key.seq,
+        customerBpId: source.customerBpId,
+        customerBranchBpId: source.customerBranchBpId,
+        salesRepId,
+        shipToBpId: source.shipToBpId,
+        deliveryMethod: source.deliveryMethod,
+        endUserBpId: source.endUserBpId,
+        assignedPlantId: source.assignedPlantId,
+        shippingWorkLocationId: source.shippingWorkLocationId,
+        customerProvidesDeliveryNote: source.customerProvidesDeliveryNote,
+        customerOrderRef: source.customerOrderRef,
+        quoteYearMonth: source.quoteYearMonth,
+        quoteSeq: source.quoteSeq,
+        orderDate: source.orderDate,
+        currency: source.currency,
+        notes: source.notes,
+        createdBy: actor,
+        items: {
+          create: source.items.map((it, i) => ({
+            productId: it.productId,
+            productText: it.productText,
+            orderType: it.orderType,
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            priceOverridden: it.priceOverridden,
+            deliveryDate: it.deliveryDate,
+            endUserBpId: it.endUserBpId,
+            notes: it.notes,
+            sortOrder: i,
+          })),
+        },
+      },
+    });
+
+    await recordAudit({
+      action: "CREATE",
+      tableName: "order_acceptances",
+      recordId: newNumber,
+      after: {
+        note: tr("sales.orderAcceptanceActions.recreatedFromCancelled", {
+          number,
+        }),
+        replaces: number,
+        customerBpId: source.customerBpId,
+        itemCount: source.items.length,
+        status: "DRAFT",
+      },
+    });
+    // 元の請書にも残す — 「この請書は作り直された」を元の履歴から読めるように。
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "order_acceptances",
+      recordId: number,
+      after: {
+        note: tr("sales.orderAcceptanceActions.recreatedAs", {
+          number: newNumber,
+        }),
+        replacedBy: newNumber,
+      },
+    });
+    revalidate(number);
+    revalidate(newNumber);
+    return actionOk({ number: newNumber });
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.orderAcceptanceActions.createFailed"),
+        tr,
+      ),
+    );
+  }
+}
+
 // ── 注文請書キャンセル（承認フロー） ────────────────────────────────────────
 //
 // 確定済み（COMPLETED）の注文請書は明細単位ではキャンセルできない。

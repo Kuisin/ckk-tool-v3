@@ -15,7 +15,14 @@ export default async function MasterProductsPage() {
   if (denied) return denied;
   const records = await prisma.product.findMany({
     orderBy: { id: "asc" },
-    include: { materialType: { select: { code: true, name: true } } },
+    include: {
+      materialType: { select: { code: true, name: true } },
+      // 顧客品番は検索にだけ使う（列には出さない）。有効な行の品番と別表記。
+      customerProductCodes: {
+        where: { isActive: true },
+        select: { code: true, aliases: true },
+      },
+    },
   });
 
   const rows: ProductRow[] = records.map((r) => {
@@ -32,6 +39,10 @@ export default async function MasterProductsPage() {
         ? `${r.materialType.code ?? ""}${mtName ? ` — ${mtName}` : ""}`
         : "",
       matchNames: r.matchNames,
+      customerCodes: r.customerProductCodes.flatMap((c) => [
+        c.code,
+        ...c.aliases,
+      ]),
       diameterMm: r.diameterMm != null ? Number(r.diameterMm) : null,
       lengthMm: r.lengthMm != null ? Number(r.lengthMm) : null,
       unit: r.unit,

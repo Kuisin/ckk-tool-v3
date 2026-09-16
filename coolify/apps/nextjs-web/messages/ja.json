@@ -6157,6 +6157,69 @@
       "rateRange": "税率は 0 以上 100 以下で入力してください",
       "useDefault": "既定に従う",
       "followProduct": "製品に従う"
+    },
+    "chargeItems": {
+      "pageTitle": "料金マスタ",
+      "newChargeItem": "料金項目を新規作成",
+      "editTheChargeItem": "料金項目を編集",
+      "deleteTheChargeItem": "料金項目を削除",
+      "disableTheChargeItem": "料金項目を無効化",
+      "enableTheChargeItem": "料金項目を有効化",
+      "empty": "料金項目はまだありません",
+      "codeHelp": "料金項目を識別するコード（作成後は変更できません）",
+      "codePlaceholder": "SHIPPING など",
+      "amountMode": "金額の決まり方",
+      "modeFixed": "固定",
+      "modeVariable": "可変",
+      "modeFixedHelp": "料金マスタの金額をそのまま使います。使うときに変えられません",
+      "modeVariableHelp": "使うたびに人が入れます。下の金額は入力欄の既定値です",
+      "amount": "金額",
+      "defaultAmount": "既定の金額",
+      "amountFixedHelp": "この項目を足すと必ずこの金額になります",
+      "amountVariableHelp": "空のままにすると、毎回きちんと入力させます",
+      "defaultSuffix": "（既定）",
+      "taxCategoryHelp": "送料は課税、印紙代は非課税、のように項目ごとに決まります。顧客に課税区分が入っていればそちらが優先します",
+      "fixedNeedsAmount": "固定の料金項目には金額が必要です",
+      "created": "料金項目を作成しました",
+      "updated": "{name} を更新しました",
+      "deleted": "{name} を削除しました",
+      "enabled": "{name} を有効化しました",
+      "disabled": "{name} を無効化しました",
+      "deleteConfirm": "{name} を削除します。",
+      "enableConfirm": "{name} を有効化します。",
+      "disableConfirm": "{name} を無効化します。以後この項目は新しく選べなくなりますが、すでに書いた行はそのまま残ります。",
+      "itCannotBeDeletedWhileInUse": "指示書・出荷書で使われている料金項目は削除できません（無効化はできます）",
+      "inUseCannotDelete": "指示書 {workOrders} 件・出荷書 {deliveryOrders} 件で使われているため削除できません",
+      "bulkDeleteChargeItems": "料金項目を一括削除",
+      "bulkDeleteConfirm": "{count} 件の料金項目を削除します。",
+      "bulkDeleted": "{count} 件を削除しました",
+      "bulkEnabled": "{count} 件を有効化しました",
+      "bulkDisabled": "{count} 件を無効化しました",
+      "createFailed": "料金項目の作成に失敗しました",
+      "updateFailed": "料金項目の更新に失敗しました",
+      "deleteFailed": "料金項目の削除に失敗しました",
+      "unknownChargeItem": "料金項目が見つかりません",
+      "quantityMin1": "数量は 1 以上の整数で入力してください",
+      "enterAnAmount": "金額を入力してください",
+      "amountCannotBeNegative": "金額にマイナスは入力できません"
+    },
+    "customerProductCodes": {
+      "title": "顧客品番",
+      "help": "この製品を顧客が何と呼ぶか。登録すると、その顧客の注文書は品番で 1 発で突合でき、納品書・請求書の品名欄に相手の品番を併記します。",
+      "empty": "顧客品番は登録されていません",
+      "code": "顧客品番",
+      "codePlaceholder": "相手の品番",
+      "name": "顧客品名",
+      "namePlaceholder": "相手が呼ぶ品名（任意）",
+      "aliases": "別表記",
+      "aliasesPlaceholder": "旧品番など（突合のみ・印字しない）",
+      "addRow": "顧客を追加",
+      "everyRowNeedsCustomerAndCode": "各行に顧客と顧客品番を入力してください",
+      "selectACustomer": "顧客を選択してください",
+      "enterACustomerCode": "顧客品番を入力してください",
+      "duplicateCustomerRow": "同じ顧客の行が 2 つあります。1 顧客につき 1 行にしてください",
+      "duplicateCodeForCustomer": "顧客品番「{code}」が同じ顧客の中で重複しています",
+      "couldNotSave": "顧客品番の保存に失敗しました"
     }
   },
   "manual": {
@@ -7137,7 +7200,16 @@
       "showTheDocumentPane": "書類を開く",
       "hideTheDocument": "隠す",
       "customerProvidesDeliveryNote": "顧客提供の納品書",
-      "priceNoTierLine": "行{row} 数量 {quantity} に該当する価格表の数量段階なし"
+      "priceNoTierLine": "行{row} 数量 {quantity} に該当する価格表の数量段階なし",
+      "recreate": "作り直す",
+      "recreateFromThis": "この注文請書から作り直す",
+      "recreatedFrom": "作り直し元",
+      "recreatedAsTitle": "作り直し先",
+      "recreatedAs": "{number} として作り直しました",
+      "theCancelledOrderAcceptance": "この注文請書の元になったキャンセル済みの請書",
+      "youCanRecreateOnceCancelled": "キャンセル済みの注文請書からのみ作り直せます",
+      "confirmRecreateMessage": "{number} の内容を引き継いだ下書きを作ります。紐付けは残ります。",
+      "alreadyRecreatedAs": "この注文請書はすでに {numbers} として作り直されています。二重に起こしていないか確認してください。"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "この明細の親書類",
@@ -7600,7 +7672,10 @@
       "takenOverManually": "自動抽出を待たず手入力へ切り替え",
       "targetCancelRequestNotFound": "対象のキャンセル依頼が見つかりません",
       "targetNotFound": "対象の注文請書が見つかりません",
-      "unitPriceMin0": "単価は0以上"
+      "unitPriceMin0": "単価は0以上",
+      "onlyCancelledCanBeRecreated": "作り直せるのはキャンセル済みの注文請書だけです",
+      "recreatedFromCancelled": "キャンセル済みの {number} から作り直しました",
+      "recreatedAs": "{number} として作り直しました"
     },
     "quoteActions": {
       "createFailed": "見積書の作成に失敗しました",
@@ -8472,7 +8547,8 @@
       "effectiveFrom": "適用開始日",
       "ratePercent": "税率（%）",
       "taxCategoryId": "税区分",
-      "shortLabel": "帳票の区分表示"
+      "shortLabel": "帳票の区分表示",
+      "customerProductCodes": "顧客品番"
     },
     "tableFieldLabels": {
       "kiosk_devices": {
@@ -8537,6 +8613,7 @@
       "estimates": "価格試算",
       "price_list_entries": "価格表",
       "products": "製品",
+      "charge_items": "料金マスタ",
       "materials": "素材",
       "material_types": "材種",
       "business_partners": "取引先",
@@ -9924,5 +10001,24 @@
     "clientNotFound": "対象のクライアントが見つかりません",
     "featureDisabled": "この環境では外部 API は無効です",
     "invalidNameChars": "名前に使えない文字が含まれています"
+  },
+  "charges": {
+    "title": "追加料金",
+    "item": "料金項目",
+    "note": "但し書き",
+    "notePlaceholder": "○○運輸 着払い など",
+    "selectAnItem": "料金項目を選択",
+    "addRow": "料金を追加",
+    "total": "追加料金 合計",
+    "empty": "追加料金はありません",
+    "everyRowNeedsAnItem": "各行の料金項目を選択してください",
+    "fixedByMaster": "料金マスタの固定金額",
+    "quantityTimesUnitPrice": "{quantity} × ¥{unitPrice}",
+    "copiedFromWorkOrder": "指示書 #{number} から複写",
+    "couldNotSave": "追加料金の保存に失敗しました",
+    "workOrderHelp": "送料など、製品の代金以外に請求するもの。ここは**予定**で、出荷書を作るときに複写されます。請求されるのは出荷書側の行です。",
+    "deliveryOrderHelp": "この出荷で請求する追加料金。確定すると締日処理が請求書の明細にします。直せるのは下書きのうちだけです。",
+    "workOrderClosedForCharges": "完了・キャンセルした指示書の追加料金は変更できません。出荷書側で直してください",
+    "deliveryOrderClosedForCharges": "追加料金を変更できるのは下書きの出荷書だけです"
   }
 }

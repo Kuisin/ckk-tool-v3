@@ -6157,6 +6157,69 @@
       "rateRange": "税率请输入 0 到 100 之间的值",
       "useDefault": "按默认",
       "followProduct": "按产品"
+    },
+    "chargeItems": {
+      "pageTitle": "费用项目",
+      "newChargeItem": "新建费用项目",
+      "editTheChargeItem": "编辑费用项目",
+      "deleteTheChargeItem": "删除费用项目",
+      "disableTheChargeItem": "停用费用项目",
+      "enableTheChargeItem": "启用费用项目",
+      "empty": "尚无费用项目",
+      "codeHelp": "识别费用项目的编号（创建后无法更改）",
+      "codePlaceholder": "如：SHIPPING",
+      "amountMode": "金额的确定方式",
+      "modeFixed": "固定",
+      "modeVariable": "可变",
+      "modeFixedHelp": "直接使用费用项目的金额，使用时无法更改",
+      "modeVariableHelp": "每次使用时由人输入。下面的金额为输入框的默认值",
+      "amount": "金额",
+      "defaultAmount": "默认金额",
+      "amountFixedHelp": "添加该项目时始终为此金额",
+      "amountVariableHelp": "留空则每次都必须输入金额",
+      "defaultSuffix": "（默认）",
+      "taxCategoryHelp": "按项目确定，例如运费应税、印花税免税。客户设有税种时以客户为准",
+      "fixedNeedsAmount": "固定的费用项目需要填写金额",
+      "created": "已创建费用项目",
+      "updated": "已更新 {name}",
+      "deleted": "已删除 {name}",
+      "enabled": "已启用 {name}",
+      "disabled": "已停用 {name}",
+      "deleteConfirm": "将删除 {name}。",
+      "enableConfirm": "将启用 {name}。",
+      "disableConfirm": "将停用 {name}。此后无法为新行选择该项目，但已写入的行保持不变。",
+      "itCannotBeDeletedWhileInUse": "已在工单・出货单中使用的费用项目无法删除（可以停用）",
+      "inUseCannotDelete": "已用于 {workOrders} 张工单和 {deliveryOrders} 张出货单，无法删除",
+      "bulkDeleteChargeItems": "批量删除费用项目",
+      "bulkDeleteConfirm": "将删除 {count} 个费用项目。",
+      "bulkDeleted": "已删除 {count} 个",
+      "bulkEnabled": "已启用 {count} 个",
+      "bulkDisabled": "已停用 {count} 个",
+      "createFailed": "费用项目创建失败",
+      "updateFailed": "费用项目更新失败",
+      "deleteFailed": "费用项目删除失败",
+      "unknownChargeItem": "未找到费用项目",
+      "quantityMin1": "数量请输入 1 以上的整数",
+      "enterAnAmount": "请输入金额",
+      "amountCannotBeNegative": "金额不能为负数"
+    },
+    "customerProductCodes": {
+      "title": "客户料号",
+      "help": "各客户对该产品的称呼。登记后，该客户的订单可按料号一次匹配，并在送货单・请款单的品名栏一并显示对方的料号。",
+      "empty": "尚未登记客户料号",
+      "code": "客户料号",
+      "codePlaceholder": "对方的料号",
+      "name": "客户品名",
+      "namePlaceholder": "对方使用的品名（可选）",
+      "aliases": "其他料号",
+      "aliasesPlaceholder": "旧料号等（仅用于匹配，不打印）",
+      "addRow": "添加客户",
+      "everyRowNeedsCustomerAndCode": "请在每一行输入客户和客户料号",
+      "selectACustomer": "请选择客户",
+      "enterACustomerCode": "请输入客户料号",
+      "duplicateCustomerRow": "同一客户出现了两行。每个客户只保留一行",
+      "duplicateCodeForCustomer": "客户料号“{code}”在同一客户中重复",
+      "couldNotSave": "客户料号保存失败"
     }
   },
   "manual": {
@@ -7137,7 +7200,16 @@
       "showTheDocumentPane": "展开单据",
       "hideTheDocument": "隐藏",
       "customerProvidesDeliveryNote": "客户自备送货单",
-      "priceNoTierLine": "第 {row} 行：没有覆盖数量 {quantity} 的价格表数量档"
+      "priceNoTierLine": "第 {row} 行：没有覆盖数量 {quantity} 的价格表数量档",
+      "recreate": "重新创建",
+      "recreateFromThis": "由此订单确认书重新创建",
+      "recreatedFrom": "重新创建来源",
+      "recreatedAsTitle": "重新创建去向",
+      "recreatedAs": "已重新创建为 {number}",
+      "theCancelledOrderAcceptance": "本单据的来源——已取消的订单确认书",
+      "youCanRecreateOnceCancelled": "只能由已取消的订单确认书重新创建",
+      "confirmRecreateMessage": "将创建一份沿用 {number} 内容的草稿。两者的关联会保留。",
+      "alreadyRecreatedAs": "本订单确认书已重新创建为 {numbers}。请确认没有重复开立。"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "此明细的父单据",
@@ -7600,7 +7672,10 @@
       "takenOverManually": "未等待自动提取即切换为手动录入",
       "targetCancelRequestNotFound": "未找到目标取消申请",
       "targetNotFound": "未找到目标订单确认书",
-      "unitPriceMin0": "单价须为 0 以上"
+      "unitPriceMin0": "单价须为 0 以上",
+      "onlyCancelledCanBeRecreated": "只有已取消的订单确认书才能重新创建",
+      "recreatedFromCancelled": "由已取消的 {number} 重新创建",
+      "recreatedAs": "已重新创建为 {number}"
     },
     "quoteActions": {
       "createFailed": "报价单创建失败",
@@ -8472,7 +8547,8 @@
       "effectiveFrom": "生效日",
       "ratePercent": "税率（%）",
       "taxCategoryId": "税种",
-      "shortLabel": "单据上的显示"
+      "shortLabel": "单据上的显示",
+      "customerProductCodes": "客户料号"
     },
     "tableFieldLabels": {
       "kiosk_devices": {
@@ -8537,6 +8613,7 @@
       "estimates": "价格试算",
       "price_list_entries": "价格表",
       "products": "产品",
+      "charge_items": "费用项目",
       "materials": "材料",
       "material_types": "材料类别",
       "business_partners": "业务伙伴",
@@ -9924,5 +10001,24 @@
     "clientNotFound": "未找到该客户端",
     "featureDisabled": "此环境中外部 API 已停用",
     "invalidNameChars": "名称包含不允许使用的字符"
+  },
+  "charges": {
+    "title": "附加费用",
+    "item": "费用项目",
+    "note": "附注",
+    "notePlaceholder": "如：××运输 到付",
+    "selectAnItem": "选择费用项目",
+    "addRow": "添加费用",
+    "total": "附加费用合计",
+    "empty": "没有附加费用",
+    "everyRowNeedsAnItem": "请为每一行选择费用项目",
+    "fixedByMaster": "费用项目的固定金额",
+    "quantityTimesUnitPrice": "{quantity} × ¥{unitPrice}",
+    "copiedFromWorkOrder": "由工单 #{number} 复制",
+    "couldNotSave": "附加费用保存失败",
+    "workOrderHelp": "产品货款以外要请款的项目，例如运费。此处为**预定**，创建出货单时会复制过去，实际请款的是出货单上的行。",
+    "deliveryOrderHelp": "本次出货要请款的附加费用。确定后由结算处理生成请款单明细。仅在出货单为草稿时可以修改。",
+    "workOrderClosedForCharges": "已完成或已取消的工单无法修改附加费用。请在出货单上修改",
+    "deliveryOrderClosedForCharges": "仅草稿状态的出货单可以修改附加费用"
   }
 }
