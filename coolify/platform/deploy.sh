@@ -12,6 +12,7 @@
 #   ./deploy.sh po-extract-dev   deploy po-extract dev  (internal only — 公開ポート無し)
 #   ./deploy.sh po-extract-main  deploy po-extract prod (internal only — 公開ポート無し)
 #   ./deploy.sh intake-gateway       deploy メール取込ゲートウェイ (common/main, internal only)
+#   ./deploy.sh kot-import       deploy 勤怠取込（King of Time, common/main, internal only）
 #   ./deploy.sh db-migrate-dev   apply DB migrations to ckk-db-dev  (通常は push で自動)
 #   ./deploy.sh db-migrate-main  apply DB migrations to ckk-db-main (通常は push で自動)
 #   ./deploy.sh ckk-db-dev       ⚠ DB コンテナを作り直す（イメージ更新時のみ）
@@ -24,7 +25,7 @@
 
 set -euo pipefail
 
-USAGE="usage: deploy.sh dev|main|admin-dev|admin-main|kiosk-dev|kiosk-main|po-extract-dev|po-extract-main|intake-gateway|db-migrate-dev|db-migrate-main|ckk-db-dev|ckk-db-main [git-sha]"
+USAGE="usage: deploy.sh dev|main|admin-dev|admin-main|kiosk-dev|kiosk-main|po-extract-dev|po-extract-main|intake-gateway|kot-import|db-migrate-dev|db-migrate-main|ckk-db-dev|ckk-db-main [git-sha]"
 TARGET=${1:?$USAGE}
 SHA=${2:-}
 case "$TARGET" in
@@ -37,6 +38,7 @@ case "$TARGET" in
   po-extract-dev)         APP_NAME=po-extract-dev ;;
   po-extract-main)        APP_NAME=po-extract-main ;;
   intake-gateway)         APP_NAME=intake-gateway ;;
+  kot-import)             APP_NAME=kot-import ;;
   db-migrate-dev)         APP_NAME=db-migrate-dev ;;
   db-migrate-main)        APP_NAME=db-migrate-main ;;
   ckk-db-dev|ckk-db-main) APP_NAME=$TARGET ;;
