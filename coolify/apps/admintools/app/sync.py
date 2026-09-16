@@ -2,7 +2,6 @@
 reusing the vendored adduser/create_email logic (driven by DB instead of Excel)."""
 from __future__ import annotations
 
-import os
 import re
 import sys
 import threading
@@ -11,7 +10,7 @@ from contextlib import contextmanager
 
 from playwright.sync_api import sync_playwright
 
-from .db import DEFAULT_DOMAIN, MailAccount, SessionLocal
+from .db import DEFAULT_DOMAIN, MailAccount, SessionLocal, get_sakura_credentials
 from .sakura import adduser, create_email
 
 LOGIN_URL = "https://secure.sakura.ad.jp/rs/cp/"
@@ -89,8 +88,7 @@ def preview() -> dict:
     before syncing. Each active account becomes a mailbox (username@domain); when
     the account's email differs from username@domain it ALSO gets an alias (the
     friendly address routed to the mailbox)."""
-    sid = os.environ.get("SAKURA_ID", "").strip()
-    spw = os.environ.get("SAKURA_PW", "").strip()
+    sid, spw = get_sakura_credentials()
     users, aliases = _load_from_db()
     return {
         "env_ok": bool(sid and spw),
@@ -116,8 +114,7 @@ def check_live(refresh: bool = False, max_age: float = 300.0) -> dict:
         c = _check_cache
         if not refresh and c["result"] and time.time() - c["ts"] < max_age:
             return c["result"]
-    sid = os.environ.get("SAKURA_ID", "").strip()
-    spw = os.environ.get("SAKURA_PW", "").strip()
+    sid, spw = get_sakura_credentials()
     if not sid or not spw:
         return {"env_ok": False, "error": "SAKURA_ID / SAKURA_PW not set"}
     if _state["running"]:
@@ -269,10 +266,9 @@ def _sync_passwords(page, users, dirty: set, force_all: bool) -> int:
 
 
 def _run(headless: bool, remove_not_on_list: bool, sync_all_passwords: bool = False) -> None:
-    sid = os.environ.get("SAKURA_ID", "").strip()
-    spw = os.environ.get("SAKURA_PW", "").strip()
+    sid, spw = get_sakura_credentials()
     if not sid or not spw:
-        _log("ERROR: SAKURA_ID / SAKURA_PW not set in .env — cannot sync.")
+        _log("ERROR: Sakura の管理者ID/パスワードが未設定です（/email の「Sakura管理者設定」または SAKURA_ID/SAKURA_PW を設定してください）。")
         return
     users, aliases = _load_from_db()
     dirty = _dirty_usernames()

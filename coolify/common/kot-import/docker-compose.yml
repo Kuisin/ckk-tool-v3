@@ -19,9 +19,13 @@ services:
     container_name: kot-import
     restart: unless-stopped
     environment:
-      # King of Time admin login (https://s2.ta.kingoftime.jp/admin).
+      # King of Time admin login (https://s2.ta.kingoftime.jp/admin). Legacy
+      # fallback — used only when no kot_settings DB row exists (set via
+      # adminTools' /kot 設定 modal).
       - KOT_ID=${KOT_ID:-}
       - KOT_PW=${KOT_PW:-}
+      # Must match adminTools' CRED_ENCRYPTION_KEY to decrypt a DB-set KOT_ID/PW.
+      - CRED_ENCRYPTION_KEY=${CRED_ENCRYPTION_KEY:-}
       # 本番 DB `ckk-db-main`（2026-08-24 に shared-db から移行。kot スキーマごと
       # 移してある）。Coolify のコンテナ名はハッシュなので `coolify` ネットワーク上の
       # 安定した別名で引く。ホストは env で上書きできる。

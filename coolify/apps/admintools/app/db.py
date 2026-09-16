@@ -5,6 +5,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
+from . import secret_box
+
 engine = create_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
@@ -49,6 +51,62 @@ class MailAccount(Base):
     updated_at: Mapped["DateTime"] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class AppCredential(Base):
+    """Single row (id=1) holding the Sakura control-panel admin login, edited via
+    the 設定 modal on /email. Values are Fernet-encrypted (secret_box.py,
+    CRED_ENCRYPTION_KEY) — never stored plaintext. Falls back to SAKURA_ID/PW env
+    vars when this row is absent or the key can't decrypt it, so an un-migrated
+    deployment keeps working exactly as before."""
+
+    __tablename__ = "app_credentials"
+
+    id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    sakura_id_encrypted: Mapped[str] = mapped_column(Text, default="")
+    sakura_pw_encrypted: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped["DateTime"] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+def get_sakura_credentials() -> tuple[str, str]:
+    """(sakura_id, sakura_pw) — DB row wins when both fields decrypt to a
+    non-empty value; otherwise falls back to the SAKURA_ID/SAKURA_PW env vars."""
+    with SessionLocal() as s:
+        row = s.get(AppCredential, 1)
+    if row:
+        sid = secret_box.decrypt(row.sakura_id_encrypted)
+        spw = secret_box.decrypt(row.sakura_pw_encrypted)
+        if sid and spw:
+            return sid, spw
+    return os.environ.get("SAKURA_ID", "").strip(), os.environ.get("SAKURA_PW", "").strip()
+
+
+def sakura_credentials_configured() -> dict:
+    """For the settings panel: where do the active Sakura credentials come from."""
+    with SessionLocal() as s:
+        row = s.get(AppCredential, 1)
+    db_ok = bool(row and secret_box.decrypt(row.sakura_id_encrypted) and secret_box.decrypt(row.sakura_pw_encrypted))
+    env_ok = bool(os.environ.get("SAKURA_ID", "").strip() and os.environ.get("SAKURA_PW", "").strip())
+    return {"source": "db" if db_ok else ("env" if env_ok else "none"),
+            "updated_at": row.updated_at.strftime("%Y-%m-%d %H:%M") if (row and db_ok) else None}
+
+
+def set_sakura_credentials(sakura_id: str, sakura_pw: str) -> None:
+    """Blank field = keep the existing encrypted value unchanged (so either ID or
+    password alone can be updated, and the modal never needs to show a decrypted
+    secret)."""
+    with SessionLocal() as s:
+        row = s.get(AppCredential, 1)
+        if row is None:
+            row = AppCredential(id=1)
+            s.add(row)
+        if sakura_id.strip():
+            row.sakura_id_encrypted = secret_box.encrypt(sakura_id.strip())
+        if sakura_pw.strip():
+            row.sakura_pw_encrypted = secret_box.encrypt(sakura_pw.strip())
+        s.commit()
 
 
 class GroupMember(Base):
