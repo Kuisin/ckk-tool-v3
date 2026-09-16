@@ -223,10 +223,20 @@ model DeliveryNoteItem {
   notes     String?
   sortOrder Int      @default(0) @map("sort_order")
 
+  /// 行の税スナップショット（課税区分と、その行に当たった率）。**出荷書の確定時**に
+  /// 請求単価 (delivery_order_items.unit_price) と一緒に焼き込む — 確定より後に
+  /// 税区分マスタを直しても、発行済みの納品書は動かない。
+  /// **税額は行に持たない**（税は率ごとの束でしか正しく丸められない — lib/money.ts）。
+  /// 価格記載なし (include_price = false) の納品書と、税区分マスタ以前の行は null。
+  taxCategoryId Int?     @map("tax_category_id")
+  taxRate       Decimal? @map("tax_rate") @db.Decimal(5, 4)
+
   deliveryNote DeliveryNote @relation(fields: [deliveryNoteYearMonth, deliveryNoteSeq], references: [yearMonth, seq], onDelete: Cascade)
   product      Product      @relation(fields: [productId], references: [id])
+  taxCategory  TaxCategory? @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
 
   @@index([deliveryNoteYearMonth, deliveryNoteSeq])
+  @@index([taxCategoryId])
   @@map("delivery_note_items")
   @@schema("app")
 }

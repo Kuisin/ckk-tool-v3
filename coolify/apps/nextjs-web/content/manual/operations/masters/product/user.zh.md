@@ -186,7 +186,7 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 
 该产品的消费税税种。报价单和请款单的税额由此决定。
 
-留空则按税种主数据（**MS0F**）的**默认值**（通常为标准税率 10%）。只有适用减免税率的产品才需要另行选择。
+留空则按[税种](/manual/zh/operations/masters/tax-category/user)主数据的**默认值**（通常为标准税率 10%）。只有适用减免税率的产品才需要另行选择。
 
 若业务伙伴设置了自己的税种，则**以业务伙伴为准**（例如免税的业务伙伴）。
 

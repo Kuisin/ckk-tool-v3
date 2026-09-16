@@ -30,6 +30,9 @@ const DELIVERY_NOTE_INCLUDE = {
   // 1 出荷書は複数の注文明細を束ねられるので、明細行から番号を集める。
   deliveryOrder: {
     include: {
+      // 税率スナップショットを持たない旧データのフォールバック元
+      // （請求書・見積書と同じく「顧客の課税区分」へ落ちる）。
+      customerBp: { select: { customerAttrs: { select: { taxType: true } } } },
       items: {
         select: {
           orderLine: {
@@ -100,6 +103,7 @@ function mapDeliveryNote(
     quantity: it.quantity,
     unitPrice: it.unitPrice != null ? Number(it.unitPrice) : null,
     amount: it.amount != null ? Number(it.amount) : null,
+    taxRate: it.taxRate != null ? Number(it.taxRate) : null,
     notes: it.notes,
   }));
   return {
@@ -140,6 +144,7 @@ function mapDeliveryNote(
     totalAmount: r.includePrice
       ? items.reduce((sum, it) => sum + (it.amount ?? 0), 0)
       : null,
+    customerTaxType: r.deliveryOrder.customerBp.customerAttrs?.taxType ?? null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };

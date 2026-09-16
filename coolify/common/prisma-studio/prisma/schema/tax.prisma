@@ -40,6 +40,7 @@ model TaxCategory {
   customerAttrs   BpCustomerAttrs[]
   invoiceItems    InvoiceItem[]
   quoteItems      QuoteItem[]
+  deliveryNoteItems DeliveryNoteItem[]
   invoiceTaxLines InvoiceTaxSummary[]
 
   @@index([isActive, sortOrder])

@@ -22,6 +22,7 @@ import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
+import { isoDateJst } from "@/components/sales/price-lists/model";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission, requireAnyRead } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -37,6 +38,8 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { loadTaxCatalog } from "@/lib/tax-categories";
+import { billingBasisDate, resolveLineTax } from "@/lib/tax-rate";
 
 const BASE_PATH = "/shipping/delivery-notes";
 
@@ -118,8 +121,13 @@ interface ItemInputValue {
   notes: string | null;
 }
 
-/** 明細行 → DB 値。価格記載なしのときは単価・金額を保存しない。 */
-function toItemData(it: ItemInputValue, i: number, includePrice: boolean) {
+/** 明細行 → DB 値。価格記載なしのときは単価・金額・税を保存しない。 */
+function toItemData(
+  it: ItemInputValue,
+  i: number,
+  includePrice: boolean,
+  lineTax: { categoryId: number | null; rate: number } | null,
+) {
   const unitPrice = includePrice ? (it.unitPrice ?? 0) : null;
   return {
     productId: Number(it.productId),
@@ -127,8 +135,87 @@ function toItemData(it: ItemInputValue, i: number, includePrice: boolean) {
     unitPrice,
     // 金額はサーバー側で計算（クライアント表示値は信用しない）。
     amount: unitPrice != null ? unitPrice * it.quantity : null,
+    // 税も同じ — 価格を載せない納品書は税も出さないので持たせない。
+    taxCategoryId: includePrice ? (lineTax?.categoryId ?? null) : null,
+    taxRate: includePrice ? (lineTax?.rate ?? null) : null,
     notes: trimOrNull(it.notes),
     sortOrder: i,
+  };
+}
+
+/**
+ * 下書きの納品書を保存するときの税解決。
+ *
+ * 自動生成の納品書は**出荷書の確定時**に税を焼き込む（delivery-orders/actions.ts）。
+ * こちらは人が下書きを直して保存する経路で、同じ規則で解決し直す — 基準日も
+ * 注文日 → 出荷日 → 今日 と、請求書とまったく同じ落ち方にする。
+ */
+async function resolveNoteLineTax(
+  deliveryOrderKey: { yearMonth: string; seq: number } | null,
+): Promise<(productId: number) => { categoryId: number | null; rate: number }> {
+  const catalog = await loadTaxCatalog();
+  if (deliveryOrderKey == null) {
+    // 出荷書が辿れない納品書（本来は作られない）。製品も注文日も引けないので、
+    // 既定の区分・今日の率に落ちる。
+    const fallback = resolveLineTax(catalog, {
+      customerTaxCategoryId: null,
+      productTaxCategoryId: null,
+      basisDate: isoDateJst(new Date()),
+    });
+    return () => fallback;
+  }
+  const order = await prisma.deliveryOrder.findUnique({
+    where: { yearMonth_seq: deliveryOrderKey },
+    select: {
+      shippedAt: true,
+      customerBp: {
+        select: { customerAttrs: { select: { taxCategoryId: true } } },
+      },
+      items: {
+        select: {
+          productId: true,
+          product: { select: { taxCategoryId: true } },
+          orderLine: {
+            select: { acceptance: { select: { orderDate: true } } },
+          },
+        },
+      },
+    },
+  });
+  const customerTaxCategoryId =
+    order?.customerBp.customerAttrs?.taxCategoryId ?? null;
+  const shippedAt = order?.shippedAt ? isoDateJst(order.shippedAt) : null;
+  // 製品 → (課税区分, 注文日)。同じ製品が複数行にあるときは**最も早い注文日**に
+  // 揃える（どの行から引くかで率が変わらないように）。
+  const byProduct = new Map<
+    number,
+    { categoryId: number | null; orderDate: string | null }
+  >();
+  for (const it of order?.items ?? []) {
+    const orderDate = it.orderLine?.acceptance.orderDate
+      ? isoDateJst(it.orderLine.acceptance.orderDate)
+      : null;
+    const prev = byProduct.get(it.productId);
+    if (prev == null) {
+      byProduct.set(it.productId, {
+        categoryId: it.product.taxCategoryId,
+        orderDate,
+      });
+    } else if (
+      orderDate != null &&
+      (prev.orderDate == null || orderDate < prev.orderDate)
+    ) {
+      prev.orderDate = orderDate;
+    }
+  }
+  const today = isoDateJst(new Date());
+  return (productId) => {
+    const hit = byProduct.get(productId);
+    return resolveLineTax(catalog, {
+      customerTaxCategoryId,
+      productTaxCategoryId: hit?.categoryId ?? null,
+      basisDate: billingBasisDate(hit?.orderDate ?? null, shippedAt, today),
+    });
   };
 }
 
@@ -281,6 +368,16 @@ export async function updateDeliveryNote(
       );
       if (itemsError) return actionError(itemsError);
     }
+    // 税はトランザクションの外で解決しておく（読むだけ・時間のかかる I/O を
+    // トランザクションに入れない）。
+    const lineTaxOf = await resolveNoteLineTax(
+      prior?.deliveryOrderYearMonth && prior.deliveryOrderSeq != null
+        ? {
+            yearMonth: prior.deliveryOrderYearMonth,
+            seq: prior.deliveryOrderSeq,
+          }
+        : null,
+    );
     await prisma.$transaction(async (tx) => {
       // status を where に含めた updateMany で原子的にガードする。
       const updated = await tx.deliveryNote.updateMany({
@@ -310,7 +407,7 @@ export async function updateDeliveryNote(
         data: v.items.map((it, i) => ({
           deliveryNoteYearMonth: key.yearMonth,
           deliveryNoteSeq: key.seq,
-          ...toItemData(it, i, v.includePrice),
+          ...toItemData(it, i, v.includePrice, lineTaxOf(Number(it.productId))),
         })),
       });
     });
