@@ -103,6 +103,11 @@ export async function fetchOrderAcceptance(
       },
       salesRep: { select: { id: true, displayName: true } },
       createdByUser: { select: { displayName: true } },
+      // キャンセル → 作り直し の紐付け（両向き）。
+      replacedBy: {
+        select: { yearMonth: true, seq: true },
+        orderBy: [{ yearMonth: "asc" }, { seq: "asc" }],
+      },
       items: {
         orderBy: { sortOrder: "asc" },
         include: {
@@ -259,6 +264,16 @@ export async function fetchOrderAcceptance(
             seq: r.quoteSeq,
           })
         : null,
+    replacesNumber:
+      r.replacesYearMonth && r.replacesSeq != null
+        ? formatDocNumber("ORD", {
+            yearMonth: r.replacesYearMonth,
+            seq: r.replacesSeq,
+          })
+        : null,
+    replacedByNumbers: r.replacedBy.map((x) =>
+      formatDocNumber("ORD", { yearMonth: x.yearMonth, seq: x.seq }),
+    ),
     orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
     notes: r.notes,
     items,

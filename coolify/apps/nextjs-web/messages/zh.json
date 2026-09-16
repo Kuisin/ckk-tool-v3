@@ -7123,7 +7123,16 @@
       "showTheDocumentPane": "展开单据",
       "hideTheDocument": "隐藏",
       "customerProvidesDeliveryNote": "客户自备送货单",
-      "priceNoTierLine": "第 {row} 行：没有覆盖数量 {quantity} 的价格表数量档"
+      "priceNoTierLine": "第 {row} 行：没有覆盖数量 {quantity} 的价格表数量档",
+      "recreate": "重新创建",
+      "recreateFromThis": "由此订单确认书重新创建",
+      "recreatedFrom": "重新创建来源",
+      "recreatedAsTitle": "重新创建去向",
+      "recreatedAs": "已重新创建为 {number}",
+      "theCancelledOrderAcceptance": "本单据的来源——已取消的订单确认书",
+      "youCanRecreateOnceCancelled": "只能由已取消的订单确认书重新创建",
+      "confirmRecreateMessage": "将创建一份沿用 {number} 内容的草稿。两者的关联会保留。",
+      "alreadyRecreatedAs": "本订单确认书已重新创建为 {numbers}。请确认没有重复开立。"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "此明细的父单据",
@@ -7586,7 +7595,10 @@
       "takenOverManually": "未等待自动提取即切换为手动录入",
       "targetCancelRequestNotFound": "未找到目标取消申请",
       "targetNotFound": "未找到目标订单确认书",
-      "unitPriceMin0": "单价须为 0 以上"
+      "unitPriceMin0": "单价须为 0 以上",
+      "onlyCancelledCanBeRecreated": "只有已取消的订单确认书才能重新创建",
+      "recreatedFromCancelled": "由已取消的 {number} 重新创建",
+      "recreatedAs": "已重新创建为 {number}"
     },
     "quoteActions": {
       "createFailed": "报价单创建失败",
