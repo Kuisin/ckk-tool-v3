@@ -115,6 +115,25 @@ export interface RunClosingResult {
 }
 
 /**
+ * 請求明細 1 行（製品 / 追加料金で同じ形）。`items.push` するために、
+ * flatMap の戻り値を推論に任せず明示する。
+ */
+interface InvoiceItemDraft {
+  deliveryOrderYearMonth: string;
+  deliveryOrderSeq: number;
+  deliveryNoteYearMonth: string | null;
+  deliveryNoteSeq: number | null;
+  orderLineId: string | null;
+  description: { ja: string; en: string };
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  taxCategoryId: number | null;
+  taxRate: number;
+  sortOrder: number;
+}
+
+/**
  * 締日処理を実行 — 対象月 "YYYYMM" の未請求出荷を顧客×締日で集計する。
  * 戻り値は作成/更新/スキップ（処理済み行）件数。
  */
@@ -189,7 +208,7 @@ export async function processClosing(
 
     // 明細: 出荷書明細 1 行 = 請求明細 1 行（摘要 = 製品名 + ロット、由来キー付き）。
     let sortOrder = 0;
-    const items = shipments.flatMap((s) => {
+    const items: InvoiceItemDraft[] = shipments.flatMap((s) => {
       const deliveryNote = s.deliveryNotes[0] ?? null;
       return s.items.map((it) => {
         // 単価は**その行**から取る（1 出荷書に単価の異なる複数明細が載り得る
@@ -244,6 +263,50 @@ export async function processClosing(
         };
       });
     });
+
+    // 追加料金（送料など）— 出荷書の行をそのまま請求明細にする。
+    //
+    // 税率の基準日は製品明細と違って **出荷日**（注文日ではない）。送料は
+    // 引き渡しの約束ではなく「運んだ日の役務」なので、率が改正されたときに
+    // 効くべきなのは運んだ日の率。区分は料金マスタが持つものを使い、顧客の
+    // 指定があればそちらが勝つのは製品と同じ規約。
+    const chargeItems = shipments.flatMap((s) => {
+      const deliveryNote = s.deliveryNotes[0] ?? null;
+      return s.charges.map((c) => {
+        const name = c.chargeItem.name as LocalizedText | null;
+        const suffix = c.description ? `（${c.description}）` : "";
+        const lineTax = resolveLineTax(catalog, {
+          customerTaxCategoryId,
+          productTaxCategoryId: c.chargeItem.taxCategoryId,
+          basisDate: billingBasisDate(
+            null,
+            isoDateOrNull(s.shippedAt),
+            isoDateJst(closing.closingDate),
+          ),
+        });
+        return {
+          deliveryOrderYearMonth: s.yearMonth,
+          deliveryOrderSeq: s.seq,
+          deliveryNoteYearMonth: deliveryNote?.yearMonth ?? null,
+          deliveryNoteSeq: deliveryNote?.seq ?? null,
+          // 追加料金は注文明細に紐づかない（出荷 1 件にかかるもの）。
+          orderLineId: null,
+          description: {
+            ja: `${localized(name, "ja")}${suffix}`,
+            en: `${localized(name, "en")}${suffix}`,
+          },
+          quantity: c.quantity,
+          unitPrice: Number(c.unitPrice),
+          // 金額は出荷書の行に焼き込んだものをそのまま使う（掛け算をやり直すと
+          // 締日画面の予定額と 1 円ずれ得る）。
+          amount: Number(c.amount),
+          taxCategoryId: lineTax.categoryId,
+          taxRate: lineTax.rate,
+          sortOrder: sortOrder++,
+        };
+      });
+    });
+    items.push(...chargeItems);
 
     // 小計は**明細に印字される金額の和**（lib/money.ts の方針）。出荷書側で
     // 合算してから丸めると「小計 ≠ 明細の合計」になり、PDF と弥生 CSV も

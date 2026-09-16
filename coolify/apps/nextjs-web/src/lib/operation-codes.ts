@@ -299,6 +299,31 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "F",
   },
+  // 料金マスタ（送料などの追加項目）— 詳細ページを持たない小マスタ（編集は
+  // 一覧のモーダル）なので list + new の 2 コード。
+  {
+    code: "MS0G",
+    label: "料金マスタ",
+    href: "/master/charge-items",
+    category: "マスタ",
+    kind: "list",
+    categoryCode: "MS",
+    mode: "0",
+    index: "G",
+  },
+  {
+    code: "MS1G",
+    label: "料金マスタ 新規",
+    // 対訳は app-list.ts の 1 箇所だけにあり、baseLabel で引き当てる
+    // （接尾辞「新規」が付いたままだと en/zh で日本語のまま出る）。
+    baseLabel: "料金マスタ",
+    href: "/master/charge-items/new",
+    category: "マスタ",
+    kind: "new",
+    categoryCode: "MS",
+    mode: "1",
+    index: "G",
+  },
 
   // ─── ドキュメント (DC) ───────────────────────────────────────────────────
   // マニュアル（/manual・fumadocs）— 単一画面, list コードのみ（旧 SY03）

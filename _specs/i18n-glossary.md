@@ -189,6 +189,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | MS0D | 作業場所 | Work locations | 作业场所 |
 | MS0E | 保管場所 | Storage locations | 存放位置 |
 | MS0F | 税区分 | Tax categories | 税种 |
+| MS0G | 料金マスタ | Charge items | 费用项目 |
 | DC01 | マニュアル | Manual | 操作手册 |
 | DC02 | 管理マニュアル | Admin manual | 管理手册 |
 | SY01 | ユーザー管理 | Users | 用户管理 |
@@ -328,6 +329,9 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 注文日 | Order date | 订货日 |
 | 通貨 / 円 | Currency / JPY | 币种 / 日元 |
 | 価格差異 | Price mismatch | 价格差异 |
+| 追加料金 | Additional charge | 附加费用 |
+| 料金マスタ | Charge items | 费用项目 |
+| 固定 / 可変（金額の決まり方） | Fixed / Variable | 固定 / 可变 |
 
 ### 3.7 購買
 
@@ -413,6 +417,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 過不足納品 | Delivery quantity variance | 交货数量差异 |
 | 許容の基準 / 許容範囲（過不足の） | Tolerance basis / Tolerance | 允许基准 / 允许范围 |
 | 請求単価 | Billing unit price | 请款单价 |
+| 送料 | Shipping cost | 运费 |
 
 ### 3.11 承認
 

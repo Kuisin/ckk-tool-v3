@@ -23,6 +23,22 @@
 >   書類・製品の `currency` 列（products / quotes / order_acceptances / invoices に
 >   追加。既定 'JPY'、FK なし — 既存 price_list_entries.currency と同じ規約）が指す。
 >   レートは手動更新の分析用換算（会計処理用ではない）。注文明細はヘッダから読む。
+> - `master.prisma`: `charge_items` — 料金マスタ（送料などの追加項目）。製品の代金以外に
+>   請求するものを表す場所がこれまで無く、備考に書いて人が請求書へ足すか単価に混ぜるしか
+>   なかった（どちらも後から「何にいくら掛かったのか」を読めない）。**金額の決まり方が
+>   2 通りある**ので `amount_mode` で分ける: FIXED = マスタの金額をそのまま使う（担当者ごとに
+>   ぶれてはいけないもの）/ VARIABLE = 使うたびに人が入れる（送料のように実費が都度違う
+>   もの）。判定の唯一の定義元は nextjs-web の `lib/charge-core.ts`（画面の入力欄の活性と
+>   サーバーの保存が同じ関数を見る）。税区分は項目自身が持つ（送料は課税・印紙代は非課税）。
+>   管理は MS0G。
+> - `production.prisma` / `shipping.prisma`: `work_order_charges` / `delivery_order_charges`
+>   — 追加料金の行。**2 つに分かれているのは意味が違うから**（作業計画と実績と同じ）:
+>   指示書側が**予定**（生産側が「このロットは送料が要る」と先に書く）、出荷書側が**確定**で
+>   請求されるのはこちら。出荷書を作るとき、載せたロットの指示書から複写する（同じ指示書を
+>   2 行以上載せても 1 回だけ）。複写後は出荷書側だけを直す — 実費・箱数・同梱で要らなく
+>   なった、は出荷のときにしか決まらない。金額は行に焼き込む（マスタを直しても既に書いた行は
+>   動かない）。締日処理が出荷書側の行を請求明細へ写し、税率の基準日は製品明細と違って
+>   **出荷日**（送料は引き渡しの約束ではなく運んだ日の役務のため）。
 > - `display.prisma`: 管理ディスプレイ（下記 Display 節。管理は SY09 の中）
 > - `kiosk.prisma`: `kiosk_cards` / `kiosk_device_locations` / `kiosk_device_logs` / `kiosk_devices` / `kiosk_floor_maps` / `kiosk_link_requests` / `kiosk_sessions` /
 >   `kiosk_unlock_pins` — メンテナンス退出 PIN の履歴。現行値は

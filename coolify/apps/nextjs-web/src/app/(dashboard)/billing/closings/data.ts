@@ -23,6 +23,7 @@ import {
   inBillingWindow,
   jstMidnightOf,
 } from "@/components/billing/closings/model";
+import { chargesTotal } from "@/lib/charge-core";
 import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -92,6 +93,12 @@ const SHIPMENT_INCLUDE = {
   deliveryNotes: {
     select: { yearMonth: true, seq: true },
     orderBy: [{ yearMonth: "asc" as const }, { seq: "asc" as const }],
+  },
+  // 追加料金（送料など）。製品明細と同じく請求書へ写る — 締日画面の予定額と
+  // 発行される請求書が同じものを数えるよう、ここで一緒に読む。
+  charges: {
+    orderBy: { sortOrder: "asc" as const },
+    include: { chargeItem: { select: { name: true, taxCategoryId: true } } },
   },
 };
 
@@ -197,9 +204,13 @@ export function billableUnitPrice(it: {
 export function shipmentAmount(s: BillableShipment): number {
   // 行ごとに円へ丸めてから足す（lib/money.ts の方針）— 締日処理が作る請求書の
   // 明細と同じ丸め方なので、締日画面の予定額と発行後の請求額がずれない。
-  return s.items.reduce(
-    (sum, it) => sum + lineAmountYen(billableUnitPrice(it), it.quantity),
-    0,
+  // **追加料金（送料など）も足す** — 請求書には明細として載るので、ここで
+  // 数えないと締日画面の予定額だけが少なく出る。
+  return (
+    s.items.reduce(
+      (sum, it) => sum + lineAmountYen(billableUnitPrice(it), it.quantity),
+      0,
+    ) + chargesTotal(s.charges.map((c) => ({ amount: Number(c.amount) })))
   );
 }
 
