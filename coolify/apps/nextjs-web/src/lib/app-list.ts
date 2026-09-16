@@ -423,6 +423,19 @@ export const appList: AppEntry[] = [
     requiredPermission: "master",
   },
 
+  {
+    // 料金マスタ（送料などの追加項目）。指示書と出荷書に行として足し、
+    // 出荷書の行が請求書の明細になる。金額の決まり方（固定 / 可変）は
+    // lib/charge-core.ts が唯一の判定元。
+    key: "master-charge-items",
+    label: "料金マスタ",
+    operationCode: "MS0G",
+    href: "/master/charge-items",
+    icon: "IconCoin",
+    category: "マスタ",
+    requiredPermission: "master",
+  },
+
   // ─── ドキュメント ──────────────────────────────────────────────────────────
   {
     // マニュアル（/manual・fumadocs）。公開ページだが launcher からも開ける。
@@ -742,6 +755,7 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "master-work-locations": { en: "Work locations", zh: "作业场所" },
   "master-storage-locations": { en: "Storage locations", zh: "存放位置" },
   "master-tax-categories": { en: "Tax categories", zh: "税种" },
+  "master-charge-items": { en: "Charge items", zh: "费用项目" },
   docs: { en: "Manual", zh: "操作手册" },
   "admin-manual": { en: "Admin manual", zh: "管理手册" },
   "user-management": { en: "Users", zh: "用户管理" },

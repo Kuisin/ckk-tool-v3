@@ -7,9 +7,12 @@ import { WorkOrderDetail } from "@/components/production/work-orders/WorkOrderDe
 import { appLabelForKey } from "@/lib/app-list";
 import { fetchApprovalState } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
+import { loadChargeItemOptions } from "@/lib/charge-items";
 import { prisma } from "@/lib/db";
 import { listMemos } from "@/lib/document-memos";
+import { type LocalizedText, localized } from "@/lib/format";
 import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
 import {
@@ -52,6 +55,7 @@ export default async function ProductionWorkOrdersDetailPage({
   const { id } = await params;
   const workOrderNumber = await resolveWorkOrderIdParam(id);
   if (workOrderNumber == null) notFound();
+  const locale = await getServerLocale();
 
   const [
     workOrder,
@@ -120,12 +124,41 @@ export default async function ProductionWorkOrdersDetailPage({
     workOrder.id,
   );
 
+  // 追加料金（送料など。ここは**予定**で、請求されるのは出荷書側の行）。
+  const [chargeRows, chargeItems, chargeAuthz] = await Promise.all([
+    prisma.workOrderCharge.findMany({
+      where: { workOrderId: workOrder.id },
+      orderBy: { sortOrder: "asc" },
+      include: { chargeItem: { select: { name: true } } },
+    }),
+    loadChargeItemOptions(locale),
+    checkPermission("work_order", "UPDATE"),
+  ]);
+
   return (
     <WorkOrderDetail
       approval={approval}
       approvalTrail={approvalTrail}
       auditEntries={auditEntries}
+      canEditCharges={
+        chargeAuthz.ok &&
+        workOrder.status !== "COMPLETED" &&
+        workOrder.status !== "CANCELLED"
+      }
       catalogOptions={catalogOptions}
+      chargeItems={chargeItems}
+      charges={chargeRows.map((c) => ({
+        id: c.id,
+        chargeItemId: c.chargeItemId,
+        chargeItemLabel: localized(
+          c.chargeItem.name as LocalizedText | null,
+          locale,
+        ),
+        description: c.description ?? "",
+        quantity: c.quantity,
+        unitPrice: Number(c.unitPrice),
+        amount: Number(c.amount),
+      }))}
       designFile={designFile}
       designPinned={woDesign?.designFileId != null}
       flowChange={pendingFlowChange}

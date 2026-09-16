@@ -41,6 +41,7 @@ model TaxCategory {
   invoiceItems    InvoiceItem[]
   quoteItems      QuoteItem[]
   deliveryNoteItems DeliveryNoteItem[]
+  chargeItems       ChargeItem[]      @relation("ChargeItemTaxCategory")
   invoiceTaxLines InvoiceTaxSummary[]
 
   @@index([isActive, sortOrder])

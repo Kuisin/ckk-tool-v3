@@ -304,6 +304,63 @@ model Currency {
   @@schema("app")
 }
 
+// ─── 料金マスタ（送料などの追加項目） ────────────────────────────────────────
+//
+// 製品の代金以外に請求するもの — 送料・梱包費・特急料金・型費など。これまで
+// 表す場所が無く、備考に書いて人が請求書へ足すか、単価に混ぜて誤魔化すしか
+// なかった（どちらも後から「何にいくら掛かったのか」を読めない）。
+//
+// **金額の決まり方が 2 通りある**ので `amount_mode` で分ける:
+//   FIXED    … マスタの金額をそのまま使う（使うときに変えられない）。
+//              社内で決めた梱包費など、担当者ごとにぶれてはいけないもの。
+//   VARIABLE … 使うたびに人が入れる（マスタの金額は目安として出す）。
+//              送料のように実費が都度違うもの。
+//
+// 税区分は**この項目自身が持つ**（tax_categories）— 送料は課税、印紙代は非課税、
+// のように製品とは別に決まる。顧客の課税区分が入っていればそちらが勝つのは
+// 製品と同じ規約（lib/tax-rate.ts resolveLineTax）。
+//
+// 使う先は 指示書（予定）と 出荷書（確定・請求される実体）の 2 つ。
+// 詳しくは work_order_charges / delivery_order_charges のコメント。
+enum ChargeAmountMode {
+  FIXED
+  VARIABLE
+
+  @@map("CHARGE_AMOUNT_MODE")
+  @@schema("app")
+}
+
+model ChargeItem {
+  id   Int    @id @default(autoincrement())
+  code String @unique
+  name Json // { ja, en, ... }
+
+  amountMode ChargeAmountMode @map("amount_mode")
+  /// FIXED では**必ず**使う金額。VARIABLE では入力欄の既定値（目安）。
+  /// VARIABLE で null = 既定値を出さない（毎回きちんと入れさせる）。
+  defaultAmount Decimal? @map("default_amount") @db.Decimal(12, 2)
+  /// 課税区分（null = 税区分マスタの既定）。顧客側の指定があればそちらが勝つ。
+  taxCategoryId Int?     @map("tax_category_id")
+
+  isActive  Boolean @default(true) @map("is_active")
+  sortOrder Int     @default(0) @map("sort_order")
+  notes     String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  taxCategory         TaxCategory?          @relation("ChargeItemTaxCategory", fields: [taxCategoryId], references: [id], onDelete: Restrict)
+  workOrderCharges    WorkOrderCharge[]
+  deliveryOrderCharges DeliveryOrderCharge[]
+
+  @@index([isActive, sortOrder])
+  @@index([taxCategoryId])
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
+  @@map("charge_items")
+  @@schema("app")
+}
+
 // ─── 顧客専用の製品コード（製品 × 顧客の別名） ───────────────────────────
 //
 // 相手は**自分の品番で**注文を出し、自分の品番で納品書・請求書を照合する。

@@ -43,6 +43,11 @@ INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
 
+-- 料金マスタ（MS0G）も dev 検証後に本番公開する。**本番で公開しないと
+-- 料金項目を登録できず、指示書・出荷書の「追加料金」が選択肢ゼロで出る**ので、
+-- 追加料金を本番で使い始めるときは必ずこの行を有効にすること:
+--   ('app:master-charge-items:main', true, '料金マスタ 本番公開', now()),
+
 -- 端末管理（SY09）・キオスク設定（SY0A）は dev 検証後に本番公開する。
 -- 公開時にコメントを外して再適用:
 --   ('app:kiosk-devices:main',  true, '端末管理 本番公開',     now()),

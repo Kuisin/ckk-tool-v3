@@ -329,6 +329,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | C | 拠点 | MS0C | MS1C | MS2C |
 | マスタ | D | 作業場所 | MS0D | — | — |
 | マスタ | E | 保管場所 | MS0E | — | — |
+| マスタ | G | 料金マスタ | MS0G | MS1G | — |
 | ドキュメント | 1 | マニュアル | DC01 | — | — |
 | ドキュメント | 2 | 管理マニュアル | DC02 | — | — |
 | システム | 1 | ユーザー管理 | SY01 | — | — |
@@ -442,6 +443,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 不良種類 | `IconAlertTriangle` |
 | 承認設定 | `IconUsersGroup` |
 | 拠点 | `IconBuildingWarehouse` |
+| 料金マスタ | `IconCoin` |
 | ユーザー管理 | `IconUserCog` |
 | 価格試算計算 | `IconMathFunction` |
 | 製品項目 | `IconListDetails` |

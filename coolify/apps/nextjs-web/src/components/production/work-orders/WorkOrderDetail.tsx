@@ -42,9 +42,15 @@ import {
   acknowledgeFlowChangeAction,
   cancelWorkOrder,
   copyWorkOrder,
+  saveWorkOrderCharges,
   setWorkOrderDesignFile,
 } from "@/app/(dashboard)/production/work-orders/actions";
 import type { ApprovalActionState } from "@/components/approvals/ApprovalActionCard";
+import {
+  type ChargeItemChoice,
+  type ChargeRowView,
+  ChargesPanel,
+} from "@/components/charges/ChargesPanel";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   type ApprovalTrailView,
@@ -93,6 +99,9 @@ export function WorkOrderDetail({
   rejectedAppliedFlowChange = null,
   designFile = null,
   designPinned = false,
+  charges = [],
+  chargeItems = [],
+  canEditCharges = false,
   variant = "default",
 }: {
   workOrder: WorkOrderView;
@@ -108,6 +117,11 @@ export function WorkOrderDetail({
   designFile?: ProductDesignFile | null;
   /** その版に固定されているか（false = 表示のたびに最新を引いている）。 */
   designPinned?: boolean;
+  /** 追加料金（送料など）— **予定**。請求される実体は出荷書側の行。 */
+  charges?: ChargeRowView[];
+  /** 料金マスタの選択肢（編集時のみ使う）。 */
+  chargeItems?: ChargeItemChoice[];
+  canEditCharges?: boolean;
   /** 承認依頼中の工程フロー変更（承認設定が未設定なら常に null = 即適用）。 */
   flowChange?: PendingFlowChangeView | null;
   /** 上の変更そのものの承認状態（指示書の承認とは別物）。 */
@@ -618,6 +632,21 @@ export function WorkOrderDetail({
               workOrderNumber={wo.workOrderNumber}
               workOrderStatus={wo.status}
             />
+            {/* 追加料金（送料など）。ここは**予定**で、出荷書を作るときに
+                複写される — 請求されるのは出荷書側の行。承認の画面
+                （variant="approval"）では読むだけにする。 */}
+            {!isApproval && (
+              <ChargesPanel
+                canEdit={canEditCharges}
+                description={tr("charges.workOrderHelp")}
+                items={chargeItems}
+                onSave={(rows) =>
+                  saveWorkOrderCharges(wo.workOrderNumber, rows)
+                }
+                rows={charges}
+                title={tr("charges.title")}
+              />
+            )}
             {wo.notes && (
               <div>
                 <Text c="dimmed" mb={4} size="xs">

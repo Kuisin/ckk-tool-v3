@@ -34,12 +34,18 @@ import {
   confirmDeliveryOrder,
   deleteDeliveryOrder,
   rejectDeliveryOrder,
+  saveDeliveryOrderCharges,
   shipDeliveryOrder,
 } from "@/app/(dashboard)/shipping/delivery-orders/actions";
 import {
   ApprovalTrailList,
   countTrailRecords,
 } from "@/components/approvals/ApprovalTrailList";
+import {
+  type ChargeItemChoice,
+  type ChargeRowView,
+  ChargesPanel,
+} from "@/components/charges/ChargesPanel";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DeliveryVarianceCard } from "@/components/shipping/delivery-orders/DeliveryVarianceCard";
 import { AppTabs } from "@/components/ui/AppTabs";
@@ -299,6 +305,9 @@ export function DeliveryOrderDetail({
   memos,
   approval,
   approvalTrail,
+  charges = [],
+  chargeItems = [],
+  canEditCharges = false,
 }: {
   order: DeliveryOrder;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
@@ -312,6 +321,11 @@ export function DeliveryOrderDetail({
    */
   approval: ApprovalActionState;
   approvalTrail: ApprovalTrailEntry[];
+  /** 追加料金（送料など）— **請求される実体**。締日処理が請求明細へ写す。 */
+  charges?: ChargeRowView[];
+  /** 料金マスタの選択肢（編集時のみ使う）。 */
+  chargeItems?: ChargeItemChoice[];
+  canEditCharges?: boolean;
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -577,6 +591,20 @@ export function DeliveryOrderDetail({
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
+            {/* 追加料金（送料など）。指示書から複写された予定がここに入って
+                いる。**直せるのは下書きのうちだけ** — 確定後は締日処理が
+                この金額を請求書へ写すので、あとから動かすと締日画面の予定額と
+                発行済みの請求額が食い違う。 */}
+            <ChargesPanel
+              canEdit={canEditCharges}
+              description={tr("charges.deliveryOrderHelp")}
+              items={chargeItems}
+              onSave={(rows) =>
+                saveDeliveryOrderCharges(order.deliveryOrderNumber, rows)
+              }
+              rows={charges}
+              title={tr("charges.title")}
+            />
             <div>
               <Text c="dimmed" mb={4} size="xs">
                 {tr("common.notes")}

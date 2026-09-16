@@ -57,6 +57,7 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   inspection_templates: "identity",
   inspection_template_groups: "identity",
   products: "identity",
+  charge_items: "identity",
   materials: "identity",
   material_types: "identity",
   material_type_prices: "identity",
