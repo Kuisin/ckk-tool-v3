@@ -3251,6 +3251,15 @@
       "toleranceBottom": "Tolerance bottom",
       "upperLimit": "Upper limit",
       "lowerLimit": "Lower limit"
+    },
+    "movements": {
+      "movementNumber": "Movement no.",
+      "cause": "Cause",
+      "sourceDocument": "Source document",
+      "searchByNumber": "Search by movement no.",
+      "noMovements": "There are no stock movements",
+      "storageLocation": "Storage location / shelf",
+      "truncatedNotice": "Showing the 1,000 most recent only. Older slips will not appear, even when filtered."
     }
   },
   "purchase": {

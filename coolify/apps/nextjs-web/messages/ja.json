@@ -3251,6 +3251,15 @@
       "toleranceBottom": "公差 Bottom",
       "upperLimit": "上限",
       "lowerLimit": "下限"
+    },
+    "movements": {
+      "movementNumber": "伝票番号",
+      "cause": "事由",
+      "sourceDocument": "元書類",
+      "searchByNumber": "伝票番号で検索",
+      "noMovements": "入出庫伝票がありません",
+      "storageLocation": "保管場所・棚",
+      "truncatedNotice": "直近 1000 件のみ表示しています。これより古い伝票は絞り込んでも出てきません。"
     }
   },
   "purchase": {

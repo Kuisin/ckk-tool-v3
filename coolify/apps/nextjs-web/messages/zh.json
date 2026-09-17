@@ -3251,6 +3251,15 @@
       "toleranceBottom": "公差下偏差",
       "upperLimit": "上限",
       "lowerLimit": "下限"
+    },
+    "movements": {
+      "movementNumber": "单据编号",
+      "cause": "事由",
+      "sourceDocument": "来源单据",
+      "searchByNumber": "按单据编号搜索",
+      "noMovements": "没有出入库单",
+      "storageLocation": "存放位置 / 货架",
+      "truncatedNotice": "仅显示最近 1000 条。更早的单据即使筛选也不会出现。"
     }
   },
   "purchase": {
