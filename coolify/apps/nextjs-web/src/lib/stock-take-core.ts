@@ -96,7 +96,10 @@ export function canEditCounts(s: StockTakeState): boolean {
  * 何も止めていない。差し戻し後は数え直して再依頼できるので DRAFT/COUNTING と
  * 同じ扱いにする。
  */
-export function canSubmit(s: StockTakeState, lines: StockTakeLineInput[]): boolean {
+export function canSubmit(
+  s: StockTakeState,
+  lines: StockTakeLineInput[],
+): boolean {
   if (s.status !== "DRAFT" && s.status !== "COUNTING") return false;
   if (s.approvalStatus === "PENDING") return false;
   return countedLines(lines) > 0;

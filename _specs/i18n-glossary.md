@@ -403,7 +403,6 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 入出庫伝票 | Stock movement | 出入库单 |
 | 伝票番号 | Slip number | 单据编号 |
 | 事由（入出庫の） | Cause | 事由 |
-| 入庫 / 出庫 | Stock in / Stock out | 入库 / 出库 |
 | 帳簿数 / 実測数 | Book quantity / Counted | 账面数 / 实测数 |
 | 差異 | Difference | 差异 |
 | 未カウント | Not counted | 未记录 |

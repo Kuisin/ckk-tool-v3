@@ -6,8 +6,8 @@ import {
   countedLines,
   differenceCount,
   differenceTotals,
-  shouldPost,
   type StockTakeLineInput,
+  shouldPost,
   stockTakeDifference,
 } from "./stock-take-core";
 
@@ -70,13 +70,15 @@ describe("集計", () => {
 
 describe("状態の門", () => {
   it("確定・キャンセル後は数量を書き換えられない", () => {
-    expect(canEditCounts({ status: "DRAFT", approvalStatus: "NONE" })).toBe(true);
+    expect(canEditCounts({ status: "DRAFT", approvalStatus: "NONE" })).toBe(
+      true,
+    );
     expect(canEditCounts({ status: "COUNTING", approvalStatus: "NONE" })).toBe(
       true,
     );
-    expect(canEditCounts({ status: "CONFIRMED", approvalStatus: "APPROVED" })).toBe(
-      false,
-    );
+    expect(
+      canEditCounts({ status: "CONFIRMED", approvalStatus: "APPROVED" }),
+    ).toBe(false);
     expect(canEditCounts({ status: "CANCELLED", approvalStatus: "NONE" })).toBe(
       false,
     );
@@ -89,19 +91,26 @@ describe("状態の門", () => {
   });
 
   it("差し戻し後は数え直して再依頼できる", () => {
-    const rejected = { status: "COUNTING", approvalStatus: "REJECTED" } as const;
+    const rejected = {
+      status: "COUNTING",
+      approvalStatus: "REJECTED",
+    } as const;
     expect(canEditCounts(rejected)).toBe(true);
     expect(canSubmit(rejected, [line(10, 8)])).toBe(true);
   });
 
   it("1 行も数えていなければ確定に進めない", () => {
     expect(
-      canSubmit({ status: "COUNTING", approvalStatus: "NONE" }, [line(10, null)]),
+      canSubmit({ status: "COUNTING", approvalStatus: "NONE" }, [
+        line(10, null),
+      ]),
     ).toBe(false);
   });
 
   it("確定済みはキャンセルできない（戻すなら逆仕訳の棚卸を起こす）", () => {
-    expect(canCancel({ status: "COUNTING", approvalStatus: "NONE" })).toBe(true);
+    expect(canCancel({ status: "COUNTING", approvalStatus: "NONE" })).toBe(
+      true,
+    );
     expect(canCancel({ status: "CONFIRMED", approvalStatus: "APPROVED" })).toBe(
       false,
     );

@@ -11,10 +11,7 @@
 import "server-only";
 
 import type { Prisma } from "../../generated/client/client";
-import {
-  type MovementOpener,
-  releaseOrderLineReservations,
-} from "./inventory";
+import { type MovementOpener, releaseOrderLineReservations } from "./inventory";
 
 type Tx = Prisma.TransactionClient;
 

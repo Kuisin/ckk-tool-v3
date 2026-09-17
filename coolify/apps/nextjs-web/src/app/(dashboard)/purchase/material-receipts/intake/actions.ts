@@ -20,8 +20,8 @@ import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, targetPlantsInScope } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
-import { allocateDocumentKey } from "@/lib/numbering";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
+import { allocateDocumentKey } from "@/lib/numbering";
 import { learnPurchaseAliases } from "@/lib/purchase-intake";
 import {
   type ActionResult,

@@ -1213,8 +1213,8 @@
       "OTHER": "Unknown (pre-migration)"
     },
     "TRANSACTION_TYPE_LABEL": {
-      "IN": "Stock in",
-      "OUT": "Stock out",
+      "IN": "In",
+      "OUT": "Out",
       "RESERVE": "Reserve",
       "RELEASE": "Release",
       "ADJUST": "Adjustment"

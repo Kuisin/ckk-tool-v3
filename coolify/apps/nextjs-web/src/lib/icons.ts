@@ -9,6 +9,7 @@
 import {
   IconAdjustments,
   IconAlertTriangle,
+  IconArrowsExchange,
   IconAtom,
   IconBolt,
   IconBook2,
@@ -21,7 +22,6 @@ import {
   IconCalendarDue,
   IconCategory,
   IconClipboardCheck,
-  IconArrowsExchange,
   IconClipboardList,
   IconCoin,
   IconCurrencyYen,

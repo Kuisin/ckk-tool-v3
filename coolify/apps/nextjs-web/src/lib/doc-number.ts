@@ -43,9 +43,11 @@ export const formatQuoteNumber = (key: DocKey) => formatDocNumber("QOT", key);
 export const formatPriceListNumber = (key: DocKey) =>
   formatDocNumber("PRC", key);
 /** 入出庫伝票番号 MOV-YYYYMM-NNNNN — URL id にも使用。 */
-export const formatMovementNumber = (key: DocKey) => formatDocNumber("MOV", key);
+export const formatMovementNumber = (key: DocKey) =>
+  formatDocNumber("MOV", key);
 /** 棚卸番号 STK-YYYYMM-NNNNN — URL id にも使用。 */
-export const formatStockTakeNumber = (key: DocKey) => formatDocNumber("STK", key);
+export const formatStockTakeNumber = (key: DocKey) =>
+  formatDocNumber("STK", key);
 
 /**
  * 製品コード PRD-YYYYMM-NNNN — (year_month, seq) から導出。

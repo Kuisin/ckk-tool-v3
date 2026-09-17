@@ -8,9 +8,9 @@ import "server-only";
  */
 
 import type { Prisma as PrismaNS } from "../../generated/client/client";
-import { encodeInventoryNote } from "./inventory-note-core";
-import { applyTransaction, movementOpener } from "./inventory";
 import type { MovementKey } from "./inventory";
+import { applyTransaction, movementOpener } from "./inventory";
+import { encodeInventoryNote } from "./inventory-note-core";
 import { shouldPost, stockTakeDifference } from "./stock-take-core";
 
 type Tx = PrismaNS.TransactionClient;
@@ -31,8 +31,7 @@ export async function snapshotStockTakeLines(
   plantId: number,
   storageLocationId: number | null,
 ): Promise<number> {
-  const locationFilter =
-    storageLocationId == null ? {} : { storageLocationId };
+  const locationFilter = storageLocationId == null ? {} : { storageLocationId };
 
   const products = await tx.productInventory.findMany({
     where: { plantId, ...locationFilter },

@@ -16,8 +16,8 @@ import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, targetPlantsInScope } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
-import { allocateDocumentKey } from "@/lib/numbering";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
+import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
   actionError,
@@ -87,12 +87,6 @@ export async function createMaterialReceipt(
     // 入荷行の作成と在庫への計上（台帳 + キャッシュ数量）は同じ tx — 途中で
     // 落ちれば入荷行ごと戻る（入荷はあるのに在庫が無い、を作らない）。
     const receipt = await prisma.$transaction(async (tx) => {
-      const openMovement = movementOpener(tx, {
-        key: movementKey,
-        cause: "MATERIAL_RECEIPT",
-        sourceType: "material_receipts",
-        plantId,
-      });
       const created = await tx.materialReceipt.create({
         data: {
           materialId: Number(v.materialId),
@@ -107,6 +101,15 @@ export async function createMaterialReceipt(
           createdBy: actor,
         },
         select: { id: true },
+      });
+      // 伝票は入荷行を作ってから起こす — そうしないと source_id に入れる id が
+      // まだ無い（1 件の入荷はその入荷行そのものが出どころ）。
+      const openMovement = movementOpener(tx, {
+        key: movementKey,
+        cause: "MATERIAL_RECEIPT",
+        sourceType: "material_receipts",
+        sourceId: created.id,
+        plantId,
       });
       await onMaterialReceipt(created.id, tx, openMovement);
       return created;
