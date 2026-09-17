@@ -1,3 +1,11 @@
+-- allow-destructive: 引っかかる 2 行はどちらも旧アプリを壊さない。
+--   (1) DROP TABLE _movement_backfill … この migration 内だけの一時表。
+--   (2) approval_flows の CHECK 張り替え … 値を **増やす** だけ（'stock_takes' の
+--       追加）。旧アプリはその値を書かないので、制約が広がって困ることは無い。
+-- **列を落とす / NOT NULL を後付けする類は入れていない。** movement_id は
+-- わざと nullable のままにしてある（旧アプリがこの列を知らないまま INSERT する
+-- 数分間があるため）。NOT NULL はデプロイが行き渡ってから別の migration で当てる。
+--
 -- 入出庫伝票（inventory_movements）と棚卸（stock_takes）。
 --
 -- これまで在庫の増減は inventory_transactions の行だけで、手掛かりは
