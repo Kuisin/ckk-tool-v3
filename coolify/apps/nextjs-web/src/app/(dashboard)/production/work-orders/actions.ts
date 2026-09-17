@@ -43,6 +43,7 @@ import {
 } from "@/lib/design-files-core";
 import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { movementOpener } from "@/lib/inventory";
 import { allocateDocumentKey, nextSerialNumber } from "@/lib/numbering";
 import {
   copyRouteVersionToCustomerTx,
@@ -1334,8 +1335,17 @@ export async function cancelWorkOrder(
     }
     const actor = await getCurrentActorId();
     const linkedLineIds = prior.orderLineLinks.map((l) => l.orderLineId);
+    // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。解放すべき予約が
+    // 1 件も無ければ伝票は起こらない（番号だけ欠番になる）。
+    const cancelMovementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
     const { releasedReservations, lotCleared } = await prisma.$transaction(
       async (tx) => {
+        const openMovement = movementOpener(tx, {
+          key: cancelMovementKey,
+          cause: "RESERVATION_RELEASE",
+          sourceType: "work_orders",
+          sourceId: String(workOrderNumber),
+        });
         // 遷移は条件付き — 読んだあとに承認・開始が走っていたら負ける側に倒す
         // （着手済みの指示書を「未着手だった」前提でキャンセルしない）。
         const flipped = await tx.workOrder.updateMany({
@@ -1400,6 +1410,7 @@ export async function cancelWorkOrder(
           tr("production.workOrderActions.cancelReleaseNote", {
             number: workOrderNumber,
           }),
+          openMovement,
         );
         // ロット番号 = この指示書番号 を持つ明細からロットを外す（ロットは
         // 消えた）。番号は指示書ごとに一意なので、他の生きている指示書が同じ
@@ -1708,13 +1719,22 @@ export async function approveWorkOrder(
           where: { id: prior.materialId },
           select: { unit: true },
         });
+        // 伝票の番号はこの（承認とは別の）tx の外で採番する。
+        const reserveMovementKey =
+          await allocateDocumentKey("INVENTORY_MOVEMENT");
         await prisma.$transaction(async (tx) => {
+          const openMovement = movementOpener(tx, {
+            key: reserveMovementKey,
+            cause: "STOCK_RESERVATION",
+            sourceType: "work_orders",
+            sourceId: String(workOrderNumber),
+          });
           const invId = await ensureMaterialInventory(tx, {
             materialId: prior.materialId as number,
             plantId: null,
             unit: material?.unit ?? "本", // i18n-ignore — DB データの既定値（単位）。対象外（_specs/i18n-glossary.md §1）
           });
-          await applyTransaction(tx, {
+          await applyTransaction(tx, await openMovement(), {
             inventoryType: "MATERIAL",
             inventoryId: invId,
             transactionType: "RESERVE",

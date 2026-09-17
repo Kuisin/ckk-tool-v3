@@ -8,6 +8,12 @@
  * - onDeliveryOrderShipped: DISPATCH は出庫 + 予約 RELEASE。STOCK_STORAGE は
  *   保管拠点へ入庫（請求フロー外）。
  * - reserveProductStock: §4 二段照合 → 引当予約（不足分は指示書分割の材料）。
+ *
+ * **すべての取引行は入出庫伝票（inventory_movements）に属する。** 伝票は在庫の
+ * 増減と同じトランザクションで作られる — applyTransaction が伝票 id を必須で
+ * 受け取るので、伝票の無い計上は型で書けない。番号だけは他の書類と同じく
+ * トランザクションの外で採番し（allocateDocumentKey("INVENTORY_MOVEMENT")）、
+ * 呼び出し側が MovementKey として渡す。
  */
 
 import type { Prisma as PrismaNS } from "../../generated/client/client";
@@ -25,6 +31,76 @@ import {
 
 type Tx = PrismaNS.TransactionClient;
 
+/** 入出庫伝票の事由。DB の app."INVENTORY_MOVEMENT_CAUSE" と同じ集合。 */
+export type MovementCause =
+  | "WORK_ORDER_COMPLETION"
+  | "DELIVERY_SHIPMENT"
+  | "MATERIAL_RECEIPT"
+  | "STOCK_TRANSFER"
+  | "STOCK_RESERVATION"
+  | "RESERVATION_RELEASE"
+  | "ADJUSTMENT"
+  | "OTHER";
+
+/** allocateDocumentKey("INVENTORY_MOVEMENT") の戻り値。 */
+export interface MovementKey {
+  yearMonth: string;
+  seq: number;
+}
+
+export interface MovementInit {
+  key: MovementKey;
+  cause: MovementCause;
+  /** 元書類のテーブル名（audit_logs と同じ多態規約）。 */
+  sourceType?: string | null;
+  /** 元書類の業務キー（詳細 URL の id と同じ文字列）。 */
+  sourceId?: string | null;
+  plantId?: number | null;
+  notes?: string;
+}
+
+/**
+ * 伝票を 1 枚起こす。**呼び出し側の tx の中で**作ること — 在庫だけ動いて伝票が
+ * 無い（またはその逆）状態を作らないため。
+ */
+export async function createMovement(
+  tx: Tx,
+  init: MovementInit,
+): Promise<string> {
+  const actor = await getCurrentActorId();
+  const row = await tx.inventoryMovement.create({
+    data: {
+      yearMonth: init.key.yearMonth,
+      seq: init.key.seq,
+      cause: init.cause,
+      sourceType: init.sourceType ?? null,
+      sourceId: init.sourceId ?? null,
+      plantId: init.plantId ?? null,
+      notes: init.notes,
+      createdBy: actor,
+    },
+    select: { id: true },
+  });
+  return row.id;
+}
+
+/** 最初に必要になったときだけ伝票を起こす遅延オープナー。 */
+export type MovementOpener = () => Promise<string>;
+
+/**
+ * 伝票の遅延生成。1 件も計上しなかった出来事（良品ゼロの完了、解放すべき予約が
+ * 無いキャンセル）で**空の伝票を残さない**ため、最初の applyTransaction まで
+ * INSERT を遅らせる。採番だけは先に済んでいるので、その番号は欠番になる
+ * — 全書類共通の作法（ロールバックでも番号は飛ぶ）。
+ */
+export function movementOpener(tx: Tx, init: MovementInit): MovementOpener {
+  let id: string | null = null;
+  return async () => {
+    if (id == null) id = await createMovement(tx, init);
+    return id;
+  };
+}
+
 export interface ApplyTransactionInput {
   inventoryType: "PRODUCT" | "MATERIAL";
   inventoryId: string;
@@ -38,14 +114,19 @@ export interface ApplyTransactionInput {
 /**
  * 在庫取引の適用: 台帳行 + キャッシュ数量/予約数量の更新を同一 tx で行う。
  * IN/OUT → quantity、RESERVE/RELEASE → reserved_quantity、ADJUST → quantity 直加算。
+ *
+ * `movementId` は必須 — 伝票に属さない計上を作れないようにするための型の門。
+ * DB 側は移行完了後に movement_id を NOT NULL にして同じことを二重に守る。
  */
 export async function applyTransaction(
   tx: Tx,
+  movementId: string,
   input: ApplyTransactionInput,
 ): Promise<void> {
   const actor = await getCurrentActorId();
   await tx.inventoryTransaction.create({
     data: {
+      movementId,
       inventoryType: input.inventoryType,
       inventoryId: input.inventoryId,
       transactionType: input.transactionType,
@@ -214,9 +295,12 @@ export async function ensureMaterialInventory(
  *   して自ロットの IN と相殺する（付け替え — 二重計上を防ぐ）。
  *   在庫分は割当 1 件のみ（work-order-alloc-core の不変条件）。
  */
-export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
+export async function onWorkOrderCompleted(
+  workOrderId: string,
+  movementKey: MovementKey,
+): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    await onWorkOrderCompletedTx(tx, workOrderId);
+    await onWorkOrderCompletedTx(tx, workOrderId, movementKey);
   });
 }
 
@@ -229,6 +313,7 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
 export async function onWorkOrderCompletedTx(
   tx: Tx,
   workOrderId: string,
+  movementKey: MovementKey,
 ): Promise<void> {
   const wo = await tx.workOrder.findUniqueOrThrow({
     where: { id: workOrderId },
@@ -263,6 +348,16 @@ export async function onWorkOrderCompletedTx(
     computeBranchSemiFinishedQuantity(engineSteps, engineLinks);
   const plantId = wo.steps.find((s) => s.plantId != null)?.plantId ?? null;
 
+  // この完了で動く在庫はすべて 1 枚の伝票に入る（完成品の入庫・半製品の入庫・
+  // 材料の消費・在庫分の付け替え）。1 回の出来事だから 1 枚。
+  const openMovement = movementOpener(tx, {
+    key: movementKey,
+    cause: "WORK_ORDER_COMPLETION",
+    sourceType: "work_orders",
+    sourceId: String(wo.workOrderNumber),
+    plantId,
+  });
+
   if (finishedQty > 0) {
     const invId = await ensureProductInventory(tx, {
       productId: wo.productId,
@@ -270,7 +365,7 @@ export async function onWorkOrderCompletedTx(
       lotNumber: wo.workOrderNumber,
       isSemiFinished: false,
     });
-    await applyTransaction(tx, {
+    await applyTransaction(tx, await openMovement(), {
       inventoryType: "PRODUCT",
       inventoryId: invId,
       transactionType: "IN",
@@ -293,7 +388,7 @@ export async function onWorkOrderCompletedTx(
       isSemiFinished: true,
       sourceStepId: semiStep?.id ?? null,
     });
-    await applyTransaction(tx, {
+    await applyTransaction(tx, await openMovement(), {
       inventoryType: "PRODUCT",
       inventoryId: invId,
       transactionType: "IN",
@@ -316,7 +411,7 @@ export async function onWorkOrderCompletedTx(
     },
   });
   for (const r of materialReservations) {
-    await applyTransaction(tx, {
+    await applyTransaction(tx, await openMovement(), {
       inventoryType: "MATERIAL",
       inventoryId: r.inventoryId,
       transactionType: "RELEASE",
@@ -339,7 +434,7 @@ export async function onWorkOrderCompletedTx(
     });
     const consume = Math.min(Number(inv?.quantity ?? 0), Number(r.quantity));
     if (consume > 0) {
-      await applyTransaction(tx, {
+      await applyTransaction(tx, await openMovement(), {
         inventoryType: "MATERIAL",
         inventoryId: r.inventoryId,
         transactionType: "OUT",
@@ -388,7 +483,7 @@ export async function onWorkOrderCompletedTx(
       });
       const take = Math.min(needed, Number(r.quantity), inv?.quantity ?? 0);
       if (take > 0) {
-        await applyTransaction(tx, {
+        await applyTransaction(tx, await openMovement(), {
           inventoryType: "PRODUCT",
           inventoryId: r.inventoryId,
           transactionType: "RELEASE",
@@ -399,7 +494,7 @@ export async function onWorkOrderCompletedTx(
             workOrderNumber: wo.workOrderNumber,
           }),
         });
-        await applyTransaction(tx, {
+        await applyTransaction(tx, await openMovement(), {
           inventoryType: "PRODUCT",
           inventoryId: r.inventoryId,
           transactionType: "OUT",
@@ -451,12 +546,12 @@ export async function onWorkOrderCompletedTx(
  * 出荷フック: DISPATCH は SO ロット在庫から出庫 + 予約解除。STOCK_STORAGE は
  * 保管入庫（予備製作分）。shipDeliveryOrder から呼ぶ。
  */
-export async function onDeliveryOrderShipped(key: {
-  yearMonth: string;
-  seq: number;
-}): Promise<void> {
+export async function onDeliveryOrderShipped(
+  key: { yearMonth: string; seq: number },
+  movementKey: MovementKey,
+): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    await onDeliveryOrderShippedTx(tx, key);
+    await onDeliveryOrderShippedTx(tx, key, movementKey);
   });
 }
 
@@ -467,12 +562,21 @@ export async function onDeliveryOrderShipped(key: {
 export async function onDeliveryOrderShippedTx(
   tx: Tx,
   key: { yearMonth: string; seq: number },
+  movementKey: MovementKey,
 ): Promise<void> {
   const so = await tx.deliveryOrder.findUniqueOrThrow({
     where: { yearMonth_seq: key },
     include: { items: true },
   });
   const ref = `DOR-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
+  // 出庫・在庫保管の入庫・予約解除は 1 回の出荷の中身なので 1 枚にまとめる。
+  const openMovement = movementOpener(tx, {
+    key: movementKey,
+    cause: "DELIVERY_SHIPMENT",
+    sourceType: "delivery_orders",
+    sourceId: ref,
+    plantId: so.fromPlantId,
+  });
   for (const item of so.items) {
     if (so.type === "DISPATCH") {
       // ロット在庫から出庫。行が無ければ失敗させる（黙ってスキップすると
@@ -531,7 +635,7 @@ export async function onDeliveryOrderShippedTx(
         );
       }
       for (const step of steps) {
-        await applyTransaction(tx, {
+        await applyTransaction(tx, await openMovement(), {
           inventoryType: "PRODUCT",
           inventoryId: step.bucketId,
           transactionType: "OUT",
@@ -549,7 +653,7 @@ export async function onDeliveryOrderShippedTx(
         lotNumber: item.lotNumber,
         isSemiFinished: false,
       });
-      await applyTransaction(tx, {
+      await applyTransaction(tx, await openMovement(), {
         inventoryType: "PRODUCT",
         inventoryId: invId,
         transactionType: "IN",
@@ -589,7 +693,7 @@ export async function onDeliveryOrderShippedTx(
       for (const r of reservations) {
         if (remainingToRelease <= 0) break;
         const release = Math.min(Number(r.quantity), remainingToRelease);
-        await applyTransaction(tx, {
+        await applyTransaction(tx, await openMovement(), {
           inventoryType: r.inventoryType,
           inventoryId: r.inventoryId,
           transactionType: "RELEASE",
@@ -624,12 +728,13 @@ export async function releaseOrderLineReservations(
   tx: Tx,
   orderLineId: string,
   reason: string,
+  openMovement: MovementOpener,
 ): Promise<number> {
   const reservations = await tx.inventoryReservation.findMany({
     where: { orderLineId, status: { in: ["RESERVED", "CONFIRMED"] } },
   });
   for (const r of reservations) {
-    await applyTransaction(tx, {
+    await applyTransaction(tx, await openMovement(), {
       inventoryType: r.inventoryType,
       inventoryId: r.inventoryId,
       transactionType: "RELEASE",
@@ -656,12 +761,13 @@ export async function releaseWorkOrderReservations(
   tx: Tx,
   workOrderId: string,
   reason: string,
+  openMovement: MovementOpener,
 ): Promise<number> {
   const reservations = await tx.inventoryReservation.findMany({
     where: { workOrderId, status: "RESERVED" },
   });
   for (const r of reservations) {
-    await applyTransaction(tx, {
+    await applyTransaction(tx, await openMovement(), {
       inventoryType: r.inventoryType,
       inventoryId: r.inventoryId,
       transactionType: "RELEASE",
@@ -691,15 +797,17 @@ export async function releaseWorkOrderReservations(
  */
 export async function onMaterialReceipt(
   receiptId: string,
-  tx?: Tx,
+  tx: Tx,
+  openMovement: MovementOpener,
 ): Promise<void> {
-  if (tx) return onMaterialReceiptTx(tx, receiptId);
-  await prisma.$transaction(async (t) => {
-    await onMaterialReceiptTx(t, receiptId);
-  });
+  return onMaterialReceiptTx(tx, receiptId, openMovement);
 }
 
-async function onMaterialReceiptTx(tx: Tx, receiptId: string): Promise<void> {
+async function onMaterialReceiptTx(
+  tx: Tx,
+  receiptId: string,
+  openMovement: MovementOpener,
+): Promise<void> {
   const r = await tx.materialReceipt.findUniqueOrThrow({
     where: { id: receiptId },
   });
@@ -718,7 +826,7 @@ async function onMaterialReceiptTx(tx: Tx, receiptId: string): Promise<void> {
     plantId: r.plantId,
     unit: r.unit,
   });
-  await applyTransaction(tx, {
+  await applyTransaction(tx, await openMovement(), {
     inventoryType: "MATERIAL",
     inventoryId: invId,
     transactionType: "IN",
@@ -747,6 +855,7 @@ export interface StockCheckResult {
  */
 export async function reserveProductStock(
   orderLineId: string,
+  movementKey: MovementKey,
 ): Promise<StockCheckResult> {
   const so = await prisma.orderLine.findUniqueOrThrow({
     where: { id: orderLineId },
@@ -758,6 +867,12 @@ export async function reserveProductStock(
   const productId = so.productId;
 
   return prisma.$transaction(async (tx) => {
+    const openMovement = movementOpener(tx, {
+      key: movementKey,
+      cause: "STOCK_RESERVATION",
+      sourceType: "order_lines",
+      sourceId: orderLineId,
+    });
     // 対象行をロック（FOR UPDATE）— 同時照合による二重引当を防ぐ（監査 P1-3）。
     // ロック取得後に読む値が確定値になる。
     await tx.$queryRaw`
@@ -793,7 +908,7 @@ export async function reserveProductStock(
       const free = row.quantity - row.reservedQuantity;
       if (free <= 0) continue;
       const take = Math.min(free, remaining);
-      await applyTransaction(tx, {
+      await applyTransaction(tx, await openMovement(), {
         inventoryType: "PRODUCT",
         inventoryId: row.id,
         transactionType: "RESERVE",

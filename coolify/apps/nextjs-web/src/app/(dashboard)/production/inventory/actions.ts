@@ -19,7 +19,8 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
-import { applyTransaction } from "@/lib/inventory";
+import { applyTransaction, movementOpener } from "@/lib/inventory";
+import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
   actionError,
@@ -143,8 +144,17 @@ export async function transferStock(
     }
     const destLabel = targetLabel(plant, location, shelf);
     const transferId = randomUUID();
+    // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。1 回の移動 =
+    // 1 枚で、出庫と入庫の 2 行がその明細になる。これまで両行を結びつけていた
+    // transferId（その場限りの uuid）は互換のため行にも残す。
+    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
 
     const targetInventoryId = await prisma.$transaction(async (tx) => {
+      const openMovement = movementOpener(tx, {
+        key: movementKey,
+        cause: "STOCK_TRANSFER",
+        plantId: v.targetPlantId,
+      });
       if (v.inventoryType === "PRODUCT") {
         const src = await tx.productInventory.findUnique({
           where: { id: v.inventoryId },
@@ -202,7 +212,7 @@ export async function transferStock(
               from: srcLabel,
               to: destLabel,
             });
-        await applyTransaction(tx, {
+        await applyTransaction(tx, await openMovement(), {
           inventoryType: "PRODUCT",
           inventoryId: src.id,
           transactionType: "OUT",
@@ -211,7 +221,7 @@ export async function transferStock(
           referenceId: transferId,
           notes: note,
         });
-        await applyTransaction(tx, {
+        await applyTransaction(tx, await openMovement(), {
           inventoryType: "PRODUCT",
           inventoryId: target.id,
           transactionType: "IN",
@@ -290,7 +300,7 @@ export async function transferStock(
             from: srcLabel,
             to: destLabel,
           });
-      await applyTransaction(tx, {
+      await applyTransaction(tx, await openMovement(), {
         inventoryType: "MATERIAL",
         inventoryId: src.id,
         transactionType: "OUT",
@@ -299,7 +309,7 @@ export async function transferStock(
         referenceId: transferId,
         notes: note,
       });
-      await applyTransaction(tx, {
+      await applyTransaction(tx, await openMovement(), {
         inventoryType: "MATERIAL",
         inventoryId: target.id,
         transactionType: "IN",

@@ -1767,6 +1767,11 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
       after: string;
     }[] = [];
 
+    // 入出庫伝票の番号は tx の外で採番する（この関数のすぐ上、confirmDeliveryOrder
+    // が納品書番号でやっているのと同じ作法）。**1 出荷 = 伝票 1 枚** で、出庫・
+    // 在庫保管の入庫・予約の按分解除が全部その明細になる。
+    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
+
     await prisma.$transaction(async (tx) => {
       const updated = await tx.deliveryOrder.updateMany({
         where: { ...key, status: "CONFIRMED" },
@@ -1879,7 +1884,7 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
       // 在庫反映（同一 tx）: DISPATCH は出庫 + 予約按分解除、STOCK_STORAGE は
       // 保管入庫。在庫不足・台帳欠落はここで throw され全体がロールバック。
       const { onDeliveryOrderShippedTx } = await import("@/lib/inventory");
-      await onDeliveryOrderShippedTx(tx, key);
+      await onDeliveryOrderShippedTx(tx, key, movementKey);
     });
 
     await recordAudit({

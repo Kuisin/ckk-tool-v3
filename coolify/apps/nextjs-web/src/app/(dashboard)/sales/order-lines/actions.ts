@@ -19,6 +19,7 @@ import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatOrderLineNumber } from "@/lib/doc-number";
 import { reserveProductStock, type StockCheckResult } from "@/lib/inventory";
+import { allocateDocumentKey } from "@/lib/numbering";
 import { isLineStockCheckable } from "@/lib/order-line-core";
 import {
   type ActionResult,
@@ -109,7 +110,10 @@ export async function runStockCheck(
     if (!isLineStockCheckable(line)) {
       return actionError(tr("sales.orderLinesActions.notStockCheckableStatus"));
     }
-    const result = await reserveProductStock(orderLineId);
+    // 入出庫伝票の番号は tx の外で採番する（reserveProductStock が自前で tx を
+    // 開くので、鍵だけ渡して中で伝票を起こさせる）。
+    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
+    const result = await reserveProductStock(orderLineId, movementKey);
     revalidate(
       formatOrderLineNumber({
         yearMonth: line.acceptanceYearMonth,

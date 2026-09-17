@@ -11,7 +11,10 @@
 import "server-only";
 
 import type { Prisma } from "../../generated/client/client";
-import { releaseOrderLineReservations } from "./inventory";
+import {
+  type MovementOpener,
+  releaseOrderLineReservations,
+} from "./inventory";
 
 type Tx = Prisma.TransactionClient;
 
@@ -34,6 +37,7 @@ export async function cancelOrderLineTx(
   tx: Tx,
   lineId: string,
   auditNote: string,
+  openMovement: MovementOpener,
 ): Promise<LineCancelResult> {
   const updated = await tx.orderLine.updateMany({
     where: {
@@ -47,7 +51,12 @@ export async function cancelOrderLineTx(
   if (updated.count === 0) {
     return { cancelled: false, released: 0, cancelledWos: [] };
   }
-  const released = await releaseOrderLineReservations(tx, lineId, auditNote);
+  const released = await releaseOrderLineReservations(
+    tx,
+    lineId,
+    auditNote,
+    openMovement,
+  );
   // 未完了の子指示書を連鎖キャンセル（完了済みは在庫計上済みのため対象外）。
   const childWos = await tx.workOrder.findMany({
     where: {

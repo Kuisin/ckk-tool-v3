@@ -26,6 +26,7 @@ import { prisma } from "./db";
 import { jstDateOnly } from "./format";
 import { missingInspectionSheets } from "./inspection-core";
 import { encodeInventoryNote } from "./inventory-note-core";
+import { allocateDocumentKey } from "./numbering";
 import {
   canStartStep,
   computeFinishedQuantity,
@@ -854,6 +855,10 @@ export async function completeStepExecution(
   // （nextjs-web completeStepExecution と同じ規則）。
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
   if (isWorkOrderComplete(ctx)) {
+    // 入出庫伝票の番号は tx の外で採番する（web と同じ作法）。バッチ完了でも
+    // completeStepExecution は 1 指示書ずつ別々の tx で走るので、ここは
+    // **1 指示書 = 伝票 1 枚** になる（バッチ 1 回で 1 枚にはならない）。
+    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
     await prisma.$transaction(async (tx) => {
       const flipped = await tx.workOrder.updateMany({
         where: { id: stepRow.workOrderId, status: { not: "COMPLETED" } },
@@ -861,7 +866,7 @@ export async function completeStepExecution(
       });
       if (flipped.count === 1) {
         const { onWorkOrderCompletedTx } = await import("./inventory");
-        await onWorkOrderCompletedTx(tx, stepRow.workOrderId);
+        await onWorkOrderCompletedTx(tx, stepRow.workOrderId, movementKey);
       }
     });
   }
