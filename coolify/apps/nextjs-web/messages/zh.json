@@ -805,7 +805,9 @@
     "priceListExpired": "价格表不在有效期",
     "dateFrom": "起始日期",
     "dateTo": "结束日期",
-    "billTo": "请款对象"
+    "billTo": "请款对象",
+    "stockTake": "盘点",
+    "stockMovement": "出入库单"
   },
   "shell": {
     "appsLabel": "应用",
@@ -1199,6 +1201,27 @@
     "DELIVERY_TOLERANCE_BASIS_LABEL": {
       "PERCENT": "百分比（%）",
       "QUANTITY": "数量"
+    },
+    "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "WORK_ORDER_COMPLETION": "工单完成",
+      "DELIVERY_SHIPMENT": "出货",
+      "MATERIAL_RECEIPT": "材料到货",
+      "STOCK_TRANSFER": "库存调拨",
+      "STOCK_RESERVATION": "库存预留",
+      "RESERVATION_RELEASE": "解除预留",
+      "ADJUSTMENT": "盘点调整",
+      "OTHER": "未知（迁移前）"
+    },
+    "TRANSACTION_TYPE_LABEL": {
+      "IN": "入库",
+      "OUT": "出库",
+      "RESERVE": "预留",
+      "RELEASE": "解除预留",
+      "ADJUST": "盘点调整"
+    },
+    "INVENTORY_TYPE_LABEL": {
+      "PRODUCT": "产品",
+      "MATERIAL": "材料"
     }
   },
   "status": {
@@ -1550,6 +1573,34 @@
         },
         "REVOKED": {
           "label": "已撤销"
+        }
+      },
+      "StockTake": {
+        "DRAFT": {
+          "label": "草稿"
+        },
+        "COUNTING": {
+          "label": "记录中"
+        },
+        "CONFIRMED": {
+          "label": "已确定"
+        },
+        "CANCELLED": {
+          "label": "已取消"
+        }
+      },
+      "StockTakeApproval": {
+        "NONE": {
+          "label": "—"
+        },
+        "PENDING": {
+          "label": "审批中"
+        },
+        "APPROVED": {
+          "label": "已批准"
+        },
+        "REJECTED": {
+          "label": "已退回"
         }
       }
     }
@@ -6085,7 +6136,10 @@
       "numberConditionSummary": "{label}{op}{value}",
       "selectConditionSummary": "{label}{op}“{value}”",
       "deliveryTotalQuantity": "出货数量合计",
-      "fromPlant": "出货据点"
+      "fromPlant": "出货据点",
+      "plant": "据点",
+      "differenceCount": "差异件数",
+      "cases": "件"
     },
     "inspectionTemplateExcel": {
       "sheetName": "检查表"
@@ -8671,7 +8725,10 @@
       "api_clients": "API 客户端",
       "api_client_tokens": "API 令牌",
       "tax_categories": "税种",
-      "tax_category_rates": "税率"
+      "tax_category_rates": "税率",
+      "inventory_movements": "出入库单",
+      "stock_takes": "盘点",
+      "stock_take_lines": "盘点明细"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -8925,7 +8982,8 @@
     "finalInspectionDeliveryNoteIssued": "出货前确认：已记录送货单开具人",
     "finalInspectionShipmentAuthorized": "出货前确认：已记录出货批准人",
     "finalInspectionShipDefectReviewed": "已记录出货时不良内容确认人印",
-    "inspectionApproved": "已批准检查记录"
+    "inspectionApproved": "已批准检查记录",
+    "stockTakeAdjusted": "盘点调整（实数 {book} → 实测 {counted}）"
   },
   "workflowCore": {
     "quantityLabels": {

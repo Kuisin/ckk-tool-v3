@@ -144,6 +144,24 @@ export const deliveryOrderTypeLabel = (value: string, locale: Locale) =>
 export const deliveryOrderTypeOptions = (locale: Locale) =>
   labelOptions("DELIVERY_ORDER_TYPE_LABEL", locale);
 
+/** 入出庫伝票の事由（PD07）。 */
+export const movementCauseLabel = (value: string, locale: Locale) =>
+  resolveLabel("INVENTORY_MOVEMENT_CAUSE_LABEL", value, locale);
+export const movementCauseOptions = (locale: Locale) =>
+  labelOptions("INVENTORY_MOVEMENT_CAUSE_LABEL", locale);
+
+/** 在庫取引の区分（入出庫伝票の明細 — IN / OUT / RESERVE / RELEASE / ADJUST）。 */
+export const transactionTypeLabel = (value: string, locale: Locale) =>
+  resolveLabel("TRANSACTION_TYPE_LABEL", value, locale);
+export const transactionTypeOptions = (locale: Locale) =>
+  labelOptions("TRANSACTION_TYPE_LABEL", locale);
+
+/** 在庫の種別（製品 / 素材）。 */
+export const inventoryTypeLabel = (value: string, locale: Locale) =>
+  resolveLabel("INVENTORY_TYPE_LABEL", value, locale);
+export const inventoryTypeOptions = (locale: Locale) =>
+  labelOptions("INVENTORY_TYPE_LABEL", locale);
+
 /** 請求単価の出どころ（出荷書ヘッダ — 過不足納品 §8）。 */
 export const deliveryBillingPriceModeLabel = (value: string, locale: Locale) =>
   resolveLabel("DELIVERY_BILLING_PRICE_MODE_LABEL", value, locale);

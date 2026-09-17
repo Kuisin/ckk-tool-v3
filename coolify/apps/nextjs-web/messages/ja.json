@@ -805,7 +805,9 @@
     "priceListExpired": "価格表の有効期間外",
     "dateFrom": "開始日",
     "dateTo": "終了日",
-    "billTo": "請求先"
+    "billTo": "請求先",
+    "stockTake": "棚卸",
+    "stockMovement": "入出庫伝票"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -1199,6 +1201,27 @@
     "DELIVERY_TOLERANCE_BASIS_LABEL": {
       "PERCENT": "パーセント（%）",
       "QUANTITY": "数量"
+    },
+    "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "WORK_ORDER_COMPLETION": "指示書完了",
+      "DELIVERY_SHIPMENT": "出荷",
+      "MATERIAL_RECEIPT": "素材入荷",
+      "STOCK_TRANSFER": "在庫移動",
+      "STOCK_RESERVATION": "引当予約",
+      "RESERVATION_RELEASE": "予約解除",
+      "ADJUSTMENT": "棚卸調整",
+      "OTHER": "不明（移行前）"
+    },
+    "TRANSACTION_TYPE_LABEL": {
+      "IN": "入庫",
+      "OUT": "出庫",
+      "RESERVE": "予約",
+      "RELEASE": "予約解除",
+      "ADJUST": "棚卸調整"
+    },
+    "INVENTORY_TYPE_LABEL": {
+      "PRODUCT": "製品",
+      "MATERIAL": "素材"
     }
   },
   "status": {
@@ -1550,6 +1573,34 @@
         },
         "REVOKED": {
           "label": "取り消し"
+        }
+      },
+      "StockTake": {
+        "DRAFT": {
+          "label": "下書き"
+        },
+        "COUNTING": {
+          "label": "記入中"
+        },
+        "CONFIRMED": {
+          "label": "確定"
+        },
+        "CANCELLED": {
+          "label": "キャンセル"
+        }
+      },
+      "StockTakeApproval": {
+        "NONE": {
+          "label": "—"
+        },
+        "PENDING": {
+          "label": "承認依頼中"
+        },
+        "APPROVED": {
+          "label": "承認済"
+        },
+        "REJECTED": {
+          "label": "差し戻し"
         }
       }
     }
@@ -6085,7 +6136,10 @@
       "numberConditionSummary": "{label}が {value} {op}",
       "selectConditionSummary": "{label}が「{value}」{op}",
       "deliveryTotalQuantity": "出荷数量の合計",
-      "fromPlant": "出荷元拠点"
+      "fromPlant": "出荷元拠点",
+      "plant": "拠点",
+      "differenceCount": "差異の件数",
+      "cases": "件"
     },
     "inspectionTemplateExcel": {
       "sheetName": "検査表"
@@ -8671,7 +8725,10 @@
       "api_clients": "API クライアント",
       "api_client_tokens": "API トークン",
       "tax_categories": "税区分",
-      "tax_category_rates": "税率"
+      "tax_category_rates": "税率",
+      "inventory_movements": "入出庫伝票",
+      "stock_takes": "棚卸",
+      "stock_take_lines": "棚卸明細"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -8925,7 +8982,8 @@
     "finalInspectionDeliveryNoteIssued": "出荷前確認: 納品書発行者を記録",
     "finalInspectionShipmentAuthorized": "出荷前確認: 出荷許可者を記録",
     "finalInspectionShipDefectReviewed": "出荷時不良内容確認者印を記録",
-    "inspectionApproved": "検査記録を承認"
+    "inspectionApproved": "検査記録を承認",
+    "stockTakeAdjusted": "棚卸調整（実数 {book} → 実測 {counted}）"
   },
   "workflowCore": {
     "quantityLabels": {

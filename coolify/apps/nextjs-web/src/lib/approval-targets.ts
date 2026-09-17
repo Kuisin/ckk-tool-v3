@@ -32,6 +32,7 @@ export const APPROVAL_TARGET_TYPES = [
   "internal_pages",
   "design_requests",
   "delivery_orders",
+  "stock_takes",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -172,6 +173,13 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     appKey: "delivery-orders",
     approvePermission: "delivery_order",
   },
+  stock_takes: {
+    label: label("common.stockTake", "ja"),
+    color: "violet",
+    href: (id) => `/production/stock-takes/${id}`,
+    appKey: "stock-takes",
+    approvePermission: "inventory",
+  },
 };
 
 export function isApprovalTargetType(v: string): v is ApprovalTargetType {
@@ -190,6 +198,7 @@ const TARGET_LABEL_KEY: Record<ApprovalTargetType, string> = {
   purchase_requests: "common.purchaseRequest",
   design_requests: "common.designRequest2",
   delivery_orders: "common.deliveryOrder",
+  stock_takes: "common.stockTake",
 };
 
 /**

@@ -134,6 +134,16 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     listPath: "/shipping/delivery-orders",
     directDetail: true,
   },
+  inventory_movements: {
+    appListKey: "inventory-movements",
+    listPath: "/production/inventory/movements",
+    directDetail: true,
+  },
+  stock_takes: {
+    appListKey: "stock-takes",
+    listPath: "/production/stock-takes",
+    directDetail: true,
+  },
   delivery_notes: {
     appListKey: "delivery-notes",
     listPath: "/shipping/delivery-notes",

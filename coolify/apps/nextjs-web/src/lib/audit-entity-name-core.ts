@@ -75,6 +75,8 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   material_type_prices: false, // 材種×直径×黒皮研磨の価格行。単体の名前を持たない
   billing_closings: false, // 顧客×締日の処理行
   material_receipts: false, // 入荷イベント行
+  inventory_movements: false, // 在庫が動いた出来事。番号がそのまま名前
+  stock_takes: false, // 棚卸。番号がそのまま名前
   privileged_access_requests: false, // 申請行（code は権限コード、対象者ではない）
   user_change_requests: false, // 変更依頼行（targetUserId はあるが自表の名前ではない）
   portal_grants: false, // 共有範囲の付与行

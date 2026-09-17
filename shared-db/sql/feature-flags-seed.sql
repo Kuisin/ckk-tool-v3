@@ -71,6 +71,17 @@ ON CONFLICT (key) DO UPDATE
 --   ('app:design-requests:main', true, '設計依頼書 本番公開', now()),
 --   ('app:design-files:main',    true, '設計図 本番公開',     now())
 
+-- 入出庫伝票（PD07）と棚卸（PD08）は **2 つセットで**公開する。伝票の一覧だけを
+-- 出しても、そこに並ぶ「棚卸調整」を誰も起こせない（調整を起こす口は棚卸しか
+-- 無い）。逆に棚卸だけを出すと、確定した調整が何を動かしたのかを追う先が無い。
+-- また公開前に、その環境で
+--   SELECT count(*) FROM app.inventory_transactions WHERE movement_id IS NULL;
+-- が 0 であることを確かめること（移行前の行に伝票が付いていれば 0 になる）。
+-- 0 でないまま公開すると、伝票の一覧に出てこない在庫の動きが残る。
+-- 受け入れが済んだら:
+--   ('app:inventory-movements:main', true, '入出庫伝票 本番公開', now()),
+--   ('app:stock-takes:main',         true, '棚卸 本番公開',       now())
+
 -- ログイン履歴（SY0D）は dev で記録が溜まるのを確認してから本番公開する。
 -- 先に本番の env（LOGIN_ATTEMPT_PEPPER / CORPORATE_CIDRS /
 -- TRUSTED_PROXY_HOPS）を入れておくこと — 未設定でも落ちないが、相関キーも

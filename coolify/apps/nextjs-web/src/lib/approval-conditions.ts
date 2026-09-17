@@ -220,6 +220,22 @@ export function approvalConditionFields(
         optionsKey: "plants",
       },
     ],
+    // 棚卸は「どの拠点か」と「差異が何件あるか」で段を分けられる。
+    // 差異ゼロの棚卸まで承認に回すと、承認が形骸化する。
+    stock_takes: [
+      {
+        key: "plant_id",
+        label: tr("master.approvalConditions.plant"),
+        type: "select",
+        optionsKey: "plants",
+      },
+      {
+        key: "difference_count",
+        label: tr("master.approvalConditions.differenceCount"),
+        type: "number",
+        unit: tr("master.approvalConditions.cases"),
+      },
+    ],
   };
 }
 

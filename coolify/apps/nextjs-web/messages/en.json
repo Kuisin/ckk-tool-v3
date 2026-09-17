@@ -805,7 +805,9 @@
     "priceListExpired": "Price list out of valid period",
     "dateFrom": "From date",
     "dateTo": "To date",
-    "billTo": "Bill-to"
+    "billTo": "Bill-to",
+    "stockTake": "Stocktaking",
+    "stockMovement": "Stock movement"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -1199,6 +1201,27 @@
     "DELIVERY_TOLERANCE_BASIS_LABEL": {
       "PERCENT": "Percent (%)",
       "QUANTITY": "Quantity"
+    },
+    "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "WORK_ORDER_COMPLETION": "Work order completed",
+      "DELIVERY_SHIPMENT": "Shipment",
+      "MATERIAL_RECEIPT": "Material receipt",
+      "STOCK_TRANSFER": "Stock transfer",
+      "STOCK_RESERVATION": "Stock reservation",
+      "RESERVATION_RELEASE": "Reservation released",
+      "ADJUSTMENT": "Adjustment",
+      "OTHER": "Unknown (pre-migration)"
+    },
+    "TRANSACTION_TYPE_LABEL": {
+      "IN": "Stock in",
+      "OUT": "Stock out",
+      "RESERVE": "Reserve",
+      "RELEASE": "Release",
+      "ADJUST": "Adjustment"
+    },
+    "INVENTORY_TYPE_LABEL": {
+      "PRODUCT": "Product",
+      "MATERIAL": "Material"
     }
   },
   "status": {
@@ -1550,6 +1573,34 @@
         },
         "REVOKED": {
           "label": "Revoked"
+        }
+      },
+      "StockTake": {
+        "DRAFT": {
+          "label": "Draft"
+        },
+        "COUNTING": {
+          "label": "Counting"
+        },
+        "CONFIRMED": {
+          "label": "Confirmed"
+        },
+        "CANCELLED": {
+          "label": "Cancelled"
+        }
+      },
+      "StockTakeApproval": {
+        "NONE": {
+          "label": "—"
+        },
+        "PENDING": {
+          "label": "Pending approval"
+        },
+        "APPROVED": {
+          "label": "Approved"
+        },
+        "REJECTED": {
+          "label": "Sent back"
         }
       }
     }
@@ -6085,7 +6136,10 @@
       "numberConditionSummary": "{label} {op} {value}",
       "selectConditionSummary": "{label} {op} \"{value}\"",
       "deliveryTotalQuantity": "Total shipped quantity",
-      "fromPlant": "From site"
+      "fromPlant": "From site",
+      "plant": "Site",
+      "differenceCount": "Differences",
+      "cases": "cases"
     },
     "inspectionTemplateExcel": {
       "sheetName": "Inspection sheet"
@@ -8671,7 +8725,10 @@
       "api_clients": "API client",
       "api_client_tokens": "API token",
       "tax_categories": "Tax category",
-      "tax_category_rates": "Tax rate"
+      "tax_category_rates": "Tax rate",
+      "inventory_movements": "Stock movement",
+      "stock_takes": "Stocktaking",
+      "stock_take_lines": "Stocktaking line"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -8925,7 +8982,8 @@
     "finalInspectionDeliveryNoteIssued": "Pre-shipment check: recorded delivery note issued by",
     "finalInspectionShipmentAuthorized": "Pre-shipment check: recorded shipment authorized by",
     "finalInspectionShipDefectReviewed": "Recorded the checked-by stamp for defects at shipping",
-    "inspectionApproved": "Approved the inspection record"
+    "inspectionApproved": "Approved the inspection record",
+    "stockTakeAdjusted": "Stocktaking adjustment (on hand {book} → counted {counted})"
   },
   "workflowCore": {
     "quantityLabels": {

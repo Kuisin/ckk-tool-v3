@@ -218,6 +218,29 @@ export const appList: AppEntry[] = [
     requiredPermission: "inventory",
   },
   {
+    // 入出庫伝票 — 在庫が動いた出来事 1 回 = 1 枚（明細は取引行そのもの）。
+    // **作る画面は無い** — 伝票は在庫を動かした処理が自分で起こすもので、
+    // 人が手で起こすものではない（数を直したいときは棚卸 PD08）。
+    key: "inventory-movements",
+    label: "入出庫伝票",
+    operationCode: "PD07",
+    href: "/production/inventory/movements",
+    icon: "IconArrowsExchange",
+    category: "生産",
+    requiredPermission: "inventory",
+  },
+  {
+    // 棚卸 — 実地棚卸。バケット（拠点 × 保管場所 × 棚 × ロット）単位で数え、
+    // 確定が差異ぶんの入出庫伝票（ADJUST）を起こす。
+    key: "stock-takes",
+    label: "棚卸",
+    operationCode: "PD08",
+    href: "/production/stock-takes",
+    icon: "IconClipboardList",
+    category: "生産",
+    requiredPermission: "inventory",
+  },
+  {
     // 設計図 — 図面（design_files）の台帳。版は (製品 × 受注元) ごとに数える。
     // 設計依頼 (SA06) は「作ってほしい」という起票で、こちらはその成果物と
     // 依頼を経ない取り込みの両方を持つ。**版を登録・編集できる唯一の画面**で、
@@ -733,6 +756,8 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "outsource-orders": { en: "Outsource order", zh: "外协委托单" },
   "work-orders": { en: "Work order", zh: "工单" },
   inventory: { en: "Inventory", zh: "库存管理" },
+  "inventory-movements": { en: "Stock movement", zh: "出入库单" },
+  "stock-takes": { en: "Stocktaking", zh: "盘点" },
   "pending-work-orders": { en: "Pending work orders", zh: "未处理工单" },
   "delivery-orders": { en: "Delivery order", zh: "出货单" },
   "delivery-notes": { en: "Delivery note", zh: "送货单" },
