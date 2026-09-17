@@ -82,7 +82,6 @@ export interface ProcessStepRow {
   workLocationRequired: boolean;
   planTimeRequired: boolean;
   planAssigneeRequired: boolean;
-  planQuantityRequired: boolean;
   sortOrder: number;
   isActive: boolean;
 }
@@ -376,9 +375,6 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
             : null,
           r.planTimeRequired
             ? tr("master.processSteps.planFieldTimeShort")
-            : null,
-          r.planQuantityRequired
-            ? tr("master.processSteps.planFieldQuantityShort")
             : null,
         ].filter((x): x is string => x != null);
         return parts.length === 0 ? (

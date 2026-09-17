@@ -1473,7 +1473,6 @@ export async function requestApproval(
             workLocationRequired: true,
             planTimeRequired: true,
             planAssigneeRequired: true,
-            planQuantityRequired: true,
           },
         },
         plans: {
@@ -1497,7 +1496,6 @@ export async function requestApproval(
         workLocationRequired: st.processStep.workLocationRequired,
         planTimeRequired: st.processStep.planTimeRequired,
         planAssigneeRequired: st.processStep.planAssigneeRequired,
-        planQuantityRequired: st.processStep.planQuantityRequired,
         plans: st.plans,
       })),
       { workLocationsConfigured: await workLocationsConfigured() },

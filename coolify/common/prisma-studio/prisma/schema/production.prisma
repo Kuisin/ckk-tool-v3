@@ -363,7 +363,11 @@ model WorkOrderStepPlan {
   plannedDate    DateTime  @map("planned_date") @db.Date
   plannedStartAt DateTime? @map("planned_start_at") @db.Timestamptz(6)
   plannedEndAt   DateTime? @map("planned_end_at") @db.Timestamptz(6)
-  quantity       Int? // 分割時の割当数量（任意）
+  /// @deprecated 2026-09-17 — 計画の数量は画面から外した。書き込まれるだけで
+  /// どこからも読まれず、実績の数量（work_order_step_actuals.quantity）とも
+  /// 突き合わせていなかったため。**既存の行は残す**（過去に入力された数字を
+  /// 消さない）。実際に何本流したかは工程の受入数・良品数と実績が持つ。
+  quantity       Int?
   workLocationId Int?      @map("work_location_id") // 作業場所（機械/エリア — 任意）
   notes          String?
   createdBy      String?   @map("created_by") @db.Uuid

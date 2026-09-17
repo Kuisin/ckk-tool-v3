@@ -2001,13 +2001,12 @@ export function WorkflowBuilder({
                   workLocationRequired: cat.workLocationRequired,
                   planTimeRequired: cat.planTimeRequired,
                   planAssigneeRequired: cat.planAssigneeRequired,
-                  planQuantityRequired: cat.planQuantityRequired,
                 },
                 { workLocationsConfigured: workLocationOptions.length > 0 },
               );
-              const needsPanel = required.some(
-                (f) => f === "TIME" || f === "QUANTITY",
-              );
+              // 時刻は作成フォームでは入れさせない（工程ごとの時間割は
+              // 承認後に計画パネルで詰める）ので、必要なら案内だけ出す。
+              const needsPanel = required.includes("TIME");
               return (
                 <Paper key={s.processStepId} p="sm" radius="sm" withBorder>
                   <Group

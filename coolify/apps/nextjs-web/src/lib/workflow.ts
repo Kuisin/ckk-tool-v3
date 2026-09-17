@@ -45,7 +45,6 @@ export async function loadCatalog(): Promise<WorkflowCatalog> {
       workLocationRequired: s.workLocationRequired,
       planTimeRequired: s.planTimeRequired,
       planAssigneeRequired: s.planAssigneeRequired,
-      planQuantityRequired: s.planQuantityRequired,
       sortOrder: s.sortOrder,
     })),
     useDeps: useDeps.map((d) => ({

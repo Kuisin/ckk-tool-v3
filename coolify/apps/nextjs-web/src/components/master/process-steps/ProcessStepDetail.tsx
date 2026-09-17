@@ -65,7 +65,6 @@ export interface ProcessStepDetailData {
   workLocationRequired: boolean;
   planTimeRequired: boolean;
   planAssigneeRequired: boolean;
-  planQuantityRequired: boolean;
   approvalMinRank: string | null;
   quantityTracking: string;
   lotInputMode: string;
@@ -314,7 +313,6 @@ export function ProcessStepDetail({
             ...(record.planTimeRequired
               ? [tr("master.processSteps.planTime")]
               : []),
-            ...(record.planQuantityRequired ? [tr("common.quantity")] : []),
           ].join(tr("common.s1"))}
         />
         <FieldValue

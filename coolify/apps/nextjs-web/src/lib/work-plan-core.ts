@@ -8,11 +8,16 @@
  *
  * **何を入れれば「揃った」かは工程マスタだけが決める**（§7）:
  *   - 計画日 は常に必須（列が NOT NULL — 計画の最小単位は「いつ・どこで」）
- *   - 担当者 / 作業場所 / 開始・終了時刻 / 数量 は工程ごとに 要る / 要らない
+ *   - 担当者 / 作業場所 / 開始・終了時刻 は工程ごとに 要る / 要らない
  *     （process_step_catalog の plan_assignee_required / work_location_required /
- *     plan_time_required / plan_quantity_required）。担当者は既定で任意 —
- *     承認後に現場で決めてよい工程が多く、承認を出すためだけに仮の人を
- *     入れる運用を作らないため。
+ *     plan_time_required）。担当者は既定で任意 — 承認後に現場で決めてよい工程が
+ *     多く、承認を出すためだけに仮の人を入れる運用を作らないため。
+ *
+ * ★ **数量は計画の項目ではない**（2026-09-17 に外した）。書き込まれるだけで
+ *   どこからも読まれず、実績の数量とも突き合わせていない欄で、「承認を通すために
+ *   数字を書かせる」以上の意味を持っていなかった。工程が実際に何本流したかは
+ *   工程の受入数・良品数（work_order_steps）と実績（work_order_step_actuals）が
+ *   持つ。計画に数量を戻すなら、まず**何がそれを読むのか**を決めること。
  * 社内工程（execution_location = INTERNAL）ごとに、それらの揃った計画が 1 行以上。
  * 外注工程は対象外 — 作業場所は社内の機械/エリアで、外注先には当てはまらない
  * （外注は 依頼日 / 入荷予定日 を別に持つ）。キャンセル済みの工程も対象外。
@@ -26,14 +31,13 @@
  */
 
 /** 工程ごとに要否を切れる計画の項目。 */
-export type PlanField = "ASSIGNEE" | "WORK_LOCATION" | "TIME" | "QUANTITY";
+export type PlanField = "ASSIGNEE" | "WORK_LOCATION" | "TIME";
 
 /** 工程マスタが持つ計画の必須項目の印。 */
 export interface PlanRequirementFlags {
   planAssigneeRequired?: boolean;
   workLocationRequired?: boolean;
   planTimeRequired?: boolean;
-  planQuantityRequired?: boolean;
 }
 
 /**
@@ -50,7 +54,6 @@ export function requiredPlanFields(
   if (options.workLocationsConfigured && step.workLocationRequired !== false)
     out.push("WORK_LOCATION");
   if (step.planTimeRequired) out.push("TIME");
-  if (step.planQuantityRequired) out.push("QUANTITY");
   return out;
 }
 
@@ -62,7 +65,6 @@ export interface PlanReadinessPlan {
   workLocationId: number | null;
   plannedStartAt?: string | Date | null;
   plannedEndAt?: string | Date | null;
-  quantity?: number | null;
 }
 
 export interface PlanReadinessStep extends PlanRequirementFlags {
@@ -103,7 +105,6 @@ export function missingPlanFields(
       (plan.plannedStartAt == null || plan.plannedEndAt == null)
     )
       out.push(f);
-    if (f === "QUANTITY" && plan.quantity == null) out.push(f);
   }
   return [...new Set(out)];
 }

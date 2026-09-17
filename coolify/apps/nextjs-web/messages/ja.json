@@ -2646,8 +2646,7 @@
       "selectAWorkLocation": "作業場所を選択してください",
       "start": "開始",
       "end": "終了",
-      "enterStartAndEnd": "開始と終了の時刻を入力してください",
-      "enterQuantity": "数量を入力してください"
+      "enterStartAndEnd": "開始と終了の時刻を入力してください"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "数量・不良",
@@ -3028,7 +3027,6 @@
       "workLocationRequiredForPlan": "作業計画には作業場所が必要です",
       "planLockedByWorkOrderStatus": "承認依頼中・完了・キャンセルの指示書では作業計画を変更できません",
       "timeRequiredForPlan": "この工程の作業計画には開始・終了時刻が必要です",
-      "quantityRequiredForPlan": "この工程の作業計画には数量が必要です",
       "assigneeRequiredForPlan": "この工程の作業計画には担当者が必要です"
     },
     "workOrderActions": {
@@ -5429,8 +5427,6 @@
       "planRequiredFieldsHelp": "承認依頼の前に、この工程の作業計画に何が入っている必要があるか。計画日は常に必須です。",
       "planTimeRequired": "作業計画に開始・終了時刻が必要",
       "planTimeRequiredHelp": "時間帯まで決めてから承認に出す工程で立てます。",
-      "planQuantityRequired": "作業計画に数量が必要",
-      "planQuantityRequiredHelp": "計画を数量で分割する工程（担当者ごとに何本、など）で立てます。",
       "planTime": "開始・終了時刻",
       "routeKind": "工程リスト",
       "routeKindPrep": "準備",
@@ -5440,7 +5436,6 @@
       "planRequiredShort": "計画必須",
       "planFieldLocationShort": "場所",
       "planFieldTimeShort": "時刻",
-      "planFieldQuantityShort": "数量",
       "planAssigneeRequired": "作業計画に担当者が必要",
       "planAssigneeRequiredHelp": "承認依頼の前に担当者まで決めてから出す工程で立てます。既定では担当者は任意で、承認後に現場で決められます。",
       "planFieldAssigneeShort": "担当"

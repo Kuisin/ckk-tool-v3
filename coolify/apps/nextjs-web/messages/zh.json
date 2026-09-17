@@ -2646,8 +2646,7 @@
       "selectAWorkLocation": "请选择作业场所",
       "start": "开始",
       "end": "结束",
-      "enterStartAndEnd": "请输入开始与结束时间",
-      "enterQuantity": "请输入数量"
+      "enterStartAndEnd": "请输入开始与结束时间"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "数量与不良",
@@ -3028,7 +3027,6 @@
       "workLocationRequiredForPlan": "作业计划需要作业场所",
       "planLockedByWorkOrderStatus": "审批中、已完成或已取消的工单无法修改作业计划",
       "timeRequiredForPlan": "本工序的作业计划需要开始・结束时间",
-      "quantityRequiredForPlan": "本工序的作业计划需要数量",
       "assigneeRequiredForPlan": "此工序的作业计划需要负责人"
     },
     "workOrderActions": {
@@ -5429,8 +5427,6 @@
       "planRequiredFieldsHelp": "提交审批前，此工序的作业计划必须包含哪些内容。计划日始终为必填。",
       "planTimeRequired": "作业计划需要开始・结束时间",
       "planTimeRequiredHelp": "需在审批前确定时间段的工序请开启。",
-      "planQuantityRequired": "作业计划需要数量",
-      "planQuantityRequiredHelp": "按数量拆分计划的工序（如每人多少支）请开启。",
       "planTime": "开始・结束时间",
       "routeKind": "工序清单",
       "routeKindPrep": "准备",
@@ -5440,7 +5436,6 @@
       "planRequiredShort": "计划必填",
       "planFieldLocationShort": "场所",
       "planFieldTimeShort": "时间",
-      "planFieldQuantityShort": "数量",
       "planAssigneeRequired": "作业计划需要负责人",
       "planAssigneeRequiredHelp": "在需要先确定负责人再提交审批的工序上启用。默认负责人为可选，可在审批后由现场决定。",
       "planFieldAssigneeShort": "负责人"

@@ -196,9 +196,13 @@ model ProcessStepCatalog {
   // false にする。使える場所の範囲は別（process_step_work_locations の許可リスト）。
   workLocationRequired Boolean       @default(true) @map("work_location_required")
   // 作業計画の必須項目（承認前の揃い）— 作業場所と同じく工程ごと。担当者と計画日は
-  // 常に必須（列が NOT NULL）で、ここで切れるのは 時刻（開始・終了）と 数量。
+  // 常に必須（列が NOT NULL）で、ここで切れるのは 時刻（開始・終了）。
   // 「何を入れれば計画が揃ったか」は工程マスタだけが決める（lib/work-plan-core.ts）。
   planTimeRequired     Boolean       @default(false) @map("plan_time_required")
+  /// @deprecated 2026-09-17 — 計画の数量そのものを廃止したので、この印は
+  /// どこからも読まれない（工程マスタの画面からも消した）。列を残してあるのは
+  /// ローリングデプロイ中に旧コンテナがここへ書き続けるため（bp_customer_attrs
+  /// .tax_type と同じ扱い）。DROP は移行が全経路で終わったあとの別マイグレーションで。
   planQuantityRequired Boolean       @default(false) @map("plan_quantity_required")
   // 担当者。既定は任意 — 承認後に現場で決めてよい工程が多く、計画の最小単位は
   // 「いつ・どこで」。人まで決めてから承認に出す工程だけ立てる。
