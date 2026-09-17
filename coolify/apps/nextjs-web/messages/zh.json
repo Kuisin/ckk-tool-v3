@@ -3260,6 +3260,62 @@
       "noMovements": "没有出入库单",
       "storageLocation": "存放位置 / 货架",
       "truncatedNotice": "仅显示最近 1000 条。更早的单据即使筛选也不会出现。"
+    },
+    "stockTakes": {
+      "actions": {
+        "cancelFailed": "取消失败",
+        "cannotCancelNow": "当前无法取消（仅草稿或记入中可取消）",
+        "cannotSubmitNow": "当前无法提交（请至少填写 1 行的实测数）",
+        "countsSaved": "已保存记入",
+        "createFailed": "创建失败",
+        "noLinesToCount": "没有可盘点的对象",
+        "notEditableNow": "当前无法记入",
+        "notPendingApproval": "不处于审批中",
+        "saveCountsFailed": "保存记入失败",
+        "selectAPlant": "请选择据点",
+        "stateChanged": "状态已发生变化，请刷新后重试",
+        "submitFailed": "提交失败"
+      },
+      "detail": {
+        "bookQuantity": "账面数量",
+        "confirmCancelBody": "将取消 {number}，此操作无法撤销。",
+        "confirmedAtLabel": "确定时间",
+        "countedProgress": "已记入 {counted}/{total} 项",
+        "countedQuantity": "实测数量",
+        "countsSaved": "已保存记入",
+        "createdAtLabel": "创建时间",
+        "difference": "差异",
+        "item": "对象",
+        "linesTitle": "盘点对象（{count}）",
+        "movementTitle": "出入库单据",
+        "noDifferenceNoMovement": "无差异（未开出入库单据）",
+        "notConfirmedYet": "尚未确定",
+        "notCounted": "未盘点",
+        "numberLabel": "盘点编号",
+        "stageConfirmed": "确定",
+        "stageCounting": "记入",
+        "stageDraft": "草稿",
+        "summaryLine": "已记入 {counted}/{total} 项・差异 {diffCount} 项（盘盈 +{over} ・ 盘亏 −{under}）",
+        "unassignedLocation": "未分配"
+      },
+      "form": {
+        "created": "已创建",
+        "createdBody": "已创建 {number}",
+        "newTitle": "新建盘点",
+        "sectionDescription": "导入整个据点，或按保管位置缩小范围后的盘点对象。",
+        "sectionTitle": "盘点信息",
+        "selectAPlant": "选择据点",
+        "selectAPlantFirst": "请先选择据点",
+        "selectAStorageLocation": "选择存放位置（可选）"
+      },
+      "table": {
+        "approvalStatus": "审批状态",
+        "emptyMessage": "暂无盘点记录",
+        "lineCount": "明细数",
+        "number": "盘点编号",
+        "searchPlaceholder": "按盘点编号、据点、存放位置搜索",
+        "storageLocation": "存放位置"
+      }
     }
   },
   "purchase": {

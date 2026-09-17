@@ -3260,6 +3260,62 @@
       "noMovements": "There are no stock movements",
       "storageLocation": "Storage location / shelf",
       "truncatedNotice": "Showing the 1,000 most recent only. Older slips will not appear, even when filtered."
+    },
+    "stockTakes": {
+      "actions": {
+        "cancelFailed": "Could not cancel",
+        "cannotCancelNow": "This cannot be cancelled now (only while draft or counting)",
+        "cannotSubmitNow": "This cannot be submitted now (count at least one line first)",
+        "countsSaved": "Counts saved",
+        "createFailed": "Could not create",
+        "noLinesToCount": "There is nothing to count",
+        "notEditableNow": "This cannot be edited now",
+        "notPendingApproval": "Not pending approval",
+        "saveCountsFailed": "Could not save the counts",
+        "selectAPlant": "Select a site",
+        "stateChanged": "The state has changed. Reload and try again",
+        "submitFailed": "Could not submit"
+      },
+      "detail": {
+        "bookQuantity": "Book quantity",
+        "confirmCancelBody": "This cancels {number}. This cannot be undone.",
+        "confirmedAtLabel": "Confirmed at",
+        "countedProgress": "{counted}/{total} counted",
+        "countedQuantity": "Counted quantity",
+        "countsSaved": "Counts saved",
+        "createdAtLabel": "Created at",
+        "difference": "Difference",
+        "item": "Item",
+        "linesTitle": "Buckets ({count})",
+        "movementTitle": "Inventory movement",
+        "noDifferenceNoMovement": "No difference (no movement was issued)",
+        "notConfirmedYet": "Not confirmed yet",
+        "notCounted": "Not counted",
+        "numberLabel": "Stocktake number",
+        "stageConfirmed": "Confirmed",
+        "stageCounting": "Counting",
+        "stageDraft": "Draft",
+        "summaryLine": "Counted {counted}/{total} · {diffCount} with a difference (over +{over} / under −{under})",
+        "unassignedLocation": "Unassigned"
+      },
+      "form": {
+        "created": "Created",
+        "createdBody": "Created {number}",
+        "newTitle": "New stocktake",
+        "sectionDescription": "Pulls in the buckets for the whole site, or narrowed to one storage location.",
+        "sectionTitle": "Stocktake information",
+        "selectAPlant": "Select a site",
+        "selectAPlantFirst": "Select a site first",
+        "selectAStorageLocation": "Select a storage location (optional)"
+      },
+      "table": {
+        "approvalStatus": "Approval status",
+        "emptyMessage": "There are no stocktakes yet",
+        "lineCount": "Line count",
+        "number": "Stocktake number",
+        "searchPlaceholder": "Search by stocktake number, site, or storage location",
+        "storageLocation": "Storage location"
+      }
     }
   },
   "purchase": {

@@ -3260,6 +3260,62 @@
       "noMovements": "入出庫伝票がありません",
       "storageLocation": "保管場所・棚",
       "truncatedNotice": "直近 1000 件のみ表示しています。これより古い伝票は絞り込んでも出てきません。"
+    },
+    "stockTakes": {
+      "actions": {
+        "cancelFailed": "キャンセルに失敗しました",
+        "cannotCancelNow": "いまはキャンセルできません（下書き・記入中のみ）",
+        "cannotSubmitNow": "いまは提出できません（1 件以上カウントしてください）",
+        "countsSaved": "記入を保存しました",
+        "createFailed": "作成に失敗しました",
+        "noLinesToCount": "数える対象がありません",
+        "notEditableNow": "いまは記入できません",
+        "notPendingApproval": "承認依頼中ではありません",
+        "saveCountsFailed": "記入の保存に失敗しました",
+        "selectAPlant": "拠点を選択してください",
+        "stateChanged": "状態が変わっています。再読み込みしてください",
+        "submitFailed": "提出に失敗しました"
+      },
+      "detail": {
+        "bookQuantity": "帳簿数",
+        "confirmCancelBody": "{number} をキャンセルします。この操作は取り消せません。",
+        "confirmedAtLabel": "確定日時",
+        "countedProgress": "{counted}/{total} 件入力済み",
+        "countedQuantity": "実測数",
+        "countsSaved": "記入を保存しました",
+        "createdAtLabel": "作成日時",
+        "difference": "差異",
+        "item": "対象",
+        "linesTitle": "対象バケット（{count}）",
+        "movementTitle": "入出庫伝票",
+        "noDifferenceNoMovement": "差異なし（伝票は起票していません）",
+        "notConfirmedYet": "未確定",
+        "notCounted": "未カウント",
+        "numberLabel": "棚卸番号",
+        "stageConfirmed": "確定",
+        "stageCounting": "記入",
+        "stageDraft": "下書き",
+        "summaryLine": "記入 {counted}/{total} 件・差異 {diffCount} 件（過 +{over} ・ 不足 −{under}）",
+        "unassignedLocation": "未割当"
+      },
+      "form": {
+        "created": "作成しました",
+        "createdBody": "{number} を作成しました",
+        "newTitle": "新規棚卸",
+        "sectionDescription": "拠点全体、または保管場所を絞って対象バケットを取り込みます。",
+        "sectionTitle": "棚卸情報",
+        "selectAPlant": "拠点を選択",
+        "selectAPlantFirst": "先に拠点を選択",
+        "selectAStorageLocation": "保管場所を選択（任意）"
+      },
+      "table": {
+        "approvalStatus": "承認状態",
+        "emptyMessage": "棚卸はまだありません",
+        "lineCount": "明細数",
+        "number": "棚卸番号",
+        "searchPlaceholder": "棚卸番号・拠点・保管場所で検索",
+        "storageLocation": "保管場所"
+      }
     }
   },
   "purchase": {
