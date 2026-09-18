@@ -19,7 +19,7 @@
 | ○ | アプリにハードコードされた UI 文言 | `.tsx` の文字列、`messages/*.json`、`StatusBadge.tsx`、`enum-labels.ts`、`app-list.ts`、`audit.ts`、PDF/メールのテンプレート文言 |
 | ✕ | **DB に入るデータ** | マスタ名称（製品・素材・材種・拠点・工程・検査項目）、取引先名、ロール名、権限の表示名、工具種、不良種類、製品項目の値 |
 | ✕ | 識別子 | 書類番号・接頭辞（`QOT-` `ORD-` `PO-` `DRN-` `INV-` `WOR-` `EST-` `PRC-`）、操作コード、DB の enum 値、製品コード・素材コード |
-| ✕ | 固有名詞 | 社名・人名・製品名（弥生会計 / Gotenberg など）、`LD`（社内語） |
+| ✕ | 固有名詞 | 社名・人名・製品名（TKC FX4クラウド / Gotenberg など）、`LD`（社内語） |
 | ✕ | **外部 API の誤り本文** | `/api/v1` が返す RFC 9457 の `type` / `title` / `code` / `detail`（`lib/api-problem-core.ts`）。機械向けの契約なので**英語で固定**し、next-intl を通さない —閲覧者ごとに変わる文字列を契約に混ぜない（`_specs/api.md` §4） |
 
 DB データは**訳す対象ではないが、入れ物の作り方は決めてある**（§2.10）。
@@ -211,6 +211,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | SY0F | 通知メール | Notification email | 通知邮件 |
 | SY0G | 特権アクセス | Privileged access | 特权访问 |
 | SY0H | 取引先ポータル | Partner portal | 客户门户 |
+| SY0I | 外部 API | External API | 外部 API |
+| SY0J | 会計連携 | Accounting export | 会计对接 |
 
 ### 3.3 書類・番号
 
@@ -335,6 +337,15 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 注文日 | Order date | 订货日 |
 | 通貨 / 円 | Currency / JPY | 币种 / 日元 |
 | 価格差異 | Price mismatch | 价格差异 |
+| 仕訳 | Journal entry | 记账凭证 |
+| 勘定科目 | Account | 科目 |
+| 科目コード | Account code | 科目代码 |
+| 補助科目 | Sub-account | 辅助科目 |
+| 部門コード | Department code | 部门代码 |
+| 売掛金 | Accounts receivable | 应收账款 |
+| 売上高 | Sales | 销售收入 |
+| 仮受消費税 | Tax suspense (received) | 暂收消费税 |
+| 消費税コード | Tax code | 税代码 |
 | 追加料金 | Additional charge | 附加费用 |
 | 料金マスタ | Charge items | 费用项目 |
 | 固定 / 可変（金額の決まり方） | Fixed / Variable | 固定 / 可变 |
@@ -427,6 +438,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 請求期間 | Billing period | 请款期间 |
 | 締日処理 | Billing closing | 结算处理 |
 | 会計連携 | Accounting export | 会计对接 |
+| 会計連携CSV | Accounting CSV | 会计对接 CSV |
+| 会計連携日時 | Accounting export date | 会计对接时间 |
 | 過不足納品 | Delivery quantity variance | 交货数量差异 |
 | 許容の基準 / 許容範囲（過不足の） | Tolerance basis / Tolerance | 允许基准 / 允许范围 |
 | 請求単価 | Billing unit price | 请款单价 |
@@ -704,6 +717,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 17 | **税区分はマスタ（MS0F 税区分 / Tax categories / 税种）に一本化**し、製品と顧客の双方がそれを参照する。**顧客の課税区分が優先**で、顧客が未設定（null）のときだけ製品の区分が効く — その状態を画面では「**製品に従う / Follow the product / 按产品**」と呼ぶ。enum `TAX_TYPE` は `tax_categories.code` の値としてだけ残す（訳語 課税 / 非課税 / 軽減税率 は §3.4 のまま変えない）。率は DB 行で適用開始日を持ち、**引くときの基準日は注文日** | `app-list.ts` / 製品・取引先マスタ / 請求書・見積書の税表示 |
 
 | 18 | **入出庫伝票 = Stock movement / 出入库单**、**棚卸 = Stocktaking / 盘点**。既にある 在庫移動（Stock transfer / 库存调拨）と 棚卸調整（Adjustment / 盘点调整）とは**別の語**として扱う — 前者は「保管場所・拠点の間で動かす操作」、入出庫伝票は「在庫が動いた出来事の記録そのもの」で、en で Stock transfer を使い回すと 2 つが同じものに見える | `app-list.ts` / PD07・PD08 の画面 / `enum.INVENTORY_MOVEMENT_CAUSE_LABEL` |
+| 19 | **会計ソフトは TKC FX4クラウド**（旧 弥生会計 Next）。ただし**画面には製品名を出さない** — ボタンも履歴も列も「会計連携CSV / Accounting CSV / 会计对接 CSV」「会計連携日時」で統一し、製品名は仕様書とマニュアル本文にだけ書く。理由は 2 つ: 会計ソフトが替わるたびに 3 言語の文言と DB 列名を直す作業が再発すること、および zh に「FX4クラウド」の定訳が無く、弥生のときは「弥生会计」という造語を当てていたこと。仕訳の勘定科目は**マスタの列**（`tax_categories` / `bp_customer_attrs`）から引き、空なら `system_settings` の `accounting.*` の既定に落ちる。列レイアウトと文字コードは SY0J で可変 | `app-list.ts` / `messages/*.json` / `lib/accounting-export-core.ts` / MS0F・MS01 / マニュアル 3 言語 |
 
 ## 5. 未決
 
