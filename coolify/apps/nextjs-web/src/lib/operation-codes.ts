@@ -575,6 +575,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "I",
   },
+  // 会計連携（仕訳 CSV の列・文字コード・既定の科目コード）
+  {
+    code: "SY0J",
+    label: "会計連携",
+    href: "/settings/accounting",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "J",
+  },
 ];
 
 const CODE_LOOKUP = new Map(
