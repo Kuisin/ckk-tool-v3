@@ -139,7 +139,7 @@ ON CONFLICT (id) DO NOTHING;
 -- 小計 161,000 / 消費税 16,100 / 合計 177,100。支払期限 = 締日 2026-06-30 + 30日。
 INSERT INTO app.invoices (year_month, seq, customer_bp_id, customer_branch_bp_id,
   billing_period_from, billing_period_to, subtotal, tax_amount, total_amount,
-  status, issued_at, due_date, sent_at, pdf_file_id, yayoi_exported_at, notes,
+  status, issued_at, due_date, sent_at, pdf_file_id, accounting_exported_at, notes,
   created_by, created_at, updated_at)
 VALUES
   ('202606', 1, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
