@@ -128,6 +128,14 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // 会計連携。会計ソフトの製品名を URL から外した（弥生 → 会計連携）ので、
+      // ブックマークや手順書に残っている旧 URL をここで受ける。クエリ
+      // （?invoice=… &force=1）は Next が引き継ぐ。
+      {
+        source: "/api/export/yayoi",
+        destination: "/api/export/accounting",
+        permanent: true,
+      },
       // ディスプレイ管理は独立アプリ（SY0I）をやめ、端末管理（SY09）の
       // タブに統合した。機器の登録手順が共有端末とまったく同じなので、
       // 別の場所に置くと「どっちの画面で直すのか」を現場が毎回考えることになる。

@@ -135,6 +135,20 @@ export interface InvoiceTaxBucket {
   taxAmount: number;
   /** 区分の表示名（区分が 1 つに定まるときだけ）。 */
   categoryName: string | null;
+  // ── 会計連携（仕訳 CSV）用のコード ────────────────────────────────────────
+  // 税区分マスタ由来。**画面では使わない** — 出力にだけ効く。null = 設定の既定。
+  /** 消費税コード。 */
+  taxCode?: string | null;
+  /** 売上高の科目コード（貸方・売上行）。 */
+  salesAccountCode?: string | null;
+  /** 仮受消費税の科目コード（貸方・消費税行）。 */
+  taxAccountCode?: string | null;
+  /**
+   * 束の税区分が一意に定まらず、明細の区分がコードで**食い違っている**。
+   * 会計連携のエクスポートはこれが立っている請求書を拒否する
+   * （違う科目へ計上された仕訳を出すより、出さないほうが安い）。
+   */
+  codeConflict?: boolean;
 }
 
 /**

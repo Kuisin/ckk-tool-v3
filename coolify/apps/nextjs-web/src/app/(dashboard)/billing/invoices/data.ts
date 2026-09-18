@@ -29,14 +29,42 @@ const INVOICE_INCLUDE = {
   customerBranchBp: true,
   salesRep: { select: { id: true, displayName: true } },
   createdByUser: { select: { displayName: true } },
-  items: { orderBy: { sortOrder: "asc" as const } },
+  items: {
+    orderBy: { sortOrder: "asc" as const },
+    // 明細の税区分は**会計連携のためだけ**に読む — 束 (taxSummaries) の区分が
+    // 一意に定まらないとき（同じ率の区分が 2 つ以上あるとき）に、科目コードが
+    // 食い違っていないかをここで確かめる。
+    include: {
+      taxCategory: {
+        select: { taxCode: true, salesAccountCode: true, taxAccountCode: true },
+      },
+    },
+  },
   // 税率ごとの区分記載（適格請求書）。行が無い＝税区分マスタ以前の請求書で、
   // その場合は読み出し側がヘッダから 1 本合成する（resolveTaxBuckets）。
   taxSummaries: {
     orderBy: { sortOrder: "asc" as const },
-    include: { taxCategory: { select: { name: true } } },
+    include: {
+      taxCategory: {
+        select: {
+          name: true,
+          taxCode: true,
+          salesAccountCode: true,
+          taxAccountCode: true,
+        },
+      },
+    },
   },
 };
+
+/** 明細 1 行から読める会計コードの組（比較用に 1 本の文字列へ畳む）。 */
+function accountingCodeKey(c: {
+  taxCode: string | null;
+  salesAccountCode: string | null;
+  taxAccountCode: string | null;
+}): string {
+  return `${c.taxCode ?? ""}|${c.salesAccountCode ?? ""}|${c.taxAccountCode ?? ""}`;
+}
 
 type InvoiceRow = NonNullable<Awaited<ReturnType<typeof findRow>>>;
 
@@ -107,14 +135,45 @@ function mapInvoice(r: InvoiceRow, forDocument = false): Invoice {
     // 発行済みの請求書のラベルは 10% のままでなければならない。
     taxType: r.taxType ?? r.customerBp.customerAttrs?.taxType ?? null,
     taxRate: r.taxRate != null ? Number(r.taxRate) : null,
-    taxBuckets: r.taxSummaries.map((b) => ({
-      taxRate: Number(b.taxRate),
-      taxableBase: Number(b.taxableBase),
-      taxAmount: Number(b.taxAmount),
-      categoryName: b.taxCategory
-        ? localized(b.taxCategory.name as LocalizedText | null)
-        : null,
-    })),
+    taxBuckets: r.taxSummaries.map((b) => {
+      const rate = Number(b.taxRate);
+      // 束の区分が定まらないときだけ、その率の明細が持つ科目コードを見比べる。
+      // 1 種類に決まるならそれを使ってよい（区分が 2 つでも会計上は同じ科目、
+      // というのは普通にある）。2 種類以上あるときだけ食い違いとして印を付ける。
+      const itemCodes = b.taxCategory
+        ? []
+        : [
+            ...new Set(
+              r.items
+                .filter(
+                  (it) => it.taxRate != null && Number(it.taxRate) === rate,
+                )
+                .map((it) => it.taxCategory)
+                .filter((c) => c != null)
+                .map(accountingCodeKey),
+            ),
+          ];
+      const sole =
+        itemCodes.length === 1
+          ? r.items
+              .map((it) => it.taxCategory)
+              .find((c) => c != null && accountingCodeKey(c) === itemCodes[0])
+          : null;
+      return {
+        taxRate: rate,
+        taxableBase: Number(b.taxableBase),
+        taxAmount: Number(b.taxAmount),
+        categoryName: b.taxCategory
+          ? localized(b.taxCategory.name as LocalizedText | null)
+          : null,
+        taxCode: b.taxCategory?.taxCode ?? sole?.taxCode ?? null,
+        salesAccountCode:
+          b.taxCategory?.salesAccountCode ?? sole?.salesAccountCode ?? null,
+        taxAccountCode:
+          b.taxCategory?.taxAccountCode ?? sole?.taxAccountCode ?? null,
+        codeConflict: itemCodes.length > 1,
+      };
+    }),
     totalAmount: Number(r.totalAmount),
     status: r.status as InvoiceStatus,
     issuedAt: r.issuedAt?.toISOString() ?? null,
@@ -180,6 +239,35 @@ export async function fetchInvoiceForDocument(
     return null;
   }
   return mapInvoice(row, true);
+}
+
+/**
+ * 会計連携（仕訳 CSV）が要る取引先側のコード。
+ *
+ * **画面の DTO（Invoice）には混ぜない** — 勘定科目コードは出力にしか使わない
+ * 値で、一覧や詳細に載せるとクライアントのバンドルに乗るだけだから。読むのは
+ * `app/api/export/accounting` の 1 か所。
+ */
+export async function fetchInvoiceAccountingParty(
+  customerBpId: string,
+): Promise<{
+  customerCode: string | null;
+  receivableAccountCode: string | null;
+  receivableSubAccountCode: string | null;
+}> {
+  const attrs = await prisma.bpCustomerAttrs.findUnique({
+    where: { bpId: customerBpId },
+    select: {
+      customerCode: true,
+      receivableAccountCode: true,
+      receivableSubAccountCode: true,
+    },
+  });
+  return {
+    customerCode: attrs?.customerCode ?? null,
+    receivableAccountCode: attrs?.receivableAccountCode ?? null,
+    receivableSubAccountCode: attrs?.receivableSubAccountCode ?? null,
+  };
 }
 
 /**
