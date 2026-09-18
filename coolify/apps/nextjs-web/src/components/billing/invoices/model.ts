@@ -84,7 +84,7 @@ export interface Invoice {
   issuedAt: string | null;
   dueDate: string | null;
   sentAt: string | null;
-  yayoiExportedAt: string | null;
+  accountingExportedAt: string | null;
   notes: string | null;
   items: InvoiceItem[];
   totalQuantity: number;
@@ -161,7 +161,7 @@ export function formatRatePercent(taxRate: number): string {
  *
  * 税区分マスタ以前に発行された請求書には `invoice_tax_summaries` の行が無いので、
  * **ヘッダ（小計・税額・税率）から 1 本合成する**。これがあるおかげで、移行の
- * 前後で古い請求書の画面・PDF・弥生 CSV が 1 文字も変わらない。
+ * 前後で古い請求書の画面・PDF・会計連携 CSV が 1 文字も変わらない。
  */
 export function resolveTaxBuckets(
   invoice: Pick<Invoice, "subtotal" | "taxAmount" | "taxRate" | "taxBuckets">,

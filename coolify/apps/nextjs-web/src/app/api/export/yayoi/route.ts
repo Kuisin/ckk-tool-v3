@@ -40,9 +40,9 @@ export async function GET(request: Request): Promise<Response> {
       status: 409,
     });
   }
-  if (invoice.yayoiExportedAt && url.searchParams.get("force") !== "1") {
+  if (invoice.accountingExportedAt && url.searchParams.get("force") !== "1") {
     return new Response(
-      `Invoice ${id} was already exported at ${invoice.yayoiExportedAt}; add force=1 to export again`,
+      `Invoice ${id} was already exported at ${invoice.accountingExportedAt}; add force=1 to export again`,
       { status: 409 },
     );
   }
@@ -73,7 +73,7 @@ export async function GET(request: Request): Promise<Response> {
     exportedClosingId = await prisma.$transaction(async (tx) => {
       await tx.invoice.update({
         where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
-        data: { yayoiExportedAt: exportedAt },
+        data: { accountingExportedAt: exportedAt },
       });
       // PROCESSED のものだけを進める（未処理・二重実行を where で弾く）。
       const closing = await tx.billingClosing.findFirst({
@@ -95,8 +95,8 @@ export async function GET(request: Request): Promise<Response> {
       action: "UPDATE",
       tableName: "invoices",
       recordId: invoice.invoiceNumber,
-      before: { yayoiExportedAt: invoice.yayoiExportedAt },
-      after: { yayoiExportedAt: exportedAt.toISOString() },
+      before: { accountingExportedAt: invoice.accountingExportedAt },
+      after: { accountingExportedAt: exportedAt.toISOString() },
     });
     if (exportedClosingId) {
       await recordAudit({
@@ -108,7 +108,7 @@ export async function GET(request: Request): Promise<Response> {
       });
     }
   } catch (e) {
-    console.error("[export/yayoi] failed to stamp yayoiExportedAt", e);
+    console.error("[export/yayoi] failed to stamp accountingExportedAt", e);
   }
 
   return new Response(csv, {

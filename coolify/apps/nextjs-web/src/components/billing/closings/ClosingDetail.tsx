@@ -128,7 +128,7 @@ export function ClosingDetail({
 
   // ── 手続き状況（未処理 → 請求書生成 → エクスポート済）─────────────────
   // 請求書を作り終えたら「請求書生成」は済んだ段で、待っているのは
-  // 弥生への書き出し（2）。
+  // 会計連携への書き出し（2）。
   const stages = procedureStages(
     [
       {
@@ -146,7 +146,7 @@ export function ClosingDetail({
       {
         key: "exported",
         label: tr("billing.closings.exported"),
-        description: tr("billing.closings.yayoiAccountingCsv"),
+        description: tr("billing.closings.accountingCsv"),
       },
     ],
     closing.status === "PENDING" ? 0 : closing.status === "PROCESSED" ? 2 : 3,

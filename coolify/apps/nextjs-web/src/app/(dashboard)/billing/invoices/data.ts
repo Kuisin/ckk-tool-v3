@@ -120,7 +120,7 @@ function mapInvoice(r: InvoiceRow, forDocument = false): Invoice {
     issuedAt: r.issuedAt?.toISOString() ?? null,
     dueDate: r.dueDate?.toISOString() ?? null,
     sentAt: r.sentAt?.toISOString() ?? null,
-    yayoiExportedAt: r.yayoiExportedAt?.toISOString() ?? null,
+    accountingExportedAt: r.accountingExportedAt?.toISOString() ?? null,
     notes: r.notes,
     items,
     totalQuantity: items.reduce((sum, it) => sum + it.quantity, 0),
@@ -166,7 +166,7 @@ export async function fetchInvoice(key: DocKey): Promise<Invoice | null> {
 
 /**
  * 帳票用の 1 件取得 — 摘要・取引先名を**受取先の言語**で解決する。
- * PDF ルート（api/pdf/invoice）と弥生 CSV から使う。権限・スコープの扱いは
+ * PDF ルート（api/pdf/invoice）と会計連携 CSV から使う。権限・スコープの扱いは
  * fetchInvoice と同じ。
  */
 export async function fetchInvoiceForDocument(
