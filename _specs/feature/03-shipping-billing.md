@@ -85,7 +85,7 @@
 
 ### 機能概要
 
-締日処理、請求書生成、弥生会計 Next へのCSVエクスポート。
+締日処理、請求書生成、会計連携（仕訳 CSV エクスポート）。
 
 ### 画面
 
@@ -101,13 +101,14 @@
 - 締日処理: 月次バッチで対象発送レコードを集計
 - 請求書採番: `INV-YYYYMM-NNNNN`（`lib/numbering.ts`）
 - 請求書 PDF 生成: `app/api/pdf/invoice/route.ts` → Gotenberg
-- 弥生会計 Next CSV エクスポート: `app/api/export/yayoi/route.ts` → `lib/csv-export.ts`
-- 仕訳生成: `lib/csv-export.ts`（弥生 CSV の生成と一体。独立した `lib/journal.ts` は無い）
+- 会計連携 CSV エクスポート: `app/api/export/accounting/route.ts` → `lib/accounting-export-core.ts`
+  （列の並び・文字コード・既定の科目コードは SY0J 会計連携 = `lib/accounting-settings.ts`）
+- 仕訳生成: `lib/accounting-export-core.ts`（CSV の組み立てと一体。独立した `lib/journal.ts` は無い）
 - 請求書ステータス: `DRAFT → ISSUED → SENT → PAID`
 - 締日処理ステータス: `PENDING → PROCESSED → EXPORTED`
 
 ### 業務ルール
 
 - 締日処理トリガ: §8 の発送記録
-- 弥生会計連携: 締日処理完了後に CSV エクスポート
-- エクスポート済みフラグ: `yayoi_exported_at` で管理（二重エクスポート防止）
+- 会計連携: 締日処理完了後に CSV エクスポート
+- エクスポート済みフラグ: `accounting_exported_at` で管理（二重エクスポート防止）

@@ -6,7 +6,8 @@
 > 直さないなら「実装の正はツリー」であることを思い出すこと。
 > 既知のずれ（2026-09-05 時点）:
 > - `lib/journal.ts` は**存在しない**。仕訳の組み立ては `lib/csv-export.ts`
->   の中にあり、弥生 CSV の生成と一体になっている。
+>   の中にあり、会計連携 CSV の生成と一体になっている（現在は
+>   `lib/accounting-export-core.ts`）。
 > - `production/approvals/` は 一般カテゴリの `general/tasks`（CM01）へ移設済み。
 > - システム設定は `settings/*` 配下（`admin/*` は旧パス）。
 
@@ -200,7 +201,7 @@ src/
 │   │   │   ├── work-orders/[id]/route.ts           # 製造進捗
 │   │   │   └── approvals/route.ts                  # 承認通知
 │   │   └── export/
-│   │       └── yayoi/route.ts                      # 弥生会計 CSV エクスポート
+│   │       └── accounting/route.ts                 # 会計連携 CSV エクスポート
 │   │
 │   ├── (auth)/
 │   │   └── login/page.tsx
@@ -247,7 +248,7 @@ src/
 │   ├── db.ts                                       # Prisma client
 │   ├── auth.ts                                     # Auth.js v5 設定
 │   ├── journal.ts                                  # ⚠️ 未実装 — 仕訳の組み立ては csv-export.ts の中
-│   ├── csv-export.ts                               # 弥生会計 Next CSV 生成
+│   ├── accounting-export-core.ts                   # 会計連携 仕訳 CSV 生成
 │   ├── inventory.ts                                # 在庫引当・予約ロジック
 │   ├── pricing.ts                                  # 価格試算原価計算・価格表解決・見積自動生成・値引き計算
 │   ├── numbering.ts                                # 採番ロジック（EST/QOT/ORD/DRN/INV/PO）
