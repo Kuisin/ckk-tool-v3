@@ -5263,7 +5263,13 @@
       "varianceApprovalWithinHelp": "即使差异在允许范围内，出货单确定前也要经过审批。",
       "varianceApprovalOutside": "超出允许范围时需要审批",
       "varianceApprovalOutsideHelp": "取消后，超出范围的差异也会无需审批直接通过，允许范围将失去意义。通常保持勾选。",
-      "approvalNotRequired": "不需要"
+      "approvalNotRequired": "不需要",
+      "accountingSection": "会计对接",
+      "accountingSectionHint": "写入记账凭证 CSV 借方（应收账款）的科目代码。留空则按会计对接（SY0J）的默认值。",
+      "accountCodeHint": "仅限数字，最多 8 位（可留空）",
+      "receivableAccountCode": "应收账款 科目代码",
+      "receivableSubAccountCode": "辅助科目代码（客户）",
+      "receivableSubAccountCodeHint": "会计软件一侧的客户代码。与公司内部的客户编号是两套编号，请勿混用。"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "已创建不良类别",
@@ -6334,7 +6340,13 @@
       "selectEffectiveFrom": "请选择生效日",
       "rateRange": "税率请输入 0 到 100 之间的值",
       "useDefault": "按默认",
-      "followProduct": "按产品"
+      "followProduct": "按产品",
+      "accountingSection": "会计对接",
+      "accountingSectionHint": "写入记账凭证 CSV 的科目代码。留空则按会计对接（SY0J）的默认值。",
+      "accountCodeHint": "仅限数字，最多 8 位（可留空）",
+      "taxCode": "税代码",
+      "salesAccountCode": "销售收入 科目代码",
+      "taxAccountCode": "暂收消费税 科目代码"
     },
     "chargeItems": {
       "pageTitle": "费用项目",

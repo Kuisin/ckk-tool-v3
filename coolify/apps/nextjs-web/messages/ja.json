@@ -5263,7 +5263,13 @@
       "varianceApprovalWithinHelp": "範囲に収まっている過不足でも、出荷書の確定前に承認を通す。",
       "varianceApprovalOutside": "許容範囲外は承認を要求する",
       "varianceApprovalOutsideHelp": "外すと範囲外の過不足も決裁なしで通る。範囲の設定が意味を持たなくなるので、通常は付けたままにする。",
-      "approvalNotRequired": "不要"
+      "approvalNotRequired": "不要",
+      "accountingSection": "会計連携",
+      "accountingSectionHint": "仕訳 CSV の借方（売掛金）に出す科目コード。空欄なら会計連携（SY0J）の既定に従う。",
+      "accountCodeHint": "半角数字・8 桁まで（空欄可）",
+      "receivableAccountCode": "売掛金 科目コード",
+      "receivableSubAccountCode": "補助科目コード（得意先）",
+      "receivableSubAccountCodeHint": "会計ソフト側の得意先コード。社内の顧客コードとは別物なので、流用しない。"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "不良種類を作成しました",
@@ -6334,7 +6340,13 @@
       "selectEffectiveFrom": "適用開始日を選択してください",
       "rateRange": "税率は 0 以上 100 以下で入力してください",
       "useDefault": "既定に従う",
-      "followProduct": "製品に従う"
+      "followProduct": "製品に従う",
+      "accountingSection": "会計連携",
+      "accountingSectionHint": "仕訳 CSV に出す科目コード。空欄なら会計連携（SY0J）の既定に従う。",
+      "accountCodeHint": "半角数字・8 桁まで（空欄可）",
+      "taxCode": "消費税コード",
+      "salesAccountCode": "売上高 科目コード",
+      "taxAccountCode": "仮受消費税 科目コード"
     },
     "chargeItems": {
       "pageTitle": "料金マスタ",
