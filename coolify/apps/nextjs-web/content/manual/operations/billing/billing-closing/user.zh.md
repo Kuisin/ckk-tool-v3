@@ -105,7 +105,7 @@ screenshots: [billing-closing-list-01, billing-closing-run-01, billing-closing-d
 
 结算前请确认该期间的发货是否已全部记录。**事后追加的发货不会计入已结算的请求书** — 将顺延至下一期间。
 
-面向会计软件（弥生会计 Next）的 CSV 导出不在本画面，而是**按每张请求书**进行。请在[请求书](/manual/zh/operations/billing/invoice/user)画面点右上角的「**…**」并选择「**弥生会計CSV**」（弥生会计 CSV）。导出的日期时间会记录在那张请求书上。
+面向会计软件（TKC FX4 Cloud）的 CSV 导出不在本画面，而是**按每张请求书**进行。请在[请求书](/manual/zh/operations/billing/invoice/user)画面点右上角的「**…**」并选择「**会計連携CSV**」（会计对接 CSV）。导出的日期时间会记录在那张请求书上。
 
 ## 常见问题与困扰
 

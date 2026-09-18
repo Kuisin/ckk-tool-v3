@@ -250,7 +250,7 @@ For a product that has no drawing yet, a design request is raised **in parallel*
 
 - Running billing closing automatically totals up everything delivered in that period.
 - Generating the invoice assigns an invoice number (INV-) automatically, and issuing it saves a PDF.
-- A closed period can be exported as a CSV file for 弥生会計 (Yayoi Accounting).
+- A closed period can be exported as a journal CSV file for the accounting software.
 
 ## Related pages
 

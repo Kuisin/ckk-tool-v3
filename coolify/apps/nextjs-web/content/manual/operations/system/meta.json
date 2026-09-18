@@ -13,6 +13,7 @@
     "link-management",
     "order-intake",
     "privileged-access",
-    "external-api"
+    "external-api",
+    "accounting"
   ]
 }

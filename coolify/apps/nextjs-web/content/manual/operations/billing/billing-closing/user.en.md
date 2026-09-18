@@ -105,7 +105,7 @@ Gathers what was shipped in the period (「発送」 dispatch shipping orders th
 
 Before closing, check that every shipment in the period has been recorded. **A shipment added afterwards does not join a closed invoice** — it moves to the next period.
 
-The CSV export for the accounting software (Yayoi Kaikei Next) is done **per invoice**, not on this screen. On the [invoice](/manual/en/operations/billing/invoice/user) screen, choose 「**弥生会計CSV**」 (Yayoi accounting CSV) from the 「**…**」 at the top right. The date and time of the export is recorded on that invoice.
+The CSV export for the accounting software (TKC FX4 Cloud) is done **per invoice**, not on this screen. On the [invoice](/manual/en/operations/billing/invoice/user) screen, choose 「**会計連携CSV**」 (Accounting CSV) from the 「**…**」 at the top right. The date and time of the export is recorded on that invoice.
 
 ## Questions and problems
 

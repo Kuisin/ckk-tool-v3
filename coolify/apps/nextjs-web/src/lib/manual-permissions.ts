@@ -152,6 +152,7 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
     app: "privileged-access",
   },
   { path: "operations/system/external-api/user", app: "api-clients" },
+  { path: "operations/system/accounting/user", app: "accounting" },
   // ── キオスク（現場のタブレット。nextjs-web のアプリ一覧には無い）───────────
   // ログイン画面。QRカードと PIN があれば入れる — 権限の話ではない。
   { path: "operations/kiosk/start/user", code: null },
