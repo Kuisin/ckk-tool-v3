@@ -21,7 +21,10 @@ import {
   buildAccountingCsvText,
   conflictingTaxRates,
 } from "@/lib/accounting-export-core";
-import { getAccountingSettings } from "@/lib/accounting-settings";
+import {
+  getAccountingSettings,
+  getAccountingSettingsRevision,
+} from "@/lib/accounting-settings";
 import { recordAudit } from "@/lib/audit";
 import { requirePermissionResponse } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -139,7 +142,11 @@ export async function GET(request: Request): Promise<Response> {
       tableName: "invoices",
       recordId: invoice.invoiceNumber,
       before: { accountingExportedAt: invoice.accountingExportedAt },
-      after: { accountingExportedAt: exportedAt.toISOString() },
+      after: {
+        accountingExportedAt: exportedAt.toISOString(),
+        // どの設定で出た CSV なのか（設定を変えると同じ請求書でも中身が変わる）。
+        settingsRevision: await getAccountingSettingsRevision(),
+      },
     });
     if (exportedClosingId) {
       await recordAudit({

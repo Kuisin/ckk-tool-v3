@@ -18,6 +18,7 @@ import {
   DEFAULT_ACCOUNTING_EXPORT_SETTINGS,
 } from "./accounting-export-core";
 import { readConfigNamespace, writeConfigValues } from "./app-config";
+import { prisma } from "./db";
 
 /** 平坦なキー → system_settings のキー。科目コードは 1 つずつ別キーに置く。 */
 const KEY = {
@@ -82,6 +83,23 @@ export async function getAccountingSettings(): Promise<AccountingExportSettings>
     return DEFAULT_ACCOUNTING_EXPORT_SETTINGS;
   }
   return parsed.data;
+}
+
+/**
+ * いまの設定の「版」— `accounting.*` の中で最後に更新された時刻（ISO 文字列）。
+ *
+ * 設定を変えると**同じ請求書を書き出し直したときのバイト列が変わる**。あとから
+ * 「この CSV はどの設定で出たのか」を追えるように、エクスポートの監査行へ添える。
+ * 版番号の列を別に持たないのは、持つと設定の保存と版の更新がずれ得るため —
+ * updated_at はその 1 行の保存そのものなのでずれない。
+ */
+export async function getAccountingSettingsRevision(): Promise<string | null> {
+  const row = await prisma.systemSetting.findFirst({
+    where: { key: { startsWith: "accounting." } },
+    orderBy: { updatedAt: "desc" },
+    select: { updatedAt: true },
+  });
+  return row?.updatedAt.toISOString() ?? null;
 }
 
 export async function saveAccountingSettings(
