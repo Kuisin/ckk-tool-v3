@@ -171,6 +171,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | PD04 | 在庫管理 | Inventory | 库存管理 |
 | PD05 | 未処理指示書 | Pending work orders | 未处理工单 |
 | PD06 | 設計図 | Drawing | 图纸 |
+| PD07 | 入出庫伝票 | Stock movement | 出入库单 |
+| PD08 | 棚卸 | Stocktaking | 盘点 |
 | SH01 | 出荷書 | Delivery order | 出货单 |
 | SH02 | 納品書 | Delivery note | 送货单 |
 | SH03 | 未処理出荷書 | Pending shipments | 未处理出货 |
@@ -397,6 +399,13 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 仕掛品 | WIP | 在制品 |
 | 予約 / 引当 / 予約解除 | Reserved / Allocated / Released | 预留 / 已分配 / 解除预留 |
 | 棚卸調整 | Adjustment | 盘点调整 |
+| 棚卸 | Stocktaking | 盘点 |
+| 入出庫伝票 | Stock movement | 出入库单 |
+| 伝票番号 | Slip number | 单据编号 |
+| 事由（入出庫の） | Cause | 事由 |
+| 帳簿数 / 実測数 | Book quantity / Counted | 账面数 / 实测数 |
+| 差異 | Difference | 差异 |
+| 未カウント | Not counted | 未记录 |
 | 入庫 / 出庫 | In / Out | 入库 / 出库 |
 | 在庫移動 | Stock transfer | 库存调拨 |
 | 保管場所 / 棚 | Storage location / Shelf | 存放位置 / 货架 |
@@ -693,6 +702,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 15 | **決定 2（試算 → 価格試算）が効くのは「もの」を指す名詞だけ。** 動詞や複合語の中まで機械的に置き換えない — 2026-08-30 の一括置換が実際に `複製して再価格試算`・`単価を価格試算する` を作った（`再試算`・`試算する` の中の 2 文字まで置換された）。動詞側は素直な日本語にする: **複製して作り直す**（メニュー / 名前の接尾は `（作り直し）`）、**単価を算出する**（スイムレーン図）。en / zh は壊れていないので触らない（`Duplicate and re-estimate` / `复制并重新试算` のまま） | `messages/ja.json` / マニュアル 3 言語 / `tools/swimlane/diagrams/` |
 | 16 | **CM01 は「未処理一覧 / Pending list / 未处理列表」**（旧「承認・予定」）。並ぶのは承認だけではない — 作業予定・未回答のフォーム・文書のコメント・特権アクセスの決裁待ちも同じ画面に出るので、「自分がまだ処理していないもの」という 1 語にした。`未処理` は PD05 未処理指示書 / SH03 未処理出荷書 と同じ語（en `Pending` / zh `未处理`）| `app-list.ts` / `operation-codes.ts` / `messages/*.json` / マニュアル 3 言語 |
 | 17 | **税区分はマスタ（MS0F 税区分 / Tax categories / 税种）に一本化**し、製品と顧客の双方がそれを参照する。**顧客の課税区分が優先**で、顧客が未設定（null）のときだけ製品の区分が効く — その状態を画面では「**製品に従う / Follow the product / 按产品**」と呼ぶ。enum `TAX_TYPE` は `tax_categories.code` の値としてだけ残す（訳語 課税 / 非課税 / 軽減税率 は §3.4 のまま変えない）。率は DB 行で適用開始日を持ち、**引くときの基準日は注文日** | `app-list.ts` / 製品・取引先マスタ / 請求書・見積書の税表示 |
+
+| 18 | **入出庫伝票 = Stock movement / 出入库单**、**棚卸 = Stocktaking / 盘点**。既にある 在庫移動（Stock transfer / 库存调拨）と 棚卸調整（Adjustment / 盘点调整）とは**別の語**として扱う — 前者は「保管場所・拠点の間で動かす操作」、入出庫伝票は「在庫が動いた出来事の記録そのもの」で、en で Stock transfer を使い回すと 2 つが同じものに見える | `app-list.ts` / PD07・PD08 の画面 / `enum.INVENTORY_MOVEMENT_CAUSE_LABEL` |
 
 ## 5. 未決
 

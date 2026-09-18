@@ -312,6 +312,8 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 生産 | 4 | 在庫管理 | PD04 | — | — |
 | 生産 | 5 | 未処理指示書 | PD05 | — | — |
 | 生産 | 6 | 設計図 | PD06 | PD16 | PD26 |
+| 生産 | 7 | 入出庫伝票 | PD07 | — | PD27 |
+| 生産 | 8 | 棚卸 | PD08 | PD18 | PD28 |
 | 出荷 | 1 | 出荷書 | SH01 | SH11 | SH21 |
 | 出荷 | 2 | 納品書 | SH02 | SH12 | SH22 |
 | 出荷 | 3 | 未処理出荷書 | SH03 | — | — |
@@ -426,6 +428,8 @@ Stack (gap="xl", p="md", maw={1200})
 | 指示書 | `IconSettings2` |
 | 未処理指示書 | `IconProgress` |
 | 設計図 | `IconFileVector` |
+| 入出庫伝票 | `IconArrowsExchange` |
+| 棚卸 | `IconClipboardList` |
 | 未処理一覧 | `IconClipboardList` |
 | 製品在庫 | `IconBoxSeam` |
 | 素材在庫 | `IconStack2` |
@@ -704,6 +708,14 @@ Stack (gap="md")
 | DesignRequest | COMPLETED | green | 完了 |
 | DesignRequest | REJECTED | red | 差し戻し |
 | DesignRequest | CANCELLED | red | キャンセル |
+| StockTake | DRAFT | gray | 下書き |
+| StockTake | COUNTING | blue | 記入中 |
+| StockTake | CONFIRMED | green | 確定 |
+| StockTake | CANCELLED | red | キャンセル |
+| StockTake (approval) | NONE | gray | — |
+| StockTake (approval) | PENDING | yellow | 承認依頼中 |
+| StockTake (approval) | APPROVED | green | 承認済 |
+| StockTake (approval) | REJECTED | red | 差し戻し |
 | BillingClosing | PENDING | gray | 未処理 |
 | BillingClosing | PROCESSED | blue | 処理済 |
 | BillingClosing | EXPORTED | green | エクスポート済 |
@@ -1285,7 +1297,8 @@ Paper (withBorder, p="md", radius="md")
 表示なし）、書類ごとに進捗を探す場所が違っていた。
 
 搭載: 価格試算 / 見積書 / 注文請書 / 注文明細 / 設計依頼書 / 購買依頼 / 素材発注書 /
-指示書 / 出荷書 / 納品書 / 請求書 / 締日処理（**12 書類**）。
+指示書 / 出荷書 / 納品書 / 請求書 / 締日処理 / 棚卸（**13 書類**）。
+**入出庫伝票は持たない** — 作られた時点で完結していて、進む先が無い（不変）。
 価格表（進行するライフサイクルが無い）と素材入荷（入庫済みの確定記録）は持たない。
 
 置き場所は **ActionCard (§10.9) → SummaryGrid → ProcedurePanel → Tabs** の順。

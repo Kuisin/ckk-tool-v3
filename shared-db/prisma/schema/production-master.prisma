@@ -61,6 +61,8 @@ model Plant {
   storageLocations   StorageLocation[]   @relation("StorageLocationPlant")
   userPlants         UserPlant[]         @relation("PlantUsers")
   orderAcceptances   OrderAcceptance[]   @relation("AcceptancePlant")
+  inventoryMovements InventoryMovement[] @relation("InventoryMovementPlant")
+  stockTakes         StockTake[]         @relation("StockTakePlant")
 
   @@index([regionId])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。

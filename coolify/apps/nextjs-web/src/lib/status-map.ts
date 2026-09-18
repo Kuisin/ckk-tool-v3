@@ -20,6 +20,20 @@ export type StatusMap = Record<string, string>;
 
 /** 書類ごとの 状態 → 色。キーは DB の enum 値と同じ。 */
 export const STATUS_MAPS = {
+  // 棚卸（PD08）。確定は「数え終えて調整を当てた」状態で、以後は動かない。
+  StockTake: {
+    DRAFT: "gray",
+    COUNTING: "blue",
+    CONFIRMED: "green",
+    CANCELLED: "red",
+  },
+  // 棚卸の承認（段が 1 つも無ければ NONE のまま素通しする）。
+  StockTakeApproval: {
+    NONE: "gray",
+    PENDING: "yellow",
+    APPROVED: "green",
+    REJECTED: "red",
+  },
   Estimate: {
     DRAFT: "gray",
     CONFIRMED: "blue",

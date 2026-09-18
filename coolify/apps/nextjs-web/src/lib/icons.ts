@@ -9,6 +9,7 @@
 import {
   IconAdjustments,
   IconAlertTriangle,
+  IconArrowsExchange,
   IconAtom,
   IconBolt,
   IconBook2,
@@ -85,6 +86,7 @@ export const ICON_MAP: Record<string, AppIcon> = {
   IconPackageImport,
   IconTruckDelivery,
   IconCoin,
+  IconArrowsExchange,
   IconClipboardList,
   IconSettings2,
   IconShieldCheck,

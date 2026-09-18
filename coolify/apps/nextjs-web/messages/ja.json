@@ -805,7 +805,9 @@
     "priceListExpired": "価格表の有効期間外",
     "dateFrom": "開始日",
     "dateTo": "終了日",
-    "billTo": "請求先"
+    "billTo": "請求先",
+    "stockTake": "棚卸",
+    "stockMovement": "入出庫伝票"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -1199,6 +1201,27 @@
     "DELIVERY_TOLERANCE_BASIS_LABEL": {
       "PERCENT": "パーセント（%）",
       "QUANTITY": "数量"
+    },
+    "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "WORK_ORDER_COMPLETION": "指示書完了",
+      "DELIVERY_SHIPMENT": "出荷",
+      "MATERIAL_RECEIPT": "素材入荷",
+      "STOCK_TRANSFER": "在庫移動",
+      "STOCK_RESERVATION": "引当予約",
+      "RESERVATION_RELEASE": "予約解除",
+      "ADJUSTMENT": "棚卸調整",
+      "OTHER": "不明（移行前）"
+    },
+    "TRANSACTION_TYPE_LABEL": {
+      "IN": "入庫",
+      "OUT": "出庫",
+      "RESERVE": "予約",
+      "RELEASE": "予約解除",
+      "ADJUST": "棚卸調整"
+    },
+    "INVENTORY_TYPE_LABEL": {
+      "PRODUCT": "製品",
+      "MATERIAL": "素材"
     }
   },
   "status": {
@@ -1550,6 +1573,34 @@
         },
         "REVOKED": {
           "label": "取り消し"
+        }
+      },
+      "StockTake": {
+        "DRAFT": {
+          "label": "下書き"
+        },
+        "COUNTING": {
+          "label": "記入中"
+        },
+        "CONFIRMED": {
+          "label": "確定"
+        },
+        "CANCELLED": {
+          "label": "キャンセル"
+        }
+      },
+      "StockTakeApproval": {
+        "NONE": {
+          "label": "—"
+        },
+        "PENDING": {
+          "label": "承認依頼中"
+        },
+        "APPROVED": {
+          "label": "承認済"
+        },
+        "REJECTED": {
+          "label": "差し戻し"
         }
       }
     }
@@ -3200,6 +3251,71 @@
       "toleranceBottom": "公差 Bottom",
       "upperLimit": "上限",
       "lowerLimit": "下限"
+    },
+    "movements": {
+      "movementNumber": "伝票番号",
+      "cause": "事由",
+      "sourceDocument": "元書類",
+      "searchByNumber": "伝票番号で検索",
+      "noMovements": "入出庫伝票がありません",
+      "storageLocation": "保管場所・棚",
+      "truncatedNotice": "直近 1000 件のみ表示しています。これより古い伝票は絞り込んでも出てきません。"
+    },
+    "stockTakes": {
+      "actions": {
+        "cancelFailed": "キャンセルに失敗しました",
+        "cannotCancelNow": "いまはキャンセルできません（下書き・記入中のみ）",
+        "cannotSubmitNow": "いまは提出できません（1 件以上カウントしてください）",
+        "countsSaved": "記入を保存しました",
+        "createFailed": "作成に失敗しました",
+        "noLinesToCount": "数える対象がありません",
+        "notEditableNow": "いまは記入できません",
+        "notPendingApproval": "承認依頼中ではありません",
+        "saveCountsFailed": "記入の保存に失敗しました",
+        "selectAPlant": "拠点を選択してください",
+        "stateChanged": "状態が変わっています。再読み込みしてください",
+        "submitFailed": "提出に失敗しました"
+      },
+      "detail": {
+        "bookQuantity": "帳簿数",
+        "confirmCancelBody": "{number} をキャンセルします。この操作は取り消せません。",
+        "confirmedAtLabel": "確定日時",
+        "countedProgress": "{counted}/{total} 件入力済み",
+        "countedQuantity": "実測数",
+        "countsSaved": "記入を保存しました",
+        "createdAtLabel": "作成日時",
+        "difference": "差異",
+        "item": "対象",
+        "linesTitle": "対象バケット（{count}）",
+        "movementTitle": "入出庫伝票",
+        "noDifferenceNoMovement": "差異なし（伝票は起票していません）",
+        "notConfirmedYet": "未確定",
+        "notCounted": "未カウント",
+        "numberLabel": "棚卸番号",
+        "stageConfirmed": "確定",
+        "stageCounting": "記入",
+        "stageDraft": "下書き",
+        "summaryLine": "記入 {counted}/{total} 件・差異 {diffCount} 件（過 +{over} ・ 不足 −{under}）",
+        "unassignedLocation": "未割当"
+      },
+      "form": {
+        "created": "作成しました",
+        "createdBody": "{number} を作成しました",
+        "newTitle": "新規棚卸",
+        "sectionDescription": "拠点全体、または保管場所を絞って対象バケットを取り込みます。",
+        "sectionTitle": "棚卸情報",
+        "selectAPlant": "拠点を選択",
+        "selectAPlantFirst": "先に拠点を選択",
+        "selectAStorageLocation": "保管場所を選択（任意）"
+      },
+      "table": {
+        "approvalStatus": "承認状態",
+        "emptyMessage": "棚卸はまだありません",
+        "lineCount": "明細数",
+        "number": "棚卸番号",
+        "searchPlaceholder": "棚卸番号・拠点・保管場所で検索",
+        "storageLocation": "保管場所"
+      }
     }
   },
   "purchase": {
@@ -6085,7 +6201,10 @@
       "numberConditionSummary": "{label}が {value} {op}",
       "selectConditionSummary": "{label}が「{value}」{op}",
       "deliveryTotalQuantity": "出荷数量の合計",
-      "fromPlant": "出荷元拠点"
+      "fromPlant": "出荷元拠点",
+      "plant": "拠点",
+      "differenceCount": "差異の件数",
+      "cases": "件"
     },
     "inspectionTemplateExcel": {
       "sheetName": "検査表"
@@ -8671,7 +8790,10 @@
       "api_clients": "API クライアント",
       "api_client_tokens": "API トークン",
       "tax_categories": "税区分",
-      "tax_category_rates": "税率"
+      "tax_category_rates": "税率",
+      "inventory_movements": "入出庫伝票",
+      "stock_takes": "棚卸",
+      "stock_take_lines": "棚卸明細"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -8925,7 +9047,8 @@
     "finalInspectionDeliveryNoteIssued": "出荷前確認: 納品書発行者を記録",
     "finalInspectionShipmentAuthorized": "出荷前確認: 出荷許可者を記録",
     "finalInspectionShipDefectReviewed": "出荷時不良内容確認者印を記録",
-    "inspectionApproved": "検査記録を承認"
+    "inspectionApproved": "検査記録を承認",
+    "stockTakeAdjusted": "棚卸調整（実数 {book} → 実測 {counted}）"
   },
   "workflowCore": {
     "quantityLabels": {

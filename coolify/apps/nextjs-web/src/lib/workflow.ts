@@ -8,6 +8,7 @@
 import { getTranslations } from "next-intl/server";
 import { Prisma, prisma } from "./db";
 import { type LocalizedText, localized } from "./format";
+import { allocateDocumentKey } from "./numbering";
 import type { CatalogStep, ExecDep, UseDep } from "./workflow-core";
 
 type Tr = Awaited<ReturnType<typeof getTranslations>>;
@@ -677,6 +678,10 @@ export async function completeStepExecution(
   // （COMPLETED なのに在庫が無く、巻き戻しも拒否される状態を作らない）。
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
   if (isWorkOrderComplete(ctx)) {
+    // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。ここは
+    // 「本当に完了した」ときにしか通らないので、工程を 1 つ終えるたびに
+    // 番号を焼くことにはならない。勝者以外・計上ゼロでは欠番になる。
+    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
     await prisma.$transaction(async (tx) => {
       const flipped = await tx.workOrder.updateMany({
         where: { id: stepRow.workOrderId, status: { not: "COMPLETED" } },
@@ -684,7 +689,7 @@ export async function completeStepExecution(
       });
       if (flipped.count === 1) {
         const { onWorkOrderCompletedTx } = await import("./inventory");
-        await onWorkOrderCompletedTx(tx, stepRow.workOrderId);
+        await onWorkOrderCompletedTx(tx, stepRow.workOrderId, movementKey);
       }
     });
   }

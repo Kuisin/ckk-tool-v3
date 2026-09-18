@@ -19,8 +19,9 @@ import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, targetPlantsInScope } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { onMaterialReceipt } from "@/lib/inventory";
+import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
+import { allocateDocumentKey } from "@/lib/numbering";
 import { learnPurchaseAliases } from "@/lib/purchase-intake";
 import {
   type ActionResult,
@@ -110,8 +111,17 @@ export async function createReceiptsFromDelivery(
     }
 
     const actor = await getCurrentActorId();
+    // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。
+    // **納品書 1 枚 = 伝票 1 枚**（明細が N 行）— 取り込んでいる出来事は
+    // 「この納品書が届いた」の 1 回で、入荷行が何行に割れるかは都合に過ぎない。
+    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
     // **1 トランザクション**: 全行の作成 + 在庫計上。1 行でも落ちれば全部戻る。
     const created = await prisma.$transaction(async (tx) => {
+      const openMovement = movementOpener(tx, {
+        key: movementKey,
+        cause: "MATERIAL_RECEIPT",
+        sourceType: "material_receipts",
+      });
       const ids: string[] = [];
       for (const line of v.lines) {
         const materialId = Number(line.materialId);
@@ -131,7 +141,7 @@ export async function createReceiptsFromDelivery(
           },
           select: { id: true },
         });
-        await onMaterialReceipt(row.id, tx);
+        await onMaterialReceipt(row.id, tx, openMovement);
         ids.push(row.id);
       }
       return ids;

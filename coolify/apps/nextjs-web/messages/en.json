@@ -805,7 +805,9 @@
     "priceListExpired": "Price list out of valid period",
     "dateFrom": "From date",
     "dateTo": "To date",
-    "billTo": "Bill-to"
+    "billTo": "Bill-to",
+    "stockTake": "Stocktaking",
+    "stockMovement": "Stock movement"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -1199,6 +1201,27 @@
     "DELIVERY_TOLERANCE_BASIS_LABEL": {
       "PERCENT": "Percent (%)",
       "QUANTITY": "Quantity"
+    },
+    "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "WORK_ORDER_COMPLETION": "Work order completed",
+      "DELIVERY_SHIPMENT": "Shipment",
+      "MATERIAL_RECEIPT": "Material receipt",
+      "STOCK_TRANSFER": "Stock transfer",
+      "STOCK_RESERVATION": "Stock reservation",
+      "RESERVATION_RELEASE": "Reservation released",
+      "ADJUSTMENT": "Adjustment",
+      "OTHER": "Unknown (pre-migration)"
+    },
+    "TRANSACTION_TYPE_LABEL": {
+      "IN": "In",
+      "OUT": "Out",
+      "RESERVE": "Reserve",
+      "RELEASE": "Release",
+      "ADJUST": "Adjustment"
+    },
+    "INVENTORY_TYPE_LABEL": {
+      "PRODUCT": "Product",
+      "MATERIAL": "Material"
     }
   },
   "status": {
@@ -1550,6 +1573,34 @@
         },
         "REVOKED": {
           "label": "Revoked"
+        }
+      },
+      "StockTake": {
+        "DRAFT": {
+          "label": "Draft"
+        },
+        "COUNTING": {
+          "label": "Counting"
+        },
+        "CONFIRMED": {
+          "label": "Confirmed"
+        },
+        "CANCELLED": {
+          "label": "Cancelled"
+        }
+      },
+      "StockTakeApproval": {
+        "NONE": {
+          "label": "—"
+        },
+        "PENDING": {
+          "label": "Pending approval"
+        },
+        "APPROVED": {
+          "label": "Approved"
+        },
+        "REJECTED": {
+          "label": "Sent back"
         }
       }
     }
@@ -3200,6 +3251,71 @@
       "toleranceBottom": "Tolerance bottom",
       "upperLimit": "Upper limit",
       "lowerLimit": "Lower limit"
+    },
+    "movements": {
+      "movementNumber": "Movement no.",
+      "cause": "Cause",
+      "sourceDocument": "Source document",
+      "searchByNumber": "Search by movement no.",
+      "noMovements": "There are no stock movements",
+      "storageLocation": "Storage location / shelf",
+      "truncatedNotice": "Showing the 1,000 most recent only. Older slips will not appear, even when filtered."
+    },
+    "stockTakes": {
+      "actions": {
+        "cancelFailed": "Could not cancel",
+        "cannotCancelNow": "This cannot be cancelled now (only while draft or counting)",
+        "cannotSubmitNow": "This cannot be submitted now (count at least one line first)",
+        "countsSaved": "Counts saved",
+        "createFailed": "Could not create",
+        "noLinesToCount": "There is nothing to count",
+        "notEditableNow": "This cannot be edited now",
+        "notPendingApproval": "Not pending approval",
+        "saveCountsFailed": "Could not save the counts",
+        "selectAPlant": "Select a site",
+        "stateChanged": "The state has changed. Reload and try again",
+        "submitFailed": "Could not submit"
+      },
+      "detail": {
+        "bookQuantity": "Book quantity",
+        "confirmCancelBody": "This cancels {number}. This cannot be undone.",
+        "confirmedAtLabel": "Confirmed at",
+        "countedProgress": "{counted}/{total} counted",
+        "countedQuantity": "Counted quantity",
+        "countsSaved": "Counts saved",
+        "createdAtLabel": "Created at",
+        "difference": "Difference",
+        "item": "Item",
+        "linesTitle": "Buckets ({count})",
+        "movementTitle": "Inventory movement",
+        "noDifferenceNoMovement": "No difference (no movement was issued)",
+        "notConfirmedYet": "Not confirmed yet",
+        "notCounted": "Not counted",
+        "numberLabel": "Stocktake number",
+        "stageConfirmed": "Confirmed",
+        "stageCounting": "Counting",
+        "stageDraft": "Draft",
+        "summaryLine": "Counted {counted}/{total} · {diffCount} with a difference (over +{over} / under −{under})",
+        "unassignedLocation": "Unassigned"
+      },
+      "form": {
+        "created": "Created",
+        "createdBody": "Created {number}",
+        "newTitle": "New stocktake",
+        "sectionDescription": "Pulls in the buckets for the whole site, or narrowed to one storage location.",
+        "sectionTitle": "Stocktake information",
+        "selectAPlant": "Select a site",
+        "selectAPlantFirst": "Select a site first",
+        "selectAStorageLocation": "Select a storage location (optional)"
+      },
+      "table": {
+        "approvalStatus": "Approval status",
+        "emptyMessage": "There are no stocktakes yet",
+        "lineCount": "Line count",
+        "number": "Stocktake number",
+        "searchPlaceholder": "Search by stocktake number, site, or storage location",
+        "storageLocation": "Storage location"
+      }
     }
   },
   "purchase": {
@@ -6085,7 +6201,10 @@
       "numberConditionSummary": "{label} {op} {value}",
       "selectConditionSummary": "{label} {op} \"{value}\"",
       "deliveryTotalQuantity": "Total shipped quantity",
-      "fromPlant": "From site"
+      "fromPlant": "From site",
+      "plant": "Site",
+      "differenceCount": "Differences",
+      "cases": "cases"
     },
     "inspectionTemplateExcel": {
       "sheetName": "Inspection sheet"
@@ -8671,7 +8790,10 @@
       "api_clients": "API client",
       "api_client_tokens": "API token",
       "tax_categories": "Tax category",
-      "tax_category_rates": "Tax rate"
+      "tax_category_rates": "Tax rate",
+      "inventory_movements": "Stock movement",
+      "stock_takes": "Stocktaking",
+      "stock_take_lines": "Stocktaking line"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -8925,7 +9047,8 @@
     "finalInspectionDeliveryNoteIssued": "Pre-shipment check: recorded delivery note issued by",
     "finalInspectionShipmentAuthorized": "Pre-shipment check: recorded shipment authorized by",
     "finalInspectionShipDefectReviewed": "Recorded the checked-by stamp for defects at shipping",
-    "inspectionApproved": "Approved the inspection record"
+    "inspectionApproved": "Approved the inspection record",
+    "stockTakeAdjusted": "Stocktaking adjustment (on hand {book} → counted {counted})"
   },
   "workflowCore": {
     "quantityLabels": {

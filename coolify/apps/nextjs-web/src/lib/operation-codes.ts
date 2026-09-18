@@ -202,6 +202,32 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   // 設計図 — 図面の台帳。一覧 (PD06) は系列（製品 × 受注元）、詳細 (PD26) は
   // 1 製品の全系列、新規 (PD16) は版を 1 つ登録する。
   ...makeResource("生産", "PD", "6", "設計図", "/production/design-files"),
+  // 入出庫伝票 — 在庫が動いた出来事の台帳。**新規は無い**（伝票は在庫を動かした
+  // 処理が起こすもので、人が手で書くものではない）ので list + detail だけ。
+  {
+    code: "PD07",
+    label: "入出庫伝票",
+    baseLabel: "入出庫伝票",
+    href: "/production/inventory/movements",
+    category: "生産",
+    kind: "list",
+    categoryCode: "PD",
+    mode: "0",
+    index: "7",
+  },
+  {
+    code: "PD27",
+    label: "入出庫伝票 詳細",
+    baseLabel: "入出庫伝票",
+    href: "/production/inventory/movements/_search",
+    category: "生産",
+    kind: "detail",
+    categoryCode: "PD",
+    mode: "2",
+    index: "7",
+  },
+  // 棚卸 — 数えて差異を確定する。確定が入出庫伝票（ADJUST）を起こす。
+  ...makeResource("生産", "PD", "8", "棚卸", "/production/stock-takes"),
   // 未処理指示書 — 作業キュー（未手配の注文明細 + 進行中の指示書）。
   // 書類を作る画面ではないので list コードのみ（新規は PD12 と同じフォーム）。
   {

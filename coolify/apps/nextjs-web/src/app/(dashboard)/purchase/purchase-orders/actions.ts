@@ -34,9 +34,9 @@ import {
   targetPlantsInScope,
 } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { onMaterialReceipt } from "@/lib/inventory";
+import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
-import { nextDocumentNumber } from "@/lib/numbering";
+import { allocateDocumentKey, nextDocumentNumber } from "@/lib/numbering";
 import { learnPurchaseAliases } from "@/lib/purchase-intake";
 import {
   type ActionResult,
@@ -715,8 +715,17 @@ export async function receivePurchaseOrderItems(
     const actor = await getCurrentActorId();
     const now = new Date();
     const receivedAt = todayJst();
+    // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。
+    // **この入荷 1 回 = 伝票 1 枚**（受け取った明細が N 行ぶら下がる）。
+    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
 
     const result = await prisma.$transaction(async (tx) => {
+      const openMovement = movementOpener(tx, {
+        key: movementKey,
+        cause: "MATERIAL_RECEIPT",
+        sourceType: "material_purchase_orders",
+        sourceId: poNumber,
+      });
       // prior で見た ORDERED は tx の外の読み。短納クローズ（ORDERED → COMPLETED）
       // と競合すると、閉じた発注書に入荷行と在庫が積まれる。行を更新して
       // 「いまも ORDERED」を原子的に確かめる（更新は行ロックも兼ねる）。
@@ -769,7 +778,7 @@ export async function receivePurchaseOrderItems(
         });
         // 在庫への計上は入荷行と**同じ tx** — 途中で落ちれば入荷行ごと戻る
         // （入荷はあるのに在庫が無い、を作らない）。
-        await onMaterialReceipt(receipt.id, tx);
+        await onMaterialReceipt(receipt.id, tx, openMovement);
         ids.push(receipt.id);
       }
       // 全明細が発注数量に達したら COMPLETED

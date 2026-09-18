@@ -24,6 +24,8 @@ const DOC_FORMATS = {
   PO: { digits: 5 }, // 素材発注書（po_number に文字列そのまま保存）
   PRQ: { digits: 5 }, // 購買依頼（request_number に文字列そのまま保存）
   DSG: { digits: 5 }, // 設計依頼書（request_number に文字列そのまま保存）
+  MOV: { digits: 5 }, // 入出庫伝票（PD07 — 在庫が動くたびに 1 枚）
+  STK: { digits: 5 }, // 棚卸（PD08）
 } as const;
 
 export type DocPrefix = keyof typeof DOC_FORMATS;
@@ -40,6 +42,12 @@ export const formatQuoteNumber = (key: DocKey) => formatDocNumber("QOT", key);
 /** 価格表番号 PRC-YYYYMM-NNNNN — URL id にも使用。 */
 export const formatPriceListNumber = (key: DocKey) =>
   formatDocNumber("PRC", key);
+/** 入出庫伝票番号 MOV-YYYYMM-NNNNN — URL id にも使用。 */
+export const formatMovementNumber = (key: DocKey) =>
+  formatDocNumber("MOV", key);
+/** 棚卸番号 STK-YYYYMM-NNNNN — URL id にも使用。 */
+export const formatStockTakeNumber = (key: DocKey) =>
+  formatDocNumber("STK", key);
 
 /**
  * 製品コード PRD-YYYYMM-NNNN — (year_month, seq) から導出。

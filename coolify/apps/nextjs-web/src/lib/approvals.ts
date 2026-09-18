@@ -457,6 +457,29 @@ export async function fetchApprovalDocInfo(
         from_plant_id: row.fromPlantId != null ? String(row.fromPlantId) : null,
       };
     }
+    case "stock_takes": {
+      const key = parseDocKey(targetId, "STK");
+      if (!key) return null;
+      const row = await prisma.stockTake.findUnique({
+        where: { yearMonth_seq: key },
+        select: {
+          plantId: true,
+          lines: { select: { bookQuantity: true, countedQuantity: true } },
+        },
+      });
+      if (!row) return null;
+      // 差異の件数は**数えた行のうち帳簿と違うもの**。未カウントは数えない
+      // （「差異ゼロ」と「まだ数えていない」を同じ扱いにしない）。
+      const differenceCount = row.lines.filter(
+        (l) =>
+          l.countedQuantity != null &&
+          Number(l.countedQuantity) !== Number(l.bookQuantity),
+      ).length;
+      return {
+        plant_id: String(row.plantId),
+        difference_count: differenceCount,
+      };
+    }
   }
 }
 
@@ -694,6 +717,15 @@ async function targetCreatedAt(
       const key = parseDocKey(targetId, "DOR");
       if (!key) return null;
       const row = await prisma.deliveryOrder.findUnique({
+        where: { yearMonth_seq: key },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "stock_takes": {
+      const key = parseDocKey(targetId, "STK");
+      if (!key) return null;
+      const row = await prisma.stockTake.findUnique({
         where: { yearMonth_seq: key },
         select: { createdAt: true },
       });

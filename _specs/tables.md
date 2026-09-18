@@ -1315,8 +1315,122 @@ Enum RESERVATION_STATUS {
   RELEASED        // 解除（出荷・キャンセル）
 }
 
+// ===========================
+// 入出庫伝票（在庫が動いた出来事）
+// ===========================
+//
+// **1 回の出来事 = 1 枚**、明細は inventory_transactions の行そのもの。
+// 在庫の増減と**同じトランザクション**で作られる（lib/inventory.ts の
+// applyTransaction が伝票 id を必須で受け取るので、伝票の無い計上は書けない）。
+//
+// なぜ要るか: 取引行の手掛かりは (reference_type, reference_id) の 2 列だけで、
+// しかもその形が経路ごとに違った — 指示書は uuid、出荷書は表示番号 "DOR-…"、
+// 在庫移動に至ってはその場限りの randomUUID を 2 行に書くだけでどこにも
+// 保存していなかった。「この 1 回の移動」を 1 行として読めず、番号で呼べない。
+//
+// **ライフサイクルを持たない。** 訂正は逆仕訳の伝票を新しく起こす（承認も
+// 下書きも無い）。番号 MOV-YYYYMM-NNNNN は他の書類と同じくトランザクションの
+// 外で採番するので、ロールバックで欠番が出るのは仕様。
+Table inventory_movements {
+  id          uuid [pk]
+  year_month  char(6)
+  seq         int
+  cause       INVENTORY_MOVEMENT_CAUSE
+  source_type varchar  // 元書類のテーブル名（audit_logs と同じ多態規約。FK なし）
+  source_id   varchar  // 元書類の業務キー
+  plant_id    int [ref: > plants.id]  // 拠点をまたぐ移動は null
+  notes       text
+  created_by  uuid
+  created_at  timestamp
+
+  indexes {
+    (year_month, seq) [unique]
+  }
+}
+
+Enum INVENTORY_MOVEMENT_CAUSE {
+  WORK_ORDER_COMPLETION
+  DELIVERY_SHIPMENT
+  MATERIAL_RECEIPT
+  STOCK_TRANSFER
+  STOCK_RESERVATION
+  RESERVATION_RELEASE
+  ADJUSTMENT
+  OTHER   // 移行前の行に後から付けた伝票。新規では使わない
+}
+
+// ===========================
+// 棚卸
+// ===========================
+//
+// **バケット単位**（拠点 × 保管場所 × 棚 × ロット）で数える — 棚を歩くのと
+// 同じ粒度でないと、差異がどの棚のものか言えない。拠点の合計差異をバケットへ
+// 割り振るのはシステムの当て推量になる。
+//
+// ライフサイクルを持つのは棚卸のほうで、そこから出る入出庫伝票は不変。
+// 確定は承認を通す（approval_flows に段が 1 つも無ければ素通し — 工程フロー
+// 変更と同じ規約）。**最終承認が調整を適用する。**
+//
+// ★ 差異は確定時に**その場で読み直した実数**と数えた数の差。取り込み時点の
+//   book_quantity ではない — 数え始めてから確定するまでに在庫は動くので、
+//   取り込み時点との差を当てると、その間の正しい出荷・入荷まで打ち消す。
+//   判定の唯一の定義元は lib/stock-take-core.ts。
+Table stock_takes {
+  id                  uuid [pk]
+  year_month          char(6)
+  seq                 int
+  plant_id            int [not null, ref: > plants.id]
+  storage_location_id int [ref: > storage_locations.id]  // null = 拠点まるごと
+  status              STOCK_TAKE_STATUS
+  approval_status     STOCK_TAKE_APPROVAL_STATUS
+  counted_at          timestamp
+  requested_at        timestamp
+  requested_by        uuid
+  rejected_at         timestamp
+  rejected_by         uuid
+  reject_reason       text
+  confirmed_at        timestamp
+  confirmed_by        uuid
+  cancelled_at        timestamp
+  cancelled_by        uuid
+  // 確定時に発行した入出庫伝票。差異が 1 件も無ければ null（伝票を起こさない）
+  movement_id         uuid [ref: > inventory_movements.id]
+  notes               text
+  created_by          uuid
+  created_at          timestamp
+  updated_at          timestamp
+
+  indexes {
+    (year_month, seq) [unique]
+  }
+}
+
+// 1 行 = 1 在庫バケット。inventory_id は product_inventory / material_inventory の
+// どちらかを指す多態参照（inventory_reservations と同じ規約 — FK は張らない）。
+Table stock_take_lines {
+  id               uuid [pk]
+  stock_take_id    uuid [not null, ref: > stock_takes.id]
+  inventory_type   INVENTORY_TYPE
+  inventory_id     uuid
+  // 取り込んだ時点の帳簿数。**差異の計算には使わない**（上記 ★）— 画面に
+  // 「取り込んだときはこうだった」を出すためだけに持つ。
+  book_quantity    numeric(12,3)
+  counted_quantity numeric(12,3)  // null = 未カウント（差異ゼロ扱いにしない）
+  notes            text
+  sort_order       int
+
+  indexes {
+    (stock_take_id, inventory_type, inventory_id) [unique]
+  }
+}
+
+Enum STOCK_TAKE_STATUS { DRAFT, COUNTING, CONFIRMED, CANCELLED }
+Enum STOCK_TAKE_APPROVAL_STATUS { NONE, PENDING, APPROVED, REJECTED }
+
 Table inventory_transactions {
   id              uuid [pk]
+  // 所属する入出庫伝票。**すべての行が伝票に属する**（移行完了後に NOT NULL）。
+  movement_id     uuid [ref: > inventory_movements.id]
   inventory_type  INVENTORY_TYPE [not null]
   inventory_id    uuid [not null]
   transaction_type TRANSACTION_TYPE [not null]
