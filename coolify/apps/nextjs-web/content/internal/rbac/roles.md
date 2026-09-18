@@ -50,6 +50,7 @@ description: "システムのロール（職務セット）と権限コードの
 | 出荷 | `shipping` | 出荷書・納品書の実務（出荷書と在庫は **所属拠点のみ**） |
 | 経理部長 | `accounting_manager` | 請求・締日を全件フル操作 + 全業務閲覧 |
 | 経理 | `accounting` | 請求書・締日処理・弥生 CSV |
+| マスタ管理 | `master_editor` | マスタの登録・編集だけ。業務書類は持たないので部門ロールと併せて割り当てる |
 | 閲覧 | `viewer` | 全業務の閲覧のみ（役員・監査向け） |
 | 一般 | `staff` | 移行期の暫定ロール。システム・キオスク以外を全部できるので、**本番では部門ロールへの置き換えを推奨** |
 
@@ -131,6 +132,7 @@ DC01 マニュアル / SY06 ファイル管理 / SY0G 特権アクセス。中�
 | **出荷**<br/>`shipping` | — | — | R | — | R | — | — | — |
 | **経理部長**<br/>`accounting_manager` | R | R | R | R | R | R | R | R |
 | **経理**<br/>`accounting` | R | R | R | — | R | — | — | — |
+| **マスタ管理**<br/>`master_editor` | — | — | — | — | — | — | — | — |
 | **閲覧**<br/>`viewer` | R | R | R | R | R | R | R | R |
 | **一般**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE |
 
@@ -153,6 +155,7 @@ DC01 マニュアル / SY06 ファイル管理 / SY0G 特権アクセス。中�
 | **出荷**<br/>`shipping` | R | — | RU<br/>PLANT | RCUDE<br/>PLANT | RCUDE | — | — | R | — | — | — |
 | **経理部長**<br/>`accounting_manager` | R | R | R | R | R | RCUDE | RCUDE | R | R | R | R |
 | **経理**<br/>`accounting` | — | — | — | R | R | RCUDE | RCUE | R | — | — | — |
+| **マスタ管理**<br/>`master_editor` | — | — | — | — | — | — | — | RCUD | — | — | — |
 | **閲覧**<br/>`viewer` | R | R | R | R | R | R | R | R | R | R | R |
 | **一般**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | — |
 

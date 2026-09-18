@@ -47,6 +47,7 @@ description: "系统中所有角色与权限代码的一览：谁能做什么，
 | 出货 | `shipping` | 出货单・送货单的日常操作（出货单与库存 **仅所属基地**） |
 | 会计部长 | `accounting_manager` | 发票・结算全量完整操作 + 全业务查看 |
 | 会计 | `accounting` | 发票・月度结算・弥生 CSV |
+| 主数据管理 | `master_editor` | 仅主数据的新建与修改。不含业务单据权限，需与部门角色一并分配 |
 | 只读 | `viewer` | 全业务仅查看（面向管理层・审计） |
 | 通用 | `staff` | 过渡期的临时角色，除系统与终端外均可操作。**生产环境建议改用部门角色** |
 
@@ -127,6 +128,7 @@ SY06 文件管理 / SY0G 特权访问。它们的内容本身只显示与本人�
 | **出货**<br/>`shipping` | — | — | R | — | R | — | — | — |
 | **会计部长**<br/>`accounting_manager` | R | R | R | R | R | R | R | R |
 | **会计**<br/>`accounting` | R | R | R | — | R | — | — | — |
+| **主数据管理**<br/>`master_editor` | — | — | — | — | — | — | — | — |
 | **查看**<br/>`viewer` | R | R | R | R | R | R | R | R |
 | **一般**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE |
 
@@ -149,6 +151,7 @@ SY06 文件管理 / SY0G 特权访问。它们的内容本身只显示与本人�
 | **出货**<br/>`shipping` | R | — | RU<br/>PLANT | RCUDE<br/>PLANT | RCUDE | — | — | R | — | — | — |
 | **会计部长**<br/>`accounting_manager` | R | R | R | R | R | RCUDE | RCUDE | R | R | R | R |
 | **会计**<br/>`accounting` | — | — | — | R | R | RCUDE | RCUE | R | — | — | — |
+| **主数据管理**<br/>`master_editor` | — | — | — | — | — | — | — | RCUD | — | — | — |
 | **查看**<br/>`viewer` | R | R | R | R | R | R | R | R | R | R | R |
 | **一般**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | — |
 
