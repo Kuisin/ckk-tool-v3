@@ -35,7 +35,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { InventoryBadge } from "@/components/production/InventoryBadge";
@@ -51,6 +51,8 @@ import {
   useUrlStringState,
 } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { categoryLabel } from "@/lib/app-list";
+import type { Locale } from "@/lib/i18n";
 import type { MaterialInventoryRow } from "./materials/model";
 import type { ProductInventoryRow, WipRow } from "./products/model";
 import {
@@ -85,6 +87,7 @@ export function UnifiedInventory({
   plants: TransferPlantOption[];
 }) {
   const tr = useTranslations();
+  const locale = useLocale() as Locale;
   const KIND_OPTIONS = [
     { value: "FINISHED", label: tr("common.finishedGoods") },
     { value: "SEMI_FINISHED", label: tr("common.semiFinished") },
@@ -399,7 +402,10 @@ export function UnifiedInventory({
 
   return (
     <ListShell
-      breadcrumbs={[tr("common.production"), tr("common.inventory")]}
+      breadcrumbs={[
+        categoryLabel("在庫", locale), // i18n-ignore — app-list のカテゴリ名（対訳は app-list.ts が持つ）
+        tr("common.inventory"),
+      ]}
       filters={
         tab === "products" || tab === "materials" ? (
           <>

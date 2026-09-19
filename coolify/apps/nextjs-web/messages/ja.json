@@ -1073,6 +1073,7 @@
       "MANUFACTURE": "製造分"
     },
     "INSPECTION_STATUS_LABEL": {
+      "APPROVED": "承認済",
       "PENDING": "未実施",
       "PASS": "合格",
       "FAIL": "不合格"
@@ -1205,6 +1206,7 @@
       "QUANTITY": "数量"
     },
     "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "MANUAL": "手動",
       "WORK_ORDER_COMPLETION": "指示書完了",
       "DELIVERY_SHIPMENT": "出荷",
       "MATERIAL_RECEIPT": "素材入荷",
