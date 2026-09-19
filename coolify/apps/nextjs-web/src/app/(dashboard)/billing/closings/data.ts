@@ -15,13 +15,12 @@ import {
   addDays,
   type BillingClosing,
   type BillingClosingDetail,
-  billingPeriodStart,
   billingPeriodStartFrom,
-  billingWindowFor,
+  type ClosingKind,
   type ClosingShipmentRow,
   type ClosingStatus,
-  inBillingWindow,
   jstMidnightOf,
+  scheduledClosingDates,
 } from "@/components/billing/closings/model";
 import { resolveDueDate } from "@/lib/billing-terms-core";
 import { chargesTotal } from "@/lib/charge-core";
@@ -63,6 +62,7 @@ function mapClosing(r: ClosingRow): BillingClosing {
     customerBpId: r.customerBpId,
     customerName: localized(r.customerBp.name as LocalizedText | null),
     closingDate: r.closingDate.toISOString(),
+    kind: r.kind as ClosingKind,
     status: r.status as ClosingStatus,
     totalAmount: r.totalAmount != null ? Number(r.totalAmount) : null,
     invoiceNumber:
@@ -346,45 +346,97 @@ export interface CustomerClosingCandidate {
   shipmentNumbers: string[];
 }
 
+/** 実質的に下限なしとして扱う日付（未請求出荷は epoch より後にしか存在しない）。 */
+const EPOCH = new Date(0);
+
 /**
- * 対象月の未請求出荷を顧客ごとにまとめ、締日（BpCustomerAttrs.closingDay、
- * 既定 = 月末）と合計金額を確定する。顧客の請求期間は (前回締日, 今回締日]
- * — 締日より後の出荷は翌月の締めに入る（billingWindowFor）。
+ * **指定日までに締日が到来し、まだ請求されていない未請求出荷**を顧客ごとに
+ * まとめる。締日（BpCustomerAttrs.closingDay、既定 = 月末）は顧客ごとに違う
+ * ので、1 回の呼び出しで「何か月ぶんも走らせ忘れていた顧客」を一度に拾う —
+ * 月次だった旧 collectClosingCandidates（1 回の呼び出しで 1 顧客 1 締日しか
+ * 見なかった）が「月初 3 日だけ前月も見る」その場しのぎを要求していた原因。
+ *
+ * 顧客ごとに、
+ *   1. 最初の締日候補の窓の始点は resolveBillingPeriodStart で決める
+ *      （前回実際に処理した締日があればその翌日 — 締日設定を変えた月でも
+ *      隙間を作らない、従来の processClosing と同じ規約）。
+ *   2. 以降の締日候補は 1 か月ずつ後ろへ鎖状につながる（scheduledClosingDates
+ *      が生成する隣り合う締日は必ず暦 1 か月差なので、窓の終わりと次の窓の
+ *      始まりが一致する）。
+ * 出荷が 1 件も無い締日候補は行を作らない（従来どおり）。
  */
-export async function collectClosingCandidates(
-  year: number,
-  month: number,
+export async function collectClosingCandidatesUpTo(
+  targetDate: Date,
 ): Promise<CustomerClosingCandidate[]> {
-  // 全顧客の請求期間の和集合を 1 回で引く: 最も早い前回締日（1 日）の翌日 〜
-  // 最も遅い締日（月末）の翌日。顧客ごとの絞り込みは下のループで行う。
-  const gte = jstMidnightOf(billingPeriodStart(year, month, 1));
-  const { lt } = billingWindowFor(year, month, 31);
-  const shipments = await fetchUninvoicedShipments({ gte, lt });
+  const lt = jstMidnightOf(addDays(targetDate, 1));
+  const shipments = await fetchUninvoicedShipments({ gte: EPOCH, lt });
 
-  const byCustomer = new Map<string, CustomerClosingCandidate>();
+  const byCustomer = new Map<string, BillableShipment[]>();
   for (const s of shipments) {
-    const customer = s.customerBp;
-    const window = billingWindowFor(
-      year,
-      month,
-      customer.customerAttrs?.closingDay ?? null,
-    );
-    // 前回締日以前（前回の締め）・締日より後（翌月の締め）は今回に含めない。
-    if (!s.shippedAt || !inBillingWindow(s.shippedAt, window)) continue;
-    const closingDate = window.closingDate;
-
-    const cur = byCustomer.get(customer.id) ?? {
-      customerBpId: customer.id,
-      customerName: localized(customer.name as LocalizedText | null),
-      closingDate,
-      totalAmount: 0,
-      shipmentNumbers: [],
-    };
-    cur.totalAmount += shipmentAmount(s);
-    cur.shipmentNumbers.push(
-      formatDocNumber("DOR", { yearMonth: s.yearMonth, seq: s.seq }),
-    );
-    byCustomer.set(customer.id, cur);
+    if (!s.shippedAt) continue;
+    const list = byCustomer.get(s.customerBpId);
+    if (list) list.push(s);
+    else byCustomer.set(s.customerBpId, [s]);
   }
-  return [...byCustomer.values()];
+
+  const candidates: CustomerClosingCandidate[] = [];
+  for (const [customerBpId, custShipments] of byCustomer) {
+    const customer = custShipments[0].customerBp;
+    const closingDay = customer.customerAttrs?.closingDay ?? null;
+    const customerName = localized(customer.name as LocalizedText | null);
+
+    // scheduledClosingDates の fromDate は「どの月から数え始めるか」だけを
+    // 決める下限 — 実際の窓の始点（gte）は resolveBillingPeriodStart /
+    // 前候補の締日+1日 が別に決める（下のループ）。
+    const earliestShippedAt = custShipments.reduce(
+      (min, s) => (s.shippedAt && s.shippedAt < min ? s.shippedAt : min),
+      custShipments[0].shippedAt as Date,
+    );
+    const scanFrom = new Date(
+      Date.UTC(
+        earliestShippedAt.getUTCFullYear(),
+        earliestShippedAt.getUTCMonth(),
+        1,
+      ),
+    );
+    const dates = scheduledClosingDates(scanFrom, targetDate, closingDay);
+
+    let previousClosingDate: Date | null = null;
+    for (const closingDate of dates) {
+      const windowStart = previousClosingDate
+        ? addDays(previousClosingDate, 1)
+        : await resolveBillingPeriodStart(customerBpId, closingDate);
+      const gte = jstMidnightOf(windowStart);
+      const windowLt = jstMidnightOf(addDays(closingDate, 1));
+      const inWindow = custShipments.filter(
+        (s) => s.shippedAt && s.shippedAt >= gte && s.shippedAt < windowLt,
+      );
+      if (inWindow.length > 0) {
+        candidates.push({
+          customerBpId,
+          customerName,
+          closingDate,
+          totalAmount: inWindow.reduce((sum, s) => sum + shipmentAmount(s), 0),
+          shipmentNumbers: inWindow.map((s) =>
+            formatDocNumber("DOR", { yearMonth: s.yearMonth, seq: s.seq }),
+          ),
+        });
+      }
+      previousClosingDate = closingDate;
+    }
+  }
+  return candidates;
+}
+
+// ── 手動請求（BL11）用: 顧客の未請求出荷を締日窓に依らず全件 ──────────────────
+
+/** 締日窓を無視して、その顧客の未請求出荷を全件返す（手動請求の選択肢）。 */
+export async function fetchUninvoicedShipmentsForCustomer(
+  customerBpId: string,
+): Promise<BillableShipment[]> {
+  const rows = await fetchUninvoicedShipments({
+    gte: EPOCH,
+    lt: jstMidnightOf(addDays(new Date(), 1)),
+  });
+  return rows.filter((r) => r.customerBpId === customerBpId);
 }

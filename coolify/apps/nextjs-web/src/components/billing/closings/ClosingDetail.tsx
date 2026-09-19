@@ -242,6 +242,14 @@ export function ClosingDetail({
           }
         />
         <FieldValue
+          label={tr("billing.closings.kind")}
+          value={
+            closing.kind === "MANUAL"
+              ? tr("billing.closings.kindManual")
+              : tr("billing.closings.kindScheduled")
+          }
+        />
+        <FieldValue
           label={tr("billing.closings.generatedInvoice")}
           value={
             closing.invoiceNumber ? (

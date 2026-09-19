@@ -2050,7 +2050,6 @@
       "confirmGeneratingInvoices": "Confirm generating invoices",
       "theBillingClosingWasRun": "The billing closing was run",
       "runTheBillingClosing": "Run the billing closing",
-      "aggregatesTheMonthSUnbilledShipments": "Aggregates the month's unbilled shipments (shipped, dispatch only) per customer and creates closing rows.",
       "years": "years",
       "months": "months",
       "runTheBillingClosing2": "Run the billing closing",
@@ -2074,7 +2073,12 @@
       "selectPendingPastClosingDate": "Select rows that are unprocessed and past their closing date",
       "invoicesWereGenerated": "Generated {count} invoice(s)",
       "someCouldNotBeProcessed": "{count} could not be generated",
-      "skippedNotReady": "{count} skipped (already processed, or before the closing date)"
+      "skippedNotReady": "{count} skipped (already processed, or before the closing date)",
+      "aggregatesUnbilledShipmentsUpToDate": "Aggregates unbilled shipments (shipped, dispatch only) per customer whose closing date has arrived by the target date and has not yet been closed, and generates a draft invoice for closings already past their closing date.",
+      "targetDate": "Target date",
+      "kind": "Run type",
+      "kindScheduled": "Scheduled",
+      "kindManual": "Manual"
     },
     "invoices": {
       "issueThePdf": "Issue the PDF",
@@ -2116,8 +2120,6 @@
       "markedPaidWithNumber": "Marked invoice {invoiceNumber} as paid"
     },
     "closingTable": {
-      "yearLabel": "{year}",
-      "monthLabel": "Month {month}",
       "createdAndUpdatedCounts": "Created {created} / updated {updated}",
       "skippedCount": "Skipped {skipped} already processed"
     },
@@ -2134,11 +2136,11 @@
       "closingDateNotReached": "Cannot process until the closing date has passed (from the day after)",
       "closingNotFound": "The billing closing was not found",
       "generateInvoiceFailed": "Could not generate the invoice",
-      "invalidYearMonth": "Invalid target month format (YYYYMM)",
       "itemNameWithLot": "{name} (Lot {lot})",
-      "noUnbilledShipmentsForMonth": "No unbilled shipments for the target month",
       "pendingOnly": "Only an unprocessed closing can generate an invoice",
-      "runFailed": "Could not run the billing closing"
+      "runFailed": "Could not run the billing closing",
+      "invalidDate": "Invalid target date format",
+      "noUnbilledShipmentsUpToDate": "No unbilled shipments up to the target date"
     }
   },
   "general": {

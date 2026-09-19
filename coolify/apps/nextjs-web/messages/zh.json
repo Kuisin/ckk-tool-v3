@@ -2050,7 +2050,6 @@
       "confirmGeneratingInvoices": "确认生成请款单",
       "theBillingClosingWasRun": "已执行结算处理",
       "runTheBillingClosing": "执行结算处理",
-      "aggregatesTheMonthSUnbilledShipments": "按客户汇总对象月的未请款出货（已出货・仅发货），并创建结算日的处理行。",
       "years": "年",
       "months": "个月",
       "runTheBillingClosing2": "执行结算处理",
@@ -2074,7 +2073,12 @@
       "selectPendingPastClosingDate": "请选择未处理且已过结算日的行",
       "invoicesWereGenerated": "已生成 {count} 张请款单",
       "someCouldNotBeProcessed": "{count} 张未能生成",
-      "skippedNotReady": "{count} 项不在对象内（已处理或尚未到结算日）"
+      "skippedNotReady": "{count} 项不在对象内（已处理或尚未到结算日）",
+      "aggregatesUnbilledShipmentsUpToDate": "按客户汇总截至指定日期已到结算日且尚未结算的未请款出货（已出货・仅发货），并为已过结算日的部分直接生成请款单（草稿）。",
+      "targetDate": "指定日期",
+      "kind": "执行类别",
+      "kindScheduled": "定期",
+      "kindManual": "手动"
     },
     "invoices": {
       "issueThePdf": "发行 PDF",
@@ -2116,8 +2120,6 @@
       "markedPaidWithNumber": "已将请款单 {invoiceNumber} 标记为已付款"
     },
     "closingTable": {
-      "yearLabel": "{year} 年",
-      "monthLabel": "{month} 月",
       "createdAndUpdatedCounts": "新建 {created} 项 / 更新 {updated} 项",
       "skippedCount": "跳过已处理 {skipped} 项"
     },
@@ -2134,11 +2136,11 @@
       "closingDateNotReached": "结算日之前无法处理（从结算日次日起）",
       "closingNotFound": "未找到目标结算处理",
       "generateInvoiceFailed": "请款单生成失败",
-      "invalidYearMonth": "目标月份格式无效（YYYYMM）",
       "itemNameWithLot": "{name}（批次 {lot}）",
-      "noUnbilledShipmentsForMonth": "目标月份没有未请款的出货",
       "pendingOnly": "只有未处理的结算才能生成请款单",
-      "runFailed": "结算处理执行失败"
+      "runFailed": "结算处理执行失败",
+      "invalidDate": "指定日期格式无效",
+      "noUnbilledShipmentsUpToDate": "截至指定日期没有未请款的出货"
     }
   },
   "general": {

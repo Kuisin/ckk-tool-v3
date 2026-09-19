@@ -2050,7 +2050,6 @@
       "confirmGeneratingInvoices": "請求書生成の確認",
       "theBillingClosingWasRun": "締日処理を実行しました",
       "runTheBillingClosing": "締日処理の実行",
-      "aggregatesTheMonthSUnbilledShipments": "対象月の未請求出荷（出荷済・発送のみ）を顧客ごとに集計し、締日の処理行を作成します。",
       "years": "年",
       "months": "月",
       "runTheBillingClosing2": "締日処理を実行",
@@ -2074,7 +2073,12 @@
       "selectPendingPastClosingDate": "未処理で、かつ締日を過ぎた行を選んでください",
       "invoicesWereGenerated": "請求書を {count} 件生成しました",
       "someCouldNotBeProcessed": "{count} 件は生成できませんでした",
-      "skippedNotReady": "未処理でない・締日前の {count} 件は対象外"
+      "skippedNotReady": "未処理でない・締日前の {count} 件は対象外",
+      "aggregatesUnbilledShipmentsUpToDate": "指定日までに締日が到来し、まだ締めていない顧客の未請求出荷（出荷済・発送のみ）を集計し、締日を過ぎている分はそのまま請求書（下書き）まで作成します。",
+      "targetDate": "指定日",
+      "kind": "実行区分",
+      "kindScheduled": "定期",
+      "kindManual": "手動"
     },
     "invoices": {
       "issueThePdf": "PDF を発行",
@@ -2116,8 +2120,6 @@
       "markedPaidWithNumber": "請求書 {invoiceNumber} を入金済みにしました"
     },
     "closingTable": {
-      "yearLabel": "{year}年",
-      "monthLabel": "{month}月",
       "createdAndUpdatedCounts": "作成 {created} 件 / 更新 {updated} 件",
       "skippedCount": "処理済みスキップ {skipped} 件"
     },
@@ -2134,11 +2136,11 @@
       "closingDateNotReached": "締日を過ぎるまで処理できません（締日の翌日から）",
       "closingNotFound": "対象の締日処理が見つかりません",
       "generateInvoiceFailed": "請求書の生成に失敗しました",
-      "invalidYearMonth": "対象月の形式が不正です（YYYYMM）",
       "itemNameWithLot": "{name}（ロット {lot}）",
-      "noUnbilledShipmentsForMonth": "対象月に未請求の出荷がありません",
       "pendingOnly": "未処理の締日のみ請求書を生成できます",
-      "runFailed": "締日処理の実行に失敗しました"
+      "runFailed": "締日処理の実行に失敗しました",
+      "invalidDate": "指定日の形式が不正です",
+      "noUnbilledShipmentsUpToDate": "指定日までに未請求の出荷がありません"
     }
   },
   "general": {
