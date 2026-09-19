@@ -43,15 +43,13 @@ const ROUTE_INCLUDE = {
 /**
  * 製品の製造工程リスト一覧（バージョン降順・工程サマリ付き）— 製品詳細/ビルダー用。
  *
- * `productId` は products.id（呼び出し側はまだ製品マスタ・指示書の
- * productId 文脈のまま） — product_process_routes 自体の絞り込みは品目
- * (items.id) で行うので、ここで 1 回だけ変換する。
+ * `itemId` は **items.id**（製品マスタの URL id / ビルダーの製品ピッカーの値）。
+ * 以前は products.id を受けて中で 1 回変換していたが、呼び出し側が品目へ移った
+ * あとも引数名が productId のままだったため、**製品マスタ (MS04) が品目 id を
+ * 旧 id として渡し、別の製品のリストを引いていた**（どちらも number なので型は
+ * 通る）。受け取る意味を列名に出して、同じ取り違えを繰り返せなくする。
  */
-export async function listProductRoutes(
-  productId: number,
-): Promise<RouteView[]> {
-  const itemId = await itemIdForLegacyProduct(productId);
-  if (itemId == null) return [];
+export async function listProductRoutes(itemId: number): Promise<RouteView[]> {
   const routes = await prisma.productProcessRoute.findMany({
     where: { itemId, kind: "MANUFACTURING" },
     include: ROUTE_INCLUDE,

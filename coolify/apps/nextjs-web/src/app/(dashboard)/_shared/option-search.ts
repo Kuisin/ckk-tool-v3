@@ -7,30 +7,27 @@
  * 上位 LIMIT 件だけ返す。空クエリは先頭 LIMIT 件。
  * 値は内部 id（連番）の文字列、ラベルは表示コード + 名称。
  *
- * ## 製品・素材は id 空間が 2 つある（品目統合の途中）
+ * ## 製品・素材の値は **品目（items.id）で統一**（品目統合 第 3 段）
  *
- * 既定は **品目（items.id）** — `searchProductItemOptions` /
- * `searchMaterialItemOptions` / `f4SearchProductItems`。製品マスタ (MS04)・
- * 素材マスタ (MS06)・設計図 (PD06) の画面と URL も第 3 段でここへ移った。
+ * `searchProductItemOptions` / `searchMaterialItemOptions` /
+ * `f4SearchProductItems` の 3 本だけで、**旧 id（products.id / materials.id）を
+ * 返すピッカーはもう無い**。最後まで残っていた `searchProductOptions`
+ * （指示書ビルダーの在庫向け製品ピッカー）は、`resolveWorkOrderTarget` /
+ * `work-order-alloc-core` / `routesInfo` と 1 つの state を共有していたので
+ * 4 か所まとめて品目へ移し、この関数は消した。共有する state の名前は
+ * `productId` → `itemId` へ改めてある — **旧 id と品目 id はどちらも number
+ * なので、取り違えても型では止まらない**。名前だけが防ぎになる。
  *
- * 旧 id（products.id）に残っているのは **`searchProductOptions` 1 本だけ**:
- * 指示書ビルダーの在庫向け製品ピッカー。`resolveWorkOrderTarget` /
- * `work-order-alloc-core` と `routesInfo.productId` という 1 つの state を
- * 共有しているので、3 か所まとめてでないと移せない（work-orders/actions.ts の
- * `resolveWorkOrderTarget` のコメント）。
- *
- * CM02 フォームの「業務データ検索」（`components/forms/lookup-dispatch.ts`）は
- * 第 3 段で品目へ移した — 保存済みの回答が持っていた旧 id は migration
+ * CM02 フォームの「業務データ検索」（`components/forms/lookup-dispatch.ts`）も
+ * 品目 — 保存済みの回答が持っていた旧 id は migration
  * `20261101090000_items_stage3_matching_forms` で書き換えてある。
- * **旧 id と品目 id はどちらも number なので取り違えても型では止まらない。**
- * 混ぜないこと。
  */
 
 import { getTranslations } from "next-intl/server";
 import { checkPermission, requireAnyRead } from "@/lib/authz";
 import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
-import { formatProductNumber, formatQuoteNumber } from "@/lib/doc-number";
+import { formatQuoteNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { listCustomerSalesReps } from "@/lib/sales-rep";
 
@@ -117,98 +114,8 @@ const s = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
  */
 const likeEscape = (q: string) => q.replace(/[\\%_]/g, (c) => `\\${c}`);
 
-async function productIdsByKeyword(
-  q: string,
-  limit: number,
-): Promise<number[]> {
-  if (!q) return [];
-  const rows = await prisma.$queryRaw<{ id: number }[]>`
-    SELECT id FROM app.products
-    WHERE is_active
-      AND EXISTS (
-        SELECT 1 FROM unnest(match_names) AS k WHERE k ILIKE ${`%${likeEscape(q)}%`}
-      )
-    ORDER BY id
-    LIMIT ${limit}`;
-  return rows.map((r) => r.id);
-}
-
-/**
- * 顧客品番（customer_product_codes）に probe を含む製品 id。
- * 主品番と別表記（旧品番）の両方を見る — 探す側は古い紙を持っていることがある。
- * 別表記は配列列なので `unnest + ILIKE`（match_names と同じ作り）。
- */
-async function productIdsByCustomerCode(
-  q: string,
-  limit: number,
-): Promise<number[]> {
-  if (!q) return [];
-  const like = `%${likeEscape(q)}%`;
-  const rows = await prisma.$queryRaw<{ product_id: number }[]>`
-    SELECT DISTINCT product_id FROM app.customer_product_codes
-    WHERE is_active
-      AND (
-        code ILIKE ${like}
-        OR EXISTS (SELECT 1 FROM unnest(aliases) AS a WHERE a ILIKE ${like})
-      )
-    ORDER BY product_id
-    LIMIT ${limit}`;
-  return rows.map((r) => r.product_id);
-}
-
 /** id 集合を Prisma の OR 条件へ（空なら条件を足さない）。 */
 const byIds = (ids: number[]) => (ids.length > 0 ? [{ id: { in: ids } }] : []);
-
-function productLabel(p: {
-  id: number;
-  name: unknown;
-  yearMonth: string | null;
-  seq: number | null;
-}): string {
-  const code = formatProductNumber(p.yearMonth, p.seq);
-  const name = localized(p.name as LocalizedText | null);
-  return code ? `${name} ${code}` : name;
-}
-
-/**
- * 製品 — 名称(ja)・キーワード（match_names）・**顧客品番**の部分一致
- * （コードは未採番のレガシーが大半のため名称主体）。
- *
- * 顧客品番を混ぜるのは、注文書を手で起こすときに人が見ているのが相手の
- * 品番だから — こちらの製品名を覚えていなくても辿り着ける。顧客で絞らない
- * のは意図的で、どの顧客の品番で引いても同じ製品に行き着く（品番は顧客ごとに
- * 一意だが、探す側はどの顧客の紙かを先に選ばない）。
- *
- * ⚠️ **value は旧 products.id。** 残っている使い手は指示書ビルダーの
- * 在庫向け製品ピッカー 1 つだけ（このファイル冒頭の節）。それ以外は
- * `searchProductItemOptions`（value = items.id）を使う。
- */
-export async function searchProductOptions(
-  query: string,
-): Promise<SearchOption[]> {
-  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
-  const q = query.trim();
-  const [keywordIds, customerCodeIds] = await Promise.all([
-    productIdsByKeyword(q, LIMIT),
-    productIdsByCustomerCode(q, LIMIT),
-  ]);
-  const rows = await prisma.product.findMany({
-    where: {
-      isActive: true,
-      ...(q
-        ? {
-            OR: [
-              { name: { path: ["ja"], string_contains: q } },
-              ...byIds([...new Set([...keywordIds, ...customerCodeIds])]),
-            ],
-          }
-        : {}),
-    },
-    orderBy: { id: "asc" },
-    take: LIMIT,
-  });
-  return rows.map((p) => ({ value: String(p.id), label: productLabel(p) }));
-}
 
 /** 顧客品番（customer_product_codes）に probe を含む**品目 id**（items.id）。 */
 async function productItemIdsByCustomerCode(
@@ -242,10 +149,9 @@ function productItemLabel(p: {
  * 製品（品目）— 指示書・工程リスト・検査表テンプレート・設計依頼・設計図の
  * 製品ピッカー用。value は **items.id**（`itemType: "PRODUCT"`）。
  *
- * 品目統合 第 2 段 D — work_orders.product_item_id /
- * product_process_routes.item_id / inspection_templates.item_id /
- * design_requests.item_id / design_files.item_id が指す先。旧
- * `searchProductOptions`（products.id）とは値の意味が違うので混ぜないこと。
+ * work_orders.product_item_id / product_process_routes.item_id /
+ * inspection_templates.item_id / design_requests.item_id /
+ * design_files.item_id が指す先。
  */
 export async function searchProductItemOptions(
   query: string,

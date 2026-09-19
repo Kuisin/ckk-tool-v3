@@ -21,8 +21,7 @@ type Tr = ReturnType<typeof useTranslations>;
  * 製品 F4。value は **items.id**（`searchProductItemOptions` と対）。
  *
  * 旧 products.id 版（`productF4` / `f4SearchProducts`）は使い手が無くなった
- * ので品目統合 第 3 段で消した — 残っている旧 id のピッカーは
- * `searchProductOptions` の 2 か所だけで、どちらも F4 を出していない。
+ * ので品目統合 第 3 段で消した。旧 id を返すピッカーはもう 1 本も無い。
  */
 export function productItemF4(tr: Tr): F4Config {
   return {

@@ -12,9 +12,9 @@
  *   <SearchSelect
  *     label="製品"
  *     storageKey="product"
- *     onSearch={searchProductOptions}   // "use server" action
- *     value={form.values.productId}
- *     onChange={(v) => form.setFieldValue("productId", v)}
+ *     onSearch={searchProductItemOptions}   // "use server" action
+ *     value={form.values.itemId}
+ *     onChange={(v) => form.setFieldValue("itemId", v)}
  *     initialOption={…}                 // 編集時: 既存値の {value,label}
  *   />
  */

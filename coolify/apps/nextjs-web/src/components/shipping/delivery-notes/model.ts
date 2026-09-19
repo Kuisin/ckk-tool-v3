@@ -26,11 +26,11 @@ export interface DeliveryNoteItem {
    */
   itemId: string;
   /**
-   * 旧 products.id を文字列にしたもの。**PDF の「コード」欄が刷っている値**
-   * （納品書テンプレートの `code`）がこれなので、印字を変えないために持つ。
-   * それ以外の用途に使わない。
+   * 製品コード（`items.code` = `PRD-YYYYMM-NNNN`）。**PDF の「コード」欄に
+   * 刷る値**（納品書テンプレートの `code`）。採番前のレガシー品目は null で、
+   * そのときは欄を空で刷る。判定・突合には使わない（すべて `itemId`）。
    */
-  productLegacyId: string;
+  productCode: string | null;
   productName: string;
   quantity: number;
   /** 価格記載なし（includePrice=false）の納品書では null。 */

@@ -64,7 +64,7 @@ export function mapQuote(r: QuoteRow): Quote {
     items: r.items.map((it) => ({
       id: it.id,
       itemId: String(it.itemId ?? ""),
-      productLegacyId: String(it.productId),
+      productCode: it.item?.code ?? null,
       productName: (() => {
         const code = formatProductNumber(
           it.item?.yearMonth ?? null,

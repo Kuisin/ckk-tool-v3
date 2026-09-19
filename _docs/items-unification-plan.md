@@ -218,10 +218,64 @@ B から始めるのは小さいから。C を最後にするのは金額に直�
 
 | 残したもの | なぜ | 移すときの条件 |
 |---|---|---|
-| `resolveWorkOrderTarget` / `work-order-alloc-core` / `WorkflowBuilder` の製品ピッカー | 3 つが `routesInfo.productId` という 1 つの state を共有している。片側だけ品目にすると **どちらも `number` なので型では止まらず**、黙って別の id 空間を突き合わせる | 3 つ同時。移すときは列名を `itemId` にして、次に半端な直し方ができないようにする |
+| ~~`resolveWorkOrderTarget` / `work-order-alloc-core` / `WorkflowBuilder` の製品ピッカー~~ | **済**（下記「指示書の製品ピッカー 3 点」） | — |
 | 価格表の自然キー `(customer_bp_id, product_id)` | 「価格表の識別は作成後不変」という約束がある | 鍵の差し替えとして独立に判断する。第 3 段のついでにやらない |
 | ~~突合（`lib/intake.ts` / `product-match.ts` / `material-match.ts`）~~ | **済**（下記「突合と CM02 の移行」） | — |
-| 帳票の `code` 欄（見積書・納品書） | いま刷っているのは**内部の連番 id** で、`items.code`（`PRD-YYYYMM-NNNN`）に替えると**刷られる文字列が変わる** | 「そもそも内部 id を客先に刷ってよいのか」を決めてから。品目統合とは別の話 |
+| ~~帳票の `code` 欄（見積書・納品書）~~ | **済**（下記「帳票の `code` 欄」） | — |
+| ~~`/api/v1` の id~~ | **済**（下記「`/api/v1` の id」） | — |
+
+### 指示書の製品ピッカー 3 点（済）
+
+`routesInfo.productId` を共有していた 3 か所を**同時に**品目へ移し、共有する
+state の名前を **`itemId`** に改めた（列名が同じままだと、次に半端な直し方を
+しても型で止まらない）。実際に動いたのは 3 つより広く、**同じ state を食べて
+いたものは全部**同じコミットで移している:
+
+- `resolveWorkOrderTarget`（`{ productId }` → `{ itemId }`。在庫向けは
+  `items` を `itemType: "PRODUCT"` 付きで確かめる — 品目 id は 1 本の連番
+  なので、素材の id でも「存在はする」）
+- `work-order-alloc-core` の `LineAllocInfo.itemId`（「全行同一製品」の不変条件）
+- `WorkflowBuilder` の製品ピッカー（`searchProductOptions` →
+  `searchProductItemOptions`）とフォームの `itemId`
+- `getProductRoutesForOrderLine` / `getProductRoutesForProduct` /
+  `getDesignVersionsForProduct` / `getWorkOrderMaterialAssumption` /
+  `OrderLineRef` / `InspectionTemplateOption`
+
+★ **途中で live なバグが 1 件見つかった。** `listProductRoutes(productId)` は
+中で `itemIdForLegacyProduct` を通していたのに、製品マスタ (MS04) が第 3 段で
+URL を items.id へ移したあと**品目 id をそのまま渡していた**。連番同士なので
+エラーにはならず、**別の製品の工程リストを引いていた**。引数を `itemId` に
+変えて変換を落とした（呼び出し側は全部 items.id を持っている）。
+
+`searchProductOptions` は使い手が無くなったので削除した — これで
+**旧 id（products.id / materials.id）を返すピッカーは 1 本も無い**。
+
+書き込みの橋だけが残る: `work_orders.product_id` はまだ NOT NULL なので、
+create / update / copy の 3 か所で `legacyProductIdForItem` を 1 回だけ通す。
+読み・判定は通らない。
+
+### 帳票の `code` 欄（済）
+
+見積書・納品書の PDF が刷っていた `code` は**内部の連番 id**（`42`）だった。
+利用者判断で **`items.code`（`PRD-YYYYMM-NNNN`）を刷る**ことにした — あの欄が
+最初から意味していたもの。採番前のレガシー品目（`code` が null）は**空欄**で
+刷る（`"null"` のような文字列を客先の紙に出さない）。ビューモデルの
+`productLegacyId` は `productCode: string | null` に置き換え、旧 id の配管は
+消した。
+
+### `/api/v1` の id（済 — clean break）
+
+`/products` `/materials` `/inventory/*` `/work-orders` `/order-lines`
+`/delivery-orders` `/delivery-notes` の 7 本。**URL も項目名も応答の形も
+変えず、id の値だけ**を `items.id` に切り替えた（利用者判断。橋を架けると
+旧マスタを落とせなくなる橋が外部契約の側にできる）。
+
+連番同士なので**旧 id は「見つからない」ではなく別の行に当たる**。切り替え前の
+カーソルも `(updated_at, id)` なので同じ理由でずれる。連携先は全件同期から
+やり直し、保存済みの id ではなく `code` / `number` で引き直す — この注意は
+**`_specs/api.md` §6.1** と **`/api/v1/openapi.json` の説明**（`lib/api-openapi.ts`
+の `DESCRIPTION`）の両方に置いた。連携先が読むのは後者なので、片方だけに
+書かない。
 
 ### 突合と CM02 の移行（済 — migration `20261101090000_items_stage3_matching_forms`）
 
@@ -261,7 +315,12 @@ B から始めるのは小さいから。C を最後にするのは金額に直�
 ## 第 3 段 — 旧いものを落とす
 
 1. アプリ側に `products` / `materials` / 旧在庫表への参照が 1 つも無いことを
-   grep の門で確認（`items-readonly-guard.test.ts` を反転させた形）
+   grep の門で確認（`items-readonly-guard.test.ts` を反転させた形）。
+   **残っている読み手は「書き込みの橋」だけ**のはず —
+   `lib/item-legacy-product.ts` / `item-legacy-material.ts` と、それを呼ぶ
+   マスタ 2 画面・書類の保存処理・`work_orders.product_id`（NOT NULL）。
+   旧 id で来る URL の転送（`/master/{products,materials}/legacy/[id]`）は
+   監査ログの旧 id を開くためのものなので、落とすときに別途判断する
 2. トリガーと同期関数を落とす
 3. 旧列（`*.product_id` / `*.material_id` / `*.item_id` の対応列）を落とす
 4. `products` / `materials` / `product_inventory` / `material_inventory` を落とす

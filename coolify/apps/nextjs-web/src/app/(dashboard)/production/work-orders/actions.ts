@@ -44,7 +44,7 @@ import {
 import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { movementOpener } from "@/lib/inventory";
-import { itemIdForLegacyProduct } from "@/lib/item-legacy-product";
+import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import { allocateDocumentKey, nextSerialNumber } from "@/lib/numbering";
 import {
   copyRouteVersionToCustomerTx,
@@ -218,11 +218,11 @@ function workOrderInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z
     .object({
       allocations: z.array(allocationInputSchema(tr)),
-      // 在庫向け（注文明細なし）のときの対象製品。値は products.id —
-      // WorkflowBuilder のピッカー（searchProductOptions）と揃える。
-      // 品目参照（productItemId）はここから products→item を橋渡しして書く
-      // （resolveWorkOrderTarget / createWorkOrder・updateWorkOrder）。
-      productId: z.number().int().positive().nullable(),
+      // 在庫向け（注文明細なし）のときの対象製品。値は **items.id** —
+      // WorkflowBuilder のピッカー（searchProductItemOptions）と揃える。
+      // 旧 work_orders.product_id はまだ NOT NULL なので、書くときだけ
+      // legacyProductIdForItem で橋渡しする（createWorkOrder・updateWorkOrder）。
+      itemId: z.number().int().positive().nullable(),
       type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
       plannedQuantity: z
         .number()
@@ -272,7 +272,7 @@ function workOrderInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
             ),
           });
         }
-        if (v.productId == null) {
+        if (v.itemId == null) {
           refCtx.addIssue({
             code: "custom",
             message: tr(
@@ -306,7 +306,7 @@ async function loadLineAllocInfos(
         acceptanceSeq: true,
         branch: true,
         quantity: true,
-        productId: true,
+        itemId: true,
         status: true,
       },
     }),
@@ -317,7 +317,7 @@ async function loadLineAllocInfos(
     number: orderLineNumberOf(r) ?? r.id,
     lineQuantity: r.quantity,
     otherAllocated: allocated.get(r.id) ?? 0,
-    productId: r.productId,
+    itemId: r.itemId,
     status: r.status,
   }));
 }
@@ -326,19 +326,18 @@ async function loadLineAllocInfos(
  * 保存対象の解決: 割当あり = 明細の製品 + 割当検証（work-order-alloc-core）、
  * 割当なし（在庫向け）= 製品を直接検証する。エラー時は文字列を返す。
  *
- * ★ **ここは両側とも `products.id` のまま据え置く**（品目統合 第 2 段 C の判断）。
- *   注文明細は `order_lines.item_id` を持つようになったが、この関数が比べる
- *   もう一方は WorkflowBuilder の製品ピッカー（`searchProductOptions` =
- *   products.id）で、`work-order-alloc-core` の「全行同一製品」不変条件も
- *   同じ値を見ている。片側だけ品目へ移すと **どちらも number なので型では
- *   止まらず**、黙ってずれる。移すときは 3 か所（ピッカー・この関数・
- *   alloc-core）を同時に移し、フィールド名も itemId へ改名すること。
+ * ★ 両側とも **品目 id（items.id）**。注文明細側（`order_lines.item_id`）・
+ *   ピッカー（`searchProductItemOptions`）・`work-order-alloc-core` の
+ *   「全行同一製品」不変条件の 3 つが同じ id 空間を見る。旧 products.id とは
+ *   **どちらも number なので型では止まらない** — だから列名を productId では
+ *   なく itemId にしてある。旧列 `work_orders.product_id` へ書く 1 行だけが
+ *   `legacyProductIdForItem` を通る（書き込みの橋）。
  */
 async function resolveWorkOrderTarget(
   v: WorkOrderInput,
   tr: Awaited<ReturnType<typeof getTranslations>>,
   excludeWorkOrderNumber?: number | null,
-): Promise<{ productId: number } | string> {
+): Promise<{ itemId: number } | string> {
   if (v.allocations.length > 0) {
     const lines = await loadLineAllocInfos(
       v.allocations.map((a) => a.orderLineId),
@@ -354,23 +353,23 @@ async function resolveWorkOrderTarget(
       tr,
     );
     if (error) return error;
-    // validateAllocations が「全行同一製品・productId 非 null」を保証済み
-    const productId = lines.find(
+    // validateAllocations が「全行同一製品・itemId 非 null」を保証済み
+    const itemId = lines.find(
       (l) => l.orderLineId === v.allocations[0].orderLineId,
-    )?.productId;
-    if (productId == null)
+    )?.itemId;
+    if (itemId == null)
       return tr("production.workOrderActions.orderLineNotFound");
-    return { productId };
+    return { itemId };
   }
-  // 在庫向け（注文明細なし）— ピッカーは products.id で選ぶ
-  // （WorkflowBuilder は searchProductOptions のまま。品目参照への変換は
-  // 書き込み側の橋渡し 1 箇所（createWorkOrder/updateWorkOrder）に閉じる）。
-  const product = await prisma.product.findUnique({
-    where: { id: v.productId ?? 0 },
-    select: { id: true, isActive: true },
+  // 在庫向け（注文明細なし）— ピッカーが返す品目をそのまま確かめる。
+  // 素材を掴ませない（itemType で絞る）: 品目 id は 1 本の連番なので、
+  // 素材の id を渡されても「存在はする」— 種別まで見ないと止まらない。
+  const item = await prisma.item.findFirst({
+    where: { id: v.itemId ?? 0, itemType: "PRODUCT" },
+    select: { id: true },
   });
-  if (!product) return tr("production.workOrderActions.productNotFound");
-  return { productId: product.id };
+  if (!item) return tr("production.workOrderActions.productNotFound");
+  return { itemId: item.id };
 }
 
 /** 保管場所（任意）の存在・有効チェック。null = 未指定は素通し。 */
@@ -381,7 +380,7 @@ async function resolveWorkOrderTarget(
  */
 async function validateDesignFile(
   designFileId: string | null | undefined,
-  productId: number,
+  itemId: number,
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   if (!designFileId) return null;
@@ -390,8 +389,6 @@ async function validateDesignFile(
     select: { itemId: true },
   });
   if (!df) return tr("production.workOrderActions.designFileNotFound");
-  // design_files 自体は品目 (items.id) で持つので、比較の前に 1 回だけ変換する。
-  const itemId = await itemIdForLegacyProduct(productId);
   if (df.itemId !== itemId) {
     return tr("production.workOrderActions.designFileWrongProduct");
   }
@@ -631,17 +628,19 @@ export async function createWorkOrder(
     if (typeof target === "string") return actionError(target);
     const storageError = await validateStorageLocation(v.storageLocationId, tr);
     if (storageError) return actionError(storageError);
-    const { productId } = target;
-    const designError = await validateDesignFile(v.designFileId, productId, tr);
+    const { itemId } = target;
+    const designError = await validateDesignFile(v.designFileId, itemId, tr);
     if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
     const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
     const docNumber = formatDocNumber("WOR", docKey);
     const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
-    // 品目統合 第 2 段 D — 作る製品の品目参照。旧 product_id は残る（他コードが
-    // まだ読む可能性があるので、書き続ける）。
-    const productItemId = await itemIdForLegacyProduct(productId);
+    // 旧 work_orders.product_id はまだ NOT NULL。**書くときだけ**品目 → 旧 id
+    // を引く（読み・判定は itemId のまま）。対応が無ければ書けないので止める。
+    const productId = await legacyProductIdForItem(itemId);
+    if (productId == null)
+      return actionError(tr("production.workOrderActions.productNotFound"));
 
     const resolvedVersions = await prisma.$transaction(async (tx) => {
       // 工程構成 → ルートバージョン解決（変更があれば新バージョンを自動保存）
@@ -662,7 +661,7 @@ export async function createWorkOrder(
           yearMonth: docKey.yearMonth,
           seq: docKey.seq,
           productId,
-          productItemId,
+          productItemId: itemId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
           materialItemId,
@@ -748,8 +747,8 @@ export async function createWorkOrder(
     });
     revalidate(workOrderNumber, docNumber);
     // 製品マスタ (MS04) の URL は items.id（品目統合 第 3 段）。
-    if (v.route != null && productItemId != null) {
-      revalidatePath(`/master/products/${productItemId}`);
+    if (v.route != null) {
+      revalidatePath(`/master/products/${itemId}`);
     }
     return actionOk({ workOrderNumber, docNumber });
   } catch (e) {
@@ -799,14 +798,15 @@ export async function updateWorkOrder(
     if (typeof target === "string") return actionError(target);
     const storageError = await validateStorageLocation(v.storageLocationId, tr);
     if (storageError) return actionError(storageError);
-    const { productId } = target;
-    const designError = await validateDesignFile(v.designFileId, productId, tr);
+    const { itemId } = target;
+    const designError = await validateDesignFile(v.designFileId, itemId, tr);
     if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
     const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
-    // 品目統合 第 2 段 D — 作る製品の品目参照。旧 product_id は残る（他コードが
-    // まだ読む可能性があるので、書き続ける）。
-    const productItemId = await itemIdForLegacyProduct(productId);
+    // 旧 work_orders.product_id はまだ NOT NULL — 書くときだけ橋を通る（上記）。
+    const productId = await legacyProductIdForItem(itemId);
+    if (productId == null)
+      return actionError(tr("production.workOrderActions.productNotFound"));
     let plansKept = 0;
     let plansDropped = 0;
 
@@ -868,7 +868,7 @@ export async function updateWorkOrder(
         where: { id: prior.id },
         data: {
           productId,
-          productItemId,
+          productItemId: itemId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
           materialItemId,
@@ -953,8 +953,8 @@ export async function updateWorkOrder(
     });
     revalidate(workOrderNumber, docNumber);
     // 製品マスタ (MS04) の URL は items.id（品目統合 第 3 段）。
-    if (v.route != null && productItemId != null) {
-      revalidatePath(`/master/products/${productItemId}`);
+    if (v.route != null) {
+      revalidatePath(`/master/products/${itemId}`);
     }
     return actionOk({ workOrderNumber, docNumber });
   } catch (e) {
@@ -1112,8 +1112,9 @@ export async function copyWorkOrder(
       );
     }
     // コピー先: 注文明細指定 = その明細の製品 + 割当（受注残の範囲で予定数量
-    // まで充当）/ 未指定 = 在庫向け（製品引継ぎ・割当なし）
-    let productId = source.productId;
+    // まで充当）/ 未指定 = 在庫向け（製品引継ぎ・割当なし）。**品目 id で持つ**
+    // （比較の相手は明細の itemId）。
+    let itemId = source.productItemId;
     let allocations: AllocationInput[] = [];
     if (targetOrderLineId) {
       const lines = await loadLineAllocInfos([targetOrderLineId]);
@@ -1147,13 +1148,15 @@ export async function copyWorkOrder(
         tr,
       );
       if (error) return actionError(error);
-      if (line.productId == null) {
+      if (line.itemId == null) {
         return actionError(
           tr("production.workOrderActions.orderLineProductUnresolved"),
         );
       }
-      productId = line.productId;
+      itemId = line.itemId;
     }
+    if (itemId == null)
+      return actionError(tr("production.workOrderActions.productNotFound"));
     const actor = await getCurrentActorId();
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
     const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
@@ -1163,9 +1166,12 @@ export async function copyWorkOrder(
       source.type === "FROM_STOCK" && allocations.length > 0
         ? allocations[0].quantity
         : source.plannedQuantity;
-    // コピー先の製品が変わりうる（別の注文明細を指定できる）ので、
-    // 品目参照はここで改めて解決する（source.productItemId を素通ししない）。
-    const productItemId = await itemIdForLegacyProduct(productId);
+    // 旧 work_orders.product_id はまだ NOT NULL — 書くときだけ橋を通る。
+    // コピー先の製品は変わりうる（別の注文明細を指定できる）ので、
+    // source の値を素通しせず itemId から引き直す。
+    const productId = await legacyProductIdForItem(itemId);
+    if (productId == null)
+      return actionError(tr("production.workOrderActions.productNotFound"));
 
     await prisma.$transaction(async (tx) => {
       await tx.workOrder.create({
@@ -1181,7 +1187,7 @@ export async function copyWorkOrder(
             })),
           },
           productId,
-          productItemId,
+          productItemId: itemId,
           type: source.type,
           plannedQuantity,
           materialItemId: source.materialItemId,
@@ -1941,47 +1947,55 @@ export interface WorkOrderMaterialAssumption {
  * materials 行には紐付けない — _specs/tables.md）ので、一致する素材の中から
  * 全長も一致するものを優先して 1 件だけ候補にする。
  *
- * 品目統合 第 2 段 B — 候補は **items**（`itemType: "MATERIAL"`）から探す。
- * 返す id も items.id（旧 materials.id ではない）。
+ * 品目統合 — 製品（`itemId`）も候補の素材も **items**。返す id も items.id。
+ *
+ * ★ 製品側は **`requires*`** を読む（その製品が**要求する**材種・寸法）。
+ *   品目の `materialTypeId` / `diameterMm` / `lengthMm` は**素材の実寸**で、
+ *   同じ名前の別物（items.prisma 冒頭の注意）— 取り違えても型は通る。
  */
 export async function getWorkOrderMaterialAssumption(
-  productId: number,
+  itemId: number,
 ): Promise<WorkOrderMaterialAssumption | null> {
   if (!(await checkPermission("work_order", "READ")).ok) return null;
-  if (!Number.isInteger(productId) || productId <= 0) return null;
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
+  if (!Number.isInteger(itemId) || itemId <= 0) return null;
+  const product = await prisma.item.findFirst({
+    where: { id: itemId, itemType: "PRODUCT" },
     select: {
-      materialTypeId: true,
-      diameterMm: true,
-      lengthMm: true,
-      materialType: { select: { name: true } },
+      requiresMaterialTypeId: true,
+      requiresDiameterMm: true,
+      requiresLengthMm: true,
+      requiresMaterialType: { select: { name: true } },
     },
   });
-  if (!product || product.materialTypeId == null) return null;
+  if (!product || product.requiresMaterialTypeId == null) return null;
   const candidates = await prisma.item.findMany({
     where: {
       itemType: "MATERIAL",
       isActive: true,
-      materialTypeId: product.materialTypeId,
-      ...(product.diameterMm != null ? { diameterMm: product.diameterMm } : {}),
+      materialTypeId: product.requiresMaterialTypeId,
+      ...(product.requiresDiameterMm != null
+        ? { diameterMm: product.requiresDiameterMm }
+        : {}),
     },
     orderBy: { code: "asc" },
     take: 20,
   });
   const exact =
-    product.lengthMm != null
+    product.requiresLengthMm != null
       ? candidates.find((m) =>
-          m.lengthMm?.equals(product.lengthMm as Prisma.Decimal),
+          m.lengthMm?.equals(product.requiresLengthMm as Prisma.Decimal),
         )
       : undefined;
   const suggested = exact ?? candidates[0] ?? null;
   return {
-    materialTypeId: product.materialTypeId,
-    materialTypeName: product.materialType
-      ? localized(product.materialType.name as LocalizedText | null)
+    materialTypeId: product.requiresMaterialTypeId,
+    materialTypeName: product.requiresMaterialType
+      ? localized(product.requiresMaterialType.name as LocalizedText | null)
       : null,
-    diameterMm: product.diameterMm != null ? Number(product.diameterMm) : null,
+    diameterMm:
+      product.requiresDiameterMm != null
+        ? Number(product.requiresDiameterMm)
+        : null,
     suggestedItemId: suggested?.id ?? null,
     suggestedMaterialLabel: suggested
       ? `${suggested.code}（${localized(suggested.name as LocalizedText | null)}）`
@@ -2024,11 +2038,13 @@ export async function getMaterialTypeSpec(
  * 注文明細 → 対象製品の工程ルート一覧（ビルダーのルート選択用）。
  * 明細の受注元（注文請書ヘッダの顧客）も返す — 顧客一致ルートの優先選択と
  * 新規ルート保存時の対象顧客の既定値に使う。
+ *
+ * `itemId` は **items.id**（ビルダーの `routesInfo.itemId` になる値）。
  */
 export async function getProductRoutesForOrderLine(
   orderLineId: string,
 ): Promise<{
-  productId: number;
+  itemId: number;
   customerBpId: string | null;
   customerName: string | null;
   routes: RouteView[];
@@ -2040,7 +2056,7 @@ export async function getProductRoutesForOrderLine(
   const so = await prisma.orderLine.findUnique({
     where: { id: orderLineId },
     select: {
-      productId: true,
+      itemId: true,
       acceptance: {
         select: {
           customerBpId: true,
@@ -2050,14 +2066,14 @@ export async function getProductRoutesForOrderLine(
     },
   });
   // 確定前の明細（製品未特定）は指示書の対象にならない。
-  if (!so || so.productId == null) return null;
-  const productId = so.productId;
+  if (!so || so.itemId == null) return null;
+  const itemId = so.itemId;
   const [routes, prepRoutes] = await Promise.all([
-    listProductRoutes(productId),
+    listProductRoutes(itemId),
     listPrepRoutes(),
   ]);
   return {
-    productId,
+    itemId,
     customerBpId: so.acceptance.customerBpId,
     customerName: so.acceptance.customerBp
       ? localized(so.acceptance.customerBp.name as LocalizedText | null)
@@ -2067,9 +2083,12 @@ export async function getProductRoutesForOrderLine(
   };
 }
 
-/** 製品直接指定（在庫向け指示書）の工程ルート一覧。 */
-export async function getProductRoutesForProduct(productId: number): Promise<{
-  productId: number;
+/**
+ * 製品直接指定（在庫向け指示書）の工程ルート一覧。
+ * `itemId` は **items.id**（ビルダーの製品ピッカー = searchProductItemOptions）。
+ */
+export async function getProductRoutesForProduct(itemId: number): Promise<{
+  itemId: number;
   customerBpId: string | null;
   customerName: string | null;
   routes: RouteView[];
@@ -2077,18 +2096,19 @@ export async function getProductRoutesForProduct(productId: number): Promise<{
   prepRoutes: RouteView[];
 } | null> {
   if (!(await checkPermission("work_order", "READ")).ok) return null;
-  if (!Number.isInteger(productId) || productId <= 0) return null;
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
+  if (!Number.isInteger(itemId) || itemId <= 0) return null;
+  // 種別まで確かめる — 品目 id は 1 本の連番なので、素材の id でも「存在はする」。
+  const item = await prisma.item.findFirst({
+    where: { id: itemId, itemType: "PRODUCT" },
     select: { id: true },
   });
-  if (!product) return null;
+  if (!item) return null;
   const [routes, prepRoutes] = await Promise.all([
-    listProductRoutes(productId),
+    listProductRoutes(itemId),
     listPrepRoutes(),
   ]);
   return {
-    productId,
+    itemId,
     customerBpId: null,
     customerName: null,
     routes: routes.filter((r) => r.isActive),
@@ -2444,9 +2464,11 @@ export async function setWorkOrderDesignFile(
  * 版は (製品 × 受注元) ごとの系列なので、**その指示書の顧客で自動解決した
  * ときに何が使われるか**も一緒に返す。固定しない（null）を選んだときに
  * 何が出るのか判らないと、固定するかどうかを決められない。
+ *
+ * `itemId` は **items.id**（design_files 自体が品目で持つ）。
  */
 export async function getDesignVersionsForProduct(
-  productId: number,
+  itemId: number,
   customerBpId: string | null,
 ): Promise<{
   options: { value: string; label: string }[];
@@ -2455,11 +2477,11 @@ export async function getDesignVersionsForProduct(
 }> {
   const tr = await getTranslations();
   const authz = await checkPermission("work_order", "READ");
-  if (!authz.ok || !Number.isInteger(productId) || productId <= 0) {
+  if (!authz.ok || !Number.isInteger(itemId) || itemId <= 0) {
     return { options: [], autoLabel: null };
   }
   const rows = await prisma.designFile.findMany({
-    where: { productId, role: { in: ["PREVIEW", "BLUEPRINT"] } },
+    where: { itemId, role: { in: ["PREVIEW", "BLUEPRINT"] } },
     select: {
       id: true,
       version: true,

@@ -179,6 +179,37 @@ IP 範囲外 / 背後のユーザーが利用停止 — **どれも同じ本文�
 
 ラベルも書式も**閲覧者ごとに変わる**もので、API には閲覧者が居ない。
 
+## 6.1 製品・素材の id を入れ替えた（2026-09-20・破壊的変更）
+
+製品マスタと素材マスタは 1 つの品目マスタ（`app.items`）に統合された。
+**口の URL も項目名も応答の形も変えていない** — 変わったのは id の**値**だけ:
+
+| 口 | 変わった項目 | 変わらないもの |
+|---|---|---|
+| `/products` / `/materials` | `id` | パス・項目名・`number` / `code` |
+| `/order-lines` / `/work-orders` | `productId` / `materialId` | それ以外 |
+| `/delivery-orders` / `/delivery-notes` | 明細の `productId` | それ以外 |
+| `/inventory/products` / `/inventory/materials` | `productId` / `materialId` | 在庫行の `id`（uuid で不変） |
+
+**利用者の判断で、橋を架けずに切り替えた**（clean break）。旧 id を新 id へ
+読み替えて返し続ける選択肢もあったが、それは旧マスタを落とせなくなる橋を
+外部契約の側に作ることになる。本番稼働前で連携先がまだ居ないうちに、
+1 度だけ壊すほうを選んだ。
+
+⚠️ **旧 id は「見つからない」ではなく「別の行に当たる」。** `products.id` /
+`materials.id` / `items.id` はどれも密な連番なので、切り替え前の id をそのまま
+渡すと必ず何かに解決する。切り替え前に発行した**カーソル**も
+`(updated_at, id)` の組なので、同じ理由で位置がずれる。
+
+**連携先がやること** — 影響する資源を**全件同期からやり直す**（`?updatedSince=`
+での追随ではなく、カーソル無しで先頭から）。保存済みの id で突き合わせている
+なら、素材は `code`（素材コード）、製品は `number`（`PRD-YYYYMM-NNNN`）で
+引き直す。この 2 つは統合をまたいで変わっていない。
+
+同じ注意書きを **`GET /api/v1/openapi.json` の説明**（`lib/api-openapi.ts` の
+`DESCRIPTION`）にも置いてある — 連携先が最初に読むのはこの仕様書ではなく
+あちらなので、片方だけに書かない。
+
 ## 7. 環境と公開
 
 `src/config/dev-features.json` の `api` で閉じる。`main` に出すには PR が要る。
