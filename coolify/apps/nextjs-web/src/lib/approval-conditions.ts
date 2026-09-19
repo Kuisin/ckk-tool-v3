@@ -241,6 +241,25 @@ export function approvalConditionFields(
         unit: tr("master.approvalConditions.cases"),
       },
     ],
+    // 追加費用ありの請求書だけが通る発行前承認。条件で使えるのは金額だけ
+    // （手動費用の有無そのものは既にゲートなので、条件をさらに絞る意味が薄い）。
+    invoices: [
+      {
+        key: "total_amount",
+        label: tr("master.approvalConditions.totalAmount"),
+        type: "number",
+        unit: tr("master.approvalConditions.yen"),
+      },
+    ],
+    // 入金前承認。対象は請求書と同じ行だが、種別は別（invoices と同じ属性を出す）。
+    invoice_payments: [
+      {
+        key: "total_amount",
+        label: tr("master.approvalConditions.totalAmount"),
+        type: "number",
+        unit: tr("master.approvalConditions.yen"),
+      },
+    ],
   };
 }
 

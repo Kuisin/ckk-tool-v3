@@ -499,6 +499,17 @@ export async function fetchApprovalDocInfo(
         difference_count: differenceCount,
       };
     }
+    case "invoices":
+    case "invoice_payments": {
+      const key = parseDocKey(targetId, "INV");
+      if (!key) return null;
+      const row = await prisma.invoice.findUnique({
+        where: { yearMonth_seq: key },
+        select: { totalAmount: true },
+      });
+      if (!row) return null;
+      return { total_amount: Number(row.totalAmount) };
+    }
   }
 }
 
@@ -745,6 +756,16 @@ async function targetCreatedAt(
       const key = parseDocKey(targetId, "STK");
       if (!key) return null;
       const row = await prisma.stockTake.findUnique({
+        where: { yearMonth_seq: key },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "invoices":
+    case "invoice_payments": {
+      const key = parseDocKey(targetId, "INV");
+      if (!key) return null;
+      const row = await prisma.invoice.findUnique({
         where: { yearMonth_seq: key },
         select: { createdAt: true },
       });

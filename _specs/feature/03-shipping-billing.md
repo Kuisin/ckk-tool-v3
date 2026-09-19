@@ -91,20 +91,31 @@
 
 ### 機能概要
 
-締日処理、請求書生成、会計連携（仕訳 CSV エクスポート）。
+締日処理、請求書生成、会計連携（仕訳 CSV エクスポート）。承認は 2 か所
+（発行前・入金前）、いずれも MS0B（承認設定）に段が無ければ素通し。
 
 ### 画面
 
 | パス | 内容 |
 |------|------|
-| `/billing/invoices` | 請求書一覧 |
-| `/billing/invoices/[id]` | 請求書詳細 |
+| `/billing/invoices` | 請求書一覧（一括: 発行 / 入金依頼 / 承認・差し戻し） |
+| `/billing/invoices/new` | 手動請求 (BL11) — 顧客を選び、未請求出荷から臨時の請求書を作る |
+| `/billing/invoices/[id]` | 請求書詳細（承認カード・追加費用パネル込み） |
 | `/billing/closings` | 締日処理一覧 |
 | `/billing/closings/[id]` | 締日処理詳細 |
 
 ### 主要機能
 
-- 締日処理: 月次バッチで対象発送レコードを集計
+- **締日処理は「指定日（既定=今日）」で一括実行する**（旧・対象月選択は
+  廃止）。指定日までに締日が到来し、まだ締めていない顧客すべての未請求出荷
+  を集計し、締日が到来している行はそのまま請求書（下書き）まで作る
+  （`lib/closing.ts` `runClosingBatch` / `src/components/billing/closings/model.ts`
+  `scheduledClosingDates`）。何か月分の走らせ忘れも 1 回の実行で拾う
+  （旧「月初 3 日だけ前月も見る」特例は不要になった）。
+- **手動請求 (BL11)** — 締日を待たず、選んだ出荷から臨時の請求書（下書き）を
+  作る。`billing_closings.kind = MANUAL` の行が 1 本残る（定期実行の行は
+  `SCHEDULED`）。明細組み立て・税計算は締日処理と**同じ関数**
+  （`lib/invoice-generation.ts`）を通るので、締め方によって請求額が変わらない。
 - 請求書採番: `INV-YYYYMM-NNNNN`（`lib/numbering.ts`）
 - 請求書 PDF 生成: `app/api/pdf/invoice/route.ts` → Gotenberg
 - 会計連携 CSV エクスポート: `app/api/export/accounting/route.ts` → `lib/accounting-export-core.ts`
@@ -112,6 +123,25 @@
 - 仕訳生成: `lib/accounting-export-core.ts`（CSV の組み立てと一体。独立した `lib/journal.ts` は無い）
 - 請求書ステータス: `DRAFT → ISSUED → SENT → PAID`
 - 締日処理ステータス: `PENDING → PROCESSED → EXPORTED`
+- **下書きへの追加費用** — 料金マスタ（MS0G）からだけ選べる。出荷書由来の
+  行と違い、人が金額を決めて足すので**発行前に承認が要る**（下の承認節）。
+  `invoice_items.charge_item_id` が入り `delivery_order_year_month` が無い行が
+  手動費用（`saveInvoiceCharges`、`ChargesPanel` — 指示書・出荷書と共用）。
+  編集できるのは下書きのうちだけ。足す/消すたびに承認状態は `NONE` に戻る。
+- 一覧の一括操作（`InvoiceTable`）— 発行 / 入金依頼 / 承認・差し戻し。
+  1 件ずつ独立に処理し（`processClosings` と同じ規約）、承認が要る請求書も
+  対象から外さない（何が止まったかは失敗一覧に出す）。
+
+### 承認（MS0B の承認対象種別）
+
+| 種別 | いつ通るか | 適用 |
+|---|---|---|
+| `invoices` | **追加費用ありの請求書だけ**、発行前（DRAFT） | 承認は発行を「できるようにする」だけ。発行そのものは利用者が押す（自動発行しない） |
+| `invoice_payments` | 入金前（SENT） — 追加費用の有無に関わらず全件 | 承認完了で**そのまま入金済みへ**進める（`work_order_flow_changes` と同じ「承認で適用」） |
+
+どちらも MS0B に段が 1 つも無ければ素通し（既存の規約と同じ）。承認依頼は
+`issueInvoice` / `markPaid` を押した時点でサーバーが自動で作る — 「承認を
+依頼する」ボタンは無い（`delivery_orders` の過不足納品承認と同じ作法）。
 
 ### 業務ルール
 
