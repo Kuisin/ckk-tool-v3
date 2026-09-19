@@ -40,6 +40,8 @@ export type MovementCause =
   | "STOCK_RESERVATION"
   | "RESERVATION_RELEASE"
   | "ADJUSTMENT"
+  /// 手動入出庫（ST06）。業務としてどの型かは movementTypeId が持つ。
+  | "MANUAL"
   | "OTHER";
 
 /** allocateDocumentKey("INVENTORY_MOVEMENT") の戻り値。 */
@@ -56,6 +58,12 @@ export interface MovementInit {
   /** 元書類の業務キー（詳細 URL の id と同じ文字列）。 */
   sourceId?: string | null;
   plantId?: number | null;
+  /**
+   * 手動入出庫（ST06）で選んだ移動タイプ。自動生成の伝票では省く。
+   * **cause と役割が違う** — cause は「どの処理が起こしたか」、移動タイプは
+   * 業務としてどの型か（利用者が増やせる番号）。
+   */
+  movementTypeId?: number | null;
   notes?: string;
 }
 
@@ -76,6 +84,7 @@ export async function createMovement(
       sourceType: init.sourceType ?? null,
       sourceId: init.sourceId ?? null,
       plantId: init.plantId ?? null,
+      movementTypeId: init.movementTypeId ?? null,
       notes: init.notes,
       createdBy: actor,
     },
@@ -165,16 +174,12 @@ export async function applyTransaction(
     ...(deltaQty < 0 ? { quantity: { gte: -deltaQty } } : {}),
     ...(deltaReserved < 0 ? { reservedQuantity: { gte: -deltaReserved } } : {}),
   };
-  const updated =
-    input.inventoryType === "PRODUCT"
-      ? await tx.productInventory.updateMany({
-          where: { id: input.inventoryId, ...guard },
-          data,
-        })
-      : await tx.materialInventory.updateMany({
-          where: { id: input.inventoryId, ...guard },
-          data,
-        });
+  // 在庫は 1 表（app.item_inventory）。**inventoryType はもう書き込み先を選ばない**
+  // — 台帳の区分として行に残るだけで、製品・素材で表が分かれていた頃の名残り。
+  const updated = await tx.itemInventory.updateMany({
+    where: { id: input.inventoryId, ...guard },
+    data,
+  });
   if (updated.count !== 1) {
     // 呼び出し側（onDeliveryOrderShippedTx の catch）が message を
     // decodeInventoryNote() で判別して表示用に翻訳する — 生の日本語を
@@ -189,94 +194,113 @@ export async function applyTransaction(
 }
 
 /**
- * 製品在庫行の取得 or 作成（productId×plantId×lot×半製品フラグ）。
- * 保管場所×棚は「未割当」（null）バケット固定 — システム入庫は必ず未割当へ
- * 入り、場所への配置は在庫移動（PD04 在庫管理）で行う。
+ * 旧マスタの id から品目 id を引く。
+ *
+ * **移行中だけの橋**。work_orders.product_id / material_receipts.material_id の
+ * ような参照側がまだ旧マスタを指しているので、在庫を触る直前にここで品目へ
+ * 寄せる。第 2 段 B/D で参照側が item_id を持てば、この 2 本は消える。
  */
-async function ensureProductInventory(
+async function itemIdForProduct(tx: Tx, productId: number): Promise<number> {
+  const row = await tx.product.findUniqueOrThrow({
+    where: { id: productId },
+    select: { itemId: true },
+  });
+  if (row.itemId == null) {
+    throw new Error(encodeInventoryNote("itemMissingForProduct"));
+  }
+  return row.itemId;
+}
+
+async function itemIdForMaterial(tx: Tx, materialId: number): Promise<number> {
+  const row = await tx.material.findUniqueOrThrow({
+    where: { id: materialId },
+    select: { itemId: true },
+  });
+  if (row.itemId == null) {
+    throw new Error(encodeInventoryNote("itemMissingForMaterial"));
+  }
+  return row.itemId;
+}
+
+/**
+ * 在庫バケットの取得 or 作成（品目 × 拠点 × 保管場所 × 棚 × ロット × 半製品）。
+ *
+ * **保管場所・棚の既定は「未割当」（null）** — 指示書完了・入荷のような
+ * システム入庫は必ず未割当へ入り、場所への配置は在庫移動（ST01）で行う、
+ * という元からの約束。引数を省けば従来どおり。
+ *
+ * ただし**人が場所を指定して動かす経路（手動入出庫 ST06）は渡してくる**。
+ * そこで落とすと、利用者が選んだ棚が黙って無視されて未割当に積まれる
+ * （画面は成功と言い、在庫は違う場所に出る）ので、受け取れるようにしてある。
+ *
+ * 製品用・素材用に分かれていた 2 本（と、その間を埋めていた継ぎ目
+ * ensureItemBucket）を 1 本にした。**品目種別で分岐しない**のが統合の意味。
+ *
+ * 単位は行に持つ。既存バケットと違う単位で足そうとしたら**足さずに失敗する** —
+ * 「本」の台帳に「kg」を足すと数量の意味が消える。message は構造化ノート
+ * （unitMismatch）で、呼び出し側が自分の言語に翻訳する。
+ */
+export async function ensureItemInventory(
   tx: Tx,
   data: {
-    productId: number;
+    itemId: number;
     plantId: number | null;
-    lotNumber: number | null;
-    isSemiFinished: boolean;
+    /** 単位。省略時は品目マスタの単位。 */
+    unit?: string;
+    /** ロット = 指示書番号（素材は null）。 */
+    lotNumber?: number | null;
+    isSemiFinished?: boolean;
     sourceStepId?: string | null;
+    /** 省略 = 未割当。手動入出庫だけが指定する。 */
+    storageLocationId?: number | null;
+    shelfId?: number | null;
   },
 ): Promise<string> {
   const bucket = {
-    productId: data.productId,
+    itemId: data.itemId,
     plantId: data.plantId,
-    lotNumber: data.lotNumber,
-    isSemiFinished: data.isSemiFinished,
-    storageLocationId: null,
-    shelfId: null,
+    lotNumber: data.lotNumber ?? null,
+    isSemiFinished: data.isSemiFinished ?? false,
+    storageLocationId: data.storageLocationId ?? null,
+    shelfId: data.shelfId ?? null,
   };
-  const existing = await tx.productInventory.findFirst({
+
+  const unit =
+    data.unit ??
+    (
+      await tx.item.findUniqueOrThrow({
+        where: { id: data.itemId },
+        select: { unit: true },
+      })
+    ).unit;
+
+  const assertUnit = (row: { id: string; unit: string }): string => {
+    if (row.unit !== unit) {
+      throw new Error(
+        encodeInventoryNote("unitMismatch", {
+          expected: row.unit,
+          actual: unit,
+        }),
+      );
+    }
+    return row.id;
+  };
+
+  const existing = await tx.itemInventory.findFirst({
     where: bucket,
-    select: { id: true },
+    select: { id: true, unit: true },
   });
-  if (existing) return existing.id;
+  if (existing) return assertUnit(existing);
   try {
-    const row = await tx.productInventory.create({
-      data: { ...data },
+    const row = await tx.itemInventory.create({
+      data: { ...bucket, unit, sourceStepId: data.sourceStepId ?? null },
       select: { id: true },
     });
     return row.id;
   } catch (e) {
     // 同時 ensure の一意制約競合（NULLS NOT DISTINCT index）→ 再取得
     if ((e as { code?: string }).code === "P2002") {
-      const again = await tx.productInventory.findFirst({
-        where: bucket,
-        select: { id: true },
-      });
-      if (again) return again.id;
-    }
-    throw e;
-  }
-}
-
-/**
- * 素材在庫行の取得 or 作成（保管場所×棚は未割当バケット固定 — 同上）。
- *
- * 既存バケットの単位と入庫の単位が違うときは**足さずに失敗する** — 「本」の
- * 台帳に「kg」を足すと数量の意味が消える。message は構造化ノート
- * （unitMismatch）で、呼び出し側が自分の言語に翻訳する。
- */
-export async function ensureMaterialInventory(
-  tx: Tx,
-  data: { materialId: number; plantId: number | null; unit: string },
-): Promise<string> {
-  const bucket = {
-    materialId: data.materialId,
-    plantId: data.plantId,
-    storageLocationId: null,
-    shelfId: null,
-  };
-  const assertUnit = (row: { id: string; unit: string }): string => {
-    if (row.unit !== data.unit) {
-      throw new Error(
-        encodeInventoryNote("unitMismatch", {
-          expected: row.unit,
-          actual: data.unit,
-        }),
-      );
-    }
-    return row.id;
-  };
-  const existing = await tx.materialInventory.findFirst({
-    where: bucket,
-    select: { id: true, unit: true },
-  });
-  if (existing) return assertUnit(existing);
-  try {
-    const row = await tx.materialInventory.create({
-      data: { ...data },
-      select: { id: true },
-    });
-    return row.id;
-  } catch (e) {
-    if ((e as { code?: string }).code === "P2002") {
-      const again = await tx.materialInventory.findFirst({
+      const again = await tx.itemInventory.findFirst({
         where: bucket,
         select: { id: true, unit: true },
       });
@@ -359,8 +383,8 @@ export async function onWorkOrderCompletedTx(
   });
 
   if (finishedQty > 0) {
-    const invId = await ensureProductInventory(tx, {
-      productId: wo.productId,
+    const invId = await ensureItemInventory(tx, {
+      itemId: await itemIdForProduct(tx, wo.productId),
       plantId,
       lotNumber: wo.workOrderNumber,
       isSemiFinished: false,
@@ -381,8 +405,8 @@ export async function onWorkOrderCompletedTx(
     const semiStep =
       wo.steps.find((s) => (s.outputDefectSemiFinished ?? 0) > 0) ??
       wo.steps.find((s) => s.branchStockDisposition === "SEMI_FINISHED");
-    const invId = await ensureProductInventory(tx, {
-      productId: wo.productId,
+    const invId = await ensureItemInventory(tx, {
+      itemId: await itemIdForProduct(tx, wo.productId),
       plantId,
       lotNumber: wo.workOrderNumber,
       isSemiFinished: true,
@@ -428,7 +452,7 @@ export async function onWorkOrderCompletedTx(
     // PG は tx 内エラー後の継続が不可のため、残量を事前確認してから OUT。
     // 台帳が実態より少なければ残量分だけ消費（不足分は警告のみ — 完了を
     // 止めない。素材台帳は運用で追いつく）。
-    const inv = await tx.materialInventory.findUnique({
+    const inv = await tx.itemInventory.findUnique({
       where: { id: r.inventoryId },
       select: { quantity: true },
     });
@@ -477,11 +501,15 @@ export async function onWorkOrderCompletedTx(
     });
     for (const r of productReservations) {
       if (needed <= 0) break;
-      const inv = await tx.productInventory.findUnique({
+      const inv = await tx.itemInventory.findUnique({
         where: { id: r.inventoryId },
         select: { quantity: true },
       });
-      const take = Math.min(needed, Number(r.quantity), inv?.quantity ?? 0);
+      const take = Math.min(
+        needed,
+        Number(r.quantity),
+        Number(inv?.quantity ?? 0),
+      );
       if (take > 0) {
         await applyTransaction(tx, await openMovement(), {
           inventoryType: "PRODUCT",
@@ -582,15 +610,21 @@ export async function onDeliveryOrderShippedTx(
       // ロット在庫から出庫。行が無ければ失敗させる（黙ってスキップすると
       // 台帳と実出荷が乖離する — 監査 P0-4）。ロットは保管場所×棚で複数
       // バケットに分かれ得るため、残量のある行から順に消費する。
-      const invRows = await tx.productInventory.findMany({
-        where: {
-          productId: item.productId,
-          lotNumber: item.lotNumber,
-          isSemiFinished: false,
-        },
-        select: { id: true, quantity: true, reservedQuantity: true },
-        orderBy: { quantity: "desc" },
-      });
+      const invRows = (
+        await tx.itemInventory.findMany({
+          where: {
+            itemId: await itemIdForProduct(tx, item.productId),
+            lotNumber: item.lotNumber,
+            isSemiFinished: false,
+          },
+          select: { id: true, quantity: true, reservedQuantity: true },
+          orderBy: { quantity: "desc" },
+        })
+      ).map((r) => ({
+        id: r.id,
+        quantity: Number(r.quantity),
+        reservedQuantity: Number(r.reservedQuantity),
+      }));
       if (invRows.length === 0) {
         throw new Error(
           encodeInventoryNote("lotInventoryMissing", {
@@ -647,8 +681,8 @@ export async function onDeliveryOrderShippedTx(
       }
     } else {
       // STOCK_STORAGE: 保管拠点へ入庫（請求フロー外の予備分）
-      const invId = await ensureProductInventory(tx, {
-        productId: item.productId,
+      const invId = await ensureItemInventory(tx, {
+        itemId: await itemIdForProduct(tx, item.productId),
         plantId: so.fromPlantId,
         lotNumber: item.lotNumber,
         isSemiFinished: false,
@@ -821,8 +855,8 @@ async function onMaterialReceiptTx(
     select: { id: true },
   });
   if (posted) return;
-  const invId = await ensureMaterialInventory(tx, {
-    materialId: r.materialId,
+  const invId = await ensureItemInventory(tx, {
+    itemId: await itemIdForMaterial(tx, r.materialId),
     plantId: r.plantId,
     unit: r.unit,
   });
@@ -875,14 +909,21 @@ export async function reserveProductStock(
     });
     // 対象行をロック（FOR UPDATE）— 同時照合による二重引当を防ぐ（監査 P1-3）。
     // ロック取得後に読む値が確定値になる。
+    const itemId = await itemIdForProduct(tx, productId);
     await tx.$queryRaw`
-      SELECT id FROM app.product_inventory
-      WHERE product_id = ${productId} AND is_semi_finished = false
+      SELECT id FROM app.item_inventory
+      WHERE item_id = ${itemId} AND is_semi_finished = false
       FOR UPDATE`;
-    const rows = await tx.productInventory.findMany({
-      where: { productId, isSemiFinished: false },
-      orderBy: { lotNumber: "asc" },
-    });
+    const rows = (
+      await tx.itemInventory.findMany({
+        where: { itemId, isSemiFinished: false },
+        orderBy: { lotNumber: "asc" },
+      })
+    ).map((r) => ({
+      ...r,
+      quantity: Number(r.quantity),
+      reservedQuantity: Number(r.reservedQuantity),
+    }));
     const hasRecord = rows.length > 0;
     const available = rows.reduce(
       (sum, r) => sum + Math.max(0, r.quantity - r.reservedQuantity),
