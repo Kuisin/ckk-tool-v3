@@ -1232,6 +1232,11 @@
       "now": "Now",
       "supply": "Expected supply",
       "demand": "Expected demand"
+    },
+    "MOVEMENT_DIRECTION_LABEL": {
+      "IN": "In",
+      "OUT": "Out",
+      "TRANSFER": "Transfer"
     }
   },
   "status": {
@@ -10258,6 +10263,57 @@
       "rowKind": {
         "now": "Now"
       }
+    },
+    "goodsMovement": {
+      "selectAType": "Select a movement type",
+      "selectAnItem": "Select an item",
+      "quantityPositive": "Enter a quantity greater than zero",
+      "typeInactive": "This movement type is disabled",
+      "postFailed": "Could not record the movement",
+      "problem": {
+        "itemRequired": "Select an item",
+        "quantityPositive": "Enter a quantity greater than zero",
+        "fromRequired": "Specify the source location",
+        "toRequired": "Specify the destination location",
+        "sameEndpoint": "The source and destination are the same"
+      },
+      "movementType": "Movement type",
+      "fromLocation": "Source",
+      "toLocation": "Destination",
+      "shelf": "Shelf",
+      "itemAndQuantity": "Item and quantity",
+      "item": "Item",
+      "quantity": "Quantity",
+      "lotNumber": "Lot number",
+      "lotNumberHint": "Products only (ignored for materials)",
+      "problemsTitle": "Cannot record yet",
+      "submit": "Record",
+      "lastPosted": "Last recorded movement",
+      "posted": "Recorded movement {number}"
+    },
+    "movementTypes": {
+      "number": "Number",
+      "direction": "Direction",
+      "requiresFrom": "Requires source",
+      "requiresTo": "Requires destination",
+      "requiresFromFloor": "This direction cannot turn off the source requirement",
+      "requiresToFloor": "This direction cannot turn off the destination requirement",
+      "createFailed": "Could not create the movement type",
+      "updateFailed": "Could not update the movement type",
+      "codeHint": "The number shown in the Goods movement picker (e.g. 101 / 201 / 311)",
+      "newMovementType": "New movement type",
+      "editTheMovementType": "Edit movement type",
+      "created": "Created movement type \"{name}\"",
+      "updated": "Updated {name}",
+      "disableConfirm": "Disable {name}?",
+      "enableConfirm": "Enable {name}?",
+      "disabled": "Disabled {name}",
+      "enabled": "Enabled {name}",
+      "disableTitle": "Disable movement type",
+      "enableTitle": "Enable movement type",
+      "bulkEnabled": "Enabled {count} item(s)",
+      "bulkDisabled": "Disabled {count} item(s)",
+      "noMovementTypes": "No movement types"
     }
   }
 }

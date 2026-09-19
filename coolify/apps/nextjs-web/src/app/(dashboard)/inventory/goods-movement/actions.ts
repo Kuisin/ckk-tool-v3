@@ -159,6 +159,10 @@ export async function postGoodsMovement(
         const inventoryId = await ensureItemInventory(tx, {
           itemId: v.itemId,
           plantId: posting.endpoint.plantId,
+          // **選ばれた場所へ入れる。** 落とすと未割当に積まれ、画面は成功と
+          // 言うのに在庫は別の場所に出る（from/to を必ず記録する、が要件）。
+          storageLocationId: posting.endpoint.storageLocationId,
+          shelfId: posting.endpoint.shelfId,
           lotNumber: v.lotNumber,
         });
         await applyTransaction(tx, movementId, {

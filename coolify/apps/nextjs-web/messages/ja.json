@@ -1232,6 +1232,11 @@
       "now": "いま",
       "supply": "供給予定",
       "demand": "需要予定"
+    },
+    "MOVEMENT_DIRECTION_LABEL": {
+      "IN": "入庫",
+      "OUT": "出庫",
+      "TRANSFER": "移動"
     }
   },
   "status": {
@@ -10258,6 +10263,57 @@
       "rowKind": {
         "now": "いま"
       }
+    },
+    "goodsMovement": {
+      "selectAType": "移動タイプを選択してください",
+      "selectAnItem": "品目を選択してください",
+      "quantityPositive": "数量は正の数で入力してください",
+      "typeInactive": "この移動タイプは無効化されています",
+      "postFailed": "入出庫の登録に失敗しました",
+      "problem": {
+        "itemRequired": "品目を選択してください",
+        "quantityPositive": "数量は正の数で入力してください",
+        "fromRequired": "出庫元を指定してください",
+        "toRequired": "入庫先を指定してください",
+        "sameEndpoint": "出庫元と入庫先が同じです"
+      },
+      "movementType": "移動タイプ",
+      "fromLocation": "出庫元",
+      "toLocation": "入庫先",
+      "shelf": "棚",
+      "itemAndQuantity": "品目・数量",
+      "item": "品目",
+      "quantity": "数量",
+      "lotNumber": "ロット番号",
+      "lotNumberHint": "製品のみ有効（素材では無視されます）",
+      "problemsTitle": "登録できません",
+      "submit": "登録",
+      "lastPosted": "直前に登録した伝票",
+      "posted": "入出庫伝票 {number} を登録しました"
+    },
+    "movementTypes": {
+      "number": "番号",
+      "direction": "向き",
+      "requiresFrom": "出庫元要",
+      "requiresTo": "入庫先要",
+      "requiresFromFloor": "この向きでは「出庫元」を必須から外せません",
+      "requiresToFloor": "この向きでは「入庫先」を必須から外せません",
+      "createFailed": "移動タイプの作成に失敗しました",
+      "updateFailed": "移動タイプの更新に失敗しました",
+      "codeHint": "手動入出庫の選択肢に表示される番号（例: 101 / 201 / 311）",
+      "newMovementType": "移動タイプの新規作成",
+      "editTheMovementType": "移動タイプの編集",
+      "created": "移動タイプ「{name}」を作成しました",
+      "updated": "{name} を更新しました",
+      "disableConfirm": "{name} を無効化します。よろしいですか？",
+      "enableConfirm": "{name} を有効化します。よろしいですか？",
+      "disabled": "{name} を無効化しました",
+      "enabled": "{name} を有効化しました",
+      "disableTitle": "移動タイプの無効化",
+      "enableTitle": "移動タイプの有効化",
+      "bulkEnabled": "{count} 件を有効化しました",
+      "bulkDisabled": "{count} 件を無効化しました",
+      "noMovementTypes": "移動タイプがありません"
     }
   }
 }

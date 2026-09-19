@@ -60,7 +60,7 @@ export function RequirementsView({
   return (
     <ListShell
       breadcrumbs={[
-        categoryLabel("在庫", locale),
+        categoryLabel("在庫", locale), // i18n-ignore — app-list のカテゴリ名 / ja 既定値（対訳は app-list.ts が持つ）
         tr("inventory.requirements.title"),
       ]}
       filters={

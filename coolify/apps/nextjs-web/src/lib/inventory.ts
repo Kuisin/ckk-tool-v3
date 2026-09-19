@@ -223,10 +223,15 @@ async function itemIdForMaterial(tx: Tx, materialId: number): Promise<number> {
 }
 
 /**
- * 在庫バケットの取得 or 作成（品目 × 拠点 × ロット × 半製品フラグ）。
+ * 在庫バケットの取得 or 作成（品目 × 拠点 × 保管場所 × 棚 × ロット × 半製品）。
  *
- * 保管場所×棚は「未割当」（null）バケット固定 — システム入庫は必ず未割当へ
- * 入り、場所への配置は在庫移動（在庫管理 ST01）で行う。
+ * **保管場所・棚の既定は「未割当」（null）** — 指示書完了・入荷のような
+ * システム入庫は必ず未割当へ入り、場所への配置は在庫移動（ST01）で行う、
+ * という元からの約束。引数を省けば従来どおり。
+ *
+ * ただし**人が場所を指定して動かす経路（手動入出庫 ST06）は渡してくる**。
+ * そこで落とすと、利用者が選んだ棚が黙って無視されて未割当に積まれる
+ * （画面は成功と言い、在庫は違う場所に出る）ので、受け取れるようにしてある。
  *
  * 製品用・素材用に分かれていた 2 本（と、その間を埋めていた継ぎ目
  * ensureItemBucket）を 1 本にした。**品目種別で分岐しない**のが統合の意味。
@@ -246,6 +251,9 @@ export async function ensureItemInventory(
     lotNumber?: number | null;
     isSemiFinished?: boolean;
     sourceStepId?: string | null;
+    /** 省略 = 未割当。手動入出庫だけが指定する。 */
+    storageLocationId?: number | null;
+    shelfId?: number | null;
   },
 ): Promise<string> {
   const bucket = {
@@ -253,8 +261,8 @@ export async function ensureItemInventory(
     plantId: data.plantId,
     lotNumber: data.lotNumber ?? null,
     isSemiFinished: data.isSemiFinished ?? false,
-    storageLocationId: null,
-    shelfId: null,
+    storageLocationId: data.storageLocationId ?? null,
+    shelfId: data.shelfId ?? null,
   };
 
   const unit =

@@ -1232,6 +1232,11 @@
       "now": "当前",
       "supply": "预计供应",
       "demand": "预计需求"
+    },
+    "MOVEMENT_DIRECTION_LABEL": {
+      "IN": "入库",
+      "OUT": "出库",
+      "TRANSFER": "移动"
     }
   },
   "status": {
@@ -10258,6 +10263,57 @@
       "rowKind": {
         "now": "当前"
       }
+    },
+    "goodsMovement": {
+      "selectAType": "请选择移动类型",
+      "selectAnItem": "请选择品目",
+      "quantityPositive": "请输入大于零的数量",
+      "typeInactive": "此移动类型已停用",
+      "postFailed": "登记出入库失败",
+      "problem": {
+        "itemRequired": "请选择品目",
+        "quantityPositive": "请输入大于零的数量",
+        "fromRequired": "请指定出库地点",
+        "toRequired": "请指定入库地点",
+        "sameEndpoint": "出库地点与入库地点相同"
+      },
+      "movementType": "移动类型",
+      "fromLocation": "出库地点",
+      "toLocation": "入库地点",
+      "shelf": "货架",
+      "itemAndQuantity": "品目与数量",
+      "item": "品目",
+      "quantity": "数量",
+      "lotNumber": "批次号",
+      "lotNumberHint": "仅产品有效（材料将忽略此项）",
+      "problemsTitle": "暂时无法登记",
+      "submit": "登记",
+      "lastPosted": "刚刚登记的单据",
+      "posted": "已登记出入库单 {number}"
+    },
+    "movementTypes": {
+      "number": "编号",
+      "direction": "方向",
+      "requiresFrom": "需出库地点",
+      "requiresTo": "需入库地点",
+      "requiresFromFloor": "此方向不能取消出库地点为必填",
+      "requiresToFloor": "此方向不能取消入库地点为必填",
+      "createFailed": "创建移动类型失败",
+      "updateFailed": "更新移动类型失败",
+      "codeHint": "手动出入库选项中显示的编号（例如 101 / 201 / 311）",
+      "newMovementType": "新建移动类型",
+      "editTheMovementType": "编辑移动类型",
+      "created": "已创建移动类型「{name}」",
+      "updated": "已更新 {name}",
+      "disableConfirm": "确定要停用 {name} 吗？",
+      "enableConfirm": "确定要启用 {name} 吗？",
+      "disabled": "已停用 {name}",
+      "enabled": "已启用 {name}",
+      "disableTitle": "停用移动类型",
+      "enableTitle": "启用移动类型",
+      "bulkEnabled": "已启用 {count} 项",
+      "bulkDisabled": "已停用 {count} 项",
+      "noMovementTypes": "没有移动类型"
     }
   }
 }

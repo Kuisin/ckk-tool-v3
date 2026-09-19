@@ -264,8 +264,8 @@ export function StockOverviewTable({
   return (
     <ListShell
       breadcrumbs={[
-        categoryLabel("在庫", locale),
-        appLabelForKey("stock-overview", "在庫一覧", locale),
+        categoryLabel("在庫", locale), // i18n-ignore — app-list のカテゴリ名 / ja 既定値（対訳は app-list.ts が持つ）
+        appLabelForKey("stock-overview", "在庫一覧", locale), // i18n-ignore — app-list のカテゴリ名 / ja 既定値（対訳は app-list.ts が持つ）
       ]}
       filters={
         <>
@@ -321,7 +321,7 @@ export function StockOverviewTable({
           value={search}
         />
       }
-      title={appLabelForKey("stock-overview", "在庫一覧", locale)}
+      title={appLabelForKey("stock-overview", "在庫一覧", locale)} // i18n-ignore — app-list のカテゴリ名 / ja 既定値（対訳は app-list.ts が持つ）
     >
       <Text c="dimmed" mb="sm" size="xs">
         {tr("inventory.stockOverview.summaryLine", {
