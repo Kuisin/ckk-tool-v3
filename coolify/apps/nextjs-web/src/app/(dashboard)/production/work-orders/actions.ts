@@ -44,6 +44,7 @@ import {
 import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { movementOpener } from "@/lib/inventory";
+import { legacyMaterialIdForItem } from "@/lib/item-legacy-material";
 import { itemIdForLegacyProduct } from "@/lib/item-legacy-product";
 import { allocateDocumentKey, nextSerialNumber } from "@/lib/numbering";
 import {
@@ -639,8 +640,12 @@ export async function createWorkOrder(
     const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
     const docNumber = formatDocNumber("WOR", docKey);
     const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
-    // 品目統合 第 2 段 D — 作る製品の品目参照。旧 product_id は残る（他コードが
-    // まだ読む可能性があるので、書き続ける）。
+    // 品目統合 第 2 段 B / D — 使う素材・作る製品の品目参照。旧 material_id /
+    // product_id は第 3 段で落とすまで書き続ける（他コードがまだ読む可能性がある）。
+    const materialId =
+      materialItemId == null
+        ? null
+        : await legacyMaterialIdForItem(materialItemId);
     const productItemId = await itemIdForLegacyProduct(productId);
 
     const resolvedVersions = await prisma.$transaction(async (tx) => {
@@ -665,6 +670,7 @@ export async function createWorkOrder(
           productItemId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
+          materialId,
           materialItemId,
           storageLocationId: v.storageLocationId,
           allowQuantityVariance: v.allowQuantityVariance,
@@ -803,8 +809,12 @@ export async function updateWorkOrder(
     if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
     const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
-    // 品目統合 第 2 段 D — 作る製品の品目参照。旧 product_id は残る（他コードが
-    // まだ読む可能性があるので、書き続ける）。
+    // 品目統合 第 2 段 B / D — 使う素材・作る製品の品目参照。旧 material_id /
+    // product_id は第 3 段で落とすまで書き続ける（他コードがまだ読む可能性がある）。
+    const materialId =
+      materialItemId == null
+        ? null
+        : await legacyMaterialIdForItem(materialItemId);
     const productItemId = await itemIdForLegacyProduct(productId);
     let plansKept = 0;
     let plansDropped = 0;
@@ -870,6 +880,7 @@ export async function updateWorkOrder(
           productItemId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
+          materialId,
           materialItemId,
           storageLocationId: v.storageLocationId,
           allowQuantityVariance: v.allowQuantityVariance,
