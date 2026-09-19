@@ -40,6 +40,8 @@ export type MovementCause =
   | "STOCK_RESERVATION"
   | "RESERVATION_RELEASE"
   | "ADJUSTMENT"
+  /// 手動入出庫（ST06）。業務としてどの型かは movementTypeId が持つ。
+  | "MANUAL"
   | "OTHER";
 
 /** allocateDocumentKey("INVENTORY_MOVEMENT") の戻り値。 */
@@ -56,6 +58,12 @@ export interface MovementInit {
   /** 元書類の業務キー（詳細 URL の id と同じ文字列）。 */
   sourceId?: string | null;
   plantId?: number | null;
+  /**
+   * 手動入出庫（ST06）で選んだ移動タイプ。自動生成の伝票では省く。
+   * **cause と役割が違う** — cause は「どの処理が起こしたか」、移動タイプは
+   * 業務としてどの型か（利用者が増やせる番号）。
+   */
+  movementTypeId?: number | null;
   notes?: string;
 }
 
@@ -76,6 +84,7 @@ export async function createMovement(
       sourceType: init.sourceType ?? null,
       sourceId: init.sourceId ?? null,
       plantId: init.plantId ?? null,
+      movementTypeId: init.movementTypeId ?? null,
       notes: init.notes,
       createdBy: actor,
     },
@@ -233,6 +242,60 @@ async function ensureProductInventory(
     }
     throw e;
   }
+}
+
+/**
+ * 品目 id からバケットを取り出す（無ければ作る）— **統合の継ぎ目**。
+ *
+ * 在庫の書き込みはまだ旧 2 表（product_inventory / material_inventory）が持ち主で、
+ * item_inventory はトリガーで追随する鏡。品目で考える呼び出し側（手動入出庫）と、
+ * 種別で分かれた書き込み先のあいだを、ここ 1 か所だけで吸収する。
+ *
+ * **第 2 段 A-2（書き手を item_inventory へ移す）でこの関数は消える** —
+ * そのときは itemId をそのまま使って 1 本で済む。継ぎ目を 1 関数に閉じてあるので、
+ * 呼び出し側は書き直さなくていい。
+ */
+export async function ensureItemBucket(
+  tx: Tx,
+  data: {
+    itemId: number;
+    plantId: number | null;
+    /** 製品のみ。素材では無視される。 */
+    lotNumber?: number | null;
+    isSemiFinished?: boolean;
+    /** 素材のみ。省略時は品目マスタの単位。 */
+    unit?: string;
+  },
+): Promise<{ inventoryId: string; inventoryType: "PRODUCT" | "MATERIAL" }> {
+  const item = await tx.item.findUniqueOrThrow({
+    where: { id: data.itemId },
+    select: { itemType: true, unit: true },
+  });
+
+  if (item.itemType === "PRODUCT") {
+    const product = await tx.product.findFirstOrThrow({
+      where: { itemId: data.itemId },
+      select: { id: true },
+    });
+    const inventoryId = await ensureProductInventory(tx, {
+      productId: product.id,
+      plantId: data.plantId,
+      lotNumber: data.lotNumber ?? null,
+      isSemiFinished: data.isSemiFinished ?? false,
+    });
+    return { inventoryId, inventoryType: "PRODUCT" };
+  }
+
+  const material = await tx.material.findFirstOrThrow({
+    where: { itemId: data.itemId },
+    select: { id: true },
+  });
+  const inventoryId = await ensureMaterialInventory(tx, {
+    materialId: material.id,
+    plantId: data.plantId,
+    unit: data.unit ?? item.unit,
+  });
+  return { inventoryId, inventoryType: "MATERIAL" };
 }
 
 /**

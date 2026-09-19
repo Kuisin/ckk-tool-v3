@@ -300,6 +300,8 @@ enum InventoryMovementCause {
   STOCK_RESERVATION // 引当予約
   RESERVATION_RELEASE // 予約解除（単独）
   ADJUSTMENT // 棚卸調整
+  /// 手動入出庫（ST06）。業務としてどの型かは movement_type_id が持つ。
+  MANUAL
   /// 移行前の取引行に後から付けた伝票。**新規では使わない** —
   /// 何の出来事だったかを記録していなかった行が実在するので、それを
   /// 正直に表す値として残す。
