@@ -2,7 +2,7 @@
 //
 // 請求書 = 番号付き印刷文書 → (year_month, seq) 複合キー（INV-YYYYMM-NNNNN 導出）。
 // 明細は出荷書（DISPATCH・SHIPPED）/ 納品書に由来。STOCK_STORAGE は請求フロー外。
-// 弥生会計連携（CSV エクスポート）は lib/csv-export.ts。
+// 会計連携（仕訳 CSV エクスポート）は lib/accounting-export-core.ts。
 
 enum InvoiceStatus {
   DRAFT
@@ -17,7 +17,7 @@ enum InvoiceStatus {
 enum ClosingStatus {
   PENDING
   PROCESSED
-  EXPORTED // 弥生会計エクスポート済み
+  EXPORTED // 会計連携へ書き出し済み
 
   @@map("CLOSING_STATUS")
   @@schema("app")
@@ -46,7 +46,11 @@ model Invoice {
   dueDate             DateTime? @map("due_date") @db.Date
   sentAt              DateTime? @map("sent_at") @db.Timestamptz(6)
   pdfFileId           String?   @map("pdf_file_id") @db.Uuid
-  yayoiExportedAt     DateTime? @map("yayoi_exported_at") @db.Timestamptz(6)
+  /// 会計連携（仕訳 CSV）へ書き出した日時。二重取込を防ぐ印で、刻印済みの請求書は
+  /// `force=1` を付けない限り再出力できない。会計ソフトの製品名は**列名にも
+  /// 画面にも出さない**（i18n-glossary §4 決定 19）— ソフトが替わるたびに
+  /// マイグレーションと 3 言語の文言を直す作業が再発するため。
+  accountingExportedAt DateTime? @map("accounting_exported_at") @db.Timestamptz(6)
   notes               String?
   // 営業担当（作成時に顧客の主担当を複写したスナップショット）。
   salesRepId          String?   @map("sales_rep_id") @db.Uuid

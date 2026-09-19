@@ -703,6 +703,20 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: "api_client",
   },
+  {
+    // 会計連携 — 請求書から出す仕訳 CSV の形（列の並び・文字コード・既定の
+    // 科目コード）。会計ソフトの受入レイアウトは環境ごとに違い、経理（税務
+    // 事務所）の都合で変わるので、**コードではなく設定で持つ**。
+    //
+    // 画面にも列名にも会計ソフトの製品名を出さない（i18n-glossary §4 決定 19）。
+    key: "accounting",
+    label: "会計連携",
+    operationCode: "SY0J",
+    href: "/settings/accounting",
+    icon: "IconFileSpreadsheet",
+    category: "システム",
+    requiredPermission: "system",
+  },
 ];
 
 /** Home 絞り込み（工程）で使う URL パラメータのキー。 */
@@ -798,6 +812,7 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "login-history": { en: "Login history", zh: "登录历史" },
   "ai-provider": { en: "AI provider", zh: "AI 服务商" },
   "notification-email": { en: "Notification email", zh: "通知邮件" },
+  accounting: { en: "Accounting export", zh: "会计对接" },
   "design-files": { en: "Drawing", zh: "图纸" },
   "privileged-access": { en: "Privileged access", zh: "特权访问" },
   "portal-admin": { en: "Partner portal", zh: "客户门户" },

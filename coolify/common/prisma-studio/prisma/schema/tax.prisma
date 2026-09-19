@@ -27,6 +27,22 @@ model TaxCategory {
   /// 帳票の税率区分欄に刷る短いラベル。null = 率から組み立てる（"10%" など）。
   shortLabel Json?   @map("short_label")
   /// 顧客・製品ともに未指定のときの既定。部分 unique index で 1 行だけ true。
+  // ── 会計連携（仕訳 CSV）─────────────────────────────────────────────────
+  //
+  // 会計ソフト（TKC FX4クラウド）は**科目名ではなく科目コード**で仕訳を受ける。
+  // コードは経理（税務事務所）が決めるもので環境ごとに違うため、マイグレーションで
+  // 焼かず、**空 = system_settings の accounting.* の既定に従う**。
+  //
+  // 消費税コードと売上科目を**税区分に**持たせるのは、仕訳行が税率ごとの束
+  // (invoice_tax_summaries) で作られていて、区分がその束に 1 対 1 で付くから。
+  // 製品ごとの売上科目は持たない（理由は _specs/tables.md §9 の会計連携の節）。
+  /// 消費税コード。空 = 設定の税率別既定 → 全体既定。
+  taxCode          String? @map("tax_code")
+  /// 売上高の勘定科目コード（貸方・売上行）。空 = 設定の既定。
+  salesAccountCode String? @map("sales_account_code")
+  /// 仮受消費税の勘定科目コード（貸方・消費税行）。空 = 設定の既定。
+  taxAccountCode   String? @map("tax_account_code")
+
   isDefault  Boolean @default(false) @map("is_default")
   sortOrder  Int     @default(0) @map("sort_order")
   isActive   Boolean @default(true) @map("is_active")

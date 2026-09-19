@@ -8,7 +8,7 @@
  *   DRAFT →(発行 issueInvoice)→ ISSUED →(送付 markSent)→ SENT
  *   →(入金 markPaid)→ PAID。
  * 遷移は status を where に含めた updateMany で原子的にガードする。
- * 弥生 CSV エクスポート（yayoiExportedAt の記録）は app/api/export/yayoi。
+ * 会計連携 CSV エクスポート（accountingExportedAt の記録）は app/api/export/accounting。
  */
 
 import { revalidatePath } from "next/cache";

@@ -306,6 +306,13 @@ Table tax_categories {
   code            varchar [unique, not null]  // 旧 TAX_TYPE 値（TAXABLE / REDUCED / EXEMPT）
   name            json [not null]             // { ja: '', en: '' }
   short_label     json                        // 帳票の区分欄。null = 率から組み立て（"10%"）
+  // ── 会計連携（仕訳 CSV）— 空 = system_settings の accounting.* の既定に従う ──
+  // 会計ソフト（TKC FX4クラウド）は科目**名**ではなく科目**コード**で仕訳を受ける。
+  // コードは経理（税務事務所）が決める環境ごとの値なので、マイグレーションには
+  // 焼かず画面（MS0F / SY0J）から入れる。
+  tax_code            varchar                 // 消費税コード
+  sales_account_code  varchar                 // 売上高（貸方・売上行）
+  tax_account_code    varchar                 // 仮受消費税（貸方・消費税行）
   is_default      boolean [not null, default: false]  // 顧客も製品も未指定のときの既定
   sort_order      int [not null, default: 0]
   is_active       boolean [not null, default: true]
@@ -1682,7 +1689,7 @@ Table invoices {
   due_date        date
   sent_at         timestamp
   pdf_file_id     uuid [ref: > files.id]
-  yayoi_exported_at timestamp
+  accounting_exported_at timestamp  // 会計連携へ書き出した日時（二重取込の防止）
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp
@@ -1718,7 +1725,7 @@ Table invoice_items {
 // 区分記載は 1 行でなければならない。発行時に明細のスナップショットから集計して凍結する。
 // 不変条件: Σ taxable_base = invoices.subtotal / Σ tax_amount = invoices.tax_amount。
 // この表に行が無い請求書（税区分マスタ導入以前の発行分）は、読み出し側がヘッダから
-// 1 本の束を合成する — だから既存の請求書は表示も PDF も弥生 CSV も変わらない。
+// 1 本の束を合成する — だから既存の請求書は表示も PDF も会計連携 CSV も変わらない。
 Table invoice_tax_summaries {
   id              uuid [pk]
   invoice_id      uuid [not null, ref: > invoices.id]
@@ -1758,7 +1765,7 @@ Table billing_closings {
 Enum CLOSING_STATUS {
   PENDING
   PROCESSED
-  EXPORTED        // 弥生会計エクスポート済み
+  EXPORTED        // 会計連携へ書き出し済み
 }
 
 // ===========================
@@ -2032,6 +2039,12 @@ Table bp_customer_attrs {
   // 通すため）。移行時は既存の tax_type から全行を埋めたので、その時点では誰も
   // 「製品に従う」になっていない = 請求額は動かない。
   tax_category_id     int             [ref: > tax_categories.id]
+  // ── 会計連携（仕訳 CSV）— 空 = 科目は設定の既定 / 補助科目は空欄のまま ──
+  // 仕訳の借方は常に売掛金で、その**補助科目が得意先**というのが会計ソフト側の
+  // 普通の構成。**customer_code で代用しない** — 社内の顧客コードと会計側の
+  // 補助科目コードは別の番号体系で、流用すると違う補助科目へ計上された仕訳ができる。
+  receivable_account_code     varchar         // 売掛金の勘定科目コード（借方）
+  receivable_sub_account_code varchar         // 売掛金の補助科目コード（得意先）
   invoice_method      INVOICE_METHOD  [default: 'EMAIL']
   is_consignment      boolean         [default: false]  // 委託先フラグ
   // ── 過不足納品（§8）— 受注数量と違う数量で納品してよい範囲 ──────────────
@@ -2123,6 +2136,32 @@ Table bp_contacts {
 ```
 
 ### Other
+
+> **会計連携（仕訳 CSV）の設計メモ** — 実装は
+> `nextjs-web/src/lib/accounting-export-core.ts`（純粋・試験あり）。
+>
+> **仕訳行は税率ごとの束（`invoice_tax_summaries`）で作る。製品ごとには割らない。**
+> 理由は 3 つあり、どれも 1 つで十分な理由になる:
+>   1. 消費税は**税率束ごとに 1 度だけ**丸める（`lib/money.ts` の方針）。税側を
+>      科目で割ると Σ借方 が ±1 円ずれ、会計側の取込がエラーになる。
+>   2. 製品別の売上科目を守るには発行時に**行へ科目を凍結**する必要がある
+>      （`products` の科目を後から変えると、古い請求書の再出力が別の科目へ飛ぶ）。
+>      それは `invoice_items` に列を足す別の話。
+>   3. 税区分マスタ導入以前の請求書は `invoice_items.tax_category_id` が null で、
+>      そもそも製品別に束ねる鍵が無い。
+>
+> **科目コードの解決順**は `売掛金 = 取引先マスタ → 設定の既定`、
+> `売上高 / 仮受消費税 / 消費税コード = 税区分マスタ → 設定の税率別既定 →
+> 設定の全体既定`。**補助科目だけは既定を持たない**（空欄なら空欄で出す）。
+>
+> `invoice_tax_summaries.tax_category_id` は「同じ率の区分が 2 つ以上あるとき」に
+> null になる。そのとき明細の区分がコードで食い違っていれば、既定へ黙って落とさず
+> **エクスポートを 409 で拒否する** — 違う科目へ計上された仕訳を後から直すより、
+> 出さないほうが安い。
+>
+> 列の並び・文字コード・既定コードは `system_settings` の `accounting.*`（SY0J）。
+> 会計ソフトの製品名は**画面にも DB の列名にも出さない**（i18n-glossary §4 決定 19）。
+
 ```
 // ===========================
 // 学習した照合名（AI 突合）

@@ -4,13 +4,13 @@
  * InvoiceDetail — 請求書 詳細 (BL21, design.md §8.2).
  *
  * SummaryGrid（番号 / 顧客+支店 / 請求期間 / 小計 / 消費税 / 合計 / 支払期限 /
- * 発行日 / 弥生エクスポート）+ 明細テーブル（摘要 / 数量 / 単価 / 金額 / 由来
+ * 発行日 / 会計連携日時）+ 明細テーブル（摘要 / 数量 / 単価 / 金額 / 由来
  * DOR・DRN リンク）+ 手続き状況（ProcedurePanel — 下書き→発行→送付→入金、
- * 出荷書・納品書 ← / 弥生エクスポート →）+ Tabs: 概要 / 履歴。
+ * 出荷書・納品書 ← / 会計連携 →）+ Tabs: 概要 / 履歴。
  *
  * Actions: PDF（/api/pdf/invoice?id=INV-…）/ 発行（DRAFT → ISSUED）/
  * 送付済み（ISSUED → SENT）/ 入金済み（SENT → PAID）/
- * 弥生CSV（/api/export/yayoi?invoice=INV-… ダウンロード）。
+ * 会計連携CSV（/api/export/accounting?invoice=INV-… ダウンロード）。
  */
 
 import {
@@ -196,25 +196,25 @@ export function InvoiceDetail({
     },
   ];
 
-  // 下流 = 会計連携（弥生会計 Next の CSV）。書類ではないが請求書の最後の
+  // 下流 = 会計連携（仕訳 CSV）。書類ではないが請求書の最後の
   // 一歩なので、済/未 が判るようにここへ出す。
   const handoffGroups: HandoffGroup[] = [
     {
-      key: "yayoi",
-      title: tr("billing.invoices.yayoiAccountingExport"),
-      items: invoice.yayoiExportedAt
+      key: "accounting",
+      title: tr("billing.invoices.accountingExport"),
+      items: invoice.accountingExportedAt
         ? [
             {
-              key: "yayoi",
+              key: "accounting",
               label: invoice.invoiceNumber,
               done: true,
               note: tr("billing.invoices.exportedAtLabel", {
-                dateTime: fmt.dateTime(invoice.yayoiExportedAt),
+                dateTime: fmt.dateTime(invoice.accountingExportedAt),
               }),
             },
           ]
         : [],
-      emptyNote: tr("billing.invoices.notExportedTheYayoiCsvIs"),
+      emptyNote: tr("billing.invoices.notExportedAfterIssue"),
     },
   ];
 
@@ -309,19 +309,19 @@ export function InvoiceDetail({
                   },
                 ]
               : []),
-            // 弥生 CSV は発行後のみ（下書きはルートも 409）。エクスポート済みは
+            // 会計連携 CSV は発行後のみ（下書きはルートも 409）。エクスポート済みは
             // 再出力と明示し、ルートの二重出力ガードを force=1 で通す。
             ...(invoice.status !== "DRAFT"
               ? [
                   {
-                    label: invoice.yayoiExportedAt
-                      ? tr("billing.invoices.yayoiAccountingCsvAgain")
-                      : tr("billing.invoices.yayoiAccountingCsv"),
+                    label: invoice.accountingExportedAt
+                      ? tr("billing.invoices.accountingCsvAgain")
+                      : tr("billing.invoices.accountingCsv"),
                     icon: <IconFileSpreadsheet size={14} />,
                     divider: true,
                     // 実アンカーで別タブへ（PWA でもアプリ内ブラウザで開く）。
-                    href: `/api/export/yayoi?invoice=${invoice.invoiceNumber}${
-                      invoice.yayoiExportedAt ? "&force=1" : ""
+                    href: `/api/export/accounting?invoice=${invoice.invoiceNumber}${
+                      invoice.accountingExportedAt ? "&force=1" : ""
                     }`,
                   },
                 ]
@@ -390,10 +390,10 @@ export function InvoiceDetail({
           value={fmt.date(invoice.issuedAt)}
         />
         <FieldValue
-          label={tr("billing.invoices.yayoiExport")}
+          label={tr("billing.invoices.accountingExportedAt")}
           value={
-            invoice.yayoiExportedAt
-              ? fmt.dateTime(invoice.yayoiExportedAt)
+            invoice.accountingExportedAt
+              ? fmt.dateTime(invoice.accountingExportedAt)
               : tr("billing.invoices.notExported")
           }
         />

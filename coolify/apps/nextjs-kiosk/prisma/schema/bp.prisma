@@ -167,6 +167,19 @@ model BpCustomerAttrs {
   /// resolveLineTax()。既存行はマイグレーションで tax_type から埋めてあるので、
   /// 移行の時点では誰も「製品に従う」になっていない = 請求額は 1 円も動かない。
   taxCategoryId    Int?          @map("tax_category_id")
+  // ── 会計連携（仕訳 CSV）─────────────────────────────────────────────────
+  //
+  // 仕訳の借方は常に売掛金で、その**補助科目が得意先**というのが会計ソフト側の
+  // 普通の構成なので、科目・補助科目は顧客属性に置く（closing_day などと同じ性格）。
+  //
+  // **customer_code へは決して落とさない。** 社内の顧客コードと会計側の補助科目
+  // コードは別の番号体系で、落とすと違う補助科目へ計上された仕訳が出来上がる。
+  // 空欄のときは補助科目欄を空で出す。
+  /// 売掛金の勘定科目コード（借方）。空 = 設定 accounting.receivableAccountCode。
+  receivableAccountCode    String? @map("receivable_account_code")
+  /// 売掛金の補助科目コード（得意先）。空 = 補助科目欄は空欄。
+  receivableSubAccountCode String? @map("receivable_sub_account_code")
+
   invoiceMethod    InvoiceMethod @default(EMAIL) @map("invoice_method")
   isConsignment    Boolean       @default(false) @map("is_consignment")
 

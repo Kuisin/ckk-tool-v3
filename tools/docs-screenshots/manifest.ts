@@ -956,7 +956,7 @@ export const shots: Shot[] = [
     path: "/billing/invoices/INV-202606-00001",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
-      await page.getByRole("menuitem", { name: "弥生会計CSV" }).first().waitFor();
+      await page.getByRole("menuitem", { name: "会計連携CSV" }).first().waitFor();
     },
   },
   {
@@ -2516,15 +2516,15 @@ export const shots: Shot[] = [
     highlight: [{ text: /合計/ }],
   },
   {
-    // 請求書の操作メニュー — 「弥生会計CSV」を強調
+    // 請求書の操作メニュー — 「会計連携CSV」を強調
     id: "flow-invoice-csv-01",
     docPage: "process/billing",
     path: "/billing/invoices/INV-202606-00001",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
-      await page.getByRole("menuitem", { name: "弥生会計CSV" }).first().waitFor();
+      await page.getByRole("menuitem", { name: "会計連携CSV" }).first().waitFor();
     },
-    highlight: [{ role: "menuitem", name: "弥生会計CSV" }],
+    highlight: [{ role: "menuitem", name: "会計連携CSV" }],
   },
 
   // ─── Metabase（分析ダッシュボード）── scripts/metabase-demo-shots.sh が

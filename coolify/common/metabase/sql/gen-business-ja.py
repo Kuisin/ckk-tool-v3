@@ -502,7 +502,7 @@ COLS = {
     "due_date": "支払期限",
     "sent_at": "送付日時",
     "pdf_file_id": "PDF",
-    "yayoi_exported_at": "弥生出力日時",
+    "accounting_exported_at": "会計連携日時",
     "closing_date": "締日",
     "processed_at": "処理日時",
     "processed_by": "処理者",

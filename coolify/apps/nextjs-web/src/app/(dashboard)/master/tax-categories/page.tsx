@@ -46,6 +46,9 @@ export default async function MasterTaxCategoriesPage() {
       sortOrder: c.sortOrder,
       isActive: c.isActive,
       notes: c.notes ?? "",
+      taxCode: c.taxCode ?? "",
+      salesAccountCode: c.salesAccountCode ?? "",
+      taxAccountCode: c.taxAccountCode ?? "",
       productCount: c._count.products,
       customerCount: c._count.customerAttrs,
       documentCount:
