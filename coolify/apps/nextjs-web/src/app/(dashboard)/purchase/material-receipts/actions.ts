@@ -17,6 +17,7 @@ import { checkPermission, targetPlantsInScope } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
+import { legacyMaterialIdForItem } from "@/lib/item-legacy-material";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -29,9 +30,8 @@ const BASE_PATH = "/purchase/material-receipts";
 
 function receiptInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
-    materialId: z
-      .string()
-      .min(1, tr("purchase.materialReceipts.selectAMaterial")),
+    /** 選んだ素材の品目 id（items.id）を文字列で受ける。 */
+    itemId: z.string().min(1, tr("purchase.materialReceipts.selectAMaterial")),
     supplierBpId: z.string().nullable(),
     plantId: z.string().nullable(),
     quantity: z
@@ -69,17 +69,25 @@ export async function createMaterialReceipt(
     return actionError(tr("common.scopeDenied"));
   }
   try {
-    // 単位は素材マスタの単位で固定 — 「本」の台帳へ「kg」を足させない
+    const itemId = Number(v.itemId);
+    // 単位は素材（品目）の単位で固定 — 「本」の台帳へ「kg」を足させない
     // （lib/inventory ensureMaterialInventory も同じ理由で不一致を拒む）。
-    const material = await prisma.material.findUnique({
-      where: { id: Number(v.materialId) },
+    const item = await prisma.item.findUnique({
+      where: { id: itemId, itemType: "MATERIAL" },
       select: { unit: true },
     });
-    if (!material) return actionError(tr("common.targetRecordNotFound"));
-    if (v.unit !== material.unit) {
+    if (!item) return actionError(tr("common.targetRecordNotFound"));
+    if (v.unit !== item.unit) {
       return actionError(
-        tr("purchase.materialReceipts.unitMismatch", { unit: material.unit }),
+        tr("purchase.materialReceipts.unitMismatch", { unit: item.unit }),
       );
+    }
+    // material_id 列はまだ NOT NULL（品目統合 第 2 段 B）なので、対応する
+    // materials.id を引いて一緒に埋める（item-legacy-material.ts — 書き込み
+    // のためだけの橋）。
+    const legacyMaterialId = await legacyMaterialIdForItem(itemId);
+    if (legacyMaterialId == null) {
+      return actionError(tr("common.targetRecordNotFound"));
     }
     const actor = await getCurrentActorId();
     // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。
@@ -89,7 +97,8 @@ export async function createMaterialReceipt(
     const receipt = await prisma.$transaction(async (tx) => {
       const created = await tx.materialReceipt.create({
         data: {
-          materialId: Number(v.materialId),
+          materialId: legacyMaterialId,
+          itemId,
           supplierBpId: v.supplierBpId,
           // 直接調達 — 発注明細には紐付けない。
           purchaseOrderItemId: null,
@@ -120,7 +129,7 @@ export async function createMaterialReceipt(
       tableName: "material_receipts",
       recordId: receipt.id,
       after: {
-        materialId: Number(v.materialId),
+        itemId,
         supplierBpId: v.supplierBpId,
         plantId,
         quantity: v.quantity,

@@ -1,11 +1,15 @@
 /**
  * data.ts — 素材在庫 (PD05) のサーバーサイド取得・マッピング。
  *
- * - 一覧: material_inventory + 次回入荷（ORDERED 発注明細の直近 expected_at。
- *   lib/atp.ts materialAtp の nextReceiptDate と同じ規則を素材単位で一括算出 —
+ * - 一覧: item_inventory + 次回入荷（ORDERED 発注明細の直近 expected_at。
+ *   lib/atp.ts materialAtp の nextReceiptDate と同じ規則を品目単位で一括算出 —
  *   行ごとの ATP 呼び出しを避ける）。
  * - 詳細: 在庫行 + materialAtp タイムライン + 取引履歴。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
+ *
+ * 品目統合 第 2 段 B — 発注明細（material_purchase_order_items）が item_id を
+ * 持つようになったので、以前あった「品目 → 素材の対応をまとめて引く」往復は
+ * 不要になった（item_inventory の itemId をそのまま発注明細の絞り込みに使える）。
  */
 
 import { plantWhere, rowInScope } from "@ckk/authz-core";
@@ -43,39 +47,26 @@ export async function fetchMaterialInventories(): Promise<
     orderBy: { updatedAt: "desc" },
   });
 
-  // 在庫は品目で持つが、入荷予定は素材 id で引く（発注明細がまだ素材を指す）。
-  // 品目 → 素材の対応をまとめて引いておく。第 2 段 B で発注明細が item_id を
-  // 持てば、この往復は消える。
-  const itemIds = [...new Set(rows.map((r) => r.itemId))];
-  const materialsForItems = itemIds.length
-    ? await prisma.material.findMany({
-        where: { itemId: { in: itemIds } },
-        select: { id: true, itemId: true },
-      })
-    : [];
-  const materialIdByItem = new Map(
-    materialsForItems.map((m) => [m.itemId as number, m.id]),
-  );
-
-  // 次回入荷（素材単位、全拠点合算 — materialAtp() と同じ規則）を一括算出:
+  // 次回入荷（品目単位、全拠点合算 — materialAtp() と同じ規則）を一括算出:
   // ORDERED 発注明細のうち expected_at のある直近日。
-  const materialIds = materialsForItems.map((m) => m.id);
-  const orderedItems = materialIds.length
+  const itemIds = [...new Set(rows.map((r) => r.itemId))];
+  const orderedItems = itemIds.length
     ? await prisma.materialPurchaseOrderItem.findMany({
         where: {
-          materialId: { in: materialIds },
+          itemId: { in: itemIds },
           expectedAt: { not: null },
           purchaseOrder: { status: "ORDERED" },
         },
-        select: { materialId: true, expectedAt: true },
+        select: { itemId: true, expectedAt: true },
       })
     : [];
   const nextReceipt = new Map<number, string>();
   for (const it of orderedItems) {
+    if (it.itemId == null) continue;
     const date = it.expectedAt?.toISOString().slice(0, 10);
     if (!date) continue;
-    const cur = nextReceipt.get(it.materialId);
-    if (!cur || date < cur) nextReceipt.set(it.materialId, date);
+    const cur = nextReceipt.get(it.itemId);
+    if (!cur || date < cur) nextReceipt.set(it.itemId, date);
   }
 
   return rows.map((r) => {
@@ -97,10 +88,7 @@ export async function fetchMaterialInventories(): Promise<
       reservedQuantity,
       available: quantity - reservedQuantity,
       unit: r.unit,
-      nextReceiptDate: (() => {
-        const mid = materialIdByItem.get(r.itemId);
-        return mid == null ? null : (nextReceipt.get(mid) ?? null);
-      })(),
+      nextReceiptDate: nextReceipt.get(r.itemId) ?? null,
       updatedAt: r.updatedAt.toISOString(),
     };
   });
@@ -122,14 +110,9 @@ export async function fetchMaterialInventoryDetail(
     return null;
   }
 
-  // ATP は素材 id で引く（発注明細がまだ素材を指すため）。
-  const materialRow = await prisma.material.findFirst({
-    where: { itemId: r.itemId },
-    select: { id: true },
-  });
   const [atp, transactions] = await Promise.all([
     // 拠点が設定された在庫行はその拠点の ATP、未設定行は全拠点合算。
-    materialAtp(materialRow?.id ?? -1, r.plantId),
+    materialAtp(r.itemId, r.plantId),
     fetchInventoryTransactions("MATERIAL", r.id),
   ]);
 

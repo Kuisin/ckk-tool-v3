@@ -34,7 +34,7 @@ const PO_INCLUDE = {
   createdByUser: { select: { displayName: true } },
   sourceRequest: { select: { requestNumber: true } },
   items: {
-    include: { material: true, plant: true },
+    include: { item: true, plant: true },
     orderBy: { sortOrder: "asc" as const },
   },
 };
@@ -141,9 +141,9 @@ export async function fetchPurchaseOrder(
     notes: r.notes,
     items: r.items.map((it) => ({
       id: it.id,
-      materialId: String(it.materialId),
-      materialCode: it.material.code,
-      materialName: localized(it.material.name as LocalizedText | null),
+      itemId: String(it.itemId),
+      materialCode: it.item?.code ?? "",
+      materialName: localized(it.item?.name as LocalizedText | null),
       plantId: it.plantId != null ? String(it.plantId) : null,
       plantName: it.plant
         ? `${it.plant.code} ${localized(it.plant.name as LocalizedText | null)}`

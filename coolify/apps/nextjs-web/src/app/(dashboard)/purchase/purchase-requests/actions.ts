@@ -33,6 +33,7 @@ import {
   targetPlantsInScope,
 } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { legacyMaterialIdsForItems } from "@/lib/item-legacy-material";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -61,9 +62,8 @@ function revalidate(requestNumber?: string) {
 
 function itemInputSchema(tr: Tr) {
   return z.object({
-    materialId: z
-      .string()
-      .min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
+    /** 選んだ素材の品目 id（items.id）を文字列で受ける。 */
+    itemId: z.string().min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
     plantId: z.string().nullable(),
     quantity: z
       .number()
@@ -111,17 +111,30 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
   }));
 }
 
-/** 明細入力 → create データ。 */
-function buildItemCreates(items: PurchaseRequestInput["items"]) {
-  return items.map((it, i) => ({
-    materialId: Number(it.materialId),
-    plantId: it.plantId ? Number(it.plantId) : null,
-    quantity: it.quantity,
-    unit: it.unit,
-    desiredAt: it.desiredAt ? new Date(it.desiredAt) : null,
-    notes: it.notes?.trim() || null,
-    sortOrder: i,
-  }));
+/**
+ * 明細入力 → create データ。
+ *
+ * `material_id` 列はまだ NOT NULL（品目統合 第 2 段 B）なので、選ばれた品目
+ * id から対応する materials.id を引いて一緒に埋める
+ * （item-legacy-material.ts — 書き込みのためだけの橋）。
+ */
+async function buildItemCreates(items: PurchaseRequestInput["items"]) {
+  const legacyIds = await legacyMaterialIdsForItems(
+    items.map((it) => Number(it.itemId)),
+  );
+  return items.map((it, i) => {
+    const itemId = Number(it.itemId);
+    return {
+      itemId,
+      materialId: legacyIds.get(itemId) ?? 0,
+      plantId: it.plantId ? Number(it.plantId) : null,
+      quantity: it.quantity,
+      unit: it.unit,
+      desiredAt: it.desiredAt ? new Date(it.desiredAt) : null,
+      notes: it.notes?.trim() || null,
+      sortOrder: i,
+    };
+  });
 }
 
 /** スコープ判定に要る明細（入荷先拠点だけ）。prior の findUnique に足す。 */
@@ -173,7 +186,7 @@ export async function createPurchaseRequest(
   try {
     const actor = await getCurrentActorId();
     const requestNumber = await nextDocumentNumber("PURCHASE_REQUEST");
-    const creates = buildItemCreates(v.items);
+    const creates = await buildItemCreates(v.items);
 
     await prisma.purchaseRequest.create({
       data: {
@@ -248,7 +261,7 @@ export async function updatePurchaseRequest(
       );
     }
     const actor = await getCurrentActorId();
-    const creates = buildItemCreates(v.items);
+    const creates = await buildItemCreates(v.items);
 
     await prisma.$transaction(async (tx) => {
       await tx.purchaseRequestItem.deleteMany({
@@ -660,8 +673,11 @@ export async function convertToPurchaseOrder(
             ),
           ]),
           items: {
+            // 依頼明細は既に itemId / materialId の両方を持つ（作成時に
+            // buildItemCreates が埋めた）ので、そのまま複写する。
             create: prior.items.map((it, i) => ({
               materialId: it.materialId,
+              itemId: it.itemId,
               plantId: it.plantId,
               quantity: it.quantity,
               unit: it.unit,

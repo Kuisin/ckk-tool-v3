@@ -226,7 +226,8 @@ function workOrderInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
           1,
           tr("production.workOrderActions.plannedQuantityMustBeAtLeastOne"),
         ),
-      materialId: z.number().int().positive().nullable(),
+      /** 使用素材の品目 id（items.id。品目統合 第 2 段 B — 旧 materialId）。 */
+      materialItemId: z.number().int().positive().nullable(),
       storageLocationId: z.number().int().positive().nullable(),
       /**
        * 不足 / 超過分もそのまま納品してよいロットか（§8 過不足納品）。
@@ -619,7 +620,7 @@ export async function createWorkOrder(
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
     const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
     const docNumber = formatDocNumber("WOR", docKey);
-    const materialId = v.type === "MANUFACTURE" ? v.materialId : null;
+    const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
 
     const resolvedVersions = await prisma.$transaction(async (tx) => {
       // 工程構成 → ルートバージョン解決（変更があれば新バージョンを自動保存）
@@ -642,7 +643,7 @@ export async function createWorkOrder(
           productId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
-          materialId,
+          materialItemId,
           storageLocationId: v.storageLocationId,
           allowQuantityVariance: v.allowQuantityVariance,
           designFileId: v.designFileId ?? null,
@@ -710,7 +711,7 @@ export async function createWorkOrder(
         productId,
         type: v.type,
         plannedQuantity: v.plannedQuantity,
-        materialId,
+        materialItemId,
         storageLocationId: v.storageLocationId,
         allowQuantityVariance: v.allowQuantityVariance,
         routeVersionId: resolvedVersions.routeVersionId,
@@ -779,7 +780,7 @@ export async function updateWorkOrder(
     const designError = await validateDesignFile(v.designFileId, productId, tr);
     if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
-    const materialId = v.type === "MANUFACTURE" ? v.materialId : null;
+    const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
     let plansKept = 0;
     let plansDropped = 0;
 
@@ -843,7 +844,7 @@ export async function updateWorkOrder(
           productId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
-          materialId,
+          materialItemId,
           storageLocationId: v.storageLocationId,
           allowQuantityVariance: v.allowQuantityVariance,
           designFileId: v.designFileId ?? null,
@@ -900,7 +901,7 @@ export async function updateWorkOrder(
         allocations: prior.orderLineLinks,
         type: prior.type,
         plannedQuantity: prior.plannedQuantity,
-        materialId: prior.materialId,
+        materialItemId: prior.materialItemId,
         storageLocationId: prior.storageLocationId,
         allowQuantityVariance: prior.allowQuantityVariance,
         routeVersionId: prior.routeVersionId,
@@ -909,7 +910,7 @@ export async function updateWorkOrder(
         allocations: v.allocations,
         type: v.type,
         plannedQuantity: v.plannedQuantity,
-        materialId,
+        materialItemId,
         storageLocationId: v.storageLocationId,
         allowQuantityVariance: v.allowQuantityVariance,
         routeVersionId: resolvedVersions.routeVersionId,
@@ -1151,7 +1152,7 @@ export async function copyWorkOrder(
           productId,
           type: source.type,
           plannedQuantity,
-          materialId: source.materialId,
+          materialItemId: source.materialItemId,
           storageLocationId: source.storageLocationId,
           status: "DRAFT",
           approvalStatus: "NONE",
@@ -1710,13 +1711,15 @@ export async function approveWorkOrder(
     // 素材予約（監査 P2-1）: 製造分の承認確定で素材需要を RESERVE — ATP に
     // 製造コミットが反映される。予約超過（reserved > on-hand）は仕様
     // （発注判断のシグナル）。best-effort — 承認は既に確定済み。
-    if (prior.type === "MANUFACTURE" && prior.materialId != null) {
+    if (prior.type === "MANUFACTURE" && prior.materialItemId != null) {
       try {
         const { ensureItemInventory, applyTransaction } = await import(
           "@/lib/inventory"
         );
-        const material = await prisma.material.findUnique({
-          where: { id: prior.materialId },
+        // 品目統合 第 2 段 B — work_orders はもう品目 id（material_item_id）を
+        // 直接持つので、以前あった「素材 → 品目」の往復は要らない。
+        const item = await prisma.item.findUnique({
+          where: { id: prior.materialItemId },
           select: { unit: true },
         });
         // 伝票の番号はこの（承認とは別の）tx の外で採番する。
@@ -1729,14 +1732,10 @@ export async function approveWorkOrder(
             sourceType: "work_orders",
             sourceId: String(workOrderNumber),
           });
-          const materialRow = await tx.material.findUniqueOrThrow({
-            where: { id: prior.materialId as number },
-            select: { itemId: true },
-          });
           const invId = await ensureItemInventory(tx, {
-            itemId: materialRow.itemId as number,
+            itemId: prior.materialItemId as number,
             plantId: null,
-            unit: material?.unit ?? "本", // i18n-ignore — DB データの既定値（単位）。対象外（_specs/i18n-glossary.md §1）
+            unit: item?.unit ?? "本", // i18n-ignore — DB データの既定値（単位）。対象外（_specs/i18n-glossary.md §1）
           });
           await applyTransaction(tx, await openMovement(), {
             inventoryType: "MATERIAL",
@@ -1882,12 +1881,12 @@ export async function getOrderLineInfo(
  * ビルダーの充足/不足インライン警告用。警告のみで保存はブロックしない。
  */
 export async function getMaterialAtp(
-  materialId: number,
+  itemId: number,
 ): Promise<MaterialAtp | null> {
   if (!(await checkPermission("work_order", "READ")).ok) return null;
-  if (!Number.isInteger(materialId) || materialId <= 0) return null;
+  if (!Number.isInteger(itemId) || itemId <= 0) return null;
   try {
-    return await materialAtp(materialId);
+    return await materialAtp(itemId);
   } catch (e) {
     console.error("getMaterialAtp failed", e);
     return null;
@@ -1899,8 +1898,8 @@ export interface WorkOrderMaterialAssumption {
   materialTypeId: number | null;
   materialTypeName: string | null;
   diameterMm: number | null;
-  /** 材種 × 直径が一致する素材（cut-to-length で全長違いを許容 — §5）。 */
-  suggestedMaterialId: number | null;
+  /** 材種 × 直径が一致する素材の品目 id（cut-to-length で全長違いを許容 — §5）。 */
+  suggestedItemId: number | null;
   suggestedMaterialLabel: string | null;
 }
 
@@ -1909,6 +1908,9 @@ export interface WorkOrderMaterialAssumption {
  * 製品は「材種 + 直径 + 全長」で素材を指定する（cut-to-length のため特定の
  * materials 行には紐付けない — _specs/tables.md）ので、一致する素材の中から
  * 全長も一致するものを優先して 1 件だけ候補にする。
+ *
+ * 品目統合 第 2 段 B — 候補は **items**（`itemType: "MATERIAL"`）から探す。
+ * 返す id も items.id（旧 materials.id ではない）。
  */
 export async function getWorkOrderMaterialAssumption(
   productId: number,
@@ -1925,8 +1927,9 @@ export async function getWorkOrderMaterialAssumption(
     },
   });
   if (!product || product.materialTypeId == null) return null;
-  const candidates = await prisma.material.findMany({
+  const candidates = await prisma.item.findMany({
     where: {
+      itemType: "MATERIAL",
       isActive: true,
       materialTypeId: product.materialTypeId,
       ...(product.diameterMm != null ? { diameterMm: product.diameterMm } : {}),
@@ -1937,7 +1940,7 @@ export async function getWorkOrderMaterialAssumption(
   const exact =
     product.lengthMm != null
       ? candidates.find((m) =>
-          m.lengthMm.equals(product.lengthMm as Prisma.Decimal),
+          m.lengthMm?.equals(product.lengthMm as Prisma.Decimal),
         )
       : undefined;
   const suggested = exact ?? candidates[0] ?? null;
@@ -1947,7 +1950,7 @@ export async function getWorkOrderMaterialAssumption(
       ? localized(product.materialType.name as LocalizedText | null)
       : null,
     diameterMm: product.diameterMm != null ? Number(product.diameterMm) : null,
-    suggestedMaterialId: suggested?.id ?? null,
+    suggestedItemId: suggested?.id ?? null,
     suggestedMaterialLabel: suggested
       ? `${suggested.code}（${localized(suggested.name as LocalizedText | null)}）`
       : null,
@@ -1961,23 +1964,26 @@ export interface MaterialTypeSpec {
   diameterMm: number;
 }
 
+/** 品目統合 第 2 段 B — itemId（items.id）で引く。旧 materialId は使わない。 */
 export async function getMaterialTypeSpec(
-  materialId: number,
+  itemId: number,
 ): Promise<MaterialTypeSpec | null> {
   if (!(await checkPermission("work_order", "READ")).ok) return null;
-  if (!Number.isInteger(materialId) || materialId <= 0) return null;
-  const m = await prisma.material.findUnique({
-    where: { id: materialId },
+  if (!Number.isInteger(itemId) || itemId <= 0) return null;
+  const m = await prisma.item.findUnique({
+    where: { id: itemId, itemType: "MATERIAL" },
     select: {
       materialTypeId: true,
       diameterMm: true,
       materialType: { select: { name: true } },
     },
   });
-  if (!m) return null;
+  if (!m || m.materialTypeId == null || m.diameterMm == null) return null;
   return {
     materialTypeId: m.materialTypeId,
-    materialTypeName: localized(m.materialType.name as LocalizedText | null),
+    materialTypeName: localized(
+      (m.materialType?.name as LocalizedText | null) ?? null,
+    ),
     diameterMm: Number(m.diameterMm),
   };
 }

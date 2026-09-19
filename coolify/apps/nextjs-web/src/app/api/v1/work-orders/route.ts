@@ -8,6 +8,10 @@
  * 工程（`work_order_steps`）は**この資源の子**として返す。あの表は
  * `updated_at` も `created_at` も持たないので単独の差分同期に載せられず、
  * 親が動いたときに出し直すのが唯一正しい出し方（`_specs/api.md` §5.2）。
+ *
+ * 品目統合 第 2 段 B — DB 列は `material_item_id`（items.id）に移ったが、
+ * **外部契約は変えない**。DTO の `materialId` は品目 → 旧マスタの対応を
+ * まとめて引いて詰め直す（`/api/v1/inventory/materials` と同じ橋）。
  */
 
 import { workOrderScopeWhere } from "@/app/(dashboard)/production/work-orders/data";
@@ -40,8 +44,8 @@ export async function GET(request: Request): Promise<Response> {
       string,
       unknown
     >,
-    fetch: ({ where, take, orderBy }) =>
-      prisma.workOrder.findMany({
+    fetch: async ({ where, take, orderBy }) => {
+      const rows = await prisma.workOrder.findMany({
         // biome-ignore lint/suspicious/noExplicitAny: 断片は authz-core / pagination が組む
         where: where as any,
         take,
@@ -55,7 +59,7 @@ export async function GET(request: Request): Promise<Response> {
           productId: true,
           type: true,
           plannedQuantity: true,
-          materialId: true,
+          materialItemId: true,
           storageLocationId: true,
           status: true,
           approvalStatus: true,
@@ -95,7 +99,31 @@ export async function GET(request: Request): Promise<Response> {
               }
             : {}),
         },
-      }),
+      });
+      const materialItemIds = [
+        ...new Set(
+          rows
+            .map((r) => r.materialItemId)
+            .filter((id): id is number => id != null),
+        ),
+      ];
+      const legacyMaterials = materialItemIds.length
+        ? await prisma.material.findMany({
+            where: { itemId: { in: materialItemIds } },
+            select: { id: true, itemId: true },
+          })
+        : [];
+      const legacyIdByItem = new Map(
+        legacyMaterials.map((m) => [m.itemId as number, m.id]),
+      );
+      return rows.map((r) => ({
+        ...r,
+        materialId:
+          r.materialItemId != null
+            ? (legacyIdByItem.get(r.materialItemId) ?? null)
+            : null,
+      }));
+    },
     query,
     tiebreak: "id",
     toCursor: (r) => ({ kind: "id", id: r.id, t: r.updatedAt.toISOString() }),

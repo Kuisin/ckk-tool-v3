@@ -29,7 +29,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
-import { searchMaterialOptions } from "@/app/(dashboard)/_shared/option-search";
+import { searchMaterialItemOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
   createPurchaseRequest,
   updatePurchaseRequest,
@@ -54,9 +54,7 @@ interface Option {
 function buildSchema(tr: ReturnType<typeof useTranslations>) {
   const itemSchema = z.object({
     rowId: z.string(),
-    materialId: z
-      .string()
-      .min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
+    itemId: z.string().min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
     materialLabel: z.string(),
     plantId: z.string().nullable(),
     quantity: z.number().positive(tr("common.mustBeGreaterThanZero")),
@@ -80,7 +78,7 @@ const newRowId = () => `row-${++rowSeq}-${Date.now()}`;
 
 const emptyItem = (): ItemForm => ({
   rowId: newRowId(),
-  materialId: "",
+  itemId: "",
   materialLabel: "",
   plantId: null,
   quantity: 1,
@@ -95,7 +93,7 @@ function toFormValues(request: PurchaseRequestView): FormValues {
     notes: request.notes ?? "",
     items: request.items.map((it) => ({
       rowId: newRowId(),
-      materialId: it.materialId,
+      itemId: it.itemId,
       materialLabel: `${it.materialCode}（${it.materialName}）`,
       plantId: it.plantId,
       quantity: it.quantity,
@@ -143,7 +141,7 @@ export function PurchaseRequestForm({
         purpose: values.purpose,
         notes: values.notes,
         items: values.items.map((it) => ({
-          materialId: it.materialId,
+          itemId: it.itemId,
           plantId: it.plantId,
           quantity: it.quantity,
           unit: it.unit,
@@ -251,10 +249,10 @@ export function PurchaseRequestForm({
                   preventGrowOverflow={false}
                 >
                   <SearchSelect
-                    error={form.errors[`items.${ri}.materialId`]}
+                    error={form.errors[`items.${ri}.itemId`]}
                     initialOption={
-                      item.materialId
-                        ? { value: item.materialId, label: item.materialLabel }
+                      item.itemId
+                        ? { value: item.itemId, label: item.materialLabel }
                         : null
                     }
                     label={
@@ -263,16 +261,16 @@ export function PurchaseRequestForm({
                       />
                     }
                     onChange={(v, opt) => {
-                      form.setFieldValue(`items.${ri}.materialId`, v ?? "");
+                      form.setFieldValue(`items.${ri}.itemId`, v ?? "");
                       form.setFieldValue(
                         `items.${ri}.materialLabel`,
                         opt?.label ?? "",
                       );
                     }}
-                    onSearch={searchMaterialOptions}
+                    onSearch={searchMaterialItemOptions}
                     placeholder={tr("common.searchMaterials")}
-                    storageKey="material"
-                    value={item.materialId || null}
+                    storageKey="materialItem"
+                    value={item.itemId || null}
                     withAsterisk
                   />
                   <Select

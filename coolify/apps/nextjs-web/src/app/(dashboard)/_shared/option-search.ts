@@ -857,7 +857,18 @@ export async function searchAllocatableOrderLineOptions(
   );
 }
 
-/** 素材検索（指示書の使用素材）。value = 内部 id、label = コード + 名称。 */
+/**
+ * 素材検索（CM02 フォームの「業務データ検索」lookup=material 専用）。
+ * value = **素材マスタの内部 id**（materials.id）、label = コード + 名称。
+ *
+ * ⚠️ **購買・指示書の素材ピッカーはこれを使わない** — あちらは
+ * `searchMaterialItemOptions`（品目統合 items 由来、value = items.id）。
+ * ここは form-lookup-resolve.ts の `"material"` lookup と
+ * `lookupHref("material", …)` が materials.id を前提にしたまま（
+ * `/master/materials/[id]` は materials.id で引く）なので、値の意味を
+ * 変えるとフォーム回答の保存済みリンクが壊れる。品目統合が forms 側まで
+ * 届いたら合流する。
+ */
 export async function searchMaterialOptions(
   query: string,
 ): Promise<SearchOption[]> {
@@ -887,9 +898,48 @@ export async function searchMaterialOptions(
 }
 
 /**
+ * 素材（品目）検索 — 購買（PU01〜PU03）・指示書の使用素材ピッカー用。
+ * value = **items.id**（品目統合 第 2 段 B — material_purchase_order_items /
+ * material_receipts / purchase_request_items / work_orders.material_item_id
+ * が指す先）。旧 `searchMaterialOptions`（materials.id）とは値の意味が違うので
+ * 混ぜないこと — SearchSelect の `storageKey` も別にしてある（"materialItem"）。
+ */
+export async function searchMaterialItemOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MATERIAL_PICKER_CODES)).ok) return [];
+  const q = query.trim();
+  const keywordIds = q ? await itemIdsByKeyword(q, LIMIT) : [];
+  const rows = await prisma.item.findMany({
+    where: {
+      itemType: "MATERIAL",
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+              ...byIds(keywordIds),
+            ],
+          }
+        : {}),
+    },
+    orderBy: { code: "asc" },
+    take: LIMIT,
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: `${r.code}（${localized(r.name as LocalizedText | null)}）`,
+  }));
+}
+
+/**
  * 素材 1 件の単位（素材入荷 PU13 の単位既定値）。入荷の単位は素材マスタの
  * 単位で固定する — 台帳（material_inventory）の単位と揃えるため。
  * 最近使用（localStorage）の候補は単位を持たないので、選択時に引き直す。
+ *
+ * ⚠️ CM02 フォーム専用（`searchMaterialOptions` と対）。購買・指示書は
+ * `fetchMaterialItemUnit` を使う。
  */
 export async function fetchMaterialUnit(
   materialId: string,
@@ -899,6 +949,20 @@ export async function fetchMaterialUnit(
   if (!Number.isInteger(id) || id <= 0) return null;
   const row = await prisma.material.findUnique({
     where: { id },
+    select: { unit: true },
+  });
+  return row?.unit ?? null;
+}
+
+/** 品目（素材）1 件の単位 — `searchMaterialItemOptions` と対。value = items.id。 */
+export async function fetchMaterialItemUnit(
+  itemId: string,
+): Promise<string | null> {
+  if (!(await requireAnyRead(MATERIAL_PICKER_CODES)).ok) return null;
+  const id = Number(itemId);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  const row = await prisma.item.findUnique({
+    where: { id, itemType: "MATERIAL" },
     select: { unit: true },
   });
   return row?.unit ?? null;

@@ -227,7 +227,8 @@ export interface WorkOrderView {
   /** 作成者の表示名（システム作成は null）。 */
   createdByName: string | null;
   productName: string;
-  materialId: number | null;
+  /** 使用素材の品目 id（items.id。品目統合 第 2 段 B — 旧 materialId）。 */
+  materialItemId: number | null;
   materialCode: string | null;
   materialName: string | null;
   /** 完成品の保管場所（保管場所マスタ MS0E。null = 未指定）。 */

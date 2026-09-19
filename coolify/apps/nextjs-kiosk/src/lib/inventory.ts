@@ -855,8 +855,11 @@ async function onMaterialReceiptTx(
     select: { id: true },
   });
   if (posted) return;
+  // 品目統合 第 2 段 B — material_receipts はもう item_id を持つ（購買側が
+  // 保存時に埋める）。null のときだけ旧列からの橋を通す（移行前の残り・
+  // 保険）。
   const invId = await ensureItemInventory(tx, {
-    itemId: await itemIdForMaterial(tx, r.materialId),
+    itemId: r.itemId ?? (await itemIdForMaterial(tx, r.materialId)),
     plantId: r.plantId,
     unit: r.unit,
   });
