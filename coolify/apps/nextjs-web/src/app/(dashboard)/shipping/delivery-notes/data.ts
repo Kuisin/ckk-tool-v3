@@ -55,7 +55,8 @@ const DELIVERY_NOTE_INCLUDE = {
   createdByUser: { select: { displayName: true } },
   items: {
     orderBy: { sortOrder: "asc" as const },
-    include: { product: true },
+    // 品目統合 第 2 段 C — 表示は品目側から読む。
+    include: { item: true },
   },
 };
 
@@ -74,9 +75,10 @@ function productLabel(
     name: unknown;
     yearMonth: string | null;
     seq: number | null;
-  },
+  } | null,
   locale = "ja",
 ): string {
+  if (!p) return "—";
   const code = formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null, locale);
   return code ? `${name} ${code}` : name;
@@ -100,8 +102,9 @@ function mapDeliveryNote(
   const loc = forDocument ? (recipientDocumentLocale ?? "ja") : "ja";
   const items = r.items.map((it) => ({
     id: it.id,
-    productId: String(it.productId),
-    productName: productLabel(it.product, loc),
+    itemId: String(it.itemId ?? ""),
+    productLegacyId: String(it.productId),
+    productName: productLabel(it.item, loc),
     quantity: it.quantity,
     unitPrice: it.unitPrice != null ? Number(it.unitPrice) : null,
     amount: it.amount != null ? Number(it.amount) : null,
@@ -212,7 +215,7 @@ async function fetchDeliveryNoteRow(
   // やると 1 行ごとに引くことになる。
   const labels = await fetchCustomerProductLabels(
     row.recipientBpId,
-    note.items.map((it) => Number(it.productId)),
+    note.items.map((it) => Number(it.itemId)),
   );
   if (labels.size === 0) return note;
   return {
@@ -221,7 +224,7 @@ async function fetchDeliveryNoteRow(
       ...it,
       productName: customerFacingProductLabel(
         it.productName,
-        labels.get(Number(it.productId)),
+        labels.get(Number(it.itemId)),
       ),
     })),
   };

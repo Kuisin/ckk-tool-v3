@@ -106,7 +106,7 @@ export async function listPortalOrderLines(
       status: true,
       cancelledAt: true,
       productText: true,
-      product: { select: { name: true } },
+      item: { select: { name: true } },
       deliveryItems: {
         select: {
           deliveryOrder: {
@@ -141,9 +141,9 @@ export async function listPortalOrderLines(
       acceptanceNumber: `ORD-${r.acceptanceYearMonth}-${String(r.acceptanceSeq).padStart(5, "0")}`,
       branch: r.branch,
       // 製品マスタに突合済みならその名称、未突合なら注文書に印字されていた
-      // 品名（product_text）。**内部の product_id は出さない。**
-      productName: r.product?.name
-        ? localized(r.product.name as LocalizedTextInput)
+      // 品名（product_text）。**内部の id は出さない。**
+      productName: r.item?.name
+        ? localized(r.item.name as LocalizedTextInput)
         : (r.productText ?? "—"),
       quantity: r.quantity,
       unitPrice: r.unitPrice?.toString() ?? null,
@@ -193,7 +193,7 @@ export async function getPortalOrderLine(
       status: true,
       cancelledAt: true,
       productText: true,
-      product: { select: { name: true } },
+      item: { select: { name: true } },
       // 認可の材料（誰宛の注文か）。出荷先・エンドユーザーは明細ごと（§8）
       // — 行自身が持つ。表示には使わない。
       endUserBpId: true,
@@ -300,8 +300,8 @@ export async function getPortalOrderLine(
   return {
     acceptanceNumber,
     branch: row.branch,
-    productName: row.product?.name
-      ? localized(row.product.name as LocalizedTextInput)
+    productName: row.item?.name
+      ? localized(row.item.name as LocalizedTextInput)
       : (row.productText ?? "—"),
     quantity: row.quantity,
     unitPrice: row.unitPrice?.toString() ?? null,

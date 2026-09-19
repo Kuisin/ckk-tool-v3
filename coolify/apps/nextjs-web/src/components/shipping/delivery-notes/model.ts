@@ -20,8 +20,17 @@ export type DeliveryMethod = "NORMAL" | "DIRECT_TO_USER";
 
 export interface DeliveryNoteItem {
   id: string;
-  /** 製品の内部 id（連番）を文字列で保持 — SearchSelect の値と揃える。 */
-  productId: string;
+  /**
+   * 製品 — 値は品目 id（items.id）。品目統合 第 2 段 C。
+   * SearchSelect（`searchProductItemOptions`）の値と揃える。
+   */
+  itemId: string;
+  /**
+   * 旧 products.id を文字列にしたもの。**PDF の「コード」欄が刷っている値**
+   * （納品書テンプレートの `code`）がこれなので、印字を変えないために持つ。
+   * それ以外の用途に使わない。
+   */
+  productLegacyId: string;
   productName: string;
   quantity: number;
   /** 価格記載なし（includePrice=false）の納品書では null。 */

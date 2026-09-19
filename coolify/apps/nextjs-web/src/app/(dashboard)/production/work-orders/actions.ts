@@ -325,6 +325,14 @@ async function loadLineAllocInfos(
 /**
  * 保存対象の解決: 割当あり = 明細の製品 + 割当検証（work-order-alloc-core）、
  * 割当なし（在庫向け）= 製品を直接検証する。エラー時は文字列を返す。
+ *
+ * ★ **ここは両側とも `products.id` のまま据え置く**（品目統合 第 2 段 C の判断）。
+ *   注文明細は `order_lines.item_id` を持つようになったが、この関数が比べる
+ *   もう一方は WorkflowBuilder の製品ピッカー（`searchProductOptions` =
+ *   products.id）で、`work-order-alloc-core` の「全行同一製品」不変条件も
+ *   同じ値を見ている。片側だけ品目へ移すと **どちらも number なので型では
+ *   止まらず**、黙ってずれる。移すときは 3 か所（ピッカー・この関数・
+ *   alloc-core）を同時に移し、フィールド名も itemId へ改名すること。
  */
 async function resolveWorkOrderTarget(
   v: WorkOrderInput,

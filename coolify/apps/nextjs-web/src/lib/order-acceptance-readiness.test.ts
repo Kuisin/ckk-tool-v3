@@ -21,14 +21,14 @@ const tr = ((key: string, params?: Record<string, unknown>) =>
 
 /** 配送は行ごと（§8）。既定は通常配送・エンドユーザーなし。 */
 const item = (over: {
-  productId?: string | null;
+  itemId?: string | null;
   quantity?: number;
   unitPrice?: number | null;
   deliveryMethod?: "NORMAL" | "DIRECT_TO_USER";
   endUserBpId?: string | null;
 }) =>
   ({
-    productId: "12",
+    itemId: "12",
     quantity: 10,
     unitPrice: 1000,
     deliveryMethod: "NORMAL" as const,
@@ -82,9 +82,9 @@ describe("acceptanceReadiness", () => {
         customerBpId: "bp-1",
         items: [
           item({}),
-          item({ productId: null }),
+          item({ itemId: null }),
           item({ unitPrice: null }),
-          item({ productId: null, unitPrice: null }),
+          item({ itemId: null, unitPrice: null }),
         ],
       },
       tr,
@@ -115,11 +115,11 @@ describe("acceptanceReadiness", () => {
     expect(r.ok).toBe(true);
   });
 
-  it("空文字の productId は未特定として扱う", () => {
+  it("空文字の itemId は未特定として扱う", () => {
     const r = acceptanceReadiness(
       {
         customerBpId: "bp-1",
-        items: [item({ productId: "" })],
+        items: [item({ itemId: "" })],
       },
       tr,
     );
@@ -198,7 +198,7 @@ describe("readinessSummary", () => {
     const issues = acceptanceReadiness(
       {
         customerBpId: null,
-        items: [item({ productId: null, unitPrice: null })],
+        items: [item({ itemId: null, unitPrice: null })],
       },
       tr,
     ).issues;

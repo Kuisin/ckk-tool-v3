@@ -25,7 +25,9 @@ import { toTrialPricingOptions } from "@/lib/trial-pricing-settings";
 
 export const ENTRY_INCLUDE = {
   customerBp: true,
-  product: true,
+  // 品目統合 第 2 段 C — 表示・突合はすべて品目側。旧 product リレーションは
+  // 自然キー (customer_bp_id, product_id) を保つためだけに残っている。
+  item: true,
   salesRep: { select: { id: true, displayName: true } },
   createdByUser: { select: { displayName: true } },
   variants: {
@@ -58,10 +60,13 @@ export function mapEntry(r: EntryRow): PriceListEntry {
     entryId: formatPriceListNumber({ yearMonth: r.yearMonth, seq: r.seq }),
     customerId: r.customerBpId,
     customerName: localized(r.customerBp.name as LocalizedText | null),
-    productId: String(r.productId),
+    itemId: String(r.itemId ?? ""),
     productName: (() => {
-      const code = formatProductNumber(r.product.yearMonth, r.product.seq);
-      const nm = localized(r.product.name as LocalizedText | null);
+      const code = formatProductNumber(
+        r.item?.yearMonth ?? null,
+        r.item?.seq ?? null,
+      );
+      const nm = localized(r.item?.name as LocalizedText | null);
       return code ? `${nm} ${code}` : nm;
     })(),
     currency: r.currency,
@@ -246,14 +251,15 @@ export async function fetchEstimateBases(
 /**
  * 製品にリンクされた CONFIRMED の価格試算（価格ソース候補）。REGISTERED も含める
  * （既に他の価格表で使用済みでも、同じ価格試算を別顧客のソースにできる）。
+ * `itemId` は品目 id（items.id）— 価格試算も価格表も同じ id 空間。
  */
 export async function fetchEstimateSourcesForProduct(
-  productId: number,
+  itemId: number,
 ): Promise<EstimateSource[]> {
   const [settings, rows] = await Promise.all([
     getTrialPricingSettings(),
     prisma.estimate.findMany({
-      where: { productId, status: { in: ["CONFIRMED", "REGISTERED"] } },
+      where: { itemId, status: { in: ["CONFIRMED", "REGISTERED"] } },
       include: { customerBp: true },
       orderBy: { updatedAt: "desc" },
     }),

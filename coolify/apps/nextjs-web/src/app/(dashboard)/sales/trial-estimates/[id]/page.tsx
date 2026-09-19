@@ -60,7 +60,7 @@ export default async function TrialEstimateDetailPage({
       prisma.priceListVariant.findMany({
         where: { estimateYearMonth: key.yearMonth, estimateSeq: key.seq },
         include: {
-          entry: { include: { customerBp: true, product: true } },
+          entry: { include: { customerBp: true, item: true } },
           _count: { select: { tiers: true } },
         },
       }),
@@ -87,10 +87,10 @@ export default async function TrialEstimateDetailPage({
 
   const linkedEntries: LinkedPriceEntry[] = linked.map((v) => {
     const code = formatProductNumber(
-      v.entry.product.yearMonth,
-      v.entry.product.seq,
+      v.entry.item?.yearMonth ?? null,
+      v.entry.item?.seq ?? null,
     );
-    const nm = localized(v.entry.product.name as LocalizedText | null);
+    const nm = localized(v.entry.item?.name as LocalizedText | null);
     return {
       entryId: formatPriceListNumber({
         yearMonth: v.entry.yearMonth,

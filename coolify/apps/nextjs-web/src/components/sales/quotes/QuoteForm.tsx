@@ -59,7 +59,8 @@ import { type Quote, resolveUnitPriceFromEntries } from "./model";
 function buildSchema(tr: ReturnType<typeof useTranslations>) {
   const itemSchema = z
     .object({
-      productId: z.string().min(1, tr("common.selectAProduct")),
+      /** 製品 — 値は品目 id（items.id）。 */
+      itemId: z.string().min(1, tr("common.selectAProduct")),
       productName: z.string(),
       orderType: z.string().min(1),
       quantity: z.number().int().min(1, tr("sales.quoteForm.atLeast1")),
@@ -73,7 +74,7 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
     // 見積書は価格表からのみ価格を解決する — 未解決の行は保存できない。
     .refine((it) => it.priceTierId != null, {
       message: tr("sales.quoteForm.noMatchingPriceList"),
-      path: ["productId"],
+      path: ["itemId"],
     });
 
   return z.object({
@@ -93,7 +94,7 @@ type ItemForm = QuoteFormValues["items"][number];
 const BASE_PATH = "/sales/quotes";
 
 const emptyItem = (): ItemForm => ({
-  productId: "",
+  itemId: "",
   productName: "",
   orderType: "PRODUCTION",
   quantity: 1,
@@ -104,10 +105,14 @@ const emptyItem = (): ItemForm => ({
   deliveryDate: null,
 });
 
-/** 価格表「見積書を作成」からの事前入力（quotes/new?customer=…&product=…）. */
+/**
+ * 価格表「見積書を作成」からの事前入力（quotes/new?customer=…&product=…）。
+ * `itemId` は**品目 id**（items.id）— 価格表エントリの `itemId` をそのまま
+ * クエリ（`?product=`）に載せている。
+ */
 export interface QuotePrefill {
   customerId?: string;
-  productId?: string;
+  itemId?: string;
   orderType?: string;
   quantity?: number;
   deliveryDate?: string | null;
@@ -128,14 +133,14 @@ function buildInitial(
     notes: "",
     items: [emptyItem()],
   };
-  if (prefill?.customerId && prefill.productId) {
+  if (prefill?.customerId && prefill.itemId) {
     // 価格表から起動 — 単価・値引きを価格表から解決して1行目に流し込む。
     const orderType = prefill.orderType ?? "PRODUCTION";
     const quantity = prefill.quantity ?? 1;
     const resolved = resolveUnitPriceFromEntries(
       entries,
       prefill.customerId,
-      prefill.productId,
+      prefill.itemId,
       orderType,
       quantity,
       tr,
@@ -143,10 +148,10 @@ function buildInitial(
     base.items = [
       {
         ...emptyItem(),
-        productId: prefill.productId,
+        itemId: prefill.itemId,
         productName:
-          entries.find((e) => e.productId === prefill.productId)?.productName ??
-          prefill.productId,
+          entries.find((e) => e.itemId === prefill.itemId)?.productName ??
+          prefill.itemId,
         orderType,
         quantity,
         unitPrice: resolved?.unitPrice ?? 0,
@@ -168,7 +173,7 @@ function toFormValues(q: Quote): QuoteFormValues {
     validUntil: q.validUntil,
     notes: q.notes ?? "",
     items: q.items.map((it) => ({
-      productId: it.productId,
+      itemId: it.itemId,
       productName: it.productName,
       orderType: it.orderType,
       quantity: it.quantity,
@@ -231,11 +236,11 @@ export function QuoteForm({
     form.setFieldValue(
       "items",
       form.values.items.map((it) => {
-        const r = it.productId
+        const r = it.itemId
           ? resolveUnitPriceFromEntries(
               entries,
               customerId,
-              it.productId,
+              it.itemId,
               it.orderType,
               it.quantity,
               tr,
@@ -263,7 +268,7 @@ export function QuoteForm({
       amount: Math.max(0, it.unitPrice * it.quantity - it.discountAmount),
       taxRate: resolveLineTax(taxCatalog, {
         customerTaxCategoryId,
-        productTaxCategoryId: taxCategoryByProduct?.[it.productId] ?? null,
+        productTaxCategoryId: taxCategoryByProduct?.[it.itemId] ?? null,
         basisDate: liveBasisDate,
       }).rate,
     })),
@@ -280,7 +285,7 @@ export function QuoteForm({
       validUntil: values.validUntil,
       notes: values.notes,
       items: values.items.map((it) => ({
-        productId: it.productId,
+        itemId: it.itemId,
         orderType: it.orderType as "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER",
         quantity: it.quantity,
         deliveryDate: it.deliveryDate,
@@ -396,15 +401,14 @@ export function QuoteForm({
                     customerId={form.values.customerId}
                     // 単価が引けないのはたいてい「まだ図面が無い新規品」なので、
                     // 保存できない旨だけを出さずに §10 設計依頼へ逃がす。
-                    designRequestHref={(productId) =>
-                      `/sales/design-requests/new?product=${encodeURIComponent(productId)}`
+                    // `item=` は品目 id（items.id）。製品マスタからの
+                    // `product=`（products.id）とは別の入口。
+                    designRequestHref={(itemId) =>
+                      `/sales/design-requests/new?item=${encodeURIComponent(itemId)}`
                     }
                     entries={entries}
                     onChange={(next: ResolverValue) => {
-                      form.setFieldValue(
-                        `items.${ri}.productId`,
-                        next.productId,
-                      );
+                      form.setFieldValue(`items.${ri}.itemId`, next.itemId);
                       form.setFieldValue(
                         `items.${ri}.productName`,
                         next.productName,

@@ -402,8 +402,8 @@ export function OrderAcceptanceDetail({
   // 差異（説明のつかない食い違い）と上書き（人が宣言した単価）は別に出す。
   const diffLines = priceCheck.lines.filter((l) => l.diff);
   const overrideLines = priceCheck.lines.filter((l) => l.overridden);
-  const checkByItemId = new Map<string, AcceptancePriceCheckLine>(
-    priceCheck.lines.map((l) => [l.itemId, l]),
+  const checkByLineId = new Map<string, AcceptancePriceCheckLine>(
+    priceCheck.lines.map((l) => [l.lineId, l]),
   );
 
   const run = (action: () => Promise<ActionResult>, done: string) => {
@@ -473,7 +473,7 @@ export function OrderAcceptanceDetail({
             {tr("sales.orderAcceptances.theLinesBelowDoNotMatch")}
           </Text>
           {diffLines.map((l) => (
-            <Text key={l.itemId} size="sm">
+            <Text key={l.lineId} size="sm">
               {tr("sales.orderAcceptanceDetail.lineDiffText", {
                 row: l.row,
                 actual: formatMoney(l.actual),
@@ -826,7 +826,7 @@ export function OrderAcceptanceDetail({
                     {tr("sales.orderAcceptances.aLineSUnitPriceDoes")}
                   </Text>
                   {diffLines.map((l) => (
-                    <Text key={l.itemId} size="sm">
+                    <Text key={l.lineId} size="sm">
                       {l.noTier
                         ? tr("sales.orderAcceptanceDetail.lineNoTierText", {
                             row: l.row,
@@ -864,7 +864,7 @@ export function OrderAcceptanceDetail({
                     )}
                   </Text>
                   {overrideLines.map((l) => (
-                    <Text key={l.itemId} size="sm">
+                    <Text key={l.lineId} size="sm">
                       {tr("sales.orderAcceptanceDetail.lineOverrideText", {
                         row: l.row,
                         actual: formatMoney(l.actual),
@@ -1086,7 +1086,7 @@ export function OrderAcceptanceDetail({
                       </Table.Thead>
                       <Table.Tbody>
                         {a.items.map((it) => {
-                          const lc = checkByItemId.get(it.id);
+                          const lc = checkByLineId.get(it.id);
                           return (
                             <Table.Tr key={it.id}>
                               <Table.Td>

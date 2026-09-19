@@ -441,10 +441,10 @@ export async function visiblePortalRelated(
 
 /** 明細の見出し。製品マスタに突合済みならその名称、未突合なら注文書の品名。 */
 function lineLabel(
-  product: { name: unknown } | null,
+  item: { name: unknown } | null,
   fallback?: string | null,
 ): string {
-  if (product?.name) return localized(product.name as LocalizedTextInput);
+  if (item?.name) return localized(item.name as LocalizedTextInput);
   return fallback ?? "—";
 }
 
@@ -498,7 +498,7 @@ export async function getPortalDocument(
               unitPrice: true,
               amount: true,
               deliveryDate: true,
-              product: { select: { name: true } },
+              item: { select: { name: true } },
             },
             orderBy: { sortOrder: "asc" },
           },
@@ -518,7 +518,7 @@ export async function getPortalDocument(
         take: MAX_RELATED,
       });
       const lineItems = r.items.map((it) => ({
-        label: lineLabel(it.product),
+        label: lineLabel(it.item),
         quantity: it.quantity,
         unitPrice: money(it.unitPrice),
         amount: money(it.amount),
@@ -557,7 +557,7 @@ export async function getPortalDocument(
           quoteYearMonth: true,
           quoteSeq: true,
           items: {
-            // ★ 許可リスト。lot_number / is_locked / product_id は取らない。
+            // ★ 許可リスト。lot_number / is_locked / item_id は取らない。
             select: {
               branch: true,
               quantity: true,
@@ -565,7 +565,7 @@ export async function getPortalDocument(
               amount: true,
               deliveryDate: true,
               productText: true,
-              product: { select: { name: true } },
+              item: { select: { name: true } },
               deliveryItems: {
                 select: {
                   deliveryOrder: {
@@ -631,7 +631,7 @@ export async function getPortalDocument(
       }
 
       const lineItems = r.items.map((it) => ({
-        label: lineLabel(it.product, it.productText),
+        label: lineLabel(it.item, it.productText),
         quantity: it.quantity,
         unitPrice: money(it.unitPrice),
         amount: money(it.amount),
@@ -666,7 +666,7 @@ export async function getPortalDocument(
               amount: true,
               // 税率は出荷書の確定時に行へ焼き込んである。
               taxRate: true,
-              product: { select: { name: true } },
+              item: { select: { name: true } },
             },
             orderBy: { sortOrder: "asc" },
           },
@@ -727,7 +727,7 @@ export async function getPortalDocument(
 
       // **include_price に必ず従う** — 価格を載せない納品書に金額を出さない。
       const lineItems = r.items.map((it) => ({
-        label: lineLabel(it.product),
+        label: lineLabel(it.item),
         quantity: it.quantity,
         unitPrice: r.includePrice ? money(it.unitPrice) : null,
         amount: r.includePrice ? money(it.amount) : null,

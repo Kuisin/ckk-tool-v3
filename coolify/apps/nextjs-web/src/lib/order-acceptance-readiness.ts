@@ -30,8 +30,8 @@ export interface ReadinessIssue {
 export interface ReadinessInput {
   customerBpId: string | null;
   items: {
-    /** 製品マスタ突合済みか（null = 未特定）。 */
-    productId: string | number | null;
+    /** 製品（品目 items.id）が決まっているか（null = 未特定）。 */
+    itemId: string | number | null;
     quantity: number;
     unitPrice: number | null;
     /** 配送方法（通常配送 / ユーザー直送）。行ごとに持つ（§8）。 */
@@ -79,7 +79,7 @@ export function acceptanceReadiness(input: ReadinessInput, tr: Tr): Readiness {
   // 確実に止める。配送方法は行ごとなので、他の行チェックと同じ行番号方式。
   const noEndUser: number[] = [];
   input.items.forEach((it, i) => {
-    if (it.productId == null || it.productId === "") noProduct.push(i + 1);
+    if (it.itemId == null || it.itemId === "") noProduct.push(i + 1);
     if (!(it.quantity >= 1)) badQuantity.push(i + 1);
     if (it.unitPrice == null) noPrice.push(i + 1);
     else if (it.unitPrice < 0) negativePrice.push(i + 1);

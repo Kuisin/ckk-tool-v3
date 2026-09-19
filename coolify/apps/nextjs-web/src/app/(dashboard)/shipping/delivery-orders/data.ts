@@ -39,7 +39,8 @@ const DELIVERY_ORDER_INCLUDE = {
   items: {
     orderBy: { sortOrder: "asc" as const },
     include: {
-      product: true,
+      // 品目統合 第 2 段 C — 表示は品目側から読む。
+      item: true,
       orderLine: {
         select: {
           acceptanceYearMonth: true,
@@ -77,11 +78,14 @@ function findRow(key: DocKey) {
 }
 
 /** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
-function productLabel(p: {
-  name: unknown;
-  yearMonth: string | null;
-  seq: number | null;
-}): string {
+function productLabel(
+  p: {
+    name: unknown;
+    yearMonth: string | null;
+    seq: number | null;
+  } | null,
+): string {
+  if (!p) return "—";
   const code = formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
   return code ? `${name} ${code}` : name;
@@ -200,8 +204,8 @@ function mapDeliveryOrder(
       id: it.id,
       orderLineId: it.orderLineId,
       orderLineNumber: it.orderLine ? orderLineNumberOf(it.orderLine) : null,
-      productId: String(it.productId),
-      productName: productLabel(it.product),
+      itemId: String(it.itemId ?? ""),
+      productName: productLabel(it.item),
       lotNumber: it.lotNumber,
       quantity: it.quantity,
       // 確定前は焼き込み前なので注文明細の単価を見せる（確定すると凍る）。

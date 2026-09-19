@@ -37,6 +37,7 @@ import {
 } from "@/lib/doc-number";
 import { enqueueExtraction } from "@/lib/intake";
 import { normalizeExtraction } from "@/lib/intake-core";
+import { legacyProductIdsForItems } from "@/lib/item-legacy-product";
 import { aliasLearnings } from "@/lib/match-alias-core";
 import { saveAliasLearnings } from "@/lib/match-aliases";
 import { allocateDocumentKey } from "@/lib/numbering";
@@ -111,8 +112,11 @@ const orderTypeEnum = z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]);
 
 function itemInputSchema(tr: Tr) {
   return z.object({
-    /** 製品マスタ内部 id（文字列）。null = 未突合（productText のみ）。 */
-    productId: z.string().nullable(),
+    /**
+     * 突合済みの製品 — 値は品目 id（items.id、`itemType: "PRODUCT"`）を
+     * 文字列化したもの。null = 未突合（productText のみ）。
+     */
+    itemId: z.string().nullable(),
     productText: z.string().nullable(),
     orderType: orderTypeEnum,
     quantity: z
@@ -299,30 +303,61 @@ function buildItemCreates(
   items: readonly (OrderAcceptanceDraftInput["items"][number] & {
     priceOverridden: boolean;
   })[],
+  /** 品目 id → 旧 products.id（落とすのは最後の段まで両方書く）。 */
+  legacyProductIds: ReadonlyMap<number, number>,
 ) {
-  return items.map((it, i) => ({
-    productId: it.productId ? Number(it.productId) : null,
-    productText: trimOrNull(it.productText),
-    orderType: it.orderType,
-    quantity: it.quantity,
-    unitPrice: it.unitPrice,
-    priceOverridden: it.priceOverridden,
-    deliveryDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
-    notes: trimOrNull(it.notes),
-    sortOrder: i,
-    // 配送（§8）— 明細ごと。出荷先は通常配送だけの欄（画面も灰色にしているが、
-    // 古いタブや API 直叩きを信用しないので保存側でも落とす）。
-    shipToBpId: normalizeShipToBpId(
-      it.deliveryMethod,
-      trimOrNull(it.shipToBpId),
-    ),
-    deliveryMethod: it.deliveryMethod,
-    // エンドユーザーは配送方法に依らず保持できる（直送では必須 —
-    // lineRefsError。通常配送でも記録用に任意で持てる）。
-    endUserBpId: trimOrNull(it.endUserBpId),
-    assignedPlantId: it.assignedPlantId ?? null,
-    shippingWorkLocationId: it.shippingWorkLocationId ?? null,
-  }));
+  return items.map((it, i) => {
+    const itemId = it.itemId ? Number(it.itemId) : null;
+    return {
+      itemId,
+      productId: itemId != null ? (legacyProductIds.get(itemId) ?? null) : null,
+      productText: trimOrNull(it.productText),
+      orderType: it.orderType,
+      quantity: it.quantity,
+      unitPrice: it.unitPrice,
+      priceOverridden: it.priceOverridden,
+      deliveryDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
+      notes: trimOrNull(it.notes),
+      sortOrder: i,
+      // 配送（§8）— 明細ごと。出荷先は通常配送だけの欄（画面も灰色にしているが、
+      // 古いタブや API 直叩きを信用しないので保存側でも落とす）。
+      shipToBpId: normalizeShipToBpId(
+        it.deliveryMethod,
+        trimOrNull(it.shipToBpId),
+      ),
+      deliveryMethod: it.deliveryMethod,
+      // エンドユーザーは配送方法に依らず保持できる（直送では必須 —
+      // lineRefsError。通常配送でも記録用に任意で持てる）。
+      endUserBpId: trimOrNull(it.endUserBpId),
+      assignedPlantId: it.assignedPlantId ?? null,
+      shippingWorkLocationId: it.shippingWorkLocationId ?? null,
+    };
+  });
+}
+
+/** 明細の品目 id → 旧 products.id をまとめて引く（書き込みの橋）。 */
+function legacyProductIdsOf(
+  items: readonly { itemId: string | null }[],
+): Promise<Map<number, number>> {
+  return legacyProductIdsForItems(
+    items
+      .map((it) => (it.itemId ? Number(it.itemId) : Number.NaN))
+      .filter((n) => Number.isInteger(n)),
+  );
+}
+
+/**
+ * 突合済みの行すべてに旧 products.id の対応があるか。**無いまま保存すると
+ * item_id はあるのに product_id が null の行ができ、在庫引当
+ * （lib/inventory.ts — 旧列しか見ない）が黙って効かなくなる。**
+ */
+function missingLegacyProduct(
+  items: readonly { itemId: string | null }[],
+  legacyProductIds: ReadonlyMap<number, number>,
+): boolean {
+  return items.some(
+    (it) => it.itemId != null && !legacyProductIds.has(Number(it.itemId)),
+  );
 }
 
 // ── 再抽出（IMPORT のみ） ────────────────────────────────────────────────────
@@ -469,6 +504,8 @@ export async function saveDraft(
         notes: true,
         // 学習（match_aliases）に使う: 抽出された社名と、保存前の突合状態。
         extracted: true,
+        // 学習（match_aliases）は **products.id** のまま — 学習した別名が
+        // products を指しているので、ここだけ旧列を読む（品目統合 第 2 段 C）。
         items: { select: { productId: true, productText: true } },
       },
     });
@@ -479,8 +516,13 @@ export async function saveDraft(
     const customerBpId = trimOrNull(v.customerBpId);
     // 価格表どおりの行の単価はここで確定する（クライアントの表示値は読まない）。
     // 顧客が変わった保存でも、新しい顧客の価格表で解決し直される。
+    const legacyProductIds = await legacyProductIdsOf(v.items);
+    if (missingLegacyProduct(v.items, legacyProductIds)) {
+      return actionError(tr("common.targetProductNotFound"));
+    }
     const creates = buildItemCreates(
       await applyPriceListPrices(customerBpId, v.items, tr),
+      legacyProductIds,
     );
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
@@ -547,15 +589,23 @@ export async function saveDraft(
         extractedCustomerName: normalizeExtraction(prior.extracted)
           .customerName,
         customer: { before: prior.customerBpId, after: customerBpId },
+        // 学習の target は **products.id**（app.match_aliases の
+        // target_type = 'products'）。画面が送ってくる itemId をここで
+        // 旧 id へ戻す — 突合側は品目へ移していない。
         items: {
           before: prior.items.map((it) => ({
             productText: it.productText,
             productId: it.productId != null ? String(it.productId) : null,
           })),
-          after: v.items.map((it) => ({
-            productText: it.productText,
-            productId: trimOrNull(it.productId),
-          })),
+          after: v.items.map((it) => {
+            const itemId = it.itemId ? Number(it.itemId) : null;
+            const legacy =
+              itemId != null ? legacyProductIds.get(itemId) : undefined;
+            return {
+              productText: it.productText,
+              productId: legacy != null ? String(legacy) : null,
+            };
+          }),
         },
       }),
       authz.userId,
@@ -606,7 +656,7 @@ export async function submitForApproval(
         items: {
           orderBy: { sortOrder: "asc" },
           select: {
-            productId: true,
+            itemId: true,
             quantity: true,
             unitPrice: true,
             deliveryMethod: true,
@@ -629,7 +679,7 @@ export async function submitForApproval(
       {
         customerBpId: prior.customerBpId,
         items: prior.items.map((it) => ({
-          productId: it.productId,
+          itemId: it.itemId,
           quantity: it.quantity,
           unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
           deliveryMethod: it.deliveryMethod,
@@ -865,7 +915,7 @@ export async function confirmOrderLines(
       {
         customerBpId: prior.customerBpId,
         items: prior.items.map((it) => ({
-          productId: it.productId,
+          itemId: it.itemId,
           quantity: it.quantity,
           unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
           deliveryMethod: it.deliveryMethod,
@@ -924,7 +974,7 @@ export async function confirmOrderLines(
             number,
           }),
           customerBpId: prior.customerBpId,
-          productId: it.productId,
+          itemId: it.itemId,
           orderType: it.orderType,
           quantity: it.quantity,
           unitPrice: Number(it.unitPrice),
@@ -1016,6 +1066,10 @@ export async function createManualAcceptance(
   try {
     const refsError = await lineRefsError(tr, v.items);
     if (refsError) return actionError(refsError);
+    const createLegacyProductIds = await legacyProductIdsOf(v.items);
+    if (missingLegacyProduct(v.items, createLegacyProductIds)) {
+      return actionError(tr("common.targetProductNotFound"));
+    }
     const actor = await getCurrentActorId();
     const { yearMonth, seq } = await allocateDocumentKey("ORDER");
     const number = `ORD-${yearMonth}-${String(seq).padStart(5, "0")}`;
@@ -1042,6 +1096,7 @@ export async function createManualAcceptance(
         items: {
           create: buildItemCreates(
             await applyPriceListPrices(v.customerBpId, v.items, tr),
+            createLegacyProductIds,
           ),
         },
       },
@@ -1152,6 +1207,7 @@ export async function recreateFromCancelledAcceptance(
           // 配送（§8）も明細ごと引き継ぐ — 作り直しは「同じ注文をもう一度
           // 起こす」操作なので、行ごとに違っていた届け先もそのまま持ってくる。
           create: source.items.map((it, i) => ({
+            itemId: it.itemId,
             productId: it.productId,
             productText: it.productText,
             orderType: it.orderType,

@@ -171,7 +171,8 @@ export async function searchDocuments(
           take: LIMIT,
           include: {
             customerBp: { select: { name: true } },
-            product: { select: { name: true } },
+            // 品目統合 第 2 段 C — 価格表の製品名は品目側から読む。
+            item: { select: { name: true } },
           },
         });
         return rows.map((r) => {
@@ -179,7 +180,7 @@ export async function searchDocuments(
           return {
             href: `/sales/price-lists/${number}`,
             number,
-            detail: `${name(r.customerBp?.name)} / ${name(r.product?.name)}`,
+            detail: `${name(r.customerBp?.name)} / ${name(r.item?.name)}`,
           };
         });
       }

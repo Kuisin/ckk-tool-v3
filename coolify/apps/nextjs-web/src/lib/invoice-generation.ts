@@ -151,7 +151,13 @@ async function buildInvoiceDraft(
   const customerLabels = customerBpId
     ? await fetchCustomerProductLabels(
         customerBpId,
-        shipments.flatMap((s) => s.items.map((it) => it.productId)),
+        // **品目 id を渡す**（品目統合 第 2 段 C）。旧 products.id を渡しても
+        // 型は通るが、どちらも int の連番なので**別の製品の品番が当たり得る**。
+        shipments.flatMap((s) =>
+          s.items
+            .map((it) => it.itemId)
+            .filter((id): id is number => id != null),
+        ),
       )
     : new Map<number, CustomerProductLabel>();
 
@@ -160,8 +166,9 @@ async function buildInvoiceDraft(
     const deliveryNote = s.deliveryNotes[0] ?? null;
     return s.items.map((it) => {
       const unitPrice = billableUnitPrice(it);
-      const name = it.product.name as LocalizedText | null;
-      const customerLabel = customerLabels.get(it.productId);
+      const name = it.item?.name as LocalizedText | null;
+      const customerLabel =
+        it.itemId != null ? customerLabels.get(it.itemId) : undefined;
       const withCode = (locale: string) =>
         customerFacingProductLabel(localized(name, locale), customerLabel);
       const ja =
@@ -180,7 +187,7 @@ async function buildInvoiceDraft(
           : withCode("en");
       const lineTax = resolveLineTax(catalog, {
         customerTaxCategoryId,
-        productTaxCategoryId: it.product.taxCategoryId,
+        productTaxCategoryId: it.item?.taxCategoryId ?? null,
         basisDate: billingBasisDate(
           isoDateOrNull(it.orderLine?.acceptance?.orderDate),
           isoDateOrNull(s.shippedAt),

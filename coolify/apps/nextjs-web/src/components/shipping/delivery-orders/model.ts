@@ -35,7 +35,8 @@ export interface DeliveryOrderItem {
   /** 導出番号 ORD-YYYYMM-NNNNN-NN。 */
   orderLineNumber: string | null;
   /** 製品の内部 id（連番）を文字列で保持 — SearchSelect の値と揃える。 */
-  productId: string;
+  /** 製品 — 値は品目 id（items.id）。品目統合 第 2 段 C。 */
+  itemId: string;
   productName: string;
   /** ロット番号 = 指示書番号（任意）。 */
   lotNumber: number | null;

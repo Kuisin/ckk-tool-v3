@@ -86,9 +86,13 @@ export async function saveCustomerProductCodes(input: {
 
   const product = await prisma.product.findUnique({
     where: { id: productId },
-    select: { id: true },
+    select: { id: true, itemId: true },
   });
   if (!product) return actionError(tr("common.targetProductNotFound"));
+  // 品目統合 第 2 段 C — 顧客品番が指す品目。画面（MS04 の顧客品番タブ）は
+  // 製品マスタの URL 文脈なので入口は products.id のままで、書き込みのときだけ
+  // 品目参照を橋渡しする（旧 product_id 列は残す）。
+  const itemId = product.itemId;
 
   // 同じ保存の中の重複を先に弾く（DB の P2002 はどの行かを言えない）。
   const seenCustomer = new Set<string>();
@@ -171,6 +175,7 @@ export async function saveCustomerProductCodes(input: {
           },
           create: {
             productId,
+            itemId,
             customerBpId: r.customerBpId,
             code: r.code,
             name: r.name || null,
@@ -180,6 +185,9 @@ export async function saveCustomerProductCodes(input: {
             createdBy: actor,
           },
           update: {
+            // 既存行にも品目参照を埋め直す（移行前に作られた行が残っていても
+            // 1 度保存すれば揃う）。
+            itemId,
             code: r.code,
             name: r.name || null,
             aliases: r.aliases,

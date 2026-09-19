@@ -277,7 +277,10 @@ export async function fetchStockRequirements(
       // 明細別出荷済み数量の集計が要るため今回は見送り、過大に安全側で見積もる。
       const orderLines = await prisma.orderLine.findMany({
         where: {
-          productId: product.id,
+          // 品目統合 第 2 段 C — 注文明細は品目で絞る。指示書側
+          // （work_orders）はまだ products.id なので、上の product は
+          // そちらのためだけに残っている。
+          itemId: item.id,
           status: { in: ["CONFIRMED", "IN_PRODUCTION", "PARTIAL_SHIPPED"] },
         },
         include: {

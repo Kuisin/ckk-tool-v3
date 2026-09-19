@@ -82,6 +82,7 @@ import {
   RETRY_PENDING_MARKER,
   retryPlan,
 } from "./intake-extract-error";
+import { itemIdsForLegacyProducts } from "./item-legacy-product";
 import { aliasKeyFor } from "./match-alias-core";
 import { aliasesByTarget, findAlias, noteAliasHit } from "./match-aliases";
 import { label } from "./messages";
@@ -836,24 +837,35 @@ export async function runExtraction(
       (await matchCustomer(norm.customerName)).matched?.id ?? null;
     // 顧客が決まったら、その顧客の品番表を 1 回だけ読んで全明細で使い回す。
     const customerCodes = await loadCustomerProductCodes(customerBpId);
-    const items = await Promise.all(
-      norm.items.map(async (it, i) => {
+    const matched = await Promise.all(
+      norm.items.map((it) =>
         // 製品も同じ考え方 — 候補止まりなら入れず、画面で選ばせる。
-        const product = await matchProduct(it.productCode, it.productText, {
-          customerCodes,
-        });
-        return {
-          productId: product.matched ? Number(product.matched.id) : null,
-          productText: it.productText ?? it.productCode,
-          orderType: it.orderType,
-          quantity: it.quantity,
-          unitPrice: it.unitPrice,
-          deliveryDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
-          notes: it.notes,
-          sortOrder: i,
-        };
-      }),
+        matchProduct(it.productCode, it.productText, { customerCodes }),
+      ),
     );
+    // 突合そのものは **products.id** のまま（学習エイリアスが products を
+    // 指しているため）。注文明細へ書くときだけ品目参照へ橋渡しする
+    // （品目統合 第 2 段 C — 旧 product_id 列も残して両方埋める）。
+    const itemIds = await itemIdsForLegacyProducts(
+      matched
+        .map((m) => (m.matched ? Number(m.matched.id) : Number.NaN))
+        .filter((n) => Number.isInteger(n)),
+    );
+    const items = norm.items.map((it, i) => {
+      const product = matched[i];
+      const productId = product.matched ? Number(product.matched.id) : null;
+      return {
+        productId,
+        itemId: productId != null ? (itemIds.get(productId) ?? null) : null,
+        productText: it.productText ?? it.productCode,
+        orderType: it.orderType,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+        deliveryDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
+        notes: it.notes,
+        sortOrder: i,
+      };
+    });
 
     // 抽出中に人が「手入力に切り替え」を押していたら、その入力を上書きしない
     // （裏で走る処理が、目の前の編集を消してしまうのが一番まずい）。

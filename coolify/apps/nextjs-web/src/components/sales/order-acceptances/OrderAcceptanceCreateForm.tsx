@@ -110,7 +110,7 @@ export function OrderAcceptanceCreateForm({
     items.length > 1 ||
     items.some(
       (it) =>
-        it.productId ||
+        it.itemId ||
         it.productText ||
         it.unitPrice != null ||
         it.priceOverridden ||

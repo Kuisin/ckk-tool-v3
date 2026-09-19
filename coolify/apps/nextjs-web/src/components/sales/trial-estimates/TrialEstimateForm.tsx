@@ -35,7 +35,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
-import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
+import { searchProductItemOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
   createTrialEstimate,
   fetchMaterialPricing,
@@ -44,7 +44,7 @@ import {
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { EditButton } from "@/components/ui/buttons";
-import { productF4 } from "@/components/ui/f4-presets";
+import { productItemF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
@@ -131,9 +131,8 @@ export function TrialEstimateForm({
     source?.salesRepId ?? null,
   );
   // 対象製品（任意）— 価格表作成時の基準単価ソース候補になる。
-  const [productId, setProductId] = useState<string | null>(
-    source?.productId ?? null,
-  );
+  // 値は品目 id（items.id）。
+  const [itemId, setItemId] = useState<string | null>(source?.itemId ?? null);
   // 材料 = 材種 × 直径 × 黒皮/研磨（参照価格の解決キー）。
   const [materialTypeId, setMaterialTypeId] = useState<string>(
     source?.materialTypeId ?? materialTypeOptions[0]?.value ?? "",
@@ -320,7 +319,7 @@ export function TrialEstimateForm({
         salesRepId,
         name: name.trim(),
         customerBpId: customerId,
-        productId,
+        itemId,
         materialTypeId: materialTypeId || null,
         diameterCode: diameterCode || null,
         surfaceFinishCode: surfaceFinishCode || null,
@@ -416,11 +415,11 @@ export function TrialEstimateForm({
                     value={salesRepId}
                   />
                   <SearchSelect
-                    f4={productF4(tr)}
+                    f4={productItemF4(tr)}
                     initialOption={
-                      source?.productId && source.productName
+                      source?.itemId && source.productName
                         ? {
-                            value: source.productId,
+                            value: source.itemId,
                             label: source.productName,
                           }
                         : null
@@ -437,13 +436,13 @@ export function TrialEstimateForm({
                         }
                       />
                     }
-                    onChange={setProductId}
-                    onSearch={searchProductOptions}
+                    onChange={setItemId}
+                    onSearch={searchProductItemOptions}
                     placeholder={tr(
                       "sales.trialEstimates.searchProductsOptional",
                     )}
-                    storageKey="product"
-                    value={productId}
+                    storageKey="trial-estimate-product-item"
+                    value={itemId}
                   />
                   <NumberInput
                     label={

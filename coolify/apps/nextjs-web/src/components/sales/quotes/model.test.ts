@@ -20,7 +20,7 @@ const entry = (over: Partial<PriceListEntry> = {}): PriceListEntry => ({
   entryId: "PRC-202604-00001",
   customerId: CUSTOMER,
   customerName: "顧客",
-  productId: PRODUCT,
+  itemId: PRODUCT,
   productName: "製品",
   currency: "JPY",
   isActive: true,
