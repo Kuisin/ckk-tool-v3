@@ -332,9 +332,9 @@ export async function fetchDeliverySourceInfo(
         // ピッカーに出す（指示書は関連 SO 文書から選ぶ、が本画面の規約。
         // 他の受注のロットを充てるときは先に FROM_STOCK の在庫引当指示書で
         // この明細へ紐づける）。
-        prisma.productInventory.findMany({
+        prisma.itemInventory.findMany({
           where: {
-            productId,
+            itemId: await itemIdOfAsync(productId),
             isSemiFinished: false,
             lotNumber: { not: null },
           },
@@ -360,8 +360,8 @@ export async function fetchDeliverySourceInfo(
     for (const inv of inventories) {
       if (inv.lotNumber == null || !soLots.has(inv.lotNumber)) continue;
       const cur = byLot.get(inv.lotNumber) ?? { quantity: 0, reserved: 0 };
-      cur.quantity += inv.quantity;
-      cur.reserved += inv.reservedQuantity;
+      cur.quantity += Number(inv.quantity);
+      cur.reserved += Number(inv.reservedQuantity);
       byLot.set(inv.lotNumber, cur);
     }
     const stockLots: StockLotRef[] = [...byLot.entries()]
@@ -497,15 +497,19 @@ async function validateDispatchLots(
     byKey.set(key, cur);
   }
   for (const { productId, lot, qty } of byKey.values()) {
-    const agg = await prisma.productInventory.aggregate({
-      where: { productId, lotNumber: lot, isSemiFinished: false },
+    const agg = await prisma.itemInventory.aggregate({
+      where: {
+        itemId: await itemIdOfAsync(productId),
+        lotNumber: lot,
+        isSemiFinished: false,
+      },
       _sum: { quantity: true },
-      _count: { _all: true },
+      _count: true,
     });
-    if ((agg._count._all ?? 0) === 0) {
+    if ((agg._count ?? 0) === 0) {
       return tr("shipping.deliveryOrderActions.lotHasNoStock", { lot });
     }
-    const available = agg._sum.quantity ?? 0;
+    const available = Number(agg._sum.quantity ?? 0);
     if (qty > available) {
       return tr("shipping.deliveryOrderActions.lotStockInsufficient", {
         lot,
@@ -1710,6 +1714,19 @@ export async function confirmDeliveryOrder(
       ),
     );
   }
+}
+
+/**
+ * 製品 id → 品目 id。在庫は品目で持つ（app.item_inventory）ので、製品を指している
+ * 呼び出し側はここで寄せる。**移行中だけの橋** — 第 2 段 D で注文明細・指示書が
+ * item_id を持てば消える。
+ */
+async function itemIdOfAsync(productId: number): Promise<number> {
+  const row = await prisma.product.findUnique({
+    where: { id: productId },
+    select: { itemId: true },
+  });
+  return row?.itemId ?? -1;
 }
 
 /**

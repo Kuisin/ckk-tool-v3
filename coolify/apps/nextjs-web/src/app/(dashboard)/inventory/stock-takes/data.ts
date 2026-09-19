@@ -20,7 +20,6 @@ import { type Prisma, prisma } from "@/lib/db";
 import {
   formatDocNumber,
   formatMovementNumber,
-  formatProductNumber,
   parseDocKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -103,59 +102,29 @@ type StockTakeLineRow = Prisma.StockTakeLineGetPayload<Record<string, never>>;
 async function resolveLines(
   lines: StockTakeLineRow[],
 ): Promise<StockTakeLineView[]> {
-  const productIds = lines
-    .filter((l) => l.inventoryType === "PRODUCT")
-    .map((l) => l.inventoryId);
-  const materialIds = lines
-    .filter((l) => l.inventoryType === "MATERIAL")
-    .map((l) => l.inventoryId);
-
-  const [products, materials] = await Promise.all([
-    productIds.length
-      ? prisma.productInventory.findMany({
-          where: { id: { in: productIds } },
-          include: { product: true, storageLocation: true, shelf: true },
-        })
-      : [],
-    materialIds.length
-      ? prisma.materialInventory.findMany({
-          where: { id: { in: materialIds } },
-          include: { material: true, storageLocation: true, shelf: true },
-        })
-      : [],
-  ]);
-  const productMap = new Map(products.map((p) => [p.id, p]));
-  const materialMap = new Map(materials.map((m) => [m.id, m]));
+  // 在庫は 1 表（app.item_inventory）。棚卸の明細は品目種別を持つが、
+  // バケットを引くのに種別で分ける必要はもう無い。
+  const bucketIds = [...new Set(lines.map((l) => l.inventoryId))];
+  const buckets = bucketIds.length
+    ? await prisma.itemInventory.findMany({
+        where: { id: { in: bucketIds } },
+        include: { item: true, storageLocation: true, shelf: true },
+      })
+    : [];
+  const bucketMap = new Map(buckets.map((b) => [b.id, b]));
 
   return lines
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((l) => {
-      if (l.inventoryType === "PRODUCT") {
-        const p = productMap.get(l.inventoryId);
-        return {
-          id: l.id,
-          inventoryType: "PRODUCT" as const,
-          itemName: p ? localized(p.product.name as LocalizedText | null) : "—",
-          itemCode: p
-            ? formatProductNumber(p.product.yearMonth, p.product.seq)
-            : null,
-          storageLabel: p ? storageLabelOf(p) : null,
-          lotNumber: p?.lotNumber ?? null,
-          bookQuantity: Number(l.bookQuantity),
-          countedQuantity:
-            l.countedQuantity != null ? Number(l.countedQuantity) : null,
-          notes: l.notes,
-        };
-      }
-      const m = materialMap.get(l.inventoryId);
+      const b = bucketMap.get(l.inventoryId);
       return {
         id: l.id,
-        inventoryType: "MATERIAL" as const,
-        itemName: m ? localized(m.material.name as LocalizedText | null) : "—",
-        itemCode: m?.material.code ?? null,
-        storageLabel: m ? storageLabelOf(m) : null,
-        lotNumber: null,
+        inventoryType: l.inventoryType,
+        itemName: b ? localized(b.item.name as LocalizedText | null) : "—",
+        itemCode: b?.item.code ?? null,
+        storageLabel: b ? storageLabelOf(b) : null,
+        lotNumber: b?.lotNumber ?? null,
         bookQuantity: Number(l.bookQuantity),
         countedQuantity:
           l.countedQuantity != null ? Number(l.countedQuantity) : null,

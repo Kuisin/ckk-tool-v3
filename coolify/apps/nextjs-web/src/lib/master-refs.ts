@@ -125,6 +125,9 @@ export const MASTER_REFERENCES: Record<
   Plant: [
     ref("ProductInventory", "plantId"),
     ref("MaterialInventory", "plantId"),
+    // 統合在庫（品目統合の第 2 段 A）。移行中は旧 2 表と両方が在庫を指すので、
+    // どちらも数える — 片方だけだと「参照ゼロ」と誤って拠点を消せてしまう。
+    ref("ItemInventory", "plantId"),
     ref("WorkOrderStep", "plantId"),
     ref("ProductProcessRouteVersionStep", "plantId"),
     ref("OrderAcceptance", "assignedPlantId"),
@@ -152,6 +155,7 @@ export const MASTER_REFERENCES: Record<
   StorageLocation: [
     ref("ProductInventory", "storageLocationId"),
     ref("MaterialInventory", "storageLocationId"),
+    ref("ItemInventory", "storageLocationId"),
     // SET NULL — 完成品の保管場所。在庫行だけ見て消すと、指示書側の
     // 「どこへ入れる予定だったか」が黙って消える。
     ref("WorkOrder", "storageLocationId"),

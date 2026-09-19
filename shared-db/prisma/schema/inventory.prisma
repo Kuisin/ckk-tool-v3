@@ -64,6 +64,7 @@ model StorageLocation {
   materialInventory MaterialInventory[]
   workOrders        WorkOrder[]         @relation("WorkOrderStorageLocation")
   stockTakes        StockTake[]         @relation("StockTakeStorageLocation")
+  itemInventory     ItemInventory[]     @relation("ItemInventoryLocation")
 
   @@index([plantId])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
@@ -85,9 +86,66 @@ model StorageShelf {
 
   productInventory  ProductInventory[]
   materialInventory MaterialInventory[]
+  itemInventory     ItemInventory[]     @relation("ItemInventoryShelf")
 
   @@unique([locationId, code])
   @@map("storage_shelves")
+  @@schema("app")
+}
+
+// ─── 統合在庫 ───────────────────────────────────────────────────────────────
+//
+// product_inventory と material_inventory を 1 本にまとめたもの（統合の第 2 段 A）。
+// 1 行 = 1 バケット（品目 × 拠点 × 保管場所 × 棚 × ロット × 半製品フラグ）。
+//
+// **主キーは旧 2 表の uuid をそのまま持ち込む。** uuid は衝突しないので、
+// inventory_transactions / inventory_reservations / stock_take_lines の
+// inventory_id は**1 行も書き換えずに有効なまま**になる（masters 側は serial で
+// 衝突したので新しく採り直した — items.prisma の id 節と対照的）。
+//
+// おまけに、その 3 つは多態ゆえ今まで FK が張れなかった。参照先が 1 表に定まる
+// ので、A-3 で本物の FK を張る（整合性の純増）。
+//
+// ⚠️ **A-2 が終わるまでは鏡**。書き込みの持ち主は旧 2 表のほうで、ここへ直接
+// 書いてもトリガーに上書きされて黙って消える（lib/items-readonly-guard と同じ）。
+model ItemInventory {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itemId Int    @map("item_id")
+
+  plantId           Int?    @map("plant_id")
+  storageLocationId Int?    @map("storage_location_id")
+  shelfId           Int?    @map("shelf_id")
+
+  /// ロット = 指示書番号。素材は null（ロットで持たない）。
+  lotNumber      Int?    @map("lot_number")
+  /// 半製品バケットか。素材は常に false。
+  isSemiFinished Boolean @default(false) @map("is_semi_finished")
+  /// 半製品の発生工程（トレーサビリティ）。
+  sourceStepId   String? @map("source_step_id") @db.Uuid
+
+  /// **Decimal に寄せた。** 製品は Int、素材は Decimal(12,3) だったが、
+  /// int は Decimal に損なく入る（逆は入らない）。読み出し側は Number() が要る。
+  quantity         Decimal @default(0) @db.Decimal(12, 3)
+  reservedQuantity Decimal @default(0) @map("reserved_quantity") @db.Decimal(12, 3)
+
+  /// 単位は**行に持つ**。素材の台帳が元からそうで、「本」の台帳に「kg」を
+  /// 足すのを拒む守り（ensureMaterialInventory の unitMismatch）がこれに依る。
+  unit     String
+  location String? // 旧フリーテキスト保管場所（表示フォールバックのみ）
+  notes    String?
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  item            Item             @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  plant           Plant?           @relation("ItemInventoryPlant", fields: [plantId], references: [id])
+  storageLocation StorageLocation? @relation("ItemInventoryLocation", fields: [storageLocationId], references: [id])
+  shelf           StorageShelf?    @relation("ItemInventoryShelf", fields: [shelfId], references: [id])
+
+  // 一意バケット（NULLS NOT DISTINCT index — migration で張る）
+  @@unique([itemId, plantId, lotNumber, isSemiFinished, storageLocationId, shelfId], map: "item_inventory_bucket_key")
+  @@index([itemId])
+  @@index([plantId, storageLocationId])
+  @@index([updatedAt, id])
+  @@map("item_inventory")
   @@schema("app")
 }
 
@@ -173,6 +231,53 @@ model InventoryReservation {
   @@schema("app")
 }
 
+// ─── 移動タイプ ─────────────────────────────────────────────────────────────
+//
+// 手動で在庫を動かすときに選ぶ、**番号つきの型**（SAP の移動タイプ相当）。
+// 利用者が設定画面から増やせる。
+//
+// **cause（enum）を置き換えるものではない。** cause は「どの処理が起こしたか」
+// というシステム側の分類で、移動タイプは業務側の分類。兼ねさせると、自動生成の
+// 伝票（指示書完了・出荷・入荷）に人が決めた番号を無理に割り当てることになる。
+// 自動生成は cause だけを持ち、手動入出庫は両方を持つ。
+enum MovementDirection {
+  /// 入庫（to だけ）
+  IN
+  /// 出庫（from だけ）
+  OUT
+  /// 移動（from と to の両方）
+  TRANSFER
+
+  @@map("MOVEMENT_DIRECTION")
+  @@schema("app")
+}
+
+model MovementType {
+  id        Int               @id @default(autoincrement())
+  /// 番号。人が決める（101 / 201 / 311 …）。表示と検索の鍵。
+  code      String            @unique
+  name      Json
+  direction MovementDirection
+
+  /// 出庫元・入庫先の保管場所を要求するか。**向きから機械的に決めない** —
+  /// 「入庫だが元の場所も記録したい」のような型を作れるようにするため、
+  /// 既定を向きから入れたうえで、利用者が変えられる。
+  requiresFrom Boolean @default(false) @map("requires_from")
+  requiresTo   Boolean @default(false) @map("requires_to")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  movements InventoryMovement[]
+
+  @@index([isActive, sortOrder])
+  @@map("movement_types")
+  @@schema("app")
+}
+
 // ─── 入出庫伝票 ──────────────────────────────────────────────────────────────
 //
 // 在庫が動いた「出来事」1 回 = 1 枚。明細（= inventory_transactions）をぶら下げる。
@@ -195,6 +300,8 @@ enum InventoryMovementCause {
   STOCK_RESERVATION // 引当予約
   RESERVATION_RELEASE // 予約解除（単独）
   ADJUSTMENT // 棚卸調整
+  /// 手動入出庫（ST06）。業務としてどの型かは movement_type_id が持つ。
+  MANUAL
   /// 移行前の取引行に後から付けた伝票。**新規では使わない** —
   /// 何の出来事だったかを記録していなかった行が実在するので、それを
   /// 正直に表す値として残す。
@@ -212,6 +319,8 @@ model InventoryMovement {
   seq       Int
 
   cause InventoryMovementCause
+  /// 手動入出庫で選んだ移動タイプ。自動生成の伝票では null（cause だけを持つ）。
+  movementTypeId Int? @map("movement_type_id")
   /// 元になった書類（テーブル名。audit_logs / approval_requests と同じ多態規約）。
   /// FK は張らない — 書類を消しても伝票は残さなければならない。
   sourceType String? @map("source_type")
@@ -223,7 +332,8 @@ model InventoryMovement {
   createdBy  String? @map("created_by") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  plant Plant? @relation("InventoryMovementPlant", fields: [plantId], references: [id], onDelete: Restrict)
+  plant        Plant?        @relation("InventoryMovementPlant", fields: [plantId], references: [id], onDelete: Restrict)
+  movementType MovementType? @relation(fields: [movementTypeId], references: [id], onDelete: Restrict)
 
   lines InventoryTransaction[]
 
@@ -231,6 +341,7 @@ model InventoryMovement {
   @@index([createdAt, id])
   @@index([sourceType, sourceId])
   @@index([cause, createdAt])
+  @@index([movementTypeId])
   @@map("inventory_movements")
   @@schema("app")
 }

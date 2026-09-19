@@ -33,6 +33,21 @@ function grep(pattern: string): string[] {
   }
 }
 
+describe("旧在庫 2 表（product_inventory / material_inventory）", () => {
+  it("アプリからもう触っていない（在庫は app.item_inventory に 1 本化した）", () => {
+    // A-2 で書き手も読み手も item_inventory へ移した。旧 2 表はまだ DB に
+    // 残っているが**中身は止まっている** — ここを読むと、動かなくなった数字を
+    // 正しい在庫として出してしまう。落とすのは次の PR なので、それまでの門。
+    const uses = [
+      ...grep("prisma\\.productInventory\\."),
+      ...grep("prisma\\.materialInventory\\."),
+      ...grep("tx\\.productInventory\\."),
+      ...grep("tx\\.materialInventory\\."),
+    ];
+    expect(uses).toEqual([]);
+  });
+});
+
 describe("統合品目マスタ（app.items）", () => {
   it("アプリから書き込んでいない（鏡なので、書いてもトリガーに消される）", () => {
     const writes = [

@@ -123,6 +123,9 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   delivery_orders: "docKey",
   // 入出庫伝票 MOV-… / 棚卸 STK-… — どちらも表示番号がそのまま詳細 URL の id。
   inventory_movements: "docKey",
+  // 在庫バケット（uuid）と移動タイプ（連番）— どちらも id がそのまま record_id。
+  item_inventory: "identity",
+  movement_types: "identity",
   stock_takes: "docKey",
   delivery_notes: "docKey",
   invoices: "docKey",

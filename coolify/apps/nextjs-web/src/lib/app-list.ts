@@ -219,6 +219,50 @@ export const appList: AppEntry[] = [
     requiredPermission: "inventory",
   },
   {
+    // 在庫一覧 — **拠点・保管場所から見る**画面。「この棚に何があるか」を答える。
+    // 品目 1 つを追うのは 在庫・所要量 (ST03) のほうで、目的が違う。
+    key: "stock-overview",
+    label: "在庫一覧",
+    operationCode: "ST02",
+    href: "/inventory/stock",
+    icon: "IconBuildingWarehouse",
+    category: "在庫",
+    requiredPermission: "inventory",
+  },
+  {
+    // 在庫・所要量 — **品目 1 つを追う**画面。「この品目は足りるのか」を答える。
+    // 過去（入出庫の履歴）と未来（入出庫の予定）を 1 本の時系列に並べる。
+    // 在庫一覧 (ST02) とは見る向きが逆で、入口も別。
+    key: "stock-requirements",
+    label: "在庫・所要量",
+    operationCode: "ST03",
+    href: "/inventory/requirements",
+    icon: "IconChartLine",
+    category: "在庫",
+    requiredPermission: "inventory",
+  },
+  {
+    // 手動入出庫 — 人が在庫を動かす唯一の口。移動タイプを選び、from/to を
+    // 必ず記録して入出庫伝票を 1 枚起こす。
+    key: "goods-movement",
+    label: "手動入出庫",
+    operationCode: "ST06",
+    href: "/inventory/goods-movement",
+    icon: "IconTransfer",
+    category: "在庫",
+    requiredPermission: "inventory",
+  },
+  {
+    // 移動タイプ — 手動入出庫で選ぶ番号つきの型。利用者が増やせる。
+    key: "movement-types",
+    label: "移動タイプ",
+    operationCode: "ST09",
+    href: "/inventory/movement-types",
+    icon: "IconListNumbers",
+    category: "在庫",
+    requiredPermission: "inventory",
+  },
+  {
     // 入出庫伝票 — 在庫が動いた出来事 1 回 = 1 枚（明細は取引行そのもの）。
     // **作る画面は無い** — 伝票は在庫を動かした処理が自分で起こすもので、
     // 人が手で起こすものではない（数を直したいときは棚卸 PD08）。
@@ -773,6 +817,10 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "work-orders": { en: "Work order", zh: "工单" },
   inventory: { en: "Inventory", zh: "库存管理" },
   "inventory-movements": { en: "Stock movement", zh: "出入库单" },
+  "stock-overview": { en: "Stock overview", zh: "库存总览" },
+  "stock-requirements": { en: "Stock / requirements", zh: "库存与需求" },
+  "goods-movement": { en: "Goods movement", zh: "手动出入库" },
+  "movement-types": { en: "Movement types", zh: "移动类型" },
   "stock-takes": { en: "Stocktaking", zh: "盘点" },
   "pending-work-orders": { en: "Pending work orders", zh: "未处理工单" },
   "delivery-orders": { en: "Delivery order", zh: "出货单" },

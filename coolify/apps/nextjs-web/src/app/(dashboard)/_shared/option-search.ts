@@ -903,3 +903,56 @@ export async function fetchMaterialUnit(
   });
   return row?.unit ?? null;
 }
+
+async function itemIdsByKeyword(q: string, limit: number): Promise<number[]> {
+  if (!q) return [];
+  const rows = await prisma.$queryRaw<{ id: number }[]>`
+    SELECT id FROM app.items
+    WHERE is_active
+      AND EXISTS (
+        SELECT 1 FROM unnest(match_names) AS k WHERE k ILIKE ${`%${likeEscape(q)}%`}
+      )
+    ORDER BY id
+    LIMIT ${limit}`;
+  return rows.map((r) => r.id);
+}
+
+/**
+ * 品目（製品 + 素材の統合マスタ）— 手動入出庫 (ST06) の品目ピッカー用。
+ *
+ * value は **`<itemType>:<items.id>`**（例 `PRODUCT:123`）。id そのものは
+ * 製品・素材を通じて一意（items.id は共有シーケンス）だが、向き（kind バッジ）を
+ * 選択後もレンダーだけで判定できるよう、種別を value に畳み込んでおく —
+ * サーバーへ問い合わせ直さずに済む。呼び出し側（GoodsMovementForm）は
+ * `:` の前後を分けて itemType と数値 id に戻す。
+ */
+export async function searchItemOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
+  const q = query.trim();
+  const keywordIds = q ? await itemIdsByKeyword(q, LIMIT) : [];
+  const rows = await prisma.item.findMany({
+    where: {
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+              ...byIds(keywordIds),
+            ],
+          }
+        : {}),
+    },
+    orderBy: { id: "asc" },
+    take: LIMIT,
+  });
+  return rows.map((r) => {
+    const name = localized(r.name as LocalizedText | null);
+    return {
+      value: `${r.itemType}:${r.id}`,
+      label: `${r.code ?? "—"} — ${name}`,
+    };
+  });
+}

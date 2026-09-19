@@ -78,16 +78,10 @@ export async function transferStock(
   // スコープ行チェック（PLANT）: 移動元の保管拠点と移動先拠点の両方が
   // スコープ内であること。ALL は素通し。
   if (authz.access.kind !== "ALL") {
-    const src =
-      v.inventoryType === "PRODUCT"
-        ? await prisma.productInventory.findUnique({
-            where: { id: v.inventoryId },
-            select: { plantId: true },
-          })
-        : await prisma.materialInventory.findUnique({
-            where: { id: v.inventoryId },
-            select: { plantId: true },
-          });
+    const src = await prisma.itemInventory.findUnique({
+      where: { id: v.inventoryId },
+      select: { plantId: true },
+    });
     const srcOk =
       !src ||
       rowInScope(authz.access, { plantIds: [src.plantId] }, authz.userId);
@@ -155,123 +149,40 @@ export async function transferStock(
         cause: "STOCK_TRANSFER",
         plantId: v.targetPlantId,
       });
-      if (v.inventoryType === "PRODUCT") {
-        const src = await tx.productInventory.findUnique({
-          where: { id: v.inventoryId },
-          include: {
-            product: { select: { name: true } },
-            plant: { select: { name: true } },
-            storageLocation: { select: { name: true } },
-            shelf: { select: { code: true } },
-          },
-        });
-        if (!src)
-          throw new Error(
-            tr("production.inventoryActions.sourceInventoryNotFound"),
-          );
-        const free = src.quantity - src.reservedQuantity;
-        if (v.quantity > free) {
-          throw new Error(
-            tr("production.inventoryActions.exceedsAvailable", { free }),
-          );
-        }
-        const bucket = {
-          productId: src.productId,
-          plantId: v.targetPlantId,
-          lotNumber: src.lotNumber,
-          isSemiFinished: src.isSemiFinished,
-          storageLocationId: v.targetStorageLocationId,
-          shelfId: v.targetShelfId,
-        };
-        let target = await tx.productInventory.findFirst({
-          where: bucket,
-          select: { id: true },
-        });
-        if (target?.id === src.id) {
-          throw new Error(tr("production.inventoryActions.sameLocation"));
-        }
-        if (!target) {
-          target = await tx.productInventory.create({
-            data: { ...bucket, sourceStepId: src.sourceStepId },
-            select: { id: true },
-          });
-        }
-        const srcLabel = targetLabel(
-          src.plant ?? { name: null },
-          src.storageLocation,
-          src.shelf,
-        );
-        const remark = v.notes?.trim();
-        const note = remark
-          ? tr("production.inventoryActions.transferNoteWithRemark", {
-              from: srcLabel,
-              to: destLabel,
-              remark,
-            })
-          : tr("production.inventoryActions.transferNoteBase", {
-              from: srcLabel,
-              to: destLabel,
-            });
-        await applyTransaction(tx, await openMovement(), {
-          inventoryType: "PRODUCT",
-          inventoryId: src.id,
-          transactionType: "OUT",
-          quantity: v.quantity,
-          referenceType: "stock_transfer",
-          referenceId: transferId,
-          notes: note,
-        });
-        await applyTransaction(tx, await openMovement(), {
-          inventoryType: "PRODUCT",
-          inventoryId: target.id,
-          transactionType: "IN",
-          quantity: v.quantity,
-          referenceType: "stock_transfer",
-          referenceId: transferId,
-          notes: note,
-        });
-        await recordAudit({
-          action: "UPDATE",
-          tableName: "product_inventory",
-          recordId: src.id,
-          after: {
-            note: tr("production.inventoryActions.transferredAudit", {
-              quantity: v.quantity,
-              to: destLabel,
-            }),
-            product: localized(src.product.name as LocalizedText | null),
-            lotNumber: src.lotNumber,
-          },
-        });
-        return target.id;
-      }
 
-      const src = await tx.materialInventory.findUnique({
+      // 在庫は 1 表になったので、製品と素材で同じ処理を 2 度書かなくてよい。
+      const src = await tx.itemInventory.findUnique({
         where: { id: v.inventoryId },
         include: {
-          material: { select: { code: true } },
+          item: { select: { code: true, name: true, itemType: true } },
           plant: { select: { name: true } },
           storageLocation: { select: { name: true } },
           shelf: { select: { code: true } },
         },
       });
-      if (!src)
+      if (!src) {
         throw new Error(
           tr("production.inventoryActions.sourceInventoryNotFound"),
         );
+      }
+
+      // 予約分は動かせない（引当済みの在庫を別の棚へ移すと、引当が追えなくなる）。
       const free = Number(src.quantity) - Number(src.reservedQuantity);
       if (v.quantity > free) {
         throw new Error(
           tr("production.inventoryActions.exceedsAvailable", { free }),
         );
       }
+
       const bucket = {
-        materialId: src.materialId,
+        itemId: src.itemId,
         plantId: v.targetPlantId,
+        lotNumber: src.lotNumber,
+        isSemiFinished: src.isSemiFinished,
         storageLocationId: v.targetStorageLocationId,
         shelfId: v.targetShelfId,
       };
-      let target = await tx.materialInventory.findFirst({
+      let target = await tx.itemInventory.findFirst({
         where: bucket,
         select: { id: true },
       });
@@ -279,11 +190,12 @@ export async function transferStock(
         throw new Error(tr("production.inventoryActions.sameLocation"));
       }
       if (!target) {
-        target = await tx.materialInventory.create({
-          data: { ...bucket, unit: src.unit },
+        target = await tx.itemInventory.create({
+          data: { ...bucket, unit: src.unit, sourceStepId: src.sourceStepId },
           select: { id: true },
         });
       }
+
       const srcLabel = targetLabel(
         src.plant ?? { name: null },
         src.storageLocation,
@@ -300,8 +212,9 @@ export async function transferStock(
             from: srcLabel,
             to: destLabel,
           });
+
       await applyTransaction(tx, await openMovement(), {
-        inventoryType: "MATERIAL",
+        inventoryType: src.item.itemType,
         inventoryId: src.id,
         transactionType: "OUT",
         quantity: v.quantity,
@@ -310,7 +223,7 @@ export async function transferStock(
         notes: note,
       });
       await applyTransaction(tx, await openMovement(), {
-        inventoryType: "MATERIAL",
+        inventoryType: src.item.itemType,
         inventoryId: target.id,
         transactionType: "IN",
         quantity: v.quantity,
@@ -318,16 +231,17 @@ export async function transferStock(
         referenceId: transferId,
         notes: note,
       });
+
       await recordAudit({
         action: "UPDATE",
-        tableName: "material_inventory",
+        tableName: "item_inventory",
         recordId: src.id,
         after: {
           note: tr("production.inventoryActions.transferredAudit", {
             quantity: v.quantity,
             to: destLabel,
           }),
-          material: src.material.code,
+          item: src.item.code,
         },
       });
       return target.id;
