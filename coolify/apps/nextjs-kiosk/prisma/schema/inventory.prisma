@@ -231,6 +231,53 @@ model InventoryReservation {
   @@schema("app")
 }
 
+// ─── 移動タイプ ─────────────────────────────────────────────────────────────
+//
+// 手動で在庫を動かすときに選ぶ、**番号つきの型**（SAP の移動タイプ相当）。
+// 利用者が設定画面から増やせる。
+//
+// **cause（enum）を置き換えるものではない。** cause は「どの処理が起こしたか」
+// というシステム側の分類で、移動タイプは業務側の分類。兼ねさせると、自動生成の
+// 伝票（指示書完了・出荷・入荷）に人が決めた番号を無理に割り当てることになる。
+// 自動生成は cause だけを持ち、手動入出庫は両方を持つ。
+enum MovementDirection {
+  /// 入庫（to だけ）
+  IN
+  /// 出庫（from だけ）
+  OUT
+  /// 移動（from と to の両方）
+  TRANSFER
+
+  @@map("MOVEMENT_DIRECTION")
+  @@schema("app")
+}
+
+model MovementType {
+  id        Int               @id @default(autoincrement())
+  /// 番号。人が決める（101 / 201 / 311 …）。表示と検索の鍵。
+  code      String            @unique
+  name      Json
+  direction MovementDirection
+
+  /// 出庫元・入庫先の保管場所を要求するか。**向きから機械的に決めない** —
+  /// 「入庫だが元の場所も記録したい」のような型を作れるようにするため、
+  /// 既定を向きから入れたうえで、利用者が変えられる。
+  requiresFrom Boolean @default(false) @map("requires_from")
+  requiresTo   Boolean @default(false) @map("requires_to")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  movements InventoryMovement[]
+
+  @@index([isActive, sortOrder])
+  @@map("movement_types")
+  @@schema("app")
+}
+
 // ─── 入出庫伝票 ──────────────────────────────────────────────────────────────
 //
 // 在庫が動いた「出来事」1 回 = 1 枚。明細（= inventory_transactions）をぶら下げる。
@@ -270,6 +317,8 @@ model InventoryMovement {
   seq       Int
 
   cause InventoryMovementCause
+  /// 手動入出庫で選んだ移動タイプ。自動生成の伝票では null（cause だけを持つ）。
+  movementTypeId Int? @map("movement_type_id")
   /// 元になった書類（テーブル名。audit_logs / approval_requests と同じ多態規約）。
   /// FK は張らない — 書類を消しても伝票は残さなければならない。
   sourceType String? @map("source_type")
@@ -281,7 +330,8 @@ model InventoryMovement {
   createdBy  String? @map("created_by") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  plant Plant? @relation("InventoryMovementPlant", fields: [plantId], references: [id], onDelete: Restrict)
+  plant        Plant?        @relation("InventoryMovementPlant", fields: [plantId], references: [id], onDelete: Restrict)
+  movementType MovementType? @relation(fields: [movementTypeId], references: [id], onDelete: Restrict)
 
   lines InventoryTransaction[]
 
@@ -289,6 +339,7 @@ model InventoryMovement {
   @@index([createdAt, id])
   @@index([sourceType, sourceId])
   @@index([cause, createdAt])
+  @@index([movementTypeId])
   @@map("inventory_movements")
   @@schema("app")
 }

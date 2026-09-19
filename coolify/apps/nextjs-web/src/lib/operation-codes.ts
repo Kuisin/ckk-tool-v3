@@ -222,6 +222,54 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "1",
   },
+  // 在庫一覧 — 拠点・保管場所から見る（「この棚に何があるか」）。
+  {
+    code: "ST02",
+    label: "在庫一覧",
+    baseLabel: "在庫一覧",
+    href: "/inventory/stock",
+    category: "在庫",
+    kind: "list",
+    categoryCode: "ST",
+    mode: "0",
+    index: "2",
+  },
+  // 在庫・所要量 — 品目 1 つを追う（「この品目は足りるのか」）。入口は品目の選択。
+  {
+    code: "ST03",
+    label: "在庫・所要量",
+    baseLabel: "在庫・所要量",
+    href: "/inventory/requirements",
+    category: "在庫",
+    kind: "list",
+    categoryCode: "ST",
+    mode: "0",
+    index: "3",
+  },
+  // 手動入出庫 — 人が在庫を動かす口。伝票を 1 枚起こして終わり（詳細は ST24）。
+  {
+    code: "ST06",
+    label: "手動入出庫",
+    baseLabel: "手動入出庫",
+    href: "/inventory/goods-movement",
+    category: "在庫",
+    kind: "list",
+    categoryCode: "ST",
+    mode: "0",
+    index: "6",
+  },
+  // 移動タイプ — 手動入出庫で選ぶ番号つきの型のマスタ。
+  {
+    code: "ST09",
+    label: "移動タイプ",
+    baseLabel: "移動タイプ",
+    href: "/inventory/movement-types",
+    category: "在庫",
+    kind: "list",
+    categoryCode: "ST",
+    mode: "0",
+    index: "9",
+  },
   // 入出庫伝票 — 在庫が動いた出来事の台帳。**新規は無い**（伝票は在庫を動かした
   // 処理が起こすもので、人が手で書くものではない）ので list + detail だけ。
   {
