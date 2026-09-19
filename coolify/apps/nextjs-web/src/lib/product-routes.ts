@@ -11,6 +11,7 @@ import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { prisma } from "./db";
 import { type LocalizedText, localized } from "./format";
 import type { Tr } from "./i18n";
+import { itemIdForLegacyProduct } from "./item-legacy-product";
 import {
   type RouteStepSnapshot,
   type RouteView,
@@ -39,12 +40,20 @@ const ROUTE_INCLUDE = {
   },
 };
 
-/** 製品の製造工程リスト一覧（バージョン降順・工程サマリ付き）— 製品詳細/ビルダー用。 */
+/**
+ * 製品の製造工程リスト一覧（バージョン降順・工程サマリ付き）— 製品詳細/ビルダー用。
+ *
+ * `productId` は products.id（呼び出し側はまだ製品マスタ・指示書の
+ * productId 文脈のまま） — product_process_routes 自体の絞り込みは品目
+ * (items.id) で行うので、ここで 1 回だけ変換する。
+ */
 export async function listProductRoutes(
   productId: number,
 ): Promise<RouteView[]> {
+  const itemId = await itemIdForLegacyProduct(productId);
+  if (itemId == null) return [];
   const routes = await prisma.productProcessRoute.findMany({
-    where: { productId, kind: "MANUFACTURING" },
+    where: { itemId, kind: "MANUFACTURING" },
     include: ROUTE_INCLUDE,
     orderBy: [{ isActive: "desc" }, { id: "asc" }],
   });
@@ -173,6 +182,10 @@ export async function createRouteVersionTx(
  * ルート新規作成 + v1（呼び出し側 tx 内）。
  * kind = PREP は製品にも顧客にも紐づかない（DB の CHECK が守る — ここで
  * 渡された productId / customerBpId は捨てる）。
+ *
+ * `productId` は products.id（呼び出し側の文脈のまま）。ここで品目
+ * (items.id) へ変換して itemId 列へ書き、まだ残っている旧 product_id 列も
+ * 橋渡しで埋める。
  */
 export async function createRouteWithVersionTx(
   tx: Tx,
@@ -191,9 +204,14 @@ export async function createRouteWithVersionTx(
   if (kind === "MANUFACTURING" && input.productId == null) {
     throw new Error("manufacturing route requires productId");
   }
+  const itemId =
+    kind === "PREP" || input.productId == null
+      ? null
+      : await itemIdForLegacyProduct(input.productId);
   const route = await tx.productProcessRoute.create({
     data: {
       kind,
+      itemId,
       productId: kind === "PREP" ? null : input.productId,
       customerBpId: kind === "PREP" ? null : (input.customerBpId ?? null),
       name: input.name,
@@ -269,15 +287,18 @@ export async function resolveRouteVersionTx(
   const base = await tx.productProcessRouteVersion.findUnique({
     where: { id: input.baseVersionId },
     include: {
-      route: { select: { id: true, productId: true, kind: true } },
+      route: { select: { id: true, itemId: true, kind: true } },
       steps: { orderBy: { sortOrder: "asc" } },
     },
   });
+  // 品目 (items.id) へ変換して比べる — product_process_routes 自体は
+  // もう productId を持たない前提で判定する。
+  const itemId = await itemIdForLegacyProduct(productId);
   if (
     !base ||
     base.route.id !== input.routeId ||
     base.route.kind !== scope.kind ||
-    (scope.kind === "MANUFACTURING" && base.route.productId !== productId)
+    (scope.kind === "MANUFACTURING" && base.route.itemId !== itemId)
   ) {
     throw new Error(
       tr("production.productRoutes.theSelectedProcessRouteIsNot"),

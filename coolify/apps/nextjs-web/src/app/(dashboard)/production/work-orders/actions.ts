@@ -44,6 +44,7 @@ import {
 import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { movementOpener } from "@/lib/inventory";
+import { itemIdForLegacyProduct } from "@/lib/item-legacy-product";
 import { allocateDocumentKey, nextSerialNumber } from "@/lib/numbering";
 import {
   copyRouteVersionToCustomerTx,
@@ -217,6 +218,10 @@ function workOrderInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z
     .object({
       allocations: z.array(allocationInputSchema(tr)),
+      // 在庫向け（注文明細なし）のときの対象製品。値は products.id —
+      // WorkflowBuilder のピッカー（searchProductOptions）と揃える。
+      // 品目参照（productItemId）はここから products→item を橋渡しして書く
+      // （resolveWorkOrderTarget / createWorkOrder・updateWorkOrder）。
       productId: z.number().int().positive().nullable(),
       type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
       plannedQuantity: z
@@ -349,6 +354,9 @@ async function resolveWorkOrderTarget(
       return tr("production.workOrderActions.orderLineNotFound");
     return { productId };
   }
+  // 在庫向け（注文明細なし）— ピッカーは products.id で選ぶ
+  // （WorkflowBuilder は searchProductOptions のまま。品目参照への変換は
+  // 書き込み側の橋渡し 1 箇所（createWorkOrder/updateWorkOrder）に閉じる）。
   const product = await prisma.product.findUnique({
     where: { id: v.productId ?? 0 },
     select: { id: true, isActive: true },
@@ -371,10 +379,12 @@ async function validateDesignFile(
   if (!designFileId) return null;
   const df = await prisma.designFile.findUnique({
     where: { id: designFileId },
-    select: { productId: true },
+    select: { itemId: true },
   });
   if (!df) return tr("production.workOrderActions.designFileNotFound");
-  if (df.productId !== productId) {
+  // design_files 自体は品目 (items.id) で持つので、比較の前に 1 回だけ変換する。
+  const itemId = await itemIdForLegacyProduct(productId);
+  if (df.itemId !== itemId) {
     return tr("production.workOrderActions.designFileWrongProduct");
   }
   return null;
@@ -621,6 +631,9 @@ export async function createWorkOrder(
     const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
     const docNumber = formatDocNumber("WOR", docKey);
     const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
+    // 品目統合 第 2 段 D — 作る製品の品目参照。旧 product_id は残る（他コードが
+    // まだ読む可能性があるので、書き続ける）。
+    const productItemId = await itemIdForLegacyProduct(productId);
 
     const resolvedVersions = await prisma.$transaction(async (tx) => {
       // 工程構成 → ルートバージョン解決（変更があれば新バージョンを自動保存）
@@ -641,6 +654,7 @@ export async function createWorkOrder(
           yearMonth: docKey.yearMonth,
           seq: docKey.seq,
           productId,
+          productItemId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
           materialItemId,
@@ -781,6 +795,9 @@ export async function updateWorkOrder(
     if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
     const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
+    // 品目統合 第 2 段 D — 作る製品の品目参照。旧 product_id は残る（他コードが
+    // まだ読む可能性があるので、書き続ける）。
+    const productItemId = await itemIdForLegacyProduct(productId);
     let plansKept = 0;
     let plansDropped = 0;
 
@@ -842,6 +859,7 @@ export async function updateWorkOrder(
         where: { id: prior.id },
         data: {
           productId,
+          productItemId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
           materialItemId,
@@ -1135,6 +1153,9 @@ export async function copyWorkOrder(
       source.type === "FROM_STOCK" && allocations.length > 0
         ? allocations[0].quantity
         : source.plannedQuantity;
+    // コピー先の製品が変わりうる（別の注文明細を指定できる）ので、
+    // 品目参照はここで改めて解決する（source.productItemId を素通ししない）。
+    const productItemId = await itemIdForLegacyProduct(productId);
 
     await prisma.$transaction(async (tx) => {
       await tx.workOrder.create({
@@ -1150,6 +1171,7 @@ export async function copyWorkOrder(
             })),
           },
           productId,
+          productItemId,
           type: source.type,
           plannedQuantity,
           materialItemId: source.materialItemId,
@@ -2354,7 +2376,7 @@ export async function setWorkOrderDesignFile(
   try {
     const wo = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
-      select: { id: true, productId: true, yearMonth: true, seq: true },
+      select: { id: true, productItemId: true, yearMonth: true, seq: true },
     });
     if (!wo)
       return actionError(tr("production.workOrderActions.workOrderNotFound"));
@@ -2364,13 +2386,13 @@ export async function setWorkOrderDesignFile(
       // 呼び出しは画面からしか来ないとは限らない）。
       const df = await prisma.designFile.findUnique({
         where: { id: designFileId },
-        select: { productId: true, version: true },
+        select: { itemId: true, version: true },
       });
       if (!df)
         return actionError(
           tr("production.workOrderActions.designFileNotFound"),
         );
-      if (df.productId !== wo.productId) {
+      if (df.itemId !== wo.productItemId) {
         return actionError(
           tr("production.workOrderActions.designFileWrongProduct"),
         );

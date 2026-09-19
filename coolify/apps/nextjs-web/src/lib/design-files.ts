@@ -26,6 +26,7 @@ import {
   sameSeries,
 } from "@/lib/design-files-core";
 import { systematicFileName } from "@/lib/file-naming";
+import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import {
   type ActionResult,
   actionError,
@@ -48,7 +49,8 @@ export interface VersionFileInput {
 }
 
 export interface CreateVersionInput {
-  productId: number;
+  /** 対象製品（品目, items.id）。 */
+  itemId: number;
   /** null = 汎用。 */
   customerBpId: string | null;
   /** 設計依頼から作るときはその id。手動なら null。 */
@@ -98,12 +100,17 @@ export async function createVersionInTx(
   await tx.$executeRaw`
     SELECT pg_advisory_xact_lock(
       ${VERSION_LOCK_NS}::int,
-      hashtext(${`${input.productId}:${input.customerBpId ?? ""}`})::int
+      hashtext(${`${input.itemId}:${input.customerBpId ?? ""}`})::int
     )`;
+
+  // まだ残っている旧 product_id 列も橋渡しで埋める（他コードがそちらを
+  // 読んでいても崩れない）。品目が `searchProductItemOptions`
+  // （itemType: "PRODUCT"）由来である限り、対応する products 行は必ずある。
+  const legacyProductId = await legacyProductIdForItem(input.itemId);
 
   // 系列（製品 × 受注元）の中だけを見て次の番号を決める。
   const existing = await tx.designFile.findMany({
-    where: { productId: input.productId },
+    where: { itemId: input.itemId },
     select: {
       id: true,
       version: true,
@@ -133,7 +140,8 @@ export async function createVersionInTx(
   await tx.designFile.createMany({
     data: input.files.map((f) => ({
       designRequestId: input.designRequestId,
-      productId: input.productId,
+      itemId: input.itemId,
+      productId: legacyProductId,
       customerBpId: input.customerBpId,
       fileId: f.fileId,
       version,
@@ -149,7 +157,7 @@ export async function createVersionInTx(
   // この系列に一意なので、created は必ずこの呼び出しが作った行だけになる。
   const created = await tx.designFile.findMany({
     where: {
-      productId: input.productId,
+      itemId: input.itemId,
       customerBpId: input.customerBpId,
       version,
     },
@@ -161,9 +169,15 @@ export async function createVersionInTx(
   return { version, blueprintId };
 }
 
-/** アップロード 1 枚 → files 行。失敗したら storage も片付ける。 */
+/**
+ * アップロード 1 枚 → files 行。失敗したら storage も片付ける。
+ *
+ * ストレージキー・ファイル名の接頭辞は従来どおり products.id ベース
+ * （既存オブジェクトとの命名の一貫性のためだけの利用 — 業務ロジックは
+ * itemId 側で持つ）。
+ */
 async function storeOne(
-  productId: number,
+  legacyProductId: number,
   file: { name: string; type: string; bytes: ArrayBuffer },
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<
@@ -172,9 +186,9 @@ async function storeOne(
 > {
   const checked = validateFile(file.name, file.type, file.bytes.byteLength, tr);
   if (!checked.ok) return { ok: false, error: checked.error };
-  const storageKey = `design-files/${productId}/${systematicFileName(
+  const storageKey = `design-files/${legacyProductId}/${systematicFileName(
     file.name,
-    `PRD-${productId}`,
+    `PRD-${legacyProductId}`,
   )}`;
   if (!(await putObject(storageKey, file.bytes, checked.contentType))) {
     return { ok: false, error: tr("common.storageSaveFailed") };
@@ -202,7 +216,8 @@ async function storeOne(
 }
 
 export interface UploadVersionInput {
-  productId: number;
+  /** 対象製品（品目, items.id）。 */
+  itemId: number;
   customerBpId: string | null;
   /**
    * この版を成果物とする設計依頼 (SA06)。null = 依頼を経ない手動登録。
@@ -232,13 +247,18 @@ export interface UploadVersionInput {
  */
 export async function uploadDesignVersion(
   input: UploadVersionInput,
-): Promise<ActionResult<{ version: number }>> {
+): Promise<ActionResult<{ version: number; productId: number | null }>> {
   const tr = await getTranslations();
-  const product = await prisma.product.findUnique({
-    where: { id: input.productId },
+  const productItem = await prisma.item.findUnique({
+    where: { id: input.itemId, itemType: "PRODUCT" },
     select: { id: true },
   });
-  if (!product) return actionError(tr("common.targetProductNotFound"));
+  if (!productItem) return actionError(tr("common.targetProductNotFound"));
+  // ストレージのキー・ファイル名接頭辞は従来どおり products.id ベース
+  // （既存オブジェクトとの命名の一貫性のためだけ）。
+  const legacyProductId = await legacyProductIdForItem(input.itemId);
+  if (legacyProductId == null)
+    return actionError(tr("common.targetProductNotFound"));
 
   if (input.customerBpId) {
     const bp = await prisma.businessPartner.findUnique({
@@ -254,10 +274,10 @@ export async function uploadDesignVersion(
   if (input.designRequestId) {
     const req = await prisma.designRequest.findUnique({
       where: { id: input.designRequestId },
-      select: { id: true, productId: true },
+      select: { id: true, itemId: true },
     });
     if (!req) return actionError(tr("common.targetDesignRequestNotFound"));
-    if (req.productId != null && req.productId !== input.productId) {
+    if (req.itemId != null && req.itemId !== input.itemId) {
       return actionError(tr("common.designRequestProductMismatch"));
     }
   }
@@ -292,7 +312,7 @@ export async function uploadDesignVersion(
   ];
 
   for (const item of queue) {
-    const res = await storeOne(input.productId, item.f, tr);
+    const res = await storeOne(legacyProductId, item.f, tr);
     if (!res.ok) {
       await rollback();
       return actionError(res.error);
@@ -308,7 +328,7 @@ export async function uploadDesignVersion(
     const actor = await getCurrentActorId();
     const { version, blueprintId } = await prisma.$transaction((tx) =>
       createVersionInTx(tx, {
-        productId: input.productId,
+        itemId: input.itemId,
         customerBpId: input.customerBpId,
         designRequestId: input.designRequestId ?? null,
         files: stored.map((s) => ({
@@ -326,7 +346,7 @@ export async function uploadDesignVersion(
       // 版は複数行（プレビュー/図面データ/参考資料）から成るので、この版を
       // 代表する 1 つの id として BLUEPRINT 行の uuid を使う（1.5 —
       // 以前は productId を渡していて design_files の PK と食い違っていた）。
-      recordId: blueprintId ?? String(input.productId),
+      recordId: blueprintId ?? String(input.itemId),
       after: {
         note: tr(
           input.designRequestId
@@ -334,12 +354,12 @@ export async function uploadDesignVersion(
             : "common.designFileRegisteredManuallyNote",
           { version, count: stored.length },
         ),
-        productId: input.productId,
+        itemId: input.itemId,
         customerBpId: input.customerBpId,
         designRequestId: input.designRequestId ?? null,
       },
     });
-    return actionOk({ version });
+    return actionOk({ version, productId: legacyProductId });
   } catch (e) {
     await rollback();
     return actionError(

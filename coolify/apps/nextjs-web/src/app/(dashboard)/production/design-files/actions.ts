@@ -24,6 +24,7 @@ import {
   usedVersionKeys,
   versionKey,
 } from "@/lib/design-files-core";
+import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import {
   type ActionResult,
   actionError,
@@ -51,7 +52,7 @@ async function loadRow(id: string) {
     where: { id },
     select: {
       id: true,
-      productId: true,
+      itemId: true,
       customerBpId: true,
       version: true,
       designRequestId: true,
@@ -61,7 +62,7 @@ async function loadRow(id: string) {
   if (!row) return null;
   const siblings = await prisma.designFile.findMany({
     where: {
-      productId: row.productId,
+      itemId: row.itemId,
       customerBpId: row.customerBpId,
       version: row.version,
     },
@@ -117,7 +118,11 @@ export async function updateDesignFileNotes(
         }),
       },
     });
-    if (row.productId != null) revalidatePath(`${BASE_PATH}/${row.productId}`);
+    if (row.itemId != null) {
+      const legacyProductId = await legacyProductIdForItem(row.itemId);
+      if (legacyProductId != null)
+        revalidatePath(`${BASE_PATH}/${legacyProductId}`);
+    }
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, tr("common.couldNotUpdate"), tr));
@@ -180,7 +185,11 @@ export async function deleteDesignFile(id: string): Promise<ActionResult> {
         }),
       },
     });
-    if (row.productId != null) revalidatePath(`${BASE_PATH}/${row.productId}`);
+    if (row.itemId != null) {
+      const legacyProductId = await legacyProductIdForItem(row.itemId);
+      if (legacyProductId != null)
+        revalidatePath(`${BASE_PATH}/${legacyProductId}`);
+    }
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, tr("common.couldNotDelete"), tr));
