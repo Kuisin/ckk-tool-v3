@@ -99,7 +99,10 @@ describe("入力の検査", () => {
 
   it("入庫・出庫では「同じ場所」を見ない（片側しか使わない）", () => {
     expect(
-      validateMovement(rule("IN", false, true), draft({ from: at(1), to: at(1) })),
+      validateMovement(
+        rule("IN", false, true),
+        draft({ from: at(1), to: at(1) }),
+      ),
     ).toEqual([]);
   });
 

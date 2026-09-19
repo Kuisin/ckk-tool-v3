@@ -30,23 +30,36 @@ export async function fetchMaterialInventories(): Promise<
   // スコープ行フィルタ（PLANT = 保管拠点。ALL は {} で従来通り全件）。
   const authz = await checkPermission("inventory", "READ");
   if (!authz.ok) return [];
-  const rows = await prisma.materialInventory.findMany({
-    where: plantWhere(
-      authz.access,
-      "plantId",
-    ) as Prisma.MaterialInventoryWhereInput,
-    include: {
-      material: true,
-      plant: true,
-      storageLocation: true,
-      shelf: true,
+  // 在庫は 1 表（app.item_inventory）。この画面は素材タブなので品目種別で絞る。
+  const rows = await prisma.itemInventory.findMany({
+    where: {
+      ...(plantWhere(
+        authz.access,
+        "plantId",
+      ) as Prisma.ItemInventoryWhereInput),
+      item: { itemType: "MATERIAL" },
     },
+    include: { item: true, plant: true, storageLocation: true, shelf: true },
     orderBy: { updatedAt: "desc" },
   });
 
+  // 在庫は品目で持つが、入荷予定は素材 id で引く（発注明細がまだ素材を指す）。
+  // 品目 → 素材の対応をまとめて引いておく。第 2 段 B で発注明細が item_id を
+  // 持てば、この往復は消える。
+  const itemIds = [...new Set(rows.map((r) => r.itemId))];
+  const materialsForItems = itemIds.length
+    ? await prisma.material.findMany({
+        where: { itemId: { in: itemIds } },
+        select: { id: true, itemId: true },
+      })
+    : [];
+  const materialIdByItem = new Map(
+    materialsForItems.map((m) => [m.itemId as number, m.id]),
+  );
+
   // 次回入荷（素材単位、全拠点合算 — materialAtp() と同じ規則）を一括算出:
   // ORDERED 発注明細のうち expected_at のある直近日。
-  const materialIds = [...new Set(rows.map((r) => r.materialId))];
+  const materialIds = materialsForItems.map((m) => m.id);
   const orderedItems = materialIds.length
     ? await prisma.materialPurchaseOrderItem.findMany({
         where: {
@@ -70,8 +83,8 @@ export async function fetchMaterialInventories(): Promise<
     const reservedQuantity = Number(r.reservedQuantity);
     return {
       id: r.id,
-      materialCode: r.material.code,
-      materialName: localized(r.material.name as LocalizedText | null),
+      materialCode: r.item.code ?? "",
+      materialName: localized(r.item.name as LocalizedText | null),
       plantId: r.plantId,
       plantName: plantName(r.plant),
       storageLocationId: r.storageLocationId,
@@ -84,7 +97,10 @@ export async function fetchMaterialInventories(): Promise<
       reservedQuantity,
       available: quantity - reservedQuantity,
       unit: r.unit,
-      nextReceiptDate: nextReceipt.get(r.materialId) ?? null,
+      nextReceiptDate: (() => {
+        const mid = materialIdByItem.get(r.itemId);
+        return mid == null ? null : (nextReceipt.get(mid) ?? null);
+      })(),
       updatedAt: r.updatedAt.toISOString(),
     };
   });
@@ -96,14 +112,9 @@ export async function fetchMaterialInventoryDetail(
 ): Promise<MaterialInventoryDetailData | null> {
   const authz = await checkPermission("inventory", "READ");
   if (!authz.ok) return null;
-  const r = await prisma.materialInventory.findUnique({
+  const r = await prisma.itemInventory.findUnique({
     where: { id },
-    include: {
-      material: true,
-      plant: true,
-      storageLocation: true,
-      shelf: true,
-    },
+    include: { item: true, plant: true, storageLocation: true, shelf: true },
   });
   if (!r) return null;
   // スコープ外の行は不可視（null → 呼び出し側の notFound に乗せる）。
@@ -111,9 +122,14 @@ export async function fetchMaterialInventoryDetail(
     return null;
   }
 
+  // ATP は素材 id で引く（発注明細がまだ素材を指すため）。
+  const materialRow = await prisma.material.findFirst({
+    where: { itemId: r.itemId },
+    select: { id: true },
+  });
   const [atp, transactions] = await Promise.all([
     // 拠点が設定された在庫行はその拠点の ATP、未設定行は全拠点合算。
-    materialAtp(r.materialId, r.plantId),
+    materialAtp(materialRow?.id ?? -1, r.plantId),
     fetchInventoryTransactions("MATERIAL", r.id),
   ]);
 
@@ -122,8 +138,8 @@ export async function fetchMaterialInventoryDetail(
 
   return {
     id: r.id,
-    materialCode: r.material.code,
-    materialName: localized(r.material.name as LocalizedText | null),
+    materialCode: r.item.code ?? "",
+    materialName: localized(r.item.name as LocalizedText | null),
     plantName: plantName(r.plant),
     quantity,
     reservedQuantity,

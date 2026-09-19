@@ -21,10 +21,10 @@ import { formatMovementNumber } from "@/lib/doc-number";
 import {
   applyTransaction,
   createMovement,
-  ensureItemBucket,
+  ensureItemInventory,
 } from "@/lib/inventory";
-import { inventoryNoteLabel } from "@/lib/inventory-note-labels";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
+import { inventoryNoteLabel } from "@/lib/inventory-note-labels";
 import {
   MANUAL_CAUSE,
   type MovementDraft,
@@ -53,8 +53,13 @@ function inputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
       .number()
       .int()
       .positive(tr("inventory.goodsMovement.selectAType")),
-    itemId: z.number().int().positive(tr("inventory.goodsMovement.selectAnItem")),
-    quantity: z.number().positive(tr("inventory.goodsMovement.quantityPositive")),
+    itemId: z
+      .number()
+      .int()
+      .positive(tr("inventory.goodsMovement.selectAnItem")),
+    quantity: z
+      .number()
+      .positive(tr("inventory.goodsMovement.quantityPositive")),
     lotNumber: z.number().int().nullable(),
     from: endpointSchema,
     to: endpointSchema,
@@ -124,6 +129,13 @@ export async function postGoodsMovement(
       return actionError(tr("common.scopeDenied"));
     }
 
+    const item = await prisma.item.findUnique({
+      where: { id: v.itemId },
+      select: { itemType: true },
+    });
+    if (!item) return actionError(tr("common.targetRecordNotFound"));
+    const itemType = item.itemType;
+
     const postings = postingsFor(type, draft);
     // 伝票の拠点は「どちらか片方に決まるとき」だけ入れる。拠点をまたぐ移動では
     // null（inventory_movements.plant_id の約束）。
@@ -144,13 +156,14 @@ export async function postGoodsMovement(
       });
 
       for (const posting of postings) {
-        const { inventoryId, inventoryType } = await ensureItemBucket(tx, {
+        const inventoryId = await ensureItemInventory(tx, {
           itemId: v.itemId,
           plantId: posting.endpoint.plantId,
           lotNumber: v.lotNumber,
         });
         await applyTransaction(tx, movementId, {
-          inventoryType,
+          // 台帳の区分。在庫は 1 表になったので書き込み先は選ばない。
+          inventoryType: itemType,
           inventoryId,
           transactionType: posting.transactionType,
           quantity: v.quantity,

@@ -1222,6 +1222,16 @@
     "INVENTORY_TYPE_LABEL": {
       "PRODUCT": "Product",
       "MATERIAL": "Material"
+    },
+    "ITEM_TYPE_LABEL": {
+      "PRODUCT": "Product",
+      "MATERIAL": "Material"
+    },
+    "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
+      "past": "Actual",
+      "now": "Now",
+      "supply": "Expected supply",
+      "demand": "Expected demand"
     }
   },
   "status": {
@@ -8869,7 +8879,9 @@
       "tax_category_rates": "Tax rate",
       "inventory_movements": "Stock movement",
       "stock_takes": "Stocktaking",
-      "stock_take_lines": "Stocktaking line"
+      "stock_take_lines": "Stocktaking line",
+      "item_inventory": "Stock",
+      "movement_types": "Movement type"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -10214,5 +10226,38 @@
     "deliveryOrderHelp": "The additional charges billed for this shipment. Once confirmed, billing closing turns them into invoice lines. They can only be edited while the delivery order is a draft.",
     "workOrderClosedForCharges": "Charges on a completed or cancelled work order cannot be changed. Edit them on the delivery order instead",
     "deliveryOrderClosedForCharges": "Charges can only be changed on a draft delivery order"
+  },
+  "inventory": {
+    "stockOverview": {
+      "item": "Item",
+      "itemType": "Item type",
+      "hideZeroStock": "Hide zero stock",
+      "searchPlaceholder": "Search by item name or code",
+      "summaryLine": "{rows} rows / {items} items / {sites} sites",
+      "truncatedNotice": "Too many rows to show all — narrow the filters.",
+      "noStock": "No stock"
+    },
+    "requirements": {
+      "title": "Stock / requirements",
+      "item": "Item",
+      "itemPlaceholder": "Search by code or name",
+      "plantPlaceholder": "Select a site",
+      "emptyState": "Pick an item and a site to see its past movements and upcoming supply/demand",
+      "notFound": "Item not found",
+      "onHand": "On hand",
+      "reserved": "Reserved",
+      "availableNow": "Available",
+      "nextReceipt": "Next receipt",
+      "shortageAlertTitle": "Projected shortage",
+      "shortageAlertBody": "The running balance is projected to go negative. Check the highlighted row.",
+      "truncated": "Only the most recent history is shown (older movements exist)",
+      "rowKindHeader": "Type",
+      "reference": "Reference",
+      "balance": "Balance",
+      "dateUndetermined": "Undetermined",
+      "rowKind": {
+        "now": "Now"
+      }
+    }
   }
 }

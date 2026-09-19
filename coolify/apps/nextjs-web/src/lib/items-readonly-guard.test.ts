@@ -33,19 +33,18 @@ function grep(pattern: string): string[] {
   }
 }
 
-describe("統合在庫（app.item_inventory）", () => {
-  it("アプリから書き込んでいない（A-2 までは鏡なので、書いても消される）", () => {
-    const writes = [
-      ...grep("prisma\\.itemInventory\\.create"),
-      ...grep("prisma\\.itemInventory\\.update"),
-      ...grep("prisma\\.itemInventory\\.upsert"),
-      ...grep("prisma\\.itemInventory\\.delete"),
-      ...grep("tx\\.itemInventory\\.create"),
-      ...grep("tx\\.itemInventory\\.update"),
-      ...grep("tx\\.itemInventory\\.upsert"),
-      ...grep("tx\\.itemInventory\\.delete"),
+describe("旧在庫 2 表（product_inventory / material_inventory）", () => {
+  it("アプリからもう触っていない（在庫は app.item_inventory に 1 本化した）", () => {
+    // A-2 で書き手も読み手も item_inventory へ移した。旧 2 表はまだ DB に
+    // 残っているが**中身は止まっている** — ここを読むと、動かなくなった数字を
+    // 正しい在庫として出してしまう。落とすのは次の PR なので、それまでの門。
+    const uses = [
+      ...grep("prisma\\.productInventory\\."),
+      ...grep("prisma\\.materialInventory\\."),
+      ...grep("tx\\.productInventory\\."),
+      ...grep("tx\\.materialInventory\\."),
     ];
-    expect(writes).toEqual([]);
+    expect(uses).toEqual([]);
   });
 });
 

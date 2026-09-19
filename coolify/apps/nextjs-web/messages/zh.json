@@ -1222,6 +1222,16 @@
     "INVENTORY_TYPE_LABEL": {
       "PRODUCT": "产品",
       "MATERIAL": "材料"
+    },
+    "ITEM_TYPE_LABEL": {
+      "PRODUCT": "产品",
+      "MATERIAL": "材料"
+    },
+    "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
+      "past": "实绩",
+      "now": "当前",
+      "supply": "预计供应",
+      "demand": "预计需求"
     }
   },
   "status": {
@@ -8869,7 +8879,9 @@
       "tax_category_rates": "税率",
       "inventory_movements": "出入库单",
       "stock_takes": "盘点",
-      "stock_take_lines": "盘点明细"
+      "stock_take_lines": "盘点明细",
+      "item_inventory": "库存",
+      "movement_types": "移动类型"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -10214,5 +10226,38 @@
     "deliveryOrderHelp": "本次出货要请款的附加费用。确定后由结算处理生成请款单明细。仅在出货单为草稿时可以修改。",
     "workOrderClosedForCharges": "已完成或已取消的工单无法修改附加费用。请在出货单上修改",
     "deliveryOrderClosedForCharges": "仅草稿状态的出货单可以修改附加费用"
+  },
+  "inventory": {
+    "stockOverview": {
+      "item": "品目",
+      "itemType": "品目类别",
+      "hideZeroStock": "隐藏零库存",
+      "searchPlaceholder": "按品目名称或编号搜索",
+      "summaryLine": "{rows} 行 / {items} 个品目 / {sites} 个据点",
+      "truncatedNotice": "行数过多，仅显示部分结果，请缩小筛选范围。",
+      "noStock": "没有库存"
+    },
+    "requirements": {
+      "title": "库存与需求",
+      "item": "品目",
+      "itemPlaceholder": "按编号或名称搜索",
+      "plantPlaceholder": "选择据点",
+      "emptyState": "选择品目和据点后，将显示过去实绩与未来的供需预计",
+      "notFound": "未找到该品目",
+      "onHand": "手持",
+      "reserved": "预留",
+      "availableNow": "可用",
+      "nextReceipt": "下次到货",
+      "shortageAlertTitle": "预计缺货",
+      "shortageAlertBody": "后续余额预计将变为负数，请查看高亮行。",
+      "truncated": "历史记录较多，仅显示最近的部分",
+      "rowKindHeader": "类别",
+      "reference": "参照",
+      "balance": "余额",
+      "dateUndetermined": "未定",
+      "rowKind": {
+        "now": "当前"
+      }
+    }
   }
 }

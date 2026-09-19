@@ -109,7 +109,7 @@ model StorageShelf {
 // ⚠️ **A-2 が終わるまでは鏡**。書き込みの持ち主は旧 2 表のほうで、ここへ直接
 // 書いてもトリガーに上書きされて黙って消える（lib/items-readonly-guard と同じ）。
 model ItemInventory {
-  id     String @id @db.Uuid
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   itemId Int    @map("item_id")
 
   plantId           Int?    @map("plant_id")

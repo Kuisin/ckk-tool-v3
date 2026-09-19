@@ -143,69 +143,31 @@ export async function fetchInventoryMovement(
     orderBy: { createdAt: "asc" },
   });
 
-  const productBucketIds = [
-    ...new Set(
-      txRows
-        .filter((t) => t.inventoryType === "PRODUCT")
-        .map((t) => t.inventoryId),
-    ),
-  ];
-  const materialBucketIds = [
-    ...new Set(
-      txRows
-        .filter((t) => t.inventoryType === "MATERIAL")
-        .map((t) => t.inventoryId),
-    ),
-  ];
-
-  const [productBuckets, materialBuckets] = await Promise.all([
-    productBucketIds.length
-      ? prisma.productInventory.findMany({
-          where: { id: { in: productBucketIds } },
-          include: { product: true, storageLocation: true, shelf: true },
-        })
-      : [],
-    materialBucketIds.length
-      ? prisma.materialInventory.findMany({
-          where: { id: { in: materialBucketIds } },
-          include: { material: true, storageLocation: true, shelf: true },
-        })
-      : [],
-  ]);
-
-  const productMap = new Map(productBuckets.map((b) => [b.id, b]));
-  const materialMap = new Map(materialBuckets.map((b) => [b.id, b]));
+  // 在庫は 1 表（app.item_inventory）になったので、種別で 2 回引く必要はない。
+  // 明細 1 行ずつ引くと N+1 になるので、まとめて 1 回。
+  const bucketIds = [...new Set(txRows.map((t) => t.inventoryId))];
+  const buckets = bucketIds.length
+    ? await prisma.itemInventory.findMany({
+        where: { id: { in: bucketIds } },
+        include: { item: true, storageLocation: true, shelf: true },
+      })
+    : [];
+  const bucketMap = new Map(buckets.map((b) => [b.id, b]));
 
   const lines: MovementLineRow[] = txRows.map((t) => {
-    if (t.inventoryType === "PRODUCT") {
-      const bucket = productMap.get(t.inventoryId);
-      return {
-        id: t.id,
-        transactionType: t.transactionType,
-        inventoryType: t.inventoryType,
-        itemName: bucket
-          ? localized(bucket.product.name as LocalizedText | null)
-          : "—",
-        lotNumber: bucket?.lotNumber ?? null,
-        locationLabel: bucket ? storageLabelOf(bucket) : null,
-        quantity: Number(t.quantity),
-        // バケットが引けない行は品目名も "—" になる。単位だけ勝手に補うと
-        // 「個」で計上されたように読めるので、分からないものは空にする。
-        unit: bucket?.product.unit ?? "",
-        notes: t.notes,
-      };
-    }
-    const bucket = materialMap.get(t.inventoryId);
+    const bucket = bucketMap.get(t.inventoryId);
     return {
       id: t.id,
       transactionType: t.transactionType,
       inventoryType: t.inventoryType,
       itemName: bucket
-        ? localized(bucket.material.name as LocalizedText | null)
+        ? localized(bucket.item.name as LocalizedText | null)
         : "—",
-      lotNumber: null,
+      lotNumber: bucket?.lotNumber ?? null,
       locationLabel: bucket ? storageLabelOf(bucket) : null,
       quantity: Number(t.quantity),
+      // バケットが引けない行は品目名も "—" になる。単位だけ勝手に補うと
+      // その単位で計上されたように読めるので、分からないものは空にする。
       unit: bucket?.unit ?? "",
       notes: t.notes,
     };

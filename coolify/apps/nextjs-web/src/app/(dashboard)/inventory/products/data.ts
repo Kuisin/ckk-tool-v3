@@ -54,23 +54,22 @@ export async function fetchProductInventories(): Promise<
   // スコープ行フィルタ（PLANT = 保管拠点。ALL は {} で従来通り全件）。
   const authz = await checkPermission("inventory", "READ");
   if (!authz.ok) return [];
-  const rows = await prisma.productInventory.findMany({
-    where: plantWhere(
-      authz.access,
-      "plantId",
-    ) as Prisma.ProductInventoryWhereInput,
-    include: {
-      product: true,
-      plant: true,
-      storageLocation: true,
-      shelf: true,
+  // 在庫は 1 表（app.item_inventory）。この画面は製品タブなので品目種別で絞る。
+  const rows = await prisma.itemInventory.findMany({
+    where: {
+      ...(plantWhere(
+        authz.access,
+        "plantId",
+      ) as Prisma.ItemInventoryWhereInput),
+      item: { itemType: "PRODUCT" },
     },
+    include: { item: true, plant: true, storageLocation: true, shelf: true },
     orderBy: { updatedAt: "desc" },
   });
   return rows.map((r) => ({
     id: r.id,
-    productName: productName(r.product),
-    productCode: formatProductNumber(r.product.yearMonth, r.product.seq),
+    productName: localized(r.item.name as LocalizedText | null),
+    productCode: r.item.code,
     plantId: r.plantId,
     plantName: plantName(r.plant),
     storageLocationId: r.storageLocationId,
@@ -80,9 +79,9 @@ export async function fetchProductInventories(): Promise<
     shelfId: r.shelfId,
     shelfCode: r.shelf?.code ?? null,
     lotNumber: r.lotNumber,
-    quantity: r.quantity,
-    reservedQuantity: r.reservedQuantity,
-    available: r.quantity - r.reservedQuantity,
+    quantity: Number(r.quantity),
+    reservedQuantity: Number(r.reservedQuantity),
+    available: Number(r.quantity) - Number(r.reservedQuantity),
     isSemiFinished: r.isSemiFinished,
     updatedAt: r.updatedAt.toISOString(),
   }));
@@ -196,14 +195,9 @@ export async function fetchProductInventoryDetail(
 ): Promise<ProductInventoryDetailData | null> {
   const authz = await checkPermission("inventory", "READ");
   if (!authz.ok) return null;
-  const r = await prisma.productInventory.findUnique({
+  const r = await prisma.itemInventory.findUnique({
     where: { id },
-    include: {
-      product: true,
-      plant: true,
-      storageLocation: true,
-      shelf: true,
-    },
+    include: { item: true, plant: true, storageLocation: true, shelf: true },
   });
   if (!r) return null;
   // スコープ外の行は不可視（null → 呼び出し側の notFound に乗せる）。
@@ -236,13 +230,13 @@ export async function fetchProductInventoryDetail(
 
   return {
     id: r.id,
-    productName: productName(r.product),
-    productCode: formatProductNumber(r.product.yearMonth, r.product.seq),
+    productName: localized(r.item.name as LocalizedText | null),
+    productCode: r.item.code,
     plantName: plantName(r.plant),
     lotNumber: r.lotNumber,
-    quantity: r.quantity,
-    reservedQuantity: r.reservedQuantity,
-    available: r.quantity - r.reservedQuantity,
+    quantity: Number(r.quantity),
+    reservedQuantity: Number(r.reservedQuantity),
+    available: Number(r.quantity) - Number(r.reservedQuantity),
     isSemiFinished: r.isSemiFinished,
     storageLabel: storageLabelOf(r),
     location: r.location,

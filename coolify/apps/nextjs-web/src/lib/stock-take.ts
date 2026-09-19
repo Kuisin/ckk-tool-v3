@@ -33,33 +33,20 @@ export async function snapshotStockTakeLines(
 ): Promise<number> {
   const locationFilter = storageLocationId == null ? {} : { storageLocationId };
 
-  const products = await tx.productInventory.findMany({
+  // 在庫は 1 表になったので、品目種別で 2 回引く必要はない。
+  const buckets = await tx.itemInventory.findMany({
     where: { plantId, ...locationFilter },
-    select: { id: true, quantity: true },
-    orderBy: { id: "asc" },
-  });
-  const materials = await tx.materialInventory.findMany({
-    where: { plantId, ...locationFilter },
-    select: { id: true, quantity: true },
+    select: { id: true, quantity: true, item: { select: { itemType: true } } },
     orderBy: { id: "asc" },
   });
 
-  const data = [
-    ...products.map((r, i) => ({
-      stockTakeId,
-      inventoryType: "PRODUCT" as const,
-      inventoryId: r.id,
-      bookQuantity: r.quantity,
-      sortOrder: i,
-    })),
-    ...materials.map((r, i) => ({
-      stockTakeId,
-      inventoryType: "MATERIAL" as const,
-      inventoryId: r.id,
-      bookQuantity: r.quantity,
-      sortOrder: products.length + i,
-    })),
-  ];
+  const data = buckets.map((r, i) => ({
+    stockTakeId,
+    inventoryType: r.item.itemType,
+    inventoryId: r.id,
+    bookQuantity: r.quantity,
+    sortOrder: i,
+  }));
   if (data.length === 0) return 0;
   await tx.stockTakeLine.createMany({ data });
   return data.length;
@@ -125,22 +112,14 @@ export async function confirmStockTakeTx(
     if (line.countedQuantity == null) continue;
 
     // 実数を読み直す（この tx の中 = 確定と同じ瞬間の値）。
-    const live =
-      line.inventoryType === "PRODUCT"
-        ? (
-            await tx.productInventory.findUnique({
-              where: { id: line.inventoryId },
-              select: { quantity: true },
-            })
-          )?.quantity
-        : Number(
-            (
-              await tx.materialInventory.findUnique({
-                where: { id: line.inventoryId },
-                select: { quantity: true },
-              })
-            )?.quantity ?? Number.NaN,
-          );
+    const live = Number(
+      (
+        await tx.itemInventory.findUnique({
+          where: { id: line.inventoryId },
+          select: { quantity: true },
+        })
+      )?.quantity ?? Number.NaN,
+    );
     // バケットが消えていた（マスタ整理など）行は飛ばす — 存在しない在庫は
     // 数えようがない。落とさずに黙って飛ばすのは、他の行の調整を止めないため。
     if (live == null || Number.isNaN(live)) continue;

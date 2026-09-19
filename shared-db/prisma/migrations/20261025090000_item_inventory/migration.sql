@@ -30,7 +30,9 @@
 
 -- CreateTable
 CREATE TABLE "app"."item_inventory" (
-    "id" UUID NOT NULL,
+    -- 既定値を持つ。流し込みは旧行の id を明示で入れるが、切り替え後はアプリが
+    -- 新しいバケットを作る（そのときは採らせる）。
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "item_id" INTEGER NOT NULL,
     "plant_id" INTEGER,
     "storage_location_id" INTEGER,

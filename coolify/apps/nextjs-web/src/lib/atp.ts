@@ -28,9 +28,17 @@ export async function materialAtp(
   materialId: number,
   plantId?: number | null,
 ): Promise<MaterialAtp> {
+  // 在庫は品目で持つ（app.item_inventory）。素材 id から品目 id を先に引く
+  // （第 2 段 B で参照側が item_id を持てば、この 1 往復は消える）。
+  const materialRow = await prisma.material.findUnique({
+    where: { id: materialId },
+    select: { itemId: true },
+  });
+  const itemId = materialRow?.itemId ?? -1;
+
   const [invRows, orderedItems] = await Promise.all([
-    prisma.materialInventory.findMany({
-      where: { materialId, ...(plantId != null ? { plantId } : {}) },
+    prisma.itemInventory.findMany({
+      where: { itemId, ...(plantId != null ? { plantId } : {}) },
     }),
     prisma.materialPurchaseOrderItem.findMany({
       where: {
