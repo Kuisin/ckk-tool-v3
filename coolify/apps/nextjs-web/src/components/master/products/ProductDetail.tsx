@@ -40,6 +40,10 @@ import { useIsMobile } from "@/hooks/useViewport";
 import { orderTypeLabel } from "@/lib/enum-labels";
 import type { RouteView } from "@/lib/product-routes-core";
 import { isReservedSpecKey } from "@/lib/product-types";
+import {
+  type CustomerProductCodeRow,
+  CustomerProductCodesPanel,
+} from "./CustomerProductCodesPanel";
 import { ProductDesignFiles } from "./ProductDesignFiles";
 import {
   DeleteProductModal,
@@ -95,9 +99,15 @@ export function ProductDetail({
   routes,
   designFiles = [],
   designRequests = [],
+  customerCodes = [],
+  canManage = false,
 }: {
   record: ProductDetailData;
   auditEntries: AuditEntry[];
+  /** 顧客専用の製品コード（顧客品番タブ）。 */
+  customerCodes?: CustomerProductCodeRow[];
+  /** master:UPDATE を持つか — 顧客品番の編集ボタンの出し分け。 */
+  canManage?: boolean;
   /** 工程リスト（ルート）— 工程タブ。 */
   routes: RouteView[];
   /**
@@ -230,6 +240,9 @@ export function ProductDetail({
           <Tabs.Tab value="routes">
             {tr("master.productDetail.routesTab")}
           </Tabs.Tab>
+          <Tabs.Tab value="customerCodes">
+            {tr("master.customerProductCodes.title")}
+          </Tabs.Tab>
           <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
@@ -283,6 +296,14 @@ export function ProductDetail({
           <ProductRoutesPanel
             links={productRouteLinks(record.id)}
             routes={routes}
+          />
+        </Tabs.Panel>
+
+        <Tabs.Panel keepMounted={false} pt="md" value="customerCodes">
+          <CustomerProductCodesPanel
+            canEdit={canManage}
+            productId={record.id}
+            rows={customerCodes}
           />
         </Tabs.Panel>
 

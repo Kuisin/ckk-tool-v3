@@ -3,22 +3,29 @@
 /**
  * ClosingTable — 締日処理 一覧 (BL02, design.md §8.1 / §14).
  *
- * Columns: 顧客 / 締日 / 合計金額 / 状態 / 処理日。行クリック → 詳細。
- * ヘッダアクション「締日処理を実行」— 対象月（年・月 Select）を選んで
- * runClosing(yearMonth) を実行し、未請求出荷から PENDING 行を作成/更新する。
+ * Columns: 顧客 / 締日 / 実行区分 / 合計金額 / 状態 / 処理日。行クリック → 詳細。
+ * ヘッダアクション「締日処理を実行」— **指定日**（既定 = 今日）を選んで
+ * runClosing(dateIso) を実行する。指定日までに締日が到来し、まだ締めていない
+ * 顧客すべての未請求出荷から PENDING 行を作り、締日を過ぎている行はそのまま
+ * 請求書（下書き）まで作る（§9 更新 — 旧・月選択の実行はここで置き換わった）。
  */
 
 import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
+import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import {
   IconCalendarDue,
+  IconFileInvoice,
   IconPlayerPlay,
   IconSearch,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
-import { runClosing } from "@/app/(dashboard)/billing/closings/actions";
+import {
+  processClosings,
+  runClosing,
+} from "@/app/(dashboard)/billing/closings/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
@@ -29,11 +36,19 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { statusOptions } from "@/lib/status-map";
-import type { BillingClosing } from "./model";
+import { type BillingClosing, isProcessable } from "./model";
 
 const BASE_PATH = "/billing/closings";
 
-/** 「締日処理を実行」モーダル — 対象月を選んで runClosing。 */
+/** Date → "YYYY-MM-DD"（ローカル日時のまま、UTC に変換しない）。 */
+function isoFromDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** 「締日処理を実行」モーダル — 指定日（既定 = 今日）を選んで runClosing。 */
 function RunClosingModal({
   opened,
   onClose,
@@ -43,34 +58,17 @@ function RunClosingModal({
 }) {
   const tr = useTranslations();
   const router = useRouter();
-
-  /** 対象月の選択肢 — 前年〜当年（実行は過去月が主）。 */
-  const yearOptions = (): { value: string; label: string }[] => {
-    const current = new Date().getFullYear();
-    return [current - 1, current].map((y) => ({
-      value: String(y),
-      label: tr("billing.closingTable.yearLabel", { year: y }),
-    }));
-  };
-
-  const monthOptions = Array.from({ length: 12 }, (_, i) => ({
-    value: String(i + 1).padStart(2, "0"),
-    label: tr("billing.closingTable.monthLabel", { month: i + 1 }),
-  }));
   const [isPending, startTransition] = useTransition();
-  const now = new Date();
-  // 対象月は URL に保持（既定 = 当年・当月のときはパラメータ省略）
-  const [year, setYear] = useUrlStringState("year", String(now.getFullYear()));
-  const [month, setMonth] = useUrlStringState(
-    "month",
-    String(now.getMonth() + 1).padStart(2, "0"),
-  );
+  const todayIso = isoFromDate(new Date());
+  // 指定日は URL に保持（既定 = 今日のときはパラメータ省略）
+  const [dateIso, setDateIso] = useUrlStringState("date", todayIso);
 
   const execute = () => {
     startTransition(async () => {
-      const result = await runClosing(`${year}${month}`);
+      const result = await runClosing(dateIso);
       if (result.ok) {
-        const { created, updated, skipped } = result.data;
+        const { created, updated, skipped, invoiceNumbers, failures } =
+          result.data;
         notifications.show({
           title: tr("billing.closings.theBillingClosingWasRun"),
           message:
@@ -80,10 +78,28 @@ function RunClosingModal({
             }) +
             (skipped > 0
               ? ` / ${tr("billing.closingTable.skippedCount", { skipped })}`
+              : "") +
+            (invoiceNumbers.length > 0
+              ? ` / ${tr("billing.closings.invoicesWereGenerated", { count: invoiceNumbers.length })}`
               : ""),
           color: "green",
         });
+        if (failures.length > 0) {
+          notifications.show({
+            title: tr("billing.closings.someCouldNotBeProcessed", {
+              count: failures.length,
+            }),
+            message: failures
+              .map((f) => `${f.customerName}: ${f.error}`)
+              .join(" / "),
+            color: "red",
+            autoClose: false,
+          });
+        }
         onClose();
+        router.push(
+          invoiceNumbers.length > 0 ? "/billing/invoices" : BASE_PATH,
+        );
         router.refresh();
       } else {
         notifications.show({
@@ -105,34 +121,32 @@ function RunClosingModal({
       size="sm"
       title={tr("billing.closings.runTheBillingClosing")}
     >
-      <Text size="sm">
-        {tr("billing.closings.aggregatesTheMonthSUnbilledShipments")}
+      <Text mb="sm" size="sm">
+        {tr("billing.closings.aggregatesUnbilledShipmentsUpToDate")}
       </Text>
-      <Group grow>
-        <Select
-          allowDeselect={false}
-          data={yearOptions()}
-          label={tr("billing.closings.years")}
-          onChange={(v) => v && setYear(v)}
-          value={year}
-        />
-        <Select
-          allowDeselect={false}
-          data={monthOptions}
-          label={tr("billing.closings.months")}
-          onChange={(v) => v && setMonth(v)}
-          value={month}
-        />
-      </Group>
+      <DatePickerInput
+        label={tr("billing.closings.targetDate")}
+        onChange={(v) => v && setDateIso(v)}
+        value={dateIso}
+        valueFormat="YYYY/MM/DD"
+      />
     </ModalShell>
   );
 }
 
-export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
+export function ClosingTable({
+  rows,
+  todayIso,
+}: {
+  rows: BillingClosing[];
+  /** JST の今日（"YYYY-MM-DD"）— 締日を過ぎたかの判定に使う。サーバーが渡す。 */
+  todayIso: string;
+}) {
   const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
+  const [, startTransition] = useTransition();
 
   // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
   const [search, setSearch] = useUrlStringState("q");
@@ -150,6 +164,71 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
     return matchesSearch && matchesStatus;
   });
 
+  /**
+   * 選んだ行をまとめて請求書にする。
+   *
+   * **処理できない行は先に外す**（未処理でない / 締日前）。混ざったまま投げると
+   * 「N 件中 M 件失敗」と出るだけで、何が悪かったのかは結局 1 件ずつ開いて
+   * 確かめることになる。判定は画面のボタン活性と同じ isProcessable。
+   */
+  const bulkProcess = (targets: BillingClosing[]) => {
+    const ready = targets.filter((c) => isProcessable(c, todayIso));
+    const skipped = targets.length - ready.length;
+    if (ready.length === 0) {
+      notifications.show({
+        title: tr("billing.closings.nothingToProcess"),
+        message: tr("billing.closings.selectPendingPastClosingDate"),
+        color: "orange",
+      });
+      return;
+    }
+    startTransition(async () => {
+      const result = await processClosings(ready.map((c) => c.id));
+      if (!result.ok) {
+        notifications.show({
+          title: tr("common.error2"),
+          message: result.error,
+          color: "red",
+        });
+        return;
+      }
+      const { invoiceNumbers, failures } = result.data;
+      // 失敗は理由つきで並べる（会社名まで出さないと直しようがない）。
+      if (failures.length > 0) {
+        notifications.show({
+          title: tr("billing.closings.someCouldNotBeProcessed", {
+            count: failures.length,
+          }),
+          message: failures
+            .map((f) => `${f.customerName}: ${f.error}`)
+            .join(" / "),
+          color: "red",
+          autoClose: false,
+        });
+      }
+      if (invoiceNumbers.length > 0) {
+        notifications.show({
+          title: tr("billing.closings.invoicesWereGenerated", {
+            count: invoiceNumbers.length,
+          }),
+          message:
+            invoiceNumbers.join(" / ") +
+            (skipped > 0
+              ? ` / ${tr("billing.closings.skippedNotReady", { count: skipped })}`
+              : ""),
+          color: "green",
+        });
+      }
+      router.refresh();
+    });
+  };
+
+  /** 実行区分の表示ラベル（定期 / 手動）。 */
+  const kindLabel = (kind: BillingClosing["kind"]) =>
+    kind === "MANUAL"
+      ? tr("billing.closings.kindManual")
+      : tr("billing.closings.kindScheduled");
+
   const columns: Column<BillingClosing>[] = [
     {
       key: "customerName",
@@ -166,6 +245,17 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
       render: (c) => (
         <Text className="tabular-nums" size="sm">
           {fmt.date(c.closingDate)}
+        </Text>
+      ),
+    },
+    {
+      key: "kind",
+      header: tr("billing.closings.kind"),
+      width: 90,
+      sortValue: (c) => c.kind,
+      render: (c) => (
+        <Text c="dimmed" size="sm">
+          {kindLabel(c.kind)}
         </Text>
       ),
     },
@@ -236,6 +326,14 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
       title={tr("common.billingClosing")}
     >
       <DataTable
+        bulkActions={[
+          {
+            label: tr("billing.closings.generateInvoicesInBulk"),
+            icon: <IconFileInvoice size={16} />,
+            color: "blue",
+            onAction: bulkProcess,
+          },
+        ]}
         columns={columns}
         data={filtered}
         defaultSort={{ key: "closingDate", dir: "desc" }}
@@ -251,6 +349,8 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
               </Text>
               <Text c="dimmed" size="xs">
                 {tr("common.closingDay")}: {fmt.date(c.closingDate)}
+                {" · "}
+                {kindLabel(c.kind)}
               </Text>
               <Group gap="md" mt={2}>
                 <MoneyText ta="left" value={c.totalAmount} />
@@ -264,6 +364,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
             </Stack>
           </Group>
         )}
+        selectable
         urlState
       />
 

@@ -14,6 +14,7 @@
  */
 
 import { fetchDeliveryNoteForDocument } from "@/app/(dashboard)/shipping/delivery-notes/data";
+import { deliveryNoteTotals } from "@/components/shipping/delivery-notes/model";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
@@ -24,6 +25,8 @@ import {
   deliveryMethodLabelLocalized,
   deliveryNotePdfLabels,
   pdfAttnLine,
+  taxBaseSuffixLocalized,
+  taxRowLabelLocalized,
 } from "@/lib/pdf-labels";
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
@@ -86,6 +89,8 @@ export async function GET(request: Request): Promise<Response> {
 
   const lang = normalizeLocale(note.recipientDocumentLocale);
   const labels = deliveryNotePdfLabels(lang);
+  // 画面（DeliveryNoteDetail）と同じ関数を通すので、PDF と画面で行の数も金額も一致する。
+  const totals = deliveryNoteTotals(note);
 
   // 宛先メタ: 支店 + ご担当者、ユーザー直送は届け先（最終需要家）を明記する。
   const metaLines = [pdfAttnLine(lang, note.recipientBranchName)];
@@ -115,17 +120,35 @@ export async function GET(request: Request): Promise<Response> {
       : "",
     items: note.items.map((it) => ({
       name: it.productName,
-      code: it.productId,
+      // 印字を変えないため**旧 products.id のまま**（品目統合の前から
+      // この欄には内部 id が入っている）。
+      code: it.productLegacyId,
       quantity: yen(it.quantity),
       price_cells: note.includePrice
         ? `<td class="right">${yen(it.unitPrice ?? 0)}</td><td class="right">${yen(it.amount ?? 0)}</td>`
         : "",
       notes: it.notes ?? "",
     })),
-    totals_block: note.includePrice
+    // 価格記載ありのときだけ合計ブロックを出す。中身は請求書と同じ区分記載
+    // （小計 → 税率ごとの消費税 → 合計（税込））— 納品書に刷った金額と、後で
+    // 届く請求書の金額が食い違ってはいけない。
+    totals_block: totals
       ? `<div class="totals"><table>
            <tr><td>${labels.totalQuantity}</td><td>${yen(note.totalQuantity)}</td></tr>
-           <tr class="grand-total"><td>${labels.total}</td><td>¥ ${yen(note.totalAmount ?? 0)}</td></tr>
+           <tr><td>${labels.subtotal}</td><td>¥ ${yen(totals.subtotal)}</td></tr>
+           ${totals.buckets
+             .map(
+               (b) =>
+                 `<tr><td>${escapeHtml(taxRowLabelLocalized(b.taxRate, lang))}${
+                   totals.buckets.length > 1
+                     ? escapeHtml(
+                         taxBaseSuffixLocalized(yen(b.taxableBase), lang),
+                       )
+                     : ""
+                 }</td><td>¥ ${yen(b.taxAmount)}</td></tr>`,
+             )
+             .join("")}
+           <tr class="grand-total"><td>${labels.grandTotalTaxIncl}</td><td>¥ ${yen(totals.totalAmountInclTax)}</td></tr>
          </table></div>`
       : "",
     notes: multilineHtml(note.notes),

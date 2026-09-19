@@ -29,6 +29,10 @@ import {
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
+import {
+  itemIdForLegacyProduct,
+  legacyProductIdsForItems,
+} from "@/lib/item-legacy-product";
 import { label } from "@/lib/messages";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
@@ -55,7 +59,7 @@ const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
  */
 const LIST_INCLUDE = {
   orderLine: true,
-  product: true,
+  item: true,
   // 版が載る系列（受注元）。一覧でも「誰向けの図面か」が要る。
   customerBp: { select: { name: true } },
   createdByUser: { select: { displayName: true } },
@@ -105,8 +109,20 @@ function productLabel(p: {
   return code ? `${name} ${code}` : name;
 }
 
-/** 参照元・製品・担当者など、一覧と詳細で共通の射影。 */
-function mapCommon(r: ListRow) {
+/** 品目（items.id）ラベル: 名称 + コード（items.code は既に整形済み）。 */
+function itemLabel(item: { name: unknown; code: string | null }): string {
+  const name = localized(item.name as LocalizedText | null);
+  return item.code ? `${name} ${item.code}` : name;
+}
+
+/**
+ * 参照元・製品・担当者など、一覧と詳細で共通の射影。
+ *
+ * `legacyProductIds` は「設計図 (PD06) の一覧・詳細（まだ products.id 基準）
+ * へのリンク」専用 — 品目 (itemId) から 1 回だけバッチ解決したもの。読み・書き
+ * の判定にはここでも一切使わない。
+ */
+function mapCommon(r: ListRow, legacyProductIds: Map<number, number>) {
   return {
     id: r.requestNumber,
     requestNumber: r.requestNumber,
@@ -118,8 +134,10 @@ function mapCommon(r: ListRow) {
         : null,
     orderLineId: r.orderLineId,
     orderLineNumber: r.orderLine ? orderLineNumberOf(r.orderLine) : null,
-    productId: r.productId != null ? String(r.productId) : null,
-    productName: r.product ? productLabel(r.product) : null,
+    itemId: r.itemId != null ? String(r.itemId) : null,
+    productLegacyId:
+      r.itemId != null ? (legacyProductIds.get(r.itemId) ?? null) : null,
+    productName: r.item ? itemLabel(r.item) : null,
     customerBpId: r.customerBpId,
     customerName: localized(r.customerBp?.name as LocalizedText | null) || null,
     description: r.description,
@@ -209,8 +227,15 @@ export async function fetchDesignRequests(): Promise<DesignRequest[]> {
   const rows = await findListRows(
     designRequestScope(authz.access, authz.userId),
   );
+  const legacyProductIds = await legacyProductIdsForItems(
+    rows.map((r) => r.itemId).filter((id): id is number => id != null),
+  );
   // 一覧は履歴・版を描かないので空で返す（型は詳細と共有する）。
-  return rows.map((r) => ({ ...mapCommon(r), history: [], files: [] }));
+  return rows.map((r) => ({
+    ...mapCommon(r, legacyProductIds),
+    history: [],
+    files: [],
+  }));
 }
 
 /** 1件取得 — 未存在・スコープ外は null。 */
@@ -223,8 +248,11 @@ export async function fetchDesignRequest(
   const row: DetailRow | null = await findRow(requestNumber);
   if (!row) return null;
   if (!designRequestInScope(authz.access, row, authz.userId)) return null;
+  const legacyProductIds = await legacyProductIdsForItems(
+    row.itemId != null ? [row.itemId] : [],
+  );
   return {
-    ...mapCommon(row),
+    ...mapCommon(row, legacyProductIds),
     history: await resolveHistory(row.history, locale),
     files: row.files.map((f) => ({
       id: f.id,
@@ -283,11 +311,18 @@ export function fetchDesignRequestsForOrderLine(
   return fetchLinks({ orderLineId, status: { not: "CANCELLED" } });
 }
 
-/** 製品に紐づく設計依頼（製品詳細 関連タブ）。 */
-export function fetchDesignRequestsForProduct(
+/**
+ * 製品に紐づく設計依頼（製品詳細 関連タブ）。
+ * `productId` は products.id（呼び出し側は製品マスタの URL 文脈のまま） —
+ * design_requests 自体の絞り込みは品目 (items.id) で行うので、ここで
+ * 1 回だけ変換する。
+ */
+export async function fetchDesignRequestsForProduct(
   productId: number,
 ): Promise<DesignRequestLink[]> {
-  return fetchLinks({ productId, status: { not: "CANCELLED" } });
+  const itemId = await itemIdForLegacyProduct(productId);
+  if (itemId == null) return [];
+  return fetchLinks({ itemId, status: { not: "CANCELLED" } });
 }
 
 export interface QuoteOption {
@@ -301,21 +336,23 @@ export interface QuoteOption {
  * フォームが「新規/改訂の根拠」と「元図面の選択肢」を同時に要るので 1 回で返す。
  * 判定規則そのものは actions.ts の detectDesignKind と同じ（design_files の存在）
  * — あちらは保存する値を決め、こちらは画面に見せる。
+ *
+ * `itemId` は品目（items.id）— フォームのピッカーが選ぶ値そのまま。
  */
 export async function fetchDesignKindContext(
-  productId: string,
+  itemId: string,
   customerBpId: string | null = null,
 ): Promise<{
   detection: DesignKindDetection;
   versions: QuoteOption[];
 } | null> {
-  const id = Number(productId);
+  const id = Number(itemId);
   if (!Number.isInteger(id) || id <= 0) return null;
   // 版は (製品 × 受注元) ごとの系列なので、**その系列だけ**を見て数える。
   // 「顧客 A には図面があるが B にはまだ無い」は B から見れば新規で、
   // 製品全体で数えると改訂に見えてしまう。
   const rows = await prisma.designFile.findMany({
-    where: { productId: id, customerBpId },
+    where: { itemId: id, customerBpId },
     include: { file: { select: { filename: true } } },
     orderBy: [{ version: "desc" }, { role: "asc" }],
     take: 50,
@@ -408,13 +445,37 @@ export async function fetchOrderLineDeliveryDate(
   return r?.deliveryDate ? r.deliveryDate.toISOString().slice(0, 10) : null;
 }
 
-/** 製品 1 件の参照解決（`?product=<id>` プリフィル用）。 */
+/**
+ * 製品 1 件の参照解決（`?product=<products.id>` プリフィル用）。
+ * 返す value は品目 (items.id) — ピッカーは品目ベースなので、ここで
+ * 1 回だけ変換する。
+ */
 export async function fetchProductRef(
   productId: string,
 ): Promise<QuoteOption | null> {
   const id = Number(productId);
   if (!Number.isInteger(id) || id <= 0) return null;
   const r = await prisma.product.findUnique({ where: { id } });
+  if (!r || r.itemId == null) return null;
+  return { value: String(r.itemId), label: productLabel(r) };
+}
+
+/**
+ * 品目 1 件の参照解決（`?item=<items.id>` プリフィル用）。
+ *
+ * 見積フォームの「単価が引けない → 設計依頼を起票」からの入口。あちらは
+ * 既に品目 id を持っている（品目統合 第 2 段 C）ので、products.id を渡す
+ * `?product=` とは**別のクエリ名**にしてある — 同じ名前で 2 つの id 空間を
+ * 運ぶと、どちらが来たのか見分けられない。
+ */
+export async function fetchProductItemRef(
+  itemId: string,
+): Promise<QuoteOption | null> {
+  const id = Number(itemId);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  const r = await prisma.item.findFirst({
+    where: { id, itemType: "PRODUCT" },
+  });
   if (!r) return null;
-  return { value: String(r.id), label: productLabel(r) };
+  return { value: String(r.id), label: itemLabel(r) };
 }

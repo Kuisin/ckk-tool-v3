@@ -90,13 +90,14 @@ async function richDescription(
         },
         include: {
           customerBp: true,
-          product: true,
+          // 品目統合 第 2 段 C — 価格表の製品名は品目側から読む。
+          item: true,
           variants: { orderBy: { orderType: "asc" as const } },
         },
       });
       if (!r) return null;
       const customer = localized(r.customerBp.name as LocalizedText | null);
-      const product = localized(r.product.name as LocalizedText | null);
+      const product = localized(r.item?.name as LocalizedText | null);
       const types = r.variants
         .map((v) => ORDER_TYPE_LABEL[v.orderType] ?? v.orderType)
         .join("・");
@@ -234,11 +235,11 @@ async function richDescriptionByNumber(
     case "design-request": {
       const r = await prisma.designRequest.findUnique({
         where: { requestNumber: target.docNumber },
-        include: { product: true },
+        include: { item: true },
       });
       if (!r) return null;
-      const product = r.product
-        ? localized(r.product.name as LocalizedText | null)
+      const product = r.item
+        ? localized(r.item.name as LocalizedText | null)
         : "製品未設定";
       return `${product} / 状態: ${r.status}`;
     }

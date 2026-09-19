@@ -208,8 +208,12 @@ export function normalizeMaterialDelivery(
 
 /** 突合済みの明細 1 行（抽出結果 + 引き当て）。 */
 export interface PurchaseIntakeLine extends PurchaseExtractedItem {
-  /** 突合できた素材の内部 id（文字列）。null = 未突合（人が選ぶ）。 */
-  materialId: string | null;
+  /**
+   * 突合できた素材の品目 id（items.id、文字列）。null = 未突合（人が選ぶ）。
+   * 品目統合 第 2 段 B — 保存先（material_purchase_order_items /
+   * material_receipts）の item_id と同じ値。
+   */
+  itemId: string | null;
   /** 突合できた素材の表示名。 */
   materialLabel: string | null;
   /** 素材マスタの単位（突合できたときだけ）。入荷の単位はこれで固定する。 */

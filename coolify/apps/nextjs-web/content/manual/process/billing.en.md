@@ -26,7 +26,7 @@ A page covering the flow from closing what has been delivered and making the inv
 | 3. Issue | Issue the PDF | Accounting | [Invoice](/manual/en/operations/billing/invoice/user) (`BL01`) |
 | 4. Send | Send it to the customer and set it to sent | Accounting | [Invoice](/manual/en/operations/billing/invoice/user) (`BL01`) |
 | 5. Record payment | Set it to paid once payment arrives | Accounting | [Invoice](/manual/en/operations/billing/invoice/user) (`BL01`) |
-| 6. Hand over to accounting | Export the CSV for 弥生会計 (Yayoi Accounting) | Accounting | [Billing closing](/manual/en/operations/billing/billing-closing/user) (`BL02`) |
+| 6. Hand over to accounting | Export the journal CSV for the accounting software | Accounting | [Billing closing](/manual/en/operations/billing/billing-closing/user) (`BL02`) |
 
 ## What happens at each stage
 
@@ -48,9 +48,9 @@ Check the line items and amounts (subtotal, tax, total) of the invoice that was 
 
 ### 6. Handing over to accounting
 
-What has been closed can be exported as a CSV for 弥生会計 (Yayoi Accounting). An exported billing closing becomes「エクスポート済」(exported).
+What has been closed can be exported as a journal CSV for the accounting software (TKC FX4 Cloud). An exported billing closing becomes「エクスポート済」(exported).
 
-![Invoice actions menu. Yayoi Accounting CSV is highlighted with a red box](../assets/screenshots/flow-invoice-csv-01.png)
+![Invoice actions menu. Accounting CSV is highlighted with a red box](../assets/screenshots/flow-invoice-csv-01.png)
 
 ## Document states
 

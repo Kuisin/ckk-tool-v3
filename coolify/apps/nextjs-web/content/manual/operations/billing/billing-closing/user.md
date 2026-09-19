@@ -107,7 +107,7 @@ screenshots: [billing-closing-list-01, billing-closing-run-01, billing-closing-d
 
 締める前に、その期間の出荷がすべて記録されているか確認してください。**あとから出荷を足しても、締めた請求書には入りません** — 次の期間に回ります。
 
-会計ソフト（弥生会計 Next）用の CSV の書き出しは、この画面ではなく **請求書ごと** に行います。[請求書](/manual/ja/operations/billing/invoice/user)の画面で右上の「**…**」から「**弥生会計CSV**」を選んでください。書き出した日時はその請求書に記録されます。
+会計ソフト（TKC FX4クラウド）用の CSV の書き出しは、この画面ではなく **請求書ごと** に行います。[請求書](/manual/ja/operations/billing/invoice/user)の画面で右上の「**…**」から「**会計連携CSV**」を選んでください。書き出した日時はその請求書に記録されます。
 
 ## よくある質問・困ったとき
 

@@ -37,6 +37,7 @@ import {
 } from "@/lib/doc-number";
 import { enqueueExtraction } from "@/lib/intake";
 import { normalizeExtraction } from "@/lib/intake-core";
+import { legacyProductIdsForItems } from "@/lib/item-legacy-product";
 import { aliasLearnings } from "@/lib/match-alias-core";
 import { saveAliasLearnings } from "@/lib/match-aliases";
 import { allocateDocumentKey } from "@/lib/numbering";
@@ -111,8 +112,11 @@ const orderTypeEnum = z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]);
 
 function itemInputSchema(tr: Tr) {
   return z.object({
-    /** 製品マスタ内部 id（文字列）。null = 未突合（productText のみ）。 */
-    productId: z.string().nullable(),
+    /**
+     * 突合済みの製品 — 値は品目 id（items.id、`itemType: "PRODUCT"`）を
+     * 文字列化したもの。null = 未突合（productText のみ）。
+     */
+    itemId: z.string().nullable(),
     productText: z.string().nullable(),
     orderType: orderTypeEnum,
     quantity: z
@@ -131,6 +135,17 @@ function itemInputSchema(tr: Tr) {
     priceOverridden: z.boolean().optional().default(false),
     deliveryDate: z.string().nullable(),
     notes: z.string().nullable(),
+    // ── 配送（§8）— どこへ・どう届けるかは明細ごと ──
+    // 出荷先（顧客と異なり得る取引先。任意）
+    shipToBpId: z.string().nullable().optional(),
+    // 配送方法（通常配送 / ユーザー直送）。省略時は通常配送。
+    deliveryMethod: z.enum(["NORMAL", "DIRECT_TO_USER"]).default("NORMAL"),
+    // エンドユーザー（最終需要家）— ユーザー直送では必須（lineRefsError で強制）
+    endUserBpId: z.string().nullable().optional(),
+    // 担当拠点（任意）
+    assignedPlantId: z.number().int().positive().nullable().optional(),
+    // 出荷作業場所（作業場所マスタ MS0D。任意）
+    shippingWorkLocationId: z.number().int().positive().nullable().optional(),
   });
 }
 
@@ -140,16 +155,8 @@ function draftInputSchema(tr: Tr) {
     // 営業担当 — 顧客の担当一覧（bp_sales_reps）から選ぶ。未指定のまま顧客を
     // 変えたときは、その顧客の主担当を既定として入れる（lib/sales-rep）。
     salesRepId: z.string().nullable().optional(),
-    // 出荷先（顧客と異なり得る取引先。任意）
-    shipToBpId: z.string().nullable().optional(),
-    // 配送方法（通常配送 / ユーザー直送）。省略時は通常配送。
-    deliveryMethod: z.enum(["NORMAL", "DIRECT_TO_USER"]).default("NORMAL"),
-    // エンドユーザー（最終需要家）— ユーザー直送では必須（headerRefsError で強制）
-    endUserBpId: z.string().nullable().optional(),
-    // 担当拠点（任意）
-    assignedPlantId: z.number().int().positive().nullable().optional(),
-    // 出荷作業場所（作業場所マスタ MS0D。任意）
-    shippingWorkLocationId: z.number().int().positive().nullable().optional(),
+    // 配送（出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所）は
+    // ヘッダに無い — 明細ごと（itemInputSchema）が唯一の持ち主（§8）。
     // 顧客が自前の納品書を用意しているか（出荷準備担当への目印。任意）。
     customerProvidesDeliveryNote: z.boolean().default(false),
     customerOrderRef: z.string().nullable(),
@@ -189,61 +196,98 @@ function quoteKeyOf(quoteNumber: string | null | undefined) {
     : { quoteYearMonth: null, quoteSeq: null };
 }
 
+/** 配送（明細ごと）の入力 1 行分。lineRefsError が検証する形。 */
+interface LineDeliveryInput {
+  shipToBpId?: string | null;
+  deliveryMethod?: "NORMAL" | "DIRECT_TO_USER";
+  endUserBpId?: string | null;
+  assignedPlantId?: number | null;
+  shippingWorkLocationId?: number | null;
+}
+
 /**
- * ヘッダ参照（出荷先 / 担当拠点 / 出荷作業場所）の存在・有効チェック。
- * いずれも任意項目 — 指定されているものだけを検証し、問題があれば
- * エラーメッセージを返す（null = OK）。
+ * 明細ごとの配送参照（出荷先 / エンドユーザー / 担当拠点 / 出荷作業場所）の
+ * 存在・有効チェック（§8）。いずれも任意項目 — 指定されているものだけを
+ * 検証する。行数ぶん問い合わせないよう、参照 id は重複を落として一括で
+ * `findMany` してから突き合わせる。問題があれば行番号つきのエラー文
+ * （null = 全行 OK）。
  */
-async function headerRefsError(
+async function lineRefsError(
   tr: Tr,
-  v: {
-    shipToBpId?: string | null;
-    deliveryMethod?: "NORMAL" | "DIRECT_TO_USER";
-    endUserBpId?: string | null;
-    assignedPlantId?: number | null;
-    shippingWorkLocationId?: number | null;
-  },
+  items: readonly LineDeliveryInput[],
 ): Promise<string | null> {
-  // 直送では出荷先は保存時に落とすので（normalizeShipToBpId）、ここでも見ない。
-  const shipToBpId = normalizeShipToBpId(
-    v.deliveryMethod ?? "NORMAL",
-    trimOrNull(v.shipToBpId),
+  const shipToIds = new Set<string>();
+  const endUserIds = new Set<string>();
+  const plantIds = new Set<number>();
+  const workLocationIds = new Set<number>();
+  const noEndUser: number[] = [];
+  items.forEach((it, i) => {
+    // 直送では出荷先は保存時に落とすので（normalizeShipToBpId）、ここでも見ない。
+    const shipToBpId = normalizeShipToBpId(
+      it.deliveryMethod ?? "NORMAL",
+      trimOrNull(it.shipToBpId),
+    );
+    if (shipToBpId) shipToIds.add(shipToBpId);
+    const endUserBpId = trimOrNull(it.endUserBpId);
+    // ユーザー直送は届け先（エンドユーザー）が無いと出荷・納品書まで進めない。
+    if (it.deliveryMethod === "DIRECT_TO_USER" && !endUserBpId) {
+      noEndUser.push(i + 1);
+    }
+    if (endUserBpId) endUserIds.add(endUserBpId);
+    if (it.assignedPlantId != null) plantIds.add(it.assignedPlantId);
+    if (it.shippingWorkLocationId != null)
+      workLocationIds.add(it.shippingWorkLocationId);
+  });
+  if (noEndUser.length > 0) {
+    return tr("sales.orderAcceptanceActions.directToUserRequiresEndUser", {
+      rows: noEndUser.join(", "),
+    });
+  }
+
+  const bpIds = [...new Set([...shipToIds, ...endUserIds])];
+  const [activeBps, activePlants, workLocations] = await Promise.all([
+    bpIds.length
+      ? prisma.businessPartner.findMany({
+          where: { id: { in: bpIds }, isActive: true },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+    plantIds.size
+      ? prisma.plant.findMany({
+          where: { id: { in: [...plantIds] }, isActive: true },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+    workLocationIds.size
+      ? prisma.workLocation.findMany({
+          where: { id: { in: [...workLocationIds] } },
+          include: { group: { select: { isActive: true } } },
+        })
+      : Promise.resolve([]),
+  ]);
+  const activeBpIds = new Set(activeBps.map((b) => b.id));
+  const activePlantIds = new Set(activePlants.map((p) => p.id));
+  const activeWorkLocationIds = new Set(
+    workLocations
+      .filter((l) => l.isActive && l.group.isActive)
+      .map((l) => l.id),
   );
-  if (shipToBpId) {
-    const bp = await prisma.businessPartner.findUnique({
-      where: { id: shipToBpId },
-      select: { isActive: true },
-    });
-    if (!bp?.isActive) return tr("sales.orderAcceptanceActions.shipToInvalid");
+
+  for (const id of shipToIds) {
+    if (!activeBpIds.has(id))
+      return tr("sales.orderAcceptanceActions.shipToInvalid");
   }
-  // ユーザー直送は届け先（エンドユーザー）が無いと出荷・納品書まで進めない。
-  const endUserBpId = trimOrNull(v.endUserBpId);
-  if (v.deliveryMethod === "DIRECT_TO_USER" && !endUserBpId) {
-    return tr("sales.orderAcceptanceActions.directToUserRequiresEndUser");
+  for (const id of endUserIds) {
+    if (!activeBpIds.has(id))
+      return tr("sales.orderAcceptanceActions.endUserInvalid");
   }
-  if (endUserBpId) {
-    const bp = await prisma.businessPartner.findUnique({
-      where: { id: endUserBpId },
-      select: { isActive: true },
-    });
-    if (!bp?.isActive) return tr("sales.orderAcceptanceActions.endUserInvalid");
-  }
-  if (v.assignedPlantId != null) {
-    const plant = await prisma.plant.findUnique({
-      where: { id: v.assignedPlantId },
-      select: { isActive: true },
-    });
-    if (!plant?.isActive)
+  for (const id of plantIds) {
+    if (!activePlantIds.has(id))
       return tr("sales.orderAcceptanceActions.assignedPlantInvalid");
   }
-  if (v.shippingWorkLocationId != null) {
-    const loc = await prisma.workLocation.findUnique({
-      where: { id: v.shippingWorkLocationId },
-      include: { group: { select: { isActive: true } } },
-    });
-    if (!loc?.isActive || !loc.group.isActive) {
+  for (const id of workLocationIds) {
+    if (!activeWorkLocationIds.has(id))
       return tr("sales.orderAcceptanceActions.shippingWorkLocationInvalid");
-    }
   }
   return null;
 }
@@ -259,18 +303,61 @@ function buildItemCreates(
   items: readonly (OrderAcceptanceDraftInput["items"][number] & {
     priceOverridden: boolean;
   })[],
+  /** 品目 id → 旧 products.id（落とすのは最後の段まで両方書く）。 */
+  legacyProductIds: ReadonlyMap<number, number>,
 ) {
-  return items.map((it, i) => ({
-    productId: it.productId ? Number(it.productId) : null,
-    productText: trimOrNull(it.productText),
-    orderType: it.orderType,
-    quantity: it.quantity,
-    unitPrice: it.unitPrice,
-    priceOverridden: it.priceOverridden,
-    deliveryDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
-    notes: trimOrNull(it.notes),
-    sortOrder: i,
-  }));
+  return items.map((it, i) => {
+    const itemId = it.itemId ? Number(it.itemId) : null;
+    return {
+      itemId,
+      productId: itemId != null ? (legacyProductIds.get(itemId) ?? null) : null,
+      productText: trimOrNull(it.productText),
+      orderType: it.orderType,
+      quantity: it.quantity,
+      unitPrice: it.unitPrice,
+      priceOverridden: it.priceOverridden,
+      deliveryDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
+      notes: trimOrNull(it.notes),
+      sortOrder: i,
+      // 配送（§8）— 明細ごと。出荷先は通常配送だけの欄（画面も灰色にしているが、
+      // 古いタブや API 直叩きを信用しないので保存側でも落とす）。
+      shipToBpId: normalizeShipToBpId(
+        it.deliveryMethod,
+        trimOrNull(it.shipToBpId),
+      ),
+      deliveryMethod: it.deliveryMethod,
+      // エンドユーザーは配送方法に依らず保持できる（直送では必須 —
+      // lineRefsError。通常配送でも記録用に任意で持てる）。
+      endUserBpId: trimOrNull(it.endUserBpId),
+      assignedPlantId: it.assignedPlantId ?? null,
+      shippingWorkLocationId: it.shippingWorkLocationId ?? null,
+    };
+  });
+}
+
+/** 明細の品目 id → 旧 products.id をまとめて引く（書き込みの橋）。 */
+function legacyProductIdsOf(
+  items: readonly { itemId: string | null }[],
+): Promise<Map<number, number>> {
+  return legacyProductIdsForItems(
+    items
+      .map((it) => (it.itemId ? Number(it.itemId) : Number.NaN))
+      .filter((n) => Number.isInteger(n)),
+  );
+}
+
+/**
+ * 突合済みの行すべてに旧 products.id の対応があるか。**無いまま保存すると
+ * item_id はあるのに product_id が null の行ができ、在庫引当
+ * （lib/inventory.ts — 旧列しか見ない）が黙って効かなくなる。**
+ */
+function missingLegacyProduct(
+  items: readonly { itemId: string | null }[],
+  legacyProductIds: ReadonlyMap<number, number>,
+): boolean {
+  return items.some(
+    (it) => it.itemId != null && !legacyProductIds.has(Number(it.itemId)),
+  );
 }
 
 // ── 再抽出（IMPORT のみ） ────────────────────────────────────────────────────
@@ -411,41 +498,32 @@ export async function saveDraft(
         status: true,
         customerBpId: true,
         salesRepId: true,
-        shipToBpId: true,
-        deliveryMethod: true,
-        endUserBpId: true,
-        assignedPlantId: true,
-        shippingWorkLocationId: true,
         customerProvidesDeliveryNote: true,
         customerOrderRef: true,
         orderDate: true,
         notes: true,
         // 学習（match_aliases）に使う: 抽出された社名と、保存前の突合状態。
         extracted: true,
+        // 学習（match_aliases）は **products.id** のまま — 学習した別名が
+        // products を指しているので、ここだけ旧列を読む（品目統合 第 2 段 C）。
         items: { select: { productId: true, productText: true } },
       },
     });
     if (!prior)
       return actionError(tr("sales.orderAcceptanceActions.targetNotFound"));
-    const refsError = await headerRefsError(tr, v);
+    const refsError = await lineRefsError(tr, v.items);
     if (refsError) return actionError(refsError);
     const customerBpId = trimOrNull(v.customerBpId);
     // 価格表どおりの行の単価はここで確定する（クライアントの表示値は読まない）。
     // 顧客が変わった保存でも、新しい顧客の価格表で解決し直される。
+    const legacyProductIds = await legacyProductIdsOf(v.items);
+    if (missingLegacyProduct(v.items, legacyProductIds)) {
+      return actionError(tr("common.targetProductNotFound"));
+    }
     const creates = buildItemCreates(
       await applyPriceListPrices(customerBpId, v.items, tr),
+      legacyProductIds,
     );
-    // 出荷先は通常配送だけの欄 — 直送では落とす（画面も灰色にしているが、
-    // 古いタブや API 直叩きを信用しないため保存側でも落とす）。
-    const shipToBpId = normalizeShipToBpId(
-      v.deliveryMethod,
-      trimOrNull(v.shipToBpId),
-    );
-    // エンドユーザーは配送方法に依らず保持できる（直送では必須 —
-    // headerRefsError。通常配送でも記録用に任意で持てる）。
-    const endUserBpId = trimOrNull(v.endUserBpId);
-    const assignedPlantId = v.assignedPlantId ?? null;
-    const shippingWorkLocationId = v.shippingWorkLocationId ?? null;
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
       customerBpId,
@@ -469,11 +547,6 @@ export async function saveDraft(
         data: {
           customerBpId,
           salesRepId,
-          shipToBpId,
-          deliveryMethod: v.deliveryMethod,
-          endUserBpId,
-          assignedPlantId,
-          shippingWorkLocationId,
           customerProvidesDeliveryNote: v.customerProvidesDeliveryNote,
           customerOrderRef: trimOrNull(v.customerOrderRef),
           ...quoteKeyOf(v.quoteNumber),
@@ -491,11 +564,6 @@ export async function saveDraft(
       before: {
         customerBpId: prior.customerBpId,
         salesRepId: prior.salesRepId,
-        shipToBpId: prior.shipToBpId,
-        deliveryMethod: prior.deliveryMethod,
-        endUserBpId: prior.endUserBpId,
-        assignedPlantId: prior.assignedPlantId,
-        shippingWorkLocationId: prior.shippingWorkLocationId,
         customerProvidesDeliveryNote: prior.customerProvidesDeliveryNote,
         customerOrderRef: prior.customerOrderRef,
         orderDate: prior.orderDate?.toISOString().slice(0, 10) ?? null,
@@ -504,15 +572,12 @@ export async function saveDraft(
       after: {
         customerBpId,
         salesRepId,
-        shipToBpId,
-        deliveryMethod: v.deliveryMethod,
-        endUserBpId,
-        assignedPlantId,
-        shippingWorkLocationId,
         customerProvidesDeliveryNote: v.customerProvidesDeliveryNote,
         customerOrderRef: trimOrNull(v.customerOrderRef),
         orderDate: v.orderDate,
         notes: trimOrNull(v.notes),
+        // 配送は明細ごと（§8）— 明細の全置換は下の order_lines 監査行を
+        // 読まないと追えないため、ここでは件数だけ残す。
         itemCount: creates.length,
       },
     });
@@ -524,15 +589,23 @@ export async function saveDraft(
         extractedCustomerName: normalizeExtraction(prior.extracted)
           .customerName,
         customer: { before: prior.customerBpId, after: customerBpId },
+        // 学習の target は **products.id**（app.match_aliases の
+        // target_type = 'products'）。画面が送ってくる itemId をここで
+        // 旧 id へ戻す — 突合側は品目へ移していない。
         items: {
           before: prior.items.map((it) => ({
             productText: it.productText,
             productId: it.productId != null ? String(it.productId) : null,
           })),
-          after: v.items.map((it) => ({
-            productText: it.productText,
-            productId: trimOrNull(it.productId),
-          })),
+          after: v.items.map((it) => {
+            const itemId = it.itemId ? Number(it.itemId) : null;
+            const legacy =
+              itemId != null ? legacyProductIds.get(itemId) : undefined;
+            return {
+              productText: it.productText,
+              productId: legacy != null ? String(legacy) : null,
+            };
+          }),
         },
       }),
       authz.userId,
@@ -580,11 +653,15 @@ export async function submitForApproval(
       select: {
         status: true,
         customerBpId: true,
-        deliveryMethod: true,
-        endUserBpId: true,
         items: {
           orderBy: { sortOrder: "asc" },
-          select: { productId: true, quantity: true, unitPrice: true },
+          select: {
+            itemId: true,
+            quantity: true,
+            unitPrice: true,
+            deliveryMethod: true,
+            endUserBpId: true,
+          },
         },
       },
     });
@@ -601,12 +678,12 @@ export async function submitForApproval(
     const readiness = acceptanceReadiness(
       {
         customerBpId: prior.customerBpId,
-        deliveryMethod: prior.deliveryMethod,
-        endUserBpId: prior.endUserBpId,
         items: prior.items.map((it) => ({
-          productId: it.productId,
+          itemId: it.itemId,
           quantity: it.quantity,
           unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
+          deliveryMethod: it.deliveryMethod,
+          endUserBpId: it.endUserBpId,
         })),
       },
       tr,
@@ -837,12 +914,12 @@ export async function confirmOrderLines(
     const readiness = acceptanceReadiness(
       {
         customerBpId: prior.customerBpId,
-        deliveryMethod: prior.deliveryMethod,
-        endUserBpId: prior.endUserBpId,
         items: prior.items.map((it) => ({
-          productId: it.productId,
+          itemId: it.itemId,
           quantity: it.quantity,
           unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
+          deliveryMethod: it.deliveryMethod,
+          endUserBpId: it.endUserBpId,
         })),
       },
       tr,
@@ -897,7 +974,7 @@ export async function confirmOrderLines(
             number,
           }),
           customerBpId: prior.customerBpId,
-          productId: it.productId,
+          itemId: it.itemId,
           orderType: it.orderType,
           quantity: it.quantity,
           unitPrice: Number(it.unitPrice),
@@ -987,17 +1064,12 @@ export async function createManualAcceptance(
   if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
   try {
-    const refsError = await headerRefsError(tr, v);
+    const refsError = await lineRefsError(tr, v.items);
     if (refsError) return actionError(refsError);
-    // 出荷先は通常配送だけの欄 — 直送では落とす（saveDraft と同じ規則）。
-    const shipToBpId = normalizeShipToBpId(
-      v.deliveryMethod,
-      trimOrNull(v.shipToBpId),
-    );
-    // エンドユーザーは配送方法に依らず保持できる（直送では必須）。
-    const endUserBpId = trimOrNull(v.endUserBpId);
-    const assignedPlantId = v.assignedPlantId ?? null;
-    const shippingWorkLocationId = v.shippingWorkLocationId ?? null;
+    const createLegacyProductIds = await legacyProductIdsOf(v.items);
+    if (missingLegacyProduct(v.items, createLegacyProductIds)) {
+      return actionError(tr("common.targetProductNotFound"));
+    }
     const actor = await getCurrentActorId();
     const { yearMonth, seq } = await allocateDocumentKey("ORDER");
     const number = `ORD-${yearMonth}-${String(seq).padStart(5, "0")}`;
@@ -1015,11 +1087,6 @@ export async function createManualAcceptance(
         source: "MANUAL",
         customerBpId: v.customerBpId,
         salesRepId,
-        shipToBpId,
-        deliveryMethod: v.deliveryMethod,
-        endUserBpId,
-        assignedPlantId,
-        shippingWorkLocationId,
         customerProvidesDeliveryNote: v.customerProvidesDeliveryNote,
         customerOrderRef: trimOrNull(v.customerOrderRef),
         ...quoteKeyOf(v.quoteNumber),
@@ -1029,6 +1096,7 @@ export async function createManualAcceptance(
         items: {
           create: buildItemCreates(
             await applyPriceListPrices(v.customerBpId, v.items, tr),
+            createLegacyProductIds,
           ),
         },
       },
@@ -1041,17 +1109,153 @@ export async function createManualAcceptance(
         note: tr("sales.orderAcceptanceActions.createdManually"),
         customerBpId: v.customerBpId,
         salesRepId,
-        shipToBpId,
-        deliveryMethod: v.deliveryMethod,
-        endUserBpId,
-        assignedPlantId,
-        shippingWorkLocationId,
         itemCount: v.items.length,
         status: "DRAFT",
       },
     });
     revalidate(number);
     return actionOk({ number });
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.orderAcceptanceActions.createFailed"),
+        tr,
+      ),
+    );
+  }
+}
+
+// ── キャンセル済みからの作り直し ────────────────────────────────────────────
+
+/**
+ * キャンセル済みの注文請書から、内容を引き継いだ新しい下書きを作る。
+ *
+ * **確定済みの請書を直す唯一の手順**がこれ。明細は確定後は編集できない
+ * （lib/order-line-check.ts）ので、内容を変えたければ 請書ごとキャンセル →
+ * ここで作り直す、という流れになる。キャンセルは配下の未着手指示書も連鎖で
+ * 止めている（lib/order-line-cancel.ts）ので、作り直した側で改めて手配する。
+ *
+ * ★ **紐付けを残す**（replaces_year_month / replaces_seq）。これが無いと、
+ *   キャンセルした請書は指示書も出荷も無い行き止まりに見え、「あの注文は
+ *   どうなったのか」を追う手段が監査ログしか無くなる。
+ *
+ * ★ **単価は引き継いだ値をそのまま持ってくる**（価格表を引き直さない）。
+ *   作り直しは「同じ注文をもう一度起こす」操作で、値段を変える操作ではない。
+ *   価格表が動いていたら、確定時の価格差異チェックが従来どおり知らせる。
+ *   人が明示的に上書きした行（priceOverridden）も、その意図ごと引き継ぐ。
+ *
+ * 引き継がないもの: 枝番・ロット番号・金額・確定日時（未確定の下書きに戻す）、
+ * 取込元ファイルと抽出結果（原本は元の請書に付いたまま — 同じ PDF を 2 通に
+ * ぶら下げると、どちらが取込の結果なのか読めなくなる）。
+ */
+export async function recreateFromCancelledAcceptance(
+  number: string,
+): Promise<ActionResult<{ number: string }>> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("order_acceptance", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
+  const key = keyOf(number);
+  if (!key) return actionError(tr("common.invalidInput"));
+
+  const source = await prisma.orderAcceptance.findUnique({
+    where: { yearMonth_seq: key },
+    include: { items: { orderBy: { sortOrder: "asc" } } },
+  });
+  if (!source) return actionError(tr("common.targetNotFound"));
+  if (source.status !== "CANCELLED") {
+    return actionError(
+      tr("sales.orderAcceptanceActions.onlyCancelledCanBeRecreated"),
+    );
+  }
+  if (!source.customerBpId) {
+    return actionError(tr("sales.orderAcceptances.selectACustomer"));
+  }
+
+  try {
+    const actor = await getCurrentActorId();
+    const { yearMonth, seq } = await allocateDocumentKey("ORDER");
+    const newNumber = formatDocNumber("ORD", { yearMonth, seq });
+    // 顧客は変わらないので、引き継いだ担当をそのまま使う（resolveSalesRepId は
+    // 「顧客が変わったときだけ主担当を入れる」— 空で引き継いだなら空のまま）。
+    const salesRepId = await resolveSalesRepId(
+      source.salesRepId,
+      source.customerBpId,
+      source.customerBpId,
+    );
+    await prisma.orderAcceptance.create({
+      data: {
+        yearMonth,
+        seq,
+        status: "DRAFT",
+        // 原本の PDF は元の請書に残す。作り直した側は人が起こしたもの。
+        source: "MANUAL",
+        replacesYearMonth: key.yearMonth,
+        replacesSeq: key.seq,
+        customerBpId: source.customerBpId,
+        customerBranchBpId: source.customerBranchBpId,
+        salesRepId,
+        customerProvidesDeliveryNote: source.customerProvidesDeliveryNote,
+        customerOrderRef: source.customerOrderRef,
+        quoteYearMonth: source.quoteYearMonth,
+        quoteSeq: source.quoteSeq,
+        orderDate: source.orderDate,
+        currency: source.currency,
+        notes: source.notes,
+        createdBy: actor,
+        items: {
+          // 配送（§8）も明細ごと引き継ぐ — 作り直しは「同じ注文をもう一度
+          // 起こす」操作なので、行ごとに違っていた届け先もそのまま持ってくる。
+          create: source.items.map((it, i) => ({
+            itemId: it.itemId,
+            productId: it.productId,
+            productText: it.productText,
+            orderType: it.orderType,
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            priceOverridden: it.priceOverridden,
+            deliveryDate: it.deliveryDate,
+            shipToBpId: it.shipToBpId,
+            deliveryMethod: it.deliveryMethod,
+            endUserBpId: it.endUserBpId,
+            assignedPlantId: it.assignedPlantId,
+            shippingWorkLocationId: it.shippingWorkLocationId,
+            notes: it.notes,
+            sortOrder: i,
+          })),
+        },
+      },
+    });
+
+    await recordAudit({
+      action: "CREATE",
+      tableName: "order_acceptances",
+      recordId: newNumber,
+      after: {
+        note: tr("sales.orderAcceptanceActions.recreatedFromCancelled", {
+          number,
+        }),
+        replaces: number,
+        customerBpId: source.customerBpId,
+        itemCount: source.items.length,
+        status: "DRAFT",
+      },
+    });
+    // 元の請書にも残す — 「この請書は作り直された」を元の履歴から読めるように。
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "order_acceptances",
+      recordId: number,
+      after: {
+        note: tr("sales.orderAcceptanceActions.recreatedAs", {
+          number: newNumber,
+        }),
+        replacedBy: newNumber,
+      },
+    });
+    revalidate(number);
+    revalidate(newNumber);
+    return actionOk({ number: newNumber });
   } catch (e) {
     return actionError(
       prismaErrorMessage(

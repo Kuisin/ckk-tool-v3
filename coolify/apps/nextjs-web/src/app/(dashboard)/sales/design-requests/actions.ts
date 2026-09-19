@@ -40,6 +40,7 @@ import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { parseDocKey } from "@/lib/doc-number";
+import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import { type NotificationType, notify } from "@/lib/notifications";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
@@ -61,8 +62,8 @@ const priorityEnum = z.enum(["NORMAL", "HIGH"]);
 /** 作成・更新で共通の項目（トリガと参照元だけが作成時限定）。 */
 function commonInputShape(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return {
-    /** 製品は必須 — 依頼区分の自動判定に要る。 */
-    productId: z.string().min(1, tr("common.selectAProduct")),
+    /** 製品は必須 — 依頼区分の自動判定に要る。値は品目 (items.id)。 */
+    itemId: z.string().min(1, tr("common.selectAProduct")),
     /**
      * 対象の受注元。完成した版がどの系列に載るかを決める。
      * null = 汎用（どの顧客の指示書からも使える）。
@@ -155,7 +156,7 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
  * たびに引き直すと、他の依頼が先に完了した瞬間に区分が変わってしまう）。
  */
 async function detectDesignKind(
-  productId: number,
+  itemId: number,
   customerBpId: string | null = null,
 ): Promise<{
   kind: "NEW" | "REVISION";
@@ -165,7 +166,7 @@ async function detectDesignKind(
   // 版は (製品 × 受注元) ごとの系列なので、区分もその系列だけを見て決める。
   // 「顧客 A には図面があるが B にはまだ無い」は B から見れば**新規**で、
   // 製品全体で数えると改訂に見えてしまう。
-  const where = { productId, customerBpId };
+  const where = { itemId, customerBpId };
   const [versionCount, latest] = await Promise.all([
     prisma.designFile.count({ where }),
     prisma.designFile.findFirst({
@@ -268,13 +269,13 @@ async function notifySafe(input: {
  */
 
 export async function fetchKindContextAction(
-  productId: string,
+  itemId: string,
   customerBpId: string | null = null,
 ) {
   const authz = await checkPermission("design_request", "READ");
   if (!authz.ok) return null;
   const { fetchDesignKindContext } = await import("./data");
-  return fetchDesignKindContext(productId, customerBpId);
+  return fetchDesignKindContext(itemId, customerBpId);
 }
 
 // ── 作成 / 更新 ──────────────────────────────────────────────────────────────
@@ -304,8 +305,8 @@ export async function createDesignRequest(
   const orderLineId =
     v.trigger === "SALES_ORDER" ? trimOrNull(v.orderLineId) : null;
 
-  const productId = Number(v.productId);
-  if (!Number.isInteger(productId))
+  const itemId = Number(v.itemId);
+  if (!Number.isInteger(itemId))
     return actionError(tr("sales.designRequestActions.invalidProduct"));
 
   try {
@@ -313,9 +314,11 @@ export async function createDesignRequest(
     // 依頼区分は「その系列（製品 × 受注元）に過去の設計書があるか」で決める
     // （入力があれば上書き）。
     const customerBpId = trimOrNull(v.customerBpId);
-    const detected = await detectDesignKind(productId, customerBpId);
+    const detected = await detectDesignKind(itemId, customerBpId);
     const resolved = resolveKindFields(v, detected, tr);
     if ("error" in resolved) return actionError(resolved.error);
+    // まだ残っている旧 product_id 列も橋渡しで埋める。
+    const legacyProductId = await legacyProductIdForItem(itemId);
 
     const requestNumber = await nextDocumentNumber("DESIGN");
     await prisma.designRequest.create({
@@ -326,7 +329,8 @@ export async function createDesignRequest(
         quoteSeq: quoteKey?.seq ?? null,
         orderLineId,
         customerBpId,
-        productId,
+        itemId,
+        productId: legacyProductId,
         assigneeId: v.assigneeId,
         description: trimOrNull(v.description),
         kind: resolved.kind,
@@ -348,7 +352,7 @@ export async function createDesignRequest(
         trigger: v.trigger,
         quoteNumber,
         orderLineId,
-        productId,
+        itemId,
         assigneeId: v.assigneeId,
         description: trimOrNull(v.description),
         kind: resolved.kind,
@@ -392,15 +396,15 @@ export async function updateDesignRequest(
     );
   }
   const v = parsed.data;
-  const productId = Number(v.productId);
-  if (!Number.isInteger(productId))
+  const itemId = Number(v.itemId);
+  if (!Number.isInteger(itemId))
     return actionError(tr("sales.designRequestActions.invalidProduct"));
   try {
     const actor = await getCurrentActorId();
     const prior = await prisma.designRequest.findUnique({
       where: { requestNumber: number },
       select: {
-        productId: true,
+        itemId: true,
         assigneeId: true,
         createdBy: true,
         description: true,
@@ -415,9 +419,11 @@ export async function updateDesignRequest(
     // 製品や受注元が変われば区分を判定し直す。編集できるのは承認に出す前だけ
     // なので、ここで動いても承認済みのルートと食い違わない。
     const customerBpId = trimOrNull(v.customerBpId);
-    const detected = await detectDesignKind(productId, customerBpId);
+    const detected = await detectDesignKind(itemId, customerBpId);
     const resolved = resolveKindFields(v, detected, tr);
     if ("error" in resolved) return actionError(resolved.error);
+    // まだ残っている旧 product_id 列も橋渡しで埋める。
+    const legacyProductId = await legacyProductIdForItem(itemId);
     // status を where に含めた updateMany で原子的にガードする。
     const updated = await prisma.designRequest.updateMany({
       where: {
@@ -425,7 +431,8 @@ export async function updateDesignRequest(
         status: { in: ["DRAFT", "REJECTED"] },
       },
       data: {
-        productId,
+        itemId,
+        productId: legacyProductId,
         customerBpId,
         assigneeId: v.assigneeId,
         description: trimOrNull(v.description),
@@ -456,13 +463,13 @@ export async function updateDesignRequest(
       tableName: "design_requests",
       recordId: number,
       before: {
-        productId: prior.productId,
+        itemId: prior.itemId,
         assigneeId: prior.assigneeId,
         description: prior.description,
         kind: prior.kind,
       },
       after: {
-        productId,
+        itemId,
         assigneeId: v.assigneeId,
         description: trimOrNull(v.description),
         kind: resolved.kind,

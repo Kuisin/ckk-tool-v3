@@ -7,18 +7,16 @@
  * DRAFT の注文請書を直接作成し、詳細ページへ遷移する。
  */
 
-import { Select, SimpleGrid, TextInput } from "@mantine/core";
+import { SimpleGrid, TextInput } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   searchCustomerOptions,
-  searchEndUserOptions,
   searchQuoteOptions,
-  searchShipToOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import { createManualAcceptance } from "@/app/(dashboard)/sales/order-acceptances/actions";
 import { customerF4 } from "@/components/ui/f4-presets";
@@ -26,9 +24,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { acceptanceDeliveryMethodOptions } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
-import { shipToApplies } from "@/lib/order-acceptance-readiness";
 import {
   type ItemRowForm,
   newItemRow,
@@ -49,23 +45,12 @@ export function OrderAcceptanceCreateForm({
   workLocationOptions: { value: string; label: string }[];
 }) {
   const tr = useTranslations();
-  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [salesRepId, setSalesRepId] = useState<string | null>(null);
   const [customerError, setCustomerError] = useState<string | null>(null);
-  const [shipToBpId, setShipToBpId] = useState<string | null>(null);
-  const [deliveryMethod, setDeliveryMethod] = useState<
-    "NORMAL" | "DIRECT_TO_USER"
-  >("NORMAL");
-  const [endUserBpId, setEndUserBpId] = useState<string | null>(null);
-  const [endUserError, setEndUserError] = useState<string | null>(null);
-  const [assignedPlantId, setAssignedPlantId] = useState<string | null>(null);
-  const [shippingWorkLocationId, setShippingWorkLocationId] = useState<
-    string | null
-  >(null);
   const [customerOrderRef, setCustomerOrderRef] = useState("");
   const [quoteNumber, setQuoteNumber] = useState("");
   const [orderDate, setOrderDate] = useState<string | null>(null);
@@ -82,21 +67,10 @@ export function OrderAcceptanceCreateForm({
       setCustomerError(tr("sales.orderAcceptances.selectACustomer"));
       return;
     }
-    if (deliveryMethod === "DIRECT_TO_USER" && !endUserBpId) {
-      setEndUserError(tr("common.selectAnEndUserForDirect"));
-      return;
-    }
     startTransition(async () => {
       const result = await createManualAcceptance({
         customerBpId: customerId,
         salesRepId,
-        shipToBpId,
-        deliveryMethod,
-        endUserBpId,
-        assignedPlantId: assignedPlantId ? Number(assignedPlantId) : null,
-        shippingWorkLocationId: shippingWorkLocationId
-          ? Number(shippingWorkLocationId)
-          : null,
         customerProvidesDeliveryNote: false,
         customerOrderRef: customerOrderRef || null,
         quoteNumber: quoteNumber || null,
@@ -128,11 +102,6 @@ export function OrderAcceptanceCreateForm({
     Boolean(
       customerId ||
         salesRepId ||
-        shipToBpId ||
-        deliveryMethod !== "NORMAL" ||
-        endUserBpId ||
-        assignedPlantId ||
-        shippingWorkLocationId ||
         customerOrderRef ||
         quoteNumber ||
         orderDate ||
@@ -141,14 +110,19 @@ export function OrderAcceptanceCreateForm({
     items.length > 1 ||
     items.some(
       (it) =>
-        it.productId ||
+        it.itemId ||
         it.productText ||
         it.unitPrice != null ||
         it.priceOverridden ||
         it.deliveryDate ||
         it.notes ||
         it.quantity !== 1 ||
-        it.orderType !== "PRODUCTION",
+        it.orderType !== "PRODUCTION" ||
+        it.shipToBpId ||
+        it.deliveryMethod !== "NORMAL" ||
+        it.endUserBpId ||
+        it.assignedPlantId ||
+        it.shippingWorkLocationId,
     );
 
   return (
@@ -193,92 +167,11 @@ export function OrderAcceptanceCreateForm({
             onChange={setSalesRepId}
             value={salesRepId}
           />
-          {/* 出荷先は顧客と異なり得る（支店渡しなど）— 通常配送のときだけの欄。
-              ユーザー直送の届け先はエンドユーザーなので灰色にする。 */}
-          <SearchSelect
-            clearable
-            description={
-              shipToApplies(deliveryMethod)
-                ? undefined
-                : tr("sales.orderAcceptances.shipToOnlyForNormalDelivery")
-            }
-            disabled={!shipToApplies(deliveryMethod)}
-            label={
-              <HelpLabel {...fieldHelp(tr, "orderAcceptance", "shipTo")} />
-            }
-            onChange={setShipToBpId}
-            onSearch={searchShipToOptions}
-            placeholder={tr("common.searchShipToOptional")}
-            storageKey="ship-to"
-            value={shipToBpId}
-          />
-          {/* 配送方法 — 出荷書は同じ出荷先×配送方法の明細だけを束ねられる。 */}
-          <Select
-            allowDeselect={false}
-            data={acceptanceDeliveryMethodOptions(locale)}
-            label={
-              <HelpLabel
-                {...fieldHelp(tr, "orderAcceptance", "deliveryMethod")}
-              />
-            }
-            onChange={(v) => {
-              const next = (v as "NORMAL" | "DIRECT_TO_USER") ?? "NORMAL";
-              setDeliveryMethod(next);
-              // 直送に切り替えたら出荷先は捨てる（欄が灰色のまま値だけ残ると、
-              // 画面に出ていない届け先を持った書類になる）。
-              if (!shipToApplies(next)) setShipToBpId(null);
-              if (next !== "DIRECT_TO_USER") setEndUserError(null);
-            }}
-            value={deliveryMethod}
-            withAsterisk
-          />
-          {/* エンドユーザー — 直送では必須、通常配送でも記録用に任意で選べる。 */}
-          <SearchSelect
-            clearable
-            error={endUserError}
-            label={
-              <HelpLabel {...fieldHelp(tr, "orderAcceptance", "endUser")} />
-            }
-            onChange={(v) => {
-              setEndUserBpId(v);
-              if (v) setEndUserError(null);
-            }}
-            onSearch={searchEndUserOptions}
-            placeholder={
-              deliveryMethod === "DIRECT_TO_USER"
-                ? tr("common.searchEndUsers")
-                : tr("common.searchEndUsersOptional")
-            }
-            storageKey="end-user"
-            value={endUserBpId}
-            withAsterisk={deliveryMethod === "DIRECT_TO_USER"}
-          />
-          <Select
-            clearable
-            data={plantOptions}
-            label={
-              <HelpLabel
-                {...fieldHelp(tr, "orderAcceptance", "assignedPlant")}
-              />
-            }
-            onChange={setAssignedPlantId}
-            placeholder={tr("common.selectASiteOptional")}
-            searchable
-            value={assignedPlantId}
-          />
-          <Select
-            clearable
-            data={workLocationOptions}
-            label={
-              <HelpLabel
-                {...fieldHelp(tr, "orderAcceptance", "shippingWorkLocation")}
-              />
-            }
-            onChange={setShippingWorkLocationId}
-            placeholder={tr("common.selectAWorkLocationOptional")}
-            searchable
-            value={shippingWorkLocationId}
-          />
+          {/*
+            出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所は
+            ヘッダに無い — 明細ごとに持つ（§8、下の明細セクションの
+            「配送」節）。
+          */}
           <TextInput
             label={
               <HelpLabel
@@ -336,7 +229,9 @@ export function OrderAcceptanceCreateForm({
         <OrderAcceptanceItemsEditor
           items={items}
           onChange={setItems}
+          plantOptions={plantOptions}
           priceContext={priceContext}
+          workLocationOptions={workLocationOptions}
         />
       </FormSection>
     </FormShell>

@@ -25,6 +25,8 @@ const TWINS = [
   "workflow-core.ts",
   "workflow-core.test.ts",
   "inventory.ts",
+  // 採番 — 共有端末も工程完了で入出庫伝票を起こす（番号が要る）。
+  "numbering.ts",
   "inventory-availability-core.ts",
   "inventory-availability-core.test.ts",
   "inventory-note-core.ts",

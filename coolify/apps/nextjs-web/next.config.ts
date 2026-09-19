@@ -21,8 +21,10 @@ const MANUAL_APP_CATEGORY: Record<string, string> = {
   // "approval" (旧 PD03 承認管理) はここに置かない — production 内のスラッグ
   // 改称ではなく 一般カテゴリの my-tasks (CM01) への統合なので、個別の
   // redirect エントリ（下の「旧 承認管理 (PD03) のマニュアル」節）で扱う。
-  "product-inventory": "production",
-  "material-inventory": "production",
+  // 在庫の 2 ページは 生産 → 在庫 カテゴリへ移設（2026-09）。旧 /apps/… も
+  // 旧 /operations/production/… も、どちらも今の場所へ送る。
+  "product-inventory": "inventory",
+  "material-inventory": "inventory",
   // 旧スラッグのまま残す（このマップは旧 URL の移設用）。shipping-order →
   // delivery-order の改称は redirects() 内の個別エントリが受け持つ。
   "shipping-order": "shipping",
@@ -128,6 +130,14 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // 会計連携。会計ソフトの製品名を URL から外した（弥生 → 会計連携）ので、
+      // ブックマークや手順書に残っている旧 URL をここで受ける。クエリ
+      // （?invoice=… &force=1）は Next が引き継ぐ。
+      {
+        source: "/api/export/yayoi",
+        destination: "/api/export/accounting",
+        permanent: true,
+      },
       // ディスプレイ管理は独立アプリ（SY0I）をやめ、端末管理（SY09）の
       // タブに統合した。機器の登録手順が共有端末とまったく同じなので、
       // 別の場所に置くと「どっちの画面で直すのか」を現場が毎回考えることになる。
@@ -143,6 +153,35 @@ const nextConfig: NextConfig = {
       },
       // 旧 承認管理 (PD03) → 一般カテゴリの 未処理一覧 (CM01)。
       // 詳細 URL は指示書詳細へ（承認カードは指示書詳細に出る）。
+      // 在庫まわりは 生産 → 在庫 カテゴリへ移設した（2026-09）。
+      // ブックマーク・履歴の記録・帳票に刷られた URL が生きているので恒久で送る。
+      {
+        source: "/production/inventory",
+        destination: "/inventory",
+        permanent: true,
+      },
+      {
+        source: "/production/inventory/:path*",
+        destination: "/inventory/:path*",
+        permanent: true,
+      },
+      {
+        source: "/production/stock-takes",
+        destination: "/inventory/stock-takes",
+        permanent: true,
+      },
+      {
+        source: "/production/stock-takes/:path*",
+        destination: "/inventory/stock-takes/:path*",
+        permanent: true,
+      },
+      // 旧マニュアル URL（operations/production/... のまま貼られたもの）
+      {
+        source:
+          "/manual/:lang(ja|en|zh)/operations/production/:app(product-inventory|material-inventory)/:path*",
+        destination: "/manual/:lang/operations/inventory/:app/:path*",
+        permanent: true,
+      },
       {
         source: "/production/approvals",
         destination: "/general/tasks",

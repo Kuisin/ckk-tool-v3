@@ -4,13 +4,13 @@
  * InvoiceDetail — 請求書 詳細 (BL21, design.md §8.2).
  *
  * SummaryGrid（番号 / 顧客+支店 / 請求期間 / 小計 / 消費税 / 合計 / 支払期限 /
- * 発行日 / 弥生エクスポート）+ 明細テーブル（摘要 / 数量 / 単価 / 金額 / 由来
+ * 発行日 / 会計連携日時）+ 明細テーブル（摘要 / 数量 / 単価 / 金額 / 由来
  * DOR・DRN リンク）+ 手続き状況（ProcedurePanel — 下書き→発行→送付→入金、
- * 出荷書・納品書 ← / 弥生エクスポート →）+ Tabs: 概要 / 履歴。
+ * 出荷書・納品書 ← / 会計連携 →）+ Tabs: 概要 / 履歴。
  *
  * Actions: PDF（/api/pdf/invoice?id=INV-…）/ 発行（DRAFT → ISSUED）/
  * 送付済み（ISSUED → SENT）/ 入金済み（SENT → PAID）/
- * 弥生CSV（/api/export/yayoi?invoice=INV-… ダウンロード）。
+ * 会計連携CSV（/api/export/accounting?invoice=INV-… ダウンロード）。
  */
 
 import {
@@ -35,10 +35,21 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
+  approveInvoiceApproval,
   issueInvoice,
   markPaid,
   markSent,
+  rejectInvoiceApproval,
 } from "@/app/(dashboard)/billing/invoices/actions";
+import { saveInvoiceCharges } from "@/app/(dashboard)/billing/invoices/charge-actions";
+import {
+  ApprovalTrailList,
+  countTrailRecords,
+} from "@/components/approvals/ApprovalTrailList";
+import {
+  type ChargeItemChoice,
+  ChargesPanel,
+} from "@/components/charges/ChargesPanel";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
@@ -65,9 +76,11 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import type { ApprovalActionState, ApprovalTrailEntry } from "@/lib/approvals";
 import type { MemoView } from "@/lib/document-memos";
 import { downloadFile } from "@/lib/download";
 import type { ActionResult } from "@/lib/server-action";
+import { InvoiceApprovalCard } from "./InvoiceApprovalCard";
 import {
   canIssue,
   canMarkPaid,
@@ -81,17 +94,31 @@ const BASE_PATH = "/billing/invoices";
 
 export function InvoiceDetail({
   invoice,
+  approval,
+  approvalTrail,
   pdfMeta,
   auditEntries,
   memos,
+  chargeItems,
+  canEditCharges,
 }: {
   invoice: Invoice;
+  /**
+   * 発行前承認 / 入金前承認の状態（invoice.status から見ているほうを渡す）。
+   * どちらの関門にも当たらない状態（ISSUED / PAID）では null。
+   */
+  approval: ApprovalActionState | null;
+  approvalTrail: ApprovalTrailEntry[];
   /** 保管済み PDF のメタ（SeaweedFS 由来。未生成なら null）。 */
   pdfMeta: PdfFileMeta | null;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos: MemoView[];
+  /** 追加費用の選択肢（料金マスタ、有効な行だけ）。 */
+  chargeItems: ChargeItemChoice[];
+  /** 追加費用を編集できるか（invoice:UPDATE を持ち、かつ下書きのとき）。 */
+  canEditCharges: boolean;
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -196,25 +223,25 @@ export function InvoiceDetail({
     },
   ];
 
-  // 下流 = 会計連携（弥生会計 Next の CSV）。書類ではないが請求書の最後の
+  // 下流 = 会計連携（仕訳 CSV）。書類ではないが請求書の最後の
   // 一歩なので、済/未 が判るようにここへ出す。
   const handoffGroups: HandoffGroup[] = [
     {
-      key: "yayoi",
-      title: tr("billing.invoices.yayoiAccountingExport"),
-      items: invoice.yayoiExportedAt
+      key: "accounting",
+      title: tr("billing.invoices.accountingExport"),
+      items: invoice.accountingExportedAt
         ? [
             {
-              key: "yayoi",
+              key: "accounting",
               label: invoice.invoiceNumber,
               done: true,
               note: tr("billing.invoices.exportedAtLabel", {
-                dateTime: fmt.dateTime(invoice.yayoiExportedAt),
+                dateTime: fmt.dateTime(invoice.accountingExportedAt),
               }),
             },
           ]
         : [],
-      emptyNote: tr("billing.invoices.notExportedTheYayoiCsvIs"),
+      emptyNote: tr("billing.invoices.notExportedAfterIssue"),
     },
   ];
 
@@ -242,8 +269,8 @@ export function InvoiceDetail({
     }
   };
 
-  const run = (
-    action: () => Promise<ActionResult>,
+  const run = <T,>(
+    action: () => Promise<ActionResult<T>>,
     successTitle: string,
     successMessage: string,
   ) => {
@@ -253,6 +280,40 @@ export function InvoiceDetail({
         notifications.show({
           title: successTitle,
           message: successMessage,
+          color: "green",
+        });
+        router.refresh();
+      } else {
+        notifications.show({
+          title: tr("common.error2"),
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
+
+  /**
+   * 発行 / 入金の実行 — **依頼を作れたのは成功**で、通常の完了とは別の文言
+   * を出す（`{ requested: true }`）。ここで分けないと、承認を依頼しただけ
+   * なのに「発行しました」と誤って伝わる。
+   */
+  const runIssueOrPaid = (
+    action: () => Promise<ActionResult<{ requested: boolean }>>,
+    doneTitle: string,
+    doneMessage: string,
+    requestedTitle: string,
+  ) => {
+    startTransition(async () => {
+      const result = await action();
+      if (result.ok) {
+        notifications.show({
+          title: result.data.requested ? requestedTitle : doneTitle,
+          message: result.data.requested
+            ? tr("billing.invoiceDetail.approvalRequestedMessage", {
+                invoiceNumber: invoice.invoiceNumber,
+              })
+            : doneMessage,
           color: "green",
         });
         router.refresh();
@@ -309,19 +370,19 @@ export function InvoiceDetail({
                   },
                 ]
               : []),
-            // 弥生 CSV は発行後のみ（下書きはルートも 409）。エクスポート済みは
+            // 会計連携 CSV は発行後のみ（下書きはルートも 409）。エクスポート済みは
             // 再出力と明示し、ルートの二重出力ガードを force=1 で通す。
             ...(invoice.status !== "DRAFT"
               ? [
                   {
-                    label: invoice.yayoiExportedAt
-                      ? tr("billing.invoices.yayoiAccountingCsvAgain")
-                      : tr("billing.invoices.yayoiAccountingCsv"),
+                    label: invoice.accountingExportedAt
+                      ? tr("billing.invoices.accountingCsvAgain")
+                      : tr("billing.invoices.accountingCsv"),
                     icon: <IconFileSpreadsheet size={14} />,
                     divider: true,
                     // 実アンカーで別タブへ（PWA でもアプリ内ブラウザで開く）。
-                    href: `/api/export/yayoi?invoice=${invoice.invoiceNumber}${
-                      invoice.yayoiExportedAt ? "&force=1" : ""
+                    href: `/api/export/accounting?invoice=${invoice.invoiceNumber}${
+                      invoice.accountingExportedAt ? "&force=1" : ""
                     }`,
                   },
                 ]
@@ -340,6 +401,15 @@ export function InvoiceDetail({
       title={invoice.invoiceNumber}
       updatedAt={fmt.dateTime(invoice.updatedAt)}
     >
+      {/* ヘッダー直下 = ActionCard の定位置（design.md §8.2）。
+          発行前 / 入金前どちらの承認にも当たらなければ何も描かない。 */}
+      <InvoiceApprovalCard
+        canAct={approval?.canAct ?? false}
+        invoice={invoice}
+        onApprove={approveInvoiceApproval}
+        onReject={rejectInvoiceApproval}
+      />
+
       <SummaryGrid>
         <FieldValue
           label={tr("common.invoiceNumber")}
@@ -390,10 +460,10 @@ export function InvoiceDetail({
           value={fmt.date(invoice.issuedAt)}
         />
         <FieldValue
-          label={tr("billing.invoices.yayoiExport")}
+          label={tr("billing.invoices.accountingExportedAt")}
           value={
-            invoice.yayoiExportedAt
-              ? fmt.dateTime(invoice.yayoiExportedAt)
+            invoice.accountingExportedAt
+              ? fmt.dateTime(invoice.accountingExportedAt)
               : tr("billing.invoices.notExported")
           }
         />
@@ -520,12 +590,55 @@ export function InvoiceDetail({
         <Tabs.List>
           <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
+          {countTrailRecords(approvalTrail) > 0 && (
+            <Tabs.Tab value="approval">{tr("common.approve")}</Tabs.Tab>
+          )}
           <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
+        <Tabs.Panel pt="md" value="approval">
+          <ApprovalTrailList trail={approvalTrail} />
+        </Tabs.Panel>
+
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
+            {/* 追加費用（料金マスタからだけ選べる）。**下書きのうちだけ**編集できる
+                — 発行後は締日処理・手動請求と同じ「金額を凍結したら根拠も
+                凍結する」規約を守る（§9）。 */}
+            {invoice.status === "DRAFT" && (
+              <ChargesPanel
+                canEdit={canEditCharges}
+                description={tr("billing.invoices.chargesHelp")}
+                items={chargeItems}
+                onSave={(rows) =>
+                  saveInvoiceCharges(invoice.invoiceNumber, rows)
+                }
+                rows={invoice.items
+                  .filter((it) => it.isManualCharge)
+                  .map((it) => ({
+                    id: it.id,
+                    chargeItemId: it.chargeItemId as number,
+                    chargeItemLabel: it.chargeItemLabel ?? "",
+                    // 保存時の摘要は「マスタの名称（自由記入の備考）」の形で
+                    // 焼き込む（charge-actions.ts）。編集モーダルに戻すため
+                    // 同じ形から備考だけを取り出す — マスタの名称を変えていな
+                    // ければ復元できる（変えていたら備考は空で出る）。
+                    description: (() => {
+                      if (!it.chargeItemLabel) return "";
+                      const prefix = `${it.chargeItemLabel}（`;
+                      return it.description.startsWith(prefix) &&
+                        it.description.endsWith("）")
+                        ? it.description.slice(prefix.length, -1)
+                        : "";
+                    })(),
+                    quantity: it.quantity,
+                    unitPrice: it.unitPrice,
+                    amount: it.amount,
+                  }))}
+                title={tr("charges.title")}
+              />
+            )}
             <div>
               <Text c="dimmed" mb={4} size="xs">
                 {tr("billing.invoices.sentAt")}
@@ -589,12 +702,13 @@ export function InvoiceDetail({
         })}
         onClose={() => setIssueOpen(false)}
         onConfirm={() =>
-          run(
+          runIssueOrPaid(
             () => issueInvoice(invoice.invoiceNumber),
             tr("common.issued"),
             tr("billing.invoiceDetail.issuedWithNumber", {
               invoiceNumber: invoice.invoiceNumber,
             }),
+            tr("billing.invoicesActions.approvalRequested"),
           )
         }
         opened={issueOpen}
@@ -629,12 +743,13 @@ export function InvoiceDetail({
         })}
         onClose={() => setPaidOpen(false)}
         onConfirm={() =>
-          run(
+          runIssueOrPaid(
             () => markPaid(invoice.invoiceNumber),
             tr("billing.invoices.markedAsPaid"),
             tr("billing.invoiceDetail.markedPaidWithNumber", {
               invoiceNumber: invoice.invoiceNumber,
             }),
+            tr("billing.invoicesActions.paymentApprovalRequested"),
           )
         }
         opened={paidOpen}

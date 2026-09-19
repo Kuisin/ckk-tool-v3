@@ -186,7 +186,7 @@ How it is counted. The default is pieces.
 
 The consumption tax category for this product. It decides the tax on quotes and invoices.
 
-Left empty, the **default** of the tax category master (**MS0F**) applies — normally the standard 10% rate. Only pick a category for products on the reduced rate.
+Left empty, the **default** of the [tax category](/manual/en/operations/masters/tax-category/user) master applies — normally the standard 10% rate. Only pick a category for products on the reduced rate.
 
 If the business partner has a tax category of its own, **that wins** (for a tax-exempt partner, for example).
 

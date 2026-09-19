@@ -13,6 +13,8 @@ import type {
   DeliveryNoteStatus,
 } from "@/components/shipping/delivery-notes/model";
 import { checkPermission } from "@/lib/authz";
+import { customerFacingProductLabel } from "@/lib/customer-product-code-core";
+import { fetchCustomerProductLabels } from "@/lib/customer-product-codes";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
@@ -30,6 +32,9 @@ const DELIVERY_NOTE_INCLUDE = {
   // 1 出荷書は複数の注文明細を束ねられるので、明細行から番号を集める。
   deliveryOrder: {
     include: {
+      // 税率スナップショットを持たない旧データのフォールバック元
+      // （請求書・見積書と同じく「顧客の課税区分」へ落ちる）。
+      customerBp: { select: { customerAttrs: { select: { taxType: true } } } },
       items: {
         select: {
           orderLine: {
@@ -50,7 +55,8 @@ const DELIVERY_NOTE_INCLUDE = {
   createdByUser: { select: { displayName: true } },
   items: {
     orderBy: { sortOrder: "asc" as const },
-    include: { product: true },
+    // 品目統合 第 2 段 C — 表示は品目側から読む。
+    include: { item: true },
   },
 };
 
@@ -69,9 +75,10 @@ function productLabel(
     name: unknown;
     yearMonth: string | null;
     seq: number | null;
-  },
+  } | null,
   locale = "ja",
 ): string {
+  if (!p) return "—";
   const code = formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null, locale);
   return code ? `${name} ${code}` : name;
@@ -95,11 +102,13 @@ function mapDeliveryNote(
   const loc = forDocument ? (recipientDocumentLocale ?? "ja") : "ja";
   const items = r.items.map((it) => ({
     id: it.id,
-    productId: String(it.productId),
-    productName: productLabel(it.product, loc),
+    itemId: String(it.itemId ?? ""),
+    productLegacyId: String(it.productId),
+    productName: productLabel(it.item, loc),
     quantity: it.quantity,
     unitPrice: it.unitPrice != null ? Number(it.unitPrice) : null,
     amount: it.amount != null ? Number(it.amount) : null,
+    taxRate: it.taxRate != null ? Number(it.taxRate) : null,
     notes: it.notes,
   }));
   return {
@@ -140,6 +149,7 @@ function mapDeliveryNote(
     totalAmount: r.includePrice
       ? items.reduce((sum, it) => sum + (it.amount ?? 0), 0)
       : null,
+    customerTaxType: r.deliveryOrder.customerBp.customerAttrs?.taxType ?? null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -198,5 +208,24 @@ async function fetchDeliveryNoteRow(
   ) {
     return null;
   }
-  return mapDeliveryNote(row, forDocument);
+  const note = mapDeliveryNote(row, forDocument);
+  // 相手の品番を品名欄に併記する（顧客品番 — MS04）。**宛先の取引先**で引く
+  // ので、閲覧者が誰でも同じものが出る（書類の言語と同じ考え方）。登録が
+  // 無ければ自社の品名だけ = 従来どおり。1 件取得のときだけ行う — 一覧で
+  // やると 1 行ごとに引くことになる。
+  const labels = await fetchCustomerProductLabels(
+    row.recipientBpId,
+    note.items.map((it) => Number(it.itemId)),
+  );
+  if (labels.size === 0) return note;
+  return {
+    ...note,
+    items: note.items.map((it) => ({
+      ...it,
+      productName: customerFacingProductLabel(
+        it.productName,
+        labels.get(Number(it.itemId)),
+      ),
+    })),
+  };
 }

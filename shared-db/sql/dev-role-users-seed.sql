@@ -22,6 +22,8 @@ WITH seed(username, display_name, password_hash) AS (
     ('dev_quality_mgr', '開発 品質部長', '1e347c8cd41c28239feb09c44f171db0:61f8403814fa7b8e86d4981f0763db2d7ff05011eae3c4a1f001a6d6889cfe1a041b2a0c4865583cae0672a1d6043bc2648e00b567b064208d8475f163940bc5'),
     ('dev_shipping_mgr', '開発 出荷部長', '4e38ec525d6ed96eb2f8abb24aa66e41:c6a5ff68d115e390ccc2745f08fe4a6d0eb2eb0feae79714e95f39212b8232e36b5aed21b0403f6f37869cbb76f0f05cab66b509432e63dbd4d837ab214d018e'),
     ('dev_accounting_mgr', '開発 経理部長', '72e5ffc909cee578b0fdc8239fc653d8:26d3b17bfa978cbc98c0b223e04b16ab7ede31cbd382d511667d9ac5ad40afe64cff5e9acb59b30f065eae56cb6f93676d201952f60f4bc210feb6f02113dd08'),
+    -- マスタ編集だけを持つ単機能ロールの検証用（業務書類は 1 つも見えないこと）。
+    ('dev_master_editor', '開発 マスタ管理', '086b96cb6c3b4230a552e81c8ab17249:8cd4a2aa38dd2048c685c3f682fa74602fc7441c1300734198346c56a57637f6a6e87e080bf647e66f4620073d5b7b9d83f3465b0c25d881c974c0cafb018a1c'),
     -- 特権アクセス（SY0G）の検証用。**申請する人と承認する人を分けてある** —
     -- 1 人で両方を持たせると、分離が効いているかを確かめられない。
     ('dev_priv_operator', '開発 特権申請', '086b96cb6c3b4230a552e81c8ab17249:8cd4a2aa38dd2048c685c3f682fa74602fc7441c1300734198346c56a57637f6a6e87e080bf647e66f4620073d5b7b9d83f3465b0c25d881c974c0cafb018a1c'),
@@ -81,6 +83,11 @@ ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = N
 INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)
 SELECT u.id, r.id, true, now() FROM app.users u JOIN app.roles r ON r.rolename = 'sales_assistant'
 WHERE u.username = 'dev_sales_assistant'
+ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = NULL;
+
+INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)
+SELECT u.id, r.id, true, now() FROM app.users u JOIN app.roles r ON r.rolename = 'master_editor'
+WHERE u.username = 'dev_master_editor'
 ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = NULL;
 
 INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)

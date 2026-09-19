@@ -25,7 +25,7 @@ The steps on a [指示書 (work order)](/manual/en/operations/production/work-or
 - **Place of work** … whether the step is done only in house, or can also be asked of an outside company.
 - **Can run in parallel** … a step that may be done at the same time as another step and recorded together.
 - **Quantity tracking** … the setting for which numbers the operator is asked to enter when the step is done.
-- **Work plan required fields** … what a [work order](/manual/en/operations/production/work-order/user)'s work plan for this step must contain before approval can be requested. The planned date is always required; whether assignee, work location, start/end time and quantity are required can be set per step.
+- **Work plan required fields** … what a [work order](/manual/en/operations/production/work-order/user)'s work plan for this step must contain before approval can be requested. The planned date is always required; whether assignee, work location and start/end time are required can be set per step.
 - **Use dependency / execution dependency** … rules between steps. For details, see "[Set the order rules for steps](#set-the-order-rules-for-steps)".
 
 ## Before you start
@@ -89,7 +89,6 @@ A [work order](/manual/en/operations/production/work-order/user) needs at least 
 - **作業計画に担当者が必要** (work plan requires an assignee) … turn it on for a step where the assignee must be decided before requesting approval. **The assignee is optional by default** — it can be decided on the floor after approval.
 - **作業計画に作業場所が必要** (work plan requires a work location) … on by default. Turn it off for a step where a location has no meaning, such as 「〇〇出し」 (issue). The **range** of usable locations is set separately in "[Allowed work locations](#field-allowed-locations)". On an environment with no work locations registered at all, this is not asked for.
 - **作業計画に開始・終了時刻が必要** (work plan requires start/end time) … off by default. Turn it on for a step where the time slot must be decided before requesting approval.
-- **作業計画に数量が必要** (work plan requires a quantity) … off by default. Turn it on for a step whose plan is split by quantity, such as so many pieces per assignee.
 
 The step's detail screen lists which fields are required for its work plan.
 
@@ -124,7 +123,7 @@ Click a row in the list to open the detail screen of that step.
 
 ![Detail screen of the process step master](../../../assets/screenshots/master-process-step-detail-01.png)
 
-The step code, name, category, **step list kind** (prep / manufacturing badge), place of work, quantity tracking, lot input, **work plan required fields** (whichever of assignee, date, work location, time and quantity are actually required), default work time, display order and so on are shown together at the top. Below there are three tabs.
+The step code, name, category, **step list kind** (prep / manufacturing badge), place of work, quantity tracking, lot input, **work plan required fields** (whichever of assignee, date, work location and time are actually required), default work time, display order and so on are shown together at the top. Below there are three tabs.
 
 - **概要** (overview) … shows the allowed work locations (「制限なし」 — no restriction — when there is none, or the list of types and locations when there is) and what you wrote in the remarks.
 - **依存関係** (dependencies) … shows the use dependencies and the execution dependencies, each in its own table. Click a row to move to the screen of the other step.
@@ -216,7 +215,6 @@ A work order needs at least one work plan (who, when, where, how many) for each 
 - **作業計画に担当者が必要** (work plan requires an assignee) … off by default (it can be decided on the floor after approval). Turn it on to require the assignee before requesting approval.
 - **作業計画に作業場所が必要** (work plan requires a work location) … on by default. Turn it off for a step where a location has no meaning, such as 「〇〇出し」 (issue). Not asked for on an environment with no work locations registered at all.
 - **作業計画に開始・終了時刻が必要** (work plan requires start/end time) … off by default. Turn it on for a step where the time slot must be decided before requesting approval.
-- **作業計画に数量が必要** (work plan requires a quantity) … off by default. Turn it on for a step whose plan is split by quantity, such as so many pieces per assignee.
 
 On the work order's creation screen and a step's plan panel, only the fields required here get a red asterisk.
 

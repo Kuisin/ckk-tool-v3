@@ -35,6 +35,7 @@ All tokens are derived from Mantine's theme object. Reference semantic tokens in
 | 販売 | `blue` |
 | 購買 | `teal` |
 | 生産 | `violet` |
+| 在庫 | `cyan` |
 | 出荷 | `orange` |
 | 請求 | `pink` |
 | マスタ | `gray` |
@@ -309,9 +310,11 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 購買 | 3 | 素材入荷 | PU03 | PU13 | PU23 |
 | 購買 | 4 | 外注依頼 | PU04 | PU14 | PU24 |
 | 生産 | 2 | 指示書 | PD02 | PD12 | PD22 |
-| 生産 | 4 | 在庫管理 | PD04 | — | — |
+| 在庫 | 1 | 在庫管理 | ST01 | — | — |
 | 生産 | 5 | 未処理指示書 | PD05 | — | — |
 | 生産 | 6 | 設計図 | PD06 | PD16 | PD26 |
+| 在庫 | 4 | 入出庫伝票 | ST04 | — | ST24 |
+| 在庫 | 5 | 棚卸 | ST05 | ST15 | ST25 |
 | 出荷 | 1 | 出荷書 | SH01 | SH11 | SH21 |
 | 出荷 | 2 | 納品書 | SH02 | SH12 | SH22 |
 | 出荷 | 3 | 未処理出荷書 | SH03 | — | — |
@@ -329,6 +332,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | C | 拠点 | MS0C | MS1C | MS2C |
 | マスタ | D | 作業場所 | MS0D | — | — |
 | マスタ | E | 保管場所 | MS0E | — | — |
+| マスタ | G | 料金マスタ | MS0G | MS1G | — |
 | ドキュメント | 1 | マニュアル | DC01 | — | — |
 | ドキュメント | 2 | 管理マニュアル | DC02 | — | — |
 | システム | 1 | ユーザー管理 | SY01 | — | — |
@@ -348,6 +352,8 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | システム | G | 特権アクセス | SY0G | — | — |
 | システム | F | 通知メール | SY0F | — | — |
 | システム | H | 取引先ポータル | SY0H | — | — |
+| システム | I | API クライアント | SY0I | — | — |
+| システム | J | 会計連携 | SY0J | — | — |
 
 > `CM00`（ダッシュボード）は**アプリ一覧（`lib/app-list.ts`）には登録されて
 > いない** — ホーム自体だから。ランチャーに出るアプリの正は常に
@@ -425,6 +431,8 @@ Stack (gap="xl", p="md", maw={1200})
 | 指示書 | `IconSettings2` |
 | 未処理指示書 | `IconProgress` |
 | 設計図 | `IconFileVector` |
+| 入出庫伝票 | `IconArrowsExchange` |
+| 棚卸 | `IconClipboardList` |
 | 未処理一覧 | `IconClipboardList` |
 | 製品在庫 | `IconBoxSeam` |
 | 素材在庫 | `IconStack2` |
@@ -442,6 +450,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 不良種類 | `IconAlertTriangle` |
 | 承認設定 | `IconUsersGroup` |
 | 拠点 | `IconBuildingWarehouse` |
+| 料金マスタ | `IconCoin` |
 | ユーザー管理 | `IconUserCog` |
 | 価格試算計算 | `IconMathFunction` |
 | 製品項目 | `IconListDetails` |
@@ -702,6 +711,14 @@ Stack (gap="md")
 | DesignRequest | COMPLETED | green | 完了 |
 | DesignRequest | REJECTED | red | 差し戻し |
 | DesignRequest | CANCELLED | red | キャンセル |
+| StockTake | DRAFT | gray | 下書き |
+| StockTake | COUNTING | blue | 記入中 |
+| StockTake | CONFIRMED | green | 確定 |
+| StockTake | CANCELLED | red | キャンセル |
+| StockTake (approval) | NONE | gray | — |
+| StockTake (approval) | PENDING | yellow | 承認依頼中 |
+| StockTake (approval) | APPROVED | green | 承認済 |
+| StockTake (approval) | REJECTED | red | 差し戻し |
 | BillingClosing | PENDING | gray | 未処理 |
 | BillingClosing | PROCESSED | blue | 処理済 |
 | BillingClosing | EXPORTED | green | エクスポート済 |
@@ -883,7 +900,10 @@ Paper (withBorder, p="md", radius="md")
 
 搭載画面: 指示書 (`WorkOrderApprovalCard`) / 注文請書 / 素材発注書 / 購買依頼 /
 出荷書 (`DeliveryVarianceCard` — **過不足納品のときだけ出る**。数量ちょうどの
-出荷では何も描かない)。
+出荷では何も描かない) / 請求書 (`InvoiceApprovalCard` — 発行前承認は
+**追加費用ありの下書きだけ**、入金前承認は送付済み全件。どちらも「承認を
+依頼する」ボタンは持たず、発行/入金を押した時点でサーバーが自動で依頼する
+— `DeliveryVarianceCard` と同じ作法）。
 
 ### 10.10 EditablePanel
 
@@ -1283,7 +1303,8 @@ Paper (withBorder, p="md", radius="md")
 表示なし）、書類ごとに進捗を探す場所が違っていた。
 
 搭載: 価格試算 / 見積書 / 注文請書 / 注文明細 / 設計依頼書 / 購買依頼 / 素材発注書 /
-指示書 / 出荷書 / 納品書 / 請求書 / 締日処理（**12 書類**）。
+指示書 / 出荷書 / 納品書 / 請求書 / 締日処理 / 棚卸（**13 書類**）。
+**入出庫伝票は持たない** — 作られた時点で完結していて、進む先が無い（不変）。
 価格表（進行するライフサイクルが無い）と素材入荷（入庫済みの確定記録）は持たない。
 
 置き場所は **ActionCard (§10.9) → SummaryGrid → ProcedurePanel → Tabs** の順。
@@ -1533,8 +1554,8 @@ Row click navigates to detail page.
 | UnplannedOrderLine (PD05 未手配) | 注文明細番号 / 顧客 / 製品 / 受注数 / 手配済 / 未手配 / 在庫引当 / 納期 / 状態 |
 | UnshippedOrderLine (SH03 未手配) | 注文明細番号 / 顧客 / 製品 / 完了ロット / 完成数 / 出荷手配済 / 未手配 / 納期 / 状態 |
 | DeliveryNote | 納品番号 / 出荷書番号 / 納品先 / 方法 / 状態 / 納品日 |
-| Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態 / 発行日 |
-| BillingClosing | 顧客 / 締日 / 合計金額 / 状態 / 処理日 |
+| Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態（承認依頼中バッジ込み） / 発行日 |
+| BillingClosing | 顧客 / 締日 / 実行区分（定期/手動） / 合計金額 / 状態 / 処理日 |
 | DesignRequest | 依頼番号 / 区分 / 製品 / 担当者 / 希望納期 / 状態 / 更新日 |
 | DesignFile（設計図 PD06 — **1 行 = 1 系列**） | 製品 / 受注元 / 最新版 / 役割 / 出どころ / 更新日 |
 | MaterialPurchaseOrder | 発注番号 / 仕入先 / 入荷先拠点 / 合計金額 / 状態 / 発注日 |

@@ -804,7 +804,12 @@
     "priceListInactive": "Price list disabled",
     "priceListExpired": "Price list out of valid period",
     "dateFrom": "From date",
-    "dateTo": "To date"
+    "dateTo": "To date",
+    "billTo": "Bill-to",
+    "stockTake": "Stocktaking",
+    "stockMovement": "Stock movement",
+    "invoicePayment": "Invoice payment",
+    "notPendingApproval": "Not currently pending approval"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -1198,6 +1203,42 @@
     "DELIVERY_TOLERANCE_BASIS_LABEL": {
       "PERCENT": "Percent (%)",
       "QUANTITY": "Quantity"
+    },
+    "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "WORK_ORDER_COMPLETION": "Work order completed",
+      "DELIVERY_SHIPMENT": "Shipment",
+      "MATERIAL_RECEIPT": "Material receipt",
+      "STOCK_TRANSFER": "Stock transfer",
+      "STOCK_RESERVATION": "Stock reservation",
+      "RESERVATION_RELEASE": "Reservation released",
+      "ADJUSTMENT": "Adjustment",
+      "OTHER": "Unknown (pre-migration)"
+    },
+    "TRANSACTION_TYPE_LABEL": {
+      "IN": "In",
+      "OUT": "Out",
+      "RESERVE": "Reserve",
+      "RELEASE": "Release",
+      "ADJUST": "Adjustment"
+    },
+    "INVENTORY_TYPE_LABEL": {
+      "PRODUCT": "Product",
+      "MATERIAL": "Material"
+    },
+    "ITEM_TYPE_LABEL": {
+      "PRODUCT": "Product",
+      "MATERIAL": "Material"
+    },
+    "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
+      "past": "Actual",
+      "now": "Now",
+      "supply": "Expected supply",
+      "demand": "Expected demand"
+    },
+    "MOVEMENT_DIRECTION_LABEL": {
+      "IN": "In",
+      "OUT": "Out",
+      "TRANSFER": "Transfer"
     }
   },
   "status": {
@@ -1549,6 +1590,34 @@
         },
         "REVOKED": {
           "label": "Revoked"
+        }
+      },
+      "StockTake": {
+        "DRAFT": {
+          "label": "Draft"
+        },
+        "COUNTING": {
+          "label": "Counting"
+        },
+        "CONFIRMED": {
+          "label": "Confirmed"
+        },
+        "CANCELLED": {
+          "label": "Cancelled"
+        }
+      },
+      "StockTakeApproval": {
+        "NONE": {
+          "label": "—"
+        },
+        "PENDING": {
+          "label": "Pending approval"
+        },
+        "APPROVED": {
+          "label": "Approved"
+        },
+        "REJECTED": {
+          "label": "Sent back"
         }
       }
     }
@@ -1988,7 +2057,7 @@
       "generateInvoices": "Generate invoices",
       "createAnInvoice": "Create an invoice",
       "exported": "Exported",
-      "yayoiAccountingCsv": "Yayoi Accounting CSV",
+      "accountingCsv": "Accounting CSV",
       "shipmentsCovered": "Shipments covered",
       "thereAreNoShipmentsToBill": "There are no shipments to bill",
       "notGeneratedUseGenerateInvoices": "Not generated (use \"Generate invoices\")",
@@ -1998,7 +2067,6 @@
       "confirmGeneratingInvoices": "Confirm generating invoices",
       "theBillingClosingWasRun": "The billing closing was run",
       "runTheBillingClosing": "Run the billing closing",
-      "aggregatesTheMonthSUnbilledShipments": "Aggregates the month's unbilled shipments (shipped, dispatch only) per customer and creates closing rows.",
       "years": "years",
       "months": "months",
       "runTheBillingClosing2": "Run the billing closing",
@@ -2009,7 +2077,25 @@
       "shipmentNote": "{quantity} pcs · {amount}",
       "titleWithClosingDate": "{customer} ({date} closing)",
       "shipmentsCoveredWithCount": "Covered shipments ({count})",
-      "confirmGenerateBody": "Generates a draft invoice from {customer}'s {date} closing. The {count} covered shipments become the line items."
+      "confirmGenerateBody": "Generates a draft invoice from {customer}'s {date} closing. The {count} covered shipments become the line items.",
+      "dueDate": "Due date",
+      "monthEnd": "the last day",
+      "dayOfMonth": "day {day}",
+      "termsDayOnly": "the first {day} after the closing date",
+      "termsDaysThenDay": "the first {day} on or after the closing date + {days} days",
+      "termsDaysOnly": "closing date + {days} days (no payment day set)",
+      "termsDefault": "closing date + {days} days (the default — neither payment terms nor payment day is set)",
+      "generateInvoicesInBulk": "Generate invoices in bulk",
+      "nothingToProcess": "There is nothing to process",
+      "selectPendingPastClosingDate": "Select rows that are unprocessed and past their closing date",
+      "invoicesWereGenerated": "Generated {count} invoice(s)",
+      "someCouldNotBeProcessed": "{count} could not be generated",
+      "skippedNotReady": "{count} skipped (already processed, or before the closing date)",
+      "aggregatesUnbilledShipmentsUpToDate": "Aggregates unbilled shipments (shipped, dispatch only) per customer whose closing date has arrived by the target date and has not yet been closed, and generates a draft invoice for closings already past their closing date.",
+      "targetDate": "Target date",
+      "kind": "Run type",
+      "kindScheduled": "Scheduled",
+      "kindManual": "Manual"
     },
     "invoices": {
       "issueThePdf": "Issue the PDF",
@@ -2019,13 +2105,13 @@
       "confirmPayment": "Confirm payment",
       "handEnteredLinesOnly": "— (hand-entered lines only)",
       "shipmentWithNoDeliveryNoteIssued": "— (shipment with no delivery note issued)",
-      "yayoiAccountingExport": "Yayoi Accounting export",
-      "notExportedTheYayoiCsvIs": "Not exported (the Yayoi CSV is produced after issuing)",
+      "accountingExport": "Accounting export",
+      "notExportedAfterIssue": "Not exported (the accounting CSV is made after issuing)",
       "markAsSent": "Mark as sent",
       "markAsPaid": "Mark as paid",
-      "yayoiAccountingCsv": "Yayoi Accounting CSV",
+      "accountingCsv": "Accounting CSV",
       "paymentDue": "Payment due",
-      "yayoiExport": "Yayoi export",
+      "accountingExportedAt": "Accounting export date",
       "notExported": "Not exported",
       "summary": "Summary",
       "origin": "Origin",
@@ -2039,8 +2125,22 @@
       "taxLabelReduced": "Consumption tax (8%)",
       "taxLabelExempt": "Consumption tax (exempt)",
       "taxLabelStandard": "Consumption tax (10%)",
-      "yayoiAccountingCsvAgain": "Yayoi accounting CSV (export again)",
-      "taxLabelRate": "Tax ({rate}%)"
+      "accountingCsvAgain": "Accounting CSV (export again)",
+      "taxLabelRate": "Tax ({rate}%)",
+      "issueApprovalRejectedHelp": "Issue approval was sent back. Review the manual charges and issue again.",
+      "paymentApprovalRejectedHelp": "Payment approval was sent back. Request it again from “Mark as paid”.",
+      "issueApprovalWaitingHelp": "Only members of this group can act.",
+      "paymentApprovalWaitingHelp": "Only members of this group can act.",
+      "paymentApprovalApproveHelp": "Recording this payment requires approval. Review it and approve.",
+      "issueApprovalApproveHelpWithCharges": "Includes {count} manually added charge(s) (total {amount}). Review before approving.",
+      "chargesClosedForEditing": "Additional charges can only be edited on a draft invoice",
+      "chargesSaveFailed": "Could not save the additional charges",
+      "chargesHelp": "Charges added manually to this invoice (chosen from the charge master only). Requires approval before issuing. Editable only while the invoice is a draft.",
+      "manualInvoiceHelp": "Select the customer to invoice now. Creates a draft invoice from currently unbilled shipments without waiting for a closing date.",
+      "unbilledShipments": "Unbilled shipments",
+      "noUnbilledShipmentsForCustomer": "No unbilled shipments",
+      "createInvoiceFromSelection": "Create invoice",
+      "someShipmentsNoLongerAvailable": "Some of the selected shipments are already used by another invoice. Please select again."
     },
     "invoiceDetail": {
       "confirmIssueMessage": "This issues invoice {invoiceNumber}. The issue date is recorded as today.",
@@ -2048,11 +2148,10 @@
       "confirmMarkSentMessage": "This marks invoice {invoiceNumber} as sent.",
       "markedSentWithNumber": "Marked invoice {invoiceNumber} as sent",
       "confirmMarkPaidMessage": "This marks invoice {invoiceNumber} as paid.",
-      "markedPaidWithNumber": "Marked invoice {invoiceNumber} as paid"
+      "markedPaidWithNumber": "Marked invoice {invoiceNumber} as paid",
+      "approvalRequestedMessage": "Approval requested (invoice {invoiceNumber})"
     },
     "closingTable": {
-      "yearLabel": "{year}",
-      "monthLabel": "Month {month}",
       "createdAndUpdatedCounts": "Created {created} / updated {updated}",
       "skippedCount": "Skipped {skipped} already processed"
     },
@@ -2063,17 +2162,35 @@
       "onlyIssuedCanMarkSent": "Only issued invoices can be marked sent",
       "markSentFailed": "Could not mark as sent",
       "onlySentCanMarkPaid": "Only sent invoices can be marked paid",
-      "markPaidFailed": "Could not mark as paid"
+      "markPaidFailed": "Could not mark as paid",
+      "awaitingIssueApproval": "Awaiting issue approval",
+      "approvalRequestFailed": "Could not create the approval request",
+      "approvalRequested": "Approval requested",
+      "awaitingPaymentApproval": "Awaiting payment approval",
+      "paymentApprovalRequested": "Payment approval requested"
     },
     "closingActions": {
       "closingDateNotReached": "Cannot process until the closing date has passed (from the day after)",
       "closingNotFound": "The billing closing was not found",
       "generateInvoiceFailed": "Could not generate the invoice",
-      "invalidYearMonth": "Invalid target month format (YYYYMM)",
       "itemNameWithLot": "{name} (Lot {lot})",
-      "noUnbilledShipmentsForMonth": "No unbilled shipments for the target month",
       "pendingOnly": "Only an unprocessed closing can generate an invoice",
-      "runFailed": "Could not run the billing closing"
+      "runFailed": "Could not run the billing closing",
+      "invalidDate": "Invalid target date format",
+      "noUnbilledShipmentsUpToDate": "No unbilled shipments up to the target date"
+    },
+    "invoiceTable": {
+      "manualInvoice": "Manual invoice",
+      "nothingToIssue": "No invoices can be issued",
+      "selectDraftInvoices": "Select draft invoices",
+      "issuedCount": "Issued {count}",
+      "nothingToMarkPaid": "No invoices can be marked as paid",
+      "selectSentInvoices": "Select sent invoices",
+      "paymentProcessedCount": "Processed payment for {count}",
+      "nothingToApprove": "No invoices can be approved",
+      "selectPendingApprovalInvoices": "Select invoices pending approval",
+      "approvedCount": "Approved {count}",
+      "rejectedCount": "Sent back {count}"
     }
   },
   "general": {
@@ -2632,8 +2749,7 @@
       "selectAWorkLocation": "Select a work location",
       "start": "Start",
       "end": "End",
-      "enterStartAndEnd": "Enter the start and end times",
-      "enterQuantity": "Enter the quantity"
+      "enterStartAndEnd": "Enter the start and end times"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "Quantity and defects",
@@ -3014,7 +3130,6 @@
       "workLocationRequiredForPlan": "A work plan requires a work location",
       "planLockedByWorkOrderStatus": "Work plans cannot be changed while the work order is pending approval, completed or cancelled",
       "timeRequiredForPlan": "A work plan for this step requires start and end times",
-      "quantityRequiredForPlan": "A work plan for this step requires a quantity",
       "assigneeRequiredForPlan": "This step's work plan requires an assignee"
     },
     "workOrderActions": {
@@ -3188,6 +3303,71 @@
       "toleranceBottom": "Tolerance bottom",
       "upperLimit": "Upper limit",
       "lowerLimit": "Lower limit"
+    },
+    "movements": {
+      "movementNumber": "Movement no.",
+      "cause": "Cause",
+      "sourceDocument": "Source document",
+      "searchByNumber": "Search by movement no.",
+      "noMovements": "There are no stock movements",
+      "storageLocation": "Storage location / shelf",
+      "truncatedNotice": "Showing the 1,000 most recent only. Older slips will not appear, even when filtered."
+    },
+    "stockTakes": {
+      "actions": {
+        "cancelFailed": "Could not cancel",
+        "cannotCancelNow": "This cannot be cancelled now (only while draft or counting)",
+        "cannotSubmitNow": "This cannot be submitted now (count at least one line first)",
+        "countsSaved": "Counts saved",
+        "createFailed": "Could not create",
+        "noLinesToCount": "There is nothing to count",
+        "notEditableNow": "This cannot be edited now",
+        "notPendingApproval": "Not pending approval",
+        "saveCountsFailed": "Could not save the counts",
+        "selectAPlant": "Select a site",
+        "stateChanged": "The state has changed. Reload and try again",
+        "submitFailed": "Could not submit"
+      },
+      "detail": {
+        "bookQuantity": "Book quantity",
+        "confirmCancelBody": "This cancels {number}. This cannot be undone.",
+        "confirmedAtLabel": "Confirmed at",
+        "countedProgress": "{counted}/{total} counted",
+        "countedQuantity": "Counted quantity",
+        "countsSaved": "Counts saved",
+        "createdAtLabel": "Created at",
+        "difference": "Difference",
+        "item": "Item",
+        "linesTitle": "Buckets ({count})",
+        "movementTitle": "Inventory movement",
+        "noDifferenceNoMovement": "No difference (no movement was issued)",
+        "notConfirmedYet": "Not confirmed yet",
+        "notCounted": "Not counted",
+        "numberLabel": "Stocktake number",
+        "stageConfirmed": "Confirmed",
+        "stageCounting": "Counting",
+        "stageDraft": "Draft",
+        "summaryLine": "Counted {counted}/{total} · {diffCount} with a difference (over +{over} / under −{under})",
+        "unassignedLocation": "Unassigned"
+      },
+      "form": {
+        "created": "Created",
+        "createdBody": "Created {number}",
+        "newTitle": "New stocktake",
+        "sectionDescription": "Pulls in the buckets for the whole site, or narrowed to one storage location.",
+        "sectionTitle": "Stocktake information",
+        "selectAPlant": "Select a site",
+        "selectAPlantFirst": "Select a site first",
+        "selectAStorageLocation": "Select a storage location (optional)"
+      },
+      "table": {
+        "approvalStatus": "Approval status",
+        "emptyMessage": "There are no stocktakes yet",
+        "lineCount": "Line count",
+        "number": "Stocktake number",
+        "searchPlaceholder": "Search by stocktake number, site, or storage location",
+        "storageLocation": "Storage location"
+      }
     }
   },
   "purchase": {
@@ -4732,6 +4912,70 @@
       "activateBeforeIssuing": "Enable the account first — a disabled account cannot sign in.",
       "noActiveAccounts": "This partner has no enabled portal accounts.",
       "couldNotIssueTheGuide": "Could not issue the guide."
+    },
+    "accounting": {
+      "accounting": "Accounting export",
+      "description": "The shape of the journal CSV made from invoices. Per-row account codes live on the masters (tax categories MS0F / business partners MS01); this screen holds the shape and the defaults used when a master is blank.",
+      "notYetVendorLayout": "The default columns are a generic code-based layout, not the accounting software’s official import layout. Once you have the import layout sheet, match the columns and default codes here to it.",
+      "format": "Output format",
+      "formatDescription": "Character encoding, newline and date format the accounting software expects.",
+      "encoding": "Character encoding",
+      "newline": "Newline",
+      "dateFormat": "Date format",
+      "headerRow": "Write a header row",
+      "quoteMode": "Quoting",
+      "amountStyle": "Amount format",
+      "filenameSuffix": "Filename suffix",
+      "columns": "Column layout",
+      "columnsDescription": "What is written, in what order, under which heading. Top to bottom = first column, second column, and so on.",
+      "columnHeader": "Heading",
+      "columnField": "Field",
+      "constant": "Fixed text",
+      "addColumn": "Add a column",
+      "accounts": "Default account codes",
+      "accountsDescription": "Used when the master has no code. Left blank, the field is written empty.",
+      "receivableAccountCode": "Accounts receivable code",
+      "salesAccountCode": "Sales account code",
+      "taxAccountCode": "Tax suspense account code",
+      "deptCode": "Department code",
+      "defaultTaxCode": "Default tax code",
+      "taxCodeRules": "Tax codes by rate",
+      "taxCodeRulesDescription": "Looked up by rate when the tax category has no tax code.",
+      "taxRate": "Tax rate",
+      "taxRatePercent": "Tax rate (%)",
+      "debitTaxCode": "Debit tax code",
+      "creditTaxCode": "Credit tax code",
+      "addTaxCodeRule": "Add a rate",
+      "preview": "Preview",
+      "previewNote": "One made-up invoice mixing 10% and 8%, written with the current settings.",
+      "saved": "Accounting export settings updated",
+      "sampleCustomerName": "Sample Industries, Inc."
+    },
+    "accountingField": {
+      "date": "Entry date",
+      "dateYear": "Year",
+      "dateMonth": "Month",
+      "dateDay": "Day",
+      "slipNo": "Slip number",
+      "rowIndex": "Row number",
+      "voucherNo": "Voucher number",
+      "debitAccountCode": "Debit account code",
+      "debitSubCode": "Debit sub-account",
+      "debitDeptCode": "Debit department",
+      "debitTaxCode": "Debit tax code",
+      "debitAmount": "Debit amount",
+      "creditAccountCode": "Credit account code",
+      "creditSubCode": "Credit sub-account",
+      "creditDeptCode": "Credit department",
+      "creditTaxCode": "Credit tax code",
+      "creditAmount": "Credit amount",
+      "taxRatePercent": "Tax rate (%)",
+      "memo": "Description",
+      "invoiceNumber": "Invoice number",
+      "customerCode": "Customer code",
+      "customerName": "Customer name",
+      "constant": "Fixed text",
+      "empty": "Blank"
     }
   },
   "portal": {
@@ -5071,7 +5315,13 @@
       "varianceApprovalWithinHelp": "Route the delivery order through approval before confirming, even when the variance is within tolerance.",
       "varianceApprovalOutside": "Require approval outside tolerance",
       "varianceApprovalOutsideHelp": "Unchecking lets a variance outside the tolerance through without any approval, which makes the tolerance meaningless. Normally leave it on.",
-      "approvalNotRequired": "Not required"
+      "approvalNotRequired": "Not required",
+      "accountingSection": "Accounting export",
+      "accountingSectionHint": "Account codes written to the debit (accounts receivable) side of the journal CSV. Left blank, the default in Accounting export (SY0J) applies.",
+      "accountCodeHint": "Digits only, up to 8 (may be blank)",
+      "receivableAccountCode": "Accounts receivable code",
+      "receivableSubAccountCode": "Sub-account code (customer)",
+      "receivableSubAccountCodeHint": "The customer code in the accounting software. It is not the in-house customer code — do not reuse that one."
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "The defect type was created",
@@ -5415,8 +5665,6 @@
       "planRequiredFieldsHelp": "What this step's work plan must contain before requesting approval. The planned date is always required.",
       "planTimeRequired": "Work plan requires start and end times",
       "planTimeRequiredHelp": "Turn on for steps that must be scheduled to a time slot before approval.",
-      "planQuantityRequired": "Work plan requires a quantity",
-      "planQuantityRequiredHelp": "Turn on for steps whose plan is split by quantity (e.g. pieces per assignee).",
       "planTime": "Start / end time",
       "routeKind": "Step list",
       "routeKindPrep": "Preparation",
@@ -5426,7 +5674,6 @@
       "planRequiredShort": "Plan requires",
       "planFieldLocationShort": "Location",
       "planFieldTimeShort": "Time",
-      "planFieldQuantityShort": "Qty",
       "planAssigneeRequired": "Work plan requires an assignee",
       "planAssigneeRequiredHelp": "Turn on for steps where the assignee must be decided before requesting approval. By default the assignee is optional and can be decided on the floor after approval.",
       "planFieldAssigneeShort": "Assignee"
@@ -6076,7 +6323,10 @@
       "numberConditionSummary": "{label} {op} {value}",
       "selectConditionSummary": "{label} {op} \"{value}\"",
       "deliveryTotalQuantity": "Total shipped quantity",
-      "fromPlant": "From site"
+      "fromPlant": "From site",
+      "plant": "Site",
+      "differenceCount": "Differences",
+      "cases": "cases"
     },
     "inspectionTemplateExcel": {
       "sheetName": "Inspection sheet"
@@ -6142,7 +6392,76 @@
       "selectEffectiveFrom": "Select an effective date",
       "rateRange": "Enter a tax rate between 0 and 100",
       "useDefault": "Use the default",
-      "followProduct": "Follow the product"
+      "followProduct": "Follow the product",
+      "accountingSection": "Accounting export",
+      "accountingSectionHint": "Account codes written to the journal CSV. Left blank, the default in Accounting export (SY0J) applies.",
+      "accountCodeHint": "Digits only, up to 8 (may be blank)",
+      "taxCode": "Tax code",
+      "salesAccountCode": "Sales account code",
+      "taxAccountCode": "Tax suspense account code"
+    },
+    "chargeItems": {
+      "pageTitle": "Charge items",
+      "newChargeItem": "New charge item",
+      "editTheChargeItem": "Edit the charge item",
+      "deleteTheChargeItem": "Delete the charge item",
+      "disableTheChargeItem": "Disable the charge item",
+      "enableTheChargeItem": "Enable the charge item",
+      "empty": "There are no charge items yet",
+      "codeHelp": "A code identifying the charge item (it cannot be changed once created)",
+      "codePlaceholder": "e.g. SHIPPING",
+      "amountMode": "How the amount is set",
+      "modeFixed": "Fixed",
+      "modeVariable": "Variable",
+      "modeFixedHelp": "The amount from the charge item is used as is and cannot be changed when adding it",
+      "modeVariableHelp": "Entered each time it is used. The amount below is the default for the input",
+      "amount": "Amount",
+      "defaultAmount": "Default amount",
+      "amountFixedHelp": "Adding this item always uses this amount",
+      "amountVariableHelp": "Leave it empty to require an amount every time",
+      "defaultSuffix": "(default)",
+      "taxCategoryHelp": "Set per item — shipping is taxable, stamp duty is not. A tax category on the customer takes precedence",
+      "fixedNeedsAmount": "A fixed charge item needs an amount",
+      "created": "The charge item was created",
+      "updated": "Updated {name}",
+      "deleted": "Deleted {name}",
+      "enabled": "Enabled {name}",
+      "disabled": "Disabled {name}",
+      "deleteConfirm": "This deletes {name}.",
+      "enableConfirm": "This enables {name}.",
+      "disableConfirm": "This disables {name}. It can no longer be picked for new rows, but rows already written stay as they are.",
+      "itCannotBeDeletedWhileInUse": "A charge item used on a work order or delivery order cannot be deleted (it can be disabled)",
+      "inUseCannotDelete": "It cannot be deleted — it is used on {workOrders} work order(s) and {deliveryOrders} delivery order(s)",
+      "bulkDeleteChargeItems": "Bulk delete charge items",
+      "bulkDeleteConfirm": "This deletes {count} charge item(s).",
+      "bulkDeleted": "Deleted {count}",
+      "bulkEnabled": "Enabled {count}",
+      "bulkDisabled": "Disabled {count}",
+      "createFailed": "Could not create the charge item",
+      "updateFailed": "Could not update the charge item",
+      "deleteFailed": "Could not delete the charge item",
+      "unknownChargeItem": "The charge item was not found",
+      "quantityMin1": "Enter a quantity of 1 or more",
+      "enterAnAmount": "Enter an amount",
+      "amountCannotBeNegative": "The amount cannot be negative"
+    },
+    "customerProductCodes": {
+      "title": "Customer part numbers",
+      "help": "What each customer calls this product. Once registered, that customer's orders match by part number in one step, and their part number is shown alongside the product name on delivery notes and invoices.",
+      "empty": "No customer part numbers are registered",
+      "code": "Customer part number",
+      "codePlaceholder": "Their part number",
+      "name": "Customer part name",
+      "namePlaceholder": "The name they use (optional)",
+      "aliases": "Alternate codes",
+      "aliasesPlaceholder": "Old part numbers (matching only, never printed)",
+      "addRow": "Add a customer",
+      "everyRowNeedsCustomerAndCode": "Enter a customer and a customer part number on every row",
+      "selectACustomer": "Select a customer",
+      "enterACustomerCode": "Enter a customer part number",
+      "duplicateCustomerRow": "The same customer appears twice. Keep one row per customer",
+      "duplicateCodeForCustomer": "Customer part number “{code}” is duplicated for the same customer",
+      "couldNotSave": "Could not save the customer part numbers"
     }
   },
   "manual": {
@@ -7082,6 +7401,7 @@
       "endUser": "End user",
       "assignedSite": "Assigned site",
       "shippingWorkLocation": "Shipping work location",
+      "deliveryDestination": "Destination",
       "linesTotalQuantity": "Lines / total quantity",
       "expandedAt": "Expanded at",
       "workOrdersAllocated": "Work orders (allocated)",
@@ -7123,7 +7443,16 @@
       "showTheDocumentPane": "Expand the document",
       "hideTheDocument": "Hide",
       "customerProvidesDeliveryNote": "Customer-supplied delivery note",
-      "priceNoTierLine": "Line {row}: no price list quantity tier covers quantity {quantity}"
+      "priceNoTierLine": "Line {row}: no price list quantity tier covers quantity {quantity}",
+      "recreate": "Recreate",
+      "recreateFromThis": "Recreate from this order acceptance",
+      "recreatedFrom": "Recreated from",
+      "recreatedAsTitle": "Recreated as",
+      "recreatedAs": "Recreated as {number}",
+      "theCancelledOrderAcceptance": "The cancelled order acceptance this one came from",
+      "youCanRecreateOnceCancelled": "You can only recreate from a cancelled order acceptance",
+      "confirmRecreateMessage": "This creates a draft carrying over the contents of {number}. The link between the two is kept.",
+      "alreadyRecreatedAs": "This order acceptance has already been recreated as {numbers}. Check that you are not raising it twice."
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",
@@ -7493,7 +7822,9 @@
       "priceListPriceWithTier": "Price list {price} ({tier})",
       "fromPriceList": "From the price list",
       "willReplaceWithList": "{entered} will be replaced by the price list unit price on save",
-      "overriddenFromList": "Overridden (price list {expected})"
+      "overriddenFromList": "Overridden (price list {expected})",
+      "delivery": "Delivery",
+      "applyLineOneDeliveryToAll": "Apply line 1\u2019s delivery to all lines"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "Deletes \"{label}\". This cannot be undone.",
@@ -7563,7 +7894,7 @@
       "confirmIssues": "Cannot confirm: {summary}",
       "createFailed": "Could not create the order acceptance",
       "createdManually": "Created by manual entry",
-      "directToUserRequiresEndUser": "Direct-to-end-user delivery requires specifying the end user",
+      "directToUserRequiresEndUser": "Line {rows}: Direct-to-end-user delivery requires specifying the end user",
       "endUserInvalid": "The end user's business partner does not exist or is disabled",
       "invalidNumber": "The order acceptance number is invalid",
       "notPendingApproval": "This order acceptance is not pending approval",
@@ -7586,7 +7917,10 @@
       "takenOverManually": "Switched to manual entry without waiting for automatic extraction",
       "targetCancelRequestNotFound": "The target cancellation request was not found",
       "targetNotFound": "The target order acceptance was not found",
-      "unitPriceMin0": "The unit price must be 0 or more"
+      "unitPriceMin0": "The unit price must be 0 or more",
+      "onlyCancelledCanBeRecreated": "Only a cancelled order acceptance can be recreated",
+      "recreatedFromCancelled": "Recreated from the cancelled {number}",
+      "recreatedAs": "Recreated as {number}"
     },
     "quoteActions": {
       "createFailed": "Could not create the quote",
@@ -7712,7 +8046,7 @@
     },
     "orderAcceptanceReadiness": {
       "customerNotIdentified": "Customer not identified",
-      "directToUserButEndUserNot": "Direct to end user, but no end user specified",
+      "lineEndUserNotIdentified": "Line {rows}: End user not specified",
       "noLineItems": "There are no line items",
       "lineProductNotIdentified": "Line {rows}: Product not identified",
       "lineUnitPriceNotEntered": "Line {rows}: Unit price not entered",
@@ -8453,12 +8787,13 @@
       "viewed": "Viewed",
       "windowEndsAt": "Window ends at",
       "windowStartsAt": "Window starts at",
-      "yayoiExportedAt": "Yayoi export date",
+      "accountingExportedAt": "Accounting export date",
       "isDefault": "Default",
       "effectiveFrom": "Effective from",
       "ratePercent": "Tax rate (%)",
       "taxCategoryId": "Tax category",
-      "shortLabel": "Label on documents"
+      "shortLabel": "Label on documents",
+      "customerProductCodes": "Customer part numbers"
     },
     "tableFieldLabels": {
       "kiosk_devices": {
@@ -8523,6 +8858,7 @@
       "estimates": "Price estimates",
       "price_list_entries": "Price lists",
       "products": "Products",
+      "charge_items": "Charge items",
       "materials": "Materials",
       "material_types": "Material types",
       "business_partners": "Business partners",
@@ -8585,7 +8921,12 @@
       "api_clients": "API client",
       "api_client_tokens": "API token",
       "tax_categories": "Tax category",
-      "tax_category_rates": "Tax rate"
+      "tax_category_rates": "Tax rate",
+      "inventory_movements": "Stock movement",
+      "stock_takes": "Stocktaking",
+      "stock_take_lines": "Stocktaking line",
+      "item_inventory": "Stock",
+      "movement_types": "Movement type"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -8839,7 +9180,8 @@
     "finalInspectionDeliveryNoteIssued": "Pre-shipment check: recorded delivery note issued by",
     "finalInspectionShipmentAuthorized": "Pre-shipment check: recorded shipment authorized by",
     "finalInspectionShipDefectReviewed": "Recorded the checked-by stamp for defects at shipping",
-    "inspectionApproved": "Approved the inspection record"
+    "inspectionApproved": "Approved the inspection record",
+    "stockTakeAdjusted": "Stocktaking adjustment (on hand {book} → counted {counted})"
   },
   "workflowCore": {
     "quantityLabels": {
@@ -9910,5 +10252,108 @@
     "clientNotFound": "That client was not found",
     "featureDisabled": "The external API is disabled in this environment",
     "invalidNameChars": "The name contains characters that are not allowed"
+  },
+  "charges": {
+    "title": "Additional charges",
+    "item": "Charge item",
+    "note": "Note",
+    "notePlaceholder": "e.g. carrier, freight collect",
+    "selectAnItem": "Select a charge item",
+    "addRow": "Add a charge",
+    "total": "Additional charges total",
+    "empty": "There are no additional charges",
+    "everyRowNeedsAnItem": "Select a charge item on every row",
+    "fixedByMaster": "Fixed amount from the charge item",
+    "quantityTimesUnitPrice": "{quantity} × ¥{unitPrice}",
+    "copiedFromWorkOrder": "Copied from work order #{number}",
+    "couldNotSave": "Could not save the additional charges",
+    "workOrderHelp": "What is billed on top of the product price, such as shipping. This is the plan — it is copied onto the delivery order, and the delivery order's rows are what gets billed.",
+    "deliveryOrderHelp": "The additional charges billed for this shipment. Once confirmed, billing closing turns them into invoice lines. They can only be edited while the delivery order is a draft.",
+    "workOrderClosedForCharges": "Charges on a completed or cancelled work order cannot be changed. Edit them on the delivery order instead",
+    "deliveryOrderClosedForCharges": "Charges can only be changed on a draft delivery order"
+  },
+  "inventory": {
+    "stockOverview": {
+      "item": "Item",
+      "itemType": "Item type",
+      "hideZeroStock": "Hide zero stock",
+      "searchPlaceholder": "Search by item name or code",
+      "summaryLine": "{rows} rows / {items} items / {sites} sites",
+      "truncatedNotice": "Too many rows to show all — narrow the filters.",
+      "noStock": "No stock"
+    },
+    "requirements": {
+      "title": "Stock / requirements",
+      "item": "Item",
+      "itemPlaceholder": "Search by code or name",
+      "plantPlaceholder": "Select a site",
+      "emptyState": "Pick an item and a site to see its past movements and upcoming supply/demand",
+      "notFound": "Item not found",
+      "onHand": "On hand",
+      "reserved": "Reserved",
+      "availableNow": "Available",
+      "nextReceipt": "Next receipt",
+      "shortageAlertTitle": "Projected shortage",
+      "shortageAlertBody": "The running balance is projected to go negative. Check the highlighted row.",
+      "truncated": "Only the most recent history is shown (older movements exist)",
+      "rowKindHeader": "Type",
+      "reference": "Reference",
+      "balance": "Balance",
+      "dateUndetermined": "Undetermined",
+      "rowKind": {
+        "now": "Now"
+      }
+    },
+    "goodsMovement": {
+      "selectAType": "Select a movement type",
+      "selectAnItem": "Select an item",
+      "quantityPositive": "Enter a quantity greater than zero",
+      "typeInactive": "This movement type is disabled",
+      "postFailed": "Could not record the movement",
+      "problem": {
+        "itemRequired": "Select an item",
+        "quantityPositive": "Enter a quantity greater than zero",
+        "fromRequired": "Specify the source location",
+        "toRequired": "Specify the destination location",
+        "sameEndpoint": "The source and destination are the same"
+      },
+      "movementType": "Movement type",
+      "fromLocation": "Source",
+      "toLocation": "Destination",
+      "shelf": "Shelf",
+      "itemAndQuantity": "Item and quantity",
+      "item": "Item",
+      "quantity": "Quantity",
+      "lotNumber": "Lot number",
+      "lotNumberHint": "Products only (ignored for materials)",
+      "problemsTitle": "Cannot record yet",
+      "submit": "Record",
+      "lastPosted": "Last recorded movement",
+      "posted": "Recorded movement {number}"
+    },
+    "movementTypes": {
+      "number": "Number",
+      "direction": "Direction",
+      "requiresFrom": "Requires source",
+      "requiresTo": "Requires destination",
+      "requiresFromFloor": "This direction cannot turn off the source requirement",
+      "requiresToFloor": "This direction cannot turn off the destination requirement",
+      "createFailed": "Could not create the movement type",
+      "updateFailed": "Could not update the movement type",
+      "codeHint": "The number shown in the Goods movement picker (e.g. 101 / 201 / 311)",
+      "newMovementType": "New movement type",
+      "editTheMovementType": "Edit movement type",
+      "created": "Created movement type \"{name}\"",
+      "updated": "Updated {name}",
+      "disableConfirm": "Disable {name}?",
+      "enableConfirm": "Enable {name}?",
+      "disabled": "Disabled {name}",
+      "enabled": "Enabled {name}",
+      "disableTitle": "Disable movement type",
+      "enableTitle": "Enable movement type",
+      "bulkEnabled": "Enabled {count} item(s)",
+      "bulkDisabled": "Disabled {count} item(s)",
+      "noMovementTypes": "No movement types"
+    }
   }
 }

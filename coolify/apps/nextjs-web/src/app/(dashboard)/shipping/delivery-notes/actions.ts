@@ -22,6 +22,7 @@ import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
+import { isoDateJst } from "@/components/sales/price-lists/model";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission, requireAnyRead } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -31,12 +32,15 @@ import {
   parseDocKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { legacyProductIdsForItems } from "@/lib/item-legacy-product";
 import {
   type ActionResult,
   actionError,
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { loadTaxCatalog } from "@/lib/tax-categories";
+import { billingBasisDate, resolveLineTax } from "@/lib/tax-rate";
 
 const BASE_PATH = "/shipping/delivery-notes";
 
@@ -67,7 +71,8 @@ async function deliveryNoteInScope(
 
 function itemInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
-    productId: z.string().min(1, tr("common.selectAProduct")),
+    /** 納品する製品 — 値は品目 id（items.id）。品目統合 第 2 段 C。 */
+    itemId: z.string().min(1, tr("common.selectAProduct")),
     quantity: z
       .number()
       .int()
@@ -112,23 +117,112 @@ const trimOrNull = (v: string | null | undefined) => {
 };
 
 interface ItemInputValue {
-  productId: string;
+  /** 品目 id（items.id）。 */
+  itemId: string;
   quantity: number;
   unitPrice: number | null;
   notes: string | null;
 }
 
-/** 明細行 → DB 値。価格記載なしのときは単価・金額を保存しない。 */
-function toItemData(it: ItemInputValue, i: number, includePrice: boolean) {
+/** 明細行 → DB 値。価格記載なしのときは単価・金額・税を保存しない。 */
+function toItemData(
+  it: ItemInputValue,
+  i: number,
+  includePrice: boolean,
+  lineTax: { categoryId: number | null; rate: number } | null,
+  /** 旧 product_id 列の値（品目 → products の橋渡し）。 */
+  legacyProductId: number,
+) {
   const unitPrice = includePrice ? (it.unitPrice ?? 0) : null;
   return {
-    productId: Number(it.productId),
+    itemId: Number(it.itemId),
+    productId: legacyProductId,
     quantity: it.quantity,
     unitPrice,
     // 金額はサーバー側で計算（クライアント表示値は信用しない）。
     amount: unitPrice != null ? unitPrice * it.quantity : null,
+    // 税も同じ — 価格を載せない納品書は税も出さないので持たせない。
+    taxCategoryId: includePrice ? (lineTax?.categoryId ?? null) : null,
+    taxRate: includePrice ? (lineTax?.rate ?? null) : null,
     notes: trimOrNull(it.notes),
     sortOrder: i,
+  };
+}
+
+/**
+ * 下書きの納品書を保存するときの税解決。
+ *
+ * 自動生成の納品書は**出荷書の確定時**に税を焼き込む（delivery-orders/actions.ts）。
+ * こちらは人が下書きを直して保存する経路で、同じ規則で解決し直す — 基準日も
+ * 注文日 → 出荷日 → 今日 と、請求書とまったく同じ落ち方にする。
+ */
+async function resolveNoteLineTax(
+  deliveryOrderKey: { yearMonth: string; seq: number } | null,
+): Promise<(itemId: number) => { categoryId: number | null; rate: number }> {
+  const catalog = await loadTaxCatalog();
+  if (deliveryOrderKey == null) {
+    // 出荷書が辿れない納品書（本来は作られない）。製品も注文日も引けないので、
+    // 既定の区分・今日の率に落ちる。
+    const fallback = resolveLineTax(catalog, {
+      customerTaxCategoryId: null,
+      productTaxCategoryId: null,
+      basisDate: isoDateJst(new Date()),
+    });
+    return () => fallback;
+  }
+  const order = await prisma.deliveryOrder.findUnique({
+    where: { yearMonth_seq: deliveryOrderKey },
+    select: {
+      shippedAt: true,
+      customerBp: {
+        select: { customerAttrs: { select: { taxCategoryId: true } } },
+      },
+      items: {
+        select: {
+          itemId: true,
+          item: { select: { taxCategoryId: true } },
+          orderLine: {
+            select: { acceptance: { select: { orderDate: true } } },
+          },
+        },
+      },
+    },
+  });
+  const customerTaxCategoryId =
+    order?.customerBp.customerAttrs?.taxCategoryId ?? null;
+  const shippedAt = order?.shippedAt ? isoDateJst(order.shippedAt) : null;
+  // 製品（品目）→ (課税区分, 注文日)。同じ製品が複数行にあるときは**最も早い
+  // 注文日**に揃える（どの行から引くかで率が変わらないように）。
+  const byProduct = new Map<
+    number,
+    { categoryId: number | null; orderDate: string | null }
+  >();
+  for (const it of order?.items ?? []) {
+    if (it.itemId == null) continue;
+    const orderDate = it.orderLine?.acceptance.orderDate
+      ? isoDateJst(it.orderLine.acceptance.orderDate)
+      : null;
+    const prev = byProduct.get(it.itemId);
+    if (prev == null) {
+      byProduct.set(it.itemId, {
+        categoryId: it.item?.taxCategoryId ?? null,
+        orderDate,
+      });
+    } else if (
+      orderDate != null &&
+      (prev.orderDate == null || orderDate < prev.orderDate)
+    ) {
+      prev.orderDate = orderDate;
+    }
+  }
+  const today = isoDateJst(new Date());
+  return (itemId) => {
+    const hit = byProduct.get(itemId);
+    return resolveLineTax(catalog, {
+      customerTaxCategoryId,
+      productTaxCategoryId: hit?.categoryId ?? null,
+      basisDate: billingBasisDate(hit?.orderDate ?? null, shippedAt, today),
+    });
   };
 }
 
@@ -169,7 +263,7 @@ export async function searchEndUserOptions(
  */
 async function validateItemsAgainstShipment(
   shpKey: { yearMonth: string; seq: number },
-  items: { productId: string | number; quantity: number }[],
+  items: { itemId: string | number; quantity: number }[],
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   const shipItems = await prisma.deliveryOrderItem.findMany({
@@ -177,22 +271,24 @@ async function validateItemsAgainstShipment(
       deliveryOrderYearMonth: shpKey.yearMonth,
       deliveryOrderSeq: shpKey.seq,
     },
-    select: { productId: true, quantity: true },
+    select: { itemId: true, quantity: true },
   });
-  const shippedByProduct = new Map<number, number>();
+  // 鍵は**品目 id**（items.id）— 出荷明細も納品明細も品目で製品を指す。
+  const shippedByItem = new Map<number, number>();
   for (const it of shipItems) {
-    shippedByProduct.set(
-      it.productId,
-      (shippedByProduct.get(it.productId) ?? 0) + it.quantity,
+    if (it.itemId == null) continue;
+    shippedByItem.set(
+      it.itemId,
+      (shippedByItem.get(it.itemId) ?? 0) + it.quantity,
     );
   }
   const requested = new Map<number, number>();
   for (const it of items) {
-    const pid = Number(it.productId);
+    const pid = Number(it.itemId);
     requested.set(pid, (requested.get(pid) ?? 0) + it.quantity);
   }
   // エラー文には内部 ID ではなく画面と同じ表記（製品名 + 製品コード）を出す。
-  const products = await prisma.product.findMany({
+  const products = await prisma.item.findMany({
     where: { id: { in: [...requested.keys()] } },
     select: { id: true, name: true, yearMonth: true, seq: true },
   });
@@ -207,16 +303,16 @@ async function validateItemsAgainstShipment(
     labelById.get(id) ??
     tr("shipping.deliveryNoteActions.productFallbackLabel", { id });
 
-  for (const [productId, qty] of requested) {
-    const shipped = shippedByProduct.get(productId);
+  for (const [itemId, qty] of requested) {
+    const shipped = shippedByItem.get(itemId);
     if (shipped == null) {
       return tr("shipping.deliveryNoteActions.productNotInShipment", {
-        label: labelOf(productId),
+        label: labelOf(itemId),
       });
     }
     if (qty > shipped) {
       return tr("shipping.deliveryNoteActions.exceedsShippedQuantity", {
-        label: labelOf(productId),
+        label: labelOf(itemId),
         quantity: qty,
         shipped,
       });
@@ -266,7 +362,7 @@ export async function updateDeliveryNote(
         deliveryOrderSeq: true,
         items: {
           orderBy: { sortOrder: "asc" },
-          select: { productId: true, quantity: true, notes: true },
+          select: { itemId: true, quantity: true, notes: true },
         },
       },
     });
@@ -281,6 +377,25 @@ export async function updateDeliveryNote(
       );
       if (itemsError) return actionError(itemsError);
     }
+    // 税はトランザクションの外で解決しておく（読むだけ・時間のかかる I/O を
+    // トランザクションに入れない）。
+    // 旧 product_id 列を埋めるための橋渡し（品目統合 第 2 段 C）。
+    const legacyProductIds = await legacyProductIdsForItems(
+      v.items.map((it) => Number(it.itemId)),
+    );
+    // 品目は products の鏡なので通常あり得ない。対応が無いまま保存して旧列に
+    // 穴を空けるより、ここで止める。
+    if (v.items.some((it) => !legacyProductIds.has(Number(it.itemId)))) {
+      return actionError(tr("common.targetProductNotFound"));
+    }
+    const lineTaxOf = await resolveNoteLineTax(
+      prior?.deliveryOrderYearMonth && prior.deliveryOrderSeq != null
+        ? {
+            yearMonth: prior.deliveryOrderYearMonth,
+            seq: prior.deliveryOrderSeq,
+          }
+        : null,
+    );
     await prisma.$transaction(async (tx) => {
       // status を where に含めた updateMany で原子的にガードする。
       const updated = await tx.deliveryNote.updateMany({
@@ -310,7 +425,13 @@ export async function updateDeliveryNote(
         data: v.items.map((it, i) => ({
           deliveryNoteYearMonth: key.yearMonth,
           deliveryNoteSeq: key.seq,
-          ...toItemData(it, i, v.includePrice),
+          ...toItemData(
+            it,
+            i,
+            v.includePrice,
+            lineTaxOf(Number(it.itemId)),
+            legacyProductIds.get(Number(it.itemId)) as number,
+          ),
         })),
       });
     });

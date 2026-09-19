@@ -118,7 +118,9 @@ export async function GET(request: Request): Promise<Response> {
     },
     items: quote.items.map((it) => ({
       name: it.productName,
-      code: it.productId,
+      // 印字を変えないため**旧 products.id のまま**（品目統合の前から
+      // この欄には内部 id が入っている）。
+      code: it.productLegacyId,
       order_type: orderTypeLabelLocalized(it.orderType, lang),
       quantity: yen(it.quantity),
       unit_price: yen(it.unitPrice),

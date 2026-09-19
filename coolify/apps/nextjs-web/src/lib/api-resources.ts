@@ -38,7 +38,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "doc",
     summary:
-      "Order acceptances (注文請書). Totals are derived from the lines, not stored.", // i18n-ignore
+      "Order acceptances (注文請書). Totals are derived from the lines, not stored. shipToId/endUserId/assignedPlantId/deliveryMethod are also derived from the lines (§8: delivery is per-line) — the header's value only when all lines agree, else null.", // i18n-ignore
     scope: "Creator (OWN) when the grant is scoped.",
   },
   {
@@ -47,7 +47,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Order lines (注文明細). The execution unit; created via the acceptance.", // i18n-ignore
+      "Order lines (注文明細). The execution unit; created via the acceptance. shipToId/deliveryMethod/assignedPlantId/endUserId hold the line's own delivery destination (§8).", // i18n-ignore
     scope: "Inherited from the parent acceptance's creator.",
   },
   {

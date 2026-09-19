@@ -61,7 +61,7 @@ import {
 import { z } from "zod";
 import {
   searchAllocatableOrderLineOptions,
-  searchMaterialOptions,
+  searchMaterialItemOptions,
   searchProductOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -140,7 +140,8 @@ const schema = (tr: (key: string) => string) =>
       .number()
       .int()
       .min(1, tr("production.workflowBuilder.plannedQuantityMustBeAtLeast1")),
-    materialId: z.string().nullable(),
+    /** 使用素材の品目 id（items.id）を文字列で保持。 */
+    materialItemId: z.string().nullable(),
     storageLocationId: z.string().nullable(),
     /** 不足 / 超過分もそのまま納品してよいロットか（§8 過不足納品）。 */
     allowQuantityVariance: z.boolean(),
@@ -173,7 +174,7 @@ function initialValues(
       productId: null,
       type: "MANUFACTURE",
       plannedQuantity: 1,
-      materialId: null,
+      materialItemId: null,
       storageLocationId: null,
       allowQuantityVariance: false,
       designFileId: null,
@@ -186,8 +187,10 @@ function initialValues(
       workOrder.orderLines.length === 0 ? String(workOrder.productId) : null,
     type: workOrder.type as FormValues["type"],
     plannedQuantity: workOrder.plannedQuantity,
-    materialId:
-      workOrder.materialId != null ? String(workOrder.materialId) : null,
+    materialItemId:
+      workOrder.materialItemId != null
+        ? String(workOrder.materialItemId)
+        : null,
     allowQuantityVariance: workOrder.allowQuantityVariance,
     storageLocationId:
       workOrder.storageLocationId != null
@@ -975,21 +978,21 @@ export function WorkflowBuilder({
   const [materialAtpInfo, setMaterialAtpInfo] = useState<MaterialAtp | null>(
     null,
   );
-  const materialIdValue =
-    form.values.type === "MANUFACTURE" ? form.values.materialId : null;
+  const materialItemIdValue =
+    form.values.type === "MANUFACTURE" ? form.values.materialItemId : null;
   useEffect(() => {
-    if (!materialIdValue) {
+    if (!materialItemIdValue) {
       setMaterialAtpInfo(null);
       return;
     }
     let cancelled = false;
-    getMaterialAtp(Number(materialIdValue)).then((atp) => {
+    getMaterialAtp(Number(materialItemIdValue)).then((atp) => {
       if (!cancelled) setMaterialAtpInfo(atp);
     });
     return () => {
       cancelled = true;
     };
-  }, [materialIdValue]);
+  }, [materialItemIdValue]);
 
   // ── 使用素材のプリフィル（製品の想定材種 × 直径） + 想定外の警告 ────────────
   // 製品は「材種 + 直径」で素材を指定する（cut-to-length のため特定の
@@ -1009,7 +1012,7 @@ export function WorkflowBuilder({
   useEffect(() => {
     materialTouchedRef.current = false;
   }, [workOrderProductId]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 製品/種別が変わったときだけ引き直す（materialId・setFieldValue は判定・更新に使うだけで再実行の起点にはしない）
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 製品/種別が変わったときだけ引き直す（materialItemId・setFieldValue は判定・更新に使うだけで再実行の起点にはしない）
   useEffect(() => {
     if (workOrderProductId == null) {
       setMaterialAssumption(null);
@@ -1020,16 +1023,15 @@ export function WorkflowBuilder({
       if (cancelled) return;
       setMaterialAssumption(info);
       if (
-        info?.suggestedMaterialId != null &&
+        info?.suggestedItemId != null &&
         !materialTouchedRef.current &&
-        !form.values.materialId &&
+        !form.values.materialItemId &&
         form.values.type === "MANUFACTURE"
       ) {
-        form.setFieldValue("materialId", String(info.suggestedMaterialId));
+        form.setFieldValue("materialItemId", String(info.suggestedItemId));
         setSuggestedMaterialOption({
-          value: String(info.suggestedMaterialId),
-          label:
-            info.suggestedMaterialLabel ?? String(info.suggestedMaterialId),
+          value: String(info.suggestedItemId),
+          label: info.suggestedMaterialLabel ?? String(info.suggestedItemId),
         });
       }
     });
@@ -1038,20 +1040,20 @@ export function WorkflowBuilder({
     };
   }, [workOrderProductId, form.values.type]);
   useEffect(() => {
-    if (!materialIdValue) {
+    if (!materialItemIdValue) {
       setSelectedMaterialSpec(null);
       return;
     }
     let cancelled = false;
-    getMaterialTypeSpec(Number(materialIdValue)).then((spec) => {
+    getMaterialTypeSpec(Number(materialItemIdValue)).then((spec) => {
       if (!cancelled) setSelectedMaterialSpec(spec);
     });
     return () => {
       cancelled = true;
     };
-  }, [materialIdValue]);
+  }, [materialItemIdValue]);
   const materialMismatch =
-    materialIdValue != null &&
+    materialItemIdValue != null &&
     selectedMaterialSpec != null &&
     materialAssumption?.materialTypeId != null &&
     (selectedMaterialSpec.materialTypeId !==
@@ -1229,9 +1231,9 @@ export function WorkflowBuilder({
           : null,
       type: target === "STOCK" ? "MANUFACTURE" : values.type,
       plannedQuantity: values.plannedQuantity,
-      materialId:
-        values.type === "MANUFACTURE" && values.materialId
-          ? Number(values.materialId)
+      materialItemId:
+        values.type === "MANUFACTURE" && values.materialItemId
+          ? Number(values.materialItemId)
           : null,
       allowQuantityVariance: values.allowQuantityVariance,
       storageLocationId: values.storageLocationId
@@ -1551,7 +1553,7 @@ export function WorkflowBuilder({
                 form.setFieldValue("type", v as FormValues["type"]);
                 applyTypeToSteps(v as FormValues["type"]);
                 if (v === "FROM_STOCK") {
-                  form.setFieldValue("materialId", null);
+                  form.setFieldValue("materialItemId", null);
                   // 在庫分は割当 1 件のみ — 先頭の有効行だけ残す
                   setAllocRows((rows) => {
                     const first =
@@ -1599,9 +1601,9 @@ export function WorkflowBuilder({
               }
               initialOption={
                 suggestedMaterialOption ??
-                (workOrder?.materialId != null && workOrder.materialCode
+                (workOrder?.materialItemId != null && workOrder.materialCode
                   ? {
-                      value: String(workOrder.materialId),
+                      value: String(workOrder.materialItemId),
                       label: `${workOrder.materialCode}（${workOrder.materialName}）`,
                     }
                   : null)
@@ -1610,14 +1612,14 @@ export function WorkflowBuilder({
               onChange={(v) => {
                 materialTouchedRef.current = true;
                 setSuggestedMaterialOption(null);
-                form.setFieldValue("materialId", v);
+                form.setFieldValue("materialItemId", v);
               }}
-              onSearch={searchMaterialOptions}
+              onSearch={searchMaterialItemOptions}
               placeholder={tr(
                 "production.workOrders.searchByMaterialCodeOrName",
               )}
-              storageKey="material"
-              value={form.values.materialId}
+              storageKey="materialItem"
+              value={form.values.materialItemId}
             />
           )}
           <Select
@@ -1682,7 +1684,7 @@ export function WorkflowBuilder({
         )}
         {/* 素材 ATP 警告（充足=緑 / 不足+入荷予定あり=黄 / 不足+入荷予定なし=赤）。
             警告のみ — 保存はブロックしない（§5 素材判断は指示書承認側で行う）。 */}
-        {materialIdValue && materialAtpInfo && (
+        {materialItemIdValue && materialAtpInfo && (
           <MaterialAtpAlert
             atp={materialAtpInfo}
             plannedQuantity={form.values.plannedQuantity}
@@ -2001,13 +2003,12 @@ export function WorkflowBuilder({
                   workLocationRequired: cat.workLocationRequired,
                   planTimeRequired: cat.planTimeRequired,
                   planAssigneeRequired: cat.planAssigneeRequired,
-                  planQuantityRequired: cat.planQuantityRequired,
                 },
                 { workLocationsConfigured: workLocationOptions.length > 0 },
               );
-              const needsPanel = required.some(
-                (f) => f === "TIME" || f === "QUANTITY",
-              );
+              // 時刻は作成フォームでは入れさせない（工程ごとの時間割は
+              // 承認後に計画パネルで詰める）ので、必要なら案内だけ出す。
+              const needsPanel = required.includes("TIME");
               return (
                 <Paper key={s.processStepId} p="sm" radius="sm" withBorder>
                   <Group

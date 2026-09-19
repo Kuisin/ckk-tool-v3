@@ -30,6 +30,12 @@ import {
 import { type MaterialAtp, materialAtp } from "@/lib/atp";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
+import {
+  type ChargeRowsInput,
+  chargeAuditShape,
+  chargeRowsSchema,
+  prepareChargeRows,
+} from "@/lib/charges";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   type DesignFileRole,
@@ -37,6 +43,8 @@ import {
 } from "@/lib/design-files-core";
 import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { movementOpener } from "@/lib/inventory";
+import { itemIdForLegacyProduct } from "@/lib/item-legacy-product";
 import { allocateDocumentKey, nextSerialNumber } from "@/lib/numbering";
 import {
   copyRouteVersionToCustomerTx,
@@ -210,6 +218,10 @@ function workOrderInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z
     .object({
       allocations: z.array(allocationInputSchema(tr)),
+      // 在庫向け（注文明細なし）のときの対象製品。値は products.id —
+      // WorkflowBuilder のピッカー（searchProductOptions）と揃える。
+      // 品目参照（productItemId）はここから products→item を橋渡しして書く
+      // （resolveWorkOrderTarget / createWorkOrder・updateWorkOrder）。
       productId: z.number().int().positive().nullable(),
       type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
       plannedQuantity: z
@@ -219,7 +231,8 @@ function workOrderInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
           1,
           tr("production.workOrderActions.plannedQuantityMustBeAtLeastOne"),
         ),
-      materialId: z.number().int().positive().nullable(),
+      /** 使用素材の品目 id（items.id。品目統合 第 2 段 B — 旧 materialId）。 */
+      materialItemId: z.number().int().positive().nullable(),
       storageLocationId: z.number().int().positive().nullable(),
       /**
        * 不足 / 超過分もそのまま納品してよいロットか（§8 過不足納品）。
@@ -312,6 +325,14 @@ async function loadLineAllocInfos(
 /**
  * 保存対象の解決: 割当あり = 明細の製品 + 割当検証（work-order-alloc-core）、
  * 割当なし（在庫向け）= 製品を直接検証する。エラー時は文字列を返す。
+ *
+ * ★ **ここは両側とも `products.id` のまま据え置く**（品目統合 第 2 段 C の判断）。
+ *   注文明細は `order_lines.item_id` を持つようになったが、この関数が比べる
+ *   もう一方は WorkflowBuilder の製品ピッカー（`searchProductOptions` =
+ *   products.id）で、`work-order-alloc-core` の「全行同一製品」不変条件も
+ *   同じ値を見ている。片側だけ品目へ移すと **どちらも number なので型では
+ *   止まらず**、黙ってずれる。移すときは 3 か所（ピッカー・この関数・
+ *   alloc-core）を同時に移し、フィールド名も itemId へ改名すること。
  */
 async function resolveWorkOrderTarget(
   v: WorkOrderInput,
@@ -341,6 +362,9 @@ async function resolveWorkOrderTarget(
       return tr("production.workOrderActions.orderLineNotFound");
     return { productId };
   }
+  // 在庫向け（注文明細なし）— ピッカーは products.id で選ぶ
+  // （WorkflowBuilder は searchProductOptions のまま。品目参照への変換は
+  // 書き込み側の橋渡し 1 箇所（createWorkOrder/updateWorkOrder）に閉じる）。
   const product = await prisma.product.findUnique({
     where: { id: v.productId ?? 0 },
     select: { id: true, isActive: true },
@@ -363,10 +387,12 @@ async function validateDesignFile(
   if (!designFileId) return null;
   const df = await prisma.designFile.findUnique({
     where: { id: designFileId },
-    select: { productId: true },
+    select: { itemId: true },
   });
   if (!df) return tr("production.workOrderActions.designFileNotFound");
-  if (df.productId !== productId) {
+  // design_files 自体は品目 (items.id) で持つので、比較の前に 1 回だけ変換する。
+  const itemId = await itemIdForLegacyProduct(productId);
+  if (df.itemId !== itemId) {
     return tr("production.workOrderActions.designFileWrongProduct");
   }
   return null;
@@ -612,7 +638,10 @@ export async function createWorkOrder(
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
     const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
     const docNumber = formatDocNumber("WOR", docKey);
-    const materialId = v.type === "MANUFACTURE" ? v.materialId : null;
+    const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
+    // 品目統合 第 2 段 D — 作る製品の品目参照。旧 product_id は残る（他コードが
+    // まだ読む可能性があるので、書き続ける）。
+    const productItemId = await itemIdForLegacyProduct(productId);
 
     const resolvedVersions = await prisma.$transaction(async (tx) => {
       // 工程構成 → ルートバージョン解決（変更があれば新バージョンを自動保存）
@@ -633,9 +662,10 @@ export async function createWorkOrder(
           yearMonth: docKey.yearMonth,
           seq: docKey.seq,
           productId,
+          productItemId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
-          materialId,
+          materialItemId,
           storageLocationId: v.storageLocationId,
           allowQuantityVariance: v.allowQuantityVariance,
           designFileId: v.designFileId ?? null,
@@ -703,7 +733,7 @@ export async function createWorkOrder(
         productId,
         type: v.type,
         plannedQuantity: v.plannedQuantity,
-        materialId,
+        materialItemId,
         storageLocationId: v.storageLocationId,
         allowQuantityVariance: v.allowQuantityVariance,
         routeVersionId: resolvedVersions.routeVersionId,
@@ -772,7 +802,10 @@ export async function updateWorkOrder(
     const designError = await validateDesignFile(v.designFileId, productId, tr);
     if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
-    const materialId = v.type === "MANUFACTURE" ? v.materialId : null;
+    const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
+    // 品目統合 第 2 段 D — 作る製品の品目参照。旧 product_id は残る（他コードが
+    // まだ読む可能性があるので、書き続ける）。
+    const productItemId = await itemIdForLegacyProduct(productId);
     let plansKept = 0;
     let plansDropped = 0;
 
@@ -834,9 +867,10 @@ export async function updateWorkOrder(
         where: { id: prior.id },
         data: {
           productId,
+          productItemId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
-          materialId,
+          materialItemId,
           storageLocationId: v.storageLocationId,
           allowQuantityVariance: v.allowQuantityVariance,
           designFileId: v.designFileId ?? null,
@@ -893,7 +927,7 @@ export async function updateWorkOrder(
         allocations: prior.orderLineLinks,
         type: prior.type,
         plannedQuantity: prior.plannedQuantity,
-        materialId: prior.materialId,
+        materialItemId: prior.materialItemId,
         storageLocationId: prior.storageLocationId,
         allowQuantityVariance: prior.allowQuantityVariance,
         routeVersionId: prior.routeVersionId,
@@ -902,7 +936,7 @@ export async function updateWorkOrder(
         allocations: v.allocations,
         type: v.type,
         plannedQuantity: v.plannedQuantity,
-        materialId,
+        materialItemId,
         storageLocationId: v.storageLocationId,
         allowQuantityVariance: v.allowQuantityVariance,
         routeVersionId: resolvedVersions.routeVersionId,
@@ -1127,6 +1161,9 @@ export async function copyWorkOrder(
       source.type === "FROM_STOCK" && allocations.length > 0
         ? allocations[0].quantity
         : source.plannedQuantity;
+    // コピー先の製品が変わりうる（別の注文明細を指定できる）ので、
+    // 品目参照はここで改めて解決する（source.productItemId を素通ししない）。
+    const productItemId = await itemIdForLegacyProduct(productId);
 
     await prisma.$transaction(async (tx) => {
       await tx.workOrder.create({
@@ -1142,9 +1179,10 @@ export async function copyWorkOrder(
             })),
           },
           productId,
+          productItemId,
           type: source.type,
           plannedQuantity,
-          materialId: source.materialId,
+          materialItemId: source.materialItemId,
           storageLocationId: source.storageLocationId,
           status: "DRAFT",
           approvalStatus: "NONE",
@@ -1195,6 +1233,101 @@ export async function copyWorkOrder(
 }
 
 /** キャンセル — DRAFT / PENDING_APPROVAL のみ。注文明細ロックも解除する。 */
+// ── 追加料金（送料など。§8 出荷 / §9 請求） ─────────────────────────────────
+
+/**
+ * 指示書の追加料金を保存（渡された行が保存後の全部）。
+ *
+ * ここは **予定** — 「このロットは送料が要る」と生産側が先に書いておく置き場で、
+ * 請求されるのは出荷書側の行。出荷書を作るときにこの行が複写される。
+ *
+ * ★ 直せるのは**完了・キャンセル前まで**。完了した指示書の予定を後から書き換えても
+ *   出荷書へはもう複写されないので、直した気になるだけの操作になる
+ *   （直したいのは出荷書側なので、そちらで直させる）。
+ */
+export async function saveWorkOrderCharges(
+  workOrderNumber: number,
+  rows: ChargeRowsInput,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
+    return actionError(tr("common.scopeDenied"));
+  }
+  const parsed = chargeRowsSchema.safeParse(rows);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
+
+  const wo = await prisma.workOrder.findUnique({
+    where: { workOrderNumber },
+    select: {
+      id: true,
+      status: true,
+      yearMonth: true,
+      seq: true,
+      charges: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          chargeItemId: true,
+          description: true,
+          quantity: true,
+          unitPrice: true,
+          amount: true,
+        },
+      },
+    },
+  });
+  if (!wo)
+    return actionError(tr("production.workOrderActions.workOrderNotFound"));
+  if (wo.status === "COMPLETED" || wo.status === "CANCELLED") {
+    return actionError(tr("charges.workOrderClosedForCharges"));
+  }
+
+  const prepared = await prepareChargeRows(parsed.data);
+  if (!prepared.ok) return actionError(tr(prepared.errorKey));
+
+  const actor = await getCurrentActorId();
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.workOrderCharge.deleteMany({ where: { workOrderId: wo.id } });
+      if (prepared.rows.length > 0) {
+        await tx.workOrderCharge.createMany({
+          data: prepared.rows.map((r) => ({
+            workOrderId: wo.id,
+            chargeItemId: r.chargeItemId,
+            description: r.description,
+            quantity: r.quantity,
+            unitPrice: r.unitPrice,
+            amount: r.amount,
+            sortOrder: r.sortOrder,
+            createdBy: actor,
+          })),
+        });
+      }
+    });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, tr("charges.couldNotSave"), tr));
+  }
+
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "work_orders",
+    recordId: String(workOrderNumber),
+    before: {
+      charges: chargeAuditShape(
+        wo.charges.map((c) => ({
+          ...c,
+          unitPrice: Number(c.unitPrice),
+          amount: Number(c.amount),
+        })),
+      ),
+    },
+    after: { charges: chargeAuditShape(prepared.rows) },
+  });
+  revalidate(workOrderNumber, formatDocNumber("WOR", wo));
+  return actionOk();
+}
+
 export async function cancelWorkOrder(
   workOrderNumber: number,
 ): Promise<ActionResult> {
@@ -1233,8 +1366,17 @@ export async function cancelWorkOrder(
     }
     const actor = await getCurrentActorId();
     const linkedLineIds = prior.orderLineLinks.map((l) => l.orderLineId);
+    // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。解放すべき予約が
+    // 1 件も無ければ伝票は起こらない（番号だけ欠番になる）。
+    const cancelMovementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
     const { releasedReservations, lotCleared } = await prisma.$transaction(
       async (tx) => {
+        const openMovement = movementOpener(tx, {
+          key: cancelMovementKey,
+          cause: "RESERVATION_RELEASE",
+          sourceType: "work_orders",
+          sourceId: String(workOrderNumber),
+        });
         // 遷移は条件付き — 読んだあとに承認・開始が走っていたら負ける側に倒す
         // （着手済みの指示書を「未着手だった」前提でキャンセルしない）。
         const flipped = await tx.workOrder.updateMany({
@@ -1299,6 +1441,7 @@ export async function cancelWorkOrder(
           tr("production.workOrderActions.cancelReleaseNote", {
             number: workOrderNumber,
           }),
+          openMovement,
         );
         // ロット番号 = この指示書番号 を持つ明細からロットを外す（ロットは
         // 消えた）。番号は指示書ごとに一意なので、他の生きている指示書が同じ
@@ -1372,7 +1515,6 @@ export async function requestApproval(
             workLocationRequired: true,
             planTimeRequired: true,
             planAssigneeRequired: true,
-            planQuantityRequired: true,
           },
         },
         plans: {
@@ -1396,7 +1538,6 @@ export async function requestApproval(
         workLocationRequired: st.processStep.workLocationRequired,
         planTimeRequired: st.processStep.planTimeRequired,
         planAssigneeRequired: st.processStep.planAssigneeRequired,
-        planQuantityRequired: st.processStep.planQuantityRequired,
         plans: st.plans,
       })),
       { workLocationsConfigured: await workLocationsConfigured() },
@@ -1600,22 +1741,33 @@ export async function approveWorkOrder(
     // 素材予約（監査 P2-1）: 製造分の承認確定で素材需要を RESERVE — ATP に
     // 製造コミットが反映される。予約超過（reserved > on-hand）は仕様
     // （発注判断のシグナル）。best-effort — 承認は既に確定済み。
-    if (prior.type === "MANUFACTURE" && prior.materialId != null) {
+    if (prior.type === "MANUFACTURE" && prior.materialItemId != null) {
       try {
-        const { ensureMaterialInventory, applyTransaction } = await import(
+        const { ensureItemInventory, applyTransaction } = await import(
           "@/lib/inventory"
         );
-        const material = await prisma.material.findUnique({
-          where: { id: prior.materialId },
+        // 品目統合 第 2 段 B — work_orders はもう品目 id（material_item_id）を
+        // 直接持つので、以前あった「素材 → 品目」の往復は要らない。
+        const item = await prisma.item.findUnique({
+          where: { id: prior.materialItemId },
           select: { unit: true },
         });
+        // 伝票の番号はこの（承認とは別の）tx の外で採番する。
+        const reserveMovementKey =
+          await allocateDocumentKey("INVENTORY_MOVEMENT");
         await prisma.$transaction(async (tx) => {
-          const invId = await ensureMaterialInventory(tx, {
-            materialId: prior.materialId as number,
-            plantId: null,
-            unit: material?.unit ?? "本", // i18n-ignore — DB データの既定値（単位）。対象外（_specs/i18n-glossary.md §1）
+          const openMovement = movementOpener(tx, {
+            key: reserveMovementKey,
+            cause: "STOCK_RESERVATION",
+            sourceType: "work_orders",
+            sourceId: String(workOrderNumber),
           });
-          await applyTransaction(tx, {
+          const invId = await ensureItemInventory(tx, {
+            itemId: prior.materialItemId as number,
+            plantId: null,
+            unit: item?.unit ?? "本", // i18n-ignore — DB データの既定値（単位）。対象外（_specs/i18n-glossary.md §1）
+          });
+          await applyTransaction(tx, await openMovement(), {
             inventoryType: "MATERIAL",
             inventoryId: invId,
             transactionType: "RESERVE",
@@ -1759,12 +1911,12 @@ export async function getOrderLineInfo(
  * ビルダーの充足/不足インライン警告用。警告のみで保存はブロックしない。
  */
 export async function getMaterialAtp(
-  materialId: number,
+  itemId: number,
 ): Promise<MaterialAtp | null> {
   if (!(await checkPermission("work_order", "READ")).ok) return null;
-  if (!Number.isInteger(materialId) || materialId <= 0) return null;
+  if (!Number.isInteger(itemId) || itemId <= 0) return null;
   try {
-    return await materialAtp(materialId);
+    return await materialAtp(itemId);
   } catch (e) {
     console.error("getMaterialAtp failed", e);
     return null;
@@ -1776,8 +1928,8 @@ export interface WorkOrderMaterialAssumption {
   materialTypeId: number | null;
   materialTypeName: string | null;
   diameterMm: number | null;
-  /** 材種 × 直径が一致する素材（cut-to-length で全長違いを許容 — §5）。 */
-  suggestedMaterialId: number | null;
+  /** 材種 × 直径が一致する素材の品目 id（cut-to-length で全長違いを許容 — §5）。 */
+  suggestedItemId: number | null;
   suggestedMaterialLabel: string | null;
 }
 
@@ -1786,6 +1938,9 @@ export interface WorkOrderMaterialAssumption {
  * 製品は「材種 + 直径 + 全長」で素材を指定する（cut-to-length のため特定の
  * materials 行には紐付けない — _specs/tables.md）ので、一致する素材の中から
  * 全長も一致するものを優先して 1 件だけ候補にする。
+ *
+ * 品目統合 第 2 段 B — 候補は **items**（`itemType: "MATERIAL"`）から探す。
+ * 返す id も items.id（旧 materials.id ではない）。
  */
 export async function getWorkOrderMaterialAssumption(
   productId: number,
@@ -1802,8 +1957,9 @@ export async function getWorkOrderMaterialAssumption(
     },
   });
   if (!product || product.materialTypeId == null) return null;
-  const candidates = await prisma.material.findMany({
+  const candidates = await prisma.item.findMany({
     where: {
+      itemType: "MATERIAL",
       isActive: true,
       materialTypeId: product.materialTypeId,
       ...(product.diameterMm != null ? { diameterMm: product.diameterMm } : {}),
@@ -1814,7 +1970,7 @@ export async function getWorkOrderMaterialAssumption(
   const exact =
     product.lengthMm != null
       ? candidates.find((m) =>
-          m.lengthMm.equals(product.lengthMm as Prisma.Decimal),
+          m.lengthMm?.equals(product.lengthMm as Prisma.Decimal),
         )
       : undefined;
   const suggested = exact ?? candidates[0] ?? null;
@@ -1824,7 +1980,7 @@ export async function getWorkOrderMaterialAssumption(
       ? localized(product.materialType.name as LocalizedText | null)
       : null,
     diameterMm: product.diameterMm != null ? Number(product.diameterMm) : null,
-    suggestedMaterialId: suggested?.id ?? null,
+    suggestedItemId: suggested?.id ?? null,
     suggestedMaterialLabel: suggested
       ? `${suggested.code}（${localized(suggested.name as LocalizedText | null)}）`
       : null,
@@ -1838,23 +1994,26 @@ export interface MaterialTypeSpec {
   diameterMm: number;
 }
 
+/** 品目統合 第 2 段 B — itemId（items.id）で引く。旧 materialId は使わない。 */
 export async function getMaterialTypeSpec(
-  materialId: number,
+  itemId: number,
 ): Promise<MaterialTypeSpec | null> {
   if (!(await checkPermission("work_order", "READ")).ok) return null;
-  if (!Number.isInteger(materialId) || materialId <= 0) return null;
-  const m = await prisma.material.findUnique({
-    where: { id: materialId },
+  if (!Number.isInteger(itemId) || itemId <= 0) return null;
+  const m = await prisma.item.findUnique({
+    where: { id: itemId, itemType: "MATERIAL" },
     select: {
       materialTypeId: true,
       diameterMm: true,
       materialType: { select: { name: true } },
     },
   });
-  if (!m) return null;
+  if (!m || m.materialTypeId == null || m.diameterMm == null) return null;
   return {
     materialTypeId: m.materialTypeId,
-    materialTypeName: localized(m.materialType.name as LocalizedText | null),
+    materialTypeName: localized(
+      (m.materialType?.name as LocalizedText | null) ?? null,
+    ),
     diameterMm: Number(m.diameterMm),
   };
 }
@@ -2225,7 +2384,7 @@ export async function setWorkOrderDesignFile(
   try {
     const wo = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
-      select: { id: true, productId: true, yearMonth: true, seq: true },
+      select: { id: true, productItemId: true, yearMonth: true, seq: true },
     });
     if (!wo)
       return actionError(tr("production.workOrderActions.workOrderNotFound"));
@@ -2235,13 +2394,13 @@ export async function setWorkOrderDesignFile(
       // 呼び出しは画面からしか来ないとは限らない）。
       const df = await prisma.designFile.findUnique({
         where: { id: designFileId },
-        select: { productId: true, version: true },
+        select: { itemId: true, version: true },
       });
       if (!df)
         return actionError(
           tr("production.workOrderActions.designFileNotFound"),
         );
-      if (df.productId !== wo.productId) {
+      if (df.itemId !== wo.productItemId) {
         return actionError(
           tr("production.workOrderActions.designFileWrongProduct"),
         );

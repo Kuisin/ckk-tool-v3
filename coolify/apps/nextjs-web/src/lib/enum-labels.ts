@@ -144,6 +144,37 @@ export const deliveryOrderTypeLabel = (value: string, locale: Locale) =>
 export const deliveryOrderTypeOptions = (locale: Locale) =>
   labelOptions("DELIVERY_ORDER_TYPE_LABEL", locale);
 
+/** 入出庫伝票の事由（PD07）。 */
+export const movementCauseLabel = (value: string, locale: Locale) =>
+  resolveLabel("INVENTORY_MOVEMENT_CAUSE_LABEL", value, locale);
+export const movementCauseOptions = (locale: Locale) =>
+  labelOptions("INVENTORY_MOVEMENT_CAUSE_LABEL", locale);
+
+/** 在庫取引の区分（入出庫伝票の明細 — IN / OUT / RESERVE / RELEASE / ADJUST）。 */
+export const transactionTypeLabel = (value: string, locale: Locale) =>
+  resolveLabel("TRANSACTION_TYPE_LABEL", value, locale);
+export const transactionTypeOptions = (locale: Locale) =>
+  labelOptions("TRANSACTION_TYPE_LABEL", locale);
+
+/** 在庫の種別（製品 / 素材）。 */
+export const inventoryTypeLabel = (value: string, locale: Locale) =>
+  resolveLabel("INVENTORY_TYPE_LABEL", value, locale);
+export const inventoryTypeOptions = (locale: Locale) =>
+  labelOptions("INVENTORY_TYPE_LABEL", locale);
+
+/** 移動タイプの向き（IN / OUT / TRANSFER — ST06/ST09）。 */
+export const movementDirectionLabel = (value: string, locale: Locale) =>
+  resolveLabel("MOVEMENT_DIRECTION_LABEL", value, locale);
+export const movementDirectionOptions = (locale: Locale) =>
+  labelOptions("MOVEMENT_DIRECTION_LABEL", locale);
+
+/** 向きバッジの色（状態の色 gray/blue/green/red とはぶつからない範囲で選ぶ）。 */
+export const MOVEMENT_DIRECTION_COLOR: Record<string, string> = {
+  IN: "green",
+  OUT: "orange",
+  TRANSFER: "blue",
+};
+
 /** 請求単価の出どころ（出荷書ヘッダ — 過不足納品 §8）。 */
 export const deliveryBillingPriceModeLabel = (value: string, locale: Locale) =>
   resolveLabel("DELIVERY_BILLING_PRICE_MODE_LABEL", value, locale);
@@ -264,3 +295,17 @@ export const userChangeKindLabel = (value: string, locale: Locale) =>
   resolveLabel("USER_CHANGE_KIND_LABEL", value, locale);
 export const userChangeKindOptions = (locale: Locale) =>
   labelOptions("USER_CHANGE_KIND_LABEL", locale);
+
+/** 品目種別（app.items.item_type — 製品 / 素材）。統合品目マスタの区分。 */
+export const itemTypeLabel = (value: string, locale: Locale) =>
+  resolveLabel("ITEM_TYPE_LABEL", value, locale);
+export const itemTypeOptions = (locale: Locale) =>
+  labelOptions("ITEM_TYPE_LABEL", locale);
+
+/**
+ * 在庫・所要量 (ST03) の時系列の行区分 — 過去の実績 / いま / 未来の供給 / 未来の需要。
+ * DB の enum ではなく画面だけの区分だが、他の値付きラベルと置き場を揃えるため
+ * ここに置く（コードの中に訳を持たない、という enum-labels.ts 冒頭の約束）。
+ */
+export const stockRequirementRowKindLabel = (value: string, locale: Locale) =>
+  resolveLabel("STOCK_REQUIREMENT_ROW_KIND_LABEL", value, locale);

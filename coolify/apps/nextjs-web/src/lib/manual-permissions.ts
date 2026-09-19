@@ -79,8 +79,8 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
     app: "pending-work-orders",
   },
   { path: "operations/production/design-file/user", app: "design-files" },
-  { path: "operations/production/product-inventory/user", app: "inventory" },
-  { path: "operations/production/material-inventory/user", app: "inventory" },
+  { path: "operations/inventory/product-inventory/user", app: "inventory" },
+  { path: "operations/inventory/material-inventory/user", app: "inventory" },
   // 旧 承認管理（PD03）は 一般カテゴリの 未処理一覧（CM01）へ移設した。画面自体は
   // ログインだけで開くが、承認依頼中の一覧が出るかは approve:READ で決まる。
   // ── 出荷 ────────────────────────────────────────────────────────────────
@@ -104,6 +104,10 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
     app: "master-business-partners",
   },
   { path: "operations/masters/product/user", app: "master-products" },
+  {
+    path: "operations/masters/tax-category/user",
+    app: "master-tax-categories",
+  },
   {
     path: "operations/masters/material-type/user",
     app: "master-material-types",
@@ -148,6 +152,7 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
     app: "privileged-access",
   },
   { path: "operations/system/external-api/user", app: "api-clients" },
+  { path: "operations/system/accounting/user", app: "accounting" },
   // ── キオスク（現場のタブレット。nextjs-web のアプリ一覧には無い）───────────
   // ログイン画面。QRカードと PIN があれば入れる — 権限の話ではない。
   { path: "operations/kiosk/start/user", code: null },

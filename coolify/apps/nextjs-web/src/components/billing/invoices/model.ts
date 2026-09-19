@@ -3,10 +3,17 @@
  *
  * Model (app.invoices — 複合キー (year_month, seq)):
  *   表示番号 INV-YYYYMM-NNNNN はキーから導出（保存しない）。URL id も導出番号。
- *   請求書は締日処理 (BL02) の「請求書を生成」から作成され、明細は出荷書
- *   （DISPATCH × SHIPPED）由来 — 明細に出荷書 / 納品書の複合キーを由来として持つ。
+ *   請求書は締日処理 (BL02, closingKind=SCHEDULED) の締めか、手動請求
+ *   (BL11, closingKind=MANUAL) から作成される。明細は出荷書（DISPATCH ×
+ *   SHIPPED）由来のほか、**下書きの間だけ**料金マスタから手動で足せる
+ *   （§9 更新 — isManualCharge が立つ行）。
  *
  * ステータス遷移: DRAFT →(発行)→ ISSUED →(送付)→ SENT →(入金)→ PAID。
+ * **承認は 2 か所** — 追加費用ありの発行前（DRAFT, approvalStatus）と、
+ * 入金前（SENT, 同じ approvalStatus 列）。2 つの関門は同時に開かないので
+ * （invoice.status が「いまどちらの関門か」を語る）、列は 1 組で足りる。
+ * 承認設定 (MS0B) に段が 1 つも無ければ、どちらも素通し（従来どおり）。
+ *
  * Decimal 列はサーバー境界で Number() 済み。日付は ISO 文字列。
  * ここは pure / client-safe のみ。
  */
@@ -14,6 +21,13 @@
 import type { Tr } from "@/lib/i18n";
 
 export type InvoiceStatus = "DRAFT" | "ISSUED" | "SENT" | "PAID";
+export type InvoiceApprovalStatus =
+  | "NONE"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED";
+/** 締日行の実行区分の写し（billing_closings.kind）。旧データは null。 */
+export type ClosingKind = "SCHEDULED" | "MANUAL";
 
 export interface InvoiceItem {
   id: string;
@@ -26,6 +40,15 @@ export interface InvoiceItem {
   deliveryOrderNumber: string | null;
   /** 由来の納品書番号 DRN-YYYYMM-NNNNN（未発行時は null）。 */
   deliveryNoteNumber: string | null;
+  /**
+   * 手動で足した追加費用の行か（料金マスタ MS0G 由来・出荷書に紐づかない）。
+   * この行が 1 つでもある請求書は発行に承認が要る（§9）。
+   */
+  isManualCharge: boolean;
+  /** 由来の料金マスタ項目 id（手動費用のときだけ）。 */
+  chargeItemId: number | null;
+  /** 料金マスタの**現在の**表示名（手動費用のときだけ。編集モーダルの選択肢用）。 */
+  chargeItemLabel: string | null;
 }
 
 /**
@@ -84,17 +107,46 @@ export interface Invoice {
   issuedAt: string | null;
   dueDate: string | null;
   sentAt: string | null;
-  yayoiExportedAt: string | null;
+  accountingExportedAt: string | null;
   notes: string | null;
   items: InvoiceItem[];
   totalQuantity: number;
+  /** 実行区分（締日処理か手動請求か）。承認導入以前の請求書は null。 */
+  closingKind: ClosingKind | null;
+  /** 発行前承認 / 入金前承認の状態（§9）。どちらの関門かは status から読む。 */
+  approvalStatus: InvoiceApprovalStatus;
+  requestedAt: string | null;
+  approvedAt: string | null;
+  rejectedAt: string | null;
+  rejectReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-/** 発行できるか — 下書きのみ。 */
-export function canIssue(inv: Pick<Invoice, "status">) {
-  return inv.status === "DRAFT";
+/** 手動で足した追加費用が 1 行でもあるか。 */
+export function hasManualCharge(
+  items: readonly Pick<InvoiceItem, "isManualCharge">[],
+): boolean {
+  return items.some((it) => it.isManualCharge);
+}
+
+/**
+ * 発行できるか — 下書きで、追加費用が無い、または発行前承認が済んでいること。
+ * 承認が要るかどうかの判定自体は needsIssueApproval が持つ（同じ規則）。
+ */
+export function canIssue(
+  inv: Pick<Invoice, "status" | "items" | "approvalStatus">,
+): boolean {
+  if (inv.status !== "DRAFT") return false;
+  if (!hasManualCharge(inv.items)) return true;
+  return inv.approvalStatus === "APPROVED";
+}
+
+/** 発行前承認が要る状態か（DRAFT かつ追加費用あり）。 */
+export function needsIssueApproval(
+  inv: Pick<Invoice, "status" | "items">,
+): boolean {
+  return inv.status === "DRAFT" && hasManualCharge(inv.items);
 }
 
 /** 送付済みにできるか — 発行済みのみ。 */
@@ -102,9 +154,18 @@ export function canMarkSent(inv: Pick<Invoice, "status">) {
   return inv.status === "ISSUED";
 }
 
-/** 入金済みにできるか — 送付済みのみ。 */
+/**
+ * 「入金」ボタンを出せるか — 送付済みのみ。実際に入金済みになるか
+ * 承認依頼が立つだけかは、承認設定 (MS0B) の入金前承認フローの有無で
+ * サーバーが決める（未設定 = 即・入金済み）。
+ */
 export function canMarkPaid(inv: Pick<Invoice, "status">) {
   return inv.status === "SENT";
+}
+
+/** 承認 / 差し戻しの対象にできるか — 依頼中（発行前・入金前のどちらか）。 */
+export function canActOnApproval(inv: Pick<Invoice, "approvalStatus">) {
+  return inv.approvalStatus === "PENDING";
 }
 
 /**
@@ -135,6 +196,20 @@ export interface InvoiceTaxBucket {
   taxAmount: number;
   /** 区分の表示名（区分が 1 つに定まるときだけ）。 */
   categoryName: string | null;
+  // ── 会計連携（仕訳 CSV）用のコード ────────────────────────────────────────
+  // 税区分マスタ由来。**画面では使わない** — 出力にだけ効く。null = 設定の既定。
+  /** 消費税コード。 */
+  taxCode?: string | null;
+  /** 売上高の科目コード（貸方・売上行）。 */
+  salesAccountCode?: string | null;
+  /** 仮受消費税の科目コード（貸方・消費税行）。 */
+  taxAccountCode?: string | null;
+  /**
+   * 束の税区分が一意に定まらず、明細の区分がコードで**食い違っている**。
+   * 会計連携のエクスポートはこれが立っている請求書を拒否する
+   * （違う科目へ計上された仕訳を出すより、出さないほうが安い）。
+   */
+  codeConflict?: boolean;
 }
 
 /**
@@ -161,7 +236,7 @@ export function formatRatePercent(taxRate: number): string {
  *
  * 税区分マスタ以前に発行された請求書には `invoice_tax_summaries` の行が無いので、
  * **ヘッダ（小計・税額・税率）から 1 本合成する**。これがあるおかげで、移行の
- * 前後で古い請求書の画面・PDF・弥生 CSV が 1 文字も変わらない。
+ * 前後で古い請求書の画面・PDF・会計連携 CSV が 1 文字も変わらない。
  */
 export function resolveTaxBuckets(
   invoice: Pick<Invoice, "subtotal" | "taxAmount" | "taxRate" | "taxBuckets">,

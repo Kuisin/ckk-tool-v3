@@ -9,6 +9,7 @@
 import type { useTranslations } from "next-intl";
 import {
   f4SearchCustomers,
+  f4SearchProductItems,
   f4SearchProducts,
   f4SearchStructuredMaterialTypes,
 } from "@/app/(dashboard)/_shared/option-search";
@@ -32,6 +33,29 @@ export function productF4(tr: Tr): F4Config {
       tr("ui.f4Presets.unit"),
     ],
     onSearch: f4SearchProducts,
+  };
+}
+
+/**
+ * 製品（品目）F4 — productF4 の品目版。value は items.id
+ * （`searchProductItemOptions` と対。products.id とは値の意味が違うので
+ * 混ぜないこと）。
+ */
+export function productItemF4(tr: Tr): F4Config {
+  return {
+    title: tr("ui.f4Presets.productTitle"),
+    description: tr("ui.f4Presets.productDescription"),
+    filters: [
+      { key: "name", label: tr("ui.f4Presets.name") },
+      { key: "materialType", label: tr("ui.f4Presets.materialTypeCode") },
+    ],
+    columns: [
+      tr("ui.f4Presets.productCode"),
+      tr("ui.f4Presets.name"),
+      tr("ui.f4Presets.materialType"),
+      tr("ui.f4Presets.unit"),
+    ],
+    onSearch: f4SearchProductItems,
   };
 }
 

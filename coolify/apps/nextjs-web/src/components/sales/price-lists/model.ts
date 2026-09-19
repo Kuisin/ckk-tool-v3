@@ -87,7 +87,15 @@ export interface PriceListEntry {
   entryId: string;
   customerId: string;
   customerName: string;
-  productId: string;
+  /**
+   * 対象製品 — 値は**品目 id**（items.id、`itemType: "PRODUCT"`）。
+   * 品目統合 第 2 段 C。見積明細・注文明細・出荷明細も同じ id 空間なので、
+   * 価格の解決（`resolvePriceFromEntries`）はそのまま突き合わせられる。
+   * DB の自然キー (customer_bp_id, product_id) は products.id のまま —
+   * 識別は作成後不変という約束なので、鍵の差し替えは別の判断
+   * （shared-db の 20261030090000_items_stage2c_sales）。
+   */
+  itemId: string;
   productName: string;
   currency: string;
   isActive: boolean;
@@ -112,10 +120,13 @@ export function requiresEndDate(orderType: string): boolean {
   return END_DATE_REQUIRED_TYPES.includes(orderType);
 }
 
-/** Bare entry identity（顧客×製品 + 登録済み種別）— duplicate warnings 用。 */
+/**
+ * Bare entry identity（顧客×製品 + 登録済み種別）— duplicate warnings 用。
+ * `itemId` は品目 id（`PriceListEntry.itemId` と同じ空間）。
+ */
 export interface EntryIdentity {
   customerBpId: string;
-  productId: string;
+  itemId: string;
   orderTypes: string[];
   /** 既存エントリの PRC 番号（重複警告からのリンク先）。 */
   entryId: string;
@@ -267,17 +278,19 @@ export function findApplicableDiscount(
   );
 }
 
-/** The entry for a (顧客, 製品), if registered — pure over a list. */
+/**
+ * The entry for a (顧客, 製品), if registered — pure over a list.
+ * `itemId` は品目 id（`PriceListEntry.itemId` と同じ空間）。
+ */
 export function findEntryByCustomerProduct(
   customerId: string | null | undefined,
-  productId: string | null | undefined,
+  itemId: string | null | undefined,
   entries: PriceListEntry[],
 ): PriceListEntry | null {
-  if (!(customerId && productId)) return null;
+  if (!(customerId && itemId)) return null;
   return (
-    entries.find(
-      (e) => e.customerId === customerId && e.productId === productId,
-    ) ?? null
+    entries.find((e) => e.customerId === customerId && e.itemId === itemId) ??
+    null
   );
 }
 

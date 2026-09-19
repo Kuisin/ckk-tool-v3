@@ -28,8 +28,12 @@ type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
 /** 照合・解決に必要な明細 1 行ぶん。 */
 export interface PriceResolvableItem {
-  /** 製品マスタ内部 id（文字列）。null = 未突合 → 価格表を引けない。 */
-  productId: string | null;
+  /**
+   * 突合済みの製品 — 値は品目 id（items.id）を文字列化したもの。
+   * null = 未突合 → 価格表を引けない。価格表のエントリも同じ id 空間
+   * （品目統合 第 2 段 C）。
+   */
+  itemId: string | null;
   orderType: string;
   quantity: number;
 }
@@ -67,12 +71,12 @@ export function priceListLookup(
   item: PriceResolvableItem,
   tr: Tr,
 ): PriceListLookup {
-  if (!customerBpId || !item.productId)
+  if (!customerBpId || !item.itemId)
     return { expected: null, missReason: null };
   const r = resolvePriceFromEntries(
     entries,
     customerBpId,
-    item.productId,
+    item.itemId,
     item.orderType,
     item.quantity,
     tr,

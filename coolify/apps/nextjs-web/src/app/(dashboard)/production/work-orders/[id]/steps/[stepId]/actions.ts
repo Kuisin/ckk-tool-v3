@@ -1305,7 +1305,6 @@ export async function addStepPlan(
         workLocationRequired: true,
         planTimeRequired: true,
         planAssigneeRequired: true,
-        planQuantityRequired: true,
       },
     });
     const required = requiredPlanFields(
@@ -1335,12 +1334,6 @@ export async function addStepPlan(
         errors: [tr("production.stepExecutionActions.timeRequiredForPlan")],
       };
     }
-    if (required.includes("QUANTITY") && v.quantity == null) {
-      return {
-        ok: false,
-        errors: [tr("production.stepExecutionActions.quantityRequiredForPlan")],
-      };
-    }
     const actor = await getCurrentActorId();
     await prisma.workOrderStepPlan.create({
       data: {
@@ -1349,7 +1342,8 @@ export async function addStepPlan(
         plannedDate: new Date(`${v.date}T00:00:00+09:00`),
         plannedStartAt: toJstTimestamp(v.date, v.startTime),
         plannedEndAt: toJstTimestamp(v.date, v.endTime),
-        quantity: v.quantity,
+        // 数量は**計画には書かない**（実績だけが持つ）。画面も送ってこないが、
+        // 直接叩かれても書かないようここで落とす。
         workLocationId: v.workLocationId,
         notes: v.notes.trim() || null,
         createdBy: actor,
@@ -1361,12 +1355,6 @@ export async function addStepPlan(
           end: v.endTime ?? "",
         })
       : "";
-    const quantityText =
-      v.quantity != null
-        ? tr("production.stepExecutionActions.auditQuantitySuffix", {
-            quantity: v.quantity,
-          })
-        : "";
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
@@ -1375,7 +1363,7 @@ export async function addStepPlan(
         note: tr("production.stepExecutionActions.auditPlanAdded", {
           date: v.date,
           time: timeText,
-          quantity: quantityText,
+          quantity: "",
         }),
       },
     });

@@ -804,7 +804,12 @@
     "priceListInactive": "価格表が無効",
     "priceListExpired": "価格表の有効期間外",
     "dateFrom": "開始日",
-    "dateTo": "終了日"
+    "dateTo": "終了日",
+    "billTo": "請求先",
+    "stockTake": "棚卸",
+    "stockMovement": "入出庫伝票",
+    "invoicePayment": "請求書の入金",
+    "notPendingApproval": "承認依頼中ではありません"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -1198,6 +1203,42 @@
     "DELIVERY_TOLERANCE_BASIS_LABEL": {
       "PERCENT": "パーセント（%）",
       "QUANTITY": "数量"
+    },
+    "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "WORK_ORDER_COMPLETION": "指示書完了",
+      "DELIVERY_SHIPMENT": "出荷",
+      "MATERIAL_RECEIPT": "素材入荷",
+      "STOCK_TRANSFER": "在庫移動",
+      "STOCK_RESERVATION": "引当予約",
+      "RESERVATION_RELEASE": "予約解除",
+      "ADJUSTMENT": "棚卸調整",
+      "OTHER": "不明（移行前）"
+    },
+    "TRANSACTION_TYPE_LABEL": {
+      "IN": "入庫",
+      "OUT": "出庫",
+      "RESERVE": "予約",
+      "RELEASE": "予約解除",
+      "ADJUST": "棚卸調整"
+    },
+    "INVENTORY_TYPE_LABEL": {
+      "PRODUCT": "製品",
+      "MATERIAL": "素材"
+    },
+    "ITEM_TYPE_LABEL": {
+      "PRODUCT": "製品",
+      "MATERIAL": "素材"
+    },
+    "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
+      "past": "実績",
+      "now": "いま",
+      "supply": "供給予定",
+      "demand": "需要予定"
+    },
+    "MOVEMENT_DIRECTION_LABEL": {
+      "IN": "入庫",
+      "OUT": "出庫",
+      "TRANSFER": "移動"
     }
   },
   "status": {
@@ -1549,6 +1590,34 @@
         },
         "REVOKED": {
           "label": "取り消し"
+        }
+      },
+      "StockTake": {
+        "DRAFT": {
+          "label": "下書き"
+        },
+        "COUNTING": {
+          "label": "記入中"
+        },
+        "CONFIRMED": {
+          "label": "確定"
+        },
+        "CANCELLED": {
+          "label": "キャンセル"
+        }
+      },
+      "StockTakeApproval": {
+        "NONE": {
+          "label": "—"
+        },
+        "PENDING": {
+          "label": "承認依頼中"
+        },
+        "APPROVED": {
+          "label": "承認済"
+        },
+        "REJECTED": {
+          "label": "差し戻し"
         }
       }
     }
@@ -1988,7 +2057,7 @@
       "generateInvoices": "請求書生成",
       "createAnInvoice": "請求書を作成",
       "exported": "エクスポート済",
-      "yayoiAccountingCsv": "弥生会計 CSV",
+      "accountingCsv": "会計連携CSV",
       "shipmentsCovered": "対象出荷",
       "thereAreNoShipmentsToBill": "請求対象の出荷がありません",
       "notGeneratedUseGenerateInvoices": "未生成（「請求書を生成」で作成します）",
@@ -1998,7 +2067,6 @@
       "confirmGeneratingInvoices": "請求書生成の確認",
       "theBillingClosingWasRun": "締日処理を実行しました",
       "runTheBillingClosing": "締日処理の実行",
-      "aggregatesTheMonthSUnbilledShipments": "対象月の未請求出荷（出荷済・発送のみ）を顧客ごとに集計し、締日の処理行を作成します。",
       "years": "年",
       "months": "月",
       "runTheBillingClosing2": "締日処理を実行",
@@ -2009,7 +2077,25 @@
       "shipmentNote": "{quantity} 本・{amount}",
       "titleWithClosingDate": "{customer}（{date} 締め）",
       "shipmentsCoveredWithCount": "対象出荷（{count}）",
-      "confirmGenerateBody": "{customer} の {date} 締め分から請求書（下書き）を生成します。対象出荷 {count} 件が明細になります。"
+      "confirmGenerateBody": "{customer} の {date} 締め分から請求書（下書き）を生成します。対象出荷 {count} 件が明細になります。",
+      "dueDate": "支払期日",
+      "monthEnd": "末日",
+      "dayOfMonth": "{day} 日",
+      "termsDayOnly": "締日後の最初の {day} 払い",
+      "termsDaysThenDay": "締日 + {days} 日以降の最初の {day} 払い",
+      "termsDaysOnly": "締日 + {days} 日（支払日の設定なし）",
+      "termsDefault": "締日 + {days} 日（支払サイト・支払日とも未設定の既定）",
+      "generateInvoicesInBulk": "まとめて請求書を生成",
+      "nothingToProcess": "処理できる締日がありません",
+      "selectPendingPastClosingDate": "未処理で、かつ締日を過ぎた行を選んでください",
+      "invoicesWereGenerated": "請求書を {count} 件生成しました",
+      "someCouldNotBeProcessed": "{count} 件は生成できませんでした",
+      "skippedNotReady": "未処理でない・締日前の {count} 件は対象外",
+      "aggregatesUnbilledShipmentsUpToDate": "指定日までに締日が到来し、まだ締めていない顧客の未請求出荷（出荷済・発送のみ）を集計し、締日を過ぎている分はそのまま請求書（下書き）まで作成します。",
+      "targetDate": "指定日",
+      "kind": "実行区分",
+      "kindScheduled": "定期",
+      "kindManual": "手動"
     },
     "invoices": {
       "issueThePdf": "PDF を発行",
@@ -2019,13 +2105,13 @@
       "confirmPayment": "入金の確認",
       "handEnteredLinesOnly": "—（手入力の明細のみ）",
       "shipmentWithNoDeliveryNoteIssued": "—（納品書未発行の出荷）",
-      "yayoiAccountingExport": "弥生会計エクスポート",
-      "notExportedTheYayoiCsvIs": "未エクスポート（発行後に弥生CSVを出力します）",
+      "accountingExport": "会計連携",
+      "notExportedAfterIssue": "未エクスポート（発行後に会計連携CSVを出力します）",
       "markAsSent": "送付済みにする",
       "markAsPaid": "入金済みにする",
-      "yayoiAccountingCsv": "弥生会計CSV",
+      "accountingCsv": "会計連携CSV",
       "paymentDue": "支払期限",
-      "yayoiExport": "弥生エクスポート",
+      "accountingExportedAt": "会計連携日時",
       "notExported": "未エクスポート",
       "summary": "摘要",
       "origin": "由来",
@@ -2039,8 +2125,22 @@
       "taxLabelReduced": "消費税（8%）",
       "taxLabelExempt": "消費税（非課税）",
       "taxLabelStandard": "消費税（10%）",
-      "yayoiAccountingCsvAgain": "弥生会計CSV（再出力）",
-      "taxLabelRate": "消費税（{rate}%）"
+      "accountingCsvAgain": "会計連携CSV（再出力）",
+      "taxLabelRate": "消費税（{rate}%）",
+      "issueApprovalRejectedHelp": "発行前承認が差し戻されました。追加費用を見直して再度発行してください。",
+      "paymentApprovalRejectedHelp": "入金の承認が差し戻されました。もう一度「入金」から申請してください。",
+      "issueApprovalWaitingHelp": "このグループのメンバーだけが操作できます。",
+      "paymentApprovalWaitingHelp": "このグループのメンバーだけが操作できます。",
+      "paymentApprovalApproveHelp": "入金の記録に承認が必要です。内容を確認して承認してください。",
+      "issueApprovalApproveHelpWithCharges": "手動で追加した費用が {count} 件含まれています（合計 {amount}）。内容を確認して承認してください。",
+      "chargesClosedForEditing": "下書きの請求書だけ追加費用を編集できます",
+      "chargesSaveFailed": "追加費用の保存に失敗しました",
+      "chargesHelp": "この請求書へ手動で足す費用（料金マスタからだけ選べます）。発行前に承認が要ります。直せるのは下書きのうちだけです。",
+      "manualInvoiceHelp": "臨時に請求する顧客を選びます。締日を待たず、いま未請求の出荷から請求書（下書き）を作ります。",
+      "unbilledShipments": "未請求の出荷",
+      "noUnbilledShipmentsForCustomer": "未請求の出荷がありません",
+      "createInvoiceFromSelection": "請求書を作成",
+      "someShipmentsNoLongerAvailable": "選んだ出荷の一部が、すでに他の請求で使われています。もう一度選び直してください。"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "請求書 {invoiceNumber} を発行します。発行日は本日で記録されます。",
@@ -2048,11 +2148,10 @@
       "confirmMarkSentMessage": "請求書 {invoiceNumber} を送付済みにします。",
       "markedSentWithNumber": "請求書 {invoiceNumber} を送付済みにしました",
       "confirmMarkPaidMessage": "請求書 {invoiceNumber} を入金済みにします。",
-      "markedPaidWithNumber": "請求書 {invoiceNumber} を入金済みにしました"
+      "markedPaidWithNumber": "請求書 {invoiceNumber} を入金済みにしました",
+      "approvalRequestedMessage": "承認を依頼しました（請求書 {invoiceNumber}）"
     },
     "closingTable": {
-      "yearLabel": "{year}年",
-      "monthLabel": "{month}月",
       "createdAndUpdatedCounts": "作成 {created} 件 / 更新 {updated} 件",
       "skippedCount": "処理済みスキップ {skipped} 件"
     },
@@ -2063,17 +2162,35 @@
       "onlyIssuedCanMarkSent": "発行済みの請求書のみ送付済みにできます",
       "markSentFailed": "送付処理に失敗しました",
       "onlySentCanMarkPaid": "送付済みの請求書のみ入金済みにできます",
-      "markPaidFailed": "入金処理に失敗しました"
+      "markPaidFailed": "入金処理に失敗しました",
+      "awaitingIssueApproval": "発行前承認の依頼中です",
+      "approvalRequestFailed": "承認依頼の作成に失敗しました",
+      "approvalRequested": "承認を依頼しました",
+      "awaitingPaymentApproval": "入金前承認の依頼中です",
+      "paymentApprovalRequested": "入金の承認を依頼しました"
     },
     "closingActions": {
       "closingDateNotReached": "締日を過ぎるまで処理できません（締日の翌日から）",
       "closingNotFound": "対象の締日処理が見つかりません",
       "generateInvoiceFailed": "請求書の生成に失敗しました",
-      "invalidYearMonth": "対象月の形式が不正です（YYYYMM）",
       "itemNameWithLot": "{name}（ロット {lot}）",
-      "noUnbilledShipmentsForMonth": "対象月に未請求の出荷がありません",
       "pendingOnly": "未処理の締日のみ請求書を生成できます",
-      "runFailed": "締日処理の実行に失敗しました"
+      "runFailed": "締日処理の実行に失敗しました",
+      "invalidDate": "指定日の形式が不正です",
+      "noUnbilledShipmentsUpToDate": "指定日までに未請求の出荷がありません"
+    },
+    "invoiceTable": {
+      "manualInvoice": "手動請求",
+      "nothingToIssue": "発行できる請求書がありません",
+      "selectDraftInvoices": "下書きの請求書を選んでください",
+      "issuedCount": "{count} 件発行しました",
+      "nothingToMarkPaid": "入金できる請求書がありません",
+      "selectSentInvoices": "送付済みの請求書を選んでください",
+      "paymentProcessedCount": "{count} 件の入金処理を行いました",
+      "nothingToApprove": "承認できる請求書がありません",
+      "selectPendingApprovalInvoices": "承認依頼中の請求書を選んでください",
+      "approvedCount": "{count} 件承認しました",
+      "rejectedCount": "{count} 件差し戻しました"
     }
   },
   "general": {
@@ -2632,8 +2749,7 @@
       "selectAWorkLocation": "作業場所を選択してください",
       "start": "開始",
       "end": "終了",
-      "enterStartAndEnd": "開始と終了の時刻を入力してください",
-      "enterQuantity": "数量を入力してください"
+      "enterStartAndEnd": "開始と終了の時刻を入力してください"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "数量・不良",
@@ -3014,7 +3130,6 @@
       "workLocationRequiredForPlan": "作業計画には作業場所が必要です",
       "planLockedByWorkOrderStatus": "承認依頼中・完了・キャンセルの指示書では作業計画を変更できません",
       "timeRequiredForPlan": "この工程の作業計画には開始・終了時刻が必要です",
-      "quantityRequiredForPlan": "この工程の作業計画には数量が必要です",
       "assigneeRequiredForPlan": "この工程の作業計画には担当者が必要です"
     },
     "workOrderActions": {
@@ -3188,6 +3303,71 @@
       "toleranceBottom": "公差 Bottom",
       "upperLimit": "上限",
       "lowerLimit": "下限"
+    },
+    "movements": {
+      "movementNumber": "伝票番号",
+      "cause": "事由",
+      "sourceDocument": "元書類",
+      "searchByNumber": "伝票番号で検索",
+      "noMovements": "入出庫伝票がありません",
+      "storageLocation": "保管場所・棚",
+      "truncatedNotice": "直近 1000 件のみ表示しています。これより古い伝票は絞り込んでも出てきません。"
+    },
+    "stockTakes": {
+      "actions": {
+        "cancelFailed": "キャンセルに失敗しました",
+        "cannotCancelNow": "いまはキャンセルできません（下書き・記入中のみ）",
+        "cannotSubmitNow": "いまは提出できません（1 件以上カウントしてください）",
+        "countsSaved": "記入を保存しました",
+        "createFailed": "作成に失敗しました",
+        "noLinesToCount": "数える対象がありません",
+        "notEditableNow": "いまは記入できません",
+        "notPendingApproval": "承認依頼中ではありません",
+        "saveCountsFailed": "記入の保存に失敗しました",
+        "selectAPlant": "拠点を選択してください",
+        "stateChanged": "状態が変わっています。再読み込みしてください",
+        "submitFailed": "提出に失敗しました"
+      },
+      "detail": {
+        "bookQuantity": "帳簿数",
+        "confirmCancelBody": "{number} をキャンセルします。この操作は取り消せません。",
+        "confirmedAtLabel": "確定日時",
+        "countedProgress": "{counted}/{total} 件入力済み",
+        "countedQuantity": "実測数",
+        "countsSaved": "記入を保存しました",
+        "createdAtLabel": "作成日時",
+        "difference": "差異",
+        "item": "対象",
+        "linesTitle": "対象バケット（{count}）",
+        "movementTitle": "入出庫伝票",
+        "noDifferenceNoMovement": "差異なし（伝票は起票していません）",
+        "notConfirmedYet": "未確定",
+        "notCounted": "未カウント",
+        "numberLabel": "棚卸番号",
+        "stageConfirmed": "確定",
+        "stageCounting": "記入",
+        "stageDraft": "下書き",
+        "summaryLine": "記入 {counted}/{total} 件・差異 {diffCount} 件（過 +{over} ・ 不足 −{under}）",
+        "unassignedLocation": "未割当"
+      },
+      "form": {
+        "created": "作成しました",
+        "createdBody": "{number} を作成しました",
+        "newTitle": "新規棚卸",
+        "sectionDescription": "拠点全体、または保管場所を絞って対象バケットを取り込みます。",
+        "sectionTitle": "棚卸情報",
+        "selectAPlant": "拠点を選択",
+        "selectAPlantFirst": "先に拠点を選択",
+        "selectAStorageLocation": "保管場所を選択（任意）"
+      },
+      "table": {
+        "approvalStatus": "承認状態",
+        "emptyMessage": "棚卸はまだありません",
+        "lineCount": "明細数",
+        "number": "棚卸番号",
+        "searchPlaceholder": "棚卸番号・拠点・保管場所で検索",
+        "storageLocation": "保管場所"
+      }
     }
   },
   "purchase": {
@@ -4732,6 +4912,70 @@
       "activateBeforeIssuing": "有効化してから発行してください（未有効化のアカウントではログインできません）。",
       "noActiveAccounts": "この取引先には有効なポータルアカウントがありません。",
       "couldNotIssueTheGuide": "案内を発行できませんでした。"
+    },
+    "accounting": {
+      "accounting": "会計連携",
+      "description": "請求書から出す仕訳 CSV の形。行ごとの科目コードはマスタ側（税区分 MS0F / 取引先 MS01）にあり、ここが持つのは形と、マスタが空だったときの既定。",
+      "notYetVendorLayout": "既定の列は「科目コードで出す一般的な形」で、会計ソフトの正式な受入レイアウトではありません。受入レイアウト表を受け取ったら、この画面の列と既定コードを合わせてください。",
+      "format": "出力形式",
+      "formatDescription": "会計ソフトの受入が要求する文字コード・改行・日付の書き方。",
+      "encoding": "文字コード",
+      "newline": "改行",
+      "dateFormat": "日付の書式",
+      "headerRow": "ヘッダ行を出す",
+      "quoteMode": "引用符の付け方",
+      "amountStyle": "金額の書き方",
+      "filenameSuffix": "ファイル名の接尾辞",
+      "columns": "列レイアウト",
+      "columnsDescription": "何を、どの順で、どんな見出しで出すか。上から順に 1 列目・2 列目…になる。",
+      "columnHeader": "見出し",
+      "columnField": "出力する項目",
+      "constant": "固定文字列",
+      "addColumn": "列を追加",
+      "accounts": "既定の科目コード",
+      "accountsDescription": "マスタ側の科目コードが空のときに使う。空のままなら、その欄は空欄で出力される。",
+      "receivableAccountCode": "売掛金 科目コード",
+      "salesAccountCode": "売上高 科目コード",
+      "taxAccountCode": "仮受消費税 科目コード",
+      "deptCode": "部門コード",
+      "defaultTaxCode": "既定の消費税コード",
+      "taxCodeRules": "税率別の消費税コード",
+      "taxCodeRulesDescription": "税区分マスタに消費税コードが入っていないときに、税率から引く。",
+      "taxRate": "税率",
+      "taxRatePercent": "税率(%)",
+      "debitTaxCode": "借方 消費税コード",
+      "creditTaxCode": "貸方 消費税コード",
+      "addTaxCodeRule": "税率を追加",
+      "preview": "プレビュー",
+      "previewNote": "10% と 8% が混ざった作り話の請求書 1 通を、いまの設定で出力した結果。",
+      "saved": "会計連携の設定を更新しました",
+      "sampleCustomerName": "株式会社サンプル工業"
+    },
+    "accountingField": {
+      "date": "伝票日付",
+      "dateYear": "年",
+      "dateMonth": "月",
+      "dateDay": "日",
+      "slipNo": "伝票番号",
+      "rowIndex": "行番号",
+      "voucherNo": "証憑番号",
+      "debitAccountCode": "借方 科目コード",
+      "debitSubCode": "借方 補助科目",
+      "debitDeptCode": "借方 部門",
+      "debitTaxCode": "借方 消費税コード",
+      "debitAmount": "借方 金額",
+      "creditAccountCode": "貸方 科目コード",
+      "creditSubCode": "貸方 補助科目",
+      "creditDeptCode": "貸方 部門",
+      "creditTaxCode": "貸方 消費税コード",
+      "creditAmount": "貸方 金額",
+      "taxRatePercent": "税率(%)",
+      "memo": "摘要",
+      "invoiceNumber": "請求番号",
+      "customerCode": "顧客コード",
+      "customerName": "顧客名",
+      "constant": "固定文字列",
+      "empty": "空欄"
     }
   },
   "portal": {
@@ -5071,7 +5315,13 @@
       "varianceApprovalWithinHelp": "範囲に収まっている過不足でも、出荷書の確定前に承認を通す。",
       "varianceApprovalOutside": "許容範囲外は承認を要求する",
       "varianceApprovalOutsideHelp": "外すと範囲外の過不足も決裁なしで通る。範囲の設定が意味を持たなくなるので、通常は付けたままにする。",
-      "approvalNotRequired": "不要"
+      "approvalNotRequired": "不要",
+      "accountingSection": "会計連携",
+      "accountingSectionHint": "仕訳 CSV の借方（売掛金）に出す科目コード。空欄なら会計連携（SY0J）の既定に従う。",
+      "accountCodeHint": "半角数字・8 桁まで（空欄可）",
+      "receivableAccountCode": "売掛金 科目コード",
+      "receivableSubAccountCode": "補助科目コード（得意先）",
+      "receivableSubAccountCodeHint": "会計ソフト側の得意先コード。社内の顧客コードとは別物なので、流用しない。"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "不良種類を作成しました",
@@ -5415,8 +5665,6 @@
       "planRequiredFieldsHelp": "承認依頼の前に、この工程の作業計画に何が入っている必要があるか。計画日は常に必須です。",
       "planTimeRequired": "作業計画に開始・終了時刻が必要",
       "planTimeRequiredHelp": "時間帯まで決めてから承認に出す工程で立てます。",
-      "planQuantityRequired": "作業計画に数量が必要",
-      "planQuantityRequiredHelp": "計画を数量で分割する工程（担当者ごとに何本、など）で立てます。",
       "planTime": "開始・終了時刻",
       "routeKind": "工程リスト",
       "routeKindPrep": "準備",
@@ -5426,7 +5674,6 @@
       "planRequiredShort": "計画必須",
       "planFieldLocationShort": "場所",
       "planFieldTimeShort": "時刻",
-      "planFieldQuantityShort": "数量",
       "planAssigneeRequired": "作業計画に担当者が必要",
       "planAssigneeRequiredHelp": "承認依頼の前に担当者まで決めてから出す工程で立てます。既定では担当者は任意で、承認後に現場で決められます。",
       "planFieldAssigneeShort": "担当"
@@ -6076,7 +6323,10 @@
       "numberConditionSummary": "{label}が {value} {op}",
       "selectConditionSummary": "{label}が「{value}」{op}",
       "deliveryTotalQuantity": "出荷数量の合計",
-      "fromPlant": "出荷元拠点"
+      "fromPlant": "出荷元拠点",
+      "plant": "拠点",
+      "differenceCount": "差異の件数",
+      "cases": "件"
     },
     "inspectionTemplateExcel": {
       "sheetName": "検査表"
@@ -6142,7 +6392,76 @@
       "selectEffectiveFrom": "適用開始日を選択してください",
       "rateRange": "税率は 0 以上 100 以下で入力してください",
       "useDefault": "既定に従う",
-      "followProduct": "製品に従う"
+      "followProduct": "製品に従う",
+      "accountingSection": "会計連携",
+      "accountingSectionHint": "仕訳 CSV に出す科目コード。空欄なら会計連携（SY0J）の既定に従う。",
+      "accountCodeHint": "半角数字・8 桁まで（空欄可）",
+      "taxCode": "消費税コード",
+      "salesAccountCode": "売上高 科目コード",
+      "taxAccountCode": "仮受消費税 科目コード"
+    },
+    "chargeItems": {
+      "pageTitle": "料金マスタ",
+      "newChargeItem": "料金項目を新規作成",
+      "editTheChargeItem": "料金項目を編集",
+      "deleteTheChargeItem": "料金項目を削除",
+      "disableTheChargeItem": "料金項目を無効化",
+      "enableTheChargeItem": "料金項目を有効化",
+      "empty": "料金項目はまだありません",
+      "codeHelp": "料金項目を識別するコード（作成後は変更できません）",
+      "codePlaceholder": "SHIPPING など",
+      "amountMode": "金額の決まり方",
+      "modeFixed": "固定",
+      "modeVariable": "可変",
+      "modeFixedHelp": "料金マスタの金額をそのまま使います。使うときに変えられません",
+      "modeVariableHelp": "使うたびに人が入れます。下の金額は入力欄の既定値です",
+      "amount": "金額",
+      "defaultAmount": "既定の金額",
+      "amountFixedHelp": "この項目を足すと必ずこの金額になります",
+      "amountVariableHelp": "空のままにすると、毎回きちんと入力させます",
+      "defaultSuffix": "（既定）",
+      "taxCategoryHelp": "送料は課税、印紙代は非課税、のように項目ごとに決まります。顧客に課税区分が入っていればそちらが優先します",
+      "fixedNeedsAmount": "固定の料金項目には金額が必要です",
+      "created": "料金項目を作成しました",
+      "updated": "{name} を更新しました",
+      "deleted": "{name} を削除しました",
+      "enabled": "{name} を有効化しました",
+      "disabled": "{name} を無効化しました",
+      "deleteConfirm": "{name} を削除します。",
+      "enableConfirm": "{name} を有効化します。",
+      "disableConfirm": "{name} を無効化します。以後この項目は新しく選べなくなりますが、すでに書いた行はそのまま残ります。",
+      "itCannotBeDeletedWhileInUse": "指示書・出荷書で使われている料金項目は削除できません（無効化はできます）",
+      "inUseCannotDelete": "指示書 {workOrders} 件・出荷書 {deliveryOrders} 件で使われているため削除できません",
+      "bulkDeleteChargeItems": "料金項目を一括削除",
+      "bulkDeleteConfirm": "{count} 件の料金項目を削除します。",
+      "bulkDeleted": "{count} 件を削除しました",
+      "bulkEnabled": "{count} 件を有効化しました",
+      "bulkDisabled": "{count} 件を無効化しました",
+      "createFailed": "料金項目の作成に失敗しました",
+      "updateFailed": "料金項目の更新に失敗しました",
+      "deleteFailed": "料金項目の削除に失敗しました",
+      "unknownChargeItem": "料金項目が見つかりません",
+      "quantityMin1": "数量は 1 以上の整数で入力してください",
+      "enterAnAmount": "金額を入力してください",
+      "amountCannotBeNegative": "金額にマイナスは入力できません"
+    },
+    "customerProductCodes": {
+      "title": "顧客品番",
+      "help": "この製品を顧客が何と呼ぶか。登録すると、その顧客の注文書は品番で 1 発で突合でき、納品書・請求書の品名欄に相手の品番を併記します。",
+      "empty": "顧客品番は登録されていません",
+      "code": "顧客品番",
+      "codePlaceholder": "相手の品番",
+      "name": "顧客品名",
+      "namePlaceholder": "相手が呼ぶ品名（任意）",
+      "aliases": "別表記",
+      "aliasesPlaceholder": "旧品番など（突合のみ・印字しない）",
+      "addRow": "顧客を追加",
+      "everyRowNeedsCustomerAndCode": "各行に顧客と顧客品番を入力してください",
+      "selectACustomer": "顧客を選択してください",
+      "enterACustomerCode": "顧客品番を入力してください",
+      "duplicateCustomerRow": "同じ顧客の行が 2 つあります。1 顧客につき 1 行にしてください",
+      "duplicateCodeForCustomer": "顧客品番「{code}」が同じ顧客の中で重複しています",
+      "couldNotSave": "顧客品番の保存に失敗しました"
     }
   },
   "manual": {
@@ -7082,6 +7401,7 @@
       "endUser": "エンドユーザー",
       "assignedSite": "担当拠点",
       "shippingWorkLocation": "出荷作業場所",
+      "deliveryDestination": "届け先",
       "linesTotalQuantity": "明細数 / 合計数量",
       "expandedAt": "展開日時",
       "workOrdersAllocated": "指示書（割当）",
@@ -7123,7 +7443,16 @@
       "showTheDocumentPane": "書類を開く",
       "hideTheDocument": "隠す",
       "customerProvidesDeliveryNote": "顧客提供の納品書",
-      "priceNoTierLine": "行{row} 数量 {quantity} に該当する価格表の数量段階なし"
+      "priceNoTierLine": "行{row} 数量 {quantity} に該当する価格表の数量段階なし",
+      "recreate": "作り直す",
+      "recreateFromThis": "この注文請書から作り直す",
+      "recreatedFrom": "作り直し元",
+      "recreatedAsTitle": "作り直し先",
+      "recreatedAs": "{number} として作り直しました",
+      "theCancelledOrderAcceptance": "この注文請書の元になったキャンセル済みの請書",
+      "youCanRecreateOnceCancelled": "キャンセル済みの注文請書からのみ作り直せます",
+      "confirmRecreateMessage": "{number} の内容を引き継いだ下書きを作ります。紐付けは残ります。",
+      "alreadyRecreatedAs": "この注文請書はすでに {numbers} として作り直されています。二重に起こしていないか確認してください。"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "この明細の親書類",
@@ -7493,7 +7822,9 @@
       "priceListPriceWithTier": "価格表 {price}（{tier}）",
       "fromPriceList": "価格表から",
       "willReplaceWithList": "{entered} は保存時に価格表の単価へ置き換わります",
-      "overriddenFromList": "上書き（価格表 {expected}）"
+      "overriddenFromList": "上書き（価格表 {expected}）",
+      "delivery": "配送",
+      "applyLineOneDeliveryToAll": "先頭行の配送を全行へ適用"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "「{label}」を削除します。この操作は取り消せません。",
@@ -7563,7 +7894,7 @@
       "confirmIssues": "確定できません: {summary}",
       "createFailed": "注文請書の作成に失敗しました",
       "createdManually": "手入力で作成",
-      "directToUserRequiresEndUser": "ユーザー直送ではエンドユーザーの指定が必要です",
+      "directToUserRequiresEndUser": "明細 {rows} 行目: ユーザー直送ではエンドユーザーの指定が必要です",
       "endUserInvalid": "エンドユーザーの取引先が存在しないか無効です",
       "invalidNumber": "注文請書番号が不正です",
       "notPendingApproval": "承認依頼中の注文請書ではありません",
@@ -7586,7 +7917,10 @@
       "takenOverManually": "自動抽出を待たず手入力へ切り替え",
       "targetCancelRequestNotFound": "対象のキャンセル依頼が見つかりません",
       "targetNotFound": "対象の注文請書が見つかりません",
-      "unitPriceMin0": "単価は0以上"
+      "unitPriceMin0": "単価は0以上",
+      "onlyCancelledCanBeRecreated": "作り直せるのはキャンセル済みの注文請書だけです",
+      "recreatedFromCancelled": "キャンセル済みの {number} から作り直しました",
+      "recreatedAs": "{number} として作り直しました"
     },
     "quoteActions": {
       "createFailed": "見積書の作成に失敗しました",
@@ -7712,7 +8046,7 @@
     },
     "orderAcceptanceReadiness": {
       "customerNotIdentified": "顧客が未特定です",
-      "directToUserButEndUserNot": "ユーザー直送ですがエンドユーザーが未指定です",
+      "lineEndUserNotIdentified": "明細 {rows} 行目: エンドユーザーが未指定です",
       "noLineItems": "明細が 1 件もありません",
       "lineProductNotIdentified": "明細 {rows} 行目: 製品が未特定です",
       "lineUnitPriceNotEntered": "明細 {rows} 行目: 単価が未入力です",
@@ -8453,12 +8787,13 @@
       "viewed": "閲覧済み",
       "windowEndsAt": "承認期限（終了）",
       "windowStartsAt": "承認期限（開始）",
-      "yayoiExportedAt": "弥生エクスポート日時",
+      "accountingExportedAt": "会計連携日時",
       "isDefault": "既定",
       "effectiveFrom": "適用開始日",
       "ratePercent": "税率（%）",
       "taxCategoryId": "税区分",
-      "shortLabel": "帳票の区分表示"
+      "shortLabel": "帳票の区分表示",
+      "customerProductCodes": "顧客品番"
     },
     "tableFieldLabels": {
       "kiosk_devices": {
@@ -8523,6 +8858,7 @@
       "estimates": "価格試算",
       "price_list_entries": "価格表",
       "products": "製品",
+      "charge_items": "料金マスタ",
       "materials": "素材",
       "material_types": "材種",
       "business_partners": "取引先",
@@ -8585,7 +8921,12 @@
       "api_clients": "API クライアント",
       "api_client_tokens": "API トークン",
       "tax_categories": "税区分",
-      "tax_category_rates": "税率"
+      "tax_category_rates": "税率",
+      "inventory_movements": "入出庫伝票",
+      "stock_takes": "棚卸",
+      "stock_take_lines": "棚卸明細",
+      "item_inventory": "在庫",
+      "movement_types": "移動タイプ"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -8839,7 +9180,8 @@
     "finalInspectionDeliveryNoteIssued": "出荷前確認: 納品書発行者を記録",
     "finalInspectionShipmentAuthorized": "出荷前確認: 出荷許可者を記録",
     "finalInspectionShipDefectReviewed": "出荷時不良内容確認者印を記録",
-    "inspectionApproved": "検査記録を承認"
+    "inspectionApproved": "検査記録を承認",
+    "stockTakeAdjusted": "棚卸調整（実数 {book} → 実測 {counted}）"
   },
   "workflowCore": {
     "quantityLabels": {
@@ -9910,5 +10252,108 @@
     "clientNotFound": "対象のクライアントが見つかりません",
     "featureDisabled": "この環境では外部 API は無効です",
     "invalidNameChars": "名前に使えない文字が含まれています"
+  },
+  "charges": {
+    "title": "追加料金",
+    "item": "料金項目",
+    "note": "但し書き",
+    "notePlaceholder": "○○運輸 着払い など",
+    "selectAnItem": "料金項目を選択",
+    "addRow": "料金を追加",
+    "total": "追加料金 合計",
+    "empty": "追加料金はありません",
+    "everyRowNeedsAnItem": "各行の料金項目を選択してください",
+    "fixedByMaster": "料金マスタの固定金額",
+    "quantityTimesUnitPrice": "{quantity} × ¥{unitPrice}",
+    "copiedFromWorkOrder": "指示書 #{number} から複写",
+    "couldNotSave": "追加料金の保存に失敗しました",
+    "workOrderHelp": "送料など、製品の代金以外に請求するもの。ここは**予定**で、出荷書を作るときに複写されます。請求されるのは出荷書側の行です。",
+    "deliveryOrderHelp": "この出荷で請求する追加料金。確定すると締日処理が請求書の明細にします。直せるのは下書きのうちだけです。",
+    "workOrderClosedForCharges": "完了・キャンセルした指示書の追加料金は変更できません。出荷書側で直してください",
+    "deliveryOrderClosedForCharges": "追加料金を変更できるのは下書きの出荷書だけです"
+  },
+  "inventory": {
+    "stockOverview": {
+      "item": "品目",
+      "itemType": "品目種別",
+      "hideZeroStock": "在庫ゼロを隠す",
+      "searchPlaceholder": "品目名・コードで検索",
+      "summaryLine": "{rows} 行 / {items} 品目 / {sites} 拠点",
+      "truncatedNotice": "件数が多いため、一部のみ表示しています。絞り込んでください。",
+      "noStock": "在庫がありません"
+    },
+    "requirements": {
+      "title": "在庫・所要量",
+      "item": "品目",
+      "itemPlaceholder": "コード・名称で検索",
+      "plantPlaceholder": "拠点を選択",
+      "emptyState": "品目と拠点を選ぶと、過去の実績と未来の入出庫予定を表示します",
+      "notFound": "品目が見つかりませんでした",
+      "onHand": "手持ち",
+      "reserved": "予約",
+      "availableNow": "利用可能",
+      "nextReceipt": "次回入荷",
+      "shortageAlertTitle": "在庫不足の見込み",
+      "shortageAlertBody": "この先、残高がマイナスになる見込みです。強調表示した行を確認してください。",
+      "truncated": "古い実績が多いため、一部のみ表示しています",
+      "rowKindHeader": "区分",
+      "reference": "参照",
+      "balance": "残高",
+      "dateUndetermined": "未定",
+      "rowKind": {
+        "now": "いま"
+      }
+    },
+    "goodsMovement": {
+      "selectAType": "移動タイプを選択してください",
+      "selectAnItem": "品目を選択してください",
+      "quantityPositive": "数量は正の数で入力してください",
+      "typeInactive": "この移動タイプは無効化されています",
+      "postFailed": "入出庫の登録に失敗しました",
+      "problem": {
+        "itemRequired": "品目を選択してください",
+        "quantityPositive": "数量は正の数で入力してください",
+        "fromRequired": "出庫元を指定してください",
+        "toRequired": "入庫先を指定してください",
+        "sameEndpoint": "出庫元と入庫先が同じです"
+      },
+      "movementType": "移動タイプ",
+      "fromLocation": "出庫元",
+      "toLocation": "入庫先",
+      "shelf": "棚",
+      "itemAndQuantity": "品目・数量",
+      "item": "品目",
+      "quantity": "数量",
+      "lotNumber": "ロット番号",
+      "lotNumberHint": "製品のみ有効（素材では無視されます）",
+      "problemsTitle": "登録できません",
+      "submit": "登録",
+      "lastPosted": "直前に登録した伝票",
+      "posted": "入出庫伝票 {number} を登録しました"
+    },
+    "movementTypes": {
+      "number": "番号",
+      "direction": "向き",
+      "requiresFrom": "出庫元要",
+      "requiresTo": "入庫先要",
+      "requiresFromFloor": "この向きでは「出庫元」を必須から外せません",
+      "requiresToFloor": "この向きでは「入庫先」を必須から外せません",
+      "createFailed": "移動タイプの作成に失敗しました",
+      "updateFailed": "移動タイプの更新に失敗しました",
+      "codeHint": "手動入出庫の選択肢に表示される番号（例: 101 / 201 / 311）",
+      "newMovementType": "移動タイプの新規作成",
+      "editTheMovementType": "移動タイプの編集",
+      "created": "移動タイプ「{name}」を作成しました",
+      "updated": "{name} を更新しました",
+      "disableConfirm": "{name} を無効化します。よろしいですか？",
+      "enableConfirm": "{name} を有効化します。よろしいですか？",
+      "disabled": "{name} を無効化しました",
+      "enabled": "{name} を有効化しました",
+      "disableTitle": "移動タイプの無効化",
+      "enableTitle": "移動タイプの有効化",
+      "bulkEnabled": "{count} 件を有効化しました",
+      "bulkDisabled": "{count} 件を無効化しました",
+      "noMovementTypes": "移動タイプがありません"
+    }
   }
 }

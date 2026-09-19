@@ -37,7 +37,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
-import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
+import { searchProductItemOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
   confirmTrialEstimate,
   linkTrialEstimateProduct,
@@ -46,7 +46,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { productF4 } from "@/components/ui/f4-presets";
+import { productItemF4 } from "@/components/ui/f4-presets";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
@@ -130,7 +130,7 @@ export function TrialEstimateDetail({
   const status = record.status;
   // 製品リンク モーダル（REGISTERED は価格表が参照済みのため変更不可）
   const [linkOpen, setLinkOpen] = useState(false);
-  const [linkProductId, setLinkProductId] = useState<string | null>(null);
+  const [linkItemId, setLinkItemId] = useState<string | null>(null);
 
   // ── 手続き状況（下書き → 確定 → 価格表登録済）───────────────────────────
   // 確定済みは「確定」が済んだ段。次は価格表で使われること（2）。
@@ -187,7 +187,7 @@ export function TrialEstimateDetail({
   ];
 
   const openProductLink = () => {
-    setLinkProductId(record.productId);
+    setLinkItemId(record.itemId);
     setLinkOpen(true);
   };
 
@@ -195,12 +195,12 @@ export function TrialEstimateDetail({
     startTransition(async () => {
       const res = await linkTrialEstimateProduct(
         record.estimateNumber,
-        linkProductId,
+        linkItemId,
       );
       if (res.ok) {
         notifications.show({
           title: tr("common.saved2"),
-          message: linkProductId
+          message: linkItemId
             ? tr("sales.trialEstimates.linkedToTheProductOnceConfirmed")
             : tr("sales.trialEstimates.theProductLinkWasRemoved"),
           color: "green",
@@ -254,7 +254,7 @@ export function TrialEstimateDetail({
             ...(status !== "REGISTERED"
               ? [
                   {
-                    label: record.productId
+                    label: record.itemId
                       ? tr("sales.trialEstimates.changeTheProductLink")
                       : tr("sales.trialEstimates.linkToAProduct"),
                     icon: <IconCylinder size={14} />,
@@ -502,7 +502,7 @@ export function TrialEstimateDetail({
         onConfirm={saveProductLink}
         opened={linkOpen}
         title={
-          record.productId
+          record.itemId
             ? tr("sales.trialEstimates.changeTheProductLink")
             : tr("sales.trialEstimates.linkToAProduct")
         }
@@ -513,18 +513,18 @@ export function TrialEstimateDetail({
           </Text>
           <SearchSelect
             clearable
-            f4={productF4(tr)}
+            f4={productItemF4(tr)}
             initialOption={
-              record.productId && record.productName
-                ? { value: record.productId, label: record.productName }
+              record.itemId && record.productName
+                ? { value: record.itemId, label: record.productName }
                 : null
             }
             label={tr("common.product")}
-            onChange={setLinkProductId}
-            onSearch={searchProductOptions}
+            onChange={setLinkItemId}
+            onSearch={searchProductItemOptions}
             placeholder={tr("common.searchProducts")}
-            storageKey="product"
-            value={linkProductId}
+            storageKey="trial-estimate-product-item"
+            value={linkItemId}
           />
         </Stack>
       </ModalShell>

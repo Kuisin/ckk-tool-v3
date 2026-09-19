@@ -36,8 +36,11 @@ import { loadCustomerPriceEntries, priceListLookup } from "./price-resolve";
 
 /** 明細 1 行の照合結果。 */
 export interface AcceptancePriceCheckLine {
-  /** order_lines.id — DRAFT エディタ行との突合キー。 */
-  itemId: string;
+  /**
+   * order_lines.id — DRAFT エディタ行との突合キー。
+   * **品目 id（items.id）ではない** — 明細が指す製品は `rowPrice` が扱う。
+   */
+  lineId: string;
   /** 1 始まりの行番号（sortOrder 順）。 */
   row: number;
   /** 明細の数量（数量段階なしの文言に出す）。 */
@@ -93,7 +96,7 @@ export async function checkAcceptancePrices(
         orderBy: { sortOrder: "asc" },
         select: {
           id: true,
-          productId: true,
+          itemId: true,
           orderType: true,
           quantity: true,
           unitPrice: true,
@@ -108,24 +111,24 @@ export async function checkAcceptancePrices(
   const entries = await loadCustomerPriceEntries(customerBpId);
 
   const lines: AcceptancePriceCheckLine[] = acceptance.items.map((it, i) => {
-    const productId = it.productId != null ? String(it.productId) : null;
+    const itemId = it.itemId != null ? String(it.itemId) : null;
     const actual = it.unitPrice != null ? Number(it.unitPrice) : null;
     const { expected, missReason } = priceListLookup(
       entries,
       customerBpId,
-      { productId, orderType: it.orderType, quantity: it.quantity },
+      { itemId, orderType: it.orderType, quantity: it.quantity },
       tr,
     );
     const state = acceptancePriceState({
       // 顧客が未特定なら価格表を引く相手がいない — 照合不能として扱う。
-      matched: Boolean(productId && customerBpId),
+      matched: Boolean(itemId && customerBpId),
       expected,
       actual,
       overridden: it.priceOverridden,
       missReason,
     });
     return {
-      itemId: it.id,
+      lineId: it.id,
       row: i + 1,
       quantity: it.quantity,
       expected,

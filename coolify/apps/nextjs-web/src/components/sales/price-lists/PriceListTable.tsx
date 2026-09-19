@@ -150,7 +150,7 @@ export function PriceListTable({
       e.customerName.includes(search) ||
       e.productName.includes(search);
     const matchesCustomer = !customer || e.customerId === customer;
-    const matchesProduct = !product || e.productId === product;
+    const matchesProduct = !product || e.itemId === product;
     const matchesType =
       !orderType || e.variants.some((v) => v.orderType === orderType);
     return matchesSearch && matchesCustomer && matchesProduct && matchesType;
