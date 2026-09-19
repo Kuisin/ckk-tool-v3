@@ -77,6 +77,10 @@ export function approvalConditionFields(
   const designPriorityOpts = designPriorityOptions(locale);
 
   return {
+    // delivery_method / assigned_plant_id は行ごと（§8 — 配送は明細ごとに
+    // 持つ）。fetchApprovalDocInfo はこの 2 つを string[]（明細の値の集合）
+    // で渡し、evaluateCondition はその集合の**いずれかが条件に合えば一致**
+    // として評価する（承認を減らす側ではなく増やす側に倒す）。
     order_acceptances: [
       {
         key: "total_amount",
@@ -188,6 +192,7 @@ export function approvalConditionFields(
         unit: tr("master.approvalConditions.pcs"),
       },
     ],
+    // delivery_method も行ごと（上の order_acceptances と同じ理由・同じ規則）。
     order_acceptance_cancel_requests: [
       {
         key: "total_amount",
@@ -236,6 +241,25 @@ export function approvalConditionFields(
         unit: tr("master.approvalConditions.cases"),
       },
     ],
+    // 追加費用ありの請求書だけが通る発行前承認。条件で使えるのは金額だけ
+    // （手動費用の有無そのものは既にゲートなので、条件をさらに絞る意味が薄い）。
+    invoices: [
+      {
+        key: "total_amount",
+        label: tr("master.approvalConditions.totalAmount"),
+        type: "number",
+        unit: tr("master.approvalConditions.yen"),
+      },
+    ],
+    // 入金前承認。対象は請求書と同じ行だが、種別は別（invoices と同じ属性を出す）。
+    invoice_payments: [
+      {
+        key: "total_amount",
+        label: tr("master.approvalConditions.totalAmount"),
+        type: "number",
+        unit: tr("master.approvalConditions.yen"),
+      },
+    ],
   };
 }
 
@@ -265,8 +289,16 @@ export function conditionOpLabels(tr: TrLike): Record<ConditionOp, string> {
   };
 }
 
-/** 書類から抽出した属性値の袋（fetchApprovalDocInfo の戻り）。 */
-export type ApprovalDocInfo = Record<string, string | number | null>;
+/**
+ * 書類から抽出した属性値の袋（fetchApprovalDocInfo の戻り）。
+ *
+ * `string[]` は**行ごとに値が違い得る属性**（§8 — order_acceptances の
+ * delivery_method / assigned_plant_id。配送は明細ごとに持つので、書類 1 件の
+ * 値が 1 つに決まらない）。select 条件（eq / ne）は「その値を持つ明細が
+ * 1 行でもあれば一致」で評価する — 承認を減らす側ではなく増やす側に倒す。
+ * number 条件（gte / lte）は配列を渡さない前提（意味を持たないため）。
+ */
+export type ApprovalDocInfo = Record<string, string | number | null | string[]>;
 
 /**
  * 条件 1 件の評価。属性が無い / null / 型が合わないときは**不一致**
@@ -278,6 +310,19 @@ export function evaluateCondition(
 ): boolean {
   const raw = info[cond.field];
   if (raw == null) return false;
+  if (Array.isArray(raw)) {
+    if (raw.length === 0) return false;
+    switch (cond.op) {
+      case "eq":
+        return raw.some((v) => String(v) === String(cond.value));
+      case "ne":
+        return raw.some((v) => String(v) !== String(cond.value));
+      // gte / lte は配列を渡さない前提（number フィールドは行ごとに割れない）。
+      case "gte":
+      case "lte":
+        return false;
+    }
+  }
   switch (cond.op) {
     case "gte":
     case "lte": {

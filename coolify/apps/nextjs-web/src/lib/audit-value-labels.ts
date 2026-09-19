@@ -87,7 +87,11 @@ const ENUM_MAP_BY_FIELD: Record<string, string> = {
   lotInputMode: "LOT_INPUT_MODE_LABEL",
   orderType: "ORDER_TYPE_LABEL",
   relation: "DEPENDENCY_RELATION_LABEL",
+  // order_acceptances.deliveryMethod は @deprecated（配送は明細へ移した、
+  // order_line_delivery, 20261024090000）。新しい監査行はもう出ないが、
+  // 移行前の履歴行を読むためマッピングは残す。
   "order_acceptances.deliveryMethod": "ACCEPTANCE_DELIVERY_METHOD_LABEL",
+  "order_lines.deliveryMethod": "ACCEPTANCE_DELIVERY_METHOD_LABEL",
   "delivery_notes.deliveryMethod": "DELIVERY_METHOD_LABEL",
   "process_step_catalog.executionLocation": "PROCESS_EXECUTION_LABEL",
   "process_step_catalog.category": "PROCESS_CATEGORY_LABEL",

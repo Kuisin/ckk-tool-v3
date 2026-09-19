@@ -807,7 +807,9 @@
     "dateTo": "終了日",
     "billTo": "請求先",
     "stockTake": "棚卸",
-    "stockMovement": "入出庫伝票"
+    "stockMovement": "入出庫伝票",
+    "invoicePayment": "請求書の入金",
+    "notPendingApproval": "承認依頼中ではありません"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -2065,7 +2067,6 @@
       "confirmGeneratingInvoices": "請求書生成の確認",
       "theBillingClosingWasRun": "締日処理を実行しました",
       "runTheBillingClosing": "締日処理の実行",
-      "aggregatesTheMonthSUnbilledShipments": "対象月の未請求出荷（出荷済・発送のみ）を顧客ごとに集計し、締日の処理行を作成します。",
       "years": "年",
       "months": "月",
       "runTheBillingClosing2": "締日処理を実行",
@@ -2089,7 +2090,12 @@
       "selectPendingPastClosingDate": "未処理で、かつ締日を過ぎた行を選んでください",
       "invoicesWereGenerated": "請求書を {count} 件生成しました",
       "someCouldNotBeProcessed": "{count} 件は生成できませんでした",
-      "skippedNotReady": "未処理でない・締日前の {count} 件は対象外"
+      "skippedNotReady": "未処理でない・締日前の {count} 件は対象外",
+      "aggregatesUnbilledShipmentsUpToDate": "指定日までに締日が到来し、まだ締めていない顧客の未請求出荷（出荷済・発送のみ）を集計し、締日を過ぎている分はそのまま請求書（下書き）まで作成します。",
+      "targetDate": "指定日",
+      "kind": "実行区分",
+      "kindScheduled": "定期",
+      "kindManual": "手動"
     },
     "invoices": {
       "issueThePdf": "PDF を発行",
@@ -2120,7 +2126,21 @@
       "taxLabelExempt": "消費税（非課税）",
       "taxLabelStandard": "消費税（10%）",
       "accountingCsvAgain": "会計連携CSV（再出力）",
-      "taxLabelRate": "消費税（{rate}%）"
+      "taxLabelRate": "消費税（{rate}%）",
+      "issueApprovalRejectedHelp": "発行前承認が差し戻されました。追加費用を見直して再度発行してください。",
+      "paymentApprovalRejectedHelp": "入金の承認が差し戻されました。もう一度「入金」から申請してください。",
+      "issueApprovalWaitingHelp": "このグループのメンバーだけが操作できます。",
+      "paymentApprovalWaitingHelp": "このグループのメンバーだけが操作できます。",
+      "paymentApprovalApproveHelp": "入金の記録に承認が必要です。内容を確認して承認してください。",
+      "issueApprovalApproveHelpWithCharges": "手動で追加した費用が {count} 件含まれています（合計 {amount}）。内容を確認して承認してください。",
+      "chargesClosedForEditing": "下書きの請求書だけ追加費用を編集できます",
+      "chargesSaveFailed": "追加費用の保存に失敗しました",
+      "chargesHelp": "この請求書へ手動で足す費用（料金マスタからだけ選べます）。発行前に承認が要ります。直せるのは下書きのうちだけです。",
+      "manualInvoiceHelp": "臨時に請求する顧客を選びます。締日を待たず、いま未請求の出荷から請求書（下書き）を作ります。",
+      "unbilledShipments": "未請求の出荷",
+      "noUnbilledShipmentsForCustomer": "未請求の出荷がありません",
+      "createInvoiceFromSelection": "請求書を作成",
+      "someShipmentsNoLongerAvailable": "選んだ出荷の一部が、すでに他の請求で使われています。もう一度選び直してください。"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "請求書 {invoiceNumber} を発行します。発行日は本日で記録されます。",
@@ -2128,11 +2148,10 @@
       "confirmMarkSentMessage": "請求書 {invoiceNumber} を送付済みにします。",
       "markedSentWithNumber": "請求書 {invoiceNumber} を送付済みにしました",
       "confirmMarkPaidMessage": "請求書 {invoiceNumber} を入金済みにします。",
-      "markedPaidWithNumber": "請求書 {invoiceNumber} を入金済みにしました"
+      "markedPaidWithNumber": "請求書 {invoiceNumber} を入金済みにしました",
+      "approvalRequestedMessage": "承認を依頼しました（請求書 {invoiceNumber}）"
     },
     "closingTable": {
-      "yearLabel": "{year}年",
-      "monthLabel": "{month}月",
       "createdAndUpdatedCounts": "作成 {created} 件 / 更新 {updated} 件",
       "skippedCount": "処理済みスキップ {skipped} 件"
     },
@@ -2143,17 +2162,35 @@
       "onlyIssuedCanMarkSent": "発行済みの請求書のみ送付済みにできます",
       "markSentFailed": "送付処理に失敗しました",
       "onlySentCanMarkPaid": "送付済みの請求書のみ入金済みにできます",
-      "markPaidFailed": "入金処理に失敗しました"
+      "markPaidFailed": "入金処理に失敗しました",
+      "awaitingIssueApproval": "発行前承認の依頼中です",
+      "approvalRequestFailed": "承認依頼の作成に失敗しました",
+      "approvalRequested": "承認を依頼しました",
+      "awaitingPaymentApproval": "入金前承認の依頼中です",
+      "paymentApprovalRequested": "入金の承認を依頼しました"
     },
     "closingActions": {
       "closingDateNotReached": "締日を過ぎるまで処理できません（締日の翌日から）",
       "closingNotFound": "対象の締日処理が見つかりません",
       "generateInvoiceFailed": "請求書の生成に失敗しました",
-      "invalidYearMonth": "対象月の形式が不正です（YYYYMM）",
       "itemNameWithLot": "{name}（ロット {lot}）",
-      "noUnbilledShipmentsForMonth": "対象月に未請求の出荷がありません",
       "pendingOnly": "未処理の締日のみ請求書を生成できます",
-      "runFailed": "締日処理の実行に失敗しました"
+      "runFailed": "締日処理の実行に失敗しました",
+      "invalidDate": "指定日の形式が不正です",
+      "noUnbilledShipmentsUpToDate": "指定日までに未請求の出荷がありません"
+    },
+    "invoiceTable": {
+      "manualInvoice": "手動請求",
+      "nothingToIssue": "発行できる請求書がありません",
+      "selectDraftInvoices": "下書きの請求書を選んでください",
+      "issuedCount": "{count} 件発行しました",
+      "nothingToMarkPaid": "入金できる請求書がありません",
+      "selectSentInvoices": "送付済みの請求書を選んでください",
+      "paymentProcessedCount": "{count} 件の入金処理を行いました",
+      "nothingToApprove": "承認できる請求書がありません",
+      "selectPendingApprovalInvoices": "承認依頼中の請求書を選んでください",
+      "approvedCount": "{count} 件承認しました",
+      "rejectedCount": "{count} 件差し戻しました"
     }
   },
   "general": {
@@ -7364,6 +7401,7 @@
       "endUser": "エンドユーザー",
       "assignedSite": "担当拠点",
       "shippingWorkLocation": "出荷作業場所",
+      "deliveryDestination": "届け先",
       "linesTotalQuantity": "明細数 / 合計数量",
       "expandedAt": "展開日時",
       "workOrdersAllocated": "指示書（割当）",
@@ -7784,7 +7822,9 @@
       "priceListPriceWithTier": "価格表 {price}（{tier}）",
       "fromPriceList": "価格表から",
       "willReplaceWithList": "{entered} は保存時に価格表の単価へ置き換わります",
-      "overriddenFromList": "上書き（価格表 {expected}）"
+      "overriddenFromList": "上書き（価格表 {expected}）",
+      "delivery": "配送",
+      "applyLineOneDeliveryToAll": "先頭行の配送を全行へ適用"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "「{label}」を削除します。この操作は取り消せません。",
@@ -7854,7 +7894,7 @@
       "confirmIssues": "確定できません: {summary}",
       "createFailed": "注文請書の作成に失敗しました",
       "createdManually": "手入力で作成",
-      "directToUserRequiresEndUser": "ユーザー直送ではエンドユーザーの指定が必要です",
+      "directToUserRequiresEndUser": "明細 {rows} 行目: ユーザー直送ではエンドユーザーの指定が必要です",
       "endUserInvalid": "エンドユーザーの取引先が存在しないか無効です",
       "invalidNumber": "注文請書番号が不正です",
       "notPendingApproval": "承認依頼中の注文請書ではありません",
@@ -8006,7 +8046,7 @@
     },
     "orderAcceptanceReadiness": {
       "customerNotIdentified": "顧客が未特定です",
-      "directToUserButEndUserNot": "ユーザー直送ですがエンドユーザーが未指定です",
+      "lineEndUserNotIdentified": "明細 {rows} 行目: エンドユーザーが未指定です",
       "noLineItems": "明細が 1 件もありません",
       "lineProductNotIdentified": "明細 {rows} 行目: 製品が未特定です",
       "lineUnitPriceNotEntered": "明細 {rows} 行目: 単価が未入力です",

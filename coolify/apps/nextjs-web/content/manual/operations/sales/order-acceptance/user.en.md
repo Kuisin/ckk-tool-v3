@@ -183,11 +183,6 @@ Every field on the order acceptance screen. What the AI read from the order land
 | [Customer order no.](#field-customer-order-ref) | Optional | The number on the customer's own order |
 | [Quote](#field-quote-number) | Optional | The quote it came from |
 | [Order date](#field-order-date) | Optional | The date the customer ordered |
-| [Ship-to](#field-ship-to) | Optional (standard delivery only) | Where the products are delivered |
-| [Delivery method](#field-delivery-method) | Required | Normal delivery / direct to end user |
-| [End user](#field-end-user) | Required for direct | Where a direct shipment goes (the end user) |
-| [Assigned plant](#field-assigned-plant) | Optional | The site that handles this order |
-| [Shipping work location](#field-shipping-work-location) | Optional | Where the shipping work is done |
 | [Customer-supplied delivery note](#field-customer-provides-delivery-note) | Optional | Whether the customer provides their own delivery note |
 | [Notes](#field-notes) | Optional | Notes for the whole acceptance |
 | [Product](#field-product) | Required | The product ordered |
@@ -196,7 +191,14 @@ Every field on the order acceptance screen. What the AI read from the order land
 | [Quantity](#field-quantity) | Required | The quantity ordered |
 | [Unit price](#field-unit-price) | Required | Price per piece |
 | [Delivery date](#field-delivery-date) | Optional | Delivery date for that line |
+| [Ship-to](#field-ship-to) | Optional (standard delivery only) | Where that line is delivered |
+| [Delivery method](#field-delivery-method) | Required | Normal delivery / direct to end user (per line) |
+| [End user](#field-end-user) | Required for direct | Where a direct shipment goes (the end user, per line) |
+| [Assigned plant](#field-assigned-plant) | Optional | The site that handles that line |
+| [Shipping work location](#field-shipping-work-location) | Optional | Where the shipping work is done (per line) |
 | [Line notes](#field-item-notes) | Optional | Notes for that line only |
+
+**Ship-to, delivery method, end user, assigned plant and shipping work location are all per-line fields.** Some orders ship different lines to different destinations, so delivery is set line by line rather than once for the whole acceptance. They live in a collapsed "Delivery" section by default and open automatically once a value is set. When several lines share the same destination, fill in the first line and use "**Apply line 1's delivery to all lines**" to copy it to the rest.
 
 ### Customer [#field-customer]
 
@@ -217,28 +219,6 @@ The quote this order came from. Search for it and choose it (with a customer cho
 ### Order date [#field-order-date]
 
 The date the customer placed the order, as printed on their document.
-
-### Ship-to [#field-ship-to]
-
-Where the products are delivered. Choose it **when they go to a different company or branch** from the customer who ordered. Left empty, it means they go to the customer.
-
-This field is for **standard delivery only**. Switch the delivery method to direct-to-end-user and it greys out — the destination of a direct shipment is the [end user](#field-end-user), and a document must not carry two destinations. Switching to direct clears whatever ship-to was chosen.
-
-### Delivery method [#field-delivery-method]
-
-How the products are delivered. **Normal delivery** goes to the customer (or the ship-to you chose). **Direct to user** ships straight to the end user. A delivery order can only combine lines with **the same customer, the same ship-to and the same delivery method**, so this choice decides how shipments are grouped.
-
-### End user [#field-end-user]
-
-The actual destination (end user). **Required when direct to user is selected**; with normal delivery it can be recorded optionally. Choose from business partners registered with the end-user role.
-
-### Assigned plant [#field-assigned-plant]
-
-The site of your own company that mainly handles this order. Choose it when you want to make clear which site's work it is.
-
-### Shipping work location [#field-shipping-work-location]
-
-The place where the shipping work (packing, loading and so on) is done. Choose from the [work location](/manual/en/operations/masters/work-location/user) master.
 
 ### Customer-supplied delivery note [#field-customer-provides-delivery-note]
 
@@ -278,7 +258,29 @@ For a customer and product with no price list, the field is free to enter from t
 
 ### Delivery date [#field-delivery-date]
 
-The delivery date for that line. If a line has none, the header's requested date is used.
+The delivery date for that line. It is set per line — there is no shared default for the whole acceptance.
+
+### Ship-to [#field-ship-to]
+
+Where that line is delivered. Choose it **when it goes to a different company or branch** from the customer who ordered. Left empty, it means it goes to the customer.
+
+This field is for **standard delivery only**. Switch the line's delivery method to direct-to-end-user and it greys out — the destination of a direct shipment is the [end user](#field-end-user), and a line must not carry two destinations. Switching to direct clears whatever ship-to was chosen.
+
+### Delivery method [#field-delivery-method]
+
+How that line's products are delivered. **Normal delivery** goes to the customer (or the ship-to you chose). **Direct to user** ships straight to the end user. A delivery order can only combine lines with **the same customer, the same ship-to and the same delivery method**, so this choice decides how shipments are grouped.
+
+### End user [#field-end-user]
+
+That line's actual destination (end user). **Required when direct to user is selected**; with normal delivery it can be recorded optionally. Choose from business partners registered with the end-user role.
+
+### Assigned plant [#field-assigned-plant]
+
+The site of your own company that mainly handles that line. Choose it when you want to make clear which site's work it is.
+
+### Shipping work location [#field-shipping-work-location]
+
+The place where that line's shipping work (packing, loading and so on) is done. Choose from the [work location](/manual/en/operations/masters/work-location/user) master.
 
 ### Line notes [#field-item-notes]
 

@@ -132,6 +132,13 @@ LEFT JOIN app.quotes q ON q.year_month = qi.quote_year_month AND q.seq = qi.quot
 LEFT JOIN app.currencies cur ON cur.code = q.currency
 LEFT JOIN app.currencies usd ON usd.code = 'USD';
 
+-- ship_to_name / assigned_plant_name は @deprecated（order_line_delivery,
+-- 20261024090000）— 配送は明細ごとになったので、このヘッダ由来の 2 列は
+-- このデプロイ以降アプリが書かなくなった時点の値のまま動かない。CREATE OR
+-- REPLACE VIEW は列の削除・並べ替えを許さないため、ここでは残す。明細側の
+-- 値は v_order_lines の ship_to_name / delivery_method / assigned_plant_name
+-- を見ること。ヘッダ列は Phase 2（order_acceptances から DROP COLUMN する
+-- migration）と同じコミットで、この 2 列ごとビューから外す。
 CREATE OR REPLACE VIEW analytics.v_order_acceptances WITH (security_invoker = true) AS
 SELECT
   'ORD-'||oa.year_month||'-'||lpad(oa.seq::text,5,'0') AS order_no,
@@ -155,6 +162,7 @@ LEFT JOIN app.users cu ON cu.id = oa.created_by
 LEFT JOIN app.plants pl ON pl.id = oa.assigned_plant_id;
 
 -- 注文明細 — 報告された多段ケース（明細→請書ヘッダ→営業担当）。
+-- ⚠️ 列は必ず末尾に足すこと（v_design_requests と同じ注意）。
 CREATE OR REPLACE VIEW analytics.v_order_lines WITH (security_invoker = true) AS
 SELECT
   ol.id,
@@ -177,7 +185,13 @@ SELECT
   round(ol.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)       AS amount_usd,
   'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0') AS order_no,
   CASE WHEN oa.quote_year_month IS NOT NULL THEN
-    'QOT-'||oa.quote_year_month||'-'||lpad(oa.quote_seq::text,5,'0') END AS quote_no
+    'QOT-'||oa.quote_year_month||'-'||lpad(oa.quote_seq::text,5,'0') END AS quote_no,
+  -- 配送（§2/§8）— 20261024090000 で明細ごとに移した。ヘッダ側
+  -- （v_order_acceptances.ship_to_name / assigned_plant_name）はこの時点の
+  -- 値のまま動かなくなるので、以後はこちらを読むこと。
+  coalesce(ship.name->>'ja', ship.name->>'en') AS ship_to_name,
+  ol.delivery_method,
+  coalesce(plt.name->>'ja', plt.name->>'en')   AS assigned_plant_name
 FROM app.order_lines ol
 JOIN app.order_acceptances oa
   ON oa.year_month = ol.acceptance_year_month AND oa.seq = ol.acceptance_seq
@@ -186,7 +200,9 @@ LEFT JOIN app.users su               ON su.id = oa.sales_rep_id
 LEFT JOIN app.products prod          ON prod.id = ol.product_id
 LEFT JOIN app.business_partners eu   ON eu.id = ol.end_user_bp_id
 LEFT JOIN app.currencies cur         ON cur.code = oa.currency
-LEFT JOIN app.currencies usd         ON usd.code = 'USD';
+LEFT JOIN app.currencies usd         ON usd.code = 'USD'
+LEFT JOIN app.business_partners ship ON ship.id = ol.ship_to_bp_id
+LEFT JOIN app.plants plt             ON plt.id = ol.assigned_plant_id;
 
 CREATE OR REPLACE VIEW analytics.v_design_requests WITH (security_invoker = true) AS
 SELECT

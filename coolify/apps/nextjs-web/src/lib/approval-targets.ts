@@ -33,6 +33,8 @@ export const APPROVAL_TARGET_TYPES = [
   "design_requests",
   "delivery_orders",
   "stock_takes",
+  "invoices",
+  "invoice_payments",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -180,6 +182,26 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     appKey: "stock-takes",
     approvePermission: "inventory",
   },
+  // 請求書の発行前承認 — **追加費用（料金マスタから手動で足した明細）が
+  // ある請求書だけ**が通る（§9）。追加費用の無い請求書はこれまでどおり
+  // 依頼を作らない。
+  invoices: {
+    label: label("common.invoice", "ja"),
+    color: "pink",
+    href: (id) => `/billing/invoices/${id}`,
+    appKey: "invoices",
+    approvePermission: "invoice",
+  },
+  // 請求書の入金前承認 — 支払い済みにする操作そのもの（§9）。対象は
+  // invoices と同じ行（targetId = 請求書番号）だが、発行前承認とは別の段構成を
+  // 持てるよう種別を分ける（work_orders / work_order_flow_changes と同じ規約）。
+  invoice_payments: {
+    label: label("common.invoicePayment", "ja"),
+    color: "pink",
+    href: (id) => `/billing/invoices/${id}`,
+    appKey: "invoices",
+    approvePermission: "invoice",
+  },
 };
 
 export function isApprovalTargetType(v: string): v is ApprovalTargetType {
@@ -199,6 +221,8 @@ const TARGET_LABEL_KEY: Record<ApprovalTargetType, string> = {
   design_requests: "common.designRequest2",
   delivery_orders: "common.deliveryOrder",
   stock_takes: "common.stockTake",
+  invoices: "common.invoice",
+  invoice_payments: "common.invoicePayment",
 };
 
 /**

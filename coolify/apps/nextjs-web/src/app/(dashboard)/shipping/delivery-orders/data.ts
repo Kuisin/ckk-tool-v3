@@ -47,17 +47,14 @@ const DELIVERY_ORDER_INCLUDE = {
           branch: true,
           // 確定前の単価表示のフォールバック（確定後は明細側に凍る）。
           unitPrice: true,
-          // 実効エンドユーザー = 明細の指定 ?? 注文請書ヘッダの既定。
+          // 配送（§8）— 明細ごと（確定時の納品書自動作成の入力）。
+          deliveryMethod: true,
           endUserBpId: true,
           endUserBp: { select: { name: true } },
           // 営業担当は書類に保存せず、注文請書ヘッダから導出する。
-          // 配送方法・エンドユーザーも同じくヘッダが持つ（確定時の納品書自動作成の入力）。
           acceptance: {
             select: {
               salesRep: { select: { id: true, displayName: true } },
-              deliveryMethod: true,
-              endUserBpId: true,
-              endUserBp: { select: { name: true } },
             },
           },
         },
@@ -102,13 +99,13 @@ function autoDeliveryNotePreview(r: DeliveryOrderRow) {
   const first = r.items[0]?.orderLine;
   if (r.type !== "DISPATCH" || !first)
     return { notes: [], endUserMissing: false };
-  const endUserBpId = first.endUserBpId ?? first.acceptance.endUserBpId ?? null;
-  const endUserBp = first.endUserBp ?? first.acceptance.endUserBp ?? null;
+  const endUserBpId = first.endUserBpId ?? null;
+  const endUserBp = first.endUserBp ?? null;
   return previewAutoDeliveryNotes(
     {
       customerBpId: r.customerBpId,
       customerBranchBpId: r.customerBranchBpId,
-      deliveryMethod: first.acceptance.deliveryMethod,
+      deliveryMethod: first.deliveryMethod,
       endUserBpId,
     },
     {
