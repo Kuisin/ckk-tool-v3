@@ -23,51 +23,13 @@ import {
   usedVersionKeys,
   versionKey,
 } from "@/lib/design-files-core";
-import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
-import type { Tr } from "@/lib/i18n";
-import {
-  itemIdForLegacyProduct,
-  legacyProductIdsForItems,
-} from "@/lib/item-legacy-product";
 
 /**
  * 一覧の取得上限。系列ではなく **版** の行数に効く点に注意 — 系列は版を
  * 束ねた結果なので、ここで切ると系列そのものが落ちる。
  */
 const LIST_FETCH_CAP = 2000;
-
-/** 製品の名称とコードを分けて返す（表示側で行を分けられるように）。 */
-function productPartsOf(
-  p: {
-    id: number;
-    name: unknown;
-    yearMonth: string | null;
-    seq: number | null;
-  },
-  tr: Tr,
-): { name: string; code: string | null } {
-  return {
-    name:
-      localized(p.name as LocalizedText | null) ||
-      tr("shipping.deliveryNoteActions.productFallbackLabel", { id: p.id }),
-    code: formatProductNumber(p.yearMonth, p.seq),
-  };
-}
-
-/** 見出し用の 1 行ラベル（名称 + コード）。 */
-function productLabelOf(
-  p: {
-    id: number;
-    name: unknown;
-    yearMonth: string | null;
-    seq: number | null;
-  },
-  tr: Tr,
-): string {
-  const { name, code } = productPartsOf(p, tr);
-  return code ? `${name} ${code}` : name;
-}
 
 /** 品目（items.id）の見出し用ラベル（名称 + コード）。 */
 function itemLabelOf(item: { name: unknown; code: string | null }): string {
@@ -78,17 +40,14 @@ function itemLabelOf(item: { name: unknown; code: string | null }): string {
 /**
  * 製品の設計図（版一覧・新しい版から）。製品詳細の「設計図」節。
  *
- * 「最新」は is_latest が立っている行。製品側に design_file_id 列は無い。
+ * 「最新」は is_latest が立っている行。製品マスタ側に design_file_id 列は無い。
  *
- * `productId` は products.id（呼び出し側は製品マスタの URL 文脈のまま） —
- * design_files 自体の絞り込みは品目 (items.id) で行うので、ここで 1 回だけ
- * 変換する。
+ * `itemId` は items.id（品目統合 第 3 段 — 製品マスタ MS04 も設計図 PD26 も
+ * この id 空間で回る）。products.id を渡さないこと。
  */
-export async function fetchDesignFilesForProduct(
-  productId: number,
+export async function fetchDesignFilesForItem(
+  itemId: number,
 ): Promise<ProductDesignFile[]> {
-  const itemId = await itemIdForLegacyProduct(productId);
-  if (itemId == null) return [];
   const rows = await prisma.designFile.findMany({
     where: { itemId },
     include: {
@@ -262,10 +221,6 @@ export async function fetchDesignFileSeries(): Promise<{
     list.push(f);
     byItem.set(f.itemId, list);
   }
-  // 一覧の行クリックは /production/design-files/[productId]（まだ products.id
-  // 基準）へ遷移するので、URL 用の旧 id だけこの 1 回でまとめて引く。
-  const legacyProductIds = await legacyProductIdsForItems([...byItem.keys()]);
-
   const rows: DesignFileSeriesRow[] = [];
   for (const [itemId, list] of byItem) {
     const item = list.find((f) => f.item)?.item;
@@ -277,7 +232,6 @@ export async function fetchDesignFileSeries(): Promise<{
           }),
           code: null,
         };
-    const productId = legacyProductIds.get(itemId) ?? itemId;
     for (const g of groupBySeries(
       list.map((f) => ({
         id: f.id,
@@ -293,8 +247,8 @@ export async function fetchDesignFileSeries(): Promise<{
     )) {
       const latest = g.files.filter((f) => f.version === g.latestVersion);
       rows.push({
-        key: `${productId}:${g.customerBpId ?? ""}`,
-        productId,
+        key: `${itemId}:${g.customerBpId ?? ""}`,
+        itemId,
         productName: parts.name,
         productCode: parts.code,
         customerBpId: g.customerBpId,
@@ -321,16 +275,15 @@ export async function fetchDesignFileSeries(): Promise<{
   return { rows, truncated };
 }
 
-/** 詳細 (PD26) のヘッダに出す製品。未存在は null。 */
-export async function fetchDesignFileProduct(
-  productId: number,
+/** 詳細 (PD26) のヘッダに出す製品（品目 items.id）。未存在は null。 */
+export async function fetchDesignFileItem(
+  itemId: number,
 ): Promise<{ id: number; label: string } | null> {
-  const tr = await getTranslations();
-  const p = await prisma.product.findUnique({
-    where: { id: productId },
-    select: { id: true, name: true, yearMonth: true, seq: true },
+  const r = await prisma.item.findFirst({
+    where: { id: itemId, itemType: "PRODUCT" },
+    select: { id: true, name: true, code: true },
   });
-  return p ? { id: p.id, label: productLabelOf(p, tr) } : null;
+  return r ? { id: r.id, label: itemLabelOf(r) } : null;
 }
 
 /**
@@ -396,16 +349,12 @@ export async function fetchDesignRequestContext(
 }
 
 /**
- * `?product=` の参照解決（製品マスタ・一覧からの導線。products.id を受ける）。
- * 返す value は品目 (items.id) — ピッカーは品目ベースなので、ここで 1 回だけ
- * 変換する。
+ * `?item=<items.id>` の参照解決（製品マスタ・一覧からの導線）。
+ * ピッカーの値も items.id なので、そのまま option にする。
  */
-export async function fetchProductOption(
-  productId: number,
+export async function fetchProductItemOption(
+  itemId: number,
 ): Promise<{ value: string; label: string } | null> {
-  const [p, itemId] = await Promise.all([
-    fetchDesignFileProduct(productId),
-    itemIdForLegacyProduct(productId),
-  ]);
-  return p && itemId != null ? { value: String(itemId), label: p.label } : null;
+  const r = await fetchDesignFileItem(itemId);
+  return r ? { value: String(r.id), label: r.label } : null;
 }

@@ -33,7 +33,6 @@ import {
   targetPlantsInScope,
 } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { legacyMaterialIdsForItems } from "@/lib/item-legacy-material";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -111,22 +110,12 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
   }));
 }
 
-/**
- * 明細入力 → create データ。
- *
- * `material_id` 列はまだ NOT NULL（品目統合 第 2 段 B）なので、選ばれた品目
- * id から対応する materials.id を引いて一緒に埋める
- * （item-legacy-material.ts — 書き込みのためだけの橋）。
- */
-async function buildItemCreates(items: PurchaseRequestInput["items"]) {
-  const legacyIds = await legacyMaterialIdsForItems(
-    items.map((it) => Number(it.itemId)),
-  );
+/** 明細入力 → create データ。 */
+function buildItemCreates(items: PurchaseRequestInput["items"]) {
   return items.map((it, i) => {
     const itemId = Number(it.itemId);
     return {
       itemId,
-      materialId: legacyIds.get(itemId) ?? 0,
       plantId: it.plantId ? Number(it.plantId) : null,
       quantity: it.quantity,
       unit: it.unit,
@@ -673,10 +662,7 @@ export async function convertToPurchaseOrder(
             ),
           ]),
           items: {
-            // 依頼明細は既に itemId / materialId の両方を持つ（作成時に
-            // buildItemCreates が埋めた）ので、そのまま複写する。
             create: prior.items.map((it, i) => ({
-              materialId: it.materialId,
               itemId: it.itemId,
               plantId: it.plantId,
               quantity: it.quantity,

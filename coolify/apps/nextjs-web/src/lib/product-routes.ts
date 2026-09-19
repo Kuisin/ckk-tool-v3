@@ -11,7 +11,6 @@ import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { prisma } from "./db";
 import { type LocalizedText, localized } from "./format";
 import type { Tr } from "./i18n";
-import { itemIdForLegacyProduct } from "./item-legacy-product";
 import {
   type RouteStepSnapshot,
   type RouteView,
@@ -43,15 +42,13 @@ const ROUTE_INCLUDE = {
 /**
  * 製品の製造工程リスト一覧（バージョン降順・工程サマリ付き）— 製品詳細/ビルダー用。
  *
- * `productId` は products.id（呼び出し側はまだ製品マスタ・指示書の
- * productId 文脈のまま） — product_process_routes 自体の絞り込みは品目
- * (items.id) で行うので、ここで 1 回だけ変換する。
+ * `itemId` は **items.id**（製品マスタの URL id / ビルダーの製品ピッカーの値）。
+ * 以前は products.id を受けて中で 1 回変換していたが、呼び出し側が品目へ移った
+ * あとも引数名が productId のままだったため、**製品マスタ (MS04) が品目 id を
+ * 旧 id として渡し、別の製品のリストを引いていた**（どちらも number なので型は
+ * 通る）。受け取る意味を列名に出して、同じ取り違えを繰り返せなくする。
  */
-export async function listProductRoutes(
-  productId: number,
-): Promise<RouteView[]> {
-  const itemId = await itemIdForLegacyProduct(productId);
-  if (itemId == null) return [];
+export async function listProductRoutes(itemId: number): Promise<RouteView[]> {
   const routes = await prisma.productProcessRoute.findMany({
     where: { itemId, kind: "MANUFACTURING" },
     include: ROUTE_INCLUDE,
@@ -180,18 +177,16 @@ export async function createRouteVersionTx(
 
 /**
  * ルート新規作成 + v1（呼び出し側 tx 内）。
- * kind = PREP は製品にも顧客にも紐づかない（DB の CHECK が守る — ここで
- * 渡された productId / customerBpId は捨てる）。
+ * kind = PREP は品目にも顧客にも紐づかない（DB の CHECK が守る — ここで
+ * 渡された itemId / customerBpId は捨てる）。
  *
- * `productId` は products.id（呼び出し側の文脈のまま）。ここで品目
- * (items.id) へ変換して itemId 列へ書き、まだ残っている旧 product_id 列も
- * 橋渡しで埋める。
+ * `itemId` は **items.id**（製品品目）。
  */
 export async function createRouteWithVersionTx(
   tx: Tx,
   input: {
     kind?: ProcessRouteKind;
-    productId: number | null;
+    itemId: number | null;
     name: LocalizedText;
     /** 対象の受注元。null/未指定 = 汎用ルート。 */
     customerBpId?: string | null;
@@ -201,18 +196,13 @@ export async function createRouteWithVersionTx(
   },
 ): Promise<{ routeId: number; versionId: string }> {
   const kind = input.kind ?? "MANUFACTURING";
-  if (kind === "MANUFACTURING" && input.productId == null) {
-    throw new Error("manufacturing route requires productId");
+  if (kind === "MANUFACTURING" && input.itemId == null) {
+    throw new Error("manufacturing route requires itemId");
   }
-  const itemId =
-    kind === "PREP" || input.productId == null
-      ? null
-      : await itemIdForLegacyProduct(input.productId);
   const route = await tx.productProcessRoute.create({
     data: {
       kind,
-      itemId,
-      productId: kind === "PREP" ? null : input.productId,
+      itemId: kind === "PREP" ? null : input.itemId,
       customerBpId: kind === "PREP" ? null : (input.customerBpId ?? null),
       name: input.name,
       createdBy: input.actor,
@@ -261,7 +251,7 @@ export async function resolveRouteVersionTx(
   input: RouteResolveInput,
   steps: readonly RouteStepSnapshot[],
   actor: string | null,
-  productId: number,
+  itemId: number,
   tr: Tr,
   notes: string | null | undefined,
   scope: RouteResolveScope,
@@ -276,7 +266,7 @@ export async function resolveRouteVersionTx(
   if (input.mode === "new") {
     const created = await createRouteWithVersionTx(tx, {
       kind: scope.kind,
-      productId,
+      itemId,
       name: { ja: input.name, en: input.name },
       customerBpId: input.customerBpId ?? null,
       steps,
@@ -291,9 +281,6 @@ export async function resolveRouteVersionTx(
       steps: { orderBy: { sortOrder: "asc" } },
     },
   });
-  // 品目 (items.id) へ変換して比べる — product_process_routes 自体は
-  // もう productId を持たない前提で判定する。
-  const itemId = await itemIdForLegacyProduct(productId);
   if (
     !base ||
     base.route.id !== input.routeId ||
@@ -343,7 +330,7 @@ export async function copyRouteVersionToCustomerTx(
     where: { id: input.versionId },
     include: {
       route: {
-        select: { id: true, kind: true, productId: true, name: true },
+        select: { id: true, kind: true, itemId: true, name: true },
       },
       steps: { orderBy: { sortOrder: "asc" } },
     },
@@ -351,7 +338,7 @@ export async function copyRouteVersionToCustomerTx(
   if (
     !base ||
     base.route.kind !== "MANUFACTURING" ||
-    base.route.productId == null
+    base.route.itemId == null
   ) {
     throw new Error(
       input.tr("production.productRoutes.theSelectedProcessRouteIsNot"),
@@ -359,7 +346,7 @@ export async function copyRouteVersionToCustomerTx(
   }
   return createRouteWithVersionTx(tx, {
     kind: "MANUFACTURING",
-    productId: base.route.productId,
+    itemId: base.route.itemId,
     customerBpId: input.customerBpId,
     name: base.route.name as LocalizedText,
     steps: base.steps.map((s) => ({

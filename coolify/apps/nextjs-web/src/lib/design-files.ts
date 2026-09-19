@@ -26,7 +26,6 @@ import {
   sameSeries,
 } from "@/lib/design-files-core";
 import { systematicFileName } from "@/lib/file-naming";
-import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import {
   type ActionResult,
   actionError,
@@ -103,11 +102,6 @@ export async function createVersionInTx(
       hashtext(${`${input.itemId}:${input.customerBpId ?? ""}`})::int
     )`;
 
-  // まだ残っている旧 product_id 列も橋渡しで埋める（他コードがそちらを
-  // 読んでいても崩れない）。品目が `searchProductItemOptions`
-  // （itemType: "PRODUCT"）由来である限り、対応する products 行は必ずある。
-  const legacyProductId = await legacyProductIdForItem(input.itemId);
-
   // 系列（製品 × 受注元）の中だけを見て次の番号を決める。
   const existing = await tx.designFile.findMany({
     where: { itemId: input.itemId },
@@ -141,7 +135,6 @@ export async function createVersionInTx(
     data: input.files.map((f) => ({
       designRequestId: input.designRequestId,
       itemId: input.itemId,
-      productId: legacyProductId,
       customerBpId: input.customerBpId,
       fileId: f.fileId,
       version,
@@ -172,12 +165,10 @@ export async function createVersionInTx(
 /**
  * アップロード 1 枚 → files 行。失敗したら storage も片付ける。
  *
- * ストレージキー・ファイル名の接頭辞は従来どおり products.id ベース
- * （既存オブジェクトとの命名の一貫性のためだけの利用 — 業務ロジックは
- * itemId 側で持つ）。
+ * ストレージキー・ファイル名の接頭辞は品目 id ベース。
  */
 async function storeOne(
-  legacyProductId: number,
+  itemId: number,
   file: { name: string; type: string; bytes: ArrayBuffer },
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<
@@ -186,9 +177,9 @@ async function storeOne(
 > {
   const checked = validateFile(file.name, file.type, file.bytes.byteLength, tr);
   if (!checked.ok) return { ok: false, error: checked.error };
-  const storageKey = `design-files/${legacyProductId}/${systematicFileName(
+  const storageKey = `design-files/${itemId}/${systematicFileName(
     file.name,
-    `PRD-${legacyProductId}`,
+    `PRD-${itemId}`,
   )}`;
   if (!(await putObject(storageKey, file.bytes, checked.contentType))) {
     return { ok: false, error: tr("common.storageSaveFailed") };
@@ -247,18 +238,13 @@ export interface UploadVersionInput {
  */
 export async function uploadDesignVersion(
   input: UploadVersionInput,
-): Promise<ActionResult<{ version: number; productId: number | null }>> {
+): Promise<ActionResult<{ version: number; itemId: number }>> {
   const tr = await getTranslations();
   const productItem = await prisma.item.findUnique({
     where: { id: input.itemId, itemType: "PRODUCT" },
     select: { id: true },
   });
   if (!productItem) return actionError(tr("common.targetProductNotFound"));
-  // ストレージのキー・ファイル名接頭辞は従来どおり products.id ベース
-  // （既存オブジェクトとの命名の一貫性のためだけ）。
-  const legacyProductId = await legacyProductIdForItem(input.itemId);
-  if (legacyProductId == null)
-    return actionError(tr("common.targetProductNotFound"));
 
   if (input.customerBpId) {
     const bp = await prisma.businessPartner.findUnique({
@@ -312,7 +298,7 @@ export async function uploadDesignVersion(
   ];
 
   for (const item of queue) {
-    const res = await storeOne(legacyProductId, item.f, tr);
+    const res = await storeOne(input.itemId, item.f, tr);
     if (!res.ok) {
       await rollback();
       return actionError(res.error);
@@ -359,7 +345,7 @@ export async function uploadDesignVersion(
         designRequestId: input.designRequestId ?? null,
       },
     });
-    return actionOk({ version, productId: legacyProductId });
+    return actionOk({ version, itemId: input.itemId });
   } catch (e) {
     await rollback();
     return actionError(

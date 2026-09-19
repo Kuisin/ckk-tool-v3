@@ -40,7 +40,6 @@ import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { parseDocKey } from "@/lib/doc-number";
-import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import { type NotificationType, notify } from "@/lib/notifications";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
@@ -318,7 +317,6 @@ export async function createDesignRequest(
     const resolved = resolveKindFields(v, detected, tr);
     if ("error" in resolved) return actionError(resolved.error);
     // まだ残っている旧 product_id 列も橋渡しで埋める。
-    const legacyProductId = await legacyProductIdForItem(itemId);
 
     const requestNumber = await nextDocumentNumber("DESIGN");
     await prisma.designRequest.create({
@@ -330,7 +328,6 @@ export async function createDesignRequest(
         orderLineId,
         customerBpId,
         itemId,
-        productId: legacyProductId,
         assigneeId: v.assigneeId,
         description: trimOrNull(v.description),
         kind: resolved.kind,
@@ -423,7 +420,6 @@ export async function updateDesignRequest(
     const resolved = resolveKindFields(v, detected, tr);
     if ("error" in resolved) return actionError(resolved.error);
     // まだ残っている旧 product_id 列も橋渡しで埋める。
-    const legacyProductId = await legacyProductIdForItem(itemId);
     // status を where に含めた updateMany で原子的にガードする。
     const updated = await prisma.designRequest.updateMany({
       where: {
@@ -432,7 +428,6 @@ export async function updateDesignRequest(
       },
       data: {
         itemId,
-        productId: legacyProductId,
         customerBpId,
         assigneeId: v.assigneeId,
         description: trimOrNull(v.description),

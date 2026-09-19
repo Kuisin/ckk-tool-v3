@@ -244,7 +244,7 @@ export function DesignFileTable({
         emptyIcon={<IconRuler2 size={24} />}
         emptyMessage={tr("production.designFiles.thereAreNoDrawings")}
         getRowId={(r) => r.key}
-        onRowClick={(r) => router.push(`${BASE_PATH}/${r.productId}`)}
+        onRowClick={(r) => router.push(`${BASE_PATH}/${r.itemId}`)}
       />
     </ListShell>
   );

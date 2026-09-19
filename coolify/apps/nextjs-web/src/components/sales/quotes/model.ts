@@ -160,11 +160,12 @@ export interface QuoteItem {
   /** 製品 — 値は品目 id（items.id）。品目統合 第 2 段 C。 */
   itemId: string;
   /**
-   * 旧 products.id を文字列にしたもの。**PDF の「コード」欄が刷っている値**
-   * （見積書テンプレートの `code`）がこれなので、印字を変えないために持つ。
-   * それ以外の用途に使わない — 判定・突合はすべて `itemId`。
+   * 製品コード（`items.code` = `PRD-YYYYMM-NNNN`）。**PDF の「コード」欄に
+   * 刷る値**（見積書テンプレートの `code`）。採番前のレガシー品目は null で、
+   * そのときは欄を空で刷る — 以前ここには内部の連番 id が入っていた。
+   * 判定・突合には使わない（すべて `itemId`）。
    */
-  productLegacyId: string;
+  productCode: string | null;
   productName: string;
   orderType: string;
   quantity: number;

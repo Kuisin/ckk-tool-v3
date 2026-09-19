@@ -9,7 +9,7 @@
  *      注文どおりに刷り返してくるので、実際いちばんよく当たる経路。
  *   2. 名前で当てる。素材名は `超硬丸棒 φ6.0×310` のように**寸法が後ろに続く**
  *      ので、揺れ方は製品名と同じ。正規化は `productMatchKey` を共用する
- *      （lib/match-alias-core の `aliasKeyFor("materials", …)` も同じ鍵）。
+ *      （lib/match-alias-core の `aliasKeyFor` も同じ鍵）。
  *
  * 素材マスタは製品マスタほど大きくない（材種 × 直径 × 全長の組合せで数千件）
  * ので、取引先と同じく**全件を渡して JS で突合**する。probe の梯子（DB に
@@ -17,6 +17,12 @@
  *
  * 判定の段（完全 → 正規化 → 頭から → 一部）と自動確定の可否は lib/text-match が
  * 持つ。ここが持つのは「素材に固有の照合キーの作り方」だけ。
+ *
+ * **lib/product-match と 1 本に畳んでいない理由**は向こうのファイル冒頭に
+ * 書いてある（プールの作り方と、素材コードの完全一致という別格の段）。
+ * 品目マスタが 1 つになっても、当て方の規則は 1 つになっていない。
+ *
+ * ★ **扱う id は `items.id`（itemType = MATERIAL）**（品目統合 第 2 段 B）。
  */
 
 import { productMatchKey } from "./product-match";
@@ -40,7 +46,7 @@ export interface MaterialMatchable {
   /** メーカー型式（仕入先の書類にはこちらが印字されることがある）。 */
   manufacturerModel?: string | null;
   /**
-   * キーワード（materials.match_names — マスタ MS06 の「キーワード」欄）+
+   * キーワード（items.match_names — マスタ MS06 の「キーワード」欄）+
    * 学習した表記（app.match_aliases）。呼び出し側が合わせて渡す。
    */
   keywords?: readonly string[] | null;

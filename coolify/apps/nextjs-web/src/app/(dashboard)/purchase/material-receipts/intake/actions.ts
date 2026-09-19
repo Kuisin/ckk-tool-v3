@@ -21,7 +21,6 @@ import { checkPermission, targetPlantsInScope } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
-import { legacyMaterialIdsForItems } from "@/lib/item-legacy-material";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { learnPurchaseAliases } from "@/lib/purchase-intake";
 import {
@@ -109,13 +108,6 @@ export async function createReceiptsFromDelivery(
     if (unitById.size !== itemIds.length) {
       return actionError(tr("common.targetRecordNotFound"));
     }
-    // material_id 列はまだ NOT NULL（品目統合 第 2 段 B）なので、対応する
-    // materials.id を一括で引いて一緒に埋める（item-legacy-material.ts —
-    // 書き込みのためだけの橋）。
-    const legacyIds = await legacyMaterialIdsForItems(itemIds);
-    if (legacyIds.size !== itemIds.length) {
-      return actionError(tr("common.targetRecordNotFound"));
-    }
 
     const actor = await getCurrentActorId();
     // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。
@@ -134,7 +126,6 @@ export async function createReceiptsFromDelivery(
         const itemId = Number(line.itemId);
         const row = await tx.materialReceipt.create({
           data: {
-            materialId: legacyIds.get(itemId) ?? 0,
             itemId,
             supplierBpId: v.supplierBpId,
             // 納品書からの取込は発注明細に紐付けない（どの明細の分納かは

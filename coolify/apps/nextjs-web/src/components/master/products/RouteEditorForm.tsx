@@ -55,7 +55,7 @@ const PREP_ROUTES_PATH = "/master/process-steps/prep-routes";
 export function RouteEditorForm({
   mode,
   kind = "MANUFACTURING",
-  productId,
+  itemId,
   productLabel,
   routeId,
   routeName,
@@ -71,7 +71,8 @@ export function RouteEditorForm({
   /** 準備工程リスト（共通）か 製造工程リスト（製品 × 受注元）か。 */
   kind?: ProcessRouteKind;
   /** MANUFACTURING のみ。PREP は製品を持たない。 */
-  productId?: number;
+  /** 対象製品の品目 id（items.id）。PREP（共通の準備工程リスト）では渡さない。 */
+  itemId?: number;
   productLabel?: string;
   /** new-version 時のみ。 */
   routeId?: number;
@@ -94,7 +95,7 @@ export function RouteEditorForm({
   const backPath =
     kind === "PREP"
       ? PREP_ROUTES_PATH
-      : `/master/products/${productId}?tab=routes`;
+      : `/master/products/${itemId}?tab=routes`;
 
   // 種別の中だけを見せる。在庫分専用の 製品出し（在庫）はどちらにも出さない
   // （在庫分の指示書は固定構成で工程リストを使わない）。
@@ -206,7 +207,7 @@ export function RouteEditorForm({
         mode === "create"
           ? kind === "PREP"
             ? await createPrepRoute({ nameJa, nameEn, notes, steps })
-            : await createProductRoute(productId as number, {
+            : await createProductRoute(itemId as number, {
                 nameJa,
                 nameEn,
                 customerBpId,

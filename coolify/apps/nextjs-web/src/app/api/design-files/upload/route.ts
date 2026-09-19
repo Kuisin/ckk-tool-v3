@@ -118,8 +118,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   return NextResponse.json({
     ok: true,
     version: result.data.version,
-    // 品目 (items.id) から解決した旧 products.id — 完了後の一覧リンク
-    // （/production/design-files/[productId]）はまだ products.id 基準のため。
-    productId: result.data.productId,
+    // 完了後の遷移先（/production/design-files/[itemId]）— 設計図も製品マスタも
+    // items.id 基準（品目統合 第 3 段）。
+    itemId: result.data.itemId,
   });
 }

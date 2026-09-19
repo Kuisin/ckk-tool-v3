@@ -401,7 +401,7 @@ export function WorkOrderDetail({
             <Group gap={6} wrap="nowrap">
               <Anchor
                 component={Link}
-                href={`/master/products/${wo.productId}?tab=routes`}
+                href={`/master/products/${wo.productItemId ?? ""}?tab=routes`}
                 size="sm"
               >
                 {wo.routeName} v{wo.routeVersion}

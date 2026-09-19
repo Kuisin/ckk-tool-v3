@@ -115,7 +115,8 @@ export const API_RESOURCES: readonly ApiResource[] = [
     permission: "master",
     orderField: "updatedAt",
     tiebreak: "id",
-    summary: "Products (製品).", // i18n-ignore
+    summary:
+      "Products (製品). Since 2026-09-20 `id` is the unified item id — see the id-space note in the document description.", // i18n-ignore
     scope: "Unscoped (master data).",
   },
   {
@@ -124,7 +125,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Materials (素材). `code` is the identifier printed on supplier documents.", // i18n-ignore
+      "Materials (素材). `code` is the identifier printed on supplier documents. Since 2026-09-20 `id` is the unified item id — see the id-space note in the document description.", // i18n-ignore
     scope: "Unscoped (master data).",
   },
   {

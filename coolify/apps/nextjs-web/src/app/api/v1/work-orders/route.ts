@@ -9,9 +9,9 @@
  * `updated_at` も `created_at` も持たないので単独の差分同期に載せられず、
  * 親が動いたときに出し直すのが唯一正しい出し方（`_specs/api.md` §5.2）。
  *
- * 品目統合 第 2 段 B — DB 列は `material_item_id`（items.id）に移ったが、
- * **外部契約は変えない**。DTO の `materialId` は品目 → 旧マスタの対応を
- * まとめて引いて詰め直す（`/api/v1/inventory/materials` と同じ橋）。
+ * `productId` / `materialId` の値は **`items.id`**（2026-09-20 の切り替え —
+ * `_specs/api.md` §6.1）。項目名は従来のままで、それぞれ `/api/v1/products` /
+ * `/api/v1/materials` の `id` と同じ id 空間を指す。
  */
 
 import { workOrderScopeWhere } from "@/app/(dashboard)/production/work-orders/data";
@@ -20,7 +20,7 @@ import { iso, localizedJson } from "@/lib/api-dto";
 import { invalidCursorResponse, parseListQuery, runList } from "@/lib/api-list";
 import { instanceOf } from "@/lib/api-problem";
 import { prisma } from "@/lib/db";
-import { formatDocNumber, formatProductNumber } from "@/lib/doc-number";
+import { formatDocNumber } from "@/lib/doc-number";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,8 +44,8 @@ export async function GET(request: Request): Promise<Response> {
       string,
       unknown
     >,
-    fetch: async ({ where, take, orderBy }) => {
-      const rows = await prisma.workOrder.findMany({
+    fetch: ({ where, take, orderBy }) =>
+      prisma.workOrder.findMany({
         // biome-ignore lint/suspicious/noExplicitAny: 断片は authz-core / pagination が組む
         where: where as any,
         take,
@@ -56,7 +56,7 @@ export async function GET(request: Request): Promise<Response> {
           workOrderNumber: true,
           yearMonth: true,
           seq: true,
-          productId: true,
+          productItemId: true,
           type: true,
           plannedQuantity: true,
           materialItemId: true,
@@ -70,7 +70,7 @@ export async function GET(request: Request): Promise<Response> {
           notes: true,
           createdAt: true,
           updatedAt: true,
-          product: { select: { name: true, yearMonth: true, seq: true } },
+          productItem: { select: { name: true, code: true } },
           orderLineLinks: {
             select: { orderLineId: true, quantity: true },
             orderBy: { sortOrder: "asc" },
@@ -99,31 +99,7 @@ export async function GET(request: Request): Promise<Response> {
               }
             : {}),
         },
-      });
-      const materialItemIds = [
-        ...new Set(
-          rows
-            .map((r) => r.materialItemId)
-            .filter((id): id is number => id != null),
-        ),
-      ];
-      const legacyMaterials = materialItemIds.length
-        ? await prisma.material.findMany({
-            where: { itemId: { in: materialItemIds } },
-            select: { id: true, itemId: true },
-          })
-        : [];
-      const legacyIdByItem = new Map(
-        legacyMaterials.map((m) => [m.itemId as number, m.id]),
-      );
-      return rows.map((r) => ({
-        ...r,
-        materialId:
-          r.materialItemId != null
-            ? (legacyIdByItem.get(r.materialItemId) ?? null)
-            : null,
-      }));
-    },
+      }),
     query,
     tiebreak: "id",
     toCursor: (r) => ({ kind: "id", id: r.id, t: r.updatedAt.toISOString() }),
@@ -136,13 +112,12 @@ export async function GET(request: Request): Promise<Response> {
       status: r.status,
       approvalStatus: r.approvalStatus,
       type: r.type,
-      productId: r.productId,
-      productNumber: r.product
-        ? formatProductNumber(r.product.yearMonth, r.product.seq)
-        : null,
-      productName: localizedJson(r.product?.name),
+      productId: r.productItemId,
+      /** 製品コード PRD-YYYYMM-NNNN（採番前のレガシー品目は null）。 */
+      productNumber: r.productItem?.code ?? null,
+      productName: localizedJson(r.productItem?.name),
       plannedQuantity: r.plannedQuantity,
-      materialId: r.materialId,
+      materialId: r.materialItemId,
       storageLocationId: r.storageLocationId,
       orderLines: r.orderLineLinks.map((l) => ({
         orderLineId: l.orderLineId,

@@ -21,7 +21,7 @@ export default async function MasterTaxCategoriesPage() {
       // 画面で先に「どこから使われているか」を見せる。
       _count: {
         select: {
-          products: true,
+          items: true,
           customerAttrs: true,
           invoiceItems: true,
           quoteItems: true,
@@ -49,7 +49,7 @@ export default async function MasterTaxCategoriesPage() {
       taxCode: c.taxCode ?? "",
       salesAccountCode: c.salesAccountCode ?? "",
       taxAccountCode: c.taxAccountCode ?? "",
-      productCount: c._count.products,
+      productCount: c._count.items,
       customerCount: c._count.customerAttrs,
       documentCount:
         c._count.invoiceItems + c._count.quoteItems + c._count.invoiceTaxLines,

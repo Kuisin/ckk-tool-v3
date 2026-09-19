@@ -60,8 +60,6 @@ model StorageLocation {
   floorMap KioskFloorMap? @relation("StorageLocationFloorMap", fields: [floorMapId], references: [id])
   shelves  StorageShelf[]
 
-  productInventory  ProductInventory[]
-  materialInventory MaterialInventory[]
   workOrders        WorkOrder[]         @relation("WorkOrderStorageLocation")
   stockTakes        StockTake[]         @relation("StockTakeStorageLocation")
   itemInventory     ItemInventory[]     @relation("ItemInventoryLocation")
@@ -84,8 +82,6 @@ model StorageShelf {
 
   location StorageLocation @relation(fields: [locationId], references: [id])
 
-  productInventory  ProductInventory[]
-  materialInventory MaterialInventory[]
   itemInventory     ItemInventory[]     @relation("ItemInventoryShelf")
 
   @@unique([locationId, code])
@@ -146,60 +142,6 @@ model ItemInventory {
   @@index([plantId, storageLocationId])
   @@index([updatedAt, id])
   @@map("item_inventory")
-  @@schema("app")
-}
-
-model ProductInventory {
-  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  productId      Int     @map("product_id")
-  plantId      Int?    @map("plant_id")
-  lotNumber      Int?    @map("lot_number") // ロット = 指示書番号
-  quantity       Int     @default(0)
-  reservedQuantity Int   @default(0) @map("reserved_quantity")
-  isSemiFinished Boolean @default(false) @map("is_semi_finished") // 半製品
-  sourceStepId   String? @map("source_step_id") @db.Uuid // 半製品の発生工程
-  storageLocationId Int? @map("storage_location_id") // 保管場所（null = 未割当）
-  shelfId        Int?    @map("shelf_id") // 棚（null = 場所内未割当）
-  location       String? // 旧フリーテキスト保管場所（表示フォールバックのみ）
-  notes          String?
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
-
-  product         Product          @relation(fields: [productId], references: [id])
-  plant         Plant?         @relation(fields: [plantId], references: [id])
-  storageLocation StorageLocation? @relation(fields: [storageLocationId], references: [id])
-  shelf           StorageShelf?    @relation(fields: [shelfId], references: [id])
-
-  // 一意バケット（NULLS NOT DISTINCT index — migration で置換済み）
-  @@unique([productId, plantId, lotNumber, isSemiFinished, storageLocationId, shelfId], map: "product_inventory_bucket_key")
-  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
-  @@index([updatedAt, id])
-  @@map("product_inventory")
-  @@schema("app")
-}
-
-model MaterialInventory {
-  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  materialId       Int     @map("material_id")
-  plantId        Int?    @map("plant_id")
-  quantity         Decimal @default(0) @db.Decimal(12, 3)
-  reservedQuantity Decimal @default(0) @map("reserved_quantity") @db.Decimal(12, 3)
-  unit             String
-  storageLocationId Int?   @map("storage_location_id") // 保管場所（null = 未割当）
-  shelfId          Int?    @map("shelf_id") // 棚（null = 場所内未割当）
-  location         String? // 旧フリーテキスト保管場所（表示フォールバックのみ）
-  notes            String?
-  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
-
-  material        Material         @relation(fields: [materialId], references: [id])
-  plant         Plant?         @relation(fields: [plantId], references: [id])
-  storageLocation StorageLocation? @relation(fields: [storageLocationId], references: [id])
-  shelf           StorageShelf?    @relation(fields: [shelfId], references: [id])
-
-  // 一意バケット（NULLS NOT DISTINCT index — migration で置換済み）
-  @@unique([materialId, plantId, storageLocationId, shelfId], map: "material_inventory_bucket_key")
-  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
-  @@index([updatedAt, id])
-  @@map("material_inventory")
   @@schema("app")
 }
 

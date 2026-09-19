@@ -150,11 +150,6 @@ export interface DesignRequest {
   orderLineNumber: string | null;
   /** 対象製品（品目, items.id）を文字列で保持 — SearchSelect の値と揃える。 */
   itemId: string | null;
-  /**
-   * 品目から解決した旧 products.id — 設計図 (PD06) の一覧・詳細
-   * （まだ products.id 基準）へのリンク専用。それ以外の用途に使わない。
-   */
-  productLegacyId: number | null;
   productName: string | null;
   /** 依頼内容。 */
   description: string | null;

@@ -65,9 +65,10 @@ export interface ProductDesignFile {
  * 系列を開いた先 (PD26) で見る。
  */
 export interface DesignFileSeriesRow {
-  /** 系列キー。`${productId}:${customerBpId ?? ""}`。 */
+  /** 系列キー。`${itemId}:${customerBpId ?? ""}`。 */
   key: string;
-  productId: number;
+  /** 対象製品の品目 id（items.id）— 行クリックの遷移先 URL の id。 */
+  itemId: number;
   /** 製品名（コードは別に持つ — 1 列に詰めると長い名前でコードが切れる）。 */
   productName: string;
   /** 製品コード PRD-YYYYMM-NNNN。未採番のレガシーは null。 */

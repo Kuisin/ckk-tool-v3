@@ -3,7 +3,6 @@ import { getLocale } from "next-intl/server";
 import { ProductForm } from "@/components/master/products/ProductForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import { formatProductNumber } from "@/lib/doc-number";
 import {
   type LocalizedText,
   localized,
@@ -18,7 +17,7 @@ import { loadTaxCategoryOptions } from "@/lib/tax-categories";
 
 export const dynamic = "force-dynamic";
 
-/** 製品 編集 (MS24 edit). */
+/** 製品 編集 (MS24 edit). URL の id は items.id（品目統合 第 3 段）。 */
 export default async function MasterProductsEditPage({
   params,
 }: {
@@ -27,11 +26,11 @@ export default async function MasterProductsEditPage({
   const denied = await requireAppRead("master-products");
   if (denied) return denied;
   const { id: idParam } = await params;
-  const id = Number(idParam);
-  if (!Number.isInteger(id)) notFound();
-  const r = await prisma.product.findUnique({
-    where: { id },
-    include: { materialType: { select: { code: true, name: true } } },
+  const itemId = Number(idParam);
+  if (!Number.isInteger(itemId)) notFound();
+  const r = await prisma.item.findFirst({
+    where: { id: itemId, itemType: "PRODUCT" },
+    include: { requiresMaterialType: { select: { code: true, name: true } } },
   });
   if (!r) notFound();
 
@@ -43,8 +42,8 @@ export default async function MasterProductsEditPage({
         )
       : [];
 
-  const materialTypeLabel = r.materialType
-    ? `${r.materialType.code ?? ""} — ${localized(r.materialType.name as LocalizedText | null)}`
+  const materialTypeLabel = r.requiresMaterialType
+    ? `${r.requiresMaterialType.code ?? ""} — ${localized(r.requiresMaterialType.name as LocalizedText | null)}`
     : "";
 
   const locale = (await getLocale()) as Locale;
@@ -58,14 +57,20 @@ export default async function MasterProductsEditPage({
     <ProductForm
       initial={{
         id: r.id,
-        code: formatProductNumber(r.yearMonth, r.seq),
+        code: r.code,
         nameJa: name?.ja ?? "",
         nameTranslations: localizedTranslations(name),
+        // 製品が**要求する**素材（items.requires*）— 素材マスタの同名の列
+        // （実寸）とは意味が逆（items.prisma 冒頭の注意）。
         materialTypeId:
-          r.materialTypeId != null ? String(r.materialTypeId) : null,
+          r.requiresMaterialTypeId != null
+            ? String(r.requiresMaterialTypeId)
+            : null,
         materialTypeLabel,
-        diameterMm: r.diameterMm != null ? Number(r.diameterMm) : null,
-        lengthMm: r.lengthMm != null ? Number(r.lengthMm) : null,
+        diameterMm:
+          r.requiresDiameterMm != null ? Number(r.requiresDiameterMm) : null,
+        lengthMm:
+          r.requiresLengthMm != null ? Number(r.requiresLengthMm) : null,
         unit: r.unit,
         taxCategoryId: r.taxCategoryId,
         matchNames: r.matchNames,

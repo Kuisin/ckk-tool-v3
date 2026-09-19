@@ -55,6 +55,7 @@ import { ProductRoutesPanel, productRouteLinks } from "./ProductRoutesPanel";
 const BASE_PATH = "/master/products";
 
 export interface ProductDetailData {
+  /** 品目 id（items.id）— 画面・URL の id（品目統合 第 3 段）。 */
   id: number;
   code: string | null;
   nameJa: string;
@@ -160,7 +161,7 @@ export function ProductDetail({
               label: tr("common.raiseADesignRequest"),
               icon: <IconRuler2 size={14} />,
               onClick: () =>
-                router.push(`/sales/design-requests/new?product=${record.id}`),
+                router.push(`/sales/design-requests/new?item=${record.id}`),
             },
             {
               label: tr("common.duplicate"),
@@ -302,7 +303,7 @@ export function ProductDetail({
         <Tabs.Panel keepMounted={false} pt="md" value="customerCodes">
           <CustomerProductCodesPanel
             canEdit={canManage}
-            productId={record.id}
+            itemId={record.id}
             rows={customerCodes}
           />
         </Tabs.Panel>
@@ -313,14 +314,14 @@ export function ProductDetail({
                 登録・編集は 設計図 PD06）。版の差し替えは「新しい版を作る」
                 操作だけで、過去の版は書き換えない（何を見て作ったかを
                 追えるようにするため）。 */}
-            <ProductDesignFiles files={designFiles} productId={record.id} />
+            <ProductDesignFiles files={designFiles} itemId={record.id} />
 
             <Stack gap="xs">
               <Text fw={600} size="sm">
                 {tr("common.designRequest")}
               </Text>
               <DesignRequestLinks
-                createHref={`/sales/design-requests/new?product=${record.id}`}
+                createHref={`/sales/design-requests/new?item=${record.id}`}
                 links={designRequests}
               />
             </Stack>

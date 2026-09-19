@@ -13,7 +13,7 @@
 | 在庫の統合（第 2 段 A）+ 在庫アプリ 4 本 | #893 |
 | 購買の付け替え（第 2 段 B）+ 生産・設計（D） | `feat/items-stage2b`（PR 未作成） |
 | 販売・出荷の付け替え（第 2 段 C） | `feat/items-stage2c`（PR 未作成。2b から分岐） |
-| 旧いものを落とす（第 3 段） | これから（**C の merge 後に順番で**） |
+| 旧いものを落とす（第 3 段） | 済（`20261102090000_items_stage3_drop_legacy`。下記「旧いものを落とす」） |
 
 **PR を 2 本に割ってある。** B + D と C を 1 本にまとめないのは、C が価格の
 解決・請求・帳票・会計連携 CSV に届くため — そこだけ独立で読めるようにして
@@ -218,10 +218,95 @@ B から始めるのは小さいから。C を最後にするのは金額に直�
 
 | 残したもの | なぜ | 移すときの条件 |
 |---|---|---|
-| `resolveWorkOrderTarget` / `work-order-alloc-core` / `WorkflowBuilder` の製品ピッカー | 3 つが `routesInfo.productId` という 1 つの state を共有している。片側だけ品目にすると **どちらも `number` なので型では止まらず**、黙って別の id 空間を突き合わせる | 3 つ同時。移すときは列名を `itemId` にして、次に半端な直し方ができないようにする |
+| ~~`resolveWorkOrderTarget` / `work-order-alloc-core` / `WorkflowBuilder` の製品ピッカー~~ | **済**（下記「指示書の製品ピッカー 3 点」） | — |
 | 価格表の自然キー `(customer_bp_id, product_id)` | 「価格表の識別は作成後不変」という約束がある | 鍵の差し替えとして独立に判断する。第 3 段のついでにやらない |
-| 突合（`lib/intake.ts` / `product-match.ts` / `material-match.ts`） | `match_aliases.target_id` が `products.id` / `materials.id` を指している。学習した実績がそこに貯まっている | エイリアスの `target_id` を品目へ移す migration とセットで |
-| 帳票の `code` 欄（見積書・納品書） | いま刷っているのは**内部の連番 id** で、`items.code`（`PRD-YYYYMM-NNNN`）に替えると**刷られる文字列が変わる** | 「そもそも内部 id を客先に刷ってよいのか」を決めてから。品目統合とは別の話 |
+| ~~突合（`lib/intake.ts` / `product-match.ts` / `material-match.ts`）~~ | **済**（下記「突合と CM02 の移行」） | — |
+| ~~帳票の `code` 欄（見積書・納品書）~~ | **済**（下記「帳票の `code` 欄」） | — |
+| ~~`/api/v1` の id~~ | **済**（下記「`/api/v1` の id」） | — |
+
+### 指示書の製品ピッカー 3 点（済）
+
+`routesInfo.productId` を共有していた 3 か所を**同時に**品目へ移し、共有する
+state の名前を **`itemId`** に改めた（列名が同じままだと、次に半端な直し方を
+しても型で止まらない）。実際に動いたのは 3 つより広く、**同じ state を食べて
+いたものは全部**同じコミットで移している:
+
+- `resolveWorkOrderTarget`（`{ productId }` → `{ itemId }`。在庫向けは
+  `items` を `itemType: "PRODUCT"` 付きで確かめる — 品目 id は 1 本の連番
+  なので、素材の id でも「存在はする」）
+- `work-order-alloc-core` の `LineAllocInfo.itemId`（「全行同一製品」の不変条件）
+- `WorkflowBuilder` の製品ピッカー（`searchProductOptions` →
+  `searchProductItemOptions`）とフォームの `itemId`
+- `getProductRoutesForOrderLine` / `getProductRoutesForProduct` /
+  `getDesignVersionsForProduct` / `getWorkOrderMaterialAssumption` /
+  `OrderLineRef` / `InspectionTemplateOption`
+
+★ **途中で live なバグが 1 件見つかった。** `listProductRoutes(productId)` は
+中で `itemIdForLegacyProduct` を通していたのに、製品マスタ (MS04) が第 3 段で
+URL を items.id へ移したあと**品目 id をそのまま渡していた**。連番同士なので
+エラーにはならず、**別の製品の工程リストを引いていた**。引数を `itemId` に
+変えて変換を落とした（呼び出し側は全部 items.id を持っている）。
+
+`searchProductOptions` は使い手が無くなったので削除した — これで
+**旧 id（products.id / materials.id）を返すピッカーは 1 本も無い**。
+
+書き込みの橋だけが残る: `work_orders.product_id` はまだ NOT NULL なので、
+create / update / copy の 3 か所で `legacyProductIdForItem` を 1 回だけ通す。
+読み・判定は通らない。
+
+### 帳票の `code` 欄（済）
+
+見積書・納品書の PDF が刷っていた `code` は**内部の連番 id**（`42`）だった。
+利用者判断で **`items.code`（`PRD-YYYYMM-NNNN`）を刷る**ことにした — あの欄が
+最初から意味していたもの。採番前のレガシー品目（`code` が null）は**空欄**で
+刷る（`"null"` のような文字列を客先の紙に出さない）。ビューモデルの
+`productLegacyId` は `productCode: string | null` に置き換え、旧 id の配管は
+消した。
+
+### `/api/v1` の id（済 — clean break）
+
+`/products` `/materials` `/inventory/*` `/work-orders` `/order-lines`
+`/delivery-orders` `/delivery-notes` の 7 本。**URL も項目名も応答の形も
+変えず、id の値だけ**を `items.id` に切り替えた（利用者判断。橋を架けると
+旧マスタを落とせなくなる橋が外部契約の側にできる）。
+
+連番同士なので**旧 id は「見つからない」ではなく別の行に当たる**。切り替え前の
+カーソルも `(updated_at, id)` なので同じ理由でずれる。連携先は全件同期から
+やり直し、保存済みの id ではなく `code` / `number` で引き直す — この注意は
+**`_specs/api.md` §6.1** と **`/api/v1/openapi.json` の説明**（`lib/api-openapi.ts`
+の `DESCRIPTION`）の両方に置いた。連携先が読むのは後者なので、片方だけに
+書かない。
+
+### 突合と CM02 の移行（済 — migration `20261101090000_items_stage3_matching_forms`）
+
+列ではなく**値として旧 id を貯めていた** 2 か所。どちらも FK が無いので、旧表を
+落としても DB は何も言わず、連番同士なので**黙って別のレコードを指す**。
+
+- `app.match_aliases` … `target_type` の `products` / `materials` を **`items` 1 つ**に
+  畳み、`target_id` を `products.item_id` / `materials.item_id` 経由で書き換えた。
+  - **曖昧なら捨てる** … 参照先が消えている行と、旧 id とも items.id とも読める
+    素材の行は削除して件数を NOTICE に出す。学習を捨てても推測に落ちるだけだが、
+    行き先を推測で残すと**別の品目で自動確定する**。
+  - **衝突は 1 本だけ残す** … 製品と素材が同じ `alias_key` を覚えていたら
+    `hit_count → updated_at → id` の降順で 1 本。落ちた側は次の訂正で覚え直す。
+    型が違えば実害も無い（突合側が `itemType` を確かめて素通りする）。
+  - ★ **素材の学習は今まで 1 件も保存されていなかった** — baseline の CHECK が
+    `business_partners | products` のままで `materials` を弾き、
+    `saveAliasLearnings` の try/catch が握り潰していた。CHECK もここで張り替え、
+    `match-alias-target-guard.test.ts` が型と SQL の食い違いを見張る。
+- `app.form_responses.answers`（CM02 の `lookup` = product / material）…
+  `(form_id, version)` → `form_versions.schema` を辿って lookup 項目を特定し、
+  トップレベルとサブテーブルの列の両方を書き換えた。**引けない値は `id` を空に
+  する**（`label` は選んだ時点のスナップショットなので残す）。旧 id を置いたままに
+  すると旧表を落とした後に別の品目として解決されるが、空なら
+  `asLookupValue` が解決を試みず `isBlankAnswer` が空と見なすので、必須項目は
+  次の編集で目に見えて止まる。
+
+**`product-match.ts` と `material-match.ts` は 1 本に畳まなかった。** マスタは
+1 つになったが**当て方の規則が違う** — 製品は probe の梯子で DB に候補を出させ
+（数万件）、素材は全件を JS へ渡す（数千件）。そして素材はコードの完全一致が
+別格（仕入先がこちらの品番を刷り返してくる）。共有すべきもの（正規化キー・
+最小長・段階判定）は既に共有している。
 
 書き込みの橋（`lib/item-legacy-material.ts` / `item-legacy-product.ts`）は旧列が
 残っている間だけのもの。**読み・突合・業務判定は通さない**（そこを通し始めると
@@ -230,7 +315,12 @@ B から始めるのは小さいから。C を最後にするのは金額に直�
 ## 第 3 段 — 旧いものを落とす
 
 1. アプリ側に `products` / `materials` / 旧在庫表への参照が 1 つも無いことを
-   grep の門で確認（`items-readonly-guard.test.ts` を反転させた形）
+   grep の門で確認（`items-readonly-guard.test.ts` を反転させた形）。
+   **残っている読み手は「書き込みの橋」だけ**のはず —
+   `lib/item-legacy-product.ts` / `item-legacy-material.ts` と、それを呼ぶ
+   マスタ 2 画面・書類の保存処理・`work_orders.product_id`（NOT NULL）。
+   旧 id で来る URL の転送（`/master/{products,materials}/legacy/[id]`）は
+   監査ログの旧 id を開くためのものなので、落とすときに別途判断する
 2. トリガーと同期関数を落とす
 3. 旧列（`*.product_id` / `*.material_id` / `*.item_id` の対応列）を落とす
 4. `products` / `materials` / `product_inventory` / `material_inventory` を落とす
@@ -240,6 +330,46 @@ B から始めるのは小さいから。C を最後にするのは金額に直�
 **落とすのは別 PR で、切り替えの PR を入れたあとに順番に実行する**（利用者判断）。
 本番稼働前なので無停止の段取りは取らないが、**順序だけは守る** — 切り替えより先に
 落とすと、まだ旧表を読んでいるコードが即死する。
+
+### 実際にやった順（migration `20261102090000_items_stage3_drop_legacy`）
+
+取り消せない migration なので、**節の順番そのものが安全装置**になっている:
+
+0. **item 側を NOT NULL にする**（旧列が NOT NULL だった 9 列）。旧列の
+   「必ず何かを指している」という保証を item 側へ移す作業で、**旧列を落とす前**に
+   やる — NULL があればここで落ちて、旧列が残ったまま止まる（戻す作業が無い）。
+1. **`audit_logs` の `record_id` / `record_key` を品目 id へ読み替える。**
+   多態で FK が無く、id は全部連番なので、放っておくと旧表を落とした後に
+   **黙って別の品目を指す**。`table_name` は `products` / `materials` のまま —
+   あれは「そのとき何を書いたか」の事実で、行き先の話ではない。
+   読み替えられない行（＝削除済みマスタ。同期トリガーが品目も消していたので
+   DELETE の監査行は必ずこれになる）は `record_id` に **`legacy:` を付けて
+   解決できない形**にし、`record_key` は null。件数は NOTICE に出す。
+2. **同期トリガーと同期関数を落とす。** トリガーは表と一緒に消えるが、
+   **関数は残る**ので明示的に落とす。あわせて、差分同期の `touch_updated_at`
+   トリガーを `items` / `item_inventory` へ**引き継ぐ** — 20261009090000 が
+   18 表に張ったうちの 4 表（旧マスタ・旧在庫）がここで消えるが、統合先には
+   まだ張られていなかった（第 1 段・2A-1 が表を足しただけだったため）。
+3. **`analytics.*` を全部落とす。** 旧 4 表に依存していて DROP を阻む。
+   毎デプロイ `sql/analytics-views.sql` が作り直す成果物なので、依存している
+   ものだけ選ぶより全部落とすほうが安全（20261009090000 と同じやり方）。
+4. **旧列に載っていた不変条件を item 列へ移す。** ★ `DROP COLUMN` はその列を
+   使う CHECK と索引を**黙って道連れにする**ので、先に移さないと制約が消えた
+   ことに誰も気づかない:
+   - UNIQUE … `price_list_entries (customer_bp_id, item_id)` /
+     `customer_product_codes (customer_bp_id, item_id)`
+   - CHECK … `order_lines_confirmed_complete` /
+     `product_process_routes_kind_columns`
+   - 複合索引 … `product_process_routes (item_id, customer_bp_id)` /
+     `design_files (item_id, customer_bp_id, is_latest, role)` /
+     `material_receipts (item_id, received_at)`。前置きが重なる単独索引
+     （`@@index([itemId])`）は落とす
+   - `customer_product_codes` の品目 FK は **CASCADE**（旧 product 側と同じ
+     扱い。Restrict のままだと「顧客品番を 1 件登録した品目はもう消せない」）
+5. **旧列 16 本を落とす** → 6. **旧表 4 本を落とす**（在庫 2 表が先 — 旧マスタを
+   指す FK を持っているのがこの 2 表だけになっているため。CASCADE は使わない）
+7. 取りこぼしを `RAISE EXCEPTION` で止める（旧表・旧列・同期関数・監査の
+   行き先・`touch_updated_at` の 5 点）。
 
 ---
 
@@ -263,7 +393,7 @@ B から始めるのは小さいから。C を最後にするのは金額に直�
 | 2A-2 | 在庫が動く全経路（完了・出荷・入荷・移動・引当・棚卸）を通し、伝票と数量が一致。孤児 0 |
 | 2A-3 | 3 表の `inventory_id` に FK が張れる = 参照先の取りこぼしが無い |
 | B/D/C 各群 | その群の `item_id` が全行埋まり、旧列と指す先が一致 |
-| 3 | 旧参照が grep で 0、`migrate diff` 差分なし |
+| 3 | 旧参照が grep で 0、`migrate diff` 差分なし（済） |
 
 ## 見積もり感
 

@@ -5,6 +5,17 @@
  *
  * 素材は「材種 + 直径 + 全長」で指定する設計なので、特定の素材行ではなく
  * その 3 つを返す（`materialId` は廃止予定の旧列で、返さない）。
+ *
+ * ## `id` は **`items.id`**（2026-09-20 の切り替え）
+ *
+ * 製品・素材は 1 つの品目マスタ `app.items` に統合された。この口は
+ * **URL も項目名もそのまま**で、`id` の値だけが `products.id` から
+ * `items.id` に変わっている（利用者判断の clean break — `_specs/api.md` §6.1）。
+ * どちらも連番なので**古い id は必ず何かに当たる**（見つからないのではなく
+ * 黙って別の製品を指す）。切り替え前に発行したカーソルも同じ理由で
+ * 位置がずれるので、切り替えをまたぐときは全件同期からやり直すこと。
+ *
+ * 絞り込みは `itemType: "PRODUCT"` — この口は素材を混ぜない。
  */
 
 import { requireApiPermission } from "@/lib/api-authz";
@@ -29,9 +40,12 @@ export async function GET(request: Request): Promise<Response> {
     p.get("includeInactive") === "1" || p.get("includeInactive") === "true";
 
   return runList({
-    baseWhere: includeInactive ? {} : { isActive: true },
+    baseWhere: {
+      itemType: "PRODUCT",
+      ...(includeInactive ? {} : { isActive: true }),
+    },
     fetch: ({ where, take, orderBy }) =>
-      prisma.product.findMany({
+      prisma.item.findMany({
         // biome-ignore lint/suspicious/noExplicitAny: 断片は pagination が組む
         where: where as any,
         take,
@@ -43,9 +57,12 @@ export async function GET(request: Request): Promise<Response> {
           seq: true,
           legacyKey: true,
           name: true,
-          materialTypeId: true,
-          diameterMm: true,
-          lengthMm: true,
+          // ★ **製品は `requires*` を読む。** 品目の materialTypeId /
+          //   diameterMm / lengthMm は**素材側の実寸**で、製品の要求寸法とは
+          //   別物（items.prisma 冒頭の注意）。取り違えても型は通る。
+          requiresMaterialTypeId: true,
+          requiresDiameterMm: true,
+          requiresLengthMm: true,
           unit: true,
           spec: true,
           matchNames: true,
@@ -67,9 +84,10 @@ export async function GET(request: Request): Promise<Response> {
       number: formatProductNumber(r.yearMonth, r.seq),
       legacyKey: r.legacyKey,
       name: localizedJson(r.name),
-      materialTypeId: r.materialTypeId,
-      diameterMm: num(r.diameterMm),
-      lengthMm: num(r.lengthMm),
+      // 項目名は従来のまま（外部契約）。中身は「その製品が要求する素材」。
+      materialTypeId: r.requiresMaterialTypeId,
+      diameterMm: num(r.requiresDiameterMm),
+      lengthMm: num(r.requiresLengthMm),
       unit: r.unit,
       /** 仕様は自由構造（多言語ではない）。そのまま通す。 */
       spec: r.spec ?? null,

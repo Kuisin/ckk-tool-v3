@@ -281,7 +281,8 @@ export async function deleteTaxCategory(
       code: true,
       _count: {
         select: {
-          products: true,
+          // 製品・素材は app.items の 1 本（品目統合 第 3 段）。
+          items: true,
           customerAttrs: true,
           invoiceItems: true,
           quoteItems: true,
@@ -301,10 +302,8 @@ export async function deleteTaxCategory(
   // **どこから参照されているか**を数えて文章にする。
   const c = category._count;
   const usage: string[] = [];
-  if (c.products > 0) {
-    usage.push(
-      tr("master.taxCategories.usedByProducts", { count: c.products }),
-    );
+  if (c.items > 0) {
+    usage.push(tr("master.taxCategories.usedByProducts", { count: c.items }));
   }
   if (c.customerAttrs > 0) {
     usage.push(

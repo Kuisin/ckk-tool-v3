@@ -26,7 +26,6 @@ import {
   formatPriceListNumber,
   parseDocKey,
 } from "@/lib/doc-number";
-import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
@@ -290,13 +289,6 @@ export async function createPriceEntry(
         locks.push({ number: variant.estimateNumber, key: source.key });
       }
     }
-    // 自然キー (customer_bp_id, product_id) は products.id のままなので、
-    // 品目から橋渡しして両方の列を埋める。対応が無い品目は価格表を作れない
-    // （鏡のトリガーが作る対応なので、製品品目なら必ずある）。
-    const legacyProductId = await legacyProductIdForItem(v.identity.itemId);
-    if (legacyProductId == null) {
-      return actionError(tr("sales.trialEstimateActions.productNotFound"));
-    }
     const key = await allocateDocumentKey("PRICE_LIST");
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
@@ -310,7 +302,6 @@ export async function createPriceEntry(
           seq: key.seq,
           customerBpId: v.identity.customerBpId,
           itemId: v.identity.itemId,
-          productId: legacyProductId,
           salesRepId,
           createdBy: authz.userId,
           variants: {

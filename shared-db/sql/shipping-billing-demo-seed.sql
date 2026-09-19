@@ -82,7 +82,7 @@ ON CONFLICT (year_month, seq) DO NOTHING;
 --   未処理出荷書 SH03 から消え、指示書の「次のステップ: 出荷書の作成」と
 --   出荷書フォームの判定が食い違う（フォームは 受注数 − 出荷済 で数える）。
 INSERT INTO app.delivery_order_items (id, delivery_order_year_month, delivery_order_seq,
-  order_line_id, product_id, lot_number, quantity, notes, sort_order)
+  order_line_id, item_id, lot_number, quantity, notes, sort_order)
 VALUES
   ('dd000000-0000-4000-8000-000000000011'::uuid, '202607', 1,
    'e0000000-0000-4000-8000-000000000001'::uuid, 9001, 9004, 30, NULL, 0),
@@ -124,7 +124,7 @@ VALUES
 ON CONFLICT (year_month, seq) DO NOTHING;
 
 INSERT INTO app.delivery_note_items (id, delivery_note_year_month, delivery_note_seq,
-  product_id, quantity, unit_price, amount, notes, sort_order)
+  item_id, quantity, unit_price, amount, notes, sort_order)
 VALUES
   -- DRN-1: 価格記載あり — 単価 = 注文請書の受注単価 ¥3,220
   ('dd000000-0000-4000-8000-000000000021'::uuid, '202607', 1, 9001, 30, 3220, 96600, NULL, 0),

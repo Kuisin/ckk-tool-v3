@@ -48,26 +48,34 @@ VALUES
 ON CONFLICT (bp_id, role) DO NOTHING;
 
 -- ── 製品（PRD-202607-0001〜0003）────────────────────────────────────────────
-INSERT INTO app.products (id, year_month, seq, name, material_type_id, diameter_mm, length_mm, unit, is_active, created_at, updated_at)
+-- 製品は app.items の item_type = 'PRODUCT'（品目統合の第 3 段で旧 products は
+-- 消えた）。**材種・直径・全長は requires_*** — 製品側のそれは「要求する素材」で、
+-- 素材側の同名列（その素材が「である」実寸）とは意味が逆（items.prisma 冒頭）。
+INSERT INTO app.items (id, item_type, code, year_month, seq, name,
+  requires_material_type_id, requires_diameter_mm, requires_length_mm,
+  unit, is_active, created_at, updated_at)
 VALUES
-  (9001, '202607', 1, '{"ja": "超硬エンドミル 4枚刃 φ6×60", "en": "Carbide end mill 4FL φ6×60"}'::jsonb,
+  (9001, 'PRODUCT'::app."ITEM_TYPE", 'PRD-202607-0001', '202607', 1,
+   '{"ja": "超硬エンドミル 4枚刃 φ6×60", "en": "Carbide end mill 4FL φ6×60"}'::jsonb,
    (SELECT id FROM app.material_types WHERE code = 'B01A0001'), 6.0, 60.0, '本', true,
    '2026-07-01T09:10:00+09', '2026-07-01T09:10:00+09'),
-  (9002, '202607', 2, '{"ja": "超硬ドリル 2枚刃 φ4×50", "en": "Carbide drill 2FL φ4×50"}'::jsonb,
+  (9002, 'PRODUCT'::app."ITEM_TYPE", 'PRD-202607-0002', '202607', 2,
+   '{"ja": "超硬ドリル 2枚刃 φ4×50", "en": "Carbide drill 2FL φ4×50"}'::jsonb,
    (SELECT id FROM app.material_types WHERE code = 'B04A0001'), 4.0, 50.0, '本', true,
    '2026-07-01T09:12:00+09', '2026-07-01T09:12:00+09'),
-  (9003, '202607', 3, '{"ja": "超硬リーマ φ8×70", "en": "Carbide reamer φ8×70"}'::jsonb,
+  (9003, 'PRODUCT'::app."ITEM_TYPE", 'PRD-202607-0003', '202607', 3,
+   '{"ja": "超硬リーマ φ8×70", "en": "Carbide reamer φ8×70"}'::jsonb,
    (SELECT id FROM app.material_types WHERE code = 'B01A0001'), 8.0, 70.0, '本', true,
    '2026-07-01T09:14:00+09', '2026-07-01T09:14:00+09')
 ON CONFLICT (id) DO NOTHING;
 
-SELECT setval(pg_get_serial_sequence('app.products', 'id'),
-              GREATEST((SELECT MAX(id) FROM app.products), 9003));
+SELECT setval(pg_get_serial_sequence('app.items', 'id'),
+              GREATEST((SELECT MAX(id) FROM app.items), 9003));
 
 -- ── 試算（EST-202607-00001〜00003）──────────────────────────────────────────
 -- input は TrialEstimateForm が保存する TrialInput と同形（result は NULL —
 -- 表示側が input から再計算する。設定・データ固定なので決定的）。
-INSERT INTO app.estimates (year_month, seq, name, tool_type, status, customer_bp_id, product_id,
+INSERT INTO app.estimates (year_month, seq, name, tool_type, status, customer_bp_id, item_id,
   material_type_id, diameter_code, surface_finish_code,
   reference_unit_price, reference_date, reference_overridden, input, result, registered_at,
   created_by, created_at, updated_at)
@@ -114,7 +122,7 @@ VALUES
 ON CONFLICT (year_month, seq) DO NOTHING;
 
 -- ── 価格表（PRC-202607-00001: デモ商事 × エンドミル φ6×60）──────────────────
-INSERT INTO app.price_list_entries (year_month, seq, customer_bp_id, product_id, currency, is_active,
+INSERT INTO app.price_list_entries (year_month, seq, customer_bp_id, item_id, currency, is_active,
   created_by, created_at, updated_at)
 VALUES ('202607', 1, 'd0000000-0000-4000-8000-000000000001'::uuid, 9001, 'JPY', true,
   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-03T10:00:00+09', '2026-07-03T10:00:00+09')
@@ -157,7 +165,7 @@ VALUES
    '2026-07-04T16:00:00+09', '2026-07-04T16:00:00+09')
 ON CONFLICT (year_month, seq) DO NOTHING;
 
-INSERT INTO app.quote_items (id, quote_year_month, quote_seq, product_id, order_type, quantity,
+INSERT INTO app.quote_items (id, quote_year_month, quote_seq, item_id, order_type, quantity,
   unit_price, price_list_tier_id, discount_amount, discount_label, amount, delivery_date, sort_order)
 VALUES
   ('d4000000-0000-4000-8000-000000000001'::uuid, '202607', 1, 9001, 'PRODUCTION'::app."ORDER_TYPE",
@@ -207,7 +215,7 @@ ON CONFLICT (year_month, seq) DO NOTHING;
 -- 注文明細。20260907090000_order_lines_merge で order_acceptance_items から
 -- order_lines へ改名された（下書きと実行を 1 本にまとめた）。ここは下書き段階の
 -- 行なので status は既定の DRAFT、枝番・金額は確定時に入る（NULL のまま）。
-INSERT INTO app.order_lines (id, acceptance_year_month, acceptance_seq, product_id,
+INSERT INTO app.order_lines (id, acceptance_year_month, acceptance_seq, item_id,
   product_text, order_type, quantity, unit_price, delivery_date, sort_order)
 VALUES
   -- ORD-1: 1行目は価格表（¥3,220）と異なる単価 → 価格差異バッジの実例
@@ -233,7 +241,7 @@ ON CONFLICT (id) DO NOTHING;
 -- この seed では 9001 が改訂・9002 が新規で、両方の区分が撮影できる。
 -- なお DSG-00006 の完了で 9002 にも版が付くが、既存行の区分は保存値のまま。
 INSERT INTO app.design_requests (id, request_number, trigger, quote_year_month, quote_seq,
-  order_line_id, product_id, description, status, assignee_id,
+  order_line_id, item_id, description, status, assignee_id,
   kind, change_reason, desired_at, priority,
   requested_at, approved_at, started_at, completed_at, history,
   created_by, created_at, updated_at)
@@ -299,7 +307,7 @@ VALUES
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-08T09:00:00+09', '2026-07-09T09:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO app.design_files (id, design_request_id, product_id, file_id, version, is_latest, notes,
+INSERT INTO app.design_files (id, design_request_id, item_id, file_id, version, is_latest, notes,
   created_by, created_at)
 VALUES
   ('d8000000-0000-4000-8000-000000000001'::uuid, 'd7000000-0000-4000-8000-000000000002'::uuid, 9001,
@@ -316,7 +324,7 @@ ON CONFLICT (id) DO NOTHING;
 --
 -- デモ商事の版は依頼を経ない登録（design_request_id = null）なので一覧で「手動」、
 -- 9002 の版は DSG-00006 の成果物なので「依頼」と出る — 出どころ列の両方を撮れる。
-INSERT INTO app.design_files (id, design_request_id, product_id, customer_bp_id, file_id,
+INSERT INTO app.design_files (id, design_request_id, item_id, customer_bp_id, file_id,
   version, is_latest, role, notes, created_by, created_at)
 VALUES
   ('d8000000-0000-4000-8000-000000000003'::uuid, NULL, 9001,

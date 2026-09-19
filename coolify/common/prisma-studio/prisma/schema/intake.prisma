@@ -192,10 +192,9 @@ model OrderLine {
   sortOrder           Int    @default(0) @map("sort_order")
 
   // ── 明細内容（注文請書の行そのもの） ──
-  // 抽出直後は productText のみ。製品マスタ突合後に productId を持つ。
-  productId    Int?      @map("product_id")
-  /// 統合品目（app.items）。注文明細の製品（突合前は null）。product_id は移行中の残りで、旧列を落とす PR で消える。
-  itemId Int? @map("item_id")
+  // 抽出直後は productText のみ。品目マスタ突合後に itemId を持つ。
+  /// 統合品目（app.items）。注文明細の品目（突合前は null）。
+  itemId       Int?      @map("item_id")
   productText  String?   @map("product_text") // 抽出された品名（生）
   orderType    OrderType @default(PRODUCTION) @map("order_type")
   quantity     Int
@@ -240,8 +239,7 @@ model OrderLine {
   // 顧客・注文書番号・見積キー・作成者はヘッダ（acceptance）から読む —
   // 行に複写すると乖離するため持たない。配送だけは例外（上のコメント参照）。
   acceptance OrderAcceptance  @relation(fields: [acceptanceYearMonth, acceptanceSeq], references: [yearMonth, seq], onDelete: Restrict)
-  product    Product?         @relation(fields: [productId], references: [id])
-  item Item? @relation("OrderLineItem", fields: [itemId], references: [id], onDelete: Restrict)
+  item       Item?            @relation("OrderLineItem", fields: [itemId], references: [id], onDelete: Restrict)
   endUserBp  BusinessPartner? @relation("OrderLineEndUser", fields: [endUserBpId], references: [id])
   shipToBp             BusinessPartner? @relation("OrderLineShipTo", fields: [shipToBpId], references: [id])
   assignedPlant        Plant?           @relation("OrderLinePlant", fields: [assignedPlantId], references: [id])
@@ -255,7 +253,6 @@ model OrderLine {
 
   @@unique([acceptanceYearMonth, acceptanceSeq, branch])
   @@index([status])
-  @@index([productId])
   @@index([lotNumber])
   @@index([shipToBpId])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
@@ -283,11 +280,19 @@ model OrderLine {
 // target_type はテーブル名（audit_logs / approval_requests と同じ多態規約）。
 // FK は張れないので、マスタを消しても行は残る — 突合時に存在しない
 // target_id は黙って無視する（lib/match-aliases）。
+//
+// **値は business_partners | items の 2 つだけ**（DB 側の CHECK
+// match_aliases_target_type_check が正。Prisma では表せないので
+// migration に直接書いてある）。品目統合 第 3 段で products / materials の
+// 2 つを items へ畳んだ — 製品と素材のマスタが 1 つになったので、学習の
+// 行き先も 1 つで足りる。**製品と素材で同じ表記を覚えることはできない**
+// （1 表記 = 1 マスタ）が、突合側が引いた品目の item_type を必ず確かめるので、
+// 相手の型が当たっても素通りして推測へ落ちるだけ。
 model MatchAlias {
   id         Int      @id @default(autoincrement())
-  /// "business_partners" | "products"（テーブル名）
+  /// "business_partners" | "items"（テーブル名）
   targetType String   @map("target_type")
-  /// マスタ行の内部 id を文字列化したもの（BP は uuid、製品は連番）
+  /// マスタ行の内部 id を文字列化したもの（BP は uuid、品目は連番）
   targetId   String   @map("target_id")
   /// 書類に印字されていた表記（そのまま）
   alias      String

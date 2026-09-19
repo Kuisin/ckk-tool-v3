@@ -103,7 +103,7 @@ function mapDeliveryNote(
   const items = r.items.map((it) => ({
     id: it.id,
     itemId: String(it.itemId ?? ""),
-    productLegacyId: String(it.productId),
+    productCode: it.item?.code ?? null,
     productName: productLabel(it.item, loc),
     quantity: it.quantity,
     unitPrice: it.unitPrice != null ? Number(it.unitPrice) : null,

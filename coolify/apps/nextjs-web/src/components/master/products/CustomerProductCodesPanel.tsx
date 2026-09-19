@@ -55,11 +55,12 @@ interface Draft extends CustomerProductCodeRow {
 }
 
 export function CustomerProductCodesPanel({
-  productId,
+  itemId,
   rows,
   canEdit,
 }: {
-  productId: number;
+  /** 対象製品の品目 id（items.id — 製品詳細の URL id）。 */
+  itemId: number;
   rows: CustomerProductCodeRow[];
   canEdit: boolean;
 }) {
@@ -75,8 +76,8 @@ export function CustomerProductCodesPanel({
       edit={({ close }) => (
         <CustomerProductCodesEditor
           initial={rows}
+          itemId={itemId}
           onClose={close}
-          productId={productId}
         />
       )}
       title={tr("master.customerProductCodes.title")}
@@ -154,11 +155,11 @@ function CustomerProductCodesView({
 }
 
 function CustomerProductCodesEditor({
-  productId,
+  itemId,
   initial,
   onClose,
 }: {
-  productId: number;
+  itemId: number;
   initial: CustomerProductCodeRow[];
   onClose: () => void;
 }) {
@@ -203,7 +204,7 @@ function CustomerProductCodesEditor({
     }
     startTransition(async () => {
       const result = await saveCustomerProductCodes({
-        productId,
+        itemId,
         rows: drafts.map((r) => ({
           aliases: r.aliases,
           code: r.code.trim(),

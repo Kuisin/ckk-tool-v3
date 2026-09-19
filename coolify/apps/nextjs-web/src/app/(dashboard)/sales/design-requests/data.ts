@@ -22,17 +22,9 @@ import type {
 import type { HistoryEntry } from "@/lib/approvals";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import {
-  formatProductNumber,
-  formatQuoteNumber,
-  orderLineNumberOf,
-} from "@/lib/doc-number";
+import { formatQuoteNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
-import {
-  itemIdForLegacyProduct,
-  legacyProductIdsForItems,
-} from "@/lib/item-legacy-product";
 import { label } from "@/lib/messages";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
@@ -98,17 +90,6 @@ function findListRows(where: Prisma.DesignRequestWhereInput = {}) {
   });
 }
 
-/** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
-function productLabel(p: {
-  name: unknown;
-  yearMonth: string | null;
-  seq: number | null;
-}): string {
-  const code = formatProductNumber(p.yearMonth, p.seq);
-  const name = localized(p.name as LocalizedText | null);
-  return code ? `${name} ${code}` : name;
-}
-
 /** 品目（items.id）ラベル: 名称 + コード（items.code は既に整形済み）。 */
 function itemLabel(item: { name: unknown; code: string | null }): string {
   const name = localized(item.name as LocalizedText | null);
@@ -118,11 +99,11 @@ function itemLabel(item: { name: unknown; code: string | null }): string {
 /**
  * 参照元・製品・担当者など、一覧と詳細で共通の射影。
  *
- * `legacyProductIds` は「設計図 (PD06) の一覧・詳細（まだ products.id 基準）
- * へのリンク」専用 — 品目 (itemId) から 1 回だけバッチ解決したもの。読み・書き
- * の判定にはここでも一切使わない。
+ * 製品は `itemId`（items.id）1 本だけ — 設計図 (PD06) と製品マスタ (MS04) も
+ * 同じ id 空間へ移した（品目統合 第 3 段）ので、旧 products.id へ落とす
+ * 中継は要らなくなった。
  */
-function mapCommon(r: ListRow, legacyProductIds: Map<number, number>) {
+function mapCommon(r: ListRow) {
   return {
     id: r.requestNumber,
     requestNumber: r.requestNumber,
@@ -135,8 +116,6 @@ function mapCommon(r: ListRow, legacyProductIds: Map<number, number>) {
     orderLineId: r.orderLineId,
     orderLineNumber: r.orderLine ? orderLineNumberOf(r.orderLine) : null,
     itemId: r.itemId != null ? String(r.itemId) : null,
-    productLegacyId:
-      r.itemId != null ? (legacyProductIds.get(r.itemId) ?? null) : null,
     productName: r.item ? itemLabel(r.item) : null,
     customerBpId: r.customerBpId,
     customerName: localized(r.customerBp?.name as LocalizedText | null) || null,
@@ -227,12 +206,9 @@ export async function fetchDesignRequests(): Promise<DesignRequest[]> {
   const rows = await findListRows(
     designRequestScope(authz.access, authz.userId),
   );
-  const legacyProductIds = await legacyProductIdsForItems(
-    rows.map((r) => r.itemId).filter((id): id is number => id != null),
-  );
   // 一覧は履歴・版を描かないので空で返す（型は詳細と共有する）。
   return rows.map((r) => ({
-    ...mapCommon(r, legacyProductIds),
+    ...mapCommon(r),
     history: [],
     files: [],
   }));
@@ -248,11 +224,8 @@ export async function fetchDesignRequest(
   const row: DetailRow | null = await findRow(requestNumber);
   if (!row) return null;
   if (!designRequestInScope(authz.access, row, authz.userId)) return null;
-  const legacyProductIds = await legacyProductIdsForItems(
-    row.itemId != null ? [row.itemId] : [],
-  );
   return {
-    ...mapCommon(row, legacyProductIds),
+    ...mapCommon(row),
     history: await resolveHistory(row.history, locale),
     files: row.files.map((f) => ({
       id: f.id,
@@ -317,11 +290,10 @@ export function fetchDesignRequestsForOrderLine(
  * design_requests 自体の絞り込みは品目 (items.id) で行うので、ここで
  * 1 回だけ変換する。
  */
-export async function fetchDesignRequestsForProduct(
-  productId: number,
+/** 製品（品目 items.id）の設計依頼。製品マスタ MS24 の 関連 タブ。 */
+export async function fetchDesignRequestsForItem(
+  itemId: number,
 ): Promise<DesignRequestLink[]> {
-  const itemId = await itemIdForLegacyProduct(productId);
-  if (itemId == null) return [];
   return fetchLinks({ itemId, status: { not: "CANCELLED" } });
 }
 
@@ -446,27 +418,11 @@ export async function fetchOrderLineDeliveryDate(
 }
 
 /**
- * 製品 1 件の参照解決（`?product=<products.id>` プリフィル用）。
- * 返す value は品目 (items.id) — ピッカーは品目ベースなので、ここで
- * 1 回だけ変換する。
- */
-export async function fetchProductRef(
-  productId: string,
-): Promise<QuoteOption | null> {
-  const id = Number(productId);
-  if (!Number.isInteger(id) || id <= 0) return null;
-  const r = await prisma.product.findUnique({ where: { id } });
-  if (!r || r.itemId == null) return null;
-  return { value: String(r.itemId), label: productLabel(r) };
-}
-
-/**
  * 品目 1 件の参照解決（`?item=<items.id>` プリフィル用）。
  *
- * 見積フォームの「単価が引けない → 設計依頼を起票」からの入口。あちらは
- * 既に品目 id を持っている（品目統合 第 2 段 C）ので、products.id を渡す
- * `?product=` とは**別のクエリ名**にしてある — 同じ名前で 2 つの id 空間を
- * 運ぶと、どちらが来たのか見分けられない。
+ * 製品マスタ・見積フォームの「単価が引けない → 設計依頼を起票」からの入口。
+ * 旧 `?product=<products.id>` は旧マスタと一緒に廃止した（品目統合 第 3 段）—
+ * 読み替える対応表がもう無く、連番同士なので黙って別の品目が当たる。
  */
 export async function fetchProductItemRef(
   itemId: string,

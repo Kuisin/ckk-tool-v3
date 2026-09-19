@@ -10,6 +10,9 @@
  *   - 明細ごと: Σ 割当（キャンセル済み指示書を除く）≤ 受注数量
  *   - 指示書ごと: 予定数量 ≥ Σ 割当（不良予備分の上乗せは自由）
  *   - 割当明細の製品は指示書の製品と同一（1 指示書 = 1 製品 1 ロット）
+ *     ※ 比べるのは **品目 id（items.id）**。旧 products.id と値の意味が違う
+ *       だけで型は同じ number なので、混ぜても型では止まらない（列名を
+ *       itemId にしてあるのはそのため — option-search.ts 冒頭の節）。
  *   - FROM_STOCK（在庫分）は割当 1 件のみ・割当数 = 予定数量
  *     （在庫引当の消費先が一意である必要があるため）
  */
@@ -29,7 +32,8 @@ export interface LineAllocInfo {
   lineQuantity: number;
   /** 他の指示書（キャンセル除く・編集時は自分を除く）の割当合計。 */
   otherAllocated: number;
-  productId: number | null;
+  /** 明細の製品 — **品目 id（items.id）**。未突合の明細は null。 */
+  itemId: number | null;
   status: string;
 }
 
@@ -79,7 +83,7 @@ export function validateAllocations(
   }
   const seen = new Set<string>();
   const byId = new Map(lines.map((l) => [l.orderLineId, l]));
-  let productId: number | null = null;
+  let itemId: number | null = null;
   let total = 0;
   for (const a of allocations) {
     if (seen.has(a.orderLineId)) {
@@ -100,7 +104,7 @@ export function validateAllocations(
         number: line.number,
       });
     }
-    if (line.productId == null) {
+    if (line.itemId == null) {
       return tr(
         "production.workOrderActions.orderLineProductUnresolvedForLine",
         {
@@ -108,9 +112,9 @@ export function validateAllocations(
         },
       );
     }
-    if (productId == null) {
-      productId = line.productId;
-    } else if (line.productId !== productId) {
+    if (itemId == null) {
+      itemId = line.itemId;
+    } else if (line.itemId !== itemId) {
       return tr("production.workOrderActions.allocationsMustShareProduct");
     }
     const remaining = remainingAllocatable(line);
