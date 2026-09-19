@@ -79,8 +79,8 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
     app: "pending-work-orders",
   },
   { path: "operations/production/design-file/user", app: "design-files" },
-  { path: "operations/production/product-inventory/user", app: "inventory" },
-  { path: "operations/production/material-inventory/user", app: "inventory" },
+  { path: "operations/inventory/product-inventory/user", app: "inventory" },
+  { path: "operations/inventory/material-inventory/user", app: "inventory" },
   // 旧 承認管理（PD03）は 一般カテゴリの 未処理一覧（CM01）へ移設した。画面自体は
   // ログインだけで開くが、承認依頼中の一覧が出るかは approve:READ で決まる。
   // ── 出荷 ────────────────────────────────────────────────────────────────

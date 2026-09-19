@@ -181,7 +181,7 @@ export async function createReceiptsFromDelivery(
     });
 
     revalidatePath(BASE_PATH);
-    revalidatePath("/production/inventory");
+    revalidatePath("/inventory");
     return actionOk({ ids: created });
   } catch (e) {
     // 在庫ガード（lib/inventory）の業務エラーは構造化ノートなので翻訳して返す。

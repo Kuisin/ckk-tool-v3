@@ -142,6 +142,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 販売 | Sales | 销售 |
 | 購買 | Purchasing | 采购 |
 | 生産 | Production | 生产 |
+| 在庫 | Inventory | 库存 |
 | 出荷 | Shipping | 出货 |
 | 請求 | Billing | 请款 |
 | マスタ | Master data | 主数据 |
@@ -168,11 +169,11 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | PU03 | 素材入荷 | Material receipt | 材料到货 |
 | PU04 | 外注依頼 | Outsource order | 外协委托单 |
 | PD02 | 指示書 | Work order | 工单 |
-| PD04 | 在庫管理 | Inventory | 库存管理 |
+| ST01 | 在庫管理 | Inventory | 库存管理 |
 | PD05 | 未処理指示書 | Pending work orders | 未处理工单 |
 | PD06 | 設計図 | Drawing | 图纸 |
-| PD07 | 入出庫伝票 | Stock movement | 出入库单 |
-| PD08 | 棚卸 | Stocktaking | 盘点 |
+| ST04 | 入出庫伝票 | Stock movement | 出入库单 |
+| ST05 | 棚卸 | Stocktaking | 盘点 |
 | SH01 | 出荷書 | Delivery order | 出货单 |
 | SH02 | 納品書 | Delivery note | 送货单 |
 | SH03 | 未処理出荷書 | Pending shipments | 未处理出货 |

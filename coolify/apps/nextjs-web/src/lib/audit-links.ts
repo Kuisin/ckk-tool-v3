@@ -85,13 +85,13 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
   product_inventory: {
     appListKey: "inventory",
     suffixKey: "suffixProduct",
-    listPath: "/production/inventory/products",
+    listPath: "/inventory/products",
     directDetail: true,
   },
   material_inventory: {
     appListKey: "inventory",
     suffixKey: "suffixMaterial",
-    listPath: "/production/inventory/materials",
+    listPath: "/inventory/materials",
     directDetail: true,
   },
   // 一般
@@ -136,12 +136,12 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
   },
   inventory_movements: {
     appListKey: "inventory-movements",
-    listPath: "/production/inventory/movements",
+    listPath: "/inventory/movements",
     directDetail: true,
   },
   stock_takes: {
     appListKey: "stock-takes",
-    listPath: "/production/stock-takes",
+    listPath: "/inventory/stock-takes",
     directDetail: true,
   },
   delivery_notes: {
