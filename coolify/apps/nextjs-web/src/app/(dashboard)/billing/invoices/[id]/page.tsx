@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
 import { InvoiceDetail } from "@/components/billing/invoices/InvoiceDetail";
 import { appLabelForKey } from "@/lib/app-list";
+import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
+import { loadChargeItemOptions } from "@/lib/charge-items";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
 import { isIssued, pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
@@ -40,10 +43,11 @@ export default async function BillingInvoicesDetailPage({
   const key = parseDocKey(decodeURIComponent(id), "INV");
   if (!key) notFound();
 
+  const number = formatDocNumber("INV", key);
   const [invoice, auditEntries, memos] = await Promise.all([
     fetchInvoice(key),
-    fetchAuditEntries("invoices", formatDocNumber("INV", key)),
-    listMemos("invoices", formatDocNumber("INV", key)),
+    fetchAuditEntries("invoices", number),
+    listMemos("invoices", number),
   ]);
   if (!invoice) notFound();
 
@@ -52,9 +56,35 @@ export default async function BillingInvoicesDetailPage({
     ? await storedPdfMeta(pdfStorageKey.invoice(invoice.invoiceNumber))
     : null;
 
+  // 承認は 2 か所（§9） — DRAFT なら発行前承認、SENT なら入金前承認。
+  // どちらでもなければ承認の出番が無い（ISSUED / PAID）。
+  const approvalType =
+    invoice.status === "DRAFT"
+      ? "invoices"
+      : invoice.status === "SENT"
+        ? "invoice_payments"
+        : null;
+  const [approval, approvalTrail] = approvalType
+    ? await Promise.all([
+        fetchApprovalState(approvalType, number),
+        fetchApprovalTrail(approvalType, number),
+      ])
+    : [null, []];
+
+  // 追加費用（§9） — 料金マスタの選択肢と、下書きだけ編集できるの判定。
+  const locale = await getServerLocale();
+  const [chargeItems, chargeAuthz] = await Promise.all([
+    loadChargeItemOptions(locale),
+    checkPermission("invoice", "UPDATE"),
+  ]);
+
   return (
     <InvoiceDetail
+      approval={approval}
+      approvalTrail={approvalTrail}
       auditEntries={auditEntries}
+      canEditCharges={chargeAuthz.ok && invoice.status === "DRAFT"}
+      chargeItems={chargeItems}
       invoice={invoice}
       memos={memos}
       pdfMeta={pdfMeta}

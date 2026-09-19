@@ -97,12 +97,6 @@ export async function fetchOrderAcceptance(
       sourceFile: { select: { filename: true, mimeType: true } },
       customerBp: { select: { name: true } },
       customerBranchBp: { select: { name: true } },
-      shipToBp: { select: { name: true } },
-      endUserBp: { select: { name: true } },
-      assignedPlant: { select: { code: true, name: true } },
-      shippingWorkLocation: {
-        select: { name: true, group: { select: { name: true } } },
-      },
       salesRep: { select: { id: true, displayName: true } },
       createdByUser: { select: { displayName: true } },
       // キャンセル → 作り直し の紐付け（両向き）。
@@ -115,6 +109,13 @@ export async function fetchOrderAcceptance(
         include: {
           // 品目統合 第 2 段 C — 表示は品目側から読む。
           item: { select: { name: true, yearMonth: true, seq: true } },
+          // 配送（§8）— 明細ごとに持つ。
+          shipToBp: { select: { name: true } },
+          endUserBp: { select: { name: true } },
+          assignedPlant: { select: { code: true, name: true } },
+          shippingWorkLocation: {
+            select: { name: true, group: { select: { name: true } } },
+          },
           // 明細に割り当てられた指示書（分割・統合の割当数を表に出す）。
           workOrderLinks: {
             orderBy: { sortOrder: "asc" },
@@ -196,6 +197,28 @@ export async function fetchOrderAcceptance(
     priceOverridden: it.priceOverridden,
     deliveryDate: it.deliveryDate?.toISOString().slice(0, 10) ?? null,
     notes: it.notes,
+    // 配送（§8）— 明細ごとに持つ。
+    shipToBpId: it.shipToBpId,
+    shipToName: it.shipToBp
+      ? localized(it.shipToBp.name as LocalizedText | null)
+      : null,
+    deliveryMethod: it.deliveryMethod,
+    endUserBpId: it.endUserBpId,
+    endUserName: it.endUserBp
+      ? localized(it.endUserBp.name as LocalizedText | null)
+      : null,
+    assignedPlantId:
+      it.assignedPlantId != null ? String(it.assignedPlantId) : null,
+    assignedPlantName: it.assignedPlant
+      ? `${it.assignedPlant.code} ${localized(it.assignedPlant.name as LocalizedText | null)}`
+      : null,
+    shippingWorkLocationId:
+      it.shippingWorkLocationId != null
+        ? String(it.shippingWorkLocationId)
+        : null,
+    shippingWorkLocationName: it.shippingWorkLocation
+      ? `${localized(it.shippingWorkLocation.group.name as LocalizedText | null)} / ${localized(it.shippingWorkLocation.name as LocalizedText | null)}`
+      : null,
   }));
 
   // 顧客が決まっていない取込は、その場でもう一度突合して**候補**を出す
@@ -246,27 +269,8 @@ export async function fetchOrderAcceptance(
     customerBranchName: r.customerBranchBp
       ? localized(r.customerBranchBp.name as LocalizedText | null)
       : null,
-    shipToBpId: r.shipToBpId,
-    shipToName: r.shipToBp
-      ? localized(r.shipToBp.name as LocalizedText | null)
-      : null,
-    deliveryMethod: r.deliveryMethod,
-    endUserBpId: r.endUserBpId,
-    endUserName: r.endUserBp
-      ? localized(r.endUserBp.name as LocalizedText | null)
-      : null,
-    assignedPlantId:
-      r.assignedPlantId != null ? String(r.assignedPlantId) : null,
-    assignedPlantName: r.assignedPlant
-      ? `${r.assignedPlant.code} ${localized(r.assignedPlant.name as LocalizedText | null)}`
-      : null,
-    shippingWorkLocationId:
-      r.shippingWorkLocationId != null
-        ? String(r.shippingWorkLocationId)
-        : null,
-    shippingWorkLocationName: r.shippingWorkLocation
-      ? `${localized(r.shippingWorkLocation.group.name as LocalizedText | null)} / ${localized(r.shippingWorkLocation.name as LocalizedText | null)}`
-      : null,
+    // 出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所は
+    // items（明細）が持つ（§8）。
     customerProvidesDeliveryNote: r.customerProvidesDeliveryNote,
     customerSuggestions: customerSuggestions.map((c) => ({
       id: c.id,

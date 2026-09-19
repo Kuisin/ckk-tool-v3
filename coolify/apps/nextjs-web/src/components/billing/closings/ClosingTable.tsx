@@ -3,12 +3,15 @@
 /**
  * ClosingTable — 締日処理 一覧 (BL02, design.md §8.1 / §14).
  *
- * Columns: 顧客 / 締日 / 合計金額 / 状態 / 処理日。行クリック → 詳細。
- * ヘッダアクション「締日処理を実行」— 対象月（年・月 Select）を選んで
- * runClosing(yearMonth) を実行し、未請求出荷から PENDING 行を作成/更新する。
+ * Columns: 顧客 / 締日 / 実行区分 / 合計金額 / 状態 / 処理日。行クリック → 詳細。
+ * ヘッダアクション「締日処理を実行」— **指定日**（既定 = 今日）を選んで
+ * runClosing(dateIso) を実行する。指定日までに締日が到来し、まだ締めていない
+ * 顧客すべての未請求出荷から PENDING 行を作り、締日を過ぎている行はそのまま
+ * 請求書（下書き）まで作る（§9 更新 — 旧・月選択の実行はここで置き換わった）。
  */
 
 import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
+import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import {
   IconCalendarDue,
@@ -37,7 +40,21 @@ import { type BillingClosing, isProcessable } from "./model";
 
 const BASE_PATH = "/billing/closings";
 
-/** 「締日処理を実行」モーダル — 対象月を選んで runClosing。 */
+/** "YYYY-MM-DD" → ローカル日時の Date（DatePickerInput の value 用）。 */
+function dateFromIso(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+/** Date → "YYYY-MM-DD"（ローカル日時のまま、UTC に変換しない）。 */
+function isoFromDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** 「締日処理を実行」モーダル — 指定日（既定 = 今日）を選んで runClosing。 */
 function RunClosingModal({
   opened,
   onClose,
@@ -47,34 +64,17 @@ function RunClosingModal({
 }) {
   const tr = useTranslations();
   const router = useRouter();
-
-  /** 対象月の選択肢 — 前年〜当年（実行は過去月が主）。 */
-  const yearOptions = (): { value: string; label: string }[] => {
-    const current = new Date().getFullYear();
-    return [current - 1, current].map((y) => ({
-      value: String(y),
-      label: tr("billing.closingTable.yearLabel", { year: y }),
-    }));
-  };
-
-  const monthOptions = Array.from({ length: 12 }, (_, i) => ({
-    value: String(i + 1).padStart(2, "0"),
-    label: tr("billing.closingTable.monthLabel", { month: i + 1 }),
-  }));
   const [isPending, startTransition] = useTransition();
-  const now = new Date();
-  // 対象月は URL に保持（既定 = 当年・当月のときはパラメータ省略）
-  const [year, setYear] = useUrlStringState("year", String(now.getFullYear()));
-  const [month, setMonth] = useUrlStringState(
-    "month",
-    String(now.getMonth() + 1).padStart(2, "0"),
-  );
+  const todayIso = isoFromDate(new Date());
+  // 指定日は URL に保持（既定 = 今日のときはパラメータ省略）
+  const [dateIso, setDateIso] = useUrlStringState("date", todayIso);
 
   const execute = () => {
     startTransition(async () => {
-      const result = await runClosing(`${year}${month}`);
+      const result = await runClosing(dateIso);
       if (result.ok) {
-        const { created, updated, skipped } = result.data;
+        const { created, updated, skipped, invoiceNumbers, failures } =
+          result.data;
         notifications.show({
           title: tr("billing.closings.theBillingClosingWasRun"),
           message:
@@ -84,10 +84,28 @@ function RunClosingModal({
             }) +
             (skipped > 0
               ? ` / ${tr("billing.closingTable.skippedCount", { skipped })}`
+              : "") +
+            (invoiceNumbers.length > 0
+              ? ` / ${tr("billing.closings.invoicesWereGenerated", { count: invoiceNumbers.length })}`
               : ""),
           color: "green",
         });
+        if (failures.length > 0) {
+          notifications.show({
+            title: tr("billing.closings.someCouldNotBeProcessed", {
+              count: failures.length,
+            }),
+            message: failures
+              .map((f) => `${f.customerName}: ${f.error}`)
+              .join(" / "),
+            color: "red",
+            autoClose: false,
+          });
+        }
         onClose();
+        router.push(
+          invoiceNumbers.length > 0 ? "/billing/invoices" : BASE_PATH,
+        );
         router.refresh();
       } else {
         notifications.show({
@@ -109,25 +127,15 @@ function RunClosingModal({
       size="sm"
       title={tr("billing.closings.runTheBillingClosing")}
     >
-      <Text size="sm">
-        {tr("billing.closings.aggregatesTheMonthSUnbilledShipments")}
+      <Text mb="sm" size="sm">
+        {tr("billing.closings.aggregatesUnbilledShipmentsUpToDate")}
       </Text>
-      <Group grow>
-        <Select
-          allowDeselect={false}
-          data={yearOptions()}
-          label={tr("billing.closings.years")}
-          onChange={(v) => v && setYear(v)}
-          value={year}
-        />
-        <Select
-          allowDeselect={false}
-          data={monthOptions}
-          label={tr("billing.closings.months")}
-          onChange={(v) => v && setMonth(v)}
-          value={month}
-        />
-      </Group>
+      <DatePickerInput
+        label={tr("billing.closings.targetDate")}
+        onChange={(v) => v && setDateIso(isoFromDate(v as unknown as Date))}
+        value={dateFromIso(dateIso) as never}
+        valueFormat="YYYY/MM/DD"
+      />
     </ModalShell>
   );
 }
@@ -221,6 +229,12 @@ export function ClosingTable({
     });
   };
 
+  /** 実行区分の表示ラベル（定期 / 手動）。 */
+  const kindLabel = (kind: BillingClosing["kind"]) =>
+    kind === "MANUAL"
+      ? tr("billing.closings.kindManual")
+      : tr("billing.closings.kindScheduled");
+
   const columns: Column<BillingClosing>[] = [
     {
       key: "customerName",
@@ -237,6 +251,17 @@ export function ClosingTable({
       render: (c) => (
         <Text className="tabular-nums" size="sm">
           {fmt.date(c.closingDate)}
+        </Text>
+      ),
+    },
+    {
+      key: "kind",
+      header: tr("billing.closings.kind"),
+      width: 90,
+      sortValue: (c) => c.kind,
+      render: (c) => (
+        <Text c="dimmed" size="sm">
+          {kindLabel(c.kind)}
         </Text>
       ),
     },
@@ -330,6 +355,8 @@ export function ClosingTable({
               </Text>
               <Text c="dimmed" size="xs">
                 {tr("common.closingDay")}: {fmt.date(c.closingDate)}
+                {" · "}
+                {kindLabel(c.kind)}
               </Text>
               <Group gap="md" mt={2}>
                 <MoneyText ta="left" value={c.totalAmount} />

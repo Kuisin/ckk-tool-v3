@@ -31,7 +31,6 @@ import {
   Grid,
   Group,
   Paper,
-  Select,
   Stack,
   Table,
   Tabs,
@@ -64,9 +63,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useState, useTransition } from "react";
 import {
   searchCustomerOptions,
-  searchEndUserOptions,
   searchQuoteOptions,
-  searchShipToOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   approveAcceptance,
@@ -132,7 +129,6 @@ import { useIsMobile } from "@/hooks/useViewport";
 import type { MemoView } from "@/lib/document-memos";
 import {
   acceptanceDeliveryMethodLabel,
-  acceptanceDeliveryMethodOptions,
   orderTypeLabel,
 } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
@@ -142,7 +138,6 @@ import type { PendingAcceptanceCancelView } from "@/lib/order-acceptance-cancel"
 import {
   acceptanceReadiness,
   readinessSummary,
-  shipToApplies,
 } from "@/lib/order-acceptance-readiness";
 import {
   acceptanceTotals,
@@ -257,7 +252,12 @@ export function OrderAcceptanceDetail({
    * 畳むと左は細い帯（span="content"）になり、右が残り全部（span="auto"）を
    * 取る — 明細エディタは 1 行に 5 欄あるので、この差で折り返しが消える。
    */
-  const [docCollapsed, setDocCollapsed] = useState(false);
+  // 手入力（取込元ファイルが無い）ときは畳んで開く — 空の枠が右の幅を
+  // 食っているだけなので。畳むかどうかは利用者が後から自由に変えられる
+  // （useState の初期値なので、この既定は開閉の操作と喧嘩しない）。
+  const [docCollapsed, setDocCollapsed] = useState(
+    () => !acceptance.sourceFilename,
+  );
   const isMobile = useIsMobile();
   // モバイルは縦積み（書類はペイン内の折りたたみ）— 帯にはしない。
   const railed = docCollapsed && !isMobile;
@@ -389,8 +389,6 @@ export function OrderAcceptanceDetail({
   const readiness = acceptanceReadiness(
     {
       customerBpId: a.customerBpId,
-      deliveryMethod: a.deliveryMethod,
-      endUserBpId: a.endUserBpId,
       items: a.items,
     },
     tr,
@@ -938,29 +936,11 @@ export function OrderAcceptanceDetail({
                     label={tr("common.salesRep")}
                     value={a.salesRepName}
                   />
-                  <FieldValue
-                    label={tr("sales.orderAcceptances.shipTo")}
-                    value={a.shipToName}
-                  />
-                  <FieldValue
-                    label={tr("sales.orderAcceptances.deliveryMethod")}
-                    value={acceptanceDeliveryMethodLabel(
-                      a.deliveryMethod,
-                      locale,
-                    )}
-                  />
-                  <FieldValue
-                    label={tr("sales.orderAcceptances.endUser")}
-                    value={a.endUserName}
-                  />
-                  <FieldValue
-                    label={tr("sales.orderAcceptances.assignedSite")}
-                    value={a.assignedPlantName}
-                  />
-                  <FieldValue
-                    label={tr("sales.orderAcceptances.shippingWorkLocation")}
-                    value={a.shippingWorkLocationName}
-                  />
+                  {/*
+                    出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所は
+                    明細ごとに持つ（§8）— ヘッダの要約には出さない。明細表
+                    （下の「明細」タブ）の各行に出る。
+                  */}
                   <FieldValue
                     label={tr(
                       "sales.orderAcceptances.customerProvidesDeliveryNote",
@@ -1098,6 +1078,9 @@ export function OrderAcceptanceDetail({
                           </Table.Th>
                           <Table.Th ta="right">{tr("common.amount")}</Table.Th>
                           <Table.Th>{tr("common.deliveryDate")}</Table.Th>
+                          <Table.Th>
+                            {tr("sales.orderAcceptances.deliveryDestination")}
+                          </Table.Th>
                           <Table.Th>{tr("common.notes")}</Table.Th>
                         </Table.Tr>
                       </Table.Thead>
@@ -1263,6 +1246,43 @@ export function OrderAcceptanceDetail({
                                 {fmt.date(it.deliveryDate)}
                               </Table.Td>
                               <Table.Td>
+                                {/* 届け先（§8）— 通常配送は出荷先、
+                                    ユーザー直送はエンドユーザーを出す
+                                    （両方を書くと届け先が 2 つある書類に見える
+                                    ため、配送方法で出し分ける）。 */}
+                                {it.deliveryMethod === "DIRECT_TO_USER" ? (
+                                  <Group gap={4} wrap="nowrap">
+                                    <Badge
+                                      color="violet"
+                                      size="xs"
+                                      variant="light"
+                                    >
+                                      {acceptanceDeliveryMethodLabel(
+                                        it.deliveryMethod,
+                                        locale,
+                                      )}
+                                    </Badge>
+                                    {it.endUserName ? (
+                                      <Text size="xs">{it.endUserName}</Text>
+                                    ) : (
+                                      <Badge
+                                        color="orange"
+                                        size="xs"
+                                        variant="light"
+                                      >
+                                        {tr("common.notIdentified")}
+                                      </Badge>
+                                    )}
+                                  </Group>
+                                ) : it.shipToName ? (
+                                  <Text size="xs">{it.shipToName}</Text>
+                                ) : (
+                                  <Text c="dimmed" size="xs">
+                                    —
+                                  </Text>
+                                )}
+                              </Table.Td>
+                              <Table.Td>
                                 <Text c="dimmed" size="xs">
                                   {it.notes ?? "—"}
                                 </Text>
@@ -1299,7 +1319,7 @@ export function OrderAcceptanceDetail({
                             <Table.Th ta="right">
                               <MoneyText fw={700} value={totals.amount} />
                             </Table.Th>
-                            <Table.Th colSpan={2} />
+                            <Table.Th colSpan={3} />
                           </Table.Tr>
                         </Table.Tfoot>
                       )}
@@ -1574,7 +1594,6 @@ function DraftEditor({
   workLocationOptions: { value: string; label: string }[];
 }) {
   const tr = useTranslations();
-  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const a = acceptance;
@@ -1592,18 +1611,8 @@ function DraftEditor({
       : null,
   );
   const [salesRepId, setSalesRepId] = useState<string | null>(a.salesRepId);
-  const [shipToBpId, setShipToBpId] = useState<string | null>(a.shipToBpId);
-  const [deliveryMethod, setDeliveryMethod] = useState<
-    "NORMAL" | "DIRECT_TO_USER"
-  >(a.deliveryMethod);
-  const [endUserBpId, setEndUserBpId] = useState<string | null>(a.endUserBpId);
-  const [endUserError, setEndUserError] = useState<string | null>(null);
-  const [assignedPlantId, setAssignedPlantId] = useState<string | null>(
-    a.assignedPlantId,
-  );
-  const [shippingWorkLocationId, setShippingWorkLocationId] = useState<
-    string | null
-  >(a.shippingWorkLocationId);
+  // 出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所はヘッダに無い
+  // — 明細ごと（items — §8）。
   const [customerProvidesDeliveryNote, setCustomerProvidesDeliveryNote] =
     useState(a.customerProvidesDeliveryNote);
   const [customerOrderRef, setCustomerOrderRef] = useState(
@@ -1625,11 +1634,6 @@ function DraftEditor({
   const fingerprint = JSON.stringify([
     customerId,
     salesRepId,
-    shipToBpId,
-    deliveryMethod,
-    endUserBpId,
-    assignedPlantId,
-    shippingWorkLocationId,
     customerProvidesDeliveryNote,
     customerOrderRef,
     quoteNumber,
@@ -1643,21 +1647,12 @@ function DraftEditor({
   const isDirty = fingerprint !== initialFingerprint;
 
   const save = () => {
-    if (deliveryMethod === "DIRECT_TO_USER" && !endUserBpId) {
-      setEndUserError(tr("common.selectAnEndUserForDirect"));
-      return;
-    }
+    // 配送（出荷先・配送方法・エンドユーザー等）の必須チェックは行ごと
+    // （lineRefsError — サーバー側）に任せる。エラーは行番号つきで返る。
     startTransition(async () => {
       const result = await saveDraft(a.number, {
         customerBpId: customerId,
         salesRepId,
-        shipToBpId,
-        deliveryMethod,
-        endUserBpId,
-        assignedPlantId: assignedPlantId ? Number(assignedPlantId) : null,
-        shippingWorkLocationId: shippingWorkLocationId
-          ? Number(shippingWorkLocationId)
-          : null,
         customerProvidesDeliveryNote,
         customerOrderRef: customerOrderRef || null,
         quoteNumber: quoteNumber || null,
@@ -1795,102 +1790,11 @@ function DraftEditor({
               valueFormat="YYYY/MM/DD"
             />
           </Group>
+          {/*
+            出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所は
+            ヘッダに無い — 明細ごと（§8、下の明細セクションの「配送」節）。
+          */}
           <Group align="flex-end" gap="sm" grow preventGrowOverflow={false}>
-            {/* 出荷先は顧客と異なり得る（支店渡しなど）— 通常配送のときだけの欄。
-                ユーザー直送の届け先はエンドユーザーなので灰色にする。 */}
-            <SearchSelect
-              clearable
-              description={
-                shipToApplies(deliveryMethod)
-                  ? undefined
-                  : tr("sales.orderAcceptances.shipToOnlyForNormalDelivery")
-              }
-              disabled={!shipToApplies(deliveryMethod)}
-              initialOption={
-                a.shipToBpId && a.shipToName
-                  ? { value: a.shipToBpId, label: a.shipToName }
-                  : null
-              }
-              label={
-                <HelpLabel {...fieldHelp(tr, "orderAcceptance", "shipTo")} />
-              }
-              onChange={setShipToBpId}
-              onSearch={searchShipToOptions}
-              placeholder={tr("common.searchShipToOptional")}
-              storageKey="ship-to"
-              value={shipToBpId}
-            />
-            {/* 配送方法 — 出荷書は同じ出荷先×配送方法の明細だけを束ねられる。 */}
-            <Select
-              allowDeselect={false}
-              data={acceptanceDeliveryMethodOptions(locale)}
-              label={
-                <HelpLabel
-                  {...fieldHelp(tr, "orderAcceptance", "deliveryMethod")}
-                />
-              }
-              onChange={(v) => {
-                const next = (v as "NORMAL" | "DIRECT_TO_USER") ?? "NORMAL";
-                setDeliveryMethod(next);
-                // 直送に切り替えたら出荷先は捨てる（保存側も落とす）。
-                if (!shipToApplies(next)) setShipToBpId(null);
-                if (next !== "DIRECT_TO_USER") setEndUserError(null);
-              }}
-              value={deliveryMethod}
-              withAsterisk
-            />
-            {/* エンドユーザー — 直送では必須、通常配送でも記録用に任意で選べる。 */}
-            <SearchSelect
-              clearable
-              error={endUserError}
-              initialOption={
-                a.endUserBpId && a.endUserName
-                  ? { value: a.endUserBpId, label: a.endUserName }
-                  : null
-              }
-              label={
-                <HelpLabel {...fieldHelp(tr, "orderAcceptance", "endUser")} />
-              }
-              onChange={(v) => {
-                setEndUserBpId(v);
-                if (v) setEndUserError(null);
-              }}
-              onSearch={searchEndUserOptions}
-              placeholder={
-                deliveryMethod === "DIRECT_TO_USER"
-                  ? tr("common.searchEndUsers")
-                  : tr("common.searchEndUsersOptional")
-              }
-              storageKey="end-user"
-              value={endUserBpId}
-              withAsterisk={deliveryMethod === "DIRECT_TO_USER"}
-            />
-            <Select
-              clearable
-              data={plantOptions}
-              label={
-                <HelpLabel
-                  {...fieldHelp(tr, "orderAcceptance", "assignedPlant")}
-                />
-              }
-              onChange={setAssignedPlantId}
-              placeholder={tr("common.selectASiteOptional")}
-              searchable
-              value={assignedPlantId}
-            />
-            <Select
-              clearable
-              data={workLocationOptions}
-              label={
-                <HelpLabel
-                  {...fieldHelp(tr, "orderAcceptance", "shippingWorkLocation")}
-                />
-              }
-              onChange={setShippingWorkLocationId}
-              placeholder={tr("common.selectAWorkLocationOptional")}
-              searchable
-              value={shippingWorkLocationId}
-            />
             <Checkbox
               checked={customerProvidesDeliveryNote}
               label={
@@ -1937,7 +1841,9 @@ function DraftEditor({
         <OrderAcceptanceItemsEditor
           items={items}
           onChange={setItems}
+          plantOptions={plantOptions}
           priceContext={priceContext}
+          workLocationOptions={workLocationOptions}
         />
       </FormSection>
 

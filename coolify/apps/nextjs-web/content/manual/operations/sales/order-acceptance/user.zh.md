@@ -183,11 +183,6 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 | [客户订单号](#field-customer-order-ref) | 选填 | 客户方订单上的编号 |
 | [报价单](#field-quote-number) | 选填 | 对应的报价单 |
 | [订单日期](#field-order-date) | 选填 | 客户下单的日期 |
-| [发货目的地](#field-ship-to) | 选填（仅常规配送） | 产品的送达地点 |
-| [配送方式](#field-delivery-method) | 必填 | 普通配送 / 直送最终用户 |
-| [最终用户](#field-end-user) | 直送时必填 | 直送时的实际送达对象（最终需要方） |
-| [负责据点](#field-assigned-plant) | 选填 | 处理这笔订单的据点 |
-| [发货作业场所](#field-shipping-work-location) | 选填 | 进行发货作业的场所 |
 | [客户自备送货单](#field-customer-provides-delivery-note) | 选填 | 客户是否自备送货单的提示 |
 | [备注](#field-notes) | 选填 | 对整份受理书的补充 |
 | [产品](#field-product) | 必填 | 所订购的产品 |
@@ -196,7 +191,14 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 | [数量](#field-quantity) | 必填 | 订购的数量 |
 | [单价](#field-unit-price) | 必填 | 每支的价格 |
 | [交期](#field-delivery-date) | 选填 | 各明细的交期 |
+| [发货目的地](#field-ship-to) | 选填（仅常规配送） | 该明细的送达地点 |
+| [配送方式](#field-delivery-method) | 必填 | 普通配送 / 直送最终用户（按明细） |
+| [最终用户](#field-end-user) | 直送时必填 | 直送时的实际送达对象（最终需要方，按明细） |
+| [负责据点](#field-assigned-plant) | 选填 | 处理该明细的据点 |
+| [发货作业场所](#field-shipping-work-location) | 选填 | 进行发货作业的场所（按明细） |
 | [明细备注](#field-item-notes) | 选填 | 仅针对该明细的补充 |
+
+**发货目的地・配送方式・最终用户・负责据点・发货作业场所都是按明细设置的项目。** 有些订单在同一份单据中，行与行的送达地点并不相同，所以配送信息不是设在受理书整体，而是逐行设置。默认收纳在折叠的「配送」栏内，一旦填入值就会自动展开。如果多行送达地点相同，只需填好第 1 行，再点「**将第 1 行的配送应用到全部行**」即可一次性套用到其余行。
 
 ### 客户 [#field-customer]
 
@@ -217,28 +219,6 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 ### 订单日期 [#field-order-date]
 
 客户下单的日期。填写订单上记载的日期。
-
-### 发货目的地 [#field-ship-to]
-
-产品的送达地点。要送到**与下单客户不同的公司・分店**时选择。留空则表示送到该客户处。
-
-此栏**仅用于常规配送**。把配送方式改为「直送最终用户」后会变灰、无法选择 —— 直送的送达对象是[最终用户](#field-end-user)，一份单据不应有两个送达对象。切换为直送时，之前选择的发货目的地会被清除。
-
-### 配送方式 [#field-delivery-method]
-
-产品的送达方式。**普通配送**送到下单客户（或指定的发货目的地）。**直送最终用户**则直接发给最终用户。一份发货单只能汇总**同一客户・同一发货目的地・同一配送方式**的订单明细，因此这里的选择决定了发货的合并方式。
-
-### 最终用户 [#field-end-user]
-
-实际送达对象（最终需要方）。**选择直送时为必填**，普通配送时也可作为记录选填。从登记为最终需要方的往来单位中选择。
-
-### 负责据点 [#field-assigned-plant]
-
-主要处理这笔订单的本公司据点。想明确这是哪个据点的工作时选择。
-
-### 发货作业场所 [#field-shipping-work-location]
-
-进行发货作业（包装、装车等）的场所。从[作业场所](/manual/zh/operations/masters/work-location/user)主数据中选择。
 
 ### 客户自备送货单 [#field-customer-provides-delivery-note]
 
@@ -278,7 +258,29 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 
 ### 交期 [#field-delivery-date]
 
-该明细的交期。明细未指定时，采用表头的希望交期。
+该明细的交期。按行逐一设置（没有整份受理书共用的默认交期）。
+
+### 发货目的地 [#field-ship-to]
+
+该明细的送达地点。要送到**与下单客户不同的公司・分店**时选择。留空则表示送到该客户处。
+
+此栏**仅用于常规配送**。把该行的配送方式改为「直送最终用户」后会变灰、无法选择 —— 直送的送达对象是[最终用户](#field-end-user)，一行不应有两个送达对象。切换为直送时，之前选择的发货目的地会被清除。
+
+### 配送方式 [#field-delivery-method]
+
+该明细产品的送达方式。**普通配送**送到下单客户（或指定的发货目的地）。**直送最终用户**则直接发给最终用户。一份发货单只能汇总**同一客户・同一发货目的地・同一配送方式**的订单明细，因此这里的选择决定了发货的合并方式。
+
+### 最终用户 [#field-end-user]
+
+该明细实际的送达对象（最终需要方）。**选择直送时为必填**，普通配送时也可作为记录选填。从登记为最终需要方的往来单位中选择。
+
+### 负责据点 [#field-assigned-plant]
+
+主要处理该明细的本公司据点。想明确这是哪个据点的工作时选择。
+
+### 发货作业场所 [#field-shipping-work-location]
+
+进行该明细发货作业（包装、装车等）的场所。从[作业场所](/manual/zh/operations/masters/work-location/user)主数据中选择。
 
 ### 明细备注 [#field-item-notes]
 

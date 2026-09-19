@@ -112,6 +112,21 @@ export interface OrderAcceptanceItemView {
   priceOverridden: boolean;
   deliveryDate: string | null; // yyyy-mm-dd
   notes: string | null;
+  // ── 配送（§8）— 明細ごとに持つ。ヘッダには無い ──
+  /** 出荷先（顧客と異なり得る取引先。任意）。 */
+  shipToBpId: string | null;
+  shipToName: string | null;
+  /** 配送方法（通常配送 / ユーザー直送）。 */
+  deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
+  /** エンドユーザー（最終需要家）— ユーザー直送では必須。 */
+  endUserBpId: string | null;
+  endUserName: string | null;
+  /** 担当拠点（この明細を処理する拠点。任意。id は Select 向けに文字列化）。 */
+  assignedPlantId: string | null;
+  assignedPlantName: string | null;
+  /** 出荷作業場所（作業場所マスタ MS0D。任意。id は Select 向けに文字列化）。 */
+  shippingWorkLocationId: string | null;
+  shippingWorkLocationName: string | null;
 }
 
 /** 明細に割り当てられた指示書 1 件（表示用）。 */
@@ -169,20 +184,8 @@ export interface OrderAcceptanceView {
   /** 営業担当（作成時に顧客の主担当を複写したスナップショット）。 */
   salesRepId: string | null;
   salesRepName: string | null;
-  /** 出荷先（顧客と異なり得る取引先。任意）。 */
-  shipToBpId: string | null;
-  shipToName: string | null;
-  /** 配送方法（通常配送 / ユーザー直送）。 */
-  deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
-  /** エンドユーザー（最終需要家）— ユーザー直送では必須。 */
-  endUserBpId: string | null;
-  endUserName: string | null;
-  /** 担当拠点（任意。id は Select 向けに文字列化）。 */
-  assignedPlantId: string | null;
-  assignedPlantName: string | null;
-  /** 出荷作業場所（作業場所マスタ MS0D。任意。id は Select 向けに文字列化）。 */
-  shippingWorkLocationId: string | null;
-  shippingWorkLocationName: string | null;
+  // 出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所は
+  // OrderAcceptanceItemView（明細）が持つ（§8）— ヘッダには無い。
   /**
    * 顧客が自前の納品書（バーコード印字など）を用意しているか。true のときは
    * 自社発行の納品書に添える運用の目印（出荷準備担当への注意喚起）。

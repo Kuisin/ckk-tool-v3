@@ -807,7 +807,9 @@
     "dateTo": "To date",
     "billTo": "Bill-to",
     "stockTake": "Stocktaking",
-    "stockMovement": "Stock movement"
+    "stockMovement": "Stock movement",
+    "invoicePayment": "Invoice payment",
+    "notPendingApproval": "Not currently pending approval"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -2065,7 +2067,6 @@
       "confirmGeneratingInvoices": "Confirm generating invoices",
       "theBillingClosingWasRun": "The billing closing was run",
       "runTheBillingClosing": "Run the billing closing",
-      "aggregatesTheMonthSUnbilledShipments": "Aggregates the month's unbilled shipments (shipped, dispatch only) per customer and creates closing rows.",
       "years": "years",
       "months": "months",
       "runTheBillingClosing2": "Run the billing closing",
@@ -2089,7 +2090,12 @@
       "selectPendingPastClosingDate": "Select rows that are unprocessed and past their closing date",
       "invoicesWereGenerated": "Generated {count} invoice(s)",
       "someCouldNotBeProcessed": "{count} could not be generated",
-      "skippedNotReady": "{count} skipped (already processed, or before the closing date)"
+      "skippedNotReady": "{count} skipped (already processed, or before the closing date)",
+      "aggregatesUnbilledShipmentsUpToDate": "Aggregates unbilled shipments (shipped, dispatch only) per customer whose closing date has arrived by the target date and has not yet been closed, and generates a draft invoice for closings already past their closing date.",
+      "targetDate": "Target date",
+      "kind": "Run type",
+      "kindScheduled": "Scheduled",
+      "kindManual": "Manual"
     },
     "invoices": {
       "issueThePdf": "Issue the PDF",
@@ -2120,7 +2126,21 @@
       "taxLabelExempt": "Consumption tax (exempt)",
       "taxLabelStandard": "Consumption tax (10%)",
       "accountingCsvAgain": "Accounting CSV (export again)",
-      "taxLabelRate": "Tax ({rate}%)"
+      "taxLabelRate": "Tax ({rate}%)",
+      "issueApprovalRejectedHelp": "Issue approval was sent back. Review the manual charges and issue again.",
+      "paymentApprovalRejectedHelp": "Payment approval was sent back. Request it again from “Mark as paid”.",
+      "issueApprovalWaitingHelp": "Only members of this group can act.",
+      "paymentApprovalWaitingHelp": "Only members of this group can act.",
+      "paymentApprovalApproveHelp": "Recording this payment requires approval. Review it and approve.",
+      "issueApprovalApproveHelpWithCharges": "Includes {count} manually added charge(s) (total {amount}). Review before approving.",
+      "chargesClosedForEditing": "Additional charges can only be edited on a draft invoice",
+      "chargesSaveFailed": "Could not save the additional charges",
+      "chargesHelp": "Charges added manually to this invoice (chosen from the charge master only). Requires approval before issuing. Editable only while the invoice is a draft.",
+      "manualInvoiceHelp": "Select the customer to invoice now. Creates a draft invoice from currently unbilled shipments without waiting for a closing date.",
+      "unbilledShipments": "Unbilled shipments",
+      "noUnbilledShipmentsForCustomer": "No unbilled shipments",
+      "createInvoiceFromSelection": "Create invoice",
+      "someShipmentsNoLongerAvailable": "Some of the selected shipments are already used by another invoice. Please select again."
     },
     "invoiceDetail": {
       "confirmIssueMessage": "This issues invoice {invoiceNumber}. The issue date is recorded as today.",
@@ -2128,11 +2148,10 @@
       "confirmMarkSentMessage": "This marks invoice {invoiceNumber} as sent.",
       "markedSentWithNumber": "Marked invoice {invoiceNumber} as sent",
       "confirmMarkPaidMessage": "This marks invoice {invoiceNumber} as paid.",
-      "markedPaidWithNumber": "Marked invoice {invoiceNumber} as paid"
+      "markedPaidWithNumber": "Marked invoice {invoiceNumber} as paid",
+      "approvalRequestedMessage": "Approval requested (invoice {invoiceNumber})"
     },
     "closingTable": {
-      "yearLabel": "{year}",
-      "monthLabel": "Month {month}",
       "createdAndUpdatedCounts": "Created {created} / updated {updated}",
       "skippedCount": "Skipped {skipped} already processed"
     },
@@ -2143,17 +2162,35 @@
       "onlyIssuedCanMarkSent": "Only issued invoices can be marked sent",
       "markSentFailed": "Could not mark as sent",
       "onlySentCanMarkPaid": "Only sent invoices can be marked paid",
-      "markPaidFailed": "Could not mark as paid"
+      "markPaidFailed": "Could not mark as paid",
+      "awaitingIssueApproval": "Awaiting issue approval",
+      "approvalRequestFailed": "Could not create the approval request",
+      "approvalRequested": "Approval requested",
+      "awaitingPaymentApproval": "Awaiting payment approval",
+      "paymentApprovalRequested": "Payment approval requested"
     },
     "closingActions": {
       "closingDateNotReached": "Cannot process until the closing date has passed (from the day after)",
       "closingNotFound": "The billing closing was not found",
       "generateInvoiceFailed": "Could not generate the invoice",
-      "invalidYearMonth": "Invalid target month format (YYYYMM)",
       "itemNameWithLot": "{name} (Lot {lot})",
-      "noUnbilledShipmentsForMonth": "No unbilled shipments for the target month",
       "pendingOnly": "Only an unprocessed closing can generate an invoice",
-      "runFailed": "Could not run the billing closing"
+      "runFailed": "Could not run the billing closing",
+      "invalidDate": "Invalid target date format",
+      "noUnbilledShipmentsUpToDate": "No unbilled shipments up to the target date"
+    },
+    "invoiceTable": {
+      "manualInvoice": "Manual invoice",
+      "nothingToIssue": "No invoices can be issued",
+      "selectDraftInvoices": "Select draft invoices",
+      "issuedCount": "Issued {count}",
+      "nothingToMarkPaid": "No invoices can be marked as paid",
+      "selectSentInvoices": "Select sent invoices",
+      "paymentProcessedCount": "Processed payment for {count}",
+      "nothingToApprove": "No invoices can be approved",
+      "selectPendingApprovalInvoices": "Select invoices pending approval",
+      "approvedCount": "Approved {count}",
+      "rejectedCount": "Sent back {count}"
     }
   },
   "general": {
@@ -7364,6 +7401,7 @@
       "endUser": "End user",
       "assignedSite": "Assigned site",
       "shippingWorkLocation": "Shipping work location",
+      "deliveryDestination": "Destination",
       "linesTotalQuantity": "Lines / total quantity",
       "expandedAt": "Expanded at",
       "workOrdersAllocated": "Work orders (allocated)",
@@ -7784,7 +7822,9 @@
       "priceListPriceWithTier": "Price list {price} ({tier})",
       "fromPriceList": "From the price list",
       "willReplaceWithList": "{entered} will be replaced by the price list unit price on save",
-      "overriddenFromList": "Overridden (price list {expected})"
+      "overriddenFromList": "Overridden (price list {expected})",
+      "delivery": "Delivery",
+      "applyLineOneDeliveryToAll": "Apply line 1\u2019s delivery to all lines"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "Deletes \"{label}\". This cannot be undone.",
@@ -7854,7 +7894,7 @@
       "confirmIssues": "Cannot confirm: {summary}",
       "createFailed": "Could not create the order acceptance",
       "createdManually": "Created by manual entry",
-      "directToUserRequiresEndUser": "Direct-to-end-user delivery requires specifying the end user",
+      "directToUserRequiresEndUser": "Line {rows}: Direct-to-end-user delivery requires specifying the end user",
       "endUserInvalid": "The end user's business partner does not exist or is disabled",
       "invalidNumber": "The order acceptance number is invalid",
       "notPendingApproval": "This order acceptance is not pending approval",
@@ -8006,7 +8046,7 @@
     },
     "orderAcceptanceReadiness": {
       "customerNotIdentified": "Customer not identified",
-      "directToUserButEndUserNot": "Direct to end user, but no end user specified",
+      "lineEndUserNotIdentified": "Line {rows}: End user not specified",
       "noLineItems": "There are no line items",
       "lineProductNotIdentified": "Line {rows}: Product not identified",
       "lineUnitPriceNotEntered": "Line {rows}: Unit price not entered",

@@ -807,7 +807,9 @@
     "dateTo": "结束日期",
     "billTo": "请款对象",
     "stockTake": "盘点",
-    "stockMovement": "出入库单"
+    "stockMovement": "出入库单",
+    "invoicePayment": "请款单入款",
+    "notPendingApproval": "目前不在待审批状态"
   },
   "shell": {
     "appsLabel": "应用",
@@ -2065,7 +2067,6 @@
       "confirmGeneratingInvoices": "确认生成请款单",
       "theBillingClosingWasRun": "已执行结算处理",
       "runTheBillingClosing": "执行结算处理",
-      "aggregatesTheMonthSUnbilledShipments": "按客户汇总对象月的未请款出货（已出货・仅发货），并创建结算日的处理行。",
       "years": "年",
       "months": "个月",
       "runTheBillingClosing2": "执行结算处理",
@@ -2089,7 +2090,12 @@
       "selectPendingPastClosingDate": "请选择未处理且已过结算日的行",
       "invoicesWereGenerated": "已生成 {count} 张请款单",
       "someCouldNotBeProcessed": "{count} 张未能生成",
-      "skippedNotReady": "{count} 项不在对象内（已处理或尚未到结算日）"
+      "skippedNotReady": "{count} 项不在对象内（已处理或尚未到结算日）",
+      "aggregatesUnbilledShipmentsUpToDate": "按客户汇总截至指定日期已到结算日且尚未结算的未请款出货（已出货・仅发货），并为已过结算日的部分直接生成请款单（草稿）。",
+      "targetDate": "指定日期",
+      "kind": "执行类别",
+      "kindScheduled": "定期",
+      "kindManual": "手动"
     },
     "invoices": {
       "issueThePdf": "发行 PDF",
@@ -2120,7 +2126,21 @@
       "taxLabelExempt": "消费税（免税）",
       "taxLabelStandard": "消费税（10%）",
       "accountingCsvAgain": "会计对接 CSV（重新导出）",
-      "taxLabelRate": "消费税（{rate}%）"
+      "taxLabelRate": "消费税（{rate}%）",
+      "issueApprovalRejectedHelp": "发行前审批已被退回。请重新检查手动追加的费用后再次发行。",
+      "paymentApprovalRejectedHelp": "入款审批已被退回。请再次从“标记为已入款”提交申请。",
+      "issueApprovalWaitingHelp": "仅该组成员可以操作。",
+      "paymentApprovalWaitingHelp": "仅该组成员可以操作。",
+      "paymentApprovalApproveHelp": "记录此次入款需要审批。请确认内容后予以批准。",
+      "issueApprovalApproveHelpWithCharges": "含有 {count} 项手动追加的费用（合计 {amount}）。请确认内容后予以批准。",
+      "chargesClosedForEditing": "只有草稿状态的请款单可以编辑追加费用",
+      "chargesSaveFailed": "保存追加费用失败",
+      "chargesHelp": "手动追加到此请款单的费用（仅可从费用主数据中选择）。发行前需要审批。仅可在草稿状态下编辑。",
+      "manualInvoiceHelp": "选择要立即请款的客户。不等待结算日，直接从当前未请款的出货生成请款单（草稿）。",
+      "unbilledShipments": "未请款出货",
+      "noUnbilledShipmentsForCustomer": "没有未请款的出货",
+      "createInvoiceFromSelection": "生成请款单",
+      "someShipmentsNoLongerAvailable": "所选出货中有部分已被其他请款单使用，请重新选择。"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "将发行请款单 {invoiceNumber}，发行日期记为今天。",
@@ -2128,11 +2148,10 @@
       "confirmMarkSentMessage": "将请款单 {invoiceNumber} 标记为已寄送。",
       "markedSentWithNumber": "已将请款单 {invoiceNumber} 标记为已寄送",
       "confirmMarkPaidMessage": "将请款单 {invoiceNumber} 标记为已付款。",
-      "markedPaidWithNumber": "已将请款单 {invoiceNumber} 标记为已付款"
+      "markedPaidWithNumber": "已将请款单 {invoiceNumber} 标记为已付款",
+      "approvalRequestedMessage": "已提交审批申请（请款单 {invoiceNumber}）"
     },
     "closingTable": {
-      "yearLabel": "{year} 年",
-      "monthLabel": "{month} 月",
       "createdAndUpdatedCounts": "新建 {created} 项 / 更新 {updated} 项",
       "skippedCount": "跳过已处理 {skipped} 项"
     },
@@ -2143,17 +2162,35 @@
       "onlyIssuedCanMarkSent": "只有已发行的请款单可以标记为已寄送",
       "markSentFailed": "标记为已寄送失败",
       "onlySentCanMarkPaid": "只有已寄送的请款单可以标记为已付款",
-      "markPaidFailed": "标记为已付款失败"
+      "markPaidFailed": "标记为已付款失败",
+      "awaitingIssueApproval": "正在等待发行前审批",
+      "approvalRequestFailed": "创建审批申请失败",
+      "approvalRequested": "已提交审批申请",
+      "awaitingPaymentApproval": "正在等待入款前审批",
+      "paymentApprovalRequested": "已提交入款审批申请"
     },
     "closingActions": {
       "closingDateNotReached": "结算日之前无法处理（从结算日次日起）",
       "closingNotFound": "未找到目标结算处理",
       "generateInvoiceFailed": "请款单生成失败",
-      "invalidYearMonth": "目标月份格式无效（YYYYMM）",
       "itemNameWithLot": "{name}（批次 {lot}）",
-      "noUnbilledShipmentsForMonth": "目标月份没有未请款的出货",
       "pendingOnly": "只有未处理的结算才能生成请款单",
-      "runFailed": "结算处理执行失败"
+      "runFailed": "结算处理执行失败",
+      "invalidDate": "指定日期格式无效",
+      "noUnbilledShipmentsUpToDate": "截至指定日期没有未请款的出货"
+    },
+    "invoiceTable": {
+      "manualInvoice": "手动请款",
+      "nothingToIssue": "没有可发行的请款单",
+      "selectDraftInvoices": "请选择草稿状态的请款单",
+      "issuedCount": "已发行 {count} 项",
+      "nothingToMarkPaid": "没有可标记为已入款的请款单",
+      "selectSentInvoices": "请选择已寄送的请款单",
+      "paymentProcessedCount": "已处理 {count} 项入款",
+      "nothingToApprove": "没有可审批的请款单",
+      "selectPendingApprovalInvoices": "请选择待审批的请款单",
+      "approvedCount": "已批准 {count} 项",
+      "rejectedCount": "已退回 {count} 项"
     }
   },
   "general": {
@@ -7364,6 +7401,7 @@
       "endUser": "最终用户",
       "assignedSite": "负责据点",
       "shippingWorkLocation": "出货作业场所",
+      "deliveryDestination": "送达地",
       "linesTotalQuantity": "明细数／数量合计",
       "expandedAt": "展开时间",
       "workOrdersAllocated": "工单（分配）",
@@ -7784,7 +7822,9 @@
       "priceListPriceWithTier": "价格表 {price}（{tier}）",
       "fromPriceList": "来自价格表",
       "willReplaceWithList": "保存时 {entered} 将被替换为价格表的单价",
-      "overriddenFromList": "已覆盖（价格表 {expected}）"
+      "overriddenFromList": "已覆盖（价格表 {expected}）",
+      "delivery": "配送",
+      "applyLineOneDeliveryToAll": "将第 1 行的配送应用到全部行"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "将删除“{label}”。此操作无法撤销。",
@@ -7854,7 +7894,7 @@
       "confirmIssues": "无法确定：{summary}",
       "createFailed": "创建订单确认书失败",
       "createdManually": "手动录入创建",
-      "directToUserRequiresEndUser": "直送最终用户时须指定最终用户",
+      "directToUserRequiresEndUser": "第 {rows} 行明细：直送最终用户时须指定最终用户",
       "endUserInvalid": "最终用户的业务伙伴不存在或已停用",
       "invalidNumber": "订单确认书编号无效",
       "notPendingApproval": "该订单确认书不处于审批中",
@@ -8006,7 +8046,7 @@
     },
     "orderAcceptanceReadiness": {
       "customerNotIdentified": "客户未确定",
-      "directToUserButEndUserNot": "为直送最终用户，但未指定最终用户",
+      "lineEndUserNotIdentified": "第 {rows} 行明细：未指定最终用户",
       "noLineItems": "没有任何明细",
       "lineProductNotIdentified": "第 {rows} 行明细：产品未确定",
       "lineUnitPriceNotEntered": "第 {rows} 行明细：单价未输入",

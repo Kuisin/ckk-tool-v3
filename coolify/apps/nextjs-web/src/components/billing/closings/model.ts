@@ -1,10 +1,16 @@
 /**
  * model.ts — 締日処理 (BL02) view-model types + pure helpers.
  *
- * Model (app.billing_closings — uuid PK, unique (customer_bp_id, closing_date)):
- *   顧客 × 締日 = 1 行。「締日処理を実行」(runClosing) が対象月の未請求出荷
- *   （SHIPPED × DISPATCH）を顧客ごとに集計して PENDING 行を作成し、
- *   「請求書を生成」(processClosing) が請求書を起こして PROCESSED にする。
+ * Model (app.billing_closings — uuid PK):
+ *   顧客 × 締日 = 1 行。**実行区分（kind）が 2 つある**:
+ *     SCHEDULED … 「締日処理を実行」(runClosing) が**指定日までに締日が到来し、
+ *                 まだ締めていない顧客すべて**の未請求出荷（SHIPPED × DISPATCH）
+ *                 を集計して PENDING 行を作り、続けて請求書（DRAFT）まで作る
+ *                 （締日ごとに 1 顧客 1 行・冪等 — 部分 unique index）。
+ *     MANUAL    … 手動請求（BL11, createManualInvoice）が納品書を選んで作る
+ *                 臨時の 1 行。同じ顧客・同じ日に何度でも作れる。
+ *   「請求書を生成」(processClosing) は締日前で自動生成できなかった行や
+ *   失敗した行を後から拾うために残っている。
  *   締日は BpCustomerAttrs.closingDay（1–31、31・未設定 = 月末）から決まる。
  *
  * Decimal 列（totalAmount）はサーバー境界で Number() 済み。日付は ISO 文字列。
@@ -12,6 +18,7 @@
  */
 
 export type ClosingStatus = "PENDING" | "PROCESSED" | "EXPORTED";
+export type ClosingKind = "SCHEDULED" | "MANUAL";
 
 /** 締日処理 1 行（一覧・詳細ヘッダ共通）。 */
 export interface BillingClosing {
@@ -21,6 +28,8 @@ export interface BillingClosing {
   customerName: string;
   /** 締日（ISO date）。 */
   closingDate: string;
+  /** 実行区分（定期 / 手動）。一覧・詳細で「なぜこの行があるか」を示す。 */
+  kind: ClosingKind;
   status: ClosingStatus;
   totalAmount: number | null;
   /** 生成した請求書番号 INV-YYYYMM-NNNNN（未生成は null）。 */
@@ -111,15 +120,27 @@ export function billingPeriodStartFrom(
 // ── 対象月・締日の pure ヘルパー ─────────────────────────────────────────────
 // 日付はすべて UTC 起点（DB の @db.Date と toISOString 表示に揃える）。
 
-/** "YYYYMM" → { year, month }。不正な形式・月は null。 */
-export function parseYearMonth(
-  yearMonth: string,
-): { year: number; month: number } | null {
-  if (!/^\d{6}$/.test(yearMonth)) return null;
-  const year = Number(yearMonth.slice(0, 4));
-  const month = Number(yearMonth.slice(4, 6));
+/**
+ * "YYYY-MM-DD" → UTC 0時の Date。不正な形式・存在しない日付は null。
+ * `runClosing` が受け取る実行日（既定 = 今日）の検証に使う。
+ */
+export function parseClosingDate(iso: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
   if (month < 1 || month > 12) return null;
-  return { year, month };
+  const date = new Date(Date.UTC(year, month - 1, day));
+  // ロールオーバー（例: 2026-02-30）を弾く — UTC の年月日を作り直して照合する。
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return date;
 }
 
 /** 対象月の月初（UTC 0時）。 */
@@ -224,24 +245,33 @@ export function inBillingWindow(
 }
 
 /**
- * 月初の何日目までは日次オートランで前月分も走らせるか。締日当日（月末）の
- * 06 時以降に出荷された分は当日のオートランに間に合わないので、翌月に入って
- * から前月の締めをもう一度集計して拾う（PROCESSED 済みの締日はスキップされる）。
+ * fromDate 以降・targetDate 以下の締日をすべて返す（暦日、UTC 0時）。
+ *
+ * 「指定日までに締日が到来した未処理をすべて」は 1 か月ぶんでは終わらない —
+ * 締めを何か月も走らせていない顧客がいれば、その間の締日をひとつずつ数える
+ * 必要がある（月をまたいでも取りこぼさないのがこの関数の存在理由）。
+ * 旧 autorunTargetMonths（月初 3 日だけ前月も見る特例）はこの規則に置き換わり、
+ * 走らせ忘れは「翌日以降の実行が拾う」で自然に解消するので不要になった。
  */
-export const PREVIOUS_MONTH_GRACE_DAYS = 3;
-
-/** その日の日次オートランが走らせる対象月（前月 → 当月の順）。 */
-export function autorunTargetMonths(
-  year: number,
-  month: number,
-  day: number,
-): { year: number; month: number }[] {
-  const targets: { year: number; month: number }[] = [];
-  if (day <= PREVIOUS_MONTH_GRACE_DAYS) {
-    targets.push(
-      month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 },
-    );
+export function scheduledClosingDates(
+  fromDate: Date,
+  targetDate: Date,
+  closingDay: number | null | undefined,
+): Date[] {
+  const dates: Date[] = [];
+  let year = fromDate.getUTCFullYear();
+  let month = fromDate.getUTCMonth() + 1;
+  // 安全弁 — データ不整合（fromDate が異常に古い等）で無限ループしないよう
+  // 100 年分（1200 か月）で必ず止める。通常は数か月分しか積まない。
+  for (let i = 0; i < 1200; i++) {
+    const d = closingDateFor(year, month, closingDay);
+    if (d > targetDate) break;
+    if (d >= fromDate) dates.push(d);
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
   }
-  targets.push({ year, month });
-  return targets;
+  return dates;
 }

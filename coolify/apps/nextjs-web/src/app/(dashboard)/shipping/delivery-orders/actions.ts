@@ -301,7 +301,9 @@ export async function fetchDeliverySourceInfo(
     const so = await prisma.orderLine.findUnique({
       where: { id: orderLineId },
       include: {
-        acceptance: { include: { customerBp: true, shipToBp: true } },
+        acceptance: { include: { customerBp: true } },
+        // 出荷先は**明細ごと**（§8）— 注文請書ヘッダではなく行が持つ。
+        shipToBp: true,
         item: true,
       },
     });
@@ -389,16 +391,15 @@ export async function fetchDeliverySourceInfo(
       customerName: localized(
         so.acceptance.customerBp?.name as LocalizedText | null,
       ),
-      shipToBpId: so.acceptance.shipToBpId,
-      shipToName: so.acceptance.shipToBp
-        ? localized(so.acceptance.shipToBp.name as LocalizedText | null)
+      // 配送（§8）— 明細ごと。
+      shipToBpId: so.shipToBpId,
+      shipToName: so.shipToBp
+        ? localized(so.shipToBp.name as LocalizedText | null)
         : null,
-      deliveryMethod: so.acceptance.deliveryMethod,
-      endUserBpId: so.endUserBpId ?? so.acceptance.endUserBpId,
+      deliveryMethod: so.deliveryMethod,
+      endUserBpId: so.endUserBpId,
       assignedPlantId:
-        so.acceptance.assignedPlantId != null
-          ? String(so.acceptance.assignedPlantId)
-          : null,
+        so.assignedPlantId != null ? String(so.assignedPlantId) : null,
       shippedQuantity: await shippedQuantityForLine(so.id),
       itemId: String(itemId),
       productName: localized(so.item?.name as LocalizedText | null),
@@ -522,7 +523,7 @@ async function validateDispatchLots(
 
 /**
  * 束ね可否の不変条件 — 1 出荷書に載せられるのは同一顧客 × 同一出荷先 ×
- * 同一配送方法（注文請書ヘッダ由来）の注文明細だけ。判定はクライアントと
+ * 同一配送方法（§8 — 明細ごとに持つ）の注文明細だけ。判定はクライアントと
  * 共有の combinabilityError（components/shipping/delivery-orders/model）。
  */
 async function validateCombinable(
@@ -541,21 +542,18 @@ async function validateCombinable(
   const lines = await prisma.orderLine.findMany({
     where: { id: { in: ids } },
     select: {
+      acceptance: { select: { customerBpId: true } },
+      shipToBpId: true,
+      deliveryMethod: true,
       endUserBpId: true,
-      acceptance: {
-        select: {
-          customerBpId: true,
-          shipToBpId: true,
-          deliveryMethod: true,
-          endUserBpId: true,
-        },
-      },
     },
   });
   return combinabilityError(
     lines.map((l) => ({
-      ...l.acceptance,
-      endUserBpId: l.endUserBpId ?? l.acceptance.endUserBpId,
+      customerBpId: l.acceptance.customerBpId,
+      shipToBpId: l.shipToBpId,
+      deliveryMethod: l.deliveryMethod,
+      endUserBpId: l.endUserBpId,
     })),
     tr,
     customerBpId,
@@ -1295,12 +1293,12 @@ async function planDeliveryOrderNotes(
           orderLine: {
             select: {
               unitPrice: true,
+              // 配送（§8）— 明細ごと。
+              deliveryMethod: true,
               endUserBpId: true,
               acceptance: {
                 select: {
                   salesRepId: true,
-                  deliveryMethod: true,
-                  endUserBpId: true,
                   // 税率の基準日（注文日）。null なら出荷日 → 今日へ落ちる。
                   orderDate: true,
                 },
@@ -1329,12 +1327,8 @@ async function planDeliveryOrderNotes(
     row.customerBp.customerAttrs?.taxCategoryId ?? null;
 
   // combinabilityError が全明細で揃えることを保証しているので先頭行の値でよい。
-  const deliveryMethod =
-    row.items[0].orderLine?.acceptance.deliveryMethod ?? "NORMAL";
-  const endUserBpId =
-    row.items[0].orderLine?.endUserBpId ??
-    row.items[0].orderLine?.acceptance.endUserBpId ??
-    null;
+  const deliveryMethod = row.items[0].orderLine?.deliveryMethod ?? "NORMAL";
+  const endUserBpId = row.items[0].orderLine?.endUserBpId ?? null;
 
   return {
     customerBpId: row.customerBpId,

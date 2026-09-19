@@ -149,6 +149,8 @@ model MaterialType {
 
   materials      Material[]
   productsByType Product[] @relation("ProductMaterialType")
+  itemsByType    Item[]    @relation("ItemMaterialType")
+  itemsRequiring Item[]    @relation("ItemRequiresMaterialType")
   prices         MaterialTypePrice[]
   estimates      Estimate[]
 
@@ -185,6 +187,9 @@ model MaterialTypePrice {
 // 内部 id は連番、表示コード（素材コード）は code（構成から自動組立・不変）。
 model Material {
   id                Int      @id @default(autoincrement())
+  /// 統合先の品目（app.items）。移行中だけの対応列（id とは一致しない）。
+  /// 第 3 段で列ごと消える。
+  itemId            Int?     @unique @map("item_id")
   code              String   @unique
   materialTypeId    Int      @map("material_type_id")
   surfaceFinishCode String   @map("surface_finish_code") @db.Char(1)
@@ -231,6 +236,9 @@ model Material {
 // legacy_key に取込元 uuid5）。
 model Product {
   id         Int     @id @default(autoincrement())
+  /// 統合先の品目（app.items）。移行中だけの対応列（id とは一致しない —
+  /// 別のシーケンスが配るため）。第 3 段（旧マスタ廃止）で列ごと消える。
+  itemId     Int?    @unique @map("item_id")
   yearMonth  String? @map("year_month") @db.Char(6)
   seq        Int?
   legacyKey  String? @unique @map("legacy_key")
@@ -352,6 +360,8 @@ model ChargeItem {
   taxCategory         TaxCategory?          @relation("ChargeItemTaxCategory", fields: [taxCategoryId], references: [id], onDelete: Restrict)
   workOrderCharges    WorkOrderCharge[]
   deliveryOrderCharges DeliveryOrderCharge[]
+  /// 請求書へ手動で足した追加費用（下書きのみ・料金マスタからだけ選べる）。
+  invoiceItems        InvoiceItem[]
 
   @@index([isActive, sortOrder])
   @@index([taxCategoryId])
@@ -384,6 +394,8 @@ model CustomerProductCode {
   id           Int    @id @default(autoincrement())
   customerBpId String @map("customer_bp_id") @db.Uuid
   productId    Int    @map("product_id")
+  /// 統合品目（app.items）。顧客品番が指す製品。product_id は移行中の残りで、旧列を落とす PR で消える。
+  itemId Int? @map("item_id")
   /// 顧客の品番。**印字・検索・突合の主表記**（1 顧客の中で一意）。
   code         String
   /// 顧客がその製品を呼ぶ品名。null = 併記しない（自社の製品名だけを刷る）。
@@ -399,6 +411,7 @@ model CustomerProductCode {
 
   customerBp    BusinessPartner @relation("CustomerProductCodeCustomer", fields: [customerBpId], references: [id], onDelete: Cascade)
   product       Product         @relation("CustomerProductCodeProduct", fields: [productId], references: [id], onDelete: Cascade)
+  item Item? @relation("CustomerProductCodeItem", fields: [itemId], references: [id], onDelete: Restrict)
   createdByUser User?           @relation("CustomerProductCodeCreatedBy", fields: [createdBy], references: [id])
 
   // 1 顧客 × 1 製品 = 1 行（印字に使う表記が 2 つあってはいけない）。
@@ -411,6 +424,7 @@ model CustomerProductCode {
   @@index([aliases(ops: ArrayOps)], map: "customer_product_codes_aliases_idx", type: Gin)
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, id])
+  @@index([itemId])
   @@map("customer_product_codes")
   @@schema("app")
 }

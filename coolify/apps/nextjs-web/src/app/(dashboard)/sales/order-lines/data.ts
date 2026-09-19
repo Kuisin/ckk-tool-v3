@@ -42,6 +42,12 @@ const ORDER_LINE_INCLUDE = {
     },
   },
   endUserBp: true,
+  // 配送（§8）— 明細ごと。
+  shipToBp: true,
+  assignedPlant: true,
+  shippingWorkLocation: {
+    select: { name: true, group: { select: { name: true } } },
+  },
   // 品目統合 第 2 段 C — 表示は品目側から読む。
   item: true,
   // 指示書は割当（work_order_order_lines）経由 — 分割・統合の両対応。
@@ -129,8 +135,27 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
       : null,
     salesRepName: acc.salesRep?.displayName ?? null,
     createdByName: acc.createdByUser?.displayName ?? null,
+    // 配送（§8）— 明細ごと。
+    shipToId: r.shipToBpId,
+    shipToName: r.shipToBp
+      ? localized(r.shipToBp.name as LocalizedText | null)
+      : null,
+    deliveryMethod: r.deliveryMethod,
+    endUserId: r.endUserBpId,
     endUserName: r.endUserBp
       ? localized(r.endUserBp.name as LocalizedText | null)
+      : null,
+    assignedPlantId:
+      r.assignedPlantId != null ? String(r.assignedPlantId) : null,
+    assignedPlantName: r.assignedPlant
+      ? `${r.assignedPlant.code} ${localized(r.assignedPlant.name as LocalizedText | null)}`
+      : null,
+    shippingWorkLocationId:
+      r.shippingWorkLocationId != null
+        ? String(r.shippingWorkLocationId)
+        : null,
+    shippingWorkLocationName: r.shippingWorkLocation
+      ? `${localized(r.shippingWorkLocation.group.name as LocalizedText | null)} / ${localized(r.shippingWorkLocation.name as LocalizedText | null)}`
       : null,
     customerOrderRef: acc.customerOrderRef,
     quoteNumber:

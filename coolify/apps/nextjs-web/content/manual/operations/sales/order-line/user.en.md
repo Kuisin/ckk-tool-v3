@@ -70,6 +70,10 @@ A "**Next step**" card appears at the top of the screen. While unallocated piece
 
 The three-dot "**…**" menu at the top right also always lists "**Create work order**" and "**Create delivery order**". Actions you cannot use right now are grayed out, with the reason shown (for example "available once the order acceptance is deployed").
 
+### Check the delivery destination
+
+Ship-to, delivery method, end user, assigned plant and shipping work location are shown read-only, holding that line's own values. To change them, edit the line in the [order acceptance](/manual/en/operations/sales/order-acceptance/user)'s item editor — they are per-line fields because some orders ship different lines to different destinations.
+
 ### Check and reserve stock
 
 Press **Stock check** to look at stock for the product and **reserve whatever is available**.
