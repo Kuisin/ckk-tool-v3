@@ -6,8 +6,10 @@
 #               auto-deploys via the Coolify webhook on merge)
 #
 # pnpm workspace（ルート lockfile）。install は必ずリポジトリルートで実行する。
-# E2E (Playwright) not set up yet — add a job here when it lands
-# (see _specs/techstack.md).
+#
+# E2E: `pages` ジョブが 全画面の読み込み確認（tools/docs-screenshots/page-load.spec.ts）
+# を使い捨て DB + 本番ビルドで回す。単体試験と build が見ない「開いたら落ちる」を
+# ここで止める（撮影用のデモシードもここで全部流れるので、シードの腐りも捕まる）。
 
 name: nextjs-web CI
 
@@ -256,6 +258,50 @@ jobs:
             exit 1
           fi
           echo "図は DSL と一致しています"
+
+  # 全画面の読み込み確認 — 使い捨て Postgres（docker run）+ 全デモシード +
+  # 本番ビルドの nextjs-web を起動し、静的ルート全部・撮影パス・各一覧の先頭行の
+  # 詳細/編集を Playwright で開いて、HTTP エラー・pageerror・console.error・
+  # MISSING_MESSAGE 等の本文を合否にする（tools/docs-screenshots/README.md
+  # 「全画面の読み込み確認」）。2026-09 の在庫カテゴリ移設・品目統合のように
+  # 「型も build も通るのに開くと落ちる」変更を、merge の前に止めるためのもの。
+  pages:
+    name: nextjs-web — 全画面の読み込み確認 (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install (frozen lockfile, workspace root)
+        run: pnpm install --frozen-lockfile
+      - name: Install shared-db（workspace 外 — 自前の lockfile）
+        run: pnpm install --frozen-lockfile --ignore-workspace
+        working-directory: shared-db
+      - name: Install docs-screenshots（workspace 外）+ Chromium
+        run: |
+          pnpm install --frozen-lockfile --ignore-workspace
+          pnpm exec playwright install --with-deps chromium
+        working-directory: tools/docs-screenshots
+      - name: Sync Prisma schema (shared-db) + generate client
+        run: pnpm db:sync-schema && pnpm db:generate
+        working-directory: coolify/apps/nextjs-web
+      - name: Seed → build → start → page-load.spec.ts
+        run: pnpm e2e:pages
+        working-directory: tools/docs-screenshots
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: page-load-report
+          path: /tmp/page-load-report.json
+          if-no-files-found: ignore
 
   kiosk:
     name: nextjs-kiosk — lint & build (base ${{ github.base_ref }})
