@@ -6463,6 +6463,7 @@
       "enterACustomerCode": "请输入客户料号",
       "duplicateCustomerRow": "同一客户出现了两行。每个客户只保留一行",
       "duplicateCodeForCustomer": "客户料号“{code}”在同一客户中重复",
+      "duplicateCodeOnOtherProduct": "客户料号“{code}”已在同一客户的其他产品上登记（含写法差异）",
       "couldNotSave": "客户料号保存失败"
     }
   },

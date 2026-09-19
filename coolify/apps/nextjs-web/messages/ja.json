@@ -6463,6 +6463,7 @@
       "enterACustomerCode": "顧客品番を入力してください",
       "duplicateCustomerRow": "同じ顧客の行が 2 つあります。1 顧客につき 1 行にしてください",
       "duplicateCodeForCustomer": "顧客品番「{code}」が同じ顧客の中で重複しています",
+      "duplicateCodeOnOtherProduct": "顧客品番「{code}」は同じ顧客の別の製品に登録済みです（表記ゆれを含む）",
       "couldNotSave": "顧客品番の保存に失敗しました"
     }
   },

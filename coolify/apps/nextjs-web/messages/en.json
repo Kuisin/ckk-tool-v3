@@ -6463,6 +6463,7 @@
       "enterACustomerCode": "Enter a customer part number",
       "duplicateCustomerRow": "The same customer appears twice. Keep one row per customer",
       "duplicateCodeForCustomer": "Customer part number “{code}” is duplicated for the same customer",
+      "duplicateCodeOnOtherProduct": "Customer part number “{code}” is already registered for this customer on another product (including notation variants)",
       "couldNotSave": "Could not save the customer part numbers"
     }
   },
