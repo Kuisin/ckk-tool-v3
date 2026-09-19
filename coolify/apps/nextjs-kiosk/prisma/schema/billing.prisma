@@ -23,6 +23,32 @@ enum ClosingStatus {
   @@schema("app")
 }
 
+/// 締日行の実行区分。SCHEDULED = 締日処理の定期実行（1顧客×1締日=1行、冪等）。
+/// MANUAL = 締日を待たない臨時請求（BL11 手動請求）— 同じ顧客・同じ日に何度でも
+/// 起こせるので、SCHEDULED とは別の unique 制約（部分 unique index）に分ける。
+enum ClosingKind {
+  SCHEDULED
+  MANUAL
+
+  @@map("CLOSING_KIND")
+  @@schema("app")
+}
+
+/// 請求書の承認状態。**列は 1 組だけ**で発行前承認・入金前承認の両方を表す —
+/// 2 つの関門は同時に開かないので（発行承認は DRAFT、入金承認は SENT のときだけ）、
+/// いまどちらの関門に居るかは invoices.status が語る。履歴は種別ごとに
+/// approval_requests / approval_records が持つので、denormalize した列は
+/// 「いまの状態」だけでよい。delivery_orders と同じ形（§8 過不足納品）。
+enum InvoiceApprovalStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("INVOICE_APPROVAL_STATUS")
+  @@schema("app")
+}
+
 model Invoice {
   yearMonth String @map("year_month") @db.Char(6)
   seq       Int
@@ -54,15 +80,31 @@ model Invoice {
   notes               String?
   // 営業担当（作成時に顧客の主担当を複写したスナップショット）。
   salesRepId          String?   @map("sales_rep_id") @db.Uuid
+  /// 締日行の実行区分の写し（billing_closings.kind）— 一覧・詳細で「定期 / 手動」を
+  /// 出すために持つ表示用の複写。締日行自体は消えても請求書からは読めるように、
+  /// FK ではなく値そのものを持つ（billing_closings と invoices は緩い結びつき）。
+  closingKind         ClosingKind? @map("closing_kind")
+  /// 承認状態（発行前承認 / 入金前承認。上のコメント参照）。
+  approvalStatus      InvoiceApprovalStatus @default(NONE) @map("approval_status")
+  requestedAt         DateTime? @map("requested_at") @db.Timestamptz(6)
+  requestedBy         String?   @map("requested_by") @db.Uuid
+  approvedAt          DateTime? @map("approved_at") @db.Timestamptz(6)
+  approvedBy          String?   @map("approved_by") @db.Uuid
+  rejectedAt          DateTime? @map("rejected_at") @db.Timestamptz(6)
+  rejectedBy          String?   @map("rejected_by") @db.Uuid
+  rejectReason        String?   @map("reject_reason")
   createdBy           String?   @map("created_by") @db.Uuid
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  salesRep         User?           @relation("InvoiceSalesRep", fields: [salesRepId], references: [id])
-  customerBp       BusinessPartner @relation("InvoiceCustomer", fields: [customerBpId], references: [id])
+  salesRep        User?            @relation("InvoiceSalesRep", fields: [salesRepId], references: [id])
+  customerBp      BusinessPartner  @relation("InvoiceCustomer", fields: [customerBpId], references: [id])
   customerBranchBp BusinessPartner? @relation("InvoiceCustomerBranch", fields: [customerBranchBpId], references: [id])
-  pdfFile          File?            @relation("InvoicePdf", fields: [pdfFileId], references: [id])
-  createdByUser    User?            @relation("InvoiceCreatedBy", fields: [createdBy], references: [id])
+  pdfFile         File?            @relation("InvoicePdf", fields: [pdfFileId], references: [id])
+  createdByUser   User?            @relation("InvoiceCreatedBy", fields: [createdBy], references: [id])
+  requestedByUser User?            @relation("InvoiceRequestedBy", fields: [requestedBy], references: [id])
+  approvedByUser  User?            @relation("InvoiceApprovedBy", fields: [approvedBy], references: [id])
+  rejectedByUser  User?            @relation("InvoiceRejectedBy", fields: [rejectedBy], references: [id])
 
   items InvoiceItem[]
   /// 税率ごとの区分記載（適格請求書）。混在請求書ではヘッダの taxType / taxRate が
@@ -72,6 +114,7 @@ model Invoice {
   @@id([yearMonth, seq])
   @@index([customerBpId])
   @@index([status])
+  @@index([approvalStatus])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, yearMonth, seq])
   @@map("invoices")
@@ -90,6 +133,11 @@ model InvoiceItem {
   deliveryNoteSeq        Int?    @map("delivery_note_seq")
   // 由来の注文明細（1 出荷書が複数明細を束ねるため、単価はこの行から取る）
   orderLineId            String? @map("order_line_id") @db.Uuid
+  /// **手動で足した追加費用**の由来（料金マスタ MS0G）。出荷書由来（送料等）の
+  /// 追加料金行にも入るが、それは delivery_order_year_month が伴う。
+  /// deliveryOrderYearMonth IS NULL かつ chargeItemId が入っている行だけが
+  /// 「発行前承認が要る、人が足した費用」— lib/invoice-charges.ts が唯一の判定元。
+  chargeItemId           Int?    @map("charge_item_id")
 
   description Json // { ja: '', en: '' }
   quantity    Int
@@ -107,10 +155,12 @@ model InvoiceItem {
   invoice     Invoice      @relation(fields: [invoiceYearMonth, invoiceSeq], references: [yearMonth, seq], onDelete: Cascade)
   orderLine   OrderLine?   @relation(fields: [orderLineId], references: [id])
   taxCategory TaxCategory? @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
+  chargeItem  ChargeItem?  @relation(fields: [chargeItemId], references: [id], onDelete: SetNull)
 
   @@index([invoiceYearMonth, invoiceSeq])
   @@index([orderLineId])
   @@index([taxCategoryId])
+  @@index([chargeItemId])
   @@map("invoice_items")
   @@schema("app")
 }
@@ -120,6 +170,10 @@ model BillingClosing {
   id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   customerBpId String        @map("customer_bp_id") @db.Uuid
   closingDate  DateTime      @map("closing_date") @db.Date
+  /// 実行区分。SCHEDULED = 締日処理（自動 / 手動一括）が作る、顧客×締日で
+  /// 冪等な行。MANUAL = 締日を待たない臨時請求（BL11）— 同じ顧客・同じ日に
+  /// 何度でも作れるので unique の対象から外す（下の部分 unique index）。
+  kind         ClosingKind   @default(SCHEDULED)
   status       ClosingStatus @default(PENDING)
   totalAmount  Decimal?      @map("total_amount") @db.Decimal(12, 2)
   // 生成した請求書（任意リンク）
@@ -136,7 +190,10 @@ model BillingClosing {
 
   customerBp BusinessPartner @relation("ClosingCustomer", fields: [customerBpId], references: [id])
 
-  @@unique([customerBpId, closingDate])
+  // 定期の締めは 1 顧客 1 締日で冪等（部分 unique index — kind = 'SCHEDULED' の
+  // ときだけ効く。Prisma では表現できないので migration.sql に直書きしてある。
+  // 手動請求 (kind = MANUAL) は同じ顧客・同じ日に何本でも作れる）。
+  @@index([customerBpId, closingDate])
   @@index([status])
   @@index([updatedAt, id])
   @@map("billing_closings")

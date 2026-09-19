@@ -360,6 +360,8 @@ model ChargeItem {
   taxCategory         TaxCategory?          @relation("ChargeItemTaxCategory", fields: [taxCategoryId], references: [id], onDelete: Restrict)
   workOrderCharges    WorkOrderCharge[]
   deliveryOrderCharges DeliveryOrderCharge[]
+  /// 請求書へ手動で足した追加費用（下書きのみ・料金マスタからだけ選べる）。
+  invoiceItems        InvoiceItem[]
 
   @@index([isActive, sortOrder])
   @@index([taxCategoryId])
