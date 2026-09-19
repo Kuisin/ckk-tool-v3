@@ -119,7 +119,7 @@ interface InvoiceItemDraft {
 }
 
 /** customerAttrs のうち、この組み立てが読む部分。 */
-interface ClosingCustomerAttrsRef {
+export interface ClosingCustomerAttrsRef {
   taxCategoryId: number | null;
   paymentTermsDays: number | null;
   paymentDay: number | null;

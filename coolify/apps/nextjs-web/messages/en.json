@@ -2120,7 +2120,12 @@
       "issueApprovalApproveHelpWithCharges": "Includes {count} manually added charge(s) (total {amount}). Review before approving.",
       "chargesClosedForEditing": "Additional charges can only be edited on a draft invoice",
       "chargesSaveFailed": "Could not save the additional charges",
-      "chargesHelp": "Charges added manually to this invoice (chosen from the charge master only). Requires approval before issuing. Editable only while the invoice is a draft."
+      "chargesHelp": "Charges added manually to this invoice (chosen from the charge master only). Requires approval before issuing. Editable only while the invoice is a draft.",
+      "manualInvoiceHelp": "Select the customer to invoice now. Creates a draft invoice from currently unbilled shipments without waiting for a closing date.",
+      "unbilledShipments": "Unbilled shipments",
+      "noUnbilledShipmentsForCustomer": "No unbilled shipments",
+      "createInvoiceFromSelection": "Create invoice",
+      "someShipmentsNoLongerAvailable": "Some of the selected shipments are already used by another invoice. Please select again."
     },
     "invoiceDetail": {
       "confirmIssueMessage": "This issues invoice {invoiceNumber}. The issue date is recorded as today.",
@@ -2158,6 +2163,19 @@
       "runFailed": "Could not run the billing closing",
       "invalidDate": "Invalid target date format",
       "noUnbilledShipmentsUpToDate": "No unbilled shipments up to the target date"
+    },
+    "invoiceTable": {
+      "manualInvoice": "Manual invoice",
+      "nothingToIssue": "No invoices can be issued",
+      "selectDraftInvoices": "Select draft invoices",
+      "issuedCount": "Issued {count}",
+      "nothingToMarkPaid": "No invoices can be marked as paid",
+      "selectSentInvoices": "Select sent invoices",
+      "paymentProcessedCount": "Processed payment for {count}",
+      "nothingToApprove": "No invoices can be approved",
+      "selectPendingApprovalInvoices": "Select invoices pending approval",
+      "approvedCount": "Approved {count}",
+      "rejectedCount": "Sent back {count}"
     }
   },
   "general": {

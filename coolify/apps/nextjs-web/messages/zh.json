@@ -2120,7 +2120,12 @@
       "issueApprovalApproveHelpWithCharges": "含有 {count} 项手动追加的费用（合计 {amount}）。请确认内容后予以批准。",
       "chargesClosedForEditing": "只有草稿状态的请款单可以编辑追加费用",
       "chargesSaveFailed": "保存追加费用失败",
-      "chargesHelp": "手动追加到此请款单的费用（仅可从费用主数据中选择）。发行前需要审批。仅可在草稿状态下编辑。"
+      "chargesHelp": "手动追加到此请款单的费用（仅可从费用主数据中选择）。发行前需要审批。仅可在草稿状态下编辑。",
+      "manualInvoiceHelp": "选择要立即请款的客户。不等待结算日，直接从当前未请款的出货生成请款单（草稿）。",
+      "unbilledShipments": "未请款出货",
+      "noUnbilledShipmentsForCustomer": "没有未请款的出货",
+      "createInvoiceFromSelection": "生成请款单",
+      "someShipmentsNoLongerAvailable": "所选出货中有部分已被其他请款单使用，请重新选择。"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "将发行请款单 {invoiceNumber}，发行日期记为今天。",
@@ -2158,6 +2163,19 @@
       "runFailed": "结算处理执行失败",
       "invalidDate": "指定日期格式无效",
       "noUnbilledShipmentsUpToDate": "截至指定日期没有未请款的出货"
+    },
+    "invoiceTable": {
+      "manualInvoice": "手动请款",
+      "nothingToIssue": "没有可发行的请款单",
+      "selectDraftInvoices": "请选择草稿状态的请款单",
+      "issuedCount": "已发行 {count} 项",
+      "nothingToMarkPaid": "没有可标记为已入款的请款单",
+      "selectSentInvoices": "请选择已寄送的请款单",
+      "paymentProcessedCount": "已处理 {count} 项入款",
+      "nothingToApprove": "没有可审批的请款单",
+      "selectPendingApprovalInvoices": "请选择待审批的请款单",
+      "approvedCount": "已批准 {count} 项",
+      "rejectedCount": "已退回 {count} 项"
     }
   },
   "general": {

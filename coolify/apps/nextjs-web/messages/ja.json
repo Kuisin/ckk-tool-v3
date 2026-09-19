@@ -2120,7 +2120,12 @@
       "issueApprovalApproveHelpWithCharges": "手動で追加した費用が {count} 件含まれています（合計 {amount}）。内容を確認して承認してください。",
       "chargesClosedForEditing": "下書きの請求書だけ追加費用を編集できます",
       "chargesSaveFailed": "追加費用の保存に失敗しました",
-      "chargesHelp": "この請求書へ手動で足す費用（料金マスタからだけ選べます）。発行前に承認が要ります。直せるのは下書きのうちだけです。"
+      "chargesHelp": "この請求書へ手動で足す費用（料金マスタからだけ選べます）。発行前に承認が要ります。直せるのは下書きのうちだけです。",
+      "manualInvoiceHelp": "臨時に請求する顧客を選びます。締日を待たず、いま未請求の出荷から請求書（下書き）を作ります。",
+      "unbilledShipments": "未請求の出荷",
+      "noUnbilledShipmentsForCustomer": "未請求の出荷がありません",
+      "createInvoiceFromSelection": "請求書を作成",
+      "someShipmentsNoLongerAvailable": "選んだ出荷の一部が、すでに他の請求で使われています。もう一度選び直してください。"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "請求書 {invoiceNumber} を発行します。発行日は本日で記録されます。",
@@ -2158,6 +2163,19 @@
       "runFailed": "締日処理の実行に失敗しました",
       "invalidDate": "指定日の形式が不正です",
       "noUnbilledShipmentsUpToDate": "指定日までに未請求の出荷がありません"
+    },
+    "invoiceTable": {
+      "manualInvoice": "手動請求",
+      "nothingToIssue": "発行できる請求書がありません",
+      "selectDraftInvoices": "下書きの請求書を選んでください",
+      "issuedCount": "{count} 件発行しました",
+      "nothingToMarkPaid": "入金できる請求書がありません",
+      "selectSentInvoices": "送付済みの請求書を選んでください",
+      "paymentProcessedCount": "{count} 件の入金処理を行いました",
+      "nothingToApprove": "承認できる請求書がありません",
+      "selectPendingApprovalInvoices": "承認依頼中の請求書を選んでください",
+      "approvedCount": "{count} 件承認しました",
+      "rejectedCount": "{count} 件差し戻しました"
     }
   },
   "general": {
