@@ -1224,6 +1224,21 @@
     "INVENTORY_TYPE_LABEL": {
       "PRODUCT": "产品",
       "MATERIAL": "材料"
+    },
+    "ITEM_TYPE_LABEL": {
+      "PRODUCT": "产品",
+      "MATERIAL": "材料"
+    },
+    "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
+      "past": "实绩",
+      "now": "当前",
+      "supply": "预计供应",
+      "demand": "预计需求"
+    },
+    "MOVEMENT_DIRECTION_LABEL": {
+      "IN": "入库",
+      "OUT": "出库",
+      "TRANSFER": "移动"
     }
   },
   "status": {
@@ -7386,6 +7401,7 @@
       "endUser": "最终用户",
       "assignedSite": "负责据点",
       "shippingWorkLocation": "出货作业场所",
+      "deliveryDestination": "送达地",
       "linesTotalQuantity": "明细数／数量合计",
       "expandedAt": "展开时间",
       "workOrdersAllocated": "工单（分配）",
@@ -7806,7 +7822,9 @@
       "priceListPriceWithTier": "价格表 {price}（{tier}）",
       "fromPriceList": "来自价格表",
       "willReplaceWithList": "保存时 {entered} 将被替换为价格表的单价",
-      "overriddenFromList": "已覆盖（价格表 {expected}）"
+      "overriddenFromList": "已覆盖（价格表 {expected}）",
+      "delivery": "配送",
+      "applyLineOneDeliveryToAll": "将第 1 行的配送应用到全部行"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "将删除“{label}”。此操作无法撤销。",
@@ -7876,7 +7894,7 @@
       "confirmIssues": "无法确定：{summary}",
       "createFailed": "创建订单确认书失败",
       "createdManually": "手动录入创建",
-      "directToUserRequiresEndUser": "直送最终用户时须指定最终用户",
+      "directToUserRequiresEndUser": "第 {rows} 行明细：直送最终用户时须指定最终用户",
       "endUserInvalid": "最终用户的业务伙伴不存在或已停用",
       "invalidNumber": "订单确认书编号无效",
       "notPendingApproval": "该订单确认书不处于审批中",
@@ -8028,7 +8046,7 @@
     },
     "orderAcceptanceReadiness": {
       "customerNotIdentified": "客户未确定",
-      "directToUserButEndUserNot": "为直送最终用户，但未指定最终用户",
+      "lineEndUserNotIdentified": "第 {rows} 行明细：未指定最终用户",
       "noLineItems": "没有任何明细",
       "lineProductNotIdentified": "第 {rows} 行明细：产品未确定",
       "lineUnitPriceNotEntered": "第 {rows} 行明细：单价未输入",
@@ -8906,7 +8924,9 @@
       "tax_category_rates": "税率",
       "inventory_movements": "出入库单",
       "stock_takes": "盘点",
-      "stock_take_lines": "盘点明细"
+      "stock_take_lines": "盘点明细",
+      "item_inventory": "库存",
+      "movement_types": "移动类型"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -10251,5 +10271,89 @@
     "deliveryOrderHelp": "本次出货要请款的附加费用。确定后由结算处理生成请款单明细。仅在出货单为草稿时可以修改。",
     "workOrderClosedForCharges": "已完成或已取消的工单无法修改附加费用。请在出货单上修改",
     "deliveryOrderClosedForCharges": "仅草稿状态的出货单可以修改附加费用"
+  },
+  "inventory": {
+    "stockOverview": {
+      "item": "品目",
+      "itemType": "品目类别",
+      "hideZeroStock": "隐藏零库存",
+      "searchPlaceholder": "按品目名称或编号搜索",
+      "summaryLine": "{rows} 行 / {items} 个品目 / {sites} 个据点",
+      "truncatedNotice": "行数过多，仅显示部分结果，请缩小筛选范围。",
+      "noStock": "没有库存"
+    },
+    "requirements": {
+      "title": "库存与需求",
+      "item": "品目",
+      "itemPlaceholder": "按编号或名称搜索",
+      "plantPlaceholder": "选择据点",
+      "emptyState": "选择品目和据点后，将显示过去实绩与未来的供需预计",
+      "notFound": "未找到该品目",
+      "onHand": "手持",
+      "reserved": "预留",
+      "availableNow": "可用",
+      "nextReceipt": "下次到货",
+      "shortageAlertTitle": "预计缺货",
+      "shortageAlertBody": "后续余额预计将变为负数，请查看高亮行。",
+      "truncated": "历史记录较多，仅显示最近的部分",
+      "rowKindHeader": "类别",
+      "reference": "参照",
+      "balance": "余额",
+      "dateUndetermined": "未定",
+      "rowKind": {
+        "now": "当前"
+      }
+    },
+    "goodsMovement": {
+      "selectAType": "请选择移动类型",
+      "selectAnItem": "请选择品目",
+      "quantityPositive": "请输入大于零的数量",
+      "typeInactive": "此移动类型已停用",
+      "postFailed": "登记出入库失败",
+      "problem": {
+        "itemRequired": "请选择品目",
+        "quantityPositive": "请输入大于零的数量",
+        "fromRequired": "请指定出库地点",
+        "toRequired": "请指定入库地点",
+        "sameEndpoint": "出库地点与入库地点相同"
+      },
+      "movementType": "移动类型",
+      "fromLocation": "出库地点",
+      "toLocation": "入库地点",
+      "shelf": "货架",
+      "itemAndQuantity": "品目与数量",
+      "item": "品目",
+      "quantity": "数量",
+      "lotNumber": "批次号",
+      "lotNumberHint": "仅产品有效（材料将忽略此项）",
+      "problemsTitle": "暂时无法登记",
+      "submit": "登记",
+      "lastPosted": "刚刚登记的单据",
+      "posted": "已登记出入库单 {number}"
+    },
+    "movementTypes": {
+      "number": "编号",
+      "direction": "方向",
+      "requiresFrom": "需出库地点",
+      "requiresTo": "需入库地点",
+      "requiresFromFloor": "此方向不能取消出库地点为必填",
+      "requiresToFloor": "此方向不能取消入库地点为必填",
+      "createFailed": "创建移动类型失败",
+      "updateFailed": "更新移动类型失败",
+      "codeHint": "手动出入库选项中显示的编号（例如 101 / 201 / 311）",
+      "newMovementType": "新建移动类型",
+      "editTheMovementType": "编辑移动类型",
+      "created": "已创建移动类型「{name}」",
+      "updated": "已更新 {name}",
+      "disableConfirm": "确定要停用 {name} 吗？",
+      "enableConfirm": "确定要启用 {name} 吗？",
+      "disabled": "已停用 {name}",
+      "enabled": "已启用 {name}",
+      "disableTitle": "停用移动类型",
+      "enableTitle": "启用移动类型",
+      "bulkEnabled": "已启用 {count} 项",
+      "bulkDisabled": "已停用 {count} 项",
+      "noMovementTypes": "没有移动类型"
+    }
   }
 }

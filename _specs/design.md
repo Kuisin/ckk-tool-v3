@@ -35,6 +35,7 @@ All tokens are derived from Mantine's theme object. Reference semantic tokens in
 | 販売 | `blue` |
 | 購買 | `teal` |
 | 生産 | `violet` |
+| 在庫 | `cyan` |
 | 出荷 | `orange` |
 | 請求 | `pink` |
 | マスタ | `gray` |
@@ -309,11 +310,11 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 購買 | 3 | 素材入荷 | PU03 | PU13 | PU23 |
 | 購買 | 4 | 外注依頼 | PU04 | PU14 | PU24 |
 | 生産 | 2 | 指示書 | PD02 | PD12 | PD22 |
-| 生産 | 4 | 在庫管理 | PD04 | — | — |
+| 在庫 | 1 | 在庫管理 | ST01 | — | — |
 | 生産 | 5 | 未処理指示書 | PD05 | — | — |
 | 生産 | 6 | 設計図 | PD06 | PD16 | PD26 |
-| 生産 | 7 | 入出庫伝票 | PD07 | — | PD27 |
-| 生産 | 8 | 棚卸 | PD08 | PD18 | PD28 |
+| 在庫 | 4 | 入出庫伝票 | ST04 | — | ST24 |
+| 在庫 | 5 | 棚卸 | ST05 | ST15 | ST25 |
 | 出荷 | 1 | 出荷書 | SH01 | SH11 | SH21 |
 | 出荷 | 2 | 納品書 | SH02 | SH12 | SH22 |
 | 出荷 | 3 | 未処理出荷書 | SH03 | — | — |

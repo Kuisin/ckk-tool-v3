@@ -1224,6 +1224,21 @@
     "INVENTORY_TYPE_LABEL": {
       "PRODUCT": "Product",
       "MATERIAL": "Material"
+    },
+    "ITEM_TYPE_LABEL": {
+      "PRODUCT": "Product",
+      "MATERIAL": "Material"
+    },
+    "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
+      "past": "Actual",
+      "now": "Now",
+      "supply": "Expected supply",
+      "demand": "Expected demand"
+    },
+    "MOVEMENT_DIRECTION_LABEL": {
+      "IN": "In",
+      "OUT": "Out",
+      "TRANSFER": "Transfer"
     }
   },
   "status": {
@@ -7386,6 +7401,7 @@
       "endUser": "End user",
       "assignedSite": "Assigned site",
       "shippingWorkLocation": "Shipping work location",
+      "deliveryDestination": "Destination",
       "linesTotalQuantity": "Lines / total quantity",
       "expandedAt": "Expanded at",
       "workOrdersAllocated": "Work orders (allocated)",
@@ -7806,7 +7822,9 @@
       "priceListPriceWithTier": "Price list {price} ({tier})",
       "fromPriceList": "From the price list",
       "willReplaceWithList": "{entered} will be replaced by the price list unit price on save",
-      "overriddenFromList": "Overridden (price list {expected})"
+      "overriddenFromList": "Overridden (price list {expected})",
+      "delivery": "Delivery",
+      "applyLineOneDeliveryToAll": "Apply line 1\u2019s delivery to all lines"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "Deletes \"{label}\". This cannot be undone.",
@@ -7876,7 +7894,7 @@
       "confirmIssues": "Cannot confirm: {summary}",
       "createFailed": "Could not create the order acceptance",
       "createdManually": "Created by manual entry",
-      "directToUserRequiresEndUser": "Direct-to-end-user delivery requires specifying the end user",
+      "directToUserRequiresEndUser": "Line {rows}: Direct-to-end-user delivery requires specifying the end user",
       "endUserInvalid": "The end user's business partner does not exist or is disabled",
       "invalidNumber": "The order acceptance number is invalid",
       "notPendingApproval": "This order acceptance is not pending approval",
@@ -8028,7 +8046,7 @@
     },
     "orderAcceptanceReadiness": {
       "customerNotIdentified": "Customer not identified",
-      "directToUserButEndUserNot": "Direct to end user, but no end user specified",
+      "lineEndUserNotIdentified": "Line {rows}: End user not specified",
       "noLineItems": "There are no line items",
       "lineProductNotIdentified": "Line {rows}: Product not identified",
       "lineUnitPriceNotEntered": "Line {rows}: Unit price not entered",
@@ -8906,7 +8924,9 @@
       "tax_category_rates": "Tax rate",
       "inventory_movements": "Stock movement",
       "stock_takes": "Stocktaking",
-      "stock_take_lines": "Stocktaking line"
+      "stock_take_lines": "Stocktaking line",
+      "item_inventory": "Stock",
+      "movement_types": "Movement type"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -10251,5 +10271,89 @@
     "deliveryOrderHelp": "The additional charges billed for this shipment. Once confirmed, billing closing turns them into invoice lines. They can only be edited while the delivery order is a draft.",
     "workOrderClosedForCharges": "Charges on a completed or cancelled work order cannot be changed. Edit them on the delivery order instead",
     "deliveryOrderClosedForCharges": "Charges can only be changed on a draft delivery order"
+  },
+  "inventory": {
+    "stockOverview": {
+      "item": "Item",
+      "itemType": "Item type",
+      "hideZeroStock": "Hide zero stock",
+      "searchPlaceholder": "Search by item name or code",
+      "summaryLine": "{rows} rows / {items} items / {sites} sites",
+      "truncatedNotice": "Too many rows to show all — narrow the filters.",
+      "noStock": "No stock"
+    },
+    "requirements": {
+      "title": "Stock / requirements",
+      "item": "Item",
+      "itemPlaceholder": "Search by code or name",
+      "plantPlaceholder": "Select a site",
+      "emptyState": "Pick an item and a site to see its past movements and upcoming supply/demand",
+      "notFound": "Item not found",
+      "onHand": "On hand",
+      "reserved": "Reserved",
+      "availableNow": "Available",
+      "nextReceipt": "Next receipt",
+      "shortageAlertTitle": "Projected shortage",
+      "shortageAlertBody": "The running balance is projected to go negative. Check the highlighted row.",
+      "truncated": "Only the most recent history is shown (older movements exist)",
+      "rowKindHeader": "Type",
+      "reference": "Reference",
+      "balance": "Balance",
+      "dateUndetermined": "Undetermined",
+      "rowKind": {
+        "now": "Now"
+      }
+    },
+    "goodsMovement": {
+      "selectAType": "Select a movement type",
+      "selectAnItem": "Select an item",
+      "quantityPositive": "Enter a quantity greater than zero",
+      "typeInactive": "This movement type is disabled",
+      "postFailed": "Could not record the movement",
+      "problem": {
+        "itemRequired": "Select an item",
+        "quantityPositive": "Enter a quantity greater than zero",
+        "fromRequired": "Specify the source location",
+        "toRequired": "Specify the destination location",
+        "sameEndpoint": "The source and destination are the same"
+      },
+      "movementType": "Movement type",
+      "fromLocation": "Source",
+      "toLocation": "Destination",
+      "shelf": "Shelf",
+      "itemAndQuantity": "Item and quantity",
+      "item": "Item",
+      "quantity": "Quantity",
+      "lotNumber": "Lot number",
+      "lotNumberHint": "Products only (ignored for materials)",
+      "problemsTitle": "Cannot record yet",
+      "submit": "Record",
+      "lastPosted": "Last recorded movement",
+      "posted": "Recorded movement {number}"
+    },
+    "movementTypes": {
+      "number": "Number",
+      "direction": "Direction",
+      "requiresFrom": "Requires source",
+      "requiresTo": "Requires destination",
+      "requiresFromFloor": "This direction cannot turn off the source requirement",
+      "requiresToFloor": "This direction cannot turn off the destination requirement",
+      "createFailed": "Could not create the movement type",
+      "updateFailed": "Could not update the movement type",
+      "codeHint": "The number shown in the Goods movement picker (e.g. 101 / 201 / 311)",
+      "newMovementType": "New movement type",
+      "editTheMovementType": "Edit movement type",
+      "created": "Created movement type \"{name}\"",
+      "updated": "Updated {name}",
+      "disableConfirm": "Disable {name}?",
+      "enableConfirm": "Enable {name}?",
+      "disabled": "Disabled {name}",
+      "enabled": "Enabled {name}",
+      "disableTitle": "Disable movement type",
+      "enableTitle": "Enable movement type",
+      "bulkEnabled": "Enabled {count} item(s)",
+      "bulkDisabled": "Disabled {count} item(s)",
+      "noMovementTypes": "No movement types"
+    }
   }
 }

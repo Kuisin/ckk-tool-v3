@@ -21,6 +21,7 @@ export type AppCategory =
   | "販売"
   | "購買"
   | "生産"
+  | "在庫"
   | "出荷"
   | "請求"
   | "マスタ"
@@ -211,10 +212,54 @@ export const appList: AppEntry[] = [
     // 製品・素材・仕掛品・ロケーション（保管場所×棚）+ 在庫移動。
     key: "inventory",
     label: "在庫管理",
-    operationCode: "PD04",
-    href: "/production/inventory",
+    operationCode: "ST01",
+    href: "/inventory",
     icon: "IconBoxSeam",
-    category: "生産",
+    category: "在庫",
+    requiredPermission: "inventory",
+  },
+  {
+    // 在庫一覧 — **拠点・保管場所から見る**画面。「この棚に何があるか」を答える。
+    // 品目 1 つを追うのは 在庫・所要量 (ST03) のほうで、目的が違う。
+    key: "stock-overview",
+    label: "在庫一覧",
+    operationCode: "ST02",
+    href: "/inventory/stock",
+    icon: "IconBuildingWarehouse",
+    category: "在庫",
+    requiredPermission: "inventory",
+  },
+  {
+    // 在庫・所要量 — **品目 1 つを追う**画面。「この品目は足りるのか」を答える。
+    // 過去（入出庫の履歴）と未来（入出庫の予定）を 1 本の時系列に並べる。
+    // 在庫一覧 (ST02) とは見る向きが逆で、入口も別。
+    key: "stock-requirements",
+    label: "在庫・所要量",
+    operationCode: "ST03",
+    href: "/inventory/requirements",
+    icon: "IconChartLine",
+    category: "在庫",
+    requiredPermission: "inventory",
+  },
+  {
+    // 手動入出庫 — 人が在庫を動かす唯一の口。移動タイプを選び、from/to を
+    // 必ず記録して入出庫伝票を 1 枚起こす。
+    key: "goods-movement",
+    label: "手動入出庫",
+    operationCode: "ST06",
+    href: "/inventory/goods-movement",
+    icon: "IconTransfer",
+    category: "在庫",
+    requiredPermission: "inventory",
+  },
+  {
+    // 移動タイプ — 手動入出庫で選ぶ番号つきの型。利用者が増やせる。
+    key: "movement-types",
+    label: "移動タイプ",
+    operationCode: "ST09",
+    href: "/inventory/movement-types",
+    icon: "IconListNumbers",
+    category: "在庫",
     requiredPermission: "inventory",
   },
   {
@@ -223,10 +268,10 @@ export const appList: AppEntry[] = [
     // 人が手で起こすものではない（数を直したいときは棚卸 PD08）。
     key: "inventory-movements",
     label: "入出庫伝票",
-    operationCode: "PD07",
-    href: "/production/inventory/movements",
+    operationCode: "ST04",
+    href: "/inventory/movements",
     icon: "IconArrowsExchange",
-    category: "生産",
+    category: "在庫",
     requiredPermission: "inventory",
   },
   {
@@ -234,10 +279,10 @@ export const appList: AppEntry[] = [
     // 確定が差異ぶんの入出庫伝票（ADJUST）を起こす。
     key: "stock-takes",
     label: "棚卸",
-    operationCode: "PD08",
-    href: "/production/stock-takes",
+    operationCode: "ST05",
+    href: "/inventory/stock-takes",
     icon: "IconClipboardList",
-    category: "生産",
+    category: "在庫",
     requiredPermission: "inventory",
   },
   {
@@ -741,6 +786,7 @@ export const CATEGORY_COLORS: Record<AppCategory, string> = {
   販売: "blue",
   購買: "teal",
   生産: "violet",
+  在庫: "cyan",
   出荷: "orange",
   請求: "pink",
   マスタ: "gray",
@@ -771,6 +817,10 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "work-orders": { en: "Work order", zh: "工单" },
   inventory: { en: "Inventory", zh: "库存管理" },
   "inventory-movements": { en: "Stock movement", zh: "出入库单" },
+  "stock-overview": { en: "Stock overview", zh: "库存总览" },
+  "stock-requirements": { en: "Stock / requirements", zh: "库存与需求" },
+  "goods-movement": { en: "Goods movement", zh: "手动出入库" },
+  "movement-types": { en: "Movement types", zh: "移动类型" },
   "stock-takes": { en: "Stocktaking", zh: "盘点" },
   "pending-work-orders": { en: "Pending work orders", zh: "未处理工单" },
   "delivery-orders": { en: "Delivery order", zh: "出货单" },
@@ -827,6 +877,7 @@ export const CATEGORY_LABEL_I18N: Record<
   販売: { en: "Sales", zh: "销售" },
   購買: { en: "Purchasing", zh: "采购" },
   生産: { en: "Production", zh: "生产" },
+  在庫: { en: "Inventory", zh: "库存" },
   出荷: { en: "Shipping", zh: "出货" },
   請求: { en: "Billing", zh: "请款" },
   マスタ: { en: "Master data", zh: "主数据" },
@@ -875,6 +926,7 @@ export function getAppsByCategory(): Array<{
     "販売",
     "購買",
     "生産",
+    "在庫",
     "出荷",
     "請求",
     "マスタ",

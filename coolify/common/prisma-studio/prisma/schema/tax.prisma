@@ -63,6 +63,7 @@ model TaxCategory {
   @@index([isActive, sortOrder])
   @@map("tax_categories")
   @@schema("app")
+  items Item[] @relation("ItemTaxCategory")
 }
 
 /// 税率の履歴。

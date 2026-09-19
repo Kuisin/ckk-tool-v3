@@ -1224,6 +1224,21 @@
     "INVENTORY_TYPE_LABEL": {
       "PRODUCT": "製品",
       "MATERIAL": "素材"
+    },
+    "ITEM_TYPE_LABEL": {
+      "PRODUCT": "製品",
+      "MATERIAL": "素材"
+    },
+    "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
+      "past": "実績",
+      "now": "いま",
+      "supply": "供給予定",
+      "demand": "需要予定"
+    },
+    "MOVEMENT_DIRECTION_LABEL": {
+      "IN": "入庫",
+      "OUT": "出庫",
+      "TRANSFER": "移動"
     }
   },
   "status": {
@@ -7386,6 +7401,7 @@
       "endUser": "エンドユーザー",
       "assignedSite": "担当拠点",
       "shippingWorkLocation": "出荷作業場所",
+      "deliveryDestination": "届け先",
       "linesTotalQuantity": "明細数 / 合計数量",
       "expandedAt": "展開日時",
       "workOrdersAllocated": "指示書（割当）",
@@ -7806,7 +7822,9 @@
       "priceListPriceWithTier": "価格表 {price}（{tier}）",
       "fromPriceList": "価格表から",
       "willReplaceWithList": "{entered} は保存時に価格表の単価へ置き換わります",
-      "overriddenFromList": "上書き（価格表 {expected}）"
+      "overriddenFromList": "上書き（価格表 {expected}）",
+      "delivery": "配送",
+      "applyLineOneDeliveryToAll": "先頭行の配送を全行へ適用"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "「{label}」を削除します。この操作は取り消せません。",
@@ -7876,7 +7894,7 @@
       "confirmIssues": "確定できません: {summary}",
       "createFailed": "注文請書の作成に失敗しました",
       "createdManually": "手入力で作成",
-      "directToUserRequiresEndUser": "ユーザー直送ではエンドユーザーの指定が必要です",
+      "directToUserRequiresEndUser": "明細 {rows} 行目: ユーザー直送ではエンドユーザーの指定が必要です",
       "endUserInvalid": "エンドユーザーの取引先が存在しないか無効です",
       "invalidNumber": "注文請書番号が不正です",
       "notPendingApproval": "承認依頼中の注文請書ではありません",
@@ -8028,7 +8046,7 @@
     },
     "orderAcceptanceReadiness": {
       "customerNotIdentified": "顧客が未特定です",
-      "directToUserButEndUserNot": "ユーザー直送ですがエンドユーザーが未指定です",
+      "lineEndUserNotIdentified": "明細 {rows} 行目: エンドユーザーが未指定です",
       "noLineItems": "明細が 1 件もありません",
       "lineProductNotIdentified": "明細 {rows} 行目: 製品が未特定です",
       "lineUnitPriceNotEntered": "明細 {rows} 行目: 単価が未入力です",
@@ -8906,7 +8924,9 @@
       "tax_category_rates": "税率",
       "inventory_movements": "入出庫伝票",
       "stock_takes": "棚卸",
-      "stock_take_lines": "棚卸明細"
+      "stock_take_lines": "棚卸明細",
+      "item_inventory": "在庫",
+      "movement_types": "移動タイプ"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -10251,5 +10271,89 @@
     "deliveryOrderHelp": "この出荷で請求する追加料金。確定すると締日処理が請求書の明細にします。直せるのは下書きのうちだけです。",
     "workOrderClosedForCharges": "完了・キャンセルした指示書の追加料金は変更できません。出荷書側で直してください",
     "deliveryOrderClosedForCharges": "追加料金を変更できるのは下書きの出荷書だけです"
+  },
+  "inventory": {
+    "stockOverview": {
+      "item": "品目",
+      "itemType": "品目種別",
+      "hideZeroStock": "在庫ゼロを隠す",
+      "searchPlaceholder": "品目名・コードで検索",
+      "summaryLine": "{rows} 行 / {items} 品目 / {sites} 拠点",
+      "truncatedNotice": "件数が多いため、一部のみ表示しています。絞り込んでください。",
+      "noStock": "在庫がありません"
+    },
+    "requirements": {
+      "title": "在庫・所要量",
+      "item": "品目",
+      "itemPlaceholder": "コード・名称で検索",
+      "plantPlaceholder": "拠点を選択",
+      "emptyState": "品目と拠点を選ぶと、過去の実績と未来の入出庫予定を表示します",
+      "notFound": "品目が見つかりませんでした",
+      "onHand": "手持ち",
+      "reserved": "予約",
+      "availableNow": "利用可能",
+      "nextReceipt": "次回入荷",
+      "shortageAlertTitle": "在庫不足の見込み",
+      "shortageAlertBody": "この先、残高がマイナスになる見込みです。強調表示した行を確認してください。",
+      "truncated": "古い実績が多いため、一部のみ表示しています",
+      "rowKindHeader": "区分",
+      "reference": "参照",
+      "balance": "残高",
+      "dateUndetermined": "未定",
+      "rowKind": {
+        "now": "いま"
+      }
+    },
+    "goodsMovement": {
+      "selectAType": "移動タイプを選択してください",
+      "selectAnItem": "品目を選択してください",
+      "quantityPositive": "数量は正の数で入力してください",
+      "typeInactive": "この移動タイプは無効化されています",
+      "postFailed": "入出庫の登録に失敗しました",
+      "problem": {
+        "itemRequired": "品目を選択してください",
+        "quantityPositive": "数量は正の数で入力してください",
+        "fromRequired": "出庫元を指定してください",
+        "toRequired": "入庫先を指定してください",
+        "sameEndpoint": "出庫元と入庫先が同じです"
+      },
+      "movementType": "移動タイプ",
+      "fromLocation": "出庫元",
+      "toLocation": "入庫先",
+      "shelf": "棚",
+      "itemAndQuantity": "品目・数量",
+      "item": "品目",
+      "quantity": "数量",
+      "lotNumber": "ロット番号",
+      "lotNumberHint": "製品のみ有効（素材では無視されます）",
+      "problemsTitle": "登録できません",
+      "submit": "登録",
+      "lastPosted": "直前に登録した伝票",
+      "posted": "入出庫伝票 {number} を登録しました"
+    },
+    "movementTypes": {
+      "number": "番号",
+      "direction": "向き",
+      "requiresFrom": "出庫元要",
+      "requiresTo": "入庫先要",
+      "requiresFromFloor": "この向きでは「出庫元」を必須から外せません",
+      "requiresToFloor": "この向きでは「入庫先」を必須から外せません",
+      "createFailed": "移動タイプの作成に失敗しました",
+      "updateFailed": "移動タイプの更新に失敗しました",
+      "codeHint": "手動入出庫の選択肢に表示される番号（例: 101 / 201 / 311）",
+      "newMovementType": "移動タイプの新規作成",
+      "editTheMovementType": "移動タイプの編集",
+      "created": "移動タイプ「{name}」を作成しました",
+      "updated": "{name} を更新しました",
+      "disableConfirm": "{name} を無効化します。よろしいですか？",
+      "enableConfirm": "{name} を有効化します。よろしいですか？",
+      "disabled": "{name} を無効化しました",
+      "enabled": "{name} を有効化しました",
+      "disableTitle": "移動タイプの無効化",
+      "enableTitle": "移動タイプの有効化",
+      "bulkEnabled": "{count} 件を有効化しました",
+      "bulkDisabled": "{count} 件を無効化しました",
+      "noMovementTypes": "移動タイプがありません"
+    }
   }
 }

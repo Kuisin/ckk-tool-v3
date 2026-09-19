@@ -176,6 +176,8 @@ export async function listPortalDocuments(
     }
 
     case "order_acceptances": {
+      // 出荷先・エンドユーザーは明細ごと（§8）— ヘッダには無い。
+      // 明細のどれか 1 行が一致すればその請書は見える。
       const rows = await prisma.orderAcceptance.findMany({
         where: {
           status: { in: [...VISIBLE_ACCEPTANCE_STATUS] },
@@ -184,8 +186,16 @@ export async function listPortalDocuments(
             { customerBranchBpId: { in: bpIds } },
             ...(endUserBpIds.length
               ? [
-                  { endUserBpId: { in: endUserBpIds } },
-                  { shipToBpId: { in: endUserBpIds } },
+                  {
+                    items: {
+                      some: {
+                        OR: [
+                          { endUserBpId: { in: endUserBpIds } },
+                          { shipToBpId: { in: endUserBpIds } },
+                        ],
+                      },
+                    },
+                  },
                 ]
               : []),
           ],
@@ -309,14 +319,14 @@ export async function portalTargetOf(
       };
     }
     case "order_acceptances": {
+      // 出荷先・エンドユーザーは明細ごと（§8）— 全明細ぶんまとめて集合にする。
       const r = await prisma.orderAcceptance.findUnique({
         where: key,
         select: {
           customerBpId: true,
           customerBranchBpId: true,
-          shipToBpId: true,
-          endUserBpId: true,
           status: true,
+          items: { select: { shipToBpId: true, endUserBpId: true } },
         },
       });
       if (!r || !VISIBLE_ACCEPTANCE_STATUS.includes(r.status as never))
@@ -327,9 +337,13 @@ export async function portalTargetOf(
         customerBpIds: [r.customerBpId, r.customerBranchBpId].filter(
           (v): v is string => !!v,
         ),
-        endUserBpIds: [r.endUserBpId, r.shipToBpId].filter(
-          (v): v is string => !!v,
-        ),
+        endUserBpIds: [
+          ...new Set(
+            r.items
+              .flatMap((it) => [it.endUserBpId, it.shipToBpId])
+              .filter((v): v is string => !!v),
+          ),
+        ],
       };
     }
     case "delivery_notes": {

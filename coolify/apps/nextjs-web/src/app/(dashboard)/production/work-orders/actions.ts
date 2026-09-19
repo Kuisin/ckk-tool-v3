@@ -1712,7 +1712,7 @@ export async function approveWorkOrder(
     // （発注判断のシグナル）。best-effort — 承認は既に確定済み。
     if (prior.type === "MANUFACTURE" && prior.materialId != null) {
       try {
-        const { ensureMaterialInventory, applyTransaction } = await import(
+        const { ensureItemInventory, applyTransaction } = await import(
           "@/lib/inventory"
         );
         const material = await prisma.material.findUnique({
@@ -1729,8 +1729,12 @@ export async function approveWorkOrder(
             sourceType: "work_orders",
             sourceId: String(workOrderNumber),
           });
-          const invId = await ensureMaterialInventory(tx, {
-            materialId: prior.materialId as number,
+          const materialRow = await tx.material.findUniqueOrThrow({
+            where: { id: prior.materialId as number },
+            select: { itemId: true },
+          });
+          const invId = await ensureItemInventory(tx, {
+            itemId: materialRow.itemId as number,
             plantId: null,
             unit: material?.unit ?? "本", // i18n-ignore — DB データの既定値（単位）。対象外（_specs/i18n-glossary.md §1）
           });

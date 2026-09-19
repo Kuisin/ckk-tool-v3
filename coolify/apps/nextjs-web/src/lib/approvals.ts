@@ -327,10 +327,16 @@ export async function fetchApprovalDocInfo(
       const row = await prisma.orderAcceptance.findUnique({
         where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
         select: {
-          deliveryMethod: true,
-          assignedPlantId: true,
           items: {
-            select: { quantity: true, unitPrice: true, amount: true },
+            select: {
+              quantity: true,
+              unitPrice: true,
+              amount: true,
+              // 配送（§8）— 明細ごと。条件評価は「明細のどれかが一致すれば
+              // 一致」（approval-conditions.ts の配列対応）。
+              deliveryMethod: true,
+              assignedPlantId: true,
+            },
           },
         },
       });
@@ -344,9 +350,15 @@ export async function fetchApprovalDocInfo(
       }, 0);
       return {
         total_amount: totalAmount,
-        delivery_method: row.deliveryMethod,
-        assigned_plant_id:
-          row.assignedPlantId != null ? String(row.assignedPlantId) : null,
+        delivery_method: [...new Set(row.items.map((it) => it.deliveryMethod))],
+        assigned_plant_id: [
+          ...new Set(
+            row.items
+              .map((it) => it.assignedPlantId)
+              .filter((id): id is number => id != null)
+              .map(String),
+          ),
+        ],
       };
     }
     case "work_orders": {
@@ -420,9 +432,14 @@ export async function fetchApprovalDocInfo(
         select: {
           acceptance: {
             select: {
-              deliveryMethod: true,
               items: {
-                select: { quantity: true, unitPrice: true, amount: true },
+                select: {
+                  quantity: true,
+                  unitPrice: true,
+                  amount: true,
+                  // 配送（§8）— 明細ごと。
+                  deliveryMethod: true,
+                },
               },
             },
           },
@@ -437,7 +454,9 @@ export async function fetchApprovalDocInfo(
       }, 0);
       return {
         total_amount: totalAmount,
-        delivery_method: row.acceptance.deliveryMethod,
+        delivery_method: [
+          ...new Set(row.acceptance.items.map((it) => it.deliveryMethod)),
+        ],
       };
     }
     case "delivery_orders": {

@@ -96,9 +96,13 @@ export const MASTER_REFERENCES: Record<
     ref("Quote", "customerBranchBpId"),
     ref("OrderAcceptance", "customerBpId"),
     ref("OrderAcceptance", "customerBranchBpId"),
+    // shipToBpId / endUserBpId は @deprecated（配送は明細へ移した。
+    // order_line_delivery, 20261024090000）が、列と FK は Phase 2 まで残る
+    // ので引き続き数える。
     ref("OrderAcceptance", "shipToBpId"),
     ref("OrderAcceptance", "endUserBpId"),
     ref("OrderLine", "endUserBpId"),
+    ref("OrderLine", "shipToBpId"),
     // 出荷・請求
     ref("DeliveryOrder", "customerBpId"),
     ref("DeliveryOrder", "customerBranchBpId"),
@@ -125,9 +129,14 @@ export const MASTER_REFERENCES: Record<
   Plant: [
     ref("ProductInventory", "plantId"),
     ref("MaterialInventory", "plantId"),
+    // 統合在庫（品目統合の第 2 段 A）。移行中は旧 2 表と両方が在庫を指すので、
+    // どちらも数える — 片方だけだと「参照ゼロ」と誤って拠点を消せてしまう。
+    ref("ItemInventory", "plantId"),
     ref("WorkOrderStep", "plantId"),
     ref("ProductProcessRouteVersionStep", "plantId"),
+    // @deprecated（配送は明細へ移した）が列と FK は Phase 2 まで残る。
     ref("OrderAcceptance", "assignedPlantId"),
+    ref("OrderLine", "assignedPlantId"),
     ref("DeliveryOrder", "fromPlantId"),
     ref("MaterialPurchaseOrderItem", "plantId"),
     ref("MaterialReceipt", "plantId"),
@@ -152,6 +161,7 @@ export const MASTER_REFERENCES: Record<
   StorageLocation: [
     ref("ProductInventory", "storageLocationId"),
     ref("MaterialInventory", "storageLocationId"),
+    ref("ItemInventory", "storageLocationId"),
     // SET NULL — 完成品の保管場所。在庫行だけ見て消すと、指示書側の
     // 「どこへ入れる予定だったか」が黙って消える。
     ref("WorkOrder", "storageLocationId"),
@@ -160,7 +170,9 @@ export const MASTER_REFERENCES: Record<
     ref("WorkOrderStepPlan", "workLocationId"),
     ref("WorkOrderStepActual", "workLocationId"),
     ref("KioskDevice", "defaultWorkLocationId"),
+    // @deprecated（配送は明細へ移した）が列と FK は Phase 2 まで残る。
     ref("OrderAcceptance", "shippingWorkLocationId"),
+    ref("OrderLine", "shippingWorkLocationId"),
     // CASCADE — 工程の許可作業場所リンクが黙って消える
     ref("ProcessStepWorkLocation", "workLocationId"),
   ],

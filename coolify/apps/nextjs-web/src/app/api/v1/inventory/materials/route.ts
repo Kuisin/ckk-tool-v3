@@ -23,25 +23,42 @@ export async function GET(request: Request): Promise<Response> {
   return runList({
     baseWhere: plantWhere(gate.access, "plantId"),
     fetch: ({ where, take, orderBy }) =>
-      prisma.materialInventory.findMany({
-        // biome-ignore lint/suspicious/noExplicitAny: 断片は authz-core / pagination が組む
-        where: where as any,
-        take,
-        // biome-ignore lint/suspicious/noExplicitAny: 同上
-        orderBy: orderBy as any,
-        select: {
-          id: true,
-          materialId: true,
-          plantId: true,
-          quantity: true,
-          reservedQuantity: true,
-          unit: true,
-          storageLocationId: true,
-          shelfId: true,
-          notes: true,
-          updatedAt: true,
-        },
-      }),
+      (async () => {
+        // 在庫は 1 表（app.item_inventory）になった。**外部契約は変えない**ので、
+        // DTO の materialId は品目 → 旧マスタの対応をまとめて引いて詰め直す
+        // （1 回だけ。行ごとに引くと N+1）。第 2 段で DTO を品目に寄せるまでの橋。
+        const rows = await prisma.itemInventory.findMany({
+          // biome-ignore lint/suspicious/noExplicitAny: 断片は authz-core / pagination が組む
+          where: { ...(where as any), item: { itemType: "MATERIAL" } },
+          take,
+          // biome-ignore lint/suspicious/noExplicitAny: 同上
+          orderBy: orderBy as any,
+          select: {
+            id: true,
+            itemId: true,
+            plantId: true,
+            quantity: true,
+            reservedQuantity: true,
+            unit: true,
+            storageLocationId: true,
+            shelfId: true,
+            notes: true,
+            updatedAt: true,
+          },
+        });
+        const ids = [...new Set(rows.map((r) => r.itemId))];
+        const masters = ids.length
+          ? await prisma.material.findMany({
+              where: { itemId: { in: ids } },
+              select: { id: true, itemId: true },
+            })
+          : [];
+        const byItem = new Map(masters.map((m) => [m.itemId as number, m.id]));
+        return rows.map((r) => ({
+          ...r,
+          materialId: byItem.get(r.itemId) ?? null,
+        }));
+      })(),
     query,
     tiebreak: "id",
     toCursor: (r) => ({ kind: "id", id: r.id, t: r.updatedAt.toISOString() }),

@@ -1,0 +1,118 @@
+// 品目マスタ（app.items）— 製品と素材を 1 つの表に統合する。
+//
+// ## なぜ
+//
+// 在庫は既に品目で考えている: inventory_transactions も inventory_reservations も
+// (inventory_type, inventory_id) の多態で持っていて、「製品か素材か」は列の値に
+// すぎない。分かれているのは**マスタだけ**で、そのせいで在庫を扱う画面・ロジックが
+// すべて 2 本立てになっていた（製品用と素材用）。
+//
+// ## 移行の段取り（expand / contract）
+//
+// 18 の表が products / materials を参照していて、アプリ側の参照は約 850 箇所ある。
+// 一度に切り替えるのは無理なので 3 段に分ける:
+//
+//   **第 1 段（この変更）** … items を作り、両マスタから流し込み、**トリガーで
+//     同期し続ける**。読み取り専用の鏡として使える状態にするだけで、書き込みは
+//     従来どおり products / materials へ行く。**振る舞いは 1 つも変わらない。**
+//   第 2 段 … 参照側の表に item_id を足し、アプリを表のまとまりごとに移す。
+//   第 3 段 … 旧列と旧マスタを落とす。
+//
+// ## id の決め方
+//
+// **items.id は製品・素材のどちらにも新しく採る。** 対応は
+// products.item_id / materials.item_id に持たせ、第 2 段はその対応をたどって
+// 参照側を付け替える。
+//
+// 「製品は id をそのまま持ち込めば 13 表の値を書き換えずに済む」と最初に考えたが、
+// **それは衝突する**: 製品の id は products のシーケンスが、items の id は items の
+// シーケンスが配る。素材のぶんで items が先に進むので、あとから作られた製品が
+// 「既に素材が使っている id」を要求することになる。既存行だけがたまたま一致する
+// 状態は、新しい行が増えた瞬間に嘘になるので、最初から揃えない。
+//
+// ## いちばん危ないところ
+//
+// products と materials は **material_type_id / diameter_mm / length_mm という
+// 同じ名前の列を、逆の意味で持っている**:
+//   products  … その製品が**要求する**素材（材種 + 直径 + 全長）
+//   materials … その素材が**である**もの（材種 + 実寸）
+// 同じ列にまとめると、製品の要求寸法と素材の実寸が混ざる。混ざっても
+// 型は通り、画面もそれらしく動いてしまう。だから製品側は requires_* に分ける。
+
+enum ItemType {
+  /// 製品（売るもの・作るもの）
+  PRODUCT
+  /// 素材（買うもの・消費するもの）
+  MATERIAL
+
+  @@map("ITEM_TYPE")
+  @@schema("app")
+}
+
+/// ⚠️ **第 2 段が終わるまで、アプリからこの表へ書かないこと。**
+/// いまの items は products / materials をトリガーで写した鏡で、書き込みの持ち主は
+/// 旧マスタのほう。ここへ直接 INSERT / UPDATE すると、次にその製品（素材）が
+/// 編集された瞬間にトリガーが上書きして、書いたものが黙って消える。
+/// 読むのは自由 — むしろ在庫まわりの新しい画面はここを読むために作った。
+model Item {
+  id       Int      @id @default(autoincrement())
+  itemType ItemType @map("item_type")
+
+  /// 表示コード。製品は PRD-YYYYMM-NNNN（採番前のレガシー行は null）、
+  /// 素材は構成から組み立てた素材コード（必ずある）。
+  code String? @unique
+
+  /// { ja, en, … } の多言語 JSON（他のマスタと同じ規約）。
+  name       Json
+  unit       String
+  matchNames String[] @default([]) @map("match_names")
+  isActive   Boolean  @default(true) @map("is_active")
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  // ─── 製品だけが持つ列 ─────────────────────────────────────────────────────
+  yearMonth     String? @map("year_month") @db.Char(6)
+  seq           Int?
+  legacyKey     String? @unique @map("legacy_key")
+  currency      String? @default("JPY")
+  taxCategoryId Int?    @map("tax_category_id")
+  spec          Json?
+
+  /// その製品が**要求する**素材の材種・寸法（cut-to-length なので特定の素材行には
+  /// 紐づけない）。**素材側の materialTypeId / diameterMm / lengthMm とは別物** —
+  /// 同じ列に寄せると要求寸法と実寸が混ざる（このファイル冒頭の注意）。
+  requiresMaterialTypeId Int?     @map("requires_material_type_id")
+  requiresDiameterMm     Decimal? @map("requires_diameter_mm") @db.Decimal(8, 3)
+  requiresLengthMm       Decimal? @map("requires_length_mm") @db.Decimal(10, 3)
+
+  // ─── 素材だけが持つ列 ─────────────────────────────────────────────────────
+  materialTypeId    Int?     @map("material_type_id")
+  surfaceFinishCode String?  @map("surface_finish_code") @db.Char(1)
+  diameterCode      String?  @map("diameter_code") @db.Char(3)
+  lengthVariantCode String?  @map("length_variant_code") @db.Char(3)
+  kindCode          String?  @map("kind_code") @db.Char(2)
+  diameterMm        Decimal? @map("diameter_mm") @db.Decimal(8, 3)
+  lengthMm          Decimal? @map("length_mm") @db.Decimal(10, 3)
+  manufacturerModel String?  @map("manufacturer_model")
+  nominalDiameterMm Decimal? @map("nominal_diameter_mm") @db.Decimal(8, 3)
+
+  // 参照は Restrict — 品目が指しているマスタを消せてしまうと、
+  // 製品の要求材種や素材の材種が黙って null に化ける。
+  taxCategory          TaxCategory?  @relation("ItemTaxCategory", fields: [taxCategoryId], references: [id], onDelete: Restrict)
+  requiresMaterialType MaterialType? @relation("ItemRequiresMaterialType", fields: [requiresMaterialTypeId], references: [id], onDelete: Restrict)
+  materialType         MaterialType? @relation("ItemMaterialType", fields: [materialTypeId], references: [id], onDelete: Restrict)
+
+
+  inventory ItemInventory[]
+  @@unique([yearMonth, seq])
+  @@index([itemType, isActive])
+  @@index([materialTypeId])
+  @@index([requiresMaterialTypeId])
+  // 照合名の配列検索（AI 突合）。GIN でないと全表走査になる。
+  @@index([matchNames(ops: ArrayOps)], map: "items_match_names_idx", type: Gin)
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
+  @@map("items")
+  @@schema("app")
+}

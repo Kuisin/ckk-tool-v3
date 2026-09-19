@@ -178,7 +178,7 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
   stock_takes: {
     label: label("common.stockTake", "ja"),
     color: "violet",
-    href: (id) => `/production/stock-takes/${id}`,
+    href: (id) => `/inventory/stock-takes/${id}`,
     appKey: "stock-takes",
     approvePermission: "inventory",
   },

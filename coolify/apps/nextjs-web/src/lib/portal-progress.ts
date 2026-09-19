@@ -82,18 +82,17 @@ export async function listPortalOrderLines(
     where: {
       status: { in: [...VISIBLE_LINE_STATUS] },
       branch: { not: null }, // 確定していない行は番号も金額も無い
-      acceptance: {
-        OR: [
-          { customerBpId: { in: bpIds } },
-          { customerBranchBpId: { in: bpIds } },
-          ...(endUserBpIds.length
-            ? [
-                { endUserBpId: { in: endUserBpIds } },
-                { shipToBpId: { in: endUserBpIds } },
-              ]
-            : []),
-        ],
-      },
+      OR: [
+        { acceptance: { customerBpId: { in: bpIds } } },
+        { acceptance: { customerBranchBpId: { in: bpIds } } },
+        // 出荷先・エンドユーザーは明細ごと（§8）— 行自身が持つ。
+        ...(endUserBpIds.length
+          ? [
+              { endUserBpId: { in: endUserBpIds } },
+              { shipToBpId: { in: endUserBpIds } },
+            ]
+          : []),
+      ],
     },
     // ★ 許可リスト。lot_number / is_locked / product_id は**取らない**。
     select: {
@@ -195,16 +194,17 @@ export async function getPortalOrderLine(
       cancelledAt: true,
       productText: true,
       product: { select: { name: true } },
+      // 認可の材料（誰宛の注文か）。出荷先・エンドユーザーは明細ごと（§8）
+      // — 行自身が持つ。表示には使わない。
+      endUserBpId: true,
+      shipToBpId: true,
       acceptance: {
         select: {
           customerOrderRef: true,
           orderDate: true,
           createdAt: true,
-          // 認可の材料（誰宛の注文か）。表示には使わない。
           customerBpId: true,
           customerBranchBpId: true,
-          endUserBpId: true,
-          shipToBpId: true,
         },
       },
       deliveryItems: {
@@ -251,10 +251,9 @@ export async function getPortalOrderLine(
       row.acceptance.customerBpId,
       row.acceptance.customerBranchBpId,
     ].filter((v): v is string => !!v),
-    endUserBpIds: [
-      row.acceptance.endUserBpId,
-      row.acceptance.shipToBpId,
-    ].filter((v): v is string => !!v),
+    endUserBpIds: [row.endUserBpId, row.shipToBpId].filter(
+      (v): v is string => !!v,
+    ),
   });
   if (!access.canView) return null;
 
