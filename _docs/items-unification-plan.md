@@ -1,0 +1,214 @@
+# 品目統合と在庫まわりの計画（2026-09）
+
+製品と素材を 1 つの品目マスタにまとめ、その上に在庫の画面を載せるまでの段取り。
+**この文書は順番と理由の置き場**で、各段の実装の正はその PR と migration にある。
+
+## いまどこにいるか
+
+| | 状態 |
+|---|---|
+| 入出庫伝票（ST04）+ 棚卸（ST05） | 済（#888） |
+| 在庫を独立カテゴリ ST へ / `/inventory/*` へ移設 | #891 |
+| `app.items`（第 1 段 = 鏡を作る） | #892 |
+| 第 2 段・第 3 段、在庫の新画面 3 本 | これから（本文書） |
+
+## 目指す形
+
+```
+app.items            品目（item_type = PRODUCT | MATERIAL）
+app.item_inventory   在庫（品目 × 拠点 × 保管場所 × 棚 × ロット × 半製品）
+app.inventory_movements / _transactions   入出庫伝票とその明細
+app.movement_types   移動タイプ（番号つき・利用者が増やせる）
+```
+
+製品と素材で 2 本立てになっている画面・ロジックが 1 本になる。
+
+---
+
+## なぜこの順番か
+
+**在庫の統合（第 2 段 A）を先にやる。** 新しい画面 3 本はどれも在庫を読むので、
+品目種別で分かれたままだと 2 本立てで書くことになり、統合後に書き直しになる。
+逆に販売書類（見積・受注・請求）の付け替えは新画面と無関係なので後ろでよい。
+
+**販売書類をいちばん後ろに置く。** 金額に直結し、PDF・弥生 CSV・価格表解決まで
+連なる。壊したときの影響がいちばん大きいところを、手順が枯れてから触る。
+
+---
+
+## 第 2 段 A — 在庫を `item_inventory` に統合
+
+### uuid のおかげで、ここは masters よりずっと安い
+
+`product_inventory` と `material_inventory` の主キーは **uuid**。衝突しないので、
+**両方の id をそのまま持ち込める**。すると
+
+- `inventory_transactions.inventory_id`
+- `inventory_reservations.inventory_id`
+- `stock_take_lines.inventory_id`
+
+の 3 か所が**1 行も書き換えずに有効なまま**になる。masters 側が serial で
+衝突したのとは事情が違う（#892 の id 節）。
+
+さらに、これらは多態だったので**今まで FK が無かった**。統合すると参照先が
+1 表に定まるので、**本物の FK を張れる**ようになる（整合性の純増）。
+
+### 列の擦り合わせ
+
+| | product_inventory | material_inventory | item_inventory |
+|---|---|---|---|
+| quantity | `Int` | `Decimal(12,3)` | **`Decimal(12,3)`**（int は損なく入る） |
+| unit | 無し（マスタから） | 行に持つ | **行に持つ**（単位違いの合流を拒む既存の守りを残す） |
+| lot_number / is_semi_finished / source_step_id | あり | 無し | あり（素材は null / false） |
+
+`quantity` を Decimal に寄せると、製品数量を読んでいる箇所で `Number()` が要る。
+`lib/inventory.ts` が唯一の書き手なので書き込み側は 1 ファイルで済むが、
+**読み出し側は `data.ts` 群を洗う**（`inventory-availability-core` は数値のみで無傷）。
+
+### 段取り（3 PR）
+
+1. **A-1 鏡を作る** … `item_inventory` を作り、両表から id を保って流し込み、
+   トリガーで同期。アプリは従来どおり。`items` と同じやり方。
+2. **A-2 書き手を移す** … `lib/inventory.ts`（+ kiosk twin）と在庫の `data.ts` を
+   `item_inventory` へ。**単一書き手であることが効く** —
+   `inventory-writer-guard.test.ts` で「数量を動かすのは applyTransaction だけ」を
+   既に門にしてあるので、書き込みの移設は実質 1 ファイル。移した時点でトリガーを
+   止め、旧表は読み取り専用にする。
+3. **A-3 FK を張る** … 3 表の `inventory_id` に `item_inventory` への FK を追加。
+
+> ⚠️ `lib/inventory.ts` は kiosk との twin。`pnpm twin:sync` と
+> `twin-files.test.ts` を必ず通す。共有端末は工程完了で在庫を動かす。
+
+---
+
+## 新画面 3 本（第 2 段 A のあと）
+
+### B. 移動タイプ + 手動入出庫
+
+**移動タイプ**（`app.movement_types`）は SAP の移動タイプ相当。番号つきで、
+利用者が設定アプリから増やせる。
+
+```
+code            varchar unique   -- 番号（101 / 201 / 311 …）。人が決める
+name            json
+direction       IN | OUT | TRANSFER
+requires_from   boolean          -- 出庫元の保管場所が要るか
+requires_to     boolean          -- 入庫先が要るか
+is_active / sort_order / notes
+```
+
+`inventory_movements` に `movement_type_id` を足す。**既存の `cause`（enum）は
+残す** — あれは「どの処理が起こしたか」という**システム側の分類**で、移動タイプは
+**業務側の分類**。片方でもう片方を兼ねさせると、自動生成の伝票に人が決めた
+番号を無理に割り当てることになる。自動生成は `cause` のみ、手動は両方を持つ。
+
+**手動入出庫アプリ** … 移動タイプを選ぶ → from/to を入れる → 品目と数量 → 伝票を
+1 枚起こす。**from/to は必ず記録する**（移動タイプが `requires_from/to` で
+どちらが要るかを決める）。入庫だけの型でも「どこへ」は必ず残る。
+
+**設定アプリ**で移動タイプを追加・編集。既定の数本（入庫 / 出庫 / 保管場所間移動 /
+廃棄）を seed で入れる。**使用済みの型は削除させない**（伝票が指しているため）—
+`is_active=false` に倒す。
+
+### C. 拠点／保管場所別 在庫一覧
+
+全品目 × 拠点 × 保管場所の現在庫。`item_inventory` があれば素直な一覧 1 本。
+列: 品目（種別バッジ）/ コード / 拠点 / 保管場所・棚 / ロット / 手持ち / 予約 /
+利用可能 / 単位 / 更新日。絞り込み: 拠点・保管場所・品目種別・コード検索。
+
+> **在庫管理（ST01）の 製品/素材 タブと中身が重なる。** 利用者の指示で別アプリに
+> する。重複を残す判断なので、どちらかを直すときは両方を見ること。
+
+### D. 品目別 在庫推移・所要量（MD04 相当）
+
+品目 × 拠点で、**過去（履歴）と未来（所要量）を 1 本の時系列**に並べる。
+
+- 過去 … `inventory_transactions`（伝票番号つき）
+- 現在 … 手持ち − 予約
+- 未来 … 入庫予定と出庫予定を日付順に累積した残高
+
+`lib/atp-core.ts` は**いま供給しか見ていない**（手持ち − 予約 + 発注入荷）。
+需要を足して、3 種別すべてに広げる:
+
+| | 供給 | 需要 |
+|---|---|---|
+| 素材 | 発注済（ORDERED）の明細 `expected_at` | 指示書の素材予約 |
+| 製品 | 進行中の指示書 `planned_quantity` | 確定済み注文明細の未出荷分 `delivery_date` |
+| 半製品 | 工程が産む分 | **モデルが無い**（下記） |
+
+**製品の入庫予定日**は指示書に納期列が無いので、割当明細の最早 `delivery_date`
+から導く（`WorkOrderStepsPanel` の予定納期と同じ出どころ）。在庫向け指示書
+（割当ゼロ）は日付未定として末尾に置く — `atp-core` の既存の扱いと同じ。
+
+---
+
+## 第 2 段 B / D / C — 参照側 18 表の付け替え
+
+`items` の鏡は既にあるので、各表は `item_id` 列を足して
+`products.item_id` / `materials.item_id` をたどって埋める → アプリを移す →
+旧列を落とす（落とすのは第 3 段）。
+
+| 群 | 表 | 触るファイルの目安 |
+|---|---|---|
+| **B 購買**（`material_id`） | `material_purchase_order_items` / `material_receipts` / `purchase_request_items` / `work_orders.material_id` | 20 前後 |
+| **D 生産・設計**（`product_id`） | `work_orders` / `product_process_routes` / `inspection_templates` / `design_requests` / `design_files` | 100 前後（`work_order` が広い） |
+| **C 販売**（`product_id`） | `quote_items` / `order_lines` / `delivery_order_items` / `delivery_note_items` / `estimates` / `price_list_entries` / `customer_product_codes` | 150 前後 |
+
+B から始めるのは小さいから。C を最後にするのは金額に直結するから。
+
+### 各群で必ず巻き込まれるもの
+
+- **AI 突合** … `lib/product-match.ts` / `lib/material-match.ts` は
+  `match_names` と `productMatchKey` を見る。`items.match_names` に統合済みなので
+  **2 本を 1 本に畳める**（C と B のときに）。`match_aliases.target_type` の値
+  （`products` / `materials`）も `items` へ寄せる移行が要る。
+- **価格試算** … `estimates` は材種・直径・黒皮研磨で材料を指す（`materials` 行では
+  ない）ので、**この統合の影響を受けない**。`product_id` の付け替えだけ。
+- **`/api/v1`** … `/products` `/materials` `/inventory/*` の 4 本。**外部契約なので
+  URL は変えない** — 中で `items` を読んで従来の形で返す。第 3 段でも残す。
+- **権限** … 製品・素材のマスタ画面はどちらも `master` コードで、**分かれていない**。
+  権限まわりの移行は不要（当初 2 コードあると誤って見積もっていた）。
+
+---
+
+## 第 3 段 — 旧いものを落とす
+
+1. アプリ側に `products` / `materials` / 旧在庫表への参照が 1 つも無いことを
+   grep の門で確認（`items-readonly-guard.test.ts` を反転させた形）
+2. トリガーと同期関数を落とす
+3. 旧列（`*.product_id` / `*.material_id` / `*.item_id` の対応列）を落とす
+4. `products` / `materials` / `product_inventory` / `material_inventory` を落とす
+5. `inventory_transactions.inventory_type` は**残す**か畳むかを別途判断
+   （品目から引けるので冗長だが、既存の索引と `/api/v1` が使っている）
+
+**落とすのは必ず別 PR・別デプロイ。** `check-migration-compat.sh` が止める類で、
+止める理由がそのまま効く — 旧アプリが動いている間に列を落とすと死ぬ。
+
+---
+
+## 横断して効く注意
+
+- **デプロイ順は決められない。** アプリと migrator は同じ merge から別々に走る。
+  列の追加は安全、削除と `NOT NULL` の後付けは**必ず次の PR**へ。
+  （#888 で `movement_id NOT NULL` を分けたのと同じ理由。）
+- **kiosk の twin** … `inventory.ts` / `workflow-core.ts` / `numbering.ts` ほか。
+  在庫に触る段では必ず `pnpm twin:sync`。
+- **`items` は第 2 段が終わるまで鏡**。アプリから書かない（門あり）。
+- **マイグレーションは merge が唯一の引き金**。手で当てない。
+- 各段の受け入れは「まっさらな DB へ migrate deploy → grants → cron → analytics →
+  `migrate diff` 差分なし」＋実データでの往復確認まで。#888 / #892 と同じ。
+
+## 段ごとの受け入れ条件
+
+| 段 | これが満たせたら次へ |
+|---|---|
+| 2A-1 | `item_inventory` の行数・数量合計が旧 2 表と一致 |
+| 2A-2 | 在庫が動く全経路（完了・出荷・入荷・移動・引当・棚卸）を通し、伝票と数量が一致。孤児 0 |
+| 2A-3 | 3 表の `inventory_id` に FK が張れる = 参照先の取りこぼしが無い |
+| B/D/C 各群 | その群の `item_id` が全行埋まり、旧列と指す先が一致 |
+| 3 | 旧参照が grep で 0、`migrate diff` 差分なし |
+
+## 見積もり感
+
+PR 数でおよそ **10 本**（2A で 3、新画面で 3、2B/2D/2C で 3、第 3 段で 1）。
+新画面 3 本は 2A-2 が終われば並行して進められる。
