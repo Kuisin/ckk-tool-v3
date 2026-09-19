@@ -149,6 +149,8 @@ model MaterialType {
 
   materials      Material[]
   productsByType Product[] @relation("ProductMaterialType")
+  itemsByType    Item[]    @relation("ItemMaterialType")
+  itemsRequiring Item[]    @relation("ItemRequiresMaterialType")
   prices         MaterialTypePrice[]
   estimates      Estimate[]
 
@@ -185,6 +187,9 @@ model MaterialTypePrice {
 // 内部 id は連番、表示コード（素材コード）は code（構成から自動組立・不変）。
 model Material {
   id                Int      @id @default(autoincrement())
+  /// 統合先の品目（app.items）。移行中だけの対応列（id とは一致しない）。
+  /// 第 3 段で列ごと消える。
+  itemId            Int?     @unique @map("item_id")
   code              String   @unique
   materialTypeId    Int      @map("material_type_id")
   surfaceFinishCode String   @map("surface_finish_code") @db.Char(1)
@@ -231,6 +236,9 @@ model Material {
 // legacy_key に取込元 uuid5）。
 model Product {
   id         Int     @id @default(autoincrement())
+  /// 統合先の品目（app.items）。移行中だけの対応列（id とは一致しない —
+  /// 別のシーケンスが配るため）。第 3 段（旧マスタ廃止）で列ごと消える。
+  itemId     Int?    @unique @map("item_id")
   yearMonth  String? @map("year_month") @db.Char(6)
   seq        Int?
   legacyKey  String? @unique @map("legacy_key")
