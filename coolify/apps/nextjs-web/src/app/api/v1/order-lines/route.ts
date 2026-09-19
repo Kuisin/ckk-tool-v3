@@ -6,6 +6,10 @@
  *
  * 行スコープは**親の注文請書の作成者**で決まる（明細に createdBy は無い）。
  * 画面（sales/order-lines/data.ts）と同じ考え方。
+ *
+ * `shipToId` / `deliveryMethod` / `assignedPlantId` は §8 で明細ごとに
+ * 持つようになったフィールド（`endUserId` は元々ここにあった）。新規の
+ * 追加キーなので既存の読み手には非破壊。
  */
 
 import { ownWhere } from "@ckk/authz-core";
@@ -57,7 +61,11 @@ export async function GET(request: Request): Promise<Response> {
           status: true,
           lotNumber: true,
           isLocked: true,
+          // 配送（§8）— 明細ごと。
+          shipToBpId: true,
+          deliveryMethod: true,
           endUserBpId: true,
+          assignedPlantId: true,
           notes: true,
           confirmedAt: true,
           cancelledAt: true,
@@ -101,7 +109,10 @@ export async function GET(request: Request): Promise<Response> {
       deliveryDate: dateOnly(r.deliveryDate),
       lotNumber: r.lotNumber,
       isLocked: r.isLocked,
+      shipToId: r.shipToBpId,
+      deliveryMethod: r.deliveryMethod,
       endUserId: r.endUserBpId,
+      assignedPlantId: r.assignedPlantId,
       notes: r.notes,
       confirmedAt: iso(r.confirmedAt),
       cancelledAt: iso(r.cancelledAt),

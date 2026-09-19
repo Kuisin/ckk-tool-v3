@@ -7364,6 +7364,7 @@
       "endUser": "End user",
       "assignedSite": "Assigned site",
       "shippingWorkLocation": "Shipping work location",
+      "deliveryDestination": "Destination",
       "linesTotalQuantity": "Lines / total quantity",
       "expandedAt": "Expanded at",
       "workOrdersAllocated": "Work orders (allocated)",
@@ -7784,7 +7785,9 @@
       "priceListPriceWithTier": "Price list {price} ({tier})",
       "fromPriceList": "From the price list",
       "willReplaceWithList": "{entered} will be replaced by the price list unit price on save",
-      "overriddenFromList": "Overridden (price list {expected})"
+      "overriddenFromList": "Overridden (price list {expected})",
+      "delivery": "Delivery",
+      "applyLineOneDeliveryToAll": "Apply line 1\u2019s delivery to all lines"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "Deletes \"{label}\". This cannot be undone.",
@@ -7854,7 +7857,7 @@
       "confirmIssues": "Cannot confirm: {summary}",
       "createFailed": "Could not create the order acceptance",
       "createdManually": "Created by manual entry",
-      "directToUserRequiresEndUser": "Direct-to-end-user delivery requires specifying the end user",
+      "directToUserRequiresEndUser": "Line {rows}: Direct-to-end-user delivery requires specifying the end user",
       "endUserInvalid": "The end user's business partner does not exist or is disabled",
       "invalidNumber": "The order acceptance number is invalid",
       "notPendingApproval": "This order acceptance is not pending approval",
@@ -8006,7 +8009,7 @@
     },
     "orderAcceptanceReadiness": {
       "customerNotIdentified": "Customer not identified",
-      "directToUserButEndUserNot": "Direct to end user, but no end user specified",
+      "lineEndUserNotIdentified": "Line {rows}: End user not specified",
       "noLineItems": "There are no line items",
       "lineProductNotIdentified": "Line {rows}: Product not identified",
       "lineUnitPriceNotEntered": "Line {rows}: Unit price not entered",

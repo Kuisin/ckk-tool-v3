@@ -7364,6 +7364,7 @@
       "endUser": "最终用户",
       "assignedSite": "负责据点",
       "shippingWorkLocation": "出货作业场所",
+      "deliveryDestination": "送达地",
       "linesTotalQuantity": "明细数／数量合计",
       "expandedAt": "展开时间",
       "workOrdersAllocated": "工单（分配）",
@@ -7784,7 +7785,9 @@
       "priceListPriceWithTier": "价格表 {price}（{tier}）",
       "fromPriceList": "来自价格表",
       "willReplaceWithList": "保存时 {entered} 将被替换为价格表的单价",
-      "overriddenFromList": "已覆盖（价格表 {expected}）"
+      "overriddenFromList": "已覆盖（价格表 {expected}）",
+      "delivery": "配送",
+      "applyLineOneDeliveryToAll": "将第 1 行的配送应用到全部行"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "将删除“{label}”。此操作无法撤销。",
@@ -7854,7 +7857,7 @@
       "confirmIssues": "无法确定：{summary}",
       "createFailed": "创建订单确认书失败",
       "createdManually": "手动录入创建",
-      "directToUserRequiresEndUser": "直送最终用户时须指定最终用户",
+      "directToUserRequiresEndUser": "第 {rows} 行明细：直送最终用户时须指定最终用户",
       "endUserInvalid": "最终用户的业务伙伴不存在或已停用",
       "invalidNumber": "订单确认书编号无效",
       "notPendingApproval": "该订单确认书不处于审批中",
@@ -8006,7 +8009,7 @@
     },
     "orderAcceptanceReadiness": {
       "customerNotIdentified": "客户未确定",
-      "directToUserButEndUserNot": "为直送最终用户，但未指定最终用户",
+      "lineEndUserNotIdentified": "第 {rows} 行明细：未指定最终用户",
       "noLineItems": "没有任何明细",
       "lineProductNotIdentified": "第 {rows} 行明细：产品未确定",
       "lineUnitPriceNotEntered": "第 {rows} 行明细：单价未输入",
