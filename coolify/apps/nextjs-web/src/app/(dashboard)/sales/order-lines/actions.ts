@@ -122,7 +122,7 @@ export async function runStockCheck(
       }),
     );
     // 在庫台帳（予約数）が動くため在庫ページも再検証する。
-    revalidatePath("/production/inventory");
+    revalidatePath("/inventory");
     return actionOk(result);
   } catch (e) {
     return actionError(

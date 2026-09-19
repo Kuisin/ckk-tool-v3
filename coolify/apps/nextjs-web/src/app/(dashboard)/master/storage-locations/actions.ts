@@ -77,7 +77,7 @@ export type StorageShelfInput = z.infer<ReturnType<typeof shelfInputSchema>>;
 
 function revalidate() {
   revalidatePath("/master/storage-locations");
-  revalidatePath("/production/inventory");
+  revalidatePath("/inventory");
 }
 
 // ── 保管場所 ─────────────────────────────────────────────────────────────────
