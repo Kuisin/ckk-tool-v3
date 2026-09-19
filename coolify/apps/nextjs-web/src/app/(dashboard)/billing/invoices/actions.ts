@@ -520,6 +520,12 @@ export async function approveInvoiceApproval(
   number: string,
 ): Promise<ActionResult> {
   const tr = await getTranslations();
+  // 実際の承認可否は approveInvoiceIssue / approveInvoicePayment が
+  // checkApprovalDocAccess でもう一度判定する（種別まで決めないとどちらを
+  // 呼ぶか分からないため）。ここでの門は、Server Action を単体で叩かれた
+  // ときに未認可のまま先の findUnique まで進ませないための入口ゲート。
+  const authz = await checkApprovalDocAccess("invoice");
+  if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "INV");
   if (!key) return actionError(tr("billing.invoicesActions.invalidNumber"));
   const row = await prisma.invoice.findUnique({
@@ -540,6 +546,9 @@ export async function rejectInvoiceApproval(
   reason: string,
 ): Promise<ActionResult> {
   const tr = await getTranslations();
+  // 入口ゲート（上の approveInvoiceApproval と同じ理由）。
+  const authz = await checkApprovalDocAccess("invoice");
+  if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "INV");
   if (!key) return actionError(tr("billing.invoicesActions.invalidNumber"));
   const row = await prisma.invoice.findUnique({
@@ -609,6 +618,9 @@ export async function requestInvoicePayments(
 export async function approveInvoices(
   numbers: string[],
 ): Promise<ActionResult<BulkInvoiceResult>> {
+  // 入口ゲート — 行ごとの実際の可否は approveInvoiceApproval が再判定する。
+  const authz = await checkApprovalDocAccess("invoice");
+  if (!authz.ok) return actionError(authz.error);
   return runBulk(numbers, approveInvoiceApproval);
 }
 
@@ -617,5 +629,7 @@ export async function rejectInvoices(
   numbers: string[],
   reason: string,
 ): Promise<ActionResult<BulkInvoiceResult>> {
+  const authz = await checkApprovalDocAccess("invoice");
+  if (!authz.ok) return actionError(authz.error);
   return runBulk(numbers, (n) => rejectInvoiceApproval(n, reason));
 }
