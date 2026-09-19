@@ -54,7 +54,17 @@ export interface OrderLine {
    */
   salesRepName: string | null;
   createdByName: string | null;
+  // ── 配送（§8）— 明細ごとに持つ ──
+  shipToId: string | null;
+  shipToName: string | null;
+  /** 配送方法（通常配送 / ユーザー直送）。 */
+  deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
+  endUserId: string | null;
   endUserName: string | null;
+  assignedPlantId: string | null;
+  assignedPlantName: string | null;
+  shippingWorkLocationId: string | null;
+  shippingWorkLocationName: string | null;
   /** 顧客注文書番号（FAX 等で受領した注文書の番号）。 */
   customerOrderRef: string | null;
   /** 見積書からの展開元（QOT-… 導出番号）。手動作成時は null。 */

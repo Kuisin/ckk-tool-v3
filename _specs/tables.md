@@ -98,6 +98,18 @@
 納品書は出荷書の導出担当が 1 人に定まればそれを、請求書も対象出荷の導出担当が
 1 人に定まればそれを引き継ぐ。
 
+**配送（出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所）は逆に
+明細（`order_lines`）が持つ** — 営業担当・顧客・通貨のように「行に複写すると
+乖離するため持たない」がヘッダの規約なら、配送はその**例外**。1 通の注文書の
+中で行ごとに届け先が違う注文があり、届け先はヘッダに 1 つしか置けないのに
+明細は複数あるので、乖離しないよう複写するのではなく最初から明細が唯一の
+持ち主になる。以前はヘッダにあった（`order_acceptances.ship_to_bp_id` /
+`.delivery_method` / `.assigned_plant_id` / `.shipping_work_location_id`）が
+`order_line_delivery`（20261024090000）で明細へ移した。出荷書の束ね可否
+（`combinabilityError`）はこの 4 つ + エンドユーザーが揃った明細だけを 1 通に
+まとめる、という形で元々明細単位の判定だったので、値の持ち場所が変わっただけで
+判定の形は変わっていない。
+
 ### Auth
 ```
 Table users {
@@ -721,9 +733,11 @@ Table order_acceptances {
   quote_id        uuid [ref: > quotes.id]
   customer_bp_id  uuid [not null, ref: > business_partners.id]
   customer_branch_bp_id uuid [ref: > business_partners.id]
-  ship_to_bp_id   uuid [ref: > business_partners.id]  // 出荷先（顧客本体と別法人・支店でもよい。null = 顧客へ）
-  assigned_plant_id int [ref: > plants.id]            // 担当拠点（この注文を処理する拠点）
-  shipping_work_location_id int [ref: > work_locations.id]  // 出荷作業場所（作業場所マスタ MS0D）
+  // 出荷先・配送方法・担当拠点・出荷作業場所はヘッダに無い — **明細ごと**
+  // （order_lines）に持つ（§8）。1 通の注文書の中で行ごとに届け先が違う
+  // 注文があるため。顧客・注文書番号・見積キー・作成者と同じ「行に複写
+  // すると乖離するので持たない」規約の**例外**がこの 4 つ — 配送だけは
+  // ヘッダに複写できるほど行ごとに揃っている保証がない。
   customer_order_ref varchar               // 顧客注文書番号（FAX受取）
   status          ORDER_ACCEPTANCE_STATUS [not null, default: 'PENDING']
   total_amount    numeric(12,2)            // 注文明細から自動計算
@@ -783,11 +797,17 @@ Table order_lines {
   delivery_date   date
   notes           text
 
+  // 配送（§8）— どこへ・どう届けるかは明細ごとに決まる。
+  ship_to_bp_id   uuid [ref: > business_partners.id]  // 出荷先（null = 顧客へ）
+  delivery_method DELIVERY_METHOD [not null, default: 'NORMAL']  // 通常配送 / ユーザー直送
+  assigned_plant_id int [ref: > plants.id]            // 担当拠点（この明細を処理する拠点）
+  shipping_work_location_id int [ref: > work_locations.id]  // 出荷作業場所（作業場所マスタ MS0D）
+
   // 実行（旧 sales_orders 由来）
   status          ORDER_LINE_STATUS [not null, default: 'DRAFT']
   lot_number      int                      // 通し連番（指示書番号と共用。統合ロットでは複数明細が共有するため unique ではない）
   is_locked       boolean [not null, default: false]  // 承認依頼中のロック
-  end_user_bp_id  uuid [ref: > business_partners.id]  // 行ごとに異なり得る
+  end_user_bp_id  uuid [ref: > business_partners.id]  // エンドユーザー（行ごとに異なり得る）
   confirmed_at    timestamp
   cancelled_at    timestamp
   created_at      timestamp

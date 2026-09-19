@@ -96,9 +96,13 @@ export const MASTER_REFERENCES: Record<
     ref("Quote", "customerBranchBpId"),
     ref("OrderAcceptance", "customerBpId"),
     ref("OrderAcceptance", "customerBranchBpId"),
+    // shipToBpId / endUserBpId は @deprecated（配送は明細へ移した。
+    // order_line_delivery, 20261024090000）が、列と FK は Phase 2 まで残る
+    // ので引き続き数える。
     ref("OrderAcceptance", "shipToBpId"),
     ref("OrderAcceptance", "endUserBpId"),
     ref("OrderLine", "endUserBpId"),
+    ref("OrderLine", "shipToBpId"),
     // 出荷・請求
     ref("DeliveryOrder", "customerBpId"),
     ref("DeliveryOrder", "customerBranchBpId"),
@@ -127,7 +131,9 @@ export const MASTER_REFERENCES: Record<
     ref("MaterialInventory", "plantId"),
     ref("WorkOrderStep", "plantId"),
     ref("ProductProcessRouteVersionStep", "plantId"),
+    // @deprecated（配送は明細へ移した）が列と FK は Phase 2 まで残る。
     ref("OrderAcceptance", "assignedPlantId"),
+    ref("OrderLine", "assignedPlantId"),
     ref("DeliveryOrder", "fromPlantId"),
     ref("MaterialPurchaseOrderItem", "plantId"),
     ref("MaterialReceipt", "plantId"),
@@ -160,7 +166,9 @@ export const MASTER_REFERENCES: Record<
     ref("WorkOrderStepPlan", "workLocationId"),
     ref("WorkOrderStepActual", "workLocationId"),
     ref("KioskDevice", "defaultWorkLocationId"),
+    // @deprecated（配送は明細へ移した）が列と FK は Phase 2 まで残る。
     ref("OrderAcceptance", "shippingWorkLocationId"),
+    ref("OrderLine", "shippingWorkLocationId"),
     // CASCADE — 工程の許可作業場所リンクが黙って消える
     ref("ProcessStepWorkLocation", "workLocationId"),
   ],

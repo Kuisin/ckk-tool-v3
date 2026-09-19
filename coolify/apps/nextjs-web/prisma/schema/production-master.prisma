@@ -61,6 +61,7 @@ model Plant {
   storageLocations   StorageLocation[]   @relation("StorageLocationPlant")
   userPlants         UserPlant[]         @relation("PlantUsers")
   orderAcceptances   OrderAcceptance[]   @relation("AcceptancePlant")
+  orderLines         OrderLine[]         @relation("OrderLinePlant")
   inventoryMovements InventoryMovement[] @relation("InventoryMovementPlant")
   stockTakes         StockTake[]         @relation("StockTakePlant")
 
@@ -116,6 +117,7 @@ model WorkLocation {
   stepActuals WorkOrderStepActual[] @relation("StepActualWorkLocation")
   kioskDevices KioskDevice[] @relation("KioskDeviceDefaultWorkLocation")
   orderAcceptances OrderAcceptance[] @relation("AcceptanceShippingWorkLocation")
+  orderLines       OrderLine[]       @relation("OrderLineShippingWorkLocation")
 
   @@index([groupId, sortOrder])
   @@map("work_locations")

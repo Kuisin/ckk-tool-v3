@@ -64,6 +64,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import {
+  acceptanceDeliveryMethodLabel,
   deliveryOrderTypeLabel,
   orderTypeLabel,
   workOrderTypeLabel,
@@ -498,9 +499,27 @@ export function OrderLineDetail({
             )
           }
         />
+        {/* 配送（§8）— 明細ごとに持つ（このアプリでは読み取り専用。編集は
+            注文請書 SA04 の明細エディタ）。 */}
+        <FieldValue
+          label={tr("sales.orderAcceptances.shipTo")}
+          value={order.shipToName ?? "—"}
+        />
+        <FieldValue
+          label={tr("sales.orderAcceptances.deliveryMethod")}
+          value={acceptanceDeliveryMethodLabel(order.deliveryMethod, locale)}
+        />
         <FieldValue
           label={tr("common.endUser")}
           value={order.endUserName ?? "—"}
+        />
+        <FieldValue
+          label={tr("sales.orderAcceptances.assignedSite")}
+          value={order.assignedPlantName ?? "—"}
+        />
+        <FieldValue
+          label={tr("sales.orderAcceptances.shippingWorkLocation")}
+          value={order.shippingWorkLocationName ?? "—"}
         />
         {/* 営業担当・作成者は注文請書ヘッダの値（行では編集しない）。 */}
         <FieldValue label={tr("common.salesRep")} value={order.salesRepName} />

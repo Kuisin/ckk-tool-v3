@@ -7349,6 +7349,7 @@
       "endUser": "エンドユーザー",
       "assignedSite": "担当拠点",
       "shippingWorkLocation": "出荷作業場所",
+      "deliveryDestination": "届け先",
       "linesTotalQuantity": "明細数 / 合計数量",
       "expandedAt": "展開日時",
       "workOrdersAllocated": "指示書（割当）",
@@ -7769,7 +7770,9 @@
       "priceListPriceWithTier": "価格表 {price}（{tier}）",
       "fromPriceList": "価格表から",
       "willReplaceWithList": "{entered} は保存時に価格表の単価へ置き換わります",
-      "overriddenFromList": "上書き（価格表 {expected}）"
+      "overriddenFromList": "上書き（価格表 {expected}）",
+      "delivery": "配送",
+      "applyLineOneDeliveryToAll": "先頭行の配送を全行へ適用"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "「{label}」を削除します。この操作は取り消せません。",
@@ -7839,7 +7842,7 @@
       "confirmIssues": "確定できません: {summary}",
       "createFailed": "注文請書の作成に失敗しました",
       "createdManually": "手入力で作成",
-      "directToUserRequiresEndUser": "ユーザー直送ではエンドユーザーの指定が必要です",
+      "directToUserRequiresEndUser": "明細 {rows} 行目: ユーザー直送ではエンドユーザーの指定が必要です",
       "endUserInvalid": "エンドユーザーの取引先が存在しないか無効です",
       "invalidNumber": "注文請書番号が不正です",
       "notPendingApproval": "承認依頼中の注文請書ではありません",
@@ -7991,7 +7994,7 @@
     },
     "orderAcceptanceReadiness": {
       "customerNotIdentified": "顧客が未特定です",
-      "directToUserButEndUserNot": "ユーザー直送ですがエンドユーザーが未指定です",
+      "lineEndUserNotIdentified": "明細 {rows} 行目: エンドユーザーが未指定です",
       "noLineItems": "明細が 1 件もありません",
       "lineProductNotIdentified": "明細 {rows} 行目: 製品が未特定です",
       "lineUnitPriceNotEntered": "明細 {rows} 行目: 単価が未入力です",
