@@ -49,6 +49,11 @@ enum ItemType {
   @@schema("app")
 }
 
+/// ⚠️ **第 2 段が終わるまで、アプリからこの表へ書かないこと。**
+/// いまの items は products / materials をトリガーで写した鏡で、書き込みの持ち主は
+/// 旧マスタのほう。ここへ直接 INSERT / UPDATE すると、次にその製品（素材）が
+/// 編集された瞬間にトリガーが上書きして、書いたものが黙って消える。
+/// 読むのは自由 — むしろ在庫まわりの新しい画面はここを読むために作った。
 model Item {
   id       Int      @id @default(autoincrement())
   itemType ItemType @map("item_type")
@@ -98,6 +103,8 @@ model Item {
   requiresMaterialType MaterialType? @relation("ItemRequiresMaterialType", fields: [requiresMaterialTypeId], references: [id], onDelete: Restrict)
   materialType         MaterialType? @relation("ItemMaterialType", fields: [materialTypeId], references: [id], onDelete: Restrict)
 
+
+  inventory ItemInventory[]
   @@unique([yearMonth, seq])
   @@index([itemType, isActive])
   @@index([materialTypeId])

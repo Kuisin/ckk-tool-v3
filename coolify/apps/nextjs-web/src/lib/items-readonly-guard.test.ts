@@ -33,6 +33,22 @@ function grep(pattern: string): string[] {
   }
 }
 
+describe("統合在庫（app.item_inventory）", () => {
+  it("アプリから書き込んでいない（A-2 までは鏡なので、書いても消される）", () => {
+    const writes = [
+      ...grep("prisma\\.itemInventory\\.create"),
+      ...grep("prisma\\.itemInventory\\.update"),
+      ...grep("prisma\\.itemInventory\\.upsert"),
+      ...grep("prisma\\.itemInventory\\.delete"),
+      ...grep("tx\\.itemInventory\\.create"),
+      ...grep("tx\\.itemInventory\\.update"),
+      ...grep("tx\\.itemInventory\\.upsert"),
+      ...grep("tx\\.itemInventory\\.delete"),
+    ];
+    expect(writes).toEqual([]);
+  });
+});
+
 describe("統合品目マスタ（app.items）", () => {
   it("アプリから書き込んでいない（鏡なので、書いてもトリガーに消される）", () => {
     const writes = [

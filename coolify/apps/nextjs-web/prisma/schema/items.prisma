@@ -103,6 +103,8 @@ model Item {
   requiresMaterialType MaterialType? @relation("ItemRequiresMaterialType", fields: [requiresMaterialTypeId], references: [id], onDelete: Restrict)
   materialType         MaterialType? @relation("ItemMaterialType", fields: [materialTypeId], references: [id], onDelete: Restrict)
 
+
+  inventory ItemInventory[]
   @@unique([yearMonth, seq])
   @@index([itemType, isActive])
   @@index([materialTypeId])
