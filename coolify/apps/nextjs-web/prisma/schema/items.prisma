@@ -108,7 +108,7 @@ model Item {
   poItems          MaterialPurchaseOrderItem[] @relation("MaterialPurchaseOrderItemItem")
   receipts         MaterialReceipt[]           @relation("MaterialReceiptItem")
   purchaseReqItems PurchaseRequestItem[]       @relation("PurchaseRequestItemItem")
-  workOrderMaterials WorkOrder[]               @relation("WorkOrderItem")
+  workOrderMaterials WorkOrder[]               @relation("WorkOrderMaterialItem")
   @@unique([yearMonth, seq])
   @@index([itemType, isActive])
   @@index([materialTypeId])

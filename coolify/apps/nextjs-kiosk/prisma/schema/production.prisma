@@ -85,8 +85,11 @@ model WorkOrder {
   type            WorkOrderType
   plannedQuantity Int     @map("planned_quantity")
   materialId      Int?    @map("material_id")
-  /// 統合品目（app.items）。素材は品目の一種になった。material_id は移行中の残りで、旧列を落とす PR で消える。
-  itemId Int? @map("item_id")
+  /// **指示書が消費する素材**の品目（app.items）。
+  /// 指示書は品目を 2 つ指す — 作るもの（productItemId）と使うもの（ここ）。
+  /// 裸の item_id にすると、どちらか分からなくなる。
+  /// material_id は移行中の残りで、旧列を落とす PR で消える。
+  materialItemId Int? @map("material_item_id")
   // 完成品の保管場所（保管場所マスタ MS0E。null = 未指定）
   storageLocationId Int? @map("storage_location_id")
 
@@ -143,7 +146,7 @@ model WorkOrder {
   product         Product     @relation(fields: [productId], references: [id])
   designFile      DesignFile? @relation("WorkOrderDesignFile", fields: [designFileId], references: [id])
   material        Material?   @relation(fields: [materialId], references: [id])
-  item     Item?     @relation("WorkOrderItem", fields: [itemId], references: [id], onDelete: Restrict)
+  materialItem Item?  @relation("WorkOrderMaterialItem", fields: [materialItemId], references: [id], onDelete: Restrict)
   storageLocation StorageLocation? @relation("WorkOrderStorageLocation", fields: [storageLocationId], references: [id])
   sourceWorkOrder WorkOrder? @relation("WorkOrderCopySource", fields: [sourceWorkOrderId], references: [id])
   copies          WorkOrder[] @relation("WorkOrderCopySource")
@@ -175,7 +178,7 @@ model WorkOrder {
   @@index([storageLocationId])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, id])
-  @@index([itemId])
+  @@index([materialItemId])
   @@map("work_orders")
   @@schema("app")
 }
