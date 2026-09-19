@@ -6,6 +6,23 @@
  * 大きいマスタ（製品 4.3万件など）を全件クライアントへ送らず、クエリごとに
  * 上位 LIMIT 件だけ返す。空クエリは先頭 LIMIT 件。
  * 値は内部 id（連番）の文字列、ラベルは表示コード + 名称。
+ *
+ * ## 製品・素材は id 空間が 2 つある（品目統合の途中）
+ *
+ * 既定は **品目（items.id）** — `searchProductItemOptions` /
+ * `searchMaterialItemOptions` / `f4SearchProductItems`。製品マスタ (MS04)・
+ * 素材マスタ (MS06)・設計図 (PD06) の画面と URL も第 3 段でここへ移った。
+ *
+ * 旧 id（products.id / materials.id）に残っているのは**この 2 つだけ**で、
+ * どちらも「保存済みの値が旧 id を指している」ことが理由:
+ *   - `searchProductOptions` / `searchMaterialOptions` … CM02 フォームの
+ *     「業務データ検索」（`components/forms/lookup-dispatch.ts`）。回答に
+ *     保存された id を読み替えられない。
+ *   - `searchProductOptions` … 指示書ビルダーの在庫向け製品ピッカー。
+ *     `resolveWorkOrderTarget` / `work-order-alloc-core` と同じ値を共有して
+ *     いるので、3 か所まとめてでないと移せない（work-orders/actions.ts の
+ *     `resolveWorkOrderTarget` のコメント）。
+ * **どちらも number なので取り違えても型では止まらない。** 混ぜないこと。
  */
 
 import { getTranslations } from "next-intl/server";
@@ -176,6 +193,10 @@ function productLabel(p: {
  * 品番だから — こちらの製品名を覚えていなくても辿り着ける。顧客で絞らない
  * のは意図的で、どの顧客の品番で引いても同じ製品に行き着く（品番は顧客ごとに
  * 一意だが、探す側はどの顧客の紙かを先に選ばない）。
+ *
+ * ⚠️ **value は旧 products.id。** 残っている使い手は CM02 フォームの
+ * 業務データ検索と、指示書ビルダーの在庫向け製品ピッカーの 2 つだけ
+ * （このファイル冒頭の節）。新しい画面は `searchProductItemOptions` を使う。
  */
 export async function searchProductOptions(
   query: string,
@@ -520,54 +541,6 @@ export async function searchMaterialTypeOptions(
 }
 
 // ── F4 詳細検索（フィルタ + 結果テーブル、最大 F4_LIMIT 件） ────────────────
-
-/** 製品 F4 — 名称 / 素材コード。columns: 製品コード/名称/素材/単位。 */
-export async function f4SearchProducts(
-  filters: Record<string, string>,
-): Promise<F4SearchRow[]> {
-  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
-  const tr = await getTranslations();
-  const name = s(filters.name);
-  const materialType = s(filters.materialType);
-  // 名称欄はキーワード（match_names）込みで判定する（略称・英字でも当たる）。
-  const keywordIds = await productIdsByKeyword(name, F4_LIMIT);
-  const rows = await prisma.product.findMany({
-    where: {
-      isActive: true,
-      ...(name
-        ? {
-            OR: [
-              { name: { path: ["ja"], string_contains: name } },
-              ...byIds(keywordIds),
-            ],
-          }
-        : {}),
-      ...(materialType
-        ? {
-            materialType: {
-              code: { contains: materialType, mode: "insensitive" },
-            },
-          }
-        : {}),
-    },
-    include: { materialType: true },
-    orderBy: { id: "asc" },
-    take: F4_LIMIT,
-  });
-  return rows.map((p) => {
-    const nameJa = localized(p.name as LocalizedText | null);
-    return {
-      value: String(p.id),
-      label: productLabel(p),
-      cells: [
-        formatProductNumber(p.yearMonth, p.seq) ?? tr("common.notNumbered"),
-        nameJa,
-        p.materialType?.code ?? "—",
-        p.unit,
-      ],
-    };
-  });
-}
 
 /**
  * 製品（品目） F4 — 名称 / 材種。columns: 製品コード/名称/材種/単位。
@@ -981,11 +954,12 @@ export async function searchAllocatableOrderLineOptions(
  *
  * ⚠️ **購買・指示書の素材ピッカーはこれを使わない** — あちらは
  * `searchMaterialItemOptions`（品目統合 items 由来、value = items.id）。
- * ここは form-lookup-resolve.ts の `"material"` lookup と
- * `lookupHref("material", …)` が materials.id を前提にしたまま（
- * `/master/materials/[id]` は materials.id で引く）なので、値の意味を
- * 変えるとフォーム回答の保存済みリンクが壊れる。品目統合が forms 側まで
- * 届いたら合流する。
+ * ここは form-lookup-resolve.ts の `"material"` lookup が materials.id を
+ * 前提にしたままなので、値の意味を変えると**保存済みの回答が別の素材を
+ * 指す**（どちらも連番なので必ず何かに当たる）。素材マスタの URL は品目 id
+ * へ移ったので、回答からのリンクは `/master/materials/legacy/<materials.id>`
+ * を経由して読み替える（`lib/form-schema.ts` `lookupHref`）。
+ * 品目統合が forms 側（保存済みの回答の移行）まで届いたら合流する。
  */
 export async function searchMaterialOptions(
   query: string,

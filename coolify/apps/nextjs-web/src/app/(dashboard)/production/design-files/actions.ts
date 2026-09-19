@@ -24,7 +24,6 @@ import {
   usedVersionKeys,
   versionKey,
 } from "@/lib/design-files-core";
-import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import {
   type ActionResult,
   actionError,
@@ -118,11 +117,8 @@ export async function updateDesignFileNotes(
         }),
       },
     });
-    if (row.itemId != null) {
-      const legacyProductId = await legacyProductIdForItem(row.itemId);
-      if (legacyProductId != null)
-        revalidatePath(`${BASE_PATH}/${legacyProductId}`);
-    }
+    // 製品マスタ (MS04) の URL は items.id（品目統合 第 3 段）。
+    if (row.itemId != null) revalidatePath(`${BASE_PATH}/${row.itemId}`);
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, tr("common.couldNotUpdate"), tr));
@@ -185,11 +181,8 @@ export async function deleteDesignFile(id: string): Promise<ActionResult> {
         }),
       },
     });
-    if (row.itemId != null) {
-      const legacyProductId = await legacyProductIdForItem(row.itemId);
-      if (legacyProductId != null)
-        revalidatePath(`${BASE_PATH}/${legacyProductId}`);
-    }
+    // 製品マスタ (MS04) の URL は items.id（品目統合 第 3 段）。
+    if (row.itemId != null) revalidatePath(`${BASE_PATH}/${row.itemId}`);
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, tr("common.couldNotDelete"), tr));

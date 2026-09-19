@@ -2,7 +2,7 @@
  * f4-presets.ts — SearchSelect の F4（詳細検索ポップアップ）標準設定。
  *
  * フィルタ定義・結果列と、_shared/option-search.ts のサーバー検索を束ねる。
- * 画面側は `f4={productF4(tr)}` のように呼び出し側の `tr` を渡すだけでよい
+ * 画面側は `f4={productItemF4(tr)}` のように呼び出し側の `tr` を渡すだけでよい
  * （ui/SearchSelect.tsx）。
  */
 
@@ -10,7 +10,6 @@ import type { useTranslations } from "next-intl";
 import {
   f4SearchCustomers,
   f4SearchProductItems,
-  f4SearchProducts,
   f4SearchStructuredMaterialTypes,
 } from "@/app/(dashboard)/_shared/option-search";
 import type { Option } from "@/lib/mock";
@@ -18,28 +17,12 @@ import type { F4Config } from "./F4SearchModal";
 
 type Tr = ReturnType<typeof useTranslations>;
 
-export function productF4(tr: Tr): F4Config {
-  return {
-    title: tr("ui.f4Presets.productTitle"),
-    description: tr("ui.f4Presets.productDescription"),
-    filters: [
-      { key: "name", label: tr("ui.f4Presets.name") },
-      { key: "materialType", label: tr("ui.f4Presets.materialTypeCode") },
-    ],
-    columns: [
-      tr("ui.f4Presets.productCode"),
-      tr("ui.f4Presets.name"),
-      tr("ui.f4Presets.materialType"),
-      tr("ui.f4Presets.unit"),
-    ],
-    onSearch: f4SearchProducts,
-  };
-}
-
 /**
- * 製品（品目）F4 — productF4 の品目版。value は items.id
- * （`searchProductItemOptions` と対。products.id とは値の意味が違うので
- * 混ぜないこと）。
+ * 製品 F4。value は **items.id**（`searchProductItemOptions` と対）。
+ *
+ * 旧 products.id 版（`productF4` / `f4SearchProducts`）は使い手が無くなった
+ * ので品目統合 第 3 段で消した — 残っている旧 id のピッカーは
+ * `searchProductOptions` の 2 か所だけで、どちらも F4 を出していない。
  */
 export function productItemF4(tr: Tr): F4Config {
   return {

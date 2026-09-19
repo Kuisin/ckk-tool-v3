@@ -166,6 +166,14 @@ export function lookupSources(
 /**
  * lookup の値から参照先の詳細画面 URL を作る。null = リンクにしない。
  * kintone の商談メモで会社名・工場名がリンクになっているのと同じ役割。
+ *
+ * ★ `product` / `material` だけ `/legacy/<id>` を経由する。**保存済みの回答が
+ *   旧 products.id / materials.id を持っている**（ピッカーも
+ *   `searchProductOptions` / `searchMaterialOptions` = 旧 id のまま）のに対し、
+ *   製品・素材マスタの URL は品目 id（items.id）へ移った（品目統合 第 3 段）。
+ *   同期関数なので DB を引いて読み替えられず、そのまま並べると**別のレコードが
+ *   黙って開く**（どちらも連番なので必ず何かに当たる）。読み替えは
+ *   `master/{products,materials}/legacy/[id]/page.tsx` が 1 枚で引き受ける。
  */
 export function lookupHref(source: LookupSource, id: string): string | null {
   if (!id) return null;
@@ -177,9 +185,9 @@ export function lookupHref(source: LookupSource, id: string): string | null {
     case "business_partner":
       return `/master/business-partners/${enc}`;
     case "product":
-      return `/master/products/${enc}`;
+      return `/master/products/legacy/${enc}`;
     case "material":
-      return `/master/materials/${enc}`;
+      return `/master/materials/legacy/${enc}`;
     case "material_type":
       return `/master/material-types/${enc}`;
     case "process_step":

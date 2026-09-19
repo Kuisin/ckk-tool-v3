@@ -747,8 +747,9 @@ export async function createWorkOrder(
       },
     });
     revalidate(workOrderNumber, docNumber);
-    if (v.route != null) {
-      revalidatePath(`/master/products/${productId}`);
+    // 製品マスタ (MS04) の URL は items.id（品目統合 第 3 段）。
+    if (v.route != null && productItemId != null) {
+      revalidatePath(`/master/products/${productItemId}`);
     }
     return actionOk({ workOrderNumber, docNumber });
   } catch (e) {
@@ -951,8 +952,9 @@ export async function updateWorkOrder(
       seq: prior.seq,
     });
     revalidate(workOrderNumber, docNumber);
-    if (v.route != null) {
-      revalidatePath(`/master/products/${productId}`);
+    // 製品マスタ (MS04) の URL は items.id（品目統合 第 3 段）。
+    if (v.route != null && productItemId != null) {
+      revalidatePath(`/master/products/${productItemId}`);
     }
     return actionOk({ workOrderNumber, docNumber });
   } catch (e) {
@@ -2123,7 +2125,7 @@ export async function copyRouteToCustomer(input: {
     );
     const route = await prisma.productProcessRoute.findUnique({
       where: { id: created.routeId },
-      select: { productId: true, name: true },
+      select: { productId: true, itemId: true, name: true },
     });
     await recordAudit({
       action: "CREATE",
@@ -2137,8 +2139,9 @@ export async function copyRouteToCustomer(input: {
         version: 1,
       },
     });
-    if (route?.productId != null) {
-      revalidatePath(`/master/products/${route.productId}`);
+    // 製品マスタ (MS04) の URL は items.id（品目統合 第 3 段）。
+    if (route?.itemId != null) {
+      revalidatePath(`/master/products/${route.itemId}`);
     }
     return actionOk({ routeId: created.routeId });
   } catch (e) {

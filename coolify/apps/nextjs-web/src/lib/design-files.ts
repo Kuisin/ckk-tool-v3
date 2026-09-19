@@ -247,7 +247,7 @@ export interface UploadVersionInput {
  */
 export async function uploadDesignVersion(
   input: UploadVersionInput,
-): Promise<ActionResult<{ version: number; productId: number | null }>> {
+): Promise<ActionResult<{ version: number; itemId: number }>> {
   const tr = await getTranslations();
   const productItem = await prisma.item.findUnique({
     where: { id: input.itemId, itemType: "PRODUCT" },
@@ -359,7 +359,7 @@ export async function uploadDesignVersion(
         designRequestId: input.designRequestId ?? null,
       },
     });
-    return actionOk({ version, productId: legacyProductId });
+    return actionOk({ version, itemId: input.itemId });
   } catch (e) {
     await rollback();
     return actionError(

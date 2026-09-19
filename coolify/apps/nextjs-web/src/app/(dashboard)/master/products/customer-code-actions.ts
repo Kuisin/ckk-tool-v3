@@ -22,6 +22,7 @@ import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
+import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import { normalizeKeywords } from "@/lib/master-keywords";
 import { productMatchKey } from "@/lib/product-match";
 import {
@@ -35,7 +36,8 @@ const BASE_PATH = "/master/products";
 
 function rowsSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
-    productId: z.number().int().positive(),
+    /** 対象製品の品目 id（items.id — 品目統合 第 3 段）。 */
+    itemId: z.number().int().positive(),
     rows: z
       .array(
         z.object({
@@ -69,7 +71,7 @@ export type CustomerProductCodeInput = z.infer<
  *   どちらにも当たって自動確定できなくなる（= 登録した意味が消える）。
  */
 export async function saveCustomerProductCodes(input: {
-  productId: number;
+  itemId: number;
   rows: CustomerProductCodeInput[];
 }): Promise<ActionResult> {
   const tr = await getTranslations();
@@ -82,17 +84,18 @@ export async function saveCustomerProductCodes(input: {
       parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
     );
   }
-  const { productId, rows } = parsed.data;
+  const { itemId, rows } = parsed.data;
 
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
-    select: { id: true, itemId: true },
+  const item = await prisma.item.findFirst({
+    where: { id: itemId, itemType: "PRODUCT" },
+    select: { id: true },
   });
-  if (!product) return actionError(tr("common.targetProductNotFound"));
-  // 品目統合 第 2 段 C — 顧客品番が指す品目。画面（MS04 の顧客品番タブ）は
-  // 製品マスタの URL 文脈なので入口は products.id のままで、書き込みのときだけ
-  // 品目参照を橋渡しする（旧 product_id 列は残す）。
-  const itemId = product.itemId;
+  if (!item) return actionError(tr("common.targetProductNotFound"));
+  // 旧 customer_product_codes.product_id はまだ NOT NULL（落とすのは最後の段）
+  // なので、書き込みのときだけ品目 → products.id を橋渡しする。一意制約
+  // (customer_bp_id, product_id) もこの値で効いている。
+  const productId = await legacyProductIdForItem(itemId);
+  if (productId == null) return actionError(tr("common.targetProductNotFound"));
 
   // 同じ保存の中の重複を先に弾く（DB の P2002 はどの行かを言えない）。
   const seenCustomer = new Set<string>();
@@ -120,7 +123,7 @@ export async function saveCustomerProductCodes(input: {
   }
 
   const before = await prisma.customerProductCode.findMany({
-    where: { productId },
+    where: { itemId },
     select: { customerBpId: true, code: true, name: true, aliases: true },
     orderBy: { id: "asc" },
   });
@@ -161,7 +164,7 @@ export async function saveCustomerProductCodes(input: {
       // 消えるため（差分同期の順序キーもそこを見ている）。
       await tx.customerProductCode.deleteMany({
         where: {
-          productId,
+          itemId,
           customerBpId: { notIn: cleaned.map((r) => r.customerBpId) },
         },
       });
@@ -204,8 +207,9 @@ export async function saveCustomerProductCodes(input: {
   }
 
   // **製品の履歴として残す**（別テーブル名にしない）— 顧客品番はその製品に
-  // ついての設定なので、製品の 履歴 タブ（fetchAuditEntries("products", id)）で
-  // 読めないと誰も見に行かない。record_id も製品の id に揃える。
+  // ついての設定なので、製品の 履歴 タブで読めないと誰も見に行かない。
+  // 鍵は製品マスタ本体と同じ `("products", 旧 products.id)`（actions.ts の
+  // 監査の節）— 画面の id が品目へ移っても、履歴の鍵は動かさない。
   await recordAudit({
     action: "UPDATE",
     tableName: "products",
@@ -213,6 +217,6 @@ export async function saveCustomerProductCodes(input: {
     before: { customerProductCodes: before.map(auditLine) },
     after: { customerProductCodes: cleaned.map(auditLine) },
   });
-  revalidatePath(`${BASE_PATH}/${productId}`);
+  revalidatePath(`${BASE_PATH}/${itemId}`);
   return actionOk();
 }

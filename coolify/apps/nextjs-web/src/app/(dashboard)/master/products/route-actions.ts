@@ -17,6 +17,7 @@ import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import {
   createRouteVersionTx,
   createRouteWithVersionTx,
@@ -93,30 +94,27 @@ export type ProductRouteUpdateInput = z.infer<
   ReturnType<typeof routeUpdateInputSchema>
 >;
 
-function revalidate(productId: number) {
-  revalidatePath(`${BASE_PATH}/${productId}`);
+/** `itemId` は items.id（製品詳細の URL id — 品目統合 第 3 段）。 */
+function revalidate(itemId: number) {
+  revalidatePath(`${BASE_PATH}/${itemId}`);
 }
 
 /**
  * ルートの種別に応じた画面を捨てる（準備 = 工程マスタ配下 / 製造 = 製品詳細）。
  *
- * 品目 (itemId) が「対象製品を持つか」の判定を持ち、`productId`（旧列。
- * まだ残っている橋渡し値）は URL 組み立てにだけ使う。
+ * 品目 (itemId) が「対象製品を持つか」の判定を持ち、**URL も itemId** で組む
+ * （製品マスタの URL は items.id へ移した — 品目統合 第 3 段）。
  *
  * ⚠️ 修正: 以前はここで自分自身を再帰呼び出ししており（PREP でない枝が必ず
  * 無限再帰でスタックオーバーフローする）、製造工程リストの更新・削除・新
  * バージョン作成が軒並み落ちていた可能性がある。品目導入のついでに直す。
  */
-function revalidateFor(route: {
-  kind: string;
-  itemId: number | null;
-  productId: number | null;
-}) {
+function revalidateFor(route: { kind: string; itemId: number | null }) {
   if (route.kind === "PREP" || route.itemId == null) {
     revalidatePath(PREP_ROUTES_PATH, "layout");
     return;
   }
-  if (route.productId != null) revalidate(route.productId);
+  revalidate(route.itemId);
 }
 
 /**
@@ -173,9 +171,12 @@ export async function createPrepRoute(
   }
 }
 
-/** ルート新規作成（v1 を同時に作成）。 */
+/**
+ * ルート新規作成（v1 を同時に作成）。
+ * `itemId` は items.id（製品詳細の URL id）— products.id ではない。
+ */
 export async function createProductRoute(
-  productId: number,
+  itemId: number,
   input: ProductRouteCreateInput,
 ): Promise<ActionResult<{ routeId: number }>> {
   const tr = await getTranslations();
@@ -189,11 +190,14 @@ export async function createProductRoute(
   }
   const v = parsed.data;
   try {
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
+    // 旧 product_process_routes.product_id もまだ埋める（落とすのは最後の段）
+    // ので、ここで 1 度だけ品目 → products.id を橋渡しする。
+    const productId = await legacyProductIdForItem(itemId);
+    const item = await prisma.item.findFirst({
+      where: { id: itemId, itemType: "PRODUCT" },
       select: { id: true },
     });
-    if (!product)
+    if (!item || productId == null)
       return actionError(
         tr("master.productRouteActions.targetProductNotFound"),
       );
@@ -230,7 +234,7 @@ export async function createProductRoute(
         version: 1,
       },
     });
-    revalidate(productId);
+    revalidate(itemId);
     return actionOk({ routeId: created.routeId });
   } catch (e) {
     return actionError(
@@ -351,7 +355,6 @@ export async function updateProductRoute(
       select: {
         kind: true,
         itemId: true,
-        productId: true,
         name: true,
         isActive: true,
         notes: true,
@@ -401,7 +404,7 @@ export async function deleteProductRoute(
   try {
     const prior = await prisma.productProcessRoute.findUnique({
       where: { id: routeId },
-      select: { kind: true, itemId: true, productId: true },
+      select: { kind: true, itemId: true },
     });
     if (!prior)
       return actionError(tr("master.productRouteActions.targetRouteNotFound"));

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { fetchDesignFilesForProduct } from "@/app/(dashboard)/production/design-files/data";
-import { fetchDesignRequestsForProduct } from "@/app/(dashboard)/sales/design-requests/data";
+import { fetchDesignFilesForItem } from "@/app/(dashboard)/production/design-files/data";
+import { fetchDesignRequestsForItem } from "@/app/(dashboard)/sales/design-requests/data";
 import {
   ProductDetail,
   type ProductDetailData,
@@ -9,15 +9,21 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import { formatPriceListNumber, formatProductNumber } from "@/lib/doc-number";
+import { formatPriceListNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import { listProductRoutes } from "@/lib/product-routes";
 import { getProductTypes } from "@/lib/product-settings";
 import { PRODUCT_TYPE_SPEC_KEY } from "@/lib/product-types";
 
 export const dynamic = "force-dynamic";
 
-/** 製品 詳細 (MS24). */
+/**
+ * 製品 詳細 (MS24).
+ *
+ * URL の id は **items.id**（品目統合 第 3 段）。履歴だけは旧 products.id で
+ * 積まれているので、その 1 件のためだけに対応を引く（actions.ts の監査の節）。
+ */
 export default async function MasterProductsDetailPage({
   params,
 }: {
@@ -26,17 +32,18 @@ export default async function MasterProductsDetailPage({
   const denied = await requireAppRead("master-products");
   if (denied) return denied;
   const { id: idParam } = await params;
-  const id = Number(idParam);
-  if (!Number.isInteger(id)) notFound();
+  const itemId = Number(idParam);
+  if (!Number.isInteger(itemId)) notFound();
+  const legacyProductId = await legacyProductIdForItem(itemId);
   const [r, auditEntries, routes, designFiles, designRequests, customerCodes] =
     await Promise.all([
-      prisma.product.findUnique({
-        where: { id },
+      prisma.item.findFirst({
+        where: { id: itemId, itemType: "PRODUCT" },
         include: {
-          materialType: { select: { code: true, name: true } },
+          requiresMaterialType: { select: { code: true, name: true } },
           // 課税区分は表示名だけ要る（判定は締日処理が lib/tax-rate.ts で行う）。
           taxCategory: { select: { name: true } },
-          priceListEntries: {
+          priceListEntryRefs: {
             include: {
               customerBp: true,
               variants: { orderBy: { orderType: "asc" } },
@@ -45,15 +52,15 @@ export default async function MasterProductsDetailPage({
           },
         },
       }),
-      fetchAuditEntries("products", String(id)),
-      listProductRoutes(id),
-      // 製品の最新図面は design_files（product_id + is_latest）が正。
-      // products 側に design_file_id 列は無い。
-      fetchDesignFilesForProduct(id),
-      fetchDesignRequestsForProduct(id),
+      fetchAuditEntries("products", String(legacyProductId ?? itemId)),
+      listProductRoutes(itemId),
+      // 製品の最新図面は design_files（item_id + is_latest）が正。
+      // 製品マスタ側に design_file_id 列は無い。
+      fetchDesignFilesForItem(itemId),
+      fetchDesignRequestsForItem(itemId),
       // 顧客専用の製品コード（この製品を各顧客が何と呼ぶか）。
       prisma.customerProductCode.findMany({
-        where: { productId: id },
+        where: { itemId },
         include: { customerBp: { select: { name: true } } },
         orderBy: { id: "asc" },
       }),
@@ -79,16 +86,20 @@ export default async function MasterProductsDetailPage({
 
   const record: ProductDetailData = {
     id: r.id,
-    code: formatProductNumber(r.yearMonth, r.seq),
+    code: r.code,
     nameJa: name?.ja ?? "",
     nameEn: name?.en ?? "",
-    materialTypeId: r.materialTypeId != null ? String(r.materialTypeId) : null,
-    materialTypeCode: r.materialType?.code ?? null,
-    materialTypeName: r.materialType
-      ? localized(r.materialType.name as LocalizedText | null)
+    materialTypeId:
+      r.requiresMaterialTypeId != null
+        ? String(r.requiresMaterialTypeId)
+        : null,
+    materialTypeCode: r.requiresMaterialType?.code ?? null,
+    materialTypeName: r.requiresMaterialType
+      ? localized(r.requiresMaterialType.name as LocalizedText | null)
       : "",
-    diameterMm: r.diameterMm != null ? Number(r.diameterMm) : null,
-    lengthMm: r.lengthMm != null ? Number(r.lengthMm) : null,
+    diameterMm:
+      r.requiresDiameterMm != null ? Number(r.requiresDiameterMm) : null,
+    lengthMm: r.requiresLengthMm != null ? Number(r.requiresLengthMm) : null,
     unit: r.unit,
     taxCategoryId: r.taxCategoryId,
     taxCategoryName: r.taxCategory
@@ -102,7 +113,7 @@ export default async function MasterProductsDetailPage({
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
     // 1 行 = 1 注文種別バリアント（期間・状態はバリアント単位）。
-    priceListEntries: r.priceListEntries.flatMap((e) =>
+    priceListEntries: r.priceListEntryRefs.flatMap((e) =>
       e.variants.map((v) => ({
         // 価格表番号 PRC-… — mirrors the price-list URL id format.
         id: formatPriceListNumber({ yearMonth: e.yearMonth, seq: e.seq }),

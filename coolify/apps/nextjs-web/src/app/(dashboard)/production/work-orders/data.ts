@@ -692,6 +692,7 @@ export async function fetchWorkOrder(
         )}`
       : null,
     productId: r.productId,
+    productItemId: r.productItemId,
     routeVersionId: r.routeVersion?.id ?? null,
     routeId: r.routeVersion?.route.id ?? null,
     routeName: r.routeVersion

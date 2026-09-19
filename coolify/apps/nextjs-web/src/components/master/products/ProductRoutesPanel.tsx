@@ -49,12 +49,12 @@ export interface RoutePanelLinks {
   newVersion: (routeId: number) => string;
 }
 
-/** 製品の製造工程リスト（MS24 工程タブ）の行き先。 */
-export function productRouteLinks(productId: number): RoutePanelLinks {
+/** 製品の製造工程リスト（MS24 工程タブ）の行き先。`itemId` は items.id。 */
+export function productRouteLinks(itemId: number): RoutePanelLinks {
   return {
-    newRoute: `/master/products/${productId}/routes/new`,
+    newRoute: `/master/products/${itemId}/routes/new`,
     newVersion: (routeId) =>
-      `/master/products/${productId}/routes/${routeId}/new-version`,
+      `/master/products/${itemId}/routes/${routeId}/new-version`,
   };
 }
 

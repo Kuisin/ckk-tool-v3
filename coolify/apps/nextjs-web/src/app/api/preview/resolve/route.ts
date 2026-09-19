@@ -23,7 +23,6 @@ import {
 } from "@ckk/authz-core";
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { formatProductNumber } from "@/lib/doc-number";
 import type { LocalizedText } from "@/lib/format";
 import { formatMoney, localized } from "@/lib/format";
 import {
@@ -125,16 +124,20 @@ async function richDescription(
       if (!r) return null;
       return `${r.code ?? "未変換"} / ${localized(r.name as LocalizedText | null)}`;
     }
+    // 製品・素材マスタの URL id は品目 (items.id) — 品目統合 第 3 段。
     case "material": {
-      const r = await prisma.material.findUnique({ where: { id: target.id } });
+      const r = await prisma.item.findFirst({
+        where: { id: target.id, itemType: "MATERIAL" },
+      });
       if (!r) return null;
       return `${r.code ?? "未変換"} / ${localized(r.name as LocalizedText | null)}`;
     }
     case "product": {
-      const r = await prisma.product.findUnique({ where: { id: target.id } });
+      const r = await prisma.item.findFirst({
+        where: { id: target.id, itemType: "PRODUCT" },
+      });
       if (!r) return null;
-      const code = formatProductNumber(r.yearMonth, r.seq);
-      return `${code ?? "未採番"} / ${localized(r.name as LocalizedText | null)}`;
+      return `${r.code ?? "未採番"} / ${localized(r.name as LocalizedText | null)}`;
     }
     case "order-acceptance": {
       const r = await prisma.orderAcceptance.findUnique({

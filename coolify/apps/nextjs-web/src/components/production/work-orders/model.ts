@@ -241,8 +241,16 @@ export interface WorkOrderView {
   /** 使用する図面の版（任意のピン留め）。null = そのつど最新を引く。 */
   designFileId: string | null;
   storageLocationName: string | null;
-  /** 注文明細の対象製品（工程ルートのリンク先）。 */
+  /**
+   * 注文明細の対象製品（**旧 products.id**）。WorkflowBuilder の製品ピッカーと
+   * 工程リストの解決がこの id 空間のままなので、意味を変えないこと。
+   */
   productId: number;
+  /**
+   * 同じ製品の品目 id（items.id）。**製品マスタ (MS04) へのリンク専用** —
+   * あちらの URL は品目 id へ移した（品目統合 第 3 段）。判定には使わない。
+   */
+  productItemId: number | null;
   /** 工程ルート出所（未使用 = null）。 */
   routeVersionId: string | null;
   routeId: number | null;

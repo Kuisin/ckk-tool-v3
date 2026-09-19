@@ -29,10 +29,6 @@ import {
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
-import {
-  itemIdForLegacyProduct,
-  legacyProductIdsForItems,
-} from "@/lib/item-legacy-product";
 import { label } from "@/lib/messages";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
@@ -118,11 +114,11 @@ function itemLabel(item: { name: unknown; code: string | null }): string {
 /**
  * 参照元・製品・担当者など、一覧と詳細で共通の射影。
  *
- * `legacyProductIds` は「設計図 (PD06) の一覧・詳細（まだ products.id 基準）
- * へのリンク」専用 — 品目 (itemId) から 1 回だけバッチ解決したもの。読み・書き
- * の判定にはここでも一切使わない。
+ * 製品は `itemId`（items.id）1 本だけ — 設計図 (PD06) と製品マスタ (MS04) も
+ * 同じ id 空間へ移した（品目統合 第 3 段）ので、旧 products.id へ落とす
+ * 中継は要らなくなった。
  */
-function mapCommon(r: ListRow, legacyProductIds: Map<number, number>) {
+function mapCommon(r: ListRow) {
   return {
     id: r.requestNumber,
     requestNumber: r.requestNumber,
@@ -135,8 +131,6 @@ function mapCommon(r: ListRow, legacyProductIds: Map<number, number>) {
     orderLineId: r.orderLineId,
     orderLineNumber: r.orderLine ? orderLineNumberOf(r.orderLine) : null,
     itemId: r.itemId != null ? String(r.itemId) : null,
-    productLegacyId:
-      r.itemId != null ? (legacyProductIds.get(r.itemId) ?? null) : null,
     productName: r.item ? itemLabel(r.item) : null,
     customerBpId: r.customerBpId,
     customerName: localized(r.customerBp?.name as LocalizedText | null) || null,
@@ -227,12 +221,9 @@ export async function fetchDesignRequests(): Promise<DesignRequest[]> {
   const rows = await findListRows(
     designRequestScope(authz.access, authz.userId),
   );
-  const legacyProductIds = await legacyProductIdsForItems(
-    rows.map((r) => r.itemId).filter((id): id is number => id != null),
-  );
   // 一覧は履歴・版を描かないので空で返す（型は詳細と共有する）。
   return rows.map((r) => ({
-    ...mapCommon(r, legacyProductIds),
+    ...mapCommon(r),
     history: [],
     files: [],
   }));
@@ -248,11 +239,8 @@ export async function fetchDesignRequest(
   const row: DetailRow | null = await findRow(requestNumber);
   if (!row) return null;
   if (!designRequestInScope(authz.access, row, authz.userId)) return null;
-  const legacyProductIds = await legacyProductIdsForItems(
-    row.itemId != null ? [row.itemId] : [],
-  );
   return {
-    ...mapCommon(row, legacyProductIds),
+    ...mapCommon(row),
     history: await resolveHistory(row.history, locale),
     files: row.files.map((f) => ({
       id: f.id,
@@ -317,11 +305,10 @@ export function fetchDesignRequestsForOrderLine(
  * design_requests 自体の絞り込みは品目 (items.id) で行うので、ここで
  * 1 回だけ変換する。
  */
-export async function fetchDesignRequestsForProduct(
-  productId: number,
+/** 製品（品目 items.id）の設計依頼。製品マスタ MS24 の 関連 タブ。 */
+export async function fetchDesignRequestsForItem(
+  itemId: number,
 ): Promise<DesignRequestLink[]> {
-  const itemId = await itemIdForLegacyProduct(productId);
-  if (itemId == null) return [];
   return fetchLinks({ itemId, status: { not: "CANCELLED" } });
 }
 
@@ -449,6 +436,9 @@ export async function fetchOrderLineDeliveryDate(
  * 製品 1 件の参照解決（`?product=<products.id>` プリフィル用）。
  * 返す value は品目 (items.id) — ピッカーは品目ベースなので、ここで
  * 1 回だけ変換する。
+ *
+ * ⚠️ **旧 id の入口**。製品マスタは `?item=<items.id>`（`fetchProductItemRef`）
+ * へ移したので、いま `?product=` を送ってくるのは古いリンクだけ。
  */
 export async function fetchProductRef(
   productId: string,
