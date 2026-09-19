@@ -5,6 +5,7 @@
     "sales",
     "purchasing",
     "production",
+    "inventory",
     "shipping",
     "billing",
     "masters",

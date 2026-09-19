@@ -144,6 +144,7 @@ export const CATEGORY_SECTION_ICONS: Record<AppCategory, AppIcon> = {
   販売: IconCurrencyYen,
   購買: IconPackageImport,
   生産: IconSettings2,
+  在庫: IconBoxSeam,
   出荷: IconTruck,
   請求: IconFileInvoice,
   マスタ: IconBuilding,

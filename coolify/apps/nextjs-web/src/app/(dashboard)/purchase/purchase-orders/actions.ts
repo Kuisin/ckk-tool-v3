@@ -656,7 +656,7 @@ export async function orderPurchaseOrder(
     });
     revalidate(poNumber);
     // ATP（素材在庫の入荷予定）が変わるため在庫ページも再検証する。
-    revalidatePath("/production/inventory");
+    revalidatePath("/inventory");
     return actionOk();
   } catch (e) {
     return actionError(
@@ -846,7 +846,7 @@ export async function receivePurchaseOrderItems(
     }
     revalidate(poNumber);
     revalidatePath(RECEIPTS_PATH);
-    revalidatePath("/production/inventory");
+    revalidatePath("/inventory");
     return actionOk({ completed: result.completed });
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("GUARD:")) {
@@ -976,7 +976,7 @@ export async function closeShortPurchaseOrder(
     });
     revalidate(poNumber);
     // 未入荷分が入荷予定（ATP）から外れるので在庫ページも再検証する。
-    revalidatePath("/production/inventory");
+    revalidatePath("/inventory");
     return actionOk();
   } catch (e) {
     return actionError(

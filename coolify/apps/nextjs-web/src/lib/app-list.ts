@@ -21,6 +21,7 @@ export type AppCategory =
   | "販売"
   | "購買"
   | "生産"
+  | "在庫"
   | "出荷"
   | "請求"
   | "マスタ"
@@ -211,10 +212,10 @@ export const appList: AppEntry[] = [
     // 製品・素材・仕掛品・ロケーション（保管場所×棚）+ 在庫移動。
     key: "inventory",
     label: "在庫管理",
-    operationCode: "PD04",
-    href: "/production/inventory",
+    operationCode: "ST01",
+    href: "/inventory",
     icon: "IconBoxSeam",
-    category: "生産",
+    category: "在庫",
     requiredPermission: "inventory",
   },
   {
@@ -223,10 +224,10 @@ export const appList: AppEntry[] = [
     // 人が手で起こすものではない（数を直したいときは棚卸 PD08）。
     key: "inventory-movements",
     label: "入出庫伝票",
-    operationCode: "PD07",
-    href: "/production/inventory/movements",
+    operationCode: "ST04",
+    href: "/inventory/movements",
     icon: "IconArrowsExchange",
-    category: "生産",
+    category: "在庫",
     requiredPermission: "inventory",
   },
   {
@@ -234,10 +235,10 @@ export const appList: AppEntry[] = [
     // 確定が差異ぶんの入出庫伝票（ADJUST）を起こす。
     key: "stock-takes",
     label: "棚卸",
-    operationCode: "PD08",
-    href: "/production/stock-takes",
+    operationCode: "ST05",
+    href: "/inventory/stock-takes",
     icon: "IconClipboardList",
-    category: "生産",
+    category: "在庫",
     requiredPermission: "inventory",
   },
   {
@@ -741,6 +742,7 @@ export const CATEGORY_COLORS: Record<AppCategory, string> = {
   販売: "blue",
   購買: "teal",
   生産: "violet",
+  在庫: "cyan",
   出荷: "orange",
   請求: "pink",
   マスタ: "gray",
@@ -827,6 +829,7 @@ export const CATEGORY_LABEL_I18N: Record<
   販売: { en: "Sales", zh: "销售" },
   購買: { en: "Purchasing", zh: "采购" },
   生産: { en: "Production", zh: "生产" },
+  在庫: { en: "Inventory", zh: "库存" },
   出荷: { en: "Shipping", zh: "出货" },
   請求: { en: "Billing", zh: "请款" },
   マスタ: { en: "Master data", zh: "主数据" },
@@ -875,6 +878,7 @@ export function getAppsByCategory(): Array<{
     "販売",
     "購買",
     "生産",
+    "在庫",
     "出荷",
     "請求",
     "マスタ",
