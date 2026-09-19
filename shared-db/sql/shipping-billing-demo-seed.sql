@@ -163,8 +163,10 @@ ON CONFLICT (id) DO NOTHING;
 -- ── 締日処理 ────────────────────────────────────────────────────────────────
 -- 7月: PENDING（未処理）— 対象出荷はライブ計算で DOR-202607-00001 のみ（30×¥3,220 = ¥96,600）
 -- 6月: PROCESSED（処理済）— INV-202606-00001 へのリンク付き（生成請求書リンクの実例）
--- 冪等アービタは unique (customer_bp_id, closing_date) — アプリの締日バッチが
--- 同一ペアを upsert しても衝突しない。
+-- 冪等アービタは部分 unique index billing_closings_scheduled_key
+-- (customer_bp_id, closing_date) WHERE kind = 'SCHEDULED'（20261028090000 で
+-- 全行 unique から絞られた — 手動請求 MANUAL は同じ顧客・同じ日に何本でも
+-- 作れる）。ON CONFLICT は同じ述語を添えないと索引に一致せず落ちる。
 INSERT INTO app.billing_closings (id, customer_bp_id, closing_date, status, total_amount,
   invoice_year_month, invoice_seq, processed_at, processed_by, notes, created_at)
 VALUES
@@ -177,6 +179,6 @@ VALUES
    'PROCESSED'::app."CLOSING_STATUS", 161000,
    '202606', 1, '2026-07-01T09:00:00+09',
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, NULL, '2026-06-30T06:10:00+09')
-ON CONFLICT (customer_bp_id, closing_date) DO NOTHING;
+ON CONFLICT (customer_bp_id, closing_date) WHERE (kind = 'SCHEDULED') DO NOTHING;
 
 COMMIT;
