@@ -163,13 +163,12 @@ ON CONFLICT (id) DO NOTHING;
 -- ── 締日処理 ────────────────────────────────────────────────────────────────
 -- 7月: PENDING（未処理）— 対象出荷はライブ計算で DOR-202607-00001 のみ（30×¥3,220 = ¥96,600）
 -- 6月: PROCESSED（処理済）— INV-202606-00001 へのリンク付き（生成請求書リンクの実例）
--- 冪等アービタは **部分** unique (customer_bp_id, closing_date) WHERE kind='SCHEDULED'
--- （billing_closings_scheduled_key）。**述語まで書かないと ON CONFLICT は
--- 索引に一致せず落ちる** — この 1 行が無かったせいで、ここは
--- 「there is no unique or exclusion constraint matching …」で止まり、
--- ファイル全体が BEGIN…COMMIT なので**出荷・請求のデモデータが丸ごと
--- ロールバックしていた**（手動請求 #895 で索引が部分 unique になったとき
--- から）。kind は既定値 SCHEDULED なので、この 2 行は述語に入る。
+-- 冪等アービタは部分 unique index billing_closings_scheduled_key
+-- (customer_bp_id, closing_date) WHERE kind = 'SCHEDULED' — アプリの締日バッチが
+-- 同一ペアを upsert しても衝突しない。両行とも kind 省略 = 既定の SCHEDULED
+-- なので、ON CONFLICT にも同じ述語を付けないと推論できない
+-- （20261028090000_invoice_approval_and_manual_charges で unique から
+-- 部分 unique へ変わった）。
 INSERT INTO app.billing_closings (id, customer_bp_id, closing_date, status, total_amount,
   invoice_year_month, invoice_seq, processed_at, processed_by, notes, created_at)
 VALUES
@@ -182,6 +181,6 @@ VALUES
    'PROCESSED'::app."CLOSING_STATUS", 161000,
    '202606', 1, '2026-07-01T09:00:00+09',
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, NULL, '2026-06-30T06:10:00+09')
-ON CONFLICT (customer_bp_id, closing_date) WHERE kind = 'SCHEDULED'::app."CLOSING_KIND" DO NOTHING;
+ON CONFLICT (customer_bp_id, closing_date) WHERE kind = 'SCHEDULED' DO NOTHING;
 
 COMMIT;

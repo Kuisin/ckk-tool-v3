@@ -40,12 +40,6 @@ import { type BillingClosing, isProcessable } from "./model";
 
 const BASE_PATH = "/billing/closings";
 
-/** "YYYY-MM-DD" → ローカル日時の Date（DatePickerInput の value 用）。 */
-function dateFromIso(iso: string): Date {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, (m ?? 1) - 1, d ?? 1);
-}
-
 /** Date → "YYYY-MM-DD"（ローカル日時のまま、UTC に変換しない）。 */
 function isoFromDate(date: Date): string {
   const y = date.getFullYear();
@@ -132,8 +126,8 @@ function RunClosingModal({
       </Text>
       <DatePickerInput
         label={tr("billing.closings.targetDate")}
-        onChange={(v) => v && setDateIso(isoFromDate(v as unknown as Date))}
-        value={dateFromIso(dateIso) as never}
+        onChange={(v) => v && setDateIso(v)}
+        value={dateIso}
         valueFormat="YYYY/MM/DD"
       />
     </ModalShell>
