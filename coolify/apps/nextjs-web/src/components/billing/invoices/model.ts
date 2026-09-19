@@ -131,15 +131,22 @@ export function hasManualCharge(
 }
 
 /**
- * 発行できるか — 下書きで、追加費用が無い、または発行前承認が済んでいること。
- * 承認が要るかどうかの判定自体は needsIssueApproval が持つ（同じ規則）。
+ * 発行ボタンを出してよいか — 下書きで、発行前承認の依頼中でないこと。
+ *
+ * 承認依頼ボタンは無く、「発行」を押した時点でサーバー（issueInvoice の
+ * guardIssueApproval）が「段が無ければ素通し / 有れば依頼を起こす / 承認済みなら
+ * 発行」を決める。だからここで「追加費用ありは承認済みまで出さない」と絞ると、
+ * 承認フロー未設定の環境では**発行を始める口が詳細画面から消える**
+ * （一覧の一括発行だけが通る、という状態が実際に起きた）。押せない状態は
+ * 依頼中だけで、その間は InvoiceApprovalCard が承認 / 差し戻しを出す。
+ * 承認が要るかどうかの判定自体は needsIssueApproval が持つ。
  */
 export function canIssue(
   inv: Pick<Invoice, "status" | "items" | "approvalStatus">,
 ): boolean {
   if (inv.status !== "DRAFT") return false;
   if (!hasManualCharge(inv.items)) return true;
-  return inv.approvalStatus === "APPROVED";
+  return inv.approvalStatus !== "PENDING";
 }
 
 /** 発行前承認が要る状態か（DRAFT かつ追加費用あり）。 */

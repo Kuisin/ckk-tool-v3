@@ -447,13 +447,11 @@ export async function generateManualInvoice(input: {
     if (input.shipments.length === 0) {
       return actionError(tr("billing.closings.thereAreNoShipmentsToBill"));
     }
-    const closingDate = new Date(
-      Date.UTC(
-        new Date().getUTCFullYear(),
-        new Date().getUTCMonth(),
-        new Date().getUTCDate(),
-      ),
-    );
+    // 手動請求の締日・請求期間の終わりは「今日」— **JST の暦日**で決める。
+    // UTC の暦日で作ると、日本時間の 0〜9 時に起こした請求書が前日の日付になる
+    // （実機検証で 01:49 JST に再現）。DB の date 列と同じく UTC 0 時の Date に
+    // 落とすので、ほかの経路（締日行の closingDate）と同じ形で下流へ渡る。
+    const closingDate = new Date(`${isoDateJst(new Date())}T00:00:00Z`);
 
     const draft = await buildInvoiceDraft(
       closingDate,
