@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { ACCOUNT_CODE_PATTERN } from "@/lib/accounting-export-core";
 import { autoMatchNames } from "@/lib/company-aliases";
 import { Prisma } from "@/lib/db";
 import type { Tr } from "@/lib/i18n";
@@ -85,8 +86,8 @@ export type SalesRepAssignmentInput = z.infer<
   ReturnType<typeof salesRepAssignmentInput>
 >;
 
-/** 会計連携の科目コード — 半角数字 8 桁まで。空欄も通す（= 既定に従う）。 */
-const accountCodePattern = /^[0-9]{0,8}$/;
+/** 会計連携の科目コード — 形は SY0J / MS0F と共通（accounting-export-core.ts）。空欄 = 既定に従う。 */
+const accountCodePattern = ACCOUNT_CODE_PATTERN;
 
 export function customerAttrsInput(tr: Tr) {
   return z

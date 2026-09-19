@@ -5320,7 +5320,7 @@
       "approvalNotRequired": "不要",
       "accountingSection": "会計連携",
       "accountingSectionHint": "仕訳 CSV の借方（売掛金）に出す科目コード。空欄なら会計連携（SY0J）の既定に従う。",
-      "accountCodeHint": "半角数字・8 桁まで（空欄可）",
+      "accountCodeHint": "半角英数字・16 桁まで（空欄可）",
       "receivableAccountCode": "売掛金 科目コード",
       "receivableSubAccountCode": "補助科目コード（得意先）",
       "receivableSubAccountCodeHint": "会計ソフト側の得意先コード。社内の顧客コードとは別物なので、流用しない。"
@@ -6397,7 +6397,7 @@
       "followProduct": "製品に従う",
       "accountingSection": "会計連携",
       "accountingSectionHint": "仕訳 CSV に出す科目コード。空欄なら会計連携（SY0J）の既定に従う。",
-      "accountCodeHint": "半角数字・8 桁まで（空欄可）",
+      "accountCodeHint": "半角英数字・16 桁まで（空欄可）",
       "taxCode": "消費税コード",
       "salesAccountCode": "売上高 科目コード",
       "taxAccountCode": "仮受消費税 科目コード"

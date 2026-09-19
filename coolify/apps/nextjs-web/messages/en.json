@@ -5320,7 +5320,7 @@
       "approvalNotRequired": "Not required",
       "accountingSection": "Accounting export",
       "accountingSectionHint": "Account codes written to the debit (accounts receivable) side of the journal CSV. Left blank, the default in Accounting export (SY0J) applies.",
-      "accountCodeHint": "Digits only, up to 8 (may be blank)",
+      "accountCodeHint": "Letters, digits, - and _ only, up to 16 (may be blank)",
       "receivableAccountCode": "Accounts receivable code",
       "receivableSubAccountCode": "Sub-account code (customer)",
       "receivableSubAccountCodeHint": "The customer code in the accounting software. It is not the in-house customer code — do not reuse that one."
@@ -6397,7 +6397,7 @@
       "followProduct": "Follow the product",
       "accountingSection": "Accounting export",
       "accountingSectionHint": "Account codes written to the journal CSV. Left blank, the default in Accounting export (SY0J) applies.",
-      "accountCodeHint": "Digits only, up to 8 (may be blank)",
+      "accountCodeHint": "Letters, digits, - and _ only, up to 16 (may be blank)",
       "taxCode": "Tax code",
       "salesAccountCode": "Sales account code",
       "taxAccountCode": "Tax suspense account code"

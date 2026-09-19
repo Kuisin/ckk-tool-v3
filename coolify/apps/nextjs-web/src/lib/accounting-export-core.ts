@@ -182,6 +182,16 @@ const columnSchema = z
     message: "constant",
   });
 
+/**
+ * 科目コード・消費税コード・部門コードの形（SY0J / MS0F 税区分 / MS01 取引先で
+ * 共通）。会計ソフトの受入レイアウトがまだ手元に無いので、TKC 系の「英字を
+ * 含むコード」（T10 / C-0001）も通るよう英数字・ハイフン・下線の 16 桁まで。
+ * 空欄は「既定に従う」。以前は MS0F / MS01 だけが半角数字 8 桁に絞っていて、
+ * SY0J で保存できる値がマスタでは弾かれる、という食い違いがあった。
+ */
+export const ACCOUNT_CODE_PATTERN = /^[0-9A-Za-z_-]{0,16}$/;
+export const accountCodeSchema = z.string().regex(ACCOUNT_CODE_PATTERN);
+
 export const accountingExportSettingsSchema = z.object({
   // 列が 0 本の CSV は作れない。設定画面が全部消せてしまわないようにここで止める。
   columns: z.array(columnSchema).min(1).max(64),
@@ -198,18 +208,18 @@ export const accountingExportSettingsSchema = z.object({
     // ファイル名に入るので、区切り文字やパスになる文字は通さない。
     .regex(/^[A-Za-z0-9._-]+$/),
   accounts: z.object({
-    receivableAccountCode: z.string().max(16),
-    salesAccountCode: z.string().max(16),
-    taxAccountCode: z.string().max(16),
-    deptCode: z.string().max(16),
-    taxCode: z.string().max(16),
+    receivableAccountCode: accountCodeSchema,
+    salesAccountCode: accountCodeSchema,
+    taxAccountCode: accountCodeSchema,
+    deptCode: accountCodeSchema,
+    taxCode: accountCodeSchema,
   }),
   taxCodeRules: z
     .array(
       z.object({
         taxRate: z.number().min(0).max(1),
-        debitTaxCode: z.string().max(16),
-        creditTaxCode: z.string().max(16),
+        debitTaxCode: accountCodeSchema,
+        creditTaxCode: accountCodeSchema,
       }),
     )
     .max(16),
