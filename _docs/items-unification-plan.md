@@ -13,7 +13,7 @@
 | 在庫の統合（第 2 段 A）+ 在庫アプリ 4 本 | #893 |
 | 購買の付け替え（第 2 段 B）+ 生産・設計（D） | `feat/items-stage2b`（PR 未作成） |
 | 販売・出荷の付け替え（第 2 段 C） | `feat/items-stage2c`（PR 未作成。2b から分岐） |
-| 旧いものを落とす（第 3 段） | これから（**C の merge 後に順番で**） |
+| 旧いものを落とす（第 3 段） | 済（`20261102090000_items_stage3_drop_legacy`。下記「旧いものを落とす」） |
 
 **PR を 2 本に割ってある。** B + D と C を 1 本にまとめないのは、C が価格の
 解決・請求・帳票・会計連携 CSV に届くため — そこだけ独立で読めるようにして
@@ -331,6 +331,46 @@ create / update / copy の 3 か所で `legacyProductIdForItem` を 1 回だけ�
 本番稼働前なので無停止の段取りは取らないが、**順序だけは守る** — 切り替えより先に
 落とすと、まだ旧表を読んでいるコードが即死する。
 
+### 実際にやった順（migration `20261102090000_items_stage3_drop_legacy`）
+
+取り消せない migration なので、**節の順番そのものが安全装置**になっている:
+
+0. **item 側を NOT NULL にする**（旧列が NOT NULL だった 9 列）。旧列の
+   「必ず何かを指している」という保証を item 側へ移す作業で、**旧列を落とす前**に
+   やる — NULL があればここで落ちて、旧列が残ったまま止まる（戻す作業が無い）。
+1. **`audit_logs` の `record_id` / `record_key` を品目 id へ読み替える。**
+   多態で FK が無く、id は全部連番なので、放っておくと旧表を落とした後に
+   **黙って別の品目を指す**。`table_name` は `products` / `materials` のまま —
+   あれは「そのとき何を書いたか」の事実で、行き先の話ではない。
+   読み替えられない行（＝削除済みマスタ。同期トリガーが品目も消していたので
+   DELETE の監査行は必ずこれになる）は `record_id` に **`legacy:` を付けて
+   解決できない形**にし、`record_key` は null。件数は NOTICE に出す。
+2. **同期トリガーと同期関数を落とす。** トリガーは表と一緒に消えるが、
+   **関数は残る**ので明示的に落とす。あわせて、差分同期の `touch_updated_at`
+   トリガーを `items` / `item_inventory` へ**引き継ぐ** — 20261009090000 が
+   18 表に張ったうちの 4 表（旧マスタ・旧在庫）がここで消えるが、統合先には
+   まだ張られていなかった（第 1 段・2A-1 が表を足しただけだったため）。
+3. **`analytics.*` を全部落とす。** 旧 4 表に依存していて DROP を阻む。
+   毎デプロイ `sql/analytics-views.sql` が作り直す成果物なので、依存している
+   ものだけ選ぶより全部落とすほうが安全（20261009090000 と同じやり方）。
+4. **旧列に載っていた不変条件を item 列へ移す。** ★ `DROP COLUMN` はその列を
+   使う CHECK と索引を**黙って道連れにする**ので、先に移さないと制約が消えた
+   ことに誰も気づかない:
+   - UNIQUE … `price_list_entries (customer_bp_id, item_id)` /
+     `customer_product_codes (customer_bp_id, item_id)`
+   - CHECK … `order_lines_confirmed_complete` /
+     `product_process_routes_kind_columns`
+   - 複合索引 … `product_process_routes (item_id, customer_bp_id)` /
+     `design_files (item_id, customer_bp_id, is_latest, role)` /
+     `material_receipts (item_id, received_at)`。前置きが重なる単独索引
+     （`@@index([itemId])`）は落とす
+   - `customer_product_codes` の品目 FK は **CASCADE**（旧 product 側と同じ
+     扱い。Restrict のままだと「顧客品番を 1 件登録した品目はもう消せない」）
+5. **旧列 16 本を落とす** → 6. **旧表 4 本を落とす**（在庫 2 表が先 — 旧マスタを
+   指す FK を持っているのがこの 2 表だけになっているため。CASCADE は使わない）
+7. 取りこぼしを `RAISE EXCEPTION` で止める（旧表・旧列・同期関数・監査の
+   行き先・`touch_updated_at` の 5 点）。
+
 ---
 
 ## 横断して効く注意
@@ -353,7 +393,7 @@ create / update / copy の 3 か所で `legacyProductIdForItem` を 1 回だけ�
 | 2A-2 | 在庫が動く全経路（完了・出荷・入荷・移動・引当・棚卸）を通し、伝票と数量が一致。孤児 0 |
 | 2A-3 | 3 表の `inventory_id` に FK が張れる = 参照先の取りこぼしが無い |
 | B/D/C 各群 | その群の `item_id` が全行埋まり、旧列と指す先が一致 |
-| 3 | 旧参照が grep で 0、`migrate diff` 差分なし |
+| 3 | 旧参照が grep で 0、`migrate diff` 差分なし（済） |
 
 ## 見積もり感
 

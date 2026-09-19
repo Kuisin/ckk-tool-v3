@@ -163,10 +163,10 @@ async function richDescription(
             seq: target.docKey.seq,
           },
         },
-        include: { product: true },
+        include: { productItem: true },
       });
       if (!r) return null;
-      const product = localized(r.product.name as LocalizedText | null);
+      const product = localized(r.productItem.name as LocalizedText | null);
       return `${product} / 予定数量 ${r.plannedQuantity} / 状態: ${r.status}`;
     }
     case "delivery-order": {

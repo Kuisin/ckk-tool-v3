@@ -7,7 +7,6 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
-import { legacyMaterialIdForItem as itemIdToLegacyMaterialId } from "@/lib/item-legacy-material";
 
 export const dynamic = "force-dynamic";
 
@@ -27,13 +26,12 @@ export default async function MasterMaterialsDetailPage({
   const { id: idParam } = await params;
   const itemId = Number(idParam);
   if (!Number.isInteger(itemId)) notFound();
-  const legacyMaterialId = await itemIdToLegacyMaterialId(itemId);
   const [r, auditEntries, finishes] = await Promise.all([
     prisma.item.findFirst({
       where: { id: itemId, itemType: "MATERIAL" },
       include: { materialType: true },
     }),
-    fetchAuditEntries("materials", String(legacyMaterialId ?? itemId)),
+    fetchAuditEntries("materials", String(itemId)),
     prisma.materialSurfaceFinish.findMany(),
   ]);
   if (!r) notFound();

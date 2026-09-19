@@ -6,17 +6,16 @@
  * 製品コードは PRD-YYYYMM-NNNN の自動採番（lib/numbering.ts →
  * app.numbering_sequences）。spec はキー/値ペアの自由構造 JSON。
  *
- * ## 品目統合 第 3 段 — 本体は app.items
+ * ## 品目統合 第 3 段 — 本体は app.items（旧 products は落とした）
  *
  * 画面・URL・この Server Action の `itemId` は **items.id**（`itemType:
- * "PRODUCT"`）。旧 `products` 行はまだ落としていない参照先なので、同じ内容を
- * `lib/item-legacy-product.ts` の橋で写し続ける（書く順は必ず items → products
- * — 理由はその節のコメント）。**products.id は items.id と一致しない**ので、
- * 引数名は必ず `itemId` にしておくこと（どちらも number で型では止まらない）。
+ * "PRODUCT"`）。旧 `products` 行へ写していた橋は列と一緒に消えた。
  *
- * 監査（audit_logs）は `tableName: "products"` / `recordId = products.id` の
- * まま。既に積まれた履歴と同じ鍵でないと、履歴タブと SY07 が分断される。
- * 旧マスタを落とす PR が、この鍵の移行を履歴そのものと一緒に決める。
+ * 監査（audit_logs）の `tableName` は **`"products"` のまま**で、`recordId` が
+ * 品目 id になった。table_name は「そのとき何を書いたか」という history の事実
+ * なので動かさない（動かすと過去の行と分断される）。ポインタだけは移行
+ * 20261102090000 が旧 products.id → items.id へ読み替えてあるので、新旧の行が
+ * 同じ鍵で並ぶ。
  */
 
 import { revalidatePath } from "next/cache";
@@ -26,11 +25,6 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
-import {
-  createLegacyProductForItem,
-  legacyProductIdsForItems,
-  updateLegacyProductForItem,
-} from "@/lib/item-legacy-product";
 import { normalizeKeywords } from "@/lib/master-keywords";
 import { countMasterReferences } from "@/lib/master-refs";
 import { allocateDocumentKey } from "@/lib/numbering";
@@ -204,30 +198,12 @@ export async function createProduct(
     const code = formatProductNumber(yearMonth, seq) ?? "";
     const name = localizedInput(v.nameJa, undefined, v.nameTranslations);
     const specValue = specJson(v.spec);
-    // items → products の順（`lib/item-legacy-product.ts` の書き戻し節）。
-    const created = await prisma.$transaction(async (tx) => {
-      const item = await tx.item.create({
-        data: {
-          itemType: "PRODUCT",
-          // items.code は DB 側のトリガーが (year_month, seq) から組み立てる
-          // 値と同じ形でなければならない（PRD-YYYYMM-NNNN）。
-          code: code || null,
-          yearMonth,
-          seq,
-          name,
-          requiresMaterialTypeId: spec.materialTypeId,
-          requiresDiameterMm: spec.diameterMm,
-          requiresLengthMm: spec.lengthMm,
-          unit: v.unit,
-          taxCategoryId: taxCategoryIdOf(v.taxCategoryId),
-          matchNames: normalizeKeywords(v.matchNames),
-          spec: specValue ?? undefined,
-          isActive: v.isActive,
-          notes: v.notes?.trim() || null,
-        },
-        select: { id: true },
-      });
-      const legacyId = await createLegacyProductForItem(tx, item.id, {
+    const created = await prisma.item.create({
+      data: {
+        itemType: "PRODUCT",
+        // items.code は DB 側のトリガーが (year_month, seq) から組み立てる
+        // 値と同じ形でなければならない（PRD-YYYYMM-NNNN）。
+        code: code || null,
         yearMonth,
         seq,
         name,
@@ -237,16 +213,16 @@ export async function createProduct(
         unit: v.unit,
         taxCategoryId: taxCategoryIdOf(v.taxCategoryId),
         matchNames: normalizeKeywords(v.matchNames),
-        spec: specValue ?? Prisma.DbNull,
+        spec: specValue ?? undefined,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
-      });
-      return { id: item.id, legacyId };
+      },
+      select: { id: true },
     });
     await recordAudit({
       action: "CREATE",
       tableName: "products",
-      recordId: String(created.legacyId),
+      recordId: String(created.id),
       after: {
         code,
         nameJa: v.nameJa,
@@ -304,24 +280,9 @@ export async function updateProduct(
     const spec = materialSpec(v);
     const name = localizedInput(v.nameJa, undefined, v.nameTranslations);
     const specValue = specJson(v.spec) ?? Prisma.DbNull;
-    // items → products の順（`lib/item-legacy-product.ts` の書き戻し節）。
-    const legacyId = await prisma.$transaction(async (tx) => {
-      await tx.item.update({
-        where: { id: itemId },
-        data: {
-          name,
-          requiresMaterialTypeId: spec.materialTypeId,
-          requiresDiameterMm: spec.diameterMm,
-          requiresLengthMm: spec.lengthMm,
-          unit: v.unit,
-          taxCategoryId: taxCategoryIdOf(v.taxCategoryId),
-          matchNames: normalizeKeywords(v.matchNames),
-          spec: specValue,
-          isActive: v.isActive,
-          notes: v.notes?.trim() || null,
-        },
-      });
-      return updateLegacyProductForItem(tx, itemId, {
+    await prisma.item.update({
+      where: { id: itemId },
+      data: {
         name,
         requiresMaterialTypeId: spec.materialTypeId,
         requiresDiameterMm: spec.diameterMm,
@@ -332,12 +293,12 @@ export async function updateProduct(
         spec: specValue,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
-      });
+      },
     });
     await recordAudit({
       action: "UPDATE",
       tableName: "products",
-      recordId: String(legacyId ?? itemId),
+      recordId: String(itemId),
       before: {
         materialTypeId: prior.requiresMaterialTypeId,
         diameterMm: prior.requiresDiameterMm
@@ -383,23 +344,15 @@ export async function setProductsActive(
   if (!authz.ok) return actionError(authz.error);
   if (itemIds.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
-    const legacyIds = await legacyProductIdsForItems(itemIds);
-    // items → products の順（`lib/item-legacy-product.ts` の書き戻し節）。
-    await prisma.$transaction(async (tx) => {
-      await tx.item.updateMany({
-        where: { id: { in: itemIds }, itemType: "PRODUCT" },
-        data: { isActive },
-      });
-      await tx.product.updateMany({
-        where: { itemId: { in: itemIds } },
-        data: { isActive },
-      });
+    await prisma.item.updateMany({
+      where: { id: { in: itemIds }, itemType: "PRODUCT" },
+      data: { isActive },
     });
     for (const itemId of itemIds) {
       await recordAudit({
         action: "UPDATE",
         tableName: "products",
-        recordId: String(legacyIds.get(itemId) ?? itemId),
+        recordId: String(itemId),
         after: { isActive },
       });
     }
@@ -420,37 +373,22 @@ export async function deleteProducts(itemIds: number[]): Promise<ActionResult> {
   if (!authz.ok) return actionError(authz.error);
   if (itemIds.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
-    const legacyIds = await legacyProductIdsForItems(itemIds);
     // Guard: 参照があれば消させない。省略可能な関連（注文明細・設計・価格試算・
     // 検査表）は ON DELETE SET NULL なので DB は止めない — lib/master-refs で数える。
-    //
-    // ★ 数えるのは**旧 products.id の参照**のまま。第 2 段 B/C/D は品目参照を
-    //   足すとき旧列も必ず書き続けているので、どちらを数えても同じ集合になる。
-    //   `MASTER_REFERENCES` を品目側へ移すのは、旧列を落とす PR の仕事。
-    const refs = await countMasterReferences("product", [
-      ...legacyIds.values(),
-    ]);
+    const refs = await countMasterReferences("product", itemIds);
     if (refs.total > 0) {
       return actionError(tr("master.productsActions.referencedCannotDelete"));
     }
-    await prisma.$transaction(async (tx) => {
-      // 顧客品番は (製品, 顧客) の組についての対応表で、片側が消えれば意味を
-      // 失う（旧 products 側は CASCADE。lib/master-refs.ts IGNORED_REFERENCES）。
-      // items 側の FK は Restrict なので、明示的に先に落とす — 意図は同じで、
-      // 「顧客品番を 1 件登録した製品はもう消せない」にしない。
-      await tx.customerProductCode.deleteMany({
-        where: { itemId: { in: itemIds } },
-      });
-      await tx.item.deleteMany({
-        where: { id: { in: itemIds }, itemType: "PRODUCT" },
-      });
-      await tx.product.deleteMany({ where: { itemId: { in: itemIds } } });
+    // 顧客品番は (品目, 顧客) の組についての対応表で、片側が消えれば意味を失う
+    // （FK は CASCADE。lib/master-refs.ts IGNORED_REFERENCES にその判断がある）。
+    await prisma.item.deleteMany({
+      where: { id: { in: itemIds }, itemType: "PRODUCT" },
     });
     for (const itemId of itemIds) {
       await recordAudit({
         action: "DELETE",
         tableName: "products",
-        recordId: String(legacyIds.get(itemId) ?? itemId),
+        recordId: String(itemId),
       });
     }
     revalidate();

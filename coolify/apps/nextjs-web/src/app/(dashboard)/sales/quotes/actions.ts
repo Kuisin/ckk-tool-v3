@@ -21,7 +21,6 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
-import { legacyProductIdsForItems } from "@/lib/item-legacy-product";
 import { lineAmountYen, roundYen } from "@/lib/money";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { resolveSalesRepId } from "@/lib/sales-rep";
@@ -157,13 +156,11 @@ async function resolveItems(
   // 税は**行ごと**（製品ごとに課税区分が違い得る）。見積書は印刷して外に出す書類
   // なので、単価・値引きと同じく保存時に凍結する — 発行後に税率マスタが変わっても
   // 刷り直した PDF が動いてはいけない。
-  const [catalog, customerTaxCategoryId, productTaxCategoryIds, legacyIds] =
+  const [catalog, customerTaxCategoryId, productTaxCategoryIds] =
     await Promise.all([
       loadTaxCatalog(),
       customerTaxCategoryIdOf(v.customerBpId),
       productTaxCategoryMap(v.items.map((it) => Number(it.itemId))),
-      // 旧 product_id 列を埋めるための橋渡し（落とすのは最後の段）。
-      legacyProductIdsForItems(v.items.map((it) => Number(it.itemId))),
     ]);
   // 基準日は見積の作成日（まだ注文日が無い）。
   const basisDate = isoDateJst(new Date());
@@ -190,15 +187,8 @@ async function resolveItems(
       basisDate,
     });
     const itemId = Number(it.itemId);
-    const legacyProductId = legacyIds.get(itemId);
-    if (legacyProductId == null) {
-      // 品目は products の鏡なので通常あり得ない。落とすのは最後の段なので、
-      // 対応が無いまま保存して旧列に穴を空けるより止める。
-      throw new LineItemResolveError(tr("common.targetProductNotFound"));
-    }
     return {
       itemId,
-      productId: legacyProductId,
       orderType: it.orderType,
       quantity: it.quantity,
       unitPrice: r.unitPrice,

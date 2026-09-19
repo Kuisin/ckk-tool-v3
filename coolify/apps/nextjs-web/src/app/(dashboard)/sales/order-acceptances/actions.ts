@@ -37,7 +37,6 @@ import {
 } from "@/lib/doc-number";
 import { enqueueExtraction } from "@/lib/intake";
 import { normalizeExtraction } from "@/lib/intake-core";
-import { legacyProductIdsForItems } from "@/lib/item-legacy-product";
 import { aliasLearnings } from "@/lib/match-alias-core";
 import { saveAliasLearnings } from "@/lib/match-aliases";
 import { allocateDocumentKey } from "@/lib/numbering";
@@ -303,14 +302,11 @@ function buildItemCreates(
   items: readonly (OrderAcceptanceDraftInput["items"][number] & {
     priceOverridden: boolean;
   })[],
-  /** 品目 id → 旧 products.id（落とすのは最後の段まで両方書く）。 */
-  legacyProductIds: ReadonlyMap<number, number>,
 ) {
   return items.map((it, i) => {
     const itemId = it.itemId ? Number(it.itemId) : null;
     return {
       itemId,
-      productId: itemId != null ? (legacyProductIds.get(itemId) ?? null) : null,
       productText: trimOrNull(it.productText),
       orderType: it.orderType,
       quantity: it.quantity,
@@ -333,31 +329,6 @@ function buildItemCreates(
       shippingWorkLocationId: it.shippingWorkLocationId ?? null,
     };
   });
-}
-
-/** 明細の品目 id → 旧 products.id をまとめて引く（書き込みの橋）。 */
-function legacyProductIdsOf(
-  items: readonly { itemId: string | null }[],
-): Promise<Map<number, number>> {
-  return legacyProductIdsForItems(
-    items
-      .map((it) => (it.itemId ? Number(it.itemId) : Number.NaN))
-      .filter((n) => Number.isInteger(n)),
-  );
-}
-
-/**
- * 突合済みの行すべてに旧 products.id の対応があるか。**無いまま保存すると
- * item_id はあるのに product_id が null の行ができ、在庫引当
- * （lib/inventory.ts — 旧列しか見ない）が黙って効かなくなる。**
- */
-function missingLegacyProduct(
-  items: readonly { itemId: string | null }[],
-  legacyProductIds: ReadonlyMap<number, number>,
-): boolean {
-  return items.some(
-    (it) => it.itemId != null && !legacyProductIds.has(Number(it.itemId)),
-  );
 }
 
 // ── 再抽出（IMPORT のみ） ────────────────────────────────────────────────────
@@ -517,13 +488,8 @@ export async function saveDraft(
     const customerBpId = trimOrNull(v.customerBpId);
     // 価格表どおりの行の単価はここで確定する（クライアントの表示値は読まない）。
     // 顧客が変わった保存でも、新しい顧客の価格表で解決し直される。
-    const legacyProductIds = await legacyProductIdsOf(v.items);
-    if (missingLegacyProduct(v.items, legacyProductIds)) {
-      return actionError(tr("common.targetProductNotFound"));
-    }
     const creates = buildItemCreates(
       await applyPriceListPrices(customerBpId, v.items, tr),
-      legacyProductIds,
     );
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
@@ -1062,10 +1028,6 @@ export async function createManualAcceptance(
   try {
     const refsError = await lineRefsError(tr, v.items);
     if (refsError) return actionError(refsError);
-    const createLegacyProductIds = await legacyProductIdsOf(v.items);
-    if (missingLegacyProduct(v.items, createLegacyProductIds)) {
-      return actionError(tr("common.targetProductNotFound"));
-    }
     const actor = await getCurrentActorId();
     const { yearMonth, seq } = await allocateDocumentKey("ORDER");
     const number = `ORD-${yearMonth}-${String(seq).padStart(5, "0")}`;
@@ -1092,7 +1054,6 @@ export async function createManualAcceptance(
         items: {
           create: buildItemCreates(
             await applyPriceListPrices(v.customerBpId, v.items, tr),
-            createLegacyProductIds,
           ),
         },
       },
@@ -1204,7 +1165,6 @@ export async function recreateFromCancelledAcceptance(
           // 起こす」操作なので、行ごとに違っていた届け先もそのまま持ってくる。
           create: source.items.map((it, i) => ({
             itemId: it.itemId,
-            productId: it.productId,
             productText: it.productText,
             orderType: it.orderType,
             quantity: it.quantity,

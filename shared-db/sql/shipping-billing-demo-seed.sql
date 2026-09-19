@@ -82,7 +82,7 @@ ON CONFLICT (year_month, seq) DO NOTHING;
 --   未処理出荷書 SH03 から消え、指示書の「次のステップ: 出荷書の作成」と
 --   出荷書フォームの判定が食い違う（フォームは 受注数 − 出荷済 で数える）。
 INSERT INTO app.delivery_order_items (id, delivery_order_year_month, delivery_order_seq,
-  order_line_id, product_id, lot_number, quantity, notes, sort_order)
+  order_line_id, item_id, lot_number, quantity, notes, sort_order)
 VALUES
   ('dd000000-0000-4000-8000-000000000011'::uuid, '202607', 1,
    'e0000000-0000-4000-8000-000000000001'::uuid, 9001, 9004, 30, NULL, 0),
@@ -124,7 +124,7 @@ VALUES
 ON CONFLICT (year_month, seq) DO NOTHING;
 
 INSERT INTO app.delivery_note_items (id, delivery_note_year_month, delivery_note_seq,
-  product_id, quantity, unit_price, amount, notes, sort_order)
+  item_id, quantity, unit_price, amount, notes, sort_order)
 VALUES
   -- DRN-1: 価格記載あり — 単価 = 注文請書の受注単価 ¥3,220
   ('dd000000-0000-4000-8000-000000000021'::uuid, '202607', 1, 9001, 30, 3220, 96600, NULL, 0),
@@ -163,8 +163,13 @@ ON CONFLICT (id) DO NOTHING;
 -- ── 締日処理 ────────────────────────────────────────────────────────────────
 -- 7月: PENDING（未処理）— 対象出荷はライブ計算で DOR-202607-00001 のみ（30×¥3,220 = ¥96,600）
 -- 6月: PROCESSED（処理済）— INV-202606-00001 へのリンク付き（生成請求書リンクの実例）
--- 冪等アービタは unique (customer_bp_id, closing_date) — アプリの締日バッチが
--- 同一ペアを upsert しても衝突しない。
+-- 冪等アービタは **部分** unique (customer_bp_id, closing_date) WHERE kind='SCHEDULED'
+-- （billing_closings_scheduled_key）。**述語まで書かないと ON CONFLICT は
+-- 索引に一致せず落ちる** — この 1 行が無かったせいで、ここは
+-- 「there is no unique or exclusion constraint matching …」で止まり、
+-- ファイル全体が BEGIN…COMMIT なので**出荷・請求のデモデータが丸ごと
+-- ロールバックしていた**（手動請求 #895 で索引が部分 unique になったとき
+-- から）。kind は既定値 SCHEDULED なので、この 2 行は述語に入る。
 INSERT INTO app.billing_closings (id, customer_bp_id, closing_date, status, total_amount,
   invoice_year_month, invoice_seq, processed_at, processed_by, notes, created_at)
 VALUES
@@ -177,6 +182,6 @@ VALUES
    'PROCESSED'::app."CLOSING_STATUS", 161000,
    '202606', 1, '2026-07-01T09:00:00+09',
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, NULL, '2026-06-30T06:10:00+09')
-ON CONFLICT (customer_bp_id, closing_date) DO NOTHING;
+ON CONFLICT (customer_bp_id, closing_date) WHERE kind = 'SCHEDULED'::app."CLOSING_KIND" DO NOTHING;
 
 COMMIT;

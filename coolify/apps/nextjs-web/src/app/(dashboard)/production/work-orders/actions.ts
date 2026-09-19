@@ -44,7 +44,6 @@ import {
 import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { movementOpener } from "@/lib/inventory";
-import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import { allocateDocumentKey, nextSerialNumber } from "@/lib/numbering";
 import {
   copyRouteVersionToCustomerTx,
@@ -220,8 +219,6 @@ function workOrderInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
       allocations: z.array(allocationInputSchema(tr)),
       // 在庫向け（注文明細なし）のときの対象製品。値は **items.id** —
       // WorkflowBuilder のピッカー（searchProductItemOptions）と揃える。
-      // 旧 work_orders.product_id はまだ NOT NULL なので、書くときだけ
-      // legacyProductIdForItem で橋渡しする（createWorkOrder・updateWorkOrder）。
       itemId: z.number().int().positive().nullable(),
       type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
       plannedQuantity: z
@@ -330,8 +327,7 @@ async function loadLineAllocInfos(
  *   ピッカー（`searchProductItemOptions`）・`work-order-alloc-core` の
  *   「全行同一製品」不変条件の 3 つが同じ id 空間を見る。旧 products.id とは
  *   **どちらも number なので型では止まらない** — だから列名を productId では
- *   なく itemId にしてある。旧列 `work_orders.product_id` へ書く 1 行だけが
- *   `legacyProductIdForItem` を通る（書き込みの橋）。
+ *   なく itemId にしてある（旧列 `work_orders.product_id` は第 3 段で消えた）。
  */
 async function resolveWorkOrderTarget(
   v: WorkOrderInput,
@@ -580,7 +576,7 @@ async function resolveRouteVersionsTx(
     prepRouteVersionId: string | null;
     steps: readonly RouteStepSnapshot[];
     actor: string | null;
-    productId: number;
+    itemId: number;
     tr: Awaited<ReturnType<typeof getTranslations>>;
     note: string;
   },
@@ -598,7 +594,7 @@ async function resolveRouteVersionsTx(
     input.route,
     mfgSteps,
     input.actor,
-    input.productId,
+    input.itemId,
     input.tr,
     input.note,
     { kind: "MANUFACTURING", prepStepIds },
@@ -636,12 +632,6 @@ export async function createWorkOrder(
     const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
     const docNumber = formatDocNumber("WOR", docKey);
     const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
-    // 旧 work_orders.product_id はまだ NOT NULL。**書くときだけ**品目 → 旧 id
-    // を引く（読み・判定は itemId のまま）。対応が無ければ書けないので止める。
-    const productId = await legacyProductIdForItem(itemId);
-    if (productId == null)
-      return actionError(tr("production.workOrderActions.productNotFound"));
-
     const resolvedVersions = await prisma.$transaction(async (tx) => {
       // 工程構成 → ルートバージョン解決（変更があれば新バージョンを自動保存）
       const resolved = await resolveRouteVersionsTx(tx, {
@@ -649,7 +639,7 @@ export async function createWorkOrder(
         prepRouteVersionId: prep.prepRouteVersionId,
         steps: built.creates,
         actor,
-        productId,
+        itemId,
         tr,
         note: tr("production.workOrderActions.routeChangeNoteOnCreate", {
           number: workOrderNumber,
@@ -660,7 +650,6 @@ export async function createWorkOrder(
           workOrderNumber,
           yearMonth: docKey.yearMonth,
           seq: docKey.seq,
-          productId,
           productItemId: itemId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
@@ -729,7 +718,7 @@ export async function createWorkOrder(
       after: {
         docNumber,
         allocations: v.allocations,
-        productId,
+        itemId,
         type: v.type,
         plannedQuantity: v.plannedQuantity,
         materialItemId,
@@ -803,10 +792,6 @@ export async function updateWorkOrder(
     if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
     const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
-    // 旧 work_orders.product_id はまだ NOT NULL — 書くときだけ橋を通る（上記）。
-    const productId = await legacyProductIdForItem(itemId);
-    if (productId == null)
-      return actionError(tr("production.workOrderActions.productNotFound"));
     let plansKept = 0;
     let plansDropped = 0;
 
@@ -816,7 +801,7 @@ export async function updateWorkOrder(
         prepRouteVersionId: prep.prepRouteVersionId,
         steps: built.creates,
         actor,
-        productId,
+        itemId,
         tr,
         note: tr("production.workOrderActions.routeChangeNoteOnUpdate", {
           number: workOrderNumber,
@@ -867,7 +852,6 @@ export async function updateWorkOrder(
       const updated = await tx.workOrder.update({
         where: { id: prior.id },
         data: {
-          productId,
           productItemId: itemId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
@@ -1166,12 +1150,6 @@ export async function copyWorkOrder(
       source.type === "FROM_STOCK" && allocations.length > 0
         ? allocations[0].quantity
         : source.plannedQuantity;
-    // 旧 work_orders.product_id はまだ NOT NULL — 書くときだけ橋を通る。
-    // コピー先の製品は変わりうる（別の注文明細を指定できる）ので、
-    // source の値を素通しせず itemId から引き直す。
-    const productId = await legacyProductIdForItem(itemId);
-    if (productId == null)
-      return actionError(tr("production.workOrderActions.productNotFound"));
 
     await prisma.$transaction(async (tx) => {
       await tx.workOrder.create({
@@ -1186,7 +1164,6 @@ export async function copyWorkOrder(
               sortOrder: i,
             })),
           },
-          productId,
           productItemId: itemId,
           type: source.type,
           plannedQuantity,
@@ -2145,7 +2122,7 @@ export async function copyRouteToCustomer(input: {
     );
     const route = await prisma.productProcessRoute.findUnique({
       where: { id: created.routeId },
-      select: { productId: true, itemId: true, name: true },
+      select: { itemId: true, name: true },
     });
     await recordAudit({
       action: "CREATE",
@@ -2154,7 +2131,7 @@ export async function copyRouteToCustomer(input: {
       after: {
         copiedFromVersionId: parsed.data.versionId,
         customerBpId: parsed.data.customerBpId,
-        productId: route?.productId ?? null,
+        itemId: route?.itemId ?? null,
         nameJa: (route?.name as LocalizedText | null)?.ja ?? null,
         version: 1,
       },

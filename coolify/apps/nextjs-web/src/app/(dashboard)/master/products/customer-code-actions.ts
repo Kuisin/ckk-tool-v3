@@ -22,7 +22,6 @@ import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
-import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import { normalizeKeywords } from "@/lib/master-keywords";
 import { productMatchKey } from "@/lib/product-match";
 import {
@@ -91,11 +90,6 @@ export async function saveCustomerProductCodes(input: {
     select: { id: true },
   });
   if (!item) return actionError(tr("common.targetProductNotFound"));
-  // 旧 customer_product_codes.product_id はまだ NOT NULL（落とすのは最後の段）
-  // なので、書き込みのときだけ品目 → products.id を橋渡しする。一意制約
-  // (customer_bp_id, product_id) もこの値で効いている。
-  const productId = await legacyProductIdForItem(itemId);
-  if (productId == null) return actionError(tr("common.targetProductNotFound"));
 
   // 同じ保存の中の重複を先に弾く（DB の P2002 はどの行かを言えない）。
   const seenCustomer = new Set<string>();
@@ -171,13 +165,9 @@ export async function saveCustomerProductCodes(input: {
       for (const r of cleaned) {
         await tx.customerProductCode.upsert({
           where: {
-            customerBpId_productId: {
-              customerBpId: r.customerBpId,
-              productId,
-            },
+            customerBpId_itemId: { customerBpId: r.customerBpId, itemId },
           },
           create: {
-            productId,
             itemId,
             customerBpId: r.customerBpId,
             code: r.code,
@@ -188,9 +178,6 @@ export async function saveCustomerProductCodes(input: {
             createdBy: actor,
           },
           update: {
-            // 既存行にも品目参照を埋め直す（移行前に作られた行が残っていても
-            // 1 度保存すれば揃う）。
-            itemId,
             code: r.code,
             name: r.name || null,
             aliases: r.aliases,
@@ -208,12 +195,11 @@ export async function saveCustomerProductCodes(input: {
 
   // **製品の履歴として残す**（別テーブル名にしない）— 顧客品番はその製品に
   // ついての設定なので、製品の 履歴 タブで読めないと誰も見に行かない。
-  // 鍵は製品マスタ本体と同じ `("products", 旧 products.id)`（actions.ts の
-  // 監査の節）— 画面の id が品目へ移っても、履歴の鍵は動かさない。
+  // 鍵は製品マスタ本体と同じ `("products", items.id)`（actions.ts の監査の節）。
   await recordAudit({
     action: "UPDATE",
     tableName: "products",
-    recordId: String(productId),
+    recordId: String(itemId),
     before: { customerProductCodes: before.map(auditLine) },
     after: { customerProductCodes: cleaned.map(auditLine) },
   });

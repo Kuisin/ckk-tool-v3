@@ -82,7 +82,6 @@ import {
   RETRY_PENDING_MARKER,
   retryPlan,
 } from "./intake-extract-error";
-import { legacyProductIdsForItems } from "./item-legacy-product";
 import { aliasKeyFor } from "./match-alias-core";
 import { aliasesByTarget, findAlias, noteAliasHit } from "./match-aliases";
 import { label } from "./messages";
@@ -859,20 +858,11 @@ export async function runExtraction(
         matchProduct(it.productCode, it.productText, { customerCodes }),
       ),
     );
-    // 突合が返すのは **items.id**（品目統合 第 3 段）。注文明細の旧列
-    // product_id はまだ残っているので、書くときだけ橋を 1 回通す
-    // （lib/item-legacy-product — 読み・突合・業務判定はここを通らない）。
-    const legacyProductIds = await legacyProductIdsForItems(
-      matched
-        .map((m) => (m.matched ? Number(m.matched.id) : Number.NaN))
-        .filter((n) => Number.isInteger(n)),
-    );
+    // 突合が返すのは **items.id**（品目統合 第 3 段）。
     const items = norm.items.map((it, i) => {
       const product = matched[i];
       const itemId = product.matched ? Number(product.matched.id) : null;
       return {
-        productId:
-          itemId != null ? (legacyProductIds.get(itemId) ?? null) : null,
         itemId,
         productText: it.productText ?? it.productCode,
         orderType: it.orderType,

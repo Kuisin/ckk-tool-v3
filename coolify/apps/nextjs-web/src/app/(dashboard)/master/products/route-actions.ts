@@ -17,7 +17,6 @@ import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import {
   createRouteVersionTx,
   createRouteWithVersionTx,
@@ -144,7 +143,7 @@ export async function createPrepRoute(
     const created = await prisma.$transaction((tx) =>
       createRouteWithVersionTx(tx, {
         kind: "PREP",
-        productId: null,
+        itemId: null,
         name: localizedInput(v.nameJa, v.nameEn),
         steps: built.creates,
         actor,
@@ -190,14 +189,11 @@ export async function createProductRoute(
   }
   const v = parsed.data;
   try {
-    // 旧 product_process_routes.product_id もまだ埋める（落とすのは最後の段）
-    // ので、ここで 1 度だけ品目 → products.id を橋渡しする。
-    const productId = await legacyProductIdForItem(itemId);
     const item = await prisma.item.findFirst({
       where: { id: itemId, itemType: "PRODUCT" },
       select: { id: true },
     });
-    if (!item || productId == null)
+    if (!item)
       return actionError(
         tr("master.productRouteActions.targetProductNotFound"),
       );
@@ -213,7 +209,7 @@ export async function createProductRoute(
     const created = await prisma.$transaction((tx) =>
       createRouteWithVersionTx(tx, {
         kind: "MANUFACTURING",
-        productId,
+        itemId,
         name: localizedInput(v.nameJa, v.nameEn),
         customerBpId: v.customerBpId ?? null,
         steps: built.creates,
@@ -227,7 +223,7 @@ export async function createProductRoute(
       tableName: "product_process_routes",
       recordId: String(created.routeId),
       after: {
-        productId,
+        itemId,
         nameJa: v.nameJa,
         customerBpId: v.customerBpId ?? null,
         stepCount: built.creates.length,

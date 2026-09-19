@@ -7,7 +7,6 @@ import {
   fetchOrderLineDeliveryDate,
   fetchOrderLineRef,
   fetchProductItemRef,
-  fetchProductRef,
   fetchQuoteRef,
   fetchRecentQuoteOptions,
 } from "../data";
@@ -23,7 +22,6 @@ export const dynamic = "force-dynamic";
  * 見積書 / 注文明細 / 製品からの起票をクエリで受ける:
  *   `?quote=QOT-YYYYMM-NNNNN` — 見積書詳細から（トリガー = 見積時）
  *   `?orderLine=<uuid>`       — 注文明細詳細から（トリガー = 受注時）
- *   `?product=<products.id>`  — 製品マスタから
  *   `?item=<items.id>`        — 見積明細の単価未解決から（品目 id）
  * **id はここで実在を確かめてラベル付きの ref に解決してから**フォームへ渡す
  * （生のクエリ文字列をクライアントへ流さない — 存在しない番号でトリガーだけ
@@ -35,7 +33,6 @@ export default async function SalesDesignRequestsNewPage({
   searchParams: Promise<{
     quote?: string;
     orderLine?: string;
-    product?: string;
     item?: string;
   }>;
 }) {
@@ -58,11 +55,7 @@ export default async function SalesDesignRequestsNewPage({
     fetchEmployeeOptions(),
     sp.quote ? fetchQuoteRef(sp.quote) : null,
     sp.orderLine ? fetchOrderLineRef(sp.orderLine) : null,
-    sp.item
-      ? fetchProductItemRef(sp.item)
-      : sp.product
-        ? fetchProductRef(sp.product)
-        : null,
+    sp.item ? fetchProductItemRef(sp.item) : null,
     // 版が載る系列（受注元）の候補。
     fetchBillingOptions(),
     sp.orderLine ? fetchOrderLineCustomerBpId(sp.orderLine) : null,

@@ -11,7 +11,6 @@ import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { formatPriceListNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
-import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import { listProductRoutes } from "@/lib/product-routes";
 import { getProductTypes } from "@/lib/product-settings";
 import { PRODUCT_TYPE_SPEC_KEY } from "@/lib/product-types";
@@ -34,7 +33,6 @@ export default async function MasterProductsDetailPage({
   const { id: idParam } = await params;
   const itemId = Number(idParam);
   if (!Number.isInteger(itemId)) notFound();
-  const legacyProductId = await legacyProductIdForItem(itemId);
   const [r, auditEntries, routes, designFiles, designRequests, customerCodes] =
     await Promise.all([
       prisma.item.findFirst({
@@ -52,7 +50,7 @@ export default async function MasterProductsDetailPage({
           },
         },
       }),
-      fetchAuditEntries("products", String(legacyProductId ?? itemId)),
+      fetchAuditEntries("products", String(itemId)),
       listProductRoutes(itemId),
       // 製品の最新図面は design_files（item_id + is_latest）が正。
       // 製品マスタ側に design_file_id 列は無い。

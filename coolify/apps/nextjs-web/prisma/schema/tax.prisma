@@ -52,7 +52,6 @@ model TaxCategory {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   rates           TaxCategoryRate[]
-  products        Product[]
   customerAttrs   BpCustomerAttrs[]
   invoiceItems    InvoiceItem[]
   quoteItems      QuoteItem[]

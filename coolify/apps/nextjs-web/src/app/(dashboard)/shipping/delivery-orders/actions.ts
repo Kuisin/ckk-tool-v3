@@ -61,7 +61,6 @@ import {
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
-import { legacyProductIdsForItems } from "@/lib/item-legacy-product";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   isLineShippable,
@@ -886,15 +885,6 @@ export async function createDeliveryOrder(
     return actionError(tr("common.outOfScope"));
   }
   try {
-    // 旧 product_id 列を埋めるための橋渡し（品目統合 第 2 段 C）。
-    const legacyProductIds = await legacyProductIdsForItems(
-      v.items.map((it) => Number(it.itemId)),
-    );
-    // 品目は products の鏡なので通常あり得ない。対応が無いまま保存して旧列に
-    // 穴を空けるより、ここで止める。
-    if (v.items.some((it) => !legacyProductIds.has(Number(it.itemId)))) {
-      return actionError(tr("common.targetProductNotFound"));
-    }
     // 発送（DISPATCH）はロット在庫を fail-fast 検証（最終ガードは出荷時）
     if (v.type === "DISPATCH") {
       const lotError = await validateDispatchLots(v.items, tr);
@@ -936,7 +926,6 @@ export async function createDeliveryOrder(
             orderLineId: it.orderLineId,
             itemId: Number(it.itemId),
             // 旧 product_id 列も橋渡しで埋める（落とすのは最後の段）。
-            productId: legacyProductIds.get(Number(it.itemId)) as number,
             lotNumber: it.lotNumber,
             quantity: it.quantity,
             notes: trimOrNull(it.notes),
@@ -1024,15 +1013,6 @@ export async function updateDeliveryOrder(
         },
       },
     });
-    // 旧 product_id 列を埋めるための橋渡し（品目統合 第 2 段 C）。
-    const legacyProductIds = await legacyProductIdsForItems(
-      v.items.map((it) => Number(it.itemId)),
-    );
-    // 品目は products の鏡なので通常あり得ない。対応が無いまま保存して旧列に
-    // 穴を空けるより、ここで止める。
-    if (v.items.some((it) => !legacyProductIds.has(Number(it.itemId)))) {
-      return actionError(tr("common.targetProductNotFound"));
-    }
     // 発送（DISPATCH）はロット在庫を fail-fast 検証（最終ガードは出荷時）
     if (v.type === "DISPATCH") {
       const lotError = await validateDispatchLots(v.items, tr);
@@ -1103,7 +1083,6 @@ export async function updateDeliveryOrder(
           orderLineId: it.orderLineId,
           itemId: Number(it.itemId),
           // 旧 product_id 列も橋渡しで埋める（落とすのは最後の段）。
-          productId: legacyProductIds.get(Number(it.itemId)) as number,
           lotNumber: it.lotNumber,
           quantity: it.quantity,
           notes: trimOrNull(it.notes),
@@ -1256,9 +1235,7 @@ async function planDeliveryOrderNotes(
   salesRepId: string | null;
   items: {
     /** 品目 id（items.id）。 */
-    itemId: number | null;
-    /** 旧 products.id — 納品明細の旧列を埋めるためだけに持つ。 */
-    productId: number;
+    itemId: number;
     quantity: number;
     unitPrice: number;
     /** 行の税スナップショット（請求単価と同じく確定時に焼き込む）。 */
@@ -1283,7 +1260,6 @@ async function planDeliveryOrderNotes(
         select: {
           id: true,
           itemId: true,
-          productId: true,
           quantity: true,
           // 確定時に焼き込んだ請求単価が先。null は確定前 or 移行前のデータで、
           // そのときだけ注文明細の単価に落ちる（従来の経路）。
@@ -1349,7 +1325,6 @@ async function planDeliveryOrderNotes(
       });
       return {
         itemId: it.itemId,
-        productId: it.productId,
         quantity: it.quantity,
         unitPrice:
           unitPrices.get(it.id) ??
@@ -1686,7 +1661,6 @@ export async function confirmDeliveryOrder(
             items: {
               create: plan.items.map((it, idx) => ({
                 itemId: it.itemId,
-                productId: it.productId,
                 quantity: it.quantity,
                 unitPrice: notePlan.includePrice ? it.unitPrice : null,
                 amount: notePlan.includePrice

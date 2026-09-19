@@ -248,7 +248,7 @@ async function hydrateSteps(
           id: true,
           workOrderNumber: true,
           plannedQuantity: true,
-          product: { select: { name: true } },
+          productItem: { select: { name: true } },
         },
       },
       actuals: {
@@ -304,7 +304,7 @@ async function hydrateSteps(
     views.push({
       stepId: r.id,
       workOrderNumber: r.workOrder.workOrderNumber,
-      productName: localized(asText(r.workOrder.product.name), locale),
+      productName: localized(asText(r.workOrder.productItem.name), locale),
       stepName: localized(asText(r.processStep.name), locale),
       stepCode: r.processStep.code,
       processStepId: r.processStepId,
@@ -647,8 +647,8 @@ export async function getWorkOrderOverview(
       workOrderNumber: true,
       status: true,
       plannedQuantity: true,
-      product: { select: { name: true } },
-      material: { select: { name: true } },
+      productItem: { select: { name: true } },
+      materialItem: { select: { name: true } },
       steps: { select: { id: true } },
     },
   });
@@ -709,9 +709,9 @@ export async function getWorkOrderOverview(
   return {
     workOrderNumber: wo.workOrderNumber,
     status: wo.status,
-    productName: localized(asText(wo.product.name), locale),
-    materialName: wo.material
-      ? localized(asText(wo.material.name), locale)
+    productName: localized(asText(wo.productItem.name), locale),
+    materialName: wo.materialItem
+      ? localized(asText(wo.materialItem.name), locale)
       : null,
     plannedQuantity: wo.plannedQuantity,
     steps: items,

@@ -32,7 +32,6 @@ import {
   parseDocKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
-import { legacyProductIdsForItems } from "@/lib/item-legacy-product";
 import {
   type ActionResult,
   actionError,
@@ -130,13 +129,10 @@ function toItemData(
   i: number,
   includePrice: boolean,
   lineTax: { categoryId: number | null; rate: number } | null,
-  /** 旧 product_id 列の値（品目 → products の橋渡し）。 */
-  legacyProductId: number,
 ) {
   const unitPrice = includePrice ? (it.unitPrice ?? 0) : null;
   return {
     itemId: Number(it.itemId),
-    productId: legacyProductId,
     quantity: it.quantity,
     unitPrice,
     // 金額はサーバー側で計算（クライアント表示値は信用しない）。
@@ -379,15 +375,6 @@ export async function updateDeliveryNote(
     }
     // 税はトランザクションの外で解決しておく（読むだけ・時間のかかる I/O を
     // トランザクションに入れない）。
-    // 旧 product_id 列を埋めるための橋渡し（品目統合 第 2 段 C）。
-    const legacyProductIds = await legacyProductIdsForItems(
-      v.items.map((it) => Number(it.itemId)),
-    );
-    // 品目は products の鏡なので通常あり得ない。対応が無いまま保存して旧列に
-    // 穴を空けるより、ここで止める。
-    if (v.items.some((it) => !legacyProductIds.has(Number(it.itemId)))) {
-      return actionError(tr("common.targetProductNotFound"));
-    }
     const lineTaxOf = await resolveNoteLineTax(
       prior?.deliveryOrderYearMonth && prior.deliveryOrderSeq != null
         ? {
@@ -425,13 +412,7 @@ export async function updateDeliveryNote(
         data: v.items.map((it, i) => ({
           deliveryNoteYearMonth: key.yearMonth,
           deliveryNoteSeq: key.seq,
-          ...toItemData(
-            it,
-            i,
-            v.includePrice,
-            lineTaxOf(Number(it.itemId)),
-            legacyProductIds.get(Number(it.itemId)) as number,
-          ),
+          ...toItemData(it, i, v.includePrice, lineTaxOf(Number(it.itemId))),
         })),
       });
     });

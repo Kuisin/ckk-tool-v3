@@ -36,7 +36,6 @@ import {
 import { prisma } from "@/lib/db";
 import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
-import { legacyMaterialIdsForItems } from "@/lib/item-legacy-material";
 import { allocateDocumentKey, nextDocumentNumber } from "@/lib/numbering";
 import { learnPurchaseAliases } from "@/lib/purchase-intake";
 import {
@@ -121,22 +120,12 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
   }));
 }
 
-/**
- * 明細入力 → create データ（金額はサーバー側で計算）。
- *
- * `material_id` 列はまだ NOT NULL（品目統合 第 2 段 B。旧列を落とすのは
- * 最後の段）なので、選ばれた品目 id から対応する materials.id を引いて
- * 一緒に埋める（item-legacy-material.ts — 書き込みのためだけの橋）。
- */
-async function buildItemCreates(items: PurchaseOrderInput["items"]) {
-  const legacyIds = await legacyMaterialIdsForItems(
-    items.map((it) => Number(it.itemId)),
-  );
+/** 明細入力 → create データ（金額はサーバー側で計算）。 */
+function buildItemCreates(items: PurchaseOrderInput["items"]) {
   return items.map((it, i) => {
     const itemId = Number(it.itemId);
     return {
       itemId,
-      materialId: legacyIds.get(itemId) ?? 0,
       plantId: it.plantId ? Number(it.plantId) : null,
       quantity: it.quantity,
       unit: it.unit,
@@ -775,10 +764,6 @@ export async function receivePurchaseOrderItems(
         }
         const receipt = await tx.materialReceipt.create({
           data: {
-            // 発注明細は既に itemId / materialId の両方を持つ（作成時に
-            // buildItemCreates が埋めた）ので、そのまま複写する — 追加の
-            // 品目 → 素材の往復は要らない。
-            materialId: it.materialId,
             itemId: it.itemId,
             supplierBpId: prior.supplierBpId,
             purchaseOrderItemId: it.id,

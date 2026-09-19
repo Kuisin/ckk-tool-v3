@@ -97,7 +97,7 @@ const WO_INCLUDE = {
     orderBy: { sortOrder: "asc" as const },
   },
   createdByUser: { select: { displayName: true } },
-  product: true,
+  productItem: true,
   materialItem: true,
   storageLocation: {
     select: { id: true, name: true, plant: { select: { name: true } } },
@@ -111,7 +111,7 @@ const WO_INCLUDE = {
         select: {
           id: true,
           name: true,
-          productId: true,
+          itemId: true,
           versions: {
             select: { version: true },
             orderBy: { version: "desc" as const },
@@ -371,7 +371,7 @@ function mapRow(
         branch: number | null;
       };
     }[];
-    product: { name: unknown };
+    productItem: { name: unknown };
     type: string;
     plannedQuantity: number;
     approvalStatus: string;
@@ -387,7 +387,7 @@ function mapRow(
     docNumber: formatDocNumber("WOR", r),
     createdAt: r.createdAt.toISOString(),
     orderLineNumber: orderLineListLabel(r.orderLineLinks, tr),
-    productName: localized(r.product.name as LocalizedText | null),
+    productName: localized(r.productItem.name as LocalizedText | null),
     type: r.type,
     plannedQuantity: r.plannedQuantity,
     approvalStatus: r.approvalStatus,
@@ -454,7 +454,7 @@ export async function fetchWorkOrders(
         },
         orderBy: { sortOrder: "asc" },
       },
-      product: true,
+      productItem: true,
     },
     orderBy: { workOrderNumber: "desc" },
   });
@@ -493,7 +493,7 @@ export async function fetchWorkOrderStrips(
       ...workOrderScopeWhere(authz.access, authz.userId),
     },
     include: {
-      product: true,
+      productItem: true,
       materialItem: { select: { code: true } },
       orderLineLinks: {
         select: {
@@ -536,7 +536,7 @@ export async function fetchWorkOrderStrips(
       return {
         workOrderNumber: r.workOrderNumber,
         docNumber: formatDocNumber("WOR", r),
-        productName: localized(r.product.name as LocalizedText | null),
+        productName: localized(r.productItem.name as LocalizedText | null),
         orderLineNumber: orderLineListLabel(r.orderLineLinks, tr),
         customerName:
           customers.length === 0
@@ -677,7 +677,7 @@ export async function fetchWorkOrder(
       lotNumber: l.orderLine.lotNumber,
     })),
     createdByName: r.createdByUser?.displayName ?? null,
-    productName: localized(r.product.name as LocalizedText | null),
+    productName: localized(r.productItem.name as LocalizedText | null),
     materialItemId: r.materialItemId,
     materialCode: r.materialItem?.code ?? null,
     materialName: r.materialItem
@@ -691,7 +691,6 @@ export async function fetchWorkOrder(
           r.storageLocation.name as LocalizedText | null,
         )}`
       : null,
-    productId: r.productId,
     productItemId: r.productItemId,
     routeVersionId: r.routeVersion?.id ?? null,
     routeId: r.routeVersion?.route.id ?? null,

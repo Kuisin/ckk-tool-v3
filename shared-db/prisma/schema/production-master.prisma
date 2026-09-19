@@ -51,8 +51,6 @@ model Plant {
   poItems        MaterialPurchaseOrderItem[] @relation("PoItemPlant")
   receipts       MaterialReceipt[]           @relation("ReceiptPlant")
   prqItems       PurchaseRequestItem[]       @relation("PrqItemPlant")
-  productInventory  ProductInventory[]
-  materialInventory MaterialInventory[]
   kioskDevices      KioskDevice[]   @relation("KioskDevicePlant")
   kioskFloorMaps    KioskFloorMap[] @relation("KioskFloorMapPlant")
   displayDevices    DisplayDevice[] @relation("DisplayDevicePlant")
@@ -371,9 +369,8 @@ model InspectionTemplate {
   // ようにするため。絞り込みは既定選択だけで、割当自体（MultiSelect）は
   // 引き続きどのテンプレートも選べる（現場判断で汎用外の検査表を使うことも
   // ある）。
-  productId             Int?     @map("product_id")
-  /// 統合品目（app.items）。この検査表テンプレートの対象製品。
-  itemId Int? @map("item_id")
+  /// 統合品目（app.items）。この検査表テンプレートの対象品目。
+  itemId                Int?     @map("item_id")
   // ナビゲーション用のグループ（例: 製品検査記録／外観検査 等）。
   // 判定・PDF には影響しない — 一覧の絞り込み・見出し分けのためだけの表示軸。
   groupId               Int?     @map("group_id")
@@ -404,8 +401,7 @@ model InspectionTemplate {
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   relatedProcessStep ProcessStepCatalog?      @relation(fields: [relatedProcessStepId], references: [id])
-  product            Product?                 @relation(fields: [productId], references: [id])
-  item Item? @relation("InspectionTemplateItem", fields: [itemId], references: [id], onDelete: Restrict)
+  item               Item?                    @relation("InspectionTemplateItem", fields: [itemId], references: [id], onDelete: Restrict)
   group              InspectionTemplateGroup? @relation(fields: [groupId], references: [id])
   imageFile          File?                    @relation("InspectionTemplateImage", fields: [imageFileId], references: [id], onDelete: SetNull)
   approvalGroup      ApprovalGroup?           @relation(fields: [approvalGroupId], references: [id])
@@ -415,7 +411,6 @@ model InspectionTemplate {
   inspectionRecords  InspectionRecord[]            @relation("InspectionRecordTemplate")
 
   @@unique([code, version])
-  @@index([productId])
   @@index([groupId])
   @@index([itemId])
   @@map("inspection_templates")

@@ -25,7 +25,6 @@ import {
   localizedTranslations,
 } from "@/lib/format";
 import { discardTemplateImageFile } from "@/lib/inspection-template-image";
-import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import {
   type ActionResult,
   actionError,
@@ -351,17 +350,12 @@ export async function createInspectionTemplate(
   }
   const v = parsed.data;
   try {
-    // 品目（items.id）で受け取り、まだ残っている旧 product_id 列も
-    // 橋渡しで埋める（他コードがそちらを読んでいても崩れない）。
-    const legacyProductId =
-      v.itemId != null ? await legacyProductIdForItem(v.itemId) : null;
     const created = await prisma.inspectionTemplate.create({
       data: {
         code: v.code.trim(),
         name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         relatedProcessStepId: v.relatedProcessStepId,
         itemId: v.itemId,
-        productId: legacyProductId,
         groupId: v.groupId,
         samplingMode: v.samplingMode,
         samplingValue: v.samplingMode === "ALL" ? null : v.samplingValue,
@@ -460,9 +454,6 @@ export async function updateInspectionTemplate(
     if (definitionChanged && (await isTemplateLocked(id))) {
       return actionError(tr("master.inspectionTemplateActions.versionLocked"));
     }
-    // 品目（items.id）で受け取り、旧 product_id 列も橋渡しで埋める。
-    const legacyProductId =
-      v.itemId != null ? await legacyProductIdForItem(v.itemId) : null;
     await prisma.inspectionTemplate.update({
       where: { id },
       data: {
@@ -476,7 +467,6 @@ export async function updateInspectionTemplate(
         // ロック中でも変更可（対象製品・グループ・誰が検収できるかの入れ替えは
         // 測定定義に触れない — isActive と同じ扱い）。
         itemId: v.itemId,
-        productId: legacyProductId,
         groupId: v.groupId,
         approvalGroupId: v.approvalGroupId,
         approvers: {
@@ -555,7 +545,6 @@ export async function createInspectionTemplateVersion(
           name: source.name as object,
           relatedProcessStepId: source.relatedProcessStepId,
           itemId: source.itemId,
-          productId: source.productId,
           groupId: source.groupId,
           // 参考画像は複写しない — files 行は 1 テンプレート 1 枚の前提で
           // 削除時に実体ごと消すため、複写すると旧バージョン側の削除で

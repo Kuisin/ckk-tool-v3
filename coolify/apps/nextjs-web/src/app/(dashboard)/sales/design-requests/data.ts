@@ -22,11 +22,7 @@ import type {
 import type { HistoryEntry } from "@/lib/approvals";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import {
-  formatProductNumber,
-  formatQuoteNumber,
-  orderLineNumberOf,
-} from "@/lib/doc-number";
+import { formatQuoteNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 import { label } from "@/lib/messages";
@@ -92,17 +88,6 @@ function findListRows(where: Prisma.DesignRequestWhereInput = {}) {
     include: LIST_INCLUDE,
     orderBy: { requestNumber: "desc" },
   });
-}
-
-/** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
-function productLabel(p: {
-  name: unknown;
-  yearMonth: string | null;
-  seq: number | null;
-}): string {
-  const code = formatProductNumber(p.yearMonth, p.seq);
-  const name = localized(p.name as LocalizedText | null);
-  return code ? `${name} ${code}` : name;
 }
 
 /** 品目（items.id）ラベル: 名称 + コード（items.code は既に整形済み）。 */
@@ -433,30 +418,11 @@ export async function fetchOrderLineDeliveryDate(
 }
 
 /**
- * 製品 1 件の参照解決（`?product=<products.id>` プリフィル用）。
- * 返す value は品目 (items.id) — ピッカーは品目ベースなので、ここで
- * 1 回だけ変換する。
- *
- * ⚠️ **旧 id の入口**。製品マスタは `?item=<items.id>`（`fetchProductItemRef`）
- * へ移したので、いま `?product=` を送ってくるのは古いリンクだけ。
- */
-export async function fetchProductRef(
-  productId: string,
-): Promise<QuoteOption | null> {
-  const id = Number(productId);
-  if (!Number.isInteger(id) || id <= 0) return null;
-  const r = await prisma.product.findUnique({ where: { id } });
-  if (!r || r.itemId == null) return null;
-  return { value: String(r.itemId), label: productLabel(r) };
-}
-
-/**
  * 品目 1 件の参照解決（`?item=<items.id>` プリフィル用）。
  *
- * 見積フォームの「単価が引けない → 設計依頼を起票」からの入口。あちらは
- * 既に品目 id を持っている（品目統合 第 2 段 C）ので、products.id を渡す
- * `?product=` とは**別のクエリ名**にしてある — 同じ名前で 2 つの id 空間を
- * 運ぶと、どちらが来たのか見分けられない。
+ * 製品マスタ・見積フォームの「単価が引けない → 設計依頼を起票」からの入口。
+ * 旧 `?product=<products.id>` は旧マスタと一緒に廃止した（品目統合 第 3 段）—
+ * 読み替える対応表がもう無く、連番同士なので黙って別の品目が当たる。
  */
 export async function fetchProductItemRef(
   itemId: string,

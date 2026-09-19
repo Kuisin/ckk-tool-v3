@@ -996,7 +996,7 @@ export async function addBranchSeries(input: {
             where: {
               isActive: true,
               relatedProcessStepId: { in: inspectionCatalogIds },
-              OR: [{ productId: null }, { productId: wo.productId }],
+              OR: [{ itemId: null }, { itemId: wo.productItemId }],
             },
             orderBy: [{ code: "asc" }, { version: "desc" }],
             select: { id: true, code: true, relatedProcessStepId: true },

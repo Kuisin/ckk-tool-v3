@@ -90,9 +90,11 @@ async function lookupEntityNamesForTable(
       }
       break;
     }
+    // 製品・素材は app.items（品目統合 第 3 段）。table_name は履歴の事実なので
+    // 分かれたままで、引く先が 1 つになった（種別で必ず絞る — id 空間は共通）。
     case "products": {
-      const rows = await prisma.product.findMany({
-        where: { id: { in: ids.map(Number) } },
+      const rows = await prisma.item.findMany({
+        where: { id: { in: ids.map(Number) }, itemType: "PRODUCT" },
         select: { id: true, name: true },
       });
       for (const r of rows) {
@@ -102,8 +104,8 @@ async function lookupEntityNamesForTable(
       break;
     }
     case "materials": {
-      const rows = await prisma.material.findMany({
-        where: { id: { in: ids.map(Number) } },
+      const rows = await prisma.item.findMany({
+        where: { id: { in: ids.map(Number) }, itemType: "MATERIAL" },
         select: { id: true, name: true },
       });
       for (const r of rows) {
