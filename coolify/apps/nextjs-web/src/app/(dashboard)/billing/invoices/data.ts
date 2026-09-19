@@ -35,11 +35,13 @@ const INVOICE_INCLUDE = {
     orderBy: { sortOrder: "asc" as const },
     // 明細の税区分は**会計連携のためだけ**に読む — 束 (taxSummaries) の区分が
     // 一意に定まらないとき（同じ率の区分が 2 つ以上あるとき）に、科目コードが
-    // 食い違っていないかをここで確かめる。
+    // 食い違っていないかをここで確かめる。chargeItem は手動費用の編集モーダル
+    // （追加費用パネル）に「いま何を選んでいるか」を出すためだけに読む。
     include: {
       taxCategory: {
         select: { taxCode: true, salesAccountCode: true, taxAccountCode: true },
       },
+      chargeItem: { select: { name: true } },
     },
   },
   // 税率ごとの区分記載（適格請求書）。行が無い＝税区分マスタ以前の請求書で、
@@ -116,9 +118,13 @@ function mapInvoice(r: InvoiceRow, forDocument = false): Invoice {
       it.deliveryNoteSeq,
     ),
     // 手動費用 = 出荷書の由来が無く、料金マスタの由来が入っている行
-    // （lib/invoice-charges.ts isManualChargeItem と同じ判定）。
+    // （invoices/charge-actions.ts と同じ判定）。
     isManualCharge:
       it.deliveryOrderYearMonth == null && it.chargeItemId != null,
+    chargeItemId: it.chargeItemId,
+    chargeItemLabel: it.chargeItem
+      ? localized(it.chargeItem.name as LocalizedText | null, loc)
+      : null,
   }));
   return {
     id: number,

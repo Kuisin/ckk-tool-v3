@@ -2117,7 +2117,10 @@
       "issueApprovalWaitingHelp": "このグループのメンバーだけが操作できます。",
       "paymentApprovalWaitingHelp": "このグループのメンバーだけが操作できます。",
       "paymentApprovalApproveHelp": "入金の記録に承認が必要です。内容を確認して承認してください。",
-      "issueApprovalApproveHelpWithCharges": "手動で追加した費用が {count} 件含まれています（合計 {amount}）。内容を確認して承認してください。"
+      "issueApprovalApproveHelpWithCharges": "手動で追加した費用が {count} 件含まれています（合計 {amount}）。内容を確認して承認してください。",
+      "chargesClosedForEditing": "下書きの請求書だけ追加費用を編集できます",
+      "chargesSaveFailed": "追加費用の保存に失敗しました",
+      "chargesHelp": "この請求書へ手動で足す費用（料金マスタからだけ選べます）。発行前に承認が要ります。直せるのは下書きのうちだけです。"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "請求書 {invoiceNumber} を発行します。発行日は本日で記録されます。",

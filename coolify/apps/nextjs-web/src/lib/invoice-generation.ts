@@ -65,7 +65,7 @@ function asLegacyTaxType(
 }
 
 /** その率の束に属する明細の課税区分が 1 つに定まるならその id、でなければ null。 */
-function bucketCategoryId(
+export function bucketCategoryId(
   items: readonly { taxRate: number; taxCategoryId: number | null }[],
   taxRate: number,
 ): number | null {
@@ -83,7 +83,7 @@ function bucketCategoryId(
  * 混在請求書は 1 率しか持てないヘッダでは表せないので null にし、内訳は
  * invoice_tax_summaries だけに持たせる）。
  */
-function headerTaxSnapshot(
+export function headerTaxSnapshot(
   items: readonly { taxRate: number; taxCategoryId: number | null }[],
   buckets: readonly TaxBucket[],
   catalog: { categories: readonly { id: number; code: string }[] },

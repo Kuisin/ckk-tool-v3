@@ -3,7 +3,9 @@ import { InvoiceDetail } from "@/components/billing/invoices/InvoiceDetail";
 import { appLabelForKey } from "@/lib/app-list";
 import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
+import { loadChargeItemOptions } from "@/lib/charge-items";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
 import { isIssued, pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
@@ -69,11 +71,20 @@ export default async function BillingInvoicesDetailPage({
       ])
     : [null, []];
 
+  // 追加費用（§9） — 料金マスタの選択肢と、下書きだけ編集できるの判定。
+  const locale = await getServerLocale();
+  const [chargeItems, chargeAuthz] = await Promise.all([
+    loadChargeItemOptions(locale),
+    checkPermission("invoice", "UPDATE"),
+  ]);
+
   return (
     <InvoiceDetail
       approval={approval}
       approvalTrail={approvalTrail}
       auditEntries={auditEntries}
+      canEditCharges={chargeAuthz.ok && invoice.status === "DRAFT"}
+      chargeItems={chargeItems}
       invoice={invoice}
       memos={memos}
       pdfMeta={pdfMeta}

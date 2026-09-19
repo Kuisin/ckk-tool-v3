@@ -2117,7 +2117,10 @@
       "issueApprovalWaitingHelp": "Only members of this group can act.",
       "paymentApprovalWaitingHelp": "Only members of this group can act.",
       "paymentApprovalApproveHelp": "Recording this payment requires approval. Review it and approve.",
-      "issueApprovalApproveHelpWithCharges": "Includes {count} manually added charge(s) (total {amount}). Review before approving."
+      "issueApprovalApproveHelpWithCharges": "Includes {count} manually added charge(s) (total {amount}). Review before approving.",
+      "chargesClosedForEditing": "Additional charges can only be edited on a draft invoice",
+      "chargesSaveFailed": "Could not save the additional charges",
+      "chargesHelp": "Charges added manually to this invoice (chosen from the charge master only). Requires approval before issuing. Editable only while the invoice is a draft."
     },
     "invoiceDetail": {
       "confirmIssueMessage": "This issues invoice {invoiceNumber}. The issue date is recorded as today.",

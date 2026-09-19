@@ -2117,7 +2117,10 @@
       "issueApprovalWaitingHelp": "仅该组成员可以操作。",
       "paymentApprovalWaitingHelp": "仅该组成员可以操作。",
       "paymentApprovalApproveHelp": "记录此次入款需要审批。请确认内容后予以批准。",
-      "issueApprovalApproveHelpWithCharges": "含有 {count} 项手动追加的费用（合计 {amount}）。请确认内容后予以批准。"
+      "issueApprovalApproveHelpWithCharges": "含有 {count} 项手动追加的费用（合计 {amount}）。请确认内容后予以批准。",
+      "chargesClosedForEditing": "只有草稿状态的请款单可以编辑追加费用",
+      "chargesSaveFailed": "保存追加费用失败",
+      "chargesHelp": "手动追加到此请款单的费用（仅可从费用主数据中选择）。发行前需要审批。仅可在草稿状态下编辑。"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "将发行请款单 {invoiceNumber}，发行日期记为今天。",

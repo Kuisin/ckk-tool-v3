@@ -41,10 +41,15 @@ import {
   markSent,
   rejectInvoiceApproval,
 } from "@/app/(dashboard)/billing/invoices/actions";
+import { saveInvoiceCharges } from "@/app/(dashboard)/billing/invoices/charge-actions";
 import {
   ApprovalTrailList,
   countTrailRecords,
 } from "@/components/approvals/ApprovalTrailList";
+import {
+  type ChargeItemChoice,
+  ChargesPanel,
+} from "@/components/charges/ChargesPanel";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
@@ -94,6 +99,8 @@ export function InvoiceDetail({
   pdfMeta,
   auditEntries,
   memos,
+  chargeItems,
+  canEditCharges,
 }: {
   invoice: Invoice;
   /**
@@ -108,6 +115,10 @@ export function InvoiceDetail({
   auditEntries: AuditEntry[];
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos: MemoView[];
+  /** 追加費用の選択肢（料金マスタ、有効な行だけ）。 */
+  chargeItems: ChargeItemChoice[];
+  /** 追加費用を編集できるか（invoice:UPDATE を持ち、かつ下書きのとき）。 */
+  canEditCharges: boolean;
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -592,6 +603,42 @@ export function InvoiceDetail({
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
+            {/* 追加費用（料金マスタからだけ選べる）。**下書きのうちだけ**編集できる
+                — 発行後は締日処理・手動請求と同じ「金額を凍結したら根拠も
+                凍結する」規約を守る（§9）。 */}
+            {invoice.status === "DRAFT" && (
+              <ChargesPanel
+                canEdit={canEditCharges}
+                description={tr("billing.invoices.chargesHelp")}
+                items={chargeItems}
+                onSave={(rows) =>
+                  saveInvoiceCharges(invoice.invoiceNumber, rows)
+                }
+                rows={invoice.items
+                  .filter((it) => it.isManualCharge)
+                  .map((it) => ({
+                    id: it.id,
+                    chargeItemId: it.chargeItemId as number,
+                    chargeItemLabel: it.chargeItemLabel ?? "",
+                    // 保存時の摘要は「マスタの名称（自由記入の備考）」の形で
+                    // 焼き込む（charge-actions.ts）。編集モーダルに戻すため
+                    // 同じ形から備考だけを取り出す — マスタの名称を変えていな
+                    // ければ復元できる（変えていたら備考は空で出る）。
+                    description: (() => {
+                      if (!it.chargeItemLabel) return "";
+                      const prefix = `${it.chargeItemLabel}（`;
+                      return it.description.startsWith(prefix) &&
+                        it.description.endsWith("）")
+                        ? it.description.slice(prefix.length, -1)
+                        : "";
+                    })(),
+                    quantity: it.quantity,
+                    unitPrice: it.unitPrice,
+                    amount: it.amount,
+                  }))}
+                title={tr("charges.title")}
+              />
+            )}
             <div>
               <Text c="dimmed" mb={4} size="xs">
                 {tr("billing.invoices.sentAt")}

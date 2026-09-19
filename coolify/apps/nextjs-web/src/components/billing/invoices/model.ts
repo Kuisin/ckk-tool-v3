@@ -45,6 +45,10 @@ export interface InvoiceItem {
    * この行が 1 つでもある請求書は発行に承認が要る（§9）。
    */
   isManualCharge: boolean;
+  /** 由来の料金マスタ項目 id（手動費用のときだけ）。 */
+  chargeItemId: number | null;
+  /** 料金マスタの**現在の**表示名（手動費用のときだけ。編集モーダルの選択肢用）。 */
+  chargeItemLabel: string | null;
 }
 
 /**
