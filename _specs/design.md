@@ -899,7 +899,10 @@ Paper (withBorder, p="md", radius="md")
 
 搭載画面: 指示書 (`WorkOrderApprovalCard`) / 注文請書 / 素材発注書 / 購買依頼 /
 出荷書 (`DeliveryVarianceCard` — **過不足納品のときだけ出る**。数量ちょうどの
-出荷では何も描かない)。
+出荷では何も描かない) / 請求書 (`InvoiceApprovalCard` — 発行前承認は
+**追加費用ありの下書きだけ**、入金前承認は送付済み全件。どちらも「承認を
+依頼する」ボタンは持たず、発行/入金を押した時点でサーバーが自動で依頼する
+— `DeliveryVarianceCard` と同じ作法）。
 
 ### 10.10 EditablePanel
 
@@ -1550,8 +1553,8 @@ Row click navigates to detail page.
 | UnplannedOrderLine (PD05 未手配) | 注文明細番号 / 顧客 / 製品 / 受注数 / 手配済 / 未手配 / 在庫引当 / 納期 / 状態 |
 | UnshippedOrderLine (SH03 未手配) | 注文明細番号 / 顧客 / 製品 / 完了ロット / 完成数 / 出荷手配済 / 未手配 / 納期 / 状態 |
 | DeliveryNote | 納品番号 / 出荷書番号 / 納品先 / 方法 / 状態 / 納品日 |
-| Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態 / 発行日 |
-| BillingClosing | 顧客 / 締日 / 合計金額 / 状態 / 処理日 |
+| Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態（承認依頼中バッジ込み） / 発行日 |
+| BillingClosing | 顧客 / 締日 / 実行区分（定期/手動） / 合計金額 / 状態 / 処理日 |
 | DesignRequest | 依頼番号 / 区分 / 製品 / 担当者 / 希望納期 / 状態 / 更新日 |
 | DesignFile（設計図 PD06 — **1 行 = 1 系列**） | 製品 / 受注元 / 最新版 / 役割 / 出どころ / 更新日 |
 | MaterialPurchaseOrder | 発注番号 / 仕入先 / 入荷先拠点 / 合計金額 / 状態 / 発注日 |

@@ -1088,7 +1088,10 @@ Table approval_flows {
                                 //   段を組んでも通常の出荷は止まらない）/
                                 // order_acceptance_cancel_requests（注文請書キャンセル
                                 //   — 確定済みの請書はごとキャンセルを依頼して承認を通す。
-                                //   明細単位のキャンセル操作は廃止）
+                                //   明細単位のキャンセル操作は廃止）/
+                                // invoices（請求書 — **追加費用ありの下書きだけ**発行前に
+                                //   通る）/ invoice_payments（入金前承認。対象は請求書と
+                                //   同じ行だが種別は別。承認完了でそのまま入金済みへ進める）
   updated_by      uuid [ref: > users.id]
   updated_at      timestamp
 }
@@ -1690,6 +1693,21 @@ Table invoices {
   sent_at         timestamp
   pdf_file_id     uuid [ref: > files.id]
   accounting_exported_at timestamp  // 会計連携へ書き出した日時（二重取込の防止）
+  // 生成元の締日行の実行区分（billing_closings.kind の写し。表示専用・FK なし）。
+  closing_kind    CLOSING_KIND
+  // 承認（§9）。**列は 1 組だけ**で発行前承認・入金前承認の両方を表す —
+  // 2 つの関門は同時に開かない（発行承認は status=DRAFT、入金承認は
+  // status=SENT のときだけ）ので、いまどちらの関門かは status が語る。
+  // 承認そのものの経過は approval_requests / approval_records（種別
+  // invoices / invoice_payments）が別に持つので、ここは「いまの状態」だけ。
+  approval_status INVOICE_APPROVAL_STATUS [not null, default: 'NONE']
+  requested_at    timestamp
+  requested_by    uuid [ref: > users.id]
+  approved_at     timestamp
+  approved_by     uuid [ref: > users.id]
+  rejected_at     timestamp
+  rejected_by     uuid [ref: > users.id]
+  reject_reason   text
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp
@@ -1703,11 +1721,23 @@ Enum INVOICE_STATUS {
   PAID
 }
 
+Enum INVOICE_APPROVAL_STATUS {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 Table invoice_items {
   id              uuid [pk]
   invoice_id      uuid [not null, ref: > invoices.id]
   delivery_order_id uuid [ref: > delivery_orders.id]
   delivery_note_id  uuid [ref: > delivery_notes.id]
+  // **手動で足した追加費用**の由来（料金マスタ MS0G）。出荷書由来の追加料金
+  // （送料等）にも入るが、それは delivery_order_id が伴う。
+  // delivery_order_id が無く charge_item_id が入っている行だけが「発行前
+  // 承認が要る、人が足した費用」（§9）。下書きのうちだけ足す/消せる。
+  charge_item_id  int [ref: > charge_items.id]
   description     json [not null]         // { ja: '', en: '' }
   quantity        int [not null]
   unit_price      numeric(12,2) [not null]
@@ -1750,22 +1780,37 @@ Table invoice_tax_summaries {
 // 請求書の宛先は **請求先（bp_customer_attrs.billing_bp_id）が設定されて
 // いればそちら**。締日行は 顧客 × 締日 のままで、束ねはしない（宛先だけが
 // 変わる）。1 通に束ねるのは締日行の単位そのものを変える話。
+//
+// 実行区分（kind, §9）。SCHEDULED = 締日処理（指定日までに到来したものを
+// 一括実行）が作る、顧客×締日で冪等な行 — 部分 unique index が
+// **SCHEDULED だけ**に効くので、1 顧客 1 締日 1 行のまま。MANUAL = 手動請求
+// (BL11) が締日を待たずに作る臨時の行 — 同じ顧客・同じ日に何度でも作れる。
 Table billing_closings {
   id              uuid [pk]
   customer_bp_id  uuid [not null, ref: > business_partners.id]
   closing_date    date [not null]
+  kind            CLOSING_KIND [not null, default: 'SCHEDULED']
   status          CLOSING_STATUS [not null, default: 'PENDING']
   total_amount    numeric(12,2)
   processed_at    timestamp
   processed_by    uuid [ref: > users.id]
   notes           text
   created_at      timestamp
+
+  indexes {
+    (customer_bp_id, closing_date) [unique, note: 'kind = SCHEDULED のときだけ効く部分 unique']
+  }
 }
 
 Enum CLOSING_STATUS {
   PENDING
   PROCESSED
   EXPORTED        // 会計連携へ書き出し済み
+}
+
+Enum CLOSING_KIND {
+  SCHEDULED       // 締日処理（定期実行）
+  MANUAL          // 手動請求（BL11・締日を待たない臨時請求）
 }
 
 // ===========================
