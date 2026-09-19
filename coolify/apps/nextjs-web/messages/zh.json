@@ -807,7 +807,9 @@
     "dateTo": "结束日期",
     "billTo": "请款对象",
     "stockTake": "盘点",
-    "stockMovement": "出入库单"
+    "stockMovement": "出入库单",
+    "invoicePayment": "请款单入款",
+    "notPendingApproval": "目前不在待审批状态"
   },
   "shell": {
     "appsLabel": "应用",
@@ -2109,7 +2111,13 @@
       "taxLabelExempt": "消费税（免税）",
       "taxLabelStandard": "消费税（10%）",
       "accountingCsvAgain": "会计对接 CSV（重新导出）",
-      "taxLabelRate": "消费税（{rate}%）"
+      "taxLabelRate": "消费税（{rate}%）",
+      "issueApprovalRejectedHelp": "发行前审批已被退回。请重新检查手动追加的费用后再次发行。",
+      "paymentApprovalRejectedHelp": "入款审批已被退回。请再次从“标记为已入款”提交申请。",
+      "issueApprovalWaitingHelp": "仅该组成员可以操作。",
+      "paymentApprovalWaitingHelp": "仅该组成员可以操作。",
+      "paymentApprovalApproveHelp": "记录此次入款需要审批。请确认内容后予以批准。",
+      "issueApprovalApproveHelpWithCharges": "含有 {count} 项手动追加的费用（合计 {amount}）。请确认内容后予以批准。"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "将发行请款单 {invoiceNumber}，发行日期记为今天。",
@@ -2117,7 +2125,8 @@
       "confirmMarkSentMessage": "将请款单 {invoiceNumber} 标记为已寄送。",
       "markedSentWithNumber": "已将请款单 {invoiceNumber} 标记为已寄送",
       "confirmMarkPaidMessage": "将请款单 {invoiceNumber} 标记为已付款。",
-      "markedPaidWithNumber": "已将请款单 {invoiceNumber} 标记为已付款"
+      "markedPaidWithNumber": "已将请款单 {invoiceNumber} 标记为已付款",
+      "approvalRequestedMessage": "已提交审批申请（请款单 {invoiceNumber}）"
     },
     "closingTable": {
       "createdAndUpdatedCounts": "新建 {created} 项 / 更新 {updated} 项",
@@ -2130,7 +2139,12 @@
       "onlyIssuedCanMarkSent": "只有已发行的请款单可以标记为已寄送",
       "markSentFailed": "标记为已寄送失败",
       "onlySentCanMarkPaid": "只有已寄送的请款单可以标记为已付款",
-      "markPaidFailed": "标记为已付款失败"
+      "markPaidFailed": "标记为已付款失败",
+      "awaitingIssueApproval": "正在等待发行前审批",
+      "approvalRequestFailed": "创建审批申请失败",
+      "approvalRequested": "已提交审批申请",
+      "awaitingPaymentApproval": "正在等待入款前审批",
+      "paymentApprovalRequested": "已提交入款审批申请"
     },
     "closingActions": {
       "closingDateNotReached": "结算日之前无法处理（从结算日次日起）",

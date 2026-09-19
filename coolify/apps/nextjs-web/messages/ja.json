@@ -807,7 +807,9 @@
     "dateTo": "終了日",
     "billTo": "請求先",
     "stockTake": "棚卸",
-    "stockMovement": "入出庫伝票"
+    "stockMovement": "入出庫伝票",
+    "invoicePayment": "請求書の入金",
+    "notPendingApproval": "承認依頼中ではありません"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -2109,7 +2111,13 @@
       "taxLabelExempt": "消費税（非課税）",
       "taxLabelStandard": "消費税（10%）",
       "accountingCsvAgain": "会計連携CSV（再出力）",
-      "taxLabelRate": "消費税（{rate}%）"
+      "taxLabelRate": "消費税（{rate}%）",
+      "issueApprovalRejectedHelp": "発行前承認が差し戻されました。追加費用を見直して再度発行してください。",
+      "paymentApprovalRejectedHelp": "入金の承認が差し戻されました。もう一度「入金」から申請してください。",
+      "issueApprovalWaitingHelp": "このグループのメンバーだけが操作できます。",
+      "paymentApprovalWaitingHelp": "このグループのメンバーだけが操作できます。",
+      "paymentApprovalApproveHelp": "入金の記録に承認が必要です。内容を確認して承認してください。",
+      "issueApprovalApproveHelpWithCharges": "手動で追加した費用が {count} 件含まれています（合計 {amount}）。内容を確認して承認してください。"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "請求書 {invoiceNumber} を発行します。発行日は本日で記録されます。",
@@ -2117,7 +2125,8 @@
       "confirmMarkSentMessage": "請求書 {invoiceNumber} を送付済みにします。",
       "markedSentWithNumber": "請求書 {invoiceNumber} を送付済みにしました",
       "confirmMarkPaidMessage": "請求書 {invoiceNumber} を入金済みにします。",
-      "markedPaidWithNumber": "請求書 {invoiceNumber} を入金済みにしました"
+      "markedPaidWithNumber": "請求書 {invoiceNumber} を入金済みにしました",
+      "approvalRequestedMessage": "承認を依頼しました（請求書 {invoiceNumber}）"
     },
     "closingTable": {
       "createdAndUpdatedCounts": "作成 {created} 件 / 更新 {updated} 件",
@@ -2130,7 +2139,12 @@
       "onlyIssuedCanMarkSent": "発行済みの請求書のみ送付済みにできます",
       "markSentFailed": "送付処理に失敗しました",
       "onlySentCanMarkPaid": "送付済みの請求書のみ入金済みにできます",
-      "markPaidFailed": "入金処理に失敗しました"
+      "markPaidFailed": "入金処理に失敗しました",
+      "awaitingIssueApproval": "発行前承認の依頼中です",
+      "approvalRequestFailed": "承認依頼の作成に失敗しました",
+      "approvalRequested": "承認を依頼しました",
+      "awaitingPaymentApproval": "入金前承認の依頼中です",
+      "paymentApprovalRequested": "入金の承認を依頼しました"
     },
     "closingActions": {
       "closingDateNotReached": "締日を過ぎるまで処理できません（締日の翌日から）",

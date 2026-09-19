@@ -9,7 +9,9 @@
 
 import { ownWhere, rowInScope } from "@ckk/authz-core";
 import type {
+  ClosingKind,
   Invoice,
+  InvoiceApprovalStatus,
   InvoiceItem,
   InvoiceLink,
   InvoiceStatus,
@@ -113,6 +115,10 @@ function mapInvoice(r: InvoiceRow, forDocument = false): Invoice {
       it.deliveryNoteYearMonth,
       it.deliveryNoteSeq,
     ),
+    // 手動費用 = 出荷書の由来が無く、料金マスタの由来が入っている行
+    // （lib/invoice-charges.ts isManualChargeItem と同じ判定）。
+    isManualCharge:
+      it.deliveryOrderYearMonth == null && it.chargeItemId != null,
   }));
   return {
     id: number,
@@ -183,6 +189,12 @@ function mapInvoice(r: InvoiceRow, forDocument = false): Invoice {
     notes: r.notes,
     items,
     totalQuantity: items.reduce((sum, it) => sum + it.quantity, 0),
+    closingKind: (r.closingKind as ClosingKind | null) ?? null,
+    approvalStatus: r.approvalStatus as InvoiceApprovalStatus,
+    requestedAt: r.requestedAt?.toISOString() ?? null,
+    approvedAt: r.approvedAt?.toISOString() ?? null,
+    rejectedAt: r.rejectedAt?.toISOString() ?? null,
+    rejectReason: r.rejectReason,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };

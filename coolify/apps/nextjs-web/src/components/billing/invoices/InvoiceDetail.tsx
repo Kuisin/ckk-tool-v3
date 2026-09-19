@@ -35,10 +35,16 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
+  approveInvoiceApproval,
   issueInvoice,
   markPaid,
   markSent,
+  rejectInvoiceApproval,
 } from "@/app/(dashboard)/billing/invoices/actions";
+import {
+  ApprovalTrailList,
+  countTrailRecords,
+} from "@/components/approvals/ApprovalTrailList";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
@@ -65,9 +71,11 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import type { ApprovalActionState, ApprovalTrailEntry } from "@/lib/approvals";
 import type { MemoView } from "@/lib/document-memos";
 import { downloadFile } from "@/lib/download";
 import type { ActionResult } from "@/lib/server-action";
+import { InvoiceApprovalCard } from "./InvoiceApprovalCard";
 import {
   canIssue,
   canMarkPaid,
@@ -81,11 +89,19 @@ const BASE_PATH = "/billing/invoices";
 
 export function InvoiceDetail({
   invoice,
+  approval,
+  approvalTrail,
   pdfMeta,
   auditEntries,
   memos,
 }: {
   invoice: Invoice;
+  /**
+   * 発行前承認 / 入金前承認の状態（invoice.status から見ているほうを渡す）。
+   * どちらの関門にも当たらない状態（ISSUED / PAID）では null。
+   */
+  approval: ApprovalActionState | null;
+  approvalTrail: ApprovalTrailEntry[];
   /** 保管済み PDF のメタ（SeaweedFS 由来。未生成なら null）。 */
   pdfMeta: PdfFileMeta | null;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
@@ -242,8 +258,8 @@ export function InvoiceDetail({
     }
   };
 
-  const run = (
-    action: () => Promise<ActionResult>,
+  const run = <T,>(
+    action: () => Promise<ActionResult<T>>,
     successTitle: string,
     successMessage: string,
   ) => {
@@ -253,6 +269,40 @@ export function InvoiceDetail({
         notifications.show({
           title: successTitle,
           message: successMessage,
+          color: "green",
+        });
+        router.refresh();
+      } else {
+        notifications.show({
+          title: tr("common.error2"),
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
+
+  /**
+   * 発行 / 入金の実行 — **依頼を作れたのは成功**で、通常の完了とは別の文言
+   * を出す（`{ requested: true }`）。ここで分けないと、承認を依頼しただけ
+   * なのに「発行しました」と誤って伝わる。
+   */
+  const runIssueOrPaid = (
+    action: () => Promise<ActionResult<{ requested: boolean }>>,
+    doneTitle: string,
+    doneMessage: string,
+    requestedTitle: string,
+  ) => {
+    startTransition(async () => {
+      const result = await action();
+      if (result.ok) {
+        notifications.show({
+          title: result.data.requested ? requestedTitle : doneTitle,
+          message: result.data.requested
+            ? tr("billing.invoiceDetail.approvalRequestedMessage", {
+                invoiceNumber: invoice.invoiceNumber,
+              })
+            : doneMessage,
           color: "green",
         });
         router.refresh();
@@ -340,6 +390,15 @@ export function InvoiceDetail({
       title={invoice.invoiceNumber}
       updatedAt={fmt.dateTime(invoice.updatedAt)}
     >
+      {/* ヘッダー直下 = ActionCard の定位置（design.md §8.2）。
+          発行前 / 入金前どちらの承認にも当たらなければ何も描かない。 */}
+      <InvoiceApprovalCard
+        canAct={approval?.canAct ?? false}
+        invoice={invoice}
+        onApprove={approveInvoiceApproval}
+        onReject={rejectInvoiceApproval}
+      />
+
       <SummaryGrid>
         <FieldValue
           label={tr("common.invoiceNumber")}
@@ -520,9 +579,16 @@ export function InvoiceDetail({
         <Tabs.List>
           <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
+          {countTrailRecords(approvalTrail) > 0 && (
+            <Tabs.Tab value="approval">{tr("common.approve")}</Tabs.Tab>
+          )}
           <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
+
+        <Tabs.Panel pt="md" value="approval">
+          <ApprovalTrailList trail={approvalTrail} />
+        </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
@@ -589,12 +655,13 @@ export function InvoiceDetail({
         })}
         onClose={() => setIssueOpen(false)}
         onConfirm={() =>
-          run(
+          runIssueOrPaid(
             () => issueInvoice(invoice.invoiceNumber),
             tr("common.issued"),
             tr("billing.invoiceDetail.issuedWithNumber", {
               invoiceNumber: invoice.invoiceNumber,
             }),
+            tr("billing.invoicesActions.approvalRequested"),
           )
         }
         opened={issueOpen}
@@ -629,12 +696,13 @@ export function InvoiceDetail({
         })}
         onClose={() => setPaidOpen(false)}
         onConfirm={() =>
-          run(
+          runIssueOrPaid(
             () => markPaid(invoice.invoiceNumber),
             tr("billing.invoices.markedAsPaid"),
             tr("billing.invoiceDetail.markedPaidWithNumber", {
               invoiceNumber: invoice.invoiceNumber,
             }),
+            tr("billing.invoicesActions.paymentApprovalRequested"),
           )
         }
         opened={paidOpen}

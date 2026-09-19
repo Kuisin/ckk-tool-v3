@@ -807,7 +807,9 @@
     "dateTo": "To date",
     "billTo": "Bill-to",
     "stockTake": "Stocktaking",
-    "stockMovement": "Stock movement"
+    "stockMovement": "Stock movement",
+    "invoicePayment": "Invoice payment",
+    "notPendingApproval": "Not currently pending approval"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -2109,7 +2111,13 @@
       "taxLabelExempt": "Consumption tax (exempt)",
       "taxLabelStandard": "Consumption tax (10%)",
       "accountingCsvAgain": "Accounting CSV (export again)",
-      "taxLabelRate": "Tax ({rate}%)"
+      "taxLabelRate": "Tax ({rate}%)",
+      "issueApprovalRejectedHelp": "Issue approval was sent back. Review the manual charges and issue again.",
+      "paymentApprovalRejectedHelp": "Payment approval was sent back. Request it again from “Mark as paid”.",
+      "issueApprovalWaitingHelp": "Only members of this group can act.",
+      "paymentApprovalWaitingHelp": "Only members of this group can act.",
+      "paymentApprovalApproveHelp": "Recording this payment requires approval. Review it and approve.",
+      "issueApprovalApproveHelpWithCharges": "Includes {count} manually added charge(s) (total {amount}). Review before approving."
     },
     "invoiceDetail": {
       "confirmIssueMessage": "This issues invoice {invoiceNumber}. The issue date is recorded as today.",
@@ -2117,7 +2125,8 @@
       "confirmMarkSentMessage": "This marks invoice {invoiceNumber} as sent.",
       "markedSentWithNumber": "Marked invoice {invoiceNumber} as sent",
       "confirmMarkPaidMessage": "This marks invoice {invoiceNumber} as paid.",
-      "markedPaidWithNumber": "Marked invoice {invoiceNumber} as paid"
+      "markedPaidWithNumber": "Marked invoice {invoiceNumber} as paid",
+      "approvalRequestedMessage": "Approval requested (invoice {invoiceNumber})"
     },
     "closingTable": {
       "createdAndUpdatedCounts": "Created {created} / updated {updated}",
@@ -2130,7 +2139,12 @@
       "onlyIssuedCanMarkSent": "Only issued invoices can be marked sent",
       "markSentFailed": "Could not mark as sent",
       "onlySentCanMarkPaid": "Only sent invoices can be marked paid",
-      "markPaidFailed": "Could not mark as paid"
+      "markPaidFailed": "Could not mark as paid",
+      "awaitingIssueApproval": "Awaiting issue approval",
+      "approvalRequestFailed": "Could not create the approval request",
+      "approvalRequested": "Approval requested",
+      "awaitingPaymentApproval": "Awaiting payment approval",
+      "paymentApprovalRequested": "Payment approval requested"
     },
     "closingActions": {
       "closingDateNotReached": "Cannot process until the closing date has passed (from the day after)",
