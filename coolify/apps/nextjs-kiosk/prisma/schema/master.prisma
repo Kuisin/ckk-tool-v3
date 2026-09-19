@@ -392,6 +392,8 @@ model CustomerProductCode {
   id           Int    @id @default(autoincrement())
   customerBpId String @map("customer_bp_id") @db.Uuid
   productId    Int    @map("product_id")
+  /// 統合品目（app.items）。顧客品番が指す製品。product_id は移行中の残りで、旧列を落とす PR で消える。
+  itemId Int? @map("item_id")
   /// 顧客の品番。**印字・検索・突合の主表記**（1 顧客の中で一意）。
   code         String
   /// 顧客がその製品を呼ぶ品名。null = 併記しない（自社の製品名だけを刷る）。
@@ -407,6 +409,7 @@ model CustomerProductCode {
 
   customerBp    BusinessPartner @relation("CustomerProductCodeCustomer", fields: [customerBpId], references: [id], onDelete: Cascade)
   product       Product         @relation("CustomerProductCodeProduct", fields: [productId], references: [id], onDelete: Cascade)
+  item Item? @relation("CustomerProductCodeItem", fields: [itemId], references: [id], onDelete: Restrict)
   createdByUser User?           @relation("CustomerProductCodeCreatedBy", fields: [createdBy], references: [id])
 
   // 1 顧客 × 1 製品 = 1 行（印字に使う表記が 2 つあってはいけない）。
@@ -419,6 +422,7 @@ model CustomerProductCode {
   @@index([aliases(ops: ArrayOps)], map: "customer_product_codes_aliases_idx", type: Gin)
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, id])
+  @@index([itemId])
   @@map("customer_product_codes")
   @@schema("app")
 }
