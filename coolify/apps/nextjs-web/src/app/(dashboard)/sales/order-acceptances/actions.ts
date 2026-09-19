@@ -504,9 +504,10 @@ export async function saveDraft(
         notes: true,
         // 学習（match_aliases）に使う: 抽出された社名と、保存前の突合状態。
         extracted: true,
-        // 学習（match_aliases）は **products.id** のまま — 学習した別名が
-        // products を指しているので、ここだけ旧列を読む（品目統合 第 2 段 C）。
-        items: { select: { productId: true, productText: true } },
+        // 学習（match_aliases）の突き合わせに使う保存前の状態。品目統合
+        // 第 3 段で学習の行き先も **items.id** になったので、旧 product_id
+        // ではなく item_id を読む。
+        items: { select: { itemId: true, productText: true } },
       },
     });
     if (!prior)
@@ -584,28 +585,23 @@ export async function saveDraft(
 
     // 人が手で結び付けた「印字された表記 → マスタ」を覚える（次の取込で効く）。
     // 保存そのものは終わっている — 学習で失敗しても書類は保存済みのまま。
+    // 学習の target は **items.id**（app.match_aliases の target_type =
+    // 'items'）。画面が送ってくる itemId をそのまま渡す — 品目統合 第 3 段で
+    // 突合側も品目へ移ったので、もう旧 id へ戻す必要が無い。
     await saveAliasLearnings(
       aliasLearnings({
         extractedCustomerName: normalizeExtraction(prior.extracted)
           .customerName,
         customer: { before: prior.customerBpId, after: customerBpId },
-        // 学習の target は **products.id**（app.match_aliases の
-        // target_type = 'products'）。画面が送ってくる itemId をここで
-        // 旧 id へ戻す — 突合側は品目へ移していない。
         items: {
           before: prior.items.map((it) => ({
             productText: it.productText,
-            productId: it.productId != null ? String(it.productId) : null,
+            itemId: it.itemId != null ? String(it.itemId) : null,
           })),
-          after: v.items.map((it) => {
-            const itemId = it.itemId ? Number(it.itemId) : null;
-            const legacy =
-              itemId != null ? legacyProductIds.get(itemId) : undefined;
-            return {
-              productText: it.productText,
-              productId: legacy != null ? String(legacy) : null,
-            };
-          }),
+          after: v.items.map((it) => ({
+            productText: it.productText,
+            itemId: it.itemId ? String(Number(it.itemId)) : null,
+          })),
         },
       }),
       authz.userId,

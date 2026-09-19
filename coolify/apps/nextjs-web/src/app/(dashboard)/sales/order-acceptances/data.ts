@@ -30,7 +30,6 @@ import { type LocalizedText, localized } from "@/lib/format";
 import { matchCustomer, suggestProducts } from "@/lib/intake";
 import { normalizeExtraction } from "@/lib/intake-core";
 import { reviewIntake } from "@/lib/intake-review";
-import { itemIdsForLegacyProducts } from "@/lib/item-legacy-product";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
@@ -147,29 +146,17 @@ export async function fetchOrderAcceptance(
 
   // 製品が決まっていない行は、読み取った品名から候補を出す（1 クエリでまとめて）。
   // 顧客が決まっていれば、その顧客の品番表（MS04 の「顧客品番」）を先に当てる。
-  // ★ 突合（lib/intake / lib/product-match / app.match_aliases）は **products.id**
-  //   のまま。学習エイリアスが products を指しているので、突合側を品目へ移すと
-  //   学習が読めなくなる。画面が扱う id は品目なので、**ここで 1 回だけ**
-  //   候補の id を品目へ変換する（混ざった id 空間を画面へ渡さない）。
+  // 突合（lib/intake / lib/product-match / app.match_aliases）が返す id は
+  // 品目統合 第 3 段から **items.id** なので、画面が扱う id と同じ空間 —
+  // 以前ここに置いていた旧 id からの読み替えは要らなくなった。
   const productSuggestions = await suggestProducts(
     r.items
       .filter((it) => it.itemId == null && it.productText)
       .map((it) => it.productText as string),
     { customerCodes: await loadCustomerProductCodes(r.customerBpId) },
   );
-  const suggestionItemIds = await itemIdsForLegacyProducts(
-    [...productSuggestions.values()].flatMap((cs) =>
-      cs.map((c) => Number(c.id)),
-    ),
-  );
-  /** 候補（products.id）→ 画面用（items.id）。対応が無い候補は落とす。 */
   const toItemSuggestions = (text: string | null) =>
-    (text ? (productSuggestions.get(text.trim()) ?? []) : [])
-      .map((c) => ({
-        ...c,
-        id: String(suggestionItemIds.get(Number(c.id)) ?? ""),
-      }))
-      .filter((c) => c.id !== "");
+    text ? (productSuggestions.get(text.trim()) ?? []) : [];
 
   const items: OrderAcceptanceItemView[] = r.items.map((it) => ({
     id: it.id,

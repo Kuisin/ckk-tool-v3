@@ -13,16 +13,17 @@
  * `searchMaterialItemOptions` / `f4SearchProductItems`。製品マスタ (MS04)・
  * 素材マスタ (MS06)・設計図 (PD06) の画面と URL も第 3 段でここへ移った。
  *
- * 旧 id（products.id / materials.id）に残っているのは**この 2 つだけ**で、
- * どちらも「保存済みの値が旧 id を指している」ことが理由:
- *   - `searchProductOptions` / `searchMaterialOptions` … CM02 フォームの
- *     「業務データ検索」（`components/forms/lookup-dispatch.ts`）。回答に
- *     保存された id を読み替えられない。
- *   - `searchProductOptions` … 指示書ビルダーの在庫向け製品ピッカー。
- *     `resolveWorkOrderTarget` / `work-order-alloc-core` と同じ値を共有して
- *     いるので、3 か所まとめてでないと移せない（work-orders/actions.ts の
- *     `resolveWorkOrderTarget` のコメント）。
- * **どちらも number なので取り違えても型では止まらない。** 混ぜないこと。
+ * 旧 id（products.id）に残っているのは **`searchProductOptions` 1 本だけ**:
+ * 指示書ビルダーの在庫向け製品ピッカー。`resolveWorkOrderTarget` /
+ * `work-order-alloc-core` と `routesInfo.productId` という 1 つの state を
+ * 共有しているので、3 か所まとめてでないと移せない（work-orders/actions.ts の
+ * `resolveWorkOrderTarget` のコメント）。
+ *
+ * CM02 フォームの「業務データ検索」（`components/forms/lookup-dispatch.ts`）は
+ * 第 3 段で品目へ移した — 保存済みの回答が持っていた旧 id は migration
+ * `20261101090000_items_stage3_matching_forms` で書き換えてある。
+ * **旧 id と品目 id はどちらも number なので取り違えても型では止まらない。**
+ * 混ぜないこと。
  */
 
 import { getTranslations } from "next-intl/server";
@@ -132,22 +133,6 @@ async function productIdsByKeyword(
   return rows.map((r) => r.id);
 }
 
-async function materialIdsByKeyword(
-  q: string,
-  limit: number,
-): Promise<number[]> {
-  if (!q) return [];
-  const rows = await prisma.$queryRaw<{ id: number }[]>`
-    SELECT id FROM app.materials
-    WHERE is_active
-      AND EXISTS (
-        SELECT 1 FROM unnest(match_names) AS k WHERE k ILIKE ${`%${likeEscape(q)}%`}
-      )
-    ORDER BY code
-    LIMIT ${limit}`;
-  return rows.map((r) => r.id);
-}
-
 /**
  * 顧客品番（customer_product_codes）に probe を含む製品 id。
  * 主品番と別表記（旧品番）の両方を見る — 探す側は古い紙を持っていることがある。
@@ -194,9 +179,9 @@ function productLabel(p: {
  * のは意図的で、どの顧客の品番で引いても同じ製品に行き着く（品番は顧客ごとに
  * 一意だが、探す側はどの顧客の紙かを先に選ばない）。
  *
- * ⚠️ **value は旧 products.id。** 残っている使い手は CM02 フォームの
- * 業務データ検索と、指示書ビルダーの在庫向け製品ピッカーの 2 つだけ
- * （このファイル冒頭の節）。新しい画面は `searchProductItemOptions` を使う。
+ * ⚠️ **value は旧 products.id。** 残っている使い手は指示書ビルダーの
+ * 在庫向け製品ピッカー 1 つだけ（このファイル冒頭の節）。それ以外は
+ * `searchProductItemOptions`（value = items.id）を使う。
  */
 export async function searchProductOptions(
   query: string,
@@ -949,47 +934,6 @@ export async function searchAllocatableOrderLineOptions(
 }
 
 /**
- * 素材検索（CM02 フォームの「業務データ検索」lookup=material 専用）。
- * value = **素材マスタの内部 id**（materials.id）、label = コード + 名称。
- *
- * ⚠️ **購買・指示書の素材ピッカーはこれを使わない** — あちらは
- * `searchMaterialItemOptions`（品目統合 items 由来、value = items.id）。
- * ここは form-lookup-resolve.ts の `"material"` lookup が materials.id を
- * 前提にしたままなので、値の意味を変えると**保存済みの回答が別の素材を
- * 指す**（どちらも連番なので必ず何かに当たる）。素材マスタの URL は品目 id
- * へ移ったので、回答からのリンクは `/master/materials/legacy/<materials.id>`
- * を経由して読み替える（`lib/form-schema.ts` `lookupHref`）。
- * 品目統合が forms 側（保存済みの回答の移行）まで届いたら合流する。
- */
-export async function searchMaterialOptions(
-  query: string,
-): Promise<SearchOption[]> {
-  if (!(await requireAnyRead(MATERIAL_PICKER_CODES)).ok) return [];
-  const q = query.trim();
-  const keywordIds = await materialIdsByKeyword(q, LIMIT);
-  const rows = await prisma.material.findMany({
-    where: {
-      isActive: true,
-      ...(q
-        ? {
-            OR: [
-              { code: { contains: q, mode: "insensitive" } },
-              { name: { path: ["ja"], string_contains: q } },
-              ...byIds(keywordIds),
-            ],
-          }
-        : {}),
-    },
-    orderBy: { code: "asc" },
-    take: LIMIT,
-  });
-  return rows.map((r) => ({
-    value: String(r.id),
-    label: `${r.code}（${localized(r.name as LocalizedText | null)}）`,
-  }));
-}
-
-/**
  * 素材（品目）検索 — 購買（PU01〜PU03）・指示書の使用素材ピッカー用。
  * value = **items.id**（品目統合 第 2 段 B — material_purchase_order_items /
  * material_receipts / purchase_request_items / work_orders.material_item_id
@@ -1023,27 +967,6 @@ export async function searchMaterialItemOptions(
     value: String(r.id),
     label: `${r.code}（${localized(r.name as LocalizedText | null)}）`,
   }));
-}
-
-/**
- * 素材 1 件の単位（素材入荷 PU13 の単位既定値）。入荷の単位は素材マスタの
- * 単位で固定する — 台帳（material_inventory）の単位と揃えるため。
- * 最近使用（localStorage）の候補は単位を持たないので、選択時に引き直す。
- *
- * ⚠️ CM02 フォーム専用（`searchMaterialOptions` と対）。購買・指示書は
- * `fetchMaterialItemUnit` を使う。
- */
-export async function fetchMaterialUnit(
-  materialId: string,
-): Promise<string | null> {
-  if (!(await requireAnyRead(MATERIAL_PICKER_CODES)).ok) return null;
-  const id = Number(materialId);
-  if (!Number.isInteger(id) || id <= 0) return null;
-  const row = await prisma.material.findUnique({
-    where: { id },
-    select: { unit: true },
-  });
-  return row?.unit ?? null;
 }
 
 /** 品目（素材）1 件の単位 — `searchMaterialItemOptions` と対。value = items.id。 */

@@ -220,8 +220,39 @@ B から始めるのは小さいから。C を最後にするのは金額に直�
 |---|---|---|
 | `resolveWorkOrderTarget` / `work-order-alloc-core` / `WorkflowBuilder` の製品ピッカー | 3 つが `routesInfo.productId` という 1 つの state を共有している。片側だけ品目にすると **どちらも `number` なので型では止まらず**、黙って別の id 空間を突き合わせる | 3 つ同時。移すときは列名を `itemId` にして、次に半端な直し方ができないようにする |
 | 価格表の自然キー `(customer_bp_id, product_id)` | 「価格表の識別は作成後不変」という約束がある | 鍵の差し替えとして独立に判断する。第 3 段のついでにやらない |
-| 突合（`lib/intake.ts` / `product-match.ts` / `material-match.ts`） | `match_aliases.target_id` が `products.id` / `materials.id` を指している。学習した実績がそこに貯まっている | エイリアスの `target_id` を品目へ移す migration とセットで |
+| ~~突合（`lib/intake.ts` / `product-match.ts` / `material-match.ts`）~~ | **済**（下記「突合と CM02 の移行」） | — |
 | 帳票の `code` 欄（見積書・納品書） | いま刷っているのは**内部の連番 id** で、`items.code`（`PRD-YYYYMM-NNNN`）に替えると**刷られる文字列が変わる** | 「そもそも内部 id を客先に刷ってよいのか」を決めてから。品目統合とは別の話 |
+
+### 突合と CM02 の移行（済 — migration `20261101090000_items_stage3_matching_forms`）
+
+列ではなく**値として旧 id を貯めていた** 2 か所。どちらも FK が無いので、旧表を
+落としても DB は何も言わず、連番同士なので**黙って別のレコードを指す**。
+
+- `app.match_aliases` … `target_type` の `products` / `materials` を **`items` 1 つ**に
+  畳み、`target_id` を `products.item_id` / `materials.item_id` 経由で書き換えた。
+  - **曖昧なら捨てる** … 参照先が消えている行と、旧 id とも items.id とも読める
+    素材の行は削除して件数を NOTICE に出す。学習を捨てても推測に落ちるだけだが、
+    行き先を推測で残すと**別の品目で自動確定する**。
+  - **衝突は 1 本だけ残す** … 製品と素材が同じ `alias_key` を覚えていたら
+    `hit_count → updated_at → id` の降順で 1 本。落ちた側は次の訂正で覚え直す。
+    型が違えば実害も無い（突合側が `itemType` を確かめて素通りする）。
+  - ★ **素材の学習は今まで 1 件も保存されていなかった** — baseline の CHECK が
+    `business_partners | products` のままで `materials` を弾き、
+    `saveAliasLearnings` の try/catch が握り潰していた。CHECK もここで張り替え、
+    `match-alias-target-guard.test.ts` が型と SQL の食い違いを見張る。
+- `app.form_responses.answers`（CM02 の `lookup` = product / material）…
+  `(form_id, version)` → `form_versions.schema` を辿って lookup 項目を特定し、
+  トップレベルとサブテーブルの列の両方を書き換えた。**引けない値は `id` を空に
+  する**（`label` は選んだ時点のスナップショットなので残す）。旧 id を置いたままに
+  すると旧表を落とした後に別の品目として解決されるが、空なら
+  `asLookupValue` が解決を試みず `isBlankAnswer` が空と見なすので、必須項目は
+  次の編集で目に見えて止まる。
+
+**`product-match.ts` と `material-match.ts` は 1 本に畳まなかった。** マスタは
+1 つになったが**当て方の規則が違う** — 製品は probe の梯子で DB に候補を出させ
+（数万件）、素材は全件を JS へ渡す（数千件）。そして素材はコードの完全一致が
+別格（仕入先がこちらの品番を刷り返してくる）。共有すべきもの（正規化キー・
+最小長・段階判定）は既に共有している。
 
 書き込みの橋（`lib/item-legacy-material.ts` / `item-legacy-product.ts`）は旧列が
 残っている間だけのもの。**読み・突合・業務判定は通さない**（そこを通し始めると

@@ -283,11 +283,19 @@ model OrderLine {
 // target_type はテーブル名（audit_logs / approval_requests と同じ多態規約）。
 // FK は張れないので、マスタを消しても行は残る — 突合時に存在しない
 // target_id は黙って無視する（lib/match-aliases）。
+//
+// **値は business_partners | items の 2 つだけ**（DB 側の CHECK
+// match_aliases_target_type_check が正。Prisma では表せないので
+// migration に直接書いてある）。品目統合 第 3 段で products / materials の
+// 2 つを items へ畳んだ — 製品と素材のマスタが 1 つになったので、学習の
+// 行き先も 1 つで足りる。**製品と素材で同じ表記を覚えることはできない**
+// （1 表記 = 1 マスタ）が、突合側が引いた品目の item_type を必ず確かめるので、
+// 相手の型が当たっても素通りして推測へ落ちるだけ。
 model MatchAlias {
   id         Int      @id @default(autoincrement())
-  /// "business_partners" | "products"（テーブル名）
+  /// "business_partners" | "items"（テーブル名）
   targetType String   @map("target_type")
-  /// マスタ行の内部 id を文字列化したもの（BP は uuid、製品は連番）
+  /// マスタ行の内部 id を文字列化したもの（BP は uuid、品目は連番）
   targetId   String   @map("target_id")
   /// 書類に印字されていた表記（そのまま）
   alias      String
