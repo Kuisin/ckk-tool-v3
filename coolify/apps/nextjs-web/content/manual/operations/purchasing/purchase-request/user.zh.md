@@ -79,7 +79,7 @@ screenshots: [purchase-request-list-01, purchase-request-new-01, purchase-reques
 1. 打开申请的画面。
 2. 点击画面上方「**承認依頼が必要です**」（需要提交审批）卡片中的「**承認依頼**」（提交审批）。
 
-状态会变成「**承認依頼中**」（审批中），申请会送到审批人那里。同一份申请也会出现在[审批管理](/manual/zh/operations/production/approval/user)画面上。
+状态会变成「**承認依頼中**」（审批中），申请会送到审批人那里。同一份申请也会出现在[审批管理](/manual/zh/operations/general/my-tasks/user)画面上。
 
 ![审批中的采购申请](../../../assets/screenshots/purchase-request-detail-02.png)
 

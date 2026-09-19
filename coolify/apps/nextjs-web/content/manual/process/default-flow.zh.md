@@ -164,7 +164,7 @@ screenshots:
 
 ### 操作（谁做什么）
 
-1. 审批人在[审批管理](/manual/zh/operations/production/approval/user)（`PD03`）或工单画面中确认内容后点击「**承認**」（批准）。若有问题则选择「**差し戻し**」（退回）。
+1. 审批人在[审批管理](/manual/zh/operations/general/my-tasks/user)（`PD03`）或工单画面中确认内容后点击「**承認**」（批准）。若有问题则选择「**差し戻し**」（退回）。
 
 ![审批中的工单。批准按钮以红框强调](../assets/screenshots/flow-approval-01.png)
 

@@ -23,12 +23,12 @@ screenshots:
 
 | 阶段 | 做什么 | 负责人 | 使用的应用 |
 |------|--------|--------|------------|
-| 1. 确认产品库存 | 区分已有库存的部分与需要新制作的部分 | 生产管理 | [库存管理](/manual/zh/operations/production/product-inventory/user)（`PD04`） |
-| 2. 确认材料 | 查看制作所需的材料是否充足 | 生产管理 | [库存管理](/manual/zh/operations/production/material-inventory/user)（`PD04`） |
+| 1. 确认产品库存 | 区分已有库存的部分与需要新制作的部分 | 生产管理 | [库存管理](/manual/zh/operations/inventory/product-inventory/user)（`PD04`） |
+| 2. 确认材料 | 查看制作所需的材料是否充足 | 生产管理 | [库存管理](/manual/zh/operations/inventory/material-inventory/user)（`PD04`） |
 | 3. 制作工单 | 分为库存分・制造分（排列工序的是制造分） | 内部销售助理 | [工单](/manual/zh/operations/production/work-order/user)（`PD02`） |
-| 4. 获得审批 | 通过审批设置中确定的全部审批级，使其成为可以开始制造的状态 | 审批人 | [审批管理](/manual/zh/operations/production/approval/user)（`PD03`） |
+| 4. 获得审批 | 通过审批设置中确定的全部审批级，使其成为可以开始制造的状态 | 审批人 | [审批管理](/manual/zh/operations/general/my-tasks/user)（`PD03`） |
 | 5. 执行工序 | 现场记录开始・完成与支数 | 制造 | [工单](/manual/zh/operations/production/work-order/user) / 现场平板电脑 |
-| 6. 完成 | 全部工序结束后成为产品库存 | 制造・生产管理 | [库存管理](/manual/zh/operations/production/product-inventory/user) |
+| 6. 完成 | 全部工序结束后成为产品库存 | 制造・生产管理 | [库存管理](/manual/zh/operations/inventory/product-inventory/user) |
 
 ## 各阶段发生的事
 
