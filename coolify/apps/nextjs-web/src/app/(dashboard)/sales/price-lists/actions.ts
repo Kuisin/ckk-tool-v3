@@ -26,6 +26,7 @@ import {
   formatPriceListNumber,
   parseDocKey,
 } from "@/lib/doc-number";
+import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
@@ -61,14 +62,21 @@ async function entriesInScope(
 
 const orderTypeSchema = z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]);
 
-// 自然キー（新規作成・コピー先の識別に使用）
+/**
+ * 自然キー（新規作成・コピー先の識別に使用）。
+ *
+ * 画面が選ぶのは**品目**（items.id、`itemType: "PRODUCT"`）。
+ * DB の UNIQUE は (customer_bp_id, product_id) のままなので、保存の直前に
+ * 品目 → products.id を橋渡しして両方の列を埋める（品目統合 第 2 段 C —
+ * 価格表の識別は作成後不変という約束があり、鍵の差し替えは別の判断）。
+ */
 function identitySchema(tr: Tr) {
   return z.object({
     customerBpId: z
       .string()
       .min(1, tr("sales.orderAcceptances.selectACustomer")),
     // UI からは文字列（Select 値）で届く — DB は内部 id（int）
-    productId: z
+    itemId: z
       .union([z.string(), z.number()])
       .transform((v) => Number(v))
       .pipe(z.number().int().min(1)),
@@ -108,7 +116,7 @@ function variantSchema(tr: Tr) {
 
 export type PriceVariantInput = z.input<ReturnType<typeof variantSchema>>;
 
-/** クライアントから受け取る自然キー（productId は文字列でも可）。 */
+/** クライアントから受け取る自然キー（itemId は文字列でも可）。 */
 export type EntryIdentityPayload = z.input<ReturnType<typeof identitySchema>>;
 
 function keyOf(entryNumber: string): DocKey | null {
@@ -165,7 +173,7 @@ function validateVariants(
 async function resolveEstimateSource(
   tr: Tr,
   estimateNumber: string,
-  productId: number,
+  itemId: number,
 ): Promise<
   { ok: true; key: DocKey; needsLock: boolean } | { ok: false; error: string }
 > {
@@ -177,7 +185,7 @@ async function resolveEstimateSource(
     };
   const estimate = await prisma.estimate.findUnique({
     where: whereKey(key),
-    select: { status: true, productId: true },
+    select: { status: true, itemId: true },
   });
   if (!estimate)
     return { ok: false, error: tr("sales.priceListsActions.estimateNotFound") };
@@ -188,7 +196,7 @@ async function resolveEstimateSource(
     };
   }
   // 別製品にリンクされた価格試算は基準単価ソースにできない（製品未リンクは可）。
-  if (estimate.productId != null && estimate.productId !== productId) {
+  if (estimate.itemId != null && estimate.itemId !== itemId) {
     return { ok: false, error: tr("sales.priceListsActions.estimateNotFound") };
   }
   return { ok: true, key, needsLock: estimate.status === "CONFIRMED" };
@@ -208,14 +216,17 @@ function tierCreates(tiers: z.infer<typeof tierSchema>[]) {
   return tiers.map((t, i) => tierData(t, i));
 }
 
-/** 価格表作成フォーム用 — 製品にリンクされた価格試算（基準単価ソース候補）。 */
+/**
+ * 価格表作成フォーム用 — 製品にリンクされた価格試算（基準単価ソース候補）。
+ * `itemId` は品目 id（items.id）。
+ */
 export async function fetchEstimateSources(
-  productId: string | number,
+  itemId: string | number,
 ): Promise<ActionResult<EstimateSource[]>> {
   const tr = await getTranslations();
   const authz = await checkPermission("price_list", "READ");
   if (!authz.ok) return actionError(authz.error);
-  const id = Number(productId);
+  const id = Number(itemId);
   if (!Number.isInteger(id) || id <= 0) return actionOk([]);
   try {
     return actionOk(await fetchEstimateSourcesForProduct(id));
@@ -271,13 +282,20 @@ export async function createPriceEntry(
       const source = await resolveEstimateSource(
         tr,
         variant.estimateNumber,
-        v.identity.productId,
+        v.identity.itemId,
       );
       if (!source.ok) return actionError(source.error);
       estimateKeys.set(variant.estimateNumber, source.key);
       if (source.needsLock) {
         locks.push({ number: variant.estimateNumber, key: source.key });
       }
+    }
+    // 自然キー (customer_bp_id, product_id) は products.id のままなので、
+    // 品目から橋渡しして両方の列を埋める。対応が無い品目は価格表を作れない
+    // （鏡のトリガーが作る対応なので、製品品目なら必ずある）。
+    const legacyProductId = await legacyProductIdForItem(v.identity.itemId);
+    if (legacyProductId == null) {
+      return actionError(tr("sales.trialEstimateActions.productNotFound"));
     }
     const key = await allocateDocumentKey("PRICE_LIST");
     const salesRepId = await resolveSalesRepId(
@@ -290,7 +308,9 @@ export async function createPriceEntry(
         data: {
           yearMonth: key.yearMonth,
           seq: key.seq,
-          ...v.identity,
+          customerBpId: v.identity.customerBpId,
+          itemId: v.identity.itemId,
+          productId: legacyProductId,
           salesRepId,
           createdBy: authz.userId,
           variants: {
@@ -328,7 +348,7 @@ export async function createPriceEntry(
       recordId: entryId,
       after: {
         customerBpId: v.identity.customerBpId,
-        productId: v.identity.productId,
+        itemId: v.identity.itemId,
         orderTypes: v.variants.map((x) => x.orderType),
         estimateSources: v.variants
           .map((x) => x.estimateNumber)
@@ -443,9 +463,10 @@ export async function updatePriceEntry(
     // 価格試算はこの価格表の製品にリンクされたものだけ（別製品の単価を混ぜない）。
     const entry = await prisma.priceListEntry.findUnique({
       where: whereKey(key),
-      select: { productId: true },
+      select: { itemId: true },
     });
-    if (!entry) return actionError(tr("sales.priceListsActions.updateFailed"));
+    if (!entry?.itemId)
+      return actionError(tr("sales.priceListsActions.updateFailed"));
     const locks: { number: string; key: DocKey }[] = [];
     const estimateKeys = new Map<string, DocKey>();
     for (const variant of v.variants) {
@@ -453,7 +474,7 @@ export async function updatePriceEntry(
       const source = await resolveEstimateSource(
         tr,
         variant.estimateNumber,
-        entry.productId,
+        entry.itemId,
       );
       if (!source.ok) return actionError(source.error);
       estimateKeys.set(variant.estimateNumber, source.key);

@@ -61,6 +61,7 @@ import {
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
+import { legacyProductIdsForItems } from "@/lib/item-legacy-product";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   isLineShippable,
@@ -107,7 +108,8 @@ function itemInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
     /** 出荷元の注文明細。DISPATCH では必須（下の superRefine で強制）。 */
     orderLineId: z.string().nullable(),
-    productId: z.string().min(1, tr("common.selectAProduct")),
+    /** 出荷する製品 — 値は品目 id（items.id）。品目統合 第 2 段 C。 */
+    itemId: z.string().min(1, tr("common.selectAProduct")),
     lotNumber: z.number().int().min(1).nullable(),
     quantity: z
       .number()
@@ -264,8 +266,8 @@ export interface DeliverySourceInfo {
   assignedPlantId: string | null;
   /** 既に出荷済みの数量（残数の算出用）。 */
   shippedQuantity: number;
-  /** 注文明細の製品（明細の既定製品）。 */
-  productId: string;
+  /** 注文明細の製品（明細の既定製品）— 値は品目 id（items.id）。 */
+  itemId: string;
   productName: string;
   quantity: number;
   status: string;
@@ -300,12 +302,12 @@ export async function fetchDeliverySourceInfo(
       where: { id: orderLineId },
       include: {
         acceptance: { include: { customerBp: true, shipToBp: true } },
-        product: true,
+        item: true,
       },
     });
     // 確定前（枝番なし・製品未特定）の明細は出荷対象にならない。
-    if (!so || so.branch == null || so.productId == null) return null;
-    const productId = so.productId;
+    if (!so || so.branch == null || so.itemId == null) return null;
+    const itemId = so.itemId;
     const [workOrders, inventories, allWorkOrders, tolerance] =
       await Promise.all([
         prisma.workOrder.findMany({
@@ -334,7 +336,7 @@ export async function fetchDeliverySourceInfo(
         // この明細へ紐づける）。
         prisma.itemInventory.findMany({
           where: {
-            itemId: await itemIdOfAsync(productId),
+            itemId,
             isSemiFinished: false,
             lotNumber: { not: null },
           },
@@ -398,8 +400,8 @@ export async function fetchDeliverySourceInfo(
           ? String(so.acceptance.assignedPlantId)
           : null,
       shippedQuantity: await shippedQuantityForLine(so.id),
-      productId: String(productId),
-      productName: localized(so.product?.name as LocalizedText | null),
+      itemId: String(itemId),
+      productName: localized(so.item?.name as LocalizedText | null),
       quantity: so.quantity,
       status: so.status,
       variancePermitted: lineVariancePermitted(allWorkOrders),
@@ -478,28 +480,25 @@ export async function fetchDeliveryAcceptanceSourceInfo(
  * （非半製品バケット合計）に対して検証する。エラー時は文字列を返す。
  */
 async function validateDispatchLots(
-  items: { productId: string; lotNumber: number | null; quantity: number }[],
+  items: { itemId: string; lotNumber: number | null; quantity: number }[],
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
-  const byKey = new Map<
-    string,
-    { productId: number; lot: number; qty: number }
-  >();
+  const byKey = new Map<string, { itemId: number; lot: number; qty: number }>();
   for (const it of items) {
     if (it.lotNumber == null) continue;
-    const key = `${it.productId}:${it.lotNumber}`;
+    const key = `${it.itemId}:${it.lotNumber}`;
     const cur = byKey.get(key) ?? {
-      productId: Number(it.productId),
+      itemId: Number(it.itemId),
       lot: it.lotNumber,
       qty: 0,
     };
     cur.qty += it.quantity;
     byKey.set(key, cur);
   }
-  for (const { productId, lot, qty } of byKey.values()) {
+  for (const { itemId, lot, qty } of byKey.values()) {
     const agg = await prisma.itemInventory.aggregate({
       where: {
-        itemId: await itemIdOfAsync(productId),
+        itemId,
         lotNumber: lot,
         isSemiFinished: false,
       },
@@ -585,7 +584,7 @@ async function shippedQuantityForLine(orderLineId: string): Promise<number> {
  * 出荷時にその明細の出荷済数量として数えられ、請求もその明細の単価で立つ。
  */
 async function validateLineProducts(
-  items: { orderLineId: string | null; productId: string }[],
+  items: { orderLineId: string | null; itemId: string }[],
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   const ids = [
@@ -600,7 +599,7 @@ async function validateLineProducts(
     where: { id: { in: ids } },
     select: {
       id: true,
-      productId: true,
+      itemId: true,
       status: true,
       acceptanceYearMonth: true,
       acceptanceSeq: true,
@@ -624,7 +623,7 @@ async function validateLineProducts(
         number,
       });
     }
-    if (line.productId == null || Number(it.productId) !== line.productId) {
+    if (line.itemId == null || Number(it.itemId) !== line.itemId) {
       return tr("shipping.deliveryOrderActions.productMismatch", {
         line: i + 1,
         number,
@@ -889,6 +888,15 @@ export async function createDeliveryOrder(
     return actionError(tr("common.outOfScope"));
   }
   try {
+    // 旧 product_id 列を埋めるための橋渡し（品目統合 第 2 段 C）。
+    const legacyProductIds = await legacyProductIdsForItems(
+      v.items.map((it) => Number(it.itemId)),
+    );
+    // 品目は products の鏡なので通常あり得ない。対応が無いまま保存して旧列に
+    // 穴を空けるより、ここで止める。
+    if (v.items.some((it) => !legacyProductIds.has(Number(it.itemId)))) {
+      return actionError(tr("common.targetProductNotFound"));
+    }
     // 発送（DISPATCH）はロット在庫を fail-fast 検証（最終ガードは出荷時）
     if (v.type === "DISPATCH") {
       const lotError = await validateDispatchLots(v.items, tr);
@@ -928,7 +936,9 @@ export async function createDeliveryOrder(
         items: {
           create: v.items.map((it, i) => ({
             orderLineId: it.orderLineId,
-            productId: Number(it.productId),
+            itemId: Number(it.itemId),
+            // 旧 product_id 列も橋渡しで埋める（落とすのは最後の段）。
+            productId: legacyProductIds.get(Number(it.itemId)) as number,
             lotNumber: it.lotNumber,
             quantity: it.quantity,
             notes: trimOrNull(it.notes),
@@ -1008,7 +1018,7 @@ export async function updateDeliveryOrder(
         items: {
           orderBy: { sortOrder: "asc" },
           select: {
-            productId: true,
+            itemId: true,
             lotNumber: true,
             quantity: true,
             notes: true,
@@ -1016,6 +1026,15 @@ export async function updateDeliveryOrder(
         },
       },
     });
+    // 旧 product_id 列を埋めるための橋渡し（品目統合 第 2 段 C）。
+    const legacyProductIds = await legacyProductIdsForItems(
+      v.items.map((it) => Number(it.itemId)),
+    );
+    // 品目は products の鏡なので通常あり得ない。対応が無いまま保存して旧列に
+    // 穴を空けるより、ここで止める。
+    if (v.items.some((it) => !legacyProductIds.has(Number(it.itemId)))) {
+      return actionError(tr("common.targetProductNotFound"));
+    }
     // 発送（DISPATCH）はロット在庫を fail-fast 検証（最終ガードは出荷時）
     if (v.type === "DISPATCH") {
       const lotError = await validateDispatchLots(v.items, tr);
@@ -1084,7 +1103,9 @@ export async function updateDeliveryOrder(
           deliveryOrderYearMonth: key.yearMonth,
           deliveryOrderSeq: key.seq,
           orderLineId: it.orderLineId,
-          productId: Number(it.productId),
+          itemId: Number(it.itemId),
+          // 旧 product_id 列も橋渡しで埋める（落とすのは最後の段）。
+          productId: legacyProductIds.get(Number(it.itemId)) as number,
           lotNumber: it.lotNumber,
           quantity: it.quantity,
           notes: trimOrNull(it.notes),
@@ -1157,7 +1178,7 @@ async function resolveBillingUnitPrices(
           id: true,
           orderLineId: true,
           orderLine: {
-            select: { unitPrice: true, productId: true, orderType: true },
+            select: { unitPrice: true, itemId: true, orderType: true },
           },
         },
       },
@@ -1196,7 +1217,7 @@ async function resolveBillingUnitPrices(
     const delivered = it.orderLineId
       ? (deliveredByLine.get(it.orderLineId) ?? 0)
       : 0;
-    if (!line || line.productId == null || delivered <= 0) {
+    if (!line || line.itemId == null || delivered <= 0) {
       prices.set(it.id, original);
       continue;
     }
@@ -1204,7 +1225,7 @@ async function resolveBillingUnitPrices(
       entries,
       row.customerBpId,
       {
-        productId: String(line.productId),
+        itemId: String(line.itemId),
         orderType: line.orderType,
         quantity: delivered,
       },
@@ -1236,6 +1257,9 @@ async function planDeliveryOrderNotes(
   deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
   salesRepId: string | null;
   items: {
+    /** 品目 id（items.id）。 */
+    itemId: number | null;
+    /** 旧 products.id — 納品明細の旧列を埋めるためだけに持つ。 */
     productId: number;
     quantity: number;
     unitPrice: number;
@@ -1260,13 +1284,14 @@ async function planDeliveryOrderNotes(
         orderBy: { sortOrder: "asc" },
         select: {
           id: true,
+          itemId: true,
           productId: true,
           quantity: true,
           // 確定時に焼き込んだ請求単価が先。null は確定前 or 移行前のデータで、
           // そのときだけ注文明細の単価に落ちる（従来の経路）。
           unitPrice: true,
           // 税率は製品ごとの課税区分で決まる（顧客が指定していればそちらが優先）。
-          product: { select: { taxCategoryId: true } },
+          item: { select: { taxCategoryId: true } },
           orderLine: {
             select: {
               unitPrice: true,
@@ -1321,7 +1346,7 @@ async function planDeliveryOrderNotes(
       // 落ち方も billingBasisDate 1 本に閉じる）。
       const lineTax = resolveLineTax(catalog, {
         customerTaxCategoryId,
-        productTaxCategoryId: it.product.taxCategoryId,
+        productTaxCategoryId: it.item?.taxCategoryId ?? null,
         basisDate: billingBasisDate(
           isoDateOrNull(it.orderLine?.acceptance.orderDate),
           isoDateOrNull(row.shippedAt),
@@ -1329,6 +1354,7 @@ async function planDeliveryOrderNotes(
         ),
       });
       return {
+        itemId: it.itemId,
         productId: it.productId,
         quantity: it.quantity,
         unitPrice:
@@ -1665,6 +1691,7 @@ export async function confirmDeliveryOrder(
             createdBy: authz.userId,
             items: {
               create: plan.items.map((it, idx) => ({
+                itemId: it.itemId,
                 productId: it.productId,
                 quantity: it.quantity,
                 unitPrice: notePlan.includePrice ? it.unitPrice : null,
@@ -1714,19 +1741,6 @@ export async function confirmDeliveryOrder(
       ),
     );
   }
-}
-
-/**
- * 製品 id → 品目 id。在庫は品目で持つ（app.item_inventory）ので、製品を指している
- * 呼び出し側はここで寄せる。**移行中だけの橋** — 第 2 段 D で注文明細・指示書が
- * item_id を持てば消える。
- */
-async function itemIdOfAsync(productId: number): Promise<number> {
-  const row = await prisma.product.findUnique({
-    where: { id: productId },
-    select: { itemId: true },
-  });
-  return row?.itemId ?? -1;
 }
 
 /**

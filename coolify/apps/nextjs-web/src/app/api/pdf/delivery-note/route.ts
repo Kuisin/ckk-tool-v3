@@ -120,7 +120,9 @@ export async function GET(request: Request): Promise<Response> {
       : "",
     items: note.items.map((it) => ({
       name: it.productName,
-      code: it.productId,
+      // 印字を変えないため**旧 products.id のまま**（品目統合の前から
+      // この欄には内部 id が入っている）。
+      code: it.productLegacyId,
       quantity: yen(it.quantity),
       price_cells: note.includePrice
         ? `<td class="right">${yen(it.unitPrice ?? 0)}</td><td class="right">${yen(it.amount ?? 0)}</td>`

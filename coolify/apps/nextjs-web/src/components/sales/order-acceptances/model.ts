@@ -82,8 +82,11 @@ export interface OrderAcceptanceItemView {
    * その指示書がこの明細のために充当する数量（分割・統合の割当数）。
    */
   workOrders: OrderLineWorkOrderRef[];
-  /** 製品マスタ突合済みの内部 id（文字列化）。null = 製品未特定。 */
-  productId: string | null;
+  /**
+   * 突合済みの製品 — 値は**品目 id**（items.id、`itemType: "PRODUCT"`）を
+   * 文字列化したもの。null = 製品未特定。品目統合 第 2 段 C。
+   */
+  itemId: string | null;
   /** 名称 + 製品コード（表・ピッカーの表示用）。 */
   productLabel: string | null;
   /**
@@ -126,6 +129,11 @@ export interface OrderLineWorkOrderRef {
  * 顧客（lib/bp-match）・製品（lib/product-match）で同じ形。
  */
 export interface MatchSuggestion {
+  /**
+   * 候補の製品 — 値は**品目 id**（items.id）。突合そのもの
+   * （lib/product-match）は products.id で動いているので、画面へ渡す前に
+   * サーバー側（order-acceptances/data.ts）で 1 回だけ変換してある。
+   */
   id: string;
   label: string;
   /** 当たった登録側の表記（なぜこれが候補なのかを画面に出す）。 */

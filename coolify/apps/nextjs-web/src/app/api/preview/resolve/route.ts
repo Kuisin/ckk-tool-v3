@@ -90,13 +90,14 @@ async function richDescription(
         },
         include: {
           customerBp: true,
-          product: true,
+          // 品目統合 第 2 段 C — 価格表の製品名は品目側から読む。
+          item: true,
           variants: { orderBy: { orderType: "asc" as const } },
         },
       });
       if (!r) return null;
       const customer = localized(r.customerBp.name as LocalizedText | null);
-      const product = localized(r.product.name as LocalizedText | null);
+      const product = localized(r.item?.name as LocalizedText | null);
       const types = r.variants
         .map((v) => ORDER_TYPE_LABEL[v.orderType] ?? v.orderType)
         .join("・");

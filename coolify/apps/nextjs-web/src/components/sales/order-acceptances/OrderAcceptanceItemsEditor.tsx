@@ -31,12 +31,12 @@ import {
 import { DatePickerInput } from "@mantine/dates";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useLocale, useTranslations } from "next-intl";
-import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
+import { searchProductItemOptions } from "@/app/(dashboard)/_shared/option-search";
 import type { OrderAcceptanceDraftInput } from "@/app/(dashboard)/sales/order-acceptances/actions";
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
 import { resolvePriceFromEntries } from "@/components/sales/quotes/model";
 import { GhostButton } from "@/components/ui/buttons";
-import { productF4 } from "@/components/ui/f4-presets";
+import { productItemF4 } from "@/components/ui/f4-presets";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { orderTypeOptions } from "@/lib/enum-labels";
 import { formatMoney } from "@/lib/format";
@@ -58,8 +58,9 @@ type OrderType = (typeof ORDER_TYPES)[number];
 export interface ItemRowForm {
   rowId: string;
   /** 保存済み行の order_lines.id（未保存の追加行は null）。 */
+  lineId: string | null;
+  /** 突合済みの製品 — 値は品目 id（items.id）。null = 製品未特定。 */
   itemId: string | null;
-  productId: string | null;
   /** SearchSelect の初期表示用ラベル（突合済みのとき）。 */
   productLabel: string | null;
   productText: string;
@@ -112,11 +113,11 @@ export function rowPrice(
   tr: Tr,
 ): RowPrice {
   const resolution =
-    ctx.customerBpId && row.productId
+    ctx.customerBpId && row.itemId
       ? resolvePriceFromEntries(
           ctx.priceEntries,
           ctx.customerBpId,
-          row.productId,
+          row.itemId,
           row.orderType,
           row.quantity,
           tr,
@@ -142,7 +143,7 @@ export function rowPrice(
     overridable: expected != null,
     effective,
     state: acceptancePriceState({
-      matched: Boolean(ctx.customerBpId && row.productId),
+      matched: Boolean(ctx.customerBpId && row.itemId),
       expected,
       actual: effective,
       overridden,
@@ -156,8 +157,8 @@ const newRowId = () => `item-${++rowSeq}-${Date.now()}`;
 
 export const newItemRow = (): ItemRowForm => ({
   rowId: newRowId(),
+  lineId: null,
   itemId: null,
-  productId: null,
   productLabel: null,
   productText: "",
   productSuggestions: [],
@@ -173,8 +174,8 @@ export const newItemRow = (): ItemRowForm => ({
 export function toItemRows(items: OrderAcceptanceItemView[]): ItemRowForm[] {
   return items.map((it) => ({
     rowId: newRowId(),
-    itemId: it.id,
-    productId: it.productId,
+    lineId: it.id,
+    itemId: it.itemId,
     productLabel: it.productLabel,
     productText: it.productText ?? "",
     productSuggestions: it.productSuggestions,
@@ -203,7 +204,7 @@ export function toItemPayload(
   return rows.map((r) => {
     const price = rowPrice(r, ctx, tr);
     return {
-      productId: r.productId,
+      itemId: r.itemId,
       productText: r.productText || null,
       orderType: r.orderType,
       quantity: r.quantity,
@@ -237,7 +238,7 @@ export function OrderAcceptanceItemsEditor({
   // 価格表 / 上書きの解決後の値で数える（画面に出ている金額と一致させる）。
   const totals = acceptanceTotals(
     items.map((row, i) => ({
-      productId: row.productId,
+      itemId: row.itemId,
       quantity: row.quantity,
       unitPrice: prices[i].effective,
     })),
@@ -264,7 +265,7 @@ export function OrderAcceptanceItemsEditor({
                   index: ri + 1,
                 })}
               </Text>
-              {!row.productId && (
+              {!row.itemId && (
                 <Badge color="orange" size="xs" variant="light">
                   {tr("common.productNotIdentified")}
                 </Badge>
@@ -341,11 +342,11 @@ export function OrderAcceptanceItemsEditor({
                   preventGrowOverflow={false}
                 >
                   <SearchSelect
-                    f4={productF4(tr)}
+                    f4={productItemF4(tr)}
                     initialOption={
-                      row.productId
+                      row.itemId
                         ? {
-                            value: row.productId,
+                            value: row.itemId,
                             label: row.productLabel ?? row.productText,
                           }
                         : null
@@ -353,16 +354,16 @@ export function OrderAcceptanceItemsEditor({
                     label={tr("common.product")}
                     onChange={(v, opt) =>
                       patch(ri, {
-                        productId: v,
+                        itemId: v,
                         productLabel: opt?.label ?? null,
                       })
                     }
-                    onSearch={searchProductOptions}
+                    onSearch={searchProductItemOptions}
                     placeholder={tr(
                       "sales.orderAcceptances.matchAgainstTheProductMaster",
                     )}
-                    storageKey="product"
-                    value={row.productId}
+                    storageKey="order-line-product-item"
+                    value={row.itemId}
                   />
                   <TextInput
                     label={tr("sales.orderAcceptances.itemNameExtractedText")}
@@ -422,11 +423,11 @@ export function OrderAcceptanceItemsEditor({
                   突合が 1 件に絞れなかったときの候補。製品が決まったら消える。
                   品名がずれているからこそ突合が外れているので、打ち直しはさせない。
                 */}
-                {!row.productId && (
+                {!row.itemId && (
                   <Box mt="xs">
                     <MatchSuggestions
                       onPick={(s) =>
-                        patch(ri, { productId: s.id, productLabel: s.label })
+                        patch(ri, { itemId: s.id, productLabel: s.label })
                       }
                       suggestions={row.productSuggestions}
                     />

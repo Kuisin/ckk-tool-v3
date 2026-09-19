@@ -30,7 +30,8 @@ const QUOTE_INCLUDE = {
   createdByUser: { select: { displayName: true } },
   items: {
     orderBy: { sortOrder: "asc" as const },
-    include: { product: true },
+    // 品目統合 第 2 段 C — 名称・コードは品目側から読む。
+    include: { item: true },
   },
 };
 
@@ -62,10 +63,14 @@ export function mapQuote(r: QuoteRow): Quote {
     notes: r.notes,
     items: r.items.map((it) => ({
       id: it.id,
-      productId: String(it.productId),
+      itemId: String(it.itemId ?? ""),
+      productLegacyId: String(it.productId),
       productName: (() => {
-        const code = formatProductNumber(it.product.yearMonth, it.product.seq);
-        const nm = localized(it.product.name as LocalizedText | null);
+        const code = formatProductNumber(
+          it.item?.yearMonth ?? null,
+          it.item?.seq ?? null,
+        );
+        const nm = localized(it.item?.name as LocalizedText | null);
         return code ? `${nm} ${code}` : nm;
       })(),
       orderType: it.orderType,
@@ -172,15 +177,15 @@ export async function fetchCustomerTaxCategories(): Promise<
 }
 
 /**
- * 製品 id → 課税区分（tax_categories.id）。**価格表に載っている製品だけ**に絞る —
+ * 品目 id → 課税区分（tax_categories.id）。**価格表に載っている製品だけ**に絞る —
  * 見積フォームが選べるのはその製品だけなので、全製品を配ると props が無駄に太る。
  */
 export async function fetchProductTaxCategories(
-  productIds: readonly number[],
+  itemIds: readonly number[],
 ): Promise<Record<string, number | null>> {
-  if (productIds.length === 0) return {};
-  const rows = await prisma.product.findMany({
-    where: { id: { in: [...new Set(productIds)] } },
+  if (itemIds.length === 0) return {};
+  const rows = await prisma.item.findMany({
+    where: { id: { in: [...new Set(itemIds)] } },
     select: { id: true, taxCategoryId: true },
   });
   return Object.fromEntries(

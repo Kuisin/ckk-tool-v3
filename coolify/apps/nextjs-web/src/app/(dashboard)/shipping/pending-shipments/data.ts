@@ -86,7 +86,9 @@ export async function fetchUnshippedOrderLines(): Promise<
     },
     include: {
       acceptance: { include: { customerBp: true } },
-      product: true,
+      // 品目統合 第 2 段 C — 表示名は品目側から読む（この画面は製品名しか
+      // 使わないので、id 空間には触れていない）。
+      item: true,
       workOrderLinks: {
         where: { workOrder: { status: "COMPLETED" } },
         // エンジンが読む列だけ（STEP_STATE_SELECT — workflow-core 参照）。
@@ -156,7 +158,7 @@ export async function fetchUnshippedOrderLines(): Promise<
       customerName: localized(
         r.acceptance.customerBp?.name as LocalizedText | null,
       ),
-      productName: r.product ? productLabel(r.product) : (r.productText ?? "—"),
+      productName: r.item ? productLabel(r.item) : (r.productText ?? "—"),
       quantity: r.quantity,
       finishedQuantity,
       shippedQuantity,

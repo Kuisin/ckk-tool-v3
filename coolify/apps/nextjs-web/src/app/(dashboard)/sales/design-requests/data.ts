@@ -459,3 +459,23 @@ export async function fetchProductRef(
   if (!r || r.itemId == null) return null;
   return { value: String(r.itemId), label: productLabel(r) };
 }
+
+/**
+ * 品目 1 件の参照解決（`?item=<items.id>` プリフィル用）。
+ *
+ * 見積フォームの「単価が引けない → 設計依頼を起票」からの入口。あちらは
+ * 既に品目 id を持っている（品目統合 第 2 段 C）ので、products.id を渡す
+ * `?product=` とは**別のクエリ名**にしてある — 同じ名前で 2 つの id 空間を
+ * 運ぶと、どちらが来たのか見分けられない。
+ */
+export async function fetchProductItemRef(
+  itemId: string,
+): Promise<QuoteOption | null> {
+  const id = Number(itemId);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  const r = await prisma.item.findFirst({
+    where: { id, itemType: "PRODUCT" },
+  });
+  if (!r) return null;
+  return { value: String(r.id), label: itemLabel(r) };
+}

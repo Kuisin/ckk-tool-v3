@@ -213,7 +213,9 @@ export async function processClosing(
     // 直しても発行済みの請求書は動かない（金額・税率と同じ扱い）。
     const customerLabels = await fetchCustomerProductLabels(
       closing.customerBpId,
-      shipments.flatMap((s) => s.items.map((it) => it.productId)),
+      shipments.flatMap((s) =>
+        s.items.map((it) => it.itemId).filter((id): id is number => id != null),
+      ),
     );
 
     // 明細: 出荷書明細 1 行 = 請求明細 1 行（摘要 = 製品名 + ロット、由来キー付き）。
@@ -226,8 +228,9 @@ export async function processClosing(
         // 焼き込んだ値が先で、無ければ注文明細の単価 — billableUnitPrice が
         // 唯一の定義元で、締日画面の予定額と同じ数え方になる。
         const unitPrice = billableUnitPrice(it);
-        const name = it.product.name as LocalizedText | null;
-        const customerLabel = customerLabels.get(it.productId);
+        const name = it.item?.name as LocalizedText | null;
+        const customerLabel =
+          it.itemId != null ? customerLabels.get(it.itemId) : undefined;
         // 顧客品番はロット番号より内側に付ける — 「製品名（相手の品番）ロット …」
         // ではなく「製品名（相手の品番） ロット …」の順で読めるようにするため。
         const withCode = (locale: string) =>
@@ -251,7 +254,7 @@ export async function processClosing(
         // 落ち方は billingBasisDate 1 本に閉じてある。
         const lineTax = resolveLineTax(catalog, {
           customerTaxCategoryId,
-          productTaxCategoryId: it.product.taxCategoryId,
+          productTaxCategoryId: it.item?.taxCategoryId ?? null,
           basisDate: billingBasisDate(
             isoDateOrNull(it.orderLine?.acceptance?.orderDate),
             isoDateOrNull(s.shippedAt),

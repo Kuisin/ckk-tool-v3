@@ -61,7 +61,8 @@ export type PriceResolution =
 /**
  * Resolve 単価 + 値引き from the 価格表 for (顧客 × 製品 × 注文種別 × 数量 ×
  * 日付), pure over `entries`. Entry は顧客×製品で一意、注文種別はその中の
- * variant を選ぶ。
+ * variant を選ぶ。製品は**品目 id**（items.id）で指す — 価格表の行も書類の行も
+ * 同じ id 空間なので、突き合わせは 1 本のままでよい（品目統合 第 2 段 C）。
  *
  * **価格を出せるのは、有効なエントリの有効なバリアントで、`date`（JST の暦日）
  * が有効期間に入っているものだけ。** 無効化された価格表・期限切れ / 開始前の
@@ -71,14 +72,14 @@ export type PriceResolution =
 export function resolvePriceFromEntries(
   entries: PriceListEntry[],
   customerId: string,
-  productId: string,
+  itemId: string,
   orderType: string,
   quantity: number,
   tr: Tr,
   date: Date = new Date(),
 ): PriceResolution {
   const entry = entries.find(
-    (e) => e.customerId === customerId && e.productId === productId,
+    (e) => e.customerId === customerId && e.itemId === itemId,
   );
   if (!entry) return { ok: false, reason: "no-entry" };
   if (!entry.isActive) return { ok: false, reason: "inactive" };
@@ -125,7 +126,7 @@ export function resolvePriceFromEntries(
 export function resolveUnitPriceFromEntries(
   entries: PriceListEntry[],
   customerId: string,
-  productId: string,
+  itemId: string,
   orderType: string,
   quantity: number,
   tr: Tr,
@@ -134,7 +135,7 @@ export function resolveUnitPriceFromEntries(
   const r = resolvePriceFromEntries(
     entries,
     customerId,
-    productId,
+    itemId,
     orderType,
     quantity,
     tr,
@@ -156,7 +157,14 @@ export function tierLabel(t: PriceTier, tr: Tr): string {
 /** One quote line — 単価・値引きとも価格表から自動解決（手入力なし）。 */
 export interface QuoteItem {
   id: string;
-  productId: string;
+  /** 製品 — 値は品目 id（items.id）。品目統合 第 2 段 C。 */
+  itemId: string;
+  /**
+   * 旧 products.id を文字列にしたもの。**PDF の「コード」欄が刷っている値**
+   * （見積書テンプレートの `code`）がこれなので、印字を変えないために持つ。
+   * それ以外の用途に使わない — 判定・突合はすべて `itemId`。
+   */
+  productLegacyId: string;
   productName: string;
   orderType: string;
   quantity: number;

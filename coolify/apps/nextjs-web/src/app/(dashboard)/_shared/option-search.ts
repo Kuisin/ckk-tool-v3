@@ -873,7 +873,7 @@ export async function searchShippableAcceptanceOptions(
               {
                 items: {
                   some: {
-                    product: { name: { path: ["ja"], string_contains: q } },
+                    item: { name: { path: ["ja"], string_contains: q } },
                   },
                 },
               },
@@ -922,7 +922,7 @@ export async function searchOrderLineOptions(
                   customerOrderRef: { contains: q, mode: "insensitive" },
                 },
               },
-              { product: { name: { path: ["ja"], string_contains: q } } },
+              { item: { name: { path: ["ja"], string_contains: q } } },
               {
                 acceptance: {
                   customerBp: { name: { path: ["ja"], string_contains: q } },
@@ -932,7 +932,8 @@ export async function searchOrderLineOptions(
           }
         : {}),
     },
-    include: { product: true },
+    // 品目統合 第 2 段 C — 注文明細の製品名は品目側から読む。
+    include: { item: true },
     orderBy: [
       { acceptanceYearMonth: "desc" },
       { acceptanceSeq: "desc" },
@@ -943,7 +944,7 @@ export async function searchOrderLineOptions(
   const { orderLineNumberOf } = await import("@/lib/doc-number");
   return rows.map((r) => ({
     value: r.id,
-    label: `${orderLineNumberOf(r) ?? "—"} ${localized(r.product?.name as LocalizedText | null)}（${r.quantity}）`,
+    label: `${orderLineNumberOf(r) ?? "—"} ${localized(r.item?.name as LocalizedText | null)}（${r.quantity}）`,
   }));
 }
 

@@ -95,7 +95,8 @@ const SHIPMENT_INCLUDE = {
   items: {
     orderBy: { sortOrder: "asc" as const },
     include: {
-      product: true,
+      // 品目統合 第 2 段 C — 品名・課税区分は品目側から読む。
+      item: true,
       // acceptance は営業担当の導出用（出荷書は担当を保存しない）と、
       // 税率の基準日（注文日）の取得用。
       orderLine: {

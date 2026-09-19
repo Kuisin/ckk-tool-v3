@@ -29,8 +29,8 @@ export interface ReadinessInput {
   /** エンドユーザー（最終需要家）— ユーザー直送では必須。 */
   endUserBpId: string | null;
   items: {
-    /** 製品マスタ突合済みか（null = 未特定）。 */
-    productId: string | number | null;
+    /** 製品（品目 items.id）が決まっているか（null = 未特定）。 */
+    itemId: string | number | null;
     quantity: number;
     unitPrice: number | null;
   }[];
@@ -80,7 +80,7 @@ export function acceptanceReadiness(input: ReadinessInput, tr: Tr): Readiness {
   const noPrice: number[] = [];
   const negativePrice: number[] = [];
   input.items.forEach((it, i) => {
-    if (it.productId == null || it.productId === "") noProduct.push(i + 1);
+    if (it.itemId == null || it.itemId === "") noProduct.push(i + 1);
     if (!(it.quantity >= 1)) badQuantity.push(i + 1);
     if (it.unitPrice == null) noPrice.push(i + 1);
     else if (it.unitPrice < 0) negativePrice.push(i + 1);

@@ -42,19 +42,22 @@ async function lineageIds(bpId: string): Promise<{
 /**
  * 支店の登録を親会社より優先して 1 製品 1 行に畳む。
  * 行の並び順に依存させない（どちらが先に来ても結果が同じ）。
+ *
+ * `key` はその行の製品を指す id — 呼び出し側が products.id（突合）か
+ * items.id（印字）かを決める。**混ぜないこと**。
  */
-function preferOwn<T>(
-  rows: ReadonlyArray<{ customerBpId: string; productId: number } & T>,
+function preferOwn<T extends { customerBpId: string }>(
+  rows: readonly T[],
   selfId: string,
-): Map<number, { customerBpId: string; productId: number } & T> {
-  const out = new Map<
-    number,
-    { customerBpId: string; productId: number } & T
-  >();
+  key: (row: T) => number | null,
+): Map<number, T> {
+  const out = new Map<number, T>();
   for (const r of rows) {
-    const cur = out.get(r.productId);
+    const k = key(r);
+    if (k == null) continue;
+    const cur = out.get(k);
     if (!cur || (cur.customerBpId !== selfId && r.customerBpId === selfId)) {
-      out.set(r.productId, r);
+      out.set(k, r);
     }
   }
   return out;
@@ -86,24 +89,31 @@ export async function loadCustomerProductCodes(
     },
     orderBy: { id: "asc" },
   });
-  return [...preferOwn(rows, lineage.self).values()].map((r) => ({
-    productId: r.productId,
-    code: r.code,
-    name: r.name,
-    aliases: r.aliases,
-  }));
+  return [...preferOwn(rows, lineage.self, (r) => r.productId).values()].map(
+    (r) => ({
+      productId: r.productId,
+      code: r.code,
+      name: r.name,
+      aliases: r.aliases,
+    }),
+  );
 }
 
 /**
- * 書類に刷るための対応表 — `productId → { code, name }`。
+ * 書類に刷るための対応表 — `itemId → { code, name }`。
  * 登録の無い製品はキーごと入らない（呼び出し側は自社の品名だけを刷る）。
+ *
+ * 品目統合 第 2 段 C — 納品書・請求書の明細が品目（items.id）で製品を指すように
+ * なったので、こちらの鍵も品目に揃えてある。**突合の
+ * `loadCustomerProductCodes` は products.id のまま**（学習エイリアスが
+ * products を指しているため — 2 つの id 空間を混ぜないこと）。
  */
 export async function fetchCustomerProductLabels(
   bpId: string | null | undefined,
-  productIds: readonly number[],
+  itemIds: readonly number[],
 ): Promise<Map<number, CustomerProductLabel>> {
   const out = new Map<number, CustomerProductLabel>();
-  const ids = [...new Set(productIds)];
+  const ids = [...new Set(itemIds)];
   if (!bpId || ids.length === 0) return out;
   const lineage = await lineageIds(bpId);
   if (!lineage) return out;
@@ -111,18 +121,18 @@ export async function fetchCustomerProductLabels(
   const rows = await prisma.customerProductCode.findMany({
     where: {
       customerBpId: { in: lineage.scope },
-      productId: { in: ids },
+      itemId: { in: ids },
       isActive: true,
     },
     select: {
       customerBpId: true,
-      productId: true,
+      itemId: true,
       code: true,
       name: true,
     },
   });
-  for (const [productId, r] of preferOwn(rows, lineage.self)) {
-    out.set(productId, { code: r.code, name: r.name });
+  for (const [itemId, r] of preferOwn(rows, lineage.self, (x) => x.itemId)) {
+    out.set(itemId, { code: r.code, name: r.name });
   }
   return out;
 }

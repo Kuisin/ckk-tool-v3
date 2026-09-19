@@ -42,7 +42,8 @@ const ORDER_LINE_INCLUDE = {
     },
   },
   endUserBp: true,
-  product: true,
+  // 品目統合 第 2 段 C — 表示は品目側から読む。
+  item: true,
   // 指示書は割当（work_order_order_lines）経由 — 分割・統合の両対応。
   workOrderLinks: {
     orderBy: { workOrder: { workOrderNumber: "asc" as const } },
@@ -139,8 +140,8 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
             seq: acc.quoteSeq,
           })
         : null,
-    productId: r.productId == null ? null : String(r.productId),
-    productName: r.product ? productLabel(r.product) : (r.productText ?? "—"),
+    itemId: r.itemId == null ? null : String(r.itemId),
+    productName: r.item ? productLabel(r.item) : (r.productText ?? "—"),
     orderType: r.orderType,
     quantity: r.quantity,
     unitPrice: r.unitPrice == null ? null : Number(r.unitPrice),

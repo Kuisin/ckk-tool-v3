@@ -77,7 +77,7 @@ describe("価格試算 → 価格表 → 見積書 (constructed entry)", () => {
     entryId: "PRC-202607-00098",
     customerId: "bp-002",
     customerName: "合同会社XYZ工業",
-    productId: "9002",
+    itemId: "9002",
     productName: "テスト製品",
     currency: "JPY",
     isActive: true,

@@ -37,7 +37,7 @@ export default async function PriceListEditPage({
       estimateBases={estimateBases}
       existingEntries={existingEntries}
       mode="edit"
-      productOption={{ value: entry.productId, label: entry.productName }}
+      productOption={{ value: entry.itemId, label: entry.productName }}
     />
   );
 }

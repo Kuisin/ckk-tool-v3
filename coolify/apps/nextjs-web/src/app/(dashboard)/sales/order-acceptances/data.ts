@@ -30,6 +30,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 import { matchCustomer, suggestProducts } from "@/lib/intake";
 import { normalizeExtraction } from "@/lib/intake-core";
 import { reviewIntake } from "@/lib/intake-review";
+import { itemIdsForLegacyProducts } from "@/lib/item-legacy-product";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
@@ -112,7 +113,8 @@ export async function fetchOrderAcceptance(
       items: {
         orderBy: { sortOrder: "asc" },
         include: {
-          product: { select: { name: true, yearMonth: true, seq: true } },
+          // 品目統合 第 2 段 C — 表示は品目側から読む。
+          item: { select: { name: true, yearMonth: true, seq: true } },
           // 明細に割り当てられた指示書（分割・統合の割当数を表に出す）。
           workOrderLinks: {
             orderBy: { sortOrder: "asc" },
@@ -144,12 +146,29 @@ export async function fetchOrderAcceptance(
 
   // 製品が決まっていない行は、読み取った品名から候補を出す（1 クエリでまとめて）。
   // 顧客が決まっていれば、その顧客の品番表（MS04 の「顧客品番」）を先に当てる。
+  // ★ 突合（lib/intake / lib/product-match / app.match_aliases）は **products.id**
+  //   のまま。学習エイリアスが products を指しているので、突合側を品目へ移すと
+  //   学習が読めなくなる。画面が扱う id は品目なので、**ここで 1 回だけ**
+  //   候補の id を品目へ変換する（混ざった id 空間を画面へ渡さない）。
   const productSuggestions = await suggestProducts(
     r.items
-      .filter((it) => it.productId == null && it.productText)
+      .filter((it) => it.itemId == null && it.productText)
       .map((it) => it.productText as string),
     { customerCodes: await loadCustomerProductCodes(r.customerBpId) },
   );
+  const suggestionItemIds = await itemIdsForLegacyProducts(
+    [...productSuggestions.values()].flatMap((cs) =>
+      cs.map((c) => Number(c.id)),
+    ),
+  );
+  /** 候補（products.id）→ 画面用（items.id）。対応が無い候補は落とす。 */
+  const toItemSuggestions = (text: string | null) =>
+    (text ? (productSuggestions.get(text.trim()) ?? []) : [])
+      .map((c) => ({
+        ...c,
+        id: String(suggestionItemIds.get(Number(c.id)) ?? ""),
+      }))
+      .filter((c) => c.id !== "");
 
   const items: OrderAcceptanceItemView[] = r.items.map((it) => ({
     id: it.id,
@@ -163,16 +182,14 @@ export async function fetchOrderAcceptance(
       quantity: l.quantity,
       status: l.workOrder.status,
     })),
-    productId: it.productId != null ? String(it.productId) : null,
-    productLabel: it.product ? productLabel(it.product) : null,
-    productName: it.product
-      ? localized(it.product.name as LocalizedText | null)
+    itemId: it.itemId != null ? String(it.itemId) : null,
+    productLabel: it.item ? productLabel(it.item) : null,
+    productName: it.item
+      ? localized(it.item.name as LocalizedText | null)
       : null,
     productText: it.productText,
     productSuggestions:
-      (it.productId == null && it.productText
-        ? productSuggestions.get(it.productText.trim())
-        : null) ?? [],
+      it.itemId == null ? toItemSuggestions(it.productText) : [],
     orderType: it.orderType,
     quantity: it.quantity,
     unitPrice: it.unitPrice != null ? Number(it.unitPrice) : null,
@@ -205,7 +222,7 @@ export async function fetchOrderAcceptance(
         customerCandidateCount: customerSuggestions.length,
         orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
         items: items.map((it) => ({
-          productId: it.productId,
+          itemId: it.itemId,
           productText: it.productText,
           productCandidateCount: it.productSuggestions.length,
           quantity: it.quantity,

@@ -59,8 +59,11 @@ export interface OrderLine {
   customerOrderRef: string | null;
   /** 見積書からの展開元（QOT-… 導出番号）。手動作成時は null。 */
   quoteNumber: string | null;
-  /** 製品の内部 id（連番）を文字列で保持 — SearchSelect の値と揃える。 */
-  productId: string | null;
+  /**
+   * 製品 — 値は品目 id（items.id）を文字列化したもの。品目統合 第 2 段 C。
+   * SearchSelect（`searchProductItemOptions`）の値と揃える。
+   */
+  itemId: string | null;
   productName: string;
   orderType: string;
   quantity: number;
