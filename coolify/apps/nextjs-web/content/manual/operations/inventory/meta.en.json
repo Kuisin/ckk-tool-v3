@@ -1,7 +1,4 @@
 {
   "title": "Inventory",
-  "pages": [
-    "product-inventory",
-    "material-inventory"
-  ]
+  "pages": ["product-inventory", "material-inventory"]
 }

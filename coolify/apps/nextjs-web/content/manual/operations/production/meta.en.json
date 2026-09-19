@@ -1,8 +1,4 @@
 {
   "title": "Production",
-  "pages": [
-    "work-order",
-    "pending-work-order",
-    "design-file"
-  ]
+  "pages": ["work-order", "pending-work-order", "design-file"]
 }
