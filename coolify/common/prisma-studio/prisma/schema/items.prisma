@@ -103,6 +103,17 @@ model Item {
   requiresMaterialType MaterialType? @relation("ItemRequiresMaterialType", fields: [requiresMaterialTypeId], references: [id], onDelete: Restrict)
   materialType         MaterialType? @relation("ItemMaterialType", fields: [materialTypeId], references: [id], onDelete: Restrict)
 
+
+  inventory ItemInventory[]
+  poItems          MaterialPurchaseOrderItem[] @relation("MaterialPurchaseOrderItemItem")
+  receipts         MaterialReceipt[]           @relation("MaterialReceiptItem")
+  purchaseReqItems PurchaseRequestItem[]       @relation("PurchaseRequestItemItem")
+  workOrderMaterials WorkOrder[]               @relation("WorkOrderMaterialItem")
+  workOrderProducts  WorkOrder[]               @relation("WorkOrderProductItem")
+  productprocessrouteitemRefs ProductProcessRoute[] @relation("ProductProcessRouteItem")
+  inspectiontemplateitemRefs InspectionTemplate[] @relation("InspectionTemplateItem")
+  designrequestitemRefs DesignRequest[] @relation("DesignRequestItem")
+  designfileitemRefs DesignFile[] @relation("DesignFileItem")
   @@unique([yearMonth, seq])
   @@index([itemType, isActive])
   @@index([materialTypeId])

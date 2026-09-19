@@ -33,6 +33,8 @@ model ProductProcessRoute {
   kind         ProcessRouteKind @default(MANUFACTURING)
   // PREP は null（共通）。MANUFACTURING は必須 — CHECK product_process_routes_kind_columns。
   productId    Int?     @map("product_id")
+  /// 統合品目（app.items）。この工程リストの対象製品。
+  itemId Int? @map("item_id")
   // 対象の受注元（取引先）。null = 汎用（どの顧客にも使える）。PREP は常に null。
   // 指示書ビルダーは顧客一致ルートを優先し、無ければ汎用へフォールバックする
   // （選択規則は nextjs-web lib/product-routes-core.ts pickDefaultRoute）。
@@ -48,6 +50,7 @@ model ProductProcessRoute {
   // 製品を消したとき製造工程リストが製品を失って CHECK（MANUFACTURING は product_id
   // 必須）に落ちる。従来どおり Restrict（DB 側もこのまま）。
   product       Product?         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  item Item? @relation("ProductProcessRouteItem", fields: [itemId], references: [id], onDelete: Restrict)
   customerBp    BusinessPartner? @relation("RouteCustomerBp", fields: [customerBpId], references: [id])
   createdByUser User?            @relation("RouteCreatedBy", fields: [createdBy], references: [id])
 
@@ -55,6 +58,7 @@ model ProductProcessRoute {
 
   @@index([productId, customerBpId])
   @@index([kind])
+  @@index([itemId])
   @@map("product_process_routes")
   @@schema("app")
 }

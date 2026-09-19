@@ -69,6 +69,9 @@ const EXCLUDED_TEMPLATE: Record<string, string> = {
   productId:
     "対象製品は環境ごとの id（製品は業務キーを持たない）。測定定義とは" +
     "別のナビゲーション用の絞り込みなので、取込側で改めて設定する",
+  itemId:
+    "品目統合 第 2 段 D — productId と同じ品目参照（items.id）。" +
+    "同じ理由（環境ごとの id）で対象外、取込側で改めて設定する",
   groupId:
     "ナビゲーション用グループも環境ごとの id。判定・PDF に影響しない" +
     "表示軸なので、取込側で改めて設定する",

@@ -21,6 +21,7 @@ import { checkPermission, targetPlantsInScope } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
+import { legacyMaterialIdsForItems } from "@/lib/item-legacy-material";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { learnPurchaseAliases } from "@/lib/purchase-intake";
 import {
@@ -37,9 +38,8 @@ const MAX_LINES = 200;
 
 function intakeInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   const line = z.object({
-    materialId: z
-      .string()
-      .min(1, tr("purchase.materialReceipts.selectAMaterial")),
+    /** 選んだ素材の品目 id（items.id）を文字列で受ける。 */
+    itemId: z.string().min(1, tr("purchase.materialReceipts.selectAMaterial")),
     plantId: z.string().nullable(),
     quantity: z
       .number()
@@ -51,8 +51,8 @@ function intakeInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
     /** 学習用 — 書類に印字されていた表記（そのまま）。 */
     materialText: z.string().nullable(),
     materialCode: z.string().nullable(),
-    /** 学習用 — 突合が入れていた素材 id（人の訂正だけを覚えるための比較元）。 */
-    draftMaterialId: z.string().nullable().optional(),
+    /** 学習用 — 突合が入れていた品目 id（人の訂正だけを覚えるための比較元）。 */
+    draftItemId: z.string().nullable().optional(),
   });
 
   return z.object({
@@ -95,18 +95,25 @@ export async function createReceiptsFromDelivery(
   }
 
   try {
-    // 単位は素材マスタの単位で固定 — 「本」の台帳へ「kg」を足させない。
+    // 単位は素材（品目）の単位で固定 — 「本」の台帳へ「kg」を足させない。
     // 行ごとに引かず 1 回でまとめて読む。
-    const materialIds = [...new Set(v.lines.map((l) => Number(l.materialId)))];
-    if (materialIds.some((id) => !Number.isInteger(id) || id <= 0)) {
+    const itemIds = [...new Set(v.lines.map((l) => Number(l.itemId)))];
+    if (itemIds.some((id) => !Number.isInteger(id) || id <= 0)) {
       return actionError(tr("common.targetRecordNotFound"));
     }
-    const materials = await prisma.material.findMany({
-      where: { id: { in: materialIds } },
+    const items = await prisma.item.findMany({
+      where: { id: { in: itemIds }, itemType: "MATERIAL" },
       select: { id: true, unit: true },
     });
-    const unitById = new Map(materials.map((m) => [m.id, m.unit]));
-    if (unitById.size !== materialIds.length) {
+    const unitById = new Map(items.map((m) => [m.id, m.unit]));
+    if (unitById.size !== itemIds.length) {
+      return actionError(tr("common.targetRecordNotFound"));
+    }
+    // material_id 列はまだ NOT NULL（品目統合 第 2 段 B）なので、対応する
+    // materials.id を一括で引いて一緒に埋める（item-legacy-material.ts —
+    // 書き込みのためだけの橋）。
+    const legacyIds = await legacyMaterialIdsForItems(itemIds);
+    if (legacyIds.size !== itemIds.length) {
       return actionError(tr("common.targetRecordNotFound"));
     }
 
@@ -124,17 +131,18 @@ export async function createReceiptsFromDelivery(
       });
       const ids: string[] = [];
       for (const line of v.lines) {
-        const materialId = Number(line.materialId);
+        const itemId = Number(line.itemId);
         const row = await tx.materialReceipt.create({
           data: {
-            materialId,
+            materialId: legacyIds.get(itemId) ?? 0,
+            itemId,
             supplierBpId: v.supplierBpId,
             // 納品書からの取込は発注明細に紐付けない（どの明細の分納かは
             // 紙からは決まらない — 発注入荷は PU02 の「入荷完了」が作る）。
             purchaseOrderItemId: null,
             plantId: line.plantId ? Number(line.plantId) : null,
             quantity: line.quantity,
-            unit: unitById.get(materialId) as string,
+            unit: unitById.get(itemId) as string,
             receivedAt: new Date(line.receivedAt),
             notes: line.notes.trim() || null,
             createdBy: actor,
@@ -155,11 +163,11 @@ export async function createReceiptsFromDelivery(
         tableName: "material_receipts",
         recordId: id,
         after: {
-          materialId: Number(line.materialId),
+          itemId: Number(line.itemId),
           supplierBpId: v.supplierBpId,
           plantId: line.plantId ? Number(line.plantId) : null,
           quantity: line.quantity,
-          unit: unitById.get(Number(line.materialId)),
+          unit: unitById.get(Number(line.itemId)),
           receivedAt: line.receivedAt,
           source: "delivery-note-intake",
         },
@@ -174,8 +182,8 @@ export async function createReceiptsFromDelivery(
       lines: v.lines.map((l) => ({
         materialText: l.materialText,
         materialCode: l.materialCode,
-        materialId: l.materialId,
-        draftMaterialId: l.draftMaterialId,
+        itemId: l.itemId,
+        draftItemId: l.draftItemId,
       })),
       actorId: actor,
     });

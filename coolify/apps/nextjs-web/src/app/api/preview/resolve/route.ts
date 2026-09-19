@@ -234,11 +234,11 @@ async function richDescriptionByNumber(
     case "design-request": {
       const r = await prisma.designRequest.findUnique({
         where: { requestNumber: target.docNumber },
-        include: { product: true },
+        include: { item: true },
       });
       if (!r) return null;
-      const product = r.product
-        ? localized(r.product.name as LocalizedText | null)
+      const product = r.item
+        ? localized(r.item.name as LocalizedText | null)
         : "製品未設定";
       return `${product} / 状態: ${r.status}`;
     }

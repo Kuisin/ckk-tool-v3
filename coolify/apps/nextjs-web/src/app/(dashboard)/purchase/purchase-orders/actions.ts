@@ -36,6 +36,7 @@ import {
 import { prisma } from "@/lib/db";
 import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
+import { legacyMaterialIdsForItems } from "@/lib/item-legacy-material";
 import { allocateDocumentKey, nextDocumentNumber } from "@/lib/numbering";
 import { learnPurchaseAliases } from "@/lib/purchase-intake";
 import {
@@ -63,9 +64,8 @@ function revalidate(poNumber?: string) {
 
 function itemInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
-    materialId: z
-      .string()
-      .min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
+    /** 選んだ素材の品目 id（items.id）を文字列で受ける。 */
+    itemId: z.string().min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
     plantId: z.string().nullable(),
     quantity: z
       .number()
@@ -121,19 +121,32 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
   }));
 }
 
-/** 明細入力 → create データ（金額はサーバー側で計算）。 */
-function buildItemCreates(items: PurchaseOrderInput["items"]) {
-  return items.map((it, i) => ({
-    materialId: Number(it.materialId),
-    plantId: it.plantId ? Number(it.plantId) : null,
-    quantity: it.quantity,
-    unit: it.unit,
-    unitPrice: it.unitPrice,
-    amount: it.quantity * it.unitPrice,
-    expectedAt: it.expectedAt ? new Date(it.expectedAt) : null,
-    notes: it.notes?.trim() || null,
-    sortOrder: i,
-  }));
+/**
+ * 明細入力 → create データ（金額はサーバー側で計算）。
+ *
+ * `material_id` 列はまだ NOT NULL（品目統合 第 2 段 B。旧列を落とすのは
+ * 最後の段）なので、選ばれた品目 id から対応する materials.id を引いて
+ * 一緒に埋める（item-legacy-material.ts — 書き込みのためだけの橋）。
+ */
+async function buildItemCreates(items: PurchaseOrderInput["items"]) {
+  const legacyIds = await legacyMaterialIdsForItems(
+    items.map((it) => Number(it.itemId)),
+  );
+  return items.map((it, i) => {
+    const itemId = Number(it.itemId);
+    return {
+      itemId,
+      materialId: legacyIds.get(itemId) ?? 0,
+      plantId: it.plantId ? Number(it.plantId) : null,
+      quantity: it.quantity,
+      unit: it.unit,
+      unitPrice: it.unitPrice,
+      amount: it.quantity * it.unitPrice,
+      expectedAt: it.expectedAt ? new Date(it.expectedAt) : null,
+      notes: it.notes?.trim() || null,
+      sortOrder: i,
+    };
+  });
 }
 
 /** スコープ判定に要る明細（入荷先拠点だけ）。prior の findUnique に足す。 */
@@ -204,17 +217,17 @@ async function unitMismatchMessage(
   items: PurchaseOrderInput["items"],
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
-  const ids = [...new Set(items.map((it) => Number(it.materialId)))];
-  const materials = await prisma.material.findMany({
-    where: { id: { in: ids } },
+  const ids = [...new Set(items.map((it) => Number(it.itemId)))];
+  const materials = await prisma.item.findMany({
+    where: { id: { in: ids }, itemType: "MATERIAL" },
     select: { id: true, code: true, unit: true },
   });
   for (const it of items) {
-    const m = materials.find((x) => x.id === Number(it.materialId));
+    const m = materials.find((x) => x.id === Number(it.itemId));
     if (!m) return tr("common.targetRecordNotFound");
     if (it.unit !== m.unit) {
       return tr("purchase.purchaseOrderActions.unitMismatch", {
-        code: m.code,
+        code: m.code ?? "",
         unit: m.unit,
       });
     }
@@ -247,7 +260,7 @@ export async function createPurchaseOrder(
     if (unitError) return actionError(unitError);
     const actor = await getCurrentActorId();
     const poNumber = await nextDocumentNumber("PURCHASE");
-    const creates = buildItemCreates(v.items);
+    const creates = await buildItemCreates(v.items);
     const totalAmount = creates.reduce((sum, it) => sum + it.amount, 0);
 
     await prisma.$transaction(async (tx) => {
@@ -327,7 +340,7 @@ export async function updatePurchaseOrder(
     const unitError = await unitMismatchMessage(v.items, tr);
     if (unitError) return actionError(unitError);
     const actor = await getCurrentActorId();
-    const creates = buildItemCreates(v.items);
+    const creates = await buildItemCreates(v.items);
     const totalAmount = creates.reduce((sum, it) => sum + it.amount, 0);
 
     await prisma.$transaction(async (tx) => {
@@ -762,7 +775,11 @@ export async function receivePurchaseOrderItems(
         }
         const receipt = await tx.materialReceipt.create({
           data: {
+            // 発注明細は既に itemId / materialId の両方を持つ（作成時に
+            // buildItemCreates が埋めた）ので、そのまま複写する — 追加の
+            // 品目 → 素材の往復は要らない。
             materialId: it.materialId,
+            itemId: it.itemId,
             supplierBpId: prior.supplierBpId,
             purchaseOrderItemId: it.id,
             plantId: it.plantId,
@@ -1086,11 +1103,11 @@ export async function learnMaterialOrderAliases(payload: {
   extractedSupplierName: string | null;
   /** 突合が下書きに入れていた仕入先 id（自動一致）。 */
   supplierBpId: string | null;
-  /** 下書きの明細（並び順のまま）。materialId は自動一致の値。 */
+  /** 下書きの明細（並び順のまま）。itemId は自動一致の品目 id。 */
   lines: {
     materialText: string | null;
     materialCode: string | null;
-    materialId: string | null;
+    itemId: string | null;
   }[];
 }): Promise<ActionResult> {
   const authz = await checkPermission("purchase_order", "CREATE");
@@ -1100,7 +1117,7 @@ export async function learnMaterialOrderAliases(payload: {
     select: {
       supplierBpId: true,
       createdBy: true,
-      items: { orderBy: { sortOrder: "asc" }, select: { materialId: true } },
+      items: { orderBy: { sortOrder: "asc" }, select: { itemId: true } },
     },
   });
   // 自分が作った発注書でなければ何も覚えない（番号だけで他人の書類に紐づけない）。
@@ -1117,8 +1134,8 @@ export async function learnMaterialOrderAliases(payload: {
     lines: payload.lines.map((l, i) => ({
       materialText: l.materialText,
       materialCode: l.materialCode,
-      materialId: String(saved.items[i]?.materialId ?? ""),
-      draftMaterialId: l.materialId,
+      itemId: String(saved.items[i]?.itemId ?? ""),
+      draftItemId: l.itemId,
     })),
     actorId,
   });

@@ -204,6 +204,71 @@ export async function searchProductOptions(
   return rows.map((p) => ({ value: String(p.id), label: productLabel(p) }));
 }
 
+/** 顧客品番（customer_product_codes）に probe を含む**品目 id**（items.id）。 */
+async function productItemIdsByCustomerCode(
+  q: string,
+  limit: number,
+): Promise<number[]> {
+  if (!q) return [];
+  const like = `%${likeEscape(q)}%`;
+  const rows = await prisma.$queryRaw<{ item_id: number }[]>`
+    SELECT DISTINCT item_id FROM app.customer_product_codes
+    WHERE is_active AND item_id IS NOT NULL
+      AND (
+        code ILIKE ${like}
+        OR EXISTS (SELECT 1 FROM unnest(aliases) AS a WHERE a ILIKE ${like})
+      )
+    ORDER BY item_id
+    LIMIT ${limit}`;
+  return rows.map((r) => r.item_id);
+}
+
+function productItemLabel(p: {
+  id: number;
+  code: string | null;
+  name: unknown;
+}): string {
+  const name = localized(p.name as LocalizedText | null);
+  return p.code ? `${name} ${p.code}` : name;
+}
+
+/**
+ * 製品（品目）— 指示書・工程リスト・検査表テンプレート・設計依頼・設計図の
+ * 製品ピッカー用。value は **items.id**（`itemType: "PRODUCT"`）。
+ *
+ * 品目統合 第 2 段 D — work_orders.product_item_id /
+ * product_process_routes.item_id / inspection_templates.item_id /
+ * design_requests.item_id / design_files.item_id が指す先。旧
+ * `searchProductOptions`（products.id）とは値の意味が違うので混ぜないこと。
+ */
+export async function searchProductItemOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
+  const q = query.trim();
+  const [keywordIds, customerCodeIds] = await Promise.all([
+    itemIdsByKeyword(q, LIMIT),
+    productItemIdsByCustomerCode(q, LIMIT),
+  ]);
+  const rows = await prisma.item.findMany({
+    where: {
+      itemType: "PRODUCT",
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { name: { path: ["ja"], string_contains: q } },
+              ...byIds([...new Set([...keywordIds, ...customerCodeIds])]),
+            ],
+          }
+        : {}),
+    },
+    orderBy: { id: "asc" },
+    take: LIMIT,
+  });
+  return rows.map((r) => ({ value: String(r.id), label: productItemLabel(r) }));
+}
+
 /**
  * 見積書 — 注文請書から参照する見積を選ぶための検索。
  *
@@ -498,6 +563,58 @@ export async function f4SearchProducts(
         formatProductNumber(p.yearMonth, p.seq) ?? tr("common.notNumbered"),
         nameJa,
         p.materialType?.code ?? "—",
+        p.unit,
+      ],
+    };
+  });
+}
+
+/**
+ * 製品（品目） F4 — 名称 / 材種。columns: 製品コード/名称/材種/単位。
+ * value は items.id（`searchProductItemOptions` と対）。
+ */
+export async function f4SearchProductItems(
+  filters: Record<string, string>,
+): Promise<F4SearchRow[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
+  const tr = await getTranslations();
+  const name = s(filters.name);
+  const materialType = s(filters.materialType);
+  // 名称欄はキーワード（match_names）込みで判定する（略称・英字でも当たる）。
+  const keywordIds = await itemIdsByKeyword(name, F4_LIMIT);
+  const rows = await prisma.item.findMany({
+    where: {
+      itemType: "PRODUCT",
+      isActive: true,
+      ...(name
+        ? {
+            OR: [
+              { name: { path: ["ja"], string_contains: name } },
+              ...byIds(keywordIds),
+            ],
+          }
+        : {}),
+      ...(materialType
+        ? {
+            requiresMaterialType: {
+              code: { contains: materialType, mode: "insensitive" },
+            },
+          }
+        : {}),
+    },
+    include: { requiresMaterialType: true },
+    orderBy: { id: "asc" },
+    take: F4_LIMIT,
+  });
+  return rows.map((p) => {
+    const nameJa = localized(p.name as LocalizedText | null);
+    return {
+      value: String(p.id),
+      label: productItemLabel(p),
+      cells: [
+        p.code ?? tr("common.notNumbered"),
+        nameJa,
+        p.requiresMaterialType?.code ?? "—",
         p.unit,
       ],
     };
@@ -857,7 +974,18 @@ export async function searchAllocatableOrderLineOptions(
   );
 }
 
-/** 素材検索（指示書の使用素材）。value = 内部 id、label = コード + 名称。 */
+/**
+ * 素材検索（CM02 フォームの「業務データ検索」lookup=material 専用）。
+ * value = **素材マスタの内部 id**（materials.id）、label = コード + 名称。
+ *
+ * ⚠️ **購買・指示書の素材ピッカーはこれを使わない** — あちらは
+ * `searchMaterialItemOptions`（品目統合 items 由来、value = items.id）。
+ * ここは form-lookup-resolve.ts の `"material"` lookup と
+ * `lookupHref("material", …)` が materials.id を前提にしたまま（
+ * `/master/materials/[id]` は materials.id で引く）なので、値の意味を
+ * 変えるとフォーム回答の保存済みリンクが壊れる。品目統合が forms 側まで
+ * 届いたら合流する。
+ */
 export async function searchMaterialOptions(
   query: string,
 ): Promise<SearchOption[]> {
@@ -887,9 +1015,48 @@ export async function searchMaterialOptions(
 }
 
 /**
+ * 素材（品目）検索 — 購買（PU01〜PU03）・指示書の使用素材ピッカー用。
+ * value = **items.id**（品目統合 第 2 段 B — material_purchase_order_items /
+ * material_receipts / purchase_request_items / work_orders.material_item_id
+ * が指す先）。旧 `searchMaterialOptions`（materials.id）とは値の意味が違うので
+ * 混ぜないこと — SearchSelect の `storageKey` も別にしてある（"materialItem"）。
+ */
+export async function searchMaterialItemOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MATERIAL_PICKER_CODES)).ok) return [];
+  const q = query.trim();
+  const keywordIds = q ? await itemIdsByKeyword(q, LIMIT) : [];
+  const rows = await prisma.item.findMany({
+    where: {
+      itemType: "MATERIAL",
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+              ...byIds(keywordIds),
+            ],
+          }
+        : {}),
+    },
+    orderBy: { code: "asc" },
+    take: LIMIT,
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: `${r.code}（${localized(r.name as LocalizedText | null)}）`,
+  }));
+}
+
+/**
  * 素材 1 件の単位（素材入荷 PU13 の単位既定値）。入荷の単位は素材マスタの
  * 単位で固定する — 台帳（material_inventory）の単位と揃えるため。
  * 最近使用（localStorage）の候補は単位を持たないので、選択時に引き直す。
+ *
+ * ⚠️ CM02 フォーム専用（`searchMaterialOptions` と対）。購買・指示書は
+ * `fetchMaterialItemUnit` を使う。
  */
 export async function fetchMaterialUnit(
   materialId: string,
@@ -899,6 +1066,20 @@ export async function fetchMaterialUnit(
   if (!Number.isInteger(id) || id <= 0) return null;
   const row = await prisma.material.findUnique({
     where: { id },
+    select: { unit: true },
+  });
+  return row?.unit ?? null;
+}
+
+/** 品目（素材）1 件の単位 — `searchMaterialItemOptions` と対。value = items.id。 */
+export async function fetchMaterialItemUnit(
+  itemId: string,
+): Promise<string | null> {
+  if (!(await requireAnyRead(MATERIAL_PICKER_CODES)).ok) return null;
+  const id = Number(itemId);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  const row = await prisma.item.findUnique({
+    where: { id, itemType: "MATERIAL" },
     select: { unit: true },
   });
   return row?.unit ?? null;

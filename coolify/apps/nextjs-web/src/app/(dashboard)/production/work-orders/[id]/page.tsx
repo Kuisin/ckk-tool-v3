@@ -82,7 +82,7 @@ export default async function ProductionWorkOrdersDetailPage({
   const woDesign = await prisma.workOrder.findUnique({
     where: { workOrderNumber },
     select: {
-      productId: true,
+      productItemId: true,
       designFileId: true,
       orderLineLinks: {
         select: {
@@ -106,9 +106,9 @@ export default async function ProductionWorkOrdersDetailPage({
   const designCustomerBpId = woCustomers.length === 1 ? woCustomers[0] : null;
   const designFile = woDesign?.designFileId
     ? await fetchDesignFileById(woDesign.designFileId)
-    : woDesign?.productId
+    : woDesign?.productItemId
       ? await fetchLatestViewableDesignFile(
-          Number(woDesign.productId),
+          woDesign.productItemId,
           designCustomerBpId,
         )
       : null;

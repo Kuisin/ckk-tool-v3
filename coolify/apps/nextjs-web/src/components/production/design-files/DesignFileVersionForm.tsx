@@ -23,7 +23,7 @@ import { IconInfoCircle, IconPlus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
+import { searchProductItemOptions } from "@/app/(dashboard)/_shared/option-search";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DesignFileSlot } from "@/components/ui/DesignFileSlot";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -39,7 +39,8 @@ interface Option {
 export interface DesignRequestContext {
   id: string;
   requestNumber: string;
-  productId: number;
+  /** 対象製品（品目, items.id）。 */
+  itemId: number;
   productLabel: string;
   customerBpId: string | null;
   customerName: string | null;
@@ -64,9 +65,11 @@ export function DesignFileVersionForm({
   // 依頼から来たときは製品・受注元を依頼に合わせて固定する。ここで選び直せると
   // 「依頼の成果物なのに別製品の図面」が作れてしまう（サーバー側でも弾くが、
   // 選べる UI を出さないのが先）。
-  const [productId, setProductId] = useState<string | null>(
+  // 値は品目 (items.id) — 一覧・詳細ページはまだ products.id 基準なので、
+  // 遷移先の URL はアップロード結果が返す旧 productId を使う。
+  const [itemId, setItemId] = useState<string | null>(
     requestContext
-      ? String(requestContext.productId)
+      ? String(requestContext.itemId)
       : (initialProduct?.value ?? null),
   );
   const [customerBpId, setCustomerBpId] = useState<string | null>(
@@ -82,11 +85,11 @@ export function DesignFileVersionForm({
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
-    if (!blueprint || !productId) return;
+    if (!blueprint || !itemId) return;
     setBusy(true);
     try {
       const body = new FormData();
-      body.set("productId", productId);
+      body.set("itemId", itemId);
       if (customerBpId) body.set("customerBpId", customerBpId);
       if (requestContext) body.set("designRequestId", requestContext.id);
       if (notes.trim()) body.set("notes", notes.trim());
@@ -106,6 +109,7 @@ export function DesignFileVersionForm({
       const json = (await res.json().catch(() => null)) as {
         ok?: boolean;
         version?: number;
+        productId?: number | null;
         error?: string;
       } | null;
       if (res.ok && json?.ok) {
@@ -121,7 +125,7 @@ export function DesignFileVersionForm({
         router.push(
           requestContext
             ? `/sales/design-requests/${encodeURIComponent(requestContext.requestNumber)}`
-            : `/production/design-files/${productId}`,
+            : `/production/design-files/${json.productId ?? ""}`,
         );
       } else {
         notifications.show({
@@ -157,10 +161,10 @@ export function DesignFileVersionForm({
           <SearchSelect
             initialOption={initialProduct ?? undefined}
             label={tr("common.product")}
-            onChange={setProductId}
-            onSearch={searchProductOptions}
-            storageKey="product"
-            value={productId}
+            onChange={setItemId}
+            onSearch={searchProductItemOptions}
+            storageKey="design-file-product-item"
+            value={itemId}
             withAsterisk
           />
         )}
@@ -261,7 +265,7 @@ export function DesignFileVersionForm({
       </FormSection>
 
       <FormActions
-        disabled={!blueprint || !productId}
+        disabled={!blueprint || !itemId}
         loading={busy}
         onCancel={() => router.back()}
         onSave={submit}

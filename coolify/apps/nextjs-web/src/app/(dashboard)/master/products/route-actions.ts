@@ -97,13 +97,26 @@ function revalidate(productId: number) {
   revalidatePath(`${BASE_PATH}/${productId}`);
 }
 
-/** ルートの種別に応じた画面を捨てる（準備 = 工程マスタ配下 / 製造 = 製品詳細）。 */
-function revalidateFor(route: { kind: string; productId: number | null }) {
-  if (route.kind === "PREP" || route.productId == null) {
+/**
+ * ルートの種別に応じた画面を捨てる（準備 = 工程マスタ配下 / 製造 = 製品詳細）。
+ *
+ * 品目 (itemId) が「対象製品を持つか」の判定を持ち、`productId`（旧列。
+ * まだ残っている橋渡し値）は URL 組み立てにだけ使う。
+ *
+ * ⚠️ 修正: 以前はここで自分自身を再帰呼び出ししており（PREP でない枝が必ず
+ * 無限再帰でスタックオーバーフローする）、製造工程リストの更新・削除・新
+ * バージョン作成が軒並み落ちていた可能性がある。品目導入のついでに直す。
+ */
+function revalidateFor(route: {
+  kind: string;
+  itemId: number | null;
+  productId: number | null;
+}) {
+  if (route.kind === "PREP" || route.itemId == null) {
     revalidatePath(PREP_ROUTES_PATH, "layout");
     return;
   }
-  revalidateFor(route);
+  if (route.productId != null) revalidate(route.productId);
 }
 
 /**
@@ -337,6 +350,7 @@ export async function updateProductRoute(
       where: { id: routeId },
       select: {
         kind: true,
+        itemId: true,
         productId: true,
         name: true,
         isActive: true,
@@ -387,7 +401,7 @@ export async function deleteProductRoute(
   try {
     const prior = await prisma.productProcessRoute.findUnique({
       where: { id: routeId },
-      select: { kind: true, productId: true },
+      select: { kind: true, itemId: true, productId: true },
     });
     if (!prior)
       return actionError(tr("master.productRouteActions.targetRouteNotFound"));

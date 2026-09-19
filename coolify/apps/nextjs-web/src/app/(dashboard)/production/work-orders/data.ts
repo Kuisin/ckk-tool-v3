@@ -98,7 +98,7 @@ const WO_INCLUDE = {
   },
   createdByUser: { select: { displayName: true } },
   product: true,
-  material: true,
+  materialItem: true,
   storageLocation: {
     select: { id: true, name: true, plant: { select: { name: true } } },
   },
@@ -494,7 +494,7 @@ export async function fetchWorkOrderStrips(
     },
     include: {
       product: true,
-      material: { select: { code: true } },
+      materialItem: { select: { code: true } },
       orderLineLinks: {
         select: {
           orderLine: {
@@ -549,7 +549,7 @@ export async function fetchWorkOrderStrips(
               : customers[0],
         type: r.type,
         plannedQuantity: r.plannedQuantity,
-        materialCode: r.material?.code ?? null,
+        materialCode: r.materialItem?.code ?? null,
         createdAt: r.createdAt.toISOString(),
       };
     });
@@ -678,10 +678,10 @@ export async function fetchWorkOrder(
     })),
     createdByName: r.createdByUser?.displayName ?? null,
     productName: localized(r.product.name as LocalizedText | null),
-    materialId: r.materialId,
-    materialCode: r.material?.code ?? null,
-    materialName: r.material
-      ? localized(r.material.name as LocalizedText | null)
+    materialItemId: r.materialItemId,
+    materialCode: r.materialItem?.code ?? null,
+    materialName: r.materialItem
+      ? localized(r.materialItem.name as LocalizedText | null)
       : null,
     storageLocationId: r.storageLocationId,
     allowQuantityVariance: r.allowQuantityVariance,

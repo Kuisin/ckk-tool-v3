@@ -7,7 +7,7 @@
  * 一覧では「手動」と出る。
  *
  * フィールド:
- *   productId       … 対象製品（必須）
+ *   itemId          … 対象製品の品目 id（items.id, itemType: PRODUCT。必須）
  *   customerBpId  … 受注元（任意。空 = 汎用）
  *   designRequestId … 成果物とする設計依頼の uuid（任意。空 = 手動登録）
  *   notes         … 版のメモ（任意）
@@ -55,8 +55,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  const productId = Number(form.get("productId"));
-  if (!Number.isInteger(productId) || productId <= 0) {
+  const itemId = Number(form.get("itemId"));
+  if (!Number.isInteger(itemId) || itemId <= 0) {
     return badRequest(
       tr("production.designFilesUpload.targetProductNotSpecified"),
     );
@@ -101,7 +101,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const result = await uploadDesignVersion({
-    productId,
+    itemId,
     customerBpId: bpRaw || null,
     designRequestId: requestRaw || null,
     notes: String(form.get("notes") ?? "").trim() || null,
@@ -115,5 +115,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     ),
   });
   if (!result.ok) return badRequest(result.error);
-  return NextResponse.json({ ok: true, version: result.data.version });
+  return NextResponse.json({
+    ok: true,
+    version: result.data.version,
+    // 品目 (items.id) から解決した旧 products.id — 完了後の一覧リンク
+    // （/production/design-files/[productId]）はまだ products.id 基準のため。
+    productId: result.data.productId,
+  });
 }
