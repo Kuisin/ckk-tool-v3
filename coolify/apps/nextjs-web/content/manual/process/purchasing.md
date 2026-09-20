@@ -98,4 +98,4 @@ screenshots:
 - 各アプリの操作と入力欄の意味 … 左の **操作方法 › 購買**
 - 戻り先の流れ … [生産の流れ](/manual/ja/process/production)（素材不足はここから来る）
 - 素材そのものの登録 … [素材マスタ](/manual/ja/operations/masters/material/user)
-- 在庫の確認 … [在庫管理](/manual/ja/operations/production/material-inventory/user)
+- 在庫の確認 … [在庫管理](/manual/ja/operations/inventory/material-inventory/user)

@@ -81,7 +81,7 @@ screenshots: [purchase-request-list-01, purchase-request-new-01, purchase-reques
 1. 依頼の画面を開きます。
 2. 画面の上のほうに出ている「**承認依頼が必要です**」というカードの「**承認依頼**」を押します。
 
-状態が「**承認依頼中**」に変わり、承認する人に依頼が届きます。同じ依頼は[承認管理](/manual/ja/operations/production/approval/user)の画面にも並びます。
+状態が「**承認依頼中**」に変わり、承認する人に依頼が届きます。同じ依頼は[承認管理](/manual/ja/operations/general/my-tasks/user)の画面にも並びます。
 
 ![承認依頼中の購買依頼](../../../assets/screenshots/purchase-request-detail-02.png)
 

@@ -3,7 +3,7 @@ title: "Inventory Management (Materials and Work in Progress) — User Manual"
 description: "Check how much material you can use now, how much you will be able to use once deliveries arrive, and how much is being made right now."
 screenshots: [inventory-materials-01, inventory-material-detail-01, inventory-material-transactions-01, inventory-wip-01]
 ---
-This page explains the 「**素材**」 (materials) tab and the 「**仕掛品**」 (work in progress) tab of [inventory management](/manual/en/operations/production/product-inventory/user) (operation code `PD04`). You can check how much material you can use now, and how much is being made right now.
+This page explains the 「**素材**」 (materials) tab and the 「**仕掛品**」 (work in progress) tab of [inventory management](/manual/en/operations/inventory/product-inventory/user) (operation code `PD04`). You can check how much material you can use now, and how much is being made right now.
 
 > ⚠️ For now this app works **only in the test environment**. The screens and the steps may change before it can be used for real work.
 
@@ -14,7 +14,7 @@ This page explains the 「**素材**」 (materials) tab and the 「**仕掛品**
 - You can check **when and how much** ordered material will arrive.
 - You can check how many pieces are at which step of which work order right now.
 
-> 💡 You cannot change the material numbers directly here. The numbers move automatically along with everyday work. The only thing you can do by hand on this screen is 「**在庫移動**」 (stock transfer), which changes where something is kept. For how to do it, see [inventory management](/manual/en/operations/production/product-inventory/user).
+> 💡 You cannot change the material numbers directly here. The numbers move automatically along with everyday work. The only thing you can do by hand on this screen is 「**在庫移動**」 (stock transfer), which changes where something is kept. For how to do it, see [inventory management](/manual/en/operations/inventory/product-inventory/user).
 
 ## Words used on this page
 
@@ -82,7 +82,7 @@ This screen lists how much is being made right now, by work order and by step.
 
 > ⚠️ Work in progress is not stock yet. It goes into real stock when all the steps of the work order are finished.
 
-You need inventory permission to use this app. For the products tab, the locations tab, and how to do a stock transfer, see [inventory management](/manual/en/operations/production/product-inventory/user).
+You need inventory permission to use this app. For the products tab, the locations tab, and how to do a stock transfer, see [inventory management](/manual/en/operations/inventory/product-inventory/user).
 
 ## Input fields
 

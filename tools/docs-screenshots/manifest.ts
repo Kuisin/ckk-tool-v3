@@ -745,7 +745,7 @@ export const shots: Shot[] = [
     // 製品在庫の詳細（在庫 55 / 予約 50 / 利用可能 5）
     id: "inventory-product-detail-01",
     docPage: "operations/production/product-inventory/user",
-    path: "/production/inventory/products/dc050000-0000-4000-8000-000000000001",
+    path: "/inventory/products/dc050000-0000-4000-8000-000000000001",
     steps: async (page) => {
       await page.getByText("ORD-202607-00003-01").first().waitFor();
     },
@@ -754,7 +754,7 @@ export const shots: Shot[] = [
     // 在庫移動モーダル（保管場所が未割当の行から開く）
     id: "inventory-transfer-01",
     docPage: "operations/production/product-inventory/user",
-    path: "/production/inventory",
+    path: "/inventory",
     steps: async (page) => {
       await page.getByRole("button", { name: "移動" }).first().click();
       await page.getByText("在庫移動").first().waitFor();
@@ -763,7 +763,7 @@ export const shots: Shot[] = [
   {
     id: "inventory-transactions-01",
     docPage: "operations/production/product-inventory/user",
-    path: "/production/inventory/products/dc050000-0000-4000-8000-000000000001?tab=transactions",
+    path: "/inventory/products/dc050000-0000-4000-8000-000000000001?tab=transactions",
     steps: async (page) => {
       await page.getByText("取引履歴").first().waitFor();
     },
@@ -772,7 +772,7 @@ export const shots: Shot[] = [
     // 素材在庫の詳細（利用可能がマイナス + 入荷予定の ATP タイムライン）
     id: "inventory-material-detail-01",
     docPage: "operations/production/material-inventory/user",
-    path: "/production/inventory/materials/dc051000-0000-4000-8000-000000000002",
+    path: "/inventory/materials/dc051000-0000-4000-8000-000000000002",
     steps: async (page) => {
       await page.getByText("PO-202607-90102").first().waitFor();
     },
@@ -780,7 +780,7 @@ export const shots: Shot[] = [
   {
     id: "inventory-material-transactions-01",
     docPage: "operations/production/material-inventory/user",
-    path: "/production/inventory/materials/dc051000-0000-4000-8000-000000000002?tab=transactions",
+    path: "/inventory/materials/dc051000-0000-4000-8000-000000000002?tab=transactions",
     steps: async (page) => {
       await page.getByText("取引履歴").first().waitFor();
     },
@@ -789,7 +789,7 @@ export const shots: Shot[] = [
   {
     id: "inventory-products-01",
     docPage: "operations/production/product-inventory/user",
-    path: "/production/inventory",
+    path: "/inventory",
     steps: async (page) => {
       await page.getByText("超硬エンドミル").first().waitFor();
     },
@@ -797,7 +797,7 @@ export const shots: Shot[] = [
   {
     id: "inventory-locations-01",
     docPage: "operations/production/product-inventory/user",
-    path: "/production/inventory?tab=locations",
+    path: "/inventory?tab=locations",
     steps: async (page) => {
       await page.getByText("資材倉庫A").filter({ visible: true }).first().waitFor();
     },
@@ -805,7 +805,7 @@ export const shots: Shot[] = [
   {
     id: "inventory-materials-01",
     docPage: "operations/production/material-inventory/user",
-    path: "/production/inventory?tab=materials",
+    path: "/inventory?tab=materials",
     steps: async (page) => {
       await page.getByText("B01A0001").first().waitFor();
     },
@@ -813,7 +813,7 @@ export const shots: Shot[] = [
   {
     id: "inventory-wip-01",
     docPage: "operations/production/material-inventory/user",
-    path: "/production/inventory?tab=wip",
+    path: "/inventory?tab=wip",
     steps: async (page) => {
       await page.getByText("9001").filter({ visible: true }).first().waitFor();
     },
@@ -2446,7 +2446,7 @@ export const shots: Shot[] = [
     // 在庫管理（製品タブ）— 利用可能列を強調
     id: "flow-inventory-products-01",
     docPage: "process/production",
-    path: "/production/inventory",
+    path: "/inventory",
     steps: async (page) => {
       await page.getByText("超硬エンドミル").first().waitFor();
     },
@@ -2456,7 +2456,7 @@ export const shots: Shot[] = [
     // 在庫管理（素材タブ）— 利用可能列を強調
     id: "flow-inventory-materials-01",
     docPage: "process/production",
-    path: "/production/inventory?tab=materials",
+    path: "/inventory?tab=materials",
     steps: async (page) => {
       await page.getByText("B01A0001").first().waitFor();
     },
@@ -2476,7 +2476,7 @@ export const shots: Shot[] = [
     // 製品在庫の取引履歴 — 入庫行を強調
     id: "flow-inventory-in-01",
     docPage: "process/production",
-    path: "/production/inventory/products/dc050000-0000-4000-8000-000000000001?tab=transactions",
+    path: "/inventory/products/dc050000-0000-4000-8000-000000000001?tab=transactions",
     steps: async (page) => {
       await page.getByText("取引履歴").first().waitFor();
     },

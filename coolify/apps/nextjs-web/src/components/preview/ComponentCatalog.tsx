@@ -373,7 +373,10 @@ export function ComponentCatalog() {
               <Table.Td>{fmt.date("2026-06-04")}</Table.Td>
               <Table.Td>
                 <Code>formatDateTime</Code> →{" "}
-                {fmt.dateTime("2026-06-04T14:30:00")}
+                {/* 時刻はオフセット付きで渡す — 無しだと Date がローカル時刻と
+                    解釈し、サーバー（コンテナの TZ）とブラウザで別の瞬間になって
+                    hydration が割れる（実際に #418 が出た） */}
+                {fmt.dateTime("2026-06-04T14:30:00+09:00")}
               </Table.Td>
             </Table.Tr>
           </Table.Tbody>

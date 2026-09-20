@@ -1073,6 +1073,7 @@
       "MANUFACTURE": "製造分"
     },
     "INSPECTION_STATUS_LABEL": {
+      "APPROVED": "承認済",
       "PENDING": "未実施",
       "PASS": "合格",
       "FAIL": "不合格"
@@ -1205,6 +1206,7 @@
       "QUANTITY": "数量"
     },
     "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "MANUAL": "手動",
       "WORK_ORDER_COMPLETION": "指示書完了",
       "DELIVERY_SHIPMENT": "出荷",
       "MATERIAL_RECEIPT": "素材入荷",
@@ -4940,6 +4942,7 @@
       "addColumn": "列を追加",
       "accounts": "既定の科目コード",
       "accountsDescription": "マスタ側の科目コードが空のときに使う。空のままなら、その欄は空欄で出力される。",
+      "accountCodeHint": "半角英数字・16 桁まで（空欄可）",
       "receivableAccountCode": "売掛金 科目コード",
       "salesAccountCode": "売上高 科目コード",
       "taxAccountCode": "仮受消費税 科目コード",
@@ -5324,7 +5327,7 @@
       "approvalNotRequired": "不要",
       "accountingSection": "会計連携",
       "accountingSectionHint": "仕訳 CSV の借方（売掛金）に出す科目コード。空欄なら会計連携（SY0J）の既定に従う。",
-      "accountCodeHint": "半角数字・8 桁まで（空欄可）",
+      "accountCodeHint": "半角英数字・16 桁まで（空欄可）",
       "receivableAccountCode": "売掛金 科目コード",
       "receivableSubAccountCode": "補助科目コード（得意先）",
       "receivableSubAccountCodeHint": "会計ソフト側の得意先コード。社内の顧客コードとは別物なので、流用しない。"
@@ -6401,7 +6404,7 @@
       "followProduct": "製品に従う",
       "accountingSection": "会計連携",
       "accountingSectionHint": "仕訳 CSV に出す科目コード。空欄なら会計連携（SY0J）の既定に従う。",
-      "accountCodeHint": "半角数字・8 桁まで（空欄可）",
+      "accountCodeHint": "半角英数字・16 桁まで（空欄可）",
       "taxCode": "消費税コード",
       "salesAccountCode": "売上高 科目コード",
       "taxAccountCode": "仮受消費税 科目コード"
@@ -6467,6 +6470,7 @@
       "enterACustomerCode": "顧客品番を入力してください",
       "duplicateCustomerRow": "同じ顧客の行が 2 つあります。1 顧客につき 1 行にしてください",
       "duplicateCodeForCustomer": "顧客品番「{code}」が同じ顧客の中で重複しています",
+      "duplicateCodeOnOtherProduct": "顧客品番「{code}」は同じ顧客の別の製品に登録済みです（表記ゆれを含む）",
       "couldNotSave": "顧客品番の保存に失敗しました"
     }
   },

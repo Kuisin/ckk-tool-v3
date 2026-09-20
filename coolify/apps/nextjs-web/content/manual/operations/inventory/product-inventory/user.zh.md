@@ -17,7 +17,7 @@ screenshots: [inventory-products-01, inventory-product-detail-01, inventory-tran
 画面分为 4 个标签页。
 
 - **製品**（产品）… 做好的产品和半成品的库存（本页说明）。
-- **素材** / **仕掛品**（材料 / 在制品）… 材料库存和目前正在制造中的根数。→ [库存管理（材料・在制品）](/manual/zh/operations/production/material-inventory/user)
+- **素材** / **仕掛品**（材料 / 在制品）… 材料库存和目前正在制造中的根数。→ [库存管理（材料・在制品）](/manual/zh/operations/inventory/material-inventory/user)
 - **ロケーション**（位置）… 按 据点 → 保管场所 → 货架 的顺序查看「哪里有什么」的画面（本页说明）。
 
 以前「产品库存」和「材料库存」是分开的应用，现在已经合并到这一个应用中。打开以前画面的链接时，会自动跳转到本应用。

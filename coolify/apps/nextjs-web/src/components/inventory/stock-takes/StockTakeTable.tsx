@@ -10,7 +10,7 @@
 import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconClipboardList, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -18,6 +18,8 @@ import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
+import { categoryLabel } from "@/lib/app-list";
+import type { Locale } from "@/lib/i18n";
 import { statusOptions } from "@/lib/status-map";
 import type { StockTakeRow } from "./model";
 
@@ -25,6 +27,7 @@ const BASE_PATH = "/inventory/stock-takes";
 
 export function StockTakeTable({ rows }: { rows: StockTakeRow[] }) {
   const tr = useTranslations();
+  const locale = useLocale() as Locale;
   const fmt = useFormat();
   const router = useRouter();
 
@@ -115,7 +118,10 @@ export function StockTakeTable({ rows }: { rows: StockTakeRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={[tr("common.production"), tr("common.stockTake")]}
+      breadcrumbs={[
+        categoryLabel("在庫", locale), // i18n-ignore — app-list のカテゴリ名（対訳は app-list.ts が持つ）
+        tr("common.stockTake"),
+      ]}
       filters={
         <Select
           aria-label={tr("common.status")}

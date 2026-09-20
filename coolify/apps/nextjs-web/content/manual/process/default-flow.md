@@ -164,7 +164,7 @@ screenshots:
 
 ### 操作（だれが・なにを）
 
-1. 承認者が[承認管理](/manual/ja/operations/production/approval/user)（`PD03`）または指示書の画面で内容を確認し、「承認」する。問題があれば「差し戻し」を選ぶ。
+1. 承認者が[承認管理](/manual/ja/operations/general/my-tasks/user)（`PD03`）または指示書の画面で内容を確認し、「承認」する。問題があれば「差し戻し」を選ぶ。
 
 ![承認依頼中の指示書。承認ボタンが赤枠で強調されている](../assets/screenshots/flow-approval-01.png)
 

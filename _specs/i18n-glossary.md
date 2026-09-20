@@ -422,6 +422,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 在庫移動 | Stock transfer | 库存调拨 |
 | 保管場所 / 棚 | Storage location / Shelf | 存放位置 / 货架 |
 | 未手配 / 手配済 | Not planned / Planned | 未安排 / 已安排 |
+| 手動（入出庫伝票の事由 — ST06 手動入出庫で作った伝票） | Manual | 手动 |
 | 割当 | Allocation | 分配 |
 
 ### 3.10 出荷・請求

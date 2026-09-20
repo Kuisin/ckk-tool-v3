@@ -30,7 +30,7 @@ import { notifications } from "@mantine/notifications";
 import { IconX } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import {
   approveStockTake,
@@ -70,6 +70,8 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { categoryLabel } from "@/lib/app-list";
+import type { Locale } from "@/lib/i18n";
 import type { ActionResult } from "@/lib/server-action";
 import {
   canCancel,
@@ -411,6 +413,7 @@ export function StockTakeDetail({
   approvalTrail?: ApprovalTrailView[];
 }) {
   const tr = useTranslations();
+  const locale = useLocale() as Locale;
   const fmt = useFormat();
   const router = useRouter();
   const [tab, setTab] = useTabParam("overview");
@@ -515,7 +518,7 @@ export function StockTakeDetail({
         />
       }
       breadcrumbs={[
-        tr("common.production"),
+        categoryLabel("在庫", locale), // i18n-ignore — app-list のカテゴリ名（対訳は app-list.ts が持つ）
         { label: tr("common.stockTake"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}

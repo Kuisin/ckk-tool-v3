@@ -1073,6 +1073,7 @@
       "MANUFACTURE": "Manufacture"
     },
     "INSPECTION_STATUS_LABEL": {
+      "APPROVED": "Approved",
       "PENDING": "Not performed",
       "PASS": "Pass",
       "FAIL": "Fail"
@@ -1205,6 +1206,7 @@
       "QUANTITY": "Quantity"
     },
     "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "MANUAL": "Manual",
       "WORK_ORDER_COMPLETION": "Work order completed",
       "DELIVERY_SHIPMENT": "Shipment",
       "MATERIAL_RECEIPT": "Material receipt",
@@ -4940,6 +4942,7 @@
       "addColumn": "Add a column",
       "accounts": "Default account codes",
       "accountsDescription": "Used when the master has no code. Left blank, the field is written empty.",
+      "accountCodeHint": "Letters, digits, - and _ only, up to 16 (may be blank)",
       "receivableAccountCode": "Accounts receivable code",
       "salesAccountCode": "Sales account code",
       "taxAccountCode": "Tax suspense account code",
@@ -5324,7 +5327,7 @@
       "approvalNotRequired": "Not required",
       "accountingSection": "Accounting export",
       "accountingSectionHint": "Account codes written to the debit (accounts receivable) side of the journal CSV. Left blank, the default in Accounting export (SY0J) applies.",
-      "accountCodeHint": "Digits only, up to 8 (may be blank)",
+      "accountCodeHint": "Letters, digits, - and _ only, up to 16 (may be blank)",
       "receivableAccountCode": "Accounts receivable code",
       "receivableSubAccountCode": "Sub-account code (customer)",
       "receivableSubAccountCodeHint": "The customer code in the accounting software. It is not the in-house customer code — do not reuse that one."
@@ -6401,7 +6404,7 @@
       "followProduct": "Follow the product",
       "accountingSection": "Accounting export",
       "accountingSectionHint": "Account codes written to the journal CSV. Left blank, the default in Accounting export (SY0J) applies.",
-      "accountCodeHint": "Digits only, up to 8 (may be blank)",
+      "accountCodeHint": "Letters, digits, - and _ only, up to 16 (may be blank)",
       "taxCode": "Tax code",
       "salesAccountCode": "Sales account code",
       "taxAccountCode": "Tax suspense account code"
@@ -6467,6 +6470,7 @@
       "enterACustomerCode": "Enter a customer part number",
       "duplicateCustomerRow": "The same customer appears twice. Keep one row per customer",
       "duplicateCodeForCustomer": "Customer part number “{code}” is duplicated for the same customer",
+      "duplicateCodeOnOtherProduct": "Customer part number “{code}” is already registered for this customer on another product (including notation variants)",
       "couldNotSave": "Could not save the customer part numbers"
     }
   },

@@ -300,21 +300,19 @@ export function OrderAcceptanceItemsEditor({
   const patch = (ri: number, p: Partial<ItemRowForm>) => {
     onChange(items.map((r, i) => (i === ri ? { ...r, ...p } : r)));
   };
-  // 配送節（§8）の開閉。値が入っている行は既定で開く（hasLineDelivery）—
-  // ここに載っている rowId はその既定から**反転**させたという印で、開閉
-  // どちら向きのトグルも同じ Set で表せる。
-  const [deliveryToggled, setDeliveryToggled] = useState<Set<string>>(
-    new Set(),
-  );
+  // 配送節（§8）の開閉。値が入っている行は既定で開く（hasLineDelivery）。
+  // 人がトグルを押した行はその向きを**そのまま**覚える（true / false）—
+  // 「既定から反転」で持つと、空の節を開いて最初の値を入れた瞬間に既定側が
+  // 変わって節が閉じてしまう（実機で起きた）。押していない行は既定に従う。
+  const [deliveryOpenByRow, setDeliveryOpenByRow] = useState<
+    Map<string, boolean>
+  >(new Map());
   const isDeliveryOpen = (row: ItemRowForm) =>
-    deliveryToggled.has(row.rowId) !== hasLineDelivery(row);
+    deliveryOpenByRow.get(row.rowId) ?? hasLineDelivery(row);
   const toggleDelivery = (rowId: string) => {
-    setDeliveryToggled((prev) => {
-      const next = new Set(prev);
-      if (next.has(rowId)) next.delete(rowId);
-      else next.add(rowId);
-      return next;
-    });
+    const row = items.find((r) => r.rowId === rowId);
+    const open = row ? isDeliveryOpen(row) : false;
+    setDeliveryOpenByRow((prev) => new Map(prev).set(rowId, !open));
   };
 
   // 先頭行の配送を全行へ撒く — 届け先が 1 つだけの注文（大半）のための
@@ -338,7 +336,7 @@ export function OrderAcceptanceItemsEditor({
             },
       ),
     );
-    setDeliveryToggled(new Set());
+    setDeliveryOpenByRow(new Map());
   };
 
   const prices = items.map((row) => rowPrice(row, priceContext, tr));

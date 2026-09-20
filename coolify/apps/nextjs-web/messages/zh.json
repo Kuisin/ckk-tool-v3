@@ -1073,6 +1073,7 @@
       "MANUFACTURE": "制造分"
     },
     "INSPECTION_STATUS_LABEL": {
+      "APPROVED": "已批准",
       "PENDING": "未实施",
       "PASS": "合格",
       "FAIL": "不合格"
@@ -1205,6 +1206,7 @@
       "QUANTITY": "数量"
     },
     "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "MANUAL": "手动",
       "WORK_ORDER_COMPLETION": "工单完成",
       "DELIVERY_SHIPMENT": "出货",
       "MATERIAL_RECEIPT": "材料到货",
@@ -4940,6 +4942,7 @@
       "addColumn": "添加列",
       "accounts": "默认科目代码",
       "accountsDescription": "主数据一侧的科目代码为空时使用。留空则该栏输出为空。",
+      "accountCodeHint": "仅限半角字母、数字、- 和 _，最多 16 位（可留空）",
       "receivableAccountCode": "应收账款 科目代码",
       "salesAccountCode": "销售收入 科目代码",
       "taxAccountCode": "暂收消费税 科目代码",
@@ -5324,7 +5327,7 @@
       "approvalNotRequired": "不需要",
       "accountingSection": "会计对接",
       "accountingSectionHint": "写入记账凭证 CSV 借方（应收账款）的科目代码。留空则按会计对接（SY0J）的默认值。",
-      "accountCodeHint": "仅限数字，最多 8 位（可留空）",
+      "accountCodeHint": "仅限半角字母、数字、- 和 _，最多 16 位（可留空）",
       "receivableAccountCode": "应收账款 科目代码",
       "receivableSubAccountCode": "辅助科目代码（客户）",
       "receivableSubAccountCodeHint": "会计软件一侧的客户代码。与公司内部的客户编号是两套编号，请勿混用。"
@@ -6401,7 +6404,7 @@
       "followProduct": "按产品",
       "accountingSection": "会计对接",
       "accountingSectionHint": "写入记账凭证 CSV 的科目代码。留空则按会计对接（SY0J）的默认值。",
-      "accountCodeHint": "仅限数字，最多 8 位（可留空）",
+      "accountCodeHint": "仅限半角字母、数字、- 和 _，最多 16 位（可留空）",
       "taxCode": "税代码",
       "salesAccountCode": "销售收入 科目代码",
       "taxAccountCode": "暂收消费税 科目代码"
@@ -6467,6 +6470,7 @@
       "enterACustomerCode": "请输入客户料号",
       "duplicateCustomerRow": "同一客户出现了两行。每个客户只保留一行",
       "duplicateCodeForCustomer": "客户料号“{code}”在同一客户中重复",
+      "duplicateCodeOnOtherProduct": "客户料号“{code}”已在同一客户的其他产品上登记（含写法差异）",
       "couldNotSave": "客户料号保存失败"
     }
   },
