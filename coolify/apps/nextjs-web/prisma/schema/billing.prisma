@@ -110,6 +110,8 @@ model Invoice {
   /// 税率ごとの区分記載（適格請求書）。混在請求書ではヘッダの taxType / taxRate が
   /// null になるため、税の内訳はここだけが持つ。
   taxSummaries InvoiceTaxSummary[]
+  /// 転記した会計文書（元・反対仕訳・訂正後の複数本があり得る）。
+  accountingDocuments AccountingDocument[] @relation("InvoiceAccountingDocuments")
 
   @@id([yearMonth, seq])
   @@index([customerBpId])

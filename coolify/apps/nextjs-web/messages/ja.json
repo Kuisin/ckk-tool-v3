@@ -1539,6 +1539,14 @@
           "label": "エクスポート済"
         }
       },
+      "AccountingDocument": {
+        "POSTED": {
+          "label": "転記済み"
+        },
+        "REVERSED": {
+          "label": "反対仕訳済み"
+        }
+      },
       "ApprovalRequest": {
         "PENDING": {
           "label": "承認依頼中"
@@ -2180,6 +2188,28 @@
       "approvalRequested": "承認を依頼しました",
       "awaitingPaymentApproval": "入金前承認の依頼中です",
       "paymentApprovalRequested": "入金の承認を依頼しました"
+    },
+    "accountingDocuments": {
+      "invalidDocumentNumber": "会計文書番号が不正です",
+      "reasonRequired": "反対仕訳の理由を入力してください",
+      "notActivePosted": "この文書はすでに反対仕訳済み、または存在しません",
+      "reversed": "反対仕訳を作成しました",
+      "reverseFailed": "反対仕訳の作成に失敗しました",
+      "createReversal": "反対仕訳を作成",
+      "reverseReasonLabel": "反対仕訳の理由",
+      "confirmReverseTitle": "反対仕訳の確認",
+      "confirmReverseMessage": "この会計文書を反対仕訳します。貸借を入れ替えた新しい文書ができ、元の文書は反対仕訳済みになります（明細は変更されません）。",
+      "activeDocument": "転記済みの文書",
+      "documentHistory": "会計文書履歴",
+      "documentNumber": "文書番号",
+      "postedAtLabel": "転記日時",
+      "reversedAtLabel": "反対仕訳日時",
+      "downloadCsv": "会計連携CSV",
+      "redownloadCsv": "会計連携CSV（再ダウンロード）",
+      "notPostedYet": "まだ転記していません",
+      "needsRepost": "反対仕訳済み — 再度エクスポートすると新しい文書を転記します",
+      "documentsList": "文書履歴",
+      "documentsListDescription": "転記・反対仕訳した会計文書の一覧。行をクリックすると請求書詳細を開きます。"
     },
     "closingActions": {
       "closingDateNotReached": "締日を過ぎるまで処理できません（締日の翌日から）",
@@ -8920,6 +8950,7 @@
       "material_purchase_orders": "素材発注書",
       "material_receipts": "素材入荷",
       "invoices": "請求書",
+      "accounting_documents": "会計文書",
       "billing_closings": "締日処理",
       "design_requests": "設計依頼書",
       "approval_requests": "承認依頼",

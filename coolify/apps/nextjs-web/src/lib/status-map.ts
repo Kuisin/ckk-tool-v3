@@ -158,6 +158,12 @@ export const STATUS_MAPS = {
     PROCESSED: "blue",
     EXPORTED: "green",
   },
+  // 会計文書（転記・反対仕訳）。入出庫伝票と同じ理由で ProcedurePanel には
+  // 乗せない — 作られた時点で完結していて、進む先が無い。
+  AccountingDocument: {
+    POSTED: "blue",
+    REVERSED: "red",
+  },
   ApprovalRequest: {
     PENDING: "yellow",
     APPROVED: "green",
