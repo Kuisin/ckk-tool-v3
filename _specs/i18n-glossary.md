@@ -173,6 +173,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | PD05 | 未処理指示書 | Pending work orders | 未处理工单 |
 | PD06 | 設計図 | Drawing | 图纸 |
 | ST04 | 入出庫伝票 | Stock movement | 出入库单 |
+| 預け在庫 | Stock held by a partner | 寄存库存 |
+| 預け先 | Held by | 寄存方 |
 | ST05 | 棚卸 | Stocktaking | 盘点 |
 | SH01 | 出荷書 | Delivery order | 出货单 |
 | SH02 | 納品書 | Delivery note | 送货单 |
@@ -431,6 +433,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | ja | en | zh |
 |---|---|---|
 | 出荷 / 出荷日 | Shipment / Shipped date | 出货 / 出货日 |
+| 返品 / 返品数 | Return / Return qty | 退货 / 退货数 |
 | 出荷元拠点 | From site | 出货据点 |
 | 在庫保管（出荷書種別） | Stock storage | 库存保管 |
 | 発送 | Dispatch | 发货 |
