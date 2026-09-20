@@ -175,6 +175,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | PD05 | 未処理指示書 | Pending work orders | 未处理工单 |
 | PD06 | 設計図 | Drawing | 图纸 |
 | ST04 | 入出庫伝票 | Stock movement | 出入库单 |
+| 預け在庫 | Stock held by a partner | 寄存库存 |
+| 預け先 | Held by | 寄存方 |
 | ST05 | 棚卸 | Stocktaking | 盘点 |
 | ST06 | 手動入出庫 | Manual stock movement | 手动出入库 |
 | ST09 | 移動タイプ | Movement type | 移动类型 |
@@ -290,6 +292,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 
 | ja | en | zh |
 |---|---|---|
+| 品目 / 品目コード | Item / Item code | 品目 / 品目编号 |
+| 品目種別 | Item type | 品目类别 |
 | 製品 / 製品コード | Product / Product code | 产品 / 产品编号 |
 | 素材 | Material | 材料 |
 | 材種 | Material type | 材料类别 |
@@ -426,6 +430,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 在庫移動 | Stock transfer | 库存调拨 |
 | 保管場所 / 棚 | Storage location / Shelf | 存放位置 / 货架 |
 | 未手配 / 手配済 | Not planned / Planned | 未安排 / 已安排 |
+| 手動（入出庫伝票の事由 — ST06 手動入出庫で作った伝票） | Manual | 手动 |
 | 割当 | Allocation | 分配 |
 
 ### 3.10 出荷・請求
@@ -433,6 +438,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | ja | en | zh |
 |---|---|---|
 | 出荷 / 出荷日 | Shipment / Shipped date | 出货 / 出货日 |
+| 返品 / 返品数 | Return / Return qty | 退货 / 退货数 |
 | 出荷元拠点 | From site | 出货据点 |
 | 在庫保管（出荷書種別） | Stock storage | 库存保管 |
 | 発送 | Dispatch | 发货 |
@@ -722,6 +728,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 17 | **税区分はマスタ（MS0F 税区分 / Tax categories / 税种）に一本化**し、製品と顧客の双方がそれを参照する。**顧客の課税区分が優先**で、顧客が未設定（null）のときだけ製品の区分が効く — その状態を画面では「**製品に従う / Follow the product / 按产品**」と呼ぶ。enum `TAX_TYPE` は `tax_categories.code` の値としてだけ残す（訳語 課税 / 非課税 / 軽減税率 は §3.4 のまま変えない）。率は DB 行で適用開始日を持ち、**引くときの基準日は注文日** | `app-list.ts` / 製品・取引先マスタ / 請求書・見積書の税表示 |
 
 | 18 | **入出庫伝票 = Stock movement / 出入库单**、**棚卸 = Stocktaking / 盘点**。既にある 在庫移動（Stock transfer / 库存调拨）と 棚卸調整（Adjustment / 盘点调整）とは**別の語**として扱う — 前者は「保管場所・拠点の間で動かす操作」、入出庫伝票は「在庫が動いた出来事の記録そのもの」で、en で Stock transfer を使い回すと 2 つが同じものに見える | `app-list.ts` / PD07・PD08 の画面 / `enum.INVENTORY_MOVEMENT_CAUSE_LABEL` |
+| 20 | **製品と素材は 1 つのマスタ（品目 / Item / 品目）に統合した**（`app.items`、2026-09-20）。画面の語としては **製品・素材も残る** — MS04 製品 / MS06 素材 は「品目のうち製品だけ / 素材だけ」を編集する入口で、利用者にとっては従来どおりの 2 つのマスタに見える。**品目**を使うのは両方が混ざる場所だけ（在庫・入出庫伝票・棚卸・手動入出庫・照合エラー）。zh は **品目** をそのまま使う（物料 は当てない — 素材だけを指すと読めてしまうため） | `app-list.ts` / 在庫まわりの全画面 / `inventoryNote.*` |
 | 19 | **会計ソフトは TKC FX4クラウド**（旧 弥生会計 Next）。ただし**画面には製品名を出さない** — ボタンも履歴も列も「会計連携CSV / Accounting CSV / 会计对接 CSV」「会計連携日時」で統一し、製品名は仕様書とマニュアル本文にだけ書く。理由は 2 つ: 会計ソフトが替わるたびに 3 言語の文言と DB 列名を直す作業が再発すること、および zh に「FX4クラウド」の定訳が無く、弥生のときは「弥生会计」という造語を当てていたこと。仕訳の勘定科目は**マスタの列**（`tax_categories` / `bp_customer_attrs`）から引き、空なら `system_settings` の `accounting.*` の既定に落ちる。列レイアウトと文字コードは SY0J で可変 | `app-list.ts` / `messages/*.json` / `lib/accounting-export-core.ts` / MS0F・MS01 / マニュアル 3 言語 |
 
 ## 5. 未決

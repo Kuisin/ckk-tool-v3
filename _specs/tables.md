@@ -1296,28 +1296,41 @@ Table defect_records {
 // 在庫（§4・§5・§7）
 // ===========================
 
-Table product_inventory {
+// 在庫は**1 表**（品目統合。旧 product_inventory / material_inventory は落とした）。
+// 1 行 = 1 バケット = 品目 × 拠点 × 保管場所 × 棚 × ロット × 半製品 × 預け先。
+// 数量は Decimal に寄せてある（製品は int、素材は Decimal だったため）。
+Table item_inventory {
   id              uuid [pk]
-  product_id      varchar [not null, ref: > products.id]
-  plant_id      uuid [ref: > plants.id]   // 保管拠点
-  lot_number      int [ref: > work_orders.work_order_number]
-  quantity        int [not null, default: 0]
-  reserved_quantity int [not null, default: 0]
-  location        varchar
-  notes           text
-  updated_at      timestamp
-}
-
-Table material_inventory {
-  id              uuid [pk]
-  material_id     varchar [not null, ref: > materials.id]
-  plant_id      uuid [ref: > plants.id]   // 保管拠点
-  quantity        numeric(12,3) [not null, default: 0]
+  item_id         int [not null, ref: > items.id]
+  plant_id        int [ref: > plants.id]
+  storage_location_id int [ref: > storage_locations.id]
+  shelf_id        int [ref: > storage_shelves.id]
+  lot_number      int [ref: > work_orders.work_order_number]  // 素材は null
+  is_semi_finished boolean [not null, default: false]
+  source_step_id  uuid                                  // 半製品の発生工程
+  quantity          numeric(12,3) [not null, default: 0]
   reserved_quantity numeric(12,3) [not null, default: 0]
-  unit            varchar [not null]
-  location        varchar
+  unit            varchar [not null]   // 行に持つ（単位違いの足し込みを拒む）
+  // **預け先** — 外注が持っている分。null = 自社の在庫。
+  //
+  // 値が入っている行は**自社在庫として数えない**（手持ち・引当・出荷・棚卸の
+  // すべてから外す）。分けているのはバケットの鍵だけなので、読み出し側が
+  // `custody_bp_id IS NULL` を落とすと預けた物が出荷できてしまう —
+  // nextjs-web の inventory-custody-scope.test.ts が全クエリを走査して止める。
+  //
+  // **仕掛品を在庫にしたわけではない。** 外注へ出すとき自社在庫から引ける行は
+  // 無い（在庫が動くのは全工程完了時だけ）ので、預け在庫は移動ではなく
+  // 「預けバケットへの IN」で始まり「OUT」で終わる、それだけで閉じた台帳。
+  // 拠点には**出した拠点**を入れる（持たせないと拠点スコープの利用者から
+  // 行ごと消える）。
+  custody_bp_id   uuid [ref: > business_partners.id]
+  location        varchar   // 旧フリーテキスト（表示フォールバックのみ）
   notes           text
   updated_at      timestamp
+
+  indexes {
+    (item_id, plant_id, lot_number, is_semi_finished, storage_location_id, shelf_id, custody_bp_id) [unique, note: 'NULLS NOT DISTINCT']
+  }
 }
 
 // 在庫引当・予約（全工程完了まで予約状態を維持）
@@ -1386,6 +1399,10 @@ Enum INVENTORY_MOVEMENT_CAUSE {
   STOCK_RESERVATION
   RESERVATION_RELEASE
   ADJUSTMENT
+  MANUAL            // 手動入出庫（ST06）。業務としての型は movement_type_id
+  OUTSOURCE_ISSUE   // 外注へ出した（預け在庫が増える）
+  OUTSOURCE_RETURN  // 外注から戻った（預け在庫が減る）
+  SALES_RETURN      // 出荷後の返品（在庫が戻る）
   OTHER   // 移行前の行に後から付けた伝票。新規では使わない
 }
 
@@ -1640,6 +1657,13 @@ Table delivery_order_items {
   // （確定前・移行前のデータ）。焼き込んだあとは価格表を直しても発行済みの
   // 書類は動かない — invoices.tax_rate と同じ考え方。
   unit_price      numeric(12,2)
+  // 出荷後に返ってきた数（累計）。返品は**在庫だけを戻す** — 出荷書の状態も
+  // 請求も注文明細も動かさない（出したという事実は返品では消えないし、
+  // 返品を請求へどう反映するかは締めの運用で決まる別の判断）。
+  // 台帳から数え直さずに行に持つのは、伝票行が指すのが在庫バケット
+  // （品目 × ロット）で、同じ品目・同じロットの明細が 2 行ある出荷書では
+  // 取り違えるため。CHECK で 0 ≤ 返品数 ≤ 出荷数。
+  returned_quantity int [not null, default: 0]
   notes           text
   sort_order      int [not null, default: 0]
 }
@@ -2209,15 +2233,23 @@ Table bp_contacts {
 > 理由は 3 つあり、どれも 1 つで十分な理由になる:
 >   1. 消費税は**税率束ごとに 1 度だけ**丸める（`lib/money.ts` の方針）。税側を
 >      科目で割ると Σ借方 が ±1 円ずれ、会計側の取込がエラーになる。
->   2. 製品別の売上科目を守るには発行時に**行へ科目を凍結**する必要がある
->      （`products` の科目を後から変えると、古い請求書の再出力が別の科目へ飛ぶ）。
+>   2. 品目別の売上科目を守るには発行時に**行へ科目を凍結**する必要がある
+>      （`items` の科目を後から変えると、古い請求書の再出力が別の科目へ飛ぶ）。
 >      それは `invoice_items` に列を足す別の話。
 >   3. 税区分マスタ導入以前の請求書は `invoice_items.tax_category_id` が null で、
 >      そもそも製品別に束ねる鍵が無い。
 >
-> **科目コードの解決順**は `売掛金 = 取引先マスタ → 設定の既定`、
-> `売上高 / 仮受消費税 / 消費税コード = 税区分マスタ → 設定の税率別既定 →
-> 設定の全体既定`。**補助科目だけは既定を持たない**（空欄なら空欄で出す）。
+> **科目コードの解決順は項目ごとに段数が違う**（`tax_categories` /
+> `AccountingExportSettings` の型がそのまま解決順を表す — マスタ側の
+> フィールドコメントが正）:
+>   - `売掛金 = 取引先マスタ → 設定の既定`（2 段）。
+>   - `消費税コード = 税区分マスタ → 設定の税率別既定（taxCodeRules） →
+>     設定の全体既定`（3 段 — 率が変わると使う税区分コードも変わるのが普通の
+>     会計実務のため、率ごとの上書きを持つ）。
+>   - `売上高 / 仮受消費税 = 税区分マスタ → 設定の全体既定`（2 段 — 率が違っても
+>     同じ売上高・仮受消費税の科目へ計上するのが普通なので、率ごとの上書きは
+>     持たない。`AccountingTaxCodeRule` に売上高・仮受消費税の列は無い）。
+> **補助科目だけは既定を持たない**（空欄なら空欄で出す）。
 >
 > `invoice_tax_summaries.tax_category_id` は「同じ率の区分が 2 つ以上あるとき」に
 > null になる。そのとき明細の区分がコードで食い違っていれば、既定へ黙って落とさず

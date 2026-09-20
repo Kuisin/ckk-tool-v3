@@ -87,7 +87,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 ![草稿状态的材料订购单](../../../assets/screenshots/purchase-order-detail-02.png)
 
-状态会变成「**承認依頼中**」（审批中），申请会送到审批人那里。同一份申请也会出现在[审批管理](/manual/zh/operations/production/approval/user)画面上。
+状态会变成「**承認依頼中**」（审批中），申请会送到审批人那里。同一份申请也会出现在[审批管理](/manual/zh/operations/general/my-tasks/user)画面上。
 
 ## 审批・退回（审批人的操作）
 

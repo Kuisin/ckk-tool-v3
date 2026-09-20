@@ -10,7 +10,18 @@
  * 請求書（下書き）まで作る（§9 更新 — 旧・月選択の実行はここで置き換わった）。
  */
 
-import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
+import {
+  Alert,
+  Anchor,
+  Box,
+  Divider,
+  Group,
+  ScrollArea,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+} from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import {
@@ -19,16 +30,20 @@ import {
   IconPlayerPlay,
   IconSearch,
 } from "@tabler/icons-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import {
+  type BulkClosingResult,
   processClosings,
+  type RunClosingResult,
   runClosing,
 } from "@/app/(dashboard)/billing/closings/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { DocNumber } from "@/components/ui/DocNumber";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -39,6 +54,111 @@ import { statusOptions } from "@/lib/status-map";
 import { type BillingClosing, isProcessable } from "./model";
 
 const BASE_PATH = "/billing/closings";
+const INVOICES_PATH = "/billing/invoices";
+
+/**
+ * 締日処理・まとめて請求書生成の結果ポップアップ — 件数だけの通知ではなく、
+ * 作成した請求書を直接開けるようにする（顧客名・金額付きの一覧 + リンク）。
+ */
+function ClosingResultModal({
+  opened,
+  onClose,
+  title,
+  summary,
+  invoices,
+  failures,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  title: string;
+  summary?: ReactNode;
+  invoices: RunClosingResult["invoices"];
+  failures: RunClosingResult["failures"];
+}) {
+  const tr = useTranslations();
+  const router = useRouter();
+
+  return (
+    <ModalShell
+      cancelLabel={tr("common.close")}
+      confirmLabel={
+        invoices.length > 0
+          ? tr("billing.closingTable.openInvoiceList")
+          : undefined
+      }
+      onClose={onClose}
+      onConfirm={
+        invoices.length > 0
+          ? () => {
+              onClose();
+              router.push(INVOICES_PATH);
+            }
+          : undefined
+      }
+      opened={opened}
+      size="md"
+      title={title}
+    >
+      <Stack gap="sm">
+        {summary}
+        {invoices.length > 0 ? (
+          <Stack gap={4}>
+            <Text c="dimmed" size="xs">
+              {tr("billing.closingTable.createdInvoicesHeading", {
+                count: invoices.length,
+              })}
+            </Text>
+            <ScrollArea.Autosize mah={280}>
+              <Stack gap={0}>
+                {invoices.map((inv, i) => (
+                  <Box key={inv.invoiceNumber}>
+                    {i > 0 && <Divider />}
+                    <Anchor
+                      component={Link}
+                      href={`${INVOICES_PATH}/${inv.invoiceNumber}`}
+                      onClick={onClose}
+                      underline="never"
+                    >
+                      <Group justify="space-between" py="xs" wrap="nowrap">
+                        <Stack className="min-w-0" gap={2}>
+                          <DocNumber>{inv.invoiceNumber}</DocNumber>
+                          <Text c="dimmed" size="xs" truncate>
+                            {inv.customerName}
+                          </Text>
+                        </Stack>
+                        <MoneyText value={inv.totalAmount} />
+                      </Group>
+                    </Anchor>
+                  </Box>
+                ))}
+              </Stack>
+            </ScrollArea.Autosize>
+          </Stack>
+        ) : (
+          <Text c="dimmed" size="sm">
+            {tr("billing.closingTable.noInvoicesCreated")}
+          </Text>
+        )}
+        {failures.length > 0 && (
+          <Alert
+            color="red"
+            title={tr("billing.closingTable.failuresHeading", {
+              count: failures.length,
+            })}
+          >
+            <Stack gap={4}>
+              {failures.map((f) => (
+                <Text key={`${f.customerName}:${f.error}`} size="sm">
+                  {f.customerName}: {f.error}
+                </Text>
+              ))}
+            </Stack>
+          </Alert>
+        )}
+      </Stack>
+    </ModalShell>
+  );
+}
 
 /** Date → "YYYY-MM-DD"（ローカル日時のまま、UTC に変換しない）。 */
 function isoFromDate(date: Date): string {
@@ -62,49 +182,22 @@ function RunClosingModal({
   const todayIso = isoFromDate(new Date());
   // 指定日は URL に保持（既定 = 今日のときはパラメータ省略）
   const [dateIso, setDateIso] = useUrlStringState("date", todayIso);
+  // 実行結果は件数の通知ではなくポップアップで見せる（作成した請求書を
+  // その場で開ける）。このモーダル自身は opened=false でも DOM に残るので、
+  // 「実行」モーダルを閉じたあとも結果ポップアップは表示され続ける。
+  const [result, setResult] = useState<RunClosingResult | null>(null);
 
   const execute = () => {
     startTransition(async () => {
-      const result = await runClosing(dateIso);
-      if (result.ok) {
-        const { created, updated, skipped, invoiceNumbers, failures } =
-          result.data;
-        notifications.show({
-          title: tr("billing.closings.theBillingClosingWasRun"),
-          message:
-            tr("billing.closingTable.createdAndUpdatedCounts", {
-              created,
-              updated,
-            }) +
-            (skipped > 0
-              ? ` / ${tr("billing.closingTable.skippedCount", { skipped })}`
-              : "") +
-            (invoiceNumbers.length > 0
-              ? ` / ${tr("billing.closings.invoicesWereGenerated", { count: invoiceNumbers.length })}`
-              : ""),
-          color: "green",
-        });
-        if (failures.length > 0) {
-          notifications.show({
-            title: tr("billing.closings.someCouldNotBeProcessed", {
-              count: failures.length,
-            }),
-            message: failures
-              .map((f) => `${f.customerName}: ${f.error}`)
-              .join(" / "),
-            color: "red",
-            autoClose: false,
-          });
-        }
+      const res = await runClosing(dateIso);
+      if (res.ok) {
         onClose();
-        router.push(
-          invoiceNumbers.length > 0 ? "/billing/invoices" : BASE_PATH,
-        );
+        setResult(res.data);
         router.refresh();
       } else {
         notifications.show({
           title: tr("common.error2"),
-          message: result.error,
+          message: res.error,
           color: "red",
         });
       }
@@ -112,25 +205,47 @@ function RunClosingModal({
   };
 
   return (
-    <ModalShell
-      confirmLabel={tr("common.run2")}
-      loading={isPending}
-      onClose={onClose}
-      onConfirm={execute}
-      opened={opened}
-      size="sm"
-      title={tr("billing.closings.runTheBillingClosing")}
-    >
-      <Text mb="sm" size="sm">
-        {tr("billing.closings.aggregatesUnbilledShipmentsUpToDate")}
-      </Text>
-      <DatePickerInput
-        label={tr("billing.closings.targetDate")}
-        onChange={(v) => v && setDateIso(v)}
-        value={dateIso}
-        valueFormat="YYYY/MM/DD"
+    <>
+      <ModalShell
+        confirmLabel={tr("common.run2")}
+        loading={isPending}
+        onClose={onClose}
+        onConfirm={execute}
+        opened={opened}
+        size="sm"
+        title={tr("billing.closings.runTheBillingClosing")}
+      >
+        <Text mb="sm" size="sm">
+          {tr("billing.closings.aggregatesUnbilledShipmentsUpToDate")}
+        </Text>
+        <DatePickerInput
+          label={tr("billing.closings.targetDate")}
+          onChange={(v) => v && setDateIso(v)}
+          value={dateIso}
+          valueFormat="YYYY/MM/DD"
+        />
+      </ModalShell>
+      <ClosingResultModal
+        failures={result?.failures ?? []}
+        invoices={result?.invoices ?? []}
+        onClose={() => setResult(null)}
+        opened={result !== null}
+        summary={
+          result && (
+            <Text size="sm">
+              {tr("billing.closingTable.createdAndUpdatedCounts", {
+                created: result.created,
+                updated: result.updated,
+              })}
+              {result.skipped > 0
+                ? ` / ${tr("billing.closingTable.skippedCount", { skipped: result.skipped })}`
+                : ""}
+            </Text>
+          )
+        }
+        title={tr("billing.closingTable.resultModalTitle")}
       />
-    </ModalShell>
+    </>
   );
 }
 
@@ -152,6 +267,9 @@ export function ClosingTable({
   const [search, setSearch] = useUrlStringState("q");
   const [status, setStatus] = useUrlSelectState("status");
   const [runOpen, setRunOpen] = useState(false);
+  const [bulkResult, setBulkResult] = useState<
+    (BulkClosingResult & { skippedNotReady: number }) | null
+  >(null);
 
   const reset = () => {
     setSearch(null);
@@ -192,33 +310,7 @@ export function ClosingTable({
         });
         return;
       }
-      const { invoiceNumbers, failures } = result.data;
-      // 失敗は理由つきで並べる（会社名まで出さないと直しようがない）。
-      if (failures.length > 0) {
-        notifications.show({
-          title: tr("billing.closings.someCouldNotBeProcessed", {
-            count: failures.length,
-          }),
-          message: failures
-            .map((f) => `${f.customerName}: ${f.error}`)
-            .join(" / "),
-          color: "red",
-          autoClose: false,
-        });
-      }
-      if (invoiceNumbers.length > 0) {
-        notifications.show({
-          title: tr("billing.closings.invoicesWereGenerated", {
-            count: invoiceNumbers.length,
-          }),
-          message:
-            invoiceNumbers.join(" / ") +
-            (skipped > 0
-              ? ` / ${tr("billing.closings.skippedNotReady", { count: skipped })}`
-              : ""),
-          color: "green",
-        });
-      }
+      setBulkResult({ ...result.data, skippedNotReady: skipped });
       router.refresh();
     });
   };
@@ -369,6 +461,22 @@ export function ClosingTable({
       />
 
       <RunClosingModal onClose={() => setRunOpen(false)} opened={runOpen} />
+      <ClosingResultModal
+        failures={bulkResult?.failures ?? []}
+        invoices={bulkResult?.invoices ?? []}
+        onClose={() => setBulkResult(null)}
+        opened={bulkResult !== null}
+        summary={
+          bulkResult && bulkResult.skippedNotReady > 0 ? (
+            <Text c="dimmed" size="sm">
+              {tr("billing.closings.skippedNotReady", {
+                count: bulkResult.skippedNotReady,
+              })}
+            </Text>
+          ) : undefined
+        }
+        title={tr("billing.closingTable.bulkResultModalTitle")}
+      />
     </ListShell>
   );
 }

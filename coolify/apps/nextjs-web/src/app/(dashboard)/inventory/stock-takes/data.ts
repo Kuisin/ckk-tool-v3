@@ -106,7 +106,9 @@ async function resolveLines(
   // バケットを引くのに種別で分ける必要はもう無い。
   const bucketIds = [...new Set(lines.map((l) => l.inventoryId))];
   const buckets = bucketIds.length
-    ? await prisma.itemInventory.findMany({
+    ? // custody-scope: 棚卸行が指しているバケットを引くだけ（行を作る側で
+      // 自社在庫に絞ってある — lib/stock-take.ts）。
+      await prisma.itemInventory.findMany({
         where: { id: { in: bucketIds } },
         include: { item: true, storageLocation: true, shelf: true },
       })

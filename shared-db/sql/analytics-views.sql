@@ -462,6 +462,10 @@ LEFT JOIN app.work_orders wo ON wo.id = wos.work_order_id;
 --
 -- ⚠️ product_id / material_id 列は**品目 id を返す**（列名は互換のため据え置き）。
 --    旧マスタは落ちたので、この値で app.products を引くことはもうできない。
+--
+-- ⚠️ 製品在庫・素材在庫のビューは **自社の在庫だけ**（custody_bp_id IS NULL）。
+--    外注に預けている分は手持ちではないので、合計に混ぜると在庫金額も
+--    回転率も狂う。預け分を見るのは v_item_custody_inventory。
 CREATE OR REPLACE VIEW analytics.v_product_inventory WITH (security_invoker = true) AS
 SELECT
   ii.id,
@@ -477,7 +481,8 @@ FROM app.item_inventory ii
 JOIN app.items prod ON prod.id = ii.item_id AND prod.item_type = 'PRODUCT'
 LEFT JOIN app.plants pl ON pl.id = ii.plant_id
 LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id
-LEFT JOIN app.work_orders wo ON wo.work_order_number = ii.lot_number;
+LEFT JOIN app.work_orders wo ON wo.work_order_number = ii.lot_number
+WHERE ii.custody_bp_id IS NULL;
 
 CREATE OR REPLACE VIEW analytics.v_material_inventory WITH (security_invoker = true) AS
 SELECT
@@ -490,7 +495,8 @@ SELECT
 FROM app.item_inventory ii
 JOIN app.items m ON m.id = ii.item_id AND m.item_type = 'MATERIAL'
 LEFT JOIN app.plants pl ON pl.id = ii.plant_id
-LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id;
+LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id
+WHERE ii.custody_bp_id IS NULL;
 
 -- 統合在庫そのもの（種別を分けずに読みたいとき）。
 CREATE OR REPLACE VIEW analytics.v_item_inventory WITH (security_invoker = true) AS
@@ -511,7 +517,30 @@ FROM app.item_inventory ii
 JOIN app.items i ON i.id = ii.item_id
 LEFT JOIN app.plants pl ON pl.id = ii.plant_id
 LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id
-LEFT JOIN app.storage_shelves sh ON sh.id = ii.shelf_id;
+LEFT JOIN app.storage_shelves sh ON sh.id = ii.shelf_id
+WHERE ii.custody_bp_id IS NULL;
+
+-- 預け在庫（外注が持っている分）。**自社在庫とは別のビュー**にしてあるのは、
+-- 同じ表に混ぜて出すと必ず合計に足されるから。「いま誰が何本持っているか」
+-- だけを答える。
+CREATE OR REPLACE VIEW analytics.v_item_custody_inventory WITH (security_invoker = true) AS
+SELECT
+  ii.id,
+  ii.item_id,
+  i.item_type,
+  i.code AS item_code,
+  coalesce(i.name->>'ja', i.name->>'en') AS item_name,
+  coalesce(bp.name->>'ja', bp.name->>'en') AS custody_partner_name,
+  coalesce(pl.name->>'ja', pl.name->>'en') AS issued_from_plant_name,
+  ii.lot_number,
+  ii.quantity,
+  ii.unit,
+  ii.updated_at
+FROM app.item_inventory ii
+JOIN app.items i ON i.id = ii.item_id
+JOIN app.business_partners bp ON bp.id = ii.custody_bp_id
+LEFT JOIN app.plants pl ON pl.id = ii.plant_id
+WHERE ii.custody_bp_id IS NOT NULL;
 
 CREATE OR REPLACE VIEW analytics.v_inventory_reservations WITH (security_invoker = true) AS
 SELECT

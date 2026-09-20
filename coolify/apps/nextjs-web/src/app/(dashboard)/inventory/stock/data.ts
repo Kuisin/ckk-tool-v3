@@ -40,6 +40,8 @@ export interface StockOverviewFilter {
   search?: string | null;
   /** 在庫ゼロ（手持ちも予約も 0）のバケットを隠すか。 */
   hideZero?: boolean;
+  /** 預け先で絞る（null = 自社のみ / undefined = 絞らない）。 */
+  custodyBpId?: string | null;
 }
 
 const ITEM_INVENTORY_INCLUDE = {
@@ -47,6 +49,7 @@ const ITEM_INVENTORY_INCLUDE = {
   plant: true,
   storageLocation: true,
   shelf: true,
+  custodyBp: true,
 } satisfies Prisma.ItemInventoryInclude;
 
 type ItemInventoryDbRow = Prisma.ItemInventoryGetPayload<{
@@ -70,6 +73,10 @@ function mapRow(r: ItemInventoryDbRow): StockOverviewRow {
       : null,
     shelfId: r.shelfId,
     shelfCode: r.shelf?.code ?? null,
+    custodyBpId: r.custodyBpId,
+    custodyBpName: r.custodyBp
+      ? localized(r.custodyBp.name as LocalizedText | null)
+      : null,
     lotNumber: r.lotNumber,
     quantity,
     reservedQuantity,
@@ -111,6 +118,9 @@ export async function fetchStockOverview(
         ? [{ storageLocationId: filter.storageLocationId }]
         : []),
       ...(filter.itemType ? [{ item: { itemType: filter.itemType } }] : []),
+      ...(filter.custodyBpId !== undefined
+        ? [{ custodyBpId: filter.custodyBpId }]
+        : []),
       // 在庫ゼロを隠す = 手持ちも予約も 0 の行を外す（予約だけ残っている行は
       // 「引当済みで出ていない」なので、隠すと追えなくなる）。
       ...(filter.hideZero
@@ -138,6 +148,10 @@ export async function fetchStockOverview(
     ],
   };
 
+  // custody-scope: **ここだけは預け分も読む。** この画面は「外注先がいま何を
+  // 持っているか」に答える唯一の場所で、絞り込み（既定は自社）は画面側が
+  // 持っている。行は預け先を名乗って出てくる（custodyBpName）ので、自社の
+  // 在庫と混ざって見えることはない。
   const rows = await prisma.itemInventory.findMany({
     take: LIST_FETCH_CAP,
     where,

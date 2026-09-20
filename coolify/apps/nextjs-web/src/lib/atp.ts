@@ -35,7 +35,12 @@ export async function materialAtp(
 ): Promise<MaterialAtp> {
   const [invRows, orderedItems] = await Promise.all([
     prisma.itemInventory.findMany({
-      where: { itemId, ...(plantId != null ? { plantId } : {}) },
+      // 引ける在庫は自社の分だけ（外注へ預けている分は約束に使えない）。
+      where: {
+        itemId,
+        custodyBpId: null,
+        ...(plantId != null ? { plantId } : {}),
+      },
     }),
     prisma.materialPurchaseOrderItem.findMany({
       where: {

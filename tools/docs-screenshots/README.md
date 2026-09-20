@@ -85,6 +85,31 @@ docker rm -f ckk-shots-db              # 後始末
 **書き足すときの約束**: 落ちたときに何が起きたかが分かるよう、`check()` の第 3 引数に
 実測値（URL・幅・ラベル）を渡すこと。合否だけだと原因を追えない。
 
+## 全画面の読み込み確認（e2e:pages）
+
+**「全部の画面がエラー無しに開く」を合否で言う**試験（`page-load.spec.ts`）。
+単体試験は純ロジックしか見ず、`pnpm build` は型とバンドルしか見ないので、
+「ページを開いたら RSC が throw する / hydration が割れる / 翻訳鍵が無い /
+移設したパスが 404」は実際に開くまで分からない。`audit-crawl.ts`（診断・報告）と
+同じ巡り方を Playwright の 1 画面 = 1 テストに落としたもの。
+
+```bash
+pnpm e2e:pages                 # 使い捨て DB → シード → build → 起動 → 試験 → 破棄
+pnpm e2e:pages -- --no-build   # .next が最新ならビルドを飛ばす
+pnpm e2e:pages -- --reuse      # APP_URL（既定 :3100）の起動済みスタックに対して試験だけ
+```
+
+巡る対象は 3 種: `src/app/(dashboard)/**/page.tsx` の静的ルート全部、
+`manifest.ts` の撮影パス（固定シードの実データを指す詳細・編集・タブ付き URL）、
+各一覧の先頭行から着く詳細とその `/edit`。1 画面ごとに HTTP 4xx/5xx・/login への
+弾き・pageerror・console.error・本文の `MISSING_MESSAGE` / `[object Object]` /
+`Invalid Date` / `NaN` / `undefined` を見る。データ由来で常に出るノイズ
+（写真の無いデモユーザーの avatar 404 など）は spec の `IGNORE_CONSOLE` に理由付きで置く。
+
+既定の名前・ポートは撮影と**わざと違える**（`ckk-pages-db` / DB :55452 / app :3120）
+— 同じ機械で別のワークツリーが撮影中でも互いのコンテナを消さないため。
+結果は `/tmp/page-load-report.json`（`PAGES_REPORT` で変更可）。
+
 ## 撮影の追加手順
 
 1. `manifest.ts` にエントリを足す（`id` / `docPage` / `path` / 必要なら `steps`）。

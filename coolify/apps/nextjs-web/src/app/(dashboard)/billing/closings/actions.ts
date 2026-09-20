@@ -30,7 +30,12 @@ export interface RunClosingResult {
   created: number;
   updated: number;
   skipped: number;
-  invoiceNumbers: string[];
+  /** 生成できた請求書（作成した順）。結果ポップアップの一覧に使う。 */
+  invoices: {
+    invoiceNumber: string;
+    customerName: string;
+    totalAmount: number;
+  }[];
   failures: { customerName: string; error: string }[];
 }
 
@@ -56,7 +61,7 @@ export async function runClosing(
       result.created +
         result.updated +
         result.skipped +
-        result.invoiceNumbers.length ===
+        result.invoices.length ===
       0
     ) {
       return actionError(
@@ -89,8 +94,12 @@ export async function processClosing(
 // ── まとめて請求書を生成 ─────────────────────────────────────────────────────
 
 export interface BulkClosingResult {
-  /** 生成できた請求書の番号（処理した順）。 */
-  invoiceNumbers: string[];
+  /** 生成できた請求書（処理した順）。結果ポップアップの一覧に使う。 */
+  invoices: {
+    invoiceNumber: string;
+    customerName: string;
+    totalAmount: number;
+  }[];
   /** 生成できなかった締日行と、その理由。 */
   failures: { id: string; customerName: string; error: string }[];
 }
@@ -134,12 +143,16 @@ export async function processClosings(
     ]),
   );
 
-  const invoiceNumbers: string[] = [];
+  const invoices: BulkClosingResult["invoices"] = [];
   const failures: BulkClosingResult["failures"] = [];
   for (const row of rows) {
     const result = await generateInvoiceForClosing(row.id);
     if (result.ok && result.data) {
-      invoiceNumbers.push(result.data.invoiceNumber);
+      invoices.push({
+        invoiceNumber: result.data.invoiceNumber,
+        customerName: nameById.get(row.id) ?? row.id,
+        totalAmount: result.data.totalAmount,
+      });
     } else if (!result.ok) {
       failures.push({
         id: row.id,
@@ -148,5 +161,5 @@ export async function processClosings(
       });
     }
   }
-  return actionOk({ invoiceNumbers, failures });
+  return actionOk({ invoices, failures });
 }

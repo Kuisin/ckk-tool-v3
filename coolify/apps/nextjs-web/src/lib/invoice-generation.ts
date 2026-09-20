@@ -233,7 +233,10 @@ async function buildInvoiceDraft(
         deliveryNoteYearMonth: deliveryNote?.yearMonth ?? null,
         deliveryNoteSeq: deliveryNote?.seq ?? null,
         orderLineId: null,
-        chargeItemId: null,
+        // 由来は料金マスタ（MS0G）— 手動費用の判定（deliveryOrderYearMonth が
+        // null かどうか）には効かないが、この行が MS0G のどの項目から
+        // 来たのかの追跡には要る（tables.md invoice_items.charge_item_id）。
+        chargeItemId: c.chargeItemId,
         description: {
           ja: `${localized(name, "ja")}${suffix}`,
           en: `${localized(name, "en")}${suffix}`,
@@ -259,6 +262,7 @@ async function buildInvoiceDraft(
 
 export interface GeneratedInvoice {
   invoiceNumber: string;
+  totalAmount: number;
 }
 
 /**
@@ -414,7 +418,7 @@ export async function generateInvoiceForClosing(
     revalidatePath(`${BASE_PATH}/${closingId}`);
     revalidatePath(INVOICES_PATH);
     revalidatePath(`${INVOICES_PATH}/${invoiceNumber}`);
-    return actionOk({ invoiceNumber });
+    return actionOk({ invoiceNumber, totalAmount: draft.totalAmount });
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("GUARD:")) {
       return actionError(e.message.slice("GUARD:".length));
@@ -447,13 +451,11 @@ export async function generateManualInvoice(input: {
     if (input.shipments.length === 0) {
       return actionError(tr("billing.closings.thereAreNoShipmentsToBill"));
     }
-    const closingDate = new Date(
-      Date.UTC(
-        new Date().getUTCFullYear(),
-        new Date().getUTCMonth(),
-        new Date().getUTCDate(),
-      ),
-    );
+    // 手動請求の締日・請求期間の終わりは「今日」— **JST の暦日**で決める。
+    // UTC の暦日で作ると、日本時間の 0〜9 時に起こした請求書が前日の日付になる
+    // （実機検証で 01:49 JST に再現）。DB の date 列と同じく UTC 0 時の Date に
+    // 落とすので、ほかの経路（締日行の closingDate）と同じ形で下流へ渡る。
+    const closingDate = new Date(`${isoDateJst(new Date())}T00:00:00Z`);
 
     const draft = await buildInvoiceDraft(
       closingDate,
@@ -577,7 +579,11 @@ export async function generateManualInvoice(input: {
     revalidatePath(`${BASE_PATH}/${closingId}`);
     revalidatePath(INVOICES_PATH);
     revalidatePath(`${INVOICES_PATH}/${invoiceNumber}`);
-    return actionOk({ invoiceNumber, closingId });
+    return actionOk({
+      invoiceNumber,
+      totalAmount: draft.totalAmount,
+      closingId,
+    });
   } catch (e) {
     return actionError(
       prismaErrorMessage(

@@ -32,9 +32,14 @@ export async function updateAccountingSettings(
 
   const parsed = accountingExportSettingsSchema.safeParse(payload);
   if (!parsed.success) {
-    return actionError(
-      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
-    );
+    const issue = parsed.error.issues[0];
+    // 科目コード・消費税コードの形（ACCOUNT_CODE_PATTERN）に外れたときは、
+    // zod の英語の定型文ではなく MS0F / MS01 と同じ案内を返す。
+    const head = issue?.path[0];
+    if (head === "accounts" || head === "taxCodeRules") {
+      return actionError(tr("settings.accounting.accountCodeHint"));
+    }
+    return actionError(issue?.message ?? tr("common.invalidInput"));
   }
 
   try {

@@ -87,7 +87,7 @@ If a [purchase request](/manual/en/operations/purchasing/purchase-request/user) 
 
 ![Draft material purchase order](../../../assets/screenshots/purchase-order-detail-02.png)
 
-The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/production/approval/user) screen.
+The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/general/my-tasks/user) screen.
 
 ## Approving or sending back (for the approver)
 

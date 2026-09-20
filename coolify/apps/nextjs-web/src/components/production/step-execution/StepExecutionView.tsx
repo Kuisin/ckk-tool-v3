@@ -672,6 +672,26 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             <Title order={5}>
               {tr("production.stepExecution.outsourcingSchedule")}
             </Title>
+            {/*
+              預け在庫の状態。依頼日を入れた時点で「外注が持っている」に
+              なり、入荷日で戻る。**日付ではなく伝票の有無が事実** — 日付だけ
+              直しても在庫は動かない（二度計上しないため）ので、どちらが
+              起きているかをここに出す。
+            */}
+            {step.outsourceIssueMovementNo ? (
+              <Text c="dimmed" size="xs">
+                {step.outsourceReturnMovementNo
+                  ? tr("production.stepExecution.custodyReturned", {
+                      issued: step.outsourceIssueMovementNo,
+                      returned: step.outsourceReturnMovementNo,
+                    })
+                  : tr("production.stepExecution.custodyHeld", {
+                      quantity: step.inputQuantity ?? 0,
+                      supplier: step.supplierName ?? "—",
+                      movement: step.outsourceIssueMovementNo,
+                    })}
+              </Text>
+            ) : null}
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
               <DatePickerInput
                 clearable

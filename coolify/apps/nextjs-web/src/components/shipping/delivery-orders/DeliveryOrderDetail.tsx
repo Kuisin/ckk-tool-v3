@@ -25,7 +25,13 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCheck, IconReceipt, IconTruck, IconX } from "@tabler/icons-react";
+import {
+  IconArrowBackUp,
+  IconCheck,
+  IconReceipt,
+  IconTruck,
+  IconX,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
@@ -33,6 +39,7 @@ import {
   approveDeliveryOrder,
   confirmDeliveryOrder,
   deleteDeliveryOrder,
+  recordDeliveryReturn,
   rejectDeliveryOrder,
   saveDeliveryOrderCharges,
   shipDeliveryOrder,
@@ -47,6 +54,7 @@ import {
   ChargesPanel,
 } from "@/components/charges/ChargesPanel";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { DeliveryReturnModal } from "@/components/shipping/delivery-orders/DeliveryReturnModal";
 import { DeliveryVarianceCard } from "@/components/shipping/delivery-orders/DeliveryVarianceCard";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -336,6 +344,7 @@ export function DeliveryOrderDetail({
   const [isPending, startTransition] = useTransition();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [shipOpen, setShipOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   // 「確定」を押したときに承認依頼になるか（過不足納品 §8）。
   const needsApproval = confirmNeedsApproval(order);
@@ -366,6 +375,10 @@ export function DeliveryOrderDetail({
     });
   };
 
+  // 返品の列は**返品があるときだけ**出す。ほとんどの出荷書には無い列なので、
+  // 常に出すと「—」だけの列が 1 本増える。
+  const hasReturns = order.items.some((it) => it.returnedQuantity > 0);
+
   return (
     <DetailShell
       actions={
@@ -386,6 +399,17 @@ export function DeliveryOrderDetail({
                     label: tr("common.shipping"),
                     icon: <IconTruck size={14} />,
                     onClick: () => setShipOpen(true),
+                  },
+                ]
+              : []),
+            // 返品は**出荷済みの発送分だけ**。在庫だけが戻り、出荷書の状態も
+            // 請求も動かない（§8 追補）。
+            ...(order.status === "SHIPPED" && order.type === "DISPATCH"
+              ? [
+                  {
+                    label: tr("shipping.deliveryOrders.recordAReturn"),
+                    icon: <IconArrowBackUp size={14} />,
+                    onClick: () => setReturnOpen(true),
                   },
                 ]
               : []),
@@ -539,6 +563,11 @@ export function DeliveryOrderDetail({
                 <Table.Th>{tr("common.product")}</Table.Th>
                 <Table.Th>{tr("common.lot")}</Table.Th>
                 <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
+                {hasReturns ? (
+                  <Table.Th ta="right">
+                    {tr("shipping.deliveryOrders.returned")}
+                  </Table.Th>
+                ) : null}
                 <Table.Th>{tr("common.notes")}</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -558,6 +587,17 @@ export function DeliveryOrderDetail({
                   <Table.Td className="tabular-nums" ta="right">
                     {it.quantity}
                   </Table.Td>
+                  {hasReturns ? (
+                    <Table.Td className="tabular-nums" ta="right">
+                      {it.returnedQuantity > 0 ? (
+                        <Text c="orange" size="sm">
+                          {it.returnedQuantity}
+                        </Text>
+                      ) : (
+                        "—"
+                      )}
+                    </Table.Td>
+                  ) : null}
                   <Table.Td>
                     <Text c="dimmed" size="sm">
                       {it.notes ?? "—"}
@@ -763,6 +803,27 @@ export function DeliveryOrderDetail({
         }
         opened={shipOpen}
         title={tr("shipping.deliveryOrders.confirmTheShipment")}
+      />
+      <DeliveryReturnModal
+        items={order.items}
+        loading={isPending}
+        onClose={() => setReturnOpen(false)}
+        onSubmit={(lines, notes) =>
+          run(
+            () =>
+              recordDeliveryReturn({
+                number: order.deliveryOrderNumber,
+                lines,
+                notes,
+              }),
+            tr("shipping.deliveryOrders.returnRecorded"),
+            tr("shipping.deliveryOrders.returnRecordedBody", {
+              number: order.deliveryOrderNumber,
+            }),
+            () => setReturnOpen(false),
+          )
+        }
+        opened={returnOpen}
       />
       <ConfirmModal
         confirmLabel={tr("common.cancelDocument")}

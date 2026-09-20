@@ -89,7 +89,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 ![下書きの素材発注書](../../../assets/screenshots/purchase-order-detail-02.png)
 
-状態が「**承認依頼中**」に変わり、承認する人に依頼が届きます。同じ依頼は[承認管理](/manual/ja/operations/production/approval/user)の画面にも並びます。
+状態が「**承認依頼中**」に変わり、承認する人に依頼が届きます。同じ依頼は[承認管理](/manual/ja/operations/general/my-tasks/user)の画面にも並びます。
 
 ## 承認する・差し戻す（承認する人の操作）
 

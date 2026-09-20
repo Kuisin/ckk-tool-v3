@@ -15,6 +15,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
+import { categoryLabel } from "@/lib/app-list";
 import { auditRecordLink } from "@/lib/audit-links";
 import {
   inventoryTypeLabel,
@@ -41,7 +42,7 @@ export function MovementDetail({ movement }: { movement: MovementDetailData }) {
   return (
     <DetailShell
       breadcrumbs={[
-        tr("common.production"),
+        categoryLabel("在庫", locale), // i18n-ignore — app-list のカテゴリ名（対訳は app-list.ts が持つ）
         { label: tr("common.stockMovement"), href: BASE_PATH },
         tr("common.detail"),
       ]}

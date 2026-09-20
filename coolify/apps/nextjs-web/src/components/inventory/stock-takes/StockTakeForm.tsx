@@ -12,13 +12,15 @@ import { Select, SimpleGrid, Textarea } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useTransition } from "react";
 import { z } from "zod";
 import { createStockTake } from "@/app/(dashboard)/inventory/stock-takes/actions";
 import type { StorageLocationOption } from "@/app/(dashboard)/inventory/stock-takes/data";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { categoryLabel } from "@/lib/app-list";
 import { zodResolver } from "@/lib/form";
+import type { Locale } from "@/lib/i18n";
 
 const BASE_PATH = "/inventory/stock-takes";
 
@@ -47,6 +49,7 @@ export function StockTakeForm({
   storageLocationOptions: StorageLocationOption[];
 }) {
   const tr = useTranslations();
+  const locale = useLocale() as Locale;
   const schema = buildSchema(tr);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -104,7 +107,7 @@ export function StockTakeForm({
   return (
     <FormShell
       breadcrumbs={[
-        tr("common.production"),
+        categoryLabel("在庫", locale), // i18n-ignore — app-list のカテゴリ名（対訳は app-list.ts が持つ）
         { label: tr("common.stockTake"), href: BASE_PATH },
         tr("production.stockTakes.form.newTitle"),
       ]}

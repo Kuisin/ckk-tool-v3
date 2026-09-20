@@ -119,7 +119,7 @@ Work cannot start on a work order until it is approved. **How many approval stag
 - A work order that was sent back returns to 「下書き」 (draft) and the reason appears in red on the screen. After fixing it, you can send it out again with 「**再承認依頼**」 (Request approval again).
 - Records of approvals and send-backs stay under 「手続き状況」 (procedure status). Ones approved by a stand-in are marked 「（代理: 原承認者）」 (stand-in for the original approver).
 
-You can also approve from the list in [approval management](/manual/en/operations/production/approval/user) (PD03).
+You can also approve from the list in [approval management](/manual/en/operations/general/my-tasks/user) (PD03).
 
 When a 「製造分」 (to make) work order is approved, the material it will use is **set aside (reserved)** for that work order.
 
