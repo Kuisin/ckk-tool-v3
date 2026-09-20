@@ -37,7 +37,9 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   approveDeliveryOrder,
+  checkDeliveryStock,
   confirmDeliveryOrder,
+  type DeliveryStockShortage,
   deleteDeliveryOrder,
   recordDeliveryReturn,
   rejectDeliveryOrder,
@@ -56,6 +58,7 @@ import {
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DeliveryReturnModal } from "@/components/shipping/delivery-orders/DeliveryReturnModal";
 import { DeliveryVarianceCard } from "@/components/shipping/delivery-orders/DeliveryVarianceCard";
+import { ShipShortageModal } from "@/components/shipping/delivery-orders/ShipShortageModal";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -345,6 +348,10 @@ export function DeliveryOrderDetail({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [shipOpen, setShipOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
+  // 在庫が足りないときの確認。出荷は止まらないが、**押す前に一度だけ見せる**。
+  const [shortages, setShortages] = useState<DeliveryStockShortage[] | null>(
+    null,
+  );
   const [cancelOpen, setCancelOpen] = useState(false);
   // 「確定」を押したときに承認依頼になるか（過不足納品 §8）。
   const needsApproval = confirmNeedsApproval(order);
@@ -383,6 +390,35 @@ export function DeliveryOrderDetail({
           color: "red",
         });
       }
+    });
+  };
+
+  /** 実際に出荷する（在庫の確認は済んでいる前提）。 */
+  const ship = () =>
+    run(
+      () => shipDeliveryOrder(order.deliveryOrderNumber),
+      tr("shipping.deliveryOrders.shipped"),
+      tr("shipping.deliveryOrders.shippedBody", {
+        number: order.deliveryOrderNumber,
+      }),
+    );
+
+  /**
+   * 出荷の確認を押したとき。**先に在庫を数える** — 足りなければ、そのまま
+   * 出さずに不足の一覧を見せる（出荷そのものは止められないが、気づかずに
+   * 台帳をマイナスにするのは止める）。数えるのに失敗したときは、その場で
+   * 止めずに出荷へ進む（確認のための問い合わせが、出荷を妨げる理由には
+   * ならない）。
+   */
+  const confirmShip = () => {
+    setShipOpen(false);
+    startTransition(async () => {
+      const result = await checkDeliveryStock(order.deliveryOrderNumber);
+      if (result.ok && result.data.shortages.length > 0) {
+        setShortages(result.data.shortages);
+        return;
+      }
+      ship();
     });
   };
 
@@ -803,17 +839,22 @@ export function DeliveryOrderDetail({
               })
         }
         onClose={() => setShipOpen(false)}
-        onConfirm={() =>
-          run(
-            () => shipDeliveryOrder(order.deliveryOrderNumber),
-            tr("shipping.deliveryOrders.shipped"),
-            tr("shipping.deliveryOrders.shippedBody", {
-              number: order.deliveryOrderNumber,
-            }),
-          )
-        }
+        onConfirm={confirmShip}
         opened={shipOpen}
         title={tr("shipping.deliveryOrders.confirmTheShipment")}
+      />
+      <ShipShortageModal
+        fromPlantId={
+          order.fromPlantId != null ? Number(order.fromPlantId) : null
+        }
+        loading={isPending}
+        onClose={() => setShortages(null)}
+        onConfirm={() => {
+          setShortages(null);
+          ship();
+        }}
+        opened={shortages != null && shortages.length > 0}
+        shortages={shortages ?? []}
       />
       <DeliveryReturnModal
         items={order.items}
