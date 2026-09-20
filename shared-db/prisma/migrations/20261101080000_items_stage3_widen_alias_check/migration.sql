@@ -13,7 +13,21 @@
 -- のまま — あの migration の ④ が DROP IF EXISTS → ADD で最終形
 -- （business_partners / items）に締め直すので、ここは通り道の広さだけを持つ。
 -- まっさらな DB でも結果は同じ（広げる → 締める）。
-ALTER TABLE app.match_aliases DROP CONSTRAINT IF EXISTS match_aliases_target_type_check;
-ALTER TABLE app.match_aliases
-  ADD CONSTRAINT match_aliases_target_type_check
-  CHECK (target_type = ANY (ARRAY['business_partners'::text, 'products'::text, 'materials'::text, 'items'::text]));
+--
+-- 20261101090000 が**先に**当たっている DB（CI の使い捨て DB など、この migration が
+-- 足される前に一度通した環境）では CHECK は既に最終形なので触らない。
+-- 触ると最終形を広げ直してしまう。
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conrelid = 'app.match_aliases'::regclass
+       AND conname  = 'match_aliases_target_type_check'
+       AND pg_get_constraintdef(oid) NOT LIKE '%''items''%'
+  ) THEN
+    ALTER TABLE app.match_aliases DROP CONSTRAINT match_aliases_target_type_check;
+    ALTER TABLE app.match_aliases
+      ADD CONSTRAINT match_aliases_target_type_check
+      CHECK (target_type = ANY (ARRAY['business_partners'::text, 'products'::text, 'materials'::text, 'items'::text]));
+  END IF;
+END $$;
