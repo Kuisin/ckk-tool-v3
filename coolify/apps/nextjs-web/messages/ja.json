@@ -1207,6 +1207,9 @@
     },
     "INVENTORY_MOVEMENT_CAUSE_LABEL": {
       "MANUAL": "手動",
+      "OUTSOURCE_ISSUE": "外注預け",
+      "OUTSOURCE_RETURN": "預け戻り",
+      "SALES_RETURN": "返品",
       "WORK_ORDER_COMPLETION": "指示書完了",
       "DELIVERY_SHIPMENT": "出荷",
       "MATERIAL_RECEIPT": "素材入荷",
@@ -1214,7 +1217,6 @@
       "STOCK_RESERVATION": "引当予約",
       "RESERVATION_RELEASE": "予約解除",
       "ADJUSTMENT": "棚卸調整",
-      "MANUAL": "手動",
       "OTHER": "不明（移行前）"
     },
     "TRANSACTION_TYPE_LABEL": {

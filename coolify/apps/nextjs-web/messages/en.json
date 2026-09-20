@@ -1207,6 +1207,9 @@
     },
     "INVENTORY_MOVEMENT_CAUSE_LABEL": {
       "MANUAL": "Manual",
+      "OUTSOURCE_ISSUE": "Sent to outsourcer",
+      "OUTSOURCE_RETURN": "Returned from outsourcer",
+      "SALES_RETURN": "Return",
       "WORK_ORDER_COMPLETION": "Work order completed",
       "DELIVERY_SHIPMENT": "Shipment",
       "MATERIAL_RECEIPT": "Material receipt",
@@ -1214,7 +1217,6 @@
       "STOCK_RESERVATION": "Stock reservation",
       "RESERVATION_RELEASE": "Reservation released",
       "ADJUSTMENT": "Adjustment",
-      "MANUAL": "Manual",
       "OTHER": "Unknown (pre-migration)"
     },
     "TRANSACTION_TYPE_LABEL": {
