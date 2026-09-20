@@ -64,6 +64,7 @@ function processStepUpdateInputSchema(tr: Tr) {
     category: z.enum([
       "MATERIAL_PREP",
       "MACHINING",
+      "REGRIND",
       "COATING",
       "INSPECTION",
       "APPROVAL",

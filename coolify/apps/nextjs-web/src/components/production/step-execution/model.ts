@@ -167,6 +167,8 @@ export interface StepExecutionData {
   workOrderDocNumber: string;
   workOrderCreatedAt: string;
   workOrderStatus: string; // WORK_ORDER_STATUS
+  /** WORK_ORDER_TYPE。再研磨では半製品の区分を出さない。 */
+  workOrderType: string;
   plannedQuantity: number;
   step: StepExecutionStepView;
   /** 開始可否（canStartStep の結果）。 */

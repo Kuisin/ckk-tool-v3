@@ -78,6 +78,8 @@ function buildProductSchema(tr: Tr) {
       // 課税区分。空 = 税区分マスタの既定に従う（取引先が指定していればそちらが勝つ）。
       taxCategoryId: z.string().nullable(),
       matchNames: z.array(z.string()),
+      isExternalProduct: z.boolean(),
+      makerName: z.string(),
       isActive: z.boolean(),
       notes: z.string(),
       spec: z.array(z.object({ key: z.string(), value: z.string() })),
@@ -129,6 +131,8 @@ export interface ProductFormInitial {
   unit: string;
   taxCategoryId: number | null;
   matchNames: string[];
+  isExternalProduct: boolean;
+  makerName: string;
   isActive: boolean;
   notes: string;
   spec: { key: string; value: string }[];
@@ -233,6 +237,8 @@ export function ProductForm({
       taxCategoryId:
         initial?.taxCategoryId != null ? String(initial.taxCategoryId) : null,
       matchNames: initial?.matchNames ?? [],
+      isExternalProduct: initial?.isExternalProduct ?? false,
+      makerName: initial?.makerName ?? "",
       isActive: initial?.isActive ?? true,
       notes: initial?.notes ?? "",
       spec: [],
@@ -460,6 +466,19 @@ export function ProductForm({
             label={<HelpLabel {...fieldHelp(tr, "product", "active")} />}
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
+          {/* 他社製品 = 再研磨専用。他社が作った工具を預かって研ぎ直すときの
+              品目で、製造工程リスト・製造分の指示書・本番の明細では選べない。 */}
+          <Switch
+            description={tr("master.products.externalProductHint")}
+            label={tr("master.products.externalProduct")}
+            {...form.getInputProps("isExternalProduct", { type: "checkbox" })}
+          />
+          {form.values.isExternalProduct ? (
+            <TextInput
+              label={tr("master.products.makerName")}
+              {...form.getInputProps("makerName")}
+            />
+          ) : null}
         </Stack>
         <Textarea
           label={<HelpLabel {...fieldHelp(tr, "product", "notes")} />}

@@ -71,6 +71,13 @@ function productInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
       taxCategoryId: z.string().nullable().default(null),
       /** 検索・AI 突合用のキーワード（match_names）。保存時に整形する。 */
       matchNames: z.array(z.string()).default([]),
+      /**
+       * 他社製品（再研磨専用）。他社が作った工具を再研磨で預かるときの品目。
+       * 製造工程リスト・製造分の指示書・本番/テスト/サンプルの明細では使えない。
+       */
+      isExternalProduct: z.boolean().default(false),
+      /** 他社製品のメーカー名（自由記入。BP には紐づけない）。 */
+      makerName: z.string().nullable().default(null),
       isActive: z.boolean(),
       notes: z.string().optional(),
       spec: z.array(z.object({ key: z.string(), value: z.string() })),
@@ -214,6 +221,8 @@ export async function createProduct(
         taxCategoryId: taxCategoryIdOf(v.taxCategoryId),
         matchNames: normalizeKeywords(v.matchNames),
         spec: specValue ?? undefined,
+        isExternalProduct: v.isExternalProduct,
+        makerName: v.isExternalProduct ? v.makerName?.trim() || null : null,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },
@@ -232,6 +241,8 @@ export async function createProduct(
         unit: v.unit,
         taxCategoryId: taxCategoryIdOf(v.taxCategoryId),
         matchNames: normalizeKeywords(v.matchNames),
+        isExternalProduct: v.isExternalProduct,
+        makerName: v.isExternalProduct ? v.makerName?.trim() || null : null,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },
@@ -272,11 +283,24 @@ export async function updateProduct(
         unit: true,
         taxCategoryId: true,
         matchNames: true,
+        isExternalProduct: true,
+        makerName: true,
         isActive: true,
         notes: true,
+        // 他社製品へ切り替えるとき、製造工程リストが残っていてはいけない。
+        productprocessrouteitemRefs: {
+          where: { kind: "MANUFACTURING" },
+          select: { id: true },
+          take: 1,
+        },
       },
     });
     if (!prior) return actionError(tr("common.targetProductNotFound"));
+    if (v.isExternalProduct && prior.productprocessrouteitemRefs.length > 0) {
+      return actionError(
+        tr("master.productRouteActions.externalProductNoRoute"),
+      );
+    }
     const spec = materialSpec(v);
     const name = localizedInput(v.nameJa, undefined, v.nameTranslations);
     const specValue = specJson(v.spec) ?? Prisma.DbNull;
@@ -291,6 +315,8 @@ export async function updateProduct(
         taxCategoryId: taxCategoryIdOf(v.taxCategoryId),
         matchNames: normalizeKeywords(v.matchNames),
         spec: specValue,
+        isExternalProduct: v.isExternalProduct,
+        makerName: v.isExternalProduct ? v.makerName?.trim() || null : null,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },
@@ -310,6 +336,8 @@ export async function updateProduct(
         unit: prior.unit,
         taxCategoryId: prior.taxCategoryId,
         matchNames: prior.matchNames,
+        isExternalProduct: prior.isExternalProduct,
+        makerName: prior.makerName,
         isActive: prior.isActive,
         notes: prior.notes,
       },
@@ -321,6 +349,8 @@ export async function updateProduct(
         unit: v.unit,
         taxCategoryId: taxCategoryIdOf(v.taxCategoryId),
         matchNames: normalizeKeywords(v.matchNames),
+        isExternalProduct: v.isExternalProduct,
+        makerName: v.isExternalProduct ? v.makerName?.trim() || null : null,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },

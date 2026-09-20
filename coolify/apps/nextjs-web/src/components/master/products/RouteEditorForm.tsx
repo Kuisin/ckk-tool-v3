@@ -27,6 +27,7 @@ import {
   createPrepRoute,
   createProductRoute,
   createProductRouteVersion,
+  createRegrindRoute,
 } from "@/app/(dashboard)/master/products/route-actions";
 import {
   type Option,
@@ -47,10 +48,14 @@ import {
   isBlockingIssue,
   isPrepStep,
   STOCK_ISSUE_STEP_CODE,
+  stepAllowedForType,
   validateComposition,
 } from "@/lib/workflow-core";
 
 const PREP_ROUTES_PATH = "/master/process-steps/prep-routes";
+const REGRIND_ROUTES_PATH = "/master/process-steps/regrind-routes";
+/** 共通リスト（準備 / 再研磨）か — 製品も受注元も持たない。 */
+const isCommonKind = (kind: ProcessRouteKind) => kind !== "MANUFACTURING";
 
 export function RouteEditorForm({
   mode,
@@ -95,16 +100,25 @@ export function RouteEditorForm({
   const backPath =
     kind === "PREP"
       ? PREP_ROUTES_PATH
-      : `/master/products/${itemId}?tab=routes`;
+      : kind === "REGRIND"
+        ? REGRIND_ROUTES_PATH
+        : `/master/products/${itemId}?tab=routes`;
+  const commonTitleKey =
+    kind === "REGRIND" ? "master.regrindRoutes" : "master.prepRoutes";
 
   // 種別の中だけを見せる。在庫分専用の 製品出し（在庫）はどちらにも出さない
-  // （在庫分の指示書は固定構成で工程リストを使わない）。
+  // （在庫分の指示書は固定構成で工程リストを使わない）。再研磨リストは再研磨の
+  // 指示書に載せてよい工程の全部（stepAllowedForType）。
   const manufactureCatalog = useMemo(
     () =>
       catalogSteps.filter(
         (c) =>
           c.code !== STOCK_ISSUE_STEP_CODE &&
-          (kind === "PREP" ? isPrepStep(c) : !isPrepStep(c)),
+          (kind === "PREP"
+            ? isPrepStep(c)
+            : kind === "REGRIND"
+              ? stepAllowedForType(c, "REGRIND")
+              : !isPrepStep(c)),
       ),
     [catalogSteps, kind],
   );
@@ -207,13 +221,15 @@ export function RouteEditorForm({
         mode === "create"
           ? kind === "PREP"
             ? await createPrepRoute({ nameJa, nameEn, notes, steps })
-            : await createProductRoute(itemId as number, {
-                nameJa,
-                nameEn,
-                customerBpId,
-                notes,
-                steps,
-              })
+            : kind === "REGRIND"
+              ? await createRegrindRoute({ nameJa, nameEn, notes, steps })
+              : await createProductRoute(itemId as number, {
+                  nameJa,
+                  nameEn,
+                  customerBpId,
+                  notes,
+                  steps,
+                })
           : await createProductRouteVersion(routeId as number, {
               notes,
               steps,
@@ -241,14 +257,14 @@ export function RouteEditorForm({
   return (
     <FormShell
       breadcrumbs={
-        kind === "PREP"
+        isCommonKind(kind)
           ? [
               tr("common.masterData"),
               {
                 label: tr("common.processSteps"),
                 href: "/master/process-steps",
               },
-              { label: tr("master.prepRoutes.title"), href: backPath },
+              { label: tr(`${commonTitleKey}.title`), href: backPath },
               mode === "create"
                 ? tr("master.routeEditorForm.newRouteBreadcrumb")
                 : tr("master.products.createANewVersion"),
@@ -270,7 +286,9 @@ export function RouteEditorForm({
         mode === "create"
           ? kind === "PREP"
             ? tr("master.prepRoutes.newPrepRoute")
-            : tr("master.products.newProcessRoute")
+            : kind === "REGRIND"
+              ? tr("master.regrindRoutes.newRegrindRoute")
+              : tr("master.products.newProcessRoute")
           : tr("master.routeEditorForm.newVersionTitle", {
               name: routeName ?? "",
               version: (latestVersion ?? 0) + 1,
@@ -353,7 +371,7 @@ export function RouteEditorForm({
             })}
           </Alert>
         )}
-        {kind === "PREP" && (
+        {isCommonKind(kind) && (
           <Alert
             color="gray"
             icon={<IconInfoCircle size={16} />}
@@ -361,7 +379,7 @@ export function RouteEditorForm({
             p="xs"
             variant="light"
           >
-            {tr("master.prepRoutes.editorHelp")}
+            {tr(`${commonTitleKey}.editorHelp`)}
           </Alert>
         )}
       </FormSection>

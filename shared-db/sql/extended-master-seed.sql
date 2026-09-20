@@ -47,6 +47,7 @@ INSERT INTO app.defect_types VALUES (3, 'CHIP', '{"en": "Chipping", "ja": "欠�
 INSERT INTO app.defect_types VALUES (4, 'BREAKAGE', '{"en": "Breakage", "ja": "折損"}', true, 40);
 INSERT INTO app.defect_types VALUES (5, 'COATING', '{"en": "Coating defect", "ja": "コーティング不良"}', true, 50);
 INSERT INTO app.defect_types VALUES (6, 'OTHER', '{"en": "Other", "ja": "その他"}', true, 90);
+INSERT INTO app.defect_types VALUES (7, 'REGRIND_RETURN', '{"en": "Returned as-is (not regrindable)", "ja": "返却（再研磨不可）", "zh": "退回（无法再研磨）"}', true, 85);
 
 -- app.items（素材）— 旧 app.materials。品目統合の第 3 段で旧表が消えたので
 -- 品目へ直に入れる。id は旧 materials.id をそのまま使う（新しい DB では

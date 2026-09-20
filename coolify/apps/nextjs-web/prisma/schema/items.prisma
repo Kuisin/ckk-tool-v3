@@ -78,6 +78,13 @@ model Item {
   currency      String? @default("JPY")
   taxCategoryId Int?    @map("tax_category_id")
   spec          Json?
+  /// 他社製品（再研磨のみ）。他社が作った工具を再研磨のために預かるとき、品目として
+  /// 登録する入れ物。製造工程リスト・製造分指示書・PRODUCTION/TEST/SAMPLE 明細では
+  /// 選べない（DB は item_type = PRODUCT だけを守り、使える場所の制限はアプリ側）。
+  isExternalProduct Boolean @default(false) @map("is_external_product")
+  /// 他社製品のメーカー名（自由記入）。競合メーカーは取引先ではないので BP にはしない —
+  /// BP 行にすると顧客・仕入先のピッカーに混ざる。
+  makerName         String? @map("maker_name")
 
   /// その製品が**要求する**素材の材種・寸法（cut-to-length なので特定の素材行には
   /// 紐づけない）。**素材側の materialTypeId / diameterMm / lengthMm とは別物** —

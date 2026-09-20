@@ -122,6 +122,49 @@ export const QUANTITY_LABELS: Record<
   },
 };
 
+/**
+ * 製品受入（再研磨）の数量欄の読み方。数量の型は FLOW と同じだが、欄の意味が違う:
+ * 受入数 = 顧客から届いた本数 / 良品数 = 再研磨する本数 / 廃棄 = 返却本数
+ * （再研磨できずそのまま返す分）。列を足さずに FLOW の保存則をそのまま使うので、
+ * 返却分が後工程へ流れない・完成本数に数えられない、が自動で成り立つ。
+ */
+export const REGRIND_RECEIPT_QUANTITY_LABELS = {
+  input: "quantityLabels.regrindReceipt.input",
+  success: "quantityLabels.regrindReceipt.success",
+  semi: "quantityLabels.regrindReceipt.semi",
+  scrap: "quantityLabels.regrindReceipt.scrap",
+  rework: "quantityLabels.regrindReceipt.rework",
+} as const;
+
+const REGRIND_RECEIPT_QUANTITY_LABELS_JA = {
+  input: "受入本数", // i18n-ignore
+  success: "再研磨する本数", // i18n-ignore
+  semi: "半製品", // i18n-ignore
+  scrap: "返却（再研磨不可）", // i18n-ignore
+  rework: "工程分岐", // i18n-ignore
+} as const;
+
+/**
+ * 工程に応じた数量ラベルの鍵。製品受入（再研磨）だけが独自の読み方を持ち、
+ * それ以外は数量管理モードで決まる。画面（web / kiosk）とサーバーの検証文言が
+ * 同じ表を読む。
+ */
+export function quantityLabelKeysFor(step: {
+  code: string;
+  quantityTracking: QuantityTrackingMode;
+}): {
+  input: string;
+  success: string;
+  semi: string;
+  scrap: string;
+  rework: string;
+} {
+  if (step.code === REGRIND_RECEIPT_STEP_CODE) {
+    return REGRIND_RECEIPT_QUANTITY_LABELS;
+  }
+  return QUANTITY_LABELS[step.quantityTracking];
+}
+
 /** QUANTITY_LABELS の鍵 → ja 直書き（`t()` の fallback 用・identityT 経由での既定表示）。 */
 const QUANTITY_LABELS_JA: Record<
   QuantityTrackingMode,
@@ -158,21 +201,29 @@ const QUANTITY_LABELS_JA: Record<
 
 // ─── 工程構成の区分（開始・出荷） ────────────────────────────────────────────
 //
-// 工程構成は必ず「出し・受渡し」の**ちょうど 1 つ**で始まり、出荷系（任意）は
-// 常に末尾（出荷前検査 → 出荷）。カタログの sort_order は管理者が変えられる
-// ので、区分の同定は code で行い、並びは orderRank で強制する。
+// 工程構成は必ず「出し・受渡し・製品受入」の**ちょうど 1 つ**で始まり、出荷系
+// （任意）は常に末尾（出荷前検査 → 出荷）。カタログの sort_order は管理者が
+// 変えられるので、区分の同定は code で行い、並びは orderRank で強制する。
 
-/** 開始工程（出し・受渡し）— 全ての工程構成はこのうちちょうど 1 つで始まる。 */
+/** 開始工程（出し・受渡し・製品受入）— 全ての工程構成はこのうちちょうど 1 つで始まる。 */
 export const START_STEP_CODES = [
   "MATERIAL_ISSUE",
   "SEMI_FINISHED_ISSUE",
   "MATERIAL_HANDOFF",
   "PRODUCT_HANDOFF",
   "PRODUCT_ISSUE",
+  "REGRIND_RECEIPT",
 ] as const;
 
 /** 在庫分（FROM_STOCK）専用の開始工程。製造分の構成には含めない。 */
 export const STOCK_ISSUE_STEP_CODE = "PRODUCT_ISSUE";
+
+/**
+ * 再研磨（REGRIND）専用の開始工程 — 顧客の工具を受け入れる。完了時に受入数を
+ * 顧客所有の在庫（item_inventory.owner_bp_id）へ載せる（lib/inventory.ts
+ * onRegrindReceiptTx）。製造分・在庫分の構成には含めない。
+ */
+export const REGRIND_RECEIPT_STEP_CODE = "REGRIND_RECEIPT";
 
 /**
  * 半製品在庫を投入して始まる工程構成の開始工程。
@@ -209,11 +260,104 @@ export function isShipStep(step: Pick<CatalogStep, "code">): boolean {
 // ずれは起きない。
 
 /** 工程リストの種別（app.PROCESS_ROUTE_KIND）。 */
-export type ProcessRouteKind = "PREP" | "MANUFACTURING";
+export type ProcessRouteKind = "PREP" | "MANUFACTURING" | "REGRIND";
+
+/** 指示書の種別（app.WORK_ORDER_TYPE）。 */
+export type WorkOrderType = "FROM_STOCK" | "MANUFACTURE" | "REGRIND";
 
 /** 準備工程か（= 準備工程リストに属する）。 */
 export function isPrepStep(step: Pick<CatalogStep, "category">): boolean {
   return step.category === "MATERIAL_PREP";
+}
+
+/** 再研磨の工程か（カタログの category = REGRIND。再研磨指示書だけが使う）。 */
+export function isRegrindStep(step: Pick<CatalogStep, "category">): boolean {
+  return step.category === "REGRIND";
+}
+
+// ─── 指示書の種別ごとの構成規則 ─────────────────────────────────────────────
+//
+// どの工程がどの種別の指示書に載せられるかは**ここだけ**が決める。サーバーの
+// 検証（lib/workflow.ts validateAndOrderSteps）・指示書ビルダーのカタログ絞り込み・
+// 工程リスト編集画面の絞り込みが同じ関数を読むので、「画面では選べたのに保存で
+// 弾かれた」も「保存は通ったのに別の画面で赤くなる」も起きない。
+//
+//   FROM_STOCK   製品出し（在庫）+ 出荷前検査 だけ。
+//   MANUFACTURE  製品出し（在庫）は使えない。再研磨の工程も使えない。
+//   REGRIND      製品受入（再研磨）で始まる。材料準備・加工の工程は使えない
+//                （作るものは無い）。研磨・コーティング・検査・承認・出荷前検査 は可。
+
+/** その工程をその種別の指示書に載せてよいか。 */
+export function stepAllowedForType(
+  step: Pick<CatalogStep, "code" | "category">,
+  type: WorkOrderType,
+): boolean {
+  switch (type) {
+    case "FROM_STOCK":
+      return step.code === STOCK_ISSUE_STEP_CODE || isShipStep(step);
+    case "MANUFACTURE":
+      return step.code !== STOCK_ISSUE_STEP_CODE && !isRegrindStep(step);
+    case "REGRIND":
+      return (
+        step.code !== STOCK_ISSUE_STEP_CODE &&
+        !isPrepStep(step) &&
+        step.category !== "MACHINING"
+      );
+  }
+}
+
+/** その種別の指示書が必ず含む開始工程（null = どの開始工程でもよい）。 */
+export function requiredStartCodeForType(type: WorkOrderType): string | null {
+  switch (type) {
+    case "FROM_STOCK":
+      return STOCK_ISSUE_STEP_CODE;
+    case "REGRIND":
+      return REGRIND_RECEIPT_STEP_CODE;
+    case "MANUFACTURE":
+      return null;
+  }
+}
+
+export type TypeCompositionIssue =
+  | "STOCK_ISSUE_ONLY_FOR_FROM_STOCK"
+  | "FROM_STOCK_ALLOWED_STEPS"
+  | "FROM_STOCK_REQUIRES_STOCK_ISSUE"
+  | "REGRIND_STEPS_ONLY_FOR_REGRIND"
+  | "REGRIND_FORBIDDEN_STEPS"
+  | "REGRIND_REQUIRES_RECEIPT";
+
+/**
+ * 種別に対する構成の違反（カタログに無い id は無視 — それは別の検査）。
+ * 返す順は「載せてはいけない工程がある」→「必須の開始工程が無い」。
+ */
+export function typeCompositionIssues(
+  stepIds: readonly number[],
+  catalog: readonly Pick<CatalogStep, "id" | "code" | "category">[],
+  type: WorkOrderType,
+): TypeCompositionIssue[] {
+  const byId = new Map(catalog.map((c) => [c.id, c]));
+  const steps = stepIds
+    .map((id) => byId.get(id))
+    .filter((c): c is Pick<CatalogStep, "id" | "code" | "category"> => !!c);
+  const issues: TypeCompositionIssue[] = [];
+  const disallowed = steps.filter((c) => !stepAllowedForType(c, type));
+  if (disallowed.length > 0) {
+    if (type === "FROM_STOCK") issues.push("FROM_STOCK_ALLOWED_STEPS");
+    else if (type === "REGRIND") issues.push("REGRIND_FORBIDDEN_STEPS");
+    else if (disallowed.some((c) => c.code === STOCK_ISSUE_STEP_CODE))
+      issues.push("STOCK_ISSUE_ONLY_FOR_FROM_STOCK");
+    if (type !== "REGRIND" && disallowed.some(isRegrindStep))
+      issues.push("REGRIND_STEPS_ONLY_FOR_REGRIND");
+  }
+  const required = requiredStartCodeForType(type);
+  if (required && !steps.some((c) => c.code === required)) {
+    issues.push(
+      type === "FROM_STOCK"
+        ? "FROM_STOCK_REQUIRES_STOCK_ISSUE"
+        : "REGRIND_REQUIRES_RECEIPT",
+    );
+  }
+  return issues;
 }
 
 /** 工程 id 列を 準備 / 製造 に分ける（カタログに無い id は製造側に残す）。 */
@@ -243,12 +387,20 @@ export function splitStepIdsByKind(
 export function compositionIssuesForKind(
   issues: readonly CompositionIssue[],
   kind: ProcessRouteKind,
-  catalog: readonly Pick<CatalogStep, "id" | "category">[],
+  catalog: readonly (Pick<CatalogStep, "id" | "category"> & {
+    code?: string;
+  })[],
 ): CompositionIssue[] {
   const byId = new Map(catalog.map((c) => [c.id, c]));
   const inKind = (id: number) => {
     const c = byId.get(id);
     if (!c) return kind === "MANUFACTURING";
+    // 再研磨工程リストは 1 本で完結する（再研磨指示書に載せてよい工程の全部）。
+    if (kind === "REGRIND")
+      return stepAllowedForType(
+        { code: c.code ?? "", category: c.category },
+        "REGRIND",
+      );
     return kind === "PREP" ? isPrepStep(c) : !isPrepStep(c);
   };
   return issues.filter((issue) => {
@@ -1017,10 +1169,17 @@ export function validateQuantities(
   },
   mode: QuantityTrackingMode = "FLOW",
   t: WorkflowCoreT = identityT,
+  /** 工程 code。製品受入（再研磨）は欄の読み方が違うので文言を切り替える。 */
+  stepCode: string | null = null,
 ): QuantityIssue[] {
   if (mode === "NONE") return [];
-  const labels = QUANTITY_LABELS[mode];
-  const labelsJa = QUANTITY_LABELS_JA[mode];
+  const isRegrindReceipt = stepCode === REGRIND_RECEIPT_STEP_CODE;
+  const labels = isRegrindReceipt
+    ? REGRIND_RECEIPT_QUANTITY_LABELS
+    : QUANTITY_LABELS[mode];
+  const labelsJa = isRegrindReceipt
+    ? REGRIND_RECEIPT_QUANTITY_LABELS_JA
+    : QUANTITY_LABELS_JA[mode];
   const issues: QuantityIssue[] = [];
   const input = step.inputQuantity ?? 0;
   const success = step.outputSuccess ?? 0;
@@ -1341,6 +1500,46 @@ export function resolveReceivedQuantity(args: {
   startedWith: number | null;
   /** クライアントが送ってきた受入数。 */
   client: number | null | undefined;
+  /**
+   * 画面の入力値を優先する工程か。製品受入（再研磨）だけ true — 「頼まれた
+   * 本数 ≠ 届いた本数」が普通で、先頭工程の受入 = 予定数量に固定されると
+   * 届いた本数を記録できない。それ以外は false（既定）。
+   */
+  clientAuthoritative?: boolean;
 }): number {
+  if (args.clientAuthoritative) {
+    return args.client ?? args.startedWith ?? args.expectedAtCompletion ?? 0;
+  }
   return args.expectedAtCompletion ?? args.startedWith ?? args.client ?? 0;
+}
+
+/**
+ * 再研磨指示書の 3 つの本数。
+ *   受入本数 = 製品受入 工程の受入数（未完了なら null）
+ *   返却本数 = 全工程（キャンセル以外）の廃棄欄の合計 — 再研磨できずそのまま返す分
+ *   完成本数 = computeFinishedQuantity（呼び出し側が渡す）
+ * 詳細画面・完了時の預り品の落とし方が同じ定義を読む。
+ */
+export function regrindQuantities(
+  steps: readonly {
+    code: string | null;
+    status: StepRunStatus;
+    inputQuantity: number | null;
+    outputDefectScrap: number | null;
+  }[],
+  finished: number,
+): { received: number | null; returnedAsIs: number; finished: number } {
+  const receipt = steps.find(
+    (s) => s.code === REGRIND_RECEIPT_STEP_CODE && s.status !== "CANCELLED",
+  );
+  const received =
+    receipt && receipt.status === "COMPLETED"
+      ? (receipt.inputQuantity ?? 0)
+      : null;
+  const returnedAsIs = steps.reduce(
+    (sum, s) =>
+      s.status === "CANCELLED" ? sum : sum + (s.outputDefectScrap ?? 0),
+    0,
+  );
+  return { received, returnedAsIs, finished };
 }

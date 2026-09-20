@@ -140,9 +140,13 @@ function productItemLabel(p: {
   id: number;
   code: string | null;
   name: unknown;
+  isExternalProduct?: boolean;
 }): string {
   const name = localized(p.name as LocalizedText | null);
-  return p.code ? `${name} ${p.code}` : name;
+  const base = p.code ? `${name} ${p.code}` : name;
+  // 他社製品はピッカーの中で見分けられるように印を付ける（再研磨の明細でしか
+  // 選べない品目なので、混ざって見えると選び間違える）。
+  return p.isExternalProduct ? `${base} ［他社］` : base; // i18n-ignore
 }
 
 /**
@@ -155,6 +159,13 @@ function productItemLabel(p: {
  */
 export async function searchProductItemOptions(
   query: string,
+  opts?: {
+    /**
+     * 他社製品（再研磨専用）も候補に入れるか。既定は false — 他社製品を選べるのは
+     * 注文種別が再研磨の明細と、その価格表だけ。
+     */
+    includeExternal?: boolean;
+  },
 ): Promise<SearchOption[]> {
   if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
   const q = query.trim();
@@ -166,6 +177,7 @@ export async function searchProductItemOptions(
     where: {
       itemType: "PRODUCT",
       isActive: true,
+      ...(opts?.includeExternal ? {} : { isExternalProduct: false }),
       ...(q
         ? {
             OR: [
@@ -450,6 +462,8 @@ export async function f4SearchProductItems(
     where: {
       itemType: "PRODUCT",
       isActive: true,
+      // F4 は他社製品を出さない（再研磨の明細は検索欄から選ぶ）。
+      isExternalProduct: false,
       ...(name
         ? {
             OR: [

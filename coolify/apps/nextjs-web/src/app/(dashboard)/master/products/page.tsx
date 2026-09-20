@@ -56,6 +56,7 @@ export default async function MasterProductsPage() {
       lengthMm: r.requiresLengthMm != null ? Number(r.requiresLengthMm) : null,
       unit: r.unit,
       taxCategoryId: r.taxCategoryId,
+      isExternalProduct: r.isExternalProduct,
       isActive: r.isActive,
     };
   });

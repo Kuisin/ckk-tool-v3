@@ -136,7 +136,7 @@ export async function fetchStockRequirements(
   // shared-db/prisma/schema/inventory.prisma のコメントに同旨あり）。
   const buckets = await prisma.itemInventory.findMany({
     // 手持ちとして数えるのは自社の分だけ。
-    where: { itemId, plantId, custodyBpId: null },
+    where: { itemId, plantId, custodyBpId: null, ownerBpId: null },
   });
   const bucketIds = buckets.map((b) => b.id);
   const onHand = buckets.reduce((s, b) => s + Number(b.quantity), 0);

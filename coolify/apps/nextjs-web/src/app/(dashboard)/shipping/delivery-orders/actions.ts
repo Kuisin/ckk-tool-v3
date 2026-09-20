@@ -61,6 +61,7 @@ import {
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
+import { ownerBucketFor } from "@/lib/inventory-owner-core";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   isLineShippable,
@@ -309,6 +310,11 @@ export async function fetchDeliverySourceInfo(
     // 確定前（枝番なし・製品未特定）の明細は出荷対象にならない。
     if (!so || so.branch == null || so.itemId == null) return null;
     const itemId = so.itemId;
+    // 再研磨の明細は顧客の預り品を返す出荷 — ロットは所有者バケットから選ぶ。
+    const lotOwnerBpId = ownerBucketFor(
+      so.orderType,
+      so.acceptance.customerBpId,
+    );
     const [workOrders, inventories, allWorkOrders, tolerance] =
       await Promise.all([
         prisma.workOrder.findMany({
@@ -342,6 +348,8 @@ export async function fetchDeliverySourceInfo(
             lotNumber: { not: null },
             // 外注へ預けている分は出荷に載せられない（手元に無い）。
             custodyBpId: null,
+            // 自社在庫か、この顧客の預り品（再研磨）か。所有者が違う物は載せない。
+            ownerBpId: lotOwnerBpId,
           },
           select: {
             lotNumber: true,
@@ -487,23 +495,38 @@ export async function fetchDeliveryAcceptanceSourceInfo(
  * 出荷の記録を作れないことのほうが困る。
  */
 async function validateDispatchLots(
-  items: { itemId: string; lotNumber: number | null; quantity: number }[],
+  items: {
+    orderLineId: string | null;
+    itemId: string;
+    lotNumber: number | null;
+    quantity: number;
+  }[],
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string[]> {
   const warnings: string[] = [];
-  const byKey = new Map<string, { itemId: number; lot: number; qty: number }>();
+  // 行の所有者（再研磨の明細 = 顧客の預り品、それ以外 = 自社）。数える先の
+  // バケットが違うので、集計の鍵にも所有者を入れる。
+  const ownerByLine = await lineOwnerMap(items);
+  const byKey = new Map<
+    string,
+    { itemId: number; lot: number; qty: number; lotOwnerBpId: string | null }
+  >();
   for (const it of items) {
     if (it.lotNumber == null) continue;
-    const key = `${it.itemId}:${it.lotNumber}`;
+    const lotOwnerBpId = it.orderLineId
+      ? (ownerByLine.get(it.orderLineId) ?? null)
+      : null;
+    const key = `${it.itemId}:${it.lotNumber}:${lotOwnerBpId ?? ""}`;
     const cur = byKey.get(key) ?? {
       itemId: Number(it.itemId),
       lot: it.lotNumber,
       qty: 0,
+      lotOwnerBpId,
     };
     cur.qty += it.quantity;
     byKey.set(key, cur);
   }
-  for (const { itemId, lot, qty } of byKey.values()) {
+  for (const { itemId, lot, qty, lotOwnerBpId } of byKey.values()) {
     const agg = await prisma.itemInventory.aggregate({
       where: {
         itemId,
@@ -511,6 +534,7 @@ async function validateDispatchLots(
         isSemiFinished: false,
         // 同上 — 預けている分を数えると「在庫あり」と言って出荷で落ちる。
         custodyBpId: null,
+        ownerBpId: lotOwnerBpId,
       },
       _sum: { quantity: true },
       _count: true,
@@ -531,6 +555,57 @@ async function validateDispatchLots(
     }
   }
   return warnings;
+}
+
+/**
+ * 明細 id → その明細の物の所有者（再研磨なら顧客、それ以外は null = 自社）。
+ * 判定は lib/inventory-owner-core.ts（出荷・返品・引当が同じ規則を読む）。
+ */
+async function lineOwnerMap(
+  items: { orderLineId: string | null }[],
+): Promise<Map<string, string | null>> {
+  const ids = [
+    ...new Set(
+      items
+        .map((it) => it.orderLineId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  if (ids.length === 0) return new Map();
+  const lines = await prisma.orderLine.findMany({
+    where: { id: { in: ids } },
+    select: {
+      id: true,
+      orderType: true,
+      acceptance: { select: { customerBpId: true } },
+    },
+  });
+  return new Map(
+    lines.map((l) => [
+      l.id,
+      ownerBucketFor(l.orderType, l.acceptance.customerBpId),
+    ]),
+  );
+}
+
+/**
+ * 再研磨の明細は**発送（DISPATCH）でしか出せない**。在庫保管（STOCK_STORAGE）は
+ * 予備製作分を自社の棚へ入れる出荷書で、顧客の預り品を自社在庫に入れる経路に
+ * なってしまう。
+ */
+async function regrindLinesOnStockStorageError(
+  type: "DISPATCH" | "STOCK_STORAGE",
+  items: { orderLineId: string | null }[],
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Promise<string | null> {
+  if (type !== "STOCK_STORAGE") return null;
+  const owners = await lineOwnerMap(items);
+  for (const owner of owners.values()) {
+    if (owner != null) {
+      return tr("shipping.deliveryOrderActions.regrindLinesDispatchOnly");
+    }
+  }
+  return null;
 }
 
 /**
@@ -900,6 +975,12 @@ export async function createDeliveryOrder(
   // 止めない注意書き（在庫不足など）。保存はするが利用者には見せる。
   const warnings: string[] = [];
   try {
+    const regrindError = await regrindLinesOnStockStorageError(
+      v.type,
+      v.items,
+      tr,
+    );
+    if (regrindError) return actionError(regrindError);
     // 発送（DISPATCH）はロット在庫を数える。**足りなくても止めない** —
     // 注意書きにして返し、利用者に見せる（出荷そのものも通る）。
     if (v.type === "DISPATCH") {
@@ -1030,6 +1111,12 @@ export async function updateDeliveryOrder(
         },
       },
     });
+    const regrindError = await regrindLinesOnStockStorageError(
+      v.type,
+      v.items,
+      tr,
+    );
+    if (regrindError) return actionError(regrindError);
     // 発送（DISPATCH）はロット在庫を数える（足りなくても止めない — 上と同じ）
     if (v.type === "DISPATCH") {
       warnings.push(...(await validateDispatchLots(v.items, tr)));
@@ -2099,6 +2186,7 @@ export async function recordDeliveryReturn(input: {
         status: true,
         type: true,
         fromPlantId: true,
+        customerBpId: true,
         items: {
           select: {
             id: true,
@@ -2106,6 +2194,7 @@ export async function recordDeliveryReturn(input: {
             lotNumber: true,
             quantity: true,
             returnedQuantity: true,
+            orderLine: { select: { orderType: true } },
           },
         },
       },
@@ -2122,6 +2211,7 @@ export async function recordDeliveryReturn(input: {
       itemId: number;
       lotNumber: number | null;
       quantity: number;
+      ownerBpId: string | null;
     }[] = [];
     for (const line of requested) {
       const item = byId.get(line.itemRowId);
@@ -2138,6 +2228,11 @@ export async function recordDeliveryReturn(input: {
         itemId: item.itemId,
         lotNumber: item.lotNumber,
         quantity: line.quantity,
+        // 再研磨の明細の返品は顧客の預り品バケットへ戻る（自社在庫には入れない）。
+        ownerBpId: ownerBucketFor(
+          item.orderLine?.orderType,
+          order.customerBpId,
+        ),
       });
     }
 

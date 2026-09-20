@@ -11,6 +11,10 @@
 enum WorkOrderType {
   FROM_STOCK // 在庫分（§4 → §8 直行）
   MANUFACTURE // 製造分（§5→§6→§7）
+  /// 再研磨 — 顧客の工具を預かって研ぎ直す。作るものは無い: 完了しても自社在庫は
+  /// 動かず、受け入れた本数は顧客所有バケット（item_inventory.owner_bp_id）に載る。
+  /// 工程は共通の再研磨工程リスト（product_process_routes.kind = REGRIND）から。
+  REGRIND
 
   @@map("WORK_ORDER_TYPE")
   @@schema("app")
@@ -313,6 +317,9 @@ model WorkOrderStep {
   /// 画面からはここを辿って伝票を開く。
   outsourceIssueMovementId  String? @map("outsource_issue_movement_id") @db.Uuid
   outsourceReturnMovementId String? @map("outsource_return_movement_id") @db.Uuid
+  /// 製品受入（再研磨）の完了で顧客の工具を預り品として入庫した伝票。
+  /// outsource_*_movement_id と同じ規約 — 入っていれば「もう計上した」（二度書かない印）。
+  regrindReceiptMovementId  String? @map("regrind_receipt_movement_id") @db.Uuid
   // 外注コスト（監査 P2-6 — 円。試算実績・原価分析の入力）
   outsourceCost        Decimal?  @map("outsource_cost") @db.Decimal(12, 2)
 
@@ -353,6 +360,7 @@ model WorkOrderStep {
   supplierBp  BusinessPartner?   @relation("StepSupplier", fields: [supplierBpId], references: [id])
   outsourceIssueMovement  InventoryMovement? @relation("StepOutsourceIssue", fields: [outsourceIssueMovementId], references: [id], onDelete: SetNull)
   outsourceReturnMovement InventoryMovement? @relation("StepOutsourceReturn", fields: [outsourceReturnMovementId], references: [id], onDelete: SetNull)
+  regrindReceiptMovement  InventoryMovement? @relation("StepRegrindReceipt", fields: [regrindReceiptMovementId], references: [id], onDelete: SetNull)
 
   outgoingLinks WorkOrderStepLink[] @relation("LinkSource")
   incomingLinks WorkOrderStepLink[] @relation("LinkTarget")

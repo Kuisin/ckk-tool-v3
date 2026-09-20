@@ -128,6 +128,7 @@ model WorkLocation {
 enum ProcessCategory {
   MATERIAL_PREP // 材料準備
   MACHINING // 加工
+  REGRIND // 再研磨（顧客の工具を研ぎ直す工程。再研磨指示書だけが使う）
   COATING // コーティング
   INSPECTION // 検査
   APPROVAL // 検査承認

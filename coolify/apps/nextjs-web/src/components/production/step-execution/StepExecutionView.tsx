@@ -104,7 +104,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
   );
 
   const isOutsource = step.executionLocation === "OUTSOURCE";
-  const qtyLabels = localizedQuantityLabels(tr, step.quantityTracking);
+  const qtyLabels = localizedQuantityLabels(
+    tr,
+    step.quantityTracking,
+    step.code,
+  );
   const lockedByOther =
     step.sessionLockedBy != null && step.sessionLockedBy !== data.actorId;
   const woExecutable =
@@ -467,8 +471,10 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             blockedReason={completeBlockedReason}
             defectTypeOptions={data.defectTypeOptions}
             disabled={!canOperate}
+            hideSemi={data.workOrderType === "REGRIND"}
             inputQuantity={step.inputQuantity ?? data.expectedInputQuantity}
             mode={step.quantityTracking}
+            stepCode={step.code}
             stepId={step.id}
             workOrderNumber={workOrderNumber}
           />

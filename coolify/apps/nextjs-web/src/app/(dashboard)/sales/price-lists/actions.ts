@@ -26,6 +26,7 @@ import {
   formatPriceListNumber,
   parseDocKey,
 } from "@/lib/doc-number";
+import { externalProductItemIds } from "@/lib/external-product-guard";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
@@ -59,7 +60,13 @@ async function entriesInScope(
   );
 }
 
-const orderTypeSchema = z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]);
+const orderTypeSchema = z.enum([
+  "PRODUCTION",
+  "TEST",
+  "SAMPLE",
+  "REGRIND",
+  "OTHER",
+]);
 
 /**
  * 自然キー（新規作成・コピー先の識別に使用）。
@@ -257,6 +264,22 @@ export type PriceEntryCreateInput = z.input<
   ReturnType<typeof createInputSchema>
 >;
 
+/**
+ * 他社製品（再研磨専用）の価格表は注文種別 REGRIND のバリアントしか持てない —
+ * 本番の単価があると、本番の明細で他社製品が価格解決されて通ってしまう。
+ */
+async function externalEntryVariantError(
+  tr: Tr,
+  itemId: number,
+  orderTypes: readonly string[],
+): Promise<string | null> {
+  const external = await externalProductItemIds([itemId]);
+  if (!external.has(itemId)) return null;
+  return orderTypes.some((t) => t !== "REGRIND")
+    ? tr("sales.priceListsActions.externalProductOnlyRegrind")
+    : null;
+}
+
 export async function createPriceEntry(
   payload: PriceEntryCreateInput,
 ): Promise<ActionResult<{ entryId: string }>> {
@@ -272,6 +295,12 @@ export async function createPriceEntry(
   const v = parsed.data;
   const variantError = validateVariants(tr, v.variants);
   if (variantError) return actionError(variantError);
+  const externalError = await externalEntryVariantError(
+    tr,
+    v.identity.itemId,
+    v.variants.map((x) => x.orderType),
+  );
+  if (externalError) return actionError(externalError);
   try {
     // 価格試算ソースを検証（初回使用の価格試算はロック対象として控える）。
     const locks: { number: string; key: DocKey }[] = [];
@@ -413,6 +442,18 @@ export async function updatePriceEntry(
   const variantError = validateVariants(tr, v.variants);
   if (variantError) return actionError(variantError);
   try {
+    const entryItem = await prisma.priceListEntry.findUnique({
+      where: { yearMonth_seq: key },
+      select: { itemId: true },
+    });
+    if (entryItem) {
+      const externalError = await externalEntryVariantError(
+        tr,
+        entryItem.itemId,
+        v.variants.map((x) => x.orderType),
+      );
+      if (externalError) return actionError(externalError);
+    }
     const existing = await prisma.priceListVariant.findMany({
       where: variantWhere(key),
       select: { id: true, orderType: true },

@@ -55,7 +55,12 @@ export interface PriceDiscount {
   isActive: boolean;
 }
 
-export type EntryOrderType = "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER";
+export type EntryOrderType =
+  | "PRODUCTION"
+  | "TEST"
+  | "SAMPLE"
+  | "REGRIND"
+  | "OTHER";
 
 /**
  * 注文種別バリアント — 1 エントリ（顧客×製品）内の種別ごとの価格。

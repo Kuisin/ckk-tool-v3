@@ -73,6 +73,8 @@ export interface ProductRow {
   unit: string;
   /** 課税区分の id（複製時に引き継ぐ）。 */
   taxCategoryId: number | null;
+  /** 他社製品（再研磨専用）。一覧では名称の横に印を出す。 */
+  isExternalProduct: boolean;
   isActive: boolean;
 }
 
@@ -212,7 +214,17 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
       header: tr("common.name2"),
       sortable: true,
       sortValue: (r) => r.name,
-      render: (r) => r.name,
+      render: (r) =>
+        r.isExternalProduct ? (
+          <Group gap={6} wrap="nowrap">
+            <span>{r.name}</span>
+            <Badge color="orange" size="xs" variant="light">
+              {tr("master.products.externalBadge")}
+            </Badge>
+          </Group>
+        ) : (
+          r.name
+        ),
     },
     {
       key: "materialType",

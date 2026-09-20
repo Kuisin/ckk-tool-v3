@@ -65,6 +65,13 @@ export const PREP_ROUTE_LINKS: RoutePanelLinks = {
     `/master/process-steps/prep-routes/${routeId}/new-version`,
 };
 
+/** 再研磨工程リスト（共通 — 工程マスタ MS08 配下）の行き先。 */
+export const REGRIND_ROUTE_LINKS: RoutePanelLinks = {
+  newRoute: "/master/process-steps/regrind-routes/new",
+  newVersion: (routeId) =>
+    `/master/process-steps/regrind-routes/${routeId}/new-version`,
+};
+
 export function ProductRoutesPanel({
   routes,
   links,

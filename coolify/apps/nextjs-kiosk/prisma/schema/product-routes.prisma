@@ -10,8 +10,14 @@
 //                  同じ並びを何百回も持たせない。
 //   MANUFACTURING  製造工程リスト — 加工・コーティング・検査・承認。製品 ×
 //                  受注元ごと（従来の工程リストそのもの）。
-// どの工程がどちらに属するかは nextjs-web lib/workflow-core.ts の isPrepStep が
-// 唯一の定義（カタログの category = MATERIAL_PREP）。
+//   REGRIND        再研磨工程リスト — 製品受入 → 研磨工程 → [コーティング] →
+//                  [検査] → [出荷前検査] の 1 本。PREP と同じく**製品にも顧客にも
+//                  紐づかない**（共通）。再研磨指示書はこれ 1 本だけを使い、
+//                  準備・製造のリストは持たない。指示書側で足し引きしたら
+//                  出所リンクは外れる（共通リストの版を 1 枚の指示書の都合で
+//                  増やさない — applyLatestCommonRoute）。
+// どの工程がどちらに属するかは nextjs-web lib/workflow-core.ts の isPrepStep /
+// isRegrindStep / stepAllowedForType が唯一の定義（カタログの category）。
 // kind ごとの列の必須/禁止は DB の CHECK が守る（Prisma には書けない）。
 //
 // 移行前のルートは MANUFACTURING で、バージョンの中に準備工程が混ざったまま
@@ -23,6 +29,7 @@
 enum ProcessRouteKind {
   PREP
   MANUFACTURING
+  REGRIND
 
   @@map("PROCESS_ROUTE_KIND")
   @@schema("app")

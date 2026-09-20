@@ -463,9 +463,11 @@ LEFT JOIN app.work_orders wo ON wo.id = wos.work_order_id;
 -- ⚠️ product_id / material_id 列は**品目 id を返す**（列名は互換のため据え置き）。
 --    旧マスタは落ちたので、この値で app.products を引くことはもうできない。
 --
--- ⚠️ 製品在庫・素材在庫のビューは **自社の在庫だけ**（custody_bp_id IS NULL）。
---    外注に預けている分は手持ちではないので、合計に混ぜると在庫金額も
---    回転率も狂う。預け分を見るのは v_item_custody_inventory。
+-- ⚠️ 製品在庫・素材在庫のビューは **自社の在庫だけ**（custody_bp_id IS NULL AND
+--    owner_bp_id IS NULL）。外注に預けている分は手持ちではなく、顧客から預かって
+--    いる分（再研磨の工具）は自社の物ではないので、合計に混ぜると在庫金額も
+--    回転率も狂う。預け分は v_item_custody_inventory、預り品は
+--    v_item_customer_owned_inventory。
 CREATE OR REPLACE VIEW analytics.v_product_inventory WITH (security_invoker = true) AS
 SELECT
   ii.id,
@@ -482,7 +484,7 @@ JOIN app.items prod ON prod.id = ii.item_id AND prod.item_type = 'PRODUCT'
 LEFT JOIN app.plants pl ON pl.id = ii.plant_id
 LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id
 LEFT JOIN app.work_orders wo ON wo.work_order_number = ii.lot_number
-WHERE ii.custody_bp_id IS NULL;
+WHERE ii.custody_bp_id IS NULL AND ii.owner_bp_id IS NULL;
 
 CREATE OR REPLACE VIEW analytics.v_material_inventory WITH (security_invoker = true) AS
 SELECT
@@ -496,7 +498,7 @@ FROM app.item_inventory ii
 JOIN app.items m ON m.id = ii.item_id AND m.item_type = 'MATERIAL'
 LEFT JOIN app.plants pl ON pl.id = ii.plant_id
 LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id
-WHERE ii.custody_bp_id IS NULL;
+WHERE ii.custody_bp_id IS NULL AND ii.owner_bp_id IS NULL;
 
 -- 統合在庫そのもの（種別を分けずに読みたいとき）。
 CREATE OR REPLACE VIEW analytics.v_item_inventory WITH (security_invoker = true) AS
@@ -518,7 +520,7 @@ JOIN app.items i ON i.id = ii.item_id
 LEFT JOIN app.plants pl ON pl.id = ii.plant_id
 LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id
 LEFT JOIN app.storage_shelves sh ON sh.id = ii.shelf_id
-WHERE ii.custody_bp_id IS NULL;
+WHERE ii.custody_bp_id IS NULL AND ii.owner_bp_id IS NULL;
 
 -- 預け在庫（外注が持っている分）。**自社在庫とは別のビュー**にしてあるのは、
 -- 同じ表に混ぜて出すと必ず合計に足されるから。「いま誰が何本持っているか」
@@ -531,6 +533,9 @@ SELECT
   i.code AS item_code,
   coalesce(i.name->>'ja', i.name->>'en') AS item_name,
   coalesce(bp.name->>'ja', bp.name->>'en') AS custody_partner_name,
+  -- 預り品（顧客の工具）を外注へ出している場合の所有者。null = 自社の物。
+  ii.owner_bp_id,
+  coalesce(ob.name->>'ja', ob.name->>'en') AS owner_partner_name,
   coalesce(pl.name->>'ja', pl.name->>'en') AS issued_from_plant_name,
   ii.lot_number,
   ii.quantity,
@@ -539,8 +544,36 @@ SELECT
 FROM app.item_inventory ii
 JOIN app.items i ON i.id = ii.item_id
 JOIN app.business_partners bp ON bp.id = ii.custody_bp_id
+LEFT JOIN app.business_partners ob ON ob.id = ii.owner_bp_id
 LEFT JOIN app.plants pl ON pl.id = ii.plant_id
 WHERE ii.custody_bp_id IS NOT NULL;
+
+-- 預り品（顧客の工具 — 再研磨のために預かっている分）。自社在庫とは別のビュー
+-- （混ぜると合計に足される）。「どの顧客の工具を何本預かっているか」に答える。
+-- 外注へ出している分は custody_partner_name が入る。
+CREATE OR REPLACE VIEW analytics.v_item_customer_owned_inventory WITH (security_invoker = true) AS
+SELECT
+  ii.id,
+  ii.item_id,
+  i.item_type,
+  i.code AS item_code,
+  coalesce(i.name->>'ja', i.name->>'en') AS item_name,
+  ii.owner_bp_id,
+  coalesce(ob.name->>'ja', ob.name->>'en') AS owner_partner_name,
+  coalesce(cb.name->>'ja', cb.name->>'en') AS custody_partner_name,
+  coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
+  ii.lot_number,
+  ii.quantity,
+  ii.unit,
+  ii.updated_at,
+  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no
+FROM app.item_inventory ii
+JOIN app.items i ON i.id = ii.item_id
+JOIN app.business_partners ob ON ob.id = ii.owner_bp_id
+LEFT JOIN app.business_partners cb ON cb.id = ii.custody_bp_id
+LEFT JOIN app.plants pl ON pl.id = ii.plant_id
+LEFT JOIN app.work_orders wo ON wo.work_order_number = ii.lot_number
+WHERE ii.owner_bp_id IS NOT NULL;
 
 CREATE OR REPLACE VIEW analytics.v_inventory_reservations WITH (security_invoker = true) AS
 SELECT

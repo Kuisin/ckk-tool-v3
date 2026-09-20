@@ -74,6 +74,8 @@ export default async function MasterProductsEditPage({
         unit: r.unit,
         taxCategoryId: r.taxCategoryId,
         matchNames: r.matchNames,
+        isExternalProduct: r.isExternalProduct,
+        makerName: r.makerName ?? "",
         isActive: r.isActive,
         notes: r.notes ?? "",
         spec,

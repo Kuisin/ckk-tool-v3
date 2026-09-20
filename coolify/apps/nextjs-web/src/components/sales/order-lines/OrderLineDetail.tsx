@@ -287,7 +287,10 @@ export function OrderLineDetail({
           : order.status === "SHIPPED" || order.status === "PARTIAL_SHIPPED"
             ? tr("sales.orderLines.youCannotCreateThisOnA2")
             : undefined;
-  const woCreateHref = `/production/work-orders/new?orderLine=${order.uuid}`;
+  // 再研磨の明細は再研磨の指示書（ビルダーが種別を固定する）。
+  const woCreateHref = `/production/work-orders/new?orderLine=${order.uuid}${
+    order.orderType === "REGRIND" ? "&type=REGRIND" : ""
+  }`;
   const designCreateHref = `/sales/design-requests/new?orderLine=${order.uuid}`;
 
   // 出荷書作成の可否 — 確定済み以降（キャンセル・全量出荷済みを除く）で
@@ -312,7 +315,9 @@ export function OrderLineDetail({
   const [stockResult, setStockResult] = useState<StockCheckResult | null>(null);
 
   // 在庫照合（§4）は確定済み・製造前のみ（製造中以降は指示書側で管理）。
-  const canStockCheck = isLineStockCheckable(order);
+  // 再研磨の明細は顧客の工具を預かって返す注文 — 自社在庫の照合は意味を持たない。
+  const canStockCheck =
+    isLineStockCheckable(order) && order.orderType !== "REGRIND";
 
   const runStock = () => {
     startStockCheck(async () => {

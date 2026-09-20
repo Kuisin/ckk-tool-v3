@@ -139,6 +139,13 @@
         "scrap": "报废",
         "rework": "工序分支"
       },
+      "REGRIND_RECEIPT": {
+        "input": "接收数",
+        "success": "再研磨数",
+        "semi": "半成品",
+        "scrap": "退回（无法再研磨）",
+        "rework": "工序分支"
+      },
       "INSPECTION": {
         "input": "检查数",
         "success": "合格数",

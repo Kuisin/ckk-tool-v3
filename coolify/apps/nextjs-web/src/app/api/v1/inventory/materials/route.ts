@@ -33,6 +33,7 @@ export async function GET(request: Request): Promise<Response> {
           // biome-ignore lint/suspicious/noExplicitAny: 断片は authz-core / pagination が組む
           ...(where as any),
           custodyBpId: null,
+          ownerBpId: null,
           item: { itemType: "MATERIAL" },
         },
         take,

@@ -286,7 +286,12 @@ export function QuoteForm({
       notes: values.notes,
       items: values.items.map((it) => ({
         itemId: it.itemId,
-        orderType: it.orderType as "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER",
+        orderType: it.orderType as
+          | "PRODUCTION"
+          | "TEST"
+          | "SAMPLE"
+          | "REGRIND"
+          | "OTHER",
         quantity: it.quantity,
         deliveryDate: it.deliveryDate,
         notes: null,

@@ -998,6 +998,7 @@
       "PRODUCTION": "本番",
       "TEST": "テスト",
       "SAMPLE": "サンプル",
+      "REGRIND": "再研磨",
       "OTHER": "その他"
     },
     "PERMISSION_ACTION_LABEL": {
@@ -1023,6 +1024,7 @@
     "PROCESS_CATEGORY_LABEL": {
       "MATERIAL_PREP": "材料準備",
       "MACHINING": "加工",
+      "REGRIND": "再研磨",
       "COATING": "コーティング",
       "INSPECTION": "検査",
       "APPROVAL": "検査承認",
@@ -1071,7 +1073,8 @@
     },
     "WORK_ORDER_TYPE_LABEL": {
       "FROM_STOCK": "在庫分",
-      "MANUFACTURE": "製造分"
+      "MANUFACTURE": "製造分",
+      "REGRIND": "再研磨"
     },
     "INSPECTION_STATUS_LABEL": {
       "APPROVED": "承認済",
@@ -1211,6 +1214,7 @@
       "OUTSOURCE_ISSUE": "外注支給",
       "OUTSOURCE_RETURN": "外注戻り",
       "SALES_RETURN": "返品",
+      "REGRIND_RECEIPT": "再研磨受入",
       "WORK_ORDER_COMPLETION": "指示書完了",
       "DELIVERY_SHIPMENT": "出荷",
       "MATERIAL_RECEIPT": "素材入荷",
@@ -2006,6 +2010,7 @@
       "PRODUCTION": "本番",
       "TEST": "テスト",
       "SAMPLE": "サンプル",
+      "REGRIND": "再研磨",
       "OTHER": "その他"
     },
     "DELIVERY_METHOD": {
@@ -2620,6 +2625,12 @@
       "deliveryOrderNeedsOrderLine": "注文明細に紐づいていない指示書からは作成できません",
       "deliveryOrderAlreadyArranged": "この指示書の注文明細はすべて出荷手配済みです",
       "prepRoute": "準備工程リスト",
+      "regrindRoute": "再研磨工程リスト",
+      "regrindQuantities": "再研磨数量",
+      "regrindReceived": "受入",
+      "regrindReturned": "返却",
+      "regrindFinished": "完成",
+      "regrindNotReceivedYet": "未受入",
       "manufacturingRoute": "製造工程リスト",
       "newerVersionExists": "最新 v{version} あり",
       "varianceAllowedBadge": "許可"
@@ -3016,6 +3027,13 @@
       "thisCustomer": "この顧客",
       "stepFallbackWithId": "工程#{id}",
       "prepRouteHelp": "〇〇出し・受渡し と 材料準備の並び（全製品で共通）。指示書は常に最新の版を使い、指示書ごとに版は選べません。並びを直すときは工程マスタの準備工程リストで新しい版を作ります。",
+      "regrindRouteHelp": "再研磨工程リスト（共通）。製品・顧客に紐づかず、指示書は常に最新版を使います。流し込んだあとの足し引きは可（そのとき出所リンクは外れます）",
+      "noRegrindRouteRegistered": "再研磨工程リストが未登録です（工程マスタ > 再研磨工程リスト）",
+      "regrindRouteUsesLatest": "最新版 v{version}（{date}）を使います",
+      "editRegrindRoutes": "再研磨工程リストを編集",
+      "selectARegrindRoute": "再研磨工程リストを選んでください",
+      "regrindQuantityMatchesTheAllocation": "再研磨は割当数量（{count}）と一致させます（届いた本数は製品受入で記録します）",
+      "regrindTypeLockedByLine": "注文種別が再研磨の明細なので、指示書の種別は再研磨に固定されます",
       "noPrepRouteRegistered": "準備工程リストは未登録です（工程マスタで作成）",
       "showOtherCustomers": "同じ製品の他の受注元の工程リストも表示する",
       "showOtherCustomersHelp": "既定はこの受注元のリストと汎用だけ。他の受注元のリストは選んでから「この受注元に複製」できます。",
@@ -3248,6 +3266,14 @@
       "allocationsMustShareProduct": "1 つの指示書に割り当てる注文明細は同一製品である必要があります",
       "allocationExceedsRemaining": "注文明細 {number} への割当が受注残を超えています（受注数量 {lineQuantity} − 手配済 {otherAllocated} = 残 {remaining}）",
       "stockPlannedQuantityMustMatchAllocation": "在庫分の指示書は予定数量と割当数量を一致させてください",
+      "regrindRouteRequired": "再研磨工程リストを選んでください（有効な再研磨工程リストがあります）",
+      "regrindRouteNotFound": "選んだ再研磨工程リストが見つからないか無効です",
+      "regrindLinesOnly": "再研磨の指示書に割り当てられるのは注文種別が再研磨の明細だけです",
+      "regrindWorkOrderOneLineOnly": "再研磨の指示書に割り当てられる明細は 1 件だけです",
+      "regrindPlannedQuantityMustMatchAllocation": "再研磨の指示書は予定数量 = 割当数量です",
+      "regrindLineRequiresRegrindWorkOrder": "注文種別が再研磨の明細は再研磨の指示書にしか割り当てられません",
+      "regrindOrderRequiresOrderLine": "再研磨の指示書には注文明細が要ります",
+      "externalProductRequiresRegrind": "他社製品の指示書は再研磨だけです（製造分・在庫分は作れません）",
       "plannedQuantityBelowAllocationTotal": "予定数量が割当合計 {total} を下回っています（不良予備分の上乗せは自由ですが、割当合計以上にしてください）",
       "plansRequiredBeforeApproval": "承認依頼の前に作業計画（日付 + 作業場所）を入れてください: {steps}",
       "copyRouteFailed": "工程リストの複製に失敗しました",
@@ -5799,7 +5825,11 @@
         "notADate": "{name} は日付で入力してください",
         "invalidFormat": "{name} は形式が正しくありません"
       },
-      "taxCategoryHint": "空欄なら税区分マスタの既定に従います。取引先に課税区分が設定されていれば、そちらが優先されます。"
+      "taxCategoryHint": "空欄なら税区分マスタの既定に従います。取引先に課税区分が設定されていれば、そちらが優先されます。",
+      "externalProduct": "他社製品",
+      "externalProductHint": "他社が作った工具を再研磨のために預かるときの品目。製造工程リスト・製造分の指示書・本番/テスト/サンプルの明細では選べません（再研磨専用）。",
+      "makerName": "メーカー名",
+      "externalBadge": "他社製"
     },
     "storageLocations": {
       "editTheStorageLocation": "保管場所の編集",
@@ -6176,6 +6206,7 @@
       "referencedByWorkOrdersCannotDelete": "このルートのバージョンを参照する指示書が {count} 件あるため削除できません。無効化を検討してください。",
       "sameAsLatestVersion": "最新バージョン v{version} と同じ構成です（変更がありません）",
       "targetProductNotFound": "対象の製品が見つかりません",
+      "externalProductNoRoute": "他社製品には製造工程リストを作れません（再研磨専用の品目です）",
       "targetRouteNotFound": "対象の工程ルートが見つかりません",
       "updateFailed": "工程ルートの更新に失敗しました"
     },
@@ -6403,6 +6434,13 @@
       "intro": "〇〇出し・受渡し と 材料準備（切断・センタレス・全長合わせ・C面）の並び。製品にも受注元にも紐づかない共通のリストで、指示書は「準備工程リスト + 製品の製造工程リスト」を合わせて工程を作ります。",
       "empty": "準備工程リストは未登録です",
       "editorHelp": "準備工程だけを選びます。開始工程（〇〇出し・受渡し）はちょうど 1 つ必要です。製造側との依存は指示書で 2 本を合わせたときに検証されます。"
+    },
+    "regrindRoutes": {
+      "title": "再研磨工程リスト",
+      "newRegrindRoute": "再研磨工程リスト 新規作成",
+      "intro": "顧客の工具を預かって研ぎ直す手順（製品受入（再研磨）→ 研磨 → コーティング（任意）→ 検査（任意））。製品にも受注元にも紐づかない共通のリストで、再研磨の指示書は常にここの最新版を使います。自社在庫は動かず、受け入れた工具は顧客の預り品として記録されます。",
+      "empty": "再研磨工程リストは未登録です",
+      "editorHelp": "再研磨の指示書で使える工程だけを選びます。開始工程は 製品受入（再研磨）で、材料準備・加工の工程は入れられません。コーティング・検査・出荷前検査は任意です。"
     },
     "taxCategories": {
       "title": "税区分",
@@ -7960,6 +7998,7 @@
       "onlyApprovedCanConfirm": "承認済の注文請書のみ確定できます",
       "onlyCompletedCanArchive": "確定済の注文請書のみアーカイブできます",
       "onlyDraftCanRequestApproval": "下書きの注文請書のみ承認依頼できます",
+      "externalProductOnlyRegrind": "他社製品は注文種別「再研磨」の明細でしか使えません",
       "onlyImportCanRetryExtraction": "取込中（未抽出）の注文請書のみ再抽出できます",
       "onlyImportCanTakeOverManually": "取込中の注文請書のみ手入力へ切り替えられます",
       "orderLineConfirmedNote": "注文請書 {number} の確定",
@@ -7983,6 +8022,7 @@
     },
     "quoteActions": {
       "createFailed": "見積書の作成に失敗しました",
+      "externalProductOnlyRegrind": "他社製品は注文種別「再研磨」の明細でしか使えません",
       "invalidQuoteNumber": "見積番号が不正です",
       "issueFailed": "発行に失敗しました",
       "noPriceListEntry": "明細{line}: 該当する価格表がありません（価格試算から価格表を登録してください）",
@@ -8007,6 +8047,7 @@
     },
     "priceListsActions": {
       "testSampleRequiresEndDate": "テスト・サンプルの価格は有効終了日が必要です",
+      "externalProductOnlyRegrind": "他社製品の価格表は注文種別「再研磨」だけを持てます",
       "invalidEstimateNumber": "価格試算番号が不正です",
       "estimateNotFound": "価格試算が見つかりません",
       "onlyConfirmedEstimateUsable": "確定済みの価格試算のみ価格表に使用できます",
@@ -8108,6 +8149,7 @@
       "lineEndUserNotIdentified": "明細 {rows} 行目: エンドユーザーが未指定です",
       "noLineItems": "明細が 1 件もありません",
       "lineProductNotIdentified": "明細 {rows} 行目: 製品が未特定です",
+      "externalProductRequiresRegrind": "明細 {rows} 行目: 他社製品は注文種別「再研磨」でのみ受注できます",
       "lineUnitPriceNotEntered": "明細 {rows} 行目: 単価が未入力です",
       "lineQuantityInvalid": "明細 {rows} 行目: 数量が 1 以上ではありません",
       "lineUnitPriceNegative": "明細 {rows} 行目: 単価が負の値です",
@@ -8314,6 +8356,7 @@
       "exceedsOrderedQuantity": "{number} の受注数量 {quantity} を超える出荷になります（累計 {shipped}）",
       "invalidNumber": "出荷書番号が不正です",
       "lotHasNoStock": "ロット #{lot} の在庫がありません（完了済み指示書のロット番号を指定してください）",
+      "regrindLinesDispatchOnly": "再研磨の明細は発送（DISPATCH）でしか出荷できません — 顧客の預り品を在庫保管には入れられません",
       "lotStockInsufficient": "ロット #{lot} の在庫が不足しています（現物 {available} / 指定 {qty}）",
       "notFound": "対象の出荷書が見つかりません",
       "onlyConfirmedCanBeShipped": "確定済みの出荷書のみ出荷できます",
@@ -8583,6 +8626,11 @@
     "unknownStepsInComposition": "存在しない工程が含まれています",
     "duplicateStepsInComposition": "同じ工程が重複しています",
     "fromStockAllowedSteps": "在庫分の指示書に選べる工程は 製品出し（在庫）・出荷前検査 だけです",
+    "regrindStepsOnlyForRegrind": "再研磨の工程は再研磨の指示書にしか入れられません",
+    "regrindForbiddenSteps": "再研磨の指示書に入れられるのは 製品受入（再研磨）・研磨・コーティング・検査・承認・出荷前検査 だけです（材料準備・加工・製品出しは入れられません）",
+    "regrindRequiresReceipt": "再研磨の指示書は 製品受入（再研磨）で始める必要があります",
+    "regrindRouteOnlyRegrindSteps": "再研磨工程リストに入れられるのは再研磨の指示書で使える工程だけです（材料準備・加工は入れられません）",
+    "semiFinishedNotAllowedForRegrind": "再研磨では半製品の区分は使えません（顧客の工具は自社の半製品にはなりません）",
     "fromStockRequiresStockIssue": "在庫分の指示書には 製品出し（在庫） が必要です",
     "stockIssueOnlyForFromStock": "製品出し（在庫）は在庫分（FROM_STOCK）の指示書専用です",
     "workOrderNotApprovedOrInProgress": "指示書が承認済み/進行中ではありません",
@@ -9237,6 +9285,10 @@
     "outsourceReturned": "指示書 #{workOrderNumber} 外注から戻り",
     "outsourceReturnedOnCompletion": "指示書 #{workOrderNumber} 完了により外注から戻し",
     "salesReturned": "出荷 {ref} の返品（在庫へ戻し）",
+    "regrindReceived": "指示書 #{workOrderNumber} 製品受入（再研磨）— 預り品として入庫（箱番号 {box}）",
+    "regrindReturnedAsIs": "指示書 #{workOrderNumber} 完了 — 再研磨できず返却する分",
+    "regrindLinesAreNotStockChecked": "再研磨の明細は在庫照合の対象ではありません（顧客の工具を預かって返す注文です）",
+    "regrindOwnerUnresolved": "再研磨指示書の所有者（割当明細の顧客）を 1 人に決められません",
     "shipped": "出荷 {ref}",
     "shippedWithoutStock": "出荷 {ref}（在庫不足のまま出庫）",
     "stockStorage": "在庫保管 {ref}",
@@ -9272,6 +9324,13 @@
   },
   "workflowCore": {
     "quantityLabels": {
+      "regrindReceipt": {
+        "input": "受入本数",
+        "success": "再研磨する本数",
+        "semi": "半製品",
+        "scrap": "返却（再研磨不可）",
+        "rework": "工程分岐"
+      },
       "flow": {
         "input": "受入数",
         "success": "良品数",
@@ -10348,6 +10407,9 @@
       "hideZeroStock": "在庫ゼロを隠す",
       "custody": "預け先",
       "custodyOwn": "自社",
+      "owner": "所有者",
+      "ownerOwn": "自社の物のみ",
+      "ownedBy": "預り品: {name}",
       "heldBy": "{name} が保管",
       "searchPlaceholder": "品目名・コードで検索",
       "summaryLine": "{rows} 行 / {items} 品目 / {sites} 拠点",

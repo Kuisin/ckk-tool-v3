@@ -25,7 +25,11 @@ import {
   itemSpecFromRow,
   resolveItemPass,
 } from "@/lib/inspection-core";
-import { onOutsourceIssueTx, onOutsourceReturnTx } from "@/lib/inventory";
+import {
+  onOutsourceIssueTx,
+  onOutsourceReturnTx,
+  regrindOwnerBpIdTx,
+} from "@/lib/inventory";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { fetchAllowedWorkLocationIds } from "@/lib/work-locations";
 import { submitFlowChange } from "@/lib/work-order-flow-changes";
@@ -1090,6 +1094,7 @@ export async function saveOutsourceDates(
         workOrderNumber: true,
         productItemId: true,
         plannedQuantity: true,
+        type: true,
       },
     });
     const supplierBpId = step.supplierBpId;
@@ -1122,6 +1127,12 @@ export async function saveOutsourceDates(
     await prisma.$transaction(async (tx) => {
       let issueMovementId: string | null = null;
       let returnMovementId: string | null = null;
+      // 再研磨の指示書では預り品（顧客の物）を外注へ出す — 所有者を付けて
+      // 「所有者バケット ⇄ 所有者 + 預け先バケット」の移動として書く。
+      const ownerBpId =
+        woItem?.type === "REGRIND" && (issueKey || returnKey)
+          ? await regrindOwnerBpIdTx(tx, woItem.id)
+          : null;
       if (issueKey && supplierBpId && woItem) {
         issueMovementId = await onOutsourceIssueTx(tx, issueKey, {
           workOrderId: woItem.id,
@@ -1130,6 +1141,7 @@ export async function saveOutsourceDates(
           supplierBpId,
           quantity: custodyQuantity,
           plantId: step.plantId,
+          ownerBpId,
         });
       }
       if (returnKey && supplierBpId && woItem) {
@@ -1138,6 +1150,7 @@ export async function saveOutsourceDates(
           workOrderNumber: woItem.workOrderNumber,
           itemId: woItem.productItemId,
           supplierBpId,
+          ownerBpId,
           // 戻る数は預けた数まで（onOutsourceReturnTx が台帳残で頭打ちにする）。
           quantity:
             custodyQuantity > 0 ? custodyQuantity : Number.MAX_SAFE_INTEGER,

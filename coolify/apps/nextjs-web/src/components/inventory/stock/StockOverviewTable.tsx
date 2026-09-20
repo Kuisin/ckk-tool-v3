@@ -69,6 +69,8 @@ export function StockOverviewTable({
   const hideZero = hideZeroParam !== "0";
   // 預け先。null = 自社（既定）。URL には選んだときだけ残す。
   const [custodyBpId, setCustodyBpId] = useUrlSelectState("custody");
+  // 所有者（顧客の預り品 — 再研磨）。null = 自社の物（既定）。
+  const [ownerBpId, setOwnerBpId] = useUrlSelectState("owner");
 
   const reset = () => {
     setSearch(null);
@@ -77,7 +79,17 @@ export function StockOverviewTable({
     setItemType(null);
     setHideZeroParam(null);
     setCustodyBpId(null);
+    setOwnerBpId(null);
   };
+
+  // 所有者の選択肢は、いま工具を預かっている顧客だけ（空なら選択欄も出さない）。
+  const ownerOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of rows) {
+      if (r.ownerBpId && r.ownerBpName) seen.set(r.ownerBpId, r.ownerBpName);
+    }
+    return [...seen].map(([value, label]) => ({ value, label }));
+  }, [rows]);
 
   // 預け先の選択肢は、いま在庫を預かっている取引先だけ（空なら選択欄も出さない）。
   const custodyOptions = useMemo(() => {
@@ -125,13 +137,18 @@ export function StockOverviewTable({
     const matchesCustody = custodyBpId
       ? r.custodyBpId === custodyBpId
       : r.custodyBpId === null;
+    // 既定（未選択）は**自社の物だけ**。顧客の預り品を黙って足すと合計が嘘になる。
+    const matchesOwner = ownerBpId
+      ? r.ownerBpId === ownerBpId
+      : r.ownerBpId === null;
     return (
       matchesSearch &&
       matchesPlant &&
       matchesLocation &&
       matchesType &&
       matchesZero &&
-      matchesCustody
+      matchesCustody &&
+      matchesOwner
     );
   });
 
@@ -197,6 +214,13 @@ export function StockOverviewTable({
             <Badge color="orange" size="xs" variant="light">
               {tr("inventory.stockOverview.heldBy", {
                 name: r.custodyBpName,
+              })}
+            </Badge>
+          ) : null}
+          {r.ownerBpName ? (
+            <Badge color="grape" size="xs" variant="light">
+              {tr("inventory.stockOverview.ownedBy", {
+                name: r.ownerBpName,
               })}
             </Badge>
           ) : null}
@@ -352,6 +376,18 @@ export function StockOverviewTable({
               onChange={setCustodyBpId}
               placeholder={tr("inventory.stockOverview.custodyOwn")}
               value={custodyBpId}
+              w={isMobile ? undefined : 170}
+            />
+          ) : null}
+          {ownerOptions.length > 0 ? (
+            <Select
+              aria-label={tr("inventory.stockOverview.owner")}
+              clearable
+              data={ownerOptions}
+              flex={isMobile ? 1 : undefined}
+              onChange={setOwnerBpId}
+              placeholder={tr("inventory.stockOverview.ownerOwn")}
+              value={ownerBpId}
               w={isMobile ? undefined : 170}
             />
           ) : null}

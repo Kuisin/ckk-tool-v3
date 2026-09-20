@@ -52,7 +52,11 @@ export default async function ProductionWorkOrdersNewPage({
   ]);
 
   const initialType =
-    sp.type === "FROM_STOCK" || sp.type === "MANUFACTURE" ? sp.type : null;
+    sp.type === "FROM_STOCK" ||
+    sp.type === "MANUFACTURE" ||
+    sp.type === "REGRIND"
+      ? sp.type
+      : null;
   const initialQty = Number(sp.qty) > 0 ? Number(sp.qty) : null;
 
   return (

@@ -21,6 +21,7 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
+import { hasExternalProductOutsideRegrind } from "@/lib/external-product-guard";
 import { lineAmountYen, roundYen } from "@/lib/money";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { resolveSalesRepId } from "@/lib/sales-rep";
@@ -64,7 +65,7 @@ function itemInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
     /** 製品 — 値は品目 id（items.id、`itemType: "PRODUCT"`）。 */
     itemId: z.string().min(1, tr("common.selectAProduct")),
-    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
+    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "REGRIND", "OTHER"]),
     quantity: z.number().int().min(1, tr("sales.quoteActions.quantityMinOne")),
     deliveryDate: z.string().nullable(),
     notes: z.string().nullable(),
@@ -162,6 +163,12 @@ async function resolveItems(
       customerTaxCategoryIdOf(v.customerBpId),
       productTaxCategoryMap(v.items.map((it) => Number(it.itemId))),
     ]);
+  // 他社製品（再研磨専用）は注文種別が再研磨の行にしか載せられない。
+  if (await hasExternalProductOutsideRegrind(v.items)) {
+    throw new LineItemResolveError(
+      tr("sales.quoteActions.externalProductOnlyRegrind"),
+    );
+  }
   // 基準日は見積の作成日（まだ注文日が無い）。
   const basisDate = isoDateJst(new Date());
 

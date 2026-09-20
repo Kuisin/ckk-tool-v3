@@ -998,6 +998,7 @@
       "PRODUCTION": "Production",
       "TEST": "Test",
       "SAMPLE": "Sample",
+      "REGRIND": "Regrind",
       "OTHER": "Other"
     },
     "PERMISSION_ACTION_LABEL": {
@@ -1023,6 +1024,7 @@
     "PROCESS_CATEGORY_LABEL": {
       "MATERIAL_PREP": "Material prep",
       "MACHINING": "Machining",
+      "REGRIND": "Regrind",
       "COATING": "Coating",
       "INSPECTION": "Inspection",
       "APPROVAL": "Inspection approval",
@@ -1071,7 +1073,8 @@
     },
     "WORK_ORDER_TYPE_LABEL": {
       "FROM_STOCK": "From stock",
-      "MANUFACTURE": "Manufacture"
+      "MANUFACTURE": "Manufacture",
+      "REGRIND": "Regrind"
     },
     "INSPECTION_STATUS_LABEL": {
       "APPROVED": "Approved",
@@ -1211,6 +1214,7 @@
       "OUTSOURCE_ISSUE": "Issued to subcontractor",
       "OUTSOURCE_RETURN": "Returned from subcontractor",
       "SALES_RETURN": "Sales return",
+      "REGRIND_RECEIPT": "Regrind receipt",
       "WORK_ORDER_COMPLETION": "Work order completed",
       "DELIVERY_SHIPMENT": "Shipment",
       "MATERIAL_RECEIPT": "Material receipt",
@@ -2006,6 +2010,7 @@
       "PRODUCTION": "Production",
       "TEST": "Test",
       "SAMPLE": "Sample",
+      "REGRIND": "Regrind",
       "OTHER": "Other"
     },
     "DELIVERY_METHOD": {
@@ -2620,6 +2625,12 @@
       "deliveryOrderNeedsOrderLine": "You cannot create it from a work order with no order line",
       "deliveryOrderAlreadyArranged": "Every order line of this work order is already arranged for shipping",
       "prepRoute": "Preparation step list",
+      "regrindRoute": "Regrind step list",
+      "regrindQuantities": "Regrind quantities",
+      "regrindReceived": "Received",
+      "regrindReturned": "Returned",
+      "regrindFinished": "Finished",
+      "regrindNotReceivedYet": "Not received yet",
       "manufacturingRoute": "Manufacturing step list",
       "newerVersionExists": "Newer v{version} exists",
       "varianceAllowedBadge": "Allowed"
@@ -3016,6 +3027,13 @@
       "thisCustomer": "This customer",
       "stepFallbackWithId": "Step #{id}",
       "prepRouteHelp": "The order of issue/hand-off and material prep steps (shared by every product). A work order always uses the latest version; the version cannot be chosen per work order. To change the order, create a new version under Process steps › Preparation step lists.",
+      "regrindRouteHelp": "Regrind step list (common). Not tied to a product or customer; the work order always uses the latest version. You may add or remove steps afterwards (the link to the list is then dropped)",
+      "noRegrindRouteRegistered": "No regrind step list is registered (Process steps > Regrind step lists)",
+      "regrindRouteUsesLatest": "Uses the latest version v{version} ({date})",
+      "editRegrindRoutes": "Edit regrind step lists",
+      "selectARegrindRoute": "Select a regrind step list",
+      "regrindQuantityMatchesTheAllocation": "For regrind the planned quantity equals the allocation ({count}); the received count is recorded at tool receipt",
+      "regrindTypeLockedByLine": "The order line has order type Regrind, so the work order type is fixed to Regrind",
       "noPrepRouteRegistered": "No preparation step list is registered (create one under process steps)",
       "showOtherCustomers": "Also show other customers' step lists for this product",
       "showOtherCustomersHelp": "By default only this customer's and generic lists are shown. Select another customer's list to copy it to this customer.",
@@ -3248,6 +3266,14 @@
       "allocationsMustShareProduct": "Order lines allocated to one work order must be the same product",
       "allocationExceedsRemaining": "The allocation to order line {number} exceeds the remaining balance (order quantity {lineQuantity} − already allocated {otherAllocated} = remaining {remaining})",
       "stockPlannedQuantityMustMatchAllocation": "For a from-stock work order, the planned quantity must match the allocated quantity",
+      "regrindRouteRequired": "Select a regrind step list (active regrind step lists exist)",
+      "regrindRouteNotFound": "The selected regrind step list was not found or is disabled",
+      "regrindLinesOnly": "Only order lines with order type Regrind can be allocated to a regrind work order",
+      "regrindWorkOrderOneLineOnly": "A regrind work order can be allocated only one order line",
+      "regrindPlannedQuantityMustMatchAllocation": "For a regrind work order the planned quantity must equal the allocated quantity",
+      "regrindLineRequiresRegrindWorkOrder": "An order line with order type Regrind can only be allocated to a regrind work order",
+      "regrindOrderRequiresOrderLine": "A regrind work order needs an order line",
+      "externalProductRequiresRegrind": "Work orders for an external product can only be regrind (no manufacture / from-stock)",
       "plannedQuantityBelowAllocationTotal": "The planned quantity is below the total allocation of {total} (you may add extra for defect margin, but it must be at least the total allocation)",
       "plansRequiredBeforeApproval": "Add a work plan (date + work location) before requesting approval: {steps}",
       "copyRouteFailed": "Could not copy the step list",
@@ -5799,7 +5825,11 @@
         "notADate": "Enter {name} as a date",
         "invalidFormat": "{name} has an invalid format"
       },
-      "taxCategoryHint": "Left empty, the default tax category applies. A tax category on the business partner takes precedence."
+      "taxCategoryHint": "Left empty, the default tax category applies. A tax category on the business partner takes precedence.",
+      "externalProduct": "External product",
+      "externalProductHint": "An item for tools made by another maker that are received for regrinding. Cannot be used on manufacturing step lists, manufacture work orders, or production/test/sample lines (regrind only).",
+      "makerName": "Maker",
+      "externalBadge": "External"
     },
     "storageLocations": {
       "editTheStorageLocation": "Edit the storage location",
@@ -6176,6 +6206,7 @@
       "referencedByWorkOrdersCannotDelete": "Cannot delete because {count} work order(s) reference a version of this route. Consider disabling it instead.",
       "sameAsLatestVersion": "This is the same configuration as the latest version v{version} (no changes)",
       "targetProductNotFound": "The target product was not found",
+      "externalProductNoRoute": "External products cannot have a manufacturing step list (regrind-only item)",
       "targetRouteNotFound": "The target process route was not found",
       "updateFailed": "Could not update the process route"
     },
@@ -6403,6 +6434,13 @@
       "intro": "The issue/handoff and material-prep steps (cutting, centerless, length adjustment, chamfer). Shared across products and customers; a work order combines a preparation list with the product's manufacturing list.",
       "empty": "No preparation step list is registered",
       "editorHelp": "Only preparation steps are offered. Exactly one start step (issue/handoff) is required. Dependencies on manufacturing steps are checked when a work order combines the two lists."
+    },
+    "regrindRoutes": {
+      "title": "Regrind step lists",
+      "newRegrindRoute": "New regrind step list",
+      "intro": "The steps for regrinding tools received from a customer (tool receipt (regrind) → grinding → coating (optional) → inspection (optional)). A common list tied to neither product nor customer; regrind work orders always use its latest version. Our own stock never moves — the received tools are booked as customer-owned stock.",
+      "empty": "No regrind step list is registered",
+      "editorHelp": "Only steps usable on regrind work orders can be chosen. The start step is tool receipt (regrind); material prep and machining steps are not allowed. Coating, inspection and pre-shipment inspection are optional."
     },
     "taxCategories": {
       "title": "Tax categories",
@@ -7960,6 +7998,7 @@
       "onlyApprovedCanConfirm": "Only approved order acceptances can be confirmed",
       "onlyCompletedCanArchive": "Only confirmed order acceptances can be archived",
       "onlyDraftCanRequestApproval": "Only draft order acceptances can request approval",
+      "externalProductOnlyRegrind": "External products can only be used on lines with order type \"Regrind\"",
       "onlyImportCanRetryExtraction": "Only order acceptances still importing (not yet extracted) can be re-extracted",
       "onlyImportCanTakeOverManually": "Only order acceptances still importing can be switched to manual entry",
       "orderLineConfirmedNote": "Confirmed from order acceptance {number}",
@@ -7983,6 +8022,7 @@
     },
     "quoteActions": {
       "createFailed": "Could not create the quote",
+      "externalProductOnlyRegrind": "External products can only be used on lines with order type \"Regrind\"",
       "invalidQuoteNumber": "Invalid quote number",
       "issueFailed": "Could not issue",
       "noPriceListEntry": "Line {line}: no matching price list (register a price list from the price estimate)",
@@ -8007,6 +8047,7 @@
     },
     "priceListsActions": {
       "testSampleRequiresEndDate": "Test and sample prices require a valid-until date",
+      "externalProductOnlyRegrind": "A price list for an external product can only have the order type \"Regrind\"",
       "invalidEstimateNumber": "Invalid price estimate number",
       "estimateNotFound": "Price estimate not found",
       "onlyConfirmedEstimateUsable": "Only a confirmed price estimate can be used in a price list",
@@ -8108,6 +8149,7 @@
       "lineEndUserNotIdentified": "Line {rows}: End user not specified",
       "noLineItems": "There are no line items",
       "lineProductNotIdentified": "Line {rows}: Product not identified",
+      "externalProductRequiresRegrind": "Line {rows}: external products can only be ordered with order type \"Regrind\"",
       "lineUnitPriceNotEntered": "Line {rows}: Unit price not entered",
       "lineQuantityInvalid": "Line {rows}: Quantity must be at least 1",
       "lineUnitPriceNegative": "Line {rows}: Unit price is negative",
@@ -8314,6 +8356,7 @@
       "exceedsOrderedQuantity": "This would ship more than the ordered quantity of {quantity} for {number} (cumulative {shipped})",
       "invalidNumber": "Invalid delivery order number",
       "lotHasNoStock": "Lot #{lot} has no stock (specify the lot number of a completed work order)",
+      "regrindLinesDispatchOnly": "Regrind lines can only be shipped as a dispatch — the customer's tools cannot be put into stock storage",
       "lotStockInsufficient": "Lot #{lot} has insufficient stock (on hand {available} / requested {qty})",
       "notFound": "The delivery order was not found",
       "onlyConfirmedCanBeShipped": "Only a confirmed delivery order can be shipped",
@@ -8583,6 +8626,11 @@
     "unknownStepsInComposition": "Contains steps that do not exist",
     "duplicateStepsInComposition": "The same step appears more than once",
     "fromStockAllowedSteps": "The only steps a from-stock work order can use are Product issue (stock) and Pre-shipment inspection",
+    "regrindStepsOnlyForRegrind": "Regrind steps can only be used on regrind work orders",
+    "regrindForbiddenSteps": "A regrind work order may only contain tool receipt (regrind), grinding, coating, inspection, approval and pre-shipment inspection steps (no material prep, machining or stock issue)",
+    "regrindRequiresReceipt": "A regrind work order must start with tool receipt (regrind)",
+    "regrindRouteOnlyRegrindSteps": "A regrind step list may only contain steps usable on regrind work orders (no material prep or machining)",
+    "semiFinishedNotAllowedForRegrind": "The semi-finished bucket cannot be used for regrinding (the customer's tools never become our semi-finished stock)",
     "fromStockRequiresStockIssue": "A from-stock work order requires the Product issue (stock) step",
     "stockIssueOnlyForFromStock": "Product issue (stock) is only for from-stock (FROM_STOCK) work orders",
     "workOrderNotApprovedOrInProgress": "The work order is not approved or in progress",
@@ -9237,6 +9285,10 @@
     "outsourceReturned": "Work order #{workOrderNumber} — returned from subcontractor",
     "outsourceReturnedOnCompletion": "Work order #{workOrderNumber} — returned from subcontractor on completion",
     "salesReturned": "Return against shipment {ref} (back to stock)",
+    "regrindReceived": "Work order #{workOrderNumber} tool receipt (regrind) — booked as customer-owned stock (box {box})",
+    "regrindReturnedAsIs": "Work order #{workOrderNumber} completed — returned as-is (not regrindable)",
+    "regrindLinesAreNotStockChecked": "Regrind lines are not stock-checked (the customer's tools are received and returned)",
+    "regrindOwnerUnresolved": "Cannot resolve a single owner (customer of the allocated line) for this regrind work order",
     "shipped": "Shipped {ref}",
     "shippedWithoutStock": "Shipment {ref} (issued without stock on hand)",
     "stockStorage": "Stock storage {ref}",
@@ -9272,6 +9324,13 @@
   },
   "workflowCore": {
     "quantityLabels": {
+      "regrindReceipt": {
+        "input": "Received",
+        "success": "To regrind",
+        "semi": "Semi-finished",
+        "scrap": "Returned as-is (not regrindable)",
+        "rework": "Process branch"
+      },
       "flow": {
         "input": "Received",
         "success": "Good",
@@ -10348,6 +10407,9 @@
       "hideZeroStock": "Hide zero stock",
       "custody": "Held by",
       "custodyOwn": "Own stock",
+      "owner": "Owner",
+      "ownerOwn": "Own items only",
+      "ownedBy": "Owned by {name}",
       "heldBy": "held by {name}",
       "searchPlaceholder": "Search by item name or code",
       "summaryLine": "{rows} rows / {items} items / {sites} sites",

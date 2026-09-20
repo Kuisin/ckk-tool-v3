@@ -36,6 +36,9 @@ export interface StockOverviewRow {
    */
   custodyBpId: string | null;
   custodyBpName: string | null;
+  /** 所有者（顧客の預り品 — 再研磨で預かった工具）。null = 自社の物。 */
+  ownerBpId: string | null;
+  ownerBpName: string | null;
   /** ロット = 指示書番号（製品のみ。素材は常に null）。 */
   lotNumber: number | null;
   quantity: number;

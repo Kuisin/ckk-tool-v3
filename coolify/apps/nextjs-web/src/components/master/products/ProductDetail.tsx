@@ -77,6 +77,9 @@ export interface ProductDetailData {
   taxCategoryId: number | null;
   /** 検索・AI 突合用のキーワード（match_names）。 */
   matchNames: string[];
+  /** 他社製品（再研磨専用）か。製造工程リストのタブは出さない。 */
+  isExternalProduct: boolean;
+  makerName: string | null;
   isActive: boolean;
   notes: string;
   spec: { key: string; value: string }[];
@@ -148,6 +151,7 @@ export function ProductDetail({
     lengthMm: record.lengthMm,
     unit: record.unit,
     taxCategoryId: record.taxCategoryId,
+    isExternalProduct: record.isExternalProduct,
   };
 
   return (
@@ -192,7 +196,16 @@ export function ProductDetail({
         record.code ?? record.nameJa,
       ]}
       createdAt={fmt.dateTime(record.createdAt)}
-      status={<ActiveBadge active={record.isActive} />}
+      status={
+        <>
+          <ActiveBadge active={record.isActive} />
+          {record.isExternalProduct ? (
+            <Badge color="orange" variant="light">
+              {tr("master.products.externalBadge")}
+            </Badge>
+          ) : null}
+        </>
+      }
       title={record.nameJa}
       updatedAt={fmt.dateTime(record.updatedAt)}
     >
@@ -233,14 +246,22 @@ export function ProductDetail({
             record.taxCategoryName ?? tr("master.taxCategories.useDefault")
           }
         />
+        {record.isExternalProduct ? (
+          <FieldValue
+            label={tr("master.products.makerName")}
+            value={record.makerName || "—"}
+          />
+        ) : null}
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
-          <Tabs.Tab value="routes">
-            {tr("master.productDetail.routesTab")}
-          </Tabs.Tab>
+          {record.isExternalProduct ? null : (
+            <Tabs.Tab value="routes">
+              {tr("master.productDetail.routesTab")}
+            </Tabs.Tab>
+          )}
           <Tabs.Tab value="customerCodes">
             {tr("master.customerProductCodes.title")}
           </Tabs.Tab>
@@ -294,10 +315,12 @@ export function ProductDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="routes">
-          <ProductRoutesPanel
-            links={productRouteLinks(record.id)}
-            routes={routes}
-          />
+          {record.isExternalProduct ? null : (
+            <ProductRoutesPanel
+              links={productRouteLinks(record.id)}
+              routes={routes}
+            />
+          )}
         </Tabs.Panel>
 
         <Tabs.Panel keepMounted={false} pt="md" value="customerCodes">

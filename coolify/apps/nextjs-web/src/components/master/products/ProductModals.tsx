@@ -33,6 +33,8 @@ import { unitOptions } from "@/lib/enum-labels";
 import type { Tr } from "@/lib/i18n";
 
 export interface ProductModalTarget {
+  /** 他社製品（再研磨専用）か。複製元に従う。 */
+  isExternalProduct?: boolean;
   id: number;
   code: string | null;
   name: string;
@@ -222,6 +224,9 @@ export function DuplicateProductModal({
         // 付け忘れると黙って既定（標準税率）で請求されてしまう。
         taxCategoryId:
           source?.taxCategoryId != null ? String(source.taxCategoryId) : null,
+        // 他社製品かどうかは複製元に従う（同じメーカーの別の工具を登録する場面）。
+        isExternalProduct: source?.isExternalProduct ?? false,
+        makerName: null,
         // キーワードは複製しない — 同じ語が 2 つの製品を指すと、AI 突合が
         // どちらか決められなくなる。複製先で改めて付ける。
         matchNames: [],

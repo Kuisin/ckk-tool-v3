@@ -13,11 +13,18 @@ import {
   defaultOrder,
   isBlockingIssue,
   isPrepStep,
+  isRegrindStep,
+  quantityLabelKeysFor,
+  REGRIND_RECEIPT_STEP_CODE,
+  regrindQuantities,
   requiredCompanions,
+  requiredStartCodeForType,
   resolveReceivedQuantity,
   splitStepIdsByKind,
+  stepAllowedForType,
   stepPrerequisites,
   stepSelectBlockers,
+  typeCompositionIssues,
   type UseDep,
   validateComposition,
 } from "./workflow-core";
@@ -1207,5 +1214,206 @@ describe("compositionIssuesForKind", () => {
     expect(compositionIssuesForKind([orphan], "PREP", catalog)).toEqual([
       orphan,
     ]);
+  });
+});
+
+describe("再研磨（REGRIND）— 種別ごとの構成規則", () => {
+  const mk = (id: number, code: string, category: string) => ({
+    id,
+    code,
+    category,
+  });
+  const catalog = [
+    mk(1, "MATERIAL_ISSUE", "MATERIAL_PREP"),
+    mk(42, "PRODUCT_ISSUE", "MATERIAL_PREP"),
+    mk(50, "REGRIND_RECEIPT", "REGRIND"),
+    mk(51, "REGRIND_OD", "REGRIND"),
+    mk(7, "CYLINDER_MACHINING", "MACHINING"),
+    mk(36, "COATING", "COATING"),
+    mk(40, "PRE_SHIP_INSPECTION", "INSPECTION"),
+    mk(9, "CYLINDER_INSPECTION_APPROVAL", "APPROVAL"),
+  ];
+  const byCode = (code: string) =>
+    catalog.find((c) => c.code === code) as (typeof catalog)[number];
+
+  it("再研磨の工程はカテゴリ REGRIND だけ", () => {
+    expect(isRegrindStep(byCode("REGRIND_OD"))).toBe(true);
+    expect(isRegrindStep(byCode("COATING"))).toBe(false);
+  });
+
+  it("stepAllowedForType: 再研磨は 受入・研磨・コーティング・検査・承認 のみ", () => {
+    const allowed = catalog
+      .filter((c) => stepAllowedForType(c, "REGRIND"))
+      .map((c) => c.code);
+    expect(allowed).toEqual([
+      "REGRIND_RECEIPT",
+      "REGRIND_OD",
+      "COATING",
+      "PRE_SHIP_INSPECTION",
+      "CYLINDER_INSPECTION_APPROVAL",
+    ]);
+  });
+
+  it("stepAllowedForType: 製造分は 製品出し・再研磨工程 が使えない", () => {
+    expect(stepAllowedForType(byCode("REGRIND_OD"), "MANUFACTURE")).toBe(false);
+    expect(stepAllowedForType(byCode("PRODUCT_ISSUE"), "MANUFACTURE")).toBe(
+      false,
+    );
+    expect(
+      stepAllowedForType(byCode("CYLINDER_MACHINING"), "MANUFACTURE"),
+    ).toBe(true);
+  });
+
+  it("stepAllowedForType: 在庫分は 製品出し + 出荷前検査 だけ", () => {
+    const allowed = catalog
+      .filter((c) => stepAllowedForType(c, "FROM_STOCK"))
+      .map((c) => c.code);
+    expect(allowed).toEqual(["PRODUCT_ISSUE", "PRE_SHIP_INSPECTION"]);
+  });
+
+  it("requiredStartCodeForType", () => {
+    expect(requiredStartCodeForType("REGRIND")).toBe(REGRIND_RECEIPT_STEP_CODE);
+    expect(requiredStartCodeForType("FROM_STOCK")).toBe("PRODUCT_ISSUE");
+    expect(requiredStartCodeForType("MANUFACTURE")).toBeNull();
+  });
+
+  it("typeCompositionIssues: 再研磨に加工が混ざる / 受入が無い", () => {
+    expect(typeCompositionIssues([50, 7], catalog, "REGRIND")).toEqual([
+      "REGRIND_FORBIDDEN_STEPS",
+    ]);
+    expect(typeCompositionIssues([51, 36], catalog, "REGRIND")).toEqual([
+      "REGRIND_REQUIRES_RECEIPT",
+    ]);
+    expect(typeCompositionIssues([50, 51, 36, 40], catalog, "REGRIND")).toEqual(
+      [],
+    );
+  });
+
+  it("typeCompositionIssues: 製造分に再研磨工程 / 製品出し", () => {
+    expect(typeCompositionIssues([1, 51], catalog, "MANUFACTURE")).toEqual([
+      "REGRIND_STEPS_ONLY_FOR_REGRIND",
+    ]);
+    expect(typeCompositionIssues([1, 42, 7], catalog, "MANUFACTURE")).toEqual([
+      "STOCK_ISSUE_ONLY_FOR_FROM_STOCK",
+    ]);
+  });
+
+  it("typeCompositionIssues: 在庫分の規則は従来どおり", () => {
+    expect(typeCompositionIssues([7], catalog, "FROM_STOCK")).toEqual([
+      "FROM_STOCK_ALLOWED_STEPS",
+      "FROM_STOCK_REQUIRES_STOCK_ISSUE",
+    ]);
+    expect(typeCompositionIssues([42, 40], catalog, "FROM_STOCK")).toEqual([]);
+  });
+
+  it("compositionIssuesForKind(REGRIND): 開始工程の不足は残す", () => {
+    const issues = [
+      { stepId: 51, kind: "MISSING_START" as const, relatedStepIds: [50] },
+      { stepId: 51, kind: "MISSING_AND" as const, relatedStepIds: [7] },
+    ];
+    expect(compositionIssuesForKind(issues, "REGRIND", catalog)).toEqual([
+      issues[0],
+    ]);
+  });
+
+  it("製品受入（再研磨）は開始工程として数える（ちょうど 1 つ）", () => {
+    const full = catalog.map((c) => ({
+      ...cat(c.id, c.code),
+      category: c.category,
+    }));
+    const blocking = validateComposition([50, 51], [], full).filter(
+      isBlockingIssue,
+    );
+    expect(blocking.some((i) => i.kind === "MISSING_START")).toBe(false);
+  });
+});
+
+describe("resolveReceivedQuantity — 製品受入（再研磨）は画面の値が権威", () => {
+  it("clientAuthoritative は client → startedWith → expected の順", () => {
+    expect(
+      resolveReceivedQuantity({
+        expectedAtCompletion: 100,
+        startedWith: 100,
+        client: 97,
+        clientAuthoritative: true,
+      }),
+    ).toBe(97);
+    expect(
+      resolveReceivedQuantity({
+        expectedAtCompletion: 100,
+        startedWith: 90,
+        client: null,
+        clientAuthoritative: true,
+      }),
+    ).toBe(90);
+  });
+
+  it("既定（false）は従来どおり expected が勝つ", () => {
+    expect(
+      resolveReceivedQuantity({
+        expectedAtCompletion: 100,
+        startedWith: 90,
+        client: 97,
+      }),
+    ).toBe(100);
+  });
+});
+
+describe("quantityLabelKeysFor / regrindQuantities", () => {
+  it("製品受入（再研磨）だけ独自の鍵、それ以外はモードの鍵", () => {
+    expect(
+      quantityLabelKeysFor({
+        code: REGRIND_RECEIPT_STEP_CODE,
+        quantityTracking: "FLOW",
+      }).scrap,
+    ).toBe("quantityLabels.regrindReceipt.scrap");
+    expect(
+      quantityLabelKeysFor({ code: "REGRIND_OD", quantityTracking: "FLOW" })
+        .scrap,
+    ).toBe("quantityLabels.flow.scrap");
+  });
+
+  it("受入 = 受入工程の受入数 / 返却 = 廃棄欄の合計（キャンセル除く）", () => {
+    const steps = [
+      {
+        code: REGRIND_RECEIPT_STEP_CODE,
+        status: "COMPLETED" as const,
+        inputQuantity: 10,
+        outputDefectScrap: 2,
+      },
+      {
+        code: "REGRIND_OD",
+        status: "COMPLETED" as const,
+        inputQuantity: 8,
+        outputDefectScrap: 1,
+      },
+      {
+        code: "COATING",
+        status: "CANCELLED" as const,
+        inputQuantity: 5,
+        outputDefectScrap: 5,
+      },
+    ];
+    expect(regrindQuantities(steps, 7)).toEqual({
+      received: 10,
+      returnedAsIs: 3,
+      finished: 7,
+    });
+  });
+
+  it("受入工程が未完了なら受入は null", () => {
+    expect(
+      regrindQuantities(
+        [
+          {
+            code: REGRIND_RECEIPT_STEP_CODE,
+            status: "IN_PROGRESS" as const,
+            inputQuantity: 10,
+            outputDefectScrap: null,
+          },
+        ],
+        0,
+      ).received,
+    ).toBeNull();
   });
 });
