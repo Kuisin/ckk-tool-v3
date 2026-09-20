@@ -3,7 +3,7 @@ title: "库存管理 — 操作手册"
 description: "可以确认产品、材料、在制品分别在哪里、各有多少的应用。更改存放位置时也在这里记录。"
 screenshots: [inventory-products-01, inventory-product-detail-01, inventory-transfer-01, inventory-locations-01, inventory-transactions-01]
 ---
-这是用来确认产品和材料 **在哪里、各有多少** 的应用。更改存放位置时也在这里记录。操作码是 `PD04`。
+这是用来确认产品和材料 **在哪里、各有多少** 的应用。更改存放位置时也在这里记录。操作码是 `ST01`。
 
 > ⚠️ 本应用目前 **只能在测试环境中使用**。在可以正式使用之前，画面和步骤可能会有变化。
 

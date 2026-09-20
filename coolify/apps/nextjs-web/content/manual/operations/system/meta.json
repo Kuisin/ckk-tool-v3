@@ -14,6 +14,9 @@
     "order-intake",
     "privileged-access",
     "external-api",
-    "accounting"
+    "accounting",
+    "ai-provider",
+    "notification-email",
+    "portal"
   ]
 }

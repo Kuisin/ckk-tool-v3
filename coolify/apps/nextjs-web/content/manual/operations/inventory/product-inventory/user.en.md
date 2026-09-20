@@ -3,7 +3,7 @@ title: "Inventory Management — User Manual"
 description: "An app for checking where your products, materials, and half-made items are and how many there are. You also record here when you move something to a different place."
 screenshots: [inventory-products-01, inventory-product-detail-01, inventory-transfer-01, inventory-locations-01, inventory-transactions-01]
 ---
-This app is for checking **where products and materials are and how many there are**. You also record here when you move something to a different place. The operation code is `PD04`.
+This app is for checking **where products and materials are and how many there are**. You also record here when you move something to a different place. The operation code is `ST01`.
 
 > ⚠️ For now this app works **only in the test environment**. The screens and the steps may change before it can be used for real work.
 

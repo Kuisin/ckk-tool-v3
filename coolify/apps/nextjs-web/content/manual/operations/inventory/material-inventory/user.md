@@ -3,7 +3,7 @@ title: "在庫管理（素材・仕掛品） — 操作マニュアル"
 description: "素材が今どれだけ使えるか、入荷予定を入れるといつどれだけ使えるようになるか、そして今どれだけ作っている途中かを確認できます。"
 screenshots: [inventory-materials-01, inventory-material-detail-01, inventory-material-transactions-01, inventory-wip-01]
 ---
-[在庫管理](/manual/ja/operations/production/product-inventory/user)（操作コード `PD04`）の「**素材**」タブと「**仕掛品**」タブの見かたです。素材が今どれだけ使えるか、そして今どれだけ作っている途中かを確認できます。
+[在庫管理](/manual/ja/operations/production/product-inventory/user)（操作コード `ST01`）の「**素材**」タブと「**仕掛品**」タブの見かたです。素材が今どれだけ使えるか、そして今どれだけ作っている途中かを確認できます。
 
 > ⚠️ このアプリは今のところ **テスト用の環境だけ** で使えます。本番で使えるようになるまでに、画面や手順が変わることがあります。
 
