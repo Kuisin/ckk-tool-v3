@@ -11,7 +11,7 @@ This app is for making a **素材発注書** (material purchase order), which is
 
 - You can write which supplier, which material, how many pieces, and at what price.
 - You can place the order after your manager has given **承認** (approval).
-- Once you place the order, the material appears as "arriving soon" on its [stock screen](/manual/en/operations/inventory/material-inventory/user).
+- Once you place the order, the material appears as "arriving soon" on its [stock screen](/manual/en/operations/inventory/inventory-management/user).
 - When the material arrives, you press 「入荷完了」 (Receiving complete) and it **goes into stock automatically**.
 - You can keep copies of order forms and delivery notes attached to the purchase order.
 
@@ -104,7 +104,7 @@ A purchase order that was sent back returns to 「**下書き**」 (draft). The 
 2. Press 「**発注**」 (Order).
 3. A small window called 「発注の確認」 (confirm order) appears, so press 「**発注する**」 (Place order).
 
-The status becomes 「**発注済**」 (ordered). From this moment, the material you ordered is shown as "arriving soon" on the [stock screen](/manual/en/operations/inventory/material-inventory/user).
+The status becomes 「**発注済**」 (ordered). From this moment, the material you ordered is shown as "arriving soon" on the [stock screen](/manual/en/operations/inventory/inventory-management/user).
 
 ## Recording that the material has arrived
 

@@ -79,16 +79,34 @@ If you want more fields, choose them from 「**項目を追加**」 (Add item) u
 
 ## Looking at what you registered
 
-The screen of a saved product has four tabs.
+The screen of a saved product has five tabs.
 
 ![Product detail screen](../../../assets/screenshots/master-product-detail-01.png)
 
 - **概要** (Overview) … the product type, the specification (a table of items and values) and the notes.
 - **工程** (Processes) … the order of the process steps used to make this product. Each route shows its target customer (「汎用」 — generic — when none is set) and its 「◯ バージョン」 (number of versions).
+- **顧客品番** (Customer product codes) … what each customer calls this product (their own product code), registered per customer.
 - **関連** (Related) … the price lists for this product, listed per customer. Click one to open that price list.
 - **履歴** (History) … the record of when and who changed this registration.
 
 To correct the content, press 「**編集**」 (Edit) at the top right of the screen.
+
+## Registering customer product codes
+
+The "顧客品番" (customer product codes) tab lets you register the code each customer uses for this product. Registering one does two things:
+
+- When an order document from that customer prints this product under that code, the [order acceptance](/manual/en/operations/sales/order-acceptance/user)'s AI import can match it to this product **from the code alone**.
+- The [delivery note](/manual/en/operations/shipping/delivery-note/user) and [invoice](/manual/en/operations/billing/invoice/user) item line can print that customer's own code alongside your product name.
+
+The tab opens read-only by default. Press 「**編集**」(Edit) to switch to a table of one row per customer, where you can add or remove rows.
+
+- **Customer** (required) … the customer this code belongs to.
+- **Code** (required) … the code that customer uses for this product.
+- **Name** (optional) … what that customer calls this product.
+- **Aliases** (optional) … any other spellings you see on that customer's orders besides the code itself. Used as extra matching candidates.
+- **Status** … active / inactive. Deactivate a code that is no longer used instead of deleting it.
+
+The same customer cannot appear on two rows (one code per customer).
 
 ## Viewing drawings
 

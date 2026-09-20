@@ -5,7 +5,7 @@ screenshots: [master-material-list-01, master-material-new-01, master-material-s
 ---
 仕入れて在庫する材料の棒を、1 種類ずつ登録しておく台帳です。操作コードは `MS06` です。
 
-[材種](/manual/ja/operations/masters/material-type/user)が「どんな材料か」だとすると、素材は **「その材料の、この太さ・この長さ・この表面仕上げのもの」** という、実際に買って棚に置く 1 本のことです。ここに登録していない素材は、[素材発注書](/manual/ja/operations/purchasing/purchase-order/user)や[在庫管理（素材・仕掛品）](/manual/ja/operations/inventory/material-inventory/user)で **選べません**。
+[材種](/manual/ja/operations/masters/material-type/user)が「どんな材料か」だとすると、素材は **「その材料の、この太さ・この長さ・この表面仕上げのもの」** という、実際に買って棚に置く 1 本のことです。ここに登録していない素材は、[素材発注書](/manual/ja/operations/purchasing/purchase-order/user)や[在庫管理（素材・仕掛品）](/manual/ja/operations/inventory/inventory-management/user)で **選べません**。
 
 > ⚠️ このアプリは現在 **開発環境（テスト用の環境）だけ** で使えます。本番で使えるようになるまでに、画面や手順が変わることがあります。
 

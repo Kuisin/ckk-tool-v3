@@ -5,7 +5,7 @@ screenshots: [master-material-list-01, master-material-new-01, master-material-s
 ---
 这是用于逐一登记采购并库存的材料棒的台账。操作码是 `MS06`。
 
-如果说[材种](/manual/zh/operations/masters/material-type/user)表示「是什么样的材料」，那么「素材」（材料）就是 **「该材种中，这个直径、这个长度、这种表面处理的那一根」**，也就是实际买回来放在货架上的那一根。没有在这里登记的材料，在[材料订购单](/manual/zh/operations/purchasing/purchase-order/user)和[库存管理（材料・在制品）](/manual/zh/operations/inventory/material-inventory/user)中 **无法选择**。
+如果说[材种](/manual/zh/operations/masters/material-type/user)表示「是什么样的材料」，那么「素材」（材料）就是 **「该材种中，这个直径、这个长度、这种表面处理的那一根」**，也就是实际买回来放在货架上的那一根。没有在这里登记的材料，在[材料订购单](/manual/zh/operations/purchasing/purchase-order/user)和[库存管理（材料・在制品）](/manual/zh/operations/inventory/inventory-management/user)中 **无法选择**。
 
 > ⚠️ 本应用目前 **仅在开发环境（测试用环境）** 中可用。在正式投入使用之前，画面和操作步骤可能会有变化。
 

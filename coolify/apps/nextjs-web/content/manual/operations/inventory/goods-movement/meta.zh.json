@@ -1,4 +1,1 @@
-{
-  "title": "手工出入库",
-  "pages": ["user"]
-}
+{ "title": "手动出入库", "pages": ["user"] }

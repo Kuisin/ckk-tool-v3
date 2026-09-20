@@ -115,7 +115,7 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 2. 「**出荷**」を選びます。
 3. 「出荷の確認」が出るので「**出荷する**」を押します。
 
-出荷すると、その日の日付が **出荷日** として記録され、状態が「**出荷済**」になります。同時に、送った分だけ[製品在庫](/manual/ja/operations/inventory/product-inventory/user)が減り、注文明細のほうも「一部出荷」または「出荷済」に自動で変わります。
+出荷すると、その日の日付が **出荷日** として記録され、状態が「**出荷済**」になります。同時に、送った分だけ[製品在庫](/manual/ja/operations/inventory/inventory-management/user)が減り、注文明細のほうも「一部出荷」または「出荷済」に自動で変わります。
 
 ### まちがえたとき（キャンセル）
 
@@ -182,7 +182,7 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 > 💡 出荷書を作るとき・直すときにも、ロットの在庫が足りなければ同じ注意が出ます。
 > そこでも保存は止まりません。
 
-伝票のほうにも残ります。[入出庫伝票](/manual/ja/operations/inventory/movements/user)の明細で、足りなかった分の行の備考が「**在庫不足のまま出庫**」になります。
+伝票のほうにも残ります。[入出庫伝票](/manual/ja/operations/inventory/inventory-movements/user)の明細で、足りなかった分の行の備考が「**在庫不足のまま出庫**」になります。
 
 ## 返品を受けたとき
 
@@ -198,7 +198,7 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 
 > ⚠️ **返品しても、出荷書の状態・請求・注文明細は動きません。** 出したという事実は返品では消えないためです。請求を直す必要があるときは、経理の手順に従って別に処理してください。
 
-返品を記録すると、明細の表に「**返品**」の列が出て、戻った本数が分かるようになります。記録そのものは[入出庫伝票](/manual/ja/operations/inventory/movements/user)（事由「返品」）に残ります。
+返品を記録すると、明細の表に「**返品**」の列が出て、戻った本数が分かるようになります。記録そのものは[入出庫伝票](/manual/ja/operations/inventory/inventory-movements/user)（事由「返品」）に残ります。
 
 ## 納品書ができるまで
 

@@ -88,41 +88,26 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
     app: "pending-work-orders",
   },
   { path: "operations/production/design-file/user", app: "design-files" },
-  { path: "operations/inventory/product-inventory/user", app: "inventory" },
-  { path: "operations/inventory/material-inventory/user", app: "inventory" },
-  // 在庫の 6 画面。いずれも権限コードは inventory（読める人は同じ）で、
-  // 画面ごとに答える問いが違う（場所から / 品目から / 記録 / 数え直し /
-  // 手で動かす / その区分）。
+  // ── 在庫 ────────────────────────────────────────────────────────────────
+  {
+    path: "operations/inventory/inventory-management/user",
+    app: "inventory",
+  },
   {
     path: "operations/inventory/stock-overview/user",
     app: "stock-overview",
-    jaOnly: true,
   },
   {
     path: "operations/inventory/stock-requirements/user",
     app: "stock-requirements",
-    jaOnly: true,
   },
   {
-    path: "operations/inventory/movements/user",
+    path: "operations/inventory/inventory-movements/user",
     app: "inventory-movements",
-    jaOnly: true,
   },
-  {
-    path: "operations/inventory/stock-takes/user",
-    app: "stock-takes",
-    jaOnly: true,
-  },
-  {
-    path: "operations/inventory/goods-movement/user",
-    app: "goods-movement",
-    jaOnly: true,
-  },
-  {
-    path: "operations/inventory/movement-types/user",
-    app: "movement-types",
-    jaOnly: true,
-  },
+  { path: "operations/inventory/stock-takes/user", app: "stock-takes" },
+  { path: "operations/inventory/goods-movement/user", app: "goods-movement" },
+  { path: "operations/inventory/movement-types/user", app: "movement-types" },
   // 旧 承認管理（PD03）は 一般カテゴリの 未処理一覧（CM01）へ移設した。画面自体は
   // ログインだけで開くが、承認依頼中の一覧が出るかは approve:READ で決まる。
   // ── 出荷 ────────────────────────────────────────────────────────────────

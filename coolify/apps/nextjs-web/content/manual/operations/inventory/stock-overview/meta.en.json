@@ -1,4 +1,1 @@
-{
-  "title": "Stock list",
-  "pages": ["user"]
-}
+{ "title": "Stock Overview", "pages": ["user"] }
