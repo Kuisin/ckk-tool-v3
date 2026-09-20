@@ -427,6 +427,9 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 保管場所 / 棚 | Storage location / Shelf | 存放位置 / 货架 |
 | 未手配 / 手配済 | Not planned / Planned | 未安排 / 已安排 |
 | 手動（入出庫伝票の事由 — ST06 手動入出庫で作った伝票） | Manual | 手动 |
+| 外注支給（入出庫伝票の事由 — 外注へ出して預け在庫が増える） | Issued to subcontractor | 外协发出 |
+| 外注戻り（入出庫伝票の事由 — 外注から戻って預け在庫が減る） | Returned from subcontractor | 外协返回 |
+| 返品（入出庫伝票の事由 — 出荷後に顧客から戻る） | Sales return | 销售退货 |
 | 割当 | Allocation | 分配 |
 
 ### 3.10 出荷・請求

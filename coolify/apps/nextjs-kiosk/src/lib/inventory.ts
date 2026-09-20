@@ -49,6 +49,8 @@ export type MovementCause =
   /// 外注へ出した / 外注から戻った（預け在庫の増減）。
   | "OUTSOURCE_ISSUE"
   | "OUTSOURCE_RETURN"
+  /// 出荷後の返品（在庫が戻る）。
+  | "SALES_RETURN"
   | "OTHER";
 
 /** allocateDocumentKey("INVENTORY_MOVEMENT") の戻り値。 */
@@ -314,6 +316,57 @@ export async function ensureItemInventory(
       if (again) return assertUnit(again);
     }
     throw e;
+  }
+}
+
+/** 返ってきた 1 行（出荷明細の品目・ロットに対応する）。 */
+export interface DeliveryReturnLine {
+  itemId: number;
+  lotNumber: number | null;
+  quantity: number;
+}
+
+/**
+ * 出荷後の返品を在庫に戻す（逆仕訳の伝票 1 枚）。
+ *
+ * **出荷書は動かさない。** 出したという事実は返品では消えない — 状態を
+ * DRAFT へ戻すような「無かったこと」にする作りにすると、納品書も請求も
+ * 巻き戻す話になり、伝票の意味が変わる。ここは在庫だけを戻す。
+ *
+ * 戻す先は**出荷元の拠点の、同じロット**。保管場所は未割当（システム入庫の
+ * 既定）— 返品の品をどの棚へ置くかは人が決めることなので、在庫移動で運ぶ。
+ */
+export async function onDeliveryOrderReturnedTx(
+  tx: Tx,
+  key: { yearMonth: string; seq: number },
+  movementKey: MovementKey,
+  args: { lines: readonly DeliveryReturnLine[]; plantId: number | null },
+): Promise<void> {
+  const ref = `DOR-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
+  const openMovement = movementOpener(tx, {
+    key: movementKey,
+    cause: "SALES_RETURN",
+    sourceType: "delivery_orders",
+    sourceId: ref,
+    plantId: args.plantId,
+  });
+  for (const line of args.lines) {
+    if (line.quantity <= 0) continue;
+    const inventoryId = await ensureItemInventory(tx, {
+      itemId: line.itemId,
+      plantId: args.plantId,
+      lotNumber: line.lotNumber,
+      isSemiFinished: false,
+    });
+    await applyTransaction(tx, await openMovement(), {
+      inventoryType: "PRODUCT",
+      inventoryId,
+      transactionType: "IN",
+      quantity: line.quantity,
+      referenceType: "delivery_order",
+      referenceId: ref,
+      notes: encodeInventoryNote("salesReturned", { ref }),
+    });
   }
 }
 
