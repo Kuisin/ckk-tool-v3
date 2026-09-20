@@ -1539,6 +1539,14 @@
           "label": "已导出"
         }
       },
+      "AccountingDocument": {
+        "POSTED": {
+          "label": "已过账"
+        },
+        "REVERSED": {
+          "label": "已冲销"
+        }
+      },
       "ApprovalRequest": {
         "PENDING": {
           "label": "审批中"
@@ -2180,6 +2188,28 @@
       "approvalRequested": "已提交审批申请",
       "awaitingPaymentApproval": "正在等待入款前审批",
       "paymentApprovalRequested": "已提交入款审批申请"
+    },
+    "accountingDocuments": {
+      "invalidDocumentNumber": "会计凭证编号无效",
+      "reasonRequired": "请输入冲销理由",
+      "notActivePosted": "该凭证已冲销，或不存在",
+      "reversed": "已创建冲销分录",
+      "reverseFailed": "创建冲销分录失败",
+      "createReversal": "冲销",
+      "reverseReasonLabel": "冲销理由",
+      "confirmReverseTitle": "冲销确认",
+      "confirmReverseMessage": "将对该会计凭证进行冲销——生成一张借贷方向相反的新凭证，原凭证标记为已冲销（明细不会被修改）。",
+      "activeDocument": "已过账的凭证",
+      "documentHistory": "会计凭证历史",
+      "documentNumber": "凭证编号",
+      "postedAtLabel": "过账时间",
+      "reversedAtLabel": "冲销时间",
+      "downloadCsv": "会计对接CSV",
+      "redownloadCsv": "会计对接CSV（重新下载）",
+      "notPostedYet": "尚未过账",
+      "needsRepost": "已冲销——再次导出将过账新凭证",
+      "documentsList": "凭证历史",
+      "documentsListDescription": "已过账、已冲销的会计凭证列表。点击一行可打开对应请款单。"
     },
     "closingActions": {
       "closingDateNotReached": "结算日之前无法处理（从结算日次日起）",
@@ -8914,6 +8944,7 @@
       "material_purchase_orders": "材料采购单",
       "material_receipts": "材料到货",
       "invoices": "请款单",
+      "accounting_documents": "会计凭证",
       "billing_closings": "结算处理",
       "design_requests": "设计委托单",
       "approval_requests": "审批申请",

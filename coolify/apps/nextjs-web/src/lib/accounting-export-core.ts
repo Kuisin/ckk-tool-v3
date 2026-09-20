@@ -593,15 +593,17 @@ export function csvField(
 }
 
 /**
- * 請求書 1 件 → 仕訳 CSV のテキスト。
+ * 仕訳行 → CSV のテキスト。**行を作るところ（`buildJournalRows`）とは
+ * 独立** — 会計文書（`accounting_documents`）へ転記済みの行を DB から
+ * 戻して描き直すときは、この関数だけを呼ぶ（`buildJournalRows`は二度と
+ * 呼ばない。転記済みの行は再計算しない、というのがこの分離の理由）。
  *
  * BOM と文字コードの変換は `accounting-encode.ts` が持つ（ここは文字列だけ）。
  */
-export function buildAccountingCsvText(
-  invoice: JournalInvoiceInput,
+export function renderJournalCsv(
+  rows: JournalRow[],
   settings: AccountingExportSettings,
 ): string {
-  const rows = buildJournalRows(invoice, settings);
   const eol = settings.newline === "lf" ? "\n" : "\r\n";
   const lines: string[] = [];
   if (settings.headerRow) {
@@ -621,6 +623,19 @@ export function buildAccountingCsvText(
     );
   });
   return `${lines.join(eol)}${eol}`;
+}
+
+/**
+ * 請求書 1 件 → 仕訳 CSV のテキスト。`buildJournalRows` + `renderJournalCsv`
+ * の薄いラッパ — まだ転記していない請求書を試しに CSV 化するとき、または
+ * 既存テスト（入力→CSV の一気通貫）のためだけに残す。**転記そのもの**は
+ * `lib/accounting-documents.ts` の `postAccountingDocument` を通ること。
+ */
+export function buildAccountingCsvText(
+  invoice: JournalInvoiceInput,
+  settings: AccountingExportSettings,
+): string {
+  return renderJournalCsv(buildJournalRows(invoice, settings), settings);
 }
 
 /**

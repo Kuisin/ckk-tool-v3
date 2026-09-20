@@ -110,6 +110,8 @@ model User {
   invoicesRequested       Invoice[]             @relation("InvoiceRequestedBy")
   invoicesApproved        Invoice[]             @relation("InvoiceApprovedBy")
   invoicesRejected        Invoice[]             @relation("InvoiceRejectedBy")
+  accountingDocumentsPosted   AccountingDocument[] @relation("AccountingDocumentPostedBy")
+  accountingDocumentsReversed AccountingDocument[] @relation("AccountingDocumentReversedBy")
   designRequestsCreated   DesignRequest[]       @relation("DesignRequestCreatedBy")
   designRequestsAssigned  DesignRequest[]       @relation("DesignRequestAssignee")
   designRequestsRequested DesignRequest[]       @relation("DesignRequestRequestedBy")

@@ -454,6 +454,12 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 会計連携 | Accounting export | 会计对接 |
 | 会計連携CSV | Accounting CSV | 会计对接 CSV |
 | 会計連携日時 | Accounting export date | 会计对接时间 |
+| 会計文書 | Accounting document | 会计凭证 |
+| 転記済み | Posted | 已过账 |
+| 反対仕訳 | Reversing entry | 冲销分录 |
+| 反対仕訳済み | Reversed | 已冲销 |
+| 反対仕訳を作成 | Create reversal | 冲销 |
+| 文書履歴 | Document history | 凭证历史 |
 | 過不足納品 | Delivery quantity variance | 交货数量差异 |
 | 許容の基準 / 許容範囲（過不足の） | Tolerance basis / Tolerance | 允许基准 / 允许范围 |
 | 請求単価 | Billing unit price | 请款单价 |

@@ -722,6 +722,8 @@ Stack (gap="md")
 | BillingClosing | PENDING | gray | 未処理 |
 | BillingClosing | PROCESSED | blue | 処理済 |
 | BillingClosing | EXPORTED | green | エクスポート済 |
+| AccountingDocument | POSTED | blue | 転記済み |
+| AccountingDocument | REVERSED | red | 反対仕訳済み |
 
 ---
 

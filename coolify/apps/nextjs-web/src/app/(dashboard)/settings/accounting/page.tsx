@@ -1,6 +1,8 @@
 import { Stack } from "@mantine/core";
+import { IconHistory } from "@tabler/icons-react";
 import { getTranslations } from "next-intl/server";
 import { AccountingExportForm } from "@/components/settings/AccountingExportForm";
+import { SecondaryButton } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getAccountingSettings } from "@/lib/accounting-settings";
 import { requireAppRead } from "@/lib/authz-page";
@@ -28,6 +30,14 @@ export default async function AccountingSettingsPage() {
   return (
     <Stack gap="md">
       <PageHeader
+        actions={
+          <SecondaryButton
+            href="/settings/accounting/documents"
+            leftSection={<IconHistory size={14} />}
+          >
+            {tr("billing.accountingDocuments.documentsList")}
+          </SecondaryButton>
+        }
         breadcrumbs={[
           tr("common.system"),
           tr("settings.accounting.accounting"),
