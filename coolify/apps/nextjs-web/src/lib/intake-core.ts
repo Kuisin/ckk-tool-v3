@@ -87,7 +87,7 @@ export function normalizeOrderType(
   // 再研磨は先に見る — 「再研磨（本番品）」のように他の語と同居しても再研磨。
   // i18n-ignore
   if (
-    t.includes("再研") ||
+    t.includes("再研") || // i18n-ignore
     t.includes("regrind") ||
     t.includes("リグラインド") || // i18n-ignore
     t.includes("研ぎ直し") // i18n-ignore
