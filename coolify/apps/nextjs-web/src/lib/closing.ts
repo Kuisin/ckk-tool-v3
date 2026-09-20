@@ -29,8 +29,12 @@ export interface ClosingBatchResult {
   created: number;
   updated: number;
   skipped: number;
-  /** 生成できた請求書の番号（作成した順）。 */
-  invoiceNumbers: string[];
+  /** 生成できた請求書（作成した順）。画面が結果ポップアップで一覧するために顧客名・金額も持つ。 */
+  invoices: {
+    invoiceNumber: string;
+    customerName: string;
+    totalAmount: number;
+  }[];
   /** 締日行は作れたが請求書は生成できなかったもの（締日前 等）。 */
   failures: { customerName: string; error: string }[];
 }
@@ -102,7 +106,7 @@ export async function runClosingBatch(
   let created = 0;
   let updated = 0;
   let skipped = 0;
-  const invoiceNumbers: string[] = [];
+  const invoices: ClosingBatchResult["invoices"] = [];
   const failures: ClosingBatchResult["failures"] = [];
   const todayIso = isoDateJst(new Date());
 
@@ -121,12 +125,16 @@ export async function runClosingBatch(
     if (!closingDateReached(c.closingDate, todayIso)) continue;
     const generated = await generateInvoiceForClosing(result.id);
     if (generated.ok) {
-      invoiceNumbers.push(generated.data.invoiceNumber);
+      invoices.push({
+        invoiceNumber: generated.data.invoiceNumber,
+        customerName: c.customerName,
+        totalAmount: generated.data.totalAmount,
+      });
     } else {
       failures.push({ customerName: c.customerName, error: generated.error });
     }
   }
-  return { created, updated, skipped, invoiceNumbers, failures };
+  return { created, updated, skipped, invoices, failures };
 }
 
 /**
@@ -172,7 +180,7 @@ export async function maybeRunDailyClosing(): Promise<void> {
       );
       const result = await runClosingBatch(targetDate);
       console.log(
-        `[closing] 日次オートラン ${today}: 作成 ${result.created} / 更新 ${result.updated} / スキップ ${result.skipped} / 請求書 ${result.invoiceNumbers.length} / 失敗 ${result.failures.length}`, // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
+        `[closing] 日次オートラン ${today}: 作成 ${result.created} / 更新 ${result.updated} / スキップ ${result.skipped} / 請求書 ${result.invoices.length} / 失敗 ${result.failures.length}`, // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
       );
     });
   } catch (e) {

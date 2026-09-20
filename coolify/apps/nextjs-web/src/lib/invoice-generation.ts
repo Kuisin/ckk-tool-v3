@@ -259,6 +259,7 @@ async function buildInvoiceDraft(
 
 export interface GeneratedInvoice {
   invoiceNumber: string;
+  totalAmount: number;
 }
 
 /**
@@ -414,7 +415,7 @@ export async function generateInvoiceForClosing(
     revalidatePath(`${BASE_PATH}/${closingId}`);
     revalidatePath(INVOICES_PATH);
     revalidatePath(`${INVOICES_PATH}/${invoiceNumber}`);
-    return actionOk({ invoiceNumber });
+    return actionOk({ invoiceNumber, totalAmount: draft.totalAmount });
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("GUARD:")) {
       return actionError(e.message.slice("GUARD:".length));
@@ -577,7 +578,11 @@ export async function generateManualInvoice(input: {
     revalidatePath(`${BASE_PATH}/${closingId}`);
     revalidatePath(INVOICES_PATH);
     revalidatePath(`${INVOICES_PATH}/${invoiceNumber}`);
-    return actionOk({ invoiceNumber, closingId });
+    return actionOk({
+      invoiceNumber,
+      totalAmount: draft.totalAmount,
+      closingId,
+    });
   } catch (e) {
     return actionError(
       prismaErrorMessage(

@@ -2153,7 +2153,13 @@
     },
     "closingTable": {
       "createdAndUpdatedCounts": "新建 {created} 项 / 更新 {updated} 项",
-      "skippedCount": "跳过已处理 {skipped} 项"
+      "skippedCount": "跳过已处理 {skipped} 项",
+      "resultModalTitle": "结算处理结果",
+      "bulkResultModalTitle": "请款单生成结果",
+      "createdInvoicesHeading": "已生成请款单（{count}）",
+      "noInvoicesCreated": "未生成任何请款单",
+      "failuresHeading": "未能生成（{count}）",
+      "openInvoiceList": "打开请款单列表"
     },
     "invoicesActions": {
       "invalidNumber": "请款单号无效",
