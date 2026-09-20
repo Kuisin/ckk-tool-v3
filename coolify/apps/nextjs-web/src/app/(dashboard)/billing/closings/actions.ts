@@ -17,7 +17,13 @@
 
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
-import { parseClosingDate } from "@/components/billing/closings/model";
+import {
+  type ClosingSimulation,
+  isRunnableClosingDate,
+  parseClosingDate,
+  summarizeClosingSimulation,
+} from "@/components/billing/closings/model";
+import { isoDateJst } from "@/components/sales/price-lists/model";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -51,6 +57,11 @@ export async function runClosing(
   const tr = await getTranslations();
   const targetDate = parseClosingDate(dateIso);
   if (!targetDate) return actionError(tr("billing.closingActions.invalidDate"));
+  // 未来日では走らせない — 締日行だけ作られて請求書は作られない半端な状態が
+  // 残るため（理由は model.ts isRunnableClosingDate）。見るだけなら試算へ。
+  if (!isRunnableClosingDate(dateIso, isoDateJst(new Date()))) {
+    return actionError(tr("billing.closingActions.futureDateNotRunnable"));
+  }
   const authz = await checkPermission("billing_closing", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -75,6 +86,51 @@ export async function runClosing(
     const { prismaErrorMessage } = await import("@/lib/server-action");
     return actionError(
       prismaErrorMessage(e, tr("billing.closingActions.runFailed"), tr),
+    );
+  }
+}
+
+/**
+ * 締日処理の**試算** — 指定日に実行したら何が作られるかを見るだけ。
+ * DB には一切書かない（締日行も請求書も作らない・監査行も残さない）。
+ *
+ * 実行は今日までに制限しているので（isRunnableClosingDate）、「次の締日で
+ * いくら請求されるのか」を先に見る手段がこれ以外に無い。**未来日を許すのは
+ * ここだけ**。
+ *
+ * 候補集めは実行と**同じ関数**（collectClosingCandidatesUpTo）を通す — 別に
+ * 書くと試算と実行の結果がずれ、試算そのものが信用できなくなる。
+ *
+ * ★ 数えられるのは**いま未請求の出荷だけ**。指定日までに新しく出荷された分は
+ *   まだ存在しないので入らない（画面にもそう書く）。
+ */
+export async function simulateClosing(
+  dateIso: string,
+): Promise<ActionResult<ClosingSimulation>> {
+  const tr = await getTranslations();
+  const targetDate = parseClosingDate(dateIso);
+  if (!targetDate) return actionError(tr("billing.closingActions.invalidDate"));
+  // 読むだけなので READ で足りる（実行は UPDATE）。
+  const authz = await checkPermission("billing_closing", "READ");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    const { collectClosingCandidatesUpTo } = await import("./data");
+    const candidates = await collectClosingCandidatesUpTo(targetDate);
+    return actionOk(
+      summarizeClosingSimulation(
+        candidates.map((c) => ({
+          customerName: c.customerName,
+          closingDate: c.closingDate.toISOString(),
+          shipmentNumbers: c.shipmentNumbers,
+          totalAmount: c.totalAmount,
+        })),
+        dateIso,
+      ),
+    );
+  } catch (e) {
+    const { prismaErrorMessage } = await import("@/lib/server-action");
+    return actionError(
+      prismaErrorMessage(e, tr("billing.closingActions.simulateFailed"), tr),
     );
   }
 }

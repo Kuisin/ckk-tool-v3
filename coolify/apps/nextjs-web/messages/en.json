@@ -2109,7 +2109,17 @@
       "targetDate": "Target date",
       "kind": "Run type",
       "kindScheduled": "Scheduled",
-      "kindManual": "Manual"
+      "kindManual": "Manual",
+      "simulate": "Dry run",
+      "simulateTitle": "Billing closing dry run",
+      "simulateDateDescription": "Shows what a run on this date would produce (a future date is allowed)",
+      "simulateCountsCurrentShipmentsOnly": "Counts only shipments that are unbilled now. Shipments made between today and the target date are not included.",
+      "simulateClosingCount": "{count} closings",
+      "simulateInvoiceCount": "{count} invoices",
+      "simulateNothingToClose": "Nothing to close",
+      "simulateInvoiceCreated": "Invoice created",
+      "simulateInvoiceNotYet": "Created from the next day",
+      "runsUpToTodayOnly": "A run reaches today at the latest. Use a dry run to look ahead"
     },
     "invoices": {
       "issueThePdf": "Issue the PDF",
@@ -2219,7 +2229,9 @@
       "pendingOnly": "Only an unprocessed closing can generate an invoice",
       "runFailed": "Could not run the billing closing",
       "invalidDate": "Invalid target date format",
-      "noUnbilledShipmentsUpToDate": "No unbilled shipments up to the target date"
+      "noUnbilledShipmentsUpToDate": "No unbilled shipments up to the target date",
+      "futureDateNotRunnable": "A future date cannot be run. Use a dry run to look ahead.",
+      "simulateFailed": "Could not run the dry run"
     },
     "invoiceTable": {
       "manualInvoice": "Manual invoice",
@@ -7871,7 +7883,7 @@
       "willReplaceWithList": "{entered} will be replaced by the price list unit price on save",
       "overriddenFromList": "Overridden (price list {expected})",
       "delivery": "Delivery",
-      "applyLineOneDeliveryToAll": "Apply line 1\u2019s delivery to all lines"
+      "applyLineOneDeliveryToAll": "Apply line 1’s delivery to all lines"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "Deletes \"{label}\". This cannot be undone.",
