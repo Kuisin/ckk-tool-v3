@@ -96,6 +96,88 @@ export function closingDateReached(
   return todayIso > iso;
 }
 
+// ── 実行してよい指定日 / 試算 ───────────────────────────────────────────────
+
+/**
+ * 締日処理を**実行**してよい指定日か — 未来日は不可（今日まで）。
+ *
+ * 指定日は候補集め（collectClosingCandidatesUpTo）にしか効かず、請求書を作って
+ * よいかは常に**実際の今日**で判定される（closingDateReached — lib/closing.ts と
+ * lib/invoice-generation.ts の両方）。つまり 1 回の実行が 2 つの時計を見ている
+ * ので、未来日で走らせると締日行だけができて請求書はできない半端な状態が残る。
+ * しかも生成の見送りは黙った `continue` なので、画面には「作成 1 件」とだけ出て
+ * 一覧は空になり、理由がどこにも出ない（実際にそうなった）。
+ *
+ * **作れない行は最初から作らせない**のがここ。未来の分を見たいだけなら
+ * 試算（simulateClosing — 何も書かない）を使う。
+ */
+export function isRunnableClosingDate(
+  dateIso: string,
+  todayIso: string,
+): boolean {
+  return dateIso <= todayIso;
+}
+
+/** 試算 1 行 — 指定日に実行したら、この顧客のこの締日がどうなるか。 */
+export interface ClosingSimulationRow {
+  customerName: string;
+  /** 締日（ISO）。 */
+  closingDate: string;
+  /** 対象になる出荷書番号（DOR-YYYYMM-NNNNN）。 */
+  shipmentNumbers: string[];
+  /** 対象出荷の合計金額（税抜）。 */
+  totalAmount: number;
+  /**
+   * その実行で請求書（下書き）まで作られるか。**締日の翌日以降**に実行した
+   * ときだけ true — 締日当日は false（closingDateReached と同じ規則なので、
+   * 試算と実行がずれない）。
+   */
+  willGenerateInvoice: boolean;
+}
+
+/** 試算の結果（画面が出す形）。 */
+export interface ClosingSimulation {
+  /** 試算の基準日（"YYYY-MM-DD"）。 */
+  targetDate: string;
+  rows: ClosingSimulationRow[];
+  /** 締日行の件数。 */
+  closingCount: number;
+  /** そのうち請求書まで作られる件数。 */
+  invoiceCount: number;
+  /** 対象出荷の合計金額（税抜）。 */
+  totalAmount: number;
+}
+
+/**
+ * 試算の候補（サーバーが集めたもの）→ 画面が出す形。純粋。
+ *
+ * 請求書ができるかの判定は**基準日 = 指定日**で行う（今日ではない）。
+ * 「その日に実行したらどうなるか」を見せるのが試算なので、ここで今日を見ると
+ * 未来日の試算が全部「未生成」になって何も分からなくなる。
+ */
+export function summarizeClosingSimulation(
+  candidates: Omit<ClosingSimulationRow, "willGenerateInvoice">[],
+  targetIso: string,
+): ClosingSimulation {
+  const rows = candidates
+    .map((c) => ({
+      ...c,
+      willGenerateInvoice: closingDateReached(c.closingDate, targetIso),
+    }))
+    .sort(
+      (a, b) =>
+        a.closingDate.localeCompare(b.closingDate) ||
+        a.customerName.localeCompare(b.customerName),
+    );
+  return {
+    targetDate: targetIso,
+    rows,
+    closingCount: rows.length,
+    invoiceCount: rows.filter((r) => r.willGenerateInvoice).length,
+    totalAmount: rows.reduce((sum, r) => sum + r.totalAmount, 0),
+  };
+}
+
 /**
  * 請求期間の始点 = **前回処理した締日の翌日**。無ければ顧客の締日設定から計算。
  *

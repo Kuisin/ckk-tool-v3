@@ -451,6 +451,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 納品日 | Delivered date | 交货日 |
 | 請求期間 | Billing period | 请款期间 |
 | 締日処理 | Billing closing | 结算处理 |
+| 試算（実行せずに結果を見る） | Dry run | 试算 |
+| 指定日 | Target date | 指定日 |
 | 会計連携 | Accounting export | 会计对接 |
 | 会計連携CSV | Accounting CSV | 会计对接 CSV |
 | 会計連携日時 | Accounting export date | 会计对接时间 |
