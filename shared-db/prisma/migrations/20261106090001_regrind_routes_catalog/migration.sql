@@ -8,6 +8,9 @@
 -- 品目ごとに変わるものではなく、「外周 + 溝 → コート → 検査」のような定番を
 -- 何本か持てば足りる。製品 × 受注元ごとの製造工程リスト（MANUFACTURING）と
 -- 違い、item_id / customer_bp_id は必ず NULL。
+-- allow-destructive: CHECK を**広げる**だけ（PREP と同じ条件に REGRIND を足す）。
+--   DROP → ADD の間も旧アプリは PREP / MANUFACTURING しか書かず、どちらも新旧両方の
+--   CHECK を満たす。既存行は 1 行も違反しない。
 ALTER TABLE "app"."product_process_routes" DROP CONSTRAINT IF EXISTS "product_process_routes_kind_columns";
 ALTER TABLE "app"."product_process_routes"
   ADD CONSTRAINT "product_process_routes_kind_columns"
