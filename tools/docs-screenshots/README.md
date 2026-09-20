@@ -211,12 +211,33 @@ pnpm exec tsx audit-crawl.ts            # 両方。--web / --kiosk で片方だ�
 結果は標準出力の要約と `/tmp/audit-crawl-{web,kiosk}.json`。Gotenberg / SeaweedFS が
 無いので PDF プレビューと図面サムネイルの 502/404 は出る（環境）。
 
-**通し確認 3 本（検査承認 / 出荷+最終検査 / smoke-flows）は「1 回の種に 1 回だけ」。**
+**通し確認 4 本（検査承認 / 出荷+最終検査 / 在庫不足の出荷 / smoke-flows）は
+「1 回の種に 1 回だけ」。**
 2 回目は状態が残って落ちる — 検査承認は 1 回目で承認を消費し、出荷は工程を進め、
-smoke-flows は列設定を保存する。落ちたら中身を疑う前に
-`docker rm -f ckk-shots-db` → `pnpm docs:seed` から作り直すこと。
+在庫不足の出荷は出荷書を出荷済にし、smoke-flows は列設定を保存する。落ちたら
+中身を疑う前に `docker rm -f ckk-shots-db` → `pnpm docs:seed` から作り直すこと。
 `e2e-shipping-and-final-inspection.ts` は `e2e-fixtures.sql`、
-`e2e-kiosk-inspection-approval.ts` は `e2e-kiosk-fixtures.sql` が**必須**。
+`e2e-kiosk-inspection-approval.ts` は `e2e-kiosk-fixtures.sql`、
+`e2e-ship-shortage.ts` は `e2e-ship-shortage-fixtures.sql` が**必須**。
+
+### 在庫が足りないまま出荷する（e2e-ship-shortage.ts）
+
+出荷を押したときに出る「在庫が足りません」の確認と、そのまま出したときの
+台帳（マイナス・伝票の備考）を、実際に操作して確かめる。**デモシードには
+在庫の足りない確定済み出荷書が無い**ので、fixtures が 1 通だけ作る
+（品目 9003 × 実在しないロット 9999 × 4 本 — 利用者が dev で踏んだ形）。
+
+```
+SHOT_DB_CONTAINER=ckk-ship-db SHOT_DB_PORT=55443 pnpm docs:seed
+docker exec -i ckk-ship-db psql -U postgres -d ckk -f - < e2e-ship-shortage-fixtures.sql
+# nextjs-web を同じ DATABASE_URL で本番ビルドして :3105 で起動（APP_ENV=dev）
+APP_URL=http://localhost:3105 pnpm exec tsx e2e-ship-shortage.ts
+```
+
+見ているのは 13 点 — 足りないときにダイアログが出る / 品目と不足数が出る /
+「在庫を見る」が ST03 を品目つきで指す / やめると出荷されない / 出すと出荷され
+注意が残る / バケットがマイナスになり伝票に「在庫不足のまま出庫」が 1 行立つ /
+足りているときはダイアログが出ず、普通に減る。
 
 ## 通し確認を CI で回す（手動実行）
 

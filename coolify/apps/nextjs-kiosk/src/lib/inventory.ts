@@ -977,13 +977,149 @@ export async function onWorkOrderCompletedTx(
   }
 }
 
-/** 台帳が足りないまま出した 1 行ぶん（呼び出し側が利用者へ警告する材料）。 */
+/** 台帳が足りない 1 行ぶん（確認ダイアログと、出荷後の警告の材料）。 */
 export interface ShipShortage {
+  /** 品目の内部 id。画面から 在庫・所要量 (ST03) へ飛ぶのに使う。 */
+  itemId: number;
   /** 品目コード（PRD-… / 素材コード）。画面にはこれを出す。 */
   item: string;
   lotNumber: number | null;
-  /** 台帳に無かったのに出した本数。 */
+  /** 台帳に無い本数（出せば、この分だけマイナスになる）。 */
   shortfall: number;
+}
+
+/** 出荷 1 行ぶんの引き当ての計画（実際に引くのも、数えるだけなのも同じ計算）。 */
+interface DispatchPlanLine {
+  item: {
+    itemId: number;
+    lotNumber: number | null;
+    quantity: number;
+    orderLineId: string | null;
+  };
+  /** 実在するバケット（無ければ空。**ここでは作らない**）。 */
+  buckets: { id: string; quantity: number; reservedQuantity: number }[];
+  steps: { bucketId: string; take: number }[];
+  shortfall: number;
+}
+
+/**
+ * 発送（DISPATCH）の各行が、どのバケットから何本引けるかを数える。
+ *
+ * **出荷そのものと、出荷前の確認が同じ関数を通る。** 別々に書くと、
+ * 「確認では足りていたのに出荷したらマイナスになった」（またはその逆）が
+ * 起きる — 引ける数の定義（予約を除いた分 + 自分の予約）は 1 か所にしか
+ * 置けない。
+ */
+async function planDispatchLines(
+  tx: Tx,
+  so: {
+    fromPlantId: number | null;
+    items: {
+      itemId: number;
+      lotNumber: number | null;
+      quantity: number;
+      orderLineId: string | null;
+    }[];
+  },
+): Promise<DispatchPlanLine[]> {
+  const plans: DispatchPlanLine[] = [];
+  for (const item of so.items) {
+    // ロットは保管場所×棚で複数バケットに分かれ得るため、残量のある行から順に。
+    //
+    // **ロットを指定していない行は、どのロットから出してもよい。** 以前は
+    // `lotNumber: null` で引いていたので「ロット無しのバケット」しか当たらず、
+    // 製品在庫は指示書番号をロットに持つため該当が 1 行も無く、**ロットを
+    // 選ばずに作った出荷書は必ず在庫ゼロ扱い**になっていた（利用者が dev で
+    // 踏んだ「在庫台帳がありません」がこれ）。指定が無いのは「どれでもよい」
+    // であって「ロット無しのものだけ」ではない。
+    //
+    // 取る順は 未割当（ロット無し）→ 古いロットから（= 先入れ先出し）。
+    // 拠点は**出荷元に限る** — 別の拠点にある物を黙って出したことにすると、
+    // そちらの棚卸が合わなくなる（出荷元が未設定のときだけ拠点を問わない）。
+    const anyLot = item.lotNumber == null;
+    const buckets = (
+      await tx.itemInventory.findMany({
+        where: {
+          itemId: item.itemId,
+          ...(anyLot ? {} : { lotNumber: item.lotNumber }),
+          ...(anyLot && so.fromPlantId != null
+            ? { plantId: so.fromPlantId }
+            : {}),
+          isSemiFinished: false,
+          // 外注が預かっている分からは出荷できない（手元に無い）。
+          custodyBpId: null,
+        },
+        select: { id: true, quantity: true, reservedQuantity: true },
+        orderBy: anyLot
+          ? [
+              { lotNumber: { sort: "asc", nulls: "first" } },
+              { quantity: "desc" },
+            ]
+          : [{ quantity: "desc" }],
+      })
+    ).map((r) => ({
+      id: r.id,
+      quantity: Number(r.quantity),
+      reservedQuantity: Number(r.reservedQuantity),
+    }));
+
+    // 引ける数は **quantity ではなく「予約を除いた分 + 自分の予約」**。
+    // quantity をそのまま取ると、他の注文明細（FROM_STOCK の引当など）が
+    // 押さえている在庫を先に出荷したほうが食べてしまい、あとから相手が
+    // 在庫不足で出せなくなる。判定は lib/inventory-availability-core.ts。
+    const ownReserved = new Map<string, number>();
+    if (item.orderLineId && buckets.length > 0) {
+      const mine = await tx.inventoryReservation.groupBy({
+        by: ["inventoryId"],
+        where: {
+          orderLineId: item.orderLineId,
+          inventoryType: "PRODUCT",
+          status: { in: ["RESERVED", "CONFIRMED"] },
+          inventoryId: { in: buckets.map((r) => r.id) },
+        },
+        _sum: { quantity: true },
+      });
+      for (const m of mine) {
+        ownReserved.set(m.inventoryId, Number(m._sum.quantity ?? 0));
+      }
+    }
+    const { steps, shortfall } = allocateFromBuckets(
+      buckets,
+      item.quantity,
+      ownReserved,
+    );
+    plans.push({ item, buckets, steps, shortfall });
+  }
+  return plans;
+}
+
+/**
+ * 出荷したら足りなくなる分を数える（**書き込まない**）。
+ *
+ * 出荷の確認ダイアログが使う — 押す前に「何が何本足りないか」を見せ、
+ * そのうえで進むかどうかを人に決めてもらうため。
+ */
+export async function previewDeliveryShortagesTx(
+  tx: Tx,
+  key: { yearMonth: string; seq: number },
+): Promise<ShipShortage[]> {
+  const so = await tx.deliveryOrder.findUniqueOrThrow({
+    where: { yearMonth_seq: key },
+    include: { items: true },
+  });
+  if (so.type !== "DISPATCH") return [];
+  const plans = await planDispatchLines(tx, so);
+  const shortages: ShipShortage[] = [];
+  for (const plan of plans) {
+    if (plan.shortfall <= 0) continue;
+    shortages.push({
+      itemId: plan.item.itemId,
+      item: await itemLabel(tx, plan.item.itemId),
+      lotNumber: plan.item.lotNumber,
+      shortfall: plan.shortfall,
+    });
+  }
+  return shortages;
 }
 
 /**
@@ -1029,68 +1165,13 @@ export async function onDeliveryOrderShippedTx(
     sourceId: ref,
     plantId: so.fromPlantId,
   });
-  for (const item of so.items) {
+  // 発送の引き当ては**出荷前の確認と同じ関数**で計算する（planDispatchLines）。
+  const dispatchPlans =
+    so.type === "DISPATCH" ? await planDispatchLines(tx, so) : [];
+  for (const [index, item] of so.items.entries()) {
     if (so.type === "DISPATCH") {
-      // ロット在庫から出庫。行が無ければ失敗させる（黙ってスキップすると
-      // 台帳と実出荷が乖離する — 監査 P0-4）。ロットは保管場所×棚で複数
-      // バケットに分かれ得るため、残量のある行から順に消費する。
-      const invRows = (
-        await tx.itemInventory.findMany({
-          where: {
-            itemId: item.itemId,
-            lotNumber: item.lotNumber,
-            isSemiFinished: false,
-            // 外注が預かっている分からは出荷できない（手元に無い）。
-            custodyBpId: null,
-          },
-          select: { id: true, quantity: true, reservedQuantity: true },
-          orderBy: { quantity: "desc" },
-        })
-      ).map((r) => ({
-        id: r.id,
-        quantity: Number(r.quantity),
-        reservedQuantity: Number(r.reservedQuantity),
-      }));
-      // 台帳が 1 行も無くても止めない。出す先のバケットを作って、そこから
-      // マイナスで引く（下の shortfall の処理が拾う）。
-      if (invRows.length === 0) {
-        invRows.push({
-          id: await ensureItemInventory(tx, {
-            itemId: item.itemId,
-            plantId: so.fromPlantId,
-            lotNumber: item.lotNumber,
-            isSemiFinished: false,
-          }),
-          quantity: 0,
-          reservedQuantity: 0,
-        });
-      }
-      // 引ける数は **quantity ではなく「予約を除いた分 + 自分の予約」**。
-      // quantity をそのまま取ると、他の注文明細（FROM_STOCK の引当など）が
-      // 押さえている在庫を先に出荷したほうが食べてしまい、あとから相手が
-      // 在庫不足で出せなくなる。判定は lib/inventory-availability-core.ts。
-      const ownReserved = new Map<string, number>();
-      if (item.orderLineId) {
-        const mine = await tx.inventoryReservation.groupBy({
-          by: ["inventoryId"],
-          where: {
-            orderLineId: item.orderLineId,
-            inventoryType: "PRODUCT",
-            status: { in: ["RESERVED", "CONFIRMED"] },
-            inventoryId: { in: invRows.map((r) => r.id) },
-          },
-          _sum: { quantity: true },
-        });
-        for (const m of mine) {
-          ownReserved.set(m.inventoryId, Number(m._sum.quantity ?? 0));
-        }
-      }
-      const { steps, shortfall } = allocateFromBuckets(
-        invRows,
-        item.quantity,
-        ownReserved,
-      );
-      for (const step of steps) {
+      const plan = dispatchPlans[index];
+      for (const step of plan.steps) {
         await applyTransaction(tx, await openMovement(), {
           inventoryType: "PRODUCT",
           inventoryId: step.bucketId,
@@ -1103,14 +1184,22 @@ export async function onDeliveryOrderShippedTx(
       }
       // 足りなかった分も**出したことにする**。物は出て行ったので、ここで
       // 止めても現実は変わらない。引く先は最初のバケット（= その品目・
-      // ロットの代表）で、台帳はマイナスになる — それが「合っていない」と
-      // いう事実の、見える置き場所になる。
-      if (shortfall > 0) {
+      // ロットの代表。1 行も無ければ作る）で、台帳はマイナスになる — それが
+      // 「合っていない」という事実の、見える置き場所になる。
+      if (plan.shortfall > 0) {
+        const bucketId =
+          plan.buckets[0]?.id ??
+          (await ensureItemInventory(tx, {
+            itemId: item.itemId,
+            plantId: so.fromPlantId,
+            lotNumber: item.lotNumber,
+            isSemiFinished: false,
+          }));
         await applyTransaction(tx, await openMovement(), {
           inventoryType: "PRODUCT",
-          inventoryId: invRows[0].id,
+          inventoryId: bucketId,
           transactionType: "OUT",
-          quantity: shortfall,
+          quantity: plan.shortfall,
           allowNegative: true,
           referenceType: "delivery_order",
           referenceId: ref,
@@ -1119,9 +1208,10 @@ export async function onDeliveryOrderShippedTx(
           notes: encodeInventoryNote("shippedWithoutStock", { ref }),
         });
         shortages.push({
+          itemId: item.itemId,
           item: await itemLabel(tx, item.itemId),
           lotNumber: item.lotNumber,
-          shortfall,
+          shortfall: plan.shortfall,
         });
       }
     } else {

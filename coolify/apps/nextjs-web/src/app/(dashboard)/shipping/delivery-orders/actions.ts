@@ -2009,6 +2009,57 @@ export async function shipDeliveryOrder(
   }
 }
 
+/** 確認ダイアログに出す 1 行（不足している品目）。 */
+export interface DeliveryStockShortage {
+  /** 在庫・所要量 (ST03) へ飛ぶための品目 id。 */
+  itemId: number;
+  /** 品目コード（PRD-… / 素材コード）。 */
+  item: string;
+  lotNumber: number | null;
+  /** 足りない本数（このまま出すと、この分だけ在庫がマイナスになる）。 */
+  shortfall: number;
+}
+
+/**
+ * 出荷する前に、足りない在庫を数える（**何も書き込まない**）。
+ *
+ * 出荷そのものは在庫で止まらない（#907）。ただし黙って進めると、台帳が
+ * マイナスになったことに誰も気づかないまま終わる — なので押す前に一度だけ
+ * 「何が何本足りないか」を見せ、進むかどうかを人に決めてもらう。
+ *
+ * 数え方は出荷本体と**同じ関数**（planDispatchLines）を通る。別々に書くと
+ * 「確認では足りていたのに出したらマイナスになった」が起こり得る。
+ */
+export async function checkDeliveryStock(
+  number: string,
+): Promise<ActionResult<{ shortages: DeliveryStockShortage[] }>> {
+  const tr = await getTranslations();
+  // 出荷と同じ権限で見る（出荷できない人に在庫の不足だけ見せる意味は無い）。
+  const authz = await checkPermission("delivery_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const key = parseDocKey(number, "DOR");
+  if (!key)
+    return actionError(tr("shipping.deliveryOrderActions.invalidNumber"));
+  if (!(await deliveryOrderInScope(authz.access, authz.userId, key))) {
+    return actionError(tr("common.outOfScope"));
+  }
+  try {
+    const { previewDeliveryShortagesTx } = await import("@/lib/inventory");
+    const shortages = await prisma.$transaction((tx) =>
+      previewDeliveryShortagesTx(tx, key),
+    );
+    return actionOk({ shortages });
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("shipping.deliveryOrderActions.stockCheckFailed"),
+        tr,
+      ),
+    );
+  }
+}
+
 /**
  * 出荷後の返品を記録する（§8 追補）。
  *
