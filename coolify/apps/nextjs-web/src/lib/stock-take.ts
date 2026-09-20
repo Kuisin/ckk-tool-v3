@@ -35,7 +35,9 @@ export async function snapshotStockTakeLines(
 
   // 在庫は 1 表になったので、品目種別で 2 回引く必要はない。
   const buckets = await tx.itemInventory.findMany({
-    where: { plantId, ...locationFilter },
+    // 数えに行けるのは自社の棚だけ。外注が持っている分は棚卸の対象外
+    // （拠点を持たないので plantId でも落ちるが、意図を書いて残す）。
+    where: { plantId, custodyBpId: null, ...locationFilter },
     select: { id: true, quantity: true, item: { select: { itemType: true } } },
     orderBy: { id: "asc" },
   });

@@ -340,6 +340,8 @@ export async function fetchDeliverySourceInfo(
             itemId,
             isSemiFinished: false,
             lotNumber: { not: null },
+            // 外注へ預けている分は出荷に載せられない（手元に無い）。
+            custodyBpId: null,
           },
           select: {
             lotNumber: true,
@@ -501,6 +503,8 @@ async function validateDispatchLots(
         itemId,
         lotNumber: lot,
         isSemiFinished: false,
+        // 同上 — 預けている分を数えると「在庫あり」と言って出荷で落ちる。
+        custodyBpId: null,
       },
       _sum: { quantity: true },
       _count: true,

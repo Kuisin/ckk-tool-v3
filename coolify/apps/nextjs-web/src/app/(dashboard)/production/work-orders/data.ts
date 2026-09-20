@@ -30,6 +30,7 @@ import { avatarUrl } from "@/lib/avatar";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   formatDocNumber,
+  formatMovementNumber,
   orderLineNumberOf,
   parseDocKey,
 } from "@/lib/doc-number";
@@ -961,6 +962,9 @@ export async function fetchStepExecution(
       processStep: true,
       plant: true,
       supplierBp: true,
+      // 外注へ出した／戻った入出庫伝票（預け在庫。番号を画面に出して辿れるように）
+      outsourceIssueMovement: { select: { yearMonth: true, seq: true } },
+      outsourceReturnMovement: { select: { yearMonth: true, seq: true } },
       // この工程に割り当てられた検査表テンプレート（工程単位）
       inspectionTemplates: {
         include: {
@@ -1271,6 +1275,12 @@ export async function fetchStepExecution(
       outsourceReceivedAt: dateOnly(step.outsourceReceivedAt),
       outsourceCost:
         step.outsourceCost != null ? Number(step.outsourceCost) : null,
+      outsourceIssueMovementNo: step.outsourceIssueMovement
+        ? formatMovementNumber(step.outsourceIssueMovement)
+        : null,
+      outsourceReturnMovementNo: step.outsourceReturnMovement
+        ? formatMovementNumber(step.outsourceReturnMovement)
+        : null,
     },
     canStart: canStartStep(step.id, ctx, actorId, workflowCoreT(tr)),
     expectedInputQuantity: expectedInput(step.id, ctx),

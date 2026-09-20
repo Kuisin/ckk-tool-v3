@@ -28,6 +28,14 @@ export interface StockOverviewRow {
   storageLocationName: string | null;
   shelfId: number | null;
   shelfCode: string | null;
+  /**
+   * 預け先（外注が持っている分）。null = 自社の在庫。
+   * **入っている行は自社在庫ではない** — 手持ち・引当・出荷・棚卸の集計には
+   * 入らない（サーバー側が `custodyBpId: null` で絞っている）。この一覧だけが
+   * 両方を出し、既定では自社だけを見せる。
+   */
+  custodyBpId: string | null;
+  custodyBpName: string | null;
   /** ロット = 指示書番号（製品のみ。素材は常に null）。 */
   lotNumber: number | null;
   quantity: number;

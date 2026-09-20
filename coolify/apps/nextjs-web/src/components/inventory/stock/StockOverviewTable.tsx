@@ -10,7 +10,11 @@
  * Columns: 品目（名称 + PRODUCT/MATERIAL バッジ）/ コード / 拠点 / 保管場所・棚 /
  * ロット / 手持ち / 予約 / 利用可能 / 単位 / 更新日。
  * フィルタ: 品目名・コードでの検索 + 拠点 + 保管場所（拠点で絞り込み）+ 品目種別 +
+ * 預け先（既定は自社 — 外注が持っている分は手持ちではないので、混ぜて数えない）+
  * 在庫ゼロを隠す（既定 ON — 倉庫の一覧はそこに「ある」ものを見る画面のため）。
+ *
+ * **預け先だけは既定が「絞らない」ではなく「自社」。** ここは在庫を数える画面
+ * なので、何も選んでいない状態が自社の手持ちを指していないと、合計が嘘になる。
  */
 
 import {
@@ -63,6 +67,8 @@ export function StockOverviewTable({
   // （既定と同じ状態はパラメータを削除して URL を短く保つ、という共通の約束）。
   const [hideZeroParam, setHideZeroParam] = useUrlSelectState("hideZero");
   const hideZero = hideZeroParam !== "0";
+  // 預け先。null = 自社（既定）。URL には選んだときだけ残す。
+  const [custodyBpId, setCustodyBpId] = useUrlSelectState("custody");
 
   const reset = () => {
     setSearch(null);
@@ -70,7 +76,18 @@ export function StockOverviewTable({
     setStorageLocationId(null);
     setItemType(null);
     setHideZeroParam(null);
+    setCustodyBpId(null);
   };
+
+  // 預け先の選択肢は、いま在庫を預かっている取引先だけ（空なら選択欄も出さない）。
+  const custodyOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of rows) {
+      if (r.custodyBpId && r.custodyBpName)
+        seen.set(r.custodyBpId, r.custodyBpName);
+    }
+    return [...seen].map(([value, label]) => ({ value, label }));
+  }, [rows]);
 
   // 選んだ拠点の保管場所だけに絞る（StockTakeForm と同じ二段階 Select）。
   const filteredStorageLocationOptions = useMemo(() => {
@@ -104,12 +121,17 @@ export function StockOverviewTable({
       !storageLocationId || String(r.storageLocationId) === storageLocationId;
     const matchesType = !itemType || r.itemType === itemType;
     const matchesZero = !hideZero || r.quantity !== 0;
+    // 既定（未選択）は**自社だけ**。預け分を黙って足すと合計が嘘になる。
+    const matchesCustody = custodyBpId
+      ? r.custodyBpId === custodyBpId
+      : r.custodyBpId === null;
     return (
       matchesSearch &&
       matchesPlant &&
       matchesLocation &&
       matchesType &&
-      matchesZero
+      matchesZero &&
+      matchesCustody
     );
   });
 
@@ -168,7 +190,18 @@ export function StockOverviewTable({
       sortable: true,
       width: 120,
       sortValue: (r) => r.plantName ?? "",
-      render: (r) => r.plantName ?? "—",
+      render: (r) => (
+        <Group gap={6} wrap="nowrap">
+          <Text size="sm">{r.plantName ?? "—"}</Text>
+          {r.custodyBpName ? (
+            <Badge color="orange" size="xs" variant="light">
+              {tr("inventory.stockOverview.heldBy", {
+                name: r.custodyBpName,
+              })}
+            </Badge>
+          ) : null}
+        </Group>
+      ),
     },
     {
       key: "storage",
@@ -302,6 +335,18 @@ export function StockOverviewTable({
             value={itemType}
             w={isMobile ? undefined : 140}
           />
+          {custodyOptions.length > 0 ? (
+            <Select
+              aria-label={tr("inventory.stockOverview.custody")}
+              clearable
+              data={custodyOptions}
+              flex={isMobile ? 1 : undefined}
+              onChange={setCustodyBpId}
+              placeholder={tr("inventory.stockOverview.custodyOwn")}
+              value={custodyBpId}
+              w={isMobile ? undefined : 170}
+            />
+          ) : null}
           <Switch
             checked={hideZero}
             label={tr("inventory.stockOverview.hideZeroStock")}

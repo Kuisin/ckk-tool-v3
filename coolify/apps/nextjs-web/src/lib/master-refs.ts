@@ -136,6 +136,9 @@ export const MASTER_REFERENCES: Record<
     ref("MaterialPurchaseOrder", "supplierBpId"),
     ref("MaterialReceipt", "supplierBpId"),
     ref("WorkOrderStep", "supplierBpId"),
+    // 預け在庫（その取引先がいま持っている物）。**消させない** — SET NULL で
+    // 消すと、預けバケットが拠点も持たない「自社在庫」に化ける。
+    ref("ItemInventory", "custodyBpId"),
     ref("ProductProcessRoute", "customerBpId"),
     ref("ProductProcessRouteVersionStep", "supplierBpId"),
     // 設計

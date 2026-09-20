@@ -62,6 +62,8 @@ export async function fetchProductInventories(): Promise<
         "plantId",
       ) as Prisma.ItemInventoryWhereInput),
       item: { itemType: "PRODUCT" },
+      // 自社の在庫だけ（外注へ預けている分は手持ちではない）。
+      custodyBpId: null,
     },
     include: { item: true, plant: true, storageLocation: true, shelf: true },
     orderBy: { updatedAt: "desc" },
