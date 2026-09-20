@@ -9142,8 +9142,10 @@
   },
   "inventoryNote": {
     "insufficientStock": "在庫が不足しています（{transactionType} {quantity}）",
-    "lotInventoryMissing": "ロット {lotNumber} の在庫台帳がありません（製品 {productId}）。指示書完了または棚卸調整で入庫してから出荷してください",
-    "outOfStockOnShip": "在庫が不足しています（OUT {quantity}）: ロット {lotNumber}",
+    "lotInventoryMissing": "品目 {item} のロット {lotNumber} に在庫台帳がありません。指示書完了・素材入荷・棚卸調整のいずれかで入庫してから出荷してください",
+    "itemInventoryMissing": "品目 {item} に在庫台帳がありません。指示書完了・素材入荷・棚卸調整のいずれかで入庫してから出荷してください",
+    "outOfStockOnShip": "在庫が足りません（必要 {quantity}）: 品目 {item} ロット {lotNumber}",
+    "outOfStockOnShipNoLot": "在庫が足りません（必要 {quantity}）: 品目 {item}",
     "onlyConfirmedLinesCanBeStockChecked": "確定済みの注文明細のみ在庫照合できます",
     "workOrderCompletedFinished": "指示書 #{workOrderNumber} 完了入庫",
     "workOrderCompletedSemiFinished": "指示書 #{workOrderNumber} 半製品入庫",

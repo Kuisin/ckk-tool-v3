@@ -194,6 +194,22 @@ export async function applyTransaction(
 }
 
 /**
+ * 在庫の失敗メッセージに載せる品目の名乗り。
+ *
+ * **コードであって内部 id ではない。** 品目 id は密な連番なので、画面に出した
+ * ところで受け取った人には何のことか分からず、しかも別の品目の id と区別が
+ * つかない。コード（PRD-… / 素材コード）なら検索できる。コードが空の品目は
+ * 無いはずだが、念のため id へ落とす。
+ */
+async function itemLabel(tx: Tx, itemId: number): Promise<string> {
+  const row = await tx.item.findUnique({
+    where: { id: itemId },
+    select: { code: true },
+  });
+  return row?.code ?? String(itemId);
+}
+
+/**
  * 在庫バケットの取得 or 作成（品目 × 拠点 × 保管場所 × 棚 × ロット × 半製品）。
  *
  * **保管場所・棚の既定は「未割当」（null）** — 指示書完了・入荷のような
@@ -597,11 +613,18 @@ export async function onDeliveryOrderShippedTx(
         reservedQuantity: Number(r.reservedQuantity),
       }));
       if (invRows.length === 0) {
+        // 品目は**コードで名乗る**（内部 id ではなく PRD-… / 素材コード）。
+        // id を出しても画面から辿れないうえ、品目統合で id の意味が変わった
+        // ことに気づけない — 実際にこの行は `{productId}` を渡し続けていて、
+        // 文言の差し込みが解決できず鍵がそのまま画面に出ていた。
+        const label = await itemLabel(tx, item.itemId);
         throw new Error(
-          encodeInventoryNote("lotInventoryMissing", {
-            lotNumber: item.lotNumber ?? "-",
-            itemId: item.itemId,
-          }),
+          item.lotNumber == null
+            ? encodeInventoryNote("itemInventoryMissing", { item: label })
+            : encodeInventoryNote("lotInventoryMissing", {
+                lotNumber: item.lotNumber,
+                item: label,
+              }),
         );
       }
       // 引ける数は **quantity ではなく「予約を除いた分 + 自分の予約」**。
@@ -632,11 +655,18 @@ export async function onDeliveryOrderShippedTx(
       // 足りないときは 1 件も出庫せずに失敗させる（部分出庫してから落ちると
       // 台帳だけ減って出荷が立たない）。
       if (shortfall > 0) {
+        const label = await itemLabel(tx, item.itemId);
         throw new Error(
-          encodeInventoryNote("outOfStockOnShip", {
-            quantity: item.quantity,
-            lotNumber: item.lotNumber ?? "-",
-          }),
+          item.lotNumber == null
+            ? encodeInventoryNote("outOfStockOnShipNoLot", {
+                quantity: item.quantity,
+                item: label,
+              })
+            : encodeInventoryNote("outOfStockOnShip", {
+                quantity: item.quantity,
+                lotNumber: item.lotNumber,
+                item: label,
+              }),
         );
       }
       for (const step of steps) {

@@ -9142,8 +9142,10 @@
   },
   "inventoryNote": {
     "insufficientStock": "库存不足（{transactionType} {quantity}）",
-    "lotInventoryMissing": "批次 {lotNumber} 没有库存台账（产品 {productId}）。请先通过完成工单或库存调整入库后再出货",
-    "outOfStockOnShip": "库存不足（出库 {quantity}）：批次 {lotNumber}",
+    "lotInventoryMissing": "品目 {item} 的批次 {lotNumber} 没有库存台账。请先通过完成工单、材料到货或库存调整入库后再出货",
+    "itemInventoryMissing": "品目 {item} 没有库存台账。请先通过完成工单、材料到货或库存调整入库后再出货",
+    "outOfStockOnShip": "库存不足（需要 {quantity}）：品目 {item} 批次 {lotNumber}",
+    "outOfStockOnShipNoLot": "库存不足（需要 {quantity}）：品目 {item}",
     "onlyConfirmedLinesCanBeStockChecked": "只有已确定的订单明细可以进行库存核对",
     "workOrderCompletedFinished": "工单 #{workOrderNumber} 完成入库",
     "workOrderCompletedSemiFinished": "工单 #{workOrderNumber} 半成品入库",
