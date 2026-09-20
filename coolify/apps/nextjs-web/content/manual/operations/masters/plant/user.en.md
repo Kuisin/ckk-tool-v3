@@ -5,7 +5,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 ---
 This app is for registering **the site (plant or business location) itself**. The operation code is `MS0C`.
 
-[Product stock (製品在庫)](/manual/en/operations/inventory/product-inventory/user) and [material stock (素材在庫)](/manual/en/operations/inventory/material-inventory/user) are kept separately for each site, and the delivery place for incoming materials is also chosen from the sites registered here.
+Product and material stock are kept separately for each site in [Inventory Management](/manual/en/operations/inventory/inventory-management/user), and the delivery place for incoming materials is also chosen from the sites registered here.
 
 > ⚠️ This app is in trial release. Depending on your environment, it may not be shown yet.
 

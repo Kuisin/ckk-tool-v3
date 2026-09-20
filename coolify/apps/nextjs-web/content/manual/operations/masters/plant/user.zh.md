@@ -5,7 +5,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 ---
 这是用于登记 **据点（工厂・营业所）本身** 的应用。操作代码是 `MS0C`。
 
-[产品库存](/manual/zh/operations/inventory/product-inventory/user)和[材料库存](/manual/zh/operations/inventory/material-inventory/user)按据点分开管理，材料的到货地点等也从这里登记的据点中选择。
+产品库存和材料库存在[库存管理](/manual/zh/operations/inventory/inventory-management/user)中按据点分开管理，材料的到货地点等也从这里登记的据点中选择。
 
 > ⚠️ 本应用处于试用公开阶段。根据您使用的环境，可能还看不到它。
 

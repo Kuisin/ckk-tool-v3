@@ -76,7 +76,7 @@ screenshots:
 能合并到 1 张出货单的，只有同一客户・同一出货地・同一配送方式的订单明细。不符合条件的部分，请另外制作出货单。
 
 **无法选择想出的批次**
-该产品的库存可能不在所选的出货据点。请确认据点，或在[库存管理](/manual/zh/operations/inventory/product-inventory/user)中查找有库存的据点。
+该产品的库存可能不在所选的出货据点。请确认据点，或在[库存管理](/manual/zh/operations/inventory/inventory-management/user)中查找有库存的据点。
 
 **库存没有减少**
 确认出货单是否停在「確定」（确定）。库存会在记录出货时减少。

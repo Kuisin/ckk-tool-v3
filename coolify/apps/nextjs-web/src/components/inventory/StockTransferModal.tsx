@@ -167,7 +167,9 @@ export function StockTransferModal({
             value: String(f.id),
             label: f.name,
           }))}
-          label={<HelpLabel {...fieldHelp(tr, "productInventory", "plant")} />}
+          label={
+            <HelpLabel {...fieldHelp(tr, "inventoryManagement", "plant")} />
+          }
           onChange={(v) => {
             setPlantId(v);
             setLocationId(null);
@@ -184,7 +186,7 @@ export function StockTransferModal({
           disabled={!plant}
           label={
             <HelpLabel
-              {...fieldHelp(tr, "productInventory", "location", {
+              {...fieldHelp(tr, "inventoryManagement", "location", {
                 label: tr("common.storageLocations"),
               })}
             />
@@ -206,7 +208,7 @@ export function StockTransferModal({
           disabled={!location || shelfOptions.length === 0}
           label={
             <HelpLabel
-              {...fieldHelp(tr, "productInventory", "location", {
+              {...fieldHelp(tr, "inventoryManagement", "location", {
                 label: tr("production.inventory.shelf"),
               })}
             />
@@ -233,7 +235,7 @@ export function StockTransferModal({
         <Textarea
           label={
             <HelpLabel
-              {...fieldHelp(tr, "productInventory", "notes", {
+              {...fieldHelp(tr, "inventoryManagement", "notes", {
                 label: tr("common.notesOptional"),
               })}
             />

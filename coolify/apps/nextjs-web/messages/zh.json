@@ -1206,10 +1206,10 @@
       "QUANTITY": "数量"
     },
     "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "MANUAL": "手动",
       "OUTSOURCE_ISSUE": "外协发出",
       "OUTSOURCE_RETURN": "外协返回",
       "SALES_RETURN": "销售退货",
-      "MANUAL": "手动",
       "WORK_ORDER_COMPLETION": "工单完成",
       "DELIVERY_SHIPMENT": "出货",
       "MATERIAL_RECEIPT": "材料到货",
@@ -9656,25 +9656,7 @@
         "summary": "补充说明。现场人员查看工单时会看到这些内容。"
       }
     },
-    "productInventory": {
-      "plant": {
-        "label": "目标据点",
-        "summary": "调拨的目标据点。源据点的库存会减少，目标据点的库存会增加。"
-      },
-      "location": {
-        "label": "存放位置 / 货架",
-        "summary": "在目标据点内的具体存放位置。提前设定便于日后查找实物。"
-      },
-      "quantity": {
-        "label": "数量",
-        "summary": "调拨的数量。不能超过源据点现有的数量。"
-      },
-      "notes": {
-        "label": "备注",
-        "summary": "用于记录调拨原因等信息的栏位。调拨记录会保留在历史中。"
-      }
-    },
-    "materialInventory": {
+    "inventoryManagement": {
       "plant": {
         "label": "目标据点",
         "summary": "调拨的目标据点。源据点的库存会减少，目标据点的库存会增加。"

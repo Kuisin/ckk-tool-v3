@@ -240,7 +240,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 - 划分为「半製品」（半成品）的部分会作为半成品进入库存。
 - 之前预留的材料会作为已使用的部分从库存中扣减。
 
-库存可以在[库存管理](/manual/zh/operations/inventory/product-inventory/user)（ST01）中确认。正在制造中的根数可以在同一应用的「**仕掛品**」（在制品）标签页中查看。
+库存可以在[库存管理](/manual/zh/operations/inventory/inventory-management/user)（ST01）中确认。正在制造中的根数可以在同一应用的「**仕掛品**」（在制品）标签页中查看。
 
 ### 下一步：创建出货单
 

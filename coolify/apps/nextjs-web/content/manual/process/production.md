@@ -23,12 +23,12 @@ screenshots:
 
 | 段階 | 何をするか | 担当 | 使うアプリ |
 |------|-----------|------|-----------|
-| 1. 製品在庫を確認する | すでに在庫がある分と、新しく作る分を分ける | 生産管理 | [在庫管理](/manual/ja/operations/inventory/product-inventory/user)（`ST01`） |
-| 2. 素材を確認する | 作るのに必要な素材が足りるかを見る | 生産管理 | [在庫管理](/manual/ja/operations/inventory/material-inventory/user)（`ST01`） |
+| 1. 製品在庫を確認する | すでに在庫がある分と、新しく作る分を分ける | 生産管理 | [在庫管理](/manual/ja/operations/inventory/inventory-management/user)（`ST01`） |
+| 2. 素材を確認する | 作るのに必要な素材が足りるかを見る | 生産管理 | [在庫管理](/manual/ja/operations/inventory/inventory-management/user)（`ST01`） |
 | 3. 指示書を作る | 在庫分・製造分に分ける（工程を並べるのは製造分） | 社内営業補助 | [指示書](/manual/ja/operations/production/work-order/user)（`PD02`） |
 | 4. 承認を受ける | 承認設定で決めた段をすべて通し、製造を始められる状態にする | 承認者 | [承認管理](/manual/ja/operations/general/my-tasks/user)（`PD03`） |
 | 5. 工程を実行する | 現場が開始・完了と本数を記録する | 製造 | [指示書](/manual/ja/operations/production/work-order/user) / 現場タブレット |
-| 6. 完了する | 全工程が終わると製品在庫になる | 製造・生産管理 | [在庫管理](/manual/ja/operations/inventory/product-inventory/user) |
+| 6. 完了する | 全工程が終わると製品在庫になる | 製造・生産管理 | [在庫管理](/manual/ja/operations/inventory/inventory-management/user) |
 
 ## それぞれの段階でおきること
 
@@ -99,7 +99,7 @@ screenshots:
 
 - 数え直して合わせる … [棚卸](/manual/ja/operations/inventory/stock-takes/user)（`ST05`）。確定すると差のぶんだけ在庫が直る。
 - 人の手で入れる・出す・移す … [手動入出庫](/manual/ja/operations/inventory/goods-movement/user)（`ST06`）
-- 動いた記録を追う … [入出庫伝票](/manual/ja/operations/inventory/movements/user)（`ST04`）
+- 動いた記録を追う … [入出庫伝票](/manual/ja/operations/inventory/inventory-movements/user)（`ST04`）
 
 外注へ出した分は、その外注先が預かっているものとして別に数える（自社の在庫には入らない）。
 預け先ごとの本数は [在庫一覧](/manual/ja/operations/inventory/stock-overview/user)（`ST02`）で見る。

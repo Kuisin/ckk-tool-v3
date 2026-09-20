@@ -1,4 +1,1 @@
-{
-  "title": "库存与需求",
-  "pages": ["user"]
-}
+{ "title": "库存・所要量", "pages": ["user"] }
