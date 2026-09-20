@@ -72,7 +72,6 @@ import {
   isPrepStep,
   type ProcessRouteKind,
   REGRIND_RECEIPT_STEP_CODE,
-  STOCK_ISSUE_STEP_CODE,
   stepAllowedForType,
   typeCompositionIssues,
   validateComposition,

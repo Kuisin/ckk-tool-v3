@@ -21,7 +21,7 @@ The steps on a [指示書 (work order)](/manual/en/operations/production/work-or
 
 - **Step** … one single piece of work, such as 「切断」 (cutting), 「センタレス」 (centerless) or 「製作検査」 (production inspection).
 - **Category** … the broad group a step belongs to. There are six: material preparation, machining, coating, inspection, inspection approval, and shipping.
-- **Step list kind** … which step list a step belongs to. **Only steps whose category is "material preparation" go into the prep step list** (one list shared by every product); every other category goes into the manufacturing step list (per product × customer). It follows the category automatically and cannot be picked on its own.
+- **Step list kind** … which step list a step belongs to. **Only steps whose category is "material preparation" go into the prep step list** (one list shared by every product); steps whose category is "**regrind**" go into the shared regrind step list; every other category goes into the manufacturing step list (per product × customer) — coating, inspection and approval steps can also be used on the regrind step list. It follows the category automatically and cannot be picked on its own.
 - **Place of work** … whether the step is done only in house, or can also be asked of an outside company.
 - **Can run in parallel** … a step that may be done at the same time as another step and recorded together.
 - **Quantity tracking** … the setting for which numbers the operator is asked to enter when the step is done.
@@ -44,7 +44,7 @@ When you open the app, a list of the registered steps is shown.
 - Type in the 「**コード・名称で検索**」 (search by code or name) box at the top to show only the step you are looking for.
 - You can also narrow the list by 「**カテゴリ**」 (category) and 「**状態**」 (status). There are two statuses: 「有効」 (active, can be used) and 「無効」 (inactive, no longer used).
 - Click a row to open the detail screen of that step.
-- The 「**準備工程リスト**」 (prep step list) button next to 「新規作成」 (New) at the top right of the list opens the screen for managing the shared prep step list (see "[Manage the prep step list](#manage-the-prep-step-list)").
+- The 「**準備工程リスト**」 (prep step list) and 「**再研磨工程リスト**」 (regrind step list) buttons next to 「新規作成」 (New) at the top right of the list open the screens for managing the shared step lists (see "[Manage the prep step list](#manage-the-prep-step-list)" and "[Manage the regrind step list](#manage-the-regrind-step-list)").
 
 ## Register a step
 
@@ -154,6 +154,17 @@ The order of issue/handoff and material prep steps (cutting, centerless, length 
 
 To change the order of an existing list, make a new version from that list's 「**新バージョン**」 (New version). **A work order always uses the latest version at the time**, so from the moment you create a new version, new work orders use the new order (work orders already created do not change). The version history is kept only on this screen — a work order cannot pick a version.
 
+## Manage the regrind step list
+
+The steps used by **regrind work orders** — regrinding tools received from a customer — are also **one list shared by every product**, not split per product. Like the prep step list, it is registered and revised on the "regrind step list" screen under the process step master (it has no operation code).
+
+1. Press 「**再研磨工程リスト**」 (Regrind step list) at the top right of the process step master's list screen.
+2. The registered lists are shown. If there are none yet, you see 「**再研磨工程リストは未登録です**」 (no regrind step list is registered yet), so press 「**ルート新規作成**」 (New route).
+3. Pick the steps from the checklist. **The start step is 「製品受入（再研磨）」 (tool receipt)**, followed by grinding steps (OD, flute, tip, radius, chamfer, cut-off) and, if needed, coating, inspection and pre-ship inspection. Material prep and machining steps cannot be chosen (nothing is manufactured when regrinding).
+4. Press 「**保存**」 (Save).
+
+A regrind work order always fills in the **latest version** at the time (a version cannot be chosen on the work order). Steps may be added or removed on the work order, in which case the link to the list is dropped. Completing 「製品受入（再研磨）」 books the received tools as the customer's stock, so always keep this step first. Register 「**返却（再研磨不可）**」 (returned as-is) under [defect types](/manual/en/operations/masters/defect-type/user) as the reason for tools that cannot be reground.
+
 ## Input fields
 
 Every field on the process step screen. Steps registered here are the building blocks laid out in a work order's workflow.
@@ -180,7 +191,7 @@ The step's reference code and name; the name is what appears in the work order.
 
 ### Category [#field-category]
 
-Material preparation, machining, coating, inspection, inspection approval or shipping. **Only a step whose category is "material preparation" goes into the shared prep step list** (see "[Manage the prep step list](#manage-the-prep-step-list)"). Every other category goes into the manufacturing step list, per product × customer.
+Material preparation, machining, regrind, coating, inspection, inspection approval or shipping. **Only a step whose category is "material preparation" goes into the shared prep step list** (see "[Manage the prep step list](#manage-the-prep-step-list)"). **A step whose category is "regrind" is used only by regrind work orders** and goes into the shared regrind step list ("[Manage the regrind step list](#manage-the-regrind-step-list)"). Every other category goes into the manufacturing step list, per product × customer.
 
 ### Allowed work locations [#field-allowed-locations]
 

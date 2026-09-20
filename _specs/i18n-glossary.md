@@ -312,6 +312,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 図面データ / プレビュー用 / 参考資料 | Drawing file / Preview / Reference | 图纸文件 / 预览 / 参考资料 |
 | 汎用（受注元を限定しない図面） | Generic | 通用 |
 | キーワード | Keywords | 关键词 |
+| 他社製品 | External product | 他社产品 | 他社が作った工具。再研磨専用の品目（製造・本番の明細では使えない） |
+| メーカー名（他社製品） | Maker | 制造商 | 自由記入。BP にはしない |
 | 顧客品番 | Customer part number | 客户料号 |
 | 顧客品名 | Customer part name | 客户品名 |
 | 別表記（旧品番など） | Alternate codes | 其他料号 |
@@ -409,6 +411,11 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 担当者（作業） / 未割当 | Assignee / Unassigned | 负责人 / 未分配 | |
 | 一時停止 / 再開 | Paused / Resume | 已暂停 / 继续 | 工程の状態。QRカードの一時停止は Suspended |
 | 工具種 | Tool type | 刀具类别 | 種類の値は DB データ（対象外） |
+| 再研磨 | Regrind | 再研磨 | 注文種別・指示書種別・工程カテゴリのすべてで同じ語。顧客の工具を預かって研ぎ直す |
+| 再研磨工程リスト | Regrind step list | 再研磨工序清单 | 共通（製品・顧客に紐づかない）。準備工程リストと同型 |
+| 製品受入（再研磨） | Tool receipt (regrind) | 产品接收（再研磨） | 再研磨指示書の開始工程。完了で受入本数が預り品として入庫 |
+| 受入本数 / 返却本数 / 完成本数 | Received / Returned / Finished | 接收数 / 退回数 / 完成数 | 再研磨の 3 つの本数 |
+| 返却（再研磨不可） | Returned as-is (not regrindable) | 退回（无法再研磨） | 製品受入の「廃棄」欄の読み方 = 研ぎ直せずそのまま返す分 |
 
 ### 3.9 在庫
 
@@ -435,6 +442,9 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 外注戻り（入出庫伝票の事由 — 外注から戻って預け在庫が減る） | Returned from subcontractor | 外协返回 |
 | 返品（入出庫伝票の事由 — 出荷後に顧客から戻る） | Sales return | 销售退货 |
 | 割当 | Allocation | 分配 |
+| 預り品 | Customer-owned stock | 客户寄存品 | 再研磨で預かった顧客の工具。所有者（owner_bp_id）付きのバケットで、自社在庫ではない |
+| 所有者 | Owner | 所有者 | 預り品の顧客。預け先（custody）は「誰が持っているか」、所有者は「誰の物か」 |
+| 再研磨受入（入出庫の事由） | Regrind receipt | 再研磨接收 | INVENTORY_MOVEMENT_CAUSE.REGRIND_RECEIPT |
 
 ### 3.10 出荷・請求
 
@@ -531,7 +541,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 
 | ja | en | zh | 出どころ |
 |---|---|---|---|
-| 在庫分 / 製造分 | From stock / Manufacture | 库存分 / 制造分 | 指示書種別 |
+| 在庫分 / 製造分 / 再研磨 | From stock / Manufacture / Regrind | 库存分 / 制造分 / 再研磨 | 指示書種別 |
 | 見積時 / 受注時 / 単独 | At quote / At order / Standalone | 报价时 / 接单时 / 独立 | 設計依頼トリガ |
 | 新規 / 改訂 | New / Revision | 新增 / 修订 | 設計依頼区分 |
 | 通常 / 急ぎ | Normal / High | 普通 / 加急 | 優先度 |

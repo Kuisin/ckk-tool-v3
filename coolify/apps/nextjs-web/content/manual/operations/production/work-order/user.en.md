@@ -38,7 +38,7 @@ When you open the app, you see a list of the work orders made so far.
 ![Work order list](../../../assets/screenshots/work-order-list-01.en.png)
 
 - **指示書番号** (work order number) … a number such as `WOR-202608-00001`, in the same format as other documents (quotes, order acceptances, …), restarting from 1 each month. The lot number (a serial number such as `#9001`) is assigned separately and shown on the detail screen.
-- **種別** (type) … either 「**在庫分**」 (from stock — using stock you already have) or 「**製造分**」 (to make — making new pieces).
+- **種別** (type) … 「**在庫分**」 (from stock — using stock you already have), 「**製造分**」 (to make — making new pieces) or 「**再研磨**」 (regrind — regrinding tools received from the customer).
 - **予定数量** (planned quantity) … how many pieces you plan to make.
 - **承認状態** (approval status) … a coloured badge shows 「承認依頼中」 (pending approval), 「承認済」 (approved) or 「差し戻し」 (sent back). Which step it is currently on is shown on the card on the detail screen.
 - **状態** (status) … one of 「下書き」 (draft), 「承認依頼中」 (pending approval), 「承認済」 (approved), 「進行中」 (in progress), 「完了」 (finished), or 「キャンセル」 (cancelled).
@@ -51,7 +51,7 @@ When you open the app, you see a list of the work orders made so far.
 2. In 「**注文明細の割当**」 (order line allocations), choose the order line to base it on. You can search by order line number, product, or customer. Once you choose it, the customer name, the product, the ordered quantity, and the **remaining allocatable quantity** (the ordered quantity minus what other work orders already cover) appear below.
 3. In 「**割当数量**」 (allocation quantity), enter how many pieces this work order makes for that order line. The remaining quantity is filled in automatically, so change it only when you make just a part (splitting).
 4. To make other order lines of the same product at the same time (a combined lot), press 「**明細を追加（統合ロット）**」 (add order line — combined lot) and add rows. Order lines for different products cannot go on the same work order.
-5. In 「**種別**」 (type), choose 「在庫分」 (from stock) or 「製造分」 (to make). A from-stock work order can have only one order line. **A from-stock work order has a fixed step set — 「製品出し（在庫）」 (product issue from stock) plus, if needed, 「出荷前検査」 (pre-ship inspection) — and does not use a step list**, so steps 11–13 below (the prep step list, the manufacturing step list, and the place/lot settings) apply to made-to-order work orders only.
+5. In 「**種別**」 (type), choose 「在庫分」 (from stock) or 「製造分」 (to make). For an order line whose order type is 「再研磨」 (regrind) the type is fixed to 「**再研磨**」 — see "[Regrind work orders](#regrind-work-orders)". A from-stock work order can have only one order line. **A from-stock work order has a fixed step set — 「製品出し（在庫）」 (product issue from stock) plus, if needed, 「出荷前検査」 (pre-ship inspection) — and does not use a step list**, so steps 11–13 below (the prep step list, the manufacturing step list, and the place/lot settings) apply to made-to-order work orders only.
 6. Enter how many pieces to make in 「**予定数量**」 (planned quantity). The total of the allocations is filled in automatically and you cannot enter less than that. Adding extra as spares for defects is up to you.
 7. If you chose 「製造分」 (to make), choose the 「**使用素材**」 (material to use). **If a material matches the product's assumed material type (type × diameter), it is already filled in.** The field shows 「製品の想定材種: …」 (assumed material type) underneath, so if that is right you need not touch it.
 8. If you already know where the finished products will be kept, choose the 「**保管場所**」 (storage location). It can stay empty.
@@ -100,6 +100,21 @@ You pick steps from a checklist. **Only manufacturing steps can be picked here**
 - If the combination has a problem, a red note appears and you cannot save (「**工程構成にエラーがあります**」 — there is an error in the step setup). Please fix the steps until the red note is gone.
 
 After saving, the work order detail screen shows 「**準備工程リスト**」 (prep step list) and 「**工程ルート**」 (step route, the manufacturing step list), each with the name and version used, for example "standard steps v1". If a newer version than the one used has been registered, a 「**最新 v◯ あり**」 (newer v◯ available) badge appears, so you can tell it is not reflected in this work order. You can open the prep step list in the process step master, or the product's manufacturing step list, from there.
+
+#### Regrind step list (shared)
+
+The one list used only by regrind work orders. It starts with 「製品受入（再研磨）」 (tool receipt) and lines up grinding steps (OD, flute, tip, radius, chamfer, cut-off) and, if needed, coating, inspection and pre-ship inspection. Like the prep step list it is tied to neither product nor customer, and **the latest version is always used**. See "[Regrind work orders](#regrind-work-orders)".
+
+## Regrind work orders
+
+A regrind work order is for tools the customer has used (our own or another maker's) that are received to be reground. Nothing is manufactured, so it differs from a made-to-order work order in a few ways.
+
+- **It starts from an order acceptance.** Make it from an order line whose order type is 「**再研磨**」 (regrind); opened from [pending work orders](/manual/en/operations/production/pending-work-order/user) or the order line's "create a work order" button, the type is fixed to regrind. Another maker's tool must first be registered in the [product master](/manual/en/operations/masters/product/user) as an 「**他社製品**」 (external product).
+- **Exactly one order line**, and the planned quantity equals the allocation. The number of tools that actually arrived is recorded on the first step, 「製品受入（再研磨）」 (tool receipt) — it may differ from the plan.
+- **No material and no storage location.** The steps come from the "[regrind step list](#field-regrind-route)" (material prep and machining steps cannot be chosen).
+- **Completing the tool receipt step books the received quantity as the customer's stock** (「預り品」). It is counted separately from our own stock and can be viewed on the [stock overview](/manual/en/operations/inventory/stock-overview/user) with the owner filter. Tools that cannot be reground go into the 「廃棄」 bucket with the reason 「**返却（再研磨不可）**」 (returned as-is — register it under [defect types](/manual/en/operations/masters/defect-type/user)); they do not flow to later steps and are not counted as finished.
+- **Completion does not add to our own stock.** The detail screen shows the three regrind quantities: received / returned / finished. The reground pieces are returned to the customer with a [delivery order](/manual/en/operations/shipping/delivery-order/user) (dispatch), priced from the price list's regrind order type.
+- Sending the tools to a coater is recorded as customer-owned stock moving to the subcontractor (never into our own stock).
 
 ## Getting approval
 
@@ -162,7 +177,7 @@ Once you start a step, the 「**数量・不良**」 (quantity and defects) boxe
 - **良品数** (good quantity) … calculated automatically (it shows 「自動計算」 — calculated automatically). It goes down by the number of defects you enter.
 - **総不良数** (total defects) … the total of the numbers entered on the defect lines. This is also shown automatically.
 - **不良内訳** (defect breakdown) … enter this only when there are defects. Press 「**不良を追加**」 (Add defect) and fill in the following on each line:
-  - Type … 「**半製品**」 (semi-finished — put back into stock) / 「**廃棄**」 (scrapped) / 「**工程分岐**」 (step branch — pieces sent to another step, such as rework)
+  - Type … 「**半製品**」 (semi-finished — put back into stock) / 「**廃棄**」 (scrapped) / 「**工程分岐**」 (step branch — pieces sent to another step, such as rework). On a regrind work order 「半製品」 cannot be used, and the 「廃棄」 bucket becomes 「**返却（再研磨不可）**」 (returned as-is — pieces that cannot be reground)
   - Defect type (required) … choose from 「**不良種類を選択**」 (Select defect type), which lists what is registered in [defect types](/manual/en/operations/masters/defect-type/user)
   - Number of pieces
   - Details (required) … describe in words what the defect was
@@ -239,6 +254,7 @@ When all the steps are finished, the work order automatically becomes 「**完�
 - The good pieces from the last step go into product stock, with the lot number.
 - Pieces marked as 「半製品」 (semi-finished) go into stock as semi-finished items.
 - The material that was set aside is taken out of stock as material used.
+- **A regrind work order does not add to our own stock.** Of the tools held as the customer's property, the pieces entered as 「返却（再研磨不可）」 (returned as-is) leave the customer-owned stock at this point; the reground pieces are returned to the customer with a [delivery order](/manual/en/operations/shipping/delivery-order/user).
 
 You can check stock in [inventory management](/manual/en/operations/inventory/inventory-management/user) (ST01). Pieces still being made are shown on the 「**仕掛品**」 (work in progress) tab of the same app.
 
@@ -275,6 +291,7 @@ Every field on the work order screen. The order of the steps themselves is set i
 | [Drawing to use](#field-design-file) | Optional | Which version of the drawing to build from |
 | [Allow short/over delivery](#field-allow-quantity-variance) | Optional | Whether this lot may ship a quantity that does not exactly match the order |
 | [Prep step list](#field-prep-route) | Required (made-to-order) | Issue/handoff and material prep order (always the latest version) |
+| [Regrind step list](#field-regrind-route) | Required (regrind) | Tool receipt through grinding and inspection (always the latest version) |
 | [Manufacturing step list / version](#field-route) | Required (made-to-order) | Which sequence of steps from machining onward to use |
 | [New process list name](#field-new-route-name) | Conditional | Name when creating a new manufacturing step list |
 | [Inspection sheets](#field-inspection-templates) | — | Templates auto-assigned per inspection step |
@@ -328,6 +345,10 @@ Whether this lot may ship a quantity that does not exactly match the order. Opti
 ### Prep step list [#field-prep-route]
 
 The order of issue/handoff and material prep steps. Choose the one shared list — it is not tied to a product or a customer. **You cannot choose a version** — the latest version of the list you chose is always used. It is required whenever at least one prep step list is registered, and chosen automatically if there is only one. Not used for from-stock work orders (their step set is fixed). To change the order, create a new version on the [prep step list in the process step master](/manual/en/operations/masters/process-step/user#manage-the-prep-step-list) rather than on the work order.
+
+### Regrind step list [#field-regrind-route]
+
+The order of steps from receiving the customer's tools through regrinding and inspection. Like the prep step list it is a shared list tied to neither product nor customer, and **you cannot choose a version** — the latest version of the list you chose is always used. It is required whenever at least one regrind step list is registered, and chosen automatically if there is only one. You may add or remove steps after it has been filled in (the link to the list is then dropped and the composition is saved as hand-built). To change the order, create a new version on the [regrind step list in the process step master](/manual/en/operations/masters/process-step/user#manage-the-regrind-step-list).
 
 ### Manufacturing step list / version [#field-route]
 
