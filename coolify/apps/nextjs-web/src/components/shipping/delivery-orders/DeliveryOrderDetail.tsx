@@ -350,7 +350,9 @@ export function DeliveryOrderDetail({
   const needsApproval = confirmNeedsApproval(order);
 
   const run = (
-    action: () => Promise<ActionResult>,
+    // 成功しても**注意書き**が付くことがある（在庫が足りないまま出した、など）。
+    // 止めない代わりに必ず見せる、という約束なので、成功の通知とは別に出す。
+    action: () => Promise<ActionResult<{ warnings?: string[] } | undefined>>,
     successTitle: string,
     successMessage: string,
     afterSuccess?: () => void,
@@ -363,6 +365,15 @@ export function DeliveryOrderDetail({
           message: successMessage,
           color: "green",
         });
+        for (const warning of result.data?.warnings ?? []) {
+          notifications.show({
+            title: tr("common.warning"),
+            message: warning,
+            color: "orange",
+            // 消えると気づかない種類の知らせなので、自動では閉じない。
+            autoClose: false,
+          });
+        }
         if (afterSuccess) afterSuccess();
         else router.refresh();
       } else {
