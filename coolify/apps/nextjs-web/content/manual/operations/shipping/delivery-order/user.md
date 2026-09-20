@@ -175,7 +175,7 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 
 > ⚠️ **返品しても、出荷書の状態・請求・注文明細は動きません。** 出したという事実は返品では消えないためです。請求を直す必要があるときは、経理の手順に従って別に処理してください。
 
-返品を記録すると、明細の表に「**返品**」の列が出て、戻った本数が分かるようになります。記録そのものは[入出庫伝票](/manual/ja/operations/inventory/movements/user)（事由「返品」）に残ります。
+返品を記録すると、明細の表に「**返品**」の列が出て、戻った本数が分かるようになります。記録そのものは[入出庫伝票](/manual/ja/operations/inventory/inventory-movements/user)（事由「返品」）に残ります。
 
 ## 納品書ができるまで
 

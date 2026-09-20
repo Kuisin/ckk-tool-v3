@@ -99,7 +99,7 @@ screenshots:
 
 - 数え直して合わせる … [棚卸](/manual/ja/operations/inventory/stock-takes/user)（`ST05`）。確定すると差のぶんだけ在庫が直る。
 - 人の手で入れる・出す・移す … [手動入出庫](/manual/ja/operations/inventory/goods-movement/user)（`ST06`）
-- 動いた記録を追う … [入出庫伝票](/manual/ja/operations/inventory/movements/user)（`ST04`）
+- 動いた記録を追う … [入出庫伝票](/manual/ja/operations/inventory/inventory-movements/user)（`ST04`）
 
 外注へ出した分は、その外注先が預かっているものとして別に数える（自社の在庫には入らない）。
 預け先ごとの本数は [在庫一覧](/manual/ja/operations/inventory/stock-overview/user)（`ST02`）で見る。

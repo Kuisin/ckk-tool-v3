@@ -1206,13 +1206,10 @@
       "QUANTITY": "Quantity"
     },
     "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "MANUAL": "Manual",
       "OUTSOURCE_ISSUE": "Issued to subcontractor",
       "OUTSOURCE_RETURN": "Returned from subcontractor",
       "SALES_RETURN": "Sales return",
-      "MANUAL": "Manual",
-      "OUTSOURCE_ISSUE": "Sent to outsourcer",
-      "OUTSOURCE_RETURN": "Returned from outsourcer",
-      "SALES_RETURN": "Return",
       "WORK_ORDER_COMPLETION": "Work order completed",
       "DELIVERY_SHIPMENT": "Shipment",
       "MATERIAL_RECEIPT": "Material receipt",
