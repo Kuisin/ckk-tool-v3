@@ -19,11 +19,15 @@
 import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
-import { allocateFromBuckets } from "./inventory-availability-core";
+import {
+  allocateFromBuckets,
+  splitScrapShare,
+} from "./inventory-availability-core";
 import { encodeInventoryNote } from "./inventory-note-core";
 import {
   computeBranchSemiFinishedQuantity,
   computeFinishedQuantity,
+  SEMI_FINISHED_ISSUE_STEP_CODE,
   STEP_LINK_STATE_SELECT,
   STEP_STATE_SELECT,
   toStepState,
@@ -298,6 +302,101 @@ export async function ensureItemInventory(
 }
 
 /**
+ * 半製品出しの `lot_text` から、狙いのロット番号を読む。
+ *
+ * 自由記入の欄（工程マスタの既定は入力欄を出さない）なので、**当たれば
+ * 優先する程度**にしか使わない。読めなければ null を返して古いロットから
+ * 食べる — ここで失敗させると、書き方の揺れで完了できない指示書ができる。
+ */
+function parseLotHint(lotText: string | null | undefined): number | null {
+  if (!lotText) return null;
+  const m = lotText.match(/\d+/);
+  if (!m) return null;
+  const n = Number.parseInt(m[0], 10);
+  return Number.isSafeInteger(n) && n > 0 ? n : null;
+}
+
+/**
+ * 半製品在庫からの投入分を落とす（完了時）。
+ *
+ * 取り方は **狙いのロット優先 → 古いロットから**（ロット番号 = 指示書番号なので
+ * 昇順が先入れ先出しになる）。拠点が分かっていればその拠点のバケットだけ —
+ * 別拠点の半製品を黙って食べると、そちらの棚卸が合わなくなる。
+ *
+ * 出した数は「完成して戻る分（付け替え）」と「廃棄」に割って 2 行で記録する
+ * （splitScrapShare）。合計は同じだが、割らないと廃棄が台帳に現れない。
+ *
+ * 台帳が足りないときは**あるだけ落として完了は止めない** — 素材消費と同じ方針。
+ * 止めると、現場では終わっている指示書が画面の上だけ終われなくなる。
+ */
+async function consumeSemiFinishedStock(
+  tx: Tx,
+  openMovement: MovementOpener,
+  args: {
+    workOrderId: string;
+    workOrderNumber: number;
+    itemId: number;
+    plantId: number | null;
+    quantity: number;
+    scrap: number;
+    lotHint: number | null;
+  },
+): Promise<void> {
+  const buckets = await tx.itemInventory.findMany({
+    where: {
+      itemId: args.itemId,
+      isSemiFinished: true,
+      quantity: { gt: 0 },
+      ...(args.plantId != null ? { plantId: args.plantId } : {}),
+    },
+    select: { id: true, lotNumber: true, quantity: true },
+    orderBy: [{ lotNumber: "asc" }, { updatedAt: "asc" }],
+  });
+  const ordered =
+    args.lotHint == null
+      ? buckets
+      : [...buckets].sort(
+          (a, b) =>
+            Number(b.lotNumber === args.lotHint) -
+            Number(a.lotNumber === args.lotHint),
+        );
+
+  let left = args.quantity;
+  let reassignLeft = Math.max(0, args.quantity - args.scrap);
+  for (const bucket of ordered) {
+    if (left <= 0) break;
+    const take = Math.min(left, Number(bucket.quantity));
+    if (take <= 0) continue;
+    const share = splitScrapShare(take, reassignLeft);
+    for (const [quantity, key] of [
+      [share.reassign, "semiFinishedConsumed"],
+      [share.scrap, "semiFinishedScrapped"],
+    ] as const) {
+      if (quantity <= 0) continue;
+      await applyTransaction(tx, await openMovement(), {
+        inventoryType: "PRODUCT",
+        inventoryId: bucket.id,
+        transactionType: "OUT",
+        quantity,
+        referenceType: "work_order",
+        referenceId: args.workOrderId,
+        notes: encodeInventoryNote(key, {
+          workOrderNumber: args.workOrderNumber,
+        }),
+      });
+    }
+    reassignLeft -= share.reassign;
+    left -= take;
+  }
+  if (left > 0) {
+    console.warn(
+      // i18n-ignore — サーバーログのみ（画面には出ない）
+      `[inventory] 半製品の消費を一部スキップ（台帳残不足 残 ${left}）: WO #${args.workOrderNumber}`,
+    );
+  }
+}
+
+/**
  * 全工程完了フック: 最終工程の良品をロット入庫、半製品バケット合計を半製品
  * 入庫。completeStepExecution から呼ぶ。
  * - MANUFACTURE: **この WO の**製品予約を CONFIRMED に（割当明細の予約には
@@ -333,7 +432,15 @@ export async function onWorkOrderCompletedTx(
     // migration 前の DB で P2022 に落ちる。
     include: {
       steps: {
-        select: { ...STEP_STATE_SELECT, plantId: true },
+        select: {
+          ...STEP_STATE_SELECT,
+          plantId: true,
+          // 半製品からの投入を落とすのに要る 2 つ。code は開始工程の判別、
+          // lotText はどのロットを出したかの手掛かり（自由記入なので当たれば
+          // 優先する程度に使う）。
+          lotText: true,
+          processStep: { select: { code: true } },
+        },
         orderBy: { sortOrder: "asc" },
       },
       stepLinks: { select: STEP_LINK_STATE_SELECT },
@@ -357,6 +464,14 @@ export async function onWorkOrderCompletedTx(
   const semiTotal =
     wo.steps.reduce((sum, s) => sum + (s.outputDefectSemiFinished ?? 0), 0) +
     computeBranchSemiFinishedQuantity(engineSteps, engineLinks);
+  // 廃棄された数（全工程の合計）。**在庫から投入した指示書でだけ**台帳に
+  // 現れる — 製造分の仕掛品は元々台帳に無いので、そこでの廃棄は在庫の
+  // 出来事ではない（素材は予約ぶんを丸ごと消費済み。ここで廃棄も引くと
+  // 二重に減る）。
+  const scrapTotal = wo.steps.reduce(
+    (sum, s) => sum + (s.outputDefectScrap ?? 0),
+    0,
+  );
   const plantId = wo.steps.find((s) => s.plantId != null)?.plantId ?? null;
 
   // この完了で動く在庫はすべて 1 枚の伝票に入る（完成品の入庫・半製品の入庫・
@@ -411,6 +526,32 @@ export async function onWorkOrderCompletedTx(
       }),
     });
   }
+  // ── 半製品からの投入を在庫から落とす ─────────────────────────────────
+  //
+  // 半製品在庫は**増える一方だった**。出す工程（半製品出し）は受入数を記録
+  // するのに、その数を在庫から引く経路がどこにも無く、棚卸で「説明のつかない
+  // 差異」として消しても翌月また同じだけ積み上がる。
+  //
+  // 落とすのは完了時 — 素材の消費と同じ。在庫は全工程完了時にしか動かさない
+  // のがこの台帳の約束で、半製品だけ先に落とすと巻き戻せない中間状態ができる。
+  const semiIssueStep = wo.steps.find(
+    (s) =>
+      s.processStep?.code === SEMI_FINISHED_ISSUE_STEP_CODE &&
+      s.status !== "CANCELLED",
+  );
+  const semiIssueQty = semiIssueStep?.inputQuantity ?? 0;
+  if (semiIssueStep && semiIssueQty > 0) {
+    await consumeSemiFinishedStock(tx, openMovement, {
+      workOrderId: wo.id,
+      workOrderNumber: wo.workOrderNumber,
+      itemId: wo.productItemId,
+      plantId,
+      quantity: semiIssueQty,
+      scrap: scrapTotal,
+      lotHint: parseLotHint(semiIssueStep.lotText),
+    });
+  }
+
   // 素材予約の消費（監査 P2-1）: この WO の MATERIAL 予約を RELEASE +
   // OUT（実消費）。台帳が実態より少ない場合は OUT をスキップして警告
   // （完了を止めない — 素材台帳は運用中に追いつく）。
@@ -476,6 +617,11 @@ export async function onWorkOrderCompletedTx(
     // 在庫分は割当 1 件のみなので linkedLineIds[0] がその明細。
     const head = wo.steps.find((s) => s.status !== "CANCELLED");
     let needed = head?.inputQuantity ?? wo.plannedQuantity;
+    // 出した数のうち、完成して入り直す分（付け替え）の残り。ここを超えた分は
+    // **廃棄**として別の行で記録する。以前は全部が付け替えの顔をしていたので、
+    // 在庫から出した品が現場で割れても台帳には「出庫 10 / 入庫 7」としか
+    // 残らず、3 本の行方を後から言えなかった。
+    let reassignLeft = Math.max(0, needed - scrapTotal);
     // 旧バグ（製造分の完了が姉妹の在庫分予約まで CONFIRMED に倒していた）
     // で残った行も消費対象に含める — RESERVED | CONFIRMED の両方を読む。
     const productReservations = await tx.inventoryReservation.findMany({
@@ -509,17 +655,25 @@ export async function onWorkOrderCompletedTx(
             workOrderNumber: wo.workOrderNumber,
           }),
         });
-        await applyTransaction(tx, await openMovement(), {
-          inventoryType: "PRODUCT",
-          inventoryId: r.inventoryId,
-          transactionType: "OUT",
-          quantity: take,
-          referenceType: "work_order",
-          referenceId: wo.id,
-          notes: encodeInventoryNote("fromStockConsumedReassigned", {
-            workOrderNumber: wo.workOrderNumber,
-          }),
-        });
+        const share = splitScrapShare(take, reassignLeft);
+        for (const [quantity, key] of [
+          [share.reassign, "fromStockConsumedReassigned"],
+          [share.scrap, "fromStockScrapped"],
+        ] as const) {
+          if (quantity <= 0) continue;
+          await applyTransaction(tx, await openMovement(), {
+            inventoryType: "PRODUCT",
+            inventoryId: r.inventoryId,
+            transactionType: "OUT",
+            quantity,
+            referenceType: "work_order",
+            referenceId: wo.id,
+            notes: encodeInventoryNote(key, {
+              workOrderNumber: wo.workOrderNumber,
+            }),
+          });
+        }
+        reassignLeft -= share.reassign;
       }
       if (take >= Number(r.quantity)) {
         await tx.inventoryReservation.update({

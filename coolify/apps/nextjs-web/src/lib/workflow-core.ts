@@ -175,6 +175,16 @@ export const START_STEP_CODES = [
 export const STOCK_ISSUE_STEP_CODE = "PRODUCT_ISSUE";
 
 /**
+ * 半製品在庫を投入して始まる工程構成の開始工程。
+ *
+ * 在庫が動く開始工程は「在庫分の製品出し」とこれの 2 つで、どちらも
+ * **完了時に在庫から落とす**（onWorkOrderCompletedTx）。半製品は長らく
+ * 入る一方だった — 出す工程は受入数を記録していたのに、その数を在庫から
+ * 引く経路が無かった。
+ */
+export const SEMI_FINISHED_ISSUE_STEP_CODE = "SEMI_FINISHED_ISSUE";
+
+/**
  * 出荷側の工程（任意・常に末尾）。出荷前検査のみ — **出荷そのものは工程では
  * なく出荷書（delivery_orders / SH01）が管理する**（旧 SHIPPING 工程は廃止）。
  */
