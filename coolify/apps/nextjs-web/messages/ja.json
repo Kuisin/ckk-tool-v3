@@ -1208,6 +1208,7 @@
     "INVENTORY_MOVEMENT_CAUSE_LABEL": {
       "OUTSOURCE_ISSUE": "外注支給",
       "OUTSOURCE_RETURN": "外注戻り",
+      "SALES_RETURN": "返品",
       "MANUAL": "手動",
       "WORK_ORDER_COMPLETION": "指示書完了",
       "DELIVERY_SHIPMENT": "出荷",
@@ -1216,7 +1217,6 @@
       "STOCK_RESERVATION": "引当予約",
       "RESERVATION_RELEASE": "予約解除",
       "ADJUSTMENT": "棚卸調整",
-      "SALES_RETURN": "返品",
       "OTHER": "不明（移行前）"
     },
     "TRANSACTION_TYPE_LABEL": {
