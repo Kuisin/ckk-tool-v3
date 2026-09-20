@@ -89,7 +89,12 @@ async function main(): Promise<void> {
       log(`next start on :${APP_PORT}`);
       appProc = spawn("pnpm", ["exec", "next", "start", "-p", String(APP_PORT)], {
         cwd: NEXTJS_WEB,
-        env: { ...process.env, DATABASE_URL, AUTH_SECRET, AUTH_URL: APP_URL, NODE_ENV: "production" },
+        // 本番のコンテナは Coolify の env で TZ=Asia/Tokyo。ここも合わせないと
+        // サーバー（UTC の CI ランナー）とブラウザ（Asia/Tokyo）で時刻文字列が
+        // 割れ、hydration の #418 が「環境差」として混ざる。実際に TZ 依存の
+        // hydration 不一致は別の欠陥として見張る（page-load.spec.ts は
+        // ブラウザ側を Asia/Tokyo に固定している）。
+        env: { ...process.env, TZ: "Asia/Tokyo", DATABASE_URL, AUTH_SECRET, AUTH_URL: APP_URL, NODE_ENV: "production" },
         stdio: "inherit",
       });
       await waitForApp();
