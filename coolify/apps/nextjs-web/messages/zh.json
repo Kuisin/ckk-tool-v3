@@ -1206,6 +1206,10 @@
       "QUANTITY": "数量"
     },
     "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "OUTSOURCE_ISSUE": "外协发出",
+      "OUTSOURCE_RETURN": "外协返回",
+      "SALES_RETURN": "销售退货",
+      "MANUAL": "手动",
       "WORK_ORDER_COMPLETION": "工单完成",
       "DELIVERY_SHIPMENT": "出货",
       "MATERIAL_RECEIPT": "材料到货",
@@ -1213,10 +1217,6 @@
       "STOCK_RESERVATION": "库存预留",
       "RESERVATION_RELEASE": "解除预留",
       "ADJUSTMENT": "盘点调整",
-      "MANUAL": "手工出入库",
-      "OUTSOURCE_ISSUE": "发往外协",
-      "OUTSOURCE_RETURN": "从外协返回",
-      "SALES_RETURN": "退货",
       "OTHER": "未知（迁移前）"
     },
     "TRANSACTION_TYPE_LABEL": {
