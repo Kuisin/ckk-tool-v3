@@ -2153,7 +2153,13 @@
     },
     "closingTable": {
       "createdAndUpdatedCounts": "Created {created} / updated {updated}",
-      "skippedCount": "Skipped {skipped} already processed"
+      "skippedCount": "Skipped {skipped} already processed",
+      "resultModalTitle": "Billing closing result",
+      "bulkResultModalTitle": "Invoice generation result",
+      "createdInvoicesHeading": "Invoices created ({count})",
+      "noInvoicesCreated": "No invoices were created",
+      "failuresHeading": "Could not generate ({count})",
+      "openInvoiceList": "Open invoice list"
     },
     "invoicesActions": {
       "invalidNumber": "Invalid invoice number",

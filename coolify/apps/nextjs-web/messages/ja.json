@@ -2153,7 +2153,13 @@
     },
     "closingTable": {
       "createdAndUpdatedCounts": "作成 {created} 件 / 更新 {updated} 件",
-      "skippedCount": "処理済みスキップ {skipped} 件"
+      "skippedCount": "処理済みスキップ {skipped} 件",
+      "resultModalTitle": "締日処理の結果",
+      "bulkResultModalTitle": "請求書生成の結果",
+      "createdInvoicesHeading": "作成した請求書（{count}）",
+      "noInvoicesCreated": "請求書は作成されませんでした",
+      "failuresHeading": "生成できなかった分（{count}）",
+      "openInvoiceList": "請求書一覧を開く"
     },
     "invoicesActions": {
       "invalidNumber": "請求番号が不正です",
