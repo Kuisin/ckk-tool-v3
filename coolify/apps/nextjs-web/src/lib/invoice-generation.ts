@@ -233,7 +233,10 @@ async function buildInvoiceDraft(
         deliveryNoteYearMonth: deliveryNote?.yearMonth ?? null,
         deliveryNoteSeq: deliveryNote?.seq ?? null,
         orderLineId: null,
-        chargeItemId: null,
+        // 由来は料金マスタ（MS0G）— 手動費用の判定（deliveryOrderYearMonth が
+        // null かどうか）には効かないが、この行が MS0G のどの項目から
+        // 来たのかの追跡には要る（tables.md invoice_items.charge_item_id）。
+        chargeItemId: c.chargeItemId,
         description: {
           ja: `${localized(name, "ja")}${suffix}`,
           en: `${localized(name, "en")}${suffix}`,
