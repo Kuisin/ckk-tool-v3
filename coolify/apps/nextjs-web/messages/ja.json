@@ -1212,6 +1212,10 @@
       "STOCK_RESERVATION": "引当予約",
       "RESERVATION_RELEASE": "予約解除",
       "ADJUSTMENT": "棚卸調整",
+      "MANUAL": "手動入出庫",
+      "OUTSOURCE_ISSUE": "外注へ出し",
+      "OUTSOURCE_RETURN": "外注から戻り",
+      "SALES_RETURN": "返品",
       "OTHER": "不明（移行前）"
     },
     "TRANSACTION_TYPE_LABEL": {

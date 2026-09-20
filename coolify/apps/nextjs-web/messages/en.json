@@ -1212,6 +1212,10 @@
       "STOCK_RESERVATION": "Stock reservation",
       "RESERVATION_RELEASE": "Reservation released",
       "ADJUSTMENT": "Adjustment",
+      "MANUAL": "Manual movement",
+      "OUTSOURCE_ISSUE": "Issued to subcontractor",
+      "OUTSOURCE_RETURN": "Returned from subcontractor",
+      "SALES_RETURN": "Sales return",
       "OTHER": "Unknown (pre-migration)"
     },
     "TRANSACTION_TYPE_LABEL": {
