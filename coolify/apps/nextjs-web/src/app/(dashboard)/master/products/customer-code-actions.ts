@@ -116,15 +116,15 @@ export async function saveCustomerProductCodes(input: {
     seenCode.add(key);
   }
 
-  // 同じ顧客が**別の製品**に登録している品番とも、正規化して突き合わせる。
-  // 突合は (顧客, 正規化した品番) で製品を 1 つに決めるので、製品をまたいで
+  // 同じ顧客が**別の品目（製品）**に登録している品番とも、正規化して突き合わせる。
+  // 突合は (顧客, 正規化した品番) で品目を 1 つに決めるので、品目をまたいで
   // 同じ鍵が 2 つあると自動確定できなくなる — 同じ保存の中だけ見ていた
   // 頃は `X-100`（製品 A）と `X 100`（製品 B）が両方通っていた。
   if (cleaned.length > 0) {
     const elsewhere = await prisma.customerProductCode.findMany({
       where: {
         customerBpId: { in: cleaned.map((r) => r.customerBpId) },
-        productId: { not: productId },
+        itemId: { not: itemId },
       },
       select: { customerBpId: true, code: true },
     });
