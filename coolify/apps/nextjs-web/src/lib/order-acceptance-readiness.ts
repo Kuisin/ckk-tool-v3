@@ -22,7 +22,14 @@ import type { getTranslations } from "next-intl/server";
 /** 未完成の理由 1 件（画面にも API のエラーにもそのまま出る）。 */
 export interface ReadinessIssue {
   /** 種別 — 表示の出し分け用。 */
-  kind: "customer" | "items" | "product" | "quantity" | "price" | "endUser";
+  kind:
+    | "customer"
+    | "items"
+    | "product"
+    | "quantity"
+    | "price"
+    | "endUser"
+    | "externalProduct";
   /** 人が読む説明。 */
   message: string;
 }
@@ -38,6 +45,10 @@ export interface ReadinessInput {
     deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
     /** エンドユーザー（最終需要家）— その行がユーザー直送では必須。 */
     endUserBpId: string | null;
+    /** 注文種別。他社製品の行は REGRIND でなければならない。 */
+    orderType?: string;
+    /** 選んだ品目が他社製品（再研磨専用）か。未指定 = 判定しない。 */
+    isExternalProduct?: boolean;
   }[];
 }
 
@@ -78,8 +89,12 @@ export function acceptanceReadiness(input: ReadinessInput, tr: Tr): Readiness {
   // 進めない — 保存時にも強制するが、既存データの取りこぼしをここで
   // 確実に止める。配送方法は行ごとなので、他の行チェックと同じ行番号方式。
   const noEndUser: number[] = [];
+  // 他社製品（再研磨専用）は注文種別が再研磨の行にしか載せられない。
+  const externalNotRegrind: number[] = [];
   input.items.forEach((it, i) => {
     if (it.itemId == null || it.itemId === "") noProduct.push(i + 1);
+    if (it.isExternalProduct && it.orderType !== "REGRIND")
+      externalNotRegrind.push(i + 1);
     if (!(it.quantity >= 1)) badQuantity.push(i + 1);
     if (it.unitPrice == null) noPrice.push(i + 1);
     else if (it.unitPrice < 0) negativePrice.push(i + 1);
@@ -116,6 +131,15 @@ export function acceptanceReadiness(input: ReadinessInput, tr: Tr): Readiness {
       message: tr("sales.orderAcceptanceReadiness.lineUnitPriceNegative", {
         rows: rowList(negativePrice),
       }),
+    });
+  }
+  if (externalNotRegrind.length > 0) {
+    issues.push({
+      kind: "externalProduct",
+      message: tr(
+        "sales.orderAcceptanceReadiness.externalProductRequiresRegrind",
+        { rows: rowList(externalNotRegrind) },
+      ),
     });
   }
   if (noEndUser.length > 0) {

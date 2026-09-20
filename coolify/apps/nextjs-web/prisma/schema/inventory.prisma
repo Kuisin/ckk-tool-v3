@@ -128,6 +128,16 @@ model ItemInventory {
   /// nextjs-web の inventory-custody-scope.test.ts が止める。
   custodyBpId    String? @map("custody_bp_id") @db.Uuid
 
+  /// **所有者**（顧客の預り品 — 再研磨で預かった工具）。null = 自社の所有物。
+  ///
+  /// custody は「いま誰が持っているか」、owner は「誰の物か」— 両方入り得る
+  /// （預り品をコーティング外注へ出した状態）。値が入っている行は**自社在庫ではない**:
+  /// 手持ち・引当・出荷（通常明細）・棚卸・ATP・分析ビューのすべてから外す。
+  /// 読み出し側は必ず `ownerBpId: null` で絞るか `owner-scope:` コメントで理由を書く
+  /// （inventory-custody-scope.test.ts が custody と一緒に走査する）。
+  /// FK は Restrict — SET NULL だと顧客を消した瞬間に預り品が自社在庫に化ける。
+  ownerBpId      String? @map("owner_bp_id") @db.Uuid
+
   /// **Decimal に寄せた。** 製品は Int、素材は Decimal(12,3) だったが、
   /// int は Decimal に損なく入る（逆は入らない）。読み出し側は Number() が要る。
   quantity         Decimal @default(0) @db.Decimal(12, 3)
@@ -145,11 +155,13 @@ model ItemInventory {
   storageLocation StorageLocation? @relation("ItemInventoryLocation", fields: [storageLocationId], references: [id])
   shelf           StorageShelf?    @relation("ItemInventoryShelf", fields: [shelfId], references: [id])
   custodyBp       BusinessPartner? @relation("ItemInventoryCustody", fields: [custodyBpId], references: [id])
+  ownerBp         BusinessPartner? @relation("ItemInventoryOwner", fields: [ownerBpId], references: [id], onDelete: Restrict)
 
   // 一意バケット（NULLS NOT DISTINCT index — migration で張る）
-  @@unique([itemId, plantId, lotNumber, isSemiFinished, storageLocationId, shelfId, custodyBpId], map: "item_inventory_bucket_key")
+  @@unique([itemId, plantId, lotNumber, isSemiFinished, storageLocationId, shelfId, custodyBpId, ownerBpId], map: "item_inventory_bucket_key")
   @@index([itemId])
   @@index([custodyBpId])
+  @@index([ownerBpId])
   @@index([plantId, storageLocationId])
   @@index([updatedAt, id])
   @@map("item_inventory")
@@ -261,6 +273,8 @@ enum InventoryMovementCause {
   OUTSOURCE_RETURN
   /// 出荷したあとに顧客から返ってきた（在庫が戻る）。
   SALES_RETURN
+  /// 再研磨のために顧客の工具を受け入れた（預り品バケットへ IN）。
+  REGRIND_RECEIPT
   /// 移行前の取引行に後から付けた伝票。**新規では使わない** —
   /// 何の出来事だったかを記録していなかった行が実在するので、それを
   /// 正直に表す値として残す。
@@ -298,6 +312,8 @@ model InventoryMovement {
   /// 外注へ出した／戻った伝票を指している工程（二度計上の印を兼ねる）。
   outsourceIssuedSteps  WorkOrderStep[] @relation("StepOutsourceIssue")
   outsourceReturnedSteps WorkOrderStep[] @relation("StepOutsourceReturn")
+  /// 製品受入（再研磨）で預り品を入庫した伝票を指している工程（二度計上の印を兼ねる）。
+  regrindReceiptSteps    WorkOrderStep[] @relation("StepRegrindReceipt")
 
   @@unique([yearMonth, seq])
   @@index([createdAt, id])

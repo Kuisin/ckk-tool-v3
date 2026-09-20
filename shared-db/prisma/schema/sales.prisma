@@ -14,6 +14,9 @@ enum OrderType {
   PRODUCTION
   TEST
   SAMPLE
+  /// 再研磨 — 顧客が使った工具（自社製・他社製）を預かって研ぎ直す。
+  /// 製造ではない: 指示書は REGRIND 種別、在庫は顧客所有バケット（item_inventory.owner_bp_id）。
+  REGRIND
   OTHER
 
   @@map("ORDER_TYPE")

@@ -227,3 +227,36 @@ describe("shipToApplies / normalizeShipToBpId — 出荷先は通常配送だけ
     expect(normalizeShipToBpId("DIRECT_TO_USER", null)).toBeNull();
   });
 });
+
+describe("他社製品（再研磨専用）", () => {
+  it("注文種別が再研磨でない行に他社製品があれば止める", () => {
+    const r = acceptanceReadiness(
+      {
+        customerBpId: "bp-1",
+        items: [
+          { ...item({}), orderType: "PRODUCTION", isExternalProduct: true },
+          { ...item({}), orderType: "REGRIND", isExternalProduct: true },
+        ],
+      },
+      tr,
+    );
+    expect(r.ok).toBe(false);
+    expect(r.issues.map((i) => i.kind)).toEqual(["externalProduct"]);
+    expect(r.issues[0].message).toContain('"rows":"1"');
+  });
+
+  it("再研磨の行なら他社製品でよい。判定材料が無ければ見ない", () => {
+    expect(
+      acceptanceReadiness(
+        {
+          customerBpId: "bp-1",
+          items: [
+            { ...item({}), orderType: "REGRIND", isExternalProduct: true },
+            item({}),
+          ],
+        },
+        tr,
+      ).ok,
+    ).toBe(true);
+  });
+});

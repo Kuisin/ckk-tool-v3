@@ -39,6 +39,7 @@ export async function materialAtp(
       where: {
         itemId,
         custodyBpId: null,
+        ownerBpId: null,
         ...(plantId != null ? { plantId } : {}),
       },
     }),

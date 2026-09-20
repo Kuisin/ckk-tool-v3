@@ -108,6 +108,7 @@ import { zodResolver } from "@/lib/form";
 import type { RouteStepSnapshot, RouteView } from "@/lib/product-routes-core";
 import {
   isOtherCustomerRoute,
+  pickDefaultCommonRoute,
   pickDefaultPrepRoute,
   pickDefaultRoute,
   routeStepsEqual,
@@ -118,8 +119,9 @@ import type { CatalogStep, UseDep } from "@/lib/workflow-core";
 import {
   isBlockingIssue,
   isPrepStep,
-  isShipStep,
+  REGRIND_RECEIPT_STEP_CODE,
   STOCK_ISSUE_STEP_CODE,
+  stepAllowedForType,
   validateComposition,
 } from "@/lib/workflow-core";
 import type { WorkOrderView } from "./model";
@@ -139,7 +141,7 @@ const schema = (tr: (key: string) => string) =>
      * なければならない。旧 products.id と混ざっても型は通るので、名前で防ぐ。
      */
     itemId: z.string().nullable(),
-    type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
+    type: z.enum(["FROM_STOCK", "MANUFACTURE", "REGRIND"]),
     plannedQuantity: z
       .number()
       .int()
@@ -321,7 +323,7 @@ export function WorkflowBuilder({
   /** `?orderLine=` プリセレクト（create 時）。 */
   initialOrderLine?: OrderLineRef | null;
   /** §4 分割ガイドからの起動: 種別・数量のプリセット（create 時）。 */
-  initialType?: "FROM_STOCK" | "MANUFACTURE" | null;
+  initialType?: "FROM_STOCK" | "MANUFACTURE" | "REGRIND" | null;
   initialQuantity?: number | null;
   catalogSteps: CatalogStep[];
   useDeps: UseDep[];
@@ -438,47 +440,49 @@ export function WorkflowBuilder({
 
   const selected = form.values.selectedStepIds;
 
-  // 種別で使える工程が変わる（§7 再編）:
+  // 種別で使える工程が変わる（§7 再編。規則は workflow-core stepAllowedForType）:
   //   在庫分   = 製品出し（在庫）+ 出荷前検査 のみ（工程リスト不要）
-  //   製造分   = 製品出し（在庫）以外（従来どおり工程リスト必須）
+  //   製造分   = 製品出し（在庫）・再研磨工程 以外（従来どおり工程リスト必須）
+  //   再研磨   = 製品受入（再研磨）で始まる。材料準備・加工は使えない
   const isStock = form.values.type === "FROM_STOCK";
+  const isRegrind = form.values.type === "REGRIND";
   const productIssueId = useMemo(
     () =>
       catalogSteps.find((c) => c.code === STOCK_ISSUE_STEP_CODE)?.id ?? null,
     [catalogSteps],
   );
+  const regrindReceiptId = useMemo(
+    () =>
+      catalogSteps.find((c) => c.code === REGRIND_RECEIPT_STEP_CODE)?.id ??
+      null,
+    [catalogSteps],
+  );
+  const typeValueForCatalog = form.values.type;
   const catalogForType = useMemo(
     () =>
-      isStock
-        ? catalogSteps.filter(
-            (c) => c.code === STOCK_ISSUE_STEP_CODE || isShipStep(c),
-          )
-        : catalogSteps.filter((c) => c.code !== STOCK_ISSUE_STEP_CODE),
-    [isStock, catalogSteps],
+      catalogSteps.filter((c) => stepAllowedForType(c, typeValueForCatalog)),
+    [typeValueForCatalog, catalogSteps],
   );
-  /** 種別切替時に選択工程を合わせる（在庫分は 製品出し 必須 + 出荷系のみ）。 */
+  /** 種別切替時に選択工程を合わせる（その種別で使えない工程を外し、必須の開始工程を足す）。 */
   const applyTypeToSteps = useCallback(
-    (type: "FROM_STOCK" | "MANUFACTURE") => {
+    (type: FormValues["type"]) => {
       const current = form.values.selectedStepIds;
-      if (type === "FROM_STOCK") {
-        const allowed = new Set(
-          catalogSteps
-            .filter((c) => c.code === STOCK_ISSUE_STEP_CODE || isShipStep(c))
-            .map((c) => c.id),
-        );
-        const next = current.filter((id) => allowed.has(id));
-        if (productIssueId != null && !next.includes(productIssueId)) {
-          next.unshift(productIssueId);
-        }
-        form.setFieldValue("selectedStepIds", next);
-      } else if (productIssueId != null) {
-        form.setFieldValue(
-          "selectedStepIds",
-          current.filter((id) => id !== productIssueId),
-        );
-      }
+      const allowed = new Set(
+        catalogSteps
+          .filter((c) => stepAllowedForType(c, type))
+          .map((c) => c.id),
+      );
+      const next = current.filter((id) => allowed.has(id));
+      const required =
+        type === "FROM_STOCK"
+          ? productIssueId
+          : type === "REGRIND"
+            ? regrindReceiptId
+            : null;
+      if (required != null && !next.includes(required)) next.unshift(required);
+      form.setFieldValue("selectedStepIds", next);
     },
-    [form, catalogSteps, productIssueId],
+    [form, catalogSteps, productIssueId, regrindReceiptId],
   );
 
   // 検査表は検査工程ごとの割当。未編集（キー無し）の工程は、その工程を
@@ -537,10 +541,22 @@ export function WorkflowBuilder({
     routes: RouteView[];
     /** 準備工程リスト（共通・有効のみ）。 */
     prepRoutes: RouteView[];
+    /** 再研磨工程リスト（共通・有効のみ）。 */
+    regrindRoutes: RouteView[];
+    /** 明細の注文種別（REGRIND なら種別は再研磨に固定）。 */
+    orderType: string | null;
   } | null>(null);
   /** 選択中ルート id（文字列）。null = ルートを使わない。 */
   const [routeSel, setRouteSel] = useState<string | null>(
-    workOrder?.routeId != null ? String(workOrder.routeId) : null,
+    workOrder?.routeId != null && workOrder.type !== "REGRIND"
+      ? String(workOrder.routeId)
+      : null,
+  );
+  // ── 再研磨工程リスト（共通）— 再研磨指示書はこれ 1 本。版は選べない（常に最新版）。
+  const [regrindRouteSel, setRegrindRouteSel] = useState<string | null>(
+    workOrder?.routeId != null && workOrder.type === "REGRIND"
+      ? String(workOrder.routeId)
+      : null,
   );
   const [versionSel, setVersionSel] = useState<string | null>(
     workOrder?.routeVersionId ?? null,
@@ -666,6 +682,12 @@ export function WorkflowBuilder({
       routesInfo?.prepRoutes.find((r) => String(r.id) === prepRouteSel) ?? null,
     [routesInfo, prepRouteSel],
   );
+  const selectedRegrindRoute = useMemo(
+    () =>
+      routesInfo?.regrindRoutes.find((r) => String(r.id) === regrindRouteSel) ??
+      null,
+    [routesInfo, regrindRouteSel],
+  );
 
   /**
    * 版の工程を、いまの構成の**その種別の部分**と入れ替える。
@@ -678,7 +700,10 @@ export function WorkflowBuilder({
    * で決まるので、ここでは集合だけを合わせる。
    */
   const mergeVersionSteps = useCallback(
-    (steps: RouteStepSnapshot[], kind: "PREP" | "MANUFACTURING") => {
+    (
+      steps: RouteStepSnapshot[],
+      kind: "PREP" | "MANUFACTURING" | "REGRIND",
+    ) => {
       const knownIds = new Set(catalogSteps.map((s) => s.id));
       const usable = steps.filter((s) => knownIds.has(s.processStepId));
       if (usable.length < steps.length) {
@@ -689,15 +714,16 @@ export function WorkflowBuilder({
         });
       }
       const isPrepId = (id: number) => prepStepIds.has(id);
-      const incoming = usable.filter((s) =>
-        kind === "PREP"
-          ? isPrepId(s.processStepId)
-          : !isPrepId(s.processStepId),
-      );
+      // 再研磨リストは 1 本で完結する — その版に置き換える（残すものは無い）。
+      const inKind = (id: number) =>
+        kind === "REGRIND"
+          ? true
+          : kind === "PREP"
+            ? isPrepId(id)
+            : !isPrepId(id);
+      const incoming = usable.filter((s) => inKind(s.processStepId));
       const current = form.getValues().selectedStepIds;
-      const kept = current.filter((id) =>
-        kind === "PREP" ? !isPrepId(id) : isPrepId(id),
-      );
+      const kept = current.filter((id) => !inKind(id));
       const next = [...kept, ...incoming.map((s) => s.processStepId)];
       form.setFieldValue("selectedStepIds", [...new Set(next)]);
       setLocations((prev) => ({ ...prev, ...snapshotLocations(incoming) }));
@@ -758,6 +784,29 @@ export function WorkflowBuilder({
     );
   };
 
+  /** 再研磨工程リストを選ぶ → その**最新版**で工程を置き換える。 */
+  const applyRegrindRoute = useCallback(
+    (route: RouteView | null) => {
+      const latest = route?.versions[0];
+      if (!latest) return;
+      getRouteVersionSteps(latest.id).then((steps) => {
+        mergeVersionSteps(steps, "REGRIND");
+      });
+    },
+    [mergeVersionSteps],
+  );
+
+  const onRegrindRouteChange = (value: string | null) => {
+    setRegrindRouteSel(value);
+    if (!value) {
+      setStepsEditing(true);
+      return;
+    }
+    applyRegrindRoute(
+      routesInfo?.regrindRoutes.find((r) => String(r.id) === value) ?? null,
+    );
+  };
+
   /**
    * 他の受注元専用のリストを、この受注元のリストとして複製して選ぶ。
    * 複製した側は v1 なので、選んでいた版の中身がそのまま出発点になる。
@@ -803,6 +852,47 @@ export function WorkflowBuilder({
   // biome-ignore lint/correctness/useExhaustiveDependencies: routesInfo ロード時のみ発火させる
   useEffect(() => {
     if (routesInfo == null) return;
+    // 明細の注文種別が再研磨なら指示書も再研磨（逆も）— 種別を明細に合わせる。
+    const lineIsRegrind = routesInfo.orderType === "REGRIND";
+    const currentType = form.getValues().type;
+    if (lineIsRegrind && currentType !== "REGRIND") {
+      form.setFieldValue("type", "REGRIND");
+      form.setFieldValue("materialItemId", null);
+      form.setFieldValue("storageLocationId", null);
+      applyTypeToSteps("REGRIND");
+    } else if (
+      !lineIsRegrind &&
+      currentType === "REGRIND" &&
+      target === "SALES_ORDER"
+    ) {
+      form.setFieldValue("type", "MANUFACTURE");
+      applyTypeToSteps("MANUFACTURE");
+    }
+    const effectiveType = lineIsRegrind
+      ? "REGRIND"
+      : currentType === "REGRIND"
+        ? "MANUFACTURE"
+        : currentType;
+    if (effectiveType === "REGRIND") {
+      // 再研磨リストは常に最新版: 選択済みならその最新版で置き換え、未選択なら
+      // 有効なものが 1 本のときだけ自動で選ぶ（pickDefaultCommonRoute）。
+      if (regrindRouteSel != null) {
+        applyRegrindRoute(
+          routesInfo.regrindRoutes.find(
+            (r) => String(r.id) === regrindRouteSel,
+          ) ?? null,
+        );
+      } else if (mode === "create") {
+        const picked = pickDefaultCommonRoute(routesInfo.regrindRoutes);
+        if (picked) {
+          setRegrindRouteSel(String(picked.id));
+          applyRegrindRoute(picked);
+        } else {
+          setStepsEditing(true);
+        }
+      }
+      return;
+    }
     // 準備側は常に最新版: 選択済み（編集で開いた指示書も含む）ならその最新版で
     // 準備工程を入れ替え、未選択なら有効なものが 1 本のときだけ自動で選ぶ
     // （pickDefaultPrepRoute）。編集で開いたとき古い版の並びのままだと、
@@ -888,7 +978,8 @@ export function WorkflowBuilder({
   const typeValue = form.values.type;
   useEffect(() => {
     if (target !== "SALES_ORDER" || allocTotal <= 0) return;
-    if (typeValue === "FROM_STOCK") {
+    // 在庫分・再研磨は割当 = 予定数量（消費先 / 所有者が一意）。
+    if (typeValue !== "MANUFACTURE") {
       if (plannedQuantityValue !== allocTotal) {
         form.setFieldValue("plannedQuantity", allocTotal);
       }
@@ -1189,9 +1280,10 @@ export function WorkflowBuilder({
       return;
     }
     // 製造分は常に工程リスト（ルート）に基づく — 既存を選ぶか新規作成する。
-    // 在庫分は固定構成（製品出し + 出荷系）なので工程リストを使わない。
+    // 在庫分は固定構成（製品出し + 出荷系）、再研磨は共通の再研磨工程リスト
+    // （regrindRouteId）なので、製造工程リストは使わない。
     const route: WorkOrderInput["route"] =
-      values.type === "FROM_STOCK"
+      values.type !== "MANUFACTURE"
         ? null
         : routeSel != null && versionSel != null
           ? {
@@ -1209,7 +1301,7 @@ export function WorkflowBuilder({
                     : null,
               }
             : null;
-    if (values.type !== "FROM_STOCK" && route == null) {
+    if (values.type === "MANUFACTURE" && route == null) {
       notifications.show({
         title: tr("production.workOrders.aStepListIsRequired"),
         message: tr("production.workOrders.selectAnExistingStepListOr"),
@@ -1219,13 +1311,26 @@ export function WorkflowBuilder({
     }
     // 準備工程リストが 1 本でもあれば製造分は必須（サーバーも同じ判定）。
     if (
-      values.type !== "FROM_STOCK" &&
+      values.type === "MANUFACTURE" &&
       (routesInfo?.prepRoutes.length ?? 0) > 0 &&
       prepRouteSel == null
     ) {
       notifications.show({
         title: tr("production.workOrders.aStepListIsRequired"),
         message: tr("production.workflowBuilder.selectAPrepRoute"),
+        color: "red",
+      });
+      return;
+    }
+    // 再研磨工程リストが 1 本でもあれば再研磨は必須（サーバーも同じ判定）。
+    if (
+      values.type === "REGRIND" &&
+      (routesInfo?.regrindRoutes.length ?? 0) > 0 &&
+      regrindRouteSel == null
+    ) {
+      notifications.show({
+        title: tr("production.workOrders.aStepListIsRequired"),
+        message: tr("production.workflowBuilder.selectARegrindRoute"),
         color: "red",
       });
       return;
@@ -1241,9 +1346,11 @@ export function WorkflowBuilder({
           ? Number(values.materialItemId)
           : null,
       allowQuantityVariance: values.allowQuantityVariance,
-      storageLocationId: values.storageLocationId
-        ? Number(values.storageLocationId)
-        : null,
+      // 再研磨は顧客の工具を返すので保管場所を持たない。
+      storageLocationId:
+        values.type !== "REGRIND" && values.storageLocationId
+          ? Number(values.storageLocationId)
+          : null,
       designFileId: values.designFileId,
       notes: values.notes,
       steps: currentSnapshots.map((s) => ({
@@ -1258,9 +1365,14 @@ export function WorkflowBuilder({
       route,
       // 準備工程リストは id だけ — 版はサーバーが最新を当てる（applyLatestPrepRoute）
       prepRouteId:
-        values.type === "FROM_STOCK" || prepRouteSel == null
+        values.type !== "MANUFACTURE" || prepRouteSel == null
           ? null
           : Number(prepRouteSel),
+      // 再研磨工程リストも id だけ — 版はサーバーが最新を当てる（applyLatestRegrindRoute）
+      regrindRouteId:
+        values.type === "REGRIND" && regrindRouteSel != null
+          ? Number(regrindRouteSel)
+          : null,
       // 作成時の作業計画（計画日 × 作業場所 × 担当者（任意））。担当者が複数なら
       // 1 人 1 行、誰も入れなければ担当者なしの 1 行。編集では送らない（計画の
       // 管理は工程実行画面の計画パネル — ここで送ると既存計画と二重になる）。
@@ -1352,6 +1464,14 @@ export function WorkflowBuilder({
       value: String(r.id),
       label: r.name,
     })) ?? [];
+  const regrindRouteOptions: Option[] =
+    routesInfo?.regrindRoutes.map((r) => ({
+      value: String(r.id),
+      label: r.name,
+    })) ?? [];
+  const selectedRegrindLatest = selectedRegrindRoute?.versions[0] ?? null;
+  /** 先頭の割当明細が再研磨か（種別を固定する）。 */
+  const lineIsRegrind = routesInfo?.orderType === "REGRIND";
   const renderVersionOption =
     (route: RouteView | null) =>
     ({ option }: { option: { value: string; label: string } }) => {
@@ -1508,7 +1628,7 @@ export function WorkflowBuilder({
                 {tr("production.workOrders.theAllocatedLinesMixProductsOrder")}
               </Alert>
             )}
-            {form.values.type !== "FROM_STOCK" && (
+            {form.values.type === "MANUFACTURE" && (
               <GhostButton
                 leftSection={<IconPlus size={14} />}
                 onClick={addAllocRow}
@@ -1554,11 +1674,43 @@ export function WorkflowBuilder({
             <SegmentedControl
               data={workOrderTypeOptions(locale).map((o) => ({
                 ...o,
-                disabled: target === "STOCK" && o.value === "FROM_STOCK",
+                // 在庫向け（明細なし）は製造分のみ。再研磨の明細は再研磨に固定、
+                // それ以外の明細では再研磨を選べない（顧客の工具ではない）。
+                disabled:
+                  (target === "STOCK" && o.value !== "MANUFACTURE") ||
+                  (target === "SALES_ORDER" &&
+                    routesInfo != null &&
+                    (lineIsRegrind
+                      ? o.value !== "REGRIND"
+                      : o.value === "REGRIND")),
               }))}
               onChange={(v) => {
                 form.setFieldValue("type", v as FormValues["type"]);
                 applyTypeToSteps(v as FormValues["type"]);
+                if (v === "REGRIND") {
+                  form.setFieldValue("materialItemId", null);
+                  form.setFieldValue("storageLocationId", null);
+                  // 再研磨は割当 1 件のみ — 先頭の有効行だけ残す
+                  setAllocRows((rows) => {
+                    const first =
+                      rows.find((r) => r.orderLineId != null) ?? rows[0];
+                    return [first];
+                  });
+                  // 製造工程リストは使わない（再研磨工程リストへ）
+                  setRouteSel(null);
+                  setVersionSel(null);
+                  setBaseSteps(null);
+                  setNewRouteName("");
+                  setPrepRouteSel(null);
+                  const picked = pickDefaultCommonRoute(
+                    routesInfo?.regrindRoutes ?? [],
+                  );
+                  setRegrindRouteSel(picked ? String(picked.id) : null);
+                  if (picked) applyRegrindRoute(picked);
+                  else setStepsEditing(true);
+                } else {
+                  setRegrindRouteSel(null);
+                }
                 if (v === "FROM_STOCK") {
                   form.setFieldValue("materialItemId", null);
                   // 在庫分は割当 1 件のみ — 先頭の有効行だけ残す
@@ -1584,10 +1736,15 @@ export function WorkflowBuilder({
               target === "SALES_ORDER" && allocTotal > 0
                 ? form.values.type === "FROM_STOCK"
                   ? tr("production.workOrders.theFromStockQuantityMatchesThe")
-                  : tr(
-                      "production.workflowBuilder.atLeastAllocationTotalWithCount",
-                      { count: allocTotal },
-                    )
+                  : form.values.type === "REGRIND"
+                    ? tr(
+                        "production.workflowBuilder.regrindQuantityMatchesTheAllocation",
+                        { count: allocTotal },
+                      )
+                    : tr(
+                        "production.workflowBuilder.atLeastAllocationTotalWithCount",
+                        { count: allocTotal },
+                      )
                 : undefined
             }
             label={
@@ -1629,18 +1786,20 @@ export function WorkflowBuilder({
               value={form.values.materialItemId}
             />
           )}
-          <Select
-            clearable
-            data={storageLocationOptions}
-            label={
-              <HelpLabel {...fieldHelp(tr, "workOrder", "storageLocation")} />
-            }
-            placeholder={tr(
-              "production.workOrders.selectWhereTheFinishedGoodsGo",
-            )}
-            searchable={storageLocationOptions.length > 5}
-            {...form.getInputProps("storageLocationId")}
-          />
+          {!isRegrind && (
+            <Select
+              clearable
+              data={storageLocationOptions}
+              label={
+                <HelpLabel {...fieldHelp(tr, "workOrder", "storageLocation")} />
+              }
+              placeholder={tr(
+                "production.workOrders.selectWhereTheFinishedGoodsGo",
+              )}
+              searchable={storageLocationOptions.length > 5}
+              {...form.getInputProps("storageLocationId")}
+            />
+          )}
           {/* 過不足納品（§8）— 生産側の許可。**どこまでずれてよいかは
               顧客マスタが決める**ので、ここは「出してよいか」だけ。 */}
           <Checkbox
@@ -1699,7 +1858,48 @@ export function WorkflowBuilder({
         )}
       </FormSection>
 
-      {!isStock &&
+      {isRegrind && allocRows.some((r) => r.info != null) && (
+        <FormSection
+          description={tr("production.workflowBuilder.regrindRouteHelp")}
+          required={regrindRouteOptions.length > 0}
+          title={tr("production.workOrders.regrindRoute")}
+        >
+          <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+            <Select
+              allowDeselect={false}
+              data={regrindRouteOptions}
+              label={tr("production.workOrders.regrindRoute")}
+              onChange={onRegrindRouteChange}
+              placeholder={
+                regrindRouteOptions.length
+                  ? tr("production.workOrders.selectAStepList")
+                  : tr("production.workflowBuilder.noRegrindRouteRegistered")
+              }
+              searchable
+              value={regrindRouteSel}
+              withAsterisk={regrindRouteOptions.length > 0}
+            />
+            {selectedRegrindLatest && (
+              <Stack gap={4} justify="flex-end">
+                <Text size="sm">
+                  {tr("production.workflowBuilder.regrindRouteUsesLatest", {
+                    version: selectedRegrindLatest.version,
+                    date: fmt.dateTime(selectedRegrindLatest.createdAt),
+                  })}
+                </Text>
+                <Anchor
+                  component={Link}
+                  href="/master/process-steps/regrind-routes"
+                  size="xs"
+                >
+                  {tr("production.workflowBuilder.editRegrindRoutes")}
+                </Anchor>
+              </Stack>
+            )}
+          </SimpleGrid>
+        </FormSection>
+      )}
+      {form.values.type === "MANUFACTURE" &&
         (target === "SALES_ORDER"
           ? allocRows.some((r) => r.info != null)
           : !!itemIdValue) && (
@@ -1883,7 +2083,7 @@ export function WorkflowBuilder({
           {/* 準備工程は共通の準備工程リスト（最新版）から入るので、この画面では
               読むだけ。エディタには製造工程だけを渡し、準備工程の集合は
               そのまま持ち越す（並びは保存時にカタログ既定順で決まる）。 */}
-          {!isStock && currentPrep.length > 0 && (
+          {form.values.type === "MANUFACTURE" && currentPrep.length > 0 && (
             <Paper mb="sm" p="sm" radius="sm" withBorder>
               <Text c="dimmed" mb={6} size="xs">
                 {tr("production.workflowBuilder.prepStepsReadOnly")}
@@ -1906,7 +2106,7 @@ export function WorkflowBuilder({
           )}
           <ProcessListEditor
             catalogSteps={
-              isStock
+              isStock || isRegrind
                 ? catalogForType
                 : catalogForType.filter((c) => !prepStepIds.has(c.id))
             }
@@ -1915,20 +2115,22 @@ export function WorkflowBuilder({
                 ? form.errors.selectedStepIds
                 : null
             }
-            kind={isStock ? undefined : "MANUFACTURING"}
+            kind={isStock || isRegrind ? undefined : "MANUFACTURING"}
             locations={locations}
             onLocationsChange={setLocations}
             onSelectedChange={(next) =>
               form.setFieldValue(
                 "selectedStepIds",
-                isStock
+                isStock || isRegrind
                   ? next
                   : [...selected.filter((id) => prepStepIds.has(id)), ...next],
               )
             }
             plantOptions={plantOptions}
             selected={
-              isStock ? selected : selected.filter((id) => !prepStepIds.has(id))
+              isStock || isRegrind
+                ? selected
+                : selected.filter((id) => !prepStepIds.has(id))
             }
             supplierOptions={supplierOptions}
             useDeps={useDeps}

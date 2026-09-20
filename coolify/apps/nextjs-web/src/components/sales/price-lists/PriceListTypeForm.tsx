@@ -92,7 +92,7 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
   const variantFormSchema = z.object({
     /** 保存済みバリアントの id（新規は null）. */
     id: z.string().nullable(),
-    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
+    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "REGRIND", "OTHER"]),
     /** 基準単価ソースの価格試算番号（null = 手動設定）. */
     sourceEstimate: z.string().nullable(),
     /** 価格試算値を使わず手動の基準単価を使う（送信時に除去）. */
@@ -476,7 +476,10 @@ export function PriceListTypeForm({
               initialOption={productOption}
               label={<HelpLabel {...fieldHelp(tr, "priceList", "product")} />}
               onChange={(v) => form.setFieldValue("itemId", v ?? "")}
-              onSearch={searchProductItemOptions}
+              onSearch={(q) =>
+                // 他社製品の価格表も作れる（保存側が注文種別を再研磨に限る）。
+                searchProductItemOptions(q, { includeExternal: true })
+              }
               placeholder={tr("common.searchProducts")}
               storageKey="price-list-product-item"
               value={form.values.itemId || null}

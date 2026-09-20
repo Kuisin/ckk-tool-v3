@@ -74,6 +74,8 @@ export interface MyStepView {
   plannedQuantityForMe: number | null;
   /** 指示書の予定数量 */
   workOrderPlannedQuantity: number;
+  /** WORK_ORDER_TYPE。再研磨では半製品の区分を出さない・受入本数は端末の入力が権威。 */
+  workOrderType: string;
   /** 社内 / 外注（INTERNAL | OUTSOURCE）。 */
   executionLocation: string;
   /** 記録済みの受入数（開始済みのみ） */
@@ -248,6 +250,7 @@ async function hydrateSteps(
           id: true,
           workOrderNumber: true,
           plannedQuantity: true,
+          type: true,
           productItem: { select: { name: true } },
         },
       },
@@ -331,6 +334,7 @@ async function hydrateSteps(
       plannedEndAt: plan ? formatTime(plan.plannedEndAt) : null,
       plannedQuantityForMe: plan?.quantity ?? null,
       workOrderPlannedQuantity: r.workOrder.plannedQuantity,
+      workOrderType: r.workOrder.type,
       inputQuantity: r.inputQuantity,
       expectedInputQuantity: expectedInput(r.id, ctx),
       outputSuccessQuantity: r.outputSuccessQuantity,

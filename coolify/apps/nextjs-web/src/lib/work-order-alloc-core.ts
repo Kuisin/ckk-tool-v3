@@ -15,6 +15,11 @@
  *       itemId にしてあるのはそのため — option-search.ts 冒頭の節）。
  *   - FROM_STOCK（在庫分）は割当 1 件のみ・割当数 = 予定数量
  *     （在庫引当の消費先が一意である必要があるため）
+ *   - REGRIND（再研磨）も割当 1 件のみ・割当数 = 予定数量。しかも明細は
+ *     注文種別 REGRIND のものだけ（顧客の工具を預かって返す注文）。逆に
+ *     REGRIND の明細は再研磨の指示書にしか割り当てられない —
+ *     製造分に載ると、他社の工具が自社の完成品として入庫する。
+ *     所有者（預り品バケットの顧客）は割当明細から導くので 1 件に限る。
  */
 
 /** 保存ペイロードの 1 割当行。 */
@@ -35,7 +40,12 @@ export interface LineAllocInfo {
   /** 明細の製品 — **品目 id（items.id）**。未突合の明細は null。 */
   itemId: number | null;
   status: string;
+  /** 注文種別（ORDER_TYPE）。REGRIND の明細は再研磨の指示書だけに載る。 */
+  orderType?: string;
 }
+
+/** 指示書の種別（app.WORK_ORDER_TYPE）。lib/workflow-core.ts と同じ集合。 */
+export type AllocWorkOrderType = "FROM_STOCK" | "MANUFACTURE" | "REGRIND";
 
 /** この明細にまだ割り当てられる数量（受注数量 − 他の指示書の割当）。 */
 export function remainingAllocatable(info: {
@@ -69,7 +79,7 @@ type TrLike = (
  */
 export function validateAllocations(
   args: {
-    type: "FROM_STOCK" | "MANUFACTURE";
+    type: AllocWorkOrderType;
     plannedQuantity: number;
     allocations: readonly AllocationInput[];
     lines: readonly LineAllocInfo[];
@@ -77,9 +87,18 @@ export function validateAllocations(
   tr: TrLike,
 ): string | null {
   const { type, plannedQuantity, allocations, lines } = args;
-  if (allocations.length === 0) return null; // 在庫向けの独立指示書
+  if (allocations.length === 0) {
+    // 在庫向けの独立指示書（製造分のみ）。再研磨は顧客の物を預かるので明細が要る。
+    if (type === "REGRIND")
+      return tr("production.workOrderActions.regrindOrderRequiresOrderLine");
+    return null;
+  }
+  // 在庫分・再研磨は明細 1 件だけ（消費先 / 所有者が一意である必要がある）。
   if (type === "FROM_STOCK" && allocations.length > 1) {
     return tr("production.workOrderActions.stockWorkOrderOneLineOnly");
+  }
+  if (type === "REGRIND" && allocations.length > 1) {
+    return tr("production.workOrderActions.regrindWorkOrderOneLineOnly");
   }
   const seen = new Set<string>();
   const byId = new Map(lines.map((l) => [l.orderLineId, l]));
@@ -112,6 +131,17 @@ export function validateAllocations(
         },
       );
     }
+    // 再研磨の明細 ⇄ 再研磨の指示書 は 1 対 1 の対応。混ぜると他社の工具が
+    // 自社の完成品として入庫する（製造分）か、作るはずの物が預り品になる。
+    const lineIsRegrind = line.orderType === "REGRIND";
+    if (type === "REGRIND" && !lineIsRegrind) {
+      return tr("production.workOrderActions.regrindLinesOnly");
+    }
+    if (type !== "REGRIND" && lineIsRegrind) {
+      return tr(
+        "production.workOrderActions.regrindLineRequiresRegrindWorkOrder",
+      );
+    }
     if (itemId == null) {
       itemId = line.itemId;
     } else if (line.itemId !== itemId) {
@@ -131,6 +161,11 @@ export function validateAllocations(
   if (type === "FROM_STOCK" && plannedQuantity !== total) {
     return tr(
       "production.workOrderActions.stockPlannedQuantityMustMatchAllocation",
+    );
+  }
+  if (type === "REGRIND" && plannedQuantity !== total) {
+    return tr(
+      "production.workOrderActions.regrindPlannedQuantityMustMatchAllocation",
     );
   }
   if (plannedQuantity < total) {

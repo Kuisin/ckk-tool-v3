@@ -104,6 +104,8 @@ export default async function MasterProductsDetailPage({
       ? localized(r.taxCategory.name as LocalizedText | null)
       : null,
     matchNames: r.matchNames,
+    isExternalProduct: r.isExternalProduct,
+    makerName: r.makerName,
     isActive: r.isActive,
     notes: r.notes ?? "",
     spec,

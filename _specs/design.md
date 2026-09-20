@@ -1128,6 +1128,12 @@ Paper (withBorder, p="md", radius="md")
 | 検査 INSPECTION | `cyan` |
 | 検査承認 APPROVAL | `violet` |
 | 出荷 SHIPPING | `pink` |
+| 再研磨 REGRIND | `orange` |
+
+指示書の **種別バッジ**（`WORK_ORDER_TYPE_COLOR`, `lib/enum-labels.ts`）も同じ表の隣で決める:
+製造分 `violet` / 在庫分 `teal` / 再研磨 `orange`。一覧（PD02）・未処理指示書（PD05）・
+詳細の 3 か所が同じ表を読む（以前はコンポーネントごとの三項演算子で、種別を足すと
+片方だけ色が付かなかった）。
 
 状態色（§9 StepStatus の gray / blue / green / red）とぶつからないよう、その 4 色は
 種別に使わない。**状態**はアイコン（時計 / スピナー / チェック / ✗）と、進行を

@@ -139,6 +139,13 @@
         "scrap": "Scrapped",
         "rework": "Process branch"
       },
+      "REGRIND_RECEIPT": {
+        "input": "Received",
+        "success": "To regrind",
+        "semi": "Semi-finished",
+        "scrap": "Returned as-is (not regrindable)",
+        "rework": "Process branch"
+      },
       "INSPECTION": {
         "input": "Inspected",
         "success": "Passed",

@@ -537,6 +537,11 @@ Table products {
   // 検索・AI 突合用のキーワード（別名・略称・読み・英字表記）。注文書の品名が
   // 名称と一致しないときの突合キー（lib/intake matchProduct）でもある。
   match_names     "text[]"    [default: '{}']
+  // 他社製品（再研磨専用）。他社が作った工具を再研磨で預かるときの品目。製造工程リスト・
+  // 製造分/在庫分の指示書・PRODUCTION/TEST/SAMPLE の明細では使えない（アプリ側で守る。
+  // DB は item_type = PRODUCT だけを CHECK）。メーカーは BP にしない（競合は取引先ではない）
+  is_external_product boolean [not null, default: false]
+  maker_name      varchar
   design_file_id  uuid [ref: > design_files.id]
   is_active       boolean [default: true]
   notes           text
@@ -679,6 +684,7 @@ Enum ORDER_TYPE {
   PRODUCTION      // 本番
   TEST            // テスト
   SAMPLE          // サンプル（金額0）
+  REGRIND         // 再研磨 — 顧客の工具を預かって研ぎ直す（指示書は REGRIND、在庫は預り品）
   OTHER           // その他
 }
 
@@ -889,6 +895,7 @@ Table work_order_order_lines {
 Enum WORK_ORDER_TYPE {
   FROM_STOCK      // 在庫分
   MANUFACTURE     // 製造分
+  REGRIND         // 再研磨 — 作るものは無い。完了しても自社在庫は動かず、受入本数は顧客の預り品
 }
 
 Enum WORK_ORDER_STATUS {
@@ -961,6 +968,7 @@ Table process_step_catalog {
 Enum PROCESS_CATEGORY {
   MATERIAL_PREP   // 材料準備
   MACHINING       // 加工
+  REGRIND         // 再研磨（再研磨指示書だけが使う研磨工程。開始工程は REGRIND_RECEIPT）
   COATING         // コーティング
   INSPECTION      // 検査
   APPROVAL        // 検査承認
@@ -1031,6 +1039,8 @@ Table work_order_steps {
   cancelled_at    timestamp
   cancelled_by    uuid [ref: > users.id]
   cancel_reason   text
+  // 製品受入（再研磨）の完了で預り品を入庫した伝票。二度計上しない印（outsource_*_movement_id と同じ規約）
+  regrind_receipt_movement_id uuid [ref: > inventory_movements.id]
   notes           text
 }
 
@@ -1329,12 +1339,18 @@ Table item_inventory {
   // 拠点には**出した拠点**を入れる（持たせないと拠点スコープの利用者から
   // 行ごと消える）。
   custody_bp_id   uuid [ref: > business_partners.id]
+  // **所有者**（顧客の預り品 — 再研磨で預かった工具）。null = 自社の物。custody は
+  // 「誰が持っているか」、owner は「誰の物か」で直交し、両方入り得る（預り品を外注へ
+  // 出した状態）。値が入っている行は自社在庫ではない — 読み出し側は必ず
+  // `owner_bp_id IS NULL` で絞る（custody と同じ規則。FK は RESTRICT: SET NULL だと
+  // 顧客を消した瞬間に預り品が自社在庫に化ける）
+  owner_bp_id     uuid [ref: > business_partners.id]
   location        varchar   // 旧フリーテキスト（表示フォールバックのみ）
   notes           text
   updated_at      timestamp
 
   indexes {
-    (item_id, plant_id, lot_number, is_semi_finished, storage_location_id, shelf_id, custody_bp_id) [unique, note: 'NULLS NOT DISTINCT']
+    (item_id, plant_id, lot_number, is_semi_finished, storage_location_id, shelf_id, custody_bp_id, owner_bp_id) [unique, note: 'NULLS NOT DISTINCT']
   }
 }
 

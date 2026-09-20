@@ -82,7 +82,13 @@ import { acceptanceTotals } from "@/lib/order-acceptance-totals";
 import { MatchSuggestions } from "./MatchSuggestions";
 import type { MatchSuggestion, OrderAcceptanceItemView } from "./model";
 
-const ORDER_TYPES = ["PRODUCTION", "TEST", "SAMPLE", "OTHER"] as const;
+const ORDER_TYPES = [
+  "PRODUCTION",
+  "TEST",
+  "SAMPLE",
+  "REGRIND",
+  "OTHER",
+] as const;
 type OrderType = (typeof ORDER_TYPES)[number];
 
 /** エディタ 1 行のフォーム値。 */
@@ -480,7 +486,12 @@ export function OrderAcceptanceItemsEditor({
                         productLabel: opt?.label ?? null,
                       })
                     }
-                    onSearch={searchProductItemOptions}
+                    onSearch={(q) =>
+                      searchProductItemOptions(q, {
+                        // 他社製品は再研磨の明細でだけ選べる。
+                        includeExternal: row.orderType === "REGRIND",
+                      })
+                    }
                     placeholder={tr(
                       "sales.orderAcceptances.matchAgainstTheProductMaster",
                     )}

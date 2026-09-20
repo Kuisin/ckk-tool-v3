@@ -190,11 +190,13 @@ export async function transferStock(
         isSemiFinished: src.isSemiFinished,
         storageLocationId: v.targetStorageLocationId,
         shelfId: v.targetShelfId,
-        // 移した先は必ず自社のバケット。
+        // 移した先は必ず手元（預け先なし）のバケット。
         custodyBpId: null,
+        // 所有者は動かさない — 顧客の預り品を棚から棚へ移しても顧客の物のまま。
+        ownerBpId: src.ownerBpId,
       };
-      // custody-scope: `bucket` は custodyBpId: null を含む（移した先は
-      // 必ず自社のバケット）。
+      // custody-scope: / owner-scope: `bucket` は custodyBpId: null と
+      // 元の ownerBpId を含む（移した先は必ず手元のバケット、所有者は同じ）。
       let target = await tx.itemInventory.findFirst({
         where: bucket,
         select: { id: true },

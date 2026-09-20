@@ -103,10 +103,22 @@ export const lotInputModeOptions = (locale: Locale) =>
 export const PROCESS_CATEGORY_COLOR: Record<string, string> = {
   MATERIAL_PREP: "teal",
   MACHINING: "indigo",
+  REGRIND: "orange",
   COATING: "grape",
   INSPECTION: "cyan",
   APPROVAL: "violet",
   SHIPPING: "pink",
+};
+
+/**
+ * 指示書 種別のバッジ色。状態色（gray/blue/green/red）と衝突しない色を選ぶ。
+ * 一覧・PD05・詳細が同じ表を読む（以前は component ごとの三項演算子だった —
+ * 3 つ目の種別を足したとき片方だけ色が付かない）。
+ */
+export const WORK_ORDER_TYPE_COLOR: Record<string, string> = {
+  MANUFACTURE: "violet",
+  FROM_STOCK: "teal",
+  REGRIND: "orange",
 };
 
 export const processExecutionLabel = (value: string, locale: Locale) =>

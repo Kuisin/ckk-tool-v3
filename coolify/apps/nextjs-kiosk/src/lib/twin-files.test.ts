@@ -31,6 +31,8 @@ const TWINS = [
   "inventory-availability-core.test.ts",
   "inventory-note-core.ts",
   "inventory-note-core.test.ts",
+  "inventory-owner-core.ts",
+  "inventory-owner-core.test.ts",
   "inspection-core.ts",
   "inspection-core.test.ts",
   "qr-payload.ts",

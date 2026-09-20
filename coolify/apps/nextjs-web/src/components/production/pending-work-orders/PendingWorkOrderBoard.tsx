@@ -34,7 +34,11 @@ import {
   useUrlStringState,
 } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { workOrderTypeLabel, workOrderTypeOptions } from "@/lib/enum-labels";
+import {
+  WORK_ORDER_TYPE_COLOR,
+  workOrderTypeLabel,
+  workOrderTypeOptions,
+} from "@/lib/enum-labels";
 import { statusOptions } from "@/lib/status-map";
 import type { UnplannedOrderLineRow } from "./model";
 
@@ -43,7 +47,9 @@ const WORK_ORDERS_PATH = "/production/work-orders";
 
 /** 不足分の指示書を起こすリンク（種別と数量をプリセット）。 */
 function newWorkOrderHref(r: UnplannedOrderLineRow): string {
-  return `${WORK_ORDERS_PATH}/new?orderLine=${r.uuid}&type=MANUFACTURE&qty=${r.unplannedQuantity}`;
+  // 再研磨の明細は再研磨の指示書（顧客の工具を預かって返す）。それ以外は製造分。
+  const type = r.orderType === "REGRIND" ? "REGRIND" : "MANUFACTURE";
+  return `${WORK_ORDERS_PATH}/new?orderLine=${r.uuid}&type=${type}&qty=${r.unplannedQuantity}`;
 }
 
 export function PendingWorkOrderBoard({
@@ -256,7 +262,7 @@ export function PendingWorkOrderBoard({
       sortValue: (r) => r.type,
       render: (r) => (
         <Badge
-          color={r.type === "MANUFACTURE" ? "violet" : "teal"}
+          color={WORK_ORDER_TYPE_COLOR[r.type] ?? "gray"}
           size="sm"
           variant="light"
         >

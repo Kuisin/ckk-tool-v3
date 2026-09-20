@@ -35,6 +35,7 @@ import {
   formatOrderLineNumber,
   parseDocKey,
 } from "@/lib/doc-number";
+import { hasExternalProductOutsideRegrind } from "@/lib/external-product-guard";
 import { enqueueExtraction } from "@/lib/intake";
 import { normalizeExtraction } from "@/lib/intake-core";
 import { aliasLearnings } from "@/lib/match-alias-core";
@@ -107,7 +108,13 @@ async function acceptanceInScope(
 
 // ── 入力スキーマ ─────────────────────────────────────────────────────────────
 
-const orderTypeEnum = z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]);
+const orderTypeEnum = z.enum([
+  "PRODUCTION",
+  "TEST",
+  "SAMPLE",
+  "REGRIND",
+  "OTHER",
+]);
 
 function itemInputSchema(tr: Tr) {
   return z.object({
@@ -485,6 +492,12 @@ export async function saveDraft(
       return actionError(tr("sales.orderAcceptanceActions.targetNotFound"));
     const refsError = await lineRefsError(tr, v.items);
     if (refsError) return actionError(refsError);
+    // 他社製品（再研磨専用）は注文種別が再研磨の行にしか載せられない。
+    if (await hasExternalProductOutsideRegrind(v.items)) {
+      return actionError(
+        tr("sales.orderAcceptanceActions.externalProductOnlyRegrind"),
+      );
+    }
     const customerBpId = trimOrNull(v.customerBpId);
     // 価格表どおりの行の単価はここで確定する（クライアントの表示値は読まない）。
     // 顧客が変わった保存でも、新しい顧客の価格表で解決し直される。
@@ -623,6 +636,8 @@ export async function submitForApproval(
             unitPrice: true,
             deliveryMethod: true,
             endUserBpId: true,
+            orderType: true,
+            item: { select: { isExternalProduct: true } },
           },
         },
       },
@@ -646,6 +661,8 @@ export async function submitForApproval(
           unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
           deliveryMethod: it.deliveryMethod,
           endUserBpId: it.endUserBpId,
+          orderType: it.orderType,
+          isExternalProduct: it.item?.isExternalProduct ?? false,
         })),
       },
       tr,
@@ -863,7 +880,12 @@ export async function confirmOrderLines(
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
-      include: { items: { orderBy: { sortOrder: "asc" } } },
+      include: {
+        items: {
+          orderBy: { sortOrder: "asc" },
+          include: { item: { select: { isExternalProduct: true } } },
+        },
+      },
     });
     if (!prior)
       return actionError(tr("sales.orderAcceptanceActions.targetNotFound"));
@@ -882,6 +904,8 @@ export async function confirmOrderLines(
           unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
           deliveryMethod: it.deliveryMethod,
           endUserBpId: it.endUserBpId,
+          orderType: it.orderType,
+          isExternalProduct: it.item?.isExternalProduct ?? false,
         })),
       },
       tr,

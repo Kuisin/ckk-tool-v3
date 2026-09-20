@@ -26,6 +26,7 @@ This app is **a view of "what is where" from the location's side**. To see "is t
 - **手持ち (On hand)** … the quantity actually present.
 - **予約 (Reserved)** … the portion held for a specific order or work order.
 - **利用可能 (Available)** … the portion of on-hand stock not yet reserved.
+- **預り品 (Customer-owned stock)** … tools received from a customer for regrinding. They are the customer's property, so they are counted apart from our own stock and hidden by default; switch the 「**所有者**」 (owner) filter to see them (rows carry an 「預り品: ○○」 badge).
 
 ## The screen
 

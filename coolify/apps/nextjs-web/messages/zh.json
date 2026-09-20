@@ -998,6 +998,7 @@
       "PRODUCTION": "量产",
       "TEST": "试制",
       "SAMPLE": "样品",
+      "REGRIND": "再研磨",
       "OTHER": "其他"
     },
     "PERMISSION_ACTION_LABEL": {
@@ -1023,6 +1024,7 @@
     "PROCESS_CATEGORY_LABEL": {
       "MATERIAL_PREP": "材料准备",
       "MACHINING": "加工",
+      "REGRIND": "再研磨",
       "COATING": "涂层",
       "INSPECTION": "检查",
       "APPROVAL": "检查批准",
@@ -1071,7 +1073,8 @@
     },
     "WORK_ORDER_TYPE_LABEL": {
       "FROM_STOCK": "库存分",
-      "MANUFACTURE": "制造分"
+      "MANUFACTURE": "制造分",
+      "REGRIND": "再研磨"
     },
     "INSPECTION_STATUS_LABEL": {
       "APPROVED": "已批准",
@@ -1211,6 +1214,7 @@
       "OUTSOURCE_ISSUE": "外协发出",
       "OUTSOURCE_RETURN": "外协返回",
       "SALES_RETURN": "销售退货",
+      "REGRIND_RECEIPT": "再研磨接收",
       "WORK_ORDER_COMPLETION": "工单完成",
       "DELIVERY_SHIPMENT": "出货",
       "MATERIAL_RECEIPT": "材料到货",
@@ -2006,6 +2010,7 @@
       "PRODUCTION": "量产",
       "TEST": "试制",
       "SAMPLE": "样品",
+      "REGRIND": "再研磨",
       "OTHER": "其他"
     },
     "DELIVERY_METHOD": {
@@ -2620,6 +2625,12 @@
       "deliveryOrderNeedsOrderLine": "未关联订单明细的工单无法创建",
       "deliveryOrderAlreadyArranged": "该工单的订单明细均已安排出货",
       "prepRoute": "准备工序清单",
+      "regrindRoute": "再研磨工序清单",
+      "regrindQuantities": "再研磨数量",
+      "regrindReceived": "接收",
+      "regrindReturned": "退回",
+      "regrindFinished": "完成",
+      "regrindNotReceivedYet": "尚未接收",
       "manufacturingRoute": "制造工序清单",
       "newerVersionExists": "已有最新 v{version}",
       "varianceAllowedBadge": "允许"
@@ -3016,6 +3027,13 @@
       "thisCustomer": "该客户",
       "stepFallbackWithId": "工序 #{id}",
       "prepRouteHelp": "出库・交接与材料准备工序的顺序（所有产品共用）。工单始终使用最新版本，不能按工单选择版本。要修改顺序，请在工序主数据的准备工序清单中创建新版本。",
+      "regrindRouteHelp": "再研磨工序清单（公共）。不绑定产品或客户，工单始终使用最新版本。导入后可以增减工序（此时与清单的关联会断开）",
+      "noRegrindRouteRegistered": "尚未登记再研磨工序清单（工序主数据 > 再研磨工序清单）",
+      "regrindRouteUsesLatest": "使用最新版 v{version}（{date}）",
+      "editRegrindRoutes": "编辑再研磨工序清单",
+      "selectARegrindRoute": "请选择再研磨工序清单",
+      "regrindQuantityMatchesTheAllocation": "再研磨的计划数量与分配数量（{count}）一致；实际到货数在产品接收时记录",
+      "regrindTypeLockedByLine": "订单明细的类别为再研磨，因此工单类别固定为再研磨",
       "noPrepRouteRegistered": "尚未登记准备工序清单（请在工序主数据中创建）",
       "showOtherCustomers": "同时显示本产品其他订货方的工序清单",
       "showOtherCustomersHelp": "默认仅显示本订货方与通用清单。可选择其他订货方的清单后「复制到本订货方」。",
@@ -3248,6 +3266,14 @@
       "allocationsMustShareProduct": "分配给同一工单的订单明细必须是同一产品",
       "allocationExceedsRemaining": "对订单明细 {number} 的分配超过了剩余可分配量（订单数量 {lineQuantity} − 已分配 {otherAllocated} = 剩余 {remaining}）",
       "stockPlannedQuantityMustMatchAllocation": "库存分工单的计划数量必须与分配数量一致",
+      "regrindRouteRequired": "请选择再研磨工序清单（已有有效的再研磨工序清单）",
+      "regrindRouteNotFound": "所选的再研磨工序清单不存在或已停用",
+      "regrindLinesOnly": "再研磨工单只能分配订单类别为再研磨的明细",
+      "regrindWorkOrderOneLineOnly": "再研磨工单只能分配 1 条明细",
+      "regrindPlannedQuantityMustMatchAllocation": "再研磨工单的计划数量 = 分配数量",
+      "regrindLineRequiresRegrindWorkOrder": "订单类别为再研磨的明细只能分配给再研磨工单",
+      "regrindOrderRequiresOrderLine": "再研磨工单需要订单明细",
+      "externalProductRequiresRegrind": "他社产品的工单只能是再研磨（不能创建制造分・库存分）",
       "plannedQuantityBelowAllocationTotal": "计划数量低于分配合计 {total}（可自由追加不良品余量，但需不低于分配合计）",
       "plansRequiredBeforeApproval": "申请审批前请填写作业计划（日期 + 作业场所）：{steps}",
       "copyRouteFailed": "复制工序清单失败",
@@ -5799,7 +5825,11 @@
         "notADate": "{name}请输入日期",
         "invalidFormat": "{name}格式不正确"
       },
-      "taxCategoryHint": "留空则按税种主数据的默认值。若业务伙伴已设置税种，则以业务伙伴为准。"
+      "taxCategoryHint": "留空则按税种主数据的默认值。若业务伙伴已设置税种，则以业务伙伴为准。",
+      "externalProduct": "他社产品",
+      "externalProductHint": "为再研磨而接收的其他厂商刀具的品目。不能用于制造工序清单、制造工单以及量产/试制/样品明细（仅限再研磨）。",
+      "makerName": "制造商",
+      "externalBadge": "他社"
     },
     "storageLocations": {
       "editTheStorageLocation": "编辑存放位置",
@@ -6176,6 +6206,7 @@
       "referencedByWorkOrdersCannotDelete": "由于有 {count} 个工单引用了该路线的版本，无法删除。请考虑改为停用。",
       "sameAsLatestVersion": "与最新版本 v{version} 的配置相同（无变更）",
       "targetProductNotFound": "未找到目标产品",
+      "externalProductNoRoute": "他社产品不能创建制造工序清单（仅限再研磨的品目）",
       "targetRouteNotFound": "未找到目标工序路线",
       "updateFailed": "更新工序路线失败"
     },
@@ -6403,6 +6434,13 @@
       "intro": "〇〇出库・交接 与 材料准备（切断・无心磨・全长修整・倒角）的顺序。不与产品或订货方绑定的公共清单，工单由「准备工序清单 + 产品的制造工序清单」合并生成。",
       "empty": "尚未登记准备工序清单",
       "editorHelp": "仅可选择准备工序。开始工序（〇〇出库・交接）必须恰好 1 个。与制造侧的依赖将在工单合并两份清单时检验。"
+    },
+    "regrindRoutes": {
+      "title": "再研磨工序清单",
+      "newRegrindRoute": "新建再研磨工序清单",
+      "intro": "接收客户刀具并进行再研磨的工序（产品接收（再研磨）→ 研磨 → 涂层（可选）→ 检查（可选））。不绑定产品或客户的公共清单，再研磨工单始终使用其最新版本。本公司库存不变动，接收的刀具记为客户寄存品。",
+      "empty": "尚未登记再研磨工序清单",
+      "editorHelp": "只能选择可用于再研磨工单的工序。开始工序为 产品接收（再研磨），不能包含材料准备・加工工序。涂层・检查・发货前检查为可选。"
     },
     "taxCategories": {
       "title": "税种",
@@ -7960,6 +7998,7 @@
       "onlyApprovedCanConfirm": "只有已批准的订单确认书才能确定",
       "onlyCompletedCanArchive": "只有已确定的订单确认书才能归档",
       "onlyDraftCanRequestApproval": "只有草稿状态的订单确认书才能申请审批",
+      "externalProductOnlyRegrind": "他社产品只能用于订单类别「再研磨」的明细",
       "onlyImportCanRetryExtraction": "只有取入中（未提取）的订单确认书才能重新提取",
       "onlyImportCanTakeOverManually": "只有取入中的订单确认书才能切换为手动录入",
       "orderLineConfirmedNote": "由订单确认书 {number} 确定",
@@ -7983,6 +8022,7 @@
     },
     "quoteActions": {
       "createFailed": "报价单创建失败",
+      "externalProductOnlyRegrind": "他社产品只能用于订单类别「再研磨」的明细",
       "invalidQuoteNumber": "报价单号无效",
       "issueFailed": "发行失败",
       "noPriceListEntry": "明细 {line}：没有匹配的价格表（请从价格试算登记价格表）",
@@ -8007,6 +8047,7 @@
     },
     "priceListsActions": {
       "testSampleRequiresEndDate": "试制、样品价格必须设置有效截止日",
+      "externalProductOnlyRegrind": "他社产品的价格表只能有订单类别「再研磨」",
       "invalidEstimateNumber": "价格试算编号无效",
       "estimateNotFound": "未找到该价格试算",
       "onlyConfirmedEstimateUsable": "只有已确定的价格试算可用于价格表",
@@ -8108,6 +8149,7 @@
       "lineEndUserNotIdentified": "第 {rows} 行明细：未指定最终用户",
       "noLineItems": "没有任何明细",
       "lineProductNotIdentified": "第 {rows} 行明细：产品未确定",
+      "externalProductRequiresRegrind": "明细第 {rows} 行：他社产品只能以订单类别「再研磨」接单",
       "lineUnitPriceNotEntered": "第 {rows} 行明细：单价未输入",
       "lineQuantityInvalid": "第 {rows} 行明细：数量不足 1",
       "lineUnitPriceNegative": "第 {rows} 行明细：单价为负数",
@@ -8314,6 +8356,7 @@
       "exceedsOrderedQuantity": "这将导致 {number} 的出货量超过订购数量 {quantity}（累计 {shipped}）",
       "invalidNumber": "出货单号无效",
       "lotHasNoStock": "批次 #{lot} 没有库存（请指定已完成工单的批次号）",
+      "regrindLinesDispatchOnly": "再研磨明细只能以发货（DISPATCH）方式出货 — 客户寄存品不能转入库存保管",
       "lotStockInsufficient": "批次 #{lot} 库存不足（现有 {available} / 指定 {qty}）",
       "notFound": "未找到该出货单",
       "onlyConfirmedCanBeShipped": "只有已确定的出货单才能出货",
@@ -8583,6 +8626,11 @@
     "unknownStepsInComposition": "包含不存在的工序",
     "duplicateStepsInComposition": "存在重复的工序",
     "fromStockAllowedSteps": "库存分工单可选的工序只有产品出库（库存）和出货前检查",
+    "regrindStepsOnlyForRegrind": "再研磨工序只能用于再研磨工单",
+    "regrindForbiddenSteps": "再研磨工单只能包含 产品接收（再研磨）・研磨・涂层・检查・批准・发货前检查（不能包含材料准备・加工・产品出库）",
+    "regrindRequiresReceipt": "再研磨工单必须以 产品接收（再研磨）开始",
+    "regrindRouteOnlyRegrindSteps": "再研磨工序清单只能包含可用于再研磨工单的工序（不能包含材料准备・加工）",
+    "semiFinishedNotAllowedForRegrind": "再研磨不能使用半成品区分（客户的刀具不会成为本公司的半成品）",
     "fromStockRequiresStockIssue": "库存分工单必须包含产品出库（库存）工序",
     "stockIssueOnlyForFromStock": "产品出库（库存）仅限库存分（FROM_STOCK）工单使用",
     "workOrderNotApprovedOrInProgress": "工单尚未处于已批准或进行中状态",
@@ -9237,6 +9285,10 @@
     "outsourceReturned": "工单 #{workOrderNumber} 从外协返回",
     "outsourceReturnedOnCompletion": "工单 #{workOrderNumber} 完成时从外协返回",
     "salesReturned": "出货 {ref} 的退货（返回库存）",
+    "regrindReceived": "工单 #{workOrderNumber} 产品接收（再研磨）— 作为客户寄存品入库（箱号 {box}）",
+    "regrindReturnedAsIs": "工单 #{workOrderNumber} 完成 — 无法再研磨、原样退回的部分",
+    "regrindLinesAreNotStockChecked": "再研磨明细不做库存核对（接收并归还客户的刀具）",
+    "regrindOwnerUnresolved": "无法为该再研磨工单确定唯一所有者（分配明细的客户）",
     "shipped": "出货 {ref}",
     "shippedWithoutStock": "出货 {ref}（库存不足仍出库）",
     "stockStorage": "库存保管 {ref}",
@@ -9272,6 +9324,13 @@
   },
   "workflowCore": {
     "quantityLabels": {
+      "regrindReceipt": {
+        "input": "接收数",
+        "success": "再研磨数",
+        "semi": "半成品",
+        "scrap": "退回（无法再研磨）",
+        "rework": "工序分支"
+      },
       "flow": {
         "input": "接收数",
         "success": "良品数",
@@ -10348,6 +10407,9 @@
       "hideZeroStock": "隐藏零库存",
       "custody": "寄存方",
       "custodyOwn": "自有库存",
+      "owner": "所有者",
+      "ownerOwn": "仅本公司所有",
+      "ownedBy": "寄存品：{name}",
       "heldBy": "由 {name} 保管",
       "searchPlaceholder": "按品目名称或编号搜索",
       "summaryLine": "{rows} 行 / {items} 个品目 / {sites} 个据点",

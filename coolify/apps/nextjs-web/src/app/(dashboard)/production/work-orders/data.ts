@@ -60,6 +60,7 @@ import {
   computeFinishedQuantity,
   effectiveLotInputMode,
   expectedInput,
+  regrindQuantities,
 } from "@/lib/workflow-core";
 import { workflowCoreT } from "@/lib/workflow-core-labels";
 
@@ -112,6 +113,7 @@ const WO_INCLUDE = {
         select: {
           id: true,
           name: true,
+          kind: true,
           itemId: true,
           versions: {
             select: { version: true },
@@ -695,11 +697,25 @@ export async function fetchWorkOrder(
     productItemId: r.productItemId,
     routeVersionId: r.routeVersion?.id ?? null,
     routeId: r.routeVersion?.route.id ?? null,
+    routeKind: r.routeVersion?.route.kind ?? null,
     routeName: r.routeVersion
       ? localized(r.routeVersion.route.name as LocalizedText | null)
       : null,
     routeVersion: r.routeVersion?.version ?? null,
     routeLatestVersion: r.routeVersion?.route.versions[0]?.version ?? null,
+    // 再研磨の 3 つの本数（受入 / 返却 / 完成）— 定義は workflow-core.regrindQuantities。
+    regrind:
+      r.type === "REGRIND"
+        ? regrindQuantities(
+            r.steps.map((s) => ({
+              code: s.processStep.code,
+              status: s.status,
+              inputQuantity: s.inputQuantity,
+              outputDefectScrap: s.outputDefectScrap,
+            })),
+            finishedQuantity,
+          )
+        : null,
     prepRouteVersionId: r.prepRouteVersion?.id ?? null,
     prepRouteId: r.prepRouteVersion?.route.id ?? null,
     prepRouteName: r.prepRouteVersion
@@ -945,6 +961,7 @@ export async function fetchStepExecution(
       yearMonth: true,
       seq: true,
       createdAt: true,
+      type: true,
       plannedQuantity: true,
       createdBy: true,
       steps: { select: { plantId: true } },
@@ -1229,6 +1246,7 @@ export async function fetchStepExecution(
     workOrderDocNumber: formatDocNumber("WOR", wo),
     workOrderCreatedAt: wo.createdAt.toISOString(),
     workOrderStatus: wo.status,
+    workOrderType: wo.type,
     plannedQuantity: wo.plannedQuantity,
     step: {
       id: step.id,
@@ -1450,6 +1468,8 @@ export async function resolveWorkOrderIdParam(
 // ── 注文明細参照（?orderLine= プリセレクト・ビルダーの選択情報） ────────────────
 
 export interface OrderLineRef {
+  /** 注文種別（ORDER_TYPE）。REGRIND の明細は再研磨の指示書にしか載らない。 */
+  orderType?: string;
   id: string;
   number: string;
   label: string;
@@ -1499,6 +1519,7 @@ export async function fetchOrderLineRef(
     itemId: r.itemId ?? 0,
     quantity: r.quantity,
     status: r.status,
+    orderType: r.orderType,
     allocatedQuantity,
     remainingQuantity: Math.max(0, r.quantity - allocatedQuantity),
   };

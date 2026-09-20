@@ -50,10 +50,15 @@ import {
   fetchRouteVersionSteps,
   listPrepRoutes,
   listProductRoutes,
+  listRegrindRoutes,
   type RouteResolveInput,
   resolveRouteVersionTx,
 } from "@/lib/product-routes";
-import type { RouteStepSnapshot, RouteView } from "@/lib/product-routes-core";
+import {
+  type RouteStepSnapshot,
+  type RouteView,
+  routeStepsEqual,
+} from "@/lib/product-routes-core";
 import {
   type ActionResult,
   actionError,
@@ -89,7 +94,9 @@ import {
   isPrepStep,
   STEP_LINK_STATE_SELECT,
   STEP_STATE_SELECT,
+  stepAllowedForType,
   toStepState,
+  type WorkOrderType,
 } from "@/lib/workflow-core";
 import { fetchOrderLineRef, type OrderLineRef } from "./data";
 
@@ -220,7 +227,7 @@ function workOrderInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
       // 在庫向け（注文明細なし）のときの対象製品。値は **items.id** —
       // WorkflowBuilder のピッカー（searchProductItemOptions）と揃える。
       itemId: z.number().int().positive().nullable(),
-      type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
+      type: z.enum(["FROM_STOCK", "MANUFACTURE", "REGRIND"]),
       plannedQuantity: z
         .number()
         .int()
@@ -251,10 +258,18 @@ function workOrderInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
        * 有効な準備工程リストが 1 本でもあれば製造分は必須。
        */
       prepRouteId: z.number().int().positive().nullable().optional(),
+      /**
+       * 再研磨工程リスト（共通）の id。準備工程リストと同じく版は指定できない —
+       * 常に最新版を流し込み、指示書側で足し引きしたら出所リンクは外れる
+       * （applyLatestCommonRoute）。再研磨（REGRIND）でだけ使う。
+       */
+      regrindRouteId: z.number().int().positive().nullable().optional(),
       plans: z.array(planInputSchema(tr)),
     })
     .superRefine((v, refCtx) => {
-      if (v.type !== "FROM_STOCK" && v.route == null) {
+      // 製造工程リストが要るのは製造分だけ。在庫分は固定構成、再研磨は共通の
+      // 再研磨工程リスト（regrindRouteId）から。
+      if (v.type === "MANUFACTURE" && v.route == null) {
         refCtx.addIssue({
           code: "custom",
           message: tr("production.workOrderActions.selectOrCreateRoute"),
@@ -305,6 +320,7 @@ async function loadLineAllocInfos(
         quantity: true,
         itemId: true,
         status: true,
+        orderType: true,
       },
     }),
     effectiveAllocatedByLine(orderLineIds, { excludeWorkOrderNumber }),
@@ -316,7 +332,27 @@ async function loadLineAllocInfos(
     otherAllocated: allocated.get(r.id) ?? 0,
     itemId: r.itemId,
     status: r.status,
+    orderType: r.orderType,
   }));
+}
+
+/**
+ * 他社製品（再研磨専用）の指示書は再研磨だけ。製造分・在庫分にすると、他社の
+ * 工具が自社の完成品として入庫する（在庫分は無い在庫を引き当てようとする）。
+ */
+async function validateExternalProductType(
+  itemId: number,
+  type: WorkOrderType,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Promise<string | null> {
+  if (type === "REGRIND") return null;
+  const item = await prisma.item.findUnique({
+    where: { id: itemId },
+    select: { isExternalProduct: true },
+  });
+  return item?.isExternalProduct
+    ? tr("production.workOrderActions.externalProductRequiresRegrind")
+    : null;
 }
 
 /**
@@ -495,37 +531,99 @@ type StepInput = z.infer<typeof stepInput>;
  */
 async function applyLatestPrepRoute(
   steps: readonly StepInput[],
-  type: "FROM_STOCK" | "MANUFACTURE",
+  type: WorkOrderType,
   prepRouteId: number | null | undefined,
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<
   | { ok: false; error: string }
   | { ok: true; steps: StepInput[]; prepRouteVersionId: string | null }
 > {
-  if (type === "FROM_STOCK") {
+  if (type !== "MANUFACTURE") {
     return { ok: true, steps: [...steps], prepRouteVersionId: null };
   }
+  const r = await applyLatestCommonRoute(steps, "PREP", prepRouteId, tr);
+  if (!r.ok) return r;
+  return { ok: true, steps: r.steps, prepRouteVersionId: r.versionId };
+}
+
+/**
+ * 再研磨工程リスト（共通）の最新版を再研磨指示書に当てる。
+ *
+ * 準備工程リストと同じ理屈で、指示書ごとに版は選べず常に最新版。ただし再研磨
+ * リストは 1 本で完結する（製品受入 → 研磨 → [コーティング] → [検査]）ので、
+ * **再研磨の指示書に載せてよい工程はぜんぶこのリストの管轄** — 画面から来た
+ * 工程のうち再研磨で使えるものは全部リストの版に置き換わる。指示書側で足し
+ * 引きしたければリストを選ばずに保存する（有効なリストが無い環境のみ）か、
+ * 工程マスタ側で版を作る。
+ */
+async function applyLatestRegrindRoute(
+  steps: readonly StepInput[],
+  type: WorkOrderType,
+  regrindRouteId: number | null | undefined,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Promise<
+  | { ok: false; error: string }
+  | { ok: true; steps: StepInput[]; regrindRouteVersionId: string | null }
+> {
+  if (type !== "REGRIND") {
+    return { ok: true, steps: [...steps], regrindRouteVersionId: null };
+  }
+  const r = await applyLatestCommonRoute(steps, "REGRIND", regrindRouteId, tr);
+  if (!r.ok) return r;
+  return { ok: true, steps: r.steps, regrindRouteVersionId: r.versionId };
+}
+
+/**
+ * 共通リスト（準備 / 再研磨）の最新版を指示書の工程へ流し込む。
+ *
+ * 共通リストは全製品で共通なので、指示書ごとに版は選べない — 常に最新版で、
+ * 画面から来たその種別の工程は捨ててその版の並びに置き換える（古い画面を開いた
+ * まま保存しても最新が入る）。指示書から共通リストの新版は作らない: 1 枚の
+ * 指示書の都合で共通のリストを書き換えると、次の指示書全部が巻き込まれる。
+ * 直すときは工程マスタ配下のリストで版を作る（履歴は版として残る）。
+ *
+ * どの工程がその種別かは workflow-core（isPrepStep / stepAllowedForType）だけが
+ * 決める。在庫分（FROM_STOCK）は固定構成なので呼ばない。
+ */
+async function applyLatestCommonRoute(
+  steps: readonly StepInput[],
+  kind: "PREP" | "REGRIND",
+  routeId: number | null | undefined,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Promise<
+  | { ok: false; error: string }
+  | { ok: true; steps: StepInput[]; versionId: string | null }
+> {
   const catalog = await loadCatalog();
-  const prepStepIds = new Set(
-    catalog.steps.filter(isPrepStep).map((c) => c.id),
-  );
-  const mfgSteps = steps.filter((s) => !prepStepIds.has(s.processStepId));
-  if (prepRouteId == null) {
-    // 共通のリストがあるのに使わない指示書は作らない（〇〇出しの無い指示書に
-    // なる）。1 本も無い環境（移行前・新規 DB）だけは製造工程のみで通す。
+  const inKind = (c: (typeof catalog.steps)[number]) =>
+    kind === "PREP" ? isPrepStep(c) : stepAllowedForType(c, "REGRIND");
+  const kindStepIds = new Set(catalog.steps.filter(inKind).map((c) => c.id));
+  const otherSteps = steps.filter((s) => !kindStepIds.has(s.processStepId));
+  const requiredKey =
+    kind === "PREP"
+      ? "production.workOrderActions.prepRouteRequired"
+      : "production.workOrderActions.regrindRouteRequired";
+  const notFoundKey =
+    kind === "PREP"
+      ? "production.workOrderActions.prepRouteNotFound"
+      : "production.workOrderActions.regrindRouteNotFound";
+  if (routeId == null) {
+    // 共通のリストがあるのに使わない指示書は作らない。1 本も無い環境
+    // （移行前・新規 DB）だけは画面の構成のまま通す。
     const anyActive = await prisma.productProcessRoute.count({
-      where: { kind: "PREP", isActive: true },
+      where: { kind, isActive: true },
     });
     if (anyActive > 0) {
-      return {
-        ok: false,
-        error: tr("production.workOrderActions.prepRouteRequired"),
-      };
+      return { ok: false, error: tr(requiredKey) };
     }
-    return { ok: true, steps: mfgSteps, prepRouteVersionId: null };
+    return {
+      ok: true,
+      steps: kind === "PREP" ? otherSteps : [...steps],
+      versionId: null,
+    };
   }
   const route = await prisma.productProcessRoute.findUnique({
-    where: { id: prepRouteId },
+    where: { id: routeId },
     select: {
       kind: true,
       isActive: true,
@@ -537,14 +635,11 @@ async function applyLatestPrepRoute(
     },
   });
   const latest = route?.versions[0];
-  if (!route || route.kind !== "PREP" || !route.isActive || !latest) {
-    return {
-      ok: false,
-      error: tr("production.workOrderActions.prepRouteNotFound"),
-    };
+  if (!route || route.kind !== kind || !route.isActive || !latest) {
+    return { ok: false, error: tr(notFoundKey) };
   }
-  const prepSteps: StepInput[] = latest.steps
-    .filter((s) => prepStepIds.has(s.processStepId))
+  const kindSteps: StepInput[] = latest.steps
+    .filter((s) => kindStepIds.has(s.processStepId))
     .map((s) => ({
       processStepId: s.processStepId,
       executionLocation: s.executionLocation,
@@ -556,8 +651,8 @@ async function applyLatestPrepRoute(
     }));
   return {
     ok: true,
-    steps: [...prepSteps, ...mfgSteps],
-    prepRouteVersionId: latest.id,
+    steps: [...kindSteps, ...otherSteps],
+    versionId: latest.id,
   };
 }
 
@@ -574,6 +669,9 @@ async function resolveRouteVersionsTx(
   input: {
     route: RouteResolveInput;
     prepRouteVersionId: string | null;
+    /** 再研磨: applyLatestRegrindRoute が当てた最新版（無ければ null）。 */
+    regrindRouteVersionId?: string | null;
+    type?: WorkOrderType;
     steps: readonly RouteStepSnapshot[];
     actor: string | null;
     itemId: number;
@@ -584,6 +682,35 @@ async function resolveRouteVersionsTx(
   routeVersionId: string | null;
   prepRouteVersionId: string | null;
 }> {
+  if (input.type === "REGRIND") {
+    // 再研磨は共通リストの最新版をそのまま出所にする（指示書から版は作らない）。
+    // 版と構成が違う（指示書側で足し引きした）ときは出所リンクを外す。
+    const versionId = input.regrindRouteVersionId ?? null;
+    if (versionId == null)
+      return { routeVersionId: null, prepRouteVersionId: null };
+    const base = await tx.productProcessRouteVersion.findUnique({
+      where: { id: versionId },
+      select: { steps: { orderBy: { sortOrder: "asc" } } },
+    });
+    const same =
+      base != null &&
+      routeStepsEqual(
+        base.steps.map((s) => ({
+          processStepId: s.processStepId,
+          sortOrder: s.sortOrder,
+          executionLocation: s.executionLocation,
+          plantId: s.plantId,
+          supplierBpId: s.supplierBpId,
+          workHours: s.workHours == null ? null : Number(s.workHours),
+          lotInputMode: s.lotInputMode,
+        })),
+        input.steps,
+      );
+    return {
+      routeVersionId: same ? versionId : null,
+      prepRouteVersionId: null,
+    };
+  }
   const catalog = await loadCatalog();
   const prepStepIds = new Set(
     catalog.steps.filter(isPrepStep).map((c) => c.id),
@@ -618,13 +745,24 @@ export async function createWorkOrder(
   try {
     const prep = await applyLatestPrepRoute(v.steps, v.type, v.prepRouteId, tr);
     if (!prep.ok) return actionError(prep.error);
-    const built = await validateAndOrderSteps(prep.steps, v.type);
+    const regrind = await applyLatestRegrindRoute(
+      prep.steps,
+      v.type,
+      v.regrindRouteId,
+      tr,
+    );
+    if (!regrind.ok) return actionError(regrind.error);
+    const built = await validateAndOrderSteps(regrind.steps, v.type);
     if (!built.ok) return actionError(built.error);
     const target = await resolveWorkOrderTarget(v, tr);
     if (typeof target === "string") return actionError(target);
-    const storageError = await validateStorageLocation(v.storageLocationId, tr);
+    // 再研磨は顧客の工具を返すので完成品の保管場所を持たない。
+    const storageLocationId = v.type === "REGRIND" ? null : v.storageLocationId;
+    const storageError = await validateStorageLocation(storageLocationId, tr);
     if (storageError) return actionError(storageError);
     const { itemId } = target;
+    const externalError = await validateExternalProductType(itemId, v.type, tr);
+    if (externalError) return actionError(externalError);
     const designError = await validateDesignFile(v.designFileId, itemId, tr);
     if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
@@ -635,8 +773,10 @@ export async function createWorkOrder(
     const resolvedVersions = await prisma.$transaction(async (tx) => {
       // 工程構成 → ルートバージョン解決（変更があれば新バージョンを自動保存）
       const resolved = await resolveRouteVersionsTx(tx, {
-        route: v.type === "FROM_STOCK" ? null : v.route,
+        route: v.type === "MANUFACTURE" ? v.route : null,
         prepRouteVersionId: prep.prepRouteVersionId,
+        regrindRouteVersionId: regrind.regrindRouteVersionId,
+        type: v.type,
         steps: built.creates,
         actor,
         itemId,
@@ -654,7 +794,7 @@ export async function createWorkOrder(
           type: v.type,
           plannedQuantity: v.plannedQuantity,
           materialItemId,
-          storageLocationId: v.storageLocationId,
+          storageLocationId,
           allowQuantityVariance: v.allowQuantityVariance,
           designFileId: v.designFileId ?? null,
           routeVersionId: resolved.routeVersionId,
@@ -722,7 +862,7 @@ export async function createWorkOrder(
         type: v.type,
         plannedQuantity: v.plannedQuantity,
         materialItemId,
-        storageLocationId: v.storageLocationId,
+        storageLocationId,
         allowQuantityVariance: v.allowQuantityVariance,
         routeVersionId: resolvedVersions.routeVersionId,
         prepRouteVersionId: resolvedVersions.prepRouteVersionId,
@@ -781,13 +921,24 @@ export async function updateWorkOrder(
     }
     const prep = await applyLatestPrepRoute(v.steps, v.type, v.prepRouteId, tr);
     if (!prep.ok) return actionError(prep.error);
-    const built = await validateAndOrderSteps(prep.steps, v.type);
+    const regrind = await applyLatestRegrindRoute(
+      prep.steps,
+      v.type,
+      v.regrindRouteId,
+      tr,
+    );
+    if (!regrind.ok) return actionError(regrind.error);
+    const built = await validateAndOrderSteps(regrind.steps, v.type);
     if (!built.ok) return actionError(built.error);
     const target = await resolveWorkOrderTarget(v, tr, workOrderNumber);
     if (typeof target === "string") return actionError(target);
-    const storageError = await validateStorageLocation(v.storageLocationId, tr);
+    // 再研磨は顧客の工具を返すので完成品の保管場所を持たない。
+    const storageLocationId = v.type === "REGRIND" ? null : v.storageLocationId;
+    const storageError = await validateStorageLocation(storageLocationId, tr);
     if (storageError) return actionError(storageError);
     const { itemId } = target;
+    const externalError = await validateExternalProductType(itemId, v.type, tr);
+    if (externalError) return actionError(externalError);
     const designError = await validateDesignFile(v.designFileId, itemId, tr);
     if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
@@ -797,8 +948,10 @@ export async function updateWorkOrder(
 
     const resolvedVersions = await prisma.$transaction(async (tx) => {
       const resolved = await resolveRouteVersionsTx(tx, {
-        route: v.type === "FROM_STOCK" ? null : v.route,
+        route: v.type === "MANUFACTURE" ? v.route : null,
         prepRouteVersionId: prep.prepRouteVersionId,
+        regrindRouteVersionId: regrind.regrindRouteVersionId,
+        type: v.type,
         steps: built.creates,
         actor,
         itemId,
@@ -922,7 +1075,7 @@ export async function updateWorkOrder(
         type: v.type,
         plannedQuantity: v.plannedQuantity,
         materialItemId,
-        storageLocationId: v.storageLocationId,
+        storageLocationId,
         allowQuantityVariance: v.allowQuantityVariance,
         routeVersionId: resolvedVersions.routeVersionId,
         prepRouteVersionId: resolvedVersions.prepRouteVersionId,
@@ -1095,6 +1248,11 @@ export async function copyWorkOrder(
         tr("production.workOrderActions.stockOrderRequiresOrderLine"),
       );
     }
+    if (!targetOrderLineId && source.type === "REGRIND") {
+      return actionError(
+        tr("production.workOrderActions.regrindOrderRequiresOrderLine"),
+      );
+    }
     // コピー先: 注文明細指定 = その明細の製品 + 割当（受注残の範囲で予定数量
     // まで充当）/ 未指定 = 在庫向け（製品引継ぎ・割当なし）。**品目 id で持つ**
     // （比較の相手は明細の itemId）。
@@ -1123,7 +1281,7 @@ export async function copyWorkOrder(
         {
           type: source.type,
           plannedQuantity:
-            source.type === "FROM_STOCK"
+            source.type !== "MANUFACTURE"
               ? allocations[0].quantity
               : source.plannedQuantity,
           allocations,
@@ -1145,9 +1303,9 @@ export async function copyWorkOrder(
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
     const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
     const docNumber = formatDocNumber("WOR", docKey);
-    // 在庫分のコピーは割当 = 予定数量の不変条件を保つため、受注残まで縮める
+    // 在庫分・再研磨のコピーは割当 = 予定数量の不変条件を保つため、受注残まで縮める
     const plannedQuantity =
-      source.type === "FROM_STOCK" && allocations.length > 0
+      source.type !== "MANUFACTURE" && allocations.length > 0
         ? allocations[0].quantity
         : source.plannedQuantity;
 
@@ -1168,7 +1326,8 @@ export async function copyWorkOrder(
           type: source.type,
           plannedQuantity,
           materialItemId: source.materialItemId,
-          storageLocationId: source.storageLocationId,
+          storageLocationId:
+            source.type === "REGRIND" ? null : source.storageLocationId,
           status: "DRAFT",
           approvalStatus: "NONE",
           sourceWorkOrderId: source.id,
@@ -2027,6 +2186,10 @@ export async function getProductRoutesForOrderLine(
   routes: RouteView[];
   /** 準備工程リスト（共通・有効のみ）。 */
   prepRoutes: RouteView[];
+  /** 再研磨工程リスト（共通・有効のみ）。 */
+  regrindRoutes: RouteView[];
+  /** 明細の注文種別。REGRIND ならビルダーは種別を再研磨に固定する。 */
+  orderType: string | null;
 } | null> {
   if (!(await checkPermission("work_order", "READ")).ok) return null;
   if (!orderLineId) return null;
@@ -2034,6 +2197,7 @@ export async function getProductRoutesForOrderLine(
     where: { id: orderLineId },
     select: {
       itemId: true,
+      orderType: true,
       acceptance: {
         select: {
           customerBpId: true,
@@ -2045,9 +2209,10 @@ export async function getProductRoutesForOrderLine(
   // 確定前の明細（製品未特定）は指示書の対象にならない。
   if (!so || so.itemId == null) return null;
   const itemId = so.itemId;
-  const [routes, prepRoutes] = await Promise.all([
+  const [routes, prepRoutes, regrindRoutes] = await Promise.all([
     listProductRoutes(itemId),
     listPrepRoutes(),
+    listRegrindRoutes(),
   ]);
   return {
     itemId,
@@ -2057,6 +2222,8 @@ export async function getProductRoutesForOrderLine(
       : null,
     routes: routes.filter((r) => r.isActive),
     prepRoutes: prepRoutes.filter((r) => r.isActive),
+    regrindRoutes: regrindRoutes.filter((r) => r.isActive),
+    orderType: so.orderType,
   };
 }
 
@@ -2071,6 +2238,8 @@ export async function getProductRoutesForProduct(itemId: number): Promise<{
   routes: RouteView[];
   /** 準備工程リスト（共通・有効のみ）。 */
   prepRoutes: RouteView[];
+  regrindRoutes: RouteView[];
+  orderType: string | null;
 } | null> {
   if (!(await checkPermission("work_order", "READ")).ok) return null;
   if (!Number.isInteger(itemId) || itemId <= 0) return null;
@@ -2090,6 +2259,9 @@ export async function getProductRoutesForProduct(itemId: number): Promise<{
     customerName: null,
     routes: routes.filter((r) => r.isActive),
     prepRoutes: prepRoutes.filter((r) => r.isActive),
+    // 在庫向けの独立指示書は製造分のみ — 再研磨リストは出さない。
+    regrindRoutes: [],
+    orderType: null,
   };
 }
 

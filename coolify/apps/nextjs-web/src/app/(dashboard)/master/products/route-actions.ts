@@ -34,6 +34,7 @@ import { validateAndOrderSteps } from "@/lib/workflow";
 const BASE_PATH = "/master/products";
 /** 準備工程リスト（共通）の管理画面 — 工程マスタ (MS08) のサブページ。 */
 const PREP_ROUTES_PATH = "/master/process-steps/prep-routes";
+const REGRIND_ROUTES_PATH = "/master/process-steps/regrind-routes";
 
 type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
@@ -109,6 +110,10 @@ function revalidate(itemId: number) {
  * バージョン作成が軒並み落ちていた可能性がある。品目導入のついでに直す。
  */
 function revalidateFor(route: { kind: string; itemId: number | null }) {
+  if (route.kind === "REGRIND") {
+    revalidatePath(REGRIND_ROUTES_PATH, "layout");
+    return;
+  }
   if (route.kind === "PREP" || route.itemId == null) {
     revalidatePath(PREP_ROUTES_PATH, "layout");
     return;
@@ -124,6 +129,24 @@ function revalidateFor(route: { kind: string; itemId: number | null }) {
 export async function createPrepRoute(
   input: ProductRouteVersionCreateInput & { nameJa: string; nameEn?: string },
 ): Promise<ActionResult<{ routeId: number }>> {
+  return createCommonRoute("PREP", input);
+}
+
+/**
+ * 再研磨工程リスト（kind = REGRIND）の新規作成 + v1。準備工程リストと同じく
+ * 共通（製品も顧客も持たない）。入っていられるのは再研磨の指示書で使える工程
+ * （stepAllowedForType）で、製品受入（再研磨）で始まる。
+ */
+export async function createRegrindRoute(
+  input: ProductRouteVersionCreateInput & { nameJa: string; nameEn?: string },
+): Promise<ActionResult<{ routeId: number }>> {
+  return createCommonRoute("REGRIND", input);
+}
+
+async function createCommonRoute(
+  kind: "PREP" | "REGRIND",
+  input: ProductRouteVersionCreateInput & { nameJa: string; nameEn?: string },
+): Promise<ActionResult<{ routeId: number }>> {
   const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
@@ -137,12 +160,17 @@ export async function createPrepRoute(
   }
   const v = parsed.data;
   try {
-    const built = await validateAndOrderSteps(v.steps, "MANUFACTURE", "PREP");
+    // 再研磨リストは再研磨の指示書の構成規則で、準備リストは製造分の規則で検証する。
+    const built = await validateAndOrderSteps(
+      v.steps,
+      kind === "REGRIND" ? "REGRIND" : "MANUFACTURE",
+      kind,
+    );
     if (!built.ok) return actionError(built.error);
     const actor = await getCurrentActorId();
     const created = await prisma.$transaction((tx) =>
       createRouteWithVersionTx(tx, {
-        kind: "PREP",
+        kind,
         itemId: null,
         name: localizedInput(v.nameJa, v.nameEn),
         steps: built.creates,
@@ -155,13 +183,16 @@ export async function createPrepRoute(
       tableName: "product_process_routes",
       recordId: String(created.routeId),
       after: {
-        kind: "PREP",
+        kind,
         nameJa: v.nameJa,
         stepCount: built.creates.length,
         version: 1,
       },
     });
-    revalidatePath(PREP_ROUTES_PATH, "layout");
+    revalidatePath(
+      kind === "REGRIND" ? REGRIND_ROUTES_PATH : PREP_ROUTES_PATH,
+      "layout",
+    );
     return actionOk({ routeId: created.routeId });
   } catch (e) {
     return actionError(
@@ -191,11 +222,17 @@ export async function createProductRoute(
   try {
     const item = await prisma.item.findFirst({
       where: { id: itemId, itemType: "PRODUCT" },
-      select: { id: true },
+      select: { id: true, isExternalProduct: true },
     });
     if (!item)
       return actionError(
         tr("master.productRouteActions.targetProductNotFound"),
+      );
+    // 他社製品は再研磨専用 — 製造工程リストを持たせない（持てると製造分の
+    // 指示書が作れてしまい、他社の工具が自社の完成品として入庫する）。
+    if (item.isExternalProduct)
+      return actionError(
+        tr("master.productRouteActions.externalProductNoRoute"),
       );
     // 製造工程リストだけを保存する — 準備側は共通の準備工程リストが持つ。
     const built = await validateAndOrderSteps(
@@ -271,7 +308,7 @@ export async function createProductRouteVersion(
     // 混ざっていても、次の版からは製造側だけになる（準備側は準備工程リストへ）。
     const built = await validateAndOrderSteps(
       v.steps,
-      "MANUFACTURE",
+      route.kind === "REGRIND" ? "REGRIND" : "MANUFACTURE",
       route.kind,
     );
     if (!built.ok) return actionError(built.error);

@@ -175,6 +175,45 @@
 - 実在庫移動: 全工程完了後に自動実行（`lib/inventory.ts`）
 - リアルタイム進捗: SSE（`app/api/sse/work-orders/[id]/route.ts`）
 
+### 再研磨（REGRIND）— 顧客の工具を預かって研ぎ直す
+
+- **注文種別 `REGRIND`**（`ORDER_TYPE`）の明細から **`WORK_ORDER_TYPE.REGRIND`** の指示書を
+  作る。同じ 注文明細 → 指示書 → 出荷書 → 請求書 の鎖に乗り、価格表は
+  `price_list_variants.order_type = REGRIND` のバリアント。専用アプリは無く、PD02 の
+  種別フィルタで分ける。
+- **他社製品**（`items.is_external_product` + `maker_name`）を品目マスタに置ける。再研磨
+  専用 — 製造工程リスト・製造分/在庫分の指示書・PRODUCTION/TEST/SAMPLE の明細では
+  使えない（ピッカー `includeExternal`、保存側 `lib/external-product-guard.ts`、
+  readiness `externalProduct`、`validateExternalProductType` の 4 か所で守る）。
+- **指示書の不変条件**（`lib/work-order-alloc-core.ts`）: REGRIND 指示書は REGRIND 明細
+  **1 件だけ**・予定数量 = 割当数量。REGRIND 明細は REGRIND 指示書にしか割り当て
+  られない（逆も）。使用素材・保管場所は持たない。完了した REGRIND 指示書は
+  返却があっても全量手配済み（`effectiveAllocatedByLine` — 返却分が 未手配 に戻ると
+  二度手配になる）。
+- **工程**: 共通の **再研磨工程リスト**（`product_process_routes.kind = REGRIND`、PREP と
+  同型で製品・顧客に紐づかない。MS08 配下 `/master/process-steps/regrind-routes`）。
+  指示書は常に最新版を流し込み（`applyLatestRegrindRoute`）、足し引きすれば
+  `route_version_id = null`（指示書から共通リストの版は作らない）。種別ごとに載せて
+  よい工程は `lib/workflow-core.ts` の `stepAllowedForType` が唯一の定義 —
+  REGRIND は `PRODUCT_ISSUE` / MATERIAL_PREP / MACHINING を使えず、開始工程は
+  **`REGRIND_RECEIPT`（製品受入（再研磨））**。新カテゴリ `PROCESS_CATEGORY.REGRIND`
+  の工程（外周・溝・先端・R・C・切断）と `REGRIND_INSPECTION`。
+- **数量**: 製品受入（再研磨）は FLOW だが欄の読み方が違う — 受入数 = 受入本数
+  （**画面の値が権威** `resolveReceivedQuantity({ clientAuthoritative })`、届いた本数は
+  予定と違ってよい）、廃棄 = **返却本数**（研ぎ直せずそのまま返す分。理由は不良種類
+  `REGRIND_RETURN`）、ロット欄 = 箱番号（任意）。半製品の区分は使えない。列は足さず
+  FLOW の保存則で返却分が後工程・完成本数に入らないことが成り立つ。3 つの本数は
+  `regrindQuantities()`。
+- **在庫**: 所有者軸 `item_inventory.owner_bp_id`（顧客の預り品。`custody_bp_id` と直交、
+  両方入り得る）。読み出し側は必ず `ownerBpId: null` で絞る（`inventory-custody-scope.test.ts`
+  が 2 軸を走査）。台帳: 製品受入の完了で所有者バケットへ IN（事由 `REGRIND_RECEIPT`、
+  印 `work_order_steps.regrind_receipt_movement_id`、Web/共有端末とも完了と同じ tx）→
+  指示書完了で返却本数を OUT（自社在庫の IN・半製品 IN・素材消費・引当確定はしない）→
+  出荷（DISPATCH のみ）で所有者バケットから OUT。外注へ出すときは 所有者バケット ⇄
+  所有者+預け先バケット の移動。所有者は列に持たず割当明細の顧客から導く
+  （`regrindOwnerBpIdTx`）。PD04 に所有者フィルタ、分析ビューは預り品を自社在庫から
+  外す（`v_item_customer_owned_inventory`）。
+
 ### 工程リスト（準備 / 製造）と作業計画
 
 - **工程リストは 2 本**（`product_process_routes.kind`）。**準備工程リスト**（`PREP`）は

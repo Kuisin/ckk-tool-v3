@@ -62,8 +62,23 @@ export async function listProductRoutes(itemId: number): Promise<RouteView[]> {
  * 工程マスタ配下（/master/process-steps/prep-routes）とビルダーが読む。
  */
 export async function listPrepRoutes(): Promise<RouteView[]> {
+  return listCommonRoutes("PREP");
+}
+
+/**
+ * 再研磨工程リスト一覧（共通 — 製品にも顧客にも紐づかない）。
+ * 工程マスタ配下（/master/process-steps/regrind-routes）と再研磨指示書のビルダーが読む。
+ */
+export async function listRegrindRoutes(): Promise<RouteView[]> {
+  return listCommonRoutes("REGRIND");
+}
+
+/** 共通リスト（準備 / 再研磨）の一覧。 */
+export async function listCommonRoutes(
+  kind: "PREP" | "REGRIND",
+): Promise<RouteView[]> {
   const routes = await prisma.productProcessRoute.findMany({
-    where: { kind: "PREP" },
+    where: { kind },
     include: ROUTE_INCLUDE,
     orderBy: [{ isActive: "desc" }, { id: "asc" }],
   });
@@ -199,11 +214,23 @@ export async function createRouteWithVersionTx(
   if (kind === "MANUFACTURING" && input.itemId == null) {
     throw new Error("manufacturing route requires itemId");
   }
+  if (kind === "MANUFACTURING" && input.itemId != null) {
+    // 他社製品（再研磨専用）には製造工程リストを作らない — 最後の砦。
+    const item = await tx.item.findUnique({
+      where: { id: input.itemId },
+      select: { isExternalProduct: true },
+    });
+    if (item?.isExternalProduct) {
+      throw new Error("external product cannot have a manufacturing route");
+    }
+  }
+  // 共通リスト（準備 / 再研磨）は品目にも顧客にも紐づかない（DB の CHECK）。
+  const common = kind !== "MANUFACTURING";
   const route = await tx.productProcessRoute.create({
     data: {
       kind,
-      itemId: kind === "PREP" ? null : input.itemId,
-      customerBpId: kind === "PREP" ? null : (input.customerBpId ?? null),
+      itemId: common ? null : input.itemId,
+      customerBpId: common ? null : (input.customerBpId ?? null),
       name: input.name,
       createdBy: input.actor,
     },
@@ -231,6 +258,11 @@ export type RouteResolveInput =
 export interface RouteResolveScope {
   kind: ProcessRouteKind;
   prepStepIds: ReadonlySet<number>;
+  /**
+   * その種別に属する工程か（省略時は prepStepIds から PREP / それ以外 で決める）。
+   * 再研磨は 3 つ目の区分なので、呼び出し側が stepAllowedForType で渡す。
+   */
+  inKind?: (stepId: number) => boolean;
 }
 
 /**
@@ -259,10 +291,12 @@ export async function resolveRouteVersionTx(
   if (input == null) return null;
   // その種別の工程が 1 つも無いのに版を作っても中身が空になるだけ。
   if (steps.length === 0) return null;
-  const inKind = (id: number) =>
-    scope.kind === "PREP"
-      ? scope.prepStepIds.has(id)
-      : !scope.prepStepIds.has(id);
+  const inKind =
+    scope.inKind ??
+    ((id: number) =>
+      scope.kind === "PREP"
+        ? scope.prepStepIds.has(id)
+        : !scope.prepStepIds.has(id));
   if (input.mode === "new") {
     const created = await createRouteWithVersionTx(tx, {
       kind: scope.kind,

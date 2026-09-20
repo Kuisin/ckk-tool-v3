@@ -128,6 +128,7 @@ export async function fetchUnplannedOrderLines(): Promise<
       ),
       productName: r.item ? productLabel(r.item) : (r.productText ?? "—"),
       quantity: r.quantity,
+      orderType: r.orderType,
       plannedQuantity,
       unplannedQuantity,
       reservedStockQuantity: r.reservations.reduce(

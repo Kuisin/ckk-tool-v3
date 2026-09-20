@@ -24,6 +24,7 @@ import {
   splitScrapShare,
 } from "./inventory-availability-core";
 import { encodeInventoryNote } from "./inventory-note-core";
+import { ownerBucketFor } from "./inventory-owner-core";
 import {
   computeBranchSemiFinishedQuantity,
   computeFinishedQuantity,
@@ -51,6 +52,8 @@ export type MovementCause =
   | "OUTSOURCE_RETURN"
   /// 出荷後の返品（在庫が戻る）。
   | "SALES_RETURN"
+  /// 再研磨のために顧客の工具を受け入れた（預り品バケットへ IN）。
+  | "REGRIND_RECEIPT"
   | "OTHER";
 
 /** allocateDocumentKey("INVENTORY_MOVEMENT") の戻り値。 */
@@ -197,8 +200,8 @@ export async function applyTransaction(
   // 在庫は 1 表（app.item_inventory）。**inventoryType はもう書き込み先を選ばない**
   // — 台帳の区分として行に残るだけで、製品・素材で表が分かれていた頃の名残り。
   //
-  // custody-scope: id 1 件への加減算。どのバケットかは呼び出し側が決めて
-  // いる（預けバケットへの計上もここを通る）。
+  // custody-scope: / owner-scope: id 1 件への加減算。どのバケットかは呼び出し側が
+  // 決めている（預けバケット・預り品バケットへの計上もここを通る）。
   const updated = await tx.itemInventory.updateMany({
     where: { id: input.inventoryId, ...guard },
     data,
@@ -270,6 +273,12 @@ export async function ensureItemInventory(
      * 外れる（読み出し側が `custodyBpId: null` で絞る）。
      */
     custodyBpId?: string | null;
+    /**
+     * 所有者（顧客の預り品 — 再研磨で預かった工具）。省略 = 自社の物。
+     * custody と直交する: 預り品を外注へ出せば両方が入る。
+     * **入れたバケットは自社在庫ではない**（読み出し側が `ownerBpId: null` で絞る）。
+     */
+    ownerBpId?: string | null;
   },
 ): Promise<string> {
   const bucket = {
@@ -280,6 +289,7 @@ export async function ensureItemInventory(
     storageLocationId: data.storageLocationId ?? null,
     shelfId: data.shelfId ?? null,
     custodyBpId: data.custodyBpId ?? null,
+    ownerBpId: data.ownerBpId ?? null,
   };
 
   const unit =
@@ -303,8 +313,8 @@ export async function ensureItemInventory(
     return row.id;
   };
 
-  // custody-scope: `bucket` に custodyBpId が入っている（省略時は null =
-  // 自社）。鍵そのものなので、ここで別に絞る余地は無い。
+  // custody-scope: / owner-scope: `bucket` に custodyBpId と ownerBpId が
+  // 入っている（省略時は null = 自社）。鍵そのものなので、ここで別に絞る余地は無い。
   const existing = await tx.itemInventory.findFirst({
     where: bucket,
     select: { id: true, unit: true },
@@ -319,7 +329,7 @@ export async function ensureItemInventory(
   } catch (e) {
     // 同時 ensure の一意制約競合（NULLS NOT DISTINCT index）→ 再取得
     if ((e as { code?: string }).code === "P2002") {
-      // custody-scope: 同上（同じ鍵での引き直し）。
+      // custody-scope: / owner-scope: 同上（同じ鍵での引き直し）。
       const again = await tx.itemInventory.findFirst({
         where: bucket,
         select: { id: true, unit: true },
@@ -335,6 +345,8 @@ export interface DeliveryReturnLine {
   itemId: number;
   lotNumber: number | null;
   quantity: number;
+  /** 再研磨の明細なら顧客（預り品バケットへ戻す）。null = 自社在庫へ戻す。 */
+  ownerBpId?: string | null;
 }
 
 /**
@@ -368,6 +380,7 @@ export async function onDeliveryOrderReturnedTx(
       plantId: args.plantId,
       lotNumber: line.lotNumber,
       isSemiFinished: false,
+      ownerBpId: line.ownerBpId ?? null,
     });
     await applyTransaction(tx, await openMovement(), {
       inventoryType: "PRODUCT",
@@ -406,6 +419,7 @@ async function custodyBucket(
     supplierBpId: string;
     lotNumber: number;
     plantId: number | null;
+    ownerBpId?: string | null;
   },
 ): Promise<string> {
   return ensureItemInventory(tx, {
@@ -413,6 +427,7 @@ async function custodyBucket(
     plantId: args.plantId,
     lotNumber: args.lotNumber,
     custodyBpId: args.supplierBpId,
+    ownerBpId: args.ownerBpId ?? null,
   });
 }
 
@@ -425,6 +440,45 @@ export interface OutsourceMoveArgs {
   quantity: number;
   /** 出した拠点（伝票の拠点。バケットは社外なので持たない）。 */
   plantId?: number | null;
+  /**
+   * 所有者（再研磨で預かった顧客の工具を外注へ出すとき）。null = 自社の仕掛品。
+   *
+   * 自社の仕掛品は台帳に無いので預けバケットへの片側 IN/OUT で閉じるが、
+   * 預り品は受入時に所有者バケットへ載っているので、**移動**として書く
+   * （所有者バケット ⇄ 所有者 + 預け先バケット）。片側にすると預かった本数が
+   * 外注へ出した瞬間に 2 倍に見える。
+   */
+  ownerBpId?: string | null;
+}
+
+/**
+ * 預り品（所有者付き）の手元バケットの残を返す。`take` は残で頭打ち
+ * （移動なので、無い物は動かせない — 多めに入力されたら警告に留める）。
+ */
+async function ownerBucketHeld(
+  tx: Tx,
+  args: {
+    itemId: number;
+    lotNumber: number;
+    plantId: number | null;
+    ownerBpId: string;
+  },
+): Promise<{ id: string; held: number }> {
+  const id = await ensureItemInventory(tx, {
+    itemId: args.itemId,
+    plantId: args.plantId,
+    lotNumber: args.lotNumber,
+    ownerBpId: args.ownerBpId,
+  });
+  const held = Number(
+    (
+      await tx.itemInventory.findUnique({
+        where: { id },
+        select: { quantity: true },
+      })
+    )?.quantity ?? 0,
+  );
+  return { id, held };
 }
 
 /**
@@ -446,7 +500,38 @@ export async function onOutsourceIssueTx(
     sourceId: String(args.workOrderNumber),
     plantId: args.plantId ?? null,
   });
-  const movementId = await openMovement();
+  let quantity = args.quantity;
+  let movementId: string | null = null;
+  if (args.ownerBpId) {
+    // 預り品: 手元の所有者バケットから引いてから預けバケットへ載せる（移動）。
+    const owned = await ownerBucketHeld(tx, {
+      itemId: args.itemId,
+      lotNumber: args.workOrderNumber,
+      plantId: args.plantId ?? null,
+      ownerBpId: args.ownerBpId,
+    });
+    quantity = Math.min(owned.held, args.quantity);
+    if (quantity <= 0) return null;
+    if (quantity < args.quantity) {
+      console.warn(
+        // i18n-ignore — サーバーログのみ（画面には出ない）
+        `[inventory] 外注出しが預り品の手元数を超えている（${args.quantity} > ${owned.held}）: WO #${args.workOrderNumber}`,
+      );
+    }
+    movementId = await openMovement();
+    await applyTransaction(tx, movementId, {
+      inventoryType: "PRODUCT",
+      inventoryId: owned.id,
+      transactionType: "OUT",
+      quantity,
+      referenceType: "work_order",
+      referenceId: args.workOrderId,
+      notes: encodeInventoryNote("outsourceIssued", {
+        workOrderNumber: args.workOrderNumber,
+      }),
+    });
+  }
+  movementId ??= await openMovement();
   await applyTransaction(tx, movementId, {
     inventoryType: "PRODUCT",
     inventoryId: await custodyBucket(tx, {
@@ -454,9 +539,10 @@ export async function onOutsourceIssueTx(
       supplierBpId: args.supplierBpId,
       lotNumber: args.workOrderNumber,
       plantId: args.plantId ?? null,
+      ownerBpId: args.ownerBpId ?? null,
     }),
     transactionType: "IN",
-    quantity: args.quantity,
+    quantity,
     referenceType: "work_order",
     referenceId: args.workOrderId,
     notes: encodeInventoryNote("outsourceIssued", {
@@ -483,6 +569,7 @@ export async function onOutsourceReturnTx(
     supplierBpId: args.supplierBpId,
     lotNumber: args.workOrderNumber,
     plantId: args.plantId ?? null,
+    ownerBpId: args.ownerBpId ?? null,
   });
   const held = Number(
     (
@@ -519,7 +606,228 @@ export async function onOutsourceReturnTx(
       workOrderNumber: args.workOrderNumber,
     }),
   });
+  if (args.ownerBpId) {
+    // 預り品: 戻った分は手元の所有者バケットへ載せ直す（移動の片割れ）。
+    await applyTransaction(tx, movementId, {
+      inventoryType: "PRODUCT",
+      inventoryId: await ensureItemInventory(tx, {
+        itemId: args.itemId,
+        plantId: args.plantId ?? null,
+        lotNumber: args.workOrderNumber,
+        ownerBpId: args.ownerBpId,
+      }),
+      transactionType: "IN",
+      quantity: take,
+      referenceType: "work_order",
+      referenceId: args.workOrderId,
+      notes: encodeInventoryNote("outsourceReturned", {
+        workOrderNumber: args.workOrderNumber,
+      }),
+    });
+  }
   return movementId;
+}
+
+// ─── 再研磨（顧客の工具を預かって研ぎ直す） ───────────────────────────────────
+//
+// 作るものは無い。顧客の物を受け入れ、手を入れて、返す。台帳は
+//   受入（製品受入 工程の完了） … 所有者バケットへ IN（事由 REGRIND_RECEIPT）
+//   完了（全工程完了）           … 返却本数（研磨できなかった分）を所有者バケットから OUT
+//   出荷（出荷書）               … 所有者バケットから OUT（planDispatchLines）
+// で閉じ、全量出荷で所有者バケットは 0 になる。自社在庫は一度も動かない。
+//
+// 所有者は列に持たず**割当明細の顧客から導く**（work_order_order_lines →
+// order_lines → order_acceptances.customer_bp_id）。列に複写すると割当と乖離する。
+// 再研磨指示書は明細 1 件・顧客 1 人が不変条件（lib/work-order-alloc-core.ts）。
+
+/**
+ * 再研磨指示書の所有者 = 割当明細の顧客。割当が無い / 顧客が 2 人なら throw —
+ * 黙って自社にすると顧客の工具が自社在庫に化ける。
+ */
+export async function regrindOwnerBpIdTx(
+  tx: Tx,
+  workOrderId: string,
+): Promise<string> {
+  const links = await tx.workOrderOrderLine.findMany({
+    where: { workOrderId },
+    select: {
+      orderLine: {
+        select: { acceptance: { select: { customerBpId: true } } },
+      },
+    },
+  });
+  const owners = new Set(
+    links.map((l) => l.orderLine.acceptance.customerBpId).filter(Boolean),
+  );
+  if (owners.size !== 1) {
+    throw new Error(encodeInventoryNote("regrindOwnerUnresolved"));
+  }
+  return [...owners][0] as string;
+}
+
+/**
+ * 製品受入（再研磨）の完了: 受入本数を顧客の預り品として載せる。伝票 id を返す
+ * （計上しなければ null）。
+ *
+ * 呼び出し側は返った id を工程の `regrindReceiptMovementId` に控えること —
+ * それが「もう計上した」の唯一の印（outsource_*_movement_id と同じ規約）。
+ * 二度目以降の呼び出しは印を見て何もしない。
+ */
+export async function onRegrindReceiptTx(
+  tx: Tx,
+  movementKey: MovementKey,
+  args: {
+    stepId: string;
+    workOrderId: string;
+    workOrderNumber: number;
+    itemId: number;
+    plantId: number | null;
+    /** 受入本数（= 製品受入 工程の受入数）。 */
+    quantity: number;
+    /** 箱番号（工程の lot_text。任意）。 */
+    box?: string | null;
+  },
+): Promise<string | null> {
+  if (args.quantity <= 0) return null;
+  const already = await tx.workOrderStep.findUnique({
+    where: { id: args.stepId },
+    select: { regrindReceiptMovementId: true },
+  });
+  if (already?.regrindReceiptMovementId) return null;
+  const ownerBpId = await regrindOwnerBpIdTx(tx, args.workOrderId);
+  const openMovement = movementOpener(tx, {
+    key: movementKey,
+    cause: "REGRIND_RECEIPT",
+    sourceType: "work_orders",
+    sourceId: String(args.workOrderNumber),
+    plantId: args.plantId,
+  });
+  const movementId = await openMovement();
+  await applyTransaction(tx, movementId, {
+    inventoryType: "PRODUCT",
+    inventoryId: await ensureItemInventory(tx, {
+      itemId: args.itemId,
+      plantId: args.plantId,
+      lotNumber: args.workOrderNumber,
+      ownerBpId,
+    }),
+    transactionType: "IN",
+    quantity: args.quantity,
+    referenceType: "work_order",
+    referenceId: args.workOrderId,
+    notes: encodeInventoryNote("regrindReceived", {
+      workOrderNumber: args.workOrderNumber,
+      box: args.box?.trim() || "-",
+    }),
+  });
+  await tx.workOrderStep.update({
+    where: { id: args.stepId },
+    data: { regrindReceiptMovementId: movementId },
+  });
+  return movementId;
+}
+
+/**
+ * 再研磨指示書の完了: 自社在庫は動かさない。
+ *  (1) 外注へ出したまま戻っていない預り品を所有者バケットへ戻す
+ *  (2) 返却本数（研磨できずそのまま返す分 = 廃棄欄の合計）を所有者バケットから落とす
+ * 完成品の入庫・半製品の入庫・素材消費・引当確定は**しない**（作った物は無い）。
+ */
+async function completeRegrindTx(
+  tx: Tx,
+  openMovement: MovementOpener,
+  wo: { id: string; workOrderNumber: number; productItemId: number },
+  returnedAsIs: number,
+): Promise<void> {
+  const ownerBpId = await regrindOwnerBpIdTx(tx, wo.id);
+  // owner-scope: この所有者・このロットの預けバケットだけ（custody 付き）。
+  const openCustody = await tx.itemInventory.findMany({
+    where: {
+      itemId: wo.productItemId,
+      lotNumber: wo.workOrderNumber,
+      ownerBpId,
+      custodyBpId: { not: null },
+      quantity: { gt: 0 },
+    },
+    select: { id: true, quantity: true, plantId: true },
+  });
+  for (const bucket of openCustody) {
+    const movementId = await openMovement();
+    await applyTransaction(tx, movementId, {
+      inventoryType: "PRODUCT",
+      inventoryId: bucket.id,
+      transactionType: "OUT",
+      quantity: Number(bucket.quantity),
+      referenceType: "work_order",
+      referenceId: wo.id,
+      notes: encodeInventoryNote("outsourceReturnedOnCompletion", {
+        workOrderNumber: wo.workOrderNumber,
+      }),
+    });
+    await applyTransaction(tx, movementId, {
+      inventoryType: "PRODUCT",
+      inventoryId: await ensureItemInventory(tx, {
+        itemId: wo.productItemId,
+        plantId: bucket.plantId,
+        lotNumber: wo.workOrderNumber,
+        ownerBpId,
+      }),
+      transactionType: "IN",
+      quantity: Number(bucket.quantity),
+      referenceType: "work_order",
+      referenceId: wo.id,
+      notes: encodeInventoryNote("outsourceReturnedOnCompletion", {
+        workOrderNumber: wo.workOrderNumber,
+      }),
+    });
+  }
+  if (openCustody.length > 0) {
+    await tx.workOrderStep.updateMany({
+      where: {
+        workOrderId: wo.id,
+        outsourceIssueMovementId: { not: null },
+        outsourceReturnMovementId: null,
+      },
+      data: { outsourceReturnMovementId: await openMovement() },
+    });
+  }
+  if (returnedAsIs <= 0) return;
+  // owner-scope: 手元の所有者バケット（custody 無し）だけ。
+  const owned = await tx.itemInventory.findMany({
+    where: {
+      itemId: wo.productItemId,
+      lotNumber: wo.workOrderNumber,
+      ownerBpId,
+      custodyBpId: null,
+      quantity: { gt: 0 },
+    },
+    select: { id: true, quantity: true },
+    orderBy: { quantity: "desc" },
+  });
+  let left = returnedAsIs;
+  for (const bucket of owned) {
+    if (left <= 0) break;
+    const take = Math.min(left, Number(bucket.quantity));
+    if (take <= 0) continue;
+    await applyTransaction(tx, await openMovement(), {
+      inventoryType: "PRODUCT",
+      inventoryId: bucket.id,
+      transactionType: "OUT",
+      quantity: take,
+      referenceType: "work_order",
+      referenceId: wo.id,
+      notes: encodeInventoryNote("regrindReturnedAsIs", {
+        workOrderNumber: wo.workOrderNumber,
+      }),
+    });
+    left -= take;
+  }
+  if (left > 0) {
+    console.warn(
+      // i18n-ignore — サーバーログのみ（画面には出ない）
+      `[inventory] 返却本数が預り品の手元数を超えている（残 ${left}）: WO #${wo.workOrderNumber}`,
+    );
+  }
 }
 
 /**
@@ -568,8 +876,9 @@ async function consumeSemiFinishedStock(
       itemId: args.itemId,
       isSemiFinished: true,
       quantity: { gt: 0 },
-      // 自社の棚にある半製品だけ。外注が預かっている分は投入できない。
+      // 自社の棚にある半製品だけ。外注が預かっている分・顧客の預り品は投入できない。
       custodyBpId: null,
+      ownerBpId: null,
       ...(args.plantId != null ? { plantId: args.plantId } : {}),
     },
     select: { id: true, lotNumber: true, quantity: true },
@@ -707,6 +1016,13 @@ export async function onWorkOrderCompletedTx(
     plantId,
   });
 
+  if (wo.type === "REGRIND") {
+    // 再研磨: 作った物は無い。自社在庫には何も入れず、預り品の帳尻だけ合わせる
+    // （返却本数 = 廃棄欄の合計。研磨できずそのまま返す分）。
+    await completeRegrindTx(tx, openMovement, wo, scrapTotal);
+    return;
+  }
+
   if (finishedQty > 0) {
     const invId = await ensureItemInventory(tx, {
       itemId: wo.productItemId,
@@ -788,6 +1104,8 @@ export async function onWorkOrderCompletedTx(
       itemId: wo.productItemId,
       lotNumber: wo.workOrderNumber,
       custodyBpId: { not: null },
+      // 自社の仕掛品だけ（顧客の預り品は再研磨側 completeRegrindTx が扱う）。
+      ownerBpId: null,
       quantity: { gt: 0 },
     },
     select: { id: true, quantity: true },
@@ -996,6 +1314,8 @@ interface DispatchPlanLine {
     quantity: number;
     orderLineId: string | null;
   };
+  /** 引いた先の所有者（null = 自社）。不足分の置き場も同じ所有者で作る。 */
+  ownerBpId: string | null;
   /** 実在するバケット（無ければ空。**ここでは作らない**）。 */
   buckets: { id: string; quantity: number; reservedQuantity: number }[];
   steps: { bucketId: string; take: number }[];
@@ -1014,16 +1334,24 @@ async function planDispatchLines(
   tx: Tx,
   so: {
     fromPlantId: number | null;
+    customerBpId: string;
     items: {
       itemId: number;
       lotNumber: number | null;
       quantity: number;
       orderLineId: string | null;
+      orderLine: { orderType: string } | null;
     }[];
   },
 ): Promise<DispatchPlanLine[]> {
   const plans: DispatchPlanLine[] = [];
   for (const item of so.items) {
+    // 再研磨の明細は顧客の預り品を返す出荷 — 引く先は所有者バケット。
+    // それ以外は自社在庫（ownerBpId: null）。判定は lib/inventory-owner-core.ts。
+    const ownerBpId = ownerBucketFor(
+      item.orderLine?.orderType,
+      so.customerBpId,
+    );
     // ロットは保管場所×棚で複数バケットに分かれ得るため、残量のある行から順に。
     //
     // **ロットを指定していない行は、どのロットから出してもよい。** 以前は
@@ -1048,6 +1376,8 @@ async function planDispatchLines(
           isSemiFinished: false,
           // 外注が預かっている分からは出荷できない（手元に無い）。
           custodyBpId: null,
+          // 自社在庫か、この顧客の預り品か（再研磨）。混ぜない。
+          ownerBpId,
         },
         select: { id: true, quantity: true, reservedQuantity: true },
         orderBy: anyLot
@@ -1088,7 +1418,7 @@ async function planDispatchLines(
       item.quantity,
       ownReserved,
     );
-    plans.push({ item, buckets, steps, shortfall });
+    plans.push({ item, ownerBpId, buckets, steps, shortfall });
   }
   return plans;
 }
@@ -1105,7 +1435,9 @@ export async function previewDeliveryShortagesTx(
 ): Promise<ShipShortage[]> {
   const so = await tx.deliveryOrder.findUniqueOrThrow({
     where: { yearMonth_seq: key },
-    include: { items: true },
+    include: {
+      items: { include: { orderLine: { select: { orderType: true } } } },
+    },
   });
   if (so.type !== "DISPATCH") return [];
   const plans = await planDispatchLines(tx, so);
@@ -1152,7 +1484,9 @@ export async function onDeliveryOrderShippedTx(
 ): Promise<ShipShortage[]> {
   const so = await tx.deliveryOrder.findUniqueOrThrow({
     where: { yearMonth_seq: key },
-    include: { items: true },
+    include: {
+      items: { include: { orderLine: { select: { orderType: true } } } },
+    },
   });
   const ref = `DOR-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
   /** 台帳が足りないまま出した分。呼び出し側が利用者へ警告する。 */
@@ -1194,6 +1528,7 @@ export async function onDeliveryOrderShippedTx(
             plantId: so.fromPlantId,
             lotNumber: item.lotNumber,
             isSemiFinished: false,
+            ownerBpId: plan.ownerBpId,
           }));
         await applyTransaction(tx, await openMovement(), {
           inventoryType: "PRODUCT",
@@ -1434,6 +1769,10 @@ export async function reserveProductStock(
   if (so.branch == null || so.itemId == null) {
     throw new Error(encodeInventoryNote("onlyConfirmedLinesCanBeStockChecked"));
   }
+  // 再研磨の明細は顧客の工具を預かって返すもの — 自社在庫を引き当てる対象ではない。
+  if (so.orderType === "REGRIND") {
+    throw new Error(encodeInventoryNote("regrindLinesAreNotStockChecked"));
+  }
   const itemId = so.itemId;
 
   return prisma.$transaction(async (tx) => {
@@ -1448,11 +1787,17 @@ export async function reserveProductStock(
     await tx.$queryRaw`
       SELECT id FROM app.item_inventory
       WHERE item_id = ${itemId} AND is_semi_finished = false
+        AND custody_bp_id IS NULL AND owner_bp_id IS NULL
       FOR UPDATE`;
     const rows = (
       await tx.itemInventory.findMany({
-        // 引き当てられるのは自社の在庫だけ。
-        where: { itemId, isSemiFinished: false, custodyBpId: null },
+        // 引き当てられるのは自社の在庫だけ（預け中・顧客の預り品は除く）。
+        where: {
+          itemId,
+          isSemiFinished: false,
+          custodyBpId: null,
+          ownerBpId: null,
+        },
         orderBy: { lotNumber: "asc" },
       })
     ).map((r) => ({

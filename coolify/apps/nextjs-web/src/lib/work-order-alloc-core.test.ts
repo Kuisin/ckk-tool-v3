@@ -373,3 +373,88 @@ describe("distributeFinished", () => {
     expect(d.get("L2")).toBe(30);
   });
 });
+
+describe("REGRIND（再研磨）の割当", () => {
+  const regrindLine = (over: Partial<LineAllocInfo> = {}) =>
+    line({ orderType: "REGRIND", ...over });
+
+  it("再研磨の指示書には注文明細が要る（在庫向けの独立指示書にはならない）", () => {
+    expect(
+      validateAllocations(
+        { type: "REGRIND", plannedQuantity: 10, allocations: [], lines: [] },
+        tr,
+      ),
+    ).toBe("production.workOrderActions.regrindOrderRequiresOrderLine");
+  });
+
+  it("再研磨の指示書に割り当てられるのは再研磨の明細だけ", () => {
+    expect(
+      validateAllocations(
+        {
+          type: "REGRIND",
+          plannedQuantity: 100,
+          allocations: [{ orderLineId: "L1", quantity: 100 }],
+          lines: [line({ orderType: "PRODUCTION" })],
+        },
+        tr,
+      ),
+    ).toBe("production.workOrderActions.regrindLinesOnly");
+  });
+
+  it("再研磨の明細は製造分・在庫分には割り当てられない", () => {
+    for (const type of ["MANUFACTURE", "FROM_STOCK"] as const) {
+      expect(
+        validateAllocations(
+          {
+            type,
+            plannedQuantity: 100,
+            allocations: [{ orderLineId: "L1", quantity: 100 }],
+            lines: [regrindLine()],
+          },
+          tr,
+        ),
+      ).toBe("production.workOrderActions.regrindLineRequiresRegrindWorkOrder");
+    }
+  });
+
+  it("再研磨は明細 1 件・予定数量 = 割当数量", () => {
+    expect(
+      validateAllocations(
+        {
+          type: "REGRIND",
+          plannedQuantity: 50,
+          allocations: [
+            { orderLineId: "L1", quantity: 30 },
+            { orderLineId: "L2", quantity: 20 },
+          ],
+          lines: [regrindLine(), regrindLine({ orderLineId: "L2" })],
+        },
+        tr,
+      ),
+    ).toBe("production.workOrderActions.regrindWorkOrderOneLineOnly");
+    expect(
+      validateAllocations(
+        {
+          type: "REGRIND",
+          plannedQuantity: 40,
+          allocations: [{ orderLineId: "L1", quantity: 30 }],
+          lines: [regrindLine()],
+        },
+        tr,
+      ),
+    ).toBe(
+      "production.workOrderActions.regrindPlannedQuantityMustMatchAllocation",
+    );
+    expect(
+      validateAllocations(
+        {
+          type: "REGRIND",
+          plannedQuantity: 30,
+          allocations: [{ orderLineId: "L1", quantity: 30 }],
+          lines: [regrindLine()],
+        },
+        tr,
+      ),
+    ).toBeNull();
+  });
+});

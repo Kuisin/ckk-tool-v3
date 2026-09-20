@@ -426,6 +426,12 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
           >
             {tr("master.prepRoutes.title")}
           </SecondaryButton>
+          <SecondaryButton
+            href={`${BASE_PATH}/regrind-routes`}
+            leftSection={<IconGitBranch size={14} />}
+          >
+            {tr("master.regrindRoutes.title")}
+          </SecondaryButton>
           <NewButton href={`${BASE_PATH}/new`} />
         </Group>
       }

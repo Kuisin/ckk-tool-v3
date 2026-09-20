@@ -249,6 +249,8 @@ export interface WorkOrderView {
   /** 工程ルート出所（未使用 = null）。 */
   routeVersionId: string | null;
   routeId: number | null;
+  /** 出所リストの種別（MANUFACTURING / REGRIND）。再研磨は共通リストを指す。 */
+  routeKind: string | null;
   routeName: string | null;
   routeVersion: number | null;
   /** 製造工程リストの最新版番号 — 使っている版が古ければ画面で示す。 */
@@ -264,6 +266,12 @@ export interface WorkOrderView {
    * あるか（lib/work-plan-core.ts）。承認カードが「何が足りないか」を出す。
    */
   planReadiness: PlanReadiness;
+  /** 再研磨の 3 つの本数（受入 / 返却 / 完成）。再研磨以外は null。 */
+  regrind: {
+    received: number | null;
+    returnedAsIs: number;
+    finished: number;
+  } | null;
   /** ロット番号 = 指示書番号（注文明細側の lot_number）。 */
   lotNumber: number | null;
   sourceWorkOrderNumber: number | null;
