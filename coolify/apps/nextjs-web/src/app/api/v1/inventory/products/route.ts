@@ -31,8 +31,13 @@ export async function GET(request: Request): Promise<Response> {
     baseWhere: plantWhere(gate.access, "plantId"),
     fetch: ({ where, take, orderBy }) =>
       prisma.itemInventory.findMany({
-        // biome-ignore lint/suspicious/noExplicitAny: 断片は authz-core / pagination が組む
-        where: { ...(where as any), item: { itemType: "PRODUCT" } },
+        // custodyBpId: null = **自社の在庫だけ**（外注への預けは手持ちでない）。
+        where: {
+          // biome-ignore lint/suspicious/noExplicitAny: 断片は authz-core / pagination が組む
+          ...(where as any),
+          custodyBpId: null,
+          item: { itemType: "PRODUCT" },
+        },
         take,
         // biome-ignore lint/suspicious/noExplicitAny: 同上
         orderBy: orderBy as any,

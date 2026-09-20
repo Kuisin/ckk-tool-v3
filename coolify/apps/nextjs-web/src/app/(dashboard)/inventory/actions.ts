@@ -166,6 +166,15 @@ export async function transferStock(
         );
       }
 
+      // 外注が預かっている分はこの画面から動かせない。棚の付け替えは自社の
+      // 棚の話で、社外にある物の置き場を勝手に書き換える口にはしない
+      // （戻りは工程の入荷日で計上される）。
+      if (src.custodyBpId != null) {
+        throw new Error(
+          tr("production.inventoryActions.custodyNotTransferable"),
+        );
+      }
+
       // 予約分は動かせない（引当済みの在庫を別の棚へ移すと、引当が追えなくなる）。
       const free = Number(src.quantity) - Number(src.reservedQuantity);
       if (v.quantity > free) {
@@ -181,7 +190,11 @@ export async function transferStock(
         isSemiFinished: src.isSemiFinished,
         storageLocationId: v.targetStorageLocationId,
         shelfId: v.targetShelfId,
+        // 移した先は必ず自社のバケット。
+        custodyBpId: null,
       };
+      // custody-scope: `bucket` は custodyBpId: null を含む（移した先は
+      // 必ず自社のバケット）。
       let target = await tx.itemInventory.findFirst({
         where: bucket,
         select: { id: true },

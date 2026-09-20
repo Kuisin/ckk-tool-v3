@@ -135,7 +135,8 @@ export async function fetchStockRequirements(
   // 読み取り専用の統合ビューとして使う（root CLAUDE.md 参照は無いが
   // shared-db/prisma/schema/inventory.prisma のコメントに同旨あり）。
   const buckets = await prisma.itemInventory.findMany({
-    where: { itemId, plantId },
+    // 手持ちとして数えるのは自社の分だけ。
+    where: { itemId, plantId, custodyBpId: null },
   });
   const bucketIds = buckets.map((b) => b.id);
   const onHand = buckets.reduce((s, b) => s + Number(b.quantity), 0);

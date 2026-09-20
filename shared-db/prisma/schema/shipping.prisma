@@ -159,6 +159,13 @@ model DeliveryOrderItem {
   /// null = 未確定 or 確定前のデータ → 読み側は注文明細の単価へ落ちる。
   /// 納品書・請求書の単価はここが先で、注文明細の単価は後方互換のためのフォールバック。
   unitPrice Decimal? @map("unit_price") @db.Decimal(12, 2)
+  /// 出荷後に返ってきた数（累計）。
+  ///
+  /// **台帳から数え直さずに行に持つ。** 返品の計上は入出庫伝票（事由
+  /// SALES_RETURN）に残るが、行がどの伝票行に対応するかは (品目, ロット) で
+  /// しか辿れず、同じ品目・同じロットの行が 2 本ある出荷書で取り違える。
+  /// 「この行は何本戻ったか」は行に書くのが正しい形。
+  returnedQuantity Int @default(0) @map("returned_quantity")
   notes     String?
   sortOrder Int     @default(0) @map("sort_order")
 

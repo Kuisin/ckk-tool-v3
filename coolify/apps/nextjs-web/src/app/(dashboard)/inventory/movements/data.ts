@@ -147,7 +147,9 @@ export async function fetchInventoryMovement(
   // 明細 1 行ずつ引くと N+1 になるので、まとめて 1 回。
   const bucketIds = [...new Set(txRows.map((t) => t.inventoryId))];
   const buckets = bucketIds.length
-    ? await prisma.itemInventory.findMany({
+    ? // custody-scope: 伝票の明細が指しているバケットを引くだけ。外注の
+      // 預けバケットもそのまま出す（出し / 戻りの伝票はそれを指している）。
+      await prisma.itemInventory.findMany({
         where: { id: { in: bucketIds } },
         include: { item: true, storageLocation: true, shelf: true },
       })

@@ -472,6 +472,8 @@ export async function deleteStorageShelf(id: number): Promise<ActionResult> {
       return actionError(tr("master.storageLocationActions.shelfNotFound"));
     }
     // 在庫は 1 表になったので 1 回数えれば足りる。
+    // custody-scope: 預け分も含めて数える。ここは「この棚を指している行が
+    // 1 行でもあるか」の参照チェックで、自社在庫かどうかは関係ない。
     const invRefs = await prisma.itemInventory.count({
       where: { shelfId: id },
     });

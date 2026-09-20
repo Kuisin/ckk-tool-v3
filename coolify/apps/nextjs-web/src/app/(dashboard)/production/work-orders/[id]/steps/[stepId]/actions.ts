@@ -25,6 +25,8 @@ import {
   itemSpecFromRow,
   resolveItemPass,
 } from "@/lib/inspection-core";
+import { onOutsourceIssueTx, onOutsourceReturnTx } from "@/lib/inventory";
+import { allocateDocumentKey } from "@/lib/numbering";
 import { fetchAllowedWorkLocationIds } from "@/lib/work-locations";
 import { submitFlowChange } from "@/lib/work-order-flow-changes";
 import { requiredPlanFields } from "@/lib/work-plan-core";
@@ -1074,16 +1076,82 @@ export async function saveOutsourceDates(
     }
     const toDate = (s: string | null) => (s ? new Date(s) : null);
     const wasReceived = step.outsourceReceivedAt != null;
-    await prisma.workOrderStep.update({
-      where: { id: v.stepId },
-      data: {
-        outsourceRequestedAt: toDate(v.requestedAt),
-        outsourceExpectedAt: toDate(v.expectedAt),
-        outsourceReceivedAt: toDate(v.receivedAt),
-        ...(v.outsourceCost !== undefined
-          ? { outsourceCost: v.outsourceCost }
-          : {}),
-      },
+
+    // ── 預け在庫（外注が持っている分）────────────────────────────────────
+    //
+    // 出したこと・戻ったことを台帳に残す。**印は伝票 id で、日付ではない** —
+    // 日付は後から直せるので、日付の有無で判断すると直すたびに預け在庫が
+    // 増える。仕入先が付いていない工程（外注先未定）は載せようがないので
+    // 日付だけを保存する。
+    const woItem = await prisma.workOrder.findUnique({
+      where: { id: step.workOrderId },
+      select: { id: true, workOrderNumber: true, productItemId: true },
+    });
+    const supplierBpId = step.supplierBpId;
+    const custodyQuantity = step.inputQuantity ?? 0;
+    const postIssue =
+      supplierBpId != null &&
+      woItem != null &&
+      custodyQuantity > 0 &&
+      v.requestedAt != null &&
+      step.outsourceIssueMovementId == null;
+    const postReturn =
+      supplierBpId != null &&
+      woItem != null &&
+      v.receivedAt != null &&
+      step.outsourceReturnMovementId == null &&
+      (postIssue || step.outsourceIssueMovementId != null);
+
+    // 採番はトランザクションの外（全書類共通の作法。ロールバックで番号は飛ぶ）。
+    const issueKey = postIssue
+      ? await allocateDocumentKey("INVENTORY_MOVEMENT")
+      : null;
+    const returnKey = postReturn
+      ? await allocateDocumentKey("INVENTORY_MOVEMENT")
+      : null;
+
+    await prisma.$transaction(async (tx) => {
+      let issueMovementId: string | null = null;
+      let returnMovementId: string | null = null;
+      if (issueKey && supplierBpId && woItem) {
+        issueMovementId = await onOutsourceIssueTx(tx, issueKey, {
+          workOrderId: woItem.id,
+          workOrderNumber: woItem.workOrderNumber,
+          itemId: woItem.productItemId,
+          supplierBpId,
+          quantity: custodyQuantity,
+          plantId: step.plantId,
+        });
+      }
+      if (returnKey && supplierBpId && woItem) {
+        returnMovementId = await onOutsourceReturnTx(tx, returnKey, {
+          workOrderId: woItem.id,
+          workOrderNumber: woItem.workOrderNumber,
+          itemId: woItem.productItemId,
+          supplierBpId,
+          // 戻る数は預けた数まで（onOutsourceReturnTx が台帳残で頭打ちにする）。
+          quantity:
+            custodyQuantity > 0 ? custodyQuantity : Number.MAX_SAFE_INTEGER,
+          plantId: step.plantId,
+        });
+      }
+      await tx.workOrderStep.update({
+        where: { id: v.stepId },
+        data: {
+          outsourceRequestedAt: toDate(v.requestedAt),
+          outsourceExpectedAt: toDate(v.expectedAt),
+          outsourceReceivedAt: toDate(v.receivedAt),
+          ...(v.outsourceCost !== undefined
+            ? { outsourceCost: v.outsourceCost }
+            : {}),
+          ...(issueMovementId
+            ? { outsourceIssueMovementId: issueMovementId }
+            : {}),
+          ...(returnMovementId
+            ? { outsourceReturnMovementId: returnMovementId }
+            : {}),
+        },
+      });
     });
     // 外注入荷のハンドオフ通知（null → 入荷日設定の遷移時のみ・best-effort）
     if (!wasReceived && v.receivedAt) {

@@ -107,6 +107,8 @@ model BusinessPartner {
   deliveryOrdersAsCustomer DeliveryOrder[] @relation("DeliveryOrderCustomer")
   deliveryOrdersAsBranch   DeliveryOrder[] @relation("DeliveryOrderCustomerBranch")
   stepsAsSupplier       WorkOrderStep[] @relation("StepSupplier")
+  /// 預かってもらっている在庫（外注の預け在庫）。自社在庫ではない。
+  itemInventoryInCustody ItemInventory[] @relation("ItemInventoryCustody")
   routeStepsAsSupplier  ProductProcessRouteVersionStep[] @relation("RouteStepSupplier")
   routesAsCustomer      ProductProcessRoute[] @relation("RouteCustomerBp")
   designFilesAsCustomer    DesignFile[]    @relation("DesignFileCustomerBp")

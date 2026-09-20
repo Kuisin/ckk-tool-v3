@@ -119,6 +119,15 @@ model ItemInventory {
   /// 半製品の発生工程（トレーサビリティ）。
   sourceStepId   String? @map("source_step_id") @db.Uuid
 
+  /// **預け先**（外注先が持っている分）。null = 自社の在庫。
+  ///
+  /// 値が入っているバケットは**自社在庫ではない** — 数えてよいのは
+  /// 「いま外注先が何を持っているか」を答えるときだけで、手持ち・引当・
+  /// 出荷・棚卸からは外す。読み出し側は必ず `custodyBpId: null` で絞ること
+  /// （落とすと預けた品が出荷できてしまう）。付け忘れは
+  /// nextjs-web の inventory-custody-scope.test.ts が止める。
+  custodyBpId    String? @map("custody_bp_id") @db.Uuid
+
   /// **Decimal に寄せた。** 製品は Int、素材は Decimal(12,3) だったが、
   /// int は Decimal に損なく入る（逆は入らない）。読み出し側は Number() が要る。
   quantity         Decimal @default(0) @db.Decimal(12, 3)
@@ -135,10 +144,12 @@ model ItemInventory {
   plant           Plant?           @relation("ItemInventoryPlant", fields: [plantId], references: [id])
   storageLocation StorageLocation? @relation("ItemInventoryLocation", fields: [storageLocationId], references: [id])
   shelf           StorageShelf?    @relation("ItemInventoryShelf", fields: [shelfId], references: [id])
+  custodyBp       BusinessPartner? @relation("ItemInventoryCustody", fields: [custodyBpId], references: [id])
 
   // 一意バケット（NULLS NOT DISTINCT index — migration で張る）
-  @@unique([itemId, plantId, lotNumber, isSemiFinished, storageLocationId, shelfId], map: "item_inventory_bucket_key")
+  @@unique([itemId, plantId, lotNumber, isSemiFinished, storageLocationId, shelfId, custodyBpId], map: "item_inventory_bucket_key")
   @@index([itemId])
+  @@index([custodyBpId])
   @@index([plantId, storageLocationId])
   @@index([updatedAt, id])
   @@map("item_inventory")
@@ -244,6 +255,12 @@ enum InventoryMovementCause {
   ADJUSTMENT // 棚卸調整
   /// 手動入出庫（ST06）。業務としてどの型かは movement_type_id が持つ。
   MANUAL
+  /// 外注へ出した（預け在庫が増える）。
+  OUTSOURCE_ISSUE
+  /// 外注から戻った（預け在庫が減る）。
+  OUTSOURCE_RETURN
+  /// 出荷したあとに顧客から返ってきた（在庫が戻る）。
+  SALES_RETURN
   /// 移行前の取引行に後から付けた伝票。**新規では使わない** —
   /// 何の出来事だったかを記録していなかった行が実在するので、それを
   /// 正直に表す値として残す。
@@ -278,6 +295,9 @@ model InventoryMovement {
   movementType MovementType? @relation(fields: [movementTypeId], references: [id], onDelete: Restrict)
 
   lines InventoryTransaction[]
+  /// 外注へ出した／戻った伝票を指している工程（二度計上の印を兼ねる）。
+  outsourceIssuedSteps  WorkOrderStep[] @relation("StepOutsourceIssue")
+  outsourceReturnedSteps WorkOrderStep[] @relation("StepOutsourceReturn")
 
   @@unique([yearMonth, seq])
   @@index([createdAt, id])

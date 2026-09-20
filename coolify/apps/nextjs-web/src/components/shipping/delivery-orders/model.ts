@@ -41,6 +41,11 @@ export interface DeliveryOrderItem {
   /** ロット番号 = 指示書番号（任意）。 */
   lotNumber: number | null;
   quantity: number;
+  /**
+   * 出荷後に返ってきた数（累計）。返品は在庫を戻すだけで、**出荷した事実も
+   * 請求も動かさない**（§8 追補）。
+   */
+  returnedQuantity: number;
   /** 確定時に焼き込んだ請求単価（未確定は null → 注文明細の単価で表示）。 */
   unitPrice: number | null;
   notes: string | null;
