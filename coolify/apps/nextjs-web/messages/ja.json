@@ -4936,6 +4936,7 @@
       "addColumn": "列を追加",
       "accounts": "既定の科目コード",
       "accountsDescription": "マスタ側の科目コードが空のときに使う。空のままなら、その欄は空欄で出力される。",
+      "accountCodeHint": "半角英数字・16 桁まで（空欄可）",
       "receivableAccountCode": "売掛金 科目コード",
       "salesAccountCode": "売上高 科目コード",
       "taxAccountCode": "仮受消費税 科目コード",

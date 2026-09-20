@@ -4936,6 +4936,7 @@
       "addColumn": "添加列",
       "accounts": "默认科目代码",
       "accountsDescription": "主数据一侧的科目代码为空时使用。留空则该栏输出为空。",
+      "accountCodeHint": "仅限半角字母、数字、- 和 _，最多 16 位（可留空）",
       "receivableAccountCode": "应收账款 科目代码",
       "salesAccountCode": "销售收入 科目代码",
       "taxAccountCode": "暂收消费税 科目代码",

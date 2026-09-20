@@ -4936,6 +4936,7 @@
       "addColumn": "Add a column",
       "accounts": "Default account codes",
       "accountsDescription": "Used when the master has no code. Left blank, the field is written empty.",
+      "accountCodeHint": "Letters, digits, - and _ only, up to 16 (may be blank)",
       "receivableAccountCode": "Accounts receivable code",
       "salesAccountCode": "Sales account code",
       "taxAccountCode": "Tax suspense account code",
