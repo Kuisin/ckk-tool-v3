@@ -129,6 +129,8 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   stock_takes: "docKey",
   delivery_notes: "docKey",
   invoices: "docKey",
+  // 会計文書（転記・反対仕訳）。record_id は ACC-YYYYMM-NNNNN（DB の PK は uuid）。
+  accounting_documents: "docKey",
 
   // ── numberToUuid（1 クエリ。audit-record-key.ts が処理） ─────────────
   material_purchase_orders: "numberToUuid",

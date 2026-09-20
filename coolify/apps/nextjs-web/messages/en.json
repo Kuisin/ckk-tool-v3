@@ -1539,6 +1539,14 @@
           "label": "Exported"
         }
       },
+      "AccountingDocument": {
+        "POSTED": {
+          "label": "Posted"
+        },
+        "REVERSED": {
+          "label": "Reversed"
+        }
+      },
       "ApprovalRequest": {
         "PENDING": {
           "label": "Pending approval"
@@ -2180,6 +2188,28 @@
       "approvalRequested": "Approval requested",
       "awaitingPaymentApproval": "Awaiting payment approval",
       "paymentApprovalRequested": "Payment approval requested"
+    },
+    "accountingDocuments": {
+      "invalidDocumentNumber": "Invalid accounting document number",
+      "reasonRequired": "Enter a reason for the reversal",
+      "notActivePosted": "This document has already been reversed, or does not exist",
+      "reversed": "Reversal created",
+      "reverseFailed": "Could not create the reversal",
+      "createReversal": "Create reversal",
+      "reverseReasonLabel": "Reason for reversal",
+      "confirmReverseTitle": "Confirm reversal",
+      "confirmReverseMessage": "This will reverse the accounting document — a new document with debit and credit swapped is created, and the original is marked reversed (its lines are not changed).",
+      "activeDocument": "Posted document",
+      "documentHistory": "Accounting document history",
+      "documentNumber": "Document number",
+      "postedAtLabel": "Posted at",
+      "reversedAtLabel": "Reversed at",
+      "downloadCsv": "Accounting CSV",
+      "redownloadCsv": "Accounting CSV (re-download)",
+      "notPostedYet": "Not posted yet",
+      "needsRepost": "Reversed — exporting again will post a new document",
+      "documentsList": "Document history",
+      "documentsListDescription": "Posted and reversed accounting documents. Click a row to open the invoice."
     },
     "closingActions": {
       "closingDateNotReached": "Cannot process until the closing date has passed (from the day after)",
@@ -8920,6 +8950,7 @@
       "material_purchase_orders": "Material purchase orders",
       "material_receipts": "Material receipts",
       "invoices": "Invoices",
+      "accounting_documents": "Accounting document",
       "billing_closings": "Billing closings",
       "design_requests": "Design requests",
       "approval_requests": "Approval requests",

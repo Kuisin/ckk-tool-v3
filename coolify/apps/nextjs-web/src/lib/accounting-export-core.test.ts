@@ -15,6 +15,7 @@ import {
   DEFAULT_ACCOUNTING_EXPORT_SETTINGS,
   type JournalInvoiceInput,
   renderCell,
+  renderJournalCsv,
 } from "./accounting-export-core";
 
 /** 既定の設定に、経理が入れるはずの科目コードだけ埋めたもの。 */
@@ -189,6 +190,60 @@ describe("buildJournalRows — 旧実装から変えていない部分", () => {
       debitTotal({ ...base, totalAmount: 275_000, taxAmount: 25_000 }),
     ).toBe(275_000);
     expect(debitTotal(base)).toBe(250_000);
+  });
+});
+
+describe("renderJournalCsv — buildJournalRows から独立して同じ CSV を出す", () => {
+  // 会計文書（accounting_documents）は転記時に buildJournalRows の結果を
+  // DB へ固定し、再ダウンロードは renderJournalCsv だけを呼ぶ
+  // （buildJournalRows は二度と呼ばない）。分割してもバイト単位で同じ CSV に
+  // なることがこの回帰の要——ここが崩れると「転記済みの文書が動く」に戻る。
+  it("buildJournalRows → renderJournalCsv は buildAccountingCsvText と同じ結果", () => {
+    const invoice: JournalInvoiceInput = {
+      ...base,
+      taxAmount: 25_000,
+      totalAmount: 275_000,
+    };
+    const rows = buildJournalRows(invoice, settings);
+    expect(renderJournalCsv(rows, settings)).toBe(
+      buildAccountingCsvText(invoice, settings),
+    );
+  });
+
+  it("行だけを渡しても（請求書入力を経由せず）同じ描画になる", () => {
+    const invoice: JournalInvoiceInput = {
+      ...base,
+      taxLines: [
+        { taxRate: 0.1, taxableBase: 12_000, taxAmount: 1_200 },
+        { taxRate: 0.08, taxableBase: 5_000, taxAmount: 400 },
+      ],
+      totalAmount: 18_600,
+    };
+    const expected = buildAccountingCsvText(invoice, settings);
+    // buildJournalRows を明示的に 1 回だけ呼び、その rows を保存→復元した
+    // つもりで renderJournalCsv に渡す（DB を経由しない分だけの違い）。
+    const rows = buildJournalRows(invoice, settings);
+    expect(renderJournalCsv(rows, settings)).toBe(expected);
+
+    // ★ 転記済みの文書が科目コードの変更に影響されないことの直接確認 —
+    // rows は既に科目コードを固定して持っているので、勘定科目の設定
+    // （settings.accounts）を後から変えても renderJournalCsv の出力は
+    // **1 バイトも変わらない**（列の並び・文字コードなど描画側の設定だけが
+    // effect を持つ）。これが「force=1 で中身が変わった CSV が出る」穴を
+    // 塞ぐ側の性質——rows を保存してから描き直すだけの再ダウンロードは
+    // 何度やっても同じバイト列になる。
+    const changedAccountsSettings: AccountingExportSettings = {
+      ...settings,
+      accounts: { ...settings.accounts, salesAccountCode: "9999" },
+    };
+    expect(renderJournalCsv(rows, changedAccountsSettings)).toBe(expected);
+
+    // 一方、描画側の設定（改行コード等）は rows と無関係に効く。
+    const changedFormatSettings: AccountingExportSettings = {
+      ...settings,
+      newline: "lf",
+    };
+    expect(renderJournalCsv(rows, changedFormatSettings)).not.toBe(expected);
   });
 });
 

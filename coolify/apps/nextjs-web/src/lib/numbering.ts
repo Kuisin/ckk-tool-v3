@@ -37,6 +37,9 @@ const SEQUENCES = {
   INVENTORY_MOVEMENT: { prefix: "MOV", digits: 5 },
   // 棚卸 (PD08)。
   STOCK_TAKE: { prefix: "STK", digits: 5 },
+  // 会計文書（転記・反対仕訳）。請求書番号とは別の採番 — 1 請求書に元の文書・
+  // 反対仕訳・訂正後の文書が複数本対応し得るため。
+  ACCOUNTING_DOC: { prefix: "ACC", digits: 5 },
 } as const;
 
 export type NumberingKey = keyof typeof SEQUENCES;

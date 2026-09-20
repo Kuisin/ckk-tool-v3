@@ -21,10 +21,12 @@ import {
   Table,
   Tabs,
   Text,
+  Textarea,
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
+  IconArrowBackUp,
   IconCash,
   IconCheck,
   IconDownload,
@@ -40,6 +42,7 @@ import {
   markPaid,
   markSent,
   rejectInvoiceApproval,
+  reverseAccountingDocument,
 } from "@/app/(dashboard)/billing/invoices/actions";
 import { saveInvoiceCharges } from "@/app/(dashboard)/billing/invoices/charge-actions";
 import {
@@ -58,7 +61,7 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
-import { ConfirmModal } from "@/components/ui/modals";
+import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import {
   PdfAttachmentPanel,
   type PdfFileMeta,
@@ -76,6 +79,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import type { AccountingDocumentSummary } from "@/lib/accounting-documents";
 import type { ApprovalActionState, ApprovalTrailEntry } from "@/lib/approvals";
 import type { MemoView } from "@/lib/document-memos";
 import { downloadFile } from "@/lib/download";
@@ -101,6 +105,8 @@ export function InvoiceDetail({
   memos,
   chargeItems,
   canEditCharges,
+  accountingDocument,
+  accountingHistory,
 }: {
   invoice: Invoice;
   /**
@@ -119,6 +125,10 @@ export function InvoiceDetail({
   chargeItems: ChargeItemChoice[];
   /** 追加費用を編集できるか（invoice:UPDATE を持ち、かつ下書きのとき）。 */
   canEditCharges: boolean;
+  /** いま有効な転記（POSTED・反対仕訳ではない）。無ければ null。 */
+  accountingDocument: AccountingDocumentSummary | null;
+  /** その請求書に紐づく全会計文書（元・反対仕訳・訂正後）。新しい順。 */
+  accountingHistory: AccountingDocumentSummary[];
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -129,6 +139,9 @@ export function InvoiceDetail({
   const [issueOpen, setIssueOpen] = useState(false);
   const [sentOpen, setSentOpen] = useState(false);
   const [paidOpen, setPaidOpen] = useState(false);
+  // 反対仕訳 — 対象の会計文書番号（null = モーダルを閉じている）。
+  const [reverseTarget, setReverseTarget] = useState<string | null>(null);
+  const [reverseReason, setReverseReason] = useState("");
 
   // 税率ごとの区分記載。税区分マスタ以前の請求書はヘッダから 1 本合成されるので、
   // 画面の形は移行の前後で変わらない。
@@ -223,25 +236,31 @@ export function InvoiceDetail({
     },
   ];
 
-  // 下流 = 会計連携（仕訳 CSV）。書類ではないが請求書の最後の
-  // 一歩なので、済/未 が判るようにここへ出す。
+  // 下流 = 会計連携（会計文書の転記）。書類ではないが請求書の最後の
+  // 一歩なので、済/未 が判るようにここへ出す。**転記済み** = いま有効な
+  // 会計文書（accountingDocument）がある状態 — invoice.accountingExportedAt
+  // は「かつて転記した事実」の複写にすぎず、反対仕訳のあとも残るので、
+  // 「今転記済みか」の判定には使わない。
   const handoffGroups: HandoffGroup[] = [
     {
       key: "accounting",
       title: tr("billing.invoices.accountingExport"),
-      items: invoice.accountingExportedAt
+      items: accountingDocument
         ? [
             {
               key: "accounting",
-              label: invoice.invoiceNumber,
+              label: accountingDocument.documentNumber,
               done: true,
               note: tr("billing.invoices.exportedAtLabel", {
-                dateTime: fmt.dateTime(invoice.accountingExportedAt),
+                dateTime: fmt.dateTime(accountingDocument.postedAt),
               }),
             },
           ]
         : [],
-      emptyNote: tr("billing.invoices.notExportedAfterIssue"),
+      emptyNote:
+        accountingHistory.length > 0
+          ? tr("billing.accountingDocuments.needsRepost")
+          : tr("billing.invoices.notExportedAfterIssue"),
     },
   ];
 
@@ -327,6 +346,31 @@ export function InvoiceDetail({
     });
   };
 
+  const confirmReverse = () => {
+    if (!reverseTarget || !reverseReason.trim()) return;
+    startTransition(async () => {
+      const result = await reverseAccountingDocument(
+        reverseTarget,
+        reverseReason,
+      );
+      if (result.ok) {
+        notifications.show({
+          title: tr("billing.accountingDocuments.reversed"),
+          message: result.data.documentNumber,
+          color: "green",
+        });
+        setReverseTarget(null);
+        router.refresh();
+      } else {
+        notifications.show({
+          title: tr("common.error2"),
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
+
   return (
     <DetailShell
       actions={
@@ -370,20 +414,34 @@ export function InvoiceDetail({
                   },
                 ]
               : []),
-            // 会計連携 CSV は発行後のみ（下書きはルートも 409）。エクスポート済みは
-            // 再出力と明示し、ルートの二重出力ガードを force=1 で通す。
+            // 会計連携 CSV は発行後のみ（下書きはルートも 409）。**転記済みの
+            // 文書は再計算しない** — 再ダウンロードは同じ文書を描き直すだけ
+            // なので、force=1 のような上書き用パラメータは持たない
+            // （前は force=1 が「同じ請求書番号のまま中身を書き換える」穴だった）。
             ...(invoice.status !== "DRAFT"
               ? [
                   {
-                    label: invoice.accountingExportedAt
-                      ? tr("billing.invoices.accountingCsvAgain")
-                      : tr("billing.invoices.accountingCsv"),
+                    label: accountingDocument
+                      ? tr("billing.accountingDocuments.redownloadCsv")
+                      : tr("billing.accountingDocuments.downloadCsv"),
                     icon: <IconFileSpreadsheet size={14} />,
                     divider: true,
                     // 実アンカーで別タブへ（PWA でもアプリ内ブラウザで開く）。
-                    href: `/api/export/accounting?invoice=${invoice.invoiceNumber}${
-                      invoice.accountingExportedAt ? "&force=1" : ""
-                    }`,
+                    href: `/api/export/accounting?invoice=${invoice.invoiceNumber}`,
+                  },
+                ]
+              : []),
+            // 反対仕訳 — 有効な転記があるときだけ出す（無ければ打ち消す
+            // 対象そのものが無い）。
+            ...(accountingDocument
+              ? [
+                  {
+                    label: tr("billing.accountingDocuments.createReversal"),
+                    icon: <IconArrowBackUp size={14} />,
+                    onClick: () => {
+                      setReverseReason("");
+                      setReverseTarget(accountingDocument.documentNumber);
+                    },
                   },
                 ]
               : []),
@@ -586,6 +644,63 @@ export function InvoiceDetail({
         </Table.ScrollContainer>
       </Paper>
 
+      {/* 会計文書履歴 — 転記・反対仕訳した会計文書（元・反対仕訳・訂正後の
+          複数本があり得る）。**ProcedurePanel には乗せない** — 入出庫伝票と
+          同じ理由（作られた時点で完結していて、進む先が無い）。 */}
+      {accountingHistory.length > 0 && (
+        <Paper p="md" radius="md" withBorder>
+          <Title mb="sm" order={5}>
+            {tr("billing.accountingDocuments.documentHistory")}
+          </Title>
+          <Table.ScrollContainer minWidth={520}>
+            <Table highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>
+                    {tr("billing.accountingDocuments.documentNumber")}
+                  </Table.Th>
+                  <Table.Th>{tr("common.status")}</Table.Th>
+                  <Table.Th>
+                    {tr("billing.accountingDocuments.postedAtLabel")}
+                  </Table.Th>
+                  <Table.Th ta="right">{tr("common.totalAmount")}</Table.Th>
+                  <Table.Th>{tr("common.notes")}</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {accountingHistory.map((doc) => (
+                  <Table.Tr key={doc.documentNumber}>
+                    <Table.Td>
+                      <DocNumber>{doc.documentNumber}</DocNumber>
+                    </Table.Td>
+                    <Table.Td>
+                      <StatusBadge
+                        entity="AccountingDocument"
+                        status={doc.status}
+                      />
+                    </Table.Td>
+                    <Table.Td className="tabular-nums">
+                      {fmt.dateTime(doc.postedAt)}
+                    </Table.Td>
+                    <Table.Td className="tabular-nums" ta="right">
+                      <MoneyText value={doc.totalDebit} />
+                    </Table.Td>
+                    <Table.Td>
+                      <Text c="dimmed" size="sm">
+                        {doc.isReversal
+                          ? tr("billing.accountingDocuments.createReversal")
+                          : ""}
+                        {doc.reverseReason ? ` ${doc.reverseReason}` : ""}
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Table.ScrollContainer>
+        </Paper>
+      )}
+
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
@@ -755,6 +870,29 @@ export function InvoiceDetail({
         opened={paidOpen}
         title={tr("billing.invoices.confirmPayment")}
       />
+
+      <ModalShell
+        confirmColor="red"
+        confirmDisabled={!reverseReason.trim()}
+        confirmLabel={tr("billing.accountingDocuments.createReversal")}
+        loading={isPending}
+        onClose={() => setReverseTarget(null)}
+        onConfirm={confirmReverse}
+        opened={reverseTarget != null}
+        title={tr("billing.accountingDocuments.confirmReverseTitle")}
+      >
+        <Text mb="sm" size="sm">
+          {tr("billing.accountingDocuments.confirmReverseMessage")}
+        </Text>
+        <Textarea
+          autosize
+          label={tr("billing.accountingDocuments.reverseReasonLabel")}
+          minRows={3}
+          onChange={(e) => setReverseReason(e.currentTarget.value)}
+          value={reverseReason}
+          withAsterisk
+        />
+      </ModalShell>
     </DetailShell>
   );
 }

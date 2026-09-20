@@ -24,12 +24,13 @@
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { hasManualCharge } from "@/components/billing/invoices/model";
+import { reverseAccountingDocumentCore } from "@/lib/accounting-documents";
 import {
   actOnCurrentStep,
   assertFlowConfigured,
   startApprovalFlow,
 } from "@/lib/approvals";
-import { recordAudit } from "@/lib/audit";
+import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { parseDocKey } from "@/lib/doc-number";
@@ -632,4 +633,30 @@ export async function rejectInvoices(
   const authz = await checkApprovalDocAccess("invoice");
   if (!authz.ok) return actionError(authz.error);
   return runBulk(numbers, (n) => rejectInvoiceApproval(n, reason));
+}
+
+/**
+ * 会計文書の反対仕訳 — 転記済み（POSTED）の会計文書を、貸借を入れ替えた
+ * 新しい文書で相殺する。元の文書自体は書き換えない（`REVERSED` に変わる
+ * だけ）— 訂正はここではなく、マスタを直したあとの再エクスポート（新しい
+ * 転記）で行う。転記（会計連携 CSV エクスポート）と同じ権限で兼用する
+ * （「誰が会計へ渡すものに触れるか」という同じ関心事のため）。
+ */
+export async function reverseAccountingDocument(
+  documentNumber: string,
+  reason: string,
+): Promise<ActionResult<{ documentNumber: string }>> {
+  const authz = await checkPermission("billing_closing", "EXPORT");
+  if (!authz.ok) return actionError(authz.error);
+  const actorId = await getCurrentActorId();
+  const result = await reverseAccountingDocumentCore(
+    documentNumber,
+    reason,
+    actorId,
+  );
+  if (result.ok) {
+    revalidatePath(BASE_PATH);
+    revalidatePath("/settings/accounting/documents");
+  }
+  return result;
 }

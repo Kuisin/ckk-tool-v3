@@ -1,0 +1,107 @@
+// 会計文書 (_specs/tables.md §9 会計連携): 転記した仕訳の永続化。
+//
+// これまでは `GET /api/export/accounting` を叩くたび `lib/accounting-export-core.ts`
+// が税区分マスタ・取引先マスタ・SY0J 設定から**その場で**仕訳行を計算していた —
+// 何も DB に残らず、`invoices.accounting_exported_at` にタイムスタンプが立つだけ
+// だった。これだと発行後にマスタや設定を直してから `force=1` で出し直すと、
+// **同じ請求書番号のまま中身が変わった CSV** が出てしまう（すでに会計ソフトへ
+// 取り込んだ後にこれをやると仕訳が食い違う）。
+//
+// SAP の会計文書（BKPF/BSEG）を参考に、**転記した瞬間に行を固定して DB へ残す**。
+// 訂正は行を書き換えず、**反対仕訳**（貸借を入れ替えた別の文書）で行う —
+// SAP の FB08 と同じ形。document type・number range・posting period・open item
+// clearing は持ち込まない（この会社が転記する文書は「請求書の仕訳」1 種類だけで、
+// 会計期間という概念もまだ無い — 要ることが出てきたら別の作業として起案する）。
+
+/// 転記済み（不変）/ 反対仕訳済み（この文書自体は書き換えない。反対仕訳は別の文書）。
+enum AccountingDocumentStatus {
+  POSTED
+  REVERSED
+
+  @@map("ACCOUNTING_DOCUMENT_STATUS")
+  @@schema("app")
+}
+
+/// 会計文書（BKPF 相当）。請求書 1 通の転記の記録 — 転記した瞬間に固定し、以後
+/// マスタ（税区分・取引先の科目コード・SY0J 設定）が変わっても中身は動かない。
+model AccountingDocument {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  yearMonth String @map("year_month") @db.Char(6)
+  seq       Int
+
+  invoiceYearMonth String @map("invoice_year_month") @db.Char(6)
+  invoiceSeq       Int    @map("invoice_seq")
+
+  status AccountingDocumentStatus @default(POSTED)
+  /// 仕訳日付 = 発行日（JST 暦日）。
+  postingDate DateTime @map("posting_date") @db.Date
+  /// どの SY0J 設定版で組んだか — `getAccountingSettingsRevision()` が返す
+  /// 値（accounting.* 設定のうち最後に変更された行の updated_at の ISO 文字列。
+  /// 設定を一度も変えていなければ null）。マスタが後で変わっても「あの時点
+  /// ではこの設定だった」を読める。
+  settingsRevision String? @map("settings_revision")
+  /// Σ借方（税込合計と一致する検算用）。
+  totalDebit Decimal @map("total_debit") @db.Decimal(12, 2)
+
+  /// 反対仕訳の連結は片方向だけ張る（「自分が誰の反対仕訳か」）。「自分が
+  /// 反対仕訳されたか」は status=REVERSED の有無 + reversalOfId=自分.id を
+  /// 持つ文書の存在で引く — 2 方向を持つと同期がずれる。
+  reversalOfId String? @map("reversal_of_id") @db.Uuid
+
+  postedBy String?   @map("posted_by") @db.Uuid
+  postedAt DateTime  @default(now()) @map("posted_at") @db.Timestamptz(6)
+
+  reversedBy     String?   @map("reversed_by") @db.Uuid
+  reversedAt     DateTime? @map("reversed_at") @db.Timestamptz(6)
+  reverseReason  String?   @map("reverse_reason")
+
+  invoice        Invoice @relation("InvoiceAccountingDocuments", fields: [invoiceYearMonth, invoiceSeq], references: [yearMonth, seq])
+  lines          AccountingDocumentLine[]
+  reversalOf     AccountingDocument?  @relation("AccountingDocumentReversal", fields: [reversalOfId], references: [id])
+  reversals      AccountingDocument[] @relation("AccountingDocumentReversal")
+  postedByUser   User?  @relation("AccountingDocumentPostedBy", fields: [postedBy], references: [id])
+  reversedByUser User?  @relation("AccountingDocumentReversedBy", fields: [reversedBy], references: [id])
+
+  @@unique([yearMonth, seq])
+  @@index([invoiceYearMonth, invoiceSeq])
+  // 「請求書 1 通に有効な転記は 1 本だけ」の部分 unique index
+  // (WHERE status = 'POSTED' AND reversal_of_id IS NULL) は Prisma で表現
+  // できないので、マイグレーションに直書きする（前例: tax_categories.is_default）。
+  @@map("accounting_documents")
+  @@schema("app")
+}
+
+/// 明細行（BSEG 相当）。lib/accounting-export-core.ts の JournalRow をそのまま
+/// 凍結する — 借方・貸方どちらの科目・補助・部門・消費税コードも「転記した
+/// 瞬間の値」。再計算しない。
+model AccountingDocumentLine {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  documentId String @map("document_id") @db.Uuid
+
+  /// "sales" | "tax"（JournalRow.kind をそのまま）。列は将来の CSV 項目の
+  /// 増減に絞られたくないので enum にしない。
+  kind    String
+  taxRate Decimal @map("tax_rate") @db.Decimal(5, 4)
+
+  debitAccountCode String  @map("debit_account_code")
+  debitSubCode     String  @map("debit_sub_code")
+  debitDeptCode    String  @map("debit_dept_code")
+  debitTaxCode     String  @map("debit_tax_code")
+  debitAmount      Decimal @map("debit_amount") @db.Decimal(12, 2)
+
+  creditAccountCode String  @map("credit_account_code")
+  creditSubCode     String  @map("credit_sub_code")
+  creditDeptCode    String  @map("credit_dept_code")
+  creditTaxCode     String  @map("credit_tax_code")
+  creditAmount      Decimal @map("credit_amount") @db.Decimal(12, 2)
+
+  memo      String
+  sortOrder Int    @default(0) @map("sort_order")
+
+  document AccountingDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("accounting_document_lines")
+  @@schema("app")
+}

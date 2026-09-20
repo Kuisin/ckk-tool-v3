@@ -1,5 +1,9 @@
 import { notFound } from "next/navigation";
 import { InvoiceDetail } from "@/components/billing/invoices/InvoiceDetail";
+import {
+  fetchAccountingDocumentHistory,
+  fetchActiveAccountingDocument,
+} from "@/lib/accounting-documents";
 import { appLabelForKey } from "@/lib/app-list";
 import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
@@ -78,8 +82,16 @@ export default async function BillingInvoicesDetailPage({
     checkPermission("invoice", "UPDATE"),
   ]);
 
+  // 会計文書（転記・反対仕訳）— いま有効な転記と、その請求書の全履歴。
+  const [accountingDocument, accountingHistory] = await Promise.all([
+    fetchActiveAccountingDocument(key),
+    fetchAccountingDocumentHistory(key),
+  ]);
+
   return (
     <InvoiceDetail
+      accountingDocument={accountingDocument}
+      accountingHistory={accountingHistory}
       approval={approval}
       approvalTrail={approvalTrail}
       auditEntries={auditEntries}
