@@ -119,7 +119,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 - 被退回的指示书会回到「下書き」（草稿），画面上会以红色显示理由。修改后可以通过「**再承認依頼**」（再次提交审批）重新提交。
 - 审批和退回的记录会保留在「手続き状況」（手续状况）下方。由代理人批准的会标注「（代理: 原承認者）」（代理：原审批人）。
 
-也可以从[审批管理](/manual/zh/operations/production/approval/user)（PD03）的列表中进行审批。
+也可以从[审批管理](/manual/zh/operations/general/my-tasks/user)（PD03）的列表中进行审批。
 
 「製造分」（制造分）的指示书获得审批后，要使用的材料会为该指示书 **预留**。
 
@@ -240,7 +240,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 - 划分为「半製品」（半成品）的部分会作为半成品进入库存。
 - 之前预留的材料会作为已使用的部分从库存中扣减。
 
-库存可以在[库存管理](/manual/zh/operations/production/product-inventory/user)（ST01）中确认。正在制造中的根数可以在同一应用的「**仕掛品**」（在制品）标签页中查看。
+库存可以在[库存管理](/manual/zh/operations/inventory/product-inventory/user)（ST01）中确认。正在制造中的根数可以在同一应用的「**仕掛品**」（在制品）标签页中查看。
 
 ### 下一步：创建出货单
 

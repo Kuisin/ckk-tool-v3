@@ -164,7 +164,7 @@ For a product that has no drawing yet, a design request is raised **in parallel*
 
 ### What happens (who does what)
 
-1. The approver checks the content in [Approval management](/manual/en/operations/production/approval/user) (`PD03`) or on the work order screen, then presses「**承認**」(Approve). If there is a problem, they choose「**差し戻し**」(Send back).
+1. The approver checks the content in [Approval management](/manual/en/operations/general/my-tasks/user) (`PD03`) or on the work order screen, then presses「**承認**」(Approve). If there is a problem, they choose「**差し戻し**」(Send back).
 
 ![Work order pending approval. The approve button is highlighted with a red box](../assets/screenshots/flow-approval-01.png)
 

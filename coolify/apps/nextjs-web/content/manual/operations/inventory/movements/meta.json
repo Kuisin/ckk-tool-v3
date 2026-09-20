@@ -1,6 +1,4 @@
 {
   "title": "入出庫伝票",
-  "pages": [
-    "user"
-  ]
+  "pages": ["user"]
 }

@@ -10,7 +10,7 @@
 import { Anchor, Badge, Table, Tabs, Text } from "@mantine/core";
 import { IconBookmark } from "@tabler/icons-react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { InventoryBadge } from "@/components/production/InventoryBadge";
 import { AppTabs } from "@/components/ui/AppTabs";
@@ -19,6 +19,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { categoryLabel } from "@/lib/app-list";
+import type { Locale } from "@/lib/i18n";
 import { InventoryTransactionsTable } from "../InventoryTransactionsTable";
 import {
   type InventoryReservationRow,
@@ -35,13 +37,14 @@ export function ProductInventoryDetail({
   record: ProductInventoryDetailData;
 }) {
   const tr = useTranslations();
+  const locale = useLocale() as Locale;
   const fmt = useFormat();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("reservations");
   return (
     <DetailShell
       breadcrumbs={[
-        tr("common.production"),
+        categoryLabel("在庫", locale), // i18n-ignore — app-list のカテゴリ名（対訳は app-list.ts が持つ）
         { label: tr("common.inventory"), href: BASE_PATH },
         tr("common.detail"),
       ]}

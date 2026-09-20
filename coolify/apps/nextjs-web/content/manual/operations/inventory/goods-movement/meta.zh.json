@@ -1,6 +1,4 @@
 {
   "title": "手工出入库",
-  "pages": [
-    "user"
-  ]
+  "pages": ["user"]
 }

@@ -5,7 +5,7 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 ---
 这是用于登记「資材倉庫A」（资材仓库A）这类 **存放物品的仓库、堆放场** 以及其中 **货架** 的应用。操作代码是 `MS0E`。
 
-库存会细分到「在哪个保管场所的哪个货架上」来管理。在[库存管理](/manual/zh/operations/production/product-inventory/user)的库存移动中，可以在这里登记的场所之间搬动物品。
+库存会细分到「在哪个保管场所的哪个货架上」来管理。在[库存管理](/manual/zh/operations/inventory/product-inventory/user)的库存移动中，可以在这里登记的场所之间搬动物品。
 
 > ⚠️ 本应用处于试用公开阶段。根据您使用的环境，可能还看不到它。
 
@@ -133,7 +133,7 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 ## 常见问题・遇到麻烦时
 
 **Q. 出现「この保管場所を参照する在庫があるため削除できません（在庫移動で空にするか、無効化してください）」（存在引用该保管场所的库存，无法删除；请用库存移动清空，或将其停用）。**
-A. 该场所还留有库存。请用[库存管理](/manual/zh/operations/production/product-inventory/user)的库存移动把里面的东西移到别的场所清空，或者在编辑界面上关闭「**有効**」（有效）将其停用。删除货架时也一样。
+A. 该场所还留有库存。请用[库存管理](/manual/zh/operations/inventory/product-inventory/user)的库存移动把里面的东西移到别的场所清空，或者在编辑界面上关闭「**有効**」（有效）将其停用。删除货架时也一样。
 
 **Q. 删除保管场所后，里面的货架会怎样？**
 A. 会一起被删除。确认界面上会显示将被删除的货架数量。此操作无法撤销。

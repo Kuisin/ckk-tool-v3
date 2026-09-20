@@ -162,7 +162,7 @@ When an order is withdrawn, you cancel the **whole order acceptance** (there is 
 1. On a deployed order acceptance, choose 「**キャンセル依頼**」 (request cancellation) from the 「…」 menu.
 2. Enter the **reason** (required) and press 「**キャンセルを依頼する**」.
 
-If the 「**注文請書キャンセル**」 (order acknowledgement cancellation) flow in the [approval settings](/manual/en/operations/masters/approval-setting/user) has steps, **nothing changes until approval finishes**. A pending card appears at the top of the screen; approvers see 「**承認**」 (approve) and 「**差し戻し**」 (reject) buttons there (they can also act from the [approval management](/manual/en/operations/production/approval/user) list). With no steps configured, the cancellation applies immediately.
+If the 「**注文請書キャンセル**」 (order acknowledgement cancellation) flow in the [approval settings](/manual/en/operations/masters/approval-setting/user) has steps, **nothing changes until approval finishes**. A pending card appears at the top of the screen; approvers see 「**承認**」 (approve) and 「**差し戻し**」 (reject) buttons there (they can also act from the [approval management](/manual/en/operations/general/my-tasks/user) list). With no steps configured, the cancellation applies immediately.
 
 On final approval, the following happens automatically:
 

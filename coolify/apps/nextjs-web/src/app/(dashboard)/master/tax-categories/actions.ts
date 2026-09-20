@@ -18,6 +18,7 @@
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
+import { ACCOUNT_CODE_PATTERN } from "@/lib/accounting-export-core";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
@@ -55,8 +56,8 @@ function accountingCodes(v: {
 }
 
 const codePattern = /^[A-Za-z0-9_-]+$/;
-/** 会計連携の科目コード — 半角数字 8 桁まで。空欄も通す（= 設定の既定に従う）。 */
-const accountCodePattern = /^[0-9]{0,8}$/;
+/** 会計連携の科目コード — 形は SY0J / MS01 と共通（accounting-export-core.ts）。空欄 = 設定の既定に従う。 */
+const accountCodePattern = ACCOUNT_CODE_PATTERN;
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 function categoryInputSchema(tr: Tr) {

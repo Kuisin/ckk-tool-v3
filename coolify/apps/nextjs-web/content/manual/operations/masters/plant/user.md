@@ -5,7 +5,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 ---
 **拠点（工場・事業所）そのもの** を登録しておくアプリです。操作コードは `MS0C` です。
 
-[製品在庫](/manual/ja/operations/production/product-inventory/user)や[素材在庫](/manual/ja/operations/production/material-inventory/user)は拠点ごとに分けて管理され、素材の入荷先などもここで登録した拠点から選びます。
+[製品在庫](/manual/ja/operations/inventory/product-inventory/user)や[素材在庫](/manual/ja/operations/inventory/material-inventory/user)は拠点ごとに分けて管理され、素材の入荷先などもここで登録した拠点から選びます。
 
 > ⚠️ このアプリは試験公開中です。ご利用の環境によっては、まだ表示されないことがあります。
 

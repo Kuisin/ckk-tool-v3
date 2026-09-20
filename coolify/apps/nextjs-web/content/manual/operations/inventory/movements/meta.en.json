@@ -1,6 +1,4 @@
 {
   "title": "Stock movements",
-  "pages": [
-    "user"
-  ]
+  "pages": ["user"]
 }

@@ -121,7 +121,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 - 差し戻された指示書は「下書き」に戻り、画面に赤く理由が出ます。直したあと「**再承認依頼**」で出し直せます。
 - 承認・差し戻しの記録は「手続き状況」の下に残ります。代理で承認したものには「（代理: 原承認者）」が付きます。
 
-承認は[承認管理](/manual/ja/operations/production/approval/user)（PD03）の一覧からも行えます。
+承認は[承認管理](/manual/ja/operations/general/my-tasks/user)（PD03）の一覧からも行えます。
 
 「製造分」の指示書が承認されると、使う素材がその指示書のために **取り置き（予約）** されます。
 

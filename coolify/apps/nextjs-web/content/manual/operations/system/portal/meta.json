@@ -1,6 +1,4 @@
 {
   "title": "取引先ポータル",
-  "pages": [
-    "user"
-  ]
+  "pages": ["user"]
 }

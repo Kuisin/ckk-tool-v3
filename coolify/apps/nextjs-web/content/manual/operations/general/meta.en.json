@@ -1,8 +1,4 @@
 {
   "title": "General",
-  "pages": [
-    "my-tasks",
-    "forms",
-    "internal-pages"
-  ]
+  "pages": ["my-tasks", "forms", "internal-pages"]
 }

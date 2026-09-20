@@ -1,6 +1,4 @@
 {
   "title": "手動入出庫",
-  "pages": [
-    "user"
-  ]
+  "pages": ["user"]
 }

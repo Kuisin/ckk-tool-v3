@@ -3,7 +3,7 @@ title: "库存管理（材料・在制品） — 操作手册"
 description: "可以确认材料现在能用多少、加上到货预定后什么时候能用多少，以及现在有多少正在制造中。"
 screenshots: [inventory-materials-01, inventory-material-detail-01, inventory-material-transactions-01, inventory-wip-01]
 ---
-本页说明[库存管理](/manual/zh/operations/production/product-inventory/user)（操作码 `ST01`）的「**素材**」（材料）标签页和「**仕掛品**」（在制品）标签页的看法。可以确认材料现在能用多少，以及现在有多少正在制造中。
+本页说明[库存管理](/manual/zh/operations/inventory/product-inventory/user)（操作码 `ST01`）的「**素材**」（材料）标签页和「**仕掛品**」（在制品）标签页的看法。可以确认材料现在能用多少，以及现在有多少正在制造中。
 
 > ⚠️ 本应用目前 **只能在测试环境中使用**。在可以正式使用之前，画面和步骤可能会有变化。
 
@@ -14,7 +14,7 @@ screenshots: [inventory-materials-01, inventory-material-detail-01, inventory-ma
 - 可以确认已订购的材料 **什么时候、会进来多少**。
 - 可以确认现在哪份指示书的哪道工序上有多少根。
 
-> 💡 材料数量无法在这里直接修改。数量会随着日常业务自动变动。本画面上能手动进行的操作只有「**在庫移動**」（库存移动，即更改存放位置）。步骤请参考[库存管理](/manual/zh/operations/production/product-inventory/user)。
+> 💡 材料数量无法在这里直接修改。数量会随着日常业务自动变动。本画面上能手动进行的操作只有「**在庫移動**」（库存移动，即更改存放位置）。步骤请参考[库存管理](/manual/zh/operations/inventory/product-inventory/user)。
 
 ## 本页出现的词语
 
@@ -82,7 +82,7 @@ screenshots: [inventory-materials-01, inventory-material-detail-01, inventory-ma
 
 > ⚠️ 在制品还不是库存。只有指示书的所有工序完成后，才会进入实际库存。
 
-使用本应用需要库存权限。产品标签页、位置标签页以及库存移动的步骤，请参考[库存管理](/manual/zh/operations/production/product-inventory/user)。
+使用本应用需要库存权限。产品标签页、位置标签页以及库存移动的步骤，请参考[库存管理](/manual/zh/operations/inventory/product-inventory/user)。
 
 ## 输入项
 

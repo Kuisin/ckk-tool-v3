@@ -1,6 +1,4 @@
 {
   "title": "通知メール",
-  "pages": [
-    "user"
-  ]
+  "pages": ["user"]
 }

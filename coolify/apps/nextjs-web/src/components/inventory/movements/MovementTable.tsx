@@ -18,6 +18,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { categoryLabel } from "@/lib/app-list";
 import { movementCauseLabel, movementCauseOptions } from "@/lib/enum-labels";
 import type { Locale } from "@/lib/i18n";
 import { MOVEMENT_CAUSE_COLOR, type MovementRow } from "./model";
@@ -132,7 +133,10 @@ export function MovementTable({
 
   return (
     <ListShell
-      breadcrumbs={[tr("common.production"), tr("common.stockMovement")]}
+      breadcrumbs={[
+        categoryLabel("在庫", locale), // i18n-ignore — app-list のカテゴリ名（対訳は app-list.ts が持つ）
+        tr("common.stockMovement"),
+      ]}
       filters={
         <>
           <Select

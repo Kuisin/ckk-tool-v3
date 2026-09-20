@@ -17,7 +17,7 @@ This app is for checking **where products and materials are and how many there a
 The screen is split into four tabs.
 
 - **製品** (products) … stock of finished products and semi-finished items. This page explains it.
-- **素材** / **仕掛品** (materials / work in progress) … material stock and how many pieces are being made right now. → [Inventory management (materials and work in progress)](/manual/en/operations/production/material-inventory/user)
+- **素材** / **仕掛品** (materials / work in progress) … material stock and how many pieces are being made right now. → [Inventory management (materials and work in progress)](/manual/en/operations/inventory/material-inventory/user)
 - **ロケーション** (locations) … a screen that shows what is where, in the order site → storage place → shelf. This page explains it.
 
 Products and materials used to be separate apps, but now they are together in this one app. If you open an old link to those screens, it takes you to this app automatically.

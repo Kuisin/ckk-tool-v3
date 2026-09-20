@@ -19,7 +19,7 @@ screenshots: [inventory-products-01, inventory-product-detail-01, inventory-tran
 画面は 4 つのタブに分かれています。
 
 - **製品** … できあがった製品と半製品の在庫です（このページで説明します）。
-- **素材** / **仕掛品** … 素材の在庫と、いま作っている途中の本数です。→ [在庫管理（素材・仕掛品）](/manual/ja/operations/production/material-inventory/user)
+- **素材** / **仕掛品** … 素材の在庫と、いま作っている途中の本数です。→ [在庫管理（素材・仕掛品）](/manual/ja/operations/inventory/material-inventory/user)
 - **ロケーション** … 拠点 → 保管場所 → 棚 の順に「どこに何があるか」を見る画面です（このページで説明します）。
 
 以前は「製品在庫」と「素材在庫」が別々のアプリでしたが、今はこの 1 つのアプリにまとまっています。以前の画面のリンクを開いても、このアプリに自動でつながります。

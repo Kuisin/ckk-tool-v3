@@ -13,7 +13,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 - どの仕入先に、どの素材を何本、いくらで注文するかを書けます。
 - 上長の **承認** をもらってから発注できます。
-- 発注すると、その素材の[在庫画面](/manual/ja/operations/production/material-inventory/user)に「入荷予定」として出ます。
+- 発注すると、その素材の[在庫画面](/manual/ja/operations/inventory/material-inventory/user)に「入荷予定」として出ます。
 - 素材が届いたら「入荷完了」を押すだけで、**在庫に自動で入ります**。
 - 注文書控えや納品書控えのファイルを、発注書にくっつけて保管できます。
 
@@ -89,7 +89,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 ![下書きの素材発注書](../../../assets/screenshots/purchase-order-detail-02.png)
 
-状態が「**承認依頼中**」に変わり、承認する人に依頼が届きます。同じ依頼は[承認管理](/manual/ja/operations/production/approval/user)の画面にも並びます。
+状態が「**承認依頼中**」に変わり、承認する人に依頼が届きます。同じ依頼は[承認管理](/manual/ja/operations/general/my-tasks/user)の画面にも並びます。
 
 ## 承認する・差し戻す（承認する人の操作）
 
@@ -106,7 +106,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 2. 「**発注**」を押します。
 3. 「発注の確認」という小さな画面が出るので、「**発注する**」を押します。
 
-状態が「**発注済**」になります。この時点で、注文した素材が[在庫画面](/manual/ja/operations/production/material-inventory/user)に「入荷予定」として表示されるようになります。
+状態が「**発注済**」になります。この時点で、注文した素材が[在庫画面](/manual/ja/operations/inventory/material-inventory/user)に「入荷予定」として表示されるようになります。
 
 ## 素材が届いたら記録する
 

@@ -3,7 +3,7 @@ title: "在庫管理（素材・仕掛品） — 操作マニュアル"
 description: "素材が今どれだけ使えるか、入荷予定を入れるといつどれだけ使えるようになるか、そして今どれだけ作っている途中かを確認できます。"
 screenshots: [inventory-materials-01, inventory-material-detail-01, inventory-material-transactions-01, inventory-wip-01]
 ---
-[在庫管理](/manual/ja/operations/production/product-inventory/user)（操作コード `ST01`）の「**素材**」タブと「**仕掛品**」タブの見かたです。素材が今どれだけ使えるか、そして今どれだけ作っている途中かを確認できます。
+[在庫管理](/manual/ja/operations/inventory/product-inventory/user)（操作コード `ST01`）の「**素材**」タブと「**仕掛品**」タブの見かたです。素材が今どれだけ使えるか、そして今どれだけ作っている途中かを確認できます。
 
 > ⚠️ このアプリは今のところ **テスト用の環境だけ** で使えます。本番で使えるようになるまでに、画面や手順が変わることがあります。
 
@@ -16,7 +16,7 @@ screenshots: [inventory-materials-01, inventory-material-detail-01, inventory-ma
 - 発注済みの素材が **いつ・どれだけ入ってくるか** を確認できます。
 - 今どの指示書のどの工程に、何本が乗っているかを確認できます。
 
-> 💡 素材の数はここで直接は直せません。数は毎日の業務にあわせて自動で動きます。この画面から手で行える操作は「**在庫移動**」（置き場所を変える）だけです。手順は[在庫管理](/manual/ja/operations/production/product-inventory/user)を参照してください。
+> 💡 素材の数はここで直接は直せません。数は毎日の業務にあわせて自動で動きます。この画面から手で行える操作は「**在庫移動**」（置き場所を変える）だけです。手順は[在庫管理](/manual/ja/operations/inventory/product-inventory/user)を参照してください。
 
 ## 用語（このページで出てくる言葉）
 
@@ -84,7 +84,7 @@ screenshots: [inventory-materials-01, inventory-material-detail-01, inventory-ma
 
 > ⚠️ 仕掛品はまだ在庫ではありません。実際の在庫に入るのは、指示書のすべての工程が完了したときです。
 
-このアプリを使うには、在庫の権限が必要です。製品タブ・ロケーションタブ・在庫移動の手順は[在庫管理](/manual/ja/operations/production/product-inventory/user)を参照してください。
+このアプリを使うには、在庫の権限が必要です。製品タブ・ロケーションタブ・在庫移動の手順は[在庫管理](/manual/ja/operations/inventory/product-inventory/user)を参照してください。
 
 ## 入力項目
 
