@@ -28,6 +28,16 @@ once: **process deliveries idempotently**.
 
 **Deletions** are invisible to \`updatedSince\`. Poll \`/deletions\` as well.
 
+**Breaking change, 2026-09-20 — product and material ids** — products and
+materials became one master table. The endpoints, their field names and their
+shapes are unchanged, but the *values* of \`/products.id\`, \`/materials.id\` and
+every reference to them (\`productId\`, \`materialId\` on order lines, work orders,
+delivery orders, delivery notes and the inventory endpoints) are now item ids.
+Old ids and cursors issued before that date resolve to a **different row**
+rather than to nothing, because all three id sequences are dense. Re-sync every
+affected resource from scratch, and re-match by \`/materials.code\` or
+\`/products.number\` rather than by the stored id.
+
 Values are returned raw: enum values (not labels), multilingual fields as
 \`{ ja, en, ... }\` objects, timestamps as RFC 3339 UTC. There is no viewer, so
 nothing is localized or formatted for display.`;

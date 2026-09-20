@@ -25,10 +25,13 @@ export interface MasterReference {
 
 /** 参照される側のマスタ（Prisma モデル名で識別）。 */
 export type MasterTarget =
-  | "Product"
+  // 製品と素材は 1 つの品目マスタ（app.items）になったので**参照先も 1 つ**。
+  // 画面は 2 つ（MS04 / MS06）のままだが、「この行を誰が指しているか」という
+  // 問いは 1 つしかない — 種別で分けると、製品の削除で素材側の参照を見落とす
+  // 形の間違いを作れてしまう（どちらも同じ id 空間なので型では止まらない）。
+  | "Item"
   | "BusinessPartner"
   | "Plant"
-  | "Material"
   | "MaterialType"
   | "StorageLocation"
   | "WorkLocation"
@@ -54,11 +57,11 @@ export type MasterKind =
   | "approvalGroup";
 
 export const KIND_TARGET: Record<MasterKind, MasterTarget> = {
-  product: "Product",
+  product: "Item",
   businessPartner: "BusinessPartner",
   branch: "BusinessPartner",
   plant: "Plant",
-  material: "Material",
+  material: "Item",
   materialType: "MaterialType",
   storageLocation: "StorageLocation",
   workLocation: "WorkLocation",
@@ -79,14 +82,31 @@ export const MASTER_REFERENCES: Record<
   MasterTarget,
   ReadonlyArray<MasterReference>
 > = {
-  Product: [
-    ref("PriceListEntry", "productId"), // RESTRICT（従来からのガード）
-    ref("QuoteItem", "productId"), // RESTRICT（従来からのガード）
-    ref("OrderLine", "productId"),
-    ref("DesignFile", "productId"),
-    ref("DesignRequest", "productId"),
-    ref("Estimate", "productId"),
-    ref("InspectionTemplate", "productId"),
+  // 品目（app.items）— 製品・素材の両方。いまはすべて RESTRICT なので DB も
+  // 止めるが、**P2003 より先に同じ文言で止める**ために数える（利用者から見れば
+  // 「参照があるので消せません」の 1 つの話）。
+  Item: [
+    // 販売
+    ref("PriceListEntry", "itemId"),
+    ref("QuoteItem", "itemId"),
+    ref("OrderLine", "itemId"),
+    ref("Estimate", "itemId"),
+    // 出荷
+    ref("DeliveryOrderItem", "itemId"),
+    ref("DeliveryNoteItem", "itemId"),
+    // 生産・設計
+    ref("WorkOrder", "productItemId"),
+    ref("WorkOrder", "materialItemId"),
+    ref("ProductProcessRoute", "itemId"),
+    ref("InspectionTemplate", "itemId"),
+    ref("DesignFile", "itemId"),
+    ref("DesignRequest", "itemId"),
+    // 購買
+    ref("MaterialPurchaseOrderItem", "itemId"),
+    ref("MaterialReceipt", "itemId"),
+    ref("PurchaseRequestItem", "itemId"),
+    // 在庫（バケットが残っている品目は消させない）
+    ref("ItemInventory", "itemId"),
   ],
   BusinessPartner: [
     // 販売
@@ -127,10 +147,6 @@ export const MASTER_REFERENCES: Record<
     ref("PortalGrant", "bpId"),
   ],
   Plant: [
-    ref("ProductInventory", "plantId"),
-    ref("MaterialInventory", "plantId"),
-    // 統合在庫（品目統合の第 2 段 A）。移行中は旧 2 表と両方が在庫を指すので、
-    // どちらも数える — 片方だけだと「参照ゼロ」と誤って拠点を消せてしまう。
     ref("ItemInventory", "plantId"),
     ref("WorkOrderStep", "plantId"),
     ref("ProductProcessRouteVersionStep", "plantId"),
@@ -145,13 +161,14 @@ export const MASTER_REFERENCES: Record<
     ref("KioskDevice", "plantId"),
     ref("DisplayDevice", "plantId"),
   ],
-  Material: [ref("WorkOrder", "materialId")],
   MaterialType: [
-    ref("Material", "materialTypeId"), // RESTRICT（従来からの唯一のガード）
-    // SET NULL — 製品の材種・価格試算の材種が黙って「未設定」に化ける。
-    // 価格試算は input/result の JSON に材料原価を焼き込んであるので、
-    // 列が null になっても金額は残る = 画面上は正しく見えたまま辿れなくなる。
-    ref("Product", "materialTypeId"),
+    // 素材品目の材種（RESTRICT）と、製品品目が**要求する**材種（SET NULL）。
+    // 同じ表の別の列で、意味が逆（items.prisma 冒頭の注意）。
+    ref("Item", "materialTypeId"),
+    ref("Item", "requiresMaterialTypeId"),
+    // SET NULL — 価格試算の材種が黙って「未設定」に化ける。価格試算は
+    // input/result の JSON に材料原価を焼き込んであるので、列が null になっても
+    // 金額は残る = 画面上は正しく見えたまま辿れなくなる。
     ref("Estimate", "materialTypeId"),
     // CASCADE — 材種の既定単価マトリクス（¥/1000mm）が丸ごと消える。
     // 仕入実績が無いときの材料原価はここしか無いので、消すなら人が先に
@@ -159,8 +176,6 @@ export const MASTER_REFERENCES: Record<
     ref("MaterialTypePrice", "materialTypeId"),
   ],
   StorageLocation: [
-    ref("ProductInventory", "storageLocationId"),
-    ref("MaterialInventory", "storageLocationId"),
     ref("ItemInventory", "storageLocationId"),
     // SET NULL — 完成品の保管場所。在庫行だけ見て消すと、指示書側の
     // 「どこへ入れる予定だったか」が黙って消える。
@@ -216,13 +231,13 @@ export const IGNORED_REFERENCES: ReadonlyArray<
     reason: "history row carrying flow_snapshot; schema declares SetNull",
   },
   {
-    // 顧客専用の製品コードは (製品, 顧客) の組についての対応表でしかなく、
+    // 顧客専用の製品コードは (品目, 顧客) の組についての対応表でしかなく、
     // 片側が消えれば意味を失う（CASCADE）。**削除を止めない** — 止めると
-    // 「誰かが顧客品番を 1 件登録した製品はもう消せない」になり、独立した
+    // 「誰かが顧客品番を 1 件登録した品目はもう消せない」になり、独立した
     // 価値の無いメタデータのために業務データの整理ができなくなる。
-    target: "Product",
+    target: "Item",
     model: "CustomerProductCode",
-    field: "productId",
+    field: "itemId",
     reason: "pair-only mapping (CASCADE); has no value without either side",
   },
   {

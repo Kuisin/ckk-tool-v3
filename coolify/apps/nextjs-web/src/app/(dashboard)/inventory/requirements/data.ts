@@ -175,14 +175,11 @@ export async function fetchStockRequirements(
   const futureElements: FutureElementInput[] = [];
 
   if (item.itemType === "MATERIAL") {
-    const material = await prisma.material.findUnique({
-      where: { itemId: item.id },
-    });
-    if (material) {
+    {
       // 供給: 発注済み（ORDERED）明細の未入荷残（atp.ts materialAtp と同じ考え方）。
       const poItems = await prisma.materialPurchaseOrderItem.findMany({
         where: {
-          materialId: material.id,
+          itemId: item.id,
           plantId,
           purchaseOrder: { status: "ORDERED" },
         },
@@ -237,17 +234,14 @@ export async function fetchStockRequirements(
       }
     }
   } else {
-    const product = await prisma.product.findUnique({
-      where: { itemId: item.id },
-    });
-    if (product) {
+    {
       // 供給: 進行中の指示書（承認済み・製造中）の予定数量。
       // WorkOrder は拠点列を持たない — 完成品の保管場所（storageLocationId）が
       // 決まっていればその拠点で絞り、未定（多くの指示書はここが null のまま
       // 進む）なら拠点を問わず候補に残す（絞り込みすぎて見落とすより安全側）。
       const workOrders = await prisma.workOrder.findMany({
         where: {
-          productId: product.id,
+          productItemId: item.id,
           status: { in: ["APPROVED", "IN_PROGRESS"] },
         },
         include: {
@@ -277,9 +271,6 @@ export async function fetchStockRequirements(
       // 明細別出荷済み数量の集計が要るため今回は見送り、過大に安全側で見積もる。
       const orderLines = await prisma.orderLine.findMany({
         where: {
-          // 品目統合 第 2 段 C — 注文明細は品目で絞る。指示書側
-          // （work_orders）はまだ products.id なので、上の product は
-          // そちらのためだけに残っている。
           itemId: item.id,
           status: { in: ["CONFIRMED", "IN_PRODUCTION", "PARTIAL_SHIPPED"] },
         },

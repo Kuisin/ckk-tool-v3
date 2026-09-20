@@ -125,12 +125,12 @@ export async function searchDocuments(
               : undefined,
           orderBy: { workOrderNumber: "desc" },
           take: LIMIT,
-          include: { product: { select: { name: true } } },
+          include: { productItem: { select: { name: true } } },
         });
         return rows.map((r) => ({
           href: `/production/work-orders/${formatDocNumber("WOR", r)}`,
           number: formatDocNumber("WOR", r),
-          detail: name(r.product?.name),
+          detail: name(r.productItem?.name),
         }));
       }
       case "delivery_order": {

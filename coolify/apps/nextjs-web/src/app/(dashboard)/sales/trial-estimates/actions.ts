@@ -21,7 +21,6 @@ import {
   formatEstimateNumber,
   parseDocKey,
 } from "@/lib/doc-number";
-import { legacyProductIdForItem } from "@/lib/item-legacy-product";
 import {
   fetchMaterialTypeDefaultPrice,
   fetchPriceHistoryByType,
@@ -208,9 +207,6 @@ export async function createTrialEstimate(
       );
     }
     const itemId = v.itemId ? Number(v.itemId) : null;
-    // 旧 product_id 列を埋めるための橋渡し（読み・判定はすべて item 側）。
-    const legacyProductId =
-      itemId != null ? await legacyProductIdForItem(itemId) : null;
     const { yearMonth, seq } = await allocateDocumentKey("ESTIMATE");
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
@@ -228,7 +224,6 @@ export async function createTrialEstimate(
         salesRepId,
         itemId,
         // 旧 product_id 列はまだ残っているので橋渡しで埋める（落とすのは最後の段）。
-        productId: legacyProductId,
         materialTypeId: v.materialTypeId ? Number(v.materialTypeId) : null,
         diameterCode: v.diameterCode || null,
         surfaceFinishCode: v.surfaceFinishCode || null,
@@ -296,7 +291,6 @@ export async function linkTrialEstimateProduct(
       );
     }
     let idNum: number | null = null;
-    let legacyProductId: number | null = null;
     if (itemId !== null) {
       idNum = Number(itemId);
       if (!Number.isInteger(idNum) || idNum <= 0) {
@@ -308,13 +302,11 @@ export async function linkTrialEstimateProduct(
       });
       if (!item)
         return actionError(tr("sales.trialEstimateActions.productNotFound"));
-      legacyProductId = await legacyProductIdForItem(idNum);
     }
     if ((estimate.itemId ?? null) === idNum) return actionOk();
     await prisma.estimate.update({
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
-      // 旧 product_id 列も橋渡しで揃える（落とすのは最後の段）。
-      data: { itemId: idNum, productId: legacyProductId },
+      data: { itemId: idNum },
     });
     await recordAudit({
       action: "UPDATE",

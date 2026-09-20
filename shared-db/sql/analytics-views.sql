@@ -60,7 +60,7 @@ SELECT
   e.created_at, e.updated_at
 FROM app.estimates e
 LEFT JOIN app.business_partners cust ON cust.id = e.customer_bp_id
-LEFT JOIN app.products prod          ON prod.id = e.product_id
+LEFT JOIN app.items prod             ON prod.id = e.item_id
 LEFT JOIN app.material_types mt      ON mt.id = e.material_type_id
 LEFT JOIN app.users su               ON su.id = e.sales_rep_id
 LEFT JOIN app.users cu               ON cu.id = e.created_by;
@@ -75,7 +75,7 @@ SELECT
   pe.created_at, pe.updated_at
 FROM app.price_list_entries pe
 LEFT JOIN app.business_partners cust ON cust.id = pe.customer_bp_id
-LEFT JOIN app.products prod          ON prod.id = pe.product_id
+LEFT JOIN app.items prod             ON prod.id = pe.item_id
 LEFT JOIN app.users su               ON su.id = pe.sales_rep_id;
 
 CREATE OR REPLACE VIEW analytics.v_price_list_variants WITH (security_invoker = true) AS
@@ -94,7 +94,7 @@ SELECT
 FROM app.price_list_variants v
 JOIN app.price_list_entries pe ON pe.year_month = v.entry_year_month AND pe.seq = v.entry_seq
 LEFT JOIN app.business_partners cust ON cust.id = pe.customer_bp_id
-LEFT JOIN app.products prod          ON prod.id = pe.product_id
+LEFT JOIN app.items prod             ON prod.id = pe.item_id
 LEFT JOIN app.currencies cur         ON cur.code = pe.currency
 LEFT JOIN app.currencies usd         ON usd.code = 'USD';
 
@@ -127,7 +127,7 @@ SELECT
   round(qi.amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                       AS amount_jpy,
   round(qi.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)     AS amount_usd
 FROM app.quote_items qi
-LEFT JOIN app.products prod ON prod.id = qi.product_id
+LEFT JOIN app.items prod ON prod.id = qi.item_id
 LEFT JOIN app.quotes q ON q.year_month = qi.quote_year_month AND q.seq = qi.quote_seq
 LEFT JOIN app.currencies cur ON cur.code = q.currency
 LEFT JOIN app.currencies usd ON usd.code = 'USD';
@@ -197,7 +197,7 @@ JOIN app.order_acceptances oa
   ON oa.year_month = ol.acceptance_year_month AND oa.seq = ol.acceptance_seq
 LEFT JOIN app.business_partners cust ON cust.id = oa.customer_bp_id
 LEFT JOIN app.users su               ON su.id = oa.sales_rep_id
-LEFT JOIN app.products prod          ON prod.id = ol.product_id
+LEFT JOIN app.items prod             ON prod.id = ol.item_id
 LEFT JOIN app.business_partners eu   ON eu.id = ol.end_user_bp_id
 LEFT JOIN app.currencies cur         ON cur.code = oa.currency
 LEFT JOIN app.currencies usd         ON usd.code = 'USD'
@@ -231,7 +231,7 @@ SELECT
   dr.change_reason,
   coalesce(cbp.name->>'ja', cbp.name->>'en') AS customer_name
 FROM app.design_requests dr
-LEFT JOIN app.products prod ON prod.id = dr.product_id
+LEFT JOIN app.items prod ON prod.id = dr.item_id
 LEFT JOIN app.users cu ON cu.id = dr.created_by
 LEFT JOIN app.users au ON au.id = dr.assignee_id
 LEFT JOIN app.business_partners cbp ON cbp.id = dr.customer_bp_id
@@ -257,12 +257,13 @@ CREATE OR REPLACE VIEW analytics.v_purchase_request_items WITH (security_invoker
 SELECT
   pri.id, pri.request_id,
   coalesce(m.name->>'ja', m.name->>'en') AS material_name,
-  pri.material_id, pri.quantity, pri.unit, pri.desired_at,
+  pri.item_id AS material_id,  -- 列名は互換のため据え置き。値は品目 id（app.items）
+  pri.quantity, pri.unit, pri.desired_at,
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
   pri.sort_order,
   pr.request_number
 FROM app.purchase_request_items pri
-LEFT JOIN app.materials m ON m.id = pri.material_id
+LEFT JOIN app.items m ON m.id = pri.item_id
 LEFT JOIN app.plants pl ON pl.id = pri.plant_id
 LEFT JOIN app.purchase_requests pr ON pr.id = pri.request_id;
 
@@ -290,7 +291,7 @@ CREATE OR REPLACE VIEW analytics.v_material_purchase_order_items WITH (security_
 SELECT
   poi.id, poi.purchase_order_id,
   coalesce(m.name->>'ja', m.name->>'en') AS material_name,
-  poi.material_id,
+  poi.item_id AS material_id,  -- 列名は互換のため据え置き。値は品目 id
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
   poi.quantity, poi.unit, poi.unit_price, poi.amount, poi.currency,
   poi.received_quantity, poi.expected_at, poi.sort_order,
@@ -299,7 +300,7 @@ SELECT
   po.po_number
 FROM app.material_purchase_order_items poi
 LEFT JOIN app.material_purchase_orders po ON po.id = poi.purchase_order_id
-LEFT JOIN app.materials m ON m.id = poi.material_id
+LEFT JOIN app.items m ON m.id = poi.item_id
 LEFT JOIN app.plants pl ON pl.id = poi.plant_id
 LEFT JOIN app.currencies cur ON cur.code = poi.currency
 LEFT JOIN app.currencies usd ON usd.code = 'USD';
@@ -308,7 +309,7 @@ CREATE OR REPLACE VIEW analytics.v_material_receipts WITH (security_invoker = tr
 SELECT
   mr.id,
   coalesce(m.name->>'ja', m.name->>'en')   AS material_name,
-  mr.material_id,
+  mr.item_id AS material_id,  -- 列名は互換のため据え置き。値は品目 id
   coalesce(sup.name->>'ja', sup.name->>'en') AS supplier_name,
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
   mr.quantity, mr.unit, mr.received_at,
@@ -316,7 +317,7 @@ SELECT
   mr.created_at,
   po.po_number
 FROM app.material_receipts mr
-LEFT JOIN app.materials m ON m.id = mr.material_id
+LEFT JOIN app.items m ON m.id = mr.item_id
 LEFT JOIN app.business_partners sup ON sup.id = mr.supplier_bp_id
 LEFT JOIN app.plants pl ON pl.id = mr.plant_id
 LEFT JOIN app.users cu ON cu.id = mr.created_by
@@ -341,8 +342,8 @@ SELECT
   prod.currency,  -- 製品の通貨（指示書自体は通貨を持たない — フィルタ用）
   ords.order_line_nos  -- 割当済み注文明細番号（ORD-…-NN。m:n — 複数はカンマ区切り、割当ゼロ = NULL）
 FROM app.work_orders wo
-LEFT JOIN app.products prod          ON prod.id = wo.product_id
-LEFT JOIN app.materials m            ON m.id = wo.material_id
+LEFT JOIN app.items prod             ON prod.id = wo.product_item_id
+LEFT JOIN app.items m                ON m.id = wo.material_item_id
 LEFT JOIN app.storage_locations sl   ON sl.id = wo.storage_location_id
 LEFT JOIN app.users cu ON cu.id = wo.created_by
 LEFT JOIN app.users au ON au.id = wo.approved_by
@@ -454,35 +455,63 @@ LEFT JOIN app.work_orders wo ON wo.id = wos.work_order_id;
 -- 在庫 (Inventory)
 -- =====================================================================
 
+-- 在庫は app.item_inventory の 1 本（品目統合の第 2 段 A）。製品／素材の 2 本立ては
+-- **ビューの名前としてだけ**残す — Metabase の質問・ダッシュボードがこの名前で
+-- 保存されており、中身が品目になったことは BI の利用者には関係が無い。
+-- 品目種別で絞るのが唯一の違い。v_item_inventory は両方を種別付きで出す。
+--
+-- ⚠️ product_id / material_id 列は**品目 id を返す**（列名は互換のため据え置き）。
+--    旧マスタは落ちたので、この値で app.products を引くことはもうできない。
 CREATE OR REPLACE VIEW analytics.v_product_inventory WITH (security_invoker = true) AS
 SELECT
-  pi.id,
+  ii.id,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
-  pi.product_id,
+  ii.item_id AS product_id,
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
   coalesce(sl.name->>'ja', sl.name->>'en') AS storage_location_name,
-  pi.lot_number, pi.quantity, pi.reserved_quantity, pi.is_semi_finished,
-  pi.updated_at,
-  prod.currency,  -- 製品の通貨（フィルタ用）
+  ii.lot_number, ii.quantity, ii.reserved_quantity, ii.is_semi_finished,
+  ii.updated_at,
+  prod.currency,  -- 品目の通貨（フィルタ用）
   CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no
-FROM app.product_inventory pi
-LEFT JOIN app.products prod ON prod.id = pi.product_id
-LEFT JOIN app.plants pl ON pl.id = pi.plant_id
-LEFT JOIN app.storage_locations sl ON sl.id = pi.storage_location_id
-LEFT JOIN app.work_orders wo ON wo.work_order_number = pi.lot_number;
+FROM app.item_inventory ii
+JOIN app.items prod ON prod.id = ii.item_id AND prod.item_type = 'PRODUCT'
+LEFT JOIN app.plants pl ON pl.id = ii.plant_id
+LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id
+LEFT JOIN app.work_orders wo ON wo.work_order_number = ii.lot_number;
 
 CREATE OR REPLACE VIEW analytics.v_material_inventory WITH (security_invoker = true) AS
 SELECT
-  mi.id,
+  ii.id,
   coalesce(m.name->>'ja', m.name->>'en') AS material_name,
-  mi.material_id,
+  ii.item_id AS material_id,
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
   coalesce(sl.name->>'ja', sl.name->>'en') AS storage_location_name,
-  mi.quantity, mi.reserved_quantity, mi.unit, mi.updated_at
-FROM app.material_inventory mi
-LEFT JOIN app.materials m ON m.id = mi.material_id
-LEFT JOIN app.plants pl ON pl.id = mi.plant_id
-LEFT JOIN app.storage_locations sl ON sl.id = mi.storage_location_id;
+  ii.quantity, ii.reserved_quantity, ii.unit, ii.updated_at
+FROM app.item_inventory ii
+JOIN app.items m ON m.id = ii.item_id AND m.item_type = 'MATERIAL'
+LEFT JOIN app.plants pl ON pl.id = ii.plant_id
+LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id;
+
+-- 統合在庫そのもの（種別を分けずに読みたいとき）。
+CREATE OR REPLACE VIEW analytics.v_item_inventory WITH (security_invoker = true) AS
+SELECT
+  ii.id,
+  ii.item_id,
+  i.item_type,
+  i.code AS item_code,
+  coalesce(i.name->>'ja', i.name->>'en') AS item_name,
+  coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
+  coalesce(sl.name->>'ja', sl.name->>'en') AS storage_location_name,
+  sh.code AS shelf_code,
+  ii.lot_number, ii.is_semi_finished,
+  ii.quantity, ii.reserved_quantity,
+  ii.quantity - ii.reserved_quantity AS available_quantity,
+  ii.unit, ii.updated_at
+FROM app.item_inventory ii
+JOIN app.items i ON i.id = ii.item_id
+LEFT JOIN app.plants pl ON pl.id = ii.plant_id
+LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id
+LEFT JOIN app.storage_shelves sh ON sh.id = ii.shelf_id;
 
 CREATE OR REPLACE VIEW analytics.v_inventory_reservations WITH (security_invoker = true) AS
 SELECT
@@ -560,7 +589,7 @@ SELECT
       || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END
   END AS order_line_no
 FROM app.delivery_order_items di
-LEFT JOIN app.products prod ON prod.id = di.product_id
+LEFT JOIN app.items prod ON prod.id = di.item_id
 LEFT JOIN app.order_lines ol ON ol.id = di.order_line_id;
 
 CREATE OR REPLACE VIEW analytics.v_delivery_notes WITH (security_invoker = true) AS
@@ -597,7 +626,7 @@ SELECT
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
   di.quantity, di.unit_price, di.amount, di.sort_order
 FROM app.delivery_note_items di
-LEFT JOIN app.products prod ON prod.id = di.product_id;
+LEFT JOIN app.items prod ON prod.id = di.item_id;
 
 -- =====================================================================
 -- 請求 (Billing)
@@ -699,15 +728,26 @@ LEFT JOIN LATERAL (
 LEFT JOIN app.bp_customer_attrs ca ON ca.bp_id = bp.id
 LEFT JOIN app.bp_vendor_attrs   va ON va.bp_id = bp.id;
 
+-- 製品・素材は app.items の 1 本（item_type で分かれる）。ビューの名前と列は
+-- 据え置き — 保存済みの Metabase の質問がこの形を見ている。
+--
+-- ★ 製品の material_type_id / diameter_mm / length_mm は **その製品が要求する
+--   素材**（items.requires_*）で、素材側の同名列（その素材が「である」実寸）とは
+--   意味が逆。items が列を分けているのはそのため。ここで名前を戻すときも
+--   取り違えないこと（items.prisma 冒頭の注意）。
 CREATE OR REPLACE VIEW analytics.v_products WITH (security_invoker = true) AS
 SELECT
   p.id, p.name->>'ja' AS name_ja, p.name->>'en' AS name_en,
   coalesce(mt.name->>'ja', mt.name->>'en') AS material_type_name,
-  p.material_type_id, p.diameter_mm, p.length_mm, p.unit, p.is_active,
+  p.requires_material_type_id AS material_type_id,
+  p.requires_diameter_mm AS diameter_mm,
+  p.requires_length_mm AS length_mm,
+  p.unit, p.is_active,
   p.created_at, p.updated_at,
   p.currency
-FROM app.products p
-LEFT JOIN app.material_types mt ON mt.id = p.material_type_id;
+FROM app.items p
+LEFT JOIN app.material_types mt ON mt.id = p.requires_material_type_id
+WHERE p.item_type = 'PRODUCT';
 
 CREATE OR REPLACE VIEW analytics.v_materials WITH (security_invoker = true) AS
 SELECT
@@ -716,9 +756,25 @@ SELECT
   m.material_type_id, m.diameter_mm, m.length_mm,
   coalesce(sf.name->>'ja', sf.name->>'en') AS surface_finish_name,
   m.unit, m.manufacturer_model, m.is_active, m.created_at, m.updated_at
-FROM app.materials m
+FROM app.items m
 LEFT JOIN app.material_types mt ON mt.id = m.material_type_id
-LEFT JOIN app.material_surface_finishes sf ON sf.code = m.surface_finish_code;
+LEFT JOIN app.material_surface_finishes sf ON sf.code = m.surface_finish_code
+WHERE m.item_type = 'MATERIAL';
+
+-- 品目マスタそのもの（種別を分けずに読みたいとき）。
+CREATE OR REPLACE VIEW analytics.v_items WITH (security_invoker = true) AS
+SELECT
+  i.id, i.item_type, i.code,
+  i.name->>'ja' AS name_ja, i.name->>'en' AS name_en,
+  i.unit, i.currency, i.is_active,
+  coalesce(reqmt.name->>'ja', reqmt.name->>'en') AS requires_material_type_name,
+  i.requires_diameter_mm, i.requires_length_mm,
+  coalesce(mt.name->>'ja', mt.name->>'en') AS material_type_name,
+  i.diameter_mm, i.length_mm, i.manufacturer_model,
+  i.created_at, i.updated_at
+FROM app.items i
+LEFT JOIN app.material_types mt    ON mt.id = i.material_type_id
+LEFT JOIN app.material_types reqmt ON reqmt.id = i.requires_material_type_id;
 
 CREATE OR REPLACE VIEW analytics.v_material_types WITH (security_invoker = true) AS
 SELECT

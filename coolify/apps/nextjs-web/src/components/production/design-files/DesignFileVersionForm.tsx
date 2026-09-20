@@ -66,7 +66,7 @@ export function DesignFileVersionForm({
   // 「依頼の成果物なのに別製品の図面」が作れてしまう（サーバー側でも弾くが、
   // 選べる UI を出さないのが先）。
   // 値は品目 (items.id) — 一覧・詳細ページはまだ products.id 基準なので、
-  // 遷移先の URL はアップロード結果が返す旧 productId を使う。
+  // 遷移先の URL はアップロード結果が返す品目 id（items.id）を使う。
   const [itemId, setItemId] = useState<string | null>(
     requestContext
       ? String(requestContext.itemId)
@@ -109,7 +109,7 @@ export function DesignFileVersionForm({
       const json = (await res.json().catch(() => null)) as {
         ok?: boolean;
         version?: number;
-        productId?: number | null;
+        itemId?: number | null;
         error?: string;
       } | null;
       if (res.ok && json?.ok) {
@@ -125,7 +125,7 @@ export function DesignFileVersionForm({
         router.push(
           requestContext
             ? `/sales/design-requests/${encodeURIComponent(requestContext.requestNumber)}`
-            : `/production/design-files/${json.productId ?? ""}`,
+            : `/production/design-files/${json.itemId ?? ""}`,
         );
       } else {
         notifications.show({

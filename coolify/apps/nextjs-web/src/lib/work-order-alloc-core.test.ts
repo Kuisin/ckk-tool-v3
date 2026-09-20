@@ -17,7 +17,7 @@ const line = (over: Partial<LineAllocInfo> = {}): LineAllocInfo => ({
   number: "ORD-202607-00001-01",
   lineQuantity: 100,
   otherAllocated: 0,
-  productId: 9001,
+  itemId: 9001,
   status: "CONFIRMED",
   ...over,
 });
@@ -114,7 +114,7 @@ describe("validateAllocations", () => {
           ],
           lines: [
             line(),
-            line({ orderLineId: "L2", productId: 9002, lineQuantity: 30 }),
+            line({ orderLineId: "L2", itemId: 9002, lineQuantity: 30 }),
           ],
         },
         tr,
@@ -273,7 +273,7 @@ describe("validateAllocations", () => {
           type: "MANUFACTURE",
           plannedQuantity: 10,
           allocations: [{ orderLineId: "L1", quantity: 10 }],
-          lines: [line({ productId: null })],
+          lines: [line({ itemId: null })],
         },
         tr,
       ),

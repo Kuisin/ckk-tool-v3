@@ -6,7 +6,7 @@ import { requireAppRead } from "@/lib/authz-page";
 import {
   fetchCustomerOptions,
   fetchDesignRequestContext,
-  fetchProductOption,
+  fetchProductItemOption,
 } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -15,26 +15,26 @@ export const dynamic = "force-dynamic";
  * 設計図 新規 (PD16) — 版を 1 つ登録する。
  *
  * プリフィルは 2 経路。`?request=DSG-…`（設計依頼の成果物として登録）と
- * `?product=<id>`（製品マスタ・一覧から）。どちらも**実在を確かめてから**
+ * `?item=<items.id>`（製品マスタ・一覧から）。どちらも**実在を確かめてから**
  * フォームへ渡す — クエリをそのまま信じると、存在しない依頼の成果物や
  * 別製品の図面を作れてしまう。
  */
 export default async function ProductionDesignFileNewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ request?: string; product?: string }>;
+  searchParams: Promise<{ request?: string; item?: string }>;
 }) {
   const tr = await getTranslations();
   const denied = await requireAppRead("design-files");
   if (denied) return denied;
 
   const sp = await searchParams;
-  const productId = Number(sp.product);
+  const itemId = Number(sp.item);
   const [customerOptions, requestContext, initialProduct] = await Promise.all([
     fetchCustomerOptions(),
     sp.request ? fetchDesignRequestContext(sp.request) : null,
-    Number.isInteger(productId) && productId > 0
-      ? fetchProductOption(productId)
+    Number.isInteger(itemId) && itemId > 0
+      ? fetchProductItemOption(itemId)
       : null,
   ]);
 

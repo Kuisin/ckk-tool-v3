@@ -167,9 +167,6 @@ async function callPoExtract(
  * material_receipts の item_id）と揃えるため。
  */
 export async function loadMaterialMatchPool(): Promise<MaterialMatchable[]> {
-  // 学習した表記（人が結び付けた実績）も照合キーに混ぜる。target_type は
-  // 移行中も "materials" のまま（後続の段で移す）。
-  const learned = await aliasesByTarget("materials");
   const rows = await prisma.item.findMany({
     where: { itemType: "MATERIAL", isActive: true },
     orderBy: { code: "asc" },
@@ -182,6 +179,14 @@ export async function loadMaterialMatchPool(): Promise<MaterialMatchable[]> {
       unit: true,
     },
   });
+  // 学習した表記（人が結び付けた実績）も照合キーに混ぜる。target_type は
+  // 品目統合 第 3 段で "items"（製品と素材で 1 つの名前空間）。**プールに
+  // 居る素材の id だけを引く** — 全件引くと製品側の学習まで持ってくることに
+  // なる（混ざっても id で当たらないだけだが、読む理由が無い）。
+  const learned = await aliasesByTarget(
+    "items",
+    rows.map((r) => String(r.id)),
+  );
   return rows.map((r) => {
     const id = String(r.id);
     const nameJa = localized(r.name as LocalizedText | null);
@@ -208,11 +213,14 @@ async function learnedMaterial(
 ): Promise<MaterialMatchable | null> {
   const key = text?.trim();
   if (!key) return null;
-  const learned = await findAlias("materials", key);
+  const learned = await findAlias("items", key);
   if (!learned) return null;
+  // **プールの中にしか当てない。** 学習は製品と素材で 1 つの名前空間なので、
+  // 製品に結び付いた表記が当たることがある。プール（MATERIAL のみ）に
+  // 居なければ無視して推測へ落とす — マスタが消えた学習と同じ扱い。
   const hit = pool.find((m) => m.id === learned.targetId);
-  if (!hit) return null; // マスタが消えている / 無効になった学習は無視する
-  void noteAliasHit("materials", aliasKeyFor("materials", key));
+  if (!hit) return null;
+  void noteAliasHit("items", aliasKeyFor("items", key));
   return hit;
 }
 
@@ -416,7 +424,7 @@ export async function learnPurchaseAliases(input: {
   }
   for (const [text, itemId] of byText) {
     if (!itemId) continue;
-    const learning = aliasLearning("materials", itemId, text);
+    const learning = aliasLearning("items", itemId, text);
     if (learning) learnings.push(learning);
   }
 

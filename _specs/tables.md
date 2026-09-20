@@ -2247,9 +2247,19 @@ Table bp_contacts {
 //
 // target_type はテーブル名（audit_logs と同じ多態規約）。FK は張れないので
 // マスタを消しても行は残る — 突合時に存在しない target_id は無視する。
+//
+// **製品と素材は 1 つの名前空間（items）を共有する。** 品目統合で
+// マスタが 1 つになったので、学習の行き先も 1 つで足りる。1 表記 = 1 マスタ
+// なので製品と素材で同じ表記を別々に覚えることはできないが、突合側が引いた
+// 品目の item_type を必ず確かめる（販売側は PRODUCT、購買側は MATERIAL の
+// プール）ので、相手の型が当たっても素通りして推測へ落ちるだけ。
+// 値の集合は DB 側の CHECK が正で、TS の union との一致は
+// nextjs-web の match-alias-target-guard.test.ts が見張る — 片方だけ増やすと
+// INSERT が弾かれ、学習が best-effort なので**誰も気づかない**（実際に
+// 'materials' でそうなっていた）。
 Table match_aliases {
   id              serial [pk]
-  target_type     varchar [not null]   // business_partners | products
+  target_type     varchar [not null]   // business_partners | items
   target_id       varchar [not null]   // マスタ行の内部 id（文字列）
   alias           varchar [not null]   // 書類に印字されていた表記（そのまま）
   alias_key       varchar [not null]   // 突合用の正規化キー（アプリ側で作る）

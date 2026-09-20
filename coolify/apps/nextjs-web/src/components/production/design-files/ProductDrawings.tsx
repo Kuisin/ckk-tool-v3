@@ -36,13 +36,14 @@ import type { ProductDesignFile } from "./model";
 const BASE_PATH = "/production/design-files";
 
 export function ProductDrawings({
-  productId,
+  itemId,
   productLabel,
   files,
   canManage,
   memosByFile = {},
 }: {
-  productId: number;
+  /** 対象製品の品目 id（items.id）。 */
+  itemId: number;
   productLabel: string;
   files: ProductDesignFile[];
   /** 版を足す・直す・消す権限があるか（無ければ読むだけ）。 */
@@ -91,7 +92,7 @@ export function ProductDrawings({
       actions={
         canManage ? (
           <SecondaryButton
-            href={`${BASE_PATH}/new?product=${productId}`}
+            href={`${BASE_PATH}/new?item=${itemId}`}
             leftSection={<IconPlus size={14} />}
           >
             {tr("production.designFiles.registerAVersion")}

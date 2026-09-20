@@ -5,6 +5,17 @@
  *
  * 製品コードは PRD-YYYYMM-NNNN の自動採番（lib/numbering.ts →
  * app.numbering_sequences）。spec はキー/値ペアの自由構造 JSON。
+ *
+ * ## 品目統合 第 3 段 — 本体は app.items（旧 products は落とした）
+ *
+ * 画面・URL・この Server Action の `itemId` は **items.id**（`itemType:
+ * "PRODUCT"`）。旧 `products` 行へ写していた橋は列と一緒に消えた。
+ *
+ * 監査（audit_logs）の `tableName` は **`"products"` のまま**で、`recordId` が
+ * 品目 id になった。table_name は「そのとき何を書いたか」という history の事実
+ * なので動かさない（動かすと過去の行と分断される）。ポインタだけは移行
+ * 20261102090000 が旧 products.id → items.id へ読み替えてあるので、新旧の行が
+ * 同じ鍵で並ぶ。
  */
 
 import { revalidatePath } from "next/cache";
@@ -94,9 +105,10 @@ function productInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
 
 export type ProductInput = z.infer<ReturnType<typeof productInputSchema>>;
 
-function revalidate(id?: number) {
+/** `itemId` は items.id（URL の id）。products.id を渡さないこと。 */
+function revalidate(itemId?: number) {
   revalidatePath(BASE_PATH);
-  if (id != null) revalidatePath(`${BASE_PATH}/${id}`);
+  if (itemId != null) revalidatePath(`${BASE_PATH}/${itemId}`);
 }
 
 function intIdNum(v: string | null): number | null {
@@ -183,24 +195,30 @@ export async function createProduct(
   try {
     const { yearMonth, seq } = await allocateDocumentKey("PRODUCT");
     const spec = materialSpec(v);
-    const created = await prisma.product.create({
+    const code = formatProductNumber(yearMonth, seq) ?? "";
+    const name = localizedInput(v.nameJa, undefined, v.nameTranslations);
+    const specValue = specJson(v.spec);
+    const created = await prisma.item.create({
       data: {
+        itemType: "PRODUCT",
+        // items.code は DB 側のトリガーが (year_month, seq) から組み立てる
+        // 値と同じ形でなければならない（PRD-YYYYMM-NNNN）。
+        code: code || null,
         yearMonth,
         seq,
-        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
-        materialTypeId: spec.materialTypeId,
-        diameterMm: spec.diameterMm,
-        lengthMm: spec.lengthMm,
+        name,
+        requiresMaterialTypeId: spec.materialTypeId,
+        requiresDiameterMm: spec.diameterMm,
+        requiresLengthMm: spec.lengthMm,
         unit: v.unit,
         taxCategoryId: taxCategoryIdOf(v.taxCategoryId),
         matchNames: normalizeKeywords(v.matchNames),
-        spec: specJson(v.spec) ?? undefined,
+        spec: specValue ?? undefined,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },
       select: { id: true },
     });
-    const code = formatProductNumber(yearMonth, seq) ?? "";
     await recordAudit({
       action: "CREATE",
       tableName: "products",
@@ -227,8 +245,9 @@ export async function createProduct(
   }
 }
 
+/** `itemId` は items.id（URL の id）— products.id ではない。 */
 export async function updateProduct(
-  id: number,
+  itemId: number,
   input: ProductInput,
 ): Promise<ActionResult<{ id: number }>> {
   const tr = await getTranslations();
@@ -244,12 +263,12 @@ export async function updateProduct(
   const typeError = await validateProductTypeSpec(v.spec, tr);
   if (typeError) return actionError(typeError);
   try {
-    const prior = await prisma.product.findUnique({
-      where: { id },
+    const prior = await prisma.item.findFirst({
+      where: { id: itemId, itemType: "PRODUCT" },
       select: {
-        materialTypeId: true,
-        diameterMm: true,
-        lengthMm: true,
+        requiresMaterialTypeId: true,
+        requiresDiameterMm: true,
+        requiresLengthMm: true,
         unit: true,
         taxCategoryId: true,
         matchNames: true,
@@ -257,18 +276,21 @@ export async function updateProduct(
         notes: true,
       },
     });
+    if (!prior) return actionError(tr("common.targetProductNotFound"));
     const spec = materialSpec(v);
-    await prisma.product.update({
-      where: { id },
+    const name = localizedInput(v.nameJa, undefined, v.nameTranslations);
+    const specValue = specJson(v.spec) ?? Prisma.DbNull;
+    await prisma.item.update({
+      where: { id: itemId },
       data: {
-        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
-        materialTypeId: spec.materialTypeId,
-        diameterMm: spec.diameterMm,
-        lengthMm: spec.lengthMm,
+        name,
+        requiresMaterialTypeId: spec.materialTypeId,
+        requiresDiameterMm: spec.diameterMm,
+        requiresLengthMm: spec.lengthMm,
         unit: v.unit,
         taxCategoryId: taxCategoryIdOf(v.taxCategoryId),
         matchNames: normalizeKeywords(v.matchNames),
-        spec: specJson(v.spec) ?? Prisma.DbNull,
+        spec: specValue,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
       },
@@ -276,19 +298,21 @@ export async function updateProduct(
     await recordAudit({
       action: "UPDATE",
       tableName: "products",
-      recordId: String(id),
-      before: prior
-        ? {
-            materialTypeId: prior.materialTypeId,
-            diameterMm: prior.diameterMm ? Number(prior.diameterMm) : null,
-            lengthMm: prior.lengthMm ? Number(prior.lengthMm) : null,
-            unit: prior.unit,
-            taxCategoryId: prior.taxCategoryId,
-            matchNames: prior.matchNames,
-            isActive: prior.isActive,
-            notes: prior.notes,
-          }
-        : undefined,
+      recordId: String(itemId),
+      before: {
+        materialTypeId: prior.requiresMaterialTypeId,
+        diameterMm: prior.requiresDiameterMm
+          ? Number(prior.requiresDiameterMm)
+          : null,
+        lengthMm: prior.requiresLengthMm
+          ? Number(prior.requiresLengthMm)
+          : null,
+        unit: prior.unit,
+        taxCategoryId: prior.taxCategoryId,
+        matchNames: prior.matchNames,
+        isActive: prior.isActive,
+        notes: prior.notes,
+      },
       after: {
         nameJa: v.nameJa,
         materialTypeId: spec.materialTypeId,
@@ -301,8 +325,8 @@ export async function updateProduct(
         notes: v.notes?.trim() || null,
       },
     });
-    revalidate(id);
-    return actionOk({ id });
+    revalidate(itemId);
+    return actionOk({ id: itemId });
   } catch (e) {
     return actionError(
       prismaErrorMessage(e, tr("master.productsActions.updateFailed"), tr),
@@ -310,29 +334,30 @@ export async function updateProduct(
   }
 }
 
+/** `itemIds` は items.id（一覧の行 id）— products.id ではない。 */
 export async function setProductsActive(
-  ids: number[],
+  itemIds: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
   const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
+  if (itemIds.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
-    await prisma.product.updateMany({
-      where: { id: { in: ids } },
+    await prisma.item.updateMany({
+      where: { id: { in: itemIds }, itemType: "PRODUCT" },
       data: { isActive },
     });
-    for (const id of ids) {
+    for (const itemId of itemIds) {
       await recordAudit({
         action: "UPDATE",
         tableName: "products",
-        recordId: String(id),
+        recordId: String(itemId),
         after: { isActive },
       });
     }
     revalidate();
-    for (const id of ids) revalidatePath(`${BASE_PATH}/${id}`);
+    for (const itemId of itemIds) revalidatePath(`${BASE_PATH}/${itemId}`);
     return actionOk();
   } catch (e) {
     return actionError(
@@ -341,24 +366,29 @@ export async function setProductsActive(
   }
 }
 
-export async function deleteProducts(ids: number[]): Promise<ActionResult> {
+/** `itemIds` は items.id（一覧の行 id）— products.id ではない。 */
+export async function deleteProducts(itemIds: number[]): Promise<ActionResult> {
   const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
+  if (itemIds.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
     // Guard: 参照があれば消させない。省略可能な関連（注文明細・設計・価格試算・
     // 検査表）は ON DELETE SET NULL なので DB は止めない — lib/master-refs で数える。
-    const refs = await countMasterReferences("product", ids);
+    const refs = await countMasterReferences("product", itemIds);
     if (refs.total > 0) {
       return actionError(tr("master.productsActions.referencedCannotDelete"));
     }
-    await prisma.product.deleteMany({ where: { id: { in: ids } } });
-    for (const id of ids) {
+    // 顧客品番は (品目, 顧客) の組についての対応表で、片側が消えれば意味を失う
+    // （FK は CASCADE。lib/master-refs.ts IGNORED_REFERENCES にその判断がある）。
+    await prisma.item.deleteMany({
+      where: { id: { in: itemIds }, itemType: "PRODUCT" },
+    });
+    for (const itemId of itemIds) {
       await recordAudit({
         action: "DELETE",
         tableName: "products",
-        recordId: String(id),
+        recordId: String(itemId),
       });
     }
     revalidate();

@@ -92,7 +92,7 @@ describe("quoteTotals — 小計 / 消費税10% / 合計", () => {
   const item = (over: Partial<QuoteItem>): QuoteItem => ({
     id: "i",
     itemId: "p",
-    productLegacyId: "p",
+    productCode: null,
     productName: "p",
     orderType: "PRODUCTION",
     quantity: 1,

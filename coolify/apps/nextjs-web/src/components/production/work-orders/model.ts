@@ -241,8 +241,11 @@ export interface WorkOrderView {
   /** 使用する図面の版（任意のピン留め）。null = そのつど最新を引く。 */
   designFileId: string | null;
   storageLocationName: string | null;
-  /** 注文明細の対象製品（工程ルートのリンク先）。 */
-  productId: number;
+  /**
+   * この指示書が作る製品の品目 id（items.id）。製品ピッカー・工程リストの
+   * 解決・製品マスタ (MS04) へのリンクがすべてこの 1 つの id 空間を見る。
+   */
+  productItemId: number | null;
   /** 工程ルート出所（未使用 = null）。 */
   routeVersionId: string | null;
   routeId: number | null;

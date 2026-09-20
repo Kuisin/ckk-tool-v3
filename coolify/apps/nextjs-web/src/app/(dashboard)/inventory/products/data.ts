@@ -17,7 +17,7 @@ import type {
 } from "@/components/inventory/products/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import { formatProductNumber, orderLineNumberOf } from "@/lib/doc-number";
+import { orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
 import {
@@ -111,7 +111,7 @@ export async function fetchWipRows(): Promise<WipRow[]> {
         // 全列 SELECT は列追加のたび migration 前の DB で P2022 に落ちる。
         steps: { select: STEP_STATE_SELECT },
         stepLinks: { select: STEP_LINK_STATE_SELECT },
-        product: true,
+        productItem: true,
       },
       orderBy: { workOrderNumber: "asc" },
     }),
@@ -141,8 +141,8 @@ export async function fetchWipRows(): Promise<WipRow[]> {
     for (const w of computeWipByStep(ctx)) {
       rows.push({
         stepId: w.stepId,
-        productName: productName(wo.product),
-        productCode: formatProductNumber(wo.product.yearMonth, wo.product.seq),
+        productName: productName(wo.productItem),
+        productCode: wo.productItem.code,
         workOrderNumber: wo.workOrderNumber,
         stepName: stepNameOf.get(w.processStepId) ?? "—",
         wip: w.wip,

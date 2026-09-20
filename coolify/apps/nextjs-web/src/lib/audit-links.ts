@@ -159,6 +159,11 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     listPath: "/billing/closings",
   },
   // マスタ
+  // 製品・素材は app.items（品目統合 第 3 段）。`table_name` は
+  // `products` / `materials` のまま — あれは「そのとき何を書いたか」の事実で、
+  // 行き先の話ではない。`record_id` は移行 20261102090000 が品目 id へ
+  // 読み替えたので、URL はそのまま繋がる（読み替えられなかった行は
+  // `legacy:<旧 id>` になっていて、数値でないので詳細は開かない）。
   products: {
     appListKey: "master-products",
     listPath: "/master/products",

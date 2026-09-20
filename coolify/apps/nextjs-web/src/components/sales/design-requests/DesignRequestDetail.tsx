@@ -434,7 +434,7 @@ export function DesignRequestDetail({
               {
                 key: "product",
                 label: request.productName,
-                href: `/production/design-files/${request.productLegacyId}`,
+                href: `/production/design-files/${request.itemId}`,
                 note: tr("sales.designRequests.whereTheLatestDrawingApplies"),
               },
             ],
@@ -867,9 +867,9 @@ export function DesignRequestDetail({
                 <Text fw={600} size="sm">
                   {tr("sales.designRequests.deliverableVersion")}
                 </Text>
-                {request.productLegacyId != null && (
+                {request.itemId != null && (
                   <SecondaryButton
-                    href={`/production/design-files/${request.productLegacyId}`}
+                    href={`/production/design-files/${request.itemId}`}
                     leftSection={<IconFile size={14} />}
                   >
                     {tr("common.managedByDrawing")}

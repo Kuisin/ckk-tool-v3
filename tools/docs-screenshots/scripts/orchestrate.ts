@@ -109,9 +109,6 @@ const SEED_FILES_POST = [
   "sql/production-demo-seed.sql",
   "sql/shipping-billing-demo-seed.sql",
   "sql/system-demo-seed.sql",
-  // デモシードは旧 id だけで行を入れるので、最後に品目 id を後付けする
-  // （第 3 段で旧列が落ちるまで）。
-  "sql/demo-items-backfill.sql",
   // キオスク撮影用の端末（既知トークン）+ カード（PIN 4321・demo_shot 割当）。
   // 拠点 F01（masters-demo）とユーザー demo_shot が先に要るので最後。
   "sql/kiosk-shot-seed.sql",

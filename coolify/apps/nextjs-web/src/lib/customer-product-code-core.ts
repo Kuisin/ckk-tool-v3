@@ -21,7 +21,8 @@ import { productMatchKey } from "./product-match";
 
 /** 顧客 1 人ぶんの対応表の 1 行（DB 行から必要な列だけを写したもの）。 */
 export interface CustomerProductCodeEntry {
-  productId: number;
+  /** 指す製品の**品目 id**（`app.items.id` / itemType = PRODUCT）。 */
+  itemId: number;
   /** 顧客の品番（印字・検索・突合の主表記）。 */
   code: string;
   /** 顧客がその製品を呼ぶ品名（印字に併記する）。null = 併記しない。 */
@@ -32,7 +33,8 @@ export interface CustomerProductCodeEntry {
 
 /** どの表記で当たったか。`via` は監査行と画面の説明に出す。 */
 export interface CustomerProductCodeHit {
-  productId: number;
+  /** 当たった製品の**品目 id**（`app.items.id`）。 */
+  itemId: number;
   /** 当たった**登録側**の表記（読み取り側ではない）。 */
   matchedKey: string;
   via: "code" | "alias" | "name";
@@ -53,7 +55,7 @@ const MIN_NAME_LEN = 4;
 type Kind = CustomerProductCodeHit["via"];
 
 interface Key {
-  productId: number;
+  itemId: number;
   raw: string;
   via: Kind;
 }
@@ -63,7 +65,7 @@ function entryKeys(e: CustomerProductCodeEntry): Key[] {
   const out: Key[] = [];
   const push = (raw: string | null | undefined, via: Kind) => {
     const v = raw?.trim();
-    if (v) out.push({ productId: e.productId, raw: v, via });
+    if (v) out.push({ itemId: e.itemId, raw: v, via });
   };
   push(e.code, "code");
   for (const a of e.aliases ?? []) push(a, "alias");
@@ -84,15 +86,15 @@ function resolve(
   confidence: CustomerProductCodeHit["confidence"],
 ): CustomerProductCodeHit | null {
   if (hits.length === 0) return null;
-  const products = new Set(hits.map((h) => h.productId));
-  if (products.size > 1) return null;
+  const items = new Set(hits.map((h) => h.itemId));
+  if (items.size > 1) return null;
   // 同じ製品なら優先順（code → alias → name）の先頭を採る。
   const order: Kind[] = ["code", "alias", "name"];
   const best = hits.reduce((a, b) =>
     order.indexOf(b.via) < order.indexOf(a.via) ? b : a,
   );
   return {
-    productId: best.productId,
+    itemId: best.itemId,
     matchedKey: best.raw,
     via: best.via,
     confidence,

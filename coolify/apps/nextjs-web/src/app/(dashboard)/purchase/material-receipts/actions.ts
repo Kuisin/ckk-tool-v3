@@ -17,7 +17,6 @@ import { checkPermission, targetPlantsInScope } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
-import { legacyMaterialIdForItem } from "@/lib/item-legacy-material";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -82,13 +81,6 @@ export async function createMaterialReceipt(
         tr("purchase.materialReceipts.unitMismatch", { unit: item.unit }),
       );
     }
-    // material_id 列はまだ NOT NULL（品目統合 第 2 段 B）なので、対応する
-    // materials.id を引いて一緒に埋める（item-legacy-material.ts — 書き込み
-    // のためだけの橋）。
-    const legacyMaterialId = await legacyMaterialIdForItem(itemId);
-    if (legacyMaterialId == null) {
-      return actionError(tr("common.targetRecordNotFound"));
-    }
     const actor = await getCurrentActorId();
     // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。
     const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
@@ -97,7 +89,6 @@ export async function createMaterialReceipt(
     const receipt = await prisma.$transaction(async (tx) => {
       const created = await tx.materialReceipt.create({
         data: {
-          materialId: legacyMaterialId,
           itemId,
           supplierBpId: v.supplierBpId,
           // 直接調達 — 発注明細には紐付けない。

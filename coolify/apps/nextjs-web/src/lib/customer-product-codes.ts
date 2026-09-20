@@ -43,8 +43,8 @@ async function lineageIds(bpId: string): Promise<{
  * 支店の登録を親会社より優先して 1 製品 1 行に畳む。
  * 行の並び順に依存させない（どちらが先に来ても結果が同じ）。
  *
- * `key` はその行の製品を指す id — 呼び出し側が products.id（突合）か
- * items.id（印字）かを決める。**混ぜないこと**。
+ * `key` はその行の製品を指す id（品目統合 第 3 段以降は突合・印字とも
+ * **items.id** で揃っている）。
  */
 function preferOwn<T extends { customerBpId: string }>(
   rows: readonly T[],
@@ -78,20 +78,22 @@ export async function loadCustomerProductCodes(
     where: {
       customerBpId: { in: lineage.scope },
       isActive: true,
-      product: { isActive: true },
+      item: { isActive: true },
     },
     select: {
       customerBpId: true,
-      productId: true,
+      itemId: true,
       code: true,
       name: true,
       aliases: true,
     },
     orderBy: { id: "asc" },
   });
-  return [...preferOwn(rows, lineage.self, (r) => r.productId).values()].map(
+  return [...preferOwn(rows, lineage.self, (r) => r.itemId).values()].map(
     (r) => ({
-      productId: r.productId,
+      // itemId は nullable（旧列の移行中）だが preferOwn が null を落とすので
+      // ここに来る行は必ず持っている。
+      itemId: r.itemId as number,
       code: r.code,
       name: r.name,
       aliases: r.aliases,
@@ -104,9 +106,9 @@ export async function loadCustomerProductCodes(
  * 登録の無い製品はキーごと入らない（呼び出し側は自社の品名だけを刷る）。
  *
  * 品目統合 第 2 段 C — 納品書・請求書の明細が品目（items.id）で製品を指すように
- * なったので、こちらの鍵も品目に揃えてある。**突合の
- * `loadCustomerProductCodes` は products.id のまま**（学習エイリアスが
- * products を指しているため — 2 つの id 空間を混ぜないこと）。
+ * なったので、こちらの鍵も品目に揃えてある。突合の
+ * `loadCustomerProductCodes` も 第 3 段で items.id へ揃ったので、
+ * **2 つの関数が同じ id 空間を返す**（以前はここだけ品目だった）。
  */
 export async function fetchCustomerProductLabels(
   bpId: string | null | undefined,

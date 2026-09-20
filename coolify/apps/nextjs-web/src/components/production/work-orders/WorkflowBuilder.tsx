@@ -62,7 +62,7 @@ import { z } from "zod";
 import {
   searchAllocatableOrderLineOptions,
   searchMaterialItemOptions,
-  searchProductOptions,
+  searchProductItemOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   copyRouteToCustomer,
@@ -133,8 +133,12 @@ interface Option {
 
 const schema = (tr: (key: string) => string) =>
   z.object({
-    // 在庫向け（注文明細なし）のときの対象製品
-    productId: z.string().nullable(),
+    /**
+     * 在庫向け（注文明細なし）のときの対象製品 — **品目 id（items.id）**を
+     * 文字列で保持。注文明細から来る側（routesInfo.itemId）と同じ id 空間で
+     * なければならない。旧 products.id と混ざっても型は通るので、名前で防ぐ。
+     */
+    itemId: z.string().nullable(),
     type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
     plannedQuantity: z
       .number()
@@ -171,7 +175,7 @@ function initialValues(
 ): FormValues {
   if (!workOrder) {
     return {
-      productId: null,
+      itemId: null,
       type: "MANUFACTURE",
       plannedQuantity: 1,
       materialItemId: null,
@@ -183,8 +187,10 @@ function initialValues(
     };
   }
   return {
-    productId:
-      workOrder.orderLines.length === 0 ? String(workOrder.productId) : null,
+    itemId:
+      workOrder.orderLines.length === 0 && workOrder.productItemId != null
+        ? String(workOrder.productItemId)
+        : null,
     type: workOrder.type as FormValues["type"],
     plannedQuantity: workOrder.plannedQuantity,
     materialItemId:
@@ -219,7 +225,7 @@ function initialAllocRows(
         label: `${l.number} ${workOrder.productName}（${l.lineQuantity}）`,
         customerName: l.customerName ?? "",
         productName: workOrder.productName,
-        productId: workOrder.productId,
+        itemId: workOrder.productItemId ?? 0,
         quantity: l.lineQuantity,
         status: l.status,
         // 表示用の暫定値 — 選び直したときにサーバー値で更新される
@@ -498,14 +504,14 @@ export function WorkflowBuilder({
   // 直接指定した製品）。検査表の既定選択を製品専用テンプレートに絞るためだけ
   // に使う — 割当明細の製品解決を待つ routesInfo（サーバー往復）は使わず、
   // 既にクライアントにある値から同期的に出す。
-  const workOrderProductId = useMemo(() => {
+  const workOrderItemId = useMemo(() => {
     if (target === "SALES_ORDER") {
       return (
-        allocRows.find((r) => r.info && r.orderLineId)?.info?.productId ?? null
+        allocRows.find((r) => r.info && r.orderLineId)?.info?.itemId ?? null
       );
     }
-    return form.values.productId ? Number(form.values.productId) : null;
-  }, [target, allocRows, form.values.productId]);
+    return form.values.itemId ? Number(form.values.itemId) : null;
+  }, [target, allocRows, form.values.itemId]);
   const templatesFor = useCallback(
     (stepId: number): string[] =>
       stepTemplates[stepId] ??
@@ -513,17 +519,18 @@ export function WorkflowBuilder({
         .filter(
           (t) =>
             t.relatedProcessStepId === stepId &&
-            (t.productId == null ||
-              workOrderProductId == null ||
-              t.productId === workOrderProductId),
+            (t.itemId == null ||
+              workOrderItemId == null ||
+              t.itemId === workOrderItemId),
         )
         .map((t) => t.value),
-    [stepTemplates, templateOptions, workOrderProductId],
+    [stepTemplates, templateOptions, workOrderItemId],
   );
 
   // ── 工程ルート（製品の工程リスト） ──────────────────────────────────────────
   const [routesInfo, setRoutesInfo] = useState<{
-    productId: number;
+    /** 対象製品の品目 id（items.id）。 */
+    itemId: number;
     /** 明細の受注元（在庫向けは null）— 顧客一致ルートの優先選択に使う。 */
     customerBpId: string | null;
     customerName: string | null;
@@ -563,7 +570,7 @@ export function WorkflowBuilder({
   // 割当先頭の明細（工程ルート解決・素材 ATP の基準）
   const firstOrderLineId =
     allocRows.find((r) => r.orderLineId != null)?.orderLineId ?? null;
-  const productIdValue = form.values.productId;
+  const itemIdValue = form.values.itemId;
   // 対象に応じてルートを解決: 注文明細 → 明細の製品 / 在庫向け → 直接指定製品。
   // 「この顧客に複製」のあとも同じ経路で読み直す。
   const routeLoader = useMemo(
@@ -572,10 +579,10 @@ export function WorkflowBuilder({
         ? firstOrderLineId
           ? () => getProductRoutesForOrderLine(firstOrderLineId)
           : null
-        : productIdValue
-          ? () => getProductRoutesForProduct(Number(productIdValue))
+        : itemIdValue
+          ? () => getProductRoutesForProduct(Number(itemIdValue))
           : null,
-    [target, firstOrderLineId, productIdValue],
+    [target, firstOrderLineId, itemIdValue],
   );
   useEffect(() => {
     if (!routeLoader) {
@@ -597,15 +604,15 @@ export function WorkflowBuilder({
     options: Option[];
     autoLabel: string | null;
   } | null>(null);
-  const designProductId = routesInfo?.productId ?? null;
+  const designItemId = routesInfo?.itemId ?? null;
   const designCustomerBpId = routesInfo?.customerBpId ?? null;
   useEffect(() => {
-    if (designProductId == null) {
+    if (designItemId == null) {
       setDesignInfo(null);
       return;
     }
     let cancelled = false;
-    getDesignVersionsForProduct(designProductId, designCustomerBpId).then(
+    getDesignVersionsForProduct(designItemId, designCustomerBpId).then(
       (info) => {
         if (!cancelled) setDesignInfo(info);
       },
@@ -613,20 +620,20 @@ export function WorkflowBuilder({
     return () => {
       cancelled = true;
     };
-  }, [designProductId, designCustomerBpId]);
+  }, [designItemId, designCustomerBpId]);
 
   // 別製品へ切り替えたら図面の固定は外す（他製品の版が残ると保存で弾かれる）。
   // **初回は外さない** — 編集で開いたときは保存済みの固定が入っており、
   // ここで消すと「開いただけで設定が消える」ことになる。
-  const prevDesignProductId = useRef<number | null>(null);
+  const prevDesignItemId = useRef<number | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: 製品が変わったときだけ
   useEffect(() => {
-    const prev = prevDesignProductId.current;
-    prevDesignProductId.current = designProductId;
-    if (prev != null && prev !== designProductId) {
+    const prev = prevDesignItemId.current;
+    prevDesignItemId.current = designItemId;
+    if (prev != null && prev !== designItemId) {
       form.setFieldValue("designFileId", null);
     }
-  }, [designProductId]);
+  }, [designItemId]);
 
   // 別製品の注文明細へ切り替えたらルート選択をリセット（準備側は共通なので残る）
   useEffect(() => {
@@ -895,7 +902,7 @@ export function WorkflowBuilder({
     const ids = new Set(
       allocRows
         .filter((r) => r.info && r.orderLineId)
-        .map((r) => r.info?.productId ?? 0),
+        .map((r) => r.info?.itemId ?? 0),
     );
     return ids.size > 1;
   }, [allocRows]);
@@ -1008,18 +1015,18 @@ export function WorkflowBuilder({
     useState<MaterialTypeSpec | null>(null);
   // 製品が変わるたびリセット — 新しい製品では改めて候補を提示してよい
   const materialTouchedRef = useRef(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: workOrderProductId は再実行の起点（ref の書き換え自体には使わない）
+  // biome-ignore lint/correctness/useExhaustiveDependencies: workOrderItemId は再実行の起点（ref の書き換え自体には使わない）
   useEffect(() => {
     materialTouchedRef.current = false;
-  }, [workOrderProductId]);
+  }, [workOrderItemId]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: 製品/種別が変わったときだけ引き直す（materialItemId・setFieldValue は判定・更新に使うだけで再実行の起点にはしない）
   useEffect(() => {
-    if (workOrderProductId == null) {
+    if (workOrderItemId == null) {
       setMaterialAssumption(null);
       return;
     }
     let cancelled = false;
-    getWorkOrderMaterialAssumption(workOrderProductId).then((info) => {
+    getWorkOrderMaterialAssumption(workOrderItemId).then((info) => {
       if (cancelled) return;
       setMaterialAssumption(info);
       if (
@@ -1038,7 +1045,7 @@ export function WorkflowBuilder({
     return () => {
       cancelled = true;
     };
-  }, [workOrderProductId, form.values.type]);
+  }, [workOrderItemId, form.values.type]);
   useEffect(() => {
     if (!materialItemIdValue) {
       setSelectedMaterialSpec(null);
@@ -1164,9 +1171,9 @@ export function WorkflowBuilder({
       });
       return;
     }
-    if (target === "STOCK" && !values.productId) {
+    if (target === "STOCK" && !values.itemId) {
       form.setFieldError(
-        "productId",
+        "itemId",
         tr("production.workOrders.selectTheTargetProduct"),
       );
       return;
@@ -1225,10 +1232,8 @@ export function WorkflowBuilder({
     }
     const payload: WorkOrderInput = {
       allocations: target === "SALES_ORDER" ? allocations : [],
-      productId:
-        target === "STOCK" && values.productId
-          ? Number(values.productId)
-          : null,
+      itemId:
+        target === "STOCK" && values.itemId ? Number(values.itemId) : null,
       type: target === "STOCK" ? "MANUFACTURE" : values.type,
       plannedQuantity: values.plannedQuantity,
       materialItemId:
@@ -1518,21 +1523,23 @@ export function WorkflowBuilder({
           {target === "STOCK" && (
             <Stack gap={4}>
               <SearchSelect
-                error={form.errors.productId}
+                error={form.errors.itemId}
                 initialOption={
-                  workOrder && workOrder.orderLines.length === 0
+                  workOrder &&
+                  workOrder.orderLines.length === 0 &&
+                  workOrder.productItemId != null
                     ? {
-                        value: String(workOrder.productId),
+                        value: String(workOrder.productItemId),
                         label: workOrder.productName,
                       }
                     : null
                 }
                 label={<HelpLabel {...fieldHelp(tr, "workOrder", "product")} />}
-                onChange={(v) => form.setFieldValue("productId", v)}
-                onSearch={searchProductOptions}
+                onChange={(v) => form.setFieldValue("itemId", v)}
+                onSearch={searchProductItemOptions}
                 placeholder={tr("common.searchByProductCodeOrName")}
                 storageKey="product"
-                value={form.values.productId}
+                value={form.values.itemId}
                 withAsterisk
               />
               <Text c="dimmed" size="xs">
@@ -1695,7 +1702,7 @@ export function WorkflowBuilder({
       {!isStock &&
         (target === "SALES_ORDER"
           ? allocRows.some((r) => r.info != null)
-          : !!productIdValue) && (
+          : !!itemIdValue) && (
           <FormSection
             description={tr("production.workOrders.aWorkOrderAlwaysFollowsThe")}
             required

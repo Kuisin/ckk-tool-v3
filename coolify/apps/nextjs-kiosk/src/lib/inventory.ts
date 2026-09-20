@@ -194,35 +194,6 @@ export async function applyTransaction(
 }
 
 /**
- * 旧マスタの id から品目 id を引く。
- *
- * **移行中だけの橋**。work_orders.product_id / material_receipts.material_id の
- * ような参照側がまだ旧マスタを指しているので、在庫を触る直前にここで品目へ
- * 寄せる。第 2 段 B/D で参照側が item_id を持てば、この 2 本は消える。
- */
-async function itemIdForProduct(tx: Tx, productId: number): Promise<number> {
-  const row = await tx.product.findUniqueOrThrow({
-    where: { id: productId },
-    select: { itemId: true },
-  });
-  if (row.itemId == null) {
-    throw new Error(encodeInventoryNote("itemMissingForProduct"));
-  }
-  return row.itemId;
-}
-
-async function itemIdForMaterial(tx: Tx, materialId: number): Promise<number> {
-  const row = await tx.material.findUniqueOrThrow({
-    where: { id: materialId },
-    select: { itemId: true },
-  });
-  if (row.itemId == null) {
-    throw new Error(encodeInventoryNote("itemMissingForMaterial"));
-  }
-  return row.itemId;
-}
-
-/**
  * 在庫バケットの取得 or 作成（品目 × 拠点 × 保管場所 × 棚 × ロット × 半製品）。
  *
  * **保管場所・棚の既定は「未割当」（null）** — 指示書完了・入荷のような
@@ -384,7 +355,7 @@ export async function onWorkOrderCompletedTx(
 
   if (finishedQty > 0) {
     const invId = await ensureItemInventory(tx, {
-      itemId: await itemIdForProduct(tx, wo.productId),
+      itemId: wo.productItemId,
       plantId,
       lotNumber: wo.workOrderNumber,
       isSemiFinished: false,
@@ -406,7 +377,7 @@ export async function onWorkOrderCompletedTx(
       wo.steps.find((s) => (s.outputDefectSemiFinished ?? 0) > 0) ??
       wo.steps.find((s) => s.branchStockDisposition === "SEMI_FINISHED");
     const invId = await ensureItemInventory(tx, {
-      itemId: await itemIdForProduct(tx, wo.productId),
+      itemId: wo.productItemId,
       plantId,
       lotNumber: wo.workOrderNumber,
       isSemiFinished: true,
@@ -613,7 +584,7 @@ export async function onDeliveryOrderShippedTx(
       const invRows = (
         await tx.itemInventory.findMany({
           where: {
-            itemId: await itemIdForProduct(tx, item.productId),
+            itemId: item.itemId,
             lotNumber: item.lotNumber,
             isSemiFinished: false,
           },
@@ -629,7 +600,7 @@ export async function onDeliveryOrderShippedTx(
         throw new Error(
           encodeInventoryNote("lotInventoryMissing", {
             lotNumber: item.lotNumber ?? "-",
-            productId: item.productId,
+            itemId: item.itemId,
           }),
         );
       }
@@ -682,7 +653,7 @@ export async function onDeliveryOrderShippedTx(
     } else {
       // STOCK_STORAGE: 保管拠点へ入庫（請求フロー外の予備分）
       const invId = await ensureItemInventory(tx, {
-        itemId: await itemIdForProduct(tx, item.productId),
+        itemId: item.itemId,
         plantId: so.fromPlantId,
         lotNumber: item.lotNumber,
         isSemiFinished: false,
@@ -855,11 +826,8 @@ async function onMaterialReceiptTx(
     select: { id: true },
   });
   if (posted) return;
-  // 品目統合 第 2 段 B — material_receipts はもう item_id を持つ（購買側が
-  // 保存時に埋める）。null のときだけ旧列からの橋を通す（移行前の残り・
-  // 保険）。
   const invId = await ensureItemInventory(tx, {
-    itemId: r.itemId ?? (await itemIdForMaterial(tx, r.materialId)),
+    itemId: r.itemId,
     plantId: r.plantId,
     unit: r.unit,
   });
@@ -897,11 +865,11 @@ export async function reserveProductStock(
   const so = await prisma.orderLine.findUniqueOrThrow({
     where: { id: orderLineId },
   });
-  // 確定前（枝番なし・製品未特定）の明細は引当対象にならない。
-  if (so.branch == null || so.productId == null) {
+  // 確定前（枝番なし・品目未特定）の明細は引当対象にならない。
+  if (so.branch == null || so.itemId == null) {
     throw new Error(encodeInventoryNote("onlyConfirmedLinesCanBeStockChecked"));
   }
-  const productId = so.productId;
+  const itemId = so.itemId;
 
   return prisma.$transaction(async (tx) => {
     const openMovement = movementOpener(tx, {
@@ -912,7 +880,6 @@ export async function reserveProductStock(
     });
     // 対象行をロック（FOR UPDATE）— 同時照合による二重引当を防ぐ（監査 P1-3）。
     // ロック取得後に読む値が確定値になる。
-    const itemId = await itemIdForProduct(tx, productId);
     await tx.$queryRaw`
       SELECT id FROM app.item_inventory
       WHERE item_id = ${itemId} AND is_semi_finished = false

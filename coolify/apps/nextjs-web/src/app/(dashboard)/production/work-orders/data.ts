@@ -97,7 +97,7 @@ const WO_INCLUDE = {
     orderBy: { sortOrder: "asc" as const },
   },
   createdByUser: { select: { displayName: true } },
-  product: true,
+  productItem: true,
   materialItem: true,
   storageLocation: {
     select: { id: true, name: true, plant: { select: { name: true } } },
@@ -111,7 +111,7 @@ const WO_INCLUDE = {
         select: {
           id: true,
           name: true,
-          productId: true,
+          itemId: true,
           versions: {
             select: { version: true },
             orderBy: { version: "desc" as const },
@@ -371,7 +371,7 @@ function mapRow(
         branch: number | null;
       };
     }[];
-    product: { name: unknown };
+    productItem: { name: unknown };
     type: string;
     plannedQuantity: number;
     approvalStatus: string;
@@ -387,7 +387,7 @@ function mapRow(
     docNumber: formatDocNumber("WOR", r),
     createdAt: r.createdAt.toISOString(),
     orderLineNumber: orderLineListLabel(r.orderLineLinks, tr),
-    productName: localized(r.product.name as LocalizedText | null),
+    productName: localized(r.productItem.name as LocalizedText | null),
     type: r.type,
     plannedQuantity: r.plannedQuantity,
     approvalStatus: r.approvalStatus,
@@ -454,7 +454,7 @@ export async function fetchWorkOrders(
         },
         orderBy: { sortOrder: "asc" },
       },
-      product: true,
+      productItem: true,
     },
     orderBy: { workOrderNumber: "desc" },
   });
@@ -493,7 +493,7 @@ export async function fetchWorkOrderStrips(
       ...workOrderScopeWhere(authz.access, authz.userId),
     },
     include: {
-      product: true,
+      productItem: true,
       materialItem: { select: { code: true } },
       orderLineLinks: {
         select: {
@@ -536,7 +536,7 @@ export async function fetchWorkOrderStrips(
       return {
         workOrderNumber: r.workOrderNumber,
         docNumber: formatDocNumber("WOR", r),
-        productName: localized(r.product.name as LocalizedText | null),
+        productName: localized(r.productItem.name as LocalizedText | null),
         orderLineNumber: orderLineListLabel(r.orderLineLinks, tr),
         customerName:
           customers.length === 0
@@ -677,7 +677,7 @@ export async function fetchWorkOrder(
       lotNumber: l.orderLine.lotNumber,
     })),
     createdByName: r.createdByUser?.displayName ?? null,
-    productName: localized(r.product.name as LocalizedText | null),
+    productName: localized(r.productItem.name as LocalizedText | null),
     materialItemId: r.materialItemId,
     materialCode: r.materialItem?.code ?? null,
     materialName: r.materialItem
@@ -691,7 +691,7 @@ export async function fetchWorkOrder(
           r.storageLocation.name as LocalizedText | null,
         )}`
       : null,
-    productId: r.productId,
+    productItemId: r.productItemId,
     routeVersionId: r.routeVersion?.id ?? null,
     routeId: r.routeVersion?.route.id ?? null,
     routeName: r.routeVersion
@@ -1370,8 +1370,8 @@ export interface InspectionTemplateOption {
   value: string; // String(内部 id)
   label: string;
   relatedProcessStepId: number | null;
-  /** 対象製品。null = どの製品にも使える（汎用）。 */
-  productId: number | null;
+  /** 対象製品の**品目 id（items.id）**。null = どの製品にも使える（汎用）。 */
+  itemId: number | null;
 }
 
 /**
@@ -1391,7 +1391,7 @@ export async function fetchInspectionTemplateOptions(): Promise<
       value: String(r.id),
       label: `${r.code} v${r.version} ${localized(r.name as LocalizedText | null)}`,
       relatedProcessStepId: r.relatedProcessStepId,
-      productId: r.productId,
+      itemId: r.itemId,
     }));
 }
 
@@ -1445,7 +1445,8 @@ export interface OrderLineRef {
   label: string;
   customerName: string;
   productName: string;
-  productId: number;
+  /** 明細の製品 — **品目 id（items.id）**。旧 products.id とは別の id 空間。 */
+  itemId: number;
   quantity: number;
   status: string;
   /**
@@ -1465,7 +1466,7 @@ export async function fetchOrderLineRef(
       where: { id: orderLineId },
       include: {
         acceptance: { include: { customerBp: true } },
-        product: true,
+        item: true,
       },
     }),
     // 手配済みは実効値 — 完了済み指示書で不良が多く、割当より少なく
@@ -1475,7 +1476,7 @@ export async function fetchOrderLineRef(
   if (!r) return null;
   const number = orderLineNumberOf(r);
   if (!number) return null; // 未確定の明細は指示書の対象にならない
-  const productName = localized(r.product?.name as LocalizedText | null);
+  const productName = localized(r.item?.name as LocalizedText | null);
   const allocatedQuantity = allocatedMap.get(orderLineId) ?? 0;
   return {
     id: r.id,
@@ -1485,7 +1486,7 @@ export async function fetchOrderLineRef(
       r.acceptance.customerBp?.name as LocalizedText | null,
     ),
     productName,
-    productId: r.productId ?? 0,
+    itemId: r.itemId ?? 0,
     quantity: r.quantity,
     status: r.status,
     allocatedQuantity,

@@ -88,7 +88,9 @@ function buildItem(
   return {
     id,
     itemId,
-    productLegacyId: itemId,
+    // 価格の試験しか使わない見本なので、帳票にしか出ない製品コードは持たせない
+    // （採番前のレガシー品目と同じ形 = 欄が空で刷られる）。
+    productCode: null,
     productName,
     orderType,
     quantity,

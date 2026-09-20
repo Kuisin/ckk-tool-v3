@@ -83,7 +83,6 @@ model MaterialSurfaceFinish {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  materials  Material[]
   typePrices MaterialTypePrice[]
   estimates  Estimate[]
 
@@ -100,7 +99,6 @@ model MaterialDiameter {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  materials  Material[]
   typePrices MaterialTypePrice[]
   estimates  Estimate[]
 
@@ -118,8 +116,6 @@ model MaterialLengthVariant {
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  materials Material[]
 
   @@map("material_length_variants")
   @@schema("app")
@@ -147,8 +143,6 @@ model MaterialType {
   grade        MaterialManufacturerGrade? @relation(fields: [manufacturerCode, gradeCode], references: [manufacturerCode, code])
   shape        MaterialShape?             @relation(fields: [shapeCode], references: [code])
 
-  materials      Material[]
-  productsByType Product[] @relation("ProductMaterialType")
   itemsByType    Item[]    @relation("ItemMaterialType")
   itemsRequiring Item[]    @relation("ItemRequiresMaterialType")
   prices         MaterialTypePrice[]
@@ -179,114 +173,6 @@ model MaterialTypePrice {
 
   @@unique([materialTypeId, diameterCode, surfaceFinishCode])
   @@map("material_type_prices")
-  @@schema("app")
-}
-
-// ─── 素材 ───────────────────────────────────────────────────────────
-
-// 内部 id は連番、表示コード（素材コード）は code（構成から自動組立・不変）。
-model Material {
-  id                Int      @id @default(autoincrement())
-  /// 統合先の品目（app.items）。移行中だけの対応列（id とは一致しない）。
-  /// 第 3 段で列ごと消える。
-  itemId            Int?     @unique @map("item_id")
-  code              String   @unique
-  materialTypeId    Int      @map("material_type_id")
-  surfaceFinishCode String   @map("surface_finish_code") @db.Char(1)
-  diameterCode      String   @map("diameter_code") @db.Char(3)
-  lengthVariantCode String   @map("length_variant_code") @db.Char(3)
-  // 形状別種類（material_kinds の (材種.shape_code, kind_code)）— spec 通り FK なし、
-  // アクションで親材種の形状と突き合わせて検証する。
-  kindCode          String   @map("kind_code") @db.Char(2)
-  diameterMm        Decimal  @map("diameter_mm") @db.Decimal(8, 3)
-  lengthMm          Decimal  @map("length_mm") @db.Decimal(10, 3)
-  manufacturerModel String?  @map("manufacturer_model")
-  nominalDiameterMm Decimal? @map("nominal_diameter_mm") @db.Decimal(8, 3)
-  name              Json
-  unit              String
-  /// 検索・AI 突合用のキーワード（別名・略称・読み・英字表記）。business_partners.match_names と同じ役割。
-  matchNames        String[] @default([]) @map("match_names")
-  isActive          Boolean  @default(true) @map("is_active")
-  notes             String?
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
-
-  materialType  MaterialType          @relation(fields: [materialTypeId], references: [id])
-  surfaceFinish MaterialSurfaceFinish @relation(fields: [surfaceFinishCode], references: [code])
-  diameter      MaterialDiameter      @relation(fields: [diameterCode], references: [code])
-  lengthVariant MaterialLengthVariant @relation(fields: [lengthVariantCode], references: [code])
-
-  purchaseOrderItems MaterialPurchaseOrderItem[]
-  receipts           MaterialReceipt[]
-  purchaseRequestItems PurchaseRequestItem[]
-  workOrders         WorkOrder[]
-  inventory          MaterialInventory[]
-
-  @@unique([materialTypeId, surfaceFinishCode, diameterCode, lengthVariantCode])
-  // 照合名の配列検索。GIN でないと全表走査になる。
-  @@index([matchNames(ops: ArrayOps)], map: "materials_match_names_idx", type: Gin)
-  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
-  @@index([updatedAt, id])
-  @@map("materials")
-  @@schema("app")
-}
-
-// 内部 id は連番。製品コード PRD-YYYYMM-NNNN は (year_month, seq) から導出
-// （estimates と同型の複合キー）。レガシー取込行は未採番（year_month/seq NULL、
-// legacy_key に取込元 uuid5）。
-model Product {
-  id         Int     @id @default(autoincrement())
-  /// 統合先の品目（app.items）。移行中だけの対応列（id とは一致しない —
-  /// 別のシーケンスが配るため）。第 3 段（旧マスタ廃止）で列ごと消える。
-  itemId     Int?    @unique @map("item_id")
-  yearMonth  String? @map("year_month") @db.Char(6)
-  seq        Int?
-  legacyKey  String? @unique @map("legacy_key")
-  name       Json
-  // 製品が要求する素材を「材種 + 直径 + 全長」で指定する（cut-to-length のため
-  // 同一材種・直径の複数素材が充当可能で、特定 materials 行には紐付けない）。
-  materialTypeId Int?     @map("material_type_id")
-  diameterMm     Decimal? @map("diameter_mm") @db.Decimal(8, 3)
-  lengthMm       Decimal? @map("length_mm") @db.Decimal(10, 3)
-  unit       String   @default("本")
-  /// 価格の通貨（currencies.code。既定 JPY）
-  currency   String   @default("JPY")
-  /// 課税区分（tax_categories.id）。null = 税区分マスタの既定に従う。
-  /// 顧客側 (bp_customer_attrs.tax_category_id) が指定されていればそちらが勝つ —
-  /// 判定の唯一の定義元は nextjs-web の lib/tax-rate.ts resolveLineTax()。
-  taxCategoryId Int?  @map("tax_category_id")
-  spec       Json?
-  /// 検索・AI 突合用のキーワード（別名・略称・読み・英字表記）。business_partners.match_names と同じ役割。
-  matchNames String[] @default([]) @map("match_names")
-  isActive   Boolean  @default(true) @map("is_active")
-  notes      String?
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
-
-  materialType     MaterialType?    @relation("ProductMaterialType", fields: [materialTypeId], references: [id])
-  taxCategory      TaxCategory?     @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
-  priceListEntries PriceListEntry[]
-  estimates        Estimate[]
-  quoteItems       QuoteItem[]
-  deliveryOrderItems DeliveryOrderItem[]
-  deliveryNoteItems  DeliveryNoteItem[]
-  inventory          ProductInventory[]
-  designRequests     DesignRequest[]
-  designFiles        DesignFile[]
-  orderLines         OrderLine[]
-  processRoutes      ProductProcessRoute[]
-  workOrders         WorkOrder[]
-  inspectionTemplates InspectionTemplate[]
-  customerProductCodes CustomerProductCode[] @relation("CustomerProductCodeProduct")
-
-  @@unique([yearMonth, seq])
-  @@index([materialTypeId])
-  @@index([taxCategoryId])
-  // 照合名の配列検索（lib/intake matchProduct）。GIN でないと全表走査になる。
-  @@index([matchNames(ops: ArrayOps)], map: "products_match_names_idx", type: Gin)
-  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
-  @@index([updatedAt, id])
-  @@map("products")
   @@schema("app")
 }
 
@@ -393,9 +279,8 @@ model ChargeItem {
 model CustomerProductCode {
   id           Int    @id @default(autoincrement())
   customerBpId String @map("customer_bp_id") @db.Uuid
-  productId    Int    @map("product_id")
-  /// 統合品目（app.items）。顧客品番が指す製品。product_id は移行中の残りで、旧列を落とす PR で消える。
-  itemId Int? @map("item_id")
+  /// 統合品目（app.items）。顧客品番が指す製品。
+  itemId       Int    @map("item_id")
   /// 顧客の品番。**印字・検索・突合の主表記**（1 顧客の中で一意）。
   code         String
   /// 顧客がその製品を呼ぶ品名。null = 併記しない（自社の製品名だけを刷る）。
@@ -410,21 +295,23 @@ model CustomerProductCode {
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   customerBp    BusinessPartner @relation("CustomerProductCodeCustomer", fields: [customerBpId], references: [id], onDelete: Cascade)
-  product       Product         @relation("CustomerProductCodeProduct", fields: [productId], references: [id], onDelete: Cascade)
-  item Item? @relation("CustomerProductCodeItem", fields: [itemId], references: [id], onDelete: Restrict)
+  // 旧 product 関連は Cascade だった。対応表は (品目 × 顧客) の組でしか意味を
+  // 持たないので、片側が消えたら一緒に消す（lib/master-refs.ts の
+  // IGNORED_REFERENCES にその理由）。Restrict にすると「顧客品番を 1 件
+  // 登録した品目はもう消せない」になる。
+  item          Item            @relation("CustomerProductCodeItem", fields: [itemId], references: [id], onDelete: Cascade)
   createdByUser User?           @relation("CustomerProductCodeCreatedBy", fields: [createdBy], references: [id])
 
-  // 1 顧客 × 1 製品 = 1 行（印字に使う表記が 2 つあってはいけない）。
-  @@unique([customerBpId, productId])
+  // 1 顧客 × 1 品目 = 1 行（印字に使う表記が 2 つあってはいけない）。
+  @@unique([customerBpId, itemId])
   // 1 顧客の中で品番は一意 — でないと突合が 2 製品に当たって自動確定できない。
   @@unique([customerBpId, code])
-  @@index([productId])
+  @@index([itemId])
   @@index([code])
   // 突合の追加表記は配列なので GIN（unnest + ILIKE の全表走査を避ける）。
   @@index([aliases(ops: ArrayOps)], map: "customer_product_codes_aliases_idx", type: Gin)
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, id])
-  @@index([itemId])
   @@map("customer_product_codes")
   @@schema("app")
 }

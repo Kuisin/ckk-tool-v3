@@ -69,9 +69,8 @@ model DesignRequest {
   // アプリ側では必須（区分の自動判定に要る）。DB は nullable のまま —
   // 製品未指定の既存行があるので NOT NULL にすると移行が落ちるうえ、
   // 埋める妥当な値も無い。「これからの依頼には必須、過去の行はそのまま」。
-  productId      Int?    @map("product_id")
-  /// 統合品目（app.items）。設計を依頼する対象製品。
-  itemId Int? @map("item_id")
+  /// 統合品目（app.items）。設計を依頼する対象品目。
+  itemId         Int?    @map("item_id")
   // 完成した版がどの系列に載るか（= design_files.customer_bp_id）。
   // 既定は見積の顧客 / 注文明細の顧客。STANDALONE や汎用の図面は null。
   // null = 汎用（どの顧客の指示書からも使える）— 製品工程ルートと同じ規約。
@@ -108,8 +107,7 @@ model DesignRequest {
 
   quote           Quote?     @relation(fields: [quoteYearMonth, quoteSeq], references: [yearMonth, seq])
   orderLine       OrderLine? @relation(fields: [orderLineId], references: [id])
-  product         Product?   @relation(fields: [productId], references: [id])
-  item Item? @relation("DesignRequestItem", fields: [itemId], references: [id], onDelete: Restrict)
+  item            Item?      @relation("DesignRequestItem", fields: [itemId], references: [id], onDelete: Restrict)
   customerBp      BusinessPartner? @relation("DesignRequestCustomerBp", fields: [customerBpId], references: [id])
   assigneeUser    User?      @relation("DesignRequestAssignee", fields: [assigneeId], references: [id])
   requestedByUser User?      @relation("DesignRequestRequestedBy", fields: [requestedBy], references: [id])
@@ -167,9 +165,8 @@ enum DesignFileRole {
 model DesignFile {
   id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   designRequestId String?  @map("design_request_id") @db.Uuid
-  productId       Int?     @map("product_id")
-  /// 統合品目（app.items）。この図面が属する製品。
-  itemId Int? @map("item_id")
+  /// 統合品目（app.items）。この図面が属する品目。
+  itemId          Int?     @map("item_id")
   // 対象の受注元。null = 汎用。版番号と is_latest はこの列ごとに数える。
   customerBpId    String?  @map("customer_bp_id") @db.Uuid
   fileId          String   @map("file_id") @db.Uuid
@@ -183,8 +180,7 @@ model DesignFile {
   designRequest DesignRequest? @relation("DesignRequestFiles", fields: [designRequestId], references: [id])
   // この版を「元図面」に指している改訂依頼。
   baseOfRequests DesignRequest[] @relation("DesignRequestBaseFile")
-  product       Product?       @relation(fields: [productId], references: [id])
-  item Item? @relation("DesignFileItem", fields: [itemId], references: [id], onDelete: Restrict)
+  item          Item?          @relation("DesignFileItem", fields: [itemId], references: [id], onDelete: Restrict)
   customerBp    BusinessPartner? @relation("DesignFileCustomerBp", fields: [customerBpId], references: [id])
   // この版を使うと決めた指示書（任意のピン留め）。
   workOrders    WorkOrder[]    @relation("WorkOrderDesignFile")
@@ -192,10 +188,9 @@ model DesignFile {
   createdByUser User?          @relation("DesignFileCreatedBy", fields: [createdBy], references: [id])
 
   @@index([designRequestId])
-  // 系列（製品 × 受注元）の最新図面を引く。productId 前方一致で
+  // 系列（品目 × 受注元）の最新図面を引く。itemId 前方一致で
   // 「この製品の全系列」も同じ索引で足りる。
-  @@index([productId, customerBpId, isLatest, role])
-  @@index([itemId])
+  @@index([itemId, customerBpId, isLatest, role])
   @@map("design_files")
   @@schema("app")
 }
