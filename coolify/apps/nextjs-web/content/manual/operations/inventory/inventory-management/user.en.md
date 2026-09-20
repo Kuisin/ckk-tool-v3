@@ -229,6 +229,21 @@ A. Either that site has no storage locations registered yet, or it has no stock.
 **Q. What is the difference between this app and [Stock Overview](/manual/en/operations/inventory/stock-overview/user) (ST02)?**
 A. Both look at the same stock, just from different directions. This app splits the view by kind of thing (product / material / WIP / location); Stock Overview shows "what is where" as a single flat list. Use Stock Overview when you want a quick count across locations.
 
+## Other inventory apps
+
+This screen is for seeing "what is where right now". Recounting, moving stock by hand, and tracing what moved are separate apps.
+
+- [Stock Overview](/manual/en/operations/inventory/stock-overview/user) (`ST02`) — a list viewed from the site / storage location / shelf side. Stock held by an outsourcer also shows here.
+- [Stock Requirements](/manual/en/operations/inventory/stock-requirements/user) (`ST03`) — a single item's "what's coming in, what's going out" laid out over time.
+- [Stock Movement](/manual/en/operations/inventory/inventory-movements/user) (`ST04`) — the record of every stock movement: when, what, and how many.
+- [Stocktaking](/manual/en/operations/inventory/stock-takes/user) (`ST05`) — recount and reconcile with the book quantity.
+- [Manual Stock Movement](/manual/en/operations/inventory/goods-movement/user) (`ST06`) — move stock in, out, or between locations by hand.
+- [Movement Type](/manual/en/operations/inventory/movement-types/user) (`ST09`) — manage the categories chosen in manual stock movement.
+
+> 💡 **Every stock movement creates a [Stock Movement](/manual/en/operations/inventory/inventory-movements/user) slip.** This screen's "Move" action is the same — every move leaves a record.
+
+> ⚠️ **Stock held by an outsourcer does not count toward the quantities on this screen.** Anything not on hand is not counted as your own stock. Check what is held by an outsourcer from "Held by" on [Stock Overview](/manual/en/operations/inventory/stock-overview/user).
+
 <!-- permissions:start -->
 ## Permissions required
 

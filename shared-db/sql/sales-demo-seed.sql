@@ -346,4 +346,18 @@ UPDATE app.design_requests SET base_design_file_id = 'd8000000-0000-4000-8000-00
 UPDATE app.design_requests SET base_design_file_id = 'd8000000-0000-4000-8000-000000000001'::uuid
  WHERE id = 'd7000000-0000-4000-8000-000000000002'::uuid;
 
+-- ── 学習した照合名（match_aliases）を 1 件ずつ ──────────────────────────────
+-- 取込の突合で人が結び付けた表記の実例。**移行の試験のため**に置く: この表は
+-- 多態（target_type + target_id）で FK が無く、これまでデモ DB に 1 行も無かった
+-- ので、表を書き換える migration が空の表でしか試されず、dev の実データで
+-- 初めて落ちた（20261101090000 の CHECK の順序）。行があれば CI の
+-- 「base のデータ入り DB へ head の migration を当てる」で捕まる。
+INSERT INTO app.match_aliases (target_type, target_id, alias, alias_key, hit_count, last_seen_at, created_at, updated_at)
+SELECT 'items', i.id::text, 'デモ製品（旧表記）', 'デモ製品旧表記', 2, '2026-07-10T02:00:00+09', '2026-07-01T02:00:00+09', '2026-07-10T02:00:00+09'
+  FROM app.items i WHERE i.item_type = 'PRODUCT' ORDER BY i.id LIMIT 1
+ON CONFLICT (target_type, alias_key) DO NOTHING;
+INSERT INTO app.match_aliases (target_type, target_id, alias, alias_key, hit_count, last_seen_at, created_at, updated_at)
+VALUES ('business_partners', 'd0000000-0000-4000-8000-000000000001', 'デモ商事（株）', 'デモ商事', 3, '2026-07-10T02:00:00+09', '2026-07-01T02:00:00+09', '2026-07-10T02:00:00+09')
+ON CONFLICT (target_type, alias_key) DO NOTHING;
+
 COMMIT;

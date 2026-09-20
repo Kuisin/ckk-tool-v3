@@ -63,6 +63,7 @@ export const MOVEMENT_CAUSE_COLOR: Record<string, string> = {
   RESERVATION_RELEASE: "gray",
   ADJUSTMENT: "grape",
   MANUAL: "cyan",
+  // 外注は出し / 戻りで同じ色（同じ物の往復なので、並べたとき 1 本の線に見える）。
   OUTSOURCE_ISSUE: "indigo",
   OUTSOURCE_RETURN: "indigo",
   SALES_RETURN: "pink",

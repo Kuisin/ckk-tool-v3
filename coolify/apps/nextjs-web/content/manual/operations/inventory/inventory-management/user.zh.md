@@ -229,6 +229,21 @@ A. 该据点尚未登记存放位置，或没有库存。存放位置的登记�
 **Q. 本应用与[在庫一覧](/manual/zh/operations/inventory/stock-overview/user)（ST02）有什么区别？**
 A. 两者查看的是同样的库存，只是方向不同。本应用按物品种类（产品・材料・在制品・位置）分开查看，库存一览则以一张一览表按「哪里有什么」来查看。想跨场所快速清点时，请使用库存一览。
 
+## 库存的其他应用
+
+本画面用于查看「现在什么东西在哪里」。重新计数、手动移动、追溯移动记录都是别的应用。
+
+- [在庫一覧](/manual/zh/operations/inventory/stock-overview/user)（`ST02`）… 从据点・存放位置・货架的角度查看的一览表。寄存在外协的部分也在这里查看。
+- [在庫・所要量](/manual/zh/operations/inventory/stock-requirements/user)（`ST03`）… 按时间顺序查看单个品目「即将增加・减少」的数量。
+- [入出庫伝票](/manual/zh/operations/inventory/inventory-movements/user)（`ST04`）… 库存变动的记录。可以追溯何时・什么・移动了多少。
+- [棚卸](/manual/zh/operations/inventory/stock-takes/user)（`ST05`）… 重新盘点并与账面数对齐。
+- [手動入出庫](/manual/zh/operations/inventory/goods-movement/user)（`ST06`）… 人工入库・出库・移动。
+- [移動タイプ](/manual/zh/operations/inventory/movement-types/user)（`ST09`）… 管理手动出入库中选择的分类。
+
+> 💡 **库存一旦变动，就一定会生成一张[入出庫伝票](/manual/zh/operations/inventory/inventory-movements/user)。** 本画面的「移动」也是一样，每次移动都会留下记录。
+
+> ⚠️ **寄存在外协的部分不计入本画面的数量。** 不在手头的东西不算作自己的库存。寄存的部分请从[在庫一覧](/manual/zh/operations/inventory/stock-overview/user)的「寄存方」中确认。
+
 <!-- permissions:start -->
 ## 所需权限
 

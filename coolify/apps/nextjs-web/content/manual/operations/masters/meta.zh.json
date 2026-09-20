@@ -13,6 +13,7 @@
     "plant",
     "material-numbering",
     "work-location",
-    "storage-location"
+    "storage-location",
+    "charge-item"
   ]
 }

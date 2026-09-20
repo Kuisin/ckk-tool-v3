@@ -103,6 +103,59 @@ jobs:
       - name: schema と DB の差分が空であること
         run: pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema --exit-code
 
+  # base（merge 先）のデータが入った DB へ head の migration を当てる。
+  # migrate-deploy ジョブは**空の** DB にしか当てないので、行があると落ちる
+  # migration（列を書き換えてから CHECK を張り替える、など）は通ってしまい、
+  # dev の db-migrate で初めて落ちる（2026-09-20、20261101090000 の match_aliases）。
+  # ここでは base の worktree で使い捨て DB を立てて base の migration + 全デモ
+  # シードを流し、その上に head の migration を当てる — デモシードにある表は
+  # 「行がある状態」で試される。
+  migrate-with-data:
+    name: shared-db — base のデータ入り DB へ head の migration を当てる
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: shared-db/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: base を別ディレクトリへ
+        run: git worktree add /tmp/base "origin/${{ github.base_ref }}"
+      - name: base の shared-db / docs-screenshots を install（どちらも workspace 外）
+        run: |
+          (cd /tmp/base/shared-db && pnpm install --frozen-lockfile --ignore-workspace)
+          (cd /tmp/base/tools/docs-screenshots && pnpm install --frozen-lockfile --ignore-workspace)
+      - name: base の migration + 全デモシード（使い捨て DB、残す）
+        working-directory: /tmp/base/tools/docs-screenshots
+        env:
+          SHOT_DB_CONTAINER: ckk-ci-base-db
+          SHOT_DB_PORT: "55472"
+        run: pnpm docs:seed
+      - name: head の shared-db を install
+        working-directory: shared-db
+        run: pnpm install --frozen-lockfile --ignore-workspace
+      - name: head の migration を当てる → grants / analytics-views
+        working-directory: shared-db
+        env:
+          DATABASE_URL: postgresql://postgres:shots@127.0.0.1:55472/ckk
+        run: |
+          pnpm exec prisma migrate deploy
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/grants.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/analytics-views.sql
+      - name: schema と DB の差分が空であること
+        working-directory: shared-db
+        env:
+          DATABASE_URL: postgresql://postgres:shots@127.0.0.1:55472/ckk
+        run: pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema --exit-code
+      - name: 後始末
+        if: always()
+        run: docker rm -f ckk-ci-base-db || true
+
   authz-core:
     name: authz-core — lint & test
     runs-on: ubuntu-latest

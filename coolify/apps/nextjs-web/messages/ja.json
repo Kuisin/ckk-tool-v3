@@ -1206,6 +1206,9 @@
       "QUANTITY": "数量"
     },
     "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "OUTSOURCE_ISSUE": "外注支給",
+      "OUTSOURCE_RETURN": "外注戻り",
+      "SALES_RETURN": "返品",
       "MANUAL": "手動",
       "OUTSOURCE_ISSUE": "外注預け",
       "OUTSOURCE_RETURN": "預け戻り",

@@ -93,6 +93,17 @@ screenshots:
 **工程を完了できない（不良の入力で止まる）**
 良品数は受入数と不良の合計から自動で計算されるので、本数の不一致は起こらない。完了できないのは、不良の行に不良種類または詳細が入っていないか、不良の合計が受入数を超えているときである。不良の行を見直し、行ごとに区分・不良種類・詳細・本数をそろえる。
 
+## 在庫を数える・手で動かす
+
+在庫はこの流れの中で自動に動く。それ以外に触る口は 3 つで、どれも入出庫伝票を残す。
+
+- 数え直して合わせる … [棚卸](/manual/ja/operations/inventory/stock-takes/user)（`ST05`）。確定すると差のぶんだけ在庫が直る。
+- 人の手で入れる・出す・移す … [手動入出庫](/manual/ja/operations/inventory/goods-movement/user)（`ST06`）
+- 動いた記録を追う … [入出庫伝票](/manual/ja/operations/inventory/movements/user)（`ST04`）
+
+外注へ出した分は、その外注先が預かっているものとして別に数える（自社の在庫には入らない）。
+預け先ごとの本数は [在庫一覧](/manual/ja/operations/inventory/stock-overview/user)（`ST02`）で見る。
+
 ## 関連ページ
 
 - 一つの注文を通しで追う … [標準フロー](/manual/ja/process/default-flow)

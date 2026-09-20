@@ -686,7 +686,8 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                       returned: step.outsourceReturnMovementNo,
                     })
                   : tr("production.stepExecution.custodyHeld", {
-                      quantity: step.inputQuantity ?? 0,
+                      // 計上したのと同じ規則（受入数、無ければ予定数量）。
+                      quantity: step.inputQuantity ?? data.plannedQuantity,
                       supplier: step.supplierName ?? "—",
                       movement: step.outsourceIssueMovementNo,
                     })}

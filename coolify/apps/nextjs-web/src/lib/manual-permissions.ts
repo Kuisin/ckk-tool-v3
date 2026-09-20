@@ -48,6 +48,15 @@ interface ManualPageSource {
   code?: string | null;
   /** 特権操作を引くときのアプリ key（app と違う場合のみ）。 */
   privilegedAppKey?: string;
+  /**
+   * **日本語だけ書いてある**ページ（en / zh は未着手）。
+   *
+   * 機械的に訳した英語・中国語を置くより、既定言語へ落ちて日本語が出るほうが
+   * 読める（プロセス編が前からそうしている）。メニュー（meta.en/zh.json）には
+   * 並べたままにするので、行き先が消えるわけではない。訳を書いたらこの印を
+   * 外す — 外すと試験が 3 言語ぶんのファイルを要求しはじめる。
+   */
+  jaOnly?: boolean;
 }
 
 export const MANUAL_PAGES: readonly ManualPageSource[] = [
@@ -116,6 +125,11 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
   // 承認依頼中タブは approve 権限がある人にだけ出る（ページ側の判定）。
   { path: "operations/general/my-tasks/user", app: "my-tasks" },
   { path: "operations/general/forms/user", app: "forms" },
+  {
+    path: "operations/general/internal-pages/user",
+    app: "internal-pages",
+    jaOnly: true,
+  },
   // ── マスタ ──────────────────────────────────────────────────────────────
   {
     path: "operations/masters/business-partner/user",
@@ -154,6 +168,11 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
     path: "operations/masters/storage-location/user",
     app: "master-storage-locations",
   },
+  {
+    path: "operations/masters/charge-item/user",
+    app: "master-charge-items",
+    jaOnly: true,
+  },
   // ── システム ────────────────────────────────────────────────────────────
   { path: "operations/system/user-management/user", app: "user-management" },
   { path: "operations/system/app-management/user", app: "app-management" },
@@ -171,6 +190,17 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
   },
   { path: "operations/system/external-api/user", app: "api-clients" },
   { path: "operations/system/accounting/user", app: "accounting" },
+  {
+    path: "operations/system/ai-provider/user",
+    app: "ai-provider",
+    jaOnly: true,
+  },
+  {
+    path: "operations/system/notification-email/user",
+    app: "notification-email",
+    jaOnly: true,
+  },
+  { path: "operations/system/portal/user", app: "portal-admin", jaOnly: true },
   // ── キオスク（現場のタブレット。nextjs-web のアプリ一覧には無い）───────────
   // ログイン画面。QRカードと PIN があれば入れる — 権限の話ではない。
   { path: "operations/kiosk/start/user", code: null },

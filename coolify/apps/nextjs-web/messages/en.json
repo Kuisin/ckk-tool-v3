@@ -1206,6 +1206,9 @@
       "QUANTITY": "Quantity"
     },
     "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "OUTSOURCE_ISSUE": "Issued to subcontractor",
+      "OUTSOURCE_RETURN": "Returned from subcontractor",
+      "SALES_RETURN": "Sales return",
       "MANUAL": "Manual",
       "OUTSOURCE_ISSUE": "Sent to outsourcer",
       "OUTSOURCE_RETURN": "Returned from outsourcer",

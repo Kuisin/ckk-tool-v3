@@ -229,6 +229,21 @@ A. その拠点にまだ保管場所が登録されていないか、在庫が�
 **Q. このアプリと[在庫一覧](/manual/ja/operations/inventory/stock-overview/user)（ST02）は何が違うのですか。**
 A. どちらも同じ在庫を見ていますが、向きが違います。このアプリは「製品・素材・仕掛品・ロケーション」というモノの種類で分けて見る画面、在庫一覧は「どの場所に何があるか」を一覧表 1 本で見る画面です。場所を横断してざっと数えたいときは在庫一覧を使ってください。
 
+## 在庫のほかのアプリ
+
+この画面は「いま何がどこにあるか」を見るためのものです。数え直したり、手で動かしたり、動いた記録を追うのは別のアプリです。
+
+- [在庫一覧](/manual/ja/operations/inventory/stock-overview/user)（`ST02`）… 拠点・保管場所・棚の側から見る一覧です。外注へ預けている分もここで見ます。
+- [在庫・所要量](/manual/ja/operations/inventory/stock-requirements/user)（`ST03`）… 品目 1 つの「これから増えるぶん・減るぶん」を時間の順に見ます。
+- [入出庫伝票](/manual/ja/operations/inventory/inventory-movements/user)（`ST04`）… 在庫が動いた記録です。いつ・何が・何本動いたかを追えます。
+- [棚卸](/manual/ja/operations/inventory/stock-takes/user)（`ST05`）… 数え直して帳簿と合わせます。
+- [手動入出庫](/manual/ja/operations/inventory/goods-movement/user)（`ST06`）… 人の手で入れる・出す・移します。
+- [移動タイプ](/manual/ja/operations/inventory/movement-types/user)（`ST09`）… 手動入出庫で選ぶ区分を管理します。
+
+> 💡 **在庫が動くと、必ず[入出庫伝票](/manual/ja/operations/inventory/inventory-movements/user)が 1 枚できます。** この画面の「移動」も同じで、動かすたびに記録が残ります。
+
+> ⚠️ **外注に預けている分は、この画面の本数に入りません。** 手元に無いものは在庫として数えない決まりです。預けている分は[在庫一覧](/manual/ja/operations/inventory/stock-overview/user)の「預け先」から確認します。
+
 <!-- permissions:start -->
 ## 必要な権限
 
