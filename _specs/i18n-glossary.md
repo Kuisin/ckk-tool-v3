@@ -170,10 +170,14 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | PU04 | 外注依頼 | Outsource order | 外协委托单 |
 | PD02 | 指示書 | Work order | 工单 |
 | ST01 | 在庫管理 | Inventory | 库存管理 |
+| ST02 | 在庫一覧 | Stock overview | 库存一览 |
+| ST03 | 在庫・所要量 | Stock requirements | 库存・所要量 |
 | PD05 | 未処理指示書 | Pending work orders | 未处理工单 |
 | PD06 | 設計図 | Drawing | 图纸 |
 | ST04 | 入出庫伝票 | Stock movement | 出入库单 |
 | ST05 | 棚卸 | Stocktaking | 盘点 |
+| ST06 | 手動入出庫 | Manual stock movement | 手动出入库 |
+| ST09 | 移動タイプ | Movement type | 移动类型 |
 | SH01 | 出荷書 | Delivery order | 出货单 |
 | SH02 | 納品書 | Delivery note | 送货单 |
 | SH03 | 未処理出荷書 | Pending shipments | 未处理出货 |

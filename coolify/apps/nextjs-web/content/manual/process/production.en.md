@@ -23,12 +23,12 @@ A page covering the flow from a confirmed order, through checking stock, getting
 
 | Stage | What happens | Role | App used |
 |-------|--------------|------|----------|
-| 1. Check product stock | Split into the portion already in stock and the portion to make new | Production control | [Inventory](/manual/en/operations/production/product-inventory/user) (`PD04`) |
-| 2. Check material | See whether there is enough material to make it | Production control | [Inventory](/manual/en/operations/production/material-inventory/user) (`PD04`) |
+| 1. Check product stock | Split into the portion already in stock and the portion to make new | Production control | [Inventory](/manual/en/operations/inventory/inventory-management/user) (`ST01`) |
+| 2. Check material | See whether there is enough material to make it | Production control | [Inventory](/manual/en/operations/inventory/inventory-management/user) (`ST01`) |
 | 3. Make the work order | Split into the stock portion and the manufactured portion (only the manufactured portion has steps lined up) | Sales support | [Work order](/manual/en/operations/production/work-order/user) (`PD02`) |
 | 4. Get approval | Pass every step set in approval settings, so that manufacturing can begin | Approver | [Approval management](/manual/en/operations/production/approval/user) (`PD03`) |
 | 5. Run the steps | The shop floor records start, completion and quantities | Production | [Work order](/manual/en/operations/production/work-order/user) / shop-floor tablet |
-| 6. Complete | Once every step is done, it becomes product stock | Production / production control | [Inventory](/manual/en/operations/production/product-inventory/user) |
+| 6. Complete | Once every step is done, it becomes product stock | Production / production control | [Inventory](/manual/en/operations/inventory/inventory-management/user) |
 
 ## What happens at each stage
 

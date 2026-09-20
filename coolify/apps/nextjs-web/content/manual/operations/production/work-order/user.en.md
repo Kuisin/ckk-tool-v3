@@ -240,7 +240,7 @@ When all the steps are finished, the work order automatically becomes 「**完�
 - Pieces marked as 「半製品」 (semi-finished) go into stock as semi-finished items.
 - The material that was set aside is taken out of stock as material used.
 
-You can check stock in [inventory management](/manual/en/operations/production/product-inventory/user) (PD04). Pieces still being made are shown on the 「**仕掛品**」 (work in progress) tab of the same app.
+You can check stock in [inventory management](/manual/en/operations/inventory/inventory-management/user) (ST01). Pieces still being made are shown on the 「**仕掛品**」 (work in progress) tab of the same app.
 
 ### Next step: make a delivery order
 

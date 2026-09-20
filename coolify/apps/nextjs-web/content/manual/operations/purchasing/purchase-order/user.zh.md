@@ -11,7 +11,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 - 可以填写向哪家供应商、订购哪种材料、几根、单价多少。
 - 获得上级的 **承認**（审批）后才能下单。
-- 下单后，该材料会在[库存画面](/manual/zh/operations/production/material-inventory/user)上显示为「预计到货」。
+- 下单后，该材料会在[库存画面](/manual/zh/operations/inventory/inventory-management/user)上显示为「预计到货」。
 - 材料送到后，只要点击「入荷完了」（到货完成），就会 **自动入库**。
 - 可以把订单存根、送货单存根等文件附在订购单上保存。
 
@@ -104,7 +104,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 2. 点击「**発注**」（下单）。
 3. 会弹出「発注の確認」（下单确认）的小窗口，点击「**発注する**」（下单）。
 
-状态会变成「**発注済**」（已下单）。从这时起，订购的材料会在[库存画面](/manual/zh/operations/production/material-inventory/user)上显示为「预计到货」。
+状态会变成「**発注済**」（已下单）。从这时起，订购的材料会在[库存画面](/manual/zh/operations/inventory/inventory-management/user)上显示为「预计到货」。
 
 ## 材料送到后的记录
 

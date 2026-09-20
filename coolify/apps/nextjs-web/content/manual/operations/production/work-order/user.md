@@ -242,7 +242,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 - 「半製品」に振り分けた分は、半製品として在庫に入ります。
 - 取り置きしていた素材は、使った分として在庫から減ります。
 
-在庫は[在庫管理](/manual/ja/operations/production/product-inventory/user)（PD04）で確認できます。作っている途中の本数は、同じアプリの「**仕掛品**」タブで見られます。
+在庫は[在庫管理](/manual/ja/operations/inventory/inventory-management/user)（ST01）で確認できます。作っている途中の本数は、同じアプリの「**仕掛品**」タブで見られます。
 
 ### 次のステップ: 出荷書をつくる
 

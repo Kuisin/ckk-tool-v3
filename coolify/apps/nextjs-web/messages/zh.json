@@ -1212,6 +1212,7 @@
       "STOCK_RESERVATION": "库存预留",
       "RESERVATION_RELEASE": "解除预留",
       "ADJUSTMENT": "盘点调整",
+      "MANUAL": "手动",
       "OTHER": "未知（迁移前）"
     },
     "TRANSACTION_TYPE_LABEL": {
@@ -9618,25 +9619,7 @@
         "summary": "补充说明。现场人员查看工单时会看到这些内容。"
       }
     },
-    "productInventory": {
-      "plant": {
-        "label": "目标据点",
-        "summary": "调拨的目标据点。源据点的库存会减少，目标据点的库存会增加。"
-      },
-      "location": {
-        "label": "存放位置 / 货架",
-        "summary": "在目标据点内的具体存放位置。提前设定便于日后查找实物。"
-      },
-      "quantity": {
-        "label": "数量",
-        "summary": "调拨的数量。不能超过源据点现有的数量。"
-      },
-      "notes": {
-        "label": "备注",
-        "summary": "用于记录调拨原因等信息的栏位。调拨记录会保留在历史中。"
-      }
-    },
-    "materialInventory": {
+    "inventoryManagement": {
       "plant": {
         "label": "目标据点",
         "summary": "调拨的目标据点。源据点的库存会减少，目标据点的库存会增加。"

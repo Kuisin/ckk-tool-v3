@@ -62,5 +62,6 @@ export const MOVEMENT_CAUSE_COLOR: Record<string, string> = {
   STOCK_RESERVATION: "yellow",
   RESERVATION_RELEASE: "gray",
   ADJUSTMENT: "grape",
+  MANUAL: "cyan",
   OTHER: "gray",
 };

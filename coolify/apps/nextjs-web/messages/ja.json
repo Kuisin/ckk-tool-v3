@@ -1212,6 +1212,7 @@
       "STOCK_RESERVATION": "引当予約",
       "RESERVATION_RELEASE": "予約解除",
       "ADJUSTMENT": "棚卸調整",
+      "MANUAL": "手動",
       "OTHER": "不明（移行前）"
     },
     "TRANSACTION_TYPE_LABEL": {
@@ -9618,25 +9619,7 @@
         "summary": "補足です。現場が指示書を見るときに読まれます。"
       }
     },
-    "productInventory": {
-      "plant": {
-        "label": "移動先の拠点",
-        "summary": "どの拠点へ移すかです。移動元の在庫が減り、移動先の在庫が増えます。"
-      },
-      "location": {
-        "label": "保管場所 / 棚",
-        "summary": "移動先の拠点の中で、どこに置くかです。決めておくと、あとで現物を探しやすくなります。"
-      },
-      "quantity": {
-        "label": "数量",
-        "summary": "移す数です。移動元にある数を超えては移せません。"
-      },
-      "notes": {
-        "label": "備考",
-        "summary": "移動の理由などを残しておく欄です。移動の記録は履歴に残ります。"
-      }
-    },
-    "materialInventory": {
+    "inventoryManagement": {
       "plant": {
         "label": "移動先の拠点",
         "summary": "どの拠点へ移すかです。移動元の在庫が減り、移動先の在庫が増えます。"

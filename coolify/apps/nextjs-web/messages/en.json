@@ -1212,6 +1212,7 @@
       "STOCK_RESERVATION": "Stock reservation",
       "RESERVATION_RELEASE": "Reservation released",
       "ADJUSTMENT": "Adjustment",
+      "MANUAL": "Manual",
       "OTHER": "Unknown (pre-migration)"
     },
     "TRANSACTION_TYPE_LABEL": {
@@ -9618,25 +9619,7 @@
         "summary": "Additional notes. These are read by shop-floor staff when they view the work order."
       }
     },
-    "productInventory": {
-      "plant": {
-        "label": "Destination site",
-        "summary": "The site to transfer stock to. Stock at the source site decreases and stock at the destination site increases."
-      },
-      "location": {
-        "label": "Storage location / shelf",
-        "summary": "Where within the destination site to place it. Setting this makes it easier to locate the physical stock later."
-      },
-      "quantity": {
-        "label": "Quantity",
-        "summary": "The quantity to transfer. It cannot exceed the amount available at the source."
-      },
-      "notes": {
-        "label": "Notes",
-        "summary": "A field for recording the reason for the transfer, etc. The transfer is recorded in the history."
-      }
-    },
-    "materialInventory": {
+    "inventoryManagement": {
       "plant": {
         "label": "Destination site",
         "summary": "The site to transfer stock to. Stock at the source site decreases and stock at the destination site increases."

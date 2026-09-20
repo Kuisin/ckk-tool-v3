@@ -1,4 +1,12 @@
 {
   "title": "库存",
-  "pages": ["product-inventory", "material-inventory"]
+  "pages": [
+    "inventory-management",
+    "stock-overview",
+    "stock-requirements",
+    "inventory-movements",
+    "stock-takes",
+    "goods-movement",
+    "movement-types"
+  ]
 }

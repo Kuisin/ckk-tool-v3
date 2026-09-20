@@ -76,7 +76,7 @@ The delivery note that is made is **issued at that moment**, and there is no act
 Only order lines with the same customer, the same ship-to and the same delivery method can be bundled into one delivery order. Make a separate delivery order for the ones that do not meet the conditions.
 
 **Cannot choose the lot you want to send**
-That product's stock may not be at the chosen from site. Check the site, or look up which site has stock in [Inventory](/manual/en/operations/production/product-inventory/user).
+That product's stock may not be at the chosen from site. Check the site, or look up which site has stock in [Inventory](/manual/en/operations/inventory/inventory-management/user).
 
 **Stock does not decrease**
 Check whether the delivery order has stopped at「確定」(confirmed). Stock decreases when the shipment is recorded.
