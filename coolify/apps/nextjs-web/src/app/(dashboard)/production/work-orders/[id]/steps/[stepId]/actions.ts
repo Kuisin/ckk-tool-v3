@@ -1085,10 +1085,19 @@ export async function saveOutsourceDates(
     // 日付だけを保存する。
     const woItem = await prisma.workOrder.findUnique({
       where: { id: step.workOrderId },
-      select: { id: true, workOrderNumber: true, productItemId: true },
+      select: {
+        id: true,
+        workOrderNumber: true,
+        productItemId: true,
+        plannedQuantity: true,
+      },
     });
     const supplierBpId = step.supplierBpId;
-    const custodyQuantity = step.inputQuantity ?? 0;
+    // **工程が始まる前に依頼日を入れることがある**（先に外注へ出して、戻って
+    // きてから工程を開始する現場もある）。そのとき受入数はまだ無いので、
+    // 指示書の予定数量で載せる。戻りは台帳の残で頭打ちにするので、多めに
+    // 載っていても戻しすぎにはならない。
+    const custodyQuantity = step.inputQuantity ?? woItem?.plannedQuantity ?? 0;
     const postIssue =
       supplierBpId != null &&
       woItem != null &&

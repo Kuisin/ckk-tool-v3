@@ -1,4 +1,13 @@
 {
   "title": "在庫",
-  "pages": ["product-inventory", "material-inventory"]
+  "pages": [
+    "product-inventory",
+    "material-inventory",
+    "stock-overview",
+    "stock-requirements",
+    "movements",
+    "stock-takes",
+    "goods-movement",
+    "movement-types"
+  ]
 }

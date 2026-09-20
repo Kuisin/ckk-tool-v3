@@ -3,7 +3,7 @@ title: "Inventory Management (Materials and Work in Progress) — User Manual"
 description: "Check how much material you can use now, how much you will be able to use once deliveries arrive, and how much is being made right now."
 screenshots: [inventory-materials-01, inventory-material-detail-01, inventory-material-transactions-01, inventory-wip-01]
 ---
-This page explains the 「**素材**」 (materials) tab and the 「**仕掛品**」 (work in progress) tab of [inventory management](/manual/en/operations/inventory/product-inventory/user) (operation code `PD04`). You can check how much material you can use now, and how much is being made right now.
+This page explains the 「**素材**」 (materials) tab and the 「**仕掛品**」 (work in progress) tab of [inventory management](/manual/en/operations/inventory/product-inventory/user) (operation code `ST01`). You can check how much material you can use now, and how much is being made right now.
 
 > ⚠️ For now this app works **only in the test environment**. The screens and the steps may change before it can be used for real work.
 

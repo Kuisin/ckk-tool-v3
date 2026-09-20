@@ -23,8 +23,8 @@ screenshots:
 
 | 段階 | 何をするか | 担当 | 使うアプリ |
 |------|-----------|------|-----------|
-| 1. 製品在庫を確認する | すでに在庫がある分と、新しく作る分を分ける | 生産管理 | [在庫管理](/manual/ja/operations/inventory/product-inventory/user)（`PD04`） |
-| 2. 素材を確認する | 作るのに必要な素材が足りるかを見る | 生産管理 | [在庫管理](/manual/ja/operations/inventory/material-inventory/user)（`PD04`） |
+| 1. 製品在庫を確認する | すでに在庫がある分と、新しく作る分を分ける | 生産管理 | [在庫管理](/manual/ja/operations/inventory/product-inventory/user)（`ST01`） |
+| 2. 素材を確認する | 作るのに必要な素材が足りるかを見る | 生産管理 | [在庫管理](/manual/ja/operations/inventory/material-inventory/user)（`ST01`） |
 | 3. 指示書を作る | 在庫分・製造分に分ける（工程を並べるのは製造分） | 社内営業補助 | [指示書](/manual/ja/operations/production/work-order/user)（`PD02`） |
 | 4. 承認を受ける | 承認設定で決めた段をすべて通し、製造を始められる状態にする | 承認者 | [承認管理](/manual/ja/operations/general/my-tasks/user)（`PD03`） |
 | 5. 工程を実行する | 現場が開始・完了と本数を記録する | 製造 | [指示書](/manual/ja/operations/production/work-order/user) / 現場タブレット |
@@ -92,6 +92,17 @@ screenshots:
 
 **工程を完了できない（不良の入力で止まる）**
 良品数は受入数と不良の合計から自動で計算されるので、本数の不一致は起こらない。完了できないのは、不良の行に不良種類または詳細が入っていないか、不良の合計が受入数を超えているときである。不良の行を見直し、行ごとに区分・不良種類・詳細・本数をそろえる。
+
+## 在庫を数える・手で動かす
+
+在庫はこの流れの中で自動に動く。それ以外に触る口は 3 つで、どれも入出庫伝票を残す。
+
+- 数え直して合わせる … [棚卸](/manual/ja/operations/inventory/stock-takes/user)（`ST05`）。確定すると差のぶんだけ在庫が直る。
+- 人の手で入れる・出す・移す … [手動入出庫](/manual/ja/operations/inventory/goods-movement/user)（`ST06`）
+- 動いた記録を追う … [入出庫伝票](/manual/ja/operations/inventory/movements/user)（`ST04`）
+
+外注へ出した分は、その外注先が預かっているものとして別に数える（自社の在庫には入らない）。
+預け先ごとの本数は [在庫一覧](/manual/ja/operations/inventory/stock-overview/user)（`ST02`）で見る。
 
 ## 関連ページ
 

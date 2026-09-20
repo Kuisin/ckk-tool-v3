@@ -3,7 +3,7 @@ title: "库存管理（材料・在制品） — 操作手册"
 description: "可以确认材料现在能用多少、加上到货预定后什么时候能用多少，以及现在有多少正在制造中。"
 screenshots: [inventory-materials-01, inventory-material-detail-01, inventory-material-transactions-01, inventory-wip-01]
 ---
-本页说明[库存管理](/manual/zh/operations/inventory/product-inventory/user)（操作码 `PD04`）的「**素材**」（材料）标签页和「**仕掛品**」（在制品）标签页的看法。可以确认材料现在能用多少，以及现在有多少正在制造中。
+本页说明[库存管理](/manual/zh/operations/inventory/product-inventory/user)（操作码 `ST01`）的「**素材**」（材料）标签页和「**仕掛品**」（在制品）标签页的看法。可以确认材料现在能用多少，以及现在有多少正在制造中。
 
 > ⚠️ 本应用目前 **只能在测试环境中使用**。在可以正式使用之前，画面和步骤可能会有变化。
 

@@ -3,7 +3,7 @@ title: "在庫管理 — 操作マニュアル"
 description: "製品・素材・作りかけの品物が、どこに何本あるかを確認できるアプリです。置き場所を変えたときの記録もここで行います。"
 screenshots: [inventory-products-01, inventory-product-detail-01, inventory-transfer-01, inventory-locations-01, inventory-transactions-01]
 ---
-製品や素材が **どこに何本あるか** を確認するアプリです。置き場所を変えたときの記録もここで行います。操作コードは `PD04` です。
+製品や素材が **どこに何本あるか** を確認するアプリです。置き場所を変えたときの記録もここで行います。操作コードは `ST01` です。
 
 > ⚠️ このアプリは今のところ **テスト用の環境だけ** で使えます。本番で使えるようになるまでに、画面や手順が変わることがあります。
 
@@ -162,6 +162,21 @@ A. 製造中の本数はまだ在庫になっていません。「**仕掛品**�
 
 **Q. ロケーションタブに何も出ません。**
 A. その拠点にまだ保管場所が登録されていないか、在庫がありません。保管場所の登録は管理者に相談してください。
+
+## 在庫のほかのアプリ
+
+この画面は「いま何がどこにあるか」を見るためのものです。数え直したり、手で動かしたり、動いた記録を追うのは別のアプリです。
+
+- [在庫一覧](/manual/ja/operations/inventory/stock-overview/user)（`ST02`）… 拠点・保管場所・棚の側から見る一覧です。外注へ預けている分もここで見ます。
+- [在庫・所要量](/manual/ja/operations/inventory/stock-requirements/user)（`ST03`）… 品目 1 つの「これから増えるぶん・減るぶん」を時間の順に見ます。
+- [入出庫伝票](/manual/ja/operations/inventory/movements/user)（`ST04`）… 在庫が動いた記録です。いつ・何が・何本動いたかを追えます。
+- [棚卸](/manual/ja/operations/inventory/stock-takes/user)（`ST05`）… 数え直して帳簿と合わせます。
+- [手動入出庫](/manual/ja/operations/inventory/goods-movement/user)（`ST06`）… 人の手で入れる・出す・移します。
+- [移動タイプ](/manual/ja/operations/inventory/movement-types/user)（`ST09`）… 手動入出庫で選ぶ区分を管理します。
+
+> 💡 **在庫が動くと、必ず[入出庫伝票](/manual/ja/operations/inventory/movements/user)が 1 枚できます。** この画面の「移動」も同じで、動かすたびに記録が残ります。
+
+> ⚠️ **外注に預けている分は、この画面の本数に入りません。** 手元に無いものは在庫として数えない決まりです。預けている分は[在庫一覧](/manual/ja/operations/inventory/stock-overview/user)の「預け先」から確認します。
 
 <!-- permissions:start -->
 ## 必要な権限
