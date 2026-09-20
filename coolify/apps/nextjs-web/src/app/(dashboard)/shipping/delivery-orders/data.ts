@@ -208,6 +208,7 @@ function mapDeliveryOrder(
       productName: productLabel(it.item),
       lotNumber: it.lotNumber,
       quantity: it.quantity,
+      returnedQuantity: it.returnedQuantity,
       // 確定前は焼き込み前なので注文明細の単価を見せる（確定すると凍る）。
       unitPrice:
         it.unitPrice != null

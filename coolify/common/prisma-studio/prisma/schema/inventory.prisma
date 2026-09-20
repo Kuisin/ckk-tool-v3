@@ -259,6 +259,8 @@ enum InventoryMovementCause {
   OUTSOURCE_ISSUE
   /// 外注から戻った（預け在庫が減る）。
   OUTSOURCE_RETURN
+  /// 出荷したあとに顧客から返ってきた（在庫が戻る）。
+  SALES_RETURN
   /// 移行前の取引行に後から付けた伝票。**新規では使わない** —
   /// 何の出来事だったかを記録していなかった行が実在するので、それを
   /// 正直に表す値として残す。

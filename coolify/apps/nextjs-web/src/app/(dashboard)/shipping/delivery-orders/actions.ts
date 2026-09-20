@@ -1973,6 +1973,137 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
   }
 }
 
+/**
+ * 出荷後の返品を記録する（§8 追補）。
+ *
+ * 出した物が返ってくる経路がこれまで 1 本も無く、受け取っても在庫は減った
+ * ままだった。数を合わせるには棚卸で「増えた理由の分からない差異」として
+ * 足すしかなく、それは返品の記録ではない。
+ *
+ * **出荷書の状態は動かさない。** 出したという事実は返品では消えない。
+ * 在庫だけを戻し（逆仕訳の伝票 1 枚・事由 SALES_RETURN）、何本戻ったかは
+ * 出荷明細の行に足す。**請求は動かさない** — 返品を請求にどう反映するかは
+ * 締めの運用で決まる別の判断で、在庫の記録と混ぜない。
+ */
+export async function recordDeliveryReturn(input: {
+  number: string;
+  lines: { itemRowId: string; quantity: number }[];
+  notes?: string | null;
+}): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("delivery_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const key = parseDocKey(input.number, "DOR");
+  if (!key)
+    return actionError(tr("shipping.deliveryOrderActions.invalidNumber"));
+  if (!(await deliveryOrderInScope(authz.access, authz.userId, key))) {
+    return actionError(tr("common.outOfScope"));
+  }
+
+  const requested = input.lines.filter((l) => l.quantity > 0);
+  if (requested.length === 0) {
+    return actionError(tr("shipping.deliveryOrderActions.returnNoQuantity"));
+  }
+
+  try {
+    const order = await prisma.deliveryOrder.findUnique({
+      where: { yearMonth_seq: key },
+      select: {
+        status: true,
+        type: true,
+        fromPlantId: true,
+        items: {
+          select: {
+            id: true,
+            itemId: true,
+            lotNumber: true,
+            quantity: true,
+            returnedQuantity: true,
+          },
+        },
+      },
+    });
+    if (!order)
+      return actionError(tr("shipping.deliveryOrderActions.notFound"));
+    // 出荷していないものは返ってこない。
+    if (order.status !== "SHIPPED" || order.type !== "DISPATCH") {
+      return actionError(tr("shipping.deliveryOrderActions.returnNotShipped"));
+    }
+
+    const byId = new Map(order.items.map((it) => [it.id, it]));
+    const lines: {
+      itemId: number;
+      lotNumber: number | null;
+      quantity: number;
+    }[] = [];
+    for (const line of requested) {
+      const item = byId.get(line.itemRowId);
+      if (!item) {
+        return actionError(tr("common.targetRecordNotFound"));
+      }
+      // 出した数より多くは戻せない（DB の CHECK も同じことを言う）。
+      if (line.quantity > item.quantity - item.returnedQuantity) {
+        return actionError(
+          tr("shipping.deliveryOrderActions.returnExceedsShipped"),
+        );
+      }
+      lines.push({
+        itemId: item.itemId,
+        lotNumber: item.lotNumber,
+        quantity: line.quantity,
+      });
+    }
+
+    // 採番はトランザクションの外（全書類共通の作法）。
+    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
+    await prisma.$transaction(async (tx) => {
+      for (const line of requested) {
+        await tx.deliveryOrderItem.update({
+          where: { id: line.itemRowId },
+          data: { returnedQuantity: { increment: line.quantity } },
+        });
+      }
+      const { onDeliveryOrderReturnedTx } = await import("@/lib/inventory");
+      await onDeliveryOrderReturnedTx(tx, key, movementKey, {
+        lines,
+        plantId: order.fromPlantId,
+      });
+    });
+
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "delivery_orders",
+      recordId: input.number,
+      after: {
+        note: tr("shipping.deliveryOrderActions.auditReturnRecorded", {
+          quantity: lines.reduce((sum, l) => sum + l.quantity, 0),
+        }),
+        notes: input.notes ?? null,
+      },
+    });
+    revalidate(input.number);
+    revalidatePath("/inventory/stock");
+    revalidatePath("/inventory/movements");
+    return actionOk();
+  } catch (e) {
+    if (e instanceof Error) {
+      const decoded = decodeInventoryNote(e.message);
+      if (decoded) {
+        return actionError(
+          tr(`inventoryNote.${decoded.key}`, decoded.params ?? {}),
+        );
+      }
+    }
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("shipping.deliveryOrderActions.returnFailed"),
+        tr,
+      ),
+    );
+  }
+}
+
 /** キャンセル（削除）— 下書きのみ hard delete（明細はカスケード削除）。 */
 export async function deleteDeliveryOrder(
   number: string,
