@@ -1308,6 +1308,11 @@ Table item_inventory {
   lot_number      int [ref: > work_orders.work_order_number]  // 素材は null
   is_semi_finished boolean [not null, default: false]
   source_step_id  uuid                                  // 半製品の発生工程
+  // **マイナスになり得る。** 在庫が足りなくても出荷は止めない（物はもう
+  // 出ている。記録だけ拒んでも現実は変わらず、見えない食い違いが残る）ので、
+  // 足りない分はマイナスのまま計上する。旧 2 表にあった非負の CHECK は
+  // 引き継いでいない。マイナス = 台帳と現物が合っていない印で、棚卸か
+  // 手動入出庫で戻す。
   quantity          numeric(12,3) [not null, default: 0]
   reserved_quantity numeric(12,3) [not null, default: 0]
   unit            varchar [not null]   // 行に持つ（単位違いの足し込みを拒む）

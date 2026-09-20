@@ -477,14 +477,20 @@ export async function fetchDeliveryAcceptanceSourceInfo(
 }
 
 /**
- * DISPATCH 明細のロット在庫検証（fail-fast — 出荷時の在庫ガードは
- * onDeliveryOrderShippedTx が最終判定する）。ロット指定行のみ、現物数量
- * （非半製品バケット合計）に対して検証する。エラー時は文字列を返す。
+ * DISPATCH 明細のロット在庫の確認。ロット指定行のみ、現物数量
+ * （非半製品バケット合計）に対して数える。
+ *
+ * **止めない。** 足りなくても作成・編集は通し、注意書きを返すだけ
+ * （出荷そのものも足りないまま通る — lib/inventory の
+ * onDeliveryOrderShippedTx）。以前はここで弾いていたが、物のほうが先に
+ * 動いている現場では「出せないのは画面だけ」になり、台帳を直すより先に
+ * 出荷の記録を作れないことのほうが困る。
  */
 async function validateDispatchLots(
   items: { itemId: string; lotNumber: number | null; quantity: number }[],
   tr: Awaited<ReturnType<typeof getTranslations>>,
-): Promise<string | null> {
+): Promise<string[]> {
+  const warnings: string[] = [];
   const byKey = new Map<string, { itemId: number; lot: number; qty: number }>();
   for (const it of items) {
     if (it.lotNumber == null) continue;
@@ -510,18 +516,21 @@ async function validateDispatchLots(
       _count: true,
     });
     if ((agg._count ?? 0) === 0) {
-      return tr("shipping.deliveryOrderActions.lotHasNoStock", { lot });
+      warnings.push(tr("shipping.deliveryOrderActions.lotHasNoStock", { lot }));
+      continue;
     }
     const available = Number(agg._sum.quantity ?? 0);
     if (qty > available) {
-      return tr("shipping.deliveryOrderActions.lotStockInsufficient", {
-        lot,
-        available,
-        qty,
-      });
+      warnings.push(
+        tr("shipping.deliveryOrderActions.lotStockInsufficient", {
+          lot,
+          available,
+          qty,
+        }),
+      );
     }
   }
-  return null;
+  return warnings;
 }
 
 /**
@@ -865,7 +874,7 @@ export async function saveDeliveryOrderCharges(
 
 export async function createDeliveryOrder(
   payload: DeliveryOrderCreateInput,
-): Promise<ActionResult<{ number: string }>> {
+): Promise<ActionResult<{ number: string; warnings: string[] }>> {
   const tr = await getTranslations();
   const authz = await checkPermission("delivery_order", "CREATE");
   if (!authz.ok) return actionError(authz.error);
@@ -888,11 +897,13 @@ export async function createDeliveryOrder(
   ) {
     return actionError(tr("common.outOfScope"));
   }
+  // 止めない注意書き（在庫不足など）。保存はするが利用者には見せる。
+  const warnings: string[] = [];
   try {
-    // 発送（DISPATCH）はロット在庫を fail-fast 検証（最終ガードは出荷時）
+    // 発送（DISPATCH）はロット在庫を数える。**足りなくても止めない** —
+    // 注意書きにして返し、利用者に見せる（出荷そのものも通る）。
     if (v.type === "DISPATCH") {
-      const lotError = await validateDispatchLots(v.items, tr);
-      if (lotError) return actionError(lotError);
+      warnings.push(...(await validateDispatchLots(v.items, tr)));
       // 行の製品 = 注文明細の製品、かつ出荷できる状態の明細であること
       const productError = await validateLineProducts(v.items, tr);
       if (productError) return actionError(productError);
@@ -963,7 +974,7 @@ export async function createDeliveryOrder(
       },
     });
     revalidate(number);
-    return actionOk({ number });
+    return actionOk({ number, warnings });
   } catch (e) {
     return actionError(
       prismaErrorMessage(
@@ -979,7 +990,7 @@ export async function createDeliveryOrder(
 export async function updateDeliveryOrder(
   number: string,
   payload: DeliveryOrderUpdateInput,
-): Promise<ActionResult<{ number: string }>> {
+): Promise<ActionResult<{ number: string; warnings: string[] }>> {
   const tr = await getTranslations();
   const authz = await checkPermission("delivery_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
@@ -996,6 +1007,8 @@ export async function updateDeliveryOrder(
   if (!(await deliveryOrderInScope(authz.access, authz.userId, key))) {
     return actionError(tr("common.outOfScope"));
   }
+  // 止めない注意書き（在庫不足など）。
+  const warnings: string[] = [];
   try {
     const prior = await prisma.deliveryOrder.findUnique({
       where: { yearMonth_seq: key },
@@ -1017,10 +1030,9 @@ export async function updateDeliveryOrder(
         },
       },
     });
-    // 発送（DISPATCH）はロット在庫を fail-fast 検証（最終ガードは出荷時）
+    // 発送（DISPATCH）はロット在庫を数える（足りなくても止めない — 上と同じ）
     if (v.type === "DISPATCH") {
-      const lotError = await validateDispatchLots(v.items, tr);
-      if (lotError) return actionError(lotError);
+      warnings.push(...(await validateDispatchLots(v.items, tr)));
       // 行の製品 = 注文明細の製品、かつ出荷できる状態の明細であること
       const productError = await validateLineProducts(v.items, tr);
       if (productError) return actionError(productError);
@@ -1109,7 +1121,7 @@ export async function updateDeliveryOrder(
       },
     });
     revalidate(number);
-    return actionOk({ number });
+    return actionOk({ number, warnings });
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("GUARD:")) {
       return actionError(e.message.slice("GUARD:".length));
@@ -1722,7 +1734,9 @@ export async function confirmDeliveryOrder(
  * SHIPPED な DISPATCH 出荷書の明細数量合計 vs 受注数量 → PARTIAL_SHIPPED /
  * SHIPPED。STOCK_STORAGE（在庫保管）は注文明細ステータスを変更しない。
  */
-export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
+export async function shipDeliveryOrder(
+  number: string,
+): Promise<ActionResult<{ warnings: string[] }>> {
   const tr = await getTranslations();
   const authz = await checkPermission("delivery_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
@@ -1774,6 +1788,11 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
     // が納品書番号でやっているのと同じ作法）。**1 出荷 = 伝票 1 枚** で、出庫・
     // 在庫保管の入庫・予約の按分解除が全部その明細になる。
     const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
+
+    /** 台帳が足りないまま出た分（在庫反映が返す）。 */
+    let shortages: Awaited<
+      ReturnType<typeof import("@/lib/inventory").onDeliveryOrderShippedTx>
+    > = [];
 
     await prisma.$transaction(async (tx) => {
       const updated = await tx.deliveryOrder.updateMany({
@@ -1885,9 +1904,10 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
       }
 
       // 在庫反映（同一 tx）: DISPATCH は出庫 + 予約按分解除、STOCK_STORAGE は
-      // 保管入庫。在庫不足・台帳欠落はここで throw され全体がロールバック。
+      // 保管入庫。**在庫が足りなくても止めない** — 足りない分はマイナスの
+      // まま計上され、不足の一覧が返る（利用者には下で注意書きとして出す）。
       const { onDeliveryOrderShippedTx } = await import("@/lib/inventory");
-      await onDeliveryOrderShippedTx(tx, key, movementKey);
+      shortages = await onDeliveryOrderShippedTx(tx, key, movementKey);
     });
 
     await recordAudit({
@@ -1950,7 +1970,23 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
     }
     if (lineAudits.length > 0) revalidatePath("/sales/order-lines");
     revalidate(number);
-    return actionOk();
+    // 在庫が動いたので、在庫の画面も作り直す（マイナスのまま出た行がある）。
+    revalidatePath("/inventory/stock");
+    revalidatePath("/inventory/movements");
+    return actionOk({
+      warnings: shortages.map((s) =>
+        s.lotNumber == null
+          ? tr("shipping.deliveryOrderActions.shippedWithoutStockNoLot", {
+              item: s.item,
+              shortfall: s.shortfall,
+            })
+          : tr("shipping.deliveryOrderActions.shippedWithoutStock", {
+              item: s.item,
+              lot: s.lotNumber,
+              shortfall: s.shortfall,
+            }),
+      ),
+    });
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("GUARD:")) {
       return actionError(e.message.slice("GUARD:".length));

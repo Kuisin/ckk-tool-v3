@@ -239,7 +239,15 @@ export function StockOverviewTable({
       sortable: true,
       sortValue: (r) => r.quantity,
       render: (r) => (
-        <Text className="tabular-nums" size="sm">
+        // **マイナスは赤で出す。** 在庫が足りないまま出荷すると台帳はマイナス
+        // になる（出した事実のほうを残す作り）。数え直すまで直らないので、
+        // 淡々と並べず目に入る形にしておく。
+        <Text
+          c={r.quantity < 0 ? "red" : undefined}
+          className="tabular-nums"
+          fw={r.quantity < 0 ? 600 : undefined}
+          size="sm"
+        >
           {r.quantity.toLocaleString(locale)}
         </Text>
       ),

@@ -667,6 +667,16 @@ export function DeliveryOrderForm({
                 }),
           color: "green",
         });
+        // サーバーが返した注意書き（在庫が足りない、など）。保存は通すが
+        // 黙って通さない — 自動では閉じない通知で残す。
+        for (const warning of result.data.warnings) {
+          notifications.show({
+            title: tr("common.warning"),
+            message: warning,
+            color: "orange",
+            autoClose: false,
+          });
+        }
         // 保存後は必ず**詳細（閲覧）画面**へ。フォームが dirty のままだと
         // 離脱ガードや再送信の余地が残るため、遷移前にリセットする。
         form.resetDirty();

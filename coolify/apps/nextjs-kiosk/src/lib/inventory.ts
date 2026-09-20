@@ -127,6 +127,15 @@ export interface ApplyTransactionInput {
   referenceType?: string;
   referenceId?: string;
   notes?: string;
+  /**
+   * 台帳が足りなくても**マイナスのまま**計上する（既定 false）。
+   *
+   * 渡すのは出荷だけ。物はもう出て行っているので、台帳が止めても現実は
+   * 止まらない — 止めると「出荷したのに記録が無い」という、あとから誰にも
+   * 見えない形の食い違いになる。マイナスは在庫一覧にも棚卸にも**見える形**
+   * で残り、数え直せば直る。
+   */
+  allowNegative?: boolean;
 }
 
 /**
@@ -180,7 +189,9 @@ export async function applyTransaction(
       : {}),
   };
   const guard = {
-    ...(deltaQty < 0 ? { quantity: { gte: -deltaQty } } : {}),
+    ...(deltaQty < 0 && !input.allowNegative
+      ? { quantity: { gte: -deltaQty } }
+      : {}),
     ...(deltaReserved < 0 ? { reservedQuantity: { gte: -deltaReserved } } : {}),
   };
   // 在庫は 1 表（app.item_inventory）。**inventoryType はもう書き込み先を選ばない**
@@ -966,6 +977,15 @@ export async function onWorkOrderCompletedTx(
   }
 }
 
+/** 台帳が足りないまま出した 1 行ぶん（呼び出し側が利用者へ警告する材料）。 */
+export interface ShipShortage {
+  /** 品目コード（PRD-… / 素材コード）。画面にはこれを出す。 */
+  item: string;
+  lotNumber: number | null;
+  /** 台帳に無かったのに出した本数。 */
+  shortfall: number;
+}
+
 /**
  * 出荷フック: DISPATCH は SO ロット在庫から出庫 + 予約解除。STOCK_STORAGE は
  * 保管入庫（予備製作分）。shipDeliveryOrder から呼ぶ。
@@ -973,26 +993,34 @@ export async function onWorkOrderCompletedTx(
 export async function onDeliveryOrderShipped(
   key: { yearMonth: string; seq: number },
   movementKey: MovementKey,
-): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    await onDeliveryOrderShippedTx(tx, key, movementKey);
-  });
+): Promise<ShipShortage[]> {
+  return prisma.$transaction(async (tx) =>
+    onDeliveryOrderShippedTx(tx, key, movementKey),
+  );
 }
 
 /**
  * onDeliveryOrderShipped の tx コア — 出荷アクションの状態遷移と同一
- * トランザクションで呼べる（在庫不足時に SHIPPED だけ立つ非整合を防ぐ）。
+ * トランザクションで呼べる。
+ *
+ * **在庫が足りなくても出荷は止めない。** 以前は台帳が足りなければ例外にして
+ * いたが、物が出て行ったあとに記録だけ拒んでも現実は変わらず、「出荷したのに
+ * 台帳に無い」という誰にも見えない食い違いが残るだけだった。足りない分は
+ * マイナスのまま計上し（備考で区別できる）、不足の一覧を返す — 呼び出し側は
+ * それを利用者への警告にする。マイナスは在庫一覧にも棚卸にも見えるので直せる。
  */
 export async function onDeliveryOrderShippedTx(
   tx: Tx,
   key: { yearMonth: string; seq: number },
   movementKey: MovementKey,
-): Promise<void> {
+): Promise<ShipShortage[]> {
   const so = await tx.deliveryOrder.findUniqueOrThrow({
     where: { yearMonth_seq: key },
     include: { items: true },
   });
   const ref = `DOR-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
+  /** 台帳が足りないまま出した分。呼び出し側が利用者へ警告する。 */
+  const shortages: ShipShortage[] = [];
   // 出庫・在庫保管の入庫・予約解除は 1 回の出荷の中身なので 1 枚にまとめる。
   const openMovement = movementOpener(tx, {
     key: movementKey,
@@ -1023,20 +1051,19 @@ export async function onDeliveryOrderShippedTx(
         quantity: Number(r.quantity),
         reservedQuantity: Number(r.reservedQuantity),
       }));
+      // 台帳が 1 行も無くても止めない。出す先のバケットを作って、そこから
+      // マイナスで引く（下の shortfall の処理が拾う）。
       if (invRows.length === 0) {
-        // 品目は**コードで名乗る**（内部 id ではなく PRD-… / 素材コード）。
-        // id を出しても画面から辿れないうえ、品目統合で id の意味が変わった
-        // ことに気づけない — 実際にこの行は `{productId}` を渡し続けていて、
-        // 文言の差し込みが解決できず鍵がそのまま画面に出ていた。
-        const label = await itemLabel(tx, item.itemId);
-        throw new Error(
-          item.lotNumber == null
-            ? encodeInventoryNote("itemInventoryMissing", { item: label })
-            : encodeInventoryNote("lotInventoryMissing", {
-                lotNumber: item.lotNumber,
-                item: label,
-              }),
-        );
+        invRows.push({
+          id: await ensureItemInventory(tx, {
+            itemId: item.itemId,
+            plantId: so.fromPlantId,
+            lotNumber: item.lotNumber,
+            isSemiFinished: false,
+          }),
+          quantity: 0,
+          reservedQuantity: 0,
+        });
       }
       // 引ける数は **quantity ではなく「予約を除いた分 + 自分の予約」**。
       // quantity をそのまま取ると、他の注文明細（FROM_STOCK の引当など）が
@@ -1063,23 +1090,6 @@ export async function onDeliveryOrderShippedTx(
         item.quantity,
         ownReserved,
       );
-      // 足りないときは 1 件も出庫せずに失敗させる（部分出庫してから落ちると
-      // 台帳だけ減って出荷が立たない）。
-      if (shortfall > 0) {
-        const label = await itemLabel(tx, item.itemId);
-        throw new Error(
-          item.lotNumber == null
-            ? encodeInventoryNote("outOfStockOnShipNoLot", {
-                quantity: item.quantity,
-                item: label,
-              })
-            : encodeInventoryNote("outOfStockOnShip", {
-                quantity: item.quantity,
-                lotNumber: item.lotNumber,
-                item: label,
-              }),
-        );
-      }
       for (const step of steps) {
         await applyTransaction(tx, await openMovement(), {
           inventoryType: "PRODUCT",
@@ -1089,6 +1099,29 @@ export async function onDeliveryOrderShippedTx(
           referenceType: "delivery_order",
           referenceId: ref,
           notes: encodeInventoryNote("shipped", { ref }),
+        });
+      }
+      // 足りなかった分も**出したことにする**。物は出て行ったので、ここで
+      // 止めても現実は変わらない。引く先は最初のバケット（= その品目・
+      // ロットの代表）で、台帳はマイナスになる — それが「合っていない」と
+      // いう事実の、見える置き場所になる。
+      if (shortfall > 0) {
+        await applyTransaction(tx, await openMovement(), {
+          inventoryType: "PRODUCT",
+          inventoryId: invRows[0].id,
+          transactionType: "OUT",
+          quantity: shortfall,
+          allowNegative: true,
+          referenceType: "delivery_order",
+          referenceId: ref,
+          // 備考で普通の出庫と分ける。伝票を見れば「どの行が在庫無しで
+          // 出たのか」が読める。
+          notes: encodeInventoryNote("shippedWithoutStock", { ref }),
+        });
+        shortages.push({
+          item: await itemLabel(tx, item.itemId),
+          lotNumber: item.lotNumber,
+          shortfall,
         });
       }
     } else {
@@ -1164,6 +1197,7 @@ export async function onDeliveryOrderShippedTx(
       }
     }
   }
+  return shortages;
 }
 
 /**

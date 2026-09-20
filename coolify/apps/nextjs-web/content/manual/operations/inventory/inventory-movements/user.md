@@ -67,7 +67,8 @@ description: "在庫が動いた 1 回ごとの記録を伝票として確認で
 - **ロット** … 製品の場合のロット番号です。
 - **保管場所** … その明細の保管場所です。
 - **数量** … 動いた数です。
-- **備考** … その明細への補足です。
+- **備考** … その明細への補足です。「**在庫不足のまま出庫**」と出ている行は、
+  台帳に無い分まで出荷したものです（[出荷書](/manual/ja/operations/shipping/delivery-order/user)は在庫が足りなくても止まりません）。その品目の在庫はマイナスになっているので、[棚卸](/manual/ja/operations/inventory/stock-takes/user)（ST05）か[手動入出庫](/manual/ja/operations/inventory/goods-movement/user)（ST06）で戻します。
 
 **この画面には編集・キャンセルの操作がありません。** 伝票は確定した記録で、あとから内容を直すことはできません。間違いがあった場合は、もとになった業務（指示書・出荷書など）を直すか、[手動入出庫](/manual/ja/operations/inventory/goods-movement/user)（ST06）または[棚卸](/manual/ja/operations/inventory/stock-takes/user)（ST05）で正しい状態へ調整してください。
 
