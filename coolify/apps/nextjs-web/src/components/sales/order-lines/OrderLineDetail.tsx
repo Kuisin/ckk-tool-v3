@@ -609,7 +609,7 @@ export function OrderLineDetail({
             <EmptyState
               action={
                 <SecondaryButton
-                  href={`/production/work-orders/new?orderLine=${order.uuid}`}
+                  href={woCreateHref}
                   leftSection={<IconClipboardList size={14} />}
                 >
                   {tr("sales.orderLines.createAWorkOrder")}

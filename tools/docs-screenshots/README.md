@@ -219,6 +219,9 @@ pnpm exec tsx audit-crawl.ts            # 両方。--web / --kiosk で片方だ�
 `e2e-shipping-and-final-inspection.ts` は `e2e-fixtures.sql`、
 `e2e-kiosk-inspection-approval.ts` は `e2e-kiosk-fixtures.sql`、
 `e2e-ship-shortage.ts` は `e2e-ship-shortage-fixtures.sql` が**必須**。
+**`e2e-regrind.ts` だけは自分で fixtures を流し直す**ので、何度でも続けて回せる
+（前の実行が作った指示書が残っていると受注残が 0 になり、本題と関係ない
+落ち方をするため — 実際に踏んだ）。
 
 ### 在庫が足りないまま出荷する（e2e-ship-shortage.ts）
 
@@ -238,6 +241,29 @@ APP_URL=http://localhost:3105 pnpm exec tsx e2e-ship-shortage.ts
 「在庫を見る」が ST03 を品目つきで指す / やめると出荷されない / 出すと出荷され
 注意が残る / バケットがマイナスになり伝票に「在庫不足のまま出庫」が 1 行立つ /
 足りているときはダイアログが出ず、普通に減る。
+
+### 再研磨（e2e-regrind.ts）
+
+顧客の工具を預かって研ぎ直す一連（他社製品 → 再研磨の明細 → 指示書 → 製品受入 →
+完了 → 出荷）を、画面から操作して確かめる。**見たいのは台帳** — 顧客の物が自社在庫に
+化けないこと — で、台帳は画面に出ないので 1 手ごとに SQL で裏を取る。
+デモシードには他社製品も再研磨工程リストも再研磨の明細も無いので fixtures が作る。
+
+```
+SHOT_DB_CONTAINER=ckk-regrind-db SHOT_DB_PORT=55462 pnpm docs:seed
+# nextjs-web を同じ DATABASE_URL で本番ビルドして :3106 で起動
+APP_URL=http://localhost:3106 SHOT_DB_CONTAINER=ckk-regrind-db pnpm exec tsx e2e-regrind.ts
+```
+
+見ているのは 23 点 — 他社製品に製造工程リストのタブが出ない / 再研磨の明細に
+在庫照合が出ない / 指示書の種別が再研磨に固定され素材・保管場所の欄が消える /
+再研磨工程リストの最新版が入る / 受入の数量欄が「受入本数・返却（再研磨不可）」に
+なり半製品が選べない / 受入で預り品バケットに入り**自社在庫は 0 のまま** /
+完了しても完成品の入庫が 1 行も立たず、返却分だけ預り品から落ちる /
+詳細に 受入 10・返却 2・完成 8 が出る / 出荷は**所有者バケットから**出る。
+
+**承認は見ていない** — 再研磨でも製造分と同じ経路で固有の分岐が無いため、
+工程を動かすのに要るぶんだけ SQL で APPROVED にする。
 
 ## 通し確認を CI で回す（手動実行）
 
