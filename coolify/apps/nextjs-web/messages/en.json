@@ -5762,7 +5762,13 @@
       "planFieldTimeShort": "Time",
       "planAssigneeRequired": "Work plan requires an assignee",
       "planAssigneeRequiredHelp": "Turn on for steps where the assignee must be decided before requesting approval. By default the assignee is optional and can be decided on the floor after approval.",
-      "planFieldAssigneeShort": "Assignee"
+      "planFieldAssigneeShort": "Assignee",
+      "workOrderTypes": "Work order types",
+      "workOrderTypesShort": "Work order types",
+      "workOrderTypesHelp": "The work order types this step may be placed on. Pick at least one.",
+      "workOrderTypesPinnedHelp": "This step starts a {type} work order, so its type cannot be changed. Consuming stock and booking customer-owned tools both depend on it.",
+      "workOrderTypesPinnedBadge": "Fixed — it is a start step",
+      "pickAtLeastOneWorkOrderType": "Pick at least one work order type"
     },
     "products": {
       "specification": "Specification",

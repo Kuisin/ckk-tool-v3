@@ -13,6 +13,7 @@ The steps on a [指示書 (work order)](/manual/en/operations/production/work-or
 
 - You can register the steps done in the factory.
 - For each step, you can set what kind of work it is (material preparation, machining, coating, inspection, and so on).
+- For each step, you can set **which work order types it may be used on** (from stock, manufacture, regrind).
 - You can set whether the step is **done in house or can be asked of an outside company**.
 - You can set **which numbers the operator must enter** when the step is done (quantity received, good quantity, and so on).
 - You can register **order rules** such as "before this step, that step must be finished".
@@ -22,6 +23,7 @@ The steps on a [指示書 (work order)](/manual/en/operations/production/work-or
 - **Step** … one single piece of work, such as 「切断」 (cutting), 「センタレス」 (centerless) or 「製作検査」 (production inspection).
 - **Category** … the broad group a step belongs to. There are six: material preparation, machining, coating, inspection, inspection approval, and shipping.
 - **Step list kind** … which step list a step belongs to. **Only steps whose category is "material preparation" go into the prep step list** (one list shared by every product); steps whose category is "**regrind**" go into the shared regrind step list; every other category goes into the manufacturing step list (per product × customer) — coating, inspection and approval steps can also be used on the regrind step list. It follows the category automatically and cannot be picked on its own.
+- **Work order types** … the types of [work order](/manual/en/operations/production/work-order/user) this step may be placed on (from stock / manufacture / regrind). At least one must be chosen. For details, see "[How to choose the work order types](#how-to-choose-the-work-order-types)".
 - **Place of work** … whether the step is done only in house, or can also be asked of an outside company.
 - **Can run in parallel** … a step that may be done at the same time as another step and recorded together.
 - **Quantity tracking** … the setting for which numbers the operator is asked to enter when the step is done.
@@ -39,10 +41,10 @@ When you open the app, a list of the registered steps is shown.
 
 ![List screen of the process step master](../../../assets/screenshots/master-process-step-list-01.png)
 
-- The list columns are **コード** (code) / **名称** (name) / **カテゴリ** (category) / **工程リスト種別** (step list kind) / **実施場所** (place of work) / **同期可** (can run in parallel) / **検査** (inspection) / **承認** (approval) / **数量管理** (quantity tracking) / **表示順** (display order) / **状態** (status). 「**工程リスト種別**」 (step list kind) is a "prep" or "manufacturing" badge, decided automatically from the category.
+- The list columns are **コード** (code) / **名称** (name) / **カテゴリ** (category) / **工程リスト種別** (step list kind) / **実施場所** (place of work) / **同期可** (can run in parallel) / **検査** (inspection) / **承認** (approval) / **数量管理** (quantity tracking) / **指示書種別** (work order types) / **表示順** (display order) / **状態** (status). 「**工程リスト種別**」 (step list kind) is a "prep" or "manufacturing" badge, decided automatically from the category.
 - Normally the rows are shown from the smallest 「**表示順**」 (display order) number first.
 - Type in the 「**コード・名称で検索**」 (search by code or name) box at the top to show only the step you are looking for.
-- You can also narrow the list by 「**カテゴリ**」 (category) and 「**状態**」 (status). There are two statuses: 「有効」 (active, can be used) and 「無効」 (inactive, no longer used).
+- You can also narrow the list by 「**カテゴリ**」 (category), 「**使える指示書種別**」 (work order types) and 「**状態**」 (status). There are two statuses: 「有効」 (active, can be used) and 「無効」 (inactive, no longer used). Narrowing by work order type answers "which steps can a regrind work order use?" in one list.
 - Click a row to open the detail screen of that step.
 - The 「**準備工程リスト**」 (prep step list) and 「**再研磨工程リスト**」 (regrind step list) buttons next to 「新規作成」 (New) at the top right of the list open the screens for managing the shared step lists (see "[Manage the prep step list](#manage-the-prep-step-list)" and "[Manage the regrind step list](#manage-the-regrind-step-list)").
 
@@ -56,9 +58,10 @@ When you open the app, a list of the registered steps is shown.
 6. Choose 「**数量管理**」 (quantity tracking). See the explanation below.
 7. Choose 「**ロット入力（既定）**」 (lot input — default). This decides whether the operator is asked to enter the material lot or slip code when starting the step (required / optional / none).
 8. If you need it, enter the time this step usually takes in 「**既定作業時間**」 (default work time). The unit is hours.
-9. Set 「**作業計画の必須項目**」 (work plan required fields) — what a work order's work plan for this step must contain before requesting approval (see "Work plan required fields" below).
-10. Enter a number in 「**表示順**」 (display order). A smaller number comes higher in the list.
-11. Press 「**保存**」 (Save).
+9. In 「**使える指示書種別**」 (work order types), tick the work order types this step may be placed on (from stock / manufacture / regrind). **At least one** is needed (see the explanation below).
+10. Set 「**作業計画の必須項目**」 (work plan required fields) — what a work order's work plan for this step must contain before requesting approval (see "Work plan required fields" below).
+11. Enter a number in 「**表示順**」 (display order). A smaller number comes higher in the list.
+12. Press 「**保存**」 (Save).
 
 ![New entry form of the process step master](../../../assets/screenshots/master-process-step-new-01.png)
 
@@ -73,6 +76,31 @@ This decides which numbers the operator enters when the step is done.
 - **検査（検査数・合格・不合格）** (inspection: inspected, passed, failed) … the inspected quantity, the passed quantity and the failed quantity are entered. Choose this for inspection steps.
 
 When you turn on the 「**検査工程**」 (inspection step) switch, 「数量管理」 (quantity tracking) changes to 「検査」 (inspection) by itself. If that does not suit you, you can choose again.
+
+### How to choose the work order types
+
+This decides which types of [work order](/manual/en/operations/production/work-order/user) the step may be placed on. There are three checkboxes — 「**在庫分**」 (from stock), 「**製造分**」 (manufacture) and 「**再研磨**」 (regrind) — and **at least one** must be ticked. If you try to save with none ticked, 「**使える指示書種別を 1 つ以上選んでください**」 (pick at least one work order type) is shown and it is not saved.
+
+Until now this was decided mechanically from the category — a regrind work order could not carry machining steps, a from-stock work order could carry only 「製品出し（在庫）」 (product issue from stock) and 「出荷前検査」 (pre-ship inspection), and so on. A guess like that cannot express a shop's exceptions. Re-cutting a cylinder while a tool is being reground, or running a receiving inspection on a lot that is only being issued from stock, are both ordinary ways of working, but allowing them meant changing the program and shipping it. It is master data now, so you change it on this screen.
+
+**Two steps cannot be changed.**
+
+- 「**製品出し（在庫）**」 (product issue from stock) … always from stock only.
+- 「**製品受入（再研磨）**」 (tool receipt (regrind)) … always regrind only.
+
+On those two the checkboxes cannot be pressed, and the reason is shown under the field. It is because the stock record depends on the type — 「製品出し（在庫）」 consumes stock that has been reserved, and 「製品受入（再研磨）」 books the customer's tools as **customer-owned stock**. Letting them cross types would break the stock figures.
+
+**What you set here takes effect in three places, and all three read the same judgement.**
+
+- When the steps of a [work order](/manual/en/operations/production/work-order/user) are put together, only the steps allowed for that work order's type are offered.
+- The step list screens ([prep step list](#manage-the-prep-step-list), [regrind step list](#manage-the-regrind-step-list) and the manufacturing step list) are filtered the same way.
+- It is checked once more on the server when you save.
+
+So a step can never be pickable on one screen and refused on another.
+
+You can check the result on the list screen: it has a 「**指示書種別**」 (work order types) column (which can be hidden from the shown columns) and a 「**使える指示書種別**」 (work order types) filter.
+
+> 💡 **Nothing changed for steps that already exist.** Every existing step already holds exactly what the program used to decide, so the first time you open this screen the boxes show what the system was doing. Leave them alone and the steps offered on a work order do not change at all.
 
 ### What the switches mean
 
@@ -178,6 +206,7 @@ Every field on the process step screen. Steps registered here are the building b
 | [Quantity tracking](#field-quantity-tracking) | Required | How the step handles piece counts |
 | [Lot input (default)](#field-lot-input-mode) | Required | Whether a lot / slip code must be entered at start |
 | [Default work time](#field-default-time) | Optional | Typical time per run |
+| [Work order types](#field-work-order-types) | Required | Which work order types this step may be placed on (from stock / manufacture / regrind) |
 | [Work plan required fields](#field-plan-required-fields) | — | What a work order's work plan for this step must contain before approval |
 | [Can run in parallel](#field-sync) | — | Whether it can run alongside others |
 | [Inspection / inspection approval](#field-inspection) | — | Whether it is an inspection step |
@@ -218,6 +247,10 @@ Whether the operator is asked to enter the material **lot or slip code** when st
 ### Default work time [#field-default-time]
 
 Typical time per run, used as the initial value when a work order is created.
+
+### Work order types [#field-work-order-types]
+
+The types of work order this step may be placed on. Choose at least one of **from stock / manufacture / regrind**. The step is offered only on work orders of the types ticked here. 「製品出し（在庫）」 (product issue from stock) is fixed to from stock and 「製品受入（再研磨）」 (tool receipt) to regrind, and neither can be changed (see "[How to choose the work order types](#how-to-choose-the-work-order-types)").
 
 ### Work plan required fields [#field-plan-required-fields]
 
@@ -273,6 +306,12 @@ A. Change the 「**表示順**」 (display order) number of each step. A smaller
 
 **Q. Which decides the order of the work — the display order or the execution dependency?**
 A. The order is decided by the 「**表示順**」 (display order). When you pick steps into a process list or a work order, they line up from the smallest number first (the order of work orders already created does not change when you change the number later). The 「**実行依存**」 (execution dependency) is not an order itself — it sets the **condition for starting**, such as "this step cannot start until that step is finished".
+
+**Q. I see 「使える指示書種別を 1 つ以上選んでください」 (pick at least one work order type) and cannot save.**
+A. No work order type is ticked. A step that no work order type can use has no use, so tick at least one of from stock / manufacture / regrind.
+
+**Q. The 「使える指示書種別」 (work order types) checkboxes cannot be pressed.**
+A. The step is 「製品出し（在庫）」 (product issue from stock) or 「製品受入（再研磨）」 (tool receipt). Both are start steps whose stock record depends on the work order type, so the type cannot be changed (see "[How to choose the work order types](#how-to-choose-the-work-order-types)").
 
 **Q. I tried to add a non-material-prep step to the prep step list and got an error.**
 A. You see 「**準備工程リストには準備工程（〇〇出し・受渡し / 材料準備）だけを入れられます**」 (only prep steps — issue/handoff or material prep — can go on the prep step list). Only steps whose category is "material preparation" can go on the prep step list. Put steps from machining onward on the per-product manufacturing step list ([work order](/manual/en/operations/production/work-order/user) creation screen, or the product master's process tab) instead.

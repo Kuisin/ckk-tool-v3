@@ -45,8 +45,15 @@ import {
   processCategoryLabel,
   processCategoryOptions,
   processExecutionLabel,
+  WORK_ORDER_TYPE_COLOR,
+  workOrderTypeLabel,
+  workOrderTypeOptions,
 } from "@/lib/enum-labels";
-import { isPrepStep } from "@/lib/workflow-core";
+import {
+  isPrepStep,
+  stepAllowedForType,
+  type WorkOrderType,
+} from "@/lib/workflow-core";
 import {
   DeleteProcessStepModal,
   type ProcessStepModalTarget,
@@ -80,6 +87,8 @@ export interface ProcessStepRow {
   lotInputMode: string;
   /** 作業計画の必須項目（工程ごと — lib/work-plan-core.ts）。 */
   workLocationRequired: boolean;
+  /** この工程を載せてよい指示書種別（在庫分 / 製造分 / 再研磨）。 */
+  allowedWorkOrderTypes: WorkOrderType[];
   planTimeRequired: boolean;
   planAssigneeRequired: boolean;
   sortOrder: number;
@@ -127,6 +136,9 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
   const [search, setSearch] = useUrlStringState("q");
   const [categoryFilter, setCategoryFilter] = useUrlSelectState("category");
   const [statusFilter, setStatusFilter] = useUrlSelectState("status");
+  // 「再研磨の指示書で使える工程はどれか」を一覧で引けるようにする — 設定を
+  // 変えたあとに確かめる場所がここしかない。
+  const [woTypeFilter, setWoTypeFilter] = useUrlSelectState("workOrderType");
 
   const [deleteRow, setDeleteRow] = useState<ProcessStepModalTarget | null>(
     null,
@@ -139,6 +151,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
     setSearch(null);
     setCategoryFilter(null);
     setStatusFilter(null);
+    setWoTypeFilter(null);
   };
 
   const filtered = rows.filter((r) => {
@@ -149,7 +162,15 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
     const matchesCategory = !categoryFilter || r.category === categoryFilter;
     const matchesStatus =
       !statusFilter || (statusFilter === "active" ? r.isActive : !r.isActive);
-    return matchesSearch && matchesCategory && matchesStatus;
+    // 開始工程は種別が固定なので、一覧の絞り込みも同じ規則で答える
+    // （行の配列だけを見ると製品出しが製造分に出てしまう）。
+    const matchesWoType =
+      !woTypeFilter ||
+      stepAllowedForType(
+        r,
+        woTypeFilter as "FROM_STOCK" | "MANUFACTURE" | "REGRIND",
+      );
+    return matchesSearch && matchesCategory && matchesStatus && matchesWoType;
   });
 
   const bulkSetActive = (targets: ProcessStepRow[], isActive: boolean) => {
@@ -360,6 +381,29 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
         ),
     },
     {
+      // この工程を載せてよい指示書種別（工程マスタが持つ）。
+      key: "workOrderTypes",
+      header: tr("master.processSteps.workOrderTypesShort"),
+      hideable: true,
+      width: 150,
+      render: (r) => (
+        <Group gap={4} wrap="wrap">
+          {(["FROM_STOCK", "MANUFACTURE", "REGRIND"] as const)
+            .filter((t) => stepAllowedForType(r, t))
+            .map((t) => (
+              <Badge
+                color={WORK_ORDER_TYPE_COLOR[t] ?? "gray"}
+                key={t}
+                size="xs"
+                variant="light"
+              >
+                {workOrderTypeLabel(t, locale) ?? t}
+              </Badge>
+            ))}
+        </Group>
+      ),
+    },
+    {
       // 作業計画の必須項目（日付は常に必須なので出さない）
       key: "planRequired",
       header: tr("master.processSteps.planRequiredShort"),
@@ -445,6 +489,15 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
             onChange={setCategoryFilter}
             placeholder={tr("common.category")}
             value={categoryFilter}
+            w={isMobile ? 130 : 150}
+          />
+          <Select
+            aria-label={tr("master.processSteps.workOrderTypes")}
+            clearable
+            data={workOrderTypeOptions(locale)}
+            onChange={setWoTypeFilter}
+            placeholder={tr("master.processSteps.workOrderTypes")}
+            value={woTypeFilter}
             w={isMobile ? 130 : 150}
           />
           <Select

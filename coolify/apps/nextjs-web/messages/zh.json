@@ -5762,7 +5762,13 @@
       "planFieldTimeShort": "时间",
       "planAssigneeRequired": "作业计划需要负责人",
       "planAssigneeRequiredHelp": "在需要先确定负责人再提交审批的工序上启用。默认负责人为可选，可在审批后由现场决定。",
-      "planFieldAssigneeShort": "负责人"
+      "planFieldAssigneeShort": "负责人",
+      "workOrderTypes": "可用的工单类别",
+      "workOrderTypesShort": "工单类别",
+      "workOrderTypesHelp": "该工序可以放入的工单类别。请至少选择一个。",
+      "workOrderTypesPinnedHelp": "该工序是「{type}」的起始工序，无法更改类别。库存消耗与客户寄存品的记账都依赖于此。",
+      "workOrderTypesPinnedBadge": "起始工序，无法更改",
+      "pickAtLeastOneWorkOrderType": "请至少选择一个可用的工单类别"
     },
     "products": {
       "specification": "规格",

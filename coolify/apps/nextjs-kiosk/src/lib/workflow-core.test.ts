@@ -14,6 +14,7 @@ import {
   isBlockingIssue,
   isPrepStep,
   isRegrindStep,
+  pinnedWorkOrderType,
   quantityLabelKeysFor,
   REGRIND_RECEIPT_STEP_CODE,
   regrindQuantities,
@@ -27,6 +28,7 @@ import {
   typeCompositionIssues,
   type UseDep,
   validateComposition,
+  type WorkOrderType,
 } from "./workflow-core";
 
 /** カタログ行フィクスチャ（既定順 = id×10。code は実カタログの区分判定に使う）。 */
@@ -44,6 +46,8 @@ const cat = (
   isInspection: false,
   isApprovalStep: false,
   quantityTracking: "FLOW" as const,
+  // 既定は製造分だけ（マイグレーションの列既定と同じ）。
+  allowedWorkOrderTypes: ["MANUFACTURE"] as const,
   sortOrder,
 });
 
@@ -1173,11 +1177,17 @@ describe("isPrepStep / splitStepIdsByKind", () => {
 });
 
 describe("compositionIssuesForKind", () => {
+  const mk = (id: number, category: string) => ({
+    id,
+    code: `STEP_${id}`,
+    category,
+    allowedWorkOrderTypes: ["MANUFACTURE"] as const,
+  });
   const catalog = [
-    { id: 1, category: "MATERIAL_PREP" },
-    { id: 6, category: "MATERIAL_PREP" },
-    { id: 7, category: "MACHINING" },
-    { id: 8, category: "INSPECTION" },
+    mk(1, "MATERIAL_PREP"),
+    mk(6, "MATERIAL_PREP"),
+    mk(7, "MACHINING"),
+    mk(8, "INSPECTION"),
   ];
   const issues = [
     // 製造側だけを見たときに必ず出る「開始工程が無い」
@@ -1218,20 +1228,27 @@ describe("compositionIssuesForKind", () => {
 });
 
 describe("再研磨（REGRIND）— 種別ごとの構成規則", () => {
-  const mk = (id: number, code: string, category: string) => ({
-    id,
-    code,
-    category,
-  });
+  // 種別の可否は工程マスタが持つ（allowedWorkOrderTypes）。ここの値は
+  // マイグレーション 20261108090000 が既存行へ書き写すものと同じ = 従来の挙動。
+  const mk = (
+    id: number,
+    code: string,
+    category: string,
+    allowedWorkOrderTypes: readonly WorkOrderType[],
+  ) => ({ id, code, category, allowedWorkOrderTypes });
+  const M = ["MANUFACTURE"] as const;
+  const R = ["REGRIND"] as const;
+  const MR = ["MANUFACTURE", "REGRIND"] as const;
   const catalog = [
-    mk(1, "MATERIAL_ISSUE", "MATERIAL_PREP"),
-    mk(42, "PRODUCT_ISSUE", "MATERIAL_PREP"),
-    mk(50, "REGRIND_RECEIPT", "REGRIND"),
-    mk(51, "REGRIND_OD", "REGRIND"),
-    mk(7, "CYLINDER_MACHINING", "MACHINING"),
-    mk(36, "COATING", "COATING"),
-    mk(40, "PRE_SHIP_INSPECTION", "INSPECTION"),
-    mk(9, "CYLINDER_INSPECTION_APPROVAL", "APPROVAL"),
+    mk(1, "MATERIAL_ISSUE", "MATERIAL_PREP", M),
+    // 開始工程は種別に固定 — マスタの値は読まれない（pinnedWorkOrderType）。
+    mk(42, "PRODUCT_ISSUE", "MATERIAL_PREP", M),
+    mk(50, "REGRIND_RECEIPT", "REGRIND", M),
+    mk(51, "REGRIND_OD", "REGRIND", R),
+    mk(7, "CYLINDER_MACHINING", "MACHINING", M),
+    mk(36, "COATING", "COATING", MR),
+    mk(40, "PRE_SHIP_INSPECTION", "INSPECTION", ["FROM_STOCK", ...MR]),
+    mk(9, "CYLINDER_INSPECTION_APPROVAL", "APPROVAL", MR),
   ];
   const byCode = (code: string) =>
     catalog.find((c) => c.code === code) as (typeof catalog)[number];
@@ -1264,7 +1281,7 @@ describe("再研磨（REGRIND）— 種別ごとの構成規則", () => {
     ).toBe(true);
   });
 
-  it("stepAllowedForType: 在庫分は 製品出し + 出荷前検査 だけ", () => {
+  it("stepAllowedForType: 在庫分は 製品出し + 出荷前検査 だけ（マスタの既定）", () => {
     const allowed = catalog
       .filter((c) => stepAllowedForType(c, "FROM_STOCK"))
       .map((c) => c.code);
@@ -1304,6 +1321,47 @@ describe("再研磨（REGRIND）— 種別ごとの構成規則", () => {
       "FROM_STOCK_REQUIRES_STOCK_ISSUE",
     ]);
     expect(typeCompositionIssues([42, 40], catalog, "FROM_STOCK")).toEqual([]);
+  });
+
+  it("可否は工程マスタが決める — 設定を変えれば答えが変わる", () => {
+    // 加工は既定では再研磨に載せられない…
+    expect(stepAllowedForType(byCode("CYLINDER_MACHINING"), "REGRIND")).toBe(
+      false,
+    );
+    // …が、工程マスタで再研磨を許せば載せられる（研ぎ直しのついでに円筒を
+    // 当て直す運用。以前はコードを直さないと通せなかった）。
+    const opened = {
+      ...byCode("CYLINDER_MACHINING"),
+      allowedWorkOrderTypes: ["MANUFACTURE", "REGRIND"] as const,
+    };
+    expect(stepAllowedForType(opened, "REGRIND")).toBe(true);
+    // 逆に閉じれば製造分からも外れる。
+    const closed = {
+      ...byCode("CYLINDER_MACHINING"),
+      allowedWorkOrderTypes: ["FROM_STOCK"] as const,
+    };
+    expect(stepAllowedForType(closed, "MANUFACTURE")).toBe(false);
+  });
+
+  it("開始工程だけはマスタで動かせない（台帳がその種別に依っている）", () => {
+    // 製品出し（在庫）に全種別を許しても、在庫分にしか載らない。
+    const issue = {
+      ...byCode("PRODUCT_ISSUE"),
+      allowedWorkOrderTypes: ["FROM_STOCK", "MANUFACTURE", "REGRIND"] as const,
+    };
+    expect(stepAllowedForType(issue, "FROM_STOCK")).toBe(true);
+    expect(stepAllowedForType(issue, "MANUFACTURE")).toBe(false);
+    expect(stepAllowedForType(issue, "REGRIND")).toBe(false);
+
+    // 製品受入（再研磨）も同じ。マスタの値（製造分）は読まれない。
+    const receipt = byCode("REGRIND_RECEIPT");
+    expect(receipt.allowedWorkOrderTypes).toEqual(["MANUFACTURE"]);
+    expect(stepAllowedForType(receipt, "REGRIND")).toBe(true);
+    expect(stepAllowedForType(receipt, "MANUFACTURE")).toBe(false);
+
+    expect(pinnedWorkOrderType(byCode("PRODUCT_ISSUE"))).toBe("FROM_STOCK");
+    expect(pinnedWorkOrderType(byCode("REGRIND_RECEIPT"))).toBe("REGRIND");
+    expect(pinnedWorkOrderType(byCode("COATING"))).toBeNull();
   });
 
   it("compositionIssuesForKind(REGRIND): 開始工程の不足は残す", () => {

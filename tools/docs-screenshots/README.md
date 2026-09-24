@@ -242,6 +242,33 @@ APP_URL=http://localhost:3105 pnpm exec tsx e2e-ship-shortage.ts
 注意が残る / バケットがマイナスになり伝票に「在庫不足のまま出庫」が 1 行立つ /
 足りているときはダイアログが出ず、普通に減る。
 
+### 工程マスタの「使える指示書種別」（e2e-process-step-types.ts）
+
+どの工程をどの種別の指示書に載せられるかは**工程マスタ (MS08) が持つ**
+（`process_step_catalog.allowed_work_order_types`）。単体試験は純関数
+（`stepAllowedForType`）しか見られないので、「マスタを変えたら指示書ビルダーの
+候補が変わる」という一連はここでしか確かめられない。
+
+```
+SHOT_DB_CONTAINER=ckk-wotype-db SHOT_DB_PORT=55492 pnpm docs:seed
+# nextjs-web を同じ DATABASE_URL で本番ビルドして :3126 で起動（APP_ENV=dev）
+APP_URL=http://localhost:3126 SHOT_DB_CONTAINER=ckk-wotype-db \
+  pnpm exec tsx e2e-process-step-types.ts
+```
+
+見ているのは 8 点 — 一覧が指示書種別で絞れる / 編集画面に 3 つのチェックボックスが
+出る / **開始工程（製品出し（在庫））は選べず理由が出る** / 変更前は再研磨の候補に
+円筒加工が無い / 保存すると行に入る / **設定を変えると再研磨の候補に円筒加工が出る**
+/ 1 つも選ばずには保存できない / 画面にエラーが無い。
+
+**fixtures は自分で流し直す**（先頭で 円筒加工 を既定へ戻す）ので何度でも続けて
+回せる — 戻さないと 2 回目から「変更前」の検査が本題と関係なく落ちる。
+
+**候補の照合はラベルの先頭の語で行う。** 工程の候補は「工程名 + バッジ（同期 /
+社内 / 要: …）」というラベルなので、`getByRole("checkbox", { name, exact: true })`
+は**必ず 0 件になる** — 0 件を「出ていない」と読むと、本当は出ている工程まで
+「出ていない」と判定して試験が嘘をつく（実際に一度そうなった）。
+
 ### 再研磨（e2e-regrind.ts）
 
 顧客の工具を預かって研ぎ直す一連（再研磨品目 + 他社製品 → 再研磨の明細 → 指示書 →
