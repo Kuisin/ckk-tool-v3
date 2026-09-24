@@ -55,6 +55,38 @@ function findEntryRow(key: DocKey) {
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
+/**
+ * 価格表の品目フィルタに出す選択肢 — **売り物だけ**（製品 + 再研磨品目、
+ * 他社製品と素材は除く）。
+ *
+ * 一覧・詳細はこれまで 価格試算 の `fetchProductOptions`（`itemType: "PRODUCT"`
+ * 固定）を借りていた。そのため**再研磨品目の価格表は一覧に出るのに、品目で
+ * 絞り込もうとすると選択肢に無い**という食い違いが起きていた。作成フォームの
+ * ピッカー（`searchPriceListItemOptions`）とは既に噛み合っていたので、
+ * 読み出し側だけが取り残されていた形。
+ *
+ * 価格試算 (SA01) 側はこれまでどおり製品だけ — あちらは製品の原価を積む道具で、
+ * 役務は対象外。だから共通の関数を広げず、価格表専用にここへ置く。
+ */
+export async function fetchPriceListItemOptions(): Promise<
+  { value: string; label: string }[]
+> {
+  const rows = await prisma.item.findMany({
+    where: {
+      itemType: { in: ["PRODUCT", "REGRIND"] },
+      isExternalProduct: false,
+      isActive: true,
+    },
+    orderBy: { id: "asc" },
+  });
+  return rows.map((r) => {
+    const code =
+      r.code ?? formatProductNumber(r.yearMonth ?? null, r.seq ?? null);
+    const nm = localized(r.name as LocalizedText | null);
+    return { value: String(r.id), label: code ? `${nm} ${code}` : nm };
+  });
+}
+
 export function mapEntry(r: EntryRow): PriceListEntry {
   return {
     entryId: formatPriceListNumber({ yearMonth: r.yearMonth, seq: r.seq }),
@@ -62,13 +94,20 @@ export function mapEntry(r: EntryRow): PriceListEntry {
     customerName: localized(r.customerBp.name as LocalizedText | null),
     itemId: String(r.itemId ?? ""),
     productName: (() => {
-      const code = formatProductNumber(
-        r.item?.yearMonth ?? null,
-        r.item?.seq ?? null,
-      );
+      // **品目の code をそのまま読む。** 以前は formatProductNumber で組み立て
+      // ていたが、あれは接頭辞が PRD 固定なので、再研磨品目（RGD-YYYYMM-NNNN）
+      // が価格表では PRD- と表示されていた。code 列が本物の採番結果を持つ。
+      const code =
+        r.item?.code ??
+        formatProductNumber(r.item?.yearMonth ?? null, r.item?.seq ?? null);
       const nm = localized(r.item?.name as LocalizedText | null);
       return code ? `${nm} ${code}` : nm;
     })(),
+    itemType: r.item?.itemType === "REGRIND" ? "REGRIND" : "PRODUCT",
+    standardUnitPrice:
+      r.item?.standardUnitPrice == null
+        ? null
+        : Number(r.item.standardUnitPrice),
     currency: r.currency,
     isActive: r.isActive,
     variants: r.variants.map((v) => {

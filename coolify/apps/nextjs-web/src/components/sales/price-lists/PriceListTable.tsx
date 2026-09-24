@@ -32,6 +32,7 @@ import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { CreateButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
+import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
@@ -167,7 +168,36 @@ export function PriceListTable({
       key: "productName",
       header: tr("common.product"),
       sortable: true,
-      render: (e) => e.productName,
+      // 製品と再研磨品目が同じ列に並ぶので、行がどちらかを言う。名前だけだと
+      // 「工具の名前」と「研ぎ直しという役務の名前」が見分けられない。
+      render: (e) => (
+        <Group gap={6} wrap="nowrap">
+          {e.itemType === "REGRIND" && (
+            <Badge color="orange" size="xs" variant="light">
+              {tr("enum.ITEM_TYPE_LABEL.REGRIND")}
+            </Badge>
+          )}
+          <span>{e.productName}</span>
+        </Group>
+      ),
+    },
+    {
+      // 標準価格は**読むだけ**（持ち主は品目マスタ）。当たる価格表が無いときに
+      // いくらで売れるのかが、価格表の画面から見えないと分からないため出す。
+      key: "standardUnitPrice",
+      header: tr("common.standardPrice"),
+      width: 120,
+      align: "right" as const,
+      hideable: true,
+      sortValue: (e) => e.standardUnitPrice ?? -1,
+      render: (e) =>
+        e.standardUnitPrice == null ? (
+          <Text c="dimmed" size="xs">
+            —
+          </Text>
+        ) : (
+          <MoneyText value={e.standardUnitPrice} />
+        ),
     },
     {
       key: "orderType",

@@ -20,6 +20,8 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     customerName: "株式会社ABC製作所",
     itemId: "1001",
     productName: "精密軸 PRD-202601-0001",
+    itemType: "PRODUCT",
+    standardUnitPrice: null,
     currency: "JPY",
     isActive: true,
     variants: [
@@ -121,6 +123,8 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     customerName: "合同会社XYZ工業",
     itemId: "2008",
     productName: "ロッド PRD-202602-0008",
+    itemType: "PRODUCT",
+    standardUnitPrice: null,
     currency: "JPY",
     isActive: true,
     variants: [
@@ -168,7 +172,9 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     customerId: "bp-003",
     customerName: "株式会社DEFエンジニアリング",
     itemId: "3012",
-    productName: "特殊加工品 PRD-202603-0012",
+    productName: "再研磨 超硬エンドミル 外周 4枚刃 RGD-202603-0012",
+    itemType: "REGRIND",
+    standardUnitPrice: 1200,
     currency: "JPY",
     isActive: false,
     variants: [
