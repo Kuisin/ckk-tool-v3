@@ -228,35 +228,52 @@ describe("shipToApplies / normalizeShipToBpId — 出荷先は通常配送だけ
   });
 });
 
-describe("他社製品（再研磨専用）", () => {
-  it("注文種別が再研磨でない行に他社製品があれば止める", () => {
+describe("他社製品 と 再研磨の工具", () => {
+  it("他社製品は売り物の欄に置けない（再研磨の行でも）", () => {
     const r = acceptanceReadiness(
       {
         customerBpId: "bp-1",
         items: [
           { ...item({}), orderType: "PRODUCTION", isExternalProduct: true },
-          { ...item({}), orderType: "REGRIND", isExternalProduct: true },
+          {
+            ...item({}),
+            orderType: "REGRIND",
+            isExternalProduct: true,
+            toolItemId: "9",
+          },
         ],
       },
       tr,
     );
     expect(r.ok).toBe(false);
+    // 他社製品は「再研磨なら売ってよい」ではない — 預かるだけなので、
+    // どちらの行でも売り物の欄には置けない。
     expect(r.issues.map((i) => i.kind)).toEqual(["externalProduct"]);
-    expect(r.issues[0].message).toContain('"rows":"1"');
+    expect(r.issues[0].message).toContain('"rows":"1, 2"');
   });
 
-  it("再研磨の行なら他社製品でよい。判定材料が無ければ見ない", () => {
+  it("再研磨の行は工具が要る。判定材料が無ければ見ない", () => {
+    const r = acceptanceReadiness(
+      { customerBpId: "bp-1", items: [{ ...item({}), orderType: "REGRIND" }] },
+      tr,
+    );
+    expect(r.ok).toBe(false);
+    expect(r.issues.map((i) => i.kind)).toEqual(["regrindTool"]);
+
+    // 工具が入っていれば通る。
     expect(
       acceptanceReadiness(
         {
           customerBpId: "bp-1",
-          items: [
-            { ...item({}), orderType: "REGRIND", isExternalProduct: true },
-            item({}),
-          ],
+          items: [{ ...item({}), orderType: "REGRIND", toolItemId: "9" }],
         },
         tr,
       ).ok,
+    ).toBe(true);
+
+    // 再研磨でない行は工具を問わない（従来どおり）。
+    expect(
+      acceptanceReadiness({ customerBpId: "bp-1", items: [item({})] }, tr).ok,
     ).toBe(true);
   });
 });

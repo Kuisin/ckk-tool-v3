@@ -193,8 +193,16 @@ model OrderLine {
 
   // ── 明細内容（注文請書の行そのもの） ──
   // 抽出直後は productText のみ。品目マスタ突合後に itemId を持つ。
-  /// 統合品目（app.items）。注文明細の品目（突合前は null）。
+  /// 統合品目（app.items）。**その行で売っているもの**（突合前は null）。
+  /// 再研磨の明細では「再研磨の品目（役務）」— 値段はここに付く。研ぎ直す工具の
+  /// ほうは toolItemId が持つ。
   itemId       Int?      @map("item_id")
+  /// 研ぎ直す工具（app.items の PRODUCT。他社製品のこともある）。
+  ///
+  /// **再研磨の明細だけが持つ。** 売っているのは役務（itemId）で、預かって手を
+  /// 入れて返すのはこちら — 預り品の在庫も指示書もこの品目で動く。確定した
+  /// 再研磨の明細では必須（DB の CHECK order_lines_regrind_tool）。
+  toolItemId   Int?      @map("tool_item_id")
   productText  String?   @map("product_text") // 抽出された品名（生）
   orderType    OrderType @default(PRODUCTION) @map("order_type")
   quantity     Int
@@ -240,6 +248,7 @@ model OrderLine {
   // 行に複写すると乖離するため持たない。配送だけは例外（上のコメント参照）。
   acceptance OrderAcceptance  @relation(fields: [acceptanceYearMonth, acceptanceSeq], references: [yearMonth, seq], onDelete: Restrict)
   item       Item?            @relation("OrderLineItem", fields: [itemId], references: [id], onDelete: Restrict)
+  toolItem   Item?            @relation("OrderLineToolItem", fields: [toolItemId], references: [id], onDelete: Restrict)
   endUserBp  BusinessPartner? @relation("OrderLineEndUser", fields: [endUserBpId], references: [id])
   shipToBp             BusinessPartner? @relation("OrderLineShipTo", fields: [shipToBpId], references: [id])
   assignedPlant        Plant?           @relation("OrderLinePlant", fields: [assignedPlantId], references: [id])

@@ -504,6 +504,19 @@ export const appList: AppEntry[] = [
     requiredPermission: "master",
   },
 
+  {
+    // 再研磨品目（売る**役務**としての研ぎ直し）。値段はここに付く —
+    // 旧 再研マスタ（材料 × 加工箇所 × 刃数 × サイズ帯 → 金額）が 1 行 1 品目に
+    // なったもの。研ぐ工具のほうは製品マスタ (MS04) の行。
+    key: "master-regrind-items",
+    label: "再研磨品目",
+    operationCode: "MS0H",
+    href: "/master/regrind-items",
+    icon: "IconTool",
+    category: "マスタ",
+    requiredPermission: "master",
+  },
+
   // ─── ドキュメント ──────────────────────────────────────────────────────────
   {
     // マニュアル（/manual・fumadocs）。公開ページだが launcher からも開ける。
@@ -845,6 +858,7 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "master-storage-locations": { en: "Storage locations", zh: "存放位置" },
   "master-tax-categories": { en: "Tax categories", zh: "税种" },
   "master-charge-items": { en: "Charge items", zh: "费用项目" },
+  "master-regrind-items": { en: "Regrind items", zh: "再研磨服务" },
   docs: { en: "Manual", zh: "操作手册" },
   "admin-manual": { en: "Admin manual", zh: "管理手册" },
   "user-management": { en: "Users", zh: "用户管理" },

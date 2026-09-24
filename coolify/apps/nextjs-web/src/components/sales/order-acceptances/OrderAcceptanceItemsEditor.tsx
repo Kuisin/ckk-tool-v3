@@ -52,6 +52,7 @@ import { useState } from "react";
 import {
   searchEndUserOptions,
   searchProductItemOptions,
+  searchRegrindItemOptions,
   searchShipToOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import type { OrderAcceptanceDraftInput } from "@/app/(dashboard)/sales/order-acceptances/actions";
@@ -104,6 +105,13 @@ export interface ItemRowForm {
   /** 未突合のときの候補（lib/product-match）。手で足した行は空。 */
   productSuggestions: MatchSuggestion[];
   orderType: OrderType;
+  /**
+   * 研ぎ直す工具（再研磨の行だけ）。**売り物とは別の欄** — 売るのは
+   * 再研磨という役務（itemId）で、預かって数えるのはこの工具。
+   */
+  toolItemId: string | null;
+  /** SearchSelect の初期表示用ラベル（値があるとき）。 */
+  toolLabel: string | null;
   quantity: number;
   /**
    * 人が入れた単価。**価格表どおりの行では使われない**（表示も保存も
@@ -209,6 +217,8 @@ export const newItemRow = (): ItemRowForm => ({
   productText: "",
   productSuggestions: [],
   orderType: "PRODUCTION",
+  toolItemId: null,
+  toolLabel: null,
   quantity: 1,
   unitPrice: null,
   priceOverridden: false,
@@ -235,6 +245,8 @@ export function toItemRows(items: OrderAcceptanceItemView[]): ItemRowForm[] {
     orderType: (ORDER_TYPES as readonly string[]).includes(it.orderType)
       ? (it.orderType as OrderType)
       : "PRODUCTION",
+    toolItemId: it.toolItemId,
+    toolLabel: it.toolLabel,
     quantity: it.quantity,
     unitPrice: it.unitPrice,
     priceOverridden: it.priceOverridden,
@@ -267,6 +279,7 @@ export function toItemPayload(
       itemId: r.itemId,
       productText: r.productText || null,
       orderType: r.orderType,
+      toolItemId: r.toolItemId,
       quantity: r.quantity,
       unitPrice: price.effective,
       priceOverridden: price.state === "override",
@@ -376,6 +389,8 @@ export function OrderAcceptanceItemsEditor({
       )}
       {items.map((row, ri) => {
         const price = prices[ri];
+        // 再研磨の行は「売る役務」と「預かる工具」の 2 つを指す。
+        const isRegrind = row.orderType === "REGRIND";
         // 価格表どおりに戻す行で、いま入っている単価が違う場合 —
         // 保存すると価格表の単価に置き換わるので、置き換わる前に見せる。
         const replaced =
@@ -469,8 +484,12 @@ export function OrderAcceptanceItemsEditor({
                   grow
                   preventGrowOverflow={false}
                 >
+                  {/*
+                    売り物の欄。再研磨の行が指すのは**再研磨の品目**（役務）で、
+                    値段はそこに付く — 研ぎ直す工具は下の別の欄で選ぶ。
+                  */}
                   <SearchSelect
-                    f4={productItemF4(tr)}
+                    f4={isRegrind ? undefined : productItemF4(tr)}
                     initialOption={
                       row.itemId
                         ? {
@@ -479,23 +498,36 @@ export function OrderAcceptanceItemsEditor({
                           }
                         : null
                     }
-                    label={tr("common.product")}
+                    label={
+                      isRegrind
+                        ? tr("sales.orderAcceptanceItemsEditor.regrindItem")
+                        : tr("common.product")
+                    }
                     onChange={(v, opt) =>
                       patch(ri, {
                         itemId: v,
                         productLabel: opt?.label ?? null,
                       })
                     }
-                    onSearch={(q) =>
-                      searchProductItemOptions(q, {
-                        // 他社製品は再研磨の明細でだけ選べる。
-                        includeExternal: row.orderType === "REGRIND",
-                      })
+                    onSearch={
+                      isRegrind
+                        ? searchRegrindItemOptions
+                        : searchProductItemOptions
                     }
-                    placeholder={tr(
-                      "sales.orderAcceptances.matchAgainstTheProductMaster",
-                    )}
-                    storageKey="order-line-product-item"
+                    placeholder={
+                      isRegrind
+                        ? tr(
+                            "sales.orderAcceptanceItemsEditor.searchTheRegrindItems",
+                          )
+                        : tr(
+                            "sales.orderAcceptances.matchAgainstTheProductMaster",
+                          )
+                    }
+                    storageKey={
+                      isRegrind
+                        ? "order-line-regrind-item"
+                        : "order-line-product-item"
+                    }
                     value={row.itemId}
                   />
                   <TextInput
@@ -512,9 +544,23 @@ export function OrderAcceptanceItemsEditor({
                     data={orderTypeOptions(locale)}
                     label={tr("common.type2")}
                     maw={130}
-                    onChange={(v) =>
-                      patch(ri, { orderType: (v ?? "PRODUCTION") as OrderType })
-                    }
+                    onChange={(v) => {
+                      const next = (v ?? "PRODUCTION") as OrderType;
+                      // 再研磨とそれ以外では**品目の種類そのものが違う**
+                      // （再研磨の役務 / 製品）。跨いだら選び直し — 残すと
+                      // 保存側の検査で必ず弾かれる行になる。
+                      const crosses =
+                        (next === "REGRIND") !== (row.orderType === "REGRIND");
+                      patch(ri, {
+                        orderType: next,
+                        ...(crosses
+                          ? { itemId: null, productLabel: null }
+                          : {}),
+                        ...(next === "REGRIND"
+                          ? {}
+                          : { toolItemId: null, toolLabel: null }),
+                      });
+                    }}
                     value={row.orderType}
                     withAsterisk
                   />
@@ -556,13 +602,51 @@ export function OrderAcceptanceItemsEditor({
                   突合が 1 件に絞れなかったときの候補。製品が決まったら消える。
                   品名がずれているからこそ突合が外れているので、打ち直しはさせない。
                 */}
-                {!row.itemId && (
+                {!row.itemId && !isRegrind && (
                   <Box mt="xs">
                     <MatchSuggestions
                       onPick={(s) =>
                         patch(ri, { itemId: s.id, productLabel: s.label })
                       }
                       suggestions={row.productSuggestions}
+                    />
+                  </Box>
+                )}
+                {/*
+                  研ぎ直す工具。自社の製品でも他社製品でもよい（他社の工具を
+                  預かるのが再研磨の大半なので、他社製品を出す唯一の欄）。
+                  確定済みの再研磨明細では必須 — 工具が決まらないと預り品を
+                  数えられず、指示書も作れない。
+                */}
+                {isRegrind && (
+                  <Box mt="xs">
+                    <SearchSelect
+                      initialOption={
+                        row.toolItemId
+                          ? {
+                              value: row.toolItemId,
+                              label: row.toolLabel ?? row.toolItemId,
+                            }
+                          : null
+                      }
+                      label={tr(
+                        "sales.orderAcceptanceItemsEditor.toolToRegrind",
+                      )}
+                      onChange={(v, opt) =>
+                        patch(ri, {
+                          toolItemId: v,
+                          toolLabel: opt?.label ?? null,
+                        })
+                      }
+                      onSearch={(q) =>
+                        searchProductItemOptions(q, { includeExternal: true })
+                      }
+                      placeholder={tr(
+                        "sales.orderAcceptanceItemsEditor.searchTheToolBeingHeld",
+                      )}
+                      storageKey="order-line-tool-item"
+                      value={row.toolItemId}
+                      withAsterisk
                     />
                   </Box>
                 )}

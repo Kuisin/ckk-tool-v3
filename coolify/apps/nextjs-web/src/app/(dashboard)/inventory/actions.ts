@@ -20,6 +20,7 @@ import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import { applyTransaction, movementOpener } from "@/lib/inventory";
+import { inventoryTypeOf } from "@/lib/inventory-item-type";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -229,7 +230,7 @@ export async function transferStock(
           });
 
       await applyTransaction(tx, await openMovement(), {
-        inventoryType: src.item.itemType,
+        inventoryType: inventoryTypeOf(src.item.itemType),
         inventoryId: src.id,
         transactionType: "OUT",
         quantity: v.quantity,
@@ -238,7 +239,7 @@ export async function transferStock(
         notes: note,
       });
       await applyTransaction(tx, await openMovement(), {
-        inventoryType: src.item.itemType,
+        inventoryType: inventoryTypeOf(src.item.itemType),
         inventoryId: target.id,
         transactionType: "IN",
         quantity: v.quantity,

@@ -2,7 +2,7 @@
  * numbering.ts — document numbering on app.numbering_sequences
  * (_specs/tables.md §採番管理). Server-only.
  *
- * Formats: PRD-YYYYMM-NNNN (製品) / EST-, QOT- ... -NNNNN with monthly reset.
+ * Formats: PRD-YYYYMM-NNNN (製品) / RGD-YYYYMM-NNNN (再研磨品目) / EST-, QOT- ... -NNNNN with monthly reset.
  * The increment is a single atomic INSERT ... ON CONFLICT statement, so
  * concurrent callers never receive the same number.
  *
@@ -16,6 +16,10 @@ import { prisma } from "./db";
 
 const SEQUENCES = {
   PRODUCT: { prefix: "PRD", digits: 4 },
+  // 再研磨品目 (MS0H)。製品と同じ items 表に載るが、売る**役務**なので
+  // 番号を分ける — 一覧・注文請書・請求書で「これは研ぎ直しだ」と
+  // コードだけで読めるようにするため。
+  REGRIND_ITEM: { prefix: "RGD", digits: 4 },
   ESTIMATE: { prefix: "EST", digits: 5 },
   QUOTE: { prefix: "QOT", digits: 5 },
   PRICE_LIST: { prefix: "PRC", digits: 5 },

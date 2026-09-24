@@ -46,6 +46,22 @@ function productLabel(p: {
   return code ? `${name} ${code}` : name;
 }
 
+/**
+ * 工具ラベル: メーカー名（他社製品のみ）+ 名称 + 品目コード。
+ * 誰が作った工具なのかは預かるときに最初に要る情報なので先頭に置く。
+ */
+function toolLabel(t: {
+  name: unknown;
+  code: string | null;
+  isExternalProduct: boolean;
+  makerName: string | null;
+}): string {
+  const maker = t.isExternalProduct ? t.makerName?.trim() : null;
+  return [maker, localized(t.name as LocalizedText | null), t.code]
+    .filter((x): x is string => !!x)
+    .join(" ");
+}
+
 /** 一覧 — 新しい採番から順（取込状況一覧）。 */
 export async function fetchOrderAcceptances(): Promise<
   OrderAcceptanceListRow[]
@@ -108,6 +124,15 @@ export async function fetchOrderAcceptance(
         include: {
           // 品目統合 第 2 段 C — 表示は品目側から読む。
           item: { select: { name: true, yearMonth: true, seq: true } },
+          // 再研磨の明細が指す工具（他社製品も含む）。売り物の品目とは別の欄。
+          toolItem: {
+            select: {
+              name: true,
+              code: true,
+              isExternalProduct: true,
+              makerName: true,
+            },
+          },
           // 配送（§8）— 明細ごとに持つ。
           shipToBp: { select: { name: true } },
           endUserBp: { select: { name: true } },
@@ -179,6 +204,8 @@ export async function fetchOrderAcceptance(
     productSuggestions:
       it.itemId == null ? toItemSuggestions(it.productText) : [],
     orderType: it.orderType,
+    toolItemId: it.toolItemId != null ? String(it.toolItemId) : null,
+    toolLabel: it.toolItem ? toolLabel(it.toolItem) : null,
     quantity: it.quantity,
     unitPrice: it.unitPrice != null ? Number(it.unitPrice) : null,
     priceOverridden: it.priceOverridden,

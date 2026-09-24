@@ -39,6 +39,11 @@ export interface LineAllocInfo {
   otherAllocated: number;
   /** 明細の製品 — **品目 id（items.id）**。未突合の明細は null。 */
   itemId: number | null;
+  /**
+   * 再研磨の明細が指す**工具**（品目 id）。再研磨では itemId が「売る役務」
+   * （再研磨品目）なので、指示書が預かって研いで返す物はこちら。
+   */
+  toolItemId?: number | null;
   status: string;
   /** 注文種別（ORDER_TYPE）。REGRIND の明細は再研磨の指示書だけに載る。 */
   orderType?: string;
@@ -46,6 +51,20 @@ export interface LineAllocInfo {
 
 /** 指示書の種別（app.WORK_ORDER_TYPE）。lib/workflow-core.ts と同じ集合。 */
 export type AllocWorkOrderType = "FROM_STOCK" | "MANUFACTURE" | "REGRIND";
+
+/**
+ * その明細に対して**指示書が扱う物**の品目 id。
+ *
+ * 製造・在庫分はそのまま明細の製品。**再研磨だけ違う** — 明細の itemId は
+ * 「再研磨という役務」（値段が付いている品目）で、工場が受け取って研いで
+ * 返すのは工具のほう。指示書の対象・預り品のバケット・出荷する物は全部
+ * 工具で数えるので、ここで 1 回だけ読み替える。
+ */
+export function allocTargetItemId(
+  line: Pick<LineAllocInfo, "itemId" | "toolItemId" | "orderType">,
+): number | null {
+  return line.orderType === "REGRIND" ? (line.toolItemId ?? null) : line.itemId;
+}
 
 /** この明細にまだ割り当てられる数量（受注数量 − 他の指示書の割当）。 */
 export function remainingAllocatable(info: {
@@ -131,6 +150,12 @@ export function validateAllocations(
         },
       );
     }
+    // 再研磨の明細は「何を研ぐのか」が決まっていないと指示書にできない。
+    if (line.orderType === "REGRIND" && line.toolItemId == null) {
+      return tr("production.workOrderActions.regrindLineToolMissing", {
+        number: line.number,
+      });
+    }
     // 再研磨の明細 ⇄ 再研磨の指示書 は 1 対 1 の対応。混ぜると他社の工具が
     // 自社の完成品として入庫する（製造分）か、作るはずの物が預り品になる。
     const lineIsRegrind = line.orderType === "REGRIND";
@@ -142,9 +167,12 @@ export function validateAllocations(
         "production.workOrderActions.regrindLineRequiresRegrindWorkOrder",
       );
     }
+    // 同じ指示書に載る明細は同じ物でなければならない。再研磨では
+    // その「物」は工具（allocTargetItemId）。
+    const target = allocTargetItemId(line);
     if (itemId == null) {
-      itemId = line.itemId;
-    } else if (line.itemId !== itemId) {
+      itemId = target;
+    } else if (target !== itemId) {
       return tr("production.workOrderActions.allocationsMustShareProduct");
     }
     const remaining = remainingAllocatable(line);

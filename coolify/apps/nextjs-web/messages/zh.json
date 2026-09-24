@@ -1237,7 +1237,8 @@
     },
     "ITEM_TYPE_LABEL": {
       "PRODUCT": "产品",
-      "MATERIAL": "材料"
+      "MATERIAL": "材料",
+      "REGRIND": "再研磨"
     },
     "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
       "past": "实绩",
@@ -3278,7 +3279,8 @@
       "plansRequiredBeforeApproval": "申请审批前请填写作业计划（日期 + 作业场所）：{steps}",
       "copyRouteFailed": "复制工序清单失败",
       "prepRouteRequired": "请选择准备工序清单",
-      "prepRouteNotFound": "所选的准备工序清单不存在或已停用"
+      "prepRouteNotFound": "所选的准备工序清单不存在或已停用",
+      "regrindLineToolMissing": "订单明细 {number}：未选择要研磨的刀具"
     },
     "designFileActions": {
       "cannotDelete": "无法删除",
@@ -6559,6 +6561,54 @@
       "duplicateCodeForCustomer": "客户料号“{code}”在同一客户中重复",
       "duplicateCodeOnOtherProduct": "客户料号“{code}”已在同一客户的其他产品上登记（含写法差异）",
       "couldNotSave": "客户料号保存失败"
+    },
+    "regrindItems": {
+      "pageTitle": "再研磨服务",
+      "newRegrindItem": "新建再研磨服务",
+      "formHelp": "把研磨服务本身登记为一个品目。价格在这里设定，客户价格表优先。要研磨的刀具在产品主数据中登记。",
+      "toolClass": "刀具种类",
+      "toolClassHelp": "按价格变化的粒度填写",
+      "toolClassPlaceholder": "硬质合金螺旋立铣刀",
+      "location": "加工部位",
+      "locationHelp": "研磨哪个部位",
+      "locationPlaceholder": "外周 + 沟槽",
+      "flutes": "刃数",
+      "flutesHelp": "留空 = 价格与刃数无关",
+      "sizeMin": "尺寸下限",
+      "sizeMinHelp": "大于该直径",
+      "sizeMax": "尺寸上限",
+      "sizeMaxHelp": "小于等于该直径",
+      "sizeBand": "尺寸区间",
+      "sizeBandOrder": "尺寸上限必须大于尺寸下限",
+      "standardPrice": "标准价格",
+      "standardPriceHelp": "不分客户的定价。留空 = 仅向有价格表的客户销售",
+      "priceListOnly": "仅价格表",
+      "keywords": "关键词",
+      "searchPlaceholder": "按编号、名称、刀具种类或加工部位搜索",
+      "empty": "没有再研磨服务",
+      "created": "已创建再研磨服务 {code}",
+      "updated": "已更新 {name}",
+      "deleted": "已删除 {name}",
+      "enabled": "已启用 {name}",
+      "disabled": "已停用 {name}",
+      "editTheRegrindItem": "编辑再研磨服务",
+      "deleteTheRegrindItem": "删除再研磨服务",
+      "deleteConfirm": "将删除 {name}。",
+      "itCannotBeDeletedWhileInUse": "已被订单明细、报价单或价格表使用的品目无法删除。",
+      "enableTheRegrindItem": "启用再研磨服务",
+      "disableTheRegrindItem": "停用再研磨服务",
+      "enableConfirm": "将启用 {name}。",
+      "disableConfirm": "将停用 {name}。新明细中将无法选择。",
+      "bulkDeleteRegrindItems": "批量删除再研磨服务",
+      "bulkDeleteConfirm": "将删除 {count} 个再研磨服务。",
+      "bulkDeleted": "已删除 {count} 件",
+      "bulkEnabled": "已启用 {count} 件",
+      "bulkDisabled": "已停用 {count} 件",
+      "inUseCannotDelete": "使用中无法删除（订单明细 {orderLines} 件 / 报价 {quotes} 件 / 价格表 {priceLists} 件）",
+      "notFound": "未找到再研磨服务",
+      "createFailed": "再研磨服务创建失败",
+      "updateFailed": "再研磨服务更新失败",
+      "deleteFailed": "再研磨服务删除失败"
     }
   },
   "manual": {
@@ -7690,7 +7740,8 @@
       "addATier": "添加档",
       "quantityRangeOpen": "{min} 支起",
       "quantityRangeBounded": "{min}~{max} 支",
-      "perPieceAmount": "{amount}/支"
+      "perPieceAmount": "{amount}/支",
+      "standardPriceLabel": "标准价格"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "已发行（PDF 生成失败）",
@@ -7921,7 +7972,11 @@
       "willReplaceWithList": "保存时 {entered} 将被替换为价格表的单价",
       "overriddenFromList": "已覆盖（价格表 {expected}）",
       "delivery": "配送",
-      "applyLineOneDeliveryToAll": "将第 1 行的配送应用到全部行"
+      "applyLineOneDeliveryToAll": "将第 1 行的配送应用到全部行",
+      "regrindItem": "再研磨服务",
+      "searchTheRegrindItems": "搜索再研磨服务",
+      "toolToRegrind": "要研磨的刀具",
+      "searchTheToolBeingHeld": "搜索寄存的刀具（含他社产品）"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "将删除“{label}”。此操作无法撤销。",
@@ -7998,7 +8053,6 @@
       "onlyApprovedCanConfirm": "只有已批准的订单确认书才能确定",
       "onlyCompletedCanArchive": "只有已确定的订单确认书才能归档",
       "onlyDraftCanRequestApproval": "只有草稿状态的订单确认书才能申请审批",
-      "externalProductOnlyRegrind": "他社产品只能用于订单类别「再研磨」的明细",
       "onlyImportCanRetryExtraction": "只有取入中（未提取）的订单确认书才能重新提取",
       "onlyImportCanTakeOverManually": "只有取入中的订单确认书才能切换为手动录入",
       "orderLineConfirmedNote": "由订单确认书 {number} 确定",
@@ -8022,7 +8076,6 @@
     },
     "quoteActions": {
       "createFailed": "报价单创建失败",
-      "externalProductOnlyRegrind": "他社产品只能用于订单类别「再研磨」的明细",
       "invalidQuoteNumber": "报价单号无效",
       "issueFailed": "发行失败",
       "noPriceListEntry": "明细 {line}：没有匹配的价格表（请从价格试算登记价格表）",
@@ -8047,7 +8100,6 @@
     },
     "priceListsActions": {
       "testSampleRequiresEndDate": "试制、样品价格必须设置有效截止日",
-      "externalProductOnlyRegrind": "他社产品的价格表只能有订单类别「再研磨」",
       "invalidEstimateNumber": "价格试算编号无效",
       "estimateNotFound": "未找到该价格试算",
       "onlyConfirmedEstimateUsable": "只有已确定的价格试算可用于价格表",
@@ -8149,11 +8201,12 @@
       "lineEndUserNotIdentified": "第 {rows} 行明细：未指定最终用户",
       "noLineItems": "没有任何明细",
       "lineProductNotIdentified": "第 {rows} 行明细：产品未确定",
-      "externalProductRequiresRegrind": "明细第 {rows} 行：他社产品只能以订单类别「再研磨」接单",
       "lineUnitPriceNotEntered": "第 {rows} 行明细：单价未输入",
       "lineQuantityInvalid": "第 {rows} 行明细：数量不足 1",
       "lineUnitPriceNegative": "第 {rows} 行明细：单价为负数",
-      "andNMore": "其他 {count} 件"
+      "andNMore": "其他 {count} 件",
+      "externalProductIsNotSold": "第 {rows} 行明细：他社产品不能作为销售品目，请在再研磨行的刀具栏中选择",
+      "regrindToolNotSelected": "第 {rows} 行明细：未选择要研磨的刀具"
     },
     "orderLineCore": {
       "confirmedLineCannotBeChanged": "已确认的订单明细无法更改",
@@ -8161,6 +8214,17 @@
       "onlyDraftAcceptanceEditable": "只有草稿状态的订单确认书可以编辑",
       "productNotIdentified": "产品未确定",
       "unitPriceNotEntered": "单价未输入"
+    },
+    "salesItemGuard": {
+      "externalProductIsNotSold": "第 {row} 行明细：他社产品不能作为销售品目，请在再研磨行的刀具栏中选择",
+      "regrindNeedsRegrindItem": "第 {row} 行明细：再研磨明细请选择再研磨品目",
+      "nonRegrindNeedsProduct": "第 {row} 行明细：非再研磨明细请选择产品",
+      "toolOnlyForRegrind": "第 {row} 行明细：刀具只能填写在再研磨明细中",
+      "toolMustBeProduct": "第 {row} 行明细：刀具请选择产品",
+      "externalProductHasNoPriceList": "他社产品无法创建价格表（只是寄存，不出售）",
+      "materialHasNoPriceList": "材料无法创建价格表",
+      "regrindItemOnlyRegrindVariant": "再研磨品目只能拥有订单类别「再研磨」",
+      "productHasNoRegrindVariant": "产品无法创建订单类别「再研磨」的价格。再研磨的价格由再研磨品目持有"
     }
   },
   "shipping": {
@@ -9055,7 +9119,8 @@
       "stock_takes": "盘点",
       "stock_take_lines": "盘点明细",
       "item_inventory": "库存",
-      "movement_types": "移动类型"
+      "movement_types": "移动类型",
+      "items": "品目"
     },
     "change": {
       "pair": "{label}: {before} → {after}",

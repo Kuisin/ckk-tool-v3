@@ -44,6 +44,12 @@ enum ItemType {
   PRODUCT
   /// 素材（買うもの・消費するもの）
   MATERIAL
+  /// 再研磨（売る**役務**）。研ぎ直しそのものを 1 つの品目として持ち、値段はここに付く。
+  ///
+  /// 在庫を持たない — 預かるのは顧客の工具（PRODUCT）のほうで、この品目は
+  /// 「何をいくらでやるか」だけを表す。旧 FileMaker の 再研マスタ
+  /// （材料 × 加工箇所 × 刃数 × サイズ帯 → 金額）が 1 行 1 品目になったもの。
+  REGRIND
 
   @@map("ITEM_TYPE")
   @@schema("app")
@@ -78,6 +84,15 @@ model Item {
   currency      String? @default("JPY")
   taxCategoryId Int?    @map("tax_category_id")
   spec          Json?
+
+  /// **標準価格**（顧客を問わない定価）。顧客ごとの価格表（price_list_entries）が
+  /// 無いときの拠り所で、価格表があればそちらが勝つ — S/4HANA の
+  /// 「品目の定価 + 顧客ごとの条件レコード」と同じ形。
+  ///
+  /// **いまこれを読むのは再研磨の品目だけ**（lib/standard-price.ts）。製品は
+  /// 従来どおり価格表が無ければ単価を解決できない — 見積書が「価格表からのみ
+  /// 作成できる」ことに依っているので、広げるなら意図してやること。
+  standardUnitPrice Decimal? @map("standard_unit_price") @db.Decimal(12, 2)
   /// 他社製品（再研磨のみ）。他社が作った工具を再研磨のために預かるとき、品目として
   /// 登録する入れ物。製造工程リスト・製造分指示書・PRODUCTION/TEST/SAMPLE 明細では
   /// 選べない（DB は item_type = PRODUCT だけを守り、使える場所の制限はアプリ側）。
@@ -85,6 +100,22 @@ model Item {
   /// 他社製品のメーカー名（自由記入）。競合メーカーは取引先ではないので BP にはしない —
   /// BP 行にすると顧客・仕入先のピッカーに混ざる。
   makerName         String? @map("maker_name")
+
+  // ─── 再研磨だけが持つ列 ───────────────────────────────────────────────────
+  //
+  // 値段を決めている条件を**そのまま列で持つ**（旧 再研マスタの 材料 / 加工箇所 /
+  // 刃数 / サイズ帯）。品目を探すため・読んで分かるための情報で、突合の鍵では
+  // ない（どの品目を使うかは人が選ぶ）。自動で当てるようになったら、そのとき
+  // 小さなマスタへ昇格させるかを決める。
+  /// 工具の種類。例: 超硬ヘリカルエンドミル / ハイス ハイヘリカルエンドミル
+  regrindToolClass String?  @map("regrind_tool_class")
+  /// 加工箇所。例: 外周のみ / 溝のみ / 外周 + 溝 / 先端のみ / R / 切断 + 再生
+  regrindLocation  String?  @map("regrind_location")
+  /// 刃数（枚）。null = 刃数で値段が変わらない品目
+  regrindFlutes    Int?     @map("regrind_flutes")
+  /// サイズ帯（mm）。min < 径 ≤ max。片方だけでもよい（「10.0 以下」など）
+  regrindSizeMinMm Decimal? @map("regrind_size_min_mm") @db.Decimal(8, 3)
+  regrindSizeMaxMm Decimal? @map("regrind_size_max_mm") @db.Decimal(8, 3)
 
   /// その製品が**要求する**素材の材種・寸法（cut-to-length なので特定の素材行には
   /// 紐づけない）。**素材側の materialTypeId / diameterMm / lengthMm とは別物** —
@@ -121,6 +152,8 @@ model Item {
   priceListEntryRefs PriceListEntry[] @relation("PriceListEntryItem")
   quoteItemRefs QuoteItem[] @relation("QuoteItemItem")
   orderLineRefs OrderLine[] @relation("OrderLineItem")
+  /// 再研磨の明細が「研ぎ直す工具」として指している分（品目としては PRODUCT）。
+  orderLineToolRefs OrderLine[] @relation("OrderLineToolItem")
   deliveryOrderItemRefs DeliveryOrderItem[] @relation("DeliveryOrderItemItem")
   deliveryNoteItemRefs DeliveryNoteItem[] @relation("DeliveryNoteItemItem")
   customerProductCodeRefs CustomerProductCode[] @relation("CustomerProductCodeItem")
@@ -130,6 +163,8 @@ model Item {
   designfileitemRefs DesignFile[] @relation("DesignFileItem")
   @@unique([yearMonth, seq])
   @@index([itemType, isActive])
+  // 再研磨品目の一覧・絞り込み（材料 → 加工箇所 → 刃数 の順に読む）。
+  @@index([itemType, regrindToolClass, regrindLocation])
   @@index([materialTypeId])
   @@index([requiresMaterialTypeId])
   // 照合名の配列検索（AI 突合）。GIN でないと全表走査になる。

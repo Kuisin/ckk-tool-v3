@@ -23,6 +23,7 @@ import {
   createMovement,
   ensureItemInventory,
 } from "@/lib/inventory";
+import { inventoryTypeOf } from "@/lib/inventory-item-type";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
 import { inventoryNoteLabel } from "@/lib/inventory-note-labels";
 import {
@@ -134,7 +135,8 @@ export async function postGoodsMovement(
       select: { itemType: true },
     });
     if (!item) return actionError(tr("common.targetRecordNotFound"));
-    const itemType = item.itemType;
+    // 在庫を持たない品目（再研磨の役務）はここで落ちる。
+    const itemType = inventoryTypeOf(item.itemType);
 
     const postings = postingsFor(type, draft);
     // 伝票の拠点は「どちらか片方に決まるとき」だけ入れる。拠点をまたぐ移動では

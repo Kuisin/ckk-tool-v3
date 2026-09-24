@@ -375,8 +375,10 @@ describe("distributeFinished", () => {
 });
 
 describe("REGRIND（再研磨）の割当", () => {
+  // 再研磨の明細は品目を 2 つ指す: itemId = 売る役務（再研磨品目）、
+  // toolItemId = 研ぎ直す工具。指示書が扱うのは工具のほう。
   const regrindLine = (over: Partial<LineAllocInfo> = {}) =>
-    line({ orderType: "REGRIND", ...over });
+    line({ orderType: "REGRIND", toolItemId: 900, ...over });
 
   it("再研磨の指示書には注文明細が要る（在庫向けの独立指示書にはならない）", () => {
     expect(
@@ -415,6 +417,37 @@ describe("REGRIND（再研磨）の割当", () => {
         ),
       ).toBe("production.workOrderActions.regrindLineRequiresRegrindWorkOrder");
     }
+  });
+
+  it("工具の決まっていない再研磨の明細は指示書にできない", () => {
+    expect(
+      validateAllocations(
+        {
+          type: "REGRIND",
+          plannedQuantity: 30,
+          allocations: [{ orderLineId: "L1", quantity: 30 }],
+          lines: [regrindLine({ toolItemId: null })],
+        },
+        tr,
+      ),
+    ).toContain("production.workOrderActions.regrindLineToolMissing");
+  });
+
+  it("指示書が扱う品目は**工具**（売る役務ではない）", () => {
+    // 売り物（itemId）が違っても、工具が同じなら 1 枚の指示書に束ねられる…
+    // …わけではなく、再研磨は明細 1 件だけ。ここで確かめるのは
+    // 「工具が違えば別物として弾かれる」ほう。
+    expect(
+      validateAllocations(
+        {
+          type: "REGRIND",
+          plannedQuantity: 30,
+          allocations: [{ orderLineId: "L1", quantity: 30 }],
+          lines: [regrindLine({ itemId: 11, toolItemId: 900 })],
+        },
+        tr,
+      ),
+    ).toBeNull();
   });
 
   it("再研磨は明細 1 件・予定数量 = 割当数量", () => {

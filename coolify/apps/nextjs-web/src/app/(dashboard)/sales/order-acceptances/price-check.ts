@@ -32,6 +32,7 @@ import {
   acceptancePriceState,
   requiresPriceAcknowledgement,
 } from "@/lib/order-acceptance-price-core";
+import { loadStandardUnitPrices } from "@/lib/standard-price";
 import { loadCustomerPriceEntries, priceListLookup } from "./price-resolve";
 
 /** 明細 1 行の照合結果。 */
@@ -108,7 +109,11 @@ export async function checkAcceptancePrices(
   if (!acceptance || acceptance.items.length === 0) return EMPTY_PRICE_CHECK;
 
   const customerBpId = acceptance.customerBpId;
-  const entries = await loadCustomerPriceEntries(customerBpId);
+  // 価格表（顧客ごと）と標準価格（品目の定価）— 照合も保存と同じ 2 段で見る。
+  const [entries, standard] = await Promise.all([
+    loadCustomerPriceEntries(customerBpId),
+    loadStandardUnitPrices(acceptance.items.map((it) => it.itemId)),
+  ]);
 
   const lines: AcceptancePriceCheckLine[] = acceptance.items.map((it, i) => {
     const itemId = it.itemId != null ? String(it.itemId) : null;
@@ -116,7 +121,13 @@ export async function checkAcceptancePrices(
     const { expected, missReason } = priceListLookup(
       entries,
       customerBpId,
-      { itemId, orderType: it.orderType, quantity: it.quantity },
+      {
+        itemId,
+        orderType: it.orderType,
+        quantity: it.quantity,
+        standardUnitPrice:
+          it.itemId != null ? (standard.get(it.itemId) ?? null) : null,
+      },
       tr,
     );
     const state = acceptancePriceState({

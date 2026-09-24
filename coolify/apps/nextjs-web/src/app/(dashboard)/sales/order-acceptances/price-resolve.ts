@@ -22,6 +22,7 @@ import {
   normalizeOverride,
   type PriceMissReason,
 } from "@/lib/order-acceptance-price-core";
+import { loadStandardUnitPrices } from "@/lib/standard-price";
 import { fetchEntriesForCustomer } from "../quotes/data";
 
 type Tr = Awaited<ReturnType<typeof getTranslations>>;
@@ -36,6 +37,12 @@ export interface PriceResolvableItem {
   itemId: string | null;
   orderType: string;
   quantity: number;
+  /**
+   * 品目の標準価格（定価）。顧客の価格表が当たらないときの拠り所で、
+   * **再研磨の品目だけが持つ**（lib/standard-price.ts）。
+   * 省略 = 標準価格を見ない（従来どおり価格表だけ）。
+   */
+  standardUnitPrice?: number | null;
 }
 
 /**
@@ -80,6 +87,8 @@ export function priceListLookup(
     item.orderType,
     item.quantity,
     tr,
+    new Date(),
+    item.standardUnitPrice ?? null,
   );
   return r.ok
     ? { expected: r.price.unitPrice, missReason: null }
@@ -112,9 +121,25 @@ export async function applyPriceListPrices<T extends SaveItem>(
   items: readonly T[],
   tr: Tr,
 ): Promise<(T & { unitPrice: number | null; priceOverridden: boolean })[]> {
-  const entries = await loadCustomerPriceEntries(customerBpId);
+  // 標準価格は行が指す品目から引く（顧客に依らない）。価格表と同じ 1 回の
+  // 解決で使えるよう、ここでまとめて読む。
+  const [entries, standard] = await Promise.all([
+    loadCustomerPriceEntries(customerBpId),
+    loadStandardUnitPrices(items.map((it) => it.itemId)),
+  ]);
   return items.map((it) => {
-    const expected = priceListUnitPrice(entries, customerBpId, it, tr);
+    const withStandard = {
+      ...it,
+      standardUnitPrice:
+        it.standardUnitPrice ??
+        (it.itemId ? (standard.get(Number(it.itemId)) ?? null) : null),
+    };
+    const expected = priceListUnitPrice(
+      entries,
+      customerBpId,
+      withStandard,
+      tr,
+    );
     const overridden = normalizeOverride({
       expected,
       overridden: it.priceOverridden === true,

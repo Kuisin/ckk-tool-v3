@@ -77,25 +77,59 @@ export function resolvePriceFromEntries(
   quantity: number,
   tr: Tr,
   date: Date = new Date(),
+  /**
+   * 品目の**標準価格**（定価。items.standard_unit_price）。顧客の価格表が
+   * 当たらないときの拠り所で、価格表があればそちらが勝つ — S/4HANA の
+   * 「定価 + 顧客ごとの条件レコード」と同じ順。
+   *
+   * 渡すかどうかは呼び出し側が決める（lib/standard-price.ts）。いま渡るのは
+   * **再研磨の品目だけ** — 製品は価格表が無ければ単価を解決できないままにする。
+   */
+  standardUnitPrice: number | null = null,
 ): PriceResolution {
+  /**
+   * 顧客の価格表が当たらなかったときの答え。
+   *
+   * **「当たる価格表が無い」ときだけ標準価格へ落ちる**（エントリが無い /
+   * 無効化されている / 期間外）。`no-tier` は落とさない — 価格表は現に効いて
+   * いて、その数量の段だけが抜けている状態なので、定価で埋めると設定の穴が
+   * 見えなくなる。
+   */
+  const fallback = (reason: PriceMissReason): PriceResolution => {
+    if (standardUnitPrice == null || reason === "no-tier") {
+      return { ok: false, reason };
+    }
+    return {
+      ok: true,
+      price: {
+        unitPrice: standardUnitPrice,
+        tierId: null,
+        tierLabel: tr("sales.priceLists.standardPriceLabel"),
+        discountAmount: 0,
+        discountId: null,
+        discountLabel: null,
+      },
+    };
+  };
+
   const entry = entries.find(
     (e) => e.customerId === customerId && e.itemId === itemId,
   );
-  if (!entry) return { ok: false, reason: "no-entry" };
-  if (!entry.isActive) return { ok: false, reason: "inactive" };
+  if (!entry) return fallback("no-entry");
+  if (!entry.isActive) return fallback("inactive");
   const variant = entry.variants.find((v) => v.orderType === orderType);
-  if (!variant) return { ok: false, reason: "no-entry" };
-  if (!variant.isActive) return { ok: false, reason: "inactive" };
+  if (!variant) return fallback("no-entry");
+  if (!variant.isActive) return fallback("inactive");
   if (
     !isWithinValidity(isoDateJst(date), variant.validFrom, variant.validUntil)
   )
-    return { ok: false, reason: "expired" };
+    return fallback("expired");
   const tier = variant.tiers.find(
     (t) =>
       quantity >= t.minQuantity &&
       (t.maxQuantity == null || quantity <= t.maxQuantity),
   );
-  if (!tier) return { ok: false, reason: "no-tier" };
+  if (!tier) return fallback("no-tier");
   // 単価 = 基準単価 × 数量倍率（tier の手動上書きがあればそれ）。
   const unitPrice = tierUnitPrice(variant, tier);
   const discount = findApplicableDiscount(variant, quantity, unitPrice, date);
@@ -131,6 +165,7 @@ export function resolveUnitPriceFromEntries(
   quantity: number,
   tr: Tr,
   date: Date = new Date(),
+  standardUnitPrice: number | null = null,
 ): ResolvedPrice | null {
   const r = resolvePriceFromEntries(
     entries,
@@ -140,6 +175,7 @@ export function resolveUnitPriceFromEntries(
     quantity,
     tr,
     date,
+    standardUnitPrice,
   );
   return r.ok ? r.price : null;
 }

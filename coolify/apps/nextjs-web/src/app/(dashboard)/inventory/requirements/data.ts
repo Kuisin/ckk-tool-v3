@@ -30,6 +30,7 @@ import {
 import { itemTypeLabel } from "@/lib/enum-labels";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
+import { inventoryTypeOf } from "@/lib/inventory-item-type";
 import type { RecentOption } from "@/lib/recents";
 import {
   buildStockRequirementsTimeline,
@@ -148,7 +149,7 @@ export async function fetchStockRequirements(
       ? []
       : await prisma.inventoryTransaction.findMany({
           where: {
-            inventoryType: item.itemType,
+            inventoryType: inventoryTypeOf(item.itemType),
             inventoryId: { in: bucketIds },
           },
           orderBy: { createdAt: "asc" },

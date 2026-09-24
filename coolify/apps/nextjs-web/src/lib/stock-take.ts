@@ -10,6 +10,7 @@ import "server-only";
 import type { Prisma as PrismaNS } from "../../generated/client/client";
 import type { MovementKey } from "./inventory";
 import { applyTransaction, movementOpener } from "./inventory";
+import { inventoryTypeOf } from "./inventory-item-type";
 import { encodeInventoryNote } from "./inventory-note-core";
 import { shouldPost, stockTakeDifference } from "./stock-take-core";
 
@@ -44,7 +45,7 @@ export async function snapshotStockTakeLines(
 
   const data = buckets.map((r, i) => ({
     stockTakeId,
-    inventoryType: r.item.itemType,
+    inventoryType: inventoryTypeOf(r.item.itemType),
     inventoryId: r.id,
     bookQuantity: r.quantity,
     sortOrder: i,

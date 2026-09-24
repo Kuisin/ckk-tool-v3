@@ -74,9 +74,13 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { loadStandardUnitPrices } from "@/lib/standard-price";
 import { loadTaxCatalog } from "@/lib/tax-categories";
 import { billingBasisDate, resolveLineTax } from "@/lib/tax-rate";
-import { distributeFinished } from "@/lib/work-order-alloc-core";
+import {
+  allocTargetItemId,
+  distributeFinished,
+} from "@/lib/work-order-alloc-core";
 import {
   computeFinishedQuantity,
   STEP_LINK_STATE_SELECT,
@@ -685,6 +689,9 @@ async function validateLineProducts(
     select: {
       id: true,
       itemId: true,
+      // 再研磨の明細では「出す物」は工具のほう（itemId は売る役務）。
+      toolItemId: true,
+      orderType: true,
       status: true,
       acceptanceYearMonth: true,
       acceptanceSeq: true,
@@ -708,7 +715,10 @@ async function validateLineProducts(
         number,
       });
     }
-    if (line.itemId == null || Number(it.itemId) !== line.itemId) {
+    // 出荷明細が指すのは**現物**。再研磨では預かった工具で、
+    // 売り物（再研磨の役務）ではない — 読み替えは allocTargetItemId が 1 本。
+    const shipped = allocTargetItemId(line);
+    if (shipped == null || Number(it.itemId) !== shipped) {
       return tr("shipping.deliveryOrderActions.productMismatch", {
         line: i + 1,
         number,
@@ -1275,7 +1285,11 @@ async function resolveBillingUnitPrices(
     return prices;
   }
 
-  const entries = await loadCustomerPriceEntries(row.customerBpId);
+  // 価格表（顧客ごと）と標準価格（品目の定価）— 保存・照合と同じ 2 段で引く。
+  const [entries, standard] = await Promise.all([
+    loadCustomerPriceEntries(row.customerBpId),
+    loadStandardUnitPrices(row.items.map((it) => it.orderLine?.itemId)),
+  ]);
   // 注文明細ごとの累計納品数（この出荷書のぶんを含む — 確定の時点で既に
   // 明細行は保存されているので、除外せずそのまま数えれば累計になる）。
   const deliveredByLine = new Map<string, number>();
@@ -1308,6 +1322,7 @@ async function resolveBillingUnitPrices(
         itemId: String(line.itemId),
         orderType: line.orderType,
         quantity: delivered,
+        standardUnitPrice: standard.get(line.itemId) ?? null,
       },
       tr,
     );

@@ -29,6 +29,7 @@ import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { regrindItemLabel } from "@/lib/regrind-item-label";
 import { listCustomerSalesReps } from "@/lib/sales-rep";
 
 const LIMIT = 20;
@@ -886,6 +887,50 @@ export async function searchMaterialItemOptions(
   return rows.map((r) => ({
     value: String(r.id),
     label: `${r.code}（${localized(r.name as LocalizedText | null)}）`,
+  }));
+}
+
+/**
+ * 再研磨の品目（役務）— 再研磨の明細が「何をいくらでやるか」として指す先。
+ * value は **items.id**（`itemType: "REGRIND"`）。
+ *
+ * 値段はこの品目に付く（標準価格 + 顧客ごとの価格表）。研ぎ直す工具のほうは
+ * 別の欄（`searchProductItemOptions` の他社製品込み）で選ぶ — 売り物と
+ * 預かり物は別なので、ピッカーも分けてある。
+ */
+export async function searchRegrindItemOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
+  const q = query.trim();
+  const keywordIds = q ? await itemIdsByKeyword(q, LIMIT) : [];
+  const rows = await prisma.item.findMany({
+    where: {
+      itemType: "REGRIND",
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+              { regrindToolClass: { contains: q, mode: "insensitive" } },
+              { regrindLocation: { contains: q, mode: "insensitive" } },
+              ...byIds(keywordIds),
+            ],
+          }
+        : {}),
+    },
+    orderBy: [
+      { regrindToolClass: "asc" },
+      { regrindLocation: "asc" },
+      { regrindFlutes: "asc" },
+      { regrindSizeMaxMm: "asc" },
+    ],
+    take: LIMIT,
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: regrindItemLabel(r),
   }));
 }
 
