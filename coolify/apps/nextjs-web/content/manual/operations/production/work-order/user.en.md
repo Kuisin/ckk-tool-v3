@@ -285,6 +285,7 @@ Every field on the work order screen. The order of the steps themselves is set i
 | [Order line allocations](#field-order-line) | Optional | Which orders this work order makes pieces for, and how many |
 | [Allocation quantity](#field-alloc-quantity) | Conditional | How many pieces for that order line |
 | [Product](#field-product) | Required | The product being made |
+| [種別](#field-type) (type) | Required | From stock / to make / regrind (the order line may decide it) |
 | [Planned quantity](#field-planned-quantity) | Required | How many pieces |
 | [Material](#field-material) | Optional | The material used |
 | [Storage location](#field-storage-location) | Optional | Where the finished products are kept |
@@ -311,6 +312,22 @@ How many pieces this work order makes for that order line. The upper limit is th
 ### Product [#field-product]
 
 The product being made. Choosing a order line fills in that order's product.
+
+### 種別 (type) [#field-type]
+
+Whether this work order is 「**在庫分**」 (from stock — using stock you already have), 「**製造分**」 (to make — making new pieces) or 「**再研磨**」 (regrind — regrinding the customer's tools).
+
+**This field is not always yours to choose.** The type is decided by the order acceptance line, not by the work order. When it is already decided, no options are offered — the decided type is shown together with the reason why.
+
+| Situation | Type | Can you choose? |
+|---|---|---|
+| An order line whose order type is 「再研磨」 (regrind) is allocated | 再研磨 (regrind) | No |
+| Any other order line is allocated | 在庫分 / 製造分 | **Yes** — which way to fulfil it is production's call |
+| For stock (no order line allocated) | 製造分 (to make) | No |
+
+**To switch a regrind into a made-to-order one (or the other way round), edit 「注文種別」 (order type) on the [order acceptance](/manual/en/operations/sales/order-acceptance/user) line — not here.** If the work order could change its type alone, what is sold (a service or a product) and what is made would no longer agree.
+
+> 💡 It does not matter which screen you start from. From [pending work orders](/manual/en/operations/production/pending-work-order/user), from the order line's "create a work order" button, or from "new" on the list with a line picked there — the type comes from that line's order type either way.
 
 ### Planned quantity [#field-planned-quantity]
 

@@ -175,6 +175,7 @@ export const FIELD_HELP = {
     orderLine: {},
     allocQuantity: {},
     product: {},
+    type: {},
     plannedQuantity: {},
     material: {},
     storageLocation: {},

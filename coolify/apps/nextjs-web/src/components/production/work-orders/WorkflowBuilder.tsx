@@ -1682,8 +1682,14 @@ export function WorkflowBuilder({
             </Stack>
           )}
           <Stack gap={4}>
-            <Text fw={500} size="sm">
-              {tr("common.type2")}
+            {/*
+              component="span" は必須 — Text の既定は <p> で、HelpLabel の
+              「?」は ThemeIcon（div）。<p> の中に div が来るとパーサが <p> を
+              閉じてしまい、サーバーの HTML と食い違って hydration が落ちる
+              （React #418）。
+            */}
+            <Text component="span" fw={500} size="sm">
+              <HelpLabel {...fieldHelp(tr, "workOrder", "type")} />
             </Text>
             {/*
               **選べないときは選ばせない。** 製造か再研磨かを決めるのは注文請書

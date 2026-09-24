@@ -9809,6 +9809,10 @@
         "label": "Target product",
         "summary": "The product to make. If an order line is selected, its product is filled in automatically."
       },
+      "type": {
+        "label": "種別 (type)",
+        "summary": "From stock / to make / regrind. When the order line's order type already decides it, you cannot choose — the decided type is shown with the reason."
+      },
       "plannedQuantity": {
         "label": "Planned quantity",
         "summary": "The quantity to make. Enter an amount at least equal to the total allocations (you may add extra to allow for defects; for stock work orders it equals the total allocation). This also becomes the initial received quantity for the first step."

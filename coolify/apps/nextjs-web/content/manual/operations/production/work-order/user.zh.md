@@ -285,6 +285,7 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 | [订单明细的分配](#field-order-line) | 选填 | 为哪笔受订制造几根 |
 | [分配数量](#field-alloc-quantity) | 条件必填 | 为该明细制造的根数 |
 | [对象产品](#field-product) | 必填 | 制造的产品 |
+| [種別](#field-type)（类别） | 必填 | 库存分 / 制造分 / 再研磨（有时由订单明细决定） |
 | [计划数量](#field-planned-quantity) | 必填 | 制造的数量 |
 | [使用材料](#field-material) | 选填 | 使用的材料 |
 | [保管场所](#field-storage-location) | 选填 | 存放做好产品的场所 |
@@ -311,6 +312,22 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 ### 对象产品 [#field-product]
 
 制造的产品。选择订单明细后会带入该受订的产品。
+
+### 種別（类别） [#field-type]
+
+本指示书是「**在庫分**」（库存分，使用已有库存）、「**製造分**」（制造分，新制造）还是「**再研磨**」（再研磨，研磨客户的刀具）。
+
+**此栏并非总是可以选择。** 因为决定类别的是订单确认书的明细，而不是指示书。已经确定时不显示选项，只显示确定的类别及其理由。
+
+| 当前情况 | 类别 | 能否选择 |
+|---|---|---|
+| 分配了订单类别为「再研磨」的明细 | 再研磨 | 不能选择 |
+| 分配了其他明细 | 库存分 / 制造分 | **可以选择**（采用哪种方式由生产方判断） |
+| 库存用（不分配订单明细） | 制造分 | 不能选择 |
+
+**要把再研磨改为制造分（或相反）时，请修改[订单确认书](/manual/zh/operations/sales/order-acceptance/user)明细的「注文種別」（订单类别），而不是在本画面修改。** 如果指示书能单独更改类别，销售的内容（服务还是产品）与制造的内容就会不一致。
+
+> 💡 从哪个画面创建指示书，结果都相同。无论是从[未处理指示书](/manual/zh/operations/production/pending-work-order/user)、订单明细的「创建指示书」，还是在一览的「新建」中选择该明细，类别都由该明细的订单类别决定。
 
 ### 计划数量 [#field-planned-quantity]
 

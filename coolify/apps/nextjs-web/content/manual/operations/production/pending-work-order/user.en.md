@@ -57,7 +57,7 @@ Completed work orders do not appear on this screen. Check them in the [work orde
 
 1. On the 「**未手配**」 (unarranged) tab, find the row you want to make a work order for.
 2. Press 「**指示書作成**」 (create work order) at the right end of the row.
-3. The new work order screen opens. That order line is selected, the type is 「**製造分**」 (manufacture) — or 「**再研磨**」 (regrind) for a line whose order type is regrind — and the quantity is pre-filled with the **unarranged quantity**.
+3. The new work order screen opens. That order line is selected and the quantity is pre-filled with the **unarranged quantity**. The type **comes from that line's order type** — normally 「**製造分**」 (manufacture), which you may switch to 「在庫分」 (from stock); for a line whose order type is regrind it is fixed to 「**再研磨**」 (regrind) and cannot be chosen ([type](/manual/en/operations/production/work-order/user#field-type)).
 4. Check the content and save. For the steps after that, see the [work order](/manual/en/operations/production/work-order/user) manual.
 
 When you save, the arranged quantity increases by that amount. A line whose unarranged quantity reaches zero disappears from this tab.
