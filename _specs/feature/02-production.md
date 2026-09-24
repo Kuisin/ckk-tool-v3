@@ -178,13 +178,20 @@
 ### 再研磨（REGRIND）— 顧客の工具を預かって研ぎ直す
 
 - **注文種別 `REGRIND`**（`ORDER_TYPE`）の明細から **`WORK_ORDER_TYPE.REGRIND`** の指示書を
-  作る。同じ 注文明細 → 指示書 → 出荷書 → 請求書 の鎖に乗り、価格表は
-  `price_list_variants.order_type = REGRIND` のバリアント。専用アプリは無く、PD02 の
+  作る。同じ 注文明細 → 指示書 → 出荷書 → 請求書 の鎖に乗る。専用アプリは無く、PD02 の
   種別フィルタで分ける。
-- **他社製品**（`items.is_external_product` + `maker_name`）を品目マスタに置ける。再研磨
-  専用 — 製造工程リスト・製造分/在庫分の指示書・PRODUCTION/TEST/SAMPLE の明細では
-  使えない（ピッカー `includeExternal`、保存側 `lib/external-product-guard.ts`、
-  readiness `externalProduct`、`validateExternalProductType` の 4 か所で守る）。
+- **売っているのは役務、預かるのは工具** — 再研磨の明細は品目を 2 つ指す:
+  `order_lines.item_id` = **再研磨品目**（`items.item_type = REGRIND`。値段はここ。
+  マスタは MS0H `/master/regrind-items`）、`order_lines.tool_item_id` = **研ぎ直す工具**
+  （製品。他社製品でもよい）。指示書の対象・預り品のバケット・出荷する現物はすべて
+  **工具のほう**で数える — 読み替えは `lib/work-order-alloc-core.ts` の
+  `allocTargetItemId` が唯一の定義元。値段の決まり方は §1（品目の標準価格 + 顧客の
+  価格表）。
+- **他社製品**（`items.is_external_product` + `maker_name`）を品目マスタに置ける。
+  **売り物ではない** — 値段も価格表も持たず、工具の欄にだけ載る。製造工程リスト・
+  製造分/在庫分の指示書では使えない（ピッカー `includeExternal`、保存側
+  `lib/sales-item-guard.ts`、readiness `externalProduct` / `regrindTool`、
+  `validateExternalProductType` の 4 か所で守る）。
 - **指示書の不変条件**（`lib/work-order-alloc-core.ts`）: REGRIND 指示書は REGRIND 明細
   **1 件だけ**・予定数量 = 割当数量。REGRIND 明細は REGRIND 指示書にしか割り当て
   られない（逆も）。使用素材・保管場所は持たない。完了した REGRIND 指示書は
