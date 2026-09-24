@@ -13,10 +13,10 @@
  *      A2. 製造工程リストのタブが**出ない**（他社製品は製造できない）
  *   B. 再研磨の注文明細
  *      B1. 在庫照合のボタンが**出ない**（自社在庫を引き当てる注文ではない）
- *      B2.「指示書を作る」が type=REGRIND を連れている
+ *      B2.「指示書を作る」は注文明細だけを連れていく（種別は明細が決める）
  *      B3. 売り物は**再研磨品目**、工具は別に出る（品目を 2 つ指す）
  *   C. 指示書をつくる（画面から）
- *      C1. 種別が「再研磨」に固定される（製造分・在庫分は押せない）
+ *      C1. 種別が明細から「再研磨」に決まり、選択肢が出ない（理由が出る）
  *      C2. 使用素材・保管場所の欄が**出ない**
  *      C3. 再研磨工程リストが自動で選ばれ、「最新 v1」と出る
  *      C4. 保存すると type=REGRIND・素材 null・保管場所 null で入る
@@ -266,8 +266,11 @@ async function main(): Promise<void> {
       as.map((a) => (a as HTMLAnchorElement).getAttribute("href") ?? ""),
     );
   check(
-    "B2 指示書作成のリンクが type=REGRIND を連れている",
-    woLinks.length > 0 && woLinks.every((h) => h.includes("type=REGRIND")),
+    "B2 指示書作成のリンクは注文明細だけを連れていく（種別は明細から決まる）",
+    woLinks.length > 0 &&
+      woLinks.every(
+        (h) => h.includes(`orderLine=${ORDER_LINE_UUID}`) && !h.includes("type="),
+      ),
     woLinks.join(" | ") || "リンク無し",
   );
   // 明細は品目を 2 つ指す — 売っているのは役務、預かるのは工具。
@@ -289,24 +292,25 @@ async function main(): Promise<void> {
   );
 
   // ── C. 指示書をつくる ────────────────────────────────────────────────────
+  // URL に種別は載せない — 注文明細の注文種別から決まることを確かめる。
   await page.goto(
-    `${APP}/production/work-orders/new?orderLine=${ORDER_LINE_UUID}&type=REGRIND&qty=10`,
+    `${APP}/production/work-orders/new?orderLine=${ORDER_LINE_UUID}&qty=10`,
     { waitUntil: "networkidle" },
   );
   await page.waitForTimeout(1500); // 工程リストのロード（種別の固定はこの後）
 
-  const regrindOn = await page
-    .getByRole("radio", { name: "再研磨" })
-    .isChecked()
-    .catch(() => false);
-  const mfgDisabled = await page
-    .getByRole("radio", { name: "製造分" })
-    .isDisabled()
-    .catch(() => true);
+  // 種別は選ばせない — 明細が決めているので、理由付きの固定表示になる。
+  const typeArea = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  const typeHead = typeArea.slice(typeArea.indexOf("種別"));
+  const otherTypeOffered =
+    (await page.getByRole("radio", { name: "製造分", exact: true }).count()) +
+    (await page.getByRole("radio", { name: "在庫分", exact: true }).count());
   check(
-    "C1 種別が再研磨に固定される",
-    regrindOn && mfgDisabled,
-    `再研磨=${regrindOn} 製造分disabled=${mfgDisabled}`,
+    "C1 種別が明細から再研磨に決まり、選択肢が出ない",
+    /再研磨/.test(typeHead.slice(0, 200)) &&
+      typeHead.includes("注文明細の注文種別") &&
+      otherTypeOffered === 0,
+    `${typeHead.slice(0, 140)} / 他種別の選択肢=${otherTypeOffered}`,
   );
 
   const formBody = (

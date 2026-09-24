@@ -287,10 +287,9 @@ export function OrderLineDetail({
           : order.status === "SHIPPED" || order.status === "PARTIAL_SHIPPED"
             ? tr("sales.orderLines.youCannotCreateThisOnA2")
             : undefined;
-  // 再研磨の明細は再研磨の指示書（ビルダーが種別を固定する）。
-  const woCreateHref = `/production/work-orders/new?orderLine=${order.uuid}${
-    order.orderType === "REGRIND" ? "&type=REGRIND" : ""
-  }`;
+  // 種別は書かない — 明細から決まる（lib/work-order-alloc-core
+  // workOrderTypeForLine）。ここで書き足すと、付け忘れた入口だけ挙動が違う。
+  const woCreateHref = `/production/work-orders/new?orderLine=${order.uuid}`;
   const designCreateHref = `/sales/design-requests/new?orderLine=${order.uuid}`;
 
   // 出荷書作成の可否 — 確定済み以降（キャンセル・全量出荷済みを除く）で

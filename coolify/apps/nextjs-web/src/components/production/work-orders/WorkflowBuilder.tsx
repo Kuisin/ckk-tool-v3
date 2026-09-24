@@ -102,7 +102,12 @@ import { FormSection, FormShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 // type-only import — lib/atp は server-only（型はバンドルされない）。
 import type { MaterialAtp } from "@/lib/atp";
-import { workOrderTypeOptions } from "@/lib/enum-labels";
+import {
+  orderTypeLabel,
+  WORK_ORDER_TYPE_COLOR,
+  workOrderTypeLabel,
+  workOrderTypeOptions,
+} from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { RouteStepSnapshot, RouteView } from "@/lib/product-routes-core";
@@ -114,6 +119,7 @@ import {
   routeStepsEqual,
   routesVisibleForCustomer,
 } from "@/lib/product-routes-core";
+import { workOrderTypeForLine } from "@/lib/work-order-alloc-core";
 import { requiredPlanFields } from "@/lib/work-plan-core";
 import type { CatalogStep, UseDep } from "@/lib/workflow-core";
 import {
@@ -852,27 +858,23 @@ export function WorkflowBuilder({
   // biome-ignore lint/correctness/useExhaustiveDependencies: routesInfo ロード時のみ発火させる
   useEffect(() => {
     if (routesInfo == null) return;
-    // 明細の注文種別が再研磨なら指示書も再研磨（逆も）— 種別を明細に合わせる。
-    const lineIsRegrind = routesInfo.orderType === "REGRIND";
+    // **種別は明細が決める**（workOrderTypeForLine が唯一の定義元）。
+    // 明細を選び直したときにもここで追随する — サーバーの初期値だけに頼ると、
+    // 画面で別の明細へ変えたときに古い種別が残る。
     const currentType = form.getValues().type;
-    if (lineIsRegrind && currentType !== "REGRIND") {
-      form.setFieldValue("type", "REGRIND");
-      form.setFieldValue("materialItemId", null);
-      form.setFieldValue("storageLocationId", null);
-      applyTypeToSteps("REGRIND");
-    } else if (
-      !lineIsRegrind &&
-      currentType === "REGRIND" &&
-      target === "SALES_ORDER"
-    ) {
-      form.setFieldValue("type", "MANUFACTURE");
-      applyTypeToSteps("MANUFACTURE");
+    const effectiveType = workOrderTypeForLine(
+      routesInfo.orderType,
+      currentType,
+    );
+    const lineIsRegrind = effectiveType === "REGRIND";
+    if (effectiveType !== currentType) {
+      form.setFieldValue("type", effectiveType);
+      if (lineIsRegrind) {
+        form.setFieldValue("materialItemId", null);
+        form.setFieldValue("storageLocationId", null);
+      }
+      applyTypeToSteps(effectiveType);
     }
-    const effectiveType = lineIsRegrind
-      ? "REGRIND"
-      : currentType === "REGRIND"
-        ? "MANUFACTURE"
-        : currentType;
     if (effectiveType === "REGRIND") {
       // 再研磨リストは常に最新版: 選択済みならその最新版で置き換え、未選択なら
       // 有効なものが 1 本のときだけ自動で選ぶ（pickDefaultCommonRoute）。
@@ -1472,6 +1474,18 @@ export function WorkflowBuilder({
   const selectedRegrindLatest = selectedRegrindRoute?.versions[0] ?? null;
   /** 先頭の割当明細が再研磨か（種別を固定する）。 */
   const lineIsRegrind = routesInfo?.orderType === "REGRIND";
+  /**
+   * 実際に選べる種別だけ。1 つしか無ければ「選ぶ」ことは無いので、
+   * 上の表示は固定値に切り替わる。
+   *   在庫向け（明細なし） … 製造分だけ
+   *   再研磨の明細        … 再研磨だけ（注文請書が決めている）
+   *   それ以外の明細      … 在庫分 / 製造分（どちらで手配するかは生産の判断）
+   */
+  const typeChoices = workOrderTypeOptions(locale).filter((o) => {
+    if (target === "STOCK") return o.value === "MANUFACTURE";
+    if (routesInfo == null) return true;
+    return lineIsRegrind ? o.value === "REGRIND" : o.value !== "REGRIND";
+  });
   const renderVersionOption =
     (route: RouteView | null) =>
     ({ option }: { option: { value: string; label: string } }) => {
@@ -1671,64 +1685,81 @@ export function WorkflowBuilder({
             <Text fw={500} size="sm">
               {tr("common.type2")}
             </Text>
-            <SegmentedControl
-              data={workOrderTypeOptions(locale).map((o) => ({
-                ...o,
-                // 在庫向け（明細なし）は製造分のみ。再研磨の明細は再研磨に固定、
-                // それ以外の明細では再研磨を選べない（顧客の工具ではない）。
-                disabled:
-                  (target === "STOCK" && o.value !== "MANUFACTURE") ||
-                  (target === "SALES_ORDER" &&
-                    routesInfo != null &&
-                    (lineIsRegrind
-                      ? o.value !== "REGRIND"
-                      : o.value === "REGRIND")),
-              }))}
-              onChange={(v) => {
-                form.setFieldValue("type", v as FormValues["type"]);
-                applyTypeToSteps(v as FormValues["type"]);
-                if (v === "REGRIND") {
-                  form.setFieldValue("materialItemId", null);
-                  form.setFieldValue("storageLocationId", null);
-                  // 再研磨は割当 1 件のみ — 先頭の有効行だけ残す
-                  setAllocRows((rows) => {
-                    const first =
-                      rows.find((r) => r.orderLineId != null) ?? rows[0];
-                    return [first];
-                  });
-                  // 製造工程リストは使わない（再研磨工程リストへ）
-                  setRouteSel(null);
-                  setVersionSel(null);
-                  setBaseSteps(null);
-                  setNewRouteName("");
-                  setPrepRouteSel(null);
-                  const picked = pickDefaultCommonRoute(
-                    routesInfo?.regrindRoutes ?? [],
-                  );
-                  setRegrindRouteSel(picked ? String(picked.id) : null);
-                  if (picked) applyRegrindRoute(picked);
-                  else setStepsEditing(true);
-                } else {
-                  setRegrindRouteSel(null);
-                }
-                if (v === "FROM_STOCK") {
-                  form.setFieldValue("materialItemId", null);
-                  // 在庫分は割当 1 件のみ — 先頭の有効行だけ残す
-                  setAllocRows((rows) => {
-                    const first =
-                      rows.find((r) => r.orderLineId != null) ?? rows[0];
-                    return [first];
-                  });
-                  // 在庫分は固定構成 — 工程リスト（ルート）は使わない
-                  setRouteSel(null);
-                  setVersionSel(null);
-                  setBaseSteps(null);
-                  setNewRouteName("");
-                  setStepsEditing(true);
-                }
-              }}
-              value={form.values.type}
-            />
+            {/*
+              **選べないときは選ばせない。** 製造か再研磨かを決めるのは注文請書
+              （明細の注文種別）で、指示書ではない。押せない選択肢を並べると
+              「選べるはずのもの」に見えるので、決まっているときは決まった値と
+              その理由だけを出す。
+            */}
+            {typeChoices.length <= 1 ? (
+              <Group gap="xs">
+                <Badge
+                  color={WORK_ORDER_TYPE_COLOR[form.values.type] ?? "gray"}
+                  variant="light"
+                >
+                  {workOrderTypeLabel(form.values.type, locale) ??
+                    form.values.type}
+                </Badge>
+                <Text c="dimmed" size="xs">
+                  {target === "STOCK"
+                    ? tr("production.workflowBuilder.typeFixedByStockTarget")
+                    : tr("production.workflowBuilder.typeFixedByOrderLine", {
+                        orderType:
+                          orderTypeLabel(routesInfo?.orderType ?? "", locale) ??
+                          routesInfo?.orderType ??
+                          "",
+                      })}
+                </Text>
+              </Group>
+            ) : (
+              <SegmentedControl
+                data={typeChoices}
+                onChange={(v) => {
+                  form.setFieldValue("type", v as FormValues["type"]);
+                  applyTypeToSteps(v as FormValues["type"]);
+                  if (v === "REGRIND") {
+                    form.setFieldValue("materialItemId", null);
+                    form.setFieldValue("storageLocationId", null);
+                    // 再研磨は割当 1 件のみ — 先頭の有効行だけ残す
+                    setAllocRows((rows) => {
+                      const first =
+                        rows.find((r) => r.orderLineId != null) ?? rows[0];
+                      return [first];
+                    });
+                    // 製造工程リストは使わない（再研磨工程リストへ）
+                    setRouteSel(null);
+                    setVersionSel(null);
+                    setBaseSteps(null);
+                    setNewRouteName("");
+                    setPrepRouteSel(null);
+                    const picked = pickDefaultCommonRoute(
+                      routesInfo?.regrindRoutes ?? [],
+                    );
+                    setRegrindRouteSel(picked ? String(picked.id) : null);
+                    if (picked) applyRegrindRoute(picked);
+                    else setStepsEditing(true);
+                  } else {
+                    setRegrindRouteSel(null);
+                  }
+                  if (v === "FROM_STOCK") {
+                    form.setFieldValue("materialItemId", null);
+                    // 在庫分は割当 1 件のみ — 先頭の有効行だけ残す
+                    setAllocRows((rows) => {
+                      const first =
+                        rows.find((r) => r.orderLineId != null) ?? rows[0];
+                      return [first];
+                    });
+                    // 在庫分は固定構成 — 工程リスト（ルート）は使わない
+                    setRouteSel(null);
+                    setVersionSel(null);
+                    setBaseSteps(null);
+                    setNewRouteName("");
+                    setStepsEditing(true);
+                  }
+                }}
+                value={form.values.type}
+              />
+            )}
           </Stack>
           <NumberInput
             allowDecimal={false}
