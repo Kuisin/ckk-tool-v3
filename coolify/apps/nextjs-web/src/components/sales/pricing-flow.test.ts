@@ -79,6 +79,8 @@ describe("価格試算 → 価格表 → 見積書 (constructed entry)", () => {
     customerName: "合同会社XYZ工業",
     itemId: "9002",
     productName: "テスト製品",
+    itemType: "PRODUCT",
+    standardUnitPrice: null,
     currency: "JPY",
     isActive: true,
     variants: [variant],
