@@ -29,6 +29,7 @@ import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { regrindItemLabel } from "@/lib/regrind-item-label";
 import { listCustomerSalesReps } from "@/lib/sales-rep";
 
 const LIMIT = 20;
@@ -161,8 +162,9 @@ export async function searchProductItemOptions(
   query: string,
   opts?: {
     /**
-     * 他社製品（再研磨専用）も候補に入れるか。既定は false — 他社製品を選べるのは
-     * 注文種別が再研磨の明細と、その価格表だけ。
+     * 他社製品も候補に入れるか。既定は false — 他社製品は**売り物ではない**ので、
+     * 選べるのは再研磨の明細の「研ぎ直す工具」の欄だけ。価格表にも載らない
+     * （価格表のピッカーは `searchPriceListItemOptions`）。
      */
     includeExternal?: boolean;
   },
@@ -191,6 +193,53 @@ export async function searchProductItemOptions(
     take: LIMIT,
   });
   return rows.map((r) => ({ value: String(r.id), label: productItemLabel(r) }));
+}
+
+/**
+ * 価格表 (SA02) が作れる品目 — **製品（他社製品を除く）と再研磨品目**。
+ *
+ * 価格表は**売り物にだけ**作る。他社製品は預かるだけ、素材は買うものなので、
+ * どちらも出さない — 出すと選べてしまい、保存の段になって初めて断られる
+ * （実際にそうなっていた）。判定の正は `lib/sales-item-guard.ts`
+ * `priceListItemError` で、ここはその手前で選ばせないためのもの。
+ *
+ * 再研磨品目は**標準価格を持ったうえで**顧客ごとの価格表も持てる（2 段価格の
+ * 上の段）。ここで出さないと、その上書きを画面から作れない。
+ */
+export async function searchPriceListItemOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
+  const q = query.trim();
+  const [keywordIds, customerCodeIds] = await Promise.all([
+    itemIdsByKeyword(q, LIMIT),
+    productItemIdsByCustomerCode(q, LIMIT),
+  ]);
+  const rows = await prisma.item.findMany({
+    where: {
+      itemType: { in: ["PRODUCT", "REGRIND"] },
+      isActive: true,
+      isExternalProduct: false,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+              { regrindToolClass: { contains: q, mode: "insensitive" } },
+              { regrindLocation: { contains: q, mode: "insensitive" } },
+              ...byIds([...new Set([...keywordIds, ...customerCodeIds])]),
+            ],
+          }
+        : {}),
+    },
+    orderBy: [{ itemType: "asc" }, { id: "asc" }],
+    take: LIMIT,
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    // 再研磨品目は条件と値段まで出す — 名前だけでは行を選べない。
+    label: r.itemType === "REGRIND" ? regrindItemLabel(r) : productItemLabel(r),
+  }));
 }
 
 /**
@@ -886,6 +935,50 @@ export async function searchMaterialItemOptions(
   return rows.map((r) => ({
     value: String(r.id),
     label: `${r.code}（${localized(r.name as LocalizedText | null)}）`,
+  }));
+}
+
+/**
+ * 再研磨の品目（役務）— 再研磨の明細が「何をいくらでやるか」として指す先。
+ * value は **items.id**（`itemType: "REGRIND"`）。
+ *
+ * 値段はこの品目に付く（標準価格 + 顧客ごとの価格表）。研ぎ直す工具のほうは
+ * 別の欄（`searchProductItemOptions` の他社製品込み）で選ぶ — 売り物と
+ * 預かり物は別なので、ピッカーも分けてある。
+ */
+export async function searchRegrindItemOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
+  const q = query.trim();
+  const keywordIds = q ? await itemIdsByKeyword(q, LIMIT) : [];
+  const rows = await prisma.item.findMany({
+    where: {
+      itemType: "REGRIND",
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+              { regrindToolClass: { contains: q, mode: "insensitive" } },
+              { regrindLocation: { contains: q, mode: "insensitive" } },
+              ...byIds(keywordIds),
+            ],
+          }
+        : {}),
+    },
+    orderBy: [
+      { regrindToolClass: "asc" },
+      { regrindLocation: "asc" },
+      { regrindFlutes: "asc" },
+      { regrindSizeMaxMm: "asc" },
+    ],
+    take: LIMIT,
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: regrindItemLabel(r),
   }));
 }
 

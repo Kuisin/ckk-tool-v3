@@ -103,6 +103,19 @@ async function lookupEntityNamesForTable(
       }
       break;
     }
+    // 再研磨品目 (MS0H)。種別で絞らないのは id 空間が 1 本だから —
+    // この名前で書くのは再研磨品目の画面だけなので、絞る意味が無い。
+    case "items": {
+      const rows = await prisma.item.findMany({
+        where: { id: { in: ids.map(Number) } },
+        select: { id: true, name: true },
+      });
+      for (const r of rows) {
+        const n = jaOf(r.name);
+        if (n) out.set(String(r.id), n);
+      }
+      break;
+    }
     case "materials": {
       const rows = await prisma.item.findMany({
         where: { id: { in: ids.map(Number) }, itemType: "MATERIAL" },

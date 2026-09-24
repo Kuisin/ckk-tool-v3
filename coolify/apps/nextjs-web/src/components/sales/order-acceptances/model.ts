@@ -102,6 +102,14 @@ export interface OrderAcceptanceItemView {
    */
   productSuggestions: MatchSuggestion[];
   orderType: string;
+  /**
+   * 研ぎ直す工具（再研磨の明細だけ）。**売り物とは別の欄** — 売るのは
+   * 再研磨という役務（itemId が指す再研磨品目）で、預かって数えるのは
+   * この工具のほう。id は Select 向けに文字列化。
+   */
+  toolItemId: string | null;
+  /** 工具の表示名（名称 + コード。他社製品には ［他社］が付く）。 */
+  toolLabel: string | null;
   quantity: number;
   unitPrice: number | null;
   /**

@@ -407,6 +407,31 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     index: "G",
   },
 
+  // 再研磨品目（再研磨という役務の品目 + 値段）— 詳細ページを持たない小マスタ
+  // （編集は一覧のモーダル）なので list + new の 2 コード。
+  {
+    code: "MS0H",
+    label: "再研磨品目",
+    href: "/master/regrind-items",
+    category: "マスタ",
+    kind: "list",
+    categoryCode: "MS",
+    mode: "0",
+    index: "H",
+  },
+  {
+    code: "MS1H",
+    label: "再研磨品目 新規",
+    // 対訳は app-list.ts の 1 箇所だけにあり、baseLabel で引き当てる。
+    baseLabel: "再研磨品目",
+    href: "/master/regrind-items/new",
+    category: "マスタ",
+    kind: "new",
+    categoryCode: "MS",
+    mode: "1",
+    index: "H",
+  },
+
   // ─── ドキュメント (DC) ───────────────────────────────────────────────────
   // マニュアル（/manual・fumadocs）— 単一画面, list コードのみ（旧 SY03）
   {

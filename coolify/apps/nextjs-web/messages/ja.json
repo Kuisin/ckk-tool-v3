@@ -1237,7 +1237,8 @@
     },
     "ITEM_TYPE_LABEL": {
       "PRODUCT": "製品",
-      "MATERIAL": "素材"
+      "MATERIAL": "素材",
+      "REGRIND": "再研磨"
     },
     "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
       "past": "実績",
@@ -3278,7 +3279,8 @@
       "plansRequiredBeforeApproval": "承認依頼の前に作業計画（日付 + 作業場所）を入れてください: {steps}",
       "copyRouteFailed": "工程リストの複製に失敗しました",
       "prepRouteRequired": "準備工程リストを選択してください",
-      "prepRouteNotFound": "選択された準備工程リストが見つからないか、無効です"
+      "prepRouteNotFound": "選択された準備工程リストが見つからないか、無効です",
+      "regrindLineToolMissing": "注文明細 {number}: 研ぎ直す工具が未選択です"
     },
     "designFileActions": {
       "cannotDelete": "削除できません",
@@ -6559,6 +6561,54 @@
       "duplicateCodeForCustomer": "顧客品番「{code}」が同じ顧客の中で重複しています",
       "duplicateCodeOnOtherProduct": "顧客品番「{code}」は同じ顧客の別の製品に登録済みです（表記ゆれを含む）",
       "couldNotSave": "顧客品番の保存に失敗しました"
+    },
+    "regrindItems": {
+      "pageTitle": "再研磨品目",
+      "newRegrindItem": "再研磨品目 新規作成",
+      "formHelp": "研ぎ直しそのものを 1 つの品目として登録します。値段はここに付き、顧客ごとの価格表があればそちらが勝ちます。研ぐ工具は製品マスタで登録します。",
+      "toolClass": "工具の種類",
+      "toolClassHelp": "値段が分かれる単位で書きます",
+      "toolClassPlaceholder": "超硬ヘリカルエンドミル",
+      "location": "加工箇所",
+      "locationHelp": "どこを研ぐか",
+      "locationPlaceholder": "外周 + 溝",
+      "flutes": "刃数",
+      "flutesHelp": "空 = 刃数で値段が変わらない",
+      "sizeMin": "サイズ下限",
+      "sizeMinHelp": "この径を超えるもの",
+      "sizeMax": "サイズ上限",
+      "sizeMaxHelp": "この径以下のもの",
+      "sizeBand": "サイズ帯",
+      "sizeBandOrder": "サイズ上限はサイズ下限より大きくしてください",
+      "standardPrice": "標準価格",
+      "standardPriceHelp": "顧客を問わない定価。空 = 価格表がある顧客にだけ売る",
+      "priceListOnly": "価格表のみ",
+      "keywords": "キーワード",
+      "searchPlaceholder": "コード・名称・工具の種類・加工箇所で検索",
+      "empty": "再研磨品目がありません",
+      "created": "再研磨品目 {code} を作成しました",
+      "updated": "{name} を更新しました",
+      "deleted": "{name} を削除しました",
+      "enabled": "{name} を有効化しました",
+      "disabled": "{name} を無効化しました",
+      "editTheRegrindItem": "再研磨品目の編集",
+      "deleteTheRegrindItem": "再研磨品目の削除",
+      "deleteConfirm": "{name} を削除します。",
+      "itCannotBeDeletedWhileInUse": "注文明細・見積書・価格表で使われている品目は削除できません。",
+      "enableTheRegrindItem": "再研磨品目の有効化",
+      "disableTheRegrindItem": "再研磨品目の無効化",
+      "enableConfirm": "{name} を有効にします。",
+      "disableConfirm": "{name} を無効にします。新しい明細では選べなくなります。",
+      "bulkDeleteRegrindItems": "再研磨品目の一括削除",
+      "bulkDeleteConfirm": "{count} 件の再研磨品目を削除します。",
+      "bulkDeleted": "{count} 件を削除しました",
+      "bulkEnabled": "{count} 件を有効化しました",
+      "bulkDisabled": "{count} 件を無効化しました",
+      "inUseCannotDelete": "使用中のため削除できません（注文明細 {orderLines} 件 / 見積 {quotes} 件 / 価格表 {priceLists} 件）",
+      "notFound": "再研磨品目が見つかりません",
+      "createFailed": "再研磨品目の作成に失敗しました",
+      "updateFailed": "再研磨品目の更新に失敗しました",
+      "deleteFailed": "再研磨品目の削除に失敗しました"
     }
   },
   "manual": {
@@ -7690,7 +7740,8 @@
       "addATier": "段階を追加",
       "quantityRangeOpen": "{min}本〜",
       "quantityRangeBounded": "{min}〜{max}本",
-      "perPieceAmount": "{amount}/本"
+      "perPieceAmount": "{amount}/本",
+      "standardPriceLabel": "標準価格"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "発行しました（PDF 生成に失敗）",
@@ -7921,7 +7972,12 @@
       "willReplaceWithList": "{entered} は保存時に価格表の単価へ置き換わります",
       "overriddenFromList": "上書き（価格表 {expected}）",
       "delivery": "配送",
-      "applyLineOneDeliveryToAll": "先頭行の配送を全行へ適用"
+      "applyLineOneDeliveryToAll": "先頭行の配送を全行へ適用",
+      "regrindItem": "再研磨品目",
+      "searchTheRegrindItems": "再研磨品目を検索",
+      "toolToRegrind": "研ぎ直す工具",
+      "searchTheToolBeingHeld": "預かる工具を検索（他社製品を含む）",
+      "standardPrice": "標準価格 {price}"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "「{label}」を削除します。この操作は取り消せません。",
@@ -7998,7 +8054,6 @@
       "onlyApprovedCanConfirm": "承認済の注文請書のみ確定できます",
       "onlyCompletedCanArchive": "確定済の注文請書のみアーカイブできます",
       "onlyDraftCanRequestApproval": "下書きの注文請書のみ承認依頼できます",
-      "externalProductOnlyRegrind": "他社製品は注文種別「再研磨」の明細でしか使えません",
       "onlyImportCanRetryExtraction": "取込中（未抽出）の注文請書のみ再抽出できます",
       "onlyImportCanTakeOverManually": "取込中の注文請書のみ手入力へ切り替えられます",
       "orderLineConfirmedNote": "注文請書 {number} の確定",
@@ -8022,7 +8077,6 @@
     },
     "quoteActions": {
       "createFailed": "見積書の作成に失敗しました",
-      "externalProductOnlyRegrind": "他社製品は注文種別「再研磨」の明細でしか使えません",
       "invalidQuoteNumber": "見積番号が不正です",
       "issueFailed": "発行に失敗しました",
       "noPriceListEntry": "明細{line}: 該当する価格表がありません（価格試算から価格表を登録してください）",
@@ -8047,7 +8101,6 @@
     },
     "priceListsActions": {
       "testSampleRequiresEndDate": "テスト・サンプルの価格は有効終了日が必要です",
-      "externalProductOnlyRegrind": "他社製品の価格表は注文種別「再研磨」だけを持てます",
       "invalidEstimateNumber": "価格試算番号が不正です",
       "estimateNotFound": "価格試算が見つかりません",
       "onlyConfirmedEstimateUsable": "確定済みの価格試算のみ価格表に使用できます",
@@ -8149,11 +8202,12 @@
       "lineEndUserNotIdentified": "明細 {rows} 行目: エンドユーザーが未指定です",
       "noLineItems": "明細が 1 件もありません",
       "lineProductNotIdentified": "明細 {rows} 行目: 製品が未特定です",
-      "externalProductRequiresRegrind": "明細 {rows} 行目: 他社製品は注文種別「再研磨」でのみ受注できます",
       "lineUnitPriceNotEntered": "明細 {rows} 行目: 単価が未入力です",
       "lineQuantityInvalid": "明細 {rows} 行目: 数量が 1 以上ではありません",
       "lineUnitPriceNegative": "明細 {rows} 行目: 単価が負の値です",
-      "andNMore": "ほか {count} 件"
+      "andNMore": "ほか {count} 件",
+      "externalProductIsNotSold": "明細 {rows} 行目: 他社製品は売り物にできません。再研磨では工具の欄に選びます",
+      "regrindToolNotSelected": "明細 {rows} 行目: 研ぎ直す工具が未選択です"
     },
     "orderLineCore": {
       "confirmedLineCannotBeChanged": "確定済みの注文明細は変更できません",
@@ -8161,6 +8215,17 @@
       "onlyDraftAcceptanceEditable": "下書きの注文請書のみ編集できます",
       "productNotIdentified": "製品未特定",
       "unitPriceNotEntered": "単価未入力"
+    },
+    "salesItemGuard": {
+      "externalProductIsNotSold": "明細 {row} 行目: 他社製品は売り物にできません。再研磨では工具の欄に選びます",
+      "regrindNeedsRegrindItem": "明細 {row} 行目: 再研磨の明細には再研磨の品目を選びます",
+      "nonRegrindNeedsProduct": "明細 {row} 行目: 再研磨以外の明細には製品を選びます",
+      "toolOnlyForRegrind": "明細 {row} 行目: 工具は再研磨の明細にだけ入ります",
+      "toolMustBeProduct": "明細 {row} 行目: 工具には製品を選びます",
+      "externalProductHasNoPriceList": "他社製品には価格表を作れません（預かるだけで売る物ではありません）",
+      "materialHasNoPriceList": "素材には価格表を作れません",
+      "regrindItemOnlyRegrindVariant": "再研磨の品目が持てるのは注文種別「再研磨」だけです",
+      "productHasNoRegrindVariant": "製品に注文種別「再研磨」の価格は作れません。再研磨の値段は再研磨の品目が持ちます"
     }
   },
   "shipping": {
@@ -9055,7 +9120,8 @@
       "stock_takes": "棚卸",
       "stock_take_lines": "棚卸明細",
       "item_inventory": "在庫",
-      "movement_types": "移動タイプ"
+      "movement_types": "移動タイプ",
+      "items": "品目"
     },
     "change": {
       "pair": "{label}: {before} → {after}",

@@ -35,7 +35,6 @@ import {
   formatOrderLineNumber,
   parseDocKey,
 } from "@/lib/doc-number";
-import { hasExternalProductOutsideRegrind } from "@/lib/external-product-guard";
 import { enqueueExtraction } from "@/lib/intake";
 import { normalizeExtraction } from "@/lib/intake-core";
 import { aliasLearnings } from "@/lib/match-alias-core";
@@ -52,6 +51,7 @@ import {
   readinessSummary,
 } from "@/lib/order-acceptance-readiness";
 import { linesReplaceBlockReason, nextBranches } from "@/lib/order-line-core";
+import { salesLineItemError } from "@/lib/sales-item-guard";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
@@ -125,6 +125,13 @@ function itemInputSchema(tr: Tr) {
     itemId: z.string().nullable(),
     productText: z.string().nullable(),
     orderType: orderTypeEnum,
+    /**
+     * 研ぎ直す工具（再研磨の明細だけ）。値は品目 id（`itemType: "PRODUCT"`。
+     * 他社製品でもよい）。**売り物とは別の欄** — 売るのは再研磨という役務で、
+     * 預かって数えるのはこの工具のほう。確定済みの再研磨明細では必須
+     * （DB の CHECK order_lines_regrind_tool と readiness の両方が守る）。
+     */
+    toolItemId: z.string().nullable().optional(),
     quantity: z
       .number()
       .int()
@@ -312,8 +319,15 @@ function buildItemCreates(
 ) {
   return items.map((it, i) => {
     const itemId = it.itemId ? Number(it.itemId) : null;
+    // 工具は再研磨の明細だけが持つ。種別を再研磨から戻した行の工具を
+    // ここで落とす（DB の CHECK order_lines_tool_only_for_regrind と同じ規則）。
+    const toolItemId =
+      it.orderType === "REGRIND" && it.toolItemId
+        ? Number(it.toolItemId)
+        : null;
     return {
       itemId,
+      toolItemId,
       productText: trimOrNull(it.productText),
       orderType: it.orderType,
       quantity: it.quantity,
@@ -492,12 +506,10 @@ export async function saveDraft(
       return actionError(tr("sales.orderAcceptanceActions.targetNotFound"));
     const refsError = await lineRefsError(tr, v.items);
     if (refsError) return actionError(refsError);
-    // 他社製品（再研磨専用）は注文種別が再研磨の行にしか載せられない。
-    if (await hasExternalProductOutsideRegrind(v.items)) {
-      return actionError(
-        tr("sales.orderAcceptanceActions.externalProductOnlyRegrind"),
-      );
-    }
+    // 明細の品目が種別と噛み合っているか（他社製品は売り物にならない・
+    // 再研磨の行は再研磨の品目を指し、工具は工具の欄に載る）。
+    const itemError = await salesLineItemError(v.items, tr);
+    if (itemError) return actionError(itemError);
     const customerBpId = trimOrNull(v.customerBpId);
     // 価格表どおりの行の単価はここで確定する（クライアントの表示値は読まない）。
     // 顧客が変わった保存でも、新しい顧客の価格表で解決し直される。
@@ -637,6 +649,7 @@ export async function submitForApproval(
             deliveryMethod: true,
             endUserBpId: true,
             orderType: true,
+            toolItemId: true,
             item: { select: { isExternalProduct: true } },
           },
         },
@@ -663,6 +676,7 @@ export async function submitForApproval(
           endUserBpId: it.endUserBpId,
           orderType: it.orderType,
           isExternalProduct: it.item?.isExternalProduct ?? false,
+          toolItemId: it.toolItemId,
         })),
       },
       tr,
@@ -906,6 +920,7 @@ export async function confirmOrderLines(
           endUserBpId: it.endUserBpId,
           orderType: it.orderType,
           isExternalProduct: it.item?.isExternalProduct ?? false,
+          toolItemId: it.toolItemId,
         })),
       },
       tr,

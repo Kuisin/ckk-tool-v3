@@ -91,6 +91,7 @@ import {
   type ApprovalTrailView,
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
+import { useStandardPrices } from "@/components/sales/useStandardPrices";
 import { ActionCard } from "@/components/ui/ActionCard";
 import { AppTabs } from "@/components/ui/AppTabs";
 import {
@@ -1628,7 +1629,15 @@ function DraftEditor({
   // 行ごとの単価をその場で解決する（保存済み結果の照合ではなく、いまの入力
   // に対する解決 — 顧客や数量を変えた瞬間に単価が追随する）。
   const priceEntries = usePriceEntries(customerId);
-  const priceContext = { customerBpId: customerId, priceEntries };
+  // 標準価格（品目の定価）— 当たる価格表が無い行はこちらへ落ちる。
+  // 画面と保存側で同じものを見ていないと「見えている単価」と
+  // 「保存される単価」がずれる。
+  const standardPrices = useStandardPrices(items.map((r) => r.itemId));
+  const priceContext = {
+    customerBpId: customerId,
+    priceEntries,
+    standardPrices,
+  };
 
   /** 入力内容の指紋 — 変更の有無だけを見るので中身の意味は問わない。 */
   const fingerprint = JSON.stringify([

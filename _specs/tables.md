@@ -520,6 +520,31 @@ Table materials {
 }
 
 // 製品コード: PRD-YYYYMM-NNNN
+// ===========================
+// 品目の 3 種別と、値段の持ち主
+// ===========================
+//
+// `app.items` は 3 種別ある（`item_type`）:
+//
+//   PRODUCT  製品 … 作る / 預かる / 出す。**他社製品**（is_external_product）は
+//            この中の特別な行で、再研磨で預かる他社の工具。**売り物ではない**
+//   MATERIAL 素材 … 買う / 消費する
+//   REGRIND  再研磨（役務）… 研ぎ直しそのもの。**在庫を持たない**。値段はここ
+//
+// REGRIND の行は旧 FileMaker の 再研マスタ 1 行に当たり、値段を決めている条件を
+// そのまま列で持つ（regrind_tool_class / regrind_location / regrind_flutes /
+// regrind_size_min_mm / regrind_size_max_mm）。**突合の鍵ではない** — 探すため・
+// 読んで分かるための情報で、どの品目を使うかは人が選ぶ。
+//
+// **値段の決まり方は 2 段**（S/4HANA の「品目の定価 + 顧客ごとの条件レコード」）:
+//   1. items.standard_unit_price … 顧客を問わない定価
+//   2. price_list_entries       … あればこちらが勝つ
+// 落ちるのは「当たる価格表が無い」ときだけ（無い / 無効 / 期間外）。**数量段階の
+// 穴では落ちない** — 生きている価格表の穴は設定の誤りで、黙って定価に落とすと
+// 気づけない。いま標準価格を読むのは再研磨の品目だけ（lib/standard-price.ts）。
+//
+// 管理画面は MS04 製品 / MS06 素材 / **MS0H 再研磨品目**。
+
 Table products {
   id              varchar [pk]            // 製品コード
   name            json [not null]         // { ja: '', en: '' }
@@ -788,6 +813,18 @@ Table order_lines {
   // 明細内容（抽出直後は product_text のみ。突合後に product_id）
   product_id      int [ref: > products.id]
   product_text    varchar
+  // 研ぎ直す工具（**再研磨の明細だけ**。品目 = 製品で、他社製品でもよい）。
+  //
+  // 再研磨の明細は品目を 2 つ指す: product_id（実装は item_id）が**売っている
+  // 役務**（再研磨品目。値段はここに付く）で、こちらが**預かって手を入れて
+  // 返す現物**。預り品の在庫・指示書の対象・出荷する物はすべて工具のほうで
+  // 数える — 1 列では足りない。読み替えは lib/work-order-alloc-core.ts の
+  // allocTargetItemId が唯一の定義元。
+  //
+  // 確定済みの再研磨明細では必須（CHECK order_lines_regrind_tool）。下書きの
+  // うちは null でよい — 品目の突合と同じで、確定のときに揃う。逆に再研磨で
+  // ない明細は持たない（CHECK order_lines_tool_only_for_regrind）。
+  tool_item_id    int [ref: > items.id]
   order_type      ORDER_TYPE [not null]
   quantity        int [not null]
   unit_price      numeric(12,2)

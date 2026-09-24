@@ -174,6 +174,12 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     listPath: "/master/materials",
     directDetail: true,
   },
+  // 再研磨品目 (MS0H)。詳細ページを持たない（編集は一覧のモーダル）ので
+  // 一覧まで。`items` を書くのはこの画面だけ — 製品・素材は旧名のまま。
+  items: {
+    appListKey: "master-regrind-items",
+    listPath: "/master/regrind-items",
+  },
   material_types: {
     appListKey: "master-material-types",
     listPath: "/master/material-types",

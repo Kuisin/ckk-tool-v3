@@ -29,7 +29,8 @@ export interface ReadinessIssue {
     | "quantity"
     | "price"
     | "endUser"
-    | "externalProduct";
+    | "externalProduct"
+    | "regrindTool";
   /** 人が読む説明。 */
   message: string;
 }
@@ -45,10 +46,16 @@ export interface ReadinessInput {
     deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
     /** エンドユーザー（最終需要家）— その行がユーザー直送では必須。 */
     endUserBpId: string | null;
-    /** 注文種別。他社製品の行は REGRIND でなければならない。 */
+    /** 注文種別。再研磨の行は工具が要る。 */
     orderType?: string;
-    /** 選んだ品目が他社製品（再研磨専用）か。未指定 = 判定しない。 */
+    /**
+     * 売り物の欄に選ばれた品目が他社製品か。**他社製品は売り物にならない** —
+     * 預かって研ぎ直すだけなので、工具の欄（toolItemId）に載る。
+     * 未指定 = 判定しない。
+     */
     isExternalProduct?: boolean;
+    /** 研ぎ直す工具（再研磨の行だけ）。null = 未選択。 */
+    toolItemId?: string | number | null;
   }[];
 }
 
@@ -89,12 +96,19 @@ export function acceptanceReadiness(input: ReadinessInput, tr: Tr): Readiness {
   // 進めない — 保存時にも強制するが、既存データの取りこぼしをここで
   // 確実に止める。配送方法は行ごとなので、他の行チェックと同じ行番号方式。
   const noEndUser: number[] = [];
-  // 他社製品（再研磨専用）は注文種別が再研磨の行にしか載せられない。
-  const externalNotRegrind: number[] = [];
+  // 他社製品は売り物の欄に置けない（工具の欄に載る）。
+  const externalAsSoldItem: number[] = [];
+  // 再研磨の行は「どの工具を研ぐのか」が決まっていないと、預り品を数えられず
+  // 指示書も作れない。売り物（再研磨の役務）と工具は別の欄。
+  const regrindWithoutTool: number[] = [];
   input.items.forEach((it, i) => {
     if (it.itemId == null || it.itemId === "") noProduct.push(i + 1);
-    if (it.isExternalProduct && it.orderType !== "REGRIND")
-      externalNotRegrind.push(i + 1);
+    if (it.isExternalProduct) externalAsSoldItem.push(i + 1);
+    if (
+      it.orderType === "REGRIND" &&
+      (it.toolItemId == null || it.toolItemId === "")
+    )
+      regrindWithoutTool.push(i + 1);
     if (!(it.quantity >= 1)) badQuantity.push(i + 1);
     if (it.unitPrice == null) noPrice.push(i + 1);
     else if (it.unitPrice < 0) negativePrice.push(i + 1);
@@ -133,13 +147,20 @@ export function acceptanceReadiness(input: ReadinessInput, tr: Tr): Readiness {
       }),
     });
   }
-  if (externalNotRegrind.length > 0) {
+  if (externalAsSoldItem.length > 0) {
     issues.push({
       kind: "externalProduct",
-      message: tr(
-        "sales.orderAcceptanceReadiness.externalProductRequiresRegrind",
-        { rows: rowList(externalNotRegrind) },
-      ),
+      message: tr("sales.orderAcceptanceReadiness.externalProductIsNotSold", {
+        rows: rowList(externalAsSoldItem),
+      }),
+    });
+  }
+  if (regrindWithoutTool.length > 0) {
+    issues.push({
+      kind: "regrindTool",
+      message: tr("sales.orderAcceptanceReadiness.regrindToolNotSelected", {
+        rows: rowList(regrindWithoutTool),
+      }),
     });
   }
   if (noEndUser.length > 0) {

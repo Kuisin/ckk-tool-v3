@@ -123,7 +123,7 @@ At the top of the screen, 「**製品**」 (products), 「**明細数 / 合計�
 
 ## Asking for approval
 
-1. In view mode, press「**承認依頼**」(request approval) in the card at the very top of the screen. (The button is hidden while you are editing — save first.) The button stays disabled while something is missing: the card lists what it is (for example「顧客が未特定です」— no customer —, or「明細 2 行目: 単価が未入力です」— no unit price on row 2). Fix it with「**編集**」(edit) first.
+1. In view mode, press「**承認依頼**」(request approval) in the card at the very top of the screen. (The button is hidden while you are editing — save first.) The button stays disabled while something is missing: the card lists what it is (for example「顧客が未特定です」— no customer —,「明細 2 行目: 単価が未入力です」— no unit price on row 2 —, or「明細 2 行目: 研ぎ直す工具が未選択です」— no tool to regrind on row 2). Fix it with「**編集**」(edit) first.
 2. If there is a price difference, a screen called「価格差異の確認」(check the price difference) appears. Check the contents and press「**差異を確認して依頼**」(confirm the difference and request). Rows with an overridden unit price **do not stop the request** (the price is deliberate), but the approver also sees them as「単価の上書き N 件」(N overridden unit prices).
 
 The status changes to「**承認依頼中**」(pending approval).
@@ -188,6 +188,7 @@ Every field on the order acceptance screen. What the AI read from the order land
 | [Product](#field-product) | Required | The product ordered |
 | [Item name (as read)](#field-extracted-name) | — | The item name printed on the order |
 | [Order type](#field-order-type) | Required | Production, test and so on |
+| Tool to regrind | Required for regrind | The tool held and reground (only on rows whose [order type](#field-order-type) is regrind) |
 | [Quantity](#field-quantity) | Required | The quantity ordered |
 | [Unit price](#field-unit-price) | Required | Price per piece |
 | [Delivery date](#field-delivery-date) | Optional | Delivery date for that line |
@@ -242,7 +243,9 @@ The item name exactly as printed on the order. It is kept **as a record of what 
 
 ### Order type [#field-order-type]
 
-Production, test, sample or other. Prices differ by type.
+Production, test, sample, **regrind** or other. Prices differ by type.
+
+**A 「再研磨」 (regrind) row asks for different things.** The 「製品」 (product) field becomes a 「**再研磨品目**」 (regrind item) field — what is sold is the regrinding service, so you pick it from the [regrind items](/manual/en/operations/masters/regrind-item/user) — and a 「**研ぎ直す工具**」 (tool to regrind) field appears just below it. The tool is picked from the [product master](/manual/en/operations/masters/product/user), and this is the only field where another maker's tool (an 「他社製品」 (external product)) can be picked. **Switching a row's type into or out of 「再研磨」 clears the item that was picked** — the kind of item is different, so pick it again. **A regrind row can be neither sent for approval nor confirmed until its tool is picked** (「明細 2 行目: 研ぎ直す工具が未選択です」 — the tool to regrind is not selected).
 
 ### Quantity [#field-quantity]
 
@@ -297,7 +300,7 @@ A. The company name on the order form could not be matched to the business partn
 > 💡 **Your correction is remembered.** When you pick a customer (or a product) by hand and save, the system records "this wording on the order form means this record" and **matches it automatically the next time the same wording arrives**. For a customer who sends the same format every month, you only fix it once. Pick a different record later and it re-learns that one instead.
 
 **Q. I cannot press「承認依頼」(request approval).**
-A. Requesting approval needs **a customer, at least one line item, and a product and a unit price on every row**. Whatever is missing is listed in the card at the very top of the screen (for example「顧客が未特定です / 明細 2 行目: 単価が未入力です」). Fix it with「**編集**」(edit) and press「**保存**」(save), and the button becomes available.
+A. Requesting approval needs **a customer, at least one line item, and a product and a unit price on every row** (plus the **tool to regrind** on every row whose order type is regrind). Whatever is missing is listed in the card at the very top of the screen (for example「顧客が未特定です / 明細 2 行目: 単価が未入力です」). Fix it with「**編集**」(edit) and press「**保存**」(save), and the button becomes available.
 
 **Q. On deploy it says「確定できません: 明細 2 行目: 製品が未特定です」(cannot deploy: the product on line item row 2 is not identified).**
 A. The product or the unit price on the row shown is empty. The same check runs when approval is requested, so this is rare — if it does happen, it has to go back to a draft, so ask the person who approved it to do「**差し戻し**」(send back), correct that row, and go on from there.

@@ -14,6 +14,7 @@
     "material-numbering",
     "work-location",
     "storage-location",
-    "charge-item"
+    "charge-item",
+    "regrind-item"
   ]
 }

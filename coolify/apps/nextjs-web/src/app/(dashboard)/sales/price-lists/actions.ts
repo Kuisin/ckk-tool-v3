@@ -26,8 +26,8 @@ import {
   formatPriceListNumber,
   parseDocKey,
 } from "@/lib/doc-number";
-import { externalProductItemIds } from "@/lib/external-product-guard";
 import { allocateDocumentKey } from "@/lib/numbering";
+import { priceListItemError } from "@/lib/sales-item-guard";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
@@ -265,19 +265,16 @@ export type PriceEntryCreateInput = z.input<
 >;
 
 /**
- * 他社製品（再研磨専用）の価格表は注文種別 REGRIND のバリアントしか持てない —
- * 本番の単価があると、本番の明細で他社製品が価格解決されて通ってしまう。
+ * 価格表を作ってよい品目か（他社製品・素材は不可。再研磨の品目は再研磨の
+ * バリアントだけ、製品に再研磨のバリアントは作らない）。判定は
+ * `lib/sales-item-guard.ts` が唯一の定義元。
  */
-async function externalEntryVariantError(
+async function entryItemError(
   tr: Tr,
   itemId: number,
   orderTypes: readonly string[],
 ): Promise<string | null> {
-  const external = await externalProductItemIds([itemId]);
-  if (!external.has(itemId)) return null;
-  return orderTypes.some((t) => t !== "REGRIND")
-    ? tr("sales.priceListsActions.externalProductOnlyRegrind")
-    : null;
+  return priceListItemError(itemId, orderTypes, tr);
 }
 
 export async function createPriceEntry(
@@ -295,12 +292,12 @@ export async function createPriceEntry(
   const v = parsed.data;
   const variantError = validateVariants(tr, v.variants);
   if (variantError) return actionError(variantError);
-  const externalError = await externalEntryVariantError(
+  const itemError = await entryItemError(
     tr,
     v.identity.itemId,
     v.variants.map((x) => x.orderType),
   );
-  if (externalError) return actionError(externalError);
+  if (itemError) return actionError(itemError);
   try {
     // 価格試算ソースを検証（初回使用の価格試算はロック対象として控える）。
     const locks: { number: string; key: DocKey }[] = [];
@@ -447,12 +444,12 @@ export async function updatePriceEntry(
       select: { itemId: true },
     });
     if (entryItem) {
-      const externalError = await externalEntryVariantError(
+      const itemError = await entryItemError(
         tr,
         entryItem.itemId,
         v.variants.map((x) => x.orderType),
       );
-      if (externalError) return actionError(externalError);
+      if (itemError) return actionError(itemError);
     }
     const existing = await prisma.priceListVariant.findMany({
       where: variantWhere(key),

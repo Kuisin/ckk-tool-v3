@@ -57,6 +57,10 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   inspection_templates: "identity",
   inspection_template_groups: "identity",
   products: "identity",
+  // 再研磨品目 (MS0H)。**実表名そのまま** — products / materials が旧名のまま
+  // なのは移行の履歴（あの 2 つも中身は app.items）で、あとから作った
+  // 再研磨品目は名乗り直す必要が無い。いま `items` を書くのはこの 1 画面だけ。
+  items: "identity",
   charge_items: "identity",
   materials: "identity",
   material_types: "identity",

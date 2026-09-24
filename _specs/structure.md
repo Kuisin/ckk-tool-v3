@@ -178,6 +178,9 @@ src/
 │   │       ├── defect-types/                       # 不良種類
 │   │       │   ├── page.tsx
 │   │       │   └── new/page.tsx
+│   │       ├── regrind-items/                      # 再研磨品目（MS0H — 売る「役務」としての
+│   │       │                                       #   研ぎ直し。値段はここに付く。
+│   │       │                                       #   研ぐ工具は products 側の行）
 │   │       ├── material-numbering/                 # 採番構成（MS07 — 材種/素材コードの部品）
 │   │       ├── work-locations/                     # 作業場所（MS0D — 工程の実施場所）
 │   │       ├── storage-locations/                  # 保管場所（MS0E — 棚・フロアマップのピン）

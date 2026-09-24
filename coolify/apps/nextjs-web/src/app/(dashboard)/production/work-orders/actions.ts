@@ -69,6 +69,7 @@ import { workLocationsConfigured } from "@/lib/work-locations";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import {
   type AllocationInput,
+  allocTargetItemId,
   type LineAllocInfo,
   remainingAllocatable,
   validateAllocations,
@@ -319,6 +320,7 @@ async function loadLineAllocInfos(
         branch: true,
         quantity: true,
         itemId: true,
+        toolItemId: true,
         status: true,
         orderType: true,
       },
@@ -331,6 +333,7 @@ async function loadLineAllocInfos(
     lineQuantity: r.quantity,
     otherAllocated: allocated.get(r.id) ?? 0,
     itemId: r.itemId,
+    toolItemId: r.toolItemId,
     status: r.status,
     orderType: r.orderType,
   }));
@@ -385,10 +388,13 @@ async function resolveWorkOrderTarget(
       tr,
     );
     if (error) return error;
-    // validateAllocations が「全行同一製品・itemId 非 null」を保証済み
-    const itemId = lines.find(
+    // validateAllocations が「全行同一の対象・非 null」を保証済み。
+    // **再研磨では対象は工具**（明細の itemId は売る役務のほう）—
+    // 読み替えは allocTargetItemId の 1 か所だけ。
+    const line = lines.find(
       (l) => l.orderLineId === v.allocations[0].orderLineId,
-    )?.itemId;
+    );
+    const itemId = line ? allocTargetItemId(line) : null;
     if (itemId == null)
       return tr("production.workOrderActions.orderLineNotFound");
     return { itemId };

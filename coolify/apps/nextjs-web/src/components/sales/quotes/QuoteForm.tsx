@@ -37,6 +37,7 @@ import {
   ProductPriceResolverInput,
   type ResolverValue,
 } from "@/components/sales/ProductPriceResolverInput";
+import { useStandardPrices } from "@/components/sales/useStandardPrices";
 import { GhostButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
@@ -229,6 +230,13 @@ export function QuoteForm({
 
   const branches = branchesByCustomer[form.values.customerId] ?? [];
 
+  // 標準価格（品目の定価）— 当たる価格表が無い行はこちらへ落ちる。画面と
+  // 保存側が同じものを見ていないと「見えている単価」と「保存される単価」が
+  // ずれる。いま値が入るのは再研磨の品目だけ。
+  const standardPrices = useStandardPrices(
+    form.values.items.map((it) => it.itemId),
+  );
+
   /** Changing 顧客 → re-resolve every line's 単価・値引き against the new customer's 価格表. */
   const onCustomerChange = (customerId: string) => {
     form.setFieldValue("customerId", customerId);
@@ -244,6 +252,8 @@ export function QuoteForm({
               it.orderType,
               it.quantity,
               tr,
+              new Date(),
+              standardPrices[it.itemId] ?? null,
             )
           : null;
         return {
@@ -440,6 +450,7 @@ export function QuoteForm({
                         next.discountLabel,
                       );
                     }}
+                    standardPrices={standardPrices}
                     value={item}
                   />
                 </Box>

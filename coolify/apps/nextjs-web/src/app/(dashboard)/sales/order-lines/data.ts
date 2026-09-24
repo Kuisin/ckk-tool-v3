@@ -50,6 +50,8 @@ const ORDER_LINE_INCLUDE = {
   },
   // 品目統合 第 2 段 C — 表示は品目側から読む。
   item: true,
+  // 再研磨の明細が指す**工具**（他社製品も含む）。売り物（item）とは別の欄。
+  toolItem: true,
   // 指示書は割当（work_order_order_lines）経由 — 分割・統合の両対応。
   workOrderLinks: {
     orderBy: { workOrder: { workOrderNumber: "asc" as const } },
@@ -100,15 +102,35 @@ function findRow(key: OrderLineKey) {
   });
 }
 
-/** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
+/**
+ * 品目ラベル: 名称 + 品目コード（レガシーはコード未採番 → 名称のみ）。
+ *
+ * コードは **items.code をそのまま**読む — 製品は PRD-…、再研磨品目は RGD-… で、
+ * (year_month, seq) から組み立てられるのは製品だけ。旧行のために組み立ても
+ * 残してある。
+ */
 function productLabel(p: {
   name: unknown;
+  code?: string | null;
   yearMonth: string | null;
   seq: number | null;
 }): string {
-  const code = formatProductNumber(p.yearMonth, p.seq);
+  const code = p.code ?? formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
   return code ? `${name} ${code}` : name;
+}
+
+/** 工具ラベル: メーカー名（他社製品のみ）+ 名称 + コード。 */
+function toolLabel(t: {
+  name: unknown;
+  code: string | null;
+  isExternalProduct: boolean;
+  makerName: string | null;
+}): string {
+  const maker = t.isExternalProduct ? t.makerName?.trim() : null;
+  return [maker, localized(t.name as LocalizedText | null), t.code]
+    .filter((x): x is string => !!x)
+    .join(" ");
 }
 
 function mapOrderLine(r: OrderLineRow): OrderLine {
@@ -167,6 +189,7 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
         : null,
     itemId: r.itemId == null ? null : String(r.itemId),
     productName: r.item ? productLabel(r.item) : (r.productText ?? "—"),
+    toolName: r.toolItem ? toolLabel(r.toolItem) : null,
     orderType: r.orderType,
     quantity: r.quantity,
     unitPrice: r.unitPrice == null ? null : Number(r.unitPrice),

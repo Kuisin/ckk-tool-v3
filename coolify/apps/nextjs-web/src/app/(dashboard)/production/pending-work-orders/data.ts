@@ -46,10 +46,11 @@ const OPEN_WORK_ORDER_STATUSES = [
 /** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
 function productLabel(p: {
   name: unknown;
+  code?: string | null;
   yearMonth: string | null;
   seq: number | null;
 }): string {
-  const code = formatProductNumber(p.yearMonth, p.seq);
+  const code = p.code ?? formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
   return code ? `${name} ${code}` : name;
 }

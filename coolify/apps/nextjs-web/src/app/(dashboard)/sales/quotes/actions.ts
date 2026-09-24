@@ -21,9 +21,9 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
-import { hasExternalProductOutsideRegrind } from "@/lib/external-product-guard";
 import { lineAmountYen, roundYen } from "@/lib/money";
 import { allocateDocumentKey } from "@/lib/numbering";
+import { salesLineItemError } from "@/lib/sales-item-guard";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
@@ -31,6 +31,7 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { loadStandardUnitPrices } from "@/lib/standard-price";
 import { loadTaxCatalog } from "@/lib/tax-categories";
 import { resolveLineTax } from "@/lib/tax-rate";
 import { fetchEntriesForCustomer } from "./data";
@@ -157,18 +158,18 @@ async function resolveItems(
   // 税は**行ごと**（製品ごとに課税区分が違い得る）。見積書は印刷して外に出す書類
   // なので、単価・値引きと同じく保存時に凍結する — 発行後に税率マスタが変わっても
   // 刷り直した PDF が動いてはいけない。
-  const [catalog, customerTaxCategoryId, productTaxCategoryIds] =
+  const [catalog, customerTaxCategoryId, productTaxCategoryIds, standard] =
     await Promise.all([
       loadTaxCatalog(),
       customerTaxCategoryIdOf(v.customerBpId),
       productTaxCategoryMap(v.items.map((it) => Number(it.itemId))),
+      // 標準価格（品目の定価）— 顧客の価格表が無い再研磨の品目はこちらで解決する。
+      loadStandardUnitPrices(v.items.map((it) => it.itemId)),
     ]);
-  // 他社製品（再研磨専用）は注文種別が再研磨の行にしか載せられない。
-  if (await hasExternalProductOutsideRegrind(v.items)) {
-    throw new LineItemResolveError(
-      tr("sales.quoteActions.externalProductOnlyRegrind"),
-    );
-  }
+  // 明細の品目が種別と噛み合っているか（他社製品は売り物にならない・
+  // 再研磨の行は再研磨の品目を指す）。
+  const itemError = await salesLineItemError(v.items, tr);
+  if (itemError) throw new LineItemResolveError(itemError);
   // 基準日は見積の作成日（まだ注文日が無い）。
   const basisDate = isoDateJst(new Date());
 
@@ -180,6 +181,8 @@ async function resolveItems(
       it.orderType,
       it.quantity,
       tr,
+      new Date(),
+      standard.get(Number(it.itemId)) ?? null,
     );
     if (!resolution.ok) {
       throw new LineItemResolveError(

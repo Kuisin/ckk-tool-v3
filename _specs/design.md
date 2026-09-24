@@ -333,6 +333,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | D | 作業場所 | MS0D | — | — |
 | マスタ | E | 保管場所 | MS0E | — | — |
 | マスタ | G | 料金マスタ | MS0G | MS1G | — |
+| マスタ | H | 再研磨品目 | MS0H | MS1H | — |
 | ドキュメント | 1 | マニュアル | DC01 | — | — |
 | ドキュメント | 2 | 管理マニュアル | DC02 | — | — |
 | システム | 1 | ユーザー管理 | SY01 | — | — |
@@ -451,6 +452,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 承認設定 | `IconUsersGroup` |
 | 拠点 | `IconBuildingWarehouse` |
 | 料金マスタ | `IconCoin` |
+| 再研磨品目 | `IconTool` |
 | ユーザー管理 | `IconUserCog` |
 | 価格試算計算 | `IconMathFunction` |
 | 製品項目 | `IconListDetails` |

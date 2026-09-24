@@ -1237,7 +1237,8 @@
     },
     "ITEM_TYPE_LABEL": {
       "PRODUCT": "Product",
-      "MATERIAL": "Material"
+      "MATERIAL": "Material",
+      "REGRIND": "Regrind"
     },
     "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
       "past": "Actual",
@@ -3278,7 +3279,8 @@
       "plansRequiredBeforeApproval": "Add a work plan (date + work location) before requesting approval: {steps}",
       "copyRouteFailed": "Could not copy the step list",
       "prepRouteRequired": "Select a preparation step list",
-      "prepRouteNotFound": "The selected preparation step list was not found or is disabled"
+      "prepRouteNotFound": "The selected preparation step list was not found or is disabled",
+      "regrindLineToolMissing": "Order line {number}: the tool to regrind is not selected"
     },
     "designFileActions": {
       "cannotDelete": "Cannot delete",
@@ -6559,6 +6561,54 @@
       "duplicateCodeForCustomer": "Customer part number “{code}” is duplicated for the same customer",
       "duplicateCodeOnOtherProduct": "Customer part number “{code}” is already registered for this customer on another product (including notation variants)",
       "couldNotSave": "Could not save the customer part numbers"
+    },
+    "regrindItems": {
+      "pageTitle": "Regrind items",
+      "newRegrindItem": "New regrind item",
+      "formHelp": "Register the regrinding service itself as an item. The price lives here; a customer price list overrides it. The tool being reground is registered in the product master.",
+      "toolClass": "Tool class",
+      "toolClassHelp": "Write it at the level where the price changes",
+      "toolClassPlaceholder": "Carbide helical end mill",
+      "location": "Ground area",
+      "locationHelp": "Which part is reground",
+      "locationPlaceholder": "Periphery + flute",
+      "flutes": "Flutes",
+      "flutesHelp": "Empty = the price does not depend on the flute count",
+      "sizeMin": "Size from",
+      "sizeMinHelp": "Larger than this diameter",
+      "sizeMax": "Size to",
+      "sizeMaxHelp": "Up to and including this diameter",
+      "sizeBand": "Size band",
+      "sizeBandOrder": "Size to must be larger than size from",
+      "standardPrice": "Standard price",
+      "standardPriceHelp": "List price for every customer. Empty = sold only to customers with a price list",
+      "priceListOnly": "Price list only",
+      "keywords": "Keywords",
+      "searchPlaceholder": "Search by code, name, tool class or ground area",
+      "empty": "There are no regrind items",
+      "created": "Created regrind item {code}",
+      "updated": "Updated {name}",
+      "deleted": "Deleted {name}",
+      "enabled": "Enabled {name}",
+      "disabled": "Disabled {name}",
+      "editTheRegrindItem": "Edit the regrind item",
+      "deleteTheRegrindItem": "Delete the regrind item",
+      "deleteConfirm": "Delete {name}.",
+      "itCannotBeDeletedWhileInUse": "An item used by an order line, quote or price list cannot be deleted.",
+      "enableTheRegrindItem": "Enable the regrind item",
+      "disableTheRegrindItem": "Disable the regrind item",
+      "enableConfirm": "Enable {name}.",
+      "disableConfirm": "Disable {name}. It can no longer be picked on new lines.",
+      "bulkDeleteRegrindItems": "Bulk delete regrind items",
+      "bulkDeleteConfirm": "Delete {count} regrind items.",
+      "bulkDeleted": "Deleted {count} items",
+      "bulkEnabled": "Enabled {count} items",
+      "bulkDisabled": "Disabled {count} items",
+      "inUseCannotDelete": "In use, so it cannot be deleted ({orderLines} order lines / {quotes} quotes / {priceLists} price lists)",
+      "notFound": "Regrind item not found",
+      "createFailed": "Could not create the regrind item",
+      "updateFailed": "Could not update the regrind item",
+      "deleteFailed": "Could not delete the regrind item"
     }
   },
   "manual": {
@@ -7690,7 +7740,8 @@
       "addATier": "Add a tier",
       "quantityRangeOpen": "{min}+ pcs",
       "quantityRangeBounded": "{min}–{max} pcs",
-      "perPieceAmount": "{amount}/pc"
+      "perPieceAmount": "{amount}/pc",
+      "standardPriceLabel": "Standard price"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "Issued (PDF generation failed)",
@@ -7921,7 +7972,12 @@
       "willReplaceWithList": "{entered} will be replaced by the price list unit price on save",
       "overriddenFromList": "Overridden (price list {expected})",
       "delivery": "Delivery",
-      "applyLineOneDeliveryToAll": "Apply line 1’s delivery to all lines"
+      "applyLineOneDeliveryToAll": "Apply line 1’s delivery to all lines",
+      "regrindItem": "Regrind item",
+      "searchTheRegrindItems": "Search regrind items",
+      "toolToRegrind": "Tool to regrind",
+      "searchTheToolBeingHeld": "Search the tool held (external products included)",
+      "standardPrice": "Standard price {price}"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "Deletes \"{label}\". This cannot be undone.",
@@ -7998,7 +8054,6 @@
       "onlyApprovedCanConfirm": "Only approved order acceptances can be confirmed",
       "onlyCompletedCanArchive": "Only confirmed order acceptances can be archived",
       "onlyDraftCanRequestApproval": "Only draft order acceptances can request approval",
-      "externalProductOnlyRegrind": "External products can only be used on lines with order type \"Regrind\"",
       "onlyImportCanRetryExtraction": "Only order acceptances still importing (not yet extracted) can be re-extracted",
       "onlyImportCanTakeOverManually": "Only order acceptances still importing can be switched to manual entry",
       "orderLineConfirmedNote": "Confirmed from order acceptance {number}",
@@ -8022,7 +8077,6 @@
     },
     "quoteActions": {
       "createFailed": "Could not create the quote",
-      "externalProductOnlyRegrind": "External products can only be used on lines with order type \"Regrind\"",
       "invalidQuoteNumber": "Invalid quote number",
       "issueFailed": "Could not issue",
       "noPriceListEntry": "Line {line}: no matching price list (register a price list from the price estimate)",
@@ -8047,7 +8101,6 @@
     },
     "priceListsActions": {
       "testSampleRequiresEndDate": "Test and sample prices require a valid-until date",
-      "externalProductOnlyRegrind": "A price list for an external product can only have the order type \"Regrind\"",
       "invalidEstimateNumber": "Invalid price estimate number",
       "estimateNotFound": "Price estimate not found",
       "onlyConfirmedEstimateUsable": "Only a confirmed price estimate can be used in a price list",
@@ -8149,11 +8202,12 @@
       "lineEndUserNotIdentified": "Line {rows}: End user not specified",
       "noLineItems": "There are no line items",
       "lineProductNotIdentified": "Line {rows}: Product not identified",
-      "externalProductRequiresRegrind": "Line {rows}: external products can only be ordered with order type \"Regrind\"",
       "lineUnitPriceNotEntered": "Line {rows}: Unit price not entered",
       "lineQuantityInvalid": "Line {rows}: Quantity must be at least 1",
       "lineUnitPriceNegative": "Line {rows}: Unit price is negative",
-      "andNMore": "and {count} more"
+      "andNMore": "and {count} more",
+      "externalProductIsNotSold": "Line {rows}: an external product cannot be sold. Pick it as the tool on a regrind line",
+      "regrindToolNotSelected": "Line {rows}: the tool to regrind is not selected"
     },
     "orderLineCore": {
       "confirmedLineCannotBeChanged": "A confirmed order line cannot be changed",
@@ -8161,6 +8215,17 @@
       "onlyDraftAcceptanceEditable": "Only a draft order acceptance can be edited",
       "productNotIdentified": "Product not identified",
       "unitPriceNotEntered": "Unit price not entered"
+    },
+    "salesItemGuard": {
+      "externalProductIsNotSold": "Line {row}: an external product cannot be sold. Pick it as the tool on a regrind line",
+      "regrindNeedsRegrindItem": "Line {row}: a regrind line must use a regrind item",
+      "nonRegrindNeedsProduct": "Line {row}: a non-regrind line must use a product",
+      "toolOnlyForRegrind": "Line {row}: a tool can only be set on a regrind line",
+      "toolMustBeProduct": "Line {row}: the tool must be a product",
+      "externalProductHasNoPriceList": "An external product cannot have a price list. It is held for regrinding, not sold",
+      "materialHasNoPriceList": "A material cannot have a price list",
+      "regrindItemOnlyRegrindVariant": "A regrind item can only carry the order type \"Regrind\"",
+      "productHasNoRegrindVariant": "A product cannot carry the order type \"Regrind\". The regrind price belongs to the regrind item"
     }
   },
   "shipping": {
@@ -9055,7 +9120,8 @@
       "stock_takes": "Stocktaking",
       "stock_take_lines": "Stocktaking line",
       "item_inventory": "Stock",
-      "movement_types": "Movement type"
+      "movement_types": "Movement type",
+      "items": "Items"
     },
     "change": {
       "pair": "{label}: {before} → {after}",

@@ -32,6 +32,8 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   inspection_template_groups: true,
   products: true,
   materials: true,
+  // 再研磨品目 (MS0H) — 実表名。products / materials と同じ app.items。
+  items: true,
   material_types: true,
   plants: true,
   regions: true,
