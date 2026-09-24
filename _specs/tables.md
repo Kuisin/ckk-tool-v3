@@ -996,6 +996,23 @@ Table process_step_catalog {
   plan_assignee_required boolean [not null, default: false]
   plan_time_required     boolean [not null, default: false]
   plan_quantity_required boolean [not null, default: false]
+  // **この工程を載せてよい指示書種別**（在庫分 / 製造分 / 再研磨）。空は不可
+  // （CHECK process_step_catalog_work_order_types_not_empty）。既定は製造分だけ —
+  // 値を渡さずに作られた行が「どこでも使える」に倒れると、気づかないまま
+  // 在庫分の指示書へ加工工程が並ぶので、広い側ではなく狭い側へ落とす。
+  //
+  // 以前はカテゴリからアプリが推測していた（「再研磨に加工は載せない」等）が、
+  // 推測は現場の例外を表せない — 研ぎ直しのついでに円筒を当て直す、在庫から
+  // 出すだけのロットにも受入検査を通す、はどちらも普通の運用で、通すには
+  // コードを直して配るしかなかった。**どの工程をどの種別で使うかは業務の
+  // 決め事**なのでマスタへ移した（20261108090000）。
+  //
+  // ★ **開始工程だけは設定で動かせない** — 製品出し（在庫）は引当済み在庫を
+  //   消費し、製品受入（再研磨）は顧客の預り品を計上する。どちらも台帳が
+  //   その種別であることに依っているので、種別を跨がせると在庫が壊れる。
+  //   判定は lib/workflow-core.ts の pinnedWorkOrderType → stepAllowedForType が
+  //   唯一の定義元で、マスタの値より先にそちらが効く（行にも同じ値は入れてある）。
+  allowed_work_order_types "WORK_ORDER_TYPE[]" [not null, default: `{MANUFACTURE}`]
   approval_min_rank varchar                            // 承認必要役職（係長以上等）
   sort_order      int [not null, default: 0]
   is_active       boolean [not null, default: true]

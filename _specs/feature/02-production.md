@@ -200,11 +200,21 @@
 - **工程**: 共通の **再研磨工程リスト**（`product_process_routes.kind = REGRIND`、PREP と
   同型で製品・顧客に紐づかない。MS08 配下 `/master/process-steps/regrind-routes`）。
   指示書は常に最新版を流し込み（`applyLatestRegrindRoute`）、足し引きすれば
-  `route_version_id = null`（指示書から共通リストの版は作らない）。種別ごとに載せて
-  よい工程は `lib/workflow-core.ts` の `stepAllowedForType` が唯一の定義 —
-  REGRIND は `PRODUCT_ISSUE` / MATERIAL_PREP / MACHINING を使えず、開始工程は
+  `route_version_id = null`（指示書から共通リストの版は作らない）。開始工程は
   **`REGRIND_RECEIPT`（製品受入（再研磨））**。新カテゴリ `PROCESS_CATEGORY.REGRIND`
   の工程（外周・溝・先端・R・C・切断）と `REGRIND_INSPECTION`。
+- **種別ごとに載せてよい工程は工程マスタ (MS08) が持つ** — `process_step_catalog
+  .allowed_work_order_types`（在庫分 / 製造分 / 再研磨 の多選択・空は不可）。
+  読むのは `lib/workflow-core.ts` の `stepAllowedForType` 1 か所で、サーバーの検証・
+  指示書ビルダー・工程リスト編集が同じ関数を通る。
+  **以前はここがカテゴリから推測していた**（再研磨に加工は載せない 等）が、推測は
+  現場の例外を表せない — 研ぎ直しのついでに円筒を当て直す、在庫から出すだけの
+  ロットにも受入検査を通す、はどちらも普通の運用で、通すにはコードを直して配る
+  しかなかった。移行（20261108090000）は旧規則をそのまま行へ写すので、可否は
+  1 件も変わらない。
+  ★ **開始工程だけは設定で動かせない**（`pinnedWorkOrderType` が配列より先に効く）
+  — 製品出し（在庫）は引当済み在庫を消費し、製品受入（再研磨）は顧客の預り品を
+  計上する。どちらも台帳がその種別であることに依っている。
 - **数量**: 製品受入（再研磨）は FLOW だが欄の読み方が違う — 受入数 = 受入本数
   （**画面の値が権威** `resolveReceivedQuantity({ clientAuthoritative })`、届いた本数は
   予定と違ってよい）、廃棄 = **返却本数**（研ぎ直せずそのまま返す分。理由は不良種類

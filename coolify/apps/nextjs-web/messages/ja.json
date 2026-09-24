@@ -5762,7 +5762,13 @@
       "planFieldTimeShort": "時刻",
       "planAssigneeRequired": "作業計画に担当者が必要",
       "planAssigneeRequiredHelp": "承認依頼の前に担当者まで決めてから出す工程で立てます。既定では担当者は任意で、承認後に現場で決められます。",
-      "planFieldAssigneeShort": "担当"
+      "planFieldAssigneeShort": "担当",
+      "workOrderTypes": "使える指示書種別",
+      "workOrderTypesShort": "指示書種別",
+      "workOrderTypesHelp": "この工程を載せてよい指示書の種別です。1 つ以上選んでください。",
+      "workOrderTypesPinnedHelp": "この工程は「{type}」の開始工程なので種別を変えられません。在庫の消費・預り品の計上がこの種別であることに依っています。",
+      "workOrderTypesPinnedBadge": "開始工程のため変更不可",
+      "pickAtLeastOneWorkOrderType": "使える指示書種別を 1 つ以上選んでください"
     },
     "products": {
       "specification": "仕様",

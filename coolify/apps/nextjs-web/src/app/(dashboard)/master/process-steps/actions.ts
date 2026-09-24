@@ -75,6 +75,14 @@ function processStepUpdateInputSchema(tr: Tr) {
     isInspection: z.boolean(),
     isApprovalStep: z.boolean(),
     isFinalInspection: z.boolean(),
+    /**
+     * この工程を載せてよい指示書種別（在庫分 / 製造分 / 再研磨）。
+     * **空は許さない** — どの種別でも使えない工程は、登録する意味が無い
+     * （DB の CHECK process_step_catalog_work_order_types_not_empty も同じ）。
+     */
+    allowedWorkOrderTypes: z
+      .array(z.enum(["FROM_STOCK", "MANUFACTURE", "REGRIND"]))
+      .min(1, tr("master.processSteps.pickAtLeastOneWorkOrderType")),
     workLocationRequired: z.boolean().default(true),
     planTimeRequired: z.boolean().default(false),
     planAssigneeRequired: z.boolean().default(false),
@@ -285,6 +293,7 @@ export async function createProcessStep(
           isApprovalStep: v.isApprovalStep,
           isFinalInspection: v.isFinalInspection,
           workLocationRequired: v.workLocationRequired,
+          allowedWorkOrderTypes: v.allowedWorkOrderTypes,
           planTimeRequired: v.planTimeRequired,
           planAssigneeRequired: v.planAssigneeRequired,
           approvalMinRank: approvalMinRankValue(v),
@@ -342,6 +351,7 @@ export async function createProcessStep(
         isApprovalStep: v.isApprovalStep,
         isFinalInspection: v.isFinalInspection,
         workLocationRequired: v.workLocationRequired,
+        allowedWorkOrderTypes: v.allowedWorkOrderTypes,
         planTimeRequired: v.planTimeRequired,
         planAssigneeRequired: v.planAssigneeRequired,
         approvalMinRank: approvalMinRankValue(v),
@@ -402,6 +412,7 @@ export async function updateProcessStep(
         isApprovalStep: true,
         isFinalInspection: true,
         workLocationRequired: true,
+        allowedWorkOrderTypes: true,
         planTimeRequired: true,
         planAssigneeRequired: true,
         approvalMinRank: true,
@@ -436,6 +447,7 @@ export async function updateProcessStep(
           isApprovalStep: v.isApprovalStep,
           isFinalInspection: v.isFinalInspection,
           workLocationRequired: v.workLocationRequired,
+          allowedWorkOrderTypes: v.allowedWorkOrderTypes,
           planTimeRequired: v.planTimeRequired,
           planAssigneeRequired: v.planAssigneeRequired,
           approvalMinRank: approvalMinRankValue(v),
@@ -494,6 +506,7 @@ export async function updateProcessStep(
         isApprovalStep: prior.isApprovalStep,
         isFinalInspection: prior.isFinalInspection,
         workLocationRequired: prior.workLocationRequired,
+        allowedWorkOrderTypes: prior.allowedWorkOrderTypes,
         planTimeRequired: prior.planTimeRequired,
         planAssigneeRequired: prior.planAssigneeRequired,
         approvalMinRank: prior.approvalMinRank,
@@ -519,6 +532,7 @@ export async function updateProcessStep(
         isApprovalStep: v.isApprovalStep,
         isFinalInspection: v.isFinalInspection,
         workLocationRequired: v.workLocationRequired,
+        allowedWorkOrderTypes: v.allowedWorkOrderTypes,
         planTimeRequired: v.planTimeRequired,
         planAssigneeRequired: v.planAssigneeRequired,
         approvalMinRank: approvalMinRankValue(v),

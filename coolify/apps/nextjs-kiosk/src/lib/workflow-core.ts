@@ -63,6 +63,14 @@ export interface CatalogStep {
   planTimeRequired?: boolean;
   /** 作業計画に 担当者 が要るか。未指定は false。 */
   planAssigneeRequired?: boolean;
+  /**
+   * **この工程を載せてよい指示書種別**（工程マスタ MS08 が持つ）。
+   *
+   * 省略可にしていない — 省いたときの既定を決めると、渡し忘れた呼び出しが
+   * 「なぜか全部使える / なぜも使えない」として静かに通る。読む側は 1 つ
+   * （`stepAllowedForType`）なので、渡す側に必ず書かせるほうが安い。
+   */
+  allowedWorkOrderTypes: readonly WorkOrderType[];
   sortOrder: number;
 }
 
@@ -282,28 +290,38 @@ export function isRegrindStep(step: Pick<CatalogStep, "category">): boolean {
 // 工程リスト編集画面の絞り込みが同じ関数を読むので、「画面では選べたのに保存で
 // 弾かれた」も「保存は通ったのに別の画面で赤くなる」も起きない。
 //
-//   FROM_STOCK   製品出し（在庫）+ 出荷前検査 だけ。
-//   MANUFACTURE  製品出し（在庫）は使えない。再研磨の工程も使えない。
-//   REGRIND      製品受入（再研磨）で始まる。材料準備・加工の工程は使えない
-//                （作るものは無い）。研磨・コーティング・検査・承認・出荷前検査 は可。
+// **可否そのものは工程マスタ (MS08) が持つ**（`allowedWorkOrderTypes`）。以前は
+// ここがカテゴリから推測していたが、推測は現場の例外を表せなかった — 研ぎ直しの
+// ついでに円筒を当て直す、在庫から出すだけのロットにも受入検査を通す、どちらも
+// 普通の運用で、通すにはコードを直して配るしかなかった。
+//
+// **開始工程だけは設定で動かせない。** 製品出し（在庫）は引当済み在庫を消費し、
+// 製品受入（再研磨）は顧客の預り品を計上する。どちらも台帳が「その種別の指示書で
+// ある」ことに依っているので、種別を跨がせると在庫が壊れる。マスタの値より先に
+// ここで落とす。
+
+/**
+ * その工程が**その種別だけのもの**なら、その種別。そうでなければ null。
+ *
+ * = その種別の必須開始工程（`requiredStartCodeForType` の裏返し）。台帳が
+ * 依っている対応なので、工程マスタの設定では変えられない。
+ */
+export function pinnedWorkOrderType(
+  step: Pick<CatalogStep, "code">,
+): WorkOrderType | null {
+  if (step.code === STOCK_ISSUE_STEP_CODE) return "FROM_STOCK";
+  if (step.code === REGRIND_RECEIPT_STEP_CODE) return "REGRIND";
+  return null;
+}
 
 /** その工程をその種別の指示書に載せてよいか。 */
 export function stepAllowedForType(
-  step: Pick<CatalogStep, "code" | "category">,
+  step: Pick<CatalogStep, "code" | "allowedWorkOrderTypes">,
   type: WorkOrderType,
 ): boolean {
-  switch (type) {
-    case "FROM_STOCK":
-      return step.code === STOCK_ISSUE_STEP_CODE || isShipStep(step);
-    case "MANUFACTURE":
-      return step.code !== STOCK_ISSUE_STEP_CODE && !isRegrindStep(step);
-    case "REGRIND":
-      return (
-        step.code !== STOCK_ISSUE_STEP_CODE &&
-        !isPrepStep(step) &&
-        step.category !== "MACHINING"
-      );
-  }
+  const pinned = pinnedWorkOrderType(step);
+  if (pinned) return pinned === type;
+  return step.allowedWorkOrderTypes.includes(type);
 }
 
 /** その種別の指示書が必ず含む開始工程（null = どの開始工程でもよい）。 */
@@ -332,13 +350,18 @@ export type TypeCompositionIssue =
  */
 export function typeCompositionIssues(
   stepIds: readonly number[],
-  catalog: readonly Pick<CatalogStep, "id" | "code" | "category">[],
+  catalog: readonly Pick<
+    CatalogStep,
+    "id" | "code" | "category" | "allowedWorkOrderTypes"
+  >[],
   type: WorkOrderType,
 ): TypeCompositionIssue[] {
+  type Step = Pick<
+    CatalogStep,
+    "id" | "code" | "category" | "allowedWorkOrderTypes"
+  >;
   const byId = new Map(catalog.map((c) => [c.id, c]));
-  const steps = stepIds
-    .map((id) => byId.get(id))
-    .filter((c): c is Pick<CatalogStep, "id" | "code" | "category"> => !!c);
+  const steps = stepIds.map((id) => byId.get(id)).filter((c): c is Step => !!c);
   const issues: TypeCompositionIssue[] = [];
   const disallowed = steps.filter((c) => !stepAllowedForType(c, type));
   if (disallowed.length > 0) {
@@ -387,20 +410,17 @@ export function splitStepIdsByKind(
 export function compositionIssuesForKind(
   issues: readonly CompositionIssue[],
   kind: ProcessRouteKind,
-  catalog: readonly (Pick<CatalogStep, "id" | "category"> & {
-    code?: string;
-  })[],
+  catalog: readonly Pick<
+    CatalogStep,
+    "id" | "category" | "code" | "allowedWorkOrderTypes"
+  >[],
 ): CompositionIssue[] {
   const byId = new Map(catalog.map((c) => [c.id, c]));
   const inKind = (id: number) => {
     const c = byId.get(id);
     if (!c) return kind === "MANUFACTURING";
     // 再研磨工程リストは 1 本で完結する（再研磨指示書に載せてよい工程の全部）。
-    if (kind === "REGRIND")
-      return stepAllowedForType(
-        { code: c.code ?? "", category: c.category },
-        "REGRIND",
-      );
+    if (kind === "REGRIND") return stepAllowedForType(c, "REGRIND");
     return kind === "PREP" ? isPrepStep(c) : !isPrepStep(c);
   };
   return issues.filter((issue) => {

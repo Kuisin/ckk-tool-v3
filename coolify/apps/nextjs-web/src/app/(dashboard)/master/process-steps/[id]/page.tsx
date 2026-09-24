@@ -79,6 +79,7 @@ export default async function MasterProcessStepsDetailPage({
     isApprovalStep: r.isApprovalStep,
     isFinalInspection: r.isFinalInspection,
     workLocationRequired: r.workLocationRequired,
+    allowedWorkOrderTypes: r.allowedWorkOrderTypes,
     planTimeRequired: r.planTimeRequired,
     planAssigneeRequired: r.planAssigneeRequired,
     approvalMinRank: r.approvalMinRank,
