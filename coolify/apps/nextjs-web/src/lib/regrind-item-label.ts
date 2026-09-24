@@ -49,8 +49,8 @@ export function regrindSizeBandLabel(
   const lo = min == null ? null : Number(min);
   const hi = max == null ? null : Number(max);
   if (lo == null && hi == null) return null;
-  // i18n-ignore — 寸法の記法（φ・超・以下）は日本語の図面表記そのもの
-  if (lo == null) return `φ${hi} 以下`;
-  if (hi == null) return `φ${lo} 超`;
-  return `φ${lo} 超 ${hi} 以下`;
+  // 寸法の記法（φ・超・以下）は日本語の図面表記そのもので、訳す対象ではない。
+  if (lo == null) return `φ${hi} 以下`; // i18n-ignore
+  if (hi == null) return `φ${lo} 超`; // i18n-ignore
+  return `φ${lo} 超 ${hi} 以下`; // i18n-ignore
 }
