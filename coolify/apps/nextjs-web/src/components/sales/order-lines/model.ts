@@ -75,6 +75,11 @@ export interface OrderLine {
    */
   itemId: string | null;
   productName: string;
+  /**
+   * 研ぎ直す工具（再研磨の明細だけ。null = それ以外）。**売り物とは別** —
+   * 売っているのは再研磨という役務で、預かって返すのがこの工具。
+   */
+  toolName: string | null;
   orderType: string;
   quantity: number;
   unitPrice: number | null;

@@ -446,7 +446,24 @@ export function OrderLineDetail({
           label={tr("common.customerOrderRef")}
           value={order.customerOrderRef ?? "—"}
         />
-        <FieldValue label={tr("common.product")} value={order.productName} />
+        <FieldValue
+          label={
+            order.orderType === "REGRIND"
+              ? tr("sales.orderAcceptanceItemsEditor.regrindItem")
+              : tr("common.product")
+          }
+          value={order.productName}
+        />
+        {/*
+          研ぎ直す工具。売り物（上の欄 = 再研磨という役務）とは別の物で、
+          預り品も指示書も出荷もこちらで数える。
+        */}
+        {order.toolName && (
+          <FieldValue
+            label={tr("sales.orderAcceptanceItemsEditor.toolToRegrind")}
+            value={order.toolName}
+          />
+        )}
         <FieldValue
           label={tr("common.orderType")}
           value={

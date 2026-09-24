@@ -8,12 +8,13 @@
  * 1 手ごとに SQL で裏を取る。
  *
  * 見ているもの:
- *   A. 他社製品（再研磨専用の品目）
+ *   A. 他社製品（研ぎ直す工具）
  *      A1. 製品詳細に「他社製」バッジとメーカー名が出る
  *      A2. 製造工程リストのタブが**出ない**（他社製品は製造できない）
  *   B. 再研磨の注文明細
  *      B1. 在庫照合のボタンが**出ない**（自社在庫を引き当てる注文ではない）
  *      B2.「指示書を作る」が type=REGRIND を連れている
+ *      B3. 売り物は**再研磨品目**、工具は別に出る（品目を 2 つ指す）
  *   C. 指示書をつくる（画面から）
  *      C1. 種別が「再研磨」に固定される（製造分・在庫分は押せない）
  *      C2. 使用素材・保管場所の欄が**出ない**
@@ -35,6 +36,12 @@
  *      H1. 預り品バケットから出て 8 → 0 になる
  *      H2. 自社在庫は 0 のまま（マイナスにもならない）
  *      H3. 出庫の取引行が**所有者バケット**を指している
+ *      H4. 請求単価が**明細の再研磨品目**の価格表から引かれる（¥1,500）—
+ *          出荷明細が指す工具には値段が無いので、これは「請求は明細の
+ *          品目を読む」ことの証明でもある
+ *   I. 再研磨品目マスタ (MS0H) — 値段の持ち主
+ *      I1. 一覧に条件（種類 / 箇所 / 刃数 / サイズ帯）と標準価格が出る
+ *      I2. 新規作成でコードが RGD- で採番され、標準価格が入る
  *   G. 画面が壊れていない（pageerror / console error）
  *
  * 落ちたときに原因を追えるよう、check() には**実測値**を添えること。
@@ -58,8 +65,13 @@ import { chromium, type Page } from "@playwright/test";
 
 const APP = process.env.APP_URL ?? "http://localhost:3106";
 const DB_CONTAINER = process.env.SHOT_DB_CONTAINER ?? "ckk-regrind-db";
-/** 他社製品（fixtures）。 */
+/**
+ * 他社製品 = **研ぎ直す工具**（fixtures）。在庫・指示書・出荷はこれで数える。
+ * 値段は持たない（売り物ではない）。
+ */
 const ITEM = 9101;
+/** 再研磨品目 = **売る役務**（fixtures）。値段はこちらに付く。 */
+const REGRIND_ITEM = 9102;
 /** 再研磨の注文明細（fixtures）。 */
 const ORDER_LINE = "ORD-209902-00001-01";
 const ORDER_LINE_UUID = "d6000000-0000-4000-8000-000000009101";
@@ -215,7 +227,7 @@ async function main(): Promise<void> {
   resetFixtures();
   await login(page);
 
-  // ── A. 他社製品 ──────────────────────────────────────────────────────────
+  // ── A. 他社製品（研ぎ直す工具）──────────────────────────────────────────
   await page.goto(`${APP}/master/products/${ITEM}`, {
     waitUntil: "networkidle",
   });
@@ -252,6 +264,23 @@ async function main(): Promise<void> {
     "B2 指示書作成のリンクが type=REGRIND を連れている",
     woLinks.length > 0 && woLinks.every((h) => h.includes("type=REGRIND")),
     woLinks.join(" | ") || "リンク無し",
+  );
+  // 明細は品目を 2 つ指す — 売っているのは役務、預かるのは工具。
+  const lineBody = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+  check(
+    "B3 売り物は再研磨品目、工具は他社製品として別に出る",
+    lineBody.includes("再研磨 超硬エンドミル") &&
+      lineBody.includes("日研ツール"),
+    lineBody.slice(0, 220),
+  );
+  const lineItems = sql(
+    `SELECT item_id||'/'||coalesce(tool_item_id::text,'-') FROM app.order_lines
+      WHERE id='${ORDER_LINE_UUID}'::uuid`,
+  );
+  check(
+    "B3b DB でも item_id = 再研磨品目 / tool_item_id = 工具",
+    lineItems === `${REGRIND_ITEM}/${ITEM}`,
+    lineItems,
   );
 
   // ── C. 指示書をつくる ────────────────────────────────────────────────────
@@ -497,7 +526,7 @@ async function main(): Promise<void> {
            type, status, notes, created_by, created_at, updated_at)
          VALUES ('209902', 1, '${CUSTOMER}'::uuid,
            (SELECT id FROM app.plants WHERE code='F01'),
-           'DISPATCH'::app."DELIVERY_ORDER_TYPE", 'CONFIRMED'::app."DELIVERY_ORDER_STATUS",
+           'DISPATCH'::app."DELIVERY_ORDER_TYPE", 'DRAFT'::app."DELIVERY_ORDER_STATUS",
            'e2e: 再研磨の返却', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid, now(), now())`);
     sql(`INSERT INTO app.delivery_order_items (id, delivery_order_year_month, delivery_order_seq,
            order_line_id, item_id, lot_number, quantity, sort_order)
@@ -507,6 +536,19 @@ async function main(): Promise<void> {
     await page.goto(`${APP}/shipping/delivery-orders/DOR-209902-00001`, {
       waitUntil: "networkidle",
     });
+    // **確定を画面から押す** — 請求単価はここで焼き込まれる（H4 が見る値）。
+    // 下書きのまま SQL で CONFIRMED にすると、そこを通らずに単価が null の
+    // ままになり、H4 は何も確かめていないことになる。
+    await page.getByRole("button", { name: "操作メニュー" }).click();
+    await page.getByRole("menuitem", { name: "確定" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: /確定|実行/ })
+      .click()
+      .catch(() => undefined);
+    await page.waitForTimeout(1500);
+    await page.reload({ waitUntil: "networkidle" });
+
     await page.getByRole("button", { name: "操作メニュー" }).click();
     await page.getByRole("menuitem", { name: "出荷" }).click();
     await page
@@ -552,7 +594,58 @@ async function main(): Promise<void> {
       outOnOwner === "1",
       `行=${outOnOwner}`,
     );
+
+    // 請求単価は**注文明細の品目**（再研磨品目 9102）の価格表から引く。
+    // 出荷明細が指すのは工具 9101 で、そちらには値段が 1 円も無い —
+    // だからここに 1500 が入っていること自体が「請求は明細を読む」証拠。
+    // 標準価格 ¥1,200 ではなく価格表の ¥1,500 が勝つことも同時に見ている。
+    const billed = sql(
+      `SELECT coalesce(unit_price::text,'-') FROM app.delivery_order_items
+        WHERE delivery_order_year_month='209902' AND delivery_order_seq=1`,
+    );
+    check(
+      "H4 請求単価が再研磨品目の価格表から引かれる（標準価格 1200 ではなく 1500）",
+      Number(billed) === 1500,
+      `unit_price=${billed}`,
+    );
   }
+
+  // ── I. 再研磨品目マスタ (MS0H) ──────────────────────────────────────────
+  // 値段の持ち主がここ。条件（種類 / 箇所 / 刃数 / サイズ帯）が並ばないと、
+  // 何百とある行からどれを選ぶのか決められない（旧 再研マスタも金額の表だった）。
+  await page.goto(`${APP}/master/regrind-items`, { waitUntil: "networkidle" });
+  const masterBody = (await page.locator("body").innerText()).replace(
+    /\s+/g,
+    " ",
+  );
+  check(
+    "I1 一覧に条件と標準価格が出る",
+    masterBody.includes("RGD-209902-0001") &&
+      masterBody.includes("超硬エンドミル") &&
+      masterBody.includes("外周のみ") &&
+      /φ6\s*超\s*10\s*以下/.test(masterBody) &&
+      /1,200/.test(masterBody),
+    masterBody.slice(0, 260),
+  );
+
+  await page.goto(`${APP}/master/regrind-items/new`, {
+    waitUntil: "networkidle",
+  });
+  await page.getByLabel("名称（日本語）").fill("e2e 再研磨 溝のみ 2枚刃");
+  await page.getByLabel("工具の種類").fill("ハイスエンドミル");
+  await page.getByLabel("加工箇所").fill("溝のみ");
+  await page.getByLabel("標準価格").fill("540");
+  await page.getByRole("button", { name: "保存" }).click();
+  await page.waitForURL(/\/master\/regrind-items$/, { timeout: 20_000 });
+  const created = sql(
+    `SELECT coalesce(code,'-')||'|'||coalesce(standard_unit_price::text,'-')
+       FROM app.items WHERE item_type='REGRIND' AND name->>'ja' = 'e2e 再研磨 溝のみ 2枚刃'`,
+  );
+  check(
+    "I2 新規作成でコードが RGD- で採番され標準価格が入る",
+    /^RGD-\d{6}-\d{4}\|540/.test(created),
+    created || "作られていない",
+  );
 
   check(
     "G 画面に未捕捉のエラーが無い",

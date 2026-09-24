@@ -35,13 +35,18 @@ import { reviewIntake } from "@/lib/intake-review";
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
 const LIST_FETCH_CAP = 1000;
 
-/** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
+/**
+ * 品目ラベル: 名称 + 品目コード（レガシーはコード未採番 → 名称のみ）。
+ * コードは **items.code をそのまま** — 製品は PRD-…、再研磨品目は RGD-… で、
+ * (year_month, seq) から組み立てられるのは製品だけ。
+ */
 function productLabel(p: {
   name: unknown;
+  code?: string | null;
   yearMonth: string | null;
   seq: number | null;
 }): string {
-  const code = formatProductNumber(p.yearMonth, p.seq);
+  const code = p.code ?? formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
   return code ? `${name} ${code}` : name;
 }
@@ -123,7 +128,9 @@ export async function fetchOrderAcceptance(
         orderBy: { sortOrder: "asc" },
         include: {
           // 品目統合 第 2 段 C — 表示は品目側から読む。
-          item: { select: { name: true, yearMonth: true, seq: true } },
+          item: {
+            select: { name: true, code: true, yearMonth: true, seq: true },
+          },
           // 再研磨の明細が指す工具（他社製品も含む）。売り物の品目とは別の欄。
           toolItem: {
             select: {
