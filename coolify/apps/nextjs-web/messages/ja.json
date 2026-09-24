@@ -7976,7 +7976,8 @@
       "regrindItem": "再研磨品目",
       "searchTheRegrindItems": "再研磨品目を検索",
       "toolToRegrind": "研ぎ直す工具",
-      "searchTheToolBeingHeld": "預かる工具を検索（他社製品を含む）"
+      "searchTheToolBeingHeld": "預かる工具を検索（他社製品を含む）",
+      "standardPrice": "標準価格 {price}"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "「{label}」を削除します。この操作は取り消せません。",

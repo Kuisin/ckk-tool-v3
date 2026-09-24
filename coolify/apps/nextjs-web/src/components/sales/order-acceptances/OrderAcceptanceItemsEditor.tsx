@@ -155,6 +155,12 @@ export interface RowPrice {
   expected: number | null;
   /** 効いている数量段階のラベル（「1〜9本」）。 */
   tierLabel: string | null;
+  /**
+   * 値段の出どころが**品目の標準価格**か（= 当たる価格表が無かった）。
+   * 価格表の段には必ず id が付くので、id が無い = 標準価格。表示を
+   * 「価格表 ¥1,200（標準価格）」にしないための印 — あれは嘘になる。
+   */
+  fromStandard: boolean;
   /** 単価を価格表が持っている行か（= 単価欄は読み取り専用）。 */
   locked: boolean;
   /** 上書きを入れられる行か（価格表がある行だけ）。 */
@@ -202,6 +208,7 @@ export function rowPrice(
   return {
     expected,
     tierLabel: resolved?.tierLabel ?? null,
+    fromStandard: expected != null && resolved?.tierId == null,
     locked: expected != null && !overridden,
     overridable: expected != null,
     effective,
@@ -433,18 +440,26 @@ export function OrderAcceptanceItemsEditor({
                 </Badge>
               )}
               {price.locked && (
-                <Badge color="blue" size="xs" variant="light">
-                  {price.tierLabel
-                    ? tr(
-                        "sales.orderAcceptanceItemsEditor.priceListPriceWithTier",
-                        {
-                          price: formatMoney(price.expected),
-                          tier: price.tierLabel,
-                        },
-                      )
-                    : tr("sales.orderAcceptanceItemsEditor.priceListPrice", {
+                <Badge
+                  color={price.fromStandard ? "gray" : "blue"}
+                  size="xs"
+                  variant="light"
+                >
+                  {price.fromStandard
+                    ? tr("sales.orderAcceptanceItemsEditor.standardPrice", {
                         price: formatMoney(price.expected),
-                      })}
+                      })
+                    : price.tierLabel
+                      ? tr(
+                          "sales.orderAcceptanceItemsEditor.priceListPriceWithTier",
+                          {
+                            price: formatMoney(price.expected),
+                            tier: price.tierLabel,
+                          },
+                        )
+                      : tr("sales.orderAcceptanceItemsEditor.priceListPrice", {
+                          price: formatMoney(price.expected),
+                        })}
                 </Badge>
               )}
               {replaced != null && (

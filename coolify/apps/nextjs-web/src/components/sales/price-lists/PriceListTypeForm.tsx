@@ -39,7 +39,7 @@ import { useEffect, useState, useTransition } from "react";
 import { z } from "zod";
 import {
   searchCustomerOptions,
-  searchProductItemOptions,
+  searchPriceListItemOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   createPriceEntry,
@@ -476,10 +476,10 @@ export function PriceListTypeForm({
               initialOption={productOption}
               label={<HelpLabel {...fieldHelp(tr, "priceList", "product")} />}
               onChange={(v) => form.setFieldValue("itemId", v ?? "")}
-              onSearch={(q) =>
-                // 他社製品の価格表も作れる（保存側が注文種別を再研磨に限る）。
-                searchProductItemOptions(q, { includeExternal: true })
-              }
+              // 出るのは**売り物**だけ — 製品と再研磨品目。他社製品（預かる
+              // だけ）と素材は価格表を持てないので、選べてしまうと保存の段に
+              // なって初めて断られる。判定の正は lib/sales-item-guard.ts。
+              onSearch={searchPriceListItemOptions}
               placeholder={tr("common.searchProducts")}
               storageKey="price-list-product-item"
               value={form.values.itemId || null}

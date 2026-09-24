@@ -162,8 +162,9 @@ export async function searchProductItemOptions(
   query: string,
   opts?: {
     /**
-     * 他社製品（再研磨専用）も候補に入れるか。既定は false — 他社製品を選べるのは
-     * 注文種別が再研磨の明細と、その価格表だけ。
+     * 他社製品も候補に入れるか。既定は false — 他社製品は**売り物ではない**ので、
+     * 選べるのは再研磨の明細の「研ぎ直す工具」の欄だけ。価格表にも載らない
+     * （価格表のピッカーは `searchPriceListItemOptions`）。
      */
     includeExternal?: boolean;
   },
@@ -192,6 +193,53 @@ export async function searchProductItemOptions(
     take: LIMIT,
   });
   return rows.map((r) => ({ value: String(r.id), label: productItemLabel(r) }));
+}
+
+/**
+ * 価格表 (SA02) が作れる品目 — **製品（他社製品を除く）と再研磨品目**。
+ *
+ * 価格表は**売り物にだけ**作る。他社製品は預かるだけ、素材は買うものなので、
+ * どちらも出さない — 出すと選べてしまい、保存の段になって初めて断られる
+ * （実際にそうなっていた）。判定の正は `lib/sales-item-guard.ts`
+ * `priceListItemError` で、ここはその手前で選ばせないためのもの。
+ *
+ * 再研磨品目は**標準価格を持ったうえで**顧客ごとの価格表も持てる（2 段価格の
+ * 上の段）。ここで出さないと、その上書きを画面から作れない。
+ */
+export async function searchPriceListItemOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
+  const q = query.trim();
+  const [keywordIds, customerCodeIds] = await Promise.all([
+    itemIdsByKeyword(q, LIMIT),
+    productItemIdsByCustomerCode(q, LIMIT),
+  ]);
+  const rows = await prisma.item.findMany({
+    where: {
+      itemType: { in: ["PRODUCT", "REGRIND"] },
+      isActive: true,
+      isExternalProduct: false,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+              { regrindToolClass: { contains: q, mode: "insensitive" } },
+              { regrindLocation: { contains: q, mode: "insensitive" } },
+              ...byIds([...new Set([...keywordIds, ...customerCodeIds])]),
+            ],
+          }
+        : {}),
+    },
+    orderBy: [{ itemType: "asc" }, { id: "asc" }],
+    take: LIMIT,
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    // 再研磨品目は条件と値段まで出す — 名前だけでは行を選べない。
+    label: r.itemType === "REGRIND" ? regrindItemLabel(r) : productItemLabel(r),
+  }));
 }
 
 /**

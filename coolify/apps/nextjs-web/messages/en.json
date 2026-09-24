@@ -7976,7 +7976,8 @@
       "regrindItem": "Regrind item",
       "searchTheRegrindItems": "Search regrind items",
       "toolToRegrind": "Tool to regrind",
-      "searchTheToolBeingHeld": "Search the tool held (external products included)"
+      "searchTheToolBeingHeld": "Search the tool held (external products included)",
+      "standardPrice": "Standard price {price}"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "Deletes \"{label}\". This cannot be undone.",

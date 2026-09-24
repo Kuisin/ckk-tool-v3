@@ -42,6 +42,11 @@
  *   I. 再研磨品目マスタ (MS0H) — 値段の持ち主
  *      I1. 一覧に条件（種類 / 箇所 / 刃数 / サイズ帯）と標準価格が出る
  *      I2. 新規作成でコードが RGD- で採番され、標準価格が入る
+ *   J. 注文請書の明細エディタ — 品目を 2 つ選ぶ画面
+ *      J1. 種別を再研磨にすると品目の欄が「再研磨品目」になり、
+ *          「研ぎ直す工具」の欄が出る
+ *      J2. 価格表を持たない顧客の行に**標準価格が画面に出る** — 画面が
+ *          「価格表なし」と言いながらサーバーが定価で保存する、を防ぐ
  *   G. 画面が壊れていない（pageerror / console error）
  *
  * 落ちたときに原因を追えるよう、check() には**実測値**を添えること。
@@ -645,6 +650,75 @@ async function main(): Promise<void> {
     "I2 新規作成でコードが RGD- で採番され標準価格が入る",
     /^RGD-\d{6}-\d{4}\|540/.test(created),
     created || "作られていない",
+  );
+
+  // ── J. 注文請書の明細エディタ ────────────────────────────────────────────
+  // 売り物と預かり物を別の欄で選ばせる画面。**単価の表示はクライアント側で
+  // 解決している**ので、標準価格を画面が知らないと「価格表なし」と出しながら
+  // サーバーは定価で保存する（実際にそうなっていた）。
+  await page.goto(`${APP}/sales/order-acceptances/new`, {
+    waitUntil: "networkidle",
+  });
+  // Mantine の Select は native <select> ではなく combobox — selectOption は
+  // 効かない（クリックして候補を選ぶ）。
+  const typeSelect = page
+    .getByRole("combobox", { name: "種別", exact: true })
+    .first();
+  await typeSelect.click();
+  await page.getByRole("option", { name: "再研磨", exact: true }).click();
+  await page.waitForTimeout(800);
+  const editorBody = (await page.locator("body").innerText()).replace(
+    /\s+/g,
+    " ",
+  );
+  check(
+    "J1 再研磨の行は 再研磨品目 + 研ぎ直す工具 の 2 欄になる",
+    editorBody.includes("再研磨品目") && editorBody.includes("研ぎ直す工具"),
+    editorBody.slice(0, 200),
+  );
+
+  // **価格表を持たない顧客**を選ぶ（fixtures の価格表はデモ商事の分だけ）。
+  // 顧客が決まらないと価格解決そのものが走らない — サーバーも同じなので、
+  // 顧客なしで値段が出ないのは正しい。ここで見たいのはその次で、
+  // 「顧客は居るが価格表が無い」行が標準価格へ落ちること。
+  const otherCustomer = sql(
+    `SELECT b.name->>'ja' FROM app.business_partners b
+       JOIN app.bp_role_assignments r
+         ON r.bp_id = b.id AND r.role = 'CUSTOMER' AND r.is_active
+      WHERE b.id <> '${CUSTOMER}'::uuid AND b.parent_id IS NULL AND b.is_active
+      ORDER BY b.bp_code LIMIT 1`,
+  );
+  const customerPicker = page.getByRole("combobox", { name: "顧客" }).first();
+  await customerPicker.click();
+  await customerPicker.fill(otherCustomer);
+  await page.waitForTimeout(1200);
+  await page
+    .getByRole("option")
+    .first()
+    .click()
+    .catch(() => undefined);
+  await page.waitForTimeout(500);
+
+  const itemPicker = page
+    .getByRole("combobox", { name: "再研磨品目" })
+    .first();
+  await itemPicker.click();
+  await itemPicker.fill("RGD-209902-0001");
+  await page.waitForTimeout(1200);
+  await page
+    .getByRole("option")
+    .first()
+    .click()
+    .catch(() => undefined);
+  await page.waitForTimeout(800);
+  const pricedBody = (await page.locator("body").innerText()).replace(
+    /\s+/g,
+    " ",
+  );
+  check(
+    "J2 価格表を持たない顧客でも標準価格 ¥1,200 が画面に出る",
+    /標準価格\s*￥?1,200/.test(pricedBody) && !/価格表なし/.test(pricedBody),
+    (pricedBody.match(/.{0,80}1,200.{0,40}/) ?? ["1,200 が無い"])[0],
   );
 
   check(

@@ -7976,7 +7976,8 @@
       "regrindItem": "再研磨服务",
       "searchTheRegrindItems": "搜索再研磨服务",
       "toolToRegrind": "要研磨的刀具",
-      "searchTheToolBeingHeld": "搜索寄存的刀具（含他社产品）"
+      "searchTheToolBeingHeld": "搜索寄存的刀具（含他社产品）",
+      "standardPrice": "标准价格 {price}"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "将删除“{label}”。此操作无法撤销。",

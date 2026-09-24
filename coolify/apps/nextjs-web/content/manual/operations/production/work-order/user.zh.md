@@ -109,11 +109,11 @@ screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-
 
 接收客户使用过的刀具（本公司产品或他社产品）进行再研磨时的指示书。由于没有要制造的东西，与制造分有几点不同。
 
-- **入口是订单确认书。** 从订单类别为「**再研磨**」的明细创建（从[未处理指示书](/manual/zh/operations/production/pending-work-order/user)或订单明细画面的「创建指示书」打开时，类别固定为再研磨）。他社的刀具需先在[产品主数据](/manual/zh/operations/masters/product/user)中登记为「**他社製品**」（他社产品）。
+- **入口是订单确认书。** 从订单类别为「**再研磨**」的明细创建（从[未处理指示书](/manual/zh/operations/production/pending-work-order/user)或订单明细画面的「创建指示书」打开时，类别固定为再研磨）。再研磨的明细指向 2 个品目：**销售的是再研磨这项服务**，而**成为指示书「製品」的是要研磨的刀具**。服务登记在[再研磨服务](/manual/zh/operations/masters/regrind-item/user)中，刀具登记在[产品主数据](/manual/zh/operations/masters/product/user)中（他社制造的刀具登记为「**他社製品**」（他社产品））。
 - **只有 1 条明细**，计划数量与分配数量相同。实际到货的支数在第一道工序「製品受入（再研磨）」（产品接收）中记录（可以与计划不同）。
 - **没有使用材料和存放位置。** 工序从「[再研磨工序列表](#field-regrind-route)」导入（不能选择材料准备・加工工序）。
 - **完成产品接收工序后，接收的支数会作为客户的「寄存品」记入库存。** 与本公司库存分开计数，可在[库存一览](/manual/zh/operations/inventory/stock-overview/user)通过「所有者」切换查看。无法再研磨的刀具填入「廃棄」栏并选择理由「**返却（再研磨不可）**」（需在[不良种类](/manual/zh/operations/masters/defect-type/user)中登记）。这些支数不会流向后续工序，也不计入完成数。
-- **完成后本公司库存不会增加。** 详情画面的「再研磨数量」显示 接收 / 退回 / 完成 三个支数。再研磨完成的支数通过[出货单](/manual/zh/operations/shipping/delivery-order/user)（发货）退还客户，单价使用价格表中「再研磨」的价格。
+- **完成后本公司库存不会增加。** 详情画面的「再研磨数量」显示 接收 / 退回 / 完成 三个支数。再研磨完成的支数通过[出货单](/manual/zh/operations/shipping/delivery-order/user)（发货）退还客户，单价使用该订单明细所指的[再研磨服务](/manual/zh/operations/masters/regrind-item/user)的价格 — **标准价格**，该客户有价格表时则以价格表为准。
 - 将刀具交给涂层外协厂商时，记为客户寄存品移至外协厂商（不会进入本公司库存）。
 
 ## 获得审批
