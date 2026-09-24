@@ -267,6 +267,8 @@ model OrderLine {
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, id])
   @@index([itemId])
+  // 工具から再研磨の明細を引く（預り品の照会・品目を消せるかの判定）。
+  @@index([toolItemId])
   @@map("order_lines")
   @@schema("app")
 }

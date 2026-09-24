@@ -55,11 +55,11 @@ enum ItemType {
   @@schema("app")
 }
 
-/// ⚠️ **第 2 段が終わるまで、アプリからこの表へ書かないこと。**
-/// いまの items は products / materials をトリガーで写した鏡で、書き込みの持ち主は
-/// 旧マスタのほう。ここへ直接 INSERT / UPDATE すると、次にその製品（素材）が
-/// 編集された瞬間にトリガーが上書きして、書いたものが黙って消える。
-/// 読むのは自由 — むしろ在庫まわりの新しい画面はここを読むために作った。
+/// 第 3 段（20261102090000_items_stage3_drop_legacy）で旧マスタ products /
+/// materials とそれを写していたトリガーは落ちた。**いまはこの表が書き込みの
+/// 持ち主**で、製品マスタ (MS04) / 素材マスタ (MS06) / 再研磨品目 (MS0H) が
+/// それぞれ item_type の違う行を作る。
+/// （移行中は「ここへ書くな」と書いてあった — その注意はもう当てはまらない。）
 model Item {
   id       Int      @id @default(autoincrement())
   itemType ItemType @map("item_type")

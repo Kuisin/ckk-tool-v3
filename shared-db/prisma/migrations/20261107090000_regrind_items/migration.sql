@@ -61,3 +61,8 @@ ALTER TABLE "app"."order_lines"
   ON DELETE RESTRICT ON UPDATE CASCADE;
 
 CREATE INDEX "order_lines_tool_item_id_idx" ON "app"."order_lines"("tool_item_id");
+
+-- 再研磨品目マスタ (MS0H) の絞り込み（工具の種類 / 加工箇所）。何百と並ぶ
+-- 表なので、条件で絞れないと使えない。
+CREATE INDEX "items_item_type_regrind_tool_class_regrind_location_idx"
+  ON "app"."items"("item_type", "regrind_tool_class", "regrind_location");
