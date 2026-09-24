@@ -140,6 +140,13 @@ export interface ItemRowForm {
 export interface ItemPriceContext {
   customerBpId: string | null;
   priceEntries: PriceListEntry[];
+  /**
+   * 品目 id → **標準価格**（顧客を問わない定価）。当たる価格表が無いときの
+   * 拠り所で、いま値が入るのは再研磨の品目だけ（`lib/standard-price.ts`）。
+   * **サーバーの保存側と同じものを渡すこと** — 渡し忘れると画面は
+   * 「価格表なし」と出すのに保存では標準価格が入る。
+   */
+  standardPrices: Record<string, number>;
 }
 
 /** 1 行の単価の出どころ（表示・合計・payload が同じ値を見る）。 */
@@ -175,6 +182,8 @@ export function rowPrice(
           row.orderType,
           row.quantity,
           tr,
+          new Date(),
+          (row.itemId ? ctx.standardPrices[row.itemId] : undefined) ?? null,
         )
       : null;
   const resolved = resolution?.ok ? resolution.price : null;

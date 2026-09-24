@@ -19,6 +19,7 @@ import {
   searchQuoteOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import { createManualAcceptance } from "@/app/(dashboard)/sales/order-acceptances/actions";
+import { useStandardPrices } from "@/components/sales/useStandardPrices";
 import { customerF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
@@ -59,7 +60,15 @@ export function OrderAcceptanceCreateForm({
   // 明細の単価は既定で価格表が持つ（§2）— 顧客が決まるとその顧客の
   // 価格表を引いて、行ごとの単価をその場で出す。
   const priceEntries = usePriceEntries(customerId);
-  const priceContext = { customerBpId: customerId, priceEntries };
+  // 標準価格（品目の定価）— 当たる価格表が無い行はこちらへ落ちる。
+  // 画面と保存側で同じものを見ていないと「見えている単価」と
+  // 「保存される単価」がずれる。
+  const standardPrices = useStandardPrices(items.map((r) => r.itemId));
+  const priceContext = {
+    customerBpId: customerId,
+    priceEntries,
+    standardPrices,
+  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

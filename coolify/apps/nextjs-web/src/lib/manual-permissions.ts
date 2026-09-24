@@ -173,6 +173,10 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
     app: "master-charge-items",
     jaOnly: true,
   },
+  {
+    path: "operations/masters/regrind-item/user",
+    app: "master-regrind-items",
+  },
   // ── システム ────────────────────────────────────────────────────────────
   { path: "operations/system/user-management/user", app: "user-management" },
   { path: "operations/system/app-management/user", app: "app-management" },
