@@ -10,6 +10,7 @@ import {
   type LineAllocInfo,
   remainingAllocatable,
   validateAllocations,
+  workOrderTypeForLine,
 } from "./work-order-alloc-core";
 
 const line = (over: Partial<LineAllocInfo> = {}): LineAllocInfo => ({
@@ -485,6 +486,52 @@ describe("REGRIND（再研磨）の割当", () => {
           plannedQuantity: 30,
           allocations: [{ orderLineId: "L1", quantity: 30 }],
           lines: [regrindLine()],
+        },
+        tr,
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("workOrderTypeForLine — 種別は注文請書（明細）が決める", () => {
+  it("再研磨の明細は必ず再研磨。呼び出し側の希望は無視する", () => {
+    expect(workOrderTypeForLine("REGRIND")).toBe("REGRIND");
+    expect(workOrderTypeForLine("REGRIND", "MANUFACTURE")).toBe("REGRIND");
+    expect(workOrderTypeForLine("REGRIND", "FROM_STOCK")).toBe("REGRIND");
+  });
+
+  it("再研磨でない明細に再研磨は選べない — 製造分へ落とす", () => {
+    expect(workOrderTypeForLine("PRODUCTION", "REGRIND")).toBe("MANUFACTURE");
+    expect(workOrderTypeForLine("TEST", "REGRIND")).toBe("MANUFACTURE");
+  });
+
+  it("再研磨でない明細では 在庫分 / 製造分 の希望が通る（生産側の判断）", () => {
+    expect(workOrderTypeForLine("PRODUCTION", "FROM_STOCK")).toBe("FROM_STOCK");
+    expect(workOrderTypeForLine("PRODUCTION", "MANUFACTURE")).toBe(
+      "MANUFACTURE",
+    );
+    // 希望が無ければ製造分（従来の既定）。
+    expect(workOrderTypeForLine("PRODUCTION")).toBe("MANUFACTURE");
+    expect(workOrderTypeForLine("SAMPLE", null)).toBe("MANUFACTURE");
+  });
+
+  it("明細に紐づかない在庫向けは希望どおり（既定は製造分）", () => {
+    expect(workOrderTypeForLine(null)).toBe("MANUFACTURE");
+    expect(workOrderTypeForLine(undefined, "FROM_STOCK")).toBe("FROM_STOCK");
+    // 明細が無いのに再研磨は作れない（validateAllocations も拒む）。
+    expect(workOrderTypeForLine(null, "REGRIND")).toBe("MANUFACTURE");
+  });
+
+  it("validateAllocations の不変条件と食い違わない", () => {
+    // 導いた種別をそのまま渡せば、割当検証は種別の食い違いを訴えない。
+    const regrind = line({ orderType: "REGRIND", toolItemId: 900 });
+    expect(
+      validateAllocations(
+        {
+          type: workOrderTypeForLine(regrind.orderType),
+          plannedQuantity: 30,
+          allocations: [{ orderLineId: "L1", quantity: 30 }],
+          lines: [regrind],
         },
         tr,
       ),

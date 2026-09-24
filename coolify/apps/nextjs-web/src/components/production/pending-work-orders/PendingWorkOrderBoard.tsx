@@ -45,11 +45,15 @@ import type { UnplannedOrderLineRow } from "./model";
 const ORDER_LINES_PATH = "/sales/order-lines";
 const WORK_ORDERS_PATH = "/production/work-orders";
 
-/** 不足分の指示書を起こすリンク（種別と数量をプリセット）。 */
+/**
+ * 不足分の指示書を起こすリンク（数量だけをプリセット）。
+ *
+ * **種別は書かない** — 明細の注文種別から決まる（lib/work-order-alloc-core
+ * workOrderTypeForLine）。ここで再研磨かどうかを判定すると、同じ判定が
+ * 入口の数だけ増える。
+ */
 function newWorkOrderHref(r: UnplannedOrderLineRow): string {
-  // 再研磨の明細は再研磨の指示書（顧客の工具を預かって返す）。それ以外は製造分。
-  const type = r.orderType === "REGRIND" ? "REGRIND" : "MANUFACTURE";
-  return `${WORK_ORDERS_PATH}/new?orderLine=${r.uuid}&type=${type}&qty=${r.unplannedQuantity}`;
+  return `${WORK_ORDERS_PATH}/new?orderLine=${r.uuid}&qty=${r.unplannedQuantity}`;
 }
 
 export function PendingWorkOrderBoard({

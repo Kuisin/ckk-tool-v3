@@ -3053,7 +3053,9 @@
       "prepRouteUsesLatest": "Uses the latest, v{version} ({date})",
       "prepStepsReadOnly": "Preparation steps come from the shared preparation step list and cannot be edited here — only manufacturing steps are edited",
       "editPrepRoutes": "Edit preparation step lists (process steps)",
-      "selectAPrepRoute": "Select a preparation step list"
+      "selectAPrepRoute": "Select a preparation step list",
+      "typeFixedByOrderLine": "The order line's order type is {orderType}, so this work order's type is already decided. Change it on the order acceptance line.",
+      "typeFixedByStockTarget": "A work order for stock, with no order line, can only be Manufacture."
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "Allocated {allocated} / Ordered {ordered}",

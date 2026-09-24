@@ -3053,7 +3053,9 @@
       "prepRouteUsesLatest": "使用最新的 v{version}（{date}）",
       "prepStepsReadOnly": "准备工序来自共用的准备工序清单，此画面不能编辑 — 只编辑制造工序",
       "editPrepRoutes": "编辑准备工序清单（工序主数据）",
-      "selectAPrepRoute": "请选择准备工序清单"
+      "selectAPrepRoute": "请选择准备工序清单",
+      "typeFixedByOrderLine": "订单明细的订单类别为「{orderType}」，因此本工单的类别已确定。如需更改，请修改订单确认书的明细。",
+      "typeFixedByStockTarget": "面向库存（不关联订单明细）的工单只能是制造分。"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "分配 {allocated} / 订购 {ordered}",

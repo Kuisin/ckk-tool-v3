@@ -4,6 +4,7 @@ import {
   fetchAllowedWorkLocationMap,
   fetchWorkLocationOptions,
 } from "@/lib/work-locations";
+import { workOrderTypeForLine } from "@/lib/work-order-alloc-core";
 import { loadCatalog } from "@/lib/workflow";
 import {
   fetchEmployeeOptions,
@@ -51,12 +52,16 @@ export default async function ProductionWorkOrdersNewPage({
     sp.orderLine ? fetchOrderLineRef(sp.orderLine) : null,
   ]);
 
-  const initialType =
-    sp.type === "FROM_STOCK" ||
-    sp.type === "MANUFACTURE" ||
-    sp.type === "REGRIND"
-      ? sp.type
-      : null;
+  // **種別は注文明細が決める。** URL の `type` は在庫分 / 製造分 の希望を
+  // 伝えるだけで、再研磨かどうかは明細の注文種別から導く
+  // （workOrderTypeForLine が唯一の定義元）。呼び出し側が `&type=REGRIND` を
+  // 付け忘れても再研磨の指示書になるし、明細と食い違う type を URL に書いても
+  // 明細が勝つ。
+  const preferred =
+    sp.type === "FROM_STOCK" || sp.type === "MANUFACTURE" ? sp.type : null;
+  const initialType = soRef
+    ? workOrderTypeForLine(soRef.orderType, preferred)
+    : preferred;
   const initialQty = Number(sp.qty) > 0 ? Number(sp.qty) : null;
 
   return (

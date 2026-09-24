@@ -53,6 +53,37 @@ export interface LineAllocInfo {
 export type AllocWorkOrderType = "FROM_STOCK" | "MANUFACTURE" | "REGRIND";
 
 /**
+ * その注文明細から作る指示書の**種別**。
+ *
+ * **製造か再研磨かを決めるのは注文請書**（明細の注文種別）で、指示書ではない。
+ * 顧客が「研ぎ直してほしい」と言ったものを製造分で作り直すことは無いし、その逆も
+ * 無い。だから指示書側では選ばせず、明細から決める。
+ *
+ * 決まるのは**再研磨かどうかの軸だけ**。再研磨でない明細は、在庫から出すのか
+ * 作るのか（在庫分 / 製造分）がまだ決まっておらず、それは生産側の判断なので
+ * `preferred` で受ける。
+ *
+ * ここが唯一の定義元 — 以前は注文明細の詳細・未処理指示書の一覧・指示書
+ * ビルダーがそれぞれ `orderType === "REGRIND"` を書いていて、URL に
+ * `&type=REGRIND` を付け忘れた入口が実際にあった。
+ *
+ * @param orderType 明細の注文種別（null / 未指定 = 明細に紐づかない在庫向け）
+ * @param preferred 呼び出し側の希望（URL のプリセット等）。再研磨の明細では無視する
+ */
+export function workOrderTypeForLine(
+  orderType: string | null | undefined,
+  preferred?: AllocWorkOrderType | null,
+): AllocWorkOrderType {
+  if (orderType === "REGRIND") return "REGRIND";
+  // 再研磨でない明細に再研磨の指示書は作れない（逆も）— validateAllocations が
+  // 保存側でも同じことを言う。希望が再研磨なら黙って製造分へ落とす。
+  if (preferred === "FROM_STOCK" || preferred === "MANUFACTURE") {
+    return preferred;
+  }
+  return "MANUFACTURE";
+}
+
+/**
  * その明細に対して**指示書が扱う物**の品目 id。
  *
  * 製造・在庫分はそのまま明細の製品。**再研磨だけ違う** — 明細の itemId は

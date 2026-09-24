@@ -3053,7 +3053,9 @@
       "prepRouteUsesLatest": "最新 v{version}（{date}）を使います",
       "prepStepsReadOnly": "準備工程は共通の準備工程リストから入ります — この画面では編集できません（製造工程だけを編集します）",
       "editPrepRoutes": "準備工程リストを編集（工程マスタ）",
-      "selectAPrepRoute": "準備工程リストを選択してください"
+      "selectAPrepRoute": "準備工程リストを選択してください",
+      "typeFixedByOrderLine": "注文明細の注文種別が「{orderType}」なので、この指示書の種別は決まっています。変えるときは注文請書の明細を直します。",
+      "typeFixedByStockTarget": "在庫向け（注文明細に紐づかない）指示書は製造分だけです。"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "割当 {allocated} / 受注 {ordered}",
