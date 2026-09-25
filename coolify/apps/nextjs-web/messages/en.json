@@ -558,7 +558,6 @@
     "priceEstimateResult": "Price estimate result",
     "materialPriceHistory": "Material price history",
     "baseUnitPriceQuantityScalingIs": "Base unit price (quantity scaling is set by the price list multiplier)",
-    "baseQuantity": "Base quantity",
     "minimumUnitPrice": "Minimum unit price",
     "estimatedUnitPriceBase": "Estimated unit price (base)",
     "costBreakdownPerPiece": "Cost breakdown (per piece)",
@@ -4064,7 +4063,9 @@
       "criterionWasDeleted": "Deleted \"{name}\"",
       "thisCriterionsValueLabel": "This criterion's value:",
       "intermediateOrNotApplicable": "(intermediate / not applicable)",
-      "quantityPcs": "{quantity} pcs"
+      "quantityPcs": "{quantity} pcs",
+      "description": "Description",
+      "descriptionHint": "Shown by the hint button (ⓘ) next to this cost item on the price estimate screens. Leave blank to hide the button."
     },
     "itemDefEditForm": {
       "theKeyMustBeAnIdentifier": "The key must be an identifier starting with a letter or underscore",
@@ -5065,6 +5066,29 @@
       "customerName": "Customer name",
       "constant": "Fixed text",
       "empty": "Blank"
+    },
+    "scalePreset": {
+      "title": "Quantity scale",
+      "summary": "{count} tiers of multipliers (default tiers for price lists)",
+      "description": "The default quantity tiers when a new variant is created in a price list. Each row has only a start quantity and a multiplier; the end of a range follows from the next row's start.",
+      "previewBase": "Sample base unit price",
+      "previewBaseHint": "Only used to preview the unit-price column. It is not saved.",
+      "colFrom": "From quantity",
+      "colRange": "Range",
+      "colMultiplier": "Multiplier",
+      "colUnitPrice": "Unit price",
+      "addRow": "Add a range",
+      "removeRow": "Remove row",
+      "resetToDefault": "Restore defaults",
+      "resetConfirmTitle": "Restore defaults",
+      "resetConfirmMessage": "Replaces what you are editing with the standard table. Nothing changes until you save.",
+      "saved": "Quantity scale updated",
+      "saveFailed": "Could not save the quantity scale",
+      "issueEmpty": "Add at least one row",
+      "issueFirstNotOne": "The first row must start at 1",
+      "issueNotInteger": "The start quantity of row {row} must be a whole number of 1 or more",
+      "issueNotAscending": "The start quantity of row {row} must be larger than the previous row",
+      "issueBadMultiplier": "The multiplier of row {row} must be 0.01 or more"
     }
   },
   "portal": {
@@ -7743,7 +7767,7 @@
       "thereAreNoDiscountRules": "There are no discount rules.",
       "thereIsNoPriceListPick": "There is no price list — pick a customer × product to create one",
       "thereIsOnePriceListPer": "There is one price list per customer × product. Add per-order-type prices below.",
-      "tickingItDropsTheAutomaticCalculation": "Ticking it drops the automatic calculation and fixes this tier's price by hand (with a confirmation).",
+      "tickingItDropsTheAutomaticCalculation": "Press Custom to drop the automatic calculation and fix this tier's price by hand (with a confirmation).",
       "tiers": "Tiers",
       "unitPriceRange": "Unit price range",
       "unitPriceUsed": "Unit price used",
@@ -7751,7 +7775,13 @@
       "useACustomUnitPrice": "Use a custom unit price",
       "useACustomUnitPrice2": "Use a custom unit price",
       "useCreateAQuoteToBuild": "— (use \"Create a quote\" to build one from this price list)",
-      "useTheEstimatedValueAsIt": "Use the estimated value as it is"
+      "useTheEstimatedValueAsIt": "Use the estimated value as it is",
+      "customButton": "Custom",
+      "backToAutoButton": "Back to auto",
+      "resetToPreset": "Reset to preset",
+      "resetToPresetTitle": "Reset tiers to the preset",
+      "resetToPresetMessage": "Replaces this variant's quantity tiers with the quantity-scale preset (price estimate engine settings). Ranges you added and custom prices are lost.",
+      "addACustomRange": "Add a range"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "Issued (PDF generation failed)",
@@ -7833,9 +7863,6 @@
       "lDFluteLengthMm": "LD flute length (mm)",
       "extraInputsDefinedUnderThePrice": "Extra inputs defined under the price estimate engine (SY02). They are variables in criterion formulas.",
       "customFields": "Custom fields",
-      "usedOnlyToProrateFormShaping": "Used only to prorate form shaping (spare shapes). Per-quantity price scaling (×multiplier) is set on the price list.",
-      "theQuantityUsedToProrateForm": "The quantity used to prorate form shaping (spare shapes). No per-quantity scaling is applied here; use the price list's multiplier (×1.01 etc.).",
-      "baseQuantityPcs": "Base quantity (pcs)",
       "priceEstimateName": "Price estimate name",
       "eGPrecisionShaft338": "e.g. Precision shaft φ3×38 BAL Alcrona",
       "forCylinderEstimatesTheMaterialPrice": "For cylinder estimates the material price is entered by hand (purchase history is shown for reference).",
@@ -7849,10 +7876,10 @@
       "inspectionCertificate": "Inspection certificate",
       "shapeOutPerPiece": "Shape-out cost (per piece)",
       "correctionFactor": "Correction factor",
-      "enterABaseQuantity": "Enter a base quantity",
       "representativeEstimatedUnitPrice": "Representative estimated unit price",
       "searchByPriceEstimateNumberName": "Search by price estimate number, name or customer",
-      "thereAreNoPriceEstimates": "There are no price estimates"
+      "thereAreNoPriceEstimates": "There are no price estimates",
+      "hintFor": "About {name}"
     },
     "orderLineDetail": {
       "designWithCount": "Design ({count})",

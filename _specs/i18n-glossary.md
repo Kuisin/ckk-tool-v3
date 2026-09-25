@@ -339,6 +339,9 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 対象額（その税率の税抜合計） | Taxable amount | 应税金额 |
 | 数量 | Quantity | 数量 |
 | 数量段階 / 倍率 | Quantity tier / Multiplier | 数量档 / 系数 |
+| 数量スケール（価格表の初期の数量段階の表） | Quantity scale | 数量阶梯 |
+| プリセット | Preset | 预设 |
+| カスタム（ボタン。手で決める） / 自動に戻す | Custom / Back to auto | 自定义 / 恢复自动 |
 | 値引き / 値引き設定 | Discount / Discount rules | 折扣 / 折扣设置 |
 | 価格設定 | Pricing | 价格设置 |
 | 注文種別 | Order type | 订单类别 |

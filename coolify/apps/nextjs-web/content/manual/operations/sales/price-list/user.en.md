@@ -81,7 +81,7 @@ When you open the app, the registered price lists are shown as a list. One row i
 6. Choose「**有効開始日**」(valid from).
 7. For テスト (test) and サンプル (sample), you must also choose「**有効終了日**」(valid until).
 8. In the quantity table, enter「**最小数量**」(minimum quantity),「**最大数量**」(maximum quantity) and「**倍率**」(multiplier).
-9. To add another break, press「**段階を追加**」(add tier).
+9. To add another break, press「**範囲を追加**」(add a range). When you add a new order type, its quantity breaks start out filled from the quantity scale (the table of "from how many pieces, at what multiplier" that an administrator maintains). Press「**プリセットに戻す**」(reset to preset) to put that order type's breaks back to that table (ranges you added by hand and custom prices are lost).
 10. To register a price for another class too, press「**注文種別を追加**」(add order type) and repeat steps 5 to 9.
 11. Press「**保存**」(save).
 
@@ -117,7 +117,7 @@ In the quantity table, a row with an orange「**手動**」(manual) badge uses a
 
 - **The customer and the product cannot be changed after the record is made.** If you need a different combination, make a new record.
 - A saved order type, and the estimate its price came from, also cannot be changed.
-- To give one quantity break a special price, tick「**カスタム単価**」(custom price) on that row and enter the amount. A confirmation screen appears — press「**カスタム設定する**」(use a custom setting).
+- To give one quantity break a special price, press「**カスタム**」(custom) on that row and enter the amount. A confirmation screen appears — press「**カスタム設定する**」(use a custom setting). Press「**自動に戻す**」(back to auto) to return to the automatic calculation.
 
 ## Registering a discount rule
 

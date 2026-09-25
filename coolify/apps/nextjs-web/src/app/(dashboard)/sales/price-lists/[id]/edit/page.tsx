@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { PriceListTypeForm } from "@/components/sales/price-lists/PriceListTypeForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { parseDocKey } from "@/lib/doc-number";
+import { getScalePreset } from "@/lib/price-scale-preset-store";
 import { fetchExistingEntryRefs } from "../../../trial-estimates/data";
 import { fetchEstimateBases, fetchPriceEntry } from "../../data";
 
@@ -19,9 +20,10 @@ export default async function PriceListEditPage({
   const key = parseDocKey(decodeURIComponent(id), "PRC");
   if (!key) notFound();
 
-  const [entry, existingEntries] = await Promise.all([
+  const [entry, existingEntries, scalePreset] = await Promise.all([
     fetchPriceEntry(key),
     fetchExistingEntryRefs(),
+    getScalePreset(),
   ]);
   if (!entry) notFound();
 
@@ -38,6 +40,7 @@ export default async function PriceListEditPage({
       existingEntries={existingEntries}
       mode="edit"
       productOption={{ value: entry.itemId, label: entry.productName }}
+      scalePreset={scalePreset}
     />
   );
 }

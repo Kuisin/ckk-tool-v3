@@ -34,8 +34,6 @@ const base: TrialInput = {
   machiningMinutes: 8,
   machiningRatePer10min: 2000,
   spareShapeCount: 3,
-  lotQuantities: [10, 50, 100],
-  lotMarkups: undefined,
 };
 
 const cases: Array<{ name: string; input: TrialInput }> = [
@@ -90,10 +88,6 @@ const cases: Array<{ name: string; input: TrialInput }> = [
     },
   },
   {
-    name: "掛け率手動上書き",
-    input: { ...base, lotMarkups: [1.5, null, 0.9] },
-  },
-  {
     name: "全部盛り",
     input: {
       ...base,
@@ -113,7 +107,6 @@ const cases: Array<{ name: string; input: TrialInput }> = [
       ldOuterDiameter: 8,
       ldBladeLength: 25,
       machiningMinutes: 12,
-      lotQuantities: [5, 25, 300],
     },
   },
 ];
@@ -129,7 +122,6 @@ function expectParity(engine: TrialResult, legacy: TrialResult) {
   engine.lots.forEach((lot, i) => {
     const exp = legacy.lots[i];
     expect(lot.quantity).toBe(exp.quantity);
-    expect(lot.discountRate).toBeCloseTo(exp.discountRate, 6);
     expect(lot.minimumPrice).toBeCloseTo(exp.minimumPrice, 4);
     // 見積単価 is the acceptance gate — must match exactly (10円単位).
     expect(lot.estimateUnitPrice).toBe(exp.estimateUnitPrice);

@@ -30,7 +30,9 @@ import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
   IconCalendar,
+  IconPencil,
   IconPlus,
+  IconRestore,
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -48,7 +50,7 @@ import {
   updatePriceEntry,
 } from "@/app/(dashboard)/sales/price-lists/actions";
 import type { EstimateSource } from "@/app/(dashboard)/sales/price-lists/data";
-import { GhostButton } from "@/components/ui/buttons";
+import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { customerF4, productItemF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
@@ -61,6 +63,11 @@ import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/mock";
+import {
+  DEFAULT_SCALE_PRESET,
+  type ScalePresetRow,
+  scalePresetRanges,
+} from "@/lib/price-scale-preset";
 import {
   type EntryIdentity,
   type PriceListEntry,
@@ -160,7 +167,20 @@ const emptyTier = (): TierForm => ({
   priceOverride: null,
 });
 
-const emptyVariant = (orderType: VariantForm["orderType"]): VariantForm => ({
+/** 数量スケールのプリセット → 段階（単価の上書きなし = 全行が自動計算）。 */
+const tiersFromPreset = (preset: readonly ScalePresetRow[]): TierForm[] =>
+  scalePresetRanges(preset).map((r) => ({
+    id: null,
+    minQuantity: r.minQuantity,
+    maxQuantity: r.maxQuantity,
+    multiplier: r.multiplier,
+    priceOverride: null,
+  }));
+
+const emptyVariant = (
+  orderType: VariantForm["orderType"],
+  preset: readonly ScalePresetRow[],
+): VariantForm => ({
   id: null,
   orderType,
   sourceEstimate: null,
@@ -169,7 +189,7 @@ const emptyVariant = (orderType: VariantForm["orderType"]): VariantForm => ({
   validFrom: null,
   validUntil: null,
   isActive: true,
-  tiers: [emptyTier()],
+  tiers: tiersFromPreset(preset),
 });
 
 function buildInitial(args: {
@@ -178,6 +198,8 @@ function buildInitial(args: {
   lockedCustomerId?: string;
   /** 品目 id（items.id）。 */
   lockedProductId?: string;
+  /** 新しいバリアントの数量段階の初期値。 */
+  scalePreset: readonly ScalePresetRow[];
 }): FormValues {
   const entry = args.entry;
   if (entry) {
@@ -215,7 +237,7 @@ function buildInitial(args: {
     itemId: args.lockedProductId ?? "",
     salesRepId: null,
     isActive: true,
-    variants: [emptyVariant("PRODUCTION")],
+    variants: [emptyVariant("PRODUCTION", args.scalePreset)],
   };
 }
 
@@ -228,6 +250,7 @@ export function PriceListTypeForm({
   customerOption,
   productOption,
   existingEntries,
+  scalePreset = DEFAULT_SCALE_PRESET,
 }: {
   mode: "create" | "edit";
   /** Edit: the entry (server-fetched view-model). */
@@ -242,6 +265,8 @@ export function PriceListTypeForm({
   productOption?: Option | null;
   /** All current (顧客, 製品) identities — duplicate warnings. */
   existingEntries: EntryIdentity[];
+  /** 数量スケールのプリセット（SY02）。新しいバリアントの数量段階の初期値。 */
+  scalePreset?: readonly ScalePresetRow[];
 }) {
   const tr = useTranslations();
   const router = useRouter();
@@ -259,6 +284,7 @@ export function PriceListTypeForm({
       estimateBases,
       lockedCustomerId,
       lockedProductId,
+      scalePreset,
     }),
   });
 
@@ -345,6 +371,19 @@ export function PriceListTypeForm({
       });
     }
   };
+
+  /** 数量段階をプリセットへ戻す（手で足した範囲・カスタム単価は消える）。 */
+  const resetTiersToPreset = (vi: number) =>
+    openConfirm({
+      title: tr("sales.priceLists.resetToPresetTitle"),
+      message: tr("sales.priceLists.resetToPresetMessage"),
+      confirmLabel: tr("sales.priceLists.resetToPreset"),
+      onConfirm: () =>
+        form.setFieldValue(
+          `variants.${vi}.tiers`,
+          tiersFromPreset(scalePreset),
+        ),
+    });
 
   const handleSubmit = (raw: FormValues) => {
     const variants: PriceVariantInput[] = raw.variants.map((v) => {
@@ -819,42 +858,46 @@ export function PriceListTypeForm({
                       </Table.Td>
                       <Table.Td>
                         <Group gap="xs" wrap="nowrap">
-                          <Checkbox
-                            aria-label={tr(
-                              "sales.priceLists.useACustomUnitPrice2",
-                            )}
-                            checked={isCustom}
-                            onChange={(e) =>
-                              toggleTierOverride(
-                                vi,
-                                ri,
-                                e.currentTarget.checked,
-                                autoPrice,
-                              )
-                            }
-                          />
-                          <NumberInput
-                            aria-label={
-                              isCustom ? undefined : tr("common.auto")
-                            }
-                            disabled={!isCustom}
-                            min={0}
-                            placeholder={
-                              isCustom ? undefined : tr("common.auto")
-                            }
-                            prefix="¥"
-                            thousandSeparator=","
-                            {...form.getInputProps(
-                              `variants.${vi}.tiers.${ri}.priceOverride`,
-                            )}
-                            onChange={(v) =>
-                              form.setFieldValue(
-                                `variants.${vi}.tiers.${ri}.priceOverride`,
-                                typeof v === "number" ? v : null,
-                              )
-                            }
-                            value={tier.priceOverride ?? ""}
-                          />
+                          {isCustom ? (
+                            <>
+                              <NumberInput
+                                aria-label={tr(
+                                  "sales.priceLists.useACustomUnitPrice2",
+                                )}
+                                min={0}
+                                prefix="¥"
+                                thousandSeparator=","
+                                {...form.getInputProps(
+                                  `variants.${vi}.tiers.${ri}.priceOverride`,
+                                )}
+                                onChange={(v) =>
+                                  form.setFieldValue(
+                                    `variants.${vi}.tiers.${ri}.priceOverride`,
+                                    typeof v === "number" ? v : null,
+                                  )
+                                }
+                                value={tier.priceOverride ?? ""}
+                              />
+                              <GhostButton
+                                onClick={() =>
+                                  toggleTierOverride(vi, ri, false, autoPrice)
+                                }
+                                size="xs"
+                              >
+                                {tr("sales.priceLists.backToAutoButton")}
+                              </GhostButton>
+                            </>
+                          ) : (
+                            <SecondaryButton
+                              leftSection={<IconPencil size={14} />}
+                              onClick={() =>
+                                toggleTierOverride(vi, ri, true, autoPrice)
+                              }
+                              size="xs"
+                            >
+                              {tr("sales.priceLists.customButton")}
+                            </SecondaryButton>
+                          )}
                         </Group>
                       </Table.Td>
                       <Table.Td ta="right">
@@ -892,16 +935,24 @@ export function PriceListTypeForm({
                 })}
               </Table.Tbody>
             </Table>
-            <GhostButton
-              leftSection={<IconPlus size={16} />}
-              mt="sm"
-              onClick={() =>
-                form.insertListItem(`variants.${vi}.tiers`, emptyTier())
-              }
-              size="xs"
-            >
-              {tr("sales.priceLists.addATier")}
-            </GhostButton>
+            <Group gap="xs" mt="sm">
+              <GhostButton
+                leftSection={<IconPlus size={16} />}
+                onClick={() =>
+                  form.insertListItem(`variants.${vi}.tiers`, emptyTier())
+                }
+                size="xs"
+              >
+                {tr("sales.priceLists.addACustomRange")}
+              </GhostButton>
+              <GhostButton
+                leftSection={<IconRestore size={16} />}
+                onClick={() => resetTiersToPreset(vi)}
+                size="xs"
+              >
+                {tr("sales.priceLists.resetToPreset")}
+              </GhostButton>
+            </Group>
           </FormSection>
         );
       })}
@@ -915,7 +966,7 @@ export function PriceListTypeForm({
           const next =
             (ORDER_TYPE_OPTIONS.find((o) => !used.has(o.value))
               ?.value as VariantForm["orderType"]) ?? "PRODUCTION";
-          form.insertListItem("variants", emptyVariant(next));
+          form.insertListItem("variants", emptyVariant(next, scalePreset));
         }}
       >
         {tr("common.addAnOrderType")}

@@ -54,9 +54,8 @@ screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-
 8. 在「**加工**」（加工）栏里，输入台阶加工、颈下加工的长度与种类，以及「**加工時間 (分)**」（加工时间·分钟）。
 9. 在「**コート・処理**」（涂层·处理）栏里，选择「**コート**」（涂层）、「**ラップ処理**」（研磨处理）、「**検査成績書**」（检查成绩书）。
 10. 有 LD 加工时，打开「**LD加工あり**」（有 LD 加工），并输入部位、外径、刃长。
-11. 确认「**基準数量（本）**」（基准数量·支）。一开始是 100 支。
-12. 最后在「**価格試算名**」（试算名称）里输入名称（必填）。
-13. 点击画面右上角的「**保存**」（保存）。
+11. 最后在「**価格試算名**」（试算名称）里输入名称（必填）。
+12. 点击画面右上角的「**保存**」（保存）。
 
 ![试算新建表单](../../../assets/screenshots/trial-estimate-new-01.png)
 
@@ -64,7 +63,7 @@ screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-
 
 ![试算结果（成本明细与报价单价）](../../../assets/screenshots/trial-estimate-new-02.png)
 
-- **「原価内訳（1本あたり）」（成本明细·每支）** … 材料成本、台阶加工费、加工单价、涂层费等的明细。
+- **「原価内訳（1本あたり）」（成本明细·每支）** … 材料成本、台阶加工费、加工单价、涂层费等的明细。点击各行右侧的 **ⓘ**，可查看该费用统计的内容。
 - **「見積単価（基準）」（报价单价·基准）** … 显示在最下方的每支售价。
 
 > 💡 数量多时的折扣（让每支更便宜的设定）不在这个画面设置，而是在[价格表](/manual/zh/operations/sales/price-list/user)里设置。试算只给出每支的基准价格。
@@ -147,7 +146,6 @@ screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-
 | [研磨处理](#field-lapping) | 选填 | 是否进行研磨处理 |
 | [检查成绩书](#field-inspection-report) | 选填 | 是否附带检查成绩书 |
 | [LD加工 / 部位 / 外径 / 刃长](#field-ld) | 选填 | LD 加工的条件 |
-| [基准数量（支）](#field-base-quantity) | 必填 | 按多少支为前提计算 |
 
 ### 报价对象 [#field-customer]
 
@@ -220,10 +218,6 @@ screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-
 ### LD加工 / 部位 / 外径 (mm) / 刃长 (mm) [#field-ld]
 
 进行 LD 加工时的条件。勾选「有 LD 加工」后即可指定部位・外径・刃长。
-
-### 基准数量（支）[#field-base-quantity]
-
-按多少支为前提进行计算。**每支的费用会随数量变化**（工序准备被分摊），请填写实际预计的数量。
 
 ## 常见问题与困扰
 

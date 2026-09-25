@@ -12,9 +12,11 @@ import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { readConfigNamespace, writeConfigValues } from "./app-config";
 import {
+  type Criterion,
   type CustomInputDef,
   criterionSchema,
   customInputDefSchema,
+  DEFAULT_CRITERIA,
   GLOBAL_CUSTOM_INPUTS,
   lookupTableSchema,
   mergeBuiltinToolTypes,
@@ -56,6 +58,19 @@ function mergeGlobalCustomInputs(
   const byKey = new Set(persisted.map((d) => d.key));
   const missing = GLOBAL_CUSTOM_INPUTS.filter((g) => !byKey.has(g.key));
   return missing.length ? [...missing, ...persisted] : persisted;
+}
+
+/**
+ * 説明（description）が未設定の基準に、同じ id の既定基準の説明を補う。
+ * 説明を足す前に保存された基準にも既定のヒントが出るようにするため。管理者が
+ * 空にした場合は "" として保存されるので、そのときは補わない（消した意思を守る）。
+ */
+function withDefaultDescriptions(criteria: Criterion[]): Criterion[] {
+  return criteria.map((c) => {
+    if (c.description !== undefined) return c;
+    const def = DEFAULT_CRITERIA.find((d) => d.id === c.id)?.description;
+    return def ? { ...c, description: def } : c;
+  });
 }
 
 /**
@@ -106,7 +121,9 @@ export async function getTrialPricingSettings(): Promise<TrialPricingSettings> {
       case "criteria": {
         const parsed = criteriaArraySchema.safeParse(v);
         if (parsed.success && parsed.data.length > 0)
-          out.criteria = normalizeLegacyExpressionIds(parsed.data);
+          out.criteria = withDefaultDescriptions(
+            normalizeLegacyExpressionIds(parsed.data),
+          );
         break;
       }
       case "customInputs": {

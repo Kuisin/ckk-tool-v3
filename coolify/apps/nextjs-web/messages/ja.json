@@ -558,7 +558,6 @@
     "priceEstimateResult": "価格試算結果",
     "materialPriceHistory": "素材価格推移",
     "baseUnitPriceQuantityScalingIs": "基準単価（数量スケールは価格表の倍率で設定）",
-    "baseQuantity": "基準数量",
     "minimumUnitPrice": "最低単価",
     "estimatedUnitPriceBase": "見積単価（基準）",
     "costBreakdownPerPiece": "原価内訳（1本あたり）",
@@ -4064,7 +4063,9 @@
       "criterionWasDeleted": "「{name}」を削除しました",
       "thisCriterionsValueLabel": "この基準の値:",
       "intermediateOrNotApplicable": "（中間/対象外）",
-      "quantityPcs": "{quantity} 本"
+      "quantityPcs": "{quantity} 本",
+      "description": "説明",
+      "descriptionHint": "価格試算の画面で、この費目の横のヒントボタン（ⓘ）に表示されます。空欄ならボタンは出ません。"
     },
     "itemDefEditForm": {
       "theKeyMustBeAnIdentifier": "キーは英字/アンダースコア始まりの識別子にしてください",
@@ -5065,6 +5066,29 @@
       "customerName": "顧客名",
       "constant": "固定文字列",
       "empty": "空欄"
+    },
+    "scalePreset": {
+      "title": "数量スケール",
+      "summary": "{count}段階の倍率表（価格表の数量段階の初期値）",
+      "description": "価格表で新しいバリアントを作るときの数量段階の初期値です。開始数量と倍率だけを持ち、範囲（〜何本）は次の行の開始数量から決まります。",
+      "previewBase": "試算用の基準単価",
+      "previewBaseHint": "単価の列を読み合わせるための入力です。保存されません。",
+      "colFrom": "開始数量",
+      "colRange": "範囲",
+      "colMultiplier": "倍率",
+      "colUnitPrice": "単価",
+      "addRow": "範囲を追加",
+      "removeRow": "行を削除",
+      "resetToDefault": "初期値に戻す",
+      "resetConfirmTitle": "初期値に戻す",
+      "resetConfirmMessage": "編集中の内容を標準の表に置き換えます。保存するまで反映されません。",
+      "saved": "数量スケールを更新しました",
+      "saveFailed": "数量スケールの保存に失敗しました",
+      "issueEmpty": "行を 1 つ以上追加してください",
+      "issueFirstNotOne": "最初の行の開始数量は 1 にしてください",
+      "issueNotInteger": "{row} 行目の開始数量は 1 以上の整数にしてください",
+      "issueNotAscending": "{row} 行目の開始数量は、前の行より大きくしてください",
+      "issueBadMultiplier": "{row} 行目の倍率は 0.01 以上にしてください"
     }
   },
   "portal": {
@@ -7743,7 +7767,7 @@
       "thereAreNoDiscountRules": "値引きルールがありません。",
       "thereIsNoPriceListPick": "価格表がありません — 顧客×製品を選んで作成します",
       "thereIsOnePriceListPer": "1つの顧客×製品につき価格表は1件です。注文種別ごとの価格は下で追加します。",
-      "tickingItDropsTheAutomaticCalculation": "チェックすると自動計算を使わず、この数量帯だけ手動の固定単価にできます（確認あり）。",
+      "tickingItDropsTheAutomaticCalculation": "「カスタム」を押すと自動計算を使わず、この数量帯だけ手動の固定単価にできます（確認あり）。",
       "tiers": "段階数",
       "unitPriceRange": "単価範囲",
       "unitPriceUsed": "採用単価",
@@ -7751,7 +7775,13 @@
       "useACustomUnitPrice": "カスタム単価の使用",
       "useACustomUnitPrice2": "カスタム単価を使用",
       "useCreateAQuoteToBuild": "—（「見積書を作成」でこの価格表から見積書を作成できます）",
-      "useTheEstimatedValueAsIt": "価格試算値をそのまま使用"
+      "useTheEstimatedValueAsIt": "価格試算値をそのまま使用",
+      "customButton": "カスタム",
+      "backToAutoButton": "自動に戻す",
+      "resetToPreset": "プリセットに戻す",
+      "resetToPresetTitle": "数量段階をプリセットに戻す",
+      "resetToPresetMessage": "このバリアントの数量段階を、数量スケールのプリセット（価格試算計算の設定）に置き換えます。手で足した範囲とカスタム単価は消えます。",
+      "addACustomRange": "範囲を追加"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "発行しました（PDF 生成に失敗）",
@@ -7833,9 +7863,6 @@
       "lDFluteLengthMm": "LD刃長 (mm)",
       "extraInputsDefinedUnderThePrice": "価格試算計算（SY02）で定義された追加入力。計算基準の式で変数として使われます。",
       "customFields": "カスタム項目",
-      "usedOnlyToProrateFormShaping": "形状出し（予備形状分）の按分にのみ使用します。数量ごとの価格スケール（×倍率）は価格表側で設定します。",
-      "theQuantityUsedToProrateForm": "形状出し（予備形状分）を按分する数量。数量ごとの価格スケールは掛けず、価格表の倍率（×1.01 など）で設定します。",
-      "baseQuantityPcs": "基準数量（本）",
       "priceEstimateName": "価格試算名",
       "eGPrecisionShaft338": "例: 精密軸 φ3×38 BAL ｱﾙｸﾛｰﾅ",
       "forCylinderEstimatesTheMaterialPrice": "円筒見積は素材価格を手入力します（仕入実績は参考表示）。",
@@ -7849,10 +7876,10 @@
       "inspectionCertificate": "検査成績書",
       "shapeOutPerPiece": "形状出し（1本按分）",
       "correctionFactor": "補正値",
-      "enterABaseQuantity": "基準数量を入力してください",
       "representativeEstimatedUnitPrice": "代表見積単価",
       "searchByPriceEstimateNumberName": "価格試算番号・名称・顧客で検索",
-      "thereAreNoPriceEstimates": "価格試算がありません"
+      "thereAreNoPriceEstimates": "価格試算がありません",
+      "hintFor": "{name}の説明"
     },
     "orderLineDetail": {
       "designWithCount": "設計（{count}）",

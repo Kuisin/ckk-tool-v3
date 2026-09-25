@@ -61,6 +61,7 @@ import {
   type ToolType,
   type TrialInput,
 } from "@/lib/trial-pricing";
+import type { Criterion } from "@/lib/trial-pricing-criteria";
 import {
   COATING_OPTIONS,
   cylinderTypeOptions,
@@ -76,6 +77,7 @@ import {
   toToolTypeOptions,
   toTrialPricingOptions,
 } from "@/lib/trial-pricing-settings";
+import { criterionDescription, LabelWithHint } from "./CriterionHint";
 import { MaterialPriceChart } from "./MaterialPriceChart";
 import type { TrialEstimateRecord } from "./types";
 
@@ -182,10 +184,9 @@ export function TrialEstimateForm({
   const [machiningMinutes, setMachiningMinutes] = useState<number | string>(
     src?.machiningMinutes ?? 6,
   );
-  // 加工単価・予備形状本数は scope:"global" のカスタム固定係数（customValues）を使用。
-  // 基準数量 — 形状出し（段取り分）の按分にのみ使用。数量スケール（×倍率）は
-  // 価格表側で管理するため、価格試算はこの1点の基準単価だけを算出する。
-  const [baseQuantity, setBaseQuantity] = useState<number | string>(100);
+  // 加工単価・予備形状本数・形状出し按分本数は scope:"global" のカスタム固定係数
+  // （customValues）を使用。数量スケール（×倍率）は価格表側で管理するため、
+  // 価格試算はこの1点の基準単価だけを算出する。
 
   // ── カスタム入力項目（管理者が価格試算計算 SY02 で定義）───────────────────────
   const [customValues, setCustomValues] = useState<
@@ -300,8 +301,6 @@ export function TrialEstimateForm({
     machiningMinutes: num(machiningMinutes),
     machiningRatePer10min: Number(customValues.machiningRatePer10min ?? 2000),
     spareShapeCount: Number(customValues.spareShapeCount ?? 3),
-    lotQuantities: [num(baseQuantity), 0, 0],
-    lotMarkups: [1], // 掛け率は使わない（数量スケールは価格表の倍率で管理）
   };
   const result = calcTrialPricing(input, toTrialPricingOptions(settings));
 
@@ -883,31 +882,10 @@ export function TrialEstimateForm({
               </FormSection>
             )}
 
-            <FormSection
-              description={tr(
-                "sales.trialEstimates.usedOnlyToProrateFormShaping",
-              )}
-              title={tr("common.baseQuantity")}
-            >
-              <NumberInput
-                label={
-                  <HelpLabel
-                    help={tr(
-                      "sales.trialEstimates.theQuantityUsedToProrateForm",
-                    )}
-                    label={tr("sales.trialEstimates.baseQuantityPcs")}
-                  />
-                }
-                min={1}
-                onChange={setBaseQuantity}
-                value={baseQuantity}
-                w={220}
-              />
-            </FormSection>
-
             <ResultsPanel
               breakdown={result.breakdown}
               correctionFactor={Number(customValues.correctionFactor ?? 1.25)}
+              criteria={settings.criteria}
               lot={result.lots[0] ?? null}
               warnings={result.warnings}
             />
@@ -993,43 +971,60 @@ function ResultsPanel({
   lot,
   correctionFactor,
   warnings,
+  criteria,
 }: {
   breakdown: CostBreakdown;
+  /** 計算基準（ヒントボタンの説明を引く）。 */
+  criteria: Criterion[];
   /** 基準数量での計算結果（単一）. */
   lot: LotResult | null;
   correctionFactor: number;
   warnings: string[];
 }) {
   const tr = useTranslations();
-  const rows: { label: string; value: number }[] = [
+  const rows: { id: string; label: string; value: number }[] = [
     {
+      id: "material",
       label: tr("sales.trialEstimates.materialCost"),
       value: breakdown.material,
     },
     {
+      id: "step",
       label: tr("sales.trialEstimates.stepMachiningCost"),
       value: breakdown.step,
     },
     {
+      id: "neck",
       label: tr("sales.trialEstimates.neckMachiningCost"),
       value: breakdown.neck,
     },
     {
+      id: "machining",
       label: tr("sales.trialEstimates.machiningRate"),
       value: breakdown.machining,
     },
-    { label: tr("sales.trialEstimates.coatingCost"), value: breakdown.coating },
-    { label: tr("sales.trialEstimates.lapping"), value: breakdown.lap },
-    { label: "LD", value: breakdown.ld },
     {
+      id: "coating",
+      label: tr("sales.trialEstimates.coatingCost"),
+      value: breakdown.coating,
+    },
+    {
+      id: "lap",
+      label: tr("sales.trialEstimates.lapping"),
+      value: breakdown.lap,
+    },
+    { id: "ld", label: "LD", value: breakdown.ld },
+    {
+      id: "inspection",
       label: tr("sales.trialEstimates.inspectionCertificate"),
       value: breakdown.inspection,
     },
     // 最低単価 (lot.minimumPrice) はこの内訳 8 項目 + 形状出し（1本按分）の合計。
-    // 按分は数量に依存するため CostBreakdown ではなく lot（基準数量での結果）から読む。
+    // 按分は CostBreakdown ではなく lot（形状出し按分本数での結果）から読む。
     ...(lot
       ? [
           {
+            id: "shapeOutPerPiece",
             label: tr("sales.trialEstimates.shapeOutPerPiece"),
             value: lot.perPiece,
           },
@@ -1066,8 +1061,13 @@ function ResultsPanel({
             <Table>
               <Table.Tbody>
                 {rows.map((r) => (
-                  <Table.Tr key={r.label}>
-                    <Table.Td>{r.label}</Table.Td>
+                  <Table.Tr key={r.id}>
+                    <Table.Td>
+                      <LabelWithHint
+                        description={criterionDescription(criteria, r.id)}
+                        label={r.label}
+                      />
+                    </Table.Td>
                     <Table.Td ta="right">
                       <MoneyText value={Math.round(r.value)} />
                     </Table.Td>
@@ -1103,7 +1103,10 @@ function ResultsPanel({
                   <Table.Tr>
                     <Table.Td>
                       <Text fw={600} size="sm">
-                        {tr("common.estimatedUnitPriceBase")}
+                        <LabelWithHint
+                          description={criterionDescription(criteria, "final")}
+                          label={tr("common.estimatedUnitPriceBase")}
+                        />
                       </Text>
                     </Table.Td>
                     <Table.Td ta="right">
@@ -1114,11 +1117,7 @@ function ResultsPanel({
                   </Table.Tr>
                 </Table.Tbody>
               </Table>
-            ) : (
-              <Text c="dimmed" size="xs">
-                {tr("sales.trialEstimates.enterABaseQuantity")}
-              </Text>
-            )}
+            ) : null}
           </div>
         </SimpleGrid>
       </Stack>

@@ -73,6 +73,7 @@ import {
   type TrialPricingOptions,
   toolTypeOptionsFallback,
 } from "@/lib/trial-pricing";
+import { criterionDescription, LabelWithHint } from "./CriterionHint";
 import { MaterialPriceChart } from "./MaterialPriceChart";
 import type { LinkedPriceEntry, TrialEstimateRecord } from "./types";
 
@@ -375,14 +376,6 @@ export function TrialEstimateDetail({
                   {result.lots[0] && (
                     <>
                       <Table.Tr>
-                        <Table.Td>{tr("common.baseQuantity")}</Table.Td>
-                        <Table.Td ta="right">
-                          {tr("common.quantityPcs", {
-                            quantity: result.lots[0].quantity,
-                          })}
-                        </Table.Td>
-                      </Table.Tr>
-                      <Table.Tr>
                         <Table.Td>{tr("common.minimumUnitPrice")}</Table.Td>
                         <Table.Td ta="right">
                           <MoneyText
@@ -393,7 +386,13 @@ export function TrialEstimateDetail({
                       <Table.Tr>
                         <Table.Td>
                           <Text fw={600} size="sm">
-                            {tr("common.estimatedUnitPriceBase")}
+                            <LabelWithHint
+                              description={criterionDescription(
+                                pricingOptions.criteria,
+                                "final",
+                              )}
+                              label={tr("common.estimatedUnitPriceBase")}
+                            />
                           </Text>
                         </Table.Td>
                         <Table.Td ta="right">
@@ -417,7 +416,15 @@ export function TrialEstimateDetail({
                 <Table.Tbody>
                   {BREAKDOWN_ROWS.map(([labelKey, key]) => (
                     <Table.Tr key={key}>
-                      <Table.Td>{labelKey ? tr(labelKey) : "LD"}</Table.Td>
+                      <Table.Td>
+                        <LabelWithHint
+                          description={criterionDescription(
+                            pricingOptions.criteria,
+                            key,
+                          )}
+                          label={labelKey ? tr(labelKey) : "LD"}
+                        />
+                      </Table.Td>
                       <Table.Td ta="right">
                         <MoneyText value={Math.round(result.breakdown[key])} />
                       </Table.Td>
@@ -429,7 +436,13 @@ export function TrialEstimateDetail({
                   {result.lots[0] && (
                     <Table.Tr>
                       <Table.Td>
-                        {tr("sales.trialEstimates.shapeOutPerPiece")}
+                        <LabelWithHint
+                          description={criterionDescription(
+                            pricingOptions.criteria,
+                            "shapeOutPerPiece",
+                          )}
+                          label={tr("sales.trialEstimates.shapeOutPerPiece")}
+                        />
                       </Table.Td>
                       <Table.Td ta="right">
                         <MoneyText
