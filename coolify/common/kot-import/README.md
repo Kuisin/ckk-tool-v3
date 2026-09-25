@@ -39,7 +39,10 @@ the entrypoint polls it every `KOT_REQUEST_POLL_SECONDS` (20s) and re-imports th
 in 2-month batches (KOT caps the date range of one export) (same delete-then-insert, so repeating is safe). On the **last day of
 each month (Asia/Tokyo)** the scheduled run also queues one automatic request for
 **the 20th of the previous month → that day** (`source = 'month-end'`, at most one per
-month-end), to pick up late corrections to the closing period. Both kinds appear in the
+month-end), to pick up late corrections to the closing period. **Failsafe:** if the
+last day was missed (container down), it is caught up during the following
+`KOT_CLEANUP_CATCHUP_DAYS` (7) days; a failed reload is re-queued on later scheduled runs
+(every 6h) up to `KOT_CLEANUP_MAX_ATTEMPTS` (3) attempts, never more than one in flight. Both kinds appear in the
 adminTools request history and the import log.
 
 ## Export layout & columns

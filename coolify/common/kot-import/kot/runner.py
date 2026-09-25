@@ -40,6 +40,10 @@ CREATE TABLE IF NOT EXISTS import_requests (
 # corrections, 申請 approvals), so once a month the whole closing window is re-read.
 CLEANUP_SOURCE = "month-end"
 CLEANUP_TZ = ZoneInfo("Asia/Tokyo")  # "last day of the month" is a Japan calendar day
+# Failsafe: a missed month-end (container down all day) is caught up for this many days
+# after it, and a failed reload is retried on later scheduled runs up to this many times.
+CLEANUP_CATCHUP_DAYS = int(os.environ.get("KOT_CLEANUP_CATCHUP_DAYS", "7"))
+CLEANUP_MAX_ATTEMPTS = int(os.environ.get("KOT_CLEANUP_MAX_ATTEMPTS", "3"))
 # KOT's daily export caps how long one date range may be, so a long request is split
 # into batches of this many calendar months (start day → same day N months later − 1).
 # 2 months is at most 62 days (e.g. 7/1–8/31).
@@ -78,16 +82,31 @@ def month_end_window(today: date) -> tuple[date, date] | None:
     """On the last day of a month: (20th of the previous month, today). Else None."""
     if (today + timedelta(days=1)).day != 1:
         return None
-    prev_month_last = today.replace(day=1) - timedelta(days=1)
-    return prev_month_last.replace(day=20), today
+    return _window_ending(today)
+
+
+def _window_ending(month_end: date) -> tuple[date, date]:
+    prev_month_last = month_end.replace(day=1) - timedelta(days=1)
+    return prev_month_last.replace(day=20), month_end
+
+
+def due_month_end_window(today: date) -> tuple[date, date] | None:
+    """The month-end reload that should exist by now: this month's on its last day,
+    otherwise last month's for CLEANUP_CATCHUP_DAYS after it — so a container that was
+    down (or a KOT outage) on the last day still gets the reload once it is back."""
+    if month_end_window(today):
+        return month_end_window(today)
+    last_month_end = today.replace(day=1) - timedelta(days=1)
+    if (today - last_month_end).days <= CLEANUP_CATCHUP_DAYS:
+        return _window_ending(last_month_end)
+    return None
 
 
 def queue_month_end_cleanup() -> bool:
-    """Queue the month-end reload once per month-end day. The scheduled run calls this
-    every few hours; the source+day check keeps it to a single request. The request
-    is served by run_pending() like a manual one, so it shows up in adminTools."""
-    today = datetime.now(CLEANUP_TZ).date()
-    window = month_end_window(today)
+    """Queue the due month-end reload unless it already succeeded, is queued/running,
+    or has failed CLEANUP_MAX_ATTEMPTS times. Called by every scheduled run (6h), so a
+    failed attempt is retried on the next run — never more than one in flight."""
+    window = due_month_end_window(datetime.now(CLEANUP_TZ).date())
     if window is None:
         return False
     _ensure_request_table()
@@ -95,16 +114,23 @@ def queue_month_end_cleanup() -> bool:
     try:
         with c, c.cursor() as cur:
             cur.execute(
-                "SELECT 1 FROM import_requests WHERE source = %s AND end_date = %s LIMIT 1",
+                "SELECT status, count(*) FROM import_requests "
+                "WHERE source = %s AND end_date = %s GROUP BY status",
                 (CLEANUP_SOURCE, window[1]),
             )
-            if cur.fetchone():
+            counts = dict(cur.fetchall())
+            if counts.get("done") or counts.get("pending") or counts.get("running"):
+                return False
+            failed = counts.get("failed", 0)
+            if failed >= CLEANUP_MAX_ATTEMPTS:
+                print(f"[runner] month-end cleanup {window[1]} gave up after {failed} failures")
                 return False
             cur.execute(
                 "INSERT INTO import_requests (start_date, end_date, source) VALUES (%s, %s, %s)",
                 (window[0], window[1], CLEANUP_SOURCE),
             )
-        print(f"[runner] queued month-end cleanup {window[0]} – {window[1]}")
+        attempt = f" (retry {failed})" if failed else ""
+        print(f"[runner] queued month-end cleanup {window[0]} – {window[1]}{attempt}")
         return True
     finally:
         c.close()
