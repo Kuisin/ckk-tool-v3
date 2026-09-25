@@ -35,6 +35,7 @@ export const APPROVAL_TARGET_TYPES = [
   "stock_takes",
   "invoices",
   "invoice_payments",
+  "design_versions",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -202,6 +203,16 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     appKey: "invoices",
     approvePermission: "invoice",
   },
+  // 設計図の版の確定前承認。段が 1 つも無ければ承認を通らずに確定する
+  // （出荷書と同じ — フローを組まない限り今までどおり）。対象は版の uuid
+  // （版には業務キーが無い）。
+  design_versions: {
+    label: label("common.designVersion", "ja"),
+    color: "violet",
+    href: (id) => `/production/design-files/versions/${id}`,
+    appKey: "design-files",
+    approvePermission: "design_file",
+  },
 };
 
 export function isApprovalTargetType(v: string): v is ApprovalTargetType {
@@ -223,6 +234,7 @@ const TARGET_LABEL_KEY: Record<ApprovalTargetType, string> = {
   stock_takes: "common.stockTake",
   invoices: "common.invoice",
   invoice_payments: "common.invoicePayment",
+  design_versions: "common.designVersion",
 };
 
 /**

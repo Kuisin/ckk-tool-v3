@@ -2,20 +2,24 @@ import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
 import ja from "../../messages/ja.json";
 import {
-  canDeleteDesignFile,
-  canEditDesignFile,
+  canDeleteVersion,
+  canSubmitVersion,
   type DesignFileLike,
   type DesignFileRole,
-  describeLock,
+  type DesignVersionStatus,
+  describeVersionLock,
   designFileSource,
   groupBySeries,
+  groupVersionsBySeries,
+  isVersionEditable,
   nextDesignVersion,
+  pickSpecVersion,
   pickThumbFile,
   resolveLatestFile,
   resolveSeriesCustomer,
   sameSeries,
-  usedVersionKeys,
-  versionKey,
+  titleBlockJson,
+  toTitleBlock,
 } from "./design-files-core";
 import type { Tr } from "./i18n";
 
@@ -175,65 +179,118 @@ describe("groupBySeries", () => {
   });
 });
 
-describe("編集・削除の可否", () => {
-  it("指示書で使われている版は編集も削除もできない", () => {
-    const used = { usedByWorkOrder: true, designRequestId: null };
-    expect(canEditDesignFile(used)).toBe(false);
-    expect(canDeleteDesignFile(used)).toBe(false);
-    expect(describeLock(used, tr)).toBe("指示書で使用中のため変更できません");
+describe("版の編集・確定・削除の可否（状態で決まる）", () => {
+  const cases: [DesignVersionStatus, boolean][] = [
+    ["DRAFT", true],
+    ["REJECTED", true],
+    ["REQUESTED", false],
+    ["CONFIRMED", false],
+  ];
+  it.each(cases)("%s → 編集できる: %s", (status, editable) => {
+    expect(isVersionEditable(status)).toBe(editable);
+    expect(canSubmitVersion(status)).toBe(editable);
+    expect(canDeleteVersion(status)).toBe(editable);
   });
 
-  it("使われていない手動の版は編集も削除もできる", () => {
-    const free = { usedByWorkOrder: false, designRequestId: null };
-    expect(canEditDesignFile(free)).toBe(true);
-    expect(canDeleteDesignFile(free)).toBe(true);
-    expect(describeLock(free, tr)).toBeNull();
-  });
-
-  it("依頼の成果物は編集できるが削除はできない", () => {
-    const fromReq = { usedByWorkOrder: false, designRequestId: "r" };
-    expect(canEditDesignFile(fromReq)).toBe(true);
-    expect(canDeleteDesignFile(fromReq)).toBe(false);
-    expect(describeLock(fromReq, tr)).toContain("削除できません");
-  });
-
-  it("使用中は依頼由来かどうかに関わらず止まる（理由は使用中が優先）", () => {
-    expect(
-      describeLock({ usedByWorkOrder: true, designRequestId: "r" }, tr),
-    ).toBe("指示書で使用中のため変更できません");
+  it("触れない理由を言う（確定 / 承認依頼中）", () => {
+    expect(describeVersionLock("CONFIRMED", tr)).toBeTruthy();
+    expect(describeVersionLock("REQUESTED", tr)).toBeTruthy();
+    expect(describeVersionLock("CONFIRMED", tr)).not.toBe(
+      describeVersionLock("REQUESTED", tr),
+    );
+    expect(describeVersionLock("DRAFT", tr)).toBeNull();
+    expect(describeVersionLock("REJECTED", tr)).toBeNull();
   });
 });
 
-describe("usedVersionKeys — 使用中は版（系列 × 版番号）単位", () => {
-  it("図面データが使われていれば同じ版の参考資料も使用中", () => {
-    const used = usedVersionKeys([
-      { customerBpId: A, version: 2, workOrderCount: 1 },
-      { customerBpId: A, version: 2, workOrderCount: 0 }, // 同じ版の参考資料
-      { customerBpId: A, version: 1, workOrderCount: 0 },
-    ]);
-    expect(used.has(versionKey({ customerBpId: A, version: 2 }))).toBe(true);
-    expect(used.has(versionKey({ customerBpId: A, version: 1 }))).toBe(false);
+describe("pickSpecVersion — 製品 1 つにつき使う仕様の版", () => {
+  const v = (
+    customerBpId: string | null,
+    version: number,
+    status: DesignVersionStatus = "CONFIRMED",
+    confirmedAt: string | null = "2026-09-01T00:00:00Z",
+  ) => ({ customerBpId, version, status, confirmedAt });
+
+  it("受注元が一致する系列の最新版を優先する", () => {
+    const hit = pickSpecVersion([v(null, 3), v(A, 1), v(A, 2)], A);
+    expect(hit).toMatchObject({ customerBpId: A, version: 2 });
   });
 
-  it("別の系列（受注元）の同じ版番号は混ざらない", () => {
-    const used = usedVersionKeys([
-      { customerBpId: A, version: 1, workOrderCount: 1 },
-      { customerBpId: B, version: 1, workOrderCount: 0 },
-      { customerBpId: null, version: 1, workOrderCount: 0 },
-    ]);
-    expect(used.has(versionKey({ customerBpId: A, version: 1 }))).toBe(true);
-    expect(used.has(versionKey({ customerBpId: B, version: 1 }))).toBe(false);
-    expect(used.has(versionKey({ customerBpId: null, version: 1 }))).toBe(
-      false,
+  it("一致が無ければ汎用の最新版", () => {
+    const hit = pickSpecVersion([v(null, 1), v(null, 2), v(B, 5)], A);
+    expect(hit).toMatchObject({ customerBpId: null, version: 2 });
+  });
+
+  it("汎用も無ければ最後に確定した版（受注元を問わない）", () => {
+    const hit = pickSpecVersion(
+      [
+        v(A, 1, "CONFIRMED", "2026-09-01T00:00:00Z"),
+        v(B, 1, "CONFIRMED", "2026-09-10T00:00:00Z"),
+      ],
+      null,
     );
+    expect(hit).toMatchObject({ customerBpId: B });
   });
 
-  it("何も使われていなければ空", () => {
-    expect(usedVersionKeys([]).size).toBe(0);
+  it("**確定していない版は読まない**（下書きの仕様が製品の値にならない）", () => {
+    const hit = pickSpecVersion([v(null, 1), v(null, 2, "DRAFT", null)], null);
+    expect(hit).toMatchObject({ version: 1 });
+    expect(pickSpecVersion([v(null, 1, "REQUESTED", null)])).toBeNull();
+  });
+
+  it("何も無ければ null", () => {
+    expect(pickSpecVersion([], A)).toBeNull();
+  });
+});
+
+describe("groupVersionsBySeries", () => {
+  it("汎用を先頭に、系列内は版の降順", () => {
+    const g = groupVersionsBySeries([
+      { customerBpId: A, version: 1 },
+      { customerBpId: null, version: 1 },
+      { customerBpId: null, version: 2 },
+      { customerBpId: B, version: 3 },
+    ]);
+    expect(g.map((s) => s.customerBpId)).toEqual([null, B, A]);
+    expect(g[0].versions.map((x) => x.version)).toEqual([2, 1]);
+    expect(g[0].latestVersion).toBe(2);
+  });
+});
+
+describe("nextDesignVersion — 版の行でも数えられる", () => {
+  it("ファイルの無い版（仕様だけ）も番号を使う", () => {
     expect(
-      usedVersionKeys([{ customerBpId: null, version: 3, workOrderCount: 0 }])
-        .size,
-    ).toBe(0);
+      nextDesignVersion(
+        [
+          { customerBpId: null, version: 1 },
+          { customerBpId: A, version: 4 },
+        ],
+        null,
+      ),
+    ).toBe(2);
+  });
+});
+
+describe("表題欄（title_block）", () => {
+  it("知らないキー・空の値・文字列でない値は落とす", () => {
+    expect(
+      toTitleBlock({
+        productName: " 超硬ドリル ",
+        flutes: "",
+        x: "y",
+        helix: 30,
+      }),
+    ).toEqual({ productName: "超硬ドリル" });
+    expect(toTitleBlock(null)).toEqual({});
+    expect(toTitleBlock(["a"])).toEqual({});
+  });
+
+  it("空なら null で持つ", () => {
+    expect(titleBlockJson({})).toBeNull();
+    expect(titleBlockJson({ material: "  " })).toBeNull();
+    expect(titleBlockJson({ material: "超微粒子超硬" })).toEqual({
+      material: "超微粒子超硬",
+    });
   });
 });
 

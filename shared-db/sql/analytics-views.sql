@@ -797,21 +797,33 @@ LEFT JOIN app.bp_vendor_attrs   va ON va.bp_id = bp.id;
 -- 据え置き — 保存済みの Metabase の質問がこの形を見ている。
 --
 -- ★ 製品の material_type_id / diameter_mm / length_mm は **その製品が要求する
---   素材**（items.requires_*）で、素材側の同名列（その素材が「である」実寸）とは
---   意味が逆。items が列を分けているのはそのため。ここで名前を戻すときも
---   取り違えないこと（items.prisma 冒頭の注意）。
+--   素材**で、素材側の同名列（その素材が「である」実寸）とは意味が逆。
+--   値は**設計図の確定済みの版**（app.design_versions）から読む — 仕様は
+--   2026-11 に製品マスタ（items.requires_* / spec）から版へ移した。版の選び方は
+--   アプリの lib/design-files-core.ts pickSpecVersion（顧客を問わないとき）と同じ:
+--   汎用系列の最新版 → 無ければ最後に確定した版。
 CREATE OR REPLACE VIEW analytics.v_products WITH (security_invoker = true) AS
 SELECT
   p.id, p.name->>'ja' AS name_ja, p.name->>'en' AS name_en,
   coalesce(mt.name->>'ja', mt.name->>'en') AS material_type_name,
-  p.requires_material_type_id AS material_type_id,
-  p.requires_diameter_mm AS diameter_mm,
-  p.requires_length_mm AS length_mm,
+  ds.material_type_id,
+  ds.diameter_mm,
+  ds.length_mm,
   p.unit, p.is_active,
   p.created_at, p.updated_at,
   p.currency
 FROM app.items p
-LEFT JOIN app.material_types mt ON mt.id = p.requires_material_type_id
+LEFT JOIN LATERAL (
+  SELECT dv.material_type_id, dv.diameter_mm, dv.length_mm
+  FROM app.design_versions dv
+  WHERE dv.item_id = p.id AND dv.status = 'CONFIRMED'
+  ORDER BY (dv.customer_bp_id IS NULL) DESC,
+           CASE WHEN dv.customer_bp_id IS NULL THEN dv.version END DESC NULLS LAST,
+           dv.confirmed_at DESC NULLS LAST,
+           dv.version DESC
+  LIMIT 1
+) ds ON true
+LEFT JOIN app.material_types mt ON mt.id = ds.material_type_id
 WHERE p.item_type = 'PRODUCT';
 
 CREATE OR REPLACE VIEW analytics.v_materials WITH (security_invoker = true) AS
@@ -827,19 +839,31 @@ LEFT JOIN app.material_surface_finishes sf ON sf.code = m.surface_finish_code
 WHERE m.item_type = 'MATERIAL';
 
 -- 品目マスタそのもの（種別を分けずに読みたいとき）。
+-- requires_* は製品の要求寸法（設計図の確定済みの版から — v_products と同じ選び方）。
+-- 列名は据え置き（保存済みの Metabase の質問がこの形を見ている）。
 CREATE OR REPLACE VIEW analytics.v_items WITH (security_invoker = true) AS
 SELECT
   i.id, i.item_type, i.code,
   i.name->>'ja' AS name_ja, i.name->>'en' AS name_en,
   i.unit, i.currency, i.is_active,
   coalesce(reqmt.name->>'ja', reqmt.name->>'en') AS requires_material_type_name,
-  i.requires_diameter_mm, i.requires_length_mm,
+  ds.diameter_mm AS requires_diameter_mm, ds.length_mm AS requires_length_mm,
   coalesce(mt.name->>'ja', mt.name->>'en') AS material_type_name,
   i.diameter_mm, i.length_mm, i.manufacturer_model,
   i.created_at, i.updated_at
 FROM app.items i
+LEFT JOIN LATERAL (
+  SELECT dv.material_type_id, dv.diameter_mm, dv.length_mm
+  FROM app.design_versions dv
+  WHERE dv.item_id = i.id AND dv.status = 'CONFIRMED'
+  ORDER BY (dv.customer_bp_id IS NULL) DESC,
+           CASE WHEN dv.customer_bp_id IS NULL THEN dv.version END DESC NULLS LAST,
+           dv.confirmed_at DESC NULLS LAST,
+           dv.version DESC
+  LIMIT 1
+) ds ON i.item_type = 'PRODUCT'
 LEFT JOIN app.material_types mt    ON mt.id = i.material_type_id
-LEFT JOIN app.material_types reqmt ON reqmt.id = i.requires_material_type_id;
+LEFT JOIN app.material_types reqmt ON reqmt.id = ds.material_type_id;
 
 CREATE OR REPLACE VIEW analytics.v_material_types WITH (security_invoker = true) AS
 SELECT

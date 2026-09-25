@@ -100,6 +100,9 @@ export const MASTER_REFERENCES: Record<
     ref("ProductProcessRoute", "itemId"),
     ref("InspectionTemplate", "itemId"),
     ref("DesignFile", "itemId"),
+    // 設計図の版（RESTRICT）— ファイルの無い仕様だけの版もあるので、
+    // design_files だけ数えると「参照なし」に見えて DB で止まる。
+    ref("DesignVersion", "itemId"),
     ref("DesignRequest", "itemId"),
     // 購買
     ref("MaterialPurchaseOrderItem", "itemId"),
@@ -143,6 +146,9 @@ export const MASTER_REFERENCES: Record<
     ref("ProductProcessRouteVersionStep", "supplierBpId"),
     // 設計
     ref("DesignFile", "customerBpId"),
+    // SET NULL — 顧客専用の系列が黙って汎用系列へ落ちる（版番号がぶつかれば
+    // 一意制約で止まる）。どちらにしても人が先に系列を整理すべき。
+    ref("DesignVersion", "customerBpId"),
     ref("DesignRequest", "customerBpId"),
     // マスタ内部・ポータル
     ref("BpCustomerAttrs", "billingBpId"),
@@ -169,6 +175,8 @@ export const MASTER_REFERENCES: Record<
     // 同じ表の別の列で、意味が逆（items.prisma 冒頭の注意）。
     ref("Item", "materialTypeId"),
     ref("Item", "requiresMaterialTypeId"),
+    // 設計図の版が要求する材種（RESTRICT）— 仕様の移設先。
+    ref("DesignVersion", "materialTypeId"),
     // SET NULL — 価格試算の材種が黙って「未設定」に化ける。価格試算は
     // input/result の JSON に材料原価を焼き込んであるので、列が null になっても
     // 金額は残る = 画面上は正しく見えたまま辿れなくなる。

@@ -27,6 +27,7 @@ import { getTranslations } from "next-intl/server";
 import { checkPermission, requireAnyRead } from "@/lib/authz";
 import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
+import { itemIdsByMaterialTypeCode, resolveItemSpecs } from "@/lib/design-spec";
 import { formatQuoteNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { regrindItemLabel } from "@/lib/regrind-item-label";
@@ -507,6 +508,10 @@ export async function f4SearchProductItems(
   const materialType = s(filters.materialType);
   // 名称欄はキーワード（match_names）込みで判定する（略称・英字でも当たる）。
   const keywordIds = await itemIdsByKeyword(name, F4_LIMIT);
+  // 材種は設計図の確定済みの版が持つ（製品マスタから移した）。
+  const materialIds = materialType
+    ? await itemIdsByMaterialTypeCode(materialType, F4_LIMIT * 5)
+    : null;
   const rows = await prisma.item.findMany({
     where: {
       itemType: "PRODUCT",
@@ -521,18 +526,12 @@ export async function f4SearchProductItems(
             ],
           }
         : {}),
-      ...(materialType
-        ? {
-            requiresMaterialType: {
-              code: { contains: materialType, mode: "insensitive" },
-            },
-          }
-        : {}),
+      ...(materialIds ? { id: { in: materialIds } } : {}),
     },
-    include: { requiresMaterialType: true },
     orderBy: { id: "asc" },
     take: F4_LIMIT,
   });
+  const specs = await resolveItemSpecs(rows.map((p) => p.id));
   return rows.map((p) => {
     const nameJa = localized(p.name as LocalizedText | null);
     return {
@@ -541,7 +540,7 @@ export async function f4SearchProductItems(
       cells: [
         p.code ?? tr("common.notNumbered"),
         nameJa,
-        p.requiresMaterialType?.code ?? "—",
+        specs.get(p.id)?.materialTypeCode ?? "—",
         p.unit,
       ],
     };

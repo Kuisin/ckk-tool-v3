@@ -4,6 +4,10 @@ import { DesignFileVersionForm } from "@/components/production/design-files/Desi
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
 import {
+  getProductItemDefs,
+  getResolvedProductTypes,
+} from "@/lib/product-settings";
+import {
   fetchCustomerOptions,
   fetchDesignRequestContext,
   fetchProductItemOption,
@@ -12,7 +16,7 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * 設計図 新規 (PD16) — 版を 1 つ登録する。
+ * 設計図 新規 (PD16) — 版を 1 つ下書きで作る（確定は版の詳細で）。
  *
  * プリフィルは 2 経路。`?request=DSG-…`（設計依頼の成果物として登録）と
  * `?item=<items.id>`（製品マスタ・一覧から）。どちらも**実在を確かめてから**
@@ -30,12 +34,20 @@ export default async function ProductionDesignFileNewPage({
 
   const sp = await searchParams;
   const itemId = Number(sp.item);
-  const [customerOptions, requestContext, initialProduct] = await Promise.all([
+  const [
+    customerOptions,
+    requestContext,
+    initialProduct,
+    productTypes,
+    itemDefs,
+  ] = await Promise.all([
     fetchCustomerOptions(),
     sp.request ? fetchDesignRequestContext(sp.request) : null,
     Number.isInteger(itemId) && itemId > 0
       ? fetchProductItemOption(itemId)
       : null,
+    getResolvedProductTypes(),
+    getProductItemDefs(),
   ]);
 
   return (
@@ -51,6 +63,8 @@ export default async function ProductionDesignFileNewPage({
       <DesignFileVersionForm
         customerOptions={customerOptions}
         initialProduct={initialProduct}
+        itemDefs={itemDefs}
+        productTypes={productTypes}
         requestContext={requestContext}
       />
     </Stack>

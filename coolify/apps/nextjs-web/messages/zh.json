@@ -811,7 +811,8 @@
     "stockTake": "盘点",
     "stockMovement": "出入库单",
     "invoicePayment": "请款单入款",
-    "notPendingApproval": "目前不在待审批状态"
+    "notPendingApproval": "目前不在待审批状态",
+    "designVersion": "图纸版本"
   },
   "shell": {
     "appsLabel": "应用",
@@ -1185,8 +1186,9 @@
     },
     "DESIGN_FILE_ROLE_LABEL": {
       "PREVIEW": "预览",
-      "BLUEPRINT": "图纸文件",
-      "REFERENCE": "参考资料"
+      "BLUEPRINT": "2D 图纸",
+      "REFERENCE": "参考资料",
+      "MODEL": "3D 模型"
     },
     "STEP_EXECUTION_LABEL": {
       "INTERNAL": "厂内",
@@ -1635,6 +1637,20 @@
         },
         "APPROVED": {
           "label": "已批准"
+        },
+        "REJECTED": {
+          "label": "已退回"
+        }
+      },
+      "DesignVersion": {
+        "DRAFT": {
+          "label": "草稿"
+        },
+        "REQUESTED": {
+          "label": "审批中"
+        },
+        "CONFIRMED": {
+          "label": "已确定"
         },
         "REJECTED": {
           "label": "已退回"
@@ -2900,8 +2916,6 @@
       "couldNotRegisterIt": "登记失败",
       "generic": "、通用",
       "leaveItBlankForGenericUsed": "留空则为「通用」— 在没有客户专用图纸时使用。版本号按订货方分别计数",
-      "theSourceDataForTheMachining": "生成加工程序的源数据。将成为此系列的最新图纸",
-      "drawingFile": "图纸文件",
       "aFileSuchAsStlFor": "STL 等用于在画面确认形状的文件。没有也可登记",
       "forPreview3d": "预览用（3D）",
       "descriptionOptionalEGPartDrawing": "说明（可选）— 例：零件图、尺寸表",
@@ -3084,8 +3098,7 @@
     "designFileVersionForm": {
       "registeringAsResultOfRequest": "作为设计委托单 {requestNumber} 的成果登记。产品「{productLabel}」{customerPart}由委托单确定，无法更改。",
       "andCustomerWithName": "・订货方「{name}」",
-      "referenceWithNumber": "参考资料 {number}",
-      "designFileWasAddedWithVersion": "已添加图纸 v{version}"
+      "referenceWithNumber": "参考资料 {number}"
     },
     "stepExecutionView": {
       "stepWithName": "工序：{name}",
@@ -3283,7 +3296,8 @@
       "copyRouteFailed": "复制工序清单失败",
       "prepRouteRequired": "请选择准备工序清单",
       "prepRouteNotFound": "所选的准备工序清单不存在或已停用",
-      "regrindLineToolMissing": "订单明细 {number}：未选择要研磨的刀具"
+      "regrindLineToolMissing": "订单明细 {number}：未选择要研磨的刀具",
+      "designFileNotConfirmed": "未确定版本的图纸无法固定到工单"
     },
     "designFileActions": {
       "cannotDelete": "无法删除",
@@ -3292,8 +3306,17 @@
       "memoUpdatedAudit": "更新图纸 v{version} 的备忘",
       "notFound": "未找到该图纸",
       "referencedByRevisionRequest": "无法删除——修订委托将其指定为原图纸",
-      "lockedInUseByWorkOrder": "工单正在使用，无法更改",
-      "lockedRequestDeliverable": "无法删除——这是设计委托的成果物（备忘可以编辑）"
+      "approvalRequestFailed": "无法提交审批申请",
+      "approvedRemaining": "已批准（剩余 {remaining} 人）",
+      "approvedToNextStep": "已批准（进入下一级）",
+      "filesAddedAudit": "向 v{version} 添加了 {count} 个文件",
+      "lockedConfirmed": "已确定的版本无法更改",
+      "lockedPendingApproval": "审批中，无法更改",
+      "notPendingApproval": "该版本不在审批中",
+      "openVersionExists": "该系列已有未确定的版本（v{version}）。请先确定或删除该版本。",
+      "roleAlreadyAttached": "已附有{role}。如需替换，请先移除。",
+      "specUpdatedAudit": "更新了 v{version} 的规格",
+      "versionDeletedAudit": "删除了草稿版本 v{version}"
     },
     "inventoryActions": {
       "exceedsAvailable": "超过可移动数量（可用 {free} —— 预留部分无法移动）",
@@ -3360,7 +3383,6 @@
       "targetProductNotSpecified": "未指定目标产品",
       "invalidOrderingCustomer": "指定的订货客户无效",
       "invalidDesignRequest": "指定的设计委托无效",
-      "selectTheDrawingFile": "请选择图纸文件",
       "isTooLargeMax20mb": "{name} 过大（每个文件最多 20MB）"
     },
     "workflowIssues": {
@@ -3456,6 +3478,60 @@
         "searchPlaceholder": "按盘点编号、据点、存放位置搜索",
         "storageLocation": "存放位置"
       }
+    },
+    "designVersion": {
+      "addFiles": "添加文件",
+      "blueprintSlotHint": "图脑 SXF（.sfc）、DXF、DWG 等。选择 .sfc 文件时会读取标题栏和尺寸并填入规格。",
+      "checkTheSpec": "请检查规格的输入",
+      "confirmCardDesc": "确定后，该版本将用于工单和产品主数据。确定后无法更改。",
+      "confirmCardTitle": "这是待确定的草稿",
+      "confirmModalMessage": "已确定的版本无法更改。请确认规格和文件后再确定。",
+      "confirmModalTitle": "确定 v{version}",
+      "confirmedBy": "已确定",
+      "confirmedToast": "已确定",
+      "deleteVersion": "删除版本",
+      "deleteVersionConfirm": "将删除草稿版本 v{version} 及其文件。此操作无法撤销。",
+      "draftCreated": "已创建草稿版本 v{version}",
+      "filesAdded": "已添加文件",
+      "filesHint": "均为可选。确定前可以随时添加或删除。",
+      "latestConfirmed": "已确定的最新版本",
+      "latestConfirmedVersion": "已确定 v{version}",
+      "modelSlotHint": "STEP、IGES、CIM3D 等。无法在画面中显示的格式仅可下载。",
+      "noConfirmedVersion": "无已确定的版本",
+      "noFiles": "没有文件",
+      "noSpec": "未设置规格",
+      "openVersion": "打开 v{version}",
+      "referenceSlotHint": "零件图、尺寸表等。可以添加任意数量。",
+      "removeFile": "移除文件",
+      "removeFileConfirm": "将从该版本中移除并删除“{filename}”。",
+      "saveDraft": "保存草稿",
+      "spec": "规格",
+      "stageDraft": "创建",
+      "superseded": "已有更新的版本",
+      "sxfApplyFailed": "无法将从图纸读取的值应用到规格",
+      "sxfCheckHint": "保存前请确认读取的值。图纸上未写明的项目不会更改。",
+      "sxfCustomerMatched": "已根据客户名称“{name}”选择订货方",
+      "sxfCustomerNotMatched": "无法将客户名称“{name}”匹配到唯一的订货方。请手动选择订货方。",
+      "sxfDimensions": "外径 φ{diameter} / 全长 {length}",
+      "sxfRead": "已从图纸读取 {count} 个项目",
+      "sxfSheet": "图号 {sheet}",
+      "sxfUnreadable": "无法作为 SXF 读取",
+      "sxfUnreadableHint": "文件仍可附加，但请手动输入规格。只能读取用图脑 RAPID 的“SXF 格式”导出的 .sfc 文件。",
+      "titleBlock": "图纸标题栏",
+      "titleBlockHint": "图纸标题栏中记载的内容。选择图脑 SXF（.sfc）文件时会自动填入。",
+      "versionCount": "共 {count} 个版本",
+      "titleBlockField": {
+        "productName": "品名",
+        "drawingNumber": "图纸编号",
+        "toolNumber": "刀具编号",
+        "material": "材质",
+        "surfaceTreatment": "表面处理",
+        "flutes": "刃数",
+        "helix": "螺旋角",
+        "marking": "刻印",
+        "drawnAt": "绘制日期"
+      },
+      "confirm": "确定"
     }
   },
   "purchase": {
@@ -5775,11 +5851,8 @@
     },
     "products": {
       "specification": "规格",
-      "noSpecificationIsRegistered": "未登记规格",
       "priceListEntry": "价格表条目",
       "thereAreNoPriceListEntries": "该产品没有价格表条目",
-      "checkTheProductTypeSFields": "请确认产品类别的项目",
-      "checkTheExtraFields": "请确认追加项目",
       "theProductWasCreated": "已创建产品",
       "newProduct": "新建产品",
       "formatPrdYyyymmNnnnNumberedAutomatically": "格式：PRD-YYYYMM-NNNN（自动编号）",
@@ -5799,7 +5872,6 @@
       "duplicateTheProduct": "复制产品",
       "duplicatedFrom": "复制来源",
       "theProductCodeIsAssignedAutomatically": "产品编号在保存时自动编排（PRD-YYYYMM-NNNN）",
-      "carriesOverTheSourceSMaterial": "沿用复制来源的材料类别・直径・全长（创建后可编辑）",
       "stepListRoute": "工序列表（路线）",
       "newRoute": "新建路线",
       "noStepListIsRegisteredFor": "该产品未登记工序列表。创建路线后可在创建工单时预填工序构成。",
@@ -5840,7 +5912,11 @@
       "externalProduct": "他社产品",
       "externalProductHint": "为再研磨而接收的其他厂商刀具的品目。不能用于制造工序清单、制造工单以及量产/试制/样品明细（仅限再研磨）。",
       "makerName": "制造商",
-      "externalBadge": "他社"
+      "externalBadge": "他社",
+      "noConfirmedSpec": "尚无已确定的图纸版本。规格（材料类别、尺寸、产品项目）在图纸中登记。",
+      "registerSpecInDrawing": "在图纸中登记规格",
+      "specFromVersion": "来自图纸 v{version}（{series}）的规格",
+      "specLivesInDrawing": "规格（材料类别、尺寸、产品项目）属于图纸版本，因此不会复制。请在图纸中为复制的产品登记图纸。"
     },
     "storageLocations": {
       "editTheStorageLocation": "编辑存放位置",
@@ -6256,8 +6332,6 @@
       "execDependencyCycle": "执行依赖形成了循环（{path}）"
     },
     "productsActions": {
-      "diameterRange": "请输入 {min}〜{max}mm 之间的直径",
-      "lengthRange": "请输入 {min}〜{max}mm 之间的全长",
       "createFailed": "产品创建失败",
       "updateFailed": "产品更新失败",
       "referencedCannotDelete": "此产品被其他数据（价格表、报价单、订单明细、图纸、检查表等）引用，无法删除。请考虑停用。",
@@ -9109,6 +9183,7 @@
       "system": "系统",
       "approval_flow_rules": "条件审批规则",
       "design_files": "图纸",
+      "design_versions": "图纸版本",
       "inspection_template_groups": "检查表模板分组",
       "kiosk_unlock_pins": "退出PIN历史",
       "link_blacklist": "链接黑名单",
@@ -10030,18 +10105,6 @@
       "unit": {
         "label": "单位",
         "summary": "计数单位，默认为「支」。"
-      },
-      "productType": {
-        "label": "产品类别",
-        "summary": "产品的类别。选择类别后，下方会显示该类别所定义的规格项目。"
-      },
-      "materialType": {
-        "label": "材料类别",
-        "summary": "制作该产品所使用的材料类别。"
-      },
-      "dimensions": {
-        "label": "直径 (mm) / 全长 (mm)",
-        "summary": "所需材料的尺寸。以「材料类别 + 直径 + 全长」指定，而非特定材料——只要条件相同的材料均可使用。"
       },
       "keywords": {
         "label": "关键词",

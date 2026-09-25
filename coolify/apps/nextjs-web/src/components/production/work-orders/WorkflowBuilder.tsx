@@ -1119,7 +1119,10 @@ export function WorkflowBuilder({
       return;
     }
     let cancelled = false;
-    getWorkOrderMaterialAssumption(workOrderItemId).then((info) => {
+    getWorkOrderMaterialAssumption(workOrderItemId, {
+      customerBpId: designCustomerBpId,
+      designFileId: form.values.designFileId,
+    }).then((info) => {
       if (cancelled) return;
       setMaterialAssumption(info);
       if (
@@ -1138,7 +1141,12 @@ export function WorkflowBuilder({
     return () => {
       cancelled = true;
     };
-  }, [workOrderItemId, form.values.type]);
+  }, [
+    workOrderItemId,
+    form.values.type,
+    designCustomerBpId,
+    form.values.designFileId,
+  ]);
   useEffect(() => {
     if (!materialItemIdValue) {
       setSelectedMaterialSpec(null);

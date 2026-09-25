@@ -145,6 +145,7 @@ model MaterialType {
 
   itemsByType    Item[]    @relation("ItemMaterialType")
   itemsRequiring Item[]    @relation("ItemRequiresMaterialType")
+  designVersions DesignVersion[] @relation("DesignVersionMaterialType")
   prices         MaterialTypePrice[]
   estimates      Estimate[]
 

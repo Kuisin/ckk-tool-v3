@@ -182,6 +182,11 @@ export interface DesignRequest {
   customerBpId: string | null;
   customerName: string | null;
   files: DesignRequestFile[];
+  /**
+   * この依頼から出来た版（design_versions）。ファイルの無い仕様だけの版も
+   * 含む — 「成果物があるか」はファイルではなく版で見る（completeDesign と同じ）。
+   */
+  versions: { id: string; version: number; status: string }[];
   createdAt: string;
   updatedAt: string;
 }

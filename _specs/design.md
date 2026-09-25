@@ -713,6 +713,10 @@ Stack (gap="md")
 | DesignRequest | COMPLETED | green | 完了 |
 | DesignRequest | REJECTED | red | 差し戻し |
 | DesignRequest | CANCELLED | red | キャンセル |
+| DesignVersion | DRAFT | gray | 下書き |
+| DesignVersion | REQUESTED | yellow | 承認依頼中 |
+| DesignVersion | CONFIRMED | green | 確定 |
+| DesignVersion | REJECTED | red | 差し戻し |
 | StockTake | DRAFT | gray | 下書き |
 | StockTake | COUNTING | blue | 記入中 |
 | StockTake | CONFIRMED | green | 確定 |
@@ -1567,7 +1571,7 @@ Row click navigates to detail page.
 | Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態（承認依頼中バッジ込み） / 発行日 |
 | BillingClosing | 顧客 / 締日 / 実行区分（定期/手動） / 合計金額 / 状態 / 処理日 |
 | DesignRequest | 依頼番号 / 区分 / 製品 / 担当者 / 希望納期 / 状態 / 更新日 |
-| DesignFile（設計図 PD06 — **1 行 = 1 系列**） | 製品 / 受注元 / 最新版 / 役割 / 出どころ / 更新日 |
+| DesignFile（設計図 PD06 — **1 行 = 1 系列**） | 製品 / 受注元 / 最新版（番号 + 状態。下書きなら確定済みの版を併記）/ 役割 / 出どころ / 更新日 |
 | MaterialPurchaseOrder | 発注番号 / 仕入先 / 入荷先拠点 / 合計金額 / 状態 / 発注日 |
 | MaterialReceipt | 素材 / 仕入先 / 入荷拠点 / 数量 / 入荷日 |
 | OutsourceOrder | 外注先 / 工程 / 依頼日 / 入荷予定日 / 入荷日 / 状態 |

@@ -161,6 +161,7 @@ model Item {
   inspectiontemplateitemRefs InspectionTemplate[] @relation("InspectionTemplateItem")
   designrequestitemRefs DesignRequest[] @relation("DesignRequestItem")
   designfileitemRefs DesignFile[] @relation("DesignFileItem")
+  designVersions DesignVersion[] @relation("DesignVersionItem")
   @@unique([yearMonth, seq])
   @@index([itemType, isActive])
   // 再研磨品目の一覧・絞り込み（材料 → 加工箇所 → 刃数 の順に読む）。

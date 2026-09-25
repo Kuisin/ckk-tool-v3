@@ -43,6 +43,10 @@ import { notify, notifyApprovalGroup } from "./notifications";
 
 export type { ApprovalTargetType } from "./approval-targets";
 
+/** uuid を業務キーにする書類（版など）の形の確認 — 不正な形で findUnique すると例外になる。 */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // ─── 履歴 Json（行ワークフローの遷移記録。承認とは別軸で各書類が持つ） ──────
 
 export interface HistoryEntry {
@@ -510,6 +514,15 @@ export async function fetchApprovalDocInfo(
       if (!row) return null;
       return { total_amount: Number(row.totalAmount) };
     }
+    case "design_versions": {
+      if (!UUID_RE.test(targetId)) return null;
+      const row = await prisma.designVersion.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      });
+      // 条件に使う属性は無い（approvalConditionFields も空）。
+      return row ? {} : null;
+    }
   }
 }
 
@@ -771,6 +784,14 @@ async function targetCreatedAt(
       });
       return row?.createdAt ?? null;
     }
+    case "design_versions": {
+      if (!UUID_RE.test(targetId)) return null;
+      const row = await prisma.designVersion.findUnique({
+        where: { id: targetId },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
   }
 }
 
@@ -823,6 +844,21 @@ async function targetDisplayNumber(
             seq: row.acceptanceSeq,
           })
         : targetId;
+    }
+    case "design_versions": {
+      // 版の uuid は人が読む番号ではない — 「製品コード v版番号」にする。
+      if (!UUID_RE.test(targetId)) return targetId;
+      const row = await prisma.designVersion.findUnique({
+        where: { id: targetId },
+        select: {
+          version: true,
+          item: { select: { code: true, name: true } },
+        },
+      });
+      if (!row) return targetId;
+      const product =
+        row.item.code ?? localized(row.item.name as LocalizedText | null);
+      return `${product} v${row.version}`;
     }
     default:
       return targetId;
