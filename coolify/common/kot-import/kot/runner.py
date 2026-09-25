@@ -40,9 +40,10 @@ CREATE TABLE IF NOT EXISTS import_requests (
 # corrections, 申請 approvals), so once a month the whole closing window is re-read.
 CLEANUP_SOURCE = "month-end"
 CLEANUP_TZ = ZoneInfo("Asia/Tokyo")  # "last day of the month" is a Japan calendar day
-# KOT's daily export is requested in windows this long, so one big request doesn't
-# depend on how many days the export screen accepts at once.
-CHUNK_DAYS = 31
+# KOT's daily export caps how long one date range may be, so a long request is split
+# into batches of this many calendar months (start day → same day N months later − 1).
+# 2 months is at most 62 days (e.g. 7/1–8/31).
+BATCH_MONTHS = 2
 
 
 def _conn():
@@ -150,11 +151,21 @@ def _finish_request(req_id, status, rows, message):
         c.close()
 
 
+def _add_months(d: date, months: int) -> date:
+    """Same day `months` later, clamped to that month's last day (1/31 + 1 → 2/28)."""
+    y, m = divmod(d.month - 1 + months, 12)
+    y, m = d.year + y, m + 1
+    last = (date(y + (m == 12), m % 12 + 1, 1) - timedelta(days=1)).day
+    return date(y, m, min(d.day, last))
+
+
 def _windows(start: date, end: date):
+    """Split [start, end] into consecutive batches of BATCH_MONTHS calendar months."""
     cur = start
     while cur <= end:
-        yield cur, min(cur + timedelta(days=CHUNK_DAYS - 1), end)
-        cur += timedelta(days=CHUNK_DAYS)
+        nxt = _add_months(cur, BATCH_MONTHS)
+        yield cur, min(nxt - timedelta(days=1), end)
+        cur = nxt
 
 
 def run_pending() -> int:

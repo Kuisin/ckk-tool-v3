@@ -685,7 +685,7 @@ def update_kot_settings(kot_id: str = Form(""), kot_pw: str = Form("")):
 
 
 # Longest range one force-import may ask for. KOT keeps years of history, but a run
-# logs in and downloads once per 31-day window, so keep an accidental "2024→today"
+# logs in and downloads once per 2-month batch (KOT caps one export range), so keep an accidental "2024→today"
 # from queueing a very long browser session.
 KOT_FORCE_MAX_DAYS = 366
 _KOT_REQ_DDL = """
