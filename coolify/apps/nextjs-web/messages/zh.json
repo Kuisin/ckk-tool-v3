@@ -3530,7 +3530,8 @@
         "helix": "螺旋角",
         "marking": "刻印",
         "drawnAt": "绘制日期"
-      }
+      },
+      "confirm": "确定"
     }
   },
   "purchase": {

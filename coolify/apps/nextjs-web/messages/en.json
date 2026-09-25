@@ -3530,7 +3530,8 @@
         "helix": "Helix angle",
         "marking": "Marking",
         "drawnAt": "Drawn date"
-      }
+      },
+      "confirm": "Confirm"
     }
   },
   "purchase": {

@@ -178,7 +178,7 @@ export function DesignVersionDetail({
             loading={isPending}
             onClick={() => setConfirmOpen(true)}
           >
-            {tr("common.confirmed")}
+            {tr("production.designVersion.confirm")}
           </PrimaryButton>
         }
         description={tr("production.designVersion.confirmCardDesc")}
@@ -401,7 +401,7 @@ export function DesignVersionDetail({
 
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel={tr("common.confirmed")}
+        confirmLabel={tr("production.designVersion.confirm")}
         loading={isPending}
         message={tr("production.designVersion.confirmModalMessage")}
         onClose={() => setConfirmOpen(false)}

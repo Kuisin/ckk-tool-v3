@@ -3530,7 +3530,8 @@
         "helix": "ネジレ",
         "marking": "刻印",
         "drawnAt": "作成年月日"
-      }
+      },
+      "confirm": "確定"
     }
   },
   "purchase": {
