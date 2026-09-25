@@ -205,6 +205,10 @@ model DesignVersion {
   /// 属性で、こちらは図面そのものの記載 — 片方に寄せると、SY03 に項目が無い
   /// 環境で図面から読んだ値の行き場が無くなる。
   titleBlock      Json?               @map("title_block")
+  /// 図面から読み取った値（lib/design-extract-core.ts）。{ source, values, overridden }。
+  /// 読み取った欄は画面で読み取り専用になり、overridden に入れた欄だけ手入力できる。
+  /// 手入力にしても values は参照として残す（図面とどこが違うかを後から見られる）。
+  extract         Json?
 
   requestedAt     DateTime?           @map("requested_at") @db.Timestamptz(6)
   requestedBy     String?             @map("requested_by") @db.Uuid

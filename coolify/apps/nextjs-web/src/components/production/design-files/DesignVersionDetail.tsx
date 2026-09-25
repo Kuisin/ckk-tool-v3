@@ -570,6 +570,7 @@ function SpecEditor({
     <Stack gap="md">
       <DesignSpecFields
         errors={errors}
+        flat
         itemDefs={itemDefs}
         onChange={setSpec}
         productTypes={productTypes}
@@ -635,7 +636,8 @@ function AddFilesModal({
         });
         return;
       }
-      // 図面から読めたものを仕様へ反映する（読めた欄だけ上書き）。
+      // 図面から読めたものを仕様へ反映する。読み取った欄は読み取り専用になり、
+      // 手入力にしていた欄はそのまま（applySxfReading）。
       if (reading && reading !== "unreadable") {
         const base = initialDesignSpecState(v, productTypes, itemDefs);
         const { state } = applySxfReading(
@@ -643,6 +645,7 @@ function AddFilesModal({
           reading,
           productTypes,
           itemDefs,
+          files.blueprint?.name ?? null,
         );
         const saved = await updateDesignVersion(
           v.id,

@@ -133,6 +133,9 @@ export async function createDraftVersionInTx(
       lengthMm: input.spec.lengthMm,
       spec: input.spec.spec ?? undefined,
       titleBlock: input.spec.titleBlock ?? undefined,
+      extract: (input.spec.extract ?? undefined) as
+        | Prisma.InputJsonValue
+        | undefined,
       history: [
         { action: "CREATE", user: input.actor, at: new Date().toISOString() },
       ] as Prisma.InputJsonValue,

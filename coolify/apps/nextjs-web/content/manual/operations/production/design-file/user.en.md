@@ -105,6 +105,10 @@ Choose a **.sfc file exported from Zunou RAPID in "SXF format"** as the 2D drawi
 
 **Always check the values read before saving.** Items not written on the drawing are left unchanged. The material type cannot be decided from the drawing's "material" (such as ultra-fine-grain carbide), so choose it by hand.
 
+**Fields read from the drawing are read-only** (they show "**Drawing**" above the field). To use a different value, press "**Edit manually**" on that field and overwrite it. **The drawing value stays shown above the field as "Drawing: …"**, so you can see later where it differs from the drawing. "**Revert to drawing value**" makes the field read-only again. The version screen also marks each value as "Drawing" or "Manual".
+
+If you don't want to use the values read, press "**Detach drawing values**" in the blue box at the top; every field becomes editable again (the current values are kept).
+
 > 💡 Only .sfc files exported from Zunou RAPID in "SXF format" can be read. DXF files and images are not read (they can still be attached as files). On drawings whose title-block frame differs from the company's standard spec drawing, some items will not be picked up.
 
 ### Supported files

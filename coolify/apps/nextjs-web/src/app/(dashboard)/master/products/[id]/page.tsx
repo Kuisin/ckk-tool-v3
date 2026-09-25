@@ -127,6 +127,7 @@ export default async function MasterProductsDetailPage({
           lengthMm: spec.lengthMm,
           spec: spec.spec,
           titleBlock: spec.titleBlock,
+          extract: spec.extract,
         }
       : null,
     createdAt: r.createdAt.toISOString(),
