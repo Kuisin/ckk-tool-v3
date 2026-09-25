@@ -9,7 +9,7 @@
  * 履歴タブは audit_logs 導入後に接続する（現状は空表示）。
  */
 
-import { Badge, Stack, Table, Tabs, Text } from "@mantine/core";
+import { Anchor, Badge, Group, Stack, Table, Tabs, Text } from "@mantine/core";
 import {
   IconCircleMinus,
   IconCopy,
@@ -21,6 +21,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { KeywordBadges } from "@/components/master/MasterKeywordsField";
+import {
+  DesignSpecView,
+  type DesignSpecViewData,
+} from "@/components/production/design-files/DesignSpecView";
 import type { ProductDesignFile } from "@/components/production/design-files/model";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
 import type { DesignRequestLink } from "@/components/sales/design-requests/model";
@@ -39,7 +43,7 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { orderTypeLabel } from "@/lib/enum-labels";
 import type { RouteView } from "@/lib/product-routes-core";
-import { isReservedSpecKey } from "@/lib/product-types";
+import type { ProductItemDef, ResolvedProductType } from "@/lib/product-types";
 import {
   type CustomerProductCodeRow,
   CustomerProductCodesPanel,
@@ -82,9 +86,18 @@ export interface ProductDetailData {
   makerName: string | null;
   isActive: boolean;
   notes: string;
-  spec: { key: string; value: string }[];
-  /** 製品種別（SY04）名。spec の予約キー `_product_type` から解決。 */
-  productTypeName?: string | null;
+  /**
+   * 仕様（設計図の確定済みの版から — lib/design-spec.ts resolveItemSpec）。
+   * 製品マスタでは直せない。null = まだ確定した版が無い。
+   */
+  designSpec:
+    | (DesignSpecViewData & {
+        versionId: string;
+        version: number;
+        /** 受注元の系列から来ていればその名前。null = 汎用。 */
+        customerName: string | null;
+      })
+    | null;
   createdAt: string;
   updatedAt: string;
   priceListEntries: {
@@ -105,8 +118,14 @@ export function ProductDetail({
   designRequests = [],
   customerCodes = [],
   canManage = false,
+  productTypes = [],
+  itemDefs = [],
 }: {
   record: ProductDetailData;
+  /** 製品種別 (SY04) — 仕様の表示に使う。 */
+  productTypes?: ResolvedProductType[];
+  /** 製品項目 (SY03) — 仕様の表示に使う。 */
+  itemDefs?: ProductItemDef[];
   auditEntries: AuditEntry[];
   /** 顧客専用の製品コード（顧客品番タブ）。 */
   customerCodes?: CustomerProductCodeRow[];
@@ -271,37 +290,44 @@ export function ProductDetail({
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
-            {record.productTypeName && (
-              <FieldValue
-                label={tr("common.productTypes")}
-                value={record.productTypeName}
-              />
-            )}
+            {/* 仕様は設計図の版が持つ（ここでは読むだけ）。どの版から来たかを
+                出し、直すときの行き先（設計図）へつなぐ。 */}
             <Stack gap="xs">
-              <Text fw={600} size="sm">
-                {tr("master.products.specification")}
-              </Text>
-              {(() => {
-                const specRows = record.spec.filter(
-                  (s) => !isReservedSpecKey(s.key),
-                );
-                return specRows.length === 0 ? (
-                  <Text c="dimmed" size="sm">
-                    {tr("master.products.noSpecificationIsRegistered")}
-                  </Text>
+              <Group gap="xs" justify="space-between" wrap="wrap">
+                <Text fw={600} size="sm">
+                  {tr("master.products.specification")}
+                </Text>
+                {record.designSpec ? (
+                  <Anchor
+                    href={`/production/design-files/versions/${record.designSpec.versionId}`}
+                    size="xs"
+                  >
+                    {tr("master.products.specFromVersion", {
+                      version: record.designSpec.version,
+                      series:
+                        record.designSpec.customerName ?? tr("common.generic"),
+                    })}
+                  </Anchor>
                 ) : (
-                  <Table striped withTableBorder>
-                    <Table.Tbody>
-                      {specRows.map((s) => (
-                        <Table.Tr key={s.key}>
-                          <Table.Th w={isMobile ? 120 : 200}>{s.key}</Table.Th>
-                          <Table.Td>{s.value}</Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                );
-              })()}
+                  <Anchor
+                    href={`/production/design-files/new?item=${record.id}`}
+                    size="xs"
+                  >
+                    {tr("master.products.registerSpecInDrawing")}
+                  </Anchor>
+                )}
+              </Group>
+              {record.designSpec ? (
+                <DesignSpecView
+                  data={record.designSpec}
+                  itemDefs={itemDefs}
+                  productTypes={productTypes}
+                />
+              ) : (
+                <Text c="dimmed" size="sm">
+                  {tr("master.products.noConfirmedSpec")}
+                </Text>
+              )}
             </Stack>
             <FieldValue
               label={tr("common.keywords")}

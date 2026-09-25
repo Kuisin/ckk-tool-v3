@@ -98,6 +98,8 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   approval_flows: "identity",
   link_blacklist: "identity",
   design_files: "uuidOnly",
+  // 設計図の版 — record_id は design_versions.id（版には業務キーが無い）。
+  design_versions: "uuidOnly",
   // bug-report-actions.ts の唯一の直書き。`bug-report:<uuid>` はそれ自体が
   // 一意で不変なので identity で足りる。
   system: "identity",

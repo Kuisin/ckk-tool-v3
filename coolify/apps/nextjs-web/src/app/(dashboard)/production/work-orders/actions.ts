@@ -41,6 +41,7 @@ import {
   type DesignFileRole,
   resolveSeriesCustomer,
 } from "@/lib/design-files-core";
+import { resolveItemSpec } from "@/lib/design-spec";
 import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { movementOpener } from "@/lib/inventory";
@@ -424,11 +425,15 @@ async function validateDesignFile(
   if (!designFileId) return null;
   const df = await prisma.designFile.findUnique({
     where: { id: designFileId },
-    select: { itemId: true },
+    select: { itemId: true, designVersion: { select: { status: true } } },
   });
   if (!df) return tr("production.workOrderActions.designFileNotFound");
   if (df.itemId !== itemId) {
     return tr("production.workOrderActions.designFileWrongProduct");
+  }
+  // 確定していない版（下書き・承認依頼中）の図面では作らせない。
+  if (df.designVersion.status !== "CONFIRMED") {
+    return tr("production.workOrderActions.designFileNotConfirmed");
   }
   return null;
 }
@@ -2084,60 +2089,49 @@ export interface WorkOrderMaterialAssumption {
 }
 
 /**
- * 製品詳細から使用素材をプリフィルするための想定構成（材種 × 直径）。
+ * 使用素材をプリフィルするための想定構成（材種 × 直径）。
  * 製品は「材種 + 直径 + 全長」で素材を指定する（cut-to-length のため特定の
  * materials 行には紐付けない — _specs/tables.md）ので、一致する素材の中から
  * 全長も一致するものを優先して 1 件だけ候補にする。
  *
- * 品目統合 — 製品（`itemId`）も候補の素材も **items**。返す id も items.id。
+ * 材種・寸法は**設計図の確定済みの版**が持つ（製品マスタから移した）。どの版を
+ * 読むかは lib/design-spec.ts resolveItemSpec が決める — 指示書が図面を固定して
+ * いればその版、無ければ受注元の系列 → 汎用 → 最後に確定した版。
  *
- * ★ 製品側は **`requires*`** を読む（その製品が**要求する**材種・寸法）。
- *   品目の `materialTypeId` / `diameterMm` / `lengthMm` は**素材の実寸**で、
- *   同じ名前の別物（items.prisma 冒頭の注意）— 取り違えても型は通る。
+ * 品目統合 — 製品（`itemId`）も候補の素材も **items**。返す id も items.id。
  */
 export async function getWorkOrderMaterialAssumption(
   itemId: number,
+  opts: { customerBpId?: string | null; designFileId?: string | null } = {},
 ): Promise<WorkOrderMaterialAssumption | null> {
   if (!(await checkPermission("work_order", "READ")).ok) return null;
   if (!Number.isInteger(itemId) || itemId <= 0) return null;
-  const product = await prisma.item.findFirst({
-    where: { id: itemId, itemType: "PRODUCT" },
-    select: {
-      requiresMaterialTypeId: true,
-      requiresDiameterMm: true,
-      requiresLengthMm: true,
-      requiresMaterialType: { select: { name: true } },
-    },
+  const spec = await resolveItemSpec(itemId, {
+    customerBpId: opts.customerBpId ?? null,
+    designFileId: opts.designFileId ?? null,
   });
-  if (!product || product.requiresMaterialTypeId == null) return null;
+  if (!spec || spec.materialTypeId == null) return null;
   const candidates = await prisma.item.findMany({
     where: {
       itemType: "MATERIAL",
       isActive: true,
-      materialTypeId: product.requiresMaterialTypeId,
-      ...(product.requiresDiameterMm != null
-        ? { diameterMm: product.requiresDiameterMm }
-        : {}),
+      materialTypeId: spec.materialTypeId,
+      ...(spec.diameterMm != null ? { diameterMm: spec.diameterMm } : {}),
     },
     orderBy: { code: "asc" },
     take: 20,
   });
   const exact =
-    product.requiresLengthMm != null
-      ? candidates.find((m) =>
-          m.lengthMm?.equals(product.requiresLengthMm as Prisma.Decimal),
+    spec.lengthMm != null
+      ? candidates.find(
+          (m) => m.lengthMm != null && Number(m.lengthMm) === spec.lengthMm,
         )
       : undefined;
   const suggested = exact ?? candidates[0] ?? null;
   return {
-    materialTypeId: product.requiresMaterialTypeId,
-    materialTypeName: product.requiresMaterialType
-      ? localized(product.requiresMaterialType.name as LocalizedText | null)
-      : null,
-    diameterMm:
-      product.requiresDiameterMm != null
-        ? Number(product.requiresDiameterMm)
-        : null,
+    materialTypeId: spec.materialTypeId,
+    materialTypeName: spec.materialTypeName,
+    diameterMm: spec.diameterMm,
     suggestedItemId: suggested?.id ?? null,
     suggestedMaterialLabel: suggested
       ? `${suggested.code}（${localized(suggested.name as LocalizedText | null)}）`
@@ -2572,7 +2566,11 @@ export async function setWorkOrderDesignFile(
       // 呼び出しは画面からしか来ないとは限らない）。
       const df = await prisma.designFile.findUnique({
         where: { id: designFileId },
-        select: { itemId: true, version: true },
+        select: {
+          itemId: true,
+          version: true,
+          designVersion: { select: { status: true } },
+        },
       });
       if (!df)
         return actionError(
@@ -2581,6 +2579,11 @@ export async function setWorkOrderDesignFile(
       if (df.itemId !== wo.productItemId) {
         return actionError(
           tr("production.workOrderActions.designFileWrongProduct"),
+        );
+      }
+      if (df.designVersion.status !== "CONFIRMED") {
+        return actionError(
+          tr("production.workOrderActions.designFileNotConfirmed"),
         );
       }
     }
@@ -2636,7 +2639,12 @@ export async function getDesignVersionsForProduct(
     return { options: [], autoLabel: null };
   }
   const rows = await prisma.designFile.findMany({
-    where: { itemId, role: { in: ["PREVIEW", "BLUEPRINT"] } },
+    // 固定できるのは確定した版の図面だけ（下書きは設計図の画面にしか出さない）。
+    where: {
+      itemId,
+      role: { in: ["PREVIEW", "BLUEPRINT"] },
+      designVersion: { status: "CONFIRMED" },
+    },
     select: {
       id: true,
       version: true,

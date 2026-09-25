@@ -153,6 +153,13 @@ export const STATUS_MAPS = {
     REJECTED: "red",
     CANCELLED: "red",
   },
+  // 設計図の版（design_versions）。確定前（下書き・差し戻し）だけ編集できる。
+  DesignVersion: {
+    DRAFT: "gray",
+    REQUESTED: "yellow",
+    CONFIRMED: "green",
+    REJECTED: "red",
+  },
   BillingClosing: {
     PENDING: "gray",
     PROCESSED: "blue",

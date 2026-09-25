@@ -20,6 +20,7 @@ import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -119,25 +120,41 @@ export function DesignFileTable({
     {
       key: "latestVersion",
       header: tr("production.designFiles.latestVersion"),
-      width: 110,
+      width: 190,
       sortable: true,
+      // 最新の版（下書きを含む）と、その状態。確定済みの最新版が別にあれば
+      // 並べて出す — 指示書・製品マスタが読むのは確定済みのほう。
       render: (r) => (
-        <Text className="tabular-nums" size="sm">
-          v{r.latestVersion}
-          {r.versionCount > 1 && (
-            <Text c="dimmed" component="span" size="xs">
-              {" "}
-              （全 {r.versionCount} 版）
+        <Stack gap={2}>
+          <Group gap={6} wrap="nowrap">
+            <Text className="tabular-nums" size="sm">
+              v{r.latestVersion}
+            </Text>
+            <StatusBadge entity="DesignVersion" status={r.latestStatus} />
+          </Group>
+          {r.latestStatus !== "CONFIRMED" && (
+            <Text c="dimmed" size="xs">
+              {r.confirmedVersion != null
+                ? tr("production.designVersion.latestConfirmedVersion", {
+                    version: r.confirmedVersion,
+                  })
+                : tr("production.designVersion.noConfirmedVersion")}
             </Text>
           )}
-        </Text>
+          {r.versionCount > 1 && (
+            <Text c="dimmed" size="xs">
+              {tr("production.designVersion.versionCount", {
+                count: r.versionCount,
+              })}
+            </Text>
+          )}
+        </Stack>
       ),
     },
     {
       key: "latestRoles",
       header: tr("common.role2"),
-      // 最新版に何が揃っているか。図面データが無い系列は作れないはずだが、
-      // 手で入れたデータや将来の変更で欠けうるので、揃っているものを出す。
+      // 最新版に何が揃っているか（どれも任意なので、揃っているものだけを出す）。
       render: (r) => (
         <Group gap={4}>
           {r.latestRoles.map((role) => (
@@ -159,7 +176,7 @@ export function DesignFileTable({
       sortValue: (r) => (r.hasRequestSourced ? 1 : 0),
       render: (r) => (
         <Badge color={r.hasRequestSourced ? "blue" : "gray"} variant="light">
-          {r.hasRequestSourced ? "依頼" : tr("common.manual")}
+          {r.hasRequestSourced ? tr("common.request") : tr("common.manual")}
         </Badge>
       ),
     },

@@ -934,11 +934,12 @@ export async function completeDesign(number: string): Promise<ActionResult> {
     if (!designRequestInScope(authz.access, request, authz.userId))
       return actionError(tr("common.scopeDenied"));
 
-    // 成果物（この依頼から出来た版）。1 版に複数ファイルが載るので、
-    // 版番号の種類数で「何版ぶんか」を数える。
-    const produced = await prisma.designFile.findMany({
+    // 成果物（この依頼から出来た版）。版は design_versions の行 — ファイルの
+    // 無い仕様だけの版もあるので、ファイルではなく版を数える。確定前の版でも
+    // 成果物として数える（確定・承認は設計図の側の手続きで、依頼の完了とは別）。
+    const produced = await prisma.designVersion.findMany({
       where: { designRequestId: request.id },
-      select: { version: true, role: true },
+      select: { version: true },
     });
     if (produced.length === 0) {
       return actionError(

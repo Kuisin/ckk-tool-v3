@@ -1,16 +1,19 @@
 /**
- * design-files.ts — 設計図の版（app.design_files）の読み書き。server-only.
+ * design-files.ts — 設計図の版（app.design_versions + design_files）の書き込み。server-only.
  *
  * 版は **(製品 × 受注元)** ごとの連番で、1 版 =
- *   プレビュー 0..1 + 図面データ 1 + 参考資料 0..N
- * の 1 まとまり。判定規則そのものは lib/design-files-core.ts（純関数）が持ち、
- * ここは DB と storage をつなぐだけ。
+ *   2D 原図 0..1 + 3D 原図 0..1 + プレビュー 0..1 + 参考資料 0..N + 仕様
+ * の 1 まとまり（どれも任意 — 仕様だけの版もある）。判定規則そのものは
+ * lib/design-files-core.ts（純関数）が持ち、ここは DB と storage をつなぐだけ。
  *
- * **版を作る口は 2 つある。** 設計依頼の完了（completeDesign）と、ここの
- * `createDesignVersion`（製品マスタから手で足す）。番号の採り方と is_latest の
- * 付け替えは**この 1 関数に集約**してあり、completeDesign も同じ関数を通る —
- * 2 箇所で数えると、片方だけ直したときに版が飛んだり is_latest が 2 行立ったり
- * するのが避けられない。
+ * 版の一生は書類と同じ **下書き → (承認) → 確定**:
+ *   - 作った時点で番号を採り、下書き（DRAFT）として置く。ファイルの is_latest は
+ *     立てない — 指示書・製品マスタ・サムネイルが下書きの図面を拾わないように
+ *   - 確定前は仕様もファイルも直せる
+ *   - 確定で系列の is_latest がこの版へ移る（confirmVersionInTx が唯一の持ち主）
+ *
+ * **番号を採る口・is_latest を動かす口はこのファイルにしか無い。** 2 箇所で
+ * 数えると、片方だけ直したときに版が飛んだり is_latest が 2 版に立ったりする。
  */
 
 import "server-only";
@@ -18,13 +21,15 @@ import "server-only";
 import { getTranslations } from "next-intl/server";
 import { validateFile } from "@/lib/attachments";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
-import { prisma } from "@/lib/db";
+import { type Prisma, prisma } from "@/lib/db";
 import {
-  type DesignFileLike,
   type DesignFileRole,
+  type DesignVersionStatus,
+  isVersionEditable,
   nextDesignVersion,
   sameSeries,
 } from "@/lib/design-files-core";
+import type { VersionSpecColumns } from "@/lib/design-spec";
 import { systematicFileName } from "@/lib/file-naming";
 import {
   type ActionResult,
@@ -34,142 +39,204 @@ import {
 } from "@/lib/server-action";
 import { deleteObject, putObject } from "@/lib/storage";
 
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
 /** 1 版に載せるファイル 1 枚（すでに files 行になっているもの）。 */
 export interface VersionFileInput {
   fileId: string;
   role: DesignFileRole;
-  /**
-   * そのファイルだけの説明（参考資料の「何の図か」など）。
-   * **枚数が増えるのは参考資料だけ**なので、実際に使うのはほぼそこ。
-   * 版全体のメモ（CreateVersionInput.notes）とは別物で、指定があれば
-   * こちらが優先される。
-   */
+  /** そのファイルだけの説明（参考資料の「何の図か」など）。 */
   notes?: string | null;
 }
 
-export interface CreateVersionInput {
-  /** 対象製品（品目, items.id）。 */
-  itemId: number;
-  /** null = 汎用。 */
-  customerBpId: string | null;
-  /** 設計依頼から作るときはその id。手動なら null。 */
-  designRequestId: string | null;
-  files: VersionFileInput[];
-  notes?: string | null;
-  actor: string | null;
+/** アップロードされた 1 枚。 */
+export interface UploadedFile {
+  name: string;
+  type: string;
+  bytes: ArrayBuffer;
+  /** その 1 枚の説明（参考資料の何の図か）。 */
+  note?: string | null;
 }
 
-/**
- * 版の採番で使う advisory lock の名前空間。他の用途と衝突しないための定数。
- */
+/** 役割ごとのアップロード。原図・プレビューは各 1 枚まで、参考資料は何枚でも。 */
+export interface VersionUploads {
+  blueprint?: UploadedFile | null;
+  model?: UploadedFile | null;
+  preview?: UploadedFile | null;
+  references?: UploadedFile[];
+}
+
+/** 版の採番で使う advisory lock の名前空間。他の用途と衝突しないための定数。 */
 const VERSION_LOCK_NS = 0x0de5_1;
 
-/**
- * 版を 1 つ作る（採番 + is_latest の付け替え + 行作成）。
- *
- * **必ずトランザクションの中で呼ぶこと。** 採番は「読んで + 1 して書く」ので、
- * 呼び出し側の tx を受け取る形にして、版の作成が常に他の更新と同じ
- * トランザクションに入るようにしている。
- *
- * ⚠️ **トランザクションだけでは足りない。** PostgreSQL の既定は READ COMMITTED
- * なので、同じ系列に対して同時に 2 本走ると**両方が同じ max を読んで同じ番号を
- * 書く**（v2 が 2 つでき、is_latest も 2 行立つ）。採番テーブルのように
- * 1 文の upsert に畳めない（読んだ結果で更新対象が変わる）ため、系列ごとの
- * advisory lock で直列化する。トランザクション終了時に自動で解放される。
- *
- * 採番テーブル（numbering_sequences）を使わないのは、版番号が「系列ごとの
- * 連番」で、系列が (製品 × 受注元) の組で無数に増えるため — キーを 1 行ずつ
- * 作る形に馴染まない。
- */
-export interface CreateVersionResult {
-  version: number;
-  /**
-   * この版の BLUEPRINT 行の uuid（監査ログの安定キー用 — 1.5 で
-   * `String(productId)` を渡していたバグを直す）。図面データが 1 枚も
-   * 無い呼び出しでは代わりに作成した最初の行の id、行が 1 つも無ければ
-   * null（起こらないはずだが、監査の解決は null に落ちるだけで安全）。
-   */
-  blueprintId: string | null;
-}
-
-export async function createVersionInTx(
-  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
-  input: CreateVersionInput,
-): Promise<CreateVersionResult> {
+async function lockSeries(tx: Tx, itemId: number, customerBpId: string | null) {
   await tx.$executeRaw`
     SELECT pg_advisory_xact_lock(
       ${VERSION_LOCK_NS}::int,
-      hashtext(${`${input.itemId}:${input.customerBpId ?? ""}`})::int
+      hashtext(${`${itemId}:${customerBpId ?? ""}`})::int
     )`;
+}
 
-  // 系列（製品 × 受注元）の中だけを見て次の番号を決める。
-  const existing = await tx.designFile.findMany({
+/** 同じ系列の確定前の版（あれば 1 つ）。 */
+export async function findOpenVersion(
+  client: Tx | typeof prisma,
+  itemId: number,
+  customerBpId: string | null,
+): Promise<{ id: string; version: number } | null> {
+  return client.designVersion.findFirst({
+    where: { itemId, customerBpId, status: { not: "CONFIRMED" } },
+    select: { id: true, version: true },
+  });
+}
+
+/**
+ * 下書きの版を 1 つ作る（採番 + 行作成）。**必ずトランザクションの中で呼ぶ。**
+ *
+ * ⚠️ トランザクションだけでは足りない。PostgreSQL の既定は READ COMMITTED
+ * なので、同じ系列に同時に 2 本走ると両方が同じ max を読む。系列ごとの
+ * advisory lock で直列化する（トランザクション終了時に自動で解放）。
+ * 系列ごとに確定前の版は 1 つだけ（DB の部分 unique index が最後の砦）—
+ * 既にあれば作らずに null を返し、呼び出し側がその版へ案内する。
+ */
+export async function createDraftVersionInTx(
+  tx: Tx,
+  input: {
+    itemId: number;
+    customerBpId: string | null;
+    designRequestId: string | null;
+    spec: VersionSpecColumns;
+    actor: string | null;
+  },
+): Promise<
+  | { ok: true; id: string; version: number }
+  | { ok: false; openVersion: { id: string; version: number } }
+> {
+  await lockSeries(tx, input.itemId, input.customerBpId);
+  const open = await findOpenVersion(tx, input.itemId, input.customerBpId);
+  if (open) return { ok: false, openVersion: open };
+
+  const existing = await tx.designVersion.findMany({
     where: { itemId: input.itemId },
-    select: {
-      id: true,
-      version: true,
-      isLatest: true,
-      role: true,
-      customerBpId: true,
-      designRequestId: true,
+    select: { customerBpId: true, version: true },
+  });
+  const version = nextDesignVersion(existing, input.customerBpId);
+  const created = await tx.designVersion.create({
+    data: {
+      itemId: input.itemId,
+      customerBpId: input.customerBpId,
+      version,
+      status: "DRAFT",
+      designRequestId: input.designRequestId,
+      notes: input.spec.notes,
+      materialTypeId: input.spec.materialTypeId,
+      diameterMm: input.spec.diameterMm,
+      lengthMm: input.spec.lengthMm,
+      spec: input.spec.spec ?? undefined,
+      titleBlock: input.spec.titleBlock ?? undefined,
+      history: [
+        { action: "CREATE", user: input.actor, at: new Date().toISOString() },
+      ] as Prisma.InputJsonValue,
+      createdBy: input.actor,
+    },
+    select: { id: true },
+  });
+  return { ok: true, id: created.id, version };
+}
+
+/** 版にファイルを載せる（下書きのファイルは is_latest を立てない）。 */
+export async function attachFilesInTx(
+  tx: Tx,
+  version: {
+    id: string;
+    itemId: number;
+    customerBpId: string | null;
+    version: number;
+    designRequestId: string | null;
+    status: DesignVersionStatus;
+  },
+  files: VersionFileInput[],
+  actor: string | null,
+): Promise<void> {
+  if (files.length === 0) return;
+  await tx.designFile.createMany({
+    data: files.map((f) => ({
+      designVersionId: version.id,
+      designRequestId: version.designRequestId,
+      itemId: version.itemId,
+      customerBpId: version.customerBpId,
+      fileId: f.fileId,
+      version: version.version,
+      isLatest: version.status === "CONFIRMED",
+      role: f.role,
+      notes: f.notes?.trim() || null,
+      createdBy: actor,
+    })),
+  });
+}
+
+/**
+ * 版を確定する。系列の is_latest をこの版のファイルへ移す（他の系列には触らない
+ * — 顧客 A の改訂で顧客 B の最新図面が消えては困る）。
+ *
+ * 条件付き更新で「確定前 → 確定」を 1 回だけ成立させる。同時に 2 人が押しても
+ * 片方は count 0 で止まる。
+ */
+export async function confirmVersionInTx(
+  tx: Tx,
+  versionId: string,
+  actor: string | null,
+  history: Prisma.InputJsonValue,
+): Promise<boolean> {
+  const v = await tx.designVersion.findUnique({
+    where: { id: versionId },
+    select: { itemId: true, customerBpId: true },
+  });
+  if (!v) return false;
+  await lockSeries(tx, v.itemId, v.customerBpId);
+  const res = await tx.designVersion.updateMany({
+    where: { id: versionId, status: { not: "CONFIRMED" } },
+    data: {
+      status: "CONFIRMED",
+      confirmedAt: new Date(),
+      confirmedBy: actor,
+      history,
     },
   });
-  const version = nextDesignVersion(
-    existing as DesignFileLike[],
-    input.customerBpId,
-  );
+  if (res.count !== 1) return false;
 
-  // 同じ系列の is_latest だけを下ろす。**他の系列には触らない** —
-  // 顧客 A の改訂で顧客 B の最新図面が消えては困る。
-  const staleIds = existing
-    .filter((f) => f.isLatest && sameSeries(f.customerBpId, input.customerBpId))
+  const seriesFiles = await tx.designFile.findMany({
+    where: { itemId: v.itemId, isLatest: true },
+    select: { id: true, customerBpId: true },
+  });
+  const stale = seriesFiles
+    .filter((f) => sameSeries(f.customerBpId, v.customerBpId))
     .map((f) => f.id);
-  if (staleIds.length > 0) {
+  if (stale.length > 0) {
     await tx.designFile.updateMany({
-      where: { id: { in: staleIds } },
+      where: { id: { in: stale } },
       data: { isLatest: false },
     });
   }
-
-  await tx.designFile.createMany({
-    data: input.files.map((f) => ({
-      designRequestId: input.designRequestId,
-      itemId: input.itemId,
-      customerBpId: input.customerBpId,
-      fileId: f.fileId,
-      version,
-      isLatest: true,
-      role: f.role,
-      notes: f.notes?.trim() || input.notes?.trim() || null,
-      createdBy: input.actor,
-    })),
+  await tx.designFile.updateMany({
+    where: { designVersionId: versionId },
+    data: { isLatest: true },
   });
-
-  // createMany は作成した行を返さないので、監査キー用に 1 回だけ引き直す。
-  // version はこの呼び出しの中で（advisory lock 下で）新規採番したばかりで
-  // この系列に一意なので、created は必ずこの呼び出しが作った行だけになる。
-  const created = await tx.designFile.findMany({
-    where: {
-      itemId: input.itemId,
-      customerBpId: input.customerBpId,
-      version,
-    },
-    select: { id: true, role: true },
+  // 製品の仕様（外部 API・一覧が読む値）が変わりうるので、製品の更新日時を
+  // 進める。/api/v1/products の差分同期は items.updated_at で拾う。
+  await tx.item.update({
+    where: { id: v.itemId },
+    data: { updatedAt: new Date() },
   });
-  const blueprintId =
-    created.find((f) => f.role === "BLUEPRINT")?.id ?? created[0]?.id ?? null;
-
-  return { version, blueprintId };
+  return true;
 }
 
 /**
  * アップロード 1 枚 → files 行。失敗したら storage も片付ける。
- *
  * ストレージキー・ファイル名の接頭辞は品目 id ベース。
  */
 async function storeOne(
   itemId: number,
-  file: { name: string; type: string; bytes: ArrayBuffer },
+  file: UploadedFile,
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<
   | { ok: true; fileId: string; storageKey: string }
@@ -206,39 +273,82 @@ async function storeOne(
   }
 }
 
-export interface UploadVersionInput {
+type Stored = {
+  fileId: string;
+  storageKey: string;
+  role: DesignFileRole;
+  note?: string | null;
+};
+
+/**
+ * 全部を storage + files に置く。1 枚でも失敗したら、それまでに置いたものを
+ * 消してから諦める（孤児を残さない）。
+ */
+async function storeUploads(
+  itemId: number,
+  uploads: VersionUploads,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Promise<
+  | { ok: true; stored: Stored[]; rollback: () => Promise<void> }
+  | { ok: false; error: string }
+> {
+  const stored: Stored[] = [];
+  const rollback = async () => {
+    for (const s of stored) {
+      await deleteObject(s.storageKey);
+      await prisma.file.delete({ where: { id: s.fileId } }).catch(() => {});
+    }
+  };
+  const queue: { f: UploadedFile; role: DesignFileRole }[] = [
+    ...(uploads.preview
+      ? [{ f: uploads.preview, role: "PREVIEW" as const }]
+      : []),
+    ...(uploads.blueprint
+      ? [{ f: uploads.blueprint, role: "BLUEPRINT" as const }]
+      : []),
+    ...(uploads.model ? [{ f: uploads.model, role: "MODEL" as const }] : []),
+    ...(uploads.references ?? []).map((f) => ({
+      f,
+      role: "REFERENCE" as const,
+    })),
+  ];
+  for (const item of queue) {
+    const res = await storeOne(itemId, item.f, tr);
+    if (!res.ok) {
+      await rollback();
+      return { ok: false, error: res.error };
+    }
+    stored.push({
+      fileId: res.fileId,
+      storageKey: res.storageKey,
+      role: item.role,
+      note: item.f.note,
+    });
+  }
+  return { ok: true, stored, rollback };
+}
+
+export interface CreateVersionInput {
   /** 対象製品（品目, items.id）。 */
   itemId: number;
   customerBpId: string | null;
-  /**
-   * この版を成果物とする設計依頼 (SA06)。null = 依頼を経ない手動登録。
-   * 「依頼 / 手動」の別はこの列の有無から導く（designFileSource）ので、
-   * 別に持たせない。
-   */
+  /** この版を成果物とする設計依頼 (SA06)。null = 依頼を経ない登録。 */
   designRequestId?: string | null;
-  notes: string | null;
-  blueprint: { name: string; type: string; bytes: ArrayBuffer };
-  preview?: { name: string; type: string; bytes: ArrayBuffer } | null;
-  references?: {
-    name: string;
-    type: string;
-    bytes: ArrayBuffer;
-    /** その 1 枚の説明（何の図か）。 */
-    note?: string | null;
-  }[];
+  spec: VersionSpecColumns;
+  uploads: VersionUploads;
 }
 
 /**
- * 版を 1 つ足す（設計図 PD06 の登録口）。
+ * 版を 1 つ下書きで作る（設計図 PD16 の登録口）。
  *
  * designRequestId を渡せばその依頼の成果物として、渡さなければ手動登録
- * （図面だけ先に出来ている・既存図面を取り込む）として登録する。採番と
- * is_latest の付け替えは createVersionInTx が唯一の管理者なので、どちらの
- * 入口でも版の数え方は変わらない。
+ * （図面だけ先に出来ている・既存図面を取り込む）として作る。
  */
-export async function uploadDesignVersion(
-  input: UploadVersionInput,
-): Promise<ActionResult<{ version: number; itemId: number }>> {
+export async function createDesignVersion(
+  input: CreateVersionInput,
+): Promise<
+  ActionResult<{ versionId: string; version: number; itemId: number }>
+> {
   const tr = await getTranslations();
   const productItem = await prisma.item.findUnique({
     where: { id: input.itemId, itemType: "PRODUCT" },
@@ -268,86 +378,171 @@ export async function uploadDesignVersion(
     }
   }
 
-  // 先に全部を storage + files に置く。1 枚でも失敗したら、それまでに
-  // 置いたものを消してから諦める（孤児を残さない）。
-  const stored: {
-    fileId: string;
-    storageKey: string;
-    role: DesignFileRole;
-    note?: string | null;
-  }[] = [];
-  const rollback = async () => {
-    for (const s of stored) {
-      await deleteObject(s.storageKey);
-      await prisma.file.delete({ where: { id: s.fileId } }).catch(() => {});
-    }
-  };
-
-  const queue: {
-    f: NonNullable<typeof input.preview>;
-    role: DesignFileRole;
-  }[] = [
-    ...(input.preview
-      ? [{ f: input.preview, role: "PREVIEW" as DesignFileRole }]
-      : []),
-    { f: input.blueprint, role: "BLUEPRINT" as DesignFileRole },
-    ...(input.references ?? []).map((f) => ({
-      f,
-      role: "REFERENCE" as DesignFileRole,
-    })),
-  ];
-
-  for (const item of queue) {
-    const res = await storeOne(input.itemId, item.f, tr);
-    if (!res.ok) {
-      await rollback();
-      return actionError(res.error);
-    }
-    stored.push({
-      fileId: res.fileId,
-      storageKey: res.storageKey,
-      role: item.role,
-    });
+  // ファイルを置く前に、系列に確定前の版が無いかを確かめる（あるなら置いても
+  // 捨てることになる）。最終判定はトランザクションの中でもう一度行う。
+  const open = await findOpenVersion(prisma, input.itemId, input.customerBpId);
+  if (open) {
+    return actionError(
+      tr("production.designFileActions.openVersionExists", {
+        version: open.version,
+      }),
+    );
   }
+
+  const stored = await storeUploads(input.itemId, input.uploads, tr);
+  if (!stored.ok) return actionError(stored.error);
 
   try {
     const actor = await getCurrentActorId();
-    const { version, blueprintId } = await prisma.$transaction((tx) =>
-      createVersionInTx(tx, {
+    const result = await prisma.$transaction(async (tx) => {
+      const created = await createDraftVersionInTx(tx, {
         itemId: input.itemId,
         customerBpId: input.customerBpId,
         designRequestId: input.designRequestId ?? null,
-        files: stored.map((s) => ({
+        spec: input.spec,
+        actor,
+      });
+      if (!created.ok) return created;
+      await attachFilesInTx(
+        tx,
+        {
+          id: created.id,
+          itemId: input.itemId,
+          customerBpId: input.customerBpId,
+          version: created.version,
+          designRequestId: input.designRequestId ?? null,
+          status: "DRAFT",
+        },
+        stored.stored.map((s) => ({
           fileId: s.fileId,
           role: s.role,
           notes: s.note,
         })),
-        notes: input.notes,
         actor,
-      }),
-    );
+      );
+      return created;
+    });
+    if (!result.ok) {
+      await stored.rollback();
+      return actionError(
+        tr("production.designFileActions.openVersionExists", {
+          version: result.openVersion.version,
+        }),
+      );
+    }
     await recordAudit({
       action: "CREATE",
-      tableName: "design_files",
-      // 版は複数行（プレビュー/図面データ/参考資料）から成るので、この版を
-      // 代表する 1 つの id として BLUEPRINT 行の uuid を使う（1.5 —
-      // 以前は productId を渡していて design_files の PK と食い違っていた）。
-      recordId: blueprintId ?? String(input.itemId),
+      tableName: "design_versions",
+      recordId: result.id,
       after: {
         note: tr(
           input.designRequestId
             ? "common.designFileRegisteredFromRequestNote"
             : "common.designFileRegisteredManuallyNote",
-          { version, count: stored.length },
+          { version: result.version, count: stored.stored.length },
         ),
         itemId: input.itemId,
         customerBpId: input.customerBpId,
         designRequestId: input.designRequestId ?? null,
+        status: "DRAFT",
       },
     });
-    return actionOk({ version, itemId: input.itemId });
+    return actionOk({
+      versionId: result.id,
+      version: result.version,
+      itemId: input.itemId,
+    });
   } catch (e) {
-    await rollback();
+    await stored.rollback();
+    return actionError(
+      prismaErrorMessage(e, tr("common.designFileRegisterFailed"), tr),
+    );
+  }
+}
+
+/**
+ * 確定前の版にファイルを足す（版の詳細の「ファイルを追加」）。原図・プレビューは
+ * 各 1 枚まで — 既に同じ役割のファイルがあれば、先にそれを外してもらう
+ * （黙って差し替えると、どちらが正の図面だったのかが履歴から消える）。
+ */
+export async function addDesignVersionFiles(
+  versionId: string,
+  uploads: VersionUploads,
+): Promise<ActionResult<{ itemId: number }>> {
+  const tr = await getTranslations();
+  const v = await prisma.designVersion.findUnique({
+    where: { id: versionId },
+    select: {
+      id: true,
+      itemId: true,
+      customerBpId: true,
+      version: true,
+      designRequestId: true,
+      status: true,
+      files: { select: { role: true } },
+    },
+  });
+  if (!v) return actionError(tr("production.designFileActions.notFound"));
+  if (!isVersionEditable(v.status)) {
+    return actionError(tr("production.designFileActions.lockedConfirmed"));
+  }
+  const taken = new Set(v.files.map((f) => f.role));
+  for (const [role, file] of [
+    ["BLUEPRINT", uploads.blueprint],
+    ["MODEL", uploads.model],
+    ["PREVIEW", uploads.preview],
+  ] as const) {
+    if (file && taken.has(role)) {
+      return actionError(
+        tr("production.designFileActions.roleAlreadyAttached", {
+          role: tr(`enum.DESIGN_FILE_ROLE_LABEL.${role}`),
+        }),
+      );
+    }
+  }
+
+  const stored = await storeUploads(v.itemId, uploads, tr);
+  if (!stored.ok) return actionError(stored.error);
+  if (stored.stored.length === 0) return actionOk({ itemId: v.itemId });
+  try {
+    const actor = await getCurrentActorId();
+    const attached = await prisma.$transaction(async (tx) => {
+      // 置いているあいだに確定されていないか（確定後は足させない）。
+      const fresh = await tx.designVersion.findUnique({
+        where: { id: v.id },
+        select: { status: true },
+      });
+      if (!fresh || !isVersionEditable(fresh.status)) return false;
+      await attachFilesInTx(
+        tx,
+        { ...v, status: fresh.status },
+        stored.stored.map((s) => ({
+          fileId: s.fileId,
+          role: s.role,
+          notes: s.note,
+        })),
+        actor,
+      );
+      return true;
+    });
+    if (!attached) {
+      await stored.rollback();
+      return actionError(tr("production.designFileActions.lockedConfirmed"));
+    }
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "design_versions",
+      recordId: v.id,
+      after: {
+        note: tr("production.designFileActions.filesAddedAudit", {
+          version: v.version,
+          count: stored.stored.length,
+        }),
+      },
+    });
+    return actionOk({ itemId: v.itemId });
+  } catch (e) {
+    await stored.rollback();
     return actionError(
       prismaErrorMessage(e, tr("common.designFileRegisterFailed"), tr),
     );

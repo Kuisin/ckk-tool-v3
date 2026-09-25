@@ -811,7 +811,8 @@
     "stockTake": "Stocktaking",
     "stockMovement": "Stock movement",
     "invoicePayment": "Invoice payment",
-    "notPendingApproval": "Not currently pending approval"
+    "notPendingApproval": "Not currently pending approval",
+    "designVersion": "Drawing version"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -1185,8 +1186,9 @@
     },
     "DESIGN_FILE_ROLE_LABEL": {
       "PREVIEW": "Preview",
-      "BLUEPRINT": "Drawing file",
-      "REFERENCE": "Reference"
+      "BLUEPRINT": "2D drawing",
+      "REFERENCE": "Reference",
+      "MODEL": "3D model"
     },
     "STEP_EXECUTION_LABEL": {
       "INTERNAL": "In-house",
@@ -1635,6 +1637,20 @@
         },
         "APPROVED": {
           "label": "Approved"
+        },
+        "REJECTED": {
+          "label": "Sent back"
+        }
+      },
+      "DesignVersion": {
+        "DRAFT": {
+          "label": "Draft"
+        },
+        "REQUESTED": {
+          "label": "Pending approval"
+        },
+        "CONFIRMED": {
+          "label": "Confirmed"
         },
         "REJECTED": {
           "label": "Sent back"
@@ -2900,8 +2916,6 @@
       "couldNotRegisterIt": "Could not register it",
       "generic": "・generic",
       "leaveItBlankForGenericUsed": "Leave it blank for generic — used when there is no customer-specific drawing. Versions are counted per ordering customer",
-      "theSourceDataForTheMachining": "The source data for the machining program. It becomes this series' latest drawing",
-      "drawingFile": "Drawing file",
       "aFileSuchAsStlFor": "A file such as STL for checking the shape on screen. You can register without one",
       "forPreview3d": "For preview (3D)",
       "descriptionOptionalEGPartDrawing": "Description (optional) — e.g. part drawing, dimension table",
@@ -3084,8 +3098,7 @@
     "designFileVersionForm": {
       "registeringAsResultOfRequest": "Registering as the deliverable of design request {requestNumber}. The product \"{productLabel}\"{customerPart} is fixed by the request and cannot be changed.",
       "andCustomerWithName": "/ customer \"{name}\"",
-      "referenceWithNumber": "Reference {number}",
-      "designFileWasAddedWithVersion": "Drawing v{version} was added"
+      "referenceWithNumber": "Reference {number}"
     },
     "stepExecutionView": {
       "stepWithName": "Step: {name}",
@@ -3283,7 +3296,8 @@
       "copyRouteFailed": "Could not copy the step list",
       "prepRouteRequired": "Select a preparation step list",
       "prepRouteNotFound": "The selected preparation step list was not found or is disabled",
-      "regrindLineToolMissing": "Order line {number}: the tool to regrind is not selected"
+      "regrindLineToolMissing": "Order line {number}: the tool to regrind is not selected",
+      "designFileNotConfirmed": "A drawing from an unconfirmed version cannot be pinned to a work order"
     },
     "designFileActions": {
       "cannotDelete": "Cannot delete",
@@ -3292,8 +3306,17 @@
       "memoUpdatedAudit": "Updated the memo for drawing v{version}",
       "notFound": "The drawing was not found",
       "referencedByRevisionRequest": "Cannot delete — a revision request references this as its original drawing",
-      "lockedInUseByWorkOrder": "Cannot be changed — in use by a work order",
-      "lockedRequestDeliverable": "Cannot be deleted — it is a design request deliverable (the memo can still be edited)"
+      "approvalRequestFailed": "Could not request approval",
+      "approvedRemaining": "Approved ({remaining} remaining)",
+      "approvedToNextStep": "Approved (moved to the next step)",
+      "filesAddedAudit": "Added {count} files to v{version}",
+      "lockedConfirmed": "A confirmed version cannot be changed",
+      "lockedPendingApproval": "Cannot be changed while pending approval",
+      "notPendingApproval": "This version is not pending approval",
+      "openVersionExists": "This series already has an unconfirmed version (v{version}). Confirm or delete it first.",
+      "roleAlreadyAttached": "A {role} is already attached. Remove it first to replace it.",
+      "specUpdatedAudit": "Updated the specification of v{version}",
+      "versionDeletedAudit": "Deleted draft version v{version}"
     },
     "inventoryActions": {
       "exceedsAvailable": "Exceeds the amount available to move (available {free} — reserved stock cannot be moved)",
@@ -3360,7 +3383,6 @@
       "targetProductNotSpecified": "The target product is not specified",
       "invalidOrderingCustomer": "The ordering customer specified is invalid",
       "invalidDesignRequest": "The design request specified is invalid",
-      "selectTheDrawingFile": "Select the drawing file",
       "isTooLargeMax20mb": "{name} is too large (up to 20MB per file)"
     },
     "workflowIssues": {
@@ -3455,6 +3477,59 @@
         "number": "Stocktake number",
         "searchPlaceholder": "Search by stocktake number, site, or storage location",
         "storageLocation": "Storage location"
+      }
+    },
+    "designVersion": {
+      "addFiles": "Add files",
+      "blueprintSlotHint": "Zunou SXF (.sfc), DXF, DWG, etc. Choosing a .sfc file reads the title block and dimensions to fill in the specification.",
+      "checkTheSpec": "Check the specification",
+      "confirmCardDesc": "Once confirmed, this version is used by work orders and the product master. It cannot be changed afterwards.",
+      "confirmCardTitle": "This draft is waiting to be confirmed",
+      "confirmModalMessage": "A confirmed version cannot be changed. Check the specification and files before confirming.",
+      "confirmModalTitle": "Confirm v{version}",
+      "confirmedBy": "Confirmed",
+      "confirmedToast": "Confirmed",
+      "deleteVersion": "Delete version",
+      "deleteVersionConfirm": "Draft version v{version} and its files will be deleted. This cannot be undone.",
+      "draftCreated": "Created draft version v{version}",
+      "filesAdded": "Files added",
+      "filesHint": "All optional. You can add or remove files until the version is confirmed.",
+      "latestConfirmed": "Latest confirmed",
+      "latestConfirmedVersion": "Confirmed v{version}",
+      "modelSlotHint": "STEP, IGES, CIM3D, etc. Formats that cannot be displayed on screen are download-only.",
+      "noConfirmedVersion": "No confirmed version",
+      "noFiles": "No files",
+      "noSpec": "No specification set",
+      "openVersion": "Open v{version}",
+      "referenceSlotHint": "Part drawings, dimension tables, etc. You can add as many as you need.",
+      "removeFile": "Remove file",
+      "removeFileConfirm": "\"{filename}\" will be removed from this version and deleted.",
+      "saveDraft": "Save draft",
+      "spec": "Specification",
+      "stageDraft": "Created",
+      "superseded": "A newer version exists",
+      "sxfApplyFailed": "Could not apply the values read from the drawing to the specification",
+      "sxfCheckHint": "Check the values read before saving. Items not written on the drawing are left unchanged.",
+      "sxfCustomerMatched": "Selected the ordering customer from the customer name \"{name}\"",
+      "sxfCustomerNotMatched": "Could not match the customer name \"{name}\" to a single ordering customer. Select the ordering customer manually.",
+      "sxfDimensions": "Diameter φ{diameter} / Overall length {length}",
+      "sxfRead": "Read {count} items from the drawing",
+      "sxfSheet": "Drawing {sheet}",
+      "sxfUnreadable": "Could not read the file as SXF",
+      "sxfUnreadableHint": "The file can still be attached, but enter the specification manually. Only .sfc files exported with Zunou RAPID's \"SXF format\" can be read.",
+      "titleBlock": "Title block",
+      "titleBlockHint": "What is written in the drawing's title block. Filled in automatically when you choose a Zunou SXF (.sfc) file.",
+      "versionCount": "{count} versions",
+      "titleBlockField": {
+        "productName": "Part name",
+        "drawingNumber": "Drawing No.",
+        "toolNumber": "Tool No.",
+        "material": "Material",
+        "surfaceTreatment": "Surface treatment",
+        "flutes": "Flutes",
+        "helix": "Helix angle",
+        "marking": "Marking",
+        "drawnAt": "Drawn date"
       }
     }
   },
@@ -5775,11 +5850,8 @@
     },
     "products": {
       "specification": "Specification",
-      "noSpecificationIsRegistered": "No specification is registered",
       "priceListEntry": "Price list entry",
       "thereAreNoPriceListEntries": "There are no price list entries for this product",
-      "checkTheProductTypeSFields": "Check the product type's fields",
-      "checkTheExtraFields": "Check the extra fields",
       "theProductWasCreated": "The product was created",
       "newProduct": "New product",
       "formatPrdYyyymmNnnnNumberedAutomatically": "Format: PRD-YYYYMM-NNNN (numbered automatically)",
@@ -5799,7 +5871,6 @@
       "duplicateTheProduct": "Duplicate the product",
       "duplicatedFrom": "Duplicated from",
       "theProductCodeIsAssignedAutomatically": "The product code is assigned automatically on save (PRD-YYYYMM-NNNN)",
-      "carriesOverTheSourceSMaterial": "Carries over the source's material type, diameter and length (editable after creating)",
       "stepListRoute": "Step list (route)",
       "newRoute": "New route",
       "noStepListIsRegisteredFor": "No step list is registered for this product. Creating a route lets work orders prefill the steps.",
@@ -5840,7 +5911,11 @@
       "externalProduct": "External product",
       "externalProductHint": "An item for tools made by another maker that are received for regrinding. Cannot be used on manufacturing step lists, manufacture work orders, or production/test/sample lines (regrind only).",
       "makerName": "Maker",
-      "externalBadge": "External"
+      "externalBadge": "External",
+      "noConfirmedSpec": "No confirmed drawing version yet. The specification (material type, dimensions, product items) is registered in Drawings.",
+      "registerSpecInDrawing": "Register the specification in Drawings",
+      "specFromVersion": "Specification from drawing v{version} ({series})",
+      "specLivesInDrawing": "The specification (material type, dimensions, product items) belongs to the drawing version, so it is not duplicated. Register a drawing for the new product in Drawings."
     },
     "storageLocations": {
       "editTheStorageLocation": "Edit the storage location",
@@ -6256,8 +6331,6 @@
       "execDependencyCycle": "Execution dependencies form a cycle ({path})"
     },
     "productsActions": {
-      "diameterRange": "Enter a diameter between {min} and {max} mm",
-      "lengthRange": "Enter an overall length between {min} and {max} mm",
       "createFailed": "Could not create the product",
       "updateFailed": "Could not update the product",
       "referencedCannotDelete": "This product is referenced by other data (price lists, quotes, order lines, drawings, inspection templates) and cannot be deleted. Consider disabling it instead.",
@@ -9109,6 +9182,7 @@
       "system": "System",
       "approval_flow_rules": "Conditional approval rules",
       "design_files": "Drawings",
+      "design_versions": "Drawing version",
       "inspection_template_groups": "Inspection template groups",
       "kiosk_unlock_pins": "Unlock PIN history",
       "link_blacklist": "Link blacklist",
@@ -10030,18 +10104,6 @@
       "unit": {
         "label": "Unit",
         "summary": "The unit used to count the product. The default is pcs."
-      },
-      "productType": {
-        "label": "Product type",
-        "summary": "The product's type. Selecting a type displays the specification fields defined for that type below."
-      },
-      "materialType": {
-        "label": "Material type",
-        "summary": "The type of material used to make this product."
-      },
-      "dimensions": {
-        "label": "Diameter (mm) / Overall length (mm)",
-        "summary": "The dimensions of the material required. Specified as \"material type + diameter + overall length\" rather than a specific material, since any material meeting those conditions can be used."
       },
       "keywords": {
         "label": "Keywords",

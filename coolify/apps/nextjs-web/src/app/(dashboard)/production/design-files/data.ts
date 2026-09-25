@@ -1,28 +1,31 @@
 /**
  * data.ts — 設計図 (PD06) のサーバーサイド取得・マッピング。
  *
- * 版は **(製品 × 受注元)** ごとの系列で育つ。系列そのものはテーブルではなく
- * design_files を束ねた導出値なので、束ね方は `lib/design-files-core.ts` の
- * `groupBySeries` / `sameSeries` に寄せる（一覧・詳細・製品マスタが同じ
- * 並びになる唯一の理由）。
+ * 版は **(製品 × 受注元)** ごとの系列で育ち、1 版 = design_versions の 1 行
+ * （ファイル 0 枚の版もある — 仕様だけの版）。系列の束ね方は
+ * `lib/design-files-core.ts` の `groupVersionsBySeries` / `sameSeries` に寄せる
+ * （一覧・詳細・製品マスタが同じ並びになる唯一の理由）。
  *
- * ここは設計依頼 (SA06) の data.ts から図面ぶんを引き取ったもの。依頼を経ない
- * 版があるので、図面の取得が依頼の取得に相乗りしているのは筋が悪かった。
+ * **確定していない版（下書き・承認依頼中・差し戻し）は設計図の画面にだけ出る。**
+ * 指示書・製品マスタは確定済みの版しか読まない（is_latest は確定で立つ）。
  */
 
 import { getTranslations } from "next-intl/server";
 import type {
   DesignFileRole,
   DesignFileSeriesRow,
+  DesignVersionView,
   ProductDesignFile,
 } from "@/components/production/design-files/model";
 import { prisma } from "@/lib/db";
 import {
-  groupBySeries,
+  compareRole,
+  type DesignVersionStatus,
+  groupVersionsBySeries,
   resolveSeriesCustomer,
-  usedVersionKeys,
-  versionKey,
+  toTitleBlock,
 } from "@/lib/design-files-core";
+import { specRecord } from "@/lib/design-spec-core";
 import { type LocalizedText, localized } from "@/lib/format";
 
 /**
@@ -37,57 +40,12 @@ function itemLabelOf(item: { name: unknown; code: string | null }): string {
   return item.code ? `${name} ${item.code}` : name;
 }
 
-/**
- * 製品の設計図（版一覧・新しい版から）。製品詳細の「設計図」節。
- *
- * 「最新」は is_latest が立っている行。製品マスタ側に design_file_id 列は無い。
- *
- * `itemId` は items.id（品目統合 第 3 段 — 製品マスタ MS04 も設計図 PD26 も
- * この id 空間で回る）。products.id を渡さないこと。
- */
-export async function fetchDesignFilesForItem(
-  itemId: number,
-): Promise<ProductDesignFile[]> {
-  const rows = await prisma.designFile.findMany({
-    where: { itemId },
-    include: {
-      file: { select: { filename: true, mimeType: true } },
-      designRequest: { select: { requestNumber: true } },
-      customerBp: { select: { name: true } },
-      // 指示書がこの版を指しているか = 編集・削除できるか。導出値なので
-      // 列は持たない（ピン留めを外したら編集できるように戻るのが正しい）。
-      _count: { select: { workOrders: true } },
-    },
-    orderBy: [{ version: "desc" }, { role: "asc" }],
-    // 版は (製品 × 受注元) ごとに育つので、顧客が増えるほど行が増える。
-    // 20 だと系列がいくつかあるだけで古い版が黙って消えるため広めに取る。
-    take: 200,
-  });
-  // 使用中は**版**単位（同じ版のプレビュー・参考資料も一緒に凍る）—
-  // 削除の Server Action と同じ規則（usedVersionKeys）。
-  const used = usedVersionKeys(
-    rows.map((f) => ({
-      customerBpId: f.customerBpId,
-      version: f.version,
-      workOrderCount: f._count.workOrders,
-    })),
-  );
-  return rows.map((f) => ({
-    id: f.id,
-    version: f.version,
-    isLatest: f.isLatest,
-    role: f.role as DesignFileRole,
-    mimeType: f.file.mimeType,
-    filename: f.file.filename,
-    requestNumber: f.designRequest?.requestNumber ?? null,
-    designRequestId: f.designRequestId,
-    customerBpId: f.customerBpId,
-    customerName: localized(f.customerBp?.name as LocalizedText | null) || null,
-    usedByWorkOrder: used.has(versionKey(f)),
-    notes: f.notes,
-    createdAt: f.createdAt.toISOString(),
-  }));
-}
+const DESIGN_FILE_INCLUDE = {
+  file: { select: { filename: true, mimeType: true } },
+  designRequest: { select: { requestNumber: true } },
+  customerBp: { select: { name: true } },
+  designVersion: { select: { status: true } },
+} as const;
 
 /** design_files 1 行 → 画面の型（取り出し方をここ 1 箇所に閉じる）。 */
 type DesignFileRow = {
@@ -99,10 +57,11 @@ type DesignFileRow = {
   createdAt: Date;
   customerBpId: string | null;
   designRequestId: string | null;
+  designVersionId: string;
   file: { filename: string; mimeType: string };
   designRequest: { requestNumber: string } | null;
   customerBp: { name: unknown } | null;
-  _count: { workOrders: number };
+  designVersion: { status: string };
 };
 
 function toProductDesignFile(f: DesignFileRow): ProductDesignFile {
@@ -117,18 +76,173 @@ function toProductDesignFile(f: DesignFileRow): ProductDesignFile {
     designRequestId: f.designRequestId,
     customerBpId: f.customerBpId,
     customerName: localized(f.customerBp?.name as LocalizedText | null) || null,
-    usedByWorkOrder: f._count.workOrders > 0,
+    designVersionId: f.designVersionId,
+    versionStatus: f.designVersion.status as DesignVersionStatus,
     notes: f.notes,
     createdAt: f.createdAt.toISOString(),
   };
 }
 
-const DESIGN_FILE_INCLUDE = {
-  file: { select: { filename: true, mimeType: true } },
-  designRequest: { select: { requestNumber: true } },
+/**
+ * 製品の設計図ファイル（製品マスタ MS24 の「設計図」タブ）。
+ *
+ * 製品マスタは**確定済みの版だけ**を出す — そこは「いま何を作るか」を見る
+ * 画面で、描きかけの図面が並ぶと取り違える。下書きは設計図 (PD26) で見る。
+ * `itemId` は items.id。
+ */
+export async function fetchDesignFilesForItem(
+  itemId: number,
+): Promise<ProductDesignFile[]> {
+  const rows = await prisma.designFile.findMany({
+    where: { itemId, designVersion: { status: "CONFIRMED" } },
+    include: DESIGN_FILE_INCLUDE,
+    orderBy: [{ version: "desc" }, { role: "asc" }],
+    // 版は (製品 × 受注元) ごとに育つので、顧客が増えるほど行が増える。
+    take: 200,
+  });
+  return rows.map((f) => toProductDesignFile(f as DesignFileRow));
+}
+
+const VERSION_INCLUDE = {
   customerBp: { select: { name: true } },
-  _count: { select: { workOrders: true } },
+  designRequest: { select: { requestNumber: true } },
+  materialType: { select: { code: true, name: true } },
+  createdByUser: { select: { displayName: true } },
+  confirmedByUser: { select: { displayName: true } },
+  files: { include: DESIGN_FILE_INCLUDE },
 } as const;
+
+type VersionRow = {
+  id: string;
+  itemId: number;
+  version: number;
+  status: string;
+  customerBpId: string | null;
+  designRequestId: string | null;
+  notes: string | null;
+  materialTypeId: number | null;
+  diameterMm: { toString(): string } | null;
+  lengthMm: { toString(): string } | null;
+  spec: unknown;
+  titleBlock: unknown;
+  createdAt: Date;
+  confirmedAt: Date | null;
+  requestedAt: Date | null;
+  customerBp: { name: unknown } | null;
+  designRequest: { requestNumber: string } | null;
+  materialType: { code: string | null; name: unknown } | null;
+  createdByUser: { displayName: string } | null;
+  confirmedByUser: { displayName: string } | null;
+  files: DesignFileRow[];
+};
+
+function toVersionView(
+  v: VersionRow,
+  latestConfirmedIds: Set<string>,
+): DesignVersionView {
+  return {
+    id: v.id,
+    itemId: v.itemId,
+    version: v.version,
+    status: v.status as DesignVersionStatus,
+    customerBpId: v.customerBpId,
+    customerName: localized(v.customerBp?.name as LocalizedText | null) || null,
+    designRequestId: v.designRequestId,
+    requestNumber: v.designRequest?.requestNumber ?? null,
+    notes: v.notes,
+    materialTypeId: v.materialTypeId,
+    materialTypeLabel: v.materialType
+      ? [
+          v.materialType.code,
+          localized(v.materialType.name as LocalizedText | null),
+        ]
+          .filter(Boolean)
+          .join(" ")
+      : null,
+    diameterMm: v.diameterMm != null ? Number(v.diameterMm.toString()) : null,
+    lengthMm: v.lengthMm != null ? Number(v.lengthMm.toString()) : null,
+    spec: specRecord(v.spec),
+    titleBlock: toTitleBlock(v.titleBlock),
+    isLatestConfirmed: latestConfirmedIds.has(v.id),
+    files: v.files
+      .map(toProductDesignFile)
+      .sort((a, b) => compareRole(a.role, b.role)),
+    createdAt: v.createdAt.toISOString(),
+    createdByName: v.createdByUser?.displayName ?? null,
+    confirmedAt: v.confirmedAt?.toISOString() ?? null,
+    confirmedByName: v.confirmedByUser?.displayName ?? null,
+    requestedAt: v.requestedAt?.toISOString() ?? null,
+  };
+}
+
+/** 系列ごとの確定済み最新版の id。 */
+function latestConfirmedIds(
+  rows: readonly {
+    id: string;
+    customerBpId: string | null;
+    version: number;
+    status: string;
+  }[],
+): Set<string> {
+  const best = new Map<string, { id: string; version: number }>();
+  for (const r of rows) {
+    if (r.status !== "CONFIRMED") continue;
+    const key = r.customerBpId ?? "";
+    const cur = best.get(key);
+    if (!cur || r.version > cur.version)
+      best.set(key, { id: r.id, version: r.version });
+  }
+  return new Set([...best.values()].map((b) => b.id));
+}
+
+/** 製品の全版（設計図 PD26）。系列ごとに並べるのは画面側（groupVersionsBySeries）。 */
+export async function fetchDesignVersionsForItem(
+  itemId: number,
+): Promise<DesignVersionView[]> {
+  const rows = await prisma.designVersion.findMany({
+    where: { itemId },
+    include: VERSION_INCLUDE,
+    orderBy: [{ version: "desc" }],
+    take: 200,
+  });
+  const latest = latestConfirmedIds(rows);
+  return rows.map((v) => toVersionView(v as VersionRow, latest));
+}
+
+/** 版の詳細。存在しなければ null。 */
+export async function fetchDesignVersion(id: string): Promise<{
+  view: DesignVersionView;
+  productLabel: string;
+  productCode: string | null;
+  history: unknown;
+} | null> {
+  const v = await prisma.designVersion.findUnique({
+    where: { id },
+    include: {
+      ...VERSION_INCLUDE,
+      item: { select: { name: true, code: true } },
+    },
+  });
+  if (!v) return null;
+  // 「系列の確定済み最新版か」は同じ系列の確定版だけを見れば判る。
+  const siblings = await prisma.designVersion.findMany({
+    where: {
+      itemId: v.itemId,
+      customerBpId: v.customerBpId,
+      status: "CONFIRMED",
+    },
+    select: { id: true, customerBpId: true, version: true, status: true },
+  });
+  return {
+    view: toVersionView(
+      v as unknown as VersionRow,
+      latestConfirmedIds(siblings),
+    ),
+    productLabel: itemLabelOf(v.item),
+    productCode: v.item.code,
+    history: v.history,
+  };
+}
 
 /**
  * 指示書などに出す「いま何を見て作るか」の 1 件。
@@ -139,7 +253,8 @@ const DESIGN_FILE_INCLUDE = {
  * lib/design-files-core resolveSeriesCustomer が唯一の定義元。
  *
  * 役割の優先は PREVIEW → BLUEPRINT。3D プレビュー用に上げたファイルがあれば
- * それを見せ、無ければ図面データ（PDF 等）を見せる。
+ * それを見せ、無ければ 2D 原図（PDF 等）を見せる。is_latest は確定した版にしか
+ * 立たないので、下書きの図面はここに出ない。
  */
 export async function fetchLatestViewableDesignFile(
   itemId: number,
@@ -190,40 +305,38 @@ export async function fetchDesignFileById(
  * 一覧 (PD06) — 1 行 = 1 系列（製品 × 受注元）。
  *
  * 版を 1 行ずつ並べない理由は model.ts の `DesignFileSeriesRow` に書いた。
- * 上限に当たったぶんは黙って落とさず、呼び出し側へ `truncated` で返して
- * 画面に出す（「これで全部」に見えるのがいちばん困る）。
+ * ファイルの無い版（仕様だけの版）も系列を作る。上限に当たったぶんは黙って
+ * 落とさず、呼び出し側へ `truncated` で返して画面に出す（「これで全部」に
+ * 見えるのがいちばん困る）。
  */
 export async function fetchDesignFileSeries(): Promise<{
   rows: DesignFileSeriesRow[];
   truncated: boolean;
 }> {
   const tr = await getTranslations();
-  const files = await prisma.designFile.findMany({
+  const versions = await prisma.designVersion.findMany({
     include: {
-      file: { select: { filename: true, mimeType: true } },
-      designRequest: { select: { requestNumber: true } },
       customerBp: { select: { name: true } },
       item: { select: { id: true, name: true, code: true } },
-      _count: { select: { workOrders: true } },
+      files: { select: { role: true, createdAt: true } },
     },
-    orderBy: [{ createdAt: "desc" }],
+    orderBy: [{ updatedAt: "desc" }],
     take: LIST_FETCH_CAP + 1,
   });
-  const truncated = files.length > LIST_FETCH_CAP;
-  const capped = truncated ? files.slice(0, LIST_FETCH_CAP) : files;
+  const truncated = versions.length > LIST_FETCH_CAP;
+  const capped = truncated ? versions.slice(0, LIST_FETCH_CAP) : versions;
 
-  // 品目ごとに分けてから系列へ落とす。groupBySeries は 1 品目ぶんを前提に
-  // した関数なので、品目をまたいで渡すと別製品の同じ受注元が 1 系列になる。
+  // 品目ごとに分けてから系列へ落とす。groupVersionsBySeries は 1 品目ぶんを
+  // 前提にした関数なので、品目をまたいで渡すと別製品の同じ受注元が 1 系列になる。
   const byItem = new Map<number, typeof capped>();
-  for (const f of capped) {
-    if (f.itemId == null) continue; // 製品なしの版は系列を作れない
-    const list = byItem.get(f.itemId) ?? [];
-    list.push(f);
-    byItem.set(f.itemId, list);
+  for (const v of capped) {
+    const list = byItem.get(v.itemId) ?? [];
+    list.push(v);
+    byItem.set(v.itemId, list);
   }
   const rows: DesignFileSeriesRow[] = [];
   for (const [itemId, list] of byItem) {
-    const item = list.find((f) => f.item)?.item;
+    const item = list[0]?.item;
     const parts = item
       ? { name: localized(item.name as LocalizedText | null), code: item.code }
       : {
@@ -232,37 +345,30 @@ export async function fetchDesignFileSeries(): Promise<{
           }),
           code: null,
         };
-    for (const g of groupBySeries(
-      list.map((f) => ({
-        id: f.id,
-        version: f.version,
-        isLatest: f.isLatest,
-        role: f.role as DesignFileRole,
-        customerBpId: f.customerBpId,
-        designRequestId: f.designRequestId,
-        createdAt: f.createdAt,
-        customerName:
-          localized(f.customerBp?.name as LocalizedText | null) || null,
-      })),
-    )) {
-      const latest = g.files.filter((f) => f.version === g.latestVersion);
+    for (const g of groupVersionsBySeries(list)) {
+      const latest = g.versions[0];
+      const confirmed = g.versions.find((v) => v.status === "CONFIRMED");
+      const updated = g.versions.reduce(
+        (max, v) => (v.updatedAt > max ? v.updatedAt : max),
+        latest.updatedAt,
+      );
       rows.push({
         key: `${itemId}:${g.customerBpId ?? ""}`,
         itemId,
         productName: parts.name,
         productCode: parts.code,
         customerBpId: g.customerBpId,
-        customerName: g.files.find((f) => f.customerName)?.customerName ?? null,
+        customerName:
+          localized(latest.customerBp?.name as LocalizedText | null) || null,
         latestVersion: g.latestVersion,
-        latestRoles: latest.map((f) => f.role),
-        hasRequestSourced: g.files.some((f) => f.designRequestId != null),
-        versionCount: new Set(g.files.map((f) => f.version)).size,
-        updatedAt: g.files
-          .reduce(
-            (max, f) => (f.createdAt > max ? f.createdAt : max),
-            g.files[0].createdAt,
-          )
-          .toISOString(),
+        latestStatus: latest.status as DesignVersionStatus,
+        confirmedVersion: confirmed?.version ?? null,
+        latestRoles: [
+          ...new Set(latest.files.map((f) => f.role as DesignFileRole)),
+        ].sort(compareRole),
+        hasRequestSourced: g.versions.some((v) => v.designRequestId != null),
+        versionCount: g.versions.length,
+        updatedAt: updated.toISOString(),
       });
     }
   }

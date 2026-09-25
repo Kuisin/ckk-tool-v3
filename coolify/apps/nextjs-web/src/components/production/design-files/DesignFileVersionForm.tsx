@@ -1,34 +1,51 @@
 "use client";
 
 /**
- * DesignFileVersionForm — 設計図の版を 1 つ登録する (PD16)。
+ * DesignFileVersionForm — 設計図の版を 1 つ**下書きで**作る (PD16)。
  *
  * **版の登録口はここ 1 つ。** 設計依頼 (SA06) の成果物も、依頼を経ない
- * 取り込みも同じフォームを通る。以前は「依頼の完了」と「製品マスタから追加」
- * の 2 箇所に登録口があり、採番と is_latest の付け替えが二重に存在していた。
+ * 取り込みも同じフォームを通る。保存すると下書きの版ができ、版の詳細で
+ * 確定する（承認設定 MS0B に段があれば承認依頼）。確定するまでは指示書・
+ * 製品マスタから見えない。
  *
- * 1 版 = プレビュー 0..1 + 図面データ 1 + 参考資料 0..N。同時に出したファイルは
- * 同じ版番号を共有する（版は図面の改訂世代で、ファイルの通し番号ではない）。
- *
- * 受注元を選ぶと、その顧客の系列に版が積まれる。空のままなら「汎用」で、
- * 顧客専用の図面が無いときのフォールバックになる。
+ * 1 版 = 2D 原図 + 3D 原図 + プレビュー + 参考資料 + 仕様（どれも任意）。
+ * 2D 原図に図脳 SXF (.sfc) を選ぶと、表題欄（品名・材質・刃数 …）と寸法
+ * （外径・全長）を読んで仕様欄を埋める。得意先名が受注元の 1 社に決まれば
+ * 受注元も選ぶ（決まらなければ選ばない — 違う顧客の系列に版を積むのが
+ * 最悪の誤り）。
  *
  * 送信先は Server Action ではなく `/api/design-files/upload`
  * （Server Action のボディは 1MB で頭打ちになり、図面は普通に超える）。
  */
 
-import { Alert, Group, Select, Stack, Text, Textarea } from "@mantine/core";
+import { Alert, Select, Stack } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconInfoCircle, IconPlus } from "@tabler/icons-react";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { searchProductItemOptions } from "@/app/(dashboard)/_shared/option-search";
-import { SecondaryButton } from "@/components/ui/buttons";
-import { DesignFileSlot } from "@/components/ui/DesignFileSlot";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions, FormSection } from "@/components/ui/shells";
-import { useIsMobile } from "@/hooks/useViewport";
+import type { ProductItemDef, ResolvedProductType } from "@/lib/product-types";
+import { matchCustomerOption, type SxfDrawingReading } from "@/lib/sxf-core";
+import {
+  applySxfReading,
+  type DesignSpecErrors,
+  DesignSpecFields,
+  type DesignSpecFormState,
+  initialDesignSpecState,
+  toVersionSpecPayload,
+  validateDesignSpec,
+} from "./DesignSpecFields";
+import {
+  appendFileSlots,
+  EMPTY_FILE_SLOTS,
+  readSxfFile,
+  SxfReadNotice,
+  type VersionFileSlotState,
+  VersionFileSlots,
+} from "./VersionFileSlots";
 
 interface Option {
   value: string;
@@ -50,23 +67,24 @@ export function DesignFileVersionForm({
   customerOptions,
   initialProduct,
   requestContext,
+  productTypes,
+  itemDefs,
 }: {
   /** 版を載せられる受注元。空のままなら汎用。 */
   customerOptions: Option[];
-  /** `?product=` から来たときの既定値。 */
+  /** `?item=` から来たときの既定値。 */
   initialProduct: Option | null;
   /** `?request=` から来たときの依頼。 */
   requestContext: DesignRequestContext | null;
+  productTypes: ResolvedProductType[];
+  itemDefs: ProductItemDef[];
 }) {
   const tr = useTranslations();
   const router = useRouter();
-  const isMobile = useIsMobile();
 
   // 依頼から来たときは製品・受注元を依頼に合わせて固定する。ここで選び直せると
   // 「依頼の成果物なのに別製品の図面」が作れてしまう（サーバー側でも弾くが、
   // 選べる UI を出さないのが先）。
-  // 値は品目 (items.id) — 一覧・詳細ページはまだ products.id 基準なので、
-  // 遷移先の URL はアップロード結果が返す品目 id（items.id）を使う。
   const [itemId, setItemId] = useState<string | null>(
     requestContext
       ? String(requestContext.itemId)
@@ -75,32 +93,67 @@ export function DesignFileVersionForm({
   const [customerBpId, setCustomerBpId] = useState<string | null>(
     requestContext?.customerBpId ?? null,
   );
-  const [blueprint, setBlueprint] = useState<File | null>(null);
-  const [preview, setPreview] = useState<File | null>(null);
-  const [references, setReferences] = useState<
-    { key: number; file: File | null; note: string }[]
-  >([]);
-  const [nextKey, setNextKey] = useState(1);
-  const [notes, setNotes] = useState("");
+  const [spec, setSpec] = useState<DesignSpecFormState>(() =>
+    initialDesignSpecState(null, productTypes, itemDefs),
+  );
+  const [specErrors, setSpecErrors] = useState<DesignSpecErrors | null>(null);
+  const [files, setFiles] = useState<VersionFileSlotState>(EMPTY_FILE_SLOTS);
+  const [sxf, setSxf] = useState<{
+    reading: SxfDrawingReading | "unreadable";
+    filled: number;
+    customerMatched: boolean | null;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const onSxfPicked = async (file: File) => {
+    const reading = await readSxfFile(file);
+    if (!reading) {
+      setSxf({ reading: "unreadable", filled: 0, customerMatched: null });
+      return;
+    }
+    const { state, filled } = applySxfReading(
+      spec,
+      reading,
+      productTypes,
+      itemDefs,
+    );
+    setSpec(state);
+    // 受注元は、依頼から来ていない・まだ選んでいないときだけ当てる。
+    let customerMatched: boolean | null = null;
+    if (!requestContext && customerBpId == null && reading.title.customerName) {
+      const hit = matchCustomerOption(
+        reading.title.customerName,
+        customerOptions,
+      );
+      if (hit) setCustomerBpId(hit.value);
+      customerMatched = hit != null;
+    }
+    setSxf({ reading, filled, customerMatched });
+  };
+
   const submit = async () => {
-    if (!blueprint || !itemId) return;
+    if (!itemId) return;
+    const errors = validateDesignSpec(spec, productTypes, itemDefs, tr);
+    setSpecErrors(errors);
+    if (errors) {
+      notifications.show({
+        title: tr("common.inputError"),
+        message: tr("production.designVersion.checkTheSpec"),
+        color: "red",
+      });
+      return;
+    }
     setBusy(true);
     try {
       const body = new FormData();
       body.set("itemId", itemId);
       if (customerBpId) body.set("customerBpId", customerBpId);
       if (requestContext) body.set("designRequestId", requestContext.id);
-      if (notes.trim()) body.set("notes", notes.trim());
-      body.set("blueprint", blueprint);
-      if (preview) body.set("preview", preview);
-      // 参考資料はファイルと説明を同じ順で並べて送る（受け側で組み直す）。
-      for (const r of references) {
-        if (!r.file) continue;
-        body.append("reference", r.file);
-        body.append("referenceNote", r.note.trim());
-      }
+      body.set(
+        "spec",
+        JSON.stringify(toVersionSpecPayload(spec, productTypes)),
+      );
+      appendFileSlots(body, files);
 
       const res = await fetch("/api/design-files/upload", {
         method: "POST",
@@ -108,25 +161,19 @@ export function DesignFileVersionForm({
       });
       const json = (await res.json().catch(() => null)) as {
         ok?: boolean;
+        versionId?: string;
         version?: number;
-        itemId?: number | null;
         error?: string;
       } | null;
-      if (res.ok && json?.ok) {
+      if (res.ok && json?.ok && json.versionId) {
         notifications.show({
           title: tr("common.registered"),
-          message: tr(
-            "production.designFileVersionForm.designFileWasAddedWithVersion",
-            { version: json.version ?? 1 },
-          ),
+          message: tr("production.designVersion.draftCreated", {
+            version: json.version ?? 1,
+          }),
           color: "green",
         });
-        // 依頼から来たなら依頼へ戻す（次にやることは「完了」なので）。
-        router.push(
-          requestContext
-            ? `/sales/design-requests/${encodeURIComponent(requestContext.requestNumber)}`
-            : `/production/design-files/${json.itemId ?? ""}`,
-        );
+        router.push(`/production/design-files/versions/${json.versionId}`);
       } else {
         notifications.show({
           title: tr("common.error2"),
@@ -181,94 +228,39 @@ export function DesignFileVersionForm({
         />
       </FormSection>
 
-      <FormSection title={tr("common.file")}>
-        <DesignFileSlot
-          description={tr(
-            "production.designFiles.theSourceDataForTheMachining",
-          )}
-          file={blueprint}
-          fullWidth={isMobile}
-          label={tr("production.designFiles.drawingFile")}
-          onPick={setBlueprint}
-          required
+      <FormSection
+        description={tr("production.designVersion.filesHint")}
+        title={tr("common.file")}
+      >
+        {sxf && (
+          <SxfReadNotice
+            customerMatched={sxf.customerMatched}
+            filled={sxf.filled}
+            onClose={() => setSxf(null)}
+            reading={sxf.reading}
+          />
+        )}
+        <VersionFileSlots
+          onChange={setFiles}
+          onSxfPicked={onSxfPicked}
+          value={files}
         />
-        <DesignFileSlot
-          description={tr("production.designFiles.aFileSuchAsStlFor")}
-          file={preview}
-          fullWidth={isMobile}
-          label={tr("production.designFiles.forPreview3d")}
-          onPick={setPreview}
-        />
-
-        <Stack gap="sm">
-          {references.map((r, i) => (
-            <DesignFileSlot
-              description={
-                i === 0 ? "部品図・寸法表など。何枚でも追加できます" : undefined
-              }
-              file={r.file}
-              fullWidth={isMobile}
-              key={r.key}
-              label={tr(
-                "production.designFileVersionForm.referenceWithNumber",
-                { number: i + 1 },
-              )}
-              note={r.note}
-              notePlaceholder={tr(
-                "production.designFiles.descriptionOptionalEGPartDrawing",
-              )}
-              onNoteChange={(v) =>
-                setReferences((prev) =>
-                  prev.map((x, j) => (j === i ? { ...x, note: v } : x)),
-                )
-              }
-              onPick={(f) =>
-                setReferences((prev) =>
-                  // ファイルを外したら行ごと消す（空の行が残らない）
-                  f == null
-                    ? prev.filter((_, j) => j !== i)
-                    : prev.map((x, j) => (j === i ? { ...x, file: f } : x)),
-                )
-              }
-            />
-          ))}
-          <Group>
-            <SecondaryButton
-              fullWidth={isMobile}
-              leftSection={<IconPlus size={14} />}
-              onClick={() => {
-                setReferences((prev) => [
-                  ...prev,
-                  { key: nextKey, file: null, note: "" },
-                ]);
-                setNextKey((k) => k + 1);
-              }}
-            >
-              {tr("production.designFiles.addAReference")}
-            </SecondaryButton>
-          </Group>
-        </Stack>
-
-        <Textarea
-          autosize
-          label={tr("common.memo")}
-          minRows={2}
-          onChange={(e) => setNotes(e.currentTarget.value)}
-          placeholder={tr(
-            "production.designFiles.whatChangedInThisVersionOptional",
-          )}
-          value={notes}
-        />
-        <Text c="dimmed" size="xs">
-          {tr("production.designFiles.upTo20mbEach")}
-        </Text>
       </FormSection>
 
+      <DesignSpecFields
+        errors={specErrors}
+        itemDefs={itemDefs}
+        onChange={setSpec}
+        productTypes={productTypes}
+        value={spec}
+      />
+
       <FormActions
-        disabled={!blueprint || !itemId}
+        disabled={!itemId}
         loading={busy}
         onCancel={() => router.back()}
         onSave={submit}
+        submitLabel={tr("production.designVersion.saveDraft")}
       />
     </Stack>
   );

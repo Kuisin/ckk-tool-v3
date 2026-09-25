@@ -14,7 +14,59 @@
 
 import type { Tr } from "./i18n";
 
-export type DesignFileRole = "PREVIEW" | "BLUEPRINT" | "REFERENCE";
+export type DesignFileRole = "PREVIEW" | "BLUEPRINT" | "MODEL" | "REFERENCE";
+
+/** 版の状態。書類と同じ「下書き → (承認) → 確定」。 */
+export type DesignVersionStatus =
+  | "DRAFT"
+  | "REQUESTED"
+  | "CONFIRMED"
+  | "REJECTED";
+
+export const DESIGN_VERSION_STATUSES: readonly DesignVersionStatus[] = [
+  "DRAFT",
+  "REQUESTED",
+  "CONFIRMED",
+  "REJECTED",
+];
+
+/**
+ * 図面の表題欄の項目（design_versions.title_block のキー）。唯一の定義元。
+ * 図脳 SXF を読むと lib/sxf-core.ts の表題欄の項目からここへ写す。
+ * 並びは画面に出す順。
+ */
+export const TITLE_BLOCK_FIELDS = [
+  "productName",
+  "drawingNumber",
+  "toolNumber",
+  "material",
+  "surfaceTreatment",
+  "flutes",
+  "helix",
+  "marking",
+  "drawnAt",
+] as const;
+export type TitleBlockField = (typeof TITLE_BLOCK_FIELDS)[number];
+export type TitleBlock = Partial<Record<TitleBlockField, string>>;
+
+/** JSON 列 → 表題欄（知らないキー・文字列でない値は落とす）。 */
+export function toTitleBlock(value: unknown): TitleBlock {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  const out: TitleBlock = {};
+  for (const f of TITLE_BLOCK_FIELDS) {
+    const v = (value as Record<string, unknown>)[f];
+    if (typeof v === "string" && v.trim() !== "") out[f] = v.trim();
+  }
+  return out;
+}
+
+/** 表題欄 → JSON 列（空なら null — 「何も書かれていない」を空オブジェクトで持たない）。 */
+export function titleBlockJson(tb: TitleBlock): Record<string, string> | null {
+  const clean = toTitleBlock(tb);
+  return Object.keys(clean).length > 0 ? clean : null;
+}
 
 /** 版の出どころ。列は持たず、依頼 id の有無から導く。 */
 export type DesignFileSource = "REQUEST" | "MANUAL";
@@ -75,32 +127,9 @@ export function versionKey(f: {
   return `${seriesKey(f.customerBpId)}#${f.version}`;
 }
 
-/**
- * 指示書に使われている**版**のキー集合。
- *
- * 指示書のピン留め（`work_orders.design_file_id`）は版の 1 行（ふつうは
- * 図面データ）を指すが、「使われた」のは版そのものなので、同じ版の
- * プレビュー・参考資料も一緒に動かせない — 1 行ずつ数えると、図面データが
- * 使用中でも同じ版の参考資料だけ消せてしまい、何を見て作ったかの一部が
- * 欠ける。行の `workOrderCount` を版ごとに合算して判定する。
- */
-export function usedVersionKeys(
-  files: readonly {
-    customerBpId: string | null;
-    version: number;
-    workOrderCount: number;
-  }[],
-): Set<string> {
-  const used = new Set<string>();
-  for (const f of files) {
-    if (f.workOrderCount > 0) used.add(versionKey(f));
-  }
-  return used;
-}
-
 /** その系列の次の版番号。系列が空なら 1。 */
 export function nextDesignVersion(
-  files: readonly DesignFileLike[],
+  files: readonly { customerBpId: string | null; version: number }[],
   customerBpId: string | null,
 ): number {
   const versions = files
@@ -156,8 +185,14 @@ export interface DesignSeries<T extends DesignFileLike> {
 const ROLE_ORDER: Record<DesignFileRole, number> = {
   PREVIEW: 0,
   BLUEPRINT: 1,
-  REFERENCE: 2,
+  MODEL: 2,
+  REFERENCE: 3,
 };
+
+/** 版の中のファイルの並び（プレビュー → 2D → 3D → 参考資料）。 */
+export function compareRole(a: DesignFileRole, b: DesignFileRole): number {
+  return ROLE_ORDER[a] - ROLE_ORDER[b];
+}
 
 /**
  * 系列ごとにまとめる。汎用を先頭に、あとは版数の多い順
@@ -191,41 +226,136 @@ export function groupBySeries<T extends DesignFileLike>(
 }
 
 /**
- * 版を編集・削除してよいか。
+ * 版を編集してよいか — **確定前（下書き・差し戻し）だけ**。
  *
- * **使われた版は動かせない。** 指示書がその版を指している = その図面で物を
- * 作った（あるいは作る）ということなので、あとから中身や番号が変わると
- * 「何を見て作ったか」が追えなくなる。承認済みの書類を書き換えないのと同じ。
- *
- * 依頼から出来た版を消せないのは別の理由 — それは完了した設計依頼の成果物
- * そのもので、消すと依頼側が成果物を失う。中身のメモは直してよい。
+ * 書類と同じで、確定した版は動かない。指示書・製品マスタ・サムネイルは確定した
+ * 版しか読まない（is_latest は確定で立つ）ので、確定後に中身が変わると
+ * 「何を見て作ったか」が追えなくなる。承認依頼中も触らせない — 承認者が
+ * 見ているものと、承認されるものが食い違う。
  */
-export function canEditDesignFile(f: { usedByWorkOrder: boolean }): boolean {
-  return !f.usedByWorkOrder;
+export function isVersionEditable(status: DesignVersionStatus): boolean {
+  return status === "DRAFT" || status === "REJECTED";
 }
 
-export function canDeleteDesignFile(f: {
-  usedByWorkOrder: boolean;
-  designRequestId: string | null;
-}): boolean {
-  return !f.usedByWorkOrder && designFileSource(f) === "MANUAL";
+/** 確定（承認フローがあれば承認依頼）へ進めてよいか。編集できる状態と同じ。 */
+export function canSubmitVersion(status: DesignVersionStatus): boolean {
+  return isVersionEditable(status);
+}
+
+/**
+ * 版そのものを消してよいか — 確定前だけ。確定した版は指示書や改訂依頼が指して
+ * いるかもしれず、番号の欠けた系列は「どこへ行ったのか」を説明できない。
+ */
+export function canDeleteVersion(status: DesignVersionStatus): boolean {
+  return isVersionEditable(status);
 }
 
 /** 編集できない理由（画面にそのまま出す）。編集できるときは null。 */
-export function describeLock(
-  f: {
-    usedByWorkOrder: boolean;
-    designRequestId: string | null;
-  },
+export function describeVersionLock(
+  status: DesignVersionStatus,
   tr: Tr,
 ): string | null {
-  if (f.usedByWorkOrder) {
-    return tr("production.designFileActions.lockedInUseByWorkOrder");
+  if (status === "CONFIRMED") {
+    return tr("production.designFileActions.lockedConfirmed");
   }
-  if (designFileSource(f) === "REQUEST") {
-    return tr("production.designFileActions.lockedRequestDeliverable");
+  if (status === "REQUESTED") {
+    return tr("production.designFileActions.lockedPendingApproval");
   }
   return null;
+}
+
+export const DESIGN_VERSION_STATUS_COLOR: Record<DesignVersionStatus, string> =
+  {
+    DRAFT: "gray",
+    REQUESTED: "yellow",
+    CONFIRMED: "green",
+    REJECTED: "red",
+  };
+
+/** 版の選び方に要るもの。 */
+export interface VersionPickLike {
+  customerBpId: string | null;
+  version: number;
+  status: DesignVersionStatus;
+  /** 確定した日時（ISO 文字列 / Date）。未確定は null。 */
+  confirmedAt: string | Date | null;
+}
+
+/**
+ * 製品 1 つにつき 1 つの仕様が要る読み手（指示書の素材候補・製品検索・外部 API・
+ * 製品マスタの表示）が、どの版の仕様を使うか。**確定済みの版だけ**から:
+ *
+ *   1. 受注元が一致する系列の最新版
+ *   2. 汎用系列の最新版
+ *   3. それも無ければ、いちばん最後に確定した版（受注元を問わない）
+ *
+ * 1〜2 は図面の系列の優先規則（resolveSeriesCustomer）と同じ。3 は仕様の
+ * 読み手だけの規則 — 図面と違い、製品の材種・寸法は顧客をまたいでもほぼ
+ * 同じなので、何も出さないより最後に確定した値を出すほうが役に立つ。
+ */
+export function pickSpecVersion<T extends VersionPickLike>(
+  versions: readonly T[],
+  customerBpId: string | null = null,
+): T | null {
+  const confirmed = versions.filter((v) => v.status === "CONFIRMED");
+  const latestOf = (series: string | null) =>
+    confirmed
+      .filter((v) => sameSeries(v.customerBpId, series))
+      .sort((a, b) => b.version - a.version)[0] ?? null;
+  if (customerBpId != null) {
+    const hit = latestOf(customerBpId);
+    if (hit) return hit;
+  }
+  const generic = latestOf(null);
+  if (generic) return generic;
+  const time = (v: T) =>
+    v.confirmedAt == null ? 0 : new Date(v.confirmedAt).getTime();
+  return (
+    [...confirmed].sort(
+      (a, b) => time(b) - time(a) || b.version - a.version,
+    )[0] ?? null
+  );
+}
+
+export interface VersionSeries<
+  T extends { customerBpId: string | null; version: number },
+> {
+  customerBpId: string | null;
+  /** 版の降順。 */
+  versions: T[];
+  latestVersion: number;
+}
+
+/**
+ * 版を系列ごとにまとめる。汎用を先頭に、あとは版数の多い順（groupBySeries と
+ * 同じ並び — 画面によって系列の順番が変わらないように）。
+ */
+export function groupVersionsBySeries<
+  T extends { customerBpId: string | null; version: number },
+>(versions: readonly T[]): VersionSeries<T>[] {
+  const byKey = new Map<string, VersionSeries<T>>();
+  for (const v of versions) {
+    const key = seriesKey(v.customerBpId);
+    let g = byKey.get(key);
+    if (!g) {
+      g = {
+        customerBpId: v.customerBpId ?? null,
+        versions: [],
+        latestVersion: 0,
+      };
+      byKey.set(key, g);
+    }
+    g.versions.push(v);
+    if (v.version > g.latestVersion) g.latestVersion = v.version;
+  }
+  for (const g of byKey.values()) {
+    g.versions.sort((a, b) => b.version - a.version);
+  }
+  return [...byKey.values()].sort((a, b) => {
+    if (a.customerBpId == null) return -1;
+    if (b.customerBpId == null) return 1;
+    return b.latestVersion - a.latestVersion;
+  });
 }
 
 /**

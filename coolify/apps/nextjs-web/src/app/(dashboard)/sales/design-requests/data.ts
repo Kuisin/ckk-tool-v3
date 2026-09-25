@@ -69,6 +69,10 @@ const DETAIL_INCLUDE = {
     include: { file: true },
     orderBy: [{ version: "desc" as const }, { role: "asc" as const }],
   },
+  versions: {
+    select: { id: true, version: true, status: true },
+    orderBy: { version: "desc" as const },
+  },
 };
 
 type DetailRow = NonNullable<Awaited<ReturnType<typeof findRow>>>;
@@ -211,6 +215,7 @@ export async function fetchDesignRequests(): Promise<DesignRequest[]> {
     ...mapCommon(r),
     history: [],
     files: [],
+    versions: [],
   }));
 }
 
@@ -237,6 +242,11 @@ export async function fetchDesignRequest(
       sizeBytes: Number(f.file.sizeBytes ?? 0),
       notes: f.notes,
       createdAt: f.createdAt.toISOString(),
+    })),
+    versions: row.versions.map((v) => ({
+      id: v.id,
+      version: v.version,
+      status: v.status,
     })),
   };
 }

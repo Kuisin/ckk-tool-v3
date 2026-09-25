@@ -811,7 +811,8 @@
     "stockTake": "棚卸",
     "stockMovement": "入出庫伝票",
     "invoicePayment": "請求書の入金",
-    "notPendingApproval": "承認依頼中ではありません"
+    "notPendingApproval": "承認依頼中ではありません",
+    "designVersion": "設計図の版"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -1185,8 +1186,9 @@
     },
     "DESIGN_FILE_ROLE_LABEL": {
       "PREVIEW": "プレビュー",
-      "BLUEPRINT": "図面データ",
-      "REFERENCE": "参考資料"
+      "BLUEPRINT": "2D 原図",
+      "REFERENCE": "参考資料",
+      "MODEL": "3D 原図"
     },
     "STEP_EXECUTION_LABEL": {
       "INTERNAL": "社内",
@@ -1635,6 +1637,20 @@
         },
         "APPROVED": {
           "label": "承認済"
+        },
+        "REJECTED": {
+          "label": "差し戻し"
+        }
+      },
+      "DesignVersion": {
+        "DRAFT": {
+          "label": "下書き"
+        },
+        "REQUESTED": {
+          "label": "承認依頼中"
+        },
+        "CONFIRMED": {
+          "label": "確定"
         },
         "REJECTED": {
           "label": "差し戻し"
@@ -2900,8 +2916,6 @@
       "couldNotRegisterIt": "登録に失敗しました",
       "generic": "・汎用",
       "leaveItBlankForGenericUsed": "空のままなら「汎用」— 顧客専用の図面が無いときに使われます。版番号は受注元ごとに数えます",
-      "theSourceDataForTheMachining": "加工プログラムを起こす元データ。この系列の最新図面になります",
-      "drawingFile": "図面データ",
       "aFileSuchAsStlFor": "STL など、画面で形を確かめるためのファイル。無くても登録できます",
       "forPreview3d": "プレビュー用（3D）",
       "descriptionOptionalEGPartDrawing": "説明（任意）— 例: 部品図、寸法表",
@@ -3084,8 +3098,7 @@
     "designFileVersionForm": {
       "registeringAsResultOfRequest": "設計依頼 {requestNumber} の成果物として登録します。製品「{productLabel}」{customerPart}は依頼で決まっているので変更できません。",
       "andCustomerWithName": "・受注元「{name}」",
-      "referenceWithNumber": "参考資料 {number}",
-      "designFileWasAddedWithVersion": "設計図 v{version} を追加しました"
+      "referenceWithNumber": "参考資料 {number}"
     },
     "stepExecutionView": {
       "stepWithName": "工程: {name}",
@@ -3283,7 +3296,8 @@
       "copyRouteFailed": "工程リストの複製に失敗しました",
       "prepRouteRequired": "準備工程リストを選択してください",
       "prepRouteNotFound": "選択された準備工程リストが見つからないか、無効です",
-      "regrindLineToolMissing": "注文明細 {number}: 研ぎ直す工具が未選択です"
+      "regrindLineToolMissing": "注文明細 {number}: 研ぎ直す工具が未選択です",
+      "designFileNotConfirmed": "確定していない版の図面は指示書に固定できません"
     },
     "designFileActions": {
       "cannotDelete": "削除できません",
@@ -3292,8 +3306,17 @@
       "memoUpdatedAudit": "設計図 v{version} のメモを更新",
       "notFound": "対象の設計図が見つかりません",
       "referencedByRevisionRequest": "改訂依頼が元図面に指定しているため削除できません",
-      "lockedInUseByWorkOrder": "指示書で使用中のため変更できません",
-      "lockedRequestDeliverable": "設計依頼の成果物なので削除できません（メモは編集できます）"
+      "approvalRequestFailed": "承認依頼を出せませんでした",
+      "approvedRemaining": "承認しました（残り {remaining} 名）",
+      "approvedToNextStep": "承認しました（次の段へ）",
+      "filesAddedAudit": "v{version} にファイルを {count} 件追加",
+      "lockedConfirmed": "確定した版は変更できません",
+      "lockedPendingApproval": "承認依頼中のため変更できません",
+      "notPendingApproval": "承認依頼中の版ではありません",
+      "openVersionExists": "この系列には確定前の版（v{version}）があります。先にそちらを確定するか削除してください",
+      "roleAlreadyAttached": "{role}はすでに載っています。差し替えるときは先に外してください",
+      "specUpdatedAudit": "v{version} の仕様を更新",
+      "versionDeletedAudit": "下書きの版 v{version} を削除"
     },
     "inventoryActions": {
       "exceedsAvailable": "移動可能数を超えています（利用可能 {free} — 予約分は移動できません）",
@@ -3360,7 +3383,6 @@
       "targetProductNotSpecified": "対象の製品が指定されていません",
       "invalidOrderingCustomer": "受注元の指定が不正です",
       "invalidDesignRequest": "設計依頼の指定が不正です",
-      "selectTheDrawingFile": "図面データを選択してください",
       "isTooLargeMax20mb": "{name} が大きすぎます（1 件 20MB まで）"
     },
     "workflowIssues": {
@@ -3455,6 +3477,59 @@
         "number": "棚卸番号",
         "searchPlaceholder": "棚卸番号・拠点・保管場所で検索",
         "storageLocation": "保管場所"
+      }
+    },
+    "designVersion": {
+      "addFiles": "ファイルを追加",
+      "blueprintSlotHint": "図脳 SXF（.sfc）・DXF・DWG など。.sfc を選ぶと表題欄と寸法を読んで仕様を埋めます",
+      "checkTheSpec": "仕様の入力を確認してください",
+      "confirmCardDesc": "確定すると、この版が指示書・製品マスタで使われます。確定後は変更できません",
+      "confirmCardTitle": "確定待ちの下書きです",
+      "confirmModalMessage": "確定した版は変更できません。仕様とファイルを確認してから確定してください。",
+      "confirmModalTitle": "v{version} を確定",
+      "confirmedBy": "確定",
+      "confirmedToast": "確定しました",
+      "deleteVersion": "版を削除",
+      "deleteVersionConfirm": "下書きの版 v{version} と、載っているファイルを削除します。この操作は取り消せません。",
+      "draftCreated": "下書きの版 v{version} を作りました",
+      "filesAdded": "ファイルを追加しました",
+      "filesHint": "どれも任意です。確定するまでは後から追加・削除できます",
+      "latestConfirmed": "確定済みの最新版",
+      "latestConfirmedVersion": "確定済み v{version}",
+      "modelSlotHint": "STEP・IGES・CIM3D など。画面では表示できない形式はダウンロードのみです",
+      "noConfirmedVersion": "確定済みの版なし",
+      "noFiles": "ファイルはありません",
+      "noSpec": "仕様は未設定です",
+      "openVersion": "v{version} を開く",
+      "referenceSlotHint": "部品図・寸法表など。何枚でも追加できます",
+      "removeFile": "ファイルを外す",
+      "removeFileConfirm": "「{filename}」をこの版から外して削除します。",
+      "saveDraft": "下書きを保存",
+      "spec": "仕様",
+      "stageDraft": "作成",
+      "superseded": "新しい版があります",
+      "sxfApplyFailed": "図面から読んだ値を仕様に反映できませんでした",
+      "sxfCheckHint": "読み取った値は保存前に確認してください。図面に書かれていない項目は変わりません",
+      "sxfCustomerMatched": "得意先名「{name}」から受注元を選びました",
+      "sxfCustomerNotMatched": "得意先名「{name}」に当たる受注元が 1 社に決まりませんでした。受注元は手で選んでください",
+      "sxfDimensions": "外径 φ{diameter} / 全長 {length}",
+      "sxfRead": "図面から {count} 項目を読み取りました",
+      "sxfSheet": "図番 {sheet}",
+      "sxfUnreadable": "SXF として読めませんでした",
+      "sxfUnreadableHint": "ファイルは添付できますが、仕様は手で入力してください。図脳RAPID の「SXF形式」で書き出した .sfc だけを読めます",
+      "titleBlock": "図面情報",
+      "titleBlockHint": "図面の表題欄に書かれていること。図脳 SXF（.sfc）を選ぶと自動で入ります",
+      "versionCount": "全 {count} 版",
+      "titleBlockField": {
+        "productName": "品名",
+        "drawingNumber": "図面番号",
+        "toolNumber": "工具番号",
+        "material": "材質",
+        "surfaceTreatment": "表面処理",
+        "flutes": "刃数",
+        "helix": "ネジレ",
+        "marking": "刻印",
+        "drawnAt": "作成年月日"
       }
     }
   },
@@ -5775,11 +5850,8 @@
     },
     "products": {
       "specification": "仕様",
-      "noSpecificationIsRegistered": "仕様は登録されていません",
       "priceListEntry": "価格表エントリ",
       "thereAreNoPriceListEntries": "この製品の価格表エントリはありません",
-      "checkTheProductTypeSFields": "製品種別の項目を確認してください",
-      "checkTheExtraFields": "追加項目を確認してください",
       "theProductWasCreated": "製品を作成しました",
       "newProduct": "製品 新規作成",
       "formatPrdYyyymmNnnnNumberedAutomatically": "形式: PRD-YYYYMM-NNNN（自動採番）",
@@ -5799,7 +5871,6 @@
       "duplicateTheProduct": "製品の複製",
       "duplicatedFrom": "複製元",
       "theProductCodeIsAssignedAutomatically": "製品コードは保存時に自動採番されます（PRD-YYYYMM-NNNN）",
-      "carriesOverTheSourceSMaterial": "複製元の材種・直径・全長を引き継ぎます（作成後に編集できます）",
       "stepListRoute": "工程リスト（ルート）",
       "newRoute": "ルート新規作成",
       "noStepListIsRegisteredFor": "この製品の工程リストは未登録です。ルートを作成すると指示書作成時に工程構成をプリフィルできます。",
@@ -5840,7 +5911,11 @@
       "externalProduct": "他社製品",
       "externalProductHint": "他社が作った工具を再研磨のために預かるときの品目。製造工程リスト・製造分の指示書・本番/テスト/サンプルの明細では選べません（再研磨専用）。",
       "makerName": "メーカー名",
-      "externalBadge": "他社製"
+      "externalBadge": "他社製",
+      "noConfirmedSpec": "確定した設計図の版がまだありません。仕様（材種・寸法・製品項目）は設計図で登録します。",
+      "registerSpecInDrawing": "設計図で仕様を登録",
+      "specFromVersion": "設計図 v{version}（{series}）の仕様",
+      "specLivesInDrawing": "仕様（材種・寸法・製品項目）は設計図の版が持つため複製しません。複製した製品の図面は設計図で登録してください。"
     },
     "storageLocations": {
       "editTheStorageLocation": "保管場所の編集",
@@ -6256,8 +6331,6 @@
       "execDependencyCycle": "実行依存が循環しています（{path}）"
     },
     "productsActions": {
-      "diameterRange": "直径は {min}〜{max}mm で入力してください",
-      "lengthRange": "全長は {min}〜{max}mm で入力してください",
       "createFailed": "製品の作成に失敗しました",
       "updateFailed": "製品の更新に失敗しました",
       "referencedCannotDelete": "この製品を参照するデータ（価格表・見積書・注文明細・設計・検査表など）が存在するため削除できません。無効化を検討してください。",
@@ -9109,6 +9182,7 @@
       "system": "システム",
       "approval_flow_rules": "条件付き承認ルール",
       "design_files": "設計図",
+      "design_versions": "設計図の版",
       "inspection_template_groups": "検査表テンプレートグループ",
       "kiosk_unlock_pins": "退出PIN履歴",
       "link_blacklist": "リンク拒否リスト",
@@ -10030,18 +10104,6 @@
       "unit": {
         "label": "単位",
         "summary": "数え方の単位です。既定は「本」です。"
-      },
-      "productType": {
-        "label": "製品種別",
-        "summary": "製品の種別です。種別を選ぶと、その種別に決められた項目（仕様）が下に出てきます。"
-      },
-      "materialType": {
-        "label": "材種",
-        "summary": "その製品を作るのに使う材料の種類です。"
-      },
-      "dimensions": {
-        "label": "直径 (mm) / 全長 (mm)",
-        "summary": "必要な素材の寸法です。特定の素材ではなく「材種 + 直径 + 全長」で指定します — 同じ条件の素材ならどれを使っても作れるためです。"
       },
       "keywords": {
         "label": "キーワード",
