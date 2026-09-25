@@ -8042,7 +8042,8 @@
       "editTitle": "编辑价格表",
       "manualWithEstimateValue": "手动设置（价格试算值：{price}）",
       "multiplierMustBePositive": "大于 0 的系数",
-      "orderTypeSectionTitle": "注文种别：{orderType}"
+      "orderTypeSectionTitle": "注文种别：{orderType}",
+      "maxBelowMin": "最大数量不得小于最小数量"
     },
     "quoteDetail": {
       "acceptanceNoteWithLines": "{status}・明细 {count} 件",

@@ -69,9 +69,11 @@ import {
   scalePresetRanges,
 } from "@/lib/price-scale-preset";
 import {
+  appendTierRange,
   type EntryIdentity,
   type PriceListEntry,
   requiresEndDate,
+  setTierEnd,
 } from "./model";
 
 /**
@@ -80,21 +82,26 @@ import {
  * `ReturnType` から導出する）。
  */
 function buildSchema(tr: ReturnType<typeof useTranslations>) {
-  const tierSchema = z.object({
-    /** 保存済みの段階の id（新規は null）— 更新時に行を残すために送る. */
-    id: z.string().nullable(),
-    minQuantity: z
-      .number()
-      .int()
-      .min(1, tr("sales.priceListTypeForm.atLeast1")),
-    maxQuantity: z.number().int().nullable(),
-    /** 数量倍率（×1.01 など）. */
-    multiplier: z
-      .number()
-      .min(0.01, tr("sales.priceListTypeForm.multiplierMustBePositive")),
-    /** 手動上書き単価（null = 基準単価 × 倍率）. */
-    priceOverride: z.number().min(0).nullable(),
-  });
+  const tierSchema = z
+    .object({
+      /** 保存済みの段階の id（新規は null）— 更新時に行を残すために送る. */
+      id: z.string().nullable(),
+      minQuantity: z
+        .number()
+        .int()
+        .min(1, tr("sales.priceListTypeForm.atLeast1")),
+      maxQuantity: z.number().int().nullable(),
+      /** 数量倍率（×1.01 など）. */
+      multiplier: z
+        .number()
+        .min(0.01, tr("sales.priceListTypeForm.multiplierMustBePositive")),
+      /** 手動上書き単価（null = 基準単価 × 倍率）. */
+      priceOverride: z.number().min(0).nullable(),
+    })
+    .refine((t) => t.maxQuantity == null || t.maxQuantity >= t.minQuantity, {
+      path: ["maxQuantity"],
+      message: tr("sales.priceListTypeForm.maxBelowMin"),
+    });
 
   const variantFormSchema = z.object({
     /** 保存済みバリアントの id（新規は null）. */
@@ -832,6 +839,16 @@ export function PriceListTypeForm({
                           {...form.getInputProps(
                             `variants.${vi}.tiers.${ri}.maxQuantity`,
                           )}
+                          onChange={(v) =>
+                            form.setFieldValue(
+                              `variants.${vi}.tiers`,
+                              setTierEnd(
+                                variant.tiers,
+                                ri,
+                                typeof v === "number" ? v : null,
+                              ),
+                            )
+                          }
                         />
                       </Table.Td>
                       <Table.Td>
@@ -939,7 +956,13 @@ export function PriceListTypeForm({
               <GhostButton
                 leftSection={<IconPlus size={16} />}
                 onClick={() =>
-                  form.insertListItem(`variants.${vi}.tiers`, emptyTier())
+                  form.setFieldValue(
+                    `variants.${vi}.tiers`,
+                    appendTierRange(variant.tiers, (min) => ({
+                      ...emptyTier(),
+                      minQuantity: min,
+                    })),
+                  )
                 }
                 size="xs"
               >

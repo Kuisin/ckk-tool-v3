@@ -8042,7 +8042,8 @@
       "editTitle": "Edit price list",
       "manualWithEstimateValue": "Manually set (price estimate value: {price})",
       "multiplierMustBePositive": "A multiplier greater than 0",
-      "orderTypeSectionTitle": "Order type: {orderType}"
+      "orderTypeSectionTitle": "Order type: {orderType}",
+      "maxBelowMin": "The maximum quantity must be at least the minimum"
     },
     "quoteDetail": {
       "acceptanceNoteWithLines": "{status} · {count} line item(s)",

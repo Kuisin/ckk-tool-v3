@@ -8042,7 +8042,8 @@
       "editTitle": "価格表 編集",
       "manualWithEstimateValue": "手動設定（価格試算値: {price}）",
       "multiplierMustBePositive": "0より大きい倍率",
-      "orderTypeSectionTitle": "注文種別: {orderType}"
+      "orderTypeSectionTitle": "注文種別: {orderType}",
+      "maxBelowMin": "最大数量は最小数量以上にしてください"
     },
     "quoteDetail": {
       "acceptanceNoteWithLines": "{status}・明細 {count} 件",
