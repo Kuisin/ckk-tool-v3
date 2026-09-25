@@ -43,13 +43,14 @@ This is the most important rule.
 
 ## Reading the screen (top page)
 
-When you open the app, five cards are shown. Press a card to open that settings screen.
+When you open the app, six cards are shown. Press a card to open that settings screen.
 
 ![Top screen of 価格試算計算](../../../assets/screenshots/trial-pricing-hub-01.png)
 
 - 「**計算基準**」 (Calculation criteria) … the list of the parts that build up the unit price.
 - 「**工具種管理**」 (Tool type management) … adding and deleting tool types, and the settings for each type.
 - 「**材料参照価格ポリシー**」 (Material reference price policy) … where the material price is taken from.
+- 「**数量スケール**」 (Quantity scale) … the starting table of quantity breaks and multipliers for price lists.
 - 「**カスタム入力項目**」 (Custom input fields) … the fields shown on the trial estimate input screen, and company-wide fixed values.
 - 「**ルックアップ表**」 (Lookup tables) … the quick-lookup tables used in the calculation.
 
@@ -86,7 +87,7 @@ Each row in the list carries one of these marks.
 
 1. Click the criterion you want to edit in the list.
 2. Its content appears on the right.
-3. You can change the displayed name in 「**基準名**」 (Criterion name).
+3. You can change the displayed name in 「**基準名**」 (Criterion name). In 「**説明**」 (Description) you can write what the cost counts; it is shown when someone presses the **ⓘ** next to the row on the price estimate screens (no button if left blank).
 4. If you turn off the 「**有効**」 (Enabled) switch, that criterion is no longer used in the calculation.
 5. In 「**適用工具種**」 (Applicable tool types), choose which kinds of tool it is used for.
 6. Press 「**保存**」 (Save).
@@ -157,6 +158,15 @@ Decide how the material price used in a trial estimate is taken from actual purc
 4. Press 「**保存**」 (Save).
 
 > 💡 On a trial estimate where no purchase record existed and the default price was used, 「**既定価格**」 (default price) is shown on screen. That amount is not based on actual results, so please check whether it is fine to use as-is in a quotation.
+
+## 数量スケール (Quantity scale) — the starting quantity breaks for price lists
+
+The table that gives the first values of the quantity breaks and multipliers when a new order type is created in a price list. It replaces the "lot discount rate" that used to be built into the price estimate, and can now be edited freely here.
+
+- Each row has only a「**開始数量**」(from quantity) and a「**倍率**」(multiplier). The end of a range follows from the next row's start, so there are no gaps or overlaps. The first row starts at 1.
+- The「**単価**」(unit price) column is a sample: the「**試算用の基準単価**」(sample base unit price) entered at the top times the multiplier. It is not saved.
+- Press「**範囲を追加**」(add a range) to add a row and「**初期値に戻す**」(restore defaults) to go back to the standard table. Nothing takes effect until you save.
+- **Price lists that already exist do not change.** Only order types created from now on start from this table.
 
 ## カスタム入力項目 (Custom input fields) — input boxes and fixed values
 

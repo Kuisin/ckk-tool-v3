@@ -56,9 +56,8 @@ screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-
 8. 「**加工**」の欄で、段加工・首下加工の長さと種類、「**加工時間 (分)**」を入れます。
 9. 「**コート・処理**」の欄で「**コート**」「**ラップ処理**」「**検査成績書**」を選びます。
 10. LD 加工がある場合は「**LD加工あり**」をオンにして、部位・外径・刃長を入れます。
-11. 「**基準数量（本）**」を確認します（はじめは 100 本が入っています）。
-12. 最後に「**価格試算名**」に名前を入れます（必ず入力してください）。
-13. 画面右上の「**保存**」を押します。
+11. 最後に「**価格試算名**」に名前を入れます（必ず入力してください）。
+12. 画面右上の「**保存**」を押します。
 
 ![価格試算の新規作成フォーム](../../../assets/screenshots/trial-estimate-new-01.png)
 
@@ -66,7 +65,7 @@ screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-
 
 ![価格試算結果（原価内訳と見積単価）](../../../assets/screenshots/trial-estimate-new-02.png)
 
-- **原価内訳（1本あたり）** … 材料原価・段加工費・加工単価・コート代などの内訳です。
+- **原価内訳（1本あたり）** … 材料原価・段加工費・加工単価・コート代などの内訳です。各行の右の **ⓘ** を押すと、その費用が何を数えているかの説明が出ます。
 - **見積単価（基準）** … いちばん下に出る、1 本あたりの売値です。
 
 > 💡 数量が多いときの割引（1 本あたりを安くする設定）は、この画面ではなく[価格表](/manual/ja/operations/sales/price-list/user)で設定します。価格試算では 1 本あたりの基準の値段だけを出します。
@@ -149,7 +148,6 @@ screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-
 | [ラップ処理](#field-lapping) | 任意 | ラップ処理の有無 |
 | [検査成績書](#field-inspection-report) | 任意 | 検査成績書を付けるか |
 | [LD加工あり / LD部位 / LD外径 / LD刃長](#field-ld) | 任意 | LD 加工の条件 |
-| [基準数量（本）](#field-base-quantity) | 必須 | 何本つくる前提で計算するか |
 
 ### 見積り先 [#field-customer]
 
@@ -222,10 +220,6 @@ screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-
 ### LD加工あり / LD部位 / LD外径 (mm) / LD刃長 (mm) [#field-ld]
 
 LD 加工をする場合の条件です。「LD加工あり」を入れると、部位・外径・刃長を指定できるようになります。
-
-### 基準数量（本）[#field-base-quantity]
-
-何本つくる前提で計算するかです。**1 本あたりの費用は数量で変わる**（段取りが分散する）ため、実際に見込む数量を入れてください。
 
 ## よくある質問・困ったとき
 

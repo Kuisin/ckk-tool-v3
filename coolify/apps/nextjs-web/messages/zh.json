@@ -558,7 +558,6 @@
     "priceEstimateResult": "价格试算结果",
     "materialPriceHistory": "材料价格走势",
     "baseUnitPriceQuantityScalingIs": "基准单价（数量档由价格表系数设置）",
-    "baseQuantity": "基准数量",
     "minimumUnitPrice": "最低单价",
     "estimatedUnitPriceBase": "试算单价（基准）",
     "costBreakdownPerPiece": "成本明细（每支）",
@@ -4064,7 +4063,9 @@
       "criterionWasDeleted": "已删除「{name}」",
       "thisCriterionsValueLabel": "该基准的值：",
       "intermediateOrNotApplicable": "（中间值/不适用）",
-      "quantityPcs": "{quantity} 支"
+      "quantityPcs": "{quantity} 支",
+      "description": "说明",
+      "descriptionHint": "显示在价格试算画面中此费用项旁的提示按钮（ⓘ）里。留空则不显示按钮。"
     },
     "itemDefEditForm": {
       "theKeyMustBeAnIdentifier": "键请使用以字母或下划线开头的标识符",
@@ -5065,6 +5066,29 @@
       "customerName": "客户名称",
       "constant": "固定文字",
       "empty": "空白"
+    },
+    "scalePreset": {
+      "title": "数量阶梯",
+      "summary": "共 {count} 档系数（价格表数量档的初始值）",
+      "description": "在价格表中新建变体时的数量档初始值。每行只有起始数量和系数，范围（到多少支）由下一行的起始数量决定。",
+      "previewBase": "试算用基准单价",
+      "previewBaseHint": "仅用于预览单价列，不会保存。",
+      "colFrom": "起始数量",
+      "colRange": "范围",
+      "colMultiplier": "系数",
+      "colUnitPrice": "单价",
+      "addRow": "添加范围",
+      "removeRow": "删除行",
+      "resetToDefault": "恢复默认",
+      "resetConfirmTitle": "恢复默认",
+      "resetConfirmMessage": "将正在编辑的内容替换为标准表。保存前不会生效。",
+      "saved": "数量阶梯已更新",
+      "saveFailed": "数量阶梯保存失败",
+      "issueEmpty": "请至少添加一行",
+      "issueFirstNotOne": "第一行的起始数量必须为 1",
+      "issueNotInteger": "第 {row} 行的起始数量必须是 1 以上的整数",
+      "issueNotAscending": "第 {row} 行的起始数量必须大于上一行",
+      "issueBadMultiplier": "第 {row} 行的系数必须为 0.01 以上"
     }
   },
   "portal": {
@@ -7743,7 +7767,7 @@
       "thereAreNoDiscountRules": "没有折扣规则。",
       "thereIsNoPriceListPick": "没有价格表 — 请选择客户×产品来创建",
       "thereIsOnePriceListPer": "每个客户×产品对应 1 张价格表。各订单类别的价格在下方添加。",
-      "tickingItDropsTheAutomaticCalculation": "勾选后将不使用自动计算，仅此数量档设为手动固定单价（会有确认）。",
+      "tickingItDropsTheAutomaticCalculation": "点击“自定义”后不使用自动计算，仅此数量档设为手动固定单价（会有确认）。",
       "tiers": "档数",
       "unitPriceRange": "单价范围",
       "unitPriceUsed": "采用单价",
@@ -7751,7 +7775,13 @@
       "useACustomUnitPrice": "使用自定义单价",
       "useACustomUnitPrice2": "使用自定义单价",
       "useCreateAQuoteToBuild": "—（可通过「创建报价单」从此价格表创建报价单）",
-      "useTheEstimatedValueAsIt": "直接使用试算值"
+      "useTheEstimatedValueAsIt": "直接使用试算值",
+      "customButton": "自定义",
+      "backToAutoButton": "恢复自动",
+      "resetToPreset": "恢复预设",
+      "resetToPresetTitle": "将数量档恢复为预设",
+      "resetToPresetMessage": "将此变体的数量档替换为数量阶梯预设（价格试算计算设置）。手动添加的范围和自定义单价将丢失。",
+      "addACustomRange": "添加范围"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "已发行（PDF 生成失败）",
@@ -7833,9 +7863,6 @@
       "lDFluteLengthMm": "LD 刃长 (mm)",
       "extraInputsDefinedUnderThePrice": "在价格试算计算 (SY02) 中定义的追加输入。将作为变量用于计算基准的公式。",
       "customFields": "自定义项目",
-      "usedOnlyToProrateFormShaping": "仅用于成型（备用成型分）的分摊。各数量的价格档（×系数）在价格表侧设置。",
-      "theQuantityUsedToProrateForm": "分摊成型（备用成型分）的数量。此处不乘以各数量的价格档，请在价格表的系数（如 ×1.01）中设置。",
-      "baseQuantityPcs": "基准数量（支）",
       "priceEstimateName": "价格试算名称",
       "eGPrecisionShaft338": "例：精密轴 φ3×38 BAL Alcrona",
       "forCylinderEstimatesTheMaterialPrice": "圆筒试算需手动输入材料价格（采购实绩仅供参考）。",
@@ -7847,11 +7874,12 @@
       "coatingCost": "涂层费",
       "lapping": "研磨抛光",
       "inspectionCertificate": "检查成绩书",
+      "shapeOutPerPiece": "成型分摊费（每支）",
       "correctionFactor": "修正系数",
-      "enterABaseQuantity": "请输入基准数量",
       "representativeEstimatedUnitPrice": "代表试算单价",
       "searchByPriceEstimateNumberName": "按价格试算编号、名称或客户搜索",
-      "thereAreNoPriceEstimates": "没有价格试算"
+      "thereAreNoPriceEstimates": "没有价格试算",
+      "hintFor": "关于{name}的说明"
     },
     "orderLineDetail": {
       "designWithCount": "设计（{count}）",
@@ -8014,7 +8042,8 @@
       "editTitle": "编辑价格表",
       "manualWithEstimateValue": "手动设置（价格试算值：{price}）",
       "multiplierMustBePositive": "大于 0 的系数",
-      "orderTypeSectionTitle": "注文种别：{orderType}"
+      "orderTypeSectionTitle": "注文种别：{orderType}",
+      "maxBelowMin": "最大数量不得小于最小数量"
     },
     "quoteDetail": {
       "acceptanceNoteWithLines": "{status}・明细 {count} 件",
