@@ -525,6 +525,9 @@ WHERE ii.custody_bp_id IS NULL AND ii.owner_bp_id IS NULL;
 -- 預け在庫（外注が持っている分）。**自社在庫とは別のビュー**にしてあるのは、
 -- 同じ表に混ぜて出すと必ず合計に足されるから。「いま誰が何本持っているか」
 -- だけを答える。
+-- owner_bp_id / owner_partner_name を途中に足したので作り直し（CREATE OR REPLACE は
+-- 列の挿入・改名ができず、db-migrate が止まる — 2026-09 の再研磨追加で実際に止まった）。
+DROP VIEW IF EXISTS analytics.v_item_custody_inventory;
 CREATE OR REPLACE VIEW analytics.v_item_custody_inventory WITH (security_invoker = true) AS
 SELECT
   ii.id,

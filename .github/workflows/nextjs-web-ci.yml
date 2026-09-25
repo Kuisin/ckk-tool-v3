@@ -136,6 +136,16 @@ jobs:
           SHOT_DB_CONTAINER: ckk-ci-base-db
           SHOT_DB_PORT: "55472"
         run: pnpm docs:seed
+      - name: base の grants / analytics-views（本物の DB と同じく「既にビューがある」状態にする）
+        # これが無いと head の analytics-views.sql は**ビューが無い DB** にしか当たらず、
+        # 既存ビューの途中へ列を足す変更（CREATE OR REPLACE では通らない）が CI を
+        # 素通りして db-migrate で初めて落ちる（2026-09-25、v_item_custody_inventory）。
+        working-directory: /tmp/base/shared-db
+        env:
+          DATABASE_URL: postgresql://postgres:shots@127.0.0.1:55472/ckk
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/grants.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/analytics-views.sql
       - name: head の shared-db を install
         working-directory: shared-db
         run: pnpm install --frozen-lockfile --ignore-workspace
