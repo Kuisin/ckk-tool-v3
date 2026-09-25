@@ -53,9 +53,10 @@ overwrite good data).
 
 **Adding an export column** = one line in `db.py` + `ALTER TABLE` in
 `shared-db/sql/kot-columns.sql`. The `kot` schema is not Prisma-managed and role `kot`
-does not own `hr_records`, so that SQL is run **as postgres, before** deploying the
-importer (otherwise the INSERT fails and the run is recorded as failed — the delete is
-rolled back, so nothing is lost). New columns are NULL for rows imported with the old
+does not own `hr_records`, so that SQL is applied **as postgres by `db-migrate`** on every
+deploy (only where `kot.hr_records` exists). If the importer happens to deploy before the
+migrator, its INSERT fails and the run is recorded as failed — the delete is rolled back,
+so nothing is lost; the next run after the migrator succeeds. New columns are NULL for rows imported with the old
 layout (NULL = the layout had no such field, 0 = it did and the value was 0). They are
 also exposed in `kot.v_labor`; Metabase needs a schema re-sync to see them.
 

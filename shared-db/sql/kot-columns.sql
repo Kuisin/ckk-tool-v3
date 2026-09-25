@@ -4,6 +4,8 @@
 -- kot スキーマは Prisma 管理外（旧来の `CREATE TABLE IF NOT EXISTS` 流儀）で、
 -- テーブルの所有者は postgres。kot-import のロール `kot` は所有者ではないので
 -- ALTER できない — だからインポーターに自己修復させず、ここに置いて postgres で流す。
+-- 適用は db-migrate（coolify/apps/db-migrate/entrypoint.sh）が毎デプロイ行う。
+-- kot.hr_records が無い DB では entrypoint 側で飛ばす。
 --
 -- 冪等（何度流してもよい）。列はすべて NULL 可・追加のみ:
 --   NULL = その行を取り込んだ時点の出力レイアウトに項目が無かった（旧 auto_import）
