@@ -32,6 +32,23 @@ The scheduler runs immediately on start, then every `KOT_INTERVAL_SECONDS`
 (default 6h), pulling the last `KOT_DAYS` (default 7) days. Each run deletes and
 re-inserts that date range, so re-runs are idempotent.
 
+## Export layout & columns
+
+The export uses KOT's **出力レイアウト `auto_import_v2`** (`KOT_EXPORT_LAYOUT`, default
+`auto_import_v2`; the legacy layout is `auto_import`). Every CSV field is read **by
+header name** (`INT_FIELDS` / `TEXT_FIELDS` in `kot/db.py`), never by position, and each
+lists the legacy header as a fallback. A layout missing a required header is rejected
+*before* the date range is deleted (a wrong layout used to parse as all-zero rows and
+overwrite good data).
+
+**Adding an export column** = one line in `db.py` + `ALTER TABLE` in
+`shared-db/sql/kot-columns.sql`. The `kot` schema is not Prisma-managed and role `kot`
+does not own `hr_records`, so that SQL is run **as postgres, before** deploying the
+importer (otherwise the INSERT fails and the run is recorded as failed — the delete is
+rolled back, so nothing is lost). New columns are NULL for rows imported with the old
+layout (NULL = the layout had no such field, 0 = it did and the value was 0). They are
+also exposed in `kot.v_labor`; Metabase needs a schema re-sync to see them.
+
 ## Employee mapping (required for rows to land)
 
 `db.py` maps the KOT `従業員コード` → an AD `username` via the **`employees`** table
