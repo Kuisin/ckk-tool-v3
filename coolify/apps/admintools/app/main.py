@@ -1,5 +1,6 @@
 import io
 import os
+from datetime import date
 import secrets
 import string
 import time
@@ -681,6 +682,74 @@ def update_kot_settings(kot_id: str = Form(""), kot_pw: str = Form("")):
             cur.execute("UPDATE kot_settings SET kot_pw_encrypted = %s, updated_at = now() WHERE id = 1", (enc_pw,))
         c.commit()
     return RedirectResponse("/kot", status_code=303)
+
+
+# Longest range one force-import may ask for. KOT keeps years of history, but a run
+# logs in and downloads once per 31-day window, so keep an accidental "2024→today"
+# from queueing a very long browser session.
+KOT_FORCE_MAX_DAYS = 366
+_KOT_REQ_DDL = """
+CREATE TABLE IF NOT EXISTS import_requests (
+    id bigserial PRIMARY KEY,
+    start_date date NOT NULL, end_date date NOT NULL,
+    status text NOT NULL DEFAULT 'pending',
+    requested_at timestamptz NOT NULL DEFAULT now(),
+    started_at timestamptz, finished_at timestamptz,
+    rows integer, message text
+)
+"""
+
+
+@app.post("/settings/kot/import")
+def force_kot_import(start_date: str = Form(""), end_date: str = Form("")):
+    """Queue a forced King of Time import for a date range. kot-import (a separate
+    container) picks the request up within ~20s, re-downloads that range and replaces
+    the stored rows for it (the same delete-then-insert a scheduled run does), then
+    records the outcome in the import log. Only one pending/running request at a time."""
+    url = os.environ.get("KOT_DB_URL", "")
+    if not url:
+        return RedirectResponse("/kot?err=KOT_DB_URL が未設定です", status_code=303)
+    try:
+        sd, ed = date.fromisoformat(start_date), date.fromisoformat(end_date)
+    except ValueError:
+        return RedirectResponse("/kot?err=開始日と終了日を入力してください", status_code=303)
+    if sd > ed:
+        return RedirectResponse("/kot?err=開始日が終了日より後です", status_code=303)
+    if ed > date.today():
+        return RedirectResponse("/kot?err=終了日に未来の日付は指定できません", status_code=303)
+    if (ed - sd).days + 1 > KOT_FORCE_MAX_DAYS:
+        return RedirectResponse(f"/kot?err=期間は最長 {KOT_FORCE_MAX_DAYS} 日までです", status_code=303)
+    import psycopg
+    with psycopg.connect(url, connect_timeout=5) as c, c.cursor() as cur:
+        cur.execute(_KOT_REQ_DDL)
+        cur.execute("SELECT 1 FROM import_requests WHERE status IN ('pending','running') LIMIT 1")
+        if cur.fetchone():
+            return RedirectResponse("/kot?err=実行待ち・実行中の取り込みがあります。完了後に再度お試しください", status_code=303)
+        cur.execute("INSERT INTO import_requests (start_date, end_date) VALUES (%s, %s)", (sd, ed))
+        c.commit()
+    return RedirectResponse("/kot?ok=queued", status_code=303)
+
+
+@app.get("/imports/requests")
+def import_requests_log():
+    """Recent force-import requests (queued / running / finished)."""
+    url = os.environ.get("KOT_DB_URL", "")
+    if not url:
+        return {"enabled": False, "requests": []}
+    try:
+        import psycopg
+        with psycopg.connect(url, connect_timeout=5) as c, c.cursor() as cur:
+            cur.execute(_KOT_REQ_DDL)
+            cur.execute("SELECT id, start_date, end_date, status, requested_at, finished_at, rows, message "
+                        "FROM import_requests ORDER BY id DESC LIMIT 10")
+            rows = cur.fetchall()
+            c.commit()
+        return {"enabled": True, "requests": [
+            {"id": r[0], "start_date": str(r[1]), "end_date": str(r[2]), "status": r[3],
+             "requested_at": str(r[4]), "finished_at": str(r[5]) if r[5] else None,
+             "rows": r[6], "message": r[7]} for r in rows]}
+    except Exception as e:  # noqa: BLE001
+        return {"enabled": True, "error": str(e)[:160], "requests": []}
 
 
 # ---------------------------------------------------------------------------

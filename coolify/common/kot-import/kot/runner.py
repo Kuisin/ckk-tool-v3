@@ -4,6 +4,7 @@
 import os
 import sys
 import traceback
+from datetime import date, timedelta
 
 import psycopg2
 
@@ -18,6 +19,22 @@ CREATE TABLE IF NOT EXISTS import_runs (
     rows integer, status text, message text
 )
 """
+
+# Manual "force import" requests, written by adminTools (/kot). Both sides create the
+# table if missing (role `kot` may CREATE in schema kot), so deploy order doesn't matter.
+_REQ_DDL = """
+CREATE TABLE IF NOT EXISTS import_requests (
+    id bigserial PRIMARY KEY,
+    start_date date NOT NULL, end_date date NOT NULL,
+    status text NOT NULL DEFAULT 'pending',
+    requested_at timestamptz NOT NULL DEFAULT now(),
+    started_at timestamptz, finished_at timestamptz,
+    rows integer, message text
+)
+"""
+# KOT's daily export is requested in windows this long, so one big request doesn't
+# depend on how many days the export screen accepts at once.
+CHUNK_DAYS = 31
 
 
 def _conn():
@@ -48,7 +65,85 @@ def _record(status, sd, ed, days, rows, message):
         print(f"[runner] could not record run: {e}")
 
 
+def _ensure_request_table():
+    try:
+        c = _conn()
+        with c, c.cursor() as cur:
+            cur.execute(_REQ_DDL)
+        c.close()
+    except Exception as e:  # noqa: BLE001
+        print(f"[runner] could not ensure import_requests: {e}")
+
+
+def _claim_request():
+    """Take the oldest pending request (row lock, so two runners never share one)."""
+    c = _conn()
+    try:
+        with c, c.cursor() as cur:
+            cur.execute(
+                "UPDATE import_requests SET status = 'running', started_at = now() "
+                "WHERE id = (SELECT id FROM import_requests WHERE status = 'pending' "
+                "ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED) "
+                "RETURNING id, start_date, end_date"
+            )
+            return cur.fetchone()
+    finally:
+        c.close()
+
+
+def _finish_request(req_id, status, rows, message):
+    c = _conn()
+    try:
+        with c, c.cursor() as cur:
+            cur.execute(
+                "UPDATE import_requests SET status = %s, rows = %s, message = %s, "
+                "finished_at = now() WHERE id = %s",
+                (status, rows, (message or "")[:2000], req_id),
+            )
+    finally:
+        c.close()
+
+
+def _windows(start: date, end: date):
+    cur = start
+    while cur <= end:
+        yield cur, min(cur + timedelta(days=CHUNK_DAYS - 1), end)
+        cur += timedelta(days=CHUNK_DAYS)
+
+
+def run_pending() -> int:
+    """Process every pending force-import request. Cheap when there is none — the
+    entrypoint calls this every few seconds between scheduled runs."""
+    _ensure_table()
+    _ensure_request_table()
+    handled = 0
+    while True:
+        req = _claim_request()
+        if req is None:
+            return handled
+        req_id, sd, ed = req
+        handled += 1
+        total = 0
+        try:
+            for a, b in _windows(sd, ed):
+                path = export_daily_csv.run(headless=True, start=a, end=b)
+                total += db.write_to_db(path)
+            msg = f"manual #{req_id}: upserted {total} rows"
+            _record("ok", sd, ed, (ed - sd).days + 1, total, msg)
+            _finish_request(req_id, "done", total, msg)
+            print(f"[runner] request {req_id} ok: {total} rows")
+        except Exception as e:  # noqa: BLE001
+            msg = f"manual #{req_id}: {e}"
+            _record("failed", sd, ed, (ed - sd).days + 1, total, msg)
+            _finish_request(req_id, "failed", total, str(e))
+            print(f"[runner] request {req_id} failed: {e}")
+            traceback.print_exc()
+
+
 def main() -> int:
+    if "--pending" in sys.argv[1:]:
+        run_pending()
+        return 0
     _ensure_table()
     days = int(os.environ.get("KOT_DAYS", "7"))
     sd, ed = export_daily_csv._resolve_date_range(None, None, days)
