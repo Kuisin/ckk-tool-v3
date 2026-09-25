@@ -550,6 +550,8 @@ Table products {
   name            json [not null]         // { ja: '', en: '' }
   // 素材は「材種 + 直径 + 全長」で指定する。特定の materials 行には紐付けない
   // （同一材種・直径の複数素材が cut-to-length で充当可能。素材マスタは在庫管理用に存置）。
+  // ★ 2026-09-25 以降、材種・直径・全長・spec は**設計図の版 (design_versions) が持つ**。
+  //   items 側の requires_* / spec は移行のため残っているだけで、アプリは使わない。
   material_type_id int [ref: > material_types.id]
   diameter_mm     numeric(8,3)            // 直径 (mm)
   length_mm       numeric(10,3)           // 全長 (mm)
@@ -1172,7 +1174,9 @@ Table approval_flows {
                                 //   段を組んでも通常の出荷は止まらない）/
                                 // order_acceptance_cancel_requests（注文請書キャンセル
                                 //   — 確定済みの請書はごとキャンセルを依頼して承認を通す。
-                                //   明細単位のキャンセル操作は廃止）/
+                                //   明細単位のキャンセル操作は廃止）
+                                // design_versions（設計図の版の確定前承認 — 段が無ければ
+                                //   承認を通らずに確定する）/
                                 // invoices（請求書 — **追加費用ありの下書きだけ**発行前に
                                 //   通る）/ invoice_payments（入金前承認。対象は請求書と
                                 //   同じ行だが種別は別。承認完了でそのまま入金済みへ進める）
@@ -1985,13 +1989,70 @@ Table design_requests {
 
 Ref: design_requests.(quote_year_month, quote_seq) > quotes.(year_month, seq)
 
-// 1 版 = プレビュー 0..1 + 図面データ 1 + 参考資料 0..N。
-// PREVIEW と BLUEPRINT を分けているのは用途が違うから — STL は人が形を
-// 確かめるためのもの、CAD は加工プログラムを起こす元データで代用できない。
+// 1 版 = 2D 原図 0..1 + 3D 原図 0..1 + プレビュー 0..1 + 参考資料 0..N（どれも任意 —
+// ファイルの無い仕様だけの版もある）。PREVIEW と原図を分けているのは用途が
+// 違うから — STL は人が形を確かめるためのもの、原図は加工プログラムを起こす
+// 元データで代用できない。
 Enum DESIGN_FILE_ROLE {
   PREVIEW         // プレビュー用（3D 表示）
-  BLUEPRINT       // 図面データ（加工プログラム用。製品マスタの最新図面はこれ）
+  BLUEPRINT       // 2D 原図（図脳 SXF / DXF / DWG …。製品マスタの最新図面はこれ）
   REFERENCE       // 参考資料（部品図・寸法表など）
+  MODEL           // 3D 原図（STEP / IGES / CIM3D …）
+}
+
+// 設計図の版（1 行 = 1 版）。以前は design_files を (製品 × 受注元 × 版番号) で
+// 束ねた導出値だったが、状態と仕様を持たせるため行にした（2026-09-25）。
+//
+// **製品の仕様は版が持つ**（製品マスタの items.requires_* / spec から移した。
+// 旧列は移行のため残っているだけで、アプリは読みも書きもしない）。製品 1 つに
+// 1 つの値が要る読み手（指示書の素材候補・製品検索・外部 API・分析ビュー・
+// 製品マスタの表示）は確定済みの版から「指示書が固定した版 → 受注元一致 →
+// 汎用 → 最後に確定した版」の順で 1 つ選ぶ（lib/design-files-core.ts
+// pickSpecVersion / lib/design-spec.ts resolveItemSpec が唯一の定義元）。
+//
+// 状態は書類と同じ **下書き → (承認) → 確定**。承認の段は承認設定 (MS0B,
+// target_type = 'design_versions') が決め、**段が無ければ承認を通らずに確定**
+// する。確定前（下書き・差し戻し）だけ仕様とファイルを直せる。系列ごとに
+// 確定前の版は 1 つだけ（部分 unique index design_versions_open_per_series_key）。
+// 版番号は系列内で一意（NULLS NOT DISTINCT — 汎用同士も同じ系列）。
+//
+// 図脳 SXF（.sfc）を読むと title_block・直径・全長・名前の一致する製品項目が
+// 埋まる（lib/sxf-core.ts — 表題欄はラベルの右隣の文字、寸法は表示文字列から）。
+Table design_versions {
+  id                uuid [pk]
+  item_id           int [not null, ref: > items.id]            // Restrict
+  customer_bp_id    uuid [ref: > business_partners.id]         // null = 汎用
+  version           int [not null]
+  status            DESIGN_VERSION_STATUS [not null, default: 'DRAFT']
+  design_request_id uuid [ref: > design_requests.id]           // null = 手動登録
+  notes             text                                       // 版全体のメモ
+  // 仕様（材種を入れたら直径・全長も必須。寸法だけは材種なしでも持てる —
+  // 図面から読んだ寸法を捨てないため）
+  material_type_id  int [ref: > material_types.id]             // Restrict
+  diameter_mm       numeric(8,3)
+  length_mm         numeric(10,3)
+  spec              json      // 製品項目 (SY03) の値 + 予約キー _product_type
+  title_block       json      // 図面情報（品名・図面番号・工具番号・材質・表面処理・
+                              // 刃数・ネジレ・刻印・作成年月日。キーは TITLE_BLOCK_FIELDS）
+  requested_at      timestamp
+  requested_by      uuid [ref: > users.id]
+  confirmed_at      timestamp
+  confirmed_by      uuid [ref: > users.id]
+  history           json      // [{ action, user, at, notes }]
+  created_by        uuid [ref: > users.id]
+  created_at        timestamp
+  updated_at        timestamp
+
+  indexes {
+    (item_id, customer_bp_id, version) [unique]   // NULLS NOT DISTINCT
+  }
+}
+
+Enum DESIGN_VERSION_STATUS {
+  DRAFT           // 下書き
+  REQUESTED       // 承認依頼中
+  CONFIRMED       // 確定
+  REJECTED        // 差し戻し（直してもう一度出せる）
 }
 
 Enum DESIGN_TRIGGER {
@@ -2050,8 +2111,12 @@ Enum DESIGN_STATUS {
 // **設計依頼を経ない版もある**（design_request_id = null）。図面だけ先に
 // 出来ている・既存図面を取り込む場合で、一覧の「依頼 / 手動」の別はこの列の
 // 有無から導く（列を増やして二重に持たない）。
+// item_id / customer_bp_id / version / design_request_id は版 (design_versions) の写し
+// （版の系列と番号は作成後に変わらないので写してもずれない）。
+// **is_latest は確定した版のファイルにだけ立つ** — 下書きの図面を指示書が拾わない。
 Table design_files {
   id              uuid [pk]
+  design_version_id uuid [not null, ref: > design_versions.id]
   design_request_id uuid [ref: > design_requests.id]
   product_id      int [ref: > products.id]
   // 対象の受注元。null = 汎用。版番号と is_latest はこの列ごとに数える。
