@@ -32,6 +32,16 @@ The scheduler runs immediately on start, then every `KOT_INTERVAL_SECONDS`
 (default 6h), pulling the last `KOT_DAYS` (default 7) days. Each run deletes and
 re-inserts that date range, so re-runs are idempotent.
 
+## Force import & month-end cleanup
+
+adminTools `/kot` → 「期間を指定して取り込み」 queues a date range in `kot.import_requests`;
+the entrypoint polls it every `KOT_REQUEST_POLL_SECONDS` (20s) and re-imports the range
+in 31-day windows (same delete-then-insert, so repeating is safe). On the **last day of
+each month (Asia/Tokyo)** the scheduled run also queues one automatic request for
+**the 20th of the previous month → that day** (`source = 'month-end'`, at most one per
+month-end), to pick up late corrections to the closing period. Both kinds appear in the
+adminTools request history and the import log.
+
 ## Export layout & columns
 
 The export uses KOT's **出力レイアウト `auto_import_v2`** (`KOT_EXPORT_LAYOUT`, default

@@ -695,7 +695,8 @@ CREATE TABLE IF NOT EXISTS import_requests (
     status text NOT NULL DEFAULT 'pending',
     requested_at timestamptz NOT NULL DEFAULT now(),
     started_at timestamptz, finished_at timestamptz,
-    rows integer, message text
+    rows integer, message text,
+    source text NOT NULL DEFAULT 'manual'
 )
 """
 
@@ -722,6 +723,7 @@ def force_kot_import(start_date: str = Form(""), end_date: str = Form("")):
     import psycopg
     with psycopg.connect(url, connect_timeout=5) as c, c.cursor() as cur:
         cur.execute(_KOT_REQ_DDL)
+        cur.execute("ALTER TABLE import_requests ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'manual'")
         cur.execute("SELECT 1 FROM import_requests WHERE status IN ('pending','running') LIMIT 1")
         if cur.fetchone():
             return RedirectResponse("/kot?err=実行待ち・実行中の取り込みがあります。完了後に再度お試しください", status_code=303)
@@ -740,14 +742,15 @@ def import_requests_log():
         import psycopg
         with psycopg.connect(url, connect_timeout=5) as c, c.cursor() as cur:
             cur.execute(_KOT_REQ_DDL)
-            cur.execute("SELECT id, start_date, end_date, status, requested_at, finished_at, rows, message "
+            cur.execute("ALTER TABLE import_requests ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'manual'")
+            cur.execute("SELECT id, start_date, end_date, status, requested_at, finished_at, rows, message, source "
                         "FROM import_requests ORDER BY id DESC LIMIT 10")
             rows = cur.fetchall()
             c.commit()
         return {"enabled": True, "requests": [
             {"id": r[0], "start_date": str(r[1]), "end_date": str(r[2]), "status": r[3],
              "requested_at": str(r[4]), "finished_at": str(r[5]) if r[5] else None,
-             "rows": r[6], "message": r[7]} for r in rows]}
+             "rows": r[6], "message": r[7], "source": r[8]} for r in rows]}
     except Exception as e:  # noqa: BLE001
         return {"enabled": True, "error": str(e)[:160], "requests": []}
 

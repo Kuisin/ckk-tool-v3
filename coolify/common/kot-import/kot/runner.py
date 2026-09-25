@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Run the King of Time export + DB load once, recording the outcome to the
 `import_runs` table so adminTools can show the import log."""
+from __future__ import annotations
+
 import os
 import sys
 import traceback
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import psycopg2
 
@@ -29,9 +32,14 @@ CREATE TABLE IF NOT EXISTS import_requests (
     status text NOT NULL DEFAULT 'pending',
     requested_at timestamptz NOT NULL DEFAULT now(),
     started_at timestamptz, finished_at timestamptz,
-    rows integer, message text
+    rows integer, message text,
+    source text NOT NULL DEFAULT 'manual'
 )
 """
+# Month-end cleanup: KOT keeps changing a day's numbers after the fact (late
+# corrections, 申請 approvals), so once a month the whole closing window is re-read.
+CLEANUP_SOURCE = "month-end"
+CLEANUP_TZ = ZoneInfo("Asia/Tokyo")  # "last day of the month" is a Japan calendar day
 # KOT's daily export is requested in windows this long, so one big request doesn't
 # depend on how many days the export screen accepts at once.
 CHUNK_DAYS = 31
@@ -65,11 +73,49 @@ def _record(status, sd, ed, days, rows, message):
         print(f"[runner] could not record run: {e}")
 
 
+def month_end_window(today: date) -> tuple[date, date] | None:
+    """On the last day of a month: (20th of the previous month, today). Else None."""
+    if (today + timedelta(days=1)).day != 1:
+        return None
+    prev_month_last = today.replace(day=1) - timedelta(days=1)
+    return prev_month_last.replace(day=20), today
+
+
+def queue_month_end_cleanup() -> bool:
+    """Queue the month-end reload once per month-end day. The scheduled run calls this
+    every few hours; the source+day check keeps it to a single request. The request
+    is served by run_pending() like a manual one, so it shows up in adminTools."""
+    today = datetime.now(CLEANUP_TZ).date()
+    window = month_end_window(today)
+    if window is None:
+        return False
+    _ensure_request_table()
+    c = _conn()
+    try:
+        with c, c.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM import_requests WHERE source = %s AND end_date = %s LIMIT 1",
+                (CLEANUP_SOURCE, window[1]),
+            )
+            if cur.fetchone():
+                return False
+            cur.execute(
+                "INSERT INTO import_requests (start_date, end_date, source) VALUES (%s, %s, %s)",
+                (window[0], window[1], CLEANUP_SOURCE),
+            )
+        print(f"[runner] queued month-end cleanup {window[0]} – {window[1]}")
+        return True
+    finally:
+        c.close()
+
+
 def _ensure_request_table():
     try:
         c = _conn()
         with c, c.cursor() as cur:
             cur.execute(_REQ_DDL)
+            # tables created before `source` existed
+            cur.execute("ALTER TABLE import_requests ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'manual'")
         c.close()
     except Exception as e:  # noqa: BLE001
         print(f"[runner] could not ensure import_requests: {e}")
@@ -84,7 +130,7 @@ def _claim_request():
                 "UPDATE import_requests SET status = 'running', started_at = now() "
                 "WHERE id = (SELECT id FROM import_requests WHERE status = 'pending' "
                 "ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED) "
-                "RETURNING id, start_date, end_date"
+                "RETURNING id, start_date, end_date, source"
             )
             return cur.fetchone()
     finally:
@@ -121,23 +167,31 @@ def run_pending() -> int:
         req = _claim_request()
         if req is None:
             return handled
-        req_id, sd, ed = req
+        req_id, sd, ed, source = req
+        label = "month-end" if source == CLEANUP_SOURCE else "manual"
         handled += 1
         total = 0
         try:
             for a, b in _windows(sd, ed):
                 path = export_daily_csv.run(headless=True, start=a, end=b)
                 total += db.write_to_db(path)
-            msg = f"manual #{req_id}: upserted {total} rows"
+            msg = f"{label} #{req_id}: upserted {total} rows"
             _record("ok", sd, ed, (ed - sd).days + 1, total, msg)
             _finish_request(req_id, "done", total, msg)
             print(f"[runner] request {req_id} ok: {total} rows")
         except Exception as e:  # noqa: BLE001
-            msg = f"manual #{req_id}: {e}"
+            msg = f"{label} #{req_id}: {e}"
             _record("failed", sd, ed, (ed - sd).days + 1, total, msg)
             _finish_request(req_id, "failed", total, str(e))
             print(f"[runner] request {req_id} failed: {e}")
             traceback.print_exc()
+
+
+def _queue_cleanup_safely() -> None:
+    try:
+        queue_month_end_cleanup()
+    except Exception as e:  # noqa: BLE001
+        print(f"[runner] could not queue month-end cleanup: {e}")
 
 
 def main() -> int:
@@ -152,11 +206,13 @@ def main() -> int:
         rows = db.write_to_db(path)
         _record("ok", sd, ed, days, rows, f"upserted {rows} rows")
         print(f"[runner] ok: {rows} rows")
+        _queue_cleanup_safely()
         return 0
     except Exception as e:  # noqa: BLE001
         _record("failed", sd, ed, days, 0, str(e))
         print(f"[runner] failed: {e}")
         traceback.print_exc()
+        _queue_cleanup_safely()  # a failed routine run must not also skip the cleanup
         return 1
 
 
