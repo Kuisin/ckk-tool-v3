@@ -46,7 +46,9 @@ VIEW v_labor  -- one row per employee per day (use for most questions)
   company, is_active,
   work_minutes / work_hours, overtime_minutes / overtime_hours,
   overtime_night_minutes, night_allowance_minutes, leave_late_minutes,
-  pto_minutes / pto_hours, clock_in_count, plan_start, plan_end
+  pto_minutes / pto_hours, clock_in_count, plan_start, plan_end,
+  scheduled_minutes, holiday_minutes, holiday_night_minutes,
+  absence_part_minutes, absence_leave_minutes  (NULL before 2026-09 layout change)
 TABLE hr_records         -- raw daily rows
 TABLE employees          -- employee_code -> username
 TABLE kot_employees      -- employee_code -> name
@@ -180,7 +182,9 @@ def query_labor_data(sql: str) -> str:
               department, position, company, is_active,
               work_minutes, work_hours, overtime_minutes, overtime_hours,
               overtime_night_minutes, night_allowance_minutes, leave_late_minutes,
-              pto_minutes, pto_hours, clock_in_count, plan_start, plan_end)
+              pto_minutes, pto_hours, clock_in_count, plan_start, plan_end,
+              scheduled_minutes, holiday_minutes, holiday_night_minutes,
+              absence_part_minutes, absence_leave_minutes)
       -- one row per employee per day. *_minutes are minutes, *_hours are hours.
       -- Label people by employee_name. The date column is named `date`.
       -- position = 役職 (係長/課長/部長…): NULL = regular staff, non-NULL = manager/leader.
