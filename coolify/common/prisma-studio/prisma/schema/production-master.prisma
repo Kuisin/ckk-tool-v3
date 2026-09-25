@@ -128,6 +128,7 @@ model WorkLocation {
 enum ProcessCategory {
   MATERIAL_PREP // 材料準備
   MACHINING // 加工
+  REGRIND // 再研磨（顧客の工具を研ぎ直す工程。再研磨指示書だけが使う）
   COATING // コーティング
   INSPECTION // 検査
   APPROVAL // 検査承認
@@ -210,6 +211,21 @@ model ProcessStepCatalog {
   // 担当者。既定は任意 — 承認後に現場で決めてよい工程が多く、計画の最小単位は
   // 「いつ・どこで」。人まで決めてから承認に出す工程だけ立てる。
   planAssigneeRequired Boolean       @default(false) @map("plan_assignee_required")
+  /// **この工程を載せてよい指示書種別**（在庫分 / 製造分 / 再研磨）。空にはできない。
+  ///
+  /// 以前はカテゴリから推測していた（「再研磨の指示書に加工工程は載せない」等）が、
+  /// 推測は現場の例外を表せない — 研ぎ直しのついでに円筒を当て直す、在庫から出す
+  /// だけのロットにも受入検査を通す、といった運用はどの会社にもあり、そのたびに
+  /// コードを直すことになっていた。**どの工程がどの種別で使えるかは業務の決め事**
+  /// なので、マスタが持つ。
+  ///
+  /// ただし**開始工程だけは設定で動かせない**（`stepAllowedForType`）— 製品出し
+  /// （在庫）は引当済み在庫を消費し、製品受入（再研磨）は顧客の預り品を計上する。
+  /// どちらも台帳がその種別であることに依っているので、種別を跨がせると在庫が壊れる。
+  ///
+  /// 既定は製造分だけ — 値を渡さずに作られた行が「どこでも使える」に倒れると、
+  /// 気づかないまま在庫分の指示書へ加工工程が並ぶ。広い側ではなく狭い側へ落とす。
+  allowedWorkOrderTypes WorkOrderType[] @default([MANUFACTURE]) @map("allowed_work_order_types")
   approvalMinRank   String?          @map("approval_min_rank") // 係長以上等
   quantityTracking  QuantityTracking @default(FLOW) @map("quantity_tracking")
   lotInputMode      LotInputMode     @default(NONE) @map("lot_input_mode") // 実行時のロット入力の既定（工程リスト/指示書で上書き可）
