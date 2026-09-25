@@ -116,6 +116,7 @@ export function DesignFileVersionForm({
       reading,
       productTypes,
       itemDefs,
+      file.name,
     );
     setSpec(state);
     // 受注元は、依頼から来ていない・まだ選んでいないときだけ当てる。

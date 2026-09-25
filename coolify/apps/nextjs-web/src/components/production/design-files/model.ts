@@ -11,6 +11,7 @@
  * 表現できない。
  */
 
+import type { DesignExtract } from "@/lib/design-extract-core";
 import type {
   DesignFileRole as CoreDesignFileRole,
   DesignVersionStatus,
@@ -120,6 +121,8 @@ export interface DesignVersionView {
   lengthMm: number | null;
   spec: Record<string, string>;
   titleBlock: TitleBlock;
+  /** 図面から読み取った値（無ければ null）。読み取り専用・手入力の別もここ。 */
+  extract: DesignExtract | null;
   /** 系列の中で確定済みの最新版か（製品マスタ・指示書が読む版）。 */
   isLatestConfirmed: boolean;
   files: ProductDesignFile[];

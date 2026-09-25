@@ -7,27 +7,56 @@
  * ここへ移し、図面の表題欄（図面情報）を足したもの。組み立てと検証の規則は
  * lib/design-spec-core.ts が唯一の定義元で、サーバーも同じ関数を通す。
  *
+ * **図面から読み取った欄は読み取り専用**（lib/design-extract-core.ts）。欄ごとの
+ * 「手入力」で上書きでき、上書きしても図面の値は欄の下に参照として残る。
+ * 「図面の値に戻す」で読み取り専用へ戻る。
+ *
  * 状態は親が持つ（制御コンポーネント）。図脳 SXF を読んだ値の差し込みも親が
  * applySxfReading で行う — 読み取りはファイルの欄で起きるので、欄どうしを
  * 親でつなぐほうが素直。
+ *
+ * `flat` にすると節をカードにせず見出し + 区切り線で並べる。すでにカードの中に
+ * 置く画面（版の詳細の「編集」）でカードを入れ子にしないため。
  */
 
 import {
+  Alert,
+  Badge,
+  Divider,
   Group,
   NumberInput,
   Select,
   SimpleGrid,
+  Stack,
   Switch,
+  Text,
   Textarea,
   TextInput,
+  Title,
 } from "@mantine/core";
-import { IconMinus } from "@tabler/icons-react";
+import {
+  IconArrowBackUp,
+  IconFileSearch,
+  IconMinus,
+  IconPencil,
+} from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 import { searchStructuredMaterialTypeOptions } from "@/app/(dashboard)/_shared/option-search";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton } from "@/components/ui/buttons";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
+import {
+  type DesignExtract,
+  extractCounts,
+  extractedValue,
+  extractFromSxf,
+  isLocked,
+  replaceExtract,
+  setOverride,
+} from "@/lib/design-extract-core";
 import {
   TITLE_BLOCK_FIELDS,
   type TitleBlock,
@@ -52,11 +81,7 @@ import {
   type ResolvedProductType,
   validateItemValue,
 } from "@/lib/product-types";
-import {
-  type SxfDrawingReading,
-  sxfSpecPatch,
-  sxfTitleBlock,
-} from "@/lib/sxf-core";
+import type { SxfDrawingReading } from "@/lib/sxf-core";
 
 /** 画面が持つ仕様の状態。 */
 export interface DesignSpecFormState {
@@ -67,6 +92,8 @@ export interface DesignSpecFormState {
   editor: SpecEditorState;
   titleBlock: TitleBlock;
   notes: string;
+  /** 図面から読み取った値（読み取り専用・手入力の別もここ）。 */
+  extract: DesignExtract | null;
 }
 
 /** 欄ごとのエラー（種別・追加項目はキー単位）。 */
@@ -85,6 +112,7 @@ export function initialDesignSpecState(
     spec: Record<string, string>;
     titleBlock: TitleBlock;
     notes: string | null;
+    extract?: DesignExtract | null;
   } | null,
   types: readonly ResolvedProductType[],
   defs: readonly ProductItemDef[],
@@ -98,6 +126,7 @@ export function initialDesignSpecState(
     editor: decomposeSpec(from?.spec ?? {}, types, defs),
     titleBlock: { ...(from?.titleBlock ?? {}) },
     notes: from?.notes ?? "",
+    extract: from?.extract ?? null,
   };
 }
 
@@ -113,6 +142,7 @@ export function toVersionSpecPayload(
     spec: mergeSpec(s.editor, types),
     titleBlock: s.titleBlock,
     notes: s.notes.trim() || null,
+    extract: s.extract,
   };
 }
 
@@ -144,30 +174,52 @@ export function validateDesignSpec(
 }
 
 /**
- * 図脳 SXF の読み取り結果を差し込む。**読めた欄だけ上書きする**（空の欄は
- * 触らない）— 手で入れた値を、図面に書かれていない項目で消さない。
+ * 読み取り専用の欄を図面の値に揃える（手入力にした欄には触らない）。
+ * lib/design-extract-core enforceExtract の画面の状態版。
+ */
+function enforceForm(
+  s: DesignSpecFormState,
+  types: readonly ResolvedProductType[],
+): DesignSpecFormState {
+  const ex = s.extract;
+  if (!ex) return s;
+  const next: DesignSpecFormState = { ...s, titleBlock: { ...s.titleBlock } };
+  const specValues: Record<string, string> = {};
+  for (const [key, value] of Object.entries(ex.values)) {
+    if (ex.overridden.includes(key)) continue;
+    if (key === "diameterMm") next.diameterMm = Number(value);
+    else if (key === "lengthMm") next.lengthMm = Number(value);
+    else if (key.startsWith("titleBlock.")) {
+      next.titleBlock[key.slice("titleBlock.".length) as TitleBlockField] =
+        value;
+    } else if (key.startsWith("spec.")) {
+      specValues[key.slice("spec.".length)] = value;
+    }
+  }
+  next.editor = applySpecValues(next.editor, specValues, types);
+  return next;
+}
+
+/**
+ * 図脳 SXF の読み取り結果を差し込む。読み取った欄は読み取り専用になり、
+ * **手入力にしていた欄はそのまま**（人が決めた値を図面で消さない）。
+ * 図面に書かれていない欄は触らない。
  */
 export function applySxfReading(
   s: DesignSpecFormState,
   reading: SxfDrawingReading,
   types: readonly ResolvedProductType[],
   defs: readonly ProductItemDef[],
+  fileName: string | null = null,
 ): { state: DesignSpecFormState; filled: number } {
-  const patch = sxfSpecPatch(reading, defs);
-  const title = sxfTitleBlock(reading);
-  const next: DesignSpecFormState = {
-    ...s,
-    diameterMm: patch.diameterMm ?? s.diameterMm,
-    lengthMm: patch.lengthMm ?? s.lengthMm,
-    editor: applySpecValues(s.editor, patch.specValues, types),
-    titleBlock: { ...s.titleBlock, ...title },
+  const extract = replaceExtract(
+    s.extract,
+    extractFromSxf(reading, defs, fileName, new Date()),
+  );
+  return {
+    state: enforceForm({ ...s, extract }, types),
+    filled: Object.keys(extract.values).length,
   };
-  const filled =
-    (patch.diameterMm != null ? 1 : 0) +
-    (patch.lengthMm != null ? 1 : 0) +
-    Object.keys(patch.specValues).length +
-    Object.keys(title).length;
-  return { state: next, filled };
 }
 
 const typeLabel = (t: ResolvedProductType) => t.name.ja || t.name.en || t.id;
@@ -178,19 +230,83 @@ export function DesignSpecFields({
   errors,
   productTypes,
   itemDefs,
+  flat = false,
 }: {
   value: DesignSpecFormState;
   onChange: (next: DesignSpecFormState) => void;
   errors?: DesignSpecErrors | null;
   productTypes: ResolvedProductType[];
   itemDefs: ProductItemDef[];
+  /** 節をカードにしない（すでにカードの中に置くとき）。 */
+  flat?: boolean;
 }) {
   const tr = useTranslations();
+  const fmt = useFormat();
   const isMobile = useIsMobile();
   const set = (patch: Partial<DesignSpecFormState>) =>
     onChange({ ...value, ...patch });
   const setEditor = (patch: Partial<SpecEditorState>) =>
     set({ editor: { ...value.editor, ...patch } });
+
+  const ex = value.extract;
+  const locked = (key: string) => isLocked(ex, key);
+
+  /** 手入力の切り替え。戻すときは図面の値へ揃え直す。 */
+  const toggleOverride = (key: string, on: boolean) => {
+    if (!ex) return;
+    onChange(
+      enforceForm(
+        { ...value, extract: setOverride(ex, key, on) },
+        productTypes,
+      ),
+    );
+  };
+
+  /**
+   * 欄の説明に出す「図面から」の印と切り替え。読み取っていない欄は何も出さない。
+   * 読み取り専用 = 「図面から」+「手入力」／手入力 = 図面の値 +「図面の値に戻す」。
+   */
+  const extractNote = (key: string, display?: (v: string) => string) => {
+    const raw = extractedValue(ex, key);
+    if (raw == null) return undefined;
+    const shown = display ? display(raw) : raw;
+    return locked(key) ? (
+      <Group component="span" gap={6} wrap="wrap">
+        <Badge color="blue" component="span" size="xs" variant="light">
+          {tr("production.designVersion.extract.fromDrawing")}
+        </Badge>
+        <GhostButton
+          leftSection={<IconPencil size={12} />}
+          onClick={() => toggleOverride(key, true)}
+          size="compact-xs"
+        >
+          {tr("production.designVersion.extract.editManually")}
+        </GhostButton>
+      </Group>
+    ) : (
+      <Group component="span" gap={6} wrap="wrap">
+        <Badge color="orange" component="span" size="xs" variant="light">
+          {tr("production.designVersion.extract.manual")}
+        </Badge>
+        <Text c="dimmed" component="span" size="xs">
+          {tr("production.designVersion.extract.drawingValue", {
+            value: shown,
+          })}
+        </Text>
+        <GhostButton
+          leftSection={<IconArrowBackUp size={12} />}
+          onClick={() => toggleOverride(key, false)}
+          size="compact-xs"
+        >
+          {tr("production.designVersion.extract.revert")}
+        </GhostButton>
+      </Group>
+    );
+  };
+
+  /** 読み取り専用の欄の見た目（入力できないことが一目で判るように塗る）。 */
+  const lockProps = (key: string) =>
+    locked(key) ? { readOnly: true, variant: "filled" as const } : {};
 
   const defByKey = new Map(itemDefs.map((d) => [d.key, d]));
   const selectedType =
@@ -211,37 +327,87 @@ export function DesignSpecFields({
   const onTypeChange = (id: string | null) => {
     const t = productTypes.find((x) => x.id === id) ?? null;
     const keys = new Set(t?.items.map((i) => i.key) ?? []);
-    setEditor({
-      typeId: id,
-      typeValues: t ? defaultValuesFor(t) : {},
-      // 種別に含まれる項目は追加項目から外す（重複防止）。
-      extraKeys: value.editor.extraKeys.filter((k) => !keys.has(k)),
-    });
+    onChange(
+      enforceForm(
+        {
+          ...value,
+          editor: {
+            ...value.editor,
+            typeId: id,
+            typeValues: t ? defaultValuesFor(t) : {},
+            // 種別に含まれる項目は追加項目から外す（重複防止）。
+            extraKeys: value.editor.extraKeys.filter((k) => !keys.has(k)),
+          },
+        },
+        productTypes,
+      ),
+    );
   };
 
   const setTitle = (field: TitleBlockField, v: string) =>
     set({ titleBlock: { ...value.titleBlock, [field]: v } });
 
+  const counts = extractCounts(ex);
+
   return (
     <>
-      <FormSection
+      {ex && (
+        <Alert
+          color="blue"
+          icon={<IconFileSearch size={16} />}
+          title={tr("production.designVersion.extract.summaryTitle", {
+            file: ex.source.fileName ?? ex.source.sheetNumber ?? "—",
+          })}
+        >
+          <Stack gap={4}>
+            <Text size="xs">
+              {tr("production.designVersion.extract.summaryCounts", {
+                read: counts.read,
+                overridden: counts.overridden,
+                at: fmt.dateTime(ex.source.readAt),
+              })}
+            </Text>
+            <Text c="dimmed" size="xs">
+              {tr("production.designVersion.extract.summaryHint")}
+            </Text>
+            <Group>
+              <GhostButton
+                c="red"
+                onClick={() => set({ extract: null })}
+                size="compact-xs"
+              >
+                {tr("production.designVersion.extract.detach")}
+              </GhostButton>
+            </Group>
+          </Stack>
+        </Alert>
+      )}
+
+      <Section
         description={tr("production.designVersion.titleBlockHint")}
+        flat={flat}
         title={tr("production.designVersion.titleBlock")}
       >
         <SimpleGrid cols={isMobile ? 1 : 3} spacing="sm">
-          {TITLE_BLOCK_FIELDS.map((f) => (
-            <TextInput
-              key={f}
-              label={tr(`production.designVersion.titleBlockField.${f}`)}
-              onChange={(e) => setTitle(f, e.currentTarget.value)}
-              value={value.titleBlock[f] ?? ""}
-            />
-          ))}
+          {TITLE_BLOCK_FIELDS.map((f) => {
+            const key = `titleBlock.${f}`;
+            return (
+              <TextInput
+                description={extractNote(key)}
+                key={f}
+                label={tr(`production.designVersion.titleBlockField.${f}`)}
+                onChange={(e) => setTitle(f, e.currentTarget.value)}
+                value={value.titleBlock[f] ?? ""}
+                {...lockProps(key)}
+              />
+            );
+          })}
         </SimpleGrid>
-      </FormSection>
+      </Section>
 
-      <FormSection
+      <Section
         description={tr("master.products.theMaterialAProductNeedsIs")}
+        flat={flat}
         title={tr("common.materialSpecification")}
       >
         <SearchSelect
@@ -263,14 +429,17 @@ export function DesignSpecFields({
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
           <NumberInput
             decimalScale={3}
-            description={tr("master.productForm.diameterCodeLabel", {
-              code:
-                value.diameterMm != null &&
-                value.diameterMm >= DIAMETER_MIN &&
-                value.diameterMm <= DIAMETER_MAX
-                  ? diameterCodeFromMm(value.diameterMm)
-                  : "—",
-            })}
+            description={
+              extractNote("diameterMm", (v) => `φ${v}`) ??
+              tr("master.productForm.diameterCodeLabel", {
+                code:
+                  value.diameterMm != null &&
+                  value.diameterMm >= DIAMETER_MIN &&
+                  value.diameterMm <= DIAMETER_MAX
+                    ? diameterCodeFromMm(value.diameterMm)
+                    : "—",
+              })
+            }
             error={errors?.diameterMm}
             label={tr("common.diameterMm")}
             max={DIAMETER_MAX}
@@ -280,17 +449,21 @@ export function DesignSpecFields({
             }
             step={0.1}
             value={value.diameterMm ?? ""}
+            {...lockProps("diameterMm")}
           />
           <NumberInput
             decimalScale={3}
-            description={tr("master.productForm.lengthCodeLabel", {
-              code:
-                value.lengthMm != null &&
-                value.lengthMm >= LENGTH_MIN &&
-                value.lengthMm <= LENGTH_MAX
-                  ? lengthCodeFromMm(value.lengthMm)
-                  : "—",
-            })}
+            description={
+              extractNote("lengthMm") ??
+              tr("master.productForm.lengthCodeLabel", {
+                code:
+                  value.lengthMm != null &&
+                  value.lengthMm >= LENGTH_MIN &&
+                  value.lengthMm <= LENGTH_MAX
+                    ? lengthCodeFromMm(value.lengthMm)
+                    : "—",
+              })
+            }
             error={errors?.lengthMm}
             label={tr("common.overallLengthMm")}
             max={LENGTH_MAX}
@@ -299,13 +472,15 @@ export function DesignSpecFields({
               set({ lengthMm: v === "" || v == null ? null : Number(v) })
             }
             value={value.lengthMm ?? ""}
+            {...lockProps("lengthMm")}
           />
         </SimpleGrid>
-      </FormSection>
+      </Section>
 
       {typeOptions.length > 0 && (
-        <FormSection
+        <Section
           description={tr("master.products.choosingATypeUnfoldsTheInput")}
+          flat={flat}
           title={tr("common.productTypes")}
         >
           <Select
@@ -324,6 +499,7 @@ export function DesignSpecFields({
             <SimpleGrid cols={isMobile ? 1 : 2} mt="md" spacing="sm">
               {selectedType.items.map((it) => (
                 <SpecItemInput
+                  description={extractNote(`spec.${it.key}`)}
                   error={errors?.items?.[it.key]}
                   item={it}
                   key={it.key}
@@ -332,17 +508,19 @@ export function DesignSpecFields({
                       typeValues: { ...value.editor.typeValues, [it.key]: v },
                     })
                   }
+                  readOnly={locked(`spec.${it.key}`)}
                   value={value.editor.typeValues[it.key] ?? ""}
                 />
               ))}
             </SimpleGrid>
           )}
-        </FormSection>
+        </Section>
       )}
 
       {(value.editor.extraKeys.length > 0 || addableOptions.length > 0) && (
-        <FormSection
+        <Section
           description={tr("master.products.onlyFieldsDefinedUnderProductItems")}
+          flat={flat}
           title={tr("master.products.extraFields")}
         >
           {value.editor.extraKeys.length > 0 && (
@@ -350,10 +528,12 @@ export function DesignSpecFields({
               {value.editor.extraKeys.map((key) => {
                 const def = defByKey.get(key);
                 if (!def) return null;
+                const exKey = `spec.${key}`;
                 return (
                   <Group align="flex-end" gap="xs" key={key} wrap="nowrap">
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <SpecItemInput
+                        description={extractNote(exKey)}
                         error={errors?.items?.[key]}
                         item={def}
                         onChange={(v) =>
@@ -364,23 +544,27 @@ export function DesignSpecFields({
                             },
                           })
                         }
+                        readOnly={locked(exKey)}
                         value={value.editor.extraValues[key] ?? ""}
                       />
                     </div>
-                    <GhostButton
-                      aria-label={tr("master.products.removeThisField")}
-                      color="red"
-                      onClick={() =>
-                        setEditor({
-                          extraKeys: value.editor.extraKeys.filter(
-                            (k) => k !== key,
-                          ),
-                        })
-                      }
-                      px={6}
-                    >
-                      <IconMinus size={14} />
-                    </GhostButton>
+                    {/* 図面から読んだ項目は外せない（外しても保存で戻るため）。 */}
+                    {!locked(exKey) && (
+                      <GhostButton
+                        aria-label={tr("master.products.removeThisField")}
+                        color="red"
+                        onClick={() =>
+                          setEditor({
+                            extraKeys: value.editor.extraKeys.filter(
+                              (k) => k !== key,
+                            ),
+                          })
+                        }
+                        px={6}
+                      >
+                        <IconMinus size={14} />
+                      </GhostButton>
+                    )}
                   </Group>
                 );
               })}
@@ -410,10 +594,10 @@ export function DesignSpecFields({
             searchable
             value={null}
           />
-        </FormSection>
+        </Section>
       )}
 
-      <FormSection title={tr("common.memo")}>
+      <Section flat={flat} title={tr("common.memo")}>
         <Textarea
           autosize
           label={tr("common.memo")}
@@ -424,8 +608,43 @@ export function DesignSpecFields({
           )}
           value={value.notes}
         />
-      </FormSection>
+      </Section>
     </>
+  );
+}
+
+/** 節。`flat` なら見出し + 区切り線だけ（カードを入れ子にしない）。 */
+function Section({
+  flat,
+  title,
+  description,
+  children,
+}: {
+  flat: boolean;
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  if (!flat) {
+    return (
+      <FormSection description={description} title={title}>
+        {children}
+      </FormSection>
+    );
+  }
+  return (
+    <Stack gap={0}>
+      <Title mb={description ? 2 : "xs"} order={5}>
+        {title}
+      </Title>
+      {description && (
+        <Text c="dimmed" mb="xs" size="xs">
+          {description}
+        </Text>
+      )}
+      <Divider mb="sm" />
+      {children}
+    </Stack>
   );
 }
 
@@ -434,16 +653,27 @@ function SpecItemInput({
   item,
   value,
   error,
+  description,
+  readOnly = false,
   onChange,
 }: {
   item: ProductItemDef;
   value: string;
   error?: string;
+  description?: ReactNode;
+  /** 図面から読んだ値で固定されている。 */
+  readOnly?: boolean;
   onChange: (v: string) => void;
 }) {
   const tr = useTranslations();
   const label = item.label.ja || item.label.en || item.key;
-  const common = { label, withAsterisk: item.required, error };
+  const common = {
+    label,
+    withAsterisk: item.required,
+    error,
+    description,
+    ...(readOnly ? { readOnly: true, variant: "filled" as const } : {}),
+  };
   switch (item.type) {
     case "number":
       return (
@@ -460,7 +690,8 @@ function SpecItemInput({
       return (
         <Switch
           checked={value === "true"}
-          description={error}
+          description={error ?? description}
+          disabled={readOnly}
           label={label}
           mt="lg"
           onChange={(e) => onChange(e.currentTarget.checked ? "true" : "false")}
@@ -470,7 +701,7 @@ function SpecItemInput({
       return (
         <Select
           {...common}
-          clearable={!item.required}
+          clearable={!item.required && !readOnly}
           data={(item.options ?? []).map((o) => ({
             value: o.value,
             label: o.label,

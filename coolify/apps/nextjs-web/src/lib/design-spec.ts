@@ -14,6 +14,11 @@ import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import {
+  type DesignExtract,
+  enforceExtract,
+  toDesignExtract,
+} from "@/lib/design-extract-core";
+import {
   type DesignVersionStatus,
   pickSpecVersion,
   TITLE_BLOCK_FIELDS,
@@ -49,6 +54,8 @@ export const versionSpecSchema = z.object({
     )
     .default({}),
   notes: z.string().max(2000).nullable(),
+  /** 図面から読み取った値（形は toDesignExtract が正規化する）。 */
+  extract: z.unknown().nullable().optional(),
 });
 export type VersionSpecInput = z.infer<typeof versionSpecSchema>;
 
@@ -60,6 +67,7 @@ export interface VersionSpecColumns {
   spec: Record<string, string> | null;
   titleBlock: Record<string, string> | null;
   notes: string | null;
+  extract: DesignExtract | null;
 }
 
 /**
@@ -72,7 +80,24 @@ export async function validateVersionSpec(
   { ok: true; data: VersionSpecColumns } | { ok: false; error: string }
 > {
   const tr = await getTranslations();
-  const errs = materialSpecErrors(input, tr);
+  // 読み取り専用の欄（図面から読み、手入力にしていない欄）は図面の値に揃える —
+  // 画面の外から別の値を送っても、手入力に切り替えていなければ通さない。
+  // 検証は揃えたあとの値（= 実際に保存する値）に対して行う。
+  const extract = toDesignExtract(input.extract ?? null);
+  const enforced = enforceExtract(
+    {
+      diameterMm: input.diameterMm,
+      lengthMm: input.lengthMm,
+      spec:
+        input.spec && Object.keys(input.spec).length > 0 ? input.spec : null,
+      titleBlock: input.titleBlock as TitleBlock,
+    },
+    extract,
+  );
+  const errs = materialSpecErrors(
+    { materialTypeId: input.materialTypeId, ...enforced },
+    tr,
+  );
   const first = errs.diameterMm ?? errs.lengthMm;
   if (first) return { ok: false, error: first };
   if (input.materialTypeId != null) {
@@ -86,7 +111,7 @@ export async function validateVersionSpec(
     getResolvedProductTypes(),
     getProductItemDefs(),
   ]);
-  const specError = validateSpec(input.spec, types, defs, tr);
+  const specError = validateSpec(enforced.spec, types, defs, tr);
   if (specError) return { ok: false, error: specError };
   return {
     ok: true,
@@ -94,12 +119,12 @@ export async function validateVersionSpec(
       materialTypeId: input.materialTypeId,
       // 寸法は材種なしでも持てる（図面から読んだ寸法を捨てない —
       // design-spec-core materialSpecErrors）。
-      diameterMm: input.diameterMm,
-      lengthMm: input.lengthMm,
-      spec:
-        input.spec && Object.keys(input.spec).length > 0 ? input.spec : null,
-      titleBlock: titleBlockJson(input.titleBlock as TitleBlock),
+      diameterMm: enforced.diameterMm,
+      lengthMm: enforced.lengthMm,
+      spec: enforced.spec,
+      titleBlock: titleBlockJson(enforced.titleBlock),
       notes: input.notes?.trim() || null,
+      extract,
     },
   };
 }
@@ -116,6 +141,8 @@ export interface ResolvedItemSpec {
   lengthMm: number | null;
   spec: Record<string, string>;
   titleBlock: TitleBlock;
+  /** 図面から読み取った値（表示で「図面 / 手入力」の印を付ける）。 */
+  extract: DesignExtract | null;
 }
 
 const SPEC_SELECT = {
@@ -130,6 +157,7 @@ const SPEC_SELECT = {
   lengthMm: true,
   spec: true,
   titleBlock: true,
+  extract: true,
   materialType: { select: { code: true, name: true } },
 } as const;
 
@@ -145,6 +173,7 @@ type SpecRow = {
   lengthMm: { toString(): string } | null;
   spec: unknown;
   titleBlock: unknown;
+  extract: unknown;
   materialType: { code: string | null; name: unknown } | null;
 };
 
@@ -162,6 +191,7 @@ function toResolved(v: SpecRow): ResolvedItemSpec {
     lengthMm: v.lengthMm != null ? Number(v.lengthMm.toString()) : null,
     spec: specRecord(v.spec),
     titleBlock: toTitleBlock(v.titleBlock),
+    extract: toDesignExtract(v.extract),
   };
 }
 

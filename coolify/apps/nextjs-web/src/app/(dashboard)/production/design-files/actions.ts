@@ -144,6 +144,9 @@ export async function updateDesignVersion(
           // null = 消す。JSON 列は DbNull で書かないと「触らない」になる。
           spec: spec.data.spec ?? Prisma.DbNull,
           titleBlock: spec.data.titleBlock ?? Prisma.DbNull,
+          extract:
+            (spec.data.extract as Prisma.InputJsonValue | null) ??
+            Prisma.DbNull,
           notes: spec.data.notes,
         },
       });
@@ -165,6 +168,7 @@ export async function updateDesignVersion(
         lengthMm: spec.data.lengthMm,
         spec: spec.data.spec,
         titleBlock: spec.data.titleBlock,
+        overridden: spec.data.extract?.overridden ?? [],
       },
     });
     revalidate(v);

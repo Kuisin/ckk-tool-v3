@@ -18,6 +18,7 @@ import type {
   ProductDesignFile,
 } from "@/components/production/design-files/model";
 import { prisma } from "@/lib/db";
+import { toDesignExtract } from "@/lib/design-extract-core";
 import {
   compareRole,
   type DesignVersionStatus,
@@ -125,6 +126,7 @@ type VersionRow = {
   lengthMm: { toString(): string } | null;
   spec: unknown;
   titleBlock: unknown;
+  extract: unknown;
   createdAt: Date;
   confirmedAt: Date | null;
   requestedAt: Date | null;
@@ -163,6 +165,7 @@ function toVersionView(
     lengthMm: v.lengthMm != null ? Number(v.lengthMm.toString()) : null,
     spec: specRecord(v.spec),
     titleBlock: toTitleBlock(v.titleBlock),
+    extract: toDesignExtract(v.extract),
     isLatestConfirmed: latestConfirmedIds.has(v.id),
     files: v.files
       .map(toProductDesignFile)

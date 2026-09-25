@@ -319,6 +319,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 刻印 | Marking | 刻印 | 図面情報の項目 |
 | 作成年月日（図面） | Drawn date | 绘制日期 | 図面情報の項目 |
 | 図脳（図脳RAPID） | Zunou (Zunou RAPID) | 图脑（图脑 RAPID） | CAD ソフトの名前。SXF（.sfc）の書き出し元 |
+| 手入力（図面から読んだ値の上書き） | Manual / Edit manually | 手动输入 | 状態の印は Manual、切り替えボタンは Edit manually |
+| 図面の値に戻す | Revert to drawing value | 恢复为图纸的值 | 手入力をやめて読み取り専用へ戻す |
 | 汎用（受注元を限定しない図面） | Generic | 通用 |
 | キーワード | Keywords | 关键词 |
 | 他社製品 | External product | 他社产品 | 他社が作った工具。再研磨専用の品目（製造・本番の明細では使えない） |

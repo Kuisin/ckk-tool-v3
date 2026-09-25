@@ -3531,7 +3531,19 @@
         "marking": "刻印",
         "drawnAt": "作成年月日"
       },
-      "confirm": "確定"
+      "confirm": "確定",
+      "extract": {
+        "fromDrawing": "図面",
+        "editManually": "手入力",
+        "manual": "手入力",
+        "drawingValue": "図面: {value}",
+        "revert": "図面の値に戻す",
+        "summaryTitle": "図面「{file}」から読み取りました",
+        "summaryCounts": "{read} 項目を読み取り（手入力 {overridden} 項目）・{at}",
+        "summaryHint": "図面から読んだ欄は読み取り専用です。欄の「手入力」で上書きでき、図面の値は欄の下に残ります。",
+        "detach": "読み取りを外す",
+        "viewSummary": "図面「{file}」から {read} 項目（手入力 {overridden} 項目）・{at}"
+      }
     }
   },
   "purchase": {
