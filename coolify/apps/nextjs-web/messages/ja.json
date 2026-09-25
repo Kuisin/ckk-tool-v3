@@ -7847,6 +7847,7 @@
       "coatingCost": "コート代",
       "lapping": "ラップ処理",
       "inspectionCertificate": "検査成績書",
+      "shapeOutPerPiece": "形状出し（1本按分）",
       "correctionFactor": "補正値",
       "enterABaseQuantity": "基準数量を入力してください",
       "representativeEstimatedUnitPrice": "代表見積単価",

@@ -7847,6 +7847,7 @@
       "coatingCost": "涂层费",
       "lapping": "研磨抛光",
       "inspectionCertificate": "检查成绩书",
+      "shapeOutPerPiece": "成型分摊费（每支）",
       "correctionFactor": "修正系数",
       "enterABaseQuantity": "请输入基准数量",
       "representativeEstimatedUnitPrice": "代表试算单价",

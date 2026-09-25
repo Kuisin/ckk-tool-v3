@@ -423,6 +423,21 @@ export function TrialEstimateDetail({
                       </Table.Td>
                     </Table.Tr>
                   ))}
+                  {/* 最低単価 (lots[0].minimumPrice) はこの内訳 8 項目 + 形状出し
+                      （1本按分）の合計。按分は数量に依存するため CostBreakdown では
+                      なく lots[0]（基準数量での結果）から読む。 */}
+                  {result.lots[0] && (
+                    <Table.Tr>
+                      <Table.Td>
+                        {tr("sales.trialEstimates.shapeOutPerPiece")}
+                      </Table.Td>
+                      <Table.Td ta="right">
+                        <MoneyText
+                          value={Math.round(result.lots[0].perPiece)}
+                        />
+                      </Table.Td>
+                    </Table.Tr>
+                  )}
                 </Table.Tbody>
               </Table>
             </div>

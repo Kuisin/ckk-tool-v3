@@ -1025,6 +1025,16 @@ function ResultsPanel({
       label: tr("sales.trialEstimates.inspectionCertificate"),
       value: breakdown.inspection,
     },
+    // 最低単価 (lot.minimumPrice) はこの内訳 8 項目 + 形状出し（1本按分）の合計。
+    // 按分は数量に依存するため CostBreakdown ではなく lot（基準数量での結果）から読む。
+    ...(lot
+      ? [
+          {
+            label: tr("sales.trialEstimates.shapeOutPerPiece"),
+            value: lot.perPiece,
+          },
+        ]
+      : []),
   ];
 
   return (

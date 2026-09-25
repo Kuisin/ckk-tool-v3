@@ -7847,6 +7847,7 @@
       "coatingCost": "Coating cost",
       "lapping": "Lapping",
       "inspectionCertificate": "Inspection certificate",
+      "shapeOutPerPiece": "Shape-out cost (per piece)",
       "correctionFactor": "Correction factor",
       "enterABaseQuantity": "Enter a base quantity",
       "representativeEstimatedUnitPrice": "Representative estimated unit price",
