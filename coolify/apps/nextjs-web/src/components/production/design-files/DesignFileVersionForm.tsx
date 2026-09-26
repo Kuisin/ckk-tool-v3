@@ -66,6 +66,7 @@ export interface DesignRequestContext {
 export function DesignFileVersionForm({
   customerOptions,
   initialProduct,
+  initialCustomerBpId = null,
   requestContext,
   productTypes,
   itemDefs,
@@ -74,6 +75,8 @@ export function DesignFileVersionForm({
   customerOptions: Option[];
   /** `?item=` から来たときの既定値。 */
   initialProduct: Option | null;
+  /** `?customer=` から来たときの受注元（設計図 PD26 で系列を絞っていたとき）。 */
+  initialCustomerBpId?: string | null;
   /** `?request=` から来たときの依頼。 */
   requestContext: DesignRequestContext | null;
   productTypes: ResolvedProductType[];
@@ -91,7 +94,7 @@ export function DesignFileVersionForm({
       : (initialProduct?.value ?? null),
   );
   const [customerBpId, setCustomerBpId] = useState<string | null>(
-    requestContext?.customerBpId ?? null,
+    requestContext ? requestContext.customerBpId : initialCustomerBpId,
   );
   const [spec, setSpec] = useState<DesignSpecFormState>(() =>
     initialDesignSpecState(null, productTypes, itemDefs),

@@ -12,12 +12,14 @@ import {
   groupBySeries,
   groupVersionsBySeries,
   isVersionEditable,
+  matchesSeriesParam,
   nextDesignVersion,
   pickSpecVersion,
   pickThumbFile,
   resolveLatestFile,
   resolveSeriesCustomer,
   sameSeries,
+  seriesParam,
   titleBlockJson,
   toTitleBlock,
 } from "./design-files-core";
@@ -314,5 +316,21 @@ describe("pickThumbFile", () => {
 
   it("空なら null", () => {
     expect(pickThumbFile([])).toBeNull();
+  });
+});
+
+describe("系列の URL 値（?series=）", () => {
+  it("汎用は generic、受注元は取引先 id", () => {
+    expect(seriesParam(null)).toBe("generic");
+    expect(seriesParam(A)).toBe(A);
+  });
+
+  it("値が無ければ全系列、あればその系列だけ", () => {
+    expect(matchesSeriesParam(A, null)).toBe(true);
+    expect(matchesSeriesParam(null, "")).toBe(true);
+    expect(matchesSeriesParam(null, "generic")).toBe(true);
+    expect(matchesSeriesParam(A, "generic")).toBe(false);
+    expect(matchesSeriesParam(A, A)).toBe(true);
+    expect(matchesSeriesParam(B, A)).toBe(false);
   });
 });
