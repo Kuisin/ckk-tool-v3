@@ -26,12 +26,11 @@ Register product drawings **as versions** and keep them **separate per ordering 
 
 Even if you upload a 2D drawing, a 3D model, a preview and reference files together, they **all share the same version number**. A version is a revision generation of the drawing, not a serial number per file. You can also create a **specification-only version** with no files at all.
 
-### Version numbers run across the product; drawings grow per product × ordering customer
+### Versions are counted per product × ordering customer
 
 The same product grows a separate drawing for each customer. This **combination of product and ordering customer** is called a series.
 
-- **Version numbers are one running sequence per product.** Generic v1, then v2 for customer A, then v3 when the generic drawing is revised — the number goes up whichever series you create it in, so "v2" always means one version of the product.
-- As a result, numbers can skip within a series (generic has v1 and v3, customer A has v2).
+- Customer A's v3 and customer B's v1 live side by side on the same product.
 - A series with the ordering customer left blank is the **generic** one. It is used when a customer has no dedicated drawing.
 - **Another customer's series is never used.** Customer A's drawing will not appear on customer B's work order (that would mean making the wrong thing without noticing).
 
@@ -78,7 +77,7 @@ Clicking a row shows **every series for that product**, split by ordering custom
 5. Check the **Title block** and **Specification** (they are filled in automatically when you choose an SXF file).
 6. Select **Save draft**.
 
-Saving creates a draft version and opens its screen. The version number is assigned automatically (the product's latest version number plus one). **At this point work orders do not use it yet** — confirm it on the version screen.
+Saving creates a draft version and opens its screen. The version number is assigned automatically (the series' latest version plus one). **At this point work orders do not use it yet** — confirm it on the version screen.
 
 ![The registration form, with one slot per role](../../../assets/screenshots/design-file-new-01.png)
 
@@ -154,8 +153,8 @@ In the file list on the version screen, selecting **Memo** on a row opens a memo
 
 ## Questions and problems
 
-**Q. Version numbers skip within a series (v1, then v3)**
-Version numbers run across the whole product, so the missing number was used in another ordering customer's series. Check the other series on the same product's drawing screen.
+**Q. The version went back to v1 on the same product**
+You are looking at a series with a different ordering customer. Versions are counted per product × ordering customer, so a drawing for a new customer starts at v1.
 
 **Q. The drawing I registered does not appear on the work order**
 The version is still a draft (or pending approval). Confirm it on the version screen. If there is no confirmed version, confirming one generic version (ordering customer left blank) makes it available to every customer's work orders.
