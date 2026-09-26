@@ -24,6 +24,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { seriesParam } from "@/lib/design-files-core";
 import { DESIGN_FILE_ROLE_COLOR, type DesignFileSeriesRow } from "./model";
 
 const BASE_PATH = "/production/design-files";
@@ -261,7 +262,12 @@ export function DesignFileTable({
         emptyIcon={<IconRuler2 size={24} />}
         emptyMessage={tr("production.designFiles.thereAreNoDrawings")}
         getRowId={(r) => r.key}
-        onRowClick={(r) => router.push(`${BASE_PATH}/${r.itemId}`)}
+        // 行 = 系列なので、その系列に絞った状態で開く（?series=）。
+        onRowClick={(r) =>
+          router.push(
+            `${BASE_PATH}/${r.itemId}?series=${encodeURIComponent(seriesParam(r.customerBpId))}`,
+          )
+        }
       />
     </ListShell>
   );

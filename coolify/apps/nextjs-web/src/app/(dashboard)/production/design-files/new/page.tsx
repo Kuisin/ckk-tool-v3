@@ -26,7 +26,7 @@ export const dynamic = "force-dynamic";
 export default async function ProductionDesignFileNewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ request?: string; item?: string }>;
+  searchParams: Promise<{ request?: string; item?: string; customer?: string }>;
 }) {
   const tr = await getTranslations();
   const denied = await requireAppRead("design-files");
@@ -62,6 +62,12 @@ export default async function ProductionDesignFileNewPage({
       />
       <DesignFileVersionForm
         customerOptions={customerOptions}
+        // ?customer= は受注元の選択肢にあるときだけ使う（実在を確かめてから渡す）。
+        initialCustomerBpId={
+          customerOptions.some((o) => o.value === sp.customer)
+            ? (sp.customer ?? null)
+            : null
+        }
         initialProduct={initialProduct}
         itemDefs={itemDefs}
         productTypes={productTypes}

@@ -3543,7 +3543,9 @@
         "summaryHint": "Fields read from the drawing are read-only. Use \"Edit manually\" on a field to overwrite it; the drawing value stays shown below the field.",
         "detach": "Detach drawing values",
         "viewSummary": "{read} fields from drawing \"{file}\" ({overridden} edited manually) · {at}"
-      }
+      },
+      "seriesOption": "{name} ({count} versions)",
+      "allSeries": "All ordering customers"
     }
   },
   "purchase": {

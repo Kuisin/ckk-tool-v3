@@ -111,6 +111,24 @@ export function seriesKey(customerBpId: string | null): string {
   return customerBpId ?? "";
 }
 
+/**
+ * 系列を URL で指す値（?series=）。汎用は "generic"、受注元はその取引先 id。
+ * null を空文字にすると「指定なし」と区別できないので、汎用には名前を付ける。
+ */
+export const GENERIC_SERIES_PARAM = "generic";
+
+export function seriesParam(customerBpId: string | null): string {
+  return customerBpId ?? GENERIC_SERIES_PARAM;
+}
+
+/** ?series= の値がその系列を指すか。値が無ければ全系列が当たる。 */
+export function matchesSeriesParam(
+  customerBpId: string | null,
+  param: string | null,
+): boolean {
+  return param == null || param === "" || seriesParam(customerBpId) === param;
+}
+
 /** 同じ系列か（null 同士は同じ系列）。 */
 export function sameSeries(
   a: string | null | undefined,

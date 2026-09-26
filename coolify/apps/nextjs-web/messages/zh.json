@@ -3543,7 +3543,9 @@
         "summaryHint": "从图纸读取的栏位为只读。点击栏位的“手动输入”即可覆盖，图纸的值会保留在栏位下方。",
         "detach": "解除读取",
         "viewSummary": "来自图纸“{file}”的 {read} 个项目（手动输入 {overridden} 个）· {at}"
-      }
+      },
+      "seriesOption": "{name}（{count} 个版本）",
+      "allSeries": "所有订货方"
     }
   },
   "purchase": {

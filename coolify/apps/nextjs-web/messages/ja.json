@@ -3543,7 +3543,9 @@
         "summaryHint": "図面から読んだ欄は読み取り専用です。欄の「手入力」で上書きでき、図面の値は欄の下に残ります。",
         "detach": "読み取りを外す",
         "viewSummary": "図面「{file}」から {read} 項目（手入力 {overridden} 項目）・{at}"
-      }
+      },
+      "seriesOption": "{name}（{count} 版）",
+      "allSeries": "すべての受注元"
     }
   },
   "purchase": {

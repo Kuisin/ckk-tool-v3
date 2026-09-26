@@ -62,7 +62,7 @@ The list shows **one row per series**. Listing every version would repeat the sa
 | Source | "Request" if any version came from a design request, otherwise "Manual" |
 | Updated | The date the newest version was updated |
 
-Clicking a row shows **every series for that product**, split by ordering customer. Each series shows a thumbnail of its latest confirmed version and the version list (status, a summary of the specification, files). Select a version to open its screen.
+Clicking a row opens that product's drawings **filtered to the row's series**. Use the "**Ordering customer**" dropdown at the top to switch to another series, or clear it to list **all series** by ordering customer. Each series shows a thumbnail of its latest confirmed version and a list of versions (status, spec summary, files). Click a version to open its screen. While filtered by an ordering customer, "**Register a version**" opens the registration screen with that customer already selected.
 
 ![The drawing list. One row is one series (product × customer)](../../../assets/screenshots/design-file-list-01.png)
 
