@@ -2014,9 +2014,7 @@ Enum DESIGN_FILE_ROLE {
 // target_type = 'design_versions') が決め、**段が無ければ承認を通らずに確定**
 // する。確定前（下書き・差し戻し）だけ仕様とファイルを直せる。系列ごとに
 // 確定前の版は 1 つだけ（部分 unique index design_versions_open_per_series_key）。
-// 版番号は製品ごとの通し番号（lib/design-files-core.ts nextDesignVersion、製品単位の
-// advisory lock で採る）。DB の一意制約は系列内（NULLS NOT DISTINCT）のまま —
-// 通し番号に変える前の版が系列ごとに v1 を持っているため。
+// 版番号は系列内で一意（NULLS NOT DISTINCT — 汎用同士も同じ系列）。
 //
 // 図脳 SXF（.sfc）を読むと title_block・直径・全長・名前の一致する製品項目が
 // 埋まる（lib/sxf-core.ts — 表題欄はラベルの右隣の文字、寸法は表示文字列から）。
@@ -2100,7 +2098,7 @@ Enum DESIGN_STATUS {
 // 参考資料 0..N）だけが違う。version は「図面の改訂世代」でファイルの通し番号
 // ではない。
 //
-// **版は (製品 × 受注元) の系列で育つ**（番号は製品の通し番号 — 2026-09-26 に系列ごとの連番から変更）。同じ製品でも顧客ごとに図面が別々に
+// **版は (製品 × 受注元) ごとに数える。** 同じ製品でも顧客ごとに図面が別々に
 // 育つので、顧客 A の v3 と顧客 B の v1 が同居する。customer_bp_id が null の
 // 系列は「汎用」で、顧客専用の図面が無いときのフォールバック。優先規則
 // （顧客一致 → 汎用。**他の顧客の系列へは決して落ちない**）は
@@ -2121,7 +2119,7 @@ Table design_files {
   design_version_id uuid [not null, ref: > design_versions.id]
   design_request_id uuid [ref: > design_requests.id]
   product_id      int [ref: > products.id]
-  // 対象の受注元。null = 汎用。is_latest はこの列（系列）ごとに立つ。
+  // 対象の受注元。null = 汎用。版番号と is_latest はこの列ごとに数える。
   customer_bp_id  uuid [ref: > business_partners.id]
   file_id         uuid [not null, ref: > files.id]
   version         int [not null, default: 1]

@@ -175,13 +175,13 @@ enum DesignVersionStatus {
 // 「受注元一致 → 汎用 → 最後に確定した版」の順で 1 つ選ぶ
 // （lib/design-files-core.ts pickSpecVersion が唯一の定義元）。
 //
-// 版番号は**製品ごとの通し番号**（系列をまたいで増える）で、下書きを作った時点で採る。
+// 版番号は系列 (製品 × 受注元) ごとの連番で、下書きを作った時点で採る。
 // 系列ごとに**確定前の版は 1 つだけ**（部分 unique index — migration で張る）。
 // 並行して 2 つの下書きがあると、どちらが次の版なのかが読めなくなる。
 model DesignVersion {
   id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   itemId          Int                 @map("item_id")
-  /// null = 汎用。系列（最新図面・顧客一致 → 汎用）はこの列で分ける。
+  /// null = 汎用。版番号はこの列ごとに数える。
   customerBpId    String?             @map("customer_bp_id") @db.Uuid
   version         Int
   status          DesignVersionStatus @default(DRAFT)
@@ -244,7 +244,7 @@ model DesignVersion {
 // すべて同じ version・同じ is_latest を持ち、role だけが違う。version は
 // 「図面の改訂世代」であってファイルの通し番号ではない。
 //
-// **版は (製品 × 受注元) の系列で育つ**（番号は製品の通し番号）。同じ製品でも顧客ごとに図面が別々に
+// **版は (製品 × 受注元) ごとに数える。** 同じ製品でも顧客ごとに図面が別々に
 // 育つので、顧客 A の v3 と顧客 B の v1 が同じ製品に同居する。customer_bp_id が
 // null の系列は「汎用」で、顧客専用の図面が無いときのフォールバック。
 // この規約は製品工程ルート（product_process_routes.customer_bp_id）と同じ —
@@ -272,7 +272,7 @@ model DesignFile {
   designRequestId String?  @map("design_request_id") @db.Uuid
   /// 統合品目（app.items）。この図面が属する品目。
   itemId          Int?     @map("item_id")
-  // 対象の受注元。null = 汎用。is_latest はこの列（系列）ごとに立つ。
+  // 対象の受注元。null = 汎用。版番号と is_latest はこの列ごとに数える。
   customerBpId    String?  @map("customer_bp_id") @db.Uuid
   fileId          String   @map("file_id") @db.Uuid
   version         Int      @default(1)

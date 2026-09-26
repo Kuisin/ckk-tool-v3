@@ -1,7 +1,7 @@
 /**
  * design-files-core.ts — 設計図の版まわりの判定規則（純関数・唯一の定義元）。
  *
- * 版は **(製品 × 受注元)** の系列で育つ（番号だけは製品の通し番号 — nextDesignVersion）。同じ製品でも顧客ごとに図面が別々に
+ * 版は **(製品 × 受注元)** ごとに数える。同じ製品でも顧客ごとに図面が別々に
  * 育つので、顧客 A の v3 と顧客 B の v1 が同居する。`customerBpId = null` の
  * 系列は「汎用」で、顧客専用の図面が無いときのフォールバック。
  *
@@ -127,20 +127,15 @@ export function versionKey(f: {
   return `${seriesKey(f.customerBpId)}#${f.version}`;
 }
 
-/**
- * 次の版番号 — **製品ごとの通し番号**（受注元の系列をまたいで増える）。版が無ければ 1。
- *
- * 以前は系列（製品 × 受注元）ごとに数えていたので、顧客専用の系列を作ると
- * 同じ製品に v1 が何本も並び、「v1」がどの図面か言えなかった。番号だけは製品で
- * 1 本にし、系列の区別（最新図面・顧客一致 → 汎用の優先）はそのまま残す。
- * そのため系列の中では番号が飛ぶ（汎用 v1・顧客 A v2・汎用 v3）ことがある。
- */
+/** その系列の次の版番号。系列が空なら 1。 */
 export function nextDesignVersion(
-  versions: readonly { version: number }[],
+  files: readonly { customerBpId: string | null; version: number }[],
+  customerBpId: string | null,
 ): number {
-  return versions.length === 0
-    ? 1
-    : Math.max(...versions.map((v) => v.version)) + 1;
+  const versions = files
+    .filter((f) => sameSeries(f.customerBpId, customerBpId))
+    .map((f) => f.version);
+  return versions.length === 0 ? 1 : Math.max(...versions) + 1;
 }
 
 /**
