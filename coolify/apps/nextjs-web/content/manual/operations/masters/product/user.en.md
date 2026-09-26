@@ -97,7 +97,7 @@ The same customer cannot appear on two rows (one code per customer).
 
 The "related" tab shows this product's drawings. **This view is read-only** — registering, editing and deleting happen in [Drawing](/manual/en/operations/production/design-file/user) (PD06). Keeping one place to write is what keeps version numbering consistent across screens. Use「**設計図で管理**」(manage in Drawing) at the top right to go there.
 
-**Versions are counted per product and customer.** The same product grows a separate drawing for each customer, so customer A's v3 sits next to customer B's v1 on one product. A series with no customer is the **generic** one, used by work orders for customers that have no drawing of their own. Each series gets its own heading, with a thumbnail of the latest version on top (select it to enlarge; 3D models rotate in place).
+**Drawings grow per product and customer** (version numbers run across the whole product). The same product grows a separate drawing for each customer, so each series gets its own heading. A series with no customer is the **generic** one, used by work orders for customers that have no drawing of their own. Each series gets its own heading, with a thumbnail of the latest version on top (select it to enlarge; 3D models rotate in place).
 
 Each version carries a source tag.
 
