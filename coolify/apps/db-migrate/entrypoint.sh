@@ -9,6 +9,8 @@
 #   3. kiosk-cron.sql         — pg_cron job definitions (idempotent)
 #      （user-suspension / security / portal / api も同じブロックで流す）
 #   4. analytics-views.sql    — Metabase / AI reporting views (CREATE OR REPLACE)
+#      kot-columns.sql        — kot.hr_records の追加列 + kot.v_labor（kot スキーマは
+#                               Prisma 管理外。kot.hr_records がある DB でだけ流す）
 #   5. user-provision-cron.sql — AD→app.users の日次作成（**本番のみ**・env で切替）
 #
 # 2–4 are deliberately NOT migrations: they must be re-applied as the schema
@@ -93,6 +95,15 @@ fi
 
 echo "==> analytics-views.sql"
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/analytics-views.sql
+
+# 勤怠（King of Time）の表は kot-import が作るもので、Prisma の外にある。
+# 表が無い DB（新規 DB・CI）では何もしない — 作るのは kot-import の役目。
+if [ "$(psql "$DATABASE_URL" -At -c "SELECT to_regclass('kot.hr_records') IS NOT NULL")" = "t" ]; then
+  echo "==> kot-columns.sql"
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/kot-columns.sql
+else
+  echo "==> kot-columns.sql — kot.hr_records not present, skipped"
+fi
 
 # AD からのユーザー自動作成（毎日 02:00 JST）は **本番だけ**。
 # dev の DB に社員 120 人分のアカウントを量産しても意味が無いので、

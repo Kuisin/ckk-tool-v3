@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { ACCOUNT_CODE_PATTERN } from "@/lib/accounting-export-core";
 import { autoMatchNames } from "@/lib/company-aliases";
 import { Prisma } from "@/lib/db";
 import type { Tr } from "@/lib/i18n";
@@ -85,6 +86,9 @@ export type SalesRepAssignmentInput = z.infer<
   ReturnType<typeof salesRepAssignmentInput>
 >;
 
+/** 会計連携の科目コード — 形は SY0J / MS0F と共通（accounting-export-core.ts）。空欄 = 既定に従う。 */
+const accountCodePattern = ACCOUNT_CODE_PATTERN;
+
 export function customerAttrsInput(tr: Tr) {
   return z
     .object({
@@ -113,6 +117,25 @@ export function customerAttrsInput(tr: Tr) {
       deliveryToleranceOver: z.number().min(0).nullable(),
       varianceApprovalWithin: z.boolean(),
       varianceApprovalOutside: z.boolean(),
+      // ── 会計連携（仕訳 CSV）─────────────────────────────────────────────
+      // 仕訳の借方は常に売掛金で、その**補助科目が得意先**というのが会計ソフト側の
+      // 普通の構成。空欄 = 科目は SY0J の既定 / 補助科目は空欄のまま出す。
+      // **customerCode で代用しない** — 社内の顧客コードと会計側の補助科目コードは
+      // 別の番号体系で、流用すると違う補助科目へ計上された仕訳ができる。
+      receivableAccountCode: z
+        .string()
+        .regex(
+          accountCodePattern,
+          tr("master.businessPartners.accountCodeHint"),
+        )
+        .optional(),
+      receivableSubAccountCode: z
+        .string()
+        .regex(
+          accountCodePattern,
+          tr("master.businessPartners.accountCodeHint"),
+        )
+        .optional(),
       // 属性行（bp_customer_attrs）ではなく別テーブルに書くので
       // customerAttrsData には含めない（syncCustomerSalesReps が受け持つ）。
       salesReps: z.array(salesRepAssignmentInput(tr)).default([]),
@@ -171,6 +194,10 @@ export function customerAttrsData(
     deliveryToleranceOver: v.deliveryToleranceOver,
     varianceApprovalWithin: v.varianceApprovalWithin,
     varianceApprovalOutside: v.varianceApprovalOutside,
+    // 空欄は null（空文字にしない）— 「入っていない = 既定に従う」の判定を
+    // null かどうかだけで済ませるため。
+    receivableAccountCode: v.receivableAccountCode?.trim() || null,
+    receivableSubAccountCode: v.receivableSubAccountCode?.trim() || null,
   };
 }
 

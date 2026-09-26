@@ -78,6 +78,7 @@
     "disabled2": "已停用",
     "display": "显示",
     "error2": "错误",
+    "warning": "注意",
     "category": "分类",
     "apps": "应用",
     "unknownError": "未知错误",
@@ -643,6 +644,7 @@
     "products": "产品",
     "defectType": "不良类别",
     "product": "产品",
+    "standardPrice": "标准价格",
     "guest": "访客",
     "site": "据点",
     "detail": "详情",
@@ -804,7 +806,13 @@
     "priceListInactive": "价格表已停用",
     "priceListExpired": "价格表不在有效期",
     "dateFrom": "起始日期",
-    "dateTo": "结束日期"
+    "dateTo": "结束日期",
+    "billTo": "请款对象",
+    "stockTake": "盘点",
+    "stockMovement": "出入库单",
+    "invoicePayment": "请款单入款",
+    "notPendingApproval": "目前不在待审批状态",
+    "designVersion": "图纸版本"
   },
   "shell": {
     "appsLabel": "应用",
@@ -992,6 +1000,7 @@
       "PRODUCTION": "量产",
       "TEST": "试制",
       "SAMPLE": "样品",
+      "REGRIND": "再研磨",
       "OTHER": "其他"
     },
     "PERMISSION_ACTION_LABEL": {
@@ -1017,6 +1026,7 @@
     "PROCESS_CATEGORY_LABEL": {
       "MATERIAL_PREP": "材料准备",
       "MACHINING": "加工",
+      "REGRIND": "再研磨",
       "COATING": "涂层",
       "INSPECTION": "检查",
       "APPROVAL": "检查批准",
@@ -1065,9 +1075,11 @@
     },
     "WORK_ORDER_TYPE_LABEL": {
       "FROM_STOCK": "库存分",
-      "MANUFACTURE": "制造分"
+      "MANUFACTURE": "制造分",
+      "REGRIND": "再研磨"
     },
     "INSPECTION_STATUS_LABEL": {
+      "APPROVED": "已批准",
       "PENDING": "未实施",
       "PASS": "合格",
       "FAIL": "不合格"
@@ -1174,8 +1186,9 @@
     },
     "DESIGN_FILE_ROLE_LABEL": {
       "PREVIEW": "预览",
-      "BLUEPRINT": "图纸文件",
-      "REFERENCE": "参考资料"
+      "BLUEPRINT": "2D 图纸",
+      "REFERENCE": "参考资料",
+      "MODEL": "3D 模型"
     },
     "STEP_EXECUTION_LABEL": {
       "INTERNAL": "厂内",
@@ -1198,6 +1211,48 @@
     "DELIVERY_TOLERANCE_BASIS_LABEL": {
       "PERCENT": "百分比（%）",
       "QUANTITY": "数量"
+    },
+    "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "MANUAL": "手动",
+      "OUTSOURCE_ISSUE": "外协发出",
+      "OUTSOURCE_RETURN": "外协返回",
+      "SALES_RETURN": "销售退货",
+      "REGRIND_RECEIPT": "再研磨接收",
+      "WORK_ORDER_COMPLETION": "工单完成",
+      "DELIVERY_SHIPMENT": "出货",
+      "MATERIAL_RECEIPT": "材料到货",
+      "STOCK_TRANSFER": "库存调拨",
+      "STOCK_RESERVATION": "库存预留",
+      "RESERVATION_RELEASE": "解除预留",
+      "ADJUSTMENT": "盘点调整",
+      "OTHER": "未知（迁移前）"
+    },
+    "TRANSACTION_TYPE_LABEL": {
+      "IN": "入库",
+      "OUT": "出库",
+      "RESERVE": "预留",
+      "RELEASE": "解除预留",
+      "ADJUST": "盘点调整"
+    },
+    "INVENTORY_TYPE_LABEL": {
+      "PRODUCT": "产品",
+      "MATERIAL": "材料"
+    },
+    "ITEM_TYPE_LABEL": {
+      "PRODUCT": "产品",
+      "MATERIAL": "材料",
+      "REGRIND": "再研磨"
+    },
+    "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
+      "past": "实绩",
+      "now": "当前",
+      "supply": "预计供应",
+      "demand": "预计需求"
+    },
+    "MOVEMENT_DIRECTION_LABEL": {
+      "IN": "入库",
+      "OUT": "出库",
+      "TRANSFER": "移动"
     }
   },
   "status": {
@@ -1492,6 +1547,14 @@
           "label": "已导出"
         }
       },
+      "AccountingDocument": {
+        "POSTED": {
+          "label": "已过账"
+        },
+        "REVERSED": {
+          "label": "已冲销"
+        }
+      },
       "ApprovalRequest": {
         "PENDING": {
           "label": "审批中"
@@ -1549,6 +1612,48 @@
         },
         "REVOKED": {
           "label": "已撤销"
+        }
+      },
+      "StockTake": {
+        "DRAFT": {
+          "label": "草稿"
+        },
+        "COUNTING": {
+          "label": "记录中"
+        },
+        "CONFIRMED": {
+          "label": "已确定"
+        },
+        "CANCELLED": {
+          "label": "已取消"
+        }
+      },
+      "StockTakeApproval": {
+        "NONE": {
+          "label": "—"
+        },
+        "PENDING": {
+          "label": "审批中"
+        },
+        "APPROVED": {
+          "label": "已批准"
+        },
+        "REJECTED": {
+          "label": "已退回"
+        }
+      },
+      "DesignVersion": {
+        "DRAFT": {
+          "label": "草稿"
+        },
+        "REQUESTED": {
+          "label": "审批中"
+        },
+        "CONFIRMED": {
+          "label": "已确定"
+        },
+        "REJECTED": {
+          "label": "已退回"
         }
       }
     }
@@ -1923,6 +2028,7 @@
       "PRODUCTION": "量产",
       "TEST": "试制",
       "SAMPLE": "样品",
+      "REGRIND": "再研磨",
       "OTHER": "其他"
     },
     "DELIVERY_METHOD": {
@@ -1988,7 +2094,7 @@
       "generateInvoices": "生成请款单",
       "createAnInvoice": "创建请款单",
       "exported": "已导出",
-      "yayoiAccountingCsv": "弥生会计 CSV",
+      "accountingCsv": "会计对接 CSV",
       "shipmentsCovered": "对象出货",
       "thereAreNoShipmentsToBill": "没有可请款的出货",
       "notGeneratedUseGenerateInvoices": "未生成（通过「生成请款单」创建）",
@@ -1998,7 +2104,6 @@
       "confirmGeneratingInvoices": "确认生成请款单",
       "theBillingClosingWasRun": "已执行结算处理",
       "runTheBillingClosing": "执行结算处理",
-      "aggregatesTheMonthSUnbilledShipments": "按客户汇总对象月的未请款出货（已出货・仅发货），并创建结算日的处理行。",
       "years": "年",
       "months": "个月",
       "runTheBillingClosing2": "执行结算处理",
@@ -2009,7 +2114,35 @@
       "shipmentNote": "{quantity} 支・{amount}",
       "titleWithClosingDate": "{customer}（{date} 结算）",
       "shipmentsCoveredWithCount": "对象出货（{count}）",
-      "confirmGenerateBody": "将根据 {customer} 的 {date} 结算生成请款单（草稿）。对象出货的 {count} 条记录将成为明细。"
+      "confirmGenerateBody": "将根据 {customer} 的 {date} 结算生成请款单（草稿）。对象出货的 {count} 条记录将成为明细。",
+      "dueDate": "付款期日",
+      "monthEnd": "月末",
+      "dayOfMonth": "{day} 日",
+      "termsDayOnly": "结算日之后的第一个 {day} 付款",
+      "termsDaysThenDay": "结算日 + {days} 天之后的第一个 {day} 付款",
+      "termsDaysOnly": "结算日 + {days} 天（未设置付款日）",
+      "termsDefault": "结算日 + {days} 天（账期与付款日均未设置时的默认）",
+      "generateInvoicesInBulk": "批量生成请款单",
+      "nothingToProcess": "没有可处理的结算",
+      "selectPendingPastClosingDate": "请选择未处理且已过结算日的行",
+      "invoicesWereGenerated": "已生成 {count} 张请款单",
+      "someCouldNotBeProcessed": "{count} 张未能生成",
+      "skippedNotReady": "{count} 项不在对象内（已处理或尚未到结算日）",
+      "aggregatesUnbilledShipmentsUpToDate": "按客户汇总截至指定日期已到结算日且尚未结算的未请款出货（已出货・仅发货），并为已过结算日的部分直接生成请款单（草稿）。",
+      "targetDate": "指定日期",
+      "kind": "执行类别",
+      "kindScheduled": "定期",
+      "kindManual": "手动",
+      "simulate": "试算",
+      "simulateTitle": "结算处理试算",
+      "simulateDateDescription": "查看在该日执行会产生什么结果（可以选择未来日期）",
+      "simulateCountsCurrentShipmentsOnly": "只统计当前未请款的出货。指定日之前新产生的出货不包含在内。",
+      "simulateClosingCount": "结算日 {count} 件",
+      "simulateInvoiceCount": "请款单 {count} 件",
+      "simulateNothingToClose": "没有可结算的内容",
+      "simulateInvoiceCreated": "生成请款单",
+      "simulateInvoiceNotYet": "次日起生成",
+      "runsUpToTodayOnly": "最多只能执行到今天。想看之后的请使用试算"
     },
     "invoices": {
       "issueThePdf": "发行 PDF",
@@ -2019,13 +2152,13 @@
       "confirmPayment": "确认收款",
       "handEnteredLinesOnly": "—（仅手动输入的明细）",
       "shipmentWithNoDeliveryNoteIssued": "—（未发行送货单的出货）",
-      "yayoiAccountingExport": "弥生会计导出",
-      "notExportedTheYayoiCsvIs": "未导出（发行后输出弥生 CSV）",
+      "accountingExport": "会计对接",
+      "notExportedAfterIssue": "未导出（发行后导出会计对接 CSV）",
       "markAsSent": "标记为已寄送",
       "markAsPaid": "标记为已付款",
-      "yayoiAccountingCsv": "弥生会计 CSV",
+      "accountingCsv": "会计对接 CSV",
       "paymentDue": "付款期限",
-      "yayoiExport": "弥生导出",
+      "accountingExportedAt": "会计对接时间",
       "notExported": "未导出",
       "summary": "摘要",
       "origin": "来源",
@@ -2039,8 +2172,22 @@
       "taxLabelReduced": "消费税（8%）",
       "taxLabelExempt": "消费税（免税）",
       "taxLabelStandard": "消费税（10%）",
-      "yayoiAccountingCsvAgain": "弥生会计 CSV（重新导出）",
-      "taxLabelRate": "消费税（{rate}%）"
+      "accountingCsvAgain": "会计对接 CSV（重新导出）",
+      "taxLabelRate": "消费税（{rate}%）",
+      "issueApprovalRejectedHelp": "发行前审批已被退回。请重新检查手动追加的费用后再次发行。",
+      "paymentApprovalRejectedHelp": "入款审批已被退回。请再次从“标记为已入款”提交申请。",
+      "issueApprovalWaitingHelp": "仅该组成员可以操作。",
+      "paymentApprovalWaitingHelp": "仅该组成员可以操作。",
+      "paymentApprovalApproveHelp": "记录此次入款需要审批。请确认内容后予以批准。",
+      "issueApprovalApproveHelpWithCharges": "含有 {count} 项手动追加的费用（合计 {amount}）。请确认内容后予以批准。",
+      "chargesClosedForEditing": "只有草稿状态的请款单可以编辑追加费用",
+      "chargesSaveFailed": "保存追加费用失败",
+      "chargesHelp": "手动追加到此请款单的费用（仅可从费用主数据中选择）。发行前需要审批。仅可在草稿状态下编辑。",
+      "manualInvoiceHelp": "选择要立即请款的客户。不等待结算日，直接从当前未请款的出货生成请款单（草稿）。",
+      "unbilledShipments": "未请款出货",
+      "noUnbilledShipmentsForCustomer": "没有未请款的出货",
+      "createInvoiceFromSelection": "生成请款单",
+      "someShipmentsNoLongerAvailable": "所选出货中有部分已被其他请款单使用，请重新选择。"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "将发行请款单 {invoiceNumber}，发行日期记为今天。",
@@ -2048,13 +2195,18 @@
       "confirmMarkSentMessage": "将请款单 {invoiceNumber} 标记为已寄送。",
       "markedSentWithNumber": "已将请款单 {invoiceNumber} 标记为已寄送",
       "confirmMarkPaidMessage": "将请款单 {invoiceNumber} 标记为已付款。",
-      "markedPaidWithNumber": "已将请款单 {invoiceNumber} 标记为已付款"
+      "markedPaidWithNumber": "已将请款单 {invoiceNumber} 标记为已付款",
+      "approvalRequestedMessage": "已提交审批申请（请款单 {invoiceNumber}）"
     },
     "closingTable": {
-      "yearLabel": "{year} 年",
-      "monthLabel": "{month} 月",
       "createdAndUpdatedCounts": "新建 {created} 项 / 更新 {updated} 项",
-      "skippedCount": "跳过已处理 {skipped} 项"
+      "skippedCount": "跳过已处理 {skipped} 项",
+      "resultModalTitle": "结算处理结果",
+      "bulkResultModalTitle": "请款单生成结果",
+      "createdInvoicesHeading": "已生成请款单（{count}）",
+      "noInvoicesCreated": "未生成任何请款单",
+      "failuresHeading": "未能生成（{count}）",
+      "openInvoiceList": "打开请款单列表"
     },
     "invoicesActions": {
       "invalidNumber": "请款单号无效",
@@ -2063,17 +2215,59 @@
       "onlyIssuedCanMarkSent": "只有已发行的请款单可以标记为已寄送",
       "markSentFailed": "标记为已寄送失败",
       "onlySentCanMarkPaid": "只有已寄送的请款单可以标记为已付款",
-      "markPaidFailed": "标记为已付款失败"
+      "markPaidFailed": "标记为已付款失败",
+      "awaitingIssueApproval": "正在等待发行前审批",
+      "approvalRequestFailed": "创建审批申请失败",
+      "approvalRequested": "已提交审批申请",
+      "awaitingPaymentApproval": "正在等待入款前审批",
+      "paymentApprovalRequested": "已提交入款审批申请"
+    },
+    "accountingDocuments": {
+      "invalidDocumentNumber": "会计凭证编号无效",
+      "reasonRequired": "请输入冲销理由",
+      "notActivePosted": "该凭证已冲销，或不存在",
+      "reversed": "已创建冲销分录",
+      "reverseFailed": "创建冲销分录失败",
+      "createReversal": "冲销",
+      "reverseReasonLabel": "冲销理由",
+      "confirmReverseTitle": "冲销确认",
+      "confirmReverseMessage": "将对该会计凭证进行冲销——生成一张借贷方向相反的新凭证，原凭证标记为已冲销（明细不会被修改）。",
+      "activeDocument": "已过账的凭证",
+      "documentHistory": "会计凭证历史",
+      "documentNumber": "凭证编号",
+      "postedAtLabel": "过账时间",
+      "reversedAtLabel": "冲销时间",
+      "downloadCsv": "会计对接CSV",
+      "redownloadCsv": "会计对接CSV（重新下载）",
+      "notPostedYet": "尚未过账",
+      "needsRepost": "已冲销——再次导出将过账新凭证",
+      "documentsList": "凭证历史",
+      "documentsListDescription": "已过账、已冲销的会计凭证列表。点击一行可打开对应请款单。"
     },
     "closingActions": {
       "closingDateNotReached": "结算日之前无法处理（从结算日次日起）",
       "closingNotFound": "未找到目标结算处理",
       "generateInvoiceFailed": "请款单生成失败",
-      "invalidYearMonth": "目标月份格式无效（YYYYMM）",
       "itemNameWithLot": "{name}（批次 {lot}）",
-      "noUnbilledShipmentsForMonth": "目标月份没有未请款的出货",
       "pendingOnly": "只有未处理的结算才能生成请款单",
-      "runFailed": "结算处理执行失败"
+      "runFailed": "结算处理执行失败",
+      "invalidDate": "指定日期格式无效",
+      "noUnbilledShipmentsUpToDate": "截至指定日期没有未请款的出货",
+      "futureDateNotRunnable": "无法以未来日期执行。请使用试算查看之后的内容。",
+      "simulateFailed": "试算失败"
+    },
+    "invoiceTable": {
+      "manualInvoice": "手动请款",
+      "nothingToIssue": "没有可发行的请款单",
+      "selectDraftInvoices": "请选择草稿状态的请款单",
+      "issuedCount": "已发行 {count} 项",
+      "nothingToMarkPaid": "没有可标记为已入款的请款单",
+      "selectSentInvoices": "请选择已寄送的请款单",
+      "paymentProcessedCount": "已处理 {count} 项入款",
+      "nothingToApprove": "没有可审批的请款单",
+      "selectPendingApprovalInvoices": "请选择待审批的请款单",
+      "approvedCount": "已批准 {count} 项",
+      "rejectedCount": "已退回 {count} 项"
     }
   },
   "general": {
@@ -2449,6 +2643,12 @@
       "deliveryOrderNeedsOrderLine": "未关联订单明细的工单无法创建",
       "deliveryOrderAlreadyArranged": "该工单的订单明细均已安排出货",
       "prepRoute": "准备工序清单",
+      "regrindRoute": "再研磨工序清单",
+      "regrindQuantities": "再研磨数量",
+      "regrindReceived": "接收",
+      "regrindReturned": "退回",
+      "regrindFinished": "完成",
+      "regrindNotReceivedYet": "尚未接收",
       "manufacturingRoute": "制造工序清单",
       "newerVersionExists": "已有最新 v{version}",
       "varianceAllowedBadge": "允许"
@@ -2632,8 +2832,7 @@
       "selectAWorkLocation": "请选择作业场所",
       "start": "开始",
       "end": "结束",
-      "enterStartAndEnd": "请输入开始与结束时间",
-      "enterQuantity": "请输入数量"
+      "enterStartAndEnd": "请输入开始与结束时间"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "数量与不良",
@@ -2717,8 +2916,6 @@
       "couldNotRegisterIt": "登记失败",
       "generic": "、通用",
       "leaveItBlankForGenericUsed": "留空则为「通用」— 在没有客户专用图纸时使用。版本号按订货方分别计数",
-      "theSourceDataForTheMachining": "生成加工程序的源数据。将成为此系列的最新图纸",
-      "drawingFile": "图纸文件",
       "aFileSuchAsStlFor": "STL 等用于在画面确认形状的文件。没有也可登记",
       "forPreview3d": "预览用（3D）",
       "descriptionOptionalEGPartDrawing": "说明（可选）— 例：零件图、尺寸表",
@@ -2816,6 +3013,8 @@
       "thisStepHasBeenCancelled": "该工序已取消",
       "thisStepHasBeenCancelled2": "该工序已取消。",
       "outsourcingSchedule": "外协日程",
+      "custodyHeld": "寄存库存：{supplier} 保管 {quantity} 支（单据 {movement}）",
+      "custodyReturned": "寄存库存：已返回（发出 {issued} / 返回 {returned}）",
       "outsourcingCost": "外协费",
       "saveTheOutsourcingSchedule": "保存外协日程",
       "interruptRollBack": "中断（回退）",
@@ -2844,6 +3043,13 @@
       "thisCustomer": "该客户",
       "stepFallbackWithId": "工序 #{id}",
       "prepRouteHelp": "出库・交接与材料准备工序的顺序（所有产品共用）。工单始终使用最新版本，不能按工单选择版本。要修改顺序，请在工序主数据的准备工序清单中创建新版本。",
+      "regrindRouteHelp": "再研磨工序清单（公共）。不绑定产品或客户，工单始终使用最新版本。导入后可以增减工序（此时与清单的关联会断开）",
+      "noRegrindRouteRegistered": "尚未登记再研磨工序清单（工序主数据 > 再研磨工序清单）",
+      "regrindRouteUsesLatest": "使用最新版 v{version}（{date}）",
+      "editRegrindRoutes": "编辑再研磨工序清单",
+      "selectARegrindRoute": "请选择再研磨工序清单",
+      "regrindQuantityMatchesTheAllocation": "再研磨的计划数量与分配数量（{count}）一致；实际到货数在产品接收时记录",
+      "regrindTypeLockedByLine": "订单明细的类别为再研磨，因此工单类别固定为再研磨",
       "noPrepRouteRegistered": "尚未登记准备工序清单（请在工序主数据中创建）",
       "showOtherCustomers": "同时显示本产品其他订货方的工序清单",
       "showOtherCustomersHelp": "默认仅显示本订货方与通用清单。可选择其他订货方的清单后「复制到本订货方」。",
@@ -2862,7 +3068,9 @@
       "prepRouteUsesLatest": "使用最新的 v{version}（{date}）",
       "prepStepsReadOnly": "准备工序来自共用的准备工序清单，此画面不能编辑 — 只编辑制造工序",
       "editPrepRoutes": "编辑准备工序清单（工序主数据）",
-      "selectAPrepRoute": "请选择准备工序清单"
+      "selectAPrepRoute": "请选择准备工序清单",
+      "typeFixedByOrderLine": "订单明细的订单类别为「{orderType}」，因此本工单的类别已确定。如需更改，请修改订单确认书的明细。",
+      "typeFixedByStockTarget": "面向库存（不关联订单明细）的工单只能是制造分。"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "分配 {allocated} / 订购 {ordered}",
@@ -2890,8 +3098,7 @@
     "designFileVersionForm": {
       "registeringAsResultOfRequest": "作为设计委托单 {requestNumber} 的成果登记。产品「{productLabel}」{customerPart}由委托单确定，无法更改。",
       "andCustomerWithName": "・订货方「{name}」",
-      "referenceWithNumber": "参考资料 {number}",
-      "designFileWasAddedWithVersion": "已添加图纸 v{version}"
+      "referenceWithNumber": "参考资料 {number}"
     },
     "stepExecutionView": {
       "stepWithName": "工序：{name}",
@@ -3014,7 +3221,6 @@
       "workLocationRequiredForPlan": "作业计划需要作业场所",
       "planLockedByWorkOrderStatus": "审批中、已完成或已取消的工单无法修改作业计划",
       "timeRequiredForPlan": "本工序的作业计划需要开始・结束时间",
-      "quantityRequiredForPlan": "本工序的作业计划需要数量",
       "assigneeRequiredForPlan": "此工序的作业计划需要负责人"
     },
     "workOrderActions": {
@@ -3077,11 +3283,21 @@
       "allocationsMustShareProduct": "分配给同一工单的订单明细必须是同一产品",
       "allocationExceedsRemaining": "对订单明细 {number} 的分配超过了剩余可分配量（订单数量 {lineQuantity} − 已分配 {otherAllocated} = 剩余 {remaining}）",
       "stockPlannedQuantityMustMatchAllocation": "库存分工单的计划数量必须与分配数量一致",
+      "regrindRouteRequired": "请选择再研磨工序清单（已有有效的再研磨工序清单）",
+      "regrindRouteNotFound": "所选的再研磨工序清单不存在或已停用",
+      "regrindLinesOnly": "再研磨工单只能分配订单类别为再研磨的明细",
+      "regrindWorkOrderOneLineOnly": "再研磨工单只能分配 1 条明细",
+      "regrindPlannedQuantityMustMatchAllocation": "再研磨工单的计划数量 = 分配数量",
+      "regrindLineRequiresRegrindWorkOrder": "订单类别为再研磨的明细只能分配给再研磨工单",
+      "regrindOrderRequiresOrderLine": "再研磨工单需要订单明细",
+      "externalProductRequiresRegrind": "他社产品的工单只能是再研磨（不能创建制造分・库存分）",
       "plannedQuantityBelowAllocationTotal": "计划数量低于分配合计 {total}（可自由追加不良品余量，但需不低于分配合计）",
       "plansRequiredBeforeApproval": "申请审批前请填写作业计划（日期 + 作业场所）：{steps}",
       "copyRouteFailed": "复制工序清单失败",
       "prepRouteRequired": "请选择准备工序清单",
-      "prepRouteNotFound": "所选的准备工序清单不存在或已停用"
+      "prepRouteNotFound": "所选的准备工序清单不存在或已停用",
+      "regrindLineToolMissing": "订单明细 {number}：未选择要研磨的刀具",
+      "designFileNotConfirmed": "未确定版本的图纸无法固定到工单"
     },
     "designFileActions": {
       "cannotDelete": "无法删除",
@@ -3090,13 +3306,23 @@
       "memoUpdatedAudit": "更新图纸 v{version} 的备忘",
       "notFound": "未找到该图纸",
       "referencedByRevisionRequest": "无法删除——修订委托将其指定为原图纸",
-      "lockedInUseByWorkOrder": "工单正在使用，无法更改",
-      "lockedRequestDeliverable": "无法删除——这是设计委托的成果物（备忘可以编辑）"
+      "approvalRequestFailed": "无法提交审批申请",
+      "approvedRemaining": "已批准（剩余 {remaining} 人）",
+      "approvedToNextStep": "已批准（进入下一级）",
+      "filesAddedAudit": "向 v{version} 添加了 {count} 个文件",
+      "lockedConfirmed": "已确定的版本无法更改",
+      "lockedPendingApproval": "审批中，无法更改",
+      "notPendingApproval": "该版本不在审批中",
+      "openVersionExists": "该系列已有未确定的版本（v{version}）。请先确定或删除该版本。",
+      "roleAlreadyAttached": "已附有{role}。如需替换，请先移除。",
+      "specUpdatedAudit": "更新了 v{version} 的规格",
+      "versionDeletedAudit": "删除了草稿版本 v{version}"
     },
     "inventoryActions": {
       "exceedsAvailable": "超过可移动数量（可用 {free} —— 预留部分无法移动）",
       "quantityRequired": "请输入数量",
       "sameLocation": "移出地与移入地相同",
+      "custodyNotTransferable": "外协寄存的库存无法在此移动。返回时由工序的到货日期记账。",
       "selectTargetPlant": "请选择移入据点",
       "sourceInventoryNotFound": "未找到移出库存",
       "targetLocationMismatch": "移入存放位置与移入据点不一致",
@@ -3157,7 +3383,6 @@
       "targetProductNotSpecified": "未指定目标产品",
       "invalidOrderingCustomer": "指定的订货客户无效",
       "invalidDesignRequest": "指定的设计委托无效",
-      "selectTheDrawingFile": "请选择图纸文件",
       "isTooLargeMax20mb": "{name} 过大（每个文件最多 20MB）"
     },
     "workflowIssues": {
@@ -3188,6 +3413,139 @@
       "toleranceBottom": "公差下偏差",
       "upperLimit": "上限",
       "lowerLimit": "下限"
+    },
+    "movements": {
+      "movementNumber": "单据编号",
+      "cause": "事由",
+      "sourceDocument": "来源单据",
+      "searchByNumber": "按单据编号搜索",
+      "noMovements": "没有出入库单",
+      "storageLocation": "存放位置 / 货架",
+      "truncatedNotice": "仅显示最近 1000 条。更早的单据即使筛选也不会出现。"
+    },
+    "stockTakes": {
+      "actions": {
+        "cancelFailed": "取消失败",
+        "cannotCancelNow": "当前无法取消（仅草稿或记入中可取消）",
+        "cannotSubmitNow": "当前无法提交（请至少填写 1 行的实测数）",
+        "countsSaved": "已保存记入",
+        "createFailed": "创建失败",
+        "noLinesToCount": "没有可盘点的对象",
+        "notEditableNow": "当前无法记入",
+        "notPendingApproval": "不处于审批中",
+        "saveCountsFailed": "保存记入失败",
+        "selectAPlant": "请选择据点",
+        "stateChanged": "状态已发生变化，请刷新后重试",
+        "submitFailed": "提交失败"
+      },
+      "detail": {
+        "bookQuantity": "账面数量",
+        "confirmCancelBody": "将取消 {number}，此操作无法撤销。",
+        "confirmedAtLabel": "确定时间",
+        "countedProgress": "已记入 {counted}/{total} 项",
+        "countedQuantity": "实测数量",
+        "countsSaved": "已保存记入",
+        "createdAtLabel": "创建时间",
+        "difference": "差异",
+        "item": "对象",
+        "linesTitle": "盘点对象（{count}）",
+        "movementTitle": "出入库单据",
+        "noDifferenceNoMovement": "无差异（未开出入库单据）",
+        "notConfirmedYet": "尚未确定",
+        "notCounted": "未盘点",
+        "numberLabel": "盘点编号",
+        "stageConfirmed": "确定",
+        "stageCounting": "记入",
+        "stageDraft": "草稿",
+        "summaryLine": "已记入 {counted}/{total} 项・差异 {diffCount} 项（盘盈 +{over} ・ 盘亏 −{under}）",
+        "unassignedLocation": "未分配"
+      },
+      "form": {
+        "created": "已创建",
+        "createdBody": "已创建 {number}",
+        "newTitle": "新建盘点",
+        "sectionDescription": "导入整个据点，或按保管位置缩小范围后的盘点对象。",
+        "sectionTitle": "盘点信息",
+        "selectAPlant": "选择据点",
+        "selectAPlantFirst": "请先选择据点",
+        "selectAStorageLocation": "选择存放位置（可选）"
+      },
+      "table": {
+        "approvalStatus": "审批状态",
+        "emptyMessage": "暂无盘点记录",
+        "lineCount": "明细数",
+        "number": "盘点编号",
+        "searchPlaceholder": "按盘点编号、据点、存放位置搜索",
+        "storageLocation": "存放位置"
+      }
+    },
+    "designVersion": {
+      "addFiles": "添加文件",
+      "blueprintSlotHint": "图脑 SXF（.sfc）、DXF、DWG 等。选择 .sfc 文件时会读取标题栏和尺寸并填入规格。",
+      "checkTheSpec": "请检查规格的输入",
+      "confirmCardDesc": "确定后，该版本将用于工单和产品主数据。确定后无法更改。",
+      "confirmCardTitle": "这是待确定的草稿",
+      "confirmModalMessage": "已确定的版本无法更改。请确认规格和文件后再确定。",
+      "confirmModalTitle": "确定 v{version}",
+      "confirmedBy": "已确定",
+      "confirmedToast": "已确定",
+      "deleteVersion": "删除版本",
+      "deleteVersionConfirm": "将删除草稿版本 v{version} 及其文件。此操作无法撤销。",
+      "draftCreated": "已创建草稿版本 v{version}",
+      "filesAdded": "已添加文件",
+      "filesHint": "均为可选。确定前可以随时添加或删除。",
+      "latestConfirmed": "已确定的最新版本",
+      "latestConfirmedVersion": "已确定 v{version}",
+      "modelSlotHint": "STEP、IGES、CIM3D 等。无法在画面中显示的格式仅可下载。",
+      "noConfirmedVersion": "无已确定的版本",
+      "noFiles": "没有文件",
+      "noSpec": "未设置规格",
+      "openVersion": "打开 v{version}",
+      "referenceSlotHint": "零件图、尺寸表等。可以添加任意数量。",
+      "removeFile": "移除文件",
+      "removeFileConfirm": "将从该版本中移除并删除“{filename}”。",
+      "saveDraft": "保存草稿",
+      "spec": "规格",
+      "stageDraft": "创建",
+      "superseded": "已有更新的版本",
+      "sxfApplyFailed": "无法将从图纸读取的值应用到规格",
+      "sxfCheckHint": "保存前请确认读取的值。图纸上未写明的项目不会更改。",
+      "sxfCustomerMatched": "已根据客户名称“{name}”选择订货方",
+      "sxfCustomerNotMatched": "无法将客户名称“{name}”匹配到唯一的订货方。请手动选择订货方。",
+      "sxfDimensions": "外径 φ{diameter} / 全长 {length}",
+      "sxfRead": "已从图纸读取 {count} 个项目",
+      "sxfSheet": "图号 {sheet}",
+      "sxfUnreadable": "无法作为 SXF 读取",
+      "sxfUnreadableHint": "文件仍可附加，但请手动输入规格。只能读取用图脑 RAPID 的“SXF 格式”导出的 .sfc 文件。",
+      "titleBlock": "图纸标题栏",
+      "titleBlockHint": "图纸标题栏中记载的内容。选择图脑 SXF（.sfc）文件时会自动填入。",
+      "versionCount": "共 {count} 个版本",
+      "titleBlockField": {
+        "productName": "品名",
+        "drawingNumber": "图纸编号",
+        "toolNumber": "刀具编号",
+        "material": "材质",
+        "surfaceTreatment": "表面处理",
+        "flutes": "刃数",
+        "helix": "螺旋角",
+        "marking": "刻印",
+        "drawnAt": "绘制日期"
+      },
+      "confirm": "确定",
+      "extract": {
+        "fromDrawing": "图纸",
+        "editManually": "手动输入",
+        "manual": "手动输入",
+        "drawingValue": "图纸：{value}",
+        "revert": "恢复为图纸的值",
+        "summaryTitle": "已从图纸“{file}”读取",
+        "summaryCounts": "读取了 {read} 个项目（手动输入 {overridden} 个）· {at}",
+        "summaryHint": "从图纸读取的栏位为只读。点击栏位的“手动输入”即可覆盖，图纸的值会保留在栏位下方。",
+        "detach": "解除读取",
+        "viewSummary": "来自图纸“{file}”的 {read} 个项目（手动输入 {overridden} 个）· {at}"
+      },
+      "seriesOption": "{name}（{count} 个版本）",
+      "allSeries": "所有订货方"
     }
   },
   "purchase": {
@@ -4732,6 +5090,71 @@
       "activateBeforeIssuing": "请先启用账号（未启用的账号无法登录）。",
       "noActiveAccounts": "该客户没有已启用的门户账号。",
       "couldNotIssueTheGuide": "无法发行指南。"
+    },
+    "accounting": {
+      "accounting": "会计对接",
+      "description": "由请款单生成的记账凭证 CSV 的格式。每行的科目代码在主数据一侧（税种 MS0F / 业务伙伴 MS01），本页保存的是格式，以及主数据为空时的默认值。",
+      "notYetVendorLayout": "默认列是「按科目代码输出」的通用格式，并非会计软件的正式导入格式。拿到导入格式表后，请在此页调整列与默认代码。",
+      "format": "输出格式",
+      "formatDescription": "会计软件要求的字符编码、换行与日期写法。",
+      "encoding": "字符编码",
+      "newline": "换行",
+      "dateFormat": "日期格式",
+      "headerRow": "输出表头行",
+      "quoteMode": "引号方式",
+      "amountStyle": "金额写法",
+      "filenameSuffix": "文件名后缀",
+      "columns": "列布局",
+      "columnsDescription": "输出什么、按什么顺序、用什么标题。从上到下依次为第 1 列、第 2 列……",
+      "columnHeader": "标题",
+      "columnField": "输出项目",
+      "constant": "固定文字",
+      "addColumn": "添加列",
+      "accounts": "默认科目代码",
+      "accountsDescription": "主数据一侧的科目代码为空时使用。留空则该栏输出为空。",
+      "accountCodeHint": "仅限半角字母、数字、- 和 _，最多 16 位（可留空）",
+      "receivableAccountCode": "应收账款 科目代码",
+      "salesAccountCode": "销售收入 科目代码",
+      "taxAccountCode": "暂收消费税 科目代码",
+      "deptCode": "部门代码",
+      "defaultTaxCode": "默认税代码",
+      "taxCodeRules": "按税率的税代码",
+      "taxCodeRulesDescription": "税种主数据未填税代码时，按税率查找。",
+      "taxRate": "税率",
+      "taxRatePercent": "税率(%)",
+      "debitTaxCode": "借方 税代码",
+      "creditTaxCode": "贷方 税代码",
+      "addTaxCodeRule": "添加税率",
+      "preview": "预览",
+      "previewNote": "一张混合 10% 与 8% 的示例请款单，按当前设置输出的结果。",
+      "saved": "已更新会计对接设置",
+      "sampleCustomerName": "样品工业股份公司"
+    },
+    "accountingField": {
+      "date": "凭证日期",
+      "dateYear": "年",
+      "dateMonth": "月",
+      "dateDay": "日",
+      "slipNo": "凭证编号",
+      "rowIndex": "行号",
+      "voucherNo": "单据编号",
+      "debitAccountCode": "借方 科目代码",
+      "debitSubCode": "借方 辅助科目",
+      "debitDeptCode": "借方 部门",
+      "debitTaxCode": "借方 税代码",
+      "debitAmount": "借方 金额",
+      "creditAccountCode": "贷方 科目代码",
+      "creditSubCode": "贷方 辅助科目",
+      "creditDeptCode": "贷方 部门",
+      "creditTaxCode": "贷方 税代码",
+      "creditAmount": "贷方 金额",
+      "taxRatePercent": "税率(%)",
+      "memo": "摘要",
+      "invoiceNumber": "请款单号",
+      "customerCode": "客户编号",
+      "customerName": "客户名称",
+      "constant": "固定文字",
+      "empty": "空白"
     }
   },
   "portal": {
@@ -5071,7 +5494,13 @@
       "varianceApprovalWithinHelp": "即使差异在允许范围内，出货单确定前也要经过审批。",
       "varianceApprovalOutside": "超出允许范围时需要审批",
       "varianceApprovalOutsideHelp": "取消后，超出范围的差异也会无需审批直接通过，允许范围将失去意义。通常保持勾选。",
-      "approvalNotRequired": "不需要"
+      "approvalNotRequired": "不需要",
+      "accountingSection": "会计对接",
+      "accountingSectionHint": "写入记账凭证 CSV 借方（应收账款）的科目代码。留空则按会计对接（SY0J）的默认值。",
+      "accountCodeHint": "仅限半角字母、数字、- 和 _，最多 16 位（可留空）",
+      "receivableAccountCode": "应收账款 科目代码",
+      "receivableSubAccountCode": "辅助科目代码（客户）",
+      "receivableSubAccountCodeHint": "会计软件一侧的客户代码。与公司内部的客户编号是两套编号，请勿混用。"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "已创建不良类别",
@@ -5415,8 +5844,6 @@
       "planRequiredFieldsHelp": "提交审批前，此工序的作业计划必须包含哪些内容。计划日始终为必填。",
       "planTimeRequired": "作业计划需要开始・结束时间",
       "planTimeRequiredHelp": "需在审批前确定时间段的工序请开启。",
-      "planQuantityRequired": "作业计划需要数量",
-      "planQuantityRequiredHelp": "按数量拆分计划的工序（如每人多少支）请开启。",
       "planTime": "开始・结束时间",
       "routeKind": "工序清单",
       "routeKindPrep": "准备",
@@ -5426,18 +5853,20 @@
       "planRequiredShort": "计划必填",
       "planFieldLocationShort": "场所",
       "planFieldTimeShort": "时间",
-      "planFieldQuantityShort": "数量",
       "planAssigneeRequired": "作业计划需要负责人",
       "planAssigneeRequiredHelp": "在需要先确定负责人再提交审批的工序上启用。默认负责人为可选，可在审批后由现场决定。",
-      "planFieldAssigneeShort": "负责人"
+      "planFieldAssigneeShort": "负责人",
+      "workOrderTypes": "可用的工单类别",
+      "workOrderTypesShort": "工单类别",
+      "workOrderTypesHelp": "该工序可以放入的工单类别。请至少选择一个。",
+      "workOrderTypesPinnedHelp": "该工序是「{type}」的起始工序，无法更改类别。库存消耗与客户寄存品的记账都依赖于此。",
+      "workOrderTypesPinnedBadge": "起始工序，无法更改",
+      "pickAtLeastOneWorkOrderType": "请至少选择一个可用的工单类别"
     },
     "products": {
       "specification": "规格",
-      "noSpecificationIsRegistered": "未登记规格",
       "priceListEntry": "价格表条目",
       "thereAreNoPriceListEntries": "该产品没有价格表条目",
-      "checkTheProductTypeSFields": "请确认产品类别的项目",
-      "checkTheExtraFields": "请确认追加项目",
       "theProductWasCreated": "已创建产品",
       "newProduct": "新建产品",
       "formatPrdYyyymmNnnnNumberedAutomatically": "格式：PRD-YYYYMM-NNNN（自动编号）",
@@ -5457,7 +5886,6 @@
       "duplicateTheProduct": "复制产品",
       "duplicatedFrom": "复制来源",
       "theProductCodeIsAssignedAutomatically": "产品编号在保存时自动编排（PRD-YYYYMM-NNNN）",
-      "carriesOverTheSourceSMaterial": "沿用复制来源的材料类别・直径・全长（创建后可编辑）",
       "stepListRoute": "工序列表（路线）",
       "newRoute": "新建路线",
       "noStepListIsRegisteredFor": "该产品未登记工序列表。创建路线后可在创建工单时预填工序构成。",
@@ -5494,7 +5922,15 @@
         "notADate": "{name}请输入日期",
         "invalidFormat": "{name}格式不正确"
       },
-      "taxCategoryHint": "留空则按税种主数据的默认值。若业务伙伴已设置税种，则以业务伙伴为准。"
+      "taxCategoryHint": "留空则按税种主数据的默认值。若业务伙伴已设置税种，则以业务伙伴为准。",
+      "externalProduct": "他社产品",
+      "externalProductHint": "为再研磨而接收的其他厂商刀具的品目。不能用于制造工序清单、制造工单以及量产/试制/样品明细（仅限再研磨）。",
+      "makerName": "制造商",
+      "externalBadge": "他社",
+      "noConfirmedSpec": "尚无已确定的图纸版本。规格（材料类别、尺寸、产品项目）在图纸中登记。",
+      "registerSpecInDrawing": "在图纸中登记规格",
+      "specFromVersion": "来自图纸 v{version}（{series}）的规格",
+      "specLivesInDrawing": "规格（材料类别、尺寸、产品项目）属于图纸版本，因此不会复制。请在图纸中为复制的产品登记图纸。"
     },
     "storageLocations": {
       "editTheStorageLocation": "编辑存放位置",
@@ -5871,6 +6307,7 @@
       "referencedByWorkOrdersCannotDelete": "由于有 {count} 个工单引用了该路线的版本，无法删除。请考虑改为停用。",
       "sameAsLatestVersion": "与最新版本 v{version} 的配置相同（无变更）",
       "targetProductNotFound": "未找到目标产品",
+      "externalProductNoRoute": "他社产品不能创建制造工序清单（仅限再研磨的品目）",
       "targetRouteNotFound": "未找到目标工序路线",
       "updateFailed": "更新工序路线失败"
     },
@@ -5909,8 +6346,6 @@
       "execDependencyCycle": "执行依赖形成了循环（{path}）"
     },
     "productsActions": {
-      "diameterRange": "请输入 {min}〜{max}mm 之间的直径",
-      "lengthRange": "请输入 {min}〜{max}mm 之间的全长",
       "createFailed": "产品创建失败",
       "updateFailed": "产品更新失败",
       "referencedCannotDelete": "此产品被其他数据（价格表、报价单、订单明细、图纸、检查表等）引用，无法删除。请考虑停用。",
@@ -6076,7 +6511,10 @@
       "numberConditionSummary": "{label}{op}{value}",
       "selectConditionSummary": "{label}{op}“{value}”",
       "deliveryTotalQuantity": "出货数量合计",
-      "fromPlant": "出货据点"
+      "fromPlant": "出货据点",
+      "plant": "据点",
+      "differenceCount": "差异件数",
+      "cases": "件"
     },
     "inspectionTemplateExcel": {
       "sheetName": "检查表"
@@ -6095,6 +6533,13 @@
       "intro": "〇〇出库・交接 与 材料准备（切断・无心磨・全长修整・倒角）的顺序。不与产品或订货方绑定的公共清单，工单由「准备工序清单 + 产品的制造工序清单」合并生成。",
       "empty": "尚未登记准备工序清单",
       "editorHelp": "仅可选择准备工序。开始工序（〇〇出库・交接）必须恰好 1 个。与制造侧的依赖将在工单合并两份清单时检验。"
+    },
+    "regrindRoutes": {
+      "title": "再研磨工序清单",
+      "newRegrindRoute": "新建再研磨工序清单",
+      "intro": "接收客户刀具并进行再研磨的工序（产品接收（再研磨）→ 研磨 → 涂层（可选）→ 检查（可选））。不绑定产品或客户的公共清单，再研磨工单始终使用其最新版本。本公司库存不变动，接收的刀具记为客户寄存品。",
+      "empty": "尚未登记再研磨工序清单",
+      "editorHelp": "只能选择可用于再研磨工单的工序。开始工序为 产品接收（再研磨），不能包含材料准备・加工工序。涂层・检查・发货前检查为可选。"
     },
     "taxCategories": {
       "title": "税种",
@@ -6142,7 +6587,125 @@
       "selectEffectiveFrom": "请选择生效日",
       "rateRange": "税率请输入 0 到 100 之间的值",
       "useDefault": "按默认",
-      "followProduct": "按产品"
+      "followProduct": "按产品",
+      "accountingSection": "会计对接",
+      "accountingSectionHint": "写入记账凭证 CSV 的科目代码。留空则按会计对接（SY0J）的默认值。",
+      "accountCodeHint": "仅限半角字母、数字、- 和 _，最多 16 位（可留空）",
+      "taxCode": "税代码",
+      "salesAccountCode": "销售收入 科目代码",
+      "taxAccountCode": "暂收消费税 科目代码"
+    },
+    "chargeItems": {
+      "pageTitle": "费用项目",
+      "newChargeItem": "新建费用项目",
+      "editTheChargeItem": "编辑费用项目",
+      "deleteTheChargeItem": "删除费用项目",
+      "disableTheChargeItem": "停用费用项目",
+      "enableTheChargeItem": "启用费用项目",
+      "empty": "尚无费用项目",
+      "codeHelp": "识别费用项目的编号（创建后无法更改）",
+      "codePlaceholder": "如：SHIPPING",
+      "amountMode": "金额的确定方式",
+      "modeFixed": "固定",
+      "modeVariable": "可变",
+      "modeFixedHelp": "直接使用费用项目的金额，使用时无法更改",
+      "modeVariableHelp": "每次使用时由人输入。下面的金额为输入框的默认值",
+      "amount": "金额",
+      "defaultAmount": "默认金额",
+      "amountFixedHelp": "添加该项目时始终为此金额",
+      "amountVariableHelp": "留空则每次都必须输入金额",
+      "defaultSuffix": "（默认）",
+      "taxCategoryHelp": "按项目确定，例如运费应税、印花税免税。客户设有税种时以客户为准",
+      "fixedNeedsAmount": "固定的费用项目需要填写金额",
+      "created": "已创建费用项目",
+      "updated": "已更新 {name}",
+      "deleted": "已删除 {name}",
+      "enabled": "已启用 {name}",
+      "disabled": "已停用 {name}",
+      "deleteConfirm": "将删除 {name}。",
+      "enableConfirm": "将启用 {name}。",
+      "disableConfirm": "将停用 {name}。此后无法为新行选择该项目，但已写入的行保持不变。",
+      "itCannotBeDeletedWhileInUse": "已在工单・出货单中使用的费用项目无法删除（可以停用）",
+      "inUseCannotDelete": "已用于 {workOrders} 张工单和 {deliveryOrders} 张出货单，无法删除",
+      "bulkDeleteChargeItems": "批量删除费用项目",
+      "bulkDeleteConfirm": "将删除 {count} 个费用项目。",
+      "bulkDeleted": "已删除 {count} 个",
+      "bulkEnabled": "已启用 {count} 个",
+      "bulkDisabled": "已停用 {count} 个",
+      "createFailed": "费用项目创建失败",
+      "updateFailed": "费用项目更新失败",
+      "deleteFailed": "费用项目删除失败",
+      "unknownChargeItem": "未找到费用项目",
+      "quantityMin1": "数量请输入 1 以上的整数",
+      "enterAnAmount": "请输入金额",
+      "amountCannotBeNegative": "金额不能为负数"
+    },
+    "customerProductCodes": {
+      "title": "客户料号",
+      "help": "各客户对该产品的称呼。登记后，该客户的订单可按料号一次匹配，并在送货单・请款单的品名栏一并显示对方的料号。",
+      "empty": "尚未登记客户料号",
+      "code": "客户料号",
+      "codePlaceholder": "对方的料号",
+      "name": "客户品名",
+      "namePlaceholder": "对方使用的品名（可选）",
+      "aliases": "其他料号",
+      "aliasesPlaceholder": "旧料号等（仅用于匹配，不打印）",
+      "addRow": "添加客户",
+      "everyRowNeedsCustomerAndCode": "请在每一行输入客户和客户料号",
+      "selectACustomer": "请选择客户",
+      "enterACustomerCode": "请输入客户料号",
+      "duplicateCustomerRow": "同一客户出现了两行。每个客户只保留一行",
+      "duplicateCodeForCustomer": "客户料号“{code}”在同一客户中重复",
+      "duplicateCodeOnOtherProduct": "客户料号“{code}”已在同一客户的其他产品上登记（含写法差异）",
+      "couldNotSave": "客户料号保存失败"
+    },
+    "regrindItems": {
+      "pageTitle": "再研磨服务",
+      "newRegrindItem": "新建再研磨服务",
+      "formHelp": "把研磨服务本身登记为一个品目。价格在这里设定，客户价格表优先。要研磨的刀具在产品主数据中登记。",
+      "toolClass": "刀具种类",
+      "toolClassHelp": "按价格变化的粒度填写",
+      "toolClassPlaceholder": "硬质合金螺旋立铣刀",
+      "location": "加工部位",
+      "locationHelp": "研磨哪个部位",
+      "locationPlaceholder": "外周 + 沟槽",
+      "flutes": "刃数",
+      "flutesHelp": "留空 = 价格与刃数无关",
+      "sizeMin": "尺寸下限",
+      "sizeMinHelp": "大于该直径",
+      "sizeMax": "尺寸上限",
+      "sizeMaxHelp": "小于等于该直径",
+      "sizeBand": "尺寸区间",
+      "sizeBandOrder": "尺寸上限必须大于尺寸下限",
+      "standardPrice": "标准价格",
+      "standardPriceHelp": "不分客户的定价。留空 = 仅向有价格表的客户销售",
+      "priceListOnly": "仅价格表",
+      "keywords": "关键词",
+      "searchPlaceholder": "按编号、名称、刀具种类或加工部位搜索",
+      "empty": "没有再研磨服务",
+      "created": "已创建再研磨服务 {code}",
+      "updated": "已更新 {name}",
+      "deleted": "已删除 {name}",
+      "enabled": "已启用 {name}",
+      "disabled": "已停用 {name}",
+      "editTheRegrindItem": "编辑再研磨服务",
+      "deleteTheRegrindItem": "删除再研磨服务",
+      "deleteConfirm": "将删除 {name}。",
+      "itCannotBeDeletedWhileInUse": "已被订单明细、报价单或价格表使用的品目无法删除。",
+      "enableTheRegrindItem": "启用再研磨服务",
+      "disableTheRegrindItem": "停用再研磨服务",
+      "enableConfirm": "将启用 {name}。",
+      "disableConfirm": "将停用 {name}。新明细中将无法选择。",
+      "bulkDeleteRegrindItems": "批量删除再研磨服务",
+      "bulkDeleteConfirm": "将删除 {count} 个再研磨服务。",
+      "bulkDeleted": "已删除 {count} 件",
+      "bulkEnabled": "已启用 {count} 件",
+      "bulkDisabled": "已停用 {count} 件",
+      "inUseCannotDelete": "使用中无法删除（订单明细 {orderLines} 件 / 报价 {quotes} 件 / 价格表 {priceLists} 件）",
+      "notFound": "未找到再研磨服务",
+      "createFailed": "再研磨服务创建失败",
+      "updateFailed": "再研磨服务更新失败",
+      "deleteFailed": "再研磨服务删除失败"
     }
   },
   "manual": {
@@ -7082,6 +7645,7 @@
       "endUser": "最终用户",
       "assignedSite": "负责据点",
       "shippingWorkLocation": "出货作业场所",
+      "deliveryDestination": "送达地",
       "linesTotalQuantity": "明细数／数量合计",
       "expandedAt": "展开时间",
       "workOrdersAllocated": "工单（分配）",
@@ -7123,7 +7687,16 @@
       "showTheDocumentPane": "展开单据",
       "hideTheDocument": "隐藏",
       "customerProvidesDeliveryNote": "客户自备送货单",
-      "priceNoTierLine": "第 {row} 行：没有覆盖数量 {quantity} 的价格表数量档"
+      "priceNoTierLine": "第 {row} 行：没有覆盖数量 {quantity} 的价格表数量档",
+      "recreate": "重新创建",
+      "recreateFromThis": "由此订单确认书重新创建",
+      "recreatedFrom": "重新创建来源",
+      "recreatedAsTitle": "重新创建去向",
+      "recreatedAs": "已重新创建为 {number}",
+      "theCancelledOrderAcceptance": "本单据的来源——已取消的订单确认书",
+      "youCanRecreateOnceCancelled": "只能由已取消的订单确认书重新创建",
+      "confirmRecreateMessage": "将创建一份沿用 {number} 内容的草稿。两者的关联会保留。",
+      "alreadyRecreatedAs": "本订单确认书已重新创建为 {numbers}。请确认没有重复开立。"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "此明细的父单据",
@@ -7164,107 +7737,109 @@
       "thereAreNoOrderLinesThey": "没有订单明细（确定订单确认书后创建）"
     },
     "priceLists": {
+      "addATier": "添加档",
+      "amountPc": "金额（¥/支）",
+      "automaticallyCalculatedAsBaseUnitPrice": "自动计算值：基准单价（来自价格试算）× 系数。",
+      "automaticallyCalculatedUnitPrice": "自动计算单价",
+      "backToAutomaticCalculation": "恢复自动计算",
+      "backToTheEstimatedValue": "恢复试算值",
+      "baseUnitPrice": "基准单价",
+      "bulkDeletePriceLists": "批量删除价格表",
+      "byDefaultTheEstimateSUnit": "默认直接使用价格试算的试算单价。仅在需要手动设定其他基准单价时勾选（会有确认）。",
+      "confirmedPriceEstimatesLinkedToThe": "关联产品的已确定价格试算",
       "copyDescription": "将“{product}”的全部订单类别（{types}）复制到目标。请设置目标的有效期（所有类别共用）。",
-      "selectACustomerError": "请选择客户",
-      "selectAProductError": "请选择产品",
-      "endDateRequiredForTestSample": "因包含试制、样品类别，失效日为必填",
-      "enterTheDestinationCustomerProductAnd": "请输入复制目标的客户、产品和有效期（开始・结束）",
-      "enterTheDestinationCustomerProductAnd2": "请输入复制目标的客户、产品和生效日",
-      "thePriceListWasCopiedTo": "已将价格表复制到其他客户・产品",
-      "createByCopying": "复制并创建",
       "copyThePriceListToAnother": "将价格表复制到其他客户・产品",
       "copyToCustomer": "复制目标客户",
       "copyToProduct": "复制目标产品",
-      "selectAProduct": "选择产品",
       "createAQuoteDraft": "创建报价单（草稿）",
-      "howManyAreQuotedUsedTo": "报价的支数。用于判定数量档（系数）和折扣规则的适用。",
-      "discountAppliedAutomatically": "折扣（自动适用）",
-      "noPriceTierCoversThisQuantity": "没有对应此数量的价格档。请调整数量，或在价格表中添加数量档。",
+      "createByCopying": "复制并创建",
+      "currentValidPeriod": "当前有效期",
+      "deleteTheDiscountRule": "删除折扣规则",
+      "deleteTheDiscountRule2": "删除折扣规则",
+      "deleteTheOrderType": "删除订单类别",
       "deleteThePriceList": "删除价格表",
-      "ifQuotesReferenceThisPriceList": "若有报价单正在引用此价格表，将无法自动填入单价。",
+      "deleteThisOrderType": "删除此订单类别",
+      "discountAmountPerPiece": "折扣金额（每支）",
+      "discountAppliedAutomatically": "折扣（自动适用）",
+      "discountRules": "折扣设置",
+      "discountType": "折扣类别",
+      "duplicateWithADifferentValidPeriod": "更改有效期并复制",
+      "eGSummerCampaign": "例：夏季活动",
+      "editOnItemMaster": "在品目主数据中修改",
+      "editTheDiscountRule": "编辑折扣规则",
+      "enabledWholePriceList": "启用（整个价格表）",
+      "endDateRequiredForTestSample": "因包含试制、样品类别，失效日为必填",
       "enterANameAValueAnd": "请输入名称、值和生效日",
       "enterARateBelow100": "比例请输入 100% 以下",
-      "theMaximumQuantityMustBeAt": "数量上限请输入不小于下限的值",
-      "eGSummerCampaign": "例：夏季活动",
-      "rateIsAShareOfThe": "比例（%）为单价的占比，金额（¥/支）为每支的折扣额。",
-      "discountType": "折扣类别",
-      "rate": "比例（%）",
-      "amountPc": "金额（¥/支）",
-      "discountAmountPerPiece": "折扣金额（每支）",
-      "theMinimumQuantityThisRuleApplies": "此规则适用的最小数量。上限留空表示无限制。",
-      "minimumQuantity": "数量下限",
-      "maximumQuantity": "数量上限",
-      "leaveBlankForNoMaximum": "留空表示无上限",
-      "thePeriodThisRuleAppliesTo": "此规则适用的期间。仅在创建报价单时处于期间内的规则生效。",
-      "rulesMeetingTheConditionsQuantityAnd": "满足条件（数量・期间）的规则将在创建报价单时自动适用。多条匹配时采用折扣额最大的规则。",
-      "selectAStartDate": "请选择生效日",
-      "theValidPeriodWasChanged": "已更改有效期",
-      "switchedToANewValidPeriod": "内容不变，已切换到新的有效期",
+      "enterTheDestinationCustomerProductAnd": "请输入复制目标的客户、产品和有效期（开始・结束）",
+      "enterTheDestinationCustomerProductAnd2": "请输入复制目标的客户、产品和生效日",
+      "estimatedUnitPricePriceEstimate": "试算单价（价格试算）",
+      "howManyAreQuotedUsedTo": "报价的支数。用于判定数量档（系数）和折扣规则的适用。",
+      "ifQuotesReferenceThisPriceList": "若有报价单正在引用此价格表，将无法自动填入单价。",
       "keepsTheChosenOrderTypeS": "保持所选订单类别的内容（基准单价・全部档次）不变，仅将有效期换到新的期间。",
-      "currentValidPeriod": "当前有效期",
-      "newStartDate": "新的生效日",
+      "leaveBlankForNoMaximum": "留空表示无上限",
+      "manualOnlySinceThereIsNo": "无价格试算来源，仅可手动设置",
+      "maximumQuantity": "数量上限",
+      "maximumQuantity2": "最大数量",
+      "minimumQuantity": "数量下限",
+      "minimumQuantity2": "最小数量",
+      "multiplier": "系数",
       "newEndDate": "新的失效日",
-      "deleteTheDiscountRule": "删除折扣规则",
+      "newPriceList": "新建价格表",
+      "newStartDate": "新的生效日",
+      "noConfirmedEstimateIsLinkedTo": "此产品没有关联的已确定价格试算。基准单价请手动设置（在价格试算 (SA01) 中指定产品并确定后即可在此选择）。",
+      "noMaximum": "无上限",
+      "noPriceEstimateManual": "无价格试算（手动）",
+      "noPriceEstimateSource": "—（无价格试算来源）",
+      "noPriceTierCoversThisQuantity": "没有对应此数量的价格档。请调整数量，或在价格表中添加数量档。",
+      "perPieceAmount": "{amount}/支",
+      "priceEstimateSourcePerOrderType": "价格试算来源（按订单类别）",
       "priceListDetails": "价格表详情",
+      "priceSourcePriceEstimate": "价格来源（价格试算）",
+      "pricing": "价格设置",
+      "quantityCondition": "数量条件",
+      "quantityRangeBounded": "{min}~{max} 支",
+      "quantityRangeOpen": "{min} 支起",
+      "quotesCreatedFromThisPriceList": "由此价格表创建的报价单",
+      "rate": "比例（%）",
+      "rateIsAShareOfThe": "比例（%）为单价的占比，金额（¥/支）为每支的折扣额。",
+      "registeredManually": "手动登记",
+      "removeTheTier": "删除档",
+      "rulesMeetingTheConditionsQuantityAnd": "满足条件（数量・期间）的规则将在创建报价单时自动适用。多条匹配时采用折扣额最大的规则。",
+      "rulesMeetingThePeriodAndQuantity": "满足期间・数量条件的规则将在创建报价单时自动适用（多条匹配时取折扣额最大者）。规则按订单类别登记。",
+      "searchByCustomerOrProduct": "按客户或产品搜索",
+      "selectACustomerError": "请选择客户",
+      "selectAProduct": "选择产品",
+      "selectAProductError": "请选择产品",
+      "selectAStartDate": "请选择生效日",
+      "setPerType": "按类别设置",
+      "standardPriceLabel": "标准价格",
+      "switchedToANewValidPeriod": "内容不变，已切换到新的有效期",
+      "testAndSampleEntriesNeedAn": "试制・样品必须填写结束日",
+      "theBaseForThePriceList": "价格表的基准单价。默认为价格试算的试算单价。各数量档单价 = 基准单价 × 系数。",
+      "theBasePriceComesFromThe": "基准单价取自价格试算的试算单价。仅在明确启用自定义时可手动覆盖（会有确认）。各档单价 = 基准单价 × 系数。",
+      "theCustomerAndProductCannotBe": "客户与产品创建后无法更改。",
+      "theMaximumQuantityMustBeAt": "数量上限请输入不小于下限的值",
+      "theMinimumQuantityThisRuleApplies": "此规则适用的最小数量。上限留空表示无限制。",
+      "theMultiplierPerTierEG": "各数量档的系数（例 ×1.05 = 基准单价加 5%）。单价 = 基准单价 × 系数。",
+      "thePeriodThisRuleAppliesTo": "此规则适用的期间。仅在创建报价单时处于期间内的规则生效。",
+      "thePriceListWasCopiedTo": "已将价格表复制到其他客户・产品",
+      "thePriceListWasCreated": "已创建价格表",
+      "thePriceListWasUpdated": "已更新价格表",
+      "theSameOrderTypeAppearsTwice": "订单类别重复",
+      "theValidPeriodWasChanged": "已更改有效期",
+      "thereAreNoDiscountRules": "没有折扣规则。",
+      "thereIsNoPriceListPick": "没有价格表 — 请选择客户×产品来创建",
+      "thereIsOnePriceListPer": "每个客户×产品对应 1 张价格表。各订单类别的价格在下方添加。",
+      "tickingItDropsTheAutomaticCalculation": "勾选后将不使用自动计算，仅此数量档设为手动固定单价（会有确认）。",
       "tiers": "档数",
       "unitPriceRange": "单价范围",
-      "pricing": "价格设置",
-      "discountRules": "折扣设置",
-      "baseUnitPrice": "基准单价",
-      "multiplier": "系数",
-      "rulesMeetingThePeriodAndQuantity": "满足期间・数量条件的规则将在创建报价单时自动适用（多条匹配时取折扣额最大者）。规则按订单类别登记。",
-      "quantityCondition": "数量条件",
-      "editTheDiscountRule": "编辑折扣规则",
-      "deleteTheDiscountRule2": "删除折扣规则",
-      "thereAreNoDiscountRules": "没有折扣规则。",
-      "priceEstimateSourcePerOrderType": "价格试算来源（按订单类别）",
-      "registeredManually": "手动登记",
-      "quotesCreatedFromThisPriceList": "由此价格表创建的报价单",
-      "useCreateAQuoteToBuild": "—（可通过「创建报价单」从此价格表创建报价单）",
-      "bulkDeletePriceLists": "批量删除价格表",
-      "setPerType": "按类别设置",
-      "searchByCustomerOrProduct": "按客户或产品搜索",
-      "thereIsNoPriceListPick": "没有价格表 — 请选择客户×产品来创建",
-      "duplicateWithADifferentValidPeriod": "更改有效期并复制",
-      "theSameOrderTypeAppearsTwice": "订单类别重复",
-      "useACustomBaseUnitPrice": "使用自定义基准单价",
-      "backToTheEstimatedValue": "恢复试算值",
-      "useACustomUnitPrice": "使用自定义单价",
-      "backToAutomaticCalculation": "恢复自动计算",
-      "thePriceListWasUpdated": "已更新价格表",
-      "thePriceListWasCreated": "已创建价格表",
-      "newPriceList": "新建价格表",
-      "theCustomerAndProductCannotBe": "客户与产品创建后无法更改。",
-      "thereIsOnePriceListPer": "每个客户×产品对应 1 张价格表。各订单类别的价格在下方添加。",
-      "enabledWholePriceList": "启用（整个价格表）",
-      "noConfirmedEstimateIsLinkedTo": "此产品没有关联的已确定价格试算。基准单价请手动设置（在价格试算 (SA01) 中指定产品并确定后即可在此选择）。",
-      "theBasePriceComesFromThe": "基准单价取自价格试算的试算单价。仅在明确启用自定义时可手动覆盖（会有确认）。各档单价 = 基准单价 × 系数。",
-      "priceSourcePriceEstimate": "价格来源（价格试算）",
-      "confirmedPriceEstimatesLinkedToThe": "关联产品的已确定价格试算",
-      "noPriceEstimateManual": "无价格试算（手动）",
-      "deleteThisOrderType": "删除此订单类别",
-      "deleteTheOrderType": "删除订单类别",
-      "estimatedUnitPricePriceEstimate": "试算单价（价格试算）",
-      "noPriceEstimateSource": "—（无价格试算来源）",
-      "manualOnlySinceThereIsNo": "无价格试算来源，仅可手动设置",
-      "byDefaultTheEstimateSUnit": "默认直接使用价格试算的试算单价。仅在需要手动设定其他基准单价时勾选（会有确认）。",
-      "useACustomUnitPrice2": "使用自定义单价",
-      "useTheEstimatedValueAsIt": "直接使用试算值",
-      "theBaseForThePriceList": "价格表的基准单价。默认为价格试算的试算单价。各数量档单价 = 基准单价 × 系数。",
-      "testAndSampleEntriesNeedAn": "试制・样品必须填写结束日",
-      "minimumQuantity2": "最小数量",
-      "maximumQuantity2": "最大数量",
-      "theMultiplierPerTierEG": "各数量档的系数（例 ×1.05 = 基准单价加 5%）。单价 = 基准单价 × 系数。",
-      "automaticallyCalculatedAsBaseUnitPrice": "自动计算值：基准单价（来自价格试算）× 系数。",
-      "automaticallyCalculatedUnitPrice": "自动计算单价",
-      "tickingItDropsTheAutomaticCalculation": "勾选后将不使用自动计算，仅此数量档设为手动固定单价（会有确认）。",
       "unitPriceUsed": "采用单价",
-      "noMaximum": "无上限",
-      "removeTheTier": "删除档",
-      "addATier": "添加档",
-      "quantityRangeOpen": "{min} 支起",
-      "quantityRangeBounded": "{min}~{max} 支",
-      "perPieceAmount": "{amount}/支"
+      "useACustomBaseUnitPrice": "使用自定义基准单价",
+      "useACustomUnitPrice": "使用自定义单价",
+      "useACustomUnitPrice2": "使用自定义单价",
+      "useCreateAQuoteToBuild": "—（可通过「创建报价单」从此价格表创建报价单）",
+      "useTheEstimatedValueAsIt": "直接使用试算值"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "已发行（PDF 生成失败）",
@@ -7493,7 +8068,14 @@
       "priceListPriceWithTier": "价格表 {price}（{tier}）",
       "fromPriceList": "来自价格表",
       "willReplaceWithList": "保存时 {entered} 将被替换为价格表的单价",
-      "overriddenFromList": "已覆盖（价格表 {expected}）"
+      "overriddenFromList": "已覆盖（价格表 {expected}）",
+      "delivery": "配送",
+      "applyLineOneDeliveryToAll": "将第 1 行的配送应用到全部行",
+      "regrindItem": "再研磨服务",
+      "searchTheRegrindItems": "搜索再研磨服务",
+      "toolToRegrind": "要研磨的刀具",
+      "searchTheToolBeingHeld": "搜索寄存的刀具（含他社产品）",
+      "standardPrice": "标准价格 {price}"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "将删除“{label}”。此操作无法撤销。",
@@ -7563,7 +8145,7 @@
       "confirmIssues": "无法确定：{summary}",
       "createFailed": "创建订单确认书失败",
       "createdManually": "手动录入创建",
-      "directToUserRequiresEndUser": "直送最终用户时须指定最终用户",
+      "directToUserRequiresEndUser": "第 {rows} 行明细：直送最终用户时须指定最终用户",
       "endUserInvalid": "最终用户的业务伙伴不存在或已停用",
       "invalidNumber": "订单确认书编号无效",
       "notPendingApproval": "该订单确认书不处于审批中",
@@ -7586,7 +8168,10 @@
       "takenOverManually": "未等待自动提取即切换为手动录入",
       "targetCancelRequestNotFound": "未找到目标取消申请",
       "targetNotFound": "未找到目标订单确认书",
-      "unitPriceMin0": "单价须为 0 以上"
+      "unitPriceMin0": "单价须为 0 以上",
+      "onlyCancelledCanBeRecreated": "只有已取消的订单确认书才能重新创建",
+      "recreatedFromCancelled": "由已取消的 {number} 重新创建",
+      "recreatedAs": "已重新创建为 {number}"
     },
     "quoteActions": {
       "createFailed": "报价单创建失败",
@@ -7712,13 +8297,15 @@
     },
     "orderAcceptanceReadiness": {
       "customerNotIdentified": "客户未确定",
-      "directToUserButEndUserNot": "为直送最终用户，但未指定最终用户",
+      "lineEndUserNotIdentified": "第 {rows} 行明细：未指定最终用户",
       "noLineItems": "没有任何明细",
       "lineProductNotIdentified": "第 {rows} 行明细：产品未确定",
       "lineUnitPriceNotEntered": "第 {rows} 行明细：单价未输入",
       "lineQuantityInvalid": "第 {rows} 行明细：数量不足 1",
       "lineUnitPriceNegative": "第 {rows} 行明细：单价为负数",
-      "andNMore": "其他 {count} 件"
+      "andNMore": "其他 {count} 件",
+      "externalProductIsNotSold": "第 {rows} 行明细：他社产品不能作为销售品目，请在再研磨行的刀具栏中选择",
+      "regrindToolNotSelected": "第 {rows} 行明细：未选择要研磨的刀具"
     },
     "orderLineCore": {
       "confirmedLineCannotBeChanged": "已确认的订单明细无法更改",
@@ -7726,6 +8313,17 @@
       "onlyDraftAcceptanceEditable": "只有草稿状态的订单确认书可以编辑",
       "productNotIdentified": "产品未确定",
       "unitPriceNotEntered": "单价未输入"
+    },
+    "salesItemGuard": {
+      "externalProductIsNotSold": "第 {row} 行明细：他社产品不能作为销售品目，请在再研磨行的刀具栏中选择",
+      "regrindNeedsRegrindItem": "第 {row} 行明细：再研磨明细请选择再研磨品目",
+      "nonRegrindNeedsProduct": "第 {row} 行明细：非再研磨明细请选择产品",
+      "toolOnlyForRegrind": "第 {row} 行明细：刀具只能填写在再研磨明细中",
+      "toolMustBeProduct": "第 {row} 行明细：刀具请选择产品",
+      "externalProductHasNoPriceList": "他社产品无法创建价格表（只是寄存，不出售）",
+      "materialHasNoPriceList": "材料无法创建价格表",
+      "regrindItemOnlyRegrindVariant": "再研磨品目只能拥有订单类别「再研磨」",
+      "productHasNoRegrindVariant": "产品无法创建订单类别「再研磨」的价格。再研磨的价格由再研磨品目持有"
     }
   },
   "shipping": {
@@ -7802,6 +8400,19 @@
       "confirmShipBodyDispatch": "将出货单 {number} 标记为已出货。订单明细的出货状态也会重新计算。",
       "confirmShipBodyStock": "将出货单 {number} 标记为已出货（因为是库存保管，订单明细的出货状态不会改变）。",
       "shippedBody": "已将出货单 {number} 标记为已出货",
+      "notEnoughStockTitle": "库存不足",
+      "notEnoughStockBody": "若仍要出货，缺少的数量会使库存变为负数。出货本身仍会被记录，之后可通过盘点（ST05）或手工出入库（ST06）调平。",
+      "shipAnyway": "仍然出货",
+      "viewStock": "查看库存",
+      "shortfall": "缺少",
+      "recordAReturn": "记录退货",
+      "recordTheReturn": "记录退货",
+      "returnQuantity": "退货数",
+      "returned": "退货",
+      "alreadyReturned": "已退货",
+      "returnHelp": "退货数量不能超过出货数量。库存将返回出货据点的同一批次（未分配货位）。出货单状态与请款不会变动。",
+      "returnRecorded": "已记录退货",
+      "returnRecordedBody": "{number} 的退货已返回库存",
       "confirmDeleteBody": "将删除出货单 {number}。此操作无法撤销。",
       "deletedBody": "已删除出货单 {number}",
       "onlySameCustomerCanBeCombined": "一张出货单只能合并同一客户的订单明细",
@@ -7908,6 +8519,7 @@
       "exceedsOrderedQuantity": "这将导致 {number} 的出货量超过订购数量 {quantity}（累计 {shipped}）",
       "invalidNumber": "出货单号无效",
       "lotHasNoStock": "批次 #{lot} 没有库存（请指定已完成工单的批次号）",
+      "regrindLinesDispatchOnly": "再研磨明细只能以发货（DISPATCH）方式出货 — 客户寄存品不能转入库存保管",
       "lotStockInsufficient": "批次 #{lot} 库存不足（现有 {available} / 指定 {qty}）",
       "notFound": "未找到该出货单",
       "onlyConfirmedCanBeShipped": "只有已确定的出货单才能出货",
@@ -7917,6 +8529,14 @@
       "orderLineRequiredForDispatch": "第 {line} 行明细：发送必须指定订单明细",
       "quantityMustBeAtLeast1": "数量须为 1 以上",
       "shipFailed": "出货处理失败",
+      "stockCheckFailed": "库存确认失败",
+      "shippedWithoutStockNoLot": "库存不足仍已出货（品目 {item}：缺 {shortfall}）。台账已变为负数——请通过盘点或手工出入库调平。",
+      "shippedWithoutStock": "库存不足仍已出货（品目 {item} 批次 #{lot}：缺 {shortfall}）。台账已变为负数——请通过盘点或手工出入库调平。",
+      "returnNoQuantity": "请输入退货数量",
+      "returnNotShipped": "仅可对已出货的发货记录退货",
+      "returnExceedsShipped": "退货数量不能超过出货数量",
+      "returnFailed": "退货记录失败",
+      "auditReturnRecorded": "已记录退货（{quantity} 支返回库存）",
       "shippedNotificationTitle": "出货单 {number} 已出货",
       "specifyAConfirmedOrderLine": "请指定已确定的订单明细",
       "updateFailed": "出货单更新失败",
@@ -8169,6 +8789,11 @@
     "unknownStepsInComposition": "包含不存在的工序",
     "duplicateStepsInComposition": "存在重复的工序",
     "fromStockAllowedSteps": "库存分工单可选的工序只有产品出库（库存）和出货前检查",
+    "regrindStepsOnlyForRegrind": "再研磨工序只能用于再研磨工单",
+    "regrindForbiddenSteps": "再研磨工单只能包含 产品接收（再研磨）・研磨・涂层・检查・批准・发货前检查（不能包含材料准备・加工・产品出库）",
+    "regrindRequiresReceipt": "再研磨工单必须以 产品接收（再研磨）开始",
+    "regrindRouteOnlyRegrindSteps": "再研磨工序清单只能包含可用于再研磨工单的工序（不能包含材料准备・加工）",
+    "semiFinishedNotAllowedForRegrind": "再研磨不能使用半成品区分（客户的刀具不会成为本公司的半成品）",
     "fromStockRequiresStockIssue": "库存分工单必须包含产品出库（库存）工序",
     "stockIssueOnlyForFromStock": "产品出库（库存）仅限库存分（FROM_STOCK）工单使用",
     "workOrderNotApprovedOrInProgress": "工单尚未处于已批准或进行中状态",
@@ -8453,12 +9078,13 @@
       "viewed": "已查看",
       "windowEndsAt": "授权窗口结束",
       "windowStartsAt": "授权窗口开始",
-      "yayoiExportedAt": "弥生导出时间",
+      "accountingExportedAt": "会计对接时间",
       "isDefault": "默认",
       "effectiveFrom": "生效日",
       "ratePercent": "税率（%）",
       "taxCategoryId": "税种",
-      "shortLabel": "单据上的显示"
+      "shortLabel": "单据上的显示",
+      "customerProductCodes": "客户料号"
     },
     "tableFieldLabels": {
       "kiosk_devices": {
@@ -8523,6 +9149,7 @@
       "estimates": "价格试算",
       "price_list_entries": "价格表",
       "products": "产品",
+      "charge_items": "费用项目",
       "materials": "材料",
       "material_types": "材料类别",
       "business_partners": "业务伙伴",
@@ -8546,6 +9173,7 @@
       "material_purchase_orders": "材料采购单",
       "material_receipts": "材料到货",
       "invoices": "请款单",
+      "accounting_documents": "会计凭证",
       "billing_closings": "结算处理",
       "design_requests": "设计委托单",
       "approval_requests": "审批申请",
@@ -8569,6 +9197,7 @@
       "system": "系统",
       "approval_flow_rules": "条件审批规则",
       "design_files": "图纸",
+      "design_versions": "图纸版本",
       "inspection_template_groups": "检查表模板分组",
       "kiosk_unlock_pins": "退出PIN历史",
       "link_blacklist": "链接黑名单",
@@ -8585,7 +9214,13 @@
       "api_clients": "API 客户端",
       "api_client_tokens": "API 令牌",
       "tax_categories": "税种",
-      "tax_category_rates": "税率"
+      "tax_category_rates": "税率",
+      "inventory_movements": "出入库单",
+      "stock_takes": "盘点",
+      "stock_take_lines": "盘点明细",
+      "item_inventory": "库存",
+      "movement_types": "移动类型",
+      "items": "品目"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -8801,8 +9436,6 @@
   },
   "inventoryNote": {
     "insufficientStock": "库存不足（{transactionType} {quantity}）",
-    "lotInventoryMissing": "批次 {lotNumber} 没有库存台账（产品 {productId}）。请先通过完成工单或库存调整入库后再出货",
-    "outOfStockOnShip": "库存不足（出库 {quantity}）：批次 {lotNumber}",
     "onlyConfirmedLinesCanBeStockChecked": "只有已确定的订单明细可以进行库存核对",
     "workOrderCompletedFinished": "工单 #{workOrderNumber} 完成入库",
     "workOrderCompletedSemiFinished": "工单 #{workOrderNumber} 半成品入库",
@@ -8810,7 +9443,19 @@
     "workOrderMaterialConsumed": "工单 #{workOrderNumber} 材料消耗",
     "fromStockConsumedReleased": "工单 #{workOrderNumber} 库存分消耗（解除分配）",
     "fromStockConsumedReassigned": "工单 #{workOrderNumber} 库存分消耗（转记到批次 #{workOrderNumber}）",
+    "fromStockScrapped": "工单 #{workOrderNumber} 库存分报废",
+    "semiFinishedConsumed": "工单 #{workOrderNumber} 半成品领用（转记到批次 #{workOrderNumber}）",
+    "semiFinishedScrapped": "工单 #{workOrderNumber} 半成品报废",
+    "outsourceIssued": "工单 #{workOrderNumber} 发往外协（转为寄存库存）",
+    "outsourceReturned": "工单 #{workOrderNumber} 从外协返回",
+    "outsourceReturnedOnCompletion": "工单 #{workOrderNumber} 完成时从外协返回",
+    "salesReturned": "出货 {ref} 的退货（返回库存）",
+    "regrindReceived": "工单 #{workOrderNumber} 产品接收（再研磨）— 作为客户寄存品入库（箱号 {box}）",
+    "regrindReturnedAsIs": "工单 #{workOrderNumber} 完成 — 无法再研磨、原样退回的部分",
+    "regrindLinesAreNotStockChecked": "再研磨明细不做库存核对（接收并归还客户的刀具）",
+    "regrindOwnerUnresolved": "无法为该再研磨工单确定唯一所有者（分配明细的客户）",
     "shipped": "出货 {ref}",
+    "shippedWithoutStock": "出货 {ref}（库存不足仍出库）",
     "stockStorage": "库存保管 {ref}",
     "shippedReservationReleased": "因出货解除预留 {ref}",
     "materialReceived": "材料到货",
@@ -8839,10 +9484,18 @@
     "finalInspectionDeliveryNoteIssued": "出货前确认：已记录送货单开具人",
     "finalInspectionShipmentAuthorized": "出货前确认：已记录出货批准人",
     "finalInspectionShipDefectReviewed": "已记录出货时不良内容确认人印",
-    "inspectionApproved": "已批准检查记录"
+    "inspectionApproved": "已批准检查记录",
+    "stockTakeAdjusted": "盘点调整（实数 {book} → 实测 {counted}）"
   },
   "workflowCore": {
     "quantityLabels": {
+      "regrindReceipt": {
+        "input": "接收数",
+        "success": "再研磨数",
+        "semi": "半成品",
+        "scrap": "退回（无法再研磨）",
+        "rework": "工序分支"
+      },
       "flow": {
         "input": "接收数",
         "success": "良品数",
@@ -9247,6 +9900,10 @@
         "label": "目标产品",
         "summary": "要制作的产品。选择订单明细后，会自动带入该订单的产品。"
       },
+      "type": {
+        "label": "種別（类别）",
+        "summary": "库存分 / 制造分 / 再研磨的区分。由订单明细的订单类别确定时无法选择，只显示确定的类别及其理由。"
+      },
       "plannedQuantity": {
         "label": "计划数量",
         "summary": "制作的数量。应输入不少于分配总量的数值（可自行加上不良品的预留量；备库工单则等于分配总量）。该数值也会作为工序接收数的初始值。"
@@ -9276,25 +9933,7 @@
         "summary": "补充说明。现场人员查看工单时会看到这些内容。"
       }
     },
-    "productInventory": {
-      "plant": {
-        "label": "目标据点",
-        "summary": "调拨的目标据点。源据点的库存会减少，目标据点的库存会增加。"
-      },
-      "location": {
-        "label": "存放位置 / 货架",
-        "summary": "在目标据点内的具体存放位置。提前设定便于日后查找实物。"
-      },
-      "quantity": {
-        "label": "数量",
-        "summary": "调拨的数量。不能超过源据点现有的数量。"
-      },
-      "notes": {
-        "label": "备注",
-        "summary": "用于记录调拨原因等信息的栏位。调拨记录会保留在历史中。"
-      }
-    },
-    "materialInventory": {
+    "inventoryManagement": {
       "plant": {
         "label": "目标据点",
         "summary": "调拨的目标据点。源据点的库存会减少，目标据点的库存会增加。"
@@ -9480,18 +10119,6 @@
       "unit": {
         "label": "单位",
         "summary": "计数单位，默认为「支」。"
-      },
-      "productType": {
-        "label": "产品类别",
-        "summary": "产品的类别。选择类别后，下方会显示该类别所定义的规格项目。"
-      },
-      "materialType": {
-        "label": "材料类别",
-        "summary": "制作该产品所使用的材料类别。"
-      },
-      "dimensions": {
-        "label": "直径 (mm) / 全长 (mm)",
-        "summary": "所需材料的尺寸。以「材料类别 + 直径 + 全长」指定，而非特定材料——只要条件相同的材料均可使用。"
       },
       "keywords": {
         "label": "关键词",
@@ -9910,5 +10537,114 @@
     "clientNotFound": "未找到该客户端",
     "featureDisabled": "此环境中外部 API 已停用",
     "invalidNameChars": "名称包含不允许使用的字符"
+  },
+  "charges": {
+    "title": "附加费用",
+    "item": "费用项目",
+    "note": "附注",
+    "notePlaceholder": "如：××运输 到付",
+    "selectAnItem": "选择费用项目",
+    "addRow": "添加费用",
+    "total": "附加费用合计",
+    "empty": "没有附加费用",
+    "everyRowNeedsAnItem": "请为每一行选择费用项目",
+    "fixedByMaster": "费用项目的固定金额",
+    "quantityTimesUnitPrice": "{quantity} × ¥{unitPrice}",
+    "copiedFromWorkOrder": "由工单 #{number} 复制",
+    "couldNotSave": "附加费用保存失败",
+    "workOrderHelp": "产品货款以外要请款的项目，例如运费。此处为**预定**，创建出货单时会复制过去，实际请款的是出货单上的行。",
+    "deliveryOrderHelp": "本次出货要请款的附加费用。确定后由结算处理生成请款单明细。仅在出货单为草稿时可以修改。",
+    "workOrderClosedForCharges": "已完成或已取消的工单无法修改附加费用。请在出货单上修改",
+    "deliveryOrderClosedForCharges": "仅草稿状态的出货单可以修改附加费用"
+  },
+  "inventory": {
+    "stockOverview": {
+      "item": "品目",
+      "itemType": "品目类别",
+      "hideZeroStock": "隐藏零库存",
+      "custody": "寄存方",
+      "custodyOwn": "自有库存",
+      "owner": "所有者",
+      "ownerOwn": "仅本公司所有",
+      "ownedBy": "寄存品：{name}",
+      "heldBy": "由 {name} 保管",
+      "searchPlaceholder": "按品目名称或编号搜索",
+      "summaryLine": "{rows} 行 / {items} 个品目 / {sites} 个据点",
+      "truncatedNotice": "行数过多，仅显示部分结果，请缩小筛选范围。",
+      "noStock": "没有库存"
+    },
+    "requirements": {
+      "title": "库存与需求",
+      "item": "品目",
+      "itemPlaceholder": "按编号或名称搜索",
+      "plantPlaceholder": "选择据点",
+      "emptyState": "选择品目和据点后，将显示过去实绩与未来的供需预计",
+      "notFound": "未找到该品目",
+      "onHand": "手持",
+      "reserved": "预留",
+      "availableNow": "可用",
+      "nextReceipt": "下次到货",
+      "shortageAlertTitle": "预计缺货",
+      "shortageAlertBody": "后续余额预计将变为负数，请查看高亮行。",
+      "truncated": "历史记录较多，仅显示最近的部分",
+      "rowKindHeader": "类别",
+      "reference": "参照",
+      "balance": "余额",
+      "dateUndetermined": "未定",
+      "rowKind": {
+        "now": "当前"
+      }
+    },
+    "goodsMovement": {
+      "selectAType": "请选择移动类型",
+      "selectAnItem": "请选择品目",
+      "quantityPositive": "请输入大于零的数量",
+      "typeInactive": "此移动类型已停用",
+      "postFailed": "登记出入库失败",
+      "problem": {
+        "itemRequired": "请选择品目",
+        "quantityPositive": "请输入大于零的数量",
+        "fromRequired": "请指定出库地点",
+        "toRequired": "请指定入库地点",
+        "sameEndpoint": "出库地点与入库地点相同"
+      },
+      "movementType": "移动类型",
+      "fromLocation": "出库地点",
+      "toLocation": "入库地点",
+      "shelf": "货架",
+      "itemAndQuantity": "品目与数量",
+      "item": "品目",
+      "quantity": "数量",
+      "lotNumber": "批次号",
+      "lotNumberHint": "仅产品有效（材料将忽略此项）",
+      "problemsTitle": "暂时无法登记",
+      "submit": "登记",
+      "lastPosted": "刚刚登记的单据",
+      "posted": "已登记出入库单 {number}"
+    },
+    "movementTypes": {
+      "number": "编号",
+      "direction": "方向",
+      "requiresFrom": "需出库地点",
+      "requiresTo": "需入库地点",
+      "requiresFromFloor": "此方向不能取消出库地点为必填",
+      "requiresToFloor": "此方向不能取消入库地点为必填",
+      "createFailed": "创建移动类型失败",
+      "updateFailed": "更新移动类型失败",
+      "codeHint": "手动出入库选项中显示的编号（例如 101 / 201 / 311）",
+      "newMovementType": "新建移动类型",
+      "editTheMovementType": "编辑移动类型",
+      "created": "已创建移动类型「{name}」",
+      "updated": "已更新 {name}",
+      "disableConfirm": "确定要停用 {name} 吗？",
+      "enableConfirm": "确定要启用 {name} 吗？",
+      "disabled": "已停用 {name}",
+      "enabled": "已启用 {name}",
+      "disableTitle": "停用移动类型",
+      "enableTitle": "启用移动类型",
+      "bulkEnabled": "已启用 {count} 项",
+      "bulkDisabled": "已停用 {count} 项",
+      "noMovementTypes": "没有移动类型"
+    }
   }
 }

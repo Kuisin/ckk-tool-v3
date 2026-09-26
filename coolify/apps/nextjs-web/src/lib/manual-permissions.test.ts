@@ -29,10 +29,13 @@ function fileFor(path: string, locale: Locale): string {
 const WRITE = process.env.UPDATE_MANUAL === "1";
 
 describe("マニュアルの「必要な権限」", () => {
-  it("登録したページの .md が実在する（ja/en/zh）", () => {
+  it("登録したページの .md が実在する（ja/en/zh。jaOnly は ja だけ）", () => {
     const missing: string[] = [];
     for (const page of MANUAL_PAGES) {
-      for (const locale of LOCALES) {
+      // jaOnly = 訳が未着手のページ。en/zh は置かず既定言語へ落とす
+      // （機械訳を置くより日本語が出るほうが読める。プロセス編と同じ扱い）。
+      const locales = page.jaOnly ? (["ja"] as const) : LOCALES;
+      for (const locale of locales) {
         if (!existsSync(fileFor(page.path, locale))) {
           missing.push(fileFor(page.path, locale).replace(CONTENT, ""));
         }

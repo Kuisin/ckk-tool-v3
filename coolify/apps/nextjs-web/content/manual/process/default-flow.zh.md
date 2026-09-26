@@ -164,7 +164,7 @@ screenshots:
 
 ### 操作（谁做什么）
 
-1. 审批人在[审批管理](/manual/zh/operations/production/approval/user)（`PD03`）或工单画面中确认内容后点击「**承認**」（批准）。若有问题则选择「**差し戻し**」（退回）。
+1. 审批人在[审批管理](/manual/zh/operations/general/my-tasks/user)（`PD03`）或工单画面中确认内容后点击「**承認**」（批准）。若有问题则选择「**差し戻し**」（退回）。
 
 ![审批中的工单。批准按钮以红框强调](../assets/screenshots/flow-approval-01.png)
 
@@ -250,7 +250,7 @@ screenshots:
 
 - 执行结算处理后，该期间内交货的部分会被自动汇总。
 - 生成请款单后会自动赋予请款单编号（INV-），发行时会保存 PDF。
-- 已结算的部分可以导出为弥生会计（Yayoi 会计）用的 CSV 文件。
+- 已结算的部分可以导出为会计软件用的记账凭证 CSV 文件。
 
 ## 相关页面
 

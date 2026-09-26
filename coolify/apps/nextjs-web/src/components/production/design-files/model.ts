@@ -11,14 +11,22 @@
  * 表現できない。
  */
 
+import type { DesignExtract } from "@/lib/design-extract-core";
+import type {
+  DesignFileRole as CoreDesignFileRole,
+  DesignVersionStatus,
+  TitleBlock,
+} from "@/lib/design-files-core";
+
 /**
- * 版の中での役割。1 版 = プレビュー 0..1 + 図面データ 1 + 参考資料 0..N。
+ * 版の中での役割。1 版 = 2D 原図 0..1 + 3D 原図 0..1 + プレビュー 0..1 +
+ * 参考資料 0..N（どれも任意）。
  *
- * PREVIEW と BLUEPRINT を分けているのは用途が違うから — STL は人が形を
- * 確かめるためのもの、CAD は加工プログラムを起こす元データで、片方で
- * 代用できない。製品の「最新図面」は BLUEPRINT を指す。
+ * 原図とプレビューを分けているのは用途が違うから — STL は人が形を
+ * 確かめるためのもの、原図は加工プログラムを起こす元データで、片方で
+ * 代用できない。製品の「最新図面」は BLUEPRINT（2D 原図）を指す。
  */
-export type DesignFileRole = "PREVIEW" | "BLUEPRINT" | "REFERENCE";
+export type DesignFileRole = CoreDesignFileRole;
 
 // 表示ラベルは messages/*.json の enum.DESIGN_FILE_ROLE_LABEL.* —
 // 呼び出し側で tr(`enum.DESIGN_FILE_ROLE_LABEL.${role}`) を直接引く
@@ -27,6 +35,7 @@ export type DesignFileRole = "PREVIEW" | "BLUEPRINT" | "REFERENCE";
 export const DESIGN_FILE_ROLE_COLOR: Record<DesignFileRole, string> = {
   PREVIEW: "grape",
   BLUEPRINT: "blue",
+  MODEL: "cyan",
   REFERENCE: "gray",
 };
 
@@ -51,8 +60,10 @@ export interface ProductDesignFile {
   /** 版系列の軸。null = 汎用（どの顧客の指示書からも使える）。 */
   customerBpId: string | null;
   customerName: string | null;
-  /** 指示書がこの版を指しているか。true なら編集・削除できない。 */
-  usedByWorkOrder: boolean;
+  /** 属する版（design_versions.id）。 */
+  designVersionId: string;
+  /** 版の状態。確定前だけがファイルを外せる。 */
+  versionStatus: DesignVersionStatus;
   notes: string | null;
   createdAt: string;
 }
@@ -65,9 +76,10 @@ export interface ProductDesignFile {
  * 系列を開いた先 (PD26) で見る。
  */
 export interface DesignFileSeriesRow {
-  /** 系列キー。`${productId}:${customerBpId ?? ""}`。 */
+  /** 系列キー。`${itemId}:${customerBpId ?? ""}`。 */
   key: string;
-  productId: number;
+  /** 対象製品の品目 id（items.id）— 行クリックの遷移先 URL の id。 */
+  itemId: number;
   /** 製品名（コードは別に持つ — 1 列に詰めると長い名前でコードが切れる）。 */
   productName: string;
   /** 製品コード PRD-YYYYMM-NNNN。未採番のレガシーは null。 */
@@ -75,7 +87,12 @@ export interface DesignFileSeriesRow {
   /** null = 汎用。 */
   customerBpId: string | null;
   customerName: string | null;
+  /** 系列でいちばん大きい版番号（下書きを含む）。 */
   latestVersion: number;
+  /** その版の状態。 */
+  latestStatus: DesignVersionStatus;
+  /** 確定済みの最新版（無ければ null — 下書きしか無い系列）。 */
+  confirmedVersion: number | null;
   /** 最新版に揃っている役割（欠けているものが判る）。 */
   latestRoles: DesignFileRole[];
   /** 系列内に依頼由来の版があるか（無ければすべて手動登録）。 */
@@ -84,4 +101,34 @@ export interface DesignFileSeriesRow {
   versionCount: number;
   /** 系列でいちばん新しい版の登録日時。 */
   updatedAt: string;
+}
+
+/** 版 1 つ（版の一覧・詳細）。 */
+export interface DesignVersionView {
+  id: string;
+  itemId: number;
+  version: number;
+  status: DesignVersionStatus;
+  customerBpId: string | null;
+  customerName: string | null;
+  designRequestId: string | null;
+  requestNumber: string | null;
+  notes: string | null;
+  materialTypeId: number | null;
+  /** 材種の表示（コード + 名称）。 */
+  materialTypeLabel: string | null;
+  diameterMm: number | null;
+  lengthMm: number | null;
+  spec: Record<string, string>;
+  titleBlock: TitleBlock;
+  /** 図面から読み取った値（無ければ null）。読み取り専用・手入力の別もここ。 */
+  extract: DesignExtract | null;
+  /** 系列の中で確定済みの最新版か（製品マスタ・指示書が読む版）。 */
+  isLatestConfirmed: boolean;
+  files: ProductDesignFile[];
+  createdAt: string;
+  createdByName: string | null;
+  confirmedAt: string | null;
+  confirmedByName: string | null;
+  requestedAt: string | null;
 }

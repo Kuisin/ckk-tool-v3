@@ -90,7 +90,7 @@ export const displayDb = {
   deliveryOrder: readOnly("deliveryOrder"),
   deliveryOrderItem: readOnly("deliveryOrderItem"),
   // マスタ
-  product: readOnly("product"),
+  item: readOnly("item"),
   plant: readOnly("plant"),
   businessPartner: readOnly("businessPartner"),
 } as const;

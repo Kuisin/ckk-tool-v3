@@ -38,7 +38,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "doc",
     summary:
-      "Order acceptances (注文請書). Totals are derived from the lines, not stored.", // i18n-ignore
+      "Order acceptances (注文請書). Totals are derived from the lines, not stored. shipToId/endUserId/assignedPlantId/deliveryMethod are also derived from the lines (§8: delivery is per-line) — the header's value only when all lines agree, else null.", // i18n-ignore
     scope: "Creator (OWN) when the grant is scoped.",
   },
   {
@@ -47,7 +47,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Order lines (注文明細). The execution unit; created via the acceptance.", // i18n-ignore
+      "Order lines (注文明細). The execution unit; created via the acceptance. shipToId/deliveryMethod/assignedPlantId/endUserId hold the line's own delivery destination (§8).", // i18n-ignore
     scope: "Inherited from the parent acceptance's creator.",
   },
   {
@@ -115,7 +115,8 @@ export const API_RESOURCES: readonly ApiResource[] = [
     permission: "master",
     orderField: "updatedAt",
     tiebreak: "id",
-    summary: "Products (製品).", // i18n-ignore
+    summary:
+      "Products (製品). Since 2026-09-20 `id` is the unified item id — see the id-space note in the document description.", // i18n-ignore
     scope: "Unscoped (master data).",
   },
   {
@@ -124,7 +125,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Materials (素材). `code` is the identifier printed on supplier documents.", // i18n-ignore
+      "Materials (素材). `code` is the identifier printed on supplier documents. Since 2026-09-20 `id` is the unified item id — see the id-space note in the document description.", // i18n-ignore
     scope: "Unscoped (master data).",
   },
   {

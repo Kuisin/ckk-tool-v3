@@ -15,8 +15,9 @@ import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, targetPlantsInScope } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { onMaterialReceipt } from "@/lib/inventory";
+import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
+import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
   actionError,
@@ -28,9 +29,8 @@ const BASE_PATH = "/purchase/material-receipts";
 
 function receiptInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
-    materialId: z
-      .string()
-      .min(1, tr("purchase.materialReceipts.selectAMaterial")),
+    /** 選んだ素材の品目 id（items.id）を文字列で受ける。 */
+    itemId: z.string().min(1, tr("purchase.materialReceipts.selectAMaterial")),
     supplierBpId: z.string().nullable(),
     plantId: z.string().nullable(),
     quantity: z
@@ -68,25 +68,28 @@ export async function createMaterialReceipt(
     return actionError(tr("common.scopeDenied"));
   }
   try {
-    // 単位は素材マスタの単位で固定 — 「本」の台帳へ「kg」を足させない
+    const itemId = Number(v.itemId);
+    // 単位は素材（品目）の単位で固定 — 「本」の台帳へ「kg」を足させない
     // （lib/inventory ensureMaterialInventory も同じ理由で不一致を拒む）。
-    const material = await prisma.material.findUnique({
-      where: { id: Number(v.materialId) },
+    const item = await prisma.item.findUnique({
+      where: { id: itemId, itemType: "MATERIAL" },
       select: { unit: true },
     });
-    if (!material) return actionError(tr("common.targetRecordNotFound"));
-    if (v.unit !== material.unit) {
+    if (!item) return actionError(tr("common.targetRecordNotFound"));
+    if (v.unit !== item.unit) {
       return actionError(
-        tr("purchase.materialReceipts.unitMismatch", { unit: material.unit }),
+        tr("purchase.materialReceipts.unitMismatch", { unit: item.unit }),
       );
     }
     const actor = await getCurrentActorId();
+    // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。
+    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
     // 入荷行の作成と在庫への計上（台帳 + キャッシュ数量）は同じ tx — 途中で
     // 落ちれば入荷行ごと戻る（入荷はあるのに在庫が無い、を作らない）。
     const receipt = await prisma.$transaction(async (tx) => {
       const created = await tx.materialReceipt.create({
         data: {
-          materialId: Number(v.materialId),
+          itemId,
           supplierBpId: v.supplierBpId,
           // 直接調達 — 発注明細には紐付けない。
           purchaseOrderItemId: null,
@@ -99,7 +102,16 @@ export async function createMaterialReceipt(
         },
         select: { id: true },
       });
-      await onMaterialReceipt(created.id, tx);
+      // 伝票は入荷行を作ってから起こす — そうしないと source_id に入れる id が
+      // まだ無い（1 件の入荷はその入荷行そのものが出どころ）。
+      const openMovement = movementOpener(tx, {
+        key: movementKey,
+        cause: "MATERIAL_RECEIPT",
+        sourceType: "material_receipts",
+        sourceId: created.id,
+        plantId,
+      });
+      await onMaterialReceipt(created.id, tx, openMovement);
       return created;
     });
 
@@ -108,7 +120,7 @@ export async function createMaterialReceipt(
       tableName: "material_receipts",
       recordId: receipt.id,
       after: {
-        materialId: Number(v.materialId),
+        itemId,
         supplierBpId: v.supplierBpId,
         plantId,
         quantity: v.quantity,
@@ -120,7 +132,7 @@ export async function createMaterialReceipt(
     revalidatePath(BASE_PATH);
     revalidatePath(`${BASE_PATH}/${receipt.id}`);
     // 在庫台帳（数量）が動くため在庫ページも再検証する。
-    revalidatePath("/production/inventory");
+    revalidatePath("/inventory");
     return actionOk({ id: receipt.id });
   } catch (e) {
     // 在庫ガード（lib/inventory）の業務エラーは構造化ノート（鍵 + パラメータ）

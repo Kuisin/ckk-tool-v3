@@ -39,7 +39,7 @@ import { useEffect, useState, useTransition } from "react";
 import { z } from "zod";
 import {
   searchCustomerOptions,
-  searchProductOptions,
+  searchPriceListItemOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   createPriceEntry,
@@ -50,7 +50,7 @@ import {
 import type { EstimateSource } from "@/app/(dashboard)/sales/price-lists/data";
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { customerF4, productF4 } from "@/components/ui/f4-presets";
+import { customerF4, productItemF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { openConfirm } from "@/components/ui/modals";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
@@ -92,7 +92,7 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
   const variantFormSchema = z.object({
     /** 保存済みバリアントの id（新規は null）. */
     id: z.string().nullable(),
-    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
+    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "REGRIND", "OTHER"]),
     /** 基準単価ソースの価格試算番号（null = 手動設定）. */
     sourceEstimate: z.string().nullable(),
     /** 価格試算値を使わず手動の基準単価を使う（送信時に除去）. */
@@ -115,7 +115,8 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
       customerId: z
         .string()
         .min(1, tr("sales.orderAcceptances.selectACustomer")),
-      productId: z.string().min(1, tr("common.selectAProduct")),
+      /** 対象製品 — 値は品目 id（items.id）。 */
+      itemId: z.string().min(1, tr("common.selectAProduct")),
       /** 営業担当 — 顧客の担当一覧から選ぶ（未設定なら主担当が既定で入る）。 */
       salesRepId: z.string().nullable(),
       isActive: z.boolean(),
@@ -175,13 +176,14 @@ function buildInitial(args: {
   entry?: PriceListEntry | null;
   estimateBases: Record<string, number>;
   lockedCustomerId?: string;
+  /** 品目 id（items.id）。 */
   lockedProductId?: string;
 }): FormValues {
   const entry = args.entry;
   if (entry) {
     return {
       customerId: entry.customerId,
-      productId: entry.productId,
+      itemId: entry.itemId,
       salesRepId: entry.salesRepId,
       isActive: entry.isActive,
       variants: entry.variants.map((v) => {
@@ -210,7 +212,7 @@ function buildInitial(args: {
   }
   return {
     customerId: args.lockedCustomerId ?? "",
-    productId: args.lockedProductId ?? "",
+    itemId: args.lockedProductId ?? "",
     salesRepId: null,
     isActive: true,
     variants: [emptyVariant("PRODUCTION")],
@@ -262,20 +264,20 @@ export function PriceListTypeForm({
 
   // ── 製品にリンクされた価格試算（基準単価ソース候補）────────────────────────────
   const [sources, setSources] = useState<EstimateSource[]>([]);
-  const productId = form.values.productId;
+  const itemId = form.values.itemId;
   useEffect(() => {
-    if (!productId) {
+    if (!itemId) {
       setSources([]);
       return;
     }
     let cancelled = false;
-    fetchEstimateSources(productId).then((result) => {
+    fetchEstimateSources(itemId).then((result) => {
       if (!cancelled) setSources(result.ok ? result.data : []);
     });
     return () => {
       cancelled = true;
     };
-  }, [productId]);
+  }, [itemId]);
 
   /** バリアントの基準単価ロック値（価格試算ソース選択時のみ）。 */
   const baseOf = (v: VariantForm): number | null => {
@@ -374,7 +376,7 @@ export function PriceListTypeForm({
           : await createPriceEntry({
               identity: {
                 customerBpId: raw.customerId,
-                productId: raw.productId,
+                itemId: raw.itemId,
               },
               salesRepId: raw.salesRepId,
               variants,
@@ -405,7 +407,7 @@ export function PriceListTypeForm({
       ? (existingEntries.find(
           (e) =>
             e.customerBpId === form.values.customerId &&
-            e.productId === form.values.productId,
+            e.itemId === form.values.itemId,
         ) ?? null)
       : null;
 
@@ -465,19 +467,22 @@ export function PriceListTypeForm({
           {lockCustomerProduct ? (
             <FieldValue
               label={tr("common.product")}
-              value={productOption?.label ?? (form.values.productId || "—")}
+              value={productOption?.label ?? (form.values.itemId || "—")}
             />
           ) : (
             <SearchSelect
-              error={form.errors.productId}
-              f4={productF4(tr)}
+              error={form.errors.itemId}
+              f4={productItemF4(tr)}
               initialOption={productOption}
               label={<HelpLabel {...fieldHelp(tr, "priceList", "product")} />}
-              onChange={(v) => form.setFieldValue("productId", v ?? "")}
-              onSearch={searchProductOptions}
+              onChange={(v) => form.setFieldValue("itemId", v ?? "")}
+              // 出るのは**売り物**だけ — 製品と再研磨品目。他社製品（預かる
+              // だけ）と素材は価格表を持てないので、選べてしまうと保存の段に
+              // なって初めて断られる。判定の正は lib/sales-item-guard.ts。
+              onSearch={searchPriceListItemOptions}
               placeholder={tr("common.searchProducts")}
-              storageKey="product"
-              value={form.values.productId || null}
+              storageKey="price-list-product-item"
+              value={form.values.itemId || null}
               withAsterisk
             />
           )}
@@ -520,7 +525,7 @@ export function PriceListTypeForm({
             })}
           </Alert>
         )}
-        {form.values.productId && sources.length === 0 && (
+        {form.values.itemId && sources.length === 0 && (
           <Alert color="gray" mt="sm" variant="light">
             {tr("sales.priceLists.noConfirmedEstimateIsLinkedTo")}
           </Alert>

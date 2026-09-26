@@ -31,12 +31,12 @@ import { DesignFileViewButton } from "@/components/ui/DesignFileViewer";
 import { useIsMobile } from "@/hooks/useViewport";
 import { isViewable } from "@/lib/design-file-kind";
 import {
-  canDeleteDesignFile,
-  canEditDesignFile,
   DESIGN_FILE_SOURCE_COLOR,
-  describeLock,
+  type DesignVersionStatus,
+  describeVersionLock,
   designFileSource,
   designFileSourceLabel,
+  isVersionEditable,
 } from "@/lib/design-files-core";
 import type { DesignFileRole } from "./model";
 import { RoleBadge } from "./RoleBadge";
@@ -54,8 +54,11 @@ export interface DesignFileListRow {
   requestNumber?: string | null;
   /** 依頼 id。渡すと「依頼 / 手動」のタグを出す。 */
   designRequestId?: string | null;
-  /** 指示書が指している版か（編集・削除の可否）。 */
-  usedByWorkOrder?: boolean;
+  /**
+   * 属する版の状態。確定前（下書き・差し戻し）だけ説明の編集・取り外しができる。
+   * 渡さない行（設計依頼 SA26 など読むだけの画面）は操作を出さない。
+   */
+  versionStatus?: DesignVersionStatus;
   createdAt: string;
 }
 
@@ -89,16 +92,14 @@ export function DesignFileList({
   const isMobile = useIsMobile();
   const showNotes = rows.some((r) => r.notes);
 
-  // 行ごとの操作。使われている版・依頼の成果物は落ちる（判定は 1 箇所）。
+  // 行ごとの操作。確定した版・承認依頼中の版は動かせない（判定は 1 箇所）。
   const actionsFor = (f: DesignFileListRow) => {
-    const state = {
-      usedByWorkOrder: f.usedByWorkOrder ?? false,
-      designRequestId: f.designRequestId ?? null,
-    };
+    const editable =
+      f.versionStatus != null && isVersionEditable(f.versionStatus);
     return {
-      canEdit: onEdit != null && canEditDesignFile(state),
-      canDelete: onDelete != null && canDeleteDesignFile(state),
-      lock: describeLock(state, tr),
+      canEdit: onEdit != null && editable,
+      canDelete: onDelete != null && editable,
+      lock: f.versionStatus ? describeVersionLock(f.versionStatus, tr) : null,
     };
   };
 

@@ -29,7 +29,7 @@ export default async function MasterInspectionTemplatesEditPage({
     where: { id },
     include: {
       relatedProcessStep: true,
-      product: { select: { name: true } },
+      item: { select: { name: true } },
       approvers: {
         include: { user: { select: { displayName: true } } },
         orderBy: { sortOrder: "asc" },
@@ -66,9 +66,9 @@ export default async function MasterInspectionTemplatesEditPage({
         relatedProcessStepLabel: r.relatedProcessStep
           ? `${localized(r.relatedProcessStep.name as LocalizedText | null)}（${r.relatedProcessStep.code}）`
           : "",
-        productId: r.productId != null ? String(r.productId) : null,
-        productLabel: r.product
-          ? localized(r.product.name as LocalizedText | null)
+        itemId: r.itemId != null ? String(r.itemId) : null,
+        productLabel: r.item
+          ? localized(r.item.name as LocalizedText | null)
           : "",
         groupId: r.groupId != null ? String(r.groupId) : null,
         samplingMode: r.samplingMode,

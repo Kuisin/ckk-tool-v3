@@ -78,6 +78,7 @@
     "disabled2": "Disabled",
     "display": "Display",
     "error2": "Error",
+    "warning": "Warning",
     "category": "Category",
     "apps": "Apps",
     "unknownError": "Unknown error",
@@ -643,6 +644,7 @@
     "products": "Products",
     "defectType": "Defect type",
     "product": "Product",
+    "standardPrice": "Standard price",
     "guest": "Guest",
     "site": "Site",
     "detail": "Details",
@@ -804,7 +806,13 @@
     "priceListInactive": "Price list disabled",
     "priceListExpired": "Price list out of valid period",
     "dateFrom": "From date",
-    "dateTo": "To date"
+    "dateTo": "To date",
+    "billTo": "Bill-to",
+    "stockTake": "Stocktaking",
+    "stockMovement": "Stock movement",
+    "invoicePayment": "Invoice payment",
+    "notPendingApproval": "Not currently pending approval",
+    "designVersion": "Drawing version"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -992,6 +1000,7 @@
       "PRODUCTION": "Production",
       "TEST": "Test",
       "SAMPLE": "Sample",
+      "REGRIND": "Regrind",
       "OTHER": "Other"
     },
     "PERMISSION_ACTION_LABEL": {
@@ -1017,6 +1026,7 @@
     "PROCESS_CATEGORY_LABEL": {
       "MATERIAL_PREP": "Material prep",
       "MACHINING": "Machining",
+      "REGRIND": "Regrind",
       "COATING": "Coating",
       "INSPECTION": "Inspection",
       "APPROVAL": "Inspection approval",
@@ -1065,9 +1075,11 @@
     },
     "WORK_ORDER_TYPE_LABEL": {
       "FROM_STOCK": "From stock",
-      "MANUFACTURE": "Manufacture"
+      "MANUFACTURE": "Manufacture",
+      "REGRIND": "Regrind"
     },
     "INSPECTION_STATUS_LABEL": {
+      "APPROVED": "Approved",
       "PENDING": "Not performed",
       "PASS": "Pass",
       "FAIL": "Fail"
@@ -1174,8 +1186,9 @@
     },
     "DESIGN_FILE_ROLE_LABEL": {
       "PREVIEW": "Preview",
-      "BLUEPRINT": "Drawing file",
-      "REFERENCE": "Reference"
+      "BLUEPRINT": "2D drawing",
+      "REFERENCE": "Reference",
+      "MODEL": "3D model"
     },
     "STEP_EXECUTION_LABEL": {
       "INTERNAL": "In-house",
@@ -1198,6 +1211,48 @@
     "DELIVERY_TOLERANCE_BASIS_LABEL": {
       "PERCENT": "Percent (%)",
       "QUANTITY": "Quantity"
+    },
+    "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "MANUAL": "Manual",
+      "OUTSOURCE_ISSUE": "Issued to subcontractor",
+      "OUTSOURCE_RETURN": "Returned from subcontractor",
+      "SALES_RETURN": "Sales return",
+      "REGRIND_RECEIPT": "Regrind receipt",
+      "WORK_ORDER_COMPLETION": "Work order completed",
+      "DELIVERY_SHIPMENT": "Shipment",
+      "MATERIAL_RECEIPT": "Material receipt",
+      "STOCK_TRANSFER": "Stock transfer",
+      "STOCK_RESERVATION": "Stock reservation",
+      "RESERVATION_RELEASE": "Reservation released",
+      "ADJUSTMENT": "Adjustment",
+      "OTHER": "Unknown (pre-migration)"
+    },
+    "TRANSACTION_TYPE_LABEL": {
+      "IN": "In",
+      "OUT": "Out",
+      "RESERVE": "Reserve",
+      "RELEASE": "Release",
+      "ADJUST": "Adjustment"
+    },
+    "INVENTORY_TYPE_LABEL": {
+      "PRODUCT": "Product",
+      "MATERIAL": "Material"
+    },
+    "ITEM_TYPE_LABEL": {
+      "PRODUCT": "Product",
+      "MATERIAL": "Material",
+      "REGRIND": "Regrind"
+    },
+    "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
+      "past": "Actual",
+      "now": "Now",
+      "supply": "Expected supply",
+      "demand": "Expected demand"
+    },
+    "MOVEMENT_DIRECTION_LABEL": {
+      "IN": "In",
+      "OUT": "Out",
+      "TRANSFER": "Transfer"
     }
   },
   "status": {
@@ -1492,6 +1547,14 @@
           "label": "Exported"
         }
       },
+      "AccountingDocument": {
+        "POSTED": {
+          "label": "Posted"
+        },
+        "REVERSED": {
+          "label": "Reversed"
+        }
+      },
       "ApprovalRequest": {
         "PENDING": {
           "label": "Pending approval"
@@ -1549,6 +1612,48 @@
         },
         "REVOKED": {
           "label": "Revoked"
+        }
+      },
+      "StockTake": {
+        "DRAFT": {
+          "label": "Draft"
+        },
+        "COUNTING": {
+          "label": "Counting"
+        },
+        "CONFIRMED": {
+          "label": "Confirmed"
+        },
+        "CANCELLED": {
+          "label": "Cancelled"
+        }
+      },
+      "StockTakeApproval": {
+        "NONE": {
+          "label": "—"
+        },
+        "PENDING": {
+          "label": "Pending approval"
+        },
+        "APPROVED": {
+          "label": "Approved"
+        },
+        "REJECTED": {
+          "label": "Sent back"
+        }
+      },
+      "DesignVersion": {
+        "DRAFT": {
+          "label": "Draft"
+        },
+        "REQUESTED": {
+          "label": "Pending approval"
+        },
+        "CONFIRMED": {
+          "label": "Confirmed"
+        },
+        "REJECTED": {
+          "label": "Sent back"
         }
       }
     }
@@ -1923,6 +2028,7 @@
       "PRODUCTION": "Production",
       "TEST": "Test",
       "SAMPLE": "Sample",
+      "REGRIND": "Regrind",
       "OTHER": "Other"
     },
     "DELIVERY_METHOD": {
@@ -1988,7 +2094,7 @@
       "generateInvoices": "Generate invoices",
       "createAnInvoice": "Create an invoice",
       "exported": "Exported",
-      "yayoiAccountingCsv": "Yayoi Accounting CSV",
+      "accountingCsv": "Accounting CSV",
       "shipmentsCovered": "Shipments covered",
       "thereAreNoShipmentsToBill": "There are no shipments to bill",
       "notGeneratedUseGenerateInvoices": "Not generated (use \"Generate invoices\")",
@@ -1998,7 +2104,6 @@
       "confirmGeneratingInvoices": "Confirm generating invoices",
       "theBillingClosingWasRun": "The billing closing was run",
       "runTheBillingClosing": "Run the billing closing",
-      "aggregatesTheMonthSUnbilledShipments": "Aggregates the month's unbilled shipments (shipped, dispatch only) per customer and creates closing rows.",
       "years": "years",
       "months": "months",
       "runTheBillingClosing2": "Run the billing closing",
@@ -2009,7 +2114,35 @@
       "shipmentNote": "{quantity} pcs · {amount}",
       "titleWithClosingDate": "{customer} ({date} closing)",
       "shipmentsCoveredWithCount": "Covered shipments ({count})",
-      "confirmGenerateBody": "Generates a draft invoice from {customer}'s {date} closing. The {count} covered shipments become the line items."
+      "confirmGenerateBody": "Generates a draft invoice from {customer}'s {date} closing. The {count} covered shipments become the line items.",
+      "dueDate": "Due date",
+      "monthEnd": "the last day",
+      "dayOfMonth": "day {day}",
+      "termsDayOnly": "the first {day} after the closing date",
+      "termsDaysThenDay": "the first {day} on or after the closing date + {days} days",
+      "termsDaysOnly": "closing date + {days} days (no payment day set)",
+      "termsDefault": "closing date + {days} days (the default — neither payment terms nor payment day is set)",
+      "generateInvoicesInBulk": "Generate invoices in bulk",
+      "nothingToProcess": "There is nothing to process",
+      "selectPendingPastClosingDate": "Select rows that are unprocessed and past their closing date",
+      "invoicesWereGenerated": "Generated {count} invoice(s)",
+      "someCouldNotBeProcessed": "{count} could not be generated",
+      "skippedNotReady": "{count} skipped (already processed, or before the closing date)",
+      "aggregatesUnbilledShipmentsUpToDate": "Aggregates unbilled shipments (shipped, dispatch only) per customer whose closing date has arrived by the target date and has not yet been closed, and generates a draft invoice for closings already past their closing date.",
+      "targetDate": "Target date",
+      "kind": "Run type",
+      "kindScheduled": "Scheduled",
+      "kindManual": "Manual",
+      "simulate": "Dry run",
+      "simulateTitle": "Billing closing dry run",
+      "simulateDateDescription": "Shows what a run on this date would produce (a future date is allowed)",
+      "simulateCountsCurrentShipmentsOnly": "Counts only shipments that are unbilled now. Shipments made between today and the target date are not included.",
+      "simulateClosingCount": "{count} closings",
+      "simulateInvoiceCount": "{count} invoices",
+      "simulateNothingToClose": "Nothing to close",
+      "simulateInvoiceCreated": "Invoice created",
+      "simulateInvoiceNotYet": "Created from the next day",
+      "runsUpToTodayOnly": "A run reaches today at the latest. Use a dry run to look ahead"
     },
     "invoices": {
       "issueThePdf": "Issue the PDF",
@@ -2019,13 +2152,13 @@
       "confirmPayment": "Confirm payment",
       "handEnteredLinesOnly": "— (hand-entered lines only)",
       "shipmentWithNoDeliveryNoteIssued": "— (shipment with no delivery note issued)",
-      "yayoiAccountingExport": "Yayoi Accounting export",
-      "notExportedTheYayoiCsvIs": "Not exported (the Yayoi CSV is produced after issuing)",
+      "accountingExport": "Accounting export",
+      "notExportedAfterIssue": "Not exported (the accounting CSV is made after issuing)",
       "markAsSent": "Mark as sent",
       "markAsPaid": "Mark as paid",
-      "yayoiAccountingCsv": "Yayoi Accounting CSV",
+      "accountingCsv": "Accounting CSV",
       "paymentDue": "Payment due",
-      "yayoiExport": "Yayoi export",
+      "accountingExportedAt": "Accounting export date",
       "notExported": "Not exported",
       "summary": "Summary",
       "origin": "Origin",
@@ -2039,8 +2172,22 @@
       "taxLabelReduced": "Consumption tax (8%)",
       "taxLabelExempt": "Consumption tax (exempt)",
       "taxLabelStandard": "Consumption tax (10%)",
-      "yayoiAccountingCsvAgain": "Yayoi accounting CSV (export again)",
-      "taxLabelRate": "Tax ({rate}%)"
+      "accountingCsvAgain": "Accounting CSV (export again)",
+      "taxLabelRate": "Tax ({rate}%)",
+      "issueApprovalRejectedHelp": "Issue approval was sent back. Review the manual charges and issue again.",
+      "paymentApprovalRejectedHelp": "Payment approval was sent back. Request it again from “Mark as paid”.",
+      "issueApprovalWaitingHelp": "Only members of this group can act.",
+      "paymentApprovalWaitingHelp": "Only members of this group can act.",
+      "paymentApprovalApproveHelp": "Recording this payment requires approval. Review it and approve.",
+      "issueApprovalApproveHelpWithCharges": "Includes {count} manually added charge(s) (total {amount}). Review before approving.",
+      "chargesClosedForEditing": "Additional charges can only be edited on a draft invoice",
+      "chargesSaveFailed": "Could not save the additional charges",
+      "chargesHelp": "Charges added manually to this invoice (chosen from the charge master only). Requires approval before issuing. Editable only while the invoice is a draft.",
+      "manualInvoiceHelp": "Select the customer to invoice now. Creates a draft invoice from currently unbilled shipments without waiting for a closing date.",
+      "unbilledShipments": "Unbilled shipments",
+      "noUnbilledShipmentsForCustomer": "No unbilled shipments",
+      "createInvoiceFromSelection": "Create invoice",
+      "someShipmentsNoLongerAvailable": "Some of the selected shipments are already used by another invoice. Please select again."
     },
     "invoiceDetail": {
       "confirmIssueMessage": "This issues invoice {invoiceNumber}. The issue date is recorded as today.",
@@ -2048,13 +2195,18 @@
       "confirmMarkSentMessage": "This marks invoice {invoiceNumber} as sent.",
       "markedSentWithNumber": "Marked invoice {invoiceNumber} as sent",
       "confirmMarkPaidMessage": "This marks invoice {invoiceNumber} as paid.",
-      "markedPaidWithNumber": "Marked invoice {invoiceNumber} as paid"
+      "markedPaidWithNumber": "Marked invoice {invoiceNumber} as paid",
+      "approvalRequestedMessage": "Approval requested (invoice {invoiceNumber})"
     },
     "closingTable": {
-      "yearLabel": "{year}",
-      "monthLabel": "Month {month}",
       "createdAndUpdatedCounts": "Created {created} / updated {updated}",
-      "skippedCount": "Skipped {skipped} already processed"
+      "skippedCount": "Skipped {skipped} already processed",
+      "resultModalTitle": "Billing closing result",
+      "bulkResultModalTitle": "Invoice generation result",
+      "createdInvoicesHeading": "Invoices created ({count})",
+      "noInvoicesCreated": "No invoices were created",
+      "failuresHeading": "Could not generate ({count})",
+      "openInvoiceList": "Open invoice list"
     },
     "invoicesActions": {
       "invalidNumber": "Invalid invoice number",
@@ -2063,17 +2215,59 @@
       "onlyIssuedCanMarkSent": "Only issued invoices can be marked sent",
       "markSentFailed": "Could not mark as sent",
       "onlySentCanMarkPaid": "Only sent invoices can be marked paid",
-      "markPaidFailed": "Could not mark as paid"
+      "markPaidFailed": "Could not mark as paid",
+      "awaitingIssueApproval": "Awaiting issue approval",
+      "approvalRequestFailed": "Could not create the approval request",
+      "approvalRequested": "Approval requested",
+      "awaitingPaymentApproval": "Awaiting payment approval",
+      "paymentApprovalRequested": "Payment approval requested"
+    },
+    "accountingDocuments": {
+      "invalidDocumentNumber": "Invalid accounting document number",
+      "reasonRequired": "Enter a reason for the reversal",
+      "notActivePosted": "This document has already been reversed, or does not exist",
+      "reversed": "Reversal created",
+      "reverseFailed": "Could not create the reversal",
+      "createReversal": "Create reversal",
+      "reverseReasonLabel": "Reason for reversal",
+      "confirmReverseTitle": "Confirm reversal",
+      "confirmReverseMessage": "This will reverse the accounting document — a new document with debit and credit swapped is created, and the original is marked reversed (its lines are not changed).",
+      "activeDocument": "Posted document",
+      "documentHistory": "Accounting document history",
+      "documentNumber": "Document number",
+      "postedAtLabel": "Posted at",
+      "reversedAtLabel": "Reversed at",
+      "downloadCsv": "Accounting CSV",
+      "redownloadCsv": "Accounting CSV (re-download)",
+      "notPostedYet": "Not posted yet",
+      "needsRepost": "Reversed — exporting again will post a new document",
+      "documentsList": "Document history",
+      "documentsListDescription": "Posted and reversed accounting documents. Click a row to open the invoice."
     },
     "closingActions": {
       "closingDateNotReached": "Cannot process until the closing date has passed (from the day after)",
       "closingNotFound": "The billing closing was not found",
       "generateInvoiceFailed": "Could not generate the invoice",
-      "invalidYearMonth": "Invalid target month format (YYYYMM)",
       "itemNameWithLot": "{name} (Lot {lot})",
-      "noUnbilledShipmentsForMonth": "No unbilled shipments for the target month",
       "pendingOnly": "Only an unprocessed closing can generate an invoice",
-      "runFailed": "Could not run the billing closing"
+      "runFailed": "Could not run the billing closing",
+      "invalidDate": "Invalid target date format",
+      "noUnbilledShipmentsUpToDate": "No unbilled shipments up to the target date",
+      "futureDateNotRunnable": "A future date cannot be run. Use a dry run to look ahead.",
+      "simulateFailed": "Could not run the dry run"
+    },
+    "invoiceTable": {
+      "manualInvoice": "Manual invoice",
+      "nothingToIssue": "No invoices can be issued",
+      "selectDraftInvoices": "Select draft invoices",
+      "issuedCount": "Issued {count}",
+      "nothingToMarkPaid": "No invoices can be marked as paid",
+      "selectSentInvoices": "Select sent invoices",
+      "paymentProcessedCount": "Processed payment for {count}",
+      "nothingToApprove": "No invoices can be approved",
+      "selectPendingApprovalInvoices": "Select invoices pending approval",
+      "approvedCount": "Approved {count}",
+      "rejectedCount": "Sent back {count}"
     }
   },
   "general": {
@@ -2449,6 +2643,12 @@
       "deliveryOrderNeedsOrderLine": "You cannot create it from a work order with no order line",
       "deliveryOrderAlreadyArranged": "Every order line of this work order is already arranged for shipping",
       "prepRoute": "Preparation step list",
+      "regrindRoute": "Regrind step list",
+      "regrindQuantities": "Regrind quantities",
+      "regrindReceived": "Received",
+      "regrindReturned": "Returned",
+      "regrindFinished": "Finished",
+      "regrindNotReceivedYet": "Not received yet",
       "manufacturingRoute": "Manufacturing step list",
       "newerVersionExists": "Newer v{version} exists",
       "varianceAllowedBadge": "Allowed"
@@ -2632,8 +2832,7 @@
       "selectAWorkLocation": "Select a work location",
       "start": "Start",
       "end": "End",
-      "enterStartAndEnd": "Enter the start and end times",
-      "enterQuantity": "Enter the quantity"
+      "enterStartAndEnd": "Enter the start and end times"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "Quantity and defects",
@@ -2717,8 +2916,6 @@
       "couldNotRegisterIt": "Could not register it",
       "generic": "・generic",
       "leaveItBlankForGenericUsed": "Leave it blank for generic — used when there is no customer-specific drawing. Versions are counted per ordering customer",
-      "theSourceDataForTheMachining": "The source data for the machining program. It becomes this series' latest drawing",
-      "drawingFile": "Drawing file",
       "aFileSuchAsStlFor": "A file such as STL for checking the shape on screen. You can register without one",
       "forPreview3d": "For preview (3D)",
       "descriptionOptionalEGPartDrawing": "Description (optional) — e.g. part drawing, dimension table",
@@ -2816,6 +3013,8 @@
       "thisStepHasBeenCancelled": "This step has been cancelled",
       "thisStepHasBeenCancelled2": "This step has been cancelled.",
       "outsourcingSchedule": "Outsourcing schedule",
+      "custodyHeld": "Held by subcontractor: {supplier} has {quantity} pcs (slip {movement})",
+      "custodyReturned": "Held by subcontractor: returned (issued {issued} / returned {returned})",
       "outsourcingCost": "Outsourcing cost",
       "saveTheOutsourcingSchedule": "Save the outsourcing schedule",
       "interruptRollBack": "Interrupt (roll back)",
@@ -2844,6 +3043,13 @@
       "thisCustomer": "This customer",
       "stepFallbackWithId": "Step #{id}",
       "prepRouteHelp": "The order of issue/hand-off and material prep steps (shared by every product). A work order always uses the latest version; the version cannot be chosen per work order. To change the order, create a new version under Process steps › Preparation step lists.",
+      "regrindRouteHelp": "Regrind step list (common). Not tied to a product or customer; the work order always uses the latest version. You may add or remove steps afterwards (the link to the list is then dropped)",
+      "noRegrindRouteRegistered": "No regrind step list is registered (Process steps > Regrind step lists)",
+      "regrindRouteUsesLatest": "Uses the latest version v{version} ({date})",
+      "editRegrindRoutes": "Edit regrind step lists",
+      "selectARegrindRoute": "Select a regrind step list",
+      "regrindQuantityMatchesTheAllocation": "For regrind the planned quantity equals the allocation ({count}); the received count is recorded at tool receipt",
+      "regrindTypeLockedByLine": "The order line has order type Regrind, so the work order type is fixed to Regrind",
       "noPrepRouteRegistered": "No preparation step list is registered (create one under process steps)",
       "showOtherCustomers": "Also show other customers' step lists for this product",
       "showOtherCustomersHelp": "By default only this customer's and generic lists are shown. Select another customer's list to copy it to this customer.",
@@ -2862,7 +3068,9 @@
       "prepRouteUsesLatest": "Uses the latest, v{version} ({date})",
       "prepStepsReadOnly": "Preparation steps come from the shared preparation step list and cannot be edited here — only manufacturing steps are edited",
       "editPrepRoutes": "Edit preparation step lists (process steps)",
-      "selectAPrepRoute": "Select a preparation step list"
+      "selectAPrepRoute": "Select a preparation step list",
+      "typeFixedByOrderLine": "The order line's order type is {orderType}, so this work order's type is already decided. Change it on the order acceptance line.",
+      "typeFixedByStockTarget": "A work order for stock, with no order line, can only be Manufacture."
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "Allocated {allocated} / Ordered {ordered}",
@@ -2890,8 +3098,7 @@
     "designFileVersionForm": {
       "registeringAsResultOfRequest": "Registering as the deliverable of design request {requestNumber}. The product \"{productLabel}\"{customerPart} is fixed by the request and cannot be changed.",
       "andCustomerWithName": "/ customer \"{name}\"",
-      "referenceWithNumber": "Reference {number}",
-      "designFileWasAddedWithVersion": "Drawing v{version} was added"
+      "referenceWithNumber": "Reference {number}"
     },
     "stepExecutionView": {
       "stepWithName": "Step: {name}",
@@ -3014,7 +3221,6 @@
       "workLocationRequiredForPlan": "A work plan requires a work location",
       "planLockedByWorkOrderStatus": "Work plans cannot be changed while the work order is pending approval, completed or cancelled",
       "timeRequiredForPlan": "A work plan for this step requires start and end times",
-      "quantityRequiredForPlan": "A work plan for this step requires a quantity",
       "assigneeRequiredForPlan": "This step's work plan requires an assignee"
     },
     "workOrderActions": {
@@ -3077,11 +3283,21 @@
       "allocationsMustShareProduct": "Order lines allocated to one work order must be the same product",
       "allocationExceedsRemaining": "The allocation to order line {number} exceeds the remaining balance (order quantity {lineQuantity} − already allocated {otherAllocated} = remaining {remaining})",
       "stockPlannedQuantityMustMatchAllocation": "For a from-stock work order, the planned quantity must match the allocated quantity",
+      "regrindRouteRequired": "Select a regrind step list (active regrind step lists exist)",
+      "regrindRouteNotFound": "The selected regrind step list was not found or is disabled",
+      "regrindLinesOnly": "Only order lines with order type Regrind can be allocated to a regrind work order",
+      "regrindWorkOrderOneLineOnly": "A regrind work order can be allocated only one order line",
+      "regrindPlannedQuantityMustMatchAllocation": "For a regrind work order the planned quantity must equal the allocated quantity",
+      "regrindLineRequiresRegrindWorkOrder": "An order line with order type Regrind can only be allocated to a regrind work order",
+      "regrindOrderRequiresOrderLine": "A regrind work order needs an order line",
+      "externalProductRequiresRegrind": "Work orders for an external product can only be regrind (no manufacture / from-stock)",
       "plannedQuantityBelowAllocationTotal": "The planned quantity is below the total allocation of {total} (you may add extra for defect margin, but it must be at least the total allocation)",
       "plansRequiredBeforeApproval": "Add a work plan (date + work location) before requesting approval: {steps}",
       "copyRouteFailed": "Could not copy the step list",
       "prepRouteRequired": "Select a preparation step list",
-      "prepRouteNotFound": "The selected preparation step list was not found or is disabled"
+      "prepRouteNotFound": "The selected preparation step list was not found or is disabled",
+      "regrindLineToolMissing": "Order line {number}: the tool to regrind is not selected",
+      "designFileNotConfirmed": "A drawing from an unconfirmed version cannot be pinned to a work order"
     },
     "designFileActions": {
       "cannotDelete": "Cannot delete",
@@ -3090,13 +3306,23 @@
       "memoUpdatedAudit": "Updated the memo for drawing v{version}",
       "notFound": "The drawing was not found",
       "referencedByRevisionRequest": "Cannot delete — a revision request references this as its original drawing",
-      "lockedInUseByWorkOrder": "Cannot be changed — in use by a work order",
-      "lockedRequestDeliverable": "Cannot be deleted — it is a design request deliverable (the memo can still be edited)"
+      "approvalRequestFailed": "Could not request approval",
+      "approvedRemaining": "Approved ({remaining} remaining)",
+      "approvedToNextStep": "Approved (moved to the next step)",
+      "filesAddedAudit": "Added {count} files to v{version}",
+      "lockedConfirmed": "A confirmed version cannot be changed",
+      "lockedPendingApproval": "Cannot be changed while pending approval",
+      "notPendingApproval": "This version is not pending approval",
+      "openVersionExists": "This series already has an unconfirmed version (v{version}). Confirm or delete it first.",
+      "roleAlreadyAttached": "A {role} is already attached. Remove it first to replace it.",
+      "specUpdatedAudit": "Updated the specification of v{version}",
+      "versionDeletedAudit": "Deleted draft version v{version}"
     },
     "inventoryActions": {
       "exceedsAvailable": "Exceeds the amount available to move (available {free} — reserved stock cannot be moved)",
       "quantityRequired": "Enter a quantity",
       "sameLocation": "The source and destination are the same location",
+      "custodyNotTransferable": "Stock held by a subcontractor cannot be moved here. It is posted back when the step records the received date.",
       "selectTargetPlant": "Select a destination site",
       "sourceInventoryNotFound": "The source stock was not found",
       "targetLocationMismatch": "The destination storage location does not match the destination site",
@@ -3157,7 +3383,6 @@
       "targetProductNotSpecified": "The target product is not specified",
       "invalidOrderingCustomer": "The ordering customer specified is invalid",
       "invalidDesignRequest": "The design request specified is invalid",
-      "selectTheDrawingFile": "Select the drawing file",
       "isTooLargeMax20mb": "{name} is too large (up to 20MB per file)"
     },
     "workflowIssues": {
@@ -3188,6 +3413,139 @@
       "toleranceBottom": "Tolerance bottom",
       "upperLimit": "Upper limit",
       "lowerLimit": "Lower limit"
+    },
+    "movements": {
+      "movementNumber": "Movement no.",
+      "cause": "Cause",
+      "sourceDocument": "Source document",
+      "searchByNumber": "Search by movement no.",
+      "noMovements": "There are no stock movements",
+      "storageLocation": "Storage location / shelf",
+      "truncatedNotice": "Showing the 1,000 most recent only. Older slips will not appear, even when filtered."
+    },
+    "stockTakes": {
+      "actions": {
+        "cancelFailed": "Could not cancel",
+        "cannotCancelNow": "This cannot be cancelled now (only while draft or counting)",
+        "cannotSubmitNow": "This cannot be submitted now (count at least one line first)",
+        "countsSaved": "Counts saved",
+        "createFailed": "Could not create",
+        "noLinesToCount": "There is nothing to count",
+        "notEditableNow": "This cannot be edited now",
+        "notPendingApproval": "Not pending approval",
+        "saveCountsFailed": "Could not save the counts",
+        "selectAPlant": "Select a site",
+        "stateChanged": "The state has changed. Reload and try again",
+        "submitFailed": "Could not submit"
+      },
+      "detail": {
+        "bookQuantity": "Book quantity",
+        "confirmCancelBody": "This cancels {number}. This cannot be undone.",
+        "confirmedAtLabel": "Confirmed at",
+        "countedProgress": "{counted}/{total} counted",
+        "countedQuantity": "Counted quantity",
+        "countsSaved": "Counts saved",
+        "createdAtLabel": "Created at",
+        "difference": "Difference",
+        "item": "Item",
+        "linesTitle": "Buckets ({count})",
+        "movementTitle": "Inventory movement",
+        "noDifferenceNoMovement": "No difference (no movement was issued)",
+        "notConfirmedYet": "Not confirmed yet",
+        "notCounted": "Not counted",
+        "numberLabel": "Stocktake number",
+        "stageConfirmed": "Confirmed",
+        "stageCounting": "Counting",
+        "stageDraft": "Draft",
+        "summaryLine": "Counted {counted}/{total} · {diffCount} with a difference (over +{over} / under −{under})",
+        "unassignedLocation": "Unassigned"
+      },
+      "form": {
+        "created": "Created",
+        "createdBody": "Created {number}",
+        "newTitle": "New stocktake",
+        "sectionDescription": "Pulls in the buckets for the whole site, or narrowed to one storage location.",
+        "sectionTitle": "Stocktake information",
+        "selectAPlant": "Select a site",
+        "selectAPlantFirst": "Select a site first",
+        "selectAStorageLocation": "Select a storage location (optional)"
+      },
+      "table": {
+        "approvalStatus": "Approval status",
+        "emptyMessage": "There are no stocktakes yet",
+        "lineCount": "Line count",
+        "number": "Stocktake number",
+        "searchPlaceholder": "Search by stocktake number, site, or storage location",
+        "storageLocation": "Storage location"
+      }
+    },
+    "designVersion": {
+      "addFiles": "Add files",
+      "blueprintSlotHint": "Zunou SXF (.sfc), DXF, DWG, etc. Choosing a .sfc file reads the title block and dimensions to fill in the specification.",
+      "checkTheSpec": "Check the specification",
+      "confirmCardDesc": "Once confirmed, this version is used by work orders and the product master. It cannot be changed afterwards.",
+      "confirmCardTitle": "This draft is waiting to be confirmed",
+      "confirmModalMessage": "A confirmed version cannot be changed. Check the specification and files before confirming.",
+      "confirmModalTitle": "Confirm v{version}",
+      "confirmedBy": "Confirmed",
+      "confirmedToast": "Confirmed",
+      "deleteVersion": "Delete version",
+      "deleteVersionConfirm": "Draft version v{version} and its files will be deleted. This cannot be undone.",
+      "draftCreated": "Created draft version v{version}",
+      "filesAdded": "Files added",
+      "filesHint": "All optional. You can add or remove files until the version is confirmed.",
+      "latestConfirmed": "Latest confirmed",
+      "latestConfirmedVersion": "Confirmed v{version}",
+      "modelSlotHint": "STEP, IGES, CIM3D, etc. Formats that cannot be displayed on screen are download-only.",
+      "noConfirmedVersion": "No confirmed version",
+      "noFiles": "No files",
+      "noSpec": "No specification set",
+      "openVersion": "Open v{version}",
+      "referenceSlotHint": "Part drawings, dimension tables, etc. You can add as many as you need.",
+      "removeFile": "Remove file",
+      "removeFileConfirm": "\"{filename}\" will be removed from this version and deleted.",
+      "saveDraft": "Save draft",
+      "spec": "Specification",
+      "stageDraft": "Created",
+      "superseded": "A newer version exists",
+      "sxfApplyFailed": "Could not apply the values read from the drawing to the specification",
+      "sxfCheckHint": "Check the values read before saving. Items not written on the drawing are left unchanged.",
+      "sxfCustomerMatched": "Selected the ordering customer from the customer name \"{name}\"",
+      "sxfCustomerNotMatched": "Could not match the customer name \"{name}\" to a single ordering customer. Select the ordering customer manually.",
+      "sxfDimensions": "Diameter φ{diameter} / Overall length {length}",
+      "sxfRead": "Read {count} items from the drawing",
+      "sxfSheet": "Drawing {sheet}",
+      "sxfUnreadable": "Could not read the file as SXF",
+      "sxfUnreadableHint": "The file can still be attached, but enter the specification manually. Only .sfc files exported with Zunou RAPID's \"SXF format\" can be read.",
+      "titleBlock": "Title block",
+      "titleBlockHint": "What is written in the drawing's title block. Filled in automatically when you choose a Zunou SXF (.sfc) file.",
+      "versionCount": "{count} versions",
+      "titleBlockField": {
+        "productName": "Part name",
+        "drawingNumber": "Drawing No.",
+        "toolNumber": "Tool No.",
+        "material": "Material",
+        "surfaceTreatment": "Surface treatment",
+        "flutes": "Flutes",
+        "helix": "Helix angle",
+        "marking": "Marking",
+        "drawnAt": "Drawn date"
+      },
+      "confirm": "Confirm",
+      "extract": {
+        "fromDrawing": "Drawing",
+        "editManually": "Edit manually",
+        "manual": "Manual",
+        "drawingValue": "Drawing: {value}",
+        "revert": "Revert to drawing value",
+        "summaryTitle": "Read from drawing \"{file}\"",
+        "summaryCounts": "{read} fields read ({overridden} edited manually) · {at}",
+        "summaryHint": "Fields read from the drawing are read-only. Use \"Edit manually\" on a field to overwrite it; the drawing value stays shown below the field.",
+        "detach": "Detach drawing values",
+        "viewSummary": "{read} fields from drawing \"{file}\" ({overridden} edited manually) · {at}"
+      },
+      "seriesOption": "{name} ({count} versions)",
+      "allSeries": "All ordering customers"
     }
   },
   "purchase": {
@@ -4732,6 +5090,71 @@
       "activateBeforeIssuing": "Enable the account first — a disabled account cannot sign in.",
       "noActiveAccounts": "This partner has no enabled portal accounts.",
       "couldNotIssueTheGuide": "Could not issue the guide."
+    },
+    "accounting": {
+      "accounting": "Accounting export",
+      "description": "The shape of the journal CSV made from invoices. Per-row account codes live on the masters (tax categories MS0F / business partners MS01); this screen holds the shape and the defaults used when a master is blank.",
+      "notYetVendorLayout": "The default columns are a generic code-based layout, not the accounting software’s official import layout. Once you have the import layout sheet, match the columns and default codes here to it.",
+      "format": "Output format",
+      "formatDescription": "Character encoding, newline and date format the accounting software expects.",
+      "encoding": "Character encoding",
+      "newline": "Newline",
+      "dateFormat": "Date format",
+      "headerRow": "Write a header row",
+      "quoteMode": "Quoting",
+      "amountStyle": "Amount format",
+      "filenameSuffix": "Filename suffix",
+      "columns": "Column layout",
+      "columnsDescription": "What is written, in what order, under which heading. Top to bottom = first column, second column, and so on.",
+      "columnHeader": "Heading",
+      "columnField": "Field",
+      "constant": "Fixed text",
+      "addColumn": "Add a column",
+      "accounts": "Default account codes",
+      "accountsDescription": "Used when the master has no code. Left blank, the field is written empty.",
+      "accountCodeHint": "Letters, digits, - and _ only, up to 16 (may be blank)",
+      "receivableAccountCode": "Accounts receivable code",
+      "salesAccountCode": "Sales account code",
+      "taxAccountCode": "Tax suspense account code",
+      "deptCode": "Department code",
+      "defaultTaxCode": "Default tax code",
+      "taxCodeRules": "Tax codes by rate",
+      "taxCodeRulesDescription": "Looked up by rate when the tax category has no tax code.",
+      "taxRate": "Tax rate",
+      "taxRatePercent": "Tax rate (%)",
+      "debitTaxCode": "Debit tax code",
+      "creditTaxCode": "Credit tax code",
+      "addTaxCodeRule": "Add a rate",
+      "preview": "Preview",
+      "previewNote": "One made-up invoice mixing 10% and 8%, written with the current settings.",
+      "saved": "Accounting export settings updated",
+      "sampleCustomerName": "Sample Industries, Inc."
+    },
+    "accountingField": {
+      "date": "Entry date",
+      "dateYear": "Year",
+      "dateMonth": "Month",
+      "dateDay": "Day",
+      "slipNo": "Slip number",
+      "rowIndex": "Row number",
+      "voucherNo": "Voucher number",
+      "debitAccountCode": "Debit account code",
+      "debitSubCode": "Debit sub-account",
+      "debitDeptCode": "Debit department",
+      "debitTaxCode": "Debit tax code",
+      "debitAmount": "Debit amount",
+      "creditAccountCode": "Credit account code",
+      "creditSubCode": "Credit sub-account",
+      "creditDeptCode": "Credit department",
+      "creditTaxCode": "Credit tax code",
+      "creditAmount": "Credit amount",
+      "taxRatePercent": "Tax rate (%)",
+      "memo": "Description",
+      "invoiceNumber": "Invoice number",
+      "customerCode": "Customer code",
+      "customerName": "Customer name",
+      "constant": "Fixed text",
+      "empty": "Blank"
     }
   },
   "portal": {
@@ -5071,7 +5494,13 @@
       "varianceApprovalWithinHelp": "Route the delivery order through approval before confirming, even when the variance is within tolerance.",
       "varianceApprovalOutside": "Require approval outside tolerance",
       "varianceApprovalOutsideHelp": "Unchecking lets a variance outside the tolerance through without any approval, which makes the tolerance meaningless. Normally leave it on.",
-      "approvalNotRequired": "Not required"
+      "approvalNotRequired": "Not required",
+      "accountingSection": "Accounting export",
+      "accountingSectionHint": "Account codes written to the debit (accounts receivable) side of the journal CSV. Left blank, the default in Accounting export (SY0J) applies.",
+      "accountCodeHint": "Letters, digits, - and _ only, up to 16 (may be blank)",
+      "receivableAccountCode": "Accounts receivable code",
+      "receivableSubAccountCode": "Sub-account code (customer)",
+      "receivableSubAccountCodeHint": "The customer code in the accounting software. It is not the in-house customer code — do not reuse that one."
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "The defect type was created",
@@ -5415,8 +5844,6 @@
       "planRequiredFieldsHelp": "What this step's work plan must contain before requesting approval. The planned date is always required.",
       "planTimeRequired": "Work plan requires start and end times",
       "planTimeRequiredHelp": "Turn on for steps that must be scheduled to a time slot before approval.",
-      "planQuantityRequired": "Work plan requires a quantity",
-      "planQuantityRequiredHelp": "Turn on for steps whose plan is split by quantity (e.g. pieces per assignee).",
       "planTime": "Start / end time",
       "routeKind": "Step list",
       "routeKindPrep": "Preparation",
@@ -5426,18 +5853,20 @@
       "planRequiredShort": "Plan requires",
       "planFieldLocationShort": "Location",
       "planFieldTimeShort": "Time",
-      "planFieldQuantityShort": "Qty",
       "planAssigneeRequired": "Work plan requires an assignee",
       "planAssigneeRequiredHelp": "Turn on for steps where the assignee must be decided before requesting approval. By default the assignee is optional and can be decided on the floor after approval.",
-      "planFieldAssigneeShort": "Assignee"
+      "planFieldAssigneeShort": "Assignee",
+      "workOrderTypes": "Work order types",
+      "workOrderTypesShort": "Work order types",
+      "workOrderTypesHelp": "The work order types this step may be placed on. Pick at least one.",
+      "workOrderTypesPinnedHelp": "This step starts a {type} work order, so its type cannot be changed. Consuming stock and booking customer-owned tools both depend on it.",
+      "workOrderTypesPinnedBadge": "Fixed — it is a start step",
+      "pickAtLeastOneWorkOrderType": "Pick at least one work order type"
     },
     "products": {
       "specification": "Specification",
-      "noSpecificationIsRegistered": "No specification is registered",
       "priceListEntry": "Price list entry",
       "thereAreNoPriceListEntries": "There are no price list entries for this product",
-      "checkTheProductTypeSFields": "Check the product type's fields",
-      "checkTheExtraFields": "Check the extra fields",
       "theProductWasCreated": "The product was created",
       "newProduct": "New product",
       "formatPrdYyyymmNnnnNumberedAutomatically": "Format: PRD-YYYYMM-NNNN (numbered automatically)",
@@ -5457,7 +5886,6 @@
       "duplicateTheProduct": "Duplicate the product",
       "duplicatedFrom": "Duplicated from",
       "theProductCodeIsAssignedAutomatically": "The product code is assigned automatically on save (PRD-YYYYMM-NNNN)",
-      "carriesOverTheSourceSMaterial": "Carries over the source's material type, diameter and length (editable after creating)",
       "stepListRoute": "Step list (route)",
       "newRoute": "New route",
       "noStepListIsRegisteredFor": "No step list is registered for this product. Creating a route lets work orders prefill the steps.",
@@ -5494,7 +5922,15 @@
         "notADate": "Enter {name} as a date",
         "invalidFormat": "{name} has an invalid format"
       },
-      "taxCategoryHint": "Left empty, the default tax category applies. A tax category on the business partner takes precedence."
+      "taxCategoryHint": "Left empty, the default tax category applies. A tax category on the business partner takes precedence.",
+      "externalProduct": "External product",
+      "externalProductHint": "An item for tools made by another maker that are received for regrinding. Cannot be used on manufacturing step lists, manufacture work orders, or production/test/sample lines (regrind only).",
+      "makerName": "Maker",
+      "externalBadge": "External",
+      "noConfirmedSpec": "No confirmed drawing version yet. The specification (material type, dimensions, product items) is registered in Drawings.",
+      "registerSpecInDrawing": "Register the specification in Drawings",
+      "specFromVersion": "Specification from drawing v{version} ({series})",
+      "specLivesInDrawing": "The specification (material type, dimensions, product items) belongs to the drawing version, so it is not duplicated. Register a drawing for the new product in Drawings."
     },
     "storageLocations": {
       "editTheStorageLocation": "Edit the storage location",
@@ -5871,6 +6307,7 @@
       "referencedByWorkOrdersCannotDelete": "Cannot delete because {count} work order(s) reference a version of this route. Consider disabling it instead.",
       "sameAsLatestVersion": "This is the same configuration as the latest version v{version} (no changes)",
       "targetProductNotFound": "The target product was not found",
+      "externalProductNoRoute": "External products cannot have a manufacturing step list (regrind-only item)",
       "targetRouteNotFound": "The target process route was not found",
       "updateFailed": "Could not update the process route"
     },
@@ -5909,8 +6346,6 @@
       "execDependencyCycle": "Execution dependencies form a cycle ({path})"
     },
     "productsActions": {
-      "diameterRange": "Enter a diameter between {min} and {max} mm",
-      "lengthRange": "Enter an overall length between {min} and {max} mm",
       "createFailed": "Could not create the product",
       "updateFailed": "Could not update the product",
       "referencedCannotDelete": "This product is referenced by other data (price lists, quotes, order lines, drawings, inspection templates) and cannot be deleted. Consider disabling it instead.",
@@ -6076,7 +6511,10 @@
       "numberConditionSummary": "{label} {op} {value}",
       "selectConditionSummary": "{label} {op} \"{value}\"",
       "deliveryTotalQuantity": "Total shipped quantity",
-      "fromPlant": "From site"
+      "fromPlant": "From site",
+      "plant": "Site",
+      "differenceCount": "Differences",
+      "cases": "cases"
     },
     "inspectionTemplateExcel": {
       "sheetName": "Inspection sheet"
@@ -6095,6 +6533,13 @@
       "intro": "The issue/handoff and material-prep steps (cutting, centerless, length adjustment, chamfer). Shared across products and customers; a work order combines a preparation list with the product's manufacturing list.",
       "empty": "No preparation step list is registered",
       "editorHelp": "Only preparation steps are offered. Exactly one start step (issue/handoff) is required. Dependencies on manufacturing steps are checked when a work order combines the two lists."
+    },
+    "regrindRoutes": {
+      "title": "Regrind step lists",
+      "newRegrindRoute": "New regrind step list",
+      "intro": "The steps for regrinding tools received from a customer (tool receipt (regrind) → grinding → coating (optional) → inspection (optional)). A common list tied to neither product nor customer; regrind work orders always use its latest version. Our own stock never moves — the received tools are booked as customer-owned stock.",
+      "empty": "No regrind step list is registered",
+      "editorHelp": "Only steps usable on regrind work orders can be chosen. The start step is tool receipt (regrind); material prep and machining steps are not allowed. Coating, inspection and pre-shipment inspection are optional."
     },
     "taxCategories": {
       "title": "Tax categories",
@@ -6142,7 +6587,125 @@
       "selectEffectiveFrom": "Select an effective date",
       "rateRange": "Enter a tax rate between 0 and 100",
       "useDefault": "Use the default",
-      "followProduct": "Follow the product"
+      "followProduct": "Follow the product",
+      "accountingSection": "Accounting export",
+      "accountingSectionHint": "Account codes written to the journal CSV. Left blank, the default in Accounting export (SY0J) applies.",
+      "accountCodeHint": "Letters, digits, - and _ only, up to 16 (may be blank)",
+      "taxCode": "Tax code",
+      "salesAccountCode": "Sales account code",
+      "taxAccountCode": "Tax suspense account code"
+    },
+    "chargeItems": {
+      "pageTitle": "Charge items",
+      "newChargeItem": "New charge item",
+      "editTheChargeItem": "Edit the charge item",
+      "deleteTheChargeItem": "Delete the charge item",
+      "disableTheChargeItem": "Disable the charge item",
+      "enableTheChargeItem": "Enable the charge item",
+      "empty": "There are no charge items yet",
+      "codeHelp": "A code identifying the charge item (it cannot be changed once created)",
+      "codePlaceholder": "e.g. SHIPPING",
+      "amountMode": "How the amount is set",
+      "modeFixed": "Fixed",
+      "modeVariable": "Variable",
+      "modeFixedHelp": "The amount from the charge item is used as is and cannot be changed when adding it",
+      "modeVariableHelp": "Entered each time it is used. The amount below is the default for the input",
+      "amount": "Amount",
+      "defaultAmount": "Default amount",
+      "amountFixedHelp": "Adding this item always uses this amount",
+      "amountVariableHelp": "Leave it empty to require an amount every time",
+      "defaultSuffix": "(default)",
+      "taxCategoryHelp": "Set per item — shipping is taxable, stamp duty is not. A tax category on the customer takes precedence",
+      "fixedNeedsAmount": "A fixed charge item needs an amount",
+      "created": "The charge item was created",
+      "updated": "Updated {name}",
+      "deleted": "Deleted {name}",
+      "enabled": "Enabled {name}",
+      "disabled": "Disabled {name}",
+      "deleteConfirm": "This deletes {name}.",
+      "enableConfirm": "This enables {name}.",
+      "disableConfirm": "This disables {name}. It can no longer be picked for new rows, but rows already written stay as they are.",
+      "itCannotBeDeletedWhileInUse": "A charge item used on a work order or delivery order cannot be deleted (it can be disabled)",
+      "inUseCannotDelete": "It cannot be deleted — it is used on {workOrders} work order(s) and {deliveryOrders} delivery order(s)",
+      "bulkDeleteChargeItems": "Bulk delete charge items",
+      "bulkDeleteConfirm": "This deletes {count} charge item(s).",
+      "bulkDeleted": "Deleted {count}",
+      "bulkEnabled": "Enabled {count}",
+      "bulkDisabled": "Disabled {count}",
+      "createFailed": "Could not create the charge item",
+      "updateFailed": "Could not update the charge item",
+      "deleteFailed": "Could not delete the charge item",
+      "unknownChargeItem": "The charge item was not found",
+      "quantityMin1": "Enter a quantity of 1 or more",
+      "enterAnAmount": "Enter an amount",
+      "amountCannotBeNegative": "The amount cannot be negative"
+    },
+    "customerProductCodes": {
+      "title": "Customer part numbers",
+      "help": "What each customer calls this product. Once registered, that customer's orders match by part number in one step, and their part number is shown alongside the product name on delivery notes and invoices.",
+      "empty": "No customer part numbers are registered",
+      "code": "Customer part number",
+      "codePlaceholder": "Their part number",
+      "name": "Customer part name",
+      "namePlaceholder": "The name they use (optional)",
+      "aliases": "Alternate codes",
+      "aliasesPlaceholder": "Old part numbers (matching only, never printed)",
+      "addRow": "Add a customer",
+      "everyRowNeedsCustomerAndCode": "Enter a customer and a customer part number on every row",
+      "selectACustomer": "Select a customer",
+      "enterACustomerCode": "Enter a customer part number",
+      "duplicateCustomerRow": "The same customer appears twice. Keep one row per customer",
+      "duplicateCodeForCustomer": "Customer part number “{code}” is duplicated for the same customer",
+      "duplicateCodeOnOtherProduct": "Customer part number “{code}” is already registered for this customer on another product (including notation variants)",
+      "couldNotSave": "Could not save the customer part numbers"
+    },
+    "regrindItems": {
+      "pageTitle": "Regrind items",
+      "newRegrindItem": "New regrind item",
+      "formHelp": "Register the regrinding service itself as an item. The price lives here; a customer price list overrides it. The tool being reground is registered in the product master.",
+      "toolClass": "Tool class",
+      "toolClassHelp": "Write it at the level where the price changes",
+      "toolClassPlaceholder": "Carbide helical end mill",
+      "location": "Ground area",
+      "locationHelp": "Which part is reground",
+      "locationPlaceholder": "Periphery + flute",
+      "flutes": "Flutes",
+      "flutesHelp": "Empty = the price does not depend on the flute count",
+      "sizeMin": "Size from",
+      "sizeMinHelp": "Larger than this diameter",
+      "sizeMax": "Size to",
+      "sizeMaxHelp": "Up to and including this diameter",
+      "sizeBand": "Size band",
+      "sizeBandOrder": "Size to must be larger than size from",
+      "standardPrice": "Standard price",
+      "standardPriceHelp": "List price for every customer. Empty = sold only to customers with a price list",
+      "priceListOnly": "Price list only",
+      "keywords": "Keywords",
+      "searchPlaceholder": "Search by code, name, tool class or ground area",
+      "empty": "There are no regrind items",
+      "created": "Created regrind item {code}",
+      "updated": "Updated {name}",
+      "deleted": "Deleted {name}",
+      "enabled": "Enabled {name}",
+      "disabled": "Disabled {name}",
+      "editTheRegrindItem": "Edit the regrind item",
+      "deleteTheRegrindItem": "Delete the regrind item",
+      "deleteConfirm": "Delete {name}.",
+      "itCannotBeDeletedWhileInUse": "An item used by an order line, quote or price list cannot be deleted.",
+      "enableTheRegrindItem": "Enable the regrind item",
+      "disableTheRegrindItem": "Disable the regrind item",
+      "enableConfirm": "Enable {name}.",
+      "disableConfirm": "Disable {name}. It can no longer be picked on new lines.",
+      "bulkDeleteRegrindItems": "Bulk delete regrind items",
+      "bulkDeleteConfirm": "Delete {count} regrind items.",
+      "bulkDeleted": "Deleted {count} items",
+      "bulkEnabled": "Enabled {count} items",
+      "bulkDisabled": "Disabled {count} items",
+      "inUseCannotDelete": "In use, so it cannot be deleted ({orderLines} order lines / {quotes} quotes / {priceLists} price lists)",
+      "notFound": "Regrind item not found",
+      "createFailed": "Could not create the regrind item",
+      "updateFailed": "Could not update the regrind item",
+      "deleteFailed": "Could not delete the regrind item"
     }
   },
   "manual": {
@@ -7082,6 +7645,7 @@
       "endUser": "End user",
       "assignedSite": "Assigned site",
       "shippingWorkLocation": "Shipping work location",
+      "deliveryDestination": "Destination",
       "linesTotalQuantity": "Lines / total quantity",
       "expandedAt": "Expanded at",
       "workOrdersAllocated": "Work orders (allocated)",
@@ -7123,7 +7687,16 @@
       "showTheDocumentPane": "Expand the document",
       "hideTheDocument": "Hide",
       "customerProvidesDeliveryNote": "Customer-supplied delivery note",
-      "priceNoTierLine": "Line {row}: no price list quantity tier covers quantity {quantity}"
+      "priceNoTierLine": "Line {row}: no price list quantity tier covers quantity {quantity}",
+      "recreate": "Recreate",
+      "recreateFromThis": "Recreate from this order acceptance",
+      "recreatedFrom": "Recreated from",
+      "recreatedAsTitle": "Recreated as",
+      "recreatedAs": "Recreated as {number}",
+      "theCancelledOrderAcceptance": "The cancelled order acceptance this one came from",
+      "youCanRecreateOnceCancelled": "You can only recreate from a cancelled order acceptance",
+      "confirmRecreateMessage": "This creates a draft carrying over the contents of {number}. The link between the two is kept.",
+      "alreadyRecreatedAs": "This order acceptance has already been recreated as {numbers}. Check that you are not raising it twice."
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",
@@ -7164,107 +7737,109 @@
       "thereAreNoOrderLinesThey": "There are no order lines (they are created when the order acceptance is confirmed)"
     },
     "priceLists": {
+      "addATier": "Add a tier",
+      "amountPc": "Amount (¥/pc)",
+      "automaticallyCalculatedAsBaseUnitPrice": "Automatically calculated as base unit price (from the estimate) × multiplier.",
+      "automaticallyCalculatedUnitPrice": "Automatically calculated unit price",
+      "backToAutomaticCalculation": "Back to automatic calculation",
+      "backToTheEstimatedValue": "Back to the estimated value",
+      "baseUnitPrice": "Base unit price",
+      "bulkDeletePriceLists": "Bulk delete price lists",
+      "byDefaultTheEstimateSUnit": "By default the estimate's unit price is used as is. Tick it only to set a different base by hand (with a confirmation).",
+      "confirmedPriceEstimatesLinkedToThe": "Confirmed price estimates linked to the product",
       "copyDescription": "Copies every order type ({types}) of \"{product}\" to the destination. Set the destination's valid period (shared by all types).",
-      "selectACustomerError": "Select a customer",
-      "selectAProductError": "Select a product",
-      "endDateRequiredForTestSample": "An end date is required because test or sample types are included",
-      "enterTheDestinationCustomerProductAnd": "Enter the destination customer, product and valid period (start and end)",
-      "enterTheDestinationCustomerProductAnd2": "Enter the destination customer, product and start date",
-      "thePriceListWasCopiedTo": "The price list was copied to another customer or product",
-      "createByCopying": "Create by copying",
       "copyThePriceListToAnother": "Copy the price list to another customer or product",
       "copyToCustomer": "Copy to customer",
       "copyToProduct": "Copy to product",
-      "selectAProduct": "Select a product",
       "createAQuoteDraft": "Create a quote (draft)",
-      "howManyAreQuotedUsedTo": "How many are quoted. Used to decide the quantity tier (multiplier) and discount rules.",
-      "discountAppliedAutomatically": "Discount (applied automatically)",
-      "noPriceTierCoversThisQuantity": "No price tier covers this quantity. Revise the quantity, or add a tier to the price list.",
+      "createByCopying": "Create by copying",
+      "currentValidPeriod": "Current valid period",
+      "deleteTheDiscountRule": "Delete the discount rule",
+      "deleteTheDiscountRule2": "Delete the discount rule",
+      "deleteTheOrderType": "Delete the order type",
       "deleteThePriceList": "Delete the price list",
-      "ifQuotesReferenceThisPriceList": "If quotes reference this price list, they will no longer autofill unit prices.",
+      "deleteThisOrderType": "Delete this order type",
+      "discountAmountPerPiece": "Discount amount (per piece)",
+      "discountAppliedAutomatically": "Discount (applied automatically)",
+      "discountRules": "Discount rules",
+      "discountType": "Discount type",
+      "duplicateWithADifferentValidPeriod": "Duplicate with a different valid period",
+      "eGSummerCampaign": "e.g. Summer campaign",
+      "editOnItemMaster": "Edit on the item master",
+      "editTheDiscountRule": "Edit the discount rule",
+      "enabledWholePriceList": "Enabled (whole price list)",
+      "endDateRequiredForTestSample": "An end date is required because test or sample types are included",
       "enterANameAValueAnd": "Enter a name, a value and a start date",
       "enterARateBelow100": "Enter a rate below 100%",
-      "theMaximumQuantityMustBeAt": "The maximum quantity must be at or above the minimum",
-      "eGSummerCampaign": "e.g. Summer campaign",
-      "rateIsAShareOfThe": "Rate (%) is a share of the unit price; amount (¥/pc) is the discount per piece.",
-      "discountType": "Discount type",
-      "rate": "Rate (%)",
-      "amountPc": "Amount (¥/pc)",
-      "discountAmountPerPiece": "Discount amount (per piece)",
-      "theMinimumQuantityThisRuleApplies": "The minimum quantity this rule applies from. Leave the maximum blank for no limit.",
-      "minimumQuantity": "Minimum quantity",
-      "maximumQuantity": "Maximum quantity",
-      "leaveBlankForNoMaximum": "Leave blank for no maximum",
-      "thePeriodThisRuleAppliesTo": "The period this rule applies to. Only rules in force on the quote's creation date apply.",
-      "rulesMeetingTheConditionsQuantityAnd": "Rules meeting the conditions (quantity and period) apply automatically when quoting. If several match, the largest discount is used.",
-      "selectAStartDate": "Select a start date",
-      "theValidPeriodWasChanged": "The valid period was changed",
-      "switchedToANewValidPeriod": "Switched to a new valid period with the same contents",
+      "enterTheDestinationCustomerProductAnd": "Enter the destination customer, product and valid period (start and end)",
+      "enterTheDestinationCustomerProductAnd2": "Enter the destination customer, product and start date",
+      "estimatedUnitPricePriceEstimate": "Estimated unit price (price estimate)",
+      "howManyAreQuotedUsedTo": "How many are quoted. Used to decide the quantity tier (multiplier) and discount rules.",
+      "ifQuotesReferenceThisPriceList": "If quotes reference this price list, they will no longer autofill unit prices.",
       "keepsTheChosenOrderTypeS": "Keeps the chosen order type's contents (base price and every tier) and just moves it to a new valid period.",
-      "currentValidPeriod": "Current valid period",
-      "newStartDate": "New start date",
+      "leaveBlankForNoMaximum": "Leave blank for no maximum",
+      "manualOnlySinceThereIsNo": "Manual only, since there is no price estimate source",
+      "maximumQuantity": "Maximum quantity",
+      "maximumQuantity2": "Maximum quantity",
+      "minimumQuantity": "Minimum quantity",
+      "minimumQuantity2": "Minimum quantity",
+      "multiplier": "Multiplier",
       "newEndDate": "New end date",
-      "deleteTheDiscountRule": "Delete the discount rule",
+      "newPriceList": "New price list",
+      "newStartDate": "New start date",
+      "noConfirmedEstimateIsLinkedTo": "No confirmed estimate is linked to this product. Set the base price by hand (specify the product in a price estimate (SA01) and confirm it, and it becomes selectable here).",
+      "noMaximum": "No maximum",
+      "noPriceEstimateManual": "No price estimate (manual)",
+      "noPriceEstimateSource": "— (no price estimate source)",
+      "noPriceTierCoversThisQuantity": "No price tier covers this quantity. Revise the quantity, or add a tier to the price list.",
+      "perPieceAmount": "{amount}/pc",
+      "priceEstimateSourcePerOrderType": "Price estimate source (per order type)",
       "priceListDetails": "Price list details",
+      "priceSourcePriceEstimate": "Price source (price estimate)",
+      "pricing": "Pricing",
+      "quantityCondition": "Quantity condition",
+      "quantityRangeBounded": "{min}–{max} pcs",
+      "quantityRangeOpen": "{min}+ pcs",
+      "quotesCreatedFromThisPriceList": "Quotes created from this price list",
+      "rate": "Rate (%)",
+      "rateIsAShareOfThe": "Rate (%) is a share of the unit price; amount (¥/pc) is the discount per piece.",
+      "registeredManually": "Registered manually",
+      "removeTheTier": "Remove the tier",
+      "rulesMeetingTheConditionsQuantityAnd": "Rules meeting the conditions (quantity and period) apply automatically when quoting. If several match, the largest discount is used.",
+      "rulesMeetingThePeriodAndQuantity": "Rules meeting the period and quantity conditions apply automatically when quoting (the largest discount wins if several match). Rules are registered per order type.",
+      "searchByCustomerOrProduct": "Search by customer or product",
+      "selectACustomerError": "Select a customer",
+      "selectAProduct": "Select a product",
+      "selectAProductError": "Select a product",
+      "selectAStartDate": "Select a start date",
+      "setPerType": "Set per type",
+      "standardPriceLabel": "Standard price",
+      "switchedToANewValidPeriod": "Switched to a new valid period with the same contents",
+      "testAndSampleEntriesNeedAn": "Test and sample entries need an end date",
+      "theBaseForThePriceList": "The base for the price list. It defaults to the estimated unit price. Each tier = base × multiplier.",
+      "theBasePriceComesFromThe": "The base price comes from the estimate's unit price. Manual override only with custom explicitly enabled (with a confirmation). Each tier = base × multiplier.",
+      "theCustomerAndProductCannotBe": "The customer and product cannot be changed once created.",
+      "theMaximumQuantityMustBeAt": "The maximum quantity must be at or above the minimum",
+      "theMinimumQuantityThisRuleApplies": "The minimum quantity this rule applies from. Leave the maximum blank for no limit.",
+      "theMultiplierPerTierEG": "The multiplier per tier (e.g. ×1.05 = 5% above the base). Price = base × multiplier.",
+      "thePeriodThisRuleAppliesTo": "The period this rule applies to. Only rules in force on the quote's creation date apply.",
+      "thePriceListWasCopiedTo": "The price list was copied to another customer or product",
+      "thePriceListWasCreated": "The price list was created",
+      "thePriceListWasUpdated": "The price list was updated",
+      "theSameOrderTypeAppearsTwice": "The same order type appears twice",
+      "theValidPeriodWasChanged": "The valid period was changed",
+      "thereAreNoDiscountRules": "There are no discount rules.",
+      "thereIsNoPriceListPick": "There is no price list — pick a customer × product to create one",
+      "thereIsOnePriceListPer": "There is one price list per customer × product. Add per-order-type prices below.",
+      "tickingItDropsTheAutomaticCalculation": "Ticking it drops the automatic calculation and fixes this tier's price by hand (with a confirmation).",
       "tiers": "Tiers",
       "unitPriceRange": "Unit price range",
-      "pricing": "Pricing",
-      "discountRules": "Discount rules",
-      "baseUnitPrice": "Base unit price",
-      "multiplier": "Multiplier",
-      "rulesMeetingThePeriodAndQuantity": "Rules meeting the period and quantity conditions apply automatically when quoting (the largest discount wins if several match). Rules are registered per order type.",
-      "quantityCondition": "Quantity condition",
-      "editTheDiscountRule": "Edit the discount rule",
-      "deleteTheDiscountRule2": "Delete the discount rule",
-      "thereAreNoDiscountRules": "There are no discount rules.",
-      "priceEstimateSourcePerOrderType": "Price estimate source (per order type)",
-      "registeredManually": "Registered manually",
-      "quotesCreatedFromThisPriceList": "Quotes created from this price list",
-      "useCreateAQuoteToBuild": "— (use \"Create a quote\" to build one from this price list)",
-      "bulkDeletePriceLists": "Bulk delete price lists",
-      "setPerType": "Set per type",
-      "searchByCustomerOrProduct": "Search by customer or product",
-      "thereIsNoPriceListPick": "There is no price list — pick a customer × product to create one",
-      "duplicateWithADifferentValidPeriod": "Duplicate with a different valid period",
-      "theSameOrderTypeAppearsTwice": "The same order type appears twice",
-      "useACustomBaseUnitPrice": "Use a custom base unit price",
-      "backToTheEstimatedValue": "Back to the estimated value",
-      "useACustomUnitPrice": "Use a custom unit price",
-      "backToAutomaticCalculation": "Back to automatic calculation",
-      "thePriceListWasUpdated": "The price list was updated",
-      "thePriceListWasCreated": "The price list was created",
-      "newPriceList": "New price list",
-      "theCustomerAndProductCannotBe": "The customer and product cannot be changed once created.",
-      "thereIsOnePriceListPer": "There is one price list per customer × product. Add per-order-type prices below.",
-      "enabledWholePriceList": "Enabled (whole price list)",
-      "noConfirmedEstimateIsLinkedTo": "No confirmed estimate is linked to this product. Set the base price by hand (specify the product in a price estimate (SA01) and confirm it, and it becomes selectable here).",
-      "theBasePriceComesFromThe": "The base price comes from the estimate's unit price. Manual override only with custom explicitly enabled (with a confirmation). Each tier = base × multiplier.",
-      "priceSourcePriceEstimate": "Price source (price estimate)",
-      "confirmedPriceEstimatesLinkedToThe": "Confirmed price estimates linked to the product",
-      "noPriceEstimateManual": "No price estimate (manual)",
-      "deleteThisOrderType": "Delete this order type",
-      "deleteTheOrderType": "Delete the order type",
-      "estimatedUnitPricePriceEstimate": "Estimated unit price (price estimate)",
-      "noPriceEstimateSource": "— (no price estimate source)",
-      "manualOnlySinceThereIsNo": "Manual only, since there is no price estimate source",
-      "byDefaultTheEstimateSUnit": "By default the estimate's unit price is used as is. Tick it only to set a different base by hand (with a confirmation).",
-      "useACustomUnitPrice2": "Use a custom unit price",
-      "useTheEstimatedValueAsIt": "Use the estimated value as it is",
-      "theBaseForThePriceList": "The base for the price list. It defaults to the estimated unit price. Each tier = base × multiplier.",
-      "testAndSampleEntriesNeedAn": "Test and sample entries need an end date",
-      "minimumQuantity2": "Minimum quantity",
-      "maximumQuantity2": "Maximum quantity",
-      "theMultiplierPerTierEG": "The multiplier per tier (e.g. ×1.05 = 5% above the base). Price = base × multiplier.",
-      "automaticallyCalculatedAsBaseUnitPrice": "Automatically calculated as base unit price (from the estimate) × multiplier.",
-      "automaticallyCalculatedUnitPrice": "Automatically calculated unit price",
-      "tickingItDropsTheAutomaticCalculation": "Ticking it drops the automatic calculation and fixes this tier's price by hand (with a confirmation).",
       "unitPriceUsed": "Unit price used",
-      "noMaximum": "No maximum",
-      "removeTheTier": "Remove the tier",
-      "addATier": "Add a tier",
-      "quantityRangeOpen": "{min}+ pcs",
-      "quantityRangeBounded": "{min}–{max} pcs",
-      "perPieceAmount": "{amount}/pc"
+      "useACustomBaseUnitPrice": "Use a custom base unit price",
+      "useACustomUnitPrice": "Use a custom unit price",
+      "useACustomUnitPrice2": "Use a custom unit price",
+      "useCreateAQuoteToBuild": "— (use \"Create a quote\" to build one from this price list)",
+      "useTheEstimatedValueAsIt": "Use the estimated value as it is"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "Issued (PDF generation failed)",
@@ -7493,7 +8068,14 @@
       "priceListPriceWithTier": "Price list {price} ({tier})",
       "fromPriceList": "From the price list",
       "willReplaceWithList": "{entered} will be replaced by the price list unit price on save",
-      "overriddenFromList": "Overridden (price list {expected})"
+      "overriddenFromList": "Overridden (price list {expected})",
+      "delivery": "Delivery",
+      "applyLineOneDeliveryToAll": "Apply line 1’s delivery to all lines",
+      "regrindItem": "Regrind item",
+      "searchTheRegrindItems": "Search regrind items",
+      "toolToRegrind": "Tool to regrind",
+      "searchTheToolBeingHeld": "Search the tool held (external products included)",
+      "standardPrice": "Standard price {price}"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "Deletes \"{label}\". This cannot be undone.",
@@ -7563,7 +8145,7 @@
       "confirmIssues": "Cannot confirm: {summary}",
       "createFailed": "Could not create the order acceptance",
       "createdManually": "Created by manual entry",
-      "directToUserRequiresEndUser": "Direct-to-end-user delivery requires specifying the end user",
+      "directToUserRequiresEndUser": "Line {rows}: Direct-to-end-user delivery requires specifying the end user",
       "endUserInvalid": "The end user's business partner does not exist or is disabled",
       "invalidNumber": "The order acceptance number is invalid",
       "notPendingApproval": "This order acceptance is not pending approval",
@@ -7586,7 +8168,10 @@
       "takenOverManually": "Switched to manual entry without waiting for automatic extraction",
       "targetCancelRequestNotFound": "The target cancellation request was not found",
       "targetNotFound": "The target order acceptance was not found",
-      "unitPriceMin0": "The unit price must be 0 or more"
+      "unitPriceMin0": "The unit price must be 0 or more",
+      "onlyCancelledCanBeRecreated": "Only a cancelled order acceptance can be recreated",
+      "recreatedFromCancelled": "Recreated from the cancelled {number}",
+      "recreatedAs": "Recreated as {number}"
     },
     "quoteActions": {
       "createFailed": "Could not create the quote",
@@ -7712,13 +8297,15 @@
     },
     "orderAcceptanceReadiness": {
       "customerNotIdentified": "Customer not identified",
-      "directToUserButEndUserNot": "Direct to end user, but no end user specified",
+      "lineEndUserNotIdentified": "Line {rows}: End user not specified",
       "noLineItems": "There are no line items",
       "lineProductNotIdentified": "Line {rows}: Product not identified",
       "lineUnitPriceNotEntered": "Line {rows}: Unit price not entered",
       "lineQuantityInvalid": "Line {rows}: Quantity must be at least 1",
       "lineUnitPriceNegative": "Line {rows}: Unit price is negative",
-      "andNMore": "and {count} more"
+      "andNMore": "and {count} more",
+      "externalProductIsNotSold": "Line {rows}: an external product cannot be sold. Pick it as the tool on a regrind line",
+      "regrindToolNotSelected": "Line {rows}: the tool to regrind is not selected"
     },
     "orderLineCore": {
       "confirmedLineCannotBeChanged": "A confirmed order line cannot be changed",
@@ -7726,6 +8313,17 @@
       "onlyDraftAcceptanceEditable": "Only a draft order acceptance can be edited",
       "productNotIdentified": "Product not identified",
       "unitPriceNotEntered": "Unit price not entered"
+    },
+    "salesItemGuard": {
+      "externalProductIsNotSold": "Line {row}: an external product cannot be sold. Pick it as the tool on a regrind line",
+      "regrindNeedsRegrindItem": "Line {row}: a regrind line must use a regrind item",
+      "nonRegrindNeedsProduct": "Line {row}: a non-regrind line must use a product",
+      "toolOnlyForRegrind": "Line {row}: a tool can only be set on a regrind line",
+      "toolMustBeProduct": "Line {row}: the tool must be a product",
+      "externalProductHasNoPriceList": "An external product cannot have a price list. It is held for regrinding, not sold",
+      "materialHasNoPriceList": "A material cannot have a price list",
+      "regrindItemOnlyRegrindVariant": "A regrind item can only carry the order type \"Regrind\"",
+      "productHasNoRegrindVariant": "A product cannot carry the order type \"Regrind\". The regrind price belongs to the regrind item"
     }
   },
   "shipping": {
@@ -7802,6 +8400,19 @@
       "confirmShipBodyDispatch": "This marks delivery order {number} as shipped. The order line's shipping status will also be recalculated.",
       "confirmShipBodyStock": "This marks delivery order {number} as shipped (the order line's shipping status will not change, since this is stock storage).",
       "shippedBody": "Marked delivery order {number} as shipped",
+      "notEnoughStockTitle": "Not enough stock",
+      "notEnoughStockBody": "If you ship anyway, the stock goes negative by the missing amount. The shipment is still recorded, and you can settle it later with a stocktake (ST05) or a manual movement (ST06).",
+      "shipAnyway": "Ship anyway",
+      "viewStock": "View stock",
+      "shortfall": "Short by",
+      "recordAReturn": "Record a return",
+      "recordTheReturn": "Record the return",
+      "returnQuantity": "Return qty",
+      "returned": "Returned",
+      "alreadyReturned": "Already returned",
+      "returnHelp": "You can return at most what was shipped. Stock goes back to the shipping site and the same lot, unassigned. The delivery order status and billing do not change.",
+      "returnRecorded": "Return recorded",
+      "returnRecordedBody": "The return for {number} went back to stock",
       "confirmDeleteBody": "This deletes delivery order {number}. This cannot be undone.",
       "deletedBody": "Deleted delivery order {number}",
       "onlySameCustomerCanBeCombined": "A delivery order can only combine order lines for the same customer",
@@ -7908,6 +8519,7 @@
       "exceedsOrderedQuantity": "This would ship more than the ordered quantity of {quantity} for {number} (cumulative {shipped})",
       "invalidNumber": "Invalid delivery order number",
       "lotHasNoStock": "Lot #{lot} has no stock (specify the lot number of a completed work order)",
+      "regrindLinesDispatchOnly": "Regrind lines can only be shipped as a dispatch — the customer's tools cannot be put into stock storage",
       "lotStockInsufficient": "Lot #{lot} has insufficient stock (on hand {available} / requested {qty})",
       "notFound": "The delivery order was not found",
       "onlyConfirmedCanBeShipped": "Only a confirmed delivery order can be shipped",
@@ -7917,6 +8529,14 @@
       "orderLineRequiredForDispatch": "Line {line}: a dispatch requires an order line",
       "quantityMustBeAtLeast1": "Quantity must be at least 1",
       "shipFailed": "Could not process the shipment",
+      "stockCheckFailed": "Could not check the stock",
+      "shippedWithoutStockNoLot": "Shipped without enough stock (item {item}: short by {shortfall}). The ledger is now negative — fix it with a stocktake or a manual movement.",
+      "shippedWithoutStock": "Shipped without enough stock (item {item}, lot #{lot}: short by {shortfall}). The ledger is now negative — fix it with a stocktake or a manual movement.",
+      "returnNoQuantity": "Enter a quantity to return",
+      "returnNotShipped": "Returns can only be recorded against shipped dispatches",
+      "returnExceedsShipped": "Cannot return more than was shipped",
+      "returnFailed": "Could not record the return",
+      "auditReturnRecorded": "Return recorded ({quantity} pcs back to stock)",
       "shippedNotificationTitle": "Delivery order {number} has shipped",
       "specifyAConfirmedOrderLine": "Specify a confirmed order line",
       "updateFailed": "Could not update the delivery order",
@@ -8169,6 +8789,11 @@
     "unknownStepsInComposition": "Contains steps that do not exist",
     "duplicateStepsInComposition": "The same step appears more than once",
     "fromStockAllowedSteps": "The only steps a from-stock work order can use are Product issue (stock) and Pre-shipment inspection",
+    "regrindStepsOnlyForRegrind": "Regrind steps can only be used on regrind work orders",
+    "regrindForbiddenSteps": "A regrind work order may only contain tool receipt (regrind), grinding, coating, inspection, approval and pre-shipment inspection steps (no material prep, machining or stock issue)",
+    "regrindRequiresReceipt": "A regrind work order must start with tool receipt (regrind)",
+    "regrindRouteOnlyRegrindSteps": "A regrind step list may only contain steps usable on regrind work orders (no material prep or machining)",
+    "semiFinishedNotAllowedForRegrind": "The semi-finished bucket cannot be used for regrinding (the customer's tools never become our semi-finished stock)",
     "fromStockRequiresStockIssue": "A from-stock work order requires the Product issue (stock) step",
     "stockIssueOnlyForFromStock": "Product issue (stock) is only for from-stock (FROM_STOCK) work orders",
     "workOrderNotApprovedOrInProgress": "The work order is not approved or in progress",
@@ -8453,12 +9078,13 @@
       "viewed": "Viewed",
       "windowEndsAt": "Window ends at",
       "windowStartsAt": "Window starts at",
-      "yayoiExportedAt": "Yayoi export date",
+      "accountingExportedAt": "Accounting export date",
       "isDefault": "Default",
       "effectiveFrom": "Effective from",
       "ratePercent": "Tax rate (%)",
       "taxCategoryId": "Tax category",
-      "shortLabel": "Label on documents"
+      "shortLabel": "Label on documents",
+      "customerProductCodes": "Customer part numbers"
     },
     "tableFieldLabels": {
       "kiosk_devices": {
@@ -8523,6 +9149,7 @@
       "estimates": "Price estimates",
       "price_list_entries": "Price lists",
       "products": "Products",
+      "charge_items": "Charge items",
       "materials": "Materials",
       "material_types": "Material types",
       "business_partners": "Business partners",
@@ -8546,6 +9173,7 @@
       "material_purchase_orders": "Material purchase orders",
       "material_receipts": "Material receipts",
       "invoices": "Invoices",
+      "accounting_documents": "Accounting document",
       "billing_closings": "Billing closings",
       "design_requests": "Design requests",
       "approval_requests": "Approval requests",
@@ -8569,6 +9197,7 @@
       "system": "System",
       "approval_flow_rules": "Conditional approval rules",
       "design_files": "Drawings",
+      "design_versions": "Drawing version",
       "inspection_template_groups": "Inspection template groups",
       "kiosk_unlock_pins": "Unlock PIN history",
       "link_blacklist": "Link blacklist",
@@ -8585,7 +9214,13 @@
       "api_clients": "API client",
       "api_client_tokens": "API token",
       "tax_categories": "Tax category",
-      "tax_category_rates": "Tax rate"
+      "tax_category_rates": "Tax rate",
+      "inventory_movements": "Stock movement",
+      "stock_takes": "Stocktaking",
+      "stock_take_lines": "Stocktaking line",
+      "item_inventory": "Stock",
+      "movement_types": "Movement type",
+      "items": "Items"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -8801,8 +9436,6 @@
   },
   "inventoryNote": {
     "insufficientStock": "Insufficient stock ({transactionType} {quantity})",
-    "lotInventoryMissing": "No inventory record for lot {lotNumber} (product {productId}). Complete the work order or make a stock adjustment to receive it before shipping.",
-    "outOfStockOnShip": "Insufficient stock (OUT {quantity}): lot {lotNumber}",
     "onlyConfirmedLinesCanBeStockChecked": "Only confirmed order lines can be stock-checked",
     "workOrderCompletedFinished": "Work order #{workOrderNumber} completed — received",
     "workOrderCompletedSemiFinished": "Work order #{workOrderNumber} — semi-finished goods received",
@@ -8810,7 +9443,19 @@
     "workOrderMaterialConsumed": "Work order #{workOrderNumber} — material consumed",
     "fromStockConsumedReleased": "Work order #{workOrderNumber} — from-stock consumption (allocation released)",
     "fromStockConsumedReassigned": "Work order #{workOrderNumber} — from-stock consumption (reassigned to lot #{workOrderNumber})",
+    "fromStockScrapped": "Work order #{workOrderNumber} — from-stock units scrapped",
+    "semiFinishedConsumed": "Work order #{workOrderNumber} — semi-finished issued (reassigned to lot #{workOrderNumber})",
+    "semiFinishedScrapped": "Work order #{workOrderNumber} — semi-finished units scrapped",
+    "outsourceIssued": "Work order #{workOrderNumber} — issued to subcontractor (held by them)",
+    "outsourceReturned": "Work order #{workOrderNumber} — returned from subcontractor",
+    "outsourceReturnedOnCompletion": "Work order #{workOrderNumber} — returned from subcontractor on completion",
+    "salesReturned": "Return against shipment {ref} (back to stock)",
+    "regrindReceived": "Work order #{workOrderNumber} tool receipt (regrind) — booked as customer-owned stock (box {box})",
+    "regrindReturnedAsIs": "Work order #{workOrderNumber} completed — returned as-is (not regrindable)",
+    "regrindLinesAreNotStockChecked": "Regrind lines are not stock-checked (the customer's tools are received and returned)",
+    "regrindOwnerUnresolved": "Cannot resolve a single owner (customer of the allocated line) for this regrind work order",
     "shipped": "Shipped {ref}",
+    "shippedWithoutStock": "Shipment {ref} (issued without stock on hand)",
     "stockStorage": "Stock storage {ref}",
     "shippedReservationReleased": "Reservation released by shipment {ref}",
     "materialReceived": "Material received",
@@ -8839,10 +9484,18 @@
     "finalInspectionDeliveryNoteIssued": "Pre-shipment check: recorded delivery note issued by",
     "finalInspectionShipmentAuthorized": "Pre-shipment check: recorded shipment authorized by",
     "finalInspectionShipDefectReviewed": "Recorded the checked-by stamp for defects at shipping",
-    "inspectionApproved": "Approved the inspection record"
+    "inspectionApproved": "Approved the inspection record",
+    "stockTakeAdjusted": "Stocktaking adjustment (on hand {book} → counted {counted})"
   },
   "workflowCore": {
     "quantityLabels": {
+      "regrindReceipt": {
+        "input": "Received",
+        "success": "To regrind",
+        "semi": "Semi-finished",
+        "scrap": "Returned as-is (not regrindable)",
+        "rework": "Process branch"
+      },
       "flow": {
         "input": "Received",
         "success": "Good",
@@ -9247,6 +9900,10 @@
         "label": "Target product",
         "summary": "The product to make. If an order line is selected, its product is filled in automatically."
       },
+      "type": {
+        "label": "種別 (type)",
+        "summary": "From stock / to make / regrind. When the order line's order type already decides it, you cannot choose — the decided type is shown with the reason."
+      },
       "plannedQuantity": {
         "label": "Planned quantity",
         "summary": "The quantity to make. Enter an amount at least equal to the total allocations (you may add extra to allow for defects; for stock work orders it equals the total allocation). This also becomes the initial received quantity for the first step."
@@ -9276,25 +9933,7 @@
         "summary": "Additional notes. These are read by shop-floor staff when they view the work order."
       }
     },
-    "productInventory": {
-      "plant": {
-        "label": "Destination site",
-        "summary": "The site to transfer stock to. Stock at the source site decreases and stock at the destination site increases."
-      },
-      "location": {
-        "label": "Storage location / shelf",
-        "summary": "Where within the destination site to place it. Setting this makes it easier to locate the physical stock later."
-      },
-      "quantity": {
-        "label": "Quantity",
-        "summary": "The quantity to transfer. It cannot exceed the amount available at the source."
-      },
-      "notes": {
-        "label": "Notes",
-        "summary": "A field for recording the reason for the transfer, etc. The transfer is recorded in the history."
-      }
-    },
-    "materialInventory": {
+    "inventoryManagement": {
       "plant": {
         "label": "Destination site",
         "summary": "The site to transfer stock to. Stock at the source site decreases and stock at the destination site increases."
@@ -9480,18 +10119,6 @@
       "unit": {
         "label": "Unit",
         "summary": "The unit used to count the product. The default is pcs."
-      },
-      "productType": {
-        "label": "Product type",
-        "summary": "The product's type. Selecting a type displays the specification fields defined for that type below."
-      },
-      "materialType": {
-        "label": "Material type",
-        "summary": "The type of material used to make this product."
-      },
-      "dimensions": {
-        "label": "Diameter (mm) / Overall length (mm)",
-        "summary": "The dimensions of the material required. Specified as \"material type + diameter + overall length\" rather than a specific material, since any material meeting those conditions can be used."
       },
       "keywords": {
         "label": "Keywords",
@@ -9910,5 +10537,114 @@
     "clientNotFound": "That client was not found",
     "featureDisabled": "The external API is disabled in this environment",
     "invalidNameChars": "The name contains characters that are not allowed"
+  },
+  "charges": {
+    "title": "Additional charges",
+    "item": "Charge item",
+    "note": "Note",
+    "notePlaceholder": "e.g. carrier, freight collect",
+    "selectAnItem": "Select a charge item",
+    "addRow": "Add a charge",
+    "total": "Additional charges total",
+    "empty": "There are no additional charges",
+    "everyRowNeedsAnItem": "Select a charge item on every row",
+    "fixedByMaster": "Fixed amount from the charge item",
+    "quantityTimesUnitPrice": "{quantity} × ¥{unitPrice}",
+    "copiedFromWorkOrder": "Copied from work order #{number}",
+    "couldNotSave": "Could not save the additional charges",
+    "workOrderHelp": "What is billed on top of the product price, such as shipping. This is the plan — it is copied onto the delivery order, and the delivery order's rows are what gets billed.",
+    "deliveryOrderHelp": "The additional charges billed for this shipment. Once confirmed, billing closing turns them into invoice lines. They can only be edited while the delivery order is a draft.",
+    "workOrderClosedForCharges": "Charges on a completed or cancelled work order cannot be changed. Edit them on the delivery order instead",
+    "deliveryOrderClosedForCharges": "Charges can only be changed on a draft delivery order"
+  },
+  "inventory": {
+    "stockOverview": {
+      "item": "Item",
+      "itemType": "Item type",
+      "hideZeroStock": "Hide zero stock",
+      "custody": "Held by",
+      "custodyOwn": "Own stock",
+      "owner": "Owner",
+      "ownerOwn": "Own items only",
+      "ownedBy": "Owned by {name}",
+      "heldBy": "held by {name}",
+      "searchPlaceholder": "Search by item name or code",
+      "summaryLine": "{rows} rows / {items} items / {sites} sites",
+      "truncatedNotice": "Too many rows to show all — narrow the filters.",
+      "noStock": "No stock"
+    },
+    "requirements": {
+      "title": "Stock / requirements",
+      "item": "Item",
+      "itemPlaceholder": "Search by code or name",
+      "plantPlaceholder": "Select a site",
+      "emptyState": "Pick an item and a site to see its past movements and upcoming supply/demand",
+      "notFound": "Item not found",
+      "onHand": "On hand",
+      "reserved": "Reserved",
+      "availableNow": "Available",
+      "nextReceipt": "Next receipt",
+      "shortageAlertTitle": "Projected shortage",
+      "shortageAlertBody": "The running balance is projected to go negative. Check the highlighted row.",
+      "truncated": "Only the most recent history is shown (older movements exist)",
+      "rowKindHeader": "Type",
+      "reference": "Reference",
+      "balance": "Balance",
+      "dateUndetermined": "Undetermined",
+      "rowKind": {
+        "now": "Now"
+      }
+    },
+    "goodsMovement": {
+      "selectAType": "Select a movement type",
+      "selectAnItem": "Select an item",
+      "quantityPositive": "Enter a quantity greater than zero",
+      "typeInactive": "This movement type is disabled",
+      "postFailed": "Could not record the movement",
+      "problem": {
+        "itemRequired": "Select an item",
+        "quantityPositive": "Enter a quantity greater than zero",
+        "fromRequired": "Specify the source location",
+        "toRequired": "Specify the destination location",
+        "sameEndpoint": "The source and destination are the same"
+      },
+      "movementType": "Movement type",
+      "fromLocation": "Source",
+      "toLocation": "Destination",
+      "shelf": "Shelf",
+      "itemAndQuantity": "Item and quantity",
+      "item": "Item",
+      "quantity": "Quantity",
+      "lotNumber": "Lot number",
+      "lotNumberHint": "Products only (ignored for materials)",
+      "problemsTitle": "Cannot record yet",
+      "submit": "Record",
+      "lastPosted": "Last recorded movement",
+      "posted": "Recorded movement {number}"
+    },
+    "movementTypes": {
+      "number": "Number",
+      "direction": "Direction",
+      "requiresFrom": "Requires source",
+      "requiresTo": "Requires destination",
+      "requiresFromFloor": "This direction cannot turn off the source requirement",
+      "requiresToFloor": "This direction cannot turn off the destination requirement",
+      "createFailed": "Could not create the movement type",
+      "updateFailed": "Could not update the movement type",
+      "codeHint": "The number shown in the Goods movement picker (e.g. 101 / 201 / 311)",
+      "newMovementType": "New movement type",
+      "editTheMovementType": "Edit movement type",
+      "created": "Created movement type \"{name}\"",
+      "updated": "Updated {name}",
+      "disableConfirm": "Disable {name}?",
+      "enableConfirm": "Enable {name}?",
+      "disabled": "Disabled {name}",
+      "enabled": "Enabled {name}",
+      "disableTitle": "Disable movement type",
+      "enableTitle": "Enable movement type",
+      "bulkEnabled": "Enabled {count} item(s)",
+      "bulkDisabled": "Disabled {count} item(s)",
+      "noMovementTypes": "No movement types"
+    }
   }
 }

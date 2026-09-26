@@ -9,7 +9,7 @@
  * 履歴タブは audit_logs 導入後に接続する（現状は空表示）。
  */
 
-import { Badge, Stack, Table, Tabs, Text } from "@mantine/core";
+import { Anchor, Badge, Group, Stack, Table, Tabs, Text } from "@mantine/core";
 import {
   IconCircleMinus,
   IconCopy,
@@ -21,6 +21,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { KeywordBadges } from "@/components/master/MasterKeywordsField";
+import {
+  DesignSpecView,
+  type DesignSpecViewData,
+} from "@/components/production/design-files/DesignSpecView";
 import type { ProductDesignFile } from "@/components/production/design-files/model";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
 import type { DesignRequestLink } from "@/components/sales/design-requests/model";
@@ -39,7 +43,11 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { orderTypeLabel } from "@/lib/enum-labels";
 import type { RouteView } from "@/lib/product-routes-core";
-import { isReservedSpecKey } from "@/lib/product-types";
+import type { ProductItemDef, ResolvedProductType } from "@/lib/product-types";
+import {
+  type CustomerProductCodeRow,
+  CustomerProductCodesPanel,
+} from "./CustomerProductCodesPanel";
 import { ProductDesignFiles } from "./ProductDesignFiles";
 import {
   DeleteProductModal,
@@ -51,6 +59,7 @@ import { ProductRoutesPanel, productRouteLinks } from "./ProductRoutesPanel";
 const BASE_PATH = "/master/products";
 
 export interface ProductDetailData {
+  /** 品目 id（items.id）— 画面・URL の id（品目統合 第 3 段）。 */
   id: number;
   code: string | null;
   nameJa: string;
@@ -72,11 +81,23 @@ export interface ProductDetailData {
   taxCategoryId: number | null;
   /** 検索・AI 突合用のキーワード（match_names）。 */
   matchNames: string[];
+  /** 他社製品（再研磨専用）か。製造工程リストのタブは出さない。 */
+  isExternalProduct: boolean;
+  makerName: string | null;
   isActive: boolean;
   notes: string;
-  spec: { key: string; value: string }[];
-  /** 製品種別（SY04）名。spec の予約キー `_product_type` から解決。 */
-  productTypeName?: string | null;
+  /**
+   * 仕様（設計図の確定済みの版から — lib/design-spec.ts resolveItemSpec）。
+   * 製品マスタでは直せない。null = まだ確定した版が無い。
+   */
+  designSpec:
+    | (DesignSpecViewData & {
+        versionId: string;
+        version: number;
+        /** 受注元の系列から来ていればその名前。null = 汎用。 */
+        customerName: string | null;
+      })
+    | null;
   createdAt: string;
   updatedAt: string;
   priceListEntries: {
@@ -95,9 +116,21 @@ export function ProductDetail({
   routes,
   designFiles = [],
   designRequests = [],
+  customerCodes = [],
+  canManage = false,
+  productTypes = [],
+  itemDefs = [],
 }: {
   record: ProductDetailData;
+  /** 製品種別 (SY04) — 仕様の表示に使う。 */
+  productTypes?: ResolvedProductType[];
+  /** 製品項目 (SY03) — 仕様の表示に使う。 */
+  itemDefs?: ProductItemDef[];
   auditEntries: AuditEntry[];
+  /** 顧客専用の製品コード（顧客品番タブ）。 */
+  customerCodes?: CustomerProductCodeRow[];
+  /** master:UPDATE を持つか — 顧客品番の編集ボタンの出し分け。 */
+  canManage?: boolean;
   /** 工程リスト（ルート）— 工程タブ。 */
   routes: RouteView[];
   /**
@@ -137,6 +170,7 @@ export function ProductDetail({
     lengthMm: record.lengthMm,
     unit: record.unit,
     taxCategoryId: record.taxCategoryId,
+    isExternalProduct: record.isExternalProduct,
   };
 
   return (
@@ -150,7 +184,7 @@ export function ProductDetail({
               label: tr("common.raiseADesignRequest"),
               icon: <IconRuler2 size={14} />,
               onClick: () =>
-                router.push(`/sales/design-requests/new?product=${record.id}`),
+                router.push(`/sales/design-requests/new?item=${record.id}`),
             },
             {
               label: tr("common.duplicate"),
@@ -181,7 +215,16 @@ export function ProductDetail({
         record.code ?? record.nameJa,
       ]}
       createdAt={fmt.dateTime(record.createdAt)}
-      status={<ActiveBadge active={record.isActive} />}
+      status={
+        <>
+          <ActiveBadge active={record.isActive} />
+          {record.isExternalProduct ? (
+            <Badge color="orange" variant="light">
+              {tr("master.products.externalBadge")}
+            </Badge>
+          ) : null}
+        </>
+      }
       title={record.nameJa}
       updatedAt={fmt.dateTime(record.updatedAt)}
     >
@@ -222,13 +265,24 @@ export function ProductDetail({
             record.taxCategoryName ?? tr("master.taxCategories.useDefault")
           }
         />
+        {record.isExternalProduct ? (
+          <FieldValue
+            label={tr("master.products.makerName")}
+            value={record.makerName || "—"}
+          />
+        ) : null}
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
-          <Tabs.Tab value="routes">
-            {tr("master.productDetail.routesTab")}
+          {record.isExternalProduct ? null : (
+            <Tabs.Tab value="routes">
+              {tr("master.productDetail.routesTab")}
+            </Tabs.Tab>
+          )}
+          <Tabs.Tab value="customerCodes">
+            {tr("master.customerProductCodes.title")}
           </Tabs.Tab>
           <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
@@ -236,37 +290,44 @@ export function ProductDetail({
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
-            {record.productTypeName && (
-              <FieldValue
-                label={tr("common.productTypes")}
-                value={record.productTypeName}
-              />
-            )}
+            {/* 仕様は設計図の版が持つ（ここでは読むだけ）。どの版から来たかを
+                出し、直すときの行き先（設計図）へつなぐ。 */}
             <Stack gap="xs">
-              <Text fw={600} size="sm">
-                {tr("master.products.specification")}
-              </Text>
-              {(() => {
-                const specRows = record.spec.filter(
-                  (s) => !isReservedSpecKey(s.key),
-                );
-                return specRows.length === 0 ? (
-                  <Text c="dimmed" size="sm">
-                    {tr("master.products.noSpecificationIsRegistered")}
-                  </Text>
+              <Group gap="xs" justify="space-between" wrap="wrap">
+                <Text fw={600} size="sm">
+                  {tr("master.products.specification")}
+                </Text>
+                {record.designSpec ? (
+                  <Anchor
+                    href={`/production/design-files/versions/${record.designSpec.versionId}`}
+                    size="xs"
+                  >
+                    {tr("master.products.specFromVersion", {
+                      version: record.designSpec.version,
+                      series:
+                        record.designSpec.customerName ?? tr("common.generic"),
+                    })}
+                  </Anchor>
                 ) : (
-                  <Table striped withTableBorder>
-                    <Table.Tbody>
-                      {specRows.map((s) => (
-                        <Table.Tr key={s.key}>
-                          <Table.Th w={isMobile ? 120 : 200}>{s.key}</Table.Th>
-                          <Table.Td>{s.value}</Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                );
-              })()}
+                  <Anchor
+                    href={`/production/design-files/new?item=${record.id}`}
+                    size="xs"
+                  >
+                    {tr("master.products.registerSpecInDrawing")}
+                  </Anchor>
+                )}
+              </Group>
+              {record.designSpec ? (
+                <DesignSpecView
+                  data={record.designSpec}
+                  itemDefs={itemDefs}
+                  productTypes={productTypes}
+                />
+              ) : (
+                <Text c="dimmed" size="sm">
+                  {tr("master.products.noConfirmedSpec")}
+                </Text>
+              )}
             </Stack>
             <FieldValue
               label={tr("common.keywords")}
@@ -280,9 +341,19 @@ export function ProductDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="routes">
-          <ProductRoutesPanel
-            links={productRouteLinks(record.id)}
-            routes={routes}
+          {record.isExternalProduct ? null : (
+            <ProductRoutesPanel
+              links={productRouteLinks(record.id)}
+              routes={routes}
+            />
+          )}
+        </Tabs.Panel>
+
+        <Tabs.Panel keepMounted={false} pt="md" value="customerCodes">
+          <CustomerProductCodesPanel
+            canEdit={canManage}
+            itemId={record.id}
+            rows={customerCodes}
           />
         </Tabs.Panel>
 
@@ -292,14 +363,14 @@ export function ProductDetail({
                 登録・編集は 設計図 PD06）。版の差し替えは「新しい版を作る」
                 操作だけで、過去の版は書き換えない（何を見て作ったかを
                 追えるようにするため）。 */}
-            <ProductDesignFiles files={designFiles} productId={record.id} />
+            <ProductDesignFiles files={designFiles} itemId={record.id} />
 
             <Stack gap="xs">
               <Text fw={600} size="sm">
                 {tr("common.designRequest")}
               </Text>
               <DesignRequestLinks
-                createHref={`/sales/design-requests/new?product=${record.id}`}
+                createHref={`/sales/design-requests/new?item=${record.id}`}
                 links={designRequests}
               />
             </Stack>

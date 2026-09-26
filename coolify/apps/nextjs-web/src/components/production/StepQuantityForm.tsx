@@ -59,6 +59,8 @@ export function StepQuantityForm({
   disabled,
   blockedReason,
   mode = "FLOW",
+  stepCode = null,
+  hideSemi = false,
 }: {
   workOrderNumber: number;
   stepId: string;
@@ -73,6 +75,13 @@ export function StepQuantityForm({
    */
   blockedReason?: string | null;
   mode?: QuantityTrackingMode;
+  /** 工程 code。製品受入（再研磨）は数量欄の読み方が違う。 */
+  stepCode?: string | null;
+  /**
+   * 半製品の区分を出さない（再研磨の指示書）。顧客の工具は自社の半製品には
+   * ならない — サーバーも同じ規則で弾く（こちらは説明用）。
+   */
+  hideSemi?: boolean;
 }) {
   const tr = useTranslations();
   const router = useRouter();
@@ -80,7 +89,7 @@ export function StepQuantityForm({
   const [defects, setDefects] = useState<DefectReasonEntry[]>([]);
 
   const input = inputQuantity ?? 0;
-  const labels = localizedQuantityLabels(tr, mode);
+  const labels = localizedQuantityLabels(tr, mode, stepCode);
   const issue = checkDefectList(defects, input, mode);
   const total = defectListTotal(defects);
   const success = deriveSuccessFromList(input, defects);
@@ -204,7 +213,9 @@ export function StepQuantityForm({
                 <Select
                   aria-label={tr("common.type2")}
                   data={[
-                    { value: "SEMI", label: labels.semi },
+                    ...(hideSemi
+                      ? []
+                      : [{ value: "SEMI", label: labels.semi }]),
                     { value: "SCRAP", label: labels.scrap },
                     { value: "REWORK", label: labels.rework },
                   ]}

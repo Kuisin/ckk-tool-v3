@@ -34,8 +34,8 @@ const APP_MANUAL_PATH = {
   purchaseOrder: "operations/purchasing/purchase-order/user",
   materialReceipt: "operations/purchasing/material-receipt/user",
   workOrder: "operations/production/work-order/user",
-  productInventory: "operations/production/product-inventory/user",
-  materialInventory: "operations/production/material-inventory/user",
+  // 在庫管理 (ST01) — 旧「製品在庫」「素材在庫」の 2 ページを統合した先。
+  inventoryManagement: "operations/inventory/inventory-management/user",
   approval: "operations/general/my-tasks/user",
   deliveryOrder: "operations/shipping/delivery-order/user",
   deliveryNote: "operations/shipping/delivery-note/user",
@@ -175,6 +175,7 @@ export const FIELD_HELP = {
     orderLine: {},
     allocQuantity: {},
     product: {},
+    type: {},
     plannedQuantity: {},
     material: {},
     storageLocation: {},
@@ -183,13 +184,7 @@ export const FIELD_HELP = {
     inspectionTemplates: {},
     notes: {},
   },
-  productInventory: {
-    plant: {},
-    location: {},
-    quantity: {},
-    notes: {},
-  },
-  materialInventory: {
+  inventoryManagement: {
     plant: {},
     location: {},
     quantity: {},
@@ -243,9 +238,6 @@ export const FIELD_HELP = {
     code: {},
     name: {},
     unit: {},
-    productType: {},
-    materialType: {},
-    dimensions: {},
     keywords: {},
     active: {},
     notes: {},

@@ -72,6 +72,10 @@ ORD-202608-00012-01
 
 右上の「**…**」（点が 3 つのボタン）にも「**指示書を作成**」「**出荷書を作成**」が常に並びます。いま押せない操作は灰色になり、理由（例:「注文請書の確定後に作成できます」）が表示されます。
 
+### 届け先を確認する
+
+出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所は、この明細の値を読み取り専用で表示します。値そのものを直すのは[注文請書](/manual/ja/operations/sales/order-acceptance/user)の明細エディタです — 1 通の注文書の中で行ごとに届け先が違う注文があるため、これらは明細ごとの項目になっています。
+
 ### 在庫を調べて引き当てる
 
 「**在庫照合**」を押すと、その製品の在庫を調べて、**使える分だけ引き当て（予約）** します。
@@ -131,7 +135,7 @@ ORD-202608-00012-01
 - [注文請書](/manual/ja/operations/sales/order-acceptance/user) — 注文明細を作る・直す画面
 - [指示書](/manual/ja/operations/production/work-order/user) — 製造を進める画面
 - [出荷書](/manual/ja/operations/shipping/delivery-order/user) — 出荷する画面
-- [在庫管理](/manual/ja/operations/production/product-inventory/user) — 在庫と引き当ての状況
+- [在庫管理](/manual/ja/operations/inventory/inventory-management/user) — 在庫と引き当ての状況
 
 <!-- permissions:start -->
 ## 必要な権限

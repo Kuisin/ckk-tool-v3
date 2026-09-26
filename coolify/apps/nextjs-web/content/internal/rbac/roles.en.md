@@ -49,7 +49,8 @@ When several roles grant the same code, the **widest scope wins** (PLANT + ALL
 | Shipping manager | `shipping_manager` | Full control of shipping data + read everywhere |
 | Shipping | `shipping` | Shipping orders and delivery notes (shipping + inventory are **own plants only**) |
 | Accounting manager | `accounting_manager` | Full control of billing + read everywhere |
-| Accounting | `accounting` | Invoices, monthly closing, Yayoi CSV |
+| Accounting | `accounting` | Invoices, monthly closing, accounting CSV |
+| Master data editor | `master_editor` | Master data only. Holds no business-document grants, so pair it with a department role |
 | Viewer | `viewer` | Read-only across every area (executives, audit) |
 | Staff | `staff` | Transitional catch-all — everything except system and kiosk. **Replace with department roles in production** |
 
@@ -94,7 +95,7 @@ list that they cannot approve their own request.
 | `delivery_order` | Delivery order | SH01 Delivery orders / SH03 Pending shipments |
 | `delivery_note` | Delivery note | SH02 Delivery notes |
 | `invoice` | Invoice | BL01 Invoices |
-| `billing_closing` | Billing closing | BL02 Billing closing (the Yayoi CSV export is E) |
+| `billing_closing` | Billing closing | BL02 Billing closing (the accounting CSV export is E) |
 | `master` | Master data | All 12 master apps, MS01 and MS04–MS0E |
 | `form` | Forms | **The app itself needs no permission** (CM02 opens for anyone). C / U are needed to create or edit a form |
 | `internal_page` | Internal documents | CM03 Internal documents |
@@ -133,6 +134,7 @@ to show only what concerns you, so the door is left open.
 | **Shipping**<br/>`shipping` | — | — | R | — | R | — | — | — |
 | **Accounting manager**<br/>`accounting_manager` | R | R | R | R | R | R | R | R |
 | **Accounting**<br/>`accounting` | R | R | R | — | R | — | — | — |
+| **Master data editor**<br/>`master_editor` | — | — | — | — | — | — | — | — |
 | **Viewer**<br/>`viewer` | R | R | R | R | R | R | R | R |
 | **Staff**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE |
 
@@ -155,6 +157,7 @@ to show only what concerns you, so the door is left open.
 | **Shipping**<br/>`shipping` | R | — | RU<br/>PLANT | RCUDE<br/>PLANT | RCUDE | — | — | R | — | — | — |
 | **Accounting manager**<br/>`accounting_manager` | R | R | R | R | R | RCUDE | RCUDE | R | R | R | R |
 | **Accounting**<br/>`accounting` | — | — | — | R | R | RCUDE | RCUE | R | — | — | — |
+| **Master data editor**<br/>`master_editor` | — | — | — | — | — | — | — | RCUD | — | — | — |
 | **Viewer**<br/>`viewer` | R | R | R | R | R | R | R | R | R | R | R |
 | **Staff**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | — |
 

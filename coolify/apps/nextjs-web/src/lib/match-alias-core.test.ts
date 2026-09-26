@@ -6,9 +6,9 @@ import { aliasKeyFor, aliasLearning, aliasLearnings } from "./match-alias-core";
  * のは行数だけで、曖昧な表記を覚えると**次から黙って間違える**ようになる。
  */
 
-const item = (productText: string | null, productId: string | null) => ({
+const item = (productText: string | null, itemId: string | null) => ({
   productText,
-  productId,
+  itemId,
 });
 
 const base = {
@@ -23,53 +23,53 @@ describe("aliasKeyFor", () => {
     expect(aliasKeyFor("business_partners", "㈱稔産業")).toBe(
       aliasKeyFor("business_partners", "株式会社 稔産業"),
     );
-    // 製品: 寸法記号のゆれを吸収する。
-    expect(aliasKeyFor("products", "カッター φ8.3×330")).toBe(
-      aliasKeyFor("products", "カッター 8.3x330"),
+    // 品目: 寸法記号のゆれを吸収する。
+    expect(aliasKeyFor("items", "カッター φ8.3×330")).toBe(
+      aliasKeyFor("items", "カッター 8.3x330"),
     );
   });
 
-  it("素材は製品と同じ鍵（購買側の取込が同じ表記を引けるように）", () => {
+  it("素材の表記も同じ鍵（購買側の取込が同じ表記を引けるように）", () => {
     // 覚えるのは lib/purchase-intake、引くのは lib/material-match。
     // 鍵が割れると「覚えたのに次から当たらない」になる。
-    expect(aliasKeyFor("materials", "丸棒 Φ６．０×310")).toBe(
-      aliasKeyFor("products", "丸棒 6.0x310"),
+    expect(aliasKeyFor("items", "丸棒 Φ６．０×310")).toBe(
+      aliasKeyFor("items", "丸棒 6.0x310"),
     );
-    expect(aliasKeyFor("materials", "B01A0001-A060-310")).toBe(
-      aliasKeyFor("materials", "b01a0001-a060-310"),
+    expect(aliasKeyFor("items", "B01A0001-A060-310")).toBe(
+      aliasKeyFor("items", "b01a0001-a060-310"),
     );
   });
 });
 
 describe("aliasLearning", () => {
   it("表記とマスタが揃っていれば組み立てる", () => {
-    expect(aliasLearning("products", "12", " OHリーマ ")).toEqual({
-      targetType: "products",
+    expect(aliasLearning("items", "12", " OHリーマ ")).toEqual({
+      targetType: "items",
       targetId: "12",
       alias: "OHリーマ",
-      aliasKey: aliasKeyFor("products", "OHリーマ"),
+      aliasKey: aliasKeyFor("items", "OHリーマ"),
     });
   });
 
   it("**短すぎる表記は学習しない**（断片に 1 マスタを割り当てない）", () => {
-    expect(aliasLearning("products", "12", "A")).toBeNull();
+    expect(aliasLearning("items", "12", "A")).toBeNull();
     // 記号だけの表記は正規化すると消える。
-    expect(aliasLearning("products", "12", "（）")).toBeNull();
+    expect(aliasLearning("items", "12", "（）")).toBeNull();
   });
 
   it("マスタ・表記が欠けていれば学習しない", () => {
-    expect(aliasLearning("products", null, "ドリル")).toBeNull();
-    expect(aliasLearning("products", "12", "   ")).toBeNull();
+    expect(aliasLearning("items", null, "ドリル")).toBeNull();
+    expect(aliasLearning("items", "12", "   ")).toBeNull();
   });
 
   it("素材も同じ規則で組み立てる", () => {
-    expect(aliasLearning("materials", "7", " 超硬丸棒 φ6.0 ")).toEqual({
-      targetType: "materials",
+    expect(aliasLearning("items", "7", " 超硬丸棒 φ6.0 ")).toEqual({
+      targetType: "items",
       targetId: "7",
       alias: "超硬丸棒 φ6.0",
-      aliasKey: aliasKeyFor("materials", "超硬丸棒 φ6.0"),
+      aliasKey: aliasKeyFor("items", "超硬丸棒 φ6.0"),
     });
-    expect(aliasLearning("materials", "7", "A")).toBeNull();
+    expect(aliasLearning("items", "7", "A")).toBeNull();
   });
 });
 
@@ -122,7 +122,7 @@ describe("aliasLearnings", () => {
     ).toEqual([]);
   });
 
-  it("明細の製品を人が選んだら、その品名を覚える", () => {
+  it("明細の品目を人が選んだら、その品名を覚える", () => {
     const out = aliasLearnings({
       ...base,
       items: {
@@ -132,15 +132,15 @@ describe("aliasLearnings", () => {
     });
     expect(out).toEqual([
       {
-        targetType: "products",
+        targetType: "items",
         targetId: "5",
         alias: "OHリーマ φ8.3",
-        aliasKey: aliasKeyFor("products", "OHリーマ φ8.3"),
+        aliasKey: aliasKeyFor("items", "OHリーマ φ8.3"),
       },
     ]);
   });
 
-  it("既に同じ製品なら覚えない / 付け替えたら覚える", () => {
+  it("既に同じ品目なら覚えない / 付け替えたら覚える", () => {
     expect(
       aliasLearnings({
         ...base,
@@ -154,7 +154,7 @@ describe("aliasLearnings", () => {
     expect(moved.map((l) => l.targetId)).toEqual(["9"]);
   });
 
-  it("**同じ品名が別々の製品に結ばれている書類は覚えない**（どちらか決められない）", () => {
+  it("**同じ品名が別々の品目に結ばれている書類は覚えない**（どちらか決められない）", () => {
     expect(
       aliasLearnings({
         ...base,
@@ -186,7 +186,7 @@ describe("aliasLearnings", () => {
     });
     expect(out.map((l) => l.targetType)).toEqual([
       "business_partners",
-      "products",
+      "items",
     ]);
   });
 });

@@ -161,12 +161,14 @@ async function callPoExtract(
  * 素材マスタは材種 × 直径 × 全長の組合せで数千件。製品（数万件を見込む）と
  * 違って全件を JS へ持ってこられるので、取引先と同じやり方にする — 1 回の
  * 取込で 1 度だけ読み、行数ぶんの突合をこの 1 つのプールに対して行う。
+ *
+ * 品目統合 第 2 段 B — 突合の対象・返す id は **items.id**（旧
+ * `materials.id` ではない）。保存先（material_purchase_order_items /
+ * material_receipts の item_id）と揃えるため。
  */
 export async function loadMaterialMatchPool(): Promise<MaterialMatchable[]> {
-  // 学習した表記（人が結び付けた実績）も照合キーに混ぜる。
-  const learned = await aliasesByTarget("materials");
-  const rows = await prisma.material.findMany({
-    where: { isActive: true },
+  const rows = await prisma.item.findMany({
+    where: { itemType: "MATERIAL", isActive: true },
     orderBy: { code: "asc" },
     select: {
       id: true,
@@ -177,6 +179,14 @@ export async function loadMaterialMatchPool(): Promise<MaterialMatchable[]> {
       unit: true,
     },
   });
+  // 学習した表記（人が結び付けた実績）も照合キーに混ぜる。target_type は
+  // 品目統合 第 3 段で "items"（製品と素材で 1 つの名前空間）。**プールに
+  // 居る素材の id だけを引く** — 全件引くと製品側の学習まで持ってくることに
+  // なる（混ざっても id で当たらないだけだが、読む理由が無い）。
+  const learned = await aliasesByTarget(
+    "items",
+    rows.map((r) => String(r.id)),
+  );
   return rows.map((r) => {
     const id = String(r.id);
     const nameJa = localized(r.name as LocalizedText | null);
@@ -203,11 +213,14 @@ async function learnedMaterial(
 ): Promise<MaterialMatchable | null> {
   const key = text?.trim();
   if (!key) return null;
-  const learned = await findAlias("materials", key);
+  const learned = await findAlias("items", key);
   if (!learned) return null;
+  // **プールの中にしか当てない。** 学習は製品と素材で 1 つの名前空間なので、
+  // 製品に結び付いた表記が当たることがある。プール（MATERIAL のみ）に
+  // 居なければ無視して推測へ落とす — マスタが消えた学習と同じ扱い。
   const hit = pool.find((m) => m.id === learned.targetId);
-  if (!hit) return null; // マスタが消えている / 無効になった学習は無視する
-  void noteAliasHit("materials", aliasKeyFor("materials", key));
+  if (!hit) return null;
+  void noteAliasHit("items", aliasKeyFor("items", key));
   return hit;
 }
 
@@ -223,7 +236,7 @@ async function matchLines(
     if (learned) {
       out.push({
         ...item,
-        materialId: learned.id,
+        itemId: learned.id,
         materialLabel: learned.label,
         materialUnit: learned.unit ?? null,
         candidates: [],
@@ -236,7 +249,7 @@ async function matchLines(
       : null;
     out.push({
       ...item,
-      materialId: r.matched?.id ?? null,
+      itemId: r.matched?.id ?? null,
       materialLabel: r.matched?.label ?? null,
       materialUnit: hit?.unit ?? null,
       candidates: r.candidates,
@@ -343,13 +356,13 @@ export interface PurchaseAliasLine {
   materialText: string | null;
   /** 抽出された品番（印字されたまま）。 */
   materialCode: string | null;
-  /** 保存された素材 id（未選択は null）。 */
-  materialId: string | null;
+  /** 保存された素材の品目 id（items.id。未選択は null）。 */
+  itemId: string | null;
   /**
-   * 突合が下書きに入れていた素材 id（自動一致。無ければ null）。渡されたときは
+   * 突合が下書きに入れていた品目 id（自動一致。無ければ null）。渡されたときは
    * **保存値がこれと違う行だけ**を学習する — 人が直した組み合わせだけを覚える。
    */
-  draftMaterialId?: string | null;
+  draftItemId?: string | null;
 }
 
 /**
@@ -397,24 +410,21 @@ export async function learnPurchaseAliases(input: {
   // ので**その表記だけ**捨てる（曖昧なものを覚えると害の方が大きい）。
   const byText = new Map<string, string | null>();
   for (const line of input.lines) {
-    if (!line.materialId) continue;
+    if (!line.itemId) continue;
     // 自動一致のまま保存された行は覚えない（人の判断ではない）。
-    if (
-      line.draftMaterialId !== undefined &&
-      line.draftMaterialId === line.materialId
-    )
+    if (line.draftItemId !== undefined && line.draftItemId === line.itemId)
       continue;
     for (const raw of [line.materialText, line.materialCode]) {
       const text = raw?.trim();
       if (!text) continue;
       const seen = byText.get(text);
-      if (seen === undefined) byText.set(text, line.materialId);
-      else if (seen !== line.materialId) byText.set(text, null);
+      if (seen === undefined) byText.set(text, line.itemId);
+      else if (seen !== line.itemId) byText.set(text, null);
     }
   }
-  for (const [text, materialId] of byText) {
-    if (!materialId) continue;
-    const learning = aliasLearning("materials", materialId, text);
+  for (const [text, itemId] of byText) {
+    if (!itemId) continue;
+    const learning = aliasLearning("items", itemId, text);
     if (learning) learnings.push(learning);
   }
 

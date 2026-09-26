@@ -29,9 +29,9 @@ export default async function MasterProcessStepsPage() {
     quantityTracking: r.quantityTracking,
     lotInputMode: r.lotInputMode,
     workLocationRequired: r.workLocationRequired,
+    allowedWorkOrderTypes: r.allowedWorkOrderTypes,
     planTimeRequired: r.planTimeRequired,
     planAssigneeRequired: r.planAssigneeRequired,
-    planQuantityRequired: r.planQuantityRequired,
     sortOrder: r.sortOrder,
     isActive: r.isActive,
   }));

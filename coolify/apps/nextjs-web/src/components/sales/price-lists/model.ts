@@ -55,7 +55,12 @@ export interface PriceDiscount {
   isActive: boolean;
 }
 
-export type EntryOrderType = "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER";
+export type EntryOrderType =
+  | "PRODUCTION"
+  | "TEST"
+  | "SAMPLE"
+  | "REGRIND"
+  | "OTHER";
 
 /**
  * 注文種別バリアント — 1 エントリ（顧客×製品）内の種別ごとの価格。
@@ -87,8 +92,30 @@ export interface PriceListEntry {
   entryId: string;
   customerId: string;
   customerName: string;
-  productId: string;
+  /**
+   * 対象製品 — 値は**品目 id**（items.id、`itemType: "PRODUCT"`）。
+   * 品目統合 第 2 段 C。見積明細・注文明細・出荷明細も同じ id 空間なので、
+   * 価格の解決（`resolvePriceFromEntries`）はそのまま突き合わせられる。
+   * DB の自然キー (customer_bp_id, product_id) は products.id のまま —
+   * 識別は作成後不変という約束なので、鍵の差し替えは別の判断
+   * （shared-db の 20261030090000_items_stage2c_sales）。
+   */
+  itemId: string;
   productName: string;
+  /**
+   * 品目の種別。**製品と再研磨品目は同じ価格表に並ぶ** — 売り物である点も、
+   * 顧客ごとに値段を持つ点も同じなので、別のアプリには分けない。ただし
+   * 「研ぎ直しという役務」と「製品」は読み手にとって別物なので、行には
+   * 種別を出す（出さないと、工具の名前と役務の名前が同じ列に混ざる）。
+   */
+  itemType: "PRODUCT" | "REGRIND";
+  /**
+   * 品目の標準価格（定価）。**この画面では読むだけ** — 持ち主は品目マスタ
+   * （再研磨品目 MS0H）で、直すのはあちら。ここに出すのは「当たる価格表が
+   * 無いときいくらで売れるのか」が、価格表の画面から見えないと分からない
+   * ため。標準価格を読む品目は今のところ再研磨だけなので、製品は null。
+   */
+  standardUnitPrice: number | null;
   currency: string;
   isActive: boolean;
   /** 注文種別ごとの価格（少なくとも 1 件）。 */
@@ -112,10 +139,13 @@ export function requiresEndDate(orderType: string): boolean {
   return END_DATE_REQUIRED_TYPES.includes(orderType);
 }
 
-/** Bare entry identity（顧客×製品 + 登録済み種別）— duplicate warnings 用。 */
+/**
+ * Bare entry identity（顧客×製品 + 登録済み種別）— duplicate warnings 用。
+ * `itemId` は品目 id（`PriceListEntry.itemId` と同じ空間）。
+ */
 export interface EntryIdentity {
   customerBpId: string;
-  productId: string;
+  itemId: string;
   orderTypes: string[];
   /** 既存エントリの PRC 番号（重複警告からのリンク先）。 */
   entryId: string;
@@ -267,17 +297,19 @@ export function findApplicableDiscount(
   );
 }
 
-/** The entry for a (顧客, 製品), if registered — pure over a list. */
+/**
+ * The entry for a (顧客, 製品), if registered — pure over a list.
+ * `itemId` は品目 id（`PriceListEntry.itemId` と同じ空間）。
+ */
 export function findEntryByCustomerProduct(
   customerId: string | null | undefined,
-  productId: string | null | undefined,
+  itemId: string | null | undefined,
   entries: PriceListEntry[],
 ): PriceListEntry | null {
-  if (!(customerId && productId)) return null;
+  if (!(customerId && itemId)) return null;
   return (
-    entries.find(
-      (e) => e.customerId === customerId && e.productId === productId,
-    ) ?? null
+    entries.find((e) => e.customerId === customerId && e.itemId === itemId) ??
+    null
   );
 }
 

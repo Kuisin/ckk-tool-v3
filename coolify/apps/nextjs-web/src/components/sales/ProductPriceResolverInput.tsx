@@ -16,8 +16,11 @@
 
 import { Anchor, Group, NumberInput, Select, Stack, Text } from "@mantine/core";
 import { useTranslations } from "next-intl";
-import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
-import { productF4 } from "@/components/ui/f4-presets";
+import {
+  searchProductItemOptions,
+  searchRegrindItemOptions,
+} from "@/app/(dashboard)/_shared/option-search";
+import { productItemF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -32,7 +35,8 @@ import {
 
 /** The slice of a quote line this control owns — 価格は全て自動解決値. */
 export interface ResolverValue {
-  productId: string;
+  /** 製品 — 値は品目 id（items.id）。価格表の行と同じ id 空間。 */
+  itemId: string;
   productName: string;
   orderType: string;
   quantity: number;
@@ -50,10 +54,17 @@ export function ProductPriceResolverInput({
   value,
   onChange,
   designRequestHref,
+  standardPrices,
 }: {
   customerId: string;
   /** 顧客の価格表エントリ（サーバー取得）— ライブ解決に使用。 */
   entries: PriceListEntry[];
+  /**
+   * 品目 id → **標準価格**（顧客を問わない定価）。当たる価格表が無いときの
+   * 拠り所で、いま値が入るのは再研磨の品目だけ。**保存側と同じものを渡すこと** —
+   * 渡し忘れると画面は「価格表なし」と出すのに保存では標準価格が入る。
+   */
+  standardPrices?: Record<string, number>;
   value: ResolverValue;
   onChange: (next: ResolverValue) => void;
   /**
@@ -61,23 +72,28 @@ export function ProductPriceResolverInput({
    * 渡さないと誘導リンクを出さない（価格表画面など、設計依頼が無関係な
    * 呼び出し元のため）。
    */
-  designRequestHref?: (productId: string) => string;
+  designRequestHref?: (itemId: string) => string;
 }) {
   const tr = useTranslations();
   const isMobile = useIsMobile();
+  // 再研磨の行が指すのは**再研磨の品目**（役務）で、製品ではない。
+  const isRegrind = value.orderType === "REGRIND";
+  const standardOf = (itemId: string) => standardPrices?.[itemId] ?? null;
 
   /** Re-resolve 単価・値引き from the 価格表 when 製品/種別/数量 changes. */
   const reresolve = (patch: Partial<ResolverValue>): ResolverValue => {
     const next = { ...value, ...patch };
     const resolved =
-      customerId && next.productId
+      customerId && next.itemId
         ? resolveUnitPriceFromEntries(
             entries,
             customerId,
-            next.productId,
+            next.itemId,
             next.orderType,
             next.quantity,
             tr,
+            new Date(),
+            standardOf(next.itemId),
           )
         : null;
     next.unitPrice = resolved?.unitPrice ?? 0;
@@ -91,19 +107,21 @@ export function ProductPriceResolverInput({
     0,
     value.unitPrice * value.quantity - value.discountAmount,
   );
-  const unresolved = Boolean(value.productId) && value.priceTierId == null;
+  const unresolved = Boolean(value.itemId) && value.priceTierId == null;
   // 引けない理由（価格表なし / 無効 / 有効期間外 / 数量段階なし）— 「価格表なし」
   // の一言だと、数量を直せば通る行と価格表の登録が要る行の区別がつかない。
   const missReason: PriceMissReason | null =
-    unresolved && customerId && value.productId
+    unresolved && customerId && value.itemId
       ? (() => {
           const r = resolvePriceFromEntries(
             entries,
             customerId,
-            value.productId,
+            value.itemId,
             value.orderType,
             value.quantity,
             tr,
+            new Date(),
+            standardOf(value.itemId),
           );
           return r.ok ? null : r.reason;
         })()
@@ -124,30 +142,52 @@ export function ProductPriceResolverInput({
   return (
     <Group align="flex-end" gap="sm" wrap={isMobile ? "wrap" : "nowrap"}>
       <SearchSelect
-        f4={productF4(tr)}
+        f4={isRegrind ? undefined : productItemF4(tr)}
         flex={isMobile ? "1 1 100%" : 2}
         initialOption={
-          value.productId
-            ? { value: value.productId, label: value.productName }
+          value.itemId
+            ? { value: value.itemId, label: value.productName }
             : null
         }
-        label={tr("common.product")}
+        label={
+          isRegrind
+            ? tr("sales.orderAcceptanceItemsEditor.regrindItem")
+            : tr("common.product")
+        }
         onChange={(v, opt) =>
           onChange(
-            reresolve({ productId: v ?? "", productName: opt?.label ?? "" }),
+            reresolve({ itemId: v ?? "", productName: opt?.label ?? "" }),
           )
         }
-        onSearch={searchProductOptions}
-        placeholder={tr("common.searchProducts")}
-        storageKey="product"
-        value={value.productId || null}
+        onSearch={
+          isRegrind ? searchRegrindItemOptions : searchProductItemOptions
+        }
+        placeholder={
+          isRegrind
+            ? tr("sales.orderAcceptanceItemsEditor.searchTheRegrindItems")
+            : tr("common.searchProducts")
+        }
+        storageKey={isRegrind ? "quote-regrind-item" : "quote-product-item"}
+        value={value.itemId || null}
         withAsterisk
       />
       <Select
         data={ORDER_TYPE_OPTIONS}
         flex={isMobile ? 1 : 1}
         label={tr("common.orderType")}
-        onChange={(v) => onChange(reresolve({ orderType: v ?? "PRODUCTION" }))}
+        onChange={(v) => {
+          const next = v ?? "PRODUCTION";
+          // 再研磨とそれ以外では品目の種類そのものが違う（役務 / 製品）。
+          // 跨いだら選び直し — 残すと保存側の検査で必ず弾かれる行になる。
+          const crosses = (next === "REGRIND") !== isRegrind;
+          onChange(
+            reresolve(
+              crosses
+                ? { orderType: next, itemId: "", productName: "" }
+                : { orderType: next },
+            ),
+          );
+        }}
         value={value.orderType}
         withAsterisk
       />
@@ -181,7 +221,7 @@ export function ProductPriceResolverInput({
             </Text>
             {designRequestHref && missReason !== "no-tier" && (
               <Anchor
-                href={designRequestHref(value.productId)}
+                href={designRequestHref(value.itemId)}
                 size="xs"
                 target="_blank"
               >

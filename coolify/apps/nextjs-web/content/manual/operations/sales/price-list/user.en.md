@@ -25,6 +25,32 @@ Register a price here when you and the customer have agreed a price. From then o
 - **倍率 (multiplier)** … the number the base unit price is multiplied by. Below 1 makes it cheaper.
 - **値引きルール (discount rule)** … a discount that is taken off automatically when you make a quote, if the period and the number of pieces match the conditions you set.
 
+## Products and regrinds are priced on this same screen
+
+There are two kinds of sellable thing, and **both carry their per-customer price here**. They are not split across separate apps.
+
+| Sellable | Where the item is registered | Order type used |
+|---|---|---|
+| **Product** | [Products](/manual/en/operations/masters/product/user) (MS04) | Production / test / sample / other |
+| **Regrind** (the regrinding service) | [Regrind items](/manual/en/operations/masters/regrind-item/user) (MS0H) | 再研磨 (regrind) |
+
+In the list, regrind rows carry a 「**再研磨**」 badge. A tool's name and the name of "the regrinding service" look alike, so the row says which it is. The 「製品」 (product) filter offers regrind items too.
+
+> 💡 **The pairings are fixed.** A regrind item can only carry a regrind price, and a product cannot carry one. They are different things to sell, and a mismatch is refused on save.
+
+> ⚠️ **The customer's tool itself (an external product) is never priced.** You receive it, regrind it and send it back — you do not sell it. It does not appear among this screen's item choices.
+
+### The standard price cannot be edited here
+
+A regrind item carries a customer-independent **standard price**. This screen only **reads** it — edit it on [regrind items](/manual/en/operations/masters/regrind-item/user) (MS0H), so the price has one owner rather than two. The detail screen links straight there.
+
+A price resolves in two tiers:
+
+1. the item's **standard price**
+2. that customer's **price list** — which wins when one applies
+
+**It falls back only when no price list applies** (none made / inactive / outside its period). ⚠️ A live price list that is missing that quantity tier does **not** fall back — that would hide a configuration hole, so the price stays unresolved. Fix the tier.
+
 ## Before you start
 
 - The [customer](/manual/en/operations/masters/business-partner/user) and the [product](/manual/en/operations/masters/product/user) must already be registered.

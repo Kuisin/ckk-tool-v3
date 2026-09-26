@@ -18,6 +18,7 @@ import type {
   OrderAcceptanceView,
 } from "@/components/sales/order-acceptances/model";
 import { checkPermission } from "@/lib/authz";
+import { loadCustomerProductCodes } from "@/lib/customer-product-codes";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
@@ -34,15 +35,36 @@ import { reviewIntake } from "@/lib/intake-review";
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
 const LIST_FETCH_CAP = 1000;
 
-/** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
+/**
+ * 品目ラベル: 名称 + 品目コード（レガシーはコード未採番 → 名称のみ）。
+ * コードは **items.code をそのまま** — 製品は PRD-…、再研磨品目は RGD-… で、
+ * (year_month, seq) から組み立てられるのは製品だけ。
+ */
 function productLabel(p: {
   name: unknown;
+  code?: string | null;
   yearMonth: string | null;
   seq: number | null;
 }): string {
-  const code = formatProductNumber(p.yearMonth, p.seq);
+  const code = p.code ?? formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
   return code ? `${name} ${code}` : name;
+}
+
+/**
+ * 工具ラベル: メーカー名（他社製品のみ）+ 名称 + 品目コード。
+ * 誰が作った工具なのかは預かるときに最初に要る情報なので先頭に置く。
+ */
+function toolLabel(t: {
+  name: unknown;
+  code: string | null;
+  isExternalProduct: boolean;
+  makerName: string | null;
+}): string {
+  const maker = t.isExternalProduct ? t.makerName?.trim() : null;
+  return [maker, localized(t.name as LocalizedText | null), t.code]
+    .filter((x): x is string => !!x)
+    .join(" ");
 }
 
 /** 一覧 — 新しい採番から順（取込状況一覧）。 */
@@ -95,18 +117,36 @@ export async function fetchOrderAcceptance(
       sourceFile: { select: { filename: true, mimeType: true } },
       customerBp: { select: { name: true } },
       customerBranchBp: { select: { name: true } },
-      shipToBp: { select: { name: true } },
-      endUserBp: { select: { name: true } },
-      assignedPlant: { select: { code: true, name: true } },
-      shippingWorkLocation: {
-        select: { name: true, group: { select: { name: true } } },
-      },
       salesRep: { select: { id: true, displayName: true } },
       createdByUser: { select: { displayName: true } },
+      // キャンセル → 作り直し の紐付け（両向き）。
+      replacedBy: {
+        select: { yearMonth: true, seq: true },
+        orderBy: [{ yearMonth: "asc" }, { seq: "asc" }],
+      },
       items: {
         orderBy: { sortOrder: "asc" },
         include: {
-          product: { select: { name: true, yearMonth: true, seq: true } },
+          // 品目統合 第 2 段 C — 表示は品目側から読む。
+          item: {
+            select: { name: true, code: true, yearMonth: true, seq: true },
+          },
+          // 再研磨の明細が指す工具（他社製品も含む）。売り物の品目とは別の欄。
+          toolItem: {
+            select: {
+              name: true,
+              code: true,
+              isExternalProduct: true,
+              makerName: true,
+            },
+          },
+          // 配送（§8）— 明細ごとに持つ。
+          shipToBp: { select: { name: true } },
+          endUserBp: { select: { name: true } },
+          assignedPlant: { select: { code: true, name: true } },
+          shippingWorkLocation: {
+            select: { name: true, group: { select: { name: true } } },
+          },
           // 明細に割り当てられた指示書（分割・統合の割当数を表に出す）。
           workOrderLinks: {
             orderBy: { sortOrder: "asc" },
@@ -137,11 +177,18 @@ export async function fetchOrderAcceptance(
   });
 
   // 製品が決まっていない行は、読み取った品名から候補を出す（1 クエリでまとめて）。
+  // 顧客が決まっていれば、その顧客の品番表（MS04 の「顧客品番」）を先に当てる。
+  // 突合（lib/intake / lib/product-match / app.match_aliases）が返す id は
+  // 品目統合 第 3 段から **items.id** なので、画面が扱う id と同じ空間 —
+  // 以前ここに置いていた旧 id からの読み替えは要らなくなった。
   const productSuggestions = await suggestProducts(
     r.items
-      .filter((it) => it.productId == null && it.productText)
+      .filter((it) => it.itemId == null && it.productText)
       .map((it) => it.productText as string),
+    { customerCodes: await loadCustomerProductCodes(r.customerBpId) },
   );
+  const toItemSuggestions = (text: string | null) =>
+    text ? (productSuggestions.get(text.trim()) ?? []) : [];
 
   const items: OrderAcceptanceItemView[] = r.items.map((it) => ({
     id: it.id,
@@ -155,22 +202,44 @@ export async function fetchOrderAcceptance(
       quantity: l.quantity,
       status: l.workOrder.status,
     })),
-    productId: it.productId != null ? String(it.productId) : null,
-    productLabel: it.product ? productLabel(it.product) : null,
-    productName: it.product
-      ? localized(it.product.name as LocalizedText | null)
+    itemId: it.itemId != null ? String(it.itemId) : null,
+    productLabel: it.item ? productLabel(it.item) : null,
+    productName: it.item
+      ? localized(it.item.name as LocalizedText | null)
       : null,
     productText: it.productText,
     productSuggestions:
-      (it.productId == null && it.productText
-        ? productSuggestions.get(it.productText.trim())
-        : null) ?? [],
+      it.itemId == null ? toItemSuggestions(it.productText) : [],
     orderType: it.orderType,
+    toolItemId: it.toolItemId != null ? String(it.toolItemId) : null,
+    toolLabel: it.toolItem ? toolLabel(it.toolItem) : null,
     quantity: it.quantity,
     unitPrice: it.unitPrice != null ? Number(it.unitPrice) : null,
     priceOverridden: it.priceOverridden,
     deliveryDate: it.deliveryDate?.toISOString().slice(0, 10) ?? null,
     notes: it.notes,
+    // 配送（§8）— 明細ごとに持つ。
+    shipToBpId: it.shipToBpId,
+    shipToName: it.shipToBp
+      ? localized(it.shipToBp.name as LocalizedText | null)
+      : null,
+    deliveryMethod: it.deliveryMethod,
+    endUserBpId: it.endUserBpId,
+    endUserName: it.endUserBp
+      ? localized(it.endUserBp.name as LocalizedText | null)
+      : null,
+    assignedPlantId:
+      it.assignedPlantId != null ? String(it.assignedPlantId) : null,
+    assignedPlantName: it.assignedPlant
+      ? `${it.assignedPlant.code} ${localized(it.assignedPlant.name as LocalizedText | null)}`
+      : null,
+    shippingWorkLocationId:
+      it.shippingWorkLocationId != null
+        ? String(it.shippingWorkLocationId)
+        : null,
+    shippingWorkLocationName: it.shippingWorkLocation
+      ? `${localized(it.shippingWorkLocation.group.name as LocalizedText | null)} / ${localized(it.shippingWorkLocation.name as LocalizedText | null)}`
+      : null,
   }));
 
   // 顧客が決まっていない取込は、その場でもう一度突合して**候補**を出す
@@ -197,7 +266,7 @@ export async function fetchOrderAcceptance(
         customerCandidateCount: customerSuggestions.length,
         orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
         items: items.map((it) => ({
-          productId: it.productId,
+          itemId: it.itemId,
           productText: it.productText,
           productCandidateCount: it.productSuggestions.length,
           quantity: it.quantity,
@@ -221,27 +290,8 @@ export async function fetchOrderAcceptance(
     customerBranchName: r.customerBranchBp
       ? localized(r.customerBranchBp.name as LocalizedText | null)
       : null,
-    shipToBpId: r.shipToBpId,
-    shipToName: r.shipToBp
-      ? localized(r.shipToBp.name as LocalizedText | null)
-      : null,
-    deliveryMethod: r.deliveryMethod,
-    endUserBpId: r.endUserBpId,
-    endUserName: r.endUserBp
-      ? localized(r.endUserBp.name as LocalizedText | null)
-      : null,
-    assignedPlantId:
-      r.assignedPlantId != null ? String(r.assignedPlantId) : null,
-    assignedPlantName: r.assignedPlant
-      ? `${r.assignedPlant.code} ${localized(r.assignedPlant.name as LocalizedText | null)}`
-      : null,
-    shippingWorkLocationId:
-      r.shippingWorkLocationId != null
-        ? String(r.shippingWorkLocationId)
-        : null,
-    shippingWorkLocationName: r.shippingWorkLocation
-      ? `${localized(r.shippingWorkLocation.group.name as LocalizedText | null)} / ${localized(r.shippingWorkLocation.name as LocalizedText | null)}`
-      : null,
+    // 出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所は
+    // items（明細）が持つ（§8）。
     customerProvidesDeliveryNote: r.customerProvidesDeliveryNote,
     customerSuggestions: customerSuggestions.map((c) => ({
       id: c.id,
@@ -259,6 +309,16 @@ export async function fetchOrderAcceptance(
             seq: r.quoteSeq,
           })
         : null,
+    replacesNumber:
+      r.replacesYearMonth && r.replacesSeq != null
+        ? formatDocNumber("ORD", {
+            yearMonth: r.replacesYearMonth,
+            seq: r.replacesSeq,
+          })
+        : null,
+    replacedByNumbers: r.replacedBy.map((x) =>
+      formatDocNumber("ORD", { yearMonth: x.yearMonth, seq: x.seq }),
+    ),
     orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
     notes: r.notes,
     items,

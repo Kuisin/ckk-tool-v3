@@ -248,7 +248,7 @@ export function DesignRequestDetail({
   // 成果物（この依頼から出来た版）。完了できるかの判定はサーバー側
   // (completeDesign) が正で、ここは同じ条件を画面に出しているだけ。
   const producedVersions = [
-    ...new Set(request.files.map((f) => f.version)),
+    ...new Set(request.versions.map((v) => v.version)),
   ].sort((a, b) => b - a);
   const hasProducedVersion = producedVersions.length > 0;
   /** 未登録のときに送る先 — 製品・受注元・依頼を埋めた 設計図 の登録画面。 */
@@ -434,7 +434,7 @@ export function DesignRequestDetail({
               {
                 key: "product",
                 label: request.productName,
-                href: `/production/design-files/${request.productId}`,
+                href: `/production/design-files/${request.itemId}`,
                 note: tr("sales.designRequests.whereTheLatestDrawingApplies"),
               },
             ],
@@ -867,9 +867,9 @@ export function DesignRequestDetail({
                 <Text fw={600} size="sm">
                   {tr("sales.designRequests.deliverableVersion")}
                 </Text>
-                {request.productId != null && (
+                {request.itemId != null && (
                   <SecondaryButton
-                    href={`/production/design-files/${request.productId}`}
+                    href={`/production/design-files/${request.itemId}`}
                     leftSection={<IconFile size={14} />}
                   >
                     {tr("common.managedByDrawing")}

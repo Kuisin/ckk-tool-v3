@@ -61,8 +61,8 @@ import {
 import { z } from "zod";
 import {
   searchAllocatableOrderLineOptions,
-  searchMaterialOptions,
-  searchProductOptions,
+  searchMaterialItemOptions,
+  searchProductItemOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   copyRouteToCustomer,
@@ -102,24 +102,32 @@ import { FormSection, FormShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 // type-only import — lib/atp は server-only（型はバンドルされない）。
 import type { MaterialAtp } from "@/lib/atp";
-import { workOrderTypeOptions } from "@/lib/enum-labels";
+import {
+  orderTypeLabel,
+  WORK_ORDER_TYPE_COLOR,
+  workOrderTypeLabel,
+  workOrderTypeOptions,
+} from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { RouteStepSnapshot, RouteView } from "@/lib/product-routes-core";
 import {
   isOtherCustomerRoute,
+  pickDefaultCommonRoute,
   pickDefaultPrepRoute,
   pickDefaultRoute,
   routeStepsEqual,
   routesVisibleForCustomer,
 } from "@/lib/product-routes-core";
+import { workOrderTypeForLine } from "@/lib/work-order-alloc-core";
 import { requiredPlanFields } from "@/lib/work-plan-core";
 import type { CatalogStep, UseDep } from "@/lib/workflow-core";
 import {
   isBlockingIssue,
   isPrepStep,
-  isShipStep,
+  REGRIND_RECEIPT_STEP_CODE,
   STOCK_ISSUE_STEP_CODE,
+  stepAllowedForType,
   validateComposition,
 } from "@/lib/workflow-core";
 import type { WorkOrderView } from "./model";
@@ -133,14 +141,19 @@ interface Option {
 
 const schema = (tr: (key: string) => string) =>
   z.object({
-    // 在庫向け（注文明細なし）のときの対象製品
-    productId: z.string().nullable(),
-    type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
+    /**
+     * 在庫向け（注文明細なし）のときの対象製品 — **品目 id（items.id）**を
+     * 文字列で保持。注文明細から来る側（routesInfo.itemId）と同じ id 空間で
+     * なければならない。旧 products.id と混ざっても型は通るので、名前で防ぐ。
+     */
+    itemId: z.string().nullable(),
+    type: z.enum(["FROM_STOCK", "MANUFACTURE", "REGRIND"]),
     plannedQuantity: z
       .number()
       .int()
       .min(1, tr("production.workflowBuilder.plannedQuantityMustBeAtLeast1")),
-    materialId: z.string().nullable(),
+    /** 使用素材の品目 id（items.id）を文字列で保持。 */
+    materialItemId: z.string().nullable(),
     storageLocationId: z.string().nullable(),
     /** 不足 / 超過分もそのまま納品してよいロットか（§8 過不足納品）。 */
     allowQuantityVariance: z.boolean(),
@@ -170,10 +183,10 @@ function initialValues(
 ): FormValues {
   if (!workOrder) {
     return {
-      productId: null,
+      itemId: null,
       type: "MANUFACTURE",
       plannedQuantity: 1,
-      materialId: null,
+      materialItemId: null,
       storageLocationId: null,
       allowQuantityVariance: false,
       designFileId: null,
@@ -182,12 +195,16 @@ function initialValues(
     };
   }
   return {
-    productId:
-      workOrder.orderLines.length === 0 ? String(workOrder.productId) : null,
+    itemId:
+      workOrder.orderLines.length === 0 && workOrder.productItemId != null
+        ? String(workOrder.productItemId)
+        : null,
     type: workOrder.type as FormValues["type"],
     plannedQuantity: workOrder.plannedQuantity,
-    materialId:
-      workOrder.materialId != null ? String(workOrder.materialId) : null,
+    materialItemId:
+      workOrder.materialItemId != null
+        ? String(workOrder.materialItemId)
+        : null,
     allowQuantityVariance: workOrder.allowQuantityVariance,
     storageLocationId:
       workOrder.storageLocationId != null
@@ -216,7 +233,7 @@ function initialAllocRows(
         label: `${l.number} ${workOrder.productName}（${l.lineQuantity}）`,
         customerName: l.customerName ?? "",
         productName: workOrder.productName,
-        productId: workOrder.productId,
+        itemId: workOrder.productItemId ?? 0,
         quantity: l.lineQuantity,
         status: l.status,
         // 表示用の暫定値 — 選び直したときにサーバー値で更新される
@@ -312,7 +329,7 @@ export function WorkflowBuilder({
   /** `?orderLine=` プリセレクト（create 時）。 */
   initialOrderLine?: OrderLineRef | null;
   /** §4 分割ガイドからの起動: 種別・数量のプリセット（create 時）。 */
-  initialType?: "FROM_STOCK" | "MANUFACTURE" | null;
+  initialType?: "FROM_STOCK" | "MANUFACTURE" | "REGRIND" | null;
   initialQuantity?: number | null;
   catalogSteps: CatalogStep[];
   useDeps: UseDep[];
@@ -429,47 +446,49 @@ export function WorkflowBuilder({
 
   const selected = form.values.selectedStepIds;
 
-  // 種別で使える工程が変わる（§7 再編）:
+  // 種別で使える工程が変わる（§7 再編。規則は workflow-core stepAllowedForType）:
   //   在庫分   = 製品出し（在庫）+ 出荷前検査 のみ（工程リスト不要）
-  //   製造分   = 製品出し（在庫）以外（従来どおり工程リスト必須）
+  //   製造分   = 製品出し（在庫）・再研磨工程 以外（従来どおり工程リスト必須）
+  //   再研磨   = 製品受入（再研磨）で始まる。材料準備・加工は使えない
   const isStock = form.values.type === "FROM_STOCK";
+  const isRegrind = form.values.type === "REGRIND";
   const productIssueId = useMemo(
     () =>
       catalogSteps.find((c) => c.code === STOCK_ISSUE_STEP_CODE)?.id ?? null,
     [catalogSteps],
   );
+  const regrindReceiptId = useMemo(
+    () =>
+      catalogSteps.find((c) => c.code === REGRIND_RECEIPT_STEP_CODE)?.id ??
+      null,
+    [catalogSteps],
+  );
+  const typeValueForCatalog = form.values.type;
   const catalogForType = useMemo(
     () =>
-      isStock
-        ? catalogSteps.filter(
-            (c) => c.code === STOCK_ISSUE_STEP_CODE || isShipStep(c),
-          )
-        : catalogSteps.filter((c) => c.code !== STOCK_ISSUE_STEP_CODE),
-    [isStock, catalogSteps],
+      catalogSteps.filter((c) => stepAllowedForType(c, typeValueForCatalog)),
+    [typeValueForCatalog, catalogSteps],
   );
-  /** 種別切替時に選択工程を合わせる（在庫分は 製品出し 必須 + 出荷系のみ）。 */
+  /** 種別切替時に選択工程を合わせる（その種別で使えない工程を外し、必須の開始工程を足す）。 */
   const applyTypeToSteps = useCallback(
-    (type: "FROM_STOCK" | "MANUFACTURE") => {
+    (type: FormValues["type"]) => {
       const current = form.values.selectedStepIds;
-      if (type === "FROM_STOCK") {
-        const allowed = new Set(
-          catalogSteps
-            .filter((c) => c.code === STOCK_ISSUE_STEP_CODE || isShipStep(c))
-            .map((c) => c.id),
-        );
-        const next = current.filter((id) => allowed.has(id));
-        if (productIssueId != null && !next.includes(productIssueId)) {
-          next.unshift(productIssueId);
-        }
-        form.setFieldValue("selectedStepIds", next);
-      } else if (productIssueId != null) {
-        form.setFieldValue(
-          "selectedStepIds",
-          current.filter((id) => id !== productIssueId),
-        );
-      }
+      const allowed = new Set(
+        catalogSteps
+          .filter((c) => stepAllowedForType(c, type))
+          .map((c) => c.id),
+      );
+      const next = current.filter((id) => allowed.has(id));
+      const required =
+        type === "FROM_STOCK"
+          ? productIssueId
+          : type === "REGRIND"
+            ? regrindReceiptId
+            : null;
+      if (required != null && !next.includes(required)) next.unshift(required);
+      form.setFieldValue("selectedStepIds", next);
     },
-    [form, catalogSteps, productIssueId],
+    [form, catalogSteps, productIssueId, regrindReceiptId],
   );
 
   // 検査表は検査工程ごとの割当。未編集（キー無し）の工程は、その工程を
@@ -495,14 +514,14 @@ export function WorkflowBuilder({
   // 直接指定した製品）。検査表の既定選択を製品専用テンプレートに絞るためだけ
   // に使う — 割当明細の製品解決を待つ routesInfo（サーバー往復）は使わず、
   // 既にクライアントにある値から同期的に出す。
-  const workOrderProductId = useMemo(() => {
+  const workOrderItemId = useMemo(() => {
     if (target === "SALES_ORDER") {
       return (
-        allocRows.find((r) => r.info && r.orderLineId)?.info?.productId ?? null
+        allocRows.find((r) => r.info && r.orderLineId)?.info?.itemId ?? null
       );
     }
-    return form.values.productId ? Number(form.values.productId) : null;
-  }, [target, allocRows, form.values.productId]);
+    return form.values.itemId ? Number(form.values.itemId) : null;
+  }, [target, allocRows, form.values.itemId]);
   const templatesFor = useCallback(
     (stepId: number): string[] =>
       stepTemplates[stepId] ??
@@ -510,27 +529,40 @@ export function WorkflowBuilder({
         .filter(
           (t) =>
             t.relatedProcessStepId === stepId &&
-            (t.productId == null ||
-              workOrderProductId == null ||
-              t.productId === workOrderProductId),
+            (t.itemId == null ||
+              workOrderItemId == null ||
+              t.itemId === workOrderItemId),
         )
         .map((t) => t.value),
-    [stepTemplates, templateOptions, workOrderProductId],
+    [stepTemplates, templateOptions, workOrderItemId],
   );
 
   // ── 工程ルート（製品の工程リスト） ──────────────────────────────────────────
   const [routesInfo, setRoutesInfo] = useState<{
-    productId: number;
+    /** 対象製品の品目 id（items.id）。 */
+    itemId: number;
     /** 明細の受注元（在庫向けは null）— 顧客一致ルートの優先選択に使う。 */
     customerBpId: string | null;
     customerName: string | null;
     routes: RouteView[];
     /** 準備工程リスト（共通・有効のみ）。 */
     prepRoutes: RouteView[];
+    /** 再研磨工程リスト（共通・有効のみ）。 */
+    regrindRoutes: RouteView[];
+    /** 明細の注文種別（REGRIND なら種別は再研磨に固定）。 */
+    orderType: string | null;
   } | null>(null);
   /** 選択中ルート id（文字列）。null = ルートを使わない。 */
   const [routeSel, setRouteSel] = useState<string | null>(
-    workOrder?.routeId != null ? String(workOrder.routeId) : null,
+    workOrder?.routeId != null && workOrder.type !== "REGRIND"
+      ? String(workOrder.routeId)
+      : null,
+  );
+  // ── 再研磨工程リスト（共通）— 再研磨指示書はこれ 1 本。版は選べない（常に最新版）。
+  const [regrindRouteSel, setRegrindRouteSel] = useState<string | null>(
+    workOrder?.routeId != null && workOrder.type === "REGRIND"
+      ? String(workOrder.routeId)
+      : null,
   );
   const [versionSel, setVersionSel] = useState<string | null>(
     workOrder?.routeVersionId ?? null,
@@ -560,7 +592,7 @@ export function WorkflowBuilder({
   // 割当先頭の明細（工程ルート解決・素材 ATP の基準）
   const firstOrderLineId =
     allocRows.find((r) => r.orderLineId != null)?.orderLineId ?? null;
-  const productIdValue = form.values.productId;
+  const itemIdValue = form.values.itemId;
   // 対象に応じてルートを解決: 注文明細 → 明細の製品 / 在庫向け → 直接指定製品。
   // 「この顧客に複製」のあとも同じ経路で読み直す。
   const routeLoader = useMemo(
@@ -569,10 +601,10 @@ export function WorkflowBuilder({
         ? firstOrderLineId
           ? () => getProductRoutesForOrderLine(firstOrderLineId)
           : null
-        : productIdValue
-          ? () => getProductRoutesForProduct(Number(productIdValue))
+        : itemIdValue
+          ? () => getProductRoutesForProduct(Number(itemIdValue))
           : null,
-    [target, firstOrderLineId, productIdValue],
+    [target, firstOrderLineId, itemIdValue],
   );
   useEffect(() => {
     if (!routeLoader) {
@@ -594,15 +626,15 @@ export function WorkflowBuilder({
     options: Option[];
     autoLabel: string | null;
   } | null>(null);
-  const designProductId = routesInfo?.productId ?? null;
+  const designItemId = routesInfo?.itemId ?? null;
   const designCustomerBpId = routesInfo?.customerBpId ?? null;
   useEffect(() => {
-    if (designProductId == null) {
+    if (designItemId == null) {
       setDesignInfo(null);
       return;
     }
     let cancelled = false;
-    getDesignVersionsForProduct(designProductId, designCustomerBpId).then(
+    getDesignVersionsForProduct(designItemId, designCustomerBpId).then(
       (info) => {
         if (!cancelled) setDesignInfo(info);
       },
@@ -610,20 +642,20 @@ export function WorkflowBuilder({
     return () => {
       cancelled = true;
     };
-  }, [designProductId, designCustomerBpId]);
+  }, [designItemId, designCustomerBpId]);
 
   // 別製品へ切り替えたら図面の固定は外す（他製品の版が残ると保存で弾かれる）。
   // **初回は外さない** — 編集で開いたときは保存済みの固定が入っており、
   // ここで消すと「開いただけで設定が消える」ことになる。
-  const prevDesignProductId = useRef<number | null>(null);
+  const prevDesignItemId = useRef<number | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: 製品が変わったときだけ
   useEffect(() => {
-    const prev = prevDesignProductId.current;
-    prevDesignProductId.current = designProductId;
-    if (prev != null && prev !== designProductId) {
+    const prev = prevDesignItemId.current;
+    prevDesignItemId.current = designItemId;
+    if (prev != null && prev !== designItemId) {
       form.setFieldValue("designFileId", null);
     }
-  }, [designProductId]);
+  }, [designItemId]);
 
   // 別製品の注文明細へ切り替えたらルート選択をリセット（準備側は共通なので残る）
   useEffect(() => {
@@ -656,6 +688,12 @@ export function WorkflowBuilder({
       routesInfo?.prepRoutes.find((r) => String(r.id) === prepRouteSel) ?? null,
     [routesInfo, prepRouteSel],
   );
+  const selectedRegrindRoute = useMemo(
+    () =>
+      routesInfo?.regrindRoutes.find((r) => String(r.id) === regrindRouteSel) ??
+      null,
+    [routesInfo, regrindRouteSel],
+  );
 
   /**
    * 版の工程を、いまの構成の**その種別の部分**と入れ替える。
@@ -668,7 +706,10 @@ export function WorkflowBuilder({
    * で決まるので、ここでは集合だけを合わせる。
    */
   const mergeVersionSteps = useCallback(
-    (steps: RouteStepSnapshot[], kind: "PREP" | "MANUFACTURING") => {
+    (
+      steps: RouteStepSnapshot[],
+      kind: "PREP" | "MANUFACTURING" | "REGRIND",
+    ) => {
       const knownIds = new Set(catalogSteps.map((s) => s.id));
       const usable = steps.filter((s) => knownIds.has(s.processStepId));
       if (usable.length < steps.length) {
@@ -679,15 +720,16 @@ export function WorkflowBuilder({
         });
       }
       const isPrepId = (id: number) => prepStepIds.has(id);
-      const incoming = usable.filter((s) =>
-        kind === "PREP"
-          ? isPrepId(s.processStepId)
-          : !isPrepId(s.processStepId),
-      );
+      // 再研磨リストは 1 本で完結する — その版に置き換える（残すものは無い）。
+      const inKind = (id: number) =>
+        kind === "REGRIND"
+          ? true
+          : kind === "PREP"
+            ? isPrepId(id)
+            : !isPrepId(id);
+      const incoming = usable.filter((s) => inKind(s.processStepId));
       const current = form.getValues().selectedStepIds;
-      const kept = current.filter((id) =>
-        kind === "PREP" ? !isPrepId(id) : isPrepId(id),
-      );
+      const kept = current.filter((id) => !inKind(id));
       const next = [...kept, ...incoming.map((s) => s.processStepId)];
       form.setFieldValue("selectedStepIds", [...new Set(next)]);
       setLocations((prev) => ({ ...prev, ...snapshotLocations(incoming) }));
@@ -748,6 +790,29 @@ export function WorkflowBuilder({
     );
   };
 
+  /** 再研磨工程リストを選ぶ → その**最新版**で工程を置き換える。 */
+  const applyRegrindRoute = useCallback(
+    (route: RouteView | null) => {
+      const latest = route?.versions[0];
+      if (!latest) return;
+      getRouteVersionSteps(latest.id).then((steps) => {
+        mergeVersionSteps(steps, "REGRIND");
+      });
+    },
+    [mergeVersionSteps],
+  );
+
+  const onRegrindRouteChange = (value: string | null) => {
+    setRegrindRouteSel(value);
+    if (!value) {
+      setStepsEditing(true);
+      return;
+    }
+    applyRegrindRoute(
+      routesInfo?.regrindRoutes.find((r) => String(r.id) === value) ?? null,
+    );
+  };
+
   /**
    * 他の受注元専用のリストを、この受注元のリストとして複製して選ぶ。
    * 複製した側は v1 なので、選んでいた版の中身がそのまま出発点になる。
@@ -793,6 +858,43 @@ export function WorkflowBuilder({
   // biome-ignore lint/correctness/useExhaustiveDependencies: routesInfo ロード時のみ発火させる
   useEffect(() => {
     if (routesInfo == null) return;
+    // **種別は明細が決める**（workOrderTypeForLine が唯一の定義元）。
+    // 明細を選び直したときにもここで追随する — サーバーの初期値だけに頼ると、
+    // 画面で別の明細へ変えたときに古い種別が残る。
+    const currentType = form.getValues().type;
+    const effectiveType = workOrderTypeForLine(
+      routesInfo.orderType,
+      currentType,
+    );
+    const lineIsRegrind = effectiveType === "REGRIND";
+    if (effectiveType !== currentType) {
+      form.setFieldValue("type", effectiveType);
+      if (lineIsRegrind) {
+        form.setFieldValue("materialItemId", null);
+        form.setFieldValue("storageLocationId", null);
+      }
+      applyTypeToSteps(effectiveType);
+    }
+    if (effectiveType === "REGRIND") {
+      // 再研磨リストは常に最新版: 選択済みならその最新版で置き換え、未選択なら
+      // 有効なものが 1 本のときだけ自動で選ぶ（pickDefaultCommonRoute）。
+      if (regrindRouteSel != null) {
+        applyRegrindRoute(
+          routesInfo.regrindRoutes.find(
+            (r) => String(r.id) === regrindRouteSel,
+          ) ?? null,
+        );
+      } else if (mode === "create") {
+        const picked = pickDefaultCommonRoute(routesInfo.regrindRoutes);
+        if (picked) {
+          setRegrindRouteSel(String(picked.id));
+          applyRegrindRoute(picked);
+        } else {
+          setStepsEditing(true);
+        }
+      }
+      return;
+    }
     // 準備側は常に最新版: 選択済み（編集で開いた指示書も含む）ならその最新版で
     // 準備工程を入れ替え、未選択なら有効なものが 1 本のときだけ自動で選ぶ
     // （pickDefaultPrepRoute）。編集で開いたとき古い版の並びのままだと、
@@ -878,7 +980,8 @@ export function WorkflowBuilder({
   const typeValue = form.values.type;
   useEffect(() => {
     if (target !== "SALES_ORDER" || allocTotal <= 0) return;
-    if (typeValue === "FROM_STOCK") {
+    // 在庫分・再研磨は割当 = 予定数量（消費先 / 所有者が一意）。
+    if (typeValue !== "MANUFACTURE") {
       if (plannedQuantityValue !== allocTotal) {
         form.setFieldValue("plannedQuantity", allocTotal);
       }
@@ -892,7 +995,7 @@ export function WorkflowBuilder({
     const ids = new Set(
       allocRows
         .filter((r) => r.info && r.orderLineId)
-        .map((r) => r.info?.productId ?? 0),
+        .map((r) => r.info?.itemId ?? 0),
     );
     return ids.size > 1;
   }, [allocRows]);
@@ -975,21 +1078,21 @@ export function WorkflowBuilder({
   const [materialAtpInfo, setMaterialAtpInfo] = useState<MaterialAtp | null>(
     null,
   );
-  const materialIdValue =
-    form.values.type === "MANUFACTURE" ? form.values.materialId : null;
+  const materialItemIdValue =
+    form.values.type === "MANUFACTURE" ? form.values.materialItemId : null;
   useEffect(() => {
-    if (!materialIdValue) {
+    if (!materialItemIdValue) {
       setMaterialAtpInfo(null);
       return;
     }
     let cancelled = false;
-    getMaterialAtp(Number(materialIdValue)).then((atp) => {
+    getMaterialAtp(Number(materialItemIdValue)).then((atp) => {
       if (!cancelled) setMaterialAtpInfo(atp);
     });
     return () => {
       cancelled = true;
     };
-  }, [materialIdValue]);
+  }, [materialItemIdValue]);
 
   // ── 使用素材のプリフィル（製品の想定材種 × 直径） + 想定外の警告 ────────────
   // 製品は「材種 + 直径」で素材を指定する（cut-to-length のため特定の
@@ -1005,53 +1108,60 @@ export function WorkflowBuilder({
     useState<MaterialTypeSpec | null>(null);
   // 製品が変わるたびリセット — 新しい製品では改めて候補を提示してよい
   const materialTouchedRef = useRef(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: workOrderProductId は再実行の起点（ref の書き換え自体には使わない）
+  // biome-ignore lint/correctness/useExhaustiveDependencies: workOrderItemId は再実行の起点（ref の書き換え自体には使わない）
   useEffect(() => {
     materialTouchedRef.current = false;
-  }, [workOrderProductId]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 製品/種別が変わったときだけ引き直す（materialId・setFieldValue は判定・更新に使うだけで再実行の起点にはしない）
+  }, [workOrderItemId]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 製品/種別が変わったときだけ引き直す（materialItemId・setFieldValue は判定・更新に使うだけで再実行の起点にはしない）
   useEffect(() => {
-    if (workOrderProductId == null) {
+    if (workOrderItemId == null) {
       setMaterialAssumption(null);
       return;
     }
     let cancelled = false;
-    getWorkOrderMaterialAssumption(workOrderProductId).then((info) => {
+    getWorkOrderMaterialAssumption(workOrderItemId, {
+      customerBpId: designCustomerBpId,
+      designFileId: form.values.designFileId,
+    }).then((info) => {
       if (cancelled) return;
       setMaterialAssumption(info);
       if (
-        info?.suggestedMaterialId != null &&
+        info?.suggestedItemId != null &&
         !materialTouchedRef.current &&
-        !form.values.materialId &&
+        !form.values.materialItemId &&
         form.values.type === "MANUFACTURE"
       ) {
-        form.setFieldValue("materialId", String(info.suggestedMaterialId));
+        form.setFieldValue("materialItemId", String(info.suggestedItemId));
         setSuggestedMaterialOption({
-          value: String(info.suggestedMaterialId),
-          label:
-            info.suggestedMaterialLabel ?? String(info.suggestedMaterialId),
+          value: String(info.suggestedItemId),
+          label: info.suggestedMaterialLabel ?? String(info.suggestedItemId),
         });
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [workOrderProductId, form.values.type]);
+  }, [
+    workOrderItemId,
+    form.values.type,
+    designCustomerBpId,
+    form.values.designFileId,
+  ]);
   useEffect(() => {
-    if (!materialIdValue) {
+    if (!materialItemIdValue) {
       setSelectedMaterialSpec(null);
       return;
     }
     let cancelled = false;
-    getMaterialTypeSpec(Number(materialIdValue)).then((spec) => {
+    getMaterialTypeSpec(Number(materialItemIdValue)).then((spec) => {
       if (!cancelled) setSelectedMaterialSpec(spec);
     });
     return () => {
       cancelled = true;
     };
-  }, [materialIdValue]);
+  }, [materialItemIdValue]);
   const materialMismatch =
-    materialIdValue != null &&
+    materialItemIdValue != null &&
     selectedMaterialSpec != null &&
     materialAssumption?.materialTypeId != null &&
     (selectedMaterialSpec.materialTypeId !==
@@ -1162,9 +1272,9 @@ export function WorkflowBuilder({
       });
       return;
     }
-    if (target === "STOCK" && !values.productId) {
+    if (target === "STOCK" && !values.itemId) {
       form.setFieldError(
-        "productId",
+        "itemId",
         tr("production.workOrders.selectTheTargetProduct"),
       );
       return;
@@ -1180,9 +1290,10 @@ export function WorkflowBuilder({
       return;
     }
     // 製造分は常に工程リスト（ルート）に基づく — 既存を選ぶか新規作成する。
-    // 在庫分は固定構成（製品出し + 出荷系）なので工程リストを使わない。
+    // 在庫分は固定構成（製品出し + 出荷系）、再研磨は共通の再研磨工程リスト
+    // （regrindRouteId）なので、製造工程リストは使わない。
     const route: WorkOrderInput["route"] =
-      values.type === "FROM_STOCK"
+      values.type !== "MANUFACTURE"
         ? null
         : routeSel != null && versionSel != null
           ? {
@@ -1200,7 +1311,7 @@ export function WorkflowBuilder({
                     : null,
               }
             : null;
-    if (values.type !== "FROM_STOCK" && route == null) {
+    if (values.type === "MANUFACTURE" && route == null) {
       notifications.show({
         title: tr("production.workOrders.aStepListIsRequired"),
         message: tr("production.workOrders.selectAnExistingStepListOr"),
@@ -1210,7 +1321,7 @@ export function WorkflowBuilder({
     }
     // 準備工程リストが 1 本でもあれば製造分は必須（サーバーも同じ判定）。
     if (
-      values.type !== "FROM_STOCK" &&
+      values.type === "MANUFACTURE" &&
       (routesInfo?.prepRoutes.length ?? 0) > 0 &&
       prepRouteSel == null
     ) {
@@ -1221,22 +1332,35 @@ export function WorkflowBuilder({
       });
       return;
     }
+    // 再研磨工程リストが 1 本でもあれば再研磨は必須（サーバーも同じ判定）。
+    if (
+      values.type === "REGRIND" &&
+      (routesInfo?.regrindRoutes.length ?? 0) > 0 &&
+      regrindRouteSel == null
+    ) {
+      notifications.show({
+        title: tr("production.workOrders.aStepListIsRequired"),
+        message: tr("production.workflowBuilder.selectARegrindRoute"),
+        color: "red",
+      });
+      return;
+    }
     const payload: WorkOrderInput = {
       allocations: target === "SALES_ORDER" ? allocations : [],
-      productId:
-        target === "STOCK" && values.productId
-          ? Number(values.productId)
-          : null,
+      itemId:
+        target === "STOCK" && values.itemId ? Number(values.itemId) : null,
       type: target === "STOCK" ? "MANUFACTURE" : values.type,
       plannedQuantity: values.plannedQuantity,
-      materialId:
-        values.type === "MANUFACTURE" && values.materialId
-          ? Number(values.materialId)
+      materialItemId:
+        values.type === "MANUFACTURE" && values.materialItemId
+          ? Number(values.materialItemId)
           : null,
       allowQuantityVariance: values.allowQuantityVariance,
-      storageLocationId: values.storageLocationId
-        ? Number(values.storageLocationId)
-        : null,
+      // 再研磨は顧客の工具を返すので保管場所を持たない。
+      storageLocationId:
+        values.type !== "REGRIND" && values.storageLocationId
+          ? Number(values.storageLocationId)
+          : null,
       designFileId: values.designFileId,
       notes: values.notes,
       steps: currentSnapshots.map((s) => ({
@@ -1251,9 +1375,14 @@ export function WorkflowBuilder({
       route,
       // 準備工程リストは id だけ — 版はサーバーが最新を当てる（applyLatestPrepRoute）
       prepRouteId:
-        values.type === "FROM_STOCK" || prepRouteSel == null
+        values.type !== "MANUFACTURE" || prepRouteSel == null
           ? null
           : Number(prepRouteSel),
+      // 再研磨工程リストも id だけ — 版はサーバーが最新を当てる（applyLatestRegrindRoute）
+      regrindRouteId:
+        values.type === "REGRIND" && regrindRouteSel != null
+          ? Number(regrindRouteSel)
+          : null,
       // 作成時の作業計画（計画日 × 作業場所 × 担当者（任意））。担当者が複数なら
       // 1 人 1 行、誰も入れなければ担当者なしの 1 行。編集では送らない（計画の
       // 管理は工程実行画面の計画パネル — ここで送ると既存計画と二重になる）。
@@ -1345,6 +1474,26 @@ export function WorkflowBuilder({
       value: String(r.id),
       label: r.name,
     })) ?? [];
+  const regrindRouteOptions: Option[] =
+    routesInfo?.regrindRoutes.map((r) => ({
+      value: String(r.id),
+      label: r.name,
+    })) ?? [];
+  const selectedRegrindLatest = selectedRegrindRoute?.versions[0] ?? null;
+  /** 先頭の割当明細が再研磨か（種別を固定する）。 */
+  const lineIsRegrind = routesInfo?.orderType === "REGRIND";
+  /**
+   * 実際に選べる種別だけ。1 つしか無ければ「選ぶ」ことは無いので、
+   * 上の表示は固定値に切り替わる。
+   *   在庫向け（明細なし） … 製造分だけ
+   *   再研磨の明細        … 再研磨だけ（注文請書が決めている）
+   *   それ以外の明細      … 在庫分 / 製造分（どちらで手配するかは生産の判断）
+   */
+  const typeChoices = workOrderTypeOptions(locale).filter((o) => {
+    if (target === "STOCK") return o.value === "MANUFACTURE";
+    if (routesInfo == null) return true;
+    return lineIsRegrind ? o.value === "REGRIND" : o.value !== "REGRIND";
+  });
   const renderVersionOption =
     (route: RouteView | null) =>
     ({ option }: { option: { value: string; label: string } }) => {
@@ -1501,7 +1650,7 @@ export function WorkflowBuilder({
                 {tr("production.workOrders.theAllocatedLinesMixProductsOrder")}
               </Alert>
             )}
-            {form.values.type !== "FROM_STOCK" && (
+            {form.values.type === "MANUFACTURE" && (
               <GhostButton
                 leftSection={<IconPlus size={14} />}
                 onClick={addAllocRow}
@@ -1516,21 +1665,23 @@ export function WorkflowBuilder({
           {target === "STOCK" && (
             <Stack gap={4}>
               <SearchSelect
-                error={form.errors.productId}
+                error={form.errors.itemId}
                 initialOption={
-                  workOrder && workOrder.orderLines.length === 0
+                  workOrder &&
+                  workOrder.orderLines.length === 0 &&
+                  workOrder.productItemId != null
                     ? {
-                        value: String(workOrder.productId),
+                        value: String(workOrder.productItemId),
                         label: workOrder.productName,
                       }
                     : null
                 }
                 label={<HelpLabel {...fieldHelp(tr, "workOrder", "product")} />}
-                onChange={(v) => form.setFieldValue("productId", v)}
-                onSearch={searchProductOptions}
+                onChange={(v) => form.setFieldValue("itemId", v)}
+                onSearch={searchProductItemOptions}
                 placeholder={tr("common.searchByProductCodeOrName")}
                 storageKey="product"
-                value={form.values.productId}
+                value={form.values.itemId}
                 withAsterisk
               />
               <Text c="dimmed" size="xs">
@@ -1539,35 +1690,90 @@ export function WorkflowBuilder({
             </Stack>
           )}
           <Stack gap={4}>
-            <Text fw={500} size="sm">
-              {tr("common.type2")}
+            {/*
+              component="span" は必須 — Text の既定は <p> で、HelpLabel の
+              「?」は ThemeIcon（div）。<p> の中に div が来るとパーサが <p> を
+              閉じてしまい、サーバーの HTML と食い違って hydration が落ちる
+              （React #418）。
+            */}
+            <Text component="span" fw={500} size="sm">
+              <HelpLabel {...fieldHelp(tr, "workOrder", "type")} />
             </Text>
-            <SegmentedControl
-              data={workOrderTypeOptions(locale).map((o) => ({
-                ...o,
-                disabled: target === "STOCK" && o.value === "FROM_STOCK",
-              }))}
-              onChange={(v) => {
-                form.setFieldValue("type", v as FormValues["type"]);
-                applyTypeToSteps(v as FormValues["type"]);
-                if (v === "FROM_STOCK") {
-                  form.setFieldValue("materialId", null);
-                  // 在庫分は割当 1 件のみ — 先頭の有効行だけ残す
-                  setAllocRows((rows) => {
-                    const first =
-                      rows.find((r) => r.orderLineId != null) ?? rows[0];
-                    return [first];
-                  });
-                  // 在庫分は固定構成 — 工程リスト（ルート）は使わない
-                  setRouteSel(null);
-                  setVersionSel(null);
-                  setBaseSteps(null);
-                  setNewRouteName("");
-                  setStepsEditing(true);
-                }
-              }}
-              value={form.values.type}
-            />
+            {/*
+              **選べないときは選ばせない。** 製造か再研磨かを決めるのは注文請書
+              （明細の注文種別）で、指示書ではない。押せない選択肢を並べると
+              「選べるはずのもの」に見えるので、決まっているときは決まった値と
+              その理由だけを出す。
+            */}
+            {typeChoices.length <= 1 ? (
+              <Group gap="xs">
+                <Badge
+                  color={WORK_ORDER_TYPE_COLOR[form.values.type] ?? "gray"}
+                  variant="light"
+                >
+                  {workOrderTypeLabel(form.values.type, locale) ??
+                    form.values.type}
+                </Badge>
+                <Text c="dimmed" size="xs">
+                  {target === "STOCK"
+                    ? tr("production.workflowBuilder.typeFixedByStockTarget")
+                    : tr("production.workflowBuilder.typeFixedByOrderLine", {
+                        orderType:
+                          orderTypeLabel(routesInfo?.orderType ?? "", locale) ??
+                          routesInfo?.orderType ??
+                          "",
+                      })}
+                </Text>
+              </Group>
+            ) : (
+              <SegmentedControl
+                data={typeChoices}
+                onChange={(v) => {
+                  form.setFieldValue("type", v as FormValues["type"]);
+                  applyTypeToSteps(v as FormValues["type"]);
+                  if (v === "REGRIND") {
+                    form.setFieldValue("materialItemId", null);
+                    form.setFieldValue("storageLocationId", null);
+                    // 再研磨は割当 1 件のみ — 先頭の有効行だけ残す
+                    setAllocRows((rows) => {
+                      const first =
+                        rows.find((r) => r.orderLineId != null) ?? rows[0];
+                      return [first];
+                    });
+                    // 製造工程リストは使わない（再研磨工程リストへ）
+                    setRouteSel(null);
+                    setVersionSel(null);
+                    setBaseSteps(null);
+                    setNewRouteName("");
+                    setPrepRouteSel(null);
+                    const picked = pickDefaultCommonRoute(
+                      routesInfo?.regrindRoutes ?? [],
+                    );
+                    setRegrindRouteSel(picked ? String(picked.id) : null);
+                    if (picked) applyRegrindRoute(picked);
+                    else setStepsEditing(true);
+                  } else {
+                    setRegrindRouteSel(null);
+                  }
+                  if (v === "FROM_STOCK") {
+                    form.setFieldValue("materialItemId", null);
+                    // 在庫分は割当 1 件のみ — 先頭の有効行だけ残す
+                    setAllocRows((rows) => {
+                      const first =
+                        rows.find((r) => r.orderLineId != null) ?? rows[0];
+                      return [first];
+                    });
+                    // 在庫分は固定構成 — 工程リスト（ルート）は使わない
+                    setRouteSel(null);
+                    setVersionSel(null);
+                    setBaseSteps(null);
+                    setNewRouteName("");
+                    setStepsEditing(true);
+                  }
+                }}
+                value={form.values.type}
+              />
+            )}
           </Stack>
           <NumberInput
             allowDecimal={false}
@@ -1575,10 +1781,15 @@ export function WorkflowBuilder({
               target === "SALES_ORDER" && allocTotal > 0
                 ? form.values.type === "FROM_STOCK"
                   ? tr("production.workOrders.theFromStockQuantityMatchesThe")
-                  : tr(
-                      "production.workflowBuilder.atLeastAllocationTotalWithCount",
-                      { count: allocTotal },
-                    )
+                  : form.values.type === "REGRIND"
+                    ? tr(
+                        "production.workflowBuilder.regrindQuantityMatchesTheAllocation",
+                        { count: allocTotal },
+                      )
+                    : tr(
+                        "production.workflowBuilder.atLeastAllocationTotalWithCount",
+                        { count: allocTotal },
+                      )
                 : undefined
             }
             label={
@@ -1599,9 +1810,9 @@ export function WorkflowBuilder({
               }
               initialOption={
                 suggestedMaterialOption ??
-                (workOrder?.materialId != null && workOrder.materialCode
+                (workOrder?.materialItemId != null && workOrder.materialCode
                   ? {
-                      value: String(workOrder.materialId),
+                      value: String(workOrder.materialItemId),
                       label: `${workOrder.materialCode}（${workOrder.materialName}）`,
                     }
                   : null)
@@ -1610,28 +1821,30 @@ export function WorkflowBuilder({
               onChange={(v) => {
                 materialTouchedRef.current = true;
                 setSuggestedMaterialOption(null);
-                form.setFieldValue("materialId", v);
+                form.setFieldValue("materialItemId", v);
               }}
-              onSearch={searchMaterialOptions}
+              onSearch={searchMaterialItemOptions}
               placeholder={tr(
                 "production.workOrders.searchByMaterialCodeOrName",
               )}
-              storageKey="material"
-              value={form.values.materialId}
+              storageKey="materialItem"
+              value={form.values.materialItemId}
             />
           )}
-          <Select
-            clearable
-            data={storageLocationOptions}
-            label={
-              <HelpLabel {...fieldHelp(tr, "workOrder", "storageLocation")} />
-            }
-            placeholder={tr(
-              "production.workOrders.selectWhereTheFinishedGoodsGo",
-            )}
-            searchable={storageLocationOptions.length > 5}
-            {...form.getInputProps("storageLocationId")}
-          />
+          {!isRegrind && (
+            <Select
+              clearable
+              data={storageLocationOptions}
+              label={
+                <HelpLabel {...fieldHelp(tr, "workOrder", "storageLocation")} />
+              }
+              placeholder={tr(
+                "production.workOrders.selectWhereTheFinishedGoodsGo",
+              )}
+              searchable={storageLocationOptions.length > 5}
+              {...form.getInputProps("storageLocationId")}
+            />
+          )}
           {/* 過不足納品（§8）— 生産側の許可。**どこまでずれてよいかは
               顧客マスタが決める**ので、ここは「出してよいか」だけ。 */}
           <Checkbox
@@ -1682,7 +1895,7 @@ export function WorkflowBuilder({
         )}
         {/* 素材 ATP 警告（充足=緑 / 不足+入荷予定あり=黄 / 不足+入荷予定なし=赤）。
             警告のみ — 保存はブロックしない（§5 素材判断は指示書承認側で行う）。 */}
-        {materialIdValue && materialAtpInfo && (
+        {materialItemIdValue && materialAtpInfo && (
           <MaterialAtpAlert
             atp={materialAtpInfo}
             plannedQuantity={form.values.plannedQuantity}
@@ -1690,10 +1903,51 @@ export function WorkflowBuilder({
         )}
       </FormSection>
 
-      {!isStock &&
+      {isRegrind && allocRows.some((r) => r.info != null) && (
+        <FormSection
+          description={tr("production.workflowBuilder.regrindRouteHelp")}
+          required={regrindRouteOptions.length > 0}
+          title={tr("production.workOrders.regrindRoute")}
+        >
+          <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
+            <Select
+              allowDeselect={false}
+              data={regrindRouteOptions}
+              label={tr("production.workOrders.regrindRoute")}
+              onChange={onRegrindRouteChange}
+              placeholder={
+                regrindRouteOptions.length
+                  ? tr("production.workOrders.selectAStepList")
+                  : tr("production.workflowBuilder.noRegrindRouteRegistered")
+              }
+              searchable
+              value={regrindRouteSel}
+              withAsterisk={regrindRouteOptions.length > 0}
+            />
+            {selectedRegrindLatest && (
+              <Stack gap={4} justify="flex-end">
+                <Text size="sm">
+                  {tr("production.workflowBuilder.regrindRouteUsesLatest", {
+                    version: selectedRegrindLatest.version,
+                    date: fmt.dateTime(selectedRegrindLatest.createdAt),
+                  })}
+                </Text>
+                <Anchor
+                  component={Link}
+                  href="/master/process-steps/regrind-routes"
+                  size="xs"
+                >
+                  {tr("production.workflowBuilder.editRegrindRoutes")}
+                </Anchor>
+              </Stack>
+            )}
+          </SimpleGrid>
+        </FormSection>
+      )}
+      {form.values.type === "MANUFACTURE" &&
         (target === "SALES_ORDER"
           ? allocRows.some((r) => r.info != null)
-          : !!productIdValue) && (
+          : !!itemIdValue) && (
           <FormSection
             description={tr("production.workOrders.aWorkOrderAlwaysFollowsThe")}
             required
@@ -1874,7 +2128,7 @@ export function WorkflowBuilder({
           {/* 準備工程は共通の準備工程リスト（最新版）から入るので、この画面では
               読むだけ。エディタには製造工程だけを渡し、準備工程の集合は
               そのまま持ち越す（並びは保存時にカタログ既定順で決まる）。 */}
-          {!isStock && currentPrep.length > 0 && (
+          {form.values.type === "MANUFACTURE" && currentPrep.length > 0 && (
             <Paper mb="sm" p="sm" radius="sm" withBorder>
               <Text c="dimmed" mb={6} size="xs">
                 {tr("production.workflowBuilder.prepStepsReadOnly")}
@@ -1897,7 +2151,7 @@ export function WorkflowBuilder({
           )}
           <ProcessListEditor
             catalogSteps={
-              isStock
+              isStock || isRegrind
                 ? catalogForType
                 : catalogForType.filter((c) => !prepStepIds.has(c.id))
             }
@@ -1906,20 +2160,22 @@ export function WorkflowBuilder({
                 ? form.errors.selectedStepIds
                 : null
             }
-            kind={isStock ? undefined : "MANUFACTURING"}
+            kind={isStock || isRegrind ? undefined : "MANUFACTURING"}
             locations={locations}
             onLocationsChange={setLocations}
             onSelectedChange={(next) =>
               form.setFieldValue(
                 "selectedStepIds",
-                isStock
+                isStock || isRegrind
                   ? next
                   : [...selected.filter((id) => prepStepIds.has(id)), ...next],
               )
             }
             plantOptions={plantOptions}
             selected={
-              isStock ? selected : selected.filter((id) => !prepStepIds.has(id))
+              isStock || isRegrind
+                ? selected
+                : selected.filter((id) => !prepStepIds.has(id))
             }
             supplierOptions={supplierOptions}
             useDeps={useDeps}
@@ -2001,13 +2257,12 @@ export function WorkflowBuilder({
                   workLocationRequired: cat.workLocationRequired,
                   planTimeRequired: cat.planTimeRequired,
                   planAssigneeRequired: cat.planAssigneeRequired,
-                  planQuantityRequired: cat.planQuantityRequired,
                 },
                 { workLocationsConfigured: workLocationOptions.length > 0 },
               );
-              const needsPanel = required.some(
-                (f) => f === "TIME" || f === "QUANTITY",
-              );
+              // 時刻は作成フォームでは入れさせない（工程ごとの時間割は
+              // 承認後に計画パネルで詰める）ので、必要なら案内だけ出す。
+              const needsPanel = required.includes("TIME");
               return (
                 <Paper key={s.processStepId} p="sm" radius="sm" withBorder>
                   <Group

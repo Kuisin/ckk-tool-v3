@@ -33,8 +33,8 @@ export interface PurchaseOrderRow {
 /** 発注明細（material_purchase_order_items）。 */
 export interface PurchaseOrderItemView {
   id: string;
-  /** 素材の内部 id（連番）を文字列で保持 — SearchSelect の値と揃える。 */
-  materialId: string;
+  /** 選んだ素材の品目 id（items.id）を文字列で保持 — SearchSelect の値と揃える。 */
+  itemId: string;
   materialCode: string;
   materialName: string;
   plantId: string | null;

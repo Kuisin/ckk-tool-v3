@@ -151,6 +151,13 @@ export interface StepExecutionStepView {
   outsourceExpectedAt: string | null;
   outsourceReceivedAt: string | null;
   outsourceCost: number | null;
+  /**
+   * 外注へ出した／戻ったときの入出庫伝票番号（MOV-…）。
+   * **預け在庫を計上したかどうかの印でもある** — 出しの番号が入っていれば、
+   * その数はいまその外注先が持っている（戻りの番号が入るまで）。
+   */
+  outsourceIssueMovementNo: string | null;
+  outsourceReturnMovementNo: string | null;
 }
 
 export interface StepExecutionData {
@@ -160,6 +167,8 @@ export interface StepExecutionData {
   workOrderDocNumber: string;
   workOrderCreatedAt: string;
   workOrderStatus: string; // WORK_ORDER_STATUS
+  /** WORK_ORDER_TYPE。再研磨では半製品の区分を出さない。 */
+  workOrderType: string;
   plannedQuantity: number;
   step: StepExecutionStepView;
   /** 開始可否（canStartStep の結果）。 */

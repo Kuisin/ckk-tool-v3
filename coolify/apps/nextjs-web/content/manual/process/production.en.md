@@ -23,12 +23,12 @@ A page covering the flow from a confirmed order, through checking stock, getting
 
 | Stage | What happens | Role | App used |
 |-------|--------------|------|----------|
-| 1. Check product stock | Split into the portion already in stock and the portion to make new | Production control | [Inventory](/manual/en/operations/production/product-inventory/user) (`PD04`) |
-| 2. Check material | See whether there is enough material to make it | Production control | [Inventory](/manual/en/operations/production/material-inventory/user) (`PD04`) |
-| 3. Make the work order | Split into the stock portion and the manufactured portion (only the manufactured portion has steps lined up) | Sales support | [Work order](/manual/en/operations/production/work-order/user) (`PD02`) |
-| 4. Get approval | Pass every step set in approval settings, so that manufacturing can begin | Approver | [Approval management](/manual/en/operations/production/approval/user) (`PD03`) |
+| 1. Check product stock | Split into the portion already in stock and the portion to make new | Production control | [Inventory](/manual/en/operations/inventory/inventory-management/user) (`ST01`) |
+| 2. Check material | See whether there is enough material to make it | Production control | [Inventory](/manual/en/operations/inventory/inventory-management/user) (`ST01`) |
+| 3. Make the work order | Split into the stock portion and the manufactured portion (only the manufactured portion has steps lined up). Orders to regrind the customer's tools become regrind work orders | Sales support | [Work order](/manual/en/operations/production/work-order/user) (`PD02`) |
+| 4. Get approval | Pass every step set in approval settings, so that manufacturing can begin | Approver | [Approval management](/manual/en/operations/general/my-tasks/user) (`PD03`) |
 | 5. Run the steps | The shop floor records start, completion and quantities | Production | [Work order](/manual/en/operations/production/work-order/user) / shop-floor tablet |
-| 6. Complete | Once every step is done, it becomes product stock | Production / production control | [Inventory](/manual/en/operations/production/product-inventory/user) |
+| 6. Complete | Once every step is done, it becomes product stock | Production / production control | [Inventory](/manual/en/operations/inventory/inventory-management/user) |
 
 ## What happens at each stage
 
@@ -43,6 +43,8 @@ First look at product stock and split it into **the portion that can be taken fr
 ### 3. Making the work order
 
 Make a work order for each of the stock portion and the manufactured portion. It is the manufactured portion that has its steps lined up in order, and it always begins with **exactly one**「出し・受渡し」(issue / hand-over) step (more than one cannot be chosen). The sequence of steps can be registered as a **process route** per product × ordering customer (business partner), and when making a work order it is chosen automatically in the order: the route whose ordering customer matches → a route not limited to any ordering customer → the first route. **The stock portion has a fixed composition of「製品出し」(product issue) plus an optional「出荷前検査」(pre-shipment inspection)**, and creating it allocates the stock. Shipping itself is not a step; it is managed by [Delivery order](/manual/en/operations/shipping/delivery-order/user). If there is a previous work order for the same ordering customer and product, it can be copied (a warning appears if the content has changed). For each step, decide whether it is done in-house or outsourced; outsourcing it makes it appear in the [Outsource order](/manual/en/operations/purchasing/outsource-order/user) list (steps … [Standard flow §6](/manual/en/process/default-flow#stage-6)).
+
+**Regrinding** (an order to regrind tools the customer has used — ours or another maker's) is made as a **regrind work order** from an order line whose order type is regrind. Nothing is manufactured, so it has no material and no storage location; its steps come from the latest version of the shared **regrind step list** (tool receipt → grinding → optional coating / inspection), tied to neither product nor customer. Recording the number of tools that arrived on the first step, tool receipt, books them as the customer's stock (separate from our own). Another maker's tool is registered in the product master as an external product first.
 
 ![New work order screen made from an order line. The save button is highlighted with a red box](../assets/screenshots/flow-work-order-new-01.png)
 
@@ -66,7 +68,7 @@ The shop floor records start and completion for each step. Enter the received qu
 
 ### 6. Completing
 
-Once every step is done, that work order's product goes into stock, and you can go on to [Shipping flow](/manual/en/process/shipping).
+Once every step is done, that work order's product goes into stock, and you can go on to [Shipping flow](/manual/en/process/shipping). **A regrind work order does not add to our own stock** — the received tools are recorded as the customer's property, and the reground pieces are returned with a delivery order.
 
 ![Product stock transaction history. The stock-in record is highlighted with a red box](../assets/screenshots/flow-inventory-in-01.png)
 

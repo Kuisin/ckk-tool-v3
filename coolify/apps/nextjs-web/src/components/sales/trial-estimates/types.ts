@@ -29,8 +29,11 @@ export interface TrialEstimateRecord {
   status: EstimateStatus;
   customerId: string | null;
   customerName: string | null;
-  /** 対象製品（任意リンク — 価格表作成時の基準単価ソース候補）. */
-  productId: string | null;
+  /**
+   * 対象製品（任意リンク — 価格表作成時の基準単価ソース候補）。
+   * 値は品目 id（items.id、`itemType: "PRODUCT"`）— products.id ではない。
+   */
+  itemId: string | null;
   productName: string | null;
   /** 材種 × 直径 × 黒皮/研磨（参照価格の解決キー）. */
   materialTypeId: string;

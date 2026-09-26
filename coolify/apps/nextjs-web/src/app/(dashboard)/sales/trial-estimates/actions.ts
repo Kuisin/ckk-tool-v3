@@ -131,8 +131,11 @@ function createInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
     customerBpId: z.string().nullable(),
     /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
     salesRepId: z.string().nullable().optional(),
-    /** 対象製品（任意）— 価格表作成時の基準単価ソース候補になる。 */
-    productId: z.string().nullable(),
+    /**
+     * 対象製品（任意）— 価格表作成時の基準単価ソース候補になる。
+     * 値は品目 id（items.id、`itemType: "PRODUCT"`）。
+     */
+    itemId: z.string().nullable(),
     materialTypeId: z.string().nullable(),
     diameterCode: z.string().nullable(),
     surfaceFinishCode: z.string().nullable(),
@@ -203,6 +206,7 @@ export async function createTrialEstimate(
         }),
       );
     }
+    const itemId = v.itemId ? Number(v.itemId) : null;
     const { yearMonth, seq } = await allocateDocumentKey("ESTIMATE");
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
@@ -218,7 +222,8 @@ export async function createTrialEstimate(
         status: "DRAFT",
         customerBpId: v.customerBpId,
         salesRepId,
-        productId: v.productId ? Number(v.productId) : null,
+        itemId,
+        // 旧 product_id 列はまだ残っているので橋渡しで埋める（落とすのは最後の段）。
         materialTypeId: v.materialTypeId ? Number(v.materialTypeId) : null,
         diameterCode: v.diameterCode || null,
         surfaceFinishCode: v.surfaceFinishCode || null,
@@ -239,7 +244,7 @@ export async function createTrialEstimate(
       after: {
         name: v.name,
         toolType: v.input.toolType,
-        productId: v.productId,
+        itemId: v.itemId,
         materialTypeId: v.materialTypeId,
         diameterCode: v.diameterCode,
         surfaceFinishCode: v.surfaceFinishCode,
@@ -259,11 +264,11 @@ export async function createTrialEstimate(
 
 /**
  * 製品リンクの設定/解除（詳細画面から）。REGISTERED は価格表が参照済みのため
- * 変更不可。productId = null で解除。
+ * 変更不可。itemId = null で解除。値は品目 id（items.id）。
  */
 export async function linkTrialEstimateProduct(
   number: string,
-  productId: string | null,
+  itemId: string | null,
 ): Promise<ActionResult> {
   const tr = await getTranslations();
   const key = keyOf(number);
@@ -286,31 +291,31 @@ export async function linkTrialEstimateProduct(
       );
     }
     let idNum: number | null = null;
-    if (productId !== null) {
-      idNum = Number(productId);
+    if (itemId !== null) {
+      idNum = Number(itemId);
       if (!Number.isInteger(idNum) || idNum <= 0) {
         return actionError(tr("sales.trialEstimateActions.invalidProduct"));
       }
-      const product = await prisma.product.findUnique({
-        where: { id: idNum },
+      const item = await prisma.item.findFirst({
+        where: { id: idNum, itemType: "PRODUCT" },
+        select: { id: true },
       });
-      if (!product)
+      if (!item)
         return actionError(tr("sales.trialEstimateActions.productNotFound"));
     }
-    if ((estimate.productId ?? null) === idNum) return actionOk();
+    if ((estimate.itemId ?? null) === idNum) return actionOk();
     await prisma.estimate.update({
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
-      data: { productId: idNum },
+      data: { itemId: idNum },
     });
     await recordAudit({
       action: "UPDATE",
       tableName: "estimates",
       recordId: number,
       before: {
-        productId:
-          estimate.productId != null ? String(estimate.productId) : null,
+        itemId: estimate.itemId != null ? String(estimate.itemId) : null,
       },
-      after: { productId: idNum != null ? String(idNum) : null },
+      after: { itemId: idNum != null ? String(idNum) : null },
     });
     revalidate(number);
     return actionOk();

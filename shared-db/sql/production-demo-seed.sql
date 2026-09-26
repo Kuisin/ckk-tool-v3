@@ -70,7 +70,7 @@ ON CONFLICT (user_id, plant_id) DO NOTHING;
 -- （sales_orders）」が別テーブルだったものが 1 テーブルに寄った形で、
 -- 画面上も 下書き 1 行 + 確定 2 行 として並ぶ。
 INSERT INTO app.order_lines (id, acceptance_year_month, acceptance_seq, branch,
-  sort_order, product_id, product_text, order_type, quantity, unit_price, amount,
+  sort_order, item_id, product_text, order_type, quantity, unit_price, amount,
   delivery_date, status, lot_number, is_locked, end_user_bp_id, confirmed_at,
   created_at, updated_at)
 VALUES
@@ -95,7 +95,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ── 製品 9001 の工程ルート「標準工程」v1 ────────────────────────────────────
 -- 使用依存を満たす 6 工程: 素材出し → 切断 → センタレス（外注: デモ研磨工業）
 -- → 段加工 → 段加工検査 → 段加工検査承認。
-INSERT INTO app.product_process_routes (id, product_id, name, is_active, notes,
+INSERT INTO app.product_process_routes (id, item_id, name, is_active, notes,
   created_by, created_at, updated_at)
 VALUES (9001, 9001,
   '{"ja": "標準工程", "en": "Standard route"}'::jsonb, true, NULL,
@@ -147,15 +147,15 @@ ON CONFLICT (id) DO NOTHING;
 --   requested_1st_* → requested_*、approved_1st/2nd_* → approved_*（最終）
 --   approval_status の PENDING_1ST → PENDING
 -- 各段の記録は approval_requests / approval_records 側にある。
-INSERT INTO app.work_orders (id, work_order_number, year_month, seq, product_id, type,
-  planned_quantity, material_id, status, approval_status, route_version_id,
+INSERT INTO app.work_orders (id, work_order_number, year_month, seq, product_item_id, type,
+  planned_quantity, material_item_id, status, approval_status, route_version_id,
   requested_at, requested_by, approved_at, approved_by, started_at, completed_at,
   history, notes, created_by, created_at, updated_at)
 VALUES
   -- #9001: 進行中（受注 50 + 予備 5 = 55。承認記録あり・工程は下の steps 参照）
   ('dc000000-0000-4000-8000-000000009001'::uuid, 9001, '202607', 9001,
    9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
-   55, (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
+   55, (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
    'IN_PROGRESS'::app."WORK_ORDER_STATUS", 'APPROVED'::app."WORK_ORDER_APPROVAL_STATUS",
    'dc040000-0000-4000-8000-000000000001'::uuid,
    '2026-07-15T09:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
@@ -171,7 +171,7 @@ VALUES
   -- #9002: 承認依頼中（PENDING_1ST — PD03 の主役。approval_requests 行あり）
   ('dc000000-0000-4000-8000-000000009002'::uuid, 9002, '202607', 9002,
    9002, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
-   100, (SELECT id FROM app.materials WHERE code = 'B04A0001-B040-310'),
+   100, (SELECT id FROM app.items WHERE code = 'B04A0001-B040-310' AND item_type = 'MATERIAL'),
    'PENDING_APPROVAL'::app."WORK_ORDER_STATUS", 'PENDING'::app."WORK_ORDER_APPROVAL_STATUS",
    NULL,
    '2026-07-20T09:30:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
@@ -192,7 +192,7 @@ VALUES
   -- #9004: 完了（全工程完了 → 良品 55 を製品在庫ロット 9004 として入庫済み）
   ('dc000000-0000-4000-8000-000000009004'::uuid, 9004, '202607', 9004,
    9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
-   60, (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
+   60, (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
    'COMPLETED'::app."WORK_ORDER_STATUS", 'APPROVED'::app."WORK_ORDER_APPROVAL_STATUS",
    'dc040000-0000-4000-8000-000000000001'::uuid,
    '2026-07-08T09:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
@@ -515,16 +515,16 @@ VALUES
    '2026-07-14T10:50:00+09', '2026-07-15T09:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO app.material_purchase_order_items (id, purchase_order_id, material_id,
+INSERT INTO app.material_purchase_order_items (id, purchase_order_id, item_id,
   quantity, unit, unit_price, amount, currency, expected_at, received_quantity,
   plant_id, notes, sort_order)
 VALUES
   ('dc061000-0000-4000-8000-000000000001'::uuid, 'dc060000-0000-4000-8000-000000000001'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
+   (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
    50, '本', 2485, 124250, 'JPY', '2026-08-20', 0,
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0),
   ('dc061000-0000-4000-8000-000000000002'::uuid, 'dc060000-0000-4000-8000-000000000002'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B04A0001-B040-310'),
+   (SELECT id FROM app.items WHERE code = 'B04A0001-B040-310' AND item_type = 'MATERIAL'),
    200, '本', 1100, 220000, 'JPY', '2026-08-10', 0,
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0)
 ON CONFLICT (id) DO NOTHING;
@@ -557,49 +557,51 @@ SELECT setval(pg_get_serial_sequence('app.storage_shelves', 'id'),
               GREATEST((SELECT MAX(id) FROM app.storage_shelves), 9121));
 
 -- ── 製品在庫（完成品 / 半製品 / 未割当 / 移動先棚のバリエーション）─────────────
-INSERT INTO app.product_inventory (id, product_id, plant_id, lot_number,
+-- 在庫は app.item_inventory の 1 本（製品・素材の区別は品目が持つ）。
+-- 単位は行に持つ（旧 product_inventory は持たず、マスタから引いていた）。
+INSERT INTO app.item_inventory (id, item_id, plant_id, lot_number,
   quantity, reserved_quantity, is_semi_finished, source_step_id,
-  storage_location_id, shelf_id, location, notes, updated_at)
+  storage_location_id, shelf_id, unit, location, notes, updated_at)
 VALUES
   -- #9004 完了ロットの完成品（受注 50 を予約中 → 利用可能 5）
   ('dc050000-0000-4000-8000-000000000001'::uuid, 9001,
    (SELECT id FROM app.plants WHERE code = 'F01'), 9004,
-   55, 50, false, NULL, 9101, 9111, NULL, NULL, '2026-07-18T16:05:00+09'),
+   55, 50, false, NULL, 9101, 9111, '本', NULL, NULL, '2026-07-18T16:05:00+09'),
   -- #9001 切断工程で発生した半製品（source_step = 切断）
   ('dc050000-0000-4000-8000-000000000002'::uuid, 9001,
    (SELECT id FROM app.plants WHERE code = 'F01'), 9001,
    2, 0, true, 'dc011000-0000-4000-8000-000000000002'::uuid,
-   9101, 9113, NULL, NULL, '2026-07-16T11:35:00+09'),
+   9101, 9113, '本', NULL, NULL, '2026-07-16T11:35:00+09'),
   -- 保管場所未割当の例（在庫移動の移動元）
   ('dc050000-0000-4000-8000-000000000003'::uuid, 9002,
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL,
-   30, 0, false, NULL, NULL, NULL, NULL, NULL, '2026-07-17T10:10:00+09'),
+   30, 0, false, NULL, NULL, NULL, '本', NULL, NULL, '2026-07-17T10:10:00+09'),
   -- 未割当 → 第一倉庫 A-2 へ 10 本移動した移動先バケット
   ('dc050000-0000-4000-8000-000000000004'::uuid, 9002,
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL,
-   10, 0, false, NULL, 9101, 9112, NULL, NULL, '2026-07-17T10:10:00+09'),
+   10, 0, false, NULL, 9101, 9112, '本', NULL, NULL, '2026-07-17T10:10:00+09'),
   ('dc050000-0000-4000-8000-000000000005'::uuid, 9003,
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL,
-   12, 0, false, NULL, 9102, 9121, NULL, NULL, '2026-07-10T14:00:00+09')
+   12, 0, false, NULL, 9102, 9121, '本', NULL, NULL, '2026-07-10T14:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 素材在庫（予約 > 在庫 の ATP マイナス例を 1 行含む）───────────────────────
-INSERT INTO app.material_inventory (id, material_id, plant_id,
+INSERT INTO app.item_inventory (id, item_id, plant_id,
   quantity, reserved_quantity, unit, storage_location_id, shelf_id,
   location, notes, updated_at)
 VALUES
   ('dc051000-0000-4000-8000-000000000001'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
+   (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
    (SELECT id FROM app.plants WHERE code = 'F01'),
    80, 55, '本', 9102, 9121, NULL, NULL, '2026-07-15T09:10:00+09'),
   -- 予約 100 > 在庫 20 → 利用可能マイナス（ATP タイムラインの赤字例。
   -- PO-202607-90102 の入荷予定 200 本が 2026-08-10 に補う）
   ('dc051000-0000-4000-8000-000000000002'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B04A0001-B040-310'),
+   (SELECT id FROM app.items WHERE code = 'B04A0001-B040-310' AND item_type = 'MATERIAL'),
    (SELECT id FROM app.plants WHERE code = 'F01'),
    20, 100, '本', 9102, NULL, NULL, NULL, '2026-07-20T09:35:00+09'),
   ('dc051000-0000-4000-8000-000000000003'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B01A0001-B080-310'),
+   (SELECT id FROM app.items WHERE code = 'B01A0001-B080-310' AND item_type = 'MATERIAL'),
    (SELECT id FROM app.plants WHERE code = 'F01'),
    40, 0, '本', NULL, NULL, NULL, NULL, '2026-07-10T09:00:00+09')
 ON CONFLICT (id) DO NOTHING;
