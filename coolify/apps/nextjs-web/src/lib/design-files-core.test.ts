@@ -57,22 +57,18 @@ describe("sameSeries", () => {
   });
 });
 
-describe("nextDesignVersion", () => {
-  it("空の系列は 1 から", () => {
-    expect(nextDesignVersion([], null)).toBe(1);
-    expect(nextDesignVersion([], A)).toBe(1);
+describe("nextDesignVersion — 製品ごとの通し番号", () => {
+  it("版が無ければ 1 から", () => {
+    expect(nextDesignVersion([])).toBe(1);
   });
 
-  it("系列ごとに独立して数える", () => {
-    const files = [
-      f({ id: "1", version: 1, customerBpId: null }),
-      f({ id: "2", version: 2, customerBpId: null }),
-      f({ id: "3", version: 1, customerBpId: A }),
+  it("**受注元の系列をまたいで増える**（新しい顧客の系列も v1 に戻らない）", () => {
+    const versions = [
+      { customerBpId: null, version: 1 },
+      { customerBpId: null, version: 2 },
+      { customerBpId: A, version: 3 },
     ];
-    expect(nextDesignVersion(files, null)).toBe(3);
-    expect(nextDesignVersion(files, A)).toBe(2);
-    // 他の系列に版があっても、新しい顧客は 1 から始まる
-    expect(nextDesignVersion(files, B)).toBe(1);
+    expect(nextDesignVersion(versions)).toBe(4);
   });
 
   it("同じ版を共有する複数ファイルでも番号は進まない", () => {
@@ -81,7 +77,7 @@ describe("nextDesignVersion", () => {
       f({ id: "2", version: 1, role: "BLUEPRINT" }),
       f({ id: "3", version: 1, role: "REFERENCE" }),
     ];
-    expect(nextDesignVersion(files, null)).toBe(2);
+    expect(nextDesignVersion(files)).toBe(2);
   });
 });
 
@@ -260,14 +256,9 @@ describe("groupVersionsBySeries", () => {
 describe("nextDesignVersion — 版の行でも数えられる", () => {
   it("ファイルの無い版（仕様だけ）も番号を使う", () => {
     expect(
-      nextDesignVersion(
-        [
-          { customerBpId: null, version: 1 },
-          { customerBpId: A, version: 4 },
-        ],
-        null,
-      ),
-    ).toBe(2);
+      // 汎用 v1 と、別の受注元の系列にある v4（ファイルの無い版）
+      nextDesignVersion([{ version: 1 }, { version: 4 }]),
+    ).toBe(5);
   });
 });
 

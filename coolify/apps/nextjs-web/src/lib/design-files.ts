@@ -1,7 +1,7 @@
 /**
  * design-files.ts — 設計図の版（app.design_versions + design_files）の書き込み。server-only.
  *
- * 版は **(製品 × 受注元)** ごとの連番で、1 版 =
+ * 版番号は**製品ごとの通し番号**（系列＝製品 × 受注元をまたいで増える）で、1 版 =
  *   2D 原図 0..1 + 3D 原図 0..1 + プレビュー 0..1 + 参考資料 0..N + 仕様
  * の 1 まとまり（どれも任意 — 仕様だけの版もある）。判定規則そのものは
  * lib/design-files-core.ts（純関数）が持ち、ここは DB と storage をつなぐだけ。
@@ -69,11 +69,15 @@ export interface VersionUploads {
 /** 版の採番で使う advisory lock の名前空間。他の用途と衝突しないための定数。 */
 const VERSION_LOCK_NS = 0x0de5_1;
 
-async function lockSeries(tx: Tx, itemId: number, customerBpId: string | null) {
+/**
+ * 製品ごとの advisory lock。版番号は製品の通し番号なので、系列ではなく製品で
+ * 直列化する（系列ごとに取ると、別の系列の 2 本が同じ番号を読んでしまう）。
+ */
+async function lockItem(tx: Tx, itemId: number) {
   await tx.$executeRaw`
     SELECT pg_advisory_xact_lock(
       ${VERSION_LOCK_NS}::int,
-      hashtext(${`${itemId}:${customerBpId ?? ""}`})::int
+      hashtext(${String(itemId)})::int
     )`;
 }
 
@@ -93,7 +97,7 @@ export async function findOpenVersion(
  * 下書きの版を 1 つ作る（採番 + 行作成）。**必ずトランザクションの中で呼ぶ。**
  *
  * ⚠️ トランザクションだけでは足りない。PostgreSQL の既定は READ COMMITTED
- * なので、同じ系列に同時に 2 本走ると両方が同じ max を読む。系列ごとの
+ * なので、同じ製品に同時に 2 本走ると両方が同じ max を読む。製品ごとの
  * advisory lock で直列化する（トランザクション終了時に自動で解放）。
  * 系列ごとに確定前の版は 1 つだけ（DB の部分 unique index が最後の砦）—
  * 既にあれば作らずに null を返し、呼び出し側がその版へ案内する。
@@ -111,15 +115,15 @@ export async function createDraftVersionInTx(
   | { ok: true; id: string; version: number }
   | { ok: false; openVersion: { id: string; version: number } }
 > {
-  await lockSeries(tx, input.itemId, input.customerBpId);
+  await lockItem(tx, input.itemId);
   const open = await findOpenVersion(tx, input.itemId, input.customerBpId);
   if (open) return { ok: false, openVersion: open };
 
   const existing = await tx.designVersion.findMany({
     where: { itemId: input.itemId },
-    select: { customerBpId: true, version: true },
+    select: { version: true },
   });
-  const version = nextDesignVersion(existing, input.customerBpId);
+  const version = nextDesignVersion(existing);
   const created = await tx.designVersion.create({
     data: {
       itemId: input.itemId,
@@ -195,7 +199,7 @@ export async function confirmVersionInTx(
     select: { itemId: true, customerBpId: true },
   });
   if (!v) return false;
-  await lockSeries(tx, v.itemId, v.customerBpId);
+  await lockItem(tx, v.itemId);
   const res = await tx.designVersion.updateMany({
     where: { id: versionId, status: { not: "CONFIRMED" } },
     data: {
