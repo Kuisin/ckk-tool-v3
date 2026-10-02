@@ -110,6 +110,11 @@ export interface Criterion {
   id: string;
   /** 表示名 e.g. "材料原価". */
   name: string;
+  /**
+   * この基準が何を数えているかの説明（管理者が書く）。価格試算の画面で内訳の各行に
+   * 付くヒントボタンに出る。未設定 = ヒントボタンなし。
+   */
+  description?: string;
   role: CriterionRole;
   /** JS expression body returning a number. */
   expression: string;
@@ -162,6 +167,7 @@ export function criterionSchema(tr: Tr) {
     name: z
       .string()
       .min(1, tr("settings.trialPricingCriteria.enterACriterionName")),
+    description: z.string().max(1000).optional(),
     role: z.enum(["component", "intermediate", "final"]),
     expression: z.string().max(4000),
     order: z.number(),
@@ -216,9 +222,8 @@ export const RESERVED_KEYS: ReadonlySet<string> = new Set([
   "ldOuterDiameter",
   "ldBladeLength",
   "machiningMinutes",
-  "lotQuantities",
-  "lotMarkups",
-  // per-lot / running state
+  // running state（discountRate / autoRate / lotMarkup は廃止したロット割引率の
+  // 名前。保存済みの式との互換で中立値のまま束縛してあるので、予約語のままにする）
   "quantity",
   "subtotal",
   "r",
@@ -236,7 +241,6 @@ export const RESERVED_KEYS: ReadonlySet<string> = new Set([
   "matchDesc",
   "coatingRawCost",
   "ldMinutes",
-  "lotDiscountRate",
   "stepTypeRate",
   "neckTypeRate",
   "cylinderTypeRate",
@@ -337,6 +341,11 @@ export const DEFAULT_CRITERIA: Criterion[] = BASE_CRITERIA.map((c) => ({
   ...c,
   toolTypes: [...TRIAL_TOOL_TYPES],
 }));
+
+/** 形状出しを按分する本数（scope:"global" のカスタム値のキー）。 */
+export const SHAPE_OUT_BASE_QUANTITY_KEY = "shapeOutBaseQuantity";
+/** 旧「基準数量」の既定値と同じ。 */
+export const DEFAULT_SHAPE_OUT_BASE_QUANTITY = 100;
 
 /** scope:"global" の既定カスタム入力（常に存在させる固定係数）。 */
 export const GLOBAL_CUSTOM_INPUTS: CustomInputDef[] =

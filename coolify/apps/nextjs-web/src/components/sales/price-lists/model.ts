@@ -151,6 +151,54 @@ export interface EntryIdentity {
   entryId: string;
 }
 
+/** 数量段階の行が持つ範囲（フォームの行もこの形を満たす）。 */
+interface TierRange {
+  minQuantity: number;
+  maxQuantity: number | null;
+}
+
+/**
+ * `index` 行の最大数量を `max` にし、次の行があればその最小数量を **max + 1** で
+ * 埋める（前の行の終わりが次の行の始まりになるので、隙間も重なりもできない）。
+ * `max` が空（上限なし）のときは次の行を触らない。
+ */
+export function setTierEnd<T extends TierRange>(
+  tiers: readonly T[],
+  index: number,
+  max: number | null,
+): T[] {
+  return tiers.map((t, i) => {
+    if (i === index) return { ...t, maxQuantity: max };
+    if (i === index + 1 && max != null) return { ...t, minQuantity: max + 1 };
+    return t;
+  });
+}
+
+/** 範囲を 1 行足すときの、最後の行の終わりを閉じる幅（上限なしだったとき）。 */
+const APPEND_RANGE_STEP = 100;
+
+/**
+ * 末尾に範囲を足す。新しい行の最小数量は最後の行の最大数量 + 1。最後の行が
+ * 上限なしなら、その行を「最小数量 + 99」で閉じてから続ける。`make` は最小数量
+ * から新しい行を作る。
+ */
+export function appendTierRange<T extends TierRange>(
+  tiers: readonly T[],
+  make: (minQuantity: number) => T,
+): T[] {
+  const last = tiers[tiers.length - 1];
+  if (!last) return [make(1)];
+  if (last.maxQuantity != null) {
+    return [...tiers, make(last.maxQuantity + 1)];
+  }
+  const start = last.minQuantity + APPEND_RANGE_STEP;
+  return [
+    ...tiers.slice(0, -1),
+    { ...last, maxQuantity: start - 1 },
+    make(start),
+  ];
+}
+
 /**
  * Tier の採用単価 — 手動上書きがあればそれ、なければ 基準単価 × 倍率（円丸め）。
  */
