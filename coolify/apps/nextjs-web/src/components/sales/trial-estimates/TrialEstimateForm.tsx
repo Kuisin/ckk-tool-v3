@@ -54,6 +54,7 @@ import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions, FormSection } from "@/components/ui/shells";
 import { fieldHelp } from "@/lib/field-help";
 import type { Option } from "@/lib/mock";
+import type { ScalePresetRow } from "@/lib/price-scale-preset";
 import {
   type CostBreakdown,
   calcTrialPricing,
@@ -79,6 +80,7 @@ import {
 } from "@/lib/trial-pricing-settings";
 import { criterionDescription, LabelWithHint } from "./CriterionHint";
 import { MaterialPriceChart } from "./MaterialPriceChart";
+import { ScaleEstimateTable } from "./ScaleEstimateTable";
 import type { TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
@@ -94,6 +96,7 @@ export function TrialEstimateForm({
   surfaceFinishOptions,
   settings,
   initialPricing,
+  scalePreset,
   /** 複製元（?from= で開いたとき）— 全入力を引き継いだ新規 DRAFT を作る。 */
   source,
 }: {
@@ -106,6 +109,8 @@ export function TrialEstimateForm({
   settings: TrialPricingSettings;
   /** 初期材種構成の仕入実績＋ポリシー参照価格（サーバー取得）. */
   initialPricing: MaterialPricing;
+  /** 数量スケール（SY02）。見積単価から数量ごとの単価の見込みを出す。 */
+  scalePreset: ScalePresetRow[];
   source?: TrialEstimateRecord | null;
 }) {
   const tr = useTranslations();
@@ -887,6 +892,7 @@ export function TrialEstimateForm({
               correctionFactor={Number(customValues.correctionFactor ?? 1.25)}
               criteria={settings.criteria}
               lot={result.lots[0] ?? null}
+              scalePreset={scalePreset}
               warnings={result.warnings}
             />
 
@@ -972,6 +978,7 @@ function ResultsPanel({
   correctionFactor,
   warnings,
   criteria,
+  scalePreset,
 }: {
   breakdown: CostBreakdown;
   /** 計算基準（ヒントボタンの説明を引く）。 */
@@ -980,6 +987,7 @@ function ResultsPanel({
   lot: LotResult | null;
   correctionFactor: number;
   warnings: string[];
+  scalePreset: ScalePresetRow[];
 }) {
   const tr = useTranslations();
   const rows: { id: string; label: string; value: number }[] = [
@@ -1120,6 +1128,12 @@ function ResultsPanel({
             ) : null}
           </div>
         </SimpleGrid>
+        {lot && (
+          <ScaleEstimateTable
+            baseUnitPrice={lot.estimateUnitPrice}
+            preset={scalePreset}
+          />
+        )}
       </Stack>
     </Paper>
   );

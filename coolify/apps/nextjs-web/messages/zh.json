@@ -7967,7 +7967,9 @@
       "representativeEstimatedUnitPrice": "代表试算单价",
       "searchByPriceEstimateNumberName": "按价格试算编号、名称或客户搜索",
       "thereAreNoPriceEstimates": "没有价格试算",
-      "hintFor": "关于{name}的说明"
+      "hintFor": "关于{name}的说明",
+      "scaleEstimateNote": "这是用试算单价（基准）× 数量阶梯系数得出的参考值。实际按数量的价格由价格表决定（与用此价格试算创建价格表时的初始值相同）。",
+      "scaleEstimateTitle": "参考：按数量的单价"
     },
     "orderLineDetail": {
       "designWithCount": "设计（{count}）",

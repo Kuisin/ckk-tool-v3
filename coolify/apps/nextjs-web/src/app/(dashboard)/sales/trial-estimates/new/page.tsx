@@ -7,6 +7,7 @@ import {
   type MaterialTypeKey,
 } from "@/lib/material-pricing";
 import { computeReferencePrice } from "@/lib/material-pricing-core";
+import { getScalePreset } from "@/lib/price-scale-preset-store";
 import { getTrialPricingSettings } from "@/lib/system-settings";
 import {
   fetchCustomerOptions,
@@ -36,6 +37,7 @@ export default async function TrialEstimateNewPage({
     surfaceFinishOptions,
     source,
     settings,
+    scalePreset,
   ] = await Promise.all([
     fetchCustomerOptions(),
     fetchMaterialTypeOptions(),
@@ -43,6 +45,7 @@ export default async function TrialEstimateNewPage({
     fetchSurfaceFinishOptions(),
     fromKey ? fetchTrialEstimate(fromKey.yearMonth, fromKey.seq) : null,
     getTrialPricingSettings(),
+    getScalePreset(),
   ]);
 
   // 複製元が材種構成を持つときのみ仕入実績＋既定単価を取得。新規はフォームで
@@ -80,6 +83,7 @@ export default async function TrialEstimateNewPage({
       diameterOptions={diameterOptions}
       initialPricing={initialPricing}
       materialTypeOptions={materialTypeOptions}
+      scalePreset={scalePreset}
       settings={settings}
       source={source}
       surfaceFinishOptions={surfaceFinishOptions}

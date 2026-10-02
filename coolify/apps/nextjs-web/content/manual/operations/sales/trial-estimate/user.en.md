@@ -22,6 +22,7 @@ This is the first app you use when you decide the price of a new product.
 - **材種 (material type)** … the kind of material. It is decided by the combination of maker and material grade.
 - **参照単価 (reference unit price)** … the purchase price for 1000 mm of the material. It is filled in automatically from past purchases.
 - **見積単価（基準）(quoted unit price, base)** … the selling price per piece worked out by this estimate. It becomes the 基準単価 (base unit price) on the price list.
+- **参考：数量ごとの単価 (reference: unit price by quantity)** … the estimated unit price (base) times each multiplier of the [quantity scale](/manual/en/operations/sales/trial-estimate/settings), per quantity range. A price list made from this estimate starts with the same tiers.
 - **下書き (draft) / 確定 (confirmed) / 価格表登録済 (used in a price list)** … where the estimate stands now. 下書き means it has only been created, 確定 means it can be used in a price list, and 価格表登録済 means it has actually been used in a price list.
 
 ## Before you start
@@ -64,7 +65,8 @@ Every time you enter something,「**価格試算結果**」(estimate result) nea
 ![Estimate result (cost breakdown and quoted unit price)](../../../assets/screenshots/trial-estimate-new-02.png)
 
 - **原価内訳（1本あたり）(cost breakdown, per piece)** … the breakdown of material cost, step machining cost, machining unit price, coating cost and so on. Press the **ⓘ** to the right of a row to see what that cost counts.
-- **見積単価（基準）(quoted unit price, base)** … the selling price per piece, shown at the very bottom.
+- **見積単価（基準）(quoted unit price, base)** … the base selling price per piece.
+- **参考：数量ごとの単価 (reference: unit price by quantity)** … the table below it shows the base price times each quantity-scale multiplier, per quantity range.
 
 > 💡 The discount for large quantities (the setting that makes each piece cheaper) is not made on this screen. It is made in the [price list](/manual/en/operations/sales/price-list/user). A trial estimate only gives the base price for one piece.
 
