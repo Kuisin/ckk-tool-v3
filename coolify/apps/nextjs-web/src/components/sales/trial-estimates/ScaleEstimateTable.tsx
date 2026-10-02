@@ -28,10 +28,13 @@ export function ScaleEstimateTable({
   const tr = useTranslations();
   return (
     <div>
+      <Text c="dimmed" fw={600} size="xs">
+        {tr("sales.trialEstimates.scaleEstimateTitle")}
+      </Text>
       <Text c="dimmed" mb={4} size="xs">
         {tr("sales.trialEstimates.scaleEstimateNote")}
       </Text>
-      <Table>
+      <Table c="dimmed">
         <Table.Thead>
           <Table.Tr>
             <Table.Th>{tr("settings.scalePreset.colRange")}</Table.Th>

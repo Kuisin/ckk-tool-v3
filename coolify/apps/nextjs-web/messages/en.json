@@ -7968,7 +7968,8 @@
       "searchByPriceEstimateNumberName": "Search by price estimate number, name or customer",
       "thereAreNoPriceEstimates": "There are no price estimates",
       "hintFor": "About {name}",
-      "scaleEstimateNote": "Unit price by quantity (estimate) — estimated unit price (base) × the quantity-scale multiplier. Same as the starting tiers when a price list is made from this estimate."
+      "scaleEstimateNote": "A reference value: the estimated unit price (base) × the quantity-scale multiplier. The actual price per quantity is set in the price list (these are the starting tiers when a price list is made from this estimate).",
+      "scaleEstimateTitle": "Reference: unit price by quantity"
     },
     "orderLineDetail": {
       "designWithCount": "Design ({count})",

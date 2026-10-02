@@ -7968,7 +7968,8 @@
       "searchByPriceEstimateNumberName": "価格試算番号・名称・顧客で検索",
       "thereAreNoPriceEstimates": "価格試算がありません",
       "hintFor": "{name}の説明",
-      "scaleEstimateNote": "数量ごとの単価（見込み）— 見積単価（基準）× 数量スケールの倍率。価格表をこの価格試算から作るときの初期値と同じです。"
+      "scaleEstimateNote": "見積単価（基準）× 数量スケールの倍率で出した参考値です。実際の数量ごとの価格は価格表で決まります（この価格試算から価格表を作るときの初期値と同じ）。",
+      "scaleEstimateTitle": "参考：数量ごとの単価"
     },
     "orderLineDetail": {
       "designWithCount": "設計（{count}）",
