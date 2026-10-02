@@ -68,6 +68,7 @@ import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import type { MaterialPricePoint } from "@/lib/material-pricing-core";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import type { ScalePresetRow } from "@/lib/price-scale-preset";
 import {
   calcTrialPricing,
   type TrialPricingOptions,
@@ -75,6 +76,7 @@ import {
 } from "@/lib/trial-pricing";
 import { criterionDescription, LabelWithHint } from "./CriterionHint";
 import { MaterialPriceChart } from "./MaterialPriceChart";
+import { ScaleEstimateTable } from "./ScaleEstimateTable";
 import type { LinkedPriceEntry, TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
@@ -99,6 +101,7 @@ export function TrialEstimateDetail({
   priceHistory,
   pricingOptions = {},
   toolTypeOptions,
+  scalePreset,
 }: {
   record: TrialEstimateRecord;
   linkedEntries: LinkedPriceEntry[];
@@ -112,6 +115,8 @@ export function TrialEstimateDetail({
   pricingOptions?: TrialPricingOptions;
   /** 工具種の選択肢（管理者定義。未指定は組み込み 3 種）. */
   toolTypeOptions?: { value: string; label: string }[];
+  /** 数量スケール（SY02）。見積単価から数量ごとの単価の見込みを出す。 */
+  scalePreset: ScalePresetRow[];
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -408,6 +413,12 @@ export function TrialEstimateDetail({
                 </Table.Tbody>
               </Table>
             </div>
+            {result.lots[0] && (
+              <ScaleEstimateTable
+                baseUnitPrice={result.lots[0].estimateUnitPrice}
+                preset={scalePreset}
+              />
+            )}
             <div>
               <Text c="dimmed" mb={4} size="xs">
                 {tr("common.costBreakdownPerPiece")}

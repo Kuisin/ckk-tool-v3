@@ -7967,7 +7967,8 @@
       "representativeEstimatedUnitPrice": "Representative estimated unit price",
       "searchByPriceEstimateNumberName": "Search by price estimate number, name or customer",
       "thereAreNoPriceEstimates": "There are no price estimates",
-      "hintFor": "About {name}"
+      "hintFor": "About {name}",
+      "scaleEstimateNote": "Unit price by quantity (estimate) — estimated unit price (base) × the quantity-scale multiplier. Same as the starting tiers when a price list is made from this estimate."
     },
     "orderLineDetail": {
       "designWithCount": "Design ({count})",

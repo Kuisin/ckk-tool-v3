@@ -16,6 +16,7 @@ import { listMemos } from "@/lib/document-memos";
 import { type LocalizedText, localized } from "@/lib/format";
 import { fetchPriceHistoryByType } from "@/lib/material-pricing";
 import { formatDocPageTitle } from "@/lib/page-title";
+import { getScalePreset } from "@/lib/price-scale-preset-store";
 import { getTrialPricingSettings } from "@/lib/system-settings";
 import {
   toToolTypeOptions,
@@ -54,8 +55,8 @@ export default async function TrialEstimateDetailPage({
   const key = parseDocKey(id, "EST");
   if (!key) notFound();
 
-  const [record, linked, auditEntries, settings, memos, tr] = await Promise.all(
-    [
+  const [record, linked, auditEntries, settings, memos, tr, scalePreset] =
+    await Promise.all([
       fetchTrialEstimate(key.yearMonth, key.seq),
       prisma.priceListVariant.findMany({
         where: { estimateYearMonth: key.yearMonth, estimateSeq: key.seq },
@@ -68,8 +69,8 @@ export default async function TrialEstimateDetailPage({
       getTrialPricingSettings(),
       listMemos("estimates", formatEstimateNumber(key)),
       getTranslations(),
-    ],
-  );
+      getScalePreset(),
+    ]);
   if (!record) notFound();
 
   const typeId = Number(record.materialTypeId);
@@ -111,6 +112,7 @@ export default async function TrialEstimateDetailPage({
       priceHistory={priceHistory}
       pricingOptions={toTrialPricingOptions(settings)}
       record={record}
+      scalePreset={scalePreset}
       toolTypeOptions={toToolTypeOptions(settings, tr)}
     />
   );

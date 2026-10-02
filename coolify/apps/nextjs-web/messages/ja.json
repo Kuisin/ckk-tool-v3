@@ -7967,7 +7967,8 @@
       "representativeEstimatedUnitPrice": "代表見積単価",
       "searchByPriceEstimateNumberName": "価格試算番号・名称・顧客で検索",
       "thereAreNoPriceEstimates": "価格試算がありません",
-      "hintFor": "{name}の説明"
+      "hintFor": "{name}の説明",
+      "scaleEstimateNote": "数量ごとの単価（見込み）— 見積単価（基準）× 数量スケールの倍率。価格表をこの価格試算から作るときの初期値と同じです。"
     },
     "orderLineDetail": {
       "designWithCount": "設計（{count}）",
