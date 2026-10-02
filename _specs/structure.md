@@ -6,7 +6,8 @@
 > 直さないなら「実装の正はツリー」であることを思い出すこと。
 > 既知のずれ（2026-09-05 時点）:
 > - `lib/journal.ts` は**存在しない**。仕訳の組み立ては `lib/csv-export.ts`
->   の中にあり、弥生 CSV の生成と一体になっている。
+>   の中にあり、会計連携 CSV の生成と一体になっている（現在は
+>   `lib/accounting-export-core.ts`）。
 > - `production/approvals/` は 一般カテゴリの `general/tasks`（CM01）へ移設済み。
 > - システム設定は `settings/*` 配下（`admin/*` は旧パス）。
 
@@ -87,9 +88,11 @@ src/
 │   │   │   │   │                                   #   版は (製品 × 受注元) ごと。
 │   │   │   │   │                                   #   **版を登録・編集できる唯一の画面**
 │   │   │   │   │                                   #   （製品マスタ MS24 / 設計依頼 SA26 は表示のみ）
+│   │   │   │   │                                   #   製品の仕様（材種・寸法・製品項目）も版が持つ
 │   │   │   │   ├── page.tsx                        # 一覧（1 行 = 1 系列）
-│   │   │   │   ├── new/page.tsx                    # 版を 1 つ登録（?request= / ?product= でプリフィル）
-│   │   │   │   └── [productId]/page.tsx            # 1 製品の全系列（受注元ごとに節）
+│   │   │   │   ├── new/page.tsx                    # 版を 1 つ下書きで作る（?request= / ?item=。図脳 SXF 読み取り）
+│   │   │   │   ├── [itemId]/page.tsx               # 1 製品の全系列（受注元ごとに節・版の一覧）
+│   │   │   │   └── versions/[id]/page.tsx          # 版の詳細（下書き → (承認) → 確定、仕様・ファイルの編集）
 │   │   │   ├── approvals/                          # 承認管理（§6）
 │   │   │   │   ├── page.tsx                        # 承認依頼中一覧
 │   │   │   │   └── [id]/page.tsx
@@ -177,6 +180,9 @@ src/
 │   │       ├── defect-types/                       # 不良種類
 │   │       │   ├── page.tsx
 │   │       │   └── new/page.tsx
+│   │       ├── regrind-items/                      # 再研磨品目（MS0H — 売る「役務」としての
+│   │       │                                       #   研ぎ直し。値段はここに付く。
+│   │       │                                       #   研ぐ工具は products 側の行）
 │   │       ├── material-numbering/                 # 採番構成（MS07 — 材種/素材コードの部品）
 │   │       ├── work-locations/                     # 作業場所（MS0D — 工程の実施場所）
 │   │       ├── storage-locations/                  # 保管場所（MS0E — 棚・フロアマップのピン）
@@ -200,7 +206,7 @@ src/
 │   │   │   ├── work-orders/[id]/route.ts           # 製造進捗
 │   │   │   └── approvals/route.ts                  # 承認通知
 │   │   └── export/
-│   │       └── yayoi/route.ts                      # 弥生会計 CSV エクスポート
+│   │       └── accounting/route.ts                 # 会計連携 CSV エクスポート
 │   │
 │   ├── (auth)/
 │   │   └── login/page.tsx
@@ -247,7 +253,7 @@ src/
 │   ├── db.ts                                       # Prisma client
 │   ├── auth.ts                                     # Auth.js v5 設定
 │   ├── journal.ts                                  # ⚠️ 未実装 — 仕訳の組み立ては csv-export.ts の中
-│   ├── csv-export.ts                               # 弥生会計 Next CSV 生成
+│   ├── accounting-export-core.ts                   # 会計連携 仕訳 CSV 生成
 │   ├── inventory.ts                                # 在庫引当・予約ロジック
 │   ├── pricing.ts                                  # 価格試算原価計算・価格表解決・見積自動生成・値引き計算
 │   ├── numbering.ts                                # 採番ロジック（EST/QOT/ORD/DRN/INV/PO）

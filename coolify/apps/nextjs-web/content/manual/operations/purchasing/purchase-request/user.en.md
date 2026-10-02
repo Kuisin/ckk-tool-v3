@@ -79,7 +79,7 @@ Once you have checked the content, ask your manager to look at it.
 1. Open the request screen.
 2. Press 「**承認依頼**」 (Request approval) on the 「**承認依頼が必要です**」 (approval request needed) card near the top of the screen.
 
-The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/production/approval/user) screen.
+The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/general/my-tasks/user) screen.
 
 ![Purchase request pending approval](../../../assets/screenshots/purchase-request-detail-02.png)
 

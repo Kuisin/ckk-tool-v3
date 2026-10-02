@@ -12,8 +12,8 @@
 /** 一覧 (PU03) の1行 = 詳細 view model（項目数が少ないため共用）。 */
 export interface MaterialReceiptView {
   id: string;
-  /** 素材の内部 id（連番）を文字列で保持。 */
-  materialId: string;
+  /** 選んだ素材の品目 id（items.id）を文字列で保持。 */
+  itemId: string;
   materialCode: string;
   materialName: string;
   supplierName: string | null;

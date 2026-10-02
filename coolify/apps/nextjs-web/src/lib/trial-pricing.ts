@@ -16,6 +16,7 @@ import type {
   CustomInputDef,
   LookupTable,
 } from "./trial-pricing-criteria";
+import { DEFAULT_SHAPE_OUT_BASE_QUANTITY } from "./trial-pricing-criteria";
 import {
   CENTERLESS,
   CORRECTION_FACTOR,
@@ -28,7 +29,6 @@ import {
   lapOptions,
   ldMinutes,
   lookupMatrix,
-  lotDiscountRate,
   MATERIAL_BASIS_LENGTH_MM,
   NECK_MACHINING,
   neckTypeOptions,
@@ -100,13 +100,6 @@ export interface TrialInput {
   machiningMinutes: number; // 加工時間/分
   machiningRatePer10min: number; // 加工単価/10分
   spareShapeCount: number; // 予備形状本数
-  // ロット (1–3 tiers)
-  lotQuantities: number[];
-  /**
-   * ロット別の掛け率の手動指定（lotQuantities と同じ index）。
-   * null/undefined の要素はロット別の自動掛け率を使う。
-   */
-  lotMarkups?: (number | null)[];
 }
 
 export interface CostBreakdown {
@@ -120,20 +113,23 @@ export interface CostBreakdown {
   inspection: number; // 検査成績書
 }
 
+/**
+ * 価格試算の結果 1 件（基準単価）。数量スケール（何本から何倍か）は価格表が持つ
+ * ので、ここには掛け率を持たない。`lots` が配列なのは保存済みスナップショット
+ * （estimates.result）との互換のためで、要素は常に 1 つ。
+ */
 export interface LotResult {
-  /** index into TrialInput.lotQuantities (for per-lot markup editing). */
   lotIndex: number;
+  /** 形状出しを按分した本数（SY02 の固定値）。 */
   quantity: number;
-  perPiece: number; // 1本単価 (形状出し ÷ lot)
+  perPiece: number; // 形状出し（1本按分）
   minimumPrice: number; // 最低単価
-  autoRate: number; // ロット別の自動掛け率
-  discountRate: number; // 適用掛け率 (override があればそれ)
   estimateUnitPrice: number; // 見積単価 (×補正値, ROUNDUP -1)
 }
 
 export interface TrialResult {
   breakdown: CostBreakdown;
-  shapeOutPrice: number; // 形状出し単価 = (材料+段加工+加工単価)×形状本数
+  shapeOutPrice: number; // 形状出し単価 = (材料+段加工+加工単価)×予備形状本数
   lots: LotResult[];
   warnings: string[];
 }
@@ -287,41 +283,29 @@ export function calcTrialPricingLegacy(
   // ── 形状出し単価 = (材料原価 + 段加工費 + 加工単価) × 形状本数 ─────────────
   const shapeOutPrice = (material + step + machining) * input.spareShapeCount;
 
-  // ── ロットごとの価格 ──────────────────────────────────────────────────────
-  const lots: LotResult[] = input.lotQuantities
-    .map((quantity, lotIndex) => ({ quantity, lotIndex }))
-    .filter((x) => x.quantity >= 1)
-    .map(({ quantity, lotIndex }) => {
-      const perPiece = shapeOutPrice / quantity;
-      // 最低単価 = 材料+段加工+首下+加工単価+コート+ラップ+LD+1本単価+検査
-      const minimumPrice =
-        material +
-        step +
-        neck +
-        machining +
-        coating +
-        lap +
-        ld +
-        perPiece +
-        inspection;
-      const autoRate = lotDiscountRate(quantity);
-      const override = input.lotMarkups?.[lotIndex];
-      const discountRate =
-        override != null && override > 0 ? override : autoRate;
-      const estimateUnitPrice = roundUp(
-        minimumPrice * discountRate * correction,
-        -1,
-      );
-      return {
-        lotIndex,
-        quantity,
-        perPiece,
-        minimumPrice,
-        autoRate,
-        discountRate,
-        estimateUnitPrice,
-      };
-    });
+  // ── 基準単価（1 点）────────────────────────────────────────────────────────
+  const quantity = DEFAULT_SHAPE_OUT_BASE_QUANTITY;
+  const perPiece = shapeOutPrice / quantity;
+  // 最低単価 = 材料+段加工+首下+加工単価+コート+ラップ+LD+1本単価+検査
+  const minimumPrice =
+    material +
+    step +
+    neck +
+    machining +
+    coating +
+    lap +
+    ld +
+    perPiece +
+    inspection;
+  const lots: LotResult[] = [
+    {
+      lotIndex: 0,
+      quantity,
+      perPiece,
+      minimumPrice,
+      estimateUnitPrice: roundUp(minimumPrice * correction, -1),
+    },
+  ];
 
   return { breakdown, shapeOutPrice, lots, warnings };
 }

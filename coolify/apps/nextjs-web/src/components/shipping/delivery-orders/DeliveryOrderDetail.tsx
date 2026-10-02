@@ -25,23 +25,40 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCheck, IconReceipt, IconTruck, IconX } from "@tabler/icons-react";
+import {
+  IconArrowBackUp,
+  IconCheck,
+  IconReceipt,
+  IconTruck,
+  IconX,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   approveDeliveryOrder,
+  checkDeliveryStock,
   confirmDeliveryOrder,
+  type DeliveryStockShortage,
   deleteDeliveryOrder,
+  recordDeliveryReturn,
   rejectDeliveryOrder,
+  saveDeliveryOrderCharges,
   shipDeliveryOrder,
 } from "@/app/(dashboard)/shipping/delivery-orders/actions";
 import {
   ApprovalTrailList,
   countTrailRecords,
 } from "@/components/approvals/ApprovalTrailList";
+import {
+  type ChargeItemChoice,
+  type ChargeRowView,
+  ChargesPanel,
+} from "@/components/charges/ChargesPanel";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { DeliveryReturnModal } from "@/components/shipping/delivery-orders/DeliveryReturnModal";
 import { DeliveryVarianceCard } from "@/components/shipping/delivery-orders/DeliveryVarianceCard";
+import { ShipShortageModal } from "@/components/shipping/delivery-orders/ShipShortageModal";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -299,6 +316,9 @@ export function DeliveryOrderDetail({
   memos,
   approval,
   approvalTrail,
+  charges = [],
+  chargeItems = [],
+  canEditCharges = false,
 }: {
   order: DeliveryOrder;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
@@ -312,6 +332,11 @@ export function DeliveryOrderDetail({
    */
   approval: ApprovalActionState;
   approvalTrail: ApprovalTrailEntry[];
+  /** 追加料金（送料など）— **請求される実体**。締日処理が請求明細へ写す。 */
+  charges?: ChargeRowView[];
+  /** 料金マスタの選択肢（編集時のみ使う）。 */
+  chargeItems?: ChargeItemChoice[];
+  canEditCharges?: boolean;
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -322,12 +347,19 @@ export function DeliveryOrderDetail({
   const [isPending, startTransition] = useTransition();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [shipOpen, setShipOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
+  // 在庫が足りないときの確認。出荷は止まらないが、**押す前に一度だけ見せる**。
+  const [shortages, setShortages] = useState<DeliveryStockShortage[] | null>(
+    null,
+  );
   const [cancelOpen, setCancelOpen] = useState(false);
   // 「確定」を押したときに承認依頼になるか（過不足納品 §8）。
   const needsApproval = confirmNeedsApproval(order);
 
   const run = (
-    action: () => Promise<ActionResult>,
+    // 成功しても**注意書き**が付くことがある（在庫が足りないまま出した、など）。
+    // 止めない代わりに必ず見せる、という約束なので、成功の通知とは別に出す。
+    action: () => Promise<ActionResult<{ warnings?: string[] } | undefined>>,
     successTitle: string,
     successMessage: string,
     afterSuccess?: () => void,
@@ -340,6 +372,15 @@ export function DeliveryOrderDetail({
           message: successMessage,
           color: "green",
         });
+        for (const warning of result.data?.warnings ?? []) {
+          notifications.show({
+            title: tr("common.warning"),
+            message: warning,
+            color: "orange",
+            // 消えると気づかない種類の知らせなので、自動では閉じない。
+            autoClose: false,
+          });
+        }
         if (afterSuccess) afterSuccess();
         else router.refresh();
       } else {
@@ -351,6 +392,39 @@ export function DeliveryOrderDetail({
       }
     });
   };
+
+  /** 実際に出荷する（在庫の確認は済んでいる前提）。 */
+  const ship = () =>
+    run(
+      () => shipDeliveryOrder(order.deliveryOrderNumber),
+      tr("shipping.deliveryOrders.shipped"),
+      tr("shipping.deliveryOrders.shippedBody", {
+        number: order.deliveryOrderNumber,
+      }),
+    );
+
+  /**
+   * 出荷の確認を押したとき。**先に在庫を数える** — 足りなければ、そのまま
+   * 出さずに不足の一覧を見せる（出荷そのものは止められないが、気づかずに
+   * 台帳をマイナスにするのは止める）。数えるのに失敗したときは、その場で
+   * 止めずに出荷へ進む（確認のための問い合わせが、出荷を妨げる理由には
+   * ならない）。
+   */
+  const confirmShip = () => {
+    setShipOpen(false);
+    startTransition(async () => {
+      const result = await checkDeliveryStock(order.deliveryOrderNumber);
+      if (result.ok && result.data.shortages.length > 0) {
+        setShortages(result.data.shortages);
+        return;
+      }
+      ship();
+    });
+  };
+
+  // 返品の列は**返品があるときだけ**出す。ほとんどの出荷書には無い列なので、
+  // 常に出すと「—」だけの列が 1 本増える。
+  const hasReturns = order.items.some((it) => it.returnedQuantity > 0);
 
   return (
     <DetailShell
@@ -372,6 +446,17 @@ export function DeliveryOrderDetail({
                     label: tr("common.shipping"),
                     icon: <IconTruck size={14} />,
                     onClick: () => setShipOpen(true),
+                  },
+                ]
+              : []),
+            // 返品は**出荷済みの発送分だけ**。在庫だけが戻り、出荷書の状態も
+            // 請求も動かない（§8 追補）。
+            ...(order.status === "SHIPPED" && order.type === "DISPATCH"
+              ? [
+                  {
+                    label: tr("shipping.deliveryOrders.recordAReturn"),
+                    icon: <IconArrowBackUp size={14} />,
+                    onClick: () => setReturnOpen(true),
                   },
                 ]
               : []),
@@ -525,6 +610,11 @@ export function DeliveryOrderDetail({
                 <Table.Th>{tr("common.product")}</Table.Th>
                 <Table.Th>{tr("common.lot")}</Table.Th>
                 <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
+                {hasReturns ? (
+                  <Table.Th ta="right">
+                    {tr("shipping.deliveryOrders.returned")}
+                  </Table.Th>
+                ) : null}
                 <Table.Th>{tr("common.notes")}</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -544,6 +634,17 @@ export function DeliveryOrderDetail({
                   <Table.Td className="tabular-nums" ta="right">
                     {it.quantity}
                   </Table.Td>
+                  {hasReturns ? (
+                    <Table.Td className="tabular-nums" ta="right">
+                      {it.returnedQuantity > 0 ? (
+                        <Text c="orange" size="sm">
+                          {it.returnedQuantity}
+                        </Text>
+                      ) : (
+                        "—"
+                      )}
+                    </Table.Td>
+                  ) : null}
                   <Table.Td>
                     <Text c="dimmed" size="sm">
                       {it.notes ?? "—"}
@@ -577,6 +678,20 @@ export function DeliveryOrderDetail({
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
+            {/* 追加料金（送料など）。指示書から複写された予定がここに入って
+                いる。**直せるのは下書きのうちだけ** — 確定後は締日処理が
+                この金額を請求書へ写すので、あとから動かすと締日画面の予定額と
+                発行済みの請求額が食い違う。 */}
+            <ChargesPanel
+              canEdit={canEditCharges}
+              description={tr("charges.deliveryOrderHelp")}
+              items={chargeItems}
+              onSave={(rows) =>
+                saveDeliveryOrderCharges(order.deliveryOrderNumber, rows)
+              }
+              rows={charges}
+              title={tr("charges.title")}
+            />
             <div>
               <Text c="dimmed" mb={4} size="xs">
                 {tr("common.notes")}
@@ -724,17 +839,43 @@ export function DeliveryOrderDetail({
               })
         }
         onClose={() => setShipOpen(false)}
-        onConfirm={() =>
-          run(
-            () => shipDeliveryOrder(order.deliveryOrderNumber),
-            tr("shipping.deliveryOrders.shipped"),
-            tr("shipping.deliveryOrders.shippedBody", {
-              number: order.deliveryOrderNumber,
-            }),
-          )
-        }
+        onConfirm={confirmShip}
         opened={shipOpen}
         title={tr("shipping.deliveryOrders.confirmTheShipment")}
+      />
+      <ShipShortageModal
+        fromPlantId={
+          order.fromPlantId != null ? Number(order.fromPlantId) : null
+        }
+        loading={isPending}
+        onClose={() => setShortages(null)}
+        onConfirm={() => {
+          setShortages(null);
+          ship();
+        }}
+        opened={shortages != null && shortages.length > 0}
+        shortages={shortages ?? []}
+      />
+      <DeliveryReturnModal
+        items={order.items}
+        loading={isPending}
+        onClose={() => setReturnOpen(false)}
+        onSubmit={(lines, notes) =>
+          run(
+            () =>
+              recordDeliveryReturn({
+                number: order.deliveryOrderNumber,
+                lines,
+                notes,
+              }),
+            tr("shipping.deliveryOrders.returnRecorded"),
+            tr("shipping.deliveryOrders.returnRecordedBody", {
+              number: order.deliveryOrderNumber,
+            }),
+            () => setReturnOpen(false),
+          )
+        }
+        opened={returnOpen}
       />
       <ConfirmModal
         confirmLabel={tr("common.cancelDocument")}

@@ -247,7 +247,8 @@ UPDATE app.material_diameters            SET created_at='2026-07-01T09:00:00+09'
 UPDATE app.material_length_variants      SET created_at='2026-07-01T09:00:00+09', updated_at='2026-07-01T09:00:00+09';
 UPDATE app.material_types                SET created_at='2026-07-01T09:00:00+09', updated_at='2026-07-01T09:00:00+09';
 UPDATE app.material_type_prices          SET created_at='2026-07-01T09:00:00+09', updated_at='2026-07-01T09:00:00+09';
-UPDATE app.materials                     SET created_at='2026-07-01T09:00:00+09', updated_at='2026-07-01T09:00:00+09';
+-- 素材・製品は app.items（品目統合の第 3 段で旧 2 表は消えた）。
+UPDATE app.items                         SET created_at='2026-07-01T09:00:00+09', updated_at='2026-07-01T09:00:00+09';
 UPDATE app.plants                        SET created_at='2026-07-01T09:00:00+09', updated_at='2026-07-01T09:00:00+09'
   WHERE updated_at > '2026-07-31T00:00:00+09';
 COMMIT;

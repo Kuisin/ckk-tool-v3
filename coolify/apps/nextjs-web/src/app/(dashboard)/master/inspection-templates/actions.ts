@@ -43,8 +43,8 @@ function templateFieldsSchema(tr: Tr) {
     nameJa: z.string().min(1, tr("common.nameJaRequired")),
     nameTranslations: z.record(z.string(), z.string()).optional(),
     relatedProcessStepId: z.number().int().positive().nullable(),
-    // 対象製品。null = どの製品にも使える（汎用）。
-    productId: z.number().int().positive().nullable(),
+    // 対象製品（品目, items.id）。null = どの製品にも使える（汎用）。
+    itemId: z.number().int().positive().nullable(),
     // ナビゲーション用グループ（任意）。
     groupId: z.number().int().positive().nullable(),
     // 検査対象（シート単位）: 全数 / 割合(%) / 本数
@@ -355,7 +355,7 @@ export async function createInspectionTemplate(
         code: v.code.trim(),
         name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         relatedProcessStepId: v.relatedProcessStepId,
-        productId: v.productId,
+        itemId: v.itemId,
         groupId: v.groupId,
         samplingMode: v.samplingMode,
         samplingValue: v.samplingMode === "ALL" ? null : v.samplingValue,
@@ -384,7 +384,7 @@ export async function createInspectionTemplate(
         code: v.code.trim(),
         nameJa: v.nameJa,
         relatedProcessStepId: v.relatedProcessStepId,
-        productId: v.productId,
+        itemId: v.itemId,
         isActive: v.isActive,
       },
     });
@@ -421,7 +421,7 @@ export async function updateInspectionTemplate(
       select: {
         name: true,
         relatedProcessStepId: true,
-        productId: true,
+        itemId: true,
         samplingMode: true,
         samplingValue: true,
         recordStyle: true,
@@ -466,7 +466,7 @@ export async function updateInspectionTemplate(
         sampleNaming: v.sampleNaming,
         // ロック中でも変更可（対象製品・グループ・誰が検収できるかの入れ替えは
         // 測定定義に触れない — isActive と同じ扱い）。
-        productId: v.productId,
+        itemId: v.itemId,
         groupId: v.groupId,
         approvalGroupId: v.approvalGroupId,
         approvers: {
@@ -486,13 +486,13 @@ export async function updateInspectionTemplate(
       before: {
         nameJa: localized(priorName),
         relatedProcessStepId: prior.relatedProcessStepId,
-        productId: prior.productId,
+        itemId: prior.itemId,
         isActive: prior.isActive,
       },
       after: {
         nameJa: v.nameJa,
         relatedProcessStepId: v.relatedProcessStepId,
-        productId: v.productId,
+        itemId: v.itemId,
         isActive: v.isActive,
       },
     });
@@ -544,7 +544,7 @@ export async function createInspectionTemplateVersion(
           version,
           name: source.name as object,
           relatedProcessStepId: source.relatedProcessStepId,
-          productId: source.productId,
+          itemId: source.itemId,
           groupId: source.groupId,
           // 参考画像は複写しない — files 行は 1 テンプレート 1 枚の前提で
           // 削除時に実体ごと消すため、複写すると旧バージョン側の削除で

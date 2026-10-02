@@ -60,6 +60,7 @@ export interface MaterialTypeDetailData {
   createdAt: string;
   updatedAt: string;
   materials: {
+    /** 素材の品目 id（items.id）— 素材マスタ MS26 の URL id と同じ空間。 */
     id: number;
     code: string;
     name: string;

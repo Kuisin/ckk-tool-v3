@@ -8,6 +8,16 @@
  * 構成行（material_diameters / material_length_variants）は無ければ自動登録。
  * 種類（kind）は親材種の形状に属するものだけ許可。材種はレガシー未変換
  * （code なし）を親にできない。
+ *
+ * ## 品目統合 第 3 段 — 本体は app.items（旧 materials は落とした）
+ *
+ * 画面・URL・この Server Action の `itemId` は **items.id**（`itemType:
+ * "MATERIAL"`）。旧 `materials` 行へ写していた橋は列と一緒に消えた。
+ *
+ * 素材コードは従来どおり構成から組み立てて `items.code` に入れる。
+ * 監査は `tableName: "materials"` のままで `recordId` が品目 id
+ * （table_name は「そのとき何を書いたか」の事実なので動かさない —
+ *  過去の行は移行 20261102090000 がポインタだけ読み替えてある）。
  */
 
 import { revalidatePath } from "next/cache";
@@ -81,9 +91,10 @@ export type MaterialCreateInput = z.infer<
   ReturnType<typeof materialCreateInputSchema>
 >;
 
-function revalidate(id?: number) {
+/** `itemId` は items.id（URL の id）。materials.id を渡さないこと。 */
+function revalidate(itemId?: number) {
   revalidatePath(BASE_PATH);
-  if (id != null) revalidatePath(`${BASE_PATH}/${id}`);
+  if (itemId != null) revalidatePath(`${BASE_PATH}/${itemId}`);
 }
 
 export interface StructuredTypeInfo {
@@ -185,6 +196,16 @@ export async function createMaterial(
       lengthCode,
     );
 
+    const name = localizedInput(v.nameJa, undefined, v.nameTranslations);
+    const attrs = {
+      name,
+      unit: v.unit,
+      manufacturerModel: v.manufacturerModel?.trim() || null,
+      nominalDiameterMm: v.nominalDiameterMm,
+      matchNames: normalizeKeywords(v.matchNames),
+      isActive: v.isActive,
+      notes: v.notes?.trim() || null,
+    };
     const created = await prisma.$transaction(async (tx) => {
       // 径・全長の構成行は reuse-or-create（管理画面は閲覧・無効化・カスタム名用）。
       await tx.materialDiameter.upsert({
@@ -208,9 +229,13 @@ export async function createMaterial(
         },
         update: {},
       });
-      return tx.material.create({
+      // 素材コードの重複は items.code の unique が弾く（P2002）。
+      const item = await tx.item.create({
         data: {
+          itemType: "MATERIAL",
           code,
+          // ここは**その素材が何であるか**の実寸（製品側の要求寸法
+          // items.requires* とは別の列 — items.prisma 冒頭の注意）。
           materialTypeId: v.materialTypeId,
           surfaceFinishCode: v.surfaceFinishCode,
           diameterCode,
@@ -218,16 +243,11 @@ export async function createMaterial(
           kindCode: v.kindCode,
           diameterMm: v.diameterMm,
           lengthMm: Math.round(v.lengthMm),
-          manufacturerModel: v.manufacturerModel?.trim() || null,
-          nominalDiameterMm: v.nominalDiameterMm,
-          name: localizedInput(v.nameJa, undefined, v.nameTranslations),
-          unit: v.unit,
-          matchNames: normalizeKeywords(v.matchNames),
-          isActive: v.isActive,
-          notes: v.notes?.trim() || null,
+          ...attrs,
         },
         select: { id: true, code: true },
       });
+      return { id: item.id, code: item.code ?? code };
     });
     await recordAudit({
       action: "CREATE",
@@ -262,8 +282,9 @@ export async function createMaterial(
   }
 }
 
+/** `itemId` は items.id（URL の id）— materials.id ではない。 */
 export async function updateMaterial(
-  id: number,
+  itemId: number,
   input: MaterialUpdateInput,
 ): Promise<ActionResult<{ id: number }>> {
   const tr = await getTranslations();
@@ -277,8 +298,8 @@ export async function updateMaterial(
   }
   const v = parsed.data;
   try {
-    const prior = await prisma.material.findUnique({
-      where: { id },
+    const prior = await prisma.item.findFirst({
+      where: { id: itemId, itemType: "MATERIAL" },
       select: {
         unit: true,
         manufacturerModel: true,
@@ -288,34 +309,33 @@ export async function updateMaterial(
         notes: true,
       },
     });
-    await prisma.material.update({
-      where: { id },
-      data: {
-        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
-        unit: v.unit,
-        manufacturerModel: v.manufacturerModel?.trim() || null,
-        nominalDiameterMm: v.nominalDiameterMm,
-        matchNames: normalizeKeywords(v.matchNames),
-        isActive: v.isActive,
-        notes: v.notes?.trim() || null,
-      },
-    });
+    if (!prior) {
+      return actionError(tr("master.materialActions.updateFailed"));
+    }
+    const attrs = {
+      name: localizedInput(v.nameJa, undefined, v.nameTranslations),
+      unit: v.unit,
+      manufacturerModel: v.manufacturerModel?.trim() || null,
+      nominalDiameterMm: v.nominalDiameterMm,
+      matchNames: normalizeKeywords(v.matchNames),
+      isActive: v.isActive,
+      notes: v.notes?.trim() || null,
+    };
+    await prisma.item.update({ where: { id: itemId }, data: attrs });
     await recordAudit({
       action: "UPDATE",
       tableName: "materials",
-      recordId: String(id),
-      before: prior
-        ? {
-            unit: prior.unit,
-            manufacturerModel: prior.manufacturerModel,
-            nominalDiameterMm: prior.nominalDiameterMm
-              ? Number(prior.nominalDiameterMm)
-              : null,
-            matchNames: prior.matchNames,
-            isActive: prior.isActive,
-            notes: prior.notes,
-          }
-        : undefined,
+      recordId: String(itemId),
+      before: {
+        unit: prior.unit,
+        manufacturerModel: prior.manufacturerModel,
+        nominalDiameterMm: prior.nominalDiameterMm
+          ? Number(prior.nominalDiameterMm)
+          : null,
+        matchNames: prior.matchNames,
+        isActive: prior.isActive,
+        notes: prior.notes,
+      },
       after: {
         nameJa: v.nameJa,
         unit: v.unit,
@@ -326,8 +346,8 @@ export async function updateMaterial(
         notes: v.notes?.trim() || null,
       },
     });
-    revalidate(id);
-    return actionOk({ id });
+    revalidate(itemId);
+    return actionOk({ id: itemId });
   } catch (e) {
     return actionError(
       prismaErrorMessage(e, tr("master.materialActions.updateFailed"), tr),
@@ -335,31 +355,32 @@ export async function updateMaterial(
   }
 }
 
+/** `itemIds` は items.id（一覧の行 id）— materials.id ではない。 */
 export async function setMaterialsActive(
-  ids: number[],
+  itemIds: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
   const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) {
+  if (itemIds.length === 0) {
     return actionError(tr("master.materialActions.noTargetsSelected"));
   }
   try {
-    await prisma.material.updateMany({
-      where: { id: { in: ids } },
+    await prisma.item.updateMany({
+      where: { id: { in: itemIds }, itemType: "MATERIAL" },
       data: { isActive },
     });
-    for (const id of ids) {
+    for (const itemId of itemIds) {
       await recordAudit({
         action: "UPDATE",
         tableName: "materials",
-        recordId: String(id),
+        recordId: String(itemId),
         after: { isActive },
       });
     }
     revalidate();
-    for (const id of ids) revalidatePath(`${BASE_PATH}/${id}`);
+    for (const itemId of itemIds) revalidatePath(`${BASE_PATH}/${itemId}`);
     return actionOk();
   } catch (e) {
     return actionError(
@@ -372,27 +393,32 @@ export async function setMaterialsActive(
   }
 }
 
-export async function deleteMaterials(ids: number[]): Promise<ActionResult> {
+/** `itemIds` は items.id（一覧の行 id）— materials.id ではない。 */
+export async function deleteMaterials(
+  itemIds: number[],
+): Promise<ActionResult> {
   const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) {
+  if (itemIds.length === 0) {
     return actionError(tr("master.materialActions.noTargetsSelected"));
   }
   try {
-    // 参照ガード: 製品は材種参照へ移行済み（products.material_id は廃止）。
-    // 発注明細・入荷・在庫は RESTRICT なので P2003 → prismaErrorMessage で止まるが、
-    // 指示書（work_orders.material_id）は SET NULL で DB が止めない — ここで数える。
-    const refs = await countMasterReferences("material", ids);
+    // 参照ガード: 発注明細・入荷・在庫は RESTRICT なので P2003 →
+    // prismaErrorMessage で止まるが、指示書（work_orders.material_item_id）は
+    // Restrict でも数え漏らしたくないので lib/master-refs で先に数える。
+    const refs = await countMasterReferences("material", itemIds);
     if (refs.total > 0) {
       return actionError(tr("master.materialActions.referencedCannotDelete"));
     }
-    await prisma.material.deleteMany({ where: { id: { in: ids } } });
-    for (const id of ids) {
+    await prisma.item.deleteMany({
+      where: { id: { in: itemIds }, itemType: "MATERIAL" },
+    });
+    for (const itemId of itemIds) {
       await recordAudit({
         action: "DELETE",
         tableName: "materials",
-        recordId: String(id),
+        recordId: String(itemId),
       });
     }
     revalidate();

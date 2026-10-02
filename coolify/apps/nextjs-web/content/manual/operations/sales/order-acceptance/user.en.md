@@ -123,7 +123,7 @@ At the top of the screen, 「**製品**」 (products), 「**明細数 / 合計�
 
 ## Asking for approval
 
-1. In view mode, press「**承認依頼**」(request approval) in the card at the very top of the screen. (The button is hidden while you are editing — save first.) The button stays disabled while something is missing: the card lists what it is (for example「顧客が未特定です」— no customer —, or「明細 2 行目: 単価が未入力です」— no unit price on row 2). Fix it with「**編集**」(edit) first.
+1. In view mode, press「**承認依頼**」(request approval) in the card at the very top of the screen. (The button is hidden while you are editing — save first.) The button stays disabled while something is missing: the card lists what it is (for example「顧客が未特定です」— no customer —,「明細 2 行目: 単価が未入力です」— no unit price on row 2 —, or「明細 2 行目: 研ぎ直す工具が未選択です」— no tool to regrind on row 2). Fix it with「**編集**」(edit) first.
 2. If there is a price difference, a screen called「価格差異の確認」(check the price difference) appears. Check the contents and press「**差異を確認して依頼**」(confirm the difference and request). Rows with an overridden unit price **do not stop the request** (the price is deliberate), but the approver also sees them as「単価の上書き N 件」(N overridden unit prices).
 
 The status changes to「**承認依頼中**」(pending approval).
@@ -162,7 +162,7 @@ When an order is withdrawn, you cancel the **whole order acceptance** (there is 
 1. On a deployed order acceptance, choose 「**キャンセル依頼**」 (request cancellation) from the 「…」 menu.
 2. Enter the **reason** (required) and press 「**キャンセルを依頼する**」.
 
-If the 「**注文請書キャンセル**」 (order acknowledgement cancellation) flow in the [approval settings](/manual/en/operations/masters/approval-setting/user) has steps, **nothing changes until approval finishes**. A pending card appears at the top of the screen; approvers see 「**承認**」 (approve) and 「**差し戻し**」 (reject) buttons there (they can also act from the [approval management](/manual/en/operations/production/approval/user) list). With no steps configured, the cancellation applies immediately.
+If the 「**注文請書キャンセル**」 (order acknowledgement cancellation) flow in the [approval settings](/manual/en/operations/masters/approval-setting/user) has steps, **nothing changes until approval finishes**. A pending card appears at the top of the screen; approvers see 「**承認**」 (approve) and 「**差し戻し**」 (reject) buttons there (they can also act from the [approval management](/manual/en/operations/general/my-tasks/user) list). With no steps configured, the cancellation applies immediately.
 
 On final approval, the following happens automatically:
 
@@ -183,20 +183,23 @@ Every field on the order acceptance screen. What the AI read from the order land
 | [Customer order no.](#field-customer-order-ref) | Optional | The number on the customer's own order |
 | [Quote](#field-quote-number) | Optional | The quote it came from |
 | [Order date](#field-order-date) | Optional | The date the customer ordered |
-| [Ship-to](#field-ship-to) | Optional (standard delivery only) | Where the products are delivered |
-| [Delivery method](#field-delivery-method) | Required | Normal delivery / direct to end user |
-| [End user](#field-end-user) | Required for direct | Where a direct shipment goes (the end user) |
-| [Assigned plant](#field-assigned-plant) | Optional | The site that handles this order |
-| [Shipping work location](#field-shipping-work-location) | Optional | Where the shipping work is done |
 | [Customer-supplied delivery note](#field-customer-provides-delivery-note) | Optional | Whether the customer provides their own delivery note |
 | [Notes](#field-notes) | Optional | Notes for the whole acceptance |
 | [Product](#field-product) | Required | The product ordered |
 | [Item name (as read)](#field-extracted-name) | — | The item name printed on the order |
 | [Order type](#field-order-type) | Required | Production, test and so on |
+| Tool to regrind | Required for regrind | The tool held and reground (only on rows whose [order type](#field-order-type) is regrind) |
 | [Quantity](#field-quantity) | Required | The quantity ordered |
 | [Unit price](#field-unit-price) | Required | Price per piece |
 | [Delivery date](#field-delivery-date) | Optional | Delivery date for that line |
+| [Ship-to](#field-ship-to) | Optional (standard delivery only) | Where that line is delivered |
+| [Delivery method](#field-delivery-method) | Required | Normal delivery / direct to end user (per line) |
+| [End user](#field-end-user) | Required for direct | Where a direct shipment goes (the end user, per line) |
+| [Assigned plant](#field-assigned-plant) | Optional | The site that handles that line |
+| [Shipping work location](#field-shipping-work-location) | Optional | Where the shipping work is done (per line) |
 | [Line notes](#field-item-notes) | Optional | Notes for that line only |
+
+**Ship-to, delivery method, end user, assigned plant and shipping work location are all per-line fields.** Some orders ship different lines to different destinations, so delivery is set line by line rather than once for the whole acceptance. They live in a collapsed "Delivery" section by default and open automatically once a value is set. When several lines share the same destination, fill in the first line and use "**Apply line 1's delivery to all lines**" to copy it to the rest.
 
 ### Customer [#field-customer]
 
@@ -217,28 +220,6 @@ The quote this order came from. Search for it and choose it (with a customer cho
 ### Order date [#field-order-date]
 
 The date the customer placed the order, as printed on their document.
-
-### Ship-to [#field-ship-to]
-
-Where the products are delivered. Choose it **when they go to a different company or branch** from the customer who ordered. Left empty, it means they go to the customer.
-
-This field is for **standard delivery only**. Switch the delivery method to direct-to-end-user and it greys out — the destination of a direct shipment is the [end user](#field-end-user), and a document must not carry two destinations. Switching to direct clears whatever ship-to was chosen.
-
-### Delivery method [#field-delivery-method]
-
-How the products are delivered. **Normal delivery** goes to the customer (or the ship-to you chose). **Direct to user** ships straight to the end user. A delivery order can only combine lines with **the same customer, the same ship-to and the same delivery method**, so this choice decides how shipments are grouped.
-
-### End user [#field-end-user]
-
-The actual destination (end user). **Required when direct to user is selected**; with normal delivery it can be recorded optionally. Choose from business partners registered with the end-user role.
-
-### Assigned plant [#field-assigned-plant]
-
-The site of your own company that mainly handles this order. Choose it when you want to make clear which site's work it is.
-
-### Shipping work location [#field-shipping-work-location]
-
-The place where the shipping work (packing, loading and so on) is done. Choose from the [work location](/manual/en/operations/masters/work-location/user) master.
 
 ### Customer-supplied delivery note [#field-customer-provides-delivery-note]
 
@@ -262,7 +243,9 @@ The item name exactly as printed on the order. It is kept **as a record of what 
 
 ### Order type [#field-order-type]
 
-Production, test, sample or other. Prices differ by type.
+Production, test, sample, **regrind** or other. Prices differ by type.
+
+**A 「再研磨」 (regrind) row asks for different things.** The 「製品」 (product) field becomes a 「**再研磨品目**」 (regrind item) field — what is sold is the regrinding service, so you pick it from the [regrind items](/manual/en/operations/masters/regrind-item/user) — and a 「**研ぎ直す工具**」 (tool to regrind) field appears just below it. The tool is picked from the [product master](/manual/en/operations/masters/product/user), and this is the only field where another maker's tool (an 「他社製品」 (external product)) can be picked. **Switching a row's type into or out of 「再研磨」 clears the item that was picked** — the kind of item is different, so pick it again. **A regrind row can be neither sent for approval nor confirmed until its tool is picked** (「明細 2 行目: 研ぎ直す工具が未選択です」 — the tool to regrind is not selected).
 
 ### Quantity [#field-quantity]
 
@@ -278,7 +261,29 @@ For a customer and product with no price list, the field is free to enter from t
 
 ### Delivery date [#field-delivery-date]
 
-The delivery date for that line. If a line has none, the header's requested date is used.
+The delivery date for that line. It is set per line — there is no shared default for the whole acceptance.
+
+### Ship-to [#field-ship-to]
+
+Where that line is delivered. Choose it **when it goes to a different company or branch** from the customer who ordered. Left empty, it means it goes to the customer.
+
+This field is for **standard delivery only**. Switch the line's delivery method to direct-to-end-user and it greys out — the destination of a direct shipment is the [end user](#field-end-user), and a line must not carry two destinations. Switching to direct clears whatever ship-to was chosen.
+
+### Delivery method [#field-delivery-method]
+
+How that line's products are delivered. **Normal delivery** goes to the customer (or the ship-to you chose). **Direct to user** ships straight to the end user. A delivery order can only combine lines with **the same customer, the same ship-to and the same delivery method**, so this choice decides how shipments are grouped.
+
+### End user [#field-end-user]
+
+That line's actual destination (end user). **Required when direct to user is selected**; with normal delivery it can be recorded optionally. Choose from business partners registered with the end-user role.
+
+### Assigned plant [#field-assigned-plant]
+
+The site of your own company that mainly handles that line. Choose it when you want to make clear which site's work it is.
+
+### Shipping work location [#field-shipping-work-location]
+
+The place where that line's shipping work (packing, loading and so on) is done. Choose from the [work location](/manual/en/operations/masters/work-location/user) master.
 
 ### Line notes [#field-item-notes]
 
@@ -295,7 +300,7 @@ A. The company name on the order form could not be matched to the business partn
 > 💡 **Your correction is remembered.** When you pick a customer (or a product) by hand and save, the system records "this wording on the order form means this record" and **matches it automatically the next time the same wording arrives**. For a customer who sends the same format every month, you only fix it once. Pick a different record later and it re-learns that one instead.
 
 **Q. I cannot press「承認依頼」(request approval).**
-A. Requesting approval needs **a customer, at least one line item, and a product and a unit price on every row**. Whatever is missing is listed in the card at the very top of the screen (for example「顧客が未特定です / 明細 2 行目: 単価が未入力です」). Fix it with「**編集**」(edit) and press「**保存**」(save), and the button becomes available.
+A. Requesting approval needs **a customer, at least one line item, and a product and a unit price on every row** (plus the **tool to regrind** on every row whose order type is regrind). Whatever is missing is listed in the card at the very top of the screen (for example「顧客が未特定です / 明細 2 行目: 単価が未入力です」). Fix it with「**編集**」(edit) and press「**保存**」(save), and the button becomes available.
 
 **Q. On deploy it says「確定できません: 明細 2 行目: 製品が未特定です」(cannot deploy: the product on line item row 2 is not identified).**
 A. The product or the unit price on the row shown is empty. The same check runs when approval is requested, so this is rare — if it does happen, it has to go back to a draft, so ask the person who approved it to do「**差し戻し**」(send back), correct that row, and go on from there.

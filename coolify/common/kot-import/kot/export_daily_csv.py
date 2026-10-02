@@ -8,6 +8,7 @@ Credentials come from db.get_kot_credentials() — a DB row set via adminTools'
 
 from __future__ import annotations
 
+import os
 import time
 from datetime import date, timedelta
 from pathlib import Path
@@ -28,6 +29,9 @@ DAILY_EXPORT_BUTTON_ID = "button_2-1"
 DATE_RANGE_BUTTON_ID = "action_02"  # 日付指定
 EXPORT_SUBMIT_BUTTON_ID = "button_01"  # データ出力
 PAGE_TITLE_DAILY_EXPORT = "日別データ出力"
+# 「2. 出力レイアウトを選択」. auto_import = legacy, auto_import_v2 = adds the カ） columns,
+# 休日/所定内時間, 欠勤時間休 and 勤務開始/終了刻限. Overridable without a redeploy.
+EXPORT_LAYOUT = os.environ.get("KOT_EXPORT_LAYOUT", "auto_import_v2").strip()
 DOWNLOADS_DIR = SCRIPT_DIR / "downloads"
 
 
@@ -140,6 +144,26 @@ def _go_to_daily_export(page) -> None:
     print("Daily export form loaded.")
 
 
+def _select_layout(page, name: str) -> None:
+    """Pick the 出力レイアウト by its visible name (exact match: `auto_import` must
+    not match `auto_import_v2`). The control's DOM id is not known, so try a <select>
+    that offers the name, then any clickable element whose whole text is the name.
+    Fails loudly — silently exporting with the wrong layout writes wrong data."""
+    print(f"Selecting export layout: {name}")
+    for sel in page.locator("select:visible").all():
+        labels = [t.strip() for t in sel.locator("option").all_inner_texts()]
+        if name in labels:
+            sel.select_option(label=name)
+            time.sleep(0.5)
+            return
+    target = page.get_by_text(name, exact=True).first
+    if target.count() == 0:
+        raise RuntimeError(f"Export layout '{name}' not found on the daily export page")
+    target.scroll_into_view_if_needed()
+    target.click(force=True)
+    time.sleep(0.5)
+
+
 def _fill_date_range_and_export(page, start: date, end: date) -> Path:
     print("Switching to date range (日付指定)...")
     date_btn = page.locator(f"#{DATE_RANGE_BUTTON_ID}")
@@ -172,6 +196,8 @@ def _fill_date_range_and_export(page, start: date, end: date) -> Path:
 
     DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
     out_path = DOWNLOADS_DIR / f"kot_daily_{start_str.replace('/', '-')}_{end_str.replace('/', '-')}.csv"
+
+    _select_layout(page, EXPORT_LAYOUT)
 
     # Set select_3 to value "3" (UTF-8) before submitting
     select3 = page.locator("#select_3")

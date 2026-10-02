@@ -233,7 +233,40 @@ export function PriceListDetail({
     >
       <SummaryGrid>
         <FieldValue label={tr("common.customer")} value={entry.customerName} />
-        <FieldValue label={tr("common.product")} value={entry.productName} />
+        <FieldValue
+          label={tr("common.product")}
+          value={
+            <Group gap={6} wrap="nowrap">
+              {entry.itemType === "REGRIND" && (
+                <Badge color="orange" size="xs" variant="light">
+                  {tr("enum.ITEM_TYPE_LABEL.REGRIND")}
+                </Badge>
+              )}
+              <span>{entry.productName}</span>
+            </Group>
+          }
+        />
+        {/*
+          標準価格は**この画面では読むだけ**。持ち主は品目マスタ（再研磨品目
+          MS0H）で、直すのはあちら — 値段の持ち主を 2 か所にしない。ここに
+          出すのは「当たる価格表が無いときいくらで売れるのか」が価格表の画面
+          から見えないと分からないため。
+        */}
+        {entry.standardUnitPrice != null && (
+          <FieldValue
+            label={tr("common.standardPrice")}
+            value={
+              <Group gap={8} wrap="nowrap">
+                <MoneyText value={entry.standardUnitPrice} />
+                {entry.itemType === "REGRIND" && (
+                  <Anchor href="/master/regrind-items" size="xs">
+                    {tr("sales.priceLists.editOnItemMaster")}
+                  </Anchor>
+                )}
+              </Group>
+            }
+          />
+        )}
         <FieldValue
           label={tr("common.orderType")}
           value={

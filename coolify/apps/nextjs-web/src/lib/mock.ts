@@ -93,6 +93,7 @@ export const ORDER_TYPE_OPTIONS: Option[] = [
   { value: "PRODUCTION", label: "本番" },
   { value: "TEST", label: "テスト" },
   { value: "SAMPLE", label: "サンプル" },
+  { value: "REGRIND", label: "再研磨" },
   { value: "OTHER", label: "その他" },
 ];
 

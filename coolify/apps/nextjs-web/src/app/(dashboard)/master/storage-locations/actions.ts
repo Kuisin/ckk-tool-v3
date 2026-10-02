@@ -77,7 +77,7 @@ export type StorageShelfInput = z.infer<ReturnType<typeof shelfInputSchema>>;
 
 function revalidate() {
   revalidatePath("/master/storage-locations");
-  revalidatePath("/production/inventory");
+  revalidatePath("/inventory");
 }
 
 // ── 保管場所 ─────────────────────────────────────────────────────────────────
@@ -471,11 +471,13 @@ export async function deleteStorageShelf(id: number): Promise<ActionResult> {
     if (!before) {
       return actionError(tr("master.storageLocationActions.shelfNotFound"));
     }
-    const [prodRefs, matRefs] = await Promise.all([
-      prisma.productInventory.count({ where: { shelfId: id } }),
-      prisma.materialInventory.count({ where: { shelfId: id } }),
-    ]);
-    if (prodRefs + matRefs > 0) {
+    // 在庫は 1 表になったので 1 回数えれば足りる。
+    // custody-scope: / owner-scope: 預け分・預り品も含めて数える。ここは「この
+    // 棚を指している行が 1 行でもあるか」の参照チェックで、自社在庫かどうかは関係ない。
+    const invRefs = await prisma.itemInventory.count({
+      where: { shelfId: id },
+    });
+    if (invRefs > 0) {
       return actionError(
         tr("master.storageLocationActions.shelfHasInventoryRefs"),
       );

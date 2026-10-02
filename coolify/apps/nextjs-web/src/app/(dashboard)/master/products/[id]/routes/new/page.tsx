@@ -7,13 +7,12 @@ import { fetchCustomerOptions } from "@/app/(dashboard)/sales/trial-estimates/da
 import { RouteEditorForm } from "@/components/master/products/RouteEditorForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { loadCatalog } from "@/lib/workflow";
 
 export const dynamic = "force-dynamic";
 
-/** 製品工程ルート 新規作成 (MS24 工程タブ). */
+/** 製品工程ルート 新規作成 (MS24 工程タブ). URL の id は items.id。 */
 export default async function ProductRouteNewPage({
   params,
 }: {
@@ -22,13 +21,13 @@ export default async function ProductRouteNewPage({
   const denied = await requireAppRead("master-products");
   if (denied) return denied;
   const { id: idParam } = await params;
-  const id = Number(idParam);
-  if (!Number.isInteger(id)) notFound();
+  const itemId = Number(idParam);
+  if (!Number.isInteger(itemId)) notFound();
   const [product, catalog, plantOptions, supplierOptions, customerOptions] =
     await Promise.all([
-      prisma.product.findUnique({
-        where: { id },
-        select: { id: true, name: true, yearMonth: true, seq: true },
+      prisma.item.findFirst({
+        where: { id: itemId, itemType: "PRODUCT" },
+        select: { id: true, name: true, code: true },
       }),
       loadCatalog(),
       fetchPlantOptions(),
@@ -38,16 +37,15 @@ export default async function ProductRouteNewPage({
   if (!product) notFound();
 
   const productLabel =
-    formatProductNumber(product.yearMonth, product.seq) ??
-    localized(product.name as LocalizedText | null);
+    product.code ?? localized(product.name as LocalizedText | null);
 
   return (
     <RouteEditorForm
       catalogSteps={catalog.steps}
       customerOptions={customerOptions}
+      itemId={product.id}
       mode="create"
       plantOptions={plantOptions}
-      productId={product.id}
       productLabel={productLabel}
       supplierOptions={supplierOptions}
       useDeps={catalog.useDeps}

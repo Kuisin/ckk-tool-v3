@@ -5,7 +5,10 @@
  *
  * ★ **この表だけはアプリ内で物理削除される**（下書きのみ・
  * `deleteDeliveryOrder`）。消えた行は差分同期からは見えないので、
- * `GET /api/v1/deletions` を併せて引くこと（`_specs/api.md` §5.3）。
+ * `GET /api/v1/deletions` を併せて引くこと（`_specs/api.md` §5.3）。 *
+ * 明細の `productId` の値は **`items.id`**（2026-09-20 の切り替え —
+ * `_specs/api.md` §6.1）。項目名は従来のままで、`/api/v1/products` の `id` と
+ * 同じ id 空間を指す。
  */
 
 import { ownOrPlantWhere } from "@ckk/authz-core";
@@ -54,7 +57,7 @@ export async function GET(request: Request): Promise<Response> {
             orderBy: { sortOrder: "asc" },
             select: {
               id: true,
-              productId: true,
+              itemId: true,
               orderLineId: true,
               lotNumber: true,
               quantity: true,
@@ -83,7 +86,7 @@ export async function GET(request: Request): Promise<Response> {
       // 明細は時刻列を持たないのでヘッダの子として出す（単独の差分同期は無い）。
       items: r.items.map((i) => ({
         id: i.id,
-        productId: i.productId,
+        productId: i.itemId,
         orderLineId: i.orderLineId,
         lotNumber: i.lotNumber,
         quantity: i.quantity,

@@ -19,25 +19,27 @@ const tr = ((key: string, params?: Record<string, unknown>) =>
   typeof acceptanceReadiness
 >[1];
 
+/** 配送は行ごと（§8）。既定は通常配送・エンドユーザーなし。 */
 const item = (over: {
-  productId?: string | null;
+  itemId?: string | null;
   quantity?: number;
   unitPrice?: number | null;
-}) => ({ productId: "12", quantity: 10, unitPrice: 1000, ...over }) as const;
-
-/** 配送方法の既定（通常配送・エンドユーザーなし）。 */
-const delivery = (
-  over: Partial<{
-    deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
-    endUserBpId: string | null;
-  }> = {},
-) => ({ deliveryMethod: "NORMAL" as const, endUserBpId: null, ...over });
+  deliveryMethod?: "NORMAL" | "DIRECT_TO_USER";
+  endUserBpId?: string | null;
+}) =>
+  ({
+    itemId: "12",
+    quantity: 10,
+    unitPrice: 1000,
+    deliveryMethod: "NORMAL" as const,
+    endUserBpId: null,
+    ...over,
+  }) as const;
 
 describe("acceptanceReadiness", () => {
   it("顧客 + 全行に製品と単価が揃えば ok", () => {
     const r = acceptanceReadiness(
       {
-        ...delivery(),
         customerBpId: "bp-1",
         items: [item({}), item({})],
       },
@@ -49,7 +51,6 @@ describe("acceptanceReadiness", () => {
   it("顧客未特定を拾う", () => {
     const r = acceptanceReadiness(
       {
-        ...delivery(),
         customerBpId: null,
         items: [item({})],
       },
@@ -62,7 +63,6 @@ describe("acceptanceReadiness", () => {
   it("明細 0 件はそこで打ち切る（行の指摘は出さない）", () => {
     const r = acceptanceReadiness(
       {
-        ...delivery(),
         customerBpId: "bp-1",
         items: [],
       },
@@ -79,13 +79,12 @@ describe("acceptanceReadiness", () => {
   it("製品未特定・単価未入力を行番号つきで挙げる", () => {
     const r = acceptanceReadiness(
       {
-        ...delivery(),
         customerBpId: "bp-1",
         items: [
           item({}),
-          item({ productId: null }),
+          item({ itemId: null }),
           item({ unitPrice: null }),
-          item({ productId: null, unitPrice: null }),
+          item({ itemId: null, unitPrice: null }),
         ],
       },
       tr,
@@ -108,7 +107,6 @@ describe("acceptanceReadiness", () => {
   it("単価 0 は「未入力」ではない（サンプルは 0 円がある）", () => {
     const r = acceptanceReadiness(
       {
-        ...delivery(),
         customerBpId: "bp-1",
         items: [item({ unitPrice: 0 })],
       },
@@ -117,24 +115,22 @@ describe("acceptanceReadiness", () => {
     expect(r.ok).toBe(true);
   });
 
-  it("空文字の productId は未特定として扱う", () => {
+  it("空文字の itemId は未特定として扱う", () => {
     const r = acceptanceReadiness(
       {
-        ...delivery(),
         customerBpId: "bp-1",
-        items: [item({ productId: "" })],
+        items: [item({ itemId: "" })],
       },
       tr,
     );
     expect(r.ok).toBe(false);
   });
 
-  it("ユーザー直送でエンドユーザー未指定を拾う", () => {
+  it("ユーザー直送の行でエンドユーザー未指定を行番号つきで拾う", () => {
     const r = acceptanceReadiness(
       {
-        ...delivery({ deliveryMethod: "DIRECT_TO_USER" }),
         customerBpId: "bp-1",
-        items: [item({})],
+        items: [item({ deliveryMethod: "DIRECT_TO_USER" })],
       },
       tr,
     );
@@ -142,7 +138,8 @@ describe("acceptanceReadiness", () => {
     expect(r.issues).toEqual([
       {
         kind: "endUser",
-        message: "sales.orderAcceptanceReadiness.directToUserButEndUserNot",
+        message:
+          'sales.orderAcceptanceReadiness.lineEndUserNotIdentified:{"rows":"1"}',
       },
     ]);
   });
@@ -150,13 +147,49 @@ describe("acceptanceReadiness", () => {
   it("ユーザー直送でもエンドユーザーが居れば ok", () => {
     const r = acceptanceReadiness(
       {
-        ...delivery({ deliveryMethod: "DIRECT_TO_USER", endUserBpId: "bp-9" }),
         customerBpId: "bp-1",
-        items: [item({})],
+        items: [
+          item({ deliveryMethod: "DIRECT_TO_USER", endUserBpId: "bp-9" }),
+        ],
       },
       tr,
     );
     expect(r.ok).toBe(true);
+  });
+
+  it("行ごとに配送方法が違っても、揃っている行だけなら先へ進める", () => {
+    const r = acceptanceReadiness(
+      {
+        customerBpId: "bp-1",
+        items: [
+          item({ deliveryMethod: "NORMAL" }),
+          item({ deliveryMethod: "DIRECT_TO_USER", endUserBpId: "bp-9" }),
+        ],
+      },
+      tr,
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("行ごとに配送方法が違うとき、直送側だけエンドユーザー未指定なら 2 行目だけ挙げる", () => {
+    const r = acceptanceReadiness(
+      {
+        customerBpId: "bp-1",
+        items: [
+          item({ deliveryMethod: "NORMAL" }),
+          item({ deliveryMethod: "DIRECT_TO_USER" }),
+        ],
+      },
+      tr,
+    );
+    expect(r.ok).toBe(false);
+    expect(r.issues).toEqual([
+      {
+        kind: "endUser",
+        message:
+          'sales.orderAcceptanceReadiness.lineEndUserNotIdentified:{"rows":"2"}',
+      },
+    ]);
   });
 });
 
@@ -164,9 +197,8 @@ describe("readinessSummary", () => {
   it("先頭 3 件までを並べ、残りは件数で示す", () => {
     const issues = acceptanceReadiness(
       {
-        ...delivery(),
         customerBpId: null,
-        items: [item({ productId: null, unitPrice: null })],
+        items: [item({ itemId: null, unitPrice: null })],
       },
       tr,
     ).issues;
@@ -193,5 +225,55 @@ describe("shipToApplies / normalizeShipToBpId — 出荷先は通常配送だけ
   it("未指定はどちらの配送方法でも null のまま", () => {
     expect(normalizeShipToBpId("NORMAL", null)).toBeNull();
     expect(normalizeShipToBpId("DIRECT_TO_USER", null)).toBeNull();
+  });
+});
+
+describe("他社製品 と 再研磨の工具", () => {
+  it("他社製品は売り物の欄に置けない（再研磨の行でも）", () => {
+    const r = acceptanceReadiness(
+      {
+        customerBpId: "bp-1",
+        items: [
+          { ...item({}), orderType: "PRODUCTION", isExternalProduct: true },
+          {
+            ...item({}),
+            orderType: "REGRIND",
+            isExternalProduct: true,
+            toolItemId: "9",
+          },
+        ],
+      },
+      tr,
+    );
+    expect(r.ok).toBe(false);
+    // 他社製品は「再研磨なら売ってよい」ではない — 預かるだけなので、
+    // どちらの行でも売り物の欄には置けない。
+    expect(r.issues.map((i) => i.kind)).toEqual(["externalProduct"]);
+    expect(r.issues[0].message).toContain('"rows":"1, 2"');
+  });
+
+  it("再研磨の行は工具が要る。判定材料が無ければ見ない", () => {
+    const r = acceptanceReadiness(
+      { customerBpId: "bp-1", items: [{ ...item({}), orderType: "REGRIND" }] },
+      tr,
+    );
+    expect(r.ok).toBe(false);
+    expect(r.issues.map((i) => i.kind)).toEqual(["regrindTool"]);
+
+    // 工具が入っていれば通る。
+    expect(
+      acceptanceReadiness(
+        {
+          customerBpId: "bp-1",
+          items: [{ ...item({}), orderType: "REGRIND", toolItemId: "9" }],
+        },
+        tr,
+      ).ok,
+    ).toBe(true);
+
+    // 再研磨でない行は工具を問わない（従来どおり）。
+    expect(
+      acceptanceReadiness({ customerBpId: "bp-1", items: [item({})] }, tr).ok,
+    ).toBe(true);
   });
 });

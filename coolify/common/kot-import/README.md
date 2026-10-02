@@ -32,6 +32,37 @@ The scheduler runs immediately on start, then every `KOT_INTERVAL_SECONDS`
 (default 6h), pulling the last `KOT_DAYS` (default 7) days. Each run deletes and
 re-inserts that date range, so re-runs are idempotent.
 
+## Force import & month-end cleanup
+
+adminTools `/kot` → 「期間を指定して取り込み」 queues a date range in `kot.import_requests`;
+the entrypoint polls it every `KOT_REQUEST_POLL_SECONDS` (20s) and re-imports the range
+in 2-month batches (KOT caps the date range of one export) (same delete-then-insert, so repeating is safe). On the **last day of
+each month (Asia/Tokyo)** the scheduled run also queues one automatic request for
+**the 20th of the previous month → that day** (`source = 'month-end'`, at most one per
+month-end), to pick up late corrections to the closing period. **Failsafe:** if the
+last day was missed (container down), it is caught up during the following
+`KOT_CLEANUP_CATCHUP_DAYS` (7) days; a failed reload is re-queued on later scheduled runs
+(every 6h) up to `KOT_CLEANUP_MAX_ATTEMPTS` (3) attempts, never more than one in flight. Both kinds appear in the
+adminTools request history and the import log.
+
+## Export layout & columns
+
+The export uses KOT's **出力レイアウト `auto_import_v2`** (`KOT_EXPORT_LAYOUT`, default
+`auto_import_v2`; the legacy layout is `auto_import`). Every CSV field is read **by
+header name** (`INT_FIELDS` / `TEXT_FIELDS` in `kot/db.py`), never by position, and each
+lists the legacy header as a fallback. A layout missing a required header is rejected
+*before* the date range is deleted (a wrong layout used to parse as all-zero rows and
+overwrite good data).
+
+**Adding an export column** = one line in `db.py` + `ALTER TABLE` in
+`shared-db/sql/kot-columns.sql`. The `kot` schema is not Prisma-managed and role `kot`
+does not own `hr_records`, so that SQL is applied **as postgres by `db-migrate`** on every
+deploy (only where `kot.hr_records` exists). If the importer happens to deploy before the
+migrator, its INSERT fails and the run is recorded as failed — the delete is rolled back,
+so nothing is lost; the next run after the migrator succeeds. New columns are NULL for rows imported with the old
+layout (NULL = the layout had no such field, 0 = it did and the value was 0). They are
+also exposed in `kot.v_labor`; Metabase needs a schema re-sync to see them.
+
 ## Employee mapping (required for rows to land)
 
 `db.py` maps the KOT `従業員コード` → an AD `username` via the **`employees`** table

@@ -13,7 +13,7 @@
  * 製品詳細の「関連」タブからは読むだけ + 起票への導線を出す。
  */
 
-import { Select, Stack, TextInput } from "@mantine/core";
+import { Select, Stack, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -33,6 +33,8 @@ import { unitOptions } from "@/lib/enum-labels";
 import type { Tr } from "@/lib/i18n";
 
 export interface ProductModalTarget {
+  /** 他社製品（再研磨専用）か。複製元に従う。 */
+  isExternalProduct?: boolean;
   id: number;
   code: string | null;
   name: string;
@@ -203,10 +205,6 @@ export function DuplicateProductModal({
     setUnit(source.unit);
   }
 
-  const materialSpecText = source?.materialTypeId
-    ? `${source.materialTypeLabel || tr("common.materialTypes")} ／ φ${source.diameterMm ?? "—"} × ${source.lengthMm ?? "—"}mm`
-    : "—";
-
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!nameJa.trim() || !unit) return;
@@ -214,20 +212,19 @@ export function DuplicateProductModal({
       const result = await createProduct({
         nameJa,
         nameTranslations,
-        materialTypeId: source?.materialTypeId ?? null,
-        diameterMm: source?.diameterMm ?? null,
-        lengthMm: source?.lengthMm ?? null,
         unit,
         // 課税区分は引き継ぐ — 同じ形の製品なら税の扱いも同じであることが多く、
         // 付け忘れると黙って既定（標準税率）で請求されてしまう。
         taxCategoryId:
           source?.taxCategoryId != null ? String(source.taxCategoryId) : null,
+        // 他社製品かどうかは複製元に従う（同じメーカーの別の工具を登録する場面）。
+        isExternalProduct: source?.isExternalProduct ?? false,
+        makerName: null,
         // キーワードは複製しない — 同じ語が 2 つの製品を指すと、AI 突合が
         // どちらか決められなくなる。複製先で改めて付ける。
         matchNames: [],
         isActive: true,
         notes: "",
-        spec: [],
       });
       if (result.ok) {
         notifications.show({
@@ -293,13 +290,11 @@ export function DuplicateProductModal({
             onChange: setNameTranslations,
           }}
         />
-        <TextInput
-          description={tr("master.products.carriesOverTheSourceSMaterial")}
-          disabled
-          label={tr("common.materialSpecification")}
-          readOnly
-          value={materialSpecText}
-        />
+        {/* 仕様（材種・寸法・製品項目）は設計図の版が持つので複製しない —
+            複製した製品の図面は、設計図で新しく登録する。 */}
+        <Text c="dimmed" size="xs">
+          {tr("master.products.specLivesInDrawing")}
+        </Text>
         <Select
           data={unitOptions(locale)}
           label={tr("common.unit")}

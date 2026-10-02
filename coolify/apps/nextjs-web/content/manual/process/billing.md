@@ -26,7 +26,7 @@ screenshots:
 | 3. 発行する | PDF を発行する | 経理 | [請求書](/manual/ja/operations/billing/invoice/user)（`BL01`） |
 | 4. 送付する | 顧客へ送り、送付済にする | 経理 | [請求書](/manual/ja/operations/billing/invoice/user)（`BL01`） |
 | 5. 入金を記録する | 入金があったら支払済にする | 経理 | [請求書](/manual/ja/operations/billing/invoice/user)（`BL01`） |
-| 6. 会計へ渡す | 弥生会計向けの CSV を書き出す | 経理 | [締日処理](/manual/ja/operations/billing/billing-closing/user)（`BL02`） |
+| 6. 会計へ渡す | 会計ソフト向けの仕訳 CSV を書き出す | 経理 | [締日処理](/manual/ja/operations/billing/billing-closing/user)（`BL02`） |
 
 ## それぞれの段階でおきること
 
@@ -48,9 +48,9 @@ screenshots:
 
 ### 6. 会計へ渡す
 
-締めた分は、弥生会計向けの CSV として書き出せる。書き出した締日処理は「エクスポート済」になる。
+締めた分は、会計ソフト（TKC FX4クラウド）向けの仕訳 CSV として書き出せる。書き出した締日処理は「エクスポート済」になる。
 
-![請求書の操作メニュー。弥生会計CSVが赤枠で強調されている](../assets/screenshots/flow-invoice-csv-01.png)
+![請求書の操作メニュー。会計連携CSVが赤枠で強調されている](../assets/screenshots/flow-invoice-csv-01.png)
 
 ## 書類の状態
 

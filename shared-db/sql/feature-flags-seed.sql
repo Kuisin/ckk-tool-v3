@@ -43,6 +43,11 @@ INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
 
+-- 料金マスタ（MS0G）も dev 検証後に本番公開する。**本番で公開しないと
+-- 料金項目を登録できず、指示書・出荷書の「追加料金」が選択肢ゼロで出る**ので、
+-- 追加料金を本番で使い始めるときは必ずこの行を有効にすること:
+--   ('app:master-charge-items:main', true, '料金マスタ 本番公開', now()),
+
 -- 端末管理（SY09）・キオスク設定（SY0A）は dev 検証後に本番公開する。
 -- 公開時にコメントを外して再適用:
 --   ('app:kiosk-devices:main',  true, '端末管理 本番公開',     now()),
@@ -65,6 +70,17 @@ ON CONFLICT (key) DO UPDATE
 -- 両方を済ませて dev で受け入れたら:
 --   ('app:design-requests:main', true, '設計依頼書 本番公開', now()),
 --   ('app:design-files:main',    true, '設計図 本番公開',     now())
+
+-- 入出庫伝票（PD07）と棚卸（PD08）は **2 つセットで**公開する。伝票の一覧だけを
+-- 出しても、そこに並ぶ「棚卸調整」を誰も起こせない（調整を起こす口は棚卸しか
+-- 無い）。逆に棚卸だけを出すと、確定した調整が何を動かしたのかを追う先が無い。
+-- また公開前に、その環境で
+--   SELECT count(*) FROM app.inventory_transactions WHERE movement_id IS NULL;
+-- が 0 であることを確かめること（移行前の行に伝票が付いていれば 0 になる）。
+-- 0 でないまま公開すると、伝票の一覧に出てこない在庫の動きが残る。
+-- 受け入れが済んだら:
+--   ('app:inventory-movements:main', true, '入出庫伝票 本番公開', now()),
+--   ('app:stock-takes:main',         true, '棚卸 本番公開',       now())
 
 -- ログイン履歴（SY0D）は dev で記録が溜まるのを確認してから本番公開する。
 -- 先に本番の env（LOGIN_ATTEMPT_PEPPER / CORPORATE_CIDRS /

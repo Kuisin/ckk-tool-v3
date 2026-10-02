@@ -46,10 +46,11 @@ const OPEN_WORK_ORDER_STATUSES = [
 /** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
 function productLabel(p: {
   name: unknown;
+  code?: string | null;
   yearMonth: string | null;
   seq: number | null;
 }): string {
-  const code = formatProductNumber(p.yearMonth, p.seq);
+  const code = p.code ?? formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
   return code ? `${name} ${code}` : name;
 }
@@ -82,7 +83,9 @@ export async function fetchUnplannedOrderLines(): Promise<
     },
     include: {
       acceptance: { include: { customerBp: true } },
-      product: true,
+      // 品目統合 第 2 段 C — 表示名は品目側から読む（この画面は製品名しか
+      // 使わないので、id 空間には触れていない）。
+      item: true,
       // 件数バッジ用（手配済みの実効値は下で effectiveAllocatedByLine が計算）。
       workOrderLinks: {
         where: { workOrder: { status: { not: "CANCELLED" } } },
@@ -124,8 +127,9 @@ export async function fetchUnplannedOrderLines(): Promise<
       customerName: localized(
         r.acceptance.customerBp?.name as LocalizedText | null,
       ),
-      productName: r.product ? productLabel(r.product) : (r.productText ?? "—"),
+      productName: r.item ? productLabel(r.item) : (r.productText ?? "—"),
       quantity: r.quantity,
+      orderType: r.orderType,
       plannedQuantity,
       unplannedQuantity,
       reservedStockQuantity: r.reservations.reduce(

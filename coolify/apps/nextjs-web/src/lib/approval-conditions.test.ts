@@ -118,6 +118,53 @@ describe("evaluateCondition", () => {
       }),
     ).toBe(true);
   });
+
+  // 配送（§8）は order_acceptances のヘッダではなく明細ごとに持つ。
+  // fetchApprovalDocInfo は delivery_method / assigned_plant_id を
+  // 明細の値の集合（string[]）で渡し、eq / ne は「集合のどれかが一致すれば
+  // 一致」で評価する（承認を減らす側ではなく増やす側に倒す）。
+  it("行ごとの値（配列）は「いずれかが一致」で eq を判定する", () => {
+    const info = { delivery_method: ["NORMAL", "DIRECT_TO_USER"] };
+    expect(
+      evaluateCondition(cond("delivery_method", "eq", "DIRECT_TO_USER"), info),
+    ).toBe(true);
+    expect(
+      evaluateCondition(cond("delivery_method", "eq", "NORMAL"), info),
+    ).toBe(true);
+    expect(
+      evaluateCondition(cond("delivery_method", "eq", "OTHER"), info),
+    ).toBe(false);
+  });
+
+  it("行ごとの値（配列）は「いずれかが一致」で ne を判定する", () => {
+    // 全行が同じ値のときだけ ne は不一致（=「一致しない行がある」が真の意味）。
+    expect(
+      evaluateCondition(cond("delivery_method", "ne", "NORMAL"), {
+        delivery_method: ["NORMAL", "NORMAL"],
+      }),
+    ).toBe(false);
+    expect(
+      evaluateCondition(cond("delivery_method", "ne", "NORMAL"), {
+        delivery_method: ["NORMAL", "DIRECT_TO_USER"],
+      }),
+    ).toBe(true);
+  });
+
+  it("空の配列は不一致（明細が無い書類に特別フローを当てない）", () => {
+    expect(
+      evaluateCondition(cond("delivery_method", "eq", "NORMAL"), {
+        delivery_method: [],
+      }),
+    ).toBe(false);
+  });
+
+  it("配列は数値条件（gte / lte）には使わない（不一致）", () => {
+    expect(
+      evaluateCondition(cond("assigned_plant_id", "gte", 1), {
+        assigned_plant_id: ["1", "2"],
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("evaluateConditions / matchFlowRule", () => {

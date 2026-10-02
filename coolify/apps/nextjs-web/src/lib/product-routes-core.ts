@@ -72,8 +72,8 @@ export interface RouteVersionView {
 
 export interface RouteView {
   id: number;
-  /** 準備工程リスト（共通）か 製造工程リスト（製品 × 受注元）か。 */
-  kind: "PREP" | "MANUFACTURING";
+  /** 準備工程リスト（共通）/ 製造工程リスト（製品 × 受注元）/ 再研磨工程リスト（共通）。 */
+  kind: "PREP" | "MANUFACTURING" | "REGRIND";
   name: string;
   nameEn: string;
   /** 対象の受注元（取引先）。null = 汎用（どの顧客にも使える）。 */
@@ -142,6 +142,17 @@ export function isOtherCustomerRoute(
 export function pickDefaultPrepRoute(
   prepRoutes: readonly RouteView[],
 ): RouteView | null {
-  const active = prepRoutes.filter((r) => r.isActive);
+  return pickDefaultCommonRoute(prepRoutes);
+}
+
+/**
+ * 共通リスト（準備 / 再研磨）の既定選択。製品にも顧客にも紐づかないので優先規則は
+ * 無い — **有効なものが 1 本だけのときだけ**自動で選ぶ。2 本以上あるのは
+ * 「やり方が複数ある」という意思表示なので、人に選ばせる。
+ */
+export function pickDefaultCommonRoute(
+  routes: readonly RouteView[],
+): RouteView | null {
+  const active = routes.filter((r) => r.isActive);
   return active.length === 1 ? active[0] : null;
 }

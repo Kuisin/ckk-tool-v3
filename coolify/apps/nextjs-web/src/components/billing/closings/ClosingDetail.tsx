@@ -49,10 +49,37 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { paymentTermsShape } from "@/lib/billing-terms-core";
 import { formatMoney } from "@/lib/format";
 import { type BillingClosingDetail, isProcessable } from "./model";
 
 const BASE_PATH = "/billing/closings";
+
+/**
+ * 支払条件を 1 行の説明にする。**どの形か**は lib/billing-terms-core の
+ * paymentTermsShape が決め、ここは文言を当てるだけ（判断を画面に持たせない）。
+ */
+function paymentTermsText(
+  closing: Pick<BillingClosingDetail, "paymentTermsDays" | "paymentDay">,
+  tr: ReturnType<typeof useTranslations>,
+): string {
+  const shape = paymentTermsShape(closing);
+  if (shape.kind === "dayOfMonth") {
+    const day =
+      shape.paymentDay >= 31
+        ? tr("billing.closings.monthEnd")
+        : tr("billing.closings.dayOfMonth", { day: shape.paymentDay });
+    return shape.paymentTermsDays != null
+      ? tr("billing.closings.termsDaysThenDay", {
+          days: shape.paymentTermsDays,
+          day,
+        })
+      : tr("billing.closings.termsDayOnly", { day });
+  }
+  return shape.kind === "days"
+    ? tr("billing.closings.termsDaysOnly", { days: shape.paymentTermsDays })
+    : tr("billing.closings.termsDefault", { days: shape.paymentTermsDays });
+}
 const INVOICES_PATH = "/billing/invoices";
 
 export function ClosingDetail({
@@ -101,7 +128,7 @@ export function ClosingDetail({
 
   // ── 手続き状況（未処理 → 請求書生成 → エクスポート済）─────────────────
   // 請求書を作り終えたら「請求書生成」は済んだ段で、待っているのは
-  // 弥生への書き出し（2）。
+  // 会計連携への書き出し（2）。
   const stages = procedureStages(
     [
       {
@@ -119,7 +146,7 @@ export function ClosingDetail({
       {
         key: "exported",
         label: tr("billing.closings.exported"),
-        description: tr("billing.closings.yayoiAccountingCsv"),
+        description: tr("billing.closings.accountingCsv"),
       },
     ],
     closing.status === "PENDING" ? 0 : closing.status === "PROCESSED" ? 2 : 3,
@@ -215,6 +242,14 @@ export function ClosingDetail({
           }
         />
         <FieldValue
+          label={tr("billing.closings.kind")}
+          value={
+            closing.kind === "MANUAL"
+              ? tr("billing.closings.kindManual")
+              : tr("billing.closings.kindScheduled")
+          }
+        />
+        <FieldValue
           label={tr("billing.closings.generatedInvoice")}
           value={
             closing.invoiceNumber ? (
@@ -234,6 +269,27 @@ export function ClosingDetail({
         <FieldValue
           label={tr("common.processedOn")}
           value={fmt.dateTime(closing.processedAt)}
+        />
+        {/* 請求先が別法人のときだけ出す。請求書が別会社宛で出る理由が
+            画面から読めないと、発行後に「宛先が違う」と言われて初めて気づく。 */}
+        {closing.billingPartyName && (
+          <FieldValue
+            label={tr("common.billTo")}
+            value={closing.billingPartyName}
+          />
+        )}
+        {/* 支払期日とその根拠。取引先マスタの支払サイト・支払日が
+            そのまま期日になる（lib/billing-terms-core.ts）。 */}
+        <FieldValue
+          label={tr("billing.closings.dueDate")}
+          value={
+            <Stack gap={2}>
+              <Text size="sm">{fmt.date(closing.dueDate)}</Text>
+              <Text c="dimmed" size="xs">
+                {paymentTermsText(closing, tr)}
+              </Text>
+            </Stack>
+          }
         />
       </SummaryGrid>
 

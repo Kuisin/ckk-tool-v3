@@ -7,11 +7,12 @@ import { parseDocKey } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
 import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
+import { fetchCustomerOptions } from "../../trial-estimates/data";
 import {
-  fetchCustomerOptions,
-  fetchProductOptions,
-} from "../../trial-estimates/data";
-import { fetchPriceEntry, fetchRelatedQuotes } from "../data";
+  fetchPriceEntry,
+  fetchPriceListItemOptions,
+  fetchRelatedQuotes,
+} from "../data";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export default async function PriceListDetailPage({
     await Promise.all([
       fetchRelatedQuotes(key),
       fetchCustomerOptions(),
-      fetchProductOptions(),
+      fetchPriceListItemOptions(),
       fetchAuditEntries("price_list_entries", entry.entryId),
       listMemos("price_list_entries", entry.entryId),
     ]);

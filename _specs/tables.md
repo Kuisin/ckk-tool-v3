@@ -23,6 +23,35 @@
 >   書類・製品の `currency` 列（products / quotes / order_acceptances / invoices に
 >   追加。既定 'JPY'、FK なし — 既存 price_list_entries.currency と同じ規約）が指す。
 >   レートは手動更新の分析用換算（会計処理用ではない）。注文明細はヘッダから読む。
+> - `master.prisma`: `charge_items` — 料金マスタ（送料などの追加項目）。製品の代金以外に
+>   請求するものを表す場所がこれまで無く、備考に書いて人が請求書へ足すか単価に混ぜるしか
+>   なかった（どちらも後から「何にいくら掛かったのか」を読めない）。**金額の決まり方が
+>   2 通りある**ので `amount_mode` で分ける: FIXED = マスタの金額をそのまま使う（担当者ごとに
+>   ぶれてはいけないもの）/ VARIABLE = 使うたびに人が入れる（送料のように実費が都度違う
+>   もの）。判定の唯一の定義元は nextjs-web の `lib/charge-core.ts`（画面の入力欄の活性と
+>   サーバーの保存が同じ関数を見る）。税区分は項目自身が持つ（送料は課税・印紙代は非課税）。
+>   管理は MS0G。
+> - `production.prisma` / `shipping.prisma`: `work_order_charges` / `delivery_order_charges`
+>   — 追加料金の行。**2 つに分かれているのは意味が違うから**（作業計画と実績と同じ）:
+>   指示書側が**予定**（生産側が「このロットは送料が要る」と先に書く）、出荷書側が**確定**で
+>   請求されるのはこちら。出荷書を作るとき、載せたロットの指示書から複写する（同じ指示書を
+>   2 行以上載せても 1 回だけ）。複写後は出荷書側だけを直す — 実費・箱数・同梱で要らなく
+>   なった、は出荷のときにしか決まらない。金額は行に焼き込む（マスタを直しても既に書いた行は
+>   動かない）。締日処理が出荷書側の行を請求明細へ写し、税率の基準日は製品明細と違って
+>   **出荷日**（送料は引き渡しの約束ではなく運んだ日の役務のため）。
+> - `master.prisma`: `customer_product_codes` — 顧客専用の製品コード（製品 × 顧客の別名）。
+>   相手は**自分の品番で**注文を出し、自分の品番で納品書・請求書を照合するが、こちらの
+>   製品コードも製品名も相手の書類には出てこない。`products.match_names` が「誰が書いても
+>   こう読めるはず」という全社共通の別名なのに対し、こちらは「**この顧客だけ**がこう呼ぶ」
+>   という対応で、同じ品番を別の顧客が別の製品に使っていても衝突しない（unique は顧客ごと
+>   — `(customer_bp_id, product_id)` と `(customer_bp_id, code)` の 2 本）。用途は 3 つ:
+>   (1) AI 突合 — 顧客が確定している注文書では**最優先**で当てる（学習エイリアス
+>   `match_aliases` より先。あちらは実績からの推測、こちらは人がマスタに登録した事実。
+>   曖昧なら当てない = `lib/customer-product-code-core.ts` が唯一の判定元）/
+>   (2) 納品書・請求書への印字（自社の品名は必ず残し、相手の表記は括弧で添える。請求書は
+>   摘要を**発行時に焼き込む**ので、あとで品番を直しても発行済みは動かない）/
+>   (3) 画面での検索（製品一覧・製品ピッカー）。`aliases` は旧品番などの**突合専用**で
+>   印字しない。支店は親会社の登録を引き継ぐ。管理は MS04 の「顧客品番」タブ。
 > - `display.prisma`: 管理ディスプレイ（下記 Display 節。管理は SY09 の中）
 > - `kiosk.prisma`: `kiosk_cards` / `kiosk_device_locations` / `kiosk_device_logs` / `kiosk_devices` / `kiosk_floor_maps` / `kiosk_link_requests` / `kiosk_sessions` /
 >   `kiosk_unlock_pins` — メンテナンス退出 PIN の履歴。現行値は
@@ -68,6 +97,18 @@
 担当を読む（複数の注文請書を束ねた出荷書では複数になり得る — 表示は導出値）。
 納品書は出荷書の導出担当が 1 人に定まればそれを、請求書も対象出荷の導出担当が
 1 人に定まればそれを引き継ぐ。
+
+**配送（出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所）は逆に
+明細（`order_lines`）が持つ** — 営業担当・顧客・通貨のように「行に複写すると
+乖離するため持たない」がヘッダの規約なら、配送はその**例外**。1 通の注文書の
+中で行ごとに届け先が違う注文があり、届け先はヘッダに 1 つしか置けないのに
+明細は複数あるので、乖離しないよう複写するのではなく最初から明細が唯一の
+持ち主になる。以前はヘッダにあった（`order_acceptances.ship_to_bp_id` /
+`.delivery_method` / `.assigned_plant_id` / `.shipping_work_location_id`）が
+`order_line_delivery`（20261024090000）で明細へ移した。出荷書の束ね可否
+（`combinabilityError`）はこの 4 つ + エンドユーザーが揃った明細だけを 1 通に
+まとめる、という形で元々明細単位の判定だったので、値の持ち場所が変わっただけで
+判定の形は変わっていない。
 
 ### Auth
 ```
@@ -277,6 +318,13 @@ Table tax_categories {
   code            varchar [unique, not null]  // 旧 TAX_TYPE 値（TAXABLE / REDUCED / EXEMPT）
   name            json [not null]             // { ja: '', en: '' }
   short_label     json                        // 帳票の区分欄。null = 率から組み立て（"10%"）
+  // ── 会計連携（仕訳 CSV）— 空 = system_settings の accounting.* の既定に従う ──
+  // 会計ソフト（TKC FX4クラウド）は科目**名**ではなく科目**コード**で仕訳を受ける。
+  // コードは経理（税務事務所）が決める環境ごとの値なので、マイグレーションには
+  // 焼かず画面（MS0F / SY0J）から入れる。
+  tax_code            varchar                 // 消費税コード
+  sales_account_code  varchar                 // 売上高（貸方・売上行）
+  tax_account_code    varchar                 // 仮受消費税（貸方・消費税行）
   is_default      boolean [not null, default: false]  // 顧客も製品も未指定のときの既定
   sort_order      int [not null, default: 0]
   is_active       boolean [not null, default: true]
@@ -472,11 +520,38 @@ Table materials {
 }
 
 // 製品コード: PRD-YYYYMM-NNNN
+// ===========================
+// 品目の 3 種別と、値段の持ち主
+// ===========================
+//
+// `app.items` は 3 種別ある（`item_type`）:
+//
+//   PRODUCT  製品 … 作る / 預かる / 出す。**他社製品**（is_external_product）は
+//            この中の特別な行で、再研磨で預かる他社の工具。**売り物ではない**
+//   MATERIAL 素材 … 買う / 消費する
+//   REGRIND  再研磨（役務）… 研ぎ直しそのもの。**在庫を持たない**。値段はここ
+//
+// REGRIND の行は旧 FileMaker の 再研マスタ 1 行に当たり、値段を決めている条件を
+// そのまま列で持つ（regrind_tool_class / regrind_location / regrind_flutes /
+// regrind_size_min_mm / regrind_size_max_mm）。**突合の鍵ではない** — 探すため・
+// 読んで分かるための情報で、どの品目を使うかは人が選ぶ。
+//
+// **値段の決まり方は 2 段**（S/4HANA の「品目の定価 + 顧客ごとの条件レコード」）:
+//   1. items.standard_unit_price … 顧客を問わない定価
+//   2. price_list_entries       … あればこちらが勝つ
+// 落ちるのは「当たる価格表が無い」ときだけ（無い / 無効 / 期間外）。**数量段階の
+// 穴では落ちない** — 生きている価格表の穴は設定の誤りで、黙って定価に落とすと
+// 気づけない。いま標準価格を読むのは再研磨の品目だけ（lib/standard-price.ts）。
+//
+// 管理画面は MS04 製品 / MS06 素材 / **MS0H 再研磨品目**。
+
 Table products {
   id              varchar [pk]            // 製品コード
   name            json [not null]         // { ja: '', en: '' }
   // 素材は「材種 + 直径 + 全長」で指定する。特定の materials 行には紐付けない
   // （同一材種・直径の複数素材が cut-to-length で充当可能。素材マスタは在庫管理用に存置）。
+  // ★ 2026-09-25 以降、材種・直径・全長・spec は**設計図の版 (design_versions) が持つ**。
+  //   items 側の requires_* / spec は移行のため残っているだけで、アプリは使わない。
   material_type_id int [ref: > material_types.id]
   diameter_mm     numeric(8,3)            // 直径 (mm)
   length_mm       numeric(10,3)           // 全長 (mm)
@@ -489,6 +564,11 @@ Table products {
   // 検索・AI 突合用のキーワード（別名・略称・読み・英字表記）。注文書の品名が
   // 名称と一致しないときの突合キー（lib/intake matchProduct）でもある。
   match_names     "text[]"    [default: '{}']
+  // 他社製品（再研磨専用）。他社が作った工具を再研磨で預かるときの品目。製造工程リスト・
+  // 製造分/在庫分の指示書・PRODUCTION/TEST/SAMPLE の明細では使えない（アプリ側で守る。
+  // DB は item_type = PRODUCT だけを CHECK）。メーカーは BP にしない（競合は取引先ではない）
+  is_external_product boolean [not null, default: false]
+  maker_name      varchar
   design_file_id  uuid [ref: > design_files.id]
   is_active       boolean [default: true]
   notes           text
@@ -631,6 +711,7 @@ Enum ORDER_TYPE {
   PRODUCTION      // 本番
   TEST            // テスト
   SAMPLE          // サンプル（金額0）
+  REGRIND         // 再研磨 — 顧客の工具を預かって研ぎ直す（指示書は REGRIND、在庫は預り品）
   OTHER           // その他
 }
 
@@ -685,13 +766,23 @@ Table order_acceptances {
   quote_id        uuid [ref: > quotes.id]
   customer_bp_id  uuid [not null, ref: > business_partners.id]
   customer_branch_bp_id uuid [ref: > business_partners.id]
-  ship_to_bp_id   uuid [ref: > business_partners.id]  // 出荷先（顧客本体と別法人・支店でもよい。null = 顧客へ）
-  assigned_plant_id int [ref: > plants.id]            // 担当拠点（この注文を処理する拠点）
-  shipping_work_location_id int [ref: > work_locations.id]  // 出荷作業場所（作業場所マスタ MS0D）
+  // 出荷先・配送方法・担当拠点・出荷作業場所はヘッダに無い — **明細ごと**
+  // （order_lines）に持つ（§8）。1 通の注文書の中で行ごとに届け先が違う
+  // 注文があるため。顧客・注文書番号・見積キー・作成者と同じ「行に複写
+  // すると乖離するので持たない」規約の**例外**がこの 4 つ — 配送だけは
+  // ヘッダに複写できるほど行ごとに揃っている保証がない。
   customer_order_ref varchar               // 顧客注文書番号（FAX受取）
   status          ORDER_ACCEPTANCE_STATUS [not null, default: 'PENDING']
   total_amount    numeric(12,2)            // 注文明細から自動計算
   order_doc_file_id uuid [ref: > files.id] // 受領した注文書 PDF
+  // 作り直し元（キャンセル済みの注文請書）。確定済みの請書は明細を編集できない
+  // ので、直したいときの手順は「ごとキャンセル → その請書から作り直す」1 つだけ。
+  // キャンセルは配下の未着手指示書も連鎖で止めるので、作り直した側で改めて手配する。
+  // 紐付けを残すのは「あの注文はどうなったのか」を後から追えるようにするため —
+  // 無いとキャンセルした請書が、指示書も出荷も無い行き止まりに見える。
+  // **1 対 N**（unique にしない）— 1 件を 2 件に割って作り直すことがある。
+  replaces_year_month char(6)
+  replaces_seq    int
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp
@@ -724,6 +815,18 @@ Table order_lines {
   // 明細内容（抽出直後は product_text のみ。突合後に product_id）
   product_id      int [ref: > products.id]
   product_text    varchar
+  // 研ぎ直す工具（**再研磨の明細だけ**。品目 = 製品で、他社製品でもよい）。
+  //
+  // 再研磨の明細は品目を 2 つ指す: product_id（実装は item_id）が**売っている
+  // 役務**（再研磨品目。値段はここに付く）で、こちらが**預かって手を入れて
+  // 返す現物**。預り品の在庫・指示書の対象・出荷する物はすべて工具のほうで
+  // 数える — 1 列では足りない。読み替えは lib/work-order-alloc-core.ts の
+  // allocTargetItemId が唯一の定義元。
+  //
+  // 確定済みの再研磨明細では必須（CHECK order_lines_regrind_tool）。下書きの
+  // うちは null でよい — 品目の突合と同じで、確定のときに揃う。逆に再研磨で
+  // ない明細は持たない（CHECK order_lines_tool_only_for_regrind）。
+  tool_item_id    int [ref: > items.id]
   order_type      ORDER_TYPE [not null]
   quantity        int [not null]
   unit_price      numeric(12,2)
@@ -739,11 +842,17 @@ Table order_lines {
   delivery_date   date
   notes           text
 
+  // 配送（§8）— どこへ・どう届けるかは明細ごとに決まる。
+  ship_to_bp_id   uuid [ref: > business_partners.id]  // 出荷先（null = 顧客へ）
+  delivery_method DELIVERY_METHOD [not null, default: 'NORMAL']  // 通常配送 / ユーザー直送
+  assigned_plant_id int [ref: > plants.id]            // 担当拠点（この明細を処理する拠点）
+  shipping_work_location_id int [ref: > work_locations.id]  // 出荷作業場所（作業場所マスタ MS0D）
+
   // 実行（旧 sales_orders 由来）
   status          ORDER_LINE_STATUS [not null, default: 'DRAFT']
   lot_number      int                      // 通し連番（指示書番号と共用。統合ロットでは複数明細が共有するため unique ではない）
   is_locked       boolean [not null, default: false]  // 承認依頼中のロック
-  end_user_bp_id  uuid [ref: > business_partners.id]  // 行ごとに異なり得る
+  end_user_bp_id  uuid [ref: > business_partners.id]  // エンドユーザー（行ごとに異なり得る）
   confirmed_at    timestamp
   cancelled_at    timestamp
   created_at      timestamp
@@ -825,6 +934,7 @@ Table work_order_order_lines {
 Enum WORK_ORDER_TYPE {
   FROM_STOCK      // 在庫分
   MANUFACTURE     // 製造分
+  REGRIND         // 再研磨 — 作るものは無い。完了しても自社在庫は動かず、受入本数は顧客の預り品
 }
 
 Enum WORK_ORDER_STATUS {
@@ -888,6 +998,23 @@ Table process_step_catalog {
   plan_assignee_required boolean [not null, default: false]
   plan_time_required     boolean [not null, default: false]
   plan_quantity_required boolean [not null, default: false]
+  // **この工程を載せてよい指示書種別**（在庫分 / 製造分 / 再研磨）。空は不可
+  // （CHECK process_step_catalog_work_order_types_not_empty）。既定は製造分だけ —
+  // 値を渡さずに作られた行が「どこでも使える」に倒れると、気づかないまま
+  // 在庫分の指示書へ加工工程が並ぶので、広い側ではなく狭い側へ落とす。
+  //
+  // 以前はカテゴリからアプリが推測していた（「再研磨に加工は載せない」等）が、
+  // 推測は現場の例外を表せない — 研ぎ直しのついでに円筒を当て直す、在庫から
+  // 出すだけのロットにも受入検査を通す、はどちらも普通の運用で、通すには
+  // コードを直して配るしかなかった。**どの工程をどの種別で使うかは業務の
+  // 決め事**なのでマスタへ移した（20261108090000）。
+  //
+  // ★ **開始工程だけは設定で動かせない** — 製品出し（在庫）は引当済み在庫を
+  //   消費し、製品受入（再研磨）は顧客の預り品を計上する。どちらも台帳が
+  //   その種別であることに依っているので、種別を跨がせると在庫が壊れる。
+  //   判定は lib/workflow-core.ts の pinnedWorkOrderType → stepAllowedForType が
+  //   唯一の定義元で、マスタの値より先にそちらが効く（行にも同じ値は入れてある）。
+  allowed_work_order_types "WORK_ORDER_TYPE[]" [not null, default: `{MANUFACTURE}`]
   approval_min_rank varchar                            // 承認必要役職（係長以上等）
   sort_order      int [not null, default: 0]
   is_active       boolean [not null, default: true]
@@ -897,6 +1024,7 @@ Table process_step_catalog {
 Enum PROCESS_CATEGORY {
   MATERIAL_PREP   // 材料準備
   MACHINING       // 加工
+  REGRIND         // 再研磨（再研磨指示書だけが使う研磨工程。開始工程は REGRIND_RECEIPT）
   COATING         // コーティング
   INSPECTION      // 検査
   APPROVAL        // 検査承認
@@ -967,6 +1095,8 @@ Table work_order_steps {
   cancelled_at    timestamp
   cancelled_by    uuid [ref: > users.id]
   cancel_reason   text
+  // 製品受入（再研磨）の完了で預り品を入庫した伝票。二度計上しない印（outsource_*_movement_id と同じ規約）
+  regrind_receipt_movement_id uuid [ref: > inventory_movements.id]
   notes           text
 }
 
@@ -1045,6 +1175,11 @@ Table approval_flows {
                                 // order_acceptance_cancel_requests（注文請書キャンセル
                                 //   — 確定済みの請書はごとキャンセルを依頼して承認を通す。
                                 //   明細単位のキャンセル操作は廃止）
+                                // design_versions（設計図の版の確定前承認 — 段が無ければ
+                                //   承認を通らずに確定する）/
+                                // invoices（請求書 — **追加費用ありの下書きだけ**発行前に
+                                //   通る）/ invoice_payments（入金前承認。対象は請求書と
+                                //   同じ行だが種別は別。承認完了でそのまま入金済みへ進める）
   updated_by      uuid [ref: > users.id]
   updated_at      timestamp
 }
@@ -1229,28 +1364,52 @@ Table defect_records {
 // 在庫（§4・§5・§7）
 // ===========================
 
-Table product_inventory {
+// 在庫は**1 表**（品目統合。旧 product_inventory / material_inventory は落とした）。
+// 1 行 = 1 バケット = 品目 × 拠点 × 保管場所 × 棚 × ロット × 半製品 × 預け先。
+// 数量は Decimal に寄せてある（製品は int、素材は Decimal だったため）。
+Table item_inventory {
   id              uuid [pk]
-  product_id      varchar [not null, ref: > products.id]
-  plant_id      uuid [ref: > plants.id]   // 保管拠点
-  lot_number      int [ref: > work_orders.work_order_number]
-  quantity        int [not null, default: 0]
-  reserved_quantity int [not null, default: 0]
-  location        varchar
-  notes           text
-  updated_at      timestamp
-}
-
-Table material_inventory {
-  id              uuid [pk]
-  material_id     varchar [not null, ref: > materials.id]
-  plant_id      uuid [ref: > plants.id]   // 保管拠点
-  quantity        numeric(12,3) [not null, default: 0]
+  item_id         int [not null, ref: > items.id]
+  plant_id        int [ref: > plants.id]
+  storage_location_id int [ref: > storage_locations.id]
+  shelf_id        int [ref: > storage_shelves.id]
+  lot_number      int [ref: > work_orders.work_order_number]  // 素材は null
+  is_semi_finished boolean [not null, default: false]
+  source_step_id  uuid                                  // 半製品の発生工程
+  // **マイナスになり得る。** 在庫が足りなくても出荷は止めない（物はもう
+  // 出ている。記録だけ拒んでも現実は変わらず、見えない食い違いが残る）ので、
+  // 足りない分はマイナスのまま計上する。旧 2 表にあった非負の CHECK は
+  // 引き継いでいない。マイナス = 台帳と現物が合っていない印で、棚卸か
+  // 手動入出庫で戻す。
+  quantity          numeric(12,3) [not null, default: 0]
   reserved_quantity numeric(12,3) [not null, default: 0]
-  unit            varchar [not null]
-  location        varchar
+  unit            varchar [not null]   // 行に持つ（単位違いの足し込みを拒む）
+  // **預け先** — 外注が持っている分。null = 自社の在庫。
+  //
+  // 値が入っている行は**自社在庫として数えない**（手持ち・引当・出荷・棚卸の
+  // すべてから外す）。分けているのはバケットの鍵だけなので、読み出し側が
+  // `custody_bp_id IS NULL` を落とすと預けた物が出荷できてしまう —
+  // nextjs-web の inventory-custody-scope.test.ts が全クエリを走査して止める。
+  //
+  // **仕掛品を在庫にしたわけではない。** 外注へ出すとき自社在庫から引ける行は
+  // 無い（在庫が動くのは全工程完了時だけ）ので、預け在庫は移動ではなく
+  // 「預けバケットへの IN」で始まり「OUT」で終わる、それだけで閉じた台帳。
+  // 拠点には**出した拠点**を入れる（持たせないと拠点スコープの利用者から
+  // 行ごと消える）。
+  custody_bp_id   uuid [ref: > business_partners.id]
+  // **所有者**（顧客の預り品 — 再研磨で預かった工具）。null = 自社の物。custody は
+  // 「誰が持っているか」、owner は「誰の物か」で直交し、両方入り得る（預り品を外注へ
+  // 出した状態）。値が入っている行は自社在庫ではない — 読み出し側は必ず
+  // `owner_bp_id IS NULL` で絞る（custody と同じ規則。FK は RESTRICT: SET NULL だと
+  // 顧客を消した瞬間に預り品が自社在庫に化ける）
+  owner_bp_id     uuid [ref: > business_partners.id]
+  location        varchar   // 旧フリーテキスト（表示フォールバックのみ）
   notes           text
   updated_at      timestamp
+
+  indexes {
+    (item_id, plant_id, lot_number, is_semi_finished, storage_location_id, shelf_id, custody_bp_id, owner_bp_id) [unique, note: 'NULLS NOT DISTINCT']
+  }
 }
 
 // 在庫引当・予約（全工程完了まで予約状態を維持）
@@ -1278,8 +1437,126 @@ Enum RESERVATION_STATUS {
   RELEASED        // 解除（出荷・キャンセル）
 }
 
+// ===========================
+// 入出庫伝票（在庫が動いた出来事）
+// ===========================
+//
+// **1 回の出来事 = 1 枚**、明細は inventory_transactions の行そのもの。
+// 在庫の増減と**同じトランザクション**で作られる（lib/inventory.ts の
+// applyTransaction が伝票 id を必須で受け取るので、伝票の無い計上は書けない）。
+//
+// なぜ要るか: 取引行の手掛かりは (reference_type, reference_id) の 2 列だけで、
+// しかもその形が経路ごとに違った — 指示書は uuid、出荷書は表示番号 "DOR-…"、
+// 在庫移動に至ってはその場限りの randomUUID を 2 行に書くだけでどこにも
+// 保存していなかった。「この 1 回の移動」を 1 行として読めず、番号で呼べない。
+//
+// **ライフサイクルを持たない。** 訂正は逆仕訳の伝票を新しく起こす（承認も
+// 下書きも無い）。番号 MOV-YYYYMM-NNNNN は他の書類と同じくトランザクションの
+// 外で採番するので、ロールバックで欠番が出るのは仕様。
+Table inventory_movements {
+  id          uuid [pk]
+  year_month  char(6)
+  seq         int
+  cause       INVENTORY_MOVEMENT_CAUSE
+  source_type varchar  // 元書類のテーブル名（audit_logs と同じ多態規約。FK なし）
+  source_id   varchar  // 元書類の業務キー
+  plant_id    int [ref: > plants.id]  // 拠点をまたぐ移動は null
+  notes       text
+  created_by  uuid
+  created_at  timestamp
+
+  indexes {
+    (year_month, seq) [unique]
+  }
+}
+
+Enum INVENTORY_MOVEMENT_CAUSE {
+  WORK_ORDER_COMPLETION
+  DELIVERY_SHIPMENT
+  MATERIAL_RECEIPT
+  STOCK_TRANSFER
+  STOCK_RESERVATION
+  RESERVATION_RELEASE
+  ADJUSTMENT
+  MANUAL            // 手動入出庫（ST06）。業務としての型は movement_type_id
+  OUTSOURCE_ISSUE   // 外注へ出した（預け在庫が増える）
+  OUTSOURCE_RETURN  // 外注から戻った（預け在庫が減る）
+  SALES_RETURN      // 出荷後の返品（在庫が戻る）
+  OTHER   // 移行前の行に後から付けた伝票。新規では使わない
+}
+
+// ===========================
+// 棚卸
+// ===========================
+//
+// **バケット単位**（拠点 × 保管場所 × 棚 × ロット）で数える — 棚を歩くのと
+// 同じ粒度でないと、差異がどの棚のものか言えない。拠点の合計差異をバケットへ
+// 割り振るのはシステムの当て推量になる。
+//
+// ライフサイクルを持つのは棚卸のほうで、そこから出る入出庫伝票は不変。
+// 確定は承認を通す（approval_flows に段が 1 つも無ければ素通し — 工程フロー
+// 変更と同じ規約）。**最終承認が調整を適用する。**
+//
+// ★ 差異は確定時に**その場で読み直した実数**と数えた数の差。取り込み時点の
+//   book_quantity ではない — 数え始めてから確定するまでに在庫は動くので、
+//   取り込み時点との差を当てると、その間の正しい出荷・入荷まで打ち消す。
+//   判定の唯一の定義元は lib/stock-take-core.ts。
+Table stock_takes {
+  id                  uuid [pk]
+  year_month          char(6)
+  seq                 int
+  plant_id            int [not null, ref: > plants.id]
+  storage_location_id int [ref: > storage_locations.id]  // null = 拠点まるごと
+  status              STOCK_TAKE_STATUS
+  approval_status     STOCK_TAKE_APPROVAL_STATUS
+  counted_at          timestamp
+  requested_at        timestamp
+  requested_by        uuid
+  rejected_at         timestamp
+  rejected_by         uuid
+  reject_reason       text
+  confirmed_at        timestamp
+  confirmed_by        uuid
+  cancelled_at        timestamp
+  cancelled_by        uuid
+  // 確定時に発行した入出庫伝票。差異が 1 件も無ければ null（伝票を起こさない）
+  movement_id         uuid [ref: > inventory_movements.id]
+  notes               text
+  created_by          uuid
+  created_at          timestamp
+  updated_at          timestamp
+
+  indexes {
+    (year_month, seq) [unique]
+  }
+}
+
+// 1 行 = 1 在庫バケット。inventory_id は product_inventory / material_inventory の
+// どちらかを指す多態参照（inventory_reservations と同じ規約 — FK は張らない）。
+Table stock_take_lines {
+  id               uuid [pk]
+  stock_take_id    uuid [not null, ref: > stock_takes.id]
+  inventory_type   INVENTORY_TYPE
+  inventory_id     uuid
+  // 取り込んだ時点の帳簿数。**差異の計算には使わない**（上記 ★）— 画面に
+  // 「取り込んだときはこうだった」を出すためだけに持つ。
+  book_quantity    numeric(12,3)
+  counted_quantity numeric(12,3)  // null = 未カウント（差異ゼロ扱いにしない）
+  notes            text
+  sort_order       int
+
+  indexes {
+    (stock_take_id, inventory_type, inventory_id) [unique]
+  }
+}
+
+Enum STOCK_TAKE_STATUS { DRAFT, COUNTING, CONFIRMED, CANCELLED }
+Enum STOCK_TAKE_APPROVAL_STATUS { NONE, PENDING, APPROVED, REJECTED }
+
 Table inventory_transactions {
   id              uuid [pk]
+  // 所属する入出庫伝票。**すべての行が伝票に属する**（移行完了後に NOT NULL）。
+  movement_id     uuid [ref: > inventory_movements.id]
   inventory_type  INVENTORY_TYPE [not null]
   inventory_id    uuid [not null]
   transaction_type TRANSACTION_TYPE [not null]
@@ -1459,6 +1736,13 @@ Table delivery_order_items {
   // （確定前・移行前のデータ）。焼き込んだあとは価格表を直しても発行済みの
   // 書類は動かない — invoices.tax_rate と同じ考え方。
   unit_price      numeric(12,2)
+  // 出荷後に返ってきた数（累計）。返品は**在庫だけを戻す** — 出荷書の状態も
+  // 請求も注文明細も動かさない（出したという事実は返品では消えないし、
+  // 返品を請求へどう反映するかは締めの運用で決まる別の判断）。
+  // 台帳から数え直さずに行に持つのは、伝票行が指すのが在庫バケット
+  // （品目 × ロット）で、同じ品目・同じロットの明細が 2 行ある出荷書では
+  // 取り違えるため。CHECK で 0 ≤ 返品数 ≤ 出荷数。
+  returned_quantity int [not null, default: 0]
   notes           text
   sort_order      int [not null, default: 0]
 }
@@ -1531,7 +1815,22 @@ Table invoices {
   due_date        date
   sent_at         timestamp
   pdf_file_id     uuid [ref: > files.id]
-  yayoi_exported_at timestamp
+  accounting_exported_at timestamp  // 会計連携へ書き出した日時（二重取込の防止）
+  // 生成元の締日行の実行区分（billing_closings.kind の写し。表示専用・FK なし）。
+  closing_kind    CLOSING_KIND
+  // 承認（§9）。**列は 1 組だけ**で発行前承認・入金前承認の両方を表す —
+  // 2 つの関門は同時に開かない（発行承認は status=DRAFT、入金承認は
+  // status=SENT のときだけ）ので、いまどちらの関門かは status が語る。
+  // 承認そのものの経過は approval_requests / approval_records（種別
+  // invoices / invoice_payments）が別に持つので、ここは「いまの状態」だけ。
+  approval_status INVOICE_APPROVAL_STATUS [not null, default: 'NONE']
+  requested_at    timestamp
+  requested_by    uuid [ref: > users.id]
+  approved_at     timestamp
+  approved_by     uuid [ref: > users.id]
+  rejected_at     timestamp
+  rejected_by     uuid [ref: > users.id]
+  reject_reason   text
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp
@@ -1545,11 +1844,23 @@ Enum INVOICE_STATUS {
   PAID
 }
 
+Enum INVOICE_APPROVAL_STATUS {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 Table invoice_items {
   id              uuid [pk]
   invoice_id      uuid [not null, ref: > invoices.id]
   delivery_order_id uuid [ref: > delivery_orders.id]
   delivery_note_id  uuid [ref: > delivery_notes.id]
+  // **手動で足した追加費用**の由来（料金マスタ MS0G）。出荷書由来の追加料金
+  // （送料等）にも入るが、それは delivery_order_id が伴う。
+  // delivery_order_id が無く charge_item_id が入っている行だけが「発行前
+  // 承認が要る、人が足した費用」（§9）。下書きのうちだけ足す/消せる。
+  charge_item_id  int [ref: > charge_items.id]
   description     json [not null]         // { ja: '', en: '' }
   quantity        int [not null]
   unit_price      numeric(12,2) [not null]
@@ -1567,7 +1878,7 @@ Table invoice_items {
 // 区分記載は 1 行でなければならない。発行時に明細のスナップショットから集計して凍結する。
 // 不変条件: Σ taxable_base = invoices.subtotal / Σ tax_amount = invoices.tax_amount。
 // この表に行が無い請求書（税区分マスタ導入以前の発行分）は、読み出し側がヘッダから
-// 1 本の束を合成する — だから既存の請求書は表示も PDF も弥生 CSV も変わらない。
+// 1 本の束を合成する — だから既存の請求書は表示も PDF も会計連携 CSV も変わらない。
 Table invoice_tax_summaries {
   id              uuid [pk]
   invoice_id      uuid [not null, ref: > invoices.id]
@@ -1582,22 +1893,47 @@ Table invoice_tax_summaries {
   }
 }
 
+// 支払期日は 取引先マスタの **支払サイト + 支払日** から決まる
+// （lib/billing-terms-core.ts resolveDueDate が唯一の定義元）。支払日が設定
+// されていればそれが期日を決め、「締日 + 支払サイト」は最短の期日（下限）に
+// なる — 日本の商習慣は「月末締め翌月末払い」のように日付で決まるので、
+// 日数だけの期日は実際の入金日と一致せず、入金消込の基準にならない。
+// 支払日が無い取引先は従来どおり 締日 + 支払サイト（未設定は 30 日）。
+//
+// 請求書の宛先は **請求先（bp_customer_attrs.billing_bp_id）が設定されて
+// いればそちら**。締日行は 顧客 × 締日 のままで、束ねはしない（宛先だけが
+// 変わる）。1 通に束ねるのは締日行の単位そのものを変える話。
+//
+// 実行区分（kind, §9）。SCHEDULED = 締日処理（指定日までに到来したものを
+// 一括実行）が作る、顧客×締日で冪等な行 — 部分 unique index が
+// **SCHEDULED だけ**に効くので、1 顧客 1 締日 1 行のまま。MANUAL = 手動請求
+// (BL11) が締日を待たずに作る臨時の行 — 同じ顧客・同じ日に何度でも作れる。
 Table billing_closings {
   id              uuid [pk]
   customer_bp_id  uuid [not null, ref: > business_partners.id]
   closing_date    date [not null]
+  kind            CLOSING_KIND [not null, default: 'SCHEDULED']
   status          CLOSING_STATUS [not null, default: 'PENDING']
   total_amount    numeric(12,2)
   processed_at    timestamp
   processed_by    uuid [ref: > users.id]
   notes           text
   created_at      timestamp
+
+  indexes {
+    (customer_bp_id, closing_date) [unique, note: 'kind = SCHEDULED のときだけ効く部分 unique']
+  }
 }
 
 Enum CLOSING_STATUS {
   PENDING
   PROCESSED
-  EXPORTED        // 弥生会計エクスポート済み
+  EXPORTED        // 会計連携へ書き出し済み
+}
+
+Enum CLOSING_KIND {
+  SCHEDULED       // 締日処理（定期実行）
+  MANUAL          // 手動請求（BL11・締日を待たない臨時請求）
 }
 
 // ===========================
@@ -1653,13 +1989,70 @@ Table design_requests {
 
 Ref: design_requests.(quote_year_month, quote_seq) > quotes.(year_month, seq)
 
-// 1 版 = プレビュー 0..1 + 図面データ 1 + 参考資料 0..N。
-// PREVIEW と BLUEPRINT を分けているのは用途が違うから — STL は人が形を
-// 確かめるためのもの、CAD は加工プログラムを起こす元データで代用できない。
+// 1 版 = 2D 原図 0..1 + 3D 原図 0..1 + プレビュー 0..1 + 参考資料 0..N（どれも任意 —
+// ファイルの無い仕様だけの版もある）。PREVIEW と原図を分けているのは用途が
+// 違うから — STL は人が形を確かめるためのもの、原図は加工プログラムを起こす
+// 元データで代用できない。
 Enum DESIGN_FILE_ROLE {
   PREVIEW         // プレビュー用（3D 表示）
-  BLUEPRINT       // 図面データ（加工プログラム用。製品マスタの最新図面はこれ）
+  BLUEPRINT       // 2D 原図（図脳 SXF / DXF / DWG …。製品マスタの最新図面はこれ）
   REFERENCE       // 参考資料（部品図・寸法表など）
+  MODEL           // 3D 原図（STEP / IGES / CIM3D …）
+}
+
+// 設計図の版（1 行 = 1 版）。以前は design_files を (製品 × 受注元 × 版番号) で
+// 束ねた導出値だったが、状態と仕様を持たせるため行にした（2026-09-25）。
+//
+// **製品の仕様は版が持つ**（製品マスタの items.requires_* / spec から移した。
+// 旧列は移行のため残っているだけで、アプリは読みも書きもしない）。製品 1 つに
+// 1 つの値が要る読み手（指示書の素材候補・製品検索・外部 API・分析ビュー・
+// 製品マスタの表示）は確定済みの版から「指示書が固定した版 → 受注元一致 →
+// 汎用 → 最後に確定した版」の順で 1 つ選ぶ（lib/design-files-core.ts
+// pickSpecVersion / lib/design-spec.ts resolveItemSpec が唯一の定義元）。
+//
+// 状態は書類と同じ **下書き → (承認) → 確定**。承認の段は承認設定 (MS0B,
+// target_type = 'design_versions') が決め、**段が無ければ承認を通らずに確定**
+// する。確定前（下書き・差し戻し）だけ仕様とファイルを直せる。系列ごとに
+// 確定前の版は 1 つだけ（部分 unique index design_versions_open_per_series_key）。
+// 版番号は系列内で一意（NULLS NOT DISTINCT — 汎用同士も同じ系列）。
+//
+// 図脳 SXF（.sfc）を読むと title_block・直径・全長・名前の一致する製品項目が
+// 埋まる（lib/sxf-core.ts — 表題欄はラベルの右隣の文字、寸法は表示文字列から）。
+Table design_versions {
+  id                uuid [pk]
+  item_id           int [not null, ref: > items.id]            // Restrict
+  customer_bp_id    uuid [ref: > business_partners.id]         // null = 汎用
+  version           int [not null]
+  status            DESIGN_VERSION_STATUS [not null, default: 'DRAFT']
+  design_request_id uuid [ref: > design_requests.id]           // null = 手動登録
+  notes             text                                       // 版全体のメモ
+  // 仕様（材種を入れたら直径・全長も必須。寸法だけは材種なしでも持てる —
+  // 図面から読んだ寸法を捨てないため）
+  material_type_id  int [ref: > material_types.id]             // Restrict
+  diameter_mm       numeric(8,3)
+  length_mm         numeric(10,3)
+  spec              json      // 製品項目 (SY03) の値 + 予約キー _product_type
+  title_block       json      // 図面情報（品名・図面番号・工具番号・材質・表面処理・
+                              // 刃数・ネジレ・刻印・作成年月日。キーは TITLE_BLOCK_FIELDS）
+  requested_at      timestamp
+  requested_by      uuid [ref: > users.id]
+  confirmed_at      timestamp
+  confirmed_by      uuid [ref: > users.id]
+  history           json      // [{ action, user, at, notes }]
+  created_by        uuid [ref: > users.id]
+  created_at        timestamp
+  updated_at        timestamp
+
+  indexes {
+    (item_id, customer_bp_id, version) [unique]   // NULLS NOT DISTINCT
+  }
+}
+
+Enum DESIGN_VERSION_STATUS {
+  DRAFT           // 下書き
+  REQUESTED       // 承認依頼中
+  CONFIRMED       // 確定
+  REJECTED        // 差し戻し（直してもう一度出せる）
 }
 
 Enum DESIGN_TRIGGER {
@@ -1718,8 +2111,12 @@ Enum DESIGN_STATUS {
 // **設計依頼を経ない版もある**（design_request_id = null）。図面だけ先に
 // 出来ている・既存図面を取り込む場合で、一覧の「依頼 / 手動」の別はこの列の
 // 有無から導く（列を増やして二重に持たない）。
+// item_id / customer_bp_id / version / design_request_id は版 (design_versions) の写し
+// （版の系列と番号は作成後に変わらないので写してもずれない）。
+// **is_latest は確定した版のファイルにだけ立つ** — 下書きの図面を指示書が拾わない。
 Table design_files {
   id              uuid [pk]
+  design_version_id uuid [not null, ref: > design_versions.id]
   design_request_id uuid [ref: > design_requests.id]
   product_id      int [ref: > products.id]
   // 対象の受注元。null = 汎用。版番号と is_latest はこの列ごとに数える。
@@ -1871,6 +2268,12 @@ Table bp_customer_attrs {
   // 通すため）。移行時は既存の tax_type から全行を埋めたので、その時点では誰も
   // 「製品に従う」になっていない = 請求額は動かない。
   tax_category_id     int             [ref: > tax_categories.id]
+  // ── 会計連携（仕訳 CSV）— 空 = 科目は設定の既定 / 補助科目は空欄のまま ──
+  // 仕訳の借方は常に売掛金で、その**補助科目が得意先**というのが会計ソフト側の
+  // 普通の構成。**customer_code で代用しない** — 社内の顧客コードと会計側の
+  // 補助科目コードは別の番号体系で、流用すると違う補助科目へ計上された仕訳ができる。
+  receivable_account_code     varchar         // 売掛金の勘定科目コード（借方）
+  receivable_sub_account_code varchar         // 売掛金の補助科目コード（得意先）
   invoice_method      INVOICE_METHOD  [default: 'EMAIL']
   is_consignment      boolean         [default: false]  // 委託先フラグ
   // ── 過不足納品（§8）— 受注数量と違う数量で納品してよい範囲 ──────────────
@@ -1962,6 +2365,54 @@ Table bp_contacts {
 ```
 
 ### Other
+
+> **会計連携（仕訳 CSV）の設計メモ** — 実装は
+> `nextjs-web/src/lib/accounting-export-core.ts`（純粋・試験あり）。
+>
+> **仕訳行は税率ごとの束（`invoice_tax_summaries`）で作る。製品ごとには割らない。**
+> 理由は 3 つあり、どれも 1 つで十分な理由になる:
+>   1. 消費税は**税率束ごとに 1 度だけ**丸める（`lib/money.ts` の方針）。税側を
+>      科目で割ると Σ借方 が ±1 円ずれ、会計側の取込がエラーになる。
+>   2. 品目別の売上科目を守るには発行時に**行へ科目を凍結**する必要がある
+>      （`items` の科目を後から変えると、古い請求書の再出力が別の科目へ飛ぶ）。
+>      それは `invoice_items` に列を足す別の話。
+>   3. 税区分マスタ導入以前の請求書は `invoice_items.tax_category_id` が null で、
+>      そもそも製品別に束ねる鍵が無い。
+>
+> **科目コードの解決順は項目ごとに段数が違う**（`tax_categories` /
+> `AccountingExportSettings` の型がそのまま解決順を表す — マスタ側の
+> フィールドコメントが正）:
+>   - `売掛金 = 取引先マスタ → 設定の既定`（2 段）。
+>   - `消費税コード = 税区分マスタ → 設定の税率別既定（taxCodeRules） →
+>     設定の全体既定`（3 段 — 率が変わると使う税区分コードも変わるのが普通の
+>     会計実務のため、率ごとの上書きを持つ）。
+>   - `売上高 / 仮受消費税 = 税区分マスタ → 設定の全体既定`（2 段 — 率が違っても
+>     同じ売上高・仮受消費税の科目へ計上するのが普通なので、率ごとの上書きは
+>     持たない。`AccountingTaxCodeRule` に売上高・仮受消費税の列は無い）。
+> **補助科目だけは既定を持たない**（空欄なら空欄で出す）。
+>
+> `invoice_tax_summaries.tax_category_id` は「同じ率の区分が 2 つ以上あるとき」に
+> null になる。そのとき明細の区分がコードで食い違っていれば、既定へ黙って落とさず
+> **エクスポートを 409 で拒否する** — 違う科目へ計上された仕訳を後から直すより、
+> 出さないほうが安い。
+>
+> 列の並び・文字コード・既定コードは `system_settings` の `accounting.*`（SY0J）。
+> 会計ソフトの製品名は**画面にも DB の列名にも出さない**（i18n-glossary §4 決定 19）。
+>
+> **転記した会計文書は不変・訂正は反対仕訳**（`accounting_documents` /
+> `accounting_document_lines`。SAP FI の BKPF/BSEG を参照した設計）。以前は
+> エクスポートのたびに上の解決順で仕訳行をその場で計算していたため、発行後に
+> マスタ（税区分・取引先の科目コード・SY0J 設定）を直してから再出力すると、
+> 同じ請求書番号のまま中身が変わる CSV が出てしまっていた。いまは**最初の
+> エクスポートで 1 回だけ**行を計算して DB に固定し（`invoices` とは別の採番
+> `ACC-YYYYMM-NNNNN`）、以後の再ダウンロードは固定した行をそのまま描き直す
+> だけで再計算しない — マスタを直しても転記済みの文書は動かない。訂正が要る
+> ときは行を書き換えず、貸借を反転させた**反対仕訳文書**を新しく作る（元の
+> 文書は `REVERSED` に変わるだけで明細は不変）。訂正後に改めてエクスポートす
+> ると、そのときが 2 本目の転記になる。「いま有効な転記」は
+> `status = 'POSTED' AND reversal_of_id IS NULL` の部分 unique 索引で請求書
+> 1 通につき常に 0 か 1 本に保つ（反対仕訳自体は「今の転記」として数えない）。
+
 ```
 // ===========================
 // 学習した照合名（AI 突合）
@@ -1982,9 +2433,19 @@ Table bp_contacts {
 //
 // target_type はテーブル名（audit_logs と同じ多態規約）。FK は張れないので
 // マスタを消しても行は残る — 突合時に存在しない target_id は無視する。
+//
+// **製品と素材は 1 つの名前空間（items）を共有する。** 品目統合で
+// マスタが 1 つになったので、学習の行き先も 1 つで足りる。1 表記 = 1 マスタ
+// なので製品と素材で同じ表記を別々に覚えることはできないが、突合側が引いた
+// 品目の item_type を必ず確かめる（販売側は PRODUCT、購買側は MATERIAL の
+// プール）ので、相手の型が当たっても素通りして推測へ落ちるだけ。
+// 値の集合は DB 側の CHECK が正で、TS の union との一致は
+// nextjs-web の match-alias-target-guard.test.ts が見張る — 片方だけ増やすと
+// INSERT が弾かれ、学習が best-effort なので**誰も気づかない**（実際に
+// 'materials' でそうなっていた）。
 Table match_aliases {
   id              serial [pk]
-  target_type     varchar [not null]   // business_partners | products
+  target_type     varchar [not null]   // business_partners | items
   target_id       varchar [not null]   // マスタ行の内部 id（文字列）
   alias           varchar [not null]   // 書類に印字されていた表記（そのまま）
   alias_key       varchar [not null]   // 突合用の正規化キー（アプリ側で作る）

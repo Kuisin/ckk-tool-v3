@@ -17,7 +17,7 @@ const step = (
 const cfg = { workLocationsConfigured: true };
 
 describe("requiredPlanFields", () => {
-  it("既定は作業場所だけ（時刻・数量は工程マスタで立てたときだけ）", () => {
+  it("既定は作業場所だけ（時刻は工程マスタで立てたときだけ）", () => {
     expect(requiredPlanFields({ executionLocation: "INTERNAL" }, cfg)).toEqual([
       "WORK_LOCATION",
     ]);
@@ -27,11 +27,10 @@ describe("requiredPlanFields", () => {
           executionLocation: "INTERNAL",
           workLocationRequired: false,
           planTimeRequired: true,
-          planQuantityRequired: true,
         },
         cfg,
       ),
-    ).toEqual(["TIME", "QUANTITY"]);
+    ).toEqual(["TIME"]);
   });
 
   it("担当者は既定で任意 — 工程マスタで立てたときだけ要る", () => {
@@ -89,27 +88,25 @@ describe("planReadiness", () => {
     });
   });
 
-  it("時刻・数量を必須にした工程は、片方の時刻だけでは足りない", () => {
+  it("時刻を必須にした工程は、片方の時刻だけでは足りない", () => {
     const r = planReadiness(
       [
         step({
           stepId: "a",
           planTimeRequired: true,
-          planQuantityRequired: true,
           plans: [
             {
               plannedDate: "2026-10-01",
               workLocationId: 1,
               plannedStartAt: "2026-10-01T09:00:00+09:00",
               plannedEndAt: null,
-              quantity: null,
             },
           ],
         }),
       ],
       cfg,
     );
-    expect(r.gaps[0].missing).toEqual(["TIME", "QUANTITY"]);
+    expect(r.gaps[0].missing).toEqual(["TIME"]);
   });
 
   it("揃った行が 1 行あれば足りる（他の行は不完全でもよい）", () => {
@@ -140,10 +137,9 @@ describe("planReadiness", () => {
         step({
           stepId: "a",
           planTimeRequired: true,
-          planQuantityRequired: true,
           plans: [
-            { plannedDate: "2026-10-01", workLocationId: null }, // 3 つ足りない
-            { plannedDate: "2026-10-01", workLocationId: 1, quantity: 5 }, // TIME だけ
+            { plannedDate: "2026-10-01", workLocationId: null }, // 2 つ足りない
+            { plannedDate: "2026-10-01", workLocationId: 1 }, // TIME だけ
           ],
         }),
       ],

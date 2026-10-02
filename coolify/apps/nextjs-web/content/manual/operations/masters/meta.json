@@ -3,6 +3,7 @@
   "pages": [
     "business-partner",
     "product",
+    "tax-category",
     "material-type",
     "material",
     "process-step",
@@ -12,6 +13,8 @@
     "plant",
     "material-numbering",
     "work-location",
-    "storage-location"
+    "storage-location",
+    "charge-item",
+    "regrind-item"
   ]
 }

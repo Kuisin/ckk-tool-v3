@@ -33,6 +33,7 @@ export const OPERATION_CODE_PREFIX = {
   sales: "SA",
   purchase: "PU",
   production: "PD",
+  stock: "ST",
   shipping: "SH",
   billing: "BL",
   master: "MS",
@@ -189,16 +190,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   // PD03（承認管理）は廃止・欠番 — 承認依頼中の横断一覧は 未処理一覧 (CM01) へ。
   // 在庫管理 — 製品・素材・仕掛品・ロケーションの統合単一画面, list コードのみ
   // （旧 PD04 製品在庫 / PD05 素材在庫 は本画面へ統合）
-  {
-    code: "PD04",
-    label: "在庫管理",
-    href: "/production/inventory",
-    category: "生産",
-    kind: "list",
-    categoryCode: "PD",
-    mode: "0",
-    index: "4",
-  },
+
   // 設計図 — 図面の台帳。一覧 (PD06) は系列（製品 × 受注元）、詳細 (PD26) は
   // 1 製品の全系列、新規 (PD16) は版を 1 つ登録する。
   ...makeResource("生産", "PD", "6", "設計図", "/production/design-files"),
@@ -214,6 +206,96 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "5",
   },
+
+  // ─── 在庫 (ST) ───────────────────────────────────────────────────────────
+  // 業務フロー順: 在庫管理 → 在庫一覧 → 在庫・所要量 → 入出庫伝票 → 棚卸。
+  // 旧 PD04 / PD07 / PD08 は**欠番**（生産カテゴリから在庫カテゴリへ移設）。
+  // 在庫管理 — 製品・素材・仕掛品・ロケーションの統合画面 + 在庫移動。
+  {
+    code: "ST01",
+    label: "在庫管理",
+    baseLabel: "在庫管理",
+    href: "/inventory",
+    category: "在庫",
+    kind: "list",
+    categoryCode: "ST",
+    mode: "0",
+    index: "1",
+  },
+  // 在庫一覧 — 拠点・保管場所から見る（「この棚に何があるか」）。
+  {
+    code: "ST02",
+    label: "在庫一覧",
+    baseLabel: "在庫一覧",
+    href: "/inventory/stock",
+    category: "在庫",
+    kind: "list",
+    categoryCode: "ST",
+    mode: "0",
+    index: "2",
+  },
+  // 在庫・所要量 — 品目 1 つを追う（「この品目は足りるのか」）。入口は品目の選択。
+  {
+    code: "ST03",
+    label: "在庫・所要量",
+    baseLabel: "在庫・所要量",
+    href: "/inventory/requirements",
+    category: "在庫",
+    kind: "list",
+    categoryCode: "ST",
+    mode: "0",
+    index: "3",
+  },
+  // 手動入出庫 — 人が在庫を動かす口。伝票を 1 枚起こして終わり（詳細は ST24）。
+  {
+    code: "ST06",
+    label: "手動入出庫",
+    baseLabel: "手動入出庫",
+    href: "/inventory/goods-movement",
+    category: "在庫",
+    kind: "list",
+    categoryCode: "ST",
+    mode: "0",
+    index: "6",
+  },
+  // 移動タイプ — 手動入出庫で選ぶ番号つきの型のマスタ。
+  {
+    code: "ST09",
+    label: "移動タイプ",
+    baseLabel: "移動タイプ",
+    href: "/inventory/movement-types",
+    category: "在庫",
+    kind: "list",
+    categoryCode: "ST",
+    mode: "0",
+    index: "9",
+  },
+  // 入出庫伝票 — 在庫が動いた出来事の台帳。**新規は無い**（伝票は在庫を動かした
+  // 処理が起こすもので、人が手で書くものではない）ので list + detail だけ。
+  {
+    code: "ST04",
+    label: "入出庫伝票",
+    baseLabel: "入出庫伝票",
+    href: "/inventory/movements",
+    category: "在庫",
+    kind: "list",
+    categoryCode: "ST",
+    mode: "0",
+    index: "4",
+  },
+  {
+    code: "ST24",
+    label: "入出庫伝票 詳細",
+    baseLabel: "入出庫伝票",
+    href: "/inventory/movements/_search",
+    category: "在庫",
+    kind: "detail",
+    categoryCode: "ST",
+    mode: "2",
+    index: "4",
+  },
+  // 棚卸 — 数えて差異を確定する。確定が入出庫伝票（ADJUST）を起こす。
+  ...makeResource("在庫", "ST", "5", "棚卸", "/inventory/stock-takes"),
 
   // ─── 出荷 (SH) ───────────────────────────────────────────────────────────
   ...makeResource("出荷", "SH", "1", "出荷書", "/shipping/delivery-orders"),
@@ -298,6 +380,56 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     categoryCode: "MS",
     mode: "0",
     index: "F",
+  },
+  // 料金マスタ（送料などの追加項目）— 詳細ページを持たない小マスタ（編集は
+  // 一覧のモーダル）なので list + new の 2 コード。
+  {
+    code: "MS0G",
+    label: "料金マスタ",
+    href: "/master/charge-items",
+    category: "マスタ",
+    kind: "list",
+    categoryCode: "MS",
+    mode: "0",
+    index: "G",
+  },
+  {
+    code: "MS1G",
+    label: "料金マスタ 新規",
+    // 対訳は app-list.ts の 1 箇所だけにあり、baseLabel で引き当てる
+    // （接尾辞「新規」が付いたままだと en/zh で日本語のまま出る）。
+    baseLabel: "料金マスタ",
+    href: "/master/charge-items/new",
+    category: "マスタ",
+    kind: "new",
+    categoryCode: "MS",
+    mode: "1",
+    index: "G",
+  },
+
+  // 再研磨品目（再研磨という役務の品目 + 値段）— 詳細ページを持たない小マスタ
+  // （編集は一覧のモーダル）なので list + new の 2 コード。
+  {
+    code: "MS0H",
+    label: "再研磨品目",
+    href: "/master/regrind-items",
+    category: "マスタ",
+    kind: "list",
+    categoryCode: "MS",
+    mode: "0",
+    index: "H",
+  },
+  {
+    code: "MS1H",
+    label: "再研磨品目 新規",
+    // 対訳は app-list.ts の 1 箇所だけにあり、baseLabel で引き当てる。
+    baseLabel: "再研磨品目",
+    href: "/master/regrind-items/new",
+    category: "マスタ",
+    kind: "new",
+    categoryCode: "MS",
+    mode: "1",
+    index: "H",
   },
 
   // ─── ドキュメント (DC) ───────────────────────────────────────────────────
@@ -523,6 +655,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     categoryCode: "SY",
     mode: "0",
     index: "I",
+  },
+  // 会計連携（仕訳 CSV の列・文字コード・既定の科目コード）
+  {
+    code: "SY0J",
+    label: "会計連携",
+    href: "/settings/accounting",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "J",
   },
 ];
 

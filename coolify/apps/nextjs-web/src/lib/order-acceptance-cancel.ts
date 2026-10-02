@@ -20,6 +20,8 @@ import { getApprovalFlow, startApprovalFlow } from "./approvals";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
 import { formatDocNumber } from "./doc-number";
+import { movementOpener } from "./inventory";
+import { allocateDocumentKey } from "./numbering";
 import { cancelOrderLineTx } from "./order-line-cancel";
 
 const TARGET_TYPE = "order_acceptance_cancel_requests" as const;
@@ -272,8 +274,17 @@ async function applyCancel(
     released: number;
     cancelledWos: number[];
   };
+  // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。
+  // **注文請書 1 件の取り消し = 伝票 1 枚** — 明細が何行あっても出来事は 1 回。
+  const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
   try {
     summary = await prisma.$transaction(async (tx) => {
+      const openMovement = movementOpener(tx, {
+        key: movementKey,
+        cause: "RESERVATION_RELEASE",
+        sourceType: "order_acceptances",
+        sourceId: number,
+      });
       let released = 0;
       const cancelledWos: number[] = [];
       let cancelledLines = 0;
@@ -283,6 +294,7 @@ async function applyCancel(
           tx,
           line.id,
           tr("orderAcceptanceActions.chainCancelNote", { number }),
+          openMovement,
         );
         if (!r.cancelled) {
           // 依頼〜適用の間に出荷された等 — tx ごと巻き戻す。

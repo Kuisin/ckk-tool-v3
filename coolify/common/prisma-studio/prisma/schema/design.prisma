@@ -69,7 +69,8 @@ model DesignRequest {
   // アプリ側では必須（区分の自動判定に要る）。DB は nullable のまま —
   // 製品未指定の既存行があるので NOT NULL にすると移行が落ちるうえ、
   // 埋める妥当な値も無い。「これからの依頼には必須、過去の行はそのまま」。
-  productId      Int?    @map("product_id")
+  /// 統合品目（app.items）。設計を依頼する対象品目。
+  itemId         Int?    @map("item_id")
   // 完成した版がどの系列に載るか（= design_files.customer_bp_id）。
   // 既定は見積の顧客 / 注文明細の顧客。STANDALONE や汎用の図面は null。
   // null = 汎用（どの顧客の指示書からも使える）— 製品工程ルートと同じ規約。
@@ -106,7 +107,7 @@ model DesignRequest {
 
   quote           Quote?     @relation(fields: [quoteYearMonth, quoteSeq], references: [yearMonth, seq])
   orderLine       OrderLine? @relation(fields: [orderLineId], references: [id])
-  product         Product?   @relation(fields: [productId], references: [id])
+  item            Item?      @relation("DesignRequestItem", fields: [itemId], references: [id], onDelete: Restrict)
   customerBp      BusinessPartner? @relation("DesignRequestCustomerBp", fields: [customerBpId], references: [id])
   assigneeUser    User?      @relation("DesignRequestAssignee", fields: [assigneeId], references: [id])
   requestedByUser User?      @relation("DesignRequestRequestedBy", fields: [requestedBy], references: [id])
@@ -116,28 +117,124 @@ model DesignRequest {
   createdByUser   User?      @relation("DesignRequestCreatedBy", fields: [createdBy], references: [id])
   baseDesignFile  DesignFile? @relation("DesignRequestBaseFile", fields: [baseDesignFileId], references: [id])
 
-  files DesignFile[] @relation("DesignRequestFiles")
+  files    DesignFile[]    @relation("DesignRequestFiles")
+  versions DesignVersion[] @relation("DesignRequestVersions")
 
   @@index([status])
   @@index([assigneeId, status])
   @@index([desiredAt])
+  @@index([itemId])
   @@map("design_requests")
   @@schema("app")
 }
 
 // 設計ファイルの役割。1 つの版は
-//   プレビュー 0..1 枚 + 図面データ 1 枚 + 参考資料 0..N 枚
-// で構成する。**プレビューと図面データを分けている**のは用途が違うから:
+//   2D 原図 0..1 + 3D 原図 0..1 + プレビュー 0..1 + 参考資料 0..N
+// で構成する（どれも任意 — 仕様だけの版もある）。**原図とプレビューを分けて
+// いる**のは用途が違うから:
+//   BLUEPRINT … 2D 原図（図脳 SXF / DXF / DWG …）。加工プログラムを起こす元データ
+//   MODEL     … 3D 原図（STEP / IGES / CIM3D …）。ブラウザでは描けない形式が多い
 //   PREVIEW   … 人が形を確かめるためのもの（STL 等）。画面で回して見る
-//   BLUEPRINT … 加工プログラムを起こす元データ（CAD）。これが成果物の本体で、
-//               製品マスタの「最新図面」もこれを指す
-// 同じ形状でも STL は見るため・CAD は作るためのもので、片方で代用できない。
+// 同じ形状でも STL は見るため・原図は作るためのもので、片方で代用できない。
+// ⚠️ メンバの並びは DB の enum 順と一致させること（MODEL は後から足したので末尾）。
 enum DesignFileRole {
   PREVIEW // プレビュー用（3D 表示）
-  BLUEPRINT // 図面データ（加工プログラム用）
+  BLUEPRINT // 2D 原図
   REFERENCE // 参考資料（部品図・寸法表など）
+  MODEL // 3D 原図
 
   @@map("DESIGN_FILE_ROLE")
+  @@schema("app")
+}
+
+// 設計図の版の状態。書類と同じ「下書き → (承認) → 確定」。
+// 承認の段は承認設定 (MS0B, target_type = 'design_versions') が決め、
+// **段が 1 つも無ければ承認を通らずに確定する**（出荷書・工程フロー変更と同じ規約）。
+// 確定前（下書き・差し戻し）だけが編集でき、確定した版は動かない。
+// ⚠️ メンバの並びは DB の enum 順と一致させること。
+enum DesignVersionStatus {
+  DRAFT // 下書き
+  REQUESTED // 承認依頼中
+  CONFIRMED // 確定
+  REJECTED // 差し戻し（編集できる状態へ戻る）
+
+  @@map("DESIGN_VERSION_STATUS")
+  @@schema("app")
+}
+
+// 設計図の版（1 行 = 1 版）。
+//
+// 以前の版は design_files の行を (製品 × 受注元 × 版番号) で束ねた導出値で、
+// 版そのものの行が無かった。状態（下書き / 確定）と仕様（材種・寸法・製品項目）を
+// 持たせる場所が要るので、版を行にした。ファイルは design_files が
+// design_version_id でここを指す（ファイル 0 枚の版もある — 仕様だけの版）。
+//
+// **仕様は版が持つ**（製品マスタから移した）。同じ製品でも改訂ごと・受注元ごとに
+// 図面が育つので、仕様もその版に付く。製品ごとに 1 つの値が要る読み手
+// （指示書の素材候補・製品検索・外部 API・分析ビュー）は、確定済みの版から
+// 「受注元一致 → 汎用 → 最後に確定した版」の順で 1 つ選ぶ
+// （lib/design-files-core.ts pickSpecVersion が唯一の定義元）。
+//
+// 版番号は系列 (製品 × 受注元) ごとの連番で、下書きを作った時点で採る。
+// 系列ごとに**確定前の版は 1 つだけ**（部分 unique index — migration で張る）。
+// 並行して 2 つの下書きがあると、どちらが次の版なのかが読めなくなる。
+model DesignVersion {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itemId          Int                 @map("item_id")
+  /// null = 汎用。版番号はこの列ごとに数える。
+  customerBpId    String?             @map("customer_bp_id") @db.Uuid
+  version         Int
+  status          DesignVersionStatus @default(DRAFT)
+  /// この版を成果物とする設計依頼。null = 依頼を経ない登録。
+  designRequestId String?             @map("design_request_id") @db.Uuid
+  /// 版全体のメモ（何を変えたか）。
+  notes           String?
+
+  // ─── 仕様（製品マスタから移した） ───────────────────────────────────────
+  /// この製品が要求する素材の材種 + 直径 + 全長（cut-to-length なので特定の
+  /// 素材行には紐づけない）。材種を入れたら直径・全長も必須（アプリ側）。
+  materialTypeId  Int?                @map("material_type_id")
+  diameterMm      Decimal?            @map("diameter_mm") @db.Decimal(8, 3)
+  lengthMm        Decimal?            @map("length_mm") @db.Decimal(10, 3)
+  /// 製品項目 (SY03) の値。key → 文字列の平らな JSON + 予約キー _product_type。
+  spec            Json?
+  /// 図面の表題欄に書かれていること（品名・材質・表面処理・刃数・ネジレ・工具番号・
+  /// 図面番号・作成年月日・刻印）。key → 文字列の平らな JSON。キーの集合は
+  /// lib/design-files-core.ts TITLE_BLOCK_FIELDS が唯一の定義元。図脳 SXF (.sfc)
+  /// を読むとここが埋まる（lib/sxf-core.ts）。製品項目 (SY03) は管理者が決める
+  /// 属性で、こちらは図面そのものの記載 — 片方に寄せると、SY03 に項目が無い
+  /// 環境で図面から読んだ値の行き場が無くなる。
+  titleBlock      Json?               @map("title_block")
+  /// 図面から読み取った値（lib/design-extract-core.ts）。{ source, values, overridden }。
+  /// 読み取った欄は画面で読み取り専用になり、overridden に入れた欄だけ手入力できる。
+  /// 手入力にしても values は参照として残す（図面とどこが違うかを後から見られる）。
+  extract         Json?
+
+  requestedAt     DateTime?           @map("requested_at") @db.Timestamptz(6)
+  requestedBy     String?             @map("requested_by") @db.Uuid
+  confirmedAt     DateTime?           @map("confirmed_at") @db.Timestamptz(6)
+  confirmedBy     String?             @map("confirmed_by") @db.Uuid
+  // 状態遷移履歴 [{ action, user, at, notes }]（DesignRequest と同型）
+  history         Json?
+  createdBy       String?             @map("created_by") @db.Uuid
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  item            Item             @relation("DesignVersionItem", fields: [itemId], references: [id], onDelete: Restrict)
+  customerBp      BusinessPartner? @relation("DesignVersionCustomerBp", fields: [customerBpId], references: [id])
+  designRequest   DesignRequest?   @relation("DesignRequestVersions", fields: [designRequestId], references: [id])
+  materialType    MaterialType?    @relation("DesignVersionMaterialType", fields: [materialTypeId], references: [id], onDelete: Restrict)
+  requestedByUser User?            @relation("DesignVersionRequestedBy", fields: [requestedBy], references: [id])
+  confirmedByUser User?            @relation("DesignVersionConfirmedBy", fields: [confirmedBy], references: [id])
+  createdByUser   User?            @relation("DesignVersionCreatedBy", fields: [createdBy], references: [id])
+  files           DesignFile[]     @relation("DesignVersionFiles")
+
+  // 系列内の版番号は一意（NULLS NOT DISTINCT index — migration で張る。汎用
+  // 系列の customer_bp_id = null 同士も同じ系列として数える）。
+  @@unique([itemId, customerBpId, version], map: "design_versions_series_version_key")
+  @@index([designRequestId])
+  @@index([status])
+  @@map("design_versions")
   @@schema("app")
 }
 
@@ -155,15 +252,26 @@ enum DesignFileRole {
 //
 // 系列内の「最新図面」= is_latest かつ BLUEPRINT、
 // 「最新の 3D プレビュー」= is_latest かつ PREVIEW。
+// **is_latest は確定した版にしか立たない** — 下書きのファイルは false のまま
+// 作られ、版が確定した瞬間に系列の is_latest がその版へ移る。指示書・製品
+// マスタ・サムネイルは is_latest を読むので、下書きの図面を拾わない。
 //
 // **設計依頼を経ない版もある**（design_request_id = null）。図面だけ先に
 // 出来ている・既存図面を取り込む、といった場合に製品マスタから直接足せる。
 // 一覧の「依頼 / 手動」の別はこの列の有無から導く（列を増やして二重に
 // 持たない）。
+//
+// item_id / customer_bp_id / version / design_request_id は版
+// (design_versions) の写し。版の系列と番号は作成後に変わらないので写しても
+// ずれない。既存の読み手（指示書・製品マスタ・設計依頼）がファイルから
+// 直接引いているので残してある。
 model DesignFile {
   id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 属する版。
+  designVersionId String   @map("design_version_id") @db.Uuid
   designRequestId String?  @map("design_request_id") @db.Uuid
-  productId       Int?     @map("product_id")
+  /// 統合品目（app.items）。この図面が属する品目。
+  itemId          Int?     @map("item_id")
   // 対象の受注元。null = 汎用。版番号と is_latest はこの列ごとに数える。
   customerBpId    String?  @map("customer_bp_id") @db.Uuid
   fileId          String   @map("file_id") @db.Uuid
@@ -174,10 +282,11 @@ model DesignFile {
   createdBy       String?  @map("created_by") @db.Uuid
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
+  designVersion DesignVersion  @relation("DesignVersionFiles", fields: [designVersionId], references: [id], onDelete: Restrict)
   designRequest DesignRequest? @relation("DesignRequestFiles", fields: [designRequestId], references: [id])
   // この版を「元図面」に指している改訂依頼。
   baseOfRequests DesignRequest[] @relation("DesignRequestBaseFile")
-  product       Product?       @relation(fields: [productId], references: [id])
+  item          Item?          @relation("DesignFileItem", fields: [itemId], references: [id], onDelete: Restrict)
   customerBp    BusinessPartner? @relation("DesignFileCustomerBp", fields: [customerBpId], references: [id])
   // この版を使うと決めた指示書（任意のピン留め）。
   workOrders    WorkOrder[]    @relation("WorkOrderDesignFile")
@@ -185,9 +294,10 @@ model DesignFile {
   createdByUser User?          @relation("DesignFileCreatedBy", fields: [createdBy], references: [id])
 
   @@index([designRequestId])
-  // 系列（製品 × 受注元）の最新図面を引く。productId 前方一致で
+  @@index([designVersionId])
+  // 系列（品目 × 受注元）の最新図面を引く。itemId 前方一致で
   // 「この製品の全系列」も同じ索引で足りる。
-  @@index([productId, customerBpId, isLatest, role])
+  @@index([itemId, customerBpId, isLatest, role])
   @@map("design_files")
   @@schema("app")
 }

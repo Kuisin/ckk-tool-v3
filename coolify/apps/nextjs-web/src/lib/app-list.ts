@@ -21,6 +21,7 @@ export type AppCategory =
   | "販売"
   | "購買"
   | "生産"
+  | "在庫"
   | "出荷"
   | "請求"
   | "マスタ"
@@ -211,10 +212,77 @@ export const appList: AppEntry[] = [
     // 製品・素材・仕掛品・ロケーション（保管場所×棚）+ 在庫移動。
     key: "inventory",
     label: "在庫管理",
-    operationCode: "PD04",
-    href: "/production/inventory",
+    operationCode: "ST01",
+    href: "/inventory",
     icon: "IconBoxSeam",
-    category: "生産",
+    category: "在庫",
+    requiredPermission: "inventory",
+  },
+  {
+    // 在庫一覧 — **拠点・保管場所から見る**画面。「この棚に何があるか」を答える。
+    // 品目 1 つを追うのは 在庫・所要量 (ST03) のほうで、目的が違う。
+    key: "stock-overview",
+    label: "在庫一覧",
+    operationCode: "ST02",
+    href: "/inventory/stock",
+    icon: "IconBuildingWarehouse",
+    category: "在庫",
+    requiredPermission: "inventory",
+  },
+  {
+    // 在庫・所要量 — **品目 1 つを追う**画面。「この品目は足りるのか」を答える。
+    // 過去（入出庫の履歴）と未来（入出庫の予定）を 1 本の時系列に並べる。
+    // 在庫一覧 (ST02) とは見る向きが逆で、入口も別。
+    key: "stock-requirements",
+    label: "在庫・所要量",
+    operationCode: "ST03",
+    href: "/inventory/requirements",
+    icon: "IconChartLine",
+    category: "在庫",
+    requiredPermission: "inventory",
+  },
+  {
+    // 手動入出庫 — 人が在庫を動かす唯一の口。移動タイプを選び、from/to を
+    // 必ず記録して入出庫伝票を 1 枚起こす。
+    key: "goods-movement",
+    label: "手動入出庫",
+    operationCode: "ST06",
+    href: "/inventory/goods-movement",
+    icon: "IconTransfer",
+    category: "在庫",
+    requiredPermission: "inventory",
+  },
+  {
+    // 移動タイプ — 手動入出庫で選ぶ番号つきの型。利用者が増やせる。
+    key: "movement-types",
+    label: "移動タイプ",
+    operationCode: "ST09",
+    href: "/inventory/movement-types",
+    icon: "IconListNumbers",
+    category: "在庫",
+    requiredPermission: "inventory",
+  },
+  {
+    // 入出庫伝票 — 在庫が動いた出来事 1 回 = 1 枚（明細は取引行そのもの）。
+    // **作る画面は無い** — 伝票は在庫を動かした処理が自分で起こすもので、
+    // 人が手で起こすものではない（数を直したいときは棚卸 PD08）。
+    key: "inventory-movements",
+    label: "入出庫伝票",
+    operationCode: "ST04",
+    href: "/inventory/movements",
+    icon: "IconArrowsExchange",
+    category: "在庫",
+    requiredPermission: "inventory",
+  },
+  {
+    // 棚卸 — 実地棚卸。バケット（拠点 × 保管場所 × 棚 × ロット）単位で数え、
+    // 確定が差異ぶんの入出庫伝票（ADJUST）を起こす。
+    key: "stock-takes",
+    label: "棚卸",
+    operationCode: "ST05",
+    href: "/inventory/stock-takes",
+    icon: "IconClipboardList",
+    category: "在庫",
     requiredPermission: "inventory",
   },
   {
@@ -419,6 +487,32 @@ export const appList: AppEntry[] = [
     operationCode: "MS0F",
     href: "/master/tax-categories",
     icon: "IconPercentage",
+    category: "マスタ",
+    requiredPermission: "master",
+  },
+
+  {
+    // 料金マスタ（送料などの追加項目）。指示書と出荷書に行として足し、
+    // 出荷書の行が請求書の明細になる。金額の決まり方（固定 / 可変）は
+    // lib/charge-core.ts が唯一の判定元。
+    key: "master-charge-items",
+    label: "料金マスタ",
+    operationCode: "MS0G",
+    href: "/master/charge-items",
+    icon: "IconCoin",
+    category: "マスタ",
+    requiredPermission: "master",
+  },
+
+  {
+    // 再研磨品目（売る**役務**としての研ぎ直し）。値段はここに付く —
+    // 旧 再研マスタ（材料 × 加工箇所 × 刃数 × サイズ帯 → 金額）が 1 行 1 品目に
+    // なったもの。研ぐ工具のほうは製品マスタ (MS04) の行。
+    key: "master-regrind-items",
+    label: "再研磨品目",
+    operationCode: "MS0H",
+    href: "/master/regrind-items",
+    icon: "IconTool",
     category: "マスタ",
     requiredPermission: "master",
   },
@@ -667,6 +761,20 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: "api_client",
   },
+  {
+    // 会計連携 — 請求書から出す仕訳 CSV の形（列の並び・文字コード・既定の
+    // 科目コード）。会計ソフトの受入レイアウトは環境ごとに違い、経理（税務
+    // 事務所）の都合で変わるので、**コードではなく設定で持つ**。
+    //
+    // 画面にも列名にも会計ソフトの製品名を出さない（i18n-glossary §4 決定 19）。
+    key: "accounting",
+    label: "会計連携",
+    operationCode: "SY0J",
+    href: "/settings/accounting",
+    icon: "IconFileSpreadsheet",
+    category: "システム",
+    requiredPermission: "system",
+  },
 ];
 
 /** Home 絞り込み（工程）で使う URL パラメータのキー。 */
@@ -691,6 +799,7 @@ export const CATEGORY_COLORS: Record<AppCategory, string> = {
   販売: "blue",
   購買: "teal",
   生産: "violet",
+  在庫: "cyan",
   出荷: "orange",
   請求: "pink",
   マスタ: "gray",
@@ -720,6 +829,12 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "outsource-orders": { en: "Outsource order", zh: "外协委托单" },
   "work-orders": { en: "Work order", zh: "工单" },
   inventory: { en: "Inventory", zh: "库存管理" },
+  "inventory-movements": { en: "Stock movement", zh: "出入库单" },
+  "stock-overview": { en: "Stock overview", zh: "库存总览" },
+  "stock-requirements": { en: "Stock / requirements", zh: "库存与需求" },
+  "goods-movement": { en: "Goods movement", zh: "手动出入库" },
+  "movement-types": { en: "Movement types", zh: "移动类型" },
+  "stock-takes": { en: "Stocktaking", zh: "盘点" },
   "pending-work-orders": { en: "Pending work orders", zh: "未处理工单" },
   "delivery-orders": { en: "Delivery order", zh: "出货单" },
   "delivery-notes": { en: "Delivery note", zh: "送货单" },
@@ -742,6 +857,8 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "master-work-locations": { en: "Work locations", zh: "作业场所" },
   "master-storage-locations": { en: "Storage locations", zh: "存放位置" },
   "master-tax-categories": { en: "Tax categories", zh: "税种" },
+  "master-charge-items": { en: "Charge items", zh: "费用项目" },
+  "master-regrind-items": { en: "Regrind items", zh: "再研磨服务" },
   docs: { en: "Manual", zh: "操作手册" },
   "admin-manual": { en: "Admin manual", zh: "管理手册" },
   "user-management": { en: "Users", zh: "用户管理" },
@@ -759,6 +876,7 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "login-history": { en: "Login history", zh: "登录历史" },
   "ai-provider": { en: "AI provider", zh: "AI 服务商" },
   "notification-email": { en: "Notification email", zh: "通知邮件" },
+  accounting: { en: "Accounting export", zh: "会计对接" },
   "design-files": { en: "Drawing", zh: "图纸" },
   "privileged-access": { en: "Privileged access", zh: "特权访问" },
   "portal-admin": { en: "Partner portal", zh: "客户门户" },
@@ -773,6 +891,7 @@ export const CATEGORY_LABEL_I18N: Record<
   販売: { en: "Sales", zh: "销售" },
   購買: { en: "Purchasing", zh: "采购" },
   生産: { en: "Production", zh: "生产" },
+  在庫: { en: "Inventory", zh: "库存" },
   出荷: { en: "Shipping", zh: "出货" },
   請求: { en: "Billing", zh: "请款" },
   マスタ: { en: "Master data", zh: "主数据" },
@@ -821,6 +940,7 @@ export function getAppsByCategory(): Array<{
     "販売",
     "購買",
     "生産",
+    "在庫",
     "出荷",
     "請求",
     "マスタ",

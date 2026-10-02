@@ -89,19 +89,26 @@ text-color: #5b21b6;
 [role_prod: Match against stock] <block_condition>
 label: Stock matching;
 desc: Split into the portion that can ship from stock and the portion to newly manufacture.;
-if (Product stock) is (Sufficient) than #green
-  [role_support: From-stock work order] <block_apply>
-  label: From stock;
+if (Order type) is (Regrind) than #orange
+  [role_support: Regrind work order] <block_apply>
+  label: Regrind;
   props: WORK_ORDER;
-  desc: A from-stock work order has a fixed structure (dispense product + optional pre-shipment inspection). Stock is allocated.;
+  desc: Regrind tools received from the customer. Uses the shared regrind step list; the received tools are booked as customer-owned stock (never our own).;
 else
-  [role_prod: Check material] <block_condition>
-  label: Material check;
-  desc: Check whether the needed material is sufficient. If not, procure it through the purchasing flow.;
-  [role_support: Manufacture work order] <block_apply>
-  label: To manufacture;
-  props: WORK_ORDER;
-  desc: Arrange the steps in order. If a prior work order for the same customer and product exists, it can be copied.;
+  if (Product stock) is (Sufficient) than #green
+    [role_support: From-stock work order] <block_apply>
+    label: From stock;
+    props: WORK_ORDER;
+    desc: A from-stock work order has a fixed structure (dispense product + optional pre-shipment inspection). Stock is allocated.;
+  else
+    [role_prod: Check material] <block_condition>
+    label: Material check;
+    desc: Check whether the needed material is sufficient. If not, procure it through the purchasing flow.;
+    [role_support: Manufacture work order] <block_apply>
+    label: To manufacture;
+    props: WORK_ORDER;
+    desc: Arrange the steps in order. If a prior work order for the same customer and product exists, it can be copied.;
+  endif
 endif
 [role_support: Request approval] <block_apply>
 label: Approval request;

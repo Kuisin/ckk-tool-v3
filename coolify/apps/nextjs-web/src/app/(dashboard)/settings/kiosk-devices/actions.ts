@@ -74,7 +74,7 @@ function revalidate() {
   revalidatePath(`${BASE_PATH}/map`);
   // フロアマップは MS0C（拠点詳細）/ PD04（在庫管理）とも共用
   revalidatePath("/master/plants");
-  revalidatePath("/production/inventory");
+  revalidatePath("/inventory");
 }
 
 // ── プレゼンス WS トークン ───────────────────────────────────────────────────

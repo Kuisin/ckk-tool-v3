@@ -35,7 +35,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
-import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
+import { searchProductItemOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
   createTrialEstimate,
   fetchMaterialPricing,
@@ -44,7 +44,7 @@ import {
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { EditButton } from "@/components/ui/buttons";
-import { productF4 } from "@/components/ui/f4-presets";
+import { productItemF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
@@ -54,6 +54,7 @@ import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions, FormSection } from "@/components/ui/shells";
 import { fieldHelp } from "@/lib/field-help";
 import type { Option } from "@/lib/mock";
+import type { ScalePresetRow } from "@/lib/price-scale-preset";
 import {
   type CostBreakdown,
   calcTrialPricing,
@@ -61,6 +62,7 @@ import {
   type ToolType,
   type TrialInput,
 } from "@/lib/trial-pricing";
+import type { Criterion } from "@/lib/trial-pricing-criteria";
 import {
   COATING_OPTIONS,
   cylinderTypeOptions,
@@ -76,7 +78,9 @@ import {
   toToolTypeOptions,
   toTrialPricingOptions,
 } from "@/lib/trial-pricing-settings";
+import { criterionDescription, LabelWithHint } from "./CriterionHint";
 import { MaterialPriceChart } from "./MaterialPriceChart";
+import { ScaleEstimateTable } from "./ScaleEstimateTable";
 import type { TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
@@ -92,6 +96,7 @@ export function TrialEstimateForm({
   surfaceFinishOptions,
   settings,
   initialPricing,
+  scalePreset,
   /** 複製元（?from= で開いたとき）— 全入力を引き継いだ新規 DRAFT を作る。 */
   source,
 }: {
@@ -104,6 +109,8 @@ export function TrialEstimateForm({
   settings: TrialPricingSettings;
   /** 初期材種構成の仕入実績＋ポリシー参照価格（サーバー取得）. */
   initialPricing: MaterialPricing;
+  /** 数量スケール（SY02）。見積単価から数量ごとの単価の見込みを出す。 */
+  scalePreset: ScalePresetRow[];
   source?: TrialEstimateRecord | null;
 }) {
   const tr = useTranslations();
@@ -131,9 +138,8 @@ export function TrialEstimateForm({
     source?.salesRepId ?? null,
   );
   // 対象製品（任意）— 価格表作成時の基準単価ソース候補になる。
-  const [productId, setProductId] = useState<string | null>(
-    source?.productId ?? null,
-  );
+  // 値は品目 id（items.id）。
+  const [itemId, setItemId] = useState<string | null>(source?.itemId ?? null);
   // 材料 = 材種 × 直径 × 黒皮/研磨（参照価格の解決キー）。
   const [materialTypeId, setMaterialTypeId] = useState<string>(
     source?.materialTypeId ?? materialTypeOptions[0]?.value ?? "",
@@ -183,10 +189,9 @@ export function TrialEstimateForm({
   const [machiningMinutes, setMachiningMinutes] = useState<number | string>(
     src?.machiningMinutes ?? 6,
   );
-  // 加工単価・予備形状本数は scope:"global" のカスタム固定係数（customValues）を使用。
-  // 基準数量 — 形状出し（段取り分）の按分にのみ使用。数量スケール（×倍率）は
-  // 価格表側で管理するため、価格試算はこの1点の基準単価だけを算出する。
-  const [baseQuantity, setBaseQuantity] = useState<number | string>(100);
+  // 加工単価・予備形状本数・形状出し按分本数は scope:"global" のカスタム固定係数
+  // （customValues）を使用。数量スケール（×倍率）は価格表側で管理するため、
+  // 価格試算はこの1点の基準単価だけを算出する。
 
   // ── カスタム入力項目（管理者が価格試算計算 SY02 で定義）───────────────────────
   const [customValues, setCustomValues] = useState<
@@ -301,8 +306,6 @@ export function TrialEstimateForm({
     machiningMinutes: num(machiningMinutes),
     machiningRatePer10min: Number(customValues.machiningRatePer10min ?? 2000),
     spareShapeCount: Number(customValues.spareShapeCount ?? 3),
-    lotQuantities: [num(baseQuantity), 0, 0],
-    lotMarkups: [1], // 掛け率は使わない（数量スケールは価格表の倍率で管理）
   };
   const result = calcTrialPricing(input, toTrialPricingOptions(settings));
 
@@ -320,7 +323,7 @@ export function TrialEstimateForm({
         salesRepId,
         name: name.trim(),
         customerBpId: customerId,
-        productId,
+        itemId,
         materialTypeId: materialTypeId || null,
         diameterCode: diameterCode || null,
         surfaceFinishCode: surfaceFinishCode || null,
@@ -416,11 +419,11 @@ export function TrialEstimateForm({
                     value={salesRepId}
                   />
                   <SearchSelect
-                    f4={productF4(tr)}
+                    f4={productItemF4(tr)}
                     initialOption={
-                      source?.productId && source.productName
+                      source?.itemId && source.productName
                         ? {
-                            value: source.productId,
+                            value: source.itemId,
                             label: source.productName,
                           }
                         : null
@@ -437,13 +440,13 @@ export function TrialEstimateForm({
                         }
                       />
                     }
-                    onChange={setProductId}
-                    onSearch={searchProductOptions}
+                    onChange={setItemId}
+                    onSearch={searchProductItemOptions}
                     placeholder={tr(
                       "sales.trialEstimates.searchProductsOptional",
                     )}
-                    storageKey="product"
-                    value={productId}
+                    storageKey="trial-estimate-product-item"
+                    value={itemId}
                   />
                   <NumberInput
                     label={
@@ -884,32 +887,12 @@ export function TrialEstimateForm({
               </FormSection>
             )}
 
-            <FormSection
-              description={tr(
-                "sales.trialEstimates.usedOnlyToProrateFormShaping",
-              )}
-              title={tr("common.baseQuantity")}
-            >
-              <NumberInput
-                label={
-                  <HelpLabel
-                    help={tr(
-                      "sales.trialEstimates.theQuantityUsedToProrateForm",
-                    )}
-                    label={tr("sales.trialEstimates.baseQuantityPcs")}
-                  />
-                }
-                min={1}
-                onChange={setBaseQuantity}
-                value={baseQuantity}
-                w={220}
-              />
-            </FormSection>
-
             <ResultsPanel
               breakdown={result.breakdown}
               correctionFactor={Number(customValues.correctionFactor ?? 1.25)}
+              criteria={settings.criteria}
               lot={result.lots[0] ?? null}
+              scalePreset={scalePreset}
               warnings={result.warnings}
             />
 
@@ -994,38 +977,67 @@ function ResultsPanel({
   lot,
   correctionFactor,
   warnings,
+  criteria,
+  scalePreset,
 }: {
   breakdown: CostBreakdown;
+  /** 計算基準（ヒントボタンの説明を引く）。 */
+  criteria: Criterion[];
   /** 基準数量での計算結果（単一）. */
   lot: LotResult | null;
   correctionFactor: number;
   warnings: string[];
+  scalePreset: ScalePresetRow[];
 }) {
   const tr = useTranslations();
-  const rows: { label: string; value: number }[] = [
+  const rows: { id: string; label: string; value: number }[] = [
     {
+      id: "material",
       label: tr("sales.trialEstimates.materialCost"),
       value: breakdown.material,
     },
     {
+      id: "step",
       label: tr("sales.trialEstimates.stepMachiningCost"),
       value: breakdown.step,
     },
     {
+      id: "neck",
       label: tr("sales.trialEstimates.neckMachiningCost"),
       value: breakdown.neck,
     },
     {
+      id: "machining",
       label: tr("sales.trialEstimates.machiningRate"),
       value: breakdown.machining,
     },
-    { label: tr("sales.trialEstimates.coatingCost"), value: breakdown.coating },
-    { label: tr("sales.trialEstimates.lapping"), value: breakdown.lap },
-    { label: "LD", value: breakdown.ld },
     {
+      id: "coating",
+      label: tr("sales.trialEstimates.coatingCost"),
+      value: breakdown.coating,
+    },
+    {
+      id: "lap",
+      label: tr("sales.trialEstimates.lapping"),
+      value: breakdown.lap,
+    },
+    { id: "ld", label: "LD", value: breakdown.ld },
+    {
+      id: "inspection",
       label: tr("sales.trialEstimates.inspectionCertificate"),
       value: breakdown.inspection,
     },
+    // 最低単価 (lot.minimumPrice) はこの内訳 8 項目 + 形状出し（1本按分）の合計。
+    // 按分は CostBreakdown ではなく lot（形状出し按分本数での結果）から読む。
+    ...(lot
+      ? [
+          {
+            id: "shapeOutPerPiece",
+            label: tr("sales.trialEstimates.shapeOutPerPiece"),
+            value: lot.perPiece,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -1057,8 +1069,13 @@ function ResultsPanel({
             <Table>
               <Table.Tbody>
                 {rows.map((r) => (
-                  <Table.Tr key={r.label}>
-                    <Table.Td>{r.label}</Table.Td>
+                  <Table.Tr key={r.id}>
+                    <Table.Td>
+                      <LabelWithHint
+                        description={criterionDescription(criteria, r.id)}
+                        label={r.label}
+                      />
+                    </Table.Td>
                     <Table.Td ta="right">
                       <MoneyText value={Math.round(r.value)} />
                     </Table.Td>
@@ -1094,7 +1111,10 @@ function ResultsPanel({
                   <Table.Tr>
                     <Table.Td>
                       <Text fw={600} size="sm">
-                        {tr("common.estimatedUnitPriceBase")}
+                        <LabelWithHint
+                          description={criterionDescription(criteria, "final")}
+                          label={tr("common.estimatedUnitPriceBase")}
+                        />
                       </Text>
                     </Table.Td>
                     <Table.Td ta="right">
@@ -1105,13 +1125,15 @@ function ResultsPanel({
                   </Table.Tr>
                 </Table.Tbody>
               </Table>
-            ) : (
-              <Text c="dimmed" size="xs">
-                {tr("sales.trialEstimates.enterABaseQuantity")}
-              </Text>
-            )}
+            ) : null}
           </div>
         </SimpleGrid>
+        {lot && (
+          <ScaleEstimateTable
+            baseUnitPrice={lot.estimateUnitPrice}
+            preset={scalePreset}
+          />
+        )}
       </Stack>
     </Paper>
   );

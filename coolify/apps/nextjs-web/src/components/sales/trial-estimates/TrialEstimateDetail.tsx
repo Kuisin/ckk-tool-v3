@@ -37,7 +37,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
-import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
+import { searchProductItemOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
   confirmTrialEstimate,
   linkTrialEstimateProduct,
@@ -46,7 +46,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { productF4 } from "@/components/ui/f4-presets";
+import { productItemF4 } from "@/components/ui/f4-presets";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
@@ -68,12 +68,15 @@ import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import type { MaterialPricePoint } from "@/lib/material-pricing-core";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import type { ScalePresetRow } from "@/lib/price-scale-preset";
 import {
   calcTrialPricing,
   type TrialPricingOptions,
   toolTypeOptionsFallback,
 } from "@/lib/trial-pricing";
+import { criterionDescription, LabelWithHint } from "./CriterionHint";
 import { MaterialPriceChart } from "./MaterialPriceChart";
+import { ScaleEstimateTable } from "./ScaleEstimateTable";
 import type { LinkedPriceEntry, TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
@@ -98,6 +101,7 @@ export function TrialEstimateDetail({
   priceHistory,
   pricingOptions = {},
   toolTypeOptions,
+  scalePreset,
 }: {
   record: TrialEstimateRecord;
   linkedEntries: LinkedPriceEntry[];
@@ -111,6 +115,8 @@ export function TrialEstimateDetail({
   pricingOptions?: TrialPricingOptions;
   /** 工具種の選択肢（管理者定義。未指定は組み込み 3 種）. */
   toolTypeOptions?: { value: string; label: string }[];
+  /** 数量スケール（SY02）。見積単価から数量ごとの単価の見込みを出す。 */
+  scalePreset: ScalePresetRow[];
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -130,7 +136,7 @@ export function TrialEstimateDetail({
   const status = record.status;
   // 製品リンク モーダル（REGISTERED は価格表が参照済みのため変更不可）
   const [linkOpen, setLinkOpen] = useState(false);
-  const [linkProductId, setLinkProductId] = useState<string | null>(null);
+  const [linkItemId, setLinkItemId] = useState<string | null>(null);
 
   // ── 手続き状況（下書き → 確定 → 価格表登録済）───────────────────────────
   // 確定済みは「確定」が済んだ段。次は価格表で使われること（2）。
@@ -187,7 +193,7 @@ export function TrialEstimateDetail({
   ];
 
   const openProductLink = () => {
-    setLinkProductId(record.productId);
+    setLinkItemId(record.itemId);
     setLinkOpen(true);
   };
 
@@ -195,12 +201,12 @@ export function TrialEstimateDetail({
     startTransition(async () => {
       const res = await linkTrialEstimateProduct(
         record.estimateNumber,
-        linkProductId,
+        linkItemId,
       );
       if (res.ok) {
         notifications.show({
           title: tr("common.saved2"),
-          message: linkProductId
+          message: linkItemId
             ? tr("sales.trialEstimates.linkedToTheProductOnceConfirmed")
             : tr("sales.trialEstimates.theProductLinkWasRemoved"),
           color: "green",
@@ -254,7 +260,7 @@ export function TrialEstimateDetail({
             ...(status !== "REGISTERED"
               ? [
                   {
-                    label: record.productId
+                    label: record.itemId
                       ? tr("sales.trialEstimates.changeTheProductLink")
                       : tr("sales.trialEstimates.linkToAProduct"),
                     icon: <IconCylinder size={14} />,
@@ -375,14 +381,6 @@ export function TrialEstimateDetail({
                   {result.lots[0] && (
                     <>
                       <Table.Tr>
-                        <Table.Td>{tr("common.baseQuantity")}</Table.Td>
-                        <Table.Td ta="right">
-                          {tr("common.quantityPcs", {
-                            quantity: result.lots[0].quantity,
-                          })}
-                        </Table.Td>
-                      </Table.Tr>
-                      <Table.Tr>
                         <Table.Td>{tr("common.minimumUnitPrice")}</Table.Td>
                         <Table.Td ta="right">
                           <MoneyText
@@ -393,7 +391,13 @@ export function TrialEstimateDetail({
                       <Table.Tr>
                         <Table.Td>
                           <Text fw={600} size="sm">
-                            {tr("common.estimatedUnitPriceBase")}
+                            <LabelWithHint
+                              description={criterionDescription(
+                                pricingOptions.criteria,
+                                "final",
+                              )}
+                              label={tr("common.estimatedUnitPriceBase")}
+                            />
                           </Text>
                         </Table.Td>
                         <Table.Td ta="right">
@@ -409,6 +413,12 @@ export function TrialEstimateDetail({
                 </Table.Tbody>
               </Table>
             </div>
+            {result.lots[0] && (
+              <ScaleEstimateTable
+                baseUnitPrice={result.lots[0].estimateUnitPrice}
+                preset={scalePreset}
+              />
+            )}
             <div>
               <Text c="dimmed" mb={4} size="xs">
                 {tr("common.costBreakdownPerPiece")}
@@ -417,12 +427,41 @@ export function TrialEstimateDetail({
                 <Table.Tbody>
                   {BREAKDOWN_ROWS.map(([labelKey, key]) => (
                     <Table.Tr key={key}>
-                      <Table.Td>{labelKey ? tr(labelKey) : "LD"}</Table.Td>
+                      <Table.Td>
+                        <LabelWithHint
+                          description={criterionDescription(
+                            pricingOptions.criteria,
+                            key,
+                          )}
+                          label={labelKey ? tr(labelKey) : "LD"}
+                        />
+                      </Table.Td>
                       <Table.Td ta="right">
                         <MoneyText value={Math.round(result.breakdown[key])} />
                       </Table.Td>
                     </Table.Tr>
                   ))}
+                  {/* 最低単価 (lots[0].minimumPrice) はこの内訳 8 項目 + 形状出し
+                      （1本按分）の合計。按分は数量に依存するため CostBreakdown では
+                      なく lots[0]（基準数量での結果）から読む。 */}
+                  {result.lots[0] && (
+                    <Table.Tr>
+                      <Table.Td>
+                        <LabelWithHint
+                          description={criterionDescription(
+                            pricingOptions.criteria,
+                            "shapeOutPerPiece",
+                          )}
+                          label={tr("sales.trialEstimates.shapeOutPerPiece")}
+                        />
+                      </Table.Td>
+                      <Table.Td ta="right">
+                        <MoneyText
+                          value={Math.round(result.lots[0].perPiece)}
+                        />
+                      </Table.Td>
+                    </Table.Tr>
+                  )}
                 </Table.Tbody>
               </Table>
             </div>
@@ -502,7 +541,7 @@ export function TrialEstimateDetail({
         onConfirm={saveProductLink}
         opened={linkOpen}
         title={
-          record.productId
+          record.itemId
             ? tr("sales.trialEstimates.changeTheProductLink")
             : tr("sales.trialEstimates.linkToAProduct")
         }
@@ -513,18 +552,18 @@ export function TrialEstimateDetail({
           </Text>
           <SearchSelect
             clearable
-            f4={productF4(tr)}
+            f4={productItemF4(tr)}
             initialOption={
-              record.productId && record.productName
-                ? { value: record.productId, label: record.productName }
+              record.itemId && record.productName
+                ? { value: record.itemId, label: record.productName }
                 : null
             }
             label={tr("common.product")}
-            onChange={setLinkProductId}
-            onSearch={searchProductOptions}
+            onChange={setLinkItemId}
+            onSearch={searchProductItemOptions}
             placeholder={tr("common.searchProducts")}
-            storageKey="product"
-            value={linkProductId}
+            storageKey="trial-estimate-product-item"
+            value={linkItemId}
           />
         </Stack>
       </ModalShell>

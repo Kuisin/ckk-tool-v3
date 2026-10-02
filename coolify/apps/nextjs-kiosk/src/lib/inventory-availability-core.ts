@@ -85,3 +85,25 @@ export function allocateFromBuckets(
   }
   return { steps, shortfall: Math.max(0, remaining) };
 }
+
+/**
+ * 在庫から出した数を「作り直した分」と「廃棄した分」に割る。
+ *
+ * 在庫の品を投入して作る指示書（在庫分 FROM_STOCK・半製品からの投入）では、
+ * 出した数のうち完成して戻ってきた分は**付け替え**（同じ品がロットを変えて
+ * 入り直す）で、戻ってこなかった分は**廃棄**——物が消えている。
+ *
+ * 合計は同じなので台帳の残数は割らなくても合う。それでも割るのは、
+ * 割らないと**廃棄が 1 行も台帳に現れない**から。「出庫 10 / 入庫 7」と
+ * 並ぶだけでは、3 本が廃棄なのか数え間違いなのか後から誰にも言えない。
+ *
+ * `reassignLeft` は「まだ付け替えとして数えてよい残り」。呼び出し側は
+ * `出した総数 − 廃棄数` から始めて、取り分ごとに減らしていく。
+ */
+export function splitScrapShare(
+  take: number,
+  reassignLeft: number,
+): { reassign: number; scrap: number } {
+  const reassign = Math.max(0, Math.min(take, reassignLeft));
+  return { reassign, scrap: Math.max(0, take - reassign) };
+}

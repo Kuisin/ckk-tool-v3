@@ -34,9 +34,9 @@ import {
   targetPlantsInScope,
 } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { onMaterialReceipt } from "@/lib/inventory";
+import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
-import { nextDocumentNumber } from "@/lib/numbering";
+import { allocateDocumentKey, nextDocumentNumber } from "@/lib/numbering";
 import { learnPurchaseAliases } from "@/lib/purchase-intake";
 import {
   type ActionResult,
@@ -63,9 +63,8 @@ function revalidate(poNumber?: string) {
 
 function itemInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
-    materialId: z
-      .string()
-      .min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
+    /** 選んだ素材の品目 id（items.id）を文字列で受ける。 */
+    itemId: z.string().min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
     plantId: z.string().nullable(),
     quantity: z
       .number()
@@ -123,17 +122,20 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
 
 /** 明細入力 → create データ（金額はサーバー側で計算）。 */
 function buildItemCreates(items: PurchaseOrderInput["items"]) {
-  return items.map((it, i) => ({
-    materialId: Number(it.materialId),
-    plantId: it.plantId ? Number(it.plantId) : null,
-    quantity: it.quantity,
-    unit: it.unit,
-    unitPrice: it.unitPrice,
-    amount: it.quantity * it.unitPrice,
-    expectedAt: it.expectedAt ? new Date(it.expectedAt) : null,
-    notes: it.notes?.trim() || null,
-    sortOrder: i,
-  }));
+  return items.map((it, i) => {
+    const itemId = Number(it.itemId);
+    return {
+      itemId,
+      plantId: it.plantId ? Number(it.plantId) : null,
+      quantity: it.quantity,
+      unit: it.unit,
+      unitPrice: it.unitPrice,
+      amount: it.quantity * it.unitPrice,
+      expectedAt: it.expectedAt ? new Date(it.expectedAt) : null,
+      notes: it.notes?.trim() || null,
+      sortOrder: i,
+    };
+  });
 }
 
 /** スコープ判定に要る明細（入荷先拠点だけ）。prior の findUnique に足す。 */
@@ -204,17 +206,17 @@ async function unitMismatchMessage(
   items: PurchaseOrderInput["items"],
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
-  const ids = [...new Set(items.map((it) => Number(it.materialId)))];
-  const materials = await prisma.material.findMany({
-    where: { id: { in: ids } },
+  const ids = [...new Set(items.map((it) => Number(it.itemId)))];
+  const materials = await prisma.item.findMany({
+    where: { id: { in: ids }, itemType: "MATERIAL" },
     select: { id: true, code: true, unit: true },
   });
   for (const it of items) {
-    const m = materials.find((x) => x.id === Number(it.materialId));
+    const m = materials.find((x) => x.id === Number(it.itemId));
     if (!m) return tr("common.targetRecordNotFound");
     if (it.unit !== m.unit) {
       return tr("purchase.purchaseOrderActions.unitMismatch", {
-        code: m.code,
+        code: m.code ?? "",
         unit: m.unit,
       });
     }
@@ -247,7 +249,7 @@ export async function createPurchaseOrder(
     if (unitError) return actionError(unitError);
     const actor = await getCurrentActorId();
     const poNumber = await nextDocumentNumber("PURCHASE");
-    const creates = buildItemCreates(v.items);
+    const creates = await buildItemCreates(v.items);
     const totalAmount = creates.reduce((sum, it) => sum + it.amount, 0);
 
     await prisma.$transaction(async (tx) => {
@@ -327,7 +329,7 @@ export async function updatePurchaseOrder(
     const unitError = await unitMismatchMessage(v.items, tr);
     if (unitError) return actionError(unitError);
     const actor = await getCurrentActorId();
-    const creates = buildItemCreates(v.items);
+    const creates = await buildItemCreates(v.items);
     const totalAmount = creates.reduce((sum, it) => sum + it.amount, 0);
 
     await prisma.$transaction(async (tx) => {
@@ -656,7 +658,7 @@ export async function orderPurchaseOrder(
     });
     revalidate(poNumber);
     // ATP（素材在庫の入荷予定）が変わるため在庫ページも再検証する。
-    revalidatePath("/production/inventory");
+    revalidatePath("/inventory");
     return actionOk();
   } catch (e) {
     return actionError(
@@ -715,8 +717,17 @@ export async function receivePurchaseOrderItems(
     const actor = await getCurrentActorId();
     const now = new Date();
     const receivedAt = todayJst();
+    // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。
+    // **この入荷 1 回 = 伝票 1 枚**（受け取った明細が N 行ぶら下がる）。
+    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
 
     const result = await prisma.$transaction(async (tx) => {
+      const openMovement = movementOpener(tx, {
+        key: movementKey,
+        cause: "MATERIAL_RECEIPT",
+        sourceType: "material_purchase_orders",
+        sourceId: poNumber,
+      });
       // prior で見た ORDERED は tx の外の読み。短納クローズ（ORDERED → COMPLETED）
       // と競合すると、閉じた発注書に入荷行と在庫が積まれる。行を更新して
       // 「いまも ORDERED」を原子的に確かめる（更新は行ロックも兼ねる）。
@@ -753,7 +764,7 @@ export async function receivePurchaseOrderItems(
         }
         const receipt = await tx.materialReceipt.create({
           data: {
-            materialId: it.materialId,
+            itemId: it.itemId,
             supplierBpId: prior.supplierBpId,
             purchaseOrderItemId: it.id,
             plantId: it.plantId,
@@ -769,7 +780,7 @@ export async function receivePurchaseOrderItems(
         });
         // 在庫への計上は入荷行と**同じ tx** — 途中で落ちれば入荷行ごと戻る
         // （入荷はあるのに在庫が無い、を作らない）。
-        await onMaterialReceipt(receipt.id, tx);
+        await onMaterialReceipt(receipt.id, tx, openMovement);
         ids.push(receipt.id);
       }
       // 全明細が発注数量に達したら COMPLETED
@@ -837,7 +848,7 @@ export async function receivePurchaseOrderItems(
     }
     revalidate(poNumber);
     revalidatePath(RECEIPTS_PATH);
-    revalidatePath("/production/inventory");
+    revalidatePath("/inventory");
     return actionOk({ completed: result.completed });
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("GUARD:")) {
@@ -967,7 +978,7 @@ export async function closeShortPurchaseOrder(
     });
     revalidate(poNumber);
     // 未入荷分が入荷予定（ATP）から外れるので在庫ページも再検証する。
-    revalidatePath("/production/inventory");
+    revalidatePath("/inventory");
     return actionOk();
   } catch (e) {
     return actionError(
@@ -1077,11 +1088,11 @@ export async function learnMaterialOrderAliases(payload: {
   extractedSupplierName: string | null;
   /** 突合が下書きに入れていた仕入先 id（自動一致）。 */
   supplierBpId: string | null;
-  /** 下書きの明細（並び順のまま）。materialId は自動一致の値。 */
+  /** 下書きの明細（並び順のまま）。itemId は自動一致の品目 id。 */
   lines: {
     materialText: string | null;
     materialCode: string | null;
-    materialId: string | null;
+    itemId: string | null;
   }[];
 }): Promise<ActionResult> {
   const authz = await checkPermission("purchase_order", "CREATE");
@@ -1091,7 +1102,7 @@ export async function learnMaterialOrderAliases(payload: {
     select: {
       supplierBpId: true,
       createdBy: true,
-      items: { orderBy: { sortOrder: "asc" }, select: { materialId: true } },
+      items: { orderBy: { sortOrder: "asc" }, select: { itemId: true } },
     },
   });
   // 自分が作った発注書でなければ何も覚えない（番号だけで他人の書類に紐づけない）。
@@ -1108,8 +1119,8 @@ export async function learnMaterialOrderAliases(payload: {
     lines: payload.lines.map((l, i) => ({
       materialText: l.materialText,
       materialCode: l.materialCode,
-      materialId: String(saved.items[i]?.materialId ?? ""),
-      draftMaterialId: l.materialId,
+      itemId: String(saved.items[i]?.itemId ?? ""),
+      draftItemId: l.itemId,
     })),
     actorId,
   });

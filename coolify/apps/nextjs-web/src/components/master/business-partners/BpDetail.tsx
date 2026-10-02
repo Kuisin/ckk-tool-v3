@@ -324,6 +324,18 @@ export function BpDetail({
                           : tr("master.businessPartners.approvalNotRequired")
                       }
                     />
+                    <FieldValue
+                      label={tr(
+                        "master.businessPartners.receivableAccountCode",
+                      )}
+                      value={customer.receivableAccountCode || "—"}
+                    />
+                    <FieldValue
+                      label={tr(
+                        "master.businessPartners.receivableSubAccountCode",
+                      )}
+                      value={customer.receivableSubAccountCode || "—"}
+                    />
                   </Group>
                 </Box>
                 <Box mt="sm">

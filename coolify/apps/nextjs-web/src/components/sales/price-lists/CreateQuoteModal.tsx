@@ -87,7 +87,8 @@ export function CreateQuoteModal({
         // 見積書 form opens pre-filled with this entry's line.
         const params = new URLSearchParams({
           customer: source.customerId,
-          product: source.productId,
+          // 品目 id（items.id）— 見積フォームの製品はこの空間。
+          product: source.itemId,
           orderType: variant.orderType,
           quantity: String(quantity),
         });

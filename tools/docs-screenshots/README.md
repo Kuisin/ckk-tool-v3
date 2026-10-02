@@ -85,6 +85,31 @@ docker rm -f ckk-shots-db              # 後始末
 **書き足すときの約束**: 落ちたときに何が起きたかが分かるよう、`check()` の第 3 引数に
 実測値（URL・幅・ラベル）を渡すこと。合否だけだと原因を追えない。
 
+## 全画面の読み込み確認（e2e:pages）
+
+**「全部の画面がエラー無しに開く」を合否で言う**試験（`page-load.spec.ts`）。
+単体試験は純ロジックしか見ず、`pnpm build` は型とバンドルしか見ないので、
+「ページを開いたら RSC が throw する / hydration が割れる / 翻訳鍵が無い /
+移設したパスが 404」は実際に開くまで分からない。`audit-crawl.ts`（診断・報告）と
+同じ巡り方を Playwright の 1 画面 = 1 テストに落としたもの。
+
+```bash
+pnpm e2e:pages                 # 使い捨て DB → シード → build → 起動 → 試験 → 破棄
+pnpm e2e:pages -- --no-build   # .next が最新ならビルドを飛ばす
+pnpm e2e:pages -- --reuse      # APP_URL（既定 :3100）の起動済みスタックに対して試験だけ
+```
+
+巡る対象は 3 種: `src/app/(dashboard)/**/page.tsx` の静的ルート全部、
+`manifest.ts` の撮影パス（固定シードの実データを指す詳細・編集・タブ付き URL）、
+各一覧の先頭行から着く詳細とその `/edit`。1 画面ごとに HTTP 4xx/5xx・/login への
+弾き・pageerror・console.error・本文の `MISSING_MESSAGE` / `[object Object]` /
+`Invalid Date` / `NaN` / `undefined` を見る。データ由来で常に出るノイズ
+（写真の無いデモユーザーの avatar 404 など）は spec の `IGNORE_CONSOLE` に理由付きで置く。
+
+既定の名前・ポートは撮影と**わざと違える**（`ckk-pages-db` / DB :55452 / app :3120）
+— 同じ機械で別のワークツリーが撮影中でも互いのコンテナを消さないため。
+結果は `/tmp/page-load-report.json`（`PAGES_REPORT` で変更可）。
+
 ## 撮影の追加手順
 
 1. `manifest.ts` にエントリを足す（`id` / `docPage` / `path` / 必要なら `steps`）。
@@ -186,12 +211,102 @@ pnpm exec tsx audit-crawl.ts            # 両方。--web / --kiosk で片方だ�
 結果は標準出力の要約と `/tmp/audit-crawl-{web,kiosk}.json`。Gotenberg / SeaweedFS が
 無いので PDF プレビューと図面サムネイルの 502/404 は出る（環境）。
 
-**通し確認 3 本（検査承認 / 出荷+最終検査 / smoke-flows）は「1 回の種に 1 回だけ」。**
+**通し確認 4 本（検査承認 / 出荷+最終検査 / 在庫不足の出荷 / smoke-flows）は
+「1 回の種に 1 回だけ」。**
 2 回目は状態が残って落ちる — 検査承認は 1 回目で承認を消費し、出荷は工程を進め、
-smoke-flows は列設定を保存する。落ちたら中身を疑う前に
-`docker rm -f ckk-shots-db` → `pnpm docs:seed` から作り直すこと。
+在庫不足の出荷は出荷書を出荷済にし、smoke-flows は列設定を保存する。落ちたら
+中身を疑う前に `docker rm -f ckk-shots-db` → `pnpm docs:seed` から作り直すこと。
 `e2e-shipping-and-final-inspection.ts` は `e2e-fixtures.sql`、
-`e2e-kiosk-inspection-approval.ts` は `e2e-kiosk-fixtures.sql` が**必須**。
+`e2e-kiosk-inspection-approval.ts` は `e2e-kiosk-fixtures.sql`、
+`e2e-ship-shortage.ts` は `e2e-ship-shortage-fixtures.sql` が**必須**。
+**`e2e-regrind.ts` だけは自分で fixtures を流し直す**ので、何度でも続けて回せる
+（前の実行が作った指示書が残っていると受注残が 0 になり、本題と関係ない
+落ち方をするため — 実際に踏んだ）。
+
+### 在庫が足りないまま出荷する（e2e-ship-shortage.ts）
+
+出荷を押したときに出る「在庫が足りません」の確認と、そのまま出したときの
+台帳（マイナス・伝票の備考）を、実際に操作して確かめる。**デモシードには
+在庫の足りない確定済み出荷書が無い**ので、fixtures が 1 通だけ作る
+（品目 9003 × 実在しないロット 9999 × 4 本 — 利用者が dev で踏んだ形）。
+
+```
+SHOT_DB_CONTAINER=ckk-ship-db SHOT_DB_PORT=55443 pnpm docs:seed
+docker exec -i ckk-ship-db psql -U postgres -d ckk -f - < e2e-ship-shortage-fixtures.sql
+# nextjs-web を同じ DATABASE_URL で本番ビルドして :3105 で起動（APP_ENV=dev）
+APP_URL=http://localhost:3105 pnpm exec tsx e2e-ship-shortage.ts
+```
+
+見ているのは 13 点 — 足りないときにダイアログが出る / 品目と不足数が出る /
+「在庫を見る」が ST03 を品目つきで指す / やめると出荷されない / 出すと出荷され
+注意が残る / バケットがマイナスになり伝票に「在庫不足のまま出庫」が 1 行立つ /
+足りているときはダイアログが出ず、普通に減る。
+
+### 工程マスタの「使える指示書種別」（e2e-process-step-types.ts）
+
+どの工程をどの種別の指示書に載せられるかは**工程マスタ (MS08) が持つ**
+（`process_step_catalog.allowed_work_order_types`）。単体試験は純関数
+（`stepAllowedForType`）しか見られないので、「マスタを変えたら指示書ビルダーの
+候補が変わる」という一連はここでしか確かめられない。
+
+```
+SHOT_DB_CONTAINER=ckk-wotype-db SHOT_DB_PORT=55492 pnpm docs:seed
+# nextjs-web を同じ DATABASE_URL で本番ビルドして :3126 で起動（APP_ENV=dev）
+APP_URL=http://localhost:3126 SHOT_DB_CONTAINER=ckk-wotype-db \
+  pnpm exec tsx e2e-process-step-types.ts
+```
+
+見ているのは 8 点 — 一覧が指示書種別で絞れる / 編集画面に 3 つのチェックボックスが
+出る / **開始工程（製品出し（在庫））は選べず理由が出る** / 変更前は再研磨の候補に
+円筒加工が無い / 保存すると行に入る / **設定を変えると再研磨の候補に円筒加工が出る**
+/ 1 つも選ばずには保存できない / 画面にエラーが無い。
+
+**fixtures は自分で流し直す**（先頭で 円筒加工 を既定へ戻す）ので何度でも続けて
+回せる — 戻さないと 2 回目から「変更前」の検査が本題と関係なく落ちる。
+
+**候補の照合はラベルの先頭の語で行う。** 工程の候補は「工程名 + バッジ（同期 /
+社内 / 要: …）」というラベルなので、`getByRole("checkbox", { name, exact: true })`
+は**必ず 0 件になる** — 0 件を「出ていない」と読むと、本当は出ている工程まで
+「出ていない」と判定して試験が嘘をつく（実際に一度そうなった）。
+
+### 再研磨（e2e-regrind.ts）
+
+顧客の工具を預かって研ぎ直す一連（再研磨品目 + 他社製品 → 再研磨の明細 → 指示書 →
+製品受入 → 完了 → 出荷 → 請求単価）を、画面から操作して確かめる。**見たいのは台帳** —
+顧客の物が自社在庫に化けないこと — で、台帳は画面に出ないので 1 手ごとに SQL で裏を取る。
+デモシードには再研磨品目も他社製品も再研磨工程リストも再研磨の明細も無いので
+fixtures が作る。
+
+再研磨の明細は**品目を 2 つ指す**（値段は役務、在庫と出荷は工具）ので、fixtures も
+2 行作る: 再研磨品目 9102（標準価格 ¥1,200 + 顧客の価格表 ¥1,500）と、研ぎ直す
+工具 = 他社製品 9101（値段は持たない）。
+
+```
+SHOT_DB_CONTAINER=ckk-regrind-db SHOT_DB_PORT=55462 pnpm docs:seed
+# nextjs-web を同じ DATABASE_URL で本番ビルドして :3106 で起動
+APP_URL=http://localhost:3106 SHOT_DB_CONTAINER=ckk-regrind-db pnpm exec tsx e2e-regrind.ts
+```
+
+見ているのは 30 点 — 他社製品に製造工程リストのタブが出ない / 再研磨の明細に
+在庫照合が出ない / 明細の売り物が再研磨品目・工具は別の欄 / 指示書の種別が再研磨に
+固定され素材・保管場所の欄が消える / 再研磨工程リストの最新版が入る / 受入の数量欄が
+「受入本数・返却（再研磨不可）」になり半製品が選べない / 受入で預り品バケットに入り
+**自社在庫は 0 のまま** / 完了しても完成品の入庫が 1 行も立たず、返却分だけ預り品から
+落ちる / 詳細に 受入 10・返却 2・完成 8 が出る / 出荷は**所有者バケットから**出る /
+**請求単価が明細の再研磨品目の価格表から引かれる**（出荷明細が指す工具には値段が
+無いので、これは「請求は明細の品目を読む」ことの証明でもある。標準価格 ¥1,200 では
+なく価格表の ¥1,500 が勝つことも同時に見ている）/ 再研磨品目マスタ (MS0H) に条件と
+標準価格が並び、新規作成でコードが RGD- で採番される / 注文請書の明細エディタで
+種別を再研磨にすると欄が「再研磨品目 + 研ぎ直す工具」の 2 つになり、**価格表を
+持たない顧客の行には標準価格が画面に出る**（単価の表示はクライアント側で解決して
+いるので、画面が標準価格を知らないと「価格表なし」と出しながらサーバーは定価で
+保存する — 実際にそうなっていた）。
+
+**出荷書は下書きで作り、確定を画面から押す** — 請求単価は確定で焼き込まれるので、
+SQL で CONFIRMED にすると H4 が何も確かめていないことになる（実際に一度そうなった）。
+
+**承認は見ていない** — 再研磨でも製造分と同じ経路で固有の分岐が無いため、
+工程を動かすのに要るぶんだけ SQL で APPROVED にする。
 
 ## 通し確認を CI で回す（手動実行）
 

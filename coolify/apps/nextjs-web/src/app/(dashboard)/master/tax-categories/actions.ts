@@ -18,6 +18,7 @@
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
+import { ACCOUNT_CODE_PATTERN } from "@/lib/accounting-export-core";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
@@ -38,7 +39,25 @@ function revalidate() {
   revalidatePath(BASE_PATH);
 }
 
+/**
+ * 会計連携の科目コード — 空欄は **null** にする（空文字にしない）。
+ * 「入っていない = 設定 SY0J の既定に従う」の判定が null かどうかだけで済むように。
+ */
+function accountingCodes(v: {
+  taxCode?: string;
+  salesAccountCode?: string;
+  taxAccountCode?: string;
+}) {
+  return {
+    taxCode: v.taxCode?.trim() || null,
+    salesAccountCode: v.salesAccountCode?.trim() || null,
+    taxAccountCode: v.taxAccountCode?.trim() || null,
+  };
+}
+
 const codePattern = /^[A-Za-z0-9_-]+$/;
+/** 会計連携の科目コード — 形は SY0J / MS01 と共通（accounting-export-core.ts）。空欄 = 設定の既定に従う。 */
+const accountCodePattern = ACCOUNT_CODE_PATTERN;
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 function categoryInputSchema(tr: Tr) {
@@ -55,6 +74,21 @@ function categoryInputSchema(tr: Tr) {
     sortOrder: z.number().int(),
     isActive: z.boolean(),
     notes: z.string().optional(),
+    // 会計連携（仕訳 CSV）の科目コード。空欄 = 設定 SY0J の既定に従う。
+    // 会計ソフトのコードは数字なので数字だけに閉じる（区分コードの codePattern
+    // とは別物 — あちらは社内の識別子で英字も入る）。
+    taxCode: z
+      .string()
+      .regex(accountCodePattern, tr("master.taxCategories.accountCodeHint"))
+      .optional(),
+    salesAccountCode: z
+      .string()
+      .regex(accountCodePattern, tr("master.taxCategories.accountCodeHint"))
+      .optional(),
+    taxAccountCode: z
+      .string()
+      .regex(accountCodePattern, tr("master.taxCategories.accountCodeHint"))
+      .optional(),
   });
 }
 
@@ -134,6 +168,7 @@ export async function createTaxCategory(
           sortOrder: v.sortOrder,
           isActive: v.isActive,
           notes: v.notes?.trim() || null,
+          ...accountingCodes(v),
         },
         select: { id: true },
       });
@@ -147,6 +182,7 @@ export async function createTaxCategory(
         nameJa: v.nameJa,
         isDefault: v.isDefault,
         isActive: v.isActive,
+        ...accountingCodes(v),
       },
     });
     revalidate();
@@ -172,7 +208,15 @@ export async function updateTaxCategory(
   const v = parsed.data;
   const prior = await prisma.taxCategory.findUnique({
     where: { id },
-    select: { code: true, name: true, isDefault: true, isActive: true },
+    select: {
+      code: true,
+      name: true,
+      isDefault: true,
+      isActive: true,
+      taxCode: true,
+      salesAccountCode: true,
+      taxAccountCode: true,
+    },
   });
   if (prior == null) return actionError(tr("common.targetRecordNotFound"));
   try {
@@ -194,6 +238,7 @@ export async function updateTaxCategory(
           sortOrder: v.sortOrder,
           isActive: v.isActive,
           notes: v.notes?.trim() || null,
+          ...accountingCodes(v),
         },
       });
     });
@@ -205,11 +250,15 @@ export async function updateTaxCategory(
         code: prior.code,
         isDefault: prior.isDefault,
         isActive: prior.isActive,
+        taxCode: prior.taxCode,
+        salesAccountCode: prior.salesAccountCode,
+        taxAccountCode: prior.taxAccountCode,
       },
       after: {
         code: v.code.trim(),
         isDefault: v.isDefault,
         isActive: v.isActive,
+        ...accountingCodes(v),
       },
     });
     revalidate();
@@ -233,7 +282,8 @@ export async function deleteTaxCategory(
       code: true,
       _count: {
         select: {
-          products: true,
+          // 製品・素材は app.items の 1 本（品目統合 第 3 段）。
+          items: true,
           customerAttrs: true,
           invoiceItems: true,
           quoteItems: true,
@@ -253,10 +303,8 @@ export async function deleteTaxCategory(
   // **どこから参照されているか**を数えて文章にする。
   const c = category._count;
   const usage: string[] = [];
-  if (c.products > 0) {
-    usage.push(
-      tr("master.taxCategories.usedByProducts", { count: c.products }),
-    );
+  if (c.items > 0) {
+    usage.push(tr("master.taxCategories.usedByProducts", { count: c.items }));
   }
   if (c.customerAttrs > 0) {
     usage.push(

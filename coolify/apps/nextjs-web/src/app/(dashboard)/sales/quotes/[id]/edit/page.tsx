@@ -50,7 +50,7 @@ export default async function SalesQuotesEditPage({
   if (!quote) notFound();
   // 価格表に載っている製品だけ（フォームが選べるのはそれだけ）。
   const taxCategoryByProduct = await fetchProductTaxCategories(
-    entries.map((e) => Number(e.productId)),
+    entries.map((e) => Number(e.itemId)),
   );
   if (!isEditable(quote)) {
     redirect(`/sales/quotes/${quote.quoteNumber}`);

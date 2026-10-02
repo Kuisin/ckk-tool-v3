@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   allocateFromBuckets,
   bucketAvailable,
+  splitScrapShare,
   totalAvailable,
 } from "./inventory-availability-core";
 
@@ -89,5 +90,34 @@ describe("allocateFromBuckets", () => {
 
   it("空在庫は全量不足", () => {
     expect(allocateFromBuckets([], 4)).toEqual({ steps: [], shortfall: 4 });
+  });
+});
+
+describe("出した数を 付け替え と 廃棄 に割る", () => {
+  it("廃棄が無ければ全部が付け替え", () => {
+    expect(splitScrapShare(10, 10)).toEqual({ reassign: 10, scrap: 0 });
+  });
+
+  it("付け替え枠を使い切ったぶんが廃棄になる", () => {
+    // 10 本出して 3 本廃棄 → 付け替え枠は 7。
+    expect(splitScrapShare(4, 7)).toEqual({ reassign: 4, scrap: 0 });
+    expect(splitScrapShare(6, 3)).toEqual({ reassign: 3, scrap: 3 });
+    expect(splitScrapShare(2, 0)).toEqual({ reassign: 0, scrap: 2 });
+  });
+
+  it("**合計は必ず取り分と同じ** — 割り方を変えても台帳の残数は動かない", () => {
+    for (const [take, left] of [
+      [10, 7],
+      [3, 9],
+      [5, 0],
+      [0, 4],
+    ] as const) {
+      const s = splitScrapShare(take, left);
+      expect(s.reassign + s.scrap).toBe(take);
+    }
+  });
+
+  it("枠が負でも廃棄側へ寄せるだけで、負の行は作らない", () => {
+    expect(splitScrapShare(3, -2)).toEqual({ reassign: 0, scrap: 3 });
   });
 });

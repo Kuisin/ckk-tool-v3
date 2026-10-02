@@ -20,7 +20,7 @@ import {
   type AuditEntry,
 } from '../../lib/shells';
 import { useIsMobile } from '../../lib/viewport-context';
-import { YayoiExportClosingModal } from './_modals/yayoi-export';
+import { AccountingExportClosingModal } from './_modals/accounting-export';
 
 const CL = {
   customerName: '株式会社ABC製作所',
@@ -29,7 +29,7 @@ const CL = {
   totalAmount: 1485000,
   processedAt: '2026-06-01 02:00',
   processedBy: 'システム（BullMQ 月次バッチ）',
-  yayoiExportedAt: '2026-06-02 09:00',
+  accountingExportedAt: '2026-06-02 09:00',
   createdAt: '2026-06-01 02:00',
 };
 
@@ -43,15 +43,15 @@ const shipmentTotal = SHIPMENTS.reduce((s, it) => s + it.amount, 0);
 const GENERATED_INVOICE = 'INV-202605-00008';
 
 const AUDIT: AuditEntry[] = [
-  { id: 1, action: 'EXPORT', user: '佐藤 工場長', at: '2026-06-02 09:00', detail: '弥生会計 Next CSV エクスポート（ステータス: PROCESSED → EXPORTED）' },
+  { id: 1, action: 'EXPORT', user: '佐藤 工場長', at: '2026-06-02 09:00', detail: '会計連携 CSV エクスポート（ステータス: PROCESSED → EXPORTED）' },
   { id: 2, action: 'UPDATE', user: 'システム', at: '2026-06-01 02:00', detail: '対象発送レコードを集計・請求書を生成（INV-202605-00008）' },
   { id: 3, action: 'CREATE', user: 'システム', at: '2026-06-01 02:00', detail: '締日処理を作成（月次バッチ）' },
 ];
 
 export default function ClosingDetailPage() {
   const isMobile = useIsMobile();
-  const alreadyExported = Boolean(CL.yayoiExportedAt);
-  const [yayoiOpen, setYayoiOpen] = useState(false);
+  const alreadyExported = Boolean(CL.accountingExportedAt);
+  const [accountingOpen, setAccountingOpen] = useState(false);
 
   return (
     <DetailShell
@@ -63,7 +63,7 @@ export default function ClosingDetailPage() {
       actions={
         <ResourceActions
           menuItems={[
-            { label: '弥生CSVエクスポート', icon: <IconFileExport size={14} />, onClick: () => setYayoiOpen(true) },
+            { label: '会計連携CSVエクスポート', icon: <IconFileExport size={14} />, onClick: () => setAccountingOpen(true) },
           ]}
         />
       }
@@ -71,7 +71,7 @@ export default function ClosingDetailPage() {
       {/* 二重エクスポート防止 notice */}
       {alreadyExported && (
         <Alert color="green" icon={<IconInfoCircle size={16} />} variant="light">
-          弥生会計 Next へ {formatDateTime(CL.yayoiExportedAt)} にエクスポート済みです。二重エクスポートは仕訳の重複計上につながるため注意してください。
+          会計ソフトへ {formatDateTime(CL.accountingExportedAt)} にエクスポート済みです。二重エクスポートは仕訳の重複計上につながるため注意してください。
         </Alert>
       )}
 
@@ -86,7 +86,7 @@ export default function ClosingDetailPage() {
         />
         <FieldValue label="処理日時" value={formatDateTime(CL.processedAt)} />
         <FieldValue label="処理者" value={CL.processedBy} />
-        <FieldValue label="弥生エクスポート日時" value={formatDateTime(CL.yayoiExportedAt)} />
+        <FieldValue label="会計連携日時" value={formatDateTime(CL.accountingExportedAt)} />
       </SummaryGrid>
 
       <Tabs defaultValue="shipments">
@@ -151,12 +151,12 @@ export default function ClosingDetailPage() {
         </Tabs.Panel>
       </Tabs>
 
-      <YayoiExportClosingModal
-        opened={yayoiOpen}
-        onClose={() => setYayoiOpen(false)}
+      <AccountingExportClosingModal
+        opened={accountingOpen}
+        onClose={() => setAccountingOpen(false)}
         customerName={CL.customerName}
         closingDate={formatDate(CL.closingDate)}
-        alreadyExportedAt={alreadyExported ? formatDateTime(CL.yayoiExportedAt) : null}
+        alreadyExportedAt={alreadyExported ? formatDateTime(CL.accountingExportedAt) : null}
       />
     </DetailShell>
   );

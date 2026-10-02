@@ -21,6 +21,7 @@
 import "server-only";
 
 import { quoteDisplayStatus } from "@/components/sales/quotes/model";
+import { deliveryNoteTotals } from "@/components/shipping/delivery-notes/model";
 import { type Prisma, prisma } from "./db";
 import { formatDocNumber } from "./doc-number";
 import { type LocalizedTextInput, localized } from "./format";
@@ -79,6 +80,30 @@ function money(v: { toString(): string } | null | undefined): string | null {
  * 小数第 2 位までの通貨（Decimal(12,2)）なので、銭単位の整数に直してから
  * 足す —— 浮動小数のまま足すと `¥10,000.000000000002` が出る。
  */
+/**
+ * 納品書の合計は**税込**にする。同じ納品書の PDF が「合計金額（税込）」を刷るので、
+ * ポータルの一覧だけ税抜だと取引先には別の書類に見える。
+ *
+ * 金額は他の欄と同じく文字列で返す（`sumAmounts` と同じ規約）。
+ */
+function noteTotalInclTax(r: {
+  includePrice: boolean;
+  items: readonly { amount: unknown; taxRate: unknown }[];
+  deliveryOrder: {
+    customerBp: { customerAttrs: { taxType: string } | null };
+  };
+}): string | null {
+  const totals = deliveryNoteTotals({
+    includePrice: r.includePrice,
+    customerTaxType: r.deliveryOrder.customerBp.customerAttrs?.taxType ?? null,
+    items: r.items.map((it) => ({
+      amount: it.amount != null ? Number(it.amount) : null,
+      taxRate: it.taxRate != null ? Number(it.taxRate) : null,
+    })),
+  });
+  return totals == null ? null : String(totals.totalAmountInclTax);
+}
+
 function sumAmounts(
   items: readonly { amount: string | null }[],
 ): string | null {
@@ -151,6 +176,8 @@ export async function listPortalDocuments(
     }
 
     case "order_acceptances": {
+      // 出荷先・エンドユーザーは明細ごと（§8）— ヘッダには無い。
+      // 明細のどれか 1 行が一致すればその請書は見える。
       const rows = await prisma.orderAcceptance.findMany({
         where: {
           status: { in: [...VISIBLE_ACCEPTANCE_STATUS] },
@@ -159,8 +186,16 @@ export async function listPortalDocuments(
             { customerBranchBpId: { in: bpIds } },
             ...(endUserBpIds.length
               ? [
-                  { endUserBpId: { in: endUserBpIds } },
-                  { shipToBpId: { in: endUserBpIds } },
+                  {
+                    items: {
+                      some: {
+                        OR: [
+                          { endUserBpId: { in: endUserBpIds } },
+                          { shipToBpId: { in: endUserBpIds } },
+                        ],
+                      },
+                    },
+                  },
                 ]
               : []),
           ],
@@ -284,14 +319,14 @@ export async function portalTargetOf(
       };
     }
     case "order_acceptances": {
+      // 出荷先・エンドユーザーは明細ごと（§8）— 全明細ぶんまとめて集合にする。
       const r = await prisma.orderAcceptance.findUnique({
         where: key,
         select: {
           customerBpId: true,
           customerBranchBpId: true,
-          shipToBpId: true,
-          endUserBpId: true,
           status: true,
+          items: { select: { shipToBpId: true, endUserBpId: true } },
         },
       });
       if (!r || !VISIBLE_ACCEPTANCE_STATUS.includes(r.status as never))
@@ -302,9 +337,13 @@ export async function portalTargetOf(
         customerBpIds: [r.customerBpId, r.customerBranchBpId].filter(
           (v): v is string => !!v,
         ),
-        endUserBpIds: [r.endUserBpId, r.shipToBpId].filter(
-          (v): v is string => !!v,
-        ),
+        endUserBpIds: [
+          ...new Set(
+            r.items
+              .flatMap((it) => [it.endUserBpId, it.shipToBpId])
+              .filter((v): v is string => !!v),
+          ),
+        ],
       };
     }
     case "delivery_notes": {
@@ -402,10 +441,10 @@ export async function visiblePortalRelated(
 
 /** 明細の見出し。製品マスタに突合済みならその名称、未突合なら注文書の品名。 */
 function lineLabel(
-  product: { name: unknown } | null,
+  item: { name: unknown } | null,
   fallback?: string | null,
 ): string {
-  if (product?.name) return localized(product.name as LocalizedTextInput);
+  if (item?.name) return localized(item.name as LocalizedTextInput);
   return fallback ?? "—";
 }
 
@@ -459,7 +498,7 @@ export async function getPortalDocument(
               unitPrice: true,
               amount: true,
               deliveryDate: true,
-              product: { select: { name: true } },
+              item: { select: { name: true } },
             },
             orderBy: { sortOrder: "asc" },
           },
@@ -479,7 +518,7 @@ export async function getPortalDocument(
         take: MAX_RELATED,
       });
       const lineItems = r.items.map((it) => ({
-        label: lineLabel(it.product),
+        label: lineLabel(it.item),
         quantity: it.quantity,
         unitPrice: money(it.unitPrice),
         amount: money(it.amount),
@@ -518,7 +557,7 @@ export async function getPortalDocument(
           quoteYearMonth: true,
           quoteSeq: true,
           items: {
-            // ★ 許可リスト。lot_number / is_locked / product_id は取らない。
+            // ★ 許可リスト。lot_number / is_locked / item_id は取らない。
             select: {
               branch: true,
               quantity: true,
@@ -526,7 +565,7 @@ export async function getPortalDocument(
               amount: true,
               deliveryDate: true,
               productText: true,
-              product: { select: { name: true } },
+              item: { select: { name: true } },
               deliveryItems: {
                 select: {
                   deliveryOrder: {
@@ -592,7 +631,7 @@ export async function getPortalDocument(
       }
 
       const lineItems = r.items.map((it) => ({
-        label: lineLabel(it.product, it.productText),
+        label: lineLabel(it.item, it.productText),
         quantity: it.quantity,
         unitPrice: money(it.unitPrice),
         amount: money(it.amount),
@@ -625,12 +664,18 @@ export async function getPortalDocument(
               quantity: true,
               unitPrice: true,
               amount: true,
-              product: { select: { name: true } },
+              // 税率は出荷書の確定時に行へ焼き込んである。
+              taxRate: true,
+              item: { select: { name: true } },
             },
             orderBy: { sortOrder: "asc" },
           },
           deliveryOrder: {
             select: {
+              // 税率を持たない旧データのフォールバック元（顧客の課税区分）。
+              customerBp: {
+                select: { customerAttrs: { select: { taxType: true } } },
+              },
               items: {
                 select: {
                   orderLine: {
@@ -682,7 +727,7 @@ export async function getPortalDocument(
 
       // **include_price に必ず従う** — 価格を載せない納品書に金額を出さない。
       const lineItems = r.items.map((it) => ({
-        label: lineLabel(it.product),
+        label: lineLabel(it.item),
         quantity: it.quantity,
         unitPrice: r.includePrice ? money(it.unitPrice) : null,
         amount: r.includePrice ? money(it.amount) : null,
@@ -691,7 +736,9 @@ export async function getPortalDocument(
       return {
         ...base,
         issuedOn: iso(r.deliveredAt ?? r.createdAt),
-        totalAmount: r.includePrice ? sumAmounts(lineItems) : null,
+        // **合計は税込**。同じ納品書の PDF が「合計金額（税込）」を刷るので、
+        // ポータルの一覧だけ税抜だと取引先には別の書類に見える。
+        totalAmount: noteTotalInclTax(r),
         hasPdf: r.pdfFileId != null,
         pdfFileId: r.pdfFileId,
         currency: "JPY",

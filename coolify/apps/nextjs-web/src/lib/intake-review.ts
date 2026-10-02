@@ -55,7 +55,8 @@ export interface SavedForReview {
    */
   customerCandidateCount?: number;
   items: {
-    productId: string | null;
+    /** 突合済みの製品（品目 items.id）。null = 未突合。 */
+    itemId: string | null;
     productText: string | null;
     /** 製品を絞れなかったときの候補数（顧客と同じ — 選ぶだけか、登録が要るか）。 */
     productCandidateCount?: number;
@@ -163,7 +164,7 @@ export function reviewIntake(
   }
   saved.items.forEach((item, i) => {
     const row = i + 1;
-    if (!item.productId) {
+    if (!item.itemId) {
       const count = item.productCandidateCount ?? 0;
       out.push({
         key: `item-${row}-product`,

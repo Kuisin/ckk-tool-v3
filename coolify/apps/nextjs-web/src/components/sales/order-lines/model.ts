@@ -54,14 +54,32 @@ export interface OrderLine {
    */
   salesRepName: string | null;
   createdByName: string | null;
+  // ── 配送（§8）— 明細ごとに持つ ──
+  shipToId: string | null;
+  shipToName: string | null;
+  /** 配送方法（通常配送 / ユーザー直送）。 */
+  deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
+  endUserId: string | null;
   endUserName: string | null;
+  assignedPlantId: string | null;
+  assignedPlantName: string | null;
+  shippingWorkLocationId: string | null;
+  shippingWorkLocationName: string | null;
   /** 顧客注文書番号（FAX 等で受領した注文書の番号）。 */
   customerOrderRef: string | null;
   /** 見積書からの展開元（QOT-… 導出番号）。手動作成時は null。 */
   quoteNumber: string | null;
-  /** 製品の内部 id（連番）を文字列で保持 — SearchSelect の値と揃える。 */
-  productId: string | null;
+  /**
+   * 製品 — 値は品目 id（items.id）を文字列化したもの。品目統合 第 2 段 C。
+   * SearchSelect（`searchProductItemOptions`）の値と揃える。
+   */
+  itemId: string | null;
   productName: string;
+  /**
+   * 研ぎ直す工具（再研磨の明細だけ。null = それ以外）。**売り物とは別** —
+   * 売っているのは再研磨という役務で、預かって返すのがこの工具。
+   */
+  toolName: string | null;
   orderType: string;
   quantity: number;
   unitPrice: number | null;

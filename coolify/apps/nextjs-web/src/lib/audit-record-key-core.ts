@@ -57,6 +57,11 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   inspection_templates: "identity",
   inspection_template_groups: "identity",
   products: "identity",
+  // 再研磨品目 (MS0H)。**実表名そのまま** — products / materials が旧名のまま
+  // なのは移行の履歴（あの 2 つも中身は app.items）で、あとから作った
+  // 再研磨品目は名乗り直す必要が無い。いま `items` を書くのはこの 1 画面だけ。
+  items: "identity",
+  charge_items: "identity",
   materials: "identity",
   material_types: "identity",
   material_type_prices: "identity",
@@ -93,6 +98,8 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   approval_flows: "identity",
   link_blacklist: "identity",
   design_files: "uuidOnly",
+  // 設計図の版 — record_id は design_versions.id（版には業務キーが無い）。
+  design_versions: "uuidOnly",
   // bug-report-actions.ts の唯一の直書き。`bug-report:<uuid>` はそれ自体が
   // 一意で不変なので identity で足りる。
   system: "identity",
@@ -120,8 +127,16 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   price_list_entries: "docKey",
   order_acceptances: "docKey",
   delivery_orders: "docKey",
+  // 入出庫伝票 MOV-… / 棚卸 STK-… — どちらも表示番号がそのまま詳細 URL の id。
+  inventory_movements: "docKey",
+  // 在庫バケット（uuid）と移動タイプ（連番）— どちらも id がそのまま record_id。
+  item_inventory: "identity",
+  movement_types: "identity",
+  stock_takes: "docKey",
   delivery_notes: "docKey",
   invoices: "docKey",
+  // 会計文書（転記・反対仕訳）。record_id は ACC-YYYYMM-NNNNN（DB の PK は uuid）。
+  accounting_documents: "docKey",
 
   // ── numberToUuid（1 クエリ。audit-record-key.ts が処理） ─────────────
   material_purchase_orders: "numberToUuid",

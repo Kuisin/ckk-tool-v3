@@ -43,6 +43,10 @@ import { notify, notifyApprovalGroup } from "./notifications";
 
 export type { ApprovalTargetType } from "./approval-targets";
 
+/** uuid を業務キーにする書類（版など）の形の確認 — 不正な形で findUnique すると例外になる。 */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // ─── 履歴 Json（行ワークフローの遷移記録。承認とは別軸で各書類が持つ） ──────
 
 export interface HistoryEntry {
@@ -327,10 +331,16 @@ export async function fetchApprovalDocInfo(
       const row = await prisma.orderAcceptance.findUnique({
         where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
         select: {
-          deliveryMethod: true,
-          assignedPlantId: true,
           items: {
-            select: { quantity: true, unitPrice: true, amount: true },
+            select: {
+              quantity: true,
+              unitPrice: true,
+              amount: true,
+              // 配送（§8）— 明細ごと。条件評価は「明細のどれかが一致すれば
+              // 一致」（approval-conditions.ts の配列対応）。
+              deliveryMethod: true,
+              assignedPlantId: true,
+            },
           },
         },
       });
@@ -344,9 +354,15 @@ export async function fetchApprovalDocInfo(
       }, 0);
       return {
         total_amount: totalAmount,
-        delivery_method: row.deliveryMethod,
-        assigned_plant_id:
-          row.assignedPlantId != null ? String(row.assignedPlantId) : null,
+        delivery_method: [...new Set(row.items.map((it) => it.deliveryMethod))],
+        assigned_plant_id: [
+          ...new Set(
+            row.items
+              .map((it) => it.assignedPlantId)
+              .filter((id): id is number => id != null)
+              .map(String),
+          ),
+        ],
       };
     }
     case "work_orders": {
@@ -420,9 +436,14 @@ export async function fetchApprovalDocInfo(
         select: {
           acceptance: {
             select: {
-              deliveryMethod: true,
               items: {
-                select: { quantity: true, unitPrice: true, amount: true },
+                select: {
+                  quantity: true,
+                  unitPrice: true,
+                  amount: true,
+                  // 配送（§8）— 明細ごと。
+                  deliveryMethod: true,
+                },
               },
             },
           },
@@ -437,7 +458,9 @@ export async function fetchApprovalDocInfo(
       }, 0);
       return {
         total_amount: totalAmount,
-        delivery_method: row.acceptance.deliveryMethod,
+        delivery_method: [
+          ...new Set(row.acceptance.items.map((it) => it.deliveryMethod)),
+        ],
       };
     }
     case "delivery_orders": {
@@ -456,6 +479,49 @@ export async function fetchApprovalDocInfo(
         total_quantity: row.items.reduce((sum, it) => sum + it.quantity, 0),
         from_plant_id: row.fromPlantId != null ? String(row.fromPlantId) : null,
       };
+    }
+    case "stock_takes": {
+      const key = parseDocKey(targetId, "STK");
+      if (!key) return null;
+      const row = await prisma.stockTake.findUnique({
+        where: { yearMonth_seq: key },
+        select: {
+          plantId: true,
+          lines: { select: { bookQuantity: true, countedQuantity: true } },
+        },
+      });
+      if (!row) return null;
+      // 差異の件数は**数えた行のうち帳簿と違うもの**。未カウントは数えない
+      // （「差異ゼロ」と「まだ数えていない」を同じ扱いにしない）。
+      const differenceCount = row.lines.filter(
+        (l) =>
+          l.countedQuantity != null &&
+          Number(l.countedQuantity) !== Number(l.bookQuantity),
+      ).length;
+      return {
+        plant_id: String(row.plantId),
+        difference_count: differenceCount,
+      };
+    }
+    case "invoices":
+    case "invoice_payments": {
+      const key = parseDocKey(targetId, "INV");
+      if (!key) return null;
+      const row = await prisma.invoice.findUnique({
+        where: { yearMonth_seq: key },
+        select: { totalAmount: true },
+      });
+      if (!row) return null;
+      return { total_amount: Number(row.totalAmount) };
+    }
+    case "design_versions": {
+      if (!UUID_RE.test(targetId)) return null;
+      const row = await prisma.designVersion.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      });
+      // 条件に使う属性は無い（approvalConditionFields も空）。
+      return row ? {} : null;
     }
   }
 }
@@ -699,6 +765,33 @@ async function targetCreatedAt(
       });
       return row?.createdAt ?? null;
     }
+    case "stock_takes": {
+      const key = parseDocKey(targetId, "STK");
+      if (!key) return null;
+      const row = await prisma.stockTake.findUnique({
+        where: { yearMonth_seq: key },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "invoices":
+    case "invoice_payments": {
+      const key = parseDocKey(targetId, "INV");
+      if (!key) return null;
+      const row = await prisma.invoice.findUnique({
+        where: { yearMonth_seq: key },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "design_versions": {
+      if (!UUID_RE.test(targetId)) return null;
+      const row = await prisma.designVersion.findUnique({
+        where: { id: targetId },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
   }
 }
 
@@ -751,6 +844,21 @@ async function targetDisplayNumber(
             seq: row.acceptanceSeq,
           })
         : targetId;
+    }
+    case "design_versions": {
+      // 版の uuid は人が読む番号ではない — 「製品コード v版番号」にする。
+      if (!UUID_RE.test(targetId)) return targetId;
+      const row = await prisma.designVersion.findUnique({
+        where: { id: targetId },
+        select: {
+          version: true,
+          item: { select: { code: true, name: true } },
+        },
+      });
+      if (!row) return targetId;
+      const product =
+        row.item.code ?? localized(row.item.name as LocalizedText | null);
+      return `${product} v${row.version}`;
     }
     default:
       return targetId;

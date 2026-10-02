@@ -57,8 +57,13 @@ import {
   type BpMatchResult,
   matchBusinessPartnerName,
 } from "./bp-match";
+import {
+  type CustomerProductCodeEntry,
+  matchCustomerProductCode,
+} from "./customer-product-code-core";
+import { loadCustomerProductCodes } from "./customer-product-codes";
 import { prisma } from "./db";
-import { formatDocNumber, formatProductNumber } from "./doc-number";
+import { formatDocNumber } from "./doc-number";
 import { systematicFileName } from "./file-naming";
 import { type LocalizedText, localized } from "./format";
 import {
@@ -446,30 +451,34 @@ const PRODUCT_PROBE_LIMIT = 40;
 /** probe をまたいで貯める候補の総上限。 */
 const PRODUCT_CANDIDATE_LIMIT = 120;
 
-type ProductRow = {
+/**
+ * 突合プールの 1 行（`app.items` の `itemType: "PRODUCT"`）。
+ * **id は items.id** — 品目統合 第 3 段で products.id から移した。
+ */
+type ProductItemRow = {
   id: number;
-  yearMonth: string | null;
-  seq: number | null;
+  code: string | null;
   name: unknown;
   legacyKey: string | null;
   matchNames: string[];
 };
 
-const toMatchable = (r: ProductRow): ProductMatchable => {
-  const code = formatProductNumber(r.yearMonth, r.seq);
+const toMatchable = (r: ProductItemRow): ProductMatchable => {
   const nameJa = localized(r.name as LocalizedText | null);
   return {
     id: String(r.id),
-    label: code ? `${nameJa} ${code}` : nameJa,
+    // ラベルの形は searchProductItemOptions（製品ピッカー）と揃える —
+    // 候補として出したものを人が押したあと、表示が変わらないように。
+    label: r.code ? `${nameJa} ${r.code}` : nameJa,
     nameJa,
-    code,
+    code: r.code,
     legacyKey: r.legacyKey,
     keywords: r.matchNames,
   };
 };
 
 /**
- * キーワード（match_names）に probe を含む製品 id。
+ * キーワード（match_names）に probe を含む**品目 id**（製品のみ）。
  *
  * 名称は 1 つしか持てないので、相手の呼び方はマスタ MS04 の「キーワード」に
  * 貯める（取引先の match_names と同じ考え方）。配列列は Prisma の where で
@@ -478,7 +487,7 @@ const toMatchable = (r: ProductRow): ProductMatchable => {
  * lib/product-match が行う — キーワードも名称と同じ段階（完全 → 正規化 →
  * 頭から → 一部）で評価される。
  */
-async function productIdsByKeyword(
+async function productItemIdsByKeyword(
   probe: string,
   limit: number,
 ): Promise<number[]> {
@@ -486,8 +495,8 @@ async function productIdsByKeyword(
   if (!q) return [];
   const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
   const rows = await prisma.$queryRaw<{ id: number }[]>`
-    SELECT id FROM app.products
-    WHERE is_active
+    SELECT id FROM app.items
+    WHERE is_active AND item_type = 'PRODUCT'
       AND EXISTS (SELECT 1 FROM unnest(match_names) AS k WHERE k ILIKE ${like})
     ORDER BY id
     LIMIT ${limit}`;
@@ -507,20 +516,52 @@ async function productIdsByKeyword(
  * 呼び方は名称と違うのが普通で、そのためにキーワード欄がある。
  *
  * 1 件に絞れなければ**候補**を返す。画面が明細行の下に出して人が選ぶ。
+ *
+ * ★ **返す id は `items.id`（itemType = PRODUCT）** — 品目統合 第 3 段で
+ *   products.id から移した。旧 id との取り違えは型では止まらない（どちらも
+ *   連番の int）ので、呼び出し側は「品目を受け取る」つもりで読むこと。
  */
 export async function matchProduct(
   code: string | null,
   text: string | null,
+  options: { customerCodes?: readonly CustomerProductCodeEntry[] } = {},
 ): Promise<ProductMatchResult> {
   const empty: ProductMatchResult = { matched: null, candidates: [] };
   const select = {
     id: true,
-    yearMonth: true,
-    seq: true,
+    code: true,
     name: true,
     legacyKey: true,
     matchNames: true,
   } as const;
+
+  // 0. 顧客専用の製品コード（製品 × 顧客の別名）を**最初に**当てる。
+  //    相手は自分の品番で注文を出すので、顧客が確定している書類ではこれが
+  //    最も確かな手がかり — 学習エイリアスより先に見る（あちらは実績からの
+  //    推測、こちらは人がマスタに登録した事実）。
+  const customerHit = matchCustomerProductCode(
+    [code, text],
+    options.customerCodes ?? [],
+  );
+  if (customerHit) {
+    const row = await prisma.item.findFirst({
+      where: { id: customerHit.itemId, itemType: "PRODUCT", isActive: true },
+      select,
+    });
+    if (row) {
+      const hit = toMatchable(row);
+      return {
+        matched: {
+          id: hit.id,
+          label: hit.label,
+          matchedKey: customerHit.matchedKey,
+          confidence: customerHit.confidence,
+        },
+        candidates: [],
+      };
+    }
+    // マスタが消えている / 無効になった対応は無視して以降へ落とす。
+  }
 
   // 1. コードで直接引く — 製品コード（PRD-YYYYMM-NNNN）と旧品番。
   //    旧品番は注文書に相手の品番として印字されることがある。
@@ -529,12 +570,12 @@ export async function matchProduct(
     if (!key) continue;
     const m = /^PRD-?(\d{6})-?(\d{1,4})$/i.exec(key);
     const row = m
-      ? await prisma.product.findFirst({
-          where: { yearMonth: m[1], seq: Number(m[2]) },
+      ? await prisma.item.findFirst({
+          where: { itemType: "PRODUCT", yearMonth: m[1], seq: Number(m[2]) },
           select,
         })
-      : await prisma.product.findFirst({
-          where: { isActive: true, legacyKey: key },
+      : await prisma.item.findFirst({
+          where: { itemType: "PRODUCT", isActive: true, legacyKey: key },
           select,
         });
     if (row) {
@@ -553,16 +594,23 @@ export async function matchProduct(
 
   if (!text?.trim()) return empty;
 
-  // 2. 学習済み（人がこの品名をこの製品へ結び付けた実績）を先に見る。
+  // 2. 学習済み（人がこの品名をこの品目へ結び付けた実績）を先に見る。
   //    製品マスタは大きく、推測は同族に弱い — 人が一度決めたものが最も確か。
-  const learned = await findAlias("products", text);
+  //    **itemType で絞る** — 学習は製品と素材で 1 つの名前空間（target_type
+  //    = 'items'）なので、素材に結び付いた表記が当たったらここでは無視して
+  //    推測へ落とす。確かめないと、どちらも連番なので素材を製品の欄に入れる。
+  const learned = await findAlias("items", text);
   if (learned) {
-    const row = await prisma.product.findFirst({
-      where: { id: Number(learned.targetId), isActive: true },
+    const row = await prisma.item.findFirst({
+      where: {
+        id: Number(learned.targetId),
+        itemType: "PRODUCT",
+        isActive: true,
+      },
       select,
     });
     if (row) {
-      void noteAliasHit("products", aliasKeyFor("products", text));
+      void noteAliasHit("items", aliasKeyFor("items", text));
       const hit = toMatchable(row);
       return {
         matched: {
@@ -581,9 +629,13 @@ export async function matchProduct(
   const pool = new Map<string, ProductMatchable>();
   let last: ProductMatchResult = empty;
   for (const probe of searchProbes(text)) {
-    const keywordIds = await productIdsByKeyword(probe, PRODUCT_PROBE_LIMIT);
-    const rows = await prisma.product.findMany({
+    const keywordIds = await productItemIdsByKeyword(
+      probe,
+      PRODUCT_PROBE_LIMIT,
+    );
+    const rows = await prisma.item.findMany({
       where: {
+        itemType: "PRODUCT",
         isActive: true,
         OR: [
           { name: { path: ["ja"], string_contains: probe } },
@@ -625,10 +677,58 @@ export async function matchProduct(
  */
 export async function suggestProducts(
   texts: string[],
+  options: { customerCodes?: readonly CustomerProductCodeEntry[] } = {},
 ): Promise<Map<string, ProductMatchCandidate[]>> {
   const wanted = [...new Set(texts.map((t) => t.trim()).filter(Boolean))];
   const out = new Map<string, ProductMatchCandidate[]>();
   if (wanted.length === 0) return out;
+
+  // 顧客の品番表に当たった品名は、それだけを候補に出す（matchProduct と同じ
+  // 順序 — 人がマスタに登録した対応より確かな推測は無い）。画面は候補を
+  // 1 件だけ出し、人が押して確定する。
+  const customerCodes = options.customerCodes ?? [];
+  const byCustomerCode = new Map<string, { itemId: number; key: string }>();
+  if (customerCodes.length > 0) {
+    for (const text of wanted) {
+      const hit = matchCustomerProductCode([text], customerCodes);
+      if (hit)
+        byCustomerCode.set(text, {
+          itemId: hit.itemId,
+          key: hit.matchedKey,
+        });
+    }
+  }
+  if (byCustomerCode.size > 0) {
+    const rows = await prisma.item.findMany({
+      where: {
+        id: {
+          in: [...new Set([...byCustomerCode.values()].map((v) => v.itemId))],
+        },
+        itemType: "PRODUCT",
+        isActive: true,
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        legacyKey: true,
+        matchNames: true,
+      },
+    });
+    const byId = new Map(rows.map((r) => [r.id, toMatchable(r)]));
+    for (const [text, hit] of byCustomerCode) {
+      const m = byId.get(hit.itemId);
+      if (m)
+        out.set(text, [
+          {
+            id: m.id,
+            label: m.label,
+            matchedKey: hit.key,
+            confidence: "exact",
+          },
+        ]);
+    }
+  }
 
   const probes = [...new Set(wanted.flatMap(searchProbes))];
   // キーワード側も 1 クエリでまとめて引く（生 SQL は probe ごとなので、
@@ -638,14 +738,15 @@ export async function suggestProducts(
       (
         await Promise.all(
           probes.map((probe) =>
-            productIdsByKeyword(probe, PRODUCT_PROBE_LIMIT),
+            productItemIdsByKeyword(probe, PRODUCT_PROBE_LIMIT),
           ),
         )
       ).flat(),
     ),
   ];
-  const rows = await prisma.product.findMany({
+  const rows = await prisma.item.findMany({
     where: {
+      itemType: "PRODUCT",
       isActive: true,
       OR: [
         ...probes.map((probe) => ({
@@ -658,8 +759,7 @@ export async function suggestProducts(
     take: PRODUCT_CANDIDATE_LIMIT,
     select: {
       id: true,
-      yearMonth: true,
-      seq: true,
+      code: true,
       name: true,
       legacyKey: true,
       matchNames: true,
@@ -667,6 +767,7 @@ export async function suggestProducts(
   });
   const pool = rows.map(toMatchable);
   for (const text of wanted) {
+    if (out.has(text)) continue; // 顧客の品番表で決まった行は推測で上書きしない
     const r = matchProductName(text, pool);
     // matched は「絞れた」ということなので候補は出さない（画面は突合済みの
     // 行に何も出さない）。ここで拾うのは絞れなかった分だけ。
@@ -749,22 +850,29 @@ export async function runExtraction(
     // 出し直すので、黙って 1 件に決めてしまうより人に選ばせる。
     const customerBpId =
       (await matchCustomer(norm.customerName)).matched?.id ?? null;
-    const items = await Promise.all(
-      norm.items.map(async (it, i) => {
+    // 顧客が決まったら、その顧客の品番表を 1 回だけ読んで全明細で使い回す。
+    const customerCodes = await loadCustomerProductCodes(customerBpId);
+    const matched = await Promise.all(
+      norm.items.map((it) =>
         // 製品も同じ考え方 — 候補止まりなら入れず、画面で選ばせる。
-        const product = await matchProduct(it.productCode, it.productText);
-        return {
-          productId: product.matched ? Number(product.matched.id) : null,
-          productText: it.productText ?? it.productCode,
-          orderType: it.orderType,
-          quantity: it.quantity,
-          unitPrice: it.unitPrice,
-          deliveryDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
-          notes: it.notes,
-          sortOrder: i,
-        };
-      }),
+        matchProduct(it.productCode, it.productText, { customerCodes }),
+      ),
     );
+    // 突合が返すのは **items.id**（品目統合 第 3 段）。
+    const items = norm.items.map((it, i) => {
+      const product = matched[i];
+      const itemId = product.matched ? Number(product.matched.id) : null;
+      return {
+        itemId,
+        productText: it.productText ?? it.productCode,
+        orderType: it.orderType,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+        deliveryDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
+        notes: it.notes,
+        sortOrder: i,
+      };
+    });
 
     // 抽出中に人が「手入力に切り替え」を押していたら、その入力を上書きしない
     // （裏で走る処理が、目の前の編集を消してしまうのが一番まずい）。

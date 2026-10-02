@@ -132,7 +132,7 @@ describe("reviewIntake", () => {
       saved({
         items: [
           {
-            productId: null,
+            itemId: null,
             productText: "特殊ドリル A",
             quantity: 5,
             unitPrice: 100,
@@ -153,7 +153,7 @@ describe("reviewIntake", () => {
       saved({
         items: [
           {
-            productId: null,
+            itemId: null,
             productText: "特殊ドリル",
             productCandidateCount: 3,
             quantity: 5,
@@ -172,9 +172,7 @@ describe("reviewIntake", () => {
     const rs = reviewIntake(
       { items: [{ product_name: "P", quantity: 1 }] },
       saved({
-        items: [
-          { productId: "12", productText: "P", quantity: 1, unitPrice: 50 },
-        ],
+        items: [{ itemId: "12", productText: "P", quantity: 1, unitPrice: 50 }],
       }),
       tr,
     );
@@ -187,7 +185,7 @@ describe("reviewIntake", () => {
       { items: [{ product_name: "P", quantity: 1 }] },
       saved({
         items: [
-          { productId: "12", productText: "P", quantity: 1, unitPrice: null },
+          { itemId: "12", productText: "P", quantity: 1, unitPrice: null },
         ],
       }),
       tr,
@@ -206,9 +204,7 @@ describe("reviewIntake", () => {
         customerBpId: "bp-1",
         customerOrderRef: "PO-1",
         orderDate: "2026-08-01",
-        items: [
-          { productId: "1", productText: "P", quantity: 1, unitPrice: 10 },
-        ],
+        items: [{ itemId: "1", productText: "P", quantity: 1, unitPrice: 10 }],
       }),
       tr,
     );
