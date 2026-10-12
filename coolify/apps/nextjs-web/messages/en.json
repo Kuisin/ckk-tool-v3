@@ -4155,7 +4155,10 @@
       "intermediateOrNotApplicable": "(intermediate / not applicable)",
       "quantityPcs": "{quantity} pcs",
       "description": "Description",
-      "descriptionHint": "Shown by the hint button (ⓘ) next to this cost item on the price estimate screens. Leave blank to hide the button."
+      "descriptionHint": "Shown by the hint button (ⓘ) next to this cost item on the price estimate screens. Leave blank to hide the button.",
+      "isCost": "Count as cost",
+      "isCostHint": "Recorded in the price estimate as part of the total cost. It does not change the estimated unit price.",
+      "costBadge": "Cost"
     },
     "itemDefEditForm": {
       "theKeyMustBeAnIdentifier": "The key must be an identifier starting with a letter or underscore",
@@ -7969,7 +7972,9 @@
       "thereAreNoPriceEstimates": "There are no price estimates",
       "hintFor": "About {name}",
       "scaleEstimateNote": "A reference value: the estimated unit price (base) × the quantity-scale multiplier. The actual price per quantity is set in the price list (these are the starting tiers when a price list is made from this estimate).",
-      "scaleEstimateTitle": "Reference: unit price by quantity"
+      "scaleEstimateTitle": "Reference: unit price by quantity",
+      "costTotal": "Total cost",
+      "grossMargin": "Gross margin"
     },
     "orderLineDetail": {
       "designWithCount": "Design ({count})",

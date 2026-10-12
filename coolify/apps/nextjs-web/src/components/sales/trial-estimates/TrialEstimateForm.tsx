@@ -78,6 +78,7 @@ import {
   toToolTypeOptions,
   toTrialPricingOptions,
 } from "@/lib/trial-pricing-settings";
+import { CostSummaryRows } from "./CostSummaryRows";
 import { criterionDescription, LabelWithHint } from "./CriterionHint";
 import { MaterialPriceChart } from "./MaterialPriceChart";
 import { ScaleEstimateTable } from "./ScaleEstimateTable";
@@ -890,6 +891,7 @@ export function TrialEstimateForm({
             <ResultsPanel
               breakdown={result.breakdown}
               correctionFactor={Number(customValues.correctionFactor ?? 1.25)}
+              costTotal={result.costTotal}
               criteria={settings.criteria}
               lot={result.lots[0] ?? null}
               scalePreset={scalePreset}
@@ -974,6 +976,7 @@ export function TrialEstimateForm({
 // 数量ごとの価格（×倍率）は価格表側で設定・上書きする。
 function ResultsPanel({
   breakdown,
+  costTotal,
   lot,
   correctionFactor,
   warnings,
@@ -981,6 +984,8 @@ function ResultsPanel({
   scalePreset,
 }: {
   breakdown: CostBreakdown;
+  /** 原価合計（原価の印を付けた基準の和）。 */
+  costTotal: number | undefined;
   /** 計算基準（ヒントボタンの説明を引く）。 */
   criteria: Criterion[];
   /** 基準数量での計算結果（単一）. */
@@ -1123,6 +1128,10 @@ function ResultsPanel({
                       </Text>
                     </Table.Td>
                   </Table.Tr>
+                  <CostSummaryRows
+                    costTotal={costTotal}
+                    estimateUnitPrice={lot.estimateUnitPrice}
+                  />
                 </Table.Tbody>
               </Table>
             ) : null}

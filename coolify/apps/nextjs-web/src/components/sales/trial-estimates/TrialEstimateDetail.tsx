@@ -74,6 +74,7 @@ import {
   type TrialPricingOptions,
   toolTypeOptionsFallback,
 } from "@/lib/trial-pricing";
+import { CostSummaryRows } from "./CostSummaryRows";
 import { criterionDescription, LabelWithHint } from "./CriterionHint";
 import { MaterialPriceChart } from "./MaterialPriceChart";
 import { ScaleEstimateTable } from "./ScaleEstimateTable";
@@ -408,6 +409,10 @@ export function TrialEstimateDetail({
                           </Text>
                         </Table.Td>
                       </Table.Tr>
+                      <CostSummaryRows
+                        costTotal={result.costTotal}
+                        estimateUnitPrice={result.lots[0].estimateUnitPrice}
+                      />
                     </>
                   )}
                 </Table.Tbody>

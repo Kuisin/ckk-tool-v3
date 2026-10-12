@@ -57,13 +57,41 @@ SELECT
   su.display_name                                 AS sales_staff,
   cu.display_name                                 AS created_by_name,
   e.reference_unit_price, e.reference_date, e.registered_at,
-  e.created_at, e.updated_at
+  e.created_at, e.updated_at,
+  -- 結果スナップショット（estimates.result）から。cost_total は計算基準の「原価」の
+  -- 印（SY02）を付けた基準の和で、印を入れる前に保存した価格試算は NULL のまま
+  -- （推測で埋めない）。列は末尾に足すこと — CREATE OR REPLACE は途中に挿せない。
+  (e.result->'lots'->0->>'estimateUnitPrice')::numeric AS estimate_unit_price,
+  (e.result->'lots'->0->>'minimumPrice')::numeric      AS minimum_price,
+  (e.result->>'costTotal')::numeric                     AS cost_total,
+  (e.result->'lots'->0->>'estimateUnitPrice')::numeric
+    - (e.result->>'costTotal')::numeric                 AS gross_margin
 FROM app.estimates e
 LEFT JOIN app.business_partners cust ON cust.id = e.customer_bp_id
 LEFT JOIN app.items prod             ON prod.id = e.item_id
 LEFT JOIN app.material_types mt      ON mt.id = e.material_type_id
 LEFT JOIN app.users su               ON su.id = e.sales_rep_id
 LEFT JOIN app.users cu               ON cu.id = e.created_by;
+
+-- 価格試算の計算基準ごとの値（縦持ち: 1 行 = 1 価格試算 × 1 基準）。基準は SY02 で
+-- 管理者が増減するので列にはできない。名前・役割・原価の印は**計算した時点**の
+-- もので、あとで基準を直しても保存済みの行は動かない。見積単価（final）は含まない
+-- — それは v_estimates.estimate_unit_price。印を入れる前に保存した価格試算は
+-- result に items を持たないので、このビューに行が出ない。
+CREATE OR REPLACE VIEW analytics.v_estimate_cost_items WITH (security_invoker = true) AS
+SELECT
+  'EST-'||e.year_month||'-'||lpad(e.seq::text,5,'0') AS estimate_no,
+  e.year_month, e.tool_type, e.status,
+  it.ord::int                    AS item_order,
+  it.item->>'id'                 AS criterion_id,
+  it.item->>'name'               AS criterion_name,
+  it.item->>'role'               AS criterion_role,
+  (it.item->>'isCost')::boolean  AS is_cost,
+  (it.item->>'value')::numeric   AS value
+FROM app.estimates e
+CROSS JOIN LATERAL jsonb_array_elements(
+  CASE WHEN jsonb_typeof(e.result->'items') = 'array' THEN e.result->'items' ELSE '[]'::jsonb END
+) WITH ORDINALITY AS it(item, ord);
 
 CREATE OR REPLACE VIEW analytics.v_price_list_entries WITH (security_invoker = true) AS
 SELECT
