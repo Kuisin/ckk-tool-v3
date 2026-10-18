@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { PriceListDetail } from "@/components/sales/price-lists/PriceListDetail";
 import { appLabelForKey } from "@/lib/app-list";
+import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { parseDocKey } from "@/lib/doc-number";
@@ -47,17 +48,29 @@ export default async function PriceListDetailPage({
   const entry = await fetchPriceEntry(key);
   if (!entry) notFound();
 
-  const [relatedQuotes, customerOptions, productOptions, auditEntries, memos] =
-    await Promise.all([
-      fetchRelatedQuotes(key),
-      fetchCustomerOptions(),
-      fetchPriceListItemOptions(),
-      fetchAuditEntries("price_list_entries", entry.entryId),
-      listMemos("price_list_entries", entry.entryId),
-    ]);
+  const [
+    relatedQuotes,
+    customerOptions,
+    productOptions,
+    auditEntries,
+    memos,
+    approval,
+    approvalTrail,
+  ] = await Promise.all([
+    fetchRelatedQuotes(key),
+    fetchCustomerOptions(),
+    fetchPriceListItemOptions(),
+    fetchAuditEntries("price_list_entries", entry.entryId),
+    listMemos("price_list_entries", entry.entryId),
+    // 独自値の追加承認（価格試算から引き継いでいない価格があるときだけ）
+    fetchApprovalState("price_list_entries", entry.entryId),
+    fetchApprovalTrail("price_list_entries", entry.entryId),
+  ]);
 
   return (
     <PriceListDetail
+      approval={approval}
+      approvalTrail={approvalTrail}
       auditEntries={auditEntries}
       customerOptions={customerOptions}
       entry={entry}

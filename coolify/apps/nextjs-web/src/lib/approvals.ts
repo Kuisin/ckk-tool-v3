@@ -36,6 +36,10 @@ import {
 import { effectiveMemberWhere } from "./approval-membership";
 import { APPROVAL_TARGET, type ApprovalTargetType } from "./approval-targets";
 import { getCurrentActorId } from "./audit";
+import {
+  type ApprovalStepLayer,
+  appendCustomValueSteps,
+} from "./custom-value-approval-core";
 import { prisma } from "./db";
 import { formatDocNumber, parseDocKey } from "./doc-number";
 import { type LocalizedText, localized } from "./format";
@@ -77,6 +81,8 @@ export interface FlowStepDef {
   /** カスタム段の承認者（フォームのみ・1..N 人）。グループとどちらか一方。 */
   approverUserIds?: string[];
   approverNames?: string[];
+  /** 独自値の追加承認として足した段（lib/custom-value-approval-core）。 */
+  layer?: ApprovalStepLayer;
 }
 
 /** 書類種別の承認フロー（stepNo 昇順）。未設定なら空配列。 */
@@ -95,6 +101,37 @@ export async function getApprovalFlow(
     groupName: (r.group.name ?? { ja: "", en: "" }) as LocalizedText,
     mode: r.mode as ApprovalMode,
   }));
+}
+
+/**
+ * 書類種別の「独自値の追加承認」の段（stepNo 昇順）。未設定なら空配列 —
+ * 何も足さない。通常のフローとは別建てで、依頼時に後ろへ連結する。
+ */
+export async function getCustomValueSteps(
+  targetType: ApprovalTargetType,
+): Promise<FlowStepDef[]> {
+  const rows = await prisma.approvalCustomValueStep.findMany({
+    where: { targetType },
+    include: { group: { select: { name: true } } },
+    orderBy: { stepNo: "asc" },
+  });
+  return rows.map((r) => ({
+    stepNo: r.stepNo,
+    name: (r.name ?? { ja: "", en: "" }) as LocalizedText,
+    groupId: r.groupId,
+    groupName: (r.group.name ?? { ja: "", en: "" }) as LocalizedText,
+    mode: r.mode as ApprovalMode,
+  }));
+}
+
+/** 独自値の追加承認の段が 1 本でも組まれているか。 */
+export async function hasCustomValueSteps(
+  targetType: ApprovalTargetType,
+): Promise<boolean> {
+  const count = await prisma.approvalCustomValueStep.count({
+    where: { targetType },
+  });
+  return count > 0;
 }
 
 /**
@@ -523,6 +560,9 @@ export async function fetchApprovalDocInfo(
       // 条件に使う属性は無い（approvalConditionFields も空）。
       return row ? {} : null;
     }
+    // 価格表は通常のフローも条件付きフローも持たない（独自値の追加承認だけ）。
+    case "price_list_entries":
+      return null;
   }
 }
 
@@ -532,6 +572,21 @@ export async function fetchApprovalDocInfo(
  * ルールは既定フローの**上書き**であり、単体では承認ゲートを作らない）。
  */
 async function resolveFlowForTarget(
+  targetType: ApprovalTargetType,
+  targetId: string,
+  customValues: boolean,
+): Promise<FlowStepDef[]> {
+  const base = await resolveBaseFlowForTarget(targetType, targetId);
+  // 独自値の追加承認 — 書類に前の書類から引き継いでいない値があるときだけ、
+  // 通常の段（既定 or 一致した条件付きフロー）の後ろに足す。段が無ければ何も
+  // 足さない。価格表のように通常のフローを持たない書類では、これだけが段になる。
+  if (!customValues || targetType === "form_responses") return base;
+  const extra = await getCustomValueSteps(targetType);
+  return appendCustomValueSteps(base, extra);
+}
+
+/** 通常の段（独自値の追加承認を足す前）。 */
+async function resolveBaseFlowForTarget(
   targetType: ApprovalTargetType,
   targetId: string,
 ): Promise<FlowStepDef[]> {
@@ -561,6 +616,7 @@ function toSnapshot(flow: FlowStepDef[]): FlowStepSnapshot[] {
     mode: s.mode,
     approverUserIds: s.approverUserIds ?? [],
     approverNames: s.approverNames ?? [],
+    ...(s.layer ? { layer: s.layer } : {}),
   }));
 }
 
@@ -788,6 +844,15 @@ async function targetCreatedAt(
       if (!UUID_RE.test(targetId)) return null;
       const row = await prisma.designVersion.findUnique({
         where: { id: targetId },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "price_list_entries": {
+      const key = parseDocKey(targetId, "PRC");
+      if (!key) return null;
+      const row = await prisma.priceListEntry.findUnique({
+        where: { yearMonth_seq: key },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
@@ -1075,12 +1140,22 @@ export async function startApprovalFlow(input: {
   targetType: ApprovalTargetType;
   targetId: string;
   notes?: string;
+  /**
+   * 書類が独自値（前の書類から引き継いでいない値）を持っているか。true なら
+   * 承認設定（MS0B）の「独自値の追加承認」の段を通常の段の後ろに足す。
+   * 判定は書類ごと（lib/approval-targets.ts CUSTOM_VALUE_TARGETS）。
+   */
+  customValues?: boolean;
 }): Promise<{ ok: boolean; error?: string }> {
   const tr = await getTranslations();
   // 条件付きフロー（approval_flow_rules）を書類の属性で解決する。
   // 一致すればその段構成、なければ既定フロー。以降は従来と同じ
   // （スナップショットに落ちるので、進行中の扱いに違いは無い）。
-  const flow = await resolveFlowForTarget(input.targetType, input.targetId);
+  const flow = await resolveFlowForTarget(
+    input.targetType,
+    input.targetId,
+    input.customValues ?? false,
+  );
   if (flow.length === 0) {
     return {
       ok: false,

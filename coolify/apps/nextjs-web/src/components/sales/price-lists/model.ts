@@ -17,6 +17,7 @@
  * everything here is pure and client-safe.
  */
 
+import type { PriceListApprovalStatus } from "@/lib/custom-value-approval-core";
 import { type Formatters, formatMoney } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
 
@@ -118,6 +119,11 @@ export interface PriceListEntry {
   standardUnitPrice: number | null;
   currency: string;
   isActive: boolean;
+  /**
+   * 独自値の追加承認の状態（承認設定 MS0B）。PENDING / REJECTED の間は価格の
+   * 解決に使われない（lib/custom-value-approval-core.ts priceEntryUsable）。
+   */
+  approvalStatus?: PriceListApprovalStatus;
   /** 注文種別ごとの価格（少なくとも 1 件）。 */
   variants: PriceVariant[];
   /** 営業担当（作成時に顧客の主担当を複写したスナップショット）。 */

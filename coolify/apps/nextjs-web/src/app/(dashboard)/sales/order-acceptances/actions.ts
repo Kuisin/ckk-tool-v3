@@ -61,6 +61,7 @@ import {
 } from "@/lib/server-action";
 import {
   checkAcceptancePrices,
+  customValueSummary,
   priceDiffSummary,
   priceOverrideSummary,
 } from "./price-check";
@@ -709,9 +710,14 @@ export async function submitForApproval(
     // 承認依頼中のまま誰の承認一覧にも出ない（承認も差し戻しもできず動かせない）。
     // 依頼だけが残った側は startApprovalFlow が二重依頼を成功として吸収するので、
     // もう一度依頼を押せば状態が追いつく。
+    // 独自値（価格表どおりでない単価 — 上書き・確認済みの差異・価格表なし・
+    // 数量段階なし）が 1 行でもあれば、独自値の追加承認の段を後ろに足す
+    // （承認設定 MS0B。段が無ければ何も足さない）。
+    const customValueLines = customValueSummary(priceCheck, tr);
     const started = await startApprovalFlow({
       targetType: "order_acceptances",
       targetId: number,
+      customValues: customValueLines.length > 0,
     });
     if (!started.ok)
       return actionError(started.error ?? tr("common.approvalRequestFailed"));
@@ -739,6 +745,9 @@ export async function submitForApproval(
           : {}),
         ...(priceCheck.overrideCount > 0
           ? { priceOverrides: overrideLines }
+          : {}),
+        ...(customValueLines.length > 0
+          ? { customValues: customValueLines }
           : {}),
       },
     });

@@ -642,6 +642,14 @@ Table price_list_entries {
   product_id      int [not null, ref: > products.id]
   currency        varchar [not null, default: 'JPY']
   is_active       boolean [default: true]
+  // 独自値の追加承認（approval_custom_value_steps）。価格試算から引き継いで
+  // いない価格（手動の基準単価・見積単価と違う基準単価・段階単価の上書き）を
+  // 持つ価格表は、段が組まれていれば保存のたびに承認を通る。PENDING / REJECTED
+  // の間は**価格の解決に使われない**。段が無ければ NONE のまま = 従来どおり。
+  approval_status PRICE_LIST_APPROVAL_STATUS [not null, default: 'NONE']
+  // いまの approval_status が指している独自値の指紋。独自値が変わらない保存
+  // （営業担当だけ直した、など）では承認をやり直さない。
+  custom_value_signature text
   created_by      uuid [ref: > users.id]
   created_at      timestamp
   updated_at      timestamp
@@ -1183,7 +1191,10 @@ Table approval_flows {
                                 //   承認を通らずに確定する）/
                                 // invoices（請求書 — **追加費用ありの下書きだけ**発行前に
                                 //   通る）/ invoice_payments（入金前承認。対象は請求書と
-                                //   同じ行だが種別は別。承認完了でそのまま入金済みへ進める）
+                                //   同じ行だが種別は別。承認完了でそのまま入金済みへ進める）/
+                                // price_list_entries（価格表 — 通常のフローは持たず、
+                                //   独自値の追加承認 approval_custom_value_steps の FK 先
+                                //   としてだけ行を持つ）
   updated_by      uuid [ref: > users.id]
   updated_at      timestamp
 }
@@ -1206,6 +1217,28 @@ Table approval_flow_steps {
 Enum APPROVAL_MODE {
   ANY   // いずれか 1 名の承認でこの段は通過
   ALL   // 対象メンバー全員の承認が必要
+}
+
+// 独自値の追加承認 — 通常のフロー（approval_flow_steps）とは**別建て**の段。
+// 書類に前の書類から引き継いでいない値（独自値）があるときだけ、依頼時に
+// 通常の段（既定 or 一致した条件付きフロー）の**後ろに連結**して flow_snapshot
+// に落とす（各段に layer: "customValue"）。0 段 = 追加の承認なし。
+// 「何が独自値か」は書類ごとの判定で、判定を持つ書類だけが段を持てる
+// （nextjs-web lib/approval-targets.ts CUSTOM_VALUE_TARGETS — 現状は
+// 価格表 price_list_entries と注文請書 order_acceptances）。価格表は通常の
+// フローを持たず、この段だけで承認を通る。
+// 判定・連結は lib/custom-value-approval-core.ts が唯一の定義。
+Table approval_custom_value_steps {
+  id              serial [pk]
+  target_type     varchar [not null, ref: > approval_flows.target_type]
+  step_no         int [not null]
+  name            json [not null]
+  group_id        int [not null, ref: > approval_groups.id]  // 削除は Restrict
+  mode            APPROVAL_MODE [not null, default: 'ANY']
+
+  indexes {
+    (target_type, step_no) [unique]
+  }
 }
 
 // 期間限定代理設定

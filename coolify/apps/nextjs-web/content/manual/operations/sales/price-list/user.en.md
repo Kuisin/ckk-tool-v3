@@ -119,6 +119,15 @@ In the quantity table, a row with an orange「**手動**」(manual) badge uses a
 - A saved order type, and the estimate its price came from, also cannot be changed.
 - To give one quantity break a special price, press「**カスタム**」(custom) on that row and enter the amount. A confirmation screen appears — press「**カスタム設定する**」(use a custom setting). Press「**自動に戻す**」(back to auto) to return to the automatic calculation.
 
+## Custom prices go through approval
+
+When the price list steps are set under "**独自値の追加承認**" (custom value approval) in the approval settings (MS0B), a price list with **prices not carried over from a price estimate** submits an approval request automatically when saved.
+
+- Custom prices are a base unit price not taken from a price estimate, a base unit price changed from the estimate, and a "custom" tier price (enabled order types only).
+- **Until it is approved, the price list is not used to price quotes or order acceptances.** A "pending approval" card appears at the top of the screen, from which approvers can approve or send it back.
+- Saving again without changing the custom prices (for example, only the sales rep) does not restart the approval. Changing a price restarts it.
+- If it is sent back, fix it and save again, or press "**再承認依頼**" (request again) on the card.
+
 ## Registering a discount rule
 
 1. Open the「**値引き設定**」(discount settings) tab on the price list screen.

@@ -23,6 +23,7 @@
  */
 
 import { getTranslations } from "next-intl/server";
+import { isAcceptanceCustomPriceState } from "@/lib/custom-value-approval-core";
 import { prisma } from "@/lib/db";
 import type { DocKey } from "@/lib/doc-number";
 import { formatMoney } from "@/lib/format";
@@ -200,6 +201,26 @@ export function priceOverrideSummary(
         row: l.row,
         actual: formatMoney(l.actual),
         expected: formatMoney(l.expected),
+      }),
+    );
+}
+
+/**
+ * 独自値の行の表示文字列（例: `行2 ¥1,200`）— 価格表どおりでない単価の行
+ * （上書き・確認済みの差異・価格表なし・数量段階なし）。1 行でもあれば承認依頼に
+ * 「独自値の追加承認」の段が足される（lib/custom-value-approval-core）。
+ * 監査行にも残す。
+ */
+export function customValueSummary(
+  check: AcceptancePriceCheck,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): string[] {
+  return check.lines
+    .filter((l) => isAcceptanceCustomPriceState(l.state))
+    .map((l) =>
+      tr("sales.orderAcceptances.customValueLine", {
+        row: l.row,
+        actual: formatMoney(l.actual),
       }),
     );
 }

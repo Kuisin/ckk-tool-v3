@@ -20,6 +20,7 @@ import { copyPriceEntry } from "@/app/(dashboard)/sales/price-lists/actions";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import { notifyPriceEntryApproval } from "./approval-notice";
 import { type PriceListEntry, requiresEndDate } from "./model";
 
 export function CopyPriceListModal({
@@ -94,6 +95,7 @@ export function CopyPriceListModal({
               message: tr("sales.priceLists.thePriceListWasCopiedTo"),
               color: "green",
             });
+            notifyPriceEntryApproval(result.data, tr);
             handleClose();
             router.push(`/sales/price-lists/${result.data.entryId}`);
           } else {

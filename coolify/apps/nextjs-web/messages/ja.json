@@ -811,7 +811,8 @@
     "stockMovement": "入出庫伝票",
     "invoicePayment": "請求書の入金",
     "notPendingApproval": "承認依頼中ではありません",
-    "designVersion": "設計図の版"
+    "designVersion": "設計図の版",
+    "priceListUnapproved": "価格表が承認待ち"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -1650,6 +1651,20 @@
         },
         "CONFIRMED": {
           "label": "確定"
+        },
+        "REJECTED": {
+          "label": "差し戻し"
+        }
+      },
+      "PriceListApproval": {
+        "NONE": {
+          "label": "—"
+        },
+        "PENDING": {
+          "label": "承認依頼中"
+        },
+        "APPROVED": {
+          "label": "承認済"
         },
         "REJECTED": {
           "label": "差し戻し"
@@ -6737,6 +6752,17 @@
       "createFailed": "再研磨品目の作成に失敗しました",
       "updateFailed": "再研磨品目の更新に失敗しました",
       "deleteFailed": "再研磨品目の削除に失敗しました"
+    },
+    "customValueApproval": {
+      "title": "独自値の追加承認",
+      "titleFor": "独自値の追加承認: {label}",
+      "appendedAfterBaseFlow": "この書類に前の書類から引き継いでいない値（独自値）があるときだけ、ここの段が承認フローの後ろに足されます。",
+      "onlyLayerForThisDocument": "この書類は通常の承認フローを持ちません。独自値があるときだけ、ここの段で承認を通ります。",
+      "emptyMeansNoExtraApproval": "段を 1 つも置かなければ追加の承認はありません。変更が効くのは次の承認依頼からです。",
+      "overviewIntro": "書類に前の書類から引き継いでいない値（独自値）があるときだけ、通常の承認フローの後ろに足す段です。通常のフローとは別に、書類ごとに設定します。",
+      "notSet": "未設定（追加の承認なし）",
+      "describePriceList": "独自値: 価格試算を使わない基準単価、価格試算の見積単価と違う基準単価、数量段階の単価の上書き（有効な注文種別のみ）。承認されるまで、この価格表は見積書・注文請書の価格に使われません。",
+      "describeOrderAcceptance": "独自値: 価格表どおりでない明細の単価（上書き・価格表との差異・価格表なし・数量段階なし）。"
     }
   },
   "manual": {
@@ -7727,7 +7753,8 @@
       "theCancelledOrderAcceptance": "この注文請書の元になったキャンセル済みの請書",
       "youCanRecreateOnceCancelled": "キャンセル済みの注文請書からのみ作り直せます",
       "confirmRecreateMessage": "{number} の内容を引き継いだ下書きを作ります。紐付けは残ります。",
-      "alreadyRecreatedAs": "この注文請書はすでに {numbers} として作り直されています。二重に起こしていないか確認してください。"
+      "alreadyRecreatedAs": "この注文請書はすでに {numbers} として作り直されています。二重に起こしていないか確認してください。",
+      "customValueLine": "行{row} {actual}"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "この明細の親書類",
@@ -7876,7 +7903,11 @@
       "resetToPreset": "プリセットに戻す",
       "resetToPresetTitle": "数量段階をプリセットに戻す",
       "resetToPresetMessage": "このバリアントの数量段階を、数量スケールのプリセット（価格試算計算の設定）に置き換えます。手で足した範囲とカスタム単価は消えます。",
-      "addACustomRange": "範囲を追加"
+      "addACustomRange": "範囲を追加",
+      "unapprovedNotUsedForPricing": "この価格表は独自値の追加承認が済んでいないため、見積書・注文請書の価格には使われません。",
+      "approvalTab": "承認",
+      "approvalRequestedOnSave": "独自値があるため承認依頼を出しました",
+      "approvalRequestFailedOnSave": "保存しましたが、承認依頼を出せませんでした: {error}"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "発行しました（PDF 生成に失敗）",
@@ -8228,7 +8259,8 @@
       "priceListInactive": "明細{line}: 価格表が無効化されています",
       "priceListExpired": "明細{line}: 価格表の有効期間外です",
       "validUntilRequired": "有効期限を入力してください",
-      "validUntilInPast": "有効期限は本日以降の日付にしてください"
+      "validUntilInPast": "有効期限は本日以降の日付にしてください",
+      "priceListUnapproved": "明細{line}: 価格表が承認されていません（独自値の追加承認）"
     },
     "orderLinesActions": {
       "invalidOrderLine": "注文明細が不正です",
@@ -8255,7 +8287,10 @@
       "periodChangeFailed": "有効期間の変更に失敗しました",
       "deleteFailed": "価格表の削除に失敗しました",
       "saveDiscountRuleFailed": "値引きルールの保存に失敗しました",
-      "deleteDiscountRuleFailed": "値引きルールの削除に失敗しました"
+      "deleteDiscountRuleFailed": "値引きルールの削除に失敗しました",
+      "noApprovalNeeded": "この価格表には独自値が無い（または追加承認の段が無い）ため、承認は要りません",
+      "notFound": "価格表が見つかりません",
+      "notPendingApproval": "承認依頼中ではありません"
     },
     "designRequestActions": {
       "approvalRequestFailed": "承認依頼に失敗しました",

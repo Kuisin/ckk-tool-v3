@@ -118,6 +118,8 @@ function lineResolveMessage(
       return tr("sales.quoteActions.priceListInactive", { line });
     case "expired":
       return tr("sales.quoteActions.priceListExpired", { line });
+    case "unapproved":
+      return tr("sales.quoteActions.priceListUnapproved", { line });
     default:
       return tr("sales.quoteActions.noPriceListEntry", { line });
   }

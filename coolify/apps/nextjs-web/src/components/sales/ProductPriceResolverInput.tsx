@@ -134,6 +134,8 @@ export function ProductPriceResolverInput({
         return tr("common.priceListInactive");
       case "expired":
         return tr("common.priceListExpired");
+      case "unapproved":
+        return tr("common.priceListUnapproved");
       default:
         return tr("common.noPriceList");
     }

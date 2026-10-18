@@ -811,7 +811,8 @@
     "stockMovement": "Stock movement",
     "invoicePayment": "Invoice payment",
     "notPendingApproval": "Not currently pending approval",
-    "designVersion": "Drawing version"
+    "designVersion": "Drawing version",
+    "priceListUnapproved": "Price list awaiting approval"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -1650,6 +1651,20 @@
         },
         "CONFIRMED": {
           "label": "Confirmed"
+        },
+        "REJECTED": {
+          "label": "Sent back"
+        }
+      },
+      "PriceListApproval": {
+        "NONE": {
+          "label": "—"
+        },
+        "PENDING": {
+          "label": "Pending approval"
+        },
+        "APPROVED": {
+          "label": "Approved"
         },
         "REJECTED": {
           "label": "Sent back"
@@ -6737,6 +6752,17 @@
       "createFailed": "Could not create the regrind item",
       "updateFailed": "Could not update the regrind item",
       "deleteFailed": "Could not delete the regrind item"
+    },
+    "customValueApproval": {
+      "title": "Custom value approval",
+      "titleFor": "Custom value approval: {label}",
+      "appendedAfterBaseFlow": "These steps are added after the approval flow only when the document has values not carried over from the previous document (custom values).",
+      "onlyLayerForThisDocument": "This document has no regular approval flow. It goes through these steps only when it has custom values.",
+      "emptyMeansNoExtraApproval": "With no steps, there is no additional approval. Changes apply from the next approval request.",
+      "overviewIntro": "Steps added after the regular approval flow only when a document has values not carried over from the previous document (custom values). Set separately from the regular flow, per document.",
+      "notSet": "Not set (no additional approval)",
+      "describePriceList": "Custom values: a base unit price not taken from a price estimate, a base unit price different from the estimate, or an overridden tier price (enabled order types only). Until approved, the price list is not used to price quotes or order acceptances.",
+      "describeOrderAcceptance": "Custom values: line unit prices that are not from the price list (overridden, differing from the price list, no price list, or no quantity tier)."
     }
   },
   "manual": {
@@ -7727,7 +7753,8 @@
       "theCancelledOrderAcceptance": "The cancelled order acceptance this one came from",
       "youCanRecreateOnceCancelled": "You can only recreate from a cancelled order acceptance",
       "confirmRecreateMessage": "This creates a draft carrying over the contents of {number}. The link between the two is kept.",
-      "alreadyRecreatedAs": "This order acceptance has already been recreated as {numbers}. Check that you are not raising it twice."
+      "alreadyRecreatedAs": "This order acceptance has already been recreated as {numbers}. Check that you are not raising it twice.",
+      "customValueLine": "Row {row} {actual}"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",
@@ -7876,7 +7903,11 @@
       "resetToPreset": "Reset to preset",
       "resetToPresetTitle": "Reset tiers to the preset",
       "resetToPresetMessage": "Replaces this variant's quantity tiers with the quantity-scale preset (price estimate engine settings). Ranges you added and custom prices are lost.",
-      "addACustomRange": "Add a range"
+      "addACustomRange": "Add a range",
+      "unapprovedNotUsedForPricing": "This price list has not passed custom value approval, so it is not used to price quotes or order acceptances.",
+      "approvalTab": "Approval",
+      "approvalRequestedOnSave": "Approval requested because the price list has custom values",
+      "approvalRequestFailedOnSave": "Saved, but the approval request could not be created: {error}"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "Issued (PDF generation failed)",
@@ -8228,7 +8259,8 @@
       "priceListInactive": "Line {line}: the price list is disabled",
       "priceListExpired": "Line {line}: the price list is outside its valid period",
       "validUntilRequired": "Enter the valid-until date",
-      "validUntilInPast": "The valid-until date must be today or later"
+      "validUntilInPast": "The valid-until date must be today or later",
+      "priceListUnapproved": "Line {line}: the price list has not been approved (custom value approval)"
     },
     "orderLinesActions": {
       "invalidOrderLine": "Invalid order line",
@@ -8255,7 +8287,10 @@
       "periodChangeFailed": "Could not change the valid period",
       "deleteFailed": "Could not delete the price list",
       "saveDiscountRuleFailed": "Could not save the discount rule",
-      "deleteDiscountRuleFailed": "Could not delete the discount rule"
+      "deleteDiscountRuleFailed": "Could not delete the discount rule",
+      "noApprovalNeeded": "This price list needs no approval: it has no custom values, or no custom value approval steps are set",
+      "notFound": "Price list not found",
+      "notPendingApproval": "Not pending approval"
     },
     "designRequestActions": {
       "approvalRequestFailed": "Could not request approval",
