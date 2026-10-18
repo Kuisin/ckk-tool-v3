@@ -132,7 +132,7 @@ AI補助タスク:    同じ po-extract の /generate/<task>（紙なし・LLM 1
                 （製品・素材マスタのキーワード候補生成 — MS04/MS06）。
                 自前スキーマを渡す /generate も可。アプリ側は
                 nextjs-web の lib/po-extract.ts 経由。
-Notification:   nodemailer + Nextcloud API + SSE
+Notification:   mail-api（HTTP → SMTP。アプリは fetch 1 回）+ Nextcloud API + SSE
 Job Runner:     instrumentation.ts の setInterval（取込ポーラー・通知ダイジェスト・
                 締日オートラン）+ pg_cron（DB 側の定期処理）。
                 ※ BullMQ は**入れていない**（package.json にも無い）
