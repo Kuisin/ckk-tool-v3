@@ -1779,6 +1779,10 @@
       "api_client": {
         "label": "API client administration",
         "summary": "Manage the credentials external systems use to read business data programmatically. Issuing a token and activating a client each need approval. What a client can read is decided by the roles assigned to it."
+      },
+      "estimate_cost": {
+        "label": "Price estimate cost",
+        "summary": "View the total cost and gross margin of price estimates, and which calculation criteria count as cost. Without it, total cost and gross margin are not shown. It does not affect the estimated unit price."
       }
     },
     "PERMISSION_GROUP_LABEL": {

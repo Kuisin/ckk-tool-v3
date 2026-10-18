@@ -103,6 +103,7 @@ export function TrialEstimateDetail({
   pricingOptions = {},
   toolTypeOptions,
   scalePreset,
+  canViewCost = false,
 }: {
   record: TrialEstimateRecord;
   linkedEntries: LinkedPriceEntry[];
@@ -118,6 +119,8 @@ export function TrialEstimateDetail({
   toolTypeOptions?: { value: string; label: string }[];
   /** 数量スケール（SY02）。見積単価から数量ごとの単価の見込みを出す。 */
   scalePreset: ScalePresetRow[];
+  /** 原価合計・粗利を見せるか（権限 estimate_cost — lib/estimate-cost.ts）。 */
+  canViewCost?: boolean;
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -409,10 +412,12 @@ export function TrialEstimateDetail({
                           </Text>
                         </Table.Td>
                       </Table.Tr>
-                      <CostSummaryRows
-                        costTotal={result.costTotal}
-                        estimateUnitPrice={result.lots[0].estimateUnitPrice}
-                      />
+                      {canViewCost && (
+                        <CostSummaryRows
+                          costTotal={result.costTotal}
+                          estimateUnitPrice={result.lots[0].estimateUnitPrice}
+                        />
+                      )}
                     </>
                   )}
                 </Table.Tbody>

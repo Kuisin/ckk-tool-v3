@@ -100,6 +100,7 @@ export function TrialEstimateForm({
   scalePreset,
   /** 複製元（?from= で開いたとき）— 全入力を引き継いだ新規 DRAFT を作る。 */
   source,
+  canViewCost = false,
 }: {
   customerOptions: Option[];
   /** 材種・直径・黒皮/研磨 の選択肢（材料は 3 要素で指定）. */
@@ -113,6 +114,8 @@ export function TrialEstimateForm({
   /** 数量スケール（SY02）。見積単価から数量ごとの単価の見込みを出す。 */
   scalePreset: ScalePresetRow[];
   source?: TrialEstimateRecord | null;
+  /** 原価合計・粗利を見せるか（権限 estimate_cost — lib/estimate-cost.ts）。 */
+  canViewCost?: boolean;
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -891,7 +894,7 @@ export function TrialEstimateForm({
             <ResultsPanel
               breakdown={result.breakdown}
               correctionFactor={Number(customValues.correctionFactor ?? 1.25)}
-              costTotal={result.costTotal}
+              costTotal={canViewCost ? result.costTotal : undefined}
               criteria={settings.criteria}
               lot={result.lots[0] ?? null}
               scalePreset={scalePreset}
