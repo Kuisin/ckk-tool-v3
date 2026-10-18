@@ -32,9 +32,12 @@ import { notifications } from "@mantine/notifications";
 import { IconAlertCircle, IconCircleCheck } from "@tabler/icons-react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { searchItemOptions } from "@/app/(dashboard)/_shared/option-search";
-import { postGoodsMovement } from "@/app/(dashboard)/inventory/goods-movement/actions";
+import {
+  fetchItemOwnerOptions,
+  postGoodsMovement,
+} from "@/app/(dashboard)/inventory/goods-movement/actions";
 import { ITEM_TYPE_COLOR } from "@/components/inventory/stock/model";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -165,6 +168,10 @@ export function GoodsMovementForm({
   const [from, setFrom] = useState<EndpointDraft>(EMPTY_ENDPOINT);
   const [to, setTo] = useState<EndpointDraft>(EMPTY_ENDPOINT);
   const [notes, setNotes] = useState("");
+  const [ownerBpId, setOwnerBpId] = useState<string | null>(null);
+  const [ownerOptions, setOwnerOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [lastMovementNumber, setLastMovementNumber] = useState<string | null>(
     null,
   );
@@ -187,6 +194,26 @@ export function GoodsMovementForm({
   const numericQuantity =
     typeof quantity === "number" ? quantity : Number(quantity);
 
+  // 預り品（所有者付き）のバケットがある品目を選んだときだけ「所有者」欄を出す。
+  // 常時出すと ST06 の普段の操作（自社在庫の棚移動）に無関係な欄が増える。
+  const selectedItemId = parsedItem?.itemId ?? null;
+  useEffect(() => {
+    // 品目が変われば所有者は持ち越さない — 別の品目の預り主を引き継ぐと、
+    // 気づかないまま他人の在庫を動かす伝票ができる。
+    setOwnerBpId(null);
+    if (selectedItemId == null) {
+      setOwnerOptions([]);
+      return;
+    }
+    let alive = true;
+    void fetchItemOwnerOptions(selectedItemId).then((opts) => {
+      if (alive) setOwnerOptions(opts);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [selectedItemId]);
+
   const draft: MovementDraft = useMemo(
     () => ({
       itemId: parsedItem?.itemId ?? null,
@@ -201,8 +228,9 @@ export function GoodsMovementForm({
         storageLocationId: toNumberOrNull(to.locationId),
         shelfId: toNumberOrNull(to.shelfId),
       },
+      ownerBpId,
     }),
-    [parsedItem, numericQuantity, from, to],
+    [parsedItem, numericQuantity, from, to, ownerBpId],
   );
 
   // 画面もサーバーも同じ validateMovement を呼ぶ（movement-type-core.ts）。
@@ -248,6 +276,7 @@ export function GoodsMovementForm({
           storageLocationId: toNumberOrNull(to.locationId),
           shelfId: toNumberOrNull(to.shelfId),
         },
+        ownerBpId,
         notes: notes.trim(),
       });
       if (!result.ok) {
@@ -377,6 +406,18 @@ export function GoodsMovementForm({
                 value={itemValue}
                 withAsterisk
               />
+              {ownerOptions.length > 0 && (
+                <Select
+                  clearable
+                  data={ownerOptions}
+                  description={tr("inventory.goodsMovement.ownerHint")}
+                  label={tr("inventory.goodsMovement.owner")}
+                  onChange={setOwnerBpId}
+                  placeholder={tr("inventory.goodsMovement.ownerOwn")}
+                  searchable={ownerOptions.length > 5}
+                  value={ownerBpId}
+                />
+              )}
               <Group align="flex-end" grow={!isMobile}>
                 <NumberInput
                   allowDecimal={parsedItem?.itemType === "MATERIAL"}

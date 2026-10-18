@@ -29,6 +29,7 @@ const draft = (over: Partial<MovementDraft> = {}): MovementDraft => ({
   quantity: 5,
   from: nowhere,
   to: nowhere,
+  ownerBpId: null,
   ...over,
 });
 
@@ -130,5 +131,34 @@ describe("計上の並び", () => {
     expect(steps.map((s) => s.transactionType)).toEqual(["OUT", "IN"]);
     expect(steps[0]?.endpoint).toEqual(at(1));
     expect(steps[1]?.endpoint).toEqual(at(2));
+  });
+});
+
+describe("所有者（預り品）は置き場所ではなく在庫の属性", () => {
+  it("所有者を指定しても、どちら側が要るかの判定は変わらない", () => {
+    const r = rule("TRANSFER", true, true);
+    const own = draft({ from: at(1), to: at(2) });
+    const customer = draft({ from: at(1), to: at(2), ownerBpId: "bp-1" });
+    expect(validateMovement(r, customer)).toEqual(validateMovement(r, own));
+  });
+
+  it("同じ場所の判定に所有者は混ざらない — 持ち主が違っても同じ棚なら弾く", () => {
+    // 所有者は両端で同じ（draft が 1 つ持つ）ので、「持ち主を移す移動」は
+    // そもそも表現できない。ここが endpoint 側に乗っていると、同じ棚のまま
+    // 所有者だけ変えた移動が sameEndpoint をすり抜ける。
+    expect(
+      validateMovement(
+        rule("TRANSFER", true, true),
+        draft({ from: at(1, 2, 3), to: at(1, 2, 3), ownerBpId: "bp-1" }),
+      ),
+    ).toContain("sameEndpoint");
+  });
+
+  it("計上の並びも所有者に依らない", () => {
+    const steps = postingsFor(
+      rule("TRANSFER", true, true),
+      draft({ from: at(1), to: at(2), ownerBpId: "bp-1" }),
+    );
+    expect(steps.map((s) => s.transactionType)).toEqual(["OUT", "IN"]);
   });
 });

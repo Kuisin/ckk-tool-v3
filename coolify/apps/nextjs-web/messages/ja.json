@@ -10631,6 +10631,7 @@
       "selectAnItem": "品目を選択してください",
       "quantityPositive": "数量は正の数で入力してください",
       "typeInactive": "この移動タイプは無効化されています",
+      "ownerOnlyForProducts": "預り品を持てるのは製品だけです",
       "postFailed": "入出庫の登録に失敗しました",
       "problem": {
         "itemRequired": "品目を選択してください",
@@ -10648,6 +10649,9 @@
       "quantity": "数量",
       "lotNumber": "ロット番号",
       "lotNumberHint": "製品のみ有効（素材では無視されます）",
+      "owner": "所有者",
+      "ownerOwn": "自社",
+      "ownerHint": "預り品（再研磨でお客様から預かっている工具）を動かすときだけ選びます",
       "problemsTitle": "登録できません",
       "submit": "登録",
       "lastPosted": "直前に登録した伝票",

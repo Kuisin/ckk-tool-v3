@@ -10631,6 +10631,7 @@
       "selectAnItem": "Select an item",
       "quantityPositive": "Enter a quantity greater than zero",
       "typeInactive": "This movement type is disabled",
+      "ownerOnlyForProducts": "Only products can be customer-owned",
       "postFailed": "Could not record the movement",
       "problem": {
         "itemRequired": "Select an item",
@@ -10648,6 +10649,9 @@
       "quantity": "Quantity",
       "lotNumber": "Lot number",
       "lotNumberHint": "Products only (ignored for materials)",
+      "owner": "Owner",
+      "ownerOwn": "Our own stock",
+      "ownerHint": "Set this only when moving customer-owned stock — tools received for regrinding",
       "problemsTitle": "Cannot record yet",
       "submit": "Record",
       "lastPosted": "Last recorded movement",

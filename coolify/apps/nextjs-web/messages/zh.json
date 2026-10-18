@@ -10631,6 +10631,7 @@
       "selectAnItem": "请选择品目",
       "quantityPositive": "请输入大于零的数量",
       "typeInactive": "此移动类型已停用",
+      "ownerOnlyForProducts": "只有产品才能作为客户寄存品",
       "postFailed": "登记出入库失败",
       "problem": {
         "itemRequired": "请选择品目",
@@ -10648,6 +10649,9 @@
       "quantity": "数量",
       "lotNumber": "批次号",
       "lotNumberHint": "仅产品有效（材料将忽略此项）",
+      "owner": "所有者",
+      "ownerOwn": "本公司",
+      "ownerHint": "仅在移动寄存品（再研磨时从客户接收的刀具）时选择",
       "problemsTitle": "暂时无法登记",
       "submit": "登记",
       "lastPosted": "刚刚登记的单据",
