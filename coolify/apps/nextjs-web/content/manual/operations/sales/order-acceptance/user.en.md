@@ -168,7 +168,7 @@ On final approval, the following happens automatically:
 
 - Every order line is **cancelled** and the order acceptance itself becomes 「**キャンセル**」 (cancelled).
 - All reserved stock is **released**.
-- Unfinished work orders are **cancelled along with it** (completed ones, and combined-lot work orders that also make pieces for other lines, are left alone).
+- Unfinished work orders are **cancelled along with it** (completed ones, and combined-lot work orders that also make pieces for other lines, are left alone). **Steps already in progress stop too** — the work session of whoever was working it on a shared device is closed at that moment and the step disappears from their list (the time worked up to then is kept as actuals).
 
 If even one line has already shipped, cancellation cannot be requested. If the request is rejected, nothing changes and the request is closed.
 
