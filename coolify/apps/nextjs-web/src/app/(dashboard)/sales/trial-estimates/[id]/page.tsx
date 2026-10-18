@@ -4,6 +4,7 @@ import { TrialEstimateDetail } from "@/components/sales/trial-estimates/TrialEst
 import type { LinkedPriceEntry } from "@/components/sales/trial-estimates/types";
 import { appLabelForKey } from "@/lib/app-list";
 import { fetchAuditEntries } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import {
@@ -13,9 +14,15 @@ import {
   parseDocKey,
 } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
+import {
+  ESTIMATE_COST_PERMISSION,
+  withoutCost,
+  withoutCostFlags,
+} from "@/lib/estimate-cost";
 import { type LocalizedText, localized } from "@/lib/format";
 import { fetchPriceHistoryByType } from "@/lib/material-pricing";
 import { formatDocPageTitle } from "@/lib/page-title";
+import { getScalePreset } from "@/lib/price-scale-preset-store";
 import { getTrialPricingSettings } from "@/lib/system-settings";
 import {
   toToolTypeOptions,
@@ -54,23 +61,35 @@ export default async function TrialEstimateDetailPage({
   const key = parseDocKey(id, "EST");
   if (!key) notFound();
 
-  const [record, linked, auditEntries, settings, memos, tr] = await Promise.all(
-    [
-      fetchTrialEstimate(key.yearMonth, key.seq),
-      prisma.priceListVariant.findMany({
-        where: { estimateYearMonth: key.yearMonth, estimateSeq: key.seq },
-        include: {
-          entry: { include: { customerBp: true, product: true } },
-          _count: { select: { tiers: true } },
-        },
-      }),
-      fetchAuditEntries("estimates", formatEstimateNumber(key)),
-      getTrialPricingSettings(),
-      listMemos("estimates", formatEstimateNumber(key)),
-      getTranslations(),
-    ],
-  );
+  const [
+    record,
+    linked,
+    auditEntries,
+    settings,
+    memos,
+    tr,
+    scalePreset,
+    costAuthz,
+  ] = await Promise.all([
+    fetchTrialEstimate(key.yearMonth, key.seq),
+    prisma.priceListVariant.findMany({
+      where: { estimateYearMonth: key.yearMonth, estimateSeq: key.seq },
+      include: {
+        entry: { include: { customerBp: true, item: true } },
+        _count: { select: { tiers: true } },
+      },
+    }),
+    fetchAuditEntries("estimates", formatEstimateNumber(key)),
+    getTrialPricingSettings(),
+    listMemos("estimates", formatEstimateNumber(key)),
+    getTranslations(),
+    getScalePreset(),
+    checkPermission(ESTIMATE_COST_PERMISSION, "READ"),
+  ]);
   if (!record) notFound();
+  // 原価を見られない人には、画面の行を消すだけでなく値ごと渡さない。
+  const canViewCost = costAuthz.ok;
+  const pricingOptions = toTrialPricingOptions(settings);
 
   const typeId = Number(record.materialTypeId);
   const priceHistory =
@@ -87,10 +106,10 @@ export default async function TrialEstimateDetailPage({
 
   const linkedEntries: LinkedPriceEntry[] = linked.map((v) => {
     const code = formatProductNumber(
-      v.entry.product.yearMonth,
-      v.entry.product.seq,
+      v.entry.item?.yearMonth ?? null,
+      v.entry.item?.seq ?? null,
     );
-    const nm = localized(v.entry.product.name as LocalizedText | null);
+    const nm = localized(v.entry.item?.name as LocalizedText | null);
     return {
       entryId: formatPriceListNumber({
         yearMonth: v.entry.yearMonth,
@@ -106,11 +125,26 @@ export default async function TrialEstimateDetailPage({
   return (
     <TrialEstimateDetail
       auditEntries={auditEntries}
+      canViewCost={canViewCost}
       linkedEntries={linkedEntries}
       memos={memos}
       priceHistory={priceHistory}
-      pricingOptions={toTrialPricingOptions(settings)}
-      record={record}
+      pricingOptions={
+        canViewCost
+          ? pricingOptions
+          : {
+              ...pricingOptions,
+              criteria: pricingOptions.criteria
+                ? withoutCostFlags(pricingOptions.criteria)
+                : undefined,
+            }
+      }
+      record={
+        canViewCost || !record.resultSnapshot
+          ? record
+          : { ...record, resultSnapshot: withoutCost(record.resultSnapshot) }
+      }
+      scalePreset={scalePreset}
       toolTypeOptions={toToolTypeOptions(settings, tr)}
     />
   );

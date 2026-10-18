@@ -25,6 +25,12 @@ import {
   itemSpecFromRow,
   resolveItemPass,
 } from "@/lib/inspection-core";
+import {
+  onOutsourceIssueTx,
+  onOutsourceReturnTx,
+  regrindOwnerBpIdTx,
+} from "@/lib/inventory";
+import { allocateDocumentKey } from "@/lib/numbering";
 import { fetchAllowedWorkLocationIds } from "@/lib/work-locations";
 import { submitFlowChange } from "@/lib/work-order-flow-changes";
 import { requiredPlanFields } from "@/lib/work-plan-core";
@@ -1074,16 +1080,100 @@ export async function saveOutsourceDates(
     }
     const toDate = (s: string | null) => (s ? new Date(s) : null);
     const wasReceived = step.outsourceReceivedAt != null;
-    await prisma.workOrderStep.update({
-      where: { id: v.stepId },
-      data: {
-        outsourceRequestedAt: toDate(v.requestedAt),
-        outsourceExpectedAt: toDate(v.expectedAt),
-        outsourceReceivedAt: toDate(v.receivedAt),
-        ...(v.outsourceCost !== undefined
-          ? { outsourceCost: v.outsourceCost }
-          : {}),
+
+    // ── 預け在庫（外注が持っている分）────────────────────────────────────
+    //
+    // 出したこと・戻ったことを台帳に残す。**印は伝票 id で、日付ではない** —
+    // 日付は後から直せるので、日付の有無で判断すると直すたびに預け在庫が
+    // 増える。仕入先が付いていない工程（外注先未定）は載せようがないので
+    // 日付だけを保存する。
+    const woItem = await prisma.workOrder.findUnique({
+      where: { id: step.workOrderId },
+      select: {
+        id: true,
+        workOrderNumber: true,
+        productItemId: true,
+        plannedQuantity: true,
+        type: true,
       },
+    });
+    const supplierBpId = step.supplierBpId;
+    // **工程が始まる前に依頼日を入れることがある**（先に外注へ出して、戻って
+    // きてから工程を開始する現場もある）。そのとき受入数はまだ無いので、
+    // 指示書の予定数量で載せる。戻りは台帳の残で頭打ちにするので、多めに
+    // 載っていても戻しすぎにはならない。
+    const custodyQuantity = step.inputQuantity ?? woItem?.plannedQuantity ?? 0;
+    const postIssue =
+      supplierBpId != null &&
+      woItem != null &&
+      custodyQuantity > 0 &&
+      v.requestedAt != null &&
+      step.outsourceIssueMovementId == null;
+    const postReturn =
+      supplierBpId != null &&
+      woItem != null &&
+      v.receivedAt != null &&
+      step.outsourceReturnMovementId == null &&
+      (postIssue || step.outsourceIssueMovementId != null);
+
+    // 採番はトランザクションの外（全書類共通の作法。ロールバックで番号は飛ぶ）。
+    const issueKey = postIssue
+      ? await allocateDocumentKey("INVENTORY_MOVEMENT")
+      : null;
+    const returnKey = postReturn
+      ? await allocateDocumentKey("INVENTORY_MOVEMENT")
+      : null;
+
+    await prisma.$transaction(async (tx) => {
+      let issueMovementId: string | null = null;
+      let returnMovementId: string | null = null;
+      // 再研磨の指示書では預り品（顧客の物）を外注へ出す — 所有者を付けて
+      // 「所有者バケット ⇄ 所有者 + 預け先バケット」の移動として書く。
+      const ownerBpId =
+        woItem?.type === "REGRIND" && (issueKey || returnKey)
+          ? await regrindOwnerBpIdTx(tx, woItem.id)
+          : null;
+      if (issueKey && supplierBpId && woItem) {
+        issueMovementId = await onOutsourceIssueTx(tx, issueKey, {
+          workOrderId: woItem.id,
+          workOrderNumber: woItem.workOrderNumber,
+          itemId: woItem.productItemId,
+          supplierBpId,
+          quantity: custodyQuantity,
+          plantId: step.plantId,
+          ownerBpId,
+        });
+      }
+      if (returnKey && supplierBpId && woItem) {
+        returnMovementId = await onOutsourceReturnTx(tx, returnKey, {
+          workOrderId: woItem.id,
+          workOrderNumber: woItem.workOrderNumber,
+          itemId: woItem.productItemId,
+          supplierBpId,
+          ownerBpId,
+          // 戻る数は預けた数まで（onOutsourceReturnTx が台帳残で頭打ちにする）。
+          quantity:
+            custodyQuantity > 0 ? custodyQuantity : Number.MAX_SAFE_INTEGER,
+          plantId: step.plantId,
+        });
+      }
+      await tx.workOrderStep.update({
+        where: { id: v.stepId },
+        data: {
+          outsourceRequestedAt: toDate(v.requestedAt),
+          outsourceExpectedAt: toDate(v.expectedAt),
+          outsourceReceivedAt: toDate(v.receivedAt),
+          ...(v.outsourceCost !== undefined
+            ? { outsourceCost: v.outsourceCost }
+            : {}),
+          ...(issueMovementId
+            ? { outsourceIssueMovementId: issueMovementId }
+            : {}),
+          ...(returnMovementId
+            ? { outsourceReturnMovementId: returnMovementId }
+            : {}),
+        },
+      });
     });
     // 外注入荷のハンドオフ通知（null → 入荷日設定の遷移時のみ・best-effort）
     if (!wasReceived && v.receivedAt) {
@@ -1305,7 +1395,6 @@ export async function addStepPlan(
         workLocationRequired: true,
         planTimeRequired: true,
         planAssigneeRequired: true,
-        planQuantityRequired: true,
       },
     });
     const required = requiredPlanFields(
@@ -1335,12 +1424,6 @@ export async function addStepPlan(
         errors: [tr("production.stepExecutionActions.timeRequiredForPlan")],
       };
     }
-    if (required.includes("QUANTITY") && v.quantity == null) {
-      return {
-        ok: false,
-        errors: [tr("production.stepExecutionActions.quantityRequiredForPlan")],
-      };
-    }
     const actor = await getCurrentActorId();
     await prisma.workOrderStepPlan.create({
       data: {
@@ -1349,7 +1432,8 @@ export async function addStepPlan(
         plannedDate: new Date(`${v.date}T00:00:00+09:00`),
         plannedStartAt: toJstTimestamp(v.date, v.startTime),
         plannedEndAt: toJstTimestamp(v.date, v.endTime),
-        quantity: v.quantity,
+        // 数量は**計画には書かない**（実績だけが持つ）。画面も送ってこないが、
+        // 直接叩かれても書かないようここで落とす。
         workLocationId: v.workLocationId,
         notes: v.notes.trim() || null,
         createdBy: actor,
@@ -1361,12 +1445,6 @@ export async function addStepPlan(
           end: v.endTime ?? "",
         })
       : "";
-    const quantityText =
-      v.quantity != null
-        ? tr("production.stepExecutionActions.auditQuantitySuffix", {
-            quantity: v.quantity,
-          })
-        : "";
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
@@ -1375,7 +1453,7 @@ export async function addStepPlan(
         note: tr("production.stepExecutionActions.auditPlanAdded", {
           date: v.date,
           time: timeText,
-          quantity: quantityText,
+          quantity: "",
         }),
       },
     });

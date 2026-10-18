@@ -1,12 +1,19 @@
 import { TrialEstimateForm } from "@/components/sales/trial-estimates/TrialEstimateForm";
+import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { parseDocKey } from "@/lib/doc-number";
+import {
+  ESTIMATE_COST_PERMISSION,
+  withoutCost,
+  withoutCostFlags,
+} from "@/lib/estimate-cost";
 import {
   fetchMaterialTypeDefaultPrice,
   fetchPriceHistoryByType,
   type MaterialTypeKey,
 } from "@/lib/material-pricing";
 import { computeReferencePrice } from "@/lib/material-pricing-core";
+import { getScalePreset } from "@/lib/price-scale-preset-store";
 import { getTrialPricingSettings } from "@/lib/system-settings";
 import {
   fetchCustomerOptions,
@@ -36,6 +43,8 @@ export default async function TrialEstimateNewPage({
     surfaceFinishOptions,
     source,
     settings,
+    scalePreset,
+    costAuthz,
   ] = await Promise.all([
     fetchCustomerOptions(),
     fetchMaterialTypeOptions(),
@@ -43,7 +52,11 @@ export default async function TrialEstimateNewPage({
     fetchSurfaceFinishOptions(),
     fromKey ? fetchTrialEstimate(fromKey.yearMonth, fromKey.seq) : null,
     getTrialPricingSettings(),
+    getScalePreset(),
+    checkPermission(ESTIMATE_COST_PERMISSION, "READ"),
   ]);
+  // 原価を見られない人には、画面の行を消すだけでなく値ごと渡さない。
+  const canViewCost = costAuthz.ok;
 
   // 複製元が材種構成を持つときのみ仕入実績＋既定単価を取得。新規はフォームで
   // 材種構成が揃った時点でクライアントから再取得する。
@@ -76,12 +89,22 @@ export default async function TrialEstimateNewPage({
 
   return (
     <TrialEstimateForm
+      canViewCost={canViewCost}
       customerOptions={customerOptions}
       diameterOptions={diameterOptions}
       initialPricing={initialPricing}
       materialTypeOptions={materialTypeOptions}
-      settings={settings}
-      source={source}
+      scalePreset={scalePreset}
+      settings={
+        canViewCost
+          ? settings
+          : { ...settings, criteria: withoutCostFlags(settings.criteria) }
+      }
+      source={
+        canViewCost || !source?.resultSnapshot
+          ? source
+          : { ...source, resultSnapshot: withoutCost(source.resultSnapshot) }
+      }
       surfaceFinishOptions={surfaceFinishOptions}
     />
   );

@@ -32,6 +32,8 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   inspection_template_groups: true,
   products: true,
   materials: true,
+  // 再研磨品目 (MS0H) — 実表名。products / materials と同じ app.items。
+  items: true,
   material_types: true,
   plants: true,
   regions: true,
@@ -42,6 +44,7 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   defect_types: true,
   work_location_groups: true,
   tax_categories: true,
+  charge_items: true,
   // 率の行は「2026-10-01 から 10%」であって名前を持たない。推測で区分名を
   // 出すと、どの行が変わったのか却って分からなくなるので正直に「無い」。
   tax_category_rates: false,
@@ -74,6 +77,8 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   material_type_prices: false, // 材種×直径×黒皮研磨の価格行。単体の名前を持たない
   billing_closings: false, // 顧客×締日の処理行
   material_receipts: false, // 入荷イベント行
+  item_inventory: false, // 在庫バケット。単体の名前を持たない（品目 × 場所）
+  movement_types: true, // 移動タイプは名前を持つ
   privileged_access_requests: false, // 申請行（code は権限コード、対象者ではない）
   user_change_requests: false, // 変更依頼行（targetUserId はあるが自表の名前ではない）
   portal_grants: false, // 共有範囲の付与行

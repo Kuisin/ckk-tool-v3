@@ -23,7 +23,7 @@ export {
 } from "../../production/work-orders/data";
 
 const RECEIPT_INCLUDE = {
-  material: true,
+  item: true,
   plant: true,
   supplierBp: true,
   createdByUser: { select: { displayName: true } },
@@ -44,9 +44,9 @@ type ReceiptRow = NonNullable<Awaited<ReturnType<typeof findRow>>>;
 function mapReceipt(r: ReceiptRow): MaterialReceiptView {
   return {
     id: r.id,
-    materialId: String(r.materialId),
-    materialCode: r.material.code,
-    materialName: localized(r.material.name as LocalizedText | null),
+    itemId: String(r.itemId),
+    materialCode: r.item?.code ?? "",
+    materialName: localized(r.item?.name as LocalizedText | null),
     supplierName: r.supplierBp
       ? localized(r.supplierBp.name as LocalizedText | null)
       : null,

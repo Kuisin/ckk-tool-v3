@@ -18,9 +18,27 @@
  * させると別の製品を掴むため。誤った製品は誤った顧客より下流（指示書・出荷）
  * まで響く。
  *
- * 照合の材料は名称だけではない。**キーワード**（products.match_names — マスタ
+ * 照合の材料は名称だけではない。**キーワード**（items.match_names — マスタ
  * MS04 の「キーワード」欄）も同じ段階で当てる。名称は 1 つしか持てないのに
  * 相手はいろいろな呼び方で書いてくるので、そのための欄がある。
+ *
+ * ## lib/material-match と 1 本に畳まなかった理由
+ *
+ * 製品と素材のマスタは 1 つ（app.items）になったが、**当て方の規則は別物の
+ * まま**なので 2 本に分かれている。共有しているのは共有すべきもの
+ * （`productMatchKey` の正規化 / 最小長 4 / `lib/text-match` の段階判定）で、
+ * 違うのは次の 2 点 — どちらも「畳むと片方が悪くなる」:
+ *
+ *   1. **プールの作り方。** 製品は数万件を見込むので probe の梯子で DB に
+ *      候補を出させる（`searchProbes`）。素材は数千件なので全件を JS へ渡す。
+ *      素材に梯子を被せると無駄なクエリが増え、製品を全件読むのは不可能。
+ *   2. **素材コードの完全一致が別格。** 仕入先はこちらの素材コードを注文
+ *      どおりに刷り返してくるので、当たれば 1 件に決まる（lib/material-match
+ *      の `MATERIAL_CODE_RE`）。製品側に同じ短絡は無い — 注文書に印字される
+ *      のは相手の品番で、それは `customer_product_codes` が受け持つ。
+ *
+ * ★ **扱う id は `items.id`（itemType = PRODUCT）**（品目統合 第 3 段）。
+ *   プールを組む側（lib/intake.ts）が種別で絞る。
  */
 
 import { searchKey } from "./bp-search";
@@ -34,6 +52,7 @@ import {
 
 /** 突合対象の製品 1 件。 */
 export interface ProductMatchable {
+  /** 品目 id（`app.items.id` / itemType = PRODUCT）を文字列にしたもの。 */
   id: string;
   /** 画面表示用（名称 + 製品コード）。 */
   label: string;
@@ -44,7 +63,7 @@ export interface ProductMatchable {
   /** 旧システムの識別子。注文書に相手の品番として印字されることがある。 */
   legacyKey?: string | null;
   /**
-   * キーワード（products.match_names — マスタ MS04 の「キーワード」欄）。
+   * キーワード（items.match_names — マスタ MS04 の「キーワード」欄）。
    * 相手の呼び方・略称・英字表記など、**名称欄には入れられない別表記**。
    * 名称と同じ段階（完全 → 正規化 → 頭から → 一部）で評価する。
    */

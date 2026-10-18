@@ -85,13 +85,13 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
   product_inventory: {
     appListKey: "inventory",
     suffixKey: "suffixProduct",
-    listPath: "/production/inventory/products",
+    listPath: "/inventory/products",
     directDetail: true,
   },
   material_inventory: {
     appListKey: "inventory",
     suffixKey: "suffixMaterial",
-    listPath: "/production/inventory/materials",
+    listPath: "/inventory/materials",
     directDetail: true,
   },
   // 一般
@@ -134,6 +134,16 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     listPath: "/shipping/delivery-orders",
     directDetail: true,
   },
+  inventory_movements: {
+    appListKey: "inventory-movements",
+    listPath: "/inventory/movements",
+    directDetail: true,
+  },
+  stock_takes: {
+    appListKey: "stock-takes",
+    listPath: "/inventory/stock-takes",
+    directDetail: true,
+  },
   delivery_notes: {
     appListKey: "delivery-notes",
     listPath: "/shipping/delivery-notes",
@@ -149,6 +159,11 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     listPath: "/billing/closings",
   },
   // マスタ
+  // 製品・素材は app.items（品目統合 第 3 段）。`table_name` は
+  // `products` / `materials` のまま — あれは「そのとき何を書いたか」の事実で、
+  // 行き先の話ではない。`record_id` は移行 20261102090000 が品目 id へ
+  // 読み替えたので、URL はそのまま繋がる（読み替えられなかった行は
+  // `legacy:<旧 id>` になっていて、数値でないので詳細は開かない）。
   products: {
     appListKey: "master-products",
     listPath: "/master/products",
@@ -158,6 +173,12 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     appListKey: "master-materials",
     listPath: "/master/materials",
     directDetail: true,
+  },
+  // 再研磨品目 (MS0H)。詳細ページを持たない（編集は一覧のモーダル）ので
+  // 一覧まで。`items` を書くのはこの画面だけ — 製品・素材は旧名のまま。
+  items: {
+    appListKey: "master-regrind-items",
+    listPath: "/master/regrind-items",
   },
   material_types: {
     appListKey: "master-material-types",

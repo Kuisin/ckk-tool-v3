@@ -1,0 +1,135 @@
+/**
+ * numbering.ts — document numbering on app.numbering_sequences
+ * (_specs/tables.md §採番管理). Server-only.
+ *
+ * Formats: PRD-YYYYMM-NNNN (製品) / RGD-YYYYMM-NNNN (再研磨品目) / EST-, QOT- ... -NNNNN with monthly reset.
+ * The increment is a single atomic INSERT ... ON CONFLICT statement, so
+ * concurrent callers never receive the same number.
+ *
+ * ⚠️ **nextjs-kiosk との twin file**（`pnpm twin:sync` / twin-files.test.ts）。
+ * 共有端末も工程完了で在庫を動かし、そのたびに入出庫伝票を起こす = 採番が要る。
+ * 採番の upsert を 2 か所に書くと必ずずれるので、この 1 本を逐語コピーで持つ。
+ * 依存は `./db` の prisma だけ（両アプリに同じ形である）。
+ */
+
+import { prisma } from "./db";
+
+const SEQUENCES = {
+  PRODUCT: { prefix: "PRD", digits: 4 },
+  // 再研磨品目 (MS0H)。製品と同じ items 表に載るが、売る**役務**なので
+  // 番号を分ける — 一覧・注文請書・請求書で「これは研ぎ直しだ」と
+  // コードだけで読めるようにするため。
+  REGRIND_ITEM: { prefix: "RGD", digits: 4 },
+  ESTIMATE: { prefix: "EST", digits: 5 },
+  QUOTE: { prefix: "QOT", digits: 5 },
+  PRICE_LIST: { prefix: "PRC", digits: 5 },
+  ORDER: { prefix: "ORD", digits: 5 }, // 注文明細ベース（枝番は行側で 1..N）
+  DELIVERY_ORDER: { prefix: "DOR", digits: 5 }, // 出荷書（delivery order）
+  DELIVERY: { prefix: "DRN", digits: 5 }, // 納品書
+  PURCHASE: { prefix: "PO", digits: 5 }, // 素材発注書（po_number に文字列保存）
+  PURCHASE_REQUEST: { prefix: "PRQ", digits: 5 }, // 購買依頼（request_number に文字列保存）
+  INVOICE: { prefix: "INV", digits: 5 }, // 請求書
+  DESIGN: { prefix: "DSG", digits: 5 }, // 設計依頼書（request_number に文字列保存）
+  // 指示書の書類番号（表示用）。ロット番号は別キー WORK_ORDER（通し連番）—
+  // 同じキーにすると月次リセットの upsert が通し連番を壊すため分けている。
+  WORK_ORDER_DOC: { prefix: "WOR", digits: 5 },
+  // フォーム回答 (CM02)。承認依頼・監査・添付はこの番号で紐づく。
+  FORM_RESPONSE: { prefix: "FRM", digits: 5 },
+  // 社内文書 (CM03)。DC02「管理マニュアル」とは無関係（あちらはファイル）。
+  INTERNAL_PAGE: { prefix: "DOC", digits: 5 },
+  // 入出庫伝票 (PD07)。在庫が動くたびに 1 枚 — 他の書類よりずっと数が出る。
+  INVENTORY_MOVEMENT: { prefix: "MOV", digits: 5 },
+  // 棚卸 (PD08)。
+  STOCK_TAKE: { prefix: "STK", digits: 5 },
+  // 会計文書（転記・反対仕訳）。請求書番号とは別の採番 — 1 請求書に元の文書・
+  // 反対仕訳・訂正後の文書が複数本対応し得るため。
+  ACCOUNTING_DOC: { prefix: "ACC", digits: 5 },
+} as const;
+
+export type NumberingKey = keyof typeof SEQUENCES;
+
+/**
+ * Allocate the next (yearMonth, seq) pair for `key`. Documents with combined
+ * keys (価格試算/見積書) store these two columns and DERIVE the display number
+ * (lib/doc-number.ts); `nextDocumentNumber` keeps the formatted-string API for
+ * single-column ids (製品コード).
+ */
+/**
+ * JST の YYYYMM（監査 P1-5: コンテナ TZ=UTC だと JST 0:00〜8:59 の伝票が
+ * 前月番号になるため、明示的に Asia/Tokyo で導出する）。
+ */
+export function currentYearMonthJst(): string {
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((p) => p.type === "year")?.value ?? "";
+  const month = parts.find((p) => p.type === "month")?.value ?? "";
+  return `${year}${month}`;
+}
+
+export async function allocateDocumentKey(
+  key: NumberingKey,
+): Promise<{ yearMonth: string; seq: number }> {
+  const { prefix } = SEQUENCES[key];
+  const yearMonth = currentYearMonthJst();
+
+  const rows = await prisma.$queryRaw<{ last_sequence: number }[]>`
+    INSERT INTO "app"."numbering_sequences"
+      ("key", "prefix", "last_year_month", "last_sequence", "updated_at")
+    VALUES (${key}, ${prefix}, ${yearMonth}, 1, now())
+    ON CONFLICT ("key") DO UPDATE SET
+      "last_sequence" = CASE
+        WHEN "numbering_sequences"."last_year_month" = ${yearMonth}
+          THEN "numbering_sequences"."last_sequence" + 1
+        ELSE 1
+      END,
+      "last_year_month" = ${yearMonth},
+      "updated_at" = now()
+    RETURNING "last_sequence"
+  `;
+  const seq = rows[0]?.last_sequence;
+  if (!seq) throw new Error(`numbering failed for ${key}`);
+  return { yearMonth, seq };
+}
+
+/** Next single-column document id, e.g. `PRD-202607-0012`. Resets monthly. */
+export async function nextDocumentNumber(key: NumberingKey): Promise<string> {
+  const { prefix, digits } = SEQUENCES[key];
+  const { yearMonth, seq } = await allocateDocumentKey(key);
+  return `${prefix}-${yearMonth}-${String(seq).padStart(digits, "0")}`;
+}
+
+// ── Global serials (no monthly reset) ────────────────────────────────────────
+
+const SERIALS = {
+  BP: { prefix: "BP", digits: 5 },
+  WORK_ORDER: { prefix: "WO", digits: 5 }, // 指示書番号 = ロット番号（生 int で使用）
+} as const;
+
+export type SerialKey = keyof typeof SERIALS;
+
+/** Next raw global serial (no reset). 指示書番号・ロット番号はこの生 int。 */
+export async function nextSerialNumber(key: SerialKey): Promise<number> {
+  const { prefix } = SERIALS[key];
+  const rows = await prisma.$queryRaw<{ last_sequence: number }[]>`
+    INSERT INTO "app"."numbering_sequences"
+      ("key", "prefix", "last_year_month", "last_sequence", "updated_at")
+    VALUES (${key}, ${prefix}, NULL, 1, now())
+    ON CONFLICT ("key") DO UPDATE SET
+      "last_sequence" = "numbering_sequences"."last_sequence" + 1,
+      "updated_at" = now()
+    RETURNING "last_sequence"
+  `;
+  const seq = rows[0]?.last_sequence;
+  if (!seq) throw new Error(`numbering failed for ${key}`);
+  return seq;
+}
+
+/** Next global serial code, e.g. `BP-00012`. Never resets. */
+export async function nextSerialCode(key: SerialKey): Promise<string> {
+  const { prefix, digits } = SERIALS[key];
+  const seq = await nextSerialNumber(key);
+  return `${prefix}-${String(seq).padStart(digits, "0")}`;
+}

@@ -17,8 +17,8 @@ import {
   Select,
   Stack,
   Switch,
-  Table,
   Text,
+  Textarea,
   TextInput,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -38,12 +38,13 @@ import { openConfirm } from "@/components/ui/modals";
 import { FormActions, FormSection } from "@/components/ui/shells";
 import { localized } from "@/lib/format";
 import type { ToolType, TrialInput } from "@/lib/trial-pricing";
-import type {
-  Criterion,
-  CriterionRole,
-  CustomInputDef,
-  LookupTable,
-  ToolTypeDef,
+import {
+  type Criterion,
+  type CriterionRole,
+  type CustomInputDef,
+  isCostCriterion,
+  type LookupTable,
+  type ToolTypeDef,
 } from "@/lib/trial-pricing-criteria";
 import { runCriteriaEngine } from "@/lib/trial-pricing-engine";
 import {
@@ -71,7 +72,7 @@ const INPUT_VARS = [
   "ldBladeLength",
   "machiningMinutes",
 ];
-const STATE_VARS = ["quantity", "subtotal", "discountRate", "autoRate"];
+const STATE_VARS = ["quantity", "subtotal"];
 // correctionFactor/ldChargePer10min/machiningRatePer10min/spareShapeCount は
 // scope:"global" のカスタム値へ移行し「カスタム入力」グループに表示される。
 const COEFF_VARS = ["materialBasisLength", "coatingFactor"];
@@ -82,7 +83,6 @@ const HELPER_TOKENS = [
   "coatingRawCost(",
   "ldMinutes(",
   "matchDesc(",
-  "lotDiscountRate(",
   "stepTypeRate(",
   "neckTypeRate(",
   "cylinderTypeRate(",
@@ -112,12 +112,11 @@ const SAMPLE_INPUT: TrialInput = {
   machiningMinutes: 8,
   machiningRatePer10min: 2000,
   spareShapeCount: 3,
-  lotQuantities: [10, 50, 100],
 };
 
 interface TestOutput {
   value: number | null;
-  lots: { quantity: number; estimateUnitPrice: number }[];
+  estimateUnitPrice: number;
   warnings: string[];
 }
 
@@ -324,10 +323,7 @@ export function CriterionEditForm({
     ];
     setTest({
       value: typeof breakdownVal === "number" ? breakdownVal : null,
-      lots: r.lots.map((l) => ({
-        quantity: l.quantity,
-        estimateUnitPrice: l.estimateUnitPrice,
-      })),
+      estimateUnitPrice: r.lots[0]?.estimateUnitPrice ?? 0,
       warnings: r.warnings,
     });
   };
@@ -368,7 +364,25 @@ export function CriterionEditForm({
               mt={26}
               onChange={(e) => set({ enabled: e.currentTarget.checked })}
             />
+            <Switch
+              checked={isCostCriterion(criterion)}
+              description={tr("settings.criterionEditForm.isCostHint")}
+              disabled={criterion.role === "final"}
+              label={tr("settings.criterionEditForm.isCost")}
+              mt={26}
+              onChange={(e) => set({ isCost: e.currentTarget.checked })}
+            />
           </Group>
+
+          <Textarea
+            autosize
+            description={tr("settings.criterionEditForm.descriptionHint")}
+            label={tr("settings.criterionEditForm.description")}
+            maxLength={1000}
+            minRows={2}
+            onChange={(e) => set({ description: e.currentTarget.value })}
+            value={criterion.description ?? ""}
+          />
 
           <Group align="center" gap="xs">
             <Text c="dimmed" size="xs">
@@ -457,30 +471,10 @@ export function CriterionEditForm({
                   </Text>
                 ))}
                 <Divider />
-                <Table withColumnBorders={false}>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>{tr("common.lot")}</Table.Th>
-                      <Table.Th ta="right">
-                        {tr("settings.criterionEditForm.estimatedUnitPrice")}
-                      </Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {test.lots.map((l) => (
-                      <Table.Tr key={l.quantity}>
-                        <Table.Td>
-                          {tr("settings.criterionEditForm.quantityPcs", {
-                            quantity: l.quantity,
-                          })}
-                        </Table.Td>
-                        <Table.Td className="tabular-nums" ta="right">
-                          ¥{l.estimateUnitPrice.toLocaleString()}
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
+                <Text size="sm">
+                  {tr("settings.criterionEditForm.estimatedUnitPrice")}{" "}
+                  <Code>¥{test.estimateUnitPrice.toLocaleString()}</Code>
+                </Text>
               </Stack>
             </Alert>
           )}

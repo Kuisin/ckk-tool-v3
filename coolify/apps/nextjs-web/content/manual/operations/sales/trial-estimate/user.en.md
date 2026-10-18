@@ -22,6 +22,7 @@ This is the first app you use when you decide the price of a new product.
 - **材種 (material type)** … the kind of material. It is decided by the combination of maker and material grade.
 - **参照単価 (reference unit price)** … the purchase price for 1000 mm of the material. It is filled in automatically from past purchases.
 - **見積単価（基準）(quoted unit price, base)** … the selling price per piece worked out by this estimate. It becomes the 基準単価 (base unit price) on the price list.
+- **参考：数量ごとの単価 (reference: unit price by quantity)** … the estimated unit price (base) times each multiplier of the [quantity scale](/manual/en/operations/sales/trial-estimate/settings), per quantity range. A price list made from this estimate starts with the same tiers.
 - **下書き (draft) / 確定 (confirmed) / 価格表登録済 (used in a price list)** … where the estimate stands now. 下書き means it has only been created, 確定 means it can be used in a price list, and 価格表登録済 means it has actually been used in a price list.
 
 ## Before you start
@@ -54,9 +55,8 @@ When you open the app, you see a list of the estimates made so far.
 8. In the「**加工**」(machining) area, enter the length and kind of the step machining and the neck machining, and the「**加工時間 (分)**」(machining time in minutes).
 9. In the「**コート・処理**」(coating and treatment) area, choose「**コート**」(coating),「**ラップ処理**」(lapping) and「**検査成績書**」(inspection certificate).
 10. If there is LD machining, turn on「**LD加工あり**」(has LD machining) and enter the position, outer diameter and blade length.
-11. Check「**基準数量（本）**」(base quantity in pieces). It starts at 100 pieces.
-12. Finally enter a name in「**価格試算名**」(estimate name). This one is required.
-13. Press「**保存**」(save) at the top right of the screen.
+11. Finally enter a name in「**価格試算名**」(estimate name). This one is required.
+12. Press「**保存**」(save) at the top right of the screen.
 
 ![New trial estimate form](../../../assets/screenshots/trial-estimate-new-01.png)
 
@@ -64,8 +64,9 @@ Every time you enter something,「**価格試算結果**」(estimate result) nea
 
 ![Estimate result (cost breakdown and quoted unit price)](../../../assets/screenshots/trial-estimate-new-02.png)
 
-- **原価内訳（1本あたり）(cost breakdown, per piece)** … the breakdown of material cost, step machining cost, machining unit price, coating cost and so on.
-- **見積単価（基準）(quoted unit price, base)** … the selling price per piece, shown at the very bottom.
+- **原価内訳（1本あたり）(cost breakdown, per piece)** … the breakdown of material cost, step machining cost, machining unit price, coating cost and so on. Press the **ⓘ** to the right of a row to see what that cost counts.
+- **見積単価（基準）(quoted unit price, base)** … the base selling price per piece.
+- **参考：数量ごとの単価 (reference: unit price by quantity)** … the table below it shows the base price times each quantity-scale multiplier, per quantity range.
 
 > 💡 The discount for large quantities (the setting that makes each piece cheaper) is not made on this screen. It is made in the [price list](/manual/en/operations/sales/price-list/user). A trial estimate only gives the base price for one piece.
 
@@ -147,7 +148,6 @@ Every field on the trial estimate screen. There are many, so they are grouped by
 | [Lapping](#field-lapping) | Optional | Whether lapping is applied |
 | [Inspection report](#field-inspection-report) | Optional | Whether a report is supplied |
 | [LD machining / area / OD / flute length](#field-ld) | Optional | LD machining conditions |
-| [Base quantity (pcs)](#field-base-quantity) | Required | How many pieces the costing assumes |
 
 ### Quoted for [#field-customer]
 
@@ -220,10 +220,6 @@ Whether an inspection report is supplied. Selecting it adds the inspection cost.
 ### LD machining / area / OD (mm) / flute length (mm) [#field-ld]
 
 The conditions when LD machining applies. Turning on LD machining enables the area, outside diameter and flute length.
-
-### Base quantity (pcs) [#field-base-quantity]
-
-How many pieces the costing assumes. **Cost per piece changes with quantity** because setup is spread across them, so enter the quantity you actually expect.
 
 ## Questions and problems
 

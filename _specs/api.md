@@ -179,6 +179,55 @@ IP 範囲外 / 背後のユーザーが利用停止 — **どれも同じ本文�
 
 ラベルも書式も**閲覧者ごとに変わる**もので、API には閲覧者が居ない。
 
+## 6.1 製品・素材の id を入れ替えた（2026-09-20・破壊的変更）
+
+製品マスタと素材マスタは 1 つの品目マスタ（`app.items`）に統合された。
+**口の URL も項目名も応答の形も変えていない** — 変わったのは id の**値**だけ:
+
+| 口 | 変わった項目 | 変わらないもの |
+|---|---|---|
+| `/products` / `/materials` | `id` | パス・項目名・`number` / `code` |
+| `/order-lines` / `/work-orders` | `productId` / `materialId` | それ以外 |
+| `/delivery-orders` / `/delivery-notes` | 明細の `productId` | それ以外 |
+| `/inventory/products` / `/inventory/materials` | `productId` / `materialId` | 在庫行の `id`（uuid で不変） |
+
+**利用者の判断で、橋を架けずに切り替えた**（clean break）。旧 id を新 id へ
+読み替えて返し続ける選択肢もあったが、それは旧マスタを落とせなくなる橋を
+外部契約の側に作ることになる。本番稼働前で連携先がまだ居ないうちに、
+1 度だけ壊すほうを選んだ。
+
+⚠️ **旧 id は「見つからない」ではなく「別の行に当たる」。** `products.id` /
+`materials.id` / `items.id` はどれも密な連番なので、切り替え前の id をそのまま
+渡すと必ず何かに解決する。切り替え前に発行した**カーソル**も
+`(updated_at, id)` の組なので、同じ理由で位置がずれる。
+
+**連携先がやること** — 影響する資源を**全件同期からやり直す**（`?updatedSince=`
+での追随ではなく、カーソル無しで先頭から）。保存済みの id で突き合わせている
+なら、素材は `code`（素材コード）、製品は `number`（`PRD-YYYYMM-NNNN`）で
+引き直す。この 2 つは統合をまたいで変わっていない。
+
+同じ注意書きを **`GET /api/v1/openapi.json` の説明**（`lib/api-openapi.ts` の
+`DESCRIPTION`）にも置いてある — 連携先が最初に読むのはこの仕様書ではなく
+あちらなので、片方だけに書かない。
+
+## 6.2 注文種別・指示書種別に `REGRIND` が増えた（2026-10-18）
+
+再研磨（顧客の工具を預かって研ぎ直す）は専用の口を持たず、**通常の書類の鎖を
+そのまま流れる**。そのため既存の口の enum に値が 1 つ増えた:
+
+| 口 | 項目 | 増えた値 |
+|---|---|---|
+| `/order-lines` | `orderType` | `REGRIND`（従来: PRODUCTION / TEST / SAMPLE / OTHER） |
+| `/work-orders` | `type` | `REGRIND`（従来: FROM_STOCK / MANUFACTURE） |
+
+**消した値も変えた形も無い。** OpenAPI 文書はこれらの項目に enum を宣言して
+いないので契約そのものは壊れないが、**`default` 節の無い switch を書いている
+クライアントは新しい値を取りこぼす**。
+
+注意: 再研磨の明細の `productId` は**売っている役務**（再研磨品目）で、
+研ぎ直す工具そのものではない。工具は別の列（`order_lines.tool_item_id`）で、
+**この API にはまだ出していない**。
+
 ## 7. 環境と公開
 
 `src/config/dev-features.json` の `api` で閉じる。`main` に出すには PR が要る。

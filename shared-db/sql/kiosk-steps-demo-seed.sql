@@ -60,7 +60,7 @@ BEGIN
   -- 注文明細（既存注文請書の branch=90 行。製品 1 = テスト製品１・数量 50）
   -- 顧客・作成者はヘッダ（order_acceptances）から読むため行には持たない。
   INSERT INTO app.order_lines
-    (id, acceptance_year_month, acceptance_seq, branch, sort_order, product_id,
+    (id, acceptance_year_month, acceptance_seq, branch, sort_order, item_id,
      order_type, quantity, unit_price, amount, delivery_date, status, is_locked,
      notes, confirmed_at, created_at, updated_at)
   VALUES
@@ -93,7 +93,7 @@ BEGIN
 
   -- 指示書（承認済 — キオスクから開始できる状態）
   INSERT INTO app.work_orders
-    (id, work_order_number, year_month, seq, product_id, type, planned_quantity,
+    (id, work_order_number, year_month, seq, product_item_id, type, planned_quantity,
      status, approval_status, approved_at, history, notes,
      created_by, created_at, updated_at)
   VALUES

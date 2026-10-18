@@ -98,14 +98,14 @@ export default function InvoicesListPage() {
         selectable
         bulkActions={[
           { label: 'PDF一括出力', icon: <IconFileTypePdf size={16} />, color: 'blue' },
-          { label: '弥生CSV一括エクスポート', icon: <IconFileExport size={16} />, color: 'blue' },
+          { label: '会計連携CSV一括エクスポート', icon: <IconFileExport size={16} />, color: 'blue' },
         ]}
         rowActions={(r) => [
           { label: 'PDF', icon: <IconFileTypePdf size={14} /> },
           ...(r.status === 'DRAFT' ? [{ label: '発行', icon: <IconSend size={14} />, color: 'blue' }] : []),
           ...(r.status === 'ISSUED' ? [{ label: '送付', icon: <IconSend size={14} />, color: 'blue' }] : []),
           ...(r.status === 'SENT' ? [{ label: '支払済にする', icon: <IconCircleCheck size={14} />, color: 'green' }] : []),
-          { label: '弥生CSVエクスポート', icon: <IconFileExport size={14} /> },
+          { label: '会計連携CSVエクスポート', icon: <IconFileExport size={14} /> },
         ]}
         emptyIcon={<IconFileInvoice size={24} />}
         emptyMessage="請求書がありません"

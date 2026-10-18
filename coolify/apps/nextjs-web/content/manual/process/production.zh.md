@@ -23,12 +23,12 @@ screenshots:
 
 | 阶段 | 做什么 | 负责人 | 使用的应用 |
 |------|--------|--------|------------|
-| 1. 确认产品库存 | 区分已有库存的部分与需要新制作的部分 | 生产管理 | [库存管理](/manual/zh/operations/production/product-inventory/user)（`PD04`） |
-| 2. 确认材料 | 查看制作所需的材料是否充足 | 生产管理 | [库存管理](/manual/zh/operations/production/material-inventory/user)（`PD04`） |
-| 3. 制作工单 | 分为库存分・制造分（排列工序的是制造分） | 内部销售助理 | [工单](/manual/zh/operations/production/work-order/user)（`PD02`） |
-| 4. 获得审批 | 通过审批设置中确定的全部审批级，使其成为可以开始制造的状态 | 审批人 | [审批管理](/manual/zh/operations/production/approval/user)（`PD03`） |
+| 1. 确认产品库存 | 区分已有库存的部分与需要新制作的部分 | 生产管理 | [库存管理](/manual/zh/operations/inventory/inventory-management/user)（`ST01`） |
+| 2. 确认材料 | 查看制作所需的材料是否充足 | 生产管理 | [库存管理](/manual/zh/operations/inventory/inventory-management/user)（`ST01`） |
+| 3. 制作工单 | 分为库存分・制造分（排列工序的是制造分）。再研磨客户刀具的订单则为再研磨工单 | 内部销售助理 | [工单](/manual/zh/operations/production/work-order/user)（`PD02`） |
+| 4. 获得审批 | 通过审批设置中确定的全部审批级，使其成为可以开始制造的状态 | 审批人 | [审批管理](/manual/zh/operations/general/my-tasks/user)（`PD03`） |
 | 5. 执行工序 | 现场记录开始・完成与支数 | 制造 | [工单](/manual/zh/operations/production/work-order/user) / 现场平板电脑 |
-| 6. 完成 | 全部工序结束后成为产品库存 | 制造・生产管理 | [库存管理](/manual/zh/operations/production/product-inventory/user) |
+| 6. 完成 | 全部工序结束后成为产品库存 | 制造・生产管理 | [库存管理](/manual/zh/operations/inventory/inventory-management/user) |
 
 ## 各阶段发生的事
 
@@ -43,6 +43,8 @@ screenshots:
 ### 3. 制作工单
 
 库存分与制造分各自制作工单。按顺序排列工序的是制造分，必须从**恰好 1 个**「出し・受渡し」（出库・交接）工序开始（不能选多个）。工序的排列可以按产品 × 订货客户（业务伙伴）登记为**工序路线**，制作工单时会按「订货客户一致的路线 → 不限定订货客户的路线 → 第一条路线」的顺序自动选择。**库存分是「製品出し」（产品出库）＋可选的「出荷前検査」（发货前检查）的固定构成**，创建后库存会被占用。出货本身不是工序，由[出货单](/manual/zh/operations/shipping/delivery-order/user)管理。同一订货客户・产品若有上一次的工单，可以复制（内容有变化时会显示警告）。按工序决定在厂内进行还是交给外协，设为外协后会出现在[外协委托单](/manual/zh/operations/purchasing/outsource-order/user)的一览中（操作步骤……[标准流程 §6](/manual/zh/process/default-flow#stage-6)）。
+
+**再研磨**（接收客户使用过的刀具 — 本公司产品或他社产品 — 进行再研磨的订单）从订单类别为「再研磨」的明细创建为**再研磨工单**。由于没有要制造的东西，不持有使用材料・存放位置；工序使用不关联产品和客户的公共**再研磨工序清单**（产品接收 → 研磨 → 可选的涂层・检查）的最新版本。在第一道工序「製品受入（再研磨）」记录到货支数后，该支数会作为客户寄存品记入库存（与本公司库存分开）。他社的刀具需先在产品主数据中登记为「他社製品」。
 
 ![由订单明细制作的工单新建画面。保存按钮以红框强调](../assets/screenshots/flow-work-order-new-01.png)
 
@@ -66,7 +68,7 @@ screenshots:
 
 ### 6. 完成
 
-全部工序结束后，该工单的产品会进入库存，可以进入[出货流程](/manual/zh/process/shipping)。
+全部工序结束后，该工单的产品会进入库存，可以进入[出货流程](/manual/zh/process/shipping)。**再研磨工单不会进入本公司库存** — 接收的刀具记为客户寄存品，再研磨完成的支数通过出货单退还。
 
 ![产品库存的交易历史。入库记录以红框强调](../assets/screenshots/flow-inventory-in-01.png)
 

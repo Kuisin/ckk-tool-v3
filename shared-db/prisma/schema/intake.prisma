@@ -69,17 +69,20 @@ model OrderAcceptance {
   /// 受注金額の通貨（currencies.code。既定 JPY — 明細はヘッダから読む。sales_rep と同じ規約）
   currency           String    @default("JPY")
 
-  // 出荷先（納入先の取引先。顧客本体と別の法人・支店でもよい。null = 顧客へ）
+  /// @deprecated 配送は明細（order_lines）ごとに持つように変更した
+  /// （1 通の注文書の中で行ごとに届け先が違う注文があるため）。
+  /// アプリはこの列を**もう読まない・書かない** — dev への 1 回のデプロイが
+  /// 回ったあと、別の migration で DROP する（ローリングデプロイ中は旧
+  /// コンテナがこの列しか知らないため、値を消さずに置いておくだけの期間）。
+  /// エンドユーザーは明細に end_user_bp_id が最初からあったので対象外。
   shipToBpId String? @map("ship_to_bp_id") @db.Uuid
-  // 配送方法（通常配送 / ユーザー直送）。出荷書は同じ出荷先×配送方法の
-  // 注文明細だけを束ねられる（アプリで検証）。納品書の既定値の源でもある。
+  /// @deprecated 上と同じ理由。order_lines.delivery_method へ移した。
   deliveryMethod DeliveryMethod @default(NORMAL) @map("delivery_method")
-  // エンドユーザー（最終需要家）。ユーザー直送では必須（アプリで強制）。
-  // 明細行の end_user_bp_id（行ごとの例外）より先に読む既定値。
+  /// @deprecated 上と同じ理由。order_lines.end_user_bp_id（既存列）へ一本化した。
   endUserBpId String? @map("end_user_bp_id") @db.Uuid
-  // 担当拠点（この注文を処理する拠点。null = 未割当）
+  /// @deprecated 上と同じ理由。order_lines.assigned_plant_id へ移した。
   assignedPlantId Int? @map("assigned_plant_id")
-  // 出荷作業場所（作業場所マスタ MS0D。出荷作業を行う場所）
+  /// @deprecated 上と同じ理由。order_lines.shipping_work_location_id へ移した。
   shippingWorkLocationId Int? @map("shipping_work_location_id")
   // 顧客が自前の納品書（バーコード等）を用意する取引か。true のときは
   // 自社発行の納品書に添える形で顧客提供の納品書も同梱する運用上の目印
@@ -89,6 +92,19 @@ model OrderAcceptance {
   notes       String?
   completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
   archivedAt  DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  // 作り直し元（キャンセル済みの注文請書）。
+  //
+  // 確定済み（COMPLETED）の請書は明細を編集できない（lib/order-line-check.ts）。
+  // 直したいときの手順は 1 つだけ: **ごとキャンセル → その請書から作り直す**。
+  // キャンセルは配下の未着手指示書も連鎖で止める（lib/order-line-cancel.ts）ので、
+  // 作り直した側で改めて手配することになる。
+  //
+  // 紐付けを残すのは「あの注文はどうなったのか」を後から追えるようにするため —
+  // キャンセルした請書だけが残ると、指示書も出荷も無い行き止まりに見える。
+  // 1 件を 2 件に割って作り直すこともあるので **1 対 N**（unique にしない）。
+  replacesYearMonth String? @map("replaces_year_month") @db.Char(6)
+  replacesSeq       Int?    @map("replaces_seq")
   // 営業担当 — 作成時に顧客の主担当（bp_sales_reps.is_primary）を複写した
   // スナップショット。顧客側の担当が替わっても過去書類は動かない。
   // 注文明細（order_lines）は行に複写せずここから読む。
@@ -107,6 +123,11 @@ model OrderAcceptance {
   createdByUser    User?            @relation("AcceptanceCreatedBy", fields: [createdBy], references: [id])
   salesRep         User?            @relation("AcceptanceSalesRep", fields: [salesRepId], references: [id])
 
+  // 元は消えても作り直した側は残す（SetNull）— 紐付けが切れるだけで、
+  // 作り直した請書そのものは業務データとして生きている。
+  replaces   OrderAcceptance?  @relation("AcceptanceReplaces", fields: [replacesYearMonth, replacesSeq], references: [yearMonth, seq], onDelete: SetNull, onUpdate: NoAction)
+  replacedBy OrderAcceptance[] @relation("AcceptanceReplaces")
+
   items          OrderLine[]
   cancelRequests OrderAcceptanceCancelRequest[]
 
@@ -114,6 +135,7 @@ model OrderAcceptance {
   @@index([status])
   // 注文明細の顧客絞り込みはヘッダ経由になるため必須
   @@index([customerBpId])
+  @@index([replacesYearMonth, replacesSeq])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, yearMonth, seq])
   @@map("order_acceptances")
@@ -170,8 +192,17 @@ model OrderLine {
   sortOrder           Int    @default(0) @map("sort_order")
 
   // ── 明細内容（注文請書の行そのもの） ──
-  // 抽出直後は productText のみ。製品マスタ突合後に productId を持つ。
-  productId    Int?      @map("product_id")
+  // 抽出直後は productText のみ。品目マスタ突合後に itemId を持つ。
+  /// 統合品目（app.items）。**その行で売っているもの**（突合前は null）。
+  /// 再研磨の明細では「再研磨の品目（役務）」— 値段はここに付く。研ぎ直す工具の
+  /// ほうは toolItemId が持つ。
+  itemId       Int?      @map("item_id")
+  /// 研ぎ直す工具（app.items の PRODUCT。他社製品のこともある）。
+  ///
+  /// **再研磨の明細だけが持つ。** 売っているのは役務（itemId）で、預かって手を
+  /// 入れて返すのはこちら — 預り品の在庫も指示書もこの品目で動く。確定した
+  /// 再研磨の明細では必須（DB の CHECK order_lines_regrind_tool）。
+  toolItemId   Int?      @map("tool_item_id")
   productText  String?   @map("product_text") // 抽出された品名（生）
   orderType    OrderType @default(PRODUCTION) @map("order_type")
   quantity     Int
@@ -187,6 +218,20 @@ model OrderLine {
   deliveryDate DateTime? @map("delivery_date") @db.Date
   notes        String?
 
+  // ── 配送（§2 / §8）— どこへ・どう届けるかは**明細ごと**に決まる ──
+  // 1 通の注文書の中で行ごとに届け先が違う注文があるため、ヘッダではなく
+  // 行が持つ（元は order_acceptances にあった。移行は
+  // 20261024090000_order_line_delivery。以前のヘッダの値はここへ複写済み）。
+  // 出荷書はこの 4 つ（+ 顧客・エンドユーザー）が揃った明細だけを束ねられる
+  // （combinabilityError, components/shipping/delivery-orders/model.ts）。
+  shipToBpId             String?        @map("ship_to_bp_id") @db.Uuid
+  deliveryMethod         DeliveryMethod @default(NORMAL) @map("delivery_method")
+  // 担当拠点（この明細を処理する拠点。null = 未割当。出荷書の出荷元拠点の
+  // 既定値でもある）
+  assignedPlantId Int? @map("assigned_plant_id")
+  // 出荷作業場所（作業場所マスタ MS0D。出荷作業を行う場所）
+  shippingWorkLocationId Int? @map("shipping_work_location_id")
+
   // ── 実行（旧 sales_orders） ──
   status      OrderLineStatus @default(DRAFT)
   // 通し連番（指示書番号と共用）。統合ロット（1 指示書に複数明細）では
@@ -200,10 +245,14 @@ model OrderLine {
   updatedAt   DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   // 顧客・注文書番号・見積キー・作成者はヘッダ（acceptance）から読む —
-  // 行に複写すると乖離するため持たない。
+  // 行に複写すると乖離するため持たない。配送だけは例外（上のコメント参照）。
   acceptance OrderAcceptance  @relation(fields: [acceptanceYearMonth, acceptanceSeq], references: [yearMonth, seq], onDelete: Restrict)
-  product    Product?         @relation(fields: [productId], references: [id])
+  item       Item?            @relation("OrderLineItem", fields: [itemId], references: [id], onDelete: Restrict)
+  toolItem   Item?            @relation("OrderLineToolItem", fields: [toolItemId], references: [id], onDelete: Restrict)
   endUserBp  BusinessPartner? @relation("OrderLineEndUser", fields: [endUserBpId], references: [id])
+  shipToBp             BusinessPartner? @relation("OrderLineShipTo", fields: [shipToBpId], references: [id])
+  assignedPlant        Plant?           @relation("OrderLinePlant", fields: [assignedPlantId], references: [id])
+  shippingWorkLocation WorkLocation?    @relation("OrderLineShippingWorkLocation", fields: [shippingWorkLocationId], references: [id])
 
   workOrderLinks WorkOrderOrderLine[]
   deliveryItems  DeliveryOrderItem[]
@@ -213,10 +262,13 @@ model OrderLine {
 
   @@unique([acceptanceYearMonth, acceptanceSeq, branch])
   @@index([status])
-  @@index([productId])
   @@index([lotNumber])
+  @@index([shipToBpId])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, id])
+  @@index([itemId])
+  // 工具から再研磨の明細を引く（預り品の照会・品目を消せるかの判定）。
+  @@index([toolItemId])
   @@map("order_lines")
   @@schema("app")
 }
@@ -239,11 +291,19 @@ model OrderLine {
 // target_type はテーブル名（audit_logs / approval_requests と同じ多態規約）。
 // FK は張れないので、マスタを消しても行は残る — 突合時に存在しない
 // target_id は黙って無視する（lib/match-aliases）。
+//
+// **値は business_partners | items の 2 つだけ**（DB 側の CHECK
+// match_aliases_target_type_check が正。Prisma では表せないので
+// migration に直接書いてある）。品目統合 第 3 段で products / materials の
+// 2 つを items へ畳んだ — 製品と素材のマスタが 1 つになったので、学習の
+// 行き先も 1 つで足りる。**製品と素材で同じ表記を覚えることはできない**
+// （1 表記 = 1 マスタ）が、突合側が引いた品目の item_type を必ず確かめるので、
+// 相手の型が当たっても素通りして推測へ落ちるだけ。
 model MatchAlias {
   id         Int      @id @default(autoincrement())
-  /// "business_partners" | "products"（テーブル名）
+  /// "business_partners" | "items"（テーブル名）
   targetType String   @map("target_type")
-  /// マスタ行の内部 id を文字列化したもの（BP は uuid、製品は連番）
+  /// マスタ行の内部 id を文字列化したもの（BP は uuid、品目は連番）
   targetId   String   @map("target_id")
   /// 書類に印字されていた表記（そのまま）
   alias      String

@@ -10,11 +10,11 @@
 
 import {
   searchCustomerOptions,
-  searchMaterialOptions,
+  searchMaterialItemOptions,
   searchMaterialTypeOptions,
   searchPlantOptions,
   searchProcessStepOptions,
-  searchProductOptions,
+  searchProductItemOptions,
   searchShipToOptions,
   searchStorageLocationOptions,
   searchUserOptions,
@@ -30,8 +30,11 @@ const SEARCHERS: Record<LookupSource, Searcher> = {
   customer: searchCustomerOptions,
   // 支店・工場も含めて引く（顧客の◯◯工場 を選ぶため）。
   business_partner: searchShipToOptions,
-  product: searchProductOptions,
-  material: searchMaterialOptions,
+  // 品目統合 第 3 段 — 製品・素材はどちらも **items.id** を値にする。
+  // 保存済みの回答が持っていた旧 id は migration
+  // (20261101090000_items_stage3_matching_forms) で書き換え済み。
+  product: searchProductItemOptions,
+  material: searchMaterialItemOptions,
   material_type: searchMaterialTypeOptions,
   process_step: searchProcessStepOptions,
   plant: searchPlantOptions,

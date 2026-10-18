@@ -64,6 +64,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import {
+  acceptanceDeliveryMethodLabel,
   deliveryOrderTypeLabel,
   orderTypeLabel,
   workOrderTypeLabel,
@@ -286,6 +287,8 @@ export function OrderLineDetail({
           : order.status === "SHIPPED" || order.status === "PARTIAL_SHIPPED"
             ? tr("sales.orderLines.youCannotCreateThisOnA2")
             : undefined;
+  // 種別は書かない — 明細から決まる（lib/work-order-alloc-core
+  // workOrderTypeForLine）。ここで書き足すと、付け忘れた入口だけ挙動が違う。
   const woCreateHref = `/production/work-orders/new?orderLine=${order.uuid}`;
   const designCreateHref = `/sales/design-requests/new?orderLine=${order.uuid}`;
 
@@ -311,7 +314,9 @@ export function OrderLineDetail({
   const [stockResult, setStockResult] = useState<StockCheckResult | null>(null);
 
   // 在庫照合（§4）は確定済み・製造前のみ（製造中以降は指示書側で管理）。
-  const canStockCheck = isLineStockCheckable(order);
+  // 再研磨の明細は顧客の工具を預かって返す注文 — 自社在庫の照合は意味を持たない。
+  const canStockCheck =
+    isLineStockCheckable(order) && order.orderType !== "REGRIND";
 
   const runStock = () => {
     startStockCheck(async () => {
@@ -440,7 +445,24 @@ export function OrderLineDetail({
           label={tr("common.customerOrderRef")}
           value={order.customerOrderRef ?? "—"}
         />
-        <FieldValue label={tr("common.product")} value={order.productName} />
+        <FieldValue
+          label={
+            order.orderType === "REGRIND"
+              ? tr("sales.orderAcceptanceItemsEditor.regrindItem")
+              : tr("common.product")
+          }
+          value={order.productName}
+        />
+        {/*
+          研ぎ直す工具。売り物（上の欄 = 再研磨という役務）とは別の物で、
+          預り品も指示書も出荷もこちらで数える。
+        */}
+        {order.toolName && (
+          <FieldValue
+            label={tr("sales.orderAcceptanceItemsEditor.toolToRegrind")}
+            value={order.toolName}
+          />
+        )}
         <FieldValue
           label={tr("common.orderType")}
           value={
@@ -498,9 +520,27 @@ export function OrderLineDetail({
             )
           }
         />
+        {/* 配送（§8）— 明細ごとに持つ（このアプリでは読み取り専用。編集は
+            注文請書 SA04 の明細エディタ）。 */}
+        <FieldValue
+          label={tr("sales.orderAcceptances.shipTo")}
+          value={order.shipToName ?? "—"}
+        />
+        <FieldValue
+          label={tr("sales.orderAcceptances.deliveryMethod")}
+          value={acceptanceDeliveryMethodLabel(order.deliveryMethod, locale)}
+        />
         <FieldValue
           label={tr("common.endUser")}
           value={order.endUserName ?? "—"}
+        />
+        <FieldValue
+          label={tr("sales.orderAcceptances.assignedSite")}
+          value={order.assignedPlantName ?? "—"}
+        />
+        <FieldValue
+          label={tr("sales.orderAcceptances.shippingWorkLocation")}
+          value={order.shippingWorkLocationName ?? "—"}
         />
         {/* 営業担当・作成者は注文請書ヘッダの値（行では編集しない）。 */}
         <FieldValue label={tr("common.salesRep")} value={order.salesRepName} />
@@ -585,7 +625,7 @@ export function OrderLineDetail({
             <EmptyState
               action={
                 <SecondaryButton
-                  href={`/production/work-orders/new?orderLine=${order.uuid}`}
+                  href={woCreateHref}
                   leftSection={<IconClipboardList size={14} />}
                 >
                   {tr("sales.orderLines.createAWorkOrder")}

@@ -4,13 +4,13 @@
  * InvoiceDetail — 請求書 詳細 (BL21, design.md §8.2).
  *
  * SummaryGrid（番号 / 顧客+支店 / 請求期間 / 小計 / 消費税 / 合計 / 支払期限 /
- * 発行日 / 弥生エクスポート）+ 明細テーブル（摘要 / 数量 / 単価 / 金額 / 由来
+ * 発行日 / 会計連携日時）+ 明細テーブル（摘要 / 数量 / 単価 / 金額 / 由来
  * DOR・DRN リンク）+ 手続き状況（ProcedurePanel — 下書き→発行→送付→入金、
- * 出荷書・納品書 ← / 弥生エクスポート →）+ Tabs: 概要 / 履歴。
+ * 出荷書・納品書 ← / 会計連携 →）+ Tabs: 概要 / 履歴。
  *
  * Actions: PDF（/api/pdf/invoice?id=INV-…）/ 発行（DRAFT → ISSUED）/
  * 送付済み（ISSUED → SENT）/ 入金済み（SENT → PAID）/
- * 弥生CSV（/api/export/yayoi?invoice=INV-… ダウンロード）。
+ * 会計連携CSV（/api/export/accounting?invoice=INV-… ダウンロード）。
  */
 
 import {
@@ -21,10 +21,12 @@ import {
   Table,
   Tabs,
   Text,
+  Textarea,
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
+  IconArrowBackUp,
   IconCash,
   IconCheck,
   IconDownload,
@@ -35,10 +37,22 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
+  approveInvoiceApproval,
   issueInvoice,
   markPaid,
   markSent,
+  rejectInvoiceApproval,
+  reverseAccountingDocument,
 } from "@/app/(dashboard)/billing/invoices/actions";
+import { saveInvoiceCharges } from "@/app/(dashboard)/billing/invoices/charge-actions";
+import {
+  ApprovalTrailList,
+  countTrailRecords,
+} from "@/components/approvals/ApprovalTrailList";
+import {
+  type ChargeItemChoice,
+  ChargesPanel,
+} from "@/components/charges/ChargesPanel";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
@@ -47,7 +61,7 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
-import { ConfirmModal } from "@/components/ui/modals";
+import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import {
   PdfAttachmentPanel,
   type PdfFileMeta,
@@ -65,9 +79,12 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import type { AccountingDocumentSummary } from "@/lib/accounting-documents";
+import type { ApprovalActionState, ApprovalTrailEntry } from "@/lib/approvals";
 import type { MemoView } from "@/lib/document-memos";
 import { downloadFile } from "@/lib/download";
 import type { ActionResult } from "@/lib/server-action";
+import { InvoiceApprovalCard } from "./InvoiceApprovalCard";
 import {
   canIssue,
   canMarkPaid,
@@ -81,17 +98,37 @@ const BASE_PATH = "/billing/invoices";
 
 export function InvoiceDetail({
   invoice,
+  approval,
+  approvalTrail,
   pdfMeta,
   auditEntries,
   memos,
+  chargeItems,
+  canEditCharges,
+  accountingDocument,
+  accountingHistory,
 }: {
   invoice: Invoice;
+  /**
+   * 発行前承認 / 入金前承認の状態（invoice.status から見ているほうを渡す）。
+   * どちらの関門にも当たらない状態（ISSUED / PAID）では null。
+   */
+  approval: ApprovalActionState | null;
+  approvalTrail: ApprovalTrailEntry[];
   /** 保管済み PDF のメタ（SeaweedFS 由来。未生成なら null）。 */
   pdfMeta: PdfFileMeta | null;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos: MemoView[];
+  /** 追加費用の選択肢（料金マスタ、有効な行だけ）。 */
+  chargeItems: ChargeItemChoice[];
+  /** 追加費用を編集できるか（invoice:UPDATE を持ち、かつ下書きのとき）。 */
+  canEditCharges: boolean;
+  /** いま有効な転記（POSTED・反対仕訳ではない）。無ければ null。 */
+  accountingDocument: AccountingDocumentSummary | null;
+  /** その請求書に紐づく全会計文書（元・反対仕訳・訂正後）。新しい順。 */
+  accountingHistory: AccountingDocumentSummary[];
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -102,6 +139,9 @@ export function InvoiceDetail({
   const [issueOpen, setIssueOpen] = useState(false);
   const [sentOpen, setSentOpen] = useState(false);
   const [paidOpen, setPaidOpen] = useState(false);
+  // 反対仕訳 — 対象の会計文書番号（null = モーダルを閉じている）。
+  const [reverseTarget, setReverseTarget] = useState<string | null>(null);
+  const [reverseReason, setReverseReason] = useState("");
 
   // 税率ごとの区分記載。税区分マスタ以前の請求書はヘッダから 1 本合成されるので、
   // 画面の形は移行の前後で変わらない。
@@ -196,25 +236,31 @@ export function InvoiceDetail({
     },
   ];
 
-  // 下流 = 会計連携（弥生会計 Next の CSV）。書類ではないが請求書の最後の
-  // 一歩なので、済/未 が判るようにここへ出す。
+  // 下流 = 会計連携（会計文書の転記）。書類ではないが請求書の最後の
+  // 一歩なので、済/未 が判るようにここへ出す。**転記済み** = いま有効な
+  // 会計文書（accountingDocument）がある状態 — invoice.accountingExportedAt
+  // は「かつて転記した事実」の複写にすぎず、反対仕訳のあとも残るので、
+  // 「今転記済みか」の判定には使わない。
   const handoffGroups: HandoffGroup[] = [
     {
-      key: "yayoi",
-      title: tr("billing.invoices.yayoiAccountingExport"),
-      items: invoice.yayoiExportedAt
+      key: "accounting",
+      title: tr("billing.invoices.accountingExport"),
+      items: accountingDocument
         ? [
             {
-              key: "yayoi",
-              label: invoice.invoiceNumber,
+              key: "accounting",
+              label: accountingDocument.documentNumber,
               done: true,
               note: tr("billing.invoices.exportedAtLabel", {
-                dateTime: fmt.dateTime(invoice.yayoiExportedAt),
+                dateTime: fmt.dateTime(accountingDocument.postedAt),
               }),
             },
           ]
         : [],
-      emptyNote: tr("billing.invoices.notExportedTheYayoiCsvIs"),
+      emptyNote:
+        accountingHistory.length > 0
+          ? tr("billing.accountingDocuments.needsRepost")
+          : tr("billing.invoices.notExportedAfterIssue"),
     },
   ];
 
@@ -242,8 +288,8 @@ export function InvoiceDetail({
     }
   };
 
-  const run = (
-    action: () => Promise<ActionResult>,
+  const run = <T,>(
+    action: () => Promise<ActionResult<T>>,
     successTitle: string,
     successMessage: string,
   ) => {
@@ -255,6 +301,65 @@ export function InvoiceDetail({
           message: successMessage,
           color: "green",
         });
+        router.refresh();
+      } else {
+        notifications.show({
+          title: tr("common.error2"),
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
+
+  /**
+   * 発行 / 入金の実行 — **依頼を作れたのは成功**で、通常の完了とは別の文言
+   * を出す（`{ requested: true }`）。ここで分けないと、承認を依頼しただけ
+   * なのに「発行しました」と誤って伝わる。
+   */
+  const runIssueOrPaid = (
+    action: () => Promise<ActionResult<{ requested: boolean }>>,
+    doneTitle: string,
+    doneMessage: string,
+    requestedTitle: string,
+  ) => {
+    startTransition(async () => {
+      const result = await action();
+      if (result.ok) {
+        notifications.show({
+          title: result.data.requested ? requestedTitle : doneTitle,
+          message: result.data.requested
+            ? tr("billing.invoiceDetail.approvalRequestedMessage", {
+                invoiceNumber: invoice.invoiceNumber,
+              })
+            : doneMessage,
+          color: "green",
+        });
+        router.refresh();
+      } else {
+        notifications.show({
+          title: tr("common.error2"),
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
+
+  const confirmReverse = () => {
+    if (!reverseTarget || !reverseReason.trim()) return;
+    startTransition(async () => {
+      const result = await reverseAccountingDocument(
+        reverseTarget,
+        reverseReason,
+      );
+      if (result.ok) {
+        notifications.show({
+          title: tr("billing.accountingDocuments.reversed"),
+          message: result.data.documentNumber,
+          color: "green",
+        });
+        setReverseTarget(null);
         router.refresh();
       } else {
         notifications.show({
@@ -309,20 +414,34 @@ export function InvoiceDetail({
                   },
                 ]
               : []),
-            // 弥生 CSV は発行後のみ（下書きはルートも 409）。エクスポート済みは
-            // 再出力と明示し、ルートの二重出力ガードを force=1 で通す。
+            // 会計連携 CSV は発行後のみ（下書きはルートも 409）。**転記済みの
+            // 文書は再計算しない** — 再ダウンロードは同じ文書を描き直すだけ
+            // なので、force=1 のような上書き用パラメータは持たない
+            // （前は force=1 が「同じ請求書番号のまま中身を書き換える」穴だった）。
             ...(invoice.status !== "DRAFT"
               ? [
                   {
-                    label: invoice.yayoiExportedAt
-                      ? tr("billing.invoices.yayoiAccountingCsvAgain")
-                      : tr("billing.invoices.yayoiAccountingCsv"),
+                    label: accountingDocument
+                      ? tr("billing.accountingDocuments.redownloadCsv")
+                      : tr("billing.accountingDocuments.downloadCsv"),
                     icon: <IconFileSpreadsheet size={14} />,
                     divider: true,
                     // 実アンカーで別タブへ（PWA でもアプリ内ブラウザで開く）。
-                    href: `/api/export/yayoi?invoice=${invoice.invoiceNumber}${
-                      invoice.yayoiExportedAt ? "&force=1" : ""
-                    }`,
+                    href: `/api/export/accounting?invoice=${invoice.invoiceNumber}`,
+                  },
+                ]
+              : []),
+            // 反対仕訳 — 有効な転記があるときだけ出す（無ければ打ち消す
+            // 対象そのものが無い）。
+            ...(accountingDocument
+              ? [
+                  {
+                    label: tr("billing.accountingDocuments.createReversal"),
+                    icon: <IconArrowBackUp size={14} />,
+                    onClick: () => {
+                      setReverseReason("");
+                      setReverseTarget(accountingDocument.documentNumber);
+                    },
                   },
                 ]
               : []),
@@ -340,6 +459,15 @@ export function InvoiceDetail({
       title={invoice.invoiceNumber}
       updatedAt={fmt.dateTime(invoice.updatedAt)}
     >
+      {/* ヘッダー直下 = ActionCard の定位置（design.md §8.2）。
+          発行前 / 入金前どちらの承認にも当たらなければ何も描かない。 */}
+      <InvoiceApprovalCard
+        canAct={approval?.canAct ?? false}
+        invoice={invoice}
+        onApprove={approveInvoiceApproval}
+        onReject={rejectInvoiceApproval}
+      />
+
       <SummaryGrid>
         <FieldValue
           label={tr("common.invoiceNumber")}
@@ -390,10 +518,10 @@ export function InvoiceDetail({
           value={fmt.date(invoice.issuedAt)}
         />
         <FieldValue
-          label={tr("billing.invoices.yayoiExport")}
+          label={tr("billing.invoices.accountingExportedAt")}
           value={
-            invoice.yayoiExportedAt
-              ? fmt.dateTime(invoice.yayoiExportedAt)
+            invoice.accountingExportedAt
+              ? fmt.dateTime(invoice.accountingExportedAt)
               : tr("billing.invoices.notExported")
           }
         />
@@ -516,16 +644,116 @@ export function InvoiceDetail({
         </Table.ScrollContainer>
       </Paper>
 
+      {/* 会計文書履歴 — 転記・反対仕訳した会計文書（元・反対仕訳・訂正後の
+          複数本があり得る）。**ProcedurePanel には乗せない** — 入出庫伝票と
+          同じ理由（作られた時点で完結していて、進む先が無い）。 */}
+      {accountingHistory.length > 0 && (
+        <Paper p="md" radius="md" withBorder>
+          <Title mb="sm" order={5}>
+            {tr("billing.accountingDocuments.documentHistory")}
+          </Title>
+          <Table.ScrollContainer minWidth={520}>
+            <Table highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>
+                    {tr("billing.accountingDocuments.documentNumber")}
+                  </Table.Th>
+                  <Table.Th>{tr("common.status")}</Table.Th>
+                  <Table.Th>
+                    {tr("billing.accountingDocuments.postedAtLabel")}
+                  </Table.Th>
+                  <Table.Th ta="right">{tr("common.totalAmount")}</Table.Th>
+                  <Table.Th>{tr("common.notes")}</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {accountingHistory.map((doc) => (
+                  <Table.Tr key={doc.documentNumber}>
+                    <Table.Td>
+                      <DocNumber>{doc.documentNumber}</DocNumber>
+                    </Table.Td>
+                    <Table.Td>
+                      <StatusBadge
+                        entity="AccountingDocument"
+                        status={doc.status}
+                      />
+                    </Table.Td>
+                    <Table.Td className="tabular-nums">
+                      {fmt.dateTime(doc.postedAt)}
+                    </Table.Td>
+                    <Table.Td className="tabular-nums" ta="right">
+                      <MoneyText value={doc.totalDebit} />
+                    </Table.Td>
+                    <Table.Td>
+                      <Text c="dimmed" size="sm">
+                        {doc.isReversal
+                          ? tr("billing.accountingDocuments.createReversal")
+                          : ""}
+                        {doc.reverseReason ? ` ${doc.reverseReason}` : ""}
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Table.ScrollContainer>
+        </Paper>
+      )}
+
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
+          {countTrailRecords(approvalTrail) > 0 && (
+            <Tabs.Tab value="approval">{tr("common.approve")}</Tabs.Tab>
+          )}
           <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
+        <Tabs.Panel pt="md" value="approval">
+          <ApprovalTrailList trail={approvalTrail} />
+        </Tabs.Panel>
+
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
+            {/* 追加費用（料金マスタからだけ選べる）。**下書きのうちだけ**編集できる
+                — 発行後は締日処理・手動請求と同じ「金額を凍結したら根拠も
+                凍結する」規約を守る（§9）。 */}
+            {invoice.status === "DRAFT" && (
+              <ChargesPanel
+                canEdit={canEditCharges}
+                description={tr("billing.invoices.chargesHelp")}
+                items={chargeItems}
+                onSave={(rows) =>
+                  saveInvoiceCharges(invoice.invoiceNumber, rows)
+                }
+                rows={invoice.items
+                  .filter((it) => it.isManualCharge)
+                  .map((it) => ({
+                    id: it.id,
+                    chargeItemId: it.chargeItemId as number,
+                    chargeItemLabel: it.chargeItemLabel ?? "",
+                    // 保存時の摘要は「マスタの名称（自由記入の備考）」の形で
+                    // 焼き込む（charge-actions.ts）。編集モーダルに戻すため
+                    // 同じ形から備考だけを取り出す — マスタの名称を変えていな
+                    // ければ復元できる（変えていたら備考は空で出る）。
+                    description: (() => {
+                      if (!it.chargeItemLabel) return "";
+                      const prefix = `${it.chargeItemLabel}（`;
+                      return it.description.startsWith(prefix) &&
+                        it.description.endsWith("）")
+                        ? it.description.slice(prefix.length, -1)
+                        : "";
+                    })(),
+                    quantity: it.quantity,
+                    unitPrice: it.unitPrice,
+                    amount: it.amount,
+                  }))}
+                title={tr("charges.title")}
+              />
+            )}
             <div>
               <Text c="dimmed" mb={4} size="xs">
                 {tr("billing.invoices.sentAt")}
@@ -589,12 +817,13 @@ export function InvoiceDetail({
         })}
         onClose={() => setIssueOpen(false)}
         onConfirm={() =>
-          run(
+          runIssueOrPaid(
             () => issueInvoice(invoice.invoiceNumber),
             tr("common.issued"),
             tr("billing.invoiceDetail.issuedWithNumber", {
               invoiceNumber: invoice.invoiceNumber,
             }),
+            tr("billing.invoicesActions.approvalRequested"),
           )
         }
         opened={issueOpen}
@@ -629,17 +858,41 @@ export function InvoiceDetail({
         })}
         onClose={() => setPaidOpen(false)}
         onConfirm={() =>
-          run(
+          runIssueOrPaid(
             () => markPaid(invoice.invoiceNumber),
             tr("billing.invoices.markedAsPaid"),
             tr("billing.invoiceDetail.markedPaidWithNumber", {
               invoiceNumber: invoice.invoiceNumber,
             }),
+            tr("billing.invoicesActions.paymentApprovalRequested"),
           )
         }
         opened={paidOpen}
         title={tr("billing.invoices.confirmPayment")}
       />
+
+      <ModalShell
+        confirmColor="red"
+        confirmDisabled={!reverseReason.trim()}
+        confirmLabel={tr("billing.accountingDocuments.createReversal")}
+        loading={isPending}
+        onClose={() => setReverseTarget(null)}
+        onConfirm={confirmReverse}
+        opened={reverseTarget != null}
+        title={tr("billing.accountingDocuments.confirmReverseTitle")}
+      >
+        <Text mb="sm" size="sm">
+          {tr("billing.accountingDocuments.confirmReverseMessage")}
+        </Text>
+        <Textarea
+          autosize
+          label={tr("billing.accountingDocuments.reverseReasonLabel")}
+          minRows={3}
+          onChange={(e) => setReverseReason(e.currentTarget.value)}
+          value={reverseReason}
+          withAsterisk
+        />
+      </ModalShell>
     </DetailShell>
   );
 }

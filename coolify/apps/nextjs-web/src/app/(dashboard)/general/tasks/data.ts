@@ -71,7 +71,7 @@ export async function fetchMyPendingPlans(): Promise<MyPlanRow[]> {
               yearMonth: true,
               seq: true,
               status: true,
-              product: { select: { name: true } },
+              productItem: { select: { name: true } },
             },
           },
         },
@@ -92,7 +92,7 @@ export async function fetchMyPendingPlans(): Promise<MyPlanRow[]> {
     docNumber: formatDocNumber("WOR", r.step.workOrder),
     workOrderStatus: r.step.workOrder.status,
     productName: localized(
-      r.step.workOrder.product.name as LocalizedText | null,
+      r.step.workOrder.productItem.name as LocalizedText | null,
     ),
     workLocationName: r.workLocation
       ? localized(r.workLocation.name as LocalizedText | null)

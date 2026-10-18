@@ -76,6 +76,10 @@ function bpFormSchema(tr: ReturnType<typeof useTranslations>) {
         deliveryToleranceOver: optionalNumber,
         varianceApprovalWithin: z.boolean(),
         varianceApprovalOutside: z.boolean(),
+        // 会計連携（仕訳 CSV）の科目コード。検証は Server Action 側の
+        // bp-schema.ts が持つ（画面では素通しにして、保存時に 1 か所で見る）。
+        receivableAccountCode: z.string(),
+        receivableSubAccountCode: z.string(),
         salesReps: z.array(
           z.object({ userId: z.string(), isPrimary: z.boolean() }),
         ),
@@ -179,6 +183,9 @@ export function BpForm({
         // 既定は「範囲外は決裁を通す」— 未設定の顧客が最も緩くならないように。
         varianceApprovalOutside:
           initial?.customer?.varianceApprovalOutside ?? true,
+        receivableAccountCode: initial?.customer?.receivableAccountCode ?? "",
+        receivableSubAccountCode:
+          initial?.customer?.receivableSubAccountCode ?? "",
         salesReps:
           initial?.customer?.salesReps.map((r) => ({
             userId: r.userId,
@@ -252,6 +259,8 @@ export function BpForm({
             ),
             varianceApprovalWithin: values.customer.varianceApprovalWithin,
             varianceApprovalOutside: values.customer.varianceApprovalOutside,
+            receivableAccountCode: values.customer.receivableAccountCode,
+            receivableSubAccountCode: values.customer.receivableSubAccountCode,
             salesReps: values.customer.salesReps,
           }
         : null,
@@ -520,6 +529,28 @@ export function BpForm({
               })}
             />
           </Stack>
+        </FormSection>
+      )}
+
+      {has("CUSTOMER") && (
+        <FormSection
+          description={tr("master.businessPartners.accountingSectionHint")}
+          title={tr("master.businessPartners.accountingSection")}
+        >
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <TextInput
+              description={tr("master.businessPartners.accountCodeHint")}
+              label={tr("master.businessPartners.receivableAccountCode")}
+              {...form.getInputProps("customer.receivableAccountCode")}
+            />
+            <TextInput
+              description={tr(
+                "master.businessPartners.receivableSubAccountCodeHint",
+              )}
+              label={tr("master.businessPartners.receivableSubAccountCode")}
+              {...form.getInputProps("customer.receivableSubAccountCode")}
+            />
+          </SimpleGrid>
         </FormSection>
       )}
 

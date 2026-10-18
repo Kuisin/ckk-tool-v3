@@ -1,6 +1,9 @@
 /**
  * GET /api/v1/inventory/materials — 素材在庫の一覧（keyset + 差分同期）。
  * 権限は `inventory:READ`。行スコープは保管拠点。
+ *
+ * `materialId` の値は **`items.id`**（2026-09-20 の切り替え — `_specs/api.md` §6.1）。
+ * 項目名は従来のままで、`/api/v1/materials` の `id` と同じ id 空間を指す。
  */
 
 import { plantWhere } from "@ckk/authz-core";
@@ -23,15 +26,22 @@ export async function GET(request: Request): Promise<Response> {
   return runList({
     baseWhere: plantWhere(gate.access, "plantId"),
     fetch: ({ where, take, orderBy }) =>
-      prisma.materialInventory.findMany({
-        // biome-ignore lint/suspicious/noExplicitAny: 断片は authz-core / pagination が組む
-        where: where as any,
+      prisma.itemInventory.findMany({
+        // custodyBpId: null = **自社の在庫だけ**。外注へ預けている分
+        // （custody_bp_id 付きのバケット）は手持ちではないので外す。
+        where: {
+          // biome-ignore lint/suspicious/noExplicitAny: 断片は authz-core / pagination が組む
+          ...(where as any),
+          custodyBpId: null,
+          ownerBpId: null,
+          item: { itemType: "MATERIAL" },
+        },
         take,
         // biome-ignore lint/suspicious/noExplicitAny: 同上
         orderBy: orderBy as any,
         select: {
           id: true,
-          materialId: true,
+          itemId: true,
           plantId: true,
           quantity: true,
           reservedQuantity: true,
@@ -47,7 +57,7 @@ export async function GET(request: Request): Promise<Response> {
     toCursor: (r) => ({ kind: "id", id: r.id, t: r.updatedAt.toISOString() }),
     toDto: (r) => ({
       id: r.id,
-      materialId: r.materialId,
+      materialId: r.itemId,
       plantId: r.plantId,
       quantity: num(r.quantity),
       reservedQuantity: num(r.reservedQuantity),

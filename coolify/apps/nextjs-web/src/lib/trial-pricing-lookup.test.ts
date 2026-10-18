@@ -35,7 +35,6 @@ const INPUT: TrialInput = {
   machiningMinutes: 0,
   machiningRatePer10min: 2000,
   spareShapeCount: 3,
-  lotQuantities: [1],
 };
 
 const criteria = (expr: string): Criterion[] => [

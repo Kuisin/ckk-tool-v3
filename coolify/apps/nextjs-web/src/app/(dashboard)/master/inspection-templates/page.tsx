@@ -17,7 +17,7 @@ export default async function MasterInspectionTemplatesPage() {
     prisma.inspectionTemplate.findMany({
       include: {
         relatedProcessStep: true,
-        product: { select: { name: true } },
+        item: { select: { name: true } },
         group: { select: { name: true } },
         _count: { select: { items: true } },
       },
@@ -44,9 +44,7 @@ export default async function MasterInspectionTemplatesPage() {
     relatedProcessStep: r.relatedProcessStep
       ? localized(r.relatedProcessStep.name as LocalizedText | null)
       : "",
-    productName: r.product
-      ? localized(r.product.name as LocalizedText | null)
-      : "",
+    productName: r.item ? localized(r.item.name as LocalizedText | null) : "",
     groupId: r.groupId,
     groupName: r.group ? localized(r.group.name as LocalizedText | null) : "",
     itemCount: r._count.items,

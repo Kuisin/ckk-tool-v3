@@ -51,7 +51,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { z } from "zod";
 import {
-  searchProductOptions,
+  searchProductItemOptions,
   searchShippableAcceptanceOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -63,7 +63,7 @@ import {
 } from "@/app/(dashboard)/shipping/delivery-orders/actions";
 import { GhostButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
-import { productF4 } from "@/components/ui/f4-presets";
+import { productItemF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { ModalShell } from "@/components/ui/modals";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -96,9 +96,8 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
     /** 出荷元の注文明細（m:n — 1 出荷書に複数、1 注文明細も複数の出荷書へ）。 */
     orderLineId: z.string().nullable(),
     orderLineNumber: z.string().nullable(),
-    productId: z
-      .string()
-      .min(1, tr("shipping.deliveryOrderForm.selectProduct")),
+    /** 出荷する製品 — 値は品目 id（items.id）。品目統合 第 2 段 C。 */
+    itemId: z.string().min(1, tr("shipping.deliveryOrderForm.selectProduct")),
     productName: z.string(),
     lotNumber: z.number().int().min(1).nullable(),
     quantity: z.number().int().min(1, tr("common.mustBeAtLeastOne")),
@@ -128,7 +127,7 @@ let rowSeq = 0;
 const newRowId = () => `row-${++rowSeq}-${Date.now()}`;
 
 const emptyItem = (
-  productId = "",
+  itemId = "",
   productName = "",
   lotNumber: number | null = null,
   quantity = 1,
@@ -138,7 +137,7 @@ const emptyItem = (
   rowId: newRowId(),
   orderLineId,
   orderLineNumber,
-  productId,
+  itemId,
   productName,
   lotNumber,
   quantity,
@@ -157,7 +156,7 @@ function toFormValues(order: DeliveryOrder): FormValues {
       rowId: newRowId(),
       orderLineId: it.orderLineId,
       orderLineNumber: it.orderLineNumber,
-      productId: it.productId,
+      itemId: it.itemId,
       productName: it.productName,
       lotNumber: it.lotNumber,
       quantity: it.quantity,
@@ -374,7 +373,7 @@ export function DeliveryOrderForm({
         usage.length > 0
           ? usage.map((u) =>
               emptyItem(
-                info.productId,
+                info.itemId,
                 info.productName,
                 u.lotNumber,
                 u.quantity,
@@ -386,7 +385,7 @@ export function DeliveryOrderForm({
               // 充当できるロットが無い（完了指示書なし・在庫なし）— 数量だけ
               // 残数で置き、ロットは手で選ばせる。
               emptyItem(
-                info.productId,
+                info.itemId,
                 info.productName,
                 null,
                 remaining,
@@ -643,7 +642,7 @@ export function DeliveryOrderForm({
         notes: values.notes || null,
         items: values.items.map((it) => ({
           orderLineId: it.orderLineId,
-          productId: it.productId,
+          itemId: it.itemId,
           lotNumber: it.lotNumber,
           quantity: it.quantity,
           notes: it.notes || null,
@@ -668,6 +667,16 @@ export function DeliveryOrderForm({
                 }),
           color: "green",
         });
+        // サーバーが返した注意書き（在庫が足りない、など）。保存は通すが
+        // 黙って通さない — 自動では閉じない通知で残す。
+        for (const warning of result.data.warnings) {
+          notifications.show({
+            title: tr("common.warning"),
+            message: warning,
+            color: "orange",
+            autoClose: false,
+          });
+        }
         // 保存後は必ず**詳細（閲覧）画面**へ。フォームが dirty のままだと
         // 離脱ガードや再送信の余地が残るため、遷移前にリセットする。
         form.resetDirty();
@@ -814,11 +823,11 @@ export function DeliveryOrderForm({
         <Box flex={1}>
           <Group align="flex-end" gap="sm" grow preventGrowOverflow={false}>
             <SearchSelect
-              error={form.errors[`items.${ri}.productId`]}
-              f4={productF4(tr)}
+              error={form.errors[`items.${ri}.itemId`]}
+              f4={productItemF4(tr)}
               initialOption={
-                item.productId
-                  ? { value: item.productId, label: item.productName }
+                item.itemId
+                  ? { value: item.itemId, label: item.productName }
                   : null
               }
               label={
@@ -827,14 +836,14 @@ export function DeliveryOrderForm({
               onChange={(v, opt) =>
                 form.setFieldValue(`items.${ri}`, {
                   ...item,
-                  productId: v ?? "",
+                  itemId: v ?? "",
                   productName: opt?.label ?? "",
                 })
               }
-              onSearch={searchProductOptions}
+              onSearch={searchProductItemOptions}
               placeholder={tr("common.searchProducts")}
-              storageKey="product"
-              value={item.productId || null}
+              storageKey="delivery-product-item"
+              value={item.itemId || null}
             />
             {form.values.type === "DISPATCH" && lotOptions.length > 0 ? (
               <Select
@@ -1224,7 +1233,7 @@ export function DeliveryOrderForm({
                     form.insertListItem(
                       "items",
                       emptyItem(
-                        info?.productId ?? "",
+                        info?.itemId ?? "",
                         info?.productName ?? "",
                         null,
                         1,

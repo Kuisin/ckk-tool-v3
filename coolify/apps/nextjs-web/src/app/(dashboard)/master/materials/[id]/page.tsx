@@ -10,7 +10,12 @@ import { type LocalizedText, localized } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-/** 素材 詳細 (MS26). */
+/**
+ * 素材 詳細 (MS26).
+ *
+ * URL の id は **items.id**（品目統合 第 3 段）。履歴だけは旧 materials.id で
+ * 積まれているので、その 1 件のためだけに対応を引く（actions.ts の監査の節）。
+ */
 export default async function MasterMaterialsDetailPage({
   params,
 }: {
@@ -19,32 +24,32 @@ export default async function MasterMaterialsDetailPage({
   const denied = await requireAppRead("master-materials");
   if (denied) return denied;
   const { id: idParam } = await params;
-  const id = Number(idParam);
-  if (!Number.isInteger(id)) notFound();
-  const [r, auditEntries] = await Promise.all([
-    prisma.material.findUnique({
-      where: { id },
-      include: {
-        materialType: true,
-        surfaceFinish: true,
-      },
+  const itemId = Number(idParam);
+  if (!Number.isInteger(itemId)) notFound();
+  const [r, auditEntries, finishes] = await Promise.all([
+    prisma.item.findFirst({
+      where: { id: itemId, itemType: "MATERIAL" },
+      include: { materialType: true },
     }),
-    fetchAuditEntries("materials", String(id)),
+    fetchAuditEntries("materials", String(itemId)),
+    prisma.materialSurfaceFinish.findMany(),
   ]);
   if (!r) notFound();
 
   const name = r.name as LocalizedText | null;
 
+  const surfaceFinish = finishes.find((f) => f.code === r.surfaceFinishCode);
+
   const record: MaterialDetailData = {
     id: r.id,
-    code: r.code,
-    materialTypeId: r.materialTypeId,
-    materialTypeCode: r.materialType.code ?? "",
-    materialTypeName: localized(r.materialType.name as LocalizedText | null),
-    surfaceFinish: localized(r.surfaceFinish.name as LocalizedText | null),
-    diameterMm: Number(r.diameterMm),
-    lengthMm: Number(r.lengthMm),
-    kindCode: r.kindCode,
+    code: r.code ?? "",
+    materialTypeId: r.materialTypeId ?? 0,
+    materialTypeCode: r.materialType?.code ?? "",
+    materialTypeName: localized(r.materialType?.name as LocalizedText | null),
+    surfaceFinish: localized(surfaceFinish?.name as LocalizedText | null),
+    diameterMm: Number(r.diameterMm ?? 0),
+    lengthMm: Number(r.lengthMm ?? 0),
+    kindCode: r.kindCode ?? "",
     nominalDiameterMm:
       r.nominalDiameterMm != null ? Number(r.nominalDiameterMm) : null,
     manufacturerModel: r.manufacturerModel ?? "",

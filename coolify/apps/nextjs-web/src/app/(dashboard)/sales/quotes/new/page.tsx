@@ -54,13 +54,14 @@ export default async function SalesQuotesNewPage({
   ]);
   // 価格表に載っている製品だけ（フォームが選べるのはそれだけ）。
   const taxCategoryByProduct = await fetchProductTaxCategories(
-    entries.map((e) => Number(e.productId)),
+    entries.map((e) => Number(e.itemId)),
   );
 
   const prefill = sp.customer
     ? {
         customerId: sp.customer,
-        productId: sp.product,
+        // `?product=` は価格表エントリの品目 id（items.id）。
+        itemId: sp.product,
         orderType: sp.orderType,
         quantity: sp.quantity ? Number(sp.quantity) : undefined,
         deliveryDate: sp.delivery ?? null,
