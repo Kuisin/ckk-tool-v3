@@ -109,6 +109,9 @@ const SEED_FILES_POST = [
   "sql/production-demo-seed.sql",
   "sql/shipping-billing-demo-seed.sql",
   "sql/system-demo-seed.sql",
+  // 再研磨品目（MS0H）だけ。工程リスト・注文・価格表は**作らない** —
+  // 理由はシードの頭に書いてある（既存の撮影がずれる / e2e の自動選択が止まる）。
+  "sql/regrind-demo-seed.sql",
   // キオスク撮影用の端末（既知トークン）+ カード（PIN 4321・demo_shot 割当）。
   // 拠点 F01（masters-demo）とユーザー demo_shot が先に要るので最後。
   "sql/kiosk-shot-seed.sql",
