@@ -95,6 +95,66 @@ Set 「注文種別」 (order type) to 再研磨 (regrind) on an [order acceptan
 
 Without the tool the customer-owned stock cannot be counted and no [work order](/manual/en/operations/production/work-order/user) can be made.
 
+## Input fields
+
+| Field | Required | What goes in it |
+|-------|----------|-----------------|
+| [Name](#field-name) | Required | The name shown on screen |
+| [Tool class](#field-tool-class) | Optional | The kind of tool the price splits on |
+| [Ground area](#field-location) | Optional | Which part is reground |
+| [Flutes](#field-flutes) | Optional | Only when the price varies by flute count |
+| [Size lower bound](#field-size-min) | Optional | Lower diameter bound the price applies to (mm) |
+| [Size upper bound](#field-size-max) | Optional | Upper diameter bound the price applies to (mm) |
+| [Standard price](#field-standard-price) | Optional | The list price, regardless of customer |
+| [Unit](#field-unit) | Required | The unit it is counted in |
+| [Keywords](#field-keywords) | Optional | Alternate spellings for search and matching |
+| [Notes](#field-notes) | Optional | An internal note |
+| [Active](#field-active) | — | Turning it off removes it from the pick list |
+
+### Name [#field-name]
+
+The name shown on screen. It is what you read when picking a price on an order acceptance, so writing it so the conditions are legible makes it easier to find.
+
+### Tool class [#field-tool-class]
+
+The kind of tool the price splits on (for example, a solid-carbide helical end mill). **It is not a matching key** — a person chooses which item to use. It is there to search by and to read.
+
+### Ground area [#field-location]
+
+Which part is reground (for example, periphery only, or periphery + flute). The same tool costs a different amount depending on where it is ground, so each combination is registered separately.
+
+### Flutes [#field-flutes]
+
+The number of flutes. **Leave it empty when the price does not vary by flute count** — left empty, the item applies whatever the flute count is.
+
+### Size lower bound [#field-size-min]
+
+The lower diameter bound the price applies to (mm). It covers diameters **greater than** this, not the bound itself. Specifying only one side is fine.
+
+### Size upper bound [#field-size-max]
+
+The upper diameter bound the price applies to (mm). It covers diameters **up to and including** this. It must be greater than the lower bound — the other way round produces a band no tool can ever fall into.
+
+### Standard price [#field-standard-price]
+
+The list price, regardless of customer. A price list for that customer wins over it. Left empty, no unit price can be resolved for a customer who has no price list.
+
+### Unit [#field-unit]
+
+The unit it is counted in. Required, and pre-filled with 「本」 (pieces).
+
+### Keywords [#field-keywords]
+
+Alternate spellings used for search and for matching order documents automatically. Adding abbreviations, readings and Latin-script forms lets a document match even when its wording differs from the name.
+
+### Notes [#field-notes]
+
+An internal note. It never appears on documents sent to the customer.
+
+### Active [#field-active]
+
+Turning it off removes it from the 「再研磨品目」 pick list on an order acceptance. **An item in use cannot be deleted, so you turn this off instead** — and the same applies when changing a price: deactivate the old row and add a new one, so prices on past documents do not move.
+
 ## Questions
 
 **Q. If I fix a price, do past quotes and order acceptances change?**

@@ -21,6 +21,7 @@ The **one door for a person to record a stock movement by hand** — in, out, or
 - **移動タイプ (Movement type)** … the kind of movement — "what is this move for". Choose from what has been registered in [Movement Type](/manual/en/operations/inventory/movement-types/user) (ST09) in advance. It decides which direction — in / out / transfer.
 - **出庫元 / 入庫先 (Source / Destination)** … where it decreases from, and where it increases to. Depending on the movement type, one, both, or neither may be required.
 - **品目 (Item)** … the product or material being moved.
+- **所有者 (Owner)** … whose stock it is. Blank means it is ours; for a tool received from a customer for regrinding (**預り品**, customer-owned stock) it is that customer. This field only appears when the chosen item has customer-owned stock.
 
 ## Making an entry
 
@@ -28,10 +29,11 @@ The **one door for a person to record a stock movement by hand** — in, out, or
 2. If that movement type requires it, choose 「**出庫元**」(source — site → storage location → shelf).
 3. If that movement type requires it, choose 「**入庫先**」(destination — site → storage location → shelf).
 4. Search for and choose 「**品目**」(item). A badge shows whether it's a product or a material.
-5. Enter 「**数量**」(quantity). Products accept whole numbers only; materials accept up to 3 decimal places.
-6. When receiving a product into stock, optionally enter 「**ロット番号**」(lot number).
-7. Add 「**備考**」(notes) if needed.
-8. Press 「**登録**」(Register).
+5. 「**所有者**」(owner) appears only when the chosen item has customer-owned stock. Choose the customer only when you are correcting their tool (left blank, it is our own stock).
+6. Enter 「**数量**」(quantity). Products accept whole numbers only; materials accept up to 3 decimal places.
+7. When receiving a product into stock, optionally enter 「**ロット番号**」(lot number).
+8. Add 「**備考**」(notes) if needed.
+9. Press 「**登録**」(Register).
 
 If there is a problem with what you entered, a red notice appears on the spot (item not chosen, quantity zero or below, source/destination missing, or — for a transfer — source and destination the same). You cannot register while a notice is showing.
 
@@ -40,6 +42,20 @@ Registering creates one [Stock Movement](/manual/en/operations/inventory/invento
 Once registered, a green notice and a link to that slip appear. **「移動タイプ」「出庫元」「入庫先」 (movement type, source, destination) stay selected for the next entry** — only 「品目」「数量」「ロット番号」「備考」 (item, quantity, lot number, notes) are cleared. This saves reselecting them when registering many entries in a row with the same movement type.
 
 Using this app requires the inventory permission.
+
+## Correcting the count of a tool received for regrinding
+
+**This app is the only way to correct** a 受入本数 (received count) entered wrongly on the 「製品受入（再研磨）」 step of a [Work Order](/manual/en/operations/production/work-order/user) (PD02). Completing that step posts the customer-owned stock, after which the step can no longer be rolled back (rolling back and re-completing would post it twice).
+
+1. Choose a 「**移動タイプ**」(movement type) — an out-movement to reduce an over-entry, an in-movement to add a shortfall.
+2. For 「**品目**」(item), choose the **tool** — the product being reground, not the regrind service item.
+3. In the 「**所有者**」(owner) field that appears, choose the customer who owns that tool.
+4. Enter the work order's number in 「**ロット番号**」(lot number). **Without it, the customer-owned stock cannot be told apart by lot.**
+5. Enter the difference in 「**数量**」(quantity) and press 「**登録**」(Register).
+
+**Our own stock is unaffected.** What you record against an owner is held as customer-owned stock, visible only when you switch the 「所有者」 filter in [Stock Overview](/manual/en/operations/inventory/stock-overview/user) (ST02).
+
+> While the tool is **out with a subcontractor** (for coating, say), that customer does not appear in the 「所有者」 choices. This app can only move what is on hand, so bring it back from the subcontractor first.
 
 ## Frequently asked questions / troubleshooting
 
@@ -54,6 +70,12 @@ A. This app has no correction operation. If you made a mistake, register the rev
 
 **Q. I want more movement-type choices.**
 A. An administrator registers those in [Movement Type](/manual/en/operations/inventory/movement-types/user) (ST09).
+
+**Q. The 「所有者」 field doesn't appear.**
+A. It does not appear when the item has no customer-owned stock at all. Check that you chose the **tool** (the product being reground). It also stays hidden while the tool is out with a subcontractor.
+
+**Q. Can a material have an 「所有者」?**
+A. No. Only products (tools) can be customer-owned.
 
 <!-- permissions:start -->
 ## Permissions required

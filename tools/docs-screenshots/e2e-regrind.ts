@@ -640,10 +640,18 @@ async function main(): Promise<void> {
   await page.goto(`${APP}/master/regrind-items/new`, {
     waitUntil: "networkidle",
   });
-  await page.getByLabel("名称（日本語）").fill("e2e 再研磨 溝のみ 2枚刃");
-  await page.getByLabel("工具の種類").fill("ハイスエンドミル");
-  await page.getByLabel("加工箇所").fill("溝のみ");
-  await page.getByLabel("標準価格").fill("540");
+  // **入力欄は role=textbox / spinbutton で取る。** 項目に「?」（HelpLabel）が
+  // 付いた欄では、aria-label に項目名を含む要素が 3 つ（説明リンク・?アイコン・
+  // 入力欄）になり、getByLabel の部分一致が strict mode violation で落ちる
+  // （MS0H に field-help を足したときに実際に落ちた）。
+  await page
+    .getByRole("textbox", { name: /名称（日本語）/ })
+    .fill("e2e 再研磨 溝のみ 2枚刃");
+  await page
+    .getByRole("textbox", { name: /工具の種類/ })
+    .fill("ハイスエンドミル");
+  await page.getByRole("textbox", { name: /加工箇所/ }).fill("溝のみ");
+  await page.getByRole("textbox", { name: /標準価格/ }).fill("540");
   await page.getByRole("button", { name: "保存" }).click();
   await page.waitForURL(/\/master\/regrind-items$/, { timeout: 20_000 });
   const created = sql(
@@ -724,6 +732,193 @@ async function main(): Promise<void> {
     /標準価格\s*￥?1,200/.test(pricedBody) && !/価格表なし/.test(pricedBody),
     (pricedBody.match(/.{0,80}1,200.{0,40}/) ?? ["1,200 が無い"])[0],
   );
+
+  // ── K. 手動入出庫 (ST06) で預り品の本数を訂正できる ──────────────────────
+  // 受入を計上したあとは工程の巻き戻しが**禁止**（二重計上になる）なので、
+  // 打ち間違いの訂正口はこの画面しか無い。所有者の軸が無いと自社バケットへ
+  // 落ちるので、**預り品が動くこと**と**自社在庫が動かないこと**を両方見る。
+  // この時点で預り品バケットは 0（H で全部返した）が、行は残っているので
+  // 所有者の候補には出る — 数量 0 で候補から消すと「返しきったあとに打ち直す」
+  // ができなくなるため、わざと数量で絞っていない。
+  await page.goto(`${APP}/inventory/goods-movement`, {
+    waitUntil: "networkidle",
+  });
+  await page.getByRole("combobox", { name: "移動タイプ" }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole("option", { name: /入庫/ }).first().click();
+  await page.waitForTimeout(600);
+  await page.getByRole("combobox", { name: "拠点" }).first().click();
+  await page.waitForTimeout(300);
+  await page.getByRole("option").first().click();
+  await page.waitForTimeout(400);
+
+  // SearchSelect は Mantine の combobox（native <select> でも textbox でもない）。
+  const gmItem = page.getByRole("combobox", { name: "品目" }).first();
+  await gmItem.click();
+  await gmItem.fill("PRD-209902-0001");
+  await page.waitForTimeout(1400);
+  await page
+    .getByRole("option")
+    .first()
+    .click()
+    .catch(() => undefined);
+  await page.waitForTimeout(900);
+
+  const ownerCombo = page.getByRole("combobox", { name: "所有者" }).first();
+  const ownerShown = await ownerCombo.isVisible().catch(() => false);
+  let ownerOpts: string[] = [];
+  if (ownerShown) {
+    await ownerCombo.click();
+    await page.waitForTimeout(400);
+    ownerOpts = await page.getByRole("option").allInnerTexts();
+    await page
+      .getByRole("option", { name: /デモ商事/ })
+      .first()
+      .click()
+      .catch(() => undefined);
+    await page.waitForTimeout(300);
+  }
+  check(
+    "K1 預り品のある品目を選ぶと「所有者」が出て、預け主が候補に並ぶ",
+    ownerShown && ownerOpts.some((o) => o.includes("デモ商事")),
+    ownerShown ? ownerOpts.join(" / ") : "所有者の欄が出ない",
+  );
+
+  // ロット番号を入れないと別のバケット（lot = null）へ積まれる。訂正したいのは
+  // この指示書で預かった分なので、指示書番号を入れる。
+  // Mantine の NumberInput は spinbutton ではない（react-number-format の
+  // テキスト入力）。ラベルで引く。
+  await page.getByLabel("ロット番号").first().fill(woNumber);
+  // withAsterisk が付くので「数量 *」になる — 完全一致では当たらない。
+  await page.getByLabel(/数量/).first().fill("3");
+  await page.getByRole("button", { name: "登録", exact: true }).click();
+  await page.waitForTimeout(1800);
+
+  const correctedOwned = sql(
+    `SELECT coalesce(sum(quantity),0)::text FROM app.item_inventory
+      WHERE item_id=${ITEM} AND owner_bp_id='${CUSTOMER}'::uuid
+        AND custody_bp_id IS NULL AND lot_number=${Number(woNumber)}`,
+  );
+  const correctedOwn = sql(
+    `SELECT coalesce(sum(quantity),0)::text FROM app.item_inventory
+      WHERE item_id=${ITEM} AND owner_bp_id IS NULL`,
+  );
+  check(
+    "K2 預り品バケットに 3 本足され、自社在庫は 0 のまま",
+    Number(correctedOwned) === 3 && Number(correctedOwn) === 0,
+    `預り品=${correctedOwned} 自社=${correctedOwn}`,
+  );
+
+  // 伝票は事由 MANUAL で、取引行が**所有者付きのバケット**を指していること。
+  const manualOnOwner = sql(
+    `SELECT count(*)::text FROM app.inventory_transactions t
+       JOIN app.inventory_movements m ON m.id = t.movement_id
+       JOIN app.item_inventory i ON i.id = t.inventory_id
+      WHERE m.cause='MANUAL' AND t.transaction_type='IN'
+        AND i.owner_bp_id='${CUSTOMER}'::uuid AND i.item_id=${ITEM}`,
+  );
+  check(
+    "K3 事由 MANUAL の入庫が所有者バケットに付いている",
+    Number(manualOnOwner) >= 1,
+    `行=${manualOnOwner}`,
+  );
+
+  // ── L. 全量返却なら残りの工程が畳まれ、指示書がその場で閉じる ─────────────
+  // 研ぎ直せる物が 1 本も無いとき、後続は 0 本を受け取るだけ。畳まないと
+  // 「意味のない工程を 0 で押していく」までこの指示書は閉じず、受入が
+  // COMPLETED になった時点で cancelWorkOrder（着手前のみ）も使えない。
+  resetFixtures();
+  await page.goto(
+    `${APP}/production/work-orders/new?orderLine=${ORDER_LINE_UUID}&qty=10`,
+    { waitUntil: "networkidle" },
+  );
+  await page.waitForTimeout(1500);
+  await page.getByRole("button", { name: "保存" }).click();
+  await page.waitForURL(/\/production\/work-orders\/WOR-\d{6}-\d{5}/, {
+    timeout: 30_000,
+  });
+  const wo2 = sql(
+    `SELECT coalesce(max(work_order_number)::text,'0') FROM app.work_orders WHERE product_item_id=${ITEM}`,
+  );
+  sql(
+    `UPDATE app.work_orders SET status='APPROVED', approval_status='APPROVED', approved_at=now()
+      WHERE work_order_number=${Number(wo2)}`,
+  );
+  const steps2 = sql(
+    `SELECT string_agg(s.id::text||':'||c.code, ',' ORDER BY s.sort_order)
+       FROM app.work_order_steps s
+       JOIN app.process_step_catalog c ON c.id = s.process_step_id
+       JOIN app.work_orders w ON w.id = s.work_order_id
+      WHERE w.work_order_number = ${Number(wo2)}`,
+  );
+  const receipt2 = steps2
+    .split(",")
+    .map((x) => ({ id: x.split(":")[0], code: x.split(":")[1] }))
+    .find((x) => x.code === "REGRIND_RECEIPT");
+
+  if (!receipt2) {
+    check("L 製品受入の工程が見つからない", false, steps2);
+  } else {
+    // 受入 10 / 返却 10 — 良品 0。ここで畳まれる。
+    await runStep(page, wo2, receipt2.id, {
+      count: 10,
+      defectType: "返却",
+      reason: "全量が規格外で研ぎ直せない",
+    });
+
+    const folded = sql(
+      `SELECT string_agg(c.code||'='||s.status, ',' ORDER BY s.sort_order)
+         FROM app.work_order_steps s
+         JOIN app.process_step_catalog c ON c.id = s.process_step_id
+         JOIN app.work_orders w ON w.id = s.work_order_id
+        WHERE w.work_order_number = ${Number(wo2)} AND c.code <> 'REGRIND_RECEIPT'`,
+    );
+    check(
+      "L1 下流の未着手工程が CANCELLED になる",
+      folded.length > 0 && !/=PENDING/.test(folded),
+      folded || "工程が無い",
+    );
+
+    const reason = sql(
+      `SELECT coalesce(max(s.cancel_reason),'-') FROM app.work_order_steps s
+         JOIN app.work_orders w ON w.id = s.work_order_id
+        WHERE w.work_order_number = ${Number(wo2)} AND s.status='CANCELLED'`,
+    );
+    const by = sql(
+      `SELECT count(*)::text FROM app.work_order_steps s
+         JOIN app.work_orders w ON w.id = s.work_order_id
+        WHERE w.work_order_number = ${Number(wo2)} AND s.status='CANCELLED'
+          AND s.cancelled_by IS NOT NULL`,
+    );
+    check(
+      "L2 理由と実行者が残る（工程が消えて見えるので、無いと後から読めない）",
+      reason.includes("全量返却") && Number(by) >= 1,
+      `${reason} / cancelled_by あり=${by}`,
+    );
+
+    const wo2status = sql(
+      `SELECT status FROM app.work_orders WHERE work_order_number=${Number(wo2)}`,
+    );
+    check(
+      "L3 受入を完了した時点で指示書が COMPLETED になる",
+      wo2status === "COMPLETED",
+      `status=${wo2status}`,
+    );
+
+    const owned2 = sql(
+      `SELECT coalesce(sum(quantity),0)::text FROM app.item_inventory
+        WHERE item_id=${ITEM} AND owner_bp_id='${CUSTOMER}'::uuid AND custody_bp_id IS NULL`,
+    );
+    const own2 = sql(
+      `SELECT coalesce(sum(quantity),0)::text FROM app.item_inventory
+        WHERE item_id=${ITEM} AND owner_bp_id IS NULL`,
+    );
+    check(
+      "L4 預り品は 10 入って 10 返るので 0、自社在庫は増えない",
+      Number(owned2) === 0 && Number(own2) === 0,
+      `預り品=${owned2} 自社=${own2}`,
+    );
+  }
 
   check(
     "G 画面に未捕捉のエラーが無い",

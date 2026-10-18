@@ -38,6 +38,15 @@ rather than to nothing, because all three id sequences are dense. Re-sync every
 affected resource from scratch, and re-match by \`/materials.code\` or
 \`/products.number\` rather than by the stored id.
 
+**New enum value, 2026-10-18 — \`REGRIND\`** — regrinding (reworking a tool the
+customer already owns) now flows through the ordinary documents, so
+\`/order-lines.orderType\` can return \`REGRIND\` and \`/work-orders.type\` can
+return \`REGRIND\` alongside \`FROM_STOCK\` and \`MANUFACTURE\`. Nothing was
+removed and no shape changed, but a client that switches on these values
+**without a default branch will not recognise the new one**. On a regrind order
+line \`productId\` is the *service* being sold, not the tool: the tool is a
+separate field and is not exposed here yet.
+
 Values are returned raw: enum values (not labels), multilingual fields as
 \`{ ja, en, ... }\` objects, timestamps as RFC 3339 UTC. There is no viewer, so
 nothing is localized or formatted for display.`;

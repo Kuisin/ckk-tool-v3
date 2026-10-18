@@ -29,6 +29,20 @@ export interface MovementDraft {
   quantity: number;
   from: MovementEndpoint;
   to: MovementEndpoint;
+  /**
+   * 所有者（顧客の預り品 — 再研磨で預かった工具）。null = 自社の物。
+   *
+   * **置き場所（MovementEndpoint）ではなく draft が持つ。** 所有者は在庫の
+   * 属性で、棚を変えても持ち主は変わらない — 所有者 A から所有者 B へ動かす
+   * という業務は無い（在庫移動 inventory/actions.ts が `ownerBpId: src.ownerBpId`
+   * を複写しているのと同じ規約）。両端に持たせると「持ち主が変わる移動」を
+   * 表現できてしまい、それは預り品の意味を壊す。
+   *
+   * これが要る理由: 製品受入（再研磨）の受入本数は現場の手入力で、打ち間違いは
+   * 例外ではなく前提。しかも計上後の巻き戻しは禁止（lib/workflow.ts — 二重計上に
+   * なるため）なので、**訂正口はここしか無い**。
+   */
+  ownerBpId: string | null;
 }
 
 /**

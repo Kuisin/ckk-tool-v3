@@ -18,6 +18,7 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission, targetPlantsInScope } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatMovementNumber } from "@/lib/doc-number";
+import { type LocalizedText, localized } from "@/lib/format";
 import {
   applyTransaction,
   createMovement,
@@ -64,11 +65,49 @@ function inputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
     lotNumber: z.number().int().nullable(),
     from: endpointSchema,
     to: endpointSchema,
+    /** 所有者（預り品）。null = 自社の在庫（従来の挙動）。 */
+    ownerBpId: z.string().uuid().nullable(),
     notes: z.string(),
   });
 }
 
 export type GoodsMovementInput = z.infer<ReturnType<typeof inputSchema>>;
+
+/**
+ * この品目で**実際に預り品のバケットがある**所有者（顧客）。
+ *
+ * ここは読み取りだが `data.ts` ではなくこのファイルに置いてある — 画面は品目を
+ * 選び直すたびに引く必要があり、`data.ts` は `"use server"` ではないので
+ * クライアントから呼べない（`_shared/option-search.ts` と同じ理由・同じ作り）。
+ *
+ * **候補を「在庫がある所有者」に絞るのは意図的。** ST06 は訂正の道具で、
+ * 新しい預かりをここから起こすことはない（預かりは製品受入（再研磨）の工程が
+ * 計上する）。数量 0 の行も残すのは、全量返しきったあとに打ち直す場合があるため。
+ *
+ * **外注へ出ている分（custody 付き）の所有者は出さない。** ST06 には預け先の軸が
+ * 無く、書き込み先は必ず `custodyBpId = null` のバケットになる。custody 付きの
+ * 所有者まで候補に出すと、在庫がコーティング先にあるのに手元のバケットを
+ * 減らす伝票が切れてしまう（戻ってくるまで訂正できない、が正しい）。
+ */
+export async function fetchItemOwnerOptions(
+  itemId: number,
+): Promise<{ value: string; label: string }[]> {
+  const authz = await checkPermission("inventory", "READ");
+  if (!authz.ok) return [];
+  if (!Number.isInteger(itemId) || itemId <= 0) return [];
+  const rows = await prisma.itemInventory.findMany({
+    where: { itemId, ownerBpId: { not: null }, custodyBpId: null },
+    select: { ownerBpId: true, ownerBp: { select: { name: true } } },
+    distinct: ["ownerBpId"],
+  });
+  return rows
+    .filter((r): r is typeof r & { ownerBpId: string } => r.ownerBpId != null)
+    .map((r) => ({
+      value: r.ownerBpId,
+      label: localized(r.ownerBp?.name as LocalizedText | null),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label, "ja"));
+}
 
 /**
  * 手動で在庫を動かす。
@@ -113,6 +152,7 @@ export async function postGoodsMovement(
       quantity: v.quantity,
       from: v.from,
       to: v.to,
+      ownerBpId: v.ownerBpId,
     };
     // 画面と同じ関数で検査する（画面を迂回した呼び出しも同じ規則で弾く）。
     const problems = validateMovement(type, draft);
@@ -137,6 +177,22 @@ export async function postGoodsMovement(
     if (!item) return actionError(tr("common.targetRecordNotFound"));
     // 在庫を持たない品目（再研磨の役務）はここで落ちる。
     const itemType = inventoryTypeOf(item.itemType);
+
+    if (v.ownerBpId != null) {
+      // **預り品は工具（製品）だけ。** 素材を顧客から預かる業務は無いので、
+      // 素材に所有者が付いた行ができると自社在庫の集計からも外れたまま誰も
+      // 気づかない（読み出し側は一律 ownerBpId: null で絞っている）。
+      if (item.itemType !== "PRODUCT") {
+        return actionError(tr("inventory.goodsMovement.ownerOnlyForProducts"));
+      }
+      // FK は Restrict なので無い id でも最終的には落ちるが、そこで出るのは
+      // 制約違反の生メッセージ。先に引いて読める文にする。
+      const owner = await prisma.businessPartner.findUnique({
+        where: { id: v.ownerBpId },
+        select: { id: true },
+      });
+      if (!owner) return actionError(tr("common.targetRecordNotFound"));
+    }
 
     const postings = postingsFor(type, draft);
     // 伝票の拠点は「どちらか片方に決まるとき」だけ入れる。拠点をまたぐ移動では
@@ -166,6 +222,9 @@ export async function postGoodsMovement(
           storageLocationId: posting.endpoint.storageLocationId,
           shelfId: posting.endpoint.shelfId,
           lotNumber: v.lotNumber,
+          // **所有者は両端で同じ。** 棚を変えても持ち主は変わらない
+          // （MovementDraft.ownerBpId のコメント）。null = 自社の在庫。
+          ownerBpId: v.ownerBpId,
         });
         await applyTransaction(tx, movementId, {
           // 台帳の区分。在庫は 1 表になったので書き込み先は選ばない。
@@ -191,6 +250,8 @@ export async function postGoodsMovement(
         quantity: v.quantity,
         fromPlantId: v.from.plantId,
         toPlantId: v.to.plantId,
+        // 預り品を動かしたのかどうかは履歴から読めなければ困る（顧客の資産）。
+        ownerBpId: v.ownerBpId,
       },
     });
 

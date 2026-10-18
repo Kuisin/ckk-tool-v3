@@ -12,6 +12,9 @@
  * `productId` / `materialId` の値は **`items.id`**（2026-09-20 の切り替え —
  * `_specs/api.md` §6.1）。項目名は従来のままで、それぞれ `/api/v1/products` /
  * `/api/v1/materials` の `id` と同じ id 空間を指す。
+ *
+ * `type` に **`REGRIND`** が増えている（2026-10-18 — `_specs/api.md` §6.2）。
+ * 消した値は無いが、`default` 節の無い switch を書いた読み手は取りこぼす。
  */
 
 import { workOrderScopeWhere } from "@/app/(dashboard)/production/work-orders/data";

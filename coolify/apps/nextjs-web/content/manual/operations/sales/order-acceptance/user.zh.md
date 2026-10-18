@@ -188,7 +188,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 | [产品](#field-product) | 必填 | 所订购的产品 |
 | [品名（提取文本）](#field-extracted-name) | — | 订单上记载的品名 |
 | [类别](#field-order-type) | 必填 | 正式・测试等区分 |
-| 要研磨的刀具 | 再研磨时必填 | 寄存并研磨的刀具（仅限[类别](#field-order-type)为再研磨的行） |
+| [要研磨的刀具](#field-tool) | 再研磨时必填 | 寄存并研磨的刀具（仅限[类别](#field-order-type)为再研磨的行） |
 | [数量](#field-quantity) | 必填 | 订购的数量 |
 | [单价](#field-unit-price) | 必填 | 每支的价格 |
 | [交期](#field-delivery-date) | 选填 | 各明细的交期 |
@@ -246,6 +246,12 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 正式・测试・样品・**再研磨**・其他的区分。价格按该区分而不同。
 
 **「再研磨」的行所选的东西不同。**「製品」（产品）栏变为「**再研磨品目**」（再研磨服务）栏（销售的是再研磨这项服务，因此从[再研磨服务](/manual/zh/operations/masters/regrind-item/user)中选择），其正下方会出现「**研ぎ直す工具**」（要研磨的刀具）栏。刀具从[产品主数据](/manual/zh/operations/masters/product/user)中选择，他社制造的刀具（「他社製品」＝他社产品）只能在此栏中选择。**把类别改为「再研磨」、或从「再研磨」改为其他区分时，已选的品目会被清空** — 因为要选的品目种类本身不同，请重新选择。**再研磨的行在未选择刀具前既无法申请审批，也无法确定**（会显示「明細 2 行目: 研ぎ直す工具が未選択です」＝第 2 行未选择要研磨的刀具）。
+
+### 要研磨的刀具 [#field-tool]
+
+寄存并研磨的客户刀具本身。仅出现在类别为「再研磨」的行。销售的是再研磨这项服务（[再研磨服务](/manual/zh/operations/masters/regrind-item/user)），而本栏指向的是实际加工并返还的实物——寄存品库存、工单的对象以及出货的物品都以此计数。
+
+刀具从[产品主数据](/manual/zh/operations/masters/product/user)中选择。**只有本栏可以选择他社制造的刀具（「他社製品」／他社产品）。** 再研磨的行在本栏为空时，既无法提交审批也无法确定。
 
 ### 数量 [#field-quantity]
 

@@ -244,6 +244,8 @@ This screen is for seeing "what is where right now". Recounting, moving stock by
 
 > ⚠️ **Stock held by an outsourcer does not count toward the quantities on this screen.** Anything not on hand is not counted as your own stock. Check what is held by an outsourcer from "Held by" on [Stock Overview](/manual/en/operations/inventory/stock-overview/user).
 
+> ⚠️ **Tools received from a customer (customer-owned stock) do not count here either.** They are only held for regrinding and are not ours, so they are not counted as stock. Check them from "Owner" on [Stock Overview](/manual/en/operations/inventory/stock-overview/user).
+
 <!-- permissions:start -->
 ## Permissions required
 

@@ -231,6 +231,7 @@ import {
   expectedInput,
   isOffMainline,
   isWorkOrderComplete,
+  regrindFullyReturned,
   resolveReceivedQuantity,
   STEP_LINK_STATE_SELECT,
   STEP_STATE_SELECT,
@@ -648,6 +649,28 @@ export async function completeStepExecution(
     persisted.inputQuantity > 0
       ? await allocateDocumentKey("INVENTORY_MOVEMENT")
       : null;
+
+  // **全量返却なら下流の未着手工程を畳む。** 研ぎ直せる物が 1 本も無いので
+  // 後続は 0 本を受け取るだけ。放っておくと「意味のない工程を 0 で押していく」
+  // までこの指示書は閉じず、受入が COMPLETED になった時点で cancelWorkOrder
+  // （着手前のみ）も使えない。畳めば下の isWorkOrderComplete が CANCELLED を
+  // 無視して、同じ要求の中で指示書が完了する（返却の OUT もそこで立つ）。
+  const fullyReturned =
+    isRegrindReceipt &&
+    regrindFullyReturned({
+      inputQuantity: persisted.inputQuantity,
+      outputSuccess: persisted.outputSuccessQuantity,
+      defectSemiFinished: persisted.outputDefectSemiFinished,
+      defectScrap: persisted.outputDefectScrap,
+      defectRework: persisted.outputDefectRework,
+    });
+  // ctx を引くのは全量返却のときだけ（普段の完了で 1 クエリ増やさない）。
+  const foldIds = fullyReturned
+    ? downstreamStepIds(
+        stepId,
+        (await fetchWorkflowCtx(stepRow.workOrderId)).ctx,
+      )
+    : [];
   // 完了クレームは条件付き更新 — 同時完了はどちらか一方だけ成立し、
   // 在庫の二重計上を防ぐ（監査 P0-7/#5）。
   const claimed = await prisma.$transaction(async (tx) => {
@@ -673,6 +696,21 @@ export async function completeStepExecution(
         sessionLockedAt: null,
       },
     });
+    let folded = 0;
+    if (c.count === 1 && foldIds.length > 0) {
+      // **未着手のものだけ。** 進行中・完了済みの工程は人が手を付けた実績が
+      // あるので畳まない（その場合は指示書は開いたままになる — 正しい）。
+      const f = await tx.workOrderStep.updateMany({
+        where: { id: { in: foldIds }, status: "PENDING" },
+        data: {
+          status: "CANCELLED",
+          cancelledAt: new Date(),
+          cancelledBy: actor,
+          cancelReason: tr("workflowActions.autoCancelledAllReturned"),
+        },
+      });
+      folded = f.count;
+    }
     if (c.count === 1 && receiptKey) {
       const { onRegrindReceiptTx } = await import("./inventory");
       await onRegrindReceiptTx(tx, receiptKey, {
@@ -685,7 +723,7 @@ export async function completeStepExecution(
         box: stepRow.lotText,
       });
     }
-    return c;
+    return { count: c.count, folded };
   });
   if (claimed.count !== 1) {
     // 進行中のまま他者がロックを持っている = ロック、それ以外 = 先に完了した。
@@ -737,6 +775,9 @@ export async function completeStepExecution(
         input: persisted.inputQuantity,
       }),
       ...persisted,
+      // 工程が自動で畳まれたことは履歴から読めなければ困る（工程が消えて
+      // 見えるので、理由が無いと「なぜ飛んでいるのか」が分からない）。
+      ...(claimed.folded > 0 ? { autoCancelledSteps: claimed.folded } : {}),
     },
   });
   return { ok: true };

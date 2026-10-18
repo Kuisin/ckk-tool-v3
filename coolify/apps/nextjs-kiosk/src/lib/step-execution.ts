@@ -30,10 +30,12 @@ import { allocateDocumentKey } from "./numbering";
 import {
   canStartStep,
   computeFinishedQuantity,
+  downstreamStepIds,
   effectiveLotInputMode,
   expectedInput,
   isWorkOrderComplete,
   REGRIND_RECEIPT_STEP_CODE,
+  regrindFullyReturned,
   resolveReceivedQuantity,
   STEP_LINK_STATE_SELECT,
   STEP_STATE_SELECT,
@@ -815,6 +817,25 @@ export async function completeStepExecution(
     persisted.inputQuantity > 0
       ? await allocateDocumentKey("INVENTORY_MOVEMENT")
       : null;
+  // **全量返却なら下流の未着手工程を畳む**（nextjs-web completeStepExecution と
+  // 同じ規則）。研ぎ直せる物が 1 本も無いので後続は 0 本を受け取るだけで、
+  // 放っておくと意味のない工程を 0 で押していくまで指示書が閉じない。
+  const fullyReturned =
+    isRegrindReceipt &&
+    regrindFullyReturned({
+      inputQuantity: persisted.inputQuantity,
+      outputSuccess: persisted.outputSuccessQuantity,
+      defectSemiFinished: persisted.outputDefectSemiFinished,
+      defectScrap: persisted.outputDefectScrap,
+      defectRework: persisted.outputDefectRework,
+    });
+  // ctx を引くのは全量返却のときだけ（普段の完了で 1 クエリ増やさない）。
+  const foldIds = fullyReturned
+    ? downstreamStepIds(
+        stepId,
+        (await fetchWorkflowCtx(stepRow.workOrderId)).ctx,
+      )
+    : [];
   // 完了クレームは条件付き更新 — 同時完了はどちらか一方だけ成立し、
   // 在庫の二重計上を防ぐ（監査 P0-7/#5）。作業セッションも同 tx で閉じる。
   const claimed = await prisma.$transaction(async (tx) => {
@@ -841,6 +862,19 @@ export async function completeStepExecution(
       },
     });
     if (c.count !== 1) return c.count;
+    if (foldIds.length > 0) {
+      // **未着手のものだけ。** 進行中・完了済みの工程は人が手を付けた実績が
+      // あるので畳まない（その場合は指示書は開いたまま — 正しい）。
+      await tx.workOrderStep.updateMany({
+        where: { id: { in: foldIds }, status: "PENDING" },
+        data: {
+          status: "CANCELLED",
+          cancelledAt: now,
+          cancelledBy: actorId,
+          cancelReason: "全量返却のため自動でキャンセルしました", // i18n-ignore
+        },
+      });
+    }
     if (receiptKey) {
       const { onRegrindReceiptTx } = await import("./inventory");
       await onRegrindReceiptTx(tx, receiptKey, {

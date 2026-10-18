@@ -210,6 +210,24 @@ IP 範囲外 / 背後のユーザーが利用停止 — **どれも同じ本文�
 `DESCRIPTION`）にも置いてある — 連携先が最初に読むのはこの仕様書ではなく
 あちらなので、片方だけに書かない。
 
+## 6.2 注文種別・指示書種別に `REGRIND` が増えた（2026-10-18）
+
+再研磨（顧客の工具を預かって研ぎ直す）は専用の口を持たず、**通常の書類の鎖を
+そのまま流れる**。そのため既存の口の enum に値が 1 つ増えた:
+
+| 口 | 項目 | 増えた値 |
+|---|---|---|
+| `/order-lines` | `orderType` | `REGRIND`（従来: PRODUCTION / TEST / SAMPLE / OTHER） |
+| `/work-orders` | `type` | `REGRIND`（従来: FROM_STOCK / MANUFACTURE） |
+
+**消した値も変えた形も無い。** OpenAPI 文書はこれらの項目に enum を宣言して
+いないので契約そのものは壊れないが、**`default` 節の無い switch を書いている
+クライアントは新しい値を取りこぼす**。
+
+注意: 再研磨の明細の `productId` は**売っている役務**（再研磨品目）で、
+研ぎ直す工具そのものではない。工具は別の列（`order_lines.tool_item_id`）で、
+**この API にはまだ出していない**。
+
 ## 7. 環境と公開
 
 `src/config/dev-features.json` の `api` で閉じる。`main` に出すには PR が要る。
