@@ -17,6 +17,7 @@ import {
   pinnedWorkOrderType,
   quantityLabelKeysFor,
   REGRIND_RECEIPT_STEP_CODE,
+  regrindFullyReturned,
   regrindQuantities,
   requiredCompanions,
   requiredStartCodeForType,
@@ -1473,5 +1474,50 @@ describe("quantityLabelKeysFor / regrindQuantities", () => {
         0,
       ).received,
     ).toBeNull();
+  });
+});
+
+describe("regrindFullyReturned — 全量そのまま返るか", () => {
+  const q = (
+    over: Partial<Parameters<typeof regrindFullyReturned>[0]> = {},
+  ) => ({
+    inputQuantity: 10,
+    outputSuccess: 0,
+    defectSemiFinished: 0,
+    defectScrap: 10,
+    defectRework: 0,
+    ...over,
+  });
+
+  it("受入 10 / 返却 10 — 研ぎ直せる物が 1 本も無い", () => {
+    expect(regrindFullyReturned(q())).toBe(true);
+  });
+
+  it("部分返却は当たらない（普通の再研磨）", () => {
+    expect(regrindFullyReturned(q({ outputSuccess: 7, defectScrap: 3 }))).toBe(
+      false,
+    );
+  });
+
+  it("半製品・工程分岐が 1 本でもあれば畳まない — まだ流れる先がある", () => {
+    expect(
+      regrindFullyReturned(q({ defectSemiFinished: 1, defectScrap: 9 })),
+    ).toBe(false);
+    expect(regrindFullyReturned(q({ defectRework: 1, defectScrap: 9 }))).toBe(
+      false,
+    );
+  });
+
+  it("受入 0 では真にしない — 畳む下流も無く、そもそも預り品を計上していない", () => {
+    expect(regrindFullyReturned(q({ inputQuantity: 0, defectScrap: 0 }))).toBe(
+      false,
+    );
+  });
+
+  it("保存則が崩れた入力では真にしない（検査を通さず呼ばれた場合）", () => {
+    // 廃棄が受入と一致しない = どこかに行き先が残っている可能性がある。
+    expect(regrindFullyReturned(q({ inputQuantity: 10, defectScrap: 4 }))).toBe(
+      false,
+    );
   });
 });

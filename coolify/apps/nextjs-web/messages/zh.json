@@ -8825,6 +8825,7 @@
     "regrindRequiresReceipt": "再研磨工单必须以 产品接收（再研磨）开始",
     "regrindRouteOnlyRegrindSteps": "再研磨工序清单只能包含可用于再研磨工单的工序（不能包含材料准备・加工）",
     "semiFinishedNotAllowedForRegrind": "再研磨不能使用半成品区分（客户的刀具不会成为本公司的半成品）",
+    "autoCancelledAllReturned": "因全部退回而自动取消",
     "fromStockRequiresStockIssue": "库存分工单必须包含产品出库（库存）工序",
     "stockIssueOnlyForFromStock": "产品出库（库存）仅限库存分（FROM_STOCK）工单使用",
     "workOrderNotApprovedOrInProgress": "工单尚未处于已批准或进行中状态",

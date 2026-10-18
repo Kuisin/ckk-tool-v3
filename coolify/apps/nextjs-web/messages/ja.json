@@ -8825,6 +8825,7 @@
     "regrindRequiresReceipt": "再研磨の指示書は 製品受入（再研磨）で始める必要があります",
     "regrindRouteOnlyRegrindSteps": "再研磨工程リストに入れられるのは再研磨の指示書で使える工程だけです（材料準備・加工は入れられません）",
     "semiFinishedNotAllowedForRegrind": "再研磨では半製品の区分は使えません（顧客の工具は自社の半製品にはなりません）",
+    "autoCancelledAllReturned": "全量返却のため自動でキャンセルしました",
     "fromStockRequiresStockIssue": "在庫分の指示書には 製品出し（在庫） が必要です",
     "stockIssueOnlyForFromStock": "製品出し（在庫）は在庫分（FROM_STOCK）の指示書専用です",
     "workOrderNotApprovedOrInProgress": "指示書が承認済み/進行中ではありません",

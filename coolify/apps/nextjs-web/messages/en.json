@@ -8825,6 +8825,7 @@
     "regrindRequiresReceipt": "A regrind work order must start with tool receipt (regrind)",
     "regrindRouteOnlyRegrindSteps": "A regrind step list may only contain steps usable on regrind work orders (no material prep or machining)",
     "semiFinishedNotAllowedForRegrind": "The semi-finished bucket cannot be used for regrinding (the customer's tools never become our semi-finished stock)",
+    "autoCancelledAllReturned": "Auto-cancelled: everything was returned as-is",
     "fromStockRequiresStockIssue": "A from-stock work order requires the Product issue (stock) step",
     "stockIssueOnlyForFromStock": "Product issue (stock) is only for from-stock (FROM_STOCK) work orders",
     "workOrderNotApprovedOrInProgress": "The work order is not approved or in progress",

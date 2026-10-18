@@ -1563,3 +1563,39 @@ export function regrindQuantities(
   );
   return { received, returnedAsIs, finished };
 }
+
+/**
+ * 製品受入（再研磨）で、受け入れた工具が**全部そのまま返る**か
+ * （研ぎ直せる物が 1 本も無い）。
+ *
+ * これが真のとき、後続の研磨・検査・出荷前検査へ流れる本数は 0 になる。
+ * `canStartStep` は数量を見ないので 0 本でも開始・完了でき、
+ * `isWorkOrderComplete` は「キャンセル以外の全工程が COMPLETED」しか見ないので、
+ * **意味のない工程を 0 で 1 つずつ押していくまで指示書が閉じない**。しかも
+ * 受入工程はもう COMPLETED なので `cancelWorkOrder`（着手前のみ）も使えない。
+ * 呼び出し側はこれを見て下流の未着手工程をキャンセルし、同じ要求の中で指示書を
+ * 閉じる（`isWorkOrderComplete` は CANCELLED を無視するので、それで足りる）。
+ *
+ * **条件は狭く取る。** 半製品・工程分岐が 1 本でもあれば、まだ流れる先がある
+ * ので勝手に畳まない。部分返却（受入 10 / 返却 3 / 良品 7）は普通の再研磨で、
+ * ここには当たらない。
+ *
+ * `defectScrap === inputQuantity` も自分で確かめる — `validateQuantities` の
+ * 保存則（良品 + 半製品 + 廃棄 + 分岐 = 受入）に頼れば省けるが、検査を通さずに
+ * 呼ばれたときに「全量返却」を誤って真にしたくない。
+ */
+export function regrindFullyReturned(q: {
+  inputQuantity: number;
+  outputSuccess: number;
+  defectSemiFinished: number;
+  defectScrap: number;
+  defectRework: number;
+}): boolean {
+  return (
+    q.inputQuantity > 0 &&
+    q.defectScrap === q.inputQuantity &&
+    q.outputSuccess === 0 &&
+    q.defectSemiFinished === 0 &&
+    q.defectRework === 0
+  );
+}
