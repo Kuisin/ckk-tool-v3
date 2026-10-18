@@ -13,6 +13,11 @@
  *
  * `productId` の値は **`items.id`**（2026-09-20 の切り替え — `_specs/api.md` §6.1）。
  * 項目名は従来のままで、`/api/v1/products` の `id` と同じ id 空間を指す。
+ *
+ * `orderType` に **`REGRIND`** が増えている（2026-10-18 — `_specs/api.md` §6.2）。
+ * 消した値は無いが、`default` 節の無い switch を書いた読み手は取りこぼす。
+ * 再研磨の明細の `productId` は**売っている役務**（再研磨品目）で、研ぎ直す
+ * 工具そのものではない — 工具は `tool_item_id` で、ここには出していない。
  */
 
 import { ownWhere } from "@ckk/authz-core";
