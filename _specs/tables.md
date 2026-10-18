@@ -63,15 +63,19 @@
 >   `kiosk-cron.sql` の rotate ジョブが 1 本で行う
 > - `notification.prisma`: `notifications` / `push_subscriptions` / `user_notification_settings`
 > - `product-routes.prisma`: `product_process_route_version_steps` / `product_process_route_versions` / `product_process_routes`
->   — 工程リスト。**2 種別ある（`kind`）**: `PREP` = 準備工程リスト（〇〇出し・受渡し +
+>   — 工程リスト。**3 種別ある（`kind`）**: `PREP` = 準備工程リスト（〇〇出し・受渡し +
 >   材料準備。製品にも顧客にも紐づかない共通のもの。`product_id` / `customer_bp_id` は
 >   null — DB の CHECK `product_process_routes_kind_columns`）/ `MANUFACTURING` =
->   製造工程リスト（製品 × 受注元。従来のもの）。指示書は 2 本の版を合わせて工程を作り、
->   `work_orders.route_version_id`（製造）と `.prep_route_version_id`（準備）で両方を指す。
+>   製造工程リスト（製品 × 受注元。従来のもの）/ **`REGRIND` = 再研磨工程リスト**
+>   （製品受入（再研磨）から始まる研磨の並び。PREP と同じく共通で `product_id` /
+>   `customer_bp_id` は null）。製造分の指示書は 製造 + 準備 の 2 本の版を合わせて
+>   工程を作り、`work_orders.route_version_id`（製造）と `.prep_route_version_id`
+>   （準備）で両方を指す。**再研磨の指示書はリストを 1 本しか持たない** —
+>   `route_version_id` を再利用し（kind = REGRIND）、`prep_route_version_id` は null。
 >   どの工程がどちらかは DB では決めず、`lib/workflow-core.ts` `isPrepStep`
->   （カタログの category = MATERIAL_PREP）が唯一の定義。準備工程リストは共通なので
->   **指示書ごとに版は選べない** — 常に最新版を使い、指示書から新版は作らない
->   （`applyLatestPrepRoute`）。製造側の版に準備工程は含まない（移行前に混ざっていた分は
+>   （カタログの category = MATERIAL_PREP）が唯一の定義。準備・再研磨の工程リストは
+>   共通なので **指示書ごとに版は選べない** — 常に最新版を使い、指示書から新版は
+>   作らない（`applyLatestCommonRoute`）。製造側の版に準備工程は含まない（移行前に混ざっていた分は
 >   20261019 で取り除いた。版の行は履歴として残す）— 版の比較・保存は種別の部分だけで
 >   行う（`lib/product-routes.ts` `resolveRouteVersionTx`）
 > - `production-master.prisma`: `work_location_groups` / `work_locations`

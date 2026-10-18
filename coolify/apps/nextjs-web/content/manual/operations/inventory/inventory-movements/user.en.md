@@ -35,6 +35,10 @@ See **each individual record of stock moving** as a slip. The operation code is 
 | 予約解除 (Reservation released) | A hold being released |
 | 棚卸調整 (Adjustment) | Confirming a [Stock Take](/manual/en/operations/inventory/stock-takes/user) (ST05) with a discrepancy to correct (a stock take with no discrepancy creates no slip) |
 | 手動 (Manual) | A person manually recording a movement in [Manual Stock Movement](/manual/en/operations/inventory/goods-movement/user) (ST06) |
+| 外注支給 (Issued to subcontractor) | Handing work to a subcontractor for a step (stock held by the partner increases) |
+| 外注戻り (Returned from subcontractor) | Work coming back from a subcontractor (stock held by the partner decreases) |
+| 返品 (Sales return) | A customer returning goods after dispatch (stock comes back; the delivery order and the billing do not change) |
+| 再研磨受入 (Regrind receipt) | Completing 「製品受入（再研磨）」 on a [work order](/manual/en/operations/production/work-order/user), so tools received from the customer enter as **customer-owned stock** (never into our own stock) |
 | 不明（移行前） (Unknown, pre-migration) | An old record from before the stock system was rebuilt, whose cause is unknown |
 
 ## The screen

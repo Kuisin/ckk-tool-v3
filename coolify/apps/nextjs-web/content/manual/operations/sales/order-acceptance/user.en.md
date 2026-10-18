@@ -188,7 +188,7 @@ Every field on the order acceptance screen. What the AI read from the order land
 | [Product](#field-product) | Required | The product ordered |
 | [Item name (as read)](#field-extracted-name) | — | The item name printed on the order |
 | [Order type](#field-order-type) | Required | Production, test and so on |
-| Tool to regrind | Required for regrind | The tool held and reground (only on rows whose [order type](#field-order-type) is regrind) |
+| [Tool to regrind](#field-tool) | Required for regrind | The tool held and reground (only on rows whose [order type](#field-order-type) is regrind) |
 | [Quantity](#field-quantity) | Required | The quantity ordered |
 | [Unit price](#field-unit-price) | Required | Price per piece |
 | [Delivery date](#field-delivery-date) | Optional | Delivery date for that line |
@@ -246,6 +246,12 @@ The item name exactly as printed on the order. It is kept **as a record of what 
 Production, test, sample, **regrind** or other. Prices differ by type.
 
 **A 「再研磨」 (regrind) row asks for different things.** The 「製品」 (product) field becomes a 「**再研磨品目**」 (regrind item) field — what is sold is the regrinding service, so you pick it from the [regrind items](/manual/en/operations/masters/regrind-item/user) — and a 「**研ぎ直す工具**」 (tool to regrind) field appears just below it. The tool is picked from the [product master](/manual/en/operations/masters/product/user), and this is the only field where another maker's tool (an 「他社製品」 (external product)) can be picked. **Switching a row's type into or out of 「再研磨」 clears the item that was picked** — the kind of item is different, so pick it again. **A regrind row can be neither sent for approval nor confirmed until its tool is picked** (「明細 2 行目: 研ぎ直す工具が未選択です」 — the tool to regrind is not selected).
+
+### Tool to regrind [#field-tool]
+
+The customer's own tool that is held and reground. It appears only on rows whose order type is regrind. What is sold is the regrinding service (a [regrind item](/manual/en/operations/masters/regrind-item/user)); this field points at the physical thing that is worked on and returned — customer-owned stock, the work order's target and what ships back are all counted on it.
+
+Choose the tool from the [product master](/manual/en/operations/masters/product/user). **This is the only field where a tool made by another maker (an 「他社製品」 external product) can be chosen.** A regrind row cannot be submitted for approval or confirmed while this field is empty.
 
 ### Quantity [#field-quantity]
 

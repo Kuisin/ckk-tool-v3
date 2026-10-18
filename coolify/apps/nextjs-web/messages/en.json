@@ -9692,6 +9692,10 @@
         "label": "Order type",
         "summary": "Classifies the order as Production, Test, Sample, or Other. Prices differ by this classification."
       },
+      "tool": {
+        "label": "Tool to regrind",
+        "summary": "The customer's own tool that is held and reground. It appears only on rows whose order type is regrind. What is sold is the regrinding service; this field points at the physical thing that is worked on and returned."
+      },
       "quantity": {
         "label": "Quantity",
         "summary": "The ordered quantity. Correct it if the extracted result is inaccurate."
@@ -9951,6 +9955,10 @@
       "route": {
         "label": "Step list / version",
         "summary": "Which sequence of steps to use. Choose from the step lists registered for the product (not used for stock work orders)."
+      },
+      "regrindRoute": {
+        "label": "Regrind step list",
+        "summary": "The order of steps from receiving the customer's tools through regrinding and inspection. It is a shared list tied to neither product nor customer, and you cannot choose a version — the latest is always used."
       },
       "newRouteName": {
         "label": "New step list name",
@@ -10305,6 +10313,52 @@
       "active": {
         "label": "Enabled",
         "summary": "When turned off, it no longer appears as an option for defect records."
+      }
+    },
+    "regrindItem": {
+      "name": {
+        "label": "Name",
+        "summary": "The name shown on screen. It is what you read when picking a price on an order acceptance, so writing it so the conditions are legible makes it easier to find."
+      },
+      "toolClass": {
+        "label": "Tool class",
+        "summary": "The kind of tool the price splits on (for example, a solid-carbide helical end mill). It is not a matching key — a person chooses which item to use."
+      },
+      "location": {
+        "label": "Ground area",
+        "summary": "Which part is reground (for example, periphery only, or periphery + flute). The same tool costs a different amount depending on where it is ground, so each combination is registered separately."
+      },
+      "flutes": {
+        "label": "Flutes",
+        "summary": "The number of flutes. Leave it empty when the price does not vary by flute count — left empty, the item applies whatever the flute count is."
+      },
+      "sizeMin": {
+        "label": "Size lower bound",
+        "summary": "The lower diameter bound the price applies to (mm). It covers diameters greater than this, not the bound itself. Specifying only one side is fine."
+      },
+      "sizeMax": {
+        "label": "Size upper bound",
+        "summary": "The upper diameter bound the price applies to (mm). It covers diameters up to and including this. It must be greater than the lower bound."
+      },
+      "standardPrice": {
+        "label": "Standard price",
+        "summary": "The list price, regardless of customer. A price list for that customer wins over it. Left empty, no unit price can be resolved for a customer who has no price list."
+      },
+      "unit": {
+        "label": "Unit",
+        "summary": "The unit it is counted in. Required, and pre-filled with 「本」 (pieces)."
+      },
+      "keywords": {
+        "label": "Keywords",
+        "summary": "Alternate spellings used for search and for matching order documents automatically. Abbreviations, readings and Latin-script forms let a document match even when its wording differs from the name."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "An internal note. It never appears on documents sent to the customer."
+      },
+      "active": {
+        "label": "Active",
+        "summary": "Turning it off removes it from the 「再研磨品目」 pick list on an order acceptance. An item in use cannot be deleted, so you turn this off instead."
       }
     },
     "approvalGroup": {

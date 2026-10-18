@@ -190,7 +190,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 | [製品](#field-product) | 必須 | 注文された製品 |
 | [品名（抽出テキスト）](#field-extracted-name) | — | 注文書に書かれていた品名 |
 | [種別](#field-order-type) | 必須 | 本番・テストなどの区分 |
-| 研ぎ直す工具 | 再研磨のとき必須 | 預かって研ぎ直す工具（[種別](#field-order-type)が「再研磨」の行だけ） |
+| [研ぎ直す工具](#field-tool) | 再研磨のとき必須 | 預かって研ぎ直す工具（[種別](#field-order-type)が「再研磨」の行だけ） |
 | [数量](#field-quantity) | 必須 | 注文された本数 |
 | [単価](#field-unit-price) | 必須 | 1 本あたりの価格 |
 | [納期](#field-delivery-date) | 任意 | 明細ごとの納期 |
@@ -248,6 +248,12 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 本番・テスト・サンプル・**再研磨**・その他の区分です。価格はこの区分ごとに違います。
 
 **「再研磨」の行は選ぶものが変わります。** 「製品」の欄が「**再研磨品目**」の欄になり（売っているのは研ぎ直しという役務なので、[再研磨品目](/manual/ja/operations/masters/regrind-item/user)から選びます）、そのすぐ下に「**研ぎ直す工具**」の欄が出ます。工具は[製品マスタ](/manual/ja/operations/masters/product/user)から選び、他社が作った工具（「他社製品」）を選べるのはこの欄だけです。**種別を「再研磨」に変えたとき・「再研磨」から別の区分に変えたときは、選んでいた品目が外れます** — 選ぶ品目の種類そのものが違うためで、選び直してください。**再研磨の行は工具を選ぶまで承認依頼も確定もできません**（「明細 2 行目: 研ぎ直す工具が未選択です」と出ます）。
+
+### 研ぎ直す工具 [#field-tool]
+
+預かって研ぎ直す、お客様の工具そのものです。種別が「再研磨」の行だけに出ます。売っているのは研ぎ直しという役務（[再研磨品目](/manual/ja/operations/masters/regrind-item/user)）で、この欄が指すのは手を入れて返す現物 — 預り品の在庫・指示書の対象・出荷する物はすべてこちらで数えます。
+
+工具は[製品マスタ](/manual/ja/operations/masters/product/user)から選びます。**他社が作った工具（「他社製品」）を選べるのはこの欄だけ**です。再研磨の行は、この欄が空のままでは承認依頼も確定もできません。
 
 ### 数量 [#field-quantity]
 

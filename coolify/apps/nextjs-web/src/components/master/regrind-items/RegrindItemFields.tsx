@@ -22,7 +22,9 @@ import {
 } from "@mantine/core";
 import { useTranslations } from "next-intl";
 import { MasterKeywordsField } from "@/components/master/MasterKeywordsField";
+import { HelpLabel } from "@/components/ui/HelpLabel";
 import { LocalizedTextInput } from "@/components/ui/shells";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 
 export interface RegrindItemFieldValues {
   nameJa: string;
@@ -54,6 +56,7 @@ export function RegrindItemFields({
   return (
     <Stack gap="sm">
       <LocalizedTextInput
+        help={fieldHelpTip(tr, "regrindItem", "name")}
         jaProps={{
           error: nameError ?? undefined,
           value: values.nameJa,
@@ -70,14 +73,14 @@ export function RegrindItemFields({
       />
       <TextInput
         description={tr("master.regrindItems.toolClassHelp")}
-        label={tr("master.regrindItems.toolClass")}
+        label={<HelpLabel {...fieldHelp(tr, "regrindItem", "toolClass")} />}
         onChange={(e) => onChange({ toolClass: e.currentTarget.value })}
         placeholder={tr("master.regrindItems.toolClassPlaceholder")}
         value={values.toolClass ?? ""}
       />
       <TextInput
         description={tr("master.regrindItems.locationHelp")}
-        label={tr("master.regrindItems.location")}
+        label={<HelpLabel {...fieldHelp(tr, "regrindItem", "location")} />}
         onChange={(e) => onChange({ location: e.currentTarget.value })}
         placeholder={tr("master.regrindItems.locationPlaceholder")}
         value={values.location ?? ""}
@@ -86,7 +89,7 @@ export function RegrindItemFields({
         <NumberInput
           allowDecimal={false}
           description={tr("master.regrindItems.flutesHelp")}
-          label={tr("master.regrindItems.flutes")}
+          label={<HelpLabel {...fieldHelp(tr, "regrindItem", "flutes")} />}
           min={1}
           onChange={(v) =>
             onChange({ flutes: typeof v === "number" ? v : null })
@@ -96,7 +99,7 @@ export function RegrindItemFields({
         <NumberInput
           decimalScale={3}
           description={tr("master.regrindItems.sizeMinHelp")}
-          label={tr("master.regrindItems.sizeMin")}
+          label={<HelpLabel {...fieldHelp(tr, "regrindItem", "sizeMin")} />}
           min={0}
           onChange={(v) =>
             onChange({ sizeMinMm: typeof v === "number" ? v : null })
@@ -107,7 +110,7 @@ export function RegrindItemFields({
         <NumberInput
           decimalScale={3}
           description={tr("master.regrindItems.sizeMaxHelp")}
-          label={tr("master.regrindItems.sizeMax")}
+          label={<HelpLabel {...fieldHelp(tr, "regrindItem", "sizeMax")} />}
           min={0}
           onChange={(v) =>
             onChange({ sizeMaxMm: typeof v === "number" ? v : null })
@@ -121,7 +124,9 @@ export function RegrindItemFields({
           decimalScale={2}
           description={tr("master.regrindItems.standardPriceHelp")}
           hideControls
-          label={tr("master.regrindItems.standardPrice")}
+          label={
+            <HelpLabel {...fieldHelp(tr, "regrindItem", "standardPrice")} />
+          }
           min={0}
           onChange={(v) =>
             onChange({ standardUnitPrice: typeof v === "number" ? v : null })
@@ -131,7 +136,7 @@ export function RegrindItemFields({
           value={values.standardUnitPrice ?? ""}
         />
         <TextInput
-          label={tr("common.unit")}
+          label={<HelpLabel {...fieldHelp(tr, "regrindItem", "unit")} />}
           onChange={(e) => onChange({ unit: e.currentTarget.value })}
           value={values.unit}
           withAsterisk
@@ -143,7 +148,7 @@ export function RegrindItemFields({
       */}
       <MasterKeywordsField
         kind="product"
-        label={tr("master.regrindItems.keywords")}
+        label={<HelpLabel {...fieldHelp(tr, "regrindItem", "keywords")} />}
         onChange={(v) => onChange({ matchNames: v })}
         subject={{
           name: values.nameJa,
@@ -162,14 +167,14 @@ export function RegrindItemFields({
       />
       <Textarea
         autosize
-        label={tr("common.notes")}
+        label={<HelpLabel {...fieldHelp(tr, "regrindItem", "notes")} />}
         minRows={2}
         onChange={(e) => onChange({ notes: e.currentTarget.value })}
         value={values.notes}
       />
       <Switch
         checked={values.isActive}
-        label={tr("common.enabled")}
+        label={<HelpLabel {...fieldHelp(tr, "regrindItem", "active")} />}
         onChange={(e) => onChange({ isActive: e.currentTarget.checked })}
       />
     </Stack>

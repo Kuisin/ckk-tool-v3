@@ -244,6 +244,8 @@ A. 两者查看的是同样的库存，只是方向不同。本应用按物品�
 
 > ⚠️ **寄存在外协的部分不计入本画面的数量。** 不在手头的东西不算作自己的库存。寄存的部分请从[在庫一覧](/manual/zh/operations/inventory/stock-overview/user)的「寄存方」中确认。
 
+> ⚠️ **从客户处接收的刀具（寄存品）也不计入本画面的数量。** 只是为再研磨而代为保管，并非自己的东西，因此不算作库存。请从[在庫一覧](/manual/zh/operations/inventory/stock-overview/user)的「所有者」中确认。
+
 <!-- permissions:start -->
 ## 所需权限
 

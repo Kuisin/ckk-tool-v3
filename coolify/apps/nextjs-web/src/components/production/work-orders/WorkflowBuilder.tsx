@@ -1913,7 +1913,9 @@ export function WorkflowBuilder({
             <Select
               allowDeselect={false}
               data={regrindRouteOptions}
-              label={tr("production.workOrders.regrindRoute")}
+              label={
+                <HelpLabel {...fieldHelp(tr, "workOrder", "regrindRoute")} />
+              }
               onChange={onRegrindRouteChange}
               placeholder={
                 regrindRouteOptions.length

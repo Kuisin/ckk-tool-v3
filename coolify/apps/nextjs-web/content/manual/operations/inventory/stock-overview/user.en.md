@@ -41,7 +41,7 @@ This app is **a view of "what is where" from the location's side**. To see "is t
 - **単位 (Unit)** … the unit of quantity (this column can be hidden).
 - **更新日 (Updated)** … the date that row's stock last moved.
 
-Above the list: a search box, 「**拠点**」(site), 「**保管場所**」(storage location — narrowed to that site's locations once a site is chosen), and 「**品目種別**」(item type — product / material).
+Above the list: a search box, 「**拠点**」(site), 「**保管場所**」(storage location — narrowed to that site's locations once a site is chosen), and 「**品目種別**」(item type — product / material). When there is stock held by a subcontractor or stock owned by a customer, 「**預け先**」(held by) and 「**所有者**」(owner) appear as well — both default to showing only what is ours.
 
 The 「**在庫ゼロを隠す**」(hide zero stock) switch is **on** by default. Turn it off to also show locations with zero on hand — useful for confirming that "there really is nothing where there should be something".
 

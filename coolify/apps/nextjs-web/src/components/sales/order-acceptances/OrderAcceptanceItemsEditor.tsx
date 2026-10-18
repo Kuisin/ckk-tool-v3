@@ -653,9 +653,11 @@ export function OrderAcceptanceItemsEditor({
                             }
                           : null
                       }
-                      label={tr(
-                        "sales.orderAcceptanceItemsEditor.toolToRegrind",
-                      )}
+                      label={
+                        <HelpLabel
+                          {...fieldHelp(tr, "orderAcceptance", "tool")}
+                        />
+                      }
                       onChange={(v, opt) =>
                         patch(ri, {
                           toolItemId: v,
