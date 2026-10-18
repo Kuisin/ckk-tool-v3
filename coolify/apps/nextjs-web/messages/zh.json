@@ -1779,6 +1779,10 @@
       "api_client": {
         "label": "外部 API 客户端管理",
         "summary": "管理外部系统以程序方式读取业务数据所用的凭据。签发令牌与启用客户端均需逐项获得批准。可读取的范围由分配给该客户端的角色决定。"
+      },
+      "estimate_cost": {
+        "label": "价格试算的成本",
+        "summary": "可查看价格试算的成本合计、毛利，以及各计算基准是否计入成本。没有此权限时不显示成本合计和毛利。与试算单价无关。"
       }
     },
     "PERMISSION_GROUP_LABEL": {
@@ -4155,7 +4159,10 @@
       "intermediateOrNotApplicable": "（中间值/不适用）",
       "quantityPcs": "{quantity} 支",
       "description": "说明",
-      "descriptionHint": "显示在价格试算画面中此费用项旁的提示按钮（ⓘ）里。留空则不显示按钮。"
+      "descriptionHint": "显示在价格试算画面中此费用项旁的提示按钮（ⓘ）里。留空则不显示按钮。",
+      "isCost": "计入成本",
+      "isCostHint": "作为“成本合计”记录在价格试算结果中，不影响试算单价。",
+      "costBadge": "成本"
     },
     "itemDefEditForm": {
       "theKeyMustBeAnIdentifier": "键请使用以字母或下划线开头的标识符",
@@ -7969,7 +7976,9 @@
       "thereAreNoPriceEstimates": "没有价格试算",
       "hintFor": "关于{name}的说明",
       "scaleEstimateNote": "这是用试算单价（基准）× 数量阶梯系数得出的参考值。实际按数量的价格由价格表决定（与用此价格试算创建价格表时的初始值相同）。",
-      "scaleEstimateTitle": "参考：按数量的单价"
+      "scaleEstimateTitle": "参考：按数量的单价",
+      "costTotal": "成本合计",
+      "grossMargin": "毛利"
     },
     "orderLineDetail": {
       "designWithCount": "设计（{count}）",

@@ -38,12 +38,13 @@ import { openConfirm } from "@/components/ui/modals";
 import { FormActions, FormSection } from "@/components/ui/shells";
 import { localized } from "@/lib/format";
 import type { ToolType, TrialInput } from "@/lib/trial-pricing";
-import type {
-  Criterion,
-  CriterionRole,
-  CustomInputDef,
-  LookupTable,
-  ToolTypeDef,
+import {
+  type Criterion,
+  type CriterionRole,
+  type CustomInputDef,
+  isCostCriterion,
+  type LookupTable,
+  type ToolTypeDef,
 } from "@/lib/trial-pricing-criteria";
 import { runCriteriaEngine } from "@/lib/trial-pricing-engine";
 import {
@@ -362,6 +363,14 @@ export function CriterionEditForm({
               label={tr("common.enabled")}
               mt={26}
               onChange={(e) => set({ enabled: e.currentTarget.checked })}
+            />
+            <Switch
+              checked={isCostCriterion(criterion)}
+              description={tr("settings.criterionEditForm.isCostHint")}
+              disabled={criterion.role === "final"}
+              label={tr("settings.criterionEditForm.isCost")}
+              mt={26}
+              onChange={(e) => set({ isCost: e.currentTarget.checked })}
             />
           </Group>
 

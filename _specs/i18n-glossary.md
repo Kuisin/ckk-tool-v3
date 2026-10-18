@@ -714,6 +714,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | ja | en | zh |
 |---|---|---|
 | 材料原価 | Material cost | 材料成本 |
+| 原価 / 原価に数える | Cost / Count as cost | 成本 / 计入成本 |
+| 原価合計 / 粗利 | Total cost / Gross margin | 成本合计 / 毛利 |
 | 段加工費 / 段加工長 | Step machining cost / Step length | 阶梯加工费 / 阶梯加工长度 |
 | 首下 | Neck length | 颈下长度 |
 | 加工単価 | Machining rate | 加工单价 |

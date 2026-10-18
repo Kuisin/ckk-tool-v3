@@ -122,6 +122,24 @@ export interface Criterion {
   enabled: boolean;
   /** 適用する工具種（未設定/空 = 全工具種）。指定時はその工具種の価格試算にのみ効く。 */
   toolTypes?: ToolType[];
+  /**
+   * 原価に数えるか。価格試算の結果に「原価合計」として残り、あとで原価を分析する
+   * ための印で、**見積単価の計算には効かない**（subtotal に足すかは role が決める）。
+   * 未設定（旧データ）は role から決める — `isCostCriterion` が唯一の判定。
+   */
+  isCost?: boolean;
+}
+
+/**
+ * 基準が原価に数えられるか。`final` は価格そのものなので常に false。未設定は
+ * `component`（小計に足す項目）だけを原価とみなす — 印を付ける前の保存済み
+ * 基準でも、従来の「原価内訳」と同じ集合になる。
+ */
+export function isCostCriterion(
+  c: Pick<Criterion, "role" | "isCost">,
+): boolean {
+  if (c.role === "final") return false;
+  return c.isCost ?? c.role === "component";
 }
 
 export type CustomInputType = "number" | "boolean" | "text" | "select";
@@ -174,6 +192,7 @@ export function criterionSchema(tr: Tr) {
     enabled: z.boolean(),
     // 工具種は管理者定義（値は文字列）。undefined = 全工具種 / 空 = 適用なし。
     toolTypes: z.array(z.string()).optional(),
+    isCost: z.boolean().optional(),
   });
 }
 

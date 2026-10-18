@@ -127,11 +127,30 @@ export interface LotResult {
   estimateUnitPrice: number; // 見積単価 (×補正値, ROUNDUP -1)
 }
 
+/**
+ * 評価した基準 1 つぶんの値（final を除く）。原価の分析用に、計算した時点の
+ * 名前・役割・原価の印ごと結果へ焼き込む — あとで基準を直しても、保存済みの
+ * 価格試算が何を原価に数えていたかは動かない。
+ */
+export interface CriterionResult {
+  id: string;
+  name: string;
+  role: "component" | "intermediate";
+  isCost: boolean;
+  value: number;
+}
+
 export interface TrialResult {
   breakdown: CostBreakdown;
   shapeOutPrice: number; // 形状出し単価 = (材料+段加工+加工単価)×予備形状本数
   lots: LotResult[];
   warnings: string[];
+  /**
+   * 基準ごとの値（評価順）。原価の印を持つ以前の保存済みスナップショットには無い。
+   */
+  items?: CriterionResult[];
+  /** 原価合計 = isCost の基準の和。items と同じく旧スナップショットには無い。 */
+  costTotal?: number;
 }
 
 const roundUp = (n: number, digits: number) => {

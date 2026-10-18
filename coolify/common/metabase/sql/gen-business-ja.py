@@ -458,6 +458,11 @@ COLS = {
     "planned_work_hours": "予定作業時間",
     "work_hours": "作業時間",
     "worked_date": "作業日",
+    # 価格試算の原価（v_estimates / v_estimate_cost_items）
+    "estimate_unit_price": "見積単価", "minimum_price": "最低単価",
+    "cost_total": "原価合計", "gross_margin": "粗利",
+    "item_order": "評価順", "criterion_id": "計算基準ID", "criterion_name": "計算基準",
+    "criterion_role": "計算基準の役割", "is_cost": "原価",
     "outsource_requested_at": "外注依頼日",
     "outsource_expected_at": "外注入荷予定日",
     "outsource_received_at": "外注入荷日",
@@ -583,7 +588,8 @@ BLOB_JSON = [
 # created_at / quantity …）は上の COLS を流用し、ビュー固有の解決名列だけ
 # ANALYTICS_COLS で足す（適用時に {**COLS, **ANALYTICS_COLS} で合成）。
 ANALYTICS_TABLES = {
-    "v_estimates": "価格試算", "v_price_list_entries": "価格表",
+    "v_estimates": "価格試算", "v_estimate_cost_items": "価格試算の計算基準別内訳",
+    "v_price_list_entries": "価格表",
     "v_price_list_variants": "価格表バリアント", "v_quotes": "見積書",
     "v_quote_items": "見積明細", "v_order_acceptances": "注文請書",
     "v_order_lines": "注文明細", "v_design_requests": "設計依頼",
@@ -731,6 +737,7 @@ VIEW_FKS = [
     # 価格表・試算（PRC / EST）
     ("v_price_list_variants", "price_list_no", "v_price_list_entries", "price_list_no"),
     ("v_price_list_variants", "estimate_no", "v_estimates", "estimate_no"),
+    ("v_estimate_cost_items", "estimate_no", "v_estimates", "estimate_no"),
 ]
 
 

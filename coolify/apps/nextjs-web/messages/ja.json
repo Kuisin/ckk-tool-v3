@@ -1779,6 +1779,10 @@
       "api_client": {
         "label": "外部 API クライアントの管理",
         "summary": "社外のシステムが業務データを機械的に読むための資格情報を管理します。トークンの発行と有効化は 1 件ずつ承認を受けます。読める範囲は、そのクライアントに割り当てたロールが決めます。"
+      },
+      "estimate_cost": {
+        "label": "価格試算の原価",
+        "summary": "価格試算の原価合計・粗利と、計算基準ごとの原価の印を見られます。持たない人には原価合計・粗利が表示されません。見積単価には関係しません。"
       }
     },
     "PERMISSION_GROUP_LABEL": {
@@ -4155,7 +4159,10 @@
       "intermediateOrNotApplicable": "（中間/対象外）",
       "quantityPcs": "{quantity} 本",
       "description": "説明",
-      "descriptionHint": "価格試算の画面で、この費目の横のヒントボタン（ⓘ）に表示されます。空欄ならボタンは出ません。"
+      "descriptionHint": "価格試算の画面で、この費目の横のヒントボタン（ⓘ）に表示されます。空欄ならボタンは出ません。",
+      "isCost": "原価に数える",
+      "isCostHint": "価格試算の結果に「原価合計」として残ります。見積単価の計算には影響しません。",
+      "costBadge": "原価"
     },
     "itemDefEditForm": {
       "theKeyMustBeAnIdentifier": "キーは英字/アンダースコア始まりの識別子にしてください",
@@ -7969,7 +7976,9 @@
       "thereAreNoPriceEstimates": "価格試算がありません",
       "hintFor": "{name}の説明",
       "scaleEstimateNote": "見積単価（基準）× 数量スケールの倍率で出した参考値です。実際の数量ごとの価格は価格表で決まります（この価格試算から価格表を作るときの初期値と同じ）。",
-      "scaleEstimateTitle": "参考：数量ごとの単価"
+      "scaleEstimateTitle": "参考：数量ごとの単価",
+      "costTotal": "原価合計",
+      "grossMargin": "粗利"
     },
     "orderLineDetail": {
       "designWithCount": "設計（{count}）",
