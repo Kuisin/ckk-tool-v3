@@ -12,6 +12,7 @@
 
 import {
   ActionIcon,
+  Alert,
   Anchor,
   Badge,
   Divider,
@@ -34,10 +35,22 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
+  approvePriceEntry,
   deleteDiscountRule,
+  rejectPriceEntry,
+  requestPriceEntryApproval,
   saveDiscountRule,
 } from "@/app/(dashboard)/sales/price-lists/actions";
 import type { RelatedQuoteRow } from "@/app/(dashboard)/sales/price-lists/data";
+import {
+  ApprovalActionCard,
+  type ApprovalActionState,
+} from "@/components/approvals/ApprovalActionCard";
+import {
+  ApprovalTrailList,
+  type ApprovalTrailView,
+  countTrailRecords,
+} from "@/components/approvals/ApprovalTrailList";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { AppTabs } from "@/components/ui/AppTabs";
@@ -87,6 +100,8 @@ export function PriceListDetail({
   productOptions,
   auditEntries,
   memos,
+  approval,
+  approvalTrail,
 }: {
   entry: PriceListEntry;
   relatedQuotes: RelatedQuoteRow[];
@@ -96,6 +111,9 @@ export function PriceListDetail({
   auditEntries: AuditEntry[];
   /** 社内コメント（document_memos 由来、コメントタブ）。 */
   memos: MemoView[];
+  /** 独自値の追加承認の状態（lib/approvals fetchApprovalState）。 */
+  approval: ApprovalActionState;
+  approvalTrail: ApprovalTrailView[];
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -104,6 +122,11 @@ export function PriceListDetail({
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("prices");
   const summary = entrySummary(entry);
+  const lastRejectReason =
+    [...approvalTrail]
+      .flatMap((s) => s.records)
+      .reverse()
+      .find((r) => r.action === "REJECTED")?.comment ?? null;
   const estimateVariants = entry.variants.filter((v) => v.estimateId);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -231,6 +254,28 @@ export function PriceListDetail({
       title={tr("sales.priceLists.priceListDetails")}
       updatedAt={fmt.dateTime(entry.updatedAt)}
     >
+      {/*
+        独自値の追加承認（承認設定 MS0B）— 価格試算から引き継いでいない価格を
+        持つ価格表だけが通る。依頼は保存のたびに自動で出るので、ここで押せる
+        「依頼」は差し戻されたあとの出し直しだけ。
+      */}
+      {(entry.approvalStatus === "PENDING" ||
+        entry.approvalStatus === "REJECTED") && (
+        <>
+          <ApprovalActionCard
+            approval={approval}
+            canRequest={entry.approvalStatus === "REJECTED"}
+            onApprove={() => approvePriceEntry(entry.entryId)}
+            onReject={(reason) => rejectPriceEntry(entry.entryId, reason)}
+            onRequest={() => requestPriceEntryApproval(entry.entryId)}
+            rejectReason={lastRejectReason}
+            subject={`${tr("common.priceList")} ${entry.entryId}`}
+          />
+          <Alert color="orange" variant="light">
+            {tr("sales.priceLists.unapprovedNotUsedForPricing")}
+          </Alert>
+        </>
+      )}
       <SummaryGrid>
         <FieldValue label={tr("common.customer")} value={entry.customerName} />
         <FieldValue
@@ -289,6 +334,17 @@ export function PriceListDetail({
           label={tr("sales.priceLists.unitPriceRange")}
           value={priceRangeLabel(summary.minPrice, summary.maxPrice)}
         />
+        {entry.approvalStatus && entry.approvalStatus !== "NONE" && (
+          <FieldValue
+            label={tr("master.customValueApproval.title")}
+            value={
+              <StatusBadge
+                entity="PriceListApproval"
+                status={entry.approvalStatus}
+              />
+            }
+          />
+        )}
         <FieldValue label={tr("common.salesRep")} value={entry.salesRepName} />
         <FieldValue label={tr("common.createdBy")} value={entry.createdBy} />
       </SummaryGrid>
@@ -300,6 +356,11 @@ export function PriceListDetail({
             {tr("sales.priceLists.discountRules")}
           </Tabs.Tab>
           <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
+          {countTrailRecords(approvalTrail) > 0 && (
+            <Tabs.Tab value="approval">
+              {tr("sales.priceLists.approvalTab")}
+            </Tabs.Tab>
+          )}
           <Tabs.Tab value="comments">{tr("common.comment")}</Tabs.Tab>
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
@@ -600,6 +661,10 @@ export function PriceListDetail({
         </Tabs.Panel>
 
         {/* keepMounted={false}: エディタ（prosemirror）はタブを開くまで読み込まない。 */}
+        <Tabs.Panel pt="md" value="approval">
+          <ApprovalTrailList trail={approvalTrail} />
+        </Tabs.Panel>
+
         <Tabs.Panel keepMounted={false} pt="md" value="comments">
           <MemoPanel
             memos={memos}

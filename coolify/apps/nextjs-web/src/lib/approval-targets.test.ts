@@ -4,7 +4,11 @@ import {
   APPROVAL_TARGET_TYPES,
   approvalTargetHref,
   approvalTargetLabel,
+  CUSTOM_VALUE_TARGETS,
+  FLOW_SETTINGS_TARGET_TYPES,
+  hasCustomValueLayer,
   isApprovalTargetType,
+  SETTINGS_TARGET_TYPES,
 } from "./approval-targets";
 
 describe("approval targets", () => {
@@ -31,5 +35,14 @@ describe("approval targets", () => {
     expect(approvalTargetHref("work_orders", "1042")).toBe(
       "/production/work-orders/1042",
     );
+  });
+
+  it("独自値の追加承認は判定を持つ書類だけ（価格表は通常のフローを持たない）", () => {
+    expect(hasCustomValueLayer("price_list_entries")).toBe(true);
+    expect(hasCustomValueLayer("order_acceptances")).toBe(true);
+    expect(hasCustomValueLayer("work_orders")).toBe(false);
+    expect(FLOW_SETTINGS_TARGET_TYPES).not.toContain("price_list_entries");
+    for (const t of Object.keys(CUSTOM_VALUE_TARGETS))
+      expect(SETTINGS_TARGET_TYPES).toContain(t);
   });
 });

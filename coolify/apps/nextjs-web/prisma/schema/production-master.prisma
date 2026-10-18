@@ -531,6 +531,7 @@ model ApprovalGroup {
   delegates     ApprovalDelegate[]
   flowSteps     ApprovalFlowStep[]
   flowRuleSteps ApprovalFlowRuleStep[]
+  customValueSteps ApprovalCustomValueStep[]
   formSteps     FormApprovalStep[]
   requests      ApprovalRequest[]
   inspectionTemplates InspectionTemplate[]
@@ -583,6 +584,7 @@ model ApprovalFlow {
 
   steps         ApprovalFlowStep[]
   rules         ApprovalFlowRule[]
+  customValueSteps ApprovalCustomValueStep[]
   updatedByUser User?              @relation("ApprovalFlowUpdatedBy", fields: [updatedBy], references: [id])
 
   @@map("approval_flows")
@@ -605,6 +607,32 @@ model ApprovalFlowStep {
   @@unique([targetType, stepNo])
   @@index([groupId])
   @@map("approval_flow_steps")
+  @@schema("app")
+}
+
+// ─── 独自値の追加承認（承認フローとは別の段構成） ───────────────────────────
+//
+// 書類に「前の書類から引き継いでいない値」（価格表なら価格試算に無い基準単価・
+// 段階単価の上書き、注文請書なら価格表に無い／上書きした単価）があるときだけ、
+// 既定フロー（または一致した条件付きフロー）の**後ろに足す**段。依頼時点で
+// flow_snapshot に連結されるので、進行中の扱いは通常の段と変わらない。
+// 段が 0 本 = 追加の承認なし（未設定 = 素通し）。
+// どの書類で「独自値」を判定できるかは nextjs-web lib/approval-targets.ts の
+// CUSTOM_VALUE_TARGETS が唯一の定義。approval_flow_steps と同型。
+model ApprovalCustomValueStep {
+  id         Int          @id @default(autoincrement())
+  targetType String       @map("target_type")
+  stepNo     Int          @map("step_no")
+  name       Json // { ja, en } 例「独自価格承認」
+  groupId    Int          @map("group_id")
+  mode       ApprovalMode @default(ANY)
+
+  flow  ApprovalFlow  @relation(fields: [targetType], references: [targetType], onDelete: Cascade)
+  group ApprovalGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
+  @@unique([targetType, stepNo])
+  @@index([groupId])
+  @@map("approval_custom_value_steps")
   @@schema("app")
 }
 

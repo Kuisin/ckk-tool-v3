@@ -36,6 +36,7 @@ export const APPROVAL_TARGET_TYPES = [
   "invoices",
   "invoice_payments",
   "design_versions",
+  "price_list_entries",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -50,7 +51,44 @@ export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
  * APPROVAL_TARGET_TYPES からは外さない（承認依頼中一覧・履歴はそのまま動く）。
  */
 export const FLOW_SETTINGS_TARGET_TYPES: readonly ApprovalTargetType[] =
-  APPROVAL_TARGET_TYPES.filter((t) => t !== "form_responses");
+  APPROVAL_TARGET_TYPES.filter(
+    (t) => t !== "form_responses" && t !== "price_list_entries",
+  );
+
+/**
+ * 「独自値の追加承認」（approval_custom_value_steps）を持てる書類種別と、
+ * その書類で何を独自値と数えるかの説明（messages のキー）。
+ *
+ * 独自値の追加承認は通常の承認フローとは**別建ての段構成**で、書類に前の書類
+ * から引き継いでいない値があるときだけ、通常の段の後ろに足される
+ * （lib/custom-value-approval-core.ts）。どの書類にも同じ仕組みで足せるが、
+ * 「何が独自値か」は書類ごとに決めて判定を書く必要がある — ここに載っている
+ * 書類だけが判定を持っている。書類を足すときは、ここに 1 行 + 承認依頼の
+ * 入口で `startApprovalFlow({ customValues })` を渡す。
+ *
+ * 価格表（price_list_entries）は通常のフローを持たない（MS0B の一覧に出ない）—
+ * 承認を通るのは独自値があるときだけ。
+ */
+export const CUSTOM_VALUE_TARGETS: Partial<
+  Record<ApprovalTargetType, { descriptionKey: string }>
+> = {
+  price_list_entries: {
+    descriptionKey: "master.customValueApproval.describePriceList",
+  },
+  order_acceptances: {
+    descriptionKey: "master.customValueApproval.describeOrderAcceptance",
+  },
+};
+
+export function hasCustomValueLayer(targetType: string): boolean {
+  return isApprovalTargetType(targetType) && targetType in CUSTOM_VALUE_TARGETS;
+}
+
+/** MS0B で設定する書類種別（通常のフロー or 独自値の追加承認のどちらかを持つ）。 */
+export const SETTINGS_TARGET_TYPES: readonly ApprovalTargetType[] =
+  APPROVAL_TARGET_TYPES.filter(
+    (t) => FLOW_SETTINGS_TARGET_TYPES.includes(t) || t in CUSTOM_VALUE_TARGETS,
+  );
 
 /**
  * 適用モード（approval_flows.apply_mode: PRE = 承認後に適用 / POST = 即時適用 +
@@ -213,6 +251,16 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     appKey: "design-files",
     approvePermission: "design_file",
   },
+  // 価格表は**独自値があるときだけ**承認を通る（価格試算から引き継いでいない
+  // 基準単価・段階単価の上書き）。通常のフローは持たない。承認待ちの価格表は
+  // 価格の解決に使われない。
+  price_list_entries: {
+    label: label("common.priceList", "ja"),
+    color: "blue",
+    href: (id) => `/sales/price-lists/${id}`,
+    appKey: "price-lists",
+    approvePermission: "price_list",
+  },
 };
 
 export function isApprovalTargetType(v: string): v is ApprovalTargetType {
@@ -235,6 +283,7 @@ const TARGET_LABEL_KEY: Record<ApprovalTargetType, string> = {
   invoices: "common.invoice",
   invoice_payments: "common.invoicePayment",
   design_versions: "common.designVersion",
+  price_list_entries: "common.priceList",
 };
 
 /**

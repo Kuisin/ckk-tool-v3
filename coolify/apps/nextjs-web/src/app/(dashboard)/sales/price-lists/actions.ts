@@ -18,8 +18,9 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { requiresEndDate } from "@/components/sales/price-lists/model";
+import { actOnCurrentStep } from "@/lib/approvals";
 import { recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
+import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   type DocKey,
@@ -35,6 +36,7 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { syncPriceEntryApproval } from "./approval";
 import { type EstimateSource, fetchEstimateSourcesForProduct } from "./data";
 
 type Tr = Awaited<ReturnType<typeof getTranslations>>;
@@ -277,9 +279,19 @@ async function entryItemError(
   return priceListItemError(itemId, orderTypes, tr);
 }
 
+/**
+ * 保存結果に添える承認の様子（独自値の追加承認）。画面は依頼したことを
+ * 知らせ、依頼に失敗したときは理由を出す（保存自体は成功している）。
+ */
+export interface PriceEntrySaveResult {
+  entryId: string;
+  approvalRequested: boolean;
+  approvalError?: string;
+}
+
 export async function createPriceEntry(
   payload: PriceEntryCreateInput,
-): Promise<ActionResult<{ entryId: string }>> {
+): Promise<ActionResult<PriceEntrySaveResult>> {
   const tr = await getTranslations();
   const parsed = createInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
@@ -383,8 +395,14 @@ export async function createPriceEntry(
       revalidatePath(`/sales/trial-estimates/${l.number}`);
     }
     revalidatePath("/sales/trial-estimates");
+    // 独自値の追加承認（価格試算から引き継いでいない価格があれば依頼する）。
+    const approval = await syncPriceEntryApproval(key);
     revalidate(entryId);
-    return actionOk({ entryId });
+    return actionOk({
+      entryId,
+      approvalRequested: approval.requested,
+      approvalError: approval.error,
+    });
   } catch (e) {
     const code =
       typeof e === "object" && e !== null && "code" in e
@@ -419,7 +437,7 @@ export type PriceEntryUpdateInput = z.input<
 
 export async function updatePriceEntry(
   payload: PriceEntryUpdateInput,
-): Promise<ActionResult<{ entryId: string }>> {
+): Promise<ActionResult<PriceEntrySaveResult>> {
   const tr = await getTranslations();
   const parsed = updateInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
@@ -625,8 +643,14 @@ export async function updatePriceEntry(
       });
       revalidatePath(`/sales/trial-estimates/${l.number}`);
     }
+    // 独自値が変わっていれば承認をやり直す（変わっていなければ今の承認のまま）。
+    const approval = await syncPriceEntryApproval(key);
     revalidate(v.entryNumber);
-    return actionOk({ entryId: v.entryNumber });
+    return actionOk({
+      entryId: v.entryNumber,
+      approvalRequested: approval.requested,
+      approvalError: approval.error,
+    });
   } catch (e) {
     return actionError(
       prismaErrorMessage(e, tr("sales.priceListsActions.updateFailed"), tr),
@@ -646,7 +670,7 @@ export async function copyPriceEntry(payload: {
   targetIdentity: EntryIdentityPayload;
   validFrom: string;
   validUntil: string | null;
-}): Promise<ActionResult<{ entryId: string }>> {
+}): Promise<ActionResult<PriceEntrySaveResult>> {
   const tr = await getTranslations();
   const authz = await checkPermission("price_list", "CREATE");
   if (!authz.ok) return actionError(authz.error);
@@ -993,5 +1017,137 @@ export async function deleteDiscountRule(
         tr,
       ),
     );
+  }
+}
+
+// ── 独自値の追加承認（承認設定 MS0B） ────────────────────────────────────────
+
+/**
+ * 承認依頼をもう一度出す — 差し戻された価格表を直さずに出し直すとき、または
+ * 保存時に依頼が作れなかったとき。直して保存すれば同じことが起きる。
+ */
+export async function requestPriceEntryApproval(
+  entryNumber: string,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const key = keyOf(entryNumber);
+  if (!key)
+    return actionError(tr("sales.priceListsActions.invalidEntryNumber"));
+  const authz = await checkPermission("price_list", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await entriesInScope(authz.access, authz.userId, [key]))) {
+    return actionError(tr("common.scopeDenied"));
+  }
+  try {
+    const approval = await syncPriceEntryApproval(key);
+    if (approval.error) return actionError(approval.error);
+    if (approval.status === "NONE")
+      return actionError(tr("sales.priceListsActions.noApprovalNeeded"));
+    revalidate(entryNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, tr("common.approvalRequestFailed"), tr),
+    );
+  }
+}
+
+/** 承認 — 全段通過で APPROVED（以後、価格の解決に使われる）。 */
+export async function approvePriceEntry(
+  entryNumber: string,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  // 承認グループ所属（本人 or 代理）は actOnCurrentStep が検証する。
+  const authz = await checkApprovalDocAccess("price_list");
+  if (!authz.ok) return actionError(authz.error);
+  const key = keyOf(entryNumber);
+  if (!key)
+    return actionError(tr("sales.priceListsActions.invalidEntryNumber"));
+  if (!(await entriesInScope(authz.access, authz.userId, [key]))) {
+    return actionError(tr("common.scopeDenied"));
+  }
+  try {
+    const prior = await prisma.priceListEntry.findUnique({
+      where: whereKey(key),
+      select: { approvalStatus: true },
+    });
+    if (!prior) return actionError(tr("sales.priceListsActions.notFound"));
+    if (prior.approvalStatus !== "PENDING")
+      return actionError(tr("sales.priceListsActions.notPendingApproval"));
+    const acted = await actOnCurrentStep({
+      targetType: "price_list_entries",
+      targetId: entryNumber,
+      action: "APPROVED",
+    });
+    if (!acted.ok)
+      return actionError(acted.error ?? tr("common.couldNotApprove"));
+    // 途中の段は PENDING のまま進む。全段を通ってはじめて APPROVED。
+    if (acted.flowCompleted) {
+      await prisma.priceListEntry.update({
+        where: whereKey(key),
+        data: { approvalStatus: "APPROVED" },
+      });
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "price_list_entries",
+        recordId: entryNumber,
+        before: { approvalStatus: "PENDING" },
+        after: { approvalStatus: "APPROVED" },
+      });
+    }
+    revalidate(entryNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
+  }
+}
+
+/** 差し戻し（理由必須）— 価格表は承認されるまで価格の解決に使われない。 */
+export async function rejectPriceEntry(
+  entryNumber: string,
+  reason: string,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkApprovalDocAccess("price_list");
+  if (!authz.ok) return actionError(authz.error);
+  const trimmed = reason.trim();
+  if (!trimmed) return actionError(tr("common.enterAReasonForSendingIt"));
+  const key = keyOf(entryNumber);
+  if (!key)
+    return actionError(tr("sales.priceListsActions.invalidEntryNumber"));
+  if (!(await entriesInScope(authz.access, authz.userId, [key]))) {
+    return actionError(tr("common.scopeDenied"));
+  }
+  try {
+    const prior = await prisma.priceListEntry.findUnique({
+      where: whereKey(key),
+      select: { approvalStatus: true },
+    });
+    if (!prior) return actionError(tr("sales.priceListsActions.notFound"));
+    if (prior.approvalStatus !== "PENDING")
+      return actionError(tr("sales.priceListsActions.notPendingApproval"));
+    const acted = await actOnCurrentStep({
+      targetType: "price_list_entries",
+      targetId: entryNumber,
+      action: "REJECTED",
+      comment: trimmed,
+    });
+    if (!acted.ok)
+      return actionError(acted.error ?? tr("common.couldNotApprove"));
+    await prisma.priceListEntry.update({
+      where: whereKey(key),
+      data: { approvalStatus: "REJECTED" },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "price_list_entries",
+      recordId: entryNumber,
+      before: { approvalStatus: "PENDING" },
+      after: { approvalStatus: "REJECTED", rejectReason: trimmed },
+    });
+    revalidate(entryNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
   }
 }

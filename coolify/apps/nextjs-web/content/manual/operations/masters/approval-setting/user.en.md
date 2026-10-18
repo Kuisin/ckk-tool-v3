@@ -104,6 +104,15 @@ Set this up in the "**条件付きフロー**" (conditional flows) section of th
 
 > ⚠️ As with the default flow, **changes take effect from the next approval request**. Documents already in approval are unaffected.
 
+## Adding approval only for custom values (custom value approval)
+
+This adds approval steps **at the end** only when a document has **values not carried over from the previous document** (custom values). It is set **separately** from the regular approval flow, per document — open it from the "**独自値の追加承認**" (custom value approval) tab of the approval settings.
+
+- **Price list** … a base unit price not taken from a price estimate, a base unit price different from the estimate, or a manually set tier price (custom) counts as a custom value. Price lists have no regular approval flow, so they go through these steps only when they have custom values. Saving submits the approval request automatically, and **until it is approved the price list is not used to price quotes or order acceptances**.
+- **Order acceptance** … line unit prices that are not from the price list (overridden, differing from the price list, no price list, or no quantity tier) count as custom values. If even one line has one, these steps are added **after** the regular flow (or the matching conditional flow) when the approval request is submitted.
+
+With no steps there is no additional approval (as before). Here too, **changes take effect from the next approval request**.
+
 ## Making a group
 
 Open the **Approval groups** tab and press **New** at the top right.

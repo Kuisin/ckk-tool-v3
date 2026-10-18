@@ -811,7 +811,8 @@
     "stockMovement": "出入库单",
     "invoicePayment": "请款单入款",
     "notPendingApproval": "目前不在待审批状态",
-    "designVersion": "图纸版本"
+    "designVersion": "图纸版本",
+    "priceListUnapproved": "价格表待审批"
   },
   "shell": {
     "appsLabel": "应用",
@@ -1650,6 +1651,20 @@
         },
         "CONFIRMED": {
           "label": "已确定"
+        },
+        "REJECTED": {
+          "label": "已退回"
+        }
+      },
+      "PriceListApproval": {
+        "NONE": {
+          "label": "—"
+        },
+        "PENDING": {
+          "label": "审批中"
+        },
+        "APPROVED": {
+          "label": "已批准"
         },
         "REJECTED": {
           "label": "已退回"
@@ -6737,6 +6752,17 @@
       "createFailed": "再研磨服务创建失败",
       "updateFailed": "再研磨服务更新失败",
       "deleteFailed": "再研磨服务删除失败"
+    },
+    "customValueApproval": {
+      "title": "自定义值追加审批",
+      "titleFor": "自定义值追加审批：{label}",
+      "appendedAfterBaseFlow": "仅当单据含有未从前一单据继承的值（自定义值）时，这些审批级才会追加在审批流程之后。",
+      "onlyLayerForThisDocument": "此单据没有常规审批流程。仅当含有自定义值时才经过这些审批级。",
+      "emptyMeansNoExtraApproval": "不设置任何审批级则无追加审批。更改从下一次审批申请起生效。",
+      "overviewIntro": "仅当单据含有未从前一单据继承的值（自定义值）时，追加在常规审批流程之后的审批级。与常规流程分开，按单据设置。",
+      "notSet": "未设置（无追加审批）",
+      "describePriceList": "自定义值：未使用价格试算的基准单价、与价格试算的试算单价不同的基准单价、数量档单价的手动覆盖（仅启用的订单类别）。批准前，此价格表不会用于报价单和订单确认书的定价。",
+      "describeOrderAcceptance": "自定义值：不按价格表的明细单价（手动覆盖、与价格表有差异、无价格表、无数量档）。"
     }
   },
   "manual": {
@@ -7727,7 +7753,8 @@
       "theCancelledOrderAcceptance": "本单据的来源——已取消的订单确认书",
       "youCanRecreateOnceCancelled": "只能由已取消的订单确认书重新创建",
       "confirmRecreateMessage": "将创建一份沿用 {number} 内容的草稿。两者的关联会保留。",
-      "alreadyRecreatedAs": "本订单确认书已重新创建为 {numbers}。请确认没有重复开立。"
+      "alreadyRecreatedAs": "本订单确认书已重新创建为 {numbers}。请确认没有重复开立。",
+      "customValueLine": "第{row}行 {actual}"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "此明细的父单据",
@@ -7876,7 +7903,11 @@
       "resetToPreset": "恢复预设",
       "resetToPresetTitle": "将数量档恢复为预设",
       "resetToPresetMessage": "将此变体的数量档替换为数量阶梯预设（价格试算计算设置）。手动添加的范围和自定义单价将丢失。",
-      "addACustomRange": "添加范围"
+      "addACustomRange": "添加范围",
+      "unapprovedNotUsedForPricing": "此价格表尚未通过自定义值追加审批，因此不会用于报价单和订单确认书的定价。",
+      "approvalTab": "审批",
+      "approvalRequestedOnSave": "因含有自定义值，已提交审批申请",
+      "approvalRequestFailedOnSave": "已保存，但无法提交审批申请：{error}"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "已发行（PDF 生成失败）",
@@ -8228,7 +8259,8 @@
       "priceListInactive": "明细 {line}：价格表已停用",
       "priceListExpired": "明细 {line}：价格表不在有效期内",
       "validUntilRequired": "请输入有效期",
-      "validUntilInPast": "有效期必须为今天或之后的日期"
+      "validUntilInPast": "有效期必须为今天或之后的日期",
+      "priceListUnapproved": "明细{line}：价格表尚未批准（自定义值追加审批）"
     },
     "orderLinesActions": {
       "invalidOrderLine": "订单明细无效",
@@ -8255,7 +8287,10 @@
       "periodChangeFailed": "有效期变更失败",
       "deleteFailed": "价格表删除失败",
       "saveDiscountRuleFailed": "折扣规则保存失败",
-      "deleteDiscountRuleFailed": "折扣规则删除失败"
+      "deleteDiscountRuleFailed": "折扣规则删除失败",
+      "noApprovalNeeded": "此价格表无需审批：没有自定义值，或未设置自定义值追加审批级",
+      "notFound": "未找到价格表",
+      "notPendingApproval": "不在审批中"
     },
     "designRequestActions": {
       "approvalRequestFailed": "审批申请失败",

@@ -1,11 +1,16 @@
+import { getTranslations } from "next-intl/server";
 import type { FlowOverviewRow } from "@/components/master/approval-flows/ApprovalFlowOverview";
 import { ApprovalSettingsView } from "@/components/master/approval-flows/ApprovalSettingsView";
+import type { CustomValueOverviewRow } from "@/components/master/approval-flows/CustomValueOverview";
 import type { ApprovalGroupRow } from "@/components/master/approval-settings/ApprovalGroupTable";
 import { effectiveMemberWhere } from "@/lib/approval-membership";
 import { loadGroupApprovers } from "@/lib/approval-permissions";
 import {
   APPROVAL_TARGET,
+  type ApprovalTargetType,
+  CUSTOM_VALUE_TARGETS,
   FLOW_SETTINGS_TARGET_TYPES,
+  SETTINGS_TARGET_TYPES,
 } from "@/lib/approval-targets";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
@@ -22,13 +27,16 @@ export default async function MasterApprovalSettingsPage() {
   const now = new Date();
   const permissionCodes = [
     ...new Set(
-      FLOW_SETTINGS_TARGET_TYPES.map(
-        (t) => APPROVAL_TARGET[t].approvePermission,
-      ),
+      SETTINGS_TARGET_TYPES.map((t) => APPROVAL_TARGET[t].approvePermission),
     ),
   ];
-  const [flowSteps, ruleCounts, groupRecords] = await Promise.all([
+  const [flowSteps, customSteps, ruleCounts, groupRecords] = await Promise.all([
     prisma.approvalFlowStep.findMany({
+      include: { group: { select: { name: true } } },
+      orderBy: [{ targetType: "asc" }, { stepNo: "asc" }],
+    }),
+    // 独自値の追加承認の段（通常のフローとは別建て）
+    prisma.approvalCustomValueStep.findMany({
       include: { group: { select: { name: true } } },
       orderBy: [{ targetType: "asc" }, { stepNo: "asc" }],
     }),
@@ -51,10 +59,26 @@ export default async function MasterApprovalSettingsPage() {
   // 段のメンバーが承認権限を持っているか — グループに入れただけでは承認できない
   // ので、設定画面のここで突き合わせる。
   const approversByGroup = await loadGroupApprovers(
-    flowSteps.map((s) => s.groupId),
+    [...flowSteps, ...customSteps].map((s) => s.groupId),
     permissionCodes,
     now,
   );
+
+  type StepRow = (typeof flowSteps)[number] | (typeof customSteps)[number];
+  const toOverviewSteps = (rows: StepRow[], code: string) =>
+    rows.map((s) => ({
+      stepNo: s.stepNo,
+      label: localized(s.name as LocalizedText | null),
+      groupLabel: localized(s.group.name as LocalizedText | null),
+      mode: s.mode as "ANY" | "ALL",
+      approvers: (approversByGroup.get(s.groupId) ?? []).map((a) => ({
+        userId: a.userId,
+        displayName: a.displayName,
+        allowed: a.capabilities[code]?.allowed ?? false,
+        unrestricted: a.capabilities[code]?.unrestricted ?? false,
+        scopes: a.capabilities[code]?.scopes ?? [],
+      })),
+    }));
 
   const flows: FlowOverviewRow[] = FLOW_SETTINGS_TARGET_TYPES.map(
     (targetType) => {
@@ -67,24 +91,25 @@ export default async function MasterApprovalSettingsPage() {
         permissionLabel: permissionLabel(code),
         ruleCount:
           ruleCounts.find((r) => r.targetType === targetType)?._count._all ?? 0,
-        steps: flowSteps
-          .filter((s) => s.targetType === targetType)
-          .map((s) => ({
-            stepNo: s.stepNo,
-            label: localized(s.name as LocalizedText | null),
-            groupLabel: localized(s.group.name as LocalizedText | null),
-            mode: s.mode as "ANY" | "ALL",
-            approvers: (approversByGroup.get(s.groupId) ?? []).map((a) => ({
-              userId: a.userId,
-              displayName: a.displayName,
-              allowed: a.capabilities[code]?.allowed ?? false,
-              unrestricted: a.capabilities[code]?.unrestricted ?? false,
-              scopes: a.capabilities[code]?.scopes ?? [],
-            })),
-          })),
+        steps: toOverviewSteps(
+          flowSteps.filter((s) => s.targetType === targetType),
+          code,
+        ),
       };
     },
   );
+
+  const tr = await getTranslations();
+  const customValues: CustomValueOverviewRow[] = (
+    Object.keys(CUSTOM_VALUE_TARGETS) as ApprovalTargetType[]
+  ).map((targetType) => ({
+    targetType,
+    description: tr(CUSTOM_VALUE_TARGETS[targetType]?.descriptionKey ?? ""),
+    steps: toOverviewSteps(
+      customSteps.filter((s) => s.targetType === targetType),
+      APPROVAL_TARGET[targetType].approvePermission,
+    ),
+  }));
 
   const groups: ApprovalGroupRow[] = groupRecords.map((r) => ({
     id: r.id,
@@ -93,5 +118,11 @@ export default async function MasterApprovalSettingsPage() {
     isActive: r.isActive,
   }));
 
-  return <ApprovalSettingsView flows={flows} groups={groups} />;
+  return (
+    <ApprovalSettingsView
+      customValues={customValues}
+      flows={flows}
+      groups={groups}
+    />
+  );
 }

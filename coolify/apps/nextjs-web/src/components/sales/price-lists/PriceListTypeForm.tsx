@@ -68,6 +68,7 @@ import {
   type ScalePresetRow,
   scalePresetRanges,
 } from "@/lib/price-scale-preset";
+import { notifyPriceEntryApproval } from "./approval-notice";
 import {
   appendTierRange,
   type EntryIdentity,
@@ -436,6 +437,7 @@ export function PriceListTypeForm({
               : tr("sales.priceLists.thePriceListWasCreated"),
           color: "green",
         });
+        notifyPriceEntryApproval(result.data, tr);
         // 作成・更新後は対象エントリの詳細（ビュー）ページへ。
         router.push(`${BASE_PATH}/${result.data.entryId}`);
       } else {
