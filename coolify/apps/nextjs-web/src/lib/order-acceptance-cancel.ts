@@ -253,6 +253,9 @@ async function applyCancel(
   if (!valid.ok) return { ok: false, errors: [valid.error] };
 
   const number = formatDocNumber("ORD", key);
+  // 連鎖キャンセルした工程の cancelled_by に入れる（誰が倒したのかが
+  // 工程の行から読めるように）。
+  const actor = await getCurrentActorId();
   const acceptance = await prisma.orderAcceptance.findUnique({
     where: { yearMonth_seq: key },
     select: {
@@ -295,6 +298,7 @@ async function applyCancel(
           line.id,
           tr("orderAcceptanceActions.chainCancelNote", { number }),
           openMovement,
+          actor,
         );
         if (!r.cancelled) {
           // 依頼〜適用の間に出荷された等 — tx ごと巻き戻す。
