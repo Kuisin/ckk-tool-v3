@@ -1,6 +1,7 @@
 ---
 title: "Regrind items — user guide"
 description: "Where regrinding itself is registered as an item, so the price has somewhere to live."
+screenshots: [master-regrind-item-list-01]
 ---
 This app registers **the regrinding itself** as an item, and the price is put on it. Its operation code is `MS0H`.
 
@@ -64,6 +65,10 @@ Leave the standard price empty and the list shows 「**価格表のみ**」 (pri
 ## Reading the list
 
 The list shows **code / name / tool class / ground area / flutes / size band / standard price / status**. You choose a row by its **conditions and its price**, not by its name, so the condition columns are shown as they are.
+
+![Regrind item list screen](../../../assets/screenshots/master-regrind-item-list-01.png)
+
+It reads the same way the old FileMaker 再研マスタ did — one row per combination of conditions, each row carrying one price.
 
 The filters at the top are tool class, ground area and status. Their options are built from **the values actually registered**. The search box covers code, name, tool class and ground area.
 

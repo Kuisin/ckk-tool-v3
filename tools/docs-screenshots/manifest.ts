@@ -1135,6 +1135,18 @@ export const shots: Shot[] = [
     },
   },
   // ── マスタ: 不良種類（MS0A）────────────────────────────────────────────────
+  // ── マスタ: 再研磨品目（MS0H）────────────────────────────────────────────
+  // **値段の表そのもの**を見せる 1 枚。条件（工具の種類 × 加工箇所 × 刃数 ×
+  // サイズ帯）が並んで 1 行 1 金額になる、という読み方が画像で伝わるのが要点。
+  {
+    id: "master-regrind-item-list-01",
+    docPage: "operations/masters/regrind-item/user",
+    path: "/master/regrind-items",
+    steps: async (page) => {
+      // シード値（DB のデータ）なのでロケールを変えても同じ文字列。
+      await page.getByText("超硬ヘリカルエンドミル").first().waitFor();
+    },
+  },
   {
     id: "master-defect-type-list-01",
     docPage: "operations/masters/defect-type/user",
