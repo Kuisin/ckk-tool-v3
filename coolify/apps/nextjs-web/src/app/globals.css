@@ -466,6 +466,15 @@ html {
     [data-mantine-color-scheme="dark"] .form-actions {
       background-color: var(--mantine-color-dark-8);
     }
+    /*
+     * マスタ/詳細の右ペインでは操作バーがページの末尾になる。sticky の自然位置は
+     * main の下余白（--app-shell-padding）の上なので、末尾までスクロールすると
+     * バーがフッターから 16px 浮き上がって「ずれる」。余白ぶん下へ伸ばして、
+     * 貼り付き中と末尾とで同じ位置（フッターの真上）に留める。
+     */
+    .master-detail-detail > :last-child > .form-actions:last-child {
+      margin-bottom: calc(-1 * var(--app-shell-padding, 0rem));
+    }
   }
 
   /* Form fields: in a grid row where fields differ in label/description height,

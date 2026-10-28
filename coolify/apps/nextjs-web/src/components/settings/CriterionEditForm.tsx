@@ -15,6 +15,7 @@ import {
   Group,
   SegmentedControl,
   Select,
+  SimpleGrid,
   Stack,
   Switch,
   Text,
@@ -332,7 +333,9 @@ export function CriterionEditForm({
     <Stack gap="md">
       <FormSection title={tr("settings.criterionEditForm.basis")}>
         <Stack gap="sm">
-          <Group gap="sm" wrap="wrap">
+          {/* 3 欄は右ペインの幅いっぱいに割る（固定幅だと広い画面で右が
+              余り、狭い画面では折り返して高さだけ増えていた）。 */}
+          <SimpleGrid cols={{ base: 1, md: 3 }} spacing="sm">
             <TextInput
               description={tr(
                 "settings.criterionEditForm.referencedInFormulasAsRId",
@@ -341,13 +344,11 @@ export function CriterionEditForm({
               label="ID"
               onChange={(e) => set({ id: e.currentTarget.value })}
               value={criterion.id}
-              w={180}
             />
             <TextInput
               label={tr("settings.criterionEditForm.criterionName")}
               onChange={(e) => set({ name: e.currentTarget.value })}
               value={criterion.name}
-              w={220}
             />
             <Select
               data={ROLE_OPTIONS}
@@ -356,12 +357,12 @@ export function CriterionEditForm({
                 set({ role: (v as CriterionRole) ?? "component" })
               }
               value={criterion.role}
-              w={220}
             />
+          </SimpleGrid>
+          <Group align="flex-start" gap="xl" wrap="wrap">
             <Switch
               checked={criterion.enabled}
               label={tr("common.enabled")}
-              mt={26}
               onChange={(e) => set({ enabled: e.currentTarget.checked })}
             />
             <Switch
@@ -369,7 +370,6 @@ export function CriterionEditForm({
               description={tr("settings.criterionEditForm.isCostHint")}
               disabled={criterion.role === "final"}
               label={tr("settings.criterionEditForm.isCost")}
-              mt={26}
               onChange={(e) => set({ isCost: e.currentTarget.checked })}
             />
           </Group>
