@@ -85,7 +85,15 @@ describe("secret-box", () => {
   it("暗号文が壊れていれば corrupt", () => {
     const sealed = seal("sk-test-abcd1234");
     withKeys(KEY_A);
-    const broken = { ...sealed, ct: `${sealed.ct.slice(0, -2)}AA` };
+    // 先頭の 1 文字を「必ず別の文字」に替える。固定文字 "AA" で末尾を上書き
+    // すると、暗号文がたまたま "AA" で終わる回は壊れず、試験が稀に落ちていた
+    // （実際に 1 回）。末尾の文字は base64 の詰め物ビットしか変えないことが
+    // あるので、先頭（1 バイト目の上位 6 ビット）を替える。
+    const first = sealed.ct.charAt(0);
+    const broken = {
+      ...sealed,
+      ct: `${first === "A" ? "B" : "A"}${sealed.ct.slice(1)}`,
+    };
     expect(openSecret(broken, AAD)).toEqual({ ok: false, reason: "corrupt" });
   });
 

@@ -57,7 +57,7 @@ export async function fetchPurchaseRequests(): Promise<PurchaseRequestRow[]> {
     include: {
       createdByUser: { select: { displayName: true } },
       items: {
-        include: { material: { select: { code: true } } },
+        include: { item: { select: { code: true } } },
         orderBy: { sortOrder: "asc" },
       },
     },
@@ -71,7 +71,7 @@ export async function fetchPurchaseRequests(): Promise<PurchaseRequestRow[]> {
     return {
       requestNumber: r.requestNumber,
       requesterName: r.createdByUser?.displayName ?? tr("common.system"),
-      primaryMaterial: r.items[0]?.material.code ?? null,
+      primaryMaterial: r.items[0]?.item?.code ?? null,
       itemCount: r.items.length,
       status: r.status,
       desiredAt: desired[0] ?? null,
@@ -93,7 +93,7 @@ export async function fetchPurchaseRequest(
       createdByUser: { select: { displayName: true } },
       purchaseOrder: { select: { poNumber: true } },
       items: {
-        include: { material: true, plant: true },
+        include: { item: true, plant: true },
         orderBy: { sortOrder: "asc" },
       },
     },
@@ -139,9 +139,9 @@ export async function fetchPurchaseRequest(
     notes: r.notes,
     items: r.items.map((it) => ({
       id: it.id,
-      materialId: String(it.materialId),
-      materialCode: it.material.code,
-      materialName: localized(it.material.name as LocalizedText | null),
+      itemId: String(it.itemId),
+      materialCode: it.item?.code ?? "",
+      materialName: localized(it.item?.name as LocalizedText | null),
       plantId: it.plantId != null ? String(it.plantId) : null,
       plantName: it.plant
         ? `${it.plant.code} ${localized(it.plant.name as LocalizedText | null)}`

@@ -29,6 +29,7 @@ import {
   removeDeviceAction,
   updateEmailAction,
 } from "@/app/(dashboard)/profile/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   DangerButton,
   GhostButton,
@@ -58,16 +59,6 @@ export interface ProfileData {
   lastLoginAt: string | null;
   approvalGroups: { id: number; name: unknown }[];
   devices: { id: string; userAgent: string | null; createdAt: string }[];
-}
-
-function formatTs(iso: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(
-    d.getDate(),
-  ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(
-    d.getMinutes(),
-  ).padStart(2, "0")}`;
 }
 
 /** UA 文字列から表示用の短いデバイス名を作る（厳密判定は不要）。 */
@@ -101,6 +92,9 @@ function deviceLabel(
 
 export function ProfileView({ user }: { user: ProfileData }) {
   const tr = useTranslations();
+  // 日時は利用者の表示設定（書式・タイムゾーン）で組む。ブラウザのローカル
+  // 時刻で組むとサーバーと食い違い、TZ の違う環境で hydration が割れる。
+  const fmt = useFormat();
   const userGroupLabel: Record<string, string> = {
     SYSTEM: tr("common.system"),
     EMPLOYEE: tr("profile.profileView.employee"),
@@ -335,7 +329,7 @@ export function ProfileView({ user }: { user: ProfileData }) {
               />
               <FieldValue
                 label={tr("common.lastLogin")}
-                value={formatTs(user.lastLoginAt)}
+                value={fmt.dateTime(user.lastLoginAt)}
               />
               <FieldValue
                 label={tr("common.approvalGroup")}
@@ -452,7 +446,7 @@ export function ProfileView({ user }: { user: ProfileData }) {
                     <Text size="sm">{deviceLabel(d.userAgent, tr)}</Text>
                     <Text c="dimmed" size="xs">
                       {tr("profile.profileView.registeredOn", {
-                        date: formatTs(d.createdAt),
+                        date: fmt.dateTime(d.createdAt),
                       })}
                     </Text>
                   </Stack>

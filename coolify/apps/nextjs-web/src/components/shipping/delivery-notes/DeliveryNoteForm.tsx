@@ -30,14 +30,14 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
-import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
+import { searchProductItemOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
   searchEndUserOptions,
   updateDeliveryNote,
 } from "@/app/(dashboard)/shipping/delivery-notes/actions";
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { productF4 } from "@/components/ui/f4-presets";
+import { productItemF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -56,9 +56,8 @@ const DELIVERY_METHODS = ["NORMAL", "DIRECT_TO_USER"] as const;
 function buildSchema(tr: ReturnType<typeof useTranslations>) {
   const itemSchema = z.object({
     rowId: z.string(),
-    productId: z
-      .string()
-      .min(1, tr("shipping.deliveryOrderForm.selectProduct")),
+    /** 納品する製品 — 値は品目 id（items.id）。品目統合 第 2 段 C。 */
+    itemId: z.string().min(1, tr("shipping.deliveryOrderForm.selectProduct")),
     productName: z.string(),
     quantity: z.number().int().min(1, tr("common.mustBeAtLeastOne")),
     unitPrice: z.number().min(0, tr("common.mustBeZeroOrMore")),
@@ -93,13 +92,13 @@ let rowSeq = 0;
 const newRowId = () => `row-${++rowSeq}-${Date.now()}`;
 
 const emptyItem = (
-  productId = "",
+  itemId = "",
   productName = "",
   quantity = 1,
   unitPrice = 0,
 ): ItemForm => ({
   rowId: newRowId(),
-  productId,
+  itemId,
   productName,
   quantity,
   unitPrice,
@@ -115,7 +114,7 @@ function toFormValues(note: DeliveryNote): FormValues {
     notes: note.notes ?? "",
     items: note.items.map((it) => ({
       rowId: newRowId(),
-      productId: it.productId,
+      itemId: it.itemId,
       productName: it.productName,
       quantity: it.quantity,
       unitPrice: it.unitPrice ?? 0,
@@ -179,7 +178,7 @@ export function DeliveryNoteForm({ note }: { note: DeliveryNote }) {
         includePrice: values.includePrice,
         notes: values.notes || null,
         items: values.items.map((it) => ({
-          productId: it.productId,
+          itemId: it.itemId,
           quantity: it.quantity,
           // 価格記載なしのときは単価を送らない（サーバー側でも null 化）。
           unitPrice: values.includePrice ? it.unitPrice : null,
@@ -316,11 +315,11 @@ export function DeliveryNoteForm({ note }: { note: DeliveryNote }) {
                   preventGrowOverflow={false}
                 >
                   <SearchSelect
-                    error={form.errors[`items.${ri}.productId`]}
-                    f4={productF4(tr)}
+                    error={form.errors[`items.${ri}.itemId`]}
+                    f4={productItemF4(tr)}
                     initialOption={
-                      item.productId
-                        ? { value: item.productId, label: item.productName }
+                      item.itemId
+                        ? { value: item.itemId, label: item.productName }
                         : null
                     }
                     label={
@@ -331,14 +330,14 @@ export function DeliveryNoteForm({ note }: { note: DeliveryNote }) {
                     onChange={(v, opt) =>
                       form.setFieldValue(`items.${ri}`, {
                         ...item,
-                        productId: v ?? "",
+                        itemId: v ?? "",
                         productName: opt?.label ?? "",
                       })
                     }
-                    onSearch={searchProductOptions}
+                    onSearch={searchProductItemOptions}
                     placeholder={tr("common.searchProducts")}
-                    storageKey="product"
-                    value={item.productId || null}
+                    storageKey="delivery-note-product-item"
+                    value={item.itemId || null}
                     withAsterisk
                   />
                   <NumberInput

@@ -284,6 +284,19 @@
       </div>
 
       <div class="card">
+        <h2>期間を指定して取り込み</h2>
+        <p class="muted">指定した期間を King of Time から取り直し、保存済みの同期間の勤怠を置き換えます（定期実行と同じ処理）。kot-import が約20秒以内に受け付け、2か月ずつに分けて取り込みます（King of Time の出力期間の上限のため）。最長 366 日。<br>月末（最終日）には、前月20日〜月末を自動で取り直します（履歴に「月末」と表示）。停止などで取り逃した場合は7日以内に追いかけ、失敗時は6時間ごとに最大3回まで再試行します。</p>
+        {% if q.get('ok') == 'queued' %}<p style="color:#15803d">取り込みを受け付けました。下の履歴で進捗を確認できます。</p>{% endif %}
+        <form method="post" action="/settings/kot/import" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end"
+              onsubmit="return confirm('この期間の保存済み勤怠を King of Time の内容で置き換えます。よろしいですか？')">
+          <div><label>開始日</label><input type="date" name="start_date" required></div>
+          <div><label>終了日</label><input type="date" name="end_date" required></div>
+          <button class="btn-primary" type="submit" {% if kot and not kot.db_reachable %}disabled{% endif %}>取り込む</button>
+        </form>
+        <div id="requests-body" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card">
         <h2>King of Time インポートログ</h2>
         <p class="muted">kot-import コンテナの実行履歴（最新50件）。<button class="btn-sub" type="button" onclick="loadImports()">更新</button></p>
         <div id="imports-body"><div class="muted">読み込み中…</div></div>
@@ -624,9 +637,24 @@
       } catch (e) { body.innerHTML = '<div class="muted">読み込みに失敗しました。</div>'; }
     }
 
+    async function loadRequests() {
+      const body = document.getElementById('requests-body');
+      if (!body) return;
+      try {
+        const d = await (await fetch('/imports/requests')).json();
+        const rs = d.requests || [];
+        if (d.error || !rs.length) { body.innerHTML = d.error ? '<div class="muted">' + d.error + '</div>' : ''; return; }
+        const label = {pending: '⏳ 待機中', running: '🔄 実行中', done: '✅ 完了', failed: '❌ 失敗'};
+        body.innerHTML = '<table><thead><tr><th>受付</th><th>種別</th><th>期間</th><th>状態</th><th>件数</th><th>メッセージ</th></tr></thead><tbody>'
+          + rs.map(r => `<tr><td style="white-space:nowrap">${r.requested_at.slice(0, 16)}</td><td>${r.source === 'month-end' ? '月末' : '手動'}</td><td style="white-space:nowrap">${r.start_date}〜${r.end_date}</td><td>${label[r.status] || r.status}</td><td>${r.rows ?? ''}</td><td style="color:#6b7280">${(r.message || '').slice(0, 100)}</td></tr>`).join('')
+          + '</tbody></table>';
+        if (rs.some(r => r.status === 'pending' || r.status === 'running')) setTimeout(() => { loadRequests(); loadImports(); }, 10000);
+      } catch (e) { /* the import log below reports connection problems */ }
+    }
+
     // initial state is server-rendered from the URL path (active_app)
     showTab(location.hash === '#user' ? 'user' : 'shared');
-    if ("{{ active_app }}" === 'kot') loadImports();
+    if ("{{ active_app }}" === 'kot') { loadImports(); loadRequests(); }
 
     async function poll() {
       try {

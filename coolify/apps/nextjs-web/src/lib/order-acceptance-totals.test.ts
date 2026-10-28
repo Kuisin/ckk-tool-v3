@@ -7,10 +7,10 @@ import { acceptanceTotals, productSummary } from "./order-acceptance-totals";
  */
 
 const line = (
-  productId: string | null,
+  itemId: string | null,
   quantity: number,
   unitPrice: number | null,
-) => ({ productId, quantity, unitPrice });
+) => ({ itemId, quantity, unitPrice });
 
 describe("acceptanceTotals", () => {
   it("数量と金額を合計する", () => {

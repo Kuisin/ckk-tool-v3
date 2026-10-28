@@ -166,6 +166,15 @@ export function lookupSources(
 /**
  * lookup の値から参照先の詳細画面 URL を作る。null = リンクにしない。
  * kintone の商談メモで会社名・工場名がリンクになっているのと同じ役割。
+ *
+ * 品目統合 第 3 段で `product` / `material` も**品目 id（items.id）**になった
+ * ので、他の参照先と同じく素直に並べてよい（以前は保存済みの回答が旧
+ * products.id / materials.id を持っていたため `/legacy/<id>` を経由して
+ * いた。値そのものを migration
+ * `20261101090000_items_stage3_matching_forms` で書き換えたので、その回り道は
+ * 要らなくなった）。**旧 id の入口
+ * `master/{products,materials}/legacy/[id]` は残す** — 操作履歴
+ * （`audit_logs` は旧 id で積まれている）がまだ通る。
  */
 export function lookupHref(source: LookupSource, id: string): string | null {
   if (!id) return null;

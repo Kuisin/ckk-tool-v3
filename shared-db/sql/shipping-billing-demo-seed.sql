@@ -82,7 +82,7 @@ ON CONFLICT (year_month, seq) DO NOTHING;
 --   未処理出荷書 SH03 から消え、指示書の「次のステップ: 出荷書の作成」と
 --   出荷書フォームの判定が食い違う（フォームは 受注数 − 出荷済 で数える）。
 INSERT INTO app.delivery_order_items (id, delivery_order_year_month, delivery_order_seq,
-  order_line_id, product_id, lot_number, quantity, notes, sort_order)
+  order_line_id, item_id, lot_number, quantity, notes, sort_order)
 VALUES
   ('dd000000-0000-4000-8000-000000000011'::uuid, '202607', 1,
    'e0000000-0000-4000-8000-000000000001'::uuid, 9001, 9004, 30, NULL, 0),
@@ -124,7 +124,7 @@ VALUES
 ON CONFLICT (year_month, seq) DO NOTHING;
 
 INSERT INTO app.delivery_note_items (id, delivery_note_year_month, delivery_note_seq,
-  product_id, quantity, unit_price, amount, notes, sort_order)
+  item_id, quantity, unit_price, amount, notes, sort_order)
 VALUES
   -- DRN-1: 価格記載あり — 単価 = 注文請書の受注単価 ¥3,220
   ('dd000000-0000-4000-8000-000000000021'::uuid, '202607', 1, 9001, 30, 3220, 96600, NULL, 0),
@@ -139,7 +139,7 @@ ON CONFLICT (id) DO NOTHING;
 -- 小計 161,000 / 消費税 16,100 / 合計 177,100。支払期限 = 締日 2026-06-30 + 30日。
 INSERT INTO app.invoices (year_month, seq, customer_bp_id, customer_branch_bp_id,
   billing_period_from, billing_period_to, subtotal, tax_amount, total_amount,
-  status, issued_at, due_date, sent_at, pdf_file_id, yayoi_exported_at, notes,
+  status, issued_at, due_date, sent_at, pdf_file_id, accounting_exported_at, notes,
   created_by, created_at, updated_at)
 VALUES
   ('202606', 1, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
@@ -163,8 +163,12 @@ ON CONFLICT (id) DO NOTHING;
 -- ── 締日処理 ────────────────────────────────────────────────────────────────
 -- 7月: PENDING（未処理）— 対象出荷はライブ計算で DOR-202607-00001 のみ（30×¥3,220 = ¥96,600）
 -- 6月: PROCESSED（処理済）— INV-202606-00001 へのリンク付き（生成請求書リンクの実例）
--- 冪等アービタは unique (customer_bp_id, closing_date) — アプリの締日バッチが
--- 同一ペアを upsert しても衝突しない。
+-- 冪等アービタは部分 unique index billing_closings_scheduled_key
+-- (customer_bp_id, closing_date) WHERE kind = 'SCHEDULED' — アプリの締日バッチが
+-- 同一ペアを upsert しても衝突しない。両行とも kind 省略 = 既定の SCHEDULED
+-- なので、ON CONFLICT にも同じ述語を付けないと推論できない
+-- （20261028090000_invoice_approval_and_manual_charges で unique から
+-- 部分 unique へ変わった）。
 INSERT INTO app.billing_closings (id, customer_bp_id, closing_date, status, total_amount,
   invoice_year_month, invoice_seq, processed_at, processed_by, notes, created_at)
 VALUES
@@ -177,6 +181,6 @@ VALUES
    'PROCESSED'::app."CLOSING_STATUS", 161000,
    '202606', 1, '2026-07-01T09:00:00+09',
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, NULL, '2026-06-30T06:10:00+09')
-ON CONFLICT (customer_bp_id, closing_date) DO NOTHING;
+ON CONFLICT (customer_bp_id, closing_date) WHERE kind = 'SCHEDULED' DO NOTHING;
 
 COMMIT;

@@ -81,6 +81,7 @@ Permissions fall into four kinds. To see which you hold, open [My permissions](/
 | Quote | `quote` | Work with quotes. |
 | Order acceptance | `order_acceptance` | Work with order acceptances and their lines. |
 | Design request | `design_request` | Work with design requests. The drawings themselves are covered by the drawing permission. |
+| Price estimate cost | `estimate_cost` | View the total cost and gross margin of price estimates, and which calculation criteria count as cost. Without it, total cost and gross margin are not shown. It does not affect the estimated unit price. |
 | Drawing | `design_file` | Register, edit and delete drawing versions. Nearly every business role can view them. |
 | Purchasing | `purchase_order` | Work with purchase requests and material purchase orders. |
 | Material receipt | `material_receipt` | Record incoming material. |

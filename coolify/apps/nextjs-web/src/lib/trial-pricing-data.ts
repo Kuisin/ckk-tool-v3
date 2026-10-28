@@ -780,27 +780,6 @@ export function cylinderTypeOptions(locale: Locale) {
   ] as const;
 }
 
-// ── ロット割引率 (Excel: 丸棒見積!Z29:AC36, VLOOKUP approx on lower bound) ─────
-const DISCOUNT_TIERS = [
-  { min: 0, rate: 1.02 },
-  { min: 6, rate: 1.01 },
-  { min: 21, rate: 1.0 },
-  { min: 31, rate: 0.98 },
-  { min: 51, rate: 0.96 },
-  { min: 101, rate: 0.94 },
-  { min: 201, rate: 0.91 },
-  { min: 301, rate: 0.88 },
-  { min: 501, rate: 0.85 },
-];
-
-export function lotDiscountRate(qty: number): number {
-  let rate = DISCOUNT_TIERS[0].rate;
-  for (const t of DISCOUNT_TIERS) {
-    if (qty >= t.min) rate = t.rate;
-  }
-  return rate;
-}
-
 // ── 定数 ─────────────────────────────────────────────────────────────────────
 /** 2022補正値 (改定履歴: 1.15→1.25). */
 export const CORRECTION_FACTOR = 1.25;

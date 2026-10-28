@@ -7,31 +7,33 @@ BEGIN;
 
 WITH seed(username, display_name, password_hash) AS (
   VALUES
-    ('dev_sales', '開発 営業', '887a11c51e56d87c8aa4f8e830f777d0:aff6bdc941bba61aab11b24961428f1d3711864a446381e645a37744d4c98af2e19b889ac8109aea0b03d9405ff737717f8b9d6f8fc85947c1c587fa5e220fde'),
-    ('dev_purchasing', '開発 購買', 'd0bdb1aac8638f942174ebff8be449b2:13443690c7ac7e1ef421bac7396d109e1afc6ede20d14298749d46a3cf66fd0009bb49848983cc424f9b88ee8ac12b275ca2d9a5c55b83e64883bc12e9a6f56a'),
-    ('dev_production', '開発 製造', '067d944eb8616d056579765ab4aa95ee:5387e592268257f2d5d0c979a8e7f6cec5396c7f7d5f692b22c50fbc396a2bbbb40ca6b1b710f5f0007adaa64503e33da6579ec59a7df10f24e1b5efbab977d4'),
-    ('dev_quality', '開発 品質', '4c0c763b704d9f251f23515f0b68b3c8:42b25e967213533dabeeda6742b5885cf2bf7d9a2c798c512c2e4945cdf900b47ae00a0615ad656a0c8b81c807238229729bc630a3b5857e822ed2c28136f82e'),
-    ('dev_shipping', '開発 出荷', '9e42af006d4c5f9d0abd3e78d1ba258c:74ce67071bf537236b8e8c32d49e23434793c7b37c8d37cd61b11d1c6b96718951521b1f13b508f65767be5cbe24d5c2447009a22b419a0874a85c86e03afc5e'),
-    ('dev_accounting', '開発 経理', '82cc9e348eb0f0a2a33104c97c3813e7:3027b28aee15ef853ceb84407148159ee71a00acb9003be4533e1188899ddfaec4e1149c677ba9e4663e218b4710c6754c483ae7e59d5231283c4730938dd31d'),
-    ('dev_manager', '開発 管理職', '80a040e7e5f52a9292dd61a13035b556:417c21a0773bf177daf788ef8ed613c454971f2a6f171b5651849169b7c5efc872533e8325c13fc4e2c28b4ec020997fc161c1078feb0b2739712daa88054e70'),
-    ('dev_viewer', '開発 閲覧', '086b96cb6c3b4230a552e81c8ab17249:8cd4a2aa38dd2048c685c3f682fa74602fc7441c1300734198346c56a57637f6a6e87e080bf647e66f4620073d5b7b9d83f3465b0c25d881c974c0cafb018a1c'),
-    ('dev_sales_assistant', '開発 営業補佐', '10aec77ceacec9aadf2d9cc6a48f0ce1:3adc930dad3f77fd05edd8aaf9466e3d9d36f760c083f18d3fa68fdb24974303db43bdfa46cad5cc190d25751a55356292a064a9b1310911b09ff528836c4399'),
-    ('dev_sales_mgr', '開発 営業部長', '7c1c53fd97ad898334299242604e33f8:1e9c5d4237dbfc4c759796ab99d89e63fdda09494599db6080d5d87c4779325ceaf0486868939551893d4cf09cc068e768223422ca56c57d0783d78ecf0387e3'),
-    ('dev_purchasing_mgr', '開発 購買部長', 'a21a1441ec885c4d792d930c4749ea23:378a000f403a0e89d9cf0da84e24d93e1b70662980008a4ac7aa1cf01565e79f3e03b172110f036e5f492858441b970dae8999883497d63d451b805015559cf4'),
-    ('dev_production_mgr', '開発 製造部長', '3c60efcf18b8d6c7307c19e88b3694d1:9b980be1f9e363f95f0808eb9944beebeaf8d459005266113638d7de1cd990f57479e6f5e5fed6afb1ef5d9351ff2a934d3b42cbeb307349cf1b6a01a536a61f'),
-    ('dev_quality_mgr', '開発 品質部長', '1e347c8cd41c28239feb09c44f171db0:61f8403814fa7b8e86d4981f0763db2d7ff05011eae3c4a1f001a6d6889cfe1a041b2a0c4865583cae0672a1d6043bc2648e00b567b064208d8475f163940bc5'),
-    ('dev_shipping_mgr', '開発 出荷部長', '4e38ec525d6ed96eb2f8abb24aa66e41:c6a5ff68d115e390ccc2745f08fe4a6d0eb2eb0feae79714e95f39212b8232e36b5aed21b0403f6f37869cbb76f0f05cab66b509432e63dbd4d837ab214d018e'),
-    ('dev_accounting_mgr', '開発 経理部長', '72e5ffc909cee578b0fdc8239fc653d8:26d3b17bfa978cbc98c0b223e04b16ab7ede31cbd382d511667d9ac5ad40afe64cff5e9acb59b30f065eae56cb6f93676d201952f60f4bc210feb6f02113dd08'),
+    ('dev_sales', '開発 営業', '4e4f22f09fa26c8ad33c7a4aedfb75d8:b276cfeea7eb56226a5c2ff8ae6eceeee09907ce57719dc38616be0f23aba693252c462c6ec5b4f0fe7432f6f58886a76f029983d5cac7b6642632182db0216b'),
+    ('dev_purchasing', '開発 購買', '9eee337b81c0070dd006b04369721c06:00d889ab618ab334e290c5ec0c6361ed695224541f99e793a2bed2fc4f3f589ab60ea0a4feaf65185cae0460a82a733b73552b2ca666c8094999fc9ebe9cd826'),
+    ('dev_production', '開発 製造', 'ffec413f64a83150db26877b1f49e2b9:fcc413126c6b4daee7162239b7418be80e72c0415610a1277e5191f4feb3071be4cd371b8d5403c0b3447330586c7a86670b5ce8621d700dbc3b10190103b695'),
+    ('dev_quality', '開発 品質', '7d1ad6d59108c73ffa8f6021cdba1cb9:0525a0004f785b9abf76060ad9c73a2caaffb3cfc5b4588337f275d5eecf40040406d37c805de9786a772f5e1a1cd2c081b51d4d0afdb966eb3855dac26db852'),
+    ('dev_shipping', '開発 出荷', '1c589c0a1da1022d8dc22e6d61d75356:01bb997d8e8b86837f454408e0da4b2ddc6eaeb6a73a4690909d332f017e54387a4c022ef0b76c03404fe457198a2b85d49a646d55bd8101e8aa2498a8be6b01'),
+    ('dev_accounting', '開発 経理', 'e5c1fbc747f317d770552de3dd6f2050:5fdc5520f06ca362fc66f69066a84a6e63c8c5914a456d186b8ae6edda12cc8ef99e80d5be5549222ad3f337375416f7362cec1767e7cedd12e1a9493c9bc6f1'),
+    ('dev_manager', '開発 管理職', '992f02429e9b1f90df4636e2c40ab697:9094e8bdf1e760148512faa1ff9c70faa88306b855357689c37a2bd91da2c15f54c921185f95c10ba7e48638118b8c66ffa4b6717ec1cee998c119c95adb74e0'),
+    ('dev_viewer', '開発 閲覧', '030b1388acb2c756683b5cb1e43e001c:8ece5dfce964f1f38d68f65309566bcd254824ce8ddd390adc71e8c8e9ea365c417696129112ad206badfb0ed0a0507138ceed56e9c5f82008707e8de373de6a'),
+    ('dev_sales_assistant', '開発 営業補佐', 'a8951d7539e6c8d3f044317b07d43d95:a7f7870be724b6d641d2b1bce124f879b850bf06e5e179439908e41f83437a65e8a8d3062f943673862b6bced70d685998b1dfa2ab62a14bcdad9d16420b3093'),
+    ('dev_sales_mgr', '開発 営業部長', '5602e5837f018196cf878c3c6396c5f8:c7fcdd32656bc71c2dba82d4be176d6e1971ea4790b2bb088d2222083eb860271a3916152bc714cdcaf664ea3cbbc899378d90d07a886d6160c4c53c33021c0e'),
+    ('dev_purchasing_mgr', '開発 購買部長', '84f5ccfc994f818ea2d88822d6de9663:d824eae9973a68ea4a71844a2749770c197b2605c21f3c99e356f19b44128bdad681978005e321d9dea320a5926a67568f414a0b26f2a42ee8b9a78fb2173df0'),
+    ('dev_production_mgr', '開発 製造部長', '1fb36a5d84a6c6bf36f5ac738bb1f735:546528ea27b5a50ba86196204fd9b3a878cb0707ff3e74b964a21ffdd4bb5337d17ccbed9eb522267dadf6647d2100ef14f99ea300095dfbadf3d2cf89707820'),
+    ('dev_quality_mgr', '開発 品質部長', 'c62367fda2c32601d3c12a3d3a87b80e:ef36ecad52592288399f691b01ebd83a8e63a9d9ce588a4871e75f9c54901ff86356335bef99dabfaeee20de82da7b0700615a4aa843cff0c3fa1986204a00ad'),
+    ('dev_shipping_mgr', '開発 出荷部長', '705618129f03f4ed93b375d998ffdfe5:9a389d0710b04b5e781c825632c50816af995ff53032d720bac9d42f586b219ab8fa82455eb600c79ab306f8528d0926c0f55d010b73d7aed708f7d87a171965'),
+    ('dev_accounting_mgr', '開発 経理部長', 'a59583f65c12fcc1c0eff6fc4622b7a2:ba5b3ea1485021f6793a8f3b2d3cb3a9713d491e121f45c5d3bfb6d77ca4289864d377bd71429fe384c8f6974109e3244d559dddf079c7999ba76abb100dfe49'),
+    -- マスタ編集だけを持つ単機能ロールの検証用（業務書類は 1 つも見えないこと）。
+    ('dev_master_editor', '開発 マスタ管理', '193c0b67eecc00f8ba945174bc5aeee5:0c4edec40c602061b730298b603602a594241a5e57054a0cd796f3a5e3bffb16b1f8b27e81f72233faed226e0766f18cb462f1d6fc11a7d5a5df21db3bd99d29'),
     -- 特権アクセス（SY0G）の検証用。**申請する人と承認する人を分けてある** —
     -- 1 人で両方を持たせると、分離が効いているかを確かめられない。
-    ('dev_priv_operator', '開発 特権申請', '086b96cb6c3b4230a552e81c8ab17249:8cd4a2aa38dd2048c685c3f682fa74602fc7441c1300734198346c56a57637f6a6e87e080bf647e66f4620073d5b7b9d83f3465b0c25d881c974c0cafb018a1c'),
-    ('dev_priv_approver', '開発 特権承認', '80a040e7e5f52a9292dd61a13035b556:417c21a0773bf177daf788ef8ed613c454971f2a6f171b5651849169b7c5efc872533e8325c13fc4e2c28b4ec020997fc161c1078feb0b2739712daa88054e70'),
+    ('dev_priv_operator', '開発 特権申請', 'f6ec0af0074acf77bfeed6f3d6c478a8:256755d0c3ba4f7470073912a501e922d4dff8ae36786244269f52061a028de0abfbbd4be76df2af212a95964c2335cb857f9d8de8400e3635c56c600bc479da'),
+    ('dev_priv_approver', '開発 特権承認', '6524adc22e86d789d690b6ad8e18e67e:0abfd5bf56d2bf2d9bc848bcf8491cc7bbf3669b5d2fc3d25a8d616c40ff723a4848541daeb3f769d359131c84f724a63d01c4758797f3791e87240fb2947fff'),
     -- 役目を絞ったロールの検証用（端末運用 / ユーザー運用 / 監査）。
-    ('dev_kiosk_op',   '開発 端末運用申請',   '086b96cb6c3b4230a552e81c8ab17249:8cd4a2aa38dd2048c685c3f682fa74602fc7441c1300734198346c56a57637f6a6e87e080bf647e66f4620073d5b7b9d83f3465b0c25d881c974c0cafb018a1c'),
-    ('dev_kiosk_ap',   '開発 端末運用承認',   '80a040e7e5f52a9292dd61a13035b556:417c21a0773bf177daf788ef8ed613c454971f2a6f171b5651849169b7c5efc872533e8325c13fc4e2c28b4ec020997fc161c1078feb0b2739712daa88054e70'),
-    ('dev_user_op',    '開発 ユーザー運用申請','086b96cb6c3b4230a552e81c8ab17249:8cd4a2aa38dd2048c685c3f682fa74602fc7441c1300734198346c56a57637f6a6e87e080bf647e66f4620073d5b7b9d83f3465b0c25d881c974c0cafb018a1c'),
-    ('dev_user_ap',    '開発 ユーザー運用承認','80a040e7e5f52a9292dd61a13035b556:417c21a0773bf177daf788ef8ed613c454971f2a6f171b5651849169b7c5efc872533e8325c13fc4e2c28b4ec020997fc161c1078feb0b2739712daa88054e70'),
-    ('dev_auditor',    '開発 監査',           '086b96cb6c3b4230a552e81c8ab17249:8cd4a2aa38dd2048c685c3f682fa74602fc7441c1300734198346c56a57637f6a6e87e080bf647e66f4620073d5b7b9d83f3465b0c25d881c974c0cafb018a1c')
+    ('dev_kiosk_op', '開発 端末運用申請', '387f2a7771125986fc8ae27798f9a43d:3726e553ce7b4b6e9294b86208f3c7bb62cedec7b39f575e7f90ee799e08f4fc41b948c9a72f1a14391220ec7dbee66a16ce30fb7c4dcb2236c87ff48def9849'),
+    ('dev_kiosk_ap', '開発 端末運用承認', '50a53fcfa028bf009efad50ece77f787:cfbd8fd2d30d49ae03381d5e4027f718ec1f193b915bf6d97ecad7dc614b70614a27dd3044a890f9581a596b3d0dd9fb5453511638020adc88961d48e65c1d3d'),
+    ('dev_user_op', '開発 ユーザー運用申請', 'f92dab733d29e84aeebe818f72817b5e:0b055fe41c87be35d944af6f89375901b59d6d96a1de2107923827e8df2def4086d179df51100f5d48dd7a9a863254ea53077acff15498d3225bc872667cd239'),
+    ('dev_user_ap', '開発 ユーザー運用承認', '67c437d850576d2587ea0c504aeb7dbc:f78937a923c74a6f1d63bd4093bbc9665d33d1e5a4a4b56fdb4d91e5512b3f66ee78556a4a9178158fe386fc7cf5836eac433e19f2d2ee53c9969449da0f9bb2'),
+    ('dev_auditor', '開発 監査', '04cd69e1e78c92361f97d0c6e8288a80:7f824a9f36f8f4f767e0a1c0f1ccf1c723c46369381bd23c9a7794cc50c68c5cbac990ac236b292294b106e134864ef47cffc75c6e9d03f26eaf1110cf73fc2d')
 )
 INSERT INTO app.users (id, "group", username, display_name, password_hash, is_active, created_at, updated_at)
 SELECT gen_random_uuid(), 'EMPLOYEE'::app."USER_GROUP", s.username, s.display_name, s.password_hash, true, now(), now()
@@ -81,6 +83,11 @@ ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = N
 INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)
 SELECT u.id, r.id, true, now() FROM app.users u JOIN app.roles r ON r.rolename = 'sales_assistant'
 WHERE u.username = 'dev_sales_assistant'
+ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = NULL;
+
+INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)
+SELECT u.id, r.id, true, now() FROM app.users u JOIN app.roles r ON r.rolename = 'master_editor'
+WHERE u.username = 'dev_master_editor'
 ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = NULL;
 
 INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)

@@ -24,7 +24,11 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { workOrderTypeLabel, workOrderTypeOptions } from "@/lib/enum-labels";
+import {
+  WORK_ORDER_TYPE_COLOR,
+  workOrderTypeLabel,
+  workOrderTypeOptions,
+} from "@/lib/enum-labels";
 import { statusOptions } from "@/lib/status-map";
 import type { WorkOrderRow } from "./model";
 
@@ -35,7 +39,7 @@ function TypeBadge({ type }: { type: string }) {
   const locale = useLocale();
   return (
     <Badge
-      color={type === "MANUFACTURE" ? "violet" : "teal"}
+      color={WORK_ORDER_TYPE_COLOR[type] ?? "gray"}
       size="sm"
       variant="light"
     >

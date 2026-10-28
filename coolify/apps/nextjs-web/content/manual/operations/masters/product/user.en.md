@@ -11,8 +11,7 @@ This is a ledger for the products you make. The operation code is `MS04`.
 
 - You can register the products you make.
 - After you register a product, you can choose it in the 「製品」 (Product) field of trial estimates, price lists and quotes.
-- You can record **what material the product is made from** (material type, diameter, length).
-- You can record the rules for each product, such as hardness and tolerance.
+- You can check the product's **specification** (material type, diameter, length, hardness, tolerance and so on) from the confirmed version in [Drawing](/manual/en/operations/production/design-file/user).
 - You can register the **order of the process steps** used to make that product.
 - You can **copy** a similar product and change only the parts you need.
 
@@ -21,15 +20,14 @@ This is a ledger for the products you make. The operation code is `MS04`.
 - **製品コード (Product code)** … one control number for each product. It starts with `PRD-`. It is added automatically when you save.
 - **材種 (Material type)** … the kind of material. It shows whose material it is and what kind it is (you register it in [Material Type](/manual/en/operations/masters/material-type/user)).
 - **単位 (Unit)** … how the items are counted (本 / 個 / kg / m / セット).
-- **製品種別 (Product type)** … a set of input fields prepared for each type of product, such as 「標準品」 (standard product) or 「コーティング品」 (coated product).
-- **仕様 (Specification)** … the rules for that product, such as hardness, tolerance and drawing number.
+- **仕様 (Specification)** … the material type, diameter and length, plus the rules for that product such as hardness, tolerance and drawing number. **It belongs to the version in [Drawing](/manual/en/operations/production/design-file/user)** (it cannot be edited in the product master).
 - **工程リスト（ルート） (Process route)** … the order of the process steps used to make that product.
 
 ## Before you start
 
-To register a product, the **[Material Type](/manual/en/operations/masters/material-type/user) must be registered first**. The material type is used in the field where you choose "what material to use".
+The product master only holds **the product as something you sell** (name, unit, tax category, keywords). **Material type, diameter, length, product type and product items are entered in [Drawing](/manual/en/operations/production/design-file/user).** They change together with the drawing across revisions and customers, so they belong to the drawing version.
 
-You can also register a product without choosing a material type, but then you cannot get the material cost later when you make a [Trial Estimate](/manual/en/operations/sales/trial-estimate/user). We recommend that you fill in the material type as well whenever you can.
+After registering a product, register a version in Drawing and confirm it. The specification of the confirmed version is what this screen and the material candidates of a [Work Order](/manual/en/operations/production/work-order/user) use.
 
 ## How to read the screen
 
@@ -38,7 +36,7 @@ When you open the app, a list of the registered products is shown.
 ![Product list screen](../../../assets/screenshots/master-product-list-01.png)
 
 - **製品コード (Product code)** … a control number that starts with `PRD-`. The system adds it automatically.
-- **材種 (Material type)** … shows what material the product is made from, in the form "material type code — material type name φdiameter×length". For a product with no material decided, it shows "—".
+- **材種 (Material type)** … shows what material the product is made from, in the form "material type code — material type name φdiameter×length" (taken from the confirmed drawing version). A product with no confirmed version shows "—".
 - **状態 (Status)** … the green 「**有効**」 (Active) means a product you can still use. The gray 「**無効**」 (Inactive) means a product you can no longer choose.
 - In the search box at the top (「**製品コード・名称・材種で検索**」 / Search by product code, name or material type) you can search **not only by product name but also by material type**.
 - Click a row to open the detail screen for that product.
@@ -53,42 +51,47 @@ When you open the app, a list of the registered products is shown.
 2. Enter the product name in 「**名称（日本語）**」 (Name in Japanese). **This field must always be filled in.**
 3. Choose 「**単位**」 (Unit). **This must also always be chosen** (it is usually 「本」).
 
-### Choosing the material
-
-4. Click the 「**材種**」 (Material type) field in 「**素材仕様**」 (Material specification) and type a material type name or a material type code.
-5. Choose the material type you use from the list that appears.
-6. Enter the diameter of the material in 「**直径 (mm)**」 (Diameter in mm).
-7. Enter the length of the material in 「**全長 (mm)**」 (Length in mm).
-8. Press 「**保存**」 (Save).
+4. If needed, enter 「**税区分**」 (Tax category), 「**キーワード**」 (Keywords) and 「**備考**」 (Notes).
+5. Press 「**保存**」 (Save).
 
 ![New product form](../../../assets/screenshots/master-product-new-01.png)
 
-> 💡 When you enter the diameter or the length, a 3-digit number appears under the field (for example, 「060」 for a diameter of 6.0mm). The system makes this number by itself, so you do not need to worry about it.
-
-> ⚠️ When you choose a material type, you **must also enter the diameter and the length**. You cannot save with only one of them.
-
 > ⚠️ You cannot type in the 「**製品コード**」 (Product code) field. As the screen says 「保存時に自動採番」 (numbered automatically on save), a number such as `PRD-202607-0001` is added by itself when you save.
 
-### Entering the rules for each product (optional)
+### Entering the specification (in Drawing)
 
-When the 「**製品種別**」 (Product type) field is shown, choose from 「標準品」 (standard product), 「コーティング品」 (coated product) and so on. When you choose one, the input fields decided for that category (surface treatment, hardness, tolerance and so on) appear below.
-
-If you want more fields, choose them from 「**項目を追加**」 (Add item) under 「**追加項目**」 (Extra items). **You cannot make a field with a name of your own.** You choose from the items that are prepared in advance. To remove a field you added, press the 「−」 button on that row.
-
-> 💡 The items and the categories you can choose are decided by the administrator. If the item you need is missing, please ask the person in charge of [Product Type](/manual/en/operations/system/product-type/settings).
+Material type, diameter, length, product type and product items are entered by registering a version in [Drawing](/manual/en/operations/production/design-file/user). **Register the specification in Drawings** on the product's "Overview" tab opens the registration form with that product already selected. Choosing a Zunou RAPID SXF (.sfc) file fills them in automatically from the title block and dimensions.
 
 ## Looking at what you registered
 
-The screen of a saved product has four tabs.
+The screen of a saved product has five tabs.
 
 ![Product detail screen](../../../assets/screenshots/master-product-detail-01.png)
 
-- **概要** (Overview) … the product type, the specification (a table of items and values) and the notes.
+- **概要** (Overview) … the specification (from the confirmed drawing version, with a link to that version), keywords and notes.
 - **工程** (Processes) … the order of the process steps used to make this product. Each route shows its target customer (「汎用」 — generic — when none is set) and its 「◯ バージョン」 (number of versions).
-- **関連** (Related) … the price lists for this product, listed per customer. Click one to open that price list.
+- **顧客品番** (Customer product codes) … what each customer calls this product (their own product code), registered per customer.
+- **関連** (Related) … this product's drawings (one series per ordering customer), design requests and price lists, listed per customer. Click one to open it.
 - **履歴** (History) … the record of when and who changed this registration.
 
 To correct the content, press 「**編集**」 (Edit) at the top right of the screen.
+
+## Registering customer product codes
+
+The "顧客品番" (customer product codes) tab lets you register the code each customer uses for this product. Registering one does two things:
+
+- When an order document from that customer prints this product under that code, the [order acceptance](/manual/en/operations/sales/order-acceptance/user)'s AI import can match it to this product **from the code alone**.
+- The [delivery note](/manual/en/operations/shipping/delivery-note/user) and [invoice](/manual/en/operations/billing/invoice/user) item line can print that customer's own code alongside your product name.
+
+The tab opens read-only by default. Press 「**編集**」(Edit) to switch to a table of one row per customer, where you can add or remove rows.
+
+- **Customer** (required) … the customer this code belongs to.
+- **Code** (required) … the code that customer uses for this product.
+- **Name** (optional) … what that customer calls this product.
+- **Aliases** (optional) … any other spellings you see on that customer's orders besides the code itself. Used as extra matching candidates.
+- **Status** … active / inactive. Deactivate a code that is no longer used instead of deleting it.
+
+The same customer cannot appear on two rows (one code per customer).
 
 ## Viewing drawings
 
@@ -141,7 +144,7 @@ When you add a product that is almost the same as one you registered before, you
 4. Check 「**単位**」 (Unit).
 5. Press 「**複製して新規作成**」 (Copy and create).
 
-The material type, the diameter and the length are carried over from the product you copied. A new product code is added automatically.
+A new product code is added automatically. **The specification (material type, diameter, length, product items) is not copied** — it belongs to the drawing version, so register a drawing for the new product in Drawing.
 
 ## What to do with a product you no longer make
 
@@ -163,9 +166,6 @@ Every field on the product screen.
 | [Name](#field-name) | Required | The product name |
 | [Unit](#field-unit) | Required | Pieces and so on |
 | [Tax category](#field-tax-category) | Optional | Consumption tax category (empty = use the default) |
-| [Product type](#field-product-type) | Optional | The type, which decides the spec fields |
-| [Material type](#field-material-type) | Optional | The material grade used |
-| [Diameter / length (mm)](#field-dimensions) | Optional | Stock dimensions |
 | [キーワード (keywords)](#field-keywords) | Optional | Other ways this product is written (search + AI intake) |
 | [Active](#field-active) | — | Whether it appears in pick lists |
 | [Notes](#field-notes) | Optional | Notes |
@@ -186,23 +186,11 @@ How it is counted. The default is pieces.
 
 The consumption tax category for this product. It decides the tax on quotes and invoices.
 
-Left empty, the **default** of the tax category master (**MS0F**) applies — normally the standard 10% rate. Only pick a category for products on the reduced rate.
+Left empty, the **default** of the [tax category](/manual/en/operations/masters/tax-category/user) master applies — normally the standard 10% rate. Only pick a category for products on the reduced rate.
 
 If the business partner has a tax category of its own, **that wins** (for a tax-exempt partner, for example).
 
 > 💡 The rate is written into each line when the document is created. Changing a tax category afterwards does not move a quote or invoice that has already been issued.
-
-### Product type [#field-product-type]
-
-The product's type. **Choosing a type brings up the spec fields defined for it.** Types and their fields are set by an administrator in [Product Types](/manual/en/operations/system/product-type/settings).
-
-### Material type [#field-material-type]
-
-The material grade used to make it.
-
-### Diameter / length (mm) [#field-dimensions]
-
-The stock dimensions required. **Products specify material type plus diameter and length rather than one specific stock item**, because any stock meeting those conditions can be used.
 
 ### キーワード (keywords) [#field-keywords]
 
@@ -213,7 +201,7 @@ Registering them does two things.
 1. **You can find it** — typing any of those words in the list's search box finds this product.
 2. **The AI can find it** — when a received document is read, a name printed on it can be resolved to this product.
 
-Press 「**AI で候補を出す**」 (suggest with AI) and candidates are generated from what is currently entered (name, material type, dimensions, type-specific items …). **Only the ones you click are added, and nothing is registered until you save** — look at them and pick the ones that fit.
+Press 「**AI で候補を出す**」 (suggest with AI) and candidates are generated from what is currently entered (name, unit, notes …). **Only the ones you click are added, and nothing is registered until you save** — look at them and pick the ones that fit.
 
 If the same word is put on two products, neither can be chosen. Use words that point at **this product only**.
 
@@ -230,11 +218,8 @@ Notes. Writing down why something was decided, or anything to watch out for, hel
 **Q. I see 「単位を選択してください」 (Please choose the unit) and cannot save.**
 A. 「単位」 (Unit) in 「基本情報」 (Basic information) has not been chosen yet. Normally you choose 「本」.
 
-**Q. I see 「直径は 0.1〜99.9mm で入力してください」 (Please enter a diameter between 0.1 and 99.9 mm).**
-A. When you choose a material type, the diameter is required. Enter a value between 0.1 and 99.9. The length must be between 1 and 999.
-
-**Q. I type in the material type field, but the material type I want does not appear.**
-A. Only material types "that have a code structure registered" can be chosen. The screen also says under the field: 「変換済（コード構成あり）の材種のみ選択できます」 (Only converted material types, which have a code structure, can be chosen). Material types brought over from the old system cannot be chosen, so please register them again in [Material Type](/manual/en/operations/masters/material-type/user).
+**Q. There is no field for the material type or diameter.**
+A. The specification belongs to the version in [Drawing](/manual/en/operations/production/design-file/user), so the product master has no fields for it. Register a version in Drawing and confirm it.
 
 **Q. When I try to delete, I see 「この製品を参照するデータ（価格表・見積書）が存在するため削除できません。無効化を検討してください。」 (This product cannot be deleted because data that refers to it — price lists, quotes — exists. Please consider deactivating it instead).**
 A. Price lists or quotes that use that product already exist, so it cannot be deleted. This is normal. Please use 「無効化」 (Deactivate).
@@ -244,9 +229,6 @@ A. No step is ticked. Please tick the steps you use in 「工程選択」 (Choos
 
 **Q. When I try to save a new version, I see 「最新バージョン v◯ と同じ構成です（変更がありません）」 (This is the same as the latest version v◯ — there is no change).**
 A. The steps are exactly the same as the earlier version. Change something before saving, or press 「キャンセル」 (Cancel) to go back if it is fine as it is.
-
-**Q. I cannot make an extra item with a name of my own.**
-A. That is how it works. You can only choose from the items prepared in advance. If the item you need is missing, please ask your administrator.
 
 <!-- permissions:start -->
 ## Permissions required

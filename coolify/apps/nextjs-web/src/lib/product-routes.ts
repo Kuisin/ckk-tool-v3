@@ -39,12 +39,18 @@ const ROUTE_INCLUDE = {
   },
 };
 
-/** 製品の製造工程リスト一覧（バージョン降順・工程サマリ付き）— 製品詳細/ビルダー用。 */
-export async function listProductRoutes(
-  productId: number,
-): Promise<RouteView[]> {
+/**
+ * 製品の製造工程リスト一覧（バージョン降順・工程サマリ付き）— 製品詳細/ビルダー用。
+ *
+ * `itemId` は **items.id**（製品マスタの URL id / ビルダーの製品ピッカーの値）。
+ * 以前は products.id を受けて中で 1 回変換していたが、呼び出し側が品目へ移った
+ * あとも引数名が productId のままだったため、**製品マスタ (MS04) が品目 id を
+ * 旧 id として渡し、別の製品のリストを引いていた**（どちらも number なので型は
+ * 通る）。受け取る意味を列名に出して、同じ取り違えを繰り返せなくする。
+ */
+export async function listProductRoutes(itemId: number): Promise<RouteView[]> {
   const routes = await prisma.productProcessRoute.findMany({
-    where: { productId, kind: "MANUFACTURING" },
+    where: { itemId, kind: "MANUFACTURING" },
     include: ROUTE_INCLUDE,
     orderBy: [{ isActive: "desc" }, { id: "asc" }],
   });
@@ -56,8 +62,23 @@ export async function listProductRoutes(
  * 工程マスタ配下（/master/process-steps/prep-routes）とビルダーが読む。
  */
 export async function listPrepRoutes(): Promise<RouteView[]> {
+  return listCommonRoutes("PREP");
+}
+
+/**
+ * 再研磨工程リスト一覧（共通 — 製品にも顧客にも紐づかない）。
+ * 工程マスタ配下（/master/process-steps/regrind-routes）と再研磨指示書のビルダーが読む。
+ */
+export async function listRegrindRoutes(): Promise<RouteView[]> {
+  return listCommonRoutes("REGRIND");
+}
+
+/** 共通リスト（準備 / 再研磨）の一覧。 */
+export async function listCommonRoutes(
+  kind: "PREP" | "REGRIND",
+): Promise<RouteView[]> {
   const routes = await prisma.productProcessRoute.findMany({
-    where: { kind: "PREP" },
+    where: { kind },
     include: ROUTE_INCLUDE,
     orderBy: [{ isActive: "desc" }, { id: "asc" }],
   });
@@ -171,14 +192,16 @@ export async function createRouteVersionTx(
 
 /**
  * ルート新規作成 + v1（呼び出し側 tx 内）。
- * kind = PREP は製品にも顧客にも紐づかない（DB の CHECK が守る — ここで
- * 渡された productId / customerBpId は捨てる）。
+ * kind = PREP は品目にも顧客にも紐づかない（DB の CHECK が守る — ここで
+ * 渡された itemId / customerBpId は捨てる）。
+ *
+ * `itemId` は **items.id**（製品品目）。
  */
 export async function createRouteWithVersionTx(
   tx: Tx,
   input: {
     kind?: ProcessRouteKind;
-    productId: number | null;
+    itemId: number | null;
     name: LocalizedText;
     /** 対象の受注元。null/未指定 = 汎用ルート。 */
     customerBpId?: string | null;
@@ -188,14 +211,26 @@ export async function createRouteWithVersionTx(
   },
 ): Promise<{ routeId: number; versionId: string }> {
   const kind = input.kind ?? "MANUFACTURING";
-  if (kind === "MANUFACTURING" && input.productId == null) {
-    throw new Error("manufacturing route requires productId");
+  if (kind === "MANUFACTURING" && input.itemId == null) {
+    throw new Error("manufacturing route requires itemId");
   }
+  if (kind === "MANUFACTURING" && input.itemId != null) {
+    // 他社製品（再研磨専用）には製造工程リストを作らない — 最後の砦。
+    const item = await tx.item.findUnique({
+      where: { id: input.itemId },
+      select: { isExternalProduct: true },
+    });
+    if (item?.isExternalProduct) {
+      throw new Error("external product cannot have a manufacturing route");
+    }
+  }
+  // 共通リスト（準備 / 再研磨）は品目にも顧客にも紐づかない（DB の CHECK）。
+  const common = kind !== "MANUFACTURING";
   const route = await tx.productProcessRoute.create({
     data: {
       kind,
-      productId: kind === "PREP" ? null : input.productId,
-      customerBpId: kind === "PREP" ? null : (input.customerBpId ?? null),
+      itemId: common ? null : input.itemId,
+      customerBpId: common ? null : (input.customerBpId ?? null),
       name: input.name,
       createdBy: input.actor,
     },
@@ -223,6 +258,11 @@ export type RouteResolveInput =
 export interface RouteResolveScope {
   kind: ProcessRouteKind;
   prepStepIds: ReadonlySet<number>;
+  /**
+   * その種別に属する工程か（省略時は prepStepIds から PREP / それ以外 で決める）。
+   * 再研磨は 3 つ目の区分なので、呼び出し側が stepAllowedForType で渡す。
+   */
+  inKind?: (stepId: number) => boolean;
 }
 
 /**
@@ -243,7 +283,7 @@ export async function resolveRouteVersionTx(
   input: RouteResolveInput,
   steps: readonly RouteStepSnapshot[],
   actor: string | null,
-  productId: number,
+  itemId: number,
   tr: Tr,
   notes: string | null | undefined,
   scope: RouteResolveScope,
@@ -251,14 +291,16 @@ export async function resolveRouteVersionTx(
   if (input == null) return null;
   // その種別の工程が 1 つも無いのに版を作っても中身が空になるだけ。
   if (steps.length === 0) return null;
-  const inKind = (id: number) =>
-    scope.kind === "PREP"
-      ? scope.prepStepIds.has(id)
-      : !scope.prepStepIds.has(id);
+  const inKind =
+    scope.inKind ??
+    ((id: number) =>
+      scope.kind === "PREP"
+        ? scope.prepStepIds.has(id)
+        : !scope.prepStepIds.has(id));
   if (input.mode === "new") {
     const created = await createRouteWithVersionTx(tx, {
       kind: scope.kind,
-      productId,
+      itemId,
       name: { ja: input.name, en: input.name },
       customerBpId: input.customerBpId ?? null,
       steps,
@@ -269,7 +311,7 @@ export async function resolveRouteVersionTx(
   const base = await tx.productProcessRouteVersion.findUnique({
     where: { id: input.baseVersionId },
     include: {
-      route: { select: { id: true, productId: true, kind: true } },
+      route: { select: { id: true, itemId: true, kind: true } },
       steps: { orderBy: { sortOrder: "asc" } },
     },
   });
@@ -277,7 +319,7 @@ export async function resolveRouteVersionTx(
     !base ||
     base.route.id !== input.routeId ||
     base.route.kind !== scope.kind ||
-    (scope.kind === "MANUFACTURING" && base.route.productId !== productId)
+    (scope.kind === "MANUFACTURING" && base.route.itemId !== itemId)
   ) {
     throw new Error(
       tr("production.productRoutes.theSelectedProcessRouteIsNot"),
@@ -322,7 +364,7 @@ export async function copyRouteVersionToCustomerTx(
     where: { id: input.versionId },
     include: {
       route: {
-        select: { id: true, kind: true, productId: true, name: true },
+        select: { id: true, kind: true, itemId: true, name: true },
       },
       steps: { orderBy: { sortOrder: "asc" } },
     },
@@ -330,7 +372,7 @@ export async function copyRouteVersionToCustomerTx(
   if (
     !base ||
     base.route.kind !== "MANUFACTURING" ||
-    base.route.productId == null
+    base.route.itemId == null
   ) {
     throw new Error(
       input.tr("production.productRoutes.theSelectedProcessRouteIsNot"),
@@ -338,7 +380,7 @@ export async function copyRouteVersionToCustomerTx(
   }
   return createRouteWithVersionTx(tx, {
     kind: "MANUFACTURING",
-    productId: base.route.productId,
+    itemId: base.route.itemId,
     customerBpId: input.customerBpId,
     name: base.route.name as LocalizedText,
     steps: base.steps.map((s) => ({

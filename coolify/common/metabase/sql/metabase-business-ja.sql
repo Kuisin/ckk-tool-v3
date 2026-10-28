@@ -429,6 +429,15 @@ m(col, ja) AS (VALUES
   ('planned_work_hours', '予定作業時間'),
   ('work_hours', '作業時間'),
   ('worked_date', '作業日'),
+  ('estimate_unit_price', '見積単価'),
+  ('minimum_price', '最低単価'),
+  ('cost_total', '原価合計'),
+  ('gross_margin', '粗利'),
+  ('item_order', '評価順'),
+  ('criterion_id', '計算基準ID'),
+  ('criterion_name', '計算基準'),
+  ('criterion_role', '計算基準の役割'),
+  ('is_cost', '原価'),
   ('outsource_requested_at', '外注依頼日'),
   ('outsource_expected_at', '外注入荷予定日'),
   ('outsource_received_at', '外注入荷日'),
@@ -470,7 +479,7 @@ m(col, ja) AS (VALUES
   ('due_date', '支払期限'),
   ('sent_at', '送付日時'),
   ('pdf_file_id', 'PDF'),
-  ('yayoi_exported_at', '弥生出力日時'),
+  ('accounting_exported_at', '会計連携日時'),
   ('closing_date', '締日'),
   ('processed_at', '処理日時'),
   ('processed_by', '処理者'),
@@ -551,6 +560,7 @@ WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'app'
 WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務'),
 m(tbl, ja) AS (VALUES
   ('v_estimates', '価格試算'),
+  ('v_estimate_cost_items', '価格試算の計算基準別内訳'),
   ('v_price_list_entries', '価格表'),
   ('v_price_list_variants', '価格表バリアント'),
   ('v_quotes', '見積書'),
@@ -910,6 +920,15 @@ m(col, ja) AS (VALUES
   ('planned_work_hours', '予定作業時間'),
   ('work_hours', '作業時間'),
   ('worked_date', '作業日'),
+  ('estimate_unit_price', '見積単価'),
+  ('minimum_price', '最低単価'),
+  ('cost_total', '原価合計'),
+  ('gross_margin', '粗利'),
+  ('item_order', '評価順'),
+  ('criterion_id', '計算基準ID'),
+  ('criterion_name', '計算基準'),
+  ('criterion_role', '計算基準の役割'),
+  ('is_cost', '原価'),
   ('outsource_requested_at', '外注依頼日'),
   ('outsource_expected_at', '外注入荷予定日'),
   ('outsource_received_at', '外注入荷日'),
@@ -951,7 +970,7 @@ m(col, ja) AS (VALUES
   ('due_date', '支払期限'),
   ('sent_at', '送付日時'),
   ('pdf_file_id', 'PDF'),
-  ('yayoi_exported_at', '弥生出力日時'),
+  ('accounting_exported_at', '会計連携日時'),
   ('closing_date', '締日'),
   ('processed_at', '処理日時'),
   ('processed_by', '処理者'),
@@ -1469,6 +1488,14 @@ UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.i
 FROM metabase_table t, metabase_table tt, metabase_field tf, target
 WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
   AND t.name = 'v_price_list_variants' AND f.name = 'estimate_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_estimates'
+  AND tf.table_id = tt.id AND tf.name = 'estimate_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_estimate_cost_items' AND f.name = 'estimate_no'
   AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_estimates'
   AND tf.table_id = tt.id AND tf.name = 'estimate_no'
   AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);

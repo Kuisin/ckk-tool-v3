@@ -39,7 +39,8 @@ const DELIVERY_ORDER_INCLUDE = {
   items: {
     orderBy: { sortOrder: "asc" as const },
     include: {
-      product: true,
+      // 品目統合 第 2 段 C — 表示は品目側から読む。
+      item: true,
       orderLine: {
         select: {
           acceptanceYearMonth: true,
@@ -47,17 +48,14 @@ const DELIVERY_ORDER_INCLUDE = {
           branch: true,
           // 確定前の単価表示のフォールバック（確定後は明細側に凍る）。
           unitPrice: true,
-          // 実効エンドユーザー = 明細の指定 ?? 注文請書ヘッダの既定。
+          // 配送（§8）— 明細ごと（確定時の納品書自動作成の入力）。
+          deliveryMethod: true,
           endUserBpId: true,
           endUserBp: { select: { name: true } },
           // 営業担当は書類に保存せず、注文請書ヘッダから導出する。
-          // 配送方法・エンドユーザーも同じくヘッダが持つ（確定時の納品書自動作成の入力）。
           acceptance: {
             select: {
               salesRep: { select: { id: true, displayName: true } },
-              deliveryMethod: true,
-              endUserBpId: true,
-              endUserBp: { select: { name: true } },
             },
           },
         },
@@ -80,11 +78,14 @@ function findRow(key: DocKey) {
 }
 
 /** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
-function productLabel(p: {
-  name: unknown;
-  yearMonth: string | null;
-  seq: number | null;
-}): string {
+function productLabel(
+  p: {
+    name: unknown;
+    yearMonth: string | null;
+    seq: number | null;
+  } | null,
+): string {
+  if (!p) return "—";
   const code = formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
   return code ? `${name} ${code}` : name;
@@ -102,13 +103,13 @@ function autoDeliveryNotePreview(r: DeliveryOrderRow) {
   const first = r.items[0]?.orderLine;
   if (r.type !== "DISPATCH" || !first)
     return { notes: [], endUserMissing: false };
-  const endUserBpId = first.endUserBpId ?? first.acceptance.endUserBpId ?? null;
-  const endUserBp = first.endUserBp ?? first.acceptance.endUserBp ?? null;
+  const endUserBpId = first.endUserBpId ?? null;
+  const endUserBp = first.endUserBp ?? null;
   return previewAutoDeliveryNotes(
     {
       customerBpId: r.customerBpId,
       customerBranchBpId: r.customerBranchBpId,
-      deliveryMethod: first.acceptance.deliveryMethod,
+      deliveryMethod: first.deliveryMethod,
       endUserBpId,
     },
     {
@@ -203,10 +204,11 @@ function mapDeliveryOrder(
       id: it.id,
       orderLineId: it.orderLineId,
       orderLineNumber: it.orderLine ? orderLineNumberOf(it.orderLine) : null,
-      productId: String(it.productId),
-      productName: productLabel(it.product),
+      itemId: String(it.itemId ?? ""),
+      productName: productLabel(it.item),
       lotNumber: it.lotNumber,
       quantity: it.quantity,
+      returnedQuantity: it.returnedQuantity,
       // 確定前は焼き込み前なので注文明細の単価を見せる（確定すると凍る）。
       unitPrice:
         it.unitPrice != null

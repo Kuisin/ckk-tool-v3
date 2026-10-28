@@ -18,7 +18,7 @@
 | 認証 | Auth.js v5 (Samba AD LDAP) |
 | バックグラウンドジョブ | BullMQ |
 | 国際化 | next-intl + messages/ JSON |
-| 会計連携 | 弥生会計 Next (CSV エクスポート) |
+| 会計連携 | TKC FX4クラウド (仕訳 CSV エクスポート) |
 
 ## 詳細セクション
 

@@ -2,7 +2,6 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  autorunTargetMonths,
   billingPeriodStart,
   billingPeriodStartFrom,
   billingWindowFor,
@@ -10,8 +9,12 @@ import {
   closingDateReached,
   inBillingWindow,
   isProcessable,
+  isRunnableClosingDate,
   jstMidnightOf,
+  parseClosingDate,
   previousClosingDate,
+  scheduledClosingDates,
+  summarizeClosingSimulation,
 } from "./model";
 
 /** JST の日時 → Date（UTC 瞬間）。 */
@@ -101,27 +104,68 @@ describe("billingWindowFor", () => {
   });
 });
 
-describe("autorunTargetMonths", () => {
-  it("月初 3 日間は前月 → 当月の順に 2 か月", () => {
-    expect(autorunTargetMonths(2026, 8, 1)).toEqual([
-      { year: 2026, month: 7 },
-      { year: 2026, month: 8 },
-    ]);
-    expect(autorunTargetMonths(2026, 8, 3)).toEqual([
-      { year: 2026, month: 7 },
-      { year: 2026, month: 8 },
+describe("scheduledClosingDates", () => {
+  it("月をまたいで、fromDate 以降・targetDate 以下の締日をすべて返す（月末締め）", () => {
+    // 6 月末締めを走らせ忘れ、9 月 15 日に気づいて実行した想定。
+    expect(
+      scheduledClosingDates(
+        utcDate(2026, 6, 15),
+        utcDate(2026, 9, 15),
+        null, // 31/未設定 = 月末
+      ),
+    ).toEqual([
+      utcDate(2026, 6, 30),
+      utcDate(2026, 7, 31),
+      utcDate(2026, 8, 31),
     ]);
   });
 
-  it("4 日目からは当月だけ", () => {
-    expect(autorunTargetMonths(2026, 8, 4)).toEqual([{ year: 2026, month: 8 }]);
+  it("targetDate の月の締日がまだ来ていなければ含めない", () => {
+    // 25 日締めの顧客。9 月 15 日時点では 9 月の締日（25 日）はまだ先。
+    expect(
+      scheduledClosingDates(utcDate(2026, 9, 1), utcDate(2026, 9, 15), 25),
+    ).toEqual([]);
   });
 
-  it("1 月の月初は前年 12 月", () => {
-    expect(autorunTargetMonths(2027, 1, 2)).toEqual([
-      { year: 2026, month: 12 },
-      { year: 2027, month: 1 },
-    ]);
+  it("targetDate ちょうどの締日は含める（以下＝境界を含む）", () => {
+    expect(
+      scheduledClosingDates(utcDate(2026, 8, 1), utcDate(2026, 8, 31), 31),
+    ).toEqual([utcDate(2026, 8, 31)]);
+  });
+
+  it("fromDate と同じ月でも、fromDate より前の締日は含めない", () => {
+    // 10 日締め。fromDate が 15 日なら、今月の 10 日締めはもう過ぎている
+    // （このぶんは前回すでに拾われているはずなので二重に返さない）。
+    expect(
+      scheduledClosingDates(utcDate(2026, 8, 15), utcDate(2026, 9, 30), 10),
+    ).toEqual([utcDate(2026, 9, 10)]);
+  });
+
+  it("年をまたぐ", () => {
+    expect(
+      scheduledClosingDates(utcDate(2026, 12, 1), utcDate(2027, 1, 31), 31),
+    ).toEqual([utcDate(2026, 12, 31), utcDate(2027, 1, 31)]);
+  });
+
+  it("fromDate > targetDate なら空", () => {
+    expect(
+      scheduledClosingDates(utcDate(2026, 9, 1), utcDate(2026, 8, 1), 31),
+    ).toEqual([]);
+  });
+});
+
+describe("parseClosingDate", () => {
+  it("YYYY-MM-DD を UTC 0時の Date にする", () => {
+    expect(parseClosingDate("2026-08-31")?.toISOString()).toBe(
+      "2026-08-31T00:00:00.000Z",
+    );
+  });
+
+  it("存在しない日付・不正な形式は null", () => {
+    expect(parseClosingDate("2026-02-30")).toBeNull();
+    expect(parseClosingDate("2026/08/31")).toBeNull();
+    expect(parseClosingDate("20260831")).toBeNull();
+    expect(parseClosingDate("")).toBeNull();
   });
 });
 
@@ -165,5 +209,124 @@ describe("billingPeriodStartFrom", () => {
     expect(
       billingPeriodStartFrom(new Date("2026-08-31T00:00:00Z"), 31, null),
     ).toEqual(billingPeriodStart(2026, 8, 31));
+  });
+});
+
+describe("isRunnableClosingDate", () => {
+  it("今日までは実行してよく、未来日は不可", () => {
+    expect(isRunnableClosingDate("2026-09-19", "2026-09-20")).toBe(true);
+    expect(isRunnableClosingDate("2026-09-20", "2026-09-20")).toBe(true);
+    expect(isRunnableClosingDate("2026-09-21", "2026-09-20")).toBe(false);
+    expect(isRunnableClosingDate("2026-09-30", "2026-09-20")).toBe(false);
+  });
+
+  it("年をまたいでも文字列比較で正しく並ぶ", () => {
+    expect(isRunnableClosingDate("2026-12-31", "2027-01-01")).toBe(true);
+    expect(isRunnableClosingDate("2027-01-01", "2026-12-31")).toBe(false);
+  });
+
+  /**
+   * 実行を今日までに閉じる理由そのもの — 未来日を許すと、締日行は作れるのに
+   * 請求書は作れない組み合わせができる。実行の可否（isRunnableClosingDate）と
+   * 請求書の可否（closingDateReached）は別の時計を見ているので、ここがずれると
+   * 「作成 1 件・請求書 0 件」の半端な状態が黙って残る。
+   */
+  it("未来日で実行できないので、締日行だけできる組み合わせは作れない", () => {
+    const todayIso = "2026-09-20";
+    const futureClosing = "2026-09-30";
+    // 未来の締日は今日時点では請求書にできない
+    expect(closingDateReached(futureClosing, todayIso)).toBe(false);
+    // その締日を拾うには指定日を未来にするしかなく、それは実行できない
+    expect(isRunnableClosingDate(futureClosing, todayIso)).toBe(false);
+  });
+});
+
+describe("summarizeClosingSimulation", () => {
+  const candidate = (
+    customerName: string,
+    closingDate: string,
+    totalAmount: number,
+    shipments = 1,
+  ) => ({
+    customerName,
+    closingDate,
+    totalAmount,
+    shipmentNumbers: Array.from(
+      { length: shipments },
+      (_, i) => `DOR-202609-0000${i + 1}`,
+    ),
+  });
+
+  it("請求書の可否は指定日で決まる（今日ではない）", () => {
+    const rows = [candidate("A 社", "2026-09-30", 1000)];
+    // 締日の翌日を指定 → その実行なら請求書まで作られる
+    expect(
+      summarizeClosingSimulation(rows, "2026-10-01").rows[0]
+        .willGenerateInvoice,
+    ).toBe(true);
+    // 締日当日を指定 → まだ（翌日から）
+    expect(
+      summarizeClosingSimulation(rows, "2026-09-30").rows[0]
+        .willGenerateInvoice,
+    ).toBe(false);
+  });
+
+  it("締日当日は生成されない — closingDateReached と同じ規則", () => {
+    const sim = summarizeClosingSimulation(
+      [candidate("A 社", "2026-09-30", 1000)],
+      "2026-09-30",
+    );
+    expect(sim.closingCount).toBe(1);
+    expect(sim.invoiceCount).toBe(0);
+  });
+
+  it("締日 → 顧客名の順に並べ、件数と金額を集計する", () => {
+    const sim = summarizeClosingSimulation(
+      [
+        candidate("B 社", "2026-09-30", 300, 2),
+        candidate("A 社", "2026-09-30", 200),
+        candidate("C 社", "2026-08-31", 100),
+      ],
+      "2026-10-01",
+    );
+    expect(sim.rows.map((r) => r.customerName)).toEqual([
+      "C 社",
+      "A 社",
+      "B 社",
+    ]);
+    expect(sim.closingCount).toBe(3);
+    expect(sim.invoiceCount).toBe(3);
+    expect(sim.totalAmount).toBe(600);
+    expect(sim.targetDate).toBe("2026-10-01");
+  });
+
+  it("締日を過ぎた分と当日の分が混ざっても件数を数え分ける", () => {
+    const sim = summarizeClosingSimulation(
+      [
+        candidate("先月締め", "2026-08-31", 100),
+        candidate("当日締め", "2026-09-30", 200),
+      ],
+      "2026-09-30",
+    );
+    expect(sim.closingCount).toBe(2);
+    expect(sim.invoiceCount).toBe(1);
+    expect(sim.totalAmount).toBe(300);
+  });
+
+  it("候補が無ければ空（合計 0・元の配列は壊さない）", () => {
+    const input: ReturnType<typeof candidate>[] = [];
+    const sim = summarizeClosingSimulation(input, "2026-09-20");
+    expect(sim.rows).toEqual([]);
+    expect(sim.closingCount).toBe(0);
+    expect(sim.invoiceCount).toBe(0);
+    expect(sim.totalAmount).toBe(0);
+  });
+
+  it("DB の完全な ISO 文字列（UTC 0 時）でも暦日で判定する", () => {
+    const sim = summarizeClosingSimulation(
+      [candidate("A 社", "2026-09-30T00:00:00.000Z", 1000)],
+      "2026-10-01",
+    );
+    expect(sim.rows[0].willGenerateInvoice).toBe(true);
   });
 });

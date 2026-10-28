@@ -68,7 +68,7 @@ export async function loadProductionBoard(
       yearMonth: true,
       seq: true,
       plannedQuantity: true,
-      product: { select: { name: true } },
+      productItem: { select: { name: true } },
       steps: {
         select: {
           id: true,
@@ -112,7 +112,7 @@ export async function loadProductionBoard(
       workOrderId: wo.id,
       lotNumber: wo.workOrderNumber,
       documentNumber: `WOR-${wo.yearMonth}-${String(wo.seq).padStart(5, "0")}`,
-      productName: name(wo.product.name),
+      productName: name(wo.productItem.name),
       plannedQuantity: wo.plannedQuantity,
       steps,
     };
@@ -163,7 +163,7 @@ export async function loadPendingBoard(
       branch: true,
       quantity: true,
       deliveryDate: true,
-      product: { select: { name: true } },
+      item: { select: { name: true } },
       productText: true,
       acceptance: { select: { customerBp: { select: { name: true } } } },
       workOrderLinks: { select: { quantity: true } },
@@ -188,9 +188,7 @@ export async function loadPendingBoard(
           customerName: l.acceptance.customerBp
             ? name(l.acceptance.customerBp.name)
             : "—",
-          productName: l.product
-            ? name(l.product.name)
-            : (l.productText ?? "—"),
+          productName: l.item ? name(l.item.name) : (l.productText ?? "—"),
           quantity: l.quantity,
           arrangedQuantity: arranged,
           deliveryDate: l.deliveryDate,

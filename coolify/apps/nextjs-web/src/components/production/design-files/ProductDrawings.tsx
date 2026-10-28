@@ -1,118 +1,138 @@
 "use client";
 
 /**
- * ProductDrawings — ある製品の設計図 (PD26)。**版を管理できる唯一の画面**。
+ * ProductDrawings — ある製品の設計図 (PD26)。系列ごとに版を並べる。
  *
- * 系列（製品 × 受注元）ごとに節を分ける。汎用が先頭で、以降は版数の多い順。
+ * 系列（製品 × 受注元）ごとに節を分ける。汎用が先頭で、以降は版数の多い順
+ * （lib/design-files-core.ts groupVersionsBySeries — 製品マスタ・一覧と同じ並び）。
  * 系列を混ぜて 1 本の表にすると「どの顧客の v3 なのか」が読めなくなる。
- * 並べ方は `lib/design-files-core.ts` の groupBySeries が決めるので、
- * 製品マスタ (MS24) と設計依頼 (SA26) の見え方と必ず一致する。
  *
- * 既存の版のファイルそのものは差し替えられない — 図面を変えるということは
- * 新しい版を作るということで、過去の版を書き換えると「何を見て作ったか」が
- * 追えなくなる。直せるのはメモだけ。
+ * 受注元のドロップダウンで、1 つの系列だけに絞れる（URL の ?series= —
+ * 一覧の行から来たときはその系列で開く。値の形は design-files-core seriesParam）。
+ * 絞っているあいだの「版を登録」は、その受注元を選んだ状態で登録画面を開く。
+ *
+ * 1 行 = 1 版。状態（下書き / 承認依頼中 / 確定 / 差し戻し）・仕様の要約・
+ * 載っているファイルを出し、押すと版の詳細へ行く。直す・確定するのは版の
+ * 詳細で行う（ここは探す画面）。
  */
 
-import { Badge, Box, Group, Stack, Text, Textarea } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
-import { IconPlus } from "@tabler/icons-react";
+import {
+  Badge,
+  Box,
+  Group,
+  Paper,
+  Select,
+  Stack,
+  Text,
+  UnstyledButton,
+} from "@mantine/core";
+import { IconChevronRight, IconPlus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
-import {
-  deleteDesignFile,
-  updateDesignFileNotes,
-} from "@/app/(dashboard)/production/design-files/actions";
+import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
-import { MemoPanel } from "@/components/ui/MemoPanel";
-import { ConfirmModal, ModalShell } from "@/components/ui/modals";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DetailShell } from "@/components/ui/shells";
-import { groupBySeries, pickThumbFile } from "@/lib/design-files-core";
-import type { MemoView } from "@/lib/document-memos";
-import { DesignFileList, type DesignFileListRow } from "./DesignFileList";
-import type { ProductDesignFile } from "./model";
+import { useUrlSelectState } from "@/hooks/useUrlState";
+import { useIsMobile } from "@/hooks/useViewport";
+import {
+  GENERIC_SERIES_PARAM,
+  groupVersionsBySeries,
+  matchesSeriesParam,
+  pickThumbFile,
+  seriesParam,
+} from "@/lib/design-files-core";
+import type { DesignVersionView } from "./model";
+import { RoleBadge } from "./RoleBadge";
 
 const BASE_PATH = "/production/design-files";
 
 export function ProductDrawings({
-  productId,
+  itemId,
   productLabel,
-  files,
+  versions,
   canManage,
-  memosByFile = {},
 }: {
-  productId: number;
+  /** 対象製品の品目 id（items.id）。 */
+  itemId: number;
   productLabel: string;
-  files: ProductDesignFile[];
-  /** 版を足す・直す・消す権限があるか（無ければ読むだけ）。 */
+  versions: DesignVersionView[];
+  /** 版を作れる権限があるか。 */
   canManage: boolean;
-  /**
-   * 版 id → メモ（document_memos, ownerType "design_files"）。
-   * 画面に並ぶ版ぶんをまとめて 1 回で引いたもの（listMemosByOwnerIds）。
-   */
-  memosByFile?: Record<string, MemoView[]>;
 }) {
   const tr = useTranslations();
+  const fmt = useFormat();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [editing, setEditing] = useState<DesignFileListRow | null>(null);
-  const [notes, setNotes] = useState("");
-  const [deleting, setDeleting] = useState<DesignFileListRow | null>(null);
-  const [memoFor, setMemoFor] = useState<DesignFileListRow | null>(null);
+  const isMobile = useIsMobile();
+  const allSeries = groupVersionsBySeries(versions);
+  const [seriesFilter, setSeriesFilter] = useUrlSelectState("series");
 
-  const series = groupBySeries(files);
-
-  const run = (
-    fn: () => Promise<{ ok: boolean; error?: string }>,
-    ok: string,
-  ) =>
-    startTransition(async () => {
-      const res = await fn();
-      if (res.ok) {
-        notifications.show({ title: ok, message: "", color: "green" });
-        setEditing(null);
-        setDeleting(null);
-        router.refresh();
-      } else {
-        notifications.show({
-          title: tr("common.error2"),
-          message: res.error ?? tr("common.failed"),
-          color: "red",
-        });
-      }
-    });
-
-  const openRequest = (n: string) =>
-    router.push(`/sales/design-requests/${encodeURIComponent(n)}`);
+  const seriesLabel = (g: (typeof allSeries)[number]) =>
+    g.customerBpId == null
+      ? tr("common.generic")
+      : (g.versions.find((v) => v.customerName)?.customerName ??
+        tr("common.orderingCustomer"));
+  const seriesOptions = allSeries.map((g) => ({
+    value: seriesParam(g.customerBpId),
+    label: tr("production.designVersion.seriesOption", {
+      name: seriesLabel(g),
+      count: g.versions.length,
+    }),
+  }));
+  // URL の値が今ある系列を指していなければ（古いリンク・消えた系列）全部を出す。
+  const activeFilter = seriesOptions.some((o) => o.value === seriesFilter)
+    ? seriesFilter
+    : null;
+  const series = allSeries.filter((g) =>
+    matchesSeriesParam(g.customerBpId, activeFilter),
+  );
+  // 受注元で絞っているときは、その受注元を選んだ状態で登録画面を開く。
+  const newHref =
+    activeFilter && activeFilter !== GENERIC_SERIES_PARAM
+      ? `${BASE_PATH}/new?item=${itemId}&customer=${encodeURIComponent(activeFilter)}`
+      : `${BASE_PATH}/new?item=${itemId}`;
 
   return (
     <DetailShell
       actions={
         canManage ? (
-          <SecondaryButton
-            href={`${BASE_PATH}/new?product=${productId}`}
-            leftSection={<IconPlus size={14} />}
-          >
+          <SecondaryButton href={newHref} leftSection={<IconPlus size={14} />}>
             {tr("production.designFiles.registerAVersion")}
           </SecondaryButton>
         ) : undefined
       }
       breadcrumbs={[
         tr("common.production"),
-        tr("common.drawing"),
+        { label: tr("common.drawing"), href: BASE_PATH },
         productLabel,
       ]}
       title={productLabel}
     >
       <Stack gap="lg">
+        {allSeries.length > 1 && (
+          <Select
+            aria-label={tr("common.orderingCustomer")}
+            clearable
+            data={seriesOptions}
+            label={tr("common.orderingCustomer")}
+            maw={isMobile ? undefined : 360}
+            onChange={setSeriesFilter}
+            placeholder={tr("production.designVersion.allSeries")}
+            searchable={seriesOptions.length > 5}
+            value={activeFilter}
+          />
+        )}
         {series.length === 0 ? (
           <Text c="dimmed" size="sm">
             {tr("common.thereIsNoDrawingForThis")}
           </Text>
         ) : (
           series.map((g) => {
-            const thumb = pickThumbFile(g.files);
+            const latestConfirmed = g.versions.find((v) => v.isLatestConfirmed);
+            const thumb = latestConfirmed
+              ? pickThumbFile(latestConfirmed.files)
+              : null;
             return (
               <Stack
                 gap="xs"
@@ -121,27 +141,29 @@ export function ProductDrawings({
                 key={g.customerBpId ?? "__generic__"}
               >
                 <Group gap="xs" wrap="wrap">
-                  {g.customerBpId == null ? (
-                    <Badge color="gray" variant="light">
-                      {tr("common.generic")}
-                    </Badge>
-                  ) : (
-                    <Badge color="blue" variant="light">
-                      {g.files.find((f) => f.customerName)?.customerName ??
-                        tr("common.orderingCustomer")}
-                    </Badge>
-                  )}
+                  <Badge
+                    color={g.customerBpId == null ? "gray" : "blue"}
+                    variant="light"
+                  >
+                    {seriesLabel(g)}
+                  </Badge>
                   <Text c="dimmed" size="xs">
-                    最新 v{g.latestVersion}
+                    {latestConfirmed
+                      ? tr("production.designVersion.latestConfirmedVersion", {
+                          version: latestConfirmed.version,
+                        })
+                      : tr("production.designVersion.noConfirmedVersion")}
                   </Text>
                 </Group>
-                {thumb && (
+                {thumb && latestConfirmed && (
                   <Box maw={320}>
                     <DesignFileThumb
                       target={{
                         caption: tr(
                           "production.productDrawings.versionLatest",
-                          { version: thumb.version },
+                          {
+                            version: latestConfirmed.version,
+                          },
                         ),
                         filename: thumb.filename,
                         mimeType: thumb.mimeType,
@@ -150,100 +172,62 @@ export function ProductDrawings({
                     />
                   </Box>
                 )}
-                <DesignFileList
-                  onDelete={canManage ? setDeleting : undefined}
-                  onEdit={
-                    canManage
-                      ? (row) => {
-                          setEditing(row);
-                          setNotes(row.notes ?? "");
-                        }
-                      : undefined
-                  }
-                  onMemo={setMemoFor}
-                  onOpenRequest={openRequest}
-                  rows={g.files}
-                  showSource
-                />
+                <Stack gap={6}>
+                  {g.versions.map((v) => (
+                    <UnstyledButton
+                      aria-label={tr("production.designVersion.openVersion", {
+                        version: v.version,
+                      })}
+                      key={v.id}
+                      onClick={() =>
+                        router.push(`${BASE_PATH}/versions/${v.id}`)
+                      }
+                    >
+                      <Paper p="sm" radius="sm" withBorder>
+                        <Group gap="sm" justify="space-between" wrap="nowrap">
+                          <Stack className="min-w-0" gap={4}>
+                            <Group gap="xs" wrap="wrap">
+                              <Text className="tabular-nums" fw={600} size="sm">
+                                v{v.version}
+                              </Text>
+                              <StatusBadge
+                                entity="DesignVersion"
+                                status={v.status}
+                              />
+                              {v.isLatestConfirmed && <RoleBadge latest />}
+                              {v.files.map((f) => (
+                                <RoleBadge key={f.id} role={f.role} />
+                              ))}
+                            </Group>
+                            <Text c="dimmed" size="xs" truncate>
+                              {[
+                                v.titleBlock.productName,
+                                v.materialTypeLabel,
+                                v.diameterMm != null && v.lengthMm != null
+                                  ? `φ${v.diameterMm}×${v.lengthMm}`
+                                  : null,
+                                v.notes,
+                              ]
+                                .filter(Boolean)
+                                .join(" / ") || "—"}
+                            </Text>
+                          </Stack>
+                          <Group className="shrink-0" gap="xs" wrap="nowrap">
+                            <Text c="dimmed" className="tabular-nums" size="xs">
+                              {fmt.date(v.confirmedAt ?? v.createdAt)}
+                            </Text>
+                            <IconChevronRight size={16} />
+                          </Group>
+                        </Group>
+                      </Paper>
+                    </UnstyledButton>
+                  ))}
+                </Stack>
               </Stack>
             );
           })
         )}
       </Stack>
-
-      <ModalShell
-        confirmLabel={tr("common.save2")}
-        loading={isPending}
-        onClose={() => setEditing(null)}
-        onConfirm={() =>
-          editing &&
-          run(
-            () => updateDesignFileNotes({ id: editing.id, notes }),
-            tr("common.saved2"),
-          )
-        }
-        opened={editing != null}
-        title={
-          editing
-            ? tr("production.productDrawings.versionMemo", {
-                version: editing.version,
-              })
-            : tr("common.memo")
-        }
-      >
-        <Textarea
-          autosize
-          label={tr("common.memo")}
-          minRows={3}
-          onChange={(e) => setNotes(e.currentTarget.value)}
-          placeholder={tr("production.designFiles.whatChangedInThisVersion")}
-          value={notes}
-        />
-      </ModalShell>
-
-      {/* 版ごとのメモ（リッチテキスト）。1 版 1 件の共有欄なので mode="memo"。
-          モーダルの中でだけエディタを読み込む（prosemirror は重い）。 */}
-      <ModalShell
-        onClose={() => setMemoFor(null)}
-        opened={memoFor != null}
-        size="lg"
-        title={
-          memoFor
-            ? tr("production.productDrawings.versionMemo", {
-                version: memoFor.version,
-              })
-            : tr("common.memo")
-        }
-      >
-        {memoFor && (
-          <MemoPanel
-            memos={memosByFile[memoFor.id] ?? []}
-            mode="memo"
-            ownerId={memoFor.id}
-            ownerType="design_files"
-          />
-        )}
-      </ModalShell>
-
-      <ConfirmModal
-        confirmLabel={tr("common.delete")}
-        loading={isPending}
-        message={
-          deleting
-            ? tr("production.productDrawings.deleteVersionConfirm", {
-                filename: deleting.filename,
-                version: deleting.version,
-              })
-            : ""
-        }
-        onClose={() => setDeleting(null)}
-        onConfirm={() =>
-          deleting &&
-          run(() => deleteDesignFile(deleting.id), tr("common.deleted"))
-        }
-        opened={deleting != null}
-        title={tr("production.designFiles.deleteTheDrawing")}
-      />
     </DetailShell>
   );
 }

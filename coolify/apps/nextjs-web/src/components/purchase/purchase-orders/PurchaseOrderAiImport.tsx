@@ -53,7 +53,7 @@ export interface PurchaseOrderAiPrefill {
   purchaseDate: string | null;
   notes: string;
   items: {
-    materialId: string;
+    itemId: string;
     materialLabel: string;
     quantity: number;
     unit: string;
@@ -66,7 +66,7 @@ export interface PurchaseOrderAiPrefill {
   extractedLines: {
     materialText: string | null;
     materialCode: string | null;
-    materialId: string | null;
+    itemId: string | null;
   }[];
 }
 
@@ -100,7 +100,7 @@ export function PurchaseOrderAiImport({
   const receive = (value: unknown) => {
     const next = value as MaterialOrderDraft;
     setDraft(next);
-    setAutoMatched(next.lines.map((l) => l.materialId != null));
+    setAutoMatched(next.lines.map((l) => l.itemId != null));
     setSupplierBpId(next.supplierBpId);
     setPurchaseDate(next.orderDate);
   };
@@ -117,7 +117,7 @@ export function PurchaseOrderAiImport({
         : cur,
     );
 
-  const unmatched = draft?.lines.filter((l) => !l.materialId).length ?? 0;
+  const unmatched = draft?.lines.filter((l) => !l.itemId).length ?? 0;
 
   const apply = () => {
     if (!draft || !supplierBpId) return;
@@ -128,16 +128,13 @@ export function PurchaseOrderAiImport({
       // 未突合の行も**落とさずに**渡す（素材だけ空。印字された品名は備考へ
       // 逃がしてあるので、フォーム上でも何の行なのかが読める）。
       items: draft.lines.map((l) => ({
-        materialId: l.materialId ?? "",
+        itemId: l.itemId ?? "",
         materialLabel: l.materialLabel ?? "",
         quantity: l.quantity,
         unit: normalizeUnit(l.materialUnit ?? l.unit, units),
         unitPrice: l.unitPrice ?? 0,
         expectedAt: l.expectedDate,
-        notes: [
-          l.notes,
-          l.materialId ? null : (l.materialText ?? l.materialCode),
-        ]
+        notes: [l.notes, l.itemId ? null : (l.materialText ?? l.materialCode)]
           .filter((v): v is string => !!v)
           .join(" / "),
       })),
@@ -145,7 +142,7 @@ export function PurchaseOrderAiImport({
       extractedLines: draft.lines.map((l) => ({
         materialText: l.materialText,
         materialCode: l.materialCode,
-        materialId: l.materialId,
+        itemId: l.itemId,
       })),
     });
   };
@@ -240,7 +237,7 @@ export function PurchaseOrderAiImport({
                       line={line}
                       onPick={(pick) =>
                         setLine(index, {
-                          materialId: pick.materialId,
+                          itemId: pick.itemId,
                           materialLabel: pick.materialLabel,
                         })
                       }

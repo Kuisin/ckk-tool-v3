@@ -61,11 +61,20 @@ export interface ProductRow {
   materialTypeLabel: string;
   /** 検索・AI 突合用のキーワード（match_names）。検索の当たり判定に混ぜる。 */
   matchNames: string[];
+  /**
+   * 顧客品番（顧客専用の製品コード）。相手の品番で製品を探せるようにするため
+   * 検索の当たり判定に混ぜる — 電話で「A-1000 の件」と言われたときに、
+   * こちらの製品名を知らなくても辿り着ける。表には出さない（顧客ごとに
+   * 違うものを 1 列に並べると、どの顧客のものか読めない）。
+   */
+  customerCodes: string[];
   diameterMm: number | null;
   lengthMm: number | null;
   unit: string;
   /** 課税区分の id（複製時に引き継ぐ）。 */
   taxCategoryId: number | null;
+  /** 他社製品（再研磨専用）。一覧では名称の横に印を出す。 */
+  isExternalProduct: boolean;
   isActive: boolean;
 }
 
@@ -110,14 +119,15 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
   };
 
   const filtered = rows.filter((r) => {
-    // キーワード（match_names）も検索対象 — 略称・読み・英字で辿り着ける。
+    // キーワード（match_names）と顧客品番も検索対象 — 略称・読み・英字・
+    // 相手の品番で辿り着ける。
     const matchesSearch =
       !search ||
       matchesKeywordQuery(
         {
           code: r.code,
           name: r.name,
-          keywords: r.matchNames,
+          keywords: [...r.matchNames, ...r.customerCodes],
           extra: [r.materialTypeLabel],
         },
         search,
@@ -204,7 +214,17 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
       header: tr("common.name2"),
       sortable: true,
       sortValue: (r) => r.name,
-      render: (r) => r.name,
+      render: (r) =>
+        r.isExternalProduct ? (
+          <Group gap={6} wrap="nowrap">
+            <span>{r.name}</span>
+            <Badge color="orange" size="xs" variant="light">
+              {tr("master.products.externalBadge")}
+            </Badge>
+          </Group>
+        ) : (
+          r.name
+        ),
     },
     {
       key: "materialType",

@@ -3,6 +3,16 @@
  *
  * 権限は `master:READ`。`?includeInactive=1` で無効も含める。
  * 素材コード（`code`）が業務上の識別子で、仕入先の書類にも印字される。
+ *
+ * ## `id` は **`items.id`**（2026-09-20 の切り替え）
+ *
+ * 製品・素材は 1 つの品目マスタ `app.items` になった。URL も項目名もそのままで、
+ * `id` の値だけが `materials.id` から `items.id` へ変わっている（`_specs/api.md`
+ * §6.1）。連番同士なので**古い id は黙って別の素材を指す** — 切り替え前の
+ * カーソルも同じ理由でずれるので、全件同期からやり直すこと。
+ * 照合し直すときは `code`（素材コード）が唯一安定した鍵。
+ *
+ * 絞り込みは `itemType: "MATERIAL"` — この口は製品を混ぜない。
  */
 
 import { requireApiPermission } from "@/lib/api-authz";
@@ -26,9 +36,12 @@ export async function GET(request: Request): Promise<Response> {
     p.get("includeInactive") === "1" || p.get("includeInactive") === "true";
 
   return runList({
-    baseWhere: includeInactive ? {} : { isActive: true },
+    baseWhere: {
+      itemType: "MATERIAL",
+      ...(includeInactive ? {} : { isActive: true }),
+    },
     fetch: ({ where, take, orderBy }) =>
-      prisma.material.findMany({
+      prisma.item.findMany({
         // biome-ignore lint/suspicious/noExplicitAny: 断片は pagination が組む
         where: where as any,
         take,

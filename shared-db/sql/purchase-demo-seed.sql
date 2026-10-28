@@ -7,8 +7,10 @@
 --     本ファイルでは bp_code で参照するのみ（作成しない）。
 --   - 拠点は F01（本社工場 — migration 20260714110000 でシード）と
 --     F02（masters-demo-seed が追加）を code で参照するのみ（作成しない）。
---   - 素材は baseline-seed.sql（旧 materials_from_excel）の実在コードを
---     code で参照する（materials.id は Int autoincrement のため subselect）。
+--   - 素材は extended-master-seed.sql（旧 materials_from_excel）の実在コードを
+--     code で参照する（品目 app.items の item_type='MATERIAL'。id は連番なので
+--     subselect で引く — **種別で必ず絞る**。製品と id 空間を共有しているため、
+--     code だけで引くと別種の品目に当たり得る）。
 --   - 承認グループ（第一/第二承認グループ（デモ））+ システムユーザー
 --     （00000000-…-000000000000）は manufacturing-demo-seed が作成済み。
 --   - 撮影ユーザー demo_shot（a0b1c2d3-0000-4000-8000-000000005107 / 撮影 太郎）
@@ -76,25 +78,25 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- 明細（単価・仕入先は持たない — 発注書変換時に確定する仕様）
-INSERT INTO app.purchase_request_items (id, request_id, material_id, quantity,
+INSERT INTO app.purchase_request_items (id, request_id, item_id, quantity,
   unit, desired_at, plant_id, notes, sort_order)
 VALUES
   ('db110000-0000-4000-8000-000000000001'::uuid,
    'db100000-0000-4000-8000-000000000001'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
+   (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
    50, '本', '2026-08-10', (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0),
   ('db110000-0000-4000-8000-000000000002'::uuid,
    'db100000-0000-4000-8000-000000000001'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B01A0001-B080-310'),
+   (SELECT id FROM app.items WHERE code = 'B01A0001-B080-310' AND item_type = 'MATERIAL'),
    30, '本', '2026-08-10', (SELECT id FROM app.plants WHERE code = 'F02'), NULL, 1),
   ('db110000-0000-4000-8000-000000000003'::uuid,
    'db100000-0000-4000-8000-000000000002'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B04A0001-B040-310'),
+   (SELECT id FROM app.items WHERE code = 'B04A0001-B040-310' AND item_type = 'MATERIAL'),
    100, '本', '2026-08-20', (SELECT id FROM app.plants WHERE code = 'F01'),
    '7月ロット消化後の補充分', 0),
   ('db110000-0000-4000-8000-000000000004'::uuid,
    'db100000-0000-4000-8000-000000000003'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'A02A0001-A200-310'),
+   (SELECT id FROM app.items WHERE code = 'A02A0001-A200-310' AND item_type = 'MATERIAL'),
    10, '本', NULL, NULL, NULL, 0)
 ON CONFLICT (id) DO NOTHING;
 
@@ -143,28 +145,28 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- 明細（received_quantity: PO-1 の 1 行目のみ 20/50 分納入荷済）
-INSERT INTO app.material_purchase_order_items (id, purchase_order_id, material_id,
+INSERT INTO app.material_purchase_order_items (id, purchase_order_id, item_id,
   quantity, unit, unit_price, amount, currency, expected_at, received_quantity,
   plant_id, notes, sort_order)
 VALUES
   ('db210000-0000-4000-8000-000000000001'::uuid,
    'db200000-0000-4000-8000-000000000001'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
+   (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
    50, '本', 2485, 124250, 'JPY', '2026-07-20', 20,
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0),
   ('db210000-0000-4000-8000-000000000002'::uuid,
    'db200000-0000-4000-8000-000000000001'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B01A0001-B080-310'),
+   (SELECT id FROM app.items WHERE code = 'B01A0001-B080-310' AND item_type = 'MATERIAL'),
    30, '本', 3909, 117270, 'JPY', '2026-07-25', 0,
    (SELECT id FROM app.plants WHERE code = 'F02'), NULL, 1),
   ('db210000-0000-4000-8000-000000000003'::uuid,
    'db200000-0000-4000-8000-000000000002'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B04A0001-B040-310'),
+   (SELECT id FROM app.items WHERE code = 'B04A0001-B040-310' AND item_type = 'MATERIAL'),
    100, '本', 1335, 133500, 'JPY', '2026-08-05', 0,
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0),
   ('db210000-0000-4000-8000-000000000004'::uuid,
    'db200000-0000-4000-8000-000000000003'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'A02A0001-A200-310'),
+   (SELECT id FROM app.items WHERE code = 'A02A0001-A200-310' AND item_type = 'MATERIAL'),
    10, '本', 16263, 162630, 'JPY', NULL, 0,
    NULL, NULL, 0)
 ON CONFLICT (id) DO NOTHING;
@@ -174,26 +176,26 @@ ON CONFLICT (id) DO NOTHING;
 --   発注明細列に PO リンクが出る「発注入荷」の実例、詳細撮影用の固定 uuid）。
 -- 2 件目: 直接調達（仕入先あり・PO リンクなし → 「直接調達」バッジ）。
 -- 3 件目: 直接調達（仕入先なし — 任意項目が「—」表示になる実例）。
-INSERT INTO app.material_receipts (id, material_id, supplier_bp_id,
+INSERT INTO app.material_receipts (id, item_id, supplier_bp_id,
   purchase_order_item_id, quantity, unit, received_at, plant_id, notes,
   created_by, created_at)
 VALUES
   ('db300000-0000-4000-8000-000000000001'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
+   (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
    (SELECT id FROM app.business_partners WHERE bp_code = 'BP-90003'),
    'db210000-0000-4000-8000-000000000001'::uuid,
    20, '本', '2026-07-18', (SELECT id FROM app.plants WHERE code = 'F01'),
    '分納 1回目（残 30 本は 7/20 予定）',
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-18T10:30:00+09'),
   ('db300000-0000-4000-8000-000000000002'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B01A0001-B080-310'),
+   (SELECT id FROM app.items WHERE code = 'B01A0001-B080-310' AND item_type = 'MATERIAL'),
    (SELECT id FROM app.business_partners WHERE bp_code = 'BP-90003'),
    NULL,
    15, '本', '2026-07-15', (SELECT id FROM app.plants WHERE code = 'F01'),
    NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-15T14:00:00+09'),
   ('db300000-0000-4000-8000-000000000003'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B04A0001-B040-310'),
+   (SELECT id FROM app.items WHERE code = 'B04A0001-B040-310' AND item_type = 'MATERIAL'),
    NULL, NULL,
    40, '本', '2026-07-16', (SELECT id FROM app.plants WHERE code = 'F02'),
    '持ち込み分',
