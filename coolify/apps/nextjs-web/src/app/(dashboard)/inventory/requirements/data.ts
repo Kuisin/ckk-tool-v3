@@ -152,13 +152,18 @@ export async function fetchStockRequirements(
             inventoryType: inventoryTypeOf(item.itemType),
             inventoryId: { in: bucketIds },
           },
-          orderBy: { createdAt: "asc" },
+          // **新しい側から** CAP 件。残高は「現在庫 − 表示した増減の合計」を
+          // 起点に積み上げる（stock-requirements-core）ので、窓は現在に
+          // つながっていなければならない。古い側から取ると、省いた新しい行の
+          // 分だけ全行の残高がずれ、最後の行が現在庫と合わなくなる。
+          orderBy: { createdAt: "desc" },
           take: PAST_FETCH_CAP + 1,
           include: { movement: { select: { yearMonth: true, seq: true } } },
         });
   const truncated = txRows.length > PAST_FETCH_CAP;
   const pastMovements: PastMovementInput[] = txRows
     .slice(0, PAST_FETCH_CAP)
+    .reverse()
     .map((t) => {
       const movNumber = t.movement ? formatMovementNumber(t.movement) : null;
       return {
