@@ -167,6 +167,10 @@ export async function resolveBillingPeriodStart(
         customerBpId,
         closingDate: { lt: closingDate },
         status: { in: ["PROCESSED", "EXPORTED"] },
+        // 手動請求（BL11）は「臨時」なので期間の境目を動かさない。含めると
+        // 手動で一部だけ請求した日が次の定期締めの開始日になり、その前に
+        // 出荷した未請求分がどの締めにも拾われなくなる。
+        kind: "SCHEDULED",
       },
       orderBy: { closingDate: "desc" },
       select: { closingDate: true },

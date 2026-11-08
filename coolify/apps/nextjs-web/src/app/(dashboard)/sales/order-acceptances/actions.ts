@@ -1204,6 +1204,9 @@ export async function recreateFromCancelledAcceptance(
           // 起こす」操作なので、行ごとに違っていた届け先もそのまま持ってくる。
           create: source.items.map((it, i) => ({
             itemId: it.itemId,
+            // 再研磨の行は「何を研ぐか」（顧客の工具）も明細が持つ。落とすと
+            // 作り直した請書が regrindToolNotSelected で確定できなくなる。
+            toolItemId: it.toolItemId,
             productText: it.productText,
             orderType: it.orderType,
             quantity: it.quantity,

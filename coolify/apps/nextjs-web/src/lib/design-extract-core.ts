@@ -45,7 +45,7 @@ export interface DesignExtract {
 }
 
 const KEY_RE =
-  /^(diameterMm|lengthMm|titleBlock\.[A-Za-z]+|spec\.[A-Za-z0-9_]+)$/;
+  /^(diameterMm|lengthMm|titleBlock\.[A-Za-z]+|spec\.[A-Za-z0-9_$]+)$/;
 
 /** 知らない形のキーを捨てる（JSON 列・画面からの入力の両方に通す）。 */
 export function isExtractKey(key: string): key is ExtractKey {

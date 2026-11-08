@@ -163,6 +163,10 @@ model InvoiceItem {
   @@index([orderLineId])
   @@index([taxCategoryId])
   @@index([chargeItemId])
+  /// 出荷書 → 請求明細 の逆引き。以前はここが部分 unique index で「出荷書 1 通 =
+  /// 明細 1 行」を強制していたが、明細行も料金行も同じ出荷書キーを持つので
+  /// 2 行目で請求書が作れなかった（#871）。20261113090000 で通常の index に戻した。
+  @@index([deliveryOrderYearMonth, deliveryOrderSeq], map: "invoice_items_delivery_order_idx")
   @@map("invoice_items")
   @@schema("app")
 }
