@@ -140,8 +140,13 @@ export function MasterDetailShell({
             flexShrink: 0,
             alignSelf: "flex-start",
             position: "sticky",
-            top: 8,
-            maxHeight: "calc(100vh - 210px)",
+            // 固定ヘッダーの下に貼り付き、固定フッターの上で終わる。以前は
+            // top: 8 / 100vh - 210px の決め打ちで、スクロールすると一覧の頭
+            // （追加ボタン・検索）がヘッダーの裏へ潜り、最上部では末尾が
+            // フッターの裏に隠れていた。
+            top: "calc(var(--app-shell-header-offset, 0rem) + var(--mantine-spacing-xs))",
+            maxHeight:
+              "calc(100dvh - var(--app-shell-header-offset, 0rem) - var(--app-shell-footer-offset, 0rem) - env(safe-area-inset-bottom, 0px) - 2 * var(--mantine-spacing-xs))",
             overflowY: "auto",
           }}
         >
@@ -177,7 +182,9 @@ export function MasterDetailShell({
             }}
           />
         </Box>
-        <Box style={{ flex: 1, minWidth: 0 }}>{children}</Box>
+        <Box className="master-detail-detail" style={{ flex: 1, minWidth: 0 }}>
+          {children}
+        </Box>
       </Flex>
     </Stack>
   );
