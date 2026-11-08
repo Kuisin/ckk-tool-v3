@@ -116,7 +116,8 @@ async function visit(
     if (status >= 400) issues.push({ url, viewport, kind: `http-${status}`, detail: "" });
     await page.waitForTimeout(500);
     const finalUrl = page.url();
-    if (finalUrl.includes("/login")) {
+    // `/settings/login-history` が "/login" を含むので、パスの完全一致で見る。
+    if (new URL(finalUrl).pathname === "/login") {
       issues.push({ url, viewport, kind: "redirected-to-login", detail: finalUrl });
       return;
     }

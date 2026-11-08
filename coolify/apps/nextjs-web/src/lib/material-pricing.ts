@@ -36,7 +36,8 @@ export async function fetchPriceHistoryByType(
 ): Promise<MaterialPricePoint[]> {
   const items = await prisma.materialPurchaseOrderItem.findMany({
     where: {
-      material: {
+      item: {
+        itemType: "MATERIAL",
         materialTypeId: key.materialTypeId,
         diameterCode: key.diameterCode,
         surfaceFinishCode: key.surfaceFinishCode,

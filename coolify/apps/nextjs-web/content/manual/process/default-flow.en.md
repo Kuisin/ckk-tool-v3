@@ -164,7 +164,7 @@ For a product that has no drawing yet, a design request is raised **in parallel*
 
 ### What happens (who does what)
 
-1. The approver checks the content in [Approval management](/manual/en/operations/production/approval/user) (`PD03`) or on the work order screen, then presses「**承認**」(Approve). If there is a problem, they choose「**差し戻し**」(Send back).
+1. The approver checks the content in [Approval management](/manual/en/operations/general/my-tasks/user) (`PD03`) or on the work order screen, then presses「**承認**」(Approve). If there is a problem, they choose「**差し戻し**」(Send back).
 
 ![Work order pending approval. The approve button is highlighted with a red box](../assets/screenshots/flow-approval-01.png)
 
@@ -250,7 +250,7 @@ For a product that has no drawing yet, a design request is raised **in parallel*
 
 - Running billing closing automatically totals up everything delivered in that period.
 - Generating the invoice assigns an invoice number (INV-) automatically, and issuing it saves a PDF.
-- A closed period can be exported as a CSV file for 弥生会計 (Yayoi Accounting).
+- A closed period can be exported as a journal CSV file for the accounting software.
 
 ## Related pages
 

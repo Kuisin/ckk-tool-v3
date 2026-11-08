@@ -5,10 +5,15 @@ import type { getTranslations } from "next-intl/server";
  *
  * 承認依頼（DRAFT → REQUESTED）と 確定（APPROVED → COMPLETED）は**同じ
  * 完成条件**を要求する: 顧客が特定済み・明細が 1 件以上・全行に製品と単価
- * （数量は 1 以上・単価は 0 以上 — 取込の読み違いで 0 や負が入った行を止める）。
+ * （数量は 1 以上・単価は 0 以上 — 取込の読み違いで 0 や負が入った行を止める）・
+ * ユーザー直送の行にはエンドユーザーが入っている。
  * 以前は確定のときにだけ全行を検査していたため、製品未特定のまま承認まで
  * 進んでしまい、確定の段になって「差し戻してもらってください」となっていた。
  * 入口（承認依頼）で止める方が、直す人＝内容を知っている人のままで済む。
+ *
+ * 配送（出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所）は
+ * **明細ごと**に持つ（§8） — 1 通の注文書の中で行ごとに届け先が違う注文が
+ * あるため。ヘッダには残っていない。
  *
  * 純ロジック（I/O なし）— サーバー（actions.ts）は依頼を弾くために、画面は
  * ボタンを押せなくして理由を出すために、**同じ関数**を使う。
@@ -17,22 +22,40 @@ import type { getTranslations } from "next-intl/server";
 /** 未完成の理由 1 件（画面にも API のエラーにもそのまま出る）。 */
 export interface ReadinessIssue {
   /** 種別 — 表示の出し分け用。 */
-  kind: "customer" | "items" | "product" | "quantity" | "price" | "endUser";
+  kind:
+    | "customer"
+    | "items"
+    | "product"
+    | "quantity"
+    | "price"
+    | "endUser"
+    | "externalProduct"
+    | "regrindTool";
   /** 人が読む説明。 */
   message: string;
 }
 
 export interface ReadinessInput {
   customerBpId: string | null;
-  /** 配送方法（通常配送 / ユーザー直送）。 */
-  deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
-  /** エンドユーザー（最終需要家）— ユーザー直送では必須。 */
-  endUserBpId: string | null;
   items: {
-    /** 製品マスタ突合済みか（null = 未特定）。 */
-    productId: string | number | null;
+    /** 製品（品目 items.id）が決まっているか（null = 未特定）。 */
+    itemId: string | number | null;
     quantity: number;
     unitPrice: number | null;
+    /** 配送方法（通常配送 / ユーザー直送）。行ごとに持つ（§8）。 */
+    deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
+    /** エンドユーザー（最終需要家）— その行がユーザー直送では必須。 */
+    endUserBpId: string | null;
+    /** 注文種別。再研磨の行は工具が要る。 */
+    orderType?: string;
+    /**
+     * 売り物の欄に選ばれた品目が他社製品か。**他社製品は売り物にならない** —
+     * 預かって研ぎ直すだけなので、工具の欄（toolItemId）に載る。
+     * 未指定 = 判定しない。
+     */
+    isExternalProduct?: boolean;
+    /** 研ぎ直す工具（再研磨の行だけ）。null = 未選択。 */
+    toolItemId?: string | number | null;
   }[];
 }
 
@@ -57,16 +80,6 @@ export function acceptanceReadiness(input: ReadinessInput, tr: Tr): Readiness {
     });
   }
 
-  // ユーザー直送は最終的な届け先（エンドユーザー）が決まっていないと
-  // 出荷・納品書まで進めない — 保存時にも強制するが、既存データの
-  // 取りこぼしをここで確実に止める。
-  if (input.deliveryMethod === "DIRECT_TO_USER" && !input.endUserBpId) {
-    issues.push({
-      kind: "endUser",
-      message: tr("sales.orderAcceptanceReadiness.directToUserButEndUserNot"),
-    });
-  }
-
   if (input.items.length < 1) {
     issues.push({
       kind: "items",
@@ -79,11 +92,28 @@ export function acceptanceReadiness(input: ReadinessInput, tr: Tr): Readiness {
   const badQuantity: number[] = [];
   const noPrice: number[] = [];
   const negativePrice: number[] = [];
+  // ユーザー直送の行はエンドユーザーが決まっていないと出荷・納品書まで
+  // 進めない — 保存時にも強制するが、既存データの取りこぼしをここで
+  // 確実に止める。配送方法は行ごとなので、他の行チェックと同じ行番号方式。
+  const noEndUser: number[] = [];
+  // 他社製品は売り物の欄に置けない（工具の欄に載る）。
+  const externalAsSoldItem: number[] = [];
+  // 再研磨の行は「どの工具を研ぐのか」が決まっていないと、預り品を数えられず
+  // 指示書も作れない。売り物（再研磨の役務）と工具は別の欄。
+  const regrindWithoutTool: number[] = [];
   input.items.forEach((it, i) => {
-    if (it.productId == null || it.productId === "") noProduct.push(i + 1);
+    if (it.itemId == null || it.itemId === "") noProduct.push(i + 1);
+    if (it.isExternalProduct) externalAsSoldItem.push(i + 1);
+    if (
+      it.orderType === "REGRIND" &&
+      (it.toolItemId == null || it.toolItemId === "")
+    )
+      regrindWithoutTool.push(i + 1);
     if (!(it.quantity >= 1)) badQuantity.push(i + 1);
     if (it.unitPrice == null) noPrice.push(i + 1);
     else if (it.unitPrice < 0) negativePrice.push(i + 1);
+    if (it.deliveryMethod === "DIRECT_TO_USER" && !it.endUserBpId)
+      noEndUser.push(i + 1);
   });
   if (noProduct.length > 0) {
     issues.push({
@@ -114,6 +144,30 @@ export function acceptanceReadiness(input: ReadinessInput, tr: Tr): Readiness {
       kind: "price",
       message: tr("sales.orderAcceptanceReadiness.lineUnitPriceNegative", {
         rows: rowList(negativePrice),
+      }),
+    });
+  }
+  if (externalAsSoldItem.length > 0) {
+    issues.push({
+      kind: "externalProduct",
+      message: tr("sales.orderAcceptanceReadiness.externalProductIsNotSold", {
+        rows: rowList(externalAsSoldItem),
+      }),
+    });
+  }
+  if (regrindWithoutTool.length > 0) {
+    issues.push({
+      kind: "regrindTool",
+      message: tr("sales.orderAcceptanceReadiness.regrindToolNotSelected", {
+        rows: rowList(regrindWithoutTool),
+      }),
+    });
+  }
+  if (noEndUser.length > 0) {
+    issues.push({
+      kind: "endUser",
+      message: tr("sales.orderAcceptanceReadiness.lineEndUserNotIdentified", {
+        rows: rowList(noEndUser),
       }),
     });
   }
@@ -163,4 +217,25 @@ export function normalizeShipToBpId(
   shipToBpId: string | null,
 ): string | null {
   return shipToApplies(deliveryMethod) ? shipToBpId : null;
+}
+
+/**
+ * 明細の配送欄（§8）に何か値が入っているか — 既定（通常配送・全欄未指定）
+ * かどうかの判定。行エディタが「配送」節を既定で畳むか開くかに使う
+ * （値が入っている行だけ開いた状態で出す）。
+ */
+export function hasLineDelivery(line: {
+  shipToBpId?: string | null;
+  deliveryMethod?: "NORMAL" | "DIRECT_TO_USER";
+  endUserBpId?: string | null;
+  assignedPlantId?: string | number | null;
+  shippingWorkLocationId?: string | number | null;
+}): boolean {
+  return Boolean(
+    line.shipToBpId ||
+      (line.deliveryMethod && line.deliveryMethod !== "NORMAL") ||
+      line.endUserBpId ||
+      line.assignedPlantId ||
+      line.shippingWorkLocationId,
+  );
 }

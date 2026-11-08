@@ -5,7 +5,7 @@ screenshots: [master-material-list-01, master-material-new-01, master-material-s
 ---
 This is a ledger where you register, one kind at a time, the material bars you buy and keep in stock. The operation code is `MS06`.
 
-If a [Material Type](/manual/en/operations/masters/material-type/user) says "what kind of material it is", a material is **"that material, in this diameter, this length and this surface finish"** — the actual bar you buy and put on the shelf. A material that is not registered here **cannot be chosen** on a [Material Purchase Order](/manual/en/operations/purchasing/purchase-order/user) or in [Inventory Management (Materials and Work in Progress)](/manual/en/operations/production/material-inventory/user).
+If a [Material Type](/manual/en/operations/masters/material-type/user) says "what kind of material it is", a material is **"that material, in this diameter, this length and this surface finish"** — the actual bar you buy and put on the shelf. A material that is not registered here **cannot be chosen** on a [Material Purchase Order](/manual/en/operations/purchasing/purchase-order/user) or in [Inventory Management (Materials and Work in Progress)](/manual/en/operations/inventory/inventory-management/user).
 
 > ⚠️ This app is currently available **only in the development environment (the environment for testing)**. The screens and the steps may change before it becomes available for real work.
 

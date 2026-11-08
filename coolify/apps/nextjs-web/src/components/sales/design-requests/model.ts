@@ -148,8 +148,8 @@ export interface DesignRequest {
   /** 受注時: 参照する注文明細の uuid / 導出番号 ORD-…-NN。 */
   orderLineId: string | null;
   orderLineNumber: string | null;
-  /** 製品の内部 id（連番）を文字列で保持 — SearchSelect の値と揃える。 */
-  productId: string | null;
+  /** 対象製品（品目, items.id）を文字列で保持 — SearchSelect の値と揃える。 */
+  itemId: string | null;
   productName: string | null;
   /** 依頼内容。 */
   description: string | null;
@@ -182,6 +182,11 @@ export interface DesignRequest {
   customerBpId: string | null;
   customerName: string | null;
   files: DesignRequestFile[];
+  /**
+   * この依頼から出来た版（design_versions）。ファイルの無い仕様だけの版も
+   * 含む — 「成果物があるか」はファイルではなく版で見る（completeDesign と同じ）。
+   */
+  versions: { id: string; version: number; status: string }[];
   createdAt: string;
   updatedAt: string;
 }

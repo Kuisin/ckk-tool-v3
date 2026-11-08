@@ -15,7 +15,7 @@ import { ListShell } from '../../lib/shells';
 import { CUSTOMERS } from '../../lib/mock';
 import { useIsMobile } from '../../lib/viewport-context';
 import { RunClosingModal } from './_modals/run-closing';
-import { YayoiExportClosingModal } from './_modals/yayoi-export';
+import { AccountingExportClosingModal } from './_modals/accounting-export';
 
 interface ClosingRow {
   id: string;
@@ -24,14 +24,14 @@ interface ClosingRow {
   totalAmount: number | null;
   status: string;
   processedAt: string | null;
-  yayoiExportedAt: string | null;
+  accountingExportedAt: string | null;
 }
 
 const MOCK_RECORDS: ClosingRow[] = [
-  { id: '1', customerName: '株式会社ABC製作所', closingDate: '2026-05-31', totalAmount: 1485000, status: 'EXPORTED', processedAt: '2026-06-01 02:00', yayoiExportedAt: '2026-06-02 09:00' },
-  { id: '2', customerName: '合同会社XYZ工業', closingDate: '2026-05-31', totalAmount: 660000, status: 'PROCESSED', processedAt: '2026-06-01 02:00', yayoiExportedAt: null },
-  { id: '3', customerName: '株式会社DEFエンジニアリング', closingDate: '2026-05-20', totalAmount: 209000, status: 'PROCESSED', processedAt: '2026-05-21 02:00', yayoiExportedAt: null },
-  { id: '4', customerName: '東邦精密株式会社', closingDate: '2026-06-30', totalAmount: null, status: 'PENDING', processedAt: null, yayoiExportedAt: null },
+  { id: '1', customerName: '株式会社ABC製作所', closingDate: '2026-05-31', totalAmount: 1485000, status: 'EXPORTED', processedAt: '2026-06-01 02:00', accountingExportedAt: '2026-06-02 09:00' },
+  { id: '2', customerName: '合同会社XYZ工業', closingDate: '2026-05-31', totalAmount: 660000, status: 'PROCESSED', processedAt: '2026-06-01 02:00', accountingExportedAt: null },
+  { id: '3', customerName: '株式会社DEFエンジニアリング', closingDate: '2026-05-20', totalAmount: 209000, status: 'PROCESSED', processedAt: '2026-05-21 02:00', accountingExportedAt: null },
+  { id: '4', customerName: '東邦精密株式会社', closingDate: '2026-06-30', totalAmount: null, status: 'PENDING', processedAt: null, accountingExportedAt: null },
 ];
 
 export default function ClosingsListPage() {
@@ -105,22 +105,22 @@ export default function ClosingsListPage() {
         defaultSort={{ key: 'closingDate', dir: 'desc' }}
         selectable
         bulkActions={[
-          { label: '弥生CSV一括エクスポート', icon: <IconFileExport size={16} />, color: 'blue' },
+          { label: '会計連携CSV一括エクスポート', icon: <IconFileExport size={16} />, color: 'blue' },
         ]}
         rowActions={(r) => [
-          ...(r.status !== 'PENDING' ? [{ label: '弥生CSVエクスポート', icon: <IconFileExport size={14} />, onAction: () => setExportTarget(r) }] : []),
+          ...(r.status !== 'PENDING' ? [{ label: '会計連携CSVエクスポート', icon: <IconFileExport size={14} />, onAction: () => setExportTarget(r) }] : []),
         ]}
         emptyIcon={<IconCalendarDue size={24} />}
         emptyMessage="締日処理がありません"
       />
 
       <RunClosingModal opened={runOpen} onClose={() => setRunOpen(false)} />
-      <YayoiExportClosingModal
+      <AccountingExportClosingModal
         opened={!!exportTarget}
         onClose={() => setExportTarget(null)}
         customerName={exportTarget?.customerName ?? ''}
         closingDate={exportTarget ? formatDate(exportTarget.closingDate) : ''}
-        alreadyExportedAt={exportTarget?.yayoiExportedAt ? formatDateTime(exportTarget.yayoiExportedAt) : null}
+        alreadyExportedAt={exportTarget?.accountingExportedAt ? formatDateTime(exportTarget.accountingExportedAt) : null}
       />
     </ListShell>
   );

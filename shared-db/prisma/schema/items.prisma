@@ -1,0 +1,177 @@
+// 品目マスタ（app.items）— 製品と素材を 1 つの表に統合する。
+//
+// ## なぜ
+//
+// 在庫は既に品目で考えている: inventory_transactions も inventory_reservations も
+// (inventory_type, inventory_id) の多態で持っていて、「製品か素材か」は列の値に
+// すぎない。分かれているのは**マスタだけ**で、そのせいで在庫を扱う画面・ロジックが
+// すべて 2 本立てになっていた（製品用と素材用）。
+//
+// ## 移行の段取り（expand / contract）
+//
+// 18 の表が products / materials を参照していて、アプリ側の参照は約 850 箇所ある。
+// 一度に切り替えるのは無理なので 3 段に分ける:
+//
+//   **第 1 段（この変更）** … items を作り、両マスタから流し込み、**トリガーで
+//     同期し続ける**。読み取り専用の鏡として使える状態にするだけで、書き込みは
+//     従来どおり products / materials へ行く。**振る舞いは 1 つも変わらない。**
+//   第 2 段 … 参照側の表に item_id を足し、アプリを表のまとまりごとに移す。
+//   第 3 段 … 旧列と旧マスタを落とす。
+//
+// ## id の決め方
+//
+// **items.id は製品・素材のどちらにも新しく採る。** 対応は
+// products.item_id / materials.item_id に持たせ、第 2 段はその対応をたどって
+// 参照側を付け替える。
+//
+// 「製品は id をそのまま持ち込めば 13 表の値を書き換えずに済む」と最初に考えたが、
+// **それは衝突する**: 製品の id は products のシーケンスが、items の id は items の
+// シーケンスが配る。素材のぶんで items が先に進むので、あとから作られた製品が
+// 「既に素材が使っている id」を要求することになる。既存行だけがたまたま一致する
+// 状態は、新しい行が増えた瞬間に嘘になるので、最初から揃えない。
+//
+// ## いちばん危ないところ
+//
+// products と materials は **material_type_id / diameter_mm / length_mm という
+// 同じ名前の列を、逆の意味で持っている**:
+//   products  … その製品が**要求する**素材（材種 + 直径 + 全長）
+//   materials … その素材が**である**もの（材種 + 実寸）
+// 同じ列にまとめると、製品の要求寸法と素材の実寸が混ざる。混ざっても
+// 型は通り、画面もそれらしく動いてしまう。だから製品側は requires_* に分ける。
+
+enum ItemType {
+  /// 製品（売るもの・作るもの）
+  PRODUCT
+  /// 素材（買うもの・消費するもの）
+  MATERIAL
+  /// 再研磨（売る**役務**）。研ぎ直しそのものを 1 つの品目として持ち、値段はここに付く。
+  ///
+  /// 在庫を持たない — 預かるのは顧客の工具（PRODUCT）のほうで、この品目は
+  /// 「何をいくらでやるか」だけを表す。旧 FileMaker の 再研マスタ
+  /// （材料 × 加工箇所 × 刃数 × サイズ帯 → 金額）が 1 行 1 品目になったもの。
+  REGRIND
+
+  @@map("ITEM_TYPE")
+  @@schema("app")
+}
+
+/// 第 3 段（20261102090000_items_stage3_drop_legacy）で旧マスタ products /
+/// materials とそれを写していたトリガーは落ちた。**いまはこの表が書き込みの
+/// 持ち主**で、製品マスタ (MS04) / 素材マスタ (MS06) / 再研磨品目 (MS0H) が
+/// それぞれ item_type の違う行を作る。
+/// （移行中は「ここへ書くな」と書いてあった — その注意はもう当てはまらない。）
+model Item {
+  id       Int      @id @default(autoincrement())
+  itemType ItemType @map("item_type")
+
+  /// 表示コード。製品は PRD-YYYYMM-NNNN（採番前のレガシー行は null）、
+  /// 素材は構成から組み立てた素材コード（必ずある）。
+  code String? @unique
+
+  /// { ja, en, … } の多言語 JSON（他のマスタと同じ規約）。
+  name       Json
+  unit       String
+  matchNames String[] @default([]) @map("match_names")
+  isActive   Boolean  @default(true) @map("is_active")
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  // ─── 製品だけが持つ列 ─────────────────────────────────────────────────────
+  yearMonth     String? @map("year_month") @db.Char(6)
+  seq           Int?
+  legacyKey     String? @unique @map("legacy_key")
+  currency      String? @default("JPY")
+  taxCategoryId Int?    @map("tax_category_id")
+  spec          Json?
+
+  /// **標準価格**（顧客を問わない定価）。顧客ごとの価格表（price_list_entries）が
+  /// 無いときの拠り所で、価格表があればそちらが勝つ — S/4HANA の
+  /// 「品目の定価 + 顧客ごとの条件レコード」と同じ形。
+  ///
+  /// **いまこれを読むのは再研磨の品目だけ**（lib/standard-price.ts）。製品は
+  /// 従来どおり価格表が無ければ単価を解決できない — 見積書が「価格表からのみ
+  /// 作成できる」ことに依っているので、広げるなら意図してやること。
+  standardUnitPrice Decimal? @map("standard_unit_price") @db.Decimal(12, 2)
+  /// 他社製品（再研磨のみ）。他社が作った工具を再研磨のために預かるとき、品目として
+  /// 登録する入れ物。製造工程リスト・製造分指示書・PRODUCTION/TEST/SAMPLE 明細では
+  /// 選べない（DB は item_type = PRODUCT だけを守り、使える場所の制限はアプリ側）。
+  isExternalProduct Boolean @default(false) @map("is_external_product")
+  /// 他社製品のメーカー名（自由記入）。競合メーカーは取引先ではないので BP にはしない —
+  /// BP 行にすると顧客・仕入先のピッカーに混ざる。
+  makerName         String? @map("maker_name")
+
+  // ─── 再研磨だけが持つ列 ───────────────────────────────────────────────────
+  //
+  // 値段を決めている条件を**そのまま列で持つ**（旧 再研マスタの 材料 / 加工箇所 /
+  // 刃数 / サイズ帯）。品目を探すため・読んで分かるための情報で、突合の鍵では
+  // ない（どの品目を使うかは人が選ぶ）。自動で当てるようになったら、そのとき
+  // 小さなマスタへ昇格させるかを決める。
+  /// 工具の種類。例: 超硬ヘリカルエンドミル / ハイス ハイヘリカルエンドミル
+  regrindToolClass String?  @map("regrind_tool_class")
+  /// 加工箇所。例: 外周のみ / 溝のみ / 外周 + 溝 / 先端のみ / R / 切断 + 再生
+  regrindLocation  String?  @map("regrind_location")
+  /// 刃数（枚）。null = 刃数で値段が変わらない品目
+  regrindFlutes    Int?     @map("regrind_flutes")
+  /// サイズ帯（mm）。min < 径 ≤ max。片方だけでもよい（「10.0 以下」など）
+  regrindSizeMinMm Decimal? @map("regrind_size_min_mm") @db.Decimal(8, 3)
+  regrindSizeMaxMm Decimal? @map("regrind_size_max_mm") @db.Decimal(8, 3)
+
+  /// その製品が**要求する**素材の材種・寸法（cut-to-length なので特定の素材行には
+  /// 紐づけない）。**素材側の materialTypeId / diameterMm / lengthMm とは別物** —
+  /// 同じ列に寄せると要求寸法と実寸が混ざる（このファイル冒頭の注意）。
+  requiresMaterialTypeId Int?     @map("requires_material_type_id")
+  requiresDiameterMm     Decimal? @map("requires_diameter_mm") @db.Decimal(8, 3)
+  requiresLengthMm       Decimal? @map("requires_length_mm") @db.Decimal(10, 3)
+
+  // ─── 素材だけが持つ列 ─────────────────────────────────────────────────────
+  materialTypeId    Int?     @map("material_type_id")
+  surfaceFinishCode String?  @map("surface_finish_code") @db.Char(1)
+  diameterCode      String?  @map("diameter_code") @db.Char(3)
+  lengthVariantCode String?  @map("length_variant_code") @db.Char(3)
+  kindCode          String?  @map("kind_code") @db.Char(2)
+  diameterMm        Decimal? @map("diameter_mm") @db.Decimal(8, 3)
+  lengthMm          Decimal? @map("length_mm") @db.Decimal(10, 3)
+  manufacturerModel String?  @map("manufacturer_model")
+  nominalDiameterMm Decimal? @map("nominal_diameter_mm") @db.Decimal(8, 3)
+
+  // 参照は Restrict — 品目が指しているマスタを消せてしまうと、
+  // 製品の要求材種や素材の材種が黙って null に化ける。
+  taxCategory          TaxCategory?  @relation("ItemTaxCategory", fields: [taxCategoryId], references: [id], onDelete: Restrict)
+  requiresMaterialType MaterialType? @relation("ItemRequiresMaterialType", fields: [requiresMaterialTypeId], references: [id], onDelete: Restrict)
+  materialType         MaterialType? @relation("ItemMaterialType", fields: [materialTypeId], references: [id], onDelete: Restrict)
+
+
+  inventory ItemInventory[]
+  poItems          MaterialPurchaseOrderItem[] @relation("MaterialPurchaseOrderItemItem")
+  receipts         MaterialReceipt[]           @relation("MaterialReceiptItem")
+  purchaseReqItems PurchaseRequestItem[]       @relation("PurchaseRequestItemItem")
+  workOrderMaterials WorkOrder[]               @relation("WorkOrderMaterialItem")
+  workOrderProducts  WorkOrder[]               @relation("WorkOrderProductItem")
+  estimateRefs Estimate[] @relation("EstimateItem")
+  priceListEntryRefs PriceListEntry[] @relation("PriceListEntryItem")
+  quoteItemRefs QuoteItem[] @relation("QuoteItemItem")
+  orderLineRefs OrderLine[] @relation("OrderLineItem")
+  /// 再研磨の明細が「研ぎ直す工具」として指している分（品目としては PRODUCT）。
+  orderLineToolRefs OrderLine[] @relation("OrderLineToolItem")
+  deliveryOrderItemRefs DeliveryOrderItem[] @relation("DeliveryOrderItemItem")
+  deliveryNoteItemRefs DeliveryNoteItem[] @relation("DeliveryNoteItemItem")
+  customerProductCodeRefs CustomerProductCode[] @relation("CustomerProductCodeItem")
+  productprocessrouteitemRefs ProductProcessRoute[] @relation("ProductProcessRouteItem")
+  inspectiontemplateitemRefs InspectionTemplate[] @relation("InspectionTemplateItem")
+  designrequestitemRefs DesignRequest[] @relation("DesignRequestItem")
+  designfileitemRefs DesignFile[] @relation("DesignFileItem")
+  designVersions DesignVersion[] @relation("DesignVersionItem")
+  @@unique([yearMonth, seq])
+  @@index([itemType, isActive])
+  // 再研磨品目の一覧・絞り込み（材料 → 加工箇所 → 刃数 の順に読む）。
+  @@index([itemType, regrindToolClass, regrindLocation])
+  @@index([materialTypeId])
+  @@index([requiresMaterialTypeId])
+  // 照合名の配列検索（AI 突合）。GIN でないと全表走査になる。
+  @@index([matchNames(ops: ArrayOps)], map: "items_match_names_idx", type: Gin)
+  // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
+  @@index([updatedAt, id])
+  @@map("items")
+  @@schema("app")
+}

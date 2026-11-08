@@ -1,8 +1,13 @@
 /**
  * atp.ts — 素材 ATP の Prisma ラッパ（§5 素材判断）。server-only.
  *
- * on-hand/reserved は material_inventory、入荷予定は ORDERED 発注の明細
+ * on-hand/reserved は app.item_inventory、入荷予定は ORDERED 発注の明細
  * （expected_at + PO 番号）。純ロジックは lib/atp-core.ts。
+ *
+ * 品目統合 第 2 段 B — 引数は **items.id**（旧 `materials.id` ではない）。
+ * 発注明細（material_purchase_order_items）が item_id を持つようになったので、
+ * 以前あった「素材 id → 品目 id」の 1 往復は要らなくなった（呼び出し側が
+ * 既に品目 id を持っている）。
  */
 
 import {
@@ -14,7 +19,7 @@ import {
 import { prisma } from "./db";
 
 export interface MaterialAtp {
-  materialId: number;
+  itemId: number;
   onHand: number;
   reserved: number;
   availableNow: number;
@@ -23,18 +28,24 @@ export interface MaterialAtp {
   nextReceiptDate: string | null;
 }
 
-/** 素材の ATP（plantId 指定で拠点別、省略で全拠点合算）。 */
+/** 素材（品目）の ATP（plantId 指定で拠点別、省略で全拠点合算）。 */
 export async function materialAtp(
-  materialId: number,
+  itemId: number,
   plantId?: number | null,
 ): Promise<MaterialAtp> {
   const [invRows, orderedItems] = await Promise.all([
-    prisma.materialInventory.findMany({
-      where: { materialId, ...(plantId != null ? { plantId } : {}) },
+    prisma.itemInventory.findMany({
+      // 引ける在庫は自社の分だけ（外注へ預けている分は約束に使えない）。
+      where: {
+        itemId,
+        custodyBpId: null,
+        ownerBpId: null,
+        ...(plantId != null ? { plantId } : {}),
+      },
     }),
     prisma.materialPurchaseOrderItem.findMany({
       where: {
-        materialId,
+        itemId,
         ...(plantId != null ? { plantId } : {}),
         purchaseOrder: { status: "ORDERED" },
       },
@@ -66,7 +77,7 @@ export async function materialAtp(
     (p) => p.date != null && p.date !== "9999-12-31",
   );
   return {
-    materialId,
+    itemId,
     onHand: input.onHand,
     reserved: input.reserved,
     availableNow: atpNow(input),

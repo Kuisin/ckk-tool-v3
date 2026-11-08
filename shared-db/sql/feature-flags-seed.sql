@@ -43,6 +43,11 @@ INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
 
+-- 料金マスタ（MS0G）も dev 検証後に本番公開する。**本番で公開しないと
+-- 料金項目を登録できず、指示書・出荷書の「追加料金」が選択肢ゼロで出る**ので、
+-- 追加料金を本番で使い始めるときは必ずこの行を有効にすること:
+--   ('app:master-charge-items:main', true, '料金マスタ 本番公開', now()),
+
 -- 端末管理（SY09）・キオスク設定（SY0A）は dev 検証後に本番公開する。
 -- 公開時にコメントを外して再適用:
 --   ('app:kiosk-devices:main',  true, '端末管理 本番公開',     now()),
@@ -65,6 +70,17 @@ ON CONFLICT (key) DO UPDATE
 -- 両方を済ませて dev で受け入れたら:
 --   ('app:design-requests:main', true, '設計依頼書 本番公開', now()),
 --   ('app:design-files:main',    true, '設計図 本番公開',     now())
+
+-- 入出庫伝票（PD07）と棚卸（PD08）は **2 つセットで**公開する。伝票の一覧だけを
+-- 出しても、そこに並ぶ「棚卸調整」を誰も起こせない（調整を起こす口は棚卸しか
+-- 無い）。逆に棚卸だけを出すと、確定した調整が何を動かしたのかを追う先が無い。
+-- また公開前に、その環境で
+--   SELECT count(*) FROM app.inventory_transactions WHERE movement_id IS NULL;
+-- が 0 であることを確かめること（移行前の行に伝票が付いていれば 0 になる）。
+-- 0 でないまま公開すると、伝票の一覧に出てこない在庫の動きが残る。
+-- 受け入れが済んだら:
+--   ('app:inventory-movements:main', true, '入出庫伝票 本番公開', now()),
+--   ('app:stock-takes:main',         true, '棚卸 本番公開',       now())
 
 -- ログイン履歴（SY0D）は dev で記録が溜まるのを確認してから本番公開する。
 -- 先に本番の env（LOGIN_ATTEMPT_PEPPER / CORPORATE_CIDRS /
@@ -93,5 +109,31 @@ ON CONFLICT (key) DO UPDATE
 -- なぜコードに置くのか: dev と main は同じ DB を共有しているので、この表の行は
 -- SY05 の画面から誰でも切り替えられる。社外向けの未完成な口が本番で開くのを
 -- 「画面のうっかり」で起こせる状態にしない。
+
+-- 再研磨品目（MS0H）は **単独で公開しても使えない**。再研磨は専用アプリを持たず、
+-- 注文請書 → 注文明細 → 指示書 → 出荷書 → 請求書 の通常の鎖をそのまま流れるので、
+-- 値段のマスタだけ本番に出しても注文を受ける口が無い。そしてその鎖は**丸ごと
+-- 未公開**（下のどれも本番の行が無い）— つまり再研磨の公開は「MS0H を足す」話
+-- ではなく「受注から請求までを本番で開ける」判断の一部になる。
+--
+-- 併せて必要なもの:
+--   * 不良種類（MS0A）に「返却（再研磨不可）」を登録する。これは
+--     extended-master-seed.sql（dev 専用）にしか無く、本番には入らない。
+--     無いと研ぎ直せない工具を記録できない
+--   * 工程マスタ（MS08）で再研磨工程リストを 1 本作る。再研磨の指示書は
+--     有効なリストが無いと工程を組めない（工程カタログの行自体は
+--     マイグレーション 20261106090001 で本番にも入っている）
+-- 鎖ごと公開すると決めたときに、まとめてコメントを外して再適用:
+--   ('app:master-regrind-items:main', true, '再研磨品目 本番公開',   now()),
+--   ('app:order-acceptances:main',    true, '注文請書 本番公開',     now()),
+--   ('app:order-lines:main',          true, '注文明細 本番公開',     now()),
+--   ('app:work-orders:main',          true, '指示書 本番公開',       now()),
+--   ('app:pending-work-orders:main',  true, '未処理指示書 本番公開', now()),
+--   ('app:delivery-orders:main',      true, '出荷書 本番公開',       now()),
+--   ('app:pending-shipments:main',    true, '未処理出荷書 本番公開', now()),
+--   ('app:invoices:main',             true, '請求書 本番公開',       now())
+--
+-- **このフラグはランチャーの表示だけ。** requireAppRead は権限しか見ないので、
+-- 権限を持つ利用者は URL を直に叩けば入れる（アクセス制御ではない）。
 
 COMMIT;

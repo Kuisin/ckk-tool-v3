@@ -6,14 +6,31 @@
  * 大きいマスタ（製品 4.3万件など）を全件クライアントへ送らず、クエリごとに
  * 上位 LIMIT 件だけ返す。空クエリは先頭 LIMIT 件。
  * 値は内部 id（連番）の文字列、ラベルは表示コード + 名称。
+ *
+ * ## 製品・素材の値は **品目（items.id）で統一**（品目統合 第 3 段）
+ *
+ * `searchProductItemOptions` / `searchMaterialItemOptions` /
+ * `f4SearchProductItems` の 3 本だけで、**旧 id（products.id / materials.id）を
+ * 返すピッカーはもう無い**。最後まで残っていた `searchProductOptions`
+ * （指示書ビルダーの在庫向け製品ピッカー）は、`resolveWorkOrderTarget` /
+ * `work-order-alloc-core` / `routesInfo` と 1 つの state を共有していたので
+ * 4 か所まとめて品目へ移し、この関数は消した。共有する state の名前は
+ * `productId` → `itemId` へ改めてある — **旧 id と品目 id はどちらも number
+ * なので、取り違えても型では止まらない**。名前だけが防ぎになる。
+ *
+ * CM02 フォームの「業務データ検索」（`components/forms/lookup-dispatch.ts`）も
+ * 品目 — 保存済みの回答が持っていた旧 id は migration
+ * `20261101090000_items_stage3_matching_forms` で書き換えてある。
  */
 
 import { getTranslations } from "next-intl/server";
 import { checkPermission, requireAnyRead } from "@/lib/authz";
 import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
-import { formatProductNumber, formatQuoteNumber } from "@/lib/doc-number";
+import { itemIdsByMaterialTypeCode, resolveItemSpecs } from "@/lib/design-spec";
+import { formatQuoteNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { regrindItemLabel } from "@/lib/regrind-item-label";
 import { listCustomerSalesReps } from "@/lib/sales-rep";
 
 const LIMIT = 20;
@@ -99,70 +116,76 @@ const s = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
  */
 const likeEscape = (q: string) => q.replace(/[\\%_]/g, (c) => `\\${c}`);
 
-async function productIdsByKeyword(
-  q: string,
-  limit: number,
-): Promise<number[]> {
-  if (!q) return [];
-  const rows = await prisma.$queryRaw<{ id: number }[]>`
-    SELECT id FROM app.products
-    WHERE is_active
-      AND EXISTS (
-        SELECT 1 FROM unnest(match_names) AS k WHERE k ILIKE ${`%${likeEscape(q)}%`}
-      )
-    ORDER BY id
-    LIMIT ${limit}`;
-  return rows.map((r) => r.id);
-}
-
-async function materialIdsByKeyword(
-  q: string,
-  limit: number,
-): Promise<number[]> {
-  if (!q) return [];
-  const rows = await prisma.$queryRaw<{ id: number }[]>`
-    SELECT id FROM app.materials
-    WHERE is_active
-      AND EXISTS (
-        SELECT 1 FROM unnest(match_names) AS k WHERE k ILIKE ${`%${likeEscape(q)}%`}
-      )
-    ORDER BY code
-    LIMIT ${limit}`;
-  return rows.map((r) => r.id);
-}
-
 /** id 集合を Prisma の OR 条件へ（空なら条件を足さない）。 */
 const byIds = (ids: number[]) => (ids.length > 0 ? [{ id: { in: ids } }] : []);
 
-function productLabel(p: {
+/** 顧客品番（customer_product_codes）に probe を含む**品目 id**（items.id）。 */
+async function productItemIdsByCustomerCode(
+  q: string,
+  limit: number,
+): Promise<number[]> {
+  if (!q) return [];
+  const like = `%${likeEscape(q)}%`;
+  const rows = await prisma.$queryRaw<{ item_id: number }[]>`
+    SELECT DISTINCT item_id FROM app.customer_product_codes
+    WHERE is_active AND item_id IS NOT NULL
+      AND (
+        code ILIKE ${like}
+        OR EXISTS (SELECT 1 FROM unnest(aliases) AS a WHERE a ILIKE ${like})
+      )
+    ORDER BY item_id
+    LIMIT ${limit}`;
+  return rows.map((r) => r.item_id);
+}
+
+function productItemLabel(p: {
   id: number;
+  code: string | null;
   name: unknown;
-  yearMonth: string | null;
-  seq: number | null;
+  isExternalProduct?: boolean;
 }): string {
-  const code = formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
-  return code ? `${name} ${code}` : name;
+  const base = p.code ? `${name} ${p.code}` : name;
+  // 他社製品はピッカーの中で見分けられるように印を付ける（再研磨の明細でしか
+  // 選べない品目なので、混ざって見えると選び間違える）。
+  return p.isExternalProduct ? `${base} ［他社］` : base; // i18n-ignore
 }
 
 /**
- * 製品 — 名称(ja) またはキーワード（match_names）の部分一致
- * （コードは未採番のレガシーが大半のため名称主体）。
+ * 製品（品目）— 指示書・工程リスト・検査表テンプレート・設計依頼・設計図の
+ * 製品ピッカー用。value は **items.id**（`itemType: "PRODUCT"`）。
+ *
+ * work_orders.product_item_id / product_process_routes.item_id /
+ * inspection_templates.item_id / design_requests.item_id /
+ * design_files.item_id が指す先。
  */
-export async function searchProductOptions(
+export async function searchProductItemOptions(
   query: string,
+  opts?: {
+    /**
+     * 他社製品も候補に入れるか。既定は false — 他社製品は**売り物ではない**ので、
+     * 選べるのは再研磨の明細の「研ぎ直す工具」の欄だけ。価格表にも載らない
+     * （価格表のピッカーは `searchPriceListItemOptions`）。
+     */
+    includeExternal?: boolean;
+  },
 ): Promise<SearchOption[]> {
   if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
   const q = query.trim();
-  const keywordIds = await productIdsByKeyword(q, LIMIT);
-  const rows = await prisma.product.findMany({
+  const [keywordIds, customerCodeIds] = await Promise.all([
+    itemIdsByKeyword(q, LIMIT),
+    productItemIdsByCustomerCode(q, LIMIT),
+  ]);
+  const rows = await prisma.item.findMany({
     where: {
+      itemType: "PRODUCT",
       isActive: true,
+      ...(opts?.includeExternal ? {} : { isExternalProduct: false }),
       ...(q
         ? {
             OR: [
               { name: { path: ["ja"], string_contains: q } },
-              ...byIds(keywordIds),
+              ...byIds([...new Set([...keywordIds, ...customerCodeIds])]),
             ],
           }
         : {}),
@@ -170,7 +193,54 @@ export async function searchProductOptions(
     orderBy: { id: "asc" },
     take: LIMIT,
   });
-  return rows.map((p) => ({ value: String(p.id), label: productLabel(p) }));
+  return rows.map((r) => ({ value: String(r.id), label: productItemLabel(r) }));
+}
+
+/**
+ * 価格表 (SA02) が作れる品目 — **製品（他社製品を除く）と再研磨品目**。
+ *
+ * 価格表は**売り物にだけ**作る。他社製品は預かるだけ、素材は買うものなので、
+ * どちらも出さない — 出すと選べてしまい、保存の段になって初めて断られる
+ * （実際にそうなっていた）。判定の正は `lib/sales-item-guard.ts`
+ * `priceListItemError` で、ここはその手前で選ばせないためのもの。
+ *
+ * 再研磨品目は**標準価格を持ったうえで**顧客ごとの価格表も持てる（2 段価格の
+ * 上の段）。ここで出さないと、その上書きを画面から作れない。
+ */
+export async function searchPriceListItemOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
+  const q = query.trim();
+  const [keywordIds, customerCodeIds] = await Promise.all([
+    itemIdsByKeyword(q, LIMIT),
+    productItemIdsByCustomerCode(q, LIMIT),
+  ]);
+  const rows = await prisma.item.findMany({
+    where: {
+      itemType: { in: ["PRODUCT", "REGRIND"] },
+      isActive: true,
+      isExternalProduct: false,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+              { regrindToolClass: { contains: q, mode: "insensitive" } },
+              { regrindLocation: { contains: q, mode: "insensitive" } },
+              ...byIds([...new Set([...keywordIds, ...customerCodeIds])]),
+            ],
+          }
+        : {}),
+    },
+    orderBy: [{ itemType: "asc" }, { id: "asc" }],
+    take: LIMIT,
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    // 再研磨品目は条件と値段まで出す — 名前だけでは行を選べない。
+    label: r.itemType === "REGRIND" ? regrindItemLabel(r) : productItemLabel(r),
+  }));
 }
 
 /**
@@ -425,8 +495,11 @@ export async function searchMaterialTypeOptions(
 
 // ── F4 詳細検索（フィルタ + 結果テーブル、最大 F4_LIMIT 件） ────────────────
 
-/** 製品 F4 — 名称 / 素材コード。columns: 製品コード/名称/素材/単位。 */
-export async function f4SearchProducts(
+/**
+ * 製品（品目） F4 — 名称 / 材種。columns: 製品コード/名称/材種/単位。
+ * value は items.id（`searchProductItemOptions` と対）。
+ */
+export async function f4SearchProductItems(
   filters: Record<string, string>,
 ): Promise<F4SearchRow[]> {
   if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
@@ -434,10 +507,17 @@ export async function f4SearchProducts(
   const name = s(filters.name);
   const materialType = s(filters.materialType);
   // 名称欄はキーワード（match_names）込みで判定する（略称・英字でも当たる）。
-  const keywordIds = await productIdsByKeyword(name, F4_LIMIT);
-  const rows = await prisma.product.findMany({
+  const keywordIds = await itemIdsByKeyword(name, F4_LIMIT);
+  // 材種は設計図の確定済みの版が持つ（製品マスタから移した）。
+  const materialIds = materialType
+    ? await itemIdsByMaterialTypeCode(materialType, F4_LIMIT * 5)
+    : null;
+  const rows = await prisma.item.findMany({
     where: {
+      itemType: "PRODUCT",
       isActive: true,
+      // F4 は他社製品を出さない（再研磨の明細は検索欄から選ぶ）。
+      isExternalProduct: false,
       ...(name
         ? {
             OR: [
@@ -446,27 +526,21 @@ export async function f4SearchProducts(
             ],
           }
         : {}),
-      ...(materialType
-        ? {
-            materialType: {
-              code: { contains: materialType, mode: "insensitive" },
-            },
-          }
-        : {}),
+      ...(materialIds ? { id: { in: materialIds } } : {}),
     },
-    include: { materialType: true },
     orderBy: { id: "asc" },
     take: F4_LIMIT,
   });
+  const specs = await resolveItemSpecs(rows.map((p) => p.id));
   return rows.map((p) => {
     const nameJa = localized(p.name as LocalizedText | null);
     return {
       value: String(p.id),
-      label: productLabel(p),
+      label: productItemLabel(p),
       cells: [
-        formatProductNumber(p.yearMonth, p.seq) ?? tr("common.notNumbered"),
+        p.code ?? tr("common.notNumbered"),
         nameJa,
-        p.materialType?.code ?? "—",
+        specs.get(p.id)?.materialTypeCode ?? "—",
         p.unit,
       ],
     };
@@ -725,7 +799,7 @@ export async function searchShippableAcceptanceOptions(
               {
                 items: {
                   some: {
-                    product: { name: { path: ["ja"], string_contains: q } },
+                    item: { name: { path: ["ja"], string_contains: q } },
                   },
                 },
               },
@@ -774,7 +848,7 @@ export async function searchOrderLineOptions(
                   customerOrderRef: { contains: q, mode: "insensitive" },
                 },
               },
-              { product: { name: { path: ["ja"], string_contains: q } } },
+              { item: { name: { path: ["ja"], string_contains: q } } },
               {
                 acceptance: {
                   customerBp: { name: { path: ["ja"], string_contains: q } },
@@ -784,7 +858,8 @@ export async function searchOrderLineOptions(
           }
         : {}),
     },
-    include: { product: true },
+    // 品目統合 第 2 段 C — 注文明細の製品名は品目側から読む。
+    include: { item: true },
     orderBy: [
       { acceptanceYearMonth: "desc" },
       { acceptanceSeq: "desc" },
@@ -795,7 +870,7 @@ export async function searchOrderLineOptions(
   const { orderLineNumberOf } = await import("@/lib/doc-number");
   return rows.map((r) => ({
     value: r.id,
-    label: `${orderLineNumberOf(r) ?? "—"} ${localized(r.product?.name as LocalizedText | null)}（${r.quantity}）`,
+    label: `${orderLineNumberOf(r) ?? "—"} ${localized(r.item?.name as LocalizedText | null)}（${r.quantity}）`,
   }));
 }
 
@@ -826,15 +901,22 @@ export async function searchAllocatableOrderLineOptions(
   );
 }
 
-/** 素材検索（指示書の使用素材）。value = 内部 id、label = コード + 名称。 */
-export async function searchMaterialOptions(
+/**
+ * 素材（品目）検索 — 購買（PU01〜PU03）・指示書の使用素材ピッカー用。
+ * value = **items.id**（品目統合 第 2 段 B — material_purchase_order_items /
+ * material_receipts / purchase_request_items / work_orders.material_item_id
+ * が指す先）。旧 `searchMaterialOptions`（materials.id）とは値の意味が違うので
+ * 混ぜないこと — SearchSelect の `storageKey` も別にしてある（"materialItem"）。
+ */
+export async function searchMaterialItemOptions(
   query: string,
 ): Promise<SearchOption[]> {
   if (!(await requireAnyRead(MATERIAL_PICKER_CODES)).ok) return [];
   const q = query.trim();
-  const keywordIds = await materialIdsByKeyword(q, LIMIT);
-  const rows = await prisma.material.findMany({
+  const keywordIds = q ? await itemIdsByKeyword(q, LIMIT) : [];
+  const rows = await prisma.item.findMany({
     where: {
+      itemType: "MATERIAL",
       isActive: true,
       ...(q
         ? {
@@ -856,19 +938,112 @@ export async function searchMaterialOptions(
 }
 
 /**
- * 素材 1 件の単位（素材入荷 PU13 の単位既定値）。入荷の単位は素材マスタの
- * 単位で固定する — 台帳（material_inventory）の単位と揃えるため。
- * 最近使用（localStorage）の候補は単位を持たないので、選択時に引き直す。
+ * 再研磨の品目（役務）— 再研磨の明細が「何をいくらでやるか」として指す先。
+ * value は **items.id**（`itemType: "REGRIND"`）。
+ *
+ * 値段はこの品目に付く（標準価格 + 顧客ごとの価格表）。研ぎ直す工具のほうは
+ * 別の欄（`searchProductItemOptions` の他社製品込み）で選ぶ — 売り物と
+ * 預かり物は別なので、ピッカーも分けてある。
  */
-export async function fetchMaterialUnit(
-  materialId: string,
+export async function searchRegrindItemOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
+  const q = query.trim();
+  const keywordIds = q ? await itemIdsByKeyword(q, LIMIT) : [];
+  const rows = await prisma.item.findMany({
+    where: {
+      itemType: "REGRIND",
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+              { regrindToolClass: { contains: q, mode: "insensitive" } },
+              { regrindLocation: { contains: q, mode: "insensitive" } },
+              ...byIds(keywordIds),
+            ],
+          }
+        : {}),
+    },
+    orderBy: [
+      { regrindToolClass: "asc" },
+      { regrindLocation: "asc" },
+      { regrindFlutes: "asc" },
+      { regrindSizeMaxMm: "asc" },
+    ],
+    take: LIMIT,
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: regrindItemLabel(r),
+  }));
+}
+
+/** 品目（素材）1 件の単位 — `searchMaterialItemOptions` と対。value = items.id。 */
+export async function fetchMaterialItemUnit(
+  itemId: string,
 ): Promise<string | null> {
   if (!(await requireAnyRead(MATERIAL_PICKER_CODES)).ok) return null;
-  const id = Number(materialId);
+  const id = Number(itemId);
   if (!Number.isInteger(id) || id <= 0) return null;
-  const row = await prisma.material.findUnique({
-    where: { id },
+  const row = await prisma.item.findUnique({
+    where: { id, itemType: "MATERIAL" },
     select: { unit: true },
   });
   return row?.unit ?? null;
+}
+
+async function itemIdsByKeyword(q: string, limit: number): Promise<number[]> {
+  if (!q) return [];
+  const rows = await prisma.$queryRaw<{ id: number }[]>`
+    SELECT id FROM app.items
+    WHERE is_active
+      AND EXISTS (
+        SELECT 1 FROM unnest(match_names) AS k WHERE k ILIKE ${`%${likeEscape(q)}%`}
+      )
+    ORDER BY id
+    LIMIT ${limit}`;
+  return rows.map((r) => r.id);
+}
+
+/**
+ * 品目（製品 + 素材の統合マスタ）— 手動入出庫 (ST06) の品目ピッカー用。
+ *
+ * value は **`<itemType>:<items.id>`**（例 `PRODUCT:123`）。id そのものは
+ * 製品・素材を通じて一意（items.id は共有シーケンス）だが、向き（kind バッジ）を
+ * 選択後もレンダーだけで判定できるよう、種別を value に畳み込んでおく —
+ * サーバーへ問い合わせ直さずに済む。呼び出し側（GoodsMovementForm）は
+ * `:` の前後を分けて itemType と数値 id に戻す。
+ */
+export async function searchItemOptions(
+  query: string,
+): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
+  const q = query.trim();
+  const keywordIds = q ? await itemIdsByKeyword(q, LIMIT) : [];
+  const rows = await prisma.item.findMany({
+    where: {
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { code: { contains: q, mode: "insensitive" } },
+              { name: { path: ["ja"], string_contains: q } },
+              ...byIds(keywordIds),
+            ],
+          }
+        : {}),
+    },
+    orderBy: { id: "asc" },
+    take: LIMIT,
+  });
+  return rows.map((r) => {
+    const name = localized(r.name as LocalizedText | null);
+    return {
+      value: `${r.itemType}:${r.id}`,
+      label: `${r.code ?? "—"} — ${name}`,
+    };
+  });
 }

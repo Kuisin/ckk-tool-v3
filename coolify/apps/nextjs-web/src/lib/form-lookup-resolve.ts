@@ -16,7 +16,6 @@ import "server-only";
  */
 
 import { prisma } from "./db";
-import { formatProductNumber } from "./doc-number";
 import type {
   FormAnswerValue,
   FormFieldDef,
@@ -63,23 +62,25 @@ export async function resolveLookupLabel(
       });
       return r ? localized(r.name as LocalizedText | null) : null;
     }
+    // 製品・素材はどちらも品目（app.items）。**item_type を必ず条件に入れる** —
+    // id は製品と素材で 1 本のシーケンスを共有するので、種別を確かめないと
+    // 「製品」の項目に素材を入れた payload が素通りする（品目統合 第 3 段）。
     case "product": {
       const n = intId(id);
       if (n == null) return null;
-      const r = await prisma.product.findUnique({
-        where: { id: n },
-        select: { name: true, yearMonth: true, seq: true },
+      const r = await prisma.item.findFirst({
+        where: { id: n, itemType: "PRODUCT" },
+        select: { name: true, code: true },
       });
       if (!r) return null;
-      const code = formatProductNumber(r.yearMonth, r.seq);
       const name = localized(r.name as LocalizedText | null);
-      return code ? `${name} ${code}` : name;
+      return r.code ? `${name} ${r.code}` : name;
     }
     case "material": {
       const n = intId(id);
       if (n == null) return null;
-      const r = await prisma.material.findUnique({
-        where: { id: n },
+      const r = await prisma.item.findFirst({
+        where: { id: n, itemType: "MATERIAL" },
         select: { code: true, name: true },
       });
       return r

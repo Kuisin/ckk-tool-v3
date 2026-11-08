@@ -67,8 +67,8 @@ interface EditableLine extends PurchaseIntakeLine {
   include: boolean;
   plantId: string | null;
   receivedAt: string;
-  /** 突合が入れていた素材 id（学習の比較元 — 人が選び直した行だけ覚える）。 */
-  draftMaterialId: string | null;
+  /** 突合が入れていた品目 id（学習の比較元 — 人が選び直した行だけ覚える）。 */
+  draftItemId: string | null;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -93,13 +93,13 @@ export function MaterialReceiptIntake({
   const receive = (value: unknown) => {
     const next = value as MaterialDeliveryDraft;
     setDraft(next);
-    setAutoMatched(next.lines.map((l) => l.materialId != null));
+    setAutoMatched(next.lines.map((l) => l.itemId != null));
     setSupplierBpId(next.supplierBpId);
     setLines(
       next.lines.map((l) => ({
         ...l,
-        // 学習の比較元（人が選び直したかどうか）— 画面の materialId は書き換わる
-        draftMaterialId: l.materialId,
+        // 学習の比較元（人が選び直したかどうか）— 画面の itemId は書き換わる
+        draftItemId: l.itemId,
         include: true,
         plantId: null,
         // 入荷日の既定は**納品書の日付**（無ければ今日）。紙に書いてある日を
@@ -119,7 +119,7 @@ export function MaterialReceiptIntake({
     setLines((cur) => cur.map((l) => ({ ...l, ...patch })));
 
   const selected = lines.filter((l) => l.include);
-  const blocked = selected.filter((l) => !l.materialId);
+  const blocked = selected.filter((l) => !l.itemId);
 
   const submit = () => {
     if (!draft) return;
@@ -147,7 +147,7 @@ export function MaterialReceiptIntake({
         extractedSupplierName: draft.supplierName,
         draftSupplierBpId: draft.supplierBpId,
         lines: selected.map((l) => ({
-          materialId: l.materialId as string,
+          itemId: l.itemId as string,
           plantId: l.plantId,
           quantity: l.quantity,
           receivedAt: l.receivedAt,
@@ -156,7 +156,7 @@ export function MaterialReceiptIntake({
             .join(" / "),
           materialText: l.materialText,
           materialCode: l.materialCode,
-          draftMaterialId: l.draftMaterialId,
+          draftItemId: l.draftItemId,
         })),
       });
       if (!result.ok) {
@@ -326,7 +326,7 @@ export function MaterialReceiptIntake({
                       line={line}
                       onPick={(pick) =>
                         setLine(index, {
-                          materialId: pick.materialId,
+                          itemId: pick.itemId,
                           materialLabel: pick.materialLabel,
                         })
                       }

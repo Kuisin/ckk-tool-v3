@@ -1,10 +1,4 @@
 {
   "title": "Production",
-  "pages": [
-    "work-order",
-    "pending-work-order",
-    "design-file",
-    "product-inventory",
-    "material-inventory"
-  ]
+  "pages": ["work-order", "pending-work-order", "design-file"]
 }

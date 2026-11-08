@@ -23,12 +23,12 @@ screenshots:
 
 | 段階 | 何をするか | 担当 | 使うアプリ |
 |------|-----------|------|-----------|
-| 1. 製品在庫を確認する | すでに在庫がある分と、新しく作る分を分ける | 生産管理 | [在庫管理](/manual/ja/operations/production/product-inventory/user)（`PD04`） |
-| 2. 素材を確認する | 作るのに必要な素材が足りるかを見る | 生産管理 | [在庫管理](/manual/ja/operations/production/material-inventory/user)（`PD04`） |
-| 3. 指示書を作る | 在庫分・製造分に分ける（工程を並べるのは製造分） | 社内営業補助 | [指示書](/manual/ja/operations/production/work-order/user)（`PD02`） |
-| 4. 承認を受ける | 承認設定で決めた段をすべて通し、製造を始められる状態にする | 承認者 | [承認管理](/manual/ja/operations/production/approval/user)（`PD03`） |
+| 1. 製品在庫を確認する | すでに在庫がある分と、新しく作る分を分ける | 生産管理 | [在庫管理](/manual/ja/operations/inventory/inventory-management/user)（`ST01`） |
+| 2. 素材を確認する | 作るのに必要な素材が足りるかを見る | 生産管理 | [在庫管理](/manual/ja/operations/inventory/inventory-management/user)（`ST01`） |
+| 3. 指示書を作る | 在庫分・製造分に分ける（工程を並べるのは製造分）。お客様の工具を研ぎ直す注文は再研磨 | 社内営業補助 | [指示書](/manual/ja/operations/production/work-order/user)（`PD02`） |
+| 4. 承認を受ける | 承認設定で決めた段をすべて通し、製造を始められる状態にする | 承認者 | [承認管理](/manual/ja/operations/general/my-tasks/user)（`PD03`） |
 | 5. 工程を実行する | 現場が開始・完了と本数を記録する | 製造 | [指示書](/manual/ja/operations/production/work-order/user) / 現場タブレット |
-| 6. 完了する | 全工程が終わると製品在庫になる | 製造・生産管理 | [在庫管理](/manual/ja/operations/production/product-inventory/user) |
+| 6. 完了する | 全工程が終わると製品在庫になる | 製造・生産管理 | [在庫管理](/manual/ja/operations/inventory/inventory-management/user) |
 
 ## それぞれの段階でおきること
 
@@ -43,6 +43,8 @@ screenshots:
 ### 3. 指示書を作る
 
 在庫分と製造分でそれぞれ指示書を作る。工程を順番に並べるのは製造分で、必ず「出し・受渡し」の工程**ちょうど 1 つ**から始まる（複数は選べない）。工程の並びは製品×受注元（取引先）ごとの**工程ルート**として登録でき、指示書を作るときは 受注元が一致するルート → どの受注元にも限定しないルート → 先頭のルート の順で自動で選ばれる。**在庫分は「製品出し」＋任意の「出荷前検査」の固定構成**で、作成すると在庫が引き当てられる。出荷そのものは工程ではなく、[出荷書](/manual/ja/operations/shipping/delivery-order/user)で管理する。同じ受注元・製品で前回の指示書があればコピーできる（内容が変わっている場合は警告が出る）。工程ごとに社内で行うか外注に出すかを決め、外注にすると[外注依頼](/manual/ja/operations/purchasing/outsource-order/user)の一覧に出てくる（操作手順 … [標準フロー §6](/manual/ja/process/default-flow#stage-6)）。
+
+**再研磨**（お客様が使った工具 — 自社製・他社製 — を預かって研ぎ直す注文）は、注文種別が「再研磨」の明細から**再研磨の指示書**として作る。作るものが無いので使用素材・保管場所は持たず、工程は製品にも受注元にも紐づかない共通の**再研磨工程リスト**（製品受入 → 研磨 → 任意でコーティング・検査）の最新版を使う。最初の工程「製品受入（再研磨）」で届いた本数を記録すると、その本数がお客様の預り品として在庫に載る（自社在庫とは別）。他社製の工具は製品マスタに「他社製品」として登録しておく。
 
 ![注文明細から作る指示書の新規画面。保存ボタンが赤枠で強調されている](../assets/screenshots/flow-work-order-new-01.png)
 
@@ -66,7 +68,7 @@ screenshots:
 
 ### 6. 完了
 
-すべての工程が終わると、その指示書の製品が在庫に入り、[出荷の流れ](/manual/ja/process/shipping)へ進められる。
+すべての工程が終わると、その指示書の製品が在庫に入り、[出荷の流れ](/manual/ja/process/shipping)へ進められる。**再研磨の指示書は自社の在庫に入らない** — 受け入れた工具はお客様の預り品として記録され、研ぎ直した本数を出荷書で返す。
 
 ![製品在庫の取引履歴。入庫の記録が赤枠で強調されている](../assets/screenshots/flow-inventory-in-01.png)
 
@@ -92,6 +94,17 @@ screenshots:
 
 **工程を完了できない（不良の入力で止まる）**
 良品数は受入数と不良の合計から自動で計算されるので、本数の不一致は起こらない。完了できないのは、不良の行に不良種類または詳細が入っていないか、不良の合計が受入数を超えているときである。不良の行を見直し、行ごとに区分・不良種類・詳細・本数をそろえる。
+
+## 在庫を数える・手で動かす
+
+在庫はこの流れの中で自動に動く。それ以外に触る口は 3 つで、どれも入出庫伝票を残す。
+
+- 数え直して合わせる … [棚卸](/manual/ja/operations/inventory/stock-takes/user)（`ST05`）。確定すると差のぶんだけ在庫が直る。
+- 人の手で入れる・出す・移す … [手動入出庫](/manual/ja/operations/inventory/goods-movement/user)（`ST06`）
+- 動いた記録を追う … [入出庫伝票](/manual/ja/operations/inventory/inventory-movements/user)（`ST04`）
+
+外注へ出した分は、その外注先が預かっているものとして別に数える（自社の在庫には入らない）。
+預け先ごとの本数は [在庫一覧](/manual/ja/operations/inventory/stock-overview/user)（`ST02`）で見る。
 
 ## 関連ページ
 

@@ -23,6 +23,7 @@ import { prisma } from "@/lib/db";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
 import { lineAmountYen, roundYen } from "@/lib/money";
 import { allocateDocumentKey } from "@/lib/numbering";
+import { salesLineItemError } from "@/lib/sales-item-guard";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
@@ -30,6 +31,7 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { loadStandardUnitPrices } from "@/lib/standard-price";
 import { loadTaxCatalog } from "@/lib/tax-categories";
 import { resolveLineTax } from "@/lib/tax-rate";
 import { fetchEntriesForCustomer } from "./data";
@@ -62,8 +64,9 @@ async function quoteInScope(
 
 function itemInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
-    productId: z.string().min(1, tr("common.selectAProduct")),
-    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
+    /** 製品 — 値は品目 id（items.id、`itemType: "PRODUCT"`）。 */
+    itemId: z.string().min(1, tr("common.selectAProduct")),
+    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "REGRIND", "OTHER"]),
     quantity: z.number().int().min(1, tr("sales.quoteActions.quantityMinOne")),
     deliveryDate: z.string().nullable(),
     notes: z.string().nullable(),
@@ -129,13 +132,13 @@ async function customerTaxCategoryIdOf(bpId: string): Promise<number | null> {
   return row?.taxCategoryId ?? null;
 }
 
-/** 製品 id → 課税区分 id（未設定は map に載らない = 既定に従う）。 */
+/** 品目 id → 課税区分 id（未設定は map に載らない = 既定に従う）。 */
 async function productTaxCategoryMap(
-  productIds: readonly number[],
+  itemIds: readonly number[],
 ): Promise<Map<number, number | null>> {
-  if (productIds.length === 0) return new Map();
-  const rows = await prisma.product.findMany({
-    where: { id: { in: [...new Set(productIds)] } },
+  if (itemIds.length === 0) return new Map();
+  const rows = await prisma.item.findMany({
+    where: { id: { in: [...new Set(itemIds)] } },
     select: { id: true, taxCategoryId: true },
   });
   return new Map(rows.map((r) => [r.id, r.taxCategoryId]));
@@ -155,12 +158,18 @@ async function resolveItems(
   // 税は**行ごと**（製品ごとに課税区分が違い得る）。見積書は印刷して外に出す書類
   // なので、単価・値引きと同じく保存時に凍結する — 発行後に税率マスタが変わっても
   // 刷り直した PDF が動いてはいけない。
-  const [catalog, customerTaxCategoryId, productTaxCategoryIds] =
+  const [catalog, customerTaxCategoryId, productTaxCategoryIds, standard] =
     await Promise.all([
       loadTaxCatalog(),
       customerTaxCategoryIdOf(v.customerBpId),
-      productTaxCategoryMap(v.items.map((it) => Number(it.productId))),
+      productTaxCategoryMap(v.items.map((it) => Number(it.itemId))),
+      // 標準価格（品目の定価）— 顧客の価格表が無い再研磨の品目はこちらで解決する。
+      loadStandardUnitPrices(v.items.map((it) => it.itemId)),
     ]);
+  // 明細の品目が種別と噛み合っているか（他社製品は売り物にならない・
+  // 再研磨の行は再研磨の品目を指す）。
+  const itemError = await salesLineItemError(v.items, tr);
+  if (itemError) throw new LineItemResolveError(itemError);
   // 基準日は見積の作成日（まだ注文日が無い）。
   const basisDate = isoDateJst(new Date());
 
@@ -168,10 +177,12 @@ async function resolveItems(
     const resolution = resolvePriceFromEntries(
       entries,
       v.customerBpId,
-      it.productId,
+      it.itemId,
       it.orderType,
       it.quantity,
       tr,
+      new Date(),
+      standard.get(Number(it.itemId)) ?? null,
     );
     if (!resolution.ok) {
       throw new LineItemResolveError(
@@ -182,11 +193,12 @@ async function resolveItems(
     const lineTax = resolveLineTax(catalog, {
       customerTaxCategoryId,
       productTaxCategoryId:
-        productTaxCategoryIds.get(Number(it.productId)) ?? null,
+        productTaxCategoryIds.get(Number(it.itemId)) ?? null,
       basisDate,
     });
+    const itemId = Number(it.itemId);
     return {
-      productId: Number(it.productId),
+      itemId,
       orderType: it.orderType,
       quantity: it.quantity,
       unitPrice: r.unitPrice,

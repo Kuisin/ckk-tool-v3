@@ -27,7 +27,7 @@ export default async function MasterInspectionTemplatesDetailPage({
       where: { id },
       include: {
         relatedProcessStep: true,
-        product: { select: { name: true } },
+        item: { select: { name: true } },
         group: { select: { name: true } },
         imageFile: { select: { filename: true } },
         approvalGroup: { select: { name: true } },
@@ -73,9 +73,7 @@ export default async function MasterInspectionTemplatesDetailPage({
     relatedProcessStep: r.relatedProcessStep
       ? localized(r.relatedProcessStep.name as LocalizedText | null)
       : "",
-    productName: r.product
-      ? localized(r.product.name as LocalizedText | null)
-      : "",
+    productName: r.item ? localized(r.item.name as LocalizedText | null) : "",
     groupName: r.group ? localized(r.group.name as LocalizedText | null) : "",
     imageFilename: r.imageFile?.filename ?? null,
     samplingMode: r.samplingMode,

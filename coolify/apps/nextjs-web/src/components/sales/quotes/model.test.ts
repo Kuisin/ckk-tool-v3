@@ -20,8 +20,10 @@ const entry = (over: Partial<PriceListEntry> = {}): PriceListEntry => ({
   entryId: "PRC-202604-00001",
   customerId: CUSTOMER,
   customerName: "顧客",
-  productId: PRODUCT,
+  itemId: PRODUCT,
   productName: "製品",
+  itemType: "PRODUCT",
+  standardUnitPrice: null,
   currency: "JPY",
   isActive: true,
   variants: [
@@ -265,5 +267,75 @@ describe("resolvePriceFromEntries — 引けなかった理由", () => {
       // 1 本 5,000 円引き × 2 本 = 10,000 > 明細金額 2,000 → 2,000 で止まる
       expect(r.price.discountAmount).toBe(2000);
     }
+  });
+});
+
+describe("標準価格へのフォールバック（S/4HANA 式の 2 段価格）", () => {
+  /** 標準価格つきで引く。 */
+  const withStandard = (
+    entries: PriceListEntry[],
+    orderType: string,
+    qty: number,
+    standard: number | null,
+    date = IN_WINDOW,
+  ) =>
+    resolvePriceFromEntries(
+      entries,
+      CUSTOMER,
+      PRODUCT,
+      orderType,
+      qty,
+      tr,
+      date,
+      standard,
+    );
+
+  it("当たる価格表が無ければ標準価格に落ちる（no-entry / inactive / expired）", () => {
+    // 価格表そのものが無い
+    const noEntry = withStandard([], "REGRIND", 5, 1200);
+    expect(noEntry.ok).toBe(true);
+    if (noEntry.ok) {
+      expect(noEntry.price.unitPrice).toBe(1200);
+      // 標準価格には数量段階も値引きも無い（段階の id は null）。
+      expect(noEntry.price.tierId).toBeNull();
+      expect(noEntry.price.discountAmount).toBe(0);
+    }
+    // 無効化されている
+    const inactive = withStandard(
+      [entry({ isActive: false })],
+      "PRODUCTION",
+      5,
+      1200,
+    );
+    expect(inactive.ok && inactive.price.unitPrice).toBe(1200);
+    // 有効期間外
+    const expired = withStandard(
+      [entry()],
+      "PRODUCTION",
+      5,
+      1200,
+      new Date("2026-10-01T03:00:00Z"),
+    );
+    expect(expired.ok && expired.price.unitPrice).toBe(1200);
+  });
+
+  it("価格表が当たれば価格表が勝つ（標準価格は使わない）", () => {
+    const r = withStandard([entry()], "PRODUCTION", 2, 1200);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.price.unitPrice).toBe(1000);
+  });
+
+  it("数量段階の穴（no-tier）では落ちない — 設定の誤りを隠さないため", () => {
+    // 生きている価格表に数量の穴があるのは設定漏れ。ここで黙って定価に
+    // 落とすと、誰も気づかないまま違う値段で売り続けることになる。
+    const r = withStandard([entry()], "PRODUCTION", 100, 1200);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("no-tier");
+  });
+
+  it("標準価格が無ければ従来どおり引けない", () => {
+    const r = withStandard([], "REGRIND", 5, null);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("no-entry");
   });
 });

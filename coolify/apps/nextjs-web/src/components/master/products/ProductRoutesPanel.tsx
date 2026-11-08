@@ -49,12 +49,12 @@ export interface RoutePanelLinks {
   newVersion: (routeId: number) => string;
 }
 
-/** 製品の製造工程リスト（MS24 工程タブ）の行き先。 */
-export function productRouteLinks(productId: number): RoutePanelLinks {
+/** 製品の製造工程リスト（MS24 工程タブ）の行き先。`itemId` は items.id。 */
+export function productRouteLinks(itemId: number): RoutePanelLinks {
   return {
-    newRoute: `/master/products/${productId}/routes/new`,
+    newRoute: `/master/products/${itemId}/routes/new`,
     newVersion: (routeId) =>
-      `/master/products/${productId}/routes/${routeId}/new-version`,
+      `/master/products/${itemId}/routes/${routeId}/new-version`,
   };
 }
 
@@ -63,6 +63,13 @@ export const PREP_ROUTE_LINKS: RoutePanelLinks = {
   newRoute: "/master/process-steps/prep-routes/new",
   newVersion: (routeId) =>
     `/master/process-steps/prep-routes/${routeId}/new-version`,
+};
+
+/** 再研磨工程リスト（共通 — 工程マスタ MS08 配下）の行き先。 */
+export const REGRIND_ROUTE_LINKS: RoutePanelLinks = {
+  newRoute: "/master/process-steps/regrind-routes/new",
+  newVersion: (routeId) =>
+    `/master/process-steps/regrind-routes/${routeId}/new-version`,
 };
 
 export function ProductRoutesPanel({

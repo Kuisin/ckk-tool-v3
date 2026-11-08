@@ -88,19 +88,26 @@ text-color: #5b21b6;
 [role_prod: 在庫を照合] <block_condition>
 label: 在庫照合;
 desc: 在庫から出せる分と、新しく作る分に分ける。;
-if (製品在庫) is (足りる) than #green
-  [role_support: 在庫分の指示書] <block_apply>
-  label: 在庫分;
+if (注文種別) is (再研磨) than #orange
+  [role_support: 再研磨の指示書] <block_apply>
+  label: 再研磨;
   props: WORK_ORDER;
-  desc: 在庫分は固定構成（製品出し＋任意の出荷前検査）。在庫が引き当てられる。;
+  desc: 顧客の工具を預かって研ぎ直す。共通の再研磨工程リストを使い、受け入れた本数は顧客の預り品として記録する（自社在庫には入らない）。;
 else
-  [role_prod: 素材を確認] <block_condition>
-  label: 素材確認;
-  desc: 必要な素材が足りるかを確認する。不足する場合は購買の流れで調達する。;
-  [role_support: 製造分の指示書] <block_apply>
-  label: 製造分;
-  props: WORK_ORDER;
-  desc: 工程を順番に並べる。同じ受注元・製品の前回指示書があればコピーできる。;
+  if (製品在庫) is (足りる) than #green
+    [role_support: 在庫分の指示書] <block_apply>
+    label: 在庫分;
+    props: WORK_ORDER;
+    desc: 在庫分は固定構成（製品出し＋任意の出荷前検査）。在庫が引き当てられる。;
+  else
+    [role_prod: 素材を確認] <block_condition>
+    label: 素材確認;
+    desc: 必要な素材が足りるかを確認する。不足する場合は購買の流れで調達する。;
+    [role_support: 製造分の指示書] <block_apply>
+    label: 製造分;
+    props: WORK_ORDER;
+    desc: 工程を順番に並べる。同じ受注元・製品の前回指示書があればコピーできる。;
+  endif
 endif
 [role_support: 承認を依頼する] <block_apply>
 label: 承認依頼;

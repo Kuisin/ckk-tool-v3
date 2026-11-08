@@ -52,7 +52,11 @@ INSERT INTO app.permissions (code, display_name, description) VALUES
   ('portal_admin',   '{"ja":"取引先ポータルの管理","en":"Partner portal administration"}',
    '{"ja":"社外アカウントの作成・有効化・共有範囲、書類リンクの発行と失効","en":""}'),
   ('api_client',     '{"ja":"外部 API クライアントの管理","en":"API client administration"}',
-   '{"ja":"外部 API の資格情報の作成・有効化・トークンの発行と失効","en":""}')
+   '{"ja":"外部 API の資格情報の作成・有効化・トークンの発行と失効","en":""}'),
+  -- 価格試算の原価合計・粗利（migration 20261112090000）。業務ロールへは配らず、
+  -- 管理職（manager）だけが持つ。
+  ('estimate_cost',  '{"ja":"価格試算の原価","en":"Price estimate cost"}',
+   '{"ja":"価格試算の原価合計・粗利と、計算基準ごとの原価の印を見る","en":""}')
 ON CONFLICT (code) DO NOTHING;
 
 -- ─── roles ───────────────────────────────────────────────────────────────────
@@ -98,7 +102,7 @@ WHERE r.rolename = 'staff'
   AND p.code NOT IN ('system', 'kiosk', 'admin_manual',
                      'kiosk_secret', 'kiosk_device', 'kiosk_card',
                      'personal_data', 'user_admin', 'portal_admin',
-                     'api_client')
+                     'api_client', 'estimate_cost')
 ON CONFLICT DO NOTHING;
 
 -- ─── demo ユーザーへのロール割当 ─────────────────────────────────────────────

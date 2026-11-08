@@ -36,12 +36,19 @@ import {
   deriveSuccessFromList,
   dispositionTotals,
 } from "@/lib/steps-core";
-import type { QuantityTrackingMode } from "@/lib/workflow-core";
+import {
+  type QuantityTrackingMode,
+  REGRIND_RECEIPT_STEP_CODE,
+} from "@/lib/workflow-core";
 import { useI18n } from "../I18nProvider";
 import { NumberStepper } from "./NumberStepper";
 
 type Props = {
   mode: Exclude<QuantityTrackingMode, "NONE">;
+  /** 工程 code。製品受入（再研磨）は数量欄の読み方が違う。 */
+  stepCode?: string;
+  /** 半製品の区分を出さない（再研磨の指示書 — 顧客の工具は自社の半製品にならない）。 */
+  hideSemi?: boolean;
   /** 開始時に確定した受入数（固定）。 */
   inputQuantity: number;
   /** 不良種類（理由の候補）。 */
@@ -52,13 +59,18 @@ type Props = {
 
 export function StepQuantityForm({
   mode,
+  stepCode,
+  hideSemi = false,
   inputQuantity,
   defectTypes,
   defects,
   onChange,
 }: Props) {
   const { m } = useI18n();
-  const labels = m.steps.quantity[mode];
+  const labels =
+    stepCode === REGRIND_RECEIPT_STEP_CODE
+      ? m.steps.quantity.REGRIND_RECEIPT
+      : m.steps.quantity[mode];
   const issue = checkDefectList(defects, inputQuantity, mode);
   const total = defectListTotal(defects);
   const success = deriveSuccessFromList(inputQuantity, defects);
@@ -148,7 +160,7 @@ export function StepQuantityForm({
               <Select
                 aria-label={m.steps.quantity.typeLabel}
                 data={[
-                  { value: "SEMI", label: labels.semi },
+                  ...(hideSemi ? [] : [{ value: "SEMI", label: labels.semi }]),
                   { value: "SCRAP", label: labels.scrap },
                   { value: "REWORK", label: labels.rework },
                 ]}

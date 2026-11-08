@@ -104,7 +104,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
   );
 
   const isOutsource = step.executionLocation === "OUTSOURCE";
-  const qtyLabels = localizedQuantityLabels(tr, step.quantityTracking);
+  const qtyLabels = localizedQuantityLabels(
+    tr,
+    step.quantityTracking,
+    step.code,
+  );
   const lockedByOther =
     step.sessionLockedBy != null && step.sessionLockedBy !== data.actorId;
   const woExecutable =
@@ -467,8 +471,10 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             blockedReason={completeBlockedReason}
             defectTypeOptions={data.defectTypeOptions}
             disabled={!canOperate}
+            hideSemi={data.workOrderType === "REGRIND"}
             inputQuantity={step.inputQuantity ?? data.expectedInputQuantity}
             mode={step.quantityTracking}
+            stepCode={step.code}
             stepId={step.id}
             workOrderNumber={workOrderNumber}
           />
@@ -672,6 +678,27 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             <Title order={5}>
               {tr("production.stepExecution.outsourcingSchedule")}
             </Title>
+            {/*
+              預け在庫の状態。依頼日を入れた時点で「外注が持っている」に
+              なり、入荷日で戻る。**日付ではなく伝票の有無が事実** — 日付だけ
+              直しても在庫は動かない（二度計上しないため）ので、どちらが
+              起きているかをここに出す。
+            */}
+            {step.outsourceIssueMovementNo ? (
+              <Text c="dimmed" size="xs">
+                {step.outsourceReturnMovementNo
+                  ? tr("production.stepExecution.custodyReturned", {
+                      issued: step.outsourceIssueMovementNo,
+                      returned: step.outsourceReturnMovementNo,
+                    })
+                  : tr("production.stepExecution.custodyHeld", {
+                      // 計上したのと同じ規則（受入数、無ければ予定数量）。
+                      quantity: step.inputQuantity ?? data.plannedQuantity,
+                      supplier: step.supplierName ?? "—",
+                      movement: step.outsourceIssueMovementNo,
+                    })}
+              </Text>
+            ) : null}
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
               <DatePickerInput
                 clearable

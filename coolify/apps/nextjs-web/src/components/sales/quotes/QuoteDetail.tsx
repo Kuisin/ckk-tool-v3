@@ -347,7 +347,7 @@ export function QuoteDetail({
                       <Table.Td>
                         <Text size="sm">{it.productName}</Text>
                         <Text c="dimmed" ff="mono" size="xs">
-                          {it.productId}
+                          {it.itemId}
                         </Text>
                       </Table.Td>
                       <Table.Td>

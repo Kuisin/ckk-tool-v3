@@ -1,5 +1,6 @@
 import { PriceListTypeForm } from "@/components/sales/price-lists/PriceListTypeForm";
 import { requireAppRead } from "@/lib/authz-page";
+import { getScalePreset } from "@/lib/price-scale-preset-store";
 import {
   fetchCustomerOption,
   fetchExistingEntryRefs,
@@ -24,11 +25,13 @@ export default async function PriceListNewPage({
   if (denied) return denied;
   const { customer, product } = await searchParams;
 
-  const [customerOption, productOption, existingEntries] = await Promise.all([
-    customer ? fetchCustomerOption(customer) : Promise.resolve(null),
-    product ? fetchProductOption(product) : Promise.resolve(null),
-    fetchExistingEntryRefs(),
-  ]);
+  const [customerOption, productOption, existingEntries, scalePreset] =
+    await Promise.all([
+      customer ? fetchCustomerOption(customer) : Promise.resolve(null),
+      product ? fetchProductOption(product) : Promise.resolve(null),
+      fetchExistingEntryRefs(),
+      getScalePreset(),
+    ]);
 
   return (
     <PriceListTypeForm
@@ -38,6 +41,7 @@ export default async function PriceListNewPage({
       lockedProductId={product}
       mode="create"
       productOption={productOption}
+      scalePreset={scalePreset}
     />
   );
 }

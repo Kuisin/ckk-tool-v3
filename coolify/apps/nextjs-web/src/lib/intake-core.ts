@@ -13,7 +13,7 @@ import { label } from "./messages";
 export interface ExtractedItem {
   productText: string | null;
   productCode: string | null;
-  orderType: "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER";
+  orderType: "PRODUCTION" | "TEST" | "SAMPLE" | "REGRIND" | "OTHER";
   quantity: number;
   unitPrice: number | null;
   deliveryDate: string | null; // yyyy-mm-dd
@@ -82,8 +82,18 @@ const n = (v: unknown): number | null =>
  */
 export function normalizeOrderType(
   raw: unknown,
-): "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER" {
+): "PRODUCTION" | "TEST" | "SAMPLE" | "REGRIND" | "OTHER" {
   const t = (typeof raw === "string" ? raw : "").toLowerCase();
+  // 再研磨は先に見る — 「再研磨（本番品）」のように他の語と同居しても再研磨。
+  // i18n-ignore
+  if (
+    t.includes("再研") || // i18n-ignore
+    t.includes("regrind") ||
+    t.includes("リグラインド") || // i18n-ignore
+    t.includes("研ぎ直し") // i18n-ignore
+  ) {
+    return "REGRIND";
+  }
   if (
     !t ||
     t.includes("本番") || // i18n-ignore

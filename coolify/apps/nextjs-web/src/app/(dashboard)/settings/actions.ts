@@ -14,6 +14,15 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
+  type ScalePresetRow,
+  scalePresetIssueMessage,
+  validateScalePreset,
+} from "@/lib/price-scale-preset";
+import {
+  getScalePreset,
+  saveScalePreset,
+} from "@/lib/price-scale-preset-store";
+import {
   getProductItemDefs,
   getProductTypes,
   saveProductItemDefs,
@@ -662,6 +671,44 @@ export async function updateProductTypes(
         tr("settings.productItemActions.productTypesSaveFailed"),
         tr,
       ),
+    );
+  }
+}
+
+/** 数量スケールのプリセット（価格表の既定の数量段階）を保存する。 */
+export async function updateScalePreset(
+  rows: ScalePresetRow[],
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("system", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = z
+    .array(
+      z.object({
+        minQuantity: z.number(),
+        multiplier: z.number(),
+      }),
+    )
+    .safeParse(rows);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
+  const issue = validateScalePreset(parsed.data);
+  if (issue) return actionError(scalePresetIssueMessage(issue, tr));
+  try {
+    const before = await getScalePreset();
+    await saveScalePreset(parsed.data);
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "system_settings",
+      recordId: "trial_pricing.scale_preset",
+      before: { rows: before },
+      after: { rows: parsed.data },
+    });
+    revalidatePath("/settings/trial-pricing-engine");
+    revalidatePath("/sales/price-lists");
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, tr("settings.scalePreset.saveFailed"), tr),
     );
   }
 }

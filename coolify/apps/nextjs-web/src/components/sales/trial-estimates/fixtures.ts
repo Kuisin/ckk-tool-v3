@@ -15,7 +15,7 @@ export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
     status: "REGISTERED",
     customerId: "bp-001",
     customerName: "株式会社ABC製作所",
-    productId: null,
+    itemId: null,
     productName: null,
     materialTypeId: "1",
     diameterCode: "001",
@@ -45,8 +45,6 @@ export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
       machiningMinutes: 6,
       machiningRatePer10min: 2000,
       spareShapeCount: 3,
-      lotQuantities: [100, 0, 0], // 基準数量（形状出し按分のみ）
-      lotMarkups: [1], // 掛け率は使わない（数量スケールは価格表の倍率で管理）
     },
     salesRepId: null,
     salesRepName: "鈴木 一郎",
@@ -61,7 +59,7 @@ export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
     status: "CONFIRMED",
     customerId: "bp-002",
     customerName: "合同会社XYZ工業",
-    productId: null,
+    itemId: null,
     productName: null,
     materialTypeId: "2",
     diameterCode: "002",
@@ -93,8 +91,6 @@ export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
       machiningMinutes: 40,
       machiningRatePer10min: 3000,
       spareShapeCount: 2,
-      lotQuantities: [5, 0, 0], // 基準数量（形状出し按分のみ）
-      lotMarkups: [1],
     },
     salesRepId: null,
     salesRepName: "田中 太郎",
@@ -109,7 +105,7 @@ export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
     status: "DRAFT",
     customerId: "bp-003",
     customerName: "株式会社DEFエンジニアリング",
-    productId: null,
+    itemId: null,
     productName: null,
     materialTypeId: "1",
     diameterCode: "001",
@@ -139,8 +135,6 @@ export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
       machiningMinutes: 12,
       machiningRatePer10min: 2500,
       spareShapeCount: 2,
-      lotQuantities: [10, 0, 0], // 基準数量（形状出し按分のみ）
-      lotMarkups: [1],
     },
     salesRepId: null,
     salesRepName: "中村 花子",

@@ -58,6 +58,7 @@ ROLE_ORDER = [
     "shipping",
     "accounting_manager",
     "accounting",
+    "master_editor",
     "viewer",
     "staff",
 ]

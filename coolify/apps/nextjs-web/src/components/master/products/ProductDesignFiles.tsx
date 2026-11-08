@@ -23,10 +23,11 @@ import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
 import { groupBySeries, pickThumbFile } from "@/lib/design-files-core";
 
 export function ProductDesignFiles({
-  productId,
+  itemId,
   files,
 }: {
-  productId: number;
+  /** 対象製品の品目 id（items.id — 設計図 PD26 の URL id と同じ空間）。 */
+  itemId: number;
   files: ProductDesignFile[];
 }) {
   const tr = useTranslations();
@@ -39,7 +40,7 @@ export function ProductDesignFiles({
           {tr("common.drawing")}
         </Text>
         <SecondaryButton
-          href={`/production/design-files/${productId}`}
+          href={`/production/design-files/${itemId}`}
           leftSection={<IconRuler2 size={14} />}
         >
           {tr("common.managedByDrawing")}

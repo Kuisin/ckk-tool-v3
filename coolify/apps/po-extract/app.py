@@ -95,7 +95,7 @@ def ARR(item):
     return {"type": "array", "items": item}
 
 # tables.md ORDER_TYPE
-ORDER_TYPE = ENUM("PRODUCTION", "TEST", "SAMPLE", "OTHER")
+ORDER_TYPE = ENUM("PRODUCTION", "TEST", "SAMPLE", "REGRIND", "OTHER")
 
 SCHEMAS = {
     "order-request": OBJ(
@@ -190,7 +190,9 @@ PROMPTS = {
         "printed.\n"
         "- customer_contact is that customer's contact person (担当/担当者), if printed.\n"
         "- order_type per item: PRODUCTION (本番/量産), TEST (テスト/試作), "
-        "SAMPLE (サンプル/無償), OTHER (その他); null when not stated.\n"
+        "SAMPLE (サンプル/無償), REGRIND (再研磨/再研/リグラインド/研ぎ直し — the "
+        "customer sends back used tools to be reground), OTHER (その他); "
+        "null when not stated.\n"
         "- version per item: drawing/revision number (版数, Rev, 図番改訂), if printed.\n"
         "- customization per item: special/custom work requested for that line "
         "(追加加工, 特記仕様, カスタム内容), verbatim.\n"

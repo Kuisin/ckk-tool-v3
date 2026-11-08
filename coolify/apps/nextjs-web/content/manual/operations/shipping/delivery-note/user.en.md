@@ -22,6 +22,9 @@ This app is for reviewing the **delivery note** (納品書) that goes together w
 - **通常納品 / ユーザー直送 (Normal delivery / Direct to end user)** … "通常納品" means delivering to the customer who ordered. "ユーザー直送" means delivering straight to the company that actually uses the product.
 - **最終需要家 (end user)** … The company that actually uses the product. It is the receiver when you deliver direct to the end user.
 - **価格記載 (show prices)** … The setting for whether unit prices and amounts appear on the delivery note.
+- **小計 (subtotal)** … The amount before consumption tax.
+- **消費税 (consumption tax)** … The tax on the subtotal. Worked out line by line from each **product's tax category** (standard 10% / reduced 8% / exempt). A tax category set on the business partner takes precedence over the product.
+- **合計金額（税込） (total including tax)** … The subtotal plus the tax.
 
 ## How to read the screen
 
@@ -52,9 +55,17 @@ The contents of a delivery note (delivery method, end user, show prices, quantit
 - To change the destination or whether prices are shown, fix the delivery method / end user on the underlying [order acceptance](/manual/en/operations/sales/order-acceptance/user) **before** confirming the shipping order.
 - If you notice a mistake after confirming, it has to be re-created from the correct order acceptance / shipping order — ask your administrator.
 
-The price-free delivery note made for a direct-to-end-user shipment shows **no amounts on the screen or in the PDF**.
+The price-free delivery note made for a direct-to-end-user shipment shows **no amounts on the screen or in the PDF** (no tax either).
 
 ![Delivery note without amounts](../../../assets/screenshots/delivery-note-detail-noprice-01.png)
+
+### How the tax appears
+
+A delivery note that shows prices shows **subtotal → consumption tax → total including tax**. The tax is listed **one line per rate** (「**消費税（10%）**」, 「**消費税（8%）**」 and so on). When rates are mixed, the taxable amount for each rate is shown next to it.
+
+> 💡 These amounts are worked out **the same way** as the [invoice](/manual/en/operations/billing/invoice/user) that follows. The tax on a delivery note and on its invoice never disagree.
+
+> 💡 The rate is written into each line **when the delivery order is confirmed**. Changing a [product](/manual/en/operations/masters/product/user) or a tax category afterwards does not move a delivery note that has already been made.
 
 ## Marking it delivered when it has arrived
 

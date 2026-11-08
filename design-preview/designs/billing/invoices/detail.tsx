@@ -29,7 +29,7 @@ import { useIsMobile } from '../../lib/viewport-context';
 import { IssueInvoiceModal } from './_modals/issue';
 import { SendInvoiceModal } from './_modals/send';
 import { MarkPaidInvoiceModal } from './_modals/mark-paid';
-import { YayoiExportInvoiceModal } from './_modals/yayoi-export';
+import { AccountingExportInvoiceModal } from './_modals/accounting-export';
 
 const INV = {
   invoiceNumber: 'INV-202605-00008',
@@ -44,7 +44,7 @@ const INV = {
   issuedAt: '2026-06-01 10:00',
   dueDate: '2026-06-30',
   sentAt: '2026-06-01 15:20',
-  yayoiExportedAt: '2026-06-02 09:00',
+  accountingExportedAt: '2026-06-02 09:00',
   createdBy: '佐藤 工場長',
   createdAt: '2026-06-01 09:30',
   updatedAt: '2026-06-01 15:20',
@@ -57,7 +57,7 @@ const ITEMS = [
 
 const AUDIT: AuditEntry[] = [
   { id: 1, action: 'UPDATE', user: '佐藤 工場長', at: '2026-06-01 15:20', detail: 'ステータス: ISSUED → SENT' },
-  { id: 2, action: 'EXPORT', user: 'システム', at: '2026-06-02 09:00', detail: '弥生会計 Next CSV エクスポート' },
+  { id: 2, action: 'EXPORT', user: 'システム', at: '2026-06-02 09:00', detail: '会計連携 CSV エクスポート' },
   { id: 3, action: 'UPDATE', user: 'システム', at: '2026-06-01 10:00', detail: 'ステータス: DRAFT → ISSUED（PDF生成・採番）' },
   { id: 4, action: 'CREATE', user: 'システム', at: '2026-06-01 09:30', detail: '締日処理により請求書を自動生成' },
 ];
@@ -67,7 +67,7 @@ export default function InvoiceDetailPage() {
   const [issueOpen, setIssueOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [paidOpen, setPaidOpen] = useState(false);
-  const [yayoiOpen, setYayoiOpen] = useState(false);
+  const [accountingOpen, setAccountingOpen] = useState(false);
 
   return (
     <DetailShell
@@ -83,15 +83,15 @@ export default function InvoiceDetailPage() {
             { label: '発行', icon: <IconSend size={14} />, onClick: () => setIssueOpen(true) },
             { label: '送付', icon: <IconSend size={14} />, onClick: () => setSendOpen(true) },
             { label: '支払済にする', icon: <IconCircleCheck size={14} />, onClick: () => setPaidOpen(true) },
-            { label: '弥生CSVエクスポート', icon: <IconFileExport size={14} />, divider: true, onClick: () => setYayoiOpen(true) },
+            { label: '会計連携CSVエクスポート', icon: <IconFileExport size={14} />, divider: true, onClick: () => setAccountingOpen(true) },
           ]}
         />
       }
     >
-      {/* 弥生エクスポート済み notice */}
-      {INV.yayoiExportedAt && (
+      {/* 会計連携へ書き出し済み notice */}
+      {INV.accountingExportedAt && (
         <Alert color="green" icon={<IconInfoCircle size={16} />} variant="light">
-          弥生会計 Next へ {formatDateTime(INV.yayoiExportedAt)} にエクスポート済みです。再エクスポートは二重計上の恐れがあるため注意してください。
+          会計ソフトへ {formatDateTime(INV.accountingExportedAt)} にエクスポート済みです。再エクスポートは二重計上の恐れがあるため注意してください。
         </Alert>
       )}
 
@@ -111,7 +111,7 @@ export default function InvoiceDetailPage() {
         <FieldValue label="発行日時" value={formatDateTime(INV.issuedAt)} />
         <FieldValue label="支払期限" value={formatDate(INV.dueDate)} />
         <FieldValue label="送付日時" value={formatDateTime(INV.sentAt)} />
-        <FieldValue label="弥生エクスポート日時" value={formatDateTime(INV.yayoiExportedAt)} />
+        <FieldValue label="会計連携日時" value={formatDateTime(INV.accountingExportedAt)} />
       </SummaryGrid>
 
       <Tabs defaultValue="items">
@@ -194,11 +194,11 @@ export default function InvoiceDetailPage() {
       <IssueInvoiceModal opened={issueOpen} onClose={() => setIssueOpen(false)} invoiceNumber={INV.invoiceNumber} />
       <SendInvoiceModal opened={sendOpen} onClose={() => setSendOpen(false)} invoiceNumber={INV.invoiceNumber} />
       <MarkPaidInvoiceModal opened={paidOpen} onClose={() => setPaidOpen(false)} invoiceNumber={INV.invoiceNumber} />
-      <YayoiExportInvoiceModal
-        opened={yayoiOpen}
-        onClose={() => setYayoiOpen(false)}
+      <AccountingExportInvoiceModal
+        opened={accountingOpen}
+        onClose={() => setAccountingOpen(false)}
         invoiceNumber={INV.invoiceNumber}
-        alreadyExportedAt={formatDateTime(INV.yayoiExportedAt)}
+        alreadyExportedAt={formatDateTime(INV.accountingExportedAt)}
       />
     </DetailShell>
   );

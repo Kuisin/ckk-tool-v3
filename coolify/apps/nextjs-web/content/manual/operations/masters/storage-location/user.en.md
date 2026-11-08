@@ -5,7 +5,7 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 ---
 This app is for registering **warehouses and storage areas where things are kept**, such as 資材倉庫A (material warehouse A), and the **shelves** inside them. The operation code is `MS0E`.
 
-Stock is kept separately down to "which shelf in which storage location it is on". In the stock transfer of [inventory management (在庫管理)](/manual/en/operations/production/product-inventory/user), you can move things between the places registered here.
+Stock is kept separately down to "which shelf in which storage location it is on". In the stock transfer of [inventory management (在庫管理)](/manual/en/operations/inventory/inventory-management/user), you can move things between the places registered here.
 
 > ⚠️ This app is in trial release. Depending on your environment, it may not be shown yet.
 
@@ -133,7 +133,7 @@ Turning it off removes it from storage pick lists. Notes are free text.
 ## Questions and problems
 
 **Q. I see 「この保管場所を参照する在庫があるため削除できません（在庫移動で空にするか、無効化してください）」 (this storage location cannot be deleted because stock refers to it; empty it with a stock transfer, or deactivate it).**
-A. There is still stock in that place. Either move the contents to another place with a stock transfer in [inventory management (在庫管理)](/manual/en/operations/production/product-inventory/user) to empty it, or turn off 「**有効**」 (active) on the edit screen to make it inactive. It is the same when you delete a shelf.
+A. There is still stock in that place. Either move the contents to another place with a stock transfer in [inventory management (在庫管理)](/manual/en/operations/inventory/inventory-management/user) to empty it, or turn off 「**有効**」 (active) on the edit screen to make it inactive. It is the same when you delete a shelf.
 
 **Q. If I delete a storage location, what happens to the shelves inside it?**
 A. They are deleted with it. The confirmation screen shows how many shelves will be deleted. This cannot be undone.

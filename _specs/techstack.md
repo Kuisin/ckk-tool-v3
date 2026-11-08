@@ -132,7 +132,7 @@ AI補助タスク:    同じ po-extract の /generate/<task>（紙なし・LLM 1
                 （製品・素材マスタのキーワード候補生成 — MS04/MS06）。
                 自前スキーマを渡す /generate も可。アプリ側は
                 nextjs-web の lib/po-extract.ts 経由。
-Notification:   nodemailer + Nextcloud API + SSE
+Notification:   mail-api（HTTP → SMTP。アプリは fetch 1 回）+ Nextcloud API + SSE
 Job Runner:     instrumentation.ts の setInterval（取込ポーラー・通知ダイジェスト・
                 締日オートラン）+ pg_cron（DB 側の定期処理）。
                 ※ BullMQ は**入れていない**（package.json にも無い）
@@ -141,7 +141,10 @@ Search Engine:  PGroonga
 Docs:           Markdown + Git管理
 
 # Data Integration
-Accounting:     弥生会計 Next（CSV export）
+Accounting:     TKC FX4クラウド（仕訳 CSV export）
+                列の並び・文字コード・既定の科目コードは SY0J 会計連携が
+                持つ（`lib/accounting-export-core.ts`）。会計ソフトの製品名は
+                画面にも DB の列名にも出さない — i18n-glossary §4 決定 19
 HR:             Samba AD sync（ldap-sync コンテナ + pg_cron の日次ジョブ）
 ```
 

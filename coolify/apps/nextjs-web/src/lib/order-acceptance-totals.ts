@@ -12,8 +12,8 @@
 
 /** 合計に必要な明細 1 行ぶん（詳細の view とエディタの行の共通部分）。 */
 export interface AcceptanceTotalsItem {
-  /** 製品マスタ突合済みの id。null = 製品未特定。 */
-  productId: string | null;
+  /** 突合済みの製品（品目 items.id）。null = 製品未特定。 */
+  itemId: string | null;
   quantity: number;
   /** 未入力は null（金額を出せない）。 */
   unitPrice: number | null;
@@ -47,7 +47,7 @@ export function acceptanceTotals(
   let unpricedCount = 0;
 
   for (const it of items) {
-    if (it.productId) products.add(it.productId);
+    if (it.itemId) products.add(it.itemId);
     else unmatchedCount += 1;
     const q = isFinitePositive(it.quantity) ? it.quantity : 0;
     quantity += q;

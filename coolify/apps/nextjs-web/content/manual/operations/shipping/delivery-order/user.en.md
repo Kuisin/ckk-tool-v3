@@ -111,7 +111,7 @@ The check window lists **the recipient of each delivery note about to be created
 2. Choose 「**出荷**」 (Ship).
 3. 「出荷の確認」 (Ship check) appears. Press 「**出荷する**」 (Ship).
 
-When you ship, today's date is recorded as the **出荷日 (shipping date)** and the status becomes 「**出荷済**」 (Shipped). At the same time, the [product stock](/manual/en/operations/production/product-inventory/user) goes down by the pieces you sent, and the order line changes by itself to "一部出荷" (Partly shipped) or "出荷済" (Shipped).
+When you ship, today's date is recorded as the **出荷日 (shipping date)** and the status becomes 「**出荷済**」 (Shipped). At the same time, the [product stock](/manual/en/operations/inventory/inventory-management/user) goes down by the pieces you sent, and the order line changes by itself to "一部出荷" (Partly shipped) or "出荷済" (Shipped).
 
 ### If you made a mistake (Cancel)
 
@@ -243,7 +243,7 @@ A. Quantities are filled from the connected work orders' finished output (within
 A. You are trying to send more pieces than were ordered on the same order line (the group header shows a red 「受注残 N を超えています」). Lower the quantity on this shipping order, or check what has already been shipped.
 
 **Q. I get 「在庫が不足」 (Not enough stock) and cannot ship.**
-A. The lot you chose does not have enough stock left for the pieces you want to send. Check the numbers in [product stock](/manual/en/operations/production/product-inventory/user) and try again.
+A. The lot you chose does not have enough stock left for the pieces you want to send. Check the numbers in [product stock](/manual/en/operations/inventory/inventory-management/user) and try again.
 
 **Q. I made a mistake and want to fix it, but 「編集」 (Edit) does not appear.**
 A. You can only edit while it is a 「下書き」 (Draft). After it is confirmed it cannot be fixed, so leave that shipping order as it is and make a new one with the correct contents.

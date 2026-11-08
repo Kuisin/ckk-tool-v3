@@ -21,22 +21,22 @@
 
 import { Badge, Group, Stack, Text } from "@mantine/core";
 import { useTranslations } from "next-intl";
-import { searchMaterialOptions } from "@/app/(dashboard)/_shared/option-search";
+import { searchMaterialItemOptions } from "@/app/(dashboard)/_shared/option-search";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import type { PurchaseIntakeLine } from "@/lib/purchase-intake-core";
 
 export interface MaterialPick {
-  materialId: string | null;
+  itemId: string | null;
   materialLabel: string | null;
 }
 
 /** 読み取った行が「いま」どういう状態か。 */
 export function matchState(
-  line: Pick<PurchaseIntakeLine, "materialId" | "candidates">,
+  line: Pick<PurchaseIntakeLine, "itemId" | "candidates">,
   autoMatched: boolean,
 ): "matched" | "picked" | "guess" | "unmatched" {
-  if (line.materialId) return autoMatched ? "matched" : "picked";
+  if (line.itemId) return autoMatched ? "matched" : "picked";
   return line.candidates.length > 0 ? "guess" : "unmatched";
 }
 
@@ -78,28 +78,26 @@ export function MaterialMatchField({
     <Stack gap={4}>
       <Group gap="xs" wrap="nowrap">
         <SearchSelect
-          error={
-            line.materialId ? undefined : tr("purchase.intake.pickMaterial")
-          }
+          error={line.itemId ? undefined : tr("purchase.intake.pickMaterial")}
           flex={1}
           initialOption={
-            line.materialId
+            line.itemId
               ? {
-                  value: line.materialId,
-                  label: line.materialLabel ?? line.materialId,
+                  value: line.itemId,
+                  label: line.materialLabel ?? line.itemId,
                 }
               : null
           }
           onChange={(value, option) =>
             onPick({
-              materialId: value,
+              itemId: value,
               materialLabel: option?.label ?? null,
             })
           }
-          onSearch={searchMaterialOptions}
+          onSearch={searchMaterialItemOptions}
           placeholder={tr("common.searchMaterials")}
-          storageKey="material"
-          value={line.materialId}
+          storageKey="materialItem"
+          value={line.itemId}
         />
         <Badge
           className="shrink-0"
@@ -118,7 +116,7 @@ export function MaterialMatchField({
       )}
 
       {/* 絞れなかったときの「もしかして」。押すとその場で入る。 */}
-      {!line.materialId && line.candidates.length > 0 && (
+      {!line.itemId && line.candidates.length > 0 && (
         <Group gap="xs" wrap="wrap">
           <Text c="dimmed" size="xs">
             {tr("purchase.intake.didYouMean")}
@@ -126,9 +124,7 @@ export function MaterialMatchField({
           {line.candidates.map((c) => (
             <SecondaryButton
               key={c.id}
-              onClick={() =>
-                onPick({ materialId: c.id, materialLabel: c.label })
-              }
+              onClick={() => onPick({ itemId: c.id, materialLabel: c.label })}
               size="xs"
             >
               {c.label}

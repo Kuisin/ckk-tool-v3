@@ -99,6 +99,12 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
     group: "business",
   },
   {
+    code: "estimate_cost",
+    label: localizedLabel("permission.PERMISSIONS.estimate_cost.label"),
+    summary: localizedLabel("permission.PERMISSIONS.estimate_cost.summary"),
+    group: "business",
+  },
+  {
     code: "design_file",
     label: localizedLabel("permission.PERMISSIONS.design_file.label"),
     summary: localizedLabel("permission.PERMISSIONS.design_file.summary"),

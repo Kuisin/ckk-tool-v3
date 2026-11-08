@@ -53,6 +53,7 @@ import {
   type DefectReasonEntry,
   quantitiesFromList,
 } from "@/lib/steps-core";
+import { REGRIND_RECEIPT_STEP_CODE } from "@/lib/workflow-core";
 import { ActivityMonitor } from "../ActivityMonitor";
 import { useI18n } from "../I18nProvider";
 import { QrScannerView } from "../QrScannerView";
@@ -439,7 +440,11 @@ export function StepExecutionView({
               ) : (
                 <>
                   <NumberStepper
-                    label={m.steps.quantity[trackedMode].input}
+                    label={
+                      step.stepCode === REGRIND_RECEIPT_STEP_CODE
+                        ? m.steps.quantity.REGRIND_RECEIPT.input
+                        : m.steps.quantity[trackedMode].input
+                    }
                     min={0}
                     onChange={setStartInput}
                     value={startInput}
@@ -556,9 +561,11 @@ export function StepExecutionView({
                     <StepQuantityForm
                       defects={defects}
                       defectTypes={recording.defectTypes}
+                      hideSemi={step.workOrderType === "REGRIND"}
                       inputQuantity={completeInput}
                       mode={trackedMode}
                       onChange={setDefects}
+                      stepCode={step.stepCode}
                     />
                   )}
                   <Group grow>

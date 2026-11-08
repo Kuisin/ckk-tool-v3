@@ -20,12 +20,26 @@ import { productMatchKey } from "./product-match";
 /**
  * 学習対象のマスタ（テーブル名 — audit と同じ多態規約）。
  *
- * `materials` は購買側の取込（仕入先の見積書・納品書）が使う。素材コードと
- * 素材名は製品と同じ揺れ方（寸法記号・全角半角）をするので、正規化は
- * `productMatchKey` を共用する — 別の鍵にすると同じ表記が 2 通りに落ちて、
- * 覚えたのに引けない状態になる。
+ * 品目統合 第 3 段で `products` / `materials` を **`items` 1 つ**に畳んだ。
+ * 製品も素材も 1 つの品目マスタになったので、学習の行き先も 1 つで足りる。
+ * 正規化はもともと両方 `productMatchKey` を共用していた（素材コードと素材名は
+ * 製品名と同じ揺れ方 — 寸法記号・全角半角 — をするため）ので、畳んでも
+ * 同じ表記が 2 通りの鍵に落ちることはない。
+ *
+ * **1 表記 = 1 マスタ**（unique(target_type, alias_key)）なので、製品と素材で
+ * 同じ表記を別々に覚えることはできなくなった。ただし害は無い —
+ * 突合側は引いた品目の `itemType` を必ず確かめる（販売側は PRODUCT、購買側は
+ * MATERIAL のプール）ので、相手の型の学習が当たっても素通りして推測へ落ちる。
+ *
+ * **値の集合は DB 側の CHECK（match_aliases_target_type_check）と揃えること。**
+ * 揃っていないと INSERT が弾かれ、`saveAliasLearnings` の try/catch が握り潰す
+ * ので誰も気づかない — `materials` を足したときに実際そうなっていた（CHECK を
+ * 広げ忘れたまま購買側の学習を書いていたので、**素材の学習は 1 件も保存されて
+ * いなかった**）。`match-alias-target-guard.test.ts` がこの 2 つを突き合わせる。
  */
-export type MatchAliasTarget = "business_partners" | "products" | "materials";
+export const MATCH_ALIAS_TARGETS = ["business_partners", "items"] as const;
+
+export type MatchAliasTarget = (typeof MATCH_ALIAS_TARGETS)[number];
 
 /** 学習する 1 件。 */
 export interface AliasLearning {
@@ -46,8 +60,8 @@ const MIN_ALIAS_LEN = 2;
 
 /**
  * 対象ごとの正規化（突合で使うものと同じ関数を使う — ずれると引けない）。
- * products / materials は同じ `productMatchKey`（lib/material-match も同じ
- * 鍵で突合する）。
+ * 品目（製品・素材）はどちらも `productMatchKey`（lib/product-match /
+ * lib/material-match が同じ鍵で突合する）。
  */
 export function aliasKeyFor(targetType: MatchAliasTarget, raw: string): string {
   return targetType === "business_partners"
@@ -73,8 +87,8 @@ export function aliasLearning(
 export interface AliasItemState {
   /** 抽出された品名（印字されたまま）。 */
   productText: string | null;
-  /** 突合済みの製品 id（未突合は null）。 */
-  productId: string | null;
+  /** 突合済みの品目 id（**items.id**。未突合は null）。 */
+  itemId: string | null;
 }
 
 /**
@@ -82,10 +96,10 @@ export interface AliasItemState {
  *
  * 対象は「**人が結び付けた**」もの:
  *  - 顧客: 保存後に顧客が入っていて、保存前と違う（未特定 → 特定 / 付け替え）
- *  - 明細: その品名に対する製品が、保存前と違う（未特定 → 特定 / 付け替え）
+ *  - 明細: その品名に対する品目が、保存前と違う（未特定 → 特定 / 付け替え）
  *
  * 明細は保存のたびに作り直される（id が変わる）ので、**品名で突き合わせる**。
- * 同じ品名の行が複数あって別々の製品に結ばれている書類は、どちらを覚えるべきか
+ * 同じ品名の行が複数あって別々の品目に結ばれている書類は、どちらを覚えるべきか
  * 決められないので**学習しない**（曖昧なものを覚えると害の方が大きい）。
  */
 export function aliasLearnings(input: {
@@ -106,13 +120,13 @@ export function aliasLearnings(input: {
     if (learning) out.push(learning);
   }
 
-  // 品名 → 保存前の製品（同じ品名が別の製品に結ばれていたら曖昧なので捨てる）。
+  // 品名 → 保存前の品目（同じ品名が別の品目に結ばれていたら曖昧なので捨てる）。
   const beforeByText = indexByText(input.items.before);
   const afterByText = indexByText(input.items.after);
-  for (const [text, productId] of afterByText) {
-    if (productId == null) continue; // まだ未突合の行
-    if (beforeByText.get(text) === productId) continue; // 人が触っていない
-    const learning = aliasLearning("products", productId, text);
+  for (const [text, itemId] of afterByText) {
+    if (itemId == null) continue; // まだ未突合の行
+    if (beforeByText.get(text) === itemId) continue; // 人が触っていない
+    const learning = aliasLearning("items", itemId, text);
     if (learning) out.push(learning);
   }
   return out;
@@ -121,7 +135,7 @@ export function aliasLearnings(input: {
 const AMBIGUOUS = Symbol("ambiguous");
 
 /**
- * 品名 → 製品 id の索引。同じ品名が別の製品に結ばれていたら、その品名は
+ * 品名 → 品目 id の索引。同じ品名が別の品目に結ばれていたら、その品名は
  * 覚えない（undefined を返して比較から外す）。
  */
 function indexByText(
@@ -132,8 +146,8 @@ function indexByText(
     const text = it.productText?.trim();
     if (!text) continue;
     const seen = map.get(text);
-    if (seen === undefined) map.set(text, it.productId);
-    else if (seen !== it.productId) map.set(text, AMBIGUOUS);
+    if (seen === undefined) map.set(text, it.itemId);
+    else if (seen !== it.itemId) map.set(text, AMBIGUOUS);
   }
   const out = new Map<string, string | null | undefined>();
   for (const [text, v] of map) {

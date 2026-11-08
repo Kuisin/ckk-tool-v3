@@ -22,11 +22,7 @@ import type {
 import type { HistoryEntry } from "@/lib/approvals";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import {
-  formatProductNumber,
-  formatQuoteNumber,
-  orderLineNumberOf,
-} from "@/lib/doc-number";
+import { formatQuoteNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 import { label } from "@/lib/messages";
@@ -55,7 +51,7 @@ const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
  */
 const LIST_INCLUDE = {
   orderLine: true,
-  product: true,
+  item: true,
   // 版が載る系列（受注元）。一覧でも「誰向けの図面か」が要る。
   customerBp: { select: { name: true } },
   createdByUser: { select: { displayName: true } },
@@ -72,6 +68,10 @@ const DETAIL_INCLUDE = {
   files: {
     include: { file: true },
     orderBy: [{ version: "desc" as const }, { role: "asc" as const }],
+  },
+  versions: {
+    select: { id: true, version: true, status: true },
+    orderBy: { version: "desc" as const },
   },
 };
 
@@ -94,18 +94,19 @@ function findListRows(where: Prisma.DesignRequestWhereInput = {}) {
   });
 }
 
-/** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
-function productLabel(p: {
-  name: unknown;
-  yearMonth: string | null;
-  seq: number | null;
-}): string {
-  const code = formatProductNumber(p.yearMonth, p.seq);
-  const name = localized(p.name as LocalizedText | null);
-  return code ? `${name} ${code}` : name;
+/** 品目（items.id）ラベル: 名称 + コード（items.code は既に整形済み）。 */
+function itemLabel(item: { name: unknown; code: string | null }): string {
+  const name = localized(item.name as LocalizedText | null);
+  return item.code ? `${name} ${item.code}` : name;
 }
 
-/** 参照元・製品・担当者など、一覧と詳細で共通の射影。 */
+/**
+ * 参照元・製品・担当者など、一覧と詳細で共通の射影。
+ *
+ * 製品は `itemId`（items.id）1 本だけ — 設計図 (PD06) と製品マスタ (MS04) も
+ * 同じ id 空間へ移した（品目統合 第 3 段）ので、旧 products.id へ落とす
+ * 中継は要らなくなった。
+ */
 function mapCommon(r: ListRow) {
   return {
     id: r.requestNumber,
@@ -118,8 +119,8 @@ function mapCommon(r: ListRow) {
         : null,
     orderLineId: r.orderLineId,
     orderLineNumber: r.orderLine ? orderLineNumberOf(r.orderLine) : null,
-    productId: r.productId != null ? String(r.productId) : null,
-    productName: r.product ? productLabel(r.product) : null,
+    itemId: r.itemId != null ? String(r.itemId) : null,
+    productName: r.item ? itemLabel(r.item) : null,
     customerBpId: r.customerBpId,
     customerName: localized(r.customerBp?.name as LocalizedText | null) || null,
     description: r.description,
@@ -210,7 +211,12 @@ export async function fetchDesignRequests(): Promise<DesignRequest[]> {
     designRequestScope(authz.access, authz.userId),
   );
   // 一覧は履歴・版を描かないので空で返す（型は詳細と共有する）。
-  return rows.map((r) => ({ ...mapCommon(r), history: [], files: [] }));
+  return rows.map((r) => ({
+    ...mapCommon(r),
+    history: [],
+    files: [],
+    versions: [],
+  }));
 }
 
 /** 1件取得 — 未存在・スコープ外は null。 */
@@ -236,6 +242,11 @@ export async function fetchDesignRequest(
       sizeBytes: Number(f.file.sizeBytes ?? 0),
       notes: f.notes,
       createdAt: f.createdAt.toISOString(),
+    })),
+    versions: row.versions.map((v) => ({
+      id: v.id,
+      version: v.version,
+      status: v.status,
     })),
   };
 }
@@ -283,11 +294,17 @@ export function fetchDesignRequestsForOrderLine(
   return fetchLinks({ orderLineId, status: { not: "CANCELLED" } });
 }
 
-/** 製品に紐づく設計依頼（製品詳細 関連タブ）。 */
-export function fetchDesignRequestsForProduct(
-  productId: number,
+/**
+ * 製品に紐づく設計依頼（製品詳細 関連タブ）。
+ * `productId` は products.id（呼び出し側は製品マスタの URL 文脈のまま） —
+ * design_requests 自体の絞り込みは品目 (items.id) で行うので、ここで
+ * 1 回だけ変換する。
+ */
+/** 製品（品目 items.id）の設計依頼。製品マスタ MS24 の 関連 タブ。 */
+export async function fetchDesignRequestsForItem(
+  itemId: number,
 ): Promise<DesignRequestLink[]> {
-  return fetchLinks({ productId, status: { not: "CANCELLED" } });
+  return fetchLinks({ itemId, status: { not: "CANCELLED" } });
 }
 
 export interface QuoteOption {
@@ -301,21 +318,23 @@ export interface QuoteOption {
  * フォームが「新規/改訂の根拠」と「元図面の選択肢」を同時に要るので 1 回で返す。
  * 判定規則そのものは actions.ts の detectDesignKind と同じ（design_files の存在）
  * — あちらは保存する値を決め、こちらは画面に見せる。
+ *
+ * `itemId` は品目（items.id）— フォームのピッカーが選ぶ値そのまま。
  */
 export async function fetchDesignKindContext(
-  productId: string,
+  itemId: string,
   customerBpId: string | null = null,
 ): Promise<{
   detection: DesignKindDetection;
   versions: QuoteOption[];
 } | null> {
-  const id = Number(productId);
+  const id = Number(itemId);
   if (!Number.isInteger(id) || id <= 0) return null;
   // 版は (製品 × 受注元) ごとの系列なので、**その系列だけ**を見て数える。
   // 「顧客 A には図面があるが B にはまだ無い」は B から見れば新規で、
   // 製品全体で数えると改訂に見えてしまう。
   const rows = await prisma.designFile.findMany({
-    where: { productId: id, customerBpId },
+    where: { itemId: id, customerBpId },
     include: { file: { select: { filename: true } } },
     orderBy: [{ version: "desc" }, { role: "asc" }],
     take: 50,
@@ -408,13 +427,21 @@ export async function fetchOrderLineDeliveryDate(
   return r?.deliveryDate ? r.deliveryDate.toISOString().slice(0, 10) : null;
 }
 
-/** 製品 1 件の参照解決（`?product=<id>` プリフィル用）。 */
-export async function fetchProductRef(
-  productId: string,
+/**
+ * 品目 1 件の参照解決（`?item=<items.id>` プリフィル用）。
+ *
+ * 製品マスタ・見積フォームの「単価が引けない → 設計依頼を起票」からの入口。
+ * 旧 `?product=<products.id>` は旧マスタと一緒に廃止した（品目統合 第 3 段）—
+ * 読み替える対応表がもう無く、連番同士なので黙って別の品目が当たる。
+ */
+export async function fetchProductItemRef(
+  itemId: string,
 ): Promise<QuoteOption | null> {
-  const id = Number(productId);
+  const id = Number(itemId);
   if (!Number.isInteger(id) || id <= 0) return null;
-  const r = await prisma.product.findUnique({ where: { id } });
+  const r = await prisma.item.findFirst({
+    where: { id, itemType: "PRODUCT" },
+  });
   if (!r) return null;
-  return { value: String(r.id), label: productLabel(r) };
+  return { value: String(r.id), label: itemLabel(r) };
 }

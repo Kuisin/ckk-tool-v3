@@ -33,7 +33,7 @@ const fixtureTr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
 /** Fixture-bound resolver — 価格表 fixtures + (顧客 × 製品 × 種別 × 数量). */
 export function resolveUnitPrice(
   customerId: string,
-  productId: string,
+  itemId: string,
   orderType: string,
   quantity: number,
   tr: Tr,
@@ -42,7 +42,7 @@ export function resolveUnitPrice(
   return resolveUnitPriceFromEntries(
     MOCK_PRICE_ENTRIES,
     customerId,
-    productId,
+    itemId,
     orderType,
     quantity,
     tr,
@@ -67,7 +67,7 @@ export function priceEntriesForQuote(q: Quote, tr: Tr) {
 function buildItem(
   id: string,
   customerId: string,
-  productId: string,
+  itemId: string,
   productName: string,
   orderType: string,
   quantity: number,
@@ -78,7 +78,7 @@ function buildItem(
 ): QuoteItem {
   const resolved = resolveUnitPrice(
     customerId,
-    productId,
+    itemId,
     orderType,
     quantity,
     fixtureTr,
@@ -87,7 +87,10 @@ function buildItem(
   const discountAmount = resolved?.discountAmount ?? 0;
   return {
     id,
-    productId,
+    itemId,
+    // 価格の試験しか使わない見本なので、帳票にしか出ない製品コードは持たせない
+    // （採番前のレガシー品目と同じ形 = 欄が空で刷られる）。
+    productCode: null,
     productName,
     orderType,
     quantity,

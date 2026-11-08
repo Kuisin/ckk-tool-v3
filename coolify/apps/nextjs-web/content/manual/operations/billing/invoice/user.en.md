@@ -50,7 +50,7 @@ When you open the app, you see a list of the invoices made so far.
 At the top you see the invoice number, customer, billing period, subtotal, consumption tax, total with tax, payment due date, and issue date.
 
 - **支払期限 (Payment due date)** … Filled in for you: the cut-off date plus the number of days agreed with that customer (30 days if nothing was agreed).
-- **弥生エクスポート (Yayoi export)** … The date and time the file for the accounting software was made. If it has not been made yet, it shows 「**未エクスポート**」 (Not exported).
+- **会計連携日時 (Accounting export date)** … The date and time the file for the accounting software was made. If it has not been made yet, it shows 「**未エクスポート**」 (Not exported).
 
 The 「明細」 (Lines) area below lists each line you are billing.
 
@@ -104,13 +104,13 @@ After issuing, press 「**PDF**」 at the top right of the screen and the invoic
 
 ## Making the file for the accounting software
 
-You can download a file for the accounting team to read into the accounting software (弥生会計 Next / Yayoi Kaikei Next).
+You can download a file for the accounting team to read into the accounting software (TKC FX4 Cloud).
 
 1. On the invoice screen, press 「**…**」 at the top right.
-2. Choose 「**弥生会計CSV**」 (Yayoi accounting CSV).
+2. Choose 「**会計連携CSV**」 (Accounting CSV).
 3. The file is downloaded — read it into the accounting software.
 
-After you make it, the date and time appear in the 「**弥生エクスポート**」 (Yayoi export) box on the detail screen.
+After you make it, the date and time appear in the 「**会計連携日時**」 (Accounting export date) box on the detail screen.
 
 ## Input fields
 
@@ -156,7 +156,7 @@ A. The tax comes from each **product's tax category**. Check the product's 「�
 **Q. If I change a tax category later, does the tax on an issued invoice change?**
 A. No. The rate is written into each line when the invoice is created. Changing a product or a tax category afterwards does not move an invoice that has already been issued.
 
-**Q. I press 「弥生会計CSV」 but no file comes out.**
+**Q. I press 「会計連携CSV」 but no file comes out.**
 A. You may not have the export permission. Please ask your administrator.
 
 <!-- permissions:start -->
