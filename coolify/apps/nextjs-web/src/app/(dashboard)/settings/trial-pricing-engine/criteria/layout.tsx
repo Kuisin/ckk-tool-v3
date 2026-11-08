@@ -31,7 +31,7 @@ export default async function CriteriaLayout({
           title={tr("common.calculationBasis")}
         />
       }
-      initialMasterWidth={380}
+      initialMasterWidth={300}
       master={
         <CriteriaListPanel
           initial={settings.criteria}
