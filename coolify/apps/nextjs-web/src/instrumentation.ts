@@ -45,6 +45,18 @@ export async function register() {
   }, digestTick);
   process.on("SIGTERM", () => clearInterval(digestTimer));
 
+  // 外向き Webhook（監査ログ → 送信ボックス → 配送）。`api` 機能が閉じている
+  // 環境では runWebhookTick が何もしない。刻みは配送の遅延の上限になる
+  // （既定 10 秒）。再入しないので、遅い宛先で刻みが重なることはない。
+  const { runWebhookTick } = await import("./lib/webhook-dispatcher");
+  const webhookTimer = setInterval(
+    () => {
+      runWebhookTick().catch((e) => console.error("[webhook] tick", e));
+    },
+    intervalMs("WEBHOOK_TICK_MS", 10_000),
+  );
+  process.on("SIGTERM", () => clearInterval(webhookTimer));
+
   // 抽出待ちのまま落ちた行の拾い直し（優先取込はプロセス内キューで動くため、
   // コンテナが入れ替わると待機分が消える）。十分に古い行だけを対象にするので、
   // ローリングデプロイで旧コンテナが処理中の行を横取りしない。

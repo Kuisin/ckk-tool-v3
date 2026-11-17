@@ -82,6 +82,7 @@ model ApiClient {
 
   tokens     ApiClientToken[]
   accessLogs ApiAccessLog[]
+  webhooks   WebhookEndpoint[]
 
   @@index([isActive])
   @@map("api_clients")
@@ -203,5 +204,103 @@ model ApiIdempotencyKey {
   @@id([clientId, key])
   @@index([createdAt])
   @@map("api_idempotency_keys")
+  @@schema("app")
+}
+
+// ===========================
+// 外向き Webhook（このシステム → n8n などの外部）
+// ===========================
+//
+// 設計の全体は `_specs/api.md` §9。ここには**あとから効いてくる判断**だけを書く。
+//
+// ■ 出どころは audit_logs（業務コードには 1 行も足さない）
+// 業務の書き込みは必ず recordAudit を通る。ディスパッチャ（lib/webhook-dispatcher.ts）
+// が audit_logs.id を**単調増加のカーソル**として追い、購読に合う行だけを
+// webhook_deliveries へ積む（送信ボックス）。Server Action の中に発火点を
+// 散らすと、新しい書き込みを足すたびに「通知を足し忘れる」が起きる。
+//
+// ■ 送るのは**合図**で、中身ではない（realtime バスと同じ約束）
+// 本文は「何が・どの書類に・いつ起きたか」まで。値そのもの（金額・住所）は
+// 載せない — 受け取った側が /api/v1 を引き直す。そうすると認可・行スコープ・
+// DTO の規則が **1 か所**（API）に残り、Webhook が 2 つ目の漏えい口にならない。
+//
+// ■ 主体は api_clients（購読は「そのクライアントが読めるもの」だけ）
+// 購読を作った時点ではなく**送る時点**で、バックのユーザーの実効権限
+// （decide）を引き直す。権限を外したら、購読を消さなくても配送は止まる。
+//
+// ■ 秘密（署名鍵）は secret-box で暗号化して持つ
+// 署名には生値が要る（トークンのようにハッシュでは足りない）ので、
+// AES-256-GCM の封筒（SETTINGS_ENCRYPTION_KEY）で持つ。画面には生値を 1 度だけ
+// 見せ、以後は下 4 桁だけ。metabase_ro からは剥がす（sql/grants.sql）。
+
+/// 送信先 1 つ = 1 行。購読するイベント種別と署名鍵を持つ。
+model WebhookEndpoint {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 権限の主体（どの API クライアントの目で見えるものを送るか）。
+  clientId String @map("client_id") @db.Uuid
+  /// 人が見分けるための名前（「n8n 受注連携」など）。クライアント内で一意。
+  name     String @db.VarChar(120)
+  /// 送信先 URL。https、または社内（private / .loc / 単一ラベルのホスト名）の http。
+  /// 検証は lib/webhook-core.ts validateWebhookUrl が唯一の定義元。
+  url      String @db.VarChar(2048)
+  /// 購読するイベント種別（`order_acceptance.created` など）。`*` は全種別。
+  /// **空配列は何も送らない**（空を「全部」にすると、作った直後に全件が飛ぶ）。
+  eventTypes String[] @default([]) @map("event_types")
+  /// secret-box の封筒（Sealed）。生値は作成・再発行の応答に 1 度だけ現れる。
+  secret Json
+
+  isActive Boolean @default(true) @map("is_active")
+  /// 配送が尽きた（全再試行が失敗した）回数の連続。成功で 0 に戻る。
+  /// 閾値を超えたら自動で無効化する（死んだ宛先に延々と積み続けない）。
+  consecutiveFailures Int       @default(0) @map("consecutive_failures")
+  disabledAt          DateTime? @map("disabled_at") @db.Timestamptz(6)
+  disabledReason      String?   @map("disabled_reason") @db.VarChar(200)
+
+  lastDeliveredAt DateTime? @map("last_delivered_at") @db.Timestamptz(6)
+  createdBy       String?   @map("created_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  client     ApiClient         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@unique([clientId, name])
+  @@index([isActive])
+  @@map("webhook_endpoints")
+  @@schema("app")
+}
+
+/// 配送 1 件 = 1 行（送信ボックス）。イベント × 送信先で 1 行。
+///
+/// (endpoint_id, audit_event_id, event_type) が unique なので、ディスパッチャが
+/// 同じ監査行を 2 度読んでも二重に積まれない（積む処理は冪等）。
+/// 受け取り側の重複排除用には `event_id`（= webhook-id ヘッダ）を使う — 再送でも
+/// 同じ値になる。
+model WebhookDelivery {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  endpointId  String @map("endpoint_id") @db.Uuid
+  /// 起点の監査行。ping（疎通確認）は null。
+  auditEventId BigInt? @map("audit_event_id")
+  eventType    String   @map("event_type") @db.VarChar(80)
+  /// 送った本文（JSON 文字列そのもの）。署名は**この文字列**に対して計算するので、
+  /// 再送でも 1 バイトも変わらない。
+  payload      String
+
+  /// PENDING = 送信待ち（次回試行は next_attempt_at）/ SUCCEEDED / FAILED = 打ち切り。
+  status        String    @default("PENDING") @db.VarChar(12)
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime  @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  lastStatus    Int?      @map("last_status")
+  /// 直近の失敗理由（応答本文は保存しない — 相手の内部情報が混ざりうる）。
+  lastError     String?   @map("last_error") @db.VarChar(300)
+  deliveredAt   DateTime? @map("delivered_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@unique([endpointId, auditEventId, eventType])
+  @@index([status, nextAttemptAt])
+  @@index([endpointId, createdAt(sort: Desc)])
+  @@map("webhook_deliveries")
   @@schema("app")
 }
