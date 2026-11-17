@@ -2676,6 +2676,40 @@ Table display_link_requests {
 }
 ```
 
+### Webhook（外向き）
+
+実装の正は `shared-db/prisma/schema/api.prisma`。設計は `_specs/api.md` §9。
+
+```
+// 送信先 1 つ = 1 行。購読するイベント種別と署名鍵（secret-box の封筒）を持つ。
+// 権限の主体は api_clients（送る時点で背後ユーザーの実効権限を引き直す）。
+Table webhook_endpoints {
+  id            uuid [pk]
+  client_id     uuid [not null, ref: > api_clients.id]   // 削除は Cascade
+  name          varchar(120) [not null]                  // (client_id, name) unique
+  url           varchar(2048) [not null]                 // https / 社内 http のみ
+  event_types   "text[]" [default: '{}']                 // '*' は全種別。空は何も送らない
+  secret        json [not null]                          // AES-256-GCM の封筒。生値は 1 度だけ
+  is_active     boolean [default: true]
+  consecutive_failures int [default: 0]                  // 5 で自動無効化
+  disabled_at / disabled_reason / last_delivered_at
+  created_by uuid; created_at / updated_at timestamp
+}
+
+// 配送 1 件 = 1 行（送信ボックス）。(endpoint_id, audit_event_id, event_type) unique。
+Table webhook_deliveries {
+  id uuid [pk]
+  endpoint_id    uuid [not null, ref: > webhook_endpoints.id]
+  audit_event_id bigint            // 起点の audit_logs.id。ping は null
+  event_type     varchar(80)
+  payload        text              // 送った文字列そのもの（署名は再送でも不変）
+  status         varchar(12)       // PENDING | SUCCEEDED | FAILED
+  attempts int; next_attempt_at timestamp   // 借り（リース）にも使う
+  last_status int; last_error varchar(300)  // 応答本文は保存しない
+  delivered_at / created_at timestamp
+}
+```
+
 ### Security（認証イベント）
 
 ```

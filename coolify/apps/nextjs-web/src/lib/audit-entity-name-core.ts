@@ -60,6 +60,7 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   // ── 素の String 列 ───────────────────────────────────────────────────
   portal_accounts: true, // displayName
   api_clients: true, // name（外部システムの識別名）
+  webhook_endpoints: true, // name（送信先の名前）
   // トークンの身元は last4 で、label は任意入力。名前として出すと
   // 「label を書かなかったトークン」が全部無名で並ぶので、正直に「無い」にする。
   api_client_tokens: false,

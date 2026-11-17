@@ -1948,6 +1948,10 @@
         "activate": {
           "label": "启用 API 客户端",
           "description": "将新建后尚不能通行的客户端，变为可实际读取业务数据的状态"
+        },
+        "webhook_manage": {
+          "label": "管理出站 Webhook",
+          "description": "创建或扩大向外部发送业务数据变化的通道。包括添加接收地址、更改 URL、重新签发签名密钥和启用"
         }
       }
     },
@@ -9261,7 +9265,8 @@
       "stock_take_lines": "盘点明细",
       "item_inventory": "库存",
       "movement_types": "移动类型",
-      "items": "品目"
+      "items": "品目",
+      "webhook_endpoints": "Webhook 接收地址"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -10631,7 +10636,43 @@
     "tooManyActiveTokens": "最多只能有两个有效令牌，请先撤销其中一个。",
     "clientNotFound": "未找到该客户端",
     "featureDisabled": "此环境中外部 API 已停用",
-    "invalidNameChars": "名称包含不允许使用的字符"
+    "invalidNameChars": "名称包含不允许使用的字符",
+    "webhooksTitle": "出站 Webhook",
+    "webhooksIntro": "业务数据发生变化时，向 n8n 等外部系统发送“发生了什么”的信号。不发送具体数值，由接收方通过 API 重新获取。",
+    "webhookCreateTitle": "添加 Webhook 接收地址",
+    "webhookCreateHint": "仅发送所选 API 客户端有权读取的资源的事件。移除其权限后，无需删除接收地址即可停止发送。",
+    "webhookUrl": "接收地址 URL",
+    "webhookUrlHelp": "https，或内部主机（Docker 服务名、私有 IP、.loc）的 http。URL 中常含密钥，因此列表中隐藏其路径。",
+    "webhookEvents": "事件",
+    "webhookEvent": "事件",
+    "webhookAllEvents": "全部事件",
+    "webhookEventCount": "{count} 种",
+    "webhookClient": "API 客户端",
+    "webhookClientHelp": "仅发送此客户端有权读取的资源的事件。",
+    "webhookLastDelivered": "最近发送",
+    "webhookPending": "待发送 {count}",
+    "webhookFailed": "失败 {count}",
+    "webhookEmpty": "尚无接收地址。",
+    "webhookTest": "测试发送",
+    "webhookTestOk": "已送达（HTTP {status}）",
+    "webhookTestFailed": "未送达：{error}",
+    "webhookDeliveries": "发送记录",
+    "webhookDeliveriesEmpty": "尚无发送记录。",
+    "webhookAttempts": "尝试次数",
+    "webhookResult": "结果",
+    "webhookNextAttempt": "下次尝试：{at}",
+    "webhookRedeliver": "重发",
+    "webhookRotate": "重新签发签名密钥",
+    "webhookRotateConfirm": "当前签名密钥将立即失效。在接收方更换新密钥之前，签名验证无法通过。",
+    "webhookSecretTitle": "签名密钥",
+    "webhookDeleteConfirm": "将删除此接收地址及其发送记录。",
+    "webhookInvalidUrl": "接收地址 URL 不可用：{detail}",
+    "webhookInvalidEvents": "请至少选择一个事件。",
+    "webhookNoKey": "未设置用于保存签名密钥的加密密钥（{env}）。",
+    "webhookDuplicateName": "该 API 客户端下已有同名接收地址。",
+    "webhookNotFound": "未找到接收地址。",
+    "webhookSecretUnavailable": "无法打开签名密钥。请重新签发签名密钥。",
+    "webhookNotRedeliverable": "只能重发失败的发送记录。"
   },
   "charges": {
     "title": "附加费用",

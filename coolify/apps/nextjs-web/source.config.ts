@@ -10,11 +10,21 @@
  * 配信のため processed Markdown を含める。
  */
 
-import { defineConfig, defineDocs } from "fumadocs-mdx/config";
+import {
+  defineConfig,
+  defineDocs,
+  frontmatterSchema,
+} from "fumadocs-mdx/config";
+import { z } from "zod";
 
 export const manual = defineDocs({
   dir: "content/manual",
   docs: {
+    // `_openapi` は fumadocs-openapi が生成するリファレンスの目印
+    // （content/manual/integration/reference — 生成物。api-docs-sync.test.ts）。
+    schema: frontmatterSchema.extend({
+      _openapi: z.looseObject({}).optional(),
+    }),
     postprocess: { includeProcessedMarkdown: true },
   },
 });

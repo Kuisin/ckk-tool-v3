@@ -1948,6 +1948,10 @@
         "activate": {
           "label": "Activate an API client",
           "description": "Turn a client that passes nothing into one that can actually read business data"
+        },
+        "webhook_manage": {
+          "label": "Manage outbound webhooks",
+          "description": "Create or widen a channel that sends business data changes outside. Covers adding an endpoint, changing its URL, rotating its signing secret and enabling it"
         }
       }
     },
@@ -9261,7 +9265,8 @@
       "stock_take_lines": "Stocktaking line",
       "item_inventory": "Stock",
       "movement_types": "Movement type",
-      "items": "Items"
+      "items": "Items",
+      "webhook_endpoints": "Webhook endpoint"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -10631,7 +10636,43 @@
     "tooManyActiveTokens": "At most two tokens can be active. Revoke one first.",
     "clientNotFound": "That client was not found",
     "featureDisabled": "The external API is disabled in this environment",
-    "invalidNameChars": "The name contains characters that are not allowed"
+    "invalidNameChars": "The name contains characters that are not allowed",
+    "webhooksTitle": "Outbound webhooks",
+    "webhooksIntro": "When business data changes, send a signal about what happened to an external system such as n8n. Values are not sent; the receiver pulls them through the API.",
+    "webhookCreateTitle": "Add a webhook endpoint",
+    "webhookCreateHint": "Only events for resources the chosen API client can read are sent. Removing its permissions stops delivery without deleting the endpoint.",
+    "webhookUrl": "Endpoint URL",
+    "webhookUrlHelp": "https, or http for internal hosts (Docker service names, private IPs, .loc). The URL often contains a secret, so the list hides its path.",
+    "webhookEvents": "Events",
+    "webhookEvent": "Event",
+    "webhookAllEvents": "All events",
+    "webhookEventCount": "{count} types",
+    "webhookClient": "API client",
+    "webhookClientHelp": "Only events for resources this client can read are sent.",
+    "webhookLastDelivered": "Last delivery",
+    "webhookPending": "{count} pending",
+    "webhookFailed": "{count} failed",
+    "webhookEmpty": "No endpoints yet.",
+    "webhookTest": "Send test",
+    "webhookTestOk": "Delivered (HTTP {status})",
+    "webhookTestFailed": "Not delivered: {error}",
+    "webhookDeliveries": "Deliveries",
+    "webhookDeliveriesEmpty": "No deliveries yet.",
+    "webhookAttempts": "Attempts",
+    "webhookResult": "Result",
+    "webhookNextAttempt": "Next attempt: {at}",
+    "webhookRedeliver": "Redeliver",
+    "webhookRotate": "Rotate signing secret",
+    "webhookRotateConfirm": "The current signing secret stops working immediately. Signature checks fail until the receiver has the new secret.",
+    "webhookSecretTitle": "Signing secret",
+    "webhookDeleteConfirm": "This deletes the endpoint and its delivery history.",
+    "webhookInvalidUrl": "The endpoint URL cannot be used: {detail}",
+    "webhookInvalidEvents": "Select at least one event.",
+    "webhookNoKey": "The encryption key ({env}) for storing signing secrets is not set.",
+    "webhookDuplicateName": "This API client already has an endpoint with that name.",
+    "webhookNotFound": "Endpoint not found.",
+    "webhookSecretUnavailable": "The signing secret could not be opened. Rotate the signing secret.",
+    "webhookNotRedeliverable": "Only failed deliveries can be redelivered."
   },
   "charges": {
     "title": "Additional charges",

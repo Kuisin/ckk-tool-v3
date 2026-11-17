@@ -45,6 +45,7 @@
     "diff": "9.0.0",
     "fumadocs-core": "16.14.4",
     "fumadocs-mdx": "15.2.3",
+    "fumadocs-openapi": "11.1.0",
     "fumadocs-ui": "16.14.4",
     "iconv-lite": "0.7.3",
     "next": "16.4.3",

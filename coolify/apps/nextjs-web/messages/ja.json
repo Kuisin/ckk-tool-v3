@@ -1948,6 +1948,10 @@
         "activate": {
           "label": "API クライアントの有効化",
           "description": "作っただけでは何も通らないクライアントを、実際に業務データを読める状態にする"
+        },
+        "webhook_manage": {
+          "label": "API の外向き Webhook の管理",
+          "description": "業務データの変化を外部へ送る口を作る・広げる。送信先の追加・URL の変更・署名鍵の再発行・有効化が対象"
         }
       }
     },
@@ -9261,7 +9265,8 @@
       "stock_take_lines": "棚卸明細",
       "item_inventory": "在庫",
       "movement_types": "移動タイプ",
-      "items": "品目"
+      "items": "品目",
+      "webhook_endpoints": "Webhook 送信先"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -10631,7 +10636,43 @@
     "tooManyActiveTokens": "有効なトークンは 2 本までです。先にどれかを失効してください。",
     "clientNotFound": "対象のクライアントが見つかりません",
     "featureDisabled": "この環境では外部 API は無効です",
-    "invalidNameChars": "名前に使えない文字が含まれています"
+    "invalidNameChars": "名前に使えない文字が含まれています",
+    "webhooksTitle": "外向き Webhook",
+    "webhooksIntro": "業務データが変わったとき、n8n などの外部システムへ「何が起きたか」の合図を送ります。値そのものは送らず、受け取った側が API で引き直します。",
+    "webhookCreateTitle": "Webhook の送信先を追加",
+    "webhookCreateHint": "送られるのは、選んだ API クライアントが読める資源のイベントだけです。権限を外せば、送信先を消さなくても配送は止まります。",
+    "webhookUrl": "送信先 URL",
+    "webhookUrlHelp": "https、または社内（Docker のサービス名・プライベート IP・.loc）の http。ここに認証用の文字列が入るので、一覧では経路を伏せて表示します。",
+    "webhookEvents": "イベント",
+    "webhookEvent": "イベント",
+    "webhookAllEvents": "すべてのイベント",
+    "webhookEventCount": "{count} 種類",
+    "webhookClient": "API クライアント",
+    "webhookClientHelp": "このクライアントの権限で読める資源のイベントだけが送られます。",
+    "webhookLastDelivered": "最後の配送",
+    "webhookPending": "送信待ち {count}",
+    "webhookFailed": "失敗 {count}",
+    "webhookEmpty": "送信先はまだありません。",
+    "webhookTest": "テスト送信",
+    "webhookTestOk": "届きました（HTTP {status}）",
+    "webhookTestFailed": "届きませんでした: {error}",
+    "webhookDeliveries": "配送履歴",
+    "webhookDeliveriesEmpty": "配送はまだありません。",
+    "webhookAttempts": "試行",
+    "webhookResult": "結果",
+    "webhookNextAttempt": "次の試行: {at}",
+    "webhookRedeliver": "再送",
+    "webhookRotate": "署名鍵を再発行",
+    "webhookRotateConfirm": "いまの署名鍵はその場で使えなくなります。受け取り側の鍵も入れ替えるまで、署名の検証が通りません。",
+    "webhookSecretTitle": "署名鍵",
+    "webhookDeleteConfirm": "この送信先を削除します。配送履歴も一緒に消えます。",
+    "webhookInvalidUrl": "送信先 URL が使えません: {detail}",
+    "webhookInvalidEvents": "イベントを 1 つ以上選んでください。",
+    "webhookNoKey": "署名鍵を保管するための暗号鍵（{env}）が設定されていません。",
+    "webhookDuplicateName": "同じ API クライアントに同じ名前の送信先があります。",
+    "webhookNotFound": "送信先が見つかりません。",
+    "webhookSecretUnavailable": "署名鍵を開けませんでした。署名鍵を再発行してください。",
+    "webhookNotRedeliverable": "失敗した配送だけ再送できます。"
   },
   "charges": {
     "title": "追加料金",
