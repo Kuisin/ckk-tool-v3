@@ -64,6 +64,19 @@ consumed as TS source via `transpilePackages`).
 
 - **ドキュメント基盤** — `fumadocs-ui` / `fumadocs-core` / `fumadocs-mdx` /
   `@orama/tokenizers`（+ `@types/mdx`）。`/manual` + `/admin-manual`。
+- **API / Webhook リファレンスの自動生成** — `fumadocs-openapi`（MIT, `11.1.0` 完全固定）。
+  `content/manual/integration/reference/` を OpenAPI 3.1 文書から生成し、
+  `/manual` で描く（`components/docs/OpenAPIPage.tsx`）。自前案は「文書→MDX」を
+  書き起こすことだが、パラメータ表・スキーマ展開・`webhooks`（受信側が読む
+  リクエスト例）の描画まで持つ価値が高く、既存の fumadocs 一式に素直に載る。
+  **11.1.0 に固定した理由**: 11.4 以降は `fumadocs-ui` / `fumadocs-core` ^16.15 を
+  要求するが、こちらは 16.14.4 に固定している（11.1.0 は ^16.10）。
+  **責務の境界**: 文書の中身（口・権限・イベント）は `lib/api-resources.ts` /
+  `lib/webhook-core.ts` → `lib/api-openapi.ts` が持ち、ライブラリは**描画と MDX
+  の生成だけ**。生成物のズレは `api-docs-sync.test.ts` が CI で止める
+  （`UPDATE_API_DOCS=1` で書き出し直す）。「試す」（プレイグラウンド）は出さない
+  ので `@scalar/api-client-react`（任意の peer）は入れていない — 公開マニュアルに
+  トークンの入力欄を置かないため。キオスクには入れない。
 - **画像の拡大表示** — `react-zoom-pan-pinch`（MIT, 完全固定）。docs 画像の
   全画面ビュー（`components/docs/ZoomableImage.tsx`）でホイール/ピンチ/
   ダブルクリックの実ズーム + ドラッグ移動に使う。fumadocs-ui 同梱の

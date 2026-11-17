@@ -749,6 +749,22 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 未使用 | Never used | 未使用 |
 | このトークンは二度と表示されません | This token will not be shown again | 此令牌不会再次显示 |
 
+### 3.22 外向き Webhook（SY0I）
+
+| ja | en | zh |
+|---|---|---|
+| Webhook | Webhook | Webhook |
+| 外向き Webhook | Outbound webhooks | 出站 Webhook |
+| 送信先 | Endpoint | 接收地址 |
+| 送信先 URL | Endpoint URL | 接收地址 URL |
+| 署名鍵 | Signing secret | 签名密钥 |
+| 署名鍵を再発行 | Rotate signing secret | 重新签发签名密钥 |
+| 配送 / 配送履歴 | Delivery / Deliveries | 发送 / 发送记录 |
+| 再送 | Redeliver | 重发 |
+| テスト送信 | Send test | 测试发送 |
+| イベント | Event | 事件 |
+| 合図（Webhook の本文） | Signal | 信号 |
+
 ---
 
 ## 4. 決定事項（2026-08-30）

@@ -132,6 +132,10 @@ AI補助タスク:    同じ po-extract の /generate/<task>（紙なし・LLM 1
                 （製品・素材マスタのキーワード候補生成 — MS04/MS06）。
                 自前スキーマを渡す /generate も可。アプリ側は
                 nextjs-web の lib/po-extract.ts 経由。
+External API:   /api/v1（Bearer・読み取り）+ 外向き Webhook（Standard Webhooks 互換の
+                署名）。つなぐ処理は **n8n に置き、本体は口を 2 つだけ開ける**
+                （_specs/api.md §9）。リファレンスは fumadocs-openapi 11.1.0 で
+                OpenAPI 3.1（paths + webhooks）から生成（手書きしない）
 Notification:   mail-api（HTTP → SMTP。アプリは fetch 1 回）+ Nextcloud API + SSE
 Job Runner:     instrumentation.ts の setInterval（取込ポーラー・通知ダイジェスト・
                 締日オートラン）+ pg_cron（DB 側の定期処理）。

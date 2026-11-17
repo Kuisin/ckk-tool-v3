@@ -43,6 +43,7 @@
  */
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
+@import "fumadocs-openapi/css/preset.css";
 
 /*
  * Drive Tailwind's `dark:` variant from Mantine's color scheme instead of the
