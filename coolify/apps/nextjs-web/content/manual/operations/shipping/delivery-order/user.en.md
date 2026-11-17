@@ -91,6 +91,14 @@ At the top you see the shipping order number, order line number, customer, produ
 
 A shipping order moves through three stages: 「下書き」 (Draft) → 「確定」 (Confirmed) → 「出荷済」 (Shipped). You do this from the 「**…**」 button (the three dots) at the top right of the screen.
 
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Confirm"| conf("確定<br/>Confirmed"):::blue
+  conf -->|"Ship"| ship("出荷済<br/>Shipped"):::green
+  conf -.-> dn["Delivery notes are created automatically (dispatch only)"]
+  ship -.-> inv["Product stock decreases; the order line<br/>becomes partially shipped or shipped"]
+```
+
 ![The "…" menu on the detail screen](../../../assets/screenshots/delivery-order-menu-01.png)
 
 ### 1. Fixing the contents (Confirm)

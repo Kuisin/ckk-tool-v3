@@ -86,6 +86,23 @@ consumed as TS source via `transpilePackages`).
   フォーカストラップは既存の `ModalShell`（Mantine Modal）に任せ、
   react-zoom-pan-pinch は transform（拡大率・位置）の計算だけを持つ — 2 つの
   ライブラリでホイール/タッチのイベントを取り合わせない構成。
+- **マニュアルの小さな図** — `mermaid`（MIT, 完全固定）。操作ページの中に置く
+  状態の移り変わり・承認の流れを、本文と同じ `.md` に ```mermaid フェンスで書く
+  （`components/docs/Mermaid.tsx`。`source.config.ts` の `remarkMdxMermaid` が
+  フェンスを `<Mermaid chart>` に置き換える — fumadocs-core 同梱で追加依存なし）。
+  自前案は 2 つあった: (a) `tools/swimlane` の DSL で描く — 段ごとの説明つきの
+  レーン図専用で、3〜6 状態の図には重く、本文と別ファイルになる。(b) mermaid-cli で
+  ビルド時に SVG 化 — 実行時コストは無いが、Docker ビルドと CI の両方に headless
+  Chromium が要る。**ブラウザ側で描く**ことにした（利用者判断）。
+  本体は数百 KB あるので**動的 import** — 図のあるページを開いたときだけ読み、
+  図の無いページとアプリ本体には載らない（本番ビルドで確認済み）。
+  **責務の境界**: 図の中身は `content/` の Markdown、配色と状態色
+  （`:::gray` などは StatusBadge と同じ色名）は `lib/docs-mermaid.ts` が持ち、
+  mermaid は**レイアウトと描画だけ**。`securityLevel: "strict"` のまま使う。
+  図はブラウザで描くので**書き間違えてもビルドは通る** — 代わりに
+  `lib/docs-mermaid.test.ts` が全フェンスを mermaid のパーサに通し、ja/en/zh で
+  図の形（ノードと矢印）が揃っていることも見る。**プロセス編のスイムレーン図は
+  置き換えていない**（`tools/swimlane` → ビルド時 SVG のまま）。キオスクには入れない。
 - **リッチテキスト** — `@mantine/tiptap`（`@mantine/core` と**完全に同一バージョン**に
   固定）+ `@tiptap/react` / `@tiptap/pm` / `@tiptap/starter-kit` /
   `@tiptap/extension-link`。文書メモ / コメント（`ui/MemoPanel.tsx`）。
@@ -269,7 +286,15 @@ keeps internal content out of the public search index / llms endpoints).
 Search: `/manual/search` (public) + `/admin-manual/search` (session-checked),
 Orama with ja/zh tokenizers. LLM: `/manual/llms.txt` + raw markdown at
 `/manual/<lang>/<slug>.md` (rewrite → `/llms-manual`); no internal equivalents.
-Old `/docs/...?lang=xx` URLs 308-redirect (see `next.config.ts`). Screenshots:
+Old `/docs/...?lang=xx` URLs 308-redirect (see `next.config.ts`). **Diagrams, two
+kinds**: process swimlanes are `tools/swimlane` DSL → build-time SVG under
+`assets/diagrams/`; small in-page diagrams (status lifecycles, approval flow) are
+```mermaid fences in the page itself, drawn in the browser — use `flowchart TD`
+(LR overflows the ~680px column), colour states with `:::gray|blue|yellow|…`
+(same names as StatusBadge; classDefs are injected), keep the three languages'
+diagrams structurally identical (the test enforces it), and in en/zh keep the
+on-screen Japanese label with the glossary term under it (`"下書き<br/>Draft"`).
+Screenshots:
 `content/manual/assets/screenshots/<id>.png`, captured/linted by
 `tools/docs-screenshots` (see its README).
 

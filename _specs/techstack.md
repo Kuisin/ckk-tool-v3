@@ -44,6 +44,10 @@ Icons:          Tabler Icons
 Flow Graph:     React Flow (@xyflow/react) 12.11.3（完全固定・MIT）
                 工程ワークフローの図示のみ。レイアウトと妥当性判定は
                 lib/workflow-core.ts が持ち、ライブラリは描画層に留める
+Docs Diagram:   Mermaid (mermaid) 12.3.0（完全固定・MIT）
+                マニュアル操作ページの小さな図（状態の移り変わり等）のみ。
+                ブラウザ側で描画・動的 import（図のあるページだけが読む）。
+                プロセス編のスイムレーン図は tools/swimlane（ビルド時 SVG）のまま
 Styling:        Mantine + CSS Modules
 
 Server State:   React Server Components（標準）

@@ -99,6 +99,14 @@ screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-
 
 确定后状态会变成「**確定**」（确定），画面上方会出现「確定済み」（已确定）的提示。这样在制作[价格表](/manual/zh/operations/sales/price-list/user)时就能选到这份试算了。
 
+状态按以下方式变化。
+
+```mermaid
+flowchart TD
+  draft("下書き<br/>草稿"):::gray -->|"确定"| conf("確定<br/>已确定"):::blue
+  conf -->|"被价格表使用（自动）"| reg("価格表登録済<br/>已登记价格表"):::green
+```
+
 ## 查看保存的试算
 
 保存后的试算画面有 5 个标签页。

@@ -34,6 +34,16 @@ This app is for making a **素材発注書** (material purchase order), which is
 
 A material purchase order moves along in this order. The coloured badge on the screen tells you where it is now.
 
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Request approval"| req("承認依頼中<br/>Pending approval"):::yellow
+  req -->|"Approve"| appr("承認済<br/>Approved"):::blue
+  appr -->|"Order"| ord("発注済<br/>Ordered"):::violet
+  ord -->|"Record receipt"| recv("入荷完了<br/>Received"):::green
+  req -.->|"Send back"| draft
+  appr -.->|"Withdraw"| can("キャンセル<br/>Cancelled"):::red
+```
+
 1. **下書き** (draft) … you have only created it. This is the only time you can change it.
 2. **承認依頼中** (pending approval) … you are waiting for your manager's answer.
 3. **承認済** (approved) … it was accepted. You can now order from the supplier.

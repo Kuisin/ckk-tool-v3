@@ -36,6 +36,16 @@ screenshots: [purchase-request-list-01, purchase-request-new-01, purchase-reques
 
 購買依頼は、次の順番で進みます。いまどこにいるかは、画面の色つきバッジでわかります。
 
+```mermaid
+flowchart TD
+  draft("下書き"):::gray -->|"承認依頼"| req("承認依頼中"):::yellow
+  req -->|"承認"| appr("承認済"):::blue
+  appr -->|"発注書に変える"| ord("発注済"):::violet
+  req -->|"差し戻し"| rej("差し戻し"):::red
+  rej -.->|"直して出しなおす"| req
+  appr -.->|"取り下げ"| can("キャンセル"):::red
+```
+
 1. **下書き** … あなたが作っただけの状態です。何度でも直せます。
 2. **承認依頼中** … 上長の返事待ちです。この間は直せません。
 3. **承認済** … 認められました。発注書に変えられます。

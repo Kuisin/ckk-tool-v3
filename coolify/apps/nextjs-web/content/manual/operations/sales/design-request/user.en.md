@@ -24,11 +24,15 @@ Use this when a customer asks about a special shape and a drawing is needed.
 
 ## The order a request goes through
 
-```
-下書き → 承認依頼中 → 未着手 → 進行中 → 完了
-(draft)  (awaiting)  (not started) (in progress) (done)
-           ↓ (sent back)
-        差し戻し → (fix it and send it again)
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Request approval"| req("承認依頼中<br/>Pending approval"):::yellow
+  req -->|"Approve"| pend("未着手<br/>Not started"):::blue
+  pend -->|"Start"| prog("進行中<br/>In progress"):::violet
+  prog -->|"Complete"| done("完了<br/>Completed"):::green
+  req -->|"Send back"| rej("差し戻し<br/>Sent back"):::red
+  rej -.->|"Fix and resubmit"| req
+  done -.->|"Send back (redo the work)"| prog
 ```
 
 - Right after you make it, it is **下書き (draft)**. This is the only time you can change the contents freely.

@@ -90,6 +90,13 @@ Open the PDF tab to view the finished quote, or download it and print it. After 
 
 **There is nothing to record on the quote itself.** A quote has only two states: 「下書き」(draft) and 「発行済」(issued).
 
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Issue"| iss("発行済<br/>Issued"):::blue
+  iss -->|"Valid-until date passes (automatic)"| exp("期限切れ<br/>Expired"):::orange
+  iss -.->|"When the order is won"| oa["Create an order acceptance"]
+```
+
 - **Whether you won the order** … when you create an [order acceptance](/manual/en/operations/sales/order-acceptance/user) and pick this quote, the order acceptance appears under 「**手続き状況**」(progress) → 「**次の書類へ**」(to). The existence of that order acceptance *is* the record, so nothing needs to be marked on the quote.
 - **If the customer declines** … do nothing. No order acceptance is created, and the quote turns 「期限切れ」(expired) once its valid-until date passes.
 - **When the date passes** … this is not something you set. An issued quote past its valid-until date shows as 「**期限切れ**」(expired) from that day on.

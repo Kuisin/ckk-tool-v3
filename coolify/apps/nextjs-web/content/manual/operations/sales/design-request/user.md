@@ -26,10 +26,15 @@ screenshots: [design-request-list-01, design-request-new-01, design-request-deta
 
 ## 依頼が進む順番
 
-```
-下書き → 承認依頼中 → 未着手 → 進行中 → 完了
-           ↓（差し戻し）
-        差し戻し → （直して出しなおす）
+```mermaid
+flowchart TD
+  draft("下書き"):::gray -->|"承認依頼"| req("承認依頼中"):::yellow
+  req -->|"承認"| pend("未着手"):::blue
+  pend -->|"着手"| prog("進行中"):::violet
+  prog -->|"完了"| done("完了"):::green
+  req -->|"差し戻し"| rej("差し戻し"):::red
+  rej -.->|"直して出しなおす"| req
+  done -.->|"差し戻し（作業のやり直し）"| prog
 ```
 
 - 作った直後は **下書き** です。この間だけ内容を自由に直せます。

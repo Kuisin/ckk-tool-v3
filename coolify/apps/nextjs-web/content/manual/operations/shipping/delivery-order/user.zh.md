@@ -91,6 +91,14 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 
 出货单按「下書き」（草稿）→「確定」（确定）→「出荷済」（已发货）三个阶段推进。操作在界面右上角的「**…**」（三个点的按钮）里进行。
 
+```mermaid
+flowchart TD
+  draft("下書き<br/>草稿"):::gray -->|"确定"| conf("確定<br/>已确定"):::blue
+  conf -->|"出货"| ship("出荷済<br/>已出货"):::green
+  conf -.-> dn["自动生成送货单（发货时）"]
+  ship -.-> inv["产品库存减少，订单明细<br/>变为部分出货・已出货"]
+```
+
 ![详细界面的「…」菜单](../../../assets/screenshots/delivery-order-menu-01.png)
 
 ### 1. 把内容定下来（确定）

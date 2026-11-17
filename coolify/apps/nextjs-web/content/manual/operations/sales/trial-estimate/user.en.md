@@ -99,6 +99,14 @@ To make it usable in a price list, do the following.
 
 After confirming, the status changes to「**確定**」(confirmed) and a note saying 「確定済み」(confirmed) appears at the top of the screen. You can now choose this estimate when you make a [price list](/manual/en/operations/sales/price-list/user).
 
+The status moves as follows.
+
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Confirm"| conf("確定<br/>Confirmed"):::blue
+  conf -->|"Used in a price list (automatic)"| reg("価格表登録済<br/>Registered"):::green
+```
+
 ## Looking at a saved estimate
 
 The screen of a saved estimate has five tabs.

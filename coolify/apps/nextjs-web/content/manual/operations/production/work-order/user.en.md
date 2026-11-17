@@ -45,6 +45,18 @@ When you open the app, you see a list of the work orders made so far.
 - Type a work order number, a order line number, or a product name into the search box at the top to find one. You can also narrow it down with 「**種別**」 (type) and 「**状態**」 (status).
 - Click a row to open the detail screen for that work order.
 
+The status moves as follows.
+
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Request approval"| req("承認依頼中<br/>Pending approval"):::yellow
+  req -->|"Approved at every step"| appr("承認済<br/>Approved"):::blue
+  appr -->|"First step started"| prog("進行中<br/>In progress"):::violet
+  prog -->|"All steps completed (automatic)"| done("完了<br/>Completed"):::green
+  req -.->|"Send back"| draft
+  req -.->|"Cancel document"| can("キャンセル<br/>Cancelled"):::red
+```
+
 ## Creating a work order
 
 1. Press 「**新規作成**」 (New) at the top right of the list screen. You can also open it from the order line screen, in which case the order line is already chosen.

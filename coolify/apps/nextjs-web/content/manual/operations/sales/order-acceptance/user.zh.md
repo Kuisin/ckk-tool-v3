@@ -51,6 +51,20 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 - 通过画面上方的「監視フォルダ取込」（监视文件夹导入）徽章，可以知道自动导入能不能用。
 - 只要还有正在读取的行，画面每 30 秒会自动刷新一次。
 
+状态按以下方式变化。
+
+```mermaid
+flowchart TD
+  imp("取込中<br/>导入中"):::gray -->|"读取完成"| draft("下書き<br/>草稿"):::blue
+  draft -->|"申请审批"| req("承認依頼中<br/>审批中"):::yellow
+  req -->|"批准"| appr("承認済<br/>已批准"):::green
+  appr -->|"确定"| confd("確定済<br/>已确定"):::teal
+  confd -->|"归档（可选）"| arch("アーカイブ<br/>已归档"):::dark
+  req -.->|"退回"| draft
+  confd -.-> ol["生成订单明细"]
+  confd -.->|"取消申请获批"| can("キャンセル<br/>已取消"):::red
+```
+
 ## 导入订单（4 种方式）
 
 **1. 通过邮件接收（自动）**
