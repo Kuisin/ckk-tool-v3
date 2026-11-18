@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isOtherCustomerRoute,
+  pickDefaultCommonRoute,
   pickDefaultPrepRoute,
   pickDefaultRoute,
   type RouteStepSnapshot,
@@ -186,5 +187,18 @@ describe("pickDefaultPrepRoute", () => {
 
   it("無ければ null", () => {
     expect(pickDefaultPrepRoute([prep(1, false)])).toBeNull();
+  });
+});
+
+describe("pickDefaultCommonRoute（準備 / 再研磨 の共通リスト）", () => {
+  const regrind = (id: number, isActive = true) =>
+    routeOf(id, null, { kind: "REGRIND", isActive });
+
+  it("有効なものが 1 本だけなら自動で選ぶ", () => {
+    expect(pickDefaultCommonRoute([regrind(1), regrind(2, false)])?.id).toBe(1);
+  });
+
+  it("2 本以上あれば選ばない（人が決める）", () => {
+    expect(pickDefaultCommonRoute([regrind(1), regrind(2)])).toBeNull();
   });
 });

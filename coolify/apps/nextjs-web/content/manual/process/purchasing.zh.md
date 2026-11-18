@@ -98,4 +98,4 @@ screenshots:
 - 各应用的操作与输入栏含义 … 左侧的 **操作方法 › 采购**
 - 返回的流程 … [生产流程](/manual/zh/process/production)（材料不足由此而来）
 - 材料本身的登记 … [材料主数据](/manual/zh/operations/masters/material/user)
-- 库存的确认 … [库存管理](/manual/zh/operations/production/material-inventory/user)
+- 库存的确认 … [库存管理](/manual/zh/operations/inventory/inventory-management/user)

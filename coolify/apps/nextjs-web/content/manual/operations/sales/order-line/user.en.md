@@ -60,6 +60,17 @@ Lines that have not been confirmed do not appear here, because they have no numb
 | Shipped | The full ordered quantity has shipped. |
 | Cancelled | The line has been withdrawn. |
 
+The status moves as follows.
+
+```mermaid
+flowchart TD
+  conf("確定<br/>Confirmed"):::blue -->|"Work order approved"| prod("製造中<br/>In production"):::violet
+  prod -->|"Part shipped"| part("一部出荷<br/>Partially shipped"):::orange
+  part -->|"Rest shipped"| ship("出荷済<br/>Shipped"):::green
+  prod -->|"All shipped"| ship
+  prod -.->|"Order acceptance cancelled"| can("キャンセル<br/>Cancelled"):::red
+```
+
 ## What the detail screen offers
 
 Select a row to open its detail screen.
@@ -69,6 +80,10 @@ Select a row to open its detail screen.
 A "**Next step**" card appears at the top of the screen. While unallocated pieces remain it points to **creating a work order**; once allocation is done and unshipped pieces remain it points to **creating a delivery order**. Pressing the button on the card opens the [work order](/manual/en/operations/production/work-order/user) or [delivery order](/manual/en/operations/shipping/delivery-order/user) creation screen with this order line already selected.
 
 The three-dot "**…**" menu at the top right also always lists "**Create work order**" and "**Create delivery order**". Actions you cannot use right now are grayed out, with the reason shown (for example "available once the order acceptance is deployed").
+
+### Check the delivery destination
+
+Ship-to, delivery method, end user, assigned plant and shipping work location are shown read-only, holding that line's own values. To change them, edit the line in the [order acceptance](/manual/en/operations/sales/order-acceptance/user)'s item editor — they are per-line fields because some orders ship different lines to different destinations.
 
 ### Check and reserve stock
 
@@ -130,7 +145,7 @@ It needs the same permission as order acceptances (`order_acceptance`). Contact 
 - [Order acceptance](/manual/en/operations/sales/order-acceptance/user) — where order lines are created and edited
 - [Work order](/manual/en/operations/production/work-order/user) — production
 - [Shipping order](/manual/en/operations/shipping/delivery-order/user) — shipping
-- [Inventory](/manual/en/operations/production/product-inventory/user) — stock and reservations
+- [Inventory](/manual/en/operations/inventory/inventory-management/user) — stock and reservations
 
 <!-- permissions:start -->
 ## Permissions required

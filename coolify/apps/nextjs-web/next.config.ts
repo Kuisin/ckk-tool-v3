@@ -21,8 +21,11 @@ const MANUAL_APP_CATEGORY: Record<string, string> = {
   // "approval" (旧 PD03 承認管理) はここに置かない — production 内のスラッグ
   // 改称ではなく 一般カテゴリの my-tasks (CM01) への統合なので、個別の
   // redirect エントリ（下の「旧 承認管理 (PD03) のマニュアル」節）で扱う。
-  "product-inventory": "production",
-  "material-inventory": "production",
+  // 在庫の 2 ページ (product-inventory / material-inventory) も同様にここへ
+  // 置かない — 生産→在庫カテゴリへの移設(2026-09) 後、7 アプリ構成への
+  // 分割・統合 (2026-09-20) で inventory-management へスラッグも変わったため、
+  // 単純な「カテゴリだけ差し替え」では届かない。個別の redirect エントリ
+  // （下の「在庫マニュアルの再編」節）で扱う。
   // 旧スラッグのまま残す（このマップは旧 URL の移設用）。shipping-order →
   // delivery-order の改称は redirects() 内の個別エントリが受け持つ。
   "shipping-order": "shipping",
@@ -128,6 +131,14 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // 会計連携。会計ソフトの製品名を URL から外した（弥生 → 会計連携）ので、
+      // ブックマークや手順書に残っている旧 URL をここで受ける。クエリ
+      // （?invoice=… &force=1）は Next が引き継ぐ。
+      {
+        source: "/api/export/yayoi",
+        destination: "/api/export/accounting",
+        permanent: true,
+      },
       // ディスプレイ管理は独立アプリ（SY0I）をやめ、端末管理（SY09）の
       // タブに統合した。機器の登録手順が共有端末とまったく同じなので、
       // 別の場所に置くと「どっちの画面で直すのか」を現場が毎回考えることになる。
@@ -143,6 +154,56 @@ const nextConfig: NextConfig = {
       },
       // 旧 承認管理 (PD03) → 一般カテゴリの 未処理一覧 (CM01)。
       // 詳細 URL は指示書詳細へ（承認カードは指示書詳細に出る）。
+      // 在庫まわりは 生産 → 在庫 カテゴリへ移設した（2026-09）。
+      // ブックマーク・履歴の記録・帳票に刷られた URL が生きているので恒久で送る。
+      {
+        source: "/production/inventory",
+        destination: "/inventory",
+        permanent: true,
+      },
+      {
+        source: "/production/inventory/:path*",
+        destination: "/inventory/:path*",
+        permanent: true,
+      },
+      {
+        source: "/production/stock-takes",
+        destination: "/inventory/stock-takes",
+        permanent: true,
+      },
+      {
+        source: "/production/stock-takes/:path*",
+        destination: "/inventory/stock-takes/:path*",
+        permanent: true,
+      },
+      // 在庫マニュアルの再編。product-inventory / material-inventory の
+      // 2 ページは 7 アプリ構成（ST01〜ST09）へ分割・統合し、旧 2 ページの
+      // 内容は inventory-management (ST01) に吸収した (2026-09-20)。
+      // 1. 生産→在庫カテゴリへの移設前 (operations/production/...) から。
+      {
+        source:
+          "/manual/:lang(ja|en|zh)/operations/production/:app(product-inventory|material-inventory)/:path*",
+        destination:
+          "/manual/:lang/operations/inventory/inventory-management/:path*",
+        permanent: true,
+      },
+      // 2. カテゴリ移設後・スラッグ改称前 (operations/inventory/product-inventory
+      //    等) から。
+      {
+        source:
+          "/manual/:lang(ja|en|zh)/operations/inventory/:app(product-inventory|material-inventory)/:path*",
+        destination:
+          "/manual/:lang/operations/inventory/inventory-management/:path*",
+        permanent: true,
+      },
+      // 3. 再編前の最も古い URL (apps/product-inventory 等) から。
+      {
+        source:
+          "/manual/:lang(ja|en|zh)/apps/:app(product-inventory|material-inventory)/:path*",
+        destination:
+          "/manual/:lang/operations/inventory/inventory-management/:path*",
+        permanent: true,
+      },
       {
         source: "/production/approvals",
         destination: "/general/tasks",

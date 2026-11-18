@@ -13,6 +13,7 @@ import {
   IconCoin,
   IconForms,
   IconMathFunction,
+  IconStairs,
   IconTable,
   IconTool,
 } from "@tabler/icons-react";
@@ -23,6 +24,7 @@ const SECTION_ICONS: Record<string, AppIcon> = {
   criteria: IconMathFunction,
   "tool-types": IconTool,
   "material-policy": IconCoin,
+  "scale-preset": IconStairs,
   "custom-inputs": IconForms,
   lookups: IconTable,
 };

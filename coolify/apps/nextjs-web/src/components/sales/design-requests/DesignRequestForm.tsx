@@ -40,7 +40,7 @@ import { useEffect, useState, useTransition } from "react";
 import { z } from "zod";
 import {
   searchOrderLineOptions,
-  searchProductOptions,
+  searchProductItemOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   createDesignRequest,
@@ -50,7 +50,7 @@ import {
 import type { QuoteOption } from "@/app/(dashboard)/sales/design-requests/data";
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { productF4 } from "@/components/ui/f4-presets";
+import { productItemF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -89,8 +89,8 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
       quoteNumber: z.string().nullable(),
       orderLineId: z.string().nullable(),
       // 依頼区分の自動判定に要るので必須。名称と単位だけで製品は登録できるので、
-      // 新規品でも「先に製品を登録する」で運用が回る。
-      productId: z.string().min(1, tr("common.selectAProduct")),
+      // 新規品でも「先に製品を登録する」で運用が回る。値は品目 (items.id)。
+      itemId: z.string().min(1, tr("common.selectAProduct")),
       productName: z.string(),
       /** 版が載る系列。null = 汎用（どの顧客の指示書からも使える）。 */
       customerBpId: z.string().nullable(),
@@ -124,7 +124,7 @@ function toFormValues(request: DesignRequest): FormValues {
     trigger: request.trigger,
     quoteNumber: request.quoteNumber,
     orderLineId: request.orderLineId,
-    productId: request.productId ?? "",
+    itemId: request.itemId ?? "",
     productName: request.productName ?? "",
     customerBpId: request.customerBpId ?? null,
     assigneeId: request.assigneeId ?? "",
@@ -203,7 +203,7 @@ export function DesignRequestForm({
             trigger: prefilledTrigger ?? "QUOTE",
             quoteNumber: initialQuote?.value ?? null,
             orderLineId: initialOrderLine?.value ?? null,
-            productId: initialProduct?.value ?? "",
+            itemId: initialProduct?.value ?? "",
             productName: initialProduct?.label ?? "",
             // 見積・受注から起票したときはその顧客が既定になる。
             customerBpId: initialCustomerBpId ?? null,
@@ -218,14 +218,14 @@ export function DesignRequestForm({
   });
 
   const loadKindContext = async (
-    productId: string | null,
+    itemId: string | null,
     customerBpId: string | null = form.values.customerBpId,
   ) => {
-    if (!productId) {
+    if (!itemId) {
       setKindContext(null);
       return;
     }
-    const ctx = await fetchKindContextAction(productId, customerBpId);
+    const ctx = await fetchKindContextAction(itemId, customerBpId);
     setKindContext(ctx);
     // 手動指定していなければ、元図面の既定は判定時点の最新版のまま（null）。
     if (ctx && !form.values.kind) form.setFieldValue("baseDesignFileId", null);
@@ -234,8 +234,8 @@ export function DesignRequestForm({
   // 初期表示（編集 / プリフィル）でも根拠と版一覧を出す。
   // biome-ignore lint/correctness/useExhaustiveDependencies: 製品 id が変わったときだけ引き直す
   useEffect(() => {
-    void loadKindContext(form.values.productId || null);
-  }, [form.values.productId]);
+    void loadKindContext(form.values.itemId || null);
+  }, [form.values.itemId]);
 
   /** 自動判定 + 手動上書きを合わせた、いま画面に出ている区分。 */
   const effectiveKind =
@@ -250,7 +250,7 @@ export function DesignRequestForm({
 
   const handleSubmit = (values: FormValues) => {
     const payload = {
-      productId: values.productId,
+      itemId: values.itemId,
       customerBpId: values.customerBpId,
       assigneeId: values.assigneeId,
       kind: values.kind,
@@ -448,26 +448,26 @@ export function DesignRequestForm({
             </>
           )}
           <SearchSelect
-            error={form.errors.productId}
-            f4={productF4(tr)}
+            error={form.errors.itemId}
+            f4={productItemF4(tr)}
             initialOption={
-              form.values.productId
+              form.values.itemId
                 ? {
-                    value: form.values.productId,
+                    value: form.values.itemId,
                     label: form.values.productName,
                   }
                 : null
             }
             label={<HelpLabel {...fieldHelp(tr, "designRequest", "product")} />}
             onChange={(v, opt) => {
-              form.setFieldValue("productId", v ?? "");
+              form.setFieldValue("itemId", v ?? "");
               form.setFieldValue("productName", opt?.label ?? "");
               void loadKindContext(v);
             }}
-            onSearch={searchProductOptions}
+            onSearch={searchProductItemOptions}
             placeholder={tr("common.searchProducts")}
-            storageKey="product"
-            value={form.values.productId || null}
+            storageKey="design-request-product-item"
+            value={form.values.itemId || null}
             withAsterisk
           />
           {/* 受注元 — 完成した版がどの系列に載るか。図面は (製品 × 受注元)
@@ -482,7 +482,7 @@ export function DesignRequestForm({
             label={tr("common.orderingCustomer")}
             onChange={(v) => {
               form.setFieldValue("customerBpId", v);
-              void loadKindContext(form.values.productId || null, v);
+              void loadKindContext(form.values.itemId || null, v);
             }}
             placeholder={tr("common.genericAllCustomers2")}
             searchable
@@ -545,7 +545,7 @@ export function DesignRequestForm({
             <Text c="dimmed" size="xs">
               {kindContext
                 ? describeDetection(kindContext.detection, tr)
-                : form.values.productId
+                : form.values.itemId
                   ? tr("sales.designRequests.checking")
                   : tr("sales.designRequests.itIsDeterminedOnceYouChoose")}
             </Text>

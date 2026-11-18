@@ -34,6 +34,16 @@ This app is for making a **購買依頼** (purchase request) — a way of asking
 
 A purchase request moves along in this order. The coloured badge on the screen tells you where it is now.
 
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Request approval"| req("承認依頼中<br/>Pending approval"):::yellow
+  req -->|"Approve"| appr("承認済<br/>Approved"):::blue
+  appr -->|"Convert to purchase order"| ord("発注済<br/>Ordered"):::violet
+  req -->|"Send back"| rej("差し戻し<br/>Sent back"):::red
+  rej -.->|"Fix and resubmit"| req
+  appr -.->|"Withdraw"| can("キャンセル<br/>Cancelled"):::red
+```
+
 1. **下書き** (draft) … you have only created it. You can change it as often as you like.
 2. **承認依頼中** (pending approval) … you are waiting for your manager's answer. You cannot change it during this time.
 3. **承認済** (approved) … it was accepted. It can now become a purchase order.
@@ -79,7 +89,7 @@ Once you have checked the content, ask your manager to look at it.
 1. Open the request screen.
 2. Press 「**承認依頼**」 (Request approval) on the 「**承認依頼が必要です**」 (approval request needed) card near the top of the screen.
 
-The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/production/approval/user) screen.
+The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/general/my-tasks/user) screen.
 
 ![Purchase request pending approval](../../../assets/screenshots/purchase-request-detail-02.png)
 

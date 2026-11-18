@@ -34,8 +34,6 @@ const base: TrialInput = {
   machiningMinutes: 8,
   machiningRatePer10min: 2000,
   spareShapeCount: 3,
-  lotQuantities: [10, 50, 100],
-  lotMarkups: undefined,
 };
 
 const cases: Array<{ name: string; input: TrialInput }> = [
@@ -90,10 +88,6 @@ const cases: Array<{ name: string; input: TrialInput }> = [
     },
   },
   {
-    name: "掛け率手動上書き",
-    input: { ...base, lotMarkups: [1.5, null, 0.9] },
-  },
-  {
     name: "全部盛り",
     input: {
       ...base,
@@ -113,7 +107,6 @@ const cases: Array<{ name: string; input: TrialInput }> = [
       ldOuterDiameter: 8,
       ldBladeLength: 25,
       machiningMinutes: 12,
-      lotQuantities: [5, 25, 300],
     },
   },
 ];
@@ -129,7 +122,6 @@ function expectParity(engine: TrialResult, legacy: TrialResult) {
   engine.lots.forEach((lot, i) => {
     const exp = legacy.lots[i];
     expect(lot.quantity).toBe(exp.quantity);
-    expect(lot.discountRate).toBeCloseTo(exp.discountRate, 6);
     expect(lot.minimumPrice).toBeCloseTo(exp.minimumPrice, 4);
     // 見積単価 is the acceptance gate — must match exactly (10円単位).
     expect(lot.estimateUnitPrice).toBe(exp.estimateUnitPrice);
@@ -408,5 +400,79 @@ describe("sandbox + error handling", () => {
     const res = runCriteriaEngine(base, { criteria });
     expect(res.lots[0].minimumPrice).toBe(0);
     expect(res.warnings.some((w) => w.includes("boom"))).toBe(true);
+  });
+});
+
+describe("原価の印（isCost）", () => {
+  const final: Criterion = {
+    id: "final",
+    name: "見積単価",
+    role: "final",
+    order: 999,
+    enabled: true,
+    expression: "subtotal * 2",
+  };
+
+  it("既定の基準では原価合計 = 最低単価（未設定は component だけが原価）", () => {
+    const res = calcTrialPricing(base);
+    expect(res.costTotal).toBeCloseTo(res.lots[0].minimumPrice);
+    expect(res.items?.find((i) => i.id === "shapeOut")?.isCost).toBe(false);
+    expect(res.items?.some((i) => i.id === "final")).toBe(false);
+  });
+
+  it("印は原価合計だけを動かし、見積単価には効かない", () => {
+    const criteria: Criterion[] = [
+      {
+        id: "a",
+        name: "a",
+        role: "component",
+        order: 1,
+        enabled: true,
+        expression: "100",
+      },
+      {
+        id: "b",
+        name: "b",
+        role: "component",
+        order: 2,
+        enabled: true,
+        expression: "30",
+        isCost: false,
+      },
+      {
+        id: "c",
+        name: "c",
+        role: "intermediate",
+        order: 3,
+        enabled: true,
+        expression: "7",
+        isCost: true,
+      },
+      final,
+    ];
+    const res = runCriteriaEngine(base, { criteria });
+    expect(res.lots[0].minimumPrice).toBe(130);
+    expect(res.lots[0].estimateUnitPrice).toBe(260);
+    expect(res.costTotal).toBe(107);
+    expect(res.items?.map((i) => [i.id, i.isCost, i.value])).toEqual([
+      ["a", true, 100],
+      ["b", false, 30],
+      ["c", true, 7],
+    ]);
+  });
+
+  it("final に印を付けても原価には数えない", () => {
+    const criteria: Criterion[] = [
+      {
+        id: "a",
+        name: "a",
+        role: "component",
+        order: 1,
+        enabled: true,
+        expression: "100",
+      },
+      { ...final, isCost: true },
+    ];
+    expect(runCriteriaEngine(base, { criteria }).costTotal).toBe(100);
   });
 });

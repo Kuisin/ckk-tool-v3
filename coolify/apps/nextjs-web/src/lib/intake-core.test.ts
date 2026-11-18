@@ -45,6 +45,14 @@ describe("normalizeOrderType", () => {
     expect(normalizeOrderType(null)).toBe("PRODUCTION");
     expect(normalizeOrderType("特注")).toBe("OTHER");
   });
+
+  it("再研磨は他の語と同居しても再研磨（顧客の工具を預かって返す注文）", () => {
+    expect(normalizeOrderType("再研磨")).toBe("REGRIND");
+    expect(normalizeOrderType("再研")).toBe("REGRIND");
+    expect(normalizeOrderType("Regrind")).toBe("REGRIND");
+    expect(normalizeOrderType("リグラインド")).toBe("REGRIND");
+    expect(normalizeOrderType("再研磨（本番品）")).toBe("REGRIND");
+  });
 });
 
 describe("normalizeDate", () => {

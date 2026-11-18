@@ -62,6 +62,17 @@ ORD-202608-00012-01
 | 出荷済 | 注文本数すべての出荷が済んだ状態です。 |
 | キャンセル | 取り消した注文明細です。 |
 
+状態は次のように移り変わります。
+
+```mermaid
+flowchart TD
+  conf("確定"):::blue -->|"指示書が承認される"| prod("製造中"):::violet
+  prod -->|"一部を出荷"| part("一部出荷"):::orange
+  part -->|"残りを出荷"| ship("出荷済"):::green
+  prod -->|"全数を出荷"| ship
+  prod -.->|"注文請書のキャンセル"| can("キャンセル"):::red
+```
+
 ## 詳細画面でできること
 
 一覧から 1 行を選ぶと、その注文明細の詳細が開きます。
@@ -71,6 +82,10 @@ ORD-202608-00012-01
 画面の上に「**次のステップ**」のカードが出ます。まだ手配していない本数が残っているあいだは「**指示書の作成**」、手配が済んで未出荷の本数が残っているときは「**出荷書の作成**」が案内されます。カードのボタンを押すと、この注文明細が選ばれた状態で[指示書](/manual/ja/operations/production/work-order/user)や[出荷書](/manual/ja/operations/shipping/delivery-order/user)の作成画面が開きます。
 
 右上の「**…**」（点が 3 つのボタン）にも「**指示書を作成**」「**出荷書を作成**」が常に並びます。いま押せない操作は灰色になり、理由（例:「注文請書の確定後に作成できます」）が表示されます。
+
+### 届け先を確認する
+
+出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所は、この明細の値を読み取り専用で表示します。値そのものを直すのは[注文請書](/manual/ja/operations/sales/order-acceptance/user)の明細エディタです — 1 通の注文書の中で行ごとに届け先が違う注文があるため、これらは明細ごとの項目になっています。
 
 ### 在庫を調べて引き当てる
 
@@ -131,7 +146,7 @@ ORD-202608-00012-01
 - [注文請書](/manual/ja/operations/sales/order-acceptance/user) — 注文明細を作る・直す画面
 - [指示書](/manual/ja/operations/production/work-order/user) — 製造を進める画面
 - [出荷書](/manual/ja/operations/shipping/delivery-order/user) — 出荷する画面
-- [在庫管理](/manual/ja/operations/production/product-inventory/user) — 在庫と引き当ての状況
+- [在庫管理](/manual/ja/operations/inventory/inventory-management/user) — 在庫と引き当ての状況
 
 <!-- permissions:start -->
 ## 必要な権限

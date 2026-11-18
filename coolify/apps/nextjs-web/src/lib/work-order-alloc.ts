@@ -53,6 +53,7 @@ export async function effectiveAllocatedByLine(
         select: {
           id: true,
           status: true,
+          type: true,
           // 完成配分はエンジンが読む列だけ（STEP_STATE_SELECT — workflow-core
           // 参照）。全列 SELECT は列追加のたび migration 前の DB で P2022 に落ちる。
           steps: { select: STEP_STATE_SELECT },
@@ -71,6 +72,9 @@ export async function effectiveAllocatedByLine(
   const sharesByWo = new Map<string, Map<string, number>>();
   const finishedShareOf = (link: (typeof links)[number]): number | null => {
     if (link.workOrder.status !== "COMPLETED") return null;
+    // 再研磨は「できた分」で数えない — 返却（再研磨不可）で完成が割当より少なく
+    // ても、その明細は手配済み（残りが 未手配 に戻ると二度手配になる）。
+    if (link.workOrder.type === "REGRIND") return null;
     let shares = sharesByWo.get(link.workOrder.id);
     if (!shares) {
       const finished = computeFinishedQuantity(

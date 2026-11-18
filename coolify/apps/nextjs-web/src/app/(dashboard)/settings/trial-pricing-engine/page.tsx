@@ -6,6 +6,7 @@ import {
 } from "@/components/settings/TrialPricingHubSections";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
+import { getScalePreset } from "@/lib/price-scale-preset-store";
 import { getTrialPricingSettings } from "@/lib/system-settings";
 import { materialPriceBasisOptions } from "@/lib/trial-pricing-settings";
 
@@ -18,7 +19,10 @@ export default async function TrialPricingEnginePage() {
   const tr = await getTranslations();
   const denied = await requireAppRead("trial-pricing-engine");
   if (denied) return denied;
-  const s = await getTrialPricingSettings();
+  const [s, scalePreset] = await Promise.all([
+    getTrialPricingSettings(),
+    getScalePreset(),
+  ]);
   const basisLabel =
     materialPriceBasisOptions(tr).find((o) => o.value === s.materialPriceBasis)
       ?.label ?? s.materialPriceBasis;
@@ -48,6 +52,14 @@ export default async function TrialPricingEnginePage() {
         months: s.materialPriceLookbackMonths,
       }),
       href: `${BASE}/material-policy`,
+    },
+    {
+      key: "scale-preset",
+      title: tr("settings.scalePreset.title"),
+      summary: tr("settings.scalePreset.summary", {
+        count: scalePreset.length,
+      }),
+      href: `${BASE}/scale-preset`,
     },
     {
       key: "custom-inputs",

@@ -35,11 +35,17 @@ export interface DeliveryOrderItem {
   /** 導出番号 ORD-YYYYMM-NNNNN-NN。 */
   orderLineNumber: string | null;
   /** 製品の内部 id（連番）を文字列で保持 — SearchSelect の値と揃える。 */
-  productId: string;
+  /** 製品 — 値は品目 id（items.id）。品目統合 第 2 段 C。 */
+  itemId: string;
   productName: string;
   /** ロット番号 = 指示書番号（任意）。 */
   lotNumber: number | null;
   quantity: number;
+  /**
+   * 出荷後に返ってきた数（累計）。返品は在庫を戻すだけで、**出荷した事実も
+   * 請求も動かさない**（§8 追補）。
+   */
+  returnedQuantity: number;
   /** 確定時に焼き込んだ請求単価（未確定は null → 注文明細の単価で表示）。 */
   unitPrice: number | null;
   notes: string | null;
@@ -143,7 +149,11 @@ export function confirmNeedsApproval(
 
 // ── 束ね可否（1 出荷書に載せられる注文明細の条件） ──────────────────────────
 
-/** 束ね可否の判定に使う注文明細の属性（注文請書ヘッダ由来）。 */
+/**
+ * 束ね可否の判定に使う注文明細の属性。すべて明細 (order_lines) 自身が持つ
+ * （出荷先・配送方法・エンドユーザーは §8 — 1 通の注文書の中で行ごとに
+ * 届け先が違う注文を表すため、注文請書ヘッダではなく行が唯一の持ち主）。
+ */
 export interface CombinableLineRef {
   customerBpId: string | null;
   /** 出荷先（null = 顧客へ）。 */
@@ -151,10 +161,10 @@ export interface CombinableLineRef {
   /** 配送方法（通常配送 / ユーザー直送）。 */
   deliveryMethod: string;
   /**
-   * 実効エンドユーザー（明細の行ごと指定 ?? 注文請書ヘッダの既定）。
-   * 出荷書確定時の納品書自動作成（planAutoDeliveryNotes）が「届け先 1 件」を
-   * 前提にするため、ユーザー直送の明細どうしはここも揃っている必要がある。
-   * 通常配送では無視する（省略可）。
+   * エンドユーザー（最終需要家）。出荷書確定時の納品書自動作成
+   * （planAutoDeliveryNotes）が「届け先 1 件」を前提にするため、ユーザー
+   * 直送の明細どうしはここも揃っている必要がある。通常配送では無視する
+   * （省略可）。
    */
   endUserBpId?: string | null;
 }

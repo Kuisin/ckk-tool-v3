@@ -11,7 +11,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 - 可以填写向哪家供应商、订购哪种材料、几根、单价多少。
 - 获得上级的 **承認**（审批）后才能下单。
-- 下单后，该材料会在[库存画面](/manual/zh/operations/production/material-inventory/user)上显示为「预计到货」。
+- 下单后，该材料会在[库存画面](/manual/zh/operations/inventory/inventory-management/user)上显示为「预计到货」。
 - 材料送到后，只要点击「入荷完了」（到货完成），就会 **自动入库**。
 - 可以把订单存根、送货单存根等文件附在订购单上保存。
 
@@ -33,6 +33,16 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 ## 订购推进的顺序
 
 材料订购单按以下顺序推进。当前处在哪一步，可以通过画面上带颜色的徽章来判断。
+
+```mermaid
+flowchart TD
+  draft("下書き<br/>草稿"):::gray -->|"申请审批"| req("承認依頼中<br/>审批中"):::yellow
+  req -->|"批准"| appr("承認済<br/>已批准"):::blue
+  appr -->|"下单"| ord("発注済<br/>已下单"):::violet
+  ord -->|"登记到货"| recv("入荷完了<br/>已入库"):::green
+  req -.->|"退回"| draft
+  appr -.->|"撤回"| can("キャンセル<br/>已取消"):::red
+```
 
 1. **下書き**（草稿）… 只是你创建好的状态。只有这时才能修改。
 2. **承認依頼中**（审批中）… 等待上级答复。
@@ -87,7 +97,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 ![草稿状态的材料订购单](../../../assets/screenshots/purchase-order-detail-02.png)
 
-状态会变成「**承認依頼中**」（审批中），申请会送到审批人那里。同一份申请也会出现在[审批管理](/manual/zh/operations/production/approval/user)画面上。
+状态会变成「**承認依頼中**」（审批中），申请会送到审批人那里。同一份申请也会出现在[审批管理](/manual/zh/operations/general/my-tasks/user)画面上。
 
 ## 审批・退回（审批人的操作）
 
@@ -104,7 +114,7 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 2. 点击「**発注**」（下单）。
 3. 会弹出「発注の確認」（下单确认）的小窗口，点击「**発注する**」（下单）。
 
-状态会变成「**発注済**」（已下单）。从这时起，订购的材料会在[库存画面](/manual/zh/operations/production/material-inventory/user)上显示为「预计到货」。
+状态会变成「**発注済**」（已下单）。从这时起，订购的材料会在[库存画面](/manual/zh/operations/inventory/inventory-management/user)上显示为「预计到货」。
 
 ## 材料送到后的记录
 

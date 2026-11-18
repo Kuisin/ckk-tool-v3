@@ -49,7 +49,7 @@ function fetchEstimateRowByKey(yearMonth: string, seq: number) {
     where: { yearMonth_seq: { yearMonth, seq } },
     include: {
       customerBp: true,
-      product: true,
+      item: true,
       materialType: true,
       diameter: true,
       surfaceFinish: true,
@@ -92,8 +92,8 @@ export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
     customerName: r.customerBp
       ? localized(r.customerBp.name as LocalizedText | null)
       : null,
-    productId: r.productId != null ? String(r.productId) : null,
-    productName: r.product ? productOptionLabel(r.product) : null,
+    itemId: r.itemId != null ? String(r.itemId) : null,
+    productName: r.item ? productOptionLabel(r.item) : null,
     materialTypeId: r.materialTypeId != null ? String(r.materialTypeId) : "",
     diameterCode: r.diameterCode ?? "",
     surfaceFinishCode: r.surfaceFinishCode ?? "",
@@ -124,7 +124,7 @@ export async function fetchTrialEstimates(): Promise<TrialEstimateRecord[]> {
     ) as Prisma.EstimateWhereInput,
     include: {
       customerBp: true,
-      product: true,
+      item: true,
       materialType: true,
       diameter: true,
       surfaceFinish: true,
@@ -203,10 +203,17 @@ export async function fetchSurfaceFinishOptions(): Promise<Option[]> {
   }));
 }
 
-/** 製品 options — active products (名称 + コード、レガシーは名称のみ). */
+/**
+ * 製品 options — 有効な**品目**（`itemType: "PRODUCT"`。名称 + コード、
+ * 採番前のレガシー行は名称のみ）。value は items.id。
+ *
+ * 品目統合 第 2 段 C — 価格試算 (estimates.item_id) と価格表
+ * (price_list_entries.item_id) の製品はこの値で指す。製品マスタ画面
+ * （products.id で回る URL）とは値の意味が違うので混ぜないこと。
+ */
 export async function fetchProductOptions(): Promise<Option[]> {
-  const rows = await prisma.product.findMany({
-    where: { isActive: true },
+  const rows = await prisma.item.findMany({
+    where: { itemType: "PRODUCT", isActive: true },
     orderBy: { id: "asc" },
   });
   return rows.map((p) => ({
@@ -226,11 +233,16 @@ function productOptionLabel(p: {
   return code ? `${name} ${code}` : name;
 }
 
-/** 単一製品の option（ロック表示・編集初期値用 — 全件を送らない）. */
+/**
+ * 単一製品の option（ロック表示・編集初期値用 — 全件を送らない）。
+ * `id` は品目 id（items.id）— `fetchProductOptions` と対。
+ */
 export async function fetchProductOption(id: string): Promise<Option | null> {
   const idNum = Number(id);
   if (!Number.isInteger(idNum)) return null;
-  const p = await prisma.product.findUnique({ where: { id: idNum } });
+  const p = await prisma.item.findFirst({
+    where: { id: idNum, itemType: "PRODUCT" },
+  });
   if (!p) return null;
   return { value: String(p.id), label: productOptionLabel(p) };
 }
@@ -249,14 +261,16 @@ export async function fetchExistingEntryRefs(): Promise<EntryIdentity[]> {
       yearMonth: true,
       seq: true,
       customerBpId: true,
-      productId: true,
+      itemId: true,
       variants: { select: { orderType: true } },
     },
   });
-  return rows.map((r) => ({
-    customerBpId: r.customerBpId,
-    productId: String(r.productId),
-    orderTypes: r.variants.map((v) => v.orderType),
-    entryId: formatPriceListNumber({ yearMonth: r.yearMonth, seq: r.seq }),
-  }));
+  return rows
+    .filter((r) => r.itemId != null)
+    .map((r) => ({
+      customerBpId: r.customerBpId,
+      itemId: String(r.itemId),
+      orderTypes: r.variants.map((v) => v.orderType),
+      entryId: formatPriceListNumber({ yearMonth: r.yearMonth, seq: r.seq }),
+    }));
 }

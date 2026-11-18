@@ -11,7 +11,7 @@ This app is for making a **素材発注書** (material purchase order), which is
 
 - You can write which supplier, which material, how many pieces, and at what price.
 - You can place the order after your manager has given **承認** (approval).
-- Once you place the order, the material appears as "arriving soon" on its [stock screen](/manual/en/operations/production/material-inventory/user).
+- Once you place the order, the material appears as "arriving soon" on its [stock screen](/manual/en/operations/inventory/inventory-management/user).
 - When the material arrives, you press 「入荷完了」 (Receiving complete) and it **goes into stock automatically**.
 - You can keep copies of order forms and delivery notes attached to the purchase order.
 
@@ -33,6 +33,16 @@ This app is for making a **素材発注書** (material purchase order), which is
 ## The order in which a purchase order moves along
 
 A material purchase order moves along in this order. The coloured badge on the screen tells you where it is now.
+
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Request approval"| req("承認依頼中<br/>Pending approval"):::yellow
+  req -->|"Approve"| appr("承認済<br/>Approved"):::blue
+  appr -->|"Order"| ord("発注済<br/>Ordered"):::violet
+  ord -->|"Record receipt"| recv("入荷完了<br/>Received"):::green
+  req -.->|"Send back"| draft
+  appr -.->|"Withdraw"| can("キャンセル<br/>Cancelled"):::red
+```
 
 1. **下書き** (draft) … you have only created it. This is the only time you can change it.
 2. **承認依頼中** (pending approval) … you are waiting for your manager's answer.
@@ -87,7 +97,7 @@ If a [purchase request](/manual/en/operations/purchasing/purchase-request/user) 
 
 ![Draft material purchase order](../../../assets/screenshots/purchase-order-detail-02.png)
 
-The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/production/approval/user) screen.
+The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/general/my-tasks/user) screen.
 
 ## Approving or sending back (for the approver)
 
@@ -104,7 +114,7 @@ A purchase order that was sent back returns to 「**下書き**」 (draft). The 
 2. Press 「**発注**」 (Order).
 3. A small window called 「発注の確認」 (confirm order) appears, so press 「**発注する**」 (Place order).
 
-The status becomes 「**発注済**」 (ordered). From this moment, the material you ordered is shown as "arriving soon" on the [stock screen](/manual/en/operations/production/material-inventory/user).
+The status becomes 「**発注済**」 (ordered). From this moment, the material you ordered is shown as "arriving soon" on the [stock screen](/manual/en/operations/inventory/inventory-management/user).
 
 ## Recording that the material has arrived
 

@@ -34,6 +34,7 @@ import { validateAndOrderSteps } from "@/lib/workflow";
 const BASE_PATH = "/master/products";
 /** 準備工程リスト（共通）の管理画面 — 工程マスタ (MS08) のサブページ。 */
 const PREP_ROUTES_PATH = "/master/process-steps/prep-routes";
+const REGRIND_ROUTES_PATH = "/master/process-steps/regrind-routes";
 
 type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
@@ -93,17 +94,31 @@ export type ProductRouteUpdateInput = z.infer<
   ReturnType<typeof routeUpdateInputSchema>
 >;
 
-function revalidate(productId: number) {
-  revalidatePath(`${BASE_PATH}/${productId}`);
+/** `itemId` は items.id（製品詳細の URL id — 品目統合 第 3 段）。 */
+function revalidate(itemId: number) {
+  revalidatePath(`${BASE_PATH}/${itemId}`);
 }
 
-/** ルートの種別に応じた画面を捨てる（準備 = 工程マスタ配下 / 製造 = 製品詳細）。 */
-function revalidateFor(route: { kind: string; productId: number | null }) {
-  if (route.kind === "PREP" || route.productId == null) {
+/**
+ * ルートの種別に応じた画面を捨てる（準備 = 工程マスタ配下 / 製造 = 製品詳細）。
+ *
+ * 品目 (itemId) が「対象製品を持つか」の判定を持ち、**URL も itemId** で組む
+ * （製品マスタの URL は items.id へ移した — 品目統合 第 3 段）。
+ *
+ * ⚠️ 修正: 以前はここで自分自身を再帰呼び出ししており（PREP でない枝が必ず
+ * 無限再帰でスタックオーバーフローする）、製造工程リストの更新・削除・新
+ * バージョン作成が軒並み落ちていた可能性がある。品目導入のついでに直す。
+ */
+function revalidateFor(route: { kind: string; itemId: number | null }) {
+  if (route.kind === "REGRIND") {
+    revalidatePath(REGRIND_ROUTES_PATH, "layout");
+    return;
+  }
+  if (route.kind === "PREP" || route.itemId == null) {
     revalidatePath(PREP_ROUTES_PATH, "layout");
     return;
   }
-  revalidateFor(route);
+  revalidate(route.itemId);
 }
 
 /**
@@ -112,6 +127,24 @@ function revalidateFor(route: { kind: string; productId: number | null }) {
  * （isPrepStep）だけで、開始工程がちょうど 1 つ要る（validateAndOrderSteps）。
  */
 export async function createPrepRoute(
+  input: ProductRouteVersionCreateInput & { nameJa: string; nameEn?: string },
+): Promise<ActionResult<{ routeId: number }>> {
+  return createCommonRoute("PREP", input);
+}
+
+/**
+ * 再研磨工程リスト（kind = REGRIND）の新規作成 + v1。準備工程リストと同じく
+ * 共通（製品も顧客も持たない）。入っていられるのは再研磨の指示書で使える工程
+ * （stepAllowedForType）で、製品受入（再研磨）で始まる。
+ */
+export async function createRegrindRoute(
+  input: ProductRouteVersionCreateInput & { nameJa: string; nameEn?: string },
+): Promise<ActionResult<{ routeId: number }>> {
+  return createCommonRoute("REGRIND", input);
+}
+
+async function createCommonRoute(
+  kind: "PREP" | "REGRIND",
   input: ProductRouteVersionCreateInput & { nameJa: string; nameEn?: string },
 ): Promise<ActionResult<{ routeId: number }>> {
   const tr = await getTranslations();
@@ -127,13 +160,18 @@ export async function createPrepRoute(
   }
   const v = parsed.data;
   try {
-    const built = await validateAndOrderSteps(v.steps, "MANUFACTURE", "PREP");
+    // 再研磨リストは再研磨の指示書の構成規則で、準備リストは製造分の規則で検証する。
+    const built = await validateAndOrderSteps(
+      v.steps,
+      kind === "REGRIND" ? "REGRIND" : "MANUFACTURE",
+      kind,
+    );
     if (!built.ok) return actionError(built.error);
     const actor = await getCurrentActorId();
     const created = await prisma.$transaction((tx) =>
       createRouteWithVersionTx(tx, {
-        kind: "PREP",
-        productId: null,
+        kind,
+        itemId: null,
         name: localizedInput(v.nameJa, v.nameEn),
         steps: built.creates,
         actor,
@@ -145,13 +183,16 @@ export async function createPrepRoute(
       tableName: "product_process_routes",
       recordId: String(created.routeId),
       after: {
-        kind: "PREP",
+        kind,
         nameJa: v.nameJa,
         stepCount: built.creates.length,
         version: 1,
       },
     });
-    revalidatePath(PREP_ROUTES_PATH, "layout");
+    revalidatePath(
+      kind === "REGRIND" ? REGRIND_ROUTES_PATH : PREP_ROUTES_PATH,
+      "layout",
+    );
     return actionOk({ routeId: created.routeId });
   } catch (e) {
     return actionError(
@@ -160,9 +201,12 @@ export async function createPrepRoute(
   }
 }
 
-/** ルート新規作成（v1 を同時に作成）。 */
+/**
+ * ルート新規作成（v1 を同時に作成）。
+ * `itemId` は items.id（製品詳細の URL id）— products.id ではない。
+ */
 export async function createProductRoute(
-  productId: number,
+  itemId: number,
   input: ProductRouteCreateInput,
 ): Promise<ActionResult<{ routeId: number }>> {
   const tr = await getTranslations();
@@ -176,13 +220,19 @@ export async function createProductRoute(
   }
   const v = parsed.data;
   try {
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
-      select: { id: true },
+    const item = await prisma.item.findFirst({
+      where: { id: itemId, itemType: "PRODUCT" },
+      select: { id: true, isExternalProduct: true },
     });
-    if (!product)
+    if (!item)
       return actionError(
         tr("master.productRouteActions.targetProductNotFound"),
+      );
+    // 他社製品は再研磨専用 — 製造工程リストを持たせない（持てると製造分の
+    // 指示書が作れてしまい、他社の工具が自社の完成品として入庫する）。
+    if (item.isExternalProduct)
+      return actionError(
+        tr("master.productRouteActions.externalProductNoRoute"),
       );
     // 製造工程リストだけを保存する — 準備側は共通の準備工程リストが持つ。
     const built = await validateAndOrderSteps(
@@ -196,7 +246,7 @@ export async function createProductRoute(
     const created = await prisma.$transaction((tx) =>
       createRouteWithVersionTx(tx, {
         kind: "MANUFACTURING",
-        productId,
+        itemId,
         name: localizedInput(v.nameJa, v.nameEn),
         customerBpId: v.customerBpId ?? null,
         steps: built.creates,
@@ -210,14 +260,14 @@ export async function createProductRoute(
       tableName: "product_process_routes",
       recordId: String(created.routeId),
       after: {
-        productId,
+        itemId,
         nameJa: v.nameJa,
         customerBpId: v.customerBpId ?? null,
         stepCount: built.creates.length,
         version: 1,
       },
     });
-    revalidate(productId);
+    revalidate(itemId);
     return actionOk({ routeId: created.routeId });
   } catch (e) {
     return actionError(
@@ -258,7 +308,7 @@ export async function createProductRouteVersion(
     // 混ざっていても、次の版からは製造側だけになる（準備側は準備工程リストへ）。
     const built = await validateAndOrderSteps(
       v.steps,
-      "MANUFACTURE",
+      route.kind === "REGRIND" ? "REGRIND" : "MANUFACTURE",
       route.kind,
     );
     if (!built.ok) return actionError(built.error);
@@ -337,7 +387,7 @@ export async function updateProductRoute(
       where: { id: routeId },
       select: {
         kind: true,
-        productId: true,
+        itemId: true,
         name: true,
         isActive: true,
         notes: true,
@@ -387,7 +437,7 @@ export async function deleteProductRoute(
   try {
     const prior = await prisma.productProcessRoute.findUnique({
       where: { id: routeId },
-      select: { kind: true, productId: true },
+      select: { kind: true, itemId: true },
     });
     if (!prior)
       return actionError(tr("master.productRouteActions.targetRouteNotFound"));

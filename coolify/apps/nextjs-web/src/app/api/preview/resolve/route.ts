@@ -23,7 +23,6 @@ import {
 } from "@ckk/authz-core";
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { formatProductNumber } from "@/lib/doc-number";
 import type { LocalizedText } from "@/lib/format";
 import { formatMoney, localized } from "@/lib/format";
 import {
@@ -90,13 +89,14 @@ async function richDescription(
         },
         include: {
           customerBp: true,
-          product: true,
+          // 品目統合 第 2 段 C — 価格表の製品名は品目側から読む。
+          item: true,
           variants: { orderBy: { orderType: "asc" as const } },
         },
       });
       if (!r) return null;
       const customer = localized(r.customerBp.name as LocalizedText | null);
-      const product = localized(r.product.name as LocalizedText | null);
+      const product = localized(r.item?.name as LocalizedText | null);
       const types = r.variants
         .map((v) => ORDER_TYPE_LABEL[v.orderType] ?? v.orderType)
         .join("・");
@@ -124,16 +124,20 @@ async function richDescription(
       if (!r) return null;
       return `${r.code ?? "未変換"} / ${localized(r.name as LocalizedText | null)}`;
     }
+    // 製品・素材マスタの URL id は品目 (items.id) — 品目統合 第 3 段。
     case "material": {
-      const r = await prisma.material.findUnique({ where: { id: target.id } });
+      const r = await prisma.item.findFirst({
+        where: { id: target.id, itemType: "MATERIAL" },
+      });
       if (!r) return null;
       return `${r.code ?? "未変換"} / ${localized(r.name as LocalizedText | null)}`;
     }
     case "product": {
-      const r = await prisma.product.findUnique({ where: { id: target.id } });
+      const r = await prisma.item.findFirst({
+        where: { id: target.id, itemType: "PRODUCT" },
+      });
       if (!r) return null;
-      const code = formatProductNumber(r.yearMonth, r.seq);
-      return `${code ?? "未採番"} / ${localized(r.name as LocalizedText | null)}`;
+      return `${r.code ?? "未採番"} / ${localized(r.name as LocalizedText | null)}`;
     }
     case "order-acceptance": {
       const r = await prisma.orderAcceptance.findUnique({
@@ -159,10 +163,10 @@ async function richDescription(
             seq: target.docKey.seq,
           },
         },
-        include: { product: true },
+        include: { productItem: true },
       });
       if (!r) return null;
-      const product = localized(r.product.name as LocalizedText | null);
+      const product = localized(r.productItem.name as LocalizedText | null);
       return `${product} / 予定数量 ${r.plannedQuantity} / 状態: ${r.status}`;
     }
     case "delivery-order": {
@@ -234,11 +238,11 @@ async function richDescriptionByNumber(
     case "design-request": {
       const r = await prisma.designRequest.findUnique({
         where: { requestNumber: target.docNumber },
-        include: { product: true },
+        include: { item: true },
       });
       if (!r) return null;
-      const product = r.product
-        ? localized(r.product.name as LocalizedText | null)
+      const product = r.item
+        ? localized(r.item.name as LocalizedText | null)
         : "製品未設定";
       return `${product} / 状態: ${r.status}`;
     }

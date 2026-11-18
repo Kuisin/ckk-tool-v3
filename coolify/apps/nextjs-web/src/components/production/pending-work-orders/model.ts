@@ -29,6 +29,8 @@ export interface UnplannedOrderLineRow {
   deliveryDate: string | null;
   /** ORDER_LINE_STATUS。 */
   status: string;
+  /** 注文種別（ORDER_TYPE）。REGRIND の行は再研磨の指示書を作る。 */
+  orderType: string;
   /** 注文明細の確定日時（古い順に並べて滞留を見る）。 */
   confirmedAt: string | null;
   updatedAt: string;

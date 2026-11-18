@@ -12,8 +12,15 @@
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "./api-pagination-core";
 import { PROBLEM_STATUS, PROBLEM_TITLES } from "./api-problem-core";
 import { API_RESOURCES } from "./api-resources";
+import {
+  type AuditRowLike,
+  buildEventPayload,
+  listWebhookEventTypes,
+  MAX_ATTEMPTS,
+  RETRY_DELAYS_SEC,
+} from "./webhook-core";
 
-const DESCRIPTION = `Read-only access to CKK business data.
+const DESCRIPTION = `Read-only access to CKK business data, plus outbound webhooks.
 
 **Authentication** — \`Authorization: Bearer <token>\`. Every failure returns the
 same 401 body; the reason is recorded server-side only, so that the response
@@ -27,6 +34,33 @@ cannot be used to probe whether a token exists.
 once: **process deliveries idempotently**.
 
 **Deletions** are invisible to \`updatedSince\`. Poll \`/deletions\` as well.
+
+**Breaking change, 2026-09-20 — product and material ids** — products and
+materials became one master table. The endpoints, their field names and their
+shapes are unchanged, but the *values* of \`/products.id\`, \`/materials.id\` and
+every reference to them (\`productId\`, \`materialId\` on order lines, work orders,
+delivery orders, delivery notes and the inventory endpoints) are now item ids.
+Old ids and cursors issued before that date resolve to a **different row**
+rather than to nothing, because all three id sequences are dense. Re-sync every
+affected resource from scratch, and re-match by \`/materials.code\` or
+\`/products.number\` rather than by the stored id.
+
+**New enum value, 2026-10-18 — \`REGRIND\`** — regrinding (reworking a tool the
+customer already owns) now flows through the ordinary documents, so
+\`/order-lines.orderType\` can return \`REGRIND\` and \`/work-orders.type\` can
+return \`REGRIND\` alongside \`FROM_STOCK\` and \`MANUFACTURE\`. Nothing was
+removed and no shape changed, but a client that switches on these values
+**without a default branch will not recognise the new one**. On a regrind order
+line \`productId\` is the *service* being sold, not the tool: the tool is a
+separate field and is not exposed here yet.
+
+**Outbound webhooks** — business changes are also *pushed* to endpoints an
+administrator registers (SY0I), signed per the Standard Webhooks scheme
+(\`webhook-id\`, \`webhook-timestamp\`, \`webhook-signature\`). An event is a
+**signal, not a payload**: it names the resource and what changed, never the
+values. Pull the row from the matching list endpoint. Delivery is at-least-once
+with retries, so treat \`webhook-id\` as an idempotency key, and keep polling as
+the safety net — see the \`webhooks\` section of this document.
 
 Values are returned raw: enum values (not labels), multilingual fields as
 \`{ ja, en, ... }\` objects, timestamps as RFC 3339 UTC. There is no viewer, so
@@ -135,10 +169,164 @@ const ERROR_RESPONSES = {
   },
 } as const;
 
+const SAMPLE_TIME = new Date("2026-09-10T04:11:52.881Z");
+
+function webhookEventSchema() {
+  return {
+    type: "object",
+    required: ["id", "type", "apiVersion", "occurredAt", "resource", "links"],
+    properties: {
+      id: {
+        type: "string",
+        description:
+          "Stable per (audit event, type). Identical on every retry — use it to deduplicate.",
+      },
+      type: {
+        type: "string",
+        description: "The event type, e.g. `order_acceptance.updated`.",
+      },
+      apiVersion: { type: "string", enum: ["v1"] },
+      occurredAt: { type: "string", format: "date-time" },
+      resource: {
+        type: "object",
+        required: ["type", "id", "key"],
+        properties: {
+          type: {
+            type: "string",
+            description: "Resource name; the prefix of the event type.",
+          },
+          id: {
+            type: ["string", "null"],
+            description:
+              "Public identifier (document number such as `ORD-202609-00042`, or the master id).",
+          },
+          key: {
+            type: ["string", "null"],
+            description:
+              "Stable key. Composite keys are `YYYYMM:seq`. Unlike `id` it is never reused after a numbering reset.",
+          },
+        },
+      },
+      status: {
+        type: "object",
+        description: "Present only on `.status_changed`.",
+        required: ["from", "to"],
+        properties: { from: { type: "string" }, to: { type: "string" } },
+      },
+      changedFields: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "Present only on `.updated`. Field **names** only — values are never included.",
+      },
+      links: {
+        type: "object",
+        required: ["list"],
+        properties: {
+          list: {
+            type: "string",
+            description:
+              "The list endpoint to pull the changed row from, already filtered with `?updatedSince=`.",
+          },
+        },
+      },
+    },
+  };
+}
+
+function webhookHeaders() {
+  return [
+    {
+      name: "webhook-id",
+      in: "header",
+      required: true,
+      description:
+        "Message id. The same value on every retry of the same event.",
+      schema: { type: "string" },
+    },
+    {
+      name: "webhook-timestamp",
+      in: "header",
+      required: true,
+      description:
+        "Unix seconds when this attempt was signed. Reject if it is more than 5 minutes from your clock (replay protection). Changes on every retry.",
+      schema: { type: "string" },
+    },
+    {
+      name: "webhook-signature",
+      in: "header",
+      required: true,
+      description:
+        "`v1,<base64 HMAC-SHA256>` over `{webhook-id}.{webhook-timestamp}.{raw body}` with the key `base64decode(secret without the whsec_ prefix)`. Verify against the **raw bytes**, before parsing.",
+      schema: { type: "string" },
+    },
+  ];
+}
+
+function buildWebhooks(): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const e of listWebhookEventTypes()) {
+    const action = e.type.slice(e.type.lastIndexOf(".") + 1);
+    const before =
+      action === "created" ? undefined : { status: "DRAFT", notes: "…" };
+    const after =
+      action === "deleted"
+        ? undefined
+        : {
+            status: action === "status_changed" ? "CONFIRMED" : "DRAFT",
+            notes: "changed",
+          };
+    const row: AuditRowLike = {
+      id: BigInt(1234),
+      action:
+        action === "created"
+          ? "CREATE"
+          : action === "deleted"
+            ? "DELETE"
+            : "UPDATE",
+      tableName: e.resource.table,
+      recordId: action === "deleted" ? "ORD-202609-00042" : "ORD-202609-00042",
+      recordKey: "202609:42",
+      beforeData: before,
+      afterData: after,
+      createdAt: SAMPLE_TIME,
+    };
+    const example = buildEventPayload(row, e.type);
+    out[e.type] = {
+      post: {
+        tags: ["Webhooks"],
+        operationId: `webhook_${e.type.replace(/\./g, "_")}`,
+        summary: `${e.resource.summary.replace(/\.$/, "")} — ${e.type}`,
+        description: [
+          e.when,
+          `Delivered only if the subscribing API client holds \`${e.resource.permission}:READ\`. The row itself is pulled from \`GET ${e.resource.apiPath}\`.`,
+        ].join("\n\n"),
+        parameters: webhookHeaders(),
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/WebhookEvent" },
+              example,
+            },
+          },
+        },
+        responses: {
+          "2XX": {
+            description: `Acknowledge with any 2xx. Anything else (including redirects, which are not followed) is retried ${MAX_ATTEMPTS - 1} more times after ${RETRY_DELAYS_SEC.join("s, ")}s.`,
+          },
+        },
+      },
+    };
+  }
+  return out;
+}
+
 export function buildOpenApiDocument(version: string): Record<string, unknown> {
   const paths: Record<string, unknown> = {
     "/health": {
       get: {
+        tags: ["Service"],
         summary: "Liveness. No authentication, no database access.",
         security: [],
         responses: {
@@ -159,6 +347,7 @@ export function buildOpenApiDocument(version: string): Record<string, unknown> {
     },
     "/me": {
       get: {
+        tags: ["Service"],
         summary:
           "The calling client's identity and effective permission codes. Use it to diagnose a 403 without a support ticket.",
         responses: {
@@ -169,6 +358,7 @@ export function buildOpenApiDocument(version: string): Record<string, unknown> {
     },
     "/deletions": {
       get: {
+        tags: ["Sync"],
         summary:
           "Rows that were deleted. updatedSince cannot see deletions, so poll this too. Out-of-band psql deletions are not observable here.",
         parameters: [
@@ -195,6 +385,7 @@ export function buildOpenApiDocument(version: string): Record<string, unknown> {
   for (const r of API_RESOURCES) {
     paths[r.path] = {
       get: {
+        tags: ["Resources"],
         summary: r.summary,
         description: [
           `Requires \`${r.permission}:READ\`.`,
@@ -228,6 +419,23 @@ export function buildOpenApiDocument(version: string): Record<string, unknown> {
     },
     servers: [{ url: "/api/v1" }],
     security: [{ bearerAuth: [] }],
+    tags: [
+      { name: "Service", description: "Liveness and caller identity." },
+      {
+        name: "Resources",
+        description:
+          "Business data, read with keyset paging and incremental sync.",
+      },
+      {
+        name: "Sync",
+        description: "Companion endpoints for incremental sync.",
+      },
+      {
+        name: "Webhooks",
+        description:
+          "Events pushed to your endpoint. Each is a signal; pull the data from Resources.",
+      },
+    ],
     components: {
       securitySchemes: {
         bearerAuth: { type: "http", scheme: "bearer" },
@@ -235,8 +443,10 @@ export function buildOpenApiDocument(version: string): Record<string, unknown> {
       schemas: {
         Problem: problemSchema(),
         Envelope: envelopeSchema(),
+        WebhookEvent: webhookEventSchema(),
       },
     },
     paths,
+    webhooks: buildWebhooks(),
   };
 }

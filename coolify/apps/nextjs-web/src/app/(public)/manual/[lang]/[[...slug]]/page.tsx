@@ -12,9 +12,11 @@ import {
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { docsMdxComponents } from "@/components/docs/mdx-components";
+import { OpenAPIPage } from "@/components/docs/OpenAPIPage";
 import { isDocLang } from "@/lib/docs-i18n";
 import { INTL_LOCALES } from "@/lib/i18n";
 import { manualSource } from "@/lib/manual-source";
+import { openapi } from "@/lib/openapi";
 
 interface Params {
   params: Promise<{ lang: string; slug?: string[] }>;
@@ -26,12 +28,26 @@ export default async function ManualPage({ params }: Params) {
   if (!page) notFound();
 
   const MDX = page.data.body;
+  // API / Webhook リファレンス（生成物）だけが文書を要る。他のページでは
+  // 何も読まない（`_openapi` は fumadocs-openapi が frontmatter に書く目印）。
+  const preloaded = page.data._openapi
+    ? await openapi.preloadOpenAPIPage(page)
+    : null;
+  const components = preloaded
+    ? {
+        ...docsMdxComponents,
+        OpenAPIPage: (props: Record<string, unknown>) => (
+          // biome-ignore lint/suspicious/noExplicitAny: 生成 MDX が渡す props は fumadocs-openapi の型に従う
+          <OpenAPIPage {...(props as any)} {...preloaded} />
+        ),
+      }
+    : docsMdxComponents;
   return (
     <DocsPage full={page.data.full} toc={page.data.toc}>
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
-        <MDX components={docsMdxComponents} />
+        <MDX components={components} />
       </DocsBody>
     </DocsPage>
   );

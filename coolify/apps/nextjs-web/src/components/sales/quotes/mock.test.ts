@@ -91,7 +91,8 @@ describe("resolveUnitPrice — 顧客×製品×注文種別×数量×日付 → 
 describe("quoteTotals — 小計 / 消費税10% / 合計", () => {
   const item = (over: Partial<QuoteItem>): QuoteItem => ({
     id: "i",
-    productId: "p",
+    itemId: "p",
+    productCode: null,
     productName: "p",
     orderType: "PRODUCTION",
     quantity: 1,

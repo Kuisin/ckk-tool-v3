@@ -61,6 +61,16 @@ screenshots: [kiosk-devices-01, kiosk-devices-create-01, kiosk-devices-link-01, 
 
 登録は 3 段階です。**先に枠を作り、タブレットと結び付け、最後に使える状態にします。**
 
+```mermaid
+flowchart TD
+  kpend("リンク待ち"):::gray -->|"タブレットと結び付ける"| klink("有効化待ち"):::yellow
+  klink -->|"有効化"| kact("有効"):::green
+  kact -->|"無効化"| kdis("無効"):::orange
+  kdis -->|"再有効化"| kact
+  kact -.->|"リンク解除"| kpend
+  kact -->|"取り消し"| krev("取り消し"):::red
+```
+
 ### 手順 1 — 登録枠を作る
 
 1. 画面右上の「**端末プロファイル作成**」を押します。

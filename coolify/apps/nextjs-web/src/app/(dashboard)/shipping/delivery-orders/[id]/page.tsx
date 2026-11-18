@@ -3,9 +3,13 @@ import { DeliveryOrderDetail } from "@/components/shipping/delivery-orders/Deliv
 import { appLabelForKey } from "@/lib/app-list";
 import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
+import { loadChargeItemOptions } from "@/lib/charge-items";
+import { prisma } from "@/lib/db";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
+import { type LocalizedText, localized } from "@/lib/format";
 import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
 import { fetchDeliveryOrder } from "../data";
@@ -57,11 +61,45 @@ export default async function ShippingDeliveryOrdersDetailPage({
     ]);
   if (!order) notFound();
 
+  // 追加料金（送料など）— **請求される実体はこちら**。指示書側の予定は
+  // 出荷書を作るときに複写済みで、以後は出荷書だけを直す。
+  const locale = await getServerLocale();
+  const [chargeRows, chargeItems, chargeAuthz] = await Promise.all([
+    prisma.deliveryOrderCharge.findMany({
+      where: {
+        deliveryOrderYearMonth: key.yearMonth,
+        deliveryOrderSeq: key.seq,
+      },
+      orderBy: { sortOrder: "asc" },
+      include: {
+        chargeItem: { select: { name: true } },
+        sourceWorkOrder: { select: { workOrderNumber: true } },
+      },
+    }),
+    loadChargeItemOptions(locale),
+    checkPermission("delivery_order", "UPDATE"),
+  ]);
+
   return (
     <DeliveryOrderDetail
       approval={approval}
       approvalTrail={approvalTrail}
       auditEntries={auditEntries}
+      canEditCharges={chargeAuthz.ok && order.status === "DRAFT"}
+      chargeItems={chargeItems}
+      charges={chargeRows.map((c) => ({
+        id: c.id,
+        chargeItemId: c.chargeItemId,
+        chargeItemLabel: localized(
+          c.chargeItem.name as LocalizedText | null,
+          locale,
+        ),
+        description: c.description ?? "",
+        quantity: c.quantity,
+        unitPrice: Number(c.unitPrice),
+        amount: Number(c.amount),
+        sourceWorkOrderNumber: c.sourceWorkOrder?.workOrderNumber ?? null,
+      }))}
       memos={memos}
       order={order}
     />

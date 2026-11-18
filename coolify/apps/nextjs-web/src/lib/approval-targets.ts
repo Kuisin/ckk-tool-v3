@@ -32,6 +32,10 @@ export const APPROVAL_TARGET_TYPES = [
   "internal_pages",
   "design_requests",
   "delivery_orders",
+  "stock_takes",
+  "invoices",
+  "invoice_payments",
+  "design_versions",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -172,6 +176,43 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     appKey: "delivery-orders",
     approvePermission: "delivery_order",
   },
+  stock_takes: {
+    label: label("common.stockTake", "ja"),
+    color: "violet",
+    href: (id) => `/inventory/stock-takes/${id}`,
+    appKey: "stock-takes",
+    approvePermission: "inventory",
+  },
+  // 請求書の発行前承認 — **追加費用（料金マスタから手動で足した明細）が
+  // ある請求書だけ**が通る（§9）。追加費用の無い請求書はこれまでどおり
+  // 依頼を作らない。
+  invoices: {
+    label: label("common.invoice", "ja"),
+    color: "pink",
+    href: (id) => `/billing/invoices/${id}`,
+    appKey: "invoices",
+    approvePermission: "invoice",
+  },
+  // 請求書の入金前承認 — 支払い済みにする操作そのもの（§9）。対象は
+  // invoices と同じ行（targetId = 請求書番号）だが、発行前承認とは別の段構成を
+  // 持てるよう種別を分ける（work_orders / work_order_flow_changes と同じ規約）。
+  invoice_payments: {
+    label: label("common.invoicePayment", "ja"),
+    color: "pink",
+    href: (id) => `/billing/invoices/${id}`,
+    appKey: "invoices",
+    approvePermission: "invoice",
+  },
+  // 設計図の版の確定前承認。段が 1 つも無ければ承認を通らずに確定する
+  // （出荷書と同じ — フローを組まない限り今までどおり）。対象は版の uuid
+  // （版には業務キーが無い）。
+  design_versions: {
+    label: label("common.designVersion", "ja"),
+    color: "violet",
+    href: (id) => `/production/design-files/versions/${id}`,
+    appKey: "design-files",
+    approvePermission: "design_file",
+  },
 };
 
 export function isApprovalTargetType(v: string): v is ApprovalTargetType {
@@ -190,6 +231,10 @@ const TARGET_LABEL_KEY: Record<ApprovalTargetType, string> = {
   purchase_requests: "common.purchaseRequest",
   design_requests: "common.designRequest2",
   delivery_orders: "common.deliveryOrder",
+  stock_takes: "common.stockTake",
+  invoices: "common.invoice",
+  invoice_payments: "common.invoicePayment",
+  design_versions: "common.designVersion",
 };
 
 /**

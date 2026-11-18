@@ -2,15 +2,24 @@
  * numbering.ts — document numbering on app.numbering_sequences
  * (_specs/tables.md §採番管理). Server-only.
  *
- * Formats: PRD-YYYYMM-NNNN (製品) / EST-, QOT- ... -NNNNN with monthly reset.
+ * Formats: PRD-YYYYMM-NNNN (製品) / RGD-YYYYMM-NNNN (再研磨品目) / EST-, QOT- ... -NNNNN with monthly reset.
  * The increment is a single atomic INSERT ... ON CONFLICT statement, so
  * concurrent callers never receive the same number.
+ *
+ * ⚠️ **nextjs-kiosk との twin file**（`pnpm twin:sync` / twin-files.test.ts）。
+ * 共有端末も工程完了で在庫を動かし、そのたびに入出庫伝票を起こす = 採番が要る。
+ * 採番の upsert を 2 か所に書くと必ずずれるので、この 1 本を逐語コピーで持つ。
+ * 依存は `./db` の prisma だけ（両アプリに同じ形である）。
  */
 
 import { prisma } from "./db";
 
 const SEQUENCES = {
   PRODUCT: { prefix: "PRD", digits: 4 },
+  // 再研磨品目 (MS0H)。製品と同じ items 表に載るが、売る**役務**なので
+  // 番号を分ける — 一覧・注文請書・請求書で「これは研ぎ直しだ」と
+  // コードだけで読めるようにするため。
+  REGRIND_ITEM: { prefix: "RGD", digits: 4 },
   ESTIMATE: { prefix: "EST", digits: 5 },
   QUOTE: { prefix: "QOT", digits: 5 },
   PRICE_LIST: { prefix: "PRC", digits: 5 },
@@ -28,6 +37,13 @@ const SEQUENCES = {
   FORM_RESPONSE: { prefix: "FRM", digits: 5 },
   // 社内文書 (CM03)。DC02「管理マニュアル」とは無関係（あちらはファイル）。
   INTERNAL_PAGE: { prefix: "DOC", digits: 5 },
+  // 入出庫伝票 (PD07)。在庫が動くたびに 1 枚 — 他の書類よりずっと数が出る。
+  INVENTORY_MOVEMENT: { prefix: "MOV", digits: 5 },
+  // 棚卸 (PD08)。
+  STOCK_TAKE: { prefix: "STK", digits: 5 },
+  // 会計文書（転記・反対仕訳）。請求書番号とは別の採番 — 1 請求書に元の文書・
+  // 反対仕訳・訂正後の文書が複数本対応し得るため。
+  ACCOUNTING_DOC: { prefix: "ACC", digits: 5 },
 } as const;
 
 export type NumberingKey = keyof typeof SEQUENCES;

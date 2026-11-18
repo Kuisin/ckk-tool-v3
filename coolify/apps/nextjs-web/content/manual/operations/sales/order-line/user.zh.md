@@ -60,6 +60,17 @@ ORD-202608-00012-01
 | 已发货 | 订购数量已全部发出。 |
 | 已取消 | 已作废的订单明细。 |
 
+状态按以下方式变化。
+
+```mermaid
+flowchart TD
+  conf("確定<br/>已确定"):::blue -->|"工单获批"| prod("製造中<br/>生产中"):::violet
+  prod -->|"出货一部分"| part("一部出荷<br/>部分出货"):::orange
+  part -->|"出货剩余部分"| ship("出荷済<br/>已出货"):::green
+  prod -->|"全部出货"| ship
+  prod -.->|"订单确认书被取消"| can("キャンセル<br/>已取消"):::red
+```
+
 ## 详情画面能做什么
 
 在列表中选择一行，即可打开该订单明细的详情。
@@ -69,6 +80,10 @@ ORD-202608-00012-01
 画面上方会出现「**下一步**」卡片。只要还剩未安排生产的数量，就会引导「**创建指示书**」；生产安排完毕、还剩未发货的数量时，则引导「**创建发货书**」。点击卡片上的按钮，会在已选中该订单明细的状态下打开[指示书](/manual/zh/operations/production/work-order/user)或[发货书](/manual/zh/operations/shipping/delivery-order/user)的创建画面。
 
 右上角的「**…**」（三个点的按钮）中也始终排列着「**创建指示书**」「**创建发货书**」。当前不能执行的操作会呈灰色，并显示原因（例如「订单回执确定后才能创建」）。
+
+### 查看送达地点
+
+发货目的地・配送方式・最终用户・负责据点・发货作业场所会以只读方式显示该明细自己的值。要修改这些值，请到[订单确认书](/manual/zh/operations/sales/order-acceptance/user)的明细编辑器中操作 —— 由于有些订单在同一份单据中行与行的送达地点并不相同，这些都是按明细设置的项目。
 
 ### 查询库存并预留
 
@@ -130,7 +145,7 @@ ORD-202608-00012-01
 - [订单请书](/manual/zh/operations/sales/order-acceptance/user) — 新建和修改订单明细的画面
 - [指示书](/manual/zh/operations/production/work-order/user) — 推进生产的画面
 - [发货书](/manual/zh/operations/shipping/delivery-order/user) — 发货的画面
-- [库存管理](/manual/zh/operations/production/product-inventory/user) — 库存与预留的状况
+- [库存管理](/manual/zh/operations/inventory/inventory-management/user) — 库存与预留的状况
 
 <!-- permissions:start -->
 ## 所需权限

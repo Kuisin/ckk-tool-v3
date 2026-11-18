@@ -91,6 +91,14 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 
 出货单按「下書き」（草稿）→「確定」（确定）→「出荷済」（已发货）三个阶段推进。操作在界面右上角的「**…**」（三个点的按钮）里进行。
 
+```mermaid
+flowchart TD
+  draft("下書き<br/>草稿"):::gray -->|"确定"| conf("確定<br/>已确定"):::blue
+  conf -->|"出货"| ship("出荷済<br/>已出货"):::green
+  conf -.-> dn["自动生成送货单（发货时）"]
+  ship -.-> inv["产品库存减少，订单明细<br/>变为部分出货・已出货"]
+```
+
 ![详细界面的「…」菜单](../../../assets/screenshots/delivery-order-menu-01.png)
 
 ### 1. 把内容定下来（确定）
@@ -111,7 +119,7 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 2. 选「**出荷**」（发货）。
 3. 弹出「出荷の確認」（发货确认）后，点「**出荷する**」（发货）。
 
-发货后，当天的日期会记为 **出荷日（发货日）**，状态变成「**出荷済**」（已发货）。同时，发出的数量会从[产品库存](/manual/zh/operations/production/product-inventory/user)里减掉，订单明细那边也会自动变成「一部出荷」（部分发货）或「出荷済」（已发货）。
+发货后，当天的日期会记为 **出荷日（发货日）**，状态变成「**出荷済**」（已发货）。同时，发出的数量会从[产品库存](/manual/zh/operations/inventory/inventory-management/user)里减掉，订单明细那边也会自动变成「一部出荷」（部分发货）或「出荷済」（已发货）。
 
 ### 弄错时（取消）
 
@@ -243,7 +251,7 @@ A. 数量是从相关指示书的完成数（现货库存范围内）自动填�
 A. 同一张订单明细里，您要发的支数超过了订购的支数（分组标题会红色显示「受注残 N を超えています」）。请减少这张发货单的数量，或确认之前已经发过的量。
 
 **Q. 出现「在庫が不足」（库存不足），发不了货。**
-A. 所选批次里剩下的库存不够要发的支数。请在[产品库存](/manual/zh/operations/production/product-inventory/user)里确认数量后再试一次。
+A. 所选批次里剩下的库存不够要发的支数。请在[产品库存](/manual/zh/operations/inventory/inventory-management/user)里确认数量后再试一次。
 
 **Q. 内容弄错想改，但找不到「編集」（编辑）。**
 A. 只有在「下書き」（草稿）期间才能编辑。确定之后就改不了了，请保留那张出货单，用正确的内容重新做一张。

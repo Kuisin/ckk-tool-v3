@@ -19,7 +19,7 @@ export async function fetchOutsourceSteps(): Promise<OutsourceStepRow[]> {
   const rows = await prisma.workOrderStep.findMany({
     where: { executionLocation: "OUTSOURCE" },
     include: {
-      workOrder: { include: { product: true } },
+      workOrder: { include: { productItem: true } },
       processStep: true,
       supplierBp: true,
     },
@@ -28,7 +28,9 @@ export async function fetchOutsourceSteps(): Promise<OutsourceStepRow[]> {
   return rows.map((s) => ({
     stepId: s.id,
     workOrderNumber: s.workOrder.workOrderNumber,
-    productName: localized(s.workOrder.product.name as LocalizedText | null),
+    productName: localized(
+      s.workOrder.productItem.name as LocalizedText | null,
+    ),
     processName: localized(s.processStep.name as LocalizedText | null),
     supplierBpId: s.supplierBpId,
     supplierName: s.supplierBp

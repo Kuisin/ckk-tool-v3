@@ -28,7 +28,7 @@ BEGIN
   FROM app.bp_role_assignments
   WHERE role = 'CUSTOMER' AND is_active
   ORDER BY bp_id LIMIT 1;
-  SELECT id INTO v_product FROM app.products ORDER BY id LIMIT 1;
+  SELECT id INTO v_product FROM app.items WHERE item_type = 'PRODUCT' ORDER BY id LIMIT 1;
 
   IF v_customer IS NULL OR v_product IS NULL THEN
     RAISE NOTICE 'no customer/product master data; skipping demo seed';
@@ -57,11 +57,11 @@ BEGIN
 
   -- 価格表エントリ（(year_month, seq) キー）+ 本番バリアント + 段階
   INSERT INTO app.price_list_entries
-    (year_month, seq, customer_bp_id, product_id, currency, is_active,
+    (year_month, seq, customer_bp_id, item_id, currency, is_active,
      created_by, created_at, updated_at)
   VALUES
     (v_ym, 90001, v_customer, v_product, 'JPY', true, v_sys, now(), now())
-  ON CONFLICT (customer_bp_id, product_id) DO NOTHING;
+  ON CONFLICT (customer_bp_id, item_id) DO NOTHING;
 
   INSERT INTO app.price_list_variants
     (entry_year_month, entry_seq, order_type, base_unit_price, valid_from,
@@ -87,7 +87,7 @@ BEGIN
   ON CONFLICT (year_month, seq) DO NOTHING;
 
   INSERT INTO app.quote_items
-    (quote_year_month, quote_seq, product_id, order_type, quantity, unit_price, amount, sort_order)
+    (quote_year_month, quote_seq, item_id, order_type, quantity, unit_price, amount, sort_order)
   SELECT v_ym, v_seq, v_product, 'PRODUCTION', 100, 1000, 100000, 0
   WHERE NOT EXISTS (
     SELECT 1 FROM app.quote_items WHERE quote_year_month = v_ym AND quote_seq = v_seq

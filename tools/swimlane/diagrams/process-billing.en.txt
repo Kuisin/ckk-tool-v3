@@ -84,4 +84,4 @@ label: Payment confirmation;
 desc: Confirm the actual payment before marking it "Paid".;
 [role_billing: Export to accounting] <block_apply>
 label: Accounting export;
-desc: Export the closed items as CSV for Yayoi Kaikei. The exported billing closing becomes "Exported".;
+desc: Export the closed items as a journal CSV for the accounting software. The exported billing closing becomes "Exported".;

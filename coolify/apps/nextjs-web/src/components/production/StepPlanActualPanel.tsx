@@ -7,6 +7,10 @@
  * 計画の必須項目は工程マスタが決め（lib/work-plan-core.ts requiredPlanFields）、
  * 画面は**赤い必須印だけ**で示す —「（任意）」と書き添えない。印の無い欄が任意。
  * 実績は起きたことの記録なので必須は 担当者・日付 だけ。
+ *
+ * ★ **数量は実績だけ**（2026-09-17 に計画から外した）。計画の数量は書き込まれる
+ *   だけでどこからも読まれず、実績とも突き合わせていなかった。同じ部品を
+ *   計画・実績で使い回しているので、列も入力欄も `kind` で出し分ける。
  * 担当者は従業員検索（searchUserOptions）。計画は未完了の工程で、実績は
  * 進行中の工程で編集できる。
  */
@@ -53,6 +57,7 @@ function RecordTable({
   onDelete,
   deleting,
   showLocation,
+  showQuantity,
 }: {
   rows: (StepPlanView | StepActualView)[];
   canEdit: boolean;
@@ -60,6 +65,8 @@ function RecordTable({
   deleting: boolean;
   /** 作業場所列。 */
   showLocation?: boolean;
+  /** 数量列（実績のみ — 計画は数量を持たない）。 */
+  showQuantity?: boolean;
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -79,9 +86,11 @@ function RecordTable({
           <Table.Th w={130}>
             {tr("production.stepPlanActualPanel.hours")}
           </Table.Th>
-          <Table.Th ta="right" w={90}>
-            {tr("common.quantity")}
-          </Table.Th>
+          {showQuantity && (
+            <Table.Th ta="right" w={90}>
+              {tr("common.quantity")}
+            </Table.Th>
+          )}
           {showLocation && (
             <Table.Th w={180}>
               {tr("production.stepPlanActualPanel.workLocation")}
@@ -116,11 +125,13 @@ function RecordTable({
                 )}
               </Group>
             </Table.Td>
-            <Table.Td ta="right">
-              <Text className="tabular-nums" size="sm">
-                {r.quantity ?? "—"}
-              </Text>
-            </Table.Td>
+            {showQuantity && (
+              <Table.Td ta="right">
+                <Text className="tabular-nums" size="sm">
+                  {r.quantity ?? "—"}
+                </Text>
+              </Table.Td>
+            )}
             {showLocation && (
               <Table.Td>
                 <Text c="dimmed" size="sm" truncate>
@@ -195,12 +206,13 @@ function RecordSection({
   const [workLocationId, setWorkLocationId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const showLocation = workLocationOptions.length > 0;
+  // 数量は実績だけの欄（計画は数量を持たない）。
+  const showQuantity = kind === "actual";
   // 必須印と入力チェックは同じ集合を見る — 承認依頼のゲートと同じ相手。
   const req = (f: PlanField) =>
     kind === "plan" && requiredPlanFields.includes(f);
   const locationRequired = req("WORK_LOCATION") && showLocation;
   const timeRequired = req("TIME");
-  const quantityRequired = req("QUANTITY");
   // 担当者: 計画は工程マスタが要求したときだけ、実績は常に（誰がやったかの記録）。
   const assigneeRequired = kind === "actual" || req("ASSIGNEE");
 
@@ -240,14 +252,6 @@ function RecordSection({
       });
       return;
     }
-    if (quantityRequired && quantity === "") {
-      notifications.show({
-        title: tr("common.missingInput"),
-        message: tr("production.stepPlanActualPanel.enterQuantity"),
-        color: "red",
-      });
-      return;
-    }
     const payload: StepPlanInput = {
       workOrderNumber,
       stepId,
@@ -255,7 +259,8 @@ function RecordSection({
       date,
       startTime: startTime || null,
       endTime: endTime || null,
-      quantity: quantity === "" ? null : quantity,
+      // 計画は数量を持たない（サーバー側 addStepPlan も書かない）。
+      quantity: showQuantity && quantity !== "" ? quantity : null,
       workLocationId: workLocationId ? Number(workLocationId) : null,
       notes,
     };
@@ -326,6 +331,7 @@ function RecordSection({
           showLocation={
             showLocation || rows.some((r) => r.workLocationName != null)
           }
+          showQuantity={showQuantity}
         />
         {canEdit && (
           <Stack gap="xs">
@@ -367,20 +373,21 @@ function RecordSection({
                 w={110}
                 withAsterisk={timeRequired}
               />
-              <NumberInput
-                allowNegative={false}
-                label={tr("common.quantity")}
-                min={1}
-                onChange={(v) => setQuantity(typeof v === "number" ? v : "")}
-                placeholder={
-                  suggestedQuantity != null
-                    ? String(suggestedQuantity)
-                    : undefined
-                }
-                value={quantity}
-                w={120}
-                withAsterisk={quantityRequired}
-              />
+              {showQuantity && (
+                <NumberInput
+                  allowNegative={false}
+                  label={tr("common.quantity")}
+                  min={1}
+                  onChange={(v) => setQuantity(typeof v === "number" ? v : "")}
+                  placeholder={
+                    suggestedQuantity != null
+                      ? String(suggestedQuantity)
+                      : undefined
+                  }
+                  value={quantity}
+                  w={120}
+                />
+              )}
               {showLocation && (
                 <Select
                   clearable={!locationRequired}

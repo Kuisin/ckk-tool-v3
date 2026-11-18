@@ -227,7 +227,8 @@ export interface WorkOrderView {
   /** 作成者の表示名（システム作成は null）。 */
   createdByName: string | null;
   productName: string;
-  materialId: number | null;
+  /** 使用素材の品目 id（items.id。品目統合 第 2 段 B — 旧 materialId）。 */
+  materialItemId: number | null;
   materialCode: string | null;
   materialName: string | null;
   /** 完成品の保管場所（保管場所マスタ MS0E。null = 未指定）。 */
@@ -240,11 +241,16 @@ export interface WorkOrderView {
   /** 使用する図面の版（任意のピン留め）。null = そのつど最新を引く。 */
   designFileId: string | null;
   storageLocationName: string | null;
-  /** 注文明細の対象製品（工程ルートのリンク先）。 */
-  productId: number;
+  /**
+   * この指示書が作る製品の品目 id（items.id）。製品ピッカー・工程リストの
+   * 解決・製品マスタ (MS04) へのリンクがすべてこの 1 つの id 空間を見る。
+   */
+  productItemId: number | null;
   /** 工程ルート出所（未使用 = null）。 */
   routeVersionId: string | null;
   routeId: number | null;
+  /** 出所リストの種別（MANUFACTURING / REGRIND）。再研磨は共通リストを指す。 */
+  routeKind: string | null;
   routeName: string | null;
   routeVersion: number | null;
   /** 製造工程リストの最新版番号 — 使っている版が古ければ画面で示す。 */
@@ -260,6 +266,12 @@ export interface WorkOrderView {
    * あるか（lib/work-plan-core.ts）。承認カードが「何が足りないか」を出す。
    */
   planReadiness: PlanReadiness;
+  /** 再研磨の 3 つの本数（受入 / 返却 / 完成）。再研磨以外は null。 */
+  regrind: {
+    received: number | null;
+    returnedAsIs: number;
+    finished: number;
+  } | null;
   /** ロット番号 = 指示書番号（注文明細側の lot_number）。 */
   lotNumber: number | null;
   sourceWorkOrderNumber: number | null;

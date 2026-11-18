@@ -42,9 +42,15 @@ import {
   acknowledgeFlowChangeAction,
   cancelWorkOrder,
   copyWorkOrder,
+  saveWorkOrderCharges,
   setWorkOrderDesignFile,
 } from "@/app/(dashboard)/production/work-orders/actions";
 import type { ApprovalActionState } from "@/components/approvals/ApprovalActionCard";
+import {
+  type ChargeItemChoice,
+  type ChargeRowView,
+  ChargesPanel,
+} from "@/components/charges/ChargesPanel";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   type ApprovalTrailView,
@@ -73,7 +79,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
-import { workOrderTypeLabel } from "@/lib/enum-labels";
+import { WORK_ORDER_TYPE_COLOR, workOrderTypeLabel } from "@/lib/enum-labels";
 import { FlowChangeCard, type PendingFlowChangeView } from "./FlowChangeCard";
 import type { WorkOrderView } from "./model";
 import { WorkOrderLinksCard } from "./WorkOrderLinksCard";
@@ -93,6 +99,9 @@ export function WorkOrderDetail({
   rejectedAppliedFlowChange = null,
   designFile = null,
   designPinned = false,
+  charges = [],
+  chargeItems = [],
+  canEditCharges = false,
   variant = "default",
 }: {
   workOrder: WorkOrderView;
@@ -108,6 +117,11 @@ export function WorkOrderDetail({
   designFile?: ProductDesignFile | null;
   /** その版に固定されているか（false = 表示のたびに最新を引いている）。 */
   designPinned?: boolean;
+  /** 追加料金（送料など）— **予定**。請求される実体は出荷書側の行。 */
+  charges?: ChargeRowView[];
+  /** 料金マスタの選択肢（編集時のみ使う）。 */
+  chargeItems?: ChargeItemChoice[];
+  canEditCharges?: boolean;
   /** 承認依頼中の工程フロー変更（承認設定が未設定なら常に null = 即適用）。 */
   flowChange?: PendingFlowChangeView | null;
   /** 上の変更そのものの承認状態（指示書の承認とは別物）。 */
@@ -319,54 +333,93 @@ export function WorkOrderDetail({
       <FieldValue label={tr("common.product")} value={wo.productName} />
       <FieldValue
         label={tr("common.type2")}
-        value={workOrderTypeLabel(wo.type, locale) ?? wo.type}
+        value={
+          <Badge
+            color={WORK_ORDER_TYPE_COLOR[wo.type] ?? "gray"}
+            size="sm"
+            variant="light"
+          >
+            {workOrderTypeLabel(wo.type, locale) ?? wo.type}
+          </Badge>
+        }
       />
       <FieldValue
         label={tr("common.plannedQuantity")}
         value={`${wo.plannedQuantity}`}
       />
-      <FieldValue
-        label={tr("production.workOrders.materialUsed")}
-        value={
-          wo.materialCode ? `${wo.materialCode}（${wo.materialName}）` : null
-        }
-      />
+      {/* 再研磨: 受入 / 返却（再研磨不可）/ 完成 の 3 つ。受入は製品受入の完了で
+          決まり、返却は廃棄欄の合計、完成は終端の良品。自社在庫は動かない。 */}
+      {wo.regrind && (
+        <FieldValue
+          label={tr("production.workOrders.regrindQuantities")}
+          value={
+            <Group gap="xs" wrap="wrap">
+              <Badge color="orange" size="sm" variant="light">
+                {tr("production.workOrders.regrindReceived")}{" "}
+                {wo.regrind.received ??
+                  tr("production.workOrders.regrindNotReceivedYet")}
+              </Badge>
+              <Badge color="red" size="sm" variant="light">
+                {tr("production.workOrders.regrindReturned")}{" "}
+                {wo.regrind.returnedAsIs}
+              </Badge>
+              <Badge color="green" size="sm" variant="light">
+                {tr("production.workOrders.regrindFinished")}{" "}
+                {wo.regrind.finished}
+              </Badge>
+            </Group>
+          }
+        />
+      )}
+      {wo.type !== "REGRIND" && (
+        <FieldValue
+          label={tr("production.workOrders.materialUsed")}
+          value={
+            wo.materialCode ? `${wo.materialCode}（${wo.materialName}）` : null
+          }
+        />
+      )}
       <FieldValue
         label={tr("common.lotNumber")}
         value={<DocNumber>{wo.lotNumber ?? wo.workOrderNumber}</DocNumber>}
       />
-      <FieldValue
-        label={tr("common.storageLocations")}
-        value={wo.storageLocationName}
-      />
-      {/* 工程リストは 準備（共通）+ 製造（製品 × 受注元）の 2 本（§7）。
-          使っている版が最新でなければ印を付ける — 直した工程リストが
-          この指示書に反映されていないことを、開いた人が気づけるように。 */}
-      <FieldValue
-        label={tr("production.workOrders.prepRoute")}
-        value={
-          wo.prepRouteName != null ? (
-            <Group gap={6} wrap="nowrap">
-              <Anchor
-                component={Link}
-                href="/master/process-steps/prep-routes"
-                size="sm"
-              >
-                {wo.prepRouteName} v{wo.prepRouteVersion}
-              </Anchor>
-              {wo.prepRouteLatestVersion != null &&
-                wo.prepRouteVersion != null &&
-                wo.prepRouteLatestVersion > wo.prepRouteVersion && (
-                  <Badge color="orange" size="xs" variant="light">
-                    {tr("production.workOrders.newerVersionExists", {
-                      version: wo.prepRouteLatestVersion,
-                    })}
-                  </Badge>
-                )}
-            </Group>
-          ) : null
-        }
-      />
+      {wo.type !== "REGRIND" && (
+        <FieldValue
+          label={tr("common.storageLocations")}
+          value={wo.storageLocationName}
+        />
+      )}
+      {/* 工程リストは 準備（共通）+ 製造（製品 × 受注元）の 2 本（§7）。再研磨は
+          共通の再研磨工程リスト 1 本。使っている版が最新でなければ印を付ける —
+          直した工程リストがこの指示書に反映されていないことを、開いた人が
+          気づけるように。 */}
+      {wo.type !== "REGRIND" && (
+        <FieldValue
+          label={tr("production.workOrders.prepRoute")}
+          value={
+            wo.prepRouteName != null ? (
+              <Group gap={6} wrap="nowrap">
+                <Anchor
+                  component={Link}
+                  href="/master/process-steps/prep-routes"
+                  size="sm"
+                >
+                  {wo.prepRouteName} v{wo.prepRouteVersion}
+                </Anchor>
+                {wo.prepRouteLatestVersion != null &&
+                  wo.prepRouteVersion != null &&
+                  wo.prepRouteLatestVersion > wo.prepRouteVersion && (
+                    <Badge color="orange" size="xs" variant="light">
+                      {tr("production.workOrders.newerVersionExists", {
+                        version: wo.prepRouteLatestVersion,
+                      })}
+                    </Badge>
+                  )}
+              </Group>
+            ) : null
+          }
+        />
+      )}
       {/* 過不足納品（§8）— 許可されているときだけ出す。既定（不可）は
           従来どおりの状態なので、全ての指示書に「不可」を並べても読む量が
           増えるだけ。 */}
@@ -381,13 +434,21 @@ export function WorkOrderDetail({
         />
       )}
       <FieldValue
-        label={tr("production.workOrders.processRoute")}
+        label={
+          wo.type === "REGRIND"
+            ? tr("production.workOrders.regrindRoute")
+            : tr("production.workOrders.processRoute")
+        }
         value={
           wo.routeName != null ? (
             <Group gap={6} wrap="nowrap">
               <Anchor
                 component={Link}
-                href={`/master/products/${wo.productId}?tab=routes`}
+                href={
+                  wo.routeKind === "REGRIND"
+                    ? "/master/process-steps/regrind-routes"
+                    : `/master/products/${wo.productItemId ?? ""}?tab=routes`
+                }
                 size="sm"
               >
                 {wo.routeName} v{wo.routeVersion}
@@ -618,6 +679,21 @@ export function WorkOrderDetail({
               workOrderNumber={wo.workOrderNumber}
               workOrderStatus={wo.status}
             />
+            {/* 追加料金（送料など）。ここは**予定**で、出荷書を作るときに
+                複写される — 請求されるのは出荷書側の行。承認の画面
+                （variant="approval"）では読むだけにする。 */}
+            {!isApproval && (
+              <ChargesPanel
+                canEdit={canEditCharges}
+                description={tr("charges.workOrderHelp")}
+                items={chargeItems}
+                onSave={(rows) =>
+                  saveWorkOrderCharges(wo.workOrderNumber, rows)
+                }
+                rows={charges}
+                title={tr("charges.title")}
+              />
+            )}
             {wo.notes && (
               <div>
                 <Text c="dimmed" mb={4} size="xs">

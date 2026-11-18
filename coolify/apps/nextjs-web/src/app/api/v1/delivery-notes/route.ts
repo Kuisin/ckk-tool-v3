@@ -2,7 +2,10 @@
  * GET /api/v1/delivery-notes — 納品書の一覧（keyset + 差分同期）。
  *
  * 権限は `delivery_note:READ`。行スコープは**親の出荷書の出荷元拠点**
- * ∪ 作成者（納品書自身は拠点を持たない）。
+ * ∪ 作成者（納品書自身は拠点を持たない）。 *
+ * 明細の `productId` の値は **`items.id`**（2026-09-20 の切り替え —
+ * `_specs/api.md` §6.1）。項目名は従来のままで、`/api/v1/products` の `id` と
+ * 同じ id 空間を指す。
  */
 
 import { ownOrPlantWhere } from "@ckk/authz-core";
@@ -56,7 +59,7 @@ export async function GET(request: Request): Promise<Response> {
             orderBy: { sortOrder: "asc" },
             select: {
               id: true,
-              productId: true,
+              itemId: true,
               quantity: true,
               unitPrice: true,
               amount: true,
@@ -90,7 +93,7 @@ export async function GET(request: Request): Promise<Response> {
       notes: r.notes,
       items: r.items.map((i) => ({
         id: i.id,
-        productId: i.productId,
+        productId: i.itemId,
         quantity: i.quantity,
         unitPrice: num(i.unitPrice),
         amount: num(i.amount),

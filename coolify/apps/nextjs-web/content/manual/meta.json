@@ -6,6 +6,7 @@
     "permissions",
     "analytics",
     "operations",
-    "process"
+    "process",
+    "integration"
   ]
 }

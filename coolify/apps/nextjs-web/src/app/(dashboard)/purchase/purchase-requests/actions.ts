@@ -61,9 +61,8 @@ function revalidate(requestNumber?: string) {
 
 function itemInputSchema(tr: Tr) {
   return z.object({
-    materialId: z
-      .string()
-      .min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
+    /** 選んだ素材の品目 id（items.id）を文字列で受ける。 */
+    itemId: z.string().min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
     plantId: z.string().nullable(),
     quantity: z
       .number()
@@ -113,15 +112,18 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
 
 /** 明細入力 → create データ。 */
 function buildItemCreates(items: PurchaseRequestInput["items"]) {
-  return items.map((it, i) => ({
-    materialId: Number(it.materialId),
-    plantId: it.plantId ? Number(it.plantId) : null,
-    quantity: it.quantity,
-    unit: it.unit,
-    desiredAt: it.desiredAt ? new Date(it.desiredAt) : null,
-    notes: it.notes?.trim() || null,
-    sortOrder: i,
-  }));
+  return items.map((it, i) => {
+    const itemId = Number(it.itemId);
+    return {
+      itemId,
+      plantId: it.plantId ? Number(it.plantId) : null,
+      quantity: it.quantity,
+      unit: it.unit,
+      desiredAt: it.desiredAt ? new Date(it.desiredAt) : null,
+      notes: it.notes?.trim() || null,
+      sortOrder: i,
+    };
+  });
 }
 
 /** スコープ判定に要る明細（入荷先拠点だけ）。prior の findUnique に足す。 */
@@ -173,7 +175,7 @@ export async function createPurchaseRequest(
   try {
     const actor = await getCurrentActorId();
     const requestNumber = await nextDocumentNumber("PURCHASE_REQUEST");
-    const creates = buildItemCreates(v.items);
+    const creates = await buildItemCreates(v.items);
 
     await prisma.purchaseRequest.create({
       data: {
@@ -248,7 +250,7 @@ export async function updatePurchaseRequest(
       );
     }
     const actor = await getCurrentActorId();
-    const creates = buildItemCreates(v.items);
+    const creates = await buildItemCreates(v.items);
 
     await prisma.$transaction(async (tx) => {
       await tx.purchaseRequestItem.deleteMany({
@@ -661,7 +663,7 @@ export async function convertToPurchaseOrder(
           ]),
           items: {
             create: prior.items.map((it, i) => ({
-              materialId: it.materialId,
+              itemId: it.itemId,
               plantId: it.plantId,
               quantity: it.quantity,
               unit: it.unit,

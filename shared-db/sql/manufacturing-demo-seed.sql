@@ -54,7 +54,13 @@ BEGIN
     ('order_acceptances',        1, jsonb_build_object('ja', '第一承認', 'en', 'First approval'),  v_first,  'ANY'),
     ('material_purchase_orders', 1, jsonb_build_object('ja', '第一承認', 'en', 'First approval'),  v_first,  'ANY'),
     ('purchase_requests',        1, jsonb_build_object('ja', '第一承認', 'en', 'First approval'),  v_first,  'ANY')
-  ON CONFLICT (target_type, step_no) DO NOTHING;
+  -- extended-master-seed.sql が先に同じ段を「第一/第二承認グループ」（メンバー
+  -- 無し — 本番で人が入れる前提の器）へ向けて入れている。DO NOTHING だと
+  -- その器のまま残り、承認者ゼロで誰も承認できない書類ができる（2026-09-20 の
+  -- 実機検証で 4 書類とも詰まった）。デモ環境ではメンバーの居る（デモ）
+  -- グループへ向け直す。
+  ON CONFLICT (target_type, step_no) DO UPDATE
+    SET group_id = EXCLUDED.group_id, name = EXCLUDED.name, mode = EXCLUDED.mode;
 
   -- 投入自体を履歴に残す
   INSERT INTO app.audit_logs (user_id, action, table_name, record_id, after_data)

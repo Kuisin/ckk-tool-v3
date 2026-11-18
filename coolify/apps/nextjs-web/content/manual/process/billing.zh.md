@@ -26,7 +26,7 @@ screenshots:
 | 3. 发行 | 发行 PDF | 财务 | [请款单](/manual/zh/operations/billing/invoice/user)（`BL01`） |
 | 4. 寄送 | 发给客户，设为已寄送 | 财务 | [请款单](/manual/zh/operations/billing/invoice/user)（`BL01`） |
 | 5. 记录收款 | 收到款项后设为已付款 | 财务 | [请款单](/manual/zh/operations/billing/invoice/user)（`BL01`） |
-| 6. 交给会计 | 导出弥生会计用的 CSV | 财务 | [结算处理](/manual/zh/operations/billing/billing-closing/user)（`BL02`） |
+| 6. 交给会计 | 导出会计软件用的记账凭证 CSV | 财务 | [结算处理](/manual/zh/operations/billing/billing-closing/user)（`BL02`） |
 
 ## 各阶段发生的事
 
@@ -48,9 +48,9 @@ screenshots:
 
 ### 6. 交给会计
 
-已结算的部分可以导出为弥生会计用的 CSV。已导出的结算处理会变为「エクスポート済」（已导出）。
+已结算的部分可以导出为会计软件（TKC FX4 Cloud）用的记账凭证 CSV。已导出的结算处理会变为「エクスポート済」（已导出）。
 
-![请款单操作菜单。弥生会计 CSV 以红框强调](../assets/screenshots/flow-invoice-csv-01.png)
+![请款单操作菜单。会计对接 CSV 以红框强调](../assets/screenshots/flow-invoice-csv-01.png)
 
 ## 单据状态
 

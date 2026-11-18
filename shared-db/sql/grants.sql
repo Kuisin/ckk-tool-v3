@@ -209,6 +209,12 @@ GRANT SELECT (id, name, location, plant_id, status,
 -- 宛先が入る。どちらも社内の設定値で、閲覧できて困るものではないため出している。
 -- ★ 列を足したらここにも足すこと（列単位の GRANT なので、書かない列は見えない）。
 
+-- 外向き Webhook（_specs/api.md §9）。送信先 URL には認証トークンが埋まる
+-- ことが多く（n8n の Webhook URL 自体が秘密）、secret は署名鍵の封筒。
+-- 配送の本文は業務データの写し。いずれも BI へ出さない。
+REVOKE SELECT ON app.webhook_endpoints  FROM metabase_ro;
+REVOKE SELECT ON app.webhook_deliveries FROM metabase_ro;
+
 -- 取引先ポータル（社外向け）。生きた資格情報とその使われ方が並ぶので、
 -- 生の秘密を持つ表はまるごと外す。閲覧は SY0H に閉じる。
 REVOKE SELECT ON app.portal_login_challenges FROM metabase_ro;  -- OTP のハッシュ（有効中）
