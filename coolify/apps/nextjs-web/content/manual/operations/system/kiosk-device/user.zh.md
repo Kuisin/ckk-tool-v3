@@ -61,6 +61,16 @@ screenshots: [kiosk-devices-01, kiosk-devices-create-01, kiosk-devices-link-01, 
 
 注册分 3 个阶段。**先创建注册位，再与平板绑定，最后设为可以使用的状态。**
 
+```mermaid
+flowchart TD
+  kpend("リンク待ち<br/>待关联"):::gray -->|"关联平板"| klink("有効化待ち<br/>待启用"):::yellow
+  klink -->|"启用"| kact("有効<br/>启用"):::green
+  kact -->|"停用"| kdis("無効<br/>停用"):::orange
+  kdis -->|"重新启用"| kact
+  kact -.->|"解除关联"| kpend
+  kact -->|"撤销"| krev("取り消し<br/>已撤销"):::red
+```
+
 ### 步骤 1 — 创建注册位
 
 1. 按画面右上角的「**端末プロファイル作成**」（创建终端档案）。

@@ -10,6 +10,7 @@
  * 配信のため processed Markdown を含める。
  */
 
+import { remarkMdxMermaid } from "fumadocs-core/mdx-plugins/remark-mdx-mermaid";
 import {
   defineConfig,
   defineDocs,
@@ -52,5 +53,12 @@ export default defineConfig({
      * ローカル画像（public/ 配下）は従来どおり測られる。
      */
     remarkImageOptions: { external: false },
+    /**
+     * ```mermaid フェンスを `<Mermaid chart="…" />` に置き換える（描くのは
+     * components/docs/Mermaid.tsx — ブラウザ側）。操作ページの中の小さな図
+     * （状態の移り変わりなど）用で、プロセス編のスイムレーン図（tools/swimlane →
+     * ビルド時 SVG）はそのまま。
+     */
+    remarkPlugins: [remarkMdxMermaid],
   },
 });

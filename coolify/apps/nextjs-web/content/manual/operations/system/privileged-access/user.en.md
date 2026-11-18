@@ -33,6 +33,21 @@ If you were granted 30 minutes but first use it 5 minutes before the window clos
 
 Reserving a long window costs nothing while unused, but the window's end never moves.
 
+As a diagram, the flow looks like this.
+
+```mermaid
+sequenceDiagram
+  participant A as Requester
+  participant B as Approver
+  participant S as System
+  A->>B: Request<br/>(operations, reason, window, duration)
+  B-->>A: Approve<br/>(choose which operations to allow)
+  Note over A,S: Approval alone does not start the clock
+  A->>S: First use of the operation
+  Note over A,S: The clock starts here
+  S-->>A: Ends when the duration runs out or the<br/>window closes, whichever is first
+```
+
 ## Approving
 
 Approvers see an **Approve** tab. Your own requests never appear there — the requester and the approver must be different people.

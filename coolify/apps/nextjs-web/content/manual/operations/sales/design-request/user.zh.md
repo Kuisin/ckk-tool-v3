@@ -24,11 +24,15 @@ screenshots: [design-request-list-01, design-request-new-01, design-request-deta
 
 ## 委托推进的顺序
 
-```
-下書き → 承認依頼中 → 未着手 → 進行中 → 完了
-（草稿）  （审批中）  （未开始）（进行中）（完成）
-           ↓（退回）
-        差し戻し →（改好后重新提交）
+```mermaid
+flowchart TD
+  draft("下書き<br/>草稿"):::gray -->|"申请审批"| req("承認依頼中<br/>审批中"):::yellow
+  req -->|"批准"| pend("未着手<br/>未开始"):::blue
+  pend -->|"开始"| prog("進行中<br/>进行中"):::violet
+  prog -->|"完成"| done("完了<br/>已完成"):::green
+  req -->|"退回"| rej("差し戻し<br/>已退回"):::red
+  rej -.->|"修改后重新提交"| req
+  done -.->|"退回（重新作业）"| prog
 ```
 
 - 刚建好时是 **「下書き」（草稿）**，只有这段时间能自由修改内容。

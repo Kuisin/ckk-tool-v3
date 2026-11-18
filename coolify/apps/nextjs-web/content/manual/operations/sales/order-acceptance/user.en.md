@@ -51,6 +51,20 @@ When you open the app, you see the list of the order forms that have been import
 - The 「監視フォルダ取込」(watched folder import) badge at the top of the screen tells you whether automatic importing is available.
 - While a row is still being read, the screen refreshes itself every 30 seconds.
 
+The status moves as follows.
+
+```mermaid
+flowchart TD
+  imp("取込中<br/>Importing"):::gray -->|"Reading finished"| draft("下書き<br/>Draft"):::blue
+  draft -->|"Request approval"| req("承認依頼中<br/>Pending approval"):::yellow
+  req -->|"Approve"| appr("承認済<br/>Approved"):::green
+  appr -->|"Confirm"| confd("確定済<br/>Confirmed"):::teal
+  confd -->|"Archive (optional)"| arch("アーカイブ<br/>Archived"):::dark
+  req -.->|"Send back"| draft
+  confd -.-> ol["Order lines are created"]
+  confd -.->|"Cancellation request approved"| can("キャンセル<br/>Cancelled"):::red
+```
+
 ## Importing an order form (four ways)
 
 **1. Receive it by email (automatic)**

@@ -34,6 +34,16 @@ screenshots: [purchase-request-list-01, purchase-request-new-01, purchase-reques
 
 采购申请按以下顺序推进。当前处在哪一步，可以通过画面上带颜色的徽章来判断。
 
+```mermaid
+flowchart TD
+  draft("下書き<br/>草稿"):::gray -->|"申请审批"| req("承認依頼中<br/>审批中"):::yellow
+  req -->|"批准"| appr("承認済<br/>已批准"):::blue
+  appr -->|"转为采购单"| ord("発注済<br/>已下单"):::violet
+  req -->|"退回"| rej("差し戻し<br/>已退回"):::red
+  rej -.->|"修改后重新提交"| req
+  appr -.->|"撤回"| can("キャンセル<br/>已取消"):::red
+```
+
 1. **下書き**（草稿）… 只是你创建好的状态。可以反复修改。
 2. **承認依頼中**（审批中）… 等待上级答复。这期间无法修改。
 3. **承認済**（已审批）… 已获同意。可以变成订购单。

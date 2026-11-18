@@ -53,6 +53,20 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 - 画面の上にある「監視フォルダ取込」のバッジで、自動の取り込みが使えるかどうかがわかります。
 - 読み取り中の行があるあいだは、画面が 30 秒ごとに自動で新しくなります。
 
+状態は次のように移り変わります。
+
+```mermaid
+flowchart TD
+  imp("取込中"):::gray -->|"読み取り完了"| draft("下書き"):::blue
+  draft -->|"承認依頼"| req("承認依頼中"):::yellow
+  req -->|"承認"| appr("承認済"):::green
+  appr -->|"確定"| confd("確定済"):::teal
+  confd -->|"アーカイブ（任意）"| arch("アーカイブ"):::dark
+  req -.->|"差し戻し"| draft
+  confd -.-> ol["注文明細ができる"]
+  confd -.->|"キャンセル依頼が承認される"| can("キャンセル"):::red
+```
+
 ## 注文書を取り込む（4 つのやり方）
 
 **1. メールで受け取る（自動）**

@@ -60,6 +60,17 @@ Lines that have not been confirmed do not appear here, because they have no numb
 | Shipped | The full ordered quantity has shipped. |
 | Cancelled | The line has been withdrawn. |
 
+The status moves as follows.
+
+```mermaid
+flowchart TD
+  conf("確定<br/>Confirmed"):::blue -->|"Work order approved"| prod("製造中<br/>In production"):::violet
+  prod -->|"Part shipped"| part("一部出荷<br/>Partially shipped"):::orange
+  part -->|"Rest shipped"| ship("出荷済<br/>Shipped"):::green
+  prod -->|"All shipped"| ship
+  prod -.->|"Order acceptance cancelled"| can("キャンセル<br/>Cancelled"):::red
+```
+
 ## What the detail screen offers
 
 Select a row to open its detail screen.

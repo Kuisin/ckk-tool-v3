@@ -34,6 +34,16 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 材料订购单按以下顺序推进。当前处在哪一步，可以通过画面上带颜色的徽章来判断。
 
+```mermaid
+flowchart TD
+  draft("下書き<br/>草稿"):::gray -->|"申请审批"| req("承認依頼中<br/>审批中"):::yellow
+  req -->|"批准"| appr("承認済<br/>已批准"):::blue
+  appr -->|"下单"| ord("発注済<br/>已下单"):::violet
+  ord -->|"登记到货"| recv("入荷完了<br/>已入库"):::green
+  req -.->|"退回"| draft
+  appr -.->|"撤回"| can("キャンセル<br/>已取消"):::red
+```
+
 1. **下書き**（草稿）… 只是你创建好的状态。只有这时才能修改。
 2. **承認依頼中**（审批中）… 等待上级答复。
 3. **承認済**（已审批）… 已获同意。可以向供应商下单。

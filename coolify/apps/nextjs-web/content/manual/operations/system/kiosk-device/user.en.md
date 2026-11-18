@@ -61,6 +61,16 @@ You can search with the box at the top, 「**端末名 / 場所 / 拠点...**」
 
 Registration has 3 stages. **First create the slot, then connect the tablet, and finally make it ready to use.**
 
+```mermaid
+flowchart TD
+  kpend("リンク待ち<br/>Awaiting link"):::gray -->|"Link the tablet"| klink("有効化待ち<br/>Awaiting activation"):::yellow
+  klink -->|"Enable"| kact("有効<br/>Active"):::green
+  kact -->|"Disable"| kdis("無効<br/>Disabled"):::orange
+  kdis -->|"Re-enable"| kact
+  kact -.->|"Unlink"| kpend
+  kact -->|"Revoke"| krev("取り消し<br/>Revoked"):::red
+```
+
 ### Step 1 — Create the registration slot
 
 1. Press 「**端末プロファイル作成**」 (Create device profile) at the top right of the screen.

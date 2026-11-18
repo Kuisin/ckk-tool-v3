@@ -101,6 +101,14 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 
 出荷書は「下書き → 確定 → 出荷済」と 3 段階で進みます。操作は画面右上の「**…**」（点が 3 つのボタン）から行います。
 
+```mermaid
+flowchart TD
+  draft("下書き"):::gray -->|"確定"| conf("確定"):::blue
+  conf -->|"出荷"| ship("出荷済"):::green
+  conf -.-> dn["納品書が自動で作られる（発送分）"]
+  ship -.-> inv["製品在庫が減り、注文明細が<br/>一部出荷・出荷済になる"]
+```
+
 ![詳しい画面の「…」メニュー](../../../assets/screenshots/delivery-order-menu-01.png)
 
 ### 1. 内容を固める（確定）

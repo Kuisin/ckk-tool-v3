@@ -576,3 +576,37 @@ html {
     }
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * マニュアルの Mermaid 図（components/docs/Mermaid.tsx）
+ *
+ * 図は原寸で描く（入れ物の幅へ縮めない）。入らないときは図だけが横に
+ * スクロールする — ページ全体を横に押し広げない。描き終わるまでの高さを
+ * 先に取っておくのは、下の本文が飛ばないようにするため。
+ * ───────────────────────────────────────────────────────────────────────── */
+.docs-mermaid {
+  margin: 1.25rem 0;
+  padding: 1rem;
+  min-height: 7.5rem;
+  overflow-x: auto;
+  text-align: center;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.docs-mermaid > svg {
+  display: inline-block;
+  max-width: none;
+  height: auto;
+}
+
+/* 描けなかった図はソースをそのまま見せる（title に理由）。 */
+.docs-mermaid-error {
+  margin: 1.25rem 0;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  border: 1px dashed var(--mantine-color-red-5);
+  border-radius: 0.5rem;
+}

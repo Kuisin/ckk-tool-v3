@@ -36,6 +36,16 @@ screenshots: [purchase-order-list-01, purchase-order-new-01, purchase-order-deta
 
 素材発注書は、次の順番で進みます。いまどこにいるかは、画面の色つきバッジでわかります。
 
+```mermaid
+flowchart TD
+  draft("下書き"):::gray -->|"承認依頼"| req("承認依頼中"):::yellow
+  req -->|"承認"| appr("承認済"):::blue
+  appr -->|"発注"| ord("発注済"):::violet
+  ord -->|"入荷完了を記録"| recv("入荷完了"):::green
+  req -.->|"差し戻し"| draft
+  appr -.->|"取り下げ"| can("キャンセル"):::red
+```
+
 1. **下書き** … あなたが作っただけの状態です。直せるのはこのときだけです。
 2. **承認依頼中** … 上長の返事待ちです。
 3. **承認済** … 認められました。仕入先へ発注できます。

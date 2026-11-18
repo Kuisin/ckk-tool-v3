@@ -101,6 +101,14 @@ screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-
 
 確定すると状態が「**確定**」に変わり、画面の上に「確定済み」という案内が出ます。これで[価格表](/manual/ja/operations/sales/price-list/user)をつくるときに、この価格試算を選べるようになります。
 
+状態は次のように移り変わります。
+
+```mermaid
+flowchart TD
+  draft("下書き"):::gray -->|"確定"| conf("確定"):::blue
+  conf -->|"価格表で使われる（自動）"| reg("価格表登録済"):::green
+```
+
 ## 保存した価格試算を見る
 
 保存した価格試算の画面には、5 つのタブがあります。
