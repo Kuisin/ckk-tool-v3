@@ -2,7 +2,7 @@
 title: "与 n8n 配合"
 description: "用 n8n 的 Webhook 节点接收信号、验证签名，并通过 API 获取数值；以及补回漏收的定时任务。"
 ---
-在 n8n 中实际搭建[集成总览](/manual/zh/integration/index)所述结构的步骤。
+在 n8n 中实际搭建[集成总览](/manual/zh/integration)所述结构的步骤。
 
 ## 需要准备的内容
 

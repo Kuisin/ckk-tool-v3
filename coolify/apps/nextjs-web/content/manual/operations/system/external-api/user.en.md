@@ -124,7 +124,7 @@ A. The current screen only lets you set it when creating the client. Please ask 
 
 ## Outbound webhooks
 
-The lower half of the screen, "**Outbound webhooks**", manages the endpoints that **receive a signal** (for example in n8n) when business data changes. How it works and how to receive it are described in [Integration (API and webhooks)](/manual/en/integration/index).
+The lower half of the screen, "**Outbound webhooks**", manages the endpoints that **receive a signal** (for example in n8n) when business data changes. How it works and how to receive it are described in [Integration (API and webhooks)](/manual/en/integration).
 
 - **New**: choose a name, API client, endpoint URL and the events to receive, then save. The **signing secret (`whsec_…`) is shown only once**.
 - **Send test**: sends one connectivity signal (`webhook.ping`).

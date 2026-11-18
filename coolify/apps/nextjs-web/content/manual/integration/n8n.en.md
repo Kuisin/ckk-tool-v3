@@ -2,7 +2,7 @@
 title: "Working with n8n"
 description: "Receive signals with n8n's Webhook node, verify the signature, and pull values through the API — plus a scheduled catch-up."
 ---
-Step-by-step for building the architecture from the [integration overview](/manual/en/integration/index) in n8n.
+Step-by-step for building the architecture from the [integration overview](/manual/en/integration) in n8n.
 
 ## What you need
 

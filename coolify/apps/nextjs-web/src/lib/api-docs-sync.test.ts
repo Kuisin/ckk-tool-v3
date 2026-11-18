@@ -48,12 +48,15 @@ async function generate() {
     input: openapi,
     per: "tag",
   });
-  // 拡張子は他のマニュアルと揃える（.md = ja 既定）。**中身は同じ英語を 3 つの
-  // ロケールに置く** — そうしないと en / zh のページから `reference/…` へ
-  // 張ったリンクが（実在しないので）切れ、言語切替でも行き先が消える。
+  // **拡張子は .mdx のまま**（ロケールの接尾辞だけ足す）。生成物の中身は
+  // `export default function Layout` と `<Comp …/>` = JSX で、fumadocs-mdx は
+  // `.md` を素の Markdown として読むので、`.md` に直すと**ソースがそのまま本文に
+  // 出る**（実際に出ていた — ページは 200 で開き、テストも通るので気づけなかった）。
+  // **中身は同じ英語を 3 つのロケールに置く** — そうしないと en / zh のページから
+  // `reference/…` へ張ったリンクが（実在しないので）切れ、言語切替でも行き先が消える。
   return files.flatMap((f) =>
     ["", ".en", ".zh"].map((suffix) => ({
-      path: f.path.replace(/\.mdx$/, `${suffix}.md`),
+      path: f.path.replace(/\.mdx$/, `${suffix}.mdx`),
       content: f.content,
     })),
   );
@@ -63,6 +66,8 @@ describe("API リファレンス（生成物）", () => {
   it("生成物がコードと一致している", async () => {
     const files = await generate();
     expect(files.length).toBeGreaterThan(0);
+    // JSX を含むので .mdx でなければ描けない（generate() のコメント参照）。
+    expect(files.filter((f) => !f.path.endsWith(".mdx"))).toEqual([]);
 
     if (process.env.UPDATE_API_DOCS === "1") {
       for (const rel of existingGenerated(OUT)) rmSync(join(OUT, rel));

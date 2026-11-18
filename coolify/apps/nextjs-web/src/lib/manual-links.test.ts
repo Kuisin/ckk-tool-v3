@@ -31,12 +31,13 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 function pageFile(slug: string, lang: string): string[] {
-  const suffix = lang === "ja" ? ".md" : `.${lang}.md`;
+  const locale = lang === "ja" ? "" : `.${lang}`;
   const base = slug === "" ? "index" : slug;
-  return [
-    join(CONTENT, `${base}${suffix}`),
-    join(CONTENT, base, `index${suffix}`),
-  ];
+  // .mdx は生成物の API リファレンス（integration/reference）。
+  return [".md", ".mdx"].flatMap((ext) => [
+    join(CONTENT, `${base}${locale}${ext}`),
+    join(CONTENT, base, `index${locale}${ext}`),
+  ]);
 }
 
 describe("マニュアルの内部リンク", () => {
@@ -52,6 +53,15 @@ describe("マニュアルの内部リンク", () => {
       for (const m of text.matchAll(re)) {
         const lang = m[2];
         const slug = (m[3] ?? "").replace(/\/$/, "").replace(/\.md$/, "");
+        // `…/index` は URL としては存在しない（index.md の URL は親フォルダ）。
+        // ファイルは在るので下の照合は通ってしまい、開くと 404 になる —
+        // 連携（API・Webhook）の 6 リンクが実際にそうなっていた。
+        if (slug === "index" || slug.endsWith("/index")) {
+          broken.push(
+            `${file.slice(CONTENT.length + 1)} → ${m[1]}（/index は付けない）`,
+          );
+          continue;
+        }
         if (!pageFile(slug, lang).some((p) => existsSync(p))) {
           broken.push(`${file.slice(CONTENT.length + 1)} → ${m[1]}`);
         }

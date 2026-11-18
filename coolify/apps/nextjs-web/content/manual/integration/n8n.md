@@ -2,7 +2,7 @@
 title: "n8n と組む"
 description: "n8n の Webhook ノードで合図を受け、署名を検証し、API で値を引く。取りこぼしを拾う定期実行まで。"
 ---
-[連携の全体像](/manual/ja/integration/index)の構成を、n8n で実際に組む手順です。
+[連携の全体像](/manual/ja/integration)の構成を、n8n で実際に組む手順です。
 
 ## 用意するもの
 
