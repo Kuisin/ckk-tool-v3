@@ -124,7 +124,7 @@ description: "用于发行和管理外部系统自动读取业务数据所用凭
 
 ## 出站 Webhook
 
-画面下半部分的“**出站 Webhook**”用于管理在业务数据变化时向 n8n 等**发送信号**的接收地址。工作原理与接收方式请参见 [集成（API 与 Webhook）](/manual/zh/integration/index)。
+画面下半部分的“**出站 Webhook**”用于管理在业务数据变化时向 n8n 等**发送信号**的接收地址。工作原理与接收方式请参见 [集成（API 与 Webhook）](/manual/zh/integration)。
 
 - **新建**：选择名称、API 客户端、接收地址 URL 和要接收的事件后保存。**签名密钥（`whsec_…`）只显示一次**。
 - **测试发送**：发送一条连通性确认信号（`webhook.ping`）。
