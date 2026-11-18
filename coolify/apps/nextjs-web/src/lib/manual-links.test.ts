@@ -31,12 +31,13 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 function pageFile(slug: string, lang: string): string[] {
-  const suffix = lang === "ja" ? ".md" : `.${lang}.md`;
+  const locale = lang === "ja" ? "" : `.${lang}`;
   const base = slug === "" ? "index" : slug;
-  return [
-    join(CONTENT, `${base}${suffix}`),
-    join(CONTENT, base, `index${suffix}`),
-  ];
+  // .mdx は生成物の API リファレンス（integration/reference）。
+  return [".md", ".mdx"].flatMap((ext) => [
+    join(CONTENT, `${base}${locale}${ext}`),
+    join(CONTENT, base, `index${locale}${ext}`),
+  ]);
 }
 
 describe("マニュアルの内部リンク", () => {
