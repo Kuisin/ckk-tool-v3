@@ -85,6 +85,21 @@ docker rm -f ckk-shots-db              # 後始末
 **書き足すときの約束**: 落ちたときに何が起きたかが分かるよう、`check()` の第 3 引数に
 実測値（URL・幅・ラベル）を渡すこと。合否だけだと原因を追えない。
 
+
+### URL に載せる画面状態（e2e-url-state.ts）
+
+`hooks/useUrlState.ts`（中身は nuqs）の通し確認。**日本語入力の変換中に検索欄が
+壊れない**ことを、CDP の `Input.imeSetComposition` で実際の変換を起こして見る
+（Playwright の `keyboard.type` は composition を起こさないので素通りする）。
+ほかに ページのリセット・既定値の省略・共有リンクの `sort` / `tab`・戻る・
+server モードの RSC 再取得。DB には何も書かないので何度流してもよい。
+
+```bash
+APP_URL=http://localhost:3100 pnpm exec tsx e2e-url-state.ts
+```
+
+このフックか nuqs の版を触ったら流すこと。
+
 ## 全画面の読み込み確認（e2e:pages）
 
 **「全部の画面がエラー無しに開く」を合否で言う**試験（`page-load.spec.ts`）。

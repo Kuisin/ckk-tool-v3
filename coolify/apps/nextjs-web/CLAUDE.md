@@ -77,6 +77,21 @@ consumed as TS source via `transpilePackages`).
   （`UPDATE_API_DOCS=1` で書き出し直す）。「試す」（プレイグラウンド）は出さない
   ので `@scalar/api-client-react`（任意の peer）は入れていない — 公開マニュアルに
   トークンの入力欄を置かないため。キオスクには入れない。
+- **URL に載せる画面状態** — `nuqs`（MIT, `2.10.3` 完全固定）。検索・フィルタ・
+  ページ・ソート・タブを search params に保持する `hooks/useUrlState.ts` の中身。
+  自前案は実際に動いていた（`lib/url-state-core.ts` — 「自分が書いた値に URL が
+  追いつくまで URL 側を無視する」写しの state、約 250 行 + 試験）。それでも
+  入れたのは、`useSearchParams()` が非同期で届く問題（＝日本語入力の変換が
+  壊れる）を**ライブラリ側が解いている**ことと、複数キーを 1 回の URL 更新で
+  書ける（フィルタ変更 + ページのリセット）こと、パーサを型付きで持てることの
+  3 つ（利用者判断）。**責務の境界**: 画面は nuqs を**直接呼ばない** —
+  `useUrlStringState` / `useUrlSelectState` / `useTabParam` / `useUrlTableState`
+  だけを使う。「フィルタを変えたら 1 ページ目へ」「既定値は URL から落とす」
+  「履歴は replace」という約束と、共有リンクに残っている書式
+  （`lib/url-state-params.ts` — `?sort=列.向き` など。試験あり）は自前のまま。
+  `NuqsAdapter` は `app/providers.tsx`。**IME は単体試験では見えない** —
+  このフックや nuqs の版を触ったら `tools/docs-screenshots/e2e-url-state.ts`
+  （CDP で実際の変換を起こす）を流すこと。キオスクには入れない。
 - **画像の拡大表示** — `react-zoom-pan-pinch`（MIT, 完全固定）。docs 画像の
   全画面ビュー（`components/docs/ZoomableImage.tsx`）でホイール/ピンチ/
   ダブルクリックの実ズーム + ドラッグ移動に使う。fumadocs-ui 同梱の
@@ -170,7 +185,7 @@ consumed as TS source via `transpilePackages`).
 - `src/components/{ui,<domain>}/` — `ui/` = the shared design system (see
   `design.md`); domain folders (sales, production, master, settings, …).
 - `src/lib/` — server + isomorphic logic. `src/hooks/` — client hooks
-  (`useViewport`/`useIsMobile`, `useUrlState`). `src/content/docs/` — in-app
+  (`useViewport`/`useIsMobile`, `useUrlState` — URL search params の state。nuqs の包み). `src/content/docs/` — in-app
   manuals (Markdown). `src/types/`, `messages/` (next-intl).
 
 ## Server Actions (the write path)

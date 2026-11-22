@@ -190,6 +190,9 @@ importers:
       next-intl:
         specifier: 4.13.7
         version: 4.13.7(@swc/helpers@0.5.23)(next@16.4.3(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
+      nuqs:
+        specifier: 2.10.3
+        version: 2.10.3(next@16.4.3(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       online-3d-viewer:
         specifier: 0.18.0
         version: 0.18.0
@@ -3618,6 +3621,27 @@ packages:
   npm-to-yarn@3.2.0:
     resolution: {integrity: sha512-K1HmQeZT2HrjpsR6KgqbN2FAXL2NrJJmNUSD9ck7HGTVu1JKXox8n9SB+tjbU8m8JGLF4OscrroPepew/L7/Xw==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+
+  nuqs@2.10.3:
+    resolution: {integrity: sha512-dNGDsvpKFoxyDLOWZh+OiQ02od3RLJ52044I+Ld1wjTCVOv7ZZtBmd2Aq7CHFdDGYRn+hg6FPPh6FUMFX2YLaQ==}
+    peerDependencies:
+      '@remix-run/react': '>=2'
+      '@tanstack/react-router': ^1
+      next: '>=14.2.0'
+      react: '>=18.2.0 || ^19.0.0-0'
+      react-router: ^5 || ^6 || ^7 || ^8
+      react-router-dom: ^5 || ^6 || ^7
+    peerDependenciesMeta:
+      '@remix-run/react':
+        optional: true
+      '@tanstack/react-router':
+        optional: true
+      next:
+        optional: true
+      react-router:
+        optional: true
+      react-router-dom:
+        optional: true
 
   oauth4webapi@3.8.7:
     resolution: {integrity: sha512-4RxcKxXjuItDFZ20RRPf4YTw3kpeXJyCgJFxVzJ068A7PNJ18st2Dg90tlC1LkSDS0GecroagCLHYEIVUhCAkw==}
@@ -7817,6 +7841,13 @@ snapshots:
   node-addon-api@7.1.1: {}
 
   npm-to-yarn@3.2.0: {}
+
+  nuqs@2.10.3(next@16.4.3(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4):
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      react: 19.2.4
+    optionalDependencies:
+      next: 16.4.3(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
   oauth4webapi@3.8.7: {}
 

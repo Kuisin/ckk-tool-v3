@@ -52,6 +52,8 @@ Styling:        Mantine + CSS Modules
 
 Server State:   React Server Components（標準）
 Client State:   Zustand（軽量）
+URL State:      nuqs 2.10.3（完全固定・MIT）— 検索・フィルタ・ページ・ソート・タブ。
+                画面は hooks/useUrlState.ts だけを通す（nuqs を直接呼ばない）
 Validation:     Zod
 
 API Layer:      Next.js Route Handler（/app/api）
