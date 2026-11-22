@@ -17,6 +17,7 @@ import { ModalsProvider } from "@mantine/modals";
 import { Notifications } from "@mantine/notifications";
 import "dayjs/locale/ja";
 import { NextIntlClientProvider } from "next-intl";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { ReactNode } from "react";
 import { PullToRefresh } from "@/components/layout/PullToRefresh";
 import ja from "../../messages/ja.json";
@@ -51,7 +52,9 @@ export function Providers({ children }: { children: ReactNode }) {
           <ModalsProvider>
             <Notifications position="top-right" />
             <PullToRefresh />
-            {children}
+            {/* URL search params の state（hooks/useUrlState.ts）。画面は nuqs を
+                直接呼ばず、あのフックだけを通す。 */}
+            <NuqsAdapter>{children}</NuqsAdapter>
           </ModalsProvider>
         </DatesProvider>
       </MantineProvider>
