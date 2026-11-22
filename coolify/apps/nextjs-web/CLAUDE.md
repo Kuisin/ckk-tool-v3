@@ -92,6 +92,23 @@ consumed as TS source via `transpilePackages`).
   `NuqsAdapter` は `app/providers.tsx`。**IME は単体試験では見えない** —
   このフックや nuqs の版を触ったら `tools/docs-screenshots/e2e-url-state.ts`
   （CDP で実際の変換を起こす）を流すこと。キオスクには入れない。
+- **クライアントが取りに行く読み取り** — `@tanstack/react-query`（MIT, `5.108.2`
+  完全固定）。**使う場所は狭い**: 入力に合わせた検索（`ui/SearchSelect.tsx` —
+  32 画面が使う / `ui/F4SearchModal.tsx`）、開いてから読む一覧
+  （`admin/FileManager.tsx`）、定期的な確認（`layout/VersionSkewBanner.tsx`）。
+  自前案は今までの形（`useEffect` + タイマー + 通し番号で追い越しを捨てる）で、
+  動いてはいた。入れて得たのは、一度引いた入力をキャッシュから即座に出すこと・
+  同じ検索を使う欄どうしで結果を共有すること・追い越しの処理を書かずに済むこと
+  （利用者判断）。**責務の境界**: **ページのデータは Server Component、書き込みは
+  Server Action + `router.refresh()` のまま** — 一覧・詳細のデータを Query へ
+  移さない（同じデータの取り方が 2 通りになる）。`router.refresh()` で回している
+  定期更新（取込中の一覧など）もそのまま。既定は `lib/query-client.ts`
+  （`staleTime: 0` = キャッシュは出すが必ず取り直す / タブ復帰での取り直しは切る）。
+  **関数を鍵にそのまま入れない** — JSON 化で黙って落ち、別の検索のキャッシュを
+  引く。`fnKey()` を通す（試験あり）。Server Action は 1 本ずつ直列に走り中断も
+  できないので、検索を Route Handler へ移すまでは「速い打鍵を並列に引く」ことは
+  できない。通し確認は `tools/docs-screenshots/e2e-client-reads.ts`。
+  キオスクには入れない。
 - **画像の拡大表示** — `react-zoom-pan-pinch`（MIT, 完全固定）。docs 画像の
   全画面ビュー（`components/docs/ZoomableImage.tsx`）でホイール/ピンチ/
   ダブルクリックの実ズーム + ドラッグ移動に使う。fumadocs-ui 同梱の

@@ -100,6 +100,18 @@ APP_URL=http://localhost:3100 pnpm exec tsx e2e-url-state.ts
 
 このフックか nuqs の版を触ったら流すこと。
 
+### クライアントが取りに行く読み取り（e2e-client-reads.ts）
+
+TanStack Query に載せた 4 か所（SearchSelect / F4 / ファイル管理 / 版の確認）の
+通し確認。応答をわざと遅らせて、**打鍵の追い越しで古い結果が残らない**ことと、
+**一度引いた入力がキャッシュから即座に出る**ことを見る。ほかに、置いている間は
+検索しに行かない・F4 は検索ボタンでだけ引く・管理者にアップロードが出る。
+DB には何も書かない。
+
+```bash
+APP_URL=http://localhost:3100 pnpm exec tsx e2e-client-reads.ts
+```
+
 ## 全画面の読み込み確認（e2e:pages）
 
 **「全部の画面がエラー無しに開く」を合否で言う**試験（`page-load.spec.ts`）。
