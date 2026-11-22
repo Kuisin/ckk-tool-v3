@@ -7,6 +7,8 @@ This app is for making the document (**指示書**, work order) that decides whi
 
 > ⚠️ For now this app works **only in the test environment**. The screens and the steps may change before it can be used for real work.
 
+> This app belongs to … [Production flow](/manual/en/process/production)
+
 ## What you can do with this app
 
 - You can make instructions for the factory, based on a customer's order (the order line).
@@ -214,7 +216,7 @@ Pressing 「**検査表を見る**」 (view the sheet) opens **the inspection sh
 - **最終検査・出荷前確認** (final inspection and pre-shipment checks) … on a step flagged as a 「**最終検査工程**」 (final inspection step) — 「出荷前検査」 (pre-shipment inspection) by default — you record the three checks (drawing and label, protective cap, finished quantity) plus spare stock, packing → delivery note → shipping approval, and the checked-by stamp for defects at shipping. The packing → delivery note → shipping approval chain follows the order on paper: you cannot record a stage until the previous one is recorded. **There is one record per work order**, so a work order whose step list has no flagged step has no final inspection at all.
 - **不良記録（任意）** (defect record, optional) … you can write down the defect type and what happened.
 - **作業計画 / 作業実績** (work plan / work result) … you can record who, when and where the work is planned (or was done). Plans carry the person in charge, date, time and work place; actuals add the **quantity** (see "Work plans and work actuals" below).
-- **外注日程** (outsourcing schedule) … on outsourced steps, you can record 「依頼日」 (sent date), 「入荷予定日」 (expected return date), 「入荷日」 (return date), and 「外注費」 (outsourcing cost).
+- **外注日程** (outsourcing schedule) … on outsourced steps, you can record 「依頼日」 (sent date), 「入荷予定日」 (expected return date), 「入荷日」 (return date), and 「外注費」 (outsourcing cost). **Entering the sent date records those pieces as "held by the subcontractor"** (shown under 「預け先」 (held by) on the [stock overview](/manual/en/operations/inventory/stock-overview/user)). Entering the return date brings them back. Each of the two creates one [stock movement](/manual/en/operations/inventory/inventory-movements/user) slip, and you can follow its number from the step screen. Pieces held by the subcontractor are not counted as our own stock, so they are not used for shipping or for reservations.
 
 ### Work plans and work actuals
 
@@ -248,6 +250,17 @@ Sometimes you want the pieces sent to a step branch to go through different step
    - If you choose neither, you see 「合流先を選ぶか、「在庫へ」を選んでください。分岐は必ず合流か在庫で終わります。」 (choose where it rejoins, or choose "to stock" — a branch must end in a rejoin or in stock) and the branch cannot be added.
 6. Press 「**分岐を追加**」 (Add branch).
 
+As a diagram, a branch looks like this:
+
+```mermaid
+flowchart TD
+  src["Finished step"] -->|"Good pieces"| main["Next main-line step"]
+  src -.->|"Step-branch pieces (branch quantity)"| br["Added steps (the branch)"]
+  br --> endq{"How the branch ends"}
+  endq -->|"本流へ合流<br/>Rejoin the main line"| merge["Rejoin target<br/>(a main-line step not started yet)"]
+  endq -->|"在庫へ<br/>To stock"| stock["Semi-finished or finished-product stock<br/>(booked when the work order completes)"]
+```
+
 Once you make a branch, a picture of the flow of the steps appears above the step workflow, showing how many pieces go from which step to where.
 
 After creating a branch, you can still change the **branch quantity** (only while every step in the branch is not started) and **how it ends** (the rejoin target or stock destination — only while the last step is not started) from the pencil button on the branch block. To swap the steps themselves, delete the branch and make it again.
@@ -261,6 +274,19 @@ If you add, change, or delete a branch on an approved or in-progress work order,
 
 If the approval settings have no 「工程フロー変更」 (step flow change) stage at all, the change is applied as it is, without approval.
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  chg["Add, change or delete a branch<br/>on an approved / in-progress work order"] --> q{"Do the approval settings have a<br/>「工程フロー変更」 (step flow change) stage?"}
+  q -->|"No"| now["Applied as it is, without approval"]
+  q -->|"Yes (事前承認 — approval first)"| hold["The change is held<br/>(card at the top of the screen)"]
+  hold -->|"Approved"| applied["Applied to the steps"]
+  q -->|"Yes (事後承認 — approval afterwards)"| first["Applied to the steps right away"]
+  first -->|"Approved afterwards"| ok["The change stays"]
+  first -.->|"Sent back afterwards"| red["The steps are not put back automatically<br/>Red notice → 「確認済みにする」 (Mark as checked)"]
+```
+
 ## When everything is finished
 
 When all the steps are finished, the work order automatically becomes 「**完了**」 (finished).
@@ -271,6 +297,8 @@ When all the steps are finished, the work order automatically becomes 「**完�
 - **A regrind work order does not add to our own stock.** Of the tools held as the customer's property, the pieces entered as 「返却（再研磨不可）」 (returned as-is) leave the customer-owned stock at this point; the reground pieces are returned to the customer with a [delivery order](/manual/en/operations/shipping/delivery-order/user).
 
 You can check stock in [inventory management](/manual/en/operations/inventory/inventory-management/user) (ST01). Pieces still being made are shown on the 「**仕掛品**」 (work in progress) tab of the same app.
+
+The stock movement at completion is kept as one slip under [stock movements](/manual/en/operations/inventory/inventory-movements/user) (reason 「指示書完了」 — work order completed). **For a work order made from semi-finished items, the semi-finished items used are taken out of stock at this point.**
 
 ### Next step: make a delivery order
 

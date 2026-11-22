@@ -33,6 +33,15 @@ These settings let you prepare, in advance, the input boxes that appear when you
 - To open it, choose 「**製品項目**」 (Product items) under System on the home screen, or type `SY03` in the search box at the top.
 - You can move between the two screens with the 「**製品種別へ**」 (To product types) and 「**製品項目へ**」 (To product items) buttons at the top right of each.
 
+As a diagram, the three screens connect like this:
+
+```mermaid
+flowchart TD
+  item["製品項目 (Product items, SY03)<br/>Make the input boxes one by one"] -->|"Assign"| type["製品種別 (Product types, SY04)<br/>A template combining input boxes"]
+  type -->|"Choose a product type"| prod["Product registration screen<br/>The template's input boxes appear"]
+  item -.->|"Add under 追加項目 (Extra items)"| prod
+```
+
 ## 1. Making the input boxes (Product items)
 
 ![Product items list screen](../../../assets/screenshots/product-items-01.png)

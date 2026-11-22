@@ -55,6 +55,19 @@ Shipping after confirming reduces stock, and the order line's state changes to�
 
 Splitting into two for direct delivery is so that no path exists at all by which a priced document reaches the end user. Opening or downloading a direct-delivery delivery note with prices shown puts a confirmation in between, and a warning also appears at the top of the screen. **A delivery order for stock storage does not make a delivery note** (since it is outside the billing flow).
 
+How many delivery notes are made, as a diagram:
+
+```mermaid
+flowchart TD
+  conf["Confirm the delivery order"] --> kind{"Type"}
+  kind -->|"Stock storage"| none["No delivery note is made"]
+  kind -->|"Dispatch"| method{"Delivery method"}
+  method -->|"Standard delivery"| one["One copy<br/>to the customer, with prices shown"]
+  method -->|"Direct to end user"| two["A set of two"]
+  two --> eu["Without prices shown<br/>→ end user"]
+  two --> cu["With prices shown<br/>→ customer"]
+```
+
 The destination (end user) is decided from the order line's own end user field (choosing direct to end user on the line makes the end user required). Only order lines with **the same end user** can be bundled into one delivery order, and this is also a condition that lets the automatic creation settle on a single destination.
 
 The delivery note that is made is **issued at that moment**, and there is no action on the delivery note side to correct its content (the delivery method, end user, whether prices are shown, quantity and unit price are all carried over from the order line and the delivery order). If there is a mistake, start over from the correct order acceptance and delivery order. The PDF can be viewed right away. Once it arrives, set it to「納品済」(delivered). A shipment that has got this far becomes the subject of [Billing flow](/manual/en/process/billing) (steps … [Standard flow §10](/manual/en/process/default-flow#stage-10)).
@@ -93,6 +106,6 @@ Delivery may not be complete yet, or the delivery order's type may be「在庫�
 ## Related pages
 
 - Following a single order from start to finish … [Standard flow](/manual/en/process/default-flow)
-- How to operate each app and what each field means … **How-to › Shipping** on the left
+- How to operate each app and what each field means … **Operations › Shipping** on the left
 - Previous flow … [Production flow](/manual/en/process/production)
 - Next flow … [Billing flow](/manual/en/process/billing)

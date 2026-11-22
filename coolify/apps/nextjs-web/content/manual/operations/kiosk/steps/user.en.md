@@ -44,6 +44,17 @@ Each card shows the work order number, the site, the step name, the product name
 
 > 💡 You can hide finished work from the list with 「**完了した工程を隠す**」 (Hide finished steps). Use it when there are too many items on the screen.
 
+The status moves as follows.
+
+```mermaid
+flowchart TD
+  wait("前工程待ち<br/>Waiting for the previous step") -->|"Previous step finished"| ready("開始可<br/>Can start")
+  ready -->|"工程開始<br/>Start step"| work("作業中<br/>In progress")
+  work -->|"一時停止<br/>Pause"| pause("一時停止中<br/>Paused")
+  pause -->|"再開<br/>Restart"| work
+  work -->|"工程完了<br/>Complete step"| done("完了<br/>Finished")
+```
+
 ## Starting the work
 
 1. From the list, press the card for the work you want to start.

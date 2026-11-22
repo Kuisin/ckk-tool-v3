@@ -95,7 +95,7 @@ Part of the ordered quantity has not been recorded yet. When it arrives in parts
 ## Related pages
 
 - Following a single order from start to finish … [Standard flow](/manual/en/process/default-flow)
-- How to operate each app and what each field means … **How-to › Purchasing** on the left
+- How to operate each app and what each field means … **Operations › Purchasing** on the left
 - The flow to return to … [Production flow](/manual/en/process/production) (material shortages come from there)
 - Registering the material itself … [Material master](/manual/en/operations/masters/material/user)
 - Checking stock … [Inventory](/manual/en/operations/inventory/inventory-management/user)

@@ -48,6 +48,17 @@ After you log in, the list of apps you can use appears.
 
 > ⚠️ If you get the PIN **wrong 5 times in a row**, that card **cannot be used for 15 minutes**. Please wait a while and try again. If you are in a hurry, an administrator can reset your PIN.
 
+As a diagram, logging in works like this:
+
+```mermaid
+flowchart TD
+  scan["Hold up your QR card"] --> q{"Is the PIN asked for?"}
+  q -->|"First time on this tablet<br/>Not used for 48 hours or more<br/>2 weeks since the last PIN entry"| pin["Enter your PIN"]
+  q -->|"None of these"| home["Logged in (app list)"]
+  pin -->|"Correct"| home
+  pin -.->|"Wrong 5 times in a row"| lock["The card cannot be used for 15 minutes"]
+```
+
 ## How to read the screen
 
 The bar at the very top shows the following.

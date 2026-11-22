@@ -7,6 +7,8 @@ This app is where you check the **invoice** (請求書) you send to a customer t
 
 > ⚠️ This app is still being prepared. Screens and steps may change before it is fully released.
 
+> This app belongs to … [Billing flow](/manual/en/process/billing)
+
 ## What you can do with this app
 
 - Check what is on an invoice (what, how many, and for how much).
@@ -23,7 +25,7 @@ There is no "New" button in this app. Invoices are made for you by [monthly bill
 - **消費税 (consumption tax)** … The tax on the subtotal. It is worked out line by line from each **product's tax category** (standard 10% / reduced 8% / exempt). A tax category set on the business partner takes precedence over the product.
 - **合計金額（税込） (total with tax)** … The subtotal plus the tax — the amount the customer actually pays.
 - **支払期限 (payment due date)** … The date by which the customer should pay.
-- **由来 (source)** … Shows which [shipping order](/manual/en/operations/shipping/delivery-order/user) or [delivery note](/manual/en/operations/shipping/delivery-note/user) a line came from.
+- **由来 (source)** … Shows which [delivery order](/manual/en/operations/shipping/delivery-order/user) or [delivery note](/manual/en/operations/shipping/delivery-note/user) a line came from.
 
 ## Before you start
 
@@ -57,18 +59,27 @@ The 「明細」 (Lines) area below lists each line you are billing.
 ![Invoice lines](../../../assets/screenshots/invoice-items-01.png)
 
 - **摘要 (Description)** … The product name and lot number.
-- **由来 (Source)** … Click the blue text to open the [shipping order](/manual/en/operations/shipping/delivery-order/user) or [delivery note](/manual/en/operations/shipping/delivery-note/user) it came from.
+- **由来 (Source)** … Click the blue text to open the [delivery order](/manual/en/operations/shipping/delivery-order/user) or [delivery note](/manual/en/operations/shipping/delivery-note/user) it came from.
 - At the bottom you see the subtotal, the consumption tax, and the total with tax.
 
 Below the lines there are four tabs. 「**概要**」 (Overview) shows the date and time it was sent to the customer plus the notes, 「**PDF**」 shows the invoice PDF after issuing, 「**メモ**」 (Memo) holds a shared internal memo, and 「**履歴**」 (History) shows who moved this invoice along and when.
 
-> 💡 If you want to make sure the amount is right, open the original shipping order from the "由来" (Source) link — you can check there and then how many pieces were sent and when.
+> 💡 If you want to make sure the amount is right, open the original delivery order from the "由来" (Source) link — you can check there and then how many pieces were sent and when.
 
 > 💡 The tax is shown **one line per rate** — 「**消費税（10%）**」 (Consumption tax (10%)), 「**消費税（8%）**」 (8%), and so on. When an invoice mixes rates, the taxable amount for each rate is shown next to it. This is what a qualified invoice requires.
 
 ## Recording from issue to payment
 
 An invoice moves through four stages: 「下書き」 (Draft) → 「発行済」 (Issued) → 「送付済」 (Sent) → 「支払済」 (Paid). There is no editing on this screen; you work from the 「**…**」 button (the three dots) at the top right.
+
+```mermaid
+flowchart TD
+  bc["「請求書を生成」 (Generate invoice)<br/>in billing closing"] -.-> draft("下書き<br/>Draft"):::gray
+  draft -->|"Issue"| iss("発行済<br/>Issued"):::blue
+  iss -->|"Mark as sent"| sent("送付済<br/>Sent"):::violet
+  sent -->|"Mark as paid"| paid("支払済<br/>Paid"):::green
+  iss -.-> pdf["The PDF becomes available"]
+```
 
 ![The "…" menu on the detail screen](../../../assets/screenshots/invoice-menu-01.png)
 
@@ -134,7 +145,7 @@ Records that it went to the customer. How it is sent (email, fax, post) is set p
 
 Records that payment arrived, so unpaid invoices can be found.
 
-The amounts are **collected automatically from shipping orders (dispatches that have been shipped)**. Delivery notes are attached as each line's "source" link. If an amount does not add up, check the shipping side rather than this screen.
+The amounts are **collected automatically from delivery orders (dispatches that have been shipped)**. Delivery notes are attached as each line's "source" link. If an amount does not add up, check the shipping side rather than this screen.
 
 ## Questions and problems
 
@@ -142,7 +153,7 @@ The amounts are **collected automatically from shipping orders (dispatches that 
 A. Invoices are not made on this screen. Open [monthly billing close](/manual/en/operations/billing/billing-closing/user) and press "請求書を生成" (Generate invoice) on the row you want.
 
 **Q. I want to fix an amount, but there is no edit screen.**
-A. Invoices cannot be fixed directly. Something is probably wrong on the original [shipping order](/manual/en/operations/shipping/delivery-order/user), so please talk to the accounting or sales person in charge.
+A. Invoices cannot be fixed directly. Something is probably wrong on the original [delivery order](/manual/en/operations/shipping/delivery-order/user), so please talk to the accounting or sales person in charge.
 
 **Q. I get 「下書きの請求書のみ発行できます」 (Only draft invoices can be issued).**
 A. That invoice has already been issued. Close the screen and open it again to see where it stands now.

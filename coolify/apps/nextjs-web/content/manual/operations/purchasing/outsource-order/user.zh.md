@@ -7,6 +7,8 @@ screenshots: [outsource-order-list-01, outsource-order-list-02, outsource-order-
 
 > ⚠️ 本应用仍在准备中，正式环境上可能还看不到。找不到时请咨询公司内的负责人。
 
+> 本应用所属的流程……[采购流程](/manual/zh/process/purchasing)
+
 ## 本应用能做什么
 
 - 可以在一张表里统一查看委托给外部公司的加工。
@@ -30,6 +32,15 @@ screenshots: [outsource-order-list-01, outsource-order-list-02, outsource-order-
 本应用是 **只能查看的画面**，无法从这里新增外协。
 
 要让外协出现在这个列表中，请在[制造指示书](/manual/zh/operations/production/work-order/user)的工序中，把实施地点选为「**外注**」（外协），并指定外协厂。外协厂在[业务伙伴主数据](/manual/zh/operations/masters/business-partner/user)中登记。
+
+在哪里填什么，用图表示如下。
+
+```mermaid
+flowchart TD
+  wo["在工单的工序中，<br/>把实施场所选为「外注」（外协），<br/>并指定外协厂商"] --> list["出现在外协委托列表中<br/>（本应用・仅查看）"]
+  list -->|"点击该行"| step["在工序作业画面的<br/>「外注日程」（外协日程）中填日期"]
+  step -.->|"保存后日期会反映"| list
+```
 
 查看需要外协委托权限。画面打不开时请咨询公司内的负责人。
 
@@ -117,7 +128,7 @@ A. 有两种可能。一是指示书还没有获得审批（尚未进入可以�
 A. 该工序还没有指定外协厂。请在指示书画面上打开该工序并指定外协厂。
 
 **Q. 材料的采购也在这里进行吗？**
-A. 不是。购买材料请使用[材料订购单](/manual/zh/operations/purchasing/purchase-order/user)。本应用只是委托外部公司做加工本身的一览。
+A. 不是。购买材料请使用[材料采购单](/manual/zh/operations/purchasing/purchase-order/user)。本应用只是委托外部公司做加工本身的一览。
 
 <!-- permissions:start -->
 ## 所需权限

@@ -1,6 +1,6 @@
 ---
 title: "Using the Manuals"
-description: "Operation code DC01. This page explains how to use the Manuals app itself. It is available to all users (no permissio…"
+description: "Operation code DC01. This page explains how to use the Manuals app itself. It is available to all users (no permission required)."
 screenshots: []
 ---
 Operation code **DC01**. This page explains how to use the Manuals app itself. It is available to all users (no permission required).

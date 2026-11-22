@@ -21,6 +21,17 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 
 作业场所和保管场所在登记时，都要选择「位于哪个据点」。因此请 **先登记据点**。
 
+用图表示如下。
+
+```mermaid
+flowchart TD
+  region["地区<br/>（例 关东）"] -.->|"归并据点"| plant["据点<br/>（例 总部工厂）"]
+  plant --> work["作业场所<br/>（例 NC车床1号机）"]
+  plant --> storage["保管场所・货架<br/>（例 资材仓库A 的 A-1 货架）"]
+  plant --> map["楼层地图<br/>（楼层的图纸）"]
+  storage -.->|"在图纸上放置标记"| map
+```
+
 ## 本应用可以做什么
 
 - 可以登记据点的基本信息（代码、名称、地址、电话号码等）。
@@ -115,29 +126,29 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 
 ## 输入项
 
-基地登记画面的输入项一览。
+据点登记画面的输入项一览。
 
 | 项目 | 必填 | 填什么 |
 |------|------|--------|
-| [基地编码](#field-code) | 必填 | 基地的管理编号 |
-| [名称 / 假名](#field-name) | 必填 | 基地的名称 |
+| [据点编码](#field-code) | 必填 | 据点的管理编号 |
+| [名称 / 假名](#field-name) | 必填 | 据点的名称 |
 | [国家 / 地区](#field-region) | 选填 | 用于权限范围的区分 |
 | [邮编 / 地址](#field-address) | 选填 | 所在地 |
 | [电话 / 邮箱 / 负责人](#field-contact) | 选填 | 联系方式 |
 | [有效](#field-active) | — | 是否出现在选项中 |
 | [备注](#field-notes) | 选填 | 补充说明 |
 
-### 基地编码 [#field-code]
+### 据点编码 [#field-code]
 
-基地的管理编号，用于库存与发货画面。
+据点的管理编号，用于库存与发货画面。
 
 ### 名称 / 假名 [#field-name]
 
-基地的名称，表示库存・到货・发货的「地点」。
+据点的名称，表示库存・到货・发货的「地点」。
 
 ### 国家 / 地区 [#field-region]
 
-国家与地区的区分。**是将用户权限限定为「仅该地区的基地」时的单位。**
+国家与地区的区分。**是将用户权限限定为「仅该地区的据点」时的单位。**
 
 ### 邮编 / 地址 [#field-address]
 
@@ -149,7 +160,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 
 ### 有效 [#field-active]
 
-取消后，到货基地与发货基地的选项中将不再显示。
+取消后，到货据点与发货据点的选项中将不再显示。
 
 ### 备注 [#field-notes]
 

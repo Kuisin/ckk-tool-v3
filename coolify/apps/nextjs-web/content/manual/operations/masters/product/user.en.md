@@ -1,16 +1,16 @@
 ---
 title: "Product — User Manual"
-description: "A ledger for the products you make. The products you register here become the choices in the 「製品」 (Product) field of trial estimates and quotes."
+description: "A ledger for the products you make. The products you register here become the choices in the 「製品」 (Product) field of price estimates and quotes."
 screenshots: [master-product-list-01, master-product-new-01, master-product-detail-01, master-product-routes-01, master-product-route-new-01]
 ---
 This is a ledger for the products you make. The operation code is `MS04`.
 
-**If a product is not registered, you cannot make a [Trial Estimate](/manual/en/operations/sales/trial-estimate/user), a [Price List](/manual/en/operations/sales/price-list/user) or a [Quote](/manual/en/operations/sales/quote/user).** When a new product comes up, register it on this screen first.
+**If a product is not registered, you cannot make a [Price Estimate](/manual/en/operations/sales/trial-estimate/user), a [Price List](/manual/en/operations/sales/price-list/user) or a [Quote](/manual/en/operations/sales/quote/user).** When a new product comes up, register it on this screen first.
 
 ## What you can do in this app
 
 - You can register the products you make.
-- After you register a product, you can choose it in the 「製品」 (Product) field of trial estimates, price lists and quotes.
+- After you register a product, you can choose it in the 「製品」 (Product) field of price estimates, price lists and quotes.
 - You can check the product's **specification** (material type, diameter, length, hardness, tolerance and so on) from the confirmed version in [Drawing](/manual/en/operations/production/design-file/user).
 - You can register the **order of the process steps** used to make that product.
 - You can **copy** a similar product and change only the parts you need.
@@ -28,6 +28,16 @@ This is a ledger for the products you make. The operation code is `MS04`.
 The product master only holds **the product as something you sell** (name, unit, tax category, keywords). **Material type, diameter, length, product type and product items are entered in [Drawing](/manual/en/operations/production/design-file/user).** They change together with the drawing across revisions and customers, so they belong to the drawing version.
 
 After registering a product, register a version in Drawing and confirm it. The specification of the confirmed version is what this screen and the material candidates of a [Work Order](/manual/en/operations/production/work-order/user) use.
+
+As a diagram:
+
+```mermaid
+flowchart TD
+  p["Register the product in the product master<br/>(name, unit, tax category, keywords)"] --> v["Register a version in Drawing<br/>(material type, diameter, length,<br/>product type, product items)"]
+  v --> c["Confirm the version"]
+  c -.-> s1["The specification shows<br/>on the product screen"]
+  c -.-> s2["Used for a work order's<br/>material candidates"]
+```
 
 ## How to read the screen
 
@@ -60,7 +70,7 @@ When you open the app, a list of the registered products is shown.
 
 ### Entering the specification (in Drawing)
 
-Material type, diameter, length, product type and product items are entered by registering a version in [Drawing](/manual/en/operations/production/design-file/user). **Register the specification in Drawings** on the product's "Overview" tab opens the registration form with that product already selected. Choosing a Zunou RAPID SXF (.sfc) file fills them in automatically from the title block and dimensions.
+Material type, diameter, length, product type and product items are entered by registering a version in [Drawing](/manual/en/operations/production/design-file/user). 「**設計図で仕様を登録**」 (Register the specification in Drawing) on the product's 「概要」 (Overview) tab opens the registration form with that product already selected. Choosing a Zunou RAPID SXF (.sfc) file fills them in automatically from the title block and dimensions.
 
 ## Looking at what you registered
 
@@ -154,7 +164,7 @@ Even when you stop making a product, **please do not delete it**. Past quotes an
 2. Choose 「**無効化**」 (Deactivate).
 3. On the confirmation screen, press 「**無効化する**」 (Deactivate).
 
-Once a product is inactive, you can no longer choose it in new trial estimates, price lists or quotes, but **the past data stays as it is**.
+Once a product is inactive, you can no longer choose it in new price estimates, price lists or quotes, but **the past data stays as it is**.
 
 ## Input fields
 

@@ -15,6 +15,8 @@ description: "Recount the physical stock by site and storage location, and, wher
 - If a flow exists in Approval Settings (MS0B), go through approval; if not, confirm directly.
 - On confirming, only the items with a real discrepancy are automatically reflected as an "adjustment" [Stock Movement](/manual/en/operations/inventory/inventory-movements/user) (ST04) slip. Nothing happens for items with no discrepancy.
 
+> 💡 When stock has gone **negative** (pieces shipped while stock was short), counting again in a stock take also brings it back to zero or above.
+
 ## Terms used on this page
 
 - **棚卸 (Stock take)** … the work of counting physical stock and checking it against the book quantity.
@@ -63,6 +65,20 @@ Once submitted, you cannot resume entering counts while it is awaiting approval 
 ## Approving
 
 Someone with approval permission can press 「**承認**」(Approve) or 「**差し戻し**」(Send back) from the card at the top of the detail screen. Sending it back returns it to the pre-submit state, so it can be re-entered and resubmitted. Once every step is approved, it proceeds to confirmation.
+
+As a diagram, from creation to confirmation:
+
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"First save"| cnt("記入中<br/>Counting"):::blue
+  cnt -->|"提出<br/>Submit"| q{"Does the 「棚卸」 (Stock Take) flow<br/>have approval steps?"}
+  q -->|"No"| conf("確定<br/>Confirmed"):::green
+  q -->|"Yes"| req("承認依頼中<br/>Pending approval"):::yellow
+  req -->|"Every step approved"| conf
+  req -.->|"差し戻し<br/>Send back"| cnt
+  draft -.->|"キャンセル<br/>Cancel"| can("キャンセル<br/>Cancelled"):::red
+  cnt -.->|"キャンセル<br/>Cancel"| can
+```
 
 ## What happens on confirming
 

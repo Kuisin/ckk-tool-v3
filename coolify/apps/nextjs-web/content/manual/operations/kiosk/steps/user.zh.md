@@ -44,6 +44,17 @@ screenshots: [kiosk-steps-01, kiosk-step-detail-01, kiosk-step-location-01]
 
 > 💡 已完成的作业可以用「**完了した工程を隠す**」（隐藏已完成的工序）从列表中隐藏。显示条数太多时可以使用。
 
+状态的变化如下。
+
+```mermaid
+flowchart TD
+  wait("前工程待ち<br/>等待前道工序") -->|"前道工序完成"| ready("開始可<br/>可开始")
+  ready -->|"工程開始<br/>开始工序"| work("作業中<br/>作业中")
+  work -->|"一時停止<br/>暂停"| pause("一時停止中<br/>暂停中")
+  pause -->|"再開<br/>继续"| work
+  work -->|"工程完了<br/>完成工序"| done("完了<br/>已完成")
+```
+
 ## 开始作业
 
 1. 从列表中点击想开始的作业卡片。

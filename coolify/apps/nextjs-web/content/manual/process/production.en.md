@@ -62,6 +62,18 @@ The shop floor records start and completion for each step. Enter the received qu
 
 **Changing a branch also needs approval** — adding, changing or removing a branch on an approved or in-progress work order becomes subject to approval when approval settings have a step for「工程フロー変更」(workflow change). With the pre-approval setting, the change is held until approval is granted; with the post-approval setting, it is applied on the spot and approved afterward. If it is sent back under post-approval, the steps do not revert automatically, and a red notice keeps showing on the work order until it is acknowledged.
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  chg["Add, change or remove a branch<br/>on an approved or in-progress work order"] --> has{"Do approval settings have a step for<br/>「工程フロー変更」(workflow change)?"}
+  has -->|"No"| direct["Applied as is, without approval"]
+  has -->|"Yes"| mode{"Pre-approval or post-approval?"}
+  mode -->|"Pre-approval"| hold["The change is held<br/>until approval is granted"]
+  mode -->|"Post-approval"| apply["Applied on the spot,<br/>approved afterward"]
+  apply -.->|"Sent back"| warn["The steps do not revert automatically<br/>A red notice shows until acknowledged"]
+```
+
 ![Work order step list. The step in progress is highlighted with a red box](../assets/screenshots/flow-steps-01.png)
 
 ![Quantity/defect input screen. The complete button is highlighted with a red box](../assets/screenshots/flow-step-complete-01.png)
@@ -95,9 +107,20 @@ Steps can still be opened after completion or cancellation. The button becomes�
 **Cannot complete a step (stuck on defect input)**
 The good quantity is calculated automatically from the received quantity and the total of defects, so a quantity mismatch cannot occur. What stops completion is a defect row missing its defect type or details, or the total of defects exceeding the received quantity. Review the defect rows and make sure each row has its category, defect type, details and quantity.
 
+## Counting stock and moving it by hand
+
+Stock moves automatically within this flow. Besides that there are three ways to touch it, and each leaves a stock movement document.
+
+- Recount and reconcile … [Stock take](/manual/en/operations/inventory/stock-takes/user) (`ST05`). Confirming it corrects the stock by the difference.
+- Put in, take out or move by hand … [Manual stock movement](/manual/en/operations/inventory/goods-movement/user) (`ST06`)
+- Trace what moved … [Stock movement](/manual/en/operations/inventory/inventory-movements/user) (`ST04`)
+
+What has been sent out to a subcontractor is counted separately, as held by that subcontractor (it is not part of our own stock).
+See the quantity per holder in [Stock overview](/manual/en/operations/inventory/stock-overview/user) (`ST02`).
+
 ## Related pages
 
 - Following a single order from start to finish … [Standard flow](/manual/en/process/default-flow)
-- How to operate each app and what each field means … **How-to › Production** on the left
+- How to operate each app and what each field means … **Operations › Production** on the left
 - Previous flow … [Sales flow](/manual/en/process/sales)
 - Next flow … [Shipping flow](/manual/en/process/shipping)

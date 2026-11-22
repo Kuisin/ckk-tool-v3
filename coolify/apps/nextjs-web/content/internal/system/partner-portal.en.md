@@ -32,7 +32,7 @@ Progress says how far the order has come, not which machine ran it, when, or who
 
 Go to **System → Partner portal** (operation code `SY0H`).
 
-1. Choose the business partner, contact name and e-mail address
+1. Press "New" and enter the business partner, contact name and e-mail address
 2. Decide whether branch documents are included
    - **A branch never reaches up to its parent.** Someone at a branch cannot see
      the head office's or a sibling branch's documents
@@ -47,6 +47,17 @@ A new account **sees nothing**. It can only sign in once you activate it.
 > **Deactivating needs no approval** — waiting for a signature when you want
 > access stopped would defeat the point. Deactivating also ends any session that
 > person currently has open.
+
+From creating an account to the contact starting to use it, as a diagram:
+
+```mermaid
+flowchart TD
+  c["Create the account"] --> i["Created only<br/>sees nothing"]
+  i -->|"Activate"| ap["Another person approves<br/>(privileged access, SY0G)"]
+  ap --> a["Active<br/>can sign in"]
+  a --> g["Issue the guide PDF and hand it over"]
+  a -.->|"Deactivate (no approval)"| off["Inactive<br/>open sessions end too"]
+```
 
 ## Handing over the sign-in guide
 

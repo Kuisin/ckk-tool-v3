@@ -7,6 +7,8 @@ This is the **素材入荷** (material receipt) app, where you record that mater
 
 > ⚠️ This app is still being prepared, so it may not appear on the live system yet. If you cannot find it, please ask the person in charge at your company.
 
+> This app belongs to … [Purchasing flow](/manual/en/process/purchasing)
+
 ## What you can do with this app
 
 - You can record that material has arrived. When you do, **the stock at that site goes up by the same amount**.
@@ -29,6 +31,19 @@ This is the **素材入荷** (material receipt) app, where you record that mater
 - You need material receipt permission to register arrivals. If the buttons do not appear, please ask the person in charge at your company.
 
 > ⚠️ When material you ordered with a purchase order arrives, do not register it here. Press 「**入荷完了**」 (Receiving complete) on the [material purchase order](/manual/en/operations/purchasing/purchase-order/user) screen and the arrival record is created automatically.
+
+As a diagram, this is where to record an arrival:
+
+```mermaid
+flowchart TD
+  arrive["Material has arrived"] --> q1{"Ordered with a material<br/>purchase order?"}
+  q1 -->|"No (direct purchase)"| mr["Register it in Material receipt<br/>(this screen)"]
+  q1 -->|"Yes"| q2{"Has everything<br/>ordered arrived?"}
+  q2 -->|"Yes"| po["On the material purchase order,<br/>press 「入荷完了」 (Receiving complete)"]
+  q2 -->|"Only part"| mr
+  po -.-> auto["The receipt record is created<br/>automatically and stock increases"]
+  mr -.-> stock["Stock at the receiving site increases"]
+```
 
 ## How to read the screen
 
@@ -84,7 +99,7 @@ Every field on the material receipt screen. The **?** next to a field in the app
 |-------|----------|---------------|
 | [Material](#field-material) | Required | The material that arrived |
 | [Supplier](#field-supplier) | Optional | Who delivered it |
-| [Receiving plant](#field-plant) | Optional | Where it was received |
+| [Receiving site](#field-plant) | Optional | Where it was received |
 | [Received date](#field-received-date) | Required | The day it arrived |
 | [Quantity](#field-quantity) | Required | How much actually arrived |
 | [Unit](#field-unit) | Required | Pieces, kg and so on |
@@ -98,9 +113,9 @@ The material that arrived. When recording against a purchase order, its contents
 
 Who delivered it. This is filled in automatically when recording against a purchase order; choose it here for a direct purchase.
 
-### Receiving plant [#field-plant]
+### Receiving site [#field-plant]
 
-The plant that actually received it. **Stock increases at this plant**, so choose where the goods arrived.
+The site that actually received it. **Stock increases at this site**, so choose where the goods arrived.
 
 ### Received date [#field-received-date]
 

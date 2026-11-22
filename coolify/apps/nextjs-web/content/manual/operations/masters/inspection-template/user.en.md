@@ -110,6 +110,16 @@ What you enter changes with the type.
 
 > 💡 If you save without setting a pass rule, that item is not judged by itself, and the floor chooses pass or fail on their own. If you turn off 「**合否の手動上書きを許可**」 (allow manual override of pass/fail), only the automatic judgement is used, and 「上書き不可」 (override not allowed) is shown in the list.
 
+As a diagram, this is how pass or fail is decided:
+
+```mermaid
+flowchart TD
+  v["The floor enters a value"] --> q{"Does the item have<br/>a pass standard?"}
+  q -->|"Yes"| auto["Pass or fail is set automatically"]
+  q -->|"No"| man["The floor chooses<br/>pass or fail themselves"]
+  auto -.->|"When 「合否の手動上書きを許可」 is on"| ov["Can be overridden by hand"]
+```
+
 ## Change the content (make a new version)
 
 Once a template has been used even once on a work order or in an inspection record, its content can no longer be changed. This is so that the content of an inspection already done does not change afterwards. For a template in this state, the 「**編集**」 (Edit) button is no longer shown on the detail screen.
@@ -121,6 +131,17 @@ When you want to change the content, make a new version.
 3. A small confirmation window appears. Read it and press 「**新バージョンを作成**」 (Create new version).
 
 A new edition (v2, v3 …) is made with the current inspection items copied into it. The work orders and inspection records made so far stay on the earlier edition and do not change.
+
+As a diagram:
+
+```mermaid
+flowchart TD
+  q{"Has the template ever been used by<br/>a work order or an inspection record?"}
+  q -->|"No"| e["Can be corrected with 「編集」 (Edit)"]
+  q -->|"Yes"| lock["The contents cannot be changed<br/>The 「編集」 (Edit) button is not shown"]
+  lock -->|"「…」 → 「新バージョンを作成」"| nv["New edition (v2, v3 …)<br/>current inspection items copied"]
+  lock -.-> old["Work orders and inspection records so far<br/>stay on the earlier edition"]
+```
 
 ![Versions tab of the inspection sheet template](../../../assets/screenshots/master-inspection-template-versions-01.png)
 

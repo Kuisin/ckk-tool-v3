@@ -35,7 +35,7 @@ This app is **a view of "what is where" from the location's side**. To see "is t
 - **拠点 (Site)** … which site it is at.
 - **保管場所・棚 (Storage location / shelf)** … shown as "location name / shelf code". Not yet decided shows "**未割当**" (unassigned).
 - **ロット (Lot)** … the lot number, for product rows.
-- **手持ち (On hand)** … the quantity actually present.
+- **手持ち (On hand)** … the quantity actually present. A **red negative number** means more was shipped than the ledger held (a [delivery order](/manual/en/operations/shipping/delivery-order/user) is not stopped when stock is short).
 - **予約 (Reserved)** … how much of it is reserved (this column can be hidden).
 - **利用可能 (Available)** … on-hand minus reserved — what you can actually use.
 - **単位 (Unit)** … the unit of quantity (this column can be hidden).
@@ -58,6 +58,9 @@ A. If "在庫ゼロを隠す" (hide zero stock) is on, locations with zero on ha
 
 **Q. The list is cut off at 1000 rows.**
 A. Add more filters (site / storage location / item type / search) to reduce the count. This list has no pagination — it is designed to always be narrowed with filters instead.
+
+**Q. The on-hand quantity is a red negative number.**
+A. This happens when more is shipped than the ledger held. The shipment itself is recorded, and the missing amount is kept on the [Stock Movement](/manual/en/operations/inventory/inventory-movements/user) (ST04) slip as 「在庫不足のまま出庫」 (issued while stock was short). Count again with a [Stock Take](/manual/en/operations/inventory/stock-takes/user) (ST05), or record the receipt that was forgotten with a [Manual Stock Movement](/manual/en/operations/inventory/goods-movement/user) (ST06), and it returns to zero or above.
 
 **Q. I want to transfer stock from here.**
 A. You cannot transfer from this app. Use the matching row in [Inventory Management](/manual/en/operations/inventory/inventory-management/user) (ST01), or [Manual Stock Movement](/manual/en/operations/inventory/goods-movement/user) (ST06).

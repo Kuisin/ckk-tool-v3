@@ -197,8 +197,8 @@ flowchart TD
 | [设备名称（日语 / English）](#field-name) | 必填 | 列表与日志中显示的设备名称 |
 | [基地](#field-plant) | 必填 | 放置该设备的基地 |
 | [位置](#field-location) | 选填 | 在基地内的放置位置 |
-| [关联码](#field-link-code) | 必填 | 平板端显示的确认用编码 |
 | [默认作业场所](#field-default-work-location) | 选填 | 自动记录到该终端作业实绩的作业场所 |
+| [关联码](#field-link-code) | 必填 | 平板端显示的确认用编码 |
 
 ### 设备名称（日语 / English） [#field-name]
 

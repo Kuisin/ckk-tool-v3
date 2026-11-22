@@ -37,6 +37,35 @@ Both "Split" and "Merge" refer to **relationships between one document and anoth
 | [Invoice](/manual/en/operations/billing/invoice/user) (`INV`) | Generated from billing closing (one per billing closing) | — | — (its line items come from several documents totaled up by the billing closing; see below) | Billing closing (source, 1:1) / delivery order, delivery note, order line (source of line items) |
 | [Billing closing](/manual/en/operations/billing/billing-closing/user) | Run fresh for a customer × closing day (at most one per combination of the same customer and the same closing day) | — | **Yes** — totals up everything delivered in that period into one record | Invoice (destination, 1:1) |
 
+How the documents connect, as a diagram. First, the documents from order to invoice:
+
+```mermaid
+flowchart TD
+  est["Price estimate"] -->|"basis for the unit price"| prc["Price list"]
+  prc -->|"price referenced"| qot["Quote"]
+  qot -->|"raised on from it"| ord["Order acceptance"]
+  ord -->|"generated on confirm"| line["Order line"]
+  line -->|"split fulfillment / combined lot (m:n)"| wo["Work order"]
+  line -->|"split shipment / gathered (m:n)"| dor["Delivery order"]
+  wo -->|"finished lot is shipped"| dor
+  dor -->|"generated on confirm (1:N)"| drn["Delivery note"]
+  drn -->|"totals up the period's deliveries"| cls["Billing closing"]
+  cls -->|"generated (1:1)"| inv["Invoice"]
+  qot -.->|"raised in parallel"| dsg["Design request"]
+  line -.->|"raised when the order is taken"| dsg
+  dsg -->|"registered as a version on completion"| dwg["Drawing"]
+  dwg -.->|"specifies which version to use"| wo
+  wo -.->|"appears in the list when a step is set to outsourced"| out["Outsource order"]
+```
+
+The purchasing documents:
+
+```mermaid
+flowchart TD
+  prq["Purchase request"] -->|"converted once approved (1:1)"| po["Material purchase order"]
+  po -->|"split receiving (recorded over several deliveries)"| rcp["Material receipt"]
+```
+
 ## Documents that are especially the starting point for splitting or merging
 
 ### Order line — the starting point for splitting
@@ -62,5 +91,5 @@ The ordered quantity does not have to match the quantity and the number of deliv
 
 - Following a single order from start to finish … [Standard flow](/manual/en/process/default-flow)
 - Branches and document states by domain … [Sales](/manual/en/process/sales) / [Purchasing](/manual/en/process/purchasing) / [Production](/manual/en/process/production) / [Shipping](/manual/en/process/shipping) / [Billing](/manual/en/process/billing)
-- How to operate each app and what each field means … **How-to** on the left
+- How to operate each app and what each field means … **Operations** on the left
 - New to the system … [Getting started](/manual/en/start)

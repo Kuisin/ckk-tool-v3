@@ -5,6 +5,8 @@ screenshots: [quote-list-01, quote-new-01, quote-detail-01, quote-issue-01, quot
 ---
 This app makes the **見積書 (quote)** you send to a customer, and issues it as a PDF. The operation code is `SA03`.
 
+> This app belongs to … [Sales flow](/manual/en/process/sales)
+
 ## What you can do with this app
 
 - You can make the quote you send to a customer.
@@ -24,7 +26,7 @@ This app makes the **見積書 (quote)** you send to a customer, and issues it a
 
 To make a quote, **the [price list](/manual/en/operations/sales/price-list/user) for that customer and that product must already be registered**. Without a price list the amount cannot be calculated, so the quote cannot be saved.
 
-If there is no price list yet, first work out the unit price in [Trial Estimate](/manual/en/operations/sales/trial-estimate/user), then register it in the [price list](/manual/en/operations/sales/price-list/user).
+If there is no price list yet, first work out the unit price in [Price Estimate](/manual/en/operations/sales/trial-estimate/user), then register it in the [price list](/manual/en/operations/sales/price-list/user).
 
 ## Reading the screen
 
@@ -66,7 +68,7 @@ The screen of a saved quote has five tabs.
 
 - **明細 (line items)** … the list of products, pieces and amounts. The subtotal, consumption tax and total are shown below.
 - **PDF** … after issuing, you can view or download the PDF here.
-- **関連 (related)** … you can check which price list and which trial estimate the amounts came from.
+- **関連 (related)** … you can check which price list and which price estimate the amounts came from.
 - **メモ (memo)** … you can leave internal notes about this quote.
 - **履歴 (history)** … the record of who changed what, and when.
 
@@ -186,7 +188,7 @@ Internal notes. They do not appear on the quote PDF.
 A. Amounts cannot be typed in by hand on a quote. They come automatically from the [price list](/manual/en/operations/sales/price-list/user) for that customer. To change a price, change the price list.
 
 **Q. It says「該当する価格表がありません」(no matching price list) and I cannot save.**
-A. The price list for that customer and that product is not registered yet. First work out the unit price in [Trial Estimate](/manual/en/operations/sales/trial-estimate/user), register it in the [price list](/manual/en/operations/sales/price-list/user), and try again.
+A. The price list for that customer and that product is not registered yet. First work out the unit price in [Price Estimate](/manual/en/operations/sales/trial-estimate/user), register it in the [price list](/manual/en/operations/sales/price-list/user), and try again.
 
 **Q. I changed the customer and the amount changed.**
 A. That is normal. Prices are decided per customer, so when you change the customer, the amounts are calculated again with that customer's price list.

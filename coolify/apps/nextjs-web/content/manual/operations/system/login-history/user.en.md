@@ -43,6 +43,18 @@ Both the list and the detail view show a **device category**. The system works t
 | **未管理** Unmanaged | No evidence that this is a company device | Not a conclusion |
 | **未判定** Undetermined | Nothing to judge from | — |
 
+As a diagram, the judgement runs in this order:
+
+```mermaid
+flowchart TD
+  q1{"Confirmed by the<br/>device key's signature?"} -->|"Yes"| m["会社（管理端末）<br/>Company (managed)<br/>Certain"]
+  q1 -->|"No"| q2{"Anything to judge from,<br/>such as the connection origin?"}
+  q2 -->|"No"| u["未判定<br/>Undetermined"]
+  q2 -->|"Yes"| q3{"Origin inside the<br/>office network range?"}
+  q3 -->|"Yes"| n["会社（社内NW）<br/>Company (office network)<br/>Circumstantial"]
+  q3 -->|"No"| x["未管理<br/>Unmanaged<br/>Not a conclusion"]
+```
+
 The most important caution:
 
 > ⚠️ "**Company (office network)**" means "**connecting from inside the office**", not "**this is a device the company issued**". A personal laptop brought into the office, or a connection over VPN, shows exactly the same thing.

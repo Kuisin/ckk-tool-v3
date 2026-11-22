@@ -19,9 +19,9 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 - 可以按「一家公司一条记录」的方式登记有业务往来的公司。
 - 可以给公司加 **角色**（顧客／最終需要家／仕入先・外注先）。一家公司可以加多个角色。
-- 加上「顧客」（客户）后，就可以在[价格表](/manual/zh/operations/sales/price-list/user)、[报价单](/manual/zh/operations/sales/quote/user)、[订单请书](/manual/zh/operations/sales/order-acceptance/user)以及发票中，作为对方单位来选择。
+- 加上「顧客」（客户）后，就可以在[价格表](/manual/zh/operations/sales/price-list/user)、[报价单](/manual/zh/operations/sales/quote/user)、[订单确认书](/manual/zh/operations/sales/order-acceptance/user)以及请款单中，作为对方单位来选择。
 - 加上「最終需要家」（最终需求方）后，就可以在[送货单](/manual/zh/operations/shipping/delivery-note/user)和订单明细中作为最终需求方来选择。
-- 加上「仕入先・外注先」（供应商・外协厂）后，就可以在[材料订购单](/manual/zh/operations/purchasing/purchase-order/user)、[外协委托](/manual/zh/operations/purchasing/outsource-order/user)以及制造指示书工序的外协厂中选择。
+- 加上「仕入先・外注先」（供应商・外协厂）后，就可以在[材料订购单](/manual/zh/operations/purchasing/purchase-order/user)、[外协委托](/manual/zh/operations/purchasing/outsource-order/user)以及制造工单工序的外协厂中选择。
 - 可以在公司下面登记 **支店**（分店）。
 - 每家公司可以登记任意多位 **担当者**（对方的联系人）。
 - 可以登记结算截止日、付款账期、汇款账户、标准交货周期等交易条件。
@@ -31,7 +31,7 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 - **取引先（业务伙伴）** … 指有业务往来的公司本身。一家公司登记一条记录。
 - **ロール（角色）** … 表示以什么身份使用这家公司的标记，共有以下 3 种。
-  - **顧客（客户）** … 向您下单的公司。是报价单、订单请书、发票的对方单位。
+  - **顧客（客户）** … 向您下单的公司。是报价单、订单确认书、请款单的对方单位。
   - **最終需要家（最终需求方）** … 在工厂里实际使用成品的公司。通过商社接单等「下单公司与使用公司不同」的情况会用到。
   - **仕入先・外注先（供应商・外协厂）** … 向其采购材料的公司（供应商），或委托研磨、涂层等部分加工的公司（外协厂）。
 - **外注種別（外协类别）** … 「仕入先・外注先」角色内部的区分，选择「**仕入先**」（供应商）或「**外注先**」（外协厂）之一。
@@ -48,7 +48,7 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 除此之外没有需要事先准备的东西，可以直接从本画面开始登记。
 
-登记好的业务伙伴，会在之后的[价格表](/manual/zh/operations/sales/price-list/user) →[报价单](/manual/zh/operations/sales/quote/user) →[订单请书](/manual/zh/operations/sales/order-acceptance/user)，以及[材料订购单](/manual/zh/operations/purchasing/purchase-order/user) →[外协委托](/manual/zh/operations/purchasing/outsource-order/user)中一直使用。**公司名称的写法请在一开始就确定好，再进行登记。**
+登记好的业务伙伴，会在之后的[价格表](/manual/zh/operations/sales/price-list/user) →[报价单](/manual/zh/operations/sales/quote/user) →[订单确认书](/manual/zh/operations/sales/order-acceptance/user)，以及[材料订购单](/manual/zh/operations/purchasing/purchase-order/user) →[外协委托](/manual/zh/operations/purchasing/outsource-order/user)中一直使用。**公司名称的写法请在一开始就确定好，再进行登记。**
 
 ## 界面说明
 
@@ -91,9 +91,22 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 
 ![角色选择区域](../../../assets/screenshots/master-bp-roles-01.png)
 
-- **顧客（客户）** … 可以作为报价单、订单请书、发票的对方单位来选择。
+- **顧客（客户）** … 可以作为报价单、订单确认书、请款单的对方单位来选择。
 - **最終需要家（最终需求方）** … 可以作为送货单、订单明细的最终需求方来选择。
 - **仕入先・外注先（供应商・外协厂）** … 可以在材料订购单、外协委托以及工序的外协厂中选择。
+
+角色与可选择该公司的单据之间的关系，用图表示如下。
+
+```mermaid
+flowchart TD
+  bp["业务伙伴<br/>1 家公司 1 条"]
+  bp --> c["顧客<br/>客户"]
+  bp --> e["最終需要家<br/>最终用户"]
+  bp --> v["仕入先・外注先<br/>供应商・外协厂商"]
+  c --> cd["报价单・订单确认书・<br/>请款单的对方单位"]
+  e --> ed["送货单・订单明细的<br/>最终用户"]
+  v --> vd["材料采购单・外协委托单・<br/>工序的外协厂商"]
+```
 
 勾选后，**该角色专用的输入栏会出现在下方**。取消勾选后，这些输入栏会隐藏起来。
 
@@ -109,12 +122,12 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 2. 输入「**締日**」（结算截止日）、「**支払サイト（日数）**」（付款账期・天数）、「**支払日**」（付款日）。
 3. 如果有授信额度，请填入「**与信限度額**」（授信额度）。
 4. 选择「**課税区分**」（课税区分）。留空则**按各产品的税种**（通常这样即可）。在此设置后将优先于产品——例如免税的业务伙伴。
-5. 在「**請求書送付方法**」（发票送付方式）中选择发票的寄送方式：メール（邮件）／FAX（传真）／郵送（邮寄）／ポータル（门户）。
+5. 在「**請求書送付方法**」（请款单送付方式）中选择请款单的寄送方式：メール（邮件）／FAX（传真）／郵送（邮寄）／ポータル（门户）。
 6. 如果是寄售业务的对象，请勾选「**委託先（委託販売の対象）**」（受托方・寄售对象）。
 
 > 💡 在「**締日**」（结算截止日）中输入 `31`，表示「月末」。栏位下方也会显示「31 = 月末」。这里设定的结算截止日会用于[结算截止处理](/manual/zh/operations/billing/billing-closing/user)。
 
-> ⚠️ 只有发票要寄给其他公司的交易，才需要在「**請求先（別法人の場合）**」（收票方・为其他法人时）中选择那家公司。留空则向该公司本身收款。
+> ⚠️ 只有请款单要寄给其他公司的交易，才需要在「**請求先（別法人の場合）**」（请款对象・为其他法人时）中选择那家公司。留空则向该公司本身收款。
 
 ### 4. 设定交货数量差异的允许范围（勾选「顧客」时）
 
@@ -127,6 +140,21 @@ screenshots: [master-bp-list-01, master-bp-new-01, master-bp-roles-01, master-bp
 3. 在「**超過の許容**」（超出允许范围）中填入允许高于订货数量的幅度。同样，留空表示「完全不允许超出」。
 4. 如果希望即使差异在此范围内，出货单确定前也一定要经过审批，请勾选「**許容範囲内でも承認を要求する**」（在允许范围内也需要审批）（默认不勾选，范围内的差异可无需审批直接确定）。
 5. 「**許容範囲外は承認を要求する**」（超出允许范围时需要审批）默认为勾选状态。取消勾选后，超出范围的差异也会无需审批直接通过，因此除非有充分理由，请保持勾选。
+
+有数量差异时是否需要审批，按下图决定。
+
+```mermaid
+flowchart TD
+  q0{"是工单上允许<br/>「带差异出货」的批次吗？"}
+  q0 -->|"否"| ng["不能带差异出货"]
+  q0 -->|"是"| q1{"差异在允许范围之内？"}
+  q1 -->|"范围内"| q2{"「許容範囲内でも<br/>承認を要求する」<br/>在允许范围内也需要审批"}
+  q1 -->|"范围外"| q3{"「許容範囲外は<br/>承認を要求する」<br/>超出允许范围时需要审批"}
+  q2 -->|"不勾选（默认）"| ok["无需审批即可确定"]
+  q2 -->|"勾选"| ap["经过审批后再确定"]
+  q3 -->|"勾选（默认）"| ap
+  q3 -->|"不勾选"| ok
+```
 
 > 💡 将「許容の基準」（允许基准）设为「パーセント（%）」（百分比），并对 100 件的订货将「不足の許容」（不足允许范围）设为「2」时，交货到 98 件（不足 2 件）为止都算范围内，97 件以下则算超出范围。
 

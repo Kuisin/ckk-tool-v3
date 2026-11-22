@@ -44,6 +44,17 @@ screenshots: [kiosk-steps-01, kiosk-step-detail-01, kiosk-step-location-01]
 
 > 💡 完了した作業は「**完了した工程を隠す**」で一覧から隠せます。表示件数が多いときに使ってください。
 
+状態は次のように移り変わります。
+
+```mermaid
+flowchart TD
+  wait("前工程待ち") -->|"前の工程が完了"| ready("開始可")
+  ready -->|"工程開始"| work("作業中")
+  work -->|"一時停止"| pause("一時停止中")
+  pause -->|"再開"| work
+  work -->|"工程完了"| done("完了")
+```
+
 ## 作業を始める
 
 1. 一覧から、始めたい作業のカードを押します。

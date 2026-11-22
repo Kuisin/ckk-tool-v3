@@ -105,6 +105,17 @@ The 「**編集**」 (Edit) button appears at the top right of 「**ロール割
 
 For a system administrator the change takes effect straight away. **For everyone else nothing changes yet** — write 「**変更の理由**」 (Reason for the change) and submit, and an approval request appears in [Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G). **The change takes effect when someone else approves it.** You cannot approve your own request.
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  e["Choose roles and save"] --> q{"System administrator?"}
+  q -->|"Yes"| ok["The change takes effect straight away"]
+  q -->|"No"| r["Write 変更の理由 (Reason for the change)<br/>and press 承認を依頼 (Request approval)"]
+  r --> w["An approval request appears in<br/>Privileged access (SY0G)"]
+  w -->|"Someone else approves"| ok2["The change takes effect"]
+```
+
 > ⚠️ If you remove every role, the person can do nothing at all. Check which screens they use before removing.
 
 > ⚠️ When there is only one administrator, you cannot take the admin role away from them — nobody could make anyone an administrator again. 「**最後の管理者から管理者ロールを外すことはできません**」 (The admin role cannot be removed from the last admin) is shown.
@@ -131,12 +142,12 @@ When 「**保存しました**」 (Saved) and 「**所属拠点を更新しま�
 
 ## Input fields
 
-A user's name and email are **imported from Active Directory** and cannot be changed here. The only inputs on this screen are the roles and the plant assignment.
+A user's name and email are **imported from Active Directory** and cannot be changed here. The only inputs on this screen are the roles and the assigned sites.
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
 | [Roles](#field-roles) | Optional | The roles given to this user |
-| [Assigned plants](#field-plants) | Optional | The plants this user works with |
+| [Assigned sites](#field-plants) | Optional | The sites this user works with |
 
 ### Roles [#field-roles]
 
@@ -146,9 +157,9 @@ The roles given to the user. Several can be selected.
 
 Only people with the "change user management" permission can edit it, and anyone who is not a system administrator needs approval. You cannot change your own roles.
 
-### Assigned plants [#field-plants]
+### Assigned sites [#field-plants]
 
-The plants the user is responsible for. Several can be selected.
+The sites the user is responsible for. Several can be selected.
 
 The "plant" range of a permission is **decided by the overlap with what is selected here**. Someone whose permission is "view within their plant" sees only data for the plants listed here. If this is empty, plant-ranged permissions show nothing.
 

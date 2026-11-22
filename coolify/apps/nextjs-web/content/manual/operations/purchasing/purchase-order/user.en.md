@@ -7,6 +7,8 @@ This app is for making a **素材発注書** (material purchase order), which is
 
 > ⚠️ This app is still being prepared, so it may not appear on the live system yet. If you cannot find it, please ask the person in charge at your company.
 
+> This app belongs to … [Purchasing flow](/manual/en/process/purchasing)
+
 ## What you can do with this app
 
 - You can write which supplier, which material, how many pieces, and at what price.
@@ -170,7 +172,7 @@ Every field on the material purchase order screen. The **?** next to a field in 
 | [Order date](#field-order-date) | Optional | The date of the order |
 | [Notes](#field-notes) | Optional | Notes for the whole order |
 | [Material](#field-material) | Required | The material being ordered |
-| [Receiving plant](#field-plant) | Optional | Where it will be received |
+| [Receiving site](#field-plant) | Optional | Where it will be received |
 | [Quantity](#field-quantity) | Required | How much to order |
 | [Unit](#field-unit) | Required | Pieces, kg and so on |
 | [Unit price](#field-unit-price) | Required | Price per unit |
@@ -193,9 +195,9 @@ Notes about the order as a whole. Anything specific to one material belongs in t
 
 The material being ordered. If the order was created from a purchase request, the request's contents are carried over.
 
-### Receiving plant [#field-plant]
+### Receiving site [#field-plant]
 
-The plant that receives the material. **Recording the arrival increases stock at this plant.** If it is not decided yet, you may leave it blank.
+The site that receives the material. **Recording the arrival increases stock at this site.** If it is not decided yet, you may leave it blank.
 
 ### Quantity [#field-quantity]
 

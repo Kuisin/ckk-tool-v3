@@ -16,8 +16,12 @@ description: "用 n8n 的 Webhook 节点接收信号、验证签名，并通过 
 
 ## 配方 1 — 接收信号并获取数值
 
-```
-[Webhook] → [Code: 验证签名] → [IF: 是否需要的事件] → [HTTP Request: 通过 API 获取] → [后续处理]
+```mermaid
+flowchart TD
+  wh["Webhook"] --> verify["Code: 验证签名"]
+  verify --> check["IF: 是否需要的事件"]
+  check --> fetch["HTTP Request: 通过 API 获取"]
+  fetch --> rest["后续处理"]
 ```
 
 1. **Webhook 节点**：方法 `POST`，路径使用难以猜测的值。在 Options 中开启 **Raw Body**，**Respond** 选“Immediately”（立即返回 200）。把此 **Production URL** 登记到 CKK 的“出站 Webhook”中（与 n8n 在同一 Docker 网络时可使用 `http://n8n:5678/webhook/…`）。
@@ -58,29 +62,14 @@ return [{ json: JSON.parse(raw) }];
 
 用 API 增量同步补上 Webhook 未到达、或 n8n 停机期间的数据。
 
-```js
-// n8n の Code ノード（「全アイテムに対して 1 回実行」）。
-// 要件: Webhook ノードの Options → 「Raw Body」を ON、環境変数 NODE_FUNCTION_ALLOW_BUILTIN=crypto
-const crypto = require("crypto");
-
-const item = $input.first();
-const raw = (await this.helpers.getBinaryDataBuffer(0, "data")).toString("utf8");
-const h = item.json.headers;
-const secret = $env.CKK_WEBHOOK_SECRET; // n8n 側の環境変数に whsec_… を入れておく
-
-const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
-const expected = crypto
-  .createHmac("sha256", key)
-  .update(`${h["webhook-id"]}.${h["webhook-timestamp"]}.${raw}`)
-  .digest("base64");
-
-const ok = (h["webhook-signature"] ?? "")
-  .split(" ")
-  .some((s) => s === `v1,${expected}`);
-const fresh = Math.abs(Date.now() / 1000 - Number(h["webhook-timestamp"])) < 300;
-
-if (!ok || !fresh) throw new Error("invalid webhook signature");
-return [{ json: JSON.parse(raw) }];
+```mermaid
+flowchart TD
+  sched["Schedule: 每天 / 每小时"] --> load["Code: 读取上次的 syncedAt"]
+  load --> fetch["HTTP Request: ?updatedSince=…"]
+  fetch --> page["Code: 有 nextCursor 则重复"]
+  page -.->|"下一页"| fetch
+  page --> work["处理"]
+  work --> store["Code: 保存 syncedAt"]
 ```
 
 - 把 `syncedAt` 保存在工作流的 **Static Data**（`$getWorkflowStaticData('global')`）中。

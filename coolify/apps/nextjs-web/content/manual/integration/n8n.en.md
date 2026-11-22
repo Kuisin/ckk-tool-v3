@@ -16,8 +16,12 @@ Give the client roles **for exactly the resources you want to read** (e.g. `orde
 
 ## Recipe 1 — receive a signal, then pull the values
 
-```
-[Webhook] → [Code: verify signature] → [IF: event wanted?] → [HTTP Request: fetch via API] → [your steps]
+```mermaid
+flowchart TD
+  wh["Webhook"] --> verify["Code: verify signature"]
+  verify --> check["IF: event wanted?"]
+  check --> fetch["HTTP Request: fetch via API"]
+  fetch --> rest["your steps"]
 ```
 
 1. **Webhook node**: method `POST`, a hard-to-guess path. In Options set **Raw Body** ON and **Respond** to "Immediately" (return 200 at once). Register this **Production URL** under "Outbound webhooks" in CKK (on the same Docker network as n8n you can use `http://n8n:5678/webhook/…`).
@@ -58,29 +62,14 @@ For deduplication, remember `{{ $json.id }}` in an n8n Data Store (or a DB) and 
 
 Fill in what was missed while webhooks failed or n8n was down, using API incremental sync.
 
-```js
-// n8n の Code ノード（「全アイテムに対して 1 回実行」）。
-// 要件: Webhook ノードの Options → 「Raw Body」を ON、環境変数 NODE_FUNCTION_ALLOW_BUILTIN=crypto
-const crypto = require("crypto");
-
-const item = $input.first();
-const raw = (await this.helpers.getBinaryDataBuffer(0, "data")).toString("utf8");
-const h = item.json.headers;
-const secret = $env.CKK_WEBHOOK_SECRET; // n8n 側の環境変数に whsec_… を入れておく
-
-const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
-const expected = crypto
-  .createHmac("sha256", key)
-  .update(`${h["webhook-id"]}.${h["webhook-timestamp"]}.${raw}`)
-  .digest("base64");
-
-const ok = (h["webhook-signature"] ?? "")
-  .split(" ")
-  .some((s) => s === `v1,${expected}`);
-const fresh = Math.abs(Date.now() / 1000 - Number(h["webhook-timestamp"])) < 300;
-
-if (!ok || !fresh) throw new Error("invalid webhook signature");
-return [{ json: JSON.parse(raw) }];
+```mermaid
+flowchart TD
+  sched["Schedule: daily / hourly"] --> load["Code: read the previous syncedAt"]
+  load --> fetch["HTTP Request: ?updatedSince=…"]
+  fetch --> page["Code: repeat while there is a nextCursor"]
+  page -.->|"next page"| fetch
+  page --> work["process"]
+  work --> store["Code: save syncedAt"]
 ```
 
 - Keep `syncedAt` in the workflow's **Static Data** (`$getWorkflowStaticData('global')`).

@@ -6,6 +6,22 @@ description: "外向き Webhook の登録、イベントの形、署名の検証
 
 > ⚠️ 現在は **検証環境（dev）でのみ** 使えます。
 
+受け取ってから値を読むまでの流れは次のとおりです。
+
+```mermaid
+sequenceDiagram
+  participant C as CKK システム
+  participant N as 受け取り側（n8n など）
+  C->>N: ① 合図を POST（何が変わったか。値は無し）
+  N-->>C: ② 2xx を先に返す
+  N->>N: ③ 署名を検証（生の本文で）
+  N->>C: ④ links.list を GET（Bearer トークン）
+  C-->>N: ⑤ 値（読める行だけ）
+  Note over C,N: 2xx 以外・タイムアウト・リダイレクトは再送（初回を含めて計 7 回）
+  N->>C: ⑥ 定期的に updatedSince で差分取得（取りこぼしを拾う）
+  C-->>N: 変わった行
+```
+
 ## 登録する
 
 1. [API クライアント](/manual/ja/operations/system/external-api/user)（`SY0I`）を開き、下の「**外向き Webhook**」の「新規」を押します。

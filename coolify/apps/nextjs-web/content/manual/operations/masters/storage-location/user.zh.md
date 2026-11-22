@@ -35,6 +35,17 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 - **楼层地图** … 据点楼层的图纸。图纸本身在[据点](/manual/zh/operations/masters/plant/user)中登记。
 - **图钉** … 放在图纸上、表示保管场所位置的标记。
 
+用图表示如下。
+
+```mermaid
+flowchart TD
+  plant["据点"] --> loc["保管场所<br/>（例 资材仓库A）"]
+  loc --> shelf["货架<br/>（例 A-1）"]
+  plant --> map["楼层地图<br/>（在据点应用中登记）"]
+  loc -.->|"放置图钉"| map
+  shelf -.-> stock["库存按「保管场所 + 货架」<br/>的单位计数"]
+```
+
 ## 开始之前
 
 - 使用本应用需要 **主数据权限**。
@@ -109,14 +120,14 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 
 | 项目 | 填什么 |
 |------|--------|
-| [基地 / 楼层](#field-plant) | 位于哪个基地的哪一楼层 |
+| [据点 / 楼层](#field-plant) | 位于哪个据点的哪一楼层 |
 | [编码 / 名称（日文・英文）](#field-code) | 场所的管理编号与名称 |
 | [显示顺序](#field-sort-order) | 选项中的排列顺序 |
 | [有效 / 备注](#field-active) | 取消后保管场所的选项中将不再显示 |
 
-### 基地 / 楼层 [#field-plant]
+### 据点 / 楼层 [#field-plant]
 
-位于哪个基地的哪一楼层。**库存可定位到该场所单位。**
+位于哪个据点的哪一楼层。**库存可定位到该场所单位。**
 
 ### 编码 / 名称（日文・英文） [#field-code]
 

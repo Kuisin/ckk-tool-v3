@@ -67,6 +67,16 @@ To stop a block temporarily, turn off that row's 「**有効**」 (Active) switc
 
 When someone pastes an external URL into a memo or comment and saves it, it is automatically replaced with a short link. When another person clicks it, the confirmation page opens first, showing the destination site's name and URL, and only after pressing 「**続行して移動**」 (Continue) do they move to the external site. If the host is blocked, the confirmation page shows "cannot move" along with the reason, and stops there.
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  p["Paste an external URL into<br/>a memo or comment and save"] --> s["Replaced with a short link"]
+  s -->|"Someone clicks the link"| c{"Confirmation page<br/>Is the host blocked?"}
+  c -->|"No"| g["Pressing 続行して移動 (Continue)<br/>moves to the external site"]
+  c -->|"Yes"| x["Shows 'cannot move' with the reason<br/>and stops there"]
+```
+
 ## Questions and problems
 
 **Q. There's a link in the index I don't recognize.**

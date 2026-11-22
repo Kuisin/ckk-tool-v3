@@ -4,6 +4,8 @@ description: "A work queue that shows, on one screen, the order lines that do no
 ---
 This is the **未処理指示書** (pending work orders) app, where you check together "orders that do not have a work order yet" and "work orders that were made but are not finished yet". The operation code is `PD05`.
 
+> This app belongs to … [Production flow](/manual/en/process/production)
+
 ## What you can do with this app
 
 - You can see, in one list, the confirmed order lines that do not yet have enough work orders arranged.
@@ -61,6 +63,17 @@ Completed work orders do not appear on this screen. Check them in the [work orde
 4. Check the content and save. For the steps after that, see the [work order](/manual/en/operations/production/work-order/user) manual.
 
 When you save, the arranged quantity increases by that amount. A line whose unarranged quantity reaches zero disappears from this tab.
+
+Orders and work orders move between the two tabs like this:
+
+```mermaid
+flowchart TD
+  line["Confirmed order line"] --> un["「未手配」 tab (not arranged)<br/>not arranged = ordered − arranged"]
+  un -->|"指示書作成<br/>Create work order"| wo["「進行中」 tab (in progress)<br/>work orders not finished yet"]
+  wo -->|"Work order completed"| done["Leaves this screen<br/>(see the work order list, PD02)"]
+  wo -.->|"Work order cancelled<br/>(its quantity returns to not arranged)"| un
+  wo -.->|"Completed but short because of defects<br/>(the shortfall returns to not arranged)"| un
+```
 
 ## Frequently asked questions / troubleshooting
 

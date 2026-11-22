@@ -29,6 +29,16 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 
 製品を登録したら、続けて設計図で版を登録し、確定してください。確定した版の仕様が、この画面や[指示書](/manual/ja/operations/production/work-order/user)の素材候補に使われます。
 
+流れを図にすると次のとおりです。
+
+```mermaid
+flowchart TD
+  p["製品マスタで製品を登録<br/>（名前・単位・税区分・キーワード）"] --> v["設計図で版を登録<br/>（材種・直径・全長・製品種別・製品項目）"]
+  v --> c["版を確定"]
+  c -.-> s1["製品の画面に<br/>仕様が出る"]
+  c -.-> s2["指示書の素材候補に<br/>使われる"]
+```
+
 ## 画面の見かた
 
 アプリを開くと、登録済みの製品の一覧が表示されます。

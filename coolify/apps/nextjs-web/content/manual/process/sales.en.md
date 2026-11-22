@@ -62,6 +62,20 @@ Importing the order document (fax, PDF) received from the customer runs the read
 
 What remains a **price mismatch** is only a line that "differs from the price list without being overridden" — this comes up when, say, the price list changes after saving. Before going on you must choose one of: go back to the quote and adjust the price, fix the price list, or accept it as an override (a confirmation is required to request approval while a mismatch remains).
 
+How the unit price is handled, as a diagram:
+
+```mermaid
+flowchart TD
+  auto["The line's unit price is filled in<br/>automatically from the price list"] --> same{"Same unit price as the price list?"}
+  same -->|"Same"| go["Carry on as is"]
+  same -->|"Different"| ovr{"Is「単価を上書き」(override<br/>the unit price) set on the line?"}
+  ovr -->|"Yes"| ok["A deliberate price<br/>Not a price mismatch"]
+  ovr -->|"No"| diff["Price mismatch"]
+  diff --> q["Go back to the quote<br/>and adjust the price"]
+  diff --> p["Fix the price list"]
+  diff --> o["Accept it as<br/>an override"]
+```
+
 ![Order acceptance detail screen showing a price mismatch. The mismatch display is highlighted with a red box](../assets/screenshots/flow-order-acceptance-diff-01.png)
 
 **The approval branch** — once the content is confirmed, request approval. It cannot be edited while the request is pending. If it is sent back, fix the content and request again. How many approval steps it goes through is decided by the conditional rules in [Approval settings](/manual/en/operations/masters/approval-setting/user), and the steps can vary with the document's content (such as the total amount, the delivery method, or the assigned site).
@@ -120,6 +134,6 @@ The drawing for that request is not yet registered to [Drawing](/manual/en/opera
 ## Related pages
 
 - Following a single order from start to finish … [Standard flow](/manual/en/process/default-flow)
-- How to operate each app and what each field means … **How-to › Sales** on the left
+- How to operate each app and what each field means … **Operations › Sales** on the left
 - Next flow … [Production flow](/manual/en/process/production)
 - New to the system … [Getting started](/manual/en/start)
