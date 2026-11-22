@@ -50,6 +50,18 @@ and the registration steps are the same (create, link, activate).
 Online / offline is separate from the state — it means whether the screen has
 answered within the last 5 minutes.
 
+The state changes, as a diagram (the actions are explained in the sections below):
+
+```mermaid
+flowchart TD
+  p("リンク待ち<br/>Awaiting link"):::gray -->|"Link"| l("有効化待ち<br/>Awaiting activation"):::yellow
+  l -->|"Activate"| a("有効<br/>Active"):::green
+  a -->|"Disable"| d("無効<br/>Disabled"):::gray
+  d -->|"Enable"| a
+  a -.->|"Unlink"| p
+  a -->|"Revoke"| r("取り消し<br/>Revoked"):::red
+```
+
 ## Registering a display (three steps)
 
 Exactly the same as a shared tablet.

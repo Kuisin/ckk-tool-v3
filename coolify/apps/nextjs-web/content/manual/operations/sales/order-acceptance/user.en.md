@@ -7,6 +7,8 @@ The computer reads the order form sent by the customer (a PDF or a scanned image
 
 > ⚠️ This app is still in trial release. The screens and the steps may change later.
 
+> This app belongs to … [Sales flow](/manual/en/process/sales)
+
 ## What you can do with this app
 
 - Load the order form file, and it is registered with **the customer name, the items and the number of pieces already filled in**.
@@ -66,6 +68,17 @@ flowchart TD
 ```
 
 ## Importing an order form (four ways)
+
+The four ways in, as a diagram:
+
+```mermaid
+flowchart TD
+  mail["1. Receive it by email<br/>(automatic)"] --> imp("取込中<br/>Importing"):::gray
+  folder["2. Put the file in the set folder<br/>(automatic)"] --> imp
+  pick["3. Choose a file there and then<br/>「優先取込」"] --> imp
+  imp -->|"The AI reads it"| draft("下書き<br/>Draft"):::blue
+  manual["4. Type it in by hand<br/>「手入力で新規」"] --> draft
+```
 
 **1. Receive it by email (automatic)**
 
@@ -176,7 +189,7 @@ When an order is withdrawn, you cancel the **whole order acceptance** (there is 
 1. On a deployed order acceptance, choose 「**キャンセル依頼**」 (request cancellation) from the 「…」 menu.
 2. Enter the **reason** (required) and press 「**キャンセルを依頼する**」.
 
-If the 「**注文請書キャンセル**」 (order acknowledgement cancellation) flow in the [approval settings](/manual/en/operations/masters/approval-setting/user) has steps, **nothing changes until approval finishes**. A pending card appears at the top of the screen; approvers see 「**承認**」 (approve) and 「**差し戻し**」 (reject) buttons there (they can also act from the [approval management](/manual/en/operations/general/my-tasks/user) list). With no steps configured, the cancellation applies immediately.
+If the 「**注文請書キャンセル**」 (order acceptance cancellation) flow in the [approval settings](/manual/en/operations/masters/approval-setting/user) has steps, **nothing changes until approval finishes**. A pending card appears at the top of the screen; approvers see 「**承認**」 (approve) and 「**差し戻し**」 (send back) buttons there (they can also act from the [approval management](/manual/en/operations/general/my-tasks/user) list). With no steps configured, the cancellation applies immediately.
 
 On final approval, the following happens automatically:
 
@@ -184,7 +197,19 @@ On final approval, the following happens automatically:
 - All reserved stock is **released**.
 - Unfinished work orders are **cancelled along with it** (completed ones, and combined-lot work orders that also make pieces for other lines, are left alone).
 
-If even one line has already shipped, cancellation cannot be requested. If the request is rejected, nothing changes and the request is closed.
+If even one line has already shipped, cancellation cannot be requested. If the request is sent back, nothing changes and the request is closed.
+
+As a diagram:
+
+```mermaid
+flowchart TD
+  ask["「キャンセル依頼」<br/>Enter the reason and request"] --> q{"Does the 「注文請書キャンセル」<br/>flow have steps?"}
+  q -->|"Yes"| wait["Nothing changes<br/>until approval finishes"]
+  q -->|"None"| can("キャンセル<br/>Cancelled"):::red
+  wait -->|"Final approval"| can
+  wait -.->|"Sent back"| keep["Nothing changes;<br/>the request is closed"]
+  can -.-> eff["Order lines cancelled<br/>Reserved stock released<br/>Unfinished work orders cancelled"]
+```
 
 ## Input fields
 

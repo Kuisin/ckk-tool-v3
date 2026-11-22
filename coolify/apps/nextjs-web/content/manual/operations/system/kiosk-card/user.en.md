@@ -124,6 +124,17 @@ From the 「**…**」 menu on a card's row, you can do the following.
 
 > ⚠️ 「**取り消し**」 (Revoke) **cannot be undone**. The moment you press it, any tablet currently logged in with that card is logged out on the spot. Use it when a card has been lost, or the person has left the company.
 
+As a diagram, a card's status changes like this:
+
+```mermaid
+flowchart TD
+  un("未割当<br/>Unassigned"):::gray -->|"Assign to a user"| asg("割当済<br/>Assigned"):::green
+  asg -->|"Suspend"| su("一時停止<br/>Suspended"):::orange
+  su -->|"Resume"| asg
+  asg -->|"Revoke"| rv("取り消し<br/>Revoked"):::red
+  su -->|"Revoke"| rv
+```
+
 ## The card detail screen
 
 Clicking a row in the list opens the screen for that single card.

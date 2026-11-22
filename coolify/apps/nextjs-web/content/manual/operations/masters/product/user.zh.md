@@ -1,16 +1,16 @@
 ---
 title: "产品 — 操作手册"
-description: "用于登记本公司生产的产品的台账。在这里登记的产品，会成为试算和报价单中「製品」（产品）栏的选项。"
+description: "用于登记本公司生产的产品的台账。在这里登记的产品，会成为价格试算和报价单中「製品」（产品）栏的选项。"
 screenshots: [master-product-list-01, master-product-new-01, master-product-detail-01, master-product-routes-01, master-product-route-new-01]
 ---
 这是用于登记本公司生产的产品的台账。操作码是 `MS04`。
 
-**如果没有登记产品，就无法制作[试算](/manual/zh/operations/sales/trial-estimate/user)、[价格表](/manual/zh/operations/sales/price-list/user)和[报价单](/manual/zh/operations/sales/quote/user)。** 有新产品的业务时，请先在本画面登记。
+**如果没有登记产品，就无法制作[价格试算](/manual/zh/operations/sales/trial-estimate/user)、[价格表](/manual/zh/operations/sales/price-list/user)和[报价单](/manual/zh/operations/sales/quote/user)。** 有新产品的业务时，请先在本画面登记。
 
 ## 本应用可以做什么
 
 - 可以登记本公司生产的产品。
-- 登记后，就可以在试算、价格表、报价单的「製品」（产品）栏中选择。
+- 登记后，就可以在价格试算、价格表、报价单的「製品」（产品）栏中选择。
 - 可以从[图纸](/manual/zh/operations/production/design-file/user)已确定的版本中查看该产品的 **规格**（材料类别、直径、长度、硬度、公差等）。
 - 可以登记制作该产品时的 **工序顺序**。
 - 相似的产品可以 **复制**，只修改需要变更的地方后登记。
@@ -28,6 +28,16 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 产品主数据中只填写 **作为商品的产品**（名称、单位、税种、关键词）。**材料类别、直径、全长、产品类别和产品项目在[图纸](/manual/zh/operations/production/design-file/user)中填写。** 它们会随改版或不同客户与图纸一起变化，因此由图纸的版本持有。
 
 登记产品后，请接着在图纸中登记版本并确定。已确定版本的规格会用于本画面以及[指示书](/manual/zh/operations/production/work-order/user)的材料候选。
+
+用图表示如下。
+
+```mermaid
+flowchart TD
+  p["在产品主数据中登记产品<br/>（名称、单位、税种、关键词）"] --> v["在图纸中登记版本<br/>（材料类别、直径、全长、产品类别、产品项目）"]
+  v --> c["确定版本"]
+  c -.-> s1["规格显示在<br/>产品画面上"]
+  c -.-> s2["用于指示书的<br/>材料候选"]
+```
 
 ## 界面说明
 
@@ -60,7 +70,7 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 
 ### 填写规格（在图纸中）
 
-材料类别、直径、全长、产品类别和产品项目，通过在[图纸](/manual/zh/operations/production/design-file/user)中登记版本来填写。从产品画面「概要」标签中的「**在图纸中登记规格**」，可以在已选中该产品的状态下打开登记画面。选择图脑 RAPID 的 SXF（.sfc）文件时，会根据标题栏和尺寸自动填入。
+材料类别、直径、全长、产品类别和产品项目，通过在[图纸](/manual/zh/operations/production/design-file/user)中登记版本来填写。从产品画面「概要」标签中的「**設計図で仕様を登録**」（在图纸中登记规格），可以在已选中该产品的状态下打开登记画面。选择图脑 RAPID 的 SXF（.sfc）文件时，会根据标题栏和尺寸自动填入。
 
 ## 查看已登记的内容
 
@@ -106,7 +116,7 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 
 ## 登记工序顺序
 
-在「工程」（工序）标签中，可以登记制作该产品时的工序顺序。登记好之后，在制作[制造指示书](/manual/zh/operations/production/work-order/user)时工序会 **预先填好**，不必每次都从零开始选择工序。
+在「工程」（工序）标签中，可以登记制作该产品时的工序顺序。登记好之后，在制作[指示书](/manual/zh/operations/production/work-order/user)时工序会 **预先填好**，不必每次都从零开始选择工序。
 
 ![产品详情的工序标签](../../../assets/screenshots/master-product-routes-01.png)
 
@@ -124,7 +134,7 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 
 ![工序路线新建画面](../../../assets/screenshots/master-product-route-new-01.png)
 
-> 💡 检查、承认等工序必须与其他工序成套出现。这类工序在选择时会自动补上，并以蓝色提示条告知「必須工程を自動追加しました」（已自动添加必需工序）。
+> 💡 检查、审批等工序必须与其他工序成套出现。这类工序在选择时会自动补上，并以蓝色提示条告知「必須工程を自動追加しました」（已自动添加必需工序）。
 
 ### 想修改工序顺序时
 
@@ -154,7 +164,7 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 2. 选择「**無効化**」（停用）。
 3. 在确认画面点击「**無効化する**」（确定停用）。
 
-设为无效后，新的试算、价格表、报价单中就无法再选择该产品，但是 **过去的数据会原样保留**。
+设为无效后，新的价格试算、价格表、报价单中就无法再选择该产品，但是 **过去的数据会原样保留**。
 
 ## 输入项
 
@@ -166,7 +176,7 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 | [名称](#field-name) | 必填 | 产品的名称 |
 | [单位](#field-unit) | 必填 | 支・个 等 |
 | [税种](#field-tax-category) | 选填 | 消费税税种（留空 = 按默认） |
-| [「キーワード」（关键词）](#field-keywords) | 任意 | 该产品的其他叫法（用于检索和 AI 导入） |
+| [「キーワード」（关键词）](#field-keywords) | 选填 | 该产品的其他叫法（用于检索和 AI 导入） |
 | [有效](#field-active) | — | 是否出现在选项中 |
 | [备注](#field-notes) | 选填 | 补充说明 |
 

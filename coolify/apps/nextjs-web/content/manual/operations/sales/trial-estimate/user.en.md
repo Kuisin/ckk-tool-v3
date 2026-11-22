@@ -1,9 +1,11 @@
 ---
-title: "Trial Estimate — User Manual"
+title: "Price Estimate — User Manual"
 description: "Enter the material and the machining conditions, and this app works out for you how much to sell one piece of that product for."
 screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-02, trial-estimate-detail-01, trial-estimate-detail-02, trial-estimate-detail-03]
 ---
 Enter the material cost and the machining conditions, and this app works out for you **how much to sell one piece** of that product for. The operation code is `SA01`.
+
+> This app belongs to … [Sales flow](/manual/en/process/sales)
 
 ## What you can do with this app
 
@@ -17,7 +19,7 @@ This is the first app you use when you decide the price of a new product.
 
 ## Words used on this page
 
-- **価格試算 (trial estimate)** … one record of "how much do we sell this product for", worked out from the cost.
+- **価格試算 (price estimate)** … one record of "how much do we sell this product for", worked out from the cost.
 - **工具種 (tool type)** … the shape class of the tool. Three are provided as standard: **丸棒 (round bar) / 円筒 (cylinder) / OH付 (with OH)**. The class you choose changes which fields you fill in. Each company can also add its own classes, so you may see four or more on the screen.
 - **材種 (material type)** … the kind of material. It is decided by the combination of maker and material grade.
 - **参照単価 (reference unit price)** … the purchase price for 1000 mm of the material. It is filled in automatically from past purchases.
@@ -35,7 +37,7 @@ This is the first app you use when you decide the price of a new product.
 
 When you open the app, you see a list of the estimates made so far.
 
-![Trial estimate list screen](../../../assets/screenshots/trial-estimate-list-01.en.png)
+![Price estimate list screen](../../../assets/screenshots/trial-estimate-list-01.en.png)
 
 - **価格試算番号 (estimate number)** … a number starting with `EST-`. It is added automatically when you save.
 - **状態 (status)** … a colored badge shows where the estimate stands. Gray is 「下書き」(draft), blue is 「確定」(confirmed), green is 「価格表登録済」(used in a price list).
@@ -58,7 +60,7 @@ When you open the app, you see a list of the estimates made so far.
 11. Finally enter a name in「**価格試算名**」(estimate name). This one is required.
 12. Press「**保存**」(save) at the top right of the screen.
 
-![New trial estimate form](../../../assets/screenshots/trial-estimate-new-01.png)
+![New price estimate form](../../../assets/screenshots/trial-estimate-new-01.png)
 
 Every time you enter something,「**価格試算結果**」(estimate result) near the bottom of the screen is worked out again on the spot.
 
@@ -68,7 +70,7 @@ Every time you enter something,「**価格試算結果**」(estimate result) nea
 - **見積単価（基準）(quoted unit price, base)** … the base selling price per piece.
 - **参考：数量ごとの単価 (reference: unit price by quantity)** … the table below it shows the base price times each quantity-scale multiplier, per quantity range.
 
-> 💡 The discount for large quantities (the setting that makes each piece cheaper) is not made on this screen. It is made in the [price list](/manual/en/operations/sales/price-list/user). A trial estimate only gives the base price for one piece.
+> 💡 The discount for large quantities (the setting that makes each piece cheaper) is not made on this screen. It is made in the [price list](/manual/en/operations/sales/price-list/user). A price estimate only gives the base price for one piece.
 
 ## When you want to change the material price
 
@@ -85,6 +87,16 @@ An estimate typed in by hand gets an orange「**カスタム**」(custom) badge.
 
 > ⚠️ If a yellow「**既定価格**」(default price) badge appears on the reference unit price, there are no purchase records for that material yet. The calculation uses the standard price registered on the material type.
 
+How the reference unit price is decided, as a diagram:
+
+```mermaid
+flowchart TD
+  q{"Are there purchase records<br/>for that material?"} -->|"Yes"| hist["Filled in automatically<br/>from past purchases"]
+  q -->|"No"| def["Standard price registered on the material type<br/>「既定価格」badge"]
+  hist -.->|"Retype with「単価を編集」"| cust["Price typed in by hand<br/>「カスタム」badge"]
+  def -.->|"Retype with「単価を編集」"| cust
+```
+
 ## After saving, and confirming
 
 When you save, the estimate is registered as 「**下書き**」(draft) and the detail screen opens. **A saved estimate cannot be edited afterwards.** To change the contents, use "copy and re-estimate", explained below.
@@ -95,7 +107,7 @@ To make it usable in a price list, do the following.
 2. If you have not chosen a product yet, press「**製品にリンク**」(link to a product), choose the product, and press「**保存**」(save).
 3. Press「**…**」again and choose「**確定**」(confirm).
 
-![Trial estimate detail screen with the menu open](../../../assets/screenshots/trial-estimate-detail-03.png)
+![Price estimate detail screen with the menu open](../../../assets/screenshots/trial-estimate-detail-03.png)
 
 After confirming, the status changes to「**確定**」(confirmed) and a note saying 「確定済み」(confirmed) appears at the top of the screen. You can now choose this estimate when you make a [price list](/manual/en/operations/sales/price-list/user).
 
@@ -111,7 +123,7 @@ flowchart TD
 
 The screen of a saved estimate has five tabs.
 
-![Trial estimate detail screen](../../../assets/screenshots/trial-estimate-detail-01.png)
+![Price estimate detail screen](../../../assets/screenshots/trial-estimate-detail-01.png)
 
 - **価格試算結果 (estimate result)** … the quoted unit price and the cost breakdown. The prices from the time you saved stay as they are.
 - **素材価格推移 (material price history)** … a graph of how the purchase price of that material changed over time.
@@ -134,7 +146,7 @@ When you want to calculate again with only small changes, copy it instead of mak
 
 ## Input fields
 
-Every field on the trial estimate screen. There are many, so they are grouped by **which cost they affect**. The **?** next to a field in the app links straight to its description here.
+Every field on the price estimate screen. There are many, so they are grouped by **which cost they affect**. The **?** next to a field in the app links straight to its description here.
 
 | Field | Required | What to enter |
 |-------|----------|---------------|

@@ -21,6 +21,17 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 
 作業場所と保管場所は、どちらも「どの拠点にあるか」を選んで登録します。ですから **先に拠点を登録** してください。
 
+つながりを図にすると次のとおりです。
+
+```mermaid
+flowchart TD
+  region["地域<br/>（例 関東）"] -.->|"拠点をまとめる"| plant["拠点<br/>（例 本社工場）"]
+  plant --> work["作業場所<br/>（例 NC旋盤 1号機）"]
+  plant --> storage["保管場所・棚<br/>（例 資材倉庫A の A-1 棚）"]
+  plant --> map["フロアマップ<br/>（フロアの図面）"]
+  storage -.->|"図面の上に印を置く"| map
+```
+
 ## このアプリでできること
 
 - 拠点の基本情報（コード・名称・住所・電話番号など）を登録できます。

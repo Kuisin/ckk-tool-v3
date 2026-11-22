@@ -7,18 +7,20 @@ screenshots: [material-receipt-list-01, material-receipt-new-01, material-receip
 
 > ⚠️ 本应用仍在准备中，正式环境上可能还看不到。找不到时请咨询公司内的负责人。
 
+> 本应用所属的流程……[采购流程](/manual/zh/process/purchasing)
+
 ## 本应用能做什么
 
 - 可以记录材料已经送到。登记之后，该据点的 **库存会相应增加**。
 - 可以回顾至今送到的材料是什么时候、送到哪里、送了几根。
 - 可以把送货单存根、验收单等文件附在到货记录上保存。
-- 当没有经过订购单购买的材料（例如自带带入的材料）送到时使用。
+- 当没有经过采购单购买的材料（例如自带带入的材料）送到时使用。
 
 ## 本页出现的词语
 
 - **入荷**（到货）… 材料实际送达。
-- **発注入荷**（订购到货）… 通过[材料订购单](/manual/zh/operations/purchasing/purchase-order/user)订购的材料送达。**会自动记录。**
-- **直接調達**（直接采购）… 没有经过订购单购买的材料的到货。**在本画面手动输入。**
+- **発注入荷**（订购到货）… 通过[材料采购单](/manual/zh/operations/purchasing/purchase-order/user)订购的材料送达。**会自动记录。**
+- **直接調達**（直接采购）… 没有经过采购单购买的材料的到货。**在本画面手动输入。**
 - **入荷先拠点**（收货据点）… 接收这批材料的据点（工厂・营业所）。
 - **証憑**（凭证）… 送货单存根、验收单等日后需要查阅的文件。
 
@@ -28,7 +30,20 @@ screenshots: [material-receipt-list-01, material-receipt-new-01, material-receip
 - 要选择增加库存的据点，该 **[据点](/manual/zh/operations/masters/plant/user)必须已登记**。
 - 登记需要材料到货权限。看不到按钮时请咨询公司内的负责人。
 
-> ⚠️ 通过订购单订购的材料送到时，不要在本画面登记。在[材料订购单](/manual/zh/operations/purchasing/purchase-order/user)画面上点击「**入荷完了**」（到货完成），到货记录会自动生成。
+> ⚠️ 通过采购单订购的材料送到时，不要在本画面登记。在[材料采购单](/manual/zh/operations/purchasing/purchase-order/user)画面上点击「**入荷完了**」（到货完成），到货记录会自动生成。
+
+在哪个画面登记，用图表示如下。
+
+```mermaid
+flowchart TD
+  arrive["材料到货了"] --> q1{"是用材料采购单<br/>订购的吗？"}
+  q1 -->|"否（直接采购）"| mr["在材料到货中登记<br/>（本画面）"]
+  q1 -->|"是"| q2{"订购的部分<br/>全部到齐了吗？"}
+  q2 -->|"是"| po["在材料采购单上点<br/>「入荷完了」（到货完成）"]
+  q2 -->|"只到了一部分"| mr
+  po -.-> auto["自动生成到货记录，<br/>库存增加"]
+  mr -.-> stock["到货据点的库存增加"]
+```
 
 ## 画面的看法
 
@@ -37,7 +52,7 @@ screenshots: [material-receipt-list-01, material-receipt-new-01, material-receip
 ![材料到货列表画面](../../../assets/screenshots/material-receipt-list-01.png)
 
 - **素材**（材料）… 上面是材料编码，下面是材料名称。
-- **発注明細**（订购明细）… 来自订购单的到货，会以蓝色链接显示以 `PO-` 开头的订购编号。没有经过订购单的，会显示灰色的「**直接調達**」（直接采购）徽章。
+- **発注明細**（订购明细）… 来自采购单的到货，会以蓝色链接显示以 `PO-` 开头的订购编号。没有经过采购单的，会显示灰色的「**直接調達**」（直接采购）徽章。
 - 在上方搜索框输入材料编码、名称、供应商、订购编号，可以筛选出要找的记录。
 - 用右侧的「**入荷区分**」（到货区分）可以只显示「発注入荷」（订购到货）或只显示「直接調達」（直接采购）。
 - 点击某一行，会打开该到货的详情画面。
@@ -66,11 +81,11 @@ screenshots: [material-receipt-list-01, material-receipt-new-01, material-receip
 
 在列表中点击某一行，会打开该到货的详情画面。
 
-![来自订购单的到货详情画面](../../../assets/screenshots/material-receipt-detail-01.zh.png)
+![来自采购单的到货详情画面](../../../assets/screenshots/material-receipt-detail-01.zh.png)
 
 - 可以确认材料、供应商、收货据点、数量、到货日、备注。
-- **発注明細**（订购明细）… 来自订购单的到货，会显示指向原[材料订购单](/manual/zh/operations/purchasing/purchase-order/user)的链接。点击即可确认订购内容。
-- 直接采购时会显示「**直接調達（発注書なし）**」（直接采购——无订购单）。
+- **発注明細**（订购明细）… 来自采购单的到货，会显示指向原[材料采购单](/manual/zh/operations/purchasing/purchase-order/user)的链接。点击即可确认订购内容。
+- 直接采购时会显示「**直接調達（発注書なし）**」（直接采购——无采购单）。
 
 ![直接采购的到货详情画面](../../../assets/screenshots/material-receipt-detail-02.png)
 
@@ -84,7 +99,7 @@ screenshots: [material-receipt-list-01, material-receipt-new-01, material-receip
 |------|------|--------|
 | [材料](#field-material) | 必填 | 送达的材料 |
 | [供应商](#field-supplier) | 选填 | 送货的公司 |
-| [到货基地](#field-plant) | 选填 | 接收的基地 |
+| [到货据点](#field-plant) | 选填 | 接收的据点 |
 | [到货日](#field-received-date) | 必填 | 收到的日期 |
 | [数量](#field-quantity) | 必填 | 实际送达的数量 |
 | [单位](#field-unit) | 必填 | 支・kg 等 |
@@ -98,9 +113,9 @@ screenshots: [material-receipt-list-01, material-receipt-new-01, material-receip
 
 送货的公司。从采购单登记时会自动带入；未经采购单直接采购时，请在此选择。
 
-### 到货基地 [#field-plant]
+### 到货据点 [#field-plant]
 
-实际接收的基地。**该基地的库存会增加**，请选择货物送达的地点。
+实际接收的据点。**该据点的库存会增加**，请选择货物送达的地点。
 
 ### 到货日 [#field-received-date]
 
@@ -121,10 +136,10 @@ screenshots: [material-receipt-list-01, material-receipt-new-01, material-receip
 ## 常见问题・遇到困难时
 
 **Q. 订购的材料送到了，要在这里登记吗？**
-A. 不用。请在[材料订购单](/manual/zh/operations/purchasing/purchase-order/user)画面上点击「**入荷完了**」（到货完成），到货记录会由此自动生成。如果在本画面再手动输入，同一批材料会被重复入库。
+A. 不用。请在[材料采购单](/manual/zh/operations/purchasing/purchase-order/user)画面上点击「**入荷完了**」（到货完成），到货记录会由此自动生成。如果在本画面再手动输入，同一批材料会被重复入库。
 
 **Q. 只先送到了一部分。**
-A. 订购单的「入荷完了」（到货完成）会把剩余的全部一次性处理。分批送到的部分，请在本画面只登记实际送到的根数。
+A. 采购单的「入荷完了」（到货完成）会把剩余的全部一次性处理。分批送到的部分，请在本画面只登记实际送到的根数。
 
 **Q. 想修改已登记的内容。**
 A. 到货记录是库存已经变动之后确定下来的记录，无法修改或删除，也没有「編集」（编辑）「削除」（删除）按钮。请在登记前仔细确认数量和据点。

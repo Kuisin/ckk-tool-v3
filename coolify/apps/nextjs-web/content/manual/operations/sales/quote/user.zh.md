@@ -5,6 +5,8 @@ screenshots: [quote-list-01, quote-new-01, quote-detail-01, quote-issue-01, quot
 ---
 用来制作提交给客户的 **「見積書」（报价单）**，并生成 PDF 发行的应用。操作码是 `SA03`。
 
+> 本应用所属的流程……[销售流程](/manual/zh/process/sales)
+
 ## 本应用能做什么
 
 - 可以制作提交给客户的报价单。
@@ -24,7 +26,7 @@ screenshots: [quote-list-01, quote-new-01, quote-detail-01, quote-issue-01, quot
 
 要做报价单，**必须先登记好该客户与该产品的[价格表](/manual/zh/operations/sales/price-list/user)**。没有价格表就算不出金额，也就无法保存。
 
-如果还没有价格表，请先用[试算](/manual/zh/operations/sales/trial-estimate/user)算出单价，再登记到[价格表](/manual/zh/operations/sales/price-list/user)里。
+如果还没有价格表，请先用[价格试算](/manual/zh/operations/sales/trial-estimate/user)算出单价，再登记到[价格表](/manual/zh/operations/sales/price-list/user)里。
 
 ## 界面怎么看
 
@@ -42,7 +44,7 @@ screenshots: [quote-list-01, quote-new-01, quote-detail-01, quote-issue-01, quot
 1. 点击列表画面右上角的「**新規作成**」（新建）。
 2. 点击「**顧客**」（客户）栏，选择客户。
 3. 客户有分店时，也选择「**支店**」（分店）。没有分店就保持原样即可。
-4. 确认「**営業担当**」（营业负责人）。选择客户后会自动填入主负责人，需要时可重新选择。
+4. 确认「**営業担当**」（销售负责人）。选择客户后会自动填入主负责人，需要时可重新选择。
 5. 在「**有効期限**」（有效期限）里填写本报价的有效日期（留空也可以保存）。
 6. 在明细行里选择「**製品**」（产品）、「**注文種別**」（订单类型）、「**数量**」（数量）。
 7. 输入后，**单价、折扣、金额会自动显示**。金额不需要手动修改。
@@ -66,7 +68,7 @@ screenshots: [quote-list-01, quote-new-01, quote-detail-01, quote-issue-01, quot
 
 - **「明細」（明细）** … 产品、数量、金额的一览。下方会显示小计、消费税、合计。
 - **PDF** … 发行之后可以在这里查看或下载 PDF。
-- **「関連」（关联）** … 可以确认金额是从哪张价格表、哪份试算带出来的。
+- **「関連」（关联）** … 可以确认金额是从哪张价格表、哪份价格试算带出来的。
 - **「メモ」（备忘）** … 可以留下关于这份报价单的公司内部备忘。
 - **「履歴」（历史）** … 什么时候、谁做了修改的记录。
 
@@ -121,7 +123,7 @@ flowchart TD
 |------|------|--------|
 | [客户](#field-customer) | 必填 | 出具报价单的客户 |
 | [分店](#field-customer-branch) | 选填 | 收件的分店（已登记时） |
-| [营业负责人](#field-sales-rep) | 选填 | 这份报价的本公司营业负责人 |
+| [销售负责人](#field-sales-rep) | 选填 | 这份报价的本公司销售负责人 |
 | [有效期限](#field-valid-until) | 选填 | 报价有效的最后一天 |
 | [状态](#field-status) | — | 报价单当前的处理状态 |
 | [产品](#field-product) | 必填 | 报价的产品 |
@@ -140,9 +142,9 @@ flowchart TD
 
 收件的分店。若该客户没有登记分店则无法选择，留空即可。
 
-### 营业负责人 [#field-sales-rep]
+### 销售负责人 [#field-sales-rep]
 
-负责这份报价的本公司营业。选择客户后，会自动填入该客户的主负责人。需要时，可以从登记为该客户负责人的人当中重新选择。
+负责这份报价的本公司销售。选择客户后，会自动填入该客户的主负责人。需要时，可以从登记为该客户负责人的人当中重新选择。
 
 ### 有效期限 [#field-valid-until]
 
@@ -186,7 +188,7 @@ flowchart TD
 A. 报价单上不能手动输入金额。金额会自动从该客户的[价格表](/manual/zh/operations/sales/price-list/user)带出来。想改价格请改价格表。
 
 **Q. 出现「該当する価格表がありません」（没有对应的价格表），无法保存。**
-A. 该客户与该产品的价格表还没有登记。请先用[试算](/manual/zh/operations/sales/trial-estimate/user)算出单价，登记到[价格表](/manual/zh/operations/sales/price-list/user)之后再试一次。
+A. 该客户与该产品的价格表还没有登记。请先用[价格试算](/manual/zh/operations/sales/trial-estimate/user)算出单价，登记到[价格表](/manual/zh/operations/sales/price-list/user)之后再试一次。
 
 **Q. 重新选了客户之后，金额变了。**
 A. 这是正常的。金额是按客户决定的，所以换了客户就会用那位客户的价格表重新计算。

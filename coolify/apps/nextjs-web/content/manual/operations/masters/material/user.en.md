@@ -33,6 +33,16 @@ You also need **master data permission** to use this app. If the screen does not
 
 Please note that a [Product](/manual/en/operations/masters/product/user) sets its material as "material type + diameter + length". **A product is not tied to one particular material.** This ledger is only for buying and stock.
 
+As a diagram, material types, materials and products relate like this:
+
+```mermaid
+flowchart TD
+  mt["Material type<br/>what kind of material"]
+  mt -->|"Set thickness, length, surface finish"| mat["Material<br/>the one bar you buy and shelve"]
+  mat --> use["Can be chosen on material purchase orders<br/>and in inventory"]
+  mt -.->|"Set as material type + diameter + length"| prod["Product<br/>not tied to one particular material"]
+```
+
 ## How the material code works
 
 The material code is the material type code with the **surface finish, the diameter and the length** joined after it. You do not type them one by one — the code is **built automatically from what you choose**.

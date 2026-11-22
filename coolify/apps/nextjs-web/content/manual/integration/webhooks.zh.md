@@ -6,6 +6,22 @@ description: "出站 Webhook 的登记、事件格式、签名验证、重发与
 
 > ⚠️ 目前**仅限验证环境（dev）**使用。
 
+从收到信号到读取数值的流程，用图表示如下。
+
+```mermaid
+sequenceDiagram
+  participant C as CKK 系统
+  participant N as 接收端（n8n 等）
+  C->>N: ① POST 信号（发生了什么，不含数值）
+  N-->>C: ② 先返回 2xx
+  N->>N: ③ 验证签名（使用原始请求体）
+  N->>C: ④ GET links.list（Bearer 令牌）
+  C-->>N: ⑤ 数值（仅限可读取的行）
+  Note over C,N: 非 2xx、超时、重定向均会重发（含首次共 7 次）
+  N->>C: ⑥ 定期用 updatedSince 做增量同步（补回漏收）
+  C-->>N: 发生变化的行
+```
+
 ## 登记
 
 1. 打开 [API 客户端](/manual/zh/operations/system/external-api/user)（`SY0I`），在下方“**出站 Webhook**”中点击“新建”。
@@ -77,21 +93,30 @@ payload = wh.verify(raw_body, headers)   # 不一致时抛出异常
 2. 对 `webhook-id` + `.` + `webhook-timestamp` + `.` + 原始请求体，用密钥（去掉 `whsec_` 后做 Base64 解码）计算 HMAC-SHA256。
 3. 转为 Base64，与 `v1,<值>` 比较（`webhook-signature` 可能包含多个以空格分隔的值）。
 
-```json
-{
-  "id": "evt_1234_order_acceptance.status_changed",
-  "type": "order_acceptance.status_changed",
-  "apiVersion": "v1",
-  "occurredAt": "2026-09-10T04:11:52.881Z",
-  "resource": {
-    "type": "order_acceptance",
-    "id": "ORD-202609-00042",
-    "key": "202609:42"
-  },
-  "status": { "from": "DRAFT", "to": "CONFIRMED" },
-  "links": {
-    "list": "/api/v1/order-acceptances?updatedSince=2026-09-10T04%3A11%3A51.881Z"
-  }
+```js
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+// rawBody 是**解析之前的字符串（字节序列）**。经 JSON.parse → stringify 重新生成的值无法匹配。
+export function verifyWebhook(rawBody, headers, secret) {
+  const id = headers["webhook-id"];
+  const ts = headers["webhook-timestamp"];
+  const signatures = (headers["webhook-signature"] ?? "").split(" ");
+  if (!id || !ts) return false;
+
+  // 比当前时间早 / 晚超过 5 分钟的请求视为重放攻击并丢弃
+  if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) return false;
+
+  const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
+  const expected = createHmac("sha256", key)
+    .update(`${id}.${ts}.${rawBody}`)
+    .digest();
+
+  return signatures.some((s) => {
+    const [version, b64] = s.split(",");
+    if (version !== "v1" || !b64) return false;
+    const got = Buffer.from(b64, "base64");
+    return got.length === expected.length && timingSafeEqual(got, expected);
+  });
 }
 ```
 

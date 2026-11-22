@@ -23,6 +23,18 @@ dev and main share the same database, so visibility is managed per environment. 
 - **dev (staging)** — shown **by default**. Only apps explicitly switched OFF are hidden.
 - **main (production)** — hidden **by default**. Only apps explicitly switched ON are shown. This keeps the production launcher limited to released apps.
 
+How it is decided whether an app is shown, as a diagram:
+
+```mermaid
+flowchart TD
+  env{"Environment"} -->|"dev (staging)"| d{"Explicitly switched OFF?"}
+  env -->|"main (production)"| m{"Explicitly switched ON?"}
+  d -->|"Yes"| dh["Hidden"]
+  d -->|"No (default)"| ds["Shown"]
+  m -->|"Yes"| ms["Shown"]
+  m -->|"No (default)"| mh["Hidden"]
+```
+
 In other words, **turning the main switch ON is the production release itself**. Before flipping it, make sure the app has been verified on dev.
 
 ## What happens when an app is OFF

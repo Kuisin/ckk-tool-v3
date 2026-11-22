@@ -1,18 +1,20 @@
 ---
-title: "価格試算計算 (Trial calculation) — Settings Manual"
-description: "The app where an administrator decides how the Trial estimate app calculates unit prices."
+title: "価格試算計算 (Price estimate engine) — Settings Manual"
+description: "The app where an administrator decides how the Price estimate app calculates unit prices."
 screenshots: [trial-pricing-hub-01, trial-pricing-criteria-01, trial-pricing-tool-types-01, trial-pricing-material-policy-01, trial-pricing-custom-inputs-01, trial-pricing-lookups-01]
 ---
-This is the app where an administrator decides **how unit prices are calculated** in the [価格試算](/manual/en/operations/sales/trial-estimate/user) (Trial estimate) app. Its operation code is `SY02`.
+This is the app where an administrator decides **how unit prices are calculated** in the [価格試算](/manual/en/operations/sales/trial-estimate/user) (Price estimate) app. Its operation code is `SY02`.
 
 This screen changes the way prices are worked out, so **only staff who know your company's rules** should touch it.
+
+> This app belongs to … [Sales flow](/manual/en/process/sales)
 
 ## What you can do with this app
 
 - Decide the order and the content of the steps that build up a quoted unit price.
 - Add tool types (round bar, cylinder, with OH, and so on), and choose which calculations each type uses.
 - Decide which purchase records the material price is taken from.
-- Add or remove the fields shown on the trial estimate input screen.
+- Add or remove the fields shown on the price estimate input screen.
 - Register reference tables (quick-lookup tables) used in the calculation.
 
 ## Terms used on this page
@@ -26,20 +28,20 @@ This screen changes the way prices are worked out, so **only staff who know your
 ## Before you start
 
 - You need the **system administration permission** to use this app. If you cannot open it, please ask your system administrator.
-- Changes here take effect **from the next trial estimate you create**. Amounts on trial estimates that are already 確定 (confirmed) do not change (see "Changing settings does not change past trial estimates" below).
+- Changes here take effect **from the next price estimate you create**. Amounts on price estimates that are already 確定 (confirmed) do not change (see "Changing settings does not change past price estimates" below).
 - If you are unsure what to change, do not change anything and ask your system administrator. Unit price calculation is the foundation of every quotation.
 
 ## How to open it
 
 Press **価格試算計算** in the システム (System) group on the home screen. Or type `SY02` into the search box at the top of the screen.
 
-## Changing settings does not change past trial estimates
+## Changing settings does not change past price estimates
 
 This is the most important rule.
 
-- A trial estimate **stores the calculation result exactly as it was when it was created and confirmed**.
-- So even if you change the way calculation works here, **amounts on trial estimates that are already 確定 (confirmed) do not change**. Past quotations will never move on their own.
-- However, a trial estimate that is still a 下書き (draft) **is recalculated with the settings in force at the moment it is confirmed**. Please keep this in mind if you have trial estimates left as drafts.
+- A price estimate **stores the calculation result exactly as it was when it was created and confirmed**.
+- So even if you change the way calculation works here, **amounts on price estimates that are already 確定 (confirmed) do not change**. Past quotations will never move on their own.
+- However, a price estimate that is still a 下書き (draft) **is recalculated with the settings in force at the moment it is confirmed**. Please keep this in mind if you have price estimates left as drafts.
 
 ## Reading the screen (top page)
 
@@ -51,7 +53,7 @@ When you open the app, six cards are shown. Press a card to open that settings s
 - 「**工具種管理**」 (Tool type management) … adding and deleting tool types, and the settings for each type.
 - 「**材料参照価格ポリシー**」 (Material reference price policy) … where the material price is taken from.
 - 「**数量スケール**」 (Quantity scale) … the starting table of quantity breaks and multipliers for price lists.
-- 「**カスタム入力項目**」 (Custom input fields) … the fields shown on the trial estimate input screen, and company-wide fixed values.
+- 「**カスタム入力項目**」 (Custom input fields) … the fields shown on the price estimate input screen, and company-wide fixed values.
 - 「**ルックアップ表**」 (Lookup tables) … the quick-lookup tables used in the calculation.
 
 Each card also shows, in small text, how many entries are currently registered.
@@ -76,6 +78,16 @@ Each row in the list carries one of these marks.
 - 「**全工具種**」 (all tool types) … used for every kind of tool.
 - 「**適用なし**」 (not applied) … **not used for any kind of tool.** This mark is red. It may mean a setting was forgotten.
 
+How the quoted unit price comes together, as a diagram:
+
+```mermaid
+flowchart TD
+  add["「加算」(added) criteria<br/>added up from the top down"] --> sum["Total"]
+  mid["「中間」(intermediate) criteria"] -.->|"Not added into the total"| ref["Only referenced<br/>by other calculations"]
+  sum --> fin["「見積単価」criterion<br/>one per tool type"]
+  fin --> price["Quoted unit price"]
+```
+
 ### Changing the order
 
 1. Press 「**並び替え**」 (Reorder) above the list.
@@ -96,7 +108,7 @@ Each row in the list carries one of these marks.
 
 > ⚠️ If **you do not select even one** 「**適用工具種**」**, that criterion is not used anywhere.** If you forget to select, red text appears saying 「**⚠ 未選択 — この基準はどの工具種にも適用されません**」 (Not selected — this criterion is not applied to any tool type). If you want it used everywhere, press 「**全選択**」 (Select all).
 
-> ⚠️ The 「**式**」 (Expression) box is where the calculation itself is written. If it is written incorrectly, trial estimate amounts will come out wrong. **Please leave this box to your system administrator.**
+> ⚠️ The 「**式**」 (Expression) box is where the calculation itself is written. If it is written incorrectly, price estimate amounts will come out wrong. **Please leave this box to your system administrator.**
 
 ### Trying it out before you change it
 
@@ -119,7 +131,7 @@ When you open 「工具種管理」, the registered kinds of tool are listed.
 
 - **丸棒** (round bar) / **円筒** (cylinder) / **OH付** (with OH) are the three types included from the start. They carry the 「**組み込み**」 (built-in) mark and **cannot be deleted**.
 - Types added later carry the 「**カスタム**」 (custom) mark.
-- Each row shows 「**計算基準 N 件 · 価格試算 M 件**」 (N criteria · M trial estimates). This tells you how many criteria are used for that type, and how many trial estimates of that type exist.
+- Each row shows 「**計算基準 N 件 · 価格試算 M 件**」 (N criteria · M price estimates). This tells you how many criteria are used for that type, and how many price estimates of that type exist.
 
 ### Adding a kind of tool
 
@@ -128,13 +140,13 @@ When you open 「工具種管理」, the registered kinds of tool are listed.
 3. In 「**表示名**」 (Display name), enter the name shown on screen (for example ボールエンド / ball end).
 4. Press 「**追加**」 (Add).
 
-The added type becomes selectable on the trial estimate input screen. Criteria set to 「全工具種」 (all tool types) are attached to the new type automatically.
+The added type becomes selectable on the price estimate input screen. Criteria set to 「全工具種」 (all tool types) are attached to the new type automatically.
 
 ### Settings for each type
 
 Click a type in the list to open its settings screen.
 
-- 「**適用する計算基準**」 (Applicable calculation criteria) … tick the parts used in trial estimates for that type.
+- 「**適用する計算基準**」 (Applicable calculation criteria) … tick the parts used in price estimates for that type.
 - 「**使用する見積単価**」 (Quoted unit price to use) … choose one part that wraps everything up at the end. **Exactly one is required for each type.**
 
 The settings here are simply another view of the same content as 「適用工具種」 on the calculation criteria screen. Editing on either side gives the same result.
@@ -142,12 +154,12 @@ The settings here are simply another view of the same content as 「適用工具
 ### When deletion is possible
 
 - The three 「組み込み」 (built-in) types cannot be deleted.
-- A type you added can be deleted **only when there is not a single trial estimate of that type**.
+- A type you added can be deleted **only when there is not a single price estimate of that type**.
 - Deleting it also removes that type from every calculation criterion.
 
 ## 材料参照価格ポリシー (Material reference price policy) — how the material price is decided
 
-Decide how the material price used in a trial estimate is taken from actual purchase records.
+Decide how the material price used in a price estimate is taken from actual purchase records.
 
 ![The material reference price policy screen](../../../assets/screenshots/trial-pricing-material-policy-01.png)
 
@@ -159,7 +171,7 @@ Decide how the material price used in a trial estimate is taken from actual purc
 3. In 「**既定材料単価（¥/1000mm）**」 (Default material unit price, ¥/1000mm), enter the price to use when no purchase record is found. Setting it to `0` means it is treated as having no price.
 4. Press 「**保存**」 (Save).
 
-> 💡 On a trial estimate where no purchase record existed and the default price was used, 「**既定価格**」 (default price) is shown on screen. That amount is not based on actual results, so please check whether it is fine to use as-is in a quotation.
+> 💡 On a price estimate where no purchase record existed and the default price was used, 「**既定価格**」 (default price) is shown on screen. That amount is not based on actual results, so please check whether it is fine to use as-is in a quotation.
 
 ## 数量スケール (Quantity scale) — the starting quantity breaks for price lists
 
@@ -172,7 +184,7 @@ The table that gives the first values of the quantity breaks and multipliers whe
 
 ## カスタム入力項目 (Custom input fields) — input boxes and fixed values
 
-You can add or remove the fields used in trial estimates here.
+You can add or remove the fields used in price estimates here.
 
 ![The custom input fields screen](../../../assets/screenshots/trial-pricing-custom-inputs-01.png)
 
@@ -182,7 +194,7 @@ Each field has the following settings.
 - 「**ラベル**」 (Label) … the name shown on screen.
 - 「**型**」 (Type) … the kind of thing entered into the field. Choose from 「**数値**」 (number), 「**ON/OFF**」, 「**文字列**」 (text) and 「**選択**」 (choice). For 「選択」, enter the options separated by `,` (commas).
 - 「**スコープ**」 (Scope) … where the field is used.
-  - 「**見積入力（フォームに表示）**」 (Estimate input — shown on the form) … **adds a box on the trial estimate input screen.** A person enters it for each job.
+  - 「**見積入力（フォームに表示）**」 (Estimate input — shown on the form) … **adds a box on the price estimate input screen.** A person enters it for each job.
   - 「**グローバル定数（固定係数）**」 (Global constant — fixed coefficient) … does not appear on the input screen. It is used as a company-wide fixed value.
 - 「**既定値**」 (Default value) … the value filled in from the start.
 
@@ -227,22 +239,22 @@ For a table with many rows, you can enter everything at once from Excel.
 ## FAQ and troubleshooting
 
 **Q. If I edit a calculation criterion, will past quotation amounts change too?**
-A. No, they will not. A trial estimate that is already 確定 (confirmed) stores the calculation result of that time as it was. However, a trial estimate still in 下書き (draft) is recalculated with the new settings when it is confirmed.
+A. No, they will not. A price estimate that is already 確定 (confirmed) stores the calculation result of that time as it was. However, a price estimate still in 下書き (draft) is recalculated with the new settings when it is confirmed.
 
 **Q. No amount comes out for one particular kind of tool.**
 A. It is possible that 「**使用する見積単価**」 (Quoted unit price to use) has not been set for that type. Open that type from 「工具種管理」 (Tool type management) and check that one wrap-up part is selected.
 
 **Q. I cannot delete a tool type I added.**
-A. Trial estimates using that type still exist. It cannot be deleted unless 「価格試算 M 件」 (M trial estimates) in the list shows `0`. There is no problem in leaving a type you no longer use as it is, without deleting it.
+A. Price estimates using that type still exist. It cannot be deleted unless 「価格試算 M 件」 (M price estimates) in the list shows `0`. There is no problem in leaving a type you no longer use as it is, without deleting it.
 
 **Q. A calculation criterion shows 「適用なし」 (not applied) in red.**
 A. That criterion is not set for any kind of tool. If you want to use it, open it and choose 「**適用工具種**」 (Applicable tool types) — or press 「**全選択**」 (Select all) if you want it used everywhere.
 
-**Q. I want to add a new box to the trial estimate input screen.**
-A. Add a field in 「**カスタム入力項目**」 (Custom input fields) and set its 「**スコープ**」 (Scope) to 「**見積入力（フォームに表示）**」 (Estimate input — shown on the form). The added field appears as an input box from the next trial estimate you create.
+**Q. I want to add a new box to the price estimate input screen.**
+A. Add a field in 「**カスタム入力項目**」 (Custom input fields) and set its 「**スコープ**」 (Scope) to 「**見積入力（フォームに表示）**」 (Estimate input — shown on the form). The added field appears as an input box from the next price estimate you create.
 
 **Q. I want to write extra calculation logic freely by myself.**
 A. That function is not on the current screens. When you want to change how the calculation works, do it by adding or editing 「**計算基準**」 (Calculation criteria). Please consult your system administrator about the contents of an expression.
 
 **Q. What should I check after changing a setting?**
-A. On the screen of the criterion you changed, choose a 「**テスト工具種**」 (Test tool type), press 「**テスト実行**」 (Run test), and check that the expected amount comes out. On top of that, creating one real trial estimate and comparing the amounts makes it certain.
+A. On the screen of the criterion you changed, choose a 「**テスト工具種**」 (Test tool type), press 「**テスト実行**」 (Run test), and check that the expected amount comes out. On top of that, creating one real price estimate and comparing the amounts makes it certain.

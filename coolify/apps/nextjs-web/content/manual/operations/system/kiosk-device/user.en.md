@@ -197,8 +197,8 @@ At a site that does not have a layout drawing yet, 「**この拠点にはフロ
 | [Device name (Japanese / English)](#field-name) | Required | The name shown in lists and logs |
 | [Plant](#field-plant) | Required | Where the device lives |
 | [Location](#field-location) | Optional | Where within that plant |
-| [Link code](#field-link-code) | Required | The code shown on the tablet |
 | [Default work location](#field-default-work-location) | Optional | Work location auto-recorded on actuals from this device |
+| [Link code](#field-link-code) | Required | The code shown on the tablet |
 
 ### Device name (Japanese / English) [#field-name]
 

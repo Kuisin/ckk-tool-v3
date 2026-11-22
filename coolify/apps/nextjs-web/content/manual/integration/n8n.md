@@ -16,8 +16,12 @@ description: "n8n の Webhook ノードで合図を受け、署名を検証し�
 
 ## レシピ 1 — 合図を受けて、値を引く
 
-```
-[Webhook] → [Code: 署名を検証] → [IF: 欲しいイベントか] → [HTTP Request: API で引く] → [以降の処理]
+```mermaid
+flowchart TD
+  wh["Webhook"] --> verify["Code: 署名を検証"]
+  verify --> check["IF: 欲しいイベントか"]
+  check --> fetch["HTTP Request: API で引く"]
+  fetch --> rest["以降の処理"]
 ```
 
 1. **Webhook ノード**: メソッド `POST`、パスは推測されにくいものに。Options の **Raw Body** を ON、**Respond** は「Immediately」（すぐ 200 を返す）。この **Production URL** を CKK の「外向き Webhook」に登録します（n8n と同じ Docker ネットワークなら `http://n8n:5678/webhook/…` が使えます）。
@@ -58,8 +62,14 @@ return [{ json: JSON.parse(raw) }];
 
 Webhook が届かなかった・n8n が止まっていた間の分を、API の差分取得で埋めます。
 
-```
-[Schedule: 毎日 / 毎時] → [Code: 前回の syncedAt を読む] → [HTTP Request: ?updatedSince=…] → [Code: nextCursor があれば繰り返す] → [処理] → [Code: syncedAt を保存]
+```mermaid
+flowchart TD
+  sched["Schedule: 毎日 / 毎時"] --> load["Code: 前回の syncedAt を読む"]
+  load --> fetch["HTTP Request: ?updatedSince=…"]
+  fetch --> page["Code: nextCursor があれば繰り返す"]
+  page -.->|"次のページ"| fetch
+  page --> work["処理"]
+  work --> store["Code: syncedAt を保存"]
 ```
 
 - `syncedAt` は **Workflow の Static Data**（`$getWorkflowStaticData('global')`）に保存します。

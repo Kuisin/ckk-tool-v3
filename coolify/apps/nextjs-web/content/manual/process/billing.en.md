@@ -73,6 +73,6 @@ The line items come from delivery notes. Check the delivery note's unit price an
 ## Related pages
 
 - Following a single order from start to finish … [Standard flow](/manual/en/process/default-flow)
-- How to operate each app and what each field means … **How-to › Billing** on the left
+- How to operate each app and what each field means … **Operations › Billing** on the left
 - Previous flow … [Shipping flow](/manual/en/process/shipping)
 - Closing day settings per customer … [Customer master](/manual/en/operations/masters/business-partner/user)

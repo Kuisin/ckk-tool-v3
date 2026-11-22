@@ -30,6 +30,17 @@ The steps on a [指示書 (work order)](/manual/en/operations/production/work-or
 - **Work plan required fields** … what a [work order](/manual/en/operations/production/work-order/user)'s work plan for this step must contain before approval can be requested. The planned date is always required; whether assignee, work location and start/end time are required can be set per step.
 - **Use dependency / execution dependency** … rules between steps. For details, see "[Set the order rules for steps](#set-the-order-rules-for-steps)".
 
+How the category decides the step list kind, as a diagram:
+
+```mermaid
+flowchart TD
+  cat{"What is the step's category?"}
+  cat -->|"Material preparation"| prep["Prep step list<br/>(one list shared by every product)"]
+  cat -->|"Regrind"| regrind["Regrind step list<br/>(shared)"]
+  cat -->|"Any other"| mfg["Manufacturing step list<br/>(per product × customer)"]
+  mfg -.->|"coating, inspection and approval<br/>steps can also go here"| regrind
+```
+
 ## Before you start
 
 - You need the **master permission** to use this app. If a button cannot be pressed, please ask someone who has the permission.
@@ -229,8 +240,8 @@ Material preparation, machining, regrind, coating, inspection, inspection approv
 Restricts which work locations can be used in **plans and actuals** of this step. Specify by type (machine / area, etc.), by individual locations, or both (the union is allowed). **Leave both empty for no restriction** (all work locations usable).
 
 - When adding plans/actuals on a work-order step, the select is filtered to allowed locations only
-- The same restriction applies on shop-floor tablets (kiosk): scanning a disallowed work-location QR is rejected, and a device default outside the list is not recorded on actuals
-- Kiosk devices with the "restrict work location" toggle ON can only start steps whose allowed list includes the device's default location
+- The same restriction applies on shop-floor tablets (shared devices): scanning a disallowed work-location QR is rejected, and a device default outside the list is not recorded on actuals
+- Shared devices with the "restrict work location" toggle ON can only start steps whose allowed list includes the device's default location
 
 ### Location [#field-execution]
 

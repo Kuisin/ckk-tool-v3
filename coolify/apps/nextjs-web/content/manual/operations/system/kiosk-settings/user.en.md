@@ -80,6 +80,17 @@ The 48 hours and the 14 days above are not two separate triggers. Logging in by 
 
 If even one of them is not true, the PIN is asked for. Use is counted **per tablet**, so **the first login on a new tablet always asks for the PIN.**
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  scan["Hold up the card"] --> q1{"Used on that tablet<br/>within 48 hours"}
+  q1 -->|"Yes"| q2{"PIN last entered<br/>within 14 days"}
+  q1 -->|"No"| pin["The PIN is<br/>asked for"]
+  q2 -->|"Yes"| ok["Logged in with<br/>the card alone"]
+  q2 -->|"No"| pin
+```
+
 ## Input fields
 
 This screen has no input boxes — switches decide what appears in the shop-floor tablet's app list.

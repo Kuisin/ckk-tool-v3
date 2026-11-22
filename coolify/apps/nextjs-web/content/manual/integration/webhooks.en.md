@@ -6,6 +6,22 @@ When business data changes, the system POSTs a **signal about what happened** to
 
 > ⚠️ Currently available **only in the verification environment (dev)**.
 
+The flow from receiving a signal to reading the values, as a diagram:
+
+```mermaid
+sequenceDiagram
+  participant C as CKK system
+  participant N as Receiver (n8n etc.)
+  C->>N: 1. POST the signal (what changed, no values)
+  N-->>C: 2. Return 2xx first
+  N->>N: 3. Verify the signature (on the raw body)
+  N->>C: 4. GET links.list (Bearer token)
+  C-->>N: 5. Values (only rows it may read)
+  Note over C,N: Anything other than 2xx, a timeout or a redirect is retried (7 attempts in total, including the first)
+  N->>C: 6. Periodically run incremental sync with updatedSince (catch up on misses)
+  C-->>N: Changed rows
+```
+
 ## Registering
 
 1. Open [API Clients](/manual/en/operations/system/external-api/user) (`SY0I`) and press "New" in the "**Outbound webhooks**" section below.
@@ -77,21 +93,30 @@ If you write it yourself, there are three steps. **Verify against the raw body, 
 2. HMAC-SHA256 of `webhook-id` + `.` + `webhook-timestamp` + `.` + raw body, with the key (the part after `whsec_`, Base64-decoded).
 3. Base64-encode it and compare with `v1,<value>` (`webhook-signature` may contain several values separated by spaces).
 
-```json
-{
-  "id": "evt_1234_order_acceptance.status_changed",
-  "type": "order_acceptance.status_changed",
-  "apiVersion": "v1",
-  "occurredAt": "2026-09-10T04:11:52.881Z",
-  "resource": {
-    "type": "order_acceptance",
-    "id": "ORD-202609-00042",
-    "key": "202609:42"
-  },
-  "status": { "from": "DRAFT", "to": "CONFIRMED" },
-  "links": {
-    "list": "/api/v1/order-acceptances?updatedSince=2026-09-10T04%3A11%3A51.881Z"
-  }
+```js
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+// rawBody is the **string (bytes) before parsing**. A value re-serialised with JSON.parse → stringify will not match.
+export function verifyWebhook(rawBody, headers, secret) {
+  const id = headers["webhook-id"];
+  const ts = headers["webhook-timestamp"];
+  const signatures = (headers["webhook-signature"] ?? "").split(" ");
+  if (!id || !ts) return false;
+
+  // Discard anything more than 5 minutes old / in the future as a replay attack
+  if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) return false;
+
+  const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
+  const expected = createHmac("sha256", key)
+    .update(`${id}.${ts}.${rawBody}`)
+    .digest();
+
+  return signatures.some((s) => {
+    const [version, b64] = s.split(",");
+    if (version !== "v1" || !b64) return false;
+    const got = Buffer.from(b64, "base64");
+    return got.length === expected.length && timingSafeEqual(got, expected);
+  });
 }
 ```
 

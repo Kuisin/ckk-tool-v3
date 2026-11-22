@@ -7,6 +7,8 @@ This is the **外注依頼** (outsourcing orders) app, where you check in one li
 
 > ⚠️ This app is still being prepared, so it may not appear on the live system yet. If you cannot find it, please ask the person in charge at your company.
 
+> This app belongs to … [Purchasing flow](/manual/en/process/purchasing)
+
 ## What you can do with this app
 
 - You can see all the machining work you have asked outside companies to do, in one table.
@@ -30,6 +32,15 @@ This is the **外注依頼** (outsourcing orders) app, where you check in one li
 This app is a **view-only screen**. You cannot add new outsourcing from here.
 
 To make outsourcing appear in this list, open a step in a [work order](/manual/en/operations/production/work-order/user), choose 「**外注**」 (outsourced) as the place where it is done, and name the outsourcing partner. Partner companies are registered in the [business partner master](/manual/en/operations/masters/business-partner/user).
+
+As a diagram, this is what you enter where:
+
+```mermaid
+flowchart TD
+  wo["On a work order step, choose<br/>「外注」 (Outsourced) as the execution<br/>location and name the subcontractor"] --> list["It appears in the outsource order list<br/>(this app — view only)"]
+  list -->|"Click the row"| step["Enter the dates under 「外注日程」<br/>(Outsourcing schedule) on the step screen"]
+  step -.->|"Saved dates show up"| list
+```
 
 You need outsourcing order permission to view this screen. If the screen does not open, please ask the person in charge at your company.
 

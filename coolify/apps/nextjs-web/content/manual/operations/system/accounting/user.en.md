@@ -67,6 +67,16 @@ Top to bottom is the first column, the second column, and so on. Each row sets a
 
 Used when the master has no code. **Left blank, the field is written empty.**
 
+As a diagram, the code is chosen in this order:
+
+```mermaid
+flowchart TD
+  q1{"The master<br/>has a code"} -->|"Yes"| a["Written with<br/>the master's code"]
+  q1 -->|"No"| q2{"The default on this<br/>screen has a code"}
+  q2 -->|"Yes"| b["Written with<br/>the default code"]
+  q2 -->|"No"| c["The field is<br/>written empty"]
+```
+
 The sub-account code has no default — it differs per business partner, so enter it on [Business partners](/manual/en/operations/masters/business-partner/user) (`MS01`).
 
 ### Tax codes by rate

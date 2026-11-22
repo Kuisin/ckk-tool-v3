@@ -35,7 +35,7 @@ description: "以一张表把产品和材料放在一起，查看每个场所（
 - **拠点**（据点）… 位于哪个据点。
 - **保管場所・棚**（存放位置・货架）… 以「场所名 / 货架编号」的形式显示。尚未确定的显示为「**未割当**」（未分配）。
 - **ロット**（批次）… 产品情况下的批次号。
-- **手持ち**（手持）… 实际拥有的数量。
+- **手持ち**（手持）… 实际拥有的数量。**红色的负数**表示出货数量超过了台账上的数量（[出货单](/manual/zh/operations/shipping/delivery-order/user)在库存不足时也不会被阻止）。
 - **予約**（预留）… 其中被预留的数量（此列可以隐藏）。
 - **利用可能**（可用）… 手持数量扣除预留后，实际可用的数量。
 - **単位**（单位）… 数量的单位（此列可以隐藏）。
@@ -58,6 +58,9 @@ A. 若「在庫ゼロを隠す」（隐藏零库存）为开启状态，手持�
 
 **Q. 一览在 1000 行处被截断了。**
 A. 请增加筛选条件（据点・存放位置・品目类别・搜索）以减少行数。此一览没有分页，设计上始终依靠筛选来减少行数。
+
+**Q. 手持变成了红色的负数。**
+A. 出货数量超过台账上的数量时会变成这样。出货本身已被记录，不足的部分会在[入出庫伝票](/manual/zh/operations/inventory/inventory-movements/user)（ST04）中以「在庫不足のまま出庫」（库存不足仍出库）保留。通过[棚卸](/manual/zh/operations/inventory/stock-takes/user)（ST05）重新清点，或用[手動入出庫](/manual/zh/operations/inventory/goods-movement/user)（ST06）补记漏掉的入库，即可恢复到 0 以上。
 
 **Q. 我想从这里移动库存。**
 A. 本应用无法移动库存。请使用[在庫管理](/manual/zh/operations/inventory/inventory-management/user)（ST01）中对应的行，或[手動入出庫](/manual/zh/operations/inventory/goods-movement/user)（ST06）。

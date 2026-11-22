@@ -50,6 +50,17 @@ Stock does not move from this screen — it moves automatically along with every
 - **Material decreases** … when all the process steps on that work order are complete, the reserved material is deducted as used.
 - **Product goes out** … shipping via a [delivery order](/manual/en/operations/shipping/delivery-order/user) removes it from stock and releases the reservation.
 
+As a diagram (dotted lines are reservations):
+
+```mermaid
+flowchart TD
+  rcpt["Register a material receipt"] -->|"Increases"| mat["Material stock"]
+  mat -->|"All steps of the work order complete<br/>(used material is deducted, good units come in)"| prod["Product / semi-finished stock"]
+  prod -->|"Shipped with a delivery order"| out["Leaves stock<br/>(the reservation is released too)"]
+  appr["A 製造分 (to manufacture) work order is approved"] -.->|"Reserved"| mat
+  chk["「在庫照合」 (stock check) on an order line"] -.->|"Reserved"| prod
+```
+
 ## The Product tab
 
 ![Inventory Management product tab](../../../assets/screenshots/inventory-products-01.png)

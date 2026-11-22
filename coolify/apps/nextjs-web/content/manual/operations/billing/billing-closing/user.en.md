@@ -7,29 +7,40 @@ Once a month, this app gathers "everything sent that month" for each customer an
 
 > ⚠️ This app is still being prepared. Screens and steps may change before it is fully released.
 
+> This app belongs to … [Billing flow](/manual/en/process/billing)
+
 ## What you can do with this app
 
 - Add up what was sent in a month, **grouped by customer**.
-- Check the result (which shipping order was worth how much) before making the invoice.
+- Check the result (which delivery order was worth how much) before making the invoice.
 - Make a draft [invoice](/manual/en/operations/billing/invoice/user) with one button.
 
 Every month, the billing work starts in this app.
+
+As a diagram:
+
+```mermaid
+flowchart TD
+  ship["Delivery orders that are 「出荷済」 (Shipped)<br/>with type 「発送」 (Dispatch)"] -->|"Run billing closing"| pend("未処理<br/>Unprocessed"):::gray
+  pend -->|"Generate invoice"| proc("処理済<br/>Processed"):::blue
+  proc -.-> inv["A draft invoice is created"]
+```
 
 ## Words used on this page
 
 - **締日 (cut-off date)** … The monthly cut-off date for billing you agreed on: "everything sent up to this day of the month is billed together". For example, "month-end" means everything up to the last day of that month.
 - **締日処理 (monthly billing close)** … The work of adding up what was sent, using the cut-off date as the dividing line.
 - **未請求 (not yet billed)** … A shipment that is not yet on any invoice.
-- **対象出荷 (shipments included)** … The list of shipping orders gathered into that close.
+- **対象出荷 (shipments included)** … The list of delivery orders gathered into that close.
 - **合計金額（税抜） (total before tax)** … The total before consumption tax. The tax is added when the invoice is made.
 
 ## Before you start
 
-- Only [shipping orders](/manual/en/operations/shipping/delivery-order/user) that are **「出荷済」 (Shipped) and of type 「発送」 (Dispatch)** are added up. Shipping orders still at 「下書き」 (Draft) or 「確定」 (Confirmed) are not included. Please record the shipment first.
+- Only [delivery orders](/manual/en/operations/shipping/delivery-order/user) that are **「出荷済」 (Shipped) and of type 「発送」 (Dispatch)** are added up. Delivery orders still at 「下書き」 (Draft) or 「確定」 (Confirmed) are not included. Please record the shipment first.
 - Each customer's cut-off date comes from the registered details of the [customer](/manual/en/operations/masters/business-partner/user). Customers with nothing set are gathered as **month-end**.
 - You need monthly billing close permission to run it. If you cannot use it, please ask your administrator.
 
-> ⚠️ Shipping orders of type 「**在庫保管**」 (Keep in stock) are pieces kept in-house, not sent to the customer, so they are not added up. They are not billed either.
+> ⚠️ Delivery orders of type 「**在庫保管**」 (Keep in stock) are pieces kept in-house, not sent to the customer, so they are not added up. They are not billed either.
 
 ## How to read the screen
 
@@ -66,8 +77,8 @@ Click a close row in the list to open the detail screen.
 ![Monthly billing close detail screen](../../../assets/screenshots/billing-closing-detail-01.png)
 
 - At the top you see the customer, cut-off date, total before tax, and status.
-- The 「**対象出荷**」 (Shipments included) table lists the gathered shipping orders one per row (shipping order number, shipping date, quantity, amount).
-- Click the blue shipping order number to open that [shipping order](/manual/en/operations/shipping/delivery-order/user) and check its contents.
+- The 「**対象出荷**」 (Shipments included) table lists the gathered delivery orders one per row (delivery order number, shipping date, quantity, amount).
+- Click the blue delivery order number to open that [delivery order](/manual/en/operations/shipping/delivery-order/user) and check its contents.
 - At the bottom of the table you see the totals for quantity and amount.
 
 If an amount is not what you expected, please check it here before making the invoice.
@@ -101,7 +112,7 @@ This screen has no input boxes. What to close and for which dates follows **the 
 
 ### Close [#field-process]
 
-Gathers what was shipped in the period (「発送」 dispatch shipping orders that became 「出荷済」 shipped) and creates **one invoice per customer.**
+Gathers what was shipped in the period (「発送」 dispatch delivery orders that became 「出荷済」 shipped) and creates **one invoice per customer.**
 
 Before closing, check that every shipment in the period has been recorded. **A shipment added afterwards does not join a closed invoice** — it moves to the next period.
 
@@ -110,10 +121,10 @@ The CSV export for the accounting software (TKC FX4 Cloud) is done **per invoice
 ## Questions and problems
 
 **Q. I get 「対象月に未請求の出荷がありません」 (There are no unbilled shipments in the target month).**
-A. There is not a single shipment in that month that has not been billed yet. Check that the shipping orders are all 「出荷済」 (Shipped) and that the type is 「発送」 (Dispatch).
+A. There is not a single shipment in that month that has not been billed yet. Check that the delivery orders are all 「出荷済」 (Shipped) and that the type is 「発送」 (Dispatch).
 
 **Q. I shipped this month, but it is not in the close.**
-A. Anything sent **after** the cut-off date goes into the next month's close, not this one. Also, a shipping order that is not 「出荷済」 (Shipped) is not added up.
+A. Anything sent **after** the cut-off date goes into the next month's close, not this one. Also, a delivery order that is not 「出荷済」 (Shipped) is not added up.
 
 **Q. I get 「請求対象の出荷がありません」 (There are no shipments to bill) and cannot make the invoice.**
 A. The shipments included in that close are empty. Please run 「締日処理を実行」 (Run monthly billing close) again and then try once more.

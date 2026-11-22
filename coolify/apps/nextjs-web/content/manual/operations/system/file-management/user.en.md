@@ -30,6 +30,17 @@ It holds the files you uploaded yourself, and also the PDFs the system made for 
   2. People who have been allowed a folder … see what is inside that folder.
   3. People who have permission for an app … see the PDFs that app made. For example, someone who can use quotes sees the quote PDFs.
 
+As a diagram, what you can see is decided like this:
+
+```mermaid
+flowchart TD
+  q1{"System<br/>administrator"} -->|"Yes"| all["Sees every file"]
+  q1 -->|"No"| q2{"Allowed<br/>a folder"}
+  q1 -->|"No"| q3{"Has permission<br/>for an app"}
+  q2 -->|"Yes"| f["Sees what is inside<br/>that folder"]
+  q3 -->|"Yes"| p["Sees the PDFs<br/>that app made"]
+```
+
 ## How to open it
 
 On the home screen, under 「システム」 (System), press **ファイル管理** (File Management). Or type `SY06` into the search box at the top of the screen.

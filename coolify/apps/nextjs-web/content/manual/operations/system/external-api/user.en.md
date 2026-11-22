@@ -30,6 +30,15 @@ This app only creates an **identity**. **What that client can read** is decided 
 - **Activating** a client and **issuing a token** each need their own approval in [Privileged Access](/manual/en/operations/system/privileged-access/user) (`SY0G`). Holding the permission alone is not enough to press these buttons.
 - A client that has just been created can read nothing. **Activation, a token, and an assigned role** all have to be in place before an external system can read business data through it.
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  a["Client activated"] --> ok["The external system can<br/>read business data"]
+  b["Token issued"] --> ok
+  c["Role assigned"] --> ok
+```
+
 ## How to open it
 
 Press **API クライアント** (API Clients) inside 「システム」 (System) on the home screen. Or type `SY0I` into the search box at the top of the screen.
@@ -70,6 +79,15 @@ While a client stays "disabled", an external system cannot connect through it ev
 Until approval is granted, the 「有効化」 (Enable) button cannot be pressed — it stays grayed out. Once approved, the moment you first press it within the approved period, the client becomes usable for the granted duration (see the [Privileged Access](/manual/en/operations/system/privileged-access/user) page for details).
 
 Stopping a client with 「**無効化**」 (Disable) does **not** need approval. Anyone can disable a client immediately.
+
+As a diagram, the status changes like this:
+
+```mermaid
+flowchart TD
+  crt["Create a client"] --> dis("無効<br/>Disabled"):::gray
+  dis -->|"Enable (needs approval)"| act("有効<br/>Enabled"):::green
+  act -->|"Disable (no approval needed)"| dis
+```
 
 ## Issuing a token
 

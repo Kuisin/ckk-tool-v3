@@ -39,6 +39,18 @@ From top to bottom there are four blocks: "Drop into folder", "Waiting", "Failed
 - **失敗** (Failed) … files whose extraction failed. Each has a retry button.
 - **取込済** (Processed) … files that have finished being brought in and became an order acceptance.
 
+A file moves through them like this:
+
+```mermaid
+flowchart TD
+  a["Dropped in from this screen"] --> w["取込待ち (Waiting)<br/>(in the intake folder)"]
+  m["Email (automatic)"] --> w
+  w -->|"Scan: numbering → AI extraction"| r{"Extraction succeeded?"}
+  r -->|"Yes"| d["取込済 (Processed)<br/>(becomes an order acceptance)"]
+  r -->|"No"| x["失敗 (Failed)"]
+  x -.->|"再取込 (Retry) — number is kept"| w
+```
+
 Each row shows:
 
 - **注文請書** (Order acceptance) … if numbered, the number, a status badge, the customer name, and the item count. If not yet numbered, it shows 「**未採番**」 (Not yet numbered).

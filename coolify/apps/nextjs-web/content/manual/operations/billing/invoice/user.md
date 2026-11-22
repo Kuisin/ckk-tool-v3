@@ -72,6 +72,15 @@ screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu
 
 請求書は「下書き → 発行済 → 送付済 → 支払済」と 4 段階で進みます。この画面に編集はなく、操作は右上の「**…**」（点が 3 つのボタン）から行います。
 
+```mermaid
+flowchart TD
+  bc["締日処理で<br/>「請求書を生成」"] -.-> draft("下書き"):::gray
+  draft -->|"発行"| iss("発行済"):::blue
+  iss -->|"送付済みにする"| sent("送付済"):::violet
+  sent -->|"入金済みにする"| paid("支払済"):::green
+  iss -.-> pdf["PDF を見られるようになる"]
+```
+
 ![詳しい画面の「…」メニュー](../../../assets/screenshots/invoice-menu-01.png)
 
 ### 1. 発行する

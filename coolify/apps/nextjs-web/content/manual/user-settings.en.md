@@ -56,7 +56,7 @@ Use **Home Screen Settings** in the avatar menu to customize your home screen la
 
 ## Display settings
 
-Use **Display Settings** in the avatar menu to change the language, how dates and times are shown, and how large text is. These apply to **your account only** — language and date/time also apply to the shop-floor tablets (kiosk), while text size and bold text are web only.
+Use **Display Settings** in the avatar menu to change the language, how dates and times are shown, and how large text is. These apply to **your account only** — language and date/time also apply to the shop-floor tablets (shared devices), while text size and bold text are web only.
 
 This screen also opens read-only. Press 「**編集**」(edit) at the top right to reveal the fields and the preview.
 
@@ -77,7 +77,7 @@ Your choices appear immediately in the **Preview** below, so you can check them 
 
 ### Changing the language switches every screen
 
-The interface text of both the web app and the shop-floor tablets (kiosk) is **complete in all three languages**. The date, time and time-zone settings apply to every screen as well.
+The interface text of both the web app and the shop-floor tablets (shared devices) is **complete in all three languages**. The date, time and time-zone settings apply to every screen as well.
 
 What is *not* translated is **the data you enter in the master screens** — product names, business partner names, process names, role names and so on appear in the language they were registered in. Each master screen has a 「多言語」(translations) button for entering them per language.
 

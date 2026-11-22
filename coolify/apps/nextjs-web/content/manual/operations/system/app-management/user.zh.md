@@ -68,6 +68,18 @@ screenshots: [settings-apps-01, settings-apps-filter-01, settings-apps-switch-01
 
 尚未在正式画面上发布的应用，在练习用画面上会带着橙色的「**DEV**」标记显示。这是「这个应用还不能在正式画面上使用」的标志。
 
+应用是否出现在画面上，用图表示如下。
+
+```mermaid
+flowchart TD
+  env{"哪个画面"} -->|"dev（练习用）"| d{"关掉了<br/>开关"}
+  env -->|"main（正式）"| m{"打开了<br/>开关"}
+  d -->|"否"| show["应用会显示"]
+  d -->|"是"| hide["应用不显示"]
+  m -->|"是"| show
+  m -->|"否"| hide
+```
+
 ## 关掉开关后会怎样
 
 ![应用一览（启动器）](../../../assets/screenshots/launcher-01.png)

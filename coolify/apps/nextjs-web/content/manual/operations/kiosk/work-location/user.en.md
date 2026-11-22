@@ -10,6 +10,15 @@ The list in 「工程実行」 (Run step) only shows work **assigned to you**. B
 
 That kind of work never shows up in the 「工程実行」 list, because it belongs to no one in particular. 「作業場所の工程」 finds the same work by **using the place as the key**.
 
+As a diagram, which app a piece of work shows up in:
+
+```mermaid
+flowchart TD
+  plan["Work plan"] --> q{"Is an assignee decided?"}
+  q -->|"Yes"| mine["Shows in that person's 「工程実行」 (Run step)"]
+  q -->|"No<br/>(only when and at which machine)"| loc["Found by place in 「作業場所の工程」<br/>Anyone standing at that machine can do it"]
+```
+
 ## What you can do with this app
 
 - See the list of steps waiting at **the machine or place this tablet is placed at right now**.

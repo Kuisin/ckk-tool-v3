@@ -4,12 +4,11 @@ description: "How to connect this system to external systems such as n8n: readin
 ---
 This is the entry point for connecting n8n or other external systems. **The wiring lives in n8n; this system only opens two doors.**
 
-```
-        ┌─────────────┐   1. change signal (webhook)   ┌───────────┐
-        │  CKK system │ ───────────────────────────▶ │           │
-        │             │                             │    n8n    │ ──▶ Slack / accounting / other systems
-        │  /api/v1    │ ◀─────────────────────────── │           │
-        └─────────────┘   2. fetch values (API, Bearer)  └───────────┘
+```mermaid
+flowchart TD
+  ckk["CKK system<br/>/api/v1"] -->|"1. Change signal (webhook)"| n8n["n8n"]
+  n8n -->|"2. Fetch values (API, Bearer)"| ckk
+  n8n --> ext["Slack / accounting / other systems"]
 ```
 
 ## Which door to use

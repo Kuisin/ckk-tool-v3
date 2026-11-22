@@ -82,9 +82,10 @@ The old `.kai-lab.net` addresses for `dock` / `monitor` / `chat` still work for 
   `network_security_config` and does not intercept SSL errors), so using it from a
   tablet needs either an app change that trusts the certificate plus a rebuild, or
   an internal CA.
-- CKK systems are **being consolidated under `ckk-tool.co.jp`**. The kiosk and the
-  platform tools have moved. The business app has its `ckk-tool.co.jp` addresses
-  prepared, but **keep using `kai-lab.net` until the SSO switch is done**.
-  Old addresses stay up until each move is finished.
+- CKK systems are **being consolidated under `ckk-tool.co.jp`**. The platform
+  and operations tools have moved. The business app has its `ckk-tool.co.jp`
+  addresses prepared, but **keep using `kai-lab.net` until the SSO switch is done**.
+  **The kiosk is out of scope** — it is for shop-floor tablets only and will
+  become internal-network only.
 - Staging data may be rebuilt without notice. **Do not enter anything there that
   you expect to keep.**

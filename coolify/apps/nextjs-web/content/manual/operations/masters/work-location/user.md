@@ -42,6 +42,15 @@ screenshots: [master-work-location-01, master-work-location-group-new-01, master
 - グループには拠点を指定します。先に[拠点](/manual/ja/operations/masters/plant/user)を登録しておいてください。
 - 登録は **グループが先、機械はそのあと** です。グループを作らずに機械だけを登録することはできません。
 
+つながりを図にすると次のとおりです。
+
+```mermaid
+flowchart TD
+  plant["拠点"] --> group["グループ<br/>（例 NC旋盤）"]
+  group --> loc["作業場所<br/>（例 NC旋盤 1号機）"]
+  loc -.-> wo["指示書の作業計画で<br/>「どこで作業するか」として選ぶ"]
+```
+
 ## 画面の見かた
 
 このアプリには一覧と詳細の分かれがなく、**1 つの画面ですべての操作をします**。

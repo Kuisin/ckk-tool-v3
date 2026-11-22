@@ -6,12 +6,14 @@ When an order acceptance is confirmed, each of its detail rows becomes an **orde
 
 > ⚠️ This app is still in preview. Screens and steps may change.
 
+> This app belongs to … [Sales flow](/manual/en/process/sales)
+
 ## What you can do here
 
 - See confirmed order lines from every order acceptance in **one list**.
 - Check production, shipping and reservation progress for each line.
 - Check available stock and **reserve** it for the order.
-- When an order is withdrawn, request cancellation of the **whole order acknowledgement** (individual lines cannot be cancelled on their own).
+- When an order is withdrawn, request cancellation of the **whole order acceptance** (individual lines cannot be cancelled on their own).
 
 **You cannot create or edit order lines here.** Both are done on the [order acceptance](/manual/en/operations/sales/order-acceptance/user) screen. See [When you need to change something](#when-you-need-to-change-something) below for why.
 
@@ -28,10 +30,10 @@ When an order acceptance is confirmed, each of its detail rows becomes an **orde
 
 An order line number is the order acceptance number plus a branch number.
 
-```
-ORD-202608-00012-01
-└──────┬──────┘ └┬┘
-  acceptance no.  branch (which row)
+```mermaid
+flowchart TD
+  num["ORD-202608-00012-01"] --> head["ORD-202608-00012<br/>Order acceptance number"]
+  num --> br["-01<br/>Branch number (which row)"]
 ```
 
 Lines from the same order acceptance share the first part and differ only in the branch. A three-row order produces `-01`, `-02` and `-03`.
@@ -99,16 +101,15 @@ The Work orders tab lists the work orders allocated to this line. **One order li
 
 ### Follow shipping
 
-The Shipping tab lists the shipping orders that include this line. The quantity shown is **only this line's share**. One shipping order can carry several order lines, so it may differ from the shipping order's total.
+The Shipping tab lists the delivery orders that include this line. The quantity shown is **only this line's share**. One delivery order can carry several order lines, so it may differ from the delivery order's total.
 
 As shipping progresses the status moves automatically to Partially shipped and then Shipped. **You cannot ship more than the ordered quantity.** An attempt to do so is stopped, and the screen names the order line that would be exceeded.
 
 ### When you need to cancel
 
-A single order line cannot be cancelled by itself. When an order is withdrawn, open the **parent order acknowledgement** and request cancellation from the three-dot menu ("**Request cancellation**", reason required). If the approval flow "Order acknowledgement cancellation" has steps, it goes through approval; on final approval the following happens automatically:
+A single order line cannot be cancelled by itself. When an order is withdrawn, open the **parent order acceptance** and request cancellation from the three-dot menu ("**Request cancellation**", reason required). If the approval flow "Order acceptance cancellation" has steps, it goes through approval; on final approval the following happens automatically:
 
 - Every order line is **cancelled**.
-
 - All reserved stock is **released**.
 - Unfinished work orders are **cancelled along with it** (completed ones are left alone). However, **a work order that also makes pieces for other order lines (a combined lot) is not cancelled** and is left as it is.
 
@@ -126,7 +127,7 @@ If the contents change after confirmation, talk to the person responsible.
 
 **A line is missing from the list**
 
-It may not be confirmed yet. Open the [order acceptance](/manual/en/operations/sales/order-acceptance/user) and check that its status is Completed. If approval and confirmation have not happened, do those first.
+It may not be confirmed yet. Open the [order acceptance](/manual/en/operations/sales/order-acceptance/user) and check that its status is 確定済 (Confirmed). If approval and confirmation have not happened, do those first.
 
 **Stock check is not available**
 
@@ -144,7 +145,7 @@ It needs the same permission as order acceptances (`order_acceptance`). Contact 
 
 - [Order acceptance](/manual/en/operations/sales/order-acceptance/user) — where order lines are created and edited
 - [Work order](/manual/en/operations/production/work-order/user) — production
-- [Shipping order](/manual/en/operations/shipping/delivery-order/user) — shipping
+- [Delivery order](/manual/en/operations/shipping/delivery-order/user) — shipping
 - [Inventory](/manual/en/operations/inventory/inventory-management/user) — stock and reservations
 
 <!-- permissions:start -->

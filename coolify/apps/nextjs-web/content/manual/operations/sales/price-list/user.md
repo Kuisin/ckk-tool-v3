@@ -53,6 +53,16 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 
 **落ちるのは「当たる価格表が無い」ときだけ**です（作っていない / 無効 / 有効期間の外）。⚠️ 生きている価格表にその数量の段階が無いときは標準価格に落ちません — 設定の穴が見えなくなるので、単価が引けないままにします。段階を直してください。
 
+図にすると次のとおりです。
+
+```mermaid
+flowchart TD
+  q1{"その顧客に<br/>当たる価格表がある？"} -->|"無い"| std["品目の標準価格"]
+  q1 -->|"ある"| q2{"その数量の<br/>段階がある？"}
+  q2 -->|"ある"| pl["価格表の単価"]
+  q2 -->|"無い"| none["単価が引けない<br/>（標準価格には落ちない）"]
+```
+
 ## はじめる前に
 
 - 対象の[お客様](/manual/ja/operations/masters/business-partner/user)と[製品](/manual/ja/operations/masters/product/user)が登録されている必要があります。

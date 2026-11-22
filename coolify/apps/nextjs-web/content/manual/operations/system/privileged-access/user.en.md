@@ -21,6 +21,8 @@ So these operations are off by default. You turn one on for a short time, with a
 5. Set the **window** (start and end). It may not extend more than **14 days** from the request.
 6. Set the **duration per use** in minutes (60 by default).
 
+The request then shows as **Pending approval**. You cannot perform the operation until it is approved.
+
 ### When does the clock start?
 
 This is the part people get wrong, so plainly:
@@ -59,24 +61,24 @@ When you decide, the outcome (approved / sent back / revoked) is **notified to t
 1. Read what is being asked: who, what, why, for how long.
 2. Press **Approve** to open the operation list.
 3. Everything is ticked by default. **Untick anything you do not want to grant.** Unticked operations stay unusable.
-4. To grant nothing, use **Reject** instead of approving.
+4. To grant nothing, use **Send back** instead of approving.
 
-Rejections require a reason, which the requester sees.
+Sending back requires a reason, which the requester sees.
 
 ### Stopping a live grant
 
 From the **History** tab, **Revoke** ends an active grant immediately. You do not have to wait for it to expire.
 
-## Suspending users and changing their plants
+## Suspending users and changing their sites
 
 These work differently. Instead of reserving time, you submit **the change itself**.
 
 1. Open the person in **User Management** (`SY01`).
-2. Fill in the suspension, restoration, or plant change as usual.
+2. Fill in the suspension, restoration, or site change as usual.
 3. Add a reason and press **Request approval**. Nothing changes yet.
 4. On approval, **the change is applied**.
 
-If circumstances moved in the meantime (already suspended, a plant was deleted), it is not applied and you are told why — rather than forcing a stale change through.
+If circumstances moved in the meantime (already suspended, a site was deleted), it is not applied and you are told why — rather than forcing a stale change through.
 
 ## Questions
 
