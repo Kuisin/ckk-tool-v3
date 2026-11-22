@@ -51,6 +51,9 @@ Docs Diagram:   Mermaid (mermaid) 12.3.0（完全固定・MIT）
 Styling:        Mantine + CSS Modules
 
 Server State:   React Server Components（標準）
+Client Fetch:   TanStack Query 5.108.2（完全固定・MIT）— **クライアントが自分で取りに
+                行く読み取りだけ**（検索欄・F4・ファイル管理・版の確認）。ページの
+                データは RSC、書き込みは Server Action のまま（lib/query-client.ts）
 Client State:   Zustand（軽量）
 URL State:      nuqs 2.10.3（完全固定・MIT）— 検索・フィルタ・ページ・ソート・タブ。
                 画面は hooks/useUrlState.ts だけを通す（nuqs を直接呼ばない）
