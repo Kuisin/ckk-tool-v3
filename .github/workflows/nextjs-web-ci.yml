@@ -7,6 +7,9 @@
 #
 # pnpm workspace（ルート lockfile）。install は必ずリポジトリルートで実行する。
 #
+# ジョブは「何が壊れたか」で分けてある — 依存の脆弱性監査（audit）と Python の
+# サービス（python）は、Next.js の lint / build とは別に赤くなる。
+#
 # E2E: `pages` ジョブが 全画面の読み込み確認（tools/docs-screenshots/page-load.spec.ts）
 # を使い捨て DB + 本番ビルドで回す。単体試験と build が見ない「開いたら落ちる」を
 # ここで止める（撮影用のデモシードもここで全部流れるので、シードの腐りも捕まる）。
@@ -92,9 +95,10 @@ jobs:
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/grants.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f ci/pg-cron-stub.sql
-          for f in sql/kiosk-cron.sql sql/user-suspension-cron.sql \
-                   sql/security-cron.sql sql/portal-cron.sql \
-                   sql/user-provision-cron.sql; do
+          # **一覧を手で持たない** — sql/*-cron.sql を全部流す。手書きの一覧だった
+          # ころ、api-cron.sql（db-migrate は流している）がここに無く、この網の
+          # 外にあった。足したファイルは自動で対象になる。
+          for f in sql/*-cron.sql; do
             echo "==> $f"
             sed '/CREATE EXTENSION IF NOT EXISTS pg_cron;/d' "$f" \
               | psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q
@@ -165,6 +169,70 @@ jobs:
       - name: 後始末
         if: always()
         run: docker rm -f ckk-ci-base-db || true
+
+  # 依存の脆弱性監査は**単独のジョブ**にする。
+  # 以前は nextjs-web ジョブの途中の 1 step で、ここが落ちると後ろの
+  # i18n ガード・typecheck・build が**全部 skipped** になった。advisory は
+  # こちらの変更と無関係に、ある日レジストリ側で公開される — 2026-11 に
+  # picomatch の advisory が出たとき、無関係な PR が軒並み赤くなり、しかも
+  # その PR 自身の build が CI で一度も走らないまま merge される状態になった。
+  # 監査の赤と、変更そのものの赤を別々に読めるようにする。
+  audit:
+    name: 依存の脆弱性監査 (prod, high+)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # 監査 C1: 認証の門（next の proxy / next-auth の authorized）に公開済みの
+      # advisory が出たまま 2 版滞留していた。本番依存の high 以上で止める。
+      # dev 専用の CLI（prisma の mysql2 / deepmerge-ts）は --prod で外れる。
+      #
+      # 素の `pnpm audit` ではなくラッパーを通す — npm の監査エンドポイントが
+      # 落ちている間（2026-09-04 に数十分続いた）は脆弱性ゼロでも
+      # ERR_SOCKET_TIMEOUT で赤になり、開いていた PR と昇格 PR を全部止めた。
+      # ラッパーは「届かなかった」を ::warning:: にして通し、脆弱性が
+      # 見つかったときだけ従来どおり落とす。
+      #
+      # install は不要 — pnpm audit は lockfile だけを読む。
+      - name: Dependency audit (prod, high+)
+        run: bash tools/ci/dependency-audit.sh
+
+  # Python のサービス（Coolify / deploy-stack.sh がイメージを組んで動かす）。
+  # 単体試験は書いてあったのに CI に載っておらず、手で回したときしか走って
+  # いなかった。Python の版は各 Dockerfile の FROM に合わせる。
+  python:
+    name: Python サービス — 構文 & 単体試験
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 試験の無いサービス（po-extract / kot-import / exporter 類）はこれが唯一の網。
+      # 構文誤りは merge 後のイメージビルドではなく**起動時**に初めて落ちる。
+      - name: 構文（coolify/ 配下の全 .py）
+        run: python tools/ci/python-syntax.py
+
+      # 注文書のメール取込。TIFF → PDF 変換の試験が img2pdf / pillow を使う
+      # （入っていないと skip されるので、入れてから回す）。
+      - name: intake-gateway — unittest
+        working-directory: coolify/apps/intake-gateway
+        run: |
+          pip install -q -r requirements.txt
+          python -m unittest discover -s tests -t .
+
+      # 純粋部分だけの試験（IMAP にも DB にも繋がない）なので依存は入れない。
+      - name: admintools — unittest
+        working-directory: coolify/apps/admintools
+        run: python -m unittest discover -s tests -t .
 
   authz-core:
     name: authz-core — lint & test
@@ -239,19 +307,6 @@ jobs:
         run: node scripts/check-server-action-gates.mjs
       - name: API gate guard (requireApiPermission / requireApiAuth)
         run: node scripts/check-api-gates.mjs
-
-      # 監査 C1: 認証の門（next の proxy / next-auth の authorized）に公開済みの
-      # advisory が出たまま 2 版滞留していた。本番依存の high 以上で止める。
-      # dev 専用の CLI（prisma の mysql2 / deepmerge-ts）は --prod で外れる。
-      #
-      # 素の `pnpm audit` ではなくラッパーを通す — npm の監査エンドポイントが
-      # 落ちている間（2026-09-04 に数十分続いた）は脆弱性ゼロでも
-      # ERR_SOCKET_TIMEOUT で赤になり、開いていた PR と昇格 PR を全部止めた。
-      # ラッパーは「届かなかった」を ::warning:: にして通し、脆弱性が
-      # 見つかったときだけ従来どおり落とす。
-      - name: Dependency audit (prod, high+)
-        working-directory: .
-        run: bash tools/ci/dependency-audit.sh
 
       # 英語・中国語対応は段階的に進める（数千箇所が未着手のまま残る）。
       # 全部訳し終わっていなくても落とさない — 見るのは **後戻り** だけで、
