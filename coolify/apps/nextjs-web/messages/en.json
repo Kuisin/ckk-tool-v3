@@ -1661,7 +1661,7 @@
     "ACTION_LABEL": {
       "READ": "View",
       "CREATE": "Create",
-      "UPDATE": "Edit",
+      "UPDATE": "Update",
       "DELETE": "Delete",
       "EXPORT": "Export",
       "APPROVE": "Approve",
@@ -1702,7 +1702,7 @@
       },
       "work_order": {
         "label": "Work order",
-        "summary": "Work with work orders and step execution — including the shop-floor kiosk."
+        "summary": "Work with work orders and step execution — including the shared devices on the floor."
       },
       "inventory": {
         "label": "Inventory",
@@ -1738,7 +1738,7 @@
       },
       "master": {
         "label": "Master data",
-        "summary": "Work with master data: partners, products, materials, process steps, inspection templates, approval settings, plants and more."
+        "summary": "Work with master data: partners, products, materials, process steps, inspection templates, approval settings, sites and more."
       },
       "admin_manual": {
         "label": "Admin manual",
@@ -1770,7 +1770,7 @@
       },
       "user_admin": {
         "label": "User administration",
-        "summary": "Open user management. Suspending, restoring and changing plants go through a per-change approval."
+        "summary": "Open user management. Suspending, restoring and changing sites go through a per-change approval."
       },
       "portal_admin": {
         "label": "Partner portal administration",
@@ -1801,7 +1801,7 @@
       "ALL": "Company-wide",
       "REGION": "Region",
       "COUNTRY": "Country",
-      "PLANT": "Plant",
+      "PLANT": "Site",
       "DEPARTMENT": "Department",
       "TEAM": "Team",
       "SUB": "Subordinates",

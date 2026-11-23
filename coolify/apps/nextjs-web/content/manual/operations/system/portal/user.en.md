@@ -112,8 +112,8 @@ Holding the permission is not enough for the operations below. You **request the
 
 | Operation | Permission | What it unlocks |
 | --- | --- | --- |
-| Activate a portal account | Partner portal administration（`portal_admin`）— Edit | Gives an external person a standing login to their own documents. |
-| Issue backup codes | Partner portal administration（`portal_admin`）— Edit | Prints one-time codes that bypass e-mail possession. The paper is the key. |
+| Activate a portal account | Partner portal administration（`portal_admin`）— Update | Gives an external person a standing login to their own documents. |
+| Issue backup codes | Partner portal administration（`portal_admin`）— Update | Prints one-time codes that bypass e-mail possession. The paper is the key. |
 | Mint a link-only URL | Partner portal administration（`portal_admin`）— Create | Creates a document URL anyone holding it can open. Verified links are not gated. |
 
 Permissions come through roles. If something is missing, ask an administrator.

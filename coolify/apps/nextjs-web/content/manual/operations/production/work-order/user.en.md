@@ -56,7 +56,9 @@ flowchart TD
   appr -->|"First step started"| prog("進行中<br/>In progress"):::violet
   prog -->|"All steps completed (automatic)"| done("完了<br/>Completed"):::green
   req -.->|"Send back"| draft
-  req -.->|"Cancel document"| can("キャンセル<br/>Cancelled"):::red
+  draft -.->|"Cancel document"| can("キャンセル<br/>Cancelled"):::red
+  req -.->|"Cancel document"| can
+  appr -.->|"Cancel document (no step started)"| can
 ```
 
 ## Creating a work order
@@ -138,6 +140,8 @@ Work cannot start on a work order until it is approved. **How many approval stag
 
 > ⚠️ **Work plans must be complete before you can request approval.** Every in-house step needs at least one work plan with a planned date plus whatever that step requires (assignee, work location, and so on — see "Work plans and work actuals" below). If they are not complete, the 「**承認依頼**」 button is disabled and you see a note such as 「**作業計画が揃っていません: ◯◯（作業場所 なし）**」 (work plans are incomplete: ◯◯ (missing work location)) listing which steps are missing what. Outsourced steps and cancelled steps are not counted.
 
+> ⚠️ If the work order approval flow in [approval settings](/manual/en/operations/masters/approval-setting/user) has no steps at all, the approval request is refused with「**指示書の承認フローが未設定です（承認設定 MS0B で設定してください）**」(The approval flow for work orders is not configured). Ask an administrator to set up the steps.
+
 1. On the work order screen, press 「**承認依頼**」 (Request approval) on the card at the very top.
 2. The status changes to 「**承認依頼中**」 (pending approval). From this point, the original order line can no longer be edited.
 3. The person approving each stage presses 「**承認**」 (Approve) in turn.
@@ -150,7 +154,7 @@ Work cannot start on a work order until it is approved. **How many approval stag
 - A work order that was sent back returns to 「下書き」 (draft) and the reason appears in red on the screen. After fixing it, you can send it out again with 「**再承認依頼**」 (Request approval again).
 - Records of approvals and send-backs stay under 「手続き状況」 (procedure status). Ones approved by a stand-in are marked 「（代理: 原承認者）」 (stand-in for the original approver).
 
-You can also approve from the list in [approval management](/manual/en/operations/general/my-tasks/user) (PD03).
+You can also approve from the list in [Pending list](/manual/en/operations/general/my-tasks/user) (`CM01`).
 
 When a 「製造分」 (to make) work order is approved, the material it will use is **set aside (reserved)** for that work order.
 
@@ -233,8 +237,9 @@ Near the bottom of the step screen there are 「**作業計画**」 (work plans)
 
 ### When you want to redo something
 
-- **中断（巻き戻し）** (pause and roll back) … puts a step that is in progress back to not started, with a reason. Any quantity you had entered is not kept.
-- **巻き戻し** (roll back) … puts a finished step back to not started. It cannot be done if the next step has already started, or if the pieces have already gone into stock.
+- **中断（巻き戻し）** (abort) … puts a step that is in progress back to not started, with a reason. Any quantity you had entered is not kept.
+- **巻き戻し** (roll back) … puts a finished step back to not started, with a reason. **The step's inspection records are deleted too**, so an inspection step has to be recorded again. It cannot be done if the next step has already started, or if the pieces have already gone into stock (the work order is completed, or a completed「製品受入（再研磨）」(product receipt (regrind)) step has already taken the customer's tools into stock).
+- **Pause / resume** … only on the shared device (tablet). The PC screen cannot pause a step.
 
 ## Sending step-branch pieces down a different path (adding a branch)
 
@@ -311,7 +316,7 @@ You cannot make one from a for-stock work order (one with no order line). In tha
 ## Other things you can do
 
 - **編集** (edit) … only while it is 「下書き」 (draft). Press 「**編集**」 (Edit) at the top right of the screen.
-- **キャンセル** (cancel) … only while it is 「下書き」 (draft) or 「承認依頼中」 (pending approval). Choose 「**キャンセル**」 (Cancel) from the button with three dots at the top right.
+- **キャンセル** (cancel document) … possible until work starts — while it is 「下書き」 (draft) or 「承認依頼中」 (pending approval), or 「承認済」 (approved) with no step started yet. Choose 「**キャンセル**」 (Cancel) from the button with three dots at the top right. Cancelling releases the reservations taken at approval (materials and so on) and withdraws a pending approval request. The original order line goes back to 「確定」 (confirmed) if no other live work order covers it, and its lot number is removed.
 - **コピー** (copy) … choose 「**コピー**」 (Copy) from the button with three dots at the top right, then choose the order line to use. You get a draft that keeps the steps, the places where they are done, and the inspection sheets. Where it was copied from stays on the detail screen as 「**コピー元**」 (copied from). If there is a newer version than the one you copied, a note suggests copying the latest version.
 - **ストリップ印刷** (strip print) … choose 「**ストリップ印刷**」 (Strip print) from the button with three dots at the top right to print strips with the key points of the work order and a QR code (6 strips on a plain A4 sheet). You can stick them on the pieces or the boxes.
 - The tabs on the detail screen are 「**概要**」 (overview — steps and notes), 「**関連**」 (related — the original order line and where it was copied from), and 「**履歴**」 (history — who changed what and when).

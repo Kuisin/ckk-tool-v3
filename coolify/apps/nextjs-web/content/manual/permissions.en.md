@@ -34,7 +34,7 @@ Like "view quotes, but only my own", three parts combine into one permission.
 | --- | --- |
 | View | See lists and details |
 | Create | Create new records |
-| Edit | Change existing ones |
+| Update | Change existing ones |
 | Delete | Remove them |
 | Export | Export to CSV and similar |
 
@@ -46,7 +46,7 @@ The same *View* shows different amounts depending on scope. Limited to a plant, 
 | --- | --- |
 | Company-wide | The whole company — no plant filter |
 | Region | Every plant in the regions your plants belong to |
-| Plant | Only the plants you belong to |
+| Site | Only the plants you belong to |
 | Own records | Only records you created or are responsible for |
 
 ## Permissions do not decide who may approve
@@ -86,7 +86,7 @@ Permissions fall into four kinds. To see which you hold, open [My permissions](/
 | Purchasing | `purchase_order` | Work with purchase requests and material purchase orders. |
 | Material receipt | `material_receipt` | Record incoming material. |
 | Outsource order | `outsource_order` | Work with outsourcing orders. |
-| Work order | `work_order` | Work with work orders and step execution — including the shop-floor kiosk. |
+| Work order | `work_order` | Work with work orders and step execution — including the shared devices on the floor. |
 | Inventory | `inventory` | View product, material and WIP stock, and move or adjust it. |
 | Delivery order | `delivery_order` | Work with delivery orders. |
 | Delivery note | `delivery_note` | Work with delivery notes. |
@@ -100,7 +100,7 @@ Permissions fall into four kinds. To see which you hold, open [My permissions](/
 
 | Permission | Code | What it covers |
 | --- | --- | --- |
-| Master data | `master` | Work with master data: partners, products, materials, process steps, inspection templates, approval settings, plants and more. |
+| Master data | `master` | Work with master data: partners, products, materials, process steps, inspection templates, approval settings, sites and more. |
 | Admin manual | `admin_manual` | Read the administrator-facing runbooks such as device setup (separate from the public manual). |
 
 ### Administration
@@ -118,6 +118,6 @@ Permissions fall into four kinds. To see which you hold, open [My permissions](/
 | Shared device enrolment | `kiosk_device` | Create, link, activate, disable and revoke device profiles. Adding a device grants access. |
 | Shared device card issuance | `kiosk_card` | See the card list. Issuing, assigning, revoking, resetting PINs and printing sheets need approval. |
 | Personal data access | `personal_data` | Open login and activity history. Details (IP, device signature) and cross-document search need approval. Per-document history tabs are not restricted by this. |
-| User administration | `user_admin` | Open user management. Suspending, restoring and changing plants go through a per-change approval. |
+| User administration | `user_admin` | Open user management. Suspending, restoring and changing sites go through a per-change approval. |
 | Partner portal administration | `portal_admin` | Manage the accounts external partners use to view their own documents, and the per-document links. Activating an account, issuing backup codes and minting link-only URLs each need approval. |
 | API client administration | `api_client` | Manage the credentials external systems use to read business data programmatically. Issuing a token and activating a client each need approval. What a client can read is decided by the roles assigned to it. |

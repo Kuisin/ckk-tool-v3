@@ -4,7 +4,7 @@ description: "Operation code SY08. Issues and manages the QR cards employees use
 ---
 Operation code **SY08**. Issues and manages the **QR cards** employees use to log in to shared plant-floor tablets (kiosk devices).
 
-> This app requires the **kiosk administration permission**. All operations are recorded in the audit log.
+> The entry permission for this app is the code **`kiosk_card`** (not `kiosk`). Listing, details and suspend / resume need only `kiosk_card`, but **issuing, assigning to a user, revoking, resetting / unlocking the PIN, changing the validity period, changing the concurrent-login limit and printing cards** are privileged operations (`kiosk_card.*`): request them in [Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G) and you can perform them only during the period another person approves (system administrators pass straight through). All operations are recorded in the audit log.
 
 ## What you can do here
 

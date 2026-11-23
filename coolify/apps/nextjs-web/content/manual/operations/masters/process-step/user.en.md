@@ -21,7 +21,7 @@ The steps on a [指示書 (work order)](/manual/en/operations/production/work-or
 ## Words used on this page
 
 - **Step** … one single piece of work, such as 「切断」 (cutting), 「センタレス」 (centerless) or 「製作検査」 (production inspection).
-- **Category** … the broad group a step belongs to. There are six: material preparation, machining, coating, inspection, inspection approval, and shipping.
+- **Category** … the broad group a step belongs to. There are seven: material preparation, machining, regrind, coating, inspection, inspection approval, and shipping.
 - **Step list kind** … which step list a step belongs to. **Only steps whose category is "material preparation" go into the prep step list** (one list shared by every product); steps whose category is "**regrind**" go into the shared regrind step list; every other category goes into the manufacturing step list (per product × customer) — coating, inspection and approval steps can also be used on the regrind step list. It follows the category automatically and cannot be picked on its own.
 - **Work order types** … the types of [work order](/manual/en/operations/production/work-order/user) this step may be placed on (from stock / manufacture / regrind). At least one must be chosen. For details, see "[How to choose the work order types](#how-to-choose-the-work-order-types)".
 - **Place of work** … whether the step is done only in house, or can also be asked of an outside company.
@@ -64,7 +64,7 @@ When you open the app, a list of the registered steps is shown.
 1. Press 「**新規作成**」 (New) at the top right of the list screen.
 2. Enter text that stands for this step in 「**工程コード**」 (step code), for example `CYLINDER_MACHINING`. Only capital letters, numbers and underscores can be used.
 3. Enter the name used on the floor in the Japanese box of 「**名称**」 (name), for example 円筒加工. You can save with the English box left empty.
-4. Choose 「**カテゴリ**」 (category). **Choosing "material preparation" puts this step in the shared prep step list; any other category puts it in the per-product manufacturing step list** (the field shows a note underneath explaining which).
+4. Choose 「**カテゴリ**」 (category). **Choosing "material preparation" puts this step in the shared prep step list; choosing "regrind" puts it in the shared regrind step list; any other category puts it in the per-product manufacturing step list** (the field shows a note underneath. That note and the list badge only show "prep" or "manufacturing", so a regrind step is also shown as "manufacturing").
 5. Choose 「**実施場所**」 (place of work). For a step that may be asked of an outside company, choose 「**社内・外注**」 (in house or outsourced).
 6. Choose 「**数量管理**」 (quantity tracking). See the explanation below.
 7. Choose 「**ロット入力（既定）**」 (lot input — default). This decides whether the operator is asked to enter the material lot or slip code when starting the step (required / optional / none).
@@ -123,7 +123,7 @@ You can check the result on the list screen: it has a 「**指示書種別**」 
 
 ### Work plan required fields
 
-A [work order](/manual/en/operations/production/work-order/user) needs at least one work plan (who, when, where, how many) for each in-house step before approval can be requested. **You decide what has to be in that plan here, per step.** The planned date is always required for every step (there is no switch for it). The four switches below decide what else is required.
+A [work order](/manual/en/operations/production/work-order/user) needs at least one work plan (who, when, where, how many) for each in-house step before approval can be requested. **You decide what has to be in that plan here, per step.** The planned date is always required for every step (there is no switch for it). The three switches below decide what else is required.
 
 - **作業計画に担当者が必要** (work plan requires an assignee) … turn it on for a step where the assignee must be decided before requesting approval. **The assignee is optional by default** — it can be decided on the floor after approval.
 - **作業計画に作業場所が必要** (work plan requires a work location) … on by default. Turn it off for a step where a location has no meaning, such as 「〇〇出し」 (issue). The **range** of usable locations is set separately in "[Allowed work locations](#field-allowed-locations)". On an environment with no work locations registered at all, this is not asked for.
@@ -265,7 +265,7 @@ The types of work order this step may be placed on. Choose at least one of **fro
 
 ### Work plan required fields [#field-plan-required-fields]
 
-A work order needs at least one work plan (who, when, where, how many) for each in-house step before approval can be requested. What that one row must contain is decided per step with the four switches below. **The planned date is always required for every step** (there is no switch for it).
+A work order needs at least one work plan (who, when, where, how many) for each in-house step before approval can be requested. What that one row must contain is decided per step with the three switches below. **The planned date is always required for every step** (there is no switch for it).
 
 - **作業計画に担当者が必要** (work plan requires an assignee) … off by default (it can be decided on the floor after approval). Turn it on to require the assignee before requesting approval.
 - **作業計画に作業場所が必要** (work plan requires a work location) … on by default. Turn it off for a step where a location has no meaning, such as 「〇〇出し」 (issue). Not asked for on an environment with no work locations registered at all.

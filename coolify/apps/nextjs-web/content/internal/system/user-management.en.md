@@ -4,15 +4,15 @@ description: "Operation code SY01. Lists every user registered in the system, sh
 ---
 Operation code **SY01**. Lists every user registered in the system, shows each user's role assignments, effective permissions and assigned sites, and lets you change **role assignments** and **assigned sites**.
 
-> Viewing requires **system permission** (`system:READ`). Users cannot be created or deleted here, and names and e-mail addresses cannot be edited (they come in through AD sync).
+> The entry (viewing) permission is **`user_admin`** (READ), not `system:READ`. Users cannot be created or deleted here, and names and e-mail addresses cannot be edited (they come in through AD sync).
 >
-> Changing **role assignments** and **assigned sites** is a privileged operation that needs the permission code **`user_admin`** (UPDATE). It goes through a "change request" (method B): only system administrators (`system:ADMIN`) pass straight through and apply the change directly. Everyone else writes a reason and submits a request, and **another person's approval applies the change** ([Privileged access](/manual/en/operations/system/privileged-access/user), SY0G). Either way it is recorded in the audit log.
+> Changing **role assignments** and **assigned sites**, and **suspending / restoring** a user, are privileged operations that need the permission code **`user_admin`** (UPDATE). They go through a "change request" (method B): only system administrators (`system:ADMIN`) pass straight through and apply the change directly. Everyone else writes a reason and submits a request, and **another person's approval applies the change** ([Privileged access](/manual/en/operations/system/privileged-access/user), SY0G). Either way it is recorded in the audit log.
 
 How a change gets applied, as a diagram:
 
 ```mermaid
 flowchart TD
-  e["Edit role assignments /<br/>assigned sites"] --> q{"System administrator<br/>(system:ADMIN)?"}
+  e["Edit role assignments /<br/>assigned sites /<br/>suspend / restore"] --> q{"System administrator<br/>(system:ADMIN)?"}
   q -->|"Yes"| a["Applied directly"]
   q -->|"No"| r["Write a reason and submit<br/>(change request)"]
   r --> d["Another person approves (SY0G)"]
@@ -28,6 +28,7 @@ flowchart TD
 - Check the user's **effective permissions** (permission code × action × scope) — what they can actually do.
 - Change **role assignments** (`user_admin`; with approval).
 - Review and change the **assigned sites** (what PLANT / REGION scopes apply to) (`user_admin`; with approval).
+- **Suspend** a user (temporarily / indefinitely) and **restore** them (`user_admin`; with approval). Suspension is `is_active = false`; a temporary suspension is lifted by pg_cron when it expires (up to 1 minute late). Until the request is approved, the person can still log in.
 
 ## Opening it
 
@@ -70,7 +71,7 @@ The detail page has four blocks.
 - **I want to change roles** — "Role assignments" → "編集" (Edit) on the detail page. It needs `user_admin` (UPDATE); anyone other than a system administrator writes a reason and submits a request, and the change is applied on approval. **You cannot change your own roles** (it would defeat the point of having a different person request and approve).
 - **admin cannot be removed from the last administrator** — by design. A database with no administrator cannot be recovered from this screen either (changing roles needs `user_admin`, and `user_admin` is not given to any business role), leaving psql as the only way. Create another administrator first.
 - **I saved the roles but the permissions did not change** — changes by anyone other than a system administrator are not applied until they are approved. Check SY0G for a pending request.
-- **Permissions look wrong** — check "Effective permissions" on the detail page. All grant rows from every role are listed, and actual access is their union. If someone has a "site" / "region"-scoped permission but sees no data, also check that their "Assigned sites" is not empty.
+- **Permissions look wrong** — check "Effective permissions" on the detail page. The grant rows from every role are **folded to one row per permission code** (`groupPermissionsByCode`; when several roles grant the same code, the widest scope is shown). Actual access is the union of all grant rows (`decide()`). For the row-by-row breakdown, read the `app.user_permission_summary` / `user_permissions` views. If someone has a "site" / "region"-scoped permission but sees no data, also check that their "Assigned sites" is not empty.
 - **I want to change someone else's language or date display** — not possible from this screen. Language, date/time format and time zone are personal settings that **only the user themselves** can change, from **Display Settings** in the avatar menu (web) or the kiosk launcher (tablet). The language setting is shared between the web app and the kiosk.
 - To see who changed what and when, use the [Activity Log](/admin-manual/en/system/activity-log).
 - For app visibility ON/OFF, see [App Management](/admin-manual/en/system/app-management).

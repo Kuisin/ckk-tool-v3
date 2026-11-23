@@ -18,7 +18,7 @@ The PC screens (quotes, stock, and so on) do not appear here. This screen is onl
 ## Words used on this page
 
 - **QRカード** (QR card) … a card like an employee ID card. You hold it up to log in.
-- **PIN** … your own secret number, at least 4 digits.
+- **PIN** … your own secret number. A new PIN has **6 digits**.
 - **端末** (device) … the tablet itself. Only tablets registered by an administrator can be used.
 - **工程** (step) … one stage of the work, such as cutting, step machining, or inspection.
 
@@ -38,7 +38,7 @@ The steps for preparing a brand-new tablet (installing the app, the registration
 ![Tablet login screen](../../../assets/screenshots/kiosk-login-01.png)
 
 3. When the card is read, the screen changes to the **PIN entry screen**. Enter your PIN with the number buttons on the screen.
-4. The first time a card is used, you choose a new PIN and enter it twice (you enter the same number again to confirm it).
+4. The first time a card is used, you choose a new PIN and enter it twice (you enter the same number again to confirm it). A new PIN has **6 digits**. The same digit repeated (`111111`), a run like `123456`, or a repeat like `121212` is refused with「**その PIN は使えません**」(That PIN cannot be used).
 
 After you log in, the list of apps you can use appears.
 
@@ -98,7 +98,9 @@ Hold your own card up to the tablet's camera. Cards are issued **per person**. D
 
 ### PIN [#field-pin]
 
-The number you chose. You are always asked for it when:
+The number you chose. A new PIN has **6 digits**; the same digit repeated, a run like `123456`, or a repeat like `121212` cannot be used. A PIN you registered earlier with 4 digits keeps working (after an administrator resets it, the next PIN you choose has 6 digits).
+
+You are always asked for it when:
 
 - you use the card on **that tablet for the first time**
 - **two weeks** have passed since you last entered it

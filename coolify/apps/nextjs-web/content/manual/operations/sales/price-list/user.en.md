@@ -197,7 +197,7 @@ Which product the price is for. Like the customer, it cannot be changed after cr
 
 ### Active (whole list) [#field-active]
 
-A field for marking a price list you no longer use as 「無効」(inactive), to keep things tidy. Turning it off does not, at present, affect how quotes work out their unit prices.
+Whether this price list is used. **When it is turned off, quotes and order acceptances can no longer take a unit price from it** ("price list disabled" is shown). Turn off price lists you no longer use.
 
 ### Order type [#field-order-type]
 
@@ -213,11 +213,11 @@ The price the quantity tiers work from. Each tier's price is this price times it
 
 ### Valid from [#field-valid-from]
 
-A date recording when you started using this price. Quote unit prices do not switch over on this date. What does start and stop automatically by period is the discount rules (each rule's own valid period).
+The day this price starts to apply. **If a quote or order acceptance is saved before this date, this price is not used** ("outside the price list's valid period" is shown). Discount rules start and stop separately, by each rule's own valid period.
 
 ### Valid until [#field-valid-until]
 
-When it stops applying. Leave it empty for no end date. **Test and sample prices are normally given an end date.**
+When it stops applying. **After this date, quotes and order acceptances no longer use this price** ("outside the price list's valid period" is shown). Leave it empty for no end date. **Test and sample prices are normally given an end date.**
 
 ### Multiplier [#field-multiplier]
 

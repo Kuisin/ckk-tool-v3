@@ -1833,7 +1833,7 @@
         },
         "reveal_settings_code": {
           "label": "端末設定コードの表示",
-          "description": "その端末の設定画面（左上 5 タップ）を解錠するコードを表示する"
+          "description": "その端末の設定画面（左下 5 タップ）を解錠するコードを表示する"
         },
         "regenerate_settings_code": {
           "label": "端末設定コードの再生成",

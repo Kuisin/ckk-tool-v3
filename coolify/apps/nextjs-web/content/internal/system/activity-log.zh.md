@@ -4,7 +4,7 @@ description: "操作代码 SY07。面向管理员的应用，可跨全系统查�
 ---
 操作代码 **SY07**。面向管理员的应用，可跨全系统查看操作历史（审计日志）——"谁在何时、以何种方式修改了哪条数据"。
 
-> 本应用需要 **系统权限**。历史记录 **仅供查看**，无法在此界面编辑或删除。
+> 入口权限为 **`personal_data`（个人数据查看）**（不是 `system`）。此外，跨单据搜索（列表）和单条详情分别是特权操作 `personal_data.activity_search` / `personal_data.activity_detail`，只有在 [特权访问](/manual/zh/operations/system/privileged-access/user)（SY0G）中申请并获批准的期间内才能打开。各单据的「履歴」（历史）标签不受此批准限制。历史记录 **仅供查看**，无法在此界面编辑或删除。
 
 ## 本应用能做什么
 

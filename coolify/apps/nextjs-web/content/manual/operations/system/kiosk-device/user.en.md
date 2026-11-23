@@ -278,16 +278,16 @@ Holding the permission is not enough for the operations below. You **request the
 | Reveal PIN history | Shared device secrets（`kiosk_secret`）— View | Lists up to 400 days of past exit PINs — needed for offline devices, but broader than the current value. |
 | Reveal the PIN a device holds | Shared device secrets（`kiosk_secret`）— View | Shows the exit PIN last delivered to that device — used to open an offline tablet. |
 | Reveal device settings code | Shared device secrets（`kiosk_secret`）— View | Shows the code that unlocks that device's hidden settings screen. |
-| Regenerate device settings code | Shared device secrets（`kiosk_secret`）— Edit | Issues a new settings code; anyone holding the old one loses access. |
-| Reset device attestation key | Shared device secrets（`kiosk_secret`）— Edit | Clears the attestation binding so the next device to connect is trusted (TOFU). Only for hardware replacement. |
+| Regenerate device settings code | Shared device secrets（`kiosk_secret`）— Update | Issues a new settings code; anyone holding the old one loses access. |
+| Reset device attestation key | Shared device secrets（`kiosk_secret`）— Update | Clears the attestation binding so the next device to connect is trusted (TOFU). Only for hardware replacement. |
 | Create device profile | Shared device enrolment（`kiosk_device`）— Create | Creates the slot a new tablet can be linked into. |
-| Link a device | Shared device enrolment（`kiosk_device`）— Edit | Binds real hardware to a profile and issues its device token. |
-| Activate a device | Shared device enrolment（`kiosk_device`）— Edit | Brings a linked device into service so employees can log in on it. |
-| Disable / enable a device | Shared device enrolment（`kiosk_device`）— Edit | Suspends a device or brings a suspended one back. |
-| Unlink | Shared device enrolment（`kiosk_device`）— Edit | Destroys the device token, sessions and attestation key, reopening the profile. |
-| Revoke a device | Shared device enrolment（`kiosk_device`）— Edit | Locks the device out immediately, cutting live shop-floor sessions. |
+| Link a device | Shared device enrolment（`kiosk_device`）— Update | Binds real hardware to a profile and issues its device token. |
+| Activate a device | Shared device enrolment（`kiosk_device`）— Update | Brings a linked device into service so employees can log in on it. |
+| Disable / enable a device | Shared device enrolment（`kiosk_device`）— Update | Suspends a device or brings a suspended one back. |
+| Unlink | Shared device enrolment（`kiosk_device`）— Update | Destroys the device token, sessions and attestation key, reopening the profile. |
+| Revoke a device | Shared device enrolment（`kiosk_device`）— Update | Locks the device out immediately, cutting live shop-floor sessions. |
 | Pair a display | Shared device enrolment（`kiosk_device`）— Create | Adds a shop-floor screen. A paired display shows business data where anyone can see it. |
-| Revoke a display | Shared device enrolment（`kiosk_device`）— Edit | Locks the display out immediately; it returns to the pairing screen on next reload. |
+| Revoke a display | Shared device enrolment（`kiosk_device`）— Update | Locks the display out immediately; it returns to the pairing screen on next reload. |
 
 Permissions come through roles. If something is missing, ask an administrator.
 

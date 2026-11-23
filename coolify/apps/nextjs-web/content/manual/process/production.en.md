@@ -30,7 +30,7 @@ The full list of each step's branches and the app to use is in [Business Flow](/
 | 1. Check product stock | Split into the portion already in stock and the portion to make new | Production control | [Inventory](/manual/en/operations/inventory/inventory-management/user) (`ST01`) |
 | 2. Check material | See whether there is enough material to make it | Production control | [Inventory](/manual/en/operations/inventory/inventory-management/user) (`ST01`) |
 | 3. Make the work order | Split into the stock portion and the manufactured portion (only the manufactured portion has steps lined up). Orders to regrind the customer's tools become regrind work orders | Sales support | [Work order](/manual/en/operations/production/work-order/user) (`PD02`) |
-| 4. Get approval | Pass every step set in approval settings, so that manufacturing can begin | Approver | [Approval management](/manual/en/operations/general/my-tasks/user) (`PD03`) |
+| 4. Get approval | Pass every step set in approval settings, so that manufacturing can begin | Approver | [Pending list](/manual/en/operations/general/my-tasks/user) (`CM01`) |
 | 5. Run the steps | The shop floor records start, completion and quantities | Production | [Work order](/manual/en/operations/production/work-order/user) / shop-floor tablet |
 | 6. Complete | Once every step is done, it becomes product stock | Production / production control | [Inventory](/manual/en/operations/inventory/inventory-management/user) |
 
@@ -46,7 +46,7 @@ First look at product stock and split it into **the portion that can be taken fr
 
 ### 3. Making the work order
 
-Make a work order for each of the stock portion and the manufactured portion. It is the manufactured portion that has its steps lined up in order, and it always begins with **exactly one**「出し・受渡し」(issue / hand-over) step (more than one cannot be chosen). The sequence of steps can be registered as a **process route** per product × ordering customer (business partner), and when making a work order it is chosen automatically in the order: the route whose ordering customer matches → a route not limited to any ordering customer → the first route. **The stock portion has a fixed composition of「製品出し」(product issue) plus an optional「出荷前検査」(pre-shipment inspection)**, and creating it allocates the stock. Shipping itself is not a step; it is managed by [Delivery order](/manual/en/operations/shipping/delivery-order/user). If there is a previous work order for the same ordering customer and product, it can be copied (a warning appears if the content has changed). For each step, decide whether it is done in-house or outsourced; outsourcing it makes it appear in the [Outsource order](/manual/en/operations/purchasing/outsource-order/user) list (steps … [Standard flow §6](/manual/en/process/default-flow#stage-6)).
+Make a work order for each of the stock portion and the manufactured portion. It is the manufactured portion that has its steps lined up in order, and it always begins with **exactly one**「出し・受渡し」(issue / hand-over) step (more than one cannot be chosen). The sequence of steps can be registered as a **process route** per product × ordering customer (business partner), and when making a work order it is chosen automatically in the order: the route whose ordering customer matches → a route not limited to any ordering customer → the first route. **The stock portion has a fixed composition of「製品出し」(product issue) plus an optional「出荷前検査」(pre-shipment inspection)**. Creating it does not allocate any stock — the allocation is made by「在庫照合」(stock matching) on the order line, and that stock is issued when the work order completes. Shipping itself is not a step; it is managed by [Delivery order](/manual/en/operations/shipping/delivery-order/user). If there is a previous work order for the same ordering customer and product, it can be copied (a warning appears if the content has changed). For each step, decide whether it is done in-house or outsourced; outsourcing it makes it appear in the [Outsource order](/manual/en/operations/purchasing/outsource-order/user) list (steps … [Standard flow §6](/manual/en/process/default-flow#stage-6)).
 
 **Regrinding** (an order to regrind tools the customer has used — ours or another maker's) is made as a **regrind work order** from an order line whose order type is regrind. Nothing is manufactured, so it has no material and no storage location; its steps come from the latest version of the shared **regrind step list** (tool receipt → grinding → optional coating / inspection), tied to neither product nor customer. Recording the number of tools that arrived on the first step, tool receipt, books them as the customer's stock (separate from our own). Another maker's tool is registered in the product master as an external product first.
 
@@ -60,7 +60,7 @@ A work order cannot start manufacturing until it is approved. How many approval 
 
 ### 5. Running the steps
 
-The shop floor records start and completion for each step. Enter the received quantity and the defects one row at a time — for each row enter the category (semi-finished, scrapped, process branch), the defect type, details and the quantity; the good quantity and the total per category are decided automatically from that list. **It can be paused and resumed**, and work time accumulates per session. Time spent working on several steps at once is apportioned by the number of steps worked simultaneously (two at once means half each). The same operations can be done from the shop-floor tablet (steps … [Standard flow §8](/manual/en/process/default-flow#stage-8)).
+The shop floor records start and completion for each step. Enter the received quantity and the defects one row at a time — for each row enter the category (semi-finished, scrapped, process branch), the defect type, details and the quantity; the good quantity and the total per category are decided automatically from that list. **It can be paused and resumed** (only on the shop-floor tablet; the PC screen has no pause, and to start over you abort the step back to not started), and work time accumulates per session. Time spent working on several steps at once is apportioned by the number of steps worked simultaneously (two at once means half each). The same operations can be done from the shop-floor tablet (steps … [Standard flow §8](/manual/en/process/default-flow#stage-8)).
 
 **The defect branch** — when defects occur, that portion can be routed to a separate step series (a branch) for rework.
 
@@ -93,8 +93,8 @@ Once every step is done, that work order's product goes into stock, and you can 
 | Document | How the state moves |
 |----------|----------------------|
 | Order line | Draft → Confirmed → In production → Partially shipped → Shipped (can only be cancelled via a request → approval made per order acceptance) |
-| Work order | Draft → Pending approval → Approved → In progress → Completed (can be cancelled) |
-| Work order approval | Pending approval → Approved (can be sent back). Which step it is on now is shown in Approval management and on the work order screen |
+| Work order | Draft → Pending approval → Approved → In progress → Completed (can be cancelled until work starts — while draft, pending approval, or approved with no step started) |
+| Work order approval | Pending approval → Approved (can be sent back). Which step it is on now is shown in the Pending list (`CM01`) and on the work order screen |
 | Step | Not started → In progress → Completed (can be cancelled; while paused it stays in progress) |
 
 ## Where things tend to get stuck
@@ -103,7 +103,7 @@ Once every step is done, that work order's product goes into stock, and you can 
 The previous step may not be complete yet, or the work order may not be approved. Check the work order's state and that the previous step is complete. It also cannot be started when a lot/slip code is required for the step and has not been entered, when a preceding work order (the "related work orders" on the work order detail screen) is not complete, or when another user has a session open.
 
 **The work order is not approved**
-A different person (group) approves at each step. Check in Approval management which step it is stuck at now.
+A different person (group) approves at each step. If approval settings has no step at all for work orders, the approval request itself is refused. Check on the work order screen which step it is stuck at now.
 
 **Want to see the steps of a completed work order**
 Steps can still be opened after completion or cancellation. The button becomes「詳細」(details), and you can look back at actuals and inspection records.

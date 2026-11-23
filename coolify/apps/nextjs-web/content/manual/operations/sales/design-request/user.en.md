@@ -20,7 +20,7 @@ An app for asking the design department to make a drawing, and for **keeping eac
 - You can require **approval before the design starts**. The approval steps are set in [Approval settings](/manual/en/operations/masters/approval-setting/user).
 - The finished drawing is registered in [Drawing](/manual/en/operations/production/design-file/user). **The versions (v1, v2) are held by Drawing**; this app holds the request and its progress.
 - An approved request can be **printed as a PDF document** to hand to manufacturing on paper.
-- If you set a product, the newest drawing on the [product master](/manual/en/operations/masters/product/user) is replaced when the request is done.
+- The newest drawing on the [product master](/manual/en/operations/masters/product/user) is replaced when that version is **confirmed** in [Drawings](/manual/en/operations/production/design-file/user) — not when the request is done.
 
 Use this when a customer asks about a special shape and a drawing is needed.
 
@@ -89,7 +89,7 @@ When you open the app, the requests so far are shown as a list.
 ![Design request list screen](../../../assets/screenshots/design-request-list-01.en.png)
 
 - **依頼番号 (request number)** … a number starting with `DSG-`. It is added automatically when you save.
-- **トリガー (trigger)** … 「見積時」(at quotation) or 「受注時」(at order) is shown as a badge.
+- **トリガー (trigger)** … 「見積時」(at quotation), 「受注時」(at order) or 「単独」(standalone) is shown as a badge.
 - **担当者 (assignee)** … the person who makes the drawing.
 - **状態 (status)** … a colored badge shows where it stands now. Gray is「下書き」(draft), yellow is「承認依頼中」(pending approval), blue is「未着手」(not started), violet is「進行中」(in progress), green is「完了」(done), red is「差し戻し」(sent back) and「キャンセル」(cancelled).
 - Type a request number, a product name, or a word from the request details in the search box at the top to narrow down the list. You can also narrow it down with「トリガー」(trigger),「担当者」(assignee) and「状態」(status) on the right.
@@ -98,7 +98,7 @@ When you open the app, the requests so far are shown as a list.
 ## Asking for a design
 
 1. Press「**新規作成**」(New) at the top right of the list screen.
-2. In「**トリガー**」(trigger), press「**見積時**」(at quotation) or「**受注時**」(at order) to choose it.
+2. In「**トリガー**」(trigger), press「**見積時**」(at quotation),「**受注時**」(at order) or「**単独**」(standalone) to choose it.
 3. If you chose 見積時, choose the quote it is based on in the「**見積書**」(quote) field. You can also leave it empty.
 4. If you chose 受注時, search for and choose the order line it is based on in the「**注文明細**」(order line) field. You can also leave it empty. If you chose 単独, no reference field appears.
 5. Choose the product in the「**製品**」(product) field — required. Picking it flips「**依頼区分**」(request kind) below to 新規 (new) or 改訂 (revision) automatically.
@@ -195,7 +195,7 @@ You can only attach files **between approval and completion** (未着手 and 進
 
 How versions are counted (one registration = one version; versions are per product and customer) is covered on the [Drawing](/manual/en/operations/production/design-file/user) page.
 
-The completion date is recorded, and the requester is notified — as is the sales rep on the quote, if it was raised at quoting time. On a request where you set a product, that product's newest drawing is switched to this version as well.
+The completion date is recorded, and the requester is notified — as is the sales rep on the quote, if it was raised at quoting time. Completing the request does not switch the product's newest drawing. It switches when the version is **confirmed** in [Drawings](/manual/en/operations/production/design-file/user) (a draft version is not used by work orders or the product master).
 
 If a correction is needed after it is done, press「**差し戻し**」(send back) from「**…**」, then press「**差し戻す**」(send back). The status returns to 進行中 (in progress) and the completion date is cleared. This kind of send-back is **redoing the work**, so the approval does not have to be taken again.
 
@@ -295,8 +295,8 @@ What needs to be designed. **The manufacturing side works from this text alone**
 **Q. It says「設計依頼書の承認フローが未設定です」(no approval flow is set for design requests) and I cannot request approval.**
 A. Approval settings has no steps for 設計依頼書 yet. Ask an administrator to add them in Approval settings (MS0B).
 
-**Q. It says「設計ファイルを添付してから完了してください」(please attach a design file before finishing) and I cannot finish.**
-A. No drawing file is attached yet. Upload the drawing from the「**ファイル**」(files) tab, then press「完了」(done) again.
+**Q. It says "No drawing has been registered for this request. Register a version in Drawings first" and I cannot finish.**
+A. No version made from this request exists in [Drawings](/manual/en/operations/production/design-file/user) yet. Work files uploaded on the「**ファイル**」(files) tab do not count. Register a version with「**設計図に登録**」(register in Drawings) on the request screen, then press「完了」(done) again (a draft version is enough to finish).
 
 **Q. It says 改訂 (revision) but this should be new.**
 A. That product still has a past design version. If that does not match reality, switch the kind to 新規 (new) by hand — it will then show as 手動指定 (set manually).

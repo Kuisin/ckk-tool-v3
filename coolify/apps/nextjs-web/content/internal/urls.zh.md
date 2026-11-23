@@ -28,7 +28,7 @@ description: "业务系统、平板终端、管理工具、数据库浏览器、
 
 | URL | 环境 | 内容 |
 | --- | --- | --- |
-| `https://ckk-kiosk.kai-lab.net` | **生产** | 工序执行、指示书扫描 |
+| `https://ckk-kiosk.kai-lab.net` | **生产** | 工序执行、工单扫描 |
 | `https://ckk-kiosk-dev.kai-lab.net` | 验证 | 验证用 |
 | `https://kiosk.ckk-tools.loc` | **生产** | 公司内部专用地址（自签名证书） |
 

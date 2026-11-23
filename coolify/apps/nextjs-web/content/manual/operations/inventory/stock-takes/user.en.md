@@ -64,7 +64,7 @@ Once submitted, you cannot resume entering counts while it is awaiting approval 
 
 ## Approving
 
-Someone with approval permission can press 「**承認**」(Approve) or 「**差し戻し**」(Send back) from the card at the top of the detail screen. Sending it back returns it to the pre-submit state, so it can be re-entered and resubmitted. Once every step is approved, it proceeds to confirmation.
+Someone with approval permission can press 「**承認**」(Approve) or 「**差し戻し**」(Send back) from the card at the top of the detail screen. **A reason is required** to send it back (it cannot be sent back with the reason left empty). Sending it back returns it to the pre-submit state, so it can be re-entered and resubmitted. Once every step is approved, it proceeds to confirmation.
 
 As a diagram, from creation to confirmation:
 

@@ -57,7 +57,7 @@ flowchart TD
 ## Questions and problems
 
 **Q. No email arrives.**
-A. Nothing is sent for notifications you have already read. The person may also have turned email off in their own [notification settings](/manual/en/operations/general/my-tasks/user).
+A. Nothing is sent for notifications you have already read. The person may also have turned email off in their own [notification settings](/manual/en/user-settings).
 
 **Q. Nothing arrives even after the send interval has passed.**
 A. The send interval is a lower limit — "never send more often than this". If there are no unread notifications, nothing is sent.

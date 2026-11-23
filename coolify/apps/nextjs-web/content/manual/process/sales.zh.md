@@ -96,7 +96,7 @@ flowchart TD
 
 ### （并行）设计委托
 
-对于没有图纸的产品，会在报价阶段、接单之后其中之一，或不关联任何单据**单独**起草设计委托单。**只有通过审批才能开工**（级数的构成由[审批设置](/manual/zh/operations/masters/approval-setting/user)决定，可按触发方式・委托区分・优先级而变化）。由制造制作图纸，完成后会替换产品的最新图纸（操作步骤……[标准流程（并行）设计委托](/manual/zh/process/default-flow#design-request)）。
+对于没有图纸的产品，会在报价阶段、接单之后其中之一，或不关联任何单据**单独**起草设计委托单。**只有通过审批才能开工**（级数的构成由[审批设置](/manual/zh/operations/masters/approval-setting/user)决定，可按触发方式・委托区分・优先级而变化）。由制造制作图纸，在[图纸](/manual/zh/operations/production/design-file/user)中登记版本并完成委托。产品的最新图纸在图纸中确定该版本时才会替换（操作步骤……[标准流程（并行）设计委托](/manual/zh/process/default-flow#design-request)）。
 
 产品已有图纸时会自动判定为**修订**，没有则判定为**新规**（新增），修订时需要填写变更理由。
 

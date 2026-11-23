@@ -15,11 +15,12 @@ This is the **素材入荷** (material receipt) app, where you record that mater
 - You can look back at what arrived, when, where, and how many pieces.
 - You can keep copies of delivery notes and inspection reports attached to the arrival record.
 - Use it when material bought without a purchase order (material brought in directly, for example) arrives.
+- You can **read a supplier's delivery note with AI** and register the delivered materials in one go.
 
 ## Words used on this page
 
 - **入荷** (arrival) … material actually arriving.
-- **発注入荷** (arrival from an order) … an arrival of material ordered with a [material purchase order](/manual/en/operations/purchasing/purchase-order/user). **It is recorded automatically.**
+- **発注入荷** (arrival from an order) … an arrival of material ordered with a [material purchase order](/manual/en/operations/purchasing/purchase-order/user). **It is recorded automatically when you press 「入荷完了」 (Receiving complete) or 「分割入荷」 (Partial receipt) on the purchase order screen.**
 - **直接調達** (direct purchase) … an arrival of material bought without a purchase order. **You type it in on this screen.**
 - **入荷先拠点** (receiving site) … the site (plant or business location) that receives the material.
 - **証憑** (supporting document) … papers you may want to look at later, such as a copy of the delivery note or an inspection report.
@@ -30,7 +31,7 @@ This is the **素材入荷** (material receipt) app, where you record that mater
 - To choose the site whose stock should go up, that **[site](/manual/en/operations/masters/plant/user) must be registered**.
 - You need material receipt permission to register arrivals. If the buttons do not appear, please ask the person in charge at your company.
 
-> ⚠️ When material you ordered with a purchase order arrives, do not register it here. Press 「**入荷完了**」 (Receiving complete) on the [material purchase order](/manual/en/operations/purchasing/purchase-order/user) screen and the arrival record is created automatically.
+> ⚠️ **This screen is only for material bought without a purchase order (direct purchases).** When material ordered with a purchase order arrives — all of it or only part — do not register it on this screen (「新規作成」 (New) or 「納品書から登録」 (From a delivery note)). Receipts registered here are **not linked to the purchase order**, so the order's remaining quantity does not go down, and pressing 「入荷完了」 (Receiving complete) later **puts the same material into stock a second time**. For ordered material, use the [material purchase order](/manual/en/operations/purchasing/purchase-order/user) screen: 「**入荷完了**」 (Receiving complete) when everything has arrived, or 「**分割入荷**」 (Partial receipt) when only part has. The receipt record is created automatically.
 
 As a diagram, this is where to record an arrival:
 
@@ -40,8 +41,9 @@ flowchart TD
   q1 -->|"No (direct purchase)"| mr["Register it in Material receipt<br/>(this screen)"]
   q1 -->|"Yes"| q2{"Has everything<br/>ordered arrived?"}
   q2 -->|"Yes"| po["On the material purchase order,<br/>press 「入荷完了」 (Receiving complete)"]
-  q2 -->|"Only part"| mr
-  po -.-> auto["The receipt record is created<br/>automatically and stock increases"]
+  q2 -->|"Only part"| pp["On the material purchase order,<br/>press 「分割入荷」 (Partial receipt)"]
+  po -.-> auto
+  pp -.-> auto["The receipt record is created<br/>automatically and stock increases"]
   mr -.-> stock["Stock at the receiving site increases"]
 ```
 
@@ -76,6 +78,20 @@ When you register it, the material stock at the site you chose goes up by that a
 > ⚠️ If you register with 「入荷先拠点」 (receiving site) left blank, the material does not go into any site's stock — it is treated as stock with no site. This cannot be fixed afterwards, so please always choose the site that received it.
 
 You can attach PDF, PNG, JPG, WEBP, HEIC, XLSX, and CSV files, up to 20MB each.
+
+## Registering from a delivery note (direct purchase)
+
+When the delivery note for material bought without a purchase order arrives, you can read it with AI and register several materials at once.
+
+1. Press 「**納品書から登録**」 (From a delivery note) on the list screen.
+2. Choose the delivery note (PDF or image) in the 「**AI で読み取る**」 (Read with AI) panel and press 「**AI で読み取る**」 (Read with AI). Price columns are not read.
+3. The supplier and line items that were read are shown. 「**入荷先拠点**」 (Receiving site) and 「**入荷日**」 (Received date) apply to all lines (you can also change them per line).
+4. For lines whose material could not be identified, pick it from the candidates. For lines you do not want to register, choose 「**この行を登録しない**」 (Do not register this line). The unit comes from the material master.
+5. Press 「**選択した ◯ 件を登録**」 (Register ◯ selected).
+
+The selected lines are registered **together in one go**. If even one line fails, none of them is registered (you never end up with only half registered). You cannot register while a line still has no material. The system remembers the material names you picked, so the next delivery note in the same supplier's format is matched more easily.
+
+> ⚠️ Receipts registered here are not linked to a purchase order either. Record delivery notes for material ordered with a purchase order with 「**分割入荷**」 (Partial receipt) or 「**入荷完了**」 (Receiving complete) on the [material purchase order](/manual/en/operations/purchasing/purchase-order/user), not on this screen.
 
 ## Looking at what you recorded
 
@@ -123,7 +139,7 @@ The day it arrived. **Stock increases as of this date.** Even if you record it l
 
 ### Quantity [#field-quantity]
 
-How much actually arrived. **It does not have to match the ordered quantity** — if the delivery is split, record what arrived and enter the rest as a later receipt.
+How much actually arrived. If a direct purchase arrives in parts, record what arrived and enter the rest as a later receipt. **Partial arrivals of material ordered with a purchase order are recorded with 「分割入荷」 (Partial receipt) on the purchase order, not on this screen.**
 
 ### Unit [#field-unit]
 
@@ -138,8 +154,8 @@ Anything worth checking later, such as damage or a count that did not match. Del
 **Q. Material I ordered has arrived. Do I register it here?**
 A. No. Please press 「**入荷完了**」 (Receiving complete) on the [material purchase order](/manual/en/operations/purchasing/purchase-order/user) screen. The arrival record is created from there automatically. If you type it in here as well, the same material goes into stock twice.
 
-**Q. Only part of the order arrived first.**
-A. 「入荷完了」 (Receiving complete) on the purchase order handles all the remaining quantity at once. For a partial delivery, register only the number of pieces that arrived on this screen.
+**Q. Only part of the material I ordered arrived first.**
+A. Do not register it on this screen. Press 「**分割入荷**」 (Partial receipt) on the [material purchase order](/manual/en/operations/purchasing/purchase-order/user) screen and record just the pieces that arrived. You cannot receive more than the ordered quantity, and once every line reaches its ordered quantity the order becomes received automatically. If it is decided that the rest will not come, close the order with 「**未入荷のまま完了**」 (Close without receiving).
 
 **Q. I want to change what I registered.**
 A. An arrival record is a fixed record made after the stock has already moved, so it cannot be changed or deleted. There are no 「編集」 (Edit) or 「削除」 (Delete) buttons. Please check the quantity and the site carefully before you register.

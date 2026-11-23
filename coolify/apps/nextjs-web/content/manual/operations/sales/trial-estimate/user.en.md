@@ -85,14 +85,14 @@ Open the「**素材価格推移**」(material price history) tab to see, as a gr
 
 An estimate typed in by hand gets an orange「**カスタム**」(custom) badge.
 
-> ⚠️ If a yellow「**既定価格**」(default price) badge appears on the reference unit price, there are no purchase records for that material yet. The calculation uses the standard price registered on the material type.
+> ⚠️ If a yellow「**既定価格**」(default price) badge appears on the reference unit price, there are no purchase records for that material yet. The calculation uses the default price registered on the [material type](/manual/en/operations/masters/material-type/user) for that material type × diameter × surface finish. If that combination has no default price either, the 「既定材料単価」(default material unit price) in the [Price estimate engine](/manual/en/operations/sales/trial-estimate/settings) (SY02) is used.
 
 How the reference unit price is decided, as a diagram:
 
 ```mermaid
 flowchart TD
   q{"Are there purchase records<br/>for that material?"} -->|"Yes"| hist["Filled in automatically<br/>from past purchases"]
-  q -->|"No"| def["Standard price registered on the material type<br/>「既定価格」badge"]
+  q -->|"No"| def["Material type default price<br/>(if none, SY02 default material unit price)<br/>「既定価格」badge"]
   hist -.->|"Retype with「単価を編集」"| cust["Price typed in by hand<br/>「カスタム」badge"]
   def -.->|"Retype with「単価を編集」"| cust
 ```
@@ -199,7 +199,7 @@ The stock surface condition. **Black bar is cheaper but may require a centreless
 
 ### Reference price (¥/1000mm) [#field-reference-price]
 
-The price derived **automatically from purchase history** for that material type, diameter and surface. Where there is no history, the material type's default price is used. The screen shows which history it came from.
+The price derived **automatically from purchase history** for that material type, diameter and surface. Where there is no history, the material type's default price (material type × diameter × surface finish) is used, and if that is not set either, the 「既定材料単価」(default material unit price) in SY02. The screen shows which history it came from.
 
 ### Material price (manual, ¥/pc) [#field-manual-material-price]
 
@@ -259,7 +259,7 @@ A. That estimate is already confirmed, or already used in a price list. You do n
 A. An estimate used in a price list (status 「価格表登録済」) cannot be changed. To calculate for a different product, make a new one with「複製して作り直す」(copy and re-estimate).
 
 **Q. The reference unit price shows「既定価格」(default price). The amount looks different from the real one.**
-A. There are no purchase records for that material yet, so the standard price registered on the material type is used. If you know the real price, enter it with「**単価を編集**」(edit unit price).
+A. There are no purchase records for that material yet, so the material type's default price is used (or, if that is not set, the 「既定材料単価」(default material unit price) in SY02). If you know the real price, enter it with「**単価を編集**」(edit unit price).
 
 **Q. I chose 円筒 (cylinder) and the reference unit price field disappeared.**
 A. For 円筒 (cylinder), the rule is that you enter the material price yourself in「**素材価格（手入力 ¥/本）**」(material price, entered by hand, ¥ per piece). You can still look at the purchase records for reference on the「素材価格推移」(material price history) tab.

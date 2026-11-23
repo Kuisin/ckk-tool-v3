@@ -69,16 +69,16 @@ Sending back requires a reason, which the requester sees.
 
 From the **History** tab, **Revoke** ends an active grant immediately. You do not have to wait for it to expire.
 
-## Suspending users and changing their sites
+## Suspending users and changing their sites or roles
 
 These work differently. Instead of reserving time, you submit **the change itself**.
 
 1. Open the person in **User Management** (`SY01`).
-2. Fill in the suspension, restoration, or site change as usual.
+2. Fill in the suspension, restoration, site change, or role change as usual.
 3. Add a reason and press **Request approval**. Nothing changes yet.
 4. On approval, **the change is applied**.
 
-If circumstances moved in the meantime (already suspended, a site was deleted), it is not applied and you are told why — rather than forcing a stale change through.
+If circumstances moved in the meantime (already suspended, a site was deleted, the change would remove the administrator role from the last administrator), it is not applied and you are told why — rather than forcing a stale change through.
 
 ## Questions
 
