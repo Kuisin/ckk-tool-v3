@@ -270,9 +270,9 @@
   下書き / 承認済 / 進行中のとき編集でき（実績は承認後のみ）、承認依頼中・完了・
   キャンセルでは閉じる（サーバー側 addStepPlan / deleteStepPlan も同じ判定）。
   **作業計画の必須項目は工程マスタが決める**（`requiredPlanFields`）: 計画日は
-  常に必須、担当者 / 作業場所 / 開始・終了時刻 / 数量 は工程ごと
-  （`plan_assignee_required` / `work_location_required` / `plan_time_required` /
-  `plan_quantity_required`）。**担当者は既定で任意** — 計画の最小単位は
+  常に必須、担当者 / 作業場所 / 開始・終了時刻 は工程ごと
+  （`plan_assignee_required` / `work_location_required` / `plan_time_required`。
+  数量の印 `plan_quantity_required` は計画の数量の廃止に伴い 2026-11-23 に落とした）。**担当者は既定で任意** — 計画の最小単位は
   「いつ・どこで」で、人は承認後に現場で決めてよい（`work_order_step_plans.user_id`
   は nullable。担当者なしの計画は指示書詳細の担当欄に出ず、共有端末の行レベル判定
   でも誰も縛らない = 未計画と同じ扱い）。計画パネルの必須印（赤 *）は
