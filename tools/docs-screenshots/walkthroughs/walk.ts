@@ -26,8 +26,12 @@ export const AUTH_STATE: Record<WalkUser, string> = {
   admin: ".auth/admin.json",
 };
 
-/** 利用者に見せるユーザーの呼び名（字幕ではなくログ用）。 */
-const USER_LABEL: Record<WalkUser, string> = { staff: "demo2", approver: "demo_shot", admin: "demo1" };
+/** 各役のユーザー名。global-setup.ts がログインに使うものと同じ env を読む。 */
+const USER_LABEL: Record<WalkUser, string> = {
+  staff: process.env.SHOT_STAFF_USERNAME ?? "demo2",
+  approver: process.env.SHOT_USERNAME ?? "demo_shot",
+  admin: process.env.SHOT_ADMIN_USERNAME ?? "demo1",
+};
 
 /**
  * 録画に写すカーソル。Playwright の録画には OS のカーソルが写らないので、
@@ -279,9 +283,25 @@ export class Walk {
       cookies: Parameters<ReturnType<Page["context"]>["addCookies"]>[0];
     };
     const context = this.page.context();
+    // 先にいまの画面を離れる。開いたままだと、前のユーザーで飛んでいた通信の
+    // 応答（セッションの延長 = Set-Cookie）が**差し替えたあと**に届き、cookie を
+    // 前のユーザーへ戻してしまう。CI（遅い機械）で実際に起き、担当者に戻した
+    // つもりの操作が承認者のまま記録されて、次の承認依頼で「自分で自分に依頼」になった。
+    await this.page.goto("about:blank");
     await context.clearCookies();
     await context.addCookies(state.cookies);
     console.log(`[walk] switched to ${USER_LABEL[user]}`);
     await this.goto(path);
+    // 差し替えが効いていることを、サーバーに「いま誰か」を聞いて確かめる（効いて
+    // いなければその場で落とす — 数手順あとに別の理由で落ちると原因に辿り着けない）。
+    // cookie の値は比べられない: セッションは暗号化した JWT で、リクエストのたびに
+    // 発行し直されるので、同じ人でも値が変わる。
+    const res = await this.page.request.get("/api/auth/session");
+    const session = (await res.json().catch(() => null)) as { user?: { username?: string } } | null;
+    if (session?.user?.username !== USER_LABEL[user]) {
+      throw new Error(
+        `ユーザーの切り替えが効いていない（${USER_LABEL[user]} のはずが ${session?.user?.username ?? "未ログイン"}）`,
+      );
+    }
   }
 }
