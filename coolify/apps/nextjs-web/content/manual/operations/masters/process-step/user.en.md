@@ -52,7 +52,7 @@ When you open the app, a list of the registered steps is shown.
 
 ![List screen of the process step master](../../../assets/screenshots/master-process-step-list-01.png)
 
-- The list columns are **コード** (code) / **名称** (name) / **カテゴリ** (category) / **工程リスト種別** (step list kind) / **実施場所** (place of work) / **同期可** (can run in parallel) / **検査** (inspection) / **承認** (approval) / **数量管理** (quantity tracking) / **指示書種別** (work order types) / **表示順** (display order) / **状態** (status). 「**工程リスト種別**」 (step list kind) is a "prep" or "manufacturing" badge, decided automatically from the category.
+- The list columns are **コード** (code) / **名称** (name) / **カテゴリ** (category) / **工程リスト種別** (step list kind) / **実施場所** (place of work) / **同期可** (can run in parallel) / **検査** (inspection) / **承認** (approval) / **数量管理** (quantity tracking) / **指示書種別** (work order types) / **表示順** (display order) / **状態** (status). 「**工程リスト種別**」 (step list kind) shows badges for the step lists the step can go on ("prep", "manufacturing", "regrind"). They follow automatically from the category and 「**使える指示書種別**」 (work order types); a step can show both "manufacturing" and "regrind".
 - Normally the rows are shown from the smallest 「**表示順**」 (display order) number first.
 - Type in the 「**コード・名称で検索**」 (search by code or name) box at the top to show only the step you are looking for.
 - You can also narrow the list by 「**カテゴリ**」 (category), 「**使える指示書種別**」 (work order types) and 「**状態**」 (status). There are two statuses: 「有効」 (active, can be used) and 「無効」 (inactive, no longer used). Narrowing by work order type answers "which steps can a regrind work order use?" in one list.
@@ -64,7 +64,7 @@ When you open the app, a list of the registered steps is shown.
 1. Press 「**新規作成**」 (New) at the top right of the list screen.
 2. Enter text that stands for this step in 「**工程コード**」 (step code), for example `CYLINDER_MACHINING`. Only capital letters, numbers and underscores can be used.
 3. Enter the name used on the floor in the Japanese box of 「**名称**」 (name), for example 円筒加工. You can save with the English box left empty.
-4. Choose 「**カテゴリ**」 (category). **Choosing "material preparation" puts this step in the shared prep step list; choosing "regrind" puts it in the shared regrind step list; any other category puts it in the per-product manufacturing step list** (the field shows a note underneath. That note and the list badge only show "prep" or "manufacturing", so a regrind step is also shown as "manufacturing").
+4. Choose 「**カテゴリ**」 (category). **Choosing "material preparation" puts this step in the shared prep step list; choosing "regrind" puts it in the shared regrind step list; any other category puts it in the per-product manufacturing step list** (the field shows a note underneath).
 5. Choose 「**実施場所**」 (place of work). For a step that may be asked of an outside company, choose 「**社内・外注**」 (in house or outsourced).
 6. Choose 「**数量管理**」 (quantity tracking). See the explanation below.
 7. Choose 「**ロット入力（既定）**」 (lot input — default). This decides whether the operator is asked to enter the material lot or slip code when starting the step (required / optional / none).
@@ -162,7 +162,7 @@ Click a row in the list to open the detail screen of that step.
 
 ![Detail screen of the process step master](../../../assets/screenshots/master-process-step-detail-01.png)
 
-The step code, name, category, **step list kind** (prep / manufacturing badge), place of work, quantity tracking, lot input, **work plan required fields** (whichever of assignee, date, work location and time are actually required), default work time, display order and so on are shown together at the top. Below there are three tabs.
+The step code, name, category, **step list kind** (prep / manufacturing / regrind badges), place of work, quantity tracking, lot input, **work plan required fields** (whichever of assignee, date, work location and time are actually required), default work time, display order and so on are shown together at the top. Below there are three tabs.
 
 - **概要** (overview) … shows the allowed work locations (「制限なし」 — no restriction — when there is none, or the list of types and locations when there is) and what you wrote in the remarks.
 - **依存関係** (dependencies) … shows the use dependencies and the execution dependencies, each in its own table. Click a row to move to the screen of the other step.
