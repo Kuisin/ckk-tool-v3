@@ -94,7 +94,21 @@ After issuing, the status changes to「**発行済**」(issued) and **the PDF is
 
 Open the PDF tab to view the finished quote, or download it and print it. After issuing, you can also save it from「**PDFをダウンロード**」(download PDF) in the「**…**」menu at the top right.
 
-> ⚠️ **The system does not send the quote to the customer.** Download the PDF and send it yourself, by email or otherwise. Ticking「**発行後に顧客へメール送付する**」(send to the customer by email after issuing) on the issue screen currently sends no email — it only changes the message shown when issuing finishes.
+## Notifying the customer by email
+
+If you tick「**発行後に顧客へメール送付する**」(email the customer after issuing) on the issue screen, an email is sent to the customer once the quote is issued and its PDF is saved.
+
+- **The PDF is not attached.** The email contains a **link** to the quote. When the link is opened, a **verification code** is sent to that email address; after entering it, the customer can see the quote and its PDF. Even if the email is forwarded or reaches the wrong person, it cannot be opened without access to the recipient's mailbox.
+- **The link expires at the end of the quote's valid-until date.** Once the quote has expired, the link no longer opens.
+- **The recipient** is chosen automatically: branch first, then head office; the primary contact, then other contacts, then the company email address. The recipient is shown under the checkbox on the issue screen — check it before issuing.
+- The email is written in the customer's **document language** (business partner master). Replies go to the **sales rep**.
+- Who it was sent to is recorded on the「**履歴**」(History) tab. Sent links can be checked and revoked in the document-link list of the [Partner portal](/manual/en/operations/system/portal/user) (`SY0H`).
+
+To send it later (if you did not, or could not, send it when issuing), choose「**メールで送付**」(Send by email) from the「**…**」menu at the top right (issued quotes within their valid period only).
+
+> ⚠️ It cannot be sent in these cases; the checkbox is cleared and the reason is shown:
+> - No email address is registered for the customer (including branches and contacts) → register one in the [business partner master](/manual/en/operations/masters/business-partner/user).
+> - The partner portal is not enabled in this environment, or email sending is not set up → ask your administrator. Until then, download the PDF and send it yourself.
 
 ## Recording what happens after issuing
 
