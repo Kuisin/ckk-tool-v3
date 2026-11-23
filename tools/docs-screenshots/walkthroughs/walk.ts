@@ -85,6 +85,13 @@ export interface Chapter {
 export interface Caption {
   text: string;
   startMs: number;
+  /**
+   * この字幕のあと最初に指した要素の、画面の中での高さ（0 = 上端 / 1 = 下端）。
+   * 字幕を上下どちらに出すかを決めるのに使う（walkthroughs.spec.ts）— 既定の下に
+   * 出すと、画面の下半分にある欄を案内している字幕が、当の欄を隠してしまう。
+   * 録画のときだけ入る。
+   */
+  targetY?: number;
 }
 
 export class Walk {
@@ -187,6 +194,10 @@ export class Walk {
       const dist = Math.hypot(x - this.cursor.x, y - this.cursor.y);
       await this.page.mouse.move(x, y, { steps: Math.max(8, Math.min(30, Math.round(dist / 25))) });
       this.cursor = { x, y };
+      // いま出ている字幕が案内している相手の位置を控える（最初に指した 1 つだけ）。
+      const caption = this.captions.at(-1);
+      const height = this.page.viewportSize()?.height;
+      if (caption && caption.targetY === undefined && height) caption.targetY = y / height;
     }
     await target.evaluate((el) => el.setAttribute("data-walk-highlight", "")).catch(() => undefined);
     await this.page.waitForTimeout(650);

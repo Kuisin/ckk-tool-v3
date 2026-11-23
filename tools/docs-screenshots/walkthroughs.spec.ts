@@ -35,10 +35,13 @@ function vttTime(ms: number): string {
 }
 
 /** 字幕（WebVTT）を作る。1 枚 = 1 キュー、次の字幕が始まるまで出す。 */
-function toVtt(captions: { text: string; startMs: number }[], endMs: number): string {
+function toVtt(captions: { text: string; startMs: number; targetY?: number }[], endMs: number): string {
   const cues = captions.map((c, i) => {
     const end = captions[i + 1]?.startMs ?? endMs;
-    return `${i + 1}\n${vttTime(c.startMs)} --> ${vttTime(Math.max(end, c.startMs + 1))}\n${c.text}`;
+    // 案内している欄が画面の下半分にあるときは、字幕を上へ出す（`line:6%`）。
+    // 既定（下）のままだと、説明している当の欄を字幕が覆う。
+    const position = c.targetY !== undefined && c.targetY > 0.5 ? " line:6%" : "";
+    return `${i + 1}\n${vttTime(c.startMs)} --> ${vttTime(Math.max(end, c.startMs + 1))}${position}\n${c.text}`;
   });
   return `WEBVTT\n\n${cues.join("\n\n")}\n`;
 }
