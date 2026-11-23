@@ -48,6 +48,9 @@ skip_web() {
     coolify/common/* | coolify/platform/*) return 0 ;;
     coolify/apps/nextjs-web/* | coolify/apps/nextjs-kiosk/*) return 1 ;;
     coolify/apps/*) return 0 ;; # Python のサービス等（別ジョブが見る）
+    # 動画の登録簿。マニュアル本文の ```video フェンスと突き合わせる単体試験
+    # （nextjs-web の manual-videos-content.test.ts）が読むので web を回す。
+    tools/docs-screenshots/walkthroughs/*) return 1 ;;
     tools/docs-screenshots/*) return 0 ;; # pages ジョブの持ち物
     tools/ci/python-syntax.py) return 0 ;;
     .github/workflows/nextjs-web-ci.yml) return 1 ;;

@@ -13,6 +13,10 @@ screenshots:
 
 本页整理了结算已交货的部分并制作请款单，寄送后直到记录收款为止的流程。在这里确认「现在处于哪个阶段、接下来该谁做什么」，以及各**单据状态**。基本操作步骤由[标准流程](/manual/zh/process/default-flow)负责。
 
+```video
+process-billing
+```
+
 ## 整体流程
 
 ![请款 — 从结算处理到收款与会计对接](../assets/diagrams/flow-billing.zh.svg)

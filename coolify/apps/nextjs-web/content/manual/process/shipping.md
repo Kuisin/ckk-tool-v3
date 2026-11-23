@@ -13,6 +13,10 @@ screenshots:
 
 できあがった製品を送り出し、納品書を発行して届けるまでの流れをまとめたページである。「いまどの段階で、次に誰が何をするのか」と、発送／在庫保管の**分岐**、各**書類の状態**をここで確認する。基本の操作手順は[標準フロー](/manual/ja/process/default-flow)が持つ。
 
+```video
+process-shipping
+```
+
 ## 全体の流れ
 
 ![出荷 — 出荷書から納品まで](../assets/diagrams/flow-shipping.svg)

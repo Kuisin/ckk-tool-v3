@@ -38,8 +38,8 @@ expect "アプリのコードだけの dev 向け PR では通し操作を回さ
   "web=true pages=true walkthroughs=false" \
   coolify/apps/nextjs-web/src/components/ui/SearchSelect.tsx
 
-expect "通し操作そのものを触ったら回す" dev \
-  "walkthroughs=true pages=true" \
+expect "通し操作そのものを触ったら回す（web も — 動画の登録簿を試験が読む）" dev \
+  "walkthroughs=true pages=true web=true" \
   tools/docs-screenshots/walkthroughs/sales.ts
 
 expect "デモシードは通し操作の土台なので回す" dev \

@@ -14,6 +14,10 @@ screenshots:
 
 本页整理了从发现材料不足起，经过下单、收货，直到可作为库存使用为止的流程。在这里确认「现在处于哪个阶段、接下来该谁做什么」，以及审批・分批到货的**分支**、各**单据状态**。
 
+```video
+process-purchasing
+```
+
 ## 整体流程
 
 ![采购 — 从申请材料到到货](../assets/diagrams/flow-purchasing.zh.svg)

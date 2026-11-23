@@ -13,6 +13,10 @@ screenshots:
 
 納品した分を締めて請求書を作り、送付して入金を記録するまでの流れをまとめたページである。「いまどの段階で、次に誰が何をするのか」と、各**書類の状態**をここで確認する。基本の操作手順は[標準フロー](/manual/ja/process/default-flow)が持つ。
 
+```video
+process-billing
+```
+
 ## 全体の流れ
 
 ![請求 — 締日処理から入金・会計連携まで](../assets/diagrams/flow-billing.svg)
