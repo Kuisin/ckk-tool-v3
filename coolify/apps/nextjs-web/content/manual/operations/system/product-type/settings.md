@@ -108,13 +108,13 @@ flowchart TD
 
 ## 3. 製品を登録するときの見え方
 
-[製品](/manual/ja/operations/masters/product/user)の新規作成画面に「**製品種別**」という欄が出ます。
+[設計図](/manual/ja/operations/production/design-file/user)の登録画面に「**製品種別**」という欄が出ます（製品の仕様は、製品マスタではなく設計図の版が持ちます）。
 
 1. 「**製品種別**」で、ひな形を選びます。
 2. そのひな形に組み込まれた入力欄が、下に出てきます。
 3. 既定値が入っているので、必要なところだけ直します。
 
-![製品登録画面の製品種別](../../../assets/screenshots/product-form-type-01.png)
+![設計図の登録画面の製品種別](../../../assets/screenshots/product-form-type-01.png)
 
 ひな形に入っていない入力欄も、下の「**追加項目**」で選んで足せます。ここに出るのは「製品項目」で作った入力欄だけです。
 

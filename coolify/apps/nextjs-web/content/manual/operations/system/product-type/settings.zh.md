@@ -108,13 +108,13 @@ flowchart TD
 
 ## 3. 登记产品时的样子
 
-[产品](/manual/zh/operations/masters/product/user)的新建界面上，会出现一个叫「**製品種別**」（产品种别）的栏。
+[图纸](/manual/zh/operations/production/design-file/user)的登记界面上，会出现一个叫「**製品種別**」（产品种别）的栏（产品的规格由图纸的版本保存，而不是产品主数据）。
 
 1. 在「**製品種別**」（产品种别）里选一个模板。
 2. 这个模板里装着的输入栏，会出现在下面。
 3. 默认值已经填好了，只改需要改的地方即可。
 
-![产品登记界面的产品种别](../../../assets/screenshots/product-form-type-01.png)
+![图纸登记界面的产品种别](../../../assets/screenshots/product-form-type-01.png)
 
 模板里没有的输入栏，也可以在下面的「**追加項目**」（追加项目）里选着加上。这里出现的，只有在「製品項目」（产品项目）里做过的输入栏。
 
