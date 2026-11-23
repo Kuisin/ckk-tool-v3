@@ -18,7 +18,7 @@ Operation code **SY05**. Turns each app's visibility ON/OFF per environment (**d
 
 ## How the environments work
 
-dev and main share the same database, so visibility is managed per environment. The default behavior differs.
+dev and main have **separate databases**. Visibility is stored with the environment in the key (`app:<app>:<env>`), and each environment reads **only its own environment's rows in its own database**. So **the main (production) switch takes effect in production only when you flip it on the production screen (`app.ckk-tool.co.jp`)**. Flipping the main switch on the dev screen just leaves a row in the dev database and does not reach production. The default behavior differs by environment.
 
 - **dev (staging)** — shown **by default**. Only apps explicitly switched OFF are hidden.
 - **main (production)** — hidden **by default**. Only apps explicitly switched ON are shown. This keeps the production launcher limited to released apps.
@@ -45,7 +45,7 @@ In other words, **turning the main switch ON is the production release itself**.
 
 ## Reading the list
 
-- **Category** — a badge: Sales / Purchasing / Production / Shipping / Billing / Master / Documents / System.
+- **Category** — a badge: General / Sales / Purchasing / Production / Inventory / Shipping / Billing / Master data / Documents / System.
 - **App** — the app name.
 - **Operation code** — the jump code such as `SA02` (monospace).
 - **dev (staging)** / **main (production)** — the per-environment visibility switches.
@@ -58,7 +58,7 @@ Every ON/OFF operation is written to the audit log. In the [Activity Log](/admin
 
 ## FAQ
 
-- **Release a new app to production** — once it is verified on dev, turn its **main (production)** switch ON.
+- **Release a new app to production** — once it is verified on dev, turn its **main (production)** switch ON **on the production screen**.
 - **Temporarily hide an app for maintenance** — switch it OFF in the relevant environment. Data is kept; switch it back ON to resume.
 - **Add an app to the list** — the list is generated from the app registry built into the system; adding one requires a development change.
 - Per-user permissions can be reviewed in [User Management](/admin-manual/en/system/user-management).

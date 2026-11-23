@@ -173,8 +173,8 @@ Holding the permission is not enough for the operations below. You **request the
 | Operation | Permission | What it unlocks |
 | --- | --- | --- |
 | Issue an API token | API client administration（`api_client`）— Create | Mint the key an external system uses to read business data. The minted value is the credential itself, and it carries whatever the assigned roles allow |
-| Activate an API client | API client administration（`api_client`）— Edit | Turn a client that passes nothing into one that can actually read business data |
-| Manage outbound webhooks | API client administration（`api_client`）— Edit | Create or widen a channel that sends business data changes outside. Covers adding an endpoint, changing its URL, rotating its signing secret and enabling it |
+| Activate an API client | API client administration（`api_client`）— Update | Turn a client that passes nothing into one that can actually read business data |
+| Manage outbound webhooks | API client administration（`api_client`）— Update | Create or widen a channel that sends business data changes outside. Covers adding an endpoint, changing its URL, rotating its signing secret and enabling it |
 
 Permissions come through roles. If something is missing, ask an administrator.
 

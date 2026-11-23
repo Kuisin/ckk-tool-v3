@@ -45,7 +45,7 @@ When you open the app, you see a list of the quotes made so far.
 2. Click the「**顧客**」(customer) field and choose the customer.
 3. If the customer has branches, also choose「**支店**」(branch). If there are none, just leave it.
 4. Check「**営業担当**」(sales rep). Choosing the customer fills in their primary rep automatically — change it if needed.
-5. Enter the date this quote is valid until in「**有効期限**」(valid until). You can leave it empty and still save.
+5. Enter the date this quote is valid until in「**有効期限**」(valid until). While the quote is a draft you can leave it empty and still save, but **it is required when you issue**.
 6. On the line item row, choose「**製品**」(product),「**注文種別**」(order type) and「**数量**」(quantity).
 7. As you enter them, **the unit price, discount and amount appear automatically**. You do not need to correct the amount by hand.
 8. If a delivery date is fixed for the product, also enter「**納期**」(delivery date).
@@ -58,7 +58,14 @@ Once saved, the quote is registered as 「下書き」(draft) and the detail scr
 
 > 💡 Amounts come automatically from the price list for that customer. To change a price, do not change it here — change the [price list](/manual/en/operations/sales/price-list/user) instead.
 
-> ⚠️ If a row shows「**価格表なし**」(no price list) in red, there is no price list yet for that customer and that product. The quote cannot be saved as it is, so register the price list first.
+> ⚠️ A line whose unit price cannot be found in the price list cannot be saved. There are four reasons:
+>
+> - **No price list** … there is no price list yet for that customer, product and order type. Register the price list first.
+> - **Price list disabled** … the price list (or its setting for that order type) is disabled.
+> - **Outside the valid period** … today is not within the price list's valid period.
+> - **No quantity tier** … no quantity tier matches the quantity entered. Review the quantity or add a tier to the price list.
+>
+> For regrind items only, the item's **standard price** is used in the first three cases (no price list / disabled / outside the valid period). With "no quantity tier" it does not fall back to the standard price.
 
 ## Checking the contents
 
@@ -76,9 +83,8 @@ The screen of a saved quote has five tabs.
 
 1. Press「**…**」(the three-dot button) at the top right of the quote screen.
 2. Choose「**発行**」(issue).
-3. A small window called「見積書の発行」(issue quote) appears. Check the **有効期限 (valid until)** date.
-4. If you want to send it to the customer by email, tick「**発行後に顧客へメール送付する**」(send to the customer by email after issuing).
-5. Press「**発行**」(issue).
+3. A small window called「見積書の発行」(issue quote) appears. Enter the **有効期限 (valid until)** date. **It is required and must be today or later** (you cannot issue with it empty or in the past).
+4. Press「**発行**」(issue).
 
 ![Quote issue screen](../../../assets/screenshots/quote-issue-01.png)
 
@@ -87,6 +93,8 @@ After issuing, the status changes to「**発行済**」(issued) and **the PDF is
 ![PDF tab](../../../assets/screenshots/quote-pdf-01.png)
 
 Open the PDF tab to view the finished quote, or download it and print it. After issuing, you can also save it from「**PDFをダウンロード**」(download PDF) in the「**…**」menu at the top right.
+
+> ⚠️ **The system does not send the quote to the customer.** Download the PDF and send it yourself, by email or otherwise. Ticking「**発行後に顧客へメール送付する**」(send to the customer by email after issuing) on the issue screen currently sends no email — it only changes the message shown when issuing finishes.
 
 ## Recording what happens after issuing
 
@@ -124,7 +132,7 @@ Every field on the quote screen. The **?** next to a field in the app links stra
 | [Customer](#field-customer) | Required | The customer the quote is for |
 | [Branch](#field-customer-branch) | Optional | The branch it is addressed to, if any |
 | [Sales rep](#field-sales-rep) | Optional | Your company's sales rep for this quote |
-| [Valid until](#field-valid-until) | Optional | Last day the quote is valid |
+| [Valid until](#field-valid-until) | Required to issue | Last day the quote is valid |
 | [Status](#field-status) | — | Where the quote stands now |
 | [Product](#field-product) | Required | The product being quoted |
 | [Order type](#field-order-type) | Required | Production, test, sample or other |
@@ -148,7 +156,7 @@ Your company's sales person in charge of this quote. Choosing the customer fills
 
 ### Valid until [#field-valid-until]
 
-The last day this quote is valid. **An issued quote past this date shows as 「期限切れ」(expired) automatically**, in the list and on the detail screen — nobody has to act. It may be left empty, in which case the quote never expires.
+The last day this quote is valid. **An issued quote past this date shows as 「期限切れ」(expired) automatically**, in the list and on the detail screen — nobody has to act. While the quote is a draft it may be left empty, but **when you issue it is required and must be today or later**.
 
 ### Status [#field-status]
 
@@ -194,7 +202,7 @@ A. The price list for that customer and that product is not registered yet. Firs
 A. That is normal. Prices are decided per customer, so when you change the customer, the amounts are calculated again with that customer's price list.
 
 **Q. What happens to a quote once its valid-until date passes?**
-A. It shows as 「**期限切れ**」(expired) from that day on. Nothing to do — expiry is worked out from the date every time it is displayed, so it becomes correct the moment the deadline passes.
+A. It shows as 「**期限切れ**」(expired) from that day on. Nothing to do — expiry is worked out from the date every time it is displayed, so it becomes correct the moment the deadline passes. **You cannot raise a design request from an expired quote** (「**設計依頼を起票**」(raise a design request) in the「…」menu is disabled).
 
 **Q. I increased the quantity and the unit price went down.**
 A. That is normal. If the price list is set so that a larger order makes each piece cheaper, the unit price changes with the quantity.

@@ -4,7 +4,7 @@ description: "Operation code SY07. An administrator app that shows the system-wi
 ---
 Operation code **SY07**. An administrator app that shows the system-wide activity history (audit log) across all apps and records — who changed which data, when, and how.
 
-> This app requires **system permission**. The history is **view only** — nothing can be edited or deleted from this screen.
+> The entry permission is **`personal_data`** (not `system`). On top of that, the cross-document search (the list) and the details of one record are the privileged operations `personal_data.activity_search` / `personal_data.activity_detail`, available only during a period requested and approved in [Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G). The per-document History tabs are not gated by this approval. The history is **view only** — nothing can be edited or deleted from this screen.
 
 ## What you can do here
 

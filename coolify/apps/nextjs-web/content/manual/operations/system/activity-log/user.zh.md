@@ -23,7 +23,9 @@ screenshots: [settings-activity-01, settings-activity-filter-01, settings-activi
 
 ## 开始之前
 
-- 打开本应用需要 **系统管理权限**。如果打不开，请与系统管理员联系。
+- 打开本应用需要 **个人数据查看**（`personal_data`）权限。如果打不开，请与系统管理员联系。
+- 仅有权限还无法打开列表（跨单据搜索）和单条记录的详情。需要在 [特权访问](/manual/zh/operations/system/privileged-access/user)（`SY0G`）中申请「**操作历史的跨单据检索**」「**操作历史明细**」，只有在其他人批准的期间内才能使用。
+- 各单据画面上的「**履歴**」（历史）标签不需要此批准。
 - 如果只想看某一份单据的历史，比起这个画面，**那份单据画面上的「履歴」（历史）标签** 更快找到。内容是一样的。
 
 ## 打开方式
@@ -113,7 +115,7 @@ screenshots: [settings-activity-01, settings-activity-filter-01, settings-activi
 
 ### 对象 [#field-target]
 
-按记录对象筛选，如报价单、指示书等。点击行可打开并列显示**变更前与变更后**的详情。
+按记录对象筛选，如报价单、工单等。点击行可打开并列显示**变更前与变更后**的详情。
 
 ## 常见问题・遇到麻烦时
 

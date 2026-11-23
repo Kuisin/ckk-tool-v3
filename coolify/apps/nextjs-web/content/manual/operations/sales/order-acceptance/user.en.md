@@ -146,14 +146,16 @@ At the top of the screen, 「**製品**」 (products), 「**明細数 / 合計�
 
 > 💡 On a row that has a price list, the unit price **comes from the price list and cannot be edited as-is** (the blue「**価格表 ￥…**」badge also shows which quantity tier applies). To accept it at a different price, turn on「**単価を上書き**」(override the unit price) on the right of that row and then edit it. An overridden row shows a violet「**上書き**」badge next to the price-list price, and「**単価の上書き N 件**」(N overridden unit prices) appears at the top of the screen.
 >
-> The orange「**価格差異**」(price difference) badge marks a row that differs from the price list **without** an override — for example because the price list changed after the draft was saved. A gray「**価格表なし**」(no price list) badge only means there is no price list yet for that customer and product — it is not a mistake, and the unit price on that row is free to enter.
+> The orange「**価格差異**」(price difference) badge marks a row that differs from the price list **without** an override — for example because the price list changed after the draft was saved. A gray「**価格表なし**」(no price list) badge only means there is no price list yet for that customer and product — it is not a mistake, and the unit price on that row is free to enter. An orange「**数量段階なし**」(no quantity tier) badge marks a row whose price list exists but has no tier for that quantity. Its unit price is free to enter, but like a price difference it must be acknowledged before you request approval.
 
 ## Asking for approval
 
 1. In view mode, press「**承認依頼**」(request approval) in the card at the very top of the screen. (The button is hidden while you are editing — save first.) The button stays disabled while something is missing: the card lists what it is (for example「顧客が未特定です」— no customer —,「明細 2 行目: 単価が未入力です」— no unit price on row 2 —, or「明細 2 行目: 研ぎ直す工具が未選択です」— no tool to regrind on row 2). Fix it with「**編集**」(edit) first.
-2. If there is a price difference, a screen called「価格差異の確認」(check the price difference) appears. Check the contents and press「**差異を確認して依頼**」(confirm the difference and request). Rows with an overridden unit price **do not stop the request** (the price is deliberate), but the approver also sees them as「単価の上書き N 件」(N overridden unit prices).
+2. If there is a price difference (or a row with「数量段階なし」(no quantity tier)), a screen called「価格差異の確認」(check the price difference) appears. Check the contents and press「**差異を確認して依頼**」(confirm the difference and request). Rows with an overridden unit price **do not stop the request** (the price is deliberate), but the approver also sees them as「単価の上書き N 件」(N overridden unit prices).
 
 The status changes to「**承認依頼中**」(pending approval).
+
+> ⚠️ If the「**注文請書**」(order acceptance) flow in [approval settings](/manual/en/operations/masters/approval-setting/user) has no steps at all, approval cannot be requested (a message says the order acceptance approval flow is not set up). Ask an administrator to add steps. Note that this differs from the cancellation flow, which cancels at once when it has no steps.
 
 > 💡 How many approval steps there are and who approves is decided in the [approval settings](/manual/en/operations/masters/approval-setting/user). Depending on conditions such as the total amount, the delivery method or the assigned plant, the number and makeup of the steps can differ from document to document.
 
@@ -210,6 +212,15 @@ flowchart TD
   wait -.->|"Sent back"| keep["Nothing changes;<br/>the request is closed"]
   can -.-> eff["Order lines cancelled<br/>Reserved stock released<br/>Unfinished work orders cancelled"]
 ```
+
+### Recreate a cancelled order acceptance
+
+Lines cannot be edited once confirmed, so to change the contents you cancel the whole order acceptance and then recreate it.
+
+1. On the cancelled order acceptance, press「**この注文請書から作り直す**」(recreate from this order acceptance) in the「…」menu at the top right.
+2. Press「**作り直す**」(recreate) on the confirmation screen.
+
+A **new draft** is made that carries over the customer and the lines (unit prices, the override mark and delivery included). Unit prices are copied as they are, not looked up again in the price list. Line branch numbers, lot numbers and the imported order file are not carried over. The two stay linked as「作り直し元」(recreated from) and「作り直し先」(recreated as).
 
 ## Input fields
 

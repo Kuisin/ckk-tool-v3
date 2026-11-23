@@ -24,7 +24,8 @@ This is a view-only app. You cannot correct or erase records from this screen.
 
 ## Before you start
 
-- You need **system administration permission** to open this app. If you cannot open it, please ask your system administrator.
+- You need the **Personal data access** (`personal_data`) permission to open this app. If you cannot open it, please ask your system administrator.
+- The permission alone lets you see the list, but **opening the details of one record needs an approval**. Request "**Login history detail**" in [Privileged access](/manual/en/operations/system/privileged-access/user) (`SY0G`); you can open details only during the period another person approves. Each time you open one, it is recorded as a "view" in the [Activity log](/manual/en/operations/system/activity-log/user).
 - The records include connection origins and PC characteristics. They exist **so that you can investigate when you need to**, not for routinely watching what people do.
 - Records are removed automatically: **successes after 180 days, failures after 400 days**.
 

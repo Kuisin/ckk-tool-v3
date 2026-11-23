@@ -97,6 +97,8 @@ flowchart TD
 
 Today's date is recorded as the **納品日 (delivery date)** and the status becomes 「**納品済**」 (Delivered).
 
+> ⚠️ You can mark a note delivered only after its [delivery order](/manual/en/operations/shipping/delivery-order/user) is 「**出荷済**」 (Shipped). If the delivery order has only been confirmed (not shipped yet), the screen shows "The delivery order must be shipped before the note can be marked delivered". Record the shipment on the delivery order first.
+
 By the way, this delivery note's number appears later as the "source" on the lines of the [invoice](/manual/en/operations/billing/invoice/user). From the invoice you will be able to open this delivery note right away.
 
 ## Printing (PDF)
@@ -180,6 +182,9 @@ A. The delivery destination is decided by the customer on the order line behind 
 
 **Q. Which one do I hand over — the delivery note with prices or the one without?**
 A. A direct-to-end-user shipment makes two. Give the price-free one to the end user and the priced one to the customer. A normal delivery makes only one priced note.
+
+**Q. I see "The delivery order must be shipped before the note can be marked delivered".**
+A. The original delivery order is not 「出荷済」 (Shipped) yet. Record the shipment on the [delivery order](/manual/en/operations/shipping/delivery-order/user) screen, then press 「納品済みにする」 (Mark as delivered) again.
 
 **Q. The delivery note has a mistake in it.**
 A. A delivery note cannot be edited afterwards, and there is no way to undo an issue. It has to be re-created from the correct order acceptance / delivery order, so ask your administrator. Do not hand the wrong one to the customer.

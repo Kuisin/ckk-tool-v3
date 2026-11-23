@@ -6,7 +6,12 @@ Operation code **SY09**. Registers and manages the shared plant-floor tablets (k
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 
-> This app requires the **kiosk administration permission**. All operations are recorded in the audit log.
+> The entry permission for this app is the code **`kiosk`**. Listing, details, editing names etc. and placing floor-map pins need only `kiosk`. The following are privileged operations: request them in [Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G) and you can perform them only during the period another person approves (system administrators pass straight through).
+>
+> - **`kiosk_device`** — creating a profile, linking, activating, disabling / re-enabling, unlinking, revoking (also pairing and revoking management displays)
+> - **`kiosk_secret`** — revealing the exit PIN, the PIN history, the PIN a device holds and the device settings code; regenerating the settings code; resetting the device key
+>
+>  All operations are recorded in the audit log.
 
 ## What you can do here
 

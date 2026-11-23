@@ -96,7 +96,7 @@ Confirming the order acceptance creates an **order line** for each line item. Ne
 
 ### (In parallel) Design request
 
-For a product with no drawing, a design request is raised at the quote stage, once the order is taken, or **standalone** with no link to either. **Work can only start once it has passed approval** (the steps are decided in [Approval settings](/manual/en/operations/masters/approval-setting/user), and can vary by trigger, request kind and priority). Production makes the drawing, and completing it replaces the product's latest drawing (steps … [Standard flow (in parallel) design request](/manual/en/process/default-flow#design-request)).
+For a product with no drawing, a design request is raised at the quote stage, once the order is taken, or **standalone** with no link to either. **Work can only start once it has passed approval** (the steps are decided in [Approval settings](/manual/en/operations/masters/approval-setting/user), and can vary by trigger, request kind and priority). Production makes the drawing, registers a version in [Drawings](/manual/en/operations/production/design-file/user) and completes the request. The product's latest drawing is replaced when that version is confirmed in Drawings (steps … [Standard flow (in parallel) design request](/manual/en/process/default-flow#design-request)).
 
 Whether it is automatically a **revision** or a **new** one is decided by whether the product already has a drawing; a revision requires a reason for the change.
 

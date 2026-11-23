@@ -62,12 +62,15 @@ While at least one file is waiting, the screen refreshes itself automatically ev
 ## The three ways an order arrives
 
 Besides dropping files in from this screen, orders also arrive by the routes
-below. **All of them land in the same intake folder**, so numbering and AI
-extraction work identically for each.
+below. Files dropped in from this screen and email **land in the intake folder**
+and are picked up by the automatic scan. "Priority intake" on the order acceptance
+app **bypasses the intake folder**: it numbers the file on the spot and queues it
+for AI extraction. The entry point differs, but numbering and AI extraction work
+the same way from there.
 
 | Route | How it gets in |
 |---|---|
-| **Upload** | This screen, or "Priority intake" on the order acceptance app |
+| **Upload** | This screen (via the intake folder), or "Priority intake" on the order acceptance app (does not use the intake folder) |
 | **Email** | Orders sent to **order-intake@ckk-tool.co.jp** are picked up automatically (`intake-gateway`) and appear under "Waiting" within a few minutes |
 | **Fax** | Currently a manual step — someone scans the paper on the MFP and uploads it via "Priority intake". There is no automatic fax receiver |
 

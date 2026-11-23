@@ -93,6 +93,8 @@ flowchart TD
 
 状態が「**承認依頼中**」に変わり、承認する人に依頼が届きます。同じ依頼は[承認管理](/manual/ja/operations/general/my-tasks/user)の画面にも並びます。
 
+> ⚠️ 承認の段は[承認設定](/manual/ja/operations/masters/approval-setting/user)（`MS0B`）で決まります。購買依頼の承認フローに段が 1 つも無いと、承認依頼は出せません（「**購買依頼の承認フローが未設定です**」のように表示されます）。管理者に承認設定を頼んでください。
+
 ![承認依頼中の購買依頼](../../../assets/screenshots/purchase-request-detail-02.png)
 
 承認依頼中は内容を直せません。直したいときは、いったん「**…**」（点が 3 つのボタン）から「**キャンセル**」して作り直すか、上長に差し戻してもらいます。

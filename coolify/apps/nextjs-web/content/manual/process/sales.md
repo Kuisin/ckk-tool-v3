@@ -96,7 +96,7 @@ flowchart TD
 
 ### （並行）設計依頼
 
-設計図が無い製品では、見積時・受注時のいずれか、またはどちらにも紐づかない**単独**で設計依頼書を起票する。**承認を通ってはじめて着手できる**（段の構成は[承認設定](/manual/ja/operations/masters/approval-setting/user)で決まり、トリガー・依頼区分・優先度で変えられる）。製造が図面を作り、完了すると製品の最新図面が入れ替わる（操作手順 … [標準フロー（並行）設計依頼](/manual/ja/process/default-flow#design-request)）。
+設計図が無い製品では、見積時・受注時のいずれか、またはどちらにも紐づかない**単独**で設計依頼書を起票する。**承認を通ってはじめて着手できる**（段の構成は[承認設定](/manual/ja/operations/masters/approval-setting/user)で決まり、トリガー・依頼区分・優先度で変えられる）。製造が図面を作って[設計図](/manual/ja/operations/production/design-file/user)に版を登録し、依頼を完了する。製品の最新図面が入れ替わるのは、設計図でその版を確定したとき（操作手順 … [標準フロー（並行）設計依頼](/manual/ja/process/default-flow#design-request)）。
 
 製品にすでに図面があれば**改訂**、無ければ**新規**が自動で決まり、改訂では変更理由が要る。
 

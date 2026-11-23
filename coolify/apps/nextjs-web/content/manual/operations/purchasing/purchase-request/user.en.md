@@ -93,6 +93,8 @@ Once you have checked the content, ask your manager to look at it.
 
 The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/general/my-tasks/user) screen.
 
+> ⚠️ The approval steps are decided in [approval settings](/manual/en/operations/masters/approval-setting/user) (`MS0B`). If the purchase request approval flow has no steps, you cannot request approval (a message such as "the approval flow is not configured" is shown). Ask an administrator to set up the approval settings.
+
 ![Purchase request pending approval](../../../assets/screenshots/purchase-request-detail-02.png)
 
 While it is pending approval, you cannot change the content. If you need to change it, either press 「**キャンセル**」 (Cancel) from the 「**…**」 button (the one with three dots) and make it again, or ask your manager to send it back to you.

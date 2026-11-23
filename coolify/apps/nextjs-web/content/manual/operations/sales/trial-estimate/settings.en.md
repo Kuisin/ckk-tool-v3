@@ -168,7 +168,7 @@ Decide how the material price used in a price estimate is taken from actual purc
    - 「**最新単価**」 (Latest unit price) … uses the price of the most recent purchase.
    - 「**平均単価（期間内）**」 (Average unit price within the period) … uses the average within the period.
 2. In 「**参照期間（ヶ月）**」 (Reference period, months), enter how many months to look back (1–36 months).
-3. In 「**既定材料単価（¥/1000mm）**」 (Default material unit price, ¥/1000mm), enter the price to use when no purchase record is found. Setting it to `0` means it is treated as having no price.
+3. In 「**既定材料単価（¥/1000mm）**」 (Default material unit price, ¥/1000mm), enter the price to use when no purchase record is found **and** the [material type](/manual/en/operations/masters/material-type/user) has no default price for that material type × diameter × surface finish (the material type's default price wins when it exists). Setting it to `0` means it is treated as having no price.
 4. Press 「**保存**」 (Save).
 
 > 💡 On a price estimate where no purchase record existed and the default price was used, 「**既定価格**」 (default price) is shown on screen. That amount is not based on actual results, so please check whether it is fine to use as-is in a quotation.
