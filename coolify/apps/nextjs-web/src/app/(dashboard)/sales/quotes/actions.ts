@@ -18,7 +18,7 @@ import {
   resolvePriceFromEntries,
 } from "@/components/sales/quotes/model";
 import { recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
+import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
 import { lineAmountYen, roundYen } from "@/lib/money";
@@ -468,8 +468,9 @@ export async function previewQuoteMail(
 }
 
 /**
- * 発行済みの見積書を、保存済みの PDF を添付して顧客へ送る。発行とは別の操作 —
- * 発行は成功したのに送れなかった、を「メールで送付」から送り直せるようにする。
+ * 発行済みの見積書を顧客へメールで知らせる（PDF は添付せず、宛先に束縛した
+ * 書類リンクを載せる — lib/quote-mail.ts）。発行とは別の操作 — 発行は成功
+ * したのに送れなかった、を「メールで送付」から送り直せるようにする。
  */
 export async function emailQuote(
   number: string,
@@ -482,7 +483,9 @@ export async function emailQuote(
   if (!(await quoteInScope(authz.access, authz.userId, key))) {
     return actionError(tr("sales.quoteActions.scopeDenied"));
   }
-  const result = await sendQuoteMail(key);
+  const actorId = await sessionUserId();
+  if (!actorId) return actionError(tr("common.invalidInput"));
+  const result = await sendQuoteMail(key, actorId);
   if (!result.ok) {
     return actionError(tr(`sales.issueQuoteModal.reason.${result.reason}`));
   }

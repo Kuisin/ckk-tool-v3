@@ -3,6 +3,7 @@ import {
   buildQuoteMail,
   type MailPartyCandidate,
   pickQuoteRecipient,
+  quoteLinkExpiry,
 } from "./quote-mail-core";
 
 const party = (over: Partial<MailPartyCandidate> = {}): MailPartyCandidate => ({
@@ -108,6 +109,8 @@ describe("buildQuoteMail", () => {
     const m = buildQuoteMail(
       {
         quoteNumber: "QOT-202611-00001",
+        linkUrl: "https://app.example/portal/d/TOKEN",
+        linkExpires: "2026/12/31",
         recipient: {
           email: "a@example.com",
           displayName: "鈴木",
@@ -125,6 +128,9 @@ describe("buildQuoteMail", () => {
       'salutationPerson{"company":"株式会社テスト","person":"鈴木"}',
     );
     expect(m.text).toContain('validUntil{"date":"2026/12/31"}');
+    // リンクは本文にそのまま 1 行で載る（メーラーが自動でリンクにする）。
+    expect(lines).toContain("https://app.example/portal/d/TOKEN");
+    expect(m.text).toContain('linkNote{"date":"2026/12/31"}');
     expect(lines.at(-1)).toBe(
       'contactWithEmail{"name":"山田","email":"yamada@ckk.example"}',
     );
@@ -134,6 +140,8 @@ describe("buildQuoteMail", () => {
     const m = buildQuoteMail(
       {
         quoteNumber: "QOT-202611-00002",
+        linkUrl: "https://app.example/portal/d/TOKEN2",
+        linkExpires: "2026/12/01",
         recipient: {
           email: "info@example.com",
           displayName: "本社",
@@ -148,5 +156,44 @@ describe("buildQuoteMail", () => {
     expect(m.text.split("\n")[0]).toBe('salutationCompany{"company":"本社"}');
     expect(m.text).not.toContain("validUntil");
     expect(m.text).not.toContain("contact");
+  });
+});
+
+describe("quoteLinkExpiry", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const now = new Date("2026-11-23T03:00:00Z");
+
+  it("見積書の有効期限の日の JST 23:59:59 まで", () => {
+    expect(
+      quoteLinkExpiry(
+        new Date("2026-12-31T00:00:00Z"),
+        now,
+        180 * DAY,
+      ).toISOString(),
+    ).toBe("2026-12-31T14:59:59.000Z");
+  });
+
+  it("ポータルの上限を超えるなら上限の 1 分手前で切る", () => {
+    const r = quoteLinkExpiry(new Date("2027-12-31T00:00:00Z"), now, 180 * DAY);
+    expect(r.getTime()).toBe(now.getTime() + 180 * DAY - 60_000);
+  });
+
+  it("有効期限が無ければ上限まで", () => {
+    expect(quoteLinkExpiry(null, now, 30 * DAY).getTime()).toBe(
+      now.getTime() + 30 * DAY - 60_000,
+    );
+  });
+
+  it("期限が今日なら今日の終わり（過ぎていれば過去 — 呼び出し側が送らない）", () => {
+    expect(
+      quoteLinkExpiry(
+        new Date("2026-11-23T00:00:00Z"),
+        now,
+        180 * DAY,
+      ).toISOString(),
+    ).toBe("2026-11-23T14:59:59.000Z");
+    expect(
+      quoteLinkExpiry(new Date("2026-11-22T00:00:00Z"), now, 180 * DAY) < now,
+    ).toBe(true);
   });
 });

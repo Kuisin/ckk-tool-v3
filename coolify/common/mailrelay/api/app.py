@@ -13,8 +13,6 @@
 
 from __future__ import annotations
 
-import base64
-import binascii
 import os
 import smtplib
 from email.message import EmailMessage
@@ -30,19 +28,8 @@ SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 MAIL_FROM = os.environ.get("MAIL_FROM", "no-reply@ckk-tool.co.jp")
 MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "CKK 業務管理システム")
 TOKEN = os.environ.get("MAIL_API_TOKEN", "")
-# 添付の上限（合計・デコード後）。見積書・請求書の PDF 1 通を想定した大きさで、
-# 大きなファイルの受け渡しに使わせない。
-MAX_ATTACHMENT_BYTES = int(os.environ.get("MAX_ATTACHMENT_BYTES", str(10 * 1024 * 1024)))
-ALLOWED_ATTACHMENT_TYPES = {"application/pdf"}
 
 app = FastAPI(title="mail-api", version="1.0.0")
-
-
-class Attachment(BaseModel):
-    filename: str = Field(min_length=1, max_length=200)
-    content_type: str = Field(min_length=1, max_length=100)
-    # 本体は base64（JSON に生のバイト列は載らない）。
-    content_base64: str = Field(min_length=1)
 
 
 class SendRequest(BaseModel):
@@ -52,9 +39,6 @@ class SendRequest(BaseModel):
     html: str | None = None
     # 返信先を分けたいとき（既定は差出人と同じ = no-reply）。
     reply_to: EmailStr | None = None
-    # 取引先へ書類を送るとき用。PDF だけを受け付ける（任意のファイルを外へ
-    # 出す口にしない）。
-    attachments: list[Attachment] = Field(default_factory=list, max_length=5)
 
 
 class SendResponse(BaseModel):
@@ -86,11 +70,6 @@ def healthz() -> dict[str, object]:
         "smtp_reachable": reachable,
         "from": MAIL_FROM,
         "token_configured": bool(TOKEN),
-        # アプリは添付を送る前にこれを見る。古いリレーは attachments を黙って
-        # 捨てる（pydantic は未知の項目を無視する）ため、「PDF を添付しました」
-        # と書いたメールが添付なしで届く、を防ぐための印。
-        "attachments": True,
-        "max_attachment_bytes": MAX_ATTACHMENT_BYTES,
     }
 
 
@@ -111,20 +90,6 @@ def send(req: SendRequest, x_mail_token: str | None = Header(default=None)) -> S
     msg.set_content(req.text)
     if req.html:
         msg.add_alternative(req.html, subtype="html")
-
-    total = 0
-    for a in req.attachments:
-        if a.content_type not in ALLOWED_ATTACHMENT_TYPES:
-            raise HTTPException(status_code=422, detail=f"attachment type not allowed: {a.content_type}")
-        try:
-            data = base64.b64decode(a.content_base64, validate=True)
-        except (binascii.Error, ValueError) as e:
-            raise HTTPException(status_code=422, detail="attachment is not valid base64") from e
-        total += len(data)
-        if total > MAX_ATTACHMENT_BYTES:
-            raise HTTPException(status_code=413, detail="attachments too large")
-        maintype, _, subtype = a.content_type.partition("/")
-        msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=a.filename)
 
     try:
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as s:

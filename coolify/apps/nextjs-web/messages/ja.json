@@ -8064,12 +8064,12 @@
         "noRecipient": "送付先のメールアドレスがありません。",
         "mailerNotConfigured": "メールの送信口が設定されていません。",
         "notIssued": "発行済みの見積書だけ送れます。",
-        "pdfMissing": "PDF が保存されていません。PDF タブで生成してから送ってください。",
-        "attachmentsUnsupported": "メールの送信口が PDF の添付に対応していません（管理者にご連絡ください）。",
-        "sendFailed": "送信に失敗しました。時間をおいて「メールで送付」から送り直してください。"
+        "sendFailed": "送信に失敗しました。時間をおいて「メールで送付」から送り直してください。",
+        "portalDisabled": "この環境では取引先ポータルが有効になっていないため、メールでは送れません（見積書はリンクで送ります）。",
+        "linkFailed": "見積書のリンクを発行できませんでした。"
       },
       "resend": "メールで送付",
-      "resendConfirm": "見積書 {number} の PDF を {email} へ送ります。",
+      "resendConfirm": "見積書 {number} のリンク（本人確認つき）を {email} へ送ります。",
       "mailSentTitle": "送付しました"
     },
     "materialPriceChart": {
@@ -8389,11 +8389,12 @@
       "subject": "見積書 {number} のご送付",
       "salutationCompany": "{company} 御中",
       "salutationPerson": "{company}\n{person} 様",
-      "body": "平素より大変お世話になっております。\n見積書 {number} をお送りいたします。添付の PDF をご確認ください。",
+      "body": "平素より大変お世話になっております。\n見積書 {number} をお送りいたします。下記のリンクからご確認ください（PDF をダウンロードできます）。",
       "validUntil": "有効期限: {date}",
       "closing": "ご不明な点がございましたら、お気軽にお問い合わせください。\n今後ともよろしくお願い申し上げます。",
       "contact": "担当: {name}",
-      "contactWithEmail": "担当: {name}（{email}）"
+      "contactWithEmail": "担当: {name}（{email}）",
+      "linkNote": "リンクを開くと、このメールアドレス宛てに確認コードをお送りします。リンクの有効期限: {date}"
     }
   },
   "shipping": {

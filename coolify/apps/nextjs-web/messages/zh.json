@@ -8064,12 +8064,12 @@
         "noRecipient": "没有发送对象的邮件地址。",
         "mailerNotConfigured": "未设置邮件发送通道。",
         "notIssued": "只能发送已发行的报价单。",
-        "pdfMissing": "尚未保存 PDF。请在 PDF 标签中生成后再发送。",
-        "attachmentsUnsupported": "邮件发送通道不支持 PDF 附件（请联系管理员）。",
-        "sendFailed": "发送失败。请稍后通过“邮件发送”重新发送。"
+        "sendFailed": "发送失败。请稍后通过“邮件发送”重新发送。",
+        "portalDisabled": "本环境未启用客户门户，无法通过邮件发送（报价单以链接形式发送）。",
+        "linkFailed": "无法生成报价单链接。"
       },
       "resend": "邮件发送",
-      "resendConfirm": "将报价单 {number} 的 PDF 发送至 {email}。",
+      "resendConfirm": "将报价单 {number} 的链接（需身份验证）发送至 {email}。",
       "mailSentTitle": "已发送"
     },
     "materialPriceChart": {
@@ -8389,11 +8389,12 @@
       "subject": "报价单 {number}",
       "salutationCompany": "{company}：",
       "salutationPerson": "{company}\n{person} 您好：",
-      "body": "感谢您一直以来的关照。\n现发送报价单 {number}，请查阅附件 PDF。",
+      "body": "感谢您一直以来的关照。\n现发送报价单 {number}，请通过以下链接查阅（可下载 PDF）。",
       "validUntil": "有效期限：{date}",
       "closing": "如有任何疑问，请随时与我们联系。\n今后也请多多关照。",
       "contact": "负责人：{name}",
-      "contactWithEmail": "负责人：{name}（{email}）"
+      "contactWithEmail": "负责人：{name}（{email}）",
+      "linkNote": "打开链接后，我们会向本邮件地址发送验证码。链接有效期至：{date}"
     }
   },
   "shipping": {
