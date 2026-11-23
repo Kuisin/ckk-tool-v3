@@ -44,6 +44,17 @@ Each card shows the work order number, the site, the step name, the product name
 
 > 💡 You can hide finished work from the list with 「**完了した工程を隠す**」 (Hide finished steps). Use it when there are too many items on the screen.
 
+The status moves as follows.
+
+```mermaid
+flowchart TD
+  wait("前工程待ち<br/>Waiting for the previous step") -->|"Previous step finished"| ready("開始可<br/>Can start")
+  ready -->|"工程開始<br/>Start step"| work("作業中<br/>In progress")
+  work -->|"一時停止<br/>Pause"| pause("一時停止中<br/>Paused")
+  pause -->|"再開<br/>Restart"| work
+  work -->|"工程完了<br/>Complete step"| done("完了<br/>Finished")
+```
+
 ## Starting the work
 
 1. From the list, press the card for the work you want to start.
@@ -101,6 +112,8 @@ On inspection steps, you enter the inspection record before you finish.
 2. Enter the **実測値** (measured value) for each item. Pass or fail is **judged automatically** if the value is inside the range that was set.
 3. For items that cannot be judged automatically, choose 「合格」 (pass) or 「不合格」 (fail) yourself.
 4. Press 「**検査記録を保存**」 (Save inspection record).
+
+> ⚠️ A step that has an inspection sheet **cannot be completed until the sheet is saved**. If you press「**工程完了**」(Complete step) without saving, you see「**検査記録が未入力の検査表があります。検査表を保存してから完了してください**」(Some inspection sheets have no record yet. Save them before completing the step). The same applies when completing several at once — that step goes to the list of steps that cannot be grouped.
 
 ## Recording several steps at once
 
@@ -200,11 +213,14 @@ A. If the screen shows 「**本日の担当工程はありません**」 (You ha
 **Q. I cannot start because it says 「前工程待ち」 (waiting for the previous step).**
 A. The step before it is not finished yet. Once the person doing that work finishes it, you can start.
 
+**Q. Who can operate a step that has no assigned person?**
+A. A step whose work plan has no assigned person can be started and completed by **anyone** who has the work order permission. It does not appear in the「工程実行」(Step execution) list, so open it from「**指示書スキャン**」(Work order scan) or「**作業場所の工程**」(Steps at this work location). A step assigned to someone else can only be operated by that person (and by whoever is working on it now).
+
 **Q. The received quantity is different from the real number.**
 A. Please change the number when you start. It is only the number carried over from the previous step as a starting value, so it is fine to match it to the number of pieces you really received.
 
 **Q. I finished it by mistake.**
-A. You cannot undo it from the tablet. Please tell the person in charge in the office (they will handle it on the PC).
+A. You cannot undo it from the tablet. Please tell the person in charge in the office (they roll it back on the PC). Rolling back **also deletes the step's inspection records**, so on an inspection step they must be entered again.
 
 **Q. The screen closed while I was working.**
 A. Your record is kept. Log in again and open the same step; it is still 「作業中」 (in progress) and you can carry on from where you were.

@@ -1,0 +1,280 @@
+// 業務フロー §5 製造（manual/process/business-flow#production）。
+// en / zh は同じ構造。文言を直すときは 3 本とも直すこと。
+
+/title/
+製造 — 工程の実行から完成・入庫まで
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 手順;
+left-subtitle: 説明;
+
+/role/
+
+<role_mfg>
+label: 製造（現場）;
+text-color: #134e4a;
+background-color: #ccfbf1;
+
+<role_supplier>
+label: 外注先;
+text-color: #92400e;
+background-color: #fffbeb;
+
+<role_system>
+label: システム;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_prod>
+label: 生産管理;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_appr>
+label: 承認者;
+text-color: #166534;
+background-color: #f0fdf4;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_KIOSK>
+label: 端末;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<WO>
+label: 指示書;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+<IR>
+label: 検査記録;
+side: right;
+background-color: #ecfeff;
+border-color: #0891b2;
+text-color: #155e75;
+
+<MV>
+label: 入出庫伝票;
+side: right;
+background-color: #ecfdf5;
+border-color: #059669;
+text-color: #065f46;
+
+/line/
+
+if (実施場所) is (社内) than #blue
+  if (記録する画面) is (共有端末) than #purple
+    [role_mfg: QRカードをかざす] <block_apply>
+    label: ログイン;
+    props: APP_KIOSK;
+    desc: 管理者が登録した共有端末でだけ使える。停止中・未割当のカードは入れない。;
+    if (PIN) is (求められる) than #orange
+      [role_mfg: PINを入力する] <block_apply>
+      label: PIN入力;
+      props: APP_KIOSK;
+      desc: その端末で初めて／その端末を 48 時間使っていない／前回の PIN から 2 週間、のどれかで聞かれる。初めてのカードは PIN を決めて 2 回入れる。;
+      if (照合) is (5回誤り) than #red
+        [role_system: カードをロックする] <block_reject>
+        label: 15分ロック;
+        desc: 5 回続けて間違えるとそのカードは 15 分使えない。忘れたときは管理者が PIN をリセットする。;
+        [loop]
+      elseif (一致) than
+      endif
+    elseif (不要) than
+    endif
+    [role_mfg: 工程を開く] <block_apply>
+    label: 工程を開く;
+    props: APP_KIOSK;
+    desc: 「工程実行」は自分に計画された工程を 遅延／本日／予定 で並べる。「指示書スキャン」は指示書の QR（または番号）で全工程を工程順に出す。;
+  elseif (パソコン) than #purple
+    [role_prod: 工程ビューを開く] <block_apply>
+    label: 工程ビュー;
+    props: APP_PD02;
+    desc: 指示書の詳細から「工程実行ビューを開く」。承認前・完了後は閲覧だけ。;
+  endif
+  if (開始条件) is (満たさない) than #orange
+    [role_system: 開始を止める] <block_wait>
+    label: 開始不可;
+    desc: 指示書が未承認／前工程・分岐元・先行指示書が未完了／ロット/伝票コード（必須）が未入力／別のユーザーがセッション中／この作業場所では実行できない、のときは開始できない。;
+    [loop]
+  elseif (満たす) than
+  endif
+  [role_mfg: 工程を開始する] <block_apply>
+  label: 開始;
+  props: APP_KIOSK,WO;
+  desc: 受入数（前工程の良品数が初期値）を確かめて開始する。工程は「進行中」になりセッションロックが掛かる。最初の工程の開始で指示書も「進行中」になる。;
+  if (中断) is (一時停止) than #blue
+    [role_mfg: 一時停止する] <block_wait>
+    label: 一時停止;
+    props: APP_KIOSK;
+    desc: 作業時間の計測が止まり、ロックが外れて他の人が引き取れる。工程の状態は「進行中」のまま。;
+    [role_mfg: 再開する] <block_apply>
+    label: 再開;
+    props: APP_KIOSK;
+    desc: 新しい作業区切りとして時間を積み上げる。同時に進める工程の時間は同時数で按分される。;
+  elseif (続ける) than
+  endif
+elseif (外注) than #blue
+  [role_prod: 外注先へ出す] <block_apply>
+  label: 外注依頼日;
+  props: APP_PD02,MV;
+  desc: 工程の「外注日程」に依頼日を入れると、その本数は外注先の預け在庫になる（外注支給の入出庫伝票）。一覧は外注依頼（PU04）で見る。;
+  [role_supplier: 加工して戻す] <block_neutral>
+  label: 外注加工;
+  desc: センタレス・コーティングなどを外注先が行う。;
+  [role_prod: 入荷日を記録する] <block_apply>
+  label: 入荷日;
+  props: APP_PD02,MV;
+  desc: 入荷日を入れると預け在庫が戻る（外注戻りの入出庫伝票）。工程の開始・完了は指示書の工程画面で記録する。;
+endif
+if (工程の種類) is (検査) than #blue
+  [role_mfg: 検査記録を入れる] <block_apply>
+  label: 検査記録;
+  props: APP_KIOSK,IR;
+  desc: 検査数と項目ごとの実測値を入れる。範囲内外で合否は自動、判定できない項目は手で選ぶ。抜取は必要なサンプル数が出る。検査表を保存しないと完了できない。;
+elseif (検査承認) than #blue
+  [role_appr: 検査記録を承認する] <block_approve>
+  label: 検査承認;
+  props: APP_KIOSK,IR;
+  desc: 前工程の検査表を見て承認する。承認できるのは合格の記録だけで、検査表に承認グループ・承認者があればその人だけ。数量は聞かない。;
+elseif (その他) than
+endif
+if (最終検査工程) is (はい) than #blue
+  [role_mfg: 最終検査を記録する] <block_apply>
+  label: 最終検査;
+  props: APP_KIOSK;
+  desc: 図面・ラベル確認・保護キャップ・完成本数、予備在庫、棚包→納品書発行→出荷許可を順に記録する。指示書 1 件に 1 件。;
+elseif (いいえ) than
+endif
+[role_mfg: 工程を完了する] <block_apply>
+label: 完了;
+props: APP_KIOSK,WO;
+desc: 不良を 1 行ずつ（区分＝半製品／廃棄／工程分岐・不良種類・詳細・本数）入れる。良品数は受入数−不良合計で自動。工程は「完了」になりロックが外れる。;
+if (再研磨の受入) is (製品受入) than #purple
+  [role_system: 預り品に入庫する] <block_system>
+  label: 預り品入庫;
+  props: MV;
+  desc: 再研磨の最初の工程「製品受入（再研磨）」の完了で、受け入れた本数がお客様の預り品として在庫に載る（自社在庫とは別）。;
+  if (全量返却) is (はい) than #orange
+    [role_system: 後続工程を取消] <block_end>
+    label: 自動取消;
+    desc: 全部が「返却（再研磨不可）」なら未着手の後続工程は自動でキャンセルされ、指示書はその場で完了する。;
+  elseif (いいえ) than
+  endif
+elseif (それ以外) than
+endif
+if (不良の区分) is (工程分岐) than #orange
+  [role_prod: 分岐系列を追加する] <block_apply>
+  label: 分岐追加;
+  props: APP_PD02;
+  desc: 工程分岐の本数を別の工程系列へ流す。終わり方（本流へ合流／在庫へ）を必ず選ぶ。;
+  if (変更の承認) is (事前承認) than #purple
+    [role_appr: 変更を承認する] <block_approve>
+    label: 事前承認;
+    props: APP_PD02;
+    desc: 承認が下りるまで変更は保留され、最終承認で工程に反映される。差し戻すと反映されずに閉じる。;
+  elseif (事後承認) than #purple
+    [role_system: その場で反映する] <block_system>
+    label: 即時反映;
+    desc: 変更はすぐ工程に反映される。;
+    [role_appr: 後から承認する] <block_approve>
+    label: 事後承認;
+    props: APP_PD02;
+    desc: 差し戻されても工程は自動では戻らない。赤い案内が出るので確かめて「確認済みにする」。;
+  elseif (段なし) than
+  endif
+  [role_mfg: 分岐工程を実行] <block_apply>
+  label: 分岐実行;
+  props: APP_KIOSK;
+  desc: 分岐系列の工程も同じく開始・完了する。分岐元が完了するまで始められない。;
+  if (分岐の終わり) is (本流へ合流) than #blue
+    [role_system: 合流先へ流す] <block_system>
+    label: 合流;
+    desc: 分岐の良品が、選んだ未着手のメインライン工程の受入になる。;
+  elseif (在庫へ) than #blue
+  endif
+elseif (それ以外) than
+endif
+if (訂正) is (やり直す) than #red
+  [role_prod: 工程を未着手に戻す] <block_reject>
+  label: 巻き戻し;
+  props: APP_PD02;
+  desc: 進行中は「中断」、完了済みは「巻き戻し」（どちらも理由必須）。後続が着手済み・在庫計上後は戻せない。完了の巻き戻しでは検査記録も消える。;
+elseif (なし) than
+endif
+[role_system: 指示書を完了にする] <block_system>
+label: 指示書完了;
+props: WO;
+desc: 全工程（分岐を含む）が終わるまで上を繰り返し、最後の工程が完了すると自動で指示書が「完了」になる。再研磨は自社在庫に入れず、返却（再研磨不可）の本数を預り品から外す。;
+if (指示書の種別) is (製造分・在庫分) than #blue
+  [role_system: 製品在庫に入庫する] <block_system>
+  label: 入庫;
+  props: MV;
+  desc: 完成数がロット番号付きで製品在庫へ、半製品の区分と半製品で終わる分岐は半製品在庫へ入る。取り置いた素材は消費される。1 枚の入出庫伝票（指示書完了）に残る。;
+elseif (再研磨) than #purple
+endif

@@ -68,7 +68,7 @@ Below is a table of lines:
 - **ロット (Lot)** … the lot number, for a product.
 - **保管場所 (Storage location)** … that line's storage location.
 - **数量 (Quantity)** … how much moved.
-- **備考 (Notes)** … notes on that line.
+- **備考 (Notes)** … notes on that line. A line showing 「**在庫不足のまま出庫**」 (issued while stock was short) means more was shipped than the ledger held (a [delivery order](/manual/en/operations/shipping/delivery-order/user) is not stopped when stock is short). That item's stock has gone negative, so bring it back with a [Stock Take](/manual/en/operations/inventory/stock-takes/user) (ST05) or a [Manual Stock Movement](/manual/en/operations/inventory/goods-movement/user) (ST06).
 
 **This screen has no edit or cancel operation.** A slip is a confirmed record and cannot be corrected afterward. If something is wrong, correct the originating business process (work order, delivery order, etc.), or adjust to the correct state using [Manual Stock Movement](/manual/en/operations/inventory/goods-movement/user) (ST06) or [Stock Take](/manual/en/operations/inventory/stock-takes/user) (ST05).
 

@@ -7,6 +7,8 @@ This app is for making the document (**指示書**, work order) that decides whi
 
 > ⚠️ For now this app works **only in the test environment**. The screens and the steps may change before it can be used for real work.
 
+> This app belongs to … [Production flow](/manual/en/process/production)
+
 ## What you can do with this app
 
 - You can make instructions for the factory, based on a customer's order (the order line).
@@ -44,6 +46,20 @@ When you open the app, you see a list of the work orders made so far.
 - **状態** (status) … one of 「下書き」 (draft), 「承認依頼中」 (pending approval), 「承認済」 (approved), 「進行中」 (in progress), 「完了」 (finished), or 「キャンセル」 (cancelled).
 - Type a work order number, a order line number, or a product name into the search box at the top to find one. You can also narrow it down with 「**種別**」 (type) and 「**状態**」 (status).
 - Click a row to open the detail screen for that work order.
+
+The status moves as follows.
+
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Request approval"| req("承認依頼中<br/>Pending approval"):::yellow
+  req -->|"Approved at every step"| appr("承認済<br/>Approved"):::blue
+  appr -->|"First step started"| prog("進行中<br/>In progress"):::violet
+  prog -->|"All steps completed (automatic)"| done("完了<br/>Completed"):::green
+  req -.->|"Send back"| draft
+  draft -.->|"Cancel document"| can("キャンセル<br/>Cancelled"):::red
+  req -.->|"Cancel document"| can
+  appr -.->|"Cancel document (no step started)"| can
+```
 
 ## Creating a work order
 
@@ -124,6 +140,8 @@ Work cannot start on a work order until it is approved. **How many approval stag
 
 > ⚠️ **Work plans must be complete before you can request approval.** Every in-house step needs at least one work plan with a planned date plus whatever that step requires (assignee, work location, and so on — see "Work plans and work actuals" below). If they are not complete, the 「**承認依頼**」 button is disabled and you see a note such as 「**作業計画が揃っていません: ◯◯（作業場所 なし）**」 (work plans are incomplete: ◯◯ (missing work location)) listing which steps are missing what. Outsourced steps and cancelled steps are not counted.
 
+> ⚠️ If the work order approval flow in [approval settings](/manual/en/operations/masters/approval-setting/user) has no steps at all, the approval request is refused with「**指示書の承認フローが未設定です（承認設定 MS0B で設定してください）**」(The approval flow for work orders is not configured). Ask an administrator to set up the steps.
+
 1. On the work order screen, press 「**承認依頼**」 (Request approval) on the card at the very top.
 2. The status changes to 「**承認依頼中**」 (pending approval). From this point, the original order line can no longer be edited.
 3. The person approving each stage presses 「**承認**」 (Approve) in turn.
@@ -136,7 +154,7 @@ Work cannot start on a work order until it is approved. **How many approval stag
 - A work order that was sent back returns to 「下書き」 (draft) and the reason appears in red on the screen. After fixing it, you can send it out again with 「**再承認依頼**」 (Request approval again).
 - Records of approvals and send-backs stay under 「手続き状況」 (procedure status). Ones approved by a stand-in are marked 「（代理: 原承認者）」 (stand-in for the original approver).
 
-You can also approve from the list in [approval management](/manual/en/operations/general/my-tasks/user) (PD03).
+You can also approve from the list in [Pending list](/manual/en/operations/general/my-tasks/user) (`CM01`).
 
 When a 「製造分」 (to make) work order is approved, the material it will use is **set aside (reserved)** for that work order.
 
@@ -202,7 +220,7 @@ Pressing 「**検査表を見る**」 (view the sheet) opens **the inspection sh
 - **最終検査・出荷前確認** (final inspection and pre-shipment checks) … on a step flagged as a 「**最終検査工程**」 (final inspection step) — 「出荷前検査」 (pre-shipment inspection) by default — you record the three checks (drawing and label, protective cap, finished quantity) plus spare stock, packing → delivery note → shipping approval, and the checked-by stamp for defects at shipping. The packing → delivery note → shipping approval chain follows the order on paper: you cannot record a stage until the previous one is recorded. **There is one record per work order**, so a work order whose step list has no flagged step has no final inspection at all.
 - **不良記録（任意）** (defect record, optional) … you can write down the defect type and what happened.
 - **作業計画 / 作業実績** (work plan / work result) … you can record who, when and where the work is planned (or was done). Plans carry the person in charge, date, time and work place; actuals add the **quantity** (see "Work plans and work actuals" below).
-- **外注日程** (outsourcing schedule) … on outsourced steps, you can record 「依頼日」 (sent date), 「入荷予定日」 (expected return date), 「入荷日」 (return date), and 「外注費」 (outsourcing cost).
+- **外注日程** (outsourcing schedule) … on outsourced steps, you can record 「依頼日」 (sent date), 「入荷予定日」 (expected return date), 「入荷日」 (return date), and 「外注費」 (outsourcing cost). **Entering the sent date records those pieces as "held by the subcontractor"** (shown under 「預け先」 (held by) on the [stock overview](/manual/en/operations/inventory/stock-overview/user)). Entering the return date brings them back. Each of the two creates one [stock movement](/manual/en/operations/inventory/inventory-movements/user) slip, and you can follow its number from the step screen. Pieces held by the subcontractor are not counted as our own stock, so they are not used for shipping or for reservations.
 
 ### Work plans and work actuals
 
@@ -219,8 +237,9 @@ Near the bottom of the step screen there are 「**作業計画**」 (work plans)
 
 ### When you want to redo something
 
-- **中断（巻き戻し）** (pause and roll back) … puts a step that is in progress back to not started, with a reason. Any quantity you had entered is not kept.
-- **巻き戻し** (roll back) … puts a finished step back to not started. It cannot be done if the next step has already started, or if the pieces have already gone into stock.
+- **中断（巻き戻し）** (abort) … puts a step that is in progress back to not started, with a reason. Any quantity you had entered is not kept.
+- **巻き戻し** (roll back) … puts a finished step back to not started, with a reason. **The step's inspection records are deleted too**, so an inspection step has to be recorded again. It cannot be done if the next step has already started, or if the pieces have already gone into stock (the work order is completed, or a completed「製品受入（再研磨）」(product receipt (regrind)) step has already taken the customer's tools into stock).
+- **Pause / resume** … only on the shared device (tablet). The PC screen cannot pause a step.
 
 ## Sending step-branch pieces down a different path (adding a branch)
 
@@ -236,6 +255,17 @@ Sometimes you want the pieces sent to a step branch to go through different step
    - If you choose neither, you see 「合流先を選ぶか、「在庫へ」を選んでください。分岐は必ず合流か在庫で終わります。」 (choose where it rejoins, or choose "to stock" — a branch must end in a rejoin or in stock) and the branch cannot be added.
 6. Press 「**分岐を追加**」 (Add branch).
 
+As a diagram, a branch looks like this:
+
+```mermaid
+flowchart TD
+  src["Finished step"] -->|"Good pieces"| main["Next main-line step"]
+  src -.->|"Step-branch pieces (branch quantity)"| br["Added steps (the branch)"]
+  br --> endq{"How the branch ends"}
+  endq -->|"本流へ合流<br/>Rejoin the main line"| merge["Rejoin target<br/>(a main-line step not started yet)"]
+  endq -->|"在庫へ<br/>To stock"| stock["Semi-finished or finished-product stock<br/>(booked when the work order completes)"]
+```
+
 Once you make a branch, a picture of the flow of the steps appears above the step workflow, showing how many pieces go from which step to where.
 
 After creating a branch, you can still change the **branch quantity** (only while every step in the branch is not started) and **how it ends** (the rejoin target or stock destination — only while the last step is not started) from the pencil button on the branch block. To swap the steps themselves, delete the branch and make it again.
@@ -249,6 +279,19 @@ If you add, change, or delete a branch on an approved or in-progress work order,
 
 If the approval settings have no 「工程フロー変更」 (step flow change) stage at all, the change is applied as it is, without approval.
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  chg["Add, change or delete a branch<br/>on an approved / in-progress work order"] --> q{"Do the approval settings have a<br/>「工程フロー変更」 (step flow change) stage?"}
+  q -->|"No"| now["Applied as it is, without approval"]
+  q -->|"Yes (事前承認 — approval first)"| hold["The change is held<br/>(card at the top of the screen)"]
+  hold -->|"Approved"| applied["Applied to the steps"]
+  q -->|"Yes (事後承認 — approval afterwards)"| first["Applied to the steps right away"]
+  first -->|"Approved afterwards"| ok["The change stays"]
+  first -.->|"Sent back afterwards"| red["The steps are not put back automatically<br/>Red notice → 「確認済みにする」 (Mark as checked)"]
+```
+
 ## When everything is finished
 
 When all the steps are finished, the work order automatically becomes 「**完了**」 (finished).
@@ -259,6 +302,8 @@ When all the steps are finished, the work order automatically becomes 「**完�
 - **A regrind work order does not add to our own stock.** Of the tools held as the customer's property, the pieces entered as 「返却（再研磨不可）」 (returned as-is) leave the customer-owned stock at this point; the reground pieces are returned to the customer with a [delivery order](/manual/en/operations/shipping/delivery-order/user).
 
 You can check stock in [inventory management](/manual/en/operations/inventory/inventory-management/user) (ST01). Pieces still being made are shown on the 「**仕掛品**」 (work in progress) tab of the same app.
+
+The stock movement at completion is kept as one slip under [stock movements](/manual/en/operations/inventory/inventory-movements/user) (reason 「指示書完了」 — work order completed). **For a work order made from semi-finished items, the semi-finished items used are taken out of stock at this point.**
 
 ### Next step: make a delivery order
 
@@ -271,7 +316,7 @@ You cannot make one from a for-stock work order (one with no order line). In tha
 ## Other things you can do
 
 - **編集** (edit) … only while it is 「下書き」 (draft). Press 「**編集**」 (Edit) at the top right of the screen.
-- **キャンセル** (cancel) … only while it is 「下書き」 (draft) or 「承認依頼中」 (pending approval). Choose 「**キャンセル**」 (Cancel) from the button with three dots at the top right.
+- **キャンセル** (cancel document) … possible until work starts — while it is 「下書き」 (draft) or 「承認依頼中」 (pending approval), or 「承認済」 (approved) with no step started yet. Choose 「**キャンセル**」 (Cancel) from the button with three dots at the top right. Cancelling releases the reservations taken at approval (materials and so on) and withdraws a pending approval request. The original order line goes back to 「確定」 (confirmed) if no other live work order covers it, and its lot number is removed.
 - **コピー** (copy) … choose 「**コピー**」 (Copy) from the button with three dots at the top right, then choose the order line to use. You get a draft that keeps the steps, the places where they are done, and the inspection sheets. Where it was copied from stays on the detail screen as 「**コピー元**」 (copied from). If there is a newer version than the one you copied, a note suggests copying the latest version.
 - **ストリップ印刷** (strip print) … choose 「**ストリップ印刷**」 (Strip print) from the button with three dots at the top right to print strips with the key points of the work order and a QR code (6 strips on a plain A4 sheet). You can stick them on the pieces or the boxes.
 - The tabs on the detail screen are 「**概要**」 (overview — steps and notes), 「**関連**」 (related — the original order line and where it was copied from), and 「**履歴**」 (history — who changed what and when).

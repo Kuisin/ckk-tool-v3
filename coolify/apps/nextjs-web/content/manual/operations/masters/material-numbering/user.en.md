@@ -44,6 +44,18 @@ This screen is split into seven tabs. Press a tab at the top to switch what is s
 | **直径** (Diameter) | The diameter of the material | The middle 3 digits of the material code |
 | **全長** (Length) | The length of the material | The last 3 digits of the material code |
 
+As a diagram, this is where each part goes in the codes:
+
+```mermaid
+flowchart TD
+  p1["Maker (first character)<br/>Maker grade (characters 2–3)<br/>Shape (character 4)"]
+  p1 --> mt["Material type code"]
+  p2["Black skin / Ground (1 character in the middle)<br/>Diameter (3 digits in the middle)<br/>Length (last 3 digits)"]
+  mt --> mc["Material code"]
+  p2 --> mc
+  kd["Kind"] -.->|"Chosen when registering a material"| mc
+```
+
 On every tab, the table has the columns 「**コード**」 (Code), 「**名称**」 (Name), 「**状態**」 (Status) and 「**更新日**」 (Updated). The 「メーカー材種」 (Maker grade) tab also has a 「**メーカー**」 (Maker) column showing which maker it belongs to, and the 「種類」 (Kind) tab has a 「**形状**」 (Shape) column.
 
 ![Maker grade tab of the numbering setup screen](../../../assets/screenshots/master-material-numbering-grades-01.png)

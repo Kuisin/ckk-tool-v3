@@ -128,7 +128,6 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
   {
     path: "operations/general/internal-pages/user",
     app: "internal-pages",
-    jaOnly: true,
   },
   // ── マスタ ──────────────────────────────────────────────────────────────
   {
@@ -171,7 +170,6 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
   {
     path: "operations/masters/charge-item/user",
     app: "master-charge-items",
-    jaOnly: true,
   },
   {
     path: "operations/masters/regrind-item/user",
@@ -197,14 +195,12 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
   {
     path: "operations/system/ai-provider/user",
     app: "ai-provider",
-    jaOnly: true,
   },
   {
     path: "operations/system/notification-email/user",
     app: "notification-email",
-    jaOnly: true,
   },
-  { path: "operations/system/portal/user", app: "portal-admin", jaOnly: true },
+  { path: "operations/system/portal/user", app: "portal-admin" },
   // ── キオスク（現場のタブレット。nextjs-web のアプリ一覧には無い）───────────
   // ログイン画面。QRカードと PIN があれば入れる — 権限の話ではない。
   { path: "operations/kiosk/start/user", code: null },

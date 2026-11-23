@@ -7,6 +7,8 @@ The computer reads the order form sent by the customer (a PDF or a scanned image
 
 > ⚠️ This app is still in trial release. The screens and the steps may change later.
 
+> This app belongs to … [Sales flow](/manual/en/process/sales)
+
 ## What you can do with this app
 
 - Load the order form file, and it is registered with **the customer name, the items and the number of pieces already filled in**.
@@ -51,7 +53,32 @@ When you open the app, you see the list of the order forms that have been import
 - The 「監視フォルダ取込」(watched folder import) badge at the top of the screen tells you whether automatic importing is available.
 - While a row is still being read, the screen refreshes itself every 30 seconds.
 
+The status moves as follows.
+
+```mermaid
+flowchart TD
+  imp("取込中<br/>Importing"):::gray -->|"Reading finished"| draft("下書き<br/>Draft"):::blue
+  draft -->|"Request approval"| req("承認依頼中<br/>Pending approval"):::yellow
+  req -->|"Approve"| appr("承認済<br/>Approved"):::green
+  appr -->|"Confirm"| confd("確定済<br/>Confirmed"):::teal
+  confd -->|"Archive (optional)"| arch("アーカイブ<br/>Archived"):::dark
+  req -.->|"Send back"| draft
+  confd -.-> ol["Order lines are created"]
+  confd -.->|"Cancellation request approved"| can("キャンセル<br/>Cancelled"):::red
+```
+
 ## Importing an order form (four ways)
+
+The four ways in, as a diagram:
+
+```mermaid
+flowchart TD
+  mail["1. Receive it by email<br/>(automatic)"] --> imp("取込中<br/>Importing"):::gray
+  folder["2. Put the file in the set folder<br/>(automatic)"] --> imp
+  pick["3. Choose a file there and then<br/>「優先取込」"] --> imp
+  imp -->|"The AI reads it"| draft("下書き<br/>Draft"):::blue
+  manual["4. Type it in by hand<br/>「手入力で新規」"] --> draft
+```
 
 **1. Receive it by email (automatic)**
 
@@ -119,14 +146,16 @@ At the top of the screen, 「**製品**」 (products), 「**明細数 / 合計�
 
 > 💡 On a row that has a price list, the unit price **comes from the price list and cannot be edited as-is** (the blue「**価格表 ￥…**」badge also shows which quantity tier applies). To accept it at a different price, turn on「**単価を上書き**」(override the unit price) on the right of that row and then edit it. An overridden row shows a violet「**上書き**」badge next to the price-list price, and「**単価の上書き N 件**」(N overridden unit prices) appears at the top of the screen.
 >
-> The orange「**価格差異**」(price difference) badge marks a row that differs from the price list **without** an override — for example because the price list changed after the draft was saved. A gray「**価格表なし**」(no price list) badge only means there is no price list yet for that customer and product — it is not a mistake, and the unit price on that row is free to enter.
+> The orange「**価格差異**」(price difference) badge marks a row that differs from the price list **without** an override — for example because the price list changed after the draft was saved. A gray「**価格表なし**」(no price list) badge only means there is no price list yet for that customer and product — it is not a mistake, and the unit price on that row is free to enter. An orange「**数量段階なし**」(no quantity tier) badge marks a row whose price list exists but has no tier for that quantity. Its unit price is free to enter, but like a price difference it must be acknowledged before you request approval.
 
 ## Asking for approval
 
 1. In view mode, press「**承認依頼**」(request approval) in the card at the very top of the screen. (The button is hidden while you are editing — save first.) The button stays disabled while something is missing: the card lists what it is (for example「顧客が未特定です」— no customer —,「明細 2 行目: 単価が未入力です」— no unit price on row 2 —, or「明細 2 行目: 研ぎ直す工具が未選択です」— no tool to regrind on row 2). Fix it with「**編集**」(edit) first.
-2. If there is a price difference, a screen called「価格差異の確認」(check the price difference) appears. Check the contents and press「**差異を確認して依頼**」(confirm the difference and request). Rows with an overridden unit price **do not stop the request** (the price is deliberate), but the approver also sees them as「単価の上書き N 件」(N overridden unit prices).
+2. If there is a price difference (or a row with「数量段階なし」(no quantity tier)), a screen called「価格差異の確認」(check the price difference) appears. Check the contents and press「**差異を確認して依頼**」(confirm the difference and request). Rows with an overridden unit price **do not stop the request** (the price is deliberate), but the approver also sees them as「単価の上書き N 件」(N overridden unit prices).
 
 The status changes to「**承認依頼中**」(pending approval).
+
+> ⚠️ If the「**注文請書**」(order acceptance) flow in [approval settings](/manual/en/operations/masters/approval-setting/user) has no steps at all, approval cannot be requested (a message says the order acceptance approval flow is not set up). Ask an administrator to add steps. Note that this differs from the cancellation flow, which cancels at once when it has no steps.
 
 > 💡 How many approval steps there are and who approves is decided in the [approval settings](/manual/en/operations/masters/approval-setting/user). Depending on conditions such as the total amount, the delivery method or the assigned plant, the number and makeup of the steps can differ from document to document.
 
@@ -162,7 +191,7 @@ When an order is withdrawn, you cancel the **whole order acceptance** (there is 
 1. On a deployed order acceptance, choose 「**キャンセル依頼**」 (request cancellation) from the 「…」 menu.
 2. Enter the **reason** (required) and press 「**キャンセルを依頼する**」.
 
-If the 「**注文請書キャンセル**」 (order acknowledgement cancellation) flow in the [approval settings](/manual/en/operations/masters/approval-setting/user) has steps, **nothing changes until approval finishes**. A pending card appears at the top of the screen; approvers see 「**承認**」 (approve) and 「**差し戻し**」 (reject) buttons there (they can also act from the [approval management](/manual/en/operations/general/my-tasks/user) list). With no steps configured, the cancellation applies immediately.
+If the 「**注文請書キャンセル**」 (order acceptance cancellation) flow in the [approval settings](/manual/en/operations/masters/approval-setting/user) has steps, **nothing changes until approval finishes**. A pending card appears at the top of the screen; approvers see 「**承認**」 (approve) and 「**差し戻し**」 (send back) buttons there (they can also act from the [approval management](/manual/en/operations/general/my-tasks/user) list). With no steps configured, the cancellation applies immediately.
 
 On final approval, the following happens automatically:
 
@@ -170,7 +199,28 @@ On final approval, the following happens automatically:
 - All reserved stock is **released**.
 - Unfinished work orders are **cancelled along with it** (completed ones, and combined-lot work orders that also make pieces for other lines, are left alone). **Steps already in progress stop too** — the work session of whoever was working it on a shared device is closed at that moment and the step disappears from their list (the time worked up to then is kept as actuals).
 
-If even one line has already shipped, cancellation cannot be requested. If the request is rejected, nothing changes and the request is closed.
+If even one line has already shipped, cancellation cannot be requested. If the request is sent back, nothing changes and the request is closed.
+
+As a diagram:
+
+```mermaid
+flowchart TD
+  ask["「キャンセル依頼」<br/>Enter the reason and request"] --> q{"Does the 「注文請書キャンセル」<br/>flow have steps?"}
+  q -->|"Yes"| wait["Nothing changes<br/>until approval finishes"]
+  q -->|"None"| can("キャンセル<br/>Cancelled"):::red
+  wait -->|"Final approval"| can
+  wait -.->|"Sent back"| keep["Nothing changes;<br/>the request is closed"]
+  can -.-> eff["Order lines cancelled<br/>Reserved stock released<br/>Unfinished work orders cancelled"]
+```
+
+### Recreate a cancelled order acceptance
+
+Lines cannot be edited once confirmed, so to change the contents you cancel the whole order acceptance and then recreate it.
+
+1. On the cancelled order acceptance, press「**この注文請書から作り直す**」(recreate from this order acceptance) in the「…」menu at the top right.
+2. Press「**作り直す**」(recreate) on the confirmation screen.
+
+A **new draft** is made that carries over the customer and the lines (unit prices, the override mark and delivery included). Unit prices are copied as they are, not looked up again in the price list. Line branch numbers, lot numbers and the imported order file are not carried over. The two stay linked as「作り直し元」(recreated from) and「作り直し先」(recreated as).
 
 ## Input fields
 

@@ -1,0 +1,294 @@
+// 業務フロー §3 設計 — 設計依頼書 (SA06) から設計図 (PD06) の版の確定、指示書での使用まで。
+// en / zh は同じ構造。文言を直すときは 3 本とも直すこと。
+
+/title/
+設計 — 設計依頼から図面の登録まで
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 手順;
+left-subtitle: 説明;
+
+/role/
+
+<role_cust>
+label: 顧客;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+<role_sales>
+label: 営業;
+text-color: #1e293b;
+background-color: #dbeafe;
+
+<role_system>
+label: システム;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_appr>
+label: 承認者;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_design>
+label: 設計;
+text-color: #3730a3;
+background-color: #e0e7ff;
+
+<role_prod>
+label: 生産管理;
+text-color: #065f46;
+background-color: #d1fae5;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SA03>
+label: SA03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA05>
+label: SA05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA06>
+label: SA06;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD06>
+label: PD06;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<DR>
+label: 設計依頼書;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<DV>
+label: 設計図の版;
+side: right;
+background-color: #eef2ff;
+border-color: #4f46e5;
+text-color: #3730a3;
+
+<WO>
+label: 指示書;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+/line/
+
+[role_cust: 形状を相談する] <block_neutral>
+label: 相談;
+desc: 特別な形状の相談や新製品の検討があり、図面が必要になる。;
+if (トリガー) is (見積時) than #blue
+  [role_sales: 見積書から起票] <block_apply>
+  label: 見積時;
+  props: APP_SA03,DR;
+  desc: 見積書の「設計依頼を起票」から開く。トリガー＝見積時とその見積書が入った状態になる。;
+elseif (受注時) than #blue
+  [role_sales: 注文明細から起票] <block_apply>
+  label: 受注時;
+  props: APP_SA05,DR;
+  desc: 注文明細の「設計依頼を起票」から開く。トリガー＝受注時とその注文明細が入る。;
+elseif (単独) than #blue
+  [role_sales: 単独で起票する] <block_apply>
+  label: 単独;
+  props: APP_SA06,DR;
+  desc: 見積にも受注にも紐づかない依頼。一覧の「新規作成」、製品マスタ、見積の「価格表なし」からも起票できる。;
+endif
+[role_system: 新規か改訂かを判定] <block_system>
+label: 依頼区分;
+desc: 製品 × 受注元の系列に過去の版があれば「改訂」、無ければ「新規」。手で切り替えることもできる。;
+if (依頼区分) is (改訂) than #blue
+  [role_sales: 元図面と理由を入力] <block_apply>
+  label: 改訂;
+  props: APP_SA06;
+  desc: 基にする版（空なら最新版）と変更理由（必須）を入れる。;
+elseif (新規) than #blue
+endif
+[role_sales: 下書きを保存する] <block_apply>
+label: 下書き;
+props: APP_SA06,DR;
+desc: 依頼番号（DSG-）が付き「下書き」になる。担当者に通知が届く。下書きのあいだは内容を直せる。;
+[role_sales: 承認を依頼する] <block_apply>
+label: 承認依頼;
+props: APP_SA06;
+desc: 「承認依頼中」になり、承認設定（MS0B）の 1 段目の承認者に通知が届く。;
+if (承認判断) is (差し戻し) than #red
+  [role_appr: 依頼を差し戻す] <block_reject>
+  label: 差し戻し;
+  props: APP_CM01;
+  desc: 状態は「差し戻し」になる。;
+  [role_sales: 直して再依頼する] <block_apply>
+  label: 再依頼;
+  props: APP_SA06;
+  desc: 内容を直して、もう一度「承認依頼」を押す。;
+  [loop]
+else
+  [role_appr: 依頼を承認する] <block_approve>
+  label: 承認;
+  props: APP_CM01;
+  desc: 段ごとに承認し、最後の段を通ると「未着手」になる。;
+endif
+[role_system: 担当者へ着手を通知] <block_system>
+label: 未着手;
+desc: 担当者に「着手してください」の通知が届く。;
+if (依頼の要否) is (不要になった) than #red
+  [role_sales: 依頼をキャンセル] <block_end>
+  label: キャンセル;
+  props: APP_SA06,DR;
+  desc: 理由を書いて「キャンセル」にする。完了前ならどの状態からでもでき、承認依頼中なら承認依頼も取り下げられる。ここで終わる。;
+elseif (続ける) than #blue
+endif
+[role_design: 着手する] <block_apply>
+label: 着手;
+props: APP_SA06,DR;
+desc: 「進行中」になり、依頼者に通知が届く。担当者と製品はこのあとも「…」から変えられる。;
+[role_design: 作業ファイルを添付] <block_neutral>
+label: 作業ファイル;
+props: APP_SA06;
+desc: メモ・下書きなどを「ファイル」タブに上げる（任意）。添付できるのは未着手・進行中のあいだだけ。;
+[role_design: 設計図に登録する] <block_apply>
+label: 図面登録;
+props: APP_PD06,DV;
+desc: 依頼の「設計図に登録」から開く。製品と受注元は依頼のもので固定。系列の次の番号で下書きの版ができる。;
+[role_design: 依頼を完了する] <block_apply>
+label: 完了;
+props: APP_SA06,DR;
+desc: この依頼から出来た版が 1 つ以上あるときだけ押せる。「完了」になり、依頼者（見積時は見積の営業担当にも）に通知が届く。;
+if (出来ばえ) is (描き直し) than #red
+  [role_sales: 完了を差し戻す] <block_reject>
+  label: 作業差し戻し;
+  props: APP_SA06;
+  desc: 「進行中」に戻り完了日が消える。承認は取り直さない。担当者に通知が届く。;
+  [role_design: 描き直して再完了] <block_apply>
+  label: 再完了;
+  props: APP_PD06,APP_SA06;
+  desc: 新しい版を登録して、もう一度「完了」を押す。前の版は残る。;
+  [loop]
+else
+endif
+[role_design: 版を確定に出す] <block_apply>
+label: 版の確定;
+props: APP_PD06,DV;
+desc: 下書きの版を画面で確かめ、「確定」または「承認依頼」を押す。確定するまでは仕様もファイルも直せる。;
+if (版の承認段) is (あり) than #blue
+  if (版の承認) is (差し戻し) than #red
+    [role_appr: 版を差し戻す] <block_reject>
+    label: 差し戻し;
+    props: APP_CM01;
+    desc: 版は「差し戻し」になる。;
+    [role_design: 版を直して再依頼] <block_apply>
+    label: 再依頼;
+    props: APP_PD06;
+    desc: 仕様やファイルを直して、もう一度「承認依頼」を押す。;
+    [loop]
+  else
+    [role_appr: 版を承認する] <block_approve>
+    label: 承認;
+    props: APP_CM01;
+    desc: 承認設定「設計図の版」の段を通ると「確定」になる。;
+  endif
+elseif (なし) than #blue
+  [role_design: その場で確定する] <block_approve>
+  label: 確定;
+  props: APP_PD06;
+  desc: 段が無ければ「確定」ボタン 1 つで確定する。;
+endif
+[role_system: 最新図面を切り替える] <block_system>
+label: 最新図面;
+desc: その系列の「最新」がこの版へ移る。他の受注元の系列には触らない。製品マスタの仕様もこの版を読む。;
+if (指示書の図面) is (固定する) than #purple
+  [role_prod: 使う版を固定する] <block_apply>
+  label: 固定;
+  props: APP_PD02,WO;
+  desc: 確定した版だけ選べる。あとで改訂されても現場の図面は変わらず、固定された版は直せなくなる。;
+elseif (固定しない) than #purple
+  [role_system: そのつど最新を出す] <block_system>
+  label: 自動選択;
+  desc: 受注元の系列の最新版 → 無ければ汎用の最新版。他の顧客の系列は使わない。;
+endif

@@ -68,7 +68,7 @@ description: "以单据形式查看库存每一次变动的记录。单据由业
 - **ロット**（批次）… 产品情况下的批次号。
 - **保管場所**（存放位置）… 该明细的存放位置。
 - **数量**（数量）… 变动的数量。
-- **備考**（备注）… 该明细的补充说明。
+- **備考**（备注）… 该明细的补充说明。显示「**在庫不足のまま出庫**」（库存不足仍出库）的行，表示出货数量超过了台账上的数量（[出货单](/manual/zh/operations/shipping/delivery-order/user)在库存不足时也不会被阻止）。该品目的库存已变为负数，请通过[棚卸](/manual/zh/operations/inventory/stock-takes/user)（ST05）或[手動入出庫](/manual/zh/operations/inventory/goods-movement/user)（ST06）恢复。
 
 **本画面没有编辑・取消操作。** 单据是已确定的记录，之后无法修改内容。若有错误，请修正原始业务（工单・出货单等），或通过[手動入出庫](/manual/zh/operations/inventory/goods-movement/user)（ST06）或[棚卸](/manual/zh/operations/inventory/stock-takes/user)（ST05）调整为正确状态。
 

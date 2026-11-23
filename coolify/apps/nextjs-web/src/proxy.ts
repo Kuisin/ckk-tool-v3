@@ -28,6 +28,9 @@
  * （src/config/dev-features.json）を見るページ・ルートハンドラ側が 404 を返して
  * 閉じる。matcher が言っているのは「認証を要求しない」だけで「中身がある」
  * ではない。
+ * /manual-media（マニュアルの動画・字幕・サムネイル）も除外する（/manual と同じ公開コンテンツ）—
+ * 公開マニュアルの中に埋まるので、弾くと未ログインの読者には動画ではなく
+ * /login への 307 が返る。写っているのは使い捨て DB のデモデータだけ。
  * /admin-manual は除外しない（要ログイン — レイアウト側でも二重確認）。
  *
  * ファビコン `/icon.svg`（app/icon.svg の Next 規約ルート）も除外必須 —
@@ -44,6 +47,6 @@ export default proxy;
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/sso|api/preview|api/device-signals|api/health|api/intake/inbound|api/v1(?:$|/)|login|portal(?:$|/)|manual(?:$|/)|llms-manual(?:$|/)|_next/static|_next/image|favicon\\.ico|icon\\.svg|design-assets|manifest\\.webmanifest|icons|sw\\.js).*)",
+    "/((?!api/auth|api/sso|api/preview|api/device-signals|api/health|api/intake/inbound|api/v1(?:$|/)|login|portal(?:$|/)|manual(?:$|/)|manual-media(?:$|/)|llms-manual(?:$|/)|_next/static|_next/image|favicon\\.ico|icon\\.svg|design-assets|manifest\\.webmanifest|icons|sw\\.js).*)",
   ],
 };

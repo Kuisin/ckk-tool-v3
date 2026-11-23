@@ -32,7 +32,7 @@ import { z } from "zod";
 import {
   actOnCurrentStep,
   appendHistory,
-  assertFlowConfigured,
+  approvalNeed,
   type HistoryEntry,
   startApprovalFlow,
 } from "@/lib/approvals";
@@ -570,7 +570,7 @@ export async function setDesignAssignee(
 /** 承認依頼 — DRAFT / REJECTED → REQUESTED。 */
 export async function requestDesignApproval(
   number: string,
-): Promise<ActionResult> {
+): Promise<ActionResult<{ approvedWithoutFlow: true } | undefined>> {
   const tr = await getTranslations();
   const authz = await checkPermission("design_request", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
@@ -589,8 +589,35 @@ export async function requestDesignApproval(
     }
     const actor = await getCurrentActorId();
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
-    const flowError = await assertFlowConfigured("design_requests");
-    if (flowError) return actionError(flowError);
+    const need = await approvalNeed("design_requests");
+    if (need.kind === "blocked") return actionError(need.error);
+    if (need.kind === "skip") {
+      // 承認設定で OFF — 依頼を作らず、最終承認と同じ状態（PENDING = 承認済・
+      // 着手待ち）へ直接進める。承認者は依頼した本人として記録し、履歴には
+      // 「承認なし」と残す。依頼の判定後に状態が動いていたら当てない。
+      const now = new Date();
+      const applied = await applyFinalApproval({
+        prior,
+        actor,
+        number,
+        tr,
+        from: prior.status,
+        extraData: { requestedAt: now, requestedBy: actor },
+        historyEntries: [
+          entry("REQUEST_APPROVAL", actor),
+          entry("APPROVE", actor, tr("approvals.policy.skippedNote")),
+        ],
+        auditNote: tr("approvals.policy.skippedNote"),
+      });
+      if (!applied) {
+        return actionError(
+          tr(
+            "sales.designRequestActions.onlyDraftOrRejectedCanRequestApproval",
+          ),
+        );
+      }
+      return actionOk({ approvedWithoutFlow: true });
+    }
     // 1 段目の承認依頼を作る（CM01 横断表示・承認記録の紐付け先 +
     // その段の承認グループへの自動通知）。
     // **状態より先に依頼を作る** — 逆順だと依頼の作成が失敗したとき、書類だけが
@@ -677,41 +704,82 @@ export async function approveDesign(number: string): Promise<ActionResult> {
       revalidate(number);
       return actionOk();
     }
-    await prisma.designRequest.update({
-      where: { id: prior.id },
-      data: {
-        status: "PENDING",
-        approvedAt: new Date(),
-        approvedBy: actor,
-        history: toHistoryJson(
-          appendHistory(prior.history, entry("APPROVE", actor)),
-        ),
-      },
-    });
-    await recordAudit({
-      action: "UPDATE",
-      tableName: "design_requests",
-      recordId: number,
-      before: { status: "REQUESTED" },
-      after: { status: "PENDING" },
-    });
-    // §10「依頼通知を製造担当へ」— 承認が通ってはじめて着手できるので、
-    // 起票時ではなくここが実際の合図になる。
-    await notifySafe({
-      userIds: [prior.assigneeId],
+    await applyFinalApproval({
+      prior,
       actor,
-      type: "DESIGN",
-      title: tr("sales.designRequestActions.approvedNotificationTitle", {
-        number,
-      }),
-      message: tr("sales.designRequestActions.pleaseStartMessage"),
       number,
+      tr,
+      from: "REQUESTED",
+      historyEntries: [entry("APPROVE", actor)],
     });
-    revalidate(number);
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
   }
+}
+
+/**
+ * 最終承認で書類が行き着く状態（PENDING = 承認済・着手待ち）を当てる。
+ * 承認フローの最終段と、承認設定で OFF のときの依頼（承認なし）の両方が
+ * ここを通る。
+ *
+ * - from = "REQUESTED"（最終承認）: 従来どおり無条件に更新する。
+ * - それ以外（承認なし）: 依頼の判定後に状態が動いていないことを条件に
+ *   更新し、動いていれば false を返す（二重押しで履歴を重ねない）。
+ */
+async function applyFinalApproval(args: {
+  prior: { id: string; history: unknown; assigneeId: string | null };
+  actor: string | null;
+  number: string;
+  tr: Awaited<ReturnType<typeof getTranslations>>;
+  from: "REQUESTED" | "DRAFT" | "REJECTED";
+  extraData?: { requestedAt: Date; requestedBy: string | null };
+  historyEntries: HistoryEntry[];
+  auditNote?: string;
+}): Promise<boolean> {
+  const { prior, actor, number, tr, from } = args;
+  let history = prior.history;
+  for (const e of args.historyEntries) history = appendHistory(history, e);
+  const data = {
+    ...(args.extraData ?? {}),
+    status: "PENDING" as const,
+    approvedAt: new Date(),
+    approvedBy: actor,
+    history: toHistoryJson(history as HistoryEntry[]),
+  };
+  if (from === "REQUESTED") {
+    await prisma.designRequest.update({ where: { id: prior.id }, data });
+  } else {
+    const res = await prisma.designRequest.updateMany({
+      where: { id: prior.id, status: from },
+      data,
+    });
+    if (res.count === 0) return false;
+  }
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "design_requests",
+    recordId: number,
+    before: { status: from },
+    after: {
+      status: "PENDING",
+      ...(args.auditNote ? { note: args.auditNote } : {}),
+    },
+  });
+  // §10「依頼通知を製造担当へ」— 承認が通ってはじめて着手できるので、
+  // 起票時ではなくここが実際の合図になる。
+  await notifySafe({
+    userIds: [prior.assigneeId],
+    actor,
+    type: "DESIGN",
+    title: tr("sales.designRequestActions.approvedNotificationTitle", {
+      number,
+    }),
+    message: tr("sales.designRequestActions.pleaseStartMessage"),
+    number,
+  });
+  revalidate(number);
+  return true;
 }
 
 /** 差し戻し — REQUESTED → REJECTED（理由必須）。承認グループのメンバーのみ。 */

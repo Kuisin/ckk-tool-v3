@@ -21,6 +21,17 @@ There are three apps about places, and they are easy to mix up. Please take care
 
 For both work locations and storage locations, you choose which site they are in when you register them. So please **register the site first**.
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  region["Region<br/>(e.g. Kanto)"] -.->|"groups sites"| plant["Site<br/>(e.g. head office plant)"]
+  plant --> work["Work location<br/>(e.g. NC lathe no. 1)"]
+  plant --> storage["Storage location and shelf<br/>(e.g. shelf A-1 in material warehouse A)"]
+  plant --> map["Floor map<br/>(drawing of a floor)"]
+  storage -.->|"place a mark on the drawing"| map
+```
+
 ## What you can do with this app
 
 - You can register the basic information of a site (code, name, address, phone number and so on).
@@ -115,29 +126,29 @@ Registering and swapping drawings is done only in this app. On the [storage loca
 
 ## Input fields
 
-Every field on the plant screen.
+Every field on the site screen.
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
-| [Plant code](#field-code) | Required | The plant's reference code |
-| [Name / kana](#field-name) | Required | The plant name |
+| [Site code](#field-code) | Required | The site's reference code |
+| [Name / kana](#field-name) | Required | The site name |
 | [Country / region](#field-region) | Optional | Used to scope permissions |
 | [Postcode / address](#field-address) | Optional | Location |
 | [Phone / email / contact](#field-contact) | Optional | Contact details |
 | [Active](#field-active) | — | Whether it appears in pick lists |
 | [Notes](#field-notes) | Optional | Notes |
 
-### Plant code [#field-code]
+### Site code [#field-code]
 
-The plant's reference code, used on stock and shipping screens.
+The site's reference code, used on stock and shipping screens.
 
 ### Name / kana [#field-name]
 
-The plant name — the "where" on stock, receipts and shipments.
+The site name — the "where" on stock, receipts and shipments.
 
 ### Country / region [#field-region]
 
-Country and region. **Region is the unit used to scope a user's permission to "plants in this region only".**
+Country and region. **Region is the unit used to scope a user's permission to "sites in this region only".**
 
 ### Postcode / address [#field-address]
 
@@ -149,7 +160,7 @@ Contact details. It is used as the contact point on documents.
 
 ### Active [#field-active]
 
-Turning it off removes the plant from receiving and shipping pick lists.
+Turning it off removes the site from receiving and shipping pick lists.
 
 ### Notes [#field-notes]
 

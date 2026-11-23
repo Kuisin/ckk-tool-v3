@@ -22,7 +22,7 @@ import { z } from "zod";
 import {
   actOnCurrentStep,
   appendHistory,
-  assertFlowConfigured,
+  approvalNeed,
   type HistoryEntry,
   startApprovalFlow,
 } from "@/lib/approvals";
@@ -32,7 +32,7 @@ import {
   checkPermission,
   targetPlantsInScope,
 } from "@/lib/authz";
-import { prisma } from "@/lib/db";
+import { type Prisma, prisma } from "@/lib/db";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -295,10 +295,51 @@ export async function updatePurchaseRequest(
 
 // ── 状態遷移（承認フロー） ────────────────────────────────────────────────────
 
+/**
+ * 最終承認の副作用 — 購買依頼を APPROVED にする。
+ *
+ * 承認フローの最終承認（approvePurchaseRequest）と、承認設定で OFF のときの
+ * 承認なしの確定（requestPurchaseRequestApproval の skip）の両方がここを通る。
+ * fromStatus のときだけ動かす（同時操作で二重に進めない）。false = 状態が
+ * 変わっていて動かせなかった。
+ */
+async function applyFinalPurchaseRequestApproval(args: {
+  prior: { id: string; history: Prisma.JsonValue };
+  requestNumber: string;
+  actor: string | null;
+  fromStatus: "DRAFT" | "REJECTED" | "REQUESTED";
+  historyEntry: HistoryEntry;
+  auditNote?: string;
+  /** 承認とあわせて書く列（承認なしの確定で依頼者を埋める）。 */
+  extraData?: Prisma.PurchaseRequestUncheckedUpdateManyInput;
+}): Promise<boolean> {
+  const { prior, requestNumber, actor, fromStatus, historyEntry, auditNote } =
+    args;
+  const flipped = await prisma.purchaseRequest.updateMany({
+    where: { id: prior.id, status: fromStatus },
+    data: {
+      ...args.extraData,
+      status: "APPROVED",
+      approvedAt: new Date(),
+      approvedBy: actor,
+      history: toHistoryJson(appendHistory(prior.history, historyEntry)),
+    },
+  });
+  if (flipped.count === 0) return false;
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "purchase_requests",
+    recordId: requestNumber,
+    before: { status: fromStatus },
+    after: { status: "APPROVED", ...(auditNote ? { note: auditNote } : {}) },
+  });
+  return true;
+}
+
 /** 承認依頼 — DRAFT / REJECTED → REQUESTED。 */
 export async function requestPurchaseRequestApproval(
   requestNumber: string,
-): Promise<ActionResult> {
+): Promise<ActionResult<{ approvedWithoutFlow: true } | undefined>> {
   const tr = await getTranslations();
   const authz = await checkPermission("purchase_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
@@ -323,8 +364,26 @@ export async function requestPurchaseRequestApproval(
     }
     const actor = await getCurrentActorId();
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
-    const flowError = await assertFlowConfigured("purchase_requests");
-    if (flowError) return actionError(flowError);
+    const need = await approvalNeed("purchase_requests");
+    if (need.kind === "blocked") return actionError(need.error);
+    if (need.kind === "skip") {
+      // 承認設定で OFF — 承認依頼を作らず、最終承認と同じ状態で確定する。
+      const note = tr("approvals.policy.skippedNote");
+      const flipped = await applyFinalPurchaseRequestApproval({
+        prior,
+        requestNumber,
+        actor,
+        fromStatus: prior.status,
+        historyEntry: entry("APPROVE", actor, note),
+        auditNote: note,
+        extraData: { requestedAt: new Date(), requestedBy: actor },
+      });
+      if (!flipped) {
+        return actionError(tr("purchase.purchaseRequestActions.stateChanged"));
+      }
+      revalidate(requestNumber);
+      return actionOk({ approvedWithoutFlow: true });
+    }
     // 1 段目の承認依頼を**先に**作る（PD03 横断表示・承認記録の紐付け先 +
     // その段の承認グループへの自動通知）。依頼が作れなければ状態は動かさない。
     const started = await startApprovalFlow({
@@ -416,27 +475,16 @@ export async function approvePurchaseRequest(
       revalidate(requestNumber);
       return actionOk();
     }
-    const flipped = await prisma.purchaseRequest.updateMany({
-      where: { id: prior.id, status: "REQUESTED" },
-      data: {
-        status: "APPROVED",
-        approvedAt: new Date(),
-        approvedBy: actor,
-        history: toHistoryJson(
-          appendHistory(prior.history, entry("APPROVE", actor)),
-        ),
-      },
+    const flipped = await applyFinalPurchaseRequestApproval({
+      prior,
+      requestNumber,
+      actor,
+      fromStatus: "REQUESTED",
+      historyEntry: entry("APPROVE", actor),
     });
-    if (flipped.count === 0) {
+    if (!flipped) {
       return actionError(tr("purchase.purchaseRequestActions.stateChanged"));
     }
-    await recordAudit({
-      action: "UPDATE",
-      tableName: "purchase_requests",
-      recordId: requestNumber,
-      before: { status: "REQUESTED" },
-      after: { status: "APPROVED" },
-    });
     revalidate(requestNumber);
     return actionOk();
   } catch (e) {

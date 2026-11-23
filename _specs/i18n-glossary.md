@@ -682,6 +682,10 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 送る間隔 / 猶予（分） | Send interval / Grace period (min) | 发送间隔 / 宽限（分钟） | 通知メール（SY0F） |
 | 1通の件数 / 最大件数 | Items per email / Max items | 每封件数 / 最多件数 | 通知メール（SY0F） |
 | 元に戻す | Reset to default | 恢复默认 | |
+| 動画 | Video | 视频 | マニュアルに載せる業務の通し操作の録画（ManualVideo） |
+| 手順（動画の区切り） | Steps | 步骤 | 動画の章 = 通し操作の 1 手順。字幕と同じ文。「チャプター」とは言わない |
+| 〜 録画 | Recorded 〜 | 录制于 〜 | 動画の下に出す録画日 |
+| 〜 へ移動（動画の位置） | Jump to 〜 | 跳转到 〜 | 手順の時刻ボタンの aria-label |
 
 ### 3.18 定型メッセージ
 
@@ -748,6 +752,22 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 最終利用 | Last used | 最后使用 |
 | 未使用 | Never used | 未使用 |
 | このトークンは二度と表示されません | This token will not be shown again | 此令牌不会再次显示 |
+
+### 3.22 外向き Webhook（SY0I）
+
+| ja | en | zh |
+|---|---|---|
+| Webhook | Webhook | Webhook |
+| 外向き Webhook | Outbound webhooks | 出站 Webhook |
+| 送信先 | Endpoint | 接收地址 |
+| 送信先 URL | Endpoint URL | 接收地址 URL |
+| 署名鍵 | Signing secret | 签名密钥 |
+| 署名鍵を再発行 | Rotate signing secret | 重新签发签名密钥 |
+| 配送 / 配送履歴 | Delivery / Deliveries | 发送 / 发送记录 |
+| 再送 | Redeliver | 重发 |
+| テスト送信 | Send test | 测试发送 |
+| イベント | Event | 事件 |
+| 合図（Webhook の本文） | Signal | 信号 |
 
 ---
 

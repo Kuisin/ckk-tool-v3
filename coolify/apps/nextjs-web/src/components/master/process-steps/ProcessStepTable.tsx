@@ -50,10 +50,11 @@ import {
   workOrderTypeOptions,
 } from "@/lib/enum-labels";
 import {
-  isPrepStep,
-  stepAllowedForType,
-  type WorkOrderType,
-} from "@/lib/workflow-core";
+  ROUTE_KIND_COLOR,
+  ROUTE_KIND_LABEL_KEY,
+  routeKindsForStep,
+} from "@/lib/process-route-kinds";
+import { stepAllowedForType, type WorkOrderType } from "@/lib/workflow-core";
 import {
   DeleteProcessStepModal,
   type ProcessStepModalTarget,
@@ -265,23 +266,27 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
       ),
     },
     {
-      // 準備 / 製造 のどちらの工程リストに入るか（isPrepStep — カテゴリから決まる）
+      // どの工程リストに入れられるか（準備 / 製造 / 再研磨。1 つの工程が製造と
+      // 再研磨の両方に入ることもある — lib/process-route-kinds.ts）。
       key: "routeKind",
       header: tr("master.processSteps.routeKind"),
       sortable: true,
       hideable: true,
-      width: 80,
-      sortValue: (r) => (isPrepStep(r) ? 0 : 1),
+      width: 110,
+      sortValue: (r) => routeKindsForStep(r).join(","),
       render: (r) => (
-        <Badge
-          color={isPrepStep(r) ? "teal" : "indigo"}
-          size="xs"
-          variant="light"
-        >
-          {isPrepStep(r)
-            ? tr("master.processSteps.routeKindPrep")
-            : tr("master.processSteps.routeKindManufacturing")}
-        </Badge>
+        <Group gap={4} wrap="nowrap">
+          {routeKindsForStep(r).map((kind) => (
+            <Badge
+              color={ROUTE_KIND_COLOR[kind]}
+              key={kind}
+              size="xs"
+              variant="light"
+            >
+              {tr(`master.processSteps.${ROUTE_KIND_LABEL_KEY[kind]}`)}
+            </Badge>
+          ))}
+        </Group>
       ),
     },
     {

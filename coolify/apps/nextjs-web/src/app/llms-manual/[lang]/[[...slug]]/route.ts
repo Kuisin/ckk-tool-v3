@@ -7,6 +7,7 @@
  */
 
 import { notFound } from "next/navigation";
+import { restoreMermaidFences } from "@/lib/docs-mermaid";
 import { manualSource } from "@/lib/manual-source";
 
 export const revalidate = false;
@@ -19,7 +20,8 @@ export async function GET(
   const page = manualSource.getPage(slug, lang);
   if (!page) notFound();
 
-  const md = await page.data.getText("processed");
+  // 図は `<Mermaid chart="…" />` に置き換わった後の姿で来るので、フェンスへ戻す。
+  const md = restoreMermaidFences(await page.data.getText("processed"));
   return new Response(md, {
     headers: { "Content-Type": "text/markdown; charset=utf-8" },
   });

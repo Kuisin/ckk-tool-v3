@@ -29,6 +29,17 @@ When working out the tax, the system decides in this order:
 2. If the partner is left empty (follow the product), the **product's** tax category
 3. If both are empty, the **default** category
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  bp{"Is a tax category set<br/>on the business partner?"}
+  bp -->|"Yes"| useBp["Use the business partner's<br/>tax category"]
+  bp -->|"No<br/>(follow the product)"| prod{"Is a tax category set<br/>on the product?"}
+  prod -->|"Yes"| useProd["Use the product's<br/>tax category"]
+  prod -->|"No"| useDef["Use the default<br/>tax category"]
+```
+
 > 💡 The partner comes first because a tax-exempt partner has to be billed at 0% whatever the product says. The flip side is that **a tax-exempt partner gets 0% even on a reduced-rate product**.
 
 ## Changing a rate
@@ -46,6 +57,8 @@ Enter it with a future date and the current rate keeps being used until that day
 
 ## Adding a category
 
+When you need a category of your own (for example, to treat certain transactions separately), you can add one.
+
 1. Press 「**税区分を追加**」 (Add tax category).
 2. Fill in 「**コード**」 (code, letters and digits) and 「**名称**」 (name).
 3. 「**帳票の区分表示**」 (label on documents) can stay empty — left empty it is built from the rate, e.g. "10%".
@@ -53,7 +66,7 @@ Enter it with a future date and the current rate keeps being used until that day
 
 ## When it will not delete
 
-The screen tells you why:
+It cannot be deleted in the following cases. The screen tells you why.
 
 - **A category already in use** … Products, business partners or issued documents point at it. To stop using it, switch 「**有効**」 (enabled) off instead. Products and documents already pointing at it keep working.
 - **The default category** … Make another category the default first.

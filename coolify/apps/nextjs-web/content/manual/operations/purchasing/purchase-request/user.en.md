@@ -7,6 +7,8 @@ This app is for making a **購買依頼** (purchase request) — a way of asking
 
 > ⚠️ This app is still being prepared, so it may not appear on the live system yet. If you cannot find it, please ask the person in charge at your company.
 
+> This app belongs to … [Purchasing flow](/manual/en/process/purchasing)
+
 ## What you can do with this app
 
 - You can ask for a material by writing only "what, where to, how many, and by when".
@@ -33,6 +35,16 @@ This app is for making a **購買依頼** (purchase request) — a way of asking
 ## The order in which a request moves along
 
 A purchase request moves along in this order. The coloured badge on the screen tells you where it is now.
+
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Request approval"| req("承認依頼中<br/>Pending approval"):::yellow
+  req -->|"Approve"| appr("承認済<br/>Approved"):::blue
+  appr -->|"Convert to purchase order"| ord("発注済<br/>Ordered"):::violet
+  req -->|"Send back"| rej("差し戻し<br/>Sent back"):::red
+  rej -.->|"Fix and resubmit"| req
+  appr -.->|"Withdraw"| can("キャンセル<br/>Cancelled"):::red
+```
 
 1. **下書き** (draft) … you have only created it. You can change it as often as you like.
 2. **承認依頼中** (pending approval) … you are waiting for your manager's answer. You cannot change it during this time.
@@ -80,6 +92,8 @@ Once you have checked the content, ask your manager to look at it.
 2. Press 「**承認依頼**」 (Request approval) on the 「**承認依頼が必要です**」 (approval request needed) card near the top of the screen.
 
 The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/general/my-tasks/user) screen.
+
+> ⚠️ The approval steps are decided in [approval settings](/manual/en/operations/masters/approval-setting/user) (`MS0B`). If the purchase request approval flow has no steps, you cannot request approval (a message such as "the approval flow is not configured" is shown). Ask an administrator to set up the approval settings.
 
 ![Purchase request pending approval](../../../assets/screenshots/purchase-request-detail-02.png)
 
@@ -134,7 +148,7 @@ Every field on the purchase request screen. The **?** next to a field in the app
 | [Reason](#field-reason) | Optional | Why it is needed — the approver reads this |
 | [Notes](#field-notes) | Optional | Notes for the whole request |
 | [Material](#field-material) | Required | The material you want |
-| [Receiving plant](#field-plant) | Optional | Where it will be received |
+| [Receiving site](#field-plant) | Optional | Where it will be received |
 | [Quantity](#field-quantity) | Required | How much you want |
 | [Unit](#field-unit) | Required | Pieces, kg and so on |
 | [Requested date](#field-desired-date) | Optional | When you need it by |
@@ -152,9 +166,9 @@ Notes about the request as a whole. Anything specific to one material belongs in
 
 The material you want. If it is not in the list, register it first in [Materials](/manual/en/operations/masters/material/user).
 
-### Receiving plant [#field-plant]
+### Receiving site [#field-plant]
 
-The plant that will receive the material. **It enters stock at the plant you choose here**, so pick where it will actually be used. If it is not decided yet, you may leave it blank.
+The site that will receive the material. **It enters stock at the site you choose here**, so pick where it will actually be used. If it is not decided yet, you may leave it blank.
 
 ### Quantity [#field-quantity]
 

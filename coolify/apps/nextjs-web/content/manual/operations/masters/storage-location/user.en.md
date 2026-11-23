@@ -35,6 +35,17 @@ There are three apps about places, and they are easy to mix up. Please take care
 - **Floor map** … the drawing of a floor of the site. The drawing itself is registered in [site (拠点)](/manual/en/operations/masters/plant/user).
 - **Pin** … the mark placed on the drawing that shows where a storage location is.
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  plant["Site"] --> loc["Storage location<br/>(e.g. material warehouse A)"]
+  loc --> shelf["Shelf<br/>(e.g. A-1)"]
+  plant --> map["Floor map<br/>(registered in the site app)"]
+  loc -.->|"place a pin"| map
+  shelf -.-> stock["Stock is counted per<br/>storage location + shelf"]
+```
+
 ## Before you start
 
 - You need the **master permission** to use this app.
@@ -109,14 +120,14 @@ Every field on the Storage location screen.
 
 | Field | What to enter |
 |-------|---------------|
-| [Plant / floor](#field-plant) | Which plant and floor the location is on |
+| [Site / floor](#field-plant) | Which site and floor the location is on |
 | [Code / name (ja, en)](#field-code) | The location's code and name |
 | [Sort order](#field-sort-order) | Order in the pick list |
 | [Active / notes](#field-active) | Turning it off removes it from storage pick lists |
 
-### Plant / floor [#field-plant]
+### Site / floor [#field-plant]
 
-Which plant and floor the location is on. **Stock is located down to this level.**
+Which site and floor the location is on. **Stock is located down to this level.**
 
 ### Code / name (ja, en) [#field-code]
 

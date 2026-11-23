@@ -68,6 +68,18 @@ In other words, **turning on the main switch is itself the release of that app t
 
 An app that has not yet been released to the real screen is shown on the practice screen with an orange 「**DEV**」 mark. It is a sign meaning "this app cannot be used on the real screen yet".
 
+As a diagram, whether an app appears on screen:
+
+```mermaid
+flowchart TD
+  env{"Which screen"} -->|"dev (practice)"| d{"Switch<br/>turned off"}
+  env -->|"main (real)"| m{"Switch<br/>turned on"}
+  d -->|"No"| show["The app is shown"]
+  d -->|"Yes"| hide["The app is not shown"]
+  m -->|"Yes"| show
+  m -->|"No"| hide
+```
+
 ## What happens when you turn a switch off
 
 ![The app list (launcher)](../../../assets/screenshots/launcher-01.png)

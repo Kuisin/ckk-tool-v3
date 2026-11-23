@@ -3,10 +3,13 @@ import { ApprovalSettingsView } from "@/components/master/approval-flows/Approva
 import type { ApprovalGroupRow } from "@/components/master/approval-settings/ApprovalGroupTable";
 import { effectiveMemberWhere } from "@/lib/approval-membership";
 import { loadGroupApprovers } from "@/lib/approval-permissions";
+import { LEGACY_EMPTY, resolveApprovalNeed } from "@/lib/approval-policy-core";
 import {
   APPROVAL_TARGET,
   FLOW_SETTINGS_TARGET_TYPES,
 } from "@/lib/approval-targets";
+import { getApprovalPolicies } from "@/lib/approvals";
+import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -27,26 +30,29 @@ export default async function MasterApprovalSettingsPage() {
       ),
     ),
   ];
-  const [flowSteps, ruleCounts, groupRecords] = await Promise.all([
-    prisma.approvalFlowStep.findMany({
-      include: { group: { select: { name: true } } },
-      orderBy: [{ targetType: "asc" }, { stepNo: "asc" }],
-    }),
-    // 条件付きフロー（有効のみ）の本数 — カードのバッジ用
-    prisma.approvalFlowRule.groupBy({
-      by: ["targetType"],
-      where: { isActive: true },
-      _count: { _all: true },
-    }),
-    prisma.approvalGroup.findMany({
-      include: {
-        // メンバー数は「今この瞬間に承認できる人」— 期間外の期間限定メンバーは
-        // 数えない（一覧の数字と実際に押せる人がずれると調査が長引く）。
-        _count: { select: { members: { where: effectiveMemberWhere(now) } } },
-      },
-      orderBy: { id: "asc" },
-    }),
-  ]);
+  const [flowSteps, ruleCounts, groupRecords, policies, canEdit] =
+    await Promise.all([
+      prisma.approvalFlowStep.findMany({
+        include: { group: { select: { name: true } } },
+        orderBy: [{ targetType: "asc" }, { stepNo: "asc" }],
+      }),
+      // 条件付きフロー（有効のみ）の本数 — カードのバッジ用
+      prisma.approvalFlowRule.groupBy({
+        by: ["targetType"],
+        where: { isActive: true },
+        _count: { _all: true },
+      }),
+      prisma.approvalGroup.findMany({
+        include: {
+          // メンバー数は「今この瞬間に承認できる人」— 期間外の期間限定メンバーは
+          // 数えない（一覧の数字と実際に押せる人がずれると調査が長引く）。
+          _count: { select: { members: { where: effectiveMemberWhere(now) } } },
+        },
+        orderBy: { id: "asc" },
+      }),
+      getApprovalPolicies(),
+      checkPermission("master", "UPDATE").then((r) => r.ok),
+    ]);
 
   // 段のメンバーが承認権限を持っているか — グループに入れただけでは承認できない
   // ので、設定画面のここで突き合わせる。
@@ -59,8 +65,23 @@ export default async function MasterApprovalSettingsPage() {
   const flows: FlowOverviewRow[] = FLOW_SETTINGS_TARGET_TYPES.map(
     (targetType) => {
       const code = APPROVAL_TARGET[targetType].approvePermission;
+      const stepCount = flowSteps.filter(
+        (s) => s.targetType === targetType,
+      ).length;
+      const policy = policies.get(targetType) ?? null;
+      // 承認を使う / 使わない（未設定は今の挙動から導く — lib/approval-policy-core.ts）。
+      const need = resolveApprovalNeed({
+        policy,
+        stepCount,
+        legacyEmpty:
+          LEGACY_EMPTY[
+            targetType as Exclude<typeof targetType, "form_responses">
+          ],
+      });
       return {
         targetType,
+        need,
+        policySet: policy != null,
         permissionCode: code,
         // 表示名は lib/permission-labels.ts が持つ（DB の display_name ではない）
         // — マニュアルと同じ 1 箇所から引くため。未知のコードはコードのまま出る。
@@ -93,5 +114,11 @@ export default async function MasterApprovalSettingsPage() {
     isActive: r.isActive,
   }));
 
-  return <ApprovalSettingsView flows={flows} groups={groups} />;
+  return (
+    <ApprovalSettingsView
+      canEditPolicy={canEdit}
+      flows={flows}
+      groups={groups}
+    />
+  );
 }

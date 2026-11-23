@@ -30,6 +30,15 @@ This app only creates an **identity**. **What that client can read** is decided 
 - **Activating** a client and **issuing a token** each need their own approval in [Privileged Access](/manual/en/operations/system/privileged-access/user) (`SY0G`). Holding the permission alone is not enough to press these buttons.
 - A client that has just been created can read nothing. **Activation, a token, and an assigned role** all have to be in place before an external system can read business data through it.
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  a["Client activated"] --> ok["The external system can<br/>read business data"]
+  b["Token issued"] --> ok
+  c["Role assigned"] --> ok
+```
+
 ## How to open it
 
 Press **API クライアント** (API Clients) inside 「システム」 (System) on the home screen. Or type `SY0I` into the search box at the top of the screen.
@@ -70,6 +79,15 @@ While a client stays "disabled", an external system cannot connect through it ev
 Until approval is granted, the 「有効化」 (Enable) button cannot be pressed — it stays grayed out. Once approved, the moment you first press it within the approved period, the client becomes usable for the granted duration (see the [Privileged Access](/manual/en/operations/system/privileged-access/user) page for details).
 
 Stopping a client with 「**無効化**」 (Disable) does **not** need approval. Anyone can disable a client immediately.
+
+As a diagram, the status changes like this:
+
+```mermaid
+flowchart TD
+  crt["Create a client"] --> dis("無効<br/>Disabled"):::gray
+  dis -->|"Enable (needs approval)"| act("有効<br/>Enabled"):::green
+  act -->|"Disable (no approval needed)"| dis
+```
 
 ## Issuing a token
 
@@ -122,6 +140,20 @@ A. Check whether roles are assigned. A client marked 「ロール未割当」 (N
 **Q. I want to change the allowed IP range later.**
 A. The current screen only lets you set it when creating the client. Please ask your system administrator.
 
+## Outbound webhooks
+
+The lower half of the screen, "**Outbound webhooks**", manages the endpoints that **receive a signal** (for example in n8n) when business data changes. How it works and how to receive it are described in [Integration (API and webhooks)](/manual/en/integration).
+
+- **New**: choose a name, API client, endpoint URL and the events to receive, then save. The **signing secret (`whsec_…`) is shown only once**.
+- **Send test**: sends one connectivity signal (`webhook.ping`).
+- **Deliveries**: shows recent results, attempt counts and the next attempt. A delivery that stopped as failed can be **redelivered**.
+- **Rotate signing secret**: the old secret stops working immediately.
+- **Disable / Enable / Delete**. An endpoint whose deliveries are abandoned 5 times in a row is disabled automatically.
+
+Adding an endpoint, changing its URL, rotating its secret and enabling it can be done only during a period approved in [Privileged Access](/manual/en/operations/system/privileged-access/user) (`SY0G`) as "**Manage outbound webhooks**". Disabling, deleting, test sends and redelivery need no approval.
+
+> 💡 Endpoint URLs must be https, or http to internal hosts (Docker service names, private IPs, `.loc`).
+
 <!-- permissions:start -->
 ## Permissions required
 
@@ -141,7 +173,8 @@ Holding the permission is not enough for the operations below. You **request the
 | Operation | Permission | What it unlocks |
 | --- | --- | --- |
 | Issue an API token | API client administration（`api_client`）— Create | Mint the key an external system uses to read business data. The minted value is the credential itself, and it carries whatever the assigned roles allow |
-| Activate an API client | API client administration（`api_client`）— Edit | Turn a client that passes nothing into one that can actually read business data |
+| Activate an API client | API client administration（`api_client`）— Update | Turn a client that passes nothing into one that can actually read business data |
+| Manage outbound webhooks | API client administration（`api_client`）— Update | Create or widen a channel that sends business data changes outside. Covers adding an endpoint, changing its URL, rotating its signing secret and enabling it |
 
 Permissions come through roles. If something is missing, ask an administrator.
 

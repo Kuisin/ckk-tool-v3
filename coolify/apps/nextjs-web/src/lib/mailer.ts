@@ -46,6 +46,8 @@ export interface MailInput {
   /** プレーンテキスト本文（HTML は sendNotificationMail が組み立てる）。 */
   text: string;
   html?: string;
+  /** 返信先（既定は差出人 = no-reply）。取引先へ送る書類は担当者にする。 */
+  replyTo?: string;
 }
 
 /**
@@ -69,6 +71,7 @@ export async function sendMail(input: MailInput): Promise<boolean> {
         subject: input.subject,
         text: input.text,
         html: input.html,
+        reply_to: input.replyTo,
       }),
       // 通知 1 通のために業務処理を待たせない。リレーは受け取るだけなので速い。
       signal: AbortSignal.timeout(10_000),

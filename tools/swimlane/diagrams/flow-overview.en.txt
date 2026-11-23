@@ -1,0 +1,370 @@
+// 業務フローの全体像。manual/business-flow の 0 節と、標準フロー（manual/process/default-flow）の両方が使う。
+// 分野ごとの全パターンは flow-<process>.txt（pricing / order / design / planning / production / purchasing / inventory / shipping / billing）が持つ。
+// en / zh は同じ構造。文言を直すときは 3 本とも直すこと。
+
+/title/
+Business flow overview — from price estimate to payment
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_rep>
+label: Sales;
+text-color: #1e293b;
+background-color: #dbeafe;
+
+<role_cust>
+label: Customer;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+<role_sales>
+label: Sales support;
+text-color: #92400e;
+background-color: #fef3c7;
+
+<role_appr>
+label: Approver;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_prod>
+label: Production control;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_purch>
+label: Purchasing;
+text-color: #115e59;
+background-color: #ccfbf1;
+
+<role_mfg>
+label: Manufacturing (floor);
+text-color: #134e4a;
+background-color: #ccfbf1;
+
+<role_ship>
+label: Shipping;
+text-color: #9a3412;
+background-color: #ffedd5;
+
+<role_acct>
+label: Accounting;
+text-color: #9d174d;
+background-color: #fce7f3;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_money>
+background-color: #fdf2f8;
+text-color: #9d174d;
+border-color: #db2777;
+shape: rounded;
+icon: #credit-card;
+
+/prop/
+
+<APP_SA01>
+label: SA01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA02>
+label: SA02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA03>
+label: SA03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA04>
+label: SA04;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA05>
+label: SA05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PU01>
+label: PU01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PU02>
+label: PU02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PU03>
+label: PU03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SH01>
+label: SH01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SH02>
+label: SH02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_BL01>
+label: BL01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_BL02>
+label: BL02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_KIOSK>
+label: Tablet;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<QT>
+label: Quote;
+side: right;
+background-color: #f0f9ff;
+border-color: #2563eb;
+text-color: #1e40af;
+
+<OA>
+label: Order acceptance;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<OL>
+label: Order lines;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<WO>
+label: Work order;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+<PR>
+label: Purchase request;
+side: right;
+background-color: #f0fdfa;
+border-color: #0d9488;
+text-color: #115e59;
+
+<PO>
+label: Material PO;
+side: right;
+background-color: #f0fdfa;
+border-color: #0d9488;
+text-color: #115e59;
+
+<DO>
+label: Delivery order;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<DN>
+label: Delivery note;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<INV>
+label: Invoice;
+side: right;
+background-color: #fdf2f8;
+border-color: #db2777;
+text-color: #9d174d;
+
+<CSV>
+label: Journal CSV;
+side: right;
+background-color: #f1f5f9;
+border-color: #64748b;
+text-color: #0f172a;
+
+/line/
+
+[role_rep: Calculate the price] <block_apply>
+label: Price estimate;
+props: APP_SA01;
+desc: Work out the unit price from material, size and machining, then confirm it.;
+[role_rep: Set the price list] <block_apply>
+label: Price list;
+props: APP_SA02;
+desc: Set the unit price per customer and product, optionally based on a confirmed price estimate.;
+[role_rep: Issue the quote] <block_apply>
+label: Quote;
+props: APP_SA03,QT;
+desc: Unit prices come from the price list; send the issued PDF to the customer.;
+[role_cust: Send a purchase order] <block_neutral>
+label: Order;
+desc: The order arrives by email, fax or PDF.;
+[role_sales: Import the order] <block_apply>
+label: Order acceptance;
+props: APP_SA04,OA;
+desc: Customer, items and quantities are read automatically. Check the content and the unit prices (matched against the price list).;
+[role_sales: Request approval] <block_apply>
+label: Request;
+props: APP_SA04;
+if (Approved?) is (Sent back) than #red
+  [role_sales: Fix and resubmit] <block_reject>
+  label: Sent back;
+  props: APP_SA04;
+  [loop]
+else
+  [role_appr: Approve the order] <block_approve>
+  label: Approve;
+  props: APP_CM01;
+endif
+[role_sales: Confirm the order] <block_apply>
+label: Confirm;
+props: APP_SA04,OL;
+desc: One order line is created per row, and its number and amount are fixed.;
+[role_sales: Create work order] <block_apply>
+label: Work order;
+props: APP_PD02,WO;
+desc: Split into what can come from stock (from stock) and what must be made (manufacture). For manufacture, lay out the steps and choose the material.;
+if (Material) is (Short) than #orange
+  [role_prod: Request material] <block_apply>
+  label: Request;
+  props: APP_PU01,PR;
+  [role_appr: Approve the request] <block_approve>
+  label: Approve;
+  props: APP_CM01;
+  [role_purch: Order the material] <block_apply>
+  label: Order;
+  props: APP_PU02,PO;
+  desc: The purchase order is approved, then sent to the supplier.;
+  [role_purch: Record the receipt] <block_apply>
+  label: Receipt;
+  props: APP_PU03;
+  desc: The material that arrived goes into material stock.;
+elseif (Enough) than
+endif
+[role_appr: Approve work order] <block_approve>
+label: Approve;
+props: APP_CM01;
+desc: On approval, the material for manufacture is reserved.;
+[role_mfg: Run the steps] <block_apply>
+label: Manufacture;
+props: APP_KIOSK;
+desc: On the floor tablet, start and complete each step and record quantities and defects. When every step is done, the finished goods go into product stock.;
+[role_ship: Confirm delivery] <block_apply>
+label: Delivery order;
+props: APP_SH01,DO,DN;
+desc: Confirming creates the delivery note automatically.;
+[role_ship: Ship] <block_apply>
+label: Ship;
+props: APP_SH01;
+desc: Product stock goes down and the order line becomes 出荷済 (Shipped).;
+[role_ship: Mark as delivered] <block_apply>
+label: Deliver;
+props: APP_SH02;
+[role_acct: Close the period] <block_money>
+label: Closing;
+props: APP_BL02;
+desc: On each customer's closing day, the period's deliveries are gathered.;
+[role_acct: Send the invoice] <block_money>
+label: Invoice;
+props: APP_BL01,INV;
+desc: An invoice is created from the closing; issue it and send the PDF.;
+[role_cust: Pay] <block_neutral>
+label: Payment;
+[role_acct: Record the payment] <block_money>
+label: Payment received;
+props: APP_BL01;
+desc: Check the payment and set the invoice to 支払済 (Paid).;
+[role_acct: Export journal CSV] <block_money>
+label: Accounting export;
+props: APP_BL01,CSV;
+desc: Export the journal CSV and import it into the accounting software.;

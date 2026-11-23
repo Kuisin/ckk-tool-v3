@@ -43,6 +43,7 @@
  */
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
+@import "fumadocs-openapi/css/preset.css";
 
 /*
  * Drive Tailwind's `dark:` variant from Mantine's color scheme instead of the
@@ -122,7 +123,12 @@ html {
    * ずれることがある。
    */
   html {
-    overscroll-behavior-y: none;
+    /*
+     * 横向きでも同じことが起きる（2026-10 報告: PWA の横画面でスクロールすると
+     * フッターがずれる）。y だけ止めていたので、横方向のバウンドが残っていた。
+     * 両軸とも止める。
+     */
+    overscroll-behavior: none;
   }
 }
 
@@ -466,6 +472,15 @@ html {
     [data-mantine-color-scheme="dark"] .form-actions {
       background-color: var(--mantine-color-dark-8);
     }
+    /*
+     * マスタ/詳細の右ペインでは操作バーがページの末尾になる。sticky の自然位置は
+     * main の下余白（--app-shell-padding）の上なので、末尾までスクロールすると
+     * バーがフッターから 16px 浮き上がって「ずれる」。余白ぶん下へ伸ばして、
+     * 貼り付き中と末尾とで同じ位置（フッターの真上）に留める。
+     */
+    .master-detail-detail > :last-child > .form-actions:last-child {
+      margin-bottom: calc(-1 * var(--app-shell-padding, 0rem));
+    }
   }
 
   /* Form fields: in a grid row where fields differ in label/description height,
@@ -560,4 +575,38 @@ html {
       transform: none;
     }
   }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * マニュアルの Mermaid 図（components/docs/Mermaid.tsx）
+ *
+ * 図は原寸で描く（入れ物の幅へ縮めない）。入らないときは図だけが横に
+ * スクロールする — ページ全体を横に押し広げない。描き終わるまでの高さを
+ * 先に取っておくのは、下の本文が飛ばないようにするため。
+ * ───────────────────────────────────────────────────────────────────────── */
+.docs-mermaid {
+  margin: 1.25rem 0;
+  padding: 1rem;
+  min-height: 7.5rem;
+  overflow-x: auto;
+  text-align: center;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.docs-mermaid > svg {
+  display: inline-block;
+  max-width: none;
+  height: auto;
+}
+
+/* 描けなかった図はソースをそのまま見せる（title に理由）。 */
+.docs-mermaid-error {
+  margin: 1.25rem 0;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  border: 1px dashed var(--mantine-color-red-5);
+  border-radius: 0.5rem;
 }

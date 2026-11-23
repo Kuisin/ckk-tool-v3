@@ -104,7 +104,16 @@ export function ApprovalActionCard({
     startTransition(async () => {
       const result = await action();
       if (result.ok) {
-        notifications.show({ title: done, message: subject, color: "green" });
+        // 承認設定で OFF の種別は、依頼の操作がそのまま承認済にする
+        // （lib/approval-policy-core.ts）— 「依頼しました」と出すと嘘になる。
+        const skipped =
+          (result.data as { approvedWithoutFlow?: boolean } | undefined)
+            ?.approvedWithoutFlow === true;
+        notifications.show({
+          title: skipped ? tr("approvals.policy.approvedWithoutFlow") : done,
+          message: subject,
+          color: "green",
+        });
         setRejectOpen(false);
         setReason("");
         router.refresh();

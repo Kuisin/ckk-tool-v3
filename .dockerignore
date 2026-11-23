@@ -13,6 +13,15 @@
 # マニュアルのスイムレーン図は nextjs-web の build が DSL から生成する
 # （pnpm build の先頭）。依存ゼロ・約 300KB。
 !tools/swimlane/
+# manual-videos（マニュアルの動画の録画）は、通し操作のスクリプトとシードの
+# 一部（レガシー import）も要る。
+!coolify/apps/manual-videos/
+!tools/docs-screenshots/
+!tools/data-migration/imports/
+tools/docs-screenshots/.auth
+tools/docs-screenshots/.verify-out
+tools/docs-screenshots/test-results
+tools/docs-screenshots/playwright-report
 shared-db/backups/
 **/node_modules
 **/.next

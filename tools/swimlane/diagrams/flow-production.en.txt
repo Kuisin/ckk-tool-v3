@@ -1,0 +1,280 @@
+// Business flow §5 Manufacturing (manual/process/business-flow#production).
+// Same structure as ja / zh — change all three together.
+
+/title/
+Manufacturing — from running steps to finished goods in stock
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_mfg>
+label: Manufacturing (floor);
+text-color: #134e4a;
+background-color: #ccfbf1;
+
+<role_supplier>
+label: Subcontractor;
+text-color: #92400e;
+background-color: #fffbeb;
+
+<role_system>
+label: System;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_prod>
+label: Production control;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_appr>
+label: Approver;
+text-color: #166534;
+background-color: #f0fdf4;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_KIOSK>
+label: Tablet;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<WO>
+label: Work order;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+<IR>
+label: Insp. record;
+side: right;
+background-color: #ecfeff;
+border-color: #0891b2;
+text-color: #155e75;
+
+<MV>
+label: Stock mvmt;
+side: right;
+background-color: #ecfdf5;
+border-color: #059669;
+text-color: #065f46;
+
+/line/
+
+if (Where) is (In-house) than #blue
+  if (Screen) is (Shared device) than #purple
+    [role_mfg: Scan QR card] <block_apply>
+    label: Log in;
+    props: APP_KIOSK;
+    desc: Works only on a shared device registered by an admin. Suspended or unassigned cards are refused.;
+    if (PIN) is (Asked) than #orange
+      [role_mfg: Enter PIN] <block_apply>
+      label: PIN;
+      props: APP_KIOSK;
+      desc: Asked on first use of that device, after 48 hours without using that device, or 2 weeks after the last PIN. A new card sets its PIN by entering it twice.;
+      if (Check) is (5 failures) than #red
+        [role_system: Lock the card] <block_reject>
+        label: 15-min lock;
+        desc: Five wrong PINs in a row lock the card for 15 minutes. A forgotten PIN is reset by an admin.;
+        [loop]
+      elseif (Match) than
+      endif
+    elseif (Not asked) than
+    endif
+    [role_mfg: Open the step] <block_apply>
+    label: Open step;
+    props: APP_KIOSK;
+    desc: "Steps" lists the steps planned for you as overdue / today / upcoming. "Work order scan" shows every step of a work order in step order from its QR (or number).;
+  elseif (PC) than #purple
+    [role_prod: Open step view] <block_apply>
+    label: Step view;
+    props: APP_PD02;
+    desc: From the work order detail, "Open step execution view". View-only before approval and after completion.;
+  endif
+  if (Can start) is (No) than #orange
+    [role_system: Block the start] <block_wait>
+    label: Cannot start;
+    desc: A step cannot start while the work order is not approved, a previous step / branch source / preceding work order is not completed, a required lot/slip code is empty, another user holds the session, or this work location may not run it.;
+    [loop]
+  elseif (Yes) than
+  endif
+  [role_mfg: Start the step] <block_apply>
+  label: Start;
+  props: APP_KIOSK,WO;
+  desc: Check the received quantity (prefilled with the previous step's good quantity) and start. The step becomes In progress and is session-locked; the first start also puts the work order In progress.;
+  if (Interrupt) is (Pause) than #blue
+    [role_mfg: Pause] <block_wait>
+    label: Pause;
+    props: APP_KIOSK;
+    desc: Time stops and the lock is released so someone else can take over. The step stays In progress.;
+    [role_mfg: Resume] <block_apply>
+    label: Resume;
+    props: APP_KIOSK;
+    desc: Time is added as a new work segment. Time on steps run at the same time is split by the number of concurrent steps.;
+  elseif (Continue) than
+  endif
+elseif (Outsourced) than #blue
+  [role_prod: Send out] <block_apply>
+  label: Requested date;
+  props: APP_PD02,MV;
+  desc: Entering the requested date in the step's outsourcing dates moves the quantity to stock held by the subcontractor (stock movement "Issued to subcontractor"). The list is in Outsource order (PU04).;
+  [role_supplier: Process and return] <block_neutral>
+  label: Outsourced work;
+  desc: The subcontractor does centerless grinding, coating and the like.;
+  [role_prod: Log received date] <block_apply>
+  label: Received date;
+  props: APP_PD02,MV;
+  desc: Entering the received date returns the held stock (stock movement "Returned from subcontractor"). Start and completion are recorded on the work order's step screen.;
+endif
+if (Step type) is (Inspection) than #blue
+  [role_mfg: Enter inspection] <block_apply>
+  label: Inspection;
+  props: APP_KIOSK,IR;
+  desc: Enter the inspected quantity and a measured value per item. Pass/fail is automatic against the tolerance; items that cannot be judged are set by hand. Sampling shows the required sample size. The step cannot complete until the sheet is saved.;
+elseif (Insp. approval) than #blue
+  [role_appr: Approve inspection] <block_approve>
+  label: Insp. approval;
+  props: APP_KIOSK,IR;
+  desc: Approve after viewing the previous step's inspection sheet. Only passed records can be approved, and only by the sheet's approval group / approvers if set. No quantity is asked.;
+elseif (Other) than
+endif
+if (Final insp. step) is (Yes) than #blue
+  [role_mfg: Record final insp.] <block_apply>
+  label: Final insp.;
+  props: APP_KIOSK;
+  desc: Record drawing/label check, protective caps, finished count, spare stock, then packing → delivery note issued → shipping permit in order. One per work order.;
+elseif (No) than
+endif
+[role_mfg: Complete the step] <block_apply>
+label: Complete;
+props: APP_KIOSK,WO;
+desc: Enter defects one row each (type = semi-finished / scrapped / process branch, defect type, details, quantity). Good = received − defects, automatically. The step becomes Completed and the lock is released.;
+if (Regrind receipt) is (Tool receipt) than #purple
+  [role_system: Customer stock in] <block_system>
+  label: Customer stock;
+  props: MV;
+  desc: Completing the first regrind step "Tool receipt (regrind)" books the received quantity as customer-owned stock (separate from our own stock).;
+  if (All returned) is (Yes) than #orange
+    [role_system: Cancel later steps] <block_end>
+    label: Auto-cancel;
+    desc: If everything is "Returned as-is (not regrindable)", the not-started later steps are cancelled automatically and the work order completes at once.;
+  elseif (No) than
+  endif
+elseif (Other) than
+endif
+if (Defect type) is (Process branch) than #orange
+  [role_prod: Add branch series] <block_apply>
+  label: Add branch;
+  props: APP_PD02;
+  desc: Sends the process-branch quantity through another series of steps. Choosing how it ends (merge into main line / to stock) is required.;
+  if (Change approval) is (Pre-approval) than #purple
+    [role_appr: Approve the change] <block_approve>
+    label: Pre-approval;
+    props: APP_PD02;
+    desc: The change is held until approved and applied to the steps on final approval. Sending it back closes it unapplied.;
+  elseif (Post-approval) than #purple
+    [role_system: Apply at once] <block_system>
+    label: Applied now;
+    desc: The change is applied to the steps immediately.;
+    [role_appr: Approve afterwards] <block_approve>
+    label: Post-approval;
+    props: APP_PD02;
+    desc: If sent back, the steps are not reverted automatically. A red notice appears; check and press "Mark as checked".;
+  elseif (No steps set) than
+  endif
+  [role_mfg: Run branch steps] <block_apply>
+  label: Run branch;
+  props: APP_KIOSK;
+  desc: Branch steps are started and completed the same way, and cannot start until the branch source is completed.;
+  if (Branch end) is (Merge) than #blue
+    [role_system: Flow to merge step] <block_system>
+    label: Merge;
+    desc: The branch's good quantity becomes the received quantity of the chosen not-started main-line step.;
+  elseif (To stock) than #blue
+  endif
+elseif (Other) than
+endif
+if (Correction) is (Redo) than #red
+  [role_prod: Reset step] <block_reject>
+  label: Rollback;
+  props: APP_PD02;
+  desc: In progress → "Abort"; completed → "Roll back" (both need a reason). Not possible once a later step has started or stock has been posted. Rolling back a completed step also deletes its inspection records.;
+elseif (None) than
+endif
+[role_system: Complete WO] <block_system>
+label: WO completed;
+props: WO;
+desc: Repeat the above until every step (incl. branches) is done; when the last step completes, the work order becomes Completed automatically. Regrind adds nothing to our stock and removes the returned (not regrindable) quantity from customer stock.;
+if (WO type) is (Mfg / From stock) than #blue
+  [role_system: Post product stock] <block_system>
+  label: Stock in;
+  props: MV;
+  desc: The finished quantity goes into product stock with the lot number; semi-finished defects and branches ending in semi-finished go into semi-finished stock. Reserved material is consumed. All on one stock movement (work order completed).;
+elseif (Regrind) than #purple
+endif

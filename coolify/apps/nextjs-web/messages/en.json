@@ -1661,7 +1661,7 @@
     "ACTION_LABEL": {
       "READ": "View",
       "CREATE": "Create",
-      "UPDATE": "Edit",
+      "UPDATE": "Update",
       "DELETE": "Delete",
       "EXPORT": "Export",
       "APPROVE": "Approve",
@@ -1702,7 +1702,7 @@
       },
       "work_order": {
         "label": "Work order",
-        "summary": "Work with work orders and step execution — including the shop-floor kiosk."
+        "summary": "Work with work orders and step execution — including the shared devices on the floor."
       },
       "inventory": {
         "label": "Inventory",
@@ -1738,7 +1738,7 @@
       },
       "master": {
         "label": "Master data",
-        "summary": "Work with master data: partners, products, materials, process steps, inspection templates, approval settings, plants and more."
+        "summary": "Work with master data: partners, products, materials, process steps, inspection templates, approval settings, sites and more."
       },
       "admin_manual": {
         "label": "Admin manual",
@@ -1770,7 +1770,7 @@
       },
       "user_admin": {
         "label": "User administration",
-        "summary": "Open user management. Suspending, restoring and changing plants go through a per-change approval."
+        "summary": "Open user management. Suspending, restoring and changing sites go through a per-change approval."
       },
       "portal_admin": {
         "label": "Partner portal administration",
@@ -1801,7 +1801,7 @@
       "ALL": "Company-wide",
       "REGION": "Region",
       "COUNTRY": "Country",
-      "PLANT": "Plant",
+      "PLANT": "Site",
       "DEPARTMENT": "Department",
       "TEAM": "Team",
       "SUB": "Subordinates",
@@ -1948,6 +1948,10 @@
         "activate": {
           "label": "Activate an API client",
           "description": "Turn a client that passes nothing into one that can actually read business data"
+        },
+        "webhook_manage": {
+          "label": "Manage outbound webhooks",
+          "description": "Create or widen a channel that sends business data changes outside. Covers adding an endpoint, changing its URL, rotating its signing secret and enabling it"
         }
       }
     },
@@ -3583,7 +3587,15 @@
       "filesCount": "{count}",
       "removeFile": "Remove {name}",
       "enterAUnit": "Enter a unit",
-      "registrationFailed": "Could not register the material receipt"
+      "registrationFailed": "Could not register the material receipt",
+      "openPo": {
+        "title": "This material has been ordered and part of it has not arrived yet",
+        "body": "When material ordered on a purchase order arrives, record it with 「分割入荷」 (partial receipt) or 「入荷完了」 (receiving complete) on the material purchase order. Registering it here does not reduce the purchase order's remaining quantity, so pressing 「入荷完了」 later puts the same material into stock a second time.",
+        "line": "{po}: {remaining} {unit} remaining",
+        "open": "Open the purchase order",
+        "acknowledge": "Register as a purchase separate from the purchase order",
+        "blocked": "There are ordered purchase orders not yet fully received ({list}). Record ordered material with 「分割入荷」 on the material purchase order. To register it as a separate purchase, tick the confirmation and save again."
+      }
     },
     "outsourceOrders": {
       "editOutsourceOrder": "Edit outsource order",
@@ -3624,7 +3636,7 @@
       "receiptNote": "{quantity} {unit} · {date}",
       "confirmCancelBody": "This cancels material purchase order {number}. This cannot be undone.",
       "confirmOrderBody": "This marks material purchase order {number} as ordered. The lines will be reflected in expected material stock (ATP).",
-      "confirmCompleteBody": "Registers all {count} lines as fully received material receipts and adds them to material stock at the receiving site. For partial receipts, register directly from Material receipt (PU03).",
+      "confirmCompleteBody": "Registers the remaining quantity of all {count} lines as received and adds them to material stock at the receiving site. If only part has arrived, use 「分割入荷」 (partial receipt) instead — registering in Material receipt (PU03) does not reduce this order's remaining quantity and puts the material into stock twice.",
       "receiveActionsDescription": "Marking the receipt complete receives the whole remaining quantity. Use partial receipt when only part arrived, or close without receiving when the rest will not come.",
       "partialReceipt": "Partial receipt",
       "confirmPartialReceipt": "Record a partial receipt",
@@ -5344,7 +5356,16 @@
       "canApproveScopeLimited": "{total} can approve ({count} scope-limited)",
       "noDocumentPermission": "No permission to view or edit this document: {names}",
       "noPermissionCount": "{count} of {total} have no permission",
-      "scopeIsLimited": "Permission scope is limited (documents outside the scope cannot be approved): {names}"
+      "scopeIsLimited": "Permission scope is limited (documents outside the scope cannot be approved): {names}",
+      "policy": {
+        "label": "Use approval",
+        "onHelp": "Approval requests go through the steps below in order.",
+        "onEmptyHelp": "There are no steps, so approval cannot be requested. Set up steps, or turn approval off.",
+        "offHelp": "Proceeds without approval (pressing request approval approves it immediately). The steps are kept but not used.",
+        "offBadge": "No approval",
+        "notSetYet": "Not set yet (showing the current behaviour)",
+        "saveFailed": "Could not save the approval setting"
+      }
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "This group is not used in any approval flow (assign it to a step under Approval settings).",
@@ -5892,7 +5913,10 @@
       "workOrderTypesHelp": "The work order types this step may be placed on. Pick at least one.",
       "workOrderTypesPinnedHelp": "This step starts a {type} work order, so its type cannot be changed. Consuming stock and booking customer-owned tools both depend on it.",
       "workOrderTypesPinnedBadge": "Fixed — it is a start step",
-      "pickAtLeastOneWorkOrderType": "Pick at least one work order type"
+      "pickAtLeastOneWorkOrderType": "Pick at least one work order type",
+      "routeKindRegrind": "Regrind",
+      "routeKindRegrindHelp": "Steps in the regrind category belong only to the shared regrind step list (not to manufacturing step lists).",
+      "routeKindAlsoRegrind": "If 「使える指示書種別」(work order types) includes regrind, the step can also go on the regrind step list."
     },
     "products": {
       "specification": "Specification",
@@ -6941,6 +6965,10 @@
       "alreadyProcessed": "This request has already been processed",
       "resultApprovedTitle": "{doc} {targetId} was approved",
       "resultRejectedTitle": "{doc} {targetId} was sent back"
+    },
+    "policy": {
+      "skippedNote": "No approval (turned off in approval settings)",
+      "approvedWithoutFlow": "Approved without an approval flow"
     }
   },
   "auth": {
@@ -8050,7 +8078,23 @@
     "issueQuoteModal": {
       "confirmIssueMessage": "Issues quote \"{number}\". A PDF is generated and saved at the same time, viewable in the detail page's PDF tab.",
       "issuedAndSaved": "Issued quote {number} and saved the PDF",
-      "issuedAndSavedWithMail": "Issued quote {number} and saved the PDF (email scheduled)"
+      "sendTo": "Send to: {name} ({email})",
+      "noRecipient": "No email address is registered for the customer (including branch and contacts), so it cannot be sent by email.",
+      "mailerNotConfigured": "Email sending is not set up in this environment, so it cannot be sent by email.",
+      "mailSent": "Quote sent to {email}",
+      "mailFailed": "The quote was issued, but the email could not be sent",
+      "reason": {
+        "notFound": "Quote not found.",
+        "noRecipient": "There is no recipient email address.",
+        "mailerNotConfigured": "Email sending is not set up.",
+        "notIssued": "Only issued quotes can be sent.",
+        "sendFailed": "Sending failed. Try again later from \"Send by email\".",
+        "portalDisabled": "The partner portal is not enabled in this environment, so it cannot be sent by email (quotes are sent as a link).",
+        "linkFailed": "Could not create the link to the quote."
+      },
+      "resend": "Send by email",
+      "resendConfirm": "Send a link to quote {number} (with identity check) to {email}.",
+      "mailSentTitle": "Sent"
     },
     "materialPriceChart": {
       "referencePriceAmount": "Reference price {amount}",
@@ -8364,6 +8408,17 @@
       "materialHasNoPriceList": "A material cannot have a price list",
       "regrindItemOnlyRegrindVariant": "A regrind item can only carry the order type \"Regrind\"",
       "productHasNoRegrindVariant": "A product cannot carry the order type \"Regrind\". The regrind price belongs to the regrind item"
+    },
+    "quoteMail": {
+      "subject": "Quote {number}",
+      "salutationCompany": "Dear {company},",
+      "salutationPerson": "Dear {person} ({company}),",
+      "body": "Thank you for your continued business.\nWe are sending you quote {number}. Please view it at the link below (you can download the PDF there).",
+      "validUntil": "Valid until: {date}",
+      "closing": "If you have any questions, please do not hesitate to contact us.\nKind regards,",
+      "contact": "Contact: {name}",
+      "contactWithEmail": "Contact: {name} ({email})",
+      "linkNote": "When you open the link, a verification code is sent to this email address. The link expires on {date}."
     }
   },
   "shipping": {
@@ -9261,7 +9316,8 @@
       "stock_take_lines": "Stocktaking line",
       "item_inventory": "Stock",
       "movement_types": "Movement type",
-      "items": "Items"
+      "items": "Items",
+      "webhook_endpoints": "Webhook endpoint"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -10631,7 +10687,43 @@
     "tooManyActiveTokens": "At most two tokens can be active. Revoke one first.",
     "clientNotFound": "That client was not found",
     "featureDisabled": "The external API is disabled in this environment",
-    "invalidNameChars": "The name contains characters that are not allowed"
+    "invalidNameChars": "The name contains characters that are not allowed",
+    "webhooksTitle": "Outbound webhooks",
+    "webhooksIntro": "When business data changes, send a signal about what happened to an external system such as n8n. Values are not sent; the receiver pulls them through the API.",
+    "webhookCreateTitle": "Add a webhook endpoint",
+    "webhookCreateHint": "Only events for resources the chosen API client can read are sent. Removing its permissions stops delivery without deleting the endpoint.",
+    "webhookUrl": "Endpoint URL",
+    "webhookUrlHelp": "https, or http for internal hosts (Docker service names, private IPs, .loc). The URL often contains a secret, so the list hides its path.",
+    "webhookEvents": "Events",
+    "webhookEvent": "Event",
+    "webhookAllEvents": "All events",
+    "webhookEventCount": "{count} types",
+    "webhookClient": "API client",
+    "webhookClientHelp": "Only events for resources this client can read are sent.",
+    "webhookLastDelivered": "Last delivery",
+    "webhookPending": "{count} pending",
+    "webhookFailed": "{count} failed",
+    "webhookEmpty": "No endpoints yet.",
+    "webhookTest": "Send test",
+    "webhookTestOk": "Delivered (HTTP {status})",
+    "webhookTestFailed": "Not delivered: {error}",
+    "webhookDeliveries": "Deliveries",
+    "webhookDeliveriesEmpty": "No deliveries yet.",
+    "webhookAttempts": "Attempts",
+    "webhookResult": "Result",
+    "webhookNextAttempt": "Next attempt: {at}",
+    "webhookRedeliver": "Redeliver",
+    "webhookRotate": "Rotate signing secret",
+    "webhookRotateConfirm": "The current signing secret stops working immediately. Signature checks fail until the receiver has the new secret.",
+    "webhookSecretTitle": "Signing secret",
+    "webhookDeleteConfirm": "This deletes the endpoint and its delivery history.",
+    "webhookInvalidUrl": "The endpoint URL cannot be used: {detail}",
+    "webhookInvalidEvents": "Select at least one event.",
+    "webhookNoKey": "The encryption key ({env}) for storing signing secrets is not set.",
+    "webhookDuplicateName": "This API client already has an endpoint with that name.",
+    "webhookNotFound": "Endpoint not found.",
+    "webhookSecretUnavailable": "The signing secret could not be opened. Rotate the signing secret.",
+    "webhookNotRedeliverable": "Only failed deliveries can be redelivered."
   },
   "charges": {
     "title": "Additional charges",

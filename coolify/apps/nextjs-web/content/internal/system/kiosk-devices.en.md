@@ -6,7 +6,12 @@ Operation code **SY09**. Registers and manages the shared plant-floor tablets (k
 
 > This app is currently available **in the development (dev) environment only**. Screens and steps may change before the production release.
 
-> This app requires the **kiosk administration permission**. All operations are recorded in the audit log.
+> The entry permission for this app is the code **`kiosk`**. Listing, details, editing names etc. and placing floor-map pins need only `kiosk`. The following are privileged operations: request them in [Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G) and you can perform them only during the period another person approves (system administrators pass straight through).
+>
+> - **`kiosk_device`** — creating a profile, linking, activating, disabling / re-enabling, unlinking, revoking (also pairing and revoking management displays)
+> - **`kiosk_secret`** — revealing the exit PIN, the PIN history, the PIN a device holds and the device settings code; regenerating the settings code; resetting the device key
+>
+>  All operations are recorded in the audit log.
 
 ## What you can do here
 
@@ -23,6 +28,20 @@ Operation code **SY09**. Registers and manages the shared plant-floor tablets (k
 - **無効 (Disabled)** … temporarily stopped. Restore with "再有効化" (Re-enable).
 - **取り消し (Revoked)** … permanently disabled. **Cannot be undone.**
 
+The status changes, as a diagram (each operation is explained in the sections below):
+
+```mermaid
+flowchart TD
+  p("リンク待ち<br/>Awaiting link"):::gray -->|"Link device"| l("有効化待ち<br/>Awaiting activation"):::yellow
+  l -->|"Activate"| a("有効<br/>Active"):::green
+  a -->|"Disable"| d("無効<br/>Disabled"):::gray
+  d -->|"Re-enable"| a
+  a -.->|"Unlink"| p
+  d -.->|"Unlink"| p
+  a -->|"Revoke"| r("取り消し<br/>Revoked"):::red
+  d -->|"Revoke"| r
+```
+
 ## Registering a device (link → activate)
 
 Registration is "profile first". For preparing the tablet itself (installing the dedicated app, etc.), see [Kiosk Device Setup](/admin-manual/en/system/kiosk-device-setup).
@@ -31,6 +50,22 @@ Registration is "profile first". For preparing the tablet itself (installing the
 2. The tablet's setup screen shows a **12-character link code** with a QR (valid for **10 minutes**).
 3. From the row menu, choose **端末をリンク** (Link device) and type the code — or **scan the QR with your camera** (works on any browser, including phones). On success the status becomes "Awaiting activation".
 4. Click **有効化** (Activate). The status becomes "Active" and the tablet detects this automatically and switches to the login screen.
+
+The exchange between the admin screen, the server and the tablet, as a diagram:
+
+```mermaid
+sequenceDiagram
+  participant A as Administrator (SY09)
+  participant S as Server
+  participant T as Tablet
+  A->>S: Create device profile (Awaiting link)
+  T->>S: Open the setup screen
+  S-->>T: 12-character link code + QR<br/>(valid for 10 minutes)
+  A->>S: Type the code / scan the QR<br/>(Awaiting activation)
+  A->>S: Activate (Active)
+  T->>S: Check status (detected automatically)
+  S-->>T: Switch to the login screen
+```
 
 If the code expires, have the tablet display it again and retry. Only profiles in "Awaiting link" can be linked.
 
@@ -46,7 +81,7 @@ If the code expires, have the tablet display it again and retry. Only profiles i
 - **編集** (Edit) changes the name, plant, location, and **default work location**. **Changing the plant removes the pin from the floor map** (maps are per plant).
 - **Default work location** (optional) … the work location recorded automatically onto the work actuals from this device when a step is started or resumed. Only **work locations of the device's plant** (plus locations in groups with no plant set) can be chosen, and it is **cleared when the plant is changed**.
 - The **device settings code** (6 digits) and the **maintenance PIN** (shared by all devices, auto-rotated daily at 4:00) are shown on the **device detail page under "PIN・設定コード"**. Revealing them requires a confirmation and **is recorded in the audit log** (auto-hidden after 60 s). The settings code can also be **regenerated** there.
-- Device settings such as the default work location can also be changed from the tablet-side **device settings screen** (5 taps at the top left of the screen → unlock with the device settings code). When the 「**作業場所の制限**」 (restrict work location) toggle on the same screen is ON, steps whose work locations are restricted in the process-step master **can only be started / resumed when this device's default work location is among the allowed ones** (they are blocked at non-allowed locations; even when OFF, a non-allowed location is never recorded onto the actuals).
+- Device settings such as the default work location can also be changed from the tablet-side **device settings screen** (5 taps at the bottom left of the screen → unlock with the device settings code). When the 「**作業場所の制限**」 (restrict work location) toggle on the same screen is ON, steps whose work locations are restricted in the process-step master **can only be started / resumed when this device's default work location is among the allowed ones** (they are blocked at non-allowed locations; even when OFF, a non-allowed location is never recorded onto the actuals).
 
 ## Replacing or stopping a device
 

@@ -35,6 +35,17 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 - **フロアマップ** … 拠点のフロアの図面です。図面そのものの登録は[拠点](/manual/ja/operations/masters/plant/user)で行います。
 - **ピン** … 図面の上に置く、保管場所の位置を示す印です。
 
+つながりを図にすると次のとおりです。
+
+```mermaid
+flowchart TD
+  plant["拠点"] --> loc["保管場所<br/>（例 資材倉庫A）"]
+  loc --> shelf["棚<br/>（例 A-1）"]
+  plant --> map["フロアマップ<br/>（拠点アプリで登録）"]
+  loc -.->|"ピンを置く"| map
+  shelf -.-> stock["在庫は「保管場所 + 棚」<br/>の単位で数える"]
+```
+
 ## はじめる前に
 
 - このアプリを使うには **マスタの権限** が必要です。

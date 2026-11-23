@@ -39,6 +39,18 @@ From top to bottom there are four blocks: "Drop into folder", "Waiting", "Failed
 - **失敗** (Failed) … files whose extraction failed. Each has a retry button.
 - **取込済** (Processed) … files that have finished being brought in and became an order acceptance.
 
+A file moves through them like this:
+
+```mermaid
+flowchart TD
+  a["Dropped in from this screen"] --> w["取込待ち (Waiting)<br/>(in the intake folder)"]
+  m["Email (automatic)"] --> w
+  w -->|"Scan: numbering → AI extraction"| r{"Extraction succeeded?"}
+  r -->|"Yes"| d["取込済 (Processed)<br/>(becomes an order acceptance)"]
+  r -->|"No"| x["失敗 (Failed)"]
+  x -.->|"再取込 (Retry) — number is kept"| w
+```
+
 Each row shows:
 
 - **注文請書** (Order acceptance) … if numbered, the number, a status badge, the customer name, and the item count. If not yet numbered, it shows 「**未採番**」 (Not yet numbered).
@@ -50,12 +62,15 @@ While at least one file is waiting, the screen refreshes itself automatically ev
 ## The three ways an order arrives
 
 Besides dropping files in from this screen, orders also arrive by the routes
-below. **All of them land in the same intake folder**, so numbering and AI
-extraction work identically for each.
+below. Files dropped in from this screen and email **land in the intake folder**
+and are picked up by the automatic scan. "Priority intake" on the order acceptance
+app **bypasses the intake folder**: it numbers the file on the spot and queues it
+for AI extraction. The entry point differs, but numbering and AI extraction work
+the same way from there.
 
 | Route | How it gets in |
 |---|---|
-| **Upload** | This screen, or "Priority intake" on the order acceptance app |
+| **Upload** | This screen (via the intake folder), or "Priority intake" on the order acceptance app (does not use the intake folder) |
 | **Email** | Orders sent to **order-intake@ckk-tool.co.jp** are picked up automatically (`intake-gateway`) and appear under "Waiting" within a few minutes |
 | **Fax** | Currently a manual step — someone scans the paper on the MFP and uploads it via "Priority intake". There is no automatic fax receiver |
 

@@ -1,0 +1,280 @@
+// 业务流程 §5 制造（manual/process/business-flow#production）。
+// 与 ja / en 结构相同，修改时三份一起改。
+
+/title/
+制造 — 从执行工序到成品入库
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 步骤;
+left-subtitle: 说明;
+
+/role/
+
+<role_mfg>
+label: 制造（现场）;
+text-color: #134e4a;
+background-color: #ccfbf1;
+
+<role_supplier>
+label: 外协厂商;
+text-color: #92400e;
+background-color: #fffbeb;
+
+<role_system>
+label: 系统;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_prod>
+label: 生产管理;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_appr>
+label: 审批人;
+text-color: #166534;
+background-color: #f0fdf4;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_KIOSK>
+label: 平板;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<WO>
+label: 工单;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+<IR>
+label: 检查记录;
+side: right;
+background-color: #ecfeff;
+border-color: #0891b2;
+text-color: #155e75;
+
+<MV>
+label: 出入库单;
+side: right;
+background-color: #ecfdf5;
+border-color: #059669;
+text-color: #065f46;
+
+/line/
+
+if (实施场所) is (厂内) than #blue
+  if (记录画面) is (共用终端) than #purple
+    [role_mfg: 刷二维码卡] <block_apply>
+    label: 登录;
+    props: APP_KIOSK;
+    desc: 只能在管理员登记的共用终端上使用。已停用或未分配的卡无法登录。;
+    if (PIN) is (需要) than #orange
+      [role_mfg: 输入 PIN] <block_apply>
+      label: 输入 PIN;
+      props: APP_KIOSK;
+      desc: 在该终端首次使用／该终端 48 小时未使用／距上次输入 PIN 已满 2 周，任一情况都会要求输入。新卡需设定 PIN 并输入两次。;
+      if (核对) is (错5次) than #red
+        [role_system: 锁定卡] <block_reject>
+        label: 锁定15分;
+        desc: 连续输错 5 次，该卡 15 分钟内无法使用。忘记 PIN 时由管理员重置。;
+        [loop]
+      elseif (一致) than
+      endif
+    elseif (不需要) than
+    endif
+    [role_mfg: 打开工序] <block_apply>
+    label: 打开工序;
+    props: APP_KIOSK;
+    desc: “工序执行”按 延迟／今天／计划 列出分配给自己的工序。“工单扫描”通过工单二维码（或编号）按工序顺序显示全部工序。;
+  elseif (电脑) than #purple
+    [role_prod: 打开工序视图] <block_apply>
+    label: 工序视图;
+    props: APP_PD02;
+    desc: 在工单详情中点击“打开工序执行视图”。批准前和完成后只能查看。;
+  endif
+  if (开始条件) is (不满足) than #orange
+    [role_system: 阻止开始] <block_wait>
+    label: 无法开始;
+    desc: 工单未批准／前工序・分支来源・前序工单未完成／必填的批次/单据编码未输入／其他用户正在作业／此作业场所不能执行时，无法开始。;
+    [loop]
+  elseif (满足) than
+  endif
+  [role_mfg: 开始工序] <block_apply>
+  label: 开始;
+  props: APP_KIOSK,WO;
+  desc: 确认接收数（初始值为前工序的良品数）后开始。工序变为“进行中”并加上会话锁。第一道工序开始时工单也变为“进行中”。;
+  if (中断) is (暂停) than #blue
+    [role_mfg: 暂停] <block_wait>
+    label: 暂停;
+    props: APP_KIOSK;
+    desc: 停止计时并解除锁定，其他人可以接手。工序状态仍为“进行中”。;
+    [role_mfg: 继续] <block_apply>
+    label: 继续;
+    props: APP_KIOSK;
+    desc: 作为新的作业区段累计时间。同时进行的工序按同时数分摊时间。;
+  elseif (继续作业) than
+  endif
+elseif (外协) than #blue
+  [role_prod: 交给外协厂商] <block_apply>
+  label: 委托日;
+  props: APP_PD02,MV;
+  desc: 在工序的“外协日程”中输入委托日后，该数量成为外协厂商的寄存库存（外协发出的出入库单）。列表在外协委托（PU04）中查看。;
+  [role_supplier: 加工后送回] <block_neutral>
+  label: 外协加工;
+  desc: 由外协厂商进行无心磨、涂层等加工。;
+  [role_prod: 记录到货日] <block_apply>
+  label: 到货日;
+  props: APP_PD02,MV;
+  desc: 输入到货日后寄存库存返回（外协返回的出入库单）。工序的开始・完成在工单的工序画面记录。;
+endif
+if (工序种类) is (检查) than #blue
+  [role_mfg: 录入检查记录] <block_apply>
+  label: 检查记录;
+  props: APP_KIOSK,IR;
+  desc: 录入检查数和各项目的实测值。按公差自动判定合格与否，无法自动判定的项目手动选择。抽检时显示所需样本数。未保存检查表则无法完成。;
+elseif (检查批准) than #blue
+  [role_appr: 批准检查记录] <block_approve>
+  label: 检查批准;
+  props: APP_KIOSK,IR;
+  desc: 查看前工序的检查表后批准。只能批准合格的记录；检查表设定了审批组・审批人时只有他们可以批准。不询问数量。;
+elseif (其他) than
+endif
+if (最终检查工序) is (是) than #blue
+  [role_mfg: 记录最终检查] <block_apply>
+  label: 最终检查;
+  props: APP_KIOSK;
+  desc: 依次记录图纸・标签确认、保护帽、完成数、备用库存，以及装箱→发行送货单→出货许可。每张工单一份。;
+elseif (否) than
+endif
+[role_mfg: 完成工序] <block_apply>
+label: 完成;
+props: APP_KIOSK,WO;
+desc: 不良逐行录入（区分＝半成品／报废／工序分支・不良类别・详情・数量）。良品数＝接收数−不良合计，自动计算。工序变为“已完成”并解除锁定。;
+if (再研磨接收) is (产品接收) than #purple
+  [role_system: 计入客户寄存品] <block_system>
+  label: 寄存品入库;
+  props: MV;
+  desc: 再研磨的第一道工序“产品接收（再研磨）”完成时，接收的数量作为客户寄存品计入库存（与本公司库存分开）。;
+  if (全部退回) is (是) than #orange
+    [role_system: 取消后续工序] <block_end>
+    label: 自动取消;
+    desc: 若全部为“退回（无法再研磨）”，未开始的后续工序自动取消，工单当场完成。;
+  elseif (否) than
+  endif
+elseif (其他) than
+endif
+if (不良区分) is (工序分支) than #orange
+  [role_prod: 追加分支序列] <block_apply>
+  label: 追加分支;
+  props: APP_PD02;
+  desc: 把工序分支的数量送到另一组工序。必须选择结束方式（汇合到主线／入库）。;
+  if (变更审批) is (事前审批) than #purple
+    [role_appr: 批准变更] <block_approve>
+    label: 事前审批;
+    props: APP_PD02;
+    desc: 批准前变更保持挂起，最终批准后才反映到工序。退回则不反映直接关闭。;
+  elseif (事后审批) than #purple
+    [role_system: 当场反映] <block_system>
+    label: 立即反映;
+    desc: 变更立即反映到工序。;
+    [role_appr: 事后批准] <block_approve>
+    label: 事后审批;
+    props: APP_PD02;
+    desc: 即使被退回，工序也不会自动恢复。会显示红色提示，确认后点击“标记为已确认”。;
+  elseif (未设审批级) than
+  endif
+  [role_mfg: 执行分支工序] <block_apply>
+  label: 执行分支;
+  props: APP_KIOSK;
+  desc: 分支序列的工序同样开始・完成。分支来源完成前无法开始。;
+  if (分支结束) is (汇合主线) than #blue
+    [role_system: 流向汇合工序] <block_system>
+    label: 汇合;
+    desc: 分支的良品成为所选未开始主线工序的接收数。;
+  elseif (入库) than #blue
+  endif
+elseif (其他) than
+endif
+if (更正) is (重做) than #red
+  [role_prod: 退回未开始] <block_reject>
+  label: 回退;
+  props: APP_PD02;
+  desc: 进行中用“中断”，已完成用“回退”（都需填写理由）。后续工序已开始或已计入库存后无法回退。回退已完成的工序时检查记录也会删除。;
+elseif (无) than
+endif
+[role_system: 完成工单] <block_system>
+label: 工单完成;
+props: WO;
+desc: 重复上述步骤直到全部工序（含分支）完成；最后一道工序完成后工单自动变为“已完成”。再研磨不计入本公司库存，并把退回（无法再研磨）的数量从寄存品中扣除。;
+if (工单类别) is (制造分・库存分) than #blue
+  [role_system: 计入产品库存] <block_system>
+  label: 入库;
+  props: MV;
+  desc: 完成数带批次号计入产品库存；半成品区分及以半成品结束的分支计入半成品库存。预留的材料被消耗。记在一张出入库单（工单完成）上。;
+elseif (再研磨) than #purple
+endif

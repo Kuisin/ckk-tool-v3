@@ -39,7 +39,7 @@ The summary at the top shows the item (with a type badge), site, on-hand quantit
 Below it is a single chronological table.
 
 - **過去 (Past)** … the actual record of stock movements. One row is added for every in/out/reserve/release/adjustment. From a row, you can go to the [Stock Movement](/manual/en/operations/inventory/inventory-movements/user) (ST04) slip it came from (a record with no slip number has a reason shown in its place).
-- **現在庫 (Current)** … the "today" row. Above it are actual records; below it are projections.
+- **現在庫 (Current)** … the 「**今日**」 (today) row. Above it are actual records; below it are projections.
 - **未来 (Future)** … the arrivals, shipments and usage expected from here on. What shows depends on the item's type.
   - **For a material** … lines from an ordered but not-yet-received [Material Purchase Order](/manual/en/operations/purchasing/purchase-order/user) (PU02) (with an expected date) show as an arrival (increase); the still-unused reserved quantity of a work order shows as usage (decrease, dated by the earliest delivery date among that work order's allocated order lines).
   - **For a product** … the planned quantity of an approved or in-progress [work order](/manual/en/operations/production/work-order/user) shows as completion (increase); the unshipped portion of a confirmed / in-production / partially-shipped [order line](/manual/en/operations/sales/order-line/user) shows as shipment (decrease). From a row, you can go to the source work order or order line.

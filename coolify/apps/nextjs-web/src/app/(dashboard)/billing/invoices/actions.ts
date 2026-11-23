@@ -27,7 +27,7 @@ import { hasManualCharge } from "@/components/billing/invoices/model";
 import { reverseAccountingDocumentCore } from "@/lib/accounting-documents";
 import {
   actOnCurrentStep,
-  assertFlowConfigured,
+  approvalNeed,
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
@@ -88,8 +88,10 @@ async function guardIssueApproval(
   if (row.approvalStatus === "PENDING") {
     return actionError(tr("billing.invoicesActions.awaitingIssueApproval"));
   }
-  // 段が無ければ素通し（従来の規約）。
-  if (await assertFlowConfigured("invoices")) return null;
+  // 承認設定で OFF（または段なしの従来の素通し）なら承認なしで発行できる。
+  const need = await approvalNeed("invoices");
+  if (need.kind === "skip") return null;
+  if (need.kind === "blocked") return actionError(need.error);
 
   const started = await startApprovalFlow({
     targetType: "invoices",
@@ -227,8 +229,10 @@ export async function markPaid(
       return actionError(tr("billing.invoicesActions.awaitingPaymentApproval"));
     }
 
-    // 段が無ければ素通し（従来の規約）— このままこの場で PAID にする。
-    if (await assertFlowConfigured("invoice_payments")) {
+    // 承認設定で OFF（または段なしの従来の素通し）— このままこの場で PAID にする。
+    const need = await approvalNeed("invoice_payments");
+    if (need.kind === "blocked") return actionError(need.error);
+    if (need.kind === "skip") {
       const updated = await prisma.invoice.updateMany({
         where: { ...key, status: "SENT" },
         data: { status: "PAID" },

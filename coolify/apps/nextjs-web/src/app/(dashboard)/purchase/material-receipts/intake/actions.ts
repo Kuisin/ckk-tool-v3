@@ -22,6 +22,7 @@ import { prisma } from "@/lib/db";
 import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
 import { allocateDocumentKey } from "@/lib/numbering";
+import { findOpenPoConflicts, openPoErrorMessage } from "@/lib/open-po-guard";
 import { learnPurchaseAliases } from "@/lib/purchase-intake";
 import {
   type ActionResult,
@@ -60,6 +61,8 @@ function intakeInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
     extractedSupplierName: z.string().nullable(),
     /** 学習用 — 突合が入れていた仕入先 id。 */
     draftSupplierBpId: z.string().nullable().optional(),
+    /** 1 件登録と同じ確認（発注済み・未入荷ありの素材を別の購入として入れる）。 */
+    acknowledgeOpenPo: z.boolean().optional().default(false),
     lines: z
       .array(line)
       .min(1, tr("purchase.intake.selectAtLeastOneLine"))
@@ -67,7 +70,7 @@ function intakeInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   });
 }
 
-export type DeliveryIntakeInput = z.infer<ReturnType<typeof intakeInputSchema>>;
+export type DeliveryIntakeInput = z.input<ReturnType<typeof intakeInputSchema>>;
 
 /**
  * 納品書 1 枚ぶんの入荷をまとめて登録する。
@@ -86,6 +89,20 @@ export async function createReceiptsFromDelivery(
     );
   }
   const v = parsed.data;
+
+  // 1 件登録と同じ確認 — 発注した素材を納品書から直接調達として入れると、
+  // あとで発注書の「入荷完了」で二重に入庫する。
+  if (!v.acknowledgeOpenPo) {
+    const conflicts = await findOpenPoConflicts(
+      v.lines.map((l) => ({
+        itemId: Number(l.itemId),
+        supplierBpId: v.supplierBpId,
+      })),
+    );
+    if (conflicts.length > 0) {
+      return actionError(openPoErrorMessage(conflicts, tr));
+    }
+  }
 
   // 入荷先拠点は自分の拠点集合の中（1 件登録と同じ PLANT ∪ OWN 規則）。
   const plantIds = v.lines.map((l) => (l.plantId ? Number(l.plantId) : null));

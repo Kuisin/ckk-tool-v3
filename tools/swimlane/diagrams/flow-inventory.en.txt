@@ -1,0 +1,264 @@
+// Business flow §7 Inventory (manual/process/business-flow#inventory).
+// Same structure as the ja / zh files. Change all three together.
+
+/title/
+Inventory — movements, transfers and stock-takes
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_system>
+label: System;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_prod>
+label: Production control;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_admin>
+label: Administrator;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_appr>
+label: Approver;
+text-color: #166534;
+background-color: #f0fdf4;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_ST01>
+label: ST01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST02>
+label: ST02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST03>
+label: ST03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST05>
+label: ST05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST06>
+label: ST06;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST09>
+label: ST09;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<MV>
+label: Movement;
+side: right;
+background-color: #ecfdf5;
+border-color: #059669;
+text-color: #065f46;
+
+<STK>
+label: Stocktake;
+side: right;
+background-color: #ecfdf5;
+border-color: #059669;
+text-color: #065f46;
+
+/line/
+
+if (Cause) is (Receipt) than #blue
+  [role_system: Receive material] <block_system>
+  label: Receipt;
+  desc: Registering a material receipt (PU03) or a receipt against a material purchase order adds material stock at the receiving site.;
+elseif (Allocation) than #blue
+  [role_system: Reserve stock] <block_system>
+  label: Reserve;
+  desc: A stock check on an order line reserves free product stock; approving a manufacture work order reserves its material. Material may be reserved beyond what is on hand — that is the shortage signal.;
+elseif (WO completed) than #blue
+  [role_system: Put away output] <block_system>
+  label: WO done;
+  desc: When every step is completed, good pieces go into stock with the lot number and semi-finished ones as semi-finished. Material reservations are released and the used material is issued (never more than the ledger holds).;
+elseif (Shipment) than #blue
+  if (Stock) is (Short) than #orange
+    [role_system: Ship into minus] <block_reject>
+    label: Shortage;
+    desc: A shortage never blocks shipping. The missing quantity is issued anyway as "shipped without stock" and the stock goes negative.;
+  elseif (Enough) than
+    [role_system: Issue & release] <block_system>
+    label: Shipment;
+    desc: Shipping a dispatch delivery order issues the products and releases their reservation. A stock-storage delivery order puts stock in instead.;
+  endif
+elseif (Return) than #blue
+  [role_system: Book the return] <block_system>
+  label: Return;
+  desc: Recording a return on a shipped delivery order puts the pieces back into stock, up to the quantity shipped.;
+elseif (Cancellation) than #blue
+  [role_system: Drop reservation] <block_system>
+  label: Release;
+  desc: Cancelling a work order, order line or order acceptance releases the reservations it held.;
+elseif (Outsourcing) than #blue
+  [role_system: Move partner stock] <block_system>
+  label: Outsource;
+  desc: Sending to a subcontractor increases stock held by a partner; the return decreases it. It is never counted as own stock.;
+elseif (Regrind) than #blue
+  [role_system: Receive tools] <block_system>
+  label: Regrind;
+  desc: Completing the regrind product receipt books the customer's tools as customer-owned stock. Own stock does not change.;
+endif
+[role_system: Record movement] <block_system>
+label: Slip;
+props: MV;
+desc: Every time stock moves, one stock movement slip is kept with its cause and source document. Nobody can create one by hand.;
+[role_prod: Check stock] <block_neutral>
+label: Check;
+props: APP_ST02;
+desc: Look by place in Stock overview; items, WIP and reservations in Inventory (ST01); what moved in Stock movement (ST04).;
+[role_prod: Check coverage] <block_neutral>
+label: Coverage;
+props: APP_ST03;
+desc: Puts one item's past movements and planned ones on a single timeline to show when it runs short.;
+if (Outlook) is (Short) than #orange
+  [role_prod: Hand to purchasing] <block_wait>
+  label: Replenish;
+  desc: Material that will run short is covered by a purchase request and a material purchase order.;
+elseif (Enough) than
+endif
+if (What to fix) is (Location) than #purple
+  [role_prod: Transfer stock] <block_apply>
+  label: Transfer;
+  props: APP_ST01,MV;
+  desc: Move to another shelf, storage location or site. Only unreserved stock can move. The issue at the source and the receipt at the target sit on one slip.;
+elseif (In / out) than #purple
+  [role_admin: Set movement types] <block_neutral>
+  label: Types;
+  props: APP_ST09;
+  desc: Defines the direction (in / out / transfer) and whether source and target are required. Types are never deleted, only disabled.;
+  [role_prod: Post manual move] <block_apply>
+  label: Manual;
+  props: APP_ST06;
+  desc: Pick a movement type and enter item and quantity. Each registration creates one slip with the cause "Manual".;
+  if (Source stock) is (Short) than #red
+    [role_prod: Cannot post] <block_reject>
+    label: Shortage;
+    desc: Blocked when the source does not hold enough. Fix the quantity or the source.;
+  elseif (Enough) than
+    [role_system: Update stock] <block_system>
+    label: Posted;
+    props: MV;
+    desc: A transfer records the issue first, then the receipt. To undo a mistake, post the opposite direction.;
+  endif
+elseif (Count wrong) than #purple
+  [role_prod: Create stocktake] <block_apply>
+  label: Create;
+  props: APP_ST05,STK;
+  desc: Choose a site (and optionally a storage location); every bucket there becomes a line, including empty ones. Status: Draft.;
+  [role_prod: Count and record] <block_apply>
+  label: Count;
+  props: APP_ST05;
+  desc: Enter the counted quantities and save. The first save moves it to Counting; you can save as often as you like.;
+  if (Next) is (Cancel) than #red
+    [role_prod: Cancel stocktake] <block_end>
+    label: Cancel;
+    desc: Possible while Draft or Counting. If approval is pending, the request is withdrawn too.;
+  elseif (Submit) than #blue
+    [role_prod: Submit] <block_apply>
+    label: Submit;
+    props: APP_ST05;
+    desc: Possible once at least one line is counted.;
+    if (Approval flow) is (Has steps) than #blue
+      if (Decision) is (Send back) than #red
+        [role_prod: Recount, resubmit] <block_reject>
+        label: Sent back;
+        desc: Sent back with a reason, the counts become editable again.;
+        [loop]
+      else
+        [role_appr: Approve stocktake] <block_approve>
+        label: Approve;
+        props: APP_ST05;
+        desc: Counts are locked while approval is pending. Once every step approves, it is confirmed.;
+      endif
+    elseif (No steps) than
+    endif
+    [role_system: Post differences] <block_system>
+    label: Confirm;
+    props: MV;
+    desc: Compares the counts with stock at the moment of confirmation and posts an "Adjustment" slip for the differences only; no difference, no slip. Status: Confirmed — cannot be undone.;
+  endif
+endif

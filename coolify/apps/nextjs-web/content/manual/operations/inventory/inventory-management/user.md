@@ -50,6 +50,17 @@ screenshots: [inventory-products-01, inventory-product-detail-01, inventory-mate
 - **素材が減る** … その指示書のすべての工程が完了すると、取り置きしていた素材が使った分として減ります。
 - **製品が出る** … [出荷書](/manual/ja/operations/shipping/delivery-order/user)で出荷すると在庫から出て、予約も外れます。
 
+図にすると次のとおりです（点線は取り置き）。
+
+```mermaid
+flowchart TD
+  rcpt["素材入荷を登録"] -->|"増える"| mat["素材の在庫"]
+  mat -->|"指示書の全工程が完了<br/>（使った素材が減り、良品が入る）"| prod["製品・半製品の在庫"]
+  prod -->|"出荷書で出荷"| out["在庫から出る<br/>（予約も外れる）"]
+  appr["「製造分」の指示書を承認"] -.->|"予約"| mat
+  chk["注文明細の「在庫照合」"] -.->|"予約"| prod
+```
+
 ## 製品タブの見かた
 
 ![在庫管理の製品タブ](../../../assets/screenshots/inventory-products-01.png)

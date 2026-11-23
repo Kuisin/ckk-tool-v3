@@ -1,11 +1,11 @@
 ---
 title: "作业场所 — 操作手册"
-description: "用于登记「NC车床1号机」这类实际进行作业的机器或区域的应用。登记后可以在指示书的作业计划中选择。"
+description: "用于登记「NC车床1号机」这类实际进行作业的机器或区域的应用。登记后可以在工单的作业计划中选择。"
 screenshots: [master-work-location-01, master-work-location-group-new-01, master-work-location-add-01, master-work-location-types-01, master-work-location-qr-01, master-work-location-qr-print-01]
 ---
 这是用于登记「NC旋盤 1号機」（NC车床1号机）这类实际 **进行作业的机器或区域** 的应用。操作代码是 `MS0D`。
 
-这里登记的场所，可以在[指示书](/manual/zh/operations/production/work-order/user)工序的作业计划中，作为「在哪里作业」来选择。
+这里登记的场所，可以在[工单](/manual/zh/operations/production/work-order/user)工序的作业计划中，作为「在哪里作业」来选择。
 
 > ⚠️ 本应用处于试用公开阶段。根据您使用的环境，可能还看不到它。
 
@@ -41,6 +41,15 @@ screenshots: [master-work-location-01, master-work-location-group-new-01, master
 - 使用本应用需要 **主数据权限**。
 - 分组需要指定据点。请先登记[据点](/manual/zh/operations/masters/plant/user)。
 - 登记顺序是 **先分组，后机器**。不创建分组就无法单独登记机器。
+
+用图表示如下。
+
+```mermaid
+flowchart TD
+  plant["据点"] --> group["分组<br/>（例 NC车床）"]
+  group --> loc["作业场所<br/>（例 NC车床1号机）"]
+  loc -.-> wo["在工单的作业计划中<br/>作为「在哪里作业」来选择"]
+```
 
 ## 界面的看法
 
@@ -101,7 +110,7 @@ screenshots: [master-work-location-01, master-work-location-group-new-01, master
 
 ## 打印二维码标签
 
-登录的作业场所可以打印**二维码标签**，贴在机器或区域上。在现场共享终端（平板）上执行工序时扫描该二维码，就会在作业实绩中记录「在哪里作业」。
+登记好的作业场所可以打印**二维码标签**，贴在机器或区域上。在现场共享终端（平板）上执行工序时扫描该二维码，就会在作业实绩中记录「在哪里作业」。
 
 - 分组的「**QR印刷**」（打印二维码）按钮，可以一次打印该分组的所有场所
 - 行上的二维码图标，可以只打印该场所 1 张
@@ -116,13 +125,13 @@ screenshots: [master-work-location-01, master-work-location-group-new-01, master
 >
 > ⚠️ 更改作业场所的**编码**后，已打印的标签将无法读取。更改后请重新打印并更换。
 
-## 与指示书的关联
+## 与工单的关联
 
-在指示书工序的「**作業計画**」（作业计划）和「**作業実績**」（作业实绩）中，可以为每一行选择「**作業場所（任意）**」（作业场所，可选）。所选的作业场所会显示在列表中，在现场共享终端的界面上也能确认。
+在工单工序的「**作業計画**」（作业计划）和「**作業実績**」（作业实绩）中，可以为每一行选择「**作業場所（任意）**」（作业场所，可选）。所选的作业场所会显示在列表中，在现场共享终端的界面上也能确认。
 
 从现场共享终端（平板）开始・恢复工序时，该终端设置的**默认作业场所**会自动记录到实绩中（在[终端管理](/manual/zh/operations/system/kiosk-device/user#field-default-work-location)中设置）。也可以扫描作业场所的二维码进行覆盖。
 
-另外，[工序主档](/manual/zh/operations/masters/process-step/user#field-allowed-locations)可以按类型或场所限制「该工序可使用的作业场所」。
+另外，[工序主数据](/manual/zh/operations/masters/process-step/user#field-allowed-locations)可以按类型或场所限制「该工序可使用的作业场所」。
 
 使用中的数量会显示在作业场所表格的「**計画 / 実績**」（计划／实绩）列中。任一数字不为 0 的场所表示仍在使用中（使用中的场所无法删除，请改为停用）。
 
@@ -132,15 +141,15 @@ screenshots: [master-work-location-01, master-work-location-group-new-01, master
 
 | 项目 | 填什么 |
 |------|--------|
-| [基地](#field-plant) | 属于哪个基地的作业场所 |
+| [据点](#field-plant) | 属于哪个据点的作业场所 |
 | [编码 / 名称（日文・English）](#field-code) | 作业场所的管理编号与名称，可作为工序的实施地点选择 |
 | [类别](#field-type) | 作业场所的区分 |
-| [产能](#field-capacity) | 可同时处理量的大致标准 |
+| [容量](#field-capacity) | 可同时处理量的大致标准 |
 | [显示顺序 / 有效 / 备注](#field-sort-order) | 排序・是否显示・补充说明 |
 
-### 基地 [#field-plant]
+### 据点 [#field-plant]
 
-属于哪个基地的作业场所。选择工序执行场所时，**仅显示该基地的作业场所**。
+属于哪个据点的作业场所。选择工序执行场所时，**仅显示该据点的作业场所**。
 
 ### 编码 / 名称（日文・English） [#field-code]
 
@@ -150,7 +159,7 @@ screenshots: [master-work-location-01, master-work-location-group-new-01, master
 
 作业场所的区分。用于列表的筛选。
 
-### 产能 [#field-capacity]
+### 容量 [#field-capacity]
 
 可同时处理量的大致标准。单台机器填 1，区块则填写可同时容纳的数量。
 
@@ -164,7 +173,7 @@ screenshots: [master-work-location-01, master-work-location-group-new-01, master
 A. 这个按钮在分组的卡片里。还没有任何分组时，请先用「**グループ追加**」（添加分组）创建分组。
 
 **Q. 出现「この場所は 作業計画 3 件 / 作業実績 1 件 から参照されています（削除できません — 無効化をご検討ください）。」（该场所被作业计划 3 件 / 作业实绩 1 件引用，无法删除，请考虑停用）。**
-A. 该机器正被指示书的作业计划或作业实绩使用。请不要删除，在编辑界面上关闭「**有効**」（有效）将其停用。停用后，今后创建的计划中就无法选择它。
+A. 该机器正被工单的作业计划或作业实绩使用。请不要删除，在编辑界面上关闭「**有効**」（有效）将其停用。停用后，今后创建的计划中就无法选择它。
 
 **Q. 出现「グループの削除に失敗しました（作業計画で使用中の場所が含まれる場合は削除できません）」（分组删除失败；若包含作业计划正在使用的场所，则无法删除）。**
 A. 该分组中还有正在使用的机器。请确认是哪台机器在使用，不要整组删除，改为把那台机器停用。

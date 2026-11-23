@@ -6,6 +6,8 @@
     "permissions",
     "analytics",
     "operations",
-    "process"
+    "business-flow",
+    "process",
+    "integration"
   ]
 }

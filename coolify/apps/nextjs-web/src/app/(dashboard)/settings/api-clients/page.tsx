@@ -13,11 +13,15 @@ import { Stack } from "@mantine/core";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { ApiClientsTable } from "@/components/settings/api-clients/ApiClientsTable";
+import { WebhooksPanel } from "@/components/settings/api-clients/WebhooksPanel";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { listApiClients } from "@/lib/api-clients-admin";
 import { requireAppRead } from "@/lib/authz-page";
 import { isDevFeatureEnabled } from "@/lib/dev-features";
 import { peekElevations } from "@/lib/privileged-access";
+import { hasEncryptionKey } from "@/lib/secret-box";
+import { listWebhookEventTypes } from "@/lib/webhook-core";
+import { listWebhookEndpoints } from "@/lib/webhooks-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -27,10 +31,15 @@ export default async function ApiClientsPage() {
   if (denied) return denied;
   if (!isDevFeatureEnabled("api")) notFound();
 
-  const [clients, elevations] = await Promise.all([
+  const [clients, webhooks, elevations] = await Promise.all([
     listApiClients(),
+    listWebhookEndpoints(),
     // **peek** — 画面を開いただけで持ち時間を動かさない（ボタンの活性を描くだけ）。
-    peekElevations(["api_client.issue_token", "api_client.activate"]),
+    peekElevations([
+      "api_client.issue_token",
+      "api_client.activate",
+      "api_client.webhook_manage",
+    ]),
   ]);
 
   return (
@@ -63,6 +72,32 @@ export default async function ApiClientsPage() {
             useCount: t.useCount,
             revoked: t.revokedAt !== null,
           })),
+        }))}
+      />
+      <WebhooksPanel
+        canManage={elevations["api_client.webhook_manage"]?.allowed ?? false}
+        clients={clients
+          .filter((c) => c.revokedAt === null)
+          .map((c) => ({ id: c.id, name: c.name }))}
+        encryptionKeyMissing={!hasEncryptionKey()}
+        eventTypes={listWebhookEventTypes().map((e) => ({
+          type: e.type,
+          resource: e.resource.resource,
+          summary: e.resource.summary,
+        }))}
+        webhooks={webhooks.map((w) => ({
+          id: w.id,
+          clientName: w.clientName,
+          name: w.name,
+          url: w.url,
+          eventTypes: w.eventTypes,
+          isActive: w.isActive,
+          consecutiveFailures: w.consecutiveFailures,
+          disabledReason: w.disabledReason,
+          lastDeliveredAt: w.lastDeliveredAt?.toISOString() ?? null,
+          secretLast4: w.secretLast4,
+          pendingCount: w.pendingCount,
+          failedCount: w.failedCount,
         }))}
       />
     </Stack>

@@ -65,6 +65,46 @@ Manufacturing Company Business Management System — a Next.js fullstack monolit
 @_specs/design.md
 @_specs/i18n-glossary.md
 
+## Test locally before every push (required)
+
+**Run `pnpm check` from the repo root before pushing to GitHub.** It is the whole
+nextjs-web CI, run locally in one command (`tools/ci/local-check.sh`): install,
+dependency audit, Python, authz-core, kiosk, web (every gate + biome strict +
+typecheck + build), shared-db migrations on a throwaway DB (fresh and with base
+data), and a browser pass — the full page-load crawl plus the URL-state (incl. real
+IME input) and client-read suites against a production build. Unlike CI it runs
+**every stage to the end** and prints one table, so one run shows every failure.
+Logs per stage are under `$TMPDIR/ckk-local-check/<time>/`.
+
+```bash
+pnpm check                    # everything (~20 min, needs Docker)
+pnpm check -- --changed       # only the jobs CI would run for this diff (same rules)
+pnpm check -- --quick         # no Docker / browser (a few minutes)
+pnpm check -- --only web,browser   # chosen stages
+pnpm check -- --keep          # leave the app + DB up afterwards to poke at (demo1 / demo2026)
+```
+
+Push only on `ALL PASS`. **A `pre-push` hook enforces this** (`.githooks/pre-push`;
+enable once per clone with `pnpm hooks:install` — it sets `core.hooksPath`, which every
+worktree shares). A passing run leaves a stamp for that commit (`.git/ckk-local-check/<sha>`,
+only when nothing tracked is uncommitted and stages weren't thinned with `--quick` /
+`--only`), and the hook lets stamped commits through instantly. Without a stamp it runs
+`pnpm check -- --changed` itself — **so as an AI, run `pnpm check` first and push after**;
+inside `git push` the check would outlive your command timeout. Escape hatch, with a
+reason only: `SKIP_LOCAL_CHECK=1 git push`. `--changed` is fine for small changes; use the full run for
+anything touching shared code, dependencies, schema or CI. Containers and ports are
+derived from the worktree path, so parallel worktrees don't collide. **When you add a
+step to CI, add it to `local-check.sh` too** — its first stage fails if CI has a
+one-line `run:` command the script doesn't (multi-line `run:` blocks are matched by
+hand).
+
+**CI itself is trimmed to save Actions minutes** (2026-11): draft PRs run nothing
+(CI starts on "Ready for review"), and the `changes` job (`tools/ci/changed-areas.sh`,
+tested by `changed-areas.test.sh`) skips jobs whose area the PR didn't touch — e.g.
+docs/manual/spec-only PRs skip the 13-minute page crawl. PRs into `main` (promotion)
+and changes to the CI itself always run everything. When in doubt the rules run the
+job. That is why the local run matters: a skipped CI job is not a passed one.
+
 ## Commands
 
 ```bash
@@ -191,6 +231,8 @@ the worktree costs ~122 MB. Deleting either costs one re-index and nothing else 
 
 **Auth** — Auth.js v5, DB session + short JWT. Identity sourced from Samba AD via LDAP/OAuth. **SSO only completes on the LAN/VPN**, and that is a property of the network, not a bug: the app is public (`app.ckk-tool.co.jp` via cloudflared) but the IdP is not. `AUTH_AUTHENTIK_ISSUER` is `http://auth.ckk-tools.loc:9000/...`, a **separate server** reached over the VPN — on this host the name exists only as a `vpn-ldap` network alias (socat → `21.10.10.10:9000`), so the server's own resolver cannot resolve it and neither can an off-network browser. The server-to-server token exchange works from any network (container-to-container), but the **browser** legs (`/api/sso` → authorize → the Authentik flow UI) need the client to be on the LAN or VPN; off-network they hang on Authentik's loading screen. Publishing the IdP (e.g. `auth.ckk-tool.co.jp` on the tunnel) is what would change that — deliberately not done. A local `authentik` stack used to exist here; it was unused and was stopped and **removed from the repo** on 2026-08-25 (the server volume is kept).
 
+**External API & outbound webhooks (`/api/v1`, SY0I)** — design in `_specs/api.md`. **The wiring lives in n8n; the app only exposes two doors:** a read API (Bearer token → `app.users` row → `decide()` → row scope) and **outbound webhooks** (§9). A webhook is a **signal, never the data** — it names the document and what changed (status from→to, changed *field names*), and the receiver pulls values through the API, so authorization lives in one place. Source is `audit_logs` (no business code knows about webhooks): `lib/webhook-dispatcher.ts` tails `audit_logs.id` (5 s settle, cursor in `system_settings['webhook.cursor']`), fans out into an outbox (`webhook_deliveries`, idempotent), and delivers with `FOR UPDATE SKIP LOCKED` leases, Standard-Webhooks signing, 7 attempts, auto-disable after 5 exhausted deliveries. Rules live in `lib/webhook-core.ts` (event registry `WEBHOOK_RESOURCES` — **adding an event = one row there**). **Row scope does not apply to events** (the id/type of an out-of-scope document can appear) — say so, don't paper over it. Creating/widening an endpoint is privileged (`api_client.webhook_manage`). **The reference docs are generated**: `api-resources.ts` + `webhook-core.ts` → `api-openapi.ts` → `fumadocs-openapi` → `content/manual/integration/reference/`; `api-docs-sync.test.ts` fails CI on drift (`UPDATE_API_DOCS=1 pnpm test -- src/lib/api-docs-sync.test.ts` to regenerate). Hand-written guides (api / webhooks / n8n) are ja/en/zh. Gated by `dev-features.json` `api` (dev only).
+
 **Realtime** — SSE via Next.js Route Handlers. Pub/Sub and presence through Valkey (keys + TTL).
 
 **PDF** — HTML + vanilla CSS templates sent to Gotenberg (`app/api/pdf/`). No headless browser. Generated PDFs are stored in SeaweedFS and referenced via the `files` table.
@@ -267,6 +309,8 @@ Enforcement is `lib/privileged-access.ts`, layered **after** `decide()` (authz-c
 | `nextjs-kiosk-main` | `main` | `:3007` | `ckk-kiosk.kai-lab.net` |
 | `po-extract-dev` | `dev` | — (internal) | — (alias `po-extract-dev:8000`) |
 | `po-extract-main` | `main` | — (internal) | — (alias `po-extract-main:8000`) |
+| `manual-videos-dev` | `dev` | — (internal) | — (writes `~/manual-videos/dev`) |
+| `manual-videos-main` | `main` | — (internal) | — (writes `~/manual-videos/main`) |
 
 - Deploy: `coolify/platform/deploy.sh dev` (or `main`, `kiosk-dev`, `kiosk-main`) after pushing; GitHub push auto-deploy activates once Coolify is exposed via the tunnel (see README).
 - **Rollback (main)**: Coolify UI → nextjs-web-main → Deployments → redeploy a previous build, or `deploy.sh main <git-sha>`. Deployment images are kept, so rollback is fast.
@@ -274,6 +318,8 @@ Enforcement is `lib/privileged-access.ts`, layered **after** `decide()` (authz-c
 - Coolify apps run on the external `coolify` docker network; everything they need (`ckk-db-*`, `gotenberg-*`, `seaweedfs-*`, `ollama`) is on it. App env vars are managed in Coolify (not compose).
 - **Coolify renames named volumes** to `<appUUID>_<name>` even when the compose declares `external: true` — so a named volume cannot be shared between apps, and a redeploy can silently come up on an empty one. Anything with data that must survive uses a **host bind mount** instead: `/data/ckk-secrets`, `/data/seaweed-dev`, `/data/seaweed-main`, `/data/ollama`, `/data/open-webui`. Bind mounts pass through Coolify unchanged.
 - dev and production share **nothing**: separate DB, object storage and PDF renderer (`ckk-db-dev`/`-main`, `seaweedfs-dev`/`-main`, `gotenberg-dev`/`-main`). The one accepted exception is `ollama` (a single GPU set).
+
+**Manual videos (業務の通し操作の動画) are recorded on deploy, never committed.** The five process pages (`/manual/<lang>/process/{sales,purchasing,production,shipping,billing}`) each carry a walkthrough video. The scripts live in `tools/docs-screenshots/walkthroughs/` and **one script is both the test and the recording**: `pnpm walk:check` (no pacing) is the CI job `walkthroughs` — it **always runs on the `dev`→`main` promotion PR**, and on dev PRs only when the walkthroughs or a demo seed changed — and `pnpm docs:videos` (paced, cursor + red outline + captions) is what the Coolify apps `manual-videos-dev` / `-main` run at container start. Those apps are **split from the app deploy** (watch paths = the walkthrough scripts + `coolify/apps/manual-videos/**` only, the same idea as `db-migrate`), so an ordinary app push builds nothing extra; after a visible UI change, re-record by hand with `coolify/platform/deploy.sh manual-videos-dev`. The recorder is one container holding a **throwaway Postgres of its own** (it is given no business-DB URL), a prebuilt nextjs-web and Chromium; it writes `<id>.webm` / `.vtt` / `.jpg` + `manifest.json` to a host bind mount (`~/manual-videos/{dev,main}`) **only when every walkthrough passed** — a failure fails the deployment and leaves the previous videos in place. nextjs-web mounts the same directory read-only (`MANUAL_VIDEO_DIR=/data/manual-videos`) and serves it at the public `/manual-media/<file>` (allow-list = ids in `manifest.json` × known extensions; `Range` supported). The page embeds a ```` ```video ```` fence (→ `components/docs/ManualVideo.tsx`), which asks for the manifest at view time and **renders nothing when there is no video** — local dev, CI and an environment without the recorder all read exactly as before. Registration: `coolify/platform/add-manual-video-apps.sh`. Walkthrough rules (UI only — no SQL shortcuts; requester `demo2` ≠ approver `demo_shot`; dates relative to today) are in `tools/docs-screenshots/README.md`.
 
 **Polymorphic children are cascaded by trigger, not FK** — 承認依頼 (`approval_requests.target_type/target_id`), メモ (`document_memos`), メモ改訂 (`document_memo_revisions`), 添付 (`document_attachments`) all point at a document by its **business-key string**, not an FK, so deleting a document would leave them behind — and if 採番 is ever reset, a reused number inherits them (this happened on dev: an approval record predating the document). Each document table therefore carries an `AFTER DELETE` trigger `purge_children_after_delete` → `app.purge_document_children()` (migration `20260911090000_document_children_cascade`) covering the 12 owner tables. It is invisible to the Prisma schema, so **add the trigger when you add a document table**. `audit_logs` is deliberately excluded — audit records outlive the document. The app has no document-delete path at all; the trigger exists because real deletions happen via psql/scripts/restores.
 
