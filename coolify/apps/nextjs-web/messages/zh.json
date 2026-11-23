@@ -5896,7 +5896,10 @@
       "workOrderTypesHelp": "该工序可以放入的工单类别。请至少选择一个。",
       "workOrderTypesPinnedHelp": "该工序是「{type}」的起始工序，无法更改类别。库存消耗与客户寄存品的记账都依赖于此。",
       "workOrderTypesPinnedBadge": "起始工序，无法更改",
-      "pickAtLeastOneWorkOrderType": "请至少选择一个可用的工单类别"
+      "pickAtLeastOneWorkOrderType": "请至少选择一个可用的工单类别",
+      "routeKindRegrind": "再研磨",
+      "routeKindRegrindHelp": "再研磨类别的工序只属于公共的再研磨工序清单（不属于制造工序清单）。",
+      "routeKindAlsoRegrind": "「使える指示書種別」（可用的工单类别）包含再研磨时，也可以放入再研磨工序清单。"
     },
     "products": {
       "specification": "规格",

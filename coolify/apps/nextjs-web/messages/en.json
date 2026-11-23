@@ -5896,7 +5896,10 @@
       "workOrderTypesHelp": "The work order types this step may be placed on. Pick at least one.",
       "workOrderTypesPinnedHelp": "This step starts a {type} work order, so its type cannot be changed. Consuming stock and booking customer-owned tools both depend on it.",
       "workOrderTypesPinnedBadge": "Fixed — it is a start step",
-      "pickAtLeastOneWorkOrderType": "Pick at least one work order type"
+      "pickAtLeastOneWorkOrderType": "Pick at least one work order type",
+      "routeKindRegrind": "Regrind",
+      "routeKindRegrindHelp": "Steps in the regrind category belong only to the shared regrind step list (not to manufacturing step lists).",
+      "routeKindAlsoRegrind": "If 「使える指示書種別」(work order types) includes regrind, the step can also go on the regrind step list."
     },
     "products": {
       "specification": "Specification",

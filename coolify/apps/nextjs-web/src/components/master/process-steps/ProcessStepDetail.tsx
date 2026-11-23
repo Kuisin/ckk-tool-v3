@@ -35,7 +35,11 @@ import {
   workOrderTypeLabel,
 } from "@/lib/enum-labels";
 import {
-  isPrepStep,
+  ROUTE_KIND_COLOR,
+  ROUTE_KIND_LABEL_KEY,
+  routeKindsForStep,
+} from "@/lib/process-route-kinds";
+import {
   pinnedWorkOrderType,
   stepAllowedForType,
   type WorkOrderType,
@@ -313,14 +317,17 @@ export function ProcessStepDetail({
         <FieldValue
           label={tr("master.processSteps.routeKind")}
           value={
-            <Badge
-              color={isPrepStep(record) ? "teal" : "indigo"}
-              variant="light"
-            >
-              {isPrepStep(record)
-                ? tr("master.processSteps.routeKindPrep")
-                : tr("master.processSteps.routeKindManufacturing")}
-            </Badge>
+            <Group gap={4}>
+              {routeKindsForStep(record).map((kind) => (
+                <Badge
+                  color={ROUTE_KIND_COLOR[kind]}
+                  key={kind}
+                  variant="light"
+                >
+                  {tr(`master.processSteps.${ROUTE_KIND_LABEL_KEY[kind]}`)}
+                </Badge>
+              ))}
+            </Group>
           }
         />
         <FieldValue
