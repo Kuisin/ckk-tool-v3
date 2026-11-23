@@ -159,6 +159,7 @@ promotion 後 — dev へのマージで ingress や監視が再起動しない�
 | `po-extract-dev` / `-main` | dev / main | `apps/po-extract/` | 内部のみ（alias 有り） |
 | `ckk-db-dev` / `ckk-db-main` | dev / main | `ckk-db/` | 内部のみ（alias 有り）**業務 DB 本体** |
 | `db-migrate-dev` / `-main` | dev / main | リポジトリ root（`db-migrate/`） | 内部のみ・ポート無し |
+| `manual-videos-dev` / `-main` | dev / main | リポジトリ root（`manual-videos/`） | 内部のみ・ポート無し。マニュアルの動画を録画して `~/manual-videos/{dev,main}` へ書く |
 
 dev と main を**常時両方**動かす（本番の隣で検証するため）。これがコンテナ数が
 多い一番の理由で、意図的な構成。
@@ -171,6 +172,16 @@ dev と main を**常時両方**動かす（本番の隣で検証するため）
 `db-migrate-*` は `shared-db/**` の変更を監視していて、マージのたびに
 `prisma migrate deploy` → `grants.sql` → `kiosk-cron.sql` →
 `analytics-views.sql` を流す。失敗すればデプロイが失敗として残る。
+`manual-videos-*` はマニュアルの動画（業務の通し操作）を録るだけのアプリで、
+**業務 DB にもネットワーク上の他のサービスにもつながない** — コンテナの中に
+使い捨ての Postgres を立て、デモシードを入れ、ビルド済みの nextjs-web を動かして
+Playwright で録画する。監視しているのは通し操作のスクリプト
+（`tools/docs-screenshots/walkthroughs/**` ほか）と自分自身だけなので、ふだんの
+アプリの push では動かない。書き出し先はホストの bind mount で、同じ場所を
+`nextjs-web-*` が読み取り専用で mount して `/manual-media` で配る。途中で落ちれば
+デプロイが失敗として残り、前回の動画はそのまま。登録は
+`platform/add-manual-video-apps.sh`、撮り直しは `platform/deploy.sh manual-videos-dev`。
+
 `ckk-db-*` は**自動デプロイを切ってある**（push で DB コンテナが作り直される
 事故を防ぐため）。登録は `platform/add-db-apps.sh`。
 
@@ -296,6 +307,7 @@ Coolify が git から直接建てるので、サーバー側に対応ディレ�
 | `apps/intake-gateway/` | `intake-gateway` — 注文請書のメール取込（**common / main に 1 つだけ**）。IMAP で受信箱を巡回し、添付を**本番の**取込フォルダへ直接書く。DB にも nextjs-web にも繋がない（隔離） |
 | `apps/ckk-db/` | `ckk-db-dev` / `ckk-db-main` — 業務 DB 本体 |
 | `apps/db-migrate/` | `db-migrate-dev` / `-main` — マイグレーション適用専用 |
+| `apps/manual-videos/` | `manual-videos-dev` / `-main` — マニュアルの動画の録画専用（使い捨て DB を内蔵。業務 DB には繋がない） |
 
 ## リポジトリの他の場所にある関連物
 

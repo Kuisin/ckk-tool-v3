@@ -15,6 +15,8 @@
 #   ./deploy.sh kot-import       deploy 勤怠取込（King of Time, common/main, internal only）
 #   ./deploy.sh db-migrate-dev   apply DB migrations to ckk-db-dev  (通常は push で自動)
 #   ./deploy.sh db-migrate-main  apply DB migrations to ckk-db-main (通常は push で自動)
+#   ./deploy.sh manual-videos-dev   マニュアルの動画を録り直す（dev。画面が変わったとき）
+#   ./deploy.sh manual-videos-main  同上・本番
 #   ./deploy.sh ckk-db-dev       ⚠ DB コンテナを作り直す（イメージ更新時のみ）
 #   ./deploy.sh ckk-db-main      ⚠ 同上・本番
 #
@@ -25,7 +27,7 @@
 
 set -euo pipefail
 
-USAGE="usage: deploy.sh dev|main|admin-dev|admin-main|kiosk-dev|kiosk-main|po-extract-dev|po-extract-main|intake-gateway|kot-import|db-migrate-dev|db-migrate-main|ckk-db-dev|ckk-db-main [git-sha]"
+USAGE="usage: deploy.sh dev|main|admin-dev|admin-main|kiosk-dev|kiosk-main|po-extract-dev|po-extract-main|intake-gateway|kot-import|db-migrate-dev|db-migrate-main|manual-videos-dev|manual-videos-main|ckk-db-dev|ckk-db-main [git-sha]"
 TARGET=${1:?$USAGE}
 SHA=${2:-}
 case "$TARGET" in
@@ -41,6 +43,7 @@ case "$TARGET" in
   kot-import)             APP_NAME=kot-import ;;
   db-migrate-dev)         APP_NAME=db-migrate-dev ;;
   db-migrate-main)        APP_NAME=db-migrate-main ;;
+  manual-videos-dev|manual-videos-main) APP_NAME=$TARGET ;;
   ckk-db-dev|ckk-db-main) APP_NAME=$TARGET ;;
   *) echo "unknown target: $TARGET"; echo "$USAGE"; exit 1 ;;
 esac
