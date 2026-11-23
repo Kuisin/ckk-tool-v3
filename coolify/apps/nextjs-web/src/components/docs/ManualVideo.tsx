@@ -62,9 +62,9 @@ const CAPTION_LANGUAGE = "日本語"; // i18n-ignore
  * 配り方を変えたときに上げる番号。URL に載せて、手前（Cloudflare）に残っている
  * 古い応答を引かせない。2 = Cache-Control を private にした（public だった頃の
  * 応答は Cloudflare に長さ不明のまま残り、Range に応えられずシークが効かない。
- * 理由は app/manual-media の route.ts）。
+ * 理由は app/manual-media の route.ts）。3 = 動画の URL を `.video` にした。
  */
-const SERVE_REVISION = 2;
+const SERVE_REVISION = 3;
 
 type Loaded = { video: ManualVideoMeta; version: string; recordedOn: string };
 
@@ -137,7 +137,8 @@ export function ManualVideo({ id }: { id: string }) {
           ref={ref}
           style={{ width: "100%", height: "100%", display: "block" }}
         >
-          <source src={src("webm")} type="video/webm" />
+          {/* URL は .webm で終わらせない（理由は lib/manual-videos-core.ts の MEDIA_KINDS） */}
+          <source src={src("video")} type="video/webm" />
           <track
             default
             kind="captions"
