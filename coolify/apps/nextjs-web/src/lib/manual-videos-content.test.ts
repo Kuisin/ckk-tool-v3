@@ -10,9 +10,32 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { walkthroughs } from "../../../../../tools/docs-screenshots/walkthroughs";
 
 const MANUAL_DIR = join(__dirname, "../../content/manual");
+const WALK_DIR = join(
+  __dirname,
+  "../../../../../tools/docs-screenshots/walkthroughs",
+);
+
+/**
+ * 動画の登録簿。**import せずに文字として読む** — あちらは Playwright の型に
+ * 依っていて、このアプリの依存には Playwright が無い（import すると、道具の
+ * 依存を入れていない環境で型検査ごと落ちる。CI の web ジョブがそうだった）。
+ * 各ウォークスルーは 1 ファイルに `id:` と `docPage:` を 1 つずつ持つ。
+ */
+function readWalkthroughs(): { id: string; docPage: string }[] {
+  const out: { id: string; docPage: string }[] = [];
+  for (const name of readdirSync(WALK_DIR)) {
+    if (!name.endsWith(".ts")) continue;
+    const src = readFileSync(join(WALK_DIR, name), "utf8");
+    const id = /^\s*id:\s*"([^"]+)"/m.exec(src)?.[1];
+    const docPage = /^\s*docPage:\s*"([^"]+)"/m.exec(src)?.[1];
+    if (id && docPage) out.push({ id, docPage });
+  }
+  return out;
+}
+
+const walkthroughs = readWalkthroughs();
 
 function* walk(dir: string): Generator<string> {
   for (const name of readdirSync(dir)) {
@@ -44,6 +67,16 @@ function embeds(): { page: string; lang: string; id: string }[] {
 describe("マニュアルの動画の埋め込み", () => {
   const found = embeds();
   const pages = new Map(walkthroughs.map((w) => [w.id, w.docPage]));
+
+  it("登録簿を読めている（5 本）", () => {
+    expect(walkthroughs.map((w) => w.id).sort()).toEqual([
+      "process-billing",
+      "process-production",
+      "process-purchasing",
+      "process-sales",
+      "process-shipping",
+    ]);
+  });
 
   it("フェンスの id は登録簿にあり、その動画の載せ先のページに置かれている", () => {
     for (const e of found) {
