@@ -16,7 +16,7 @@
 import "server-only";
 
 import { getTranslations } from "next-intl/server";
-import { getApprovalFlow, startApprovalFlow } from "./approvals";
+import { approvalNeed, startApprovalFlow } from "./approvals";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
 import { formatDocNumber } from "./doc-number";
@@ -103,11 +103,10 @@ export async function submitAcceptanceCancelRequest(input: {
   if (!valid.ok) return { ok: false, errors: [valid.error] };
 
   const number = formatDocNumber("ORD", key);
-  const flow = await getApprovalFlow(TARGET_TYPE);
-  if (flow.length === 0) {
-    // 承認設定が空 = 素通し（承認を運用しない環境で止めない）。
-    return applyCancel(key, reason);
-  }
+  // 承認設定で OFF（または段なしの従来の素通し）なら、その場でキャンセルする。
+  const need = await approvalNeed(TARGET_TYPE);
+  if (need.kind === "blocked") return { ok: false, errors: [need.error] };
+  if (need.kind === "skip") return applyCancel(key, reason);
 
   // 進行中の依頼は 1 注文請書に 1 件だけ（DB 側にも部分 unique index）。
   const existing = await prisma.orderAcceptanceCancelRequest.findFirst({

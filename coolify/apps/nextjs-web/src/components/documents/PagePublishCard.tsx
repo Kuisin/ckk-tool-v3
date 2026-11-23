@@ -56,13 +56,17 @@ export function PagePublishCard({
   const [reason, setReason] = useState("");
 
   const run = (
-    fn: () => Promise<{ ok: boolean; error?: string }>,
+    fn: () => Promise<{ ok: boolean; error?: string; skipped?: boolean }>,
     done: string,
   ) =>
     startTransition(async () => {
       const r = await fn();
       if (r.ok) {
-        notifications.show({ message: done, color: "green" });
+        // 承認設定で OFF のときは、公開の申請がそのまま公開になる。
+        notifications.show({
+          message: r.skipped ? tr("common.published") : done,
+          color: "green",
+        });
         setConfirmOpen(false);
         setRejectOpen(false);
         setReason("");
@@ -195,6 +199,7 @@ export function PagePublishCard({
               publishPage(pageNumber).then((r) => ({
                 ok: r.ok,
                 error: r.ok ? undefined : r.error,
+                skipped: r.ok && r.data?.approvedWithoutFlow === true,
               })),
             approvalRequired
               ? tr("documents.pagePublishCard.requestedToPublish")

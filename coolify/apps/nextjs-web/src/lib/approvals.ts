@@ -34,7 +34,17 @@ import {
   stepsFromSnapshot,
 } from "./approval-flow";
 import { effectiveMemberWhere } from "./approval-membership";
-import { APPROVAL_TARGET, type ApprovalTargetType } from "./approval-targets";
+import {
+  type ApprovalPolicy,
+  isApprovalPolicy,
+  LEGACY_EMPTY,
+  resolveApprovalNeed,
+} from "./approval-policy-core";
+import {
+  APPROVAL_TARGET,
+  type ApprovalTargetType,
+  isApprovalTargetType,
+} from "./approval-targets";
 import { getCurrentActorId } from "./audit";
 import { prisma } from "./db";
 import { formatDocNumber, parseDocKey } from "./doc-number";
@@ -156,19 +166,66 @@ export async function getApprovalApplyMode(
   return row?.applyMode ?? "PRE";
 }
 
-/** 依頼を出す前の確認。未設定ならエラー文言、設定済みなら null。 */
-export async function assertFlowConfigured(
-  targetType: ApprovalTargetType,
-): Promise<string | null> {
-  // フォームはフォームごとにフローを持つので、種別だけでは判定できない
-  // （呼ぶ側が assertFormFlowConfigured を使う）。
-  if (targetType === "form_responses") return null;
-  const count = await prisma.approvalFlowStep.count({ where: { targetType } });
-  if (count > 0) return null;
-  const tr = await getTranslations();
-  return tr("approvals.engine.flowNotConfigured", {
-    doc: APPROVAL_TARGET[targetType].label,
+/**
+ * 依頼を出す前の判断: 承認を通す / 承認なしで進める / 依頼できない。
+ *
+ * 承認設定（MS0B）の種別ごとのスイッチ（system_settings `approval_policy.<種別>`）
+ * と段の数から決める。規則は lib/approval-policy-core.ts が唯一の定義
+ * （スイッチが無い種別は従来どおり — 段なしで依頼を拒む種別と素通しする種別がある）。
+ *
+ * - `flow`    … startApprovalFlow で依頼を出す
+ * - `skip`    … 承認なし。呼び出し側は最終承認されたときと同じ状態へ進める
+ * - `blocked` … `error` を利用者へ返す
+ */
+export type ApprovalNeedResult =
+  | { kind: "flow" }
+  | { kind: "skip" }
+  | { kind: "blocked"; error: string };
+
+export async function approvalNeed(
+  targetType: Exclude<ApprovalTargetType, "form_responses">,
+): Promise<ApprovalNeedResult> {
+  const [stepCount, setting] = await Promise.all([
+    prisma.approvalFlowStep.count({ where: { targetType } }),
+    prisma.systemSetting.findUnique({
+      where: { key: `${APPROVAL_POLICY_NS}.${targetType}` },
+      select: { value: true },
+    }),
+  ]);
+  const policy = isApprovalPolicy(setting?.value) ? setting.value : null;
+  const need = resolveApprovalNeed({
+    policy,
+    stepCount,
+    legacyEmpty: LEGACY_EMPTY[targetType],
   });
+  if (need !== "blocked") return { kind: need };
+  const tr = await getTranslations();
+  return {
+    kind: "blocked",
+    error: tr("approvals.engine.flowNotConfigured", {
+      doc: APPROVAL_TARGET[targetType].label,
+    }),
+  };
+}
+
+/** system_settings の名前空間（`approval_policy.<種別>` = "on" | "off"）。 */
+export const APPROVAL_POLICY_NS = "approval_policy";
+
+/** 承認設定の一覧用: 種別ごとの保存済みスイッチ（無ければ null）。 */
+export async function getApprovalPolicies(): Promise<
+  Map<ApprovalTargetType, ApprovalPolicy | null>
+> {
+  const rows = await prisma.systemSetting.findMany({
+    where: { key: { startsWith: `${APPROVAL_POLICY_NS}.` } },
+    select: { key: true, value: true },
+  });
+  const out = new Map<ApprovalTargetType, ApprovalPolicy | null>();
+  for (const r of rows) {
+    const t = r.key.slice(APPROVAL_POLICY_NS.length + 1);
+    if (isApprovalTargetType(t) && isApprovalPolicy(r.value))
+      out.set(t, r.value);
+  }
+  return out;
 }
 
 /**

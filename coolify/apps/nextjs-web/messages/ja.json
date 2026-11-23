@@ -5356,7 +5356,16 @@
       "canApproveScopeLimited": "{total}名 承認可（{count}名は範囲限定）",
       "noDocumentPermission": "この書類を閲覧・編集できる権限がありません: {names}",
       "noPermissionCount": "{total}名中 {count}名 権限なし",
-      "scopeIsLimited": "権限の範囲が限定されています（対象外の書類は承認できません）: {names}"
+      "scopeIsLimited": "権限の範囲が限定されています（対象外の書類は承認できません）: {names}",
+      "policy": {
+        "label": "承認を使う",
+        "onHelp": "承認依頼は下の段を順に通ります。",
+        "onEmptyHelp": "段が 1 つも無いため、承認依頼を出せません。段を設定するか、承認を使わない設定にしてください。",
+        "offHelp": "承認なしで進めます（承認依頼を押すとその場で承認済になります）。段は残っていますが使いません。",
+        "offBadge": "承認なし",
+        "notSetYet": "まだ設定していません（いまの動きを表示しています）",
+        "saveFailed": "承認の使用設定を保存できませんでした"
+      }
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "このグループはどの承認フローにも使われていません（承認設定の「承認フロー」で段に割り当てます）。",
@@ -6953,6 +6962,10 @@
       "alreadyProcessed": "この依頼は既に処理されています",
       "resultApprovedTitle": "{doc} {targetId} が承認されました",
       "resultRejectedTitle": "{doc} {targetId} が差し戻されました"
+    },
+    "policy": {
+      "skippedNote": "承認なし（承認設定で OFF）",
+      "approvedWithoutFlow": "承認なしで承認済にしました"
     }
   },
   "auth": {

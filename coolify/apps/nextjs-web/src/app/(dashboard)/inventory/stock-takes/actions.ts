@@ -22,7 +22,7 @@ import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import {
   actOnCurrentStep,
-  getApprovalFlow,
+  approvalNeed,
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
@@ -304,10 +304,12 @@ export async function submitStockTake(
       return actionError(tr("production.stockTakes.actions.cannotSubmitNow"));
     }
 
-    const flow = await getApprovalFlow(TARGET_TYPE);
+    // 承認設定で OFF（または段なしの従来の素通し）なら、その場で確定する。
+    const need = await approvalNeed(TARGET_TYPE);
+    if (need.kind === "blocked") return actionError(need.error);
     const actor = await getCurrentActorId();
 
-    if (flow.length > 0) {
+    if (need.kind === "flow") {
       // 1 段目の承認依頼を先に作る（作れなければ状態を動かさない）。
       const started = await startApprovalFlow({
         targetType: TARGET_TYPE,
@@ -342,7 +344,7 @@ export async function submitStockTake(
       return actionOk({ confirmed: false });
     }
 
-    // 0 段 = 素通し。採番は tx の外で先に行う（全書類共通の作法）。
+    // 承認なし（OFF / 0 段の素通し）。採番は tx の外で先に行う（全書類共通の作法）。
     const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
     const result = await prisma.$transaction(async (tx) => {
       await tx.stockTake.update({

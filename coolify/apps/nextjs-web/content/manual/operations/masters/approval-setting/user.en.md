@@ -95,6 +95,22 @@ flowchart TD
 
 > ⚠️ **Changing the settings does not affect documents that are already in approval.** A document in progress runs to the end with the settings as they were when the approval was requested. Changes apply to approval requests made from now on.
 
+## Turning approval off for a document type (the 「承認を使う」 switch) [#approval-policy]
+
+Each card on the 「承認フロー」 (approval flow) tab has a 「**承認を使う**」 (use approval) switch. You can choose, per document type, whether it goes through approval.
+
+| Switch | Has steps | Has no steps |
+|--------|-----------|--------------|
+| On | Approved through the steps in order | **Approval cannot be requested** (the card turns red) |
+| Off | Proceeds without approval (steps are kept but not used) | Proceeds without approval |
+
+- **When it is off**, pressing 「**承認依頼**」 (request approval) on that document puts it straight into the same state as after approval (approved, etc.). Whatever normally happens on approval — reserving stock, notifying the next step — still happens. The history records 「**承認なし（承認設定で OFF）**」 (no approval — turned off in approval settings).
+- The steps are not deleted. If you turn it back on, the remaining steps are used as they are.
+- A document type whose switch has never been touched **behaves as before** (the card says 「まだ設定していません」, not set yet). Until now, some types could not request approval without steps (order acceptance, work order, purchase request, material purchase order, design request, internal documents) and others passed through without approval when there were no steps (delivery quantity variance, invoice, payment, drawing versions, process flow changes, order acceptance cancellation, stock-take). Once the switch is changed, the table above applies.
+- Only people who can edit master data can move the switch. Each change is recorded in the activity log.
+
+> ⚠️ A document already part-way through approval is not stopped by changing the switch. It finishes with the approval it was requested under.
+
 ## Splitting the flow by document content (conditional flows)
 
 You can vary the approval steps by what is in the document (amount, type and so on) — for example "material purchase orders of ¥500,000 or more get an extra executive step" or "direct-to-user order acceptances go through the sales manager".

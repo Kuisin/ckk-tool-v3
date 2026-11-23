@@ -5356,7 +5356,16 @@
       "canApproveScopeLimited": "{total} 人可审批（其中 {count} 人权限范围受限）",
       "noDocumentPermission": "没有查看或编辑此单据的权限：{names}",
       "noPermissionCount": "{total} 人中 {count} 人无权限",
-      "scopeIsLimited": "权限范围受限（范围外的单据无法审批）：{names}"
+      "scopeIsLimited": "权限范围受限（范围外的单据无法审批）：{names}",
+      "policy": {
+        "label": "使用审批",
+        "onHelp": "审批申请将按以下各级依次进行。",
+        "onEmptyHelp": "没有任何审批级别，无法申请审批。请设置级别，或设为不使用审批。",
+        "offHelp": "无需审批即可继续（申请审批时会立即变为已批准）。级别会保留但不使用。",
+        "offBadge": "无需审批",
+        "notSetYet": "尚未设置（显示当前的行为）",
+        "saveFailed": "无法保存审批使用设置"
+      }
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "此分组未用于任何审批流程（请在审批设置的「审批流程」中分配到级别）。",
@@ -6953,6 +6962,10 @@
       "alreadyProcessed": "此申请已处理",
       "resultApprovedTitle": "{doc} {targetId} 已获批准",
       "resultRejectedTitle": "{doc} {targetId} 已被退回"
+    },
+    "policy": {
+      "skippedNote": "无需审批（审批设置中已关闭）",
+      "approvedWithoutFlow": "已无需审批直接批准"
     }
   },
   "auth": {
