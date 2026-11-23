@@ -17,7 +17,7 @@
 #   bash tools/ci/changed-areas.sh <base-ref> [base-branch]   # git diff base...HEAD
 #   printf '%s\n' a.ts b.md | bash tools/ci/changed-areas.sh --files [base-branch]
 # 出力（GITHUB_OUTPUT にそのまま足せる形）:
-#   web=true  pages=false  kiosk=…  authz=…  shared_db=…  python=…
+#   web=true  pages=false  kiosk=…  authz=…  shared_db=…  python=…  walkthroughs=…
 #
 # 規則を変えたら tools/ci/changed-areas.test.sh を足すこと（CI が先に流す）。
 set -euo pipefail
@@ -31,10 +31,10 @@ else
   files=$(git diff --name-only "${base_ref}...HEAD")
 fi
 
-web=false pages=false kiosk=false authz=false shared_db=false python=false
+web=false pages=false kiosk=false authz=false shared_db=false python=false walkthroughs=false
 
 all_true() {
-  web=true pages=true kiosk=true authz=true shared_db=true python=true
+  web=true pages=true kiosk=true authz=true shared_db=true python=true walkthroughs=true
 }
 
 # web ジョブ（lint / 単体試験 / 各 gate / i18n / build）を飛ばしてよいファイル。
@@ -98,6 +98,21 @@ else
     case "$f" in
       coolify/apps/nextjs-kiosk/* | coolify/apps/nextjs-web/src/lib/* | packages/* | shared-db/prisma/schema/*) kiosk=true ;;
     esac
+    # 業務の通し操作（walkthroughs ジョブ・約 10 分）。**dev 向けの PR では、通し操作
+    # 自身かその土台（デモシード・ログイン・シードの流し方）を触ったときだけ回す** —
+    # アプリのコードを触るたびに回すと全 PR が 10 分延び、しかも通し操作はシードの
+    # 中身に依るので、関係のない PR が種の変更で落ちる。アプリ側の壊れは昇格 PR
+    # （main 向け = 上の all_true）で必ず見る: 本番へ上がる前に止めるのが役目。
+    case "$f" in
+      tools/docs-screenshots/walkthroughs/* | tools/docs-screenshots/walkthroughs.spec.ts | \
+        tools/docs-screenshots/playwright.walkthroughs.config.ts | \
+        tools/docs-screenshots/scripts/walkthroughs.ts | tools/docs-screenshots/scripts/orchestrate.ts | \
+        tools/docs-screenshots/global-setup.ts | tools/docs-screenshots/console-ignore.ts | \
+        tools/docs-screenshots/package.json | tools/docs-screenshots/pnpm-lock.yaml | \
+        shared-db/sql/*-seed.sql)
+        walkthroughs=true
+        ;;
+    esac
     # 依存の変更はワークスペースの全部に効く
     case "$f" in
       pnpm-lock.yaml | package.json | pnpm-workspace.yaml)
@@ -113,3 +128,4 @@ echo "kiosk=$kiosk"
 echo "authz=$authz"
 echo "shared_db=$shared_db"
 echo "python=$python"
+echo "walkthroughs=$walkthroughs"

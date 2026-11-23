@@ -187,7 +187,7 @@ drift_check() {
 step "CI の 1 行コマンドを全部回しているか" drift_check
 
 # ── --changed: CI と同じ判定 ──────────────────────────────────────────────
-AREA_web=true AREA_pages=true AREA_kiosk=true AREA_authz=true AREA_shared_db=true AREA_python=true
+AREA_web=true AREA_pages=true AREA_kiosk=true AREA_authz=true AREA_shared_db=true AREA_python=true AREA_walkthroughs=true
 if [ "$CHANGED" = true ]; then
   section "変更範囲の判定（tools/ci/changed-areas.sh, base=origin/${BASE}）"
   step "判定規則の試験" "bash tools/ci/changed-areas.test.sh"
@@ -374,6 +374,13 @@ if want browser; then
       step "全画面の読み込み確認（pnpm e2e:pages --reuse）" "cd '$SHOTS' && APP_URL='$APP_URL' pnpm e2e:pages --reuse"
       step "URL の状態（e2e-url-state.ts — IME を含む）" "cd '$SHOTS' && APP_URL='$APP_URL' pnpm exec tsx e2e-url-state.ts"
       step "クライアントの読み取り（e2e-client-reads.ts）" "cd '$SHOTS' && APP_URL='$APP_URL' pnpm exec tsx e2e-client-reads.ts"
+      # 通し操作は**最後**: 書類を作って先へ進めるので、同じ DB を読む上の 3 つの
+      # 前に走らせると、一覧の先頭行や件数が変わって巻き添えで落ちる。
+      if [ "$AREA_walkthroughs" = true ]; then
+        step "業務の通し操作（pnpm walk:check --reuse）" "cd '$SHOTS' && APP_URL='$APP_URL' pnpm walk:check --reuse"
+      else
+        skip "業務の通し操作" "変更なし（昇格 PR では必ず回る）"
+      fi
     fi
     if [ "$KEEP" = true ]; then
       echo "  --keep: アプリ ${APP_URL}（demo1 / demo2026）と DB $DB_APP を残した。"
