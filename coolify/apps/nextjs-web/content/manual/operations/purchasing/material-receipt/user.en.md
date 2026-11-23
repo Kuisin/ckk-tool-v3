@@ -33,6 +33,8 @@ This is the **素材入荷** (material receipt) app, where you record that mater
 
 > ⚠️ **This screen is only for material bought without a purchase order (direct purchases).** When material ordered with a purchase order arrives — all of it or only part — do not register it on this screen (「新規作成」 (New) or 「納品書から登録」 (From a delivery note)). Receipts registered here are **not linked to the purchase order**, so the order's remaining quantity does not go down, and pressing 「入荷完了」 (Receiving complete) later **puts the same material into stock a second time**. For ordered material, use the [material purchase order](/manual/en/operations/purchasing/purchase-order/user) screen: 「**入荷完了**」 (Receiving complete) when everything has arrived, or 「**分割入荷**」 (Partial receipt) when only part has. The receipt record is created automatically.
 
+> 💡 When you choose a material and supplier, if a purchase order in 「**発注済**」(Ordered) still has part of the same material outstanding, an orange confirmation appears on screen (PO number, remaining quantity and a link to the purchase order). If it is the ordered material, open the purchase order from the link and record it with 「**分割入荷**」(partial receipt). Only when it really is a separate purchase, tick 「**発注書とは別の購入として登録する**」(register as a purchase separate from the purchase order) and register. It cannot be registered without the tick.
+
 As a diagram, this is where to record an arrival:
 
 ```mermaid

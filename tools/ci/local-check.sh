@@ -33,6 +33,10 @@
 #   --keep         browser の後、アプリと DB を残す（手で触って確かめる用）
 #   --fail-fast    最初に落ちた段で止める
 #
+# 通ると、そのコミットに「合格の印」を残す（.git/ckk-local-check/<sha>）。
+# pre-push フック（.githooks/pre-push — pnpm hooks:install で有効化）は印の
+# あるコミットなら回し直さずに通す。
+#
 # 使い捨てのコンテナ名・ポートはワークツリーごとに変わる（パスのハッシュ）。
 # 同じ機械で別のワークツリーが同時に回しても互いを消さない。
 # 必要なもの: pnpm / node 24 / Docker（migrations・browser）/ python3（python）。
@@ -185,6 +189,7 @@ drift_check() {
   return $missing
 }
 step "CI の 1 行コマンドを全部回しているか" drift_check
+step "シェルスクリプトの変数（macOS bash 3.2）" "bash tools/ci/shell-vars-check.sh"
 
 # ── --changed: CI と同じ判定 ──────────────────────────────────────────────
 AREA_web=true AREA_pages=true AREA_kiosk=true AREA_authz=true AREA_shared_db=true AREA_python=true AREA_walkthroughs=true
@@ -390,4 +395,28 @@ if want browser; then
 else skip "browser" "変更なし / --quick / --only"; fi
 
 summary
+
+# ── 合格の印（pre-push フックが読む）──────────────────────────────────────
+# 通ったコミットを覚えておき、push のときに同じものを回し直さない
+# （.githooks/pre-push）。印を残すのは次の全部を満たすときだけ:
+#   - 全段が通った
+#   - 段を間引いていない（--quick / --only は印を残さない。--changed は CI と
+#     同じ判定なので残す）
+#   - 追跡しているファイルに未コミットの変更が無い（あると、通したのは
+#     HEAD ではなく手元の状態になる）。.claude* はエージェントの道具が常に
+#     書き換えるので数えない
+STAMP_DIR="$(git rev-parse --git-common-dir)/ckk-local-check"
+if [ "$FAILED" -eq 0 ] && [ "$QUICK" = false ] && [ -z "$ONLY" ]; then
+  if git diff --quiet HEAD -- . ':(exclude).claude' ':(exclude).claude-flow'; then
+    mkdir -p "$STAMP_DIR"
+    mode=full
+    [ "$CHANGED" = true ] && mode="changed:$BASE"
+    printf '%s %s %s\n' "$(git rev-parse HEAD)" "$mode" "$(date +%Y-%m-%dT%H:%M:%S)" \
+      >"$STAMP_DIR/$(git rev-parse HEAD)"
+    echo "合格の印を残した: $(git rev-parse --short HEAD)（${mode}）— このコミットは pre-push で回し直さない"
+  else
+    echo "未コミットの変更があるので合格の印は残さない（コミットしてから回すと push が速い）"
+  fi
+fi
+
 [ "$FAILED" -eq 0 ]

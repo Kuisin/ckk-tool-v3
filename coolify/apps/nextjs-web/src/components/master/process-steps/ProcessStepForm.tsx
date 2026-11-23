@@ -55,7 +55,11 @@ import {
 } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
-import { isPrepStep, pinnedWorkOrderType } from "@/lib/workflow-core";
+import {
+  isPrepStep,
+  isRegrindStep,
+  pinnedWorkOrderType,
+} from "@/lib/workflow-core";
 
 const BASE_PATH = "/master/process-steps";
 
@@ -524,12 +528,14 @@ export function ProcessStepForm({
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
           <Select
             data={processCategoryOptions(locale)}
-            // カテゴリで所属する工程リストが決まる（準備 = 材料準備のみ）。
+            // カテゴリで所属する工程リストが決まる（準備 = 材料準備 / 再研磨カテゴリ = 再研磨だけ / それ以外 = 製造。再研磨は種別でも入る）。
             description={
               form.values.category
                 ? isPrepStep({ category: form.values.category })
                   ? tr("master.processSteps.routeKindPrepHelp")
-                  : tr("master.processSteps.routeKindManufacturingHelp")
+                  : isRegrindStep({ category: form.values.category })
+                    ? tr("master.processSteps.routeKindRegrindHelp")
+                    : `${tr("master.processSteps.routeKindManufacturingHelp")} ${tr("master.processSteps.routeKindAlsoRegrind")}`
                 : undefined
             }
             label={<HelpLabel {...fieldHelp(tr, "processStep", "category")} />}

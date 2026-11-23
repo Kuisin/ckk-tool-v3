@@ -23,7 +23,7 @@ import { z } from "zod";
 import {
   actOnCurrentStep,
   appendHistory,
-  assertFlowConfigured,
+  approvalNeed,
   cancelApprovalFlow,
   type HistoryEntry,
   startApprovalFlow,
@@ -370,8 +370,10 @@ export async function submitDesignVersion(
       );
     }
     const actor = await getCurrentActorId();
-    const needsApproval =
-      (await assertFlowConfigured("design_versions")) == null;
+    // 承認設定で OFF（または段なしの従来の素通し）なら、その場で確定する。
+    const need = await approvalNeed("design_versions");
+    if (need.kind === "blocked") return actionError(need.error);
+    const needsApproval = need.kind === "flow";
 
     if (!needsApproval) {
       const ok = await prisma.$transaction((tx) =>

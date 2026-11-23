@@ -407,12 +407,16 @@ export function OrderAcceptanceDetail({
     priceCheck.lines.map((l) => [l.lineId, l]),
   );
 
-  const run = (action: () => Promise<ActionResult>, done: string) => {
+  const run = (action: () => Promise<ActionResult<unknown>>, done: string) => {
     startTransition(async () => {
       const result = await action();
       if (result.ok) {
+        // 承認設定で OFF のとき、承認依頼はそのまま承認済にする（「依頼しました」と出さない）。
+        const skipped =
+          (result.data as { approvedWithoutFlow?: boolean } | undefined)
+            ?.approvedWithoutFlow === true;
         notifications.show({
-          title: done,
+          title: skipped ? tr("approvals.policy.approvedWithoutFlow") : done,
           message: tr("sales.orderAcceptanceDetail.orderAcceptanceWithNumber", {
             number: a.number,
           }),

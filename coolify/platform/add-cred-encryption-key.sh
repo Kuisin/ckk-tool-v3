@@ -47,7 +47,7 @@ if [ ! -s "$KEY_FILE" ]; then
   chmod 600 "$KEY_FILE"
   echo "鍵を生成: $KEY_FILE"
 else
-  echo "鍵は既にある: $KEY_FILE（作り直さない）"
+  echo "鍵は既にある: ${KEY_FILE}（作り直さない）"
 fi
 KEY=$(cat "$KEY_FILE")
 case "$KEY" in

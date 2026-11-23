@@ -3587,7 +3587,15 @@
       "filesCount": "{count} 件",
       "removeFile": "取消 {name}",
       "enterAUnit": "请输入单位",
-      "registrationFailed": "材料到货登记失败"
+      "registrationFailed": "材料到货登记失败",
+      "openPo": {
+        "title": "该材料已下单，尚有未到货的部分",
+        "body": "采购单订购的材料到货时，请在材料采购单上用「分割入荷」（分批到货）或「入荷完了」（到货完成）登记。在此登记不会减少采购单的剩余数量，之后按下「入荷完了」时同一材料会再次入库。",
+        "line": "{po}：剩余 {remaining} {unit}",
+        "open": "打开采购单",
+        "acknowledge": "作为与采购单不同的另一笔采购登记",
+        "blocked": "存在已下单但未全部到货的采购单（{list}）。订购的材料请在材料采购单上用「分割入荷」登记。如要作为另一笔采购登记，请勾选确认后再保存。"
+      }
     },
     "outsourceOrders": {
       "editOutsourceOrder": "编辑外协委托单",
@@ -3628,7 +3636,7 @@
       "receiptNote": "{quantity} {unit}・{date}",
       "confirmCancelBody": "将取消材料采购单 {number}。此操作无法撤销。",
       "confirmOrderBody": "将材料采购单 {number} 标记为已下单。明细将反映到材料库存的预计到货（ATP）中。",
-      "confirmCompleteBody": "将 {count} 条明细登记为全部到货的材料入库，并计入到货据点的材料库存。如需分批到货，请直接在材料到货（PU03）中登记。",
+      "confirmCompleteBody": "将 {count} 条明细的剩余数量全部登记为到货，并计入到货据点的材料库存。只到了一部分时，请用「分割入荷」（分批到货）登记——在材料到货（PU03）中登记不会减少本采购单的剩余数量，会造成重复入库。",
       "receiveActionsDescription": "到货完成将一次性接收剩余数量。仅部分到货时使用分批到货；剩余不会到货时选择未到货直接完成。",
       "partialReceipt": "分批到货",
       "confirmPartialReceipt": "登记分批到货",
@@ -5348,7 +5356,16 @@
       "canApproveScopeLimited": "{total} 人可审批（其中 {count} 人权限范围受限）",
       "noDocumentPermission": "没有查看或编辑此单据的权限：{names}",
       "noPermissionCount": "{total} 人中 {count} 人无权限",
-      "scopeIsLimited": "权限范围受限（范围外的单据无法审批）：{names}"
+      "scopeIsLimited": "权限范围受限（范围外的单据无法审批）：{names}",
+      "policy": {
+        "label": "使用审批",
+        "onHelp": "审批申请将按以下各级依次进行。",
+        "onEmptyHelp": "没有任何审批级别，无法申请审批。请设置级别，或设为不使用审批。",
+        "offHelp": "无需审批即可继续（申请审批时会立即变为已批准）。级别会保留但不使用。",
+        "offBadge": "无需审批",
+        "notSetYet": "尚未设置（显示当前的行为）",
+        "saveFailed": "无法保存审批使用设置"
+      }
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "此分组未用于任何审批流程（请在审批设置的「审批流程」中分配到级别）。",
@@ -5896,7 +5913,10 @@
       "workOrderTypesHelp": "该工序可以放入的工单类别。请至少选择一个。",
       "workOrderTypesPinnedHelp": "该工序是「{type}」的起始工序，无法更改类别。库存消耗与客户寄存品的记账都依赖于此。",
       "workOrderTypesPinnedBadge": "起始工序，无法更改",
-      "pickAtLeastOneWorkOrderType": "请至少选择一个可用的工单类别"
+      "pickAtLeastOneWorkOrderType": "请至少选择一个可用的工单类别",
+      "routeKindRegrind": "再研磨",
+      "routeKindRegrindHelp": "再研磨类别的工序只属于公共的再研磨工序清单（不属于制造工序清单）。",
+      "routeKindAlsoRegrind": "「使える指示書種別」（可用的工单类别）包含再研磨时，也可以放入再研磨工序清单。"
     },
     "products": {
       "specification": "规格",
@@ -6945,6 +6965,10 @@
       "alreadyProcessed": "此申请已处理",
       "resultApprovedTitle": "{doc} {targetId} 已获批准",
       "resultRejectedTitle": "{doc} {targetId} 已被退回"
+    },
+    "policy": {
+      "skippedNote": "无需审批（审批设置中已关闭）",
+      "approvedWithoutFlow": "已无需审批直接批准"
     }
   },
   "auth": {
@@ -8054,7 +8078,23 @@
     "issueQuoteModal": {
       "confirmIssueMessage": "将发行报价单“{number}”。发行的同时会生成并保存 PDF，可在详情页的 PDF 标签中查看。",
       "issuedAndSaved": "已发行报价单 {number} 并保存 PDF",
-      "issuedAndSavedWithMail": "已发行报价单 {number} 并保存 PDF（已预约邮件发送）"
+      "sendTo": "发送对象：{name}（{email}）",
+      "noRecipient": "客户（含分公司与联系人）未登记邮件地址，无法通过邮件发送。",
+      "mailerNotConfigured": "本环境未设置邮件发送通道，无法通过邮件发送。",
+      "mailSent": "已将报价单发送至 {email}",
+      "mailFailed": "报价单已发行，但邮件未能发送",
+      "reason": {
+        "notFound": "找不到报价单。",
+        "noRecipient": "没有发送对象的邮件地址。",
+        "mailerNotConfigured": "未设置邮件发送通道。",
+        "notIssued": "只能发送已发行的报价单。",
+        "sendFailed": "发送失败。请稍后通过“邮件发送”重新发送。",
+        "portalDisabled": "本环境未启用客户门户，无法通过邮件发送（报价单以链接形式发送）。",
+        "linkFailed": "无法生成报价单链接。"
+      },
+      "resend": "邮件发送",
+      "resendConfirm": "将报价单 {number} 的链接（需身份验证）发送至 {email}。",
+      "mailSentTitle": "已发送"
     },
     "materialPriceChart": {
       "referencePriceAmount": "参考价格 {amount}",
@@ -8368,6 +8408,17 @@
       "materialHasNoPriceList": "材料无法创建价格表",
       "regrindItemOnlyRegrindVariant": "再研磨品目只能拥有订单类别「再研磨」",
       "productHasNoRegrindVariant": "产品无法创建订单类别「再研磨」的价格。再研磨的价格由再研磨品目持有"
+    },
+    "quoteMail": {
+      "subject": "报价单 {number}",
+      "salutationCompany": "{company}：",
+      "salutationPerson": "{company}\n{person} 您好：",
+      "body": "感谢您一直以来的关照。\n现发送报价单 {number}，请通过以下链接查阅（可下载 PDF）。",
+      "validUntil": "有效期限：{date}",
+      "closing": "如有任何疑问，请随时与我们联系。\n今后也请多多关照。",
+      "contact": "负责人：{name}",
+      "contactWithEmail": "负责人：{name}（{email}）",
+      "linkNote": "打开链接后，我们会向本邮件地址发送验证码。链接有效期至：{date}"
     }
   },
   "shipping": {

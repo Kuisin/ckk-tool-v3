@@ -24,9 +24,12 @@ import {
 } from "./ApprovalFlowOverview";
 
 export function ApprovalSettingsView({
+  canEditPolicy,
   flows,
   groups,
 }: {
+  /** 承認を使う / 使わない のスイッチを動かせるか（master:UPDATE）。 */
+  canEditPolicy: boolean;
   flows: FlowOverviewRow[];
   groups: ApprovalGroupRow[];
 }) {
@@ -45,7 +48,7 @@ export function ApprovalSettingsView({
           <Tabs.Tab value="groups">{tr("common.approvalGroup")}</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel pt="md" value="flows">
-          <ApprovalFlowOverview rows={flows} />
+          <ApprovalFlowOverview canEditPolicy={canEditPolicy} rows={flows} />
         </Tabs.Panel>
         <Tabs.Panel keepMounted={false} pt="md" value="groups">
           <ApprovalGroupTable embedded rows={groups} />
