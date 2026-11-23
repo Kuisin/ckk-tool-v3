@@ -10,7 +10,9 @@
 #   bash tools/ci/shell-vars-check.sh
 set -uo pipefail
 cd "$(dirname "$0")/../.."
-hits=$(git ls-files '*.sh' .githooks | xargs grep -nE '\$[A-Za-z_][A-Za-z0-9_]*[^ -~[:space:]]' 2>/dev/null)
+# コメント行（先頭が #）は bash が展開しないので数えない。
+hits=$(git ls-files '*.sh' .githooks | xargs grep -nE '\$[A-Za-z_][A-Za-z0-9_]*[^ -~[:space:]]' 2>/dev/null \
+  | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#')
 if [ -n "$hits" ]; then
   echo "\$変数 の直後に全角文字がある — \${変数} と波括弧で囲むこと（macOS の bash 3.2 で落ちる）:"
   echo "$hits"
