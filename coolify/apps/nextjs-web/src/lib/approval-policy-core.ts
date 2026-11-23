@@ -43,6 +43,9 @@ export const LEGACY_EMPTY: Record<
   invoices: "skip",
   invoice_payments: "skip",
   design_versions: "skip",
+  // 価格表は通常のフローを持たない（MS0B の一覧にも出さない）。承認が走るのは
+  // 独自値の追加承認の段があるときだけで、段が無ければ素通し — なので skip。
+  price_list_entries: "skip",
 };
 
 export function resolveApprovalNeed(input: {
