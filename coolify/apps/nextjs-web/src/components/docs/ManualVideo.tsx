@@ -135,7 +135,10 @@ export function ManualVideo({ id }: { id: string }) {
           poster={src("jpg")}
           preload="none"
           ref={ref}
-          style={{ width: "100%", height: "100%", display: "block" }}
+          // margin: 0 — マニュアル本文の文字組み（prose）は video に上下 2em の
+          // 余白を付ける。そのままだと動画が黒い枠の中で下へずれ、上に黒い帯が出て
+          // 下が切れる（実際にそうなっていた）。枠は外側の div が持つ。
+          style={{ width: "100%", height: "100%", display: "block", margin: 0 }}
         >
           {/* URL は .webm で終わらせない（理由は lib/manual-videos-core.ts の MEDIA_KINDS） */}
           <source src={src("video")} type="video/webm" />

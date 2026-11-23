@@ -18,7 +18,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import { isIgnoredConsole } from "./console-ignore";
-import { WALK_MODE } from "./playwright.walkthroughs.config";
+import { VIDEO_SIZE, WALK_MODE } from "./playwright.walkthroughs.config";
 import { walkthroughs } from "./walkthroughs";
 import type { RecordedVideo } from "./walkthroughs/types";
 import { AUTH_STATE, CURSOR_INIT_SCRIPT, Walk } from "./walkthroughs/walk";
@@ -34,20 +34,54 @@ function vttTime(ms: number): string {
   return `${pad(h)}:${pad(m)}:${pad(s)}.${pad(ms % 1000, 3)}`;
 }
 
-/** 手順の区切りから字幕（WebVTT）を作る。1 手順 = 1 キュー、次の手順が始まるまで出す。 */
-function toVtt(chapters: { title: string; startMs: number }[], endMs: number): string {
-  const cues = chapters.map((c, i) => {
-    const end = chapters[i + 1]?.startMs ?? endMs;
-    return `${i + 1}\n${vttTime(c.startMs)} --> ${vttTime(Math.max(end, c.startMs + 1))}\n${i + 1}. ${c.title}`;
+/** 字幕（WebVTT）を作る。1 枚 = 1 キュー、次の字幕が始まるまで出す。 */
+function toVtt(captions: { text: string; startMs: number }[], endMs: number): string {
+  const cues = captions.map((c, i) => {
+    const end = captions[i + 1]?.startMs ?? endMs;
+    return `${i + 1}\n${vttTime(c.startMs)} --> ${vttTime(Math.max(end, c.startMs + 1))}\n${c.text}`;
   });
   return `WEBVTT\n\n${cues.join("\n\n")}\n`;
+}
+
+/** HTML に入れる文字のエスケープ（題と手順は自分たちの文だが、記号を含む）。 */
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/**
+ * プレビュー（再生する前に出る画像）= 題と手順の一覧を書いた 1 枚。
+ *
+ * 以前は録画の途中の画面をそのまま使っていたが、それだと「何の動画か」が
+ * 分からない（保存直後の詳細画面が写っているだけ）。押す前に、何が見られるかを
+ * 文字で言う。手順は「—」の前（何をするか）だけを並べる。
+ */
+function titleCardHtml(title: string, chapters: { title: string }[]): string {
+  const [head, sub] = title.split(" — ");
+  const items = chapters
+    .map((c, i) => `<li><span class="n">${i + 1}</span>${esc(c.title.split(" — ")[0] ?? c.title)}</li>`)
+    .join("");
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><style>
+    * { box-sizing: border-box; margin: 0; }
+    body { width: ${VIDEO_SIZE.width}px; height: ${VIDEO_SIZE.height}px; padding: 64px 72px;
+      font-family: "Noto Sans JP", "Noto Sans CJK JP", "Hiragino Sans", system-ui, sans-serif;
+      background: #f8f9fa; color: #212529; display: flex; flex-direction: column; }
+    .bar { width: 72px; height: 8px; border-radius: 4px; background: #228be6; margin-bottom: 28px; }
+    h1 { font-size: 56px; font-weight: 700; line-height: 1.25; }
+    .sub { font-size: 30px; color: #495057; margin-top: 12px; }
+    ol { list-style: none; padding: 0; margin-top: 44px; display: grid; gap: 14px 48px;
+      grid-template-columns: ${chapters.length > 5 ? "1fr 1fr" : "1fr"}; grid-auto-flow: ${chapters.length > 5 ? "column" : "row"};
+      grid-template-rows: repeat(${chapters.length > 5 ? Math.ceil(chapters.length / 2) : chapters.length}, auto); }
+    li { font-size: 28px; display: flex; align-items: center; gap: 16px; }
+    .n { flex: none; width: 40px; height: 40px; border-radius: 50%; background: #e7f5ff; color: #1971c2;
+      font-size: 22px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  </style></head><body><div class="bar"></div><h1>${esc(head ?? title)}</h1>${sub ? `<div class="sub">${esc(sub)}</div>` : ""}<ol>${items}</ol></body></html>`;
 }
 
 for (const wt of walkthroughs) {
   test.describe(wt.id, () => {
     test.use({ storageState: AUTH_STATE[wt.user ?? "staff"] });
 
-    test(wt.title, async ({ page }, testInfo) => {
+    test(wt.title, async ({ page, browser }, testInfo) => {
       const problems: string[] = [];
       page.on("pageerror", (e) => problems.push(`pageerror: ${e.message.slice(0, 300)}`));
       page.on("console", (m) => {
@@ -59,10 +93,11 @@ for (const wt of walkthroughs) {
       await page.addInitScript(CURSOR_INIT_SCRIPT);
 
       const walk = new Walk(page, WALK_MODE);
-      let poster: Buffer | undefined;
-
       for (const [i, step] of wt.steps.entries()) {
         walk.beginStep(step.caption);
+        // 手順の見出しを読む間。すぐ案内（say）が続く手順では、これが無いと
+        // 見出しが 1〜2 秒で次の字幕に替わってしまう。
+        await walk.pace(2200);
         try {
           await test.step(`${i + 1}. ${step.caption}`, () => step.run(walk));
         } catch (e) {
@@ -78,10 +113,6 @@ for (const wt of walkthroughs) {
           if (process.env.WALK_DEBUG) console.log(body);
           throw e;
         }
-        // サムネイルは最初の手順が終わった画面（ログイン直後の空白ではなく中身のある画面）。
-        if (i === 0 && WALK_MODE === "record") {
-          poster = await page.screenshot({ type: "jpeg", quality: 80 });
-        }
         await walk.pace(1000);
       }
 
@@ -96,8 +127,14 @@ for (const wt of walkthroughs) {
       if (!video) throw new Error("録画が有効になっていない（playwright.walkthroughs.config.ts の video）");
       mkdirSync(OUT_DIR, { recursive: true });
       await video.saveAs(join(OUT_DIR, `${wt.id}.webm`));
-      writeFileSync(join(OUT_DIR, `${wt.id}.vtt`), toVtt(walk.chapters, endMs));
-      if (poster) writeFileSync(join(OUT_DIR, `${wt.id}.jpg`), poster);
+      writeFileSync(join(OUT_DIR, `${wt.id}.vtt`), toVtt(walk.captions, endMs));
+      // プレビューは録画とは別のコンテキストで描く（録画の中に写り込ませない）。
+      const cardContext = await browser.newContext({ viewport: VIDEO_SIZE, deviceScaleFactor: 1 });
+      const card = await cardContext.newPage();
+      await card.setContent(titleCardHtml(wt.title, walk.chapters), { waitUntil: "load" });
+      await card.evaluate(() => document.fonts.ready);
+      writeFileSync(join(OUT_DIR, `${wt.id}.jpg`), await card.screenshot({ type: "jpeg", quality: 88 }));
+      await cardContext.close();
       const meta: RecordedVideo = {
         id: wt.id,
         docPage: wt.docPage,
