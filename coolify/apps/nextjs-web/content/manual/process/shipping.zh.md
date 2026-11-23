@@ -13,6 +13,10 @@ screenshots:
 
 本页整理了发出制成的产品，发行送货单直到送达为止的流程。在这里确认「现在处于哪个阶段、接下来该谁做什么」，以及发货／库存保管的**分支**、各**单据状态**。基本操作步骤由[标准流程](/manual/zh/process/default-flow)负责。
 
+```video
+process-shipping
+```
+
 ## 整体流程
 
 ![出货 — 从出货单到交货](../assets/diagrams/flow-shipping.zh.svg)

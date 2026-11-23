@@ -14,6 +14,10 @@ screenshots:
 
 A page covering the flow from finding out that material is short, through ordering and receiving it, until it can be used as stock. It is where you check "what stage things are at now, and who does what next", the **branches** such as approval and split receiving, and each **document's states**.
 
+```video
+process-purchasing
+```
+
 ## Overall flow
 
 ![Purchasing — from requesting material to receiving it](../assets/diagrams/flow-purchasing.en.svg)

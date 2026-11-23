@@ -16,6 +16,10 @@ screenshots:
 
 A page covering the flow from setting the unit price to receiving the order and handing it off to manufacturing. It is where you check "what stage things are at now, and who does what next", the **branches** such as price mismatches and being sent back, and each **document's states**. The basic steps to operate belong to [Standard flow](/manual/en/process/default-flow).
 
+```video
+process-sales
+```
+
 ## Overall flow
 
 ![Pricing and quotes — from price estimate to issuing the quote](../assets/diagrams/flow-pricing.en.svg)

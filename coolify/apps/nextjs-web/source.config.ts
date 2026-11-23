@@ -17,6 +17,7 @@ import {
   frontmatterSchema,
 } from "fumadocs-mdx/config";
 import { z } from "zod";
+import { remarkManualVideo } from "./src/lib/remark-manual-video";
 
 export const manual = defineDocs({
   dir: "content/manual",
@@ -59,6 +60,11 @@ export default defineConfig({
      * （状態の移り変わりなど）用で、プロセス編のスイムレーン図（tools/swimlane →
      * ビルド時 SVG）はそのまま。
      */
-    remarkPlugins: [remarkMdxMermaid],
+    /**
+     * ```video フェンス（中身は動画の id）を `<ManualVideo id="…" />` に置き換える
+     * （components/docs/ManualVideo.tsx）。動画そのものはビルドに入らない —
+     * デプロイ後に録画アプリが書き出し、ページを開いたときに有無を見る。
+     */
+    remarkPlugins: [remarkMdxMermaid, remarkManualVideo],
   },
 });

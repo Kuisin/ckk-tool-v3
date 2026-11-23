@@ -13,6 +13,10 @@ screenshots:
 
 A page covering the flow from closing what has been delivered and making the invoice, through sending it, until payment is recorded. It is where you check "what stage things are at now, and who does what next", and each **document's states**. The basic steps to operate belong to [Standard flow](/manual/en/process/default-flow).
 
+```video
+process-billing
+```
+
 ## Overall flow
 
 ![Billing — from billing closing to payment and accounting export](../assets/diagrams/flow-billing.en.svg)

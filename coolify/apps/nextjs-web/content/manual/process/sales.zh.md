@@ -16,6 +16,10 @@ screenshots:
 
 本页整理了从确定单价到接单、再交给制造为止的流程。在这里确认「现在处于哪个阶段、接下来该谁做什么」，以及价格差异・退回等**分支**、各**单据状态**。基本操作步骤由[标准流程](/manual/zh/process/default-flow)负责。
 
+```video
+process-sales
+```
+
 ## 整体流程
 
 ![价格与报价 — 从价格试算到发行报价单](../assets/diagrams/flow-pricing.zh.svg)

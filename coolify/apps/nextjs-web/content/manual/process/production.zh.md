@@ -15,6 +15,10 @@ screenshots:
 
 本页整理了从接单确定起，确认库存、获得审批、执行工序，直到成为可出货产品为止的流程。在这里确认「现在处于哪个阶段、接下来该谁做什么」，以及库存核对・退回・不良的**分支**、各**单据状态**。基本操作步骤由[标准流程](/manual/zh/process/default-flow)负责。
 
+```video
+process-production
+```
+
 ## 整体流程
 
 ![生产计划 — 从确认库存到批准工单](../assets/diagrams/flow-planning.zh.svg)

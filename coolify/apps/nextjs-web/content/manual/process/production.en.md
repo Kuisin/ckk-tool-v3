@@ -15,6 +15,10 @@ screenshots:
 
 A page covering the flow from a confirmed order, through checking stock, getting approval and running the steps, until it becomes a product ready to ship. It is where you check "what stage things are at now, and who does what next", the **branches** such as stock matching, being sent back and defects, and each **document's states**. The basic steps to operate belong to [Standard flow](/manual/en/process/default-flow).
 
+```video
+process-production
+```
+
 ## Overall flow
 
 ![Production planning — from checking stock to approving the work order](../assets/diagrams/flow-planning.en.svg)

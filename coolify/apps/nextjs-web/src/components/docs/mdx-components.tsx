@@ -20,10 +20,15 @@
  *
  * `Mermaid` — 本文の ```mermaid フェンス（source.config.ts の remarkMdxMermaid が
  * `<Mermaid chart="…" />` に置き換える）を図にする。components/docs/Mermaid.tsx。
+ *
+ * `ManualVideo` — 本文の ```video フェンス（remarkManualVideo が
+ * `<ManualVideo id="…" />` に置き換える）を動画プレーヤーにする。動画が無い環境では
+ * 何も描かない。components/docs/ManualVideo.tsx。
  */
 
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { ImgHTMLAttributes } from "react";
+import { ManualVideo } from "./ManualVideo";
 import { Mermaid } from "./Mermaid";
 import { ZoomableImage } from "./ZoomableImage";
 
@@ -37,4 +42,5 @@ export const docsMdxComponents = {
   ...defaultMdxComponents,
   img: DocsImage,
   Mermaid,
+  ManualVideo,
 };

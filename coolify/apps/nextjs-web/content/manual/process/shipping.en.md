@@ -13,6 +13,10 @@ screenshots:
 
 A page covering the flow from sending out finished products, through issuing the delivery note, until it is delivered. It is where you check "what stage things are at now, and who does what next", the dispatch / stock storage **branch**, and each **document's states**. The basic steps to operate belong to [Standard flow](/manual/en/process/default-flow).
 
+```video
+process-shipping
+```
+
 ## Overall flow
 
 ![Shipping — from delivery order to delivery](../assets/diagrams/flow-shipping.en.svg)
