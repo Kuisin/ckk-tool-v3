@@ -42,17 +42,28 @@ export function parseManifest(json: unknown): ManualVideoManifest | null {
   return parsed.success ? parsed.data : null;
 }
 
-/** 1 本の動画に付くファイルの拡張子と Content-Type。 */
-export const MEDIA_TYPES = {
-  webm: "video/webm",
-  vtt: "text/vtt; charset=utf-8",
-  jpg: "image/jpeg",
+/**
+ * 配るときの名前（URL の最後の部分）→ 実ファイルの拡張子と Content-Type。
+ *
+ * **動画の URL は `.webm` で終わらせない（`<id>.video`）。** 公開ホスト名の手前に居る
+ * Cloudflare は、URL の拡張子が既定のキャッシュ対象（.webm / .mp4 / .jpg …）だと、
+ * **応答を見る前に** Range を外してオリジンへ全体を取りに来る。こちらが
+ * `Cache-Control: private` を返してキャッシュさせなくても、外された Range は
+ * 戻らない — 範囲を指定しても全体が 200 で返り、動画のシーク（手順へのジャンプ）が
+ * 先頭からの再生になる（`cf-cache-status: BYPASS` なのに 200 だった）。
+ * 拡張子が対象外なら Cloudflare は Range をそのまま通す。
+ * 字幕（.vtt）は対象外、サムネイル（.jpg）は Range が要らないのでそのまま。
+ */
+export const MEDIA_KINDS = {
+  video: { ext: "webm", contentType: "video/webm" },
+  vtt: { ext: "vtt", contentType: "text/vtt; charset=utf-8" },
+  jpg: { ext: "jpg", contentType: "image/jpeg" },
 } as const;
 
-export type MediaExt = keyof typeof MEDIA_TYPES;
+export type MediaKind = keyof typeof MEDIA_KINDS;
 
 /**
- * 配ってよいファイルかを決める。**manifest に載っている id × 既知の拡張子だけ**。
+ * 配ってよいファイルかを決める。**manifest に載っている id × 既知の種類だけ**。
  *
  * 利用者が URL に書いた文字列をそのままパスへ継がない。`../` を弾く正規表現を
  * 書くのではなく、こちらが知っている名前と完全一致したものだけを通す —
@@ -61,12 +72,18 @@ export type MediaExt = keyof typeof MEDIA_TYPES;
 export function resolveMedia(
   name: string,
   manifest: ManualVideoManifest,
-): { id: string; ext: MediaExt; filename: string; contentType: string } | null {
-  const m = /^([a-z0-9][a-z0-9-]{0,63})\.(webm|vtt|jpg)$/.exec(name);
+): {
+  id: string;
+  kind: MediaKind;
+  filename: string;
+  contentType: string;
+} | null {
+  const m = /^([a-z0-9][a-z0-9-]{0,63})\.(video|vtt|jpg)$/.exec(name);
   if (!m) return null;
-  const [, id, ext] = m as unknown as [string, string, MediaExt];
+  const [, id, kind] = m as unknown as [string, string, MediaKind];
   if (!manifest.videos.some((v) => v.id === id)) return null;
-  return { id, ext, filename: `${id}.${ext}`, contentType: MEDIA_TYPES[ext] };
+  const { ext, contentType } = MEDIA_KINDS[kind];
+  return { id, kind, filename: `${id}.${ext}`, contentType };
 }
 
 /**

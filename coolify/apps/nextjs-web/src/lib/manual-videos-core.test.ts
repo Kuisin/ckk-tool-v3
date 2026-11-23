@@ -51,10 +51,7 @@ describe("resolveMedia", () => {
   const m = parseManifest(manifest);
   if (!m) throw new Error("fixture");
 
-  it("manifest に載っている動画の 3 種類のファイルだけを通す", () => {
-    expect(resolveMedia("process-sales.webm", m)?.contentType).toBe(
-      "video/webm",
-    );
+  it("manifest に載っている動画の 3 種類だけを通す", () => {
     expect(resolveMedia("process-sales.vtt", m)?.contentType).toContain(
       "text/vtt",
     );
@@ -63,21 +60,31 @@ describe("resolveMedia", () => {
     );
   });
 
+  it("動画は `.video` という名前で配り、実ファイルは .webm を指す", () => {
+    const media = resolveMedia("process-sales.video", m);
+    expect(media?.contentType).toBe("video/webm");
+    expect(media?.filename).toBe("process-sales.webm");
+  });
+
+  it("**`.webm` で終わる URL は通さない**（Cloudflare が Range を外す名前）", () => {
+    expect(resolveMedia("process-sales.webm", m)).toBeNull();
+  });
+
   it("載っていない id は通さない", () => {
-    expect(resolveMedia("process-other.webm", m)).toBeNull();
+    expect(resolveMedia("process-other.video", m)).toBeNull();
   });
 
   it("パスを含む名前・知らない拡張子は通さない", () => {
     for (const name of [
-      "../process-sales.webm",
-      "process-sales.webm/..",
-      "a/process-sales.webm",
+      "../process-sales.video",
+      "process-sales.video/..",
+      "a/process-sales.video",
       "process-sales.json",
       "manifest.json",
       "process-sales",
-      "process-sales.webm.bak",
-      "PROCESS-SALES.webm",
-      "process-sales.webm\0.jpg",
+      "process-sales.video.bak",
+      "PROCESS-SALES.video",
+      "process-sales.video\0.jpg",
       "",
     ]) {
       expect(resolveMedia(name, m), name).toBeNull();

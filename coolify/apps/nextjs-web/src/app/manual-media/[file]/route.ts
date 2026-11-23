@@ -2,7 +2,8 @@
  * /manual-media/<file> — マニュアルの動画（録画・字幕・サムネイル）と、その一覧。
  *
  *   /manual-media/manifest.json      いま配れる動画の一覧（無ければ videos: []）
- *   /manual-media/<id>.webm|vtt|jpg  動画・字幕・サムネイル
+ *   /manual-media/<id>.video|vtt|jpg 動画・字幕・サムネイル（動画の URL は .webm で
+ *                                    終わらせない — lib/manual-videos-core.ts）
  *
  * **ログイン不要**（proxy.ts の matcher から除外してある）。マニュアル /manual が
  * 公開コンテンツなので、その中の動画も同じ扱いにする — 除外しないと未ログインの
@@ -52,7 +53,8 @@ export async function GET(
     // 範囲を指定しても全体を 200 で返す = **動画のシークが効かない**（手順への
     // ジャンプが先頭からの再生になる）。公開ホスト名で実際にそうなった。中の
     // ネットワークから直接叩くと 206 が返るので、手元の確認では気づけない。
-    // private なら Cloudflare は素通しし、Range はそのままここへ届く。
+    // private だけでは足りない: Cloudflare は URL の拡張子で先に Range を外すので、
+    // 動画の URL を `.video` にしてある（lib/manual-videos-core.ts の MEDIA_KINDS）。
     // 読者のブラウザには持たせてよい: URL には録画時刻の ?v= が付く
     // （ManualVideo.tsx）ので、撮り直せば URL ごと変わる。
     "Cache-Control": "private, max-age=3600",
