@@ -81,8 +81,20 @@ export interface Chapter {
   startMs: number;
 }
 
+/** 字幕 1 枚。次の字幕が始まるまで出す。 */
+export interface Caption {
+  text: string;
+  startMs: number;
+}
+
 export class Walk {
   readonly chapters: Chapter[] = [];
+  /**
+   * 字幕。手順の見出し（章と同じ文）に加えて、`say()` で足した案内が入る —
+   * 「この欄に何を入れるか」「別の場合はどうなるか」は字幕で伝える。
+   */
+  readonly captions: Caption[] = [];
+  private stepNo = 0;
   private readonly t0 = Date.now();
   private cursor = { x: 640, y: 360 };
 
@@ -102,7 +114,26 @@ export class Walk {
 
   /** 手順の区切り。字幕と章はここから作る。 */
   beginStep(caption: string): void {
-    this.chapters.push({ title: caption, startMs: this.elapsedMs() });
+    const startMs = this.elapsedMs();
+    this.stepNo += 1;
+    this.chapters.push({ title: caption, startMs });
+    this.captions.push({ text: `${this.stepNo}. ${caption}`, startMs });
+  }
+
+  /**
+   * 字幕で案内する。**操作の前に呼ぶ** — 「この欄には何を入れるか」を先に読んでから、
+   * その入力が画面で起きるように。次の `say()` か次の手順まで出たままになる。
+   *
+   * 録画では読む時間だけ待つ（文字数に比例・上限あり）。check では待たない。
+   * 1 枚は 2 行まで（`\n` で改行）。長い説明は 2 枚に分ける — 画面の下 1/3 を
+   * 字幕が覆うと、説明している当の欄が見えなくなる。
+   */
+  async say(text: string): Promise<void> {
+    this.captions.push({ text, startMs: this.elapsedMs() });
+    if (this.recording) {
+      const chars = text.replace(/\s/g, "").length;
+      await this.page.waitForTimeout(Math.min(5200, 1100 + chars * 75));
+    }
   }
 
   /** 録画のときだけ待つ。check では何もしない。 */
