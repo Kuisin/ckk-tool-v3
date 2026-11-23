@@ -24,6 +24,7 @@ import {
   tierUnitPrice,
   unitDiscountOf,
 } from "@/components/sales/price-lists/model";
+import { priceEntryUsable } from "@/lib/custom-value-approval-core";
 import { formatMoney } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
@@ -117,6 +118,10 @@ export function resolvePriceFromEntries(
   );
   if (!entry) return fallback("no-entry");
   if (!entry.isActive) return fallback("inactive");
+  // 独自値の追加承認が済んでいない価格表は引かない — 引けた時点で、承認されて
+  // いない価格が見積書・注文請書へ流れ込む。標準価格へは落ちる（価格表が
+  // 当たらないときと同じ扱い）。
+  if (!priceEntryUsable(entry.approvalStatus)) return fallback("unapproved");
   const variant = entry.variants.find((v) => v.orderType === orderType);
   if (!variant) return fallback("no-entry");
   if (!variant.isActive) return fallback("inactive");

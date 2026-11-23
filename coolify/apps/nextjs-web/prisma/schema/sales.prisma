@@ -112,6 +112,18 @@ model Estimate {
 // PRC-YYYYMM-NNNNN はキーから導出（URL id にも使用）。自然キー
 // (顧客, 製品) は作成後不変の識別として UNIQUE で維持。
 // 注文種別ごとの価格（基準単価・期間・tiers・値引き）は variants に持つ。
+/// 価格表の独自値承認の状態（段数非依存 — 何段目かは approval_requests.step_no）。
+enum PriceListApprovalStatus {
+  /// 承認不要（独自値が無い、または追加承認の段が組まれていない）。
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("PRICE_LIST_APPROVAL_STATUS")
+  @@schema("app")
+}
+
 model PriceListEntry {
   yearMonth String @map("year_month") @db.Char(6)
   seq       Int
@@ -124,6 +136,15 @@ model PriceListEntry {
   isActive  Boolean  @default(true) @map("is_active")
   // 営業担当（作成時に顧客の主担当を複写したスナップショット）。
   salesRepId String? @map("sales_rep_id") @db.Uuid
+  // 独自値の追加承認（承認設定 MS0B）。価格試算から引き継いでいない価格
+  // （手動の基準単価・価格試算と違う基準単価・段階単価の上書き）を持つ価格表は、
+  // 段が組まれていれば保存のたびに承認を通る。PENDING / REJECTED の間は
+  // **価格の解決に使われない**（見積書・注文請書から「承認待ち」として見える）。
+  // 段が無ければ NONE のまま = 従来どおり。判定は lib/custom-value-approval-core.ts。
+  approvalStatus PriceListApprovalStatus @default(NONE) @map("approval_status")
+  // いまの approval_status が指している独自値の指紋。保存し直しても独自値が
+  // 変わっていなければ承認をやり直さない（営業担当だけ直した、など）。
+  customValueSignature String? @map("custom_value_signature")
   createdBy String?  @map("created_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)

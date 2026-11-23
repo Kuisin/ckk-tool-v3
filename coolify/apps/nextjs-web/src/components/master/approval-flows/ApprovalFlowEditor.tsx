@@ -108,6 +108,7 @@ export function ApprovalFlowEditor({
   embedded = false,
   allowIndividual = false,
   searchApprovers,
+  allowEmpty = false,
 }: {
   targetType: string;
   targetLabel: string;
@@ -163,6 +164,11 @@ export function ApprovalFlowEditor({
   searchApprovers?: (
     query: string,
   ) => Promise<{ value: string; label: string; allowed: boolean }[]>;
+  /**
+   * 段 0 本の保存を許す（独自値の追加承認 — 0 本 = 追加の承認なし）。
+   * 通常のフローは 0 本だと承認依頼が出せなくなるので許さない。
+   */
+  allowEmpty?: boolean;
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -204,16 +210,21 @@ export function ApprovalFlowEditor({
       },
     ]);
 
-  const issues = validateFlowSteps(
-    steps.map((s) => ({
-      nameJa: s.nameJa,
-      groupId: s.custom ? null : s.groupId ? Number(s.groupId) : null,
-      mode: s.mode,
-      approverUserIds: s.custom ? (s.approvers ?? []).map((a) => a.value) : [],
-    })),
-    allowIndividual,
-    tr,
-  );
+  const issues =
+    allowEmpty && steps.length === 0
+      ? []
+      : validateFlowSteps(
+          steps.map((s) => ({
+            nameJa: s.nameJa,
+            groupId: s.custom ? null : s.groupId ? Number(s.groupId) : null,
+            mode: s.mode,
+            approverUserIds: s.custom
+              ? (s.approvers ?? []).map((a) => a.value)
+              : [],
+          })),
+          allowIndividual,
+          tr,
+        );
 
   const save = () => {
     if (issues.length > 0) {

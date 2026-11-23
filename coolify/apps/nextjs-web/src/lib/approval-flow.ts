@@ -15,6 +15,7 @@
  * `tr` を持っている。
  */
 
+import type { ApprovalStepLayer } from "./custom-value-approval-core";
 import type { LocalizedText } from "./format";
 import type { Tr } from "./i18n";
 
@@ -36,6 +37,11 @@ export interface FlowStepSnapshot {
    */
   approverUserIds?: string[];
   approverNames?: string[];
+  /**
+   * 独自値の追加承認として足した段（lib/custom-value-approval-core）。
+   * 通常の段は持たない。
+   */
+  layer?: ApprovalStepLayer;
 }
 
 /** 依頼 1 件ぶんの承認枠（ALL では必須チェックリスト、ANY では表示用）。 */

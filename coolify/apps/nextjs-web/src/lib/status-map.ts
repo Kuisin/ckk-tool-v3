@@ -116,6 +116,13 @@ export const STATUS_MAPS = {
     APPROVED: "green",
     REJECTED: "red",
   },
+  // 価格表の独自値の追加承認（独自値が無い・段が無ければ NONE のまま）。
+  PriceListApproval: {
+    NONE: "gray",
+    PENDING: "yellow",
+    APPROVED: "green",
+    REJECTED: "red",
+  },
   Step: {
     PENDING: "gray",
     IN_PROGRESS: "blue",

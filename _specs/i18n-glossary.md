@@ -516,6 +516,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 代理設定 / 代理 | Delegation / Delegate | 代理设置 / 代理人 | |
 | 承認者 / 承認記録 | Approver / Approval record | 审批人 / 审批记录 | |
 | 理由 | Reason | 理由 | |
+| 独自値 | Custom value | 自定义值 | 前の書類から引き継いでいない値（価格試算に無い基準単価・価格表どおりでない単価など） |
+| 独自値の追加承認 | Custom value approval | 自定义值追加审批 | MS0B のタブ。独自値があるときだけ通常のフローの後ろに足す段 |
 | 手続き状況 | Progress | 办理状态 | ProcedurePanel の見出し |
 | 前の書類から / 次の書類へ | From / To | 来源单据 / 后续单据 | |
 

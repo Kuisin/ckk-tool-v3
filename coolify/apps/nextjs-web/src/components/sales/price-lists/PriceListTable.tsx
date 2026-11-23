@@ -34,6 +34,7 @@ import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -320,7 +321,7 @@ export function PriceListTable({
       header: tr("common.status"),
       width: 90,
       sortValue: (e) => (e.isActive ? 1 : 0),
-      render: (e) => <ActiveBadge active={e.isActive} />,
+      render: (e) => <EntryStatusBadges entry={e} />,
     },
   ];
 
@@ -433,7 +434,7 @@ export function PriceListTable({
                 <Text className="tabular-nums" ff="mono" size="sm">
                   {priceRangeLabel(s.minPrice, s.maxPrice)}
                 </Text>
-                <ActiveBadge active={e.isActive} />
+                <EntryStatusBadges entry={e} />
               </Stack>
             </Group>
           );
@@ -489,5 +490,22 @@ export function PriceListTable({
         source={quoteTarget}
       />
     </ListShell>
+  );
+}
+
+/**
+ * 有効 / 無効 + 独自値の追加承認の状態。承認待ち・差し戻しの価格表は価格の
+ * 解決に使われないので、一覧でもそれと分かるようにする。
+ */
+function EntryStatusBadges({ entry }: { entry: PriceListEntry }) {
+  const pending =
+    entry.approvalStatus === "PENDING" || entry.approvalStatus === "REJECTED";
+  return (
+    <Group gap={4} wrap="nowrap">
+      <ActiveBadge active={entry.isActive} />
+      {pending && entry.approvalStatus && (
+        <StatusBadge entity="PriceListApproval" status={entry.approvalStatus} />
+      )}
+    </Group>
   );
 }

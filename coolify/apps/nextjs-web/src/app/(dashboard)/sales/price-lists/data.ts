@@ -110,6 +110,7 @@ export function mapEntry(r: EntryRow): PriceListEntry {
         : Number(r.item.standardUnitPrice),
     currency: r.currency,
     isActive: r.isActive,
+    approvalStatus: r.approvalStatus,
     variants: r.variants.map((v) => {
       const estimateNumber =
         v.estimateYearMonth && v.estimateSeq != null
