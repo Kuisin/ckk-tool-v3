@@ -41,7 +41,7 @@ export const purchasing: Walkthrough = {
       },
     },
     {
-      caption: "承認者が承認する（ここからは承認者の画面）",
+      caption: "承認者が承認する — ここからは承認者の画面",
       run: async (w) => {
         const p = w.page;
         await w.switchUser("approver", new URL(p.url()).pathname);
