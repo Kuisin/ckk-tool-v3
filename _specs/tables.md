@@ -993,7 +993,7 @@ Table process_step_catalog {
   // 判定は lib/work-plan-core.ts planReadiness が唯一の定義。
   work_location_required boolean [not null, default: true]
   // 同じく作業計画の必須項目（工程ごと）。計画日は列が NOT NULL で常に必須、
-  // 切れるのは 担当者・時刻（開始・終了）・数量。承認依頼のゲート・計画パネルの
+  // 切れるのは 担当者・時刻（開始・終了）。承認依頼のゲート・計画パネルの
   // 必須印・addStepPlan が同じ印を読む（lib/work-plan-core.ts requiredPlanFields）。
   // 担当者は既定で任意（work_order_step_plans.user_id は nullable — 承認後に
   // 現場で決めてよい工程が多く、承認を出すためだけに仮の人を入れる運用を
@@ -1001,7 +1001,6 @@ Table process_step_catalog {
   // 共有端末の行レベル判定（canOperateStep）では担当者なしの計画行は誰も縛らない。
   plan_assignee_required boolean [not null, default: false]
   plan_time_required     boolean [not null, default: false]
-  plan_quantity_required boolean [not null, default: false]
   // **この工程を載せてよい指示書種別**（在庫分 / 製造分 / 再研磨）。空は不可
   // （CHECK process_step_catalog_work_order_types_not_empty）。既定は製造分だけ —
   // 値を渡さずに作られた行が「どこでも使える」に倒れると、気づかないまま
