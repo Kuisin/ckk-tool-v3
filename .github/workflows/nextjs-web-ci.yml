@@ -283,6 +283,14 @@ jobs:
           pip install -q -r requirements.txt
           python -m unittest discover -s tests -t .
 
+      # 送信メールの HTTP 口。添付（取引先へ書類を送る）の受け付け規則を見る。
+      # SMTP はスタブなので外へは何も出ない。
+      - name: mailrelay mail-api — unittest
+        working-directory: coolify/common/mailrelay/api
+        run: |
+          pip install -q -r requirements.txt httpx
+          python -m unittest discover -s tests -t .
+
       # 純粋部分だけの試験（IMAP にも DB にも繋がない）なので依存は入れない。
       - name: admintools — unittest
         working-directory: coolify/apps/admintools

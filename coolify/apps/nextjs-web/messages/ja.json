@@ -8054,7 +8054,23 @@
     "issueQuoteModal": {
       "confirmIssueMessage": "見積書「{number}」を発行します。発行と同時に PDF が生成・保存され、詳細画面の PDF タブで閲覧できます。",
       "issuedAndSaved": "見積書 {number} を発行し、PDF を保存しました",
-      "issuedAndSavedWithMail": "見積書 {number} を発行し、PDF を保存しました（メール送付予約済み）"
+      "sendTo": "送付先: {name}（{email}）",
+      "noRecipient": "顧客（支店・担当者を含む）にメールアドレスが登録されていないため、メールでは送れません。",
+      "mailerNotConfigured": "この環境ではメールの送信口が設定されていないため、メールでは送れません。",
+      "mailSent": "{email} へ見積書を送付しました",
+      "mailFailed": "見積書は発行しましたが、メールを送れませんでした",
+      "reason": {
+        "notFound": "見積書が見つかりません。",
+        "noRecipient": "送付先のメールアドレスがありません。",
+        "mailerNotConfigured": "メールの送信口が設定されていません。",
+        "notIssued": "発行済みの見積書だけ送れます。",
+        "pdfMissing": "PDF が保存されていません。PDF タブで生成してから送ってください。",
+        "attachmentsUnsupported": "メールの送信口が PDF の添付に対応していません（管理者にご連絡ください）。",
+        "sendFailed": "送信に失敗しました。時間をおいて「メールで送付」から送り直してください。"
+      },
+      "resend": "メールで送付",
+      "resendConfirm": "見積書 {number} の PDF を {email} へ送ります。",
+      "mailSentTitle": "送付しました"
     },
     "materialPriceChart": {
       "referencePriceAmount": "参照価格 {amount}",
@@ -8368,6 +8384,16 @@
       "materialHasNoPriceList": "素材には価格表を作れません",
       "regrindItemOnlyRegrindVariant": "再研磨の品目が持てるのは注文種別「再研磨」だけです",
       "productHasNoRegrindVariant": "製品に注文種別「再研磨」の価格は作れません。再研磨の値段は再研磨の品目が持ちます"
+    },
+    "quoteMail": {
+      "subject": "見積書 {number} のご送付",
+      "salutationCompany": "{company} 御中",
+      "salutationPerson": "{company}\n{person} 様",
+      "body": "平素より大変お世話になっております。\n見積書 {number} をお送りいたします。添付の PDF をご確認ください。",
+      "validUntil": "有効期限: {date}",
+      "closing": "ご不明な点がございましたら、お気軽にお問い合わせください。\n今後ともよろしくお願い申し上げます。",
+      "contact": "担当: {name}",
+      "contactWithEmail": "担当: {name}（{email}）"
     }
   },
   "shipping": {

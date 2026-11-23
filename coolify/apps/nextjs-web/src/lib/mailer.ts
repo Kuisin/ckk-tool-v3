@@ -40,12 +40,54 @@ export function isMailerConfigured(): boolean {
   return Boolean(process.env.MAIL_API_URL && process.env.MAIL_API_TOKEN);
 }
 
+export interface MailAttachment {
+  filename: string;
+  /** リレーが受け付けるのは application/pdf だけ。 */
+  contentType: "application/pdf";
+  content: Uint8Array;
+}
+
 export interface MailInput {
   to: string;
   subject: string;
   /** プレーンテキスト本文（HTML は sendNotificationMail が組み立てる）。 */
   text: string;
   html?: string;
+  /** 返信先（既定は差出人 = no-reply）。取引先へ送る書類は担当者にする。 */
+  replyTo?: string;
+  /**
+   * 添付。**送る前に `mailerSupportsAttachments()` で確かめること** — 古い
+   * リレーは未知の項目を黙って捨てるので、確かめずに送ると「PDF を添付」と
+   * 書いたメールが添付なしで届く。
+   */
+  attachments?: MailAttachment[];
+}
+
+let attachmentSupport: { value: boolean; at: number } | null = null;
+
+/**
+ * リレーが添付を扱えるか（`/healthz` の `attachments: true`）。60 秒だけ覚える
+ * — リレーの入れ替えに追従しつつ、送信のたびに問い合わせない。
+ */
+export async function mailerSupportsAttachments(): Promise<boolean> {
+  if (!isMailerConfigured()) return false;
+  if (attachmentSupport && Date.now() - attachmentSupport.at < 60_000) {
+    return attachmentSupport.value;
+  }
+  let value = false;
+  try {
+    const res = await fetch(`${process.env.MAIL_API_URL}/healthz`, {
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (res.ok) {
+      const body = (await res.json()) as { attachments?: unknown };
+      value = body.attachments === true;
+    }
+  } catch {
+    value = false;
+  }
+  attachmentSupport = { value, at: Date.now() };
+  return value;
 }
 
 /**
@@ -69,9 +111,16 @@ export async function sendMail(input: MailInput): Promise<boolean> {
         subject: input.subject,
         text: input.text,
         html: input.html,
+        reply_to: input.replyTo,
+        attachments: input.attachments?.map((a) => ({
+          filename: a.filename,
+          content_type: a.contentType,
+          content_base64: Buffer.from(a.content).toString("base64"),
+        })),
       }),
       // 通知 1 通のために業務処理を待たせない。リレーは受け取るだけなので速い。
-      signal: AbortSignal.timeout(10_000),
+      // 添付があるときは本体の転送ぶん長めに待つ。
+      signal: AbortSignal.timeout(input.attachments?.length ? 30_000 : 10_000),
     });
     if (!res.ok) {
       console.error(

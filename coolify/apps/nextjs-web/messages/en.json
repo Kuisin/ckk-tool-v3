@@ -8054,7 +8054,23 @@
     "issueQuoteModal": {
       "confirmIssueMessage": "Issues quote \"{number}\". A PDF is generated and saved at the same time, viewable in the detail page's PDF tab.",
       "issuedAndSaved": "Issued quote {number} and saved the PDF",
-      "issuedAndSavedWithMail": "Issued quote {number} and saved the PDF (email scheduled)"
+      "sendTo": "Send to: {name} ({email})",
+      "noRecipient": "No email address is registered for the customer (including branch and contacts), so it cannot be sent by email.",
+      "mailerNotConfigured": "Email sending is not set up in this environment, so it cannot be sent by email.",
+      "mailSent": "Quote sent to {email}",
+      "mailFailed": "The quote was issued, but the email could not be sent",
+      "reason": {
+        "notFound": "Quote not found.",
+        "noRecipient": "There is no recipient email address.",
+        "mailerNotConfigured": "Email sending is not set up.",
+        "notIssued": "Only issued quotes can be sent.",
+        "pdfMissing": "No PDF is saved. Generate it in the PDF tab, then send.",
+        "attachmentsUnsupported": "The mail service does not support PDF attachments (contact your administrator).",
+        "sendFailed": "Sending failed. Try again later from \"Send by email\"."
+      },
+      "resend": "Send by email",
+      "resendConfirm": "Send the PDF of quote {number} to {email}.",
+      "mailSentTitle": "Sent"
     },
     "materialPriceChart": {
       "referencePriceAmount": "Reference price {amount}",
@@ -8368,6 +8384,16 @@
       "materialHasNoPriceList": "A material cannot have a price list",
       "regrindItemOnlyRegrindVariant": "A regrind item can only carry the order type \"Regrind\"",
       "productHasNoRegrindVariant": "A product cannot carry the order type \"Regrind\". The regrind price belongs to the regrind item"
+    },
+    "quoteMail": {
+      "subject": "Quote {number}",
+      "salutationCompany": "Dear {company},",
+      "salutationPerson": "Dear {person} ({company}),",
+      "body": "Thank you for your continued business.\nPlease find attached our quote {number} as a PDF.",
+      "validUntil": "Valid until: {date}",
+      "closing": "If you have any questions, please do not hesitate to contact us.\nKind regards,",
+      "contact": "Contact: {name}",
+      "contactWithEmail": "Contact: {name} ({email})"
     }
   },
   "shipping": {
