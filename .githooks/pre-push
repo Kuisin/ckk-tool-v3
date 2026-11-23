@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# pre-push — push するコミットが手元の確認（pnpm check）を通っているかを見る。
+#
+# 有効化: pnpm hooks:install（= git config core.hooksPath .githooks）
+#
+# pnpm check（tools/ci/local-check.sh）は通ったコミットに「合格の印」を残す。
+# ここでは push される各コミットについて:
+#   - 印がある → そのまま通す（回し直さない。push は一瞬で終わる）
+#   - 印が無い → その場で `pnpm check -- --changed`（CI と同じ判定で必要な段だけ）
+#                を回し、通れば push する。HEAD 以外のコミットを push しようと
+#                している（作業ツリーの中身と違う）ときは回せないので止める
+#
+# AI（Claude 等）は**先に** `pnpm check` を回してから push すること — 確認は
+# 十数分かかり、push の中で回すとコマンドの時間切れに当たる。
+#
+# 抜け道（理由のある場合だけ）: SKIP_LOCAL_CHECK=1 git push / git push --no-verify
+# 印を見ない対象: ブランチの削除、dev / main への直接 push（そもそもしない）
+set -uo pipefail
+
+if [ "${SKIP_LOCAL_CHECK:-}" = "1" ]; then
+  echo "pre-push: SKIP_LOCAL_CHECK=1 — 手元の確認を飛ばした" >&2
+  exit 0
+fi
+
+ROOT="$(git rev-parse --show-toplevel)"
+STAMP_DIR="$(git rev-parse --git-common-dir)/ckk-local-check"
+ZERO=0000000000000000000000000000000000000000
+need=()
+
+while read -r local_ref local_sha remote_ref _remote_sha; do
+  [ -z "${local_sha:-}" ] && continue
+  [ "$local_sha" = "$ZERO" ] && continue # 削除
+  case "$local_ref" in refs/tags/*) continue ;; esac
+  [ -f "$STAMP_DIR/$local_sha" ] && continue
+  need+=("$local_sha ${remote_ref#refs/heads/}")
+done
+
+[ ${#need[@]} -eq 0 ] && exit 0
+
+head_sha="$(git rev-parse HEAD)"
+for entry in "${need[@]}"; do
+  sha="${entry%% *}"
+  if [ "$sha" != "$head_sha" ]; then
+    echo "pre-push: ${entry#* } の ${sha:0:8} は pnpm check を通っていない。" >&2
+    echo "          そのコミットを checkout して pnpm check を回してから push すること。" >&2
+    exit 1
+  fi
+done
+
+echo "pre-push: $(git rev-parse --short HEAD) は pnpm check を通っていない — いま回す（--changed）" >&2
+echo "          （先に pnpm check を回しておけば push はすぐ終わる）" >&2
+if ! bash "$ROOT/tools/ci/local-check.sh" --changed </dev/null >&2; then
+  echo "pre-push: 手元の確認が失敗した — push を止めた" >&2
+  exit 1
+fi
+if [ ! -f "$STAMP_DIR/$head_sha" ]; then
+  echo "pre-push: 確認は通ったが合格の印が残っていない（未コミットの変更がある）— push を止めた" >&2
+  echo "          変更をコミットするか退避してからもう一度 push すること" >&2
+  exit 1
+fi
+exit 0

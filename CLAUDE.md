@@ -84,7 +84,14 @@ pnpm check -- --only web,browser   # chosen stages
 pnpm check -- --keep          # leave the app + DB up afterwards to poke at (demo1 / demo2026)
 ```
 
-Push only on `ALL PASS`. `--changed` is fine for small changes; use the full run for
+Push only on `ALL PASS`. **A `pre-push` hook enforces this** (`.githooks/pre-push`;
+enable once per clone with `pnpm hooks:install` — it sets `core.hooksPath`, which every
+worktree shares). A passing run leaves a stamp for that commit (`.git/ckk-local-check/<sha>`,
+only when nothing tracked is uncommitted and stages weren't thinned with `--quick` /
+`--only`), and the hook lets stamped commits through instantly. Without a stamp it runs
+`pnpm check -- --changed` itself — **so as an AI, run `pnpm check` first and push after**;
+inside `git push` the check would outlive your command timeout. Escape hatch, with a
+reason only: `SKIP_LOCAL_CHECK=1 git push`. `--changed` is fine for small changes; use the full run for
 anything touching shared code, dependencies, schema or CI. Containers and ports are
 derived from the worktree path, so parallel worktrees don't collide. **When you add a
 step to CI, add it to `local-check.sh` too** — its first stage fails if CI has a

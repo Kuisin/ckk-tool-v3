@@ -58,6 +58,10 @@ jobs:
       # 規則が壊れたまま「全部飛ばす」CI にならないよう、先に規則の試験を流す。
       - name: 判定規則の試験
         run: bash tools/ci/changed-areas.test.sh
+      # 「$変数」の直後の全角文字は macOS の bash 3.2 でだけ落ちる（Linux では
+      # 通る）ので、手元の pnpm check が壊れていても CI は気づかない。ここで止める。
+      - name: シェルスクリプトの変数（macOS bash 3.2 で落ちる書き方）
+        run: bash tools/ci/shell-vars-check.sh
       - name: 判定
         id: areas
         run: |
