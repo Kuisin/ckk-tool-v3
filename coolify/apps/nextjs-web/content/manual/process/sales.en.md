@@ -18,7 +18,11 @@ A page covering the flow from setting the unit price to receiving the order and 
 
 ## Overall flow
 
-![Diagram of the whole sales flow (swimlanes including the price-mismatch loop and approval send-back)](../assets/diagrams/process-sales.en.svg)
+![Pricing and quotes — from price estimate to issuing the quote](../assets/diagrams/flow-pricing.en.svg)
+
+![Order intake — from receiving the order to confirming order lines](../assets/diagrams/flow-order.en.svg)
+
+The full list of each step's branches and the app to use is in [Business Flow](/manual/en/business-flow#pricing).
 
 For a product with no drawing, a **design request** is raised **in parallel** with this flow. It can be raised at the quote stage or once the order is taken, or **standalone** with no link to any document.
 

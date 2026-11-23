@@ -31,7 +31,9 @@ Branches and exceptions (price mismatches, sending back, split receiving, and so
 
 ## Overall flow
 
-![Diagram of the whole standard flow (swimlanes from price estimate to invoice)](../assets/diagrams/process-overview.en.svg)
+![The whole business flow (from price estimate to payment)](../assets/diagrams/flow-overview.en.svg)
+
+The full list of each step's branches and the app to use is in [Business Flow](/manual/en/business-flow#overview).
 
 ## Who's involved in this flow
 
@@ -254,6 +256,7 @@ For a product that has no drawing yet, a design request is raised **in parallel*
 
 ## Related pages
 
+- Every pattern of each process from order to payment, and which app to use … [Business Flow](/manual/en/business-flow)
 - Branches, exceptions and **the list of document states** … [Sales flow](/manual/en/process/sales) / [Purchasing flow](/manual/en/process/purchasing) / [Production flow](/manual/en/process/production) / [Shipping flow](/manual/en/process/shipping) / [Billing flow](/manual/en/process/billing)
 - How to operate each app and what each field means … **Operations** on the left
 - New to the system … [Getting started](/manual/en/start)

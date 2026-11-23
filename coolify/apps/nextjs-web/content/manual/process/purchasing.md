@@ -16,7 +16,9 @@ screenshots:
 
 ## 全体の流れ
 
-![購買の流れの全体図（承認差し戻し・分割入荷のループを含むスイムレーン）](../assets/diagrams/process-purchasing.svg)
+![購買 — 素材の手配から入荷まで](../assets/diagrams/flow-purchasing.svg)
+
+各手順の分かれ道と使うアプリの一覧は [業務フロー](/manual/ja/business-flow#purchasing) にある。
 
 急ぎのときや金額が小さいときは、購買依頼を通さずに**発注書から直接**始めることもできる。外部から調達した半製品は指示書を作らず、素材として受け入れるだけである。
 

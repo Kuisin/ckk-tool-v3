@@ -15,7 +15,9 @@ screenshots:
 
 ## 整体流程
 
-![请款流程整体图（从结算处理到会计对接的泳道图）](../assets/diagrams/process-billing.zh.svg)
+![请款 — 从结算处理到收款与会计对接](../assets/diagrams/flow-billing.zh.svg)
+
+各步骤的分支与使用的应用一览，请参见[业务流程](/manual/zh/business-flow#billing)。
 
 ## 各阶段的负责人与应用
 

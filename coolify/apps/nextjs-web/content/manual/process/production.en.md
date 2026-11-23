@@ -17,7 +17,11 @@ A page covering the flow from a confirmed order, through checking stock, getting
 
 ## Overall flow
 
-![Diagram of the whole production flow (swimlanes including the stock-matching branch and approval send-back)](../assets/diagrams/process-production.en.svg)
+![Production planning — from checking stock to approving the work order](../assets/diagrams/flow-planning.en.svg)
+
+![Manufacturing — from running steps to finished goods in stock](../assets/diagrams/flow-production.en.svg)
+
+The full list of each step's branches and the app to use is in [Business Flow](/manual/en/business-flow#planning).
 
 ## Stage-by-stage roles and apps
 

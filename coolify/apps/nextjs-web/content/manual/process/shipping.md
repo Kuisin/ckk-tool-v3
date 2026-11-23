@@ -15,7 +15,9 @@ screenshots:
 
 ## 全体の流れ
 
-![出荷の流れの全体図（発送／在庫保管の分岐を含むスイムレーン）](../assets/diagrams/process-shipping.svg)
+![出荷 — 出荷書から納品まで](../assets/diagrams/flow-shipping.svg)
+
+各手順の分かれ道と使うアプリの一覧は [業務フロー](/manual/ja/business-flow#shipping) にある。
 
 ## 段階ごとの担当とアプリ
 

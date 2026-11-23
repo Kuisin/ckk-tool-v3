@@ -17,7 +17,11 @@ screenshots:
 
 ## 全体の流れ
 
-![生産の流れの全体図（在庫照合の分岐・承認差し戻しを含むスイムレーン）](../assets/diagrams/process-production.svg)
+![生産計画 — 在庫の確認から指示書の承認まで](../assets/diagrams/flow-planning.svg)
+
+![製造 — 工程の実行から完成・入庫まで](../assets/diagrams/flow-production.svg)
+
+各手順の分かれ道と使うアプリの一覧は [業務フロー](/manual/ja/business-flow#planning) にある。
 
 ## 段階ごとの担当とアプリ
 

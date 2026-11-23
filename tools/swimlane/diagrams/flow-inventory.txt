@@ -1,0 +1,264 @@
+// 業務フロー §7 在庫（manual/process/business-flow#inventory）。
+// en / zh は同じ構造。文言を直すときは 3 本とも直すこと。
+
+/title/
+在庫 — 入出庫・移動・棚卸
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 手順;
+left-subtitle: 説明;
+
+/role/
+
+<role_system>
+label: システム;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_prod>
+label: 生産管理;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_admin>
+label: 管理者;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_appr>
+label: 承認者;
+text-color: #166534;
+background-color: #f0fdf4;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_ST01>
+label: ST01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST02>
+label: ST02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST03>
+label: ST03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST05>
+label: ST05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST06>
+label: ST06;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST09>
+label: ST09;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<MV>
+label: 入出庫伝票;
+side: right;
+background-color: #ecfdf5;
+border-color: #059669;
+text-color: #065f46;
+
+<STK>
+label: 棚卸;
+side: right;
+background-color: #ecfdf5;
+border-color: #059669;
+text-color: #065f46;
+
+/line/
+
+if (事由) is (素材入荷) than #blue
+  [role_system: 素材を入庫する] <block_system>
+  label: 素材入荷;
+  desc: 素材入荷（PU03）や素材発注書の入荷登録で、入荷先拠点の素材在庫が増える。;
+elseif (引当) than #blue
+  [role_system: 在庫を予約する] <block_system>
+  label: 引当予約;
+  desc: 注文明細の「在庫照合」で空き分の製品を、製造分の指示書の承認で使う素材を予約する。素材は手元より多く予約してもよい（足りない目印になる）。;
+elseif (指示書完了) than #blue
+  [role_system: 完成品を入庫する] <block_system>
+  label: 指示書完了;
+  desc: 全工程が完了すると良品がロット付きで、半製品は半製品として入庫する。素材の予約は外れ、使った分が出庫される（台帳に無い分は出庫しない）。;
+elseif (出荷) than #blue
+  if (在庫) is (不足) than #orange
+    [role_system: マイナスで出庫する] <block_reject>
+    label: 在庫不足;
+    desc: 足りなくても出荷は止まらない。足りない分は「在庫不足のまま出庫」としてマイナスで計上される。;
+  elseif (足りる) than
+    [role_system: 出庫・予約解除する] <block_system>
+    label: 出荷;
+    desc: 発送の出荷書を出荷すると製品が出庫し、予約も外れる。在庫保管の出荷書は逆に入庫する。;
+  endif
+elseif (返品) than #blue
+  [role_system: 返品を入庫する] <block_system>
+  label: 返品;
+  desc: 出荷済みの出荷書で返品を記録すると、出した数を上限に在庫へ戻る。;
+elseif (取り消し) than #blue
+  [role_system: 予約を解除する] <block_system>
+  label: 予約解除;
+  desc: 指示書・注文明細・注文請書をキャンセルすると、取っていた予約が外れる。;
+elseif (外注) than #blue
+  [role_system: 預け在庫を動かす] <block_system>
+  label: 外注;
+  desc: 外注へ出すと預け在庫が増え、戻ると減る。預け在庫は自社在庫に数えない。;
+elseif (再研磨) than #blue
+  [role_system: 預り品を入庫する] <block_system>
+  label: 再研磨受入;
+  desc: 製品受入（再研磨）を完了すると、顧客の工具が預り品として入る。自社在庫は増えない。;
+endif
+[role_system: 入出庫伝票を起こす] <block_system>
+label: 伝票;
+props: MV;
+desc: 在庫が動いた 1 回ごとに伝票が 1 枚、事由と元書類つきで残る。人が手で作ることはできない。;
+[role_prod: 在庫を確かめる] <block_neutral>
+label: 在庫確認;
+props: APP_ST02;
+desc: 場所から見るなら在庫一覧、品目・仕掛品・予約は在庫管理（ST01）、動いた記録は入出庫伝票（ST04）で見る。;
+[role_prod: 足りるか見る] <block_neutral>
+label: 所要量;
+props: APP_ST03;
+desc: 品目 1 つの過去の入出庫と今後の予定を時系列に並べ、いつ足りなくなるかを見る。;
+if (見通し) is (不足) than #orange
+  [role_prod: 購買依頼へ回す] <block_wait>
+  label: 補充;
+  desc: 足りなくなる素材は購買依頼・素材発注で補う。;
+elseif (足りる) than
+endif
+if (直したいこと) is (置き場所) than #purple
+  [role_prod: 在庫を移動する] <block_apply>
+  label: 在庫移動;
+  props: APP_ST01,MV;
+  desc: 別の棚・保管場所・拠点へ移す。予約されていない分だけ動かせる。移動元の出庫と移動先の入庫が 1 枚の伝票に残る。;
+elseif (入出庫) than #purple
+  [role_admin: 移動タイプを整える] <block_neutral>
+  label: 移動タイプ;
+  props: APP_ST09;
+  desc: 向き（入庫 / 出庫 / 移動）と出庫元・入庫先の要否を決める。削除はできず、使わないものは無効にする。;
+  [role_prod: 手動で入出庫する] <block_apply>
+  label: 手動入出庫;
+  props: APP_ST06;
+  desc: 移動タイプを選んで品目・数量を入れる。登録するたびに事由「手動」の伝票が 1 枚できる。;
+  if (出庫元の在庫) is (不足) than #red
+    [role_prod: 登録できない] <block_reject>
+    label: 在庫不足;
+    desc: 出庫元に足りないと止まる。数量や出庫元を直す。;
+  elseif (足りる) than
+    [role_system: 在庫を増減する] <block_system>
+    label: 反映;
+    props: MV;
+    desc: 移動は出庫を先、入庫を後に記録する。間違えたら逆向きを登録して戻す。;
+  endif
+elseif (数が合わない) than #purple
+  [role_prod: 棚卸を作成する] <block_apply>
+  label: 作成;
+  props: APP_ST05,STK;
+  desc: 拠点（必要なら保管場所）を選ぶと、そこの在庫が 0 本の場所も含めて全部対象に入る。状態は「下書き」。;
+  [role_prod: 実物を数えて記入] <block_apply>
+  label: 記入;
+  props: APP_ST05;
+  desc: 記入数を入れて保存する。最初の保存で「記入中」になり、保存は何度でもできる。;
+  if (次の操作) is (キャンセル) than #red
+    [role_prod: 棚卸をキャンセル] <block_end>
+    label: キャンセル;
+    desc: 下書き・記入中ならキャンセルできる。承認依頼中なら依頼も取り下げられる。;
+  elseif (提出) than #blue
+    [role_prod: 提出する] <block_apply>
+    label: 提出;
+    props: APP_ST05;
+    desc: 1 行でも記入していれば提出できる。;
+    if (承認フロー) is (段あり) than #blue
+      if (承認判断) is (差し戻し) than #red
+        [role_prod: 数え直して再提出] <block_reject>
+        label: 差し戻し;
+        desc: 理由つきで差し戻されると記入できる状態に戻る。;
+        [loop]
+      else
+        [role_appr: 棚卸を承認する] <block_approve>
+        label: 承認;
+        props: APP_ST05;
+        desc: 承認依頼中は記入できない。全段の承認が済むと確定へ進む。;
+      endif
+    elseif (段なし) than
+    endif
+    [role_system: 差異を調整する] <block_system>
+    label: 確定;
+    props: MV;
+    desc: 確定時点の在庫と記入数の差だけ「棚卸調整」の伝票を起こす。差異が無ければ伝票は起きない。状態は「確定」で、以後取り消せない。;
+  endif
+endif

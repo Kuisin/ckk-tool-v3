@@ -31,7 +31,9 @@ screenshots:
 
 ## 整体流程
 
-![标准流程整体图（从价格试算到请款的泳道图）](../assets/diagrams/process-overview.zh.svg)
+![业务流程总览（从价格试算到收款）](../assets/diagrams/flow-overview.zh.svg)
+
+各步骤的分支与使用的应用一览，请参见[业务流程](/manual/zh/business-flow#overview)。
 
 ## 本流程涉及的人员
 
@@ -254,6 +256,7 @@ screenshots:
 
 ## 相关页面
 
+- 从订单到收款・会计对接，各流程的全部模式与使用的应用 … [业务流程](/manual/zh/business-flow)
 - 分支・例外与**单据状态一览** … [销售流程](/manual/zh/process/sales) / [采购流程](/manual/zh/process/purchasing) / [生产流程](/manual/zh/process/production) / [出货流程](/manual/zh/process/shipping) / [请款流程](/manual/zh/process/billing)
 - 各应用的操作与输入栏含义 … 左侧的 **操作方法**
 - 初次使用者 … [新手入门](/manual/zh/start)

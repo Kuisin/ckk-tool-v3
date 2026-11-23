@@ -1,0 +1,320 @@
+// Business flow "Pricing and quotes". Same structure as the ja file.
+
+/title/
+Pricing and quotes — from price estimate to issuing the quote
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_sales>
+label: Sales;
+text-color: #1e293b;
+background-color: #dbeafe;
+
+<role_system>
+label: System;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_admin>
+label: Admin;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_cust>
+label: Customer;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SA01>
+label: SA01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA02>
+label: SA02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA03>
+label: SA03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA04>
+label: SA04;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA06>
+label: SA06;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_MS0H>
+label: MS0H;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<EST>
+label: Estimate;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<RGI>
+label: Regrind item;
+side: right;
+background-color: #f1f5f9;
+border-color: #64748b;
+text-color: #0f172a;
+
+<PL>
+label: Price list;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<QOT>
+label: Quote;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<DR>
+label: Design req.;
+side: right;
+background-color: #e0e7ff;
+border-color: #4f46e5;
+text-color: #3730a3;
+
+<OA>
+label: Order accept.;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+/line/
+
+if (Item) is (Product) than #blue
+  [role_sales: Create estimate] <block_apply>
+  label: Estimate;
+  props: APP_SA01;
+  desc: Choose the tool type and enter dimensions, material (material type, diameter, surface finish) and machining conditions. The estimated unit price is recalculated on every input.;
+  if (Material price) is (Automatic) than #blue
+    [role_system: Get ref. price] <block_system>
+    label: Ref. price;
+    desc: Derives ¥/1000mm from purchase history of the same material type, diameter and surface finish, per the settings (latest / highest / average and look-back months). With no history the material type's default price is used and a "Default price" badge appears.;
+  elseif (Cylinder) than #purple
+    [role_sales: Enter bar price] <block_apply>
+    label: Manual;
+    props: APP_SA01;
+    desc: For the cylinder tool type the reference price is not used; enter the material price (¥/pc) by hand.;
+  endif
+  if (Adjust price) is (Adjust) than #purple
+    [role_sales: Edit ref. price] <block_apply>
+    label: Custom;
+    props: APP_SA01;
+    desc: If the market differs, re-enter the reference price with "Edit price". A "Custom" badge appears; "Back to policy value" restores the automatic price.;
+  elseif (Keep) than
+  endif
+  [role_sales: Save as draft] <block_apply>
+  label: Save;
+  props: APP_SA01,EST;
+  desc: A name is required. It gets an EST- number and becomes "Draft". The result at save time is recorded and the content can no longer be edited.;
+  if (Content) is (Redo) than #purple
+    [role_sales: Duplicate & redo] <block_apply>
+    label: Duplicate;
+    props: APP_SA01;
+    desc: Opens the form with the same content and "(redo)" added to the name. Saving creates a draft with a new number. Any status can be duplicated.;
+    [loop]
+  elseif (Final) than
+  endif
+  if (Product) is (Not set) than #orange
+    [role_sales: Link a product] <block_apply>
+    label: Link;
+    props: APP_SA01;
+    desc: Only estimates with a product can be chosen in a price list. While Draft or Confirmed the link can be changed or removed.;
+  elseif (Set) than
+  endif
+  [role_sales: Confirm] <block_approve>
+  label: Confirm;
+  props: APP_SA01,EST;
+  desc: Only a Draft can be confirmed. It is recalculated with the current settings, recorded, and becomes "Confirmed".;
+elseif (Regrind) than #purple
+  [role_admin: Set std. price] <block_apply>
+  label: Std. price;
+  props: APP_MS0H,RGI;
+  desc: The regrind service holds a standard price (list price) on the regrind item. No price estimate is used. The standard price cannot be changed from the price list screen.;
+endif
+if (Price list) is (Create) than #blue
+  [role_sales: Create price list] <block_apply>
+  label: Price list;
+  props: APP_SA02,PL;
+  desc: One per customer × item, with base price, valid period and quantity tiers per order type. Products take Production / Test / Sample / Other, regrind items only Regrind. Test and Sample need an end date.;
+  if (Pair) is (Exists) than #orange
+    [role_sales: Edit existing one] <block_reject>
+    label: Duplicate;
+    props: APP_SA02;
+    desc: The same customer × item already exists, so it cannot be saved. Open the existing price list and add order types or prices by editing it.;
+  elseif (New) than
+  endif
+  if (Base price) is (Estimate) than #blue
+    [role_system: Lock the estimate] <block_system>
+    label: Lock;
+    props: EST;
+    desc: The estimated unit price of a confirmed estimate for the same product becomes the base price. An estimate used for the first time becomes "Registered" and its product link can no longer change.;
+  elseif (Manual) than #purple
+    [role_sales: Enter base price] <block_apply>
+    label: Manual;
+    props: APP_SA02;
+    desc: Enter the base price by hand with "Use custom price". The estimate source shows "Manual". Custom prices can also be set per tier.;
+  endif
+  if (Discount) is (Add) than #purple
+    [role_sales: Add discount rule] <block_apply>
+    label: Discount;
+    props: APP_SA02,PL;
+    desc: Set a rate (%) or amount (¥/pc) with quantity and period conditions. If several match, the largest discount is used.;
+  elseif (None) than
+  endif
+elseif (Regrind at std.) than #gray
+endif
+[role_sales: Create quote] <block_apply>
+label: Quote;
+props: APP_SA03,QOT;
+desc: Three entry points: New, "Create quote" on a price list, or duplicating a quote. Choosing customer, item, order type and quantity fills unit price, discount and amount automatically (no manual entry).;
+if (Unit price) is (Found) than #blue
+  [role_system: Look up the price] <block_system>
+  label: Unit price;
+  desc: From an active price list and active order type whose valid period covers today, the tier matching the quantity gives the unit price (base price × multiplier, or custom) and the discount. A regrind item with no matching price list uses its standard price.;
+elseif (Not found) than #red
+  [role_sales: Fix the price list] <block_reject>
+  label: No price;
+  props: APP_SA02;
+  desc: A product line with no matching price list (missing, inactive or out of period), or a price list without a tier for the quantity, cannot be saved. Prepare the estimate and price list, or add the tier.;
+  [loop]
+endif
+[role_sales: Save as draft] <block_apply>
+label: Save;
+props: APP_SA03,QOT;
+desc: It gets a QOT- number and becomes "Draft". Unit price, discount and tax are frozen at save time. A draft can be edited; saving again re-reads the current price list.;
+if (Drawing) is (None) than #purple
+  [role_sales: Raise design req.] <block_apply>
+  label: Design req.;
+  props: APP_SA06,DR;
+  desc: Raising it from the quote's menu carries the quote over. It runs in parallel with the quote (not possible from an expired quote).;
+elseif (Exists) than
+endif
+[role_sales: Issue] <block_approve>
+label: Issue;
+props: APP_SA03,QOT;
+desc: A valid-until date is required and must be today or later. It becomes "Issued"; after that it can be neither edited nor un-issued.;
+[role_system: Generate PDF] <block_system>
+label: PDF;
+props: QOT;
+desc: The quote PDF is generated and stored on issue. Only issued quotes have a PDF.;
+if (PDF) is (Failed) than #orange
+  [role_sales: Regenerate PDF] <block_reject>
+  label: Regenerate;
+  props: APP_SA03;
+  desc: The quote is already issued. Regenerate from the PDF tab.;
+elseif (OK) than
+endif
+[role_sales: Send PDF to client] <block_apply>
+label: Submit;
+props: APP_SA03;
+desc: Download it from the PDF tab and send it by email or on paper. The "email to customer" checkbox in the issue dialog does not send anything automatically.;
+[role_cust: Receive the quote] <block_neutral>
+label: Receive;
+desc: Reviews the quote. There is no operation to record the reply on the quote.;
+if (Reply) is (Order) than #blue
+  [role_sales: Go to order] <block_apply>
+  label: To order;
+  props: APP_SA04,OA;
+  desc: When an order acceptance names this quote, it appears under "To" on the quote. The order flow starts here.;
+elseif (Declined/none) than #gray
+  [role_system: Show as expired] <block_end>
+  label: Expired;
+  props: QOT;
+  desc: An issued quote past its valid-until date is shown as "Expired" automatically (not stored as a status).;
+elseif (Revise) than #purple
+  [role_sales: Duplicate, reissue] <block_apply>
+  label: Duplicate;
+  props: APP_SA03,QOT;
+  desc: An issued quote cannot be changed, so duplicate it into a new draft and start again from step 15.;
+endif

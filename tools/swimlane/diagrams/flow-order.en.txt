@@ -1,0 +1,280 @@
+/title/
+Order intake — from receiving the order to confirming order lines
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_cust>
+label: Customer;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+<role_system>
+label: System;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_admin>
+label: Administrator;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_support>
+label: Sales assistant;
+text-color: #92400e;
+background-color: #fef3c7;
+
+<role_appr>
+label: Approver;
+text-color: #166534;
+background-color: #f0fdf4;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SA04>
+label: SA04;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA05>
+label: SA05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SY0C>
+label: SY0C;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<OA>
+label: Order acc;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<OL>
+label: Ord. line;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+/line/
+
+[role_cust: Send the order] <block_neutral>
+label: Order;
+desc: The order arrives by email, fax or PDF. A fax is scanned on the copier into a file.;
+if (Entry) is (File) than #blue
+  if (Route) is (Email) than #blue
+    [role_system: Receive the email] <block_system>
+    label: Email;
+    desc: Attachments (PDF, images) of mail to order-intake@ go into the intake folder. One attachment = one order acceptance. Production only.;
+  elseif (Folder) than #blue
+    [role_admin: Drop into folder] <block_apply>
+    label: Drop;
+    props: APP_SY0C;
+    desc: Drop many files from Order intake (or straight into the shared folder). Picked up by the 60-second scan or Scan now.;
+  elseif (Priority intake) than #blue
+    [role_support: Pick files] <block_apply>
+    label: Priority;
+    props: APP_SA04;
+    desc: Priority intake on the list takes several files. They skip the folder and appear in the list at once.;
+  endif
+  [role_system: Number and import] <block_system>
+  label: Numbering;
+  props: OA;
+  desc: An order acceptance with an ORD- number is created in status Importing.;
+  [role_system: AI extracts] <block_system>
+  label: AI extraction;
+  desc: Reads customer, item names, quantities, prices and dates. 1–3 min per document.;
+  if (Extraction) is (Temporary failure) than #orange
+    [role_system: Auto retry] <block_wait>
+    label: Retrying;
+    desc: Connection errors, congestion and malformed output are retried up to 3 times (orange Retrying).;
+    [loop]
+  elseif (Stopped) than #red
+    [role_support: Retry or type in] <block_reject>
+    label: Failed;
+    props: APP_SA04;
+    desc: The red Extraction failed badge gives cause and next step. Re-extract, or Switch to manual entry to make it a draft and type it in.;
+  elseif (Success) than #blue
+    [role_system: Match masters] <block_system>
+    label: Matching;
+    desc: Learned spellings first, then fuzzy matching; only a single hit is filled in. Status becomes Draft and the intake group is notified.;
+  endif
+elseif (By hand) than #purple
+  [role_support: Create by hand] <block_apply>
+  label: Manual;
+  props: APP_SA04,OA;
+  desc: Create by hand: enter customer and lines, then create the draft (status Draft).;
+endif
+[role_support: Check the content] <block_apply>
+label: Review;
+props: APP_SA04;
+desc: Compare with the original, Edit and save. Only a Draft can be edited.;
+if (Matching) is (Not identified) than #orange
+  [role_support: Pick customer/item] <block_apply>
+  label: Unmatched;
+  props: APP_SA04;
+  desc: Pick a suggestion or search. Saving learns the spelling so the next document matches automatically.;
+elseif (Identified) than
+endif
+if (Line type) is (Regrind) than #purple
+  [role_support: Pick regrind tool] <block_apply>
+  label: Regrind;
+  props: APP_SA04;
+  desc: The item is a regrind item; the customer's tool is picked from products (external products allowed).;
+elseif (Production etc.) than
+endif
+if (Unit price) is (As price list) than #blue
+elseif (Override) than #purple
+  [role_support: Override the price] <block_apply>
+  label: Override;
+  props: APP_SA04;
+  desc: Only when selling off the price list: turn on Override the unit price. It is intended, so not a mismatch.;
+elseif (No price list) than #blue
+  [role_support: Enter the price] <block_apply>
+  label: Free entry;
+  props: APP_SA04;
+  desc: Lines with no price list for that customer and item take any price.;
+endif
+[role_support: Request approval] <block_apply>
+label: Request;
+props: APP_SA04;
+desc: Enabled once customer, lines, every item and price (and tool for regrind) are set. Status Pending approval.;
+if (Price mismatch) is (Yes) than #orange
+  [role_support: Accept & submit] <block_wait>
+  label: Mismatch;
+  props: APP_SA04;
+  desc: Lines differing from the list without override, or with no matching tier, must be acknowledged first.;
+elseif (No) than
+endif
+[role_system: Pick approval flow] <block_system>
+label: Flow;
+desc: Approval settings choose the flow by total, delivery method and site, and notify the first group.;
+[role_appr: Approve each step] <block_approve>
+label: Approval;
+props: APP_CM01,OA;
+desc: From the order acceptance or the Pending list. When the step's approvers (any one / all) approve, it moves on.;
+if (Decision) is (Send back) than #red
+  [role_support: Fix and resubmit] <block_reject>
+  label: Sent back;
+  props: APP_SA04;
+  desc: Returns to Draft with a reason. Fix and request approval again.;
+  [loop]
+elseif (Next step) than #blue
+  [loop]
+elseif (All approved) than #green
+endif
+[role_support: Confirm the order] <block_apply>
+label: Confirm;
+props: APP_SA04,OA;
+desc: Confirm, then Expand. Status Approved → Confirmed.;
+[role_system: Create order lines] <block_system>
+label: Ord. line;
+props: OL;
+desc: Each line gets ORD-…-01, -02, its amount is frozen and its status is Confirmed.;
+if (Afterwards) is (As ordered) than #blue
+  [role_support: Check order lines] <block_apply>
+  label: Hand-off;
+  props: APP_SA05;
+  desc: Work orders and delivery orders start from the order lines. Quantity, price and item are fixed now.;
+  [role_support: Archive] <block_neutral>
+  label: Archive;
+  props: APP_SA04;
+  desc: Optional. Moves a confirmed order acceptance to Archived; no more edits.;
+elseif (Cancelled) than #red
+  [role_support: Request cancel] <block_reject>
+  label: Cancel;
+  props: APP_SA04;
+  desc: Request for the whole confirmed order acceptance, with a reason. Not possible once any line is shipped.;
+  if (Cancel approval steps) is (None) than #blue
+  elseif (Some) than #orange
+    [role_appr: Approve the cancel] <block_approve>
+    label: Approval;
+    props: APP_CM01;
+    desc: Nothing changes until final approval. Send back closes the request and leaves the order as is.;
+  endif
+  [role_system: Apply the cancel] <block_end>
+  label: Cancelled;
+  props: OA,OL;
+  desc: Order lines and acceptance become Cancelled, reservations are released and open work orders are cancelled (combined lots stay).;
+  if (Recreate) is (Yes) than #purple
+    [role_support: Recreate it] <block_apply>
+    label: Recreate;
+    props: APP_SA04,OA;
+    desc: Creates a new Draft carrying over the cancelled order acceptance's content.;
+  elseif (No) than
+  endif
+endif

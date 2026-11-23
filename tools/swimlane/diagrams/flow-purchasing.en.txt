@@ -1,0 +1,309 @@
+/title/
+Purchasing — from requesting material to receiving it
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_prod>
+label: Production control;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_appr>
+label: Approver;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_purch>
+label: Purchasing;
+text-color: #115e59;
+background-color: #ccfbf1;
+
+<role_supplier>
+label: Supplier / subcontractor;
+text-color: #92400e;
+background-color: #fffbeb;
+
+<role_recv>
+label: Receiving;
+text-color: #155e75;
+background-color: #cffafe;
+
+<role_system>
+label: System;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PU01>
+label: PU01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PU02>
+label: PU02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PU03>
+label: PU03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PU04>
+label: PU04;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<PR>
+label: Purchase req.;
+side: right;
+background-color: #f0fdfa;
+border-color: #0d9488;
+text-color: #115e59;
+
+<PO>
+label: Mat. PO;
+side: right;
+background-color: #f0fdfa;
+border-color: #0d9488;
+text-color: #115e59;
+
+<MR>
+label: Mat. rcpt;
+side: right;
+background-color: #f0fdfa;
+border-color: #0d9488;
+text-color: #115e59;
+
+<WO>
+label: Work order;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+/line/
+
+[role_prod: Spot a shortage] <block_neutral>
+label: Shortage;
+props: APP_PD02;
+desc: Choosing the material on a work order compares it with stock; if it is short with nothing expected, "No incoming receipts" is shown. Stock & requirements (ST03) shows it too. No purchase request is created automatically.;
+if (Sourcing) is (With a PO) than #blue
+  if (Start) is (From a request) than #blue
+    [role_prod: Create request] <block_apply>
+    label: Request;
+    props: APP_PU01,PR;
+    desc: Enter material, receiving site, quantity, requested date and the reason. No price or supplier. It becomes Draft.;
+    [role_prod: Request approval] <block_apply>
+    label: Approval req.;
+    props: APP_PU01;
+    desc: Not possible unless a flow exists in Approval settings (MS0B). It becomes Pending approval and the first step's approval group is notified.;
+    if (Decision) is (Send back) than #red
+      [role_prod: Fix and resubmit] <block_reject>
+      label: Sent back;
+      props: APP_PU01;
+      desc: The approver sends it back with a reason and it becomes Sent back. The requester fixes it and requests approval again without recreating it.;
+      [loop]
+    elseif (Approve) than #blue
+      [role_appr: Approve request] <block_approve>
+      label: Approve;
+      props: APP_CM01;
+      desc: With several steps it becomes Approved only after the last one; in between it stays Pending approval and moves to the next step.;
+    endif
+    if (Next) is (Withdraw) than #red
+      [role_prod: Cancel request] <block_end>
+      label: Cancelled;
+      props: APP_PU01;
+      desc: Before conversion to a PO (Draft, Pending approval, Approved, Sent back) it can be cancelled with a reason. The flow ends here.;
+    elseif (Convert) than #blue
+      [role_purch: Convert to PO] <block_apply>
+      label: Convert;
+      props: APP_PU01,PO;
+      desc: Pick a supplier and convert. A material purchase order (Draft, unit prices 0) is created with the lines carried over, and the request becomes Ordered.;
+    endif
+  elseif (Create directly) than #purple
+    if (Method) is (AI read) than #purple
+      [role_purch: Read supplier doc] <block_apply>
+      label: AI read;
+      props: APP_PU02;
+      desc: Upload the supplier's quote, order acceptance or PO copy; the supplier and materials are matched. Check each line (matched / guessed / unresolved) and apply it to the form. If it cannot be read, enter by hand.;
+    elseif (By hand) than
+    endif
+  endif
+  [role_purch: Complete the PO] <block_apply>
+  label: PO;
+  props: APP_PU02,PO;
+  desc: Enter supplier, quantity, unit price and expected date, then save. Amounts are calculated. It can be edited only while Draft.;
+  [role_purch: Request approval] <block_apply>
+  label: Approval req.;
+  props: APP_PU02;
+  desc: Not possible without an approval flow. It becomes Pending approval and the approval group is notified.;
+  if (Decision) is (Send back) than #red
+    [role_purch: Fix and resubmit] <block_reject>
+    label: Sent back;
+    props: APP_PU02;
+    desc: The approver sends it back with a reason and the PO returns to Draft. Fix it and request approval again.;
+    [loop]
+  elseif (Approve) than #blue
+    [role_appr: Approve PO] <block_approve>
+    label: Approve;
+    props: APP_CM01;
+    desc: Approved after all steps. From here supporting documents (order copies, etc.) can be attached.;
+  endif
+  if (Before order) is (Withdraw) than #red
+    [role_purch: Cancel PO] <block_end>
+    label: Cancelled;
+    props: APP_PU02;
+    desc: Only before ordering (Draft, Pending approval, Approved) can it be cancelled with a reason. The flow ends here.;
+  elseif (Order) than #blue
+  endif
+  [role_purch: Place the order] <block_apply>
+  label: Order;
+  props: APP_PU02;
+  desc: It becomes Ordered; an empty order date is set to today. The open quantity shows as incoming in Stock & requirements and in the work order's material hint. An ordered PO cannot be cancelled.;
+  [role_supplier: Deliver material] <block_neutral>
+  label: Delivery;
+  desc: The material arrives with a delivery note — not always all at once.;
+  if (Arrival) is (All) than #blue
+    [role_system: Receive the rest] <block_system>
+    label: Received;
+    props: APP_PU02,MR;
+    desc: When receiving presses "Received", the whole open quantity is received and a material receipt is recorded per line. The PO becomes Received and the requester and creator are notified.;
+  elseif (Part) than #orange
+    [role_recv: Record partial] <block_apply>
+    label: Partial;
+    props: APP_PU02,MR;
+    desc: Receive only what arrived, per line. Receiving more than ordered is refused. When the totals are complete the PO becomes Received automatically.;
+    [loop]
+  elseif (Rest not coming) than #orange
+    [role_purch: Close short] <block_end>
+    label: Close short;
+    props: APP_PU02;
+    desc: When the supplier cannot send the rest, close the PO as Received with a reason. The missing quantity never enters stock and drops out of the incoming quantity.;
+  endif
+elseif (Without a PO) than #purple
+  [role_supplier: Deliver material] <block_neutral>
+  label: Delivery;
+  desc: Material bought without a purchase order (direct purchase, brought in) arrives.;
+  if (Entry) is (One by one) than #purple
+    [role_recv: Register receipt] <block_apply>
+    label: Direct;
+    props: APP_PU03,MR;
+    desc: Enter material, supplier, receiving site, received date and quantity, then register. The unit is fixed to the material master's unit. It cannot be edited afterwards.;
+  elseif (From note) than #purple
+    [role_system: Read delivery note] <block_system>
+    label: AI read;
+    props: APP_PU03;
+    desc: Receiving uploads the delivery note (PDF/image) and AI matches the supplier and each line's material. A matching material code settles it; names are matched step by step.;
+    [role_recv: Check the lines] <block_apply>
+    label: Check;
+    props: APP_PU03;
+    desc: Exclude lines for another plant or accessories with "Do not register this line". A line without a resolved material cannot be registered (nothing is created on its own).;
+    [role_recv: Register all] <block_apply>
+    label: Register;
+    props: APP_PU03,MR;
+    desc: The selected lines are registered in one transaction; if anything fails, all are rolled back. Corrected material and supplier spellings are learned for next time.;
+  endif
+endif
+[role_system: Put into stock] <block_system>
+label: Stock in;
+desc: The receiving site's material stock rises by the received quantity and a stock movement is recorded. With no site, it goes to "no site" stock.;
+[role_recv: Attach documents] <block_apply>
+label: Documents;
+props: APP_PU03;
+desc: Optionally attach delivery-note copies to the receipt and order copies to the PO (from Approved on). The AI-read original is attached automatically; if that fails, the registration still stands.;
+if (Outsourced step) is (Yes) than #blue
+  [role_prod: Set subcontractor] <block_apply>
+  label: Outsource;
+  props: APP_PD02,WO;
+  desc: On the work order step choose Outsourced as the execution location and pick the subcontractor. No separate outsource-order document is created.;
+  [role_prod: Check outsourcing] <block_neutral>
+  label: Outsource orders;
+  props: APP_PU04;
+  desc: Outsourced steps are listed (view only). Filter by subcontractor or status and open the step from a row.;
+  [role_prod: Enter dates] <block_apply>
+  label: Dates;
+  props: APP_PD02;
+  desc: In the step's "Outsource schedule", enter the requested, expected and received dates and the cost, and save; the list reflects them.;
+elseif (No) than
+endif
