@@ -189,6 +189,7 @@ drift_check() {
   return $missing
 }
 step "CI の 1 行コマンドを全部回しているか" drift_check
+step "シェルスクリプトの変数（macOS bash 3.2）" "bash tools/ci/shell-vars-check.sh"
 
 # ── --changed: CI と同じ判定 ──────────────────────────────────────────────
 AREA_web=true AREA_pages=true AREA_kiosk=true AREA_authz=true AREA_shared_db=true AREA_python=true
@@ -405,7 +406,7 @@ if [ "$FAILED" -eq 0 ] && [ "$QUICK" = false ] && [ -z "$ONLY" ]; then
     [ "$CHANGED" = true ] && mode="changed:$BASE"
     printf '%s %s %s\n' "$(git rev-parse HEAD)" "$mode" "$(date +%Y-%m-%dT%H:%M:%S)" \
       >"$STAMP_DIR/$(git rev-parse HEAD)"
-    echo "合格の印を残した: $(git rev-parse --short HEAD)（$mode）— このコミットは pre-push で回し直さない"
+    echo "合格の印を残した: $(git rev-parse --short HEAD)（${mode}）— このコミットは pre-push で回し直さない"
   else
     echo "未コミットの変更があるので合格の印は残さない（コミットしてから回すと push が速い）"
   fi
