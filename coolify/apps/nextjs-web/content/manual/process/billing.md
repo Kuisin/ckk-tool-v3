@@ -15,7 +15,9 @@ screenshots:
 
 ## 全体の流れ
 
-![請求の流れの全体図（締日処理から会計連携までのスイムレーン）](../assets/diagrams/process-billing.svg)
+![請求 — 締日処理から入金・会計連携まで](../assets/diagrams/flow-billing.svg)
+
+各手順の分かれ道と使うアプリの一覧は [業務フロー](/manual/ja/business-flow#billing) にある。
 
 ## 段階ごとの担当とアプリ
 

@@ -17,7 +17,11 @@ screenshots:
 
 ## 整体流程
 
-![生产流程整体图（含库存核对分支・审批退回的泳道图）](../assets/diagrams/process-production.zh.svg)
+![生产计划 — 从确认库存到批准工单](../assets/diagrams/flow-planning.zh.svg)
+
+![制造 — 从执行工序到成品入库](../assets/diagrams/flow-production.zh.svg)
+
+各步骤的分支与使用的应用一览，请参见[业务流程](/manual/zh/business-flow#planning)。
 
 ## 各阶段的负责人与应用
 

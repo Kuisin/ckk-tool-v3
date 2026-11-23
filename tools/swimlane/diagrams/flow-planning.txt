@@ -1,0 +1,284 @@
+/title/
+生産計画 — 在庫の確認から指示書の承認まで
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 手順;
+left-subtitle: 説明;
+
+/role/
+
+<role_support>
+label: 営業補助;
+text-color: #92400e;
+background-color: #fef3c7;
+
+<role_system>
+label: システム;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_prod>
+label: 生産管理;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_purch>
+label: 購買;
+text-color: #115e59;
+background-color: #ccfbf1;
+
+<role_admin>
+label: 管理者;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_appr>
+label: 承認者;
+text-color: #166534;
+background-color: #f0fdf4;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SA05>
+label: SA05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD05>
+label: PD05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PU01>
+label: PU01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_MS0B>
+label: MS0B;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<OL>
+label: 注文明細;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<WO>
+label: 指示書;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+<PR>
+label: 購買依頼;
+side: right;
+background-color: #f0fdfa;
+border-color: #0d9488;
+text-color: #115e59;
+
+/line/
+
+[role_support: 在庫照合する] <block_apply>
+label: 在庫照合;
+props: APP_SA05,OL;
+desc: 状態が「確定」の注文明細で製品在庫を調べる。製造中以降と再研磨の明細は対象外。;
+[role_system: 在庫を引き当てる] <block_system>
+label: 引当;
+desc: 利用可能数の範囲で在庫を予約し、足りない本数は「不足」と表示する。不足分は製造分の指示書で作る。;
+[role_prod: 未手配を確認する] <block_neutral>
+label: 未処理;
+props: APP_PD05;
+desc: 未手配（受注数 − 手配済）が残る明細が納期順に並ぶ。「指示書作成」で未手配の本数が入った作成画面が開く。;
+if (作り方) is (前回をコピー) than #purple
+  [role_prod: 前回からコピーする] <block_apply>
+  label: コピー;
+  props: APP_PD02,WO;
+  desc: 対象の注文明細を選ぶと、工程・実施場所・検査表を引き継いだ下書きができる。新しい版があれば警告が出る。;
+elseif (在庫向け) than #purple
+  [role_prod: 製品を直接選ぶ] <block_apply>
+  label: 在庫向け;
+  props: APP_PD02;
+  desc: 注文明細を割り当てない独立の指示書。種別は製造分だけで、在庫を積み増す。;
+else
+  [role_prod: 明細を割り当てる] <block_apply>
+  label: 割当;
+  props: APP_PD02;
+  desc: 明細と割当数量を選ぶ。割当可能残（受注数 − 他の指示書の割当）が上限。;
+  if (割当) is (一部だけ) than #purple
+    [role_prod: 残りは後で手配する] <block_wait>
+    label: 分割;
+    desc: 残りの本数は未処理指示書の「未手配」に残り、別の指示書で手配する。;
+  elseif (統合ロット) than #purple
+    [role_prod: 明細をまとめる] <block_apply>
+    label: 統合;
+    desc: 同じ製品の別の明細も 1 指示書（1 ロット）にまとめる。在庫分・再研磨はできない。;
+  elseif (全数) than
+  endif
+endif
+if (種別) is (在庫分) than #blue
+  [role_prod: 工程を直接選ぶ] <block_apply>
+  label: 在庫分;
+  props: APP_PD02;
+  desc: 工程リストを使わず「製品出し（在庫）」から始める。割当は 1 明細だけで、予定数量 = 割当数量。;
+elseif (製造分) than #blue
+  [role_prod: 使用素材を選ぶ] <block_apply>
+  label: 素材;
+  props: APP_PD02;
+  desc: 製品の想定材種（材種 × 直径）に合う素材が最初から入る。素材在庫と予定数量を比べた案内が出る。;
+  if (素材在庫) is (足りる) than
+  elseif (不足・予定あり) than #orange
+    [role_prod: 入荷予定を確かめる] <block_wait>
+    label: 入荷待ち;
+    desc: 不足数と次回入荷予定日が黄色で出る。注意だけで、そのまま保存できる。;
+  elseif (不足・予定なし) than #orange
+    [role_purch: 素材を手配する] <block_apply>
+    label: 購買へ;
+    props: APP_PU01,PR;
+    desc: 「入荷予定がありません」と赤く出る。購買の流れ（購買依頼 → 素材発注）へ進む。保存は止まらない。;
+  endif
+  [role_prod: 工程リストを選ぶ] <block_apply>
+  label: 工程;
+  props: APP_PD02;
+  desc: 準備工程リスト（共通・常に最新版）と製造工程リスト（製品 × 受注元）を合わせる。無ければその場で新規登録し、変えれば新しい版で保存される。;
+elseif (再研磨) than #purple
+  [role_prod: 再研磨リストを使う] <block_apply>
+  label: 再研磨;
+  props: APP_PD02;
+  desc: 注文種別が「再研磨」の明細では種別が固定。再研磨工程リストの最新版を使い、素材・保管場所は持たない。;
+endif
+[role_prod: 下書きを保存する] <block_apply>
+label: 保存;
+props: APP_PD02,WO;
+desc: 予定数量（割当合計以上）・保管場所・図面・「不足 / 超過分も納品してよい」を決めて保存。状態「下書き」、明細にロット番号が付く。;
+[role_prod: 作業計画を入れる] <block_apply>
+label: 作業計画;
+props: APP_PD02;
+desc: 社内工程ごとに計画日と、工程マスタが求める項目（作業場所・担当者・時刻）を入れる。;
+[role_prod: 承認を依頼する] <block_apply>
+label: 承認依頼;
+props: APP_PD02;
+if (依頼の可否) is (計画が不足) than #orange
+  [role_prod: 計画を補う] <block_reject>
+  label: 計画不足;
+  desc: 「作業計画が揃っていません」と足りない工程が出て、依頼できない。;
+  [loop]
+elseif (フロー未設定) than #orange
+  [role_admin: 承認フローを組む] <block_apply>
+  label: 承認設定;
+  props: APP_MS0B;
+  desc: 指示書の承認フローに段が 1 つも無いと依頼できない。;
+  [loop]
+else
+  [role_system: 承認フローを決める] <block_system>
+  label: フロー開始;
+  desc: 条件付きルール（種別・予定数量）で段を決める。状態「承認依頼中」、注文明細は編集ロック。;
+endif
+[role_appr: 指示書を承認する] <block_approve>
+label: 承認;
+props: APP_CM01,APP_PD02;
+desc: 未処理一覧で自分の番の依頼を見つけ、指示書の画面で承認する。;
+if (承認判断) is (次の段へ) than #blue
+  [loop]
+elseif (差し戻し) than #red
+  [role_prod: 直して再依頼する] <block_reject>
+  label: 差し戻し;
+  props: APP_PD02;
+  desc: 理由つきで「下書き」に戻り、ロックが外れる。編集して「再承認依頼」。;
+  [loop]
+else
+  [role_system: 承認済にする] <block_system>
+  label: 承認済;
+  desc: 状態「承認済」。割り当てた注文明細は「製造中」になり、ロックが外れる。;
+endif
+if (種別) is (製造分) than #blue
+  [role_system: 素材を取り置く] <block_system>
+  label: 素材予約;
+  desc: 使用素材を予定数量ぶん予約する。足りなくても予約は入り、発注判断の目安になる。;
+elseif (在庫分・再研磨) than
+endif
+if (着手前の取消) is (しない) than
+elseif (キャンセル) than #red
+  [role_prod: 指示書を取り消す] <block_end>
+  label: キャンセル;
+  props: APP_PD02;
+  desc: 下書き・承認依頼中・工程が未着手の承認済で可能。予約を解放し、明細は「確定」と未手配に戻る。;
+endif

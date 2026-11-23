@@ -18,7 +18,11 @@ screenshots:
 
 ## 全体の流れ
 
-![販売の流れの全体図（価格差異ループ・承認差し戻しを含むスイムレーン）](../assets/diagrams/process-sales.svg)
+![価格・見積 — 価格試算から見積書の発行まで](../assets/diagrams/flow-pricing.svg)
+
+![受注 — 注文書の取込から注文明細の確定まで](../assets/diagrams/flow-order.svg)
+
+各手順の分かれ道と使うアプリの一覧は [業務フロー](/manual/ja/business-flow#pricing) にある。
 
 設計図が無い製品では、この流れと並行して**設計依頼書**を起票する。見積時・受注時のほか、どの書類にも紐づかない**単独**の起票もできる。
 

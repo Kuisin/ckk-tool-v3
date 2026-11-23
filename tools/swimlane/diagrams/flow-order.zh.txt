@@ -1,0 +1,280 @@
+/title/
+接单 — 从导入订单到确定订单明细
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 步骤;
+left-subtitle: 说明;
+
+/role/
+
+<role_cust>
+label: 客户;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+<role_system>
+label: 系统;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_admin>
+label: 管理员;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_support>
+label: 销售助理;
+text-color: #92400e;
+background-color: #fef3c7;
+
+<role_appr>
+label: 审批人;
+text-color: #166534;
+background-color: #f0fdf4;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SA04>
+label: SA04;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA05>
+label: SA05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SY0C>
+label: SY0C;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<OA>
+label: 订单确认书;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<OL>
+label: 订单明细;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+/line/
+
+[role_cust: 发送订单] <block_neutral>
+label: 订单;
+desc: 订单通过邮件、传真或 PDF 送达。传真用复合机扫描成文件。;
+if (入口) is (文件) than #blue
+  if (导入途径) is (邮件) than #blue
+    [role_system: 接收邮件] <block_system>
+    label: 邮件导入;
+    desc: 发往 order-intake@ 的邮件附件（PDF、图片）放入导入文件夹。1 个附件 = 1 份订单确认书。仅正式环境。;
+  elseif (文件夹) than #blue
+    [role_admin: 放入文件夹] <block_apply>
+    label: 放入;
+    props: APP_SY0C;
+    desc: 在订单导入画面批量放入（也可直接放入共享文件夹）。每 60 秒自动扫描或“立即扫描”时导入。;
+  elseif (优先导入) than #blue
+    [role_support: 选择文件] <block_apply>
+    label: 优先导入;
+    props: APP_SA04;
+    desc: 列表的“优先导入”可多选。不经文件夹，立即出现在列表中。;
+  endif
+  [role_system: 编号并导入] <block_system>
+  label: 编号;
+  props: OA;
+  desc: 生成带 ORD- 编号、状态为“导入中”的订单确认书。;
+  [role_system: AI 提取] <block_system>
+  label: AI 提取;
+  desc: 读取客户名、品名、数量、单价、交期。每份 1～3 分钟。;
+  if (提取) is (暂时失败) than #orange
+    [role_system: 自动重试] <block_wait>
+    label: 重试中;
+    desc: 连接失败、拥堵、格式不符时最多自动重试 3 次（橙色“重试中”）。;
+    [loop]
+  elseif (失败停止) than #red
+    [role_support: 重新提取或手动] <block_reject>
+    label: 提取失败;
+    props: APP_SA04;
+    desc: 红色“提取失败”显示原因和处理方法。可“重新提取”，或“切换为手动输入”转为草稿后自行输入。;
+  elseif (成功) than #blue
+    [role_system: 匹配客户和产品] <block_system>
+    label: 匹配;
+    desc: 先用已学习的写法，再做写法差异吸收；只填入唯一命中的结果。状态变为“草稿”，并通知受理人员。;
+  endif
+elseif (手动) than #purple
+  [role_support: 手动新建] <block_apply>
+  label: 手动;
+  props: APP_SA04,OA;
+  desc: 用“手动新建”输入客户和明细，创建后状态为“草稿”。;
+endif
+[role_support: 确认内容] <block_apply>
+label: 确认;
+props: APP_SA04;
+desc: 与原订单对照，“编辑”修改后保存。仅草稿状态可修改。;
+if (匹配) is (有未识别) than #orange
+  [role_support: 选择客户/产品] <block_apply>
+  label: 未识别;
+  props: APP_SA04;
+  desc: 从“可能是”候选中选择或搜索。保存后记住该写法，下次自动匹配。;
+elseif (已识别) than
+endif
+if (明细类别) is (再研磨) than #purple
+  [role_support: 选择要研磨的刀具] <block_apply>
+  label: 再研磨;
+  props: APP_SA04;
+  desc: 品目从再研磨服务中选，代管的刀具从产品主数据（可选他社产品）中选。;
+elseif (量产等) than
+endif
+if (单价) is (按价格表) than #blue
+elseif (覆盖) than #purple
+  [role_support: 覆盖单价] <block_apply>
+  label: 覆盖;
+  props: APP_SA04;
+  desc: 仅在以不同于价格表的价格接单时开启“覆盖单价”。属有意定价，不算价格差异。;
+elseif (无价格表) than #blue
+  [role_support: 输入单价] <block_apply>
+  label: 自由输入;
+  props: APP_SA04;
+  desc: 没有该客户与产品价格表的行可自由输入单价。;
+endif
+[role_support: 申请审批] <block_apply>
+label: 审批申请;
+props: APP_SA04;
+desc: 客户、明细、各行产品与单价（再研磨还需刀具）齐全后可点击。状态“审批中”。;
+if (价格差异) is (有) than #orange
+  [role_support: 确认差异后申请] <block_wait>
+  label: 价格差异;
+  props: APP_SA04;
+  desc: 未覆盖却与价格表不同的行、或无对应数量档的行，须在确认画面确认后申请。;
+elseif (无) than
+endif
+[role_system: 确定审批流程] <block_system>
+label: 流程;
+desc: 按审批设置中合计金额、配送方式、据点的条件选出流程，并通知一级审批组。;
+[role_appr: 逐级审批] <block_approve>
+label: 审批;
+props: APP_CM01,OA;
+desc: 在订单确认书画面或未处理列表中操作。该级审批人（任一人/全员）批准后进入下一级。;
+if (审批判断) is (退回) than #red
+  [role_support: 修改后重新申请] <block_reject>
+  label: 退回;
+  props: APP_SA04;
+  desc: 附理由退回“草稿”。修改后重新申请审批。;
+  [loop]
+elseif (还有下一级) than #blue
+  [loop]
+elseif (全部批准) than #green
+endif
+[role_support: 确定订单] <block_apply>
+label: 确定;
+props: APP_SA04,OA;
+desc: “确定”→“展开”。状态“已批准”→“已确定”。;
+[role_system: 生成订单明细] <block_system>
+label: 订单明细;
+props: OL;
+desc: 每行明细编号 ORD-…-01、-02，金额固定，状态为“已确定”。;
+if (之后) is (按订单进行) than #blue
+  [role_support: 确认订单明细] <block_apply>
+  label: 交接;
+  props: APP_SA05;
+  desc: 从订单明细进入工单、出货单。确定后数量、单价、产品不可更改。;
+  [role_support: 归档] <block_neutral>
+  label: 归档;
+  props: APP_SA04;
+  desc: 可选。将已确定的订单确认书设为“已归档”，之后不可编辑。;
+elseif (取消) than #red
+  [role_support: 申请作废] <block_reject>
+  label: 作废;
+  props: APP_SA04;
+  desc: 以整份已确定的订单确认书为单位，填写理由申请。只要有一行已出货就无法申请。;
+  if (作废审批级) is (无) than #blue
+  elseif (有) than #orange
+    [role_appr: 批准作废] <block_approve>
+    label: 审批;
+    props: APP_CM01;
+    desc: 最终批准前不发生任何变化。退回则订单确认书不变，申请关闭。;
+  endif
+  [role_system: 执行作废] <block_end>
+  label: 已取消;
+  props: OA,OL;
+  desc: 订单明细和订单确认书变为“已取消”，释放已分配库存，并连带取消未完成工单（合并批次保留）。;
+  if (重新创建) is (是) than #purple
+    [role_support: 重新创建] <block_apply>
+    label: 重新创建;
+    props: APP_SA04,OA;
+    desc: 由已取消的订单确认书继承内容，创建新的草稿。;
+  elseif (否) than
+  endif
+endif

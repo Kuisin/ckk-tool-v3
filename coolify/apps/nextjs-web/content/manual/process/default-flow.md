@@ -31,7 +31,9 @@ screenshots:
 
 ## 全体の流れ
 
-![標準フローの全体図（価格試算から請求までのスイムレーン）](../assets/diagrams/process-overview.svg)
+![業務フロー全体（価格試算から入金まで）](../assets/diagrams/flow-overview.svg)
+
+各手順の分かれ道と使うアプリの一覧は [業務フロー](/manual/ja/business-flow#overview) にある。
 
 ## この流れの登場人物
 
@@ -254,7 +256,7 @@ screenshots:
 
 ## 関連ページ
 
-- 注文から入金・会計連携までを部署ごとに 1 枚で見る … [注文から入金まで](/manual/ja/process/order-to-payment)
+- 注文から入金・会計連携まで、プロセスごとの全パターンと使うアプリを見る … [業務フロー](/manual/ja/business-flow)
 - 分岐・例外と**書類の状態の一覧** … [販売の流れ](/manual/ja/process/sales) / [購買の流れ](/manual/ja/process/purchasing) / [生産の流れ](/manual/ja/process/production) / [出荷の流れ](/manual/ja/process/shipping) / [請求の流れ](/manual/ja/process/billing)
 - 各アプリの操作と入力欄の意味 … 左の **操作方法**
 - はじめて使う方 … [スタートマニュアル](/manual/ja/start)

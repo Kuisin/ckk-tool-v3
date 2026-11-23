@@ -16,7 +16,9 @@ A page covering the flow from finding out that material is short, through orderi
 
 ## Overall flow
 
-![Diagram of the whole purchasing flow (swimlanes including the approval send-back and split-receiving loops)](../assets/diagrams/process-purchasing.en.svg)
+![Purchasing — from requesting material to receiving it](../assets/diagrams/flow-purchasing.en.svg)
+
+The full list of each step's branches and the app to use is in [Business Flow](/manual/en/business-flow#purchasing).
 
 When it is urgent or the amount is small, you can also start **directly from a purchase order** without going through a purchase request. Semi-finished goods procured from outside get no work order — they are simply received as material.
 

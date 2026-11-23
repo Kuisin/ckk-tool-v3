@@ -18,7 +18,11 @@ screenshots:
 
 ## 整体流程
 
-![销售流程整体图（含价格差异循环・审批退回的泳道图）](../assets/diagrams/process-sales.zh.svg)
+![价格与报价 — 从价格试算到发行报价单](../assets/diagrams/flow-pricing.zh.svg)
+
+![接单 — 从导入订单到确定订单明细](../assets/diagrams/flow-order.zh.svg)
+
+各步骤的分支与使用的应用一览，请参见[业务流程](/manual/zh/business-flow#pricing)。
 
 对于没有图纸的产品，需要**与本流程并行**起草**设计委托单**。既可以在报价阶段、也可以在接单之后起草，也可以不关联任何单据**单独**起草。
 

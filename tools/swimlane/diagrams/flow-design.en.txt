@@ -1,0 +1,296 @@
+// Business flow §3 Design — from design request (SA06) to confirming a drawing version (PD06) and its use on work orders.
+// ja / zh have the same structure. Change all three files together.
+
+/title/
+Design — from design request to registering the drawing
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_cust>
+label: Customer;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+<role_sales>
+label: Sales;
+text-color: #1e293b;
+background-color: #dbeafe;
+
+<role_system>
+label: System;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_appr>
+label: Approver;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_design>
+label: Design;
+text-color: #3730a3;
+background-color: #e0e7ff;
+
+<role_prod>
+label: Production control;
+text-color: #065f46;
+background-color: #d1fae5;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SA03>
+label: SA03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA05>
+label: SA05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA06>
+label: SA06;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD06>
+label: PD06;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<DR>
+label: Design req.;
+max-chars: 11;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<DV>
+label: Drawing;
+side: right;
+background-color: #eef2ff;
+border-color: #4f46e5;
+text-color: #3730a3;
+
+<WO>
+label: Work order;
+max-chars: 10;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+/line/
+
+[role_cust: Ask about a shape] <block_neutral>
+label: Inquiry;
+desc: A special shape is asked for or a new product is being studied, so a drawing is needed.;
+if (Trigger) is (At quote) than #blue
+  [role_sales: From a quote] <block_apply>
+  label: At quote;
+  props: APP_SA03,DR;
+  desc: Opened from "Raise design request" on the quote. Trigger = at quote and that quote are filled in.;
+elseif (At order) than #blue
+  [role_sales: From order line] <block_apply>
+  label: At order;
+  props: APP_SA05,DR;
+  desc: Opened from "Raise design request" on the order line. Trigger = at order and that order line are filled in.;
+elseif (Standalone) than #blue
+  [role_sales: Raise standalone] <block_apply>
+  label: Standalone;
+  props: APP_SA06,DR;
+  desc: A request tied to neither a quote nor an order. It can also be raised from New on the list, from the product master, or from "No price list" on a quote.;
+endif
+[role_system: New or revision?] <block_system>
+label: Request kind;
+desc: Revision if the product × ordering-customer series already has a version, otherwise New. It can be switched by hand.;
+if (Request kind) is (Revision) than #blue
+  [role_sales: Base and reason] <block_apply>
+  label: Revision;
+  props: APP_SA06;
+  desc: Enter the version to start from (empty = latest) and the reason for the change (required).;
+elseif (New) than #blue
+endif
+[role_sales: Save draft] <block_apply>
+label: Draft;
+props: APP_SA06,DR;
+desc: A request number (DSG-) is assigned and it becomes Draft. The assignee is notified. While in draft the content can be edited.;
+[role_sales: Request approval] <block_apply>
+label: Approval request;
+props: APP_SA06;
+desc: It becomes Pending approval and the first-step approvers in Approval settings (MS0B) are notified.;
+if (Decision) is (Send back) than #red
+  [role_appr: Send back] <block_reject>
+  label: Sent back;
+  props: APP_CM01;
+  desc: The status becomes Sent back.;
+  [role_sales: Fix and resubmit] <block_apply>
+  label: Resubmit;
+  props: APP_SA06;
+  desc: Fix the content and press Request approval again.;
+  [loop]
+else
+  [role_appr: Approve request] <block_approve>
+  label: Approval;
+  props: APP_CM01;
+  desc: Approved step by step; after the last step it becomes Not started.;
+endif
+[role_system: Notify assignee] <block_system>
+label: Not started;
+desc: The assignee receives a "please start" notification.;
+if (Still needed?) is (No longer) than #red
+  [role_sales: Cancel request] <block_end>
+  label: Cancelled;
+  props: APP_SA06,DR;
+  desc: Enter a reason and cancel. Possible from any status before Completed; a pending approval request is withdrawn too. The flow ends here.;
+elseif (Continue) than #blue
+endif
+[role_design: Start work] <block_apply>
+label: Start;
+props: APP_SA06,DR;
+desc: It becomes In progress and the requester is notified. Assignee and product can still be changed from the ⋯ menu.;
+[role_design: Attach work files] <block_neutral>
+label: Work files;
+props: APP_SA06;
+desc: Upload notes and drafts on the Files tab (optional). Only possible while Not started or In progress.;
+[role_design: Register drawing] <block_apply>
+label: Register drawing;
+props: APP_PD06,DV;
+desc: Opened from "Register in Drawing" on the request, with product and ordering customer fixed to the request. A draft version is created with the next number of the series.;
+[role_design: Complete request] <block_apply>
+label: Completed;
+props: APP_SA06,DR;
+desc: Only possible when at least one version came from this request. It becomes Completed; the requester (and, at quote, the quote's sales rep) is notified.;
+if (Review) is (Redraw) than #red
+  [role_sales: Reopen request] <block_reject>
+  label: Rework;
+  props: APP_SA06;
+  desc: Back to In progress and the completion date is cleared. Approval is not taken again. The assignee is notified.;
+  [role_design: Redraw, complete] <block_apply>
+  label: Re-complete;
+  props: APP_PD06,APP_SA06;
+  desc: Register a new version and press Complete again. The earlier version stays.;
+  [loop]
+else
+endif
+[role_design: Submit version] <block_apply>
+label: Confirm version;
+props: APP_PD06,DV;
+desc: Check the draft version and press Confirm or Request approval. Until confirmed, spec and files can be edited.;
+if (Version steps) is (Set up) than #blue
+  if (Decision) is (Send back) than #red
+    [role_appr: Send back] <block_reject>
+    label: Sent back;
+    props: APP_CM01;
+    desc: The version becomes Sent back.;
+    [role_design: Fix and resubmit] <block_apply>
+    label: Resubmit;
+    props: APP_PD06;
+    desc: Fix spec or files and press Request approval again.;
+    [loop]
+  else
+    [role_appr: Approve version] <block_approve>
+    label: Approval;
+    props: APP_CM01;
+    desc: After the steps set up for "Drawing version" in Approval settings it becomes Confirmed.;
+  endif
+elseif (None) than #blue
+  [role_design: Confirm directly] <block_approve>
+  label: Confirmed;
+  props: APP_PD06;
+  desc: With no steps set up, one press of Confirm confirms it.;
+endif
+[role_system: Switch latest] <block_system>
+label: Latest drawing;
+desc: "Latest" of the series moves to this version. Other customers' series are untouched. The product master reads its spec from this version.;
+if (WO drawing) is (Pin) than #purple
+  [role_prod: Pin a version] <block_apply>
+  label: Pin;
+  props: APP_PD02,WO;
+  desc: Only confirmed versions can be chosen. Later revisions do not change what the floor sees, and a pinned version can no longer be edited.;
+elseif (Don't pin) than #purple
+  [role_system: Show the latest] <block_system>
+  label: Automatic;
+  desc: Latest version of the ordering customer's series, otherwise of the generic series. Another customer's series is never used.;
+endif

@@ -1,0 +1,287 @@
+/title/
+Production planning — from checking stock to approving the work order
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_support>
+label: Sales support;
+text-color: #92400e;
+background-color: #fef3c7;
+
+<role_system>
+label: System;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_prod>
+label: Production control;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_purch>
+label: Purchasing;
+text-color: #115e59;
+background-color: #ccfbf1;
+
+<role_admin>
+label: Administrator;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_appr>
+label: Approver;
+text-color: #166534;
+background-color: #f0fdf4;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SA05>
+label: SA05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD05>
+label: PD05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PU01>
+label: PU01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_MS0B>
+label: MS0B;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<OL>
+label: Order line;
+max-chars: 13;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<WO>
+label: Work order;
+max-chars: 13;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+<PR>
+label: Purchase req.;
+max-chars: 13;
+side: right;
+background-color: #f0fdfa;
+border-color: #0d9488;
+text-color: #115e59;
+
+/line/
+
+[role_support: Check stock] <block_apply>
+label: Stock check;
+props: APP_SA05,OL;
+desc: Checks product stock for an order line in "Confirmed". Lines already in production and regrind lines are excluded.;
+[role_system: Reserve stock] <block_system>
+label: Allocate;
+desc: Reserves stock up to the available quantity and shows the rest as a shortage. The shortage is made by a Manufacture work order.;
+[role_prod: Review unplanned] <block_neutral>
+label: Pending;
+props: APP_PD05;
+desc: Lines with an unplanned quantity (ordered − planned) are listed by delivery date. "Create work order" opens the form with that quantity filled in.;
+if (How) is (Copy previous) than #purple
+  [role_prod: Copy previous WO] <block_apply>
+  label: Copy;
+  props: APP_PD02,WO;
+  desc: Pick the target order line; a draft is created with the steps, execution locations and inspection sheets. A warning shows if a newer version exists.;
+elseif (For stock) than #purple
+  [role_prod: Pick product] <block_apply>
+  label: For stock;
+  props: APP_PD02;
+  desc: A standalone work order with no order line. Only Manufacture is allowed; it builds up stock.;
+else
+  [role_prod: Allocate lines] <block_apply>
+  label: Allocation;
+  props: APP_PD02;
+  desc: Pick order lines and quantities. The limit is what is left to allocate (ordered − other work orders).;
+  if (Allocation) is (Part only) than #purple
+    [role_prod: Plan rest later] <block_wait>
+    label: Split;
+    desc: The rest stays under "Not planned" in Pending work orders and is planned by another work order.;
+  elseif (Merged lot) than #purple
+    [role_prod: Merge lines] <block_apply>
+    label: Merge;
+    desc: Other lines of the same product go into one work order (one lot). Not allowed for From stock or Regrind.;
+  elseif (All) than
+  endif
+endif
+if (Type) is (From stock) than #blue
+  [role_prod: Pick steps] <block_apply>
+  label: From stock;
+  props: APP_PD02;
+  desc: No step list; it starts with the stock-issue step. One order line only, planned quantity = allocated quantity.;
+elseif (Manufacture) than #blue
+  [role_prod: Pick material] <block_apply>
+  label: Material;
+  props: APP_PD02;
+  desc: A material matching the product's assumed type × diameter is preselected. A note compares material stock with the planned quantity.;
+  if (Material) is (Enough) than
+  elseif (Short, due) than #orange
+    [role_prod: Check receipt date] <block_wait>
+    label: Awaiting;
+    desc: The shortage and next expected receipt date show in yellow. It is only a warning; you can still save.;
+  elseif (Short, none) than #orange
+    [role_purch: Arrange material] <block_apply>
+    label: Purchasing;
+    props: APP_PU01,PR;
+    desc: "No receipt scheduled" shows in red. Go to purchasing (purchase request → material purchase order). Saving is not blocked.;
+  endif
+  [role_prod: Pick step lists] <block_apply>
+  label: Steps;
+  props: APP_PD02;
+  desc: Combines the preparation step list (shared, always latest version) and the manufacturing step list (product × customer). If none exists it is created here; edits save a new version.;
+elseif (Regrind) than #purple
+  [role_prod: Use regrind list] <block_apply>
+  label: Regrind;
+  props: APP_PD02;
+  desc: Lines with order type Regrind fix the type. The latest regrind step list is used; no material or storage location.;
+endif
+[role_prod: Save draft] <block_apply>
+label: Save;
+props: APP_PD02,WO;
+desc: Set the planned quantity (≥ allocated total), storage location, drawing and "allow short / over delivery", then save. Status Draft; the lines get the lot number.;
+[role_prod: Enter work plan] <block_apply>
+label: Work plan;
+props: APP_PD02;
+desc: For each in-house step, enter the planned date and whatever the process step master requires (work location, assignee, time).;
+[role_prod: Request approval] <block_apply>
+label: Request;
+props: APP_PD02;
+if (Can request) is (Plan missing) than #orange
+  [role_prod: Complete plan] <block_reject>
+  label: Plan gap;
+  desc: "Work plans are incomplete" lists the missing steps; the request cannot be sent.;
+  [loop]
+elseif (No flow) than #orange
+  [role_admin: Set up flow] <block_apply>
+  label: Approval set.;
+  props: APP_MS0B;
+  desc: If the work order approval flow has no steps, the request cannot be sent.;
+  [loop]
+else
+  [role_system: Pick approval flow] <block_system>
+  label: Flow start;
+  desc: Conditional rules (type, planned quantity) decide the steps. Status Pending approval; the order lines are locked.;
+endif
+[role_appr: Approve WO] <block_approve>
+label: Approve;
+props: APP_CM01,APP_PD02;
+desc: Find your turn in the Pending list and approve on the work order screen.;
+if (Decision) is (Next step) than #blue
+  [loop]
+elseif (Send back) than #red
+  [role_prod: Fix and resubmit] <block_reject>
+  label: Sent back;
+  props: APP_PD02;
+  desc: Returns to Draft with the reason and unlocks. Edit and request approval again.;
+  [loop]
+else
+  [role_system: Mark approved] <block_system>
+  label: Approved;
+  desc: Status Approved. The allocated order lines become In production and are unlocked.;
+endif
+if (Type) is (Manufacture) than #blue
+  [role_system: Reserve material] <block_system>
+  label: Mat. reserve;
+  desc: Reserves the material for the planned quantity. The reservation is made even when short and signals the need to order.;
+elseif (Stock / Regrind) than
+endif
+if (Cancel?) is (No) than
+elseif (Cancel) than #red
+  [role_prod: Cancel WO] <block_end>
+  label: Cancelled;
+  props: APP_PD02;
+  desc: Possible in Draft, Pending approval, or Approved with no step started. Reservations are released; lines go back to Confirmed and unplanned.;
+endif
