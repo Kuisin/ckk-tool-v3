@@ -62,6 +62,13 @@ Alpine 版は使えない — Playwright の Chromium は musl で動かない�
 
 ## 手元で確かめる
 
+> ⚠️ **Mac の Docker Desktop でこのイメージをビルドしない。** 中で `next build` が走り、
+> VM の CPU とメモリを使い切って Docker のデーモンごと応答しなくなった（同じ VM に
+> 居る他のコンテナも巻き添えになる）。ビルドは Linux のサーバー（Coolify）に任せ、
+> 手元では下の「Docker を介さずに録る」を使う。
+
+サーバーや十分に大きい Linux で試すなら:
+
 ```bash
 docker build -f coolify/apps/manual-videos/Dockerfile -t ckk-manual-videos:test .
 mkdir -p /tmp/manual-videos
