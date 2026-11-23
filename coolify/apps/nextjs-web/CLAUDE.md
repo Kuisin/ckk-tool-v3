@@ -330,6 +330,21 @@ Screenshots:
 `content/manual/assets/screenshots/<id>.png`, captured/linted by
 `tools/docs-screenshots` (see its README).
 
+**Videos** — a ```` ```video ```` fence whose body is a walkthrough id
+(`process-sales`) becomes `<ManualVideo id>` (`lib/remark-manual-video.ts` →
+`components/docs/ManualVideo.tsx`). **The video is not in the build or the repo**:
+it is recorded on deploy into a host directory that this app mounts read-only
+(`MANUAL_VIDEO_DIR`) and serves at the public `/manual-media/<file>`
+(`lib/manual-videos.ts`; allow-list + `Range` in `lib/manual-videos-core.ts`).
+Because manual pages are SSG, the component decides at view time (it fetches
+`/manual-media/manifest.json`) and **renders nothing when there is no video** —
+so never put a heading or a sentence that only makes sense with the video next
+to the fence. `manual-videos-content.test.ts` ties every fence to the registry in
+`tools/docs-screenshots/walkthroughs/` (a wrong id would otherwise fail silently)
+and requires each video on all three language pages. UI strings for the player
+are keyed by the **docs language (URL)**, not next-intl — the public pages'
+provider is fixed to ja.
+
 **Field help (the "?" next to inputs)** — summaries and manual anchors live in
 ONE place, `lib/field-help.ts` (31 apps / 212 fields); call sites just spread it:
 `<TextInput label={<HelpLabel {...fieldHelp("quote", "deliveryDate")} />} />`.

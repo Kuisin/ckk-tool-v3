@@ -152,6 +152,10 @@ Job Runner:     instrumentation.ts の setInterval（取込ポーラー・通知
 Cache:          なし（React Server Components + Next.js のキャッシュのみ）
 Search Engine:  PGroonga
 Docs:           Markdown + Git管理
+Manual Video:   Playwright の録画（recordVideo → WebM）。追加の依存なし —
+                スクリーンショット撮影と同じ @playwright/test を使う。
+                業務の通し操作のスクリプトが検査（CI）と録画を兼ね、動画は
+                git に入れずデプロイ時に Coolify の manual-videos アプリが録る
 
 # Data Integration
 Accounting:     TKC FX4クラウド（仕訳 CSV export）
