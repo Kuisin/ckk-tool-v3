@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { DesignVersionDetail } from "@/components/production/design-files/DesignVersionDetail";
 import {
-  assertFlowConfigured,
+  approvalNeed,
   fetchApprovalState,
   fetchApprovalTrail,
 } from "@/lib/approvals";
@@ -40,7 +40,7 @@ export default async function ProductionDesignVersionPage({
     data,
     approval,
     approvalTrail,
-    flowError,
+    need,
     manage,
     del,
     auditEntries,
@@ -50,7 +50,7 @@ export default async function ProductionDesignVersionPage({
     fetchDesignVersion(id),
     fetchApprovalState("design_versions", id),
     fetchApprovalTrail("design_versions", id),
-    assertFlowConfigured("design_versions"),
+    approvalNeed("design_versions"),
     checkPermission("design_file", "UPDATE"),
     checkPermission("design_file", "DELETE"),
     fetchAuditEntries("design_versions", id),
@@ -72,7 +72,7 @@ export default async function ProductionDesignVersionPage({
       auditEntries={auditEntries}
       canDelete={del.ok}
       canManage={manage.ok}
-      flowConfigured={flowError == null}
+      flowConfigured={need.kind === "flow"}
       itemDefs={itemDefs}
       memosByFile={memosByFile}
       productLabel={data.productLabel}

@@ -16,7 +16,7 @@ import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import {
   actOnCurrentStep,
-  assertFlowConfigured,
+  approvalNeed,
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
@@ -425,7 +425,9 @@ export async function restoreRevision(
  * 公開する。承認が要る文書は承認フローを起こし、要らない文書は即座に公開版を進める。
  * **未解決コメントがあっても止めない** — 画面側で件数を警告するだけ。
  */
-export async function publishPage(pageNumber: string): Promise<ActionResult> {
+export async function publishPage(
+  pageNumber: string,
+): Promise<ActionResult<{ approvedWithoutFlow: true } | undefined>> {
   const tr = await getTranslations();
   const gate = await requirePageEdit(pageNumber, tr);
   if (!gate.ok) return actionError(gate.error);
@@ -447,9 +449,29 @@ export async function publishPage(pageNumber: string): Promise<ActionResult> {
     return actionError(tr("general.documentActions.bodyIsEmpty"));
 
   try {
-    if (page.approvalRequired) {
-      const missing = await assertFlowConfigured("internal_pages");
-      if (missing) return actionError(missing);
+    const need = page.approvalRequired
+      ? await approvalNeed("internal_pages")
+      : null;
+    if (need?.kind === "blocked") return actionError(need.error);
+    if (need?.kind === "skip") {
+      // 承認設定で OFF — 依頼を作らず、最終承認と同じ状態（その版を公開）へ
+      // 直接進める。公開を頼んだ版 = いまの最新版。依頼の判定後に承認依頼中へ
+      // 動いていたら当てない。
+      const applied = await applyFinalApproval(page.id, latest.revision, {
+        notPending: true,
+      });
+      if (!applied)
+        return actionError(tr("general.documentActions.alreadyPendingPublish"));
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "internal_pages",
+        recordId: pageNumber,
+        after: {
+          note: tr("approvals.policy.skippedNote"),
+          revision: latest.revision,
+        },
+      });
+    } else if (page.approvalRequired) {
       // どの版の公開を頼んだかを依頼行に残す。承認後に公開するのはこの版で、
       // 承認中に本文が進んでいても latest を出さない（actOnPage）。
       const started = await startApprovalFlow({
@@ -497,12 +519,40 @@ export async function publishPage(pageNumber: string): Promise<ActionResult> {
       });
     }
     revalidate(pageNumber);
-    return actionOk();
+    return actionOk({ approvedWithoutFlow: true });
   } catch (e) {
     return actionError(
       prismaErrorMessage(e, tr("general.documentActions.publishFailed"), tr),
     );
   }
+}
+
+/**
+ * 最終承認で文書が行き着く状態（その版を公開）を当てる。承認フローの最終段と、
+ * 承認設定で OFF のときの公開依頼（承認なし）の両方がここを通る。
+ * notPending = 承認なしの経路 — 承認依頼中へ動いていないことを条件に更新し、
+ * 動いていれば false を返す。
+ */
+async function applyFinalApproval(
+  pageId: string,
+  publishedRevision: number | null,
+  opts?: { notPending?: boolean },
+): Promise<boolean> {
+  if (!opts?.notPending) {
+    await prisma.internalPage.update({
+      where: { id: pageId },
+      data: {
+        status: "PUBLISHED",
+        publishedRevision,
+      },
+    });
+    return true;
+  }
+  const res = await prisma.internalPage.updateMany({
+    where: { id: pageId, status: { not: "PENDING" } },
+    data: { status: "PUBLISHED", publishedRevision },
+  });
+  return res.count > 0;
 }
 
 async function actOnPage(
@@ -570,13 +620,7 @@ async function actOnPage(
           select: { revision: true },
         }));
       publishedRevision = target?.revision ?? null;
-      await prisma.internalPage.update({
-        where: { id: page.id },
-        data: {
-          status: "PUBLISHED",
-          publishedRevision,
-        },
-      });
+      await applyFinalApproval(page.id, publishedRevision);
     }
     await recordAudit({
       action: "UPDATE",

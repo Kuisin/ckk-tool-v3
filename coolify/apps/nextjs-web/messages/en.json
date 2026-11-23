@@ -5356,7 +5356,16 @@
       "canApproveScopeLimited": "{total} can approve ({count} scope-limited)",
       "noDocumentPermission": "No permission to view or edit this document: {names}",
       "noPermissionCount": "{count} of {total} have no permission",
-      "scopeIsLimited": "Permission scope is limited (documents outside the scope cannot be approved): {names}"
+      "scopeIsLimited": "Permission scope is limited (documents outside the scope cannot be approved): {names}",
+      "policy": {
+        "label": "Use approval",
+        "onHelp": "Approval requests go through the steps below in order.",
+        "onEmptyHelp": "There are no steps, so approval cannot be requested. Set up steps, or turn approval off.",
+        "offHelp": "Proceeds without approval (pressing request approval approves it immediately). The steps are kept but not used.",
+        "offBadge": "No approval",
+        "notSetYet": "Not set yet (showing the current behaviour)",
+        "saveFailed": "Could not save the approval setting"
+      }
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "This group is not used in any approval flow (assign it to a step under Approval settings).",
@@ -6953,6 +6962,10 @@
       "alreadyProcessed": "This request has already been processed",
       "resultApprovedTitle": "{doc} {targetId} was approved",
       "resultRejectedTitle": "{doc} {targetId} was sent back"
+    },
+    "policy": {
+      "skippedNote": "No approval (turned off in approval settings)",
+      "approvedWithoutFlow": "Approved without an approval flow"
     }
   },
   "auth": {
