@@ -44,8 +44,18 @@ export async function GET(
   const common = {
     "Content-Type": media.contentType,
     "Accept-Ranges": "bytes",
-    // URL には録画時刻の ?v= が付く（ManualVideo.tsx）ので、撮り直せば URL ごと変わる。
-    "Cache-Control": "public, max-age=3600",
+    // **private** — 手前の Cloudflare にキャッシュさせない。public にすると、拡張子
+    // （.webm）で既定のキャッシュ対象になり、Cloudflare は Range を外して全体を
+    // 取りに来る。ところが Next はルートハンドラの応答から Content-Length を必ず
+    // 落として chunked で送る（send-response.js の FORBIDDEN_HEADERS — こちらで
+    // 付けても届かない）ので、Cloudflare は「長さの分からないもの」として持ち、
+    // 範囲を指定しても全体を 200 で返す = **動画のシークが効かない**（手順への
+    // ジャンプが先頭からの再生になる）。公開ホスト名で実際にそうなった。中の
+    // ネットワークから直接叩くと 206 が返るので、手元の確認では気づけない。
+    // private なら Cloudflare は素通しし、Range はそのままここへ届く。
+    // 読者のブラウザには持たせてよい: URL には録画時刻の ?v= が付く
+    // （ManualVideo.tsx）ので、撮り直せば URL ごと変わる。
+    "Cache-Control": "private, max-age=3600",
     ETag: etag,
   };
   if (request.headers.get("if-none-match") === etag) {

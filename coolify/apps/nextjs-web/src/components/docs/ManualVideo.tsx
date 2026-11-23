@@ -58,6 +58,14 @@ const LABELS = {
 /** 字幕トラックの言語名。録画は日本語だけなので、どの言語のページでもこの名前。 */
 const CAPTION_LANGUAGE = "日本語"; // i18n-ignore
 
+/**
+ * 配り方を変えたときに上げる番号。URL に載せて、手前（Cloudflare）に残っている
+ * 古い応答を引かせない。2 = Cache-Control を private にした（public だった頃の
+ * 応答は Cloudflare に長さ不明のまま残り、Range に応えられずシークが効かない。
+ * 理由は app/manual-media の route.ts）。
+ */
+const SERVE_REVISION = 2;
+
 type Loaded = { video: ManualVideoMeta; version: string; recordedOn: string };
 
 /** 同じページに動画が複数あっても manifest は 1 回だけ取る。 */
@@ -100,7 +108,8 @@ export function ManualVideo({ id }: { id: string }) {
 
   if (!loaded) return null;
   const { video, version, recordedOn } = loaded;
-  const src = (ext: string) => `/manual-media/${video.id}.${ext}?v=${version}`;
+  const src = (ext: string) =>
+    `/manual-media/${video.id}.${ext}?v=${version}&s=${SERVE_REVISION}`;
 
   const jump = (sec: number) => {
     const el = ref.current;
