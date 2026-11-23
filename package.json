@@ -5,7 +5,8 @@
   "scripts": {
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "check": "bash tools/ci/local-check.sh"
   },
   "pnpm": {
     "overrides": {

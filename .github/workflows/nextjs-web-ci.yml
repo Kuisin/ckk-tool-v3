@@ -13,18 +13,63 @@
 # E2E: `pages` ジョブが 全画面の読み込み確認（tools/docs-screenshots/page-load.spec.ts）
 # を使い捨て DB + 本番ビルドで回す。単体試験と build が見ない「開いたら落ちる」を
 # ここで止める（撮影用のデモシードもここで全部流れるので、シードの腐りも捕まる）。
+#
+# 費用を抑えるための 2 つの約束（2026-11 — PR 1 本・push 1 回ごとに 9 ジョブ
+# 約 20 分を全部回しており、その 2/3 が `pages` だった）:
+#   1. **下書き PR では回さない。** 「レビュー可能にする」で回りはじめる。
+#   2. **触った場所のジョブだけ回す。** 判定は `changes` ジョブ
+#      （tools/ci/changed-areas.sh — 規則の試験つき）。迷ったら回す側へ倒し、
+#      **main 向け（昇格 PR）とこの CI 自身の変更は常に全部回す**。
+#   branch protection が無いので、飛ばしたジョブが merge を止めることはない。
+#   push 前に同じものを手元で回すのは tools/ci/local-check.sh。
 
 name: nextjs-web CI
 
 on:
   pull_request:
     branches: [dev, main]
+    # ready_for_review — 下書きでは回さないので、「レビュー可能にする」を
+    # 押した時点で初めて回るようにする。
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: nextjs-web-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # どのジョブが要るかを決める（上の「費用を抑える約束」）。下書きでは
+  # このジョブ自体が飛ぶので、`needs: changes` の全ジョブも一緒に飛ぶ。
+  changes:
+    name: 変更範囲の判定
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      web: ${{ steps.areas.outputs.web }}
+      pages: ${{ steps.areas.outputs.pages }}
+      kiosk: ${{ steps.areas.outputs.kiosk }}
+      authz: ${{ steps.areas.outputs.authz }}
+      shared_db: ${{ steps.areas.outputs.shared_db }}
+      python: ${{ steps.areas.outputs.python }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # 規則が壊れたまま「全部飛ばす」CI にならないよう、先に規則の試験を流す。
+      - name: 判定規則の試験
+        run: bash tools/ci/changed-areas.test.sh
+      - name: 判定
+        id: areas
+        run: |
+          bash tools/ci/changed-areas.sh "origin/${{ github.base_ref }}" "${{ github.base_ref }}" | tee -a "$GITHUB_OUTPUT"
+          {
+            echo "### 変更範囲の判定"
+            echo
+            echo '```'
+            bash tools/ci/changed-areas.sh "origin/${{ github.base_ref }}" "${{ github.base_ref }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # マージ済みマイグレーションの改変を止める。
   # マイグレーションは merge した瞬間に自動で当たる（db-migrate-dev/-main）ので、
   # base に載っているものは既に本物の DB に適用済み = 取り消せない。
@@ -32,6 +77,8 @@ jobs:
   # 直した本人ではなく「次に merge した誰か」になる。
   migrations:
     name: shared-db — 適用済みマイグレーションの保護
+    needs: changes
+    if: needs.changes.outputs.shared_db == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -51,6 +98,8 @@ jobs:
   # pg_cron は preload されていないので cron 系 SQL は entrypoint と同様に飛ぶ。
   migrate-deploy:
     name: shared-db — まっさらな DB へ migrate deploy
+    needs: changes
+    if: needs.changes.outputs.shared_db == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -116,6 +165,8 @@ jobs:
   # 「行がある状態」で試される。
   migrate-with-data:
     name: shared-db — base のデータ入り DB へ head の migration を当てる
+    needs: changes
+    if: needs.changes.outputs.shared_db == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -179,6 +230,7 @@ jobs:
   # 監査の赤と、変更そのものの赤を別々に読めるようにする。
   audit:
     name: 依存の脆弱性監査 (prod, high+)
+    needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -208,6 +260,8 @@ jobs:
   # いなかった。Python の版は各 Dockerfile の FROM に合わせる。
   python:
     name: Python サービス — 構文 & 単体試験
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -236,6 +290,8 @@ jobs:
 
   authz-core:
     name: authz-core — lint & test
+    needs: changes
+    if: needs.changes.outputs.authz == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -263,6 +319,8 @@ jobs:
 
   web:
     name: nextjs-web — lint & build (base ${{ github.base_ref }})
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -385,6 +443,8 @@ jobs:
   # 「型も build も通るのに開くと落ちる」変更を、merge の前に止めるためのもの。
   pages:
     name: nextjs-web — 全画面の読み込み確認 (Playwright)
+    needs: changes
+    if: needs.changes.outputs.pages == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -423,6 +483,8 @@ jobs:
 
   kiosk:
     name: nextjs-kiosk — lint & build (base ${{ github.base_ref }})
+    needs: changes
+    if: needs.changes.outputs.kiosk == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
