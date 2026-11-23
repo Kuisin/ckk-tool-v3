@@ -3587,7 +3587,15 @@
       "filesCount": "{count} 件",
       "removeFile": "{name} を取り消す",
       "enterAUnit": "単位を入力してください",
-      "registrationFailed": "素材入荷の登録に失敗しました"
+      "registrationFailed": "素材入荷の登録に失敗しました",
+      "openPo": {
+        "title": "この素材は発注済みで、まだ届いていない分があります",
+        "body": "発注書で注文した素材が届いたときは、素材発注書の「分割入荷」（または「入荷完了」）で記録してください。ここで登録すると発注書の残数量が減らず、あとで「入荷完了」を押したときに同じ素材がもう一度在庫に入ります。",
+        "line": "{po}: 残り {remaining} {unit}",
+        "open": "発注書を開く",
+        "acknowledge": "発注書とは別の購入として登録する",
+        "blocked": "発注済みで未入荷の発注書があります（{list}）。発注した分は素材発注書の「分割入荷」で記録してください。別の購入として登録するときは、確認にチェックしてから保存してください。"
+      }
     },
     "outsourceOrders": {
       "editOutsourceOrder": "外注依頼 編集",
@@ -3628,7 +3636,7 @@
       "receiptNote": "{quantity} {unit}・{date}",
       "confirmCancelBody": "素材発注書 {number} をキャンセルします。この操作は取り消せません。",
       "confirmOrderBody": "素材発注書 {number} を発注済にします。明細は素材在庫の入荷予定（ATP）に反映されます。",
-      "confirmCompleteBody": "明細 {count} 件を全量入荷として素材入荷を登録し、入荷先拠点の素材在庫へ入庫します。分納（部分入荷）が必要な場合は素材入荷 (PU03) から直接登録してください。",
+      "confirmCompleteBody": "明細 {count} 件の残り全量を入荷として素材入荷を登録し、入荷先拠点の素材在庫へ入庫します。一部だけ届いたときは「分割入荷」で記録してください（素材入荷 (PU03) で登録すると発注書の残りが減らず、二重に入庫します）。",
       "receiveActionsDescription": "入荷完了は残数量をまとめて入荷します。一部だけ届いたときは分割入荷、残りが届かないときは未入荷のまま完了にしてください。",
       "partialReceipt": "分割入荷",
       "confirmPartialReceipt": "分割入荷の登録",

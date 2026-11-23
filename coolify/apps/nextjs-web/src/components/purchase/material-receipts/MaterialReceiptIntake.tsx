@@ -39,6 +39,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useRef, useState, useTransition } from "react";
 import { createReceiptsFromDelivery } from "@/app/(dashboard)/purchase/material-receipts/intake/actions";
+import { OpenPoWarning } from "@/components/purchase/material-receipts/OpenPoWarning";
 import {
   CancelButton,
   PrimaryButton,
@@ -120,6 +121,9 @@ export function MaterialReceiptIntake({
 
   const selected = lines.filter((l) => l.include);
   const blocked = selected.filter((l) => !l.itemId);
+  // 同じ素材の「発注済み・未入荷あり」があるときの確認（1 件登録と同じ）。
+  const [openPoConflict, setOpenPoConflict] = useState(false);
+  const [acknowledgeOpenPo, setAcknowledgeOpenPo] = useState(false);
 
   const submit = () => {
     if (!draft) return;
@@ -141,8 +145,17 @@ export function MaterialReceiptIntake({
       });
       return;
     }
+    if (openPoConflict && !acknowledgeOpenPo) {
+      notifications.show({
+        title: tr("purchase.materialReceipts.openPo.title"),
+        message: tr("purchase.materialReceipts.openPo.acknowledge"),
+        color: "orange",
+      });
+      return;
+    }
     startTransition(async () => {
       const result = await createReceiptsFromDelivery({
+        acknowledgeOpenPo,
         supplierBpId,
         extractedSupplierName: draft.supplierName,
         draftSupplierBpId: draft.supplierBpId,
@@ -293,6 +306,15 @@ export function MaterialReceiptIntake({
           )}
 
           <Divider my="md" />
+
+          <OpenPoWarning
+            acknowledged={acknowledgeOpenPo}
+            candidates={selected
+              .filter((l) => l.itemId)
+              .map((l) => ({ itemId: l.itemId as string, supplierBpId }))}
+            onAcknowledgedChange={setAcknowledgeOpenPo}
+            onConflictsChange={setOpenPoConflict}
+          />
 
           {lines.length === 0 ? (
             <Alert

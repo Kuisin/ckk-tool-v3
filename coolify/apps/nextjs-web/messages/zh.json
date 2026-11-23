@@ -3587,7 +3587,15 @@
       "filesCount": "{count} 件",
       "removeFile": "取消 {name}",
       "enterAUnit": "请输入单位",
-      "registrationFailed": "材料到货登记失败"
+      "registrationFailed": "材料到货登记失败",
+      "openPo": {
+        "title": "该材料已下单，尚有未到货的部分",
+        "body": "采购单订购的材料到货时，请在材料采购单上用「分割入荷」（分批到货）或「入荷完了」（到货完成）登记。在此登记不会减少采购单的剩余数量，之后按下「入荷完了」时同一材料会再次入库。",
+        "line": "{po}：剩余 {remaining} {unit}",
+        "open": "打开采购单",
+        "acknowledge": "作为与采购单不同的另一笔采购登记",
+        "blocked": "存在已下单但未全部到货的采购单（{list}）。订购的材料请在材料采购单上用「分割入荷」登记。如要作为另一笔采购登记，请勾选确认后再保存。"
+      }
     },
     "outsourceOrders": {
       "editOutsourceOrder": "编辑外协委托单",
@@ -3628,7 +3636,7 @@
       "receiptNote": "{quantity} {unit}・{date}",
       "confirmCancelBody": "将取消材料采购单 {number}。此操作无法撤销。",
       "confirmOrderBody": "将材料采购单 {number} 标记为已下单。明细将反映到材料库存的预计到货（ATP）中。",
-      "confirmCompleteBody": "将 {count} 条明细登记为全部到货的材料入库，并计入到货据点的材料库存。如需分批到货，请直接在材料到货（PU03）中登记。",
+      "confirmCompleteBody": "将 {count} 条明细的剩余数量全部登记为到货，并计入到货据点的材料库存。只到了一部分时，请用「分割入荷」（分批到货）登记——在材料到货（PU03）中登记不会减少本采购单的剩余数量，会造成重复入库。",
       "receiveActionsDescription": "到货完成将一次性接收剩余数量。仅部分到货时使用分批到货；剩余不会到货时选择未到货直接完成。",
       "partialReceipt": "分批到货",
       "confirmPartialReceipt": "登记分批到货",

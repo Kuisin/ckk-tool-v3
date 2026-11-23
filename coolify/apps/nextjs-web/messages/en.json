@@ -3587,7 +3587,15 @@
       "filesCount": "{count}",
       "removeFile": "Remove {name}",
       "enterAUnit": "Enter a unit",
-      "registrationFailed": "Could not register the material receipt"
+      "registrationFailed": "Could not register the material receipt",
+      "openPo": {
+        "title": "This material has been ordered and part of it has not arrived yet",
+        "body": "When material ordered on a purchase order arrives, record it with 「分割入荷」 (partial receipt) or 「入荷完了」 (receiving complete) on the material purchase order. Registering it here does not reduce the purchase order's remaining quantity, so pressing 「入荷完了」 later puts the same material into stock a second time.",
+        "line": "{po}: {remaining} {unit} remaining",
+        "open": "Open the purchase order",
+        "acknowledge": "Register as a purchase separate from the purchase order",
+        "blocked": "There are ordered purchase orders not yet fully received ({list}). Record ordered material with 「分割入荷」 on the material purchase order. To register it as a separate purchase, tick the confirmation and save again."
+      }
     },
     "outsourceOrders": {
       "editOutsourceOrder": "Edit outsource order",
@@ -3628,7 +3636,7 @@
       "receiptNote": "{quantity} {unit} · {date}",
       "confirmCancelBody": "This cancels material purchase order {number}. This cannot be undone.",
       "confirmOrderBody": "This marks material purchase order {number} as ordered. The lines will be reflected in expected material stock (ATP).",
-      "confirmCompleteBody": "Registers all {count} lines as fully received material receipts and adds them to material stock at the receiving site. For partial receipts, register directly from Material receipt (PU03).",
+      "confirmCompleteBody": "Registers the remaining quantity of all {count} lines as received and adds them to material stock at the receiving site. If only part has arrived, use 「分割入荷」 (partial receipt) instead — registering in Material receipt (PU03) does not reduce this order's remaining quantity and puts the material into stock twice.",
       "receiveActionsDescription": "Marking the receipt complete receives the whole remaining quantity. Use partial receipt when only part arrived, or close without receiving when the rest will not come.",
       "partialReceipt": "Partial receipt",
       "confirmPartialReceipt": "Record a partial receipt",

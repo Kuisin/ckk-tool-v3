@@ -18,6 +18,8 @@ import { prisma } from "@/lib/db";
 import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
 import { allocateDocumentKey } from "@/lib/numbering";
+import { findOpenPoConflicts, openPoErrorMessage } from "@/lib/open-po-guard";
+import type { OpenPoLine } from "@/lib/open-po-guard-core";
 import {
   type ActionResult,
   actionError,
@@ -41,12 +43,33 @@ function receiptInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
       .string()
       .min(1, tr("purchase.materialReceipts.enterAReceivedDate")),
     notes: z.string(),
+    /**
+     * 「発注済み・未入荷あり」の同じ素材があっても、別の購入として登録すると
+     * 利用者が確かめたか（lib/open-po-guard-core.ts）。
+     */
+    acknowledgeOpenPo: z.boolean().optional().default(false),
   });
 }
 
-export type MaterialReceiptInput = z.infer<
+export type MaterialReceiptInput = z.input<
   ReturnType<typeof receiptInputSchema>
 >;
+
+/** 画面が確認を出すための照会: 同じ素材の「発注済み・未入荷あり」の発注書。 */
+export async function checkOpenPurchaseOrders(
+  candidates: { itemId: string; supplierBpId: string | null }[],
+): Promise<ActionResult<OpenPoLine[]>> {
+  const authz = await checkPermission("material_receipt", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
+  return actionOk(
+    await findOpenPoConflicts(
+      candidates.map((c) => ({
+        itemId: Number(c.itemId),
+        supplierBpId: c.supplierBpId,
+      })),
+    ),
+  );
+}
 
 /** 直接調達の入荷登録 — 作成 + 在庫入庫 + 監査。 */
 export async function createMaterialReceipt(
@@ -63,6 +86,16 @@ export async function createMaterialReceipt(
   }
   const v = parsed.data;
   const plantId = v.plantId ? Number(v.plantId) : null;
+  // 発注した素材を直接調達として入れると、あとで発注書の「入荷完了」で
+  // 二重に入庫する。確認なしでは保存しない（画面も同じ確認を出す）。
+  if (!v.acknowledgeOpenPo) {
+    const conflicts = await findOpenPoConflicts([
+      { itemId: Number(v.itemId), supplierBpId: v.supplierBpId },
+    ]);
+    if (conflicts.length > 0) {
+      return actionError(openPoErrorMessage(conflicts, tr));
+    }
+  }
   // 入荷先拠点は自分の拠点集合の中（読み取り側 data.ts と同じ PLANT ∪ OWN 規則）。
   if (!targetPlantsInScope(authz.access, authz.userId, [plantId])) {
     return actionError(tr("common.scopeDenied"));
