@@ -17,10 +17,19 @@
  *      images.remotePatterns の許可が必要で、standalone 実行時に許可が効かず
  *      400（"url" parameter is not allowed）になった。外部 URL は素の <img>
  *      を渡し、最適化を経由しない（ZoomableImage の isExternal）。
+ *
+ * `Mermaid` — 本文の ```mermaid フェンス（source.config.ts の remarkMdxMermaid が
+ * `<Mermaid chart="…" />` に置き換える）を図にする。components/docs/Mermaid.tsx。
+ *
+ * `ManualVideo` — 本文の ```video フェンス（remarkManualVideo が
+ * `<ManualVideo id="…" />` に置き換える）を動画プレーヤーにする。動画が無い環境では
+ * 何も描かない。components/docs/ManualVideo.tsx。
  */
 
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { ImgHTMLAttributes } from "react";
+import { ManualVideo } from "./ManualVideo";
+import { Mermaid } from "./Mermaid";
 import { ZoomableImage } from "./ZoomableImage";
 
 function DocsImage(props: ImgHTMLAttributes<HTMLImageElement>) {
@@ -32,4 +41,6 @@ function DocsImage(props: ImgHTMLAttributes<HTMLImageElement>) {
 export const docsMdxComponents = {
   ...defaultMdxComponents,
   img: DocsImage,
+  Mermaid,
+  ManualVideo,
 };

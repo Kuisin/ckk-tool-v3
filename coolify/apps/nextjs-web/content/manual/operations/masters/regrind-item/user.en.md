@@ -1,6 +1,7 @@
 ---
 title: "Regrind items — user guide"
 description: "Where regrinding itself is registered as an item, so the price has somewhere to live."
+screenshots: [master-regrind-item-list-01]
 ---
 This app registers **the regrinding itself** as an item, and the price is put on it. Its operation code is `MS0H`.
 
@@ -47,6 +48,19 @@ The tool is not something you sell, so it has no price and no [price list](/manu
 
 Leave the standard price empty and the list shows 「**価格表のみ**」 (price list only). That means the item is sold **only to customers who have a price list**.
 
+How the unit price is decided, as a diagram:
+
+```mermaid
+flowchart TD
+  q1{"Does a price list apply<br/>to that customer?"}
+  q1 -->|"Yes"| q2{"Does it have a tier<br/>for that quantity?"}
+  q1 -->|"No<br/>(none exists, disabled,<br/>or outside its valid period)"| q3{"Is a standard price<br/>entered?"}
+  q2 -->|"Yes"| r1["Unit price from<br/>the price list"]
+  q2 -->|"No"| r2["No unit price<br/>(no fallback to the standard price)"]
+  q3 -->|"Entered"| r3["Standard price"]
+  q3 -->|"Empty"| r4["No unit price<br/>(price list only)"]
+```
+
 ## Registering one
 
 1. Press 「**新規作成**」 (New) at the top right.
@@ -65,9 +79,13 @@ Leave the standard price empty and the list shows 「**価格表のみ**」 (pri
 
 The list shows **code / name / tool class / ground area / flutes / size band / standard price / status**. You choose a row by its **conditions and its price**, not by its name, so the condition columns are shown as they are.
 
+![Regrind item list screen](../../../assets/screenshots/master-regrind-item-list-01.png)
+
+It reads the same way the old FileMaker 再研マスタ did — one row per combination of conditions, each row carrying one price.
+
 The filters at the top are tool class, ground area and status. Their options are built from **the values actually registered**. The search box covers code, name, tool class and ground area.
 
-> 💡 **There is no detail page for this screen.** Clicking a row opens the edit dialog directly (the same build as the charge items master).
+> 💡 **There is no detail page for this screen.** Clicking a row opens the edit dialog directly (the same build as the [charge items master](/manual/en/operations/masters/charge-item/user)).
 
 ## Changing a price
 

@@ -68,6 +68,18 @@ screenshots: [settings-apps-01, settings-apps-filter-01, settings-apps-switch-01
 
 まだ本番に出していないアプリは、練習用の画面ではオレンジ色の「**DEV**」という印が付いて表示されます。「これはまだ本番では使えないアプリです」という目印です。
 
+アプリが画面に出るかどうかを図にすると次のとおりです。
+
+```mermaid
+flowchart TD
+  env{"どちらの画面か"} -->|"dev（検証）"| d{"スイッチを<br/>切った"}
+  env -->|"main（本番）"| m{"スイッチを<br/>入れた"}
+  d -->|"いいえ"| show["アプリが出る"]
+  d -->|"はい"| hide["アプリは出ない"]
+  m -->|"はい"| show
+  m -->|"いいえ"| hide
+```
+
 ## スイッチを切るとどうなるか
 
 ![アプリの一覧（ランチャー）](../../../assets/screenshots/launcher-01.png)

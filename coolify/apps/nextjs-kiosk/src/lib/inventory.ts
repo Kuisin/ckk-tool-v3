@@ -454,6 +454,13 @@ export interface OutsourceMoveArgs {
 /**
  * 預り品（所有者付き）の手元バケットの残を返す。`take` は残で頭打ち
  * （移動なので、無い物は動かせない — 多めに入力されたら警告に留める）。
+ *
+ * **拠点で絞らない。** 預り品を載せた拠点（製品受入 工程の拠点）と、外注へ
+ * 出す工程が名乗る拠点は一致しない — 外注工程は拠点を持たない（workflow.ts）
+ * ので、拠点一致で引くと残 0 の空バケットを作って「手元に無い」と判断し、
+ * 外注出しが一度も台帳に載らなかった。同じ所有者・同じロットの手元バケットは
+ * 実質 1 つなので、残のある行を取る（複数あれば呼び出し側の拠点 → 残の多い順）。
+ * 無ければ従来どおり呼び出し側の拠点に空バケットを作る（残 0 を返す）。
  */
 async function ownerBucketHeld(
   tx: Tx,
@@ -464,21 +471,27 @@ async function ownerBucketHeld(
     ownerBpId: string;
   },
 ): Promise<{ id: string; held: number }> {
+  const owned = await tx.itemInventory.findMany({
+    where: {
+      itemId: args.itemId,
+      lotNumber: args.lotNumber,
+      ownerBpId: args.ownerBpId,
+      custodyBpId: null,
+      quantity: { gt: 0 },
+    },
+    select: { id: true, quantity: true, plantId: true },
+    orderBy: { quantity: "desc" },
+  });
+  const pick =
+    owned.find((b) => b.plantId === args.plantId) ?? owned[0] ?? null;
+  if (pick) return { id: pick.id, held: Number(pick.quantity) };
   const id = await ensureItemInventory(tx, {
     itemId: args.itemId,
     plantId: args.plantId,
     lotNumber: args.lotNumber,
     ownerBpId: args.ownerBpId,
   });
-  const held = Number(
-    (
-      await tx.itemInventory.findUnique({
-        where: { id },
-        select: { quantity: true },
-      })
-    )?.quantity ?? 0,
-  );
-  return { id, held };
+  return { id, held: 0 };
 }
 
 /**
@@ -1345,6 +1358,11 @@ async function planDispatchLines(
   },
 ): Promise<DispatchPlanLine[]> {
   const plans: DispatchPlanLine[] = [];
+  // 同じ出荷書の前の行がすでに取った分（バケット id → 本数）。同じ品の行が
+  // 2 本あると、どちらも同じスナップショットを見て同じ 10 本を取る計画になり、
+  // 確認では不足なしと言いながら出荷時の OUT で 2 本目が止まる。計画の段階で
+  // 先の行の取り分を引いておく — 確認と出荷が同じ答えを出すのはこれが前提。
+  const taken = new Map<string, number>();
   for (const item of so.items) {
     // 再研磨の明細は顧客の預り品を返す出荷 — 引く先は所有者バケット。
     // それ以外は自社在庫（ownerBpId: null）。判定は lib/inventory-owner-core.ts。
@@ -1389,7 +1407,7 @@ async function planDispatchLines(
       })
     ).map((r) => ({
       id: r.id,
-      quantity: Number(r.quantity),
+      quantity: Number(r.quantity) - (taken.get(r.id) ?? 0),
       reservedQuantity: Number(r.reservedQuantity),
     }));
 
@@ -1418,6 +1436,9 @@ async function planDispatchLines(
       item.quantity,
       ownReserved,
     );
+    for (const st of steps) {
+      taken.set(st.bucketId, (taken.get(st.bucketId) ?? 0) + st.take);
+    }
     plans.push({ item, ownerBpId, buckets, steps, shortfall });
   }
   return plans;

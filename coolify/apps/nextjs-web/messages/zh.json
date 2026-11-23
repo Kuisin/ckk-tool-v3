@@ -1675,7 +1675,7 @@
   "permission": {
     "ACTION_LABEL": {
       "READ": "查看",
-      "CREATE": "创建",
+      "CREATE": "新建",
       "UPDATE": "更新",
       "DELETE": "删除",
       "EXPORT": "导出",
@@ -1704,8 +1704,8 @@
         "summary": "登记、编辑和删除图纸版本。几乎所有业务角色都可查看。"
       },
       "purchase_order": {
-        "label": "材料订购・采购申请",
-        "summary": "处理采购申请与材料订购单。"
+        "label": "材料采购・采购申请",
+        "summary": "处理采购申请与材料采购单。"
       },
       "material_receipt": {
         "label": "材料到货",
@@ -1753,7 +1753,7 @@
       },
       "master": {
         "label": "主数据管理",
-        "summary": "处理主数据：客户、产品、材种、材料、工序、检验表、审批设置、基地等。"
+        "summary": "处理主数据：业务伙伴、产品、材料类别、材料、工序、检查表、审批设置、据点等。"
       },
       "admin_manual": {
         "label": "管理手册",
@@ -1761,11 +1761,11 @@
       },
       "system": {
         "label": "系统管理",
-        "summary": "更改系统侧设置：应用管理、价格试算计算、链接管理、订单导入、AI 提供方、通知邮件。"
+        "summary": "更改系统侧设置：应用管理、价格试算计算、链接管理、订单导入、AI 服务商、通知邮件。"
       },
       "kiosk": {
         "label": "共用终端管理",
-        "summary": "查看共享终端并修改名称与位置。**查看机密、注册或注销终端属于另外的权限**（见特权操作）。"
+        "summary": "查看共用终端并修改名称与位置。**查看机密、注册或注销终端属于另外的权限**（见特权操作）。"
       },
       "kiosk_secret": {
         "label": "共用终端机密",
@@ -1781,11 +1781,11 @@
       },
       "personal_data": {
         "label": "个人数据查看",
-        "summary": "打开登录历史与操作历史。明细（IP、终端签名）与跨单据检索需要批准。各单据的历史页签不受此限制。"
+        "summary": "打开登录历史与操作历史。明细（IP、终端指纹）与跨单据检索需要批准。各单据的历史页签不受此限制。"
       },
       "user_admin": {
         "label": "用户・权限变更",
-        "summary": "打开用户管理。停用、恢复与变更所属基地需逐项提交变更申请并获批准。"
+        "summary": "打开用户管理。停用、恢复与变更所属据点需逐项提交变更申请并获批准。"
       },
       "portal_admin": {
         "label": "客户门户管理",
@@ -1808,7 +1808,7 @@
     },
     "PERMISSION_GROUP_SUMMARY": {
       "business": "日常工作使用的权限，按所处理的单据划分——报价单、订单确认书、工单、出货单。大多数人只持有这一类。",
-      "master": "整理全员共用的「基础数据」的权限。修改客户或产品会影响此后创建的所有单据，因此通常只由少数人持有。",
+      "master": "整理全员共用的「基础数据」的权限。修改业务伙伴或产品会影响此后创建的所有单据，因此通常只由少数人持有。",
       "admin": "更改系统本身设置的权限，涉及画面行为与外部对接等机制层面，而非业务数据。",
       "privileged": "仅持有还不能执行的权限。终端 PIN、卡片发放、个人数据查看等影响大且难以回退的操作属于此类。每次使用都需申请，并只在他人批准的时间段内执行。"
     },
@@ -1816,7 +1816,7 @@
       "ALL": "全公司",
       "REGION": "地区",
       "COUNTRY": "国家",
-      "PLANT": "基地",
+      "PLANT": "据点",
       "DEPARTMENT": "部门",
       "TEAM": "团队",
       "SUB": "下属",
@@ -1848,7 +1848,7 @@
         },
         "reveal_settings_code": {
           "label": "查看终端设置码",
-          "description": "显示解锁该终端设置画面（左上连点 5 次）的代码。"
+          "description": "显示解锁该终端设置画面（左下连点 5 次）的代码。"
         },
         "regenerate_settings_code": {
           "label": "重新生成终端设置码",
@@ -1963,6 +1963,10 @@
         "activate": {
           "label": "启用 API 客户端",
           "description": "将新建后尚不能通行的客户端，变为可实际读取业务数据的状态"
+        },
+        "webhook_manage": {
+          "label": "管理出站 Webhook",
+          "description": "创建或扩大向外部发送业务数据变化的通道。包括添加接收地址、更改 URL、重新签发签名密钥和启用"
         }
       }
     },
@@ -3598,7 +3602,15 @@
       "filesCount": "{count} 件",
       "removeFile": "取消 {name}",
       "enterAUnit": "请输入单位",
-      "registrationFailed": "材料到货登记失败"
+      "registrationFailed": "材料到货登记失败",
+      "openPo": {
+        "title": "该材料已下单，尚有未到货的部分",
+        "body": "采购单订购的材料到货时，请在材料采购单上用「分割入荷」（分批到货）或「入荷完了」（到货完成）登记。在此登记不会减少采购单的剩余数量，之后按下「入荷完了」时同一材料会再次入库。",
+        "line": "{po}：剩余 {remaining} {unit}",
+        "open": "打开采购单",
+        "acknowledge": "作为与采购单不同的另一笔采购登记",
+        "blocked": "存在已下单但未全部到货的采购单（{list}）。订购的材料请在材料采购单上用「分割入荷」登记。如要作为另一笔采购登记，请勾选确认后再保存。"
+      }
     },
     "outsourceOrders": {
       "editOutsourceOrder": "编辑外协委托单",
@@ -3639,7 +3651,7 @@
       "receiptNote": "{quantity} {unit}・{date}",
       "confirmCancelBody": "将取消材料采购单 {number}。此操作无法撤销。",
       "confirmOrderBody": "将材料采购单 {number} 标记为已下单。明细将反映到材料库存的预计到货（ATP）中。",
-      "confirmCompleteBody": "将 {count} 条明细登记为全部到货的材料入库，并计入到货据点的材料库存。如需分批到货，请直接在材料到货（PU03）中登记。",
+      "confirmCompleteBody": "将 {count} 条明细的剩余数量全部登记为到货，并计入到货据点的材料库存。只到了一部分时，请用「分割入荷」（分批到货）登记——在材料到货（PU03）中登记不会减少本采购单的剩余数量，会造成重复入库。",
       "receiveActionsDescription": "到货完成将一次性接收剩余数量。仅部分到货时使用分批到货；剩余不会到货时选择未到货直接完成。",
       "partialReceipt": "分批到货",
       "confirmPartialReceipt": "登记分批到货",
@@ -5359,7 +5371,16 @@
       "canApproveScopeLimited": "{total} 人可审批（其中 {count} 人权限范围受限）",
       "noDocumentPermission": "没有查看或编辑此单据的权限：{names}",
       "noPermissionCount": "{total} 人中 {count} 人无权限",
-      "scopeIsLimited": "权限范围受限（范围外的单据无法审批）：{names}"
+      "scopeIsLimited": "权限范围受限（范围外的单据无法审批）：{names}",
+      "policy": {
+        "label": "使用审批",
+        "onHelp": "审批申请将按以下各级依次进行。",
+        "onEmptyHelp": "没有任何审批级别，无法申请审批。请设置级别，或设为不使用审批。",
+        "offHelp": "无需审批即可继续（申请审批时会立即变为已批准）。级别会保留但不使用。",
+        "offBadge": "无需审批",
+        "notSetYet": "尚未设置（显示当前的行为）",
+        "saveFailed": "无法保存审批使用设置"
+      }
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "此分组未用于任何审批流程（请在审批设置的「审批流程」中分配到级别）。",
@@ -5907,7 +5928,10 @@
       "workOrderTypesHelp": "该工序可以放入的工单类别。请至少选择一个。",
       "workOrderTypesPinnedHelp": "该工序是「{type}」的起始工序，无法更改类别。库存消耗与客户寄存品的记账都依赖于此。",
       "workOrderTypesPinnedBadge": "起始工序，无法更改",
-      "pickAtLeastOneWorkOrderType": "请至少选择一个可用的工单类别"
+      "pickAtLeastOneWorkOrderType": "请至少选择一个可用的工单类别",
+      "routeKindRegrind": "再研磨",
+      "routeKindRegrindHelp": "再研磨类别的工序只属于公共的再研磨工序清单（不属于制造工序清单）。",
+      "routeKindAlsoRegrind": "「使える指示書種別」（可用的工单类别）包含再研磨时，也可以放入再研磨工序清单。"
     },
     "products": {
       "specification": "规格",
@@ -6967,6 +6991,10 @@
       "alreadyProcessed": "此申请已处理",
       "resultApprovedTitle": "{doc} {targetId} 已获批准",
       "resultRejectedTitle": "{doc} {targetId} 已被退回"
+    },
+    "policy": {
+      "skippedNote": "无需审批（审批设置中已关闭）",
+      "approvedWithoutFlow": "已无需审批直接批准"
     }
   },
   "auth": {
@@ -8081,7 +8109,23 @@
     "issueQuoteModal": {
       "confirmIssueMessage": "将发行报价单“{number}”。发行的同时会生成并保存 PDF，可在详情页的 PDF 标签中查看。",
       "issuedAndSaved": "已发行报价单 {number} 并保存 PDF",
-      "issuedAndSavedWithMail": "已发行报价单 {number} 并保存 PDF（已预约邮件发送）"
+      "sendTo": "发送对象：{name}（{email}）",
+      "noRecipient": "客户（含分公司与联系人）未登记邮件地址，无法通过邮件发送。",
+      "mailerNotConfigured": "本环境未设置邮件发送通道，无法通过邮件发送。",
+      "mailSent": "已将报价单发送至 {email}",
+      "mailFailed": "报价单已发行，但邮件未能发送",
+      "reason": {
+        "notFound": "找不到报价单。",
+        "noRecipient": "没有发送对象的邮件地址。",
+        "mailerNotConfigured": "未设置邮件发送通道。",
+        "notIssued": "只能发送已发行的报价单。",
+        "sendFailed": "发送失败。请稍后通过“邮件发送”重新发送。",
+        "portalDisabled": "本环境未启用客户门户，无法通过邮件发送（报价单以链接形式发送）。",
+        "linkFailed": "无法生成报价单链接。"
+      },
+      "resend": "邮件发送",
+      "resendConfirm": "将报价单 {number} 的链接（需身份验证）发送至 {email}。",
+      "mailSentTitle": "已发送"
     },
     "materialPriceChart": {
       "referencePriceAmount": "参考价格 {amount}",
@@ -8399,6 +8443,17 @@
       "materialHasNoPriceList": "材料无法创建价格表",
       "regrindItemOnlyRegrindVariant": "再研磨品目只能拥有订单类别「再研磨」",
       "productHasNoRegrindVariant": "产品无法创建订单类别「再研磨」的价格。再研磨的价格由再研磨品目持有"
+    },
+    "quoteMail": {
+      "subject": "报价单 {number}",
+      "salutationCompany": "{company}：",
+      "salutationPerson": "{company}\n{person} 您好：",
+      "body": "感谢您一直以来的关照。\n现发送报价单 {number}，请通过以下链接查阅（可下载 PDF）。",
+      "validUntil": "有效期限：{date}",
+      "closing": "如有任何疑问，请随时与我们联系。\n今后也请多多关照。",
+      "contact": "负责人：{name}",
+      "contactWithEmail": "负责人：{name}（{email}）",
+      "linkNote": "打开链接后，我们会向本邮件地址发送验证码。链接有效期至：{date}"
     }
   },
   "shipping": {
@@ -9296,7 +9351,8 @@
       "stock_take_lines": "盘点明细",
       "item_inventory": "库存",
       "movement_types": "移动类型",
-      "items": "品目"
+      "items": "品目",
+      "webhook_endpoints": "Webhook 接收地址"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -10666,7 +10722,43 @@
     "tooManyActiveTokens": "最多只能有两个有效令牌，请先撤销其中一个。",
     "clientNotFound": "未找到该客户端",
     "featureDisabled": "此环境中外部 API 已停用",
-    "invalidNameChars": "名称包含不允许使用的字符"
+    "invalidNameChars": "名称包含不允许使用的字符",
+    "webhooksTitle": "出站 Webhook",
+    "webhooksIntro": "业务数据发生变化时，向 n8n 等外部系统发送“发生了什么”的信号。不发送具体数值，由接收方通过 API 重新获取。",
+    "webhookCreateTitle": "添加 Webhook 接收地址",
+    "webhookCreateHint": "仅发送所选 API 客户端有权读取的资源的事件。移除其权限后，无需删除接收地址即可停止发送。",
+    "webhookUrl": "接收地址 URL",
+    "webhookUrlHelp": "https，或内部主机（Docker 服务名、私有 IP、.loc）的 http。URL 中常含密钥，因此列表中隐藏其路径。",
+    "webhookEvents": "事件",
+    "webhookEvent": "事件",
+    "webhookAllEvents": "全部事件",
+    "webhookEventCount": "{count} 种",
+    "webhookClient": "API 客户端",
+    "webhookClientHelp": "仅发送此客户端有权读取的资源的事件。",
+    "webhookLastDelivered": "最近发送",
+    "webhookPending": "待发送 {count}",
+    "webhookFailed": "失败 {count}",
+    "webhookEmpty": "尚无接收地址。",
+    "webhookTest": "测试发送",
+    "webhookTestOk": "已送达（HTTP {status}）",
+    "webhookTestFailed": "未送达：{error}",
+    "webhookDeliveries": "发送记录",
+    "webhookDeliveriesEmpty": "尚无发送记录。",
+    "webhookAttempts": "尝试次数",
+    "webhookResult": "结果",
+    "webhookNextAttempt": "下次尝试：{at}",
+    "webhookRedeliver": "重发",
+    "webhookRotate": "重新签发签名密钥",
+    "webhookRotateConfirm": "当前签名密钥将立即失效。在接收方更换新密钥之前，签名验证无法通过。",
+    "webhookSecretTitle": "签名密钥",
+    "webhookDeleteConfirm": "将删除此接收地址及其发送记录。",
+    "webhookInvalidUrl": "接收地址 URL 不可用：{detail}",
+    "webhookInvalidEvents": "请至少选择一个事件。",
+    "webhookNoKey": "未设置用于保存签名密钥的加密密钥（{env}）。",
+    "webhookDuplicateName": "该 API 客户端下已有同名接收地址。",
+    "webhookNotFound": "未找到接收地址。",
+    "webhookSecretUnavailable": "无法打开签名密钥。请重新签发签名密钥。",
+    "webhookNotRedeliverable": "只能重发失败的发送记录。"
   },
   "charges": {
     "title": "附加费用",

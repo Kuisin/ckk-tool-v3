@@ -31,12 +31,25 @@ A permission answers "**who** (role) may do **what** (action) to **which area**
 When several roles grant the same code, the **widest scope wins** (PLANT + ALL
 = ALL).
 
+How roles turn into effective permissions, as a diagram:
+
+```mermaid
+flowchart TD
+  u["User"] --> r1["Role A"]
+  u --> r2["Role B"]
+  r1 --> g1["Permission code × action<br/>scope PLANT"]
+  r2 --> g2["Same code × action<br/>scope ALL"]
+  g1 --> m["Union of all<br/>the roles' permissions"]
+  g2 --> m
+  m --> e["The user's permissions<br/>widest scope (ALL) wins"]
+```
+
 ## Roles
 
 | Role | rolename | Purpose |
 |---|---|---|
 | Administrator | `admin` | Everything. The only role that passes the privileged-access gates without an approval |
-| Manager | `manager` | Read and export across every area — for cross-department approvers (whether they can approve is decided by MS0B group membership) |
+| Manager (approver) | `manager` | Read and export across every area — for cross-department approvers (whether they can approve is decided by MS0B group membership) |
 | Sales manager | `sales_manager` | Full control of sales data + read everywhere |
 | Sales | `sales` | Create and edit sales data, **own records only** (OWN) |
 | Sales assistant | `sales_assistant` | Read-only across sales data. No create, edit or approve |
@@ -208,6 +221,17 @@ time (the clock starts on **first use**, not on approval).
   also the only anti-lockout path, which is why no self-approval exists. The
   bypass is recorded in the audit row as `bypass:"admin"`, so it stays
   distinguishable from an approved run.
+
+How a privileged operation becomes runnable, as a diagram:
+
+```mermaid
+flowchart TD
+  op["Want to run an operation<br/>on a privileged code"] --> q{"Administrator<br/>(system ◎)?"}
+  q -->|"Yes"| by["Runs straight through<br/>audit row has bypass: admin"]
+  q -->|"No"| rq["Request in SY0G<br/>Privileged access"]
+  rq --> ap["Someone else approves"]
+  ap --> use["Works only for the approved period<br/>clock starts on first use"]
+```
 
 None of this is granted to business roles: `system`, `kiosk` and the five
 privileged codes are all excluded from the bulk grant in `roles-seed.sql`.

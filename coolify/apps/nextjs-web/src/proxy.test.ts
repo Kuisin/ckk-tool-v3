@@ -98,6 +98,8 @@ describe("proxy matcher — 公開パスは除外される", () => {
     "/manual",
     "/manual/ja/operations",
     "/llms-manual",
+    "/manual-media/manifest.json",
+    "/manual-media/process-sales.webm",
     "/icon.svg",
     "/favicon.ico",
     "/manifest.webmanifest",
@@ -108,6 +110,13 @@ describe("proxy matcher — 公開パスは除外される", () => {
       expect(guarded(p)).toBe(false);
     });
   }
+});
+
+describe("proxy matcher — マニュアルの動画", () => {
+  it("**`/manual-mediaXxx` は守られる**（素の `manual-media` と書いていない証拠）", () => {
+    expect(guarded("/manual-media-admin")).toBe(true);
+    expect(guarded("/manual-mediax/secret")).toBe(true);
+  });
 });
 
 describe("proxy matcher — 取引先ポータル（社外向け）", () => {

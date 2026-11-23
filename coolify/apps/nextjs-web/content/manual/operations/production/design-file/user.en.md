@@ -47,6 +47,17 @@ A work order picks its drawing in this order: the series whose ordering customer
 
 **Approval is optional.** It only goes through approval when steps are set up for "**Drawing version**" in [Approval settings](/manual/en/operations/masters/approval-setting/user) (MS0B). With no steps, one **Confirm** button confirms it.
 
+As a diagram, the status moves like this:
+
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Confirm (no approval steps set up)"| conf("確定<br/>Confirmed"):::green
+  draft -->|"Request approval (steps set up)"| req("承認依頼中<br/>Pending approval"):::yellow
+  req -->|"Approve"| conf
+  req -.->|"Send back"| rej("差し戻し<br/>Sent back"):::red
+  rej -.->|"Correct and submit again"| req
+```
+
 **Each series has only one unconfirmed version at a time.** While a draft exists, you cannot create the next version in the same series (otherwise it would be unclear which one is the next version). Confirm it first, or delete the draft.
 
 ## Reading the screen

@@ -15,50 +15,44 @@
 
 import { Alert, Button, Group, Text } from "@mantine/core";
 import { IconRefresh } from "@tabler/icons-react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 分
 
-async function fetchBuildId(): Promise<string | null> {
-  try {
-    const res = await fetch("/api/app-version", { cache: "no-store" });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { buildId?: string };
-    return typeof data.buildId === "string" ? data.buildId : null;
-  } catch {
-    return null; // オフライン等 — スキュー判定はしない
-  }
+/**
+ * 取れなかったときは**投げる**（null を返さない）— 失敗した回で直前の結果を
+ * 上書きすると、一度出したバナーがオフラインになった瞬間に消える。
+ */
+async function fetchBuildId(): Promise<string> {
+  const res = await fetch("/api/app-version", { cache: "no-store" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = (await res.json()) as { buildId?: string };
+  if (typeof data.buildId !== "string") throw new Error("no buildId");
+  return data.buildId;
 }
 
 export function VersionSkewBanner() {
   const tr = useTranslations();
-  const initial = useRef<string | null>(null);
-  const [stale, setStale] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    const check = async () => {
-      const id = await fetchBuildId();
-      if (cancelled || id == null || id === "development") return;
-      if (initial.current == null) {
-        initial.current = id;
-        return;
-      }
-      if (id !== initial.current) setStale(true);
-    };
-    check();
-    const timer = setInterval(check, CHECK_INTERVAL_MS);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") check();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, []);
+  // 5 分ごと + タブへ戻ったときに確認する。タブが裏にある間は止まる
+  // （TanStack Query の既定）。取れなかった回は直前の結果のまま = 判定を変えない。
+  const { data: buildId } = useQuery({
+    queryKey: ["app-version"],
+    queryFn: fetchBuildId,
+    refetchInterval: CHECK_INTERVAL_MS,
+    // 画面遷移でバナーが載り直すたびに確認しに行かない（確認は間隔どおり）。
+    staleTime: CHECK_INTERVAL_MS,
+    // ただしタブへ戻ったときは必ず確認する — 古いタブを見つける本命の場面。
+    refetchOnWindowFocus: "always",
+    retry: false,
+  });
+  // 最初に取れた BUILD_ID が「このタブが読み込んだ版」。以後それと違えば古い。
+  // （レンダー中の setState は「外の値に合わせて state を調整する」定石。）
+  const [initial, setInitial] = useState<string | null>(null);
+  const known = buildId != null && buildId !== "development";
+  if (known && initial == null) setInitial(buildId);
+  const stale = known && initial != null && buildId !== initial;
 
   if (!stale) return null;
 

@@ -5,6 +5,8 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 ---
 A register where you record "this [product](/manual/en/operations/masters/product/user) costs this much" for each customer. The operation code is `SA02`.
 
+> This app belongs to … [Sales flow](/manual/en/process/sales)
+
 ## What you can do with this app
 
 - You can record the selling price of a product for each [customer](/manual/en/operations/masters/business-partner/user).
@@ -20,7 +22,7 @@ Register a price here when you and the customer have agreed a price. From then o
 
 - **価格表 (price list)** … one record is "one customer × one product". You can only make one record for the same combination.
 - **注文種別 (order type)** … the classes **本番 (production) / テスト (test) / サンプル (sample) / その他 (other)**. The same product can have a different price in each class.
-- **基準単価 (base unit price)** … the basic price for that order type. Normally it comes from the result of a [trial estimate](/manual/en/operations/sales/trial-estimate/user).
+- **基準単価 (base unit price)** … the basic price for that order type. Normally it comes from the result of a [price estimate](/manual/en/operations/sales/trial-estimate/user).
 - **段階（数量段階）(quantity tier)** … a break by quantity, such as "1–49 pieces cost this much, 50–99 pieces cost this much".
 - **倍率 (multiplier)** … the number the base unit price is multiplied by. Below 1 makes it cheaper.
 - **値引きルール (discount rule)** … a discount that is taken off automatically when you make a quote, if the period and the number of pieces match the conditions you set.
@@ -51,10 +53,20 @@ A price resolves in two tiers:
 
 **It falls back only when no price list applies** (none made / inactive / outside its period). ⚠️ A live price list that is missing that quantity tier does **not** fall back — that would hide a configuration hole, so the price stays unresolved. Fix the tier.
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  q1{"Does a price list apply<br/>for that customer?"} -->|"No"| std["The item's standard price"]
+  q1 -->|"Yes"| q2{"Does it have a tier<br/>for that quantity?"}
+  q2 -->|"Yes"| pl["The price-list price"]
+  q2 -->|"No"| none["Price stays unresolved<br/>(no fallback to the standard price)"]
+```
+
 ## Before you start
 
 - The [customer](/manual/en/operations/masters/business-partner/user) and the [product](/manual/en/operations/masters/product/user) must already be registered.
-- It helps to have a [trial estimate](/manual/en/operations/sales/trial-estimate/user) to base the price on. If you set a product on the estimate and set it to 確定 (confirmed), you can choose it on this screen and the amount fills in automatically.
+- It helps to have a [price estimate](/manual/en/operations/sales/trial-estimate/user) to base the price on. If you set a product on the estimate and set it to 確定 (confirmed), you can choose it on this screen and the amount fills in automatically.
 - You can still register a price list without an estimate by typing the price in by hand.
 
 ## Reading the screen
@@ -81,7 +93,7 @@ When you open the app, the registered price lists are shown as a list. One row i
 6. Choose「**有効開始日**」(valid from).
 7. For テスト (test) and サンプル (sample), you must also choose「**有効終了日**」(valid until).
 8. In the quantity table, enter「**最小数量**」(minimum quantity),「**最大数量**」(maximum quantity) and「**倍率**」(multiplier).
-9. To add another break, press「**範囲を追加**」(add a range). When you add a new order type, its quantity breaks start out filled from the quantity scale (the table of "from how many pieces, at what multiplier" that an administrator maintains). Press「**プリセットに戻す**」(reset to preset) to put that order type's breaks back to that table (ranges you added by hand and custom prices are lost).
+9. To add another break, press「**範囲を追加**」(add a range). When you add a new order type, its quantity breaks start out filled from the [quantity scale](/manual/en/operations/sales/trial-estimate/settings) (the table of "from how many pieces, at what multiplier" that an administrator maintains). Press「**プリセットに戻す**」(reset to preset) to put that order type's breaks back to that table (ranges you added by hand and custom prices are lost).
 10. To register a price for another class too, press「**注文種別を追加**」(add order type) and repeat steps 5 to 9.
 11. Press「**保存**」(save).
 
@@ -91,7 +103,7 @@ When you enter a multiplier, the amount appears on the spot in「**自動計算�
 
 > 💡 Set the quantity breaks like this: "1–49 pieces at multiplier 1.05, 50–99 at 1.00, 100 and above at 0.95". This is how you make each piece cheaper the more the customer buys.
 
-> ⚠️ If you see「この製品にリンクされた確定済みの価格試算はありません」(there is no confirmed estimate linked to this product), no estimate for that product has been confirmed yet. If you want to use an estimate, first set the product on the [trial estimate](/manual/en/operations/sales/trial-estimate/user) and confirm it. If you do not want to use an estimate, tick「**カスタム単価を使用**」(use a custom price) and type the base unit price in by hand.
+> ⚠️ If you see「この製品にリンクされた確定済みの価格試算はありません」(there is no confirmed estimate linked to this product), no estimate for that product has been confirmed yet. If you want to use an estimate, first set the product on the [price estimate](/manual/en/operations/sales/trial-estimate/user) and confirm it. If you do not want to use an estimate, tick「**カスタム単価を使用**」(use a custom price) and type the base unit price in by hand.
 
 ## Looking at what you registered
 
@@ -177,7 +189,7 @@ Every field on the price list screen. The **?** next to a field in the app links
 | [Product](#field-product) | Required | Which product the price is for |
 | [Active (whole list)](#field-active) | — | Whether this price list is in use |
 | [Order type](#field-order-type) | Required | Production, test and so on |
-| [Price source (trial estimate)](#field-estimate) | Optional | The estimate the base price comes from |
+| [Price source (price estimate)](#field-estimate) | Optional | The estimate the base price comes from |
 | [Base price](#field-base-price) | Required | The price the quantity tiers work from |
 | [Valid from](#field-valid-from) | Required | When this price starts to apply |
 | [Valid until](#field-valid-until) | Optional | When it stops applying |
@@ -194,15 +206,15 @@ Which product the price is for. Like the customer, it cannot be changed after cr
 
 ### Active (whole list) [#field-active]
 
-A field for marking a price list you no longer use as 「無効」(inactive), to keep things tidy. Turning it off does not, at present, affect how quotes work out their unit prices.
+Whether this price list is used. **When it is turned off, quotes and order acceptances can no longer take a unit price from it** ("price list disabled" is shown). Turn off price lists you no longer use.
 
 ### Order type [#field-order-type]
 
 Production, test, sample or other. **The same customer and product can hold a different price per type.** For samples, the practice is to set the unit price to zero yourself (it does not become zero automatically).
 
-### Price source (trial estimate) [#field-estimate]
+### Price source (price estimate) [#field-estimate]
 
-The trial estimate the base price comes from. **Only confirmed estimates can be chosen.** Choosing one copies its quoted unit price into the base price and locks that estimate as registered, so past prices cannot change afterwards. Leave it unset to enter the price by hand.
+The price estimate the base price comes from. **Only confirmed estimates can be chosen.** Choosing one copies its quoted unit price into the base price and locks that estimate as registered, so past prices cannot change afterwards. Leave it unset to enter the price by hand.
 
 ### Base price [#field-base-price]
 
@@ -210,11 +222,11 @@ The price the quantity tiers work from. Each tier's price is this price times it
 
 ### Valid from [#field-valid-from]
 
-A date recording when you started using this price. Quote unit prices do not switch over on this date. What does start and stop automatically by period is the discount rules (each rule's own valid period).
+The day this price starts to apply. **If a quote or order acceptance is saved before this date, this price is not used** ("outside the price list's valid period" is shown). Discount rules start and stop separately, by each rule's own valid period.
 
 ### Valid until [#field-valid-until]
 
-When it stops applying. Leave it empty for no end date. **Test and sample prices are normally given an end date.**
+When it stops applying. **After this date, quotes and order acceptances no longer use this price** ("outside the price list's valid period" is shown). Leave it empty for no end date. **Test and sample prices are normally given an end date.**
 
 ### Multiplier [#field-multiplier]
 

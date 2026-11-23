@@ -50,6 +50,17 @@ screenshots: [inventory-products-01, inventory-product-detail-01, inventory-mate
 - **材料减少** … 该工单的所有工序完成后，预留的材料会作为已使用而减少。
 - **产品出库** … 通过[出货单](/manual/zh/operations/shipping/delivery-order/user)出货后，会从库存中扣除，预留也会解除。
 
+用图表示如下（虚线为预留）。
+
+```mermaid
+flowchart TD
+  rcpt["登记材料到货"] -->|"增加"| mat["材料库存"]
+  mat -->|"工单的所有工序完成<br/>（已用材料减少，良品入库）"| prod["产品・半成品库存"]
+  prod -->|"通过出货单出货"| out["从库存中扣除<br/>（预留也解除）"]
+  appr["「制造分」的工单获得批准"] -.->|"预留"| mat
+  chk["订单明细的「在庫照合」（库存核对）"] -.->|"预留"| prod
+```
+
 ## 产品标签的查看方式
 
 ![库存管理的产品标签](../../../assets/screenshots/inventory-products-01.png)

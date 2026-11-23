@@ -23,7 +23,9 @@ It is a view-only app. You cannot correct or erase any record from this screen.
 
 ## Before you start
 
-- You need **system administration permission** to open this app. If it will not open, please ask your system administrator.
+- You need the **Personal data access** (`personal_data`) permission to open this app. If it will not open, please ask your system administrator.
+- Holding the permission is not enough to open the list (the cross-document search) or the details of one record. Request "**Cross-document activity search**" and "**Activity log detail**" in [Privileged access](/manual/en/operations/system/privileged-access/user) (`SY0G`); you can use them only during the period another person approves.
+- The 「**履歴**」 (History) tab on each document's own screen does not need this approval.
 - If you only want the history of one particular document, the **「履歴」 (History) tab on that document's own screen** will find it faster. The contents are the same.
 
 ## How to open it

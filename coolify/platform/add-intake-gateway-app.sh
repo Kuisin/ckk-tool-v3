@@ -143,7 +143,7 @@ echo "  private_key_id / git_repository fixed (非公開リポジトリのデプ
 cat <<EOS
 
 次の手順:
-  1. 取込フォルダは **nextjs-web-main と同じ** $HOST_DIR（本番）。
+  1. 取込フォルダは **nextjs-web-main と同じ** ${HOST_DIR}（本番）。
      顧客に案内するアドレスなので、届いた注文書は本番の注文請書になる。
      **dev にメール取込は無い**（SY0C の投入か取込フォルダへ直接置く）。
   2. Coolify UI で受信箱の資格情報を入れる:

@@ -66,6 +66,20 @@ Select a file and the right-hand pane shows a preview (images and PDFs) along wi
 
 Even without a folder grant, a business-app read permission lets the user read that app's generated files (the folder → permission-code map is `APP_PREFIX_PERMISSIONS` in `lib/file-access.ts`; e.g. `pdfs/quotes` → `quote`, `attachments/work_orders` → `work_order`). Writing (upload and delete) requires a folder grant with "Allow writing too" or administrator rights.
 
+How what you can see and write is decided, as a diagram:
+
+```mermaid
+flowchart TD
+  s["Open a folder"] --> a{"System administrator?"}
+  a -->|"Yes"| all["Read and write every file"]
+  a -->|"No"| f{"Folder grant on<br/>that folder?"}
+  f -->|"Writing allowed too"| rw["Read +<br/>upload and delete"]
+  f -->|"Read only"| ro["Read only"]
+  f -->|"None"| p{"Read permission on the<br/>matching business app?"}
+  p -->|"Yes"| gen["Read that app's<br/>generated files"]
+  p -->|"No"| none["Not shown"]
+```
+
 ## FAQ
 
 - **"Cannot connect to storage" is shown** — the file server (SeaweedFS) is down or misconfigured. Contact your system administrator.

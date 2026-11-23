@@ -10,6 +10,15 @@ The list in 「工程実行」 (Run step) only shows work **assigned to you**. B
 
 That kind of work never shows up in the 「工程実行」 list, because it belongs to no one in particular. 「作業場所の工程」 finds the same work by **using the place as the key**.
 
+As a diagram, which app a piece of work shows up in:
+
+```mermaid
+flowchart TD
+  plan["Work plan"] --> q{"Is an assignee decided?"}
+  q -->|"Yes"| mine["Shows in that person's 「工程実行」 (Run step)"]
+  q -->|"No<br/>(only when and at which machine)"| loc["Found by place in 「作業場所の工程」<br/>Anyone standing at that machine can do it"]
+```
+
 ## What you can do with this app
 
 - See the list of steps waiting at **the machine or place this tablet is placed at right now**.
@@ -55,7 +64,7 @@ If you scan a work order's QR code or a QR card by mistake, you get the warning 
 
 If you scan a code that is not registered, you see 「**この作業場所コードは見つかりません**」 (That work-location code was not found). This can happen if the label is dirty, damaged, or on the wrong machine — check with your administrator.
 
-> ⚠️ **The location you are viewing and the location that gets recorded are different things.** Scanning here only narrows the list. The work location recorded in the actual results when you start a step stays **this tablet's default work location**. While you are viewing a different location, the screen shows a note such as: "This list shows '◯◯'. Steps started from here record '◯◯' as well (this tablet's default is '△△')." If you actually want to change the location that gets recorded, scan it from inside the step's own screen instead (see "Recording the work location" in [Recording Work](/manual/en/operations/kiosk/steps/user)).
+> ⚠️ **While you are viewing a different location, that location is recorded in the actual results.** When you open a step from this list and start it, the work location recorded in the actual results is **the location you are viewing** (not this tablet's default work location). While you are viewing a different location, the screen shows a note such as: "This list shows '◯◯'. Steps started from here record '◯◯' as well (this tablet's default is '△△')." If you want the default location recorded, open the step from「工程実行」(Step execution) or「指示書スキャン」(Work order scan) instead. You can also scan the location again from inside the step's own screen with「**作業場所を読み取り**」(see "Recording the work location" in [Recording Work](/manual/en/operations/kiosk/steps/user)).
 
 ## Recording a step
 
@@ -78,7 +87,7 @@ A. That step is already assigned to someone else. A step marked 「他の担当�
 A. The code on the scanned label is not registered. It may be damaged or on the wrong machine — check with your administrator.
 
 **Q. A step I completed here was recorded under a different work location than the one I was viewing.**
-A. The location you were viewing (a filter) and the location recorded in the results (this tablet's default) may have differed. Check whether a note appeared at the top of the screen. If you want the recorded location itself to change, scan the work location again from inside the step's own screen.
+A. The work location in the actual results is decided when the step is **started or resumed**. If you opened it from this list and started it, it is the location you were viewing; if it was started or resumed from「工程実行」(Step execution) or from another tablet, it is that tablet's default work location. If the location is wrong, scan the work location again from inside the step's own screen.
 
 **Q. What is the difference from 「工程実行」 (Run step)?**
 A. 「工程実行」 only shows work **assigned to you**. 「作業場所の工程」 finds work by **place**, so it also finds work that was planned with no assignee (unplanned). The same step shows up in 「工程実行」 for whoever it is assigned to, and in 「作業場所の工程」 if it is assigned to no one.

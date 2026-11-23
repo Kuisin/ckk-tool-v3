@@ -40,6 +40,7 @@ import {
   searchMaterialItemOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import { createMaterialReceipt } from "@/app/(dashboard)/purchase/material-receipts/actions";
+import { OpenPoWarning } from "@/components/purchase/material-receipts/OpenPoWarning";
 import {
   ATTACHMENT_ACCEPT,
   ATTACHMENT_MAX_BYTES,
@@ -184,6 +185,10 @@ export function MaterialReceiptForm({
     }
   };
 
+  // 同じ素材の「発注済み・未入荷あり」があるときの確認（OpenPoWarning）。
+  const [openPoConflict, setOpenPoConflict] = useState(false);
+  const [acknowledgeOpenPo, setAcknowledgeOpenPo] = useState(false);
+
   const form = useForm<FormValues>({
     validate: zodResolver(schema),
     initialValues: {
@@ -215,8 +220,17 @@ export function MaterialReceiptForm({
   };
 
   const handleSubmit = (values: FormValues) => {
+    if (openPoConflict && !acknowledgeOpenPo) {
+      notifications.show({
+        title: tr("purchase.materialReceipts.openPo.title"),
+        message: tr("purchase.materialReceipts.openPo.acknowledge"),
+        color: "orange",
+      });
+      return;
+    }
     startTransition(async () => {
       const result = await createMaterialReceipt({
+        acknowledgeOpenPo,
         itemId: values.itemId,
         supplierBpId: values.supplierBpId,
         plantId: values.plantId,
@@ -262,6 +276,17 @@ export function MaterialReceiptForm({
       submitLabel={tr("common.register")}
       title={tr("purchase.materialReceipts.newMaterialReceipt")}
     >
+      <OpenPoWarning
+        acknowledged={acknowledgeOpenPo}
+        candidates={[
+          {
+            itemId: form.values.itemId,
+            supplierBpId: form.values.supplierBpId,
+          },
+        ]}
+        onAcknowledgedChange={setAcknowledgeOpenPo}
+        onConflictsChange={setOpenPoConflict}
+      />
       <FormSection
         description={tr(
           "purchase.materialReceipts.registersADirectPurchaseAReceipt",

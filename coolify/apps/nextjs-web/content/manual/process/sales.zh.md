@@ -16,9 +16,17 @@ screenshots:
 
 本页整理了从确定单价到接单、再交给制造为止的流程。在这里确认「现在处于哪个阶段、接下来该谁做什么」，以及价格差异・退回等**分支**、各**单据状态**。基本操作步骤由[标准流程](/manual/zh/process/default-flow)负责。
 
+```video
+process-sales
+```
+
 ## 整体流程
 
-![销售流程整体图（含价格差异循环・审批退回的泳道图）](../assets/diagrams/process-sales.zh.svg)
+![价格与报价 — 从价格试算到发行报价单](../assets/diagrams/flow-pricing.zh.svg)
+
+![接单 — 从导入订单到确定订单明细](../assets/diagrams/flow-order.zh.svg)
+
+各步骤的分支与使用的应用一览，请参见[业务流程](/manual/zh/business-flow#pricing)。
 
 对于没有图纸的产品，需要**与本流程并行**起草**设计委托单**。既可以在报价阶段、也可以在接单之后起草，也可以不关联任何单据**单独**起草。
 
@@ -62,6 +70,20 @@ screenshots:
 
 剩下的**价格差异**只是「未上覆却与价格表不一致」的行，多出现在保存后价格表发生变化等情况。需要先在「回到报价单调整价格 / 修改价格表 / 作为上覆接受」三者中选择一项，才能继续（带着差异申请审批需要一次确认）。
 
+单价的处理方式用图表示如下。
+
+```mermaid
+flowchart TD
+  auto["明细的单价<br/>自动从价格表带入"] --> same{"与价格表的单价相同？"}
+  same -->|"相同"| go["直接继续"]
+  same -->|"不同"| ovr{"该行填入了「単価を上書き」<br/>（单价上覆）？"}
+  ovr -->|"是"| ok["有意为之的单价<br/>不算价格差异"]
+  ovr -->|"否"| diff["价格差异"]
+  diff --> q["回到报价单<br/>调整价格"]
+  diff --> p["修改价格表"]
+  diff --> o["作为上覆<br/>接受"]
+```
+
 ![显示价格差异的订单确认书详情画面。差异显示以红框强调](../assets/screenshots/flow-order-acceptance-diff-01.png)
 
 **审批分支** —— 内容确定后申请审批。申请中无法编辑。若被退回，需要修改内容后重新申请。要经过几级审批，由[审批设置](/manual/zh/operations/masters/approval-setting/user)的条件规则决定，级数的构成可能因单据内容（合计金额・配送方式・负责据点等）而变化。
@@ -78,7 +100,7 @@ screenshots:
 
 ### （并行）设计委托
 
-对于没有图纸的产品，会在报价阶段、接单之后其中之一，或不关联任何单据**单独**起草设计委托单。**只有通过审批才能开工**（级数的构成由[审批设置](/manual/zh/operations/masters/approval-setting/user)决定，可按触发方式・委托区分・优先级而变化）。由制造制作图纸，完成后会替换产品的最新图纸（操作步骤……[标准流程（并行）设计委托](/manual/zh/process/default-flow#design-request)）。
+对于没有图纸的产品，会在报价阶段、接单之后其中之一，或不关联任何单据**单独**起草设计委托单。**只有通过审批才能开工**（级数的构成由[审批设置](/manual/zh/operations/masters/approval-setting/user)决定，可按触发方式・委托区分・优先级而变化）。由制造制作图纸，在[图纸](/manual/zh/operations/production/design-file/user)中登记版本并完成委托。产品的最新图纸在图纸中确定该版本时才会替换（操作步骤……[标准流程（并行）设计委托](/manual/zh/process/default-flow#design-request)）。
 
 产品已有图纸时会自动判定为**修订**，没有则判定为**新规**（新增），修订时需要填写变更理由。
 

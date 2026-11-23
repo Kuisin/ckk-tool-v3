@@ -95,6 +95,19 @@ In the 「**ロール**」 (Roles) area, tick the positions in which you use thi
 - **最終需要家 (End user)** … lets you choose the company as the end user on delivery notes and order lines.
 - **仕入先・外注先 (Supplier / Outsourcing partner)** … lets you choose the company on material purchase orders, outsource orders and as the outsourcing partner of a work order step.
 
+As a diagram, this is how the roles relate to the documents the company can be chosen on:
+
+```mermaid
+flowchart TD
+  bp["Business partner<br/>one entry per company"]
+  bp --> c["顧客<br/>Customer"]
+  bp --> e["最終需要家<br/>End user"]
+  bp --> v["仕入先・外注先<br/>Supplier / Outsourcing partner"]
+  c --> cd["Addressee of quotes,<br/>order acceptances, invoices"]
+  e --> ed["End user on delivery notes<br/>and order lines"]
+  v --> vd["Material purchase orders,<br/>outsource orders,<br/>outsourcing partner of a step"]
+```
+
 When you tick a role, **that role's own set of fields appears below**. When you untick it, those fields are hidden again.
 
 > ⚠️ You can save with no role ticked. But such a company **does not appear as a choice on any document**. You can add roles later, so registering the company alone first is perfectly fine.
@@ -125,8 +138,23 @@ A 「**過不足納品**」 (Delivery quantity variance) area appears. Here you 
 1. In 「**許容の基準**」 (Tolerance basis), choose whether the variance is measured in 「**パーセント（%）**」 (Percent) or 「**数量**」 (Quantity).
 2. In 「**不足の許容**」 (Under-delivery tolerance), enter how far below the ordered quantity is allowed. Leaving it empty means "no shortage is allowed at all".
 3. In 「**超過の許容**」 (Over-delivery tolerance), enter how far above the ordered quantity is allowed. Empty also means "no excess is allowed at all" here.
-4. Tick 「**許容範囲内でも承認を要求する**」 (Require approval within tolerance) if you always want a variance to go through approval before a shipping order can be confirmed, even when it is inside this range (unticked by default — a variance inside the range can be confirmed without approval).
+4. Tick 「**許容範囲内でも承認を要求する**」 (Require approval within tolerance) if you always want a variance to go through approval before a delivery order can be confirmed, even when it is inside this range (unticked by default — a variance inside the range can be confirmed without approval).
 5. 「**許容範囲外は承認を要求する**」 (Require approval outside tolerance) is ticked by default. Unticking it lets a variance outside the range through without any approval, so leave it as is unless you have a strong reason not to.
+
+Whether approval is needed when there is a variance is decided like this:
+
+```mermaid
+flowchart TD
+  q0{"Is the lot allowed on the work order<br/>to ship with a variance?"}
+  q0 -->|"No"| ng["Cannot be shipped<br/>with a variance"]
+  q0 -->|"Yes"| q1{"Is the variance inside<br/>the tolerance?"}
+  q1 -->|"Inside"| q2{"「許容範囲内でも<br/>承認を要求する」<br/>Require approval within tolerance"}
+  q1 -->|"Outside"| q3{"「許容範囲外は<br/>承認を要求する」<br/>Require approval outside tolerance"}
+  q2 -->|"Unticked (default)"| ok["Can be confirmed<br/>without approval"]
+  q2 -->|"Ticked"| ap["Confirmed after<br/>going through approval"]
+  q3 -->|"Ticked (default)"| ap
+  q3 -->|"Unticked"| ok
+```
 
 > 💡 With 「許容の基準」 (Tolerance basis) set to 「パーセント（%）」 (Percent) and 「不足の許容」 (Under-delivery tolerance) set to 「2」 for an order of 100 pieces, delivering down to 98 pieces (2 short) is within tolerance; 97 pieces or fewer is outside it.
 
@@ -347,7 +375,7 @@ How far the delivered quantity may vary from the ordered quantity. Shortage and 
 
 ### Require approval within tolerance / Require approval outside tolerance [#field-variance-approval]
 
-Whether a [shipping order](/manual/en/operations/shipping/delivery-order/user) with a quantity variance must go through approval before it can be confirmed. You set this separately for **inside** and **outside** the tolerance range. The default — no approval inside, approval required outside — is fine for most customers.
+Whether a [delivery order](/manual/en/operations/shipping/delivery-order/user) with a quantity variance must go through approval before it can be confirmed. You set this separately for **inside** and **outside** the tolerance range. The default — no approval inside, approval required outside — is fine for most customers.
 
 ---
 

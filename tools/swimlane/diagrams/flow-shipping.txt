@@ -1,0 +1,334 @@
+/title/
+出荷 — 出荷書から納品まで
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 手順;
+left-subtitle: 説明;
+
+/role/
+
+<role_ship>
+label: 出荷;
+text-color: #9a3412;
+background-color: #ffedd5;
+
+<role_system>
+label: システム;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_appr>
+label: 承認者;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_cust>
+label: 顧客;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SH03>
+label: SH03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SH01>
+label: SH01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SH02>
+label: SH02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA04>
+label: SA04;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA05>
+label: SA05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST03>
+label: ST03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<DO>
+label: 出荷書;
+side: right;
+max-chars: 12;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<DN>
+label: 納品書;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<OL>
+label: 注文明細;
+side: right;
+max-chars: 12;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<MV>
+label: 入出庫伝票;
+side: right;
+background-color: #f1f5f9;
+border-color: #64748b;
+text-color: #0f172a;
+
+/line/
+
+[role_ship: 出荷待ちを確かめる] <block_neutral>
+label: 未手配;
+props: APP_SH03;
+desc: 未処理出荷書の「未手配」タブに、完成したのに出荷書に載っていない注文明細が納期順に並ぶ。「出荷準備中」タブには出荷前の出荷書が並ぶ。;
+if (入口) is (一覧から) than #purple
+  [role_ship: 新規作成を押す] <block_apply>
+  label: 一覧;
+  props: APP_SH01;
+  desc: 空のフォームが開き、注文請書を自分で選ぶ。;
+elseif (注文請書から) than #purple
+  [role_ship: 請書から作成] <block_apply>
+  label: 注文請書;
+  props: APP_SA04;
+  desc: その注文請書の出荷できる明細がすべて入った状態で開く。;
+elseif (注文明細から) than #purple
+  [role_ship: 明細から作成] <block_apply>
+  label: 注文明細;
+  props: APP_SA05;
+  desc: 注文明細（または未処理出荷書の行）の「出荷書を作成」。その注文明細 1 件が入った状態で開く。;
+elseif (指示書から) than #purple
+  [role_ship: 指示書から作成] <block_apply>
+  label: 指示書;
+  props: APP_PD02;
+  desc: その指示書の注文明細が入る。同じ注文請書に他にも出せる明細があれば、まとめるかを聞かれる。;
+endif
+[role_ship: 明細とロット決定] <block_apply>
+label: 明細;
+props: APP_SH01,DO;
+desc: 数量は指示書の完成数から、ロット（指示書番号）へ番号順・現物在庫の範囲で自動で入る。出荷元拠点を選ぶ。別の注文請書を足せるのは同一顧客・同一出荷先・同一配送方法・同一エンドユーザーのときだけ。;
+if (種別) is (発送) than #purple
+  [role_ship: 締め・単価を選ぶ] <block_apply>
+  label: 過不足;
+  props: APP_SH01;
+  desc: 「この出荷で注文明細を締める」と請求単価（受注時の単価 / 実納品数で価格表を引き直す）を選ぶ。既定は締めない・受注時の単価。;
+elseif (在庫保管) than #purple
+endif
+if (数量) is (受注残を超過) than #red
+  [role_ship: 数量を直す] <block_reject>
+  label: 超過;
+  props: APP_SH01;
+  desc: 指示書が過不足納品を許していなければ、受注の残りを超える本数は保存できない。許していれば取引先の許容範囲まで入れられる。;
+  [loop]
+elseif (残りに不足) than #orange
+  [role_ship: 一部出荷を確認する] <block_wait>
+  label: 一部出荷;
+  props: APP_SH01;
+  desc: 「一部出荷の確認」が出る。許容範囲外の過不足なら、確定時に承認が要りうる旨も出る。残りは後で別の出荷書で出せる。;
+elseif (ちょうど) than #blue
+endif
+[role_ship: 下書きで保存する] <block_apply>
+label: 保存;
+props: APP_SH01,DO;
+desc: 出荷書が「下書き」で登録される。下書きの間は編集でき、追加料金も直せる。載せた本数は受注の残りを押さえる。;
+if (進め方) is (取りやめる) than #red
+  [role_ship: 下書きを取り消す] <block_end>
+  label: キャンセル;
+  props: APP_SH01;
+  desc: キャンセルできるのは下書きだけ（出荷書は消える）。確定後は消せない。;
+elseif (確定へ) than #blue
+endif
+[role_ship: 確定を押す] <block_apply>
+label: 確定;
+props: APP_SH01;
+desc: 確認画面に、これから作られる納品書の宛先と価格記載の有無が出る。;
+if (過不足判定) is (許可なく超過) than #red
+  [role_ship: 確定できない] <block_reject>
+  label: エラー;
+  props: APP_SH01;
+  desc: 他の出荷書が増えて累計が受注数を超えた、または指示書の許可なく不足のまま締めようとした。内容を直す。;
+  [loop]
+elseif (承認が要る) than #orange
+  [role_system: 承認依頼を出す] <block_system>
+  label: 承認依頼;
+  desc: 取引先の設定で承認が要る過不足のとき、確定の代わりに承認依頼が出る。出荷書は下書きのまま。承認設定（MS0B）に段が無ければ素通しで確定する。;
+  if (承認判断) is (差し戻し) than #red
+    [role_ship: 直して確定し直す] <block_reject>
+    label: 差し戻し;
+    props: APP_SH01;
+    desc: 理由付きで差し戻される。下書きのまま直して、もう一度確定を押す。;
+    [loop]
+  else
+    [role_appr: 過不足を承認する] <block_approve>
+    label: 承認;
+    props: APP_CM01;
+    desc: 未処理一覧か出荷書の承認カードで承認する。全段を通ると承認済になり、もう一度「確定」を押すと確定できる。;
+  endif
+elseif (承認不要) than #blue
+endif
+[role_system: 確定・単価を固定] <block_system>
+label: 確定済;
+props: DO;
+desc: 出荷書が「確定」になり編集できなくなる。請求単価が明細に焼き込まれ、以後価格表を直しても動かない。;
+if (納品書) is (在庫保管) than #blue
+elseif (通常配送) than #blue
+  [role_system: 納品書を1通作る] <block_system>
+  label: 1 通;
+  props: DN;
+  desc: 顧客宛・価格記載ありの納品書が「発行済」でできる。;
+elseif (ユーザー直送) than #blue
+  [role_system: 納品書を2通作る] <block_system>
+  label: 2 通;
+  props: DN;
+  desc: 価格記載なし（最終需要家宛）と価格記載あり（顧客宛）の 2 通が「発行済」でできる。;
+endif
+[role_ship: 納品書を印刷する] <block_apply>
+label: PDF;
+props: APP_SH02,DN;
+desc: PDF は受取先の言語で出る（取引先に設定が無ければ日本語）。価格記載ありの直送分を開くときは確認が挟まる。;
+[role_ship: 出荷を押す] <block_apply>
+label: 出荷;
+props: APP_SH01;
+desc: 押すと先に在庫を数える（書き込みはしない）。;
+if (在庫) is (不足・見送る) than #red
+  [role_ship: 確定のまま待つ] <block_wait>
+  label: 見送り;
+  props: APP_ST03;
+  desc: 「在庫が足りません」の画面でキャンセル。何も起きない。行ごとの「在庫を見る」で在庫・所要量を確かめる。;
+  [loop]
+elseif (不足・出荷する) than #orange
+  [role_ship: このまま出荷する] <block_reject>
+  label: 不足出荷;
+  props: APP_SH01;
+  desc: 出荷は通り、在庫はマイナスになる。オレンジの注意が出て、伝票の行に「在庫不足のまま出庫」と残る。棚卸か手動入出庫で直す。;
+elseif (足りる) than #blue
+endif
+[role_system: 出荷を記録する] <block_system>
+label: 出荷済;
+props: DO,MV;
+desc: 出荷書が「出荷済」になり出荷日が入る。入出庫伝票が 1 枚でき、在庫が動く。受注担当へ出荷の通知が飛ぶ。;
+if (出荷後) is (在庫保管) than #blue
+  [role_system: 保管在庫に入れる] <block_system>
+  label: 保管;
+  desc: 出荷元拠点の在庫として増える。注文明細の状態は変わらず、請求にも進まない。;
+elseif (残りあり) than #blue
+  [role_system: 一部出荷にする] <block_system>
+  label: 一部出荷;
+  props: OL;
+  desc: 製品在庫が減り、累計が受注数に届かず締めもしない注文明細は「一部出荷」になる。;
+elseif (完了・締め) than #blue
+  [role_system: 出荷済にする] <block_system>
+  label: 出荷済;
+  props: OL;
+  desc: 製品在庫が減り、累計が受注数に達した（超過を含む）か「締める」を選んだ注文明細は「出荷済」になる。;
+endif
+[role_cust: 品物を受け取る] <block_neutral>
+label: 受取;
+desc: 納品書を同梱して届ける。直送は価格記載なしを最終需要家へ渡す。;
+[role_ship: 納品済にする] <block_apply>
+label: 納品;
+props: APP_SH02,DN;
+desc: 納品書を「納品済」にし、納品日が入る。出荷書が出荷済でないとできない。ここまで済んだ発送分が請求の対象になる。;
+if (返品) is (あり) than #orange
+  [role_cust: 品物を返す] <block_neutral>
+  label: 返品;
+  desc: 出荷済の品物が顧客から戻ってくる。;
+  [role_ship: 返品を記録する] <block_apply>
+  label: 返品;
+  props: APP_SH01,MV;
+  desc: 出荷済の発送分だけ。出した数まで、出荷元拠点の同じロットへ在庫を戻す（棚は未割当）。出荷書・注文明細・請求は動かない。;
+elseif (なし) than #blue
+endif

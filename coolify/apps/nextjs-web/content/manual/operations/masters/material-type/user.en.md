@@ -90,6 +90,17 @@ To correct the name or the description, press 「**編集**」 (Edit) at the top
 
 When there is no purchase record for the material yet, the material cost in a [Trial Estimate](/manual/en/operations/sales/trial-estimate/user) uses the price you register here. **If this is empty, the trial estimate cannot show a material cost.**
 
+As a diagram, this is which price the material cost in a price estimate is worked out from:
+
+```mermaid
+flowchart TD
+  q1{"Is there a purchase record<br/>for that material?"}
+  q1 -->|"Yes"| a["Material cost worked out<br/>from the purchase records"]
+  q1 -->|"Not yet"| q2{"Is a default unit price registered<br/>for this material type?"}
+  q2 -->|"Yes"| b["Material cost worked out<br/>from the default unit price"]
+  q2 -->|"Empty"| c["The material cost<br/>cannot be worked out"]
+```
+
 1. On the material type screen, open the 「**既定単価**」 (Default unit price) tab.
 2. Press 「**直径を追加**」 (Add diameter). One row is added.
 3. In the 「**直径**」 (Diameter) field of the new row, choose the diameter.

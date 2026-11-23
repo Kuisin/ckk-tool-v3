@@ -62,8 +62,8 @@ for (const file of files) {
     console.error(`✖ ${file}: SVG root is missing viewBox`);
     continue;
   }
-  // "process-overview.txt" → "process-overview" / "process-overview.en.txt" →
-  // "process-overview.en" — the locale suffix (if any) is already part of the
+  // "flow-overview.txt" → "flow-overview" / "flow-overview.en.txt" →
+  // "flow-overview.en" — the locale suffix (if any) is already part of the
   // basename, so no further parsing is needed; it becomes the output basename.
   const outName = basename(file, ".txt");
   results.push({ file, outName, svg, viewBox });

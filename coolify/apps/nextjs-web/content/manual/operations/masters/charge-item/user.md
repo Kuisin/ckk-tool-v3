@@ -17,6 +17,21 @@ description: "送料や梱包費など、製品の代金以外に請求する項
 
 > 💡 ここで登録した項目は、[指示書](/manual/ja/operations/production/work-order/user)（予定）・[出荷書](/manual/ja/operations/shipping/delivery-order/user)（確定）・[請求書](/manual/ja/operations/billing/invoice/user)の追加費用の選択肢に出ます。
 
+登録した項目がどの書類へ進むかを図にすると、次のとおりです。
+
+```mermaid
+flowchart TD
+  m["料金マスタ<br/>項目を登録"]
+  wo["指示書<br/>追加料金（予定）"]
+  dord["出荷書<br/>追加料金（確定）"]
+  inv["請求書"]
+  m -.->|"選択肢に出る"| wo
+  m -.->|"選択肢に出る"| dord
+  m -.->|"選択肢に出る"| inv
+  wo -->|"出荷書を作るときに写す"| dord
+  dord -->|"請求される"| inv
+```
+
 ## 用語（このページで出てくる言葉）
 
 - **コード** … 項目を見分けるための英字の記号です（例: `SHIPPING`）。作ったあとは変えられません。

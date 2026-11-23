@@ -424,19 +424,23 @@ export const shots: Shot[] = [
     docPage: "operations/production/design-file/user",
     path: "/production/design-files/9001",
     steps: async (page) => {
-      await page.getByText("設計図面_デモ商事仕様_v1.pdf").first().waitFor();
+      // ファイル名はボタン（押すと拡大表示）。文字ではなくボタンの名前で待つ。
+      await page
+        .getByRole("button", { name: "設計図面_デモ商事仕様_v1.pdf" })
+        .first()
+        .waitFor();
     },
     // サムネイルは SeaweedFS の実体を読むが、撮影スタックにストレージは無い
     // ので必ず "Not found" になる。中身は本筋ではないので塗りつぶす。
     mask: ['[title$="を拡大"]'],
   },
   {
-    // 登録フォーム — 役割ごとのファイル枠（図面データ / プレビュー / 参考資料）。
+    // 登録フォーム — 役割ごとのファイル枠（2D 原図 / 3D 原図 / プレビュー / 参考資料）。
     id: "design-file-new-01",
     docPage: "operations/production/design-file/user",
     path: "/production/design-files/new",
     steps: async (page) => {
-      await page.getByText("図面データ").first().waitFor();
+      await page.getByText("2D 原図").first().waitFor();
     },
   },
   // ── 購買: 購買依頼（PU01）──────────────────────────────────────────────────
@@ -1026,10 +1030,12 @@ export const shots: Shot[] = [
     },
   },
   {
-    // 製品種別を選ぶと、その種別の項目が入力欄として出てくる様子
+    // 製品種別を選ぶと、その種別の項目が入力欄として出てくる様子。
+    // 仕様（素材・製品種別・追加項目）は製品マスタから設計図の版へ移ったので、
+    // 撮る画面は設計図の登録フォーム（id は本文の参照を変えないために据え置き）。
     id: "product-form-type-01",
     docPage: "operations/system/product-type/settings",
-    path: "/master/products/new",
+    path: "/production/design-files/new",
     steps: async (page) => {
       await page.getByRole("combobox", { name: "製品種別" }).click();
       await page.getByRole("option", { name: "標準品" }).first().click();
@@ -1135,6 +1141,18 @@ export const shots: Shot[] = [
     },
   },
   // ── マスタ: 不良種類（MS0A）────────────────────────────────────────────────
+  // ── マスタ: 再研磨品目（MS0H）────────────────────────────────────────────
+  // **値段の表そのもの**を見せる 1 枚。条件（工具の種類 × 加工箇所 × 刃数 ×
+  // サイズ帯）が並んで 1 行 1 金額になる、という読み方が画像で伝わるのが要点。
+  {
+    id: "master-regrind-item-list-01",
+    docPage: "operations/masters/regrind-item/user",
+    path: "/master/regrind-items",
+    steps: async (page) => {
+      // シード値（DB のデータ）なのでロケールを変えても同じ文字列。
+      await page.getByText("超硬ヘリカルエンドミル").first().waitFor();
+    },
+  },
   {
     id: "master-defect-type-list-01",
     docPage: "operations/masters/defect-type/user",
@@ -1274,7 +1292,8 @@ export const shots: Shot[] = [
     docPage: "operations/masters/product/user",
     path: "/master/products/new",
     steps: async (page) => {
-      await page.getByText("素材仕様").first().waitFor();
+      // 素材仕様は設計図の版へ移った。製品フォームに残るのは基本情報とキーワード。
+      await page.getByRole("heading", { name: "基本情報" }).first().waitFor();
     },
   },
   {
@@ -1656,7 +1675,12 @@ export const shots: Shot[] = [
     docPage: "operations/masters/approval-setting/user",
     path: "/master/approval-settings?tab=groups",
     steps: async (page) => {
-      await page.getByText("第一承認グループ（デモ）").first().click();
+      // 一覧の行（セル）を押す。文字だけで探すと、隠れている「承認フロー」タブの
+      // 段の説明（同じグループ名を含む）に先に当たり、見えないので押せない。
+      await page
+        .getByRole("cell", { name: "第一承認グループ（デモ）", exact: true })
+        .first()
+        .click();
       await page.getByRole("tab", { name: "メンバー" }).first().click();
       await page.getByRole("button", { name: "メンバーを追加" }).first().waitFor();
     },
@@ -1666,7 +1690,12 @@ export const shots: Shot[] = [
     docPage: "operations/masters/approval-setting/user",
     path: "/master/approval-settings?tab=groups",
     steps: async (page) => {
-      await page.getByText("第一承認グループ（デモ）").first().click();
+      // 一覧の行（セル）を押す。文字だけで探すと、隠れている「承認フロー」タブの
+      // 段の説明（同じグループ名を含む）に先に当たり、見えないので押せない。
+      await page
+        .getByRole("cell", { name: "第一承認グループ（デモ）", exact: true })
+        .first()
+        .click();
       await page.getByRole("tab", { name: "メンバー" }).first().click();
       await page.getByRole("button", { name: "メンバーを追加" }).first().click();
       await page.getByRole("dialog").first().waitFor();
@@ -1677,7 +1706,12 @@ export const shots: Shot[] = [
     docPage: "operations/masters/approval-setting/user",
     path: "/master/approval-settings?tab=groups",
     steps: async (page) => {
-      await page.getByText("第一承認グループ（デモ）").first().click();
+      // 一覧の行（セル）を押す。文字だけで探すと、隠れている「承認フロー」タブの
+      // 段の説明（同じグループ名を含む）に先に当たり、見えないので押せない。
+      await page
+        .getByRole("cell", { name: "第一承認グループ（デモ）", exact: true })
+        .first()
+        .click();
       await page.getByRole("tab", { name: "代理設定" }).first().click();
       await page.getByRole("button", { name: "代理設定を追加" }).first().click();
       await page.getByText("原承認者").first().waitFor();

@@ -46,18 +46,18 @@ The **Approval flows** tab lists the six targets that can go through approval.
 
 > 📷 A screenshot of this screen will be added at the next capture run.
 
-- The six are **Order acknowledgement**, **Work order**, **Material purchase order**, **Purchase request**, **Workflow change** and **Order acknowledgement cancellation**.
+- The six are **Order acceptance**, **Work order**, **Material purchase order**, **Purchase request**, **Workflow change** and **Order acceptance cancellation**.
   - **Workflow change** … approval for adding, editing or removing step branches on an approved / in-progress work order.
-  - **Order acknowledgement cancellation** … approval for cancelling a confirmed order acknowledgement as a whole (there is no per-line cancellation).
+  - **Order acceptance cancellation** … approval for cancelling a confirmed order acceptance as a whole (there is no per-line cancellation).
 - Each card lists its steps as "1 First approval · Plant manager · Any one person".
 - A document with no approval flow is shown with a red border and the note that **no approval can be requested for it**. In that state the request button will not take you anywhere, so be sure to set one up.
-  - **Workflow change** and **Order acknowledgement cancellation** are exceptions: with no steps configured they are **applied immediately without approval** (so sites that do not run approvals are not blocked). Configure at least one step if you want them approved.
-- Each card also shows the **permission needed to approve** it — being able to **view or edit** that document (for example, an order acknowledgement needs read/edit rights for "Order acceptance"). There is no approve-action permission: **who can approve is decided solely by the approval groups on this screen**, and someone who cannot open the document cannot approve even when they are in the group.
+  - **Workflow change** and **Order acceptance cancellation** are exceptions: with no steps configured they are **applied immediately without approval** (so sites that do not run approvals are not blocked). Configure at least one step if you want them approved.
+- Each card also shows the **permission needed to approve** it — being able to **view or edit** that document (for example, an order acceptance needs read/edit rights for "Order acceptance"). There is no approve-action permission: **who can approve is decided solely by the approval groups on this screen**, and someone who cannot open the document cannot approve even when they are in the group.
 - Every step carries a badge for the people who can approve it right now.
   - **N can approve** (green) … everyone in the step has the permission.
   - **N of N without permission** (red) … those people are turned away when they press Approve. Hover the badge to see their names.
   - **No members** (red) … nobody can approve that step at the moment, so a request would stall there.
-  - **N can approve (N limited)** (yellow) … they have the permission, but only for their own plants, so documents outside that range cannot be approved by them.
+  - **N can approve (N limited)** (yellow) … they have the permission, but only for their own sites, so documents outside that range cannot be approved by them.
 - A card with any of these problems is bordered in red, the same as an unconfigured one.
 
 To set it up, press **Edit** on the card (**Set up** when it is empty).
@@ -81,7 +81,35 @@ The edit page for **Workflow change** has, besides the steps, an **Apply mode** 
 - **Pre-approval (applied after approval)** … the change is held until the approval finishes, and is reflected in the steps only once the final approval is given (this is the initial setting).
 - **Post-approval (applied immediately)** … the change is reflected in the steps first, and then the approval goes round. Choose this when you do not want to keep the floor waiting. However, **even when it is sent back, the steps are not put back automatically**. A red warning appears on the work order screen and stays until you deal with it — fixing the steps by hand if needed — and mark it as checked.
 
+As a diagram, the two modes differ like this:
+
+```mermaid
+flowchart TD
+  chg["A workflow change is submitted"] --> mode{"Apply mode"}
+  mode -->|"Pre-approval"| hold["The change is held"]
+  hold -->|"Final approval is given"| app1["Reflected in the steps"]
+  mode -->|"Post-approval"| app2["Reflected in the steps first"]
+  app2 --> appr["The approval goes round"]
+  appr -.->|"Sent back"| warn["The steps are not put back automatically<br/>Red warning on the work order<br/>stays until marked as checked"]
+```
+
 > ⚠️ **Changing the settings does not affect documents that are already in approval.** A document in progress runs to the end with the settings as they were when the approval was requested. Changes apply to approval requests made from now on.
+
+## Turning approval off for a document type (the 「承認を使う」 switch) [#approval-policy]
+
+Each card on the 「承認フロー」 (approval flow) tab has a 「**承認を使う**」 (use approval) switch. You can choose, per document type, whether it goes through approval.
+
+| Switch | Has steps | Has no steps |
+|--------|-----------|--------------|
+| On | Approved through the steps in order | **Approval cannot be requested** (the card turns red) |
+| Off | Proceeds without approval (steps are kept but not used) | Proceeds without approval |
+
+- **When it is off**, pressing 「**承認依頼**」 (request approval) on that document puts it straight into the same state as after approval (approved, etc.). Whatever normally happens on approval — reserving stock, notifying the next step — still happens. The history records 「**承認なし（承認設定で OFF）**」 (no approval — turned off in approval settings).
+- The steps are not deleted. If you turn it back on, the remaining steps are used as they are.
+- A document type whose switch has never been touched **behaves as before** (the card says 「まだ設定していません」, not set yet). Until now, some types could not request approval without steps (order acceptance, work order, purchase request, material purchase order, design request, internal documents) and others passed through without approval when there were no steps (delivery quantity variance, invoice, payment, drawing versions, process flow changes, order acceptance cancellation, stock-take). Once the switch is changed, the table above applies.
+- Only people who can edit master data can move the switch. Each change is recorded in the activity log.
+
+> ⚠️ A document already part-way through approval is not stopped by changing the switch. It finishes with the approval it was requested under.
 
 ## Splitting the flow by document content (conditional flows)
 
@@ -92,15 +120,24 @@ Set this up in the "**条件付きフロー**" (conditional flows) section of th
 - A rule = **conditions** (matched when all of them hold) + **its own approval steps**.
 - At the moment an approval request is submitted, rules are evaluated **top to bottom** and the **first matching rule's** steps are used. Documents that match no rule proceed with the **default flow** configured above.
 - The available condition fields depend on the document type.
-  - **Order acknowledgement** … total amount / delivery method / assigned plant
+  - **Order acceptance** … total amount / delivery method / assigned site
   - **Work order** … type (made-to-order / from stock) / planned quantity
   - **Material purchase order** … total amount
   - **Purchase request** … line count
   - **Workflow change** … the work order's type / the work order's planned quantity
-  - **Order acknowledgement cancellation** … the acknowledgement's total amount / the acknowledgement's delivery method
+  - **Order acceptance cancellation** … the order acceptance's total amount / the order acceptance's delivery method
 - Use "**条件付きフローを追加**" to add a rule with its name, conditions and steps. A rule with **no conditions matches every document** (rules below it and the default flow are never reached — mind the order).
 - Use **↑ ↓** to change the evaluation order and the switch to enable / disable a rule.
 - Conditional flows **replace** the default flow; they do not create an approval gate on their own. A document type with no default flow cannot submit approval requests even if rules exist — always configure the default flow too.
+
+As a diagram, this is how the flow to use is picked:
+
+```mermaid
+flowchart TD
+  req["An approval request is submitted"] --> ev{"Conditional flows are<br/>checked from the top"}
+  ev -->|"The first one that matches"| rule["Goes through that rule's<br/>own approval steps"]
+  ev -->|"None matches"| def["Goes through the default flow"]
+```
 
 > ⚠️ As with the default flow, **changes take effect from the next approval request**. Documents already in approval are unaffected.
 
@@ -150,7 +187,7 @@ The member table shows **Name / Username / Term / State / Approval permission**.
 - **Ended** … fixed term, and the end has passed. Can no longer approve.
 - **Disabled** … stopped by hand; cannot approve regardless of the period.
 
-The **Approval permission** column shows one badge per document this group approves. **Green** … they can approve. **Yellow** … they have the permission but only within their own plants. **Red** … they cannot view or edit that document and are turned away when they press Approve. Permissions come from **roles in User management (SY01)**, not from this app.
+The **Approval permission** column shows one badge per document this group approves. **Green** … they can approve. **Yellow** … they have the permission but only within their own sites. **Red** … they cannot view or edit that document and are turned away when they press Approve. Permissions come from **roles in User management (SY01)**, not from this app.
 
 > 💡 The same column appears for stand-ins on the **Stand-ins** tab. A stand-in approves with **their own** permission, so they also need approval rights for the document.
 
@@ -239,7 +276,7 @@ A. Three things must line up: (1) they can **view or edit** that document (green
 A. They do not have permission to view or edit that document. Permissions come from roles, so check that person in **User management (SY01)** — this app cannot change them. Pass on the permission name shown on the card or badge.
 
 **Q. It says "N limited" in yellow.**
-A. They have the permission, but only within their own plants. They can approve documents inside that range and not outside it. If they need to approve company-wide, review the scope of their permission in User management (SY01).
+A. They have the permission, but only within their own sites. They can approve documents inside that range and not outside it. If they need to approve company-wide, review the scope of their permission in User management (SY01).
 
 **Q. A step set to "Everyone" does not move on after one person approves.**
 A. That is how it works. "Everyone" waits until every member as of the approval request has approved. The document screen shows "N remaining" with the names of those who have not approved yet.

@@ -18,7 +18,7 @@ The PC screens (quotes, stock, and so on) do not appear here. This screen is onl
 ## Words used on this page
 
 - **QRカード** (QR card) … a card like an employee ID card. You hold it up to log in.
-- **PIN** … your own secret number, at least 4 digits.
+- **PIN** … your own secret number. A new PIN has **6 digits**.
 - **端末** (device) … the tablet itself. Only tablets registered by an administrator can be used.
 - **工程** (step) … one stage of the work, such as cutting, step machining, or inspection.
 
@@ -38,7 +38,7 @@ The steps for preparing a brand-new tablet (installing the app, the registration
 ![Tablet login screen](../../../assets/screenshots/kiosk-login-01.png)
 
 3. When the card is read, the screen changes to the **PIN entry screen**. Enter your PIN with the number buttons on the screen.
-4. The first time a card is used, you choose a new PIN and enter it twice (you enter the same number again to confirm it).
+4. The first time a card is used, you choose a new PIN and enter it twice (you enter the same number again to confirm it). A new PIN has **6 digits**. The same digit repeated (`111111`), a run like `123456`, or a repeat like `121212` is refused with「**その PIN は使えません**」(That PIN cannot be used).
 
 After you log in, the list of apps you can use appears.
 
@@ -47,6 +47,17 @@ After you log in, the list of apps you can use appears.
 > 💡 On a tablet you use often, you can log in just by holding up your card for a while. But **on a tablet you use for the first time, it always asks for your PIN**. Also, even if you keep using it, you must **enter your PIN once every 2 weeks**.
 
 > ⚠️ If you get the PIN **wrong 5 times in a row**, that card **cannot be used for 15 minutes**. Please wait a while and try again. If you are in a hurry, an administrator can reset your PIN.
+
+As a diagram, logging in works like this:
+
+```mermaid
+flowchart TD
+  scan["Hold up your QR card"] --> q{"Is the PIN asked for?"}
+  q -->|"First time on this tablet<br/>Not used for 48 hours or more<br/>2 weeks since the last PIN entry"| pin["Enter your PIN"]
+  q -->|"None of these"| home["Logged in (app list)"]
+  pin -->|"Correct"| home
+  pin -.->|"Wrong 5 times in a row"| lock["The card cannot be used for 15 minutes"]
+```
 
 ## How to read the screen
 
@@ -87,7 +98,9 @@ Hold your own card up to the tablet's camera. Cards are issued **per person**. D
 
 ### PIN [#field-pin]
 
-The number you chose. You are always asked for it when:
+The number you chose. A new PIN has **6 digits**; the same digit repeated, a run like `123456`, or a repeat like `121212` cannot be used. A PIN you registered earlier with 4 digits keeps working (after an administrator resets it, the next PIN you choose has 6 digits).
+
+You are always asked for it when:
 
 - you use the card on **that tablet for the first time**
 - **two weeks** have passed since you last entered it

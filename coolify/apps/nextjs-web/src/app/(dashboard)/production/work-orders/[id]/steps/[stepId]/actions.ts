@@ -1095,8 +1095,20 @@ export async function saveOutsourceDates(
         productItemId: true,
         plannedQuantity: true,
         type: true,
+        // 預けバケットの拠点に使う「出した拠点」。外注工程そのものは拠点を
+        // 持たない（workflow.ts — OUTSOURCE は plantId null）ので、工程の
+        // 拠点をそのまま渡すと預け在庫が全部 拠点なし に積まれ、拠点スコープの
+        // 利用者（plantWhere）から見えなくなる。指示書完了時の入庫と同じ規則で
+        // 社内工程の最初の拠点を使う（inventory.ts onWorkOrderCompletedTx）。
+        steps: {
+          where: { plantId: { not: null } },
+          orderBy: { sortOrder: "asc" },
+          take: 1,
+          select: { plantId: true },
+        },
       },
     });
+    const custodyPlantId = step.plantId ?? woItem?.steps[0]?.plantId ?? null;
     const supplierBpId = step.supplierBpId;
     // **工程が始まる前に依頼日を入れることがある**（先に外注へ出して、戻って
     // きてから工程を開始する現場もある）。そのとき受入数はまだ無いので、
@@ -1140,7 +1152,7 @@ export async function saveOutsourceDates(
           itemId: woItem.productItemId,
           supplierBpId,
           quantity: custodyQuantity,
-          plantId: step.plantId,
+          plantId: custodyPlantId,
           ownerBpId,
         });
       }
@@ -1154,7 +1166,7 @@ export async function saveOutsourceDates(
           // 戻る数は預けた数まで（onOutsourceReturnTx が台帳残で頭打ちにする）。
           quantity:
             custodyQuantity > 0 ? custodyQuantity : Number.MAX_SAFE_INTEGER,
-          plantId: step.plantId,
+          plantId: custodyPlantId,
         });
       }
       await tx.workOrderStep.update({

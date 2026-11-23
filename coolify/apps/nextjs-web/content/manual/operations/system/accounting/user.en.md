@@ -40,6 +40,8 @@ It opens **read-only**. To change something, press "**Edit**" at the top right. 
 
 At the bottom there is a **preview** — one made-up invoice mixing 10% and 8%, written with the current settings. It updates as you edit, so you can check before saving.
 
+The CSV itself is exported not on this screen but **per issued [invoice](/manual/en/operations/billing/invoice/user)**, from "**…**" → "**会計連携CSV**" (Accounting CSV). The first export freezes the journal as an accounting document, and that invoice's billing closing becomes "Exported". "**文書履歴**" (Document history) at the top right lists the accounting documents posted and reversed so far.
+
 ## Setting it up
 
 ### Output format
@@ -67,6 +69,16 @@ Top to bottom is the first column, the second column, and so on. Each row sets a
 
 Used when the master has no code. **Left blank, the field is written empty.**
 
+As a diagram, the code is chosen in this order:
+
+```mermaid
+flowchart TD
+  q1{"The master<br/>has a code"} -->|"Yes"| a["Written with<br/>the master's code"]
+  q1 -->|"No"| q2{"The default on this<br/>screen has a code"}
+  q2 -->|"Yes"| b["Written with<br/>the default code"]
+  q2 -->|"No"| c["The field is<br/>written empty"]
+```
+
 The sub-account code has no default — it differs per business partner, so enter it on [Business partners](/manual/en/operations/masters/business-partner/user) (`MS01`).
 
 ### Tax codes by rate
@@ -85,7 +97,7 @@ A. Neither the master (tax category, business partner) nor the defaults on this 
 A. Two or more tax categories share that rate and carry different account codes, so which account to post to is undecided — it is **deliberately not exported**. On [Tax categories](/manual/en/operations/masters/tax-category/user) (`MS0F`), give the categories on that rate the same codes.
 
 **Q. If I change the settings, do invoices exported earlier change too?**
-A. Files already downloaded do not change. But **exporting the same invoice again produces the new shape**.
+A. Files already downloaded do not change. Exporting the same invoice again **uses the new settings for the shape (column order, encoding and so on)**, but **the contents — account codes, tax codes, amounts — stay as they were at the first export** (they are frozen when posted). To re-export with new codes, choose "**反対仕訳を作成**" (Create reversal — a reason is required) on the invoice screen, then export again.
 
 **Q. It told me some characters could not be converted.**
 A. The description contains characters that do not exist in Shift_JIS. They are written as `?`. If they come from a partner name, review the wording on the master.

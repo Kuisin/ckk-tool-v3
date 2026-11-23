@@ -21,8 +21,9 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import type { Option } from "@/lib/mock";
@@ -54,6 +55,8 @@ export interface F4Config {
   description?: string;
 }
 
+const NO_ROWS: F4Row[] = [];
+
 export function F4SearchModal({
   opened,
   onClose,
@@ -67,45 +70,44 @@ export function F4SearchModal({
 }) {
   const tr = useTranslations();
   const [values, setValues] = useState<Record<string, string>>({});
-  const [rows, setRows] = useState<F4Row[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
-  const seq = useRef(0);
+  // 検索ボタンで確定した条件。入力中の values とは別に持つ（打つたびに
+  // 検索しない — F4 は条件を揃えてから引く画面）。
+  const [submitted, setSubmitted] = useState<Record<string, string>>({});
+  const instanceId = useId();
+  const latestSearch = useRef(config.onSearch);
+  latestSearch.current = config.onSearch;
 
-  const run = useCallback(
-    (filters: Record<string, string>) => {
-      const id = ++seq.current;
-      setLoading(true);
-      config
-        .onSearch(filters)
-        .then((r) => {
-          if (seq.current === id) {
-            setRows(r);
-            setSearched(true);
-          }
-        })
-        .catch(() => {
-          if (seq.current === id) setRows([]);
-        })
-        .finally(() => {
-          if (seq.current === id) setLoading(false);
-        });
-    },
-    [config],
-  );
+  const query = useQuery({
+    // 鍵はこのモーダル 1 つぶん。呼び出し側は config を毎回作り直すので、
+    // 関数の同一性は鍵にしない（親の描き直しで検索し直さない）。
+    queryKey: ["f4-search", instanceId, submitted],
+    queryFn: () => latestSearch.current(submitted),
+    enabled: opened,
+    // 引き直している間は前の結果を出したままにする。
+    placeholderData: keepPreviousData,
+    retry: false,
+  });
+  const rows = query.isError ? NO_ROWS : (query.data ?? NO_ROWS);
+  const loading = query.isFetching;
+  const searched = query.isSuccess && !query.isPlaceholderData;
 
   // 開いたら空条件で先頭を出す（F4 の初期一覧）
   useEffect(() => {
     if (opened) {
       setValues({});
-      setSearched(false);
-      run({});
+      setSubmitted({});
     }
-  }, [opened, run]);
+  }, [opened]);
 
   const submit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    run(values);
+    const same =
+      Object.keys({ ...submitted, ...values }).length ===
+        Object.keys(values).length &&
+      Object.entries(values).every(([k, v]) => submitted[k] === v);
+    // 同じ条件でもう一度押したら取り直す（鍵が変わらないと自動では走らない）。
+    if (same) void query.refetch();
+    else setSubmitted({ ...values });
   };
 
   return (

@@ -33,6 +33,15 @@ These settings let you prepare, in advance, the input boxes that appear when you
 - To open it, choose 「**製品項目**」 (Product items) under System on the home screen, or type `SY03` in the search box at the top.
 - You can move between the two screens with the 「**製品種別へ**」 (To product types) and 「**製品項目へ**」 (To product items) buttons at the top right of each.
 
+As a diagram, the three screens connect like this:
+
+```mermaid
+flowchart TD
+  item["製品項目 (Product items, SY03)<br/>Make the input boxes one by one"] -->|"Assign"| type["製品種別 (Product types, SY04)<br/>A template combining input boxes"]
+  type -->|"Choose a product type"| prod["Product registration screen<br/>The template's input boxes appear"]
+  item -.->|"Add under 追加項目 (Extra items)"| prod
+```
+
 ## 1. Making the input boxes (Product items)
 
 ![Product items list screen](../../../assets/screenshots/product-items-01.png)
@@ -99,13 +108,13 @@ If you turn off the 「**有効（製品作成の選択肢に出す）**」 (Ena
 
 ## 3. How it looks when registering a product
 
-A box called 「**製品種別**」 (Product type) appears on the new [product](/manual/en/operations/masters/product/user) screen.
+A box called 「**製品種別**」 (Product type) appears on the [drawing](/manual/en/operations/production/design-file/user) registration screen (a product's specification is held by the drawing version, not by the product master).
 
 1. Choose a template in 「**製品種別**」 (Product type).
 2. The input boxes built into that template appear below.
 3. The defaults are already filled in, so change only the parts you need to.
 
-![Product type on the product registration screen](../../../assets/screenshots/product-form-type-01.png)
+![Product type on the drawing registration screen](../../../assets/screenshots/product-form-type-01.png)
 
 You can also add input boxes that are not in the template, by choosing them under 「**追加項目**」 (Extra items) below. Only the input boxes made under "製品項目" (Product items) appear there.
 

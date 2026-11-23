@@ -33,6 +33,15 @@ screenshots: [product-items-01, product-item-edit-01, product-types-01, product-
 - 開き方は、ホーム画面のシステムから「**製品項目**」を選ぶか、上の検索欄に `SY03` と入れます。
 - 2 つの画面は、それぞれの右上にある「**製品種別へ**」「**製品項目へ**」のボタンで行き来できます。
 
+3 つの画面のつながりを図にすると次のとおりです。
+
+```mermaid
+flowchart TD
+  item["製品項目（SY03）<br/>入力欄を 1 つずつ作る"] -->|"割り当て"| type["製品種別（SY04）<br/>入力欄を組み合わせたひな形"]
+  type -->|"製品種別を選ぶ"| prod["製品の登録画面<br/>ひな形の入力欄が出る"]
+  item -.->|"「追加項目」で足す"| prod
+```
+
 ## 1. 入力欄をつくる（製品項目）
 
 ![製品項目の一覧画面](../../../assets/screenshots/product-items-01.png)
@@ -99,13 +108,13 @@ screenshots: [product-items-01, product-item-edit-01, product-types-01, product-
 
 ## 3. 製品を登録するときの見え方
 
-[製品](/manual/ja/operations/masters/product/user)の新規作成画面に「**製品種別**」という欄が出ます。
+[設計図](/manual/ja/operations/production/design-file/user)の登録画面に「**製品種別**」という欄が出ます（製品の仕様は、製品マスタではなく設計図の版が持ちます）。
 
 1. 「**製品種別**」で、ひな形を選びます。
 2. そのひな形に組み込まれた入力欄が、下に出てきます。
 3. 既定値が入っているので、必要なところだけ直します。
 
-![製品登録画面の製品種別](../../../assets/screenshots/product-form-type-01.png)
+![設計図の登録画面の製品種別](../../../assets/screenshots/product-form-type-01.png)
 
 ひな形に入っていない入力欄も、下の「**追加項目**」で選んで足せます。ここに出るのは「製品項目」で作った入力欄だけです。
 

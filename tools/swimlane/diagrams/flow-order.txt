@@ -1,0 +1,280 @@
+/title/
+受注 — 注文書の取込から注文明細の確定まで
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 手順;
+left-subtitle: 説明;
+
+/role/
+
+<role_cust>
+label: 顧客;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+<role_system>
+label: システム;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_admin>
+label: 管理者;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_support>
+label: 営業補助;
+text-color: #92400e;
+background-color: #fef3c7;
+
+<role_appr>
+label: 承認者;
+text-color: #166534;
+background-color: #f0fdf4;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SA04>
+label: SA04;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA05>
+label: SA05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SY0C>
+label: SY0C;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<OA>
+label: 注文請書;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<OL>
+label: 注文明細;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+/line/
+
+[role_cust: 注文書を送る] <block_neutral>
+label: 注文;
+desc: メール・FAX・PDF で注文書が届く。FAX は複合機でスキャンしてファイルにする。;
+if (入口) is (ファイル) than #blue
+  if (取込経路) is (メール) than #blue
+    [role_system: メールを受け取る] <block_system>
+    label: メール取込;
+    desc: order-intake@ 宛のメールの添付（PDF・画像）を取込フォルダへ置く。添付 1 通 = 注文請書 1 件。本番環境だけ。;
+  elseif (フォルダ) than #blue
+    [role_admin: フォルダへ投入する] <block_apply>
+    label: 投入;
+    props: APP_SY0C;
+    desc: 注文書取込の画面からまとめて置く（共有フォルダへ直接置いてもよい）。60 秒ごとの自動スキャンか「今すぐスキャン」で取り込まれる。;
+  elseif (優先取込) than #blue
+    [role_support: ファイルを選ぶ] <block_apply>
+    label: 優先取込;
+    props: APP_SA04;
+    desc: 一覧の「優先取込」で複数選べる。フォルダを通らず、すぐ一覧に並ぶ。;
+  endif
+  [role_system: 採番して取り込む] <block_system>
+  label: 採番;
+  props: OA;
+  desc: ORD- の番号が付き、状態「取込中」の注文請書ができる。;
+  [role_system: AI が読み取る] <block_system>
+  label: AI 抽出;
+  desc: 顧客名・品名・本数・単価・納期を読み取る。1 件 1〜3 分。;
+  if (読み取り) is (一時的な失敗) than #orange
+    [role_system: 自動で読み直す] <block_wait>
+    label: 再試行中;
+    desc: 接続不可・混雑・形式外れは最大 3 回まで自動で読み直す（橙の「再試行中」）。;
+    [loop]
+  elseif (失敗で停止) than #red
+    [role_support: 再抽出か手入力へ] <block_reject>
+    label: 抽出失敗;
+    props: APP_SA04;
+    desc: 赤い「抽出失敗」に原因と対処が出る。「再抽出」でもう一度試すか、「手入力に切り替え」で下書きにして自分で入れる。;
+  elseif (成功) than #blue
+    [role_system: 顧客・製品を突合] <block_system>
+    label: 突合;
+    desc: 学習済みの表記 → 表記ゆれの吸収の順で 1 件に絞れたものだけ入れる。状態「下書き」になり、受付担当へ通知が届く。;
+  endif
+elseif (手入力) than #purple
+  [role_support: 手入力で作る] <block_apply>
+  label: 手入力;
+  props: APP_SA04,OA;
+  desc: 「手入力で新規」で顧客と明細を入れ、「下書きを作成」で状態「下書き」になる。;
+endif
+[role_support: 内容を確かめる] <block_apply>
+label: 確認;
+props: APP_SA04;
+desc: 元の注文書と見比べ、「編集」で直して保存する。直せるのは下書きのあいだだけ。;
+if (突合) is (未特定あり) than #orange
+  [role_support: 顧客・製品を選ぶ] <block_apply>
+  label: 未特定;
+  props: APP_SA04;
+  desc: 「もしかして」の候補から選ぶか検索して選ぶ。保存すると表記を覚え、次から自動で結び付く。;
+elseif (特定済み) than
+endif
+if (明細の種別) is (再研磨) than #purple
+  [role_support: 研ぎ直す工具を選ぶ] <block_apply>
+  label: 再研磨;
+  props: APP_SA04;
+  desc: 品目は再研磨品目から選び、預かる工具を製品マスタ（他社製品も可）から選ぶ。;
+elseif (本番など) than
+endif
+if (単価) is (価格表どおり) than #blue
+elseif (上書き) than #purple
+  [role_support: 単価を上書きする] <block_apply>
+  label: 上書き;
+  props: APP_SA04;
+  desc: 価格表と違う値段で受けるときだけ「単価を上書き」を入れて直す。意図した値段なので差異にはならない。;
+elseif (価格表なし) than #blue
+  [role_support: 単価を入れる] <block_apply>
+  label: 自由入力;
+  props: APP_SA04;
+  desc: その顧客・製品の価格表が無い行は単価を自由に入れる。;
+endif
+[role_support: 承認を依頼する] <block_apply>
+label: 承認依頼;
+props: APP_SA04;
+desc: 顧客・明細・全行の製品と単価（再研磨は工具も）が揃うと押せる。状態「承認依頼中」。;
+if (価格差異) is (あり) than #orange
+  [role_support: 差異を確認して依頼] <block_wait>
+  label: 価格差異;
+  props: APP_SA04;
+  desc: 上書きなしで価格表と違う行・数量段階が無い行は、確認画面で認めてから依頼する。;
+elseif (なし) than
+endif
+[role_system: 承認フローを決める] <block_system>
+label: フロー;
+desc: 承認設定で合計金額・配送方法・担当拠点の条件に合うフローを選び、1 段目の承認グループに通知する。;
+[role_appr: 段ごとに承認する] <block_approve>
+label: 承認;
+props: APP_CM01,OA;
+desc: 注文請書の画面か未処理一覧から操作する。段の承認者（いずれか 1 名 / 全員）が承認すると次の段へ。;
+if (承認判断) is (差し戻し) than #red
+  [role_support: 直して再依頼する] <block_reject>
+  label: 差し戻し;
+  props: APP_SA04;
+  desc: 理由つきで「下書き」に戻る。直して承認依頼し直す。;
+  [loop]
+elseif (次の段あり) than #blue
+  [loop]
+elseif (全段承認) than #green
+endif
+[role_support: 注文を確定する] <block_apply>
+label: 確定;
+props: APP_SA04,OA;
+desc: 「確定」→「展開する」。状態「承認済」→「確定済」。;
+[role_system: 注文明細を作る] <block_system>
+label: 注文明細;
+props: OL;
+desc: 明細 1 行ごとに ORD-…-01, -02 の番号が付き、金額が固定され、状態「確定」になる。;
+if (その後) is (受注どおり) than #blue
+  [role_support: 注文明細を確かめる] <block_apply>
+  label: 引き継ぎ;
+  props: APP_SA05;
+  desc: 注文明細から指示書・出荷書へ進む。確定後は数量・単価・製品を変えられない。;
+  [role_support: アーカイブする] <block_neutral>
+  label: 片付け;
+  props: APP_SA04;
+  desc: 任意。確定済の注文請書を「アーカイブ」にする。以後は編集できない。;
+elseif (取り消し) than #red
+  [role_support: キャンセルを依頼する] <block_reject>
+  label: キャンセル;
+  props: APP_SA04;
+  desc: 確定済の注文請書ごと、理由を入れて依頼する。出荷済の明細が 1 つでもあると依頼できない。;
+  if (キャンセルの承認段) is (なし) than #blue
+  elseif (あり) than #orange
+    [role_appr: キャンセルを承認する] <block_approve>
+    label: 承認;
+    props: APP_CM01;
+    desc: 最終承認までは何も変わらない。差し戻すと請書はそのままで依頼が閉じる。;
+  endif
+  [role_system: キャンセルを適用する] <block_end>
+  label: キャンセル;
+  props: OA,OL;
+  desc: 注文明細と注文請書が「キャンセル」になり、引当在庫を解放し、未完了の指示書を連鎖キャンセルする（統合ロットは残す）。;
+  if (作り直し) is (する) than #purple
+    [role_support: 請書から作り直す] <block_apply>
+    label: 作り直し;
+    props: APP_SA04,OA;
+    desc: キャンセル済みの請書から、内容を引き継いだ新しい下書きを作る。;
+  elseif (しない) than
+  endif
+endif

@@ -31,7 +31,7 @@ import {
 } from "@/components/shipping/delivery-orders/model";
 import {
   actOnCurrentStep,
-  assertFlowConfigured,
+  approvalNeed,
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
@@ -1544,8 +1544,10 @@ async function guardVarianceOnConfirm(
     return actionError(tr("shipping.deliveryOrderActions.awaitingApproval"));
   }
 
-  // 段が無ければ素通し（NONE のまま。依頼も作らない）。
-  if (await assertFlowConfigured("delivery_orders")) return null;
+  // 承認設定で OFF（または段なしの従来の素通し）なら NONE のまま。依頼も作らない。
+  const need = await approvalNeed("delivery_orders");
+  if (need.kind === "skip") return null;
+  if (need.kind === "blocked") return actionError(need.error);
 
   // **依頼を先に作る** — 逆順だと依頼の作成に失敗したとき、出荷書だけが
   // 承認依頼中のまま誰の承認一覧にも出ない。二重依頼は startApprovalFlow が

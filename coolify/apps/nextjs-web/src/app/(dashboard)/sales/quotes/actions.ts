@@ -18,11 +18,12 @@ import {
   resolvePriceFromEntries,
 } from "@/components/sales/quotes/model";
 import { recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
+import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
 import { lineAmountYen, roundYen } from "@/lib/money";
 import { allocateDocumentKey } from "@/lib/numbering";
+import { planQuoteMail, sendQuoteMail } from "@/lib/quote-mail";
 import { salesLineItemError } from "@/lib/sales-item-guard";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
@@ -439,4 +440,64 @@ export async function issueQuote(
       prismaErrorMessage(e, tr("sales.quoteActions.issueFailed"), tr),
     );
   }
+}
+
+/**
+ * 発行ダイアログ・「メールで送付」の確認用: 誰に送るか（送れないなら理由）。
+ * 宛先の決め方は lib/quote-mail-core.ts。
+ */
+export async function previewQuoteMail(
+  number: string,
+): Promise<ActionResult<{ name: string; email: string } | { reason: string }>> {
+  const tr = await getTranslations();
+  const key = parseDocKey(number, "QOT");
+  if (!key) return actionError(tr("sales.quoteActions.invalidQuoteNumber"));
+  const authz = await checkPermission("quote", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await quoteInScope(authz.access, authz.userId, key))) {
+    return actionError(tr("sales.quoteActions.scopeDenied"));
+  }
+  const plan = await planQuoteMail(key);
+  if (!plan.ok) {
+    return actionOk({
+      reason: tr(`sales.issueQuoteModal.reason.${plan.reason}`),
+    });
+  }
+  return actionOk({
+    name: plan.recipient.displayName,
+    email: plan.recipient.email,
+  });
+}
+
+/**
+ * 発行済みの見積書を顧客へメールで知らせる（PDF は添付せず、宛先に束縛した
+ * 書類リンクを載せる — lib/quote-mail.ts）。発行とは別の操作 — 発行は成功
+ * したのに送れなかった、を「メールで送付」から送り直せるようにする。
+ */
+export async function emailQuote(
+  number: string,
+): Promise<ActionResult<{ to: string }>> {
+  const tr = await getTranslations();
+  const key = parseDocKey(number, "QOT");
+  if (!key) return actionError(tr("sales.quoteActions.invalidQuoteNumber"));
+  const authz = await checkPermission("quote", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await quoteInScope(authz.access, authz.userId, key))) {
+    return actionError(tr("sales.quoteActions.scopeDenied"));
+  }
+  const actorId = await sessionUserId();
+  if (!actorId) return actionError(tr("common.invalidInput"));
+  const result = await sendQuoteMail(key, actorId);
+  if (!result.ok) {
+    return actionError(tr(`sales.issueQuoteModal.reason.${result.reason}`));
+  }
+  // 誰に送ったかを履歴に残す（取引先へ書類を出したという事実）。
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "quotes",
+    recordId: number,
+    after: { emailedTo: result.to },
+  });
+  revalidate(number);
+  return actionOk({ to: result.to });
 }

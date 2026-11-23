@@ -23,7 +23,7 @@ import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import {
   actOnCurrentStep,
-  assertFlowConfigured,
+  approvalNeed,
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
@@ -625,7 +625,7 @@ export async function saveDraft(
 export async function submitForApproval(
   number: string,
   acknowledgePriceDiff = false,
-): Promise<ActionResult> {
+): Promise<ActionResult<{ approvedWithoutFlow: true } | undefined>> {
   const tr = await getTranslations();
   const key = keyOf(number);
   if (!key)
@@ -703,8 +703,33 @@ export async function submitForApproval(
       );
     }
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
-    const flowError = await assertFlowConfigured("order_acceptances");
-    if (flowError) return actionError(flowError);
+    const need = await approvalNeed("order_acceptances");
+    if (need.kind === "blocked") return actionError(need.error);
+    if (need.kind === "skip") {
+      // 承認設定で OFF — 依頼を作らず、最終承認と同じ状態（APPROVED）へ直接進める。
+      // 依頼時の価格差異・上書きの記録は承認ありのときと同じく監査行に残す。
+      const applied = await applyFinalApproval(number, key, "DRAFT", {
+        note: tr("approvals.policy.skippedNote"),
+        ...(priceCheck.diffCount > 0
+          ? {
+              priceDiffNote: tr(
+                "sales.orderAcceptanceActions.priceDiffAcknowledgedNote",
+                { count: priceCheck.diffCount },
+              ),
+              priceDiffs: diffLines,
+            }
+          : {}),
+        ...(priceCheck.overrideCount > 0
+          ? { priceOverrides: overrideLines }
+          : {}),
+      });
+      if (!applied) {
+        return actionError(
+          tr("sales.orderAcceptanceActions.onlyDraftCanRequestApproval"),
+        );
+      }
+      return actionOk({ approvedWithoutFlow: true });
+    }
     // 1 段目の承認依頼を作る（PD03 横断表示・承認記録の紐付け先）。
     // **状態より先に依頼を作る** — 逆順だと依頼の作成が失敗したとき、書類だけが
     // 承認依頼中のまま誰の承認一覧にも出ない（承認も差し戻しもできず動かせない）。
@@ -760,6 +785,43 @@ export async function submitForApproval(
   }
 }
 
+/**
+ * 最終承認で書類が行き着く状態（APPROVED）を当てる。承認フローの最終段と、
+ * 承認設定で OFF のときの依頼（承認なし）の両方がここを通る。
+ *
+ * - from = "REQUESTED"（最終承認）: 従来どおり無条件に更新する。
+ * - from = "DRAFT"（承認なし）: 依頼の判定後に状態が動いていないことを条件に
+ *   更新し、動いていれば false を返す（二重押しで監査行を重ねない）。
+ */
+async function applyFinalApproval(
+  number: string,
+  key: DocKey,
+  from: "REQUESTED" | "DRAFT",
+  extraAfter?: Record<string, unknown>,
+): Promise<boolean> {
+  if (from === "REQUESTED") {
+    await prisma.orderAcceptance.update({
+      where: { yearMonth_seq: key },
+      data: { status: "APPROVED" },
+    });
+  } else {
+    const res = await prisma.orderAcceptance.updateMany({
+      where: { yearMonth: key.yearMonth, seq: key.seq, status: "DRAFT" },
+      data: { status: "APPROVED" },
+    });
+    if (res.count === 0) return false;
+  }
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "order_acceptances",
+    recordId: number,
+    before: { status: from },
+    after: { status: "APPROVED", ...(extraAfter ?? {}) },
+  });
+  revalidate(number);
+  return true;
+}
+
 /** 承認 — 現在の段に承認を記録し、全段通過で APPROVED。 */
 export async function approveAcceptance(number: string): Promise<ActionResult> {
   const tr = await getTranslations();
@@ -805,18 +867,7 @@ export async function approveAcceptance(number: string): Promise<ActionResult> {
       revalidate(number);
       return actionOk();
     }
-    await prisma.orderAcceptance.update({
-      where: { yearMonth_seq: key },
-      data: { status: "APPROVED" },
-    });
-    await recordAudit({
-      action: "UPDATE",
-      tableName: "order_acceptances",
-      recordId: number,
-      before: { status: "REQUESTED" },
-      after: { status: "APPROVED" },
-    });
-    revalidate(number);
+    await applyFinalApproval(number, key, "REQUESTED");
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
@@ -1213,6 +1264,9 @@ export async function recreateFromCancelledAcceptance(
           // 起こす」操作なので、行ごとに違っていた届け先もそのまま持ってくる。
           create: source.items.map((it, i) => ({
             itemId: it.itemId,
+            // 再研磨の行は「何を研ぐか」（顧客の工具）も明細が持つ。落とすと
+            // 作り直した請書が regrindToolNotSelected で確定できなくなる。
+            toolItemId: it.toolItemId,
             productText: it.productText,
             orderType: it.orderType,
             quantity: it.quantity,

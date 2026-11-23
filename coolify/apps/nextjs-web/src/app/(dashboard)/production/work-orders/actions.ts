@@ -23,7 +23,7 @@ import { z } from "zod";
 import {
   actOnCurrentStep,
   appendHistory,
-  assertFlowConfigured,
+  approvalNeed,
   type HistoryEntry,
   startApprovalFlow,
 } from "@/lib/approvals";
@@ -1631,10 +1631,155 @@ export async function cancelWorkOrder(
 
 // ── 承認フロー（段数は承認設定 MS0B が決める — lib/approvals） ──────────────
 
+/**
+ * 最終承認の副作用 — 指示書を APPROVED にし、割当明細のロックを外して
+ * 製造中へ進め、製造分なら素材を予約する。
+ *
+ * 承認フローの最終承認（approveWorkOrder）と、承認設定で OFF のときの
+ * 承認なしの確定（requestApproval の skip）の両方がここを通る —
+ * 承認後の状態と副作用を 1 か所で決めるため。guardStatus を渡すと
+ * その状態のときだけ更新する（違えば P2025 で全体が巻き戻る）。
+ */
+async function applyFinalWorkOrderApproval(args: {
+  prior: {
+    id: string;
+    history: Prisma.JsonValue;
+    type: WorkOrderType;
+    materialItemId: number | null;
+    plannedQuantity: number;
+  };
+  workOrderNumber: number;
+  actor: string | null;
+  linkedLineIds: string[];
+  historyEntry: HistoryEntry;
+  auditBefore: Record<string, unknown>;
+  auditNote?: string;
+  guardStatus?: "DRAFT";
+  /** 承認とあわせて書く列（承認なしの確定で依頼者・差し戻し列を整える）。 */
+  extraData?: Prisma.WorkOrderUncheckedUpdateInput;
+  tr: Awaited<ReturnType<typeof getTranslations>>;
+}): Promise<void> {
+  const {
+    prior,
+    workOrderNumber,
+    actor,
+    linkedLineIds,
+    historyEntry,
+    auditBefore,
+    auditNote,
+    guardStatus,
+    extraData,
+    tr,
+  } = args;
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.workOrder.update({
+      where: guardStatus
+        ? { id: prior.id, status: guardStatus }
+        : { id: prior.id },
+      data: {
+        ...extraData,
+        status: "APPROVED",
+        approvalStatus: "APPROVED",
+        approvedAt: now,
+        approvedBy: actor,
+        history: toHistoryJson(appendHistory(prior.history, historyEntry)),
+      },
+    }),
+    ...(linkedLineIds.length > 0
+      ? [
+          prisma.orderLine.updateMany({
+            where: { id: { in: linkedLineIds } },
+            data: { isLocked: false },
+          }),
+          // 出荷が先行している明細は戻さない（PARTIAL_SHIPPED/SHIPPED 維持）
+          prisma.orderLine.updateMany({
+            where: {
+              id: { in: linkedLineIds },
+              status: { in: ["DRAFT", "CONFIRMED"] },
+            },
+            data: { status: "IN_PRODUCTION" },
+          }),
+        ]
+      : []),
+  ]);
+  // 素材予約（監査 P2-1）: 製造分の承認確定で素材需要を RESERVE — ATP に
+  // 製造コミットが反映される。予約超過（reserved > on-hand）は仕様
+  // （発注判断のシグナル）。best-effort — 承認は既に確定済み。
+  if (prior.type === "MANUFACTURE" && prior.materialItemId != null) {
+    try {
+      const { ensureItemInventory, applyTransaction } = await import(
+        "@/lib/inventory"
+      );
+      // 品目統合 第 2 段 B — work_orders はもう品目 id（material_item_id）を
+      // 直接持つので、以前あった「素材 → 品目」の往復は要らない。
+      const item = await prisma.item.findUnique({
+        where: { id: prior.materialItemId },
+        select: { unit: true },
+      });
+      // 伝票の番号はこの（承認とは別の）tx の外で採番する。
+      const reserveMovementKey =
+        await allocateDocumentKey("INVENTORY_MOVEMENT");
+      await prisma.$transaction(async (tx) => {
+        const openMovement = movementOpener(tx, {
+          key: reserveMovementKey,
+          cause: "STOCK_RESERVATION",
+          sourceType: "work_orders",
+          sourceId: String(workOrderNumber),
+        });
+        const invId = await ensureItemInventory(tx, {
+          itemId: prior.materialItemId as number,
+          plantId: null,
+          unit: item?.unit ?? "本", // i18n-ignore — DB データの既定値（単位）。対象外（_specs/i18n-glossary.md §1）
+        });
+        await applyTransaction(tx, await openMovement(), {
+          inventoryType: "MATERIAL",
+          inventoryId: invId,
+          transactionType: "RESERVE",
+          quantity: prior.plannedQuantity,
+          referenceType: "work_order",
+          referenceId: prior.id,
+          notes: tr("production.workOrderActions.materialReserveNote", {
+            number: workOrderNumber,
+          }),
+        });
+        await tx.inventoryReservation.create({
+          data: {
+            inventoryType: "MATERIAL",
+            inventoryId: invId,
+            workOrderId: prior.id,
+            // 割当が 1 明細だけなら明細にも紐付ける（統合ロットは指示書のみ）
+            orderLineId: linkedLineIds.length === 1 ? linkedLineIds[0] : null,
+            quantity: prior.plannedQuantity,
+            status: "RESERVED",
+            reservedAt: new Date(),
+          },
+        });
+      });
+    } catch (err) {
+      console.error(
+        tr("production.workOrderActions.materialReserveFailedLog"),
+        err,
+      );
+    }
+  }
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "work_orders",
+    recordId: String(workOrderNumber),
+    before: auditBefore,
+    after: {
+      status: "APPROVED",
+      approvalStatus: "APPROVED",
+      ...(auditNote ? { note: auditNote } : {}),
+    },
+  });
+}
+
 /** 承認依頼 — DRAFT → PENDING_APPROVAL / PENDING。注文明細をロックする。 */
 export async function requestApproval(
   workOrderNumber: number,
-): Promise<ActionResult> {
+): Promise<ActionResult<{ approvedWithoutFlow: true } | undefined>> {
   const tr = await getTranslations();
   // 依頼者は起票側の操作 — "approve" ではなく "work_order":UPDATE（判断メモ）。
   const authz = await checkPermission("work_order", "UPDATE");
@@ -1705,11 +1850,39 @@ export async function requestApproval(
       );
     }
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
-    const flowError = await assertFlowConfigured("work_orders");
-    if (flowError) return actionError(flowError);
+    const need = await approvalNeed("work_orders");
+    if (need.kind === "blocked") return actionError(need.error);
     const actor = await getCurrentActorId();
     const now = new Date();
     const linkedLineIds = prior.orderLineLinks.map((l) => l.orderLineId);
+    if (need.kind === "skip") {
+      // 承認設定で OFF — 承認依頼を作らず、最終承認と同じ状態・副作用で確定する。
+      // DRAFT のときだけ動かす（競合すれば P2025 で巻き戻る）。
+      const note = tr("approvals.policy.skippedNote");
+      await applyFinalWorkOrderApproval({
+        prior,
+        workOrderNumber,
+        actor,
+        linkedLineIds,
+        historyEntry: entry("APPROVE_FINAL", actor, note),
+        auditBefore: {
+          status: prior.status,
+          approvalStatus: prior.approvalStatus,
+        },
+        auditNote: note,
+        guardStatus: "DRAFT",
+        extraData: {
+          requestedAt: now,
+          requestedBy: actor,
+          rejectedAt: null,
+          rejectedBy: null,
+          rejectReason: null,
+        },
+        tr,
+      });
+      revalidate(workOrderNumber);
+      return actionOk({ approvedWithoutFlow: true });
+    }
     // 先にフロー（1 段目の承認依頼行）を作り、成功してから状態を動かす。
     // 逆順だと、フロー開始が失敗したとき（段ゼロ・再利用番号の古い PENDING 行）
     // に PENDING_APPROVAL + 明細ロックだけが残って承認も編集も通らなくなる
@@ -1861,104 +2034,14 @@ export async function approveWorkOrder(
     }
 
     // ── 最終承認 — ここから先が指示書を動かす副作用 ──
-    const now = new Date();
-    const linkedLineIds = prior.orderLineLinks.map((l) => l.orderLineId);
-    await prisma.$transaction([
-      prisma.workOrder.update({
-        where: { id: prior.id },
-        data: {
-          status: "APPROVED",
-          approvalStatus: "APPROVED",
-          approvedAt: now,
-          approvedBy: actor,
-          history: toHistoryJson(
-            appendHistory(prior.history, entry("APPROVE_FINAL", actor)),
-          ),
-        },
-      }),
-      ...(linkedLineIds.length > 0
-        ? [
-            prisma.orderLine.updateMany({
-              where: { id: { in: linkedLineIds } },
-              data: { isLocked: false },
-            }),
-            // 出荷が先行している明細は戻さない（PARTIAL_SHIPPED/SHIPPED 維持）
-            prisma.orderLine.updateMany({
-              where: {
-                id: { in: linkedLineIds },
-                status: { in: ["DRAFT", "CONFIRMED"] },
-              },
-              data: { status: "IN_PRODUCTION" },
-            }),
-          ]
-        : []),
-    ]);
-    // 素材予約（監査 P2-1）: 製造分の承認確定で素材需要を RESERVE — ATP に
-    // 製造コミットが反映される。予約超過（reserved > on-hand）は仕様
-    // （発注判断のシグナル）。best-effort — 承認は既に確定済み。
-    if (prior.type === "MANUFACTURE" && prior.materialItemId != null) {
-      try {
-        const { ensureItemInventory, applyTransaction } = await import(
-          "@/lib/inventory"
-        );
-        // 品目統合 第 2 段 B — work_orders はもう品目 id（material_item_id）を
-        // 直接持つので、以前あった「素材 → 品目」の往復は要らない。
-        const item = await prisma.item.findUnique({
-          where: { id: prior.materialItemId },
-          select: { unit: true },
-        });
-        // 伝票の番号はこの（承認とは別の）tx の外で採番する。
-        const reserveMovementKey =
-          await allocateDocumentKey("INVENTORY_MOVEMENT");
-        await prisma.$transaction(async (tx) => {
-          const openMovement = movementOpener(tx, {
-            key: reserveMovementKey,
-            cause: "STOCK_RESERVATION",
-            sourceType: "work_orders",
-            sourceId: String(workOrderNumber),
-          });
-          const invId = await ensureItemInventory(tx, {
-            itemId: prior.materialItemId as number,
-            plantId: null,
-            unit: item?.unit ?? "本", // i18n-ignore — DB データの既定値（単位）。対象外（_specs/i18n-glossary.md §1）
-          });
-          await applyTransaction(tx, await openMovement(), {
-            inventoryType: "MATERIAL",
-            inventoryId: invId,
-            transactionType: "RESERVE",
-            quantity: prior.plannedQuantity,
-            referenceType: "work_order",
-            referenceId: prior.id,
-            notes: tr("production.workOrderActions.materialReserveNote", {
-              number: workOrderNumber,
-            }),
-          });
-          await tx.inventoryReservation.create({
-            data: {
-              inventoryType: "MATERIAL",
-              inventoryId: invId,
-              workOrderId: prior.id,
-              // 割当が 1 明細だけなら明細にも紐付ける（統合ロットは指示書のみ）
-              orderLineId: linkedLineIds.length === 1 ? linkedLineIds[0] : null,
-              quantity: prior.plannedQuantity,
-              status: "RESERVED",
-              reservedAt: new Date(),
-            },
-          });
-        });
-      } catch (err) {
-        console.error(
-          tr("production.workOrderActions.materialReserveFailedLog"),
-          err,
-        );
-      }
-    }
-    await recordAudit({
-      action: "UPDATE",
-      tableName: "work_orders",
-      recordId: String(workOrderNumber),
-      before: { status: prior.status, approvalStatus: "PENDING" },
-      after: { status: "APPROVED", approvalStatus: "APPROVED" },
+    await applyFinalWorkOrderApproval({
+      prior,
+      workOrderNumber,
+      actor,
+      linkedLineIds: prior.orderLineLinks.map((l) => l.orderLineId),
+      historyEntry: entry("APPROVE_FINAL", actor),
+      auditBefore: { status: prior.status, approvalStatus: "PENDING" },
+      tr,
     });
     revalidate(workOrderNumber);
     return actionOk({ remaining: 0, completed: true });

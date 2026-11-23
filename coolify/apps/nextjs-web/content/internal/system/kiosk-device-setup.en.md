@@ -13,9 +13,9 @@ Each tablet runs a dedicated Android app. The latest APK is always served at:
 
 ## Enrolling a new device (QR provisioning)
 
-Configure a freshly plant-reset tablet as a dedicated kiosk device — no cable, no PC.
+Configure a freshly factory-reset tablet as a dedicated kiosk device — no cable, no PC.
 
-1. Plant-reset the tablet
+1. Factory-reset the tablet
 2. On the setup "Welcome" screen, **tap 6 times** (a QR scanner opens)
 3. Connect to Wi-Fi and scan the provisioning QR below
 4. The APK downloads and installs automatically, and the device locks into kiosk mode
@@ -86,6 +86,20 @@ Even while kiosk-locked, an administrator can temporarily lift the lock to open 
 ## Recovering a device the PIN no longer opens
 
 On a device that has lost Wi-Fi, the procedure above can stop working. **The device keeps the PIN locally and cannot receive a new one while offline**, so the current PIN shown in SY09 will not open it. Work down this list — each step costs more than the one above it.
+
+The order to try things in, as a diagram:
+
+```mermaid
+flowchart TD
+  s["The current PIN does not open it"] --> p1["1. Enter the PIN that<br/>device is holding"]
+  p1 -->|"Opens"| ok["Open Settings and fix the Wi-Fi"]
+  p1 -->|"Does not open"| p2["2. Connect over USB and<br/>fix the Wi-Fi with adb"]
+  p2 -->|"Connected"| ok2["The device heals itself<br/>PIN updates on the next sync"]
+  p2 -->|"Not listed by adb /<br/>cannot authorize"| q{"Are all the conditions<br/>for a reset met?"}
+  q -->|"No"| wait["Do not reset yet<br/>try the 'do this first' items"]
+  q -->|"Yes"| p3["3. Force a factory reset<br/>(last resort)"]
+  p3 --> p4["4. Re-register<br/>QR provisioning → unlink<br/>→ link → activate"]
+```
 
 ### 1. Look up the PIN that device is holding
 
@@ -236,4 +250,4 @@ The app **updates itself**. It checks for a new release about once an hour and a
 - Locked kiosk devices: fully automatic (no dialog)
 - Unlocked test tablets: the OS shows an install confirmation dialog — tap Install
 
-> Only devices still running a pre-self-update version (v0.2.x or older) need the old methods: `adb install -r` over USB, or plant-reset and re-scan the new QR.
+> Only devices still running a pre-self-update version (v0.2.x or older) need the old methods: `adb install -r` over USB, or factory-reset and re-scan the new QR.

@@ -13,17 +13,23 @@
  */
 
 import { Anchor, Badge, Stack, Table, Tabs, Text } from "@mantine/core";
+import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import {
   IconCopy,
   IconDownload,
+  IconMail,
   IconRuler2,
   IconSend,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { issueQuote } from "@/app/(dashboard)/sales/quotes/actions";
+import {
+  emailQuote,
+  issueQuote,
+  previewQuoteMail,
+} from "@/app/(dashboard)/sales/quotes/actions";
 import { taxBucketLabel } from "@/components/billing/invoices/model";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
@@ -218,6 +224,61 @@ export function QuoteDetail({
     }
   };
 
+  // 「メールで送付」— 宛先を確かめてから送る（宛先は lib/quote-mail-core.ts）。
+  const confirmEmail = async () => {
+    const preview = await previewQuoteMail(quote.quoteNumber);
+    if (!preview.ok) {
+      notifications.show({
+        title: tr("sales.issueQuoteModal.mailFailed"),
+        message: preview.error,
+        color: "orange",
+      });
+      return;
+    }
+    if ("reason" in preview.data) {
+      notifications.show({
+        title: tr("sales.issueQuoteModal.mailFailed"),
+        message: preview.data.reason,
+        color: "orange",
+      });
+      return;
+    }
+    const { email } = preview.data;
+    modals.openConfirmModal({
+      title: tr("sales.issueQuoteModal.resend"),
+      children: (
+        <Text size="sm">
+          {tr("sales.issueQuoteModal.resendConfirm", {
+            number: quote.quoteNumber,
+            email,
+          })}
+        </Text>
+      ),
+      labels: {
+        confirm: tr("sales.issueQuoteModal.resend"),
+        cancel: tr("common.cancel"),
+      },
+      onConfirm: async () => {
+        const r = await emailQuote(quote.quoteNumber);
+        notifications.show(
+          r.ok
+            ? {
+                title: tr("sales.issueQuoteModal.mailSentTitle"),
+                message: tr("sales.issueQuoteModal.mailSent", {
+                  email: r.data.to,
+                }),
+                color: "green",
+              }
+            : {
+                title: tr("sales.issueQuoteModal.mailFailed"),
+                message: r.error,
+                color: "red",
+              },
+        );
+      },
+    });
+  };
+
   return (
     <DetailShell
       actions={
@@ -240,6 +301,17 @@ export function QuoteDetail({
                     icon: <IconDownload size={14} />,
                     onClick: () =>
                       void downloadFile(pdfUrl("&download=1"), pdfFilename),
+                  },
+                ]
+              : []),
+            // 発行済み（期限内）の見積書を、保存済みの PDF を添付して送る。
+            // 発行時に送れなかった・送らなかった分をあとから送るための口。
+            ...(status === "ISSUED" && !isExpired
+              ? [
+                  {
+                    label: tr("sales.issueQuoteModal.resend"),
+                    icon: <IconMail size={14} />,
+                    onClick: () => void confirmEmail(),
                   },
                 ]
               : []),

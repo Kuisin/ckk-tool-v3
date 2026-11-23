@@ -1,0 +1,40 @@
+---
+title: "連携の全体像 — API と Webhook"
+description: "n8n などの外部システムとこのシステムをつなぐ方法。読む（API）・知らせる（Webhook）の使い分けと、本体を汚さない構成の考え方。"
+---
+n8n などの外部システムと連携するための入口です。**つなぐ処理は n8n 側に置き、このシステムは口を 2 つ開けるだけ**にします。
+
+```mermaid
+flowchart TD
+  ckk["CKK システム<br/>/api/v1"] -->|"① 変更の合図（Webhook）"| n8n["n8n"]
+  n8n -->|"② 値の取得（API・Bearer）"| ckk
+  n8n --> ext["Slack / 会計 / 他システム"]
+```
+
+## 2 つの口の使い分け
+
+| やりたいこと | 使うもの | 詳しくは |
+| --- | --- | --- |
+| 変わったことを**すぐ**知りたい | **Webhook**（このシステム → n8n） | [Webhook](/manual/ja/integration/webhooks) |
+| 業務データの**値**を読みたい | **API**（n8n → このシステム） | [API](/manual/ja/integration/api) |
+| Webhook を取りこぼしても追いつきたい | **API の差分取得**（`updatedSince`） | [API](/manual/ja/integration/api) |
+| n8n で実際に組む | n8n のレシピ | [n8n と組む](/manual/ja/integration/n8n) |
+
+## 設計の考え方
+
+- **Webhook は合図で、中身ではありません。** 「注文請書 `ORD-202609-00042` のステータスが `DRAFT` → `CONFIRMED` に変わった」までを送り、金額や住所などの**値は送りません**。値は受け取った側が API で引き直します。そのため、認可・行スコープ・出力の形が **API の 1 か所だけ**に残り、Webhook が 2 つ目の情報漏えい口になりません。
+- **Webhook は取りこぼしてもよい作りにします。** 届かなかった・順序が入れ替わった・同じものが 2 回届いた、のどれが起きても、API の差分取得で必ず追いつけます。Webhook は「すぐ気づくための近道」、API が「正」です。
+- **権限は API クライアントのものを使います。** Webhook は、送信先ごとに紐づけた API クライアントが**読める資源のイベントだけ**を送ります。権限を外せば、送信先を消さなくても送信は止まります。
+- **このシステムから n8n へは、n8n が見える場所にだけ送ります。** 送信先 URL は https、または社内（Docker のサービス名・プライベート IP・`.loc`）の http に限ります。
+
+## いまできること・できないこと
+
+- ✅ 読み取り API（`/api/v1`）と、外向き Webhook。
+- ❌ n8n から業務データを**書き込む**口は、まだ開いていません（業務ルールを API から共通で呼べるよう整理してから開ける予定です）。注文書の PDF を n8n から投入する口は別にあります（[注文書取込](/manual/ja/operations/system/order-intake/user)）。
+- ⚠️ この機能は現在 **検証環境（dev）でのみ** 使えます。
+
+## 始める順番
+
+1. [API クライアント](/manual/ja/operations/system/external-api/user)（`SY0I`）で、n8n 用のクライアントを作り、ロールを付けて、トークンを発行する。
+2. 同じ画面の「外向き Webhook」に、n8n の Webhook URL を登録する。
+3. [n8n と組む](/manual/ja/integration/n8n) の手順で受け取り側を作る。

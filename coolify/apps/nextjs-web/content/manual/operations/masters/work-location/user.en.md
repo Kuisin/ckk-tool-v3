@@ -42,6 +42,15 @@ There are three apps about places, and they are easy to mix up. Please take care
 - A group is given a site. Please register the [site (拠点)](/manual/en/operations/masters/plant/user) first.
 - You register **the group first and the machine after that**. You cannot register a machine on its own without making a group.
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  plant["Site"] --> group["Group<br/>(e.g. NC lathe)"]
+  group --> loc["Work location<br/>(e.g. NC lathe no. 1)"]
+  loc -.-> wo["Chosen as where the work is done<br/>in a work order's work plan"]
+```
+
 ## How to read the screen
 
 This app is not split into a list and a detail screen. **You do everything on one screen.**
@@ -120,7 +129,7 @@ The print sheet opens in a new tab. Print it on plain A4 paper as-is, cut along 
 
 In the 「**作業計画**」 (work plan) and 「**作業実績**」 (work actuals) of a step on a work order, you can choose 「**作業場所（任意）**」 (work location, optional) for each row. The chosen location is shown in the lists, and can also be seen on the shared tablet screen on the floor.
 
-When a step is started or resumed from a shared floor tablet, the tablet's **default work location** is recorded on the actual automatically (set in [Kiosk devices](/manual/en/operations/system/kiosk-device/user#field-default-work-location)). Scanning a work-location QR overrides it.
+When a step is started or resumed from a shared floor tablet, the tablet's **default work location** is recorded on the actual automatically (set in [Devices](/manual/en/operations/system/kiosk-device/user#field-default-work-location)). Scanning a work-location QR overrides it.
 
 [Process steps](/manual/en/operations/masters/process-step/user#field-allowed-locations) can also restrict which work locations a step may use, by type or by individual location.
 
@@ -132,15 +141,15 @@ Every field on the Work location screen.
 
 | Field | What to enter |
 |-------|---------------|
-| [Plant](#field-plant) | Which plant the work location belongs to |
+| [Site](#field-plant) | Which site the work location belongs to |
 | [Code / name (ja, en)](#field-code) | The work location's code and name, selectable as where a step is carried out |
 | [Type](#field-type) | The kind of work location |
 | [Capacity](#field-capacity) | A guide to how much it can handle at once |
 | [Sort order / active / notes](#field-sort-order) | Ordering, whether it is offered, and notes |
 
-### Plant [#field-plant]
+### Site [#field-plant]
 
-Which plant the work location belongs to. When picking where a step runs, **only that plant's work locations** are offered.
+Which site the work location belongs to. When picking where a step runs, **only that site's work locations** are offered.
 
 ### Code / name (ja, en) [#field-code]
 

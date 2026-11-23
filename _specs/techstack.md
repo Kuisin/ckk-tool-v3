@@ -44,10 +44,19 @@ Icons:          Tabler Icons
 Flow Graph:     React Flow (@xyflow/react) 12.11.3（完全固定・MIT）
                 工程ワークフローの図示のみ。レイアウトと妥当性判定は
                 lib/workflow-core.ts が持ち、ライブラリは描画層に留める
+Docs Diagram:   Mermaid (mermaid) 12.3.0（完全固定・MIT）
+                マニュアル操作ページの小さな図（状態の移り変わり等）のみ。
+                ブラウザ側で描画・動的 import（図のあるページだけが読む）。
+                プロセス編のスイムレーン図は tools/swimlane（ビルド時 SVG）のまま
 Styling:        Mantine + CSS Modules
 
 Server State:   React Server Components（標準）
+Client Fetch:   TanStack Query 5.108.2（完全固定・MIT）— **クライアントが自分で取りに
+                行く読み取りだけ**（検索欄・F4・ファイル管理・版の確認）。ページの
+                データは RSC、書き込みは Server Action のまま（lib/query-client.ts）
 Client State:   Zustand（軽量）
+URL State:      nuqs 2.10.3（完全固定・MIT）— 検索・フィルタ・ページ・ソート・タブ。
+                画面は hooks/useUrlState.ts だけを通す（nuqs を直接呼ばない）
 Validation:     Zod
 
 API Layer:      Next.js Route Handler（/app/api）
@@ -132,6 +141,10 @@ AI補助タスク:    同じ po-extract の /generate/<task>（紙なし・LLM 1
                 （製品・素材マスタのキーワード候補生成 — MS04/MS06）。
                 自前スキーマを渡す /generate も可。アプリ側は
                 nextjs-web の lib/po-extract.ts 経由。
+External API:   /api/v1（Bearer・読み取り）+ 外向き Webhook（Standard Webhooks 互換の
+                署名）。つなぐ処理は **n8n に置き、本体は口を 2 つだけ開ける**
+                （_specs/api.md §9）。リファレンスは fumadocs-openapi 11.1.0 で
+                OpenAPI 3.1（paths + webhooks）から生成（手書きしない）
 Notification:   mail-api（HTTP → SMTP。アプリは fetch 1 回）+ Nextcloud API + SSE
 Job Runner:     instrumentation.ts の setInterval（取込ポーラー・通知ダイジェスト・
                 締日オートラン）+ pg_cron（DB 側の定期処理）。
@@ -139,6 +152,10 @@ Job Runner:     instrumentation.ts の setInterval（取込ポーラー・通知
 Cache:          なし（React Server Components + Next.js のキャッシュのみ）
 Search Engine:  PGroonga
 Docs:           Markdown + Git管理
+Manual Video:   Playwright の録画（recordVideo → WebM）。追加の依存なし —
+                スクリーンショット撮影と同じ @playwright/test を使う。
+                業務の通し操作のスクリプトが検査（CI）と録画を兼ね、動画は
+                git に入れずデプロイ時に Coolify の manual-videos アプリが録る
 
 # Data Integration
 Accounting:     TKC FX4クラウド（仕訳 CSV export）

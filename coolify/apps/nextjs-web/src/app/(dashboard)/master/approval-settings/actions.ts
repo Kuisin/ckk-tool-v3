@@ -17,6 +17,7 @@
 import { revalidatePath } from "next/cache";
 import { getLocale, getTranslations } from "next-intl/server";
 import { z } from "zod";
+import { writeConfigValues } from "@/lib/app-config";
 import { validateConditions } from "@/lib/approval-conditions";
 import { validateFlowSteps } from "@/lib/approval-flow";
 import {
@@ -31,6 +32,7 @@ import {
   FLOW_SETTINGS_TARGET_TYPES,
   hasCustomValueLayer,
 } from "@/lib/approval-targets";
+import { APPROVAL_POLICY_NS } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -1206,6 +1208,48 @@ export async function setApprovalApplyMode(
         tr("master.approvalSettingsActions.applyModeSaveFailed"),
         tr,
       ),
+    );
+  }
+}
+
+/**
+ * 書類種別ごとの「承認を使う / 使わない」（承認設定 MS0B の各カードのスイッチ）。
+ * OFF は段が残っていても承認なしで進める（段は消さない）。規則は
+ * lib/approval-policy-core.ts、読み取りは lib/approvals.ts approvalNeed。
+ */
+export async function setApprovalPolicy(
+  targetType: string,
+  policy: "on" | "off",
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (
+    !(FLOW_SETTINGS_TARGET_TYPES as readonly string[]).includes(targetType) ||
+    (policy !== "on" && policy !== "off")
+  ) {
+    return actionError(tr("common.invalidInput"));
+  }
+  try {
+    const key = `${APPROVAL_POLICY_NS}.${targetType}`;
+    const before = await prisma.systemSetting.findUnique({
+      where: { key },
+      select: { value: true },
+    });
+    await writeConfigValues({ [key]: policy });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "approval_flows",
+      recordId: targetType,
+      before: { approvalPolicy: before?.value ?? null },
+      after: { approvalPolicy: policy },
+    });
+    revalidatePath(BASE_PATH);
+    revalidatePath(`${BASE_PATH}/flows/${targetType}`);
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, tr("master.approvalFlows.policy.saveFailed"), tr),
     );
   }
 }

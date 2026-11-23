@@ -50,6 +50,18 @@ and the registration steps are the same (create, link, activate).
 Online / offline is separate from the state — it means whether the screen has
 answered within the last 5 minutes.
 
+The state changes, as a diagram (the actions are explained in the sections below):
+
+```mermaid
+flowchart TD
+  p("リンク待ち<br/>Awaiting link"):::gray -->|"Link"| l("有効化待ち<br/>Awaiting activation"):::yellow
+  l -->|"Activate"| a("有効<br/>Active"):::green
+  a -->|"Disable"| d("無効<br/>Disabled"):::gray
+  d -->|"Enable"| a
+  a -.->|"Unlink"| p
+  a -->|"Revoke"| r("取り消し<br/>Revoked"):::red
+```
+
 ## Registering a display (three steps)
 
 Exactly the same as a shared tablet.
@@ -139,8 +151,8 @@ or lost — nothing more can be seen on it.
 A. Check the power and LAN cable at the TV and the Raspberry Pi. It returns to
 online by itself once it can reach the network.
 
-**Q. Linking says the code was not found or has expired**
-A. Use the fresh code now shown on the TV.
+**Q. Linking says "The link code was not found or has expired"**
+A. The code's 10 minutes have run out, or that code has already been linked. Scan the fresh code now shown on the TV.
 
 **Q. Can several TVs show the same thing?**
 A. Yes — choose the same screen and the same options on each. Because the

@@ -1,0 +1,271 @@
+/title/
+請求 — 締日処理から入金・会計連携まで
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 手順;
+left-subtitle: 説明;
+
+/role/
+
+<role_admin>
+label: 管理者;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_system>
+label: システム;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_acct>
+label: 経理;
+text-color: #9d174d;
+background-color: #fce7f3;
+
+<role_appr>
+label: 承認者;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_cust>
+label: 顧客;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SY0J>
+label: SY0J;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_BL02>
+label: BL02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_BL11>
+label: BL11;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_BL01>
+label: BL01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<CL>
+label: 締日処理;
+side: right;
+background-color: #fdf2f8;
+border-color: #db2777;
+text-color: #9d174d;
+
+<INV>
+label: 請求書;
+side: right;
+background-color: #fdf2f8;
+border-color: #db2777;
+text-color: #9d174d;
+
+<CSV>
+label: 仕訳 CSV;
+side: right;
+background-color: #f1f5f9;
+border-color: #64748b;
+text-color: #0f172a;
+
+<ACC>
+label: 会計文書;
+side: right;
+background-color: #f1f5f9;
+border-color: #64748b;
+text-color: #0f172a;
+
+/line/
+
+[role_admin: 会計連携を設定] <block_neutral>
+label: 事前設定;
+props: APP_SY0J;
+desc: 仕訳 CSV の列の並び・文字コード・既定の科目コードを決めておく（最初に一度）。;
+if (起点) is (定期の締め) than #blue
+  if (実行) is (自動) than #blue
+    [role_system: 毎朝 6 時に締める] <block_system>
+    label: 自動実行;
+    desc: 自動実行を有効にした環境では、JST 6 時台に今日までの締日を 1 日 1 回まとめて締める。;
+  elseif (手動) than #purple
+    [role_acct: 試算で確かめる] <block_neutral>
+    label: 試算;
+    props: APP_BL02;
+    desc: 任意。指定日に締めたら何がいくらになるかを、何も書かずに見る。未来日も選べる。;
+    [role_acct: 締日処理を実行] <block_apply>
+    label: 実行;
+    props: APP_BL02;
+    desc: 対象日（今日まで）を選んで実行する。同じ日に何度実行しても二重にならない。;
+  endif
+  [role_system: 顧客ごとに集計] <block_system>
+  label: 集計;
+  props: CL;
+  desc: 顧客の締日（未設定は月末）ごとに、前回締日の翌日から今回締日までの「出荷済」の発送分を集め、締日行を「未処理」で作る。在庫保管は入らない。;
+  [role_system: 請求書下書きを作る] <block_system>
+  label: 下書き;
+  props: INV;
+  desc: 締日を過ぎた行はそのまま請求書（下書き）にし、締日行を「処理済」にする。宛先は請求先（別法人なら請求先）、支払期限と税は自動。;
+  if (生成) is (成功) than #blue
+  elseif (失敗) than #orange
+    [role_system: 未処理のまま残る] <block_wait>
+    label: 未処理;
+    desc: 対象の出荷が無いなどで請求書にできなかった行は「未処理」のまま一覧に残る。;
+    [role_acct: 請求書を生成] <block_apply>
+    label: 再生成;
+    props: APP_BL02,INV;
+    desc: 締日行を開いて（または一覧でまとめて選んで）生成し直す。;
+  endif
+elseif (臨時請求) than #purple
+  [role_acct: 出荷を選んで請求] <block_apply>
+  label: 手動請求;
+  props: APP_BL11,INV;
+  desc: 締日を待たず、顧客の未請求の出荷を選んで請求書（下書き）を作る。締日行は「手動」「処理済」で残る。;
+endif
+[role_acct: 下書きを確認する] <block_neutral>
+label: 確認;
+props: APP_BL01;
+desc: 明細・税率ごとの消費税・支払期限を確かめる。金額は出荷書から来るので直接は直せない。;
+if (追加費用) is (なし) than #blue
+elseif (あり) than #orange
+  [role_acct: 追加費用を足す] <block_apply>
+  label: 追加費用;
+  props: APP_BL01,INV;
+  desc: 料金マスタの費目から追加費用を足す。合計が引き直され、承認状態は未承認へ戻る。;
+  if (発行前承認) is (差し戻し) than #red
+    [role_acct: 直して再依頼する] <block_reject>
+    label: 差し戻し;
+    props: APP_BL01;
+    [loop]
+  elseif (承認) than #blue
+    [role_appr: 発行を承認する] <block_approve>
+    label: 発行承認;
+    props: APP_CM01;
+    desc: 「発行」を押すと承認依頼になる。承認されると発行できるようになる（自動では発行しない）。段が無ければ素通し。;
+  endif
+endif
+[role_acct: 請求書を発行する] <block_apply>
+label: 発行;
+props: APP_BL01,INV;
+desc: 「発行済」になり発行日が記録される。内容は確定し、PDF が見られるようになり、取引先ポータルにも出る。;
+[role_acct: PDF を送る] <block_neutral>
+label: 送付;
+props: APP_BL01;
+desc: PDF（受取先の言語）を出力し、メール・FAX・郵送で送る。アプリはメールを送らない。;
+[role_acct: 送付済にする] <block_apply>
+label: 送付済;
+props: APP_BL01,INV;
+desc: 「送付済」になり送付日時が記録される。;
+[role_cust: 代金を支払う] <block_neutral>
+label: 支払い;
+desc: 支払期限までに入金される。;
+[role_acct: 入金済にする] <block_apply>
+label: 入金;
+props: APP_BL01;
+desc: 入金を確かめて押す。入金前承認の段が無ければその場で「支払済」になる。;
+if (入金前承認) is (段なし) than #blue
+elseif (承認) than #blue
+  [role_appr: 入金を承認する] <block_approve>
+  label: 入金承認;
+  props: APP_CM01,INV;
+  desc: 最終承認でそのまま「支払済」になる。;
+elseif (差し戻し) than #red
+  [role_acct: 確かめて再依頼する] <block_reject>
+  label: 差し戻し;
+  props: APP_BL01;
+  desc: 「送付済」のまま残る。入金を確かめ直して再び「入金済にする」。;
+  [loop]
+endif
+[role_acct: 仕訳 CSV を出す] <block_apply>
+label: 会計連携;
+props: APP_BL01,CSV;
+desc: 発行後ならいつでも出せる。初回に会計文書を転記して固定し、以後は何度出しても同じ CSV。会計連携日時が記録される。;
+[role_system: エクスポート済へ] <block_system>
+label: 締日更新;
+props: ACC,CL;
+desc: 初回の転記と同時に、元の締日行が「処理済」→「エクスポート済」に変わる。;
+if (訂正) is (不要) than #blue
+elseif (要る) than #orange
+  [role_acct: 反対仕訳を作る] <block_reject>
+  label: 反対仕訳;
+  props: APP_BL01,ACC;
+  desc: 理由を入れて、転記済みの会計文書を貸借逆の文書で打ち消す。元の文書は書き換えない。;
+  [role_acct: 直して出し直す] <block_apply>
+  label: 再転記;
+  props: APP_BL01,CSV;
+  desc: 科目コードなどを直してから CSV を出すと、新しい会計文書が転記される。;
+endif

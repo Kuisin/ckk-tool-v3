@@ -124,6 +124,17 @@ From the 「**…**」 menu on a card's row, you can do the following.
 
 > ⚠️ 「**取り消し**」 (Revoke) **cannot be undone**. The moment you press it, any tablet currently logged in with that card is logged out on the spot. Use it when a card has been lost, or the person has left the company.
 
+As a diagram, a card's status changes like this:
+
+```mermaid
+flowchart TD
+  un("未割当<br/>Unassigned"):::gray -->|"Assign to a user"| asg("割当済<br/>Assigned"):::green
+  asg -->|"Suspend"| su("一時停止<br/>Suspended"):::orange
+  su -->|"Resume"| asg
+  asg -->|"Revoke"| rv("取り消し<br/>Revoked"):::red
+  su -->|"Revoke"| rv
+```
+
 ## The card detail screen
 
 Clicking a row in the list opens the screen for that single card.
@@ -199,12 +210,12 @@ Holding the permission is not enough for the operations below. You **request the
 | Operation | Permission | What it unlocks |
 | --- | --- | --- |
 | Issue cards | Shared device card issuance（`kiosk_card`）— Create | Creates new QR cards. The QR payload is the credential itself. |
-| Assign / reassign a card | Shared device card issuance（`kiosk_card`）— Edit | Binds a card to an employee. After reassignment, actions are recorded under the new person. |
-| Revoke a card | Shared device card issuance（`kiosk_card`）— Edit | Permanently disables a card — correct for a lost card, and irreversible. |
-| Reset a card PIN | Shared device card issuance（`kiosk_card`）— Edit | Clears the PIN so it is set again at next login. In the wrong hands this is account takeover. |
-| Release a PIN lockout | Shared device card issuance（`kiosk_card`）— Edit | Clears the 15-minute lockout caused by five failed PIN attempts. |
-| Change card validity | Shared device card issuance（`kiosk_card`）— Edit | Changes how long a card works; extending it revives an expired card. |
-| Change concurrent session limit | Shared device card issuance（`kiosk_card`）— Edit | Changes how many sessions one card may hold at once; raising it hides card sharing. |
+| Assign / reassign a card | Shared device card issuance（`kiosk_card`）— Update | Binds a card to an employee. After reassignment, actions are recorded under the new person. |
+| Revoke a card | Shared device card issuance（`kiosk_card`）— Update | Permanently disables a card — correct for a lost card, and irreversible. |
+| Reset a card PIN | Shared device card issuance（`kiosk_card`）— Update | Clears the PIN so it is set again at next login. In the wrong hands this is account takeover. |
+| Release a PIN lockout | Shared device card issuance（`kiosk_card`）— Update | Clears the 15-minute lockout caused by five failed PIN attempts. |
+| Change card validity | Shared device card issuance（`kiosk_card`）— Update | Changes how long a card works; extending it revives an expired card. |
+| Change concurrent session limit | Shared device card issuance（`kiosk_card`）— Update | Changes how many sessions one card may hold at once; raising it hides card sharing. |
 | Print the card sheet | Shared device card issuance（`kiosk_card`）— View | Renders the QR codes into a printable PDF — the credential leaves the system as a file. |
 
 Permissions come through roles. If something is missing, ask an administrator.

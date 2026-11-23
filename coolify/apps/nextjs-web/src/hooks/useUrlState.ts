@@ -13,6 +13,12 @@
  *
  * 規約: 既定値と同じ状態はパラメータを削除して URL を短く保つ。
  *
+ * 実装は **nuqs**（`useQueryStates`）。このファイルは nuqs の薄い包みで、
+ * 画面はこのフックだけを使う（nuqs を直接呼ばない）— 「フィルタを変えたら
+ * 1 ページ目へ戻す」「既定値は URL から落とす」という約束を 1 か所に置くため。
+ * URL の書式（`?q=` `?page=` `?size=` `?sort=key.dir` `?tab=`）は共有リンクに
+ * 残っているので、パーサは下の定義から変えないこと。
+ *
  * ★ **URL は「写し」であって、入力欄の値そのものではない。**
  *   `useSearchParams()` の更新は**同期ではない** — Next.js はネイティブの
  *   history 更新を `startTransition` の中で router へ流す（app-router.tsx の
@@ -24,25 +30,50 @@
  *   「あさひ」と打つと「ああさあさひ朝日」になった（2026-09-11、取引先 MS01
  *   の検索欄で発覚。同じ欄が一覧 35 画面にある）。ローマ字はたまたま無事に
  *   見えるが、これは打鍵が 1 文字ずつ確定するからで、直っているわけではない。
- *   そのため値を持つフック（`useUrlStringState` / `useUrlSelectState` /
- *   `useTabParam`）は**ローカル state を正**にし、URL は追いかけるだけに
- *   する（戻る/進む・リンク・リセットなど**外から**変わったときだけ取り込む）。
- *   ページ・ソート（`useUrlTableState`）は入力欄ではないので URL のままでよい。
+ *   そのため値は **nuqs の内部 state を正**にする — nuqs は set した値を
+ *   同じレンダーで返し、URL への反映（と `useSearchParams` の追いつき）を
+ *   待たない。戻る/進む・リンクなど**外から**の変化だけを取り込む。
+ *   以前は同じことを自前の `lib/url-state-core.ts` でやっていた。
+ *   **`useSearchParams()` を入力欄の value に直結する形へ戻さないこと。**
  */
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState } from "react";
+import { createParser, parseAsString, useQueryStates } from "nuqs";
+import { useCallback, useMemo } from "react";
 import {
-  type MirroredState,
-  NOT_PENDING,
-  reconcileMirrored,
-  writeMirrored,
-} from "@/lib/url-state-core";
+  pageParam,
+  type SortState,
+  sizeParam,
+  sortParam,
+} from "@/lib/url-state-params";
+
+type Mode = "client" | "server";
+
+/**
+ * nuqs の共通オプション。
+ * - `history: "replace"` — フィルタの 1 打ごとに履歴を積まない。
+ * - `scroll: false` — 絞り込みで画面を先頭へ飛ばさない。
+ * - `shallow` — client はサーバー往復なし / server は RSC を取り直す。
+ * 既定値と同じ値は nuqs が URL から落とす（`clearOnDefault` の既定）。
+ */
+function optionsFor(mode: Mode) {
+  return {
+    history: "replace",
+    scroll: false,
+    shallow: mode !== "server",
+  } as const;
+}
+
+const pageParser = createParser(pageParam).withDefault(1);
+const sizeParser = createParser(sizeParam);
+const sortParser = createParser(sortParam);
+/** フィルタ側が「1 ページ目へ戻す」ためだけに持つ鍵（値は読まない）。 */
+const pageResetParser = parseAsString;
 
 export type UrlPatch = Record<string, string | null | undefined>;
 
 /** search params の差分更新関数を返す。null/undefined/"" のキーは削除。 */
-export function useUrlPatcher(mode: "client" | "server" = "client") {
+export function useUrlPatcher(mode: Mode = "client") {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -76,141 +107,120 @@ export function useUrlPatcher(mode: "client" | "server" = "client") {
  * 文字列 1 値を URL param に保持: [value, set]。
  * set はフィルタ変更として扱い、常にページ番号（`page`）をリセットする。
  * 検索テキスト・Select フィルタ用（クリアは null/""）。
- *
- * 値はローカル state が正で、URL はその写し（冒頭の ★ を参照）。
  */
 export function useUrlStringState(
   key: string,
   defaultValue = "",
-  mode: "client" | "server" = "client",
+  mode: Mode = "client",
 ): [string, (v: string | null) => void] {
-  const searchParams = useSearchParams();
-  const patch = useUrlPatcher(mode);
-  const urlValue = searchParams.get(key) ?? defaultValue;
-  const [value, sync] = useMirroredState(urlValue);
+  const keyMap = useMemo(
+    () => ({
+      value: parseAsString.withDefault(defaultValue),
+      page: pageResetParser,
+    }),
+    [defaultValue],
+  );
+  const urlKeys = useMemo(() => ({ value: key }), [key]);
+  const [state, setState] = useQueryStates(keyMap, {
+    ...optionsFor(mode),
+    urlKeys,
+  });
   const set = useCallback(
     (v: string | null) => {
-      const next = v ?? defaultValue;
-      sync(next); // 入力欄へは同期で反映（URL の往復を待たない）
-      patch({ [key]: next === defaultValue ? null : next, page: null });
+      // 値とページのリセットは 1 回の URL 更新で行う（別々に書くと、間の
+      // URL が「新しい条件の 3 ページ目」になり、server モードで空振りする）。
+      void setState({ value: v ?? defaultValue, page: null });
     },
-    [patch, sync, key, defaultValue],
+    [setState, defaultValue],
   );
-  return [value, set];
+  return [state.value, set];
 }
 
 /** useUrlStringState の Select 向け別名（null 許容の値をそのまま渡せる）。 */
 export function useUrlSelectState(
   key: string,
-  mode: "client" | "server" = "client",
+  mode: Mode = "client",
 ): [string | null, (v: string | null) => void] {
-  const searchParams = useSearchParams();
-  const patch = useUrlPatcher(mode);
-  const urlValue = searchParams.get(key);
-  const [value, sync] = useMirroredState(urlValue);
+  const urlKeys = useMemo(() => ({ value: key }), [key]);
+  const [state, setState] = useQueryStates(SELECT_KEY_MAP, {
+    ...optionsFor(mode),
+    urlKeys,
+  });
   const set = useCallback(
     (v: string | null) => {
-      sync(v);
-      patch({ [key]: v, page: null });
+      // "" は「未選択」— `?key=` を残さず鍵ごと落とす。
+      void setState({ value: v === "" ? null : v, page: null });
     },
-    [patch, sync, key],
+    [setState],
   );
-  return [value, set];
+  return [state.value, set];
 }
 
-/**
- * 「自分で書いた値」と「外から変わった URL」を両立させる小さな state。
- * 判定そのものは `lib/url-state-core.ts`（純ロジック・試験あり）が持つ。
- *
- * - `sync(v)` … 自分の更新。**そのレンダーで即座に** `v` になる（URL の
- *   往復を待たない）。同時に「URL が v になるのを待っている」印を立てる。
- * - 待っている間に届く `source` は打鍵前の古い値なので無視する。
- * - 追いついたら印を下ろし、以後の `source` の変化は外からの変更として取り込む。
- *
- * レンダー中の setState は React 公式の「外の値が変わったら state を調整する」
- * パターン。安定したら `reconcileMirrored` が同じ参照を返すので追加の
- * レンダーは起きない。
- */
-function useMirroredState<T>(source: T): [T, (v: T) => void] {
-  const [state, setState] = useState<MirroredState<T>>(() => ({
-    value: source,
-    pending: NOT_PENDING,
-  }));
-  const next = reconcileMirrored(state, source);
-  if (next !== state) setState(next);
-  const sync = useCallback((v: T) => setState(writeMirrored(v)), []);
-  return [next.value, sync];
-}
+const SELECT_KEY_MAP = { value: parseAsString, page: pageResetParser };
 
 /**
  * 詳細画面のアクティブタブを `?tab=` に保持: [tab, setTab]。
  * Mantine Tabs の value/onChange にそのまま渡す。既定タブは URL から省略。
- *
- * 値はローカル state が正で、URL はその写し（冒頭の ★ を参照） — URL からだけ
- * 読むと、タブを押してから切り替わるまで 1 トランジション遅れる。
  */
 export function useTabParam(
   defaultTab: string,
   key = "tab",
 ): [string, (v: string | null) => void] {
-  const searchParams = useSearchParams();
-  const patch = useUrlPatcher();
-  const urlTab = searchParams.get(key) ?? defaultTab;
-  const [tab, sync] = useMirroredState(urlTab);
+  const keyMap = useMemo(
+    () => ({ tab: parseAsString.withDefault(defaultTab) }),
+    [defaultTab],
+  );
+  const urlKeys = useMemo(() => ({ tab: key }), [key]);
+  const [state, setState] = useQueryStates(keyMap, {
+    ...optionsFor("client"),
+    urlKeys,
+  });
   const setTab = useCallback(
     (v: string | null) => {
-      sync(v ?? defaultTab);
-      patch({ [key]: !v || v === defaultTab ? null : v });
+      void setState({ tab: v || null });
     },
-    [patch, sync, key, defaultTab],
+    [setState],
   );
-  return [tab, setTab];
+  return [state.tab, setTab];
 }
 
 export interface UrlTableState {
   page: number;
   pageSize: number | null; // null = 呼び出し側の既定
-  sort: { key: string; dir: "asc" | "desc" } | null;
+  sort: SortState | null;
   setPage: (p: number) => void;
   setPageSize: (s: number) => void;
-  setSort: (s: { key: string; dir: "asc" | "desc" } | null) => void;
+  setSort: (s: SortState | null) => void;
 }
+
+const TABLE_KEY_MAP = { page: pageParser, size: sizeParser, sort: sortParser };
 
 /**
  * DataTable のページ・ページサイズ・ソートを URL に保持
  * （`?page=2&size=50&sort=updatedAt.desc`）。既定値はパラメータ省略。
  */
-export function useUrlTableState(
-  mode: "client" | "server" = "client",
-): UrlTableState {
-  const searchParams = useSearchParams();
-  const patch = useUrlPatcher(mode);
-
-  const page = Math.max(1, Number(searchParams.get("page")) || 1);
-  const sizeRaw = Number(searchParams.get("size"));
-  const pageSize = Number.isFinite(sizeRaw) && sizeRaw > 0 ? sizeRaw : null;
-  const sortRaw = searchParams.get("sort");
-  let sort: UrlTableState["sort"] = null;
-  if (sortRaw) {
-    const idx = sortRaw.lastIndexOf(".");
-    const key = idx > 0 ? sortRaw.slice(0, idx) : sortRaw;
-    const dir = sortRaw.slice(idx + 1);
-    sort = { key, dir: dir === "desc" ? "desc" : "asc" };
-  }
+export function useUrlTableState(mode: Mode = "client"): UrlTableState {
+  const [state, setState] = useQueryStates(TABLE_KEY_MAP, optionsFor(mode));
 
   const setPage = useCallback(
-    (p: number) => patch({ page: p <= 1 ? null : String(p) }),
-    [patch],
+    (p: number) => void setState({ page: p <= 1 ? null : p }),
+    [setState],
   );
   const setPageSize = useCallback(
-    (s: number) => patch({ size: String(s), page: null }),
-    [patch],
+    (s: number) => void setState({ size: s, page: null }),
+    [setState],
   );
   const setSort = useCallback(
-    (s: { key: string; dir: "asc" | "desc" } | null) =>
-      patch({ sort: s ? `${s.key}.${s.dir}` : null }),
-    [patch],
+    (s: SortState | null) => void setState({ sort: s }),
+    [setState],
   );
 
-  return { page, pageSize, sort, setPage, setPageSize, setSort };
+  return {
+    page: state.page,
+    pageSize: state.size,
+    sort: state.sort,
+    setPage,
+    setPageSize,
+    setSort,
+  };
 }
