@@ -1,6 +1,7 @@
 {
   "title": "业务流程",
   "pages": [
+    "order-to-payment",
     "default-flow",
     "document-relations",
     "sales",

@@ -254,6 +254,7 @@ For a product that has no drawing yet, a design request is raised **in parallel*
 
 ## Related pages
 
+- See the whole flow from order to payment and the accounting export on one diagram by department … [From Order to Payment](/manual/en/process/order-to-payment)
 - Branches, exceptions and **the list of document states** … [Sales flow](/manual/en/process/sales) / [Purchasing flow](/manual/en/process/purchasing) / [Production flow](/manual/en/process/production) / [Shipping flow](/manual/en/process/shipping) / [Billing flow](/manual/en/process/billing)
 - How to operate each app and what each field means … **Operations** on the left
 - New to the system … [Getting started](/manual/en/start)

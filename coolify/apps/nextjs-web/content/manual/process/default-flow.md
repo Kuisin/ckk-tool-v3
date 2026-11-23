@@ -254,6 +254,7 @@ screenshots:
 
 ## 関連ページ
 
+- 注文から入金・会計連携までを部署ごとに 1 枚で見る … [注文から入金まで](/manual/ja/process/order-to-payment)
 - 分岐・例外と**書類の状態の一覧** … [販売の流れ](/manual/ja/process/sales) / [購買の流れ](/manual/ja/process/purchasing) / [生産の流れ](/manual/ja/process/production) / [出荷の流れ](/manual/ja/process/shipping) / [請求の流れ](/manual/ja/process/billing)
 - 各アプリの操作と入力欄の意味 … 左の **操作方法**
 - はじめて使う方 … [スタートマニュアル](/manual/ja/start)

@@ -254,6 +254,7 @@ screenshots:
 
 ## 相关页面
 
+- 按部门用一张图查看从订单到收款・会计对接的全流程 … [从订单到收款](/manual/zh/process/order-to-payment)
 - 分支・例外与**单据状态一览** … [销售流程](/manual/zh/process/sales) / [采购流程](/manual/zh/process/purchasing) / [生产流程](/manual/zh/process/production) / [出货流程](/manual/zh/process/shipping) / [请款流程](/manual/zh/process/billing)
 - 各应用的操作与输入栏含义 … 左侧的 **操作方法**
 - 初次使用者 … [新手入门](/manual/zh/start)
