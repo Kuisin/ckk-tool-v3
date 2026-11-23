@@ -12,7 +12,9 @@
     "docs:verify": "tsx scripts/orchestrate.ts --verify",
     "docs:lint": "tsx scripts/lint-screenshots.ts",
     "docs:placeholders": "tsx scripts/placeholders.ts",
-    "e2e:pages": "tsx scripts/e2e-pages.ts"
+    "e2e:pages": "tsx scripts/e2e-pages.ts",
+    "walk:check": "tsx scripts/walkthroughs.ts",
+    "docs:videos": "tsx scripts/walkthroughs.ts --record"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

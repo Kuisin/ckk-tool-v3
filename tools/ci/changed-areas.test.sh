@@ -27,8 +27,28 @@ expect "昇格 PR（main 向け）は全部回す" main \
   _docs/notes.md
 
 expect "CI 自身を触ったら全部回す" dev \
-  "web=true pages=true kiosk=true authz=true shared_db=true python=true" \
+  "web=true pages=true kiosk=true authz=true shared_db=true python=true walkthroughs=true" \
   .github/workflows/nextjs-web-ci.yml
+
+expect "昇格 PR は通し操作も必ず回す（本番へ上げる前の検査）" main \
+  "walkthroughs=true" \
+  coolify/apps/nextjs-web/src/components/ui/SearchSelect.tsx
+
+expect "アプリのコードだけの dev 向け PR では通し操作を回さない" dev \
+  "web=true pages=true walkthroughs=false" \
+  coolify/apps/nextjs-web/src/components/ui/SearchSelect.tsx
+
+expect "通し操作そのものを触ったら回す" dev \
+  "walkthroughs=true pages=true" \
+  tools/docs-screenshots/walkthroughs/sales.ts
+
+expect "デモシードは通し操作の土台なので回す" dev \
+  "walkthroughs=true shared_db=true" \
+  shared-db/sql/production-demo-seed.sql
+
+expect "撮影の manifest だけなら通し操作は回さない" dev \
+  "pages=true walkthroughs=false" \
+  tools/docs-screenshots/manifest.ts
 
 expect "アプリのコードは web + pages、他は回さない" dev \
   "web=true pages=true kiosk=false authz=false shared_db=false python=false" \

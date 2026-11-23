@@ -141,6 +141,54 @@ VALUES
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
 
+-- ── 準備工程リスト（全製品で共通）v1 ────────────────────────────────────────
+-- 素材出し → 切断 → センタレス → 全長合わせ。
+--
+-- これが無いと、デモ DB では **新しい指示書を 1 件も保存できない**: 製造工程リストは
+-- 準備工程を含まない（20261019 で分離）ので、段加工の使用依存「全長合わせ」を
+-- 満たす工程がどこにも無く、フォームが「工程構成にエラーがあります」で止まる。
+-- 上の「標準工程」v1 に残っている準備工程の行は分離前の履歴で、新規の指示書には
+-- 使われない。業務の通し操作（tools/docs-screenshots/walkthroughs/production.ts）が
+-- 指示書を実際に保存するので、ここで揃えておく。
+-- 準備工程リストは製品にも顧客にも紐づかない（CHECK product_process_routes_kind_columns）。
+INSERT INTO app.product_process_routes (id, kind, item_id, customer_bp_id, name, is_active, notes,
+  created_by, created_at, updated_at)
+VALUES (9002, 'PREP'::app."PROCESS_ROUTE_KIND", NULL, NULL,
+  '{"ja": "標準の準備工程", "en": "Standard preparation"}'::jsonb, true, NULL,
+  'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+  '2026-07-14T10:00:00+09', '2026-07-14T10:00:00+09')
+ON CONFLICT (id) DO NOTHING;
+
+SELECT setval(pg_get_serial_sequence('app.product_process_routes', 'id'),
+              GREATEST((SELECT MAX(id) FROM app.product_process_routes), 9002));
+
+INSERT INTO app.product_process_route_versions (id, route_id, version, notes,
+  created_by, created_at)
+VALUES ('dc040000-0000-4000-8000-000000000002'::uuid, 9002, 1, NULL,
+  'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-14T10:00:00+09')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO app.product_process_route_version_steps (id, route_version_id,
+  process_step_id, sort_order, execution_location, plant_id, supplier_bp_id, work_hours)
+VALUES
+  ('dc042000-0000-4000-8000-000000000001'::uuid, 'dc040000-0000-4000-8000-000000000002'::uuid,
+   (SELECT id FROM app.process_step_catalog WHERE code = 'MATERIAL_ISSUE'), 1,
+   'INTERNAL'::app."STEP_EXECUTION",
+   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0.5),
+  ('dc042000-0000-4000-8000-000000000002'::uuid, 'dc040000-0000-4000-8000-000000000002'::uuid,
+   (SELECT id FROM app.process_step_catalog WHERE code = 'CUTTING'), 2,
+   'INTERNAL'::app."STEP_EXECUTION",
+   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 2.0),
+  ('dc042000-0000-4000-8000-000000000003'::uuid, 'dc040000-0000-4000-8000-000000000002'::uuid,
+   (SELECT id FROM app.process_step_catalog WHERE code = 'CENTERLESS'), 3,
+   'INTERNAL'::app."STEP_EXECUTION",
+   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 1.0),
+  ('dc042000-0000-4000-8000-000000000004'::uuid, 'dc040000-0000-4000-8000-000000000002'::uuid,
+   (SELECT id FROM app.process_step_catalog WHERE code = 'LENGTH_ADJUST'), 4,
+   'INTERNAL'::app."STEP_EXECUTION",
+   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0.5)
+ON CONFLICT (id) DO NOTHING;
+
 -- ── 指示書 #9001〜#9004（固定番号 — 採番と衝突しないよう sequence を追従）──────
 -- 承認は「第一/第二」固定ではなくなり（approval_flows が段数を決める）、
 -- 指示書側は 依頼 / 最終承認 / 差し戻し だけを持つ:

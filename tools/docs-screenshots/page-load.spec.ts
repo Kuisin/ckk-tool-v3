@@ -29,26 +29,12 @@ import { readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
+import { isIgnoredConsole } from "./console-ignore";
 import { shots } from "./manifest";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP = process.env.APP_URL ?? "http://localhost:3100";
 const DASHBOARD = resolve(HERE, "../../coolify/apps/nextjs-web/src/app/(dashboard)");
-
-/** データ由来で常に出る既知のノイズ。コードの欠陥ではないものだけを並べる。 */
-const IGNORE_CONSOLE = [
-  "/api/avatars/", // デモユーザーの写真ファイルが無い（データ）
-  "favicon",
-  "Download the React DevTools",
-  "Geolocation",
-  // 外部サービス由来 — この試験の環境には無い。詳細画面が iframe で先読みする
-  // PDF（Gotenberg → 502）と、オブジェクトストレージの実体（SeaweedFS → 404:
-  // 取込元 PDF・設計図データ）。画面自体は描けていて、無いのはレンダラと
-  // ストレージ。
-  "/api/pdf/",
-  "/api/intake/source/",
-  "/api/design-files/",
-];
 
 const BAD_TEXT = ["MISSING_MESSAGE", "[object Object]", "Invalid Date", "NaN", "undefined"];
 
@@ -89,7 +75,7 @@ async function visit(page: Page, url: string): Promise<Issue[]> {
     if (m.type() !== "error") return;
     const t = m.text();
     const where = m.location()?.url ?? "";
-    if (IGNORE_CONSOLE.some((s) => t.includes(s) || where.includes(s))) return;
+    if (isIgnoredConsole(t, where)) return;
     issues.push({ kind: "console-error", detail: `${t.slice(0, 300)} @ ${where}` });
   };
   page.on("pageerror", onErr);

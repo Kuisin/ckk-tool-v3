@@ -51,6 +51,7 @@ jobs:
       authz: ${{ steps.areas.outputs.authz }}
       shared_db: ${{ steps.areas.outputs.shared_db }}
       python: ${{ steps.areas.outputs.python }}
+      walkthroughs: ${{ steps.areas.outputs.walkthroughs }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -484,6 +485,58 @@ jobs:
           name: page-load-report
           path: /tmp/page-load-report.json
           if-no-files-found: ignore
+
+  # 業務の通し操作 — 販売 / 購買 / 生産 / 出荷 / 請求 の流れを、マニュアルのプロセス編と
+  # 同じ順に**実際に画面で最後まで行う**（書類を作り、承認し、出荷し、請求書を出す）。
+  # 上の pages は「開けるか」しか見ないので、保存が効かない・承認しても次へ進めない、
+  # といった壊れ方はここでしか分からない。
+  #
+  # 同じスクリプトがマニュアルの動画も録る（pnpm docs:videos — 録画は Coolify の
+  # manual-videos アプリが行い、CI では録らない）。ここは待ち時間なしの検査だけ。
+  #
+  # **本番へ上げる前の検査**: 昇格 PR（main 向け）では必ず回る。dev 向けの PR では
+  # 通し操作自身かデモシードを触ったときだけ（tools/ci/changed-areas.sh）。
+  # 落ちたときは失敗時の画面・動画・トレースが artifact に残る。
+  walkthroughs:
+    name: nextjs-web — 業務の通し操作 (Playwright)
+    needs: changes
+    if: needs.changes.outputs.walkthroughs == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install (frozen lockfile, workspace root)
+        run: pnpm install --frozen-lockfile
+      - name: Install shared-db（workspace 外 — 自前の lockfile）
+        run: pnpm install --frozen-lockfile --ignore-workspace
+        working-directory: shared-db
+      - name: Install docs-screenshots（workspace 外）+ Chromium
+        run: |
+          pnpm install --frozen-lockfile --ignore-workspace
+          pnpm exec playwright install --with-deps chromium
+        working-directory: tools/docs-screenshots
+      - name: Sync Prisma schema (shared-db) + generate client
+        run: pnpm db:sync-schema && pnpm db:generate
+        working-directory: coolify/apps/nextjs-web
+      - name: Seed → build → start → walkthroughs.spec.ts
+        run: pnpm walk:check
+        working-directory: tools/docs-screenshots
+      - name: Upload failure evidence（画面・動画・トレース）
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: walkthroughs-failure
+          path: tools/docs-screenshots/test-results/walkthroughs
+          if-no-files-found: ignore
+          retention-days: 7
 
   kiosk:
     name: nextjs-kiosk — lint & build (base ${{ github.base_ref }})
