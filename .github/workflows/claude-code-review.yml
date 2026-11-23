@@ -17,7 +17,8 @@ on:
 
 jobs:
   quick-review:
-    if: github.event.pull_request.base.ref != 'main'
+    # 下書きでは回さない（nextjs-web CI と同じ約束）。「レビュー可能にする」で回る。
+    if: github.event.pull_request.base.ref != 'main' && github.event.pull_request.draft == false
     # Optional: Filter by PR author
     # if: |
     #   github.event.pull_request.user.login == 'external-contributor' ||

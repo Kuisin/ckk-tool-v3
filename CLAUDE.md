@@ -65,6 +65,39 @@ Manufacturing Company Business Management System — a Next.js fullstack monolit
 @_specs/design.md
 @_specs/i18n-glossary.md
 
+## Test locally before every push (required)
+
+**Run `pnpm check` from the repo root before pushing to GitHub.** It is the whole
+nextjs-web CI, run locally in one command (`tools/ci/local-check.sh`): install,
+dependency audit, Python, authz-core, kiosk, web (every gate + biome strict +
+typecheck + build), shared-db migrations on a throwaway DB (fresh and with base
+data), and a browser pass — the full page-load crawl plus the URL-state (incl. real
+IME input) and client-read suites against a production build. Unlike CI it runs
+**every stage to the end** and prints one table, so one run shows every failure.
+Logs per stage are under `$TMPDIR/ckk-local-check/<time>/`.
+
+```bash
+pnpm check                    # everything (~20 min, needs Docker)
+pnpm check -- --changed       # only the jobs CI would run for this diff (same rules)
+pnpm check -- --quick         # no Docker / browser (a few minutes)
+pnpm check -- --only web,browser   # chosen stages
+pnpm check -- --keep          # leave the app + DB up afterwards to poke at (demo1 / demo2026)
+```
+
+Push only on `ALL PASS`. `--changed` is fine for small changes; use the full run for
+anything touching shared code, dependencies, schema or CI. Containers and ports are
+derived from the worktree path, so parallel worktrees don't collide. **When you add a
+step to CI, add it to `local-check.sh` too** — its first stage fails if CI has a
+one-line `run:` command the script doesn't (multi-line `run:` blocks are matched by
+hand).
+
+**CI itself is trimmed to save Actions minutes** (2026-11): draft PRs run nothing
+(CI starts on "Ready for review"), and the `changes` job (`tools/ci/changed-areas.sh`,
+tested by `changed-areas.test.sh`) skips jobs whose area the PR didn't touch — e.g.
+docs/manual/spec-only PRs skip the 13-minute page crawl. PRs into `main` (promotion)
+and changes to the CI itself always run everything. When in doubt the rules run the
+job. That is why the local run matters: a skipped CI job is not a passed one.
+
 ## Commands
 
 ```bash
