@@ -47,6 +47,6 @@ export default proxy;
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/sso|api/preview|api/device-signals|api/health|api/intake/inbound|api/v1(?:$|/)|login|portal(?:$|/)|manual(?:$|/)|manual-media(?:$|/)|llms-manual(?:$|/)|_next/static|_next/image|favicon\\.ico|icon\\.svg|design-assets|manifest\\.webmanifest|icons|sw\\.js).*)",
+    "/((?!api/auth|api/sso|api/preview(?:$|/)|api/device-signals|api/health|api/intake/inbound|api/v1(?:$|/)|login|portal(?:$|/)|manual(?:$|/)|manual-media(?:$|/)|llms-manual(?:$|/)|_next/static|_next/image|favicon\\.ico|icon\\.svg|design-assets|manifest\\.webmanifest|icons|sw\\.js).*)",
   ],
 };

@@ -36,4 +36,28 @@ describe("toCsv", () => {
     expect(csv).toContain('"a,b"');
     expect(parseCsv(csv)).toEqual(rows);
   });
+
+  it("neutralizes a leading-= cell and round-trips", () => {
+    // =1+2 would execute in Excel/Sheets; a leading ' pins it to text and needs
+    // no RFC-4180 quoting. The neutralized value survives the parse round-trip.
+    const csv = toCsv([["=1+2"]]);
+    expect(csv).toBe("'=1+2");
+    expect(parseCsv(csv)).toEqual([["'=1+2"]]);
+  });
+
+  it("neutralizes every dangerous leading char (= + - @ tab cr)", () => {
+    for (const danger of ["=cmd", "+cmd", "-cmd", "@cmd", "\tcmd", "\rcmd"]) {
+      const parsed = parseCsv(toCsv([[danger, "safe"]]));
+      // after a write + read round-trip the cell still starts with ' so a
+      // spreadsheet treats it as text, not a formula
+      expect(parsed[0][0].startsWith("'")).toBe(true);
+    }
+  });
+
+  it("leaves safe strings and numeric cells untouched", () => {
+    // a negative number must NOT become '-100 or the value is corrupted
+    const csv = toCsv([["hello", -100, 0.5, "a=b"]]);
+    expect(csv).toBe("hello,-100,0.5,a=b");
+    expect(parseCsv(csv)).toEqual([["hello", "-100", "0.5", "a=b"]]);
+  });
 });

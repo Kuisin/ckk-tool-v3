@@ -54,10 +54,25 @@ const needsQuote = (s: string) => /[",\r\n]/.test(s);
 const quoteField = (s: string) =>
   needsQuote(s) ? `"${s.replace(/"/g, '""')}"` : s;
 
+/**
+ * CSV インジェクション対策 — 先頭が = + - @ / タブ / CR の文字列セルは
+ * Excel / Sheets が数式として実行する。先頭にアポストロフィを置いて文字列に
+ * 固定する（RFC4180 のクオートはこのあと `quoteField` が行う）。
+ * **数値は対象外** — 負の金額 `-100` を `'-100` にすると値が壊れる。
+ * 会計 CSV の `lib/accounting-export-core.ts` `csvField` と同じ規則。
+ */
+const neutralizeFormula = (s: string) => (/^[=+\-@\t\r]/.test(s) ? `'${s}` : s);
+
 /** 行×列 → CSV テキスト（CRLF 改行・Excel 互換）。 */
 export function toCsv(rows: (string | number)[][]): string {
   return rows
-    .map((r) => r.map((f) => quoteField(String(f))).join(","))
+    .map((r) =>
+      r
+        .map((f) =>
+          typeof f === "number" ? String(f) : quoteField(neutralizeFormula(f)),
+        )
+        .join(","),
+    )
     .join("\r\n");
 }
 
