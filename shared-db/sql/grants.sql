@@ -155,6 +155,10 @@ REVOKE SELECT ON app.push_subscriptions  FROM metabase_ro;  -- Web Push 秘密�
 -- BI からはテーブルごと外す。
 REVOKE SELECT ON app.login_attempts      FROM metabase_ro;  -- 認証イベント（個人データ）
 REVOKE SELECT ON app.user_devices        FROM metabase_ro;  -- 端末台帳（個人データ）
+-- 共有端末の位置履歴（GPS 緯度・経度・精度）。login_attempts / user_devices と同じく
+-- 従業員監視に隣接する個人データで、BI で集計する対象ではない（90 日で pg_cron が刈る。
+-- 閲覧は SY09 端末管理に閉じる）。analytics-views.sql は参照していない。
+REVOKE SELECT ON app.kiosk_device_locations FROM metabase_ro;  -- 端末の位置履歴（GPS・個人データ）
 -- 特権アクセスの申請と決裁。「誰がどの秘密を見たがったか」「誰が誰を止めよう
 -- としたか」が理由つきで並ぶ表で、BI で集計する対象ではない。閲覧は SY0G と
 -- 監査ログに閉じる。
