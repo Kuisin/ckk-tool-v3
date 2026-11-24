@@ -354,6 +354,10 @@ function postPinned(
   return new Promise<number>((resolve, reject) => {
     const onResponse = (res: IncomingMessage) => {
       // 応答本文は読まない・保存しない（相手の内部情報が混ざりうる）。破棄する。
+      // 破棄中に接続が切れても res の未処理 'error' でプロセスが落ちないよう先に
+      // 飲む（fetch 版の res.body.cancel().catch() と同じ安全性。dispatcher は
+      // 単一プロセスの setInterval で回るので uncaughtException は致命的）。
+      res.on("error", () => {});
       res.resume();
       resolve(res.statusCode ?? 0);
     };
