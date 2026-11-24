@@ -26,6 +26,7 @@ import { getTranslations } from "next-intl/server";
 import { actorAvatarUrl, getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { documentInScope } from "@/lib/document-scope";
 import {
   findBlockedLinks,
   mintShortLinks,
@@ -145,9 +146,20 @@ interface Actor {
 async function actorFor(
   permission: string,
   action: PermissionAction,
+  owner?: { type: string; id: string },
 ): Promise<{ ok: true; actor: Actor } | { ok: false; error: string }> {
   const authz = await checkPermission(permission, action);
   if (!authz.ok) return { ok: false, error: authz.error };
+  // 権限コードに加えて、対象書類が**行スコープ内**かも見る（L-7）。owner を
+  // 渡さない呼び出しは従来どおりコードのみ。拒否は owner 番号で推測した他担当・
+  // 他拠点の書類に内部メモを読み書きさせないため。
+  if (
+    owner &&
+    !(await documentInScope(authz.access, authz.userId, owner.type, owner.id))
+  ) {
+    const tr = await getTranslations();
+    return { ok: false, error: tr("common.scopeDenied") };
+  }
   const admin = await checkPermission(permission, "ADMIN");
   return { ok: true, actor: { userId: authz.userId, isAdmin: admin.ok } };
 }
@@ -291,7 +303,10 @@ export async function saveMemo(
   const owner = MEMO_OWNERS[ownerType];
   if (!owner || !ownerId) return actionError(tr("common.invalidMemoTarget"));
 
-  const auth = await actorFor(owner.permission, "UPDATE");
+  const auth = await actorFor(owner.permission, "UPDATE", {
+    type: ownerType,
+    id: ownerId,
+  });
   if (!auth.ok) return actionError(auth.error);
   const actor = auth.actor;
 
@@ -462,6 +477,23 @@ export async function listMemoRevisions(
   if (!owner) return [];
   const authz = await checkPermission(owner.permission, "READ");
   if (!authz.ok) return [];
+  // 履歴は memoId（uuid）で引くが、対象書類が行スコープ内かも確かめる（L-7）。
+  // 本体が消えていても改訂行に ownerId が残るので、そこから owner を得る。
+  const ownerRef = await prisma.documentMemoRevision.findFirst({
+    where: { memoId },
+    select: { ownerId: true },
+  });
+  if (
+    ownerRef &&
+    !(await documentInScope(
+      authz.access,
+      authz.userId,
+      ownerType,
+      ownerRef.ownerId,
+    ))
+  ) {
+    return [];
+  }
 
   try {
     const [rows, tr] = await Promise.all([
@@ -498,7 +530,10 @@ export async function deleteMemo(id: string): Promise<ActionResult> {
     const owner = MEMO_OWNERS[row.ownerType];
     if (!owner) return actionError(tr("common.invalidMemoTarget"));
 
-    const auth = await actorFor(owner.permission, "DELETE");
+    const auth = await actorFor(owner.permission, "DELETE", {
+      type: row.ownerType,
+      id: row.ownerId,
+    });
     if (!auth.ok) return actionError(auth.error);
     if (!mayMutate(row.kind, row.createdBy, auth.actor)) {
       return actionError(tr("common.cannotDeleteOthersPosts"));
@@ -558,7 +593,10 @@ export async function setMemoArchived(
     const owner = MEMO_OWNERS[row.ownerType];
     if (!owner) return actionError(tr("common.invalidMemoTarget"));
 
-    const auth = await actorFor(owner.permission, "UPDATE");
+    const auth = await actorFor(owner.permission, "UPDATE", {
+      type: row.ownerType,
+      id: row.ownerId,
+    });
     if (!auth.ok) return actionError(auth.error);
     if (!mayMutate(row.kind, row.createdBy, auth.actor)) {
       return actionError(tr("common.cannotOperateOnOthersPosts"));
