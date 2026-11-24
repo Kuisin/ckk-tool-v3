@@ -18,7 +18,8 @@ import {
   isPinLocked,
   isValidPin,
   newPinVerdict,
-  nextPinFailureState,
+  PIN_MAX_ATTEMPTS,
+  pinFailureStateAfter,
 } from "@/lib/kiosk-auth-core";
 import {
   attemptContext,
@@ -116,23 +117,58 @@ export async function POST(req: Request) {
   if (!card.pinHash) {
     return deny(ctx, "CARD_INVALID", 404, detail);
   }
+  // 読んだ時点のスナップショットでの早期弾き（通常の「ロック中に再試行」経路）。
   if (isPinLocked(now, card.pinLockedUntil)) {
     return deny(ctx, "LOCKED", 429, detail, { until: card.pinLockedUntil });
   }
 
-  if (!verifyPin(pin, card.pinHash)) {
-    // 失敗回数は DB 側で加算する。読んだ値 +1 を書き戻す形だと、同時に来た
-    // 誤入力が 1 回にしか数えられず、5 回ロックが実質的に緩んでいた。
-    const bumped = await prisma.kioskCard.update({
+  // 照合の前に「試行枠」を 1 つ atomically に確保する。これが同時撃ちの肝:
+  // チケットを N 枚先に仕込んで N 本同時に撃っても、この単一 UPDATE が
+  // Postgres 側で直列化され、pinFailedAttempts < PIN_MAX_ATTEMPTS を満たす
+  // 先頭 PIN_MAX_ATTEMPTS 本だけが枠を取れる（= verifyPin に到達できる）。
+  // 残りは count=0 で弾かれ照合に進めない。従来は verify の後に increment して
+  // いたため、ロックが書かれる前に読んだスナップショット（上の isPinLocked）を
+  // 全員が素通りし、1 窓で上限を超えて試せた。ロック中（pinLockedUntil が未来）の
+  // 行には枠を出さず、期限切れのロック時刻は「<= now」で枠を許して新しい窓を開く。
+  const claim = await prisma.kioskCard.updateMany({
+    where: {
+      id: card.id,
+      pinFailedAttempts: { lt: PIN_MAX_ATTEMPTS },
+      OR: [{ pinLockedUntil: null }, { pinLockedUntil: { lte: now } }],
+    },
+    data: { pinFailedAttempts: { increment: 1 } },
+  });
+  if (claim.count === 0) {
+    // 枠を取れなかった = 同時の失敗が先にロックした / 上限に達した。いずれも
+    // 「この窓ではこれ以上試させない」= ロック扱いで弾く（照合はしない）。
+    const fresh = await prisma.kioskCard.findUnique({
       where: { id: card.id },
-      data: { pinFailedAttempts: { increment: 1 } },
+      select: { pinLockedUntil: true },
+    });
+    return deny(ctx, "LOCKED", 429, detail, {
+      until: fresh?.pinLockedUntil ?? null,
+    });
+  }
+
+  if (!verifyPin(pin, card.pinHash)) {
+    // claim で既に +1 済み。加算後の値からロックの要否を決める。
+    const after = await prisma.kioskCard.findUnique({
+      where: { id: card.id },
       select: { pinFailedAttempts: true },
     });
-    // nextPinFailureState は「加算前の値」を取るので、加算後の値から 1 戻す
-    const next = nextPinFailureState(now, bumped.pinFailedAttempts - 1);
+    const next = pinFailureStateAfter(
+      now,
+      after?.pinFailedAttempts ?? PIN_MAX_ATTEMPTS,
+    );
     if (next.lockedUntil) {
-      await prisma.kioskCard.update({
-        where: { id: card.id },
+      // 上限到達。ロックは「まだロックされていない（期限切れ含む）」行にだけ
+      // 書く — 同時失敗のうち先頭 1 本だけが実際に書き、後続は no-op。これで
+      // 「別の失敗が既にロックした後に滑り込んで上書きする」ことを防ぐ。
+      await prisma.kioskCard.updateMany({
+        where: {
+          id: card.id,
+          OR: [{ pinLockedUntil: null }, { pinLockedUntil: { lte: now } }],
+        },
         data: {
           pinFailedAttempts: next.failedAttempts,
           pinLockedUntil: next.lockedUntil,

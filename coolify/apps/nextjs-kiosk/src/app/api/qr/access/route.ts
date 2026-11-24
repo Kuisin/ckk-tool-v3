@@ -40,7 +40,7 @@ import {
   recordKioskSuccess,
 } from "@/lib/kiosk-login-log";
 import { clientIpOf, userAgentOf } from "@/lib/request-ip";
-import { issueTicket } from "@/lib/tickets";
+import { issuePinVerifyTicket, issueTicket } from "@/lib/tickets";
 import { wsBridge } from "@/lib/ws-bridge";
 
 const bodySchema = z.object({ cardId: z.string().min(1).max(200) });
@@ -141,7 +141,15 @@ export async function POST(req: Request) {
     // userId はクライアントの「最後に開いたページ」復元（localStorage キー）用
     return NextResponse.json({ state: "OK", userId: card.user.id });
   }
-  // 4. PIN 再入力（この端末で 48h 超過 / 初めて使う端末 / 2 週間経過）
-  const ticket = issueTicket(card.id, device.device.id, "PIN_VERIFY");
+  // 4. PIN 再入力（この端末で 48h 超過 / 初めて使う端末 / 2 週間経過）。
+  //    チケット発行はカード単位でレート制限する — 1 枚ごとに新規チケットを
+  //    無制限に出していたため、攻撃者が N 枚先に仕込んで /api/kiosk/pin へ
+  //    N 本同時に撃ち、1 窓 5 回のロックを超えて試せた。
+  const ticket = issuePinVerifyTicket(card.id, device.device.id, now);
+  if (!ticket) {
+    // 発行レート上限（カード単位）に到達 = 事実上のブルートフォース。
+    // ロックと同じ扱いで弾く（画面は「ロック中」を出す）。
+    return deny(ctx, "LOCKED", 429, detail, { until: card.pinLockedUntil });
+  }
   return NextResponse.json({ state: "PIN_REQUIRED", ticket });
 }
