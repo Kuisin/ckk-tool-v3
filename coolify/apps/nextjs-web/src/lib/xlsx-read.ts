@@ -28,6 +28,11 @@ import type { Tr } from "./i18n";
 const EOCD_SIGNATURE = 0x06054b50;
 const CENTRAL_SIGNATURE = 0x02014b50;
 
+// 展開後の大きさの上限（圧縮爆弾対策）。≤10MB の deflate が数 GB に膨らむので、
+// 1 エントリ単位と、全エントリの合計の両方で閉じる。
+const MAX_ENTRY_BYTES = 64 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 128 * 1024 * 1024;
+
 /** ZIP の中身を「名前 → 中身」で取り出す。 */
 function unzip(buf: Buffer, tr: Tr): Map<string, Buffer> {
   // End of Central Directory は末尾にある（コメントがあると少し手前）
@@ -43,6 +48,7 @@ function unzip(buf: Buffer, tr: Tr): Map<string, Buffer> {
   const entryCount = buf.readUInt16LE(eocd + 10);
   let p = buf.readUInt32LE(eocd + 16);
   const files = new Map<string, Buffer>();
+  let totalBytes = 0;
 
   for (let n = 0; n < entryCount; n++) {
     if (buf.readUInt32LE(p) !== CENTRAL_SIGNATURE) {
@@ -62,13 +68,24 @@ function unzip(buf: Buffer, tr: Tr): Map<string, Buffer> {
     const start = localOffset + 30 + lNameLen + lExtraLen;
     const raw = buf.subarray(start, start + compressedSize);
 
-    if (method === 0) files.set(name, Buffer.from(raw));
-    else if (method === 8) files.set(name, inflateRawSync(raw));
-    else {
+    let entry: Buffer;
+    if (method === 0) entry = Buffer.from(raw);
+    else if (method === 8) {
+      // 展開後の大きさに上限を置く。超過すると RangeError を投げ、
+      // 呼び出し側（route）が「読めない」として 400 で返す。
+      entry = inflateRawSync(raw, { maxOutputLength: MAX_ENTRY_BYTES });
+    } else {
       throw new Error(
         tr("api.xlsxRead.unsupportedCompression", { method, name }),
       );
     }
+
+    // 1 エントリが上限内でも、束ねれば巨大になりうる。合計でも閉じる。
+    totalBytes += entry.length;
+    if (totalBytes > MAX_TOTAL_BYTES) {
+      throw new Error(tr("api.xlsxRead.tooLarge"));
+    }
+    files.set(name, entry);
 
     p += 46 + nameLen + extraLen + commentLen;
   }

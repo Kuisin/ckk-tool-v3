@@ -12,6 +12,7 @@
 
 import { NextResponse } from "next/server";
 import { getTranslations } from "next-intl/server";
+import { checkPermission } from "@/lib/authz";
 import {
   portableFileSchema,
   rowsToPortable,
@@ -26,6 +27,18 @@ const MAX_BYTES = 10 * 1024 * 1024;
 
 export async function POST(request: Request): Promise<NextResponse> {
   const tr = await getTranslations();
+
+  // 展開の前に認可する（M-1: zip-bomb DoS）。readXlsx / JSON.parse は
+  // 圧縮を解いてから走るので、権限の無いリクエストに解凍処理をさせない。
+  // importTemplates 内の CREATE チェックは多層防御として残す。
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) {
+    return NextResponse.json(
+      { ok: false, error: authz.error },
+      { status: 403 },
+    );
+  }
+
   let form: FormData;
   try {
     form = await request.formData();

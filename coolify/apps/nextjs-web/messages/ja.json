@@ -6809,7 +6809,8 @@
       "zipEndNotFound": "ZIP の終端が見つかりません",
       "zipDirectoryCorrupt": "ZIP の目録が壊れています",
       "unsupportedCompression": "未対応の圧縮方式です ({method}): {name}",
-      "noWorksheet": "ワークシートが見つかりません"
+      "noWorksheet": "ワークシートが見つかりません",
+      "tooLarge": "ファイルが大きすぎます（展開後の上限を超えました）"
     },
     "documentPdf": {
       "notIssuedYet": "発行前の{docType}は PDF を閲覧できません"
