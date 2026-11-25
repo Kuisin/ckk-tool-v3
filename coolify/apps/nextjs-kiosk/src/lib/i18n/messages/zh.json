@@ -424,6 +424,11 @@
       "download": "下载",
       "noFile": "无文件"
     },
+    "seriesMemo": {
+      "title": "系列备忘",
+      "hint": "图纸（{series}）各版本共用的备忘",
+      "generic": "通用"
+    },
     "wip": {
       "title": "入库的在制品",
       "description": "作为半成品入库的部分，按加工状态和成品尺寸分别入库。",

@@ -2968,7 +2968,9 @@
       "whatChangedInThisVersion": "What changed in this version",
       "deleteTheDrawing": "Delete the drawing",
       "seriesMemo": "Series memo",
-      "seriesMemoHint": "A memo shared by every version of this product and ordering customer (customer habits, machining notes). Write what changed in each version on that version."
+      "seriesMemoHint": "A memo shared by every version of this product and ordering customer (customer habits, machining notes). Write what changed in each version on that version.",
+      "seriesMemoReadOnlyHint": "Shared by every version of the drawing this work order uses ({series}). Edit it in Drawings.",
+      "seriesMemoOpen": "Open in Drawings"
     },
     "inventory": {
       "reservationsCount": "Reservations ({count})",

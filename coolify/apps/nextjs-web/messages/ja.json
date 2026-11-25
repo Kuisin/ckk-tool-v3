@@ -2968,7 +2968,9 @@
       "whatChangedInThisVersion": "この版で何が変わったか",
       "deleteTheDrawing": "設計図の削除",
       "seriesMemo": "系列メモ",
-      "seriesMemoHint": "この製品・受注元の図面すべてに共通するメモ（客先の癖・加工上の注意など）。版ごとの変更点は版のメモ欄へ。"
+      "seriesMemoHint": "この製品・受注元の図面すべてに共通するメモ（客先の癖・加工上の注意など）。版ごとの変更点は版のメモ欄へ。",
+      "seriesMemoReadOnlyHint": "この指示書が使う図面（{series}）の全版に共通するメモ。書き直すときは設計図で。",
+      "seriesMemoOpen": "設計図で開く"
     },
     "inventory": {
       "reservationsCount": "予約（{count}）",

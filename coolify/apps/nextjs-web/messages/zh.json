@@ -2968,7 +2968,9 @@
       "whatChangedInThisVersion": "此版本变更了什么",
       "deleteTheDrawing": "删除图纸",
       "seriesMemo": "系列备忘",
-      "seriesMemoHint": "该产品与订货方的所有图纸版本共用的备忘（客户习惯、加工注意事项等）。各版本的变更点请写在该版本的备忘中。"
+      "seriesMemoHint": "该产品与订货方的所有图纸版本共用的备忘（客户习惯、加工注意事项等）。各版本的变更点请写在该版本的备忘中。",
+      "seriesMemoReadOnlyHint": "本工单所用图纸（{series}）各版本共用的备忘。修改请在图纸中进行。",
+      "seriesMemoOpen": "在图纸中打开"
     },
     "inventory": {
       "reservationsCount": "预留（{count}）",

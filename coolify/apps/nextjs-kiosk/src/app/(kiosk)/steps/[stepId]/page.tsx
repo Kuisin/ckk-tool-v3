@@ -10,6 +10,7 @@ import { I18nProvider } from "@/components/I18nProvider";
 import { StepExecutionView } from "@/components/steps/StepExecutionView";
 import { readableCodes } from "@/lib/authz";
 import { getStepPrograms } from "@/lib/design-programs";
+import { getStepSeriesMemo } from "@/lib/design-series-memo";
 import { resolveBoardLocationByCode } from "@/lib/device-work-location";
 import { type LocalizedText, localized } from "@/lib/format";
 import { getSession } from "@/lib/kiosk-auth";
@@ -73,6 +74,8 @@ export default async function StepExecutionPage({
     session.deviceId,
     session.locale,
   );
+  // 図面系列のメモ（全版共通の注意。プログラムと同じ規則で選んだ系列）
+  const seriesMemo = await getStepSeriesMemo(step.stepId, session.locale);
 
   // 仕掛品として在庫に置く分を記録するための材料（半製品を記録するときに
   // 加工状態を見せ、仕上がり寸法を入れてもらう）。
@@ -125,6 +128,7 @@ export default async function StepExecutionPage({
         markings={markings}
         programs={programs}
         recording={recording}
+        seriesMemo={seriesMemo}
         step={step}
         wipRecording={
           wipRecording

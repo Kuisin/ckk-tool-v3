@@ -424,6 +424,11 @@
       "download": "Download",
       "noFile": "No file"
     },
+    "seriesMemo": {
+      "title": "Series memo",
+      "hint": "Shared by every version of the drawing ({series})",
+      "generic": "Generic"
+    },
     "wip": {
       "title": "WIP going to stock",
       "description": "Semi-finished parts go to stock separately by processing state and finished size.",
