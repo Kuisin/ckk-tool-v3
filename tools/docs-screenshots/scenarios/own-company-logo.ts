@@ -181,7 +181,19 @@ export const ownCompanyLogo: Scenario = {
         s.check("DB: TSP の logo_file_id が PNG を指す（own-companies/logos/…）", /^tsp-logo\.png\|image\/png\|own-companies\/logos\//.test(stored), stored);
         const img = p.getByRole("img", { name: "ロゴ" });
         await img.waitFor({ state: "visible", timeout: 8000 }).catch(() => undefined);
-        const loaded = await img.evaluate((el) => (el as HTMLImageElement).naturalWidth).catch(() => 0);
+        // 画面の更新（router.refresh）のあとで読み込みが終わるのを待ってから幅を見る。
+        const loaded = await img
+          .evaluate(
+            (el) =>
+              new Promise<number>((done) => {
+                const image = el as HTMLImageElement;
+                if (image.complete && image.naturalWidth > 0) return done(image.naturalWidth);
+                image.addEventListener("load", () => done(image.naturalWidth), { once: true });
+                image.addEventListener("error", () => done(0), { once: true });
+                setTimeout(() => done(image.naturalWidth), 8000);
+              }),
+          )
+          .catch(() => 0);
         s.check("ロゴのタブに上げた画像が出る", loaded === 240, `naturalWidth ${loaded}`);
         await s.shot("TSP — ロゴを上げた");
         await s.click(p.getByRole("tab", { name: "概要" }));
