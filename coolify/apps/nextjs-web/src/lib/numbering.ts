@@ -12,7 +12,6 @@
  * 依存は `./db` の prisma だけ（両アプリに同じ形である）。
  */
 
-import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { prisma } from "./db";
 
 const SEQUENCES = {
@@ -133,38 +132,4 @@ export async function nextSerialCode(key: SerialKey): Promise<string> {
   const { prefix, digits } = SERIALS[key];
   const seq = await nextSerialNumber(key);
   return `${prefix}-${String(seq).padStart(digits, "0")}`;
-}
-
-// ── 印字番号（A{base}-NNN の base） ──────────────────────────────────────────
-
-/**
- * 印字番号の基数の最初の値。採番行はマイグレーション
- * （20261126090000_order_line_marking_number）が last_sequence = 199999 で
- * 先に置くので、通常はこの値から払い出される。行が無い DB でも同じ値から
- * 始まるよう、INSERT 側の初期値もこれに揃えてある。
- */
-export const MARKING_BASE_START = 200000;
-
-/**
- * 次の印字番号の基数（注文明細 1 行に 1 つ。月次リセットなし）。
- *
- * **呼び出し側のトランザクションで払い出す**（`tx` を渡す）— 注文明細の確定
- * （枝番の採番）が巻き戻ったら番号も巻き戻る。注文番号・ロット番号とは別の
- * 系列（キー MARKING）。整形は lib/marking-number.ts。
- */
-export async function nextMarkingBase(
-  tx: PrismaNS.TransactionClient,
-): Promise<number> {
-  const rows = await tx.$queryRaw<{ last_sequence: number }[]>`
-    INSERT INTO "app"."numbering_sequences"
-      ("key", "prefix", "last_year_month", "last_sequence", "updated_at")
-    VALUES ('MARKING', 'A', NULL, ${MARKING_BASE_START}, now())
-    ON CONFLICT ("key") DO UPDATE SET
-      "last_sequence" = "numbering_sequences"."last_sequence" + 1,
-      "updated_at" = now()
-    RETURNING "last_sequence"
-  `;
-  const seq = rows[0]?.last_sequence;
-  if (!seq) throw new Error("numbering failed for MARKING");
-  return seq;
 }

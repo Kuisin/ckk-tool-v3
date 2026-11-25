@@ -39,7 +39,7 @@ import { enqueueExtraction } from "@/lib/intake";
 import { normalizeExtraction } from "@/lib/intake-core";
 import { aliasLearnings } from "@/lib/match-alias-core";
 import { saveAliasLearnings } from "@/lib/match-aliases";
-import { allocateDocumentKey, nextMarkingBase } from "@/lib/numbering";
+import { allocateDocumentKey } from "@/lib/numbering";
 import {
   applyApprovedAcceptanceCancel,
   closeAcceptanceCancelRequest,
@@ -1007,14 +1007,13 @@ export async function confirmOrderLines(
       // sortOrder 順に 1..N。以後 branch は不変（公開番号 ORD-…-NN の一部）。
       const branches = nextBranches(0, prior.items.length);
       for (const [i, it] of prior.items.entries()) {
-        // 印字番号の基数（A{base}-NNN）も同じトランザクションで払い出す —
-        // 確定が巻き戻れば番号も戻る。既に振られた行には二度と振らない。
-        const markingBase = it.markingBase ?? (await nextMarkingBase(tx));
+        // 印字番号の基数（marking_base）はここでは書かない — branch が入る
+        // この更新で DB のトリガーが専用 SEQUENCE から振る（マイグレーション
+        // 20261126090000_order_line_marking_number）。
         await tx.orderLine.update({
           where: { id: it.id },
           data: {
             branch: branches[i],
-            markingBase,
             status: "CONFIRMED",
             confirmedAt: completedAt,
             // 金額はサーバー側で計算し、この時点で凍結する。

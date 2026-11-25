@@ -3,8 +3,8 @@
  *
  * 形式は `A{base}-{NNN}`:
  *   - base  … 注文明細 1 行に 1 つ払い出す通し番号（order_lines.marking_base。
- *             200000 始まり・月次リセットなし。採番は lib/numbering.ts
- *             nextMarkingBase）
+ *             200000 始まり・月次リセットなし。採番は DB — 明細の確定時に
+ *             トリガーが SEQUENCE app.marking_number_seq から振る）
  *   - NNN   … その明細の何本目か（001..数量）。桁は最低 3、数量が 999 を
  *             超えるときは数量の桁数まで広げる（同じ明細の番号の桁を揃える）
  *
