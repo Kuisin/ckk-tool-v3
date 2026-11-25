@@ -117,7 +117,7 @@ import {
   pickDefaultCommonRoute,
   pickDefaultPrepRoute,
   pickDefaultRoute,
-  routeStepsEqual,
+  routeStepsEquivalent,
   routesVisibleForCustomer,
 } from "@/lib/product-routes-core";
 import { workOrderTypeForLine } from "@/lib/work-order-alloc-core";
@@ -995,12 +995,24 @@ export function WorkflowBuilder({
     () => currentSnapshots.filter((s) => !prepStepIds.has(s.processStepId)),
     [currentSnapshots, prepStepIds],
   );
+  // 実施場所を選べる工程（社内・外注）。それ以外は拠点を持たずに保存されるので、
+  // 版の側もその規則に揃えてから比べる（サーバーの routeStepsSameTx と同じ）。
+  const editableStepIds = useMemo(
+    () =>
+      new Set(
+        catalogSteps
+          .filter((c) => c.executionLocation === "INTERNAL_OR_OUTSOURCE")
+          .map((c) => c.id),
+      ),
+    [catalogSteps],
+  );
   const routeModified =
     routeSel != null &&
     baseSteps != null &&
-    !routeStepsEqual(
+    !routeStepsEquivalent(
       baseSteps.filter((s) => !prepStepIds.has(s.processStepId)),
       currentMfg,
+      editableStepIds,
     );
   const latestVersionOfRoute = selectedRoute?.versions[0]?.version ?? 0;
   /** 準備工程リストの最新版（表示用 — 指示書はこれを使う）。 */
