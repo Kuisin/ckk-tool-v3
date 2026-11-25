@@ -646,6 +646,12 @@ export interface WorkOrderOverview {
   markings: MarkingView[];
   /** 開始状態（在庫の仕掛品から始めた指示書）。素材から作る指示書は null。 */
   startWip: StartWipOverview | null;
+  /**
+   * 打ち切り（Web の指示書詳細で申請する — 共有端末からは申請しない）。
+   * ABORTED = 打ち切り済み（status は CANCELLED）/ PENDING = 承認依頼中
+   * （承認されると流れの途中の品が在庫へ戻り、工程は閉じる）/ null = なし。
+   */
+  abort: "ABORTED" | "PENDING" | null;
   steps: WorkOrderStepItem[];
 }
 
@@ -746,6 +752,12 @@ export async function getWorkOrderOverview(
       steps: { select: { id: true, processStepId: true } },
       // 開始状態 — 在庫の仕掛品から始めた指示書の、投入した仕掛品の加工状態。
       startWipState: { select: { name: true, stepIds: true } },
+      abortedAt: true,
+      aborts: {
+        where: { status: "PENDING" },
+        select: { id: true },
+        take: 1,
+      },
     },
   });
   if (!wo) return null;
@@ -816,6 +828,12 @@ export async function getWorkOrderOverview(
       wo.steps.map((s) => s.processStepId),
       locale,
     ),
+    abort:
+      wo.abortedAt != null
+        ? "ABORTED"
+        : wo.aborts.length > 0
+          ? "PENDING"
+          : null,
     steps: items,
   };
 }

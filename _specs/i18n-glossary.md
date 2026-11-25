@@ -479,6 +479,10 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 推奨（本流） | Recommended (main line) | 推荐（主线） |
 | 未加工（形を変える工程が済んでいない仕掛品） | Unprocessed | 未加工 |
 | 打ち切り（進行中の指示書を止め、品を仕掛品として在庫へ戻す） | Close out | 中止 |
+| 指示書の打ち切り（承認設定の書類種別・入出庫伝票の事由） | Work order close-out | 工单中止 |
+| 打ち切り済み / 打ち切り承認依頼中 | Closed out / Close-out pending approval | 已中止 / 中止审批中 |
+| 工程内 / 工程待ち（打ち切りで品がいる位置） | In step / Waiting | 工序中 / 等待中 |
+| 仕掛品として戻す数 | Return to stock as WIP | 作为在制品退回的数量 |
 | ちょうど / 長い / 太い（仕掛品の突合の区分） | Exact / Longer / Larger diameter | 尺寸一致 / 较长 / 较粗 |
 | 工程内（進行中の指示書に乗っている本数。在庫ではない — 在庫管理のタブ名） | In process | 工序内 |
 | 未分類（移行で行き先を決められなかった旧来の半製品） | Unclassified | 未分类 |

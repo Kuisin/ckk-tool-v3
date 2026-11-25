@@ -28,6 +28,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
   IconCopy,
+  IconPlayerStop,
   IconPrinter,
   IconRuler2,
   IconTruck,
@@ -83,8 +84,13 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import { WORK_ORDER_TYPE_COLOR, workOrderTypeLabel } from "@/lib/enum-labels";
+import type {
+  AbortFormView,
+  WorkOrderAbortView,
+} from "@/lib/work-order-aborts";
 import { FlowChangeCard, type PendingFlowChangeView } from "./FlowChangeCard";
 import type { WorkOrderView } from "./model";
+import { WorkOrderAbortCard, WorkOrderAbortModal } from "./WorkOrderAbortCard";
 import { WorkOrderLinksCard } from "./WorkOrderLinksCard";
 
 const BASE_PATH = "/production/work-orders";
@@ -99,6 +105,9 @@ export function WorkOrderDetail({
   memos = [],
   flowChange = null,
   flowChangeApproval = null,
+  abort = null,
+  abortApproval = null,
+  abortForm = null,
   rejectedAppliedFlowChange = null,
   designFile = null,
   designPinned = false,
@@ -129,6 +138,12 @@ export function WorkOrderDetail({
   flowChange?: PendingFlowChangeView | null;
   /** 上の変更そのものの承認状態（指示書の承認とは別物）。 */
   flowChangeApproval?: ApprovalActionState | null;
+  /** 打ち切りの申請（保留中 / 適用済み / 適用できなかった）。無ければ null。 */
+  abort?: WorkOrderAbortView | null;
+  /** 保留中の打ち切り申請そのものの承認状態。 */
+  abortApproval?: ApprovalActionState | null;
+  /** 打ち切りフォームの材料（進行中で編集権限がある時だけ）。 */
+  abortForm?: AbortFormView | null;
   /** 事後承認（POST）で差し戻されたが適用済み・未確認の変更（赤アラート）。 */
   rejectedAppliedFlowChange?: {
     id: string;
@@ -146,6 +161,7 @@ export function WorkOrderDetail({
   const [tab, setTab] = useTabParam("overview");
   const [isPending, startTransition] = useTransition();
   const [copyOpen, setCopyOpen] = useState(false);
+  const [abortOpen, setAbortOpen] = useState(false);
   const [copyTargetSoId, setCopyTargetSoId] = useState<string | null>(
     workOrder.orderLines[0]?.orderLineId ?? null,
   );
@@ -635,6 +651,19 @@ export function WorkOrderDetail({
                 icon: <IconPrinter size={14} />,
                 href: `${BASE_PATH}/print?ids=${wo.workOrderNumber}`,
               },
+              ...(abortForm && !abortForm.block
+                ? [
+                    {
+                      // 打ち切り — 進行中の指示書を止め、流れの途中の品を
+                      // 仕掛品として在庫へ戻す（承認設定に段があれば承認を通る）。
+                      label: tr("production.workOrderAbort.menu"),
+                      icon: <IconPlayerStop size={14} />,
+                      color: "red",
+                      divider: true,
+                      onClick: () => setAbortOpen(true),
+                    },
+                  ]
+                : []),
               ...(canCancel
                 ? [
                     {
@@ -677,6 +706,16 @@ export function WorkOrderDetail({
               entity="WorkOrderApproval"
               status={wo.approvalStatus}
             />
+          )}
+          {abort?.status === "APPLIED" && (
+            <Badge color="red" size="sm" variant="light">
+              {tr("production.workOrderAbort.abortedBadge")}
+            </Badge>
+          )}
+          {abort?.status === "PENDING" && (
+            <Badge color="yellow" size="sm" variant="light">
+              {tr("production.workOrderAbort.pendingBadge")}
+            </Badge>
           )}
           {wo.startWip && (
             <Badge color="violet" size="sm" variant="light">
@@ -758,6 +797,16 @@ export function WorkOrderDetail({
             </Button>
           </Stack>
         </Alert>
+      )}
+      {/* 打ち切り（承認依頼中 / 打ち切り済み / 適用できなかった） */}
+      <WorkOrderAbortCard abort={abort} approval={abortApproval} />
+      {abortForm && !abortForm.block && abortOpen && (
+        <WorkOrderAbortModal
+          form={abortForm}
+          onClose={() => setAbortOpen(false)}
+          opened={abortOpen}
+          workOrderNumber={wo.workOrderNumber}
+        />
       )}
       {/* 承認依頼中の工程フロー変更（承認設定が未設定なら出ない = 即適用） */}
       {flowChange && flowChangeApproval && (

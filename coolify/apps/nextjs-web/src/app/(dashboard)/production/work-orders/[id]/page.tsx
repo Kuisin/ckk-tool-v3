@@ -16,6 +16,10 @@ import { type LocalizedText, localized } from "@/lib/format";
 import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
 import {
+  fetchWorkOrderAbortView,
+  loadAbortForm,
+} from "@/lib/work-order-aborts";
+import {
   fetchPendingFlowChange,
   fetchRejectedAppliedFlowChange,
 } from "@/lib/work-order-flow-changes";
@@ -126,6 +130,18 @@ export default async function ProductionWorkOrdersDetailPage({
     workOrder.id,
   );
 
+  // 打ち切り（進行中の指示書を止め、品を仕掛品として在庫へ戻す）。
+  // 申請の状態はカードに、申請フォームの材料は「打ち切り」メニューに渡す。
+  const abort = await fetchWorkOrderAbortView(workOrder.id);
+  const abortApproval =
+    abort?.status === "PENDING"
+      ? await fetchApprovalState("work_order_aborts", abort.id)
+      : null;
+  const abortForm =
+    workOrder.status === "IN_PROGRESS"
+      ? await loadAbortForm(workOrder.id, locale)
+      : null;
+
   // 追加料金（送料など。ここは**予定**で、請求されるのは出荷書側の行）。
   const [chargeRows, chargeItems, chargeAuthz] = await Promise.all([
     prisma.workOrderCharge.findMany({
@@ -139,6 +155,9 @@ export default async function ProductionWorkOrdersDetailPage({
 
   return (
     <WorkOrderDetail
+      abort={abort}
+      abortApproval={abortApproval}
+      abortForm={chargeAuthz.ok ? abortForm : null}
       approval={approval}
       approvalTrail={approvalTrail}
       auditEntries={auditEntries}

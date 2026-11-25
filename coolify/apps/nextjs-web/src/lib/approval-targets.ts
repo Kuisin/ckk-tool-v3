@@ -39,6 +39,7 @@ export const APPROVAL_TARGET_TYPES = [
   "invoice_payments",
   "design_versions",
   "price_list_entries",
+  "work_order_aborts",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -253,6 +254,17 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     appKey: "design-files",
     approvePermission: "design_file",
   },
+  // 指示書の打ち切り — 対象は申請そのもの（uuid）。人が見たいのは指示書
+  // （保留中の申請は指示書詳細にカードで出る）なので、工程フロー変更と同じく
+  // 指示書番号へ読み替えて 302 する中継ページを置く。段が 1 つも無ければ
+  // 申請と同時に適用する（未設定 = 素通し）。
+  work_order_aborts: {
+    label: label("common.workOrderAbort", "ja"),
+    color: "red",
+    href: (id) => `/production/work-orders/aborts/${id}`,
+    appKey: "work-orders",
+    approvePermission: "work_order",
+  },
   // 価格表は**独自値があるときだけ**承認を通る（価格試算から引き継いでいない
   // 基準単価・段階単価の上書き）。通常のフローは持たない。承認待ちの価格表は
   // 価格の解決に使われない。
@@ -286,6 +298,7 @@ const TARGET_LABEL_KEY: Record<ApprovalTargetType, string> = {
   invoice_payments: "common.invoicePayment",
   design_versions: "common.designVersion",
   price_list_entries: "common.priceList",
+  work_order_aborts: "common.workOrderAbort",
 };
 
 /**

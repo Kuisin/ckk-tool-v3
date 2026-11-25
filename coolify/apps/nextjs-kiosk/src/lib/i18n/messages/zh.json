@@ -55,7 +55,10 @@
       "IN_PROGRESS": "进行中",
       "COMPLETED": "已完成",
       "CANCELLED": "已取消"
-    }
+    },
+    "aborted": "已中止",
+    "abortPending": "中止审批中",
+    "abortPendingNote": "该工单的中止正在审批中。批准后工序关闭，流程中的品作为在制品退回库存。"
   },
   "woList": {
     "title": "工单列表",
