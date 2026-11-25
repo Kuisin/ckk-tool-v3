@@ -46,6 +46,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { MarkingNumber } from "@/components/ui/MarkingNumber";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { NextStepCard } from "@/components/ui/NextStepCard";
@@ -501,6 +502,12 @@ export function OrderLineDetail({
                 {tr("sales.orderLines.notNumberedNumberedWhenTheWork")}
               </Text>
             )
+          }
+        />
+        <FieldValue
+          label={tr("common.markingNumber")}
+          value={
+            <MarkingNumber base={order.markingBase} quantity={order.quantity} />
           }
         />
         <FieldValue

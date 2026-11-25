@@ -955,6 +955,15 @@ Table order_lines {
   // 実行（旧 sales_orders 由来）
   status          ORDER_LINE_STATUS [not null, default: 'DRAFT']
   lot_number      int                      // 通し連番（指示書番号と共用。統合ロットでは複数明細が共有するため unique ではない）
+  // 印字番号の基数（製品にレーザーで刻む通し番号 A{base}-NNN の base）。
+  // 注文番号・ロット番号とは**別の**通し連番（200000 始まり・月次リセットなし）。
+  // **採番は DB** — branch が入った更新で BEFORE トリガーが専用 SEQUENCE
+  // app.marking_number_seq から振り、以後の変更はトリガーが拒否する（どの
+  // 書き込み経路から確定しても必ず振られ、二重に払い出されない。欠番は許す）。1 本ずつ刻むなら
+  // A{base}-001..A{base}-{quantity}（桁は最低 3、数量が 999 を超えれば広げる）、
+  // 明細ごとに 1 つなら A{base}。どちらも導けるので「どちらで刻むか」の列は
+  // 持たない（整形は lib/marking-number.ts）。この機能より前に確定した明細は null。
+  marking_base    int [unique]
   is_locked       boolean [not null, default: false]  // 承認依頼中のロック
   end_user_bp_id  uuid [ref: > business_partners.id]  // エンドユーザー（行ごとに異なり得る）
   confirmed_at    timestamp
@@ -2665,6 +2674,9 @@ Table files {
 //   DRN-YYYYMM-NNNNN（納品書）
 //   INV-YYYYMM-NNNNN（請求書）
 //   WOR-YYYYMM-NNNNN（指示書の書類番号 — 表示用。キーは WORK_ORDER_DOC）
+//   印字番号の基数（= order_lines.marking_base）: 通し連番 (int)。この表ではなく
+//     SEQUENCE app.marking_number_seq（DB のトリガーが確定時に振る）。
+//     200000 始まり・月次リセットなし。表示は A{base}-NNN / A{base}
 //   ロット番号（= work_orders.work_order_number）: 通し連番 (int) —
 //     在庫ロット・QR・承認/メモ/監査の業務キーはこちらのまま
 Table numbering_sequences {

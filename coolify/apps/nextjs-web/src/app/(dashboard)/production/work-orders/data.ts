@@ -45,6 +45,7 @@ import {
   parseStoredSamples,
   samplingSpecFromRow,
 } from "@/lib/inspection-core";
+import { markingRange } from "@/lib/marking-number";
 import { sumActualWorkHours } from "@/lib/step-work-hours";
 import {
   fetchAllowedWorkLocationIds,
@@ -476,7 +477,33 @@ export interface WorkOrderStripView {
   type: string;
   plannedQuantity: number;
   materialCode: string | null;
+  /**
+   * 印字番号（先頭の注文明細のもの）。1 本ずつ刻む範囲と明細ごとの番号。
+   * 在庫向け・採番前の明細は null。統合ロットで明細が複数あるときは
+   * `moreLines` に残りの件数を入れる（帯の幅に全部は載らない）。
+   */
+  marking: {
+    first: string;
+    last: string;
+    perLine: string;
+    moreLines: number;
+  } | null;
   createdAt: string;
+}
+
+/** 帯に載せる印字番号 — 採番済みの先頭明細 + 残り件数。 */
+function stripMarking(
+  links: readonly {
+    orderLine: { quantity: number; markingBase: number | null };
+  }[],
+): WorkOrderStripView["marking"] {
+  const numbered = links.filter((l) => l.orderLine.markingBase != null);
+  const head = numbered[0]?.orderLine;
+  if (!head || head.markingBase == null) return null;
+  return {
+    ...markingRange(head.markingBase, head.quantity),
+    moreLines: numbered.length - 1,
+  };
 }
 
 /**
@@ -505,6 +532,8 @@ export async function fetchWorkOrderStrips(
               acceptanceYearMonth: true,
               acceptanceSeq: true,
               branch: true,
+              quantity: true,
+              markingBase: true,
               acceptance: {
                 select: { customerBp: { select: { name: true } } },
               },
@@ -553,6 +582,7 @@ export async function fetchWorkOrderStrips(
         type: r.type,
         plannedQuantity: r.plannedQuantity,
         materialCode: r.materialItem?.code ?? null,
+        marking: stripMarking(r.orderLineLinks),
         createdAt: r.createdAt.toISOString(),
       };
     });
@@ -678,6 +708,7 @@ export async function fetchWorkOrder(
       ),
       status: l.orderLine.status,
       lotNumber: l.orderLine.lotNumber,
+      markingBase: l.orderLine.markingBase,
     })),
     createdByName: r.createdByUser?.displayName ?? null,
     productName: localized(r.productItem.name as LocalizedText | null),

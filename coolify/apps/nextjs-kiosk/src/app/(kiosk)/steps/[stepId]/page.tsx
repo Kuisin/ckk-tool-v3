@@ -14,7 +14,11 @@ import { resolveBoardLocationByCode } from "@/lib/device-work-location";
 import { getSession } from "@/lib/kiosk-auth";
 import { boardQuery, parseScope } from "@/lib/location-board-core";
 import { getStepRecordingData } from "@/lib/step-records";
-import { getMyStep, getStepLocationGate } from "@/lib/steps";
+import {
+  getMyStep,
+  getStepLocationGate,
+  getWorkOrderMarkings,
+} from "@/lib/steps";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +57,8 @@ export default async function StepExecutionPage({
     session.deviceId,
     session.locale,
   );
+
+  const markings = await getWorkOrderMarkings(step.workOrderNumber);
 
   // この工程の加工プログラム（図面の版から。機械一致が先頭）
   const programs = await getStepPrograms(
@@ -101,6 +107,7 @@ export default async function StepExecutionPage({
         backTo={backTo}
         initialWorkLocationCode={boardLocationCode}
         locationGate={locationGate}
+        markings={markings}
         programs={programs}
         recording={recording}
         step={step}

@@ -47,6 +47,9 @@ const TWINS = [
   "login-attempt-core.test.ts",
   "display-content.ts",
   "display-templates.ts",
+  // 印字番号の整形 — 工程画面にも同じ番号を出す。
+  "marking-number.ts",
+  "marking-number.test.ts",
   // 仕掛品の加工状態と突合 — 共有端末も工程完了で仕掛品を入庫する。
   "wip-state-core.ts",
   "wip-state-core.test.ts",
