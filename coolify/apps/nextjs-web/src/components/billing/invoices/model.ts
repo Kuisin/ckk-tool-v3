@@ -217,6 +217,11 @@ export interface InvoiceTaxBucket {
    * （違う科目へ計上された仕訳を出すより、出さないほうが安い）。
    */
   codeConflict?: boolean;
+  /**
+   * この率の税抜金額のうち、注文種別ごとの内訳（会計連携で売上高の科目を
+   * 種別ごとに分けるためだけに使う。画面では使わない）。
+   */
+  salesByOrderType?: { orderType: string; amount: number }[];
 }
 
 /**
