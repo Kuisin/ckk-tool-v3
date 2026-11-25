@@ -8363,7 +8363,10 @@
       "kindPriceHint": "Calculates up to the estimated unit price. Once confirmed it can be chosen as a price list base price.",
       "kindCostHint": "Shows the total cost only. Visible only to people allowed to see costs, and cannot be used as a price list base price.",
       "createPriceEstimate": "Create selling-price estimate",
-      "costEstimateNotice": "This is a cost estimate. It shows the total cost only and cannot be used as a price list base price. To get a selling price, use \"Create selling-price estimate\" to start one from the same inputs."
+      "costEstimateNotice": "This is a cost estimate. It shows the total cost only and cannot be used as a price list base price. To get a selling price, use \"Create selling-price estimate\" to start one from the same inputs.",
+      "costEstimateConfirmed": "Cost estimate confirmed. It cannot be used as a price list base price",
+      "linkedToTheProductCostEstimate": "Linked to the product",
+      "costOnlyRow": "Cost only"
     },
     "orderLineDetail": {
       "designWithCount": "Design ({count})",
@@ -10026,10 +10029,10 @@
     "execDepIncomplete": "Execution dependency incomplete (step {stepId})",
     "execDepOrIncomplete": "None of the execution dependencies (any-of) are complete",
     "branchSourceIncomplete": "The branch source step is not complete",
+    "startStepIncomplete": "The start step (issue / handoff) is not complete",
     "precedingWorkOrderIncomplete": "Preceding work order #{workOrderNumber} is not complete",
     "quantityNegative": "{label} must be 0 or greater",
     "quantityConservationInspection": "The sum of pass + fail (semi-finished, scrapped, process branch) ({sum}) does not match the inspected count ({input})",
-    "startStepIncomplete": "The start step (issue / handoff) is not complete",
     "quantityConservationFlow": "The sum of good + defective (semi-finished, scrapped, process branch) ({sum}) does not match the received count ({input})",
     "routingExceedsLimit": "The total branch quantity ({static}) exceeds good + process branch ({limit})",
     "selfLoopNotAllowed": "A self-loop cannot be created",
@@ -10073,7 +10076,7 @@
       },
       "notes": {
         "label": "Notes",
-        "summary": "Internal notes. These do not appear on the quote PDF."
+        "summary": "Notes about the whole quote. They are printed in the notes block of the quote PDF."
       }
     },
     "priceList": {

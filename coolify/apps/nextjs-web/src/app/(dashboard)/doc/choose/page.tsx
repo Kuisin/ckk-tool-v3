@@ -1,7 +1,7 @@
-import { Anchor, Paper, Stack, Text, Title } from "@mantine/core";
-import Link from "next/link";
+import { Paper, Stack, Text, Title } from "@mantine/core";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { LinkAnchor } from "@/components/ui/LinkAnchor";
 import { appList } from "@/lib/app-list";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
@@ -78,8 +78,7 @@ export default async function DocChoosePage({
           if (!parts) return null;
           return (
             <Paper key={ref} p="sm" radius="md" withBorder>
-              <Anchor
-                component={Link}
+              <LinkAnchor
                 href={`${base}/${docIdOf({ docRef: ref })}${suffix}${tail}`}
               >
                 <Text fw={600} size="sm">
@@ -88,7 +87,7 @@ export default async function DocChoosePage({
                 <Text c="dimmed" ff="mono" size="xs">
                   {parts.companyCode} · {parts.number}
                 </Text>
-              </Anchor>
+              </LinkAnchor>
             </Paper>
           );
         })}

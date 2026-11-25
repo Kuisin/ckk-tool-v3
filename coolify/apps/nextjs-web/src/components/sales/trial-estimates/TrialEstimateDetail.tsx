@@ -66,6 +66,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
+import { breakdownRowMode } from "@/lib/estimate-cost";
 import type { MaterialPricePoint } from "@/lib/material-pricing-core";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import type { ScalePresetRow } from "@/lib/price-scale-preset";
@@ -233,8 +234,11 @@ export function TrialEstimateDetail({
       if (res.ok) {
         notifications.show({
           title: tr("common.saved2"),
+          // 原価試算は価格表の基準単価にできない — 「確定後に選べます」と言わない。
           message: linkItemId
-            ? tr("sales.trialEstimates.linkedToTheProductOnceConfirmed")
+            ? isCostEstimate
+              ? tr("sales.trialEstimates.linkedToTheProductCostEstimate")
+              : tr("sales.trialEstimates.linkedToTheProductOnceConfirmed")
             : tr("sales.trialEstimates.theProductLinkWasRemoved"),
           color: "green",
         });
@@ -256,7 +260,9 @@ export function TrialEstimateDetail({
       if (res.ok) {
         notifications.show({
           title: tr("common.confirmed2"),
-          message: tr("sales.trialEstimates.itCanBeChosenAsThe"),
+          message: isCostEstimate
+            ? tr("sales.trialEstimates.costEstimateConfirmed")
+            : tr("sales.trialEstimates.itCanBeChosenAsThe"),
           color: "green",
         });
         router.refresh();
@@ -500,16 +506,34 @@ export function TrialEstimateDetail({
               </Text>
               <Table>
                 <Table.Tbody>
-                  {BREAKDOWN_ROWS.map(([labelKey, key]) => (
+                  {/* 足すと最低単価になる行だけを並べる（lib/estimate-cost.ts
+                      breakdownRowMode）。原価試算では原価にだけ数える行も
+                      原価合計の一部なので印は付けない。 */}
+                  {BREAKDOWN_ROWS.filter(
+                    ([, key]) =>
+                      breakdownRowMode(pricingOptions.criteria ?? [], key) !==
+                      "hide",
+                  ).map(([labelKey, key]) => (
                     <Table.Tr key={key}>
                       <Table.Td>
-                        <LabelWithHint
-                          description={criterionDescription(
-                            pricingOptions.criteria,
-                            key,
-                          )}
-                          label={labelKey ? tr(labelKey) : "LD"}
-                        />
+                        <Group gap="xs" wrap="nowrap">
+                          <LabelWithHint
+                            description={criterionDescription(
+                              pricingOptions.criteria,
+                              key,
+                            )}
+                            label={labelKey ? tr(labelKey) : "LD"}
+                          />
+                          {!isCostEstimate &&
+                            breakdownRowMode(
+                              pricingOptions.criteria ?? [],
+                              key,
+                            ) === "costOnly" && (
+                              <Badge color="gray" size="xs" variant="light">
+                                {tr("sales.trialEstimates.costOnlyRow")}
+                              </Badge>
+                            )}
+                        </Group>
                       </Table.Td>
                       <Table.Td ta="right">
                         <MoneyText value={Math.round(result.breakdown[key])} />

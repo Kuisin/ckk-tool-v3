@@ -54,6 +54,7 @@ import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions, FormSection } from "@/components/ui/shells";
 import type { IssuingCompanyField } from "@/lib/doc-company";
+import { breakdownRowMode } from "@/lib/estimate-cost";
 import { fieldHelp } from "@/lib/field-help";
 import type { Option } from "@/lib/mock";
 import type { ScalePresetRow } from "@/lib/price-scale-preset";
@@ -1106,6 +1107,15 @@ function ResultsPanel({
       : []),
   ];
 
+  // 内訳は「足すと最低単価になる行」だけを並べる（lib/estimate-cost.ts
+  // breakdownRowMode）。原価試算では原価にだけ数える行も原価合計の一部なので、
+  // 印は付けない。
+  const visibleRows = rows.flatMap((r) => {
+    const mode = breakdownRowMode(criteria, r.id);
+    if (mode === "hide") return [];
+    return [{ ...r, costOnly: mode === "costOnly" && !costOnlyView }];
+  });
+
   return (
     <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
@@ -1134,13 +1144,20 @@ function ResultsPanel({
             </Text>
             <Table>
               <Table.Tbody>
-                {rows.map((r) => (
+                {visibleRows.map((r) => (
                   <Table.Tr key={r.id}>
                     <Table.Td>
-                      <LabelWithHint
-                        description={criterionDescription(criteria, r.id)}
-                        label={r.label}
-                      />
+                      <Group gap="xs" wrap="nowrap">
+                        <LabelWithHint
+                          description={criterionDescription(criteria, r.id)}
+                          label={r.label}
+                        />
+                        {r.costOnly && (
+                          <Badge color="gray" size="xs" variant="light">
+                            {tr("sales.trialEstimates.costOnlyRow")}
+                          </Badge>
+                        )}
+                      </Group>
                     </Table.Td>
                     <Table.Td ta="right">
                       <MoneyText value={Math.round(r.value)} />

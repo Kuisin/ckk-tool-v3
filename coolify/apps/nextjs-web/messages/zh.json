@@ -8363,7 +8363,10 @@
       "kindPriceHint": "计算到试算单价。确定后可选作价格表的基准单价。",
       "kindCostHint": "只显示成本合计。仅有查看成本权限的人可见，不能用作价格表的基准单价。",
       "createPriceEstimate": "创建售价试算",
-      "costEstimateNotice": "这是成本试算。只显示成本合计，不能用作价格表的基准单价。需要售价时，请用“创建售价试算”沿用输入新建售价试算。"
+      "costEstimateNotice": "这是成本试算。只显示成本合计，不能用作价格表的基准单价。需要售价时，请用“创建售价试算”沿用输入新建售价试算。",
+      "costEstimateConfirmed": "成本试算已确定。不能用作价格表的基准单价",
+      "linkedToTheProductCostEstimate": "已关联产品",
+      "costOnlyRow": "仅成本"
     },
     "orderLineDetail": {
       "designWithCount": "设计（{count}）",
@@ -10026,10 +10029,10 @@
     "execDepIncomplete": "执行依赖未完成（工序 {stepId}）",
     "execDepOrIncomplete": "执行依赖（任一）均未完成",
     "branchSourceIncomplete": "分支来源工序尚未完成",
+    "startStepIncomplete": "起始工序（出库・交接）尚未完成",
     "precedingWorkOrderIncomplete": "前置工单 #{workOrderNumber} 尚未完成",
     "quantityNegative": "{label}请输入 0 以上的数值",
     "quantityConservationInspection": "合格 + 不合格（半成品・报废・工序分支）之和（{sum}）与检查数（{input}）不一致",
-    "startStepIncomplete": "起始工序（出库・交接）尚未完成",
     "quantityConservationFlow": "良品 + 不良（半成品・报废・工序分支）之和（{sum}）与接收数（{input}）不一致",
     "routingExceedsLimit": "分支数量总计（{static}）超过了 良品 + 工序分支（{limit}）",
     "selfLoopNotAllowed": "无法创建自环",
@@ -10073,7 +10076,7 @@
       },
       "notes": {
         "label": "备注",
-        "summary": "仅供内部参考的补充说明，不会显示在报价单 PDF 上。"
+        "summary": "关于整张报价单的补充说明，会印在报价单 PDF 的备注栏中。"
       }
     },
     "priceList": {

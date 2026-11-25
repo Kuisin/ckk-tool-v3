@@ -247,20 +247,33 @@ export function PriceListTable({
       key: "productName",
       header: tr("common.product"),
       sortable: true,
+      // 既定幅（160px）だと、印 + 品名 + 対象工具の 2 行が入りきらず、印は潰れて
+      // 色の四角だけになり、工具名は途中で切れる。同じ再研磨品目のサイズ帯違い・
+      // 工具違いが並んだときに見分けが付かないので、幅を取り、入りきらない名前は
+      // 切らずに折り返す（見分ける語は名前の後ろ側にある）。
+      width: 280,
+      truncate: false,
       // 製品と再研磨品目が同じ列に並ぶので、行がどちらかを言う。名前だけだと
       // 「工具の名前」と「研ぎ直しという役務の名前」が見分けられない。
       render: (e) => (
         <Group gap={6} wrap="nowrap">
           {e.itemType === "REGRIND" && (
-            <Badge color="orange" size="xs" variant="light">
+            <Badge
+              color="orange"
+              size="xs"
+              style={{ flexShrink: 0 }}
+              variant="light"
+            >
               {tr("enum.ITEM_TYPE_LABEL.REGRIND")}
             </Badge>
           )}
-          <Stack gap={0}>
-            <span>{e.productName}</span>
+          <Stack gap={0} miw={0}>
+            <Text size="sm" style={{ overflowWrap: "anywhere" }}>
+              {e.productName}
+            </Text>
             {/* 対象工具 — 工具ごとの再研磨価格だけが持つ。工具なしは出さない。 */}
             {e.toolName && (
-              <Text c="dimmed" size="xs">
+              <Text c="dimmed" size="xs" style={{ overflowWrap: "anywhere" }}>
                 {tr("sales.priceLists.targetTool")}: {e.toolName}
               </Text>
             )}

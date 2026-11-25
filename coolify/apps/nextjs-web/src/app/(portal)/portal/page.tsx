@@ -12,12 +12,12 @@
  * 繰り返さない。
  */
 
-import { Anchor, Card, Group, Stack, Text, Title } from "@mantine/core";
-import Link from "next/link";
+import { Card, Group, Stack, Text, Title } from "@mantine/core";
 import { getTranslations } from "next-intl/server";
 import { PortalDocumentLinks } from "@/components/portal/PortalDocumentLinks";
 import { PortalOrderTable } from "@/components/portal/PortalOrderTable";
 import { PortalProgressCounts } from "@/components/portal/PortalProgressCounts";
+import { LinkAnchor } from "@/components/ui/LinkAnchor";
 import {
   listPortalDocuments,
   PORTAL_DOCUMENT_TYPES,
@@ -89,9 +89,9 @@ export default async function PortalHomePage() {
         <Stack gap="xs">
           <Group justify="space-between">
             <Title order={5}>{tr("portal.home.activeOrders")}</Title>
-            <Anchor component={Link} href="/portal/orders" size="sm">
+            <LinkAnchor href="/portal/orders" size="sm">
               {tr("portal.home.viewAll")}
-            </Anchor>
+            </LinkAnchor>
           </Group>
           <PortalOrderTable rows={activeOrders} />
         </Stack>
@@ -101,9 +101,9 @@ export default async function PortalHomePage() {
         <Stack gap="xs">
           <Group justify="space-between">
             <Title order={5}>{tr("portal.home.recentDocuments")}</Title>
-            <Anchor component={Link} href="/portal/documents" size="sm">
+            <LinkAnchor href="/portal/documents" size="sm">
               {tr("portal.home.viewAll")}
-            </Anchor>
+            </LinkAnchor>
           </Group>
           <PortalDocumentLinks items={recentDocuments} />
         </Stack>

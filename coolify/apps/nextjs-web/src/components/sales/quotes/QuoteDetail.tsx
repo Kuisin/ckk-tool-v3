@@ -424,10 +424,9 @@ export function QuoteDetail({
                   return (
                     <Table.Tr key={it.id}>
                       <Table.Td>
+                        {/* 品名は「名称 コード」。内部の品目 id は出さない
+                            （以前は名称の下に連番の id が出ていた）。 */}
                         <Text size="sm">{it.productName}</Text>
-                        <Text c="dimmed" ff="mono" size="xs">
-                          {it.itemId}
-                        </Text>
                         {it.notes && (
                           <Text
                             c="dimmed"

@@ -343,6 +343,16 @@ export function PriceListTypeForm({
       setItemType(t);
       // 製品に切り替えたら工具は外す（工具は再研磨の価格表だけが持つ）。
       if (t !== "REGRIND") form.setFieldValue("toolItemId", null);
+      // 注文種別を品目に合わせる。再研磨の品目が持てるのは「再研磨」だけなので、
+      // 既定の「本番」のままだと保存が必ず弾かれる（毎回手で直すことになる）。
+      // 触るのは種別が 1 つだけのとき — 複数並べたあとは人が決めたものを動かさない。
+      const variants = form.getValues().variants;
+      const only = variants.length === 1 ? variants[0] : undefined;
+      if (only && t === "REGRIND" && only.orderType !== "REGRIND") {
+        form.setFieldValue("variants.0.orderType", "REGRIND");
+      } else if (only && t === "PRODUCT" && only.orderType === "REGRIND") {
+        form.setFieldValue("variants.0.orderType", "PRODUCTION");
+      }
     });
     return () => {
       cancelled = true;

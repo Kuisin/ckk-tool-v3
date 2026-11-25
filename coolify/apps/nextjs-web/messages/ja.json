@@ -8363,7 +8363,10 @@
       "kindPriceHint": "見積単価まで出します。確定すると価格表の基準単価に選べます。",
       "kindCostHint": "原価合計だけを出します。原価を見る権限のある人にしか見えず、価格表の基準単価にはできません。",
       "createPriceEstimate": "売価試算を作成",
-      "costEstimateNotice": "これは原価試算です。原価合計だけを出し、価格表の基準単価にはできません。売価が必要なら「売価試算を作成」で入力を引き継いだ売価試算を作ってください。"
+      "costEstimateNotice": "これは原価試算です。原価合計だけを出し、価格表の基準単価にはできません。売価が必要なら「売価試算を作成」で入力を引き継いだ売価試算を作ってください。",
+      "costEstimateConfirmed": "原価試算を確定しました。価格表の基準単価にはできません",
+      "linkedToTheProductCostEstimate": "製品にリンクしました",
+      "costOnlyRow": "原価のみ"
     },
     "orderLineDetail": {
       "designWithCount": "設計（{count}）",
@@ -10026,10 +10029,10 @@
     "execDepIncomplete": "実行依存が未完了です（工程 {stepId}）",
     "execDepOrIncomplete": "実行依存（いずれか）が未完了です",
     "branchSourceIncomplete": "分岐元の工程が未完了です",
+    "startStepIncomplete": "開始工程（出し・受渡し）が未完了です",
     "precedingWorkOrderIncomplete": "先行指示書 #{workOrderNumber} が未完了です",
     "quantityNegative": "{label}は 0 以上で入力してください",
     "quantityConservationInspection": "合格 + 不合格（半製品・廃棄・工程分岐）の合計（{sum}）が検査数（{input}）と一致しません",
-    "startStepIncomplete": "開始工程（出し・受渡し）が未完了です",
     "quantityConservationFlow": "良品 + 不良（半製品・廃棄・工程分岐）の合計（{sum}）が受入数（{input}）と一致しません",
     "routingExceedsLimit": "分岐数量の合計（{static}）が 良品 + 工程分岐（{limit}）を超えています",
     "selfLoopNotAllowed": "自己ループは作成できません",
@@ -10073,7 +10076,7 @@
       },
       "notes": {
         "label": "備考",
-        "summary": "社内向けの補足です。見積書の PDF には出ません。"
+        "summary": "見積書全体についての補足です。見積書の PDF の「備考」欄に印字されます。"
       }
     },
     "priceList": {
