@@ -3,7 +3,7 @@
 /**
  * document-link-actions.ts — リッチテキストの「文書リンク」用の文書検索。
  *
- * 文書番号（QOT-… / EST-… / 指示書番号 …）の部分一致で候補を返し、
+ * 文書番号（QOT-… / EST-… / 指示書番号 …。旧番号でも可）の部分一致で候補を返し、
  * 詳細ページへの**アプリ内パス**を組み立てる。外部 URL と違って索引
  * （短縮リンク）は挟まない — アプリ内なので確認ページを通す必要がない。
  *
@@ -17,13 +17,12 @@
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
-  formatDocNumber,
-  formatEstimateNumber,
-  formatPriceListNumber,
-  formatQuoteNumber,
+  docIdOf,
+  docNumberOf,
+  orderLineIdOf,
   orderLineNumberOf,
-  parseDocKey,
 } from "@/lib/doc-number";
+import { docRefNumber } from "@/lib/doc-ref-core";
 import {
   ESTIMATE_COST_PERMISSION,
   estimateKindWhere,
@@ -37,23 +36,43 @@ import {
 
 const LIMIT = 15;
 
-/** 数値化できる検索語だけ返す（指示書番号は整数）。 */
+/** 数値化できる検索語だけ返す（指示書番号 = ロット番号は整数）。 */
 function asInt(query: string): number | null {
-  const n = Number(query.replace(/[^0-9]/g, ""));
-  return Number.isInteger(n) && n > 0 ? n : null;
+  if (!/^\d+$/.test(query)) return null;
+  const n = Number(query);
+  return Number.isSafeInteger(n) && n > 0 && n <= 2147483647 ? n : null;
 }
 
-/** 文書番号の末尾連番部分を取り出す（"QOT-202608-00012" → 12）。 */
-function seqFromQuery(query: string): number | null {
-  const digits = query.replace(/[^0-9]/g, "");
-  if (!digits) return null;
-  const n = Number(digits.slice(-5));
-  return Number.isInteger(n) && n > 0 ? n : null;
+/** 検索語 → 番号の断片。法人コード付きの id / 参照を貼られたら法人コードは落とす。 */
+function numberQuery(query: string): string {
+  return docRefNumber(query).toUpperCase();
 }
 
 /**
- * 文書を検索する。`query` は文書番号の一部（数字だけでも可）。
+ * 番号の部分一致（新しい番号 doc_number と旧番号 legacy_number の両方）。
+ * 空の検索語は絞り込まない（新しい順の先頭を出す）。
+ */
+function numberWhere(query: string) {
+  const q = numberQuery(query);
+  if (!q) return {};
+  return {
+    OR: [{ docNumber: { contains: q } }, { legacyNumber: { contains: q } }],
+  };
+}
+
+/** 新しい順（会計年度 → 連番。法人は混ざってよい）。 */
+const NEWEST_FIRST = [
+  { fiscalYear: "desc" as const },
+  { docSeq: "desc" as const },
+  { id: "desc" as const },
+];
+
+/**
+ * 文書を検索する。`query` は文書番号の一部（数字だけでも可。旧番号でも可）。
  * 読み取り権限が無い種別は常に空配列。
+ *
+ * 返す `href` は法人コード付きの id（同じ番号が 2 つの法人にあっても行き先が
+ * 決まる）、`number` は番号だけ（リンク文字列の既定値 = 人に見せる姿）。
  */
 export async function searchDocuments(
   type: DocumentLinkType,
@@ -65,37 +84,42 @@ export async function searchDocuments(
   if (!authz.ok) return [];
 
   const q = query.trim();
-  const seq = seqFromQuery(q);
+  const where = numberWhere(q);
   const name = (v: unknown) => localized(v as LocalizedText | null);
 
   try {
     switch (type) {
       case "quote": {
         const rows = await prisma.quote.findMany({
-          where: seq ? { seq } : undefined,
-          orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+          where,
+          orderBy: NEWEST_FIRST,
           take: LIMIT,
           include: { customerBp: { select: { name: true } } },
         });
-        return rows.map((r) => {
-          const number = formatQuoteNumber(r);
-          return {
-            href: `/sales/quotes/${number}`,
-            number,
-            detail: name(r.customerBp?.name),
-          };
-        });
+        return rows.map((r) => ({
+          href: `/sales/quotes/${docIdOf(r)}`,
+          number: docNumberOf(r),
+          detail: name(r.customerBp?.name),
+        }));
       }
       case "order_line": {
+        const lineQuery = numberQuery(q);
         const rows = await prisma.orderLine.findMany({
           // 確定済み（枝番あり）のみリンク可能 — 未確定は公開番号を持たない。
           where: {
-            branch: { not: null },
-            ...(seq ? { acceptanceSeq: seq } : {}),
+            lineRef: { not: null },
+            ...(lineQuery
+              ? {
+                  OR: [
+                    { lineNumber: { contains: lineQuery } },
+                    { acceptance: { legacyNumber: { contains: lineQuery } } },
+                  ],
+                }
+              : {}),
           },
           orderBy: [
-            { acceptanceYearMonth: "desc" },
-            { acceptanceSeq: "desc" },
+            { acceptance: { fiscalYear: "desc" } },
+            { acceptance: { docSeq: "desc" } },
             { branch: "asc" },
           ],
           take: LIMIT,
@@ -106,11 +130,12 @@ export async function searchDocuments(
           },
         });
         return rows.flatMap((r) => {
+          const id = orderLineIdOf(r);
           const number = orderLineNumberOf(r);
-          if (!number) return [];
+          if (!id || !number) return [];
           return [
             {
-              href: `/sales/order-lines/${encodeURIComponent(number)}`,
+              href: `/sales/order-lines/${id}`,
               number,
               detail: name(r.acceptance.customerBp?.name),
             },
@@ -118,60 +143,51 @@ export async function searchDocuments(
         });
       }
       case "work_order": {
-        // 書類番号（WO-YYYYMM-NNNNN）でもロット番号（int）でも探せる
-        const docKey = parseDocKey(q, "WOR");
+        // 書類番号（WOR-FFFF-NNNNN・旧番号）でもロット番号（int）でも探せる。
+        // リンク先はロット番号 — 指示書の URL の鍵は法人をまたぐ通し連番で、
+        // 書類番号は法人ごとに重なり得る。
         const n = asInt(q);
         const rows = await prisma.workOrder.findMany({
-          where: docKey
-            ? { yearMonth: docKey.yearMonth, seq: docKey.seq }
-            : n
-              ? { workOrderNumber: n }
-              : undefined,
+          where: n ? { workOrderNumber: n } : where,
           orderBy: { workOrderNumber: "desc" },
           take: LIMIT,
           include: { productItem: { select: { name: true } } },
         });
         return rows.map((r) => ({
-          href: `/production/work-orders/${formatDocNumber("WOR", r)}`,
-          number: formatDocNumber("WOR", r),
+          href: `/production/work-orders/${r.workOrderNumber}`,
+          number: docNumberOf(r),
           detail: name(r.productItem?.name),
         }));
       }
       case "delivery_order": {
         const rows = await prisma.deliveryOrder.findMany({
-          where: seq ? { seq } : undefined,
-          orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+          where,
+          orderBy: NEWEST_FIRST,
           take: LIMIT,
         });
-        return rows.map((r) => {
-          const number = formatDocNumber("DOR", r);
-          return {
-            href: `/shipping/delivery-orders/${number}`,
-            number,
-            detail: "",
-          };
-        });
+        return rows.map((r) => ({
+          href: `/shipping/delivery-orders/${docIdOf(r)}`,
+          number: docNumberOf(r),
+          detail: "",
+        }));
       }
       case "invoice": {
         const rows = await prisma.invoice.findMany({
-          where: seq ? { seq } : undefined,
-          orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+          where,
+          orderBy: NEWEST_FIRST,
           take: LIMIT,
           include: { customerBp: { select: { name: true } } },
         });
-        return rows.map((r) => {
-          const number = formatDocNumber("INV", r);
-          return {
-            href: `/billing/invoices/${number}`,
-            number,
-            detail: name(r.customerBp?.name),
-          };
-        });
+        return rows.map((r) => ({
+          href: `/billing/invoices/${docIdOf(r)}`,
+          number: docNumberOf(r),
+          detail: name(r.customerBp?.name),
+        }));
       }
       case "price_list": {
         const rows = await prisma.priceListEntry.findMany({
-          where: seq ? { seq } : undefined,
-          orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+          where,
+          orderBy: NEWEST_FIRST,
           take: LIMIT,
           include: {
             customerBp: { select: { name: true } },
@@ -179,14 +195,11 @@ export async function searchDocuments(
             item: { select: { name: true } },
           },
         });
-        return rows.map((r) => {
-          const number = formatPriceListNumber(r);
-          return {
-            href: `/sales/price-lists/${number}`,
-            number,
-            detail: `${name(r.customerBp?.name)} / ${name(r.item?.name)}`,
-          };
-        });
+        return rows.map((r) => ({
+          href: `/sales/price-lists/${docIdOf(r)}`,
+          number: docNumberOf(r),
+          detail: `${name(r.customerBp?.name)} / ${name(r.item?.name)}`,
+        }));
       }
       case "estimate": {
         // 原価試算は estimate_cost の持ち主にしか候補に出さない。
@@ -195,21 +208,15 @@ export async function searchDocuments(
           "READ",
         );
         const rows = await prisma.estimate.findMany({
-          where: {
-            ...(seq ? { seq } : {}),
-            ...estimateKindWhere(costAuthz.ok),
-          },
-          orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+          where: { AND: [where, estimateKindWhere(costAuthz.ok)] },
+          orderBy: NEWEST_FIRST,
           take: LIMIT,
         });
-        return rows.map((r) => {
-          const number = formatEstimateNumber(r);
-          return {
-            href: `/sales/trial-estimates/${number}`,
-            number,
-            detail: r.name,
-          };
-        });
+        return rows.map((r) => ({
+          href: `/sales/trial-estimates/${docIdOf(r)}`,
+          number: docNumberOf(r),
+          detail: r.name,
+        }));
       }
       default:
         return [];

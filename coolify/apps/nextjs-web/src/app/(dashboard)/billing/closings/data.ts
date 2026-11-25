@@ -2,7 +2,7 @@
  * data.ts — 締日処理 (BL02) のサーバーサイド取得・請求対象出荷の収集。
  *
  * 請求対象 = SHIPPED × DISPATCH の出荷書のうち「未請求」のもの。
- * 未請求判定は invoice_items の由来キー（delivery_order_year_month/seq）に
+ * 未請求判定は invoice_items の由来（delivery_order_id）に
  * その出荷書が現れないこと（STOCK_STORAGE は請求フロー外なので対象外）。
  * 請求期間は顧客ごとに **(前回締日, 今回締日]**（境界は JST 0 時 —
  * model.ts billingWindowFor）。暦月で切ると締日より後の出荷がどの締めにも
@@ -25,7 +25,7 @@ import {
 import { resolveDueDate } from "@/lib/billing-terms-core";
 import { chargesTotal } from "@/lib/charge-core";
 import { prisma } from "@/lib/db";
-import { formatDocNumber } from "@/lib/doc-number";
+import { docIdOf, docIdOrNull, docNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { lineAmountYen } from "@/lib/money";
 
@@ -45,6 +45,8 @@ const CLOSING_INCLUDE = {
       },
     },
   },
+  // 生成した請求書（リンク用）。番号は関連から読む（旧キー列は読まない）。
+  invoice: { select: { docRef: true } },
 };
 
 type ClosingRow = NonNullable<Awaited<ReturnType<typeof findClosingRow>>>;
@@ -65,13 +67,8 @@ function mapClosing(r: ClosingRow): BillingClosing {
     kind: r.kind as ClosingKind,
     status: r.status as ClosingStatus,
     totalAmount: r.totalAmount != null ? Number(r.totalAmount) : null,
-    invoiceNumber:
-      r.invoiceYearMonth && r.invoiceSeq != null
-        ? formatDocNumber("INV", {
-            yearMonth: r.invoiceYearMonth,
-            seq: r.invoiceSeq,
-          })
-        : null,
+    // 画面の DTO は id（法人コード + 番号）で持つ — 表示側が番号だけにする。
+    invoiceNumber: docIdOrNull(r.invoice),
     processedAt: r.processedAt?.toISOString() ?? null,
     notes: r.notes,
     createdAt: r.createdAt.toISOString(),
@@ -111,8 +108,12 @@ const SHIPMENT_INCLUDE = {
     },
   },
   deliveryNotes: {
-    select: { yearMonth: true, seq: true },
-    orderBy: [{ yearMonth: "asc" as const }, { seq: "asc" as const }],
+    select: { id: true, docRef: true },
+    orderBy: [
+      { fiscalYear: "asc" as const },
+      { docSeq: "asc" as const },
+      { id: "asc" as const },
+    ],
   },
   // 追加料金（送料など）。製品明細と同じく請求書へ写る — 締日画面の予定額と
   // 発行される請求書が同じものを数えるよう、ここで一緒に読む。
@@ -139,17 +140,15 @@ export async function fetchUninvoicedShipments(range: { gte: Date; lt: Date }) {
         shippedAt: { gte: range.gte, lt: range.lt },
       },
       include: SHIPMENT_INCLUDE,
-      orderBy: [{ yearMonth: "asc" }, { seq: "asc" }],
+      orderBy: [{ fiscalYear: "asc" }, { docSeq: "asc" }, { id: "asc" }],
     }),
     prisma.invoiceItem.findMany({
-      where: { deliveryOrderYearMonth: { not: null } },
-      select: { deliveryOrderYearMonth: true, deliveryOrderSeq: true },
+      where: { deliveryOrderId: { not: null } },
+      select: { deliveryOrderId: true },
     }),
   ]);
-  const invoicedSet = new Set(
-    invoiced.map((r) => `${r.deliveryOrderYearMonth}-${r.deliveryOrderSeq}`),
-  );
-  return rows.filter((r) => !invoicedSet.has(`${r.yearMonth}-${r.seq}`));
+  const invoicedSet = new Set(invoiced.map((r) => r.deliveryOrderId));
+  return rows.filter((r) => !invoicedSet.has(r.id));
 }
 
 /**
@@ -240,10 +239,7 @@ export function shipmentAmount(s: BillableShipment): number {
 
 function mapShipmentRow(s: BillableShipment): ClosingShipmentRow {
   return {
-    deliveryOrderNumber: formatDocNumber("DOR", {
-      yearMonth: s.yearMonth,
-      seq: s.seq,
-    }),
+    deliveryOrderNumber: docIdOf(s),
     shippedAt: s.shippedAt?.toISOString() ?? null,
     quantity: s.items.reduce((sum, it) => sum + it.quantity, 0),
     amount: shipmentAmount(s),
@@ -254,49 +250,43 @@ function mapShipmentRow(s: BillableShipment): ClosingShipmentRow {
 
 /** 処理済み締日の対象出荷 — 生成請求書の明細由来から復元する。 */
 async function fetchShipmentsFromInvoice(
-  invoiceYearMonth: string,
-  invoiceSeq: number,
+  invoiceId: string,
 ): Promise<ClosingShipmentRow[]> {
   const items = await prisma.invoiceItem.findMany({
-    where: { invoiceYearMonth, invoiceSeq },
+    where: { invoiceId },
     orderBy: { sortOrder: "asc" },
+    select: {
+      quantity: true,
+      amount: true,
+      deliveryOrderId: true,
+      deliveryOrder: { select: { docRef: true, shippedAt: true } },
+    },
   });
-  // 出荷書キーごとに数量・金額を集計する。
-  const byKey = new Map<
+  // 出荷書ごとに数量・金額を集計する（鍵は出荷書の uuid）。
+  const byOrder = new Map<
     string,
-    { yearMonth: string; seq: number; quantity: number; amount: number }
+    {
+      deliveryOrderNumber: string;
+      shippedAt: Date | null;
+      quantity: number;
+      amount: number;
+    }
   >();
   for (const it of items) {
-    if (!it.deliveryOrderYearMonth || it.deliveryOrderSeq == null) continue;
-    const key = `${it.deliveryOrderYearMonth}-${it.deliveryOrderSeq}`;
-    const cur = byKey.get(key) ?? {
-      yearMonth: it.deliveryOrderYearMonth,
-      seq: it.deliveryOrderSeq,
+    if (!it.deliveryOrderId || !it.deliveryOrder) continue;
+    const cur = byOrder.get(it.deliveryOrderId) ?? {
+      deliveryOrderNumber: docIdOf(it.deliveryOrder),
+      shippedAt: it.deliveryOrder.shippedAt,
       quantity: 0,
       amount: 0,
     };
     cur.quantity += it.quantity;
     cur.amount += Number(it.amount);
-    byKey.set(key, cur);
+    byOrder.set(it.deliveryOrderId, cur);
   }
-  const keys = [...byKey.values()];
-  if (keys.length === 0) return [];
-  const orders = await prisma.deliveryOrder.findMany({
-    where: {
-      OR: keys.map((k) => ({ yearMonth: k.yearMonth, seq: k.seq })),
-    },
-    select: { yearMonth: true, seq: true, shippedAt: true },
-  });
-  const shippedAtByKey = new Map(
-    orders.map((o) => [`${o.yearMonth}-${o.seq}`, o.shippedAt]),
-  );
-  return keys.map((k) => ({
-    deliveryOrderNumber: formatDocNumber("DOR", {
-      yearMonth: k.yearMonth,
-      seq: k.seq,
-    }),
-    shippedAt:
-      shippedAtByKey.get(`${k.yearMonth}-${k.seq}`)?.toISOString() ?? null,
+  return [...byOrder.values()].map((k) => ({
+    deliveryOrderNumber: k.deliveryOrderNumber,
+    shippedAt: k.shippedAt?.toISOString() ?? null,
     quantity: k.quantity,
     amount: k.amount,
   }));
@@ -319,8 +309,8 @@ export async function fetchClosing(
             row.closingDate,
           )
         ).map(mapShipmentRow)
-      : row.invoiceYearMonth && row.invoiceSeq != null
-        ? await fetchShipmentsFromInvoice(row.invoiceYearMonth, row.invoiceSeq)
+      : row.invoiceId != null
+        ? await fetchShipmentsFromInvoice(row.invoiceId)
         : [];
 
   const attrs = row.customerBp.customerAttrs;
@@ -352,6 +342,7 @@ export interface CustomerClosingCandidate {
   customerName: string;
   closingDate: Date;
   totalAmount: number;
+  /** 対象になる出荷書の番号（`DOR-2026-00001` — 人に見せる姿）。 */
   shipmentNumbers: string[];
 }
 
@@ -426,9 +417,7 @@ export async function collectClosingCandidatesUpTo(
           customerName,
           closingDate,
           totalAmount: inWindow.reduce((sum, s) => sum + shipmentAmount(s), 0),
-          shipmentNumbers: inWindow.map((s) =>
-            formatDocNumber("DOR", { yearMonth: s.yearMonth, seq: s.seq }),
-          ),
+          shipmentNumbers: inWindow.map((s) => docNumberOf(s)),
         });
       }
       previousClosingDate = closingDate;

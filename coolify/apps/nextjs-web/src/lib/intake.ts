@@ -7,8 +7,8 @@
  *  - 画面からの優先取込（UPLOAD）: ingestAndQueueExtraction —
  *    保存 + 採番だけ同期で行い、**抽出は待ち行列へ積んで即返す**
  *
- * **1 通の注文書 = 1 行**。採番した時点でファイル名に番号を焼き込み
- * （`ORD-YYYYMM-NNNNN-<元名>`）、再取込・孤児回収でファイルが戻ってきても
+ * **1 通の注文書 = 1 行**。行を作った時点でファイル名に id を焼き込み
+ * （`CKK~ORD-2026-00001-<元名>`）、再取込・孤児回収でファイルが戻ってきても
  * 採番からやり直さず、その行の抽出（metadata）だけを更新する。
  *
  * 抽出は po-extract → ollama へ行く。ollama は OLLAMA_NUM_PARALLEL（ai-stack
@@ -19,7 +19,7 @@
  * 起動時に requeueStuckExtractions() が IMPORT のまま残った行を拾い直す。
  *
  * 流れ: ファイルを SeaweedFS へ保存 + files 行 → order_acceptances を
- * IMPORT で採番作成（ORDER シーケンス — 番号 ORD-YYYYMM-NNNNN）→ po-extract
+ * IMPORT で作成（番号 ORD-FFFF-NNNNN は DB が INSERT のときに払い出す）→ po-extract
  * /extract/order-request で構造化 → 正規化（intake-core）→ 顧客
  * （lib/bp-match）・製品（lib/product-match）を**表記ゆれを吸収して**突合
  * → DRAFT + 明細。どちらも 1 件に絞れたときだけ入れ、絞れなければ候補を
@@ -47,7 +47,6 @@ import {
   utimes,
 } from "node:fs/promises";
 import path from "node:path";
-import { requireDocRef } from "@/lib/doc-ref";
 import { companyForIntakeAcceptance } from "@/lib/intake-company";
 import { PERIODIC_LOCKS, withAdvisoryLock } from "./advisory-lock";
 import { AiProviderConfigError, aiConfigHeaders } from "./ai-provider";
@@ -65,7 +64,8 @@ import {
 } from "./customer-product-code-core";
 import { loadCustomerProductCodes } from "./customer-product-codes";
 import { prisma } from "./db";
-import { formatDocNumber } from "./doc-number";
+import { type DocKey, docIdOf, docNumberOf } from "./doc-number";
+import { resolveDocId } from "./doc-ref";
 import { systematicFileName } from "./file-naming";
 import { type LocalizedText, localized } from "./format";
 import {
@@ -88,7 +88,6 @@ import { aliasKeyFor } from "./match-alias-core";
 import { aliasesByTarget, findAlias, noteAliasHit } from "./match-aliases";
 import { label } from "./messages";
 import { notifyApprovalGroup } from "./notifications";
-import { allocateDocumentKey } from "./numbering";
 import { linesReplaceBlockReason } from "./order-line-core";
 import { isOwnCompany } from "./own-company";
 import { PO_EXTRACT_URL } from "./po-extract";
@@ -179,9 +178,10 @@ const EXTRACT_RETRY_DELAY_MS = Math.max(
 const ALLOWED_EXT = new Set([".pdf", ".png", ".jpg", ".jpeg", ".webp"]);
 
 export interface IngestResult {
-  yearMonth: string;
-  seq: number;
-  number: string; // ORD-YYYYMM-NNNNN
+  /** 注文請書の参照（行の doc_ref）。 */
+  docRef: string;
+  /** 注文請書の id（`CKK~ORD-2026-00001`）。表示は docNo() で番号だけにする。 */
+  number: string;
   status: "DRAFT" | "IMPORT"; // IMPORT = 抽出失敗（extract_error 参照）
   /** 失敗時の保存済みメッセージ（分類済み・複数行）。 */
   error?: string;
@@ -283,7 +283,7 @@ async function ingestFile(input: {
   bytes: Buffer;
   contentType: string;
   source: "FOLDER" | "UPLOAD";
-}): Promise<{ yearMonth: string; seq: number; fileId: string }> {
+}): Promise<{ docRef: string; fileId: string }> {
   const actor = await getCurrentActorId();
   // 系統的リネーム（lib/file-naming）: 時刻+乱数で一意、元名で判別可能。
   const key = `intake/${systematicFileName(input.filename)}`;
@@ -297,7 +297,6 @@ async function ingestFile(input: {
     );
   }
 
-  const { yearMonth, seq } = await allocateDocumentKey("ORDER");
   const fileRow = await prisma.file.create({
     data: {
       storageKey: key,
@@ -314,26 +313,23 @@ async function ingestFile(input: {
     source: input.source,
     uploaderId: actor,
   });
-  await prisma.orderAcceptance.create({
+  // 番号は INSERT のときに DB が払い出す — 作った行から参照を読む。
+  const { docRef } = await prisma.orderAcceptance.create({
     data: {
-      yearMonth,
-      seq,
       ...company,
       status: "IMPORT",
       source: input.source,
       sourceFileId: fileRow.id,
       createdBy: actor,
     },
+    select: { docRef: true },
   });
   // 原本を添付としても残す（ロック付き — 削除・差し替え不可）。
   // 抽出をやり直すときも、内容を確かめるときも、根拠はこの 1 枚しかない。
   await prisma.documentAttachment.create({
     data: {
       ownerType: "order_acceptances",
-      ownerId: await requireDocRef(
-        "order_acceptances",
-        formatDocNumber("ORD", { yearMonth, seq }),
-      ),
+      ownerId: docRef,
       fileId: fileRow.id,
       label: L(
         "settings.orderIntake.pipeline.sourceAttachmentLabel",
@@ -346,7 +342,7 @@ async function ingestFile(input: {
   await recordAudit({
     action: "CREATE",
     tableName: "order_acceptances",
-    recordId: formatDocNumber("ORD", { yearMonth, seq }),
+    recordId: docRef,
     after: {
       note: L(
         "settings.orderIntake.pipeline.ingestedNote",
@@ -361,7 +357,7 @@ async function ingestFile(input: {
       ),
     },
   });
-  return { yearMonth, seq, fileId: fileRow.id };
+  return { docRef, fileId: fileRow.id };
 }
 
 /**
@@ -796,17 +792,20 @@ export async function suggestProducts(
  * 再試行そのものは列側（scheduleExtraction のワーカー）が行う。
  */
 export async function runExtraction(
-  key: {
-    yearMonth: string;
-    seq: number;
-  },
+  key: DocKey,
   opts: { attempt?: number; maxAttempts?: number } = {},
 ): Promise<IngestResult> {
   const attempt = opts.attempt ?? 1;
   const maxAttempts = opts.maxAttempts ?? 1;
-  const number = `ORD-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
+  // number = 人が読む番号（通知・ログ）。結果とリンクには id（法人コード付き）。
+  const number = docNumberOf(key);
+  const done = (): IngestResult => ({
+    docRef: key.docRef,
+    number: docIdOf(key),
+    status: "DRAFT",
+  });
   const row = await prisma.orderAcceptance.findUniqueOrThrow({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     include: { sourceFile: true },
   });
   if (!row.sourceFile) {
@@ -889,26 +888,26 @@ export async function runExtraction(
     // 抽出中に人が「手入力に切り替え」を押していたら、その入力を上書きしない
     // （裏で走る処理が、目の前の編集を消してしまうのが一番まずい）。
     const current = await prisma.orderAcceptance.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { status: true },
     });
     if (current?.status !== "IMPORT") {
-      return { ...key, number, status: "DRAFT" };
+      return done();
     }
 
     await prisma.$transaction(async (tx) => {
       // ラインチェック（多重防御）: 抽出はバックグラウンドで走り UI と競合する。
       // 確定済みの明細が 1 行でもあれば作り直さない。
       const existing = await tx.orderLine.findMany({
-        where: { acceptanceYearMonth: key.yearMonth, acceptanceSeq: key.seq },
+        where: { acceptanceId: row.id },
         select: { status: true, branch: true, isLocked: true },
       });
       if (linesReplaceBlockReason("IMPORT", existing)) return;
       await tx.orderLine.deleteMany({
-        where: { acceptanceYearMonth: key.yearMonth, acceptanceSeq: key.seq },
+        where: { acceptanceId: row.id },
       });
       await tx.orderAcceptance.update({
-        where: { yearMonth_seq: key },
+        where: { docRef: key.docRef },
         data: {
           status: "DRAFT",
           extracted: raw as object,
@@ -927,7 +926,7 @@ export async function runExtraction(
     await recordAudit({
       action: "UPDATE",
       tableName: "order_acceptances",
-      recordId: number,
+      recordId: key.docRef,
       after: {
         note: L(
           "settings.orderIntake.pipeline.extractionCompletedNote",
@@ -951,7 +950,7 @@ export async function runExtraction(
         { count: items.length, matchState },
       ),
       // 取り込んだその 1 件を開く（一覧から探し直させない）
-      linkPath: APPROVAL_TARGET.order_acceptances.href(number),
+      linkPath: APPROVAL_TARGET.order_acceptances.href(docIdOf(key)),
     }).catch((err: unknown) =>
       console.error(
         L(
@@ -961,7 +960,7 @@ export async function runExtraction(
         err,
       ),
     );
-    return { ...key, number, status: "DRAFT" };
+    return done();
   } catch (e) {
     const failure = asFailure(e);
     const { willRetry } = retryPlan({
@@ -999,11 +998,11 @@ async function recordExtractFailure(
   // 失敗している間に人が「手入力に切り替え」を押していたら、裏の失敗で
   // 赤い印を付けない（成功時と同じ — 目の前の入力より裏の処理を優先しない）。
   const current = await prisma.orderAcceptance.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     select: { status: true },
   });
   if (current && current.status !== "IMPORT") {
-    return { ...key, number, status: "DRAFT" };
+    return { docRef: key.docRef, number: docIdOf(key), status: "DRAFT" };
   }
 
   const { willRetry } = retryPlan({
@@ -1018,13 +1017,13 @@ async function recordExtractFailure(
     willRetry,
   });
   await prisma.orderAcceptance.update({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     data: { extractError: message },
   });
   await recordAudit({
     action: "UPDATE",
     tableName: "order_acceptances",
-    recordId: number,
+    recordId: key.docRef,
     after: {
       note:
         L(
@@ -1044,7 +1043,7 @@ async function recordExtractFailure(
       ),
       message: [failure.summary, failure.hint].join(" / ").slice(0, 200),
       // 失敗した 1 件を開く（詳細画面が extract_error を読み戻して表示する）
-      linkPath: APPROVAL_TARGET.order_acceptances.href(number),
+      linkPath: APPROVAL_TARGET.order_acceptances.href(docIdOf(key)),
     }).catch((err: unknown) =>
       console.error(
         L(
@@ -1056,8 +1055,8 @@ async function recordExtractFailure(
     );
   }
   return {
-    ...key,
-    number,
+    docRef: key.docRef,
+    number: docIdOf(key),
     status: "IMPORT",
     error: message,
     retryable: willRetry,
@@ -1072,14 +1071,12 @@ async function recordExtractFailure(
 // プロセス内キューなので、コンテナが落ちると待機分は消える —
 // 起動時に requeueStuckExtractions() が IMPORT のまま残った行を拾い直す。
 
-interface ExtractionKey {
-  yearMonth: string;
-  seq: number;
-}
+/** 抽出の対象 = 注文請書の鍵（参照 doc_ref）。 */
+type ExtractionKey = DocKey;
 
 /**
  * キーとコールバックは**混ぜない** — ジョブをそのまま Prisma の
- * `where: { yearMonth_seq: … }` に渡すと settle/fail が紛れ込んで
+ * `where` に渡すと settle/fail が紛れ込んで
  * 「could not serialize [object Function]」で落ちる（実際にやらかした）。
  */
 interface ExtractionJob {
@@ -1090,7 +1087,7 @@ interface ExtractionJob {
   fail: (error: unknown) => void;
 }
 
-const jobId = (key: ExtractionKey) => `${key.yearMonth}-${key.seq}`;
+const jobId = (key: ExtractionKey) => key.docRef;
 
 /** 待機中・実行中の抽出（同じ書類を二重に走らせないための相乗り表）。 */
 const inFlight = new Map<string, Promise<IngestResult>>();
@@ -1169,7 +1166,7 @@ function scheduleExtraction(key: ExtractionKey): Promise<IngestResult> {
   });
   inFlight.set(id, promise);
   extractionQueue.push({
-    key: { yearMonth: key.yearMonth, seq: key.seq },
+    key: { docRef: key.docRef },
     attempt: 1,
     settle,
     fail,
@@ -1206,22 +1203,21 @@ export function extractionQueueStatus(): {
 }
 
 /**
- * 取込のみ（保存 + 採番）。抽出は呼び出し側が列へ積む。
- * 監視フォルダは、採番できた時点でファイル名に番号を焼き込みたいので、
+ * 取込のみ（保存 + 行の作成）。抽出は呼び出し側が列へ積む。
+ * 監視フォルダは、行ができた時点でファイル名に id を焼き込みたいので、
  * 取込と抽出を分けて呼ぶ（scanIntakeFolder 参照）。
+ *
+ * 返す `number` は **id の姿**（`CKK~ORD-2026-00001`）— 画面・API はこれを
+ * そのまま次の呼び出し（抽出の投入・詳細へのリンク）に渡せる。
  */
 export async function ingestIntakeFile(input: {
   filename: string;
   bytes: Buffer;
   contentType: string;
   source: "FOLDER" | "UPLOAD";
-}): Promise<{ yearMonth: string; seq: number; number: string }> {
-  const { yearMonth, seq } = await ingestFile(input);
-  return {
-    yearMonth,
-    seq,
-    number: formatDocNumber("ORD", { yearMonth, seq }),
-  };
+}): Promise<{ docRef: string; number: string }> {
+  const { docRef } = await ingestFile(input);
+  return { docRef, number: docIdOf({ docRef }) };
 }
 
 /**
@@ -1234,19 +1230,14 @@ export async function ingestAndQueueExtraction(input: {
   contentType: string;
   source: "FOLDER" | "UPLOAD";
 }): Promise<{
-  yearMonth: string;
-  seq: number;
+  docRef: string;
+  /** 注文請書の id（`CKK~ORD-2026-00001`）。 */
   number: string;
   pending: number;
 }> {
-  const { yearMonth, seq } = await ingestFile(input);
-  const pending = enqueueExtraction({ yearMonth, seq });
-  return {
-    yearMonth,
-    seq,
-    number: `ORD-${yearMonth}-${String(seq).padStart(5, "0")}`,
-    pending,
-  };
+  const { docRef } = await ingestFile(input);
+  const pending = enqueueExtraction({ docRef });
+  return { docRef, number: docIdOf({ docRef }), pending };
 }
 
 /** 列を通して抽出し、その 1 件の結果を待つ（フォルダ取込・画面の再実行から使う）。 */
@@ -1279,12 +1270,12 @@ export async function requeueStuckExtractions(): Promise<number> {
         },
       ],
     },
-    select: { yearMonth: true, seq: true },
-    orderBy: [{ yearMonth: "asc" }, { seq: "asc" }],
+    select: { docRef: true },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: 20,
   });
   for (const row of rows) {
-    enqueueExtraction({ yearMonth: row.yearMonth, seq: row.seq });
+    enqueueExtraction({ docRef: row.docRef });
   }
   if (rows.length > 0) {
     console.warn(
@@ -1317,7 +1308,9 @@ type ScanTarget =
   | { kind: "done"; number: string }; // 既に人が引き取り済み — 触らない
 
 /**
- * ファイル名 `ORD-YYYYMM-NNNNN-<元名>` から、その行の続きかどうかを見る。
+ * ファイル名 `CKK~ORD-2026-00001-<元名>` から、その行の続きかどうかを見る。
+ * 法人コードの無い名前・旧番号（`ORD-YYYYMM-NNNNN-…`）の名前も、行が 1 つに
+ * 決まれば続きとして扱う（lib/doc-ref.ts resolveDocId）。
  *
  * **二重登録を防ぐ唯一の関門** — 失敗の再取込（SY0C）や孤児 .processing の
  * 回収でファイルは何度でも待ちへ戻ってくる。番号を見ずに取り込むと、そのたびに
@@ -1327,15 +1320,24 @@ type ScanTarget =
 async function scanTargetFor(name: string): Promise<ScanTarget> {
   const parsed = parseIntakeFileNumber(name);
   if (!parsed) return { kind: "new" };
-  const key = { yearMonth: parsed.yearMonth, seq: parsed.seq };
+  let key = parsed.docKey;
+  if (!key) {
+    // 番号だけ・旧番号 — 行を引いて決める。決まらない（無い・2 つの法人に
+    // ある）なら名前の番号は当てにしない。
+    const resolved = await resolveDocId("order_acceptances", parsed.number);
+    if (resolved.status !== "ok") return { kind: "new" };
+    key = { docRef: resolved.docRef };
+  }
   const row = await prisma.orderAcceptance.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     select: { status: true, sourceFileId: true },
   });
   // 行が消えている / 原本を持たない行（手入力）→ 名前の番号は残骸。新規扱い。
   if (!row || !row.sourceFileId) return { kind: "new" };
   // IMPORT 以外は人が引き取ったあと（下書き・確定済み）。抽出は上書きしない。
-  if (row.status !== "IMPORT") return { kind: "done", number: parsed.number };
+  if (row.status !== "IMPORT") {
+    return { kind: "done", number: docNumberOf(key) };
+  }
   return { kind: "resume", key, name };
 }
 
@@ -1344,7 +1346,7 @@ async function scanTargetFor(name: string): Promise<ScanTarget> {
  * クレーム → 取込・抽出 → processed/（失敗は failed/）へ移動。
  * 逐次処理（GPU の抽出は 1 件ずつ）。再入は no-op。
  *
- * 採番したら**まずファイル名に番号を焼き込む**（`ORD-…-元名.processing`）。
+ * 行を作ったら**まずファイル名に id を焼き込む**（`CKK~ORD-…-元名.processing`）。
  * 抽出の途中でコンテナが落ちても、回収されたファイルは同じ行の続きとして
  * 処理され、番号を採り直さない。
  */
@@ -1444,7 +1446,7 @@ async function scanIntakeFolderOnce(dir: string): Promise<void> {
           contentType: MIME_BY_EXT[ext] ?? "application/octet-stream",
           source: "FOLDER",
         });
-        key = { yearMonth: ingested.yearMonth, seq: ingested.seq };
+        key = { docRef: ingested.docRef };
         // 抽出の前に番号を名前へ焼き込む — ここで落ちても続きから再開できる。
         const numbered = intakeFileName(ingested.number, name);
         const renamed = path.join(dir, `${numbered}.processing`);
@@ -1469,7 +1471,9 @@ async function scanIntakeFolderOnce(dir: string): Promise<void> {
       const result = await runExtractionSerialized(key);
       const dest = result.status === "DRAFT" ? processedDir : failedDir;
       await rename(claimed, path.join(dest, filed));
-      console.log(`[intake] ${name} → ${result.number} (${result.status})`);
+      console.log(
+        `[intake] ${name} → ${docNumberOf(result)} (${result.status})`,
+      );
     } catch (e) {
       console.error(`[intake] ${name} failed`, e);
       // 番号付きの名前で退避する（再取込が同じ行の続きとして走るように）。

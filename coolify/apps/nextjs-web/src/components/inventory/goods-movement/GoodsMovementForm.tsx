@@ -44,6 +44,7 @@ import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions, FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { appLabelForKey, categoryLabel } from "@/lib/app-list";
+import { docNo } from "@/lib/doc-number";
 import {
   inventoryTypeLabel,
   MOVEMENT_DIRECTION_COLOR,
@@ -290,7 +291,7 @@ export function GoodsMovementForm({
       notifications.show({
         title: tr("common.saved2"),
         message: tr("inventory.goodsMovement.posted", {
-          number: result.data.movementNumber,
+          number: docNo(result.data.movementNumber),
         }),
         color: "green",
       });
@@ -321,7 +322,7 @@ export function GoodsMovementForm({
                 component={Link}
                 href={`/inventory/movements/${encodeURIComponent(lastMovementNumber)}`}
               >
-                {lastMovementNumber}
+                {docNo(lastMovementNumber)}
               </Anchor>
             </Alert>
           )}

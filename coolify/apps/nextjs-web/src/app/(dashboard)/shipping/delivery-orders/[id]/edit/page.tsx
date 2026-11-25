@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { DeliveryOrderForm } from "@/components/shipping/delivery-orders/DeliveryOrderForm";
 import { isEditable } from "@/components/shipping/delivery-orders/model";
 import { requireAppRead } from "@/lib/authz-page";
-import { parseDocKey } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { fetchPlantOptions } from "../../../../production/work-orders/data";
 import { fetchDeliveryOrder } from "../../data";
 
@@ -22,8 +22,13 @@ export default async function ShippingDeliveryOrdersEditPage({
   const denied = await requireAppRead("delivery-orders");
   if (denied) return denied;
   const { id } = await params;
-  const key = parseDocKey(decodeURIComponent(id), "DOR");
-  if (!key) notFound();
+  const key = await docKeyFromParam(
+    "delivery_orders",
+    "DOR",
+    id,
+    "/shipping/delivery-orders",
+    "/edit",
+  );
 
   const [order, plantOptions] = await Promise.all([
     fetchDeliveryOrder(key),

@@ -43,6 +43,7 @@ import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { docNo } from "@/lib/doc-number";
 import { deliveryMethodLabel } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
@@ -216,14 +217,14 @@ export function DeliveryNoteForm({ note }: { note: DeliveryNote }) {
       onSubmit={form.onSubmit(handleSubmit)}
       status={<StatusBadge entity="DeliveryNote" status={note.status} />}
       title={tr("shipping.deliveryNoteForm.editWithNumber", {
-        noteId: note.id,
+        noteId: docNo(note.id),
       })}
     >
       <FormSection title={tr("common.basicInformation")}>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <FieldValue
             label={tr("common.deliveryOrder")}
-            value={note.deliveryOrderNumber}
+            value={docNo(note.deliveryOrderNumber)}
           />
           <Input.Wrapper
             label={

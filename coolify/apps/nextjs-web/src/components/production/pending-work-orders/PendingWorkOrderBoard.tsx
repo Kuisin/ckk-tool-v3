@@ -94,6 +94,7 @@ export function PendingWorkOrderBoard({
       !search ||
       String(r.workOrderNumber).includes(search) ||
       r.docNumber.includes(search) ||
+      (r.legacyNumber ?? "").includes(search) ||
       (r.orderLineNumber ?? "").includes(search) ||
       r.productName.includes(search);
     return (
@@ -462,7 +463,7 @@ export function PendingWorkOrderBoard({
             )}
             getRowId={(r) => String(r.workOrderNumber)}
             onRowClick={(r) =>
-              router.push(`${WORK_ORDERS_PATH}/${r.docNumber}`)
+              router.push(`${WORK_ORDERS_PATH}/${r.workOrderNumber}`)
             }
             renderCard={(r) => (
               <Group align="flex-start" justify="space-between" wrap="nowrap">

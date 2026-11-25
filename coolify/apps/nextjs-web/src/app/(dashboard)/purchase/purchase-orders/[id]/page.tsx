@@ -6,6 +6,8 @@ import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
+import { docIdOf, docNo } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
 import { fetchReceiptsForPurchaseOrder } from "../../material-receipts/data";
@@ -24,12 +26,12 @@ export async function generateMetadata({
   return {
     title: formatDocPageTitle(
       appLabelForKey("purchase-orders", "素材発注書", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
-      decodeURIComponent(id),
+      docNo(decodeURIComponent(id)),
     ),
   };
 }
 
-/** 素材発注書 詳細 (PU22). URL id = po_number（PO-YYYYMM-NNNNN）. */
+/** 素材発注書 詳細 (PU22). URL id = 法人コード付きの発注番号（CKK~PO-2026-00001）. */
 export default async function PurchasePurchaseOrdersDetailPage({
   params,
 }: {
@@ -38,7 +40,15 @@ export default async function PurchasePurchaseOrdersDetailPage({
   const denied = await requireAppRead("purchase-orders");
   if (denied) return denied;
   const { id } = await params;
-  const poNumber = decodeURIComponent(id);
+  // 番号だけ・旧番号で来た URL は正規の URL へ転送される。
+  const poNumber = docIdOf(
+    await docKeyFromParam(
+      "material_purchase_orders",
+      "PO",
+      id,
+      "/purchase/purchase-orders",
+    ),
+  );
   const tr = await getTranslations();
 
   const [purchaseOrder, auditEntries, approval, attachments, approvalTrail] =

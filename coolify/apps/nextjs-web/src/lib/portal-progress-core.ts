@@ -83,7 +83,16 @@ export function portalProgressOf(
  * 「これは取引先に見せてよいか」を毎回考えること（既定は見せない）。
  */
 export interface PortalOrderLineDto {
-  /** 表示用の枝番（ORD-YYYYMM-NNNNN-NN の NN）。内部 id は出さない。 */
+  /**
+   * 注文明細を指す id（`CKK~ORD-2026-00001-01` — lib/doc-number.ts の「id」の姿）。
+   * **リンク専用**で、DB の行 id（uuid）ではない。同じ番号が別の自社法人にも
+   * あり得るので、リンクは番号ではなくこれで張る。表示には `number` を使う。
+   * 枝番未採番の行は null。
+   */
+  id: string | null;
+  /** 表示番号（ORD-FFFF-NNNNN-NN）。枝番未採番の行は null。 */
+  number: string | null;
+  /** 表示用の枝番（ORD-FFFF-NNNNN-NN の NN）。内部 id は出さない。 */
   branch: number | null;
   productName: string;
   quantity: number;
@@ -100,6 +109,8 @@ export const PORTAL_ORDER_LINE_DTO_KEYS: readonly (keyof PortalOrderLineDto)[] =
     "amount",
     "branch",
     "deliveryDate",
+    "id",
+    "number",
     "productName",
     "progress",
     "quantity",
@@ -114,7 +125,13 @@ export const PORTAL_ORDER_LINE_DTO_KEYS: readonly (keyof PortalOrderLineDto)[] =
  * （IMPORT / PRICE_DIFF のような社内の途中経過を出さない）。
  */
 export interface PortalDocumentDto {
-  /** 表示番号（QOT-… / ORD-… / DRN-… / INV-…）。 */
+  /**
+   * 書類を指す id（`CKK~QOT-2026-00001` — lib/doc-number.ts の「id」の姿）。
+   * **リンクと PDF の取得専用**で、DB の行 id（uuid）ではない。同じ番号が別の
+   * 自社法人にもあり得るので、リンクは番号ではなくこれで張る。
+   */
+  id: string;
+  /** 表示番号（QOT-… / ORD-… / DRN-… / INV-…）。法人コードは付けない。 */
   number: string;
   issuedOn: string | null;
   /** 合計金額。納品書は include_price=false なら null にすること。 */
@@ -125,6 +142,7 @@ export interface PortalDocumentDto {
 
 export const PORTAL_DOCUMENT_DTO_KEYS: readonly (keyof PortalDocumentDto)[] = [
   "hasPdf",
+  "id",
   "issuedOn",
   "number",
   "totalAmount",
@@ -157,18 +175,20 @@ export const PORTAL_LINE_ITEM_DTO_KEYS: readonly (keyof PortalLineItemDto)[] = [
 /**
  * 「この書類に関係する別の書類」への参照。
  *
- * **番号だけを持つ**。ここに載るのは、その相手も同じ判定
+ * **番号と、リンク用の id だけを持つ**。ここに載るのは、その相手も同じ判定
  * （portalAccessFor）を通って見えると確認できたものだけで、見えない書類は
  * 行ごと落とす —— 番号を出すだけでも「その書類は在る」を教えてしまうため。
  */
 export interface PortalRelatedDocumentDto {
   type: PortalDocumentType;
+  /** リンク用の id（`CKK~INV-2026-00001`）。表示には number を使う。 */
+  id: string;
   number: string;
   issuedOn: string | null;
 }
 
 export const PORTAL_RELATED_DOCUMENT_DTO_KEYS: readonly (keyof PortalRelatedDocumentDto)[] =
-  ["issuedOn", "number", "type"];
+  ["id", "issuedOn", "number", "type"];
 
 export interface PortalDocumentDetailDto extends PortalDocumentDto {
   type: PortalDocumentType;
@@ -217,6 +237,7 @@ export const PORTAL_DOCUMENT_DETAIL_DTO_KEYS: readonly (keyof PortalDocumentDeta
     "deliveredOn",
     "dueDate",
     "hasPdf",
+    "id",
     "issuedOn",
     "lineItems",
     "number",
@@ -239,6 +260,7 @@ export const PORTAL_DOCUMENT_DETAIL_DTO_KEYS: readonly (keyof PortalDocumentDeta
  * （むしろ「自分のどの注文か」を照合する唯一の手掛かり）。
  */
 export interface PortalOrderLineDetailDto extends PortalOrderLineDto {
+  /** 注文請書の表示番号（ORD-FFFF-NNNNN）。リンクは related[] の id で張る。 */
   acceptanceNumber: string;
   customerOrderRef: string | null;
   orderedOn: string | null;
@@ -273,20 +295,13 @@ export function portalProgressStepIndex(progress: PortalProgress): number {
   return (PORTAL_PROGRESS_STEPS as readonly string[]).indexOf(progress);
 }
 /**
- * 注文明細 1 件（`ORD-YYYYMM-NNNNN-NN`）を分解する。
+ * 表示番号（`ORD-FFFF-NNNNN-NN`）。枝番未採番の行は番号を持たない。
  *
- * 一覧の行から詳細へ渡るのはこの文字列だけ（内部 id は社外へ出さない）ので、
- * 受け取り側は必ずここで検証する。
+ * URL から来た注文明細の id を読むのは lib/doc-number.ts `parseOrderLineKey`
+ * （法人コード付き）と lib/doc-ref.ts `docRefsByNumber`（番号だけ・旧番号）。
+ * 以前ここにあった `parsePortalOrderLineNumber` は (年月, 連番, 枝番) へ
+ * 分解するものだったので、番号設計 PR-C で役目を終えた。
  */
-export function parsePortalOrderLineNumber(
-  value: string,
-): { yearMonth: string; seq: number; branch: number } | null {
-  const m = /^ORD-(\d{6})-(\d{5})-(\d{1,3})$/.exec(value.trim().toUpperCase());
-  if (!m) return null;
-  return { yearMonth: m[1], seq: Number(m[2]), branch: Number(m[3]) };
-}
-
-/** 表示番号（`ORD-YYYYMM-NNNNN-NN`）。枝番未採番の行は番号を持たない。 */
 export function portalOrderLineNumber(
   acceptanceNumber: string,
   branch: number | null,

@@ -158,6 +158,8 @@ export interface StepExecutionStepView {
    * **預け在庫を計上したかどうかの印でもある** — 出しの番号が入っていれば、
    * その数はいまその外注先が持っている（戻りの番号が入るまで）。
    */
+  /** 外注依頼の番号（`OUT-2026-00001`）。依頼日が入ると DB が払い出す。未依頼は null。 */
+  outsourceOrderNumber: string | null;
   outsourceIssueMovementNo: string | null;
   outsourceReturnMovementNo: string | null;
 }
@@ -165,7 +167,7 @@ export interface StepExecutionStepView {
 export interface StepExecutionData {
   actorId: string | null;
   workOrderNumber: number;
-  /** 書類番号 WO-YYYYMM-NNNNN。 */
+  /** 書類番号 WOR-FFFF-NNNNN（表示専用 — 番号だけ）。 */
   workOrderDocNumber: string;
   workOrderCreatedAt: string;
   workOrderStatus: string; // WORK_ORDER_STATUS

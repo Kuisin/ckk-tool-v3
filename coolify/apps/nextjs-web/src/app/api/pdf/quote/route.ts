@@ -11,7 +11,7 @@
 import { fetchQuote } from "@/app/(dashboard)/sales/quotes/data";
 import { quoteTotals } from "@/components/sales/quotes/model";
 import { requirePermissionResponse } from "@/lib/authz";
-import { parseDocKey } from "@/lib/doc-number";
+import { docNo } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
@@ -28,6 +28,7 @@ import {
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
 import { getObject, putObject } from "@/lib/storage";
+import { docKeyFromRequest } from "../../doc-key";
 
 // Reads request query params → always rendered at request time.
 export const dynamic = "force-dynamic";
@@ -39,7 +40,7 @@ function pdfHeaders(quoteNumber: string, download: boolean): HeadersInit {
   const disp = download ? "attachment" : "inline";
   return {
     "content-type": "application/pdf",
-    "content-disposition": `${disp}; filename="${quoteNumber}.pdf"`,
+    "content-disposition": `${disp}; filename="${docNo(quoteNumber)}.pdf"`,
   };
 }
 
@@ -54,7 +55,7 @@ export async function GET(request: Request): Promise<Response> {
     return new Response('Missing "id" query parameter', { status: 400 });
   }
 
-  const key = parseDocKey(id, "QOT");
+  const key = await docKeyFromRequest("quotes", "QOT", id);
   const quote = key ? await fetchQuote(key) : null;
   if (!key || !quote) {
     return new Response(`Quote not found: ${id}`, { status: 404 });
@@ -62,6 +63,9 @@ export async function GET(request: Request): Promise<Response> {
   // 閲覧は発行後のみ（下書きの見積書は PDF を出さない）。
   if (!isIssued(quote.status)) return notIssuedResponse("見積書"); // i18n-ignore
 
+  // DTO の番号フィールドは id の姿（`CKK~…` — 法人まで運ぶ）。保管キーと
+  // QR は id のまま（番号は法人ごとの連番で、番号だけでは別法人の書類と
+  // 取り違える）。紙とファイル名に出すのは番号だけ。
   const storageKey = pdfStorageKey.quote(quote.quoteNumber);
 
   // Serve the stored copy if it exists (SeaweedFS), else generate + store.
@@ -108,7 +112,7 @@ export async function GET(request: Request): Promise<Response> {
     // 書類 QR（CKK:QOT:<番号>）。URL は入れない。
     doc_qr: documentQrSvg(QR_KINDS.QUOTE, quote.quoteNumber),
     doc: {
-      number: quote.quoteNumber,
+      number: docNo(quote.quoteNumber),
       issued_date: documentFormatters.date(quote.createdAt),
       valid_until: validUntilStr,
       // 営業担当が未設定の見積は作成者を出す（従来の挙動へのフォールバック）。

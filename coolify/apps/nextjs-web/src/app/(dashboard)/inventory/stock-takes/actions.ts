@@ -3,7 +3,8 @@
 /**
  * Server Actions — 棚卸 (app.stock_takes, PD08)。
  *
- * - 採番: allocateDocumentKey("STOCK_TAKE") → STK-YYYYMM-NNNNN。
+ * - 採番: DB が INSERT 時に払い出す（STK-FFFF-NNNNN。自社法人 × 会計年度）。
+ *   引数の stockTakeNumber は **id の姿**（`CKK~STK-2026-00001`）— 行は doc_ref で引く。
  * - 新規登録は 拠点（必須）+ 保管場所（任意・拠点に紐づく）を選び、その場で
  *   対象バケットを取り込む（snapshotStockTakeLines）。0 件なら作成ごと失敗させる
  *   （数える対象が無い棚卸を残さない）。
@@ -33,9 +34,8 @@ import {
 } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { companyForPlant } from "@/lib/doc-company";
-import { parseDocKey } from "@/lib/doc-number";
+import { docIdOf, parseDocKey } from "@/lib/doc-number";
 import { requireDocRef } from "@/lib/doc-ref";
-import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
   actionError,
@@ -135,14 +135,11 @@ export async function createStockTake(
 
   try {
     const actor = await getCurrentActorId();
-    // 採番は tx の外（全書類共通の作法）。
-    const key = await allocateDocumentKey("STOCK_TAKE");
     let lineCount = 0;
-    await prisma.$transaction(async (tx) => {
+    // 番号は DB が払い出す（渡さない）。作った行の参照を読み戻す。
+    const created = await prisma.$transaction(async (tx) => {
       const row = await tx.stockTake.create({
         data: {
-          yearMonth: key.yearMonth,
-          seq: key.seq,
           ...(await companyForPlant({ plantId }, tx)),
           plantId,
           storageLocationId,
@@ -151,7 +148,7 @@ export async function createStockTake(
           notes: v.notes.trim() || null,
           createdBy: actor,
         },
-        select: { id: true },
+        select: { id: true, docRef: true },
       });
       lineCount = await snapshotStockTakeLines(
         tx,
@@ -162,9 +159,10 @@ export async function createStockTake(
       if (lineCount === 0) {
         guardError(tr("production.stockTakes.actions.noLinesToCount"));
       }
+      return row;
     });
 
-    const stockTakeNumber = `STK-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
+    const stockTakeNumber = docIdOf(created);
     await recordAudit({
       action: "CREATE",
       tableName: "stock_takes",
@@ -200,7 +198,7 @@ export async function saveStockTakeCounts(
   }
   try {
     const prior = await prisma.stockTake.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: {
         id: true,
         plantId: true,
@@ -278,7 +276,7 @@ export async function submitStockTake(
   if (!key) return actionError(tr("common.targetRecordNotFound"));
   try {
     const prior = await prisma.stockTake.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: {
         id: true,
         plantId: true,
@@ -347,14 +345,13 @@ export async function submitStockTake(
       return actionOk({ confirmed: false });
     }
 
-    // 承認なし（OFF / 0 段の素通し）。採番は tx の外で先に行う（全書類共通の作法）。
-    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
+    // 承認なし（OFF / 0 段の素通し）。入出庫伝票の番号は DB が払い出す。
     const result = await prisma.$transaction(async (tx) => {
       await tx.stockTake.update({
         where: { id: prior.id },
         data: { countedAt: new Date() },
       });
-      return confirmStockTakeTx(tx, prior.id, movementKey, actor);
+      return confirmStockTakeTx(tx, prior.id, actor);
     });
 
     await recordAudit({
@@ -390,7 +387,7 @@ export async function approveStockTake(
   if (!key) return actionError(tr("common.targetRecordNotFound"));
   try {
     const prior = await prisma.stockTake.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { id: true, plantId: true, status: true, approvalStatus: true },
     });
     if (!prior) return actionError(tr("common.targetRecordNotFound"));
@@ -429,13 +426,12 @@ export async function approveStockTake(
 
     // 最終承認 — ここで初めて確定を当てる。
     const actor = await getCurrentActorId();
-    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
     const result = await prisma.$transaction(async (tx) => {
       await tx.stockTake.update({
         where: { id: prior.id },
         data: { approvalStatus: "APPROVED" },
       });
-      return confirmStockTakeTx(tx, prior.id, movementKey, actor);
+      return confirmStockTakeTx(tx, prior.id, actor);
     });
 
     await recordAudit({
@@ -471,7 +467,7 @@ export async function rejectStockTake(
   if (!key) return actionError(tr("common.targetRecordNotFound"));
   try {
     const prior = await prisma.stockTake.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { id: true, plantId: true, status: true, approvalStatus: true },
     });
     if (!prior) return actionError(tr("common.targetRecordNotFound"));
@@ -533,7 +529,7 @@ export async function cancelStockTake(
   if (!key) return actionError(tr("common.targetRecordNotFound"));
   try {
     const prior = await prisma.stockTake.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { id: true, plantId: true, status: true, approvalStatus: true },
     });
     if (!prior) return actionError(tr("common.targetRecordNotFound"));

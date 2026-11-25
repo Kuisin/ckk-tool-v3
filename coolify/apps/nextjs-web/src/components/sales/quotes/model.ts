@@ -1,8 +1,8 @@
 /**
  * model.ts — 見積書 view-model types + pure 価格表 resolution helpers.
  *
- * Model (sales.quotes / quote_items — combined key year_month+seq, QOT-
- * number derived):
+ * Model (sales.quotes / quote_items — 行は参照 doc_ref で引く。番号 QOT-FFFF-NNNNN は
+ * DB が払い出す):
  *   Quote = (顧客, 支店?, 状態, 有効期限) + a list of items.
  *     └ Item = (製品, 注文種別, 数量) → 単価 AND 値引き are resolved from the
  *               価格表 (tiers + 値引きルール) for that (顧客 × 製品 × 注文種別 ×
@@ -298,9 +298,14 @@ export type QuoteStatus = "DRAFT" | "ISSUED";
 export type QuoteDisplayStatus = QuoteStatus | "EXPIRED";
 
 export interface Quote {
-  /** Derived document number QOT-YYYYMM-NNNNN — also the URL id. */
+  /**
+   * 書類の id（法人コード + 番号 `CKK~QOT-2026-00001`）— URL と Server Action の
+   * 引数。表示するときは docNo() / <DocNumber> で番号だけにする。
+   */
   id: string;
   quoteNumber: string;
+  /** 旧番号（QOT-YYYYMM-NNNNN）。番号設計の切り替え前に採番された書類だけ。 */
+  legacyNumber?: string | null;
   customerId: string;
   customerName: string;
   customerBranchId: string | null;

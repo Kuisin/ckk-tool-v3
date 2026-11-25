@@ -3,7 +3,7 @@
 /**
  * Server Actions — 見積書 (sales.quotes + quote_items).
  *
- * Quotes are keyed (year_month, seq); QOT-YYYYMM-NNNNN is derived. 見積書は
+ * 番号（QOT-FFFF-NNNNN）は DB が払い出し、行は参照 doc_ref で引く。見積書は
  * 価格表からのみ価格を解決する — 明細の単価・値引きは保存時にもサーバー側で
  * 価格表から再解決してスナップショットする（クライアント表示値は信用しない）。
  */
@@ -21,9 +21,8 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { resolveIssuingCompany } from "@/lib/doc-company";
-import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
+import { type DocKey, docIdOf, parseDocKey } from "@/lib/doc-number";
 import { lineAmountYen, roundYen } from "@/lib/money";
-import { allocateDocumentKey } from "@/lib/numbering";
 import { planQuoteMail, sendQuoteMail } from "@/lib/quote-mail";
 import { salesLineItemError } from "@/lib/sales-item-guard";
 import { resolveSalesRepId } from "@/lib/sales-rep";
@@ -53,11 +52,11 @@ class LineItemResolveError extends Error {}
 async function quoteInScope(
   access: Access,
   userId: string,
-  key: { yearMonth: string; seq: number },
+  key: DocKey,
 ): Promise<boolean> {
   if (access.kind === "ALL") return true;
   const row = await prisma.quote.findUnique({
-    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    where: { docRef: key.docRef },
     select: { createdBy: true },
   });
   if (!row) return true;
@@ -250,17 +249,15 @@ export async function createQuote(
     if (!company.ok) {
       return actionError(tr("common.issuingCompanyNotAllowed"));
     }
-    const { yearMonth, seq } = await allocateDocumentKey("QUOTE");
     // 新規は prior 顧客が無いので、未指定なら顧客の主担当が入る。
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
       v.customerBpId,
       null,
     );
-    await prisma.quote.create({
+    // 番号は DB が払い出す（INSERT トリガー）— 作った行から読み戻す。
+    const created = await prisma.quote.create({
       data: {
-        yearMonth,
-        seq,
         ...company.data,
         customerBpId: v.customerBpId,
         customerBranchBpId: v.customerBranchBpId,
@@ -271,8 +268,9 @@ export async function createQuote(
         createdBy: authz.userId,
         items: { create: items },
       },
+      select: { docRef: true },
     });
-    const number = formatQuoteNumber({ yearMonth, seq });
+    const number = docIdOf(created);
     await recordAudit({
       action: "CREATE",
       tableName: "quotes",
@@ -319,7 +317,7 @@ export async function updateQuote(
   const v = parsed.data;
   try {
     const prior = await prisma.quote.findUnique({
-      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+      where: { docRef: key.docRef },
       select: {
         customerBpId: true,
         salesRepId: true,
@@ -341,10 +339,10 @@ export async function updateQuote(
     );
     await prisma.$transaction([
       prisma.quoteItem.deleteMany({
-        where: { quoteYearMonth: key.yearMonth, quoteSeq: key.seq },
+        where: { quote: { docRef: key.docRef } },
       }),
       prisma.quote.update({
-        where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+        where: { docRef: key.docRef },
         data: {
           customerBpId: v.customerBpId,
           customerBranchBpId: v.customerBranchBpId,
@@ -430,7 +428,7 @@ export async function issueQuote(
   }
   try {
     const updated = await prisma.quote.updateMany({
-      where: { yearMonth: key.yearMonth, seq: key.seq, status: "DRAFT" },
+      where: { docRef: key.docRef, status: "DRAFT" },
       data: {
         status: "ISSUED",
         validUntil: new Date(parsedValidUntil.data),

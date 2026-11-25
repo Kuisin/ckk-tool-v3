@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { isEditable } from "@/components/purchase/purchase-requests/model";
 import { PurchaseRequestForm } from "@/components/purchase/purchase-requests/PurchaseRequestForm";
 import { requireAppRead } from "@/lib/authz-page";
+import { docIdOf } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { fetchPlantOptions, fetchPurchaseRequest } from "../../data";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +23,15 @@ export default async function PurchasePurchaseRequestsEditPage({
   const denied = await requireAppRead("purchase-requests");
   if (denied) return denied;
   const { id } = await params;
-  const requestNumber = decodeURIComponent(id);
+  const requestNumber = docIdOf(
+    await docKeyFromParam(
+      "purchase_requests",
+      "PRQ",
+      id,
+      "/purchase/purchase-requests",
+      "/edit",
+    ),
+  );
 
   const [purchaseRequest, plantOptions] = await Promise.all([
     fetchPurchaseRequest(requestNumber),

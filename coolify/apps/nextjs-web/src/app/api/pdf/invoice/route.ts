@@ -14,7 +14,7 @@
 import { fetchInvoiceForDocument } from "@/app/(dashboard)/billing/invoices/data";
 import { resolveTaxBuckets } from "@/components/billing/invoices/model";
 import { requirePermissionResponse } from "@/lib/authz";
-import { parseDocKey } from "@/lib/doc-number";
+import { docNo } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters, escapeHtml } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
@@ -29,6 +29,7 @@ import {
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
 import { getObject, putObject } from "@/lib/storage";
+import { docKeyFromRequest } from "../../doc-key";
 
 // Reads request query params → always rendered at request time.
 export const dynamic = "force-dynamic";
@@ -40,7 +41,7 @@ function pdfHeaders(invoiceNumber: string, download: boolean): HeadersInit {
   const disp = download ? "attachment" : "inline";
   return {
     "content-type": "application/pdf",
-    "content-disposition": `${disp}; filename="${invoiceNumber}.pdf"`,
+    "content-disposition": `${disp}; filename="${docNo(invoiceNumber)}.pdf"`,
   };
 }
 
@@ -55,7 +56,7 @@ export async function GET(request: Request): Promise<Response> {
     return new Response('Missing "id" query parameter', { status: 400 });
   }
 
-  const key = parseDocKey(id, "INV");
+  const key = await docKeyFromRequest("invoices", "INV", id);
   const invoice = key ? await fetchInvoiceForDocument(key) : null;
   if (!invoice) {
     return new Response(`Invoice not found: ${id}`, { status: 404 });
@@ -67,6 +68,9 @@ export async function GET(request: Request): Promise<Response> {
   // 行の数も金額も必ず一致する。
   const taxBuckets = resolveTaxBuckets(invoice);
 
+  // DTO の番号フィールドは id の姿（`CKK~…` — 法人まで運ぶ）。保管キーと
+  // QR は id のまま（番号は法人ごとの連番で、番号だけでは別法人の書類と
+  // 取り違える）。紙とファイル名に出すのは番号だけ。
   const storageKey = pdfStorageKey.invoice(invoice.invoiceNumber);
 
   // Serve the stored copy if it exists (SeaweedFS), else generate + store.
@@ -110,7 +114,7 @@ export async function GET(request: Request): Promise<Response> {
     // コメント参照）ので、ここでも明示的に渡す。
     stamp: await ownCompanyStampImg(company, isIssued(invoice.status), lang),
     doc: {
-      number: invoice.invoiceNumber,
+      number: docNo(invoice.invoiceNumber),
       issued_date: documentFormatters.date(
         invoice.issuedAt ?? invoice.createdAt,
       ),
@@ -122,7 +126,7 @@ export async function GET(request: Request): Promise<Response> {
       quantity: yen(it.quantity),
       unit_price: yen(it.unitPrice),
       amount: yen(it.amount),
-      provenance: [it.deliveryOrderNumber, it.deliveryNoteNumber]
+      provenance: [docNo(it.deliveryOrderNumber), docNo(it.deliveryNoteNumber)]
         .filter(Boolean)
         .join(" / "),
     })),

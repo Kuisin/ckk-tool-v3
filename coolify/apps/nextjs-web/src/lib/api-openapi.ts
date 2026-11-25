@@ -198,12 +198,12 @@ function webhookEventSchema() {
           id: {
             type: ["string", "null"],
             description:
-              "Public identifier (document number such as `ORD-202609-00042`, or the master id).",
+              "Public identifier (document number such as `ORD-2026-00042`, or the master id). Document numbers are sequential per issuing company and fiscal year, so a number alone does not identify a document — use `key`.",
           },
           key: {
             type: ["string", "null"],
             description:
-              "Stable key. Composite keys are `YYYYMM:seq`. Unlike `id` it is never reused after a numbering reset.",
+              "Stable key. For numbered documents it is `<companyCode>/<number>` (e.g. `CKK/ORD-2026-00042`), which is unique across issuing companies; for other resources it is the row id.",
           },
         },
       },
@@ -285,8 +285,8 @@ function buildWebhooks(): Record<string, unknown> {
             ? "DELETE"
             : "UPDATE",
       tableName: e.resource.table,
-      recordId: action === "deleted" ? "ORD-202609-00042" : "ORD-202609-00042",
-      recordKey: "202609:42",
+      recordId: action === "deleted" ? "ORD-2026-00042" : "ORD-2026-00042",
+      recordKey: "CKK/ORD-2026-00042",
       beforeData: before,
       afterData: after,
       createdAt: SAMPLE_TIME,
@@ -390,9 +390,7 @@ export function buildOpenApiDocument(version: string): Record<string, unknown> {
         description: [
           `Requires \`${r.permission}:READ\`.`,
           `Row scope: ${r.scope}`,
-          `Ordered by \`${r.orderField}\` then ${
-            r.tiebreak === "doc" ? "`(yearMonth, seq)`" : "`id`"
-          }.`,
+          `Ordered by \`${r.orderField}\` then the row id.`,
         ].join("\n\n"),
         parameters: listParameters(),
         responses: {

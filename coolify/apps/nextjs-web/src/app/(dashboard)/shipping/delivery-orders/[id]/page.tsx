@@ -7,7 +7,8 @@ import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { loadChargeItemOptions } from "@/lib/charge-items";
 import { prisma } from "@/lib/db";
-import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
+import { docNo } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { listMemos } from "@/lib/document-memos";
 import { type LocalizedText, localized } from "@/lib/format";
 import { formatDocPageTitle } from "@/lib/page-title";
@@ -27,12 +28,12 @@ export async function generateMetadata({
   return {
     title: formatDocPageTitle(
       appLabelForKey("delivery-orders", "出荷書", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
-      decodeURIComponent(id),
+      docNo(decodeURIComponent(id)),
     ),
   };
 }
 
-/** 出荷書 詳細 (SH21). URL id = 導出文書番号 DOR-YYYYMM-NNNNN. */
+/** 出荷書 詳細 (SH21). URL id = 法人コード + 番号（`CKK~DOR-2026-00001`）。 */
 export default async function ShippingDeliveryOrdersDetailPage({
   params,
 }: {
@@ -45,10 +46,16 @@ export default async function ShippingDeliveryOrdersDetailPage({
   // 旧接頭辞 SHP-…（改称前のメモ内リンク・通知など）は新番号へ読み替える。
   const legacy = /^SHP-(\d{6}-\d{1,6})$/.exec(decoded);
   if (legacy) redirect(`/shipping/delivery-orders/DOR-${legacy[1]}`);
-  const key = parseDocKey(decoded, "DOR");
-  if (!key) notFound();
+  // 番号だけ・旧番号（DOR-YYYYMM-NNNNN）の URL は正規の URL へ転送される。
+  const key = await docKeyFromParam(
+    "delivery_orders",
+    "DOR",
+    id,
+    "/shipping/delivery-orders",
+  );
 
-  const number = formatDocNumber("DOR", key);
+  // 多態参照（監査・メモ・承認）は参照（doc_ref）で引く。
+  const number = key.docRef;
   const [order, auditEntries, memos, approval, approvalTrail] =
     await Promise.all([
       fetchDeliveryOrder(key),
@@ -66,10 +73,7 @@ export default async function ShippingDeliveryOrdersDetailPage({
   const locale = await getServerLocale();
   const [chargeRows, chargeItems, chargeAuthz] = await Promise.all([
     prisma.deliveryOrderCharge.findMany({
-      where: {
-        deliveryOrderYearMonth: key.yearMonth,
-        deliveryOrderSeq: key.seq,
-      },
+      where: { deliveryOrder: { docRef: key.docRef } },
       orderBy: { sortOrder: "asc" },
       include: {
         chargeItem: { select: { name: true } },

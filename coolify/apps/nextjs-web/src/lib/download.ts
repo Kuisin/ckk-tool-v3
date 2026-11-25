@@ -18,6 +18,8 @@
  * API ルート（/api/pdf/... 等）を前提とする。
  */
 
+import { docNo } from "./doc-number";
+
 /** 共有シート経路を使うべき端末か（指で操作する端末 + ファイル共有対応）。 */
 export function canShareFiles(): boolean {
   if (typeof navigator === "undefined" || typeof window === "undefined") {
@@ -48,8 +50,11 @@ function saveViaAnchor(href: string, filename: string, isObjectUrl = false) {
  */
 export async function downloadFile(
   url: string,
-  filename: string,
+  rawFilename: string,
 ): Promise<void> {
+  // 書類の id から作った名前（`CKK~QOT-2026-00001.pdf`）でも、保存名は番号だけに
+  // する — 取引先へ渡るファイル名に法人コードを出さない。
+  const filename = docNo(rawFilename);
   if (!canShareFiles()) {
     saveViaAnchor(url, filename);
     return;

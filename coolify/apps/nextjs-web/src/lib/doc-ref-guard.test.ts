@@ -53,7 +53,13 @@ const TOUCH = new RegExp(
 /** 参照の列の名前（どれかがその呼び出しの近くに出てくれば「書類を指している」）。 */
 const REF_COLUMN = /\b(targetId|ownerId|resourceId|sourceId)\b/;
 
-const USES_DOC_REF = /\b(toDocRef|toDocRefs|requireDocRef|storedTargetId)\(/;
+/**
+ * 参照を正しく作っている印。lib/doc-ref の関数を通すか、**行が持つ doc_ref /
+ * line_ref をそのまま使う**（番号設計 PR-C — 番号は DB が払い出すので、作った行・
+ * 読んだ行の `docRef` がそのまま参照。`key.docRef` / `row.docRef` / `lineRef`）。
+ */
+const USES_DOC_REF =
+  /\b(toDocRef|toDocRefs|requireDocRef|storedTargetId|resolveDocId)\(|\.(docRef|lineRef)\b|\bdocRef\b\s*[,}:]/;
 
 /**
  * 参照の列に触るが、書類番号を新しく組み立てないファイル。理由を必ず書く。

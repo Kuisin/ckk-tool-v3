@@ -234,6 +234,11 @@ export function StepCard({
 
       {isOutsource && (
         <Group gap="xl" mt="xs" pl={28}>
+          {step.outsourceOrderNumber && (
+            <Text c="dimmed" ff="mono" size="xs">
+              {step.outsourceOrderNumber}
+            </Text>
+          )}
           <Text c="dimmed" size="xs">
             {tr("production.stepCard.requestedOn", {
               date: fmt.date(step.outsourceRequestedAt),

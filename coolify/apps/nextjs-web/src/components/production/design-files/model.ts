@@ -53,7 +53,7 @@ export interface ProductDesignFile {
   role: DesignFileRole;
   mimeType: string;
   filename: string;
-  /** 生成元の設計依頼（DSG-…）。手動登録の版は null。 */
+  /** 生成元の設計依頼（id の姿 `CKK~DSG-…`）。手動登録の版は null。 */
   requestNumber: string | null;
   /** 依頼 id そのもの。「依頼 / 手動」の別はこれの有無から導く。 */
   designRequestId: string | null;

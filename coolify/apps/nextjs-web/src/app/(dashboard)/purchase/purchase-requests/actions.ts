@@ -3,8 +3,10 @@
 /**
  * Server Actions — 購買依頼 (app.purchase_requests, PU01)。
  *
- * - 採番: nextDocumentNumber("PURCHASE_REQUEST") → PRQ-YYYYMM-NNNNN
- *   （文字列保存、月次リセット）。
+ * - 採番: DB が INSERT 時に払い出す（PRQ-FFFF-NNNNN。自社法人 × 会計年度）。
+ *   アプリは番号を渡さず、作った行の doc_ref を読み戻す。
+ * - 引数の requestNumber は **id の姿**（`CKK~PRQ-2026-00001` — 法人コード付き）。
+ *   行は doc_ref で引く（番号だけでは法人が決まらない）。
  * - 単価・金額は持たない（発注書へ変換した後、発注側で確定する）。
  * - 承認フロー DRAFT→REQUESTED→APPROVED→ORDERED（+REJECTED / CANCELLED）は
  *   素材発注書と同型の row-workflow: 遷移列（at/by）+ history Json + audit。
@@ -34,8 +36,8 @@ import {
 } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import { companyForPurchase } from "@/lib/doc-company";
+import { docIdOf, docNo, docNumberOf, parseDocKey } from "@/lib/doc-number";
 import { requireDocRef } from "@/lib/doc-ref";
-import { nextDocumentNumber } from "@/lib/numbering";
 import {
   type ActionResult,
   actionError,
@@ -57,6 +59,14 @@ function revalidate(requestNumber?: string) {
     revalidatePath(`${BASE_PATH}/${requestNumber}`);
     revalidatePath(`${BASE_PATH}/${requestNumber}/edit`);
   }
+}
+
+/**
+ * 画面から渡る id（`CKK~PRQ-2026-00001`）→ 行を引く where。
+ * 形が違う id（番号だけ・旧番号）はどの行にも当たらない参照にする = 対象なし。
+ */
+function whereRequest(id: string): { docRef: string } {
+  return { docRef: parseDocKey(id, "PRQ")?.docRef ?? "(none)" };
 }
 
 // ── 入力スキーマ ─────────────────────────────────────────────────────────────
@@ -176,12 +186,11 @@ export async function createPurchaseRequest(
   }
   try {
     const actor = await getCurrentActorId();
-    const requestNumber = await nextDocumentNumber("PURCHASE_REQUEST");
     const creates = await buildItemCreates(v.items);
 
-    await prisma.purchaseRequest.create({
+    // 番号は DB が払い出す（渡さない）。作った行の参照を読み戻す。
+    const created = await prisma.purchaseRequest.create({
       data: {
-        requestNumber,
         ...(await companyForPurchase({
           linePlantIds: creates.map((it) => it.plantId),
         })),
@@ -192,7 +201,9 @@ export async function createPurchaseRequest(
         history: toHistoryJson([entry("CREATE", actor)]),
         items: { create: creates },
       },
+      select: { docRef: true },
     });
+    const requestNumber = docIdOf(created);
 
     await recordAudit({
       action: "CREATE",
@@ -239,7 +250,7 @@ export async function updatePurchaseRequest(
   }
   try {
     const prior = await prisma.purchaseRequest.findUnique({
-      where: { requestNumber },
+      where: whereRequest(requestNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -350,7 +361,7 @@ export async function requestPurchaseRequestApproval(
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.purchaseRequest.findUnique({
-      where: { requestNumber },
+      where: whereRequest(requestNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -439,7 +450,7 @@ export async function approvePurchaseRequest(
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.purchaseRequest.findUnique({
-      where: { requestNumber },
+      where: whereRequest(requestNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -511,7 +522,7 @@ export async function rejectPurchaseRequest(
   if (!trimmed) return actionError(tr("common.enterAReasonForSendingIt"));
   try {
     const prior = await prisma.purchaseRequest.findUnique({
-      where: { requestNumber },
+      where: whereRequest(requestNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -577,7 +588,7 @@ export async function cancelPurchaseRequest(
   if (!trimmed) return actionError(tr("common.enterAReasonForCancelling"));
   try {
     const prior = await prisma.purchaseRequest.findUnique({
-      where: { requestNumber },
+      where: whereRequest(requestNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -670,7 +681,7 @@ export async function convertToPurchaseOrder(
     return actionError(tr("purchase.purchaseRequests.selectASupplier"));
   try {
     const prior = await prisma.purchaseRequest.findUnique({
-      where: { requestNumber },
+      where: whereRequest(requestNumber),
       include: { items: { orderBy: { sortOrder: "asc" } } },
     });
     if (!prior)
@@ -691,20 +702,21 @@ export async function convertToPurchaseOrder(
       );
     }
     const actor = await getCurrentActorId();
-    const poNumber = await nextDocumentNumber("PURCHASE");
     const now = new Date();
+    // 人が読む文面（備考・履歴）には番号だけを書く。
+    const requestNo = docNo(requestNumber);
 
-    await prisma.$transaction(async (tx) => {
+    const poNumber = await prisma.$transaction(async (tx) => {
+      // 発注番号は DB が払い出す（渡さない）。作った行の参照を読み戻す。
       const po = await tx.materialPurchaseOrder.create({
         data: {
-          poNumber,
           // 依頼から起こした発注書は依頼の発行元を継ぐ（上流 → 拠点 → 既定）。
           ownCompanyId: prior.ownCompanyId,
           supplierBpId,
           status: "DRAFT",
           totalAmount: 0,
           notes: tr("purchase.purchaseRequestActions.createdFromRequest", {
-            requestNumber,
+            requestNumber: requestNo,
           }),
           createdBy: actor,
           history: toHistoryJson([
@@ -712,7 +724,7 @@ export async function convertToPurchaseOrder(
               "CREATE",
               actor,
               tr("purchase.purchaseRequestActions.convertedFromRequest", {
-                requestNumber,
+                requestNumber: requestNo,
               }),
             ),
           ]),
@@ -730,7 +742,7 @@ export async function convertToPurchaseOrder(
             })),
           },
         },
-        select: { id: true },
+        select: { id: true, docRef: true },
       });
       // 依頼が**まだ APPROVED のとき**だけ ORDERED へ。同時に 2 人が変換すると
       // 2 通目はここで 0 件になり、上で作った発注書ごと巻き戻る（発注書の
@@ -743,7 +755,10 @@ export async function convertToPurchaseOrder(
           orderedBy: actor,
           purchaseOrderId: po.id,
           history: toHistoryJson(
-            appendHistory(prior.history, entry("CONVERT", actor, poNumber)),
+            appendHistory(
+              prior.history,
+              entry("CONVERT", actor, docNumberOf(po)),
+            ),
           ),
         },
       });
@@ -752,6 +767,7 @@ export async function convertToPurchaseOrder(
           `GUARD:${tr("purchase.purchaseRequestActions.stateChanged")}`,
         );
       }
+      return docIdOf(po);
     });
 
     await recordAudit({
@@ -761,7 +777,7 @@ export async function convertToPurchaseOrder(
       after: {
         supplierBpId,
         status: "DRAFT",
-        sourceRequest: requestNumber,
+        sourceRequest: requestNo,
         itemCount: prior.items.length,
       },
     });
@@ -770,7 +786,7 @@ export async function convertToPurchaseOrder(
       tableName: "purchase_requests",
       recordId: requestNumber,
       before: { status: "APPROVED" },
-      after: { status: "ORDERED", poNumber },
+      after: { status: "ORDERED", poNumber: docNo(poNumber) },
     });
     revalidate(requestNumber);
     revalidatePath(PO_PATH);

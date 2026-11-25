@@ -23,12 +23,13 @@ export default async function WorkOrderStepsLayout({
 }) {
   const tr = await getTranslations();
   const { id } = await params;
-  const workOrderNumber = await resolveWorkOrderIdParam(id);
+  // 書類番号で来た URL の転送はページ側がする（ここは続きのパスを知らない）。
+  const workOrderNumber = await resolveWorkOrderIdParam(id, null);
   if (workOrderNumber == null) notFound();
 
   const nav = await fetchWorkOrderStepNav(workOrderNumber);
   if (!nav) notFound();
-  // 書類番号 WO-YYYYMM-NNNNN（内部キーは通し連番の int のまま）。
+  // 書類番号 WOR-FFFF-NNNNN（表示専用。内部キーは通し連番の int のまま）。
   const woLabel = nav.docNumber;
 
   const basePath = `/production/work-orders/${workOrderNumber}/steps`;

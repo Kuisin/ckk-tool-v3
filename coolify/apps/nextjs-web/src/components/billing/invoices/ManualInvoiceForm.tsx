@@ -26,6 +26,7 @@ import { type Column, DataTable } from "@/components/ui/DataTable";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
+import { docNo } from "@/lib/doc-number";
 
 const BASE_PATH = "/billing/invoices";
 
@@ -67,7 +68,7 @@ export function ManualInvoiceForm({
       header: tr("common.deliveryOrder"),
       render: (s) => (
         <Text ff="mono" size="sm">
-          {s.deliveryOrderNumber}
+          {docNo(s.deliveryOrderNumber)}
         </Text>
       ),
     },
@@ -80,7 +81,7 @@ export function ManualInvoiceForm({
           ff="mono"
           size="sm"
         >
-          {s.deliveryNoteNumber ?? "—"}
+          {docNo(s.deliveryNoteNumber) ?? "—"}
         </Text>
       ),
     },
@@ -120,20 +121,17 @@ export function ManualInvoiceForm({
   /** 選んだ出荷から請求書を作る — DataTable の一括操作バーがそのまま「作成」ボタンになる。 */
   const save = (selected: UnbilledShipmentRow[]) => {
     if (!customerBpId || selected.length === 0) return;
-    const deliveryOrderKeys = selected.map((s) => ({
-      yearMonth: s.yearMonth,
-      seq: s.seq,
-    }));
+    const deliveryOrderNumbers = selected.map((s) => s.deliveryOrderNumber);
     startSaveTransition(async () => {
       const result = await createManualInvoice({
         customerBpId,
-        deliveryOrderKeys,
+        deliveryOrderNumbers,
       });
       if (result.ok) {
         notifications.show({
           title: tr("common.created"),
           message: tr("billing.invoiceDetail.issuedWithNumber", {
-            invoiceNumber: result.data.invoiceNumber,
+            invoiceNumber: docNo(result.data.invoiceNumber),
           }),
           color: "green",
         });
@@ -196,7 +194,7 @@ export function ManualInvoiceForm({
                     ? tr("common.loading")
                     : tr("billing.invoices.noUnbilledShipmentsForCustomer")
                 }
-                getRowId={(s) => `${s.yearMonth}-${s.seq}`}
+                getRowId={(s) => s.deliveryOrderNumber}
                 selectable
               />
             </FormSection>

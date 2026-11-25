@@ -4,6 +4,8 @@ import { appLabelForKey } from "@/lib/app-list";
 import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
+import { docIdOf, docNo } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
 import { fetchPurchaseRequest, fetchSupplierOptions } from "../data";
@@ -21,12 +23,12 @@ export async function generateMetadata({
   return {
     title: formatDocPageTitle(
       appLabelForKey("purchase-requests", "購買依頼", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
-      decodeURIComponent(id),
+      docNo(decodeURIComponent(id)),
     ),
   };
 }
 
-/** 購買依頼 詳細 (PU21). URL id = request_number（PRQ-YYYYMM-NNNNN）. */
+/** 購買依頼 詳細 (PU21). URL id = 法人コード付きの依頼番号（CKK~PRQ-2026-00001）. */
 export default async function PurchasePurchaseRequestsDetailPage({
   params,
 }: {
@@ -35,7 +37,15 @@ export default async function PurchasePurchaseRequestsDetailPage({
   const denied = await requireAppRead("purchase-requests");
   if (denied) return denied;
   const { id } = await params;
-  const requestNumber = decodeURIComponent(id);
+  // 番号だけ・旧番号で来た URL は正規の URL へ転送される。
+  const requestNumber = docIdOf(
+    await docKeyFromParam(
+      "purchase_requests",
+      "PRQ",
+      id,
+      "/purchase/purchase-requests",
+    ),
+  );
 
   const [purchaseRequest, auditEntries, approval, supplierOptions, trail] =
     await Promise.all([

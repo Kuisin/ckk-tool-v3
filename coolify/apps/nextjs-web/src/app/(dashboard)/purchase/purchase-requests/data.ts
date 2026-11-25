@@ -1,7 +1,8 @@
 /**
  * data.ts — 購買依頼 (PU01) のサーバーサイド取得・マッピング。
  *
- * URL id = request_number（PRQ-YYYYMM-NNNNN、文字列保存）。
+ * URL id = 法人コード付きの依頼番号（`CKK~PRQ-2026-00001`）。DTO の
+ * requestNumber もこの id の姿で持つ（表示は docNo / <DocNumber> で番号だけ）。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  * history Json（{action,user,at,notes}）は displayName 解決して返す。
  * 仕入先（変換モーダル）/ 拠点 options は work-orders の data.ts を再利用する。
@@ -17,6 +18,7 @@ import type {
 import type { HistoryEntry } from "@/lib/approvals";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
+import { docIdOf, docIdOrNull, parseDocKey } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
@@ -61,7 +63,7 @@ export async function fetchPurchaseRequests(): Promise<PurchaseRequestRow[]> {
         orderBy: { sortOrder: "asc" },
       },
     },
-    orderBy: { requestNumber: "desc" },
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
   });
   return rows.map((r) => {
     const desired = r.items
@@ -69,7 +71,8 @@ export async function fetchPurchaseRequests(): Promise<PurchaseRequestRow[]> {
       .filter((d): d is string => d != null)
       .sort();
     return {
-      requestNumber: r.requestNumber,
+      requestNumber: docIdOf(r),
+      legacyNumber: r.legacyNumber,
       requesterName: r.createdByUser?.displayName ?? tr("common.system"),
       primaryMaterial: r.items[0]?.item?.code ?? null,
       itemCount: r.items.length,
@@ -80,18 +83,20 @@ export async function fetchPurchaseRequests(): Promise<PurchaseRequestRow[]> {
   });
 }
 
-/** 詳細 (PU21) view model。id = request_number。未存在は null。 */
+/** 詳細 (PU21) view model。id = `CKK~PRQ-…`（法人コード付き）。未存在は null。 */
 export async function fetchPurchaseRequest(
   requestNumber: string,
 ): Promise<PurchaseRequestView | null> {
   const tr = await getTranslations();
   const authz = await checkPermission("purchase_order", "READ");
   if (!authz.ok) return null;
+  const key = parseDocKey(requestNumber, "PRQ");
+  if (!key) return null;
   const r = await prisma.purchaseRequest.findUnique({
-    where: { requestNumber },
+    where: { docRef: key.docRef },
     include: {
       createdByUser: { select: { displayName: true } },
-      purchaseOrder: { select: { poNumber: true } },
+      purchaseOrder: { select: { docRef: true } },
       items: {
         include: { item: true, plant: true },
         orderBy: { sortOrder: "asc" },
@@ -126,7 +131,8 @@ export async function fetchPurchaseRequest(
 
   return {
     id: r.id,
-    requestNumber: r.requestNumber,
+    requestNumber: docIdOf(r),
+    legacyNumber: r.legacyNumber,
     status: r.status as PurchaseRequestStatus,
     purpose: r.purpose,
     requesterName: r.createdByUser?.displayName ?? tr("common.system"),
@@ -135,7 +141,7 @@ export async function fetchPurchaseRequest(
     orderedAt: iso(r.orderedAt),
     cancelledAt: iso(r.cancelledAt),
     cancelReason: r.cancelReason,
-    purchaseOrderNumber: r.purchaseOrder?.poNumber ?? null,
+    purchaseOrderNumber: docIdOrNull(r.purchaseOrder),
     notes: r.notes,
     items: r.items.map((it) => ({
       id: it.id,

@@ -69,6 +69,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
@@ -269,7 +270,7 @@ export function PriceListDetail({
             onReject={(reason) => rejectPriceEntry(entry.entryId, reason)}
             onRequest={() => requestPriceEntryApproval(entry.entryId)}
             rejectReason={lastRejectReason}
-            subject={`${tr("common.priceList")} ${entry.entryId}`}
+            subject={`${tr("common.priceList")} ${docNo(entry.entryId)}`}
           />
           <Alert color="orange" variant="light">
             {tr("sales.priceLists.unapprovedNotUsedForPricing")}
@@ -357,6 +358,12 @@ export function PriceListDetail({
         )}
         <FieldValue label={tr("common.salesRep")} value={entry.salesRepName} />
         <FieldValue label={tr("common.createdBy")} value={entry.createdBy} />
+        {entry.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={entry.legacyNumber}
+          />
+        )}
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>

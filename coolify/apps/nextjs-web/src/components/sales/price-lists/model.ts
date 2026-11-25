@@ -1,8 +1,9 @@
 /**
  * model.ts — 価格表 view-model types + pure display/pricing helpers.
  *
- * Model (per sales.price_list_entries — combined key (year_month, seq)):
- *   Entry — 表示番号 PRC-YYYYMM-NNNNN はキーから導出（URL id と同一）。
+ * Model (per sales.price_list_entries — 行は参照 doc_ref で引く):
+ *   Entry — 価格表番号 PRC-FFFF-NNNNN は DB が払い出す。entryId は法人コード付きの
+ *           id（CKK~PRC-2026-00001 — URL id と同一。表示は docNo() で番号だけ）。
  *           (顧客, 製品) は作成後不変の識別（unique）。通貨 + 状態を持つ。
  *     └ Variant  = 注文種別ごとの価格。基準単価（価格試算の見積単価 or 手動）+
  *                  有効期間 + 状態 + 価格試算リンクを持つ。
@@ -82,15 +83,17 @@ export interface PriceVariant {
   tiers: PriceTier[];
   /** 期間・数量条件つき値引きルール（専用リスト）. */
   discounts: PriceDiscount[];
-  /** 価格試算元の文書番号 EST-…（手動設定は null）— URL id と同一。 */
+  /** 価格試算元の id（`CKK~EST-2026-00001`。手動設定は null）— URL id と同一。 */
   estimateId: string | null;
   estimateNumber: string | null;
 }
 
 /** A price entry (顧客×製品) — owns the currency/active flag shared by variants. */
 export interface PriceListEntry {
-  /** 価格表番号 PRC-YYYYMM-NNNNN（URL id と同一）。 */
+  /** 価格表の id（法人コード + 番号 `CKK~PRC-2026-00001`。URL id と同一）。 */
   entryId: string;
+  /** 旧番号（PRC-YYYYMM-NNNNN）。番号設計の切り替え前に採番された書類だけ。 */
+  legacyNumber?: string | null;
   customerId: string;
   customerName: string;
   /**
@@ -163,7 +166,7 @@ export interface EntryIdentity {
   /** 対象工具（null = 工具を問わない価格表）。識別の一部。 */
   toolItemId: string | null;
   orderTypes: string[];
-  /** 既存エントリの PRC 番号（重複警告からのリンク先）。 */
+  /** 既存エントリの id（`CKK~PRC-…`。重複警告からのリンク先）。 */
   entryId: string;
 }
 

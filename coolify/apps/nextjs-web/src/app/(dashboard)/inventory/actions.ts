@@ -21,7 +21,6 @@ import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import { applyTransaction, movementOpener } from "@/lib/inventory";
 import { inventoryTypeOf } from "@/lib/inventory-item-type";
-import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
   actionError,
@@ -139,14 +138,12 @@ export async function transferStock(
     }
     const destLabel = targetLabel(plant, location, shelf);
     const transferId = randomUUID();
-    // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。1 回の移動 =
+    // 入出庫伝票の番号は DB が INSERT 時に払い出す。1 回の移動 =
     // 1 枚で、出庫と入庫の 2 行がその明細になる。これまで両行を結びつけていた
     // transferId（その場限りの uuid）は互換のため行にも残す。
-    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
 
     const targetInventoryId = await prisma.$transaction(async (tx) => {
       const openMovement = movementOpener(tx, {
-        key: movementKey,
         cause: "STOCK_TRANSFER",
         plantId: v.targetPlantId,
       });

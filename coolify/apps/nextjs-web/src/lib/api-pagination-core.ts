@@ -11,9 +11,14 @@
  *
  * 時刻だけだと、同じミリ秒に更新された行が境界で落ちる。一括更新をすると
  * 実際に何十行も同じ時刻になるので、これは理論上の話ではない。
- * 決着キーは表によって 2 種類ある:
- *   - `id`                … uuid / 連番 int の表
- *   - `yearMonth` + `seq` … 書類（複合 PK。**書類番号は導出値で列に無い**）
+ * 決着キーは**どの表でも行の `id`**（uuid / 連番 int）。
+ * 書類（見積書・注文請書・出荷書・納品書・請求書）は番号設計 PR-B まで複合 PK
+ * `(yearMonth, seq)` で決着していたが、いまは uuid の `id` を持つ。番号は
+ * 「自社法人 × 会計年度」の連番で、法人をまたいで同じ値になり得るので
+ * （番号設計 PR-C）、番号では決着が付かない。
+ * 旧い `doc` 形のカーソル（`{kind:"doc", t, ym, seq}`）は**読めない**
+ * （null → 呼び出し側が 400 invalid_cursor にする）— 連携先はカーソル無しで
+ * 同期をやり直す。黙って先頭へ戻すと、どこまで読んだかが分からなくなる。
  *
  * ■ `?updatedSince=` は `>=`（at-least-once）
  *
@@ -27,7 +32,7 @@
 export const DEFAULT_PAGE_SIZE = 100;
 export const MAX_PAGE_SIZE = 500;
 
-/** uuid / int PK の表のカーソル位置。 */
+/** カーソル位置（順序キーの時刻 + 行の id）。 */
 export interface IdCursor {
   kind: "id";
   /** 順序キーの値（ISO 8601）。 */
@@ -41,15 +46,7 @@ export interface IdCursor {
   id: string | number;
 }
 
-/** 書類（複合 PK）のカーソル位置。 */
-export interface DocCursor {
-  kind: "doc";
-  t: string;
-  ym: string;
-  seq: number;
-}
-
-export type Cursor = IdCursor | DocCursor;
+export type Cursor = IdCursor;
 
 /** 不透明化する（中身は実装の都合で、契約ではない）。 */
 export function encodeCursor(c: Cursor): string {
@@ -68,13 +65,8 @@ export function decodeCursor(raw: string | null | undefined): Cursor | null {
         ? { kind: "id", t: o.t, id: o.id }
         : null;
     }
-    if (o.kind === "doc") {
-      return typeof o.t === "string" &&
-        typeof o.ym === "string" &&
-        Number.isInteger(o.seq)
-        ? { kind: "doc", t: o.t, ym: o.ym, seq: o.seq }
-        : null;
-    }
+    // 旧い `doc` 形（複合 PK で決着していた頃のカーソル）を含め、知らない形は
+    // 無効として扱う。
     return null;
   } catch {
     return null;
@@ -109,24 +101,10 @@ export function cursorWhere(
   const t = new Date(cursor.t);
   if (Number.isNaN(t.getTime())) return null;
 
-  if (cursor.kind === "id") {
-    return {
-      OR: [
-        { [orderField]: { gt: t } },
-        { [orderField]: t, id: { gt: cursor.id } },
-      ],
-    };
-  }
   return {
     OR: [
       { [orderField]: { gt: t } },
-      {
-        [orderField]: t,
-        OR: [
-          { yearMonth: { gt: cursor.ym } },
-          { yearMonth: cursor.ym, seq: { gt: cursor.seq } },
-        ],
-      },
+      { [orderField]: t, id: { gt: cursor.id } },
     ],
   };
 }

@@ -4,7 +4,7 @@
  * Model (app.order_lines — 注文請書キー + 枝番):
  *   注文明細 = 注文請書の明細行そのもの。注文請書 1 行 = 注文明細 1 行で固定
  *   （分割も統合もしない）。確定時に sortOrder 順で branch = 1..N を採番し、
- *   表示番号 ORD-YYYYMM-NNNNN-NN をキーから導出する（保存しない）。
+ *   番号 ORD-FFFF-NNNNN-NN と参照 line_ref は DB が導出する（枝番が入った時点）。
  *   URL id も導出番号を使う。この画面が扱うのは確定済み行のみ。
  *
  * Decimal 列（unitPrice / amount）はサーバー境界で Number() 済み。
@@ -24,7 +24,7 @@ export type OrderLineStatus =
 export interface OrderLineWorkOrderRef {
   /** ロット番号（通し連番 int — 内部キー）。 */
   workOrderNumber: number;
-  /** 書類番号 WO-YYYYMM-NNNNN。 */
+  /** 書類番号 WOR-FFFF-NNNNN（表示専用 — URL・操作はロット番号）。 */
   docNumber: string;
   /** WORK_ORDER_TYPE（在庫分 / 製造分）。 */
   type: string;
@@ -38,12 +38,17 @@ export interface OrderLineWorkOrderRef {
 }
 
 export interface OrderLine {
-  /** 導出文書番号 ORD-YYYYMM-NNNNN-NN — URL id と同一。 */
+  /**
+   * 注文明細の id（法人コード + 番号 `CKK~ORD-2026-00001-01`）— URL id と同一。
+   * 表示するときは docNo() / <DocNumber> で番号だけにする。
+   */
   id: string;
   orderNumber: string;
+  /** 旧番号（ORD-YYYYMM-NNNNN-NN）。番号設計の切り替え前に採番された明細だけ。 */
+  legacyNumber?: string | null;
   /** DB uuid — 指示書作成リンク（?orderLine=…）等の内部参照用。 */
   uuid: string;
-  /** 親の注文請書番号 ORD-YYYYMM-NNNNN。 */
+  /** 親の注文請書の id（`CKK~ORD-2026-00001`）。 */
   acceptanceNumber: string;
   customerId: string | null;
   customerName: string;
@@ -105,7 +110,7 @@ export interface OrderLine {
 
 /** 注文明細配下の出荷書（出荷タブ・進捗表示用）。 */
 export interface OrderLineShippingRef {
-  /** DOR-YYYYMM-NNNNN（URL id と同一）。 */
+  /** 出荷書の id（`CKK~DOR-2026-00001`。URL id と同一）。 */
   number: string;
   /** DELIVERY_ORDER_TYPE（DISPATCH / STOCK_STORAGE）。 */
   type: string;

@@ -100,6 +100,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { isViewable } from "@/lib/design-file-kind";
 import { pickThumbFile } from "@/lib/design-files-core";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import {
   designHistoryActionLabel,
@@ -257,7 +258,7 @@ export function DesignRequestDetail({
   )}`;
 
   const canViewPdf = isIssuedDesign(request.status);
-  const pdfFilename = `${request.requestNumber}.pdf`;
+  const pdfFilename = `${docNo(request.requestNumber)}.pdf`;
   const pdfUrl = (extra = "") =>
     `/api/pdf/design-request?id=${encodeURIComponent(request.requestNumber)}${extra}`;
 
@@ -311,7 +312,7 @@ export function DesignRequestDetail({
         notifications.show({
           title: successMessage,
           message: tr("sales.designRequestDetail.designRequestWithNumber", {
-            number: request.requestNumber,
+            number: docNo(request.requestNumber),
           }),
           color: "green",
         });
@@ -372,7 +373,7 @@ export function DesignRequestDetail({
       ? [
           {
             key: request.quoteNumber,
-            label: request.quoteNumber,
+            label: docNo(request.quoteNumber),
             href: `/sales/quotes/${request.quoteNumber}`,
             note: tr("sales.designRequests.requestedAtQuoteTime"),
           },
@@ -382,7 +383,7 @@ export function DesignRequestDetail({
       ? [
           {
             key: request.orderLineNumber,
-            label: request.orderLineNumber,
+            label: docNo(request.orderLineNumber),
             href: `/sales/order-lines/${request.orderLineNumber}`,
             note: tr("sales.designRequests.requestedAtOrderTime"),
           },
@@ -461,7 +462,7 @@ export function DesignRequestDetail({
         onRequest={() => requestDesignApproval(request.requestNumber)}
         rejectReason={lastReject?.notes ?? null}
         subject={tr("sales.designRequestDetail.designRequestWithNumber", {
-          number: request.requestNumber,
+          number: docNo(request.requestNumber),
         })}
       />
     );
@@ -592,7 +593,7 @@ export function DesignRequestDetail({
       ]}
       createdAt={fmt.dateTime(request.createdAt)}
       status={<StatusBadge entity="DesignRequest" status={request.status} />}
-      title={request.requestNumber}
+      title={docNo(request.requestNumber)}
       updatedAt={fmt.dateTime(request.updatedAt)}
     >
       {actionCard}
@@ -602,6 +603,12 @@ export function DesignRequestDetail({
           label={tr("common.requestNumber")}
           value={<DocNumber>{request.requestNumber}</DocNumber>}
         />
+        {request.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={request.legacyNumber}
+          />
+        )}
         <FieldValue
           label={tr("common.trigger")}
           value={
@@ -920,7 +927,7 @@ export function DesignRequestDetail({
         confirmLabel={tr("sales.designRequests.complete")}
         loading={isPending}
         message={tr("sales.designRequestDetail.confirmCompleteMessage", {
-          number: request.requestNumber,
+          number: docNo(request.requestNumber),
           versions: producedVersions.join(", v"),
         })}
         onClose={() => setCompleteOpen(false)}
@@ -937,7 +944,7 @@ export function DesignRequestDetail({
         confirmLabel={tr("common.sendBack")}
         loading={isPending}
         message={tr("sales.designRequestDetail.confirmReopenMessage", {
-          number: request.requestNumber,
+          number: docNo(request.requestNumber),
         })}
         onClose={() => setReopenOpen(false)}
         onConfirm={() =>
@@ -964,7 +971,7 @@ export function DesignRequestDetail({
         <Stack gap="sm">
           <Text size="sm">
             {tr("sales.designRequestDetail.confirmCancelMessage", {
-              number: request.requestNumber,
+              number: docNo(request.requestNumber),
             })}
           </Text>
           <Textarea

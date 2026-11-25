@@ -1,8 +1,10 @@
 /**
  * model.ts — 納品書 (SH02) view-model types + pure helpers.
  *
- * Model (app.delivery_notes — 複合キー (year_month, seq)):
- *   表示番号 DRN-YYYYMM-NNNNN はキーから導出（保存しない）。URL id も導出番号。
+ * Model (app.delivery_notes):
+ *   納品書番号 DRN-FFFF-NNNNN は DB が払い出す（法人 × 会計年度の連番）。
+ *   画面では id（法人コード + 番号 `CKK~DRN-2026-00001`）で持ち、URL id を兼ねる。
+ *   表示するときは `<DocNumber>` / `docNo()` で番号だけにする（lib/doc-number.ts）。
  *   出荷書 1 : N 納品書（通常は 1:1）。納品方法が DIRECT_TO_USER（ユーザー直送）
  *   のときは最終需要家が必須で、価格記載（include_price）は既定 OFF。
  *
@@ -46,13 +48,14 @@ export interface DeliveryNoteItem {
 }
 
 export interface DeliveryNote {
-  /** 導出文書番号 DRN-YYYYMM-NNNNN — URL id と同一。 */
+  /** 納品書の id（`CKK~DRN-2026-00001`）— URL id と同一。 */
   id: string;
   deliveryNumber: string;
-  /** 導出番号 DOR-YYYYMM-NNNNN。 */
+  /** 旧番号（DRN-YYYYMM-NNNNN）。番号設計の移行前に発行された書類だけが持つ。 */
+  legacyNumber: string | null;
+  /** 出荷書の id（`CKK~DOR-2026-00001`）。 */
   deliveryOrderNumber: string;
-  /** 出荷書経由の注文明細番号（参考表示）。 */
-  /** 束ねている注文明細の番号（1 出荷書は複数の注文明細を持てる）。 */
+  /** 束ねている注文明細の id（`CKK~ORD-…-NN`。1 出荷書は複数の注文明細を持てる）。 */
   orderLineNumbers: string[];
   deliveryMethod: DeliveryMethod;
   recipientId: string;

@@ -1,34 +1,34 @@
 /**
  * audit-record-key-core.ts — 監査ログの「安定キー」を組み立てる純関数。
  *
- * `audit_logs.record_id` は表示用の業務識別子（`QOT-202608-00003` / ロット番号
- * `4711` / マスタの文字列 id）で、FK ではない。文書番号は
- * `app.numbering_sequences`（月次リセットの可変行 — Postgres の sequence では
- * ない）から払い出されるため、書類を削除して採番を戻すと同じ番号が再利用
- * される。`approval_requests`（同じ多態規約）で実際に起きた —
- * 削除済み書類の承認記録が新しい `ORD-202608-00003` に付いた
- * （[[approval-target-id-number-reuse]]）。
+ * `audit_logs.record_id` は表示用の業務識別子（`QOT-2026-00003` / ロット番号
+ * `4711` / マスタの文字列 id）で、FK ではない。書類番号は「自社法人 × 会計年度」
+ * ごとの連番（番号設計 PR-C）なので、**同じ番号が 2 つの法人に存在し得る** —
+ * 番号だけでは履歴がどの書類のものか決まらない。
  *
- * そこで `record_id`（人が読む番号）とは別に `record_key`（テーブルの主キー）
- * を持つ。ここは **クエリを要しない形だけ** を解決する純関数 —
- * uuid / int / 文字列 PK はそのまま、複合 PK `(year_month, seq)` は
- * `"202608:3"`。1 クエリで解決する形（`numberToUuid`）は
- * `audit-record-key.ts`（server-only）が持つ。
+ * そこで `record_id`（人が読む番号）とは別に `record_key`（一意な指し先）を
+ * 持つ。書類は法人コード付きの参照 `CKK/QOT-2026-00003`（= doc_ref）、それ以外は
+ * テーブルの主キー。ここは **クエリを要しない形だけ** を解決する純関数 —
+ * uuid / int / 文字列 PK はそのまま。法人コード付きの新しい番号（id / 参照）も
+ * その場で参照に直せる。番号だけ・旧番号（docKey 形）と、1 クエリで解決する形
+ * （`numberToUuid`）は `audit-record-key.ts`（server-only）が持つ。
  *
  * **340 箇所ある `recordAudit()` 呼び出し元は 1 つも変えない。** ここは
  * `recordAudit` / `fetchAuditEntries` の内側からだけ呼ばれる。
  */
 
-import { parseDocKey } from "./doc-number";
+import { parseDocKey, parseOrderLineKey } from "./doc-number";
+import { docRefNumber, isDocNumber } from "./doc-ref-core";
 
 /**
  * 表ごとの解決方法。
  *  - identity      … record_id がそのままキー（uuid / 連番 int / 文字列 PK）。
  *                    uuid・sequence 由来の int は再利用されない。
- *  - docKey        … 書類番号 `PFX-YYYYMM-NNNNN` で指す書類。キーは法人コード
- *                    付きの参照 `"<法人コード>/<番号>"`（lib/doc-ref-core.ts）—
- *                    番号は法人ごとの連番になるので、番号だけでは書類が
- *                    1 つに決まらない。法人を引くのに 1 クエリが要る
+ *  - docKey        … 書類番号 `PFX-FFFF-NNNNN`（注文明細は `-NN` 付き）で指す
+ *                    書類。キーは法人コード付きの参照 `"<法人コード>/<番号>"`
+ *                    （lib/doc-ref-core.ts = 行の doc_ref / line_ref）。
+ *                    法人コード付きの id / 参照で渡されればその場で決まる。
+ *                    番号だけ・旧番号は法人を引く 1 クエリが要る
  *                    （audit-record-key.ts 側で解決）。
  *  - numberToUuid  … 保存済みの一意な番号 → uuid PK。1 クエリが要る
  *                    （audit-record-key.ts 側で解決）。
@@ -131,7 +131,7 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   material_diameters: "identity",
   material_length_variants: "identity",
 
-  // ── docKey（クエリ不要。複合 PK (year_month, seq)） ──────────────────
+  // ── docKey（書類番号で指す書類。キーは参照 doc_ref） ────────────────
   quotes: "docKey",
   estimates: "docKey",
   price_list_entries: "docKey",
@@ -145,18 +145,23 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   stock_takes: "docKey",
   delivery_notes: "docKey",
   invoices: "docKey",
-  // 会計文書（転記・反対仕訳）。record_id は ACC-YYYYMM-NNNNN（DB の PK は uuid）。
+  // 会計文書（転記・反対仕訳）。record_id は ACC-FFFF-NNNNN（DB の PK は uuid）。
   accounting_documents: "docKey",
+  // 素材発注書 PO-… / 購買依頼 PRQ-… / 設計依頼書 DSG-…。番号設計 PR-C までは
+  // 番号が全社で一意だったので uuid PK をキーにしていた（numberToUuid）。番号が
+  // 法人ごとの連番になったので、ほかの書類と同じ参照に揃える。旧い行の uuid
+  // キーは読み出し側が一緒に拾う（audit-record-key.ts の `legacyKeys`）。
+  material_purchase_orders: "docKey",
+  purchase_requests: "docKey",
+  design_requests: "docKey",
+  // 注文明細 ORD-FFFF-NNNNN-NN。キーは line_ref。
+  order_lines: "docKey",
 
   // ── numberToUuid（1 クエリ。audit-record-key.ts が処理） ─────────────
-  material_purchase_orders: "numberToUuid",
-  purchase_requests: "numberToUuid",
-  design_requests: "numberToUuid",
   form_responses: "numberToUuid",
   internal_pages: "numberToUuid",
   forms: "numberToUuid",
   work_orders: "numberToUuid",
-  order_lines: "numberToUuid",
   users: "numberToUuid",
 
   // ── stripPrefix ──────────────────────────────────────────────────────
@@ -174,11 +179,6 @@ export function auditKeyShape(
   return AUDIT_KEY_SHAPES[tableName];
 }
 
-/** (yearMonth, seq) → "202608:3"。seq は padding しない。 */
-export function compositeKey(yearMonth: string, seq: number): string {
-  return `${yearMonth}:${seq}`;
-}
-
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -194,8 +194,8 @@ export function isUuid(value: string): boolean {
  *  - `string` … 解決したキー
  *  - `null`   … このテーブル名は「解決できるキーが無い」と確定している
  *               （none 形 / 未登録 / 不正な record_id）
- *  - `undefined` … 1 クエリが要る（numberToUuid 形）。呼び出し側
- *               （audit-record-key.ts）に委ねる。
+ *  - `undefined` … 1 クエリが要る（numberToUuid 形、docKey 形の番号だけ・
+ *               旧番号）。呼び出し側（audit-record-key.ts）に委ねる。
  */
 export function resolveAuditRecordKeySync(
   tableName: string,
@@ -207,9 +207,16 @@ export function resolveAuditRecordKeySync(
   switch (shape) {
     case "identity":
       return recordId;
-    case "docKey":
+    case "docKey": {
+      // 法人コード付きの新しい番号（id / 参照）はそのまま参照になる。
+      const ref =
+        tableName === "order_lines"
+          ? parseOrderLineKey(recordId)?.lineRef
+          : parseDocKey(recordId)?.docRef;
+      if (ref) return ref;
       // 番号の形でなければ解決できない。形が合えば法人を引きに行く。
-      return parseDocKey(recordId) ? undefined : null;
+      return isDocNumber(docRefNumber(recordId)) ? undefined : null;
+    }
     case "stripPrefix": {
       const idx = recordId.lastIndexOf("#");
       if (idx < 0) return null;

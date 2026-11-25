@@ -15,7 +15,7 @@ export * from "./model";
 export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
   {
     // 顧客×製品で 1 エントリ — 本番とサンプルは同一エントリ内のバリアント。
-    entryId: "PRC-202601-00001",
+    entryId: "CKK~PRC-2026-00001",
     customerId: "bp-001",
     customerName: "株式会社ABC製作所",
     itemId: "1001",
@@ -30,7 +30,7 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
       {
         id: "va-1",
         orderType: "PRODUCTION",
-        baseUnitPrice: 6000, // 価格試算 EST-202605-00031 の見積単価
+        baseUnitPrice: 6000, // 価格試算 EST-2026-00031 の見積単価
         validFrom: "2026-01-01",
         validUntil: null,
         isActive: true,
@@ -89,8 +89,8 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
             isActive: false,
           },
         ],
-        estimateId: "EST-202605-00031",
-        estimateNumber: "EST-202605-00031",
+        estimateId: "CKK~EST-2026-00031",
+        estimateNumber: "CKK~EST-2026-00031",
       },
       {
         id: "va-2",
@@ -109,8 +109,8 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
           },
         ],
         discounts: [],
-        estimateId: "EST-202605-00031",
-        estimateNumber: "EST-202605-00031",
+        estimateId: "CKK~EST-2026-00031",
+        estimateNumber: "CKK~EST-2026-00031",
       },
     ],
     salesRepId: null,
@@ -120,7 +120,7 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     updatedAt: "2026-01-05 14:30",
   },
   {
-    entryId: "PRC-202602-00003",
+    entryId: "CKK~PRC-2026-00003",
     customerId: "bp-002",
     customerName: "合同会社XYZ工業",
     itemId: "2008",
@@ -172,7 +172,7 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
     updatedAt: "2026-03-15 10:00",
   },
   {
-    entryId: "PRC-202603-00004",
+    entryId: "CKK~PRC-2026-00004",
     customerId: "bp-003",
     customerName: "株式会社DEFエンジニアリング",
     itemId: "3012",

@@ -33,7 +33,7 @@ import {
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { parseDocKey } from "@/lib/doc-number";
+import { type DocKey, parseDocKey } from "@/lib/doc-number";
 import {
   type ActionResult,
   actionError,
@@ -65,11 +65,12 @@ export interface IssueOrPaidResult {
  */
 async function guardIssueApproval(
   number: string,
+  key: DocKey,
   row: {
     status: string;
     approvalStatus: string;
     items: {
-      deliveryOrderYearMonth: string | null;
+      deliveryOrderId: string | null;
       chargeItemId: number | null;
     }[];
   },
@@ -79,8 +80,7 @@ async function guardIssueApproval(
   if (row.status !== "DRAFT") return null;
   const manual = hasManualCharge(
     row.items.map((it) => ({
-      isManualCharge:
-        it.deliveryOrderYearMonth == null && it.chargeItemId != null,
+      isManualCharge: it.deliveryOrderId == null && it.chargeItemId != null,
     })),
   );
   if (!manual) return null;
@@ -103,7 +103,7 @@ async function guardIssueApproval(
     );
   }
   await prisma.invoice.updateMany({
-    where: { ...parseDocKey(number, "INV"), status: "DRAFT" },
+    where: { docRef: key.docRef, status: "DRAFT" },
     data: {
       approvalStatus: "PENDING",
       requestedAt: new Date(),
@@ -135,23 +135,23 @@ export async function issueInvoice(
   if (!authz.ok) return actionError(authz.error);
   try {
     const row = await prisma.invoice.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: {
         status: true,
         approvalStatus: true,
         items: {
-          select: { deliveryOrderYearMonth: true, chargeItemId: true },
+          select: { deliveryOrderId: true, chargeItemId: true },
         },
       },
     });
     if (!row) {
       return actionError(tr("billing.invoicesActions.onlyDraftCanIssue"));
     }
-    const gate = await guardIssueApproval(number, row, authz.userId, tr);
+    const gate = await guardIssueApproval(number, key, row, authz.userId, tr);
     if (gate) return gate;
 
     const updated = await prisma.invoice.updateMany({
-      where: { ...key, status: "DRAFT" },
+      where: { docRef: key.docRef, status: "DRAFT" },
       data: { status: "ISSUED", issuedAt: new Date() },
     });
     if (updated.count === 0) {
@@ -182,7 +182,7 @@ export async function markSent(number: string): Promise<ActionResult> {
   if (!authz.ok) return actionError(authz.error);
   try {
     const updated = await prisma.invoice.updateMany({
-      where: { ...key, status: "ISSUED" },
+      where: { docRef: key.docRef, status: "ISSUED" },
       data: { status: "SENT", sentAt: new Date() },
     });
     if (updated.count === 0) {
@@ -219,7 +219,7 @@ export async function markPaid(
   if (!authz.ok) return actionError(authz.error);
   try {
     const row = await prisma.invoice.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { status: true, approvalStatus: true },
     });
     if (!row || row.status !== "SENT") {
@@ -234,7 +234,7 @@ export async function markPaid(
     if (need.kind === "blocked") return actionError(need.error);
     if (need.kind === "skip") {
       const updated = await prisma.invoice.updateMany({
-        where: { ...key, status: "SENT" },
+        where: { docRef: key.docRef, status: "SENT" },
         data: { status: "PAID" },
       });
       if (updated.count === 0) {
@@ -261,7 +261,7 @@ export async function markPaid(
       );
     }
     await prisma.invoice.updateMany({
-      where: { ...key, status: "SENT" },
+      where: { docRef: key.docRef, status: "SENT" },
       data: {
         approvalStatus: "PENDING",
         requestedAt: new Date(),
@@ -300,7 +300,7 @@ export async function approveInvoiceIssue(
   if (!key) return actionError(tr("billing.invoicesActions.invalidNumber"));
   try {
     const prior = await prisma.invoice.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { approvalStatus: true },
     });
     if (!prior) return actionError(tr("billing.invoicesActions.invalidNumber"));
@@ -320,7 +320,7 @@ export async function approveInvoiceIssue(
       return actionOk();
     }
     await prisma.invoice.update({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       data: {
         approvalStatus: "APPROVED",
         approvedAt: new Date(),
@@ -355,7 +355,7 @@ export async function rejectInvoiceIssue(
   if (!key) return actionError(tr("billing.invoicesActions.invalidNumber"));
   try {
     const prior = await prisma.invoice.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { approvalStatus: true },
     });
     if (!prior) return actionError(tr("billing.invoicesActions.invalidNumber"));
@@ -372,7 +372,7 @@ export async function rejectInvoiceIssue(
       return actionError(acted.error ?? tr("common.couldNotApprove"));
     }
     await prisma.invoice.update({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       data: {
         approvalStatus: "REJECTED",
         rejectedAt: new Date(),
@@ -407,7 +407,7 @@ export async function approveInvoicePayment(
   if (!key) return actionError(tr("billing.invoicesActions.invalidNumber"));
   try {
     const prior = await prisma.invoice.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { status: true, approvalStatus: true },
     });
     if (!prior) return actionError(tr("billing.invoicesActions.invalidNumber"));
@@ -428,7 +428,7 @@ export async function approveInvoicePayment(
     }
     // 最終承認 = 入金済み。途中承認では status を動かさない。
     const updated = await prisma.invoice.updateMany({
-      where: { ...key, status: "SENT" },
+      where: { docRef: key.docRef, status: "SENT" },
       data: {
         status: "PAID",
         approvalStatus: "APPROVED",
@@ -467,7 +467,7 @@ export async function rejectInvoicePayment(
   if (!key) return actionError(tr("billing.invoicesActions.invalidNumber"));
   try {
     const prior = await prisma.invoice.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { approvalStatus: true },
     });
     if (!prior) return actionError(tr("billing.invoicesActions.invalidNumber"));
@@ -484,7 +484,7 @@ export async function rejectInvoicePayment(
       return actionError(acted.error ?? tr("common.couldNotApprove"));
     }
     await prisma.invoice.update({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       data: {
         approvalStatus: "REJECTED",
         rejectedAt: new Date(),
@@ -534,7 +534,7 @@ export async function approveInvoiceApproval(
   const key = parseDocKey(number, "INV");
   if (!key) return actionError(tr("billing.invoicesActions.invalidNumber"));
   const row = await prisma.invoice.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     select: { status: true },
   });
   if (!row) return actionError(tr("billing.invoicesActions.invalidNumber"));
@@ -557,7 +557,7 @@ export async function rejectInvoiceApproval(
   const key = parseDocKey(number, "INV");
   if (!key) return actionError(tr("billing.invoicesActions.invalidNumber"));
   const row = await prisma.invoice.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     select: { status: true },
   });
   if (!row) return actionError(tr("billing.invoicesActions.invalidNumber"));

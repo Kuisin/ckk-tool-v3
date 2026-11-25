@@ -4,7 +4,8 @@ import { appLabelForKey } from "@/lib/app-list";
 import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
-import { parseDocKey } from "@/lib/doc-number";
+import { docNo } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { listMemos } from "@/lib/document-memos";
 import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
@@ -28,12 +29,12 @@ export async function generateMetadata({
   return {
     title: formatDocPageTitle(
       appLabelForKey("price-lists", "価格表", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
-      decodeURIComponent(id),
+      docNo(decodeURIComponent(id)),
     ),
   };
 }
 
-/** 価格表 詳細 (SA22). `id` は価格表番号 PRC-YYYYMM-NNNNN. */
+/** 価格表 詳細 (SA22). `id` は法人コード付きの価格表番号（CKK~PRC-2026-00001）。 */
 export default async function PriceListDetailPage({
   params,
 }: {
@@ -42,8 +43,12 @@ export default async function PriceListDetailPage({
   const denied = await requireAppRead("price-lists");
   if (denied) return denied;
   const { id } = await params;
-  const key = parseDocKey(decodeURIComponent(id), "PRC");
-  if (!key) notFound();
+  const key = await docKeyFromParam(
+    "price_list_entries",
+    "PRC",
+    id,
+    "/sales/price-lists",
+  );
 
   const entry = await fetchPriceEntry(key);
   if (!entry) notFound();

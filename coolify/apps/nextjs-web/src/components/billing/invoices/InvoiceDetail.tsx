@@ -81,6 +81,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { AccountingDocumentSummary } from "@/lib/accounting-documents";
 import type { ApprovalActionState, ApprovalTrailEntry } from "@/lib/approvals";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import { downloadFile } from "@/lib/download";
 import type { ActionResult } from "@/lib/server-action";
@@ -149,7 +150,7 @@ export function InvoiceDetail({
 
   // PDF は発行後のみ閲覧できる（ルート側も 403 で拒否する）。
   const canViewPdf = invoice.status !== "DRAFT";
-  const pdfFilename = `${invoice.invoiceNumber}.pdf`;
+  const pdfFilename = `${docNo(invoice.invoiceNumber)}.pdf`;
   const [pdfFile, setPdfFile] = useState<PdfFileMeta | null>(pdfMeta);
   // 再生成でプレビューの iframe を貼り替えるためのキャッシュバスター。
   const [pdfNonce, setPdfNonce] = useState(0);
@@ -215,7 +216,7 @@ export function InvoiceDetail({
           : null,
       items: orderNumbers.map((n) => ({
         key: n,
-        label: n,
+        label: docNo(n),
         href: `/shipping/delivery-orders/${n}`,
       })),
       emptyNote: tr("billing.invoices.handEnteredLinesOnly"),
@@ -229,7 +230,7 @@ export function InvoiceDetail({
           : null,
       items: noteNumbers.map((n) => ({
         key: n,
-        label: n,
+        label: docNo(n),
         href: `/shipping/delivery-notes/${n}`,
       })),
       emptyNote: tr("billing.invoices.shipmentWithNoDeliveryNoteIssued"),
@@ -249,7 +250,7 @@ export function InvoiceDetail({
         ? [
             {
               key: "accounting",
-              label: accountingDocument.documentNumber,
+              label: docNo(accountingDocument.documentNumber),
               done: true,
               note: tr("billing.invoices.exportedAtLabel", {
                 dateTime: fmt.dateTime(accountingDocument.postedAt),
@@ -330,7 +331,7 @@ export function InvoiceDetail({
           title: result.data.requested ? requestedTitle : doneTitle,
           message: result.data.requested
             ? tr("billing.invoiceDetail.approvalRequestedMessage", {
-                invoiceNumber: invoice.invoiceNumber,
+                invoiceNumber: docNo(invoice.invoiceNumber),
               })
             : doneMessage,
           color: "green",
@@ -356,7 +357,7 @@ export function InvoiceDetail({
       if (result.ok) {
         notifications.show({
           title: tr("billing.accountingDocuments.reversed"),
-          message: result.data.documentNumber,
+          message: docNo(result.data.documentNumber),
           color: "green",
         });
         setReverseTarget(null);
@@ -456,7 +457,7 @@ export function InvoiceDetail({
       ]}
       createdAt={fmt.dateTime(invoice.createdAt)}
       status={<StatusBadge entity="Invoice" status={invoice.status} />}
-      title={invoice.invoiceNumber}
+      title={docNo(invoice.invoiceNumber)}
       updatedAt={fmt.dateTime(invoice.updatedAt)}
     >
       {/* ヘッダー直下 = ActionCard の定位置（design.md §8.2）。
@@ -473,6 +474,12 @@ export function InvoiceDetail({
           label={tr("common.invoiceNumber")}
           value={<DocNumber>{invoice.invoiceNumber}</DocNumber>}
         />
+        {invoice.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={<DocNumber>{invoice.legacyNumber}</DocNumber>}
+          />
+        )}
         <FieldValue
           label={tr("common.customer")}
           value={
@@ -817,7 +824,7 @@ export function InvoiceDetail({
         confirmLabel={tr("common.issue")}
         loading={isPending}
         message={tr("billing.invoiceDetail.confirmIssueMessage", {
-          invoiceNumber: invoice.invoiceNumber,
+          invoiceNumber: docNo(invoice.invoiceNumber),
         })}
         onClose={() => setIssueOpen(false)}
         onConfirm={() =>
@@ -825,7 +832,7 @@ export function InvoiceDetail({
             () => issueInvoice(invoice.invoiceNumber),
             tr("common.issued"),
             tr("billing.invoiceDetail.issuedWithNumber", {
-              invoiceNumber: invoice.invoiceNumber,
+              invoiceNumber: docNo(invoice.invoiceNumber),
             }),
             tr("billing.invoicesActions.approvalRequested"),
           )
@@ -838,7 +845,7 @@ export function InvoiceDetail({
         confirmLabel={tr("billing.invoices.markAsSent")}
         loading={isPending}
         message={tr("billing.invoiceDetail.confirmMarkSentMessage", {
-          invoiceNumber: invoice.invoiceNumber,
+          invoiceNumber: docNo(invoice.invoiceNumber),
         })}
         onClose={() => setSentOpen(false)}
         onConfirm={() =>
@@ -846,7 +853,7 @@ export function InvoiceDetail({
             () => markSent(invoice.invoiceNumber),
             tr("billing.invoices.markedAsSent"),
             tr("billing.invoiceDetail.markedSentWithNumber", {
-              invoiceNumber: invoice.invoiceNumber,
+              invoiceNumber: docNo(invoice.invoiceNumber),
             }),
           )
         }
@@ -858,7 +865,7 @@ export function InvoiceDetail({
         confirmLabel={tr("billing.invoices.markAsPaid")}
         loading={isPending}
         message={tr("billing.invoiceDetail.confirmMarkPaidMessage", {
-          invoiceNumber: invoice.invoiceNumber,
+          invoiceNumber: docNo(invoice.invoiceNumber),
         })}
         onClose={() => setPaidOpen(false)}
         onConfirm={() =>
@@ -866,7 +873,7 @@ export function InvoiceDetail({
             () => markPaid(invoice.invoiceNumber),
             tr("billing.invoices.markedAsPaid"),
             tr("billing.invoiceDetail.markedPaidWithNumber", {
-              invoiceNumber: invoice.invoiceNumber,
+              invoiceNumber: docNo(invoice.invoiceNumber),
             }),
             tr("billing.invoicesActions.paymentApprovalRequested"),
           )

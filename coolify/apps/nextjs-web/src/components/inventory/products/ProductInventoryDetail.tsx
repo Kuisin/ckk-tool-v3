@@ -20,6 +20,7 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { categoryLabel } from "@/lib/app-list";
+import { docNo } from "@/lib/doc-number";
 import type { Locale } from "@/lib/i18n";
 import { InventoryTransactionsTable } from "../InventoryTransactionsTable";
 import {
@@ -223,7 +224,7 @@ function ReservationsTable({ rows }: { rows: InventoryReservationRow[] }) {
                       href={`/sales/order-lines/${r.orderLineNumber}`}
                       size="sm"
                     >
-                      {r.orderLineNumber}
+                      {docNo(r.orderLineNumber)}
                     </Anchor>
                   ) : r.workOrderNumber != null ? (
                     <Anchor

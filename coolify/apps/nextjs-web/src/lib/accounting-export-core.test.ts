@@ -47,6 +47,37 @@ function debitTotal(inv: JournalInvoiceInput, s = settings): number {
   return buildJournalRows(inv, s).reduce((sum, r) => sum + r.debit.amount, 0);
 }
 
+describe("buildJournalRows — 旧番号（振り直し前の請求書番号）", () => {
+  it("旧番号があれば摘要に括弧で添える（列は増やさない）", () => {
+    const rows = buildJournalRows(
+      {
+        ...base,
+        invoiceNumber: "INV-2026-00001",
+        legacyInvoiceNumber: "INV-202607-00001",
+        taxAmount: 22_727,
+      },
+      settings,
+    );
+    expect(rows[0].memo).toBe(
+      "INV-2026-00001（旧 INV-202607-00001） 株式会社テスト工業",
+    );
+    expect(rows[1].memo).toBe(
+      "INV-2026-00001（旧 INV-202607-00001） 株式会社テスト工業 消費税",
+    );
+    // 番号の列（voucherNo / invoiceNumber）は新しい番号だけ
+    expect(rows[0].voucherNo).toBe("INV-2026-00001");
+    expect(rows[0].invoiceNumber).toBe("INV-2026-00001");
+  });
+
+  it("旧番号が無ければ摘要は従来どおり", () => {
+    const withNull = buildJournalRows(
+      { ...base, invoiceNumber: "INV-2026-00001", legacyInvoiceNumber: null },
+      settings,
+    );
+    expect(withNull[0].memo).toBe("INV-2026-00001 株式会社テスト工業");
+  });
+});
+
 describe("buildJournalRows — 旧実装から変えていない部分", () => {
   it("税額を渡さなければ 1 行（税込）", () => {
     const rows = buildJournalRows(base, settings);

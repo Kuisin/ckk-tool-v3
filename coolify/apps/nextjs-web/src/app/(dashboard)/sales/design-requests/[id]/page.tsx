@@ -6,6 +6,8 @@ import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
+import { docNo } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { listMemos } from "@/lib/document-memos";
 import { pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
 import { formatDocPageTitle } from "@/lib/page-title";
@@ -25,12 +27,12 @@ export async function generateMetadata({
   return {
     title: formatDocPageTitle(
       appLabelForKey("design-requests", "設計依頼書", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
-      decodeURIComponent(id),
+      docNo(decodeURIComponent(id)),
     ),
   };
 }
 
-/** 設計依頼書 詳細 (SA26). URL id = 依頼番号 DSG-YYYYMM-NNNNN. */
+/** 設計依頼書 詳細 (SA26). URL id = 法人コード付きの番号（CKK~DSG-2026-00001）。 */
 export default async function SalesDesignRequestsDetailPage({
   params,
 }: {
@@ -39,7 +41,14 @@ export default async function SalesDesignRequestsDetailPage({
   const denied = await requireAppRead("design-requests");
   if (denied) return denied;
   const { id } = await params;
-  const requestNumber = decodeURIComponent(id);
+  const key = await docKeyFromParam(
+    "design_requests",
+    "DSG",
+    id,
+    "/sales/design-requests",
+  );
+  // 承認・メモ・添付・監査は参照（法人コード付き）で引く。
+  const requestNumber = key.docRef;
   const locale = await getServerLocale();
 
   const [
@@ -51,7 +60,7 @@ export default async function SalesDesignRequestsDetailPage({
     assigneeOptions,
     memos,
   ] = await Promise.all([
-    fetchDesignRequest(requestNumber, locale),
+    fetchDesignRequest(key, locale),
     fetchAuditEntries("design_requests", requestNumber),
     listAttachments("design_requests", requestNumber),
     fetchApprovalState("design_requests", requestNumber),

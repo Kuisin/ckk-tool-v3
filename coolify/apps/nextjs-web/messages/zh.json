@@ -494,6 +494,7 @@
     "lineNotesOptional": "行备注（可选）",
     "addLine": "添加明细",
     "requestNumber": "申请编号",
+    "legacyNumber": "旧编号",
     "approvedAt": "批准时间",
     "requestedDate2": "希望交期",
     "searchProducts": "搜索产品",

@@ -11,6 +11,7 @@ import { getTranslations } from "next-intl/server";
 import { fetchUninvoicedShipmentsForCustomer } from "@/app/(dashboard)/billing/closings/data";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { docIdOf } from "@/lib/doc-number";
 import { generateManualInvoice } from "@/lib/invoice-generation";
 import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
 import { fetchUnbilledShipmentRows, type UnbilledShipmentRow } from "./data";
@@ -32,25 +33,22 @@ export async function searchUnbilledShipments(
  */
 export async function createManualInvoice(input: {
   customerBpId: string;
-  deliveryOrderKeys: { yearMonth: string; seq: number }[];
+  /** 選んだ出荷書の id（`CKK~DOR-2026-00001`）。 */
+  deliveryOrderNumbers: string[];
 }): Promise<ActionResult<{ invoiceNumber: string }>> {
   const tr = await getTranslations();
   const authz = await checkPermission("invoice", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  if (input.deliveryOrderKeys.length === 0) {
+  if (input.deliveryOrderNumbers.length === 0) {
     return actionError(tr("common.noTargetSelected"));
   }
 
   const uninvoiced = await fetchUninvoicedShipmentsForCustomer(
     input.customerBpId,
   );
-  const wanted = new Set(
-    input.deliveryOrderKeys.map((k) => `${k.yearMonth}-${k.seq}`),
-  );
-  const shipments = uninvoiced.filter((s) =>
-    wanted.has(`${s.yearMonth}-${s.seq}`),
-  );
-  if (shipments.length !== input.deliveryOrderKeys.length) {
+  const wanted = new Set(input.deliveryOrderNumbers);
+  const shipments = uninvoiced.filter((s) => wanted.has(docIdOf(s)));
+  if (shipments.length !== wanted.size) {
     return actionError(tr("billing.invoices.someShipmentsNoLongerAvailable"));
   }
 

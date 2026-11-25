@@ -10,6 +10,10 @@
  * 指している file id と一致するか」だけを見る。これで、他人の書類の
  * file id を推測しても取り出せない。
  *
+ * `?no=` は書類の id（`CKK~INV-2026-00001`）。番号だけ・旧番号で来たときは
+ * その番号の書類を候補にして、**このアカウントに見える書類のうち file id が
+ * 一致するもの**だけを通す（番号は法人ごとの連番で、単独では決まらない）。
+ *
  * ルートハンドラは (portal)/layout.tsx を通らないので、機能フラグを
  * ここで自分で見る（check-page-gates.sh が貼り忘れを検出する）。
  */
@@ -17,15 +21,16 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { isDevFeatureEnabled } from "@/lib/dev-features";
-import { parseDocKey } from "@/lib/doc-number";
 import { recordPortalAccess } from "@/lib/portal-access-log";
 import { getPortalSession } from "@/lib/portal-auth";
 import {
   getPortalDocument,
   isPortalDocumentType,
 } from "@/lib/portal-documents";
+import { PORTAL_DOCUMENT_PREFIX } from "@/lib/portal-documents-core";
 import { clientIpOf, userAgentOf } from "@/lib/request-ip";
 import { getObject } from "@/lib/storage";
+import { portalDocCandidates } from "../../../doc-param";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,17 +54,23 @@ export async function GET(
   if (!isPortalDocumentType(type)) {
     return new NextResponse("Not found", { status: 404 });
   }
-  const key = parseDocKey(number);
-  if (!key) return new NextResponse("Not found", { status: 404 });
+  const { keys } = await portalDocCandidates(
+    type,
+    PORTAL_DOCUMENT_PREFIX[type],
+    number,
+  );
 
   // ここで認可が効く（見えない書類なら null）。
-  const doc = await getPortalDocument(session, type, key.yearMonth, key.seq);
-  if (!doc) return new NextResponse("Not found", { status: 404 });
-
   // **書類が指している file id と一致しなければ渡さない。**
-  if (!doc.pdfFileId || doc.pdfFileId !== fileId) {
-    return new NextResponse("Not found", { status: 404 });
+  let doc: Awaited<ReturnType<typeof getPortalDocument>> = null;
+  for (const key of keys) {
+    const candidate = await getPortalDocument(session, type, key);
+    if (candidate?.pdfFileId && candidate.pdfFileId === fileId) {
+      doc = candidate;
+      break;
+    }
   }
+  if (!doc) return new NextResponse("Not found", { status: 404 });
 
   const file = await prisma.file.findUnique({
     where: { id: fileId },
@@ -70,7 +81,7 @@ export async function GET(
   await recordPortalAccess({
     session,
     resourceType: type,
-    resourceId: doc.number,
+    resourceId: doc.id,
     action: "DOWNLOAD",
     ipAddress: clientIpOf(req),
     userAgent: userAgentOf(req),

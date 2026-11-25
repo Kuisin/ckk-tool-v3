@@ -10,7 +10,7 @@
  * 製品を選ぶと「その製品に過去の設計書があるか」をサーバーに問い合わせ、
  * **新規 / 改訂 が自動で決まる**（根拠つきで表示し、手で上書きもできる）。
  * 改訂のときだけ 元図面 と 変更理由 が出る（変更理由は必須）。
- * 保存は createDesignRequest が DSG-YYYYMM-NNNNN を採番し、詳細ページへ遷移。
+ * 保存は createDesignRequest（番号 DSG-FFFF-NNNNN は DB が払い出す）→ 詳細ページへ遷移。
  *
  * 見積書・注文明細から起票したとき（`?quote=` / `?orderLine=`）は initial* で
  * 参照元が入り、**トリガーは固定表示になる** — SegmentedControl を残すと、
@@ -55,6 +55,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { docNo } from "@/lib/doc-number";
 import {
   designKindLabel,
   designKindOptions,
@@ -277,7 +278,7 @@ export function DesignRequestForm({
             mode === "edit"
               ? tr("sales.designRequests.theDesignRequestWasUpdated")
               : tr("sales.designRequestForm.createdMessage", {
-                  number: result.data.number,
+                  number: docNo(result.data.number),
                 }),
           color: "green",
         });
@@ -313,7 +314,7 @@ export function DesignRequestForm({
       title={
         mode === "edit"
           ? tr("sales.designRequestForm.editTitle", {
-              requestId: requestId ?? "",
+              requestId: docNo(requestId ?? ""),
             })
           : tr("sales.designRequests.newDesignRequest")
       }
@@ -441,8 +442,8 @@ export function DesignRequestForm({
                   request && !hasSourceDocument(request.trigger)
                     ? tr("common.none2")
                     : request?.trigger === "QUOTE"
-                      ? (request?.quoteNumber ?? "—")
-                      : (request?.orderLineNumber ?? "—")
+                      ? (docNo(request?.quoteNumber) ?? "—")
+                      : (docNo(request?.orderLineNumber) ?? "—")
                 }
               />
             </>

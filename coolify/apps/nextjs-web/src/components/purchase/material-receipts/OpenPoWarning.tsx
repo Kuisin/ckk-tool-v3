@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { checkOpenPurchaseOrders } from "@/app/(dashboard)/purchase/material-receipts/actions";
+import { docNo } from "@/lib/doc-number";
 import type { OpenPoLine } from "@/lib/open-po-guard-core";
 
 export function OpenPoWarning({
@@ -73,7 +74,7 @@ export function OpenPoWarning({
           {conflicts.map((c) => (
             <List.Item key={`${c.purchaseOrderId}:${c.itemId}`}>
               {tr("purchase.materialReceipts.openPo.line", {
-                po: c.poNumber,
+                po: docNo(c.poNumber),
                 remaining: c.remaining,
                 unit: c.unit,
               })}{" "}

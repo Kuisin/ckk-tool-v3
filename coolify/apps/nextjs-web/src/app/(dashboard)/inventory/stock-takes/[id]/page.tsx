@@ -4,6 +4,8 @@ import { appLabelForKey } from "@/lib/app-list";
 import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
+import { docIdOf, docNo } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
 import { fetchStockTake } from "../data";
@@ -21,12 +23,12 @@ export async function generateMetadata({
   return {
     title: formatDocPageTitle(
       appLabelForKey("stock-takes", "棚卸", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
-      decodeURIComponent(id),
+      docNo(decodeURIComponent(id)),
     ),
   };
 }
 
-/** 棚卸 詳細 (PD28). URL id = 表示番号 STK-YYYYMM-NNNNN. */
+/** 棚卸 詳細 (PD28). URL id = 法人コード付きの棚卸番号（CKK~STK-2026-00001）. */
 export default async function ProductionStockTakesDetailPage({
   params,
 }: {
@@ -35,7 +37,10 @@ export default async function ProductionStockTakesDetailPage({
   const denied = await requireAppRead("stock-takes");
   if (denied) return denied;
   const { id } = await params;
-  const stockTakeNumber = decodeURIComponent(id);
+  // 番号だけ・旧番号で来た URL は正規の URL へ転送される。
+  const stockTakeNumber = docIdOf(
+    await docKeyFromParam("stock_takes", "STK", id, "/inventory/stock-takes"),
+  );
 
   const [stockTake, auditEntries, approval, trail] = await Promise.all([
     fetchStockTake(stockTakeNumber),

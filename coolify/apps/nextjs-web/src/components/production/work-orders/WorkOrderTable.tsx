@@ -79,6 +79,7 @@ export function WorkOrderTable({
       !search ||
       String(r.workOrderNumber).includes(search) ||
       r.docNumber.includes(search) ||
+      (r.legacyNumber ?? "").includes(search) ||
       (r.orderLineNumber ?? "").includes(search) ||
       r.productName.includes(search);
     const matchesType = !type || r.type === type;
@@ -269,7 +270,7 @@ export function WorkOrderTable({
             : tr("production.workOrders.thereAreNoWorkOrders")
         }
         getRowId={(r) => String(r.workOrderNumber)}
-        onRowClick={(r) => router.push(`${basePath}/${r.docNumber}`)}
+        onRowClick={(r) => router.push(`${basePath}/${r.workOrderNumber}`)}
         renderCard={(r) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>

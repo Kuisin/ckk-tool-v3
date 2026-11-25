@@ -14,15 +14,12 @@ import {
   fetchUninvoicedShipmentsForCustomer,
   shipmentAmount,
 } from "@/app/(dashboard)/billing/closings/data";
-import { formatDocNumber } from "@/lib/doc-number";
+import { docIdOf, docIdOrNull } from "@/lib/doc-number";
 
 export interface UnbilledShipmentRow {
-  /** 出荷書の複合キー（選択の対象キー）。 */
-  yearMonth: string;
-  seq: number;
-  /** 導出番号 DOR-YYYYMM-NNNNN。 */
+  /** 出荷書の id（`CKK~DOR-2026-00001`）— 選択の対象キーを兼ねる。 */
   deliveryOrderNumber: string;
-  /** 導出番号 DRN-YYYYMM-NNNNN（未発行なら null — 副次表示）。 */
+  /** 納品書の id（`CKK~DRN-2026-00001`。未発行なら null — 副次表示）。 */
   deliveryNoteNumber: string | null;
   shippedAt: string | null;
   quantity: number;
@@ -38,15 +35,8 @@ export async function fetchUnbilledShipmentRows(
     .map((s) => {
       const note = s.deliveryNotes[0] ?? null;
       return {
-        yearMonth: s.yearMonth,
-        seq: s.seq,
-        deliveryOrderNumber: formatDocNumber("DOR", {
-          yearMonth: s.yearMonth,
-          seq: s.seq,
-        }),
-        deliveryNoteNumber: note
-          ? formatDocNumber("DRN", { yearMonth: note.yearMonth, seq: note.seq })
-          : null,
+        deliveryOrderNumber: docIdOf(s),
+        deliveryNoteNumber: docIdOrNull(note),
         shippedAt: s.shippedAt?.toISOString() ?? null,
         quantity: s.items.reduce((sum, it) => sum + it.quantity, 0),
         amount: shipmentAmount(s),

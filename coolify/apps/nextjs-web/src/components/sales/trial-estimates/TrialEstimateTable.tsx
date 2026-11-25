@@ -23,6 +23,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docNo } from "@/lib/doc-number";
 import { statusOptions } from "@/lib/status-map";
 import {
   calcTrialPricing,
@@ -72,7 +73,8 @@ export function TrialEstimateTable({
     const matchesSearch =
       !search ||
       r.name.includes(search) ||
-      r.estimateNumber.includes(search) ||
+      docNo(r.estimateNumber).includes(search) ||
+      (r.legacyNumber?.includes(search) ?? false) ||
       (r.customerName ?? "").includes(search);
     const matchesTool = !toolType || r.input.toolType === toolType;
     const matchesStatus = !status || r.status === status;
@@ -242,7 +244,7 @@ export function TrialEstimateTable({
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                {r.estimateNumber}
+                {docNo(r.estimateNumber)}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {r.name}

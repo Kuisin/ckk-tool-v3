@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { DeliveryNoteForm } from "@/components/shipping/delivery-notes/DeliveryNoteForm";
 import { isEditable } from "@/components/shipping/delivery-notes/model";
 import { requireAppRead } from "@/lib/authz-page";
-import { parseDocKey } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { fetchDeliveryNote } from "../../data";
 
 export const dynamic = "force-dynamic";
@@ -21,8 +21,13 @@ export default async function ShippingDeliveryNotesEditPage({
   const denied = await requireAppRead("delivery-notes");
   if (denied) return denied;
   const { id } = await params;
-  const key = parseDocKey(decodeURIComponent(id), "DRN");
-  if (!key) notFound();
+  const key = await docKeyFromParam(
+    "delivery_notes",
+    "DRN",
+    id,
+    "/shipping/delivery-notes",
+    "/edit",
+  );
 
   const note = await fetchDeliveryNote(key);
   if (!note) notFound();

@@ -494,6 +494,7 @@
     "lineNotesOptional": "行の備考（任意）",
     "addLine": "明細を追加",
     "requestNumber": "依頼番号",
+    "legacyNumber": "旧番号",
     "approvedAt": "承認日時",
     "requestedDate2": "希望納期",
     "searchProducts": "製品を検索",

@@ -71,6 +71,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { categoryLabel } from "@/lib/app-list";
+import { docNo } from "@/lib/doc-number";
 import type { Locale } from "@/lib/i18n";
 import type { ActionResult } from "@/lib/server-action";
 import {
@@ -432,7 +433,7 @@ export function StockTakeDetail({
       if (result.ok) {
         notifications.show({
           title: done,
-          message: `${tr("common.stockTake")} ${v.stockTakeNumber}`,
+          message: `${tr("common.stockTake")} ${docNo(v.stockTakeNumber)}`,
           color: "green",
         });
         setCancelOpen(false);
@@ -486,7 +487,7 @@ export function StockTakeDetail({
         ? [
             {
               key: v.movementNumber,
-              label: v.movementNumber,
+              label: docNo(v.movementNumber),
               href: `/inventory/movements/${v.movementNumber}`,
               done: true,
             },
@@ -524,7 +525,7 @@ export function StockTakeDetail({
       ]}
       createdAt={fmt.dateTime(v.createdAt)}
       status={<StatusBadge entity="StockTake" status={v.status} />}
-      title={v.stockTakeNumber}
+      title={docNo(v.stockTakeNumber)}
       updatedAt={fmt.dateTime(v.updatedAt)}
     >
       <ApprovalActionCard
@@ -534,7 +535,7 @@ export function StockTakeDetail({
         onReject={(reason) => rejectStockTake(v.stockTakeNumber, reason)}
         onRequest={() => submitStockTake(v.stockTakeNumber)}
         rejectReason={v.rejectReason}
-        subject={`${tr("common.stockTake")} ${v.stockTakeNumber}`}
+        subject={`${tr("common.stockTake")} ${docNo(v.stockTakeNumber)}`}
       />
 
       <SummaryGrid>
@@ -542,6 +543,12 @@ export function StockTakeDetail({
           label={tr("production.stockTakes.detail.numberLabel")}
           value={<DocNumber>{v.stockTakeNumber}</DocNumber>}
         />
+        {v.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={<DocNumber>{v.legacyNumber}</DocNumber>}
+          />
+        )}
         <FieldValue label={tr("common.site")} value={v.plantName} />
         <FieldValue
           label={tr("production.stockTakes.table.storageLocation")}
@@ -614,7 +621,7 @@ export function StockTakeDetail({
         confirmLabel={tr("common.cancelDocument")}
         loading={isPending}
         message={tr("production.stockTakes.detail.confirmCancelBody", {
-          number: v.stockTakeNumber,
+          number: docNo(v.stockTakeNumber),
         })}
         onClose={() => setCancelOpen(false)}
         onConfirm={() =>

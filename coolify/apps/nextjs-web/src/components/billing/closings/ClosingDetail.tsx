@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { paymentTermsShape } from "@/lib/billing-terms-core";
+import { docNo } from "@/lib/doc-number";
 import { formatMoney } from "@/lib/format";
 import { type BillingClosingDetail, isProcessable } from "./model";
 
@@ -105,7 +106,7 @@ export function ClosingDetail({
         notifications.show({
           title: tr("billing.closings.theInvoicesWereGenerated"),
           message: tr("billing.closings.createdInvoice", {
-            number: result.data.invoiceNumber,
+            number: docNo(result.data.invoiceNumber),
           }),
           color: "green",
         });
@@ -166,7 +167,7 @@ export function ClosingDetail({
           : null,
       items: closing.shipments.map((sp) => ({
         key: sp.deliveryOrderNumber,
-        label: sp.deliveryOrderNumber,
+        label: docNo(sp.deliveryOrderNumber),
         href: `/shipping/delivery-orders/${sp.deliveryOrderNumber}`,
         note: tr("billing.closings.shipmentNote", {
           quantity: sp.quantity,
@@ -186,7 +187,7 @@ export function ClosingDetail({
         ? [
             {
               key: closing.invoiceNumber,
-              label: closing.invoiceNumber,
+              label: docNo(closing.invoiceNumber),
               href: `${INVOICES_PATH}/${closing.invoiceNumber}`,
               done: closing.status === "EXPORTED",
               note: formatMoney(closing.totalAmount),

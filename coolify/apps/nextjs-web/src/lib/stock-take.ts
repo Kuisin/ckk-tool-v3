@@ -7,9 +7,7 @@ import "server-only";
  * ここは DB の読み書きと、確定時の入出庫伝票の発行だけ。
  */
 
-import { requireDocRef } from "@/lib/doc-ref";
 import type { Prisma as PrismaNS } from "../../generated/client/client";
-import type { MovementKey } from "./inventory";
 import { applyTransaction, movementOpener } from "./inventory";
 import { inventoryTypeOf } from "./inventory-item-type";
 import { encodeInventoryNote } from "./inventory-note-core";
@@ -77,15 +75,13 @@ export interface ConfirmResult {
 export async function confirmStockTakeTx(
   tx: Tx,
   stockTakeId: string,
-  movementKey: MovementKey,
   actorId: string | null,
 ): Promise<ConfirmResult> {
   const take = await tx.stockTake.findUniqueOrThrow({
     where: { id: stockTakeId },
     select: {
       id: true,
-      yearMonth: true,
-      seq: true,
+      docRef: true,
       plantId: true,
       lines: {
         select: {
@@ -99,15 +95,14 @@ export async function confirmStockTakeTx(
       },
     },
   });
-  const number = `STK-${take.yearMonth}-${String(take.seq).padStart(5, "0")}`;
-  // 在庫取引の reference_id は法人コード付きの参照で残す（lib/doc-ref-core.ts）。
-  const refId = await requireDocRef("stock_takes", number, tx);
+  // 在庫取引の reference_id と伝票の元書類は、法人コード付きの参照
+  // （= 行の doc_ref）で残す（lib/doc-ref-core.ts）。番号だけにしない。
+  const refId = take.docRef;
 
   const openMovement = movementOpener(tx, {
-    key: movementKey,
     cause: "ADJUSTMENT",
     sourceType: "stock_takes",
-    sourceId: number,
+    sourceId: refId,
     plantId: take.plantId,
   });
 

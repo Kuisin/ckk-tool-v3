@@ -18,6 +18,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docNo } from "@/lib/doc-number";
 import { deliveryMethodLabel, deliveryMethodOptions } from "@/lib/enum-labels";
 import { statusOptions } from "@/lib/status-map";
 import type { DeliveryNote } from "./model";
@@ -58,8 +59,10 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
   const filtered = rows.filter((n) => {
     const matchesSearch =
       !search ||
-      n.deliveryNumber.includes(search) ||
-      n.deliveryOrderNumber.includes(search) ||
+      // 番号だけで照合する。旧番号（DRN-YYYYMM-NNNNN）でも探せる。
+      docNo(n.deliveryNumber).includes(search) ||
+      (n.legacyNumber ?? "").includes(search) ||
+      docNo(n.deliveryOrderNumber).includes(search) ||
       n.recipientName.includes(search) ||
       (n.endUserName ?? "").includes(search);
     const matchesMethod = !method || n.deliveryMethod === method;
@@ -74,7 +77,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
       sortable: true,
       render: (n) => (
         <Text ff="mono" size="sm">
-          {n.deliveryNumber}
+          {docNo(n.deliveryNumber)}
         </Text>
       ),
     },
@@ -84,7 +87,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
       sortable: true,
       render: (n) => (
         <Text ff="mono" size="sm">
-          {n.deliveryOrderNumber}
+          {docNo(n.deliveryOrderNumber)}
         </Text>
       ),
     },
@@ -191,13 +194,13 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                {n.deliveryNumber}
+                {docNo(n.deliveryNumber)}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {n.recipientName}
               </Text>
               <Text c="dimmed" size="xs" truncate>
-                {n.deliveryOrderNumber}
+                {docNo(n.deliveryOrderNumber)}
                 {n.endUserName
                   ? ` · ${tr("shipping.deliveryNoteTable.destinationLabel", { name: n.endUserName })}`
                   : ""}

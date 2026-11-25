@@ -2,8 +2,11 @@
  * audit-links.ts — 操作履歴 (SY07) から関連ドキュメント/アプリへのリンク解決。
  * pure / client-safe。
  *
- * audit_logs の recordId は業務識別子（文書番号 QOT-… / 通し番号 / マスタ id）
- * で、各詳細ページの URL id と同じ規約（例: /sales/quotes/QOT-…）。
+ * audit_logs の recordId は業務識別子（文書番号 QOT-… / 通し番号 / マスタ id）。
+ * マスタ・ロット番号はそのまま各詳細ページの URL id になる。**番号を持つ書類は
+ * 番号だけでは URL にならない**（同じ番号が 2 つの自社法人にあり得る）ので、
+ * 法人コード付きの `recordKey`（`CKK/QOT-2026-00001` — audit_logs.record_key）を
+ * 渡してもらい、URL の id（`CKK~QOT-2026-00001`）へ直す。
  * 確実に詳細 URL を組めるテーブルは kind "detail"、それ以外は一覧 + 検索
  * （?q=recordId）の kind "list" で返す。未知のテーブルは null。
  *
@@ -17,6 +20,7 @@
  */
 
 import { appLabelForKey, appList } from "./app-list";
+import { docUrlId, isDocNumber, parseDocId } from "./doc-ref-core";
 import type { Locale } from "./i18n";
 import { label } from "./messages";
 
@@ -308,11 +312,35 @@ function resolveAppLabel(route: TableRoute, locale: Locale): string {
   return `${base}${suffix}`;
 }
 
-/** 対象テーブル + recordId から関連ページへのリンクを解決する。 */
+/**
+ * 詳細 URL の id。法人コード付きの書類の参照（`recordKey` か、`recordId` 自体が
+ * 参照 / id の姿のとき）は URL の id（`CKK~QOT-2026-00001`）へ直す。
+ * それ以外（マスタ id・ロット番号・法人コードの無い番号）は recordId のまま。
+ */
+function detailId(recordId: string, recordKey?: string | null): string {
+  for (const candidate of [recordKey, recordId]) {
+    if (!candidate) continue;
+    const { companyCode, number } = parseDocId(candidate);
+    if (companyCode && isDocNumber(number)) {
+      return docUrlId(companyCode, number);
+    }
+  }
+  return recordId;
+}
+
+/**
+ * 対象テーブル + recordId から関連ページへのリンクを解決する。
+ *
+ * `recordKey` は audit_logs.record_key（任意）。番号を持つ書類ではこれが法人
+ * コード付きの参照なので、渡すとリンクが正しい法人の書類を開く。渡さないと
+ * 番号だけの URL になり、詳細ページ側が番号から書類を引く（同じ番号が複数の
+ * 法人にあれば選択画面になる）。
+ */
 export function auditRecordLink(
   tableName: string,
   recordId: string | null,
   locale: Locale = "ja",
+  recordKey?: string | null,
 ): AuditLink | null {
   const route = TABLE_ROUTES[tableName];
   if (!route) return null;
@@ -320,7 +348,7 @@ export function auditRecordLink(
   if (route.directDetail && recordId) {
     return {
       appLabel,
-      href: `${route.listPath}/${encodeURIComponent(recordId)}`,
+      href: `${route.listPath}/${encodeURIComponent(detailId(recordId, recordKey))}`,
       kind: "detail",
     };
   }

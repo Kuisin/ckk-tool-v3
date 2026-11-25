@@ -1,8 +1,10 @@
 /**
  * model.ts — 請求書 (BL01) view-model types + pure helpers.
  *
- * Model (app.invoices — 複合キー (year_month, seq)):
- *   表示番号 INV-YYYYMM-NNNNN はキーから導出（保存しない）。URL id も導出番号。
+ * Model (app.invoices):
+ *   請求書番号 INV-FFFF-NNNNN は DB が払い出す（法人 × 会計年度の連番）。
+ *   画面では id（法人コード + 番号 `CKK~INV-2026-00001`）で持ち、URL id を兼ねる。
+ *   表示するときは `<DocNumber>` / `docNo()` で番号だけにする（lib/doc-number.ts）。
  *   請求書は締日処理 (BL02, closingKind=SCHEDULED) の締めか、手動請求
  *   (BL11, closingKind=MANUAL) から作成される。明細は出荷書（DISPATCH ×
  *   SHIPPED）由来のほか、**下書きの間だけ**料金マスタから手動で足せる
@@ -36,9 +38,9 @@ export interface InvoiceItem {
   quantity: number;
   unitPrice: number;
   amount: number;
-  /** 由来の出荷書番号 DOR-YYYYMM-NNNNN（手動明細は null）。 */
+  /** 由来の出荷書の id（`CKK~DOR-2026-00001`。手動明細は null）。 */
   deliveryOrderNumber: string | null;
-  /** 由来の納品書番号 DRN-YYYYMM-NNNNN（未発行時は null）。 */
+  /** 由来の納品書の id（`CKK~DRN-2026-00001`。未発行時は null）。 */
   deliveryNoteNumber: string | null;
   /**
    * 手動で足した追加費用の行か（料金マスタ MS0G 由来・出荷書に紐づかない）。
@@ -57,7 +59,7 @@ export interface InvoiceItem {
  * fetchInvoicesForDeliveryNote。
  */
 export interface InvoiceLink {
-  /** 表示番号 INV-YYYYMM-NNNNN（URL id も同じ）。 */
+  /** 請求書の id（`CKK~INV-2026-00001`。URL id も同じ）。 */
   number: string;
   status: InvoiceStatus;
   totalAmount: number;
@@ -65,9 +67,11 @@ export interface InvoiceLink {
 }
 
 export interface Invoice {
-  /** 導出文書番号 INV-YYYYMM-NNNNN — URL id と同一。 */
+  /** 請求書の id（`CKK~INV-2026-00001`）— URL id と同一。 */
   id: string;
   invoiceNumber: string;
+  /** 旧番号（INV-YYYYMM-NNNNN）。番号設計の移行前に発行された書類だけが持つ。 */
+  legacyNumber: string | null;
   customerBpId: string;
   customerName: string;
   customerBranchName: string | null;

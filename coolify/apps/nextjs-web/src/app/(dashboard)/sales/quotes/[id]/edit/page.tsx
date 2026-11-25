@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { isEditable } from "@/components/sales/quotes/model";
 import { QuoteForm } from "@/components/sales/quotes/QuoteForm";
 import { requireAppRead } from "@/lib/authz-page";
-import { parseDocKey } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { loadTaxCatalog } from "@/lib/tax-categories";
 import { fetchCustomerOptions } from "../../../trial-estimates/data";
 import {
@@ -29,8 +29,13 @@ export default async function SalesQuotesEditPage({
   const denied = await requireAppRead("quotes");
   if (denied) return denied;
   const { id } = await params;
-  const key = parseDocKey(id, "QOT");
-  if (!key) notFound();
+  const key = await docKeyFromParam(
+    "quotes",
+    "QOT",
+    id,
+    "/sales/quotes",
+    "/edit",
+  );
 
   const [
     quote,

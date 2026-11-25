@@ -10,7 +10,8 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { loadChargeItemOptions } from "@/lib/charge-items";
-import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
+import { docNo } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { listMemos } from "@/lib/document-memos";
 import { isIssued, pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
 import { formatDocPageTitle } from "@/lib/page-title";
@@ -30,12 +31,12 @@ export async function generateMetadata({
   return {
     title: formatDocPageTitle(
       appLabelForKey("invoices", "請求書", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
-      decodeURIComponent(id),
+      docNo(decodeURIComponent(id)),
     ),
   };
 }
 
-/** 請求書 詳細 (BL21). URL id = 導出文書番号 INV-YYYYMM-NNNNN. */
+/** 請求書 詳細 (BL21). URL id = 法人コード + 番号（`CKK~INV-2026-00001`）。 */
 export default async function BillingInvoicesDetailPage({
   params,
 }: {
@@ -44,10 +45,11 @@ export default async function BillingInvoicesDetailPage({
   const denied = await requireAppRead("invoices");
   if (denied) return denied;
   const { id } = await params;
-  const key = parseDocKey(decodeURIComponent(id), "INV");
-  if (!key) notFound();
+  // 番号だけ・旧番号（INV-YYYYMM-NNNNN）の URL は正規の URL へ転送される。
+  const key = await docKeyFromParam("invoices", "INV", id, "/billing/invoices");
 
-  const number = formatDocNumber("INV", key);
+  // 多態参照（監査・メモ・承認）は参照（doc_ref）で引く。
+  const number = key.docRef;
   const [invoice, auditEntries, memos] = await Promise.all([
     fetchInvoice(key),
     fetchAuditEntries("invoices", number),

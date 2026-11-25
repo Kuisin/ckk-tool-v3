@@ -41,7 +41,7 @@ export default async function WorkOrderStepExecutionPage({
   const denied = await requireAppRead("work-orders");
   if (denied) return denied;
   const { id, stepId } = await params;
-  const workOrderNumber = await resolveWorkOrderIdParam(id);
+  const workOrderNumber = await resolveWorkOrderIdParam(id, `/steps/${stepId}`);
   if (workOrderNumber == null) notFound();
 
   const data = await fetchStepExecution(

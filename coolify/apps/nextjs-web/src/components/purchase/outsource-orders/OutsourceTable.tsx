@@ -4,7 +4,7 @@
  * OutsourceTable — 外注依頼 一覧 (PU04, design.md §8.1 / §14)。
  *
  * 指示書の外注工程（execution_location = OUTSOURCE）の読み取り専用一覧。
- * Columns: 指示書番号（指示書詳細へのリンク）/ 製品 / 工程名 / 外注先 /
+ * Columns: 依頼番号 / 指示書番号（指示書詳細へのリンク）/ 製品 / 工程名 / 外注先 /
  * 依頼日 / 入荷予定日 / 入荷日 / 状態。
  * フィルタ: 検索 + 外注先 + 状態。行クリック → 工程実行画面
  * （依頼日・入荷予定日・入荷日はそこで編集する）。
@@ -18,6 +18,7 @@ import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { DocNumber } from "@/components/ui/DocNumber";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
@@ -58,6 +59,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
+      (r.outsourceNumber ?? "").includes(search) ||
       String(r.workOrderNumber).includes(search) ||
       r.productName.includes(search) ||
       r.processName.includes(search) ||
@@ -68,6 +70,16 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
   });
 
   const columns: Column<OutsourceStepRow>[] = [
+    {
+      key: "outsourceNumber",
+      header: tr("common.requestNumber"),
+      width: 150,
+      sortable: true,
+      sortValue: (r) => r.outsourceNumber ?? "",
+      // 依頼日が入るまで番号は無い（DB が依頼時に払い出す）。
+      render: (r) =>
+        r.outsourceNumber ? <DocNumber>{r.outsourceNumber}</DocNumber> : "—",
+    },
     {
       key: "workOrderNumber",
       header: tr("common.workOrderNumber"),
@@ -213,7 +225,8 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                #{r.workOrderNumber}
+                {r.outsourceNumber ? `${r.outsourceNumber} · ` : ""}#
+                {r.workOrderNumber}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {r.processName}

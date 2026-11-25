@@ -10,7 +10,7 @@
 import { getTranslations } from "next-intl/server";
 import { bpSearchKeys } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
-import { formatQuoteNumber } from "@/lib/doc-number";
+import { docIdOf } from "@/lib/doc-number";
 import {
   type LocalizedText,
   localized,
@@ -314,7 +314,7 @@ export async function fetchBpDetail(id: string): Promise<BpDetail | null> {
       },
       quotesAsCustomer: {
         include: { items: true },
-        orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: 20,
       },
     },
@@ -397,7 +397,8 @@ export async function fetchBpDetail(id: string): Promise<BpDetail | null> {
       contact: b.contacts[0]?.name ?? "—",
     })),
     history: r.quotesAsCustomer.map((q) => ({
-      number: formatQuoteNumber({ yearMonth: q.yearMonth, seq: q.seq }),
+      // 見積書の id（`CKK~QOT-…`）— リンクにそのまま使う。表示は <DocNumber>。
+      number: docIdOf(q),
       label: tr("common.quote"),
       amount: q.items.reduce((sum, it) => sum + Number(it.amount), 0),
       status: { entity: "Quote" as const, value: q.status },

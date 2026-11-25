@@ -1,8 +1,8 @@
 /**
  * data.ts — server-side fetch/mapping for the 価格表 pages.
  *
- * sales.price_list_entries is keyed (year_month, seq) — the URL id is the
- * derived 価格表番号 PRC-YYYYMM-NNNNN (lib/doc-number). 自然キー
+ * 価格表番号（PRC-FFFF-NNNNN）は DB が払い出し、行は参照 doc_ref で引く。URL id は
+ * 法人コード付きの番号（CKK~PRC-2026-00001 — lib/doc-number）。自然キー
  * (customer_bp_id, item_id, tool_item_id) は UNIQUE の識別用（工具は再研磨だけの
  * 任意の欄で、null を 1 つの値として数える — 部分 unique index 2 本）。注文種別ごとの価格は
  * price_list_variants（基準単価・期間・価格試算リンク + tiers/discounts）。
@@ -14,11 +14,10 @@ import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
-  formatEstimateNumber,
-  formatPriceListNumber,
+  docIdOf,
+  docIdOrNull,
   formatProductNumber,
-  formatQuoteNumber,
-  legacyDocKey,
+  parseDocKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { getTrialPricingSettings } from "@/lib/system-settings";
@@ -44,6 +43,8 @@ export const ENTRY_INCLUDE = {
         ],
       },
       discounts: { orderBy: { createdAt: "asc" as const } },
+      // 価格試算元の番号は子の旧列ではなく、親の行（doc_ref）から読む。
+      estimate: { select: { docRef: true } },
     },
   },
 };
@@ -52,7 +53,7 @@ type EntryRow = NonNullable<Awaited<ReturnType<typeof findEntryRow>>>;
 
 function findEntryRow(key: DocKey) {
   return prisma.priceListEntry.findUnique({
-    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    where: { docRef: key.docRef },
     include: ENTRY_INCLUDE,
   });
 }
@@ -93,7 +94,8 @@ export async function fetchPriceListItemOptions(): Promise<
 
 export function mapEntry(r: EntryRow): PriceListEntry {
   return {
-    entryId: formatPriceListNumber({ yearMonth: r.yearMonth, seq: r.seq }),
+    entryId: docIdOf(r),
+    legacyNumber: r.legacyNumber,
     customerId: r.customerBpId,
     customerName: localized(r.customerBp.name as LocalizedText | null),
     itemId: String(r.itemId ?? ""),
@@ -123,13 +125,8 @@ export function mapEntry(r: EntryRow): PriceListEntry {
     isActive: r.isActive,
     approvalStatus: r.approvalStatus,
     variants: r.variants.map((v) => {
-      const estimateNumber =
-        v.estimateYearMonth && v.estimateSeq != null
-          ? formatEstimateNumber({
-              yearMonth: v.estimateYearMonth,
-              seq: v.estimateSeq,
-            })
-          : null;
+      // id の姿（CKK~EST-…）— 価格試算へのリンクと Server Action の引数。
+      const estimateNumber = docIdOrNull(v.estimate);
       return {
         id: v.id,
         orderType: v.orderType,
@@ -179,7 +176,7 @@ export async function fetchPriceEntries(): Promise<PriceListEntry[]> {
       "createdBy",
     ) as Prisma.PriceListEntryWhereInput,
     include: ENTRY_INCLUDE,
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
   });
   return rows.map(mapEntry);
 }
@@ -215,16 +212,14 @@ export async function fetchRelatedQuotes(
   const items = await prisma.quoteItem.findMany({
     where: {
       priceListTier: {
-        variant: { entryYearMonth: key.yearMonth, entrySeq: key.seq },
+        variant: { entry: { docRef: key.docRef } },
       },
     },
     include: { quote: true },
   });
   const byQuote = new Map<string, RelatedQuoteRow>();
   for (const it of items) {
-    const number = formatQuoteNumber({
-      ...legacyDocKey(it.quoteYearMonth, it.quoteSeq),
-    });
+    const number = docIdOf(it.quote);
     const agg = byQuote.get(number) ?? {
       quoteNumber: number,
       quantity: 0,
@@ -244,7 +239,7 @@ export async function fetchRelatedQuotes(
 
 /** 製品にリンクされた確定済み価格試算 — 基準単価ソースの選択肢。 */
 export interface EstimateSource {
-  /** 文書番号 EST-YYYYMM-NNNNN（URL id と同一）。 */
+  /** 価格試算の id（法人コード + 番号 `CKK~EST-2026-00001`。URL id と同一）。 */
   number: string;
   name: string;
   customerName: string | null;
@@ -272,7 +267,7 @@ function estimateUnitPriceOf(
 }
 
 /**
- * 価格試算番号 → 見積単価（基準単価のロック値）。編集フォームで既存バリアントの
+ * 価格試算の id → 見積単価（基準単価のロック値）。編集フォームで既存バリアントの
  * 価格試算リンクごとに使う。
  */
 export async function fetchEstimateBases(
@@ -283,10 +278,10 @@ export async function fetchEstimateBases(
   const settings = await getTrialPricingSettings();
   const bases: Record<string, number> = {};
   for (const number of unique) {
-    const m = /^EST-(\d{6})-(\d{5})$/.exec(number);
-    if (!m) continue;
+    const key = parseDocKey(number, "EST");
+    if (!key) continue;
     const row = await prisma.estimate.findUnique({
-      where: { yearMonth_seq: { yearMonth: m[1], seq: Number(m[2]) } },
+      where: { docRef: key.docRef },
     });
     if (!row) continue;
     bases[number] = estimateUnitPriceOf(
@@ -321,7 +316,7 @@ export async function fetchEstimateSourcesForProduct(
     }),
   ]);
   return rows.map((r) => ({
-    number: formatEstimateNumber({ yearMonth: r.yearMonth, seq: r.seq }),
+    number: docIdOf(r),
     name: r.name,
     customerName: r.customerBp
       ? localized(r.customerBp.name as LocalizedText | null)

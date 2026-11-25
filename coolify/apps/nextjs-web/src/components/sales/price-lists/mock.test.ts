@@ -135,7 +135,7 @@ describe("unitDiscountOf — 率(%) / 金額(¥/本)", () => {
 describe("findApplicableDiscount — 数量・期間・有効の判定", () => {
   // entry1 PRODUCTION variant: 夏季キャンペーン RATE5% 100本〜 06-01..08-31
   // (active), 初回導入割 AMOUNT300 10〜99本 01-01..03-31 (inactive)
-  const entry = getPriceEntry("PRC-202601-00001");
+  const entry = getPriceEntry("CKK~PRC-2026-00001");
   const variant = findVariant(entry, "PRODUCTION");
   if (!variant) throw new Error("mock variant missing");
 
@@ -195,7 +195,7 @@ describe("findApplicableDiscount — 数量・期間・有効の判定", () => {
 
 describe("entry summary & labels", () => {
   it("variantSummary derives min/max from effective tier prices", () => {
-    const entry = getPriceEntry("PRC-202601-00001");
+    const entry = getPriceEntry("CKK~PRC-2026-00001");
     const variant = findVariant(entry, "PRODUCTION");
     if (!variant) throw new Error("mock variant missing");
     // tiers: override 8000 / ×1.15→6900 / ×1.05→6300 / ×1.00→6000
@@ -207,7 +207,7 @@ describe("entry summary & labels", () => {
   });
 
   it("entrySummary aggregates across ALL variants", () => {
-    const entry = getPriceEntry("PRC-202601-00001");
+    const entry = getPriceEntry("CKK~PRC-2026-00001");
     if (!entry) throw new Error("mock entry missing");
     // PRODUCTION (4 tiers, 6000..8000) + SAMPLE (1 tier, ¥0)
     expect(entrySummary(entry)).toEqual({
@@ -251,7 +251,7 @@ describe("entry summary & labels", () => {
       "1001",
       MOCK_PRICE_ENTRIES,
     );
-    expect(entry?.entryId).toBe("PRC-202601-00001");
+    expect(entry?.entryId).toBe("CKK~PRC-2026-00001");
     expect(entry?.variants.map((v) => v.orderType)).toEqual([
       "PRODUCTION",
       "SAMPLE",

@@ -494,6 +494,7 @@
     "lineNotesOptional": "Line notes (optional)",
     "addLine": "Add line",
     "requestNumber": "Request number",
+    "legacyNumber": "Legacy number",
     "approvedAt": "Approved at",
     "requestedDate2": "Requested date",
     "searchProducts": "Search products",

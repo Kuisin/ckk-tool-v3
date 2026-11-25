@@ -17,7 +17,6 @@ import {
   type PortalOrderLineDetailDto,
   type PortalOrderLineDto,
   type PortalRelatedDocumentDto,
-  parsePortalOrderLineNumber,
   portalOrderLineNumber,
   portalProgressLabel,
   portalProgressOf,
@@ -94,6 +93,8 @@ describe("portalProgressLabel", () => {
 describe("社外へ出す DTO のキー集合", () => {
   it("注文明細の DTO は許可リストのキーだけを持つ", () => {
     const dto: PortalOrderLineDto = {
+      id: "CKK~ORD-2026-00001-01",
+      number: "ORD-2026-00001-01",
       branch: 1,
       productName: "製品A",
       quantity: 10,
@@ -108,7 +109,8 @@ describe("社外へ出す DTO のキー集合", () => {
 
   it("書類の DTO は許可リストのキーだけを持つ", () => {
     const dto: PortalDocumentDto = {
-      number: "INV-202609-00001",
+      id: "CKK~INV-2026-00001",
+      number: "INV-2026-00001",
       issuedOn: "2026/09/01",
       totalAmount: "10000",
       hasPdf: true,
@@ -132,7 +134,19 @@ describe("社外へ出す DTO のキー集合", () => {
       "createdBy",
       "status",
       "productId",
-      "id",
+      // DB の行 id（uuid）を指す名前。`id` だけは例外で許可リストに入っている —
+      // あれは書類の id（法人コード~番号。リンク専用）で、行の id ではない
+      // （下の「id は書類の id であって uuid ではない」が見張る）。
+      "uuid",
+      "rowId",
+      "acceptanceUuid",
+      "orderLineId",
+      "invoiceId",
+      "deliveryOrderId",
+      "deliveryNoteId",
+      "ownCompanyId",
+      "docRef",
+      "lineRef",
     ];
     const all = [
       ...PORTAL_ORDER_LINE_DTO_KEYS,
@@ -147,10 +161,27 @@ describe("社外へ出す DTO のキー集合", () => {
     }
   });
 
+  it("id は書類の id（法人コード~番号）であって、行の uuid ではない", () => {
+    // 型は string なので中身までは縛れない。ここは「id を足した理由」を
+    // 文書として残し、形の例を固定する — uuid を入れる変更はレビューで止める。
+    const dto: PortalDocumentDto = {
+      id: "CKK~QOT-2026-00001",
+      number: "QOT-2026-00001",
+      issuedOn: null,
+      totalAmount: null,
+      hasPdf: false,
+    };
+    expect(dto.id).toMatch(/^[^~/\s]+~[A-Z]{2,4}-\d{4}-\d{5}$/);
+    // 表示する番号には法人コードを出さない
+    expect(dto.number).not.toContain("~");
+    expect(dto.id.endsWith(dto.number)).toBe(true);
+  });
+
   it("書類の詳細 DTO は許可リストのキーだけを持つ", () => {
     const dto: PortalDocumentDetailDto = {
       type: "invoices",
-      number: "INV-202609-00001",
+      id: "CKK~INV-2026-00001",
+      number: "INV-2026-00001",
       issuedOn: "2026-09-01",
       totalAmount: "10000",
       hasPdf: true,
@@ -189,10 +220,11 @@ describe("社外へ出す DTO のキー集合", () => {
     expect(Object.keys(dto).sort()).toEqual([...PORTAL_LINE_ITEM_DTO_KEYS]);
   });
 
-  it("関連書類の DTO は番号と日付だけを持つ（内部 id を持たない）", () => {
+  it("関連書類の DTO は番号・リンク用の id・日付だけを持つ（行の id を持たない）", () => {
     const dto: PortalRelatedDocumentDto = {
       type: "invoices",
-      number: "INV-202609-00001",
+      id: "CKK~INV-2026-00001",
+      number: "INV-2026-00001",
       issuedOn: "2026-09-01",
     };
     expect(Object.keys(dto).sort()).toEqual([
@@ -202,6 +234,8 @@ describe("社外へ出す DTO のキー集合", () => {
 
   it("注文明細の詳細 DTO は一覧の許可リスト + 明示した 4 つだけ", () => {
     const dto: PortalOrderLineDetailDto = {
+      id: "CKK~ORD-2026-00001-01",
+      number: "ORD-2026-00001-01",
       branch: 1,
       productName: "製品A",
       quantity: 10,
@@ -210,7 +244,7 @@ describe("社外へ出す DTO のキー集合", () => {
       deliveryDate: "2026-09-30",
       progress: "RECEIVED",
       shippedOn: null,
-      acceptanceNumber: "ORD-202609-00001",
+      acceptanceNumber: "ORD-2026-00001",
       customerOrderRef: "PO-123",
       orderedOn: "2026-09-01",
       related: [],
@@ -254,40 +288,16 @@ describe("進捗の段", () => {
 
 describe("注文明細番号", () => {
   it("枝番を 2 桁に揃えて組み立てる", () => {
-    expect(portalOrderLineNumber("ORD-202609-00001", 1)).toBe(
-      "ORD-202609-00001-01",
+    expect(portalOrderLineNumber("ORD-2026-00001", 1)).toBe(
+      "ORD-2026-00001-01",
     );
-    expect(portalOrderLineNumber("ORD-202609-00001", 12)).toBe(
-      "ORD-202609-00001-12",
+    expect(portalOrderLineNumber("ORD-2026-00001", 12)).toBe(
+      "ORD-2026-00001-12",
     );
   });
 
   it("枝番の無い行（確定前）は番号を持たない", () => {
-    expect(portalOrderLineNumber("ORD-202609-00001", null)).toBeNull();
-  });
-
-  it("組み立てた番号はそのまま読み戻せる", () => {
-    const number = portalOrderLineNumber("ORD-202609-00042", 7);
-    expect(number).not.toBeNull();
-    expect(parsePortalOrderLineNumber(number as string)).toEqual({
-      yearMonth: "202609",
-      seq: 42,
-      branch: 7,
-    });
-  });
-
-  it("形の違う入力は受け取らない（URL から来る値なので必ず検証する）", () => {
-    for (const bad of [
-      "",
-      "ORD-202609-00001", // 枝番が無い
-      "QOT-202609-00001-01", // 別の書類
-      "ORD-2026-00001-01", // 年月が 6 桁でない
-      "ORD-202609-1-01", // 連番が 5 桁でない
-      "ORD-202609-00001-01-02", // 余分な枝
-      "../../etc/passwd",
-    ]) {
-      expect(parsePortalOrderLineNumber(bad), bad).toBeNull();
-    }
+    expect(portalOrderLineNumber("ORD-2026-00001", null)).toBeNull();
   });
 });
 

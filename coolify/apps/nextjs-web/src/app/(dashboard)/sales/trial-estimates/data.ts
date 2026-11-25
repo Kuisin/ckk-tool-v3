@@ -1,9 +1,9 @@
 /**
  * data.ts — server-side fetch/mapping for the 価格試算 (SA01) pages.
  *
- * Maps sales.estimates rows (combined key year_month+seq) to the
- * TrialEstimateRecord view-model; the derived EST- number doubles as the
- * URL id. Also builds the shared select options (顧客 = bp CUSTOMER role,
+ * Maps sales.estimates rows to the TrialEstimateRecord view-model. 番号
+ * （EST-FFFF-NNNNN）は DB が払い出し、行は参照 doc_ref で引く。DTO の
+ * estimateNumber は id の姿（CKK~EST-2026-00001 — URL と Server Action の引数）。 Also builds the shared select options (顧客 = bp CUSTOMER role,
  * 素材 / 製品 = active masters) and the existing price-entry identities for
  * duplicate warnings.
  */
@@ -16,11 +16,7 @@ import type {
 } from "@/components/sales/trial-estimates/types";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import {
-  formatEstimateNumber,
-  formatPriceListNumber,
-  formatProductNumber,
-} from "@/lib/doc-number";
+import { type DocKey, docIdOf, formatProductNumber } from "@/lib/doc-number";
 import {
   canSeeEstimateKind,
   ESTIMATE_COST_PERMISSION,
@@ -49,9 +45,9 @@ type EstimateRow = NonNullable<
   Awaited<ReturnType<typeof fetchEstimateRowByKey>>
 >;
 
-function fetchEstimateRowByKey(yearMonth: string, seq: number) {
+function fetchEstimateRowByKey(key: DocKey) {
   return prisma.estimate.findUnique({
-    where: { yearMonth_seq: { yearMonth, seq } },
+    where: { docRef: key.docRef },
     include: {
       customerBp: true,
       item: true,
@@ -87,10 +83,11 @@ export function materialTypeLabel(r: {
 }
 
 export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
-  const number = formatEstimateNumber({ yearMonth: r.yearMonth, seq: r.seq });
+  const number = docIdOf(r);
   return {
     id: number,
     estimateNumber: number,
+    legacyNumber: r.legacyNumber,
     name: r.name,
     status: r.status,
     kind: r.kind,
@@ -153,15 +150,14 @@ export async function fetchTrialEstimates(): Promise<TrialEstimateRecord[]> {
 }
 
 export async function fetchTrialEstimate(
-  yearMonth: string,
-  seq: number,
+  key: DocKey,
 ): Promise<TrialEstimateRecord | null> {
   const [authz, costAuthz] = await Promise.all([
     checkPermission("price_list", "READ"),
     checkPermission(ESTIMATE_COST_PERMISSION, "READ"),
   ]);
   if (!authz.ok) return null;
-  const row = await fetchEstimateRowByKey(yearMonth, seq);
+  const row = await fetchEstimateRowByKey(key);
   if (!row) return null;
   // 原価試算は estimate_cost の無い人には存在しないものとして扱う（notFound）。
   if (!canSeeEstimateKind(row.kind, costAuthz.ok)) return null;
@@ -279,8 +275,7 @@ export async function fetchCustomerOption(id: string): Promise<Option | null> {
 export async function fetchExistingEntryRefs(): Promise<EntryIdentity[]> {
   const rows = await prisma.priceListEntry.findMany({
     select: {
-      yearMonth: true,
-      seq: true,
+      docRef: true,
       customerBpId: true,
       itemId: true,
       toolItemId: true,
@@ -294,6 +289,6 @@ export async function fetchExistingEntryRefs(): Promise<EntryIdentity[]> {
       itemId: String(r.itemId),
       toolItemId: r.toolItemId != null ? String(r.toolItemId) : null,
       orderTypes: r.variants.map((v) => v.orderType),
-      entryId: formatPriceListNumber({ yearMonth: r.yearMonth, seq: r.seq }),
+      entryId: docIdOf(r),
     }));
 }

@@ -27,6 +27,8 @@ import {
   toTitleBlock,
 } from "@/lib/design-files-core";
 import { specRecord } from "@/lib/design-spec-core";
+import { docIdOf, docIdOrNull, parseDocKey } from "@/lib/doc-number";
+import { resolveDocId } from "@/lib/doc-ref";
 import { type LocalizedText, localized } from "@/lib/format";
 
 /**
@@ -43,7 +45,7 @@ function itemLabelOf(item: { name: unknown; code: string | null }): string {
 
 const DESIGN_FILE_INCLUDE = {
   file: { select: { filename: true, mimeType: true } },
-  designRequest: { select: { requestNumber: true } },
+  designRequest: { select: { docRef: true } },
   customerBp: { select: { name: true } },
   designVersion: { select: { status: true } },
 } as const;
@@ -60,7 +62,7 @@ type DesignFileRow = {
   designRequestId: string | null;
   designVersionId: string;
   file: { filename: string; mimeType: string };
-  designRequest: { requestNumber: string } | null;
+  designRequest: { docRef: string } | null;
   customerBp: { name: unknown } | null;
   designVersion: { status: string };
 };
@@ -73,7 +75,8 @@ function toProductDesignFile(f: DesignFileRow): ProductDesignFile {
     role: f.role as DesignFileRole,
     mimeType: f.file.mimeType,
     filename: f.file.filename,
-    requestNumber: f.designRequest?.requestNumber ?? null,
+    // 設計依頼の id（`CKK~DSG-…`）— リンクにそのまま使う。表示は docNo。
+    requestNumber: docIdOrNull(f.designRequest),
     designRequestId: f.designRequestId,
     customerBpId: f.customerBpId,
     customerName: localized(f.customerBp?.name as LocalizedText | null) || null,
@@ -106,7 +109,7 @@ export async function fetchDesignFilesForItem(
 
 const VERSION_INCLUDE = {
   customerBp: { select: { name: true } },
-  designRequest: { select: { requestNumber: true } },
+  designRequest: { select: { docRef: true } },
   materialType: { select: { code: true, name: true } },
   createdByUser: { select: { displayName: true } },
   confirmedByUser: { select: { displayName: true } },
@@ -131,7 +134,7 @@ type VersionRow = {
   confirmedAt: Date | null;
   requestedAt: Date | null;
   customerBp: { name: unknown } | null;
-  designRequest: { requestNumber: string } | null;
+  designRequest: { docRef: string } | null;
   materialType: { code: string | null; name: unknown } | null;
   createdByUser: { displayName: string } | null;
   confirmedByUser: { displayName: string } | null;
@@ -150,7 +153,7 @@ function toVersionView(
     customerBpId: v.customerBpId,
     customerName: localized(v.customerBp?.name as LocalizedText | null) || null,
     designRequestId: v.designRequestId,
-    requestNumber: v.designRequest?.requestNumber ?? null,
+    requestNumber: docIdOrNull(v.designRequest),
     notes: v.notes,
     materialTypeId: v.materialTypeId,
     materialTypeLabel: v.materialType
@@ -434,11 +437,19 @@ export async function fetchDesignRequestContext(
   customerBpId: string | null;
   customerName: string | null;
 } | null> {
+  // `?request=` は外から来る — 法人付きの id のほか、番号だけ・旧番号も引く
+  // （同じ番号が複数の法人にあって決まらないときは、紐づけずに開く）。
+  let docRef = parseDocKey(requestNumber, "DSG")?.docRef ?? null;
+  if (!docRef) {
+    const resolved = await resolveDocId("design_requests", requestNumber);
+    docRef = resolved.status === "ok" ? resolved.docRef : null;
+  }
+  if (!docRef) return null;
   const r = await prisma.designRequest.findUnique({
-    where: { requestNumber },
+    where: { docRef },
     select: {
       id: true,
-      requestNumber: true,
+      docRef: true,
       itemId: true,
       customerBpId: true,
       customerBp: { select: { name: true } },
@@ -449,7 +460,7 @@ export async function fetchDesignRequestContext(
   if (!r || r.itemId == null || !r.item) return null;
   return {
     id: r.id,
-    requestNumber: r.requestNumber,
+    requestNumber: docIdOf(r),
     itemId: r.itemId,
     productLabel: itemLabelOf(r.item),
     customerBpId: r.customerBpId,

@@ -25,7 +25,8 @@ import { renderJournalCsv } from "@/lib/accounting-export-core";
 import { getAccountingSettings } from "@/lib/accounting-settings";
 import { getCurrentActorId } from "@/lib/audit";
 import { requirePermissionResponse } from "@/lib/authz";
-import { parseDocKey } from "@/lib/doc-number";
+import { docNo } from "@/lib/doc-number";
+import { docKeyFromRequest } from "../../doc-key";
 
 // Reads request query params → always rendered at request time.
 export const dynamic = "force-dynamic";
@@ -39,7 +40,7 @@ export async function GET(request: Request): Promise<Response> {
     return new Response('Missing "invoice" query parameter', { status: 400 });
   }
 
-  const key = parseDocKey(id, "INV");
+  const key = await docKeyFromRequest("invoices", "INV", id);
   const invoice = key ? await fetchInvoice(key) : null;
   if (!key || !invoice) {
     return new Response(`Invoice not found: ${id}`, { status: 404 });
@@ -73,7 +74,7 @@ export async function GET(request: Request): Promise<Response> {
   if (unmappable.length > 0) {
     console.warn(
       // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
-      `[export/accounting] ${invoice.invoiceNumber}: ${settings.encoding} に変換できない文字を代替しました:`,
+      `[export/accounting] ${docNo(invoice.invoiceNumber)}: ${settings.encoding} に変換できない文字を代替しました:`,
       unmappable.join(""),
     );
   }
@@ -82,7 +83,7 @@ export async function GET(request: Request): Promise<Response> {
     status: 200,
     headers: {
       "content-type": contentType,
-      "content-disposition": `attachment; filename="${invoice.invoiceNumber}_${settings.filenameSuffix}.csv"`,
+      "content-disposition": `attachment; filename="${docNo(invoice.invoiceNumber)}_${settings.filenameSuffix}.csv"`,
     },
   });
 }

@@ -7,12 +7,8 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import {
-  formatEstimateNumber,
-  formatPriceListNumber,
-  formatProductNumber,
-  parseDocKey,
-} from "@/lib/doc-number";
+import { docIdOf, docNo, formatProductNumber } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { listMemos } from "@/lib/document-memos";
 import {
   ESTIMATE_COST_PERMISSION,
@@ -44,12 +40,12 @@ export async function generateMetadata({
   return {
     title: formatDocPageTitle(
       appLabelForKey("trial-estimates", "価格試算", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
-      decodeURIComponent(id),
+      docNo(decodeURIComponent(id)),
     ),
   };
 }
 
-/** 価格試算 詳細 (SA52). URL id = 導出文書番号 EST-YYYYMM-NNNNN. */
+/** 価格試算 詳細 (SA52). URL id = 法人コード付きの番号（CKK~EST-2026-00001）。 */
 export default async function TrialEstimateDetailPage({
   params,
 }: {
@@ -58,8 +54,12 @@ export default async function TrialEstimateDetailPage({
   const denied = await requireAppRead("trial-estimates");
   if (denied) return denied;
   const { id } = await params;
-  const key = parseDocKey(id, "EST");
-  if (!key) notFound();
+  const key = await docKeyFromParam(
+    "estimates",
+    "EST",
+    id,
+    "/sales/trial-estimates",
+  );
 
   const [
     record,
@@ -71,17 +71,17 @@ export default async function TrialEstimateDetailPage({
     scalePreset,
     costAuthz,
   ] = await Promise.all([
-    fetchTrialEstimate(key.yearMonth, key.seq),
+    fetchTrialEstimate(key),
     prisma.priceListVariant.findMany({
-      where: { estimateYearMonth: key.yearMonth, estimateSeq: key.seq },
+      where: { estimate: { docRef: key.docRef } },
       include: {
         entry: { include: { customerBp: true, item: true } },
         _count: { select: { tiers: true } },
       },
     }),
-    fetchAuditEntries("estimates", formatEstimateNumber(key)),
+    fetchAuditEntries("estimates", key.docRef),
     getTrialPricingSettings(),
-    listMemos("estimates", formatEstimateNumber(key)),
+    listMemos("estimates", key.docRef),
     getTranslations(),
     getScalePreset(),
     checkPermission(ESTIMATE_COST_PERMISSION, "READ"),
@@ -111,10 +111,7 @@ export default async function TrialEstimateDetailPage({
     );
     const nm = localized(v.entry.item?.name as LocalizedText | null);
     return {
-      entryId: formatPriceListNumber({
-        yearMonth: v.entry.yearMonth,
-        seq: v.entry.seq,
-      }),
+      entryId: docIdOf(v.entry),
       customerName: localized(v.entry.customerBp.name as LocalizedText | null),
       productName: code ? `${nm} ${code}` : nm,
       orderType: v.orderType,

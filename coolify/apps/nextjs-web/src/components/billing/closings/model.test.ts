@@ -253,7 +253,7 @@ describe("summarizeClosingSimulation", () => {
     totalAmount,
     shipmentNumbers: Array.from(
       { length: shipments },
-      (_, i) => `DOR-202609-0000${i + 1}`,
+      (_, i) => `DOR-2026-0000${i + 1}`,
     ),
   });
 

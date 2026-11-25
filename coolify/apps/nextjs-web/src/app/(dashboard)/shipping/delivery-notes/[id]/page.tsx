@@ -3,7 +3,8 @@ import { DeliveryNoteDetail } from "@/components/shipping/delivery-notes/Deliver
 import { appLabelForKey } from "@/lib/app-list";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
-import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
+import { docNo } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { isIssued, pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
 import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
@@ -23,12 +24,12 @@ export async function generateMetadata({
   return {
     title: formatDocPageTitle(
       appLabelForKey("delivery-notes", "納品書", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
-      decodeURIComponent(id),
+      docNo(decodeURIComponent(id)),
     ),
   };
 }
 
-/** 納品書 詳細 (SH22). URL id = 導出文書番号 DRN-YYYYMM-NNNNN. */
+/** 納品書 詳細 (SH22). URL id = 法人コード + 番号（`CKK~DRN-2026-00001`）。 */
 export default async function ShippingDeliveryNotesDetailPage({
   params,
 }: {
@@ -37,12 +38,17 @@ export default async function ShippingDeliveryNotesDetailPage({
   const denied = await requireAppRead("delivery-notes");
   if (denied) return denied;
   const { id } = await params;
-  const key = parseDocKey(decodeURIComponent(id), "DRN");
-  if (!key) notFound();
+  // 番号だけ・旧番号（DRN-YYYYMM-NNNNN）の URL は正規の URL へ転送される。
+  const key = await docKeyFromParam(
+    "delivery_notes",
+    "DRN",
+    id,
+    "/shipping/delivery-notes",
+  );
 
   const [note, auditEntries, invoices] = await Promise.all([
     fetchDeliveryNote(key),
-    fetchAuditEntries("delivery_notes", formatDocNumber("DRN", key)),
+    fetchAuditEntries("delivery_notes", key.docRef),
     // 手続き状況の「次の書類へ」— この納品書を請求した請求書。
     fetchInvoicesForDeliveryNote(key),
   ]);

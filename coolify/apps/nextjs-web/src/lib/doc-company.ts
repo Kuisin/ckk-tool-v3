@@ -159,7 +159,7 @@ export async function companyForAcceptance(
   );
   const quote = input.quoteKey
     ? await db.quote.findUnique({
-        where: { yearMonth_seq: input.quoteKey },
+        where: { docRef: input.quoteKey.docRef },
         select: { ownCompanyId: true },
       })
     : null;
@@ -209,7 +209,7 @@ export async function companyForDesign(
 ) {
   const quote = input.quoteKey
     ? await db.quote.findUnique({
-        where: { yearMonth_seq: input.quoteKey },
+        where: { docRef: input.quoteKey.docRef },
         select: { ownCompanyId: true },
       })
     : null;

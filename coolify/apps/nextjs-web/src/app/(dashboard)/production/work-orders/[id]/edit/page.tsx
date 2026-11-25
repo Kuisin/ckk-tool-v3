@@ -27,7 +27,7 @@ export default async function ProductionWorkOrdersEditPage({
   const denied = await requireAppRead("work-orders");
   if (denied) return denied;
   const { id } = await params;
-  const workOrderNumber = await resolveWorkOrderIdParam(id);
+  const workOrderNumber = await resolveWorkOrderIdParam(id, "/edit");
   if (workOrderNumber == null) notFound();
 
   const workOrder = await fetchWorkOrder(workOrderNumber);

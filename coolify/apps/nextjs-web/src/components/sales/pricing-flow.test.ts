@@ -74,7 +74,7 @@ describe("価格試算 → 価格表 → 見積書 (constructed entry)", () => {
     estimateNumber: estimate.estimateNumber,
   };
   const entry: PriceListEntry = {
-    entryId: "PRC-202607-00098",
+    entryId: "CKK~PRC-2026-00098",
     customerId: "bp-002",
     customerName: "合同会社XYZ工業",
     itemId: "9002",
@@ -189,7 +189,7 @@ describe("価格試算 → 価格表 → 見積書 (registered mock data end-to-
     ).toBeNull();
   });
 
-  it("価格試算元 EST-202605-00031 → 価格表 (bp-001) → 見積単価チェーンが繋がる", () => {
+  it("価格試算元 EST-2026-00031 → 価格表 (bp-001) → 見積単価チェーンが繋がる", () => {
     const estimate = getTrialEstimate("te-0001");
     expect(estimate?.status).toBe("REGISTERED");
     const r = resolveUnitPrice(
