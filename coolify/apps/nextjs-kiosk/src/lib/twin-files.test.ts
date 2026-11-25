@@ -47,6 +47,9 @@ const TWINS = [
   "login-attempt-core.test.ts",
   "display-content.ts",
   "display-templates.ts",
+  // 加工プログラムの選び方 — 工程実行画面は Web と共有端末の両方にある。
+  "design-programs-core.ts",
+  "design-programs-core.test.ts",
 ];
 
 describe("twin files (nextjs-web ⇄ nextjs-kiosk)", () => {

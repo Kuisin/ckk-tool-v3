@@ -851,6 +851,11 @@ new Intl.NumberFormat('ja-JP', { style: 'currency', currency: currency ?? 'JPY' 
 価格表 / 価格試算 / **設計依頼書** = **コメント**。既存の 備考（`notes`）は平文のまま
 別物として残り、PDF 印字も従来どおり（メモ・コメントは社内限定で PDF に出ない）。
 
+**設計図 (PD06) は 2 種類のメモを持つ。** 製品画面の各系列（製品 × 受注元）の節に
+**系列メモ**（`ownerType="design_series"`、`ownerId` = `<品目 id>:<受注元 id | generic>`
+— `lib/design-files-core.ts` `designSeriesOwnerId`）。版をまたいで残したいこと用で、
+版ごとの変更点は版の notes が持つ。
+
 **設計図 (PD06) だけ owner が書類ではなく「版」**（`design_files` の 1 行）で、
 `ownerId` は表示番号ではなく **版の uuid**。版には業務キーが無いため。画面では
 版の行の「メモ」ボタンからモーダルで開く（タブではない）。**編集可否とは独立に

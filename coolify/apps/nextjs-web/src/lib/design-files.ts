@@ -237,7 +237,7 @@ export async function confirmVersionInTx(
  * アップロード 1 枚 → files 行。失敗したら storage も片付ける。
  * ストレージキー・ファイル名の接頭辞は品目 id ベース。
  */
-async function storeOne(
+export async function storeOne(
   itemId: number,
   file: UploadedFile,
   tr: Awaited<ReturnType<typeof getTranslations>>,

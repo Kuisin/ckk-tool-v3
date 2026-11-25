@@ -385,6 +385,14 @@
       "openOne": "打开",
       "empty": "该工序目前没有可归并的对象",
       "notFound": "未找到该工序"
+    },
+    "programs": {
+      "title": "加工程序",
+      "machine": "机器：{name}",
+      "anyMachine": "不限机器",
+      "machineMatch": "本机用",
+      "download": "下载",
+      "noFile": "无文件"
     }
   },
   "deviceError": {

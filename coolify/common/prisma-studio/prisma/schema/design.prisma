@@ -228,6 +228,7 @@ model DesignVersion {
   confirmedByUser User?            @relation("DesignVersionConfirmedBy", fields: [confirmedBy], references: [id])
   createdByUser   User?            @relation("DesignVersionCreatedBy", fields: [createdBy], references: [id])
   files           DesignFile[]     @relation("DesignVersionFiles")
+  programs        DesignProgram[]  @relation("DesignVersionPrograms")
 
   // 系列内の版番号は一意（NULLS NOT DISTINCT index — migration で張る。汎用
   // 系列の customer_bp_id = null 同士も同じ系列として数える）。
@@ -299,5 +300,60 @@ model DesignFile {
   // 「この製品の全系列」も同じ索引で足りる。
   @@index([itemId, customerBpId, isLatest, role])
   @@map("design_files")
+  @@schema("app")
+}
+
+// 加工プログラム（設計図の版ごと）。
+//
+// 図面 1 版から起こした NC プログラム等を版に付ける。**1 本のプログラムが
+// N 工程を受け持つ**（荒・仕上げを 1 本で回す機械がある）ので、工程は子表
+// design_program_steps で持つ。
+//
+// **機械のマスタは作らない — 作業場所 (work_locations, MS0D) が機械そのもの。**
+// work_location_id は「この機械向けに書いたプログラム」の印で、工程実行画面では
+// 計画・実績の作業場所と一致するプログラムが先頭に並ぶ（並べ方は
+// lib/design-programs-core.ts が唯一の定義元 — 共有端末と双子）。
+//
+// 編集できるのは版が編集できるあいだ（下書き・差し戻し）だけ。確定した版の
+// プログラムは動かない（図面と同じく「作った物の根拠」を後から書き換えさせない）。
+// 版を消すとプログラムも消える（cascade）。ファイル本体（files 行）は残す。
+model DesignProgram {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  designVersionId String   @map("design_version_id") @db.Uuid
+  name            String
+  /// 機械側のプログラム番号（O0001 等）。任意。
+  programNumber   String?  @map("program_number")
+  /// プログラム本体（files → SeaweedFS）。番号だけ控えて実体は機械側、もある。
+  fileId          String?  @map("file_id") @db.Uuid
+  /// 対象の機械（= 作業場所）。null = 機械を問わない。
+  workLocationId  Int?     @map("work_location_id")
+  notes           String?
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdBy       String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  designVersion DesignVersion @relation("DesignVersionPrograms", fields: [designVersionId], references: [id], onDelete: Cascade)
+  file          File?         @relation("DesignProgramFile", fields: [fileId], references: [id], onDelete: SetNull)
+  workLocation  WorkLocation? @relation("DesignProgramWorkLocation", fields: [workLocationId], references: [id], onDelete: SetNull)
+  createdByUser User?         @relation("DesignProgramCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  steps         DesignProgramStep[]
+
+  @@index([designVersionId, sortOrder])
+  @@map("design_programs")
+  @@schema("app")
+}
+
+// プログラムが受け持つ工程（工程マスタ）。1 プログラム × N 工程。
+model DesignProgramStep {
+  programId     String @map("program_id") @db.Uuid
+  processStepId Int    @map("process_step_id")
+
+  program     DesignProgram      @relation(fields: [programId], references: [id], onDelete: Cascade)
+  processStep ProcessStepCatalog @relation("DesignProgramProcessStep", fields: [processStepId], references: [id], onDelete: Cascade)
+
+  @@id([programId, processStepId])
+  @@index([processStepId])
+  @@map("design_program_steps")
   @@schema("app")
 }

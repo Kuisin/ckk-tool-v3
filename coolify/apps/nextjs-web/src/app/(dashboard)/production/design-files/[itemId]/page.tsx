@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { ProductDrawings } from "@/components/production/design-files/ProductDrawings";
 import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
+import { designSeriesOwnerId } from "@/lib/design-files-core";
+import { listMemosByOwnerIds } from "@/lib/document-memos";
 import { fetchDesignFileItem, fetchDesignVersionsForItem } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -33,11 +35,20 @@ export default async function ProductionDesignFileDetailPage({
   ]);
   if (!product) notFound();
 
+  // 系列で共有するメモ（document_memos, ownerType "design_series"）を 1 回で引く。
+  const seriesMemos = await listMemosByOwnerIds(
+    "design_series",
+    [...new Set(versions.map((v) => v.customerBpId ?? null))].map((c) =>
+      designSeriesOwnerId(product.id, c),
+    ),
+  );
+
   return (
     <ProductDrawings
       canManage={createAuthz.ok}
       itemId={product.id}
       productLabel={product.label}
+      seriesMemos={seriesMemos}
       versions={versions}
     />
   );

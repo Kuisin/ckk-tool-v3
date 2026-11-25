@@ -8,11 +8,14 @@ import {
 import { fetchAuditEntries } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
+import { listDesignPrograms } from "@/lib/design-programs";
 import { listMemosByOwnerIds } from "@/lib/document-memos";
 import {
   getProductItemDefs,
   getResolvedProductTypes,
 } from "@/lib/product-settings";
+import { fetchWorkLocationOptions } from "@/lib/work-locations";
+import { fetchCatalogStepOptions } from "../../../work-orders/data";
 import { fetchDesignVersion } from "../../data";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +49,9 @@ export default async function ProductionDesignVersionPage({
     auditEntries,
     productTypes,
     itemDefs,
+    programs,
+    workLocationOptions,
+    stepOptions,
   ] = await Promise.all([
     fetchDesignVersion(id),
     fetchApprovalState("design_versions", id),
@@ -56,6 +62,9 @@ export default async function ProductionDesignVersionPage({
     fetchAuditEntries("design_versions", id),
     getResolvedProductTypes(),
     getProductItemDefs(),
+    listDesignPrograms(id),
+    fetchWorkLocationOptions(),
+    fetchCatalogStepOptions(),
   ]);
   if (!data) notFound();
 
@@ -77,7 +86,10 @@ export default async function ProductionDesignVersionPage({
       memosByFile={memosByFile}
       productLabel={data.productLabel}
       productTypes={productTypes}
+      programs={programs}
+      stepOptions={stepOptions}
       version={data.view}
+      workLocationOptions={workLocationOptions}
     />
   );
 }

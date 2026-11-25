@@ -71,10 +71,12 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { canDeleteVersion, isVersionEditable } from "@/lib/design-files-core";
+import type { DesignProgramView } from "@/lib/design-programs";
 import type { MemoView } from "@/lib/document-memos";
 import type { ProductItemDef, ResolvedProductType } from "@/lib/product-types";
 import type { SxfDrawingReading } from "@/lib/sxf-core";
 import { DesignFileList, type DesignFileListRow } from "./DesignFileList";
+import { DesignProgramsPanel } from "./DesignProgramsPanel";
 import {
   applySxfReading,
   type DesignSpecErrors,
@@ -110,6 +112,9 @@ export function DesignVersionDetail({
   productTypes,
   itemDefs,
   memosByFile = {},
+  programs = [],
+  workLocationOptions = [],
+  stepOptions = [],
 }: {
   version: DesignVersionView;
   productLabel: string;
@@ -126,6 +131,12 @@ export function DesignVersionDetail({
   itemDefs: ProductItemDef[];
   /** ファイル id → メモ（リッチテキスト。確定後も書ける — 凍るのは図面の中身だけ）。 */
   memosByFile?: Record<string, MemoView[]>;
+  /** 加工プログラム（版ごと）。 */
+  programs?: DesignProgramView[];
+  /** 作業場所（= 機械）の選択肢。 */
+  workLocationOptions?: { value: string; label: string }[];
+  /** 工程マスタの選択肢。 */
+  stepOptions?: { value: string; label: string }[];
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -390,6 +401,17 @@ export function DesignVersionDetail({
             rows={fileRows}
           />
         )}
+      </Paper>
+
+      <Paper p="md" radius="md" withBorder>
+        <DesignProgramsPanel
+          canEdit={canManage && editable}
+          onSaved={() => router.refresh()}
+          programs={programs}
+          stepOptions={stepOptions}
+          versionId={v.id}
+          workLocationOptions={workLocationOptions}
+        />
       </Paper>
 
       <Paper p="md" radius="md" withBorder>
