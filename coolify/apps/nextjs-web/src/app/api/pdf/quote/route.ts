@@ -15,10 +15,12 @@ import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
+import { issuerForCompanyId } from "@/lib/own-companies";
 import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   orderTypeLabelLocalized,
   pdfAttnLine,
+  quoteLineNoteHtml,
   quotePdfLabels,
   taxBaseSuffixLocalized,
   taxRowLabelLocalized,
@@ -31,14 +33,6 @@ import { getObject, putObject } from "@/lib/storage";
 export const dynamic = "force-dynamic";
 
 const yen = (n: number) => n.toLocaleString("ja-JP");
-
-// 発行元（CKK 本社）— design-preview の issuer ブロックに対応。
-const ISSUER = {
-  name: "シー・ケィ・ケー株式会社", // i18n-ignore
-  address: "〒475-0823 愛知県半田市港町2丁目27番2", // i18n-ignore
-  tel: "TEL: 0569-21-6187　FAX: 0569-23-6427",
-  invoice_reg: "T1234567890123",
-};
 
 /** Build the response headers for serving a quote PDF (inline vs attachment). */
 function pdfHeaders(quoteNumber: string, download: boolean): HeadersInit {
@@ -98,10 +92,14 @@ export async function GET(request: Request): Promise<Response> {
     tax: yen(b.taxAmount),
   }));
 
+  // 発行元（自社法人 MS0I）。見積書は拠点を持たないので既定の法人
+  // （lib/own-company-core.ts resolveIssuer — 拠点が無ければ既定）。
+  const { issuer } = await issuerForCompanyId(null, lang);
+
   const data = {
     lang,
     labels,
-    issuer: ISSUER,
+    issuer,
     recipient: {
       name: quote.customerName,
       contact: pdfAttnLine(lang, quote.customerBranchName),
@@ -116,17 +114,25 @@ export async function GET(request: Request): Promise<Response> {
       // 営業担当が未設定の見積は作成者を出す（従来の挙動へのフォールバック）。
       sales_rep: quote.salesRepName ?? quote.createdBy,
     },
-    items: quote.items.map((it) => ({
-      name: it.productName,
-      // 製品コード（PRD-YYYYMM-NNNN）。**採番前のレガシー品目は空欄で刷る** —
-      // 以前ここは内部の連番 id を刷っていた（品目統合で本来の製品コードへ）。
-      code: it.productCode ?? "",
-      order_type: orderTypeLabelLocalized(it.orderType, lang),
-      quantity: yen(it.quantity),
-      unit_price: yen(it.unitPrice),
-      amount: yen(it.amount),
-      delivery_date: documentFormatters.date(it.deliveryDate),
-    })),
+    items: quote.items.map((it) => {
+      // 値引きの注意書き + 明細の備考（受取先の言語）。空なら行を足さない。
+      const note = quoteLineNoteHtml(it, yen(it.discountAmount), lang);
+      return {
+        row_class: note ? "has-line-note" : "",
+        line_note_row: note
+          ? `<tr class="line-note"><td colspan="6">${note}</td></tr>`
+          : "",
+        name: it.productName,
+        // 製品コード（PRD-YYYYMM-NNNN）。**採番前のレガシー品目は空欄で刷る** —
+        // 以前ここは内部の連番 id を刷っていた（品目統合で本来の製品コードへ）。
+        code: it.productCode ?? "",
+        order_type: orderTypeLabelLocalized(it.orderType, lang),
+        quantity: yen(it.quantity),
+        unit_price: yen(it.unitPrice),
+        amount: yen(it.amount),
+        delivery_date: documentFormatters.date(it.deliveryDate),
+      };
+    }),
     tax_rows: taxRows,
     totals: {
       subtotal: yen(totals.subtotal),

@@ -31,7 +31,7 @@ import {
 import {
   type Criterion,
   type CriterionRole,
-  isCostCriterion,
+  criterionCostMode,
   type ToolTypeDef,
 } from "@/lib/trial-pricing-criteria";
 
@@ -163,9 +163,11 @@ export function CriteriaListPanel({
           {roleMetaMap[c.role].label}
         </Badge>
         <ToolTypesBadge c={c} toolTypes={toolTypes} />
-        {isCostCriterion(c) && (
+        {criterionCostMode(c) !== "none" && (
           <Badge color="orange" size="xs" variant="outline">
-            {tr("settings.criterionEditForm.costBadge")}
+            {criterionCostMode(c) === "costOnly"
+              ? tr("settings.criterionEditForm.costOnlyBadge")
+              : tr("settings.criterionEditForm.costBadge")}
           </Badge>
         )}
         {!c.enabled && (

@@ -4,6 +4,7 @@ import { requireAppRead } from "@/lib/authz-page";
 import { parseDocKey } from "@/lib/doc-number";
 import {
   ESTIMATE_COST_PERMISSION,
+  type EstimateKind,
   withoutCost,
   withoutCostFlags,
 } from "@/lib/estimate-cost";
@@ -25,15 +26,21 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** 価格試算 新規 (SA51). `?from=EST-…` で複製して作り直す。 */
+/**
+ * 価格試算 新規 (SA51). `?from=EST-…` で複製して作り直す。
+ * `?kind=PRICE|COST` で種別の初期値を決める — 原価試算の詳細の「売価試算を作成」は
+ * `?from=<原価試算>&kind=PRICE` で入力を複写した売価試算を開く。
+ */
 export default async function TrialEstimateNewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<{ from?: string; kind?: string }>;
 }) {
   const denied = await requireAppRead("trial-estimates");
   if (denied) return denied;
-  const { from } = await searchParams;
+  const { from, kind } = await searchParams;
+  const initialKind =
+    kind === "COST" || kind === "PRICE" ? (kind as EstimateKind) : undefined;
   const fromKey = from ? parseDocKey(from, "EST") : null;
 
   const [
@@ -92,6 +99,7 @@ export default async function TrialEstimateNewPage({
       canViewCost={canViewCost}
       customerOptions={customerOptions}
       diameterOptions={diameterOptions}
+      initialKind={initialKind}
       initialPricing={initialPricing}
       materialTypeOptions={materialTypeOptions}
       scalePreset={scalePreset}

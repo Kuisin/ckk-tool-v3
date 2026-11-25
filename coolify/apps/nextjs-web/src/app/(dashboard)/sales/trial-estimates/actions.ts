@@ -22,6 +22,11 @@ import {
   parseDocKey,
 } from "@/lib/doc-number";
 import {
+  canSeeEstimateKind,
+  ESTIMATE_COST_PERMISSION,
+  type EstimateKind,
+} from "@/lib/estimate-cost";
+import {
   fetchMaterialTypeDefaultPrice,
   fetchPriceHistoryByType,
   type MaterialTypeKey,
@@ -52,6 +57,16 @@ function estimateInScope(
   row: { createdBy: string | null },
 ): boolean {
   return rowInScope(access, { createdBy: row.createdBy }, userId);
+}
+
+/**
+ * 原価試算は estimate_cost の持ち主にしか存在しない。持たない人が番号を推測して
+ * 操作しても「見つからない」と同じに扱う（一覧・詳細と同じ規則）。
+ */
+async function kindVisible(kind: EstimateKind): Promise<boolean> {
+  if (kind === "PRICE") return true;
+  const costAuthz = await checkPermission(ESTIMATE_COST_PERMISSION, "READ");
+  return canSeeEstimateKind(kind, costAuthz.ok);
 }
 
 export interface MaterialPricing {
@@ -128,6 +143,8 @@ const trialInputSchema = z.looseObject({
 function createInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
     name: z.string().min(1, tr("sales.trialEstimates.enterAPriceEstimateName")),
+    /** 種別 — 省略は PRICE（売価試算）。COST は estimate_cost が要る。 */
+    kind: z.enum(["COST", "PRICE"]).optional(),
     customerBpId: z.string().nullable(),
     /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
     salesRepId: z.string().nullable().optional(),
@@ -197,6 +214,12 @@ export async function createTrialEstimate(
   const authz = await checkPermission("price_list", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
+  const kind: EstimateKind = v.kind ?? "PRICE";
+  if (!(await kindVisible(kind))) {
+    return actionError(
+      tr("sales.trialEstimateActions.costEstimateNotPermitted"),
+    );
+  }
   try {
     const settings = await getTrialPricingSettings();
     if (!settings.toolTypes.some((t) => t.value === v.input.toolType)) {
@@ -220,6 +243,7 @@ export async function createTrialEstimate(
         name: v.name,
         toolType: v.input.toolType,
         status: "DRAFT",
+        kind,
         customerBpId: v.customerBpId,
         salesRepId,
         itemId,
@@ -243,6 +267,7 @@ export async function createTrialEstimate(
       recordId: number,
       after: {
         name: v.name,
+        kind,
         toolType: v.input.toolType,
         itemId: v.itemId,
         materialTypeId: v.materialTypeId,
@@ -280,7 +305,7 @@ export async function linkTrialEstimateProduct(
     const estimate = await prisma.estimate.findUnique({
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
     });
-    if (!estimate)
+    if (!estimate || !(await kindVisible(estimate.kind)))
       return actionError(tr("sales.trialEstimateActions.notFound"));
     if (!estimateInScope(authz.access, authz.userId, estimate)) {
       return actionError(tr("common.outOfScope"));
@@ -343,7 +368,7 @@ export async function confirmTrialEstimate(
     const estimate = await prisma.estimate.findUnique({
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
     });
-    if (!estimate)
+    if (!estimate || !(await kindVisible(estimate.kind)))
       return actionError(tr("sales.trialEstimateActions.notFound"));
     if (!estimateInScope(authz.access, authz.userId, estimate)) {
       return actionError(tr("common.outOfScope"));

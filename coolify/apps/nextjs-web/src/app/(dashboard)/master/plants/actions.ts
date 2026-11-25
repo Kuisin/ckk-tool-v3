@@ -33,6 +33,8 @@ function plantInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
     nameKana: z.string().optional(),
     countryCode: z.string().nullable(),
     regionId: z.number().int().positive().nullable(),
+    // 所属する自社法人（書類の発行元）。null = 既定の法人
+    ownCompanyId: z.number().int().positive().nullable().optional(),
     postalCode: z.string().optional(),
     addressJa: z.string().optional(),
     addressTranslations: z.record(z.string(), z.string()).optional(),
@@ -62,6 +64,7 @@ function plantData(v: PlantInput) {
     nameKana: v.nameKana?.trim() || null,
     countryCode: v.countryCode,
     regionId: v.regionId,
+    ownCompanyId: v.ownCompanyId ?? null,
     postalCode: v.postalCode?.trim() || null,
     address:
       localizedInputOrNull(v.addressJa, undefined, v.addressTranslations) ??
@@ -81,6 +84,7 @@ function auditSnapshot(v: PlantInput) {
     nameJa: v.nameJa,
     countryCode: v.countryCode,
     regionId: v.regionId,
+    ownCompanyId: v.ownCompanyId ?? null,
     postalCode: v.postalCode?.trim() || null,
     addressJa: v.addressJa?.trim() || null,
     phone: v.phone?.trim() || null,
@@ -144,6 +148,7 @@ export async function updatePlant(
       select: {
         countryCode: true,
         regionId: true,
+        ownCompanyId: true,
         postalCode: true,
         phone: true,
         email: true,

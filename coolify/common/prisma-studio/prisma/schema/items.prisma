@@ -163,6 +163,7 @@ model Item {
   workOrderProducts  WorkOrder[]               @relation("WorkOrderProductItem")
   estimateRefs Estimate[] @relation("EstimateItem")
   priceListEntryRefs PriceListEntry[] @relation("PriceListEntryItem")
+  priceListEntryToolRefs PriceListEntry[] @relation("PriceListEntryToolItem")
   quoteItemRefs QuoteItem[] @relation("QuoteItemItem")
   orderLineRefs OrderLine[] @relation("OrderLineItem")
   /// 再研磨の明細が「研ぎ直す工具」として指している分（品目としては PRODUCT）。

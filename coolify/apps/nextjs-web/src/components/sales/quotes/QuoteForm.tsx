@@ -71,6 +71,8 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
       discountAmount: z.number().min(0),
       discountLabel: z.string().nullable(),
       deliveryDate: z.string().nullable(),
+      /** 明細の備考（複数行）。見積書 PDF の明細の下に刷る。 */
+      notes: z.string(),
     })
     // 見積書は価格表からのみ価格を解決する — 未解決の行は保存できない。
     .refine((it) => it.priceTierId != null, {
@@ -104,6 +106,7 @@ const emptyItem = (): ItemForm => ({
   discountAmount: 0,
   discountLabel: null,
   deliveryDate: null,
+  notes: "",
 });
 
 /**
@@ -183,6 +186,7 @@ function toFormValues(q: Quote): QuoteFormValues {
       discountAmount: it.discountAmount,
       discountLabel: it.discountLabel,
       deliveryDate: it.deliveryDate,
+      notes: it.notes ?? "",
     })),
   };
 }
@@ -304,7 +308,7 @@ export function QuoteForm({
           | "OTHER",
         quantity: it.quantity,
         deliveryDate: it.deliveryDate,
-        notes: null,
+        notes: it.notes.trim() ? it.notes : null,
       })),
     };
     startTransition(async () => {
@@ -476,6 +480,15 @@ export function QuoteForm({
                 placeholder={tr("common.pickADate")}
                 valueFormat="YYYY/MM/DD"
                 {...form.getInputProps(`items.${ri}.deliveryDate`)}
+              />
+              <Textarea
+                autosize
+                description={tr("sales.quoteForm.lineNotesDescription")}
+                label={tr("common.notes")}
+                maxRows={8}
+                minRows={1}
+                mt="xs"
+                {...form.getInputProps(`items.${ri}.notes`)}
               />
             </Box>
           ))}

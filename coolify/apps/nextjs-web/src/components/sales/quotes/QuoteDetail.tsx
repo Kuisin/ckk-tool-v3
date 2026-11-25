@@ -421,6 +421,16 @@ export function QuoteDetail({
                         <Text c="dimmed" ff="mono" size="xs">
                           {it.itemId}
                         </Text>
+                        {it.notes && (
+                          <Text
+                            c="dimmed"
+                            mt={4}
+                            size="xs"
+                            style={{ whiteSpace: "pre-line" }}
+                          >
+                            {it.notes}
+                          </Text>
+                        )}
                       </Table.Td>
                       <Table.Td>
                         <Badge color="gray" variant="light">

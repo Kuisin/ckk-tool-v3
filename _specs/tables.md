@@ -309,6 +309,7 @@ Table plants {
   name_kana       varchar
   country_code    varchar(2)                   // ISO 3166-1 alpha-2（拠点ごとに 1 国）
   region_id       int [ref: > regions.id]      // 所属地域（任意）
+  own_company_id  int [ref: > own_companies.id] // 所属する自社法人（書類の発行元）。null = 既定の法人
   postal_code     varchar
   address         json                         // { ja: '', en: '' }
   phone           varchar
@@ -318,6 +319,49 @@ Table plants {
   notes           text
   created_at      timestamp
   updated_at      timestamp
+}
+
+// ===========================
+// 自社法人（書類の発行元）
+// ===========================
+//
+// CKK と TSP のように同じグループの別法人が書類を出す。見積書・納品書・請求書の
+// 発行元ブロック（社名・住所・電話・登録番号・社印）はここから刷る。
+// **拠点が 1 つの法人に属し、書類の法人は拠点から決まる**（利用者の決定）—
+// 書類ごとに法人を選ばせない。拠点の分からない書類は既定の法人。
+// 決め方の唯一の定義は nextjs-web の lib/own-company-core.ts（resolveIssuer /
+// resolveOwnCompanyId — 書類ヘッダの拠点 → 明細の拠点 → 既定）。
+//   見積書: 拠点を持たないので既定の法人
+//   納品書: 出荷書の出荷元拠点 → 明細の注文明細の担当拠点 → 既定
+//   請求書: 作成時に同じ規則で決めて invoices.own_company_id に**焼く**。
+//           法人をまたいで 1 通にしない（締日 1 回で法人ごとに 1 通ずつ作る。
+//           締日行が指すのは先頭の 1 通）
+// 既定の法人は旧 PDF ルートの定数 ISSUER と同じ値で作ってあり、既存書類の見た目は
+// 変わらない（20261126120000_own_companies）。
+Table own_companies {
+  id                      serial [pk]
+  code                    varchar [unique, not null] // 作成後は変えられない（BEFORE UPDATE トリガー）。
+                                                     // 書類番号に埋め込まれる（例: CKK/QOT-2026-00001）
+  name                    json [not null]            // 可変キー { ja, en, … }
+  name_kana               varchar
+  postal_code             varchar
+  address                 json
+  phone                   varchar
+  fax                     varchar
+  email                   varchar
+  invoice_registration_no varchar   // 適格請求書発行事業者登録番号（T + 13 桁）
+  seal_file_id            uuid [ref: > files.id]  // 社印。null なら既定の法人だけ同梱の印影、他は印影なし
+  bank_name               varchar
+  bank_branch             varchar
+  bank_account_type       varchar
+  bank_account_number     varchar
+  bank_account_holder     varchar
+  fiscal_year_start_month smallint [not null, default: 4] // 会計年度の開始月（CHECK 1〜12）。法人ごとの採番の年度区切り
+  is_default              boolean [not null, default: false] // 部分 unique index で 1 行だけ。無効化・削除不可
+  is_active               boolean [not null, default: true]
+  notes                   text
+  created_at              timestamp
+  updated_at              timestamp
 }
 
 // ===========================
@@ -621,6 +665,11 @@ Table estimates {
   name            varchar [not null]
   tool_type       varchar [not null]  // 工具種（管理者定義 — trial_pricing.tool_types。組み込み: ROUND_BAR/CYLINDER/OH）
   status          ESTIMATE_STATUS [not null, default: 'DRAFT']
+  // 種別。COST = 原価試算（原価合計だけを出す。権限 estimate_cost の持ち主にしか
+  // 一覧・詳細・検索とも行ごと見せず、価格表の基準単価ソースにはできない）/
+  // PRICE = 売価試算（従来の価格試算）。作成後は変えない — 売価が要るときは
+  // 詳細の「売価試算を作成」で入力を複写した別の PRICE 行を作る。
+  kind            ESTIMATE_KIND [not null, default: 'PRICE']
   customer_bp_id  uuid [ref: > business_partners.id]
   product_id      int [ref: > products.id]     // 対象製品（任意。1製品に複数価格試算可）
   // 材料は「材種 × 直径 × 黒皮/研磨」で指定する（特定 materials 行には紐付けない）
@@ -644,6 +693,17 @@ Table estimates {
   }
 }
 
+Enum ESTIMATE_KIND {
+  COST            // 原価試算
+  PRICE           // 売価試算（既定）
+}
+
+// 計算基準（system_settings trial_pricing.criteria）の原価の扱いは 3 状態:
+//   原価に数えない（isCost=false）/ 原価と売価に数える（isCost=true）/
+//   原価のみに含める（isCost=true + costOnly=true — component でだけ意味を持ち、
+//   原価合計には数えるが小計・見積単価には足さない）。
+// 判定は lib/trial-pricing-criteria.ts criterionCostMode / addsToSubtotal が唯一の定義。
+
 Enum ESTIMATE_STATUS {
   DRAFT           // 下書き
   CONFIRMED       // 確定（価格表の基準単価ソースに選択可能）
@@ -655,6 +715,12 @@ Enum ESTIMATE_STATUS {
 // ===========================
 
 // 価格表エントリ: 顧客 + 製品 = 1 エントリ（UNIQUE・作成後不変）。
+// 再研磨の品目（役務）だけは任意の対象工具 tool_item_id を持て、
+// 顧客 + 品目 + 工具 で 1 エントリになる（工具 NULL は 1 つの値として数える —
+// 部分 unique index 2 本。Prisma では表現できないのでマイグレーションに直書き）。
+// 再研磨の明細の単価は 工具一致 → 工具なし → 品目の標準価格 の順で引く
+// （components/sales/quotes/model.ts selectPriceEntries が唯一の定義）。
+// 工具を持たない行（見積書・製品の明細）は工具なしのエントリだけを見る。
 // 表示番号 PRC-YYYYMM-NNNNN は複合キー (year_month, seq) から導出。
 // 注文種別ごとの価格（基準単価・有効期間・価格試算リンク・tiers・値引き）は
 // price_list_variants に持つ。
@@ -663,6 +729,7 @@ Table price_list_entries {
   seq             int [not null]
   customer_bp_id  uuid [not null, ref: > business_partners.id]
   product_id      int [not null, ref: > products.id]
+  tool_item_id    int [ref: > items.id]     // 対象工具（再研磨の品目だけ・任意）。null = 工具を問わない
   currency        varchar [not null, default: 'JPY']
   is_active       boolean [default: true]
   // 独自値の追加承認（approval_custom_value_steps）。価格試算から引き継いで
@@ -679,7 +746,9 @@ Table price_list_entries {
 
   indexes {
     (year_month, seq) [pk]
-    (customer_bp_id, product_id) [unique]  // 識別キー（作成後不変）
+    // 識別キー（作成後不変）。工具なし / 工具あり の 2 本の部分 unique index
+    (customer_bp_id, product_id) [unique]                // WHERE tool_item_id IS NULL
+    (customer_bp_id, product_id, tool_item_id) [unique]  // WHERE tool_item_id IS NOT NULL
   }
 }
 
@@ -1118,6 +1187,11 @@ Table work_order_steps {
   outsource_requested_at date
   outsource_expected_at  date
   outsource_received_at  date
+  // 工程納期（JST の暦日・任意）。指示書全体の予定納期（割当明細の最早納期）とは
+  // 別の、工程ごとの締切。指示書ごとの値なので工程リストの版には載らない。
+  // 過ぎて未完了（COMPLETED / CANCELLED 以外）なら画面で赤くするだけで、実行可否
+  // の判定には使わない（判定は lib/step-due-date-core.ts — 共有端末と twin）。
+  due_date        date
   status          STEP_STATUS [not null, default: 'PENDING']
   // 工程間の数量受け渡し・不良振り分け
   input_quantity            int   // 前工程からの受入数
@@ -1874,6 +1948,9 @@ Table invoices {
   // その場合だけ顧客マスタの現在の区分へフォールバックして表示する。
   tax_type        TAX_TYPE
   tax_rate        numeric(5,4)
+  // 発行元の自社法人のスナップショット（作成時に拠点から決めて焼く）。
+  // null は読み出し側で既定の法人として刷る。
+  own_company_id  int [ref: > own_companies.id]
   status          INVOICE_STATUS [not null, default: 'DRAFT']
   issued_at       timestamp
   due_date        date

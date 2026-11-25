@@ -71,7 +71,7 @@ const orderTypeSchema = z.enum([
 ]);
 
 /**
- * 自然キー（新規作成・コピー先の識別に使用）。
+ * 自然キー（新規作成・コピー先の識別に使用）— 顧客 × 品目 × 対象工具（任意）。
  *
  * 画面が選ぶのは**品目**（items.id、`itemType: "PRODUCT"`）。
  * DB の UNIQUE は (customer_bp_id, product_id) のままなので、保存の直前に
@@ -88,6 +88,15 @@ function identitySchema(tr: Tr) {
       .union([z.string(), z.number()])
       .transform((v) => Number(v))
       .pipe(z.number().int().min(1)),
+    /**
+     * 対象工具（任意・再研磨の品目だけ）。null / 空 = 工具を問わない価格表。
+     * 識別の一部 — 同じ顧客 × 役務に、工具なしの 1 本と工具ごとの複数本が並ぶ。
+     */
+    toolItemId: z
+      .union([z.string(), z.number(), z.null()])
+      .optional()
+      .transform((v) => (v == null || v === "" ? null : Number(v)))
+      .pipe(z.number().int().min(1).nullable()),
   });
 }
 
@@ -193,10 +202,17 @@ async function resolveEstimateSource(
     };
   const estimate = await prisma.estimate.findUnique({
     where: whereKey(key),
-    select: { status: true, itemId: true },
+    select: { status: true, itemId: true, kind: true },
   });
   if (!estimate)
     return { ok: false, error: tr("sales.priceListsActions.estimateNotFound") };
+  // 原価試算は見積単価を出さない — 基準単価のソースにはできない。
+  if (estimate.kind === "COST") {
+    return {
+      ok: false,
+      error: tr("sales.priceListsActions.costEstimateNotUsable"),
+    };
+  }
   if (estimate.status === "DRAFT") {
     return {
       ok: false,
@@ -249,6 +265,26 @@ export async function fetchEstimateSources(
   }
 }
 
+/**
+ * 価格表作成フォーム用 — 選んだ品目の種別。再研磨の品目のときだけ
+ * 「対象工具」の欄を出すために読む（判定の正は保存側の priceListItemError）。
+ */
+export async function fetchPriceListItemType(
+  itemId: string | number,
+): Promise<"PRODUCT" | "REGRIND" | null> {
+  const authz = await checkPermission("price_list", "READ");
+  if (!authz.ok) return null;
+  const id = Number(itemId);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  const row = await prisma.item.findUnique({
+    where: { id },
+    select: { itemType: true },
+  });
+  if (row?.itemType === "REGRIND") return "REGRIND";
+  if (row?.itemType === "PRODUCT") return "PRODUCT";
+  return null;
+}
+
 // ── 新規作成（顧客×製品 + バリアント一式） ───────────────────────────────────
 
 function createInputSchema(tr: Tr) {
@@ -275,8 +311,9 @@ async function entryItemError(
   tr: Tr,
   itemId: number,
   orderTypes: readonly string[],
+  toolItemId: number | null = null,
 ): Promise<string | null> {
-  return priceListItemError(itemId, orderTypes, tr);
+  return priceListItemError(itemId, orderTypes, tr, toolItemId);
 }
 
 /**
@@ -308,6 +345,7 @@ export async function createPriceEntry(
     tr,
     v.identity.itemId,
     v.variants.map((x) => x.orderType),
+    v.identity.toolItemId,
   );
   if (itemError) return actionError(itemError);
   try {
@@ -340,6 +378,7 @@ export async function createPriceEntry(
           seq: key.seq,
           customerBpId: v.identity.customerBpId,
           itemId: v.identity.itemId,
+          toolItemId: v.identity.toolItemId,
           salesRepId,
           createdBy: authz.userId,
           variants: {
@@ -378,6 +417,7 @@ export async function createPriceEntry(
       after: {
         customerBpId: v.identity.customerBpId,
         itemId: v.identity.itemId,
+        toolItemId: v.identity.toolItemId,
         orderTypes: v.variants.map((x) => x.orderType),
         estimateSources: v.variants
           .map((x) => x.estimateNumber)
@@ -686,8 +726,17 @@ export async function copyPriceEntry(payload: {
   });
   if (!source)
     return actionError(tr("sales.priceListsActions.sourceEntryNotFound"));
+  // 対象工具は、コピー先が同じ品目（= 同じ研ぎ直しの役務）のときだけ引き継ぐ。
+  // 別の品目へ移すなら工具の意味も変わるので、明示されない限り外す。
+  const targetItemId = Number(payload.targetIdentity.itemId);
+  const toolItemId =
+    payload.targetIdentity.toolItemId !== undefined
+      ? payload.targetIdentity.toolItemId
+      : targetItemId === source.itemId
+        ? source.toolItemId
+        : null;
   return createPriceEntry({
-    identity: payload.targetIdentity,
+    identity: { ...payload.targetIdentity, toolItemId },
     variants: source.variants.map((variant) => ({
       id: null,
       orderType: variant.orderType,

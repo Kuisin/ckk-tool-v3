@@ -402,6 +402,17 @@ export function WorkflowBuilder({
         }
       | undefined,
   ) => (p?.userIds.length ?? 0) > 0 || p?.date != null || !!p?.workLocationId;
+  // 工程納期（工程 → YYYY-MM-DD）。指示書ごとの値なので工程リスト（locations）
+  // とは別に持つ — 工程リストの版に載せると、別の指示書へ締切が漏れる。
+  const [stepDueDates, setStepDueDates] = useState<
+    Record<number, string | null>
+  >(() => {
+    const map: Record<number, string | null> = {};
+    for (const s of workOrder?.steps ?? []) {
+      if (s.dueDate) map[s.processStepId] = s.dueDate;
+    }
+    return map;
+  });
   const [stepPlans, setStepPlans] = useState<
     Record<
       number,
@@ -1369,6 +1380,7 @@ export function WorkflowBuilder({
         plantId: s.plantId,
         supplierBpId: s.supplierBpId,
         workHours: s.workHours,
+        dueDate: stepDueDates[s.processStepId] ?? null,
         lotInputMode: s.lotInputMode ?? null,
         inspectionTemplateIds: templatesFor(s.processStepId).map(Number),
       })),
@@ -2231,6 +2243,59 @@ export function WorkflowBuilder({
                     )}
                   </Group>
                 </Paper>
+              );
+            })}
+          </Stack>
+        </FormSection>
+      )}
+
+      {/* 工程納期 — 指示書ごとの締切。任意で、過ぎて未完了なら工程カード・
+          フロー図で赤くなる。承認後は工程実行画面の計画パネルで直す。 */}
+      {currentSnapshots.length > 0 && (
+        <FormSection
+          description={tr("production.stepDueDate.builderHelp")}
+          title={tr("production.stepDueDate.label")}
+        >
+          <Stack gap="xs">
+            {currentSnapshots.map((s, i) => {
+              const cat = catalogSteps.find((c) => c.id === s.processStepId);
+              if (!cat) return null;
+              return (
+                <Group
+                  gap="sm"
+                  key={s.processStepId}
+                  wrap={isMobile ? "wrap" : "nowrap"}
+                >
+                  <Group
+                    gap="sm"
+                    style={{ flex: 1, minWidth: 0 }}
+                    wrap="nowrap"
+                  >
+                    <Text c="dimmed" className="tabular-nums" size="xs" w={20}>
+                      {i + 1}
+                    </Text>
+                    <Text fw={600} size="sm" truncate>
+                      {cat.nameJa}
+                    </Text>
+                  </Group>
+                  <DatePickerInput
+                    aria-label={tr("production.stepDueDate.labelWithStep", {
+                      step: cat.nameJa,
+                    })}
+                    clearable
+                    onChange={(v) =>
+                      setStepDueDates((prev) => ({
+                        ...prev,
+                        [s.processStepId]: v,
+                      }))
+                    }
+                    placeholder={tr("production.stepDueDate.label")}
+                    size="xs"
+                    value={stepDueDates[s.processStepId] ?? null}
+                    valueFormat="YYYY/MM/DD"
+                    w={isMobile ? "100%" : 160}
+                  />
+                </Group>
               );
             })}
           </Stack>

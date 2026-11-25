@@ -7,7 +7,10 @@
  * deterministically via `calcTrialPricing`.
  */
 
+import type { EstimateKind } from "@/lib/estimate-cost";
 import type { TrialInput, TrialResult } from "@/lib/trial-pricing";
+
+export type { EstimateKind };
 
 /** 保存/確定時に記録した価格スナップショット（estimate.result）。 */
 export type TrialPriceSnapshot = TrialResult & {
@@ -27,6 +30,11 @@ export interface TrialEstimateRecord {
   estimateNumber: string;
   name: string;
   status: EstimateStatus;
+  /**
+   * 種別 — COST = 原価試算（原価合計だけを出す。estimate_cost の持ち主にしか
+   * 届かない）/ PRICE = 売価試算（従来の価格試算）。
+   */
+  kind: EstimateKind;
   customerId: string | null;
   customerName: string | null;
   /**

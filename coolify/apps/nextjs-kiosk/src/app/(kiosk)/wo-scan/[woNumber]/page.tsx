@@ -19,8 +19,10 @@ export const dynamic = "force-dynamic";
 
 export default async function WoStepsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ woNumber: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -29,6 +31,8 @@ export default async function WoStepsPage({
   if (!codes.has("work_order") && !codes.has("*")) redirect("/");
 
   const { woNumber } = await params;
+  // 指示書一覧（/wo-list）から来たときは戻り先を一覧にする。
+  const fromList = (await searchParams).from === "list";
   const parsed = parseWorkOrderNumber(decodeURIComponent(woNumber));
   if (parsed == null) redirect("/wo-scan");
 
@@ -40,7 +44,11 @@ export default async function WoStepsPage({
 
   return (
     <I18nProvider locale={session.locale}>
-      <WoStepsView overview={overview} workOrderNumber={parsed} />
+      <WoStepsView
+        fromList={fromList}
+        overview={overview}
+        workOrderNumber={parsed}
+      />
     </I18nProvider>
   );
 }

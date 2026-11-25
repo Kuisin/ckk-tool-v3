@@ -46,6 +46,7 @@ interface FormValues {
   nameKana: string;
   countryCode: string | null;
   regionId: string | null;
+  ownCompanyId: string | null;
   postalCode: string;
   addressJa: string;
   addressTranslations: Record<string, string>;
@@ -64,6 +65,7 @@ export interface PlantFormInitial {
   nameKana: string;
   countryCode: string | null;
   regionId: number | null;
+  ownCompanyId: number | null;
   postalCode: string;
   addressJa: string;
   addressTranslations: Record<string, string>;
@@ -77,10 +79,13 @@ export interface PlantFormInitial {
 export function PlantForm({
   initial,
   regionOptions,
+  ownCompanyOptions,
 }: {
   initial?: PlantFormInitial;
   /** 地域 Select の選択肢（value = String(region id)）。 */
   regionOptions: { value: string; label: string }[];
+  /** 自社法人 Select の選択肢（value = String(own company id)）。 */
+  ownCompanyOptions: { value: string; label: string }[];
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -96,6 +101,7 @@ export function PlantForm({
     nameKana: z.string(),
     countryCode: z.string().nullable(),
     regionId: z.string().nullable(),
+    ownCompanyId: z.string().nullable(),
     postalCode: z.string(),
     addressJa: z.string(),
     addressTranslations: z.record(z.string(), z.string()).default({}),
@@ -115,6 +121,13 @@ export function PlantForm({
       nameKana: initial?.nameKana ?? "",
       countryCode: initial?.countryCode ?? "JP",
       regionId: initial?.regionId != null ? String(initial.regionId) : null,
+      // 新規は既定の法人（選択肢の先頭 = 既定）を初期値にする。
+      ownCompanyId:
+        initial?.ownCompanyId != null
+          ? String(initial.ownCompanyId)
+          : initial
+            ? null
+            : (ownCompanyOptions[0]?.value ?? null),
       postalCode: initial?.postalCode ?? "",
       addressJa: initial?.addressJa ?? "",
       addressTranslations: initial?.addressTranslations ?? {},
@@ -130,6 +143,7 @@ export function PlantForm({
     const payload = {
       ...values,
       regionId: values.regionId ? Number(values.regionId) : null,
+      ownCompanyId: values.ownCompanyId ? Number(values.ownCompanyId) : null,
     };
     startTransition(async () => {
       const result = isEdit
@@ -207,6 +221,14 @@ export function PlantForm({
             label={tr("common.name2")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
+          />
+          <Select
+            clearable
+            data={ownCompanyOptions}
+            description={tr("master.plantForm.ownCompanyDesc")}
+            label={tr("master.plantForm.ownCompany")}
+            placeholder={tr("master.plantForm.ownCompanyPlaceholder")}
+            {...form.getInputProps("ownCompanyId")}
           />
           <Switch
             label={<HelpLabel {...fieldHelp(tr, "plant", "active")} />}

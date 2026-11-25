@@ -38,6 +38,13 @@ const headlinePrice = (r: TrialEstimateRecord, opts: TrialPricingOptions) =>
   (r.resultSnapshot ?? calcTrialPricing(r.input, opts)).lots[0]
     ?.estimateUnitPrice ?? 0;
 
+/**
+ * 原価試算の代表値 = 原価合計（見積単価は出さない）。原価試算の行は
+ * estimate_cost の持ち主にしか届かないので、ここで原価を出してよい。
+ */
+const headlineCost = (r: TrialEstimateRecord, opts: TrialPricingOptions) =>
+  (r.resultSnapshot ?? calcTrialPricing(r.input, opts)).costTotal ?? 0;
+
 export function TrialEstimateTable({
   rows,
   pricingOptions = {},
@@ -88,6 +95,11 @@ export function TrialEstimateTable({
       render: (r) => (
         <Group gap="xs" wrap="nowrap">
           <Text size="sm">{r.name}</Text>
+          {r.kind === "COST" && (
+            <Badge color="orange" size="xs" variant="light">
+              {tr("sales.trialEstimates.kindCost")}
+            </Badge>
+          )}
           {r.isCustomPrice && (
             <Badge color="orange" size="xs" variant="light">
               {tr("common.custom")}
@@ -123,12 +135,21 @@ export function TrialEstimateTable({
       header: tr("sales.trialEstimates.representativeEstimatedUnitPrice"),
       align: "right",
       width: 140,
-      sortValue: (r) => headlinePrice(r, pricingOptions),
-      render: (r) => (
-        <Text fw={600} size="sm" ta="right">
-          <MoneyText value={headlinePrice(r, pricingOptions)} />
-        </Text>
-      ),
+      sortValue: (r) =>
+        r.kind === "COST"
+          ? headlineCost(r, pricingOptions)
+          : headlinePrice(r, pricingOptions),
+      render: (r) =>
+        r.kind === "COST" ? (
+          <Text c="dimmed" size="sm" ta="right">
+            {`${tr("sales.trialEstimates.costTotal")} `}
+            <MoneyText value={Math.round(headlineCost(r, pricingOptions))} />
+          </Text>
+        ) : (
+          <Text fw={600} size="sm" ta="right">
+            <MoneyText value={headlinePrice(r, pricingOptions)} />
+          </Text>
+        ),
     },
     {
       key: "status",

@@ -216,7 +216,8 @@ async function resolveItems(
         roundYen(lineAmountYen(r.unitPrice, it.quantity) - r.discountAmount),
       ),
       deliveryDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
-      notes: it.notes,
+      // 明細の備考（複数行）。空白だけなら持たない — PDF に空の行を刷らない。
+      notes: it.notes?.trim() ? it.notes.trimEnd() : null,
       sortOrder: i,
     };
   });

@@ -310,6 +310,18 @@ export const appList: AppEntry[] = [
     category: "生産",
     requiredPermission: "work_order",
   },
+  {
+    // 作業場所一覧 — 選んだ日（既定 = 今日）に、作業場所ごとに何の工程が
+    // 待っているか。共有端末の「作業場所の工程」(/work-location) を全作業場所
+    // ぶん事務所から見る画面。PD07 / PD08 は在庫へ移った欠番なので PD09。
+    key: "work-location-board",
+    label: "作業場所一覧",
+    operationCode: "PD09",
+    href: "/production/work-location-board",
+    icon: "IconMapPin",
+    category: "生産",
+    requiredPermission: "work_order",
+  },
 
   // ─── 出荷 ──────────────────────────────────────────────────────────────────
   {
@@ -513,6 +525,19 @@ export const appList: AppEntry[] = [
     operationCode: "MS0H",
     href: "/master/regrind-items",
     icon: "IconTool",
+    category: "マスタ",
+    requiredPermission: "master",
+  },
+
+  {
+    // 自社法人（書類の発行元。CKK / TSP のような同じグループの別法人）。
+    // 拠点が 1 つの法人に属し、書類の法人は拠点から決まる
+    // （lib/own-company-core.ts が唯一の定義元）。
+    key: "master-own-companies",
+    label: "自社法人",
+    operationCode: "MS0I",
+    href: "/master/own-companies",
+    icon: "IconBuildingBank",
     category: "マスタ",
     requiredPermission: "master",
   },
@@ -836,6 +861,7 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "movement-types": { en: "Movement types", zh: "移动类型" },
   "stock-takes": { en: "Stocktaking", zh: "盘点" },
   "pending-work-orders": { en: "Pending work orders", zh: "未处理工单" },
+  "work-location-board": { en: "Work location board", zh: "作业场所一览" },
   "delivery-orders": { en: "Delivery order", zh: "出货单" },
   "delivery-notes": { en: "Delivery note", zh: "送货单" },
   "pending-shipments": { en: "Pending shipments", zh: "未处理出货" },
@@ -859,6 +885,7 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "master-tax-categories": { en: "Tax categories", zh: "税种" },
   "master-charge-items": { en: "Charge items", zh: "费用项目" },
   "master-regrind-items": { en: "Regrind items", zh: "再研磨服务" },
+  "master-own-companies": { en: "Own companies", zh: "本公司法人" },
   docs: { en: "Manual", zh: "操作手册" },
   "admin-manual": { en: "Admin manual", zh: "管理手册" },
   "user-management": { en: "Users", zh: "用户管理" },

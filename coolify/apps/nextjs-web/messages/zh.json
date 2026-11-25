@@ -2003,7 +2003,9 @@
       "amount": "金额（日元）",
       "deliveryDate": "交期",
       "tax": "税额（10%）",
-      "validityStrip": "本报价单有效期至 {validUntil}，请在此期限内下单。"
+      "validityStrip": "本报价单有效期至 {validUntil}，请在此期限内下单。",
+      "lineDiscount": "折扣",
+      "lineDiscountNote": "※ {label}：-¥{amount}"
     },
     "DELIVERY_NOTE": {
       "regNumber": "登记编号：",
@@ -2210,7 +2212,8 @@
       "unbilledShipments": "未请款出货",
       "noUnbilledShipmentsForCustomer": "没有未请款的出货",
       "createInvoiceFromSelection": "生成请款单",
-      "someShipmentsNoLongerAvailable": "所选出货中有部分已被其他请款单使用，请重新选择。"
+      "someShipmentsNoLongerAvailable": "所选出货中有部分已被其他请款单使用，请重新选择。",
+      "issuingCompany": "开具方"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "将发行请款单 {invoiceNumber}，发行日期记为今天。",
@@ -3569,6 +3572,36 @@
       },
       "seriesOption": "{name}（{count} 个版本）",
       "allSeries": "所有订货方"
+    },
+    "stepDueDate": {
+      "badge": "工序交期 {date}",
+      "label": "工序交期",
+      "labelWithStep": "{step} 的工序交期",
+      "builderHelp": "每道工序的截止日（可选）。超过交期且未完成的工序会在工序卡片和流程图中以红色显示。批准后可在工序执行画面的计划面板中修改。",
+      "panelHelp": "本工序应在何时前完成（可选）",
+      "notSet": "未设置",
+      "saved": "已保存工序交期",
+      "locked": "无法修改此工序的交期（工序已完成或已取消，或工单正在审批中）",
+      "couldNotSave": "无法保存工序交期",
+      "auditChanged": "工序交期改为 {date}"
+    },
+    "workLocationBoard": {
+      "title": "作业场所一览",
+      "date": "日期",
+      "today": "今天",
+      "time": "时间",
+      "workOrder": "工单",
+      "product": "产品",
+      "step": "工序",
+      "assignee": "负责人",
+      "status": "状态",
+      "carriedOver": "顺延（{date}）",
+      "working": "作业中",
+      "helpToday": "除今天的计划外，还显示之前顺延的未完成工序以及在该作业场所进行中的工序。",
+      "helpOtherDay": "按作业场所显示当天的作业计划。",
+      "empty": "当天没有作业计划",
+      "noLocation": "无作业场所",
+      "count": "{count} 条"
     }
   },
   "purchase": {
@@ -4188,8 +4221,12 @@
       "quantityPcs": "{quantity} 支",
       "description": "说明",
       "descriptionHint": "显示在价格试算画面中此费用项旁的提示按钮（ⓘ）里。留空则不显示按钮。",
-      "isCost": "计入成本",
-      "isCostHint": "作为“成本合计”记录在价格试算结果中，不影响试算单价。",
+      "costMode": "成本处理",
+      "costModeHint": "“计入成本和售价”记入成本合计；若是计入小计的项目，也计入试算单价。“仅计入成本”只记入成本合计，不计入最低单价和试算单价（仅限计入小计的项目）。",
+      "costModeNone": "不计入成本",
+      "costModeCostAndPrice": "计入成本和售价",
+      "costModeCostOnly": "仅计入成本",
+      "costOnlyBadge": "仅成本",
       "costBadge": "成本"
     },
     "itemDefEditForm": {
@@ -5154,6 +5191,10 @@
       "taxAccountCode": "暂收消费税 科目代码",
       "deptCode": "部门代码",
       "defaultTaxCode": "默认税代码",
+      "salesByOrderType": "按订单类别的销售收入 科目代码",
+      "salesByOrderTypeDescription": "按订单类别分开销售收入科目时使用（例如将再研磨的销售与产品分开记账）。仅填写了的订单类别优先于税种主数据和默认科目，留空的类别保持原样。",
+      "orderType": "订单类别",
+      "followTaxCategory": "按税种 / 默认",
       "taxCodeRules": "按税率的税代码",
       "taxCodeRulesDescription": "税种主数据未填税代码时，按税率查找。",
       "taxRate": "税率",
@@ -6245,7 +6286,11 @@
     "plantForm": {
       "enterSiteCode": "请输入据点编号",
       "siteUpdatedMessage": "已更新据点",
-      "editTitle": "编辑据点 — {code}"
+      "editTitle": "编辑据点 — {code}",
+      "ownCompany": "本公司法人",
+      "ownCompanyDesc": "作为单据（报价单、送货单、请款单）开具方的法人。未设置时为默认法人",
+      "ownCompanyPlaceholder": "默认法人",
+      "ownCompanyDefault": "默认法人"
     },
     "materialTypeForm": {
       "selectAManufacturer2": "请选择制造商",
@@ -6790,6 +6835,70 @@
       "notSet": "未设置（无追加审批）",
       "describePriceList": "自定义值：未使用价格试算的基准单价、与价格试算的试算单价不同的基准单价、数量档单价的手动覆盖（仅启用的订单类别）。批准前，此价格表不会用于报价单和订单确认书的定价。",
       "describeOrderAcceptance": "自定义值：不按价格表的明细单价（手动覆盖、与价格表有差异、无价格表、无数量档）。"
+    },
+    "ownCompanies": {
+      "title": "本公司法人",
+      "newTitle": "新建本公司法人",
+      "editTitle": "编辑 {code}",
+      "empty": "没有本公司法人",
+      "code": "法人编号",
+      "codeDesc": "识别法人的唯一编号。会写入单据编号，创建后无法更改",
+      "codePlaceholder": "例：CKK",
+      "enterCode": "请输入法人编号",
+      "default": "默认",
+      "defaultCompany": "默认法人",
+      "defaultDesc": "无法确定据点的单据（如报价单）的开具方。始终只有 1 家",
+      "registrationNo": "登记号",
+      "registrationNoLabel": "合格请款单发行事业者登记号",
+      "registrationNoDesc": "打印在报价单、送货单、请款单的开具方栏",
+      "registrationNoPlaceholder": "例：T1234567890123",
+      "invalidRegistrationNo": "请按 T + 13 位数字输入登记号",
+      "fiscalYearStartMonth": "会计年度开始月",
+      "fiscalYearStartMonthDesc": "单据编号按年度划分时的分界（1〜12）",
+      "invalidFiscalMonth": "请输入 1〜12 的开始月",
+      "monthValue": "{month} 月",
+      "plants": "据点",
+      "plantCount": "据点数",
+      "plantsDesc": "属于该法人的据点。在据点主数据（MS0C）中更改",
+      "noPlants": "没有属于该法人的据点",
+      "fax": "传真",
+      "contact": "联系方式・地址",
+      "bank": "银行账户",
+      "bankName": "金融机构",
+      "bankBranch": "分行",
+      "bankAccountType": "账户类别",
+      "bankAccountNumber": "账号",
+      "bankAccountHolder": "账户名",
+      "seal": "公司印章",
+      "sealDesc": "打印在已发行请款单上的印章图像（PNG / JPG，最大 2MB）",
+      "uploadSeal": "上传印章",
+      "removeSeal": "移除印章",
+      "sealDefaultFallback": "未设置，使用原有印章",
+      "sealNoneFallback": "未设置，请款单上不打印印章",
+      "sealTooLarge": "图像最大 2MB",
+      "sealSaveFailed": "印章保存失败",
+      "sealUploaded": "已保存印章",
+      "sealRemoved": "已移除印章",
+      "issuerPreview": "单据开具方",
+      "issuerPreviewDesc": "将按此内容打印在报价单、送货单、请款单的开具方栏",
+      "created": "已创建本公司法人",
+      "updated": "已更新本公司法人",
+      "deleted": "已删除本公司法人",
+      "deleteTitle": "删除本公司法人",
+      "deleteConfirm": "将删除本公司法人「{name}」。此操作无法撤销。",
+      "deleteWarning": "被据点或请款单使用的法人以及默认法人无法删除。",
+      "disableTitle": "停用本公司法人",
+      "enableTitle": "启用本公司法人",
+      "disableConfirm": "将停用本公司法人「{name}」。它将不再出现在据点的选项中。",
+      "enableConfirm": "将启用本公司法人「{name}」。",
+      "notFound": "未找到本公司法人",
+      "cannotUnsetDefault": "无法取消默认法人。请将其他法人设为默认",
+      "cannotDisableDefault": "无法停用默认法人",
+      "cannotDeleteDefault": "无法删除默认法人",
+      "inUse": "因被 {plants} 个据点、{invoices} 张请款单使用，无法删除",
+      "createFailed": "本公司法人创建失败",
+      "updateFailed": "本公司法人更新失败",
+      "deleteFailed": "本公司法人删除失败"
     }
   },
   "manual": {
@@ -7908,7 +8017,7 @@
       "testAndSampleEntriesNeedAn": "试制・样品必须填写结束日",
       "theBaseForThePriceList": "价格表的基准单价。默认为价格试算的试算单价。各数量档单价 = 基准单价 × 系数。",
       "theBasePriceComesFromThe": "基准单价取自价格试算的试算单价。仅在明确启用自定义时可手动覆盖（会有确认）。各档单价 = 基准单价 × 系数。",
-      "theCustomerAndProductCannotBe": "客户与产品创建后无法更改。",
+      "theCustomerAndProductCannotBe": "客户、产品与适用刀具创建后无法更改。",
       "theMaximumQuantityMustBeAt": "数量上限请输入不小于下限的值",
       "theMinimumQuantityThisRuleApplies": "此规则适用的最小数量。上限留空表示无限制。",
       "theMultiplierPerTierEG": "各数量档的系数（例 ×1.05 = 基准单价加 5%）。单价 = 基准单价 × 系数。",
@@ -7920,7 +8029,9 @@
       "theValidPeriodWasChanged": "已更改有效期",
       "thereAreNoDiscountRules": "没有折扣规则。",
       "thereIsNoPriceListPick": "没有价格表 — 请选择客户×产品来创建",
-      "thereIsOnePriceListPer": "每个客户×产品对应 1 张价格表。各订单类别的价格在下方添加。",
+      "thereIsOnePriceListPer": "每个客户×产品对应 1 张价格表（再研磨服务也可按适用刀具分别创建）。各订单类别的价格在下方添加。",
+      "targetTool": "适用刀具",
+      "anyTool": "不限刀具",
       "tickingItDropsTheAutomaticCalculation": "点击“自定义”后不使用自动计算，仅此数量档设为手动固定单价（会有确认）。",
       "tiers": "档数",
       "unitPriceRange": "单价范围",
@@ -8041,7 +8152,14 @@
       "scaleEstimateNote": "这是用试算单价（基准）× 数量阶梯系数得出的参考值。实际按数量的价格由价格表决定（与用此价格试算创建价格表时的初始值相同）。",
       "scaleEstimateTitle": "参考：按数量的单价",
       "costTotal": "成本合计",
-      "grossMargin": "毛利"
+      "grossMargin": "毛利",
+      "kind": "类别",
+      "kindPrice": "售价试算",
+      "kindCost": "成本试算",
+      "kindPriceHint": "计算到试算单价。确定后可选作价格表的基准单价。",
+      "kindCostHint": "只显示成本合计。仅有查看成本权限的人可见，不能用作价格表的基准单价。",
+      "createPriceEstimate": "创建售价试算",
+      "costEstimateNotice": "这是成本试算。只显示成本合计，不能用作价格表的基准单价。需要售价时，请用“创建售价试算”沿用输入新建售价试算。"
     },
     "orderLineDetail": {
       "designWithCount": "设计（{count}）",
@@ -8215,7 +8333,9 @@
       "confirmDeleteOrderTypeMessage": "将删除 {orderType} 的价格（含数量段和折扣规则）。保存后生效。",
       "confirmUseCustomBaseMessage": "将不再使用价格试算的单价（{price}），改为手动设置基准单价。确定吗？",
       "confirmUseCustomTierMessage": "将不再使用该数量段的自动计算单价（{price} = 基准单价 × 系数），改为手动设置单价。",
-      "duplicateEntryPrefix": "该客户 × 产品的价格表",
+      "duplicateEntryPrefix": "该客户 × 产品（× 适用刀具）的价格表",
+      "targetToolDescription": "仅当此再研磨价格只适用于某一刀具时选择。不选则为不限刀具的价格（按 刀具价格表 → 不限刀具的价格表 → 标准价格 的顺序查找）。",
+      "searchTools": "搜索刀具",
       "duplicateEntrySuffix": "已存在（{orderTypes}）。如需添加注文种别，请编辑现有价格表。",
       "editTitle": "编辑价格表",
       "manualWithEstimateValue": "手动设置（价格试算值：{price}）",
@@ -8239,7 +8359,8 @@
       "selectABranch": "选择分公司",
       "subtotalAmount": "小计 {amount}",
       "taxAmount": "税额 {amount}",
-      "totalInclTaxAmount": "合计（含税） {amount}"
+      "totalInclTaxAmount": "合计（含税） {amount}",
+      "lineNotesDescription": "打印在报价单 PDF 的明细下方"
     },
     "trialEstimateDetail": {
       "orderTypeTierCount": "{orderType}・{tierCount} 档",
@@ -8326,7 +8447,7 @@
       "invalidVariant": "变体无效",
       "invalidTier": "数量档无效",
       "createFailed": "价格表创建失败",
-      "duplicateEntry": "该客户与产品的价格表已存在。请编辑现有价格表。",
+      "duplicateEntry": "该客户、产品与适用刀具的价格表已存在。请编辑现有价格表。",
       "invalidEntryNumber": "价格表编号无效",
       "updateFailed": "价格表更新失败",
       "invalidSourceEntryNumber": "复制来源的价格表编号无效",
@@ -8338,7 +8459,8 @@
       "deleteDiscountRuleFailed": "折扣规则删除失败",
       "noApprovalNeeded": "此价格表无需审批：没有自定义值，或未设置自定义值追加审批级",
       "notFound": "未找到价格表",
-      "notPendingApproval": "不在审批中"
+      "notPendingApproval": "不在审批中",
+      "costEstimateNotUsable": "成本试算不能用作价格表的基准单价"
     },
     "designRequestActions": {
       "approvalRequestFailed": "审批申请失败",
@@ -8389,7 +8511,8 @@
       "productNotFound": "未找到该产品",
       "purchaseHistoryFetchFailed": "采购实绩获取失败",
       "saveFailed": "价格试算保存失败",
-      "toolTypeNotDefined": "未定义刀具类别“{toolType}”"
+      "toolTypeNotDefined": "未定义刀具类别“{toolType}”",
+      "costEstimateNotPermitted": "没有创建成本试算的权限"
     },
     "intakeReview": {
       "customer": "客户",
@@ -8446,7 +8569,9 @@
       "externalProductHasNoPriceList": "他社产品无法创建价格表（只是寄存，不出售）",
       "materialHasNoPriceList": "材料无法创建价格表",
       "regrindItemOnlyRegrindVariant": "再研磨品目只能拥有订单类别「再研磨」",
-      "productHasNoRegrindVariant": "产品无法创建订单类别「再研磨」的价格。再研磨的价格由再研磨品目持有"
+      "productHasNoRegrindVariant": "产品无法创建订单类别「再研磨」的价格。再研磨的价格由再研磨品目持有",
+      "priceListToolOnlyForRegrind": "只有再研磨服务的价格表可以设置适用刀具",
+      "priceListToolMustBeProduct": "适用刀具请选择产品（含他社产品）"
     },
     "quoteMail": {
       "subject": "报价单 {number}",
@@ -9356,7 +9481,8 @@
       "item_inventory": "库存",
       "movement_types": "移动类型",
       "items": "品目",
-      "webhook_endpoints": "Webhook 接收地址"
+      "webhook_endpoints": "Webhook 接收地址",
+      "own_companies": "本公司法人"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -9717,6 +9843,10 @@
       "product": {
         "label": "产品",
         "summary": "确定价格所对应的产品。与客户相同，创建后不可更改。"
+      },
+      "targetTool": {
+        "label": "适用刀具",
+        "summary": "仅当此再研磨价格只适用于某一刀具时选择。留空则为不限刀具的价格。单价按 刀具价格表 → 不限刀具的价格表 → 标准价格 的顺序查找。"
       },
       "orderType": {
         "label": "订单类别",

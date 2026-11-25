@@ -21,6 +21,11 @@ import {
   formatPriceListNumber,
   formatProductNumber,
 } from "@/lib/doc-number";
+import {
+  canSeeEstimateKind,
+  ESTIMATE_COST_PERMISSION,
+  estimateKindWhere,
+} from "@/lib/estimate-cost";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import type { TrialInput } from "@/lib/trial-pricing";
@@ -88,6 +93,7 @@ export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
     estimateNumber: number,
     name: r.name,
     status: r.status,
+    kind: r.kind,
     customerId: r.customerBpId,
     customerName: r.customerBp
       ? localized(r.customerBp.name as LocalizedText | null)
@@ -113,15 +119,25 @@ export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
 
 export async function fetchTrialEstimates(): Promise<TrialEstimateRecord[]> {
   // スコープ行フィルタ（OWN = 自分の作成分のみ。ALL は {} で従来通り全件）。
-  const authz = await checkPermission("price_list", "READ");
+  const [authz, costAuthz] = await Promise.all([
+    checkPermission("price_list", "READ"),
+    checkPermission(ESTIMATE_COST_PERMISSION, "READ"),
+  ]);
   if (!authz.ok) return [];
   const rows = await prisma.estimate.findMany({
     take: LIST_FETCH_CAP,
-    where: ownWhere(
-      authz.access,
-      authz.userId,
-      "createdBy",
-    ) as Prisma.EstimateWhereInput,
+    where: {
+      AND: [
+        ownWhere(
+          authz.access,
+          authz.userId,
+          "createdBy",
+        ) as Prisma.EstimateWhereInput,
+        // 原価試算は estimate_cost の持ち主にしか出さない（行ごと — 画面で
+        // 隠すのではなく、クエリの段階で落とす）。
+        estimateKindWhere(costAuthz.ok),
+      ],
+    },
     include: {
       customerBp: true,
       item: true,
@@ -140,10 +156,15 @@ export async function fetchTrialEstimate(
   yearMonth: string,
   seq: number,
 ): Promise<TrialEstimateRecord | null> {
-  const authz = await checkPermission("price_list", "READ");
+  const [authz, costAuthz] = await Promise.all([
+    checkPermission("price_list", "READ"),
+    checkPermission(ESTIMATE_COST_PERMISSION, "READ"),
+  ]);
   if (!authz.ok) return null;
   const row = await fetchEstimateRowByKey(yearMonth, seq);
   if (!row) return null;
+  // 原価試算は estimate_cost の無い人には存在しないものとして扱う（notFound）。
+  if (!canSeeEstimateKind(row.kind, costAuthz.ok)) return null;
   // スコープ外の行は不可視（null → 呼び出し側の notFound に乗せる）。
   if (!rowInScope(authz.access, { createdBy: row.createdBy }, authz.userId)) {
     return null;
@@ -254,7 +275,7 @@ export async function fetchCustomerOption(id: string): Promise<Option | null> {
   return { value: r.id, label: localized(r.name as LocalizedText | null) };
 }
 
-/** All current price-entry identities (顧客×製品) — duplicate warnings. */
+/** All current price-entry identities (顧客×製品×対象工具) — duplicate warnings. */
 export async function fetchExistingEntryRefs(): Promise<EntryIdentity[]> {
   const rows = await prisma.priceListEntry.findMany({
     select: {
@@ -262,6 +283,7 @@ export async function fetchExistingEntryRefs(): Promise<EntryIdentity[]> {
       seq: true,
       customerBpId: true,
       itemId: true,
+      toolItemId: true,
       variants: { select: { orderType: true } },
     },
   });
@@ -270,6 +292,7 @@ export async function fetchExistingEntryRefs(): Promise<EntryIdentity[]> {
     .map((r) => ({
       customerBpId: r.customerBpId,
       itemId: String(r.itemId),
+      toolItemId: r.toolItemId != null ? String(r.toolItemId) : null,
       orderTypes: r.variants.map((v) => v.orderType),
       entryId: formatPriceListNumber({ yearMonth: r.yearMonth, seq: r.seq }),
     }));

@@ -38,6 +38,12 @@ export interface PriceResolvableItem {
   orderType: string;
   quantity: number;
   /**
+   * 研ぎ直す工具（品目 id の文字列）。**再研磨の行だけ**が意味を持つ —
+   * 価格表は 工具一致 → 工具なし → 標準価格 の順で引く。それ以外の種別では
+   * 渡しても無視する（工具付きの価格表は再研磨の品目にしか無い）。
+   */
+  toolItemId?: string | number | null;
+  /**
    * 品目の標準価格（定価）。顧客の価格表が当たらないときの拠り所で、
    * **再研磨の品目だけが持つ**（lib/standard-price.ts）。
    * 省略 = 標準価格を見ない（従来どおり価格表だけ）。
@@ -54,6 +60,16 @@ export async function loadCustomerPriceEntries(
 ): Promise<PriceListEntry[]> {
   if (!customerBpId) return [];
   return fetchEntriesForCustomer(customerBpId);
+}
+
+/** 価格表の解決に渡す工具 — 再研磨の行だけ。空は null。 */
+export function lineToolItemId(item: {
+  orderType: string;
+  toolItemId?: string | number | null;
+}): string | null {
+  if (item.orderType !== "REGRIND") return null;
+  const t = item.toolItemId;
+  return t == null || t === "" ? null : String(t);
 }
 
 /** 1 行の価格表単価と、引けなかったときの理由。 */
@@ -89,6 +105,7 @@ export function priceListLookup(
     tr,
     new Date(),
     item.standardUnitPrice ?? null,
+    lineToolItemId(item),
   );
   return r.ok
     ? { expected: r.price.unitPrice, missReason: null }

@@ -20,6 +20,7 @@ import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters, escapeHtml } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
+import { issuerForDeliveryNote } from "@/lib/own-companies";
 import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   deliveryMethodLabelLocalized,
@@ -36,14 +37,6 @@ import { getObject, putObject } from "@/lib/storage";
 export const dynamic = "force-dynamic";
 
 const yen = (n: number) => n.toLocaleString("ja-JP");
-
-// 発行元（CKK 本社）— quote ルートの issuer ブロックと同一。
-const ISSUER = {
-  name: "シー・ケィ・ケー株式会社", // i18n-ignore
-  address: "〒475-0823 愛知県半田市港町2丁目27番2", // i18n-ignore
-  tel: "TEL: 0569-21-6187　FAX: 0569-23-6427",
-  invoice_reg: "T1234567890123",
-};
 
 /** Build the response headers for serving the PDF (inline vs attachment). */
 function pdfHeaders(deliveryNumber: string, download: boolean): HeadersInit {
@@ -67,7 +60,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const key = parseDocKey(id, "DRN");
   const note = key ? await fetchDeliveryNoteForDocument(key) : null;
-  if (!note) {
+  if (!key || !note) {
     return new Response(`Delivery note not found: ${id}`, { status: 404 });
   }
   // 閲覧は発行後のみ（下書きの納品書は PDF を出さない）。
@@ -98,11 +91,14 @@ export async function GET(request: Request): Promise<Response> {
     metaLines.push(`${labels.endUserPrefix} ${note.endUserName}`);
   }
 
+  // 発行元（自社法人 MS0I）— 出荷元拠点 → 明細の担当拠点 → 既定の法人。
+  const { issuer } = await issuerForDeliveryNote(key, lang);
+
   // 価格記載（includePrice）に応じて 単価/金額 列・合計ブロックを注入する。
   const data = {
     lang,
     labels,
-    issuer: ISSUER,
+    issuer,
     recipient: {
       name: note.recipientName,
       meta: metaLines.map(escapeHtml).join("<br>"),

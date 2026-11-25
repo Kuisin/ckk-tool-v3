@@ -1476,6 +1476,74 @@ export async function addStepPlan(
   }
 }
 
+/**
+ * 工程納期の設定・解除（null で解除）。作業計画と同じ窓で触れる —
+ * 下書き / 承認済 / 進行中の指示書の、まだ終わっていない工程だけ。
+ */
+export async function updateStepDueDate(
+  workOrderNumber: number,
+  stepId: string,
+  dueDate: string | null,
+): Promise<StepActionResult> {
+  const tr = await getTranslations();
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
+  if (denied) return denied;
+  const parsed = z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .safeParse(dueDate);
+  if (!parsed.success) {
+    return { ok: false, errors: [tr("common.invalidInput")] };
+  }
+  try {
+    const step = await findStep(workOrderNumber, stepId);
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
+    if (
+      step.status === "COMPLETED" ||
+      step.status === "CANCELLED" ||
+      !PLAN_EDITABLE_WO_STATUSES.has(step.workOrder.status)
+    ) {
+      return {
+        ok: false,
+        errors: [tr("production.stepDueDate.locked")],
+      };
+    }
+    const before = step.dueDate
+      ? step.dueDate.toISOString().slice(0, 10)
+      : null;
+    const after = parsed.data;
+    if (before === after) return { ok: true };
+    await prisma.workOrderStep.update({
+      where: { id: stepId },
+      // @db.Date は UTC 深夜に載せる（JST の暦日をそのまま）
+      data: { dueDate: after ? new Date(`${after}T00:00:00.000Z`) : null },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(workOrderNumber),
+      before: { stepId, dueDate: before },
+      after: {
+        stepId,
+        dueDate: after,
+        note: tr("production.stepDueDate.auditChanged", {
+          date: after ?? "—",
+        }),
+      },
+    });
+    revalidate(workOrderNumber, stepId);
+    return { ok: true };
+  } catch (e) {
+    return failed(e, tr("production.stepDueDate.couldNotSave"));
+  }
+}
+
 /** 作業計画の削除。 */
 export async function deleteStepPlan(
   workOrderNumber: number,
