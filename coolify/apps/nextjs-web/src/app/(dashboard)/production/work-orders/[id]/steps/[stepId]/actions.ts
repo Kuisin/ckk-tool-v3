@@ -1454,7 +1454,9 @@ export async function addStepPlan(
       data: {
         stepId: v.stepId,
         userId: v.userId,
-        plannedDate: new Date(`${v.date}T00:00:00+09:00`),
+        // 日付だけの列（@db.Date）は UTC の 0 時で渡す。JST の 0 時（+09:00）で
+        // 渡すと UTC では前日になり、選んだ日の 1 日前が保存される。
+        plannedDate: new Date(`${v.date}T00:00:00.000Z`),
         plannedStartAt: toJstTimestamp(v.date, v.startTime),
         plannedEndAt: toJstTimestamp(v.date, v.endTime),
         // 数量は**計画には書かない**（実績だけが持つ）。画面も送ってこないが、
@@ -1650,7 +1652,9 @@ export async function addStepActual(
       data: {
         stepId: v.stepId,
         userId: v.userId,
-        workedDate: new Date(`${v.date}T00:00:00+09:00`),
+        // 日付だけの列（@db.Date）は UTC の 0 時で渡す。JST の 0 時（+09:00）で
+        // 渡すと UTC では前日になり、選んだ日の 1 日前が保存される。
+        workedDate: new Date(`${v.date}T00:00:00.000Z`),
         startedAt: toJstTimestamp(v.date, v.startTime),
         endedAt: toJstTimestamp(v.date, v.endTime),
         quantity: v.quantity,

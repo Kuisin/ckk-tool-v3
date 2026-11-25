@@ -114,6 +114,55 @@ export async function fetchPendingApprovalRequests(): Promise<
       : [],
   );
 
+  // 対象が「申請そのもの」（uuid）の種別は、人が見たい親の書類の番号へ解決する。
+  // そのまま出すと対象番号の欄に uuid が並び、どの指示書・注文請書の件か読めない
+  // （行のリンクは中継ページが親へ送るので、欠けているのは表示だけ）。
+  const idsOf = (type: string) =>
+    requests.filter((r) => r.targetType === type).map((r) => r.targetId);
+  const [flowChanges, aborts, cancelRequests] = await Promise.all([
+    idsOf("work_order_flow_changes").length
+      ? prisma.workOrderFlowChange.findMany({
+          where: { id: { in: idsOf("work_order_flow_changes") } },
+          select: { id: true, workOrder: { select: { docRef: true } } },
+        })
+      : [],
+    idsOf("work_order_aborts").length
+      ? prisma.workOrderAbort.findMany({
+          where: { id: { in: idsOf("work_order_aborts") } },
+          select: { id: true, workOrder: { select: { docRef: true } } },
+        })
+      : [],
+    idsOf("order_acceptance_cancel_requests").length
+      ? prisma.orderAcceptanceCancelRequest.findMany({
+          where: { id: { in: idsOf("order_acceptance_cancel_requests") } },
+          select: { id: true, acceptance: { select: { docRef: true } } },
+        })
+      : [],
+  ]);
+  const parentDocNumbers = new Map<string, string>([
+    ...flowChanges.map(
+      (c) =>
+        [
+          `work_order_flow_changes:${c.id}`,
+          formatDocNumber("WOR", c.workOrder),
+        ] as const,
+    ),
+    ...aborts.map(
+      (a) =>
+        [
+          `work_order_aborts:${a.id}`,
+          formatDocNumber("WOR", a.workOrder),
+        ] as const,
+    ),
+    ...cancelRequests.map(
+      (c) =>
+        [
+          `order_acceptance_cancel_requests:${c.id}`,
+          formatDocNumber("ORD", c.acceptance),
+        ] as const,
+    ),
+  ]);
+
   return requests.map((r) => {
     const step = stepFromSnapshot(r.flowSnapshot, r.stepNo);
     const mode = r.mode as "ANY" | "ALL";
@@ -126,7 +175,8 @@ export async function fetchPendingApprovalRequests(): Promise<
       targetDisplay:
         r.targetType === "work_orders"
           ? (woDocNumbers.get(r.targetId) ?? `#${r.targetId}`)
-          : docDisplayNumber(r.targetType, r.targetId),
+          : (parentDocNumbers.get(`${r.targetType}:${r.targetId}`) ??
+            docDisplayNumber(r.targetType, r.targetId)),
       stepNo: r.stepNo,
       stepCount: r.stepCount,
       stepLabel: step

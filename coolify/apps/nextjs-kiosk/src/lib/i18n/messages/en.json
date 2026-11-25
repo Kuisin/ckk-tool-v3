@@ -550,6 +550,7 @@
     "execDepIncomplete": "Execution dependency incomplete (step {stepId})",
     "execDepOrIncomplete": "None of the execution dependencies (any-of) are complete",
     "branchSourceIncomplete": "The branch source step is not complete",
+    "startStepIncomplete": "The start step (issue / handoff) is not complete",
     "precedingWorkOrderIncomplete": "Preceding work order #{workOrderNumber} is not complete"
   },
   "common": {

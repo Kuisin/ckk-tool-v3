@@ -550,6 +550,7 @@
     "execDepIncomplete": "実行依存が未完了です（工程 {stepId}）",
     "execDepOrIncomplete": "実行依存（いずれか）が未完了です",
     "branchSourceIncomplete": "分岐元の工程が未完了です",
+    "startStepIncomplete": "開始工程（出し・受渡し）が未完了です",
     "precedingWorkOrderIncomplete": "先行指示書 #{workOrderNumber} が未完了です"
   },
   "common": {

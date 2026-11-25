@@ -29,7 +29,12 @@ export default async function StepExecutionPage({
   searchParams,
 }: {
   params: Promise<{ stepId: string }>;
-  searchParams: Promise<{ from?: string; loc?: string; scope?: string }>;
+  searchParams: Promise<{
+    from?: string;
+    loc?: string;
+    scope?: string;
+    via?: string;
+  }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -77,7 +82,9 @@ export default async function StepExecutionPage({
   // 固定の遷移先を組み立て、クエリの中身もサーバー側で検証してから使う。
   //   from=wo  → その指示書のビュー
   //   from=loc → 作業場所の一覧（見ていた場所と広さを保つ）
-  const { from, loc, scope: rawScope } = await searchParams;
+  //   via=list → その指示書のビューへ「指示書一覧」から来ていた（戻ったあとも
+  //              一覧へ戻れるように持ち回る。落とすと戻り先がスキャンに変わる）
+  const { from, loc, scope: rawScope, via } = await searchParams;
   const backTo =
     from === "wo"
       ? ("workOrder" as const)
@@ -104,7 +111,9 @@ export default async function StepExecutionPage({
           code: boardLocationCode,
           scope: parseScope(rawScope ?? null),
         })
-      : "";
+      : backTo === "workOrder" && via === "list"
+        ? "?from=list"
+        : "";
 
   return (
     <I18nProvider locale={session.locale}>

@@ -10029,6 +10029,7 @@
     "precedingWorkOrderIncomplete": "前置工单 #{workOrderNumber} 尚未完成",
     "quantityNegative": "{label}请输入 0 以上的数值",
     "quantityConservationInspection": "合格 + 不合格（半成品・报废・工序分支）之和（{sum}）与检查数（{input}）不一致",
+    "startStepIncomplete": "起始工序（出库・交接）尚未完成",
     "quantityConservationFlow": "良品 + 不良（半成品・报废・工序分支）之和（{sum}）与接收数（{input}）不一致",
     "routingExceedsLimit": "分支数量总计（{static}）超过了 良品 + 工序分支（{limit}）",
     "selfLoopNotAllowed": "无法创建自环",
@@ -11148,7 +11149,7 @@
     "quantityTimesUnitPrice": "{quantity} × ¥{unitPrice}",
     "copiedFromWorkOrder": "由工单 #{number} 复制",
     "couldNotSave": "附加费用保存失败",
-    "workOrderHelp": "产品货款以外要请款的项目，例如运费。此处为**预定**，创建出货单时会复制过去，实际请款的是出货单上的行。",
+    "workOrderHelp": "产品货款以外要请款的项目，例如运费。此处为预定，创建出货单时会复制过去，实际请款的是出货单上的行。",
     "deliveryOrderHelp": "本次出货要请款的附加费用。确定后由结算处理生成请款单明细。仅在出货单为草稿时可以修改。",
     "workOrderClosedForCharges": "已完成或已取消的工单无法修改附加费用。请在出货单上修改",
     "deliveryOrderClosedForCharges": "仅草稿状态的出货单可以修改附加费用"

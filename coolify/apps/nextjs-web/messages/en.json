@@ -10029,6 +10029,7 @@
     "precedingWorkOrderIncomplete": "Preceding work order #{workOrderNumber} is not complete",
     "quantityNegative": "{label} must be 0 or greater",
     "quantityConservationInspection": "The sum of pass + fail (semi-finished, scrapped, process branch) ({sum}) does not match the inspected count ({input})",
+    "startStepIncomplete": "The start step (issue / handoff) is not complete",
     "quantityConservationFlow": "The sum of good + defective (semi-finished, scrapped, process branch) ({sum}) does not match the received count ({input})",
     "routingExceedsLimit": "The total branch quantity ({static}) exceeds good + process branch ({limit})",
     "selfLoopNotAllowed": "A self-loop cannot be created",

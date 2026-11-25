@@ -1053,6 +1053,15 @@ export function WorkflowBuilder({
     });
     return stepIds.length > 0 ? { stepIds, name: semi.nameJa } : null;
   }, [wipSelected, catalogSteps, selected]);
+  /**
+   * 工程の表示名。仕掛品から始めるときの開始工程は「半製品出し」と読み替える —
+   * 工程リストはそう出しているので、納期・計画の欄だけ元の名前（素材出し）の
+   * ままだと、別の工程に見える。保存先の工程は変わらない（名前だけの読み替え）。
+   */
+  const stepDisplayName = (cat: { id: number; nameJa: string }): string =>
+    wipReplacedStart?.stepIds.includes(cat.id)
+      ? wipReplacedStart.name
+      : cat.nameJa;
   /** この指示書で実際に行う工程（飛ばす工程を除く）— 納期・計画の入力欄に使う。 */
   const activeSnapshots = useMemo(() => {
     if (!wipSelected || wipState.skippedStepIds.length === 0) {
@@ -2404,12 +2413,12 @@ export function WorkflowBuilder({
                       {i + 1}
                     </Text>
                     <Text fw={600} size="sm" truncate>
-                      {cat.nameJa}
+                      {stepDisplayName(cat)}
                     </Text>
                   </Group>
                   <DatePickerInput
                     aria-label={tr("production.stepDueDate.labelWithStep", {
-                      step: cat.nameJa,
+                      step: stepDisplayName(cat),
                     })}
                     clearable
                     onChange={(v) =>
@@ -2476,7 +2485,7 @@ export function WorkflowBuilder({
                         {i + 1}
                       </Text>
                       <Text fw={600} size="sm">
-                        {cat.nameJa}
+                        {stepDisplayName(cat)}
                       </Text>
                     </Group>
                     <MultiSelect
