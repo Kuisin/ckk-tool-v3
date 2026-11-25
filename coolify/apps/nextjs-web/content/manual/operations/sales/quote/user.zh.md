@@ -34,7 +34,7 @@ screenshots: [quote-list-01, quote-new-01, quote-detail-01, quote-issue-01, quot
 
 ![报价单列表画面](../../../assets/screenshots/quote-list-01.zh.png)
 
-- **「見積番号」（报价单编号）** … 以 `QOT-` 开头的编号，由系统自动编上。
+- **「見積番号」（报价单编号）** … 以 `QOT-` 开头的编号，由系统自动编上。处理 2 个以上[本公司法人](/manual/zh/operations/masters/own-company/user)单据的人，会在编号旁看到开具公司编号的小标记（例 `TSP`）（[开具公司标记](/manual/zh/operations/masters/own-company/user#company-badge)）。在搜索框输入法人编号，可以只显示该公司的报价单。
 - **「状態」（状态）** … 用彩色徽章显示目前的情况。灰色是「下書き」（草稿），蓝色是「発行済」（已发行），橙色是「期限切れ」（已过期 — 已发行且超过有效期限）。
 - 在上方的搜索框里输入报价单编号或客户名称，可以缩小范围找到想要的报价单。
 - 点击某一行，就会打开该报价单的详细画面。

@@ -1,7 +1,7 @@
 ---
 title: "Own Companies — User Manual"
 description: "An app for registering your own company (legal entity) that issues documents. The issuer on quotes, delivery notes and invoices, and how document numbers are counted, are decided per company registered here."
-screenshots: [master-own-company-list-01, master-own-company-new-01, master-own-company-detail-01, master-own-company-seal-01]
+screenshots: [master-own-company-list-01, master-own-company-new-01, master-own-company-detail-01, master-own-company-seal-01, master-own-company-logo-01]
 ---
 This app is for registering **your own company (legal entity) that issues documents**. The operation code is `MS0I`.
 
@@ -12,6 +12,7 @@ Use it when two or more companies in the same group issue documents (for example
 - You can register a company's name, address, phone number and invoice registration number. These are printed in the issuer block of documents.
 - You can set the **fiscal year start month** that divides document numbers, per company.
 - You can register a **company seal** (an image of the seal) to print on invoices.
+- You can register a **logo** to print at the top of documents (PDFs).
 - You can check which sites belong to the company.
 
 ## Words used on this page
@@ -64,6 +65,8 @@ For each kind of document the system looks in the order below, and the first com
 | **Document numbers** | Counted from `00001` per company and per fiscal year. The same number can exist in another company ([Document number rules](/manual/en/start#doc-number)). |
 | **Issuer block** | The company's name, address, phone number and registration number are printed on the quote, delivery note and invoice PDFs. |
 | **Company seal** | The company's seal is printed on issued invoices. |
+| **Logo** | The company's logo is printed at the top of PDFs such as quotes, delivery notes and invoices. |
+| **Telling them apart on screen** | People who handle documents of two or more companies see a small badge with the company code (for example `TSP`) next to the document number in lists and in the heading of detail screens ([Issuing company badge](#company-badge)). |
 | **Price lists** | Kept separately per company. Prices on a document come only from the price lists of that document's company ([Price list](/manual/en/operations/sales/price-list/user#per-company)). |
 | **Invoices** | Even for the same customer, shipments of different companies become separate invoices (one invoice can print only one issuer). |
 
@@ -107,12 +110,13 @@ Click a row in the list to open the detail screen of that company.
 
 ![Detail screen of an own company](../../../assets/screenshots/master-own-company-detail-01.png)
 
-The top part shows the company code, name, registration number, fiscal year start month, address, phone number and so on. Below are four tabs.
+The top part shows the company code, name, registration number, fiscal year start month, address, phone number and so on. Below are five tabs.
 
-- **概要** (Overview) … shows 「**書類の発行元**」 (Document issuer): exactly what is printed in the issuer block of quotes, delivery notes and invoices. You can check here how the registered details will look on documents.
+- **概要** (Overview) … shows 「**書類の発行元**」 (Document issuer): exactly the logo and issuer block printed at the top of quotes, delivery notes and invoices. You can check here how the registered details will look on documents. A company whose documents get no logo shows 「**ロゴなし**」 (No logo).
 - **拠点** (Sites) … the sites that belong to this company. Press a site name to open that site.
 - **振込先** (Bank account) … the registered bank and account details.
 - **社印** (Company seal) … register the seal image printed on invoices (see the next section).
+- **ロゴ** (Logo) … register the logo image printed at the top of documents ([Register the logo](#logo)).
 
 To correct the details, press 「**編集**」 (Edit) at the top right. From the 「**…**」 (three-dot) button next to it you can **disable** or **delete** the company (not shown for the default company).
 
@@ -127,6 +131,30 @@ To correct the details, press 「**編集**」 (Edit) at the top right. From the
 - The seal is printed only on **issued invoices**. It is not printed on draft invoices.
 - When no seal is registered, the default company shows 「**未設定のため、従来の印影を使います**」 (not set, so the previous seal is used) and the same seal as before is printed. Other companies show 「**未設定のため、請求書に印影は刷られません**」 (not set, so no seal is printed on invoices).
 - To remove it, press 「**印影を外す**」 (Remove seal).
+
+## Register the logo [#logo]
+
+1. Open the 「**ロゴ**」 (Logo) tab on the company's detail screen.
+2. Press 「**ロゴをアップロード**」 (Upload logo) and choose the logo image.
+
+![Logo tab of an own company](../../../assets/screenshots/master-own-company-logo-01.png)
+
+- **PNG or JPG** images up to **2 MB** can be used. A wide image fits as-is in the top-left of the heading.
+- The logo is printed at the top of the **quote, delivery note, invoice, design request, inspection sheet and portal guide** PDFs. Whose logo is printed is decided by the company of the document.
+- When no logo is registered, the default company shows 「**未設定のため、従来のロゴを使います**」 (not set, so the existing logo is used) and the same logo as before is printed. Other companies show 「**未設定のため、書類にロゴは刷られません**」 (not set, so no logo is printed on documents) and their headings get no logo (the default company's logo is never printed on another company's documents).
+- If the logo image cannot be read (for example the storage is having trouble), the PDF is still produced, with the same heading as when no logo is registered.
+- To remove it, press 「**ロゴを外す**」 (Remove logo).
+
+> 💡 Replacing the logo **does not change PDFs already saved**: a PDF such as a quote is saved once it is made and reused. To print with the new logo, press 「**再生成**」 (Regenerate) on the document's 「**PDF**」 tab.
+
+## Issuing company badge [#company-badge]
+
+Document numbers are counted per company, so the same number such as `QOT-2026-00001` can exist in both CKK and TSP. Since the number alone does not tell you whose document it is, **people who handle documents of two or more companies** see a small badge with the company code (for example `TSP`) on every document.
+
+- In **lists** it is next to the document number (on a smartphone, on the number line). In lists without a number column, such as price lists and billing closings, it is next to the customer name.
+- On **detail screens** it is next to the status badge in the heading. Point at the badge to see the company name.
+- Typing **two or more characters of a company code** in a list's search box narrows the list to that company's documents (for example `TSP`).
+- **People who belong to only one company** do not see the badge on their own company's documents (it would just repeat on every row). It appears only when they open a document of another company.
 
 ## Change the default company
 
@@ -210,6 +238,12 @@ A. The company of a document is decided when it is created and cannot be changed
 
 **Q. I opened a document by its number and a screen called 「発行会社を選択」 (Select the issuing company) appeared.**
 A. Documents with the same number exist in two or more companies. Choose the company of the document you want to open ([Document number rules](/manual/en/start#doc-number)).
+
+**Q. A small `CKK` or `TSP` appears next to document numbers in lists.**
+A. It is the code of the document's company (issuing company). The same number can exist in another company, so it is shown to people who handle documents of two or more companies ([Issuing company badge](#company-badge)).
+
+**Q. I registered a logo, but the quote PDF still shows the old one.**
+A. A saved PDF does not change until it is regenerated. Press 「**再生成**」 (Regenerate) on the document's 「**PDF**」 tab ([Register the logo](#logo)).
 
 **Q. 「拠点数」 (number of sites) in the list is 0.**
 A. No site has this company chosen as its own company. If it is the default company, documents of sites with no company set are also issued by it, so 0 causes no trouble. When you use two or more companies, choose 「自社法人」 (Own company) on each site.
