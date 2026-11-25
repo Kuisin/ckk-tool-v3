@@ -206,6 +206,18 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "5",
   },
+  // 作業場所一覧 — 作業場所ごとのその日の工程（共有端末 /work-location の
+  // 全作業場所版）。一覧だけ（作る画面は無い）。PD07 / PD08 は欠番なので PD09。
+  {
+    code: "PD09",
+    label: "作業場所一覧",
+    href: "/production/work-location-board",
+    category: "生産",
+    kind: "list",
+    categoryCode: "PD",
+    mode: "0",
+    index: "9",
+  },
 
   // ─── 在庫 (ST) ───────────────────────────────────────────────────────────
   // 業務フロー順: 在庫管理 → 在庫一覧 → 在庫・所要量 → 入出庫伝票 → 棚卸。

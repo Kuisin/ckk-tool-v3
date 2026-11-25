@@ -47,6 +47,9 @@ const TWINS = [
   "login-attempt-core.test.ts",
   "display-content.ts",
   "display-templates.ts",
+  // 工程納期の遅れ判定 — 共有端末の工程画面も同じ規則で赤くする。
+  "step-due-date-core.ts",
+  "step-due-date-core.test.ts",
 ];
 
 describe("twin files (nextjs-web ⇄ nextjs-kiosk)", () => {

@@ -86,6 +86,8 @@ export interface StepCompositionInput {
   supplierBpId: string | null;
   /** 作業時間 (h) — 任意。指示書は planned_work_hours、ルートは work_hours へ。 */
   workHours: number | null;
+  /** 工程納期（YYYY-MM-DD）— 指示書のみ。工程ルートは持たない。 */
+  dueDate?: string | null;
   /** 実行時のロット入力の上書き（null/未指定 = 工程マスタの既定を継承）。 */
   lotInputMode?: "REQUIRED" | "OPTIONAL" | "NONE" | null;
   /**
@@ -203,6 +205,7 @@ export async function validateAndOrderSteps(
       plantId: s.executionLocation === "INTERNAL" ? s.plantId : null,
       supplierBpId: s.executionLocation === "OUTSOURCE" ? s.supplierBpId : null,
       workHours: s.workHours,
+      dueDate: s.dueDate ?? null,
       lotInputMode: s.lotInputMode ?? null,
       // 検査表は検査工程のみ保持（それ以外の指定は黙って落とす）
       inspectionTemplateIds: catalogById.get(stepId)?.isInspection

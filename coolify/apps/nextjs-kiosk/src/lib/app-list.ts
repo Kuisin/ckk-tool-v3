@@ -8,7 +8,12 @@
  */
 
 import type { Icon } from "@tabler/icons-react";
-import { IconMapPin, IconQrcode, IconSettings2 } from "@tabler/icons-react";
+import {
+  IconClipboardList,
+  IconMapPin,
+  IconQrcode,
+  IconSettings2,
+} from "@tabler/icons-react";
 import type { KioskMessages } from "./i18n";
 
 export type KioskAppEntry = {
@@ -33,6 +38,15 @@ export const KIOSK_APPS: KioskAppEntry[] = [
     labelKey: "woScan",
     href: "/wo-scan",
     icon: IconQrcode,
+    requiredPermission: "work_order",
+  },
+  {
+    // 指示書一覧 — QR が手元に無いとき、動いている指示書（承認済み / 進行中・
+    // 端末の拠点）から選んで /wo-scan/[woNumber] へ入る。
+    key: "wo-list",
+    labelKey: "woList",
+    href: "/wo-list",
+    icon: IconClipboardList,
     requiredPermission: "work_order",
   },
   {

@@ -313,6 +313,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 在庫 | 1 | 在庫管理 | ST01 | — | — |
 | 生産 | 5 | 未処理指示書 | PD05 | — | — |
 | 生産 | 6 | 設計図 | PD06 | PD16 | PD26 |
+| 生産 | 9 | 作業場所一覧 | PD09 | — | — |
 | 在庫 | 4 | 入出庫伝票 | ST04 | — | ST24 |
 | 在庫 | 5 | 棚卸 | ST05 | ST15 | ST25 |
 | 出荷 | 1 | 出荷書 | SH01 | SH11 | SH21 |
@@ -368,6 +369,9 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 > 注文明細（`SA05`）として販売カテゴリへ移った。注文明細は新規・編集画面を
 > 持たない（作成は注文請書の明細エディタ）ため `SA15` も欠番で、一覧 `SA05` と
 > 詳細 `SA25` だけを登録する。
+>
+> `PD04` / `PD07` / `PD08` も**欠番**（在庫カテゴリ `ST*` へ移設した旧画面）。
+> そのため 作業場所一覧 は `PD09`（一覧だけ — 作る画面は無い）。
 
 `OperationCodeJump` component (`src/components/layout/OperationCodeJump.tsx`) renders as a compact TextInput in the header center. Pressing Enter or clicking a result navigates to that screen.
 
@@ -432,6 +436,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 指示書 | `IconSettings2` |
 | 未処理指示書 | `IconProgress` |
 | 設計図 | `IconFileVector` |
+| 作業場所一覧 | `IconMapPin` |
 | 入出庫伝票 | `IconArrowsExchange` |
 | 棚卸 | `IconClipboardList` |
 | 未処理一覧 | `IconClipboardList` |
@@ -1118,7 +1123,7 @@ Paper (withBorder, p="md", radius="md")
             zoomOnScroll=false / preventScrolling=false。工程の増減時のみ
             fitView で測り直す（数量だけの更新では視点を動かさない）。
             ノード本体は `WorkflowStepNode.tsx` = Mantine の HTML ノード
-            （工程名 lineClamp 2 + 種別バッジ + 外注バッジ + 数量バッジ。
+            （工程名 lineClamp 2 + 種別バッジ + 外注バッジ + 工程納期バッジ + 数量バッジ。
             アイコンは StepCard と STEP_STATUS_ICON を共有）
 ```
 
@@ -1172,7 +1177,14 @@ Paper (withBorder, p="sm", radius="sm")
 │   │       text: "外注" | "社内"
 │   └── [desktop, if OUTSOURCE] Text size="xs" c="dimmed" — supplier name
 ├── [mobile, if OUTSOURCE] Text size="xs" c="dimmed" mt={4} pl={28} — supplier name
-├── [if 担当者 or 作業時間] Group gap="md" mt="xs" pl={28} wrap="wrap"
+├── [if 工程納期 or 担当者 or 作業時間] Group gap="md" mt="xs" pl={28} wrap="wrap"
+│   ├── [工程納期] StepDueDateBadge — IconCalendarDue +「工程納期 {date}」。
+│   │   過ぎて未完了（COMPLETED / CANCELLED 以外）なら red filled、それ以外は gray light。
+│   │   比較は JST の暦日の文字列同士（lib/step-due-date-core.ts isStepOverdue —
+│   │   共有端末と twin）。フロー図のノードと工程実行画面の見出しにも同じバッジを出す。
+│   │   編集は指示書ビルダーの「工程納期」節（工程ごとに日付 1 つ）と、承認後は
+│   │   工程実行画面の計画パネル（作業計画と同じ窓 — 下書き/承認済/進行中の
+│   │   指示書の、未完了の工程）。
 │   ├── [担当者] Group gap={6} — Text c="dimmed" "担当" +
 │   │   最大 3 名 × (UserAvatar size={18} + Text size="xs" 氏名) + "ほか N 名"
 │   │   担当者 = 作業計画（work_order_step_plans）の割当ユーザー（重複排除・計画日順）

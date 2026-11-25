@@ -150,6 +150,12 @@ const stepInput = z.object({
   supplierBpId: z.string().nullable(),
   // 作業時間 (h) — 任意（0.01〜9999.99）
   workHours: z.number().positive().max(9999.99).nullable(),
+  // 工程納期（YYYY-MM-DD・任意）。指示書ごとの値なので工程リストの版には載らない。
+  dueDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
   // ロット入力の上書き（null/未指定 = 工程マスタの既定を継承）
   lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]).nullable().optional(),
   // 検査工程で使う検査表テンプレート（工程単位の割当。検査工程以外は無視）
@@ -474,9 +480,11 @@ async function assignLotNumbersTx(
  * 検査表はネスト作成で工程に紐付ける）。
  */
 function toWorkOrderStepCreates(creates: OrderedStepCreate[]) {
-  return creates.map(({ workHours, inspectionTemplateIds, ...s }) => ({
+  return creates.map(({ workHours, dueDate, inspectionTemplateIds, ...s }) => ({
     ...s,
     plannedWorkHours: workHours,
+    // @db.Date は UTC 深夜に載せる（JST の暦日をそのまま）
+    dueDate: dueDate ? new Date(`${dueDate}T00:00:00.000Z`) : null,
     inspectionTemplates: {
       create: inspectionTemplateIds.map((id) => ({
         inspectionTemplateId: id,
@@ -649,6 +657,10 @@ async function applyLatestCommonRoute(
   if (!route || route.kind !== kind || !route.isActive || !latest) {
     return { ok: false, error: tr(notFoundKey) };
   }
+  // 工程納期は指示書ごとの値なので、版に置き換えても画面の値を引き継ぐ。
+  const dueDateByStep = new Map(
+    steps.map((s) => [s.processStepId, s.dueDate ?? null]),
+  );
   const kindSteps: StepInput[] = latest.steps
     .filter((s) => kindStepIds.has(s.processStepId))
     .map((s) => ({
@@ -657,6 +669,7 @@ async function applyLatestCommonRoute(
       plantId: s.plantId,
       supplierBpId: s.supplierBpId,
       workHours: s.workHours == null ? null : Number(s.workHours),
+      dueDate: dueDateByStep.get(s.processStepId) ?? null,
       lotInputMode: s.lotInputMode,
       inspectionTemplateIds: [],
     }));

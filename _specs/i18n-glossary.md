@@ -174,6 +174,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | ST03 | 在庫・所要量 | Stock requirements | 库存・所要量 |
 | PD05 | 未処理指示書 | Pending work orders | 未处理工单 |
 | PD06 | 設計図 | Drawing | 图纸 |
+| PD09 | 作業場所一覧 | Work location board | 作业场所一览 |
 | ST04 | 入出庫伝票 | Stock movement | 出入库单 |
 | 預け在庫 | Stock held by a partner | 寄存库存 |
 | 預け先 | Held by | 寄存方 |
@@ -396,6 +397,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 工程 | Step | 工序 | 「工程ステップ」とは言わない。工程マスタ = Process steps / 工序主数据 |
 | 工程順 / 工程フロー | Step order / Workflow | 工序顺序 / 工序流程 | |
 | 工程リスト | Step list | 工序清单 | 製品工程ルート（product_process_routes）の画面語 |
+| 工程納期 | Step due date | 工序交期 | 工程ごとの締切（work_order_steps.due_date）。指示書の「予定納期」とは別 |
+| 持ち越し | Carried over | 顺延 | 前日以前の計画で、まだ終わっていない工程（作業場所一覧 PD09） |
 | 使える指示書種別 | Work order types | 可用的工单类别 | 工程マスタ (MS08) の設定 — この工程を載せてよい指示書種別。開始工程（製品出し（在庫）/ 製品受入（再研磨））だけは固定で選べない |
 | 準備工程 / 製造工程 | Preparation step / Manufacturing step | 准备工序 / 制造工序 | 工程リストの 2 種別（§7）。準備 = 〇〇出し・受渡し + 材料準備 |
 | 準備工程リスト / 製造工程リスト | Preparation step list / Manufacturing step list | 准备工序清单 / 制造工序清单 | 前者は共通、後者は 製品 × 受注元 |
@@ -616,6 +619,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | QRカード | QR card | 二维码卡 |
 | PIN | PIN | PIN |
 | フロアマップ | Floor map | 平面图 |
+| 指示書一覧（共有端末アプリ /wo-list） | Work order list | 工单列表 |
 | 有効化 / 無効化 | Enable / Disable | 启用 / 停用 |
 | リンク / リンク解除 | Link / Unlink | 关联 / 解除关联 |
 | 端末アテステーション | Device attestation | 终端认证 |
