@@ -53,8 +53,21 @@ model Invoice {
   /// 内部キー（uuid）。書類番号は法人ごとの連番になるので（番号設計 PR-C）、
   /// 番号は行の識別にならない。子の表はこの id を FK で指す（PR-B）。
   id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  yearMonth String @map("year_month") @db.Char(6)
-  seq       Int
+  /// 旧番号の年月と連番（PR-D で落とす）。新しい行は NULL — 旧番号の文字列は
+  /// legacy_number が持つ。SQL のシードはまだこの 2 列で書類を入れる。
+  legacyYearMonth String? @map("year_month") @db.Char(6)
+  legacySeq       Int?    @map("seq")
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
 
   customerBpId        String   @map("customer_bp_id") @db.Uuid
   customerBranchBpId  String?  @map("customer_branch_bp_id") @db.Uuid
@@ -122,13 +135,16 @@ model Invoice {
 
   billingClosings BillingClosing[] @relation("ClosingInvoice")
 
-  @@unique([yearMonth, seq])
+  @@unique([legacyYearMonth, legacySeq])
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
   @@index([customerBpId])
   @@index([status])
   @@index([approvalStatus])
   @@index([ownCompanyId])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
-  @@index([updatedAt, yearMonth, seq])
+  @@index([updatedAt, id])
   @@map("invoices")
   @@schema("app")
 }

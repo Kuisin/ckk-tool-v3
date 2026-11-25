@@ -85,8 +85,21 @@ model DeliveryOrder {
   /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
   /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
   ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
-  yearMonth String @map("year_month") @db.Char(6)
-  seq       Int
+  /// 旧番号の年月と連番（PR-D で落とす）。新しい行は NULL — 旧番号の文字列は
+  /// legacy_number が持つ。SQL のシードはまだこの 2 列で書類を入れる。
+  legacyYearMonth String? @map("year_month") @db.Char(6)
+  legacySeq       Int?    @map("seq")
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
 
   // 顧客はヘッダ（明細をまたいで同一）。注文明細リンクは明細行側。
   customerBpId       String  @map("customer_bp_id") @db.Uuid
@@ -142,11 +155,14 @@ model DeliveryOrder {
 
   ownCompany OwnCompany @relation("DeliveryOrderOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
-  @@unique([yearMonth, seq])
+  @@unique([legacyYearMonth, legacySeq])
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
   @@index([customerBpId])
   @@index([status])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
-  @@index([updatedAt, yearMonth, seq])
+  @@index([updatedAt, id])
   @@index([approvalStatus])
   @@index([ownCompanyId])
   @@map("delivery_orders")
@@ -201,8 +217,21 @@ model DeliveryNote {
   /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
   /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
   ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
-  yearMonth String @map("year_month") @db.Char(6)
-  seq       Int
+  /// 旧番号の年月と連番（PR-D で落とす）。新しい行は NULL — 旧番号の文字列は
+  /// legacy_number が持つ。SQL のシードはまだこの 2 列で書類を入れる。
+  legacyYearMonth String? @map("year_month") @db.Char(6)
+  legacySeq       Int?    @map("seq")
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
 
   deliveryOrderId String @map("delivery_order_id") @db.Uuid
   deliveryOrderYearMonth String? @map("delivery_order_year_month") @db.Char(6)
@@ -237,10 +266,13 @@ model DeliveryNote {
 
   ownCompany OwnCompany @relation("DeliveryNoteOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
-  @@unique([yearMonth, seq])
+  @@unique([legacyYearMonth, legacySeq])
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
   @@index([deliveryOrderYearMonth, deliveryOrderSeq])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
-  @@index([updatedAt, yearMonth, seq])
+  @@index([updatedAt, id])
   @@index([deliveryOrderId])
   @@index([ownCompanyId])
   @@map("delivery_notes")
