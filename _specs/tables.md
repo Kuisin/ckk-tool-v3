@@ -286,6 +286,7 @@ Table plants {
   name_kana       varchar
   country_code    varchar(2)                   // ISO 3166-1 alpha-2（拠点ごとに 1 国）
   region_id       int [ref: > regions.id]      // 所属地域（任意）
+  own_company_id  int [ref: > own_companies.id] // 所属する自社法人（書類の発行元）。null = 既定の法人
   postal_code     varchar
   address         json                         // { ja: '', en: '' }
   phone           varchar
@@ -295,6 +296,49 @@ Table plants {
   notes           text
   created_at      timestamp
   updated_at      timestamp
+}
+
+// ===========================
+// 自社法人（書類の発行元）
+// ===========================
+//
+// CKK と TSP のように同じグループの別法人が書類を出す。見積書・納品書・請求書の
+// 発行元ブロック（社名・住所・電話・登録番号・社印）はここから刷る。
+// **拠点が 1 つの法人に属し、書類の法人は拠点から決まる**（利用者の決定）—
+// 書類ごとに法人を選ばせない。拠点の分からない書類は既定の法人。
+// 決め方の唯一の定義は nextjs-web の lib/own-company-core.ts（resolveIssuer /
+// resolveOwnCompanyId — 書類ヘッダの拠点 → 明細の拠点 → 既定）。
+//   見積書: 拠点を持たないので既定の法人
+//   納品書: 出荷書の出荷元拠点 → 明細の注文明細の担当拠点 → 既定
+//   請求書: 作成時に同じ規則で決めて invoices.own_company_id に**焼く**。
+//           法人をまたいで 1 通にしない（締日 1 回で法人ごとに 1 通ずつ作る。
+//           締日行が指すのは先頭の 1 通）
+// 既定の法人は旧 PDF ルートの定数 ISSUER と同じ値で作ってあり、既存書類の見た目は
+// 変わらない（20261126120000_own_companies）。
+Table own_companies {
+  id                      serial [pk]
+  code                    varchar [unique, not null] // 作成後は変えられない（BEFORE UPDATE トリガー）。
+                                                     // 書類番号に埋め込まれる（例: CKK/QOT-2026-00001）
+  name                    json [not null]            // 可変キー { ja, en, … }
+  name_kana               varchar
+  postal_code             varchar
+  address                 json
+  phone                   varchar
+  fax                     varchar
+  email                   varchar
+  invoice_registration_no varchar   // 適格請求書発行事業者登録番号（T + 13 桁）
+  seal_file_id            uuid [ref: > files.id]  // 社印。null なら既定の法人だけ同梱の印影、他は印影なし
+  bank_name               varchar
+  bank_branch             varchar
+  bank_account_type       varchar
+  bank_account_number     varchar
+  bank_account_holder     varchar
+  fiscal_year_start_month smallint [not null, default: 4] // 会計年度の開始月（CHECK 1〜12）。法人ごとの採番の年度区切り
+  is_default              boolean [not null, default: false] // 部分 unique index で 1 行だけ。無効化・削除不可
+  is_active               boolean [not null, default: true]
+  notes                   text
+  created_at              timestamp
+  updated_at              timestamp
 }
 
 // ===========================
@@ -1876,6 +1920,9 @@ Table invoices {
   // その場合だけ顧客マスタの現在の区分へフォールバックして表示する。
   tax_type        TAX_TYPE
   tax_rate        numeric(5,4)
+  // 発行元の自社法人のスナップショット（作成時に拠点から決めて焼く）。
+  // null は読み出し側で既定の法人として刷る。
+  own_company_id  int [ref: > own_companies.id]
   status          INVOICE_STATUS [not null, default: 'DRAFT']
   issued_at       timestamp
   due_date        date

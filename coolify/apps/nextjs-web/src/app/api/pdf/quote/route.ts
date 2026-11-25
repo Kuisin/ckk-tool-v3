@@ -15,6 +15,7 @@ import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
+import { issuerForCompanyId } from "@/lib/own-companies";
 import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   orderTypeLabelLocalized,
@@ -31,14 +32,6 @@ import { getObject, putObject } from "@/lib/storage";
 export const dynamic = "force-dynamic";
 
 const yen = (n: number) => n.toLocaleString("ja-JP");
-
-// 発行元（CKK 本社）— design-preview の issuer ブロックに対応。
-const ISSUER = {
-  name: "シー・ケィ・ケー株式会社", // i18n-ignore
-  address: "〒475-0823 愛知県半田市港町2丁目27番2", // i18n-ignore
-  tel: "TEL: 0569-21-6187　FAX: 0569-23-6427",
-  invoice_reg: "T1234567890123",
-};
 
 /** Build the response headers for serving a quote PDF (inline vs attachment). */
 function pdfHeaders(quoteNumber: string, download: boolean): HeadersInit {
@@ -98,10 +91,14 @@ export async function GET(request: Request): Promise<Response> {
     tax: yen(b.taxAmount),
   }));
 
+  // 発行元（自社法人 MS0I）。見積書は拠点を持たないので既定の法人
+  // （lib/own-company-core.ts resolveIssuer — 拠点が無ければ既定）。
+  const { issuer } = await issuerForCompanyId(null, lang);
+
   const data = {
     lang,
     labels,
-    issuer: ISSUER,
+    issuer,
     recipient: {
       name: quote.customerName,
       contact: pdfAttnLine(lang, quote.customerBranchName),

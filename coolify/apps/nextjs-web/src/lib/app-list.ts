@@ -529,6 +529,19 @@ export const appList: AppEntry[] = [
     requiredPermission: "master",
   },
 
+  {
+    // 自社法人（書類の発行元。CKK / TSP のような同じグループの別法人）。
+    // 拠点が 1 つの法人に属し、書類の法人は拠点から決まる
+    // （lib/own-company-core.ts が唯一の定義元）。
+    key: "master-own-companies",
+    label: "自社法人",
+    operationCode: "MS0I",
+    href: "/master/own-companies",
+    icon: "IconBuildingBank",
+    category: "マスタ",
+    requiredPermission: "master",
+  },
+
   // ─── ドキュメント ──────────────────────────────────────────────────────────
   {
     // マニュアル（/manual・fumadocs）。公開ページだが launcher からも開ける。
@@ -872,6 +885,7 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "master-tax-categories": { en: "Tax categories", zh: "税种" },
   "master-charge-items": { en: "Charge items", zh: "费用项目" },
   "master-regrind-items": { en: "Regrind items", zh: "再研磨服务" },
+  "master-own-companies": { en: "Own companies", zh: "本公司法人" },
   docs: { en: "Manual", zh: "操作手册" },
   "admin-manual": { en: "Admin manual", zh: "管理手册" },
   "user-management": { en: "Users", zh: "用户管理" },

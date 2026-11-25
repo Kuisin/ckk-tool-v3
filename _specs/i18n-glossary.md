@@ -201,6 +201,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | MS0F | 税区分 | Tax categories | 税种 |
 | MS0G | 料金マスタ | Charge items | 费用项目 |
 | MS0H | 再研磨品目 | Regrind items | 再研磨服务 |
+| MS0I | 自社法人 | Own companies | 本公司法人 |
 | DC01 | マニュアル | Manual | 操作手册 |
 | DC02 | 管理マニュアル | Admin manual | 管理手册 |
 | SY01 | ユーザー管理 | Users | 用户管理 |
@@ -276,6 +277,12 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 営業担当（自社） | Sales rep | 销售负责人 |
 | 部門 | Department | 部门 |
 | 拠点 | Site | 据点 |
+| 自社法人 | Own company | 本公司法人 |
+| 既定の法人 | Default company | 默认法人 |
+| 発行元（書類の） | Issuer | 开具方 |
+| 適格請求書発行事業者登録番号 | Invoice registration number | 合格请款单发行事业者登记号 |
+| 社印 | Company seal | 公司印章 |
+| 会計年度の開始月 | Fiscal year start month | 会计年度开始月 |
 | 地域 / 国 | Region / Country | 地区 / 国家 |
 | ロール | Role | 角色 |
 | 締日 / 支払日 | Closing day / Payment day | 结算日 / 付款日 |
@@ -285,6 +292,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 課税 / 非課税 / 軽減税率 | Taxable / Tax exempt / Reduced tax rate | 应税 / 免税 / 减免税率 |
 | 製品に従う（顧客の課税区分） | Follow the product | 按产品 |
 | 振込先 | Bank account | 银行账户 |
+| 金融機関 / 支店（金融機関の） / 口座種別 / 口座番号 / 口座名義 | Bank / Branch / Account type / Account number / Account holder | 金融机构 / 分行 / 账户类别 / 账号 / 账户名 |
 | 普通 / 当座 | Savings / Checking | 活期 / 支票 |
 | 日本 / 中国 / アメリカ / 韓国 | Japan / China / United States / Korea | 日本 / 中国 / 美国 / 韩国 |
 
@@ -810,6 +818,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 19 | **会計ソフトは TKC FX4クラウド**（旧 弥生会計 Next）。ただし**画面には製品名を出さない** — ボタンも履歴も列も「会計連携CSV / Accounting CSV / 会计对接 CSV」「会計連携日時」で統一し、製品名は仕様書とマニュアル本文にだけ書く。理由は 2 つ: 会計ソフトが替わるたびに 3 言語の文言と DB 列名を直す作業が再発すること、および zh に「FX4クラウド」の定訳が無く、弥生のときは「弥生会计」という造語を当てていたこと。仕訳の勘定科目は**マスタの列**（`tax_categories` / `bp_customer_attrs`）から引き、空なら `system_settings` の `accounting.*` の既定に落ちる。列レイアウトと文字コードは SY0J で可変 | `app-list.ts` / `messages/*.json` / `lib/accounting-export-core.ts` / MS0F・MS01 / マニュアル 3 言語 |
 | 21 | **再研磨の値段は「再研磨品目」（MS0H / Regrind items / 再研磨服务）が持つ** — 研ぎ直しという**役務**そのものを 1 つの品目にして、そこに値段を付ける。注文明細は品目を 2 つ指し、売り物は再研磨品目、**研ぎ直す工具 / Tool to regrind / 要研磨的刀具**は別の欄。工具（他社製品を含む製品）は**売り物にならない**ので値段も価格表も持たない。ただし**再研磨品目の価格表は任意で「対象工具」を持てる**（顧客 × 役務 × 工具。解決は 工具一致 → 工具なし → 標準価格）— 値段の持ち主はあくまで役務で、工具は条件にすぎない。zh を「再研磨品目」にしないのは、この行が表すのは品物ではなく役務だから |
 | 22 | **製品の仕様（材種・直径・全長・製品種別と製品項目）は設計図の版が持つ**（`app.design_versions`、2026-09-25）。製品マスタ（MS04）では直せず、確定した版の値を読むだけ。版の状態は書類と同じ **下書き / 承認依頼中 / 確定 / 差し戻し**（新語を作らない）で、承認は承認設定（MS0B）の「**設計図の版 / Drawing version / 图纸版本**」に段を組んだときだけ通る。ファイルの役割「図面データ」は **2D 原図 / 2D drawing / 2D 图纸** に改め、**3D 原図 / 3D model / 3D 模型** を足した。図面の表題欄の記載は **図面情報 / Title block / 图纸标题栏** — 材種（マスタの値）と図面の「材質」（書かれた文字）は別の語として扱う | `messages/*.json` の `production.designVersion.*` / `enum.DESIGN_FILE_ROLE_LABEL` / 設計図・製品のマニュアル 3 言語 |
+| 23 | **書類の発行元は「自社法人」（MS0I / Own companies / 本公司法人）が持つ**（2026-11-26）。CKK と TSP のように同じグループの別法人が書類を出すため。**拠点が 1 つの法人に属し、書類の法人は拠点から決まる** — 書類ごとに法人を選ばせない。拠点の分からない書類は**既定の法人 / Default company / 默认法人**。zh を「自社」の字面（自社法人）にせず 本公司法人 にしているのは、自社 は中国語で通じないため。発行元 = Issuer / 开具方 | `lib/own-company-core.ts` / 見積書・納品書・請求書の PDF |
 
 
 ## 5. 未決
