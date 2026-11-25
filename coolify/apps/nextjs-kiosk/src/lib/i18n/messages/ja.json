@@ -43,6 +43,10 @@
     "unplanned": "担当未設定",
     "plannedForOthers": "他の担当者の工程です",
     "notExecutable": "この指示書は承認済み/進行中ではないため、工程は操作できません",
+    "startState": "開始状態",
+    "startStateUnprocessed": "未加工",
+    "startStateSkipped": "仕掛品で済んでいるので行わない工程: {names}",
+    "startStateNoSkip": "在庫の仕掛品から始めます（飛ばす工程はありません）",
     "backToWorkOrder": "指示書へ",
     "status": {
       "DRAFT": "下書き",

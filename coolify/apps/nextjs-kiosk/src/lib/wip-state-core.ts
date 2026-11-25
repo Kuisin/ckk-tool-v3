@@ -378,10 +378,23 @@ export function wipRecordingPath(
   links: readonly StepLinkState[],
   stepId: string,
   affectsWipState: (processStepId: number) => boolean,
+  /**
+   * 指示書の開始状態（在庫の仕掛品から始めた指示書の、投入した仕掛品で済んで
+   * いた工程 — work_orders.start_wip_state_id）。**頭に付ける** — 指示書の工程には
+   * 載っていない（作成時に落としてある）ので、付けないと「続きから作った品」が
+   * 浅い加工状態で在庫に戻り、次の指示書が済んでいる工程をもう一度流す。
+   */
+  startStepIds: readonly number[] = [],
 ): WipPath {
-  return wipPathForSource(steps, links, stepId, affectsWipState, {
+  const path = wipPathForSource(steps, links, stepId, affectsWipState, {
     includeSource: false,
   });
+  if (startStepIds.length === 0) return path;
+  return {
+    stepIds: [...startStepIds, ...path.stepIds],
+    ambiguous: path.ambiguous,
+    alternatives: path.alternatives.map((a) => [...startStepIds, ...a]),
+  };
 }
 
 /** 経路（発生元を含めない並び）から、発生元の種類に応じた加工状態を作る。 */
@@ -687,6 +700,12 @@ export function planWipPostings(
   links: readonly StepLinkState[],
   affectsWipState: (processStepId: number) => boolean,
   blank: Pick<WipBlankSize, "diameterMm" | "lengthMm"> | null,
+  /**
+   * 指示書の開始状態（`wipRecordingPath` の説明）。工程に記録した経路
+   * （wipPathStepIds）は記録の時点で頭に付いているので、ここで付けるのは
+   * 記録が無く推奨を計算し直すときだけ。
+   */
+  startStepIds: readonly number[] = [],
 ): WipPosting[] {
   const byId = new Map(steps.map((s) => [s.id, s]));
   const out: WipPosting[] = [];
@@ -695,7 +714,8 @@ export function planWipPostings(
     if (!step) continue;
     const upstream =
       step.wipPathStepIds ??
-      wipRecordingPath(steps, links, step.id, affectsWipState).stepIds;
+      wipRecordingPath(steps, links, step.id, affectsWipState, startStepIds)
+        .stepIds;
     const stepIds = wipStateForSource(
       upstream,
       step.processStepId,
@@ -943,4 +963,236 @@ export function matchWip(
   result.largerDiameter.sort(byRank);
   result.other.sort(byRank);
   return result;
+}
+
+// ─── 在庫の仕掛品から指示書を始める ───────────────────────────────────────
+
+/** 指示書の工程 1 つ（工程順に並べて渡す）。 */
+export interface WipStartRouteStep {
+  processStepId: number;
+  /** 加工状態に数える工程か（工程マスタ affects_wip_state）。 */
+  affectsWipState: boolean;
+  /** 開始工程（出し・受渡し）か。開始工程は飛ばさず、半製品出しへ差し替える。 */
+  isStart: boolean;
+}
+
+export interface WipStartPlan {
+  /** 仕掛品の加工状態が、製品の工程の**先頭部分**になっているか。 */
+  isPrefix: boolean;
+  /** 先頭から一致した、形を変える工程の数。 */
+  matched: number;
+  /**
+   * 飛ばせる工程（工程順）— 一致した最後の形を変える工程まで。その手前に挟まる
+   * 形を変えない工程（途中の検査など）も含む: 品物はもうそこを通り過ぎている。
+   * 一致した最後の工程より**後ろ**の検査・承認は含めない（済んだかどうかを
+   * 加工状態からは言えないので、やり直す側に倒す）。
+   */
+  skippableStepIds: number[];
+  /** 実際に飛ばす工程 = 飛ばせる工程 −「この工程はもう一度行う」と選んだ工程。 */
+  skippedStepIds: number[];
+}
+
+/**
+ * 在庫の仕掛品から始める指示書で、**どの工程を飛ばすか**の唯一の規則。
+ * 画面（指示書ビルダーの灰色表示）とサーバー（工程の作成）が同じ関数を通す。
+ *
+ * 飛ばすのは「仕掛品で済んでいる」と言える工程だけ — 製品の形を変える工程の
+ * 並びと、仕掛品の加工状態が**先頭から一致した分**。長い・太い仕掛品でも規則は
+ * 同じで、状態に入っていない切断・研削は残る（寸法を合わせる工程を勝手に
+ * 飛ばさない）。状態に入っている工程をもう一度行いたいとき（長い仕掛品を
+ * 切り直す等）は `redoStepIds` で残す。
+ *
+ * 加工状態が先頭部分になっていない（`isPrefix` = false）仕掛品は、一致した
+ * ところまでしか飛ばさない。使うこと自体に人の判断と理由が要る
+ * （`matchWip` の `other`）。
+ */
+export function planWipStart(
+  route: readonly WipStartRouteStep[],
+  stateStepIds: readonly number[],
+  redoStepIds: readonly number[] = [],
+): WipStartPlan {
+  const shaping = route
+    .map((s, index) => ({ ...s, index }))
+    .filter((s) => s.affectsWipState && !s.isStart);
+  let matched = 0;
+  while (
+    matched < stateStepIds.length &&
+    matched < shaping.length &&
+    shaping[matched].processStepId === stateStepIds[matched]
+  ) {
+    matched += 1;
+  }
+  const isPrefix = matched === stateStepIds.length;
+  if (matched === 0) {
+    return { isPrefix, matched, skippableStepIds: [], skippedStepIds: [] };
+  }
+  const lastIndex = shaping[matched - 1].index;
+  const skippableStepIds = route
+    .slice(0, lastIndex + 1)
+    .filter((s) => !s.isStart)
+    .map((s) => s.processStepId);
+  const redo = new Set(redoStepIds);
+  return {
+    isPrefix,
+    matched,
+    skippableStepIds,
+    skippedStepIds: skippableStepIds.filter((id) => !redo.has(id)),
+  };
+}
+
+/**
+ * 開始状態の工程のうち、指示書の工程に**載っていない**もの = 飛ばした工程。
+ * 指示書詳細（Web）と指示書スキャン（共有端末）の「飛ばした工程」が同じ答えに
+ * なるよう、ここで 1 つに決める。「もう一度行う」と選んだ工程は指示書に
+ * 載っているので、ここには出ない。
+ */
+export function wipStartSkippedStepIds(
+  stateStepIds: readonly number[],
+  workOrderProcessStepIds: readonly number[],
+): number[] {
+  const present = new Set(workOrderProcessStepIds);
+  return stateStepIds.filter((id) => !present.has(id));
+}
+
+/** 投入に選んだ仕掛品 1 本（在庫バケット × 数量）。 */
+export interface WipDrawInput {
+  inventoryId: string;
+  quantity: number;
+}
+
+/** 選べる仕掛品 1 本（`matchWip` の結果を、検証に要るだけの形にしたもの）。 */
+export interface WipDrawCandidate {
+  inventoryId: string;
+  wipStateId: number;
+  /** 寸法の区分。`other` = 加工状態が製品の工程の先頭部分になっていない。 */
+  group: WipDimensionGroup | "other";
+  /** 使える数（手持ち − 引当）。 */
+  available: number;
+}
+
+export type WipDrawIssue =
+  /** 候補に無い（もう在庫に無い・この製品には使えない・見える範囲の外）。 */
+  | "notACandidate"
+  | "duplicate"
+  | "quantityInvalid"
+  | "quantityExceedsAvailable"
+  /** 加工状態の違う仕掛品を 1 枚の指示書に混ぜている。 */
+  | "mixedStates"
+  /** `other` を選んだのに理由が無い。 */
+  | "overrideReasonRequired";
+
+/**
+ * 投入する仕掛品の選び方の検証 — 画面（保存ボタンを止める）とサーバー
+ * （保存を拒む）が同じ関数を通す。
+ *
+ * - 選んだバケットは候補（`matchWip` が返したもの）の中にあること。
+ * - 数量は 1 以上の整数で、使える数（手持ち − 引当）以下。
+ * - **1 枚の指示書に加工状態は 1 つ**。状態が違えば飛ばす工程が違うので、
+ *   混ぜると「どこから始める指示書か」が決まらない。
+ * - 加工状態が製品の工程の先頭部分になっていないもの（`other`）を 1 本でも
+ *   選んだら、理由が要る（監査ログに残す）。
+ *
+ * 予定数量との大小はここでは問わない（予備を多めに出す・一部だけ仕掛品で
+ * 賄えないときは指示書を分ける、は人が決める。画面は差を見せるだけ）。
+ */
+export function validateWipDraws(
+  draws: readonly WipDrawInput[],
+  candidates: readonly WipDrawCandidate[],
+  overrideReason: string | null | undefined,
+): {
+  issues: WipDrawIssue[];
+  /** 開始状態（選んだバケットの加工状態）。選んでいない・混ざっているなら null。 */
+  wipStateId: number | null;
+  needsOverride: boolean;
+  total: number;
+} {
+  const issues = new Set<WipDrawIssue>();
+  const byId = new Map(candidates.map((c) => [c.inventoryId, c]));
+  const seen = new Set<string>();
+  const states = new Set<number>();
+  let needsOverride = false;
+  let total = 0;
+  for (const d of draws) {
+    if (seen.has(d.inventoryId)) issues.add("duplicate");
+    seen.add(d.inventoryId);
+    const c = byId.get(d.inventoryId);
+    if (!c) {
+      issues.add("notACandidate");
+      continue;
+    }
+    if (!Number.isInteger(d.quantity) || d.quantity <= 0) {
+      issues.add("quantityInvalid");
+    } else {
+      if (d.quantity > c.available) issues.add("quantityExceedsAvailable");
+      total += d.quantity;
+    }
+    states.add(c.wipStateId);
+    if (c.group === "other") needsOverride = true;
+  }
+  if (states.size > 1) issues.add("mixedStates");
+  if (needsOverride && !(overrideReason ?? "").trim()) {
+    issues.add("overrideReasonRequired");
+  }
+  return {
+    issues: [...issues],
+    wipStateId: states.size === 1 ? [...states][0] : null,
+    needsOverride,
+    total,
+  };
+}
+
+/** 完了のときの、投入した仕掛品 1 本の現況。 */
+export interface WipDrawStock {
+  inventoryId: string;
+  /** この指示書がそのバケットに持っている予約（RESERVED の合計）。 */
+  reserved: number;
+  /** バケットの手持ち。 */
+  onHand: number;
+  /** バケット全体の引当（他の指示書の分も含む。この指示書の分も含む）。 */
+  reservedTotal: number;
+}
+
+export interface WipDrawConsumption {
+  inventoryId: string;
+  /** 解除する予約（この指示書の予約は使った数に関わらず全部ほどく）。 */
+  release: number;
+  /** 在庫から落とす数。 */
+  out: number;
+}
+
+/**
+ * 完了のときに、投入した仕掛品を**どのバケットからいくつ落とすか**。
+ *
+ * 落とすのは選んだバケットだけ（古い順などの推測へ落ちない）。
+ * 1. 選んだ順に、予約した数まで（手持ちが足りなければあるだけ）。
+ * 2. 出した数が予約より多ければ、同じバケットの**空き**（他の指示書が引き当てて
+ *    いない分）から足す。他の指示書の予約には手を付けない。
+ * 3. それでも足りない分は `shortage` — 落とさない（台帳に無い物は落とせない）。
+ *    完了は止めない（素材の消費と同じ方針）。
+ *
+ * 予約は使った数に関わらず全部ほどく — 出した数が少なかったときに予約だけ残ると、
+ * 使われない予約が空き数量を食い続ける。
+ */
+export function planWipDrawConsumption(
+  draws: readonly WipDrawStock[],
+  needed: number,
+): { lines: WipDrawConsumption[]; shortage: number } {
+  let left = Math.max(0, needed);
+  const lines = draws.map((d) => {
+    const take = Math.max(0, Math.min(left, d.reserved, d.onHand));
+    left -= take;
+    return { inventoryId: d.inventoryId, release: d.reserved, out: take };
+  });
+  if (left > 0) {
+    draws.forEach((d, i) => {
+      if (left <= 0) return;
+      // 予約をほどいたあとの空き = 手持ち − 落とした分 − 他の指示書の引当。
+      const others = Math.max(0, d.reservedTotal - d.reserved);
+      const free = Math.max(0, d.onHand - lines[i].out - others);
+      const extra = Math.min(left, free);
+      lines[i].out += extra;
+      left -= extra;
+    });
+  }
+  return { lines, shortage: left };
 }

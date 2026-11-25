@@ -30,6 +30,7 @@ import {
   mainlinePartChangingStepIds,
   orderSemiFinishedForConsumption,
   parseWipPathStepIds,
+  planWipDrawConsumption,
   planWipPostings,
   type WipBlankSize,
   type WipPostingStep,
@@ -1015,7 +1016,10 @@ export async function wipStateIdTx(
  * 狙いのロット → この指示書のブランクに載っていて加工状態が工程の先頭部分に
  * なっているもの（続きから作れる）→ 同じ目標製品の残り（未分類・状態が
  * 合わないもの — 第 2 段までの「同じ製品の半製品」の振る舞いを保つ）。
- * 別の製品を目標にした仕掛品を引くのは後の段。
+ *
+ * **投入する仕掛品を選んでいない指示書だけ**がここを通る（半製品出しを手で
+ * 組んだ指示書・旧アプリが作った指示書）。選んである指示書は consumeWipDraws が
+ * 選んだバケットから落とす — 別の製品を目標にした仕掛品を引けるのはそちらだけ。
  */
 async function consumeSemiFinishedStock(
   tx: Tx,
@@ -1117,6 +1121,285 @@ async function consumeSemiFinishedStock(
 }
 
 /**
+ * 投入に選んだ仕掛品（work_order_wip_draws）を落とす（完了時）。
+ *
+ * `consumeSemiFinishedStock` との違いは**推測しない**こと — 指示書を作るときに
+ * 人が選び、承認のときに予約したバケットだけを相手にする。目標製品がこの
+ * 指示書の製品と違ってよい（別の製品のために作りかけた品を使い回す）。
+ *
+ * どのバケットからいくつ落とすかは wip-state-core planWipDrawConsumption
+ * （予約した数まで → 同じバケットの空き → 残りは不足）。予約は使った数に
+ * 関わらず全部ほどく。台帳が足りなくても完了は止めない（素材の消費と同じ）。
+ */
+async function consumeWipDraws(
+  tx: Tx,
+  openMovement: MovementOpener,
+  args: {
+    workOrderId: string;
+    workOrderNumber: number;
+    draws: readonly { inventoryId: string; quantity: number }[];
+    /** 半製品出しの受入数（実際に出した数）。 */
+    quantity: number;
+    scrap: number;
+  },
+): Promise<void> {
+  const ids = args.draws.map((d) => d.inventoryId);
+  // wip-scope: 選んだバケット（id 指定）だけを読む。
+  // custody-scope: / owner-scope: 同上 — 選べるのは自社の棚の仕掛品だけ
+  // （選ぶ時点で絞ってある）。
+  const [buckets, reservations] = await Promise.all([
+    tx.itemInventory.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, quantity: true, reservedQuantity: true },
+    }),
+    tx.inventoryReservation.findMany({
+      where: {
+        workOrderId: args.workOrderId,
+        inventoryType: "PRODUCT",
+        inventoryId: { in: ids },
+        status: "RESERVED",
+      },
+    }),
+  ]);
+  const bucketOf = new Map(buckets.map((b) => [b.id, b]));
+  const reservedOf = new Map<string, number>();
+  for (const r of reservations) {
+    reservedOf.set(
+      r.inventoryId,
+      (reservedOf.get(r.inventoryId) ?? 0) + Number(r.quantity),
+    );
+  }
+  const plan = planWipDrawConsumption(
+    args.draws.map((d) => {
+      const b = bucketOf.get(d.inventoryId);
+      return {
+        inventoryId: d.inventoryId,
+        reserved: reservedOf.get(d.inventoryId) ?? 0,
+        onHand: Number(b?.quantity ?? 0),
+        reservedTotal: Number(b?.reservedQuantity ?? 0),
+      };
+    }),
+    args.quantity,
+  );
+
+  let reassignLeft = Math.max(0, args.quantity - args.scrap);
+  for (const line of plan.lines) {
+    if (line.release > 0) {
+      await applyTransaction(tx, await openMovement(), {
+        inventoryType: "PRODUCT",
+        inventoryId: line.inventoryId,
+        transactionType: "RELEASE",
+        quantity: line.release,
+        referenceType: "work_order",
+        referenceId: args.workOrderId,
+        notes: encodeInventoryNote("wipDrawReservationReleased", {
+          workOrderNumber: args.workOrderNumber,
+        }),
+      });
+    }
+    if (line.out <= 0) continue;
+    const share = splitScrapShare(line.out, reassignLeft);
+    for (const [quantity, key] of [
+      [share.reassign, "wipDrawConsumed"],
+      [share.scrap, "wipDrawScrapped"],
+    ] as const) {
+      if (quantity <= 0) continue;
+      await applyTransaction(tx, await openMovement(), {
+        inventoryType: "PRODUCT",
+        inventoryId: line.inventoryId,
+        transactionType: "OUT",
+        quantity,
+        referenceType: "work_order",
+        referenceId: args.workOrderId,
+        notes: encodeInventoryNote(key, {
+          workOrderNumber: args.workOrderNumber,
+        }),
+      });
+    }
+    reassignLeft -= share.reassign;
+  }
+  if (reservations.length > 0) {
+    await tx.inventoryReservation.updateMany({
+      where: { id: { in: reservations.map((r) => r.id) } },
+      data: { status: "RELEASED", releasedAt: new Date() },
+    });
+  }
+  if (plan.shortage > 0) {
+    console.warn(
+      // i18n-ignore — サーバーログのみ（画面には出ない）
+      `[inventory] 仕掛品の消費を一部スキップ（台帳残不足 残 ${plan.shortage}）: WO #${args.workOrderNumber}`,
+    );
+  }
+}
+
+/**
+ * 投入に選んだ仕掛品のうち、いま空き（手持ち − 引当）が足りないもの。
+ * 読むだけ（行を押さえない）— 承認依頼・承認の前に「選び直してください」と
+ * 言うための確認で、最後の砦は reserveWipDrawsTx の FOR UPDATE。
+ * この指示書がもう予約している分は足りているものとして数える。
+ */
+export async function wipDrawShortages(
+  tx: Tx | typeof prisma,
+  workOrderId: string,
+): Promise<{ inventoryId: string; requested: number; available: number }[]> {
+  const draws = await tx.workOrderWipDraw.findMany({
+    where: { workOrderId },
+    select: {
+      inventoryId: true,
+      quantity: true,
+      // wip-scope: 選んだバケット（draw の相手）だけを読む。
+      // custody-scope: / owner-scope: 同上。
+      inventory: { select: { quantity: true, reservedQuantity: true } },
+    },
+    orderBy: { sortOrder: "asc" },
+  });
+  if (draws.length === 0) return [];
+  const existing = await tx.inventoryReservation.findMany({
+    where: {
+      workOrderId,
+      inventoryType: "PRODUCT",
+      inventoryId: { in: draws.map((d) => d.inventoryId) },
+      status: "RESERVED",
+    },
+    select: { inventoryId: true, quantity: true },
+  });
+  const already = new Map<string, number>();
+  for (const r of existing) {
+    already.set(
+      r.inventoryId,
+      (already.get(r.inventoryId) ?? 0) + Number(r.quantity),
+    );
+  }
+  return draws.flatMap((d) => {
+    const need = Math.max(0, d.quantity - (already.get(d.inventoryId) ?? 0));
+    const free = Math.max(
+      0,
+      Number(d.inventory.quantity) - Number(d.inventory.reservedQuantity),
+    );
+    return need > free
+      ? [{ inventoryId: d.inventoryId, requested: need, available: free }]
+      : [];
+  });
+}
+
+/** 承認のとき、選んだ仕掛品がもう足りない（他の指示書が先に引き当てた等）。 */
+export class WipDrawShortageError extends Error {
+  constructor(
+    readonly shortages: readonly {
+      inventoryId: string;
+      requested: number;
+      available: number;
+    }[],
+  ) {
+    // i18n-ignore — 呼び出し側（指示書の承認）が自分の辞書で言い直す
+    super("selected wip stock is no longer available");
+    this.name = "WipDrawShortageError";
+  }
+}
+
+/**
+ * 指示書の承認で、投入に選んだ仕掛品を予約する（素材の予約と同じ位置づけ）。
+ *
+ * 素材の予約と違い、**足りなければ取らずに止める**（WipDrawShortageError）—
+ * 素材の予約超過は「発注せよ」の合図になるが、仕掛品は発注で増えない。空きを
+ * 超えて予約すると、ほかの指示書から見える「使える数」が嘘になる。
+ * 足りるかどうかは承認の前に `wipDrawShortages` で確かめておくこと — ここで
+ * 止まるのは、その後に別の指示書が先に取った一瞬の競合だけ。
+ *
+ * 行を FOR UPDATE で押さえてから空きを読む — 同じバケットを選んだ 2 枚の
+ * 指示書が同時に承認されても、空きを二重に配らない。
+ * 冪等: この指示書がそのバケットにもう予約を持っていれば、その分は取り直さない。
+ */
+export async function reserveWipDrawsTx(
+  tx: Tx,
+  openMovement: MovementOpener,
+  wo: { id: string; workOrderNumber: number },
+): Promise<number> {
+  const draws = await tx.workOrderWipDraw.findMany({
+    where: { workOrderId: wo.id },
+    select: { inventoryId: true, quantity: true },
+    orderBy: { sortOrder: "asc" },
+  });
+  if (draws.length === 0) return 0;
+  const ids = draws.map((d) => d.inventoryId);
+  // wip-scope: 選んだバケット（id 指定）だけを押さえる。
+  // custody-scope: / owner-scope: 同上。
+  await tx.$queryRaw`
+    SELECT id FROM app.item_inventory
+    WHERE id = ANY(${ids}::uuid[])
+    ORDER BY id
+    FOR UPDATE`;
+  const [buckets, existing] = await Promise.all([
+    tx.itemInventory.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, quantity: true, reservedQuantity: true },
+    }),
+    tx.inventoryReservation.findMany({
+      where: {
+        workOrderId: wo.id,
+        inventoryType: "PRODUCT",
+        inventoryId: { in: ids },
+        status: "RESERVED",
+      },
+      select: { inventoryId: true, quantity: true },
+    }),
+  ]);
+  const bucketOf = new Map(buckets.map((b) => [b.id, b]));
+  const already = new Map<string, number>();
+  for (const r of existing) {
+    already.set(
+      r.inventoryId,
+      (already.get(r.inventoryId) ?? 0) + Number(r.quantity),
+    );
+  }
+  const todo = draws
+    .map((d) => {
+      const b = bucketOf.get(d.inventoryId);
+      const free = Number(b?.quantity ?? 0) - Number(b?.reservedQuantity ?? 0);
+      return {
+        inventoryId: d.inventoryId,
+        need: Math.max(0, d.quantity - (already.get(d.inventoryId) ?? 0)),
+        free: Math.max(0, free),
+      };
+    })
+    .filter((d) => d.need > 0);
+  const shortages = todo.filter((d) => d.need > d.free);
+  if (shortages.length > 0) {
+    throw new WipDrawShortageError(
+      shortages.map((d) => ({
+        inventoryId: d.inventoryId,
+        requested: d.need,
+        available: d.free,
+      })),
+    );
+  }
+  for (const d of todo) {
+    await applyTransaction(tx, await openMovement(), {
+      inventoryType: "PRODUCT",
+      inventoryId: d.inventoryId,
+      transactionType: "RESERVE",
+      quantity: d.need,
+      referenceType: "work_order",
+      referenceId: wo.id,
+      notes: encodeInventoryNote("wipDrawReserved", {
+        workOrderNumber: wo.workOrderNumber,
+      }),
+    });
+    await tx.inventoryReservation.create({
+      data: {
+        inventoryType: "PRODUCT",
+        inventoryId: d.inventoryId,
+        workOrderId: wo.id,
+        quantity: d.need,
+        status: "RESERVED",
+        reservedAt: new Date(),
+      },
+    });
+  }
+  return todo.length;
+}
+
+/**
  * 全工程完了フック: 最終工程の良品をロット入庫、半製品バケット合計を半製品
  * 入庫。completeStepExecution から呼ぶ。
  * - MANUFACTURE: **この WO の**製品予約を CONFIRMED に（割当明細の予約には
@@ -1172,9 +1455,17 @@ export async function onWorkOrderCompletedTx(
         select: { orderLineId: true },
         orderBy: { sortOrder: "asc" },
       },
+      // 在庫の仕掛品から始めた指示書: 開始状態（済んでいた工程）と、投入に
+      // 選んだバケット。
+      startWipState: { select: { stepIds: true } },
+      wipDraws: {
+        select: { inventoryId: true, quantity: true },
+        orderBy: { sortOrder: "asc" },
+      },
     },
   });
   const linkedLineIds = wo.orderLineLinks.map((l) => l.orderLineId);
+  const startStepIds = wo.startWipState?.stepIds ?? [];
   // 完成数 = 良品がどこにも流れない COMPLETED 工程の残良品合計。
   // sortOrder 最大では分岐合流 DAG（合流先が手前に並ぶ場合）で誤るため、
   // グラフ集計の純関数（workflow-core computeFinishedQuantity）で判定する
@@ -1253,6 +1544,8 @@ export async function onWorkOrderCompletedTx(
     engineLinks,
     affects,
     wipBlank?.size ?? null,
+    // 仕掛品から始めた指示書の品は、投入した仕掛品で済んでいた工程も済んでいる。
+    startStepIds,
   );
   if (wipPostings.length > 0) {
     // ブランクの行は目標製品の単位で数える（本数）。品目マスタのブランクの単位に
@@ -1312,7 +1605,18 @@ export async function onWorkOrderCompletedTx(
       s.status !== "CANCELLED",
   );
   const semiIssueQty = semiIssueStep?.inputQuantity ?? 0;
-  if (semiIssueStep && semiIssueQty > 0) {
+  if (wo.wipDraws.length > 0) {
+    // 投入する仕掛品を選んである指示書: **選んだバケットだけ**から落とす。
+    // 出した数が 0 でも通す — 承認のときに取った予約をほどくため（残すと下の
+    // 「予約 → 確定」が CONFIRMED に倒し、使われない引当が空き数量を食い続ける）。
+    await consumeWipDraws(tx, openMovement, {
+      workOrderId: wo.id,
+      workOrderNumber: wo.workOrderNumber,
+      draws: wo.wipDraws,
+      quantity: semiIssueQty,
+      scrap: scrapTotal,
+    });
+  } else if (semiIssueStep && semiIssueQty > 0) {
     await consumeSemiFinishedStock(tx, openMovement, {
       workOrderId: wo.id,
       workOrderNumber: wo.workOrderNumber,

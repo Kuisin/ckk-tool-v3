@@ -48,6 +48,7 @@ import {
 import { markingRange } from "@/lib/marking-number";
 import { sumActualWorkHours } from "@/lib/step-work-hours";
 import { loadWipRecording } from "@/lib/wip-recording";
+import { wipSizeLabel } from "@/lib/wip-stock-core";
 import {
   fetchAllowedWorkLocationIds,
   fetchWorkLocationOptions,
@@ -55,6 +56,7 @@ import {
 } from "@/lib/work-locations";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import { shippableQuantity } from "@/lib/work-order-shipping-core";
+import { startWipView } from "@/lib/work-order-wip";
 import { planReadiness, requiredPlanFields } from "@/lib/work-plan-core";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import {
@@ -94,6 +96,32 @@ function parseDefectReasons(value: unknown): StepDefectReasonView[] {
 }
 
 const WO_INCLUDE = {
+  // 在庫の仕掛品から始めた指示書: 開始状態と、投入に選んだバケット。
+  startWipState: { select: { id: true, name: true, stepIds: true } },
+  wipDraws: {
+    select: {
+      inventoryId: true,
+      quantity: true,
+      inventory: {
+        select: {
+          lotNumber: true,
+          finishedDiameterMm: true,
+          finishedLengthMm: true,
+          item: {
+            select: {
+              name: true,
+              diameterMm: true,
+              lengthMm: true,
+              materialType: { select: { code: true, name: true } },
+            },
+          },
+          aimedItem: { select: { name: true } },
+          plant: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: { sortOrder: "asc" as const },
+  },
   orderLineLinks: {
     include: {
       orderLine: { include: { acceptance: { include: { customerBp: true } } } },
@@ -667,6 +695,32 @@ export async function fetchWorkOrder(
     })),
   );
 
+  // 開始状態の工程名（指示書の工程に載っていない工程も含むので工程マスタから）と、
+  // 投入する仕掛品にこの指示書がいま持っている予約。
+  const [startStepCatalog, wipReservations] = await Promise.all([
+    r.startWipState && r.startWipState.stepIds.length > 0
+      ? prisma.processStepCatalog.findMany({
+          where: { id: { in: r.startWipState.stepIds } },
+          select: { id: true, name: true },
+        })
+      : [],
+    r.wipDraws.length > 0
+      ? prisma.inventoryReservation.groupBy({
+          by: ["inventoryId"],
+          where: {
+            workOrderId: r.id,
+            inventoryType: "PRODUCT",
+            status: "RESERVED",
+            inventoryId: { in: r.wipDraws.map((d) => d.inventoryId) },
+          },
+          _sum: { quantity: true },
+        })
+      : [],
+  ]);
+  const wipReservedOf = new Map(
+    wipReservations.map((x) => [x.inventoryId, Number(x._sum.quantity ?? 0)]),
+  );
+
   const shipmentItems = await prisma.deliveryOrderItem.findMany({
     where: { lotNumber: r.workOrderNumber },
     select: {
@@ -794,6 +848,49 @@ export async function fetchWorkOrder(
       status: l.targetWorkOrder.status,
       quantity: l.quantity,
     })),
+    startWip: startWipView({
+      state: r.startWipState,
+      overrideReason: r.wipOverrideReason,
+      workOrderProcessStepIds: r.steps.map((s) => s.processStepId),
+      stepNames: new Map(
+        startStepCatalog.map((c) => [
+          c.id,
+          localized(c.name as LocalizedText | null),
+        ]),
+      ),
+    }),
+    wipDraws: r.wipDraws.map((d) => {
+      const inv = d.inventory;
+      const mt = inv.item.materialType;
+      const size = wipSizeLabel(
+        inv.item.diameterMm == null ? null : Number(inv.item.diameterMm),
+        inv.item.lengthMm == null ? null : Number(inv.item.lengthMm),
+      );
+      const mtLabel = mt
+        ? mt.code || localized(mt.name as LocalizedText | null)
+        : null;
+      return {
+        inventoryId: d.inventoryId,
+        quantity: d.quantity,
+        blankLabel:
+          [mtLabel, size].filter(Boolean).join(" ") ||
+          localized(inv.item.name as LocalizedText | null),
+        finishedDiameterMm:
+          inv.finishedDiameterMm == null
+            ? null
+            : Number(inv.finishedDiameterMm),
+        finishedLengthMm:
+          inv.finishedLengthMm == null ? null : Number(inv.finishedLengthMm),
+        lotNumber: inv.lotNumber,
+        aimedProductName: inv.aimedItem
+          ? localized(inv.aimedItem.name as LocalizedText | null)
+          : null,
+        plantName: inv.plant
+          ? localized(inv.plant.name as LocalizedText | null)
+          : null,
+        reservedQuantity: wipReservedOf.get(d.inventoryId) ?? 0,
+      };
+    }),
     steps: r.steps.map((s) => ({
       id: s.id,
       processStepId: s.processStepId,

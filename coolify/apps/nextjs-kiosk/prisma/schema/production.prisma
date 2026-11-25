@@ -132,6 +132,18 @@ model WorkOrder {
   // あとから書き換えさせない）。
   designFileId   String? @map("design_file_id") @db.Uuid
 
+  /// **開始状態** — 在庫の仕掛品から始める指示書の、投入する仕掛品の加工状態
+  /// （app.wip_states）。null = 素材から作る（従来どおり）。
+  ///
+  /// 入っていれば、その状態で済んでいる工程は指示書の工程に**載っていない**
+  /// （作成時に落とす — lib/wip-state-core.ts planWipStart が唯一の規則）。
+  /// 開始工程は半製品出し。この指示書から出る仕掛品の加工状態は、この並びを
+  /// 頭に付けて数える（付けないと「続きから作った品」が浅い状態で在庫に戻る）。
+  startWipStateId Int? @map("start_wip_state_id")
+  /// 加工状態が製品の工程の先頭部分になっていない仕掛品を、人の判断で使った理由。
+  /// それ以外は null（DB の CHECK で空文字を拒む）。監査ログにも同じ文を残す。
+  wipOverrideReason String? @map("wip_override_reason")
+
   // 承認遷移（MaterialPurchaseOrder と同型の row-workflow）。
   // 段ごとの日時・承認者は approval_requests / approval_records が持つ。
   requestedAt  DateTime? @map("requested_at") @db.Timestamptz(6)
@@ -159,8 +171,10 @@ model WorkOrder {
   routeVersion    ProductProcessRouteVersion? @relation(fields: [routeVersionId], references: [id], onDelete: SetNull)
   prepRouteVersion ProductProcessRouteVersion? @relation("WorkOrderPrepRoute", fields: [prepRouteVersionId], references: [id], onDelete: SetNull)
   createdByUser   User?      @relation("WorkOrderCreatedBy", fields: [createdBy], references: [id])
+  startWipState   WipState?  @relation("WorkOrderStartWipState", fields: [startWipStateId], references: [id], onDelete: Restrict)
 
   orderLineLinks      WorkOrderOrderLine[]
+  wipDraws            WorkOrderWipDraw[]
   steps               WorkOrderStep[]
   stepLinks           WorkOrderStepLink[]
   flowChanges         WorkOrderFlowChange[]
@@ -188,7 +202,35 @@ model WorkOrder {
   @@index([materialItemId])
   @@index([productItemId])
   @@index([ownCompanyId])
+  @@index([startWipStateId])
   @@map("work_orders")
+  @@schema("app")
+}
+
+// 指示書が投入する仕掛品（在庫バケット × 数量）。
+//
+// 作成時に人が選ぶ（指示書ビルダーの「使える仕掛品」）。**予約ではない** —
+// 予約は承認のときに inventory_reservations へ取り（素材と同じ）、完了のときに
+// ここに並ぶバケットから落とす（lib/inventory.ts consumeWipDraws）。選んだ
+// バケットを別に持つのは、承認前（予約がまだ無い）にも「どれを使うつもりか」を
+// 残し、完了のときに推測（古い順）へ落ちないようにするため。
+//
+// 1 指示書の中のバケットはすべて同じ加工状態（= work_orders.start_wip_state_id）。
+// 目標製品（item_inventory.aimed_item_id）は指示書の製品と違ってよい —
+// 別の製品のために作りかけた品を使い回すのが、この表の目的。
+model WorkOrderWipDraw {
+  workOrderId String   @map("work_order_id") @db.Uuid
+  inventoryId String   @map("inventory_id") @db.Uuid
+  quantity    Int
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workOrder WorkOrder     @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  inventory ItemInventory @relation("WorkOrderWipDrawInventory", fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  @@id([workOrderId, inventoryId])
+  @@index([inventoryId])
+  @@map("work_order_wip_draws")
   @@schema("app")
 }
 

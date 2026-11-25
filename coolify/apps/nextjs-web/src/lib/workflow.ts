@@ -120,6 +120,15 @@ export async function validateAndOrderSteps(
    * 渡さない — 全体で検証する。
    */
   kind?: ProcessRouteKind,
+  options?: {
+    /**
+     * この指示書の**外で済んでいる**工程（在庫の仕掛品から始める指示書で、
+     * 投入する仕掛品で済んでいて工程から落とした分 + 半製品出しへ差し替えた
+     * 元の開始工程）。構成には載らないが、使用依存（「段加工には円筒が要る」）は
+     * 満たしているものとして数える。
+     */
+    satisfiedStepIds?: readonly number[];
+  },
 ): Promise<
   { ok: false; error: string } | { ok: true; creates: OrderedStepCreate[] }
 > {
@@ -178,11 +187,18 @@ export async function validateAndOrderSteps(
       };
     }
   }
-  const allBlocking = validateComposition(
-    ids,
-    catalog.useDeps,
-    catalog.steps,
-  ).filter(isBlockingIssue);
+  const satisfied = new Set(options?.satisfiedStepIds ?? []);
+  const allBlocking = validateComposition(ids, catalog.useDeps, catalog.steps)
+    .filter(isBlockingIssue)
+    // 依存先がこの指示書の外で済んでいるなら不足ではない。
+    .filter(
+      (i) =>
+        !(
+          i.kind === "MISSING_AND" &&
+          i.relatedStepIds.length > 0 &&
+          i.relatedStepIds.every((id) => satisfied.has(id))
+        ),
+    );
   const blocking = kind
     ? compositionIssuesForKind(allBlocking, kind, catalog.steps)
     : allBlocking;

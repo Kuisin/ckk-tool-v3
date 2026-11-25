@@ -43,6 +43,10 @@
     "unplanned": "未分配",
     "plannedForOthers": "该工序已分配给其他人",
     "notExecutable": "该工单未处于已批准/进行中状态，无法操作工序",
+    "startState": "开始状态",
+    "startStateUnprocessed": "未加工",
+    "startStateSkipped": "在制品已完成、不再进行的工序: {names}",
+    "startStateNoSkip": "从库存的在制品开始（没有跳过的工序）",
     "backToWorkOrder": "返回工单",
     "status": {
       "DRAFT": "草稿",

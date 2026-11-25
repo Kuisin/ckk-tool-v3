@@ -125,12 +125,21 @@ import type { CatalogStep, UseDep } from "@/lib/workflow-core";
 import {
   isBlockingIssue,
   isPrepStep,
+  isStartStep,
   REGRIND_RECEIPT_STEP_CODE,
+  SEMI_FINISHED_ISSUE_STEP_CODE,
   STOCK_ISSUE_STEP_CODE,
   stepAllowedForType,
   validateComposition,
 } from "@/lib/workflow-core";
 import type { WorkOrderView } from "./model";
+import { useWipCandidates, WipDrawPanel } from "./WipDrawPanel";
+import {
+  EMPTY_WIP_SELECTION,
+  type WipDrawSelection,
+  wipDrawPayload,
+  wipSelectionState,
+} from "./wip-draw-model";
 
 const BASE_PATH = "/production/work-orders";
 
@@ -212,7 +221,15 @@ function initialValues(
         : null,
     designFileId: workOrder.designFileId ?? null,
     notes: workOrder.notes ?? "",
-    selectedStepIds: workOrder.steps.map((s) => s.processStepId),
+    // 仕掛品から始めた指示書は、済んでいた工程を落として保存してある。画面は
+    // **飛ばす前の全体**を持つ（工程リストの版はそこから決まる）ので、開始状態の
+    // 工程を戻しておく。製造側の残り（途中の検査など）は版の読み込みで戻る。
+    selectedStepIds: [
+      ...new Set([
+        ...workOrder.steps.map((s) => s.processStepId),
+        ...(workOrder.startWip?.stepIds ?? []),
+      ]),
+    ],
   };
 }
 
@@ -593,6 +610,18 @@ export function WorkflowBuilder({
     () => new Set(catalogSteps.filter(isPrepStep).map((c) => c.id)),
     [catalogSteps],
   );
+  // ── 使える仕掛品（在庫の仕掛品から始める）────────────────────────────────
+  const [wipSelection, setWipSelection] = useState<WipDrawSelection>(() =>
+    workOrder && workOrder.wipDraws.length > 0
+      ? {
+          draws: Object.fromEntries(
+            workOrder.wipDraws.map((d) => [d.inventoryId, d.quantity]),
+          ),
+          overrideReason: workOrder.startWip?.overrideReason ?? "",
+          redoStepIds: [],
+        }
+      : EMPTY_WIP_SELECTION,
+  );
   /** ルートを使わない構成を保存する場合の新ルート名（空 = 保存しない）。 */
   const [newRouteName, setNewRouteName] = useState("");
   /** 新ルートの対象顧客（customer = 明細の受注元専用 / generic = 汎用）。 */
@@ -765,6 +794,17 @@ export function WorkflowBuilder({
     },
     [mergeVersionSteps],
   );
+
+  // 編集で開いた「仕掛品から始めた指示書」: 製造側を使っている版の全体へ戻す
+  // （保存してある工程は飛ばした形なので、そのままだと「工程を外した」ことに
+  // なり、保存で製造工程リストの新しい版ができてしまう）。1 回だけ。
+  const wipRestoredRef = useRef(false);
+  useEffect(() => {
+    if (wipRestoredRef.current) return;
+    if (mode !== "edit" || !workOrder?.startWip || baseSteps == null) return;
+    wipRestoredRef.current = true;
+    mergeVersionSteps(baseSteps, "MANUFACTURING");
+  }, [mode, workOrder?.startWip, baseSteps, mergeVersionSteps]);
 
   /** 準備工程リストを選ぶ → その**最新版**の準備工程で準備側を入れ替える。 */
   const applyPrepRoute = useCallback(
@@ -964,6 +1004,62 @@ export function WorkflowBuilder({
   const latestVersionOfRoute = selectedRoute?.versions[0]?.version ?? 0;
   /** 準備工程リストの最新版（表示用 — 指示書はこれを使う）。 */
   const selectedPrepLatest = selectedPrepRoute?.versions[0] ?? null;
+
+  // 使える仕掛品の候補 — 突合の相手は**いま組んである工程の全体**。
+  const wipEnabled = form.values.type === "MANUFACTURE";
+  const wipItemId = wipEnabled ? (routesInfo?.itemId ?? null) : null;
+  const wipStepIds = useMemo(
+    () => currentSnapshots.map((s) => s.processStepId),
+    [currentSnapshots],
+  );
+  const { view: wipView, loading: wipLoading } = useWipCandidates({
+    enabled: wipEnabled,
+    itemId: wipItemId,
+    stepIds: wipStepIds,
+    workOrderNumber: workOrder?.workOrderNumber ?? null,
+  });
+  const wipState = useMemo(
+    () => wipSelectionState(wipView, wipSelection),
+    [wipView, wipSelection],
+  );
+  const wipSelected = Object.keys(wipSelection.draws).length > 0;
+  // 編集で開いたとき: 済んでいるのに指示書に載っている工程 = 「もう一度行う」と
+  // 選んであった工程。候補が読めた最初の 1 回だけ復元する。
+  const wipRedoRestoredRef = useRef(false);
+  useEffect(() => {
+    if (wipRedoRestoredRef.current || !workOrder?.startWip || !wipView) return;
+    wipRedoRestoredRef.current = true;
+    const present = new Set(workOrder.steps.map((s) => s.processStepId));
+    const redo = wipState.skippableStepIds.filter((id) => present.has(id));
+    if (redo.length > 0) {
+      setWipSelection((prev) => ({ ...prev, redoStepIds: redo }));
+    }
+  }, [workOrder, wipView, wipState.skippableStepIds]);
+  // 種別が製造分でなくなったら選択を捨てる（仕掛品を投入できるのは製造分だけ）。
+  useEffect(() => {
+    if (!wipEnabled) setWipSelection(EMPTY_WIP_SELECTION);
+  }, [wipEnabled]);
+  /** 開始工程を半製品出しへ差し替える表示（工程リストの閲覧モード用）。 */
+  const wipReplacedStart = useMemo(() => {
+    if (!wipSelected) return null;
+    const semi = catalogSteps.find(
+      (c) => c.code === SEMI_FINISHED_ISSUE_STEP_CODE,
+    );
+    if (!semi) return null;
+    const stepIds = selected.filter((id) => {
+      const c = catalogSteps.find((x) => x.id === id);
+      return c != null && isStartStep(c) && c.id !== semi.id;
+    });
+    return stepIds.length > 0 ? { stepIds, name: semi.nameJa } : null;
+  }, [wipSelected, catalogSteps, selected]);
+  /** この指示書で実際に行う工程（飛ばす工程を除く）— 納期・計画の入力欄に使う。 */
+  const activeSnapshots = useMemo(() => {
+    if (!wipSelected || wipState.skippedStepIds.length === 0) {
+      return currentSnapshots;
+    }
+    const skipped = new Set(wipState.skippedStepIds);
+    return currentSnapshots.filter((s) => !skipped.has(s.processStepId));
+  }, [wipSelected, wipState.skippedStepIds, currentSnapshots]);
 
   // ── 割当（分割・統合） ─────────────────────────────────────────────────────
   /** 行の残数表示（編集時は自分の既存割当分を戻す — サーバーも自分を除外）。 */
@@ -1261,6 +1357,18 @@ export function WorkflowBuilder({
         return;
       }
     }
+    // 使える仕掛品の選び方に不備があれば止める（サーバーも同じ理由で拒む）。
+    if (
+      wipSelected &&
+      (wipState.issues.length > 0 || wipState.missingIds.length > 0)
+    ) {
+      notifications.show({
+        title: tr("common.thereIsAnErrorInThe"),
+        message: tr("production.wipDraw.fixBeforeSaving"),
+        color: "red",
+      });
+      return;
+    }
     const allocations = allocRows
       .filter((r) => r.orderLineId != null)
       .map((r) => ({
@@ -1362,10 +1470,16 @@ export function WorkflowBuilder({
         target === "STOCK" && values.itemId ? Number(values.itemId) : null,
       type: target === "STOCK" ? "MANUFACTURE" : values.type,
       plannedQuantity: values.plannedQuantity,
+      // 仕掛品から始める指示書は素材を使わない（サーバーも同じ判定）。
       materialItemId:
-        values.type === "MANUFACTURE" && values.materialItemId
+        values.type === "MANUFACTURE" && values.materialItemId && !wipSelected
           ? Number(values.materialItemId)
           : null,
+      // 投入する仕掛品。工程（steps）は**飛ばす前の全体**を送る — どれを飛ばすかは
+      // サーバーが同じ規則（planWipStart）で決め直す。
+      ...(values.type === "MANUFACTURE"
+        ? wipDrawPayload(wipView, wipSelection)
+        : { wipDraws: [], wipOverrideReason: null, wipRedoStepIds: [] }),
       allowQuantityVariance: values.allowQuantityVariance,
       // 再研磨は顧客の工具を返すので保管場所を持たない。
       storageLocationId:
@@ -1811,7 +1925,7 @@ export function WorkflowBuilder({
             withAsterisk
             {...form.getInputProps("plannedQuantity")}
           />
-          {form.values.type === "MANUFACTURE" && (
+          {form.values.type === "MANUFACTURE" && !wipSelected && (
             <SearchSelect
               description={
                 materialAssumption?.materialTypeName
@@ -1892,7 +2006,7 @@ export function WorkflowBuilder({
         {/* 想定外の素材が選ばれているときの警告（材種 × 直径が製品の想定と
             不一致）。プリフィルを手動で上書きした場合も含め、保存はブロック
             しない — §5 素材判断は指示書承認側で行う。 */}
-        {materialMismatch && (
+        {materialMismatch && !wipSelected && (
           <Alert
             color="orange"
             icon={<IconAlertTriangle size={16} />}
@@ -1907,7 +2021,7 @@ export function WorkflowBuilder({
         )}
         {/* 素材 ATP 警告（充足=緑 / 不足+入荷予定あり=黄 / 不足+入荷予定なし=赤）。
             警告のみ — 保存はブロックしない（§5 素材判断は指示書承認側で行う）。 */}
-        {materialItemIdValue && materialAtpInfo && (
+        {materialItemIdValue && materialAtpInfo && !wipSelected && (
           <MaterialAtpAlert
             atp={materialAtpInfo}
             plannedQuantity={form.values.plannedQuantity}
@@ -2137,6 +2251,18 @@ export function WorkflowBuilder({
           </FormSection>
         )}
 
+      {/* 使える仕掛品 — 製品と工程が決まってから（突合の相手は工程の並び）。 */}
+      {wipEnabled && wipItemId != null && wipStepIds.length > 0 && (
+        <WipDrawPanel
+          loading={wipLoading}
+          onChange={setWipSelection}
+          plannedQuantity={form.values.plannedQuantity}
+          selection={wipSelection}
+          state={wipState}
+          view={wipView}
+        />
+      )}
+
       {stepsEditing ? (
         <>
           {/* 準備工程は共通の準備工程リスト（最新版）から入るので、この画面では
@@ -2201,7 +2327,9 @@ export function WorkflowBuilder({
           locations={locations}
           onEdit={() => setStepsEditing(true)}
           plantOptions={plantOptions}
+          replacedStart={wipReplacedStart}
           selected={selected}
+          skippedStepIds={wipSelected ? wipState.skippedStepIds : undefined}
           supplierOptions={supplierOptions}
         />
       )}
@@ -2251,13 +2379,13 @@ export function WorkflowBuilder({
 
       {/* 工程納期 — 指示書ごとの締切。任意で、過ぎて未完了なら工程カード・
           フロー図で赤くなる。承認後は工程実行画面の計画パネルで直す。 */}
-      {currentSnapshots.length > 0 && (
+      {activeSnapshots.length > 0 && (
         <FormSection
           description={tr("production.stepDueDate.builderHelp")}
           title={tr("production.stepDueDate.label")}
         >
           <Stack gap="xs">
-            {currentSnapshots.map((s, i) => {
+            {activeSnapshots.map((s, i) => {
               const cat = catalogSteps.find((c) => c.id === s.processStepId);
               if (!cat) return null;
               return (
@@ -2305,13 +2433,13 @@ export function WorkflowBuilder({
       {/* 作成時の作業計画 — 担当は指示書ごとに違うため、工程リストと違って
           最初から編集状態。担当を入れた工程だけ計画（work_order_step_plans）
           が作られる。詳細な時間割・数量の計画は作成後の計画パネルで。 */}
-      {mode === "create" && currentSnapshots.length > 0 && (
+      {mode === "create" && activeSnapshots.length > 0 && (
         <FormSection
           description={tr("production.workflowBuilder.workPlanHelp")}
           title={tr("production.workOrders.workPlanAssignees")}
         >
           <Stack gap="xs">
-            {currentSnapshots.map((s, i) => {
+            {activeSnapshots.map((s, i) => {
               const cat = catalogSteps.find((c) => c.id === s.processStepId);
               if (!cat) return null;
               const plan = stepPlans[s.processStepId];

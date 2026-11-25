@@ -51,6 +51,7 @@ import {
   type ChargeRowView,
   ChargesPanel,
 } from "@/components/charges/ChargesPanel";
+import { WipStateLabel } from "@/components/inventory/wip/WipStockList";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   type ApprovalTrailView,
@@ -400,6 +401,102 @@ export function WorkOrderDetail({
           }
         />
       )}
+      {/* 開始状態 — 在庫の仕掛品から始めた指示書だけ。どの加工状態の品を投入し、
+          どの工程を飛ばしたかを、工程の並びを読み解かなくても分かるようにする。 */}
+      {wo.startWip && (
+        <FieldValue
+          fullWidth
+          label={tr("production.wipDraw.startState")}
+          value={
+            <Stack data-start-wip gap={6}>
+              <Group gap="xs" wrap="wrap">
+                <Badge color="violet" size="sm" variant="filled">
+                  {tr("production.wipDraw.startState")}
+                </Badge>
+                <WipStateLabel
+                  row={{
+                    isLegacy: false,
+                    stateName: wo.startWip.stateName,
+                    stepNames: wo.startWip.stepNames,
+                  }}
+                />
+              </Group>
+              <Text c="dimmed" fw={400} size="xs">
+                {tr("production.wipDraw.startStateHelp")}
+              </Text>
+              {wo.startWip.skippedStepNames.length > 0 && (
+                <Group gap={4} wrap="wrap">
+                  <Text c="dimmed" fw={400} size="xs">
+                    {tr("production.wipDraw.skippedInThisOrder")}
+                  </Text>
+                  {wo.startWip.skippedStepNames.map((n, i) => (
+                    <Badge
+                      color="gray"
+                      // 同じ工程が 2 回入り得るので位置も鍵に入れる
+                      key={`${i}:${n}`}
+                      size="xs"
+                      variant="light"
+                    >
+                      {n}
+                    </Badge>
+                  ))}
+                </Group>
+              )}
+              {wo.startWip.overrideReason && (
+                <Text c="orange" fw={400} size="xs">
+                  {tr("production.wipDraw.overrideReasonLabel", {
+                    reason: wo.startWip.overrideReason,
+                  })}
+                </Text>
+              )}
+              {wo.wipDraws.length > 0 && (
+                <Stack gap={2}>
+                  <Text c="dimmed" fw={400} size="xs">
+                    {tr("production.wipDraw.drawsTitle")}
+                  </Text>
+                  {wo.wipDraws.map((d) => (
+                    <Group
+                      data-wip-draw={d.inventoryId}
+                      gap="xs"
+                      key={d.inventoryId}
+                      wrap="wrap"
+                    >
+                      <Text fw={400} size="sm">
+                        {tr("production.wipDraw.drawLine", {
+                          blank: d.blankLabel,
+                          lot: d.lotNumber != null ? `#${d.lotNumber}` : "—",
+                          quantity: d.quantity,
+                        })}
+                      </Text>
+                      {d.aimedProductName && (
+                        <Text c="dimmed" fw={400} size="xs">
+                          {tr("production.wipDraw.drawAimed", {
+                            product: d.aimedProductName,
+                          })}
+                        </Text>
+                      )}
+                      {d.reservedQuantity > 0 ? (
+                        <Badge color="orange" size="xs" variant="light">
+                          {tr("production.wipDraw.drawReserved", {
+                            count: d.reservedQuantity,
+                          })}
+                        </Badge>
+                      ) : (
+                        (wo.status === "DRAFT" ||
+                          wo.status === "PENDING_APPROVAL") && (
+                          <Badge color="gray" size="xs" variant="light">
+                            {tr("production.wipDraw.drawNotReserved")}
+                          </Badge>
+                        )
+                      )}
+                    </Group>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          }
+        />
+      )}
       <FieldValue
         label={tr("common.lotNumber")}
         value={<DocNumber>{wo.lotNumber ?? wo.workOrderNumber}</DocNumber>}
@@ -573,6 +670,11 @@ export function WorkOrderDetail({
               entity="WorkOrderApproval"
               status={wo.approvalStatus}
             />
+          )}
+          {wo.startWip && (
+            <Badge color="violet" size="sm" variant="light">
+              {tr("production.wipDraw.startState")}
+            </Badge>
           )}
         </>
       }

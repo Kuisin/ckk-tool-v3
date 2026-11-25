@@ -191,6 +191,40 @@ export interface WorkOrderFinalInspectionView {
   shipDefectNotes: string | null;
 }
 
+/**
+ * 開始状態 — 在庫の仕掛品から始めた指示書の、投入した仕掛品の加工状態
+ * （work_orders.start_wip_state_id）。
+ */
+export interface WorkOrderStartWipView {
+  wipStateId: number;
+  /** 呼び名（任意）。無ければ工程名を並べる。 */
+  stateName: string | null;
+  /** 済んでいた工程（カタログ id・工程順）。 */
+  stepIds: number[];
+  stepNames: string[];
+  /** そのうち、この指示書の工程に載っていない（= 飛ばした）工程の名前。 */
+  skippedStepNames: string[];
+  /** 加工状態が製品の工程の先頭部分になっていない仕掛品を使った理由。 */
+  overrideReason: string | null;
+}
+
+/** 投入する仕掛品 1 本（work_order_wip_draws）。 */
+export interface WorkOrderWipDrawView {
+  inventoryId: string;
+  /** 投入する数量（選んだ数）。 */
+  quantity: number;
+  /** 仕掛ブランクの名乗り（材種 φ径 × 長）。 */
+  blankLabel: string;
+  finishedDiameterMm: number | null;
+  finishedLengthMm: number | null;
+  lotNumber: number | null;
+  /** 目標製品（この指示書の製品と違ってよい）。 */
+  aimedProductName: string | null;
+  plantName: string | null;
+  /** この指示書がいま予約している数（承認前は 0、完了後は 0）。 */
+  reservedQuantity: number;
+}
+
 export interface WorkOrderView {
   id: string; // uuid（内部）— アクションは workOrderNumber を使う
   workOrderNumber: number;
@@ -287,6 +321,10 @@ export interface WorkOrderView {
   woLinksOutgoing: WoLinkView[];
   steps: WorkOrderStepView[];
   stepLinks: StepLinkView[];
+  /** 開始状態（在庫の仕掛品から始めた指示書）。素材から作る指示書は null。 */
+  startWip: WorkOrderStartWipView | null;
+  /** 投入する仕掛品（選んだ順）。 */
+  wipDraws: WorkOrderWipDrawView[];
   rejectReason: string | null;
   history: WorkOrderHistoryView[];
   createdAt: string;

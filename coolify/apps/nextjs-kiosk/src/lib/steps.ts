@@ -37,6 +37,7 @@ import {
   type StepSessionState,
   stepSessionState,
 } from "./steps-core";
+import { wipStartSkippedStepIds } from "./wip-state-core";
 import {
   canStartStep,
   effectiveLotInputMode,
@@ -643,6 +644,8 @@ export interface WorkOrderOverview {
   plannedQuantity: number;
   /** 印字番号（割当の注文明細ごと。採番済みのものだけ）。 */
   markings: MarkingView[];
+  /** 開始状態（在庫の仕掛品から始めた指示書）。素材から作る指示書は null。 */
+  startWip: StartWipOverview | null;
   steps: WorkOrderStepItem[];
 }
 
@@ -673,6 +676,52 @@ export async function getWorkOrderMarkings(
   );
 }
 
+/** 指示書の開始状態（在庫の仕掛品から始めた指示書）。 */
+export type StartWipOverview = {
+  /** 加工状態の呼び名（任意）。 */
+  stateName: string | null;
+  /** 済んでいた工程の名前（工程順）。空 = 未加工の仕掛品。 */
+  stepNames: string[];
+  /** そのうち、この指示書では行わない（飛ばした）工程の名前。 */
+  skippedStepNames: string[];
+};
+
+/**
+ * 開始状態を画面の形へ。済んでいた工程は指示書の工程に載っていない（作成時に
+ * 落としてある）ので、名前は工程マスタから引く。飛ばした工程の決め方は
+ * wip-state-core wipStartSkippedStepIds（Web の指示書詳細と同じ関数）。
+ */
+async function startWipOverview(
+  state: { name: unknown; stepIds: number[] } | null,
+  workOrderProcessStepIds: readonly number[],
+  locale: Locale,
+): Promise<StartWipOverview | null> {
+  if (!state) return null;
+  const catalog =
+    state.stepIds.length > 0
+      ? await prisma.processStepCatalog.findMany({
+          where: { id: { in: state.stepIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+  const names = new Map(
+    catalog.map((c) => [c.id, localized(asText(c.name), locale)]),
+  );
+  const nameOf = (id: number) => names.get(id) ?? `#${id}`;
+  const stateName =
+    state.name && typeof state.name === "object"
+      ? localized(asText(state.name), locale) || null
+      : null;
+  return {
+    stateName,
+    stepNames: state.stepIds.map(nameOf),
+    skippedStepNames: wipStartSkippedStepIds(
+      state.stepIds,
+      workOrderProcessStepIds,
+    ).map(nameOf),
+  };
+}
+
 /**
  * 指示書番号 → 指示書ビュー（QR スキャン後の画面）。存在しなければ null。
  *
@@ -694,7 +743,9 @@ export async function getWorkOrderOverview(
       plannedQuantity: true,
       productItem: { select: { name: true } },
       materialItem: { select: { name: true } },
-      steps: { select: { id: true } },
+      steps: { select: { id: true, processStepId: true } },
+      // 開始状態 — 在庫の仕掛品から始めた指示書の、投入した仕掛品の加工状態。
+      startWipState: { select: { name: true, stepIds: true } },
     },
   });
   if (!wo) return null;
@@ -760,6 +811,11 @@ export async function getWorkOrderOverview(
       : null,
     plannedQuantity: wo.plannedQuantity,
     markings: await getWorkOrderMarkings(wo.workOrderNumber),
+    startWip: await startWipOverview(
+      wo.startWipState,
+      wo.steps.map((s) => s.processStepId),
+      locale,
+    ),
     steps: items,
   };
 }
