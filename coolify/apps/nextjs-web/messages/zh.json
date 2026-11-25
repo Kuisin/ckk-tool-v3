@@ -1246,7 +1246,8 @@
     "ITEM_TYPE_LABEL": {
       "PRODUCT": "产品",
       "MATERIAL": "材料",
-      "REGRIND": "再研磨"
+      "REGRIND": "再研磨",
+      "BLANK": "在制坯料"
     },
     "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
       "past": "实绩",
@@ -5978,6 +5979,8 @@
       "stepUpdated": "已更新工序",
       "finalInspectionStep": "最终检查工序",
       "theFinalInspectionChecklistIsRecorded": "在该工序的执行画面记录最终检查与出货前确认（3 项确认、备用库存、包装 → 发行送货单 → 出货批准）。每张工单一条记录；工序清单中没有带此标记工序的工单即没有最终检查。",
+      "affectsWipState": "计入加工状态",
+      "affectsWipStateHelp": "对改变工件形状的工序启用。启用后该工序会计入在制品的加工状态（已完成工序的顺序）。检查、审批以及仅移动库存的工序请关闭。",
       "approvalStepsHaveNoQuantity": "检查审批工序不带数量（数量管理设为「无」）。它是查看前道工序的检查表并审批的工序，而不是加工工序。",
       "workLocationRequired": "作业计划需要作业场所",
       "workLocationRequiredHelp": "申请审批前，要求本工序的作业计划填写作业场所。对仅移动库存等场所无意义的工序请关闭。可使用的场所范围在下方「允许的作业场所」中设置。",

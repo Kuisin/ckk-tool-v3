@@ -55,6 +55,7 @@ import {
 } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
+import { defaultAffectsWipState } from "@/lib/wip-state-core";
 import {
   isPrepStep,
   isRegrindStep,
@@ -129,6 +130,7 @@ const processStepSchema = (tr: (key: string) => string) =>
         .min(1, tr("master.processSteps.pickAtLeastOneWorkOrderType")),
       planTimeRequired: z.boolean(),
       planAssigneeRequired: z.boolean(),
+      affectsWipState: z.boolean(),
       approvalMinRank: z.string(),
       quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
       lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]),
@@ -177,6 +179,8 @@ export interface ProcessStepFormInitial {
   allowedWorkOrderTypes: string[];
   planTimeRequired: boolean;
   planAssigneeRequired: boolean;
+  /** 加工状態に数える工程か（仕掛品 — lib/wip-state-core.ts）。 */
+  affectsWipState: boolean;
   approvalMinRank: string;
   quantityTracking: string;
   lotInputMode: string;
@@ -256,6 +260,8 @@ export function ProcessStepForm({
       allowedWorkOrderTypes: initial?.allowedWorkOrderTypes ?? ["MANUFACTURE"],
       planTimeRequired: initial?.planTimeRequired ?? false,
       planAssigneeRequired: initial?.planAssigneeRequired ?? false,
+      // 新規は工程種別の既定に倣う（材料準備・加工・コーティング）。
+      affectsWipState: initial?.affectsWipState ?? false,
       approvalMinRank: initial?.approvalMinRank ?? "",
       quantityTracking:
         initial?.quantityTracking === "NONE" ||
@@ -336,6 +342,7 @@ export function ProcessStepForm({
       )[],
       planTimeRequired: values.planTimeRequired,
       planAssigneeRequired: values.planAssigneeRequired,
+      affectsWipState: values.affectsWipState,
       approvalMinRank: values.approvalMinRank,
       quantityTracking: values.quantityTracking,
       lotInputMode: values.lotInputMode,
@@ -541,6 +548,20 @@ export function ProcessStepForm({
             label={<HelpLabel {...fieldHelp(tr, "processStep", "category")} />}
             withAsterisk
             {...form.getInputProps("category")}
+            onChange={(value) => {
+              form.setFieldValue("category", value ?? "");
+              // 新規だけ: 加工状態に数えるかを種別の既定に合わせる。編集では
+              // 人が決めた値を種別の付け替えで黙って書き換えない。
+              if (!initial) {
+                form.setFieldValue(
+                  "affectsWipState",
+                  defaultAffectsWipState({
+                    category: value ?? "",
+                    code: form.values.code,
+                  }),
+                );
+              }
+            }}
           />
           <Select
             data={processExecutionOptions(locale)}
@@ -683,6 +704,13 @@ export function ProcessStepForm({
             )}
             label={tr("master.processSteps.finalInspectionStep")}
             {...form.getInputProps("isFinalInspection", { type: "checkbox" })}
+          />
+          {/* 仕掛品の加工状態（済んだ形を変える工程の並び）に入る工程か。
+              既定は種別から（材料準備・加工・コーティング）。 */}
+          <Switch
+            description={tr("master.processSteps.affectsWipStateHelp")}
+            label={tr("master.processSteps.affectsWipState")}
+            {...form.getInputProps("affectsWipState", { type: "checkbox" })}
           />
           {/* 承認前の作業計画に何が要るか（§7）。担当者・計画日は常に必須
               （列が NOT NULL）。作業場所は在庫を動かすだけの工程（〇〇出し）の

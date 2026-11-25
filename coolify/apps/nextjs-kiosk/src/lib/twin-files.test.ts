@@ -50,6 +50,9 @@ const TWINS = [
   // 印字番号の整形 — 工程画面にも同じ番号を出す。
   "marking-number.ts",
   "marking-number.test.ts",
+  // 仕掛品の加工状態と突合 — 共有端末も工程完了で仕掛品を入庫する。
+  "wip-state-core.ts",
+  "wip-state-core.test.ts",
   // 工程納期の遅れ判定 — 共有端末の工程画面も同じ規則で赤くする。
   "step-due-date-core.ts",
   "step-due-date-core.test.ts",
