@@ -22,6 +22,8 @@
 --    既存行は「上流の書類の法人 → 拠点の法人 → 既定の法人」で埋める（下の
 --    backfill。決め方はアプリ側 lib/doc-company-core.ts と同じ順）。
 
+-- allow-destructive: 旧アプリのままでも動く。旧アプリは子の行を旧 (ym, seq) だけで書くが、BEFORE トリガー sync_doc_parent_key が NOT NULL の <親>_id を制約より先に埋める。own_company_id は既定値付き。主キーの張り替え後も (year_month, seq) は UNIQUE で残り、旧 Client の findUnique({ yearMonth_seq }) は普通の WHERE になる。落とした一意索引 3 本（変種・明細枝番・税率束）は旧コードでは findUnique の WHERE にしか使っていない（ON CONFLICT 無し）。
+
 -- ════════════════════════════════════════════════════════════════════════
 -- 0. 既定の法人
 -- ════════════════════════════════════════════════════════════════════════
