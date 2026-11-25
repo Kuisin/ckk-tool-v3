@@ -463,6 +463,12 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 在庫 / 在庫数 | Stock / On hand | 库存 / 库存数 |
 | 製品在庫 / 素材在庫 | Product stock / Material stock | 产品库存 / 材料库存 |
 | 仕掛品 | WIP | 在制品 |
+| 仕掛ブランク | WIP blank | 在制坯料 |
+| 加工状態 | Processing state | 加工状态 |
+| 加工状態に数える（工程マスタの印） | Counts toward processing state | 计入加工状态 |
+| 目標製品 | Target product | 目标产品 |
+| 打ち切り（進行中の指示書を止め、品を仕掛品として在庫へ戻す） | Close out | 中止 |
+| ちょうど / 長い / 太い（仕掛品の突合の区分） | Exact / Longer / Larger diameter | 尺寸一致 / 较长 / 较粗 |
 | 予約 / 引当 / 予約解除 | Reserved / Allocated / Released | 预留 / 已分配 / 解除预留 |
 | 棚卸調整 | Adjustment | 盘点调整 |
 | 棚卸 | Stocktaking | 盘点 |
