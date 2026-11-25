@@ -24,12 +24,26 @@ export async function fetchOwnCompanyOptions(): Promise<
   }));
 }
 
+/**
+ * 会計年度の開始月が閉じているか — その法人の連番行（document_sequences）が
+ * 1 行でもあれば閉じる。DB のトリガー own_companies_fiscal_month_lock と同じ条件で、
+ * 画面（欄を閉じる）と Server Action（先に分かりやすい文で断る）が使う。
+ */
+export async function isFiscalYearLocked(id: number): Promise<boolean> {
+  const row = await prisma.documentSequence.findFirst({
+    where: { ownCompanyId: id },
+    select: { key: true },
+  });
+  return row != null;
+}
+
 /** 1 行 → 編集フォームの初期値。 */
 export async function fetchOwnCompanyFormInitial(
   id: number,
 ): Promise<OwnCompanyFormInitial | null> {
   const r = await prisma.ownCompany.findUnique({ where: { id } });
   if (!r) return null;
+  const fiscalYearLocked = await isFiscalYearLocked(id);
   const name = r.name as LocalizedText | null;
   const address = r.address as LocalizedText | null;
   return {
@@ -51,6 +65,7 @@ export async function fetchOwnCompanyFormInitial(
     bankAccountNumber: r.bankAccountNumber ?? "",
     bankAccountHolder: r.bankAccountHolder ?? "",
     fiscalYearStartMonth: r.fiscalYearStartMonth,
+    fiscalYearLocked,
     isDefault: r.isDefault,
     isActive: r.isActive,
     notes: r.notes ?? "",

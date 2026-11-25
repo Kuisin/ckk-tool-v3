@@ -9,6 +9,7 @@ import { notFound, redirect } from "next/navigation";
 import { I18nProvider } from "@/components/I18nProvider";
 import { StepExecutionView } from "@/components/steps/StepExecutionView";
 import { readableCodes } from "@/lib/authz";
+import { getStepPrograms } from "@/lib/design-programs";
 import { resolveBoardLocationByCode } from "@/lib/device-work-location";
 import { getSession } from "@/lib/kiosk-auth";
 import { boardQuery, parseScope } from "@/lib/location-board-core";
@@ -59,6 +60,13 @@ export default async function StepExecutionPage({
 
   const markings = await getWorkOrderMarkings(step.workOrderNumber);
 
+  // この工程の加工プログラム（図面の版から。機械一致が先頭）
+  const programs = await getStepPrograms(
+    step.stepId,
+    session.deviceId,
+    session.locale,
+  );
+
   // 来た経路で戻り先を決める。**任意 URL は受けない** — 決め打ちの値のときだけ
   // 固定の遷移先を組み立て、クエリの中身もサーバー側で検証してから使う。
   //   from=wo  → その指示書のビュー
@@ -100,6 +108,7 @@ export default async function StepExecutionPage({
         initialWorkLocationCode={boardLocationCode}
         locationGate={locationGate}
         markings={markings}
+        programs={programs}
         recording={recording}
         step={step}
       />

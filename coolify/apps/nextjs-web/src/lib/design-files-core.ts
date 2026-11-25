@@ -121,6 +121,32 @@ export function seriesParam(customerBpId: string | null): string {
   return customerBpId ?? GENERIC_SERIES_PARAM;
 }
 
+/**
+ * 系列メモ（document_memos.owner_type = "design_series"）の owner id。
+ * `<品目 id>:<受注元 id | generic>`。系列には行が無いので業務キーをここで作る
+ * — DB 側の掃除トリガー（app.purge_design_series_memos）も同じ形で組み立てる。
+ */
+export function designSeriesOwnerId(
+  itemId: number,
+  customerBpId: string | null,
+): string {
+  return `${itemId}:${seriesParam(customerBpId)}`;
+}
+
+/** designSeriesOwnerId の逆。形が合わなければ null。 */
+export function parseDesignSeriesOwnerId(
+  ownerId: string,
+): { itemId: number; customerBpId: string | null } | null {
+  const m = /^(\d+):(.+)$/.exec(ownerId);
+  if (!m) return null;
+  const itemId = Number(m[1]);
+  if (!Number.isInteger(itemId) || itemId <= 0) return null;
+  return {
+    itemId,
+    customerBpId: m[2] === GENERIC_SERIES_PARAM ? null : m[2],
+  };
+}
+
 /** ?series= の値がその系列を指すか。値が無ければ全系列が当たる。 */
 export function matchesSeriesParam(
   customerBpId: string | null,

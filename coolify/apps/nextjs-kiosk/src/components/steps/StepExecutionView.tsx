@@ -42,6 +42,7 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { KioskStepProgram } from "@/lib/design-programs";
 import { fillMessage } from "@/lib/i18n";
 import { missingInspectionSheets } from "@/lib/inspection-core";
 import { QR_KINDS, qrKeyOfKind } from "@/lib/qr-payload";
@@ -63,6 +64,7 @@ import { StepDefectForm } from "./StepDefectForm";
 import { StepFinalInspectionForm } from "./StepFinalInspectionForm";
 import { StepInspectionApprovalPanel } from "./StepInspectionApprovalPanel";
 import { StepInspectionForm } from "./StepInspectionForm";
+import { StepProgramsSection } from "./StepProgramsSection";
 import { isQuantityFormValid, StepQuantityForm } from "./StepQuantityForm";
 import {
   callStepAction,
@@ -91,6 +93,8 @@ type Props = {
   initialWorkLocationCode?: string | null;
   /** 印字番号（指示書に割り当てた注文明細ごと。採番済みのみ）。 */
   markings?: MarkingView[];
+  /** この工程の加工プログラム（機械一致が先頭）。 */
+  programs?: KioskStepProgram[];
 };
 
 type Phase = "IDLE" | "STARTING" | "COMPLETING";
@@ -103,6 +107,7 @@ export function StepExecutionView({
   markings = [],
   backParams = "",
   initialWorkLocationCode = null,
+  programs = [],
 }: Props) {
   const router = useRouter();
   const { m } = useI18n();
@@ -318,6 +323,9 @@ export function StepExecutionView({
             </Group>
           </Stack>
         </Paper>
+
+        {/* 加工プログラム — 指示書の図面の版から、この工程の分（機械一致が先頭） */}
+        <StepProgramsSection programs={programs} stepId={step.stepId} />
 
         {/* 作業場所の制限 — この端末の場所では実行できない工程 */}
         {locationBlocked && !working && (

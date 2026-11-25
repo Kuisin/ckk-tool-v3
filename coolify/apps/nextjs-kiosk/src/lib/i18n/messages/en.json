@@ -400,6 +400,14 @@
       "openOne": "Open",
       "empty": "Nothing in this step can be grouped right now",
       "notFound": "That step was not found"
+    },
+    "programs": {
+      "title": "Machining programs",
+      "machine": "Machine: {name}",
+      "anyMachine": "Any machine",
+      "machineMatch": "For this machine",
+      "download": "Download",
+      "noFile": "No file"
     }
   },
   "deviceError": {

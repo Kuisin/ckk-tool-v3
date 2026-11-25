@@ -32,17 +32,20 @@ import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
+import { MemoPanel } from "@/components/ui/MemoPanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DetailShell } from "@/components/ui/shells";
 import { useUrlSelectState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
+  designSeriesOwnerId,
   GENERIC_SERIES_PARAM,
   groupVersionsBySeries,
   matchesSeriesParam,
   pickThumbFile,
   seriesParam,
 } from "@/lib/design-files-core";
+import type { MemoView } from "@/lib/document-memos";
 import type { DesignVersionView } from "./model";
 import { RoleBadge } from "./RoleBadge";
 
@@ -53,6 +56,7 @@ export function ProductDrawings({
   productLabel,
   versions,
   canManage,
+  seriesMemos = {},
 }: {
   /** 対象製品の品目 id（items.id）。 */
   itemId: number;
@@ -60,6 +64,8 @@ export function ProductDrawings({
   versions: DesignVersionView[];
   /** 版を作れる権限があるか。 */
   canManage: boolean;
+  /** 系列メモ（ownerId = designSeriesOwnerId）。 */
+  seriesMemos?: Record<string, MemoView[]>;
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -223,6 +229,26 @@ export function ProductDrawings({
                     </UnstyledButton>
                   ))}
                 </Stack>
+                {/* 系列で共有するメモ — 版をまたいで残したいこと（客先の癖・
+                    加工上の注意）。版ごとの変更点は版のメモ欄が持つ。 */}
+                <Paper p="sm" radius="sm" withBorder>
+                  <Text fw={600} mb={4} size="sm">
+                    {tr("production.designFiles.seriesMemo")}
+                  </Text>
+                  <Text c="dimmed" mb="xs" size="xs">
+                    {tr("production.designFiles.seriesMemoHint")}
+                  </Text>
+                  <MemoPanel
+                    memos={
+                      seriesMemos[
+                        designSeriesOwnerId(itemId, g.customerBpId)
+                      ] ?? []
+                    }
+                    mode="memo"
+                    ownerId={designSeriesOwnerId(itemId, g.customerBpId)}
+                    ownerType="design_series"
+                  />
+                </Paper>
               </Stack>
             );
           })

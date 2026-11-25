@@ -53,7 +53,8 @@ model OwnCompany {
   bankAccountNumber     String?  @map("bank_account_number")
   bankAccountHolder     String?  @map("bank_account_holder")
   /// 会計年度の開始月（1〜12。既定 4 = 4 月始まり）。法人ごとの採番の年度区切りに使う
-  /// （範囲は DB の CHECK own_companies_fiscal_year_start_month_check）
+  /// （範囲は DB の CHECK own_companies_fiscal_year_start_month_check）。
+  /// 1 件でも採番した法人は変えられない（トリガー own_companies_fiscal_month_lock）
   fiscalYearStartMonth  Int      @default(4) @map("fiscal_year_start_month") @db.SmallInt
   /// 既定の法人（拠点の分からない書類の発行元）。部分 unique index で 1 行だけ
   isDefault             Boolean  @default(false) @map("is_default")
@@ -62,9 +63,10 @@ model OwnCompany {
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  sealFile File?     @relation("OwnCompanySeal", fields: [sealFileId], references: [id], onDelete: SetNull)
-  plants   Plant[]   @relation("PlantOwnCompany")
-  invoices Invoice[] @relation("InvoiceOwnCompany")
+  sealFile          File?              @relation("OwnCompanySeal", fields: [sealFileId], references: [id], onDelete: SetNull)
+  plants            Plant[]            @relation("PlantOwnCompany")
+  invoices          Invoice[]          @relation("InvoiceOwnCompany")
+  documentSequences DocumentSequence[] @relation("DocumentSequenceOwnCompany")
 
   @@map("own_companies")
   @@schema("app")
@@ -167,6 +169,7 @@ model WorkLocation {
   kioskDevices KioskDevice[] @relation("KioskDeviceDefaultWorkLocation")
   orderAcceptances OrderAcceptance[] @relation("AcceptanceShippingWorkLocation")
   orderLines       OrderLine[]       @relation("OrderLineShippingWorkLocation")
+  designPrograms   DesignProgram[]   @relation("DesignProgramWorkLocation")
 
   @@index([groupId, sortOrder])
   @@map("work_locations")
@@ -287,6 +290,7 @@ model ProcessStepCatalog {
   inspectionTemplates InspectionTemplate[]
   workOrderSteps      WorkOrderStep[]
   routeVersionSteps   ProductProcessRouteVersionStep[]
+  designProgramSteps  DesignProgramStep[] @relation("DesignProgramProcessStep")
 
   @@map("process_step_catalog")
   @@schema("app")

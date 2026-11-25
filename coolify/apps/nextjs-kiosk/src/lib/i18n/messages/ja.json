@@ -400,6 +400,14 @@
       "openOne": "開く",
       "empty": "この工程はまとめられる状態ではありません",
       "notFound": "この工程は見つかりませんでした"
+    },
+    "programs": {
+      "title": "加工プログラム",
+      "machine": "機械: {name}",
+      "anyMachine": "機械を問わない",
+      "machineMatch": "この機械用",
+      "download": "ダウンロード",
+      "noFile": "ファイルなし"
     }
   },
   "deviceError": {

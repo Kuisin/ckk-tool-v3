@@ -25,6 +25,7 @@ import {
   prismaErrorMessage,
 } from "@/lib/server-action";
 import { deleteObject } from "@/lib/storage";
+import { isFiscalYearLocked } from "./data";
 
 const BASE_PATH = "/master/own-companies";
 
@@ -185,6 +186,14 @@ export async function updateOwnCompany(
     // 拠点の分からない書類の発行元が無くなる。
     if (prior.isDefault && !v.isDefault) {
       return actionError(tr("master.ownCompanies.cannotUnsetDefault"));
+    }
+    // 採番済みの法人は開始月を変えられない（DB もトリガー
+    // own_companies_fiscal_month_lock で拒否する）。先にここで分かりやすく断る。
+    if (
+      v.fiscalYearStartMonth !== prior.fiscalYearStartMonth &&
+      (await isFiscalYearLocked(id))
+    ) {
+      return actionError(tr("master.ownCompanies.fiscalYearLockedError"));
     }
     await prisma.$transaction(async (tx) => {
       if (v.isDefault && !prior.isDefault) {

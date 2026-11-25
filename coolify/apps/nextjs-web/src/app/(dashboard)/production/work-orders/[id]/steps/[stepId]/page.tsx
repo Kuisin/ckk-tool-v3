@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { StepExecutionView } from "@/components/production/step-execution/StepExecutionView";
 import { appLabelForKey } from "@/lib/app-list";
 import { requireAppRead } from "@/lib/authz-page";
+import { fetchStepPrograms } from "@/lib/design-programs";
 import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
 import { fetchStepExecution, resolveWorkOrderIdParam } from "../../../data";
@@ -48,6 +49,7 @@ export default async function WorkOrderStepExecutionPage({
     decodeURIComponent(stepId),
   );
   if (!data) notFound();
+  const programs = await fetchStepPrograms(data.step.id);
 
-  return <StepExecutionView data={data} />;
+  return <StepExecutionView data={data} programs={programs} />;
 }

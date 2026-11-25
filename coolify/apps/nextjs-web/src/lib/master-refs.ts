@@ -201,6 +201,8 @@ export const MASTER_REFERENCES: Record<
     ref("OrderLine", "shippingWorkLocationId"),
     // CASCADE — 工程の許可作業場所リンクが黙って消える
     ref("ProcessStepWorkLocation", "workLocationId"),
+    // SET NULL — 加工プログラムの対象機械（作業場所 = 機械）が黙って外れる
+    ref("DesignProgram", "workLocationId"),
   ],
   ApprovalGroup: [ref("InspectionTemplate", "approvalGroupId")],
 };
