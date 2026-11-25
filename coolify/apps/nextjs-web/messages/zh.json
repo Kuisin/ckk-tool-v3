@@ -1241,7 +1241,8 @@
     "ITEM_TYPE_LABEL": {
       "PRODUCT": "产品",
       "MATERIAL": "材料",
-      "REGRIND": "再研磨"
+      "REGRIND": "再研磨",
+      "BLANK": "在制坯料"
     },
     "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
       "past": "实绩",

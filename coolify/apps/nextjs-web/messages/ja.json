@@ -1241,7 +1241,8 @@
     "ITEM_TYPE_LABEL": {
       "PRODUCT": "製品",
       "MATERIAL": "素材",
-      "REGRIND": "再研磨"
+      "REGRIND": "再研磨",
+      "BLANK": "仕掛ブランク"
     },
     "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
       "past": "実績",

@@ -1241,7 +1241,8 @@
     "ITEM_TYPE_LABEL": {
       "PRODUCT": "Product",
       "MATERIAL": "Material",
-      "REGRIND": "Regrind"
+      "REGRIND": "Regrind",
+      "BLANK": "WIP blank"
     },
     "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
       "past": "Actual",
