@@ -36,6 +36,8 @@ const KEY = {
   taxAccountCode: "accounting.taxAccountCode",
   deptCode: "accounting.deptCode",
   taxCode: "accounting.taxCode",
+  // 注文種別 → 売上高の科目コード（JSON の 1 行）。未保存なら {} = 従来どおり。
+  salesAccountByOrderType: "accounting.salesAccountByOrderType",
 } as const;
 
 /**
@@ -62,6 +64,10 @@ export async function getAccountingSettings(): Promise<AccountingExportSettings>
     amountStyle: take(KEY.amountStyle, d.amountStyle),
     filenameSuffix: take(KEY.filenameSuffix, d.filenameSuffix),
     taxCodeRules: take(KEY.taxCodeRules, d.taxCodeRules),
+    salesAccountByOrderType: take(
+      KEY.salesAccountByOrderType,
+      d.salesAccountByOrderType,
+    ),
     accounts: {
       receivableAccountCode: take(
         KEY.receivableAccountCode,
@@ -120,5 +126,6 @@ export async function saveAccountingSettings(
     [KEY.taxAccountCode]: settings.accounts.taxAccountCode,
     [KEY.deptCode]: settings.accounts.deptCode,
     [KEY.taxCode]: settings.accounts.taxCode,
+    [KEY.salesAccountByOrderType]: settings.salesAccountByOrderType,
   });
 }

@@ -16,6 +16,7 @@ import {
   type JournalInvoiceInput,
   renderCell,
   renderJournalCsv,
+  splitSalesByAccount,
 } from "./accounting-export-core";
 
 /** 既定の設定に、経理が入れるはずの科目コードだけ埋めたもの。 */
@@ -540,6 +541,143 @@ describe("設定の検証", () => {
       accountingExportSettingsSchema.safeParse({
         ...settings,
         filenameSuffix: "../etc",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("注文種別ごとの売上高科目（再研磨を製品と別の売上科目へ）", () => {
+  const mixed: JournalInvoiceInput = {
+    ...base,
+    totalAmount: 33_000,
+    taxLines: [
+      {
+        taxRate: 0.1,
+        taxableBase: 30_000,
+        taxAmount: 3_000,
+        salesAccountCode: "5100",
+        salesByOrderType: [
+          { orderType: "PRODUCTION", amount: 20_000 },
+          { orderType: "REGRIND", amount: 10_000 },
+        ],
+      },
+    ],
+  };
+
+  it("設定が空なら、内訳があっても従来とバイト単位で同じ", () => {
+    const withoutShares: JournalInvoiceInput = {
+      ...mixed,
+      taxLines: mixed.taxLines?.map(({ salesByOrderType: _, ...l }) => l),
+    };
+    const a = buildAccountingCsvText(mixed, settings);
+    const b = buildAccountingCsvText(withoutShares, settings);
+    expect(a).toBe(b);
+    const rows = buildJournalRows(mixed, settings);
+    expect(rows.filter((r) => r.kind === "sales")).toHaveLength(1);
+    expect(rows[0].credit.accountCode).toBe("5100");
+  });
+
+  it("種別の科目 → 税区分の科目 → 既定、の順で決まり、合計は崩れない", () => {
+    const s: AccountingExportSettings = {
+      ...settings,
+      salesAccountByOrderType: { REGRIND: "5200" },
+    };
+    const rows = buildJournalRows(mixed, s);
+    const sales = rows.filter((r) => r.kind === "sales");
+    expect(sales.map((r) => [r.credit.accountCode, r.credit.amount])).toEqual([
+      ["5100", 20_000], // 製品分は税区分の科目のまま
+      ["5200", 10_000], // 再研磨は種別の科目
+    ]);
+    expect(debitTotal(mixed, s)).toBe(33_000);
+    // 消費税行は束のまま 1 本（税は率ごとにしか丸められない）
+    expect(rows.filter((r) => r.kind === "tax")).toHaveLength(1);
+  });
+
+  it("全部が再研磨なら 1 行で種別の科目", () => {
+    const s: AccountingExportSettings = {
+      ...settings,
+      salesAccountByOrderType: { REGRIND: "5200" },
+    };
+    expect(
+      splitSalesByAccount(
+        10_000,
+        { salesByOrderType: [{ orderType: "REGRIND", amount: 10_000 }] },
+        s,
+      ),
+    ).toEqual([{ accountCode: "5200", amount: 10_000 }]);
+  });
+
+  it("種別の分からない分（追加費用など）は従来の科目へ落ちる", () => {
+    const s: AccountingExportSettings = {
+      ...settings,
+      salesAccountByOrderType: { REGRIND: "5200" },
+    };
+    expect(
+      splitSalesByAccount(
+        12_000,
+        {
+          salesByOrderType: [
+            { orderType: "REGRIND", amount: 10_000 },
+            { orderType: null, amount: 2_000 },
+          ],
+        },
+        s,
+      ),
+    ).toEqual([
+      { accountCode: "5000", amount: 2_000 }, // 税区分が空 → 既定
+      { accountCode: "5200", amount: 10_000 },
+    ]);
+  });
+
+  it("種別の科目が既定と同じなら 1 行にまとまる", () => {
+    const s: AccountingExportSettings = {
+      ...settings,
+      salesAccountByOrderType: { REGRIND: "5000" },
+    };
+    expect(
+      splitSalesByAccount(
+        30_000,
+        {
+          salesByOrderType: [
+            { orderType: "PRODUCTION", amount: 20_000 },
+            { orderType: "REGRIND", amount: 10_000 },
+          ],
+        },
+        s,
+      ),
+    ).toEqual([{ accountCode: "5000", amount: 30_000 }]);
+  });
+
+  it("内訳が束の金額を超える（食い違い）なら分けずに従来の 1 行", () => {
+    const s: AccountingExportSettings = {
+      ...settings,
+      salesAccountByOrderType: { REGRIND: "5200" },
+    };
+    expect(
+      splitSalesByAccount(
+        5_000,
+        { salesByOrderType: [{ orderType: "REGRIND", amount: 10_000 }] },
+        s,
+      ),
+    ).toEqual([{ accountCode: "5000", amount: 5_000 }]);
+  });
+
+  it("設定の検証 — 知らない種別・形の違うコードは通さない", () => {
+    const ok = accountingExportSettingsSchema.safeParse({
+      ...settings,
+      salesAccountByOrderType: { REGRIND: "5200" },
+    });
+    expect(ok.success).toBe(true);
+    expect(
+      accountingExportSettingsSchema.safeParse({
+        ...settings,
+        salesAccountByOrderType: { BOGUS: "5200" },
+      }).success,
+    ).toBe(false);
+    expect(
+      accountingExportSettingsSchema.safeParse({
+        ...settings,
+        salesAccountByOrderType: { REGRIND: "売上" },
       }).success,
     ).toBe(false);
   });

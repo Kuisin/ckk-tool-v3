@@ -39,7 +39,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { updateAccountingSettings } from "@/app/(dashboard)/settings/accounting/actions";
 import { GhostButton } from "@/components/ui/buttons";
@@ -48,12 +48,15 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { FormActions, FormSection, SummaryGrid } from "@/components/ui/shells";
 import {
   ACCOUNTING_FIELD_IDS,
+  ACCOUNTING_ORDER_TYPES,
   type AccountingColumn,
   type AccountingExportSettings,
   type AccountingField,
   buildAccountingCsvText,
   type JournalInvoiceInput,
 } from "@/lib/accounting-export-core";
+import { orderTypeLabel } from "@/lib/enum-labels";
+import type { Locale } from "@/lib/i18n";
 
 /**
  * プレビュー用の作り話の請求書（10% と 8% が混ざった 1 通）。
@@ -210,7 +213,55 @@ function AccountingExportView({
         </Table>
       )}
 
+      <SalesByOrderTypeTable settings={settings} />
+
       <CsvPreview settings={settings} />
+    </Stack>
+  );
+}
+
+/** 注文種別ごとの売上高科目（閲覧）。空欄 = 税区分 → 既定の科目に従う。 */
+function SalesByOrderTypeTable({
+  settings,
+}: {
+  settings: AccountingExportSettings;
+}) {
+  const tr = useTranslations();
+  const locale = useLocale() as Locale;
+  return (
+    <Stack gap="xs">
+      <Text fw={600} size="sm">
+        {tr("settings.accounting.salesByOrderType")}
+      </Text>
+      <Table withTableBorder>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>{tr("settings.accounting.orderType")}</Table.Th>
+            <Table.Th>{tr("settings.accounting.salesAccountCode")}</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {ACCOUNTING_ORDER_TYPES.map((t) => {
+            const code = settings.salesAccountByOrderType[t] ?? "";
+            return (
+              <Table.Tr key={t}>
+                <Table.Td>{orderTypeLabel(t, locale)}</Table.Td>
+                <Table.Td>
+                  {code === "" ? (
+                    <Text c="dimmed" size="sm">
+                      {tr("settings.accounting.followTaxCategory")}
+                    </Text>
+                  ) : (
+                    <Text ff="mono" size="sm">
+                      {code}
+                    </Text>
+                  )}
+                </Table.Td>
+              </Table.Tr>
+            );
+          })}
+        </Table.Tbody>
+      </Table>
     </Stack>
   );
 }
@@ -225,6 +276,7 @@ function AccountingExportEditor({
   onSaved: () => void;
 }) {
   const tr = useTranslations();
+  const locale = useLocale() as Locale;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [settings, setSettings] = useState<AccountingExportSettings>(initial);
@@ -470,6 +522,32 @@ function AccountingExportEditor({
             onChange={(e) => patchAccounts({ taxCode: e.currentTarget.value })}
             value={settings.accounts.taxCode}
           />
+        </SummaryGrid>
+      </FormSection>
+
+      <FormSection
+        description={tr("settings.accounting.salesByOrderTypeDescription")}
+        title={tr("settings.accounting.salesByOrderType")}
+      >
+        <SummaryGrid cols={2}>
+          {ACCOUNTING_ORDER_TYPES.map((t) => (
+            <TextInput
+              key={t}
+              label={orderTypeLabel(t, locale)}
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                setSettings((s) => {
+                  const next = { ...s.salesAccountByOrderType };
+                  // 空欄は「持たない」— 税区分 → 既定の科目に従う。
+                  if (value === "") delete next[t];
+                  else next[t] = value;
+                  return { ...s, salesAccountByOrderType: next };
+                });
+              }}
+              placeholder={tr("settings.accounting.followTaxCategory")}
+              value={settings.salesAccountByOrderType[t] ?? ""}
+            />
+          ))}
         </SummaryGrid>
       </FormSection>
 
