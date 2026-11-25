@@ -254,7 +254,7 @@ export async function fetchCustomerOption(id: string): Promise<Option | null> {
   return { value: r.id, label: localized(r.name as LocalizedText | null) };
 }
 
-/** All current price-entry identities (顧客×製品) — duplicate warnings. */
+/** All current price-entry identities (顧客×製品×対象工具) — duplicate warnings. */
 export async function fetchExistingEntryRefs(): Promise<EntryIdentity[]> {
   const rows = await prisma.priceListEntry.findMany({
     select: {
@@ -262,6 +262,7 @@ export async function fetchExistingEntryRefs(): Promise<EntryIdentity[]> {
       seq: true,
       customerBpId: true,
       itemId: true,
+      toolItemId: true,
       variants: { select: { orderType: true } },
     },
   });
@@ -270,6 +271,7 @@ export async function fetchExistingEntryRefs(): Promise<EntryIdentity[]> {
     .map((r) => ({
       customerBpId: r.customerBpId,
       itemId: String(r.itemId),
+      toolItemId: r.toolItemId != null ? String(r.toolItemId) : null,
       orderTypes: r.variants.map((v) => v.orderType),
       entryId: formatPriceListNumber({ yearMonth: r.yearMonth, seq: r.seq }),
     }));

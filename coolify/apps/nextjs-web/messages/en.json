@@ -7939,7 +7939,7 @@
       "testAndSampleEntriesNeedAn": "Test and sample entries need an end date",
       "theBaseForThePriceList": "The base for the price list. It defaults to the estimated unit price. Each tier = base × multiplier.",
       "theBasePriceComesFromThe": "The base price comes from the estimate's unit price. Manual override only with custom explicitly enabled (with a confirmation). Each tier = base × multiplier.",
-      "theCustomerAndProductCannotBe": "The customer and product cannot be changed once created.",
+      "theCustomerAndProductCannotBe": "The customer, product and target tool cannot be changed once created.",
       "theMaximumQuantityMustBeAt": "The maximum quantity must be at or above the minimum",
       "theMinimumQuantityThisRuleApplies": "The minimum quantity this rule applies from. Leave the maximum blank for no limit.",
       "theMultiplierPerTierEG": "The multiplier per tier (e.g. ×1.05 = 5% above the base). Price = base × multiplier.",
@@ -7951,7 +7951,9 @@
       "theValidPeriodWasChanged": "The valid period was changed",
       "thereAreNoDiscountRules": "There are no discount rules.",
       "thereIsNoPriceListPick": "There is no price list — pick a customer × product to create one",
-      "thereIsOnePriceListPer": "There is one price list per customer × product. Add per-order-type prices below.",
+      "thereIsOnePriceListPer": "There is one price list per customer × product (regrind items can also have one per target tool). Add per-order-type prices below.",
+      "targetTool": "Target tool",
+      "anyTool": "Any tool",
       "tickingItDropsTheAutomaticCalculation": "Press Custom to drop the automatic calculation and fix this tier's price by hand (with a confirmation).",
       "tiers": "Tiers",
       "unitPriceRange": "Unit price range",
@@ -8246,7 +8248,9 @@
       "confirmDeleteOrderTypeMessage": "This deletes the price for {orderType} (including quantity tiers and discount rules). It takes effect when you save.",
       "confirmUseCustomBaseMessage": "This will stop using the price estimate's unit price ({price}) and set the base unit price manually. Continue?",
       "confirmUseCustomTierMessage": "This will stop using this tier's automatically calculated unit price ({price} = base unit price × multiplier) and set the price manually.",
-      "duplicateEntryPrefix": "The price list for this customer × product",
+      "duplicateEntryPrefix": "The price list for this customer × product (× target tool)",
+      "targetToolDescription": "Select only when this regrind price applies to one tool. Leave empty for a price that applies to any tool (lookup order: tool price list → any-tool price list → standard price).",
+      "searchTools": "Search tools",
       "duplicateEntrySuffix": "already exists ({orderTypes}). To add an order type, edit the existing price list.",
       "editTitle": "Edit price list",
       "manualWithEstimateValue": "Manually set (price estimate value: {price})",
@@ -8357,7 +8361,7 @@
       "invalidVariant": "Invalid variant",
       "invalidTier": "Invalid quantity tier",
       "createFailed": "Could not create the price list",
-      "duplicateEntry": "A price list for this customer and product already exists. Edit the existing price list instead.",
+      "duplicateEntry": "A price list for this customer, product and target tool already exists. Edit the existing price list instead.",
       "invalidEntryNumber": "Invalid price list number",
       "updateFailed": "Could not update the price list",
       "invalidSourceEntryNumber": "Invalid source price list number",
@@ -8477,7 +8481,9 @@
       "externalProductHasNoPriceList": "An external product cannot have a price list. It is held for regrinding, not sold",
       "materialHasNoPriceList": "A material cannot have a price list",
       "regrindItemOnlyRegrindVariant": "A regrind item can only carry the order type \"Regrind\"",
-      "productHasNoRegrindVariant": "A product cannot carry the order type \"Regrind\". The regrind price belongs to the regrind item"
+      "productHasNoRegrindVariant": "A product cannot carry the order type \"Regrind\". The regrind price belongs to the regrind item",
+      "priceListToolOnlyForRegrind": "A target tool can be set only on a regrind item’s price list",
+      "priceListToolMustBeProduct": "Select a product (including external products) as the target tool"
     },
     "quoteMail": {
       "subject": "Quote {number}",
@@ -9748,6 +9754,10 @@
       "product": {
         "label": "Product",
         "summary": "The product this pricing applies to. Like the customer, this cannot be changed after creation."
+      },
+      "targetTool": {
+        "label": "Target tool",
+        "summary": "Select only when this regrind price applies to one tool. Leave empty for a price that applies to any tool. Prices are looked up in the order: tool price list → any-tool price list → standard price."
       },
       "orderType": {
         "label": "Order type",

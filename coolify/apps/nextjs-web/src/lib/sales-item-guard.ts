@@ -126,9 +126,26 @@ export async function priceListItemError(
   itemId: number,
   orderTypes: readonly string[],
   tr: Tr,
+  /**
+   * 対象工具（任意）。**再研磨の品目の価格表だけ**が持てる — 工具ごとに値段を
+   * 変えるのは研ぎ直しの話で、製品の値段は工具に依らない。工具は製品の品目
+   * （他社製品でもよい — 預かる工具の大半は他社製）。
+   */
+  toolItemId: number | null = null,
 ): Promise<string | null> {
-  const kinds = await loadItemKinds([itemId]);
+  const kinds = await loadItemKinds(
+    toolItemId != null ? [itemId, toolItemId] : [itemId],
+  );
   const item = kinds.get(itemId);
+  if (toolItemId != null) {
+    if (item && item.itemType !== "REGRIND") {
+      return tr("sales.salesItemGuard.priceListToolOnlyForRegrind");
+    }
+    const tool = kinds.get(toolItemId);
+    if (!tool || tool.itemType !== "PRODUCT") {
+      return tr("sales.salesItemGuard.priceListToolMustBeProduct");
+    }
+  }
   if (!item) return null;
   if (item.isExternalProduct) {
     return tr("sales.salesItemGuard.externalProductHasNoPriceList");

@@ -190,6 +190,8 @@ export function rowPrice(
           tr,
           new Date(),
           (row.itemId ? ctx.standardPrices[row.itemId] : undefined) ?? null,
+          // 再研磨は研ぐ工具で値段が変わり得る（工具一致 → 工具なし → 標準価格）。
+          row.orderType === "REGRIND" ? row.toolItemId || null : null,
         )
       : null;
   const resolved = resolution?.ok ? resolution.price : null;
