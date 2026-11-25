@@ -458,6 +458,31 @@ export const shots: Shot[] = [
     mask: ['[title$="を拡大"]'],
   },
   {
+    // 版の画面の系列メモ（製品の画面と同じ 1 件。版の画面からも書ける）。
+    id: "design-version-series-memo-01",
+    docPage: "operations/production/design-file/user",
+    path: "/production/design-files/versions/d9000000-0000-4000-8000-000000000003",
+    clip: "[data-series-memo]",
+    steps: async (page) => {
+      const panel = page.locator("[data-series-memo]");
+      await panel.waitFor();
+      // 固定フッターの下に隠れないよう、画面の真ん中へ寄せてから撮る。
+      await panel.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    },
+  },
+  {
+    // 工程実行画面の系列メモ（読むだけ — 指示書の顧客の系列のもの）。
+    id: "work-order-step-series-memo-01",
+    docPage: "operations/production/design-file/user",
+    path: "/production/work-orders/9001/steps/dc011000-0000-4000-8000-000000000004",
+    clip: "[data-series-memo]",
+    steps: async (page) => {
+      const panel = page.locator("[data-series-memo]");
+      await panel.waitFor();
+      await panel.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    },
+  },
+  {
     // 登録フォーム — 役割ごとのファイル枠（2D 原図 / 3D 原図 / プレビュー / 参考資料）。
     id: "design-file-new-01",
     docPage: "operations/production/design-file/user",
