@@ -82,6 +82,7 @@ export default async function MasterProcessStepsDetailPage({
     allowedWorkOrderTypes: r.allowedWorkOrderTypes,
     planTimeRequired: r.planTimeRequired,
     planAssigneeRequired: r.planAssigneeRequired,
+    affectsWipState: r.affectsWipState,
     approvalMinRank: r.approvalMinRank,
     quantityTracking: r.quantityTracking,
     lotInputMode: r.lotInputMode,

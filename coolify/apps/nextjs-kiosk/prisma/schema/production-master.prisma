@@ -289,6 +289,18 @@ model ProcessStepCatalog {
   /// 既定は製造分だけ — 値を渡さずに作られた行が「どこでも使える」に倒れると、
   /// 気づかないまま在庫分の指示書へ加工工程が並ぶ。広い側ではなく狭い側へ落とす。
   allowedWorkOrderTypes WorkOrderType[] @default([MANUFACTURE]) @map("allowed_work_order_types")
+  /// **加工状態に数える工程か**（仕掛品の再設計 — lib/wip-state-core.ts）。
+  ///
+  /// 仕掛品（途中で止まった品）は「材種 × 径 × 長」のブランク品目に、
+  /// **済んだ形を変える工程の並び**（wip_states）を添えて在庫に置く。ここが
+  /// true の工程だけがその並びに入る — 検査・承認のように品物の形を変えない
+  /// 工程を数えると、同じ形の品が別の状態に割れて突合できなくなる。
+  ///
+  /// 既定はカテゴリから入れた（材料準備・加工・コーティング = true、それ以外 =
+  /// false、開始工程は常に false）が、**業務の例外は工程ごとにここで上書きする**
+  /// （allowed_work_order_types と同じ考え方 — 推測ではなくマスタが持つ）。
+  /// 新しく作る行の DB 既定は false — 渡し忘れた工程が状態を割らない側へ倒す。
+  affectsWipState       Boolean         @default(false) @map("affects_wip_state")
   approvalMinRank   String?          @map("approval_min_rank") // 係長以上等
   quantityTracking  QuantityTracking @default(FLOW) @map("quantity_tracking")
   lotInputMode      LotInputMode     @default(NONE) @map("lot_input_mode") // 実行時のロット入力の既定（工程リスト/指示書で上書き可）

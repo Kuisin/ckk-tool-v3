@@ -78,6 +78,8 @@ export interface ProcessStepDetailData {
   allowedWorkOrderTypes: WorkOrderType[];
   planTimeRequired: boolean;
   planAssigneeRequired: boolean;
+  /** 加工状態に数える工程か（仕掛品）。 */
+  affectsWipState: boolean;
   approvalMinRank: string | null;
   quantityTracking: string;
   lotInputMode: string;
@@ -219,10 +221,16 @@ export function ProcessStepDetail({
           {tr("common.finalInspection")}
         </Badge>
       )}
+      {record.affectsWipState && (
+        <Badge color="grape" size="xs" variant="light">
+          {tr("master.processSteps.affectsWipState")}
+        </Badge>
+      )}
       {!record.isSyncCapable &&
         !record.isInspection &&
         !record.isApprovalStep &&
         !record.isFinalInspection &&
+        !record.affectsWipState &&
         "—"}
     </Group>
   );
