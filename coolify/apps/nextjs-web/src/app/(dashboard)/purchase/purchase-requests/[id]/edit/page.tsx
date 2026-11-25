@@ -17,8 +17,10 @@ export const dynamic = "force-dynamic";
  */
 export default async function PurchasePurchaseRequestsEditPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("purchase-requests");
   if (denied) return denied;
@@ -30,6 +32,7 @@ export default async function PurchasePurchaseRequestsEditPage({
       id,
       "/purchase/purchase-requests",
       "/edit",
+      searchParams,
     ),
   );
 

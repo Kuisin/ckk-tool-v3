@@ -11,8 +11,10 @@ export const dynamic = "force-dynamic";
 /** 価格表 編集 (SA22 → edit). `id` は法人コード付きの価格表番号（CKK~PRC-2026-00001）。 */
 export default async function PriceListEditPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("price-lists");
   if (denied) return denied;
@@ -23,6 +25,7 @@ export default async function PriceListEditPage({
     id,
     "/sales/price-lists",
     "/edit",
+    searchParams,
   );
 
   const [entry, existingEntries, scalePreset] = await Promise.all([

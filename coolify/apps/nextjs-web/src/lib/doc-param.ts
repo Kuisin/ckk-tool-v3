@@ -34,20 +34,45 @@ function safeDecode(param: string): string {
   }
 }
 
+/** ページが受け取る searchParams（Next.js の形。Promise でも素の値でも受ける）。 */
+export type PageSearchParams =
+  | Promise<Record<string, string | string[] | undefined>>
+  | Record<string, string | string[] | undefined>
+  | undefined;
+
+/** searchParams → `tab=memo&x=1`（空なら空文字）。転送でクエリを落とさないため。 */
+export async function searchParamsToQuery(
+  searchParams: PageSearchParams,
+): Promise<string> {
+  const sp = await searchParams;
+  if (!sp) return "";
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (v == null) continue;
+    for (const x of Array.isArray(v) ? v : [v]) q.append(k, x);
+  }
+  return q.toString();
+}
+
 /** 正規でない id を引いて、正規の URL へ転送する（戻らない）。 */
 async function redirectToCanonical(
   type: string,
   id: string,
   basePath: string,
   suffix: string,
+  searchParams: PageSearchParams,
 ): Promise<never> {
   const r = await resolveDocId(type, id);
+  const query = await searchParamsToQuery(searchParams);
   if (r.status === "ok") {
-    redirect(`${basePath}/${docIdOf({ docRef: r.docRef })}${suffix}`);
+    redirect(
+      `${basePath}/${docIdOf({ docRef: r.docRef })}${suffix}${query ? `?${query}` : ""}`,
+    );
   }
   if (r.status === "ambiguous") {
     const q = new URLSearchParams({ type, number: id, base: basePath });
     if (suffix) q.set("suffix", suffix);
+    if (query) q.set("query", query);
     redirect(`/doc/choose?${q.toString()}`);
   }
   notFound();
@@ -60,6 +85,8 @@ async function redirectToCanonical(
  * @param prefix   その書類の接頭辞（別の書類の番号を弾く）
  * @param basePath 一覧のパス（`/sales/quotes`）。転送先を組み立てる
  * @param suffix   id のあとに続くパス（`/edit` など）
+ * @param searchParams ページの searchParams。渡すと転送先にクエリ（`?tab=` など）を
+ *                 引き継ぐ（旧番号の URL に付いていたタブ指定を落とさない）
  */
 export async function docKeyFromParam(
   type: string,
@@ -67,11 +94,12 @@ export async function docKeyFromParam(
   param: string,
   basePath: string,
   suffix = "",
+  searchParams?: PageSearchParams,
 ): Promise<DocKey> {
   const id = safeDecode(param);
   const key = parseDocKey(id, prefix);
   if (key) return key;
-  return redirectToCanonical(type, id, basePath, suffix);
+  return redirectToCanonical(type, id, basePath, suffix, searchParams);
 }
 
 /** 注文明細の詳細ページの `[id]` → 鍵。正規でない id は転送。 */
@@ -79,9 +107,10 @@ export async function orderLineKeyFromParam(
   param: string,
   basePath: string,
   suffix = "",
+  searchParams?: PageSearchParams,
 ): Promise<OrderLineKey> {
   const id = safeDecode(param);
   const key = parseOrderLineKey(id);
   if (key) return key;
-  return redirectToCanonical("order_lines", id, basePath, suffix);
+  return redirectToCanonical("order_lines", id, basePath, suffix, searchParams);
 }

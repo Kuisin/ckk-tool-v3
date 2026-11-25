@@ -34,9 +34,12 @@ export default async function DocChoosePage({
     number?: string;
     base?: string;
     suffix?: string;
+    query?: string;
   }>;
 }) {
-  const { type, number, base, suffix = "" } = await searchParams;
+  const { type, number, base, suffix = "", query = "" } = await searchParams;
+  // 元の URL に付いていたクエリ（?tab= など）。組み直して、値だけを引き継ぐ。
+  const tail = query ? `?${new URLSearchParams(query).toString()}` : "";
   // 転送先はアプリ内のパスだけ（外部へ飛ばす口にしない）。
   // 何も指さずに開かれた（URL を直に打った等）— 選ぶものが無いのでホームへ。
   if (!type || !number || !base) redirect("/");
@@ -50,7 +53,7 @@ export default async function DocChoosePage({
   const r = await resolveDocId(type, number);
   if (r.status === "notFound") notFound();
   if (r.status === "ok") {
-    redirect(`${base}/${docIdOf({ docRef: r.docRef })}${suffix}`);
+    redirect(`${base}/${docIdOf({ docRef: r.docRef })}${suffix}${tail}`);
   }
 
   const tr = await getTranslations();
@@ -77,7 +80,7 @@ export default async function DocChoosePage({
             <Paper key={ref} p="sm" radius="md" withBorder>
               <Anchor
                 component={Link}
-                href={`${base}/${docIdOf({ docRef: ref })}${suffix}`}
+                href={`${base}/${docIdOf({ docRef: ref })}${suffix}${tail}`}
               >
                 <Text fw={600} size="sm">
                   {nameOf(parts.companyCode)}

@@ -34,8 +34,10 @@ export async function generateMetadata({
 /** 素材発注書 詳細 (PU22). URL id = 法人コード付きの発注番号（CKK~PO-2026-00001）. */
 export default async function PurchasePurchaseOrdersDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("purchase-orders");
   if (denied) return denied;
@@ -47,6 +49,8 @@ export default async function PurchasePurchaseOrdersDetailPage({
       "PO",
       id,
       "/purchase/purchase-orders",
+      "",
+      searchParams,
     ),
   );
   const tr = await getTranslations();

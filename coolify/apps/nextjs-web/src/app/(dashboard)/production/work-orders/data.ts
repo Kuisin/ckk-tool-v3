@@ -41,6 +41,7 @@ import {
   orderLineNumberOf,
   parseDocKey,
 } from "@/lib/doc-number";
+import { type PageSearchParams, searchParamsToQuery } from "@/lib/doc-param";
 import { parseDocId } from "@/lib/doc-ref-core";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
@@ -1513,10 +1514,14 @@ export async function fetchSupplierOptions(): Promise<Option[]> {
  * @param suffix ロット番号のあとに続くパス（`/edit`・`/steps/<id>`）。転送先に付ける。
  *   **null = 転送しない**（レイアウト用 — 続きのパスを知らないので、転送は
  *   同じ URL を解決するページ側に任せ、ここは当たった先頭のロット番号を返す）
+ * @param searchParams ページの searchParams。渡すとロット番号の URL への転送に
+ *   クエリ（`?tab=` など）を引き継ぐ。一覧への転送（2 件以上）には付けない —
+ *   詳細画面のクエリは一覧では意味を持たない。
  */
 export async function resolveWorkOrderIdParam(
   id: string,
   suffix: string | null = "",
+  searchParams?: PageSearchParams,
 ): Promise<number | null> {
   let decoded = id;
   try {
@@ -1559,7 +1564,8 @@ export async function resolveWorkOrderIdParam(
   }
   if (lots.length === 0) return null;
   if (suffix === null) return lots[0];
-  redirect(`${base}/${lots[0]}${suffix}`);
+  const query = await searchParamsToQuery(searchParams);
+  redirect(`${base}/${lots[0]}${suffix}${query ? `?${query}` : ""}`);
 }
 
 // ── 注文明細参照（?orderLine= プリセレクト・ビルダーの選択情報） ────────────────

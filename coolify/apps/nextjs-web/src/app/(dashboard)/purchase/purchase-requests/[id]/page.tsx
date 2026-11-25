@@ -31,8 +31,10 @@ export async function generateMetadata({
 /** 購買依頼 詳細 (PU21). URL id = 法人コード付きの依頼番号（CKK~PRQ-2026-00001）. */
 export default async function PurchasePurchaseRequestsDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("purchase-requests");
   if (denied) return denied;
@@ -44,6 +46,8 @@ export default async function PurchasePurchaseRequestsDetailPage({
       "PRQ",
       id,
       "/purchase/purchase-requests",
+      "",
+      searchParams,
     ),
   );
 

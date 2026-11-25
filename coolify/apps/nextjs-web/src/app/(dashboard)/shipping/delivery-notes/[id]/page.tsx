@@ -32,8 +32,10 @@ export async function generateMetadata({
 /** 納品書 詳細 (SH22). URL id = 法人コード + 番号（`CKK~DRN-2026-00001`）。 */
 export default async function ShippingDeliveryNotesDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("delivery-notes");
   if (denied) return denied;
@@ -44,6 +46,8 @@ export default async function ShippingDeliveryNotesDetailPage({
     "DRN",
     id,
     "/shipping/delivery-notes",
+    "",
+    searchParams,
   );
 
   const [note, auditEntries, invoices] = await Promise.all([

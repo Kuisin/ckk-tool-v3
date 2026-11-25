@@ -48,8 +48,10 @@ export async function generateMetadata({
 /** 価格試算 詳細 (SA52). URL id = 法人コード付きの番号（CKK~EST-2026-00001）。 */
 export default async function TrialEstimateDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("trial-estimates");
   if (denied) return denied;
@@ -59,6 +61,8 @@ export default async function TrialEstimateDetailPage({
     "EST",
     id,
     "/sales/trial-estimates",
+    "",
+    searchParams,
   );
 
   const [

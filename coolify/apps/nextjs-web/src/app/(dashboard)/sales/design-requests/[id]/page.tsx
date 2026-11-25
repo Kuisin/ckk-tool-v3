@@ -35,8 +35,10 @@ export async function generateMetadata({
 /** 設計依頼書 詳細 (SA26). URL id = 法人コード付きの番号（CKK~DSG-2026-00001）。 */
 export default async function SalesDesignRequestsDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("design-requests");
   if (denied) return denied;
@@ -46,6 +48,8 @@ export default async function SalesDesignRequestsDetailPage({
     "DSG",
     id,
     "/sales/design-requests",
+    "",
+    searchParams,
   );
   // 承認・メモ・添付・監査は参照（法人コード付き）で引く。
   const requestNumber = key.docRef;

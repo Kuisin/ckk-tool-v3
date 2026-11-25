@@ -32,13 +32,20 @@ export async function generateMetadata({
 /** 注文明細 詳細 (SA25). URL id = 法人コード付きの番号（CKK~ORD-2026-00001-01）。 */
 export default async function ProductionOrderLinesDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("order-lines");
   if (denied) return denied;
   const { id } = await params;
-  const key = await orderLineKeyFromParam(id, "/sales/order-lines");
+  const key = await orderLineKeyFromParam(
+    id,
+    "/sales/order-lines",
+    "",
+    searchParams,
+  );
 
   const [order, auditEntries, memos] = await Promise.all([
     fetchOrderLine(key),

@@ -36,8 +36,10 @@ export async function generateMetadata({
 /** 注文請書 詳細 (SA24). URL id = 法人コード付きの番号（CKK~ORD-2026-00001）。 */
 export default async function OrderLineAcceptancesDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("order-acceptances");
   if (denied) return denied;
@@ -47,6 +49,8 @@ export default async function OrderLineAcceptancesDetailPage({
     "ORD",
     id,
     "/sales/order-acceptances",
+    "",
+    searchParams,
   );
   // 承認・メモ・添付・監査は参照（法人コード付き）で引く。
   const number = key.docRef;

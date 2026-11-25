@@ -23,8 +23,10 @@ export const dynamic = "force-dynamic";
  */
 export default async function SalesQuotesEditPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("quotes");
   if (denied) return denied;
@@ -35,6 +37,7 @@ export default async function SalesQuotesEditPage({
     id,
     "/sales/quotes",
     "/edit",
+    searchParams,
   );
 
   const [

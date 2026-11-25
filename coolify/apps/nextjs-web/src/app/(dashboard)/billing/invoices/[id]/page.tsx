@@ -39,14 +39,23 @@ export async function generateMetadata({
 /** 請求書 詳細 (BL21). URL id = 法人コード + 番号（`CKK~INV-2026-00001`）。 */
 export default async function BillingInvoicesDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("invoices");
   if (denied) return denied;
   const { id } = await params;
   // 番号だけ・旧番号（INV-YYYYMM-NNNNN）の URL は正規の URL へ転送される。
-  const key = await docKeyFromParam("invoices", "INV", id, "/billing/invoices");
+  const key = await docKeyFromParam(
+    "invoices",
+    "INV",
+    id,
+    "/billing/invoices",
+    "",
+    searchParams,
+  );
 
   // 多態参照（監査・メモ・承認）は参照（doc_ref）で引く。
   const number = key.docRef;

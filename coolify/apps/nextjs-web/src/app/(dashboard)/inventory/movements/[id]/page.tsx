@@ -29,8 +29,10 @@ export async function generateMetadata({
 /** 入出庫伝票 詳細 (PD27). URL id = 法人コード付きの伝票番号（CKK~MOV-2026-00001）. */
 export default async function InventoryMovementDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("inventory-movements");
   if (denied) return denied;
@@ -41,6 +43,8 @@ export default async function InventoryMovementDetailPage({
     "MOV",
     id,
     "/inventory/movements",
+    "",
+    searchParams,
   );
   const movement = await fetchInventoryMovement(docIdOf(key));
   if (!movement) notFound();

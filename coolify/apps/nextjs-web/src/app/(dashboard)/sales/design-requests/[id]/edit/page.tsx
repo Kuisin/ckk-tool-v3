@@ -19,8 +19,10 @@ export const dynamic = "force-dynamic";
  */
 export default async function SalesDesignRequestsEditPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("design-requests");
   if (denied) return denied;
@@ -31,6 +33,7 @@ export default async function SalesDesignRequestsEditPage({
     id,
     "/sales/design-requests",
     "/edit",
+    searchParams,
   );
   const locale = await getServerLocale();
   const [request, assigneeOptions, customerOptions] = await Promise.all([

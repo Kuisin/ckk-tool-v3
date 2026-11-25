@@ -15,8 +15,10 @@ export const dynamic = "force-dynamic";
  */
 export default async function ShippingDeliveryNotesEditPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("delivery-notes");
   if (denied) return denied;
@@ -27,6 +29,7 @@ export default async function ShippingDeliveryNotesEditPage({
     id,
     "/shipping/delivery-notes",
     "/edit",
+    searchParams,
   );
 
   const note = await fetchDeliveryNote(key);

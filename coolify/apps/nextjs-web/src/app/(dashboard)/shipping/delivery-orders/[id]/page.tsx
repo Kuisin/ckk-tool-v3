@@ -36,8 +36,10 @@ export async function generateMetadata({
 /** 出荷書 詳細 (SH21). URL id = 法人コード + 番号（`CKK~DOR-2026-00001`）。 */
 export default async function ShippingDeliveryOrdersDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("delivery-orders");
   if (denied) return denied;
@@ -52,6 +54,8 @@ export default async function ShippingDeliveryOrdersDetailPage({
     "DOR",
     id,
     "/shipping/delivery-orders",
+    "",
+    searchParams,
   );
 
   // 多態参照（監査・メモ・承認）は参照（doc_ref）で引く。

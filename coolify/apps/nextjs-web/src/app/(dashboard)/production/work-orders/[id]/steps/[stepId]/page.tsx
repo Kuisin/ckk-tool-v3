@@ -35,13 +35,19 @@ export async function generateMetadata({
  */
 export default async function WorkOrderStepExecutionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; stepId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("work-orders");
   if (denied) return denied;
   const { id, stepId } = await params;
-  const workOrderNumber = await resolveWorkOrderIdParam(id, `/steps/${stepId}`);
+  const workOrderNumber = await resolveWorkOrderIdParam(
+    id,
+    `/steps/${stepId}`,
+    searchParams,
+  );
   if (workOrderNumber == null) notFound();
 
   const data = await fetchStepExecution(

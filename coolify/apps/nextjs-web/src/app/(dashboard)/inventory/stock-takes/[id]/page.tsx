@@ -31,15 +31,24 @@ export async function generateMetadata({
 /** 棚卸 詳細 (PD28). URL id = 法人コード付きの棚卸番号（CKK~STK-2026-00001）. */
 export default async function ProductionStockTakesDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("stock-takes");
   if (denied) return denied;
   const { id } = await params;
   // 番号だけ・旧番号で来た URL は正規の URL へ転送される。
   const stockTakeNumber = docIdOf(
-    await docKeyFromParam("stock_takes", "STK", id, "/inventory/stock-takes"),
+    await docKeyFromParam(
+      "stock_takes",
+      "STK",
+      id,
+      "/inventory/stock-takes",
+      "",
+      searchParams,
+    ),
   );
 
   const [stockTake, auditEntries, approval, trail] = await Promise.all([
