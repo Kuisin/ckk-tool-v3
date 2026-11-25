@@ -161,7 +161,11 @@ pnpm scenarios --serve --only <id>  # 走らせずに、その 1 本ぶんの DB
 だから各シナリオは**シード直後の状態から始まり、互いに独立**で、並列に走らせても
 何度流しても同じ結果になる（複製は 1 秒かからない）。`pdf: true` のシナリオがあれば
 Gotenberg も起動し、PDF を実際に描いて 1 ページ目を画像にする（要 `pdftotext` / `gs`）。
-`kiosk: true` なら共有端末アプリも同じ DB で起動する。
+`kiosk: true` なら共有端末アプリも同じ DB で起動する。`storage: true` なら
+ファイルの保存先（SeaweedFS）の代わりにメモリだけの Filer もどき（PUT / GET / HEAD /
+DELETE）を 1 本ごとに立てて `SEAWEED_FILER_URL` を渡す — 画像のアップロード
+（社印・ロゴ）から PDF に刷られるまでを通しで確かめられる。無ければ保存先は無く、
+アップロードは失敗する。
 
 書き方（`scenarios/<id>.ts` → 分野ごとの `scenarios/group-*.ts` に登録）:
 
