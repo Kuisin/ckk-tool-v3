@@ -519,19 +519,35 @@ async function syncWorkOrderAllocationsTx(
       orderLineId: { notIn: allocations.map((a) => a.orderLineId) },
     },
   });
+  // upsert は使わない — Prisma は INSERT … ON CONFLICT で実行することがあり、
+  // そのとき衝突より先に BEFORE INSERT トリガーが走って分割番号を 1 つ
+  // 空払い出ししてしまう（番号は欠けるだけで重複はしないが、無駄に進む）。
+  const existing = new Set(
+    (
+      await tx.workOrderOrderLine.findMany({
+        where: { workOrderId },
+        select: { orderLineId: true },
+      })
+    ).map((l) => l.orderLineId),
+  );
   for (const [i, a] of allocations.entries()) {
-    await tx.workOrderOrderLine.upsert({
-      where: {
-        workOrderId_orderLineId: { workOrderId, orderLineId: a.orderLineId },
-      },
-      create: {
-        workOrderId,
-        orderLineId: a.orderLineId,
-        quantity: a.quantity,
-        sortOrder: i,
-      },
-      update: { quantity: a.quantity, sortOrder: i },
-    });
+    if (existing.has(a.orderLineId)) {
+      await tx.workOrderOrderLine.update({
+        where: {
+          workOrderId_orderLineId: { workOrderId, orderLineId: a.orderLineId },
+        },
+        data: { quantity: a.quantity, sortOrder: i },
+      });
+    } else {
+      await tx.workOrderOrderLine.create({
+        data: {
+          workOrderId,
+          orderLineId: a.orderLineId,
+          quantity: a.quantity,
+          sortOrder: i,
+        },
+      });
+    }
   }
 }
 
