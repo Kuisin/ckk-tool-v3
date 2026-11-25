@@ -1,6 +1,6 @@
 ---
 title: "图纸 — 操作手册"
-screenshots: [design-file-list-01, design-file-detail-01, design-version-programs-01, design-file-new-01]
+screenshots: [design-file-list-01, design-file-detail-01, design-version-programs-01, design-version-series-memo-01, work-order-step-series-memo-01, design-file-new-01]
 description: "按版本登记产品图纸，并按接单方分别管理。"
 ---
 **按版本** 登记产品图纸，并 **按订货方分别** 管理。操作代码为 `PD06`。
@@ -169,6 +169,16 @@ flowchart TD
 - 修订版本时 **系列备忘会延续**。各版本的变更点请写在该版本的备忘中。
 - 通用系列也有一个。
 - 删除该系列的所有版本后，系列备忘也会被删除。
+
+除产品画面外，系列备忘还会显示在以下画面。无论在哪里看，都是同一条备忘。
+
+- **版本画面** … 「加工程序」下方有「**系列备忘**」，也可以在这里填写。已确定的版本也可以写（确定时固定的只是图纸内容本身）。从工单的「图纸」链接打开版本的人，也能在这里读到系列的注意事项。
+- **工序执行画面**（在网页上打开工单工序的画面）和现场 **共用终端的工序画面** … 只读显示。显示哪个系列的备忘，与加工程序的决定方式相同 — 工单客户的系列图纸，没有则用通用图纸。**不会显示其他客户系列的备忘。** 点击「在图纸中打开」可前往修改的位置（产品画面的该系列）。
+- 没有填写备忘的系列，工序画面上不显示系列备忘栏。
+
+![版本画面的系列备忘。显示与产品画面相同的备忘，也可以在这里填写](../../../assets/screenshots/design-version-series-memo-01.png)
+
+![工序执行画面的系列备忘。只读，显示是哪个客户的图纸以及「在图纸中打开」](../../../assets/screenshots/work-order-step-series-memo-01.png)
 
 ## 加工程序
 

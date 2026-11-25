@@ -94,6 +94,7 @@ The three-dot "**…**" menu at the top right also always lists "**Create work o
   - "**Per line**" — the number to use when marking the same number on every piece of that line (`A200000`).
 - "**Not numbered (numbered when the order is confirmed)**" is shown for an order line that has no number yet.
 - The same number also appears on the screen and strip print of the [work order](/manual/en/operations/production/work-order/user#marking-number) allocated to this order line, and on the step screens of the shared shop-floor device.
+- When this order line is made by **several work orders**, each work order gets a **split number** and its head becomes `A2000001`, `A2000002`, … (the suffix counts from `001` inside the split). Below the marking number, 「**分けて作った指示書（分割ごとの番号）**」 (work orders made separately) lists each split's range with its work order and quantity. The work order tab also has a marking number column per work order (see [splitting a work order](/manual/en/operations/production/work-order/user#marking-split)).
 
 ### Check the delivery destination
 

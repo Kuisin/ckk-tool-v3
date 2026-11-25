@@ -75,13 +75,15 @@ Once you start, the status changes to 「作業中」 (in progress) and the work
 The top part of the step screen gathers the information you need for the work.
 
 - **印字番号** (marking number) … shown as 「**印字番号 A200000-001 〜 A200000-150（明細ごと A200000）**」. It is the number laser-marked on the products. When marking each piece, use the consecutive numbers from `-001`; when marking one number per line, use the number in brackets. It is not shown for a work order that is not linked to an order (for stock).
+  - When an order line is made by several work orders, each work order gets a split number and the line reads 「**印字番号 A2000001-001 〜 A2000001-050（分割 1・分割ごと A2000001）**」 (split 1, per split A2000001). This range is what this work order marks.
 - **工程納期** (step due date) … shown as 「**工程納期 2026/08/10**」: by when this step should be finished. It turns **red and bold** if the date has passed and the step is not finished. It is not shown for a step with no due date.
 - **加工プログラム** (machining programs) … when programs used in this step are registered, they are listed under 「**加工プログラム**」.
   - The program name and program number, and 「**機械: ◯◯**」 (which machine it is for; one for any machine shows 「**機械を問わない**」 (any machine)) are shown.
   - A program for the same machine as the current work location (this tablet's default work location, or the planned or actual work location) gets a 「**この機械用**」 (for this machine) mark and is listed first.
   - If a file is registered, press the file name to download it. One with only a number noted shows 「**ファイルなし**」 (no file).
+- **系列メモ** (series memo) … if notes shared by every drawing of this product and customer (customer habits, machining notes) have been written, they appear under 「**系列メモ**」. It also says whose drawing it belongs to, such as 「図面（◯◯株式会社）の全版に共通するメモ」. On this screen it is read-only.
 
-> 💡 Machining programs are registered by the office on a version of the [drawing](/manual/en/operations/production/design-file/user). If none appears or the content is wrong, please contact the office.
+> 💡 Machining programs and the series memo are registered by the office on a version of the [drawing](/manual/en/operations/production/design-file/user). If none appears or the content is wrong, please contact the office.
 
 ## Stopping partway and restarting
 

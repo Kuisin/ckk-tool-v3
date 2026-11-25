@@ -396,11 +396,22 @@ When a work order is closed out:
 
 The serial number laser-marked on the products (the **marking number**) is shown as 「**印字番号**」 (marking number) near the top of the work order detail screen.
 
-- The number belongs to the **order line** and is assigned automatically when the order acceptance is confirmed. The work order only displays the numbers of its allocated order lines.
+- The base of the number belongs to the **order line** and is assigned automatically when the order acceptance is confirmed.
 - Both forms are always shown. Which one to mark is decided on the shop floor.
   - 「**1 本ずつ**」 (per piece) … consecutive numbers for the line quantity, such as `A200000-001 〜 A200000-150`.
   - 「**明細ごと**」 (per line) … a single number with no suffix, such as `A200000`.
 - For a work order allocated to two or more order lines (a combined lot), the numbers are listed per order line.
+
+### Work orders that split an order line [#marking-split]
+
+When one order line is made by several work orders (for example, only 55 of 150 ordered pieces on this work order), each work order gets a **split number** and the head of the marking number changes.
+
+- The head is the line's number followed by the split number: the first split is `A2000001`, the second `A2000002`, and so on.
+- The suffix counts from `001` inside the split. A 55-piece split is `A2000001-001 〜 A2000001-055`, a 10-piece split is `A2000002-001 〜 A2000002-010`. Numbers never overlap with another work order.
+- The screen shows a 「**分割 1**」 (split 1) mark, and 「**分割ごと**」 (per split, `A2000001`) instead of 「明細ごと」.
+- A work order that makes the whole order line is not a split and keeps `A200000-001 〜` as before.
+- The split number is decided **once, when the order line is allocated to the work order**, and never changes. Saving the draft again keeps the same number, and changing the allocated quantity later keeps the number from when it was made (so a number that was marked or printed never moves). A split number whose allocation was removed is not reused for another work order.
+- Which work order has which split is listed on the [order line](/manual/en/operations/sales/order-line/user#marking-number) screen.
 - 「**未採番（注文確定時に採番）**」 (not numbered — assigned at order confirmation) is shown for an order line that has no number yet.
 - A for-stock work order (not linked to an order line) has no marking number field.
 
