@@ -111,6 +111,14 @@ export interface PriceListEntry {
    */
   itemType: "PRODUCT" | "REGRIND";
   /**
+   * 対象工具（品目 id の文字列）。**再研磨の品目の価格表だけ**が持てる任意の欄で、
+   * null = 工具を問わない価格。同じ顧客 × 役務に、工具なしの 1 本と工具ごとの
+   * 複数本が並び得る。解決の順は `selectPriceEntries`（quotes/model.ts）。
+   */
+  toolItemId: string | null;
+  /** 対象工具の表示名（`名称 コード`）。工具なしは null。 */
+  toolName: string | null;
+  /**
    * 品目の標準価格（定価）。**この画面では読むだけ** — 持ち主は品目マスタ
    * （再研磨品目 MS0H）で、直すのはあちら。ここに出すのは「当たる価格表が
    * 無いときいくらで売れるのか」が、価格表の画面から見えないと分からない
@@ -152,6 +160,8 @@ export function requiresEndDate(orderType: string): boolean {
 export interface EntryIdentity {
   customerBpId: string;
   itemId: string;
+  /** 対象工具（null = 工具を問わない価格表）。識別の一部。 */
+  toolItemId: string | null;
   orderTypes: string[];
   /** 既存エントリの PRC 番号（重複警告からのリンク先）。 */
   entryId: string;

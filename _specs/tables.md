@@ -632,6 +632,12 @@ Enum ESTIMATE_STATUS {
 // ===========================
 
 // 価格表エントリ: 顧客 + 製品 = 1 エントリ（UNIQUE・作成後不変）。
+// 再研磨の品目（役務）だけは任意の対象工具 tool_item_id を持て、
+// 顧客 + 品目 + 工具 で 1 エントリになる（工具 NULL は 1 つの値として数える —
+// 部分 unique index 2 本。Prisma では表現できないのでマイグレーションに直書き）。
+// 再研磨の明細の単価は 工具一致 → 工具なし → 品目の標準価格 の順で引く
+// （components/sales/quotes/model.ts selectPriceEntries が唯一の定義）。
+// 工具を持たない行（見積書・製品の明細）は工具なしのエントリだけを見る。
 // 表示番号 PRC-YYYYMM-NNNNN は複合キー (year_month, seq) から導出。
 // 注文種別ごとの価格（基準単価・有効期間・価格試算リンク・tiers・値引き）は
 // price_list_variants に持つ。
@@ -640,6 +646,7 @@ Table price_list_entries {
   seq             int [not null]
   customer_bp_id  uuid [not null, ref: > business_partners.id]
   product_id      int [not null, ref: > products.id]
+  tool_item_id    int [ref: > items.id]     // 対象工具（再研磨の品目だけ・任意）。null = 工具を問わない
   currency        varchar [not null, default: 'JPY']
   is_active       boolean [default: true]
   // 独自値の追加承認（approval_custom_value_steps）。価格試算から引き継いで
@@ -656,7 +663,9 @@ Table price_list_entries {
 
   indexes {
     (year_month, seq) [pk]
-    (customer_bp_id, product_id) [unique]  // 識別キー（作成後不変）
+    // 識別キー（作成後不変）。工具なし / 工具あり の 2 本の部分 unique index
+    (customer_bp_id, product_id) [unique]                // WHERE tool_item_id IS NULL
+    (customer_bp_id, product_id, tool_item_id) [unique]  // WHERE tool_item_id IS NOT NULL
   }
 }
 

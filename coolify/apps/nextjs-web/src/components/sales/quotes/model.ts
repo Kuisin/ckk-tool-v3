@@ -60,81 +60,61 @@ export type PriceResolution =
   | { ok: false; reason: PriceMissReason };
 
 /**
- * Resolve 単価 + 値引き from the 価格表 for (顧客 × 製品 × 注文種別 × 数量 ×
- * 日付), pure over `entries`. Entry は顧客×製品で一意、注文種別はその中の
- * variant を選ぶ。製品は**品目 id**（items.id）で指す — 価格表の行も書類の行も
- * 同じ id 空間なので、突き合わせは 1 本のままでよい（品目統合 第 2 段 C）。
+ * 価格表の候補 — 引く順に並べたエントリ（0〜2 件）。
  *
- * **価格を出せるのは、有効なエントリの有効なバリアントで、`date`（JST の暦日）
- * が有効期間に入っているものだけ。** 無効化された価格表・期限切れ / 開始前の
- * バリアントは価格を返さない — 以前はここを見ておらず、終了日を過ぎたテスト
- * 価格が見積書・注文請書にそのまま載っていた。
+ * 再研磨の価格は**どの工具を研ぐか**でも顧客ごとに違い得るので、価格表は
+ * 任意の対象工具（`toolItemId`）を持てる。引く順は:
+ *
+ *   1. 顧客 × 品目 × **工具が一致**するエントリ（工具を渡したときだけ）
+ *   2. 顧客 × 品目 × **工具なし**のエントリ
+ *   3. （ここには無い）品目の標準価格 — `resolvePriceFromEntries` の fallback
+ *
+ * 工具なしの行（見積書・製品の明細）は 2 だけを見る — 工具付きのエントリは
+ * 別の工具のための値段なので、**工具が噛み合わない限り決して当たらない**。
+ * 既存の価格表は全部「工具なし」なので、この関数を通しても結果は変わらない。
  */
-export function resolvePriceFromEntries(
-  entries: PriceListEntry[],
+export function selectPriceEntries(
+  entries: readonly PriceListEntry[],
   customerId: string,
   itemId: string,
+  toolItemId: string | null = null,
+): PriceListEntry[] {
+  const forItem = entries.filter(
+    (e) => e.customerId === customerId && e.itemId === itemId,
+  );
+  const generic = forItem.find((e) => (e.toolItemId ?? null) == null);
+  const specific = toolItemId
+    ? forItem.find((e) => e.toolItemId === toolItemId)
+    : undefined;
+  return [specific, generic].filter((e): e is PriceListEntry => e != null);
+}
+
+/** 1 エントリから価格を引く（標準価格への落とし込みはしない）。 */
+function resolveFromEntry(
+  entry: PriceListEntry,
   orderType: string,
   quantity: number,
   tr: Tr,
-  date: Date = new Date(),
-  /**
-   * 品目の**標準価格**（定価。items.standard_unit_price）。顧客の価格表が
-   * 当たらないときの拠り所で、価格表があればそちらが勝つ — S/4HANA の
-   * 「定価 + 顧客ごとの条件レコード」と同じ順。
-   *
-   * 渡すかどうかは呼び出し側が決める（lib/standard-price.ts）。いま渡るのは
-   * **再研磨の品目だけ** — 製品は価格表が無ければ単価を解決できないままにする。
-   */
-  standardUnitPrice: number | null = null,
+  date: Date,
 ): PriceResolution {
-  /**
-   * 顧客の価格表が当たらなかったときの答え。
-   *
-   * **「当たる価格表が無い」ときだけ標準価格へ落ちる**（エントリが無い /
-   * 無効化されている / 期間外）。`no-tier` は落とさない — 価格表は現に効いて
-   * いて、その数量の段だけが抜けている状態なので、定価で埋めると設定の穴が
-   * 見えなくなる。
-   */
-  const fallback = (reason: PriceMissReason): PriceResolution => {
-    if (standardUnitPrice == null || reason === "no-tier") {
-      return { ok: false, reason };
-    }
-    return {
-      ok: true,
-      price: {
-        unitPrice: standardUnitPrice,
-        tierId: null,
-        tierLabel: tr("sales.priceLists.standardPriceLabel"),
-        discountAmount: 0,
-        discountId: null,
-        discountLabel: null,
-      },
-    };
-  };
-
-  const entry = entries.find(
-    (e) => e.customerId === customerId && e.itemId === itemId,
-  );
-  if (!entry) return fallback("no-entry");
-  if (!entry.isActive) return fallback("inactive");
+  if (!entry.isActive) return { ok: false, reason: "inactive" };
   // 独自値の追加承認が済んでいない価格表は引かない — 引けた時点で、承認されて
-  // いない価格が見積書・注文請書へ流れ込む。標準価格へは落ちる（価格表が
-  // 当たらないときと同じ扱い）。
-  if (!priceEntryUsable(entry.approvalStatus)) return fallback("unapproved");
+  // いない価格が見積書・注文請書へ流れ込む。
+  if (!priceEntryUsable(entry.approvalStatus))
+    return { ok: false, reason: "unapproved" };
   const variant = entry.variants.find((v) => v.orderType === orderType);
-  if (!variant) return fallback("no-entry");
-  if (!variant.isActive) return fallback("inactive");
+  if (!variant) return { ok: false, reason: "no-entry" };
+  if (!variant.isActive) return { ok: false, reason: "inactive" };
   if (
     !isWithinValidity(isoDateJst(date), variant.validFrom, variant.validUntil)
   )
-    return fallback("expired");
+    return { ok: false, reason: "expired" };
   const tier = variant.tiers.find(
     (t) =>
       quantity >= t.minQuantity &&
       (t.maxQuantity == null || quantity <= t.maxQuantity),
   );
-  if (!tier) return fallback("no-tier");
+  if (!tier) return { ok: false, reason: "no-tier" };
   // 単価 = 基準単価 × 数量倍率（tier の手動上書きがあればそれ）。
   const unitPrice = tierUnitPrice(variant, tier);
   const discount = findApplicableDiscount(variant, quantity, unitPrice, date);
@@ -159,6 +139,86 @@ export function resolvePriceFromEntries(
 }
 
 /**
+ * Resolve 単価 + 値引き from the 価格表 for (顧客 × 製品 × 注文種別 × 数量 ×
+ * 日付), pure over `entries`. Entry は顧客×製品（再研磨は × 対象工具）で一意、
+ * 注文種別はその中の variant を選ぶ。製品は**品目 id**（items.id）で指す —
+ * 価格表の行も書類の行も同じ id 空間なので、突き合わせは 1 本のままでよい
+ * （品目統合 第 2 段 C）。
+ *
+ * **価格を出せるのは、有効なエントリの有効なバリアントで、`date`（JST の暦日）
+ * が有効期間に入っているものだけ。** 無効化された価格表・期限切れ / 開始前の
+ * バリアントは価格を返さない — 以前はここを見ておらず、終了日を過ぎたテスト
+ * 価格が見積書・注文請書にそのまま載っていた。
+ *
+ * 再研磨の明細は `toolItemId`（研ぎ直す工具）を渡す。引く順は
+ * 工具一致 → 工具なし → 標準価格（`selectPriceEntries`）。
+ */
+export function resolvePriceFromEntries(
+  entries: PriceListEntry[],
+  customerId: string,
+  itemId: string,
+  orderType: string,
+  quantity: number,
+  tr: Tr,
+  date: Date = new Date(),
+  /**
+   * 品目の**標準価格**（定価。items.standard_unit_price）。顧客の価格表が
+   * 当たらないときの拠り所で、価格表があればそちらが勝つ — S/4HANA の
+   * 「定価 + 顧客ごとの条件レコード」と同じ順。
+   *
+   * 渡すかどうかは呼び出し側が決める（lib/standard-price.ts）。いま渡るのは
+   * **再研磨の品目だけ** — 製品は価格表が無ければ単価を解決できないままにする。
+   */
+  standardUnitPrice: number | null = null,
+  /**
+   * 研ぎ直す工具（品目 id の文字列）。再研磨の明細だけが渡す。null = 工具を
+   * 問わない価格表だけを見る（従来どおり）。
+   */
+  toolItemId: string | null = null,
+): PriceResolution {
+  /**
+   * 顧客の価格表が当たらなかったときの答え。
+   *
+   * **「当たる価格表が無い」ときだけ標準価格へ落ちる**（エントリが無い /
+   * 無効化されている / 承認待ち / 期間外）。`no-tier` は落とさない — 価格表は
+   * 現に効いていて、その数量の段だけが抜けている状態なので、定価で埋めると
+   * 設定の穴が見えなくなる。
+   */
+  const fallback = (reason: PriceMissReason): PriceResolution => {
+    if (standardUnitPrice == null || reason === "no-tier") {
+      return { ok: false, reason };
+    }
+    return {
+      ok: true,
+      price: {
+        unitPrice: standardUnitPrice,
+        tierId: null,
+        tierLabel: tr("sales.priceLists.standardPriceLabel"),
+        discountAmount: 0,
+        discountId: null,
+        discountLabel: null,
+      },
+    };
+  };
+
+  // 工具一致 → 工具なし の順に引く。当たる価格表が無い（無効・承認待ち・
+  // 期間外・その種別が無い）ときは次の候補へ進む。数量の段だけが無いときは
+  // 進まない — 標準価格へ落とさないのと同じ理由で、設定の穴を隠さない。
+  let firstMiss: PriceMissReason | null = null;
+  for (const entry of selectPriceEntries(
+    entries,
+    customerId,
+    itemId,
+    toolItemId,
+  )) {
+    const r = resolveFromEntry(entry, orderType, quantity, tr, date);
+    if (r.ok || r.reason === "no-tier") return r;
+    firstMiss ??= r.reason;
+  }
+  return fallback(firstMiss ?? "no-entry");
+}
+
+/**
  * `resolvePriceFromEntries` の価格だけ版 — 引けなければ null。
  * 理由が要らない呼び出し側（フォームのライブ表示など）はこちら。
  */
@@ -171,6 +231,7 @@ export function resolveUnitPriceFromEntries(
   tr: Tr,
   date: Date = new Date(),
   standardUnitPrice: number | null = null,
+  toolItemId: string | null = null,
 ): ResolvedPrice | null {
   const r = resolvePriceFromEntries(
     entries,
@@ -181,6 +242,7 @@ export function resolveUnitPriceFromEntries(
     tr,
     date,
     standardUnitPrice,
+    toolItemId,
   );
   return r.ok ? r.price : null;
 }

@@ -131,6 +131,12 @@ model PriceListEntry {
   customerBpId String @map("customer_bp_id") @db.Uuid
   /// 統合品目（app.items）。価格表の対象品目。
   itemId       Int    @map("item_id")
+  /// 対象工具（任意）。**再研磨の品目（役務）の価格表だけ**が持てる — 同じ
+  /// 研ぎ直しでも、どの工具を研ぐかで顧客ごとの値段が違うことがあるため。
+  /// null = その役務の「工具を問わない」価格。解決は 工具一致 → 工具なし →
+  /// 標準価格 の順（components/sales/quotes/model.ts selectPriceEntry）。
+  /// 製品（PRODUCT）でも他社製品でもよい（lib/sales-item-guard.ts）。
+  toolItemId   Int?   @map("tool_item_id")
 
   currency  String   @default("JPY")
   isActive  Boolean  @default(true) @map("is_active")
@@ -152,13 +158,19 @@ model PriceListEntry {
   salesRep      User?              @relation("PriceListEntrySalesRep", fields: [salesRepId], references: [id])
   customerBp    BusinessPartner    @relation("PriceListEntryCustomer", fields: [customerBpId], references: [id])
   item          Item               @relation("PriceListEntryItem", fields: [itemId], references: [id], onDelete: Restrict)
+  toolItem      Item?              @relation("PriceListEntryToolItem", fields: [toolItemId], references: [id], onDelete: Restrict)
   createdByUser User?              @relation("PriceListEntryCreatedBy", fields: [createdBy], references: [id])
   variants      PriceListVariant[]
 
   @@id([yearMonth, seq])
-  // 価格表の識別は (顧客 × 品目)。作成後不変（lib/price-list）。
-  @@unique([customerBpId, itemId])
+  // 価格表の識別は (顧客 × 品目 × 対象工具)。作成後不変。工具は null を
+  // 1 つの値として数える（工具なしの価格表は顧客 × 品目に 1 つだけ）— Prisma は
+  // 部分 unique index を表現できないので、2 本の部分 unique index を
+  // マイグレーション 20261126140000_price_list_tool_item に直書きしている:
+  //   tool_item_id IS NULL     → (customer_bp_id, item_id)
+  //   tool_item_id IS NOT NULL → (customer_bp_id, item_id, tool_item_id)
   @@index([itemId])
+  @@index([toolItemId])
   @@map("price_list_entries")
   @@schema("app")
 }

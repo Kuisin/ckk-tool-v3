@@ -7905,7 +7905,7 @@
       "testAndSampleEntriesNeedAn": "试制・样品必须填写结束日",
       "theBaseForThePriceList": "价格表的基准单价。默认为价格试算的试算单价。各数量档单价 = 基准单价 × 系数。",
       "theBasePriceComesFromThe": "基准单价取自价格试算的试算单价。仅在明确启用自定义时可手动覆盖（会有确认）。各档单价 = 基准单价 × 系数。",
-      "theCustomerAndProductCannotBe": "客户与产品创建后无法更改。",
+      "theCustomerAndProductCannotBe": "客户、产品与适用刀具创建后无法更改。",
       "theMaximumQuantityMustBeAt": "数量上限请输入不小于下限的值",
       "theMinimumQuantityThisRuleApplies": "此规则适用的最小数量。上限留空表示无限制。",
       "theMultiplierPerTierEG": "各数量档的系数（例 ×1.05 = 基准单价加 5%）。单价 = 基准单价 × 系数。",
@@ -7917,7 +7917,9 @@
       "theValidPeriodWasChanged": "已更改有效期",
       "thereAreNoDiscountRules": "没有折扣规则。",
       "thereIsNoPriceListPick": "没有价格表 — 请选择客户×产品来创建",
-      "thereIsOnePriceListPer": "每个客户×产品对应 1 张价格表。各订单类别的价格在下方添加。",
+      "thereIsOnePriceListPer": "每个客户×产品对应 1 张价格表（再研磨服务也可按适用刀具分别创建）。各订单类别的价格在下方添加。",
+      "targetTool": "适用刀具",
+      "anyTool": "不限刀具",
       "tickingItDropsTheAutomaticCalculation": "点击“自定义”后不使用自动计算，仅此数量档设为手动固定单价（会有确认）。",
       "tiers": "档数",
       "unitPriceRange": "单价范围",
@@ -8212,7 +8214,9 @@
       "confirmDeleteOrderTypeMessage": "将删除 {orderType} 的价格（含数量段和折扣规则）。保存后生效。",
       "confirmUseCustomBaseMessage": "将不再使用价格试算的单价（{price}），改为手动设置基准单价。确定吗？",
       "confirmUseCustomTierMessage": "将不再使用该数量段的自动计算单价（{price} = 基准单价 × 系数），改为手动设置单价。",
-      "duplicateEntryPrefix": "该客户 × 产品的价格表",
+      "duplicateEntryPrefix": "该客户 × 产品（× 适用刀具）的价格表",
+      "targetToolDescription": "仅当此再研磨价格只适用于某一刀具时选择。不选则为不限刀具的价格（按 刀具价格表 → 不限刀具的价格表 → 标准价格 的顺序查找）。",
+      "searchTools": "搜索刀具",
       "duplicateEntrySuffix": "已存在（{orderTypes}）。如需添加注文种别，请编辑现有价格表。",
       "editTitle": "编辑价格表",
       "manualWithEstimateValue": "手动设置（价格试算值：{price}）",
@@ -8323,7 +8327,7 @@
       "invalidVariant": "变体无效",
       "invalidTier": "数量档无效",
       "createFailed": "价格表创建失败",
-      "duplicateEntry": "该客户与产品的价格表已存在。请编辑现有价格表。",
+      "duplicateEntry": "该客户、产品与适用刀具的价格表已存在。请编辑现有价格表。",
       "invalidEntryNumber": "价格表编号无效",
       "updateFailed": "价格表更新失败",
       "invalidSourceEntryNumber": "复制来源的价格表编号无效",
@@ -8443,7 +8447,9 @@
       "externalProductHasNoPriceList": "他社产品无法创建价格表（只是寄存，不出售）",
       "materialHasNoPriceList": "材料无法创建价格表",
       "regrindItemOnlyRegrindVariant": "再研磨品目只能拥有订单类别「再研磨」",
-      "productHasNoRegrindVariant": "产品无法创建订单类别「再研磨」的价格。再研磨的价格由再研磨品目持有"
+      "productHasNoRegrindVariant": "产品无法创建订单类别「再研磨」的价格。再研磨的价格由再研磨品目持有",
+      "priceListToolOnlyForRegrind": "只有再研磨服务的价格表可以设置适用刀具",
+      "priceListToolMustBeProduct": "适用刀具请选择产品（含他社产品）"
     },
     "quoteMail": {
       "subject": "报价单 {number}",
@@ -9714,6 +9720,10 @@
       "product": {
         "label": "产品",
         "summary": "确定价格所对应的产品。与客户相同，创建后不可更改。"
+      },
+      "targetTool": {
+        "label": "适用刀具",
+        "summary": "仅当此再研磨价格只适用于某一刀具时选择。留空则为不限刀具的价格。单价按 刀具价格表 → 不限刀具的价格表 → 标准价格 的顺序查找。"
       },
       "orderType": {
         "label": "订单类别",
