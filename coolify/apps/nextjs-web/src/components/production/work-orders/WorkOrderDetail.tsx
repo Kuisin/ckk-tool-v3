@@ -66,6 +66,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { MarkingNumber } from "@/components/ui/MarkingNumber";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { ModalShell, openConfirm } from "@/components/ui/modals";
 import { NextStepCard } from "@/components/ui/NextStepCard";
@@ -329,6 +330,26 @@ export function WorkOrderDetail({
             : "—"
         }
       />
+      {wo.orderLines.length > 0 && (
+        <FieldValue
+          label={tr("common.markingNumber")}
+          value={
+            <Stack gap={6}>
+              {wo.orderLines.map((l) => (
+                <Stack gap={0} key={l.orderLineId}>
+                  {wo.orderLines.length > 1 && (
+                    <DocNumber>{l.number}</DocNumber>
+                  )}
+                  <MarkingNumber
+                    base={l.markingBase}
+                    quantity={l.lineQuantity}
+                  />
+                </Stack>
+              ))}
+            </Stack>
+          }
+        />
+      )}
       <FieldValue label={tr("common.createdBy")} value={wo.createdByName} />
       <FieldValue label={tr("common.product")} value={wo.productName} />
       <FieldValue

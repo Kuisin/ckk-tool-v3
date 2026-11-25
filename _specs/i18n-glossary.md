@@ -239,6 +239,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 請求番号 | Invoice number | 请款单号 | |
 | 指示書番号 | Work order number | 工单编号 | |
 | ロット番号 | Lot number | 批次号 | |
+| 印字番号 | Marking number | 打标编号 | 製品にレーザーで刻む通し番号 `A{基数}-{NNN}`（明細ごとなら `A{基数}`）。ロット番号とは別系列 |
 | 枝番 | Line branch no. | 分项号 | |
 | 採番 / 未採番 | Numbering / Not numbered | 编号 / 未编号 | |
 | 帳票・書類 | Document | 单据 | |

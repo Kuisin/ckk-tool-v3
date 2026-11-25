@@ -141,6 +141,14 @@ export function workOrderStripPrintStyles(dims: {
       text-overflow: ellipsis;
     }
     .wo-strip-meta { display: flex; gap: 4mm; font-size: 3.2mm; }
+    .wo-strip-marking {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 3.2mm;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .wo-strip-order {
       font-size: 3.2mm;
       color: #444444;

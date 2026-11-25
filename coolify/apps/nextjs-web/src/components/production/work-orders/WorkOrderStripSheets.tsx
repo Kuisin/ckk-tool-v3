@@ -85,6 +85,19 @@ export function WorkOrderStripSheets({
                           </span>
                         )}
                       </div>
+                      {wo.marking && (
+                        <div className="wo-strip-marking">
+                          {tr("common.markingNumber")}{" "}
+                          {tr("common.markingRange", {
+                            first: wo.marking.first,
+                            last: wo.marking.last,
+                          })}
+                          {" ／ "}
+                          {wo.marking.perLine}
+                          {wo.marking.moreLines > 0 &&
+                            ` ${tr("production.workOrderStripSheets.moreMarkings", { count: wo.marking.moreLines })}`}
+                        </div>
+                      )}
                       <div className="wo-strip-order">
                         {wo.orderLineNumber
                           ? `${wo.orderLineNumber}${wo.customerName ? ` / ${wo.customerName}` : ""}`

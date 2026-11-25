@@ -1007,6 +1007,9 @@ export async function confirmOrderLines(
       // sortOrder 順に 1..N。以後 branch は不変（公開番号 ORD-…-NN の一部）。
       const branches = nextBranches(0, prior.items.length);
       for (const [i, it] of prior.items.entries()) {
+        // 印字番号の基数（marking_base）はここでは書かない — branch が入る
+        // この更新で DB のトリガーが専用 SEQUENCE から振る（マイグレーション
+        // 20261126180000_order_line_marking_number）。
         await tx.orderLine.update({
           where: { id: it.id },
           data: {

@@ -436,6 +436,11 @@
     "workOrderNumber": "Work order number",
     "reserved": "Reserved",
     "lotNumber": "Lot number",
+    "markingNumber": "Marking number",
+    "markingPerPiece": "Per piece",
+    "markingPerLine": "Per line",
+    "markingRange": "{first} – {last}",
+    "markingNotIssued": "Not numbered (numbered when the order is confirmed)",
     "orderLineNumber": "Order line number",
     "notPlanned": "Not planned",
     "forStock": "For stock",
@@ -3116,7 +3121,8 @@
     "workOrderStripSheets": {
       "noWorkOrdersToPrint": "There are no work orders to print.",
       "actualSizeCheck50mm": "50mm (actual-size check / A4 paper, 100% scale)",
-      "forStockNoOrderLine": "For stock (no order line)"
+      "forStockNoOrderLine": "For stock (no order line)",
+      "moreMarkings": "+{count} more lines"
     },
     "designFileTable": {
       "byCustomer": "By customer",
