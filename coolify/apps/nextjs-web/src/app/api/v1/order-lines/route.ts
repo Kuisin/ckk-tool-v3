@@ -26,7 +26,7 @@ import { dateOnly, iso, localizedJson, num } from "@/lib/api-dto";
 import { invalidCursorResponse, parseListQuery, runList } from "@/lib/api-list";
 import { instanceOf } from "@/lib/api-problem";
 import { prisma } from "@/lib/db";
-import { formatDocNumber } from "@/lib/doc-number";
+import { formatDocNumber, legacyDocKey } from "@/lib/doc-number";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -92,12 +92,10 @@ export async function GET(request: Request): Promise<Response> {
         r.branch === null
           ? null
           : `${formatDocNumber("ORD", {
-              yearMonth: r.acceptanceYearMonth,
-              seq: r.acceptanceSeq,
+              ...legacyDocKey(r.acceptanceYearMonth, r.acceptanceSeq),
             })}-${String(r.branch).padStart(2, "0")}`,
       acceptanceNumber: formatDocNumber("ORD", {
-        yearMonth: r.acceptanceYearMonth,
-        seq: r.acceptanceSeq,
+        ...legacyDocKey(r.acceptanceYearMonth, r.acceptanceSeq),
       }),
       branch: r.branch,
       sortOrder: r.sortOrder,

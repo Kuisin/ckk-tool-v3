@@ -130,6 +130,9 @@ model FormVersion {
 
 model FormResponse {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   // 業務キー。承認依頼・監査ログ・添付はこの文字列で紐づく（FK は張らない）。
   responseNumber String @unique @map("response_number")
   // フォーム内の連番（kintone の「No.」相当）。表示・印刷で使う。
@@ -164,9 +167,12 @@ model FormResponse {
 
   completionNotices FormCompletionNotice[]
 
+  ownCompany OwnCompany @relation("FormResponseOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
   @@unique([formId, recordNo])
   @@index([formId, status])
   @@index([submittedBy, createdAt])
+  @@index([ownCompanyId])
   @@map("form_responses")
   @@schema("app")
 }

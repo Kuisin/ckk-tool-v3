@@ -17,6 +17,7 @@
  */
 
 import { getTranslations } from "next-intl/server";
+import { legacyDocKey } from "@/lib/doc-number";
 import type { Prisma } from "../../generated/client/client";
 import {
   type ApprovalDocInfo,
@@ -962,8 +963,7 @@ async function targetDisplayNumber(
       });
       return row
         ? formatDocNumber("ORD", {
-            yearMonth: row.acceptanceYearMonth,
-            seq: row.acceptanceSeq,
+            ...legacyDocKey(row.acceptanceYearMonth, row.acceptanceSeq),
           })
         : targetId;
     }

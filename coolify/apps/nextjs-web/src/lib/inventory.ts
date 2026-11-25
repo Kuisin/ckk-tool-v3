@@ -88,10 +88,24 @@ export async function createMovement(
   init: MovementInit,
 ): Promise<string> {
   const actor = await getCurrentActorId();
+  // 発行元の自社法人 = 拠点の法人。拠点が無い（法人に属さない）伝票は列を
+  // 渡さず DB の既定値（既定の法人）に任せる — nextjs-web
+  // lib/doc-company-core.ts companyForPlantDoc と同じ規則（twin なので
+  // import できず、ここに書き下してある）。作成後は変えない（DB トリガー）。
+  const plant =
+    init.plantId != null
+      ? await tx.plant.findUnique({
+          where: { id: init.plantId },
+          select: { ownCompanyId: true },
+        })
+      : null;
   const row = await tx.inventoryMovement.create({
     data: {
       yearMonth: init.key.yearMonth,
       seq: init.key.seq,
+      ...(plant?.ownCompanyId != null
+        ? { ownCompanyId: plant.ownCompanyId }
+        : {}),
       cause: init.cause,
       sourceType: init.sourceType ?? null,
       sourceId: init.sourceId ?? null,

@@ -26,6 +26,7 @@ import {
   sessionUserId,
 } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { companyForUnplaced } from "@/lib/doc-company";
 import {
   PAGE_OWNER_TYPE,
   parsePublishRevisionNote,
@@ -152,6 +153,7 @@ export async function createPage(
       const page = await tx.internalPage.create({
         data: {
           pageNumber,
+          ...(await companyForUnplaced(tx)),
           title: parsed.data.title,
           summary: parsed.data.summary || null,
           folder: parsed.data.folder || null,

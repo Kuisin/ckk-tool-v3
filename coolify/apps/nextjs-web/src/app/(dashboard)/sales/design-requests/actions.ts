@@ -39,6 +39,7 @@ import {
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { companyForDesign } from "@/lib/doc-company";
 import { parseDocKey } from "@/lib/doc-number";
 import { type NotificationType, notify } from "@/lib/notifications";
 import { nextDocumentNumber } from "@/lib/numbering";
@@ -322,6 +323,7 @@ export async function createDesignRequest(
     await prisma.designRequest.create({
       data: {
         requestNumber,
+        ...(await companyForDesign({ quoteKey, orderLineId })),
         trigger: v.trigger,
         quoteYearMonth: quoteKey?.yearMonth ?? null,
         quoteSeq: quoteKey?.seq ?? null,

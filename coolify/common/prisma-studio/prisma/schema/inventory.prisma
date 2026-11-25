@@ -343,6 +343,9 @@ enum InventoryMovementCause {
 
 model InventoryMovement {
   id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   // 伝票番号 MOV-YYYYMM-NNNNN は (year_month, seq) から導出する（lib/doc-number.ts）。
   // 指示書と同型 — uuid を主キーに、番号は一意制約で持つ。
   yearMonth String @map("year_month") @db.Char(6)
@@ -372,11 +375,14 @@ model InventoryMovement {
   /// 製品受入（再研磨）で預り品を入庫した伝票を指している工程（二度計上の印を兼ねる）。
   regrindReceiptSteps    WorkOrderStep[] @relation("StepRegrindReceipt")
 
+  ownCompany OwnCompany @relation("InventoryMovementOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
   @@unique([yearMonth, seq])
   @@index([createdAt, id])
   @@index([sourceType, sourceId])
   @@index([cause, createdAt])
   @@index([movementTypeId])
+  @@index([ownCompanyId])
   @@map("inventory_movements")
   @@schema("app")
 }
@@ -440,6 +446,9 @@ enum StockTakeApprovalStatus {
 
 model StockTake {
   id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   // 棚卸番号 STK-YYYYMM-NNNNN は (year_month, seq) から導出する。
   yearMonth String @map("year_month") @db.Char(6)
   seq       Int
@@ -476,10 +485,13 @@ model StockTake {
 
   lines StockTakeLine[]
 
+  ownCompany OwnCompany @relation("StockTakeOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
   @@unique([yearMonth, seq])
   @@index([status])
   @@index([plantId])
   @@index([updatedAt, id])
+  @@index([ownCompanyId])
   @@map("stock_takes")
   @@schema("app")
 }

@@ -36,7 +36,13 @@ import {
 } from "@/lib/accounting-settings";
 import { recordAudit } from "@/lib/audit";
 import { type Prisma, prisma } from "@/lib/db";
-import { type DocKey, formatDocNumber, parseDocKey } from "@/lib/doc-number";
+import { companyForAccountingDocument } from "@/lib/doc-company-core";
+import {
+  type DocKey,
+  formatDocNumber,
+  legacyDocKey,
+  parseDocKey,
+} from "@/lib/doc-number";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
 
@@ -84,8 +90,7 @@ function toSummary(row: DocumentRow): AccountingDocumentSummary {
       seq: row.seq,
     }),
     invoiceNumber: formatDocNumber("INV", {
-      yearMonth: row.invoiceYearMonth,
-      seq: row.invoiceSeq,
+      ...legacyDocKey(row.invoiceYearMonth, row.invoiceSeq),
     }),
     status: row.status,
     isReversal: row.reversalOfId != null,
@@ -200,8 +205,7 @@ async function fetchInvoiceAccountingPartyByInvoiceRow(
   row: Pick<DocumentRow, "invoiceYearMonth" | "invoiceSeq">,
 ): Promise<{ customerCode: string | null; customerName: string }> {
   const invoice = await fetchInvoice({
-    yearMonth: row.invoiceYearMonth,
-    seq: row.invoiceSeq,
+    ...legacyDocKey(row.invoiceYearMonth, row.invoiceSeq),
   });
   const party = invoice
     ? await fetchInvoiceAccountingParty(invoice.customerBpId)
@@ -263,12 +267,19 @@ export async function postAccountingDocument(
 
   let exportedClosingId: string | null = null;
   await prisma.$transaction(async (tx) => {
+    // 会計文書は請求書の発行元を継ぐ（lib/doc-company-core.ts）。
+    const invoiceRow = await tx.invoice.findUniqueOrThrow({
+      where: { yearMonth_seq: invoiceKey },
+      select: { id: true, ownCompanyId: true },
+    });
     await tx.accountingDocument.create({
       data: {
         yearMonth,
         seq,
-        invoiceYearMonth: invoiceKey.yearMonth,
-        invoiceSeq: invoiceKey.seq,
+        invoiceId: invoiceRow.id,
+        ownCompanyId: companyForAccountingDocument({
+          invoiceCompanyId: invoiceRow.ownCompanyId,
+        }),
         status: "POSTED",
         postingDate,
         settingsRevision,
@@ -383,8 +394,9 @@ export async function reverseAccountingDocumentCore(
       data: {
         yearMonth,
         seq,
-        invoiceYearMonth: original.invoiceYearMonth,
-        invoiceSeq: original.invoiceSeq,
+        invoiceId: original.invoiceId,
+        // 反対仕訳は元の文書と同じ法人（= 同じ請求書の発行元）。
+        ownCompanyId: original.ownCompanyId,
         status: "POSTED",
         postingDate: original.postingDate,
         settingsRevision: original.settingsRevision,

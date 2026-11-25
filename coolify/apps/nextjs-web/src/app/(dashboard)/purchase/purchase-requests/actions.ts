@@ -33,6 +33,7 @@ import {
   targetPlantsInScope,
 } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
+import { companyForPurchase } from "@/lib/doc-company";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -180,6 +181,9 @@ export async function createPurchaseRequest(
     await prisma.purchaseRequest.create({
       data: {
         requestNumber,
+        ...(await companyForPurchase({
+          linePlantIds: creates.map((it) => it.plantId),
+        })),
         status: "DRAFT",
         purpose: v.purpose.trim() || null,
         notes: v.notes.trim() || null,
@@ -693,6 +697,8 @@ export async function convertToPurchaseOrder(
       const po = await tx.materialPurchaseOrder.create({
         data: {
           poNumber,
+          // 依頼から起こした発注書は依頼の発行元を継ぐ（上流 → 拠点 → 既定）。
+          ownCompanyId: prior.ownCompanyId,
           supplierBpId,
           status: "DRAFT",
           totalAmount: 0,

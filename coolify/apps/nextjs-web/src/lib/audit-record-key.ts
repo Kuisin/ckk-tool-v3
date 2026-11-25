@@ -19,7 +19,11 @@ import {
   resolveAuditRecordKeySync,
 } from "./audit-record-key-core";
 import { prisma } from "./db";
-import { parseDocKey, parseOrderLineKey } from "./doc-number";
+import {
+  orderLineWhereKey,
+  parseDocKey,
+  parseOrderLineKey,
+} from "./doc-number";
 
 export interface AuditKeyResolution {
   key: string | null;
@@ -146,14 +150,8 @@ async function resolveLookupKey(
     case "order_lines": {
       const key = parseOrderLineKey(recordId);
       if (!key) return { key: null };
-      const row = await prisma.orderLine.findUnique({
-        where: {
-          acceptanceYearMonth_acceptanceSeq_branch: {
-            acceptanceYearMonth: key.yearMonth,
-            acceptanceSeq: key.seq,
-            branch: key.branch,
-          },
-        },
+      const row = await prisma.orderLine.findFirst({
+        where: orderLineWhereKey(key),
         select,
       });
       return row ? { key: row.id, since: row.createdAt } : { key: null };

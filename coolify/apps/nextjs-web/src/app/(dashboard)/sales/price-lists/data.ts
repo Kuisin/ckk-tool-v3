@@ -18,6 +18,7 @@ import {
   formatPriceListNumber,
   formatProductNumber,
   formatQuoteNumber,
+  legacyDocKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { getTrialPricingSettings } from "@/lib/system-settings";
@@ -222,8 +223,7 @@ export async function fetchRelatedQuotes(
   const byQuote = new Map<string, RelatedQuoteRow>();
   for (const it of items) {
     const number = formatQuoteNumber({
-      yearMonth: it.quoteYearMonth,
-      seq: it.quoteSeq,
+      ...legacyDocKey(it.quoteYearMonth, it.quoteSeq),
     });
     const agg = byQuote.get(number) ?? {
       quoteNumber: number,

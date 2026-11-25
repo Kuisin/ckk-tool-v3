@@ -17,7 +17,11 @@ import type { DeliveryOrder } from "@/components/shipping/delivery-orders/model"
 import type { UnshippedOrderLineRow } from "@/components/shipping/pending-shipments/model";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { formatOrderLineNumber, formatProductNumber } from "@/lib/doc-number";
+import {
+  formatOrderLineNumber,
+  formatProductNumber,
+  legacyDocKey,
+} from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { LINE_CONSUMING_DELIVERY_ORDER_WHERE } from "@/lib/order-line-core";
 import { distributeFinished } from "@/lib/work-order-alloc-core";
@@ -148,8 +152,7 @@ export async function fetchUnshippedOrderLines(): Promise<
     // 出荷書に載りきっている明細はキューに出さない。
     if (unshippedQuantity <= 0) continue;
     const number = formatOrderLineNumber({
-      yearMonth: r.acceptanceYearMonth,
-      seq: r.acceptanceSeq,
+      ...legacyDocKey(r.acceptanceYearMonth, r.acceptanceSeq),
       branch: r.branch,
     });
     out.push({
