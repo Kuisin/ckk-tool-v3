@@ -26,6 +26,7 @@ import {
 import type { Locale } from "./i18n";
 import { missingInspectionSheets } from "./inspection-core";
 import { type PlanAssignee, stepOperability } from "./location-board-core";
+import { markingRange } from "./marking-number";
 import { isStepOverdue } from "./step-due-date-core";
 import { allowedWorkLocationIdsForStep } from "./step-execution";
 import {
@@ -640,7 +641,36 @@ export interface WorkOrderOverview {
   /** 使用素材（未指定は null）。 */
   materialName: string | null;
   plannedQuantity: number;
+  /** 印字番号（割当の注文明細ごと。採番済みのものだけ）。 */
+  markings: MarkingView[];
   steps: WorkOrderStepItem[];
+}
+
+/** 印字番号 1 明細ぶん（lib/marking-number.ts の markingRange）。 */
+export type MarkingView = {
+  first: string;
+  last: string;
+  perLine: string;
+};
+
+/**
+ * 指示書に割り当てられた注文明細の印字番号（割当順・採番済みのみ）。
+ * 範囲は**注文明細の受注数量**で引く — 番号は明細に対して振られていて、
+ * 分割ロットでもどの番号を刻むかは明細全体の通し番号で決まるため。
+ */
+export async function getWorkOrderMarkings(
+  workOrderNumber: number,
+): Promise<MarkingView[]> {
+  const links = await prisma.workOrderOrderLine.findMany({
+    where: { workOrder: { workOrderNumber } },
+    select: { orderLine: { select: { quantity: true, markingBase: true } } },
+    orderBy: { sortOrder: "asc" },
+  });
+  return links.flatMap(({ orderLine }) =>
+    orderLine.markingBase == null
+      ? []
+      : [markingRange(orderLine.markingBase, orderLine.quantity)],
+  );
 }
 
 /**
@@ -729,6 +759,7 @@ export async function getWorkOrderOverview(
       ? localized(asText(wo.materialItem.name), locale)
       : null,
     plannedQuantity: wo.plannedQuantity,
+    markings: await getWorkOrderMarkings(wo.workOrderNumber),
     steps: items,
   };
 }

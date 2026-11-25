@@ -190,6 +190,7 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
     amount: r.amount == null ? null : Number(r.amount),
     deliveryDate: r.deliveryDate?.toISOString().slice(0, 10) ?? null,
     lotNumber: r.lotNumber,
+    markingBase: r.markingBase,
     status: r.status as OrderLineStatus,
     isLocked: r.isLocked,
     // 引当済み数 = この注文明細の予約中（RESERVED）予約の合計。

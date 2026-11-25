@@ -48,7 +48,7 @@ import { missingInspectionSheets } from "@/lib/inspection-core";
 import { QR_KINDS, qrKeyOfKind } from "@/lib/qr-payload";
 import { playLogoutSound, playWarnSound } from "@/lib/sound";
 import type { StepRecordingData } from "@/lib/step-records";
-import type { MyStepView, StepLocationGate } from "@/lib/steps";
+import type { MarkingView, MyStepView, StepLocationGate } from "@/lib/steps";
 import {
   cleanReasonEntries,
   type DefectReasonEntry,
@@ -91,6 +91,8 @@ type Props = {
    * 画面内で読み取ったときと同じ扱い）。
    */
   initialWorkLocationCode?: string | null;
+  /** 印字番号（指示書に割り当てた注文明細ごと。採番済みのみ）。 */
+  markings?: MarkingView[];
   /** この工程の加工プログラム（機械一致が先頭）。 */
   programs?: KioskStepProgram[];
 };
@@ -102,6 +104,7 @@ export function StepExecutionView({
   recording,
   locationGate,
   backTo = "list",
+  markings = [],
   backParams = "",
   initialWorkLocationCode = null,
   programs = [],
@@ -271,6 +274,11 @@ export function StepExecutionView({
             </Text>
             <Title order={3}>{step.stepName}</Title>
             <Text c="dimmed">{step.productName}</Text>
+            {markings.map((mk) => (
+              <Text ff="monospace" key={mk.perLine} size="sm">
+                {fillMessage(m.steps.card.marking, mk)}
+              </Text>
+            ))}
             <Group gap="md" mt="xs">
               {step.inputQuantity != null && (
                 <Text size="sm">

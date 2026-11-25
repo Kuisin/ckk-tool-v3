@@ -256,6 +256,14 @@ model OrderLine {
   // 通し連番（指示書番号と共用）。統合ロット（1 指示書に複数明細）では
   // 同じロット番号を複数明細が共有するため unique ではない。
   lotNumber   Int?            @map("lot_number")
+  /// 印字番号の基数（A{base}-NNN の base）。製品にレーザーで刻む通し番号で、
+  /// 注文請書・ロット番号とは**別の**通し連番（200000 始まり・月次リセットなし）。
+  /// **DB が振る** — 明細が確定した（branch が入った）更新で BEFORE トリガー
+  /// order_lines_marking_base が SEQUENCE app.marking_number_seq から nextval し、
+  /// 一度入った値の変更はトリガーが拒否する。アプリはこの列を書かない。
+  /// 1 本ずつ刻むなら A{base}-001..A{base}-{数量}、明細ごとなら A{base} —
+  /// どちらも導けるので「どちらで刻むか」の列は持たない（lib/marking-number.ts）。
+  markingBase Int?            @unique @map("marking_base")
   isLocked    Boolean         @default(false) @map("is_locked") // 承認依頼中ロック
   endUserBpId String?         @map("end_user_bp_id") @db.Uuid // 最終需要家は行ごとに異なり得る
   confirmedAt DateTime?       @map("confirmed_at") @db.Timestamptz(6)
