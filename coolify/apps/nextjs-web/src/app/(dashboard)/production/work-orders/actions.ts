@@ -55,12 +55,9 @@ import {
   listRegrindRoutes,
   type RouteResolveInput,
   resolveRouteVersionTx,
+  routeStepsSameTx,
 } from "@/lib/product-routes";
-import {
-  type RouteStepSnapshot,
-  type RouteView,
-  routeStepsEqual,
-} from "@/lib/product-routes-core";
+import type { RouteStepSnapshot, RouteView } from "@/lib/product-routes-core";
 import {
   type ActionResult,
   actionError,
@@ -743,7 +740,8 @@ async function resolveRouteVersionsTx(
     });
     const same =
       base != null &&
-      routeStepsEqual(
+      (await routeStepsSameTx(
+        tx,
         base.steps.map((s) => ({
           processStepId: s.processStepId,
           sortOrder: s.sortOrder,
@@ -754,7 +752,7 @@ async function resolveRouteVersionsTx(
           lotInputMode: s.lotInputMode,
         })),
         input.steps,
-      );
+      ));
     return {
       routeVersionId: same ? versionId : null,
       prepRouteVersionId: null,

@@ -407,6 +407,7 @@ function mapRow(
     plannedQuantity: number;
     approvalStatus: string;
     status: string;
+    abortedAt: Date | null;
     requestedAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
@@ -425,6 +426,7 @@ function mapRow(
     plannedQuantity: r.plannedQuantity,
     approvalStatus: r.approvalStatus,
     status: r.status,
+    aborted: r.abortedAt != null,
     requestedAt: iso(r.requestedAt),
     updatedAt: r.updatedAt.toISOString(),
   };

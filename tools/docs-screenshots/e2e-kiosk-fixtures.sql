@@ -27,6 +27,13 @@ UPDATE app.inspection_records SET status='PASS', approved_by=NULL, approved_at=N
  WHERE id='aa000000-0000-4000-8000-000000000001';
 INSERT INTO app.inspection_record_items (inspection_record_id, template_item_id, measured_value, measured_values, is_pass)
 SELECT 'aa000000-0000-4000-8000-000000000001', i.id, NULL,
-       CASE WHEN i.input_type='NUMBER' THEN '["6.01","5.99"]'::jsonb ELSE '["true"]'::jsonb END, true
+       -- 型ごとに正しい形で入れる。以前は数値以外を全部 "true" にしていたので、
+       -- 単一選択（表面仕上げ）に選択肢に無い値が入り、検査表に生の true が出た。
+       CASE i.input_type
+         WHEN 'NUMBER' THEN '["6.01","5.99"]'::jsonb
+         WHEN 'BOOLEAN' THEN '["true"]'::jsonb
+         WHEN 'SELECT_SINGLE' THEN jsonb_build_array(i.options->0->>'value')
+         ELSE '["true"]'::jsonb
+       END, true
 FROM app.inspection_template_items i WHERE i.template_id=9102
 ON CONFLICT DO NOTHING;

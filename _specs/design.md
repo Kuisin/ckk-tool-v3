@@ -982,6 +982,11 @@ Paper (withBorder, p="md", radius="md")
   `onCancel` を渡して差し替える**（`ApprovalFlowEditor` の既定は承認設定 MS0B
   への遷移で、そのままだと別画面へ飛ばされる）。
 - モバイルでは見出しと編集ボタンを縦に積み、ボタンを全幅にする（§20.2）。
+- **閲覧へ戻るのは新しい値が届いてから。** `close` は `router.refresh()` と
+  閉じる操作を 1 つの遷移（`startTransition`）に入れるので、サーバーが描き直した
+  `view` が届くまで編集側が出たままになり、両方が一緒に切り替わる。以前は先に
+  閉じていたため、保存の直後に一瞬だけ古い値が出ていた（SY0J 会計連携）。
+  編集側で `router.refresh()` を呼んでいても害は無い。
 
 搭載画面: フォーム詳細の 承認 / 共有 タブ、回答詳細の 回答 タブ。
 
@@ -1689,6 +1694,14 @@ Use `notifications.show()` from `@mantine/notifications` for:
 notifications.show({ title: '保存しました', message: '見積書を作成しました', color: 'green' })
 notifications.show({ title: 'エラー', message: '保存に失敗しました', color: 'red' })
 ```
+
+**A success clears earlier error toasts.** When a `green` toast appears, every
+`red` toast that was already on screen (or queued) is hidden — the error described
+an attempt that has since succeeded, and leaving it next to the success (often on
+the next page, after the redirect) makes it unclear which one is current. This is
+applied once for the whole app (`components/layout/ToastHygiene.tsx`, rule in
+`lib/toast-hygiene-core.ts`), so screens keep calling `notifications.show()` and do
+not clean up themselves. Yellow / blue toasts are left alone.
 
 Do **not** use toast for:
 - Destructive confirmations (use modal instead)

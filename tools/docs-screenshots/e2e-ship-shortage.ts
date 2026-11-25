@@ -156,6 +156,20 @@ async function main(): Promise<void> {
       `href=${href}`,
     );
 
+    // A3b: 文字とアイコンが 1 行に収まっている（アイコンだけ次の行へ落ちていた）
+    const link = shortageDialog.getByRole("link", { name: /在庫を見る/ });
+    const lines = await link.evaluate((el) => {
+      const icon = el.querySelector("svg");
+      const box = el.getBoundingClientRect();
+      const ib = icon?.getBoundingClientRect();
+      return { height: Math.round(box.height), iconTop: ib ? Math.round(ib.top - box.top) : -1 };
+    });
+    check(
+      "A3b 「在庫を見る」のアイコンが文字と同じ行にある（折り返さない）",
+      lines.height <= 30 && lines.iconTop >= 0 && lines.iconTop < 16,
+      JSON.stringify(lines),
+    );
+
     // A4: やめる → 出荷されていない
     await page.getByRole("button", { name: "キャンセル" }).click();
     await shortageDialog.waitFor({ state: "hidden", timeout: 10_000 });
