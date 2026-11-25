@@ -12,9 +12,12 @@
 
 /** 一覧 (PD07) の1行。 */
 export interface MovementRow {
-  /** 導出文書番号（MOV-YYYYMM-NNNNN）。URL id にも使う。 */
+  /** 伝票の id（`CKK~MOV-2026-00001` — 法人コード付き）。URL id にも使う。 */
   id: string;
+  /** 伝票番号（`MOV-2026-00001` — 表示用の番号だけ）。 */
   movementNumber: string;
+  /** 旧番号（MOV-YYYYMM-NNNNN）。検索と詳細の「旧番号」用。無ければ null。 */
+  legacyNumber: string | null;
   /** WORK_ORDER_COMPLETION / DELIVERY_SHIPMENT / MATERIAL_RECEIPT / … */
   cause: string;
   plantId: number | null;
@@ -22,7 +25,7 @@ export interface MovementRow {
   plantName: string | null;
   /** 元になった書類のテーブル名（audit_logs と同じ多態規約）。 */
   sourceType: string | null;
-  /** 元書類の業務キー。 */
+  /** 元書類の業務キー（番号を持つ書類は id の姿 `CKK~PO-…`。表示は docNo）。 */
   sourceId: string | null;
   lineCount: number;
   notes: string | null;

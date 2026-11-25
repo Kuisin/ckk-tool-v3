@@ -4,29 +4,10 @@ import { describe, expect, it } from "vitest";
 import {
   AUDIT_KEY_SHAPES,
   auditKeyShape,
-  compositeKey,
   isUuid,
   resolveAuditRecordKeySync,
 } from "./audit-record-key-core";
-import {
-  formatDocNumber,
-  formatOrderLineNumber,
-  parseDocKey,
-} from "./doc-number";
-
-describe("compositeKey / parseDocKey", () => {
-  it("(yearMonth, seq) と表示番号は可逆", () => {
-    const key = parseDocKey("QOT-202608-00003");
-    expect(key).toEqual({ yearMonth: "202608", seq: 3 });
-    if (!key) throw new Error("parseDocKey returned null");
-    expect(formatDocNumber("QOT", key)).toBe("QOT-202608-00003");
-  });
-
-  it("seq は padding しない", () => {
-    expect(compositeKey("202608", 1)).toBe("202608:1");
-    expect(compositeKey("202608", 42)).toBe("202608:42");
-  });
-});
+import { DOC_TABLE_PREFIX } from "./doc-number";
 
 describe("resolveAuditRecordKeySync", () => {
   it("identity 形は record_id をそのまま返す", () => {
@@ -36,13 +17,54 @@ describe("resolveAuditRecordKeySync", () => {
     ).toBe("kiosk.unlock_pin");
   });
 
-  it("docKey 形は法人を引く 1 クエリへ委ねる（undefined）", () => {
+  it("docKey 形: 法人コード付きの新しい番号はその場で参照になる", () => {
+    // id（URL・画面の DTO の姿）
+    expect(resolveAuditRecordKeySync("quotes", "CKK~QOT-2026-00003")).toBe(
+      "CKK/QOT-2026-00003",
+    );
+    // 参照（行の doc_ref）
+    expect(resolveAuditRecordKeySync("estimates", "CKK/EST-2026-00001")).toBe(
+      "CKK/EST-2026-00001",
+    );
+    // 番号設計 PR-C まで uuid をキーにしていた表も同じ参照に揃う
+    expect(
+      resolveAuditRecordKeySync(
+        "material_purchase_orders",
+        "SUB~PO-2026-00001",
+      ),
+    ).toBe("SUB/PO-2026-00001");
+    expect(
+      resolveAuditRecordKeySync("design_requests", "CKK/DSG-2026-00007"),
+    ).toBe("CKK/DSG-2026-00007");
+  });
+
+  it("docKey 形: 注文明細のキーは line_ref", () => {
+    expect(
+      resolveAuditRecordKeySync("order_lines", "CKK~ORD-2026-00001-02"),
+    ).toBe("CKK/ORD-2026-00001-02");
+    // 番号だけ・旧番号は法人を引きに行く
+    expect(
+      resolveAuditRecordKeySync("order_lines", "ORD-2026-00001-02"),
+    ).toBeUndefined();
+    expect(
+      resolveAuditRecordKeySync("order_lines", "ORD-202608-00001-02"),
+    ).toBeUndefined();
+  });
+
+  it("docKey 形: 番号だけ・旧番号は法人を引く 1 クエリへ委ねる（undefined）", () => {
+    // 同じ番号が 2 つの法人にあり得るので、番号だけでは決められない
+    expect(
+      resolveAuditRecordKeySync("quotes", "QOT-2026-00003"),
+    ).toBeUndefined();
     expect(
       resolveAuditRecordKeySync("quotes", "QOT-202608-00003"),
     ).toBeUndefined();
-    // 法人コード付きの参照で渡されても同じ
+    // 法人コード付きでも旧番号は新しい参照を引く必要がある
     expect(
       resolveAuditRecordKeySync("estimates", "CKK/EST-202608-00001"),
+    ).toBeUndefined();
+    expect(
+      resolveAuditRecordKeySync("material_purchase_orders", "PO-202608-00001"),
     ).toBeUndefined();
   });
 
@@ -82,9 +104,10 @@ describe("resolveAuditRecordKeySync", () => {
   });
 
   it("numberToUuid 形は 1 クエリが要るので undefined を返す（呼び出し側に委ねる）", () => {
+    // 指示書の record_id はロット番号（通し連番）— 書類番号 WOR-… ではない。
     expect(resolveAuditRecordKeySync("work_orders", "4711")).toBeUndefined();
     expect(
-      resolveAuditRecordKeySync("material_purchase_orders", "PO-202608-00001"),
+      resolveAuditRecordKeySync("form_responses", "FRM-202608-00001"),
     ).toBeUndefined();
   });
 
@@ -112,11 +135,17 @@ describe("isUuid", () => {
   });
 });
 
-describe("order_lines の表示番号は可逆（numberToUuid 側の解決に使う）", () => {
-  it("枝番つき 3 パート番号を組み立てられる", () => {
-    expect(
-      formatOrderLineNumber({ yearMonth: "202608", seq: 1, branch: 1 }),
-    ).toBe("ORD-202608-00001-01");
+describe("番号を DB が払い出す表のキーは参照（docKey 形）", () => {
+  it("指示書・外注依頼を除く全ての表が docKey 形で登録されている", () => {
+    // 指示書はロット番号で、外注依頼は工程の id で指される（migration
+    // 20261126230000 の app.qualify_audit_record_key と同じ除外）。
+    const byOtherKey = new Set(["work_orders", "outsource_orders"]);
+    for (const table of Object.keys(DOC_TABLE_PREFIX)) {
+      if (byOtherKey.has(table)) continue;
+      expect(auditKeyShape(table), table).toBe("docKey");
+    }
+    expect(auditKeyShape("order_lines")).toBe("docKey");
+    expect(auditKeyShape("work_orders")).toBe("numberToUuid");
   });
 });
 

@@ -3,7 +3,10 @@
 /**
  * Server Actions — 素材発注書 (app.material_purchase_orders, PU02)。
  *
- * - 採番: nextDocumentNumber("PURCHASE") → PO-YYYYMM-NNNNN（文字列保存、月次リセット）。
+ * - 採番: DB が INSERT 時に払い出す（PO-FFFF-NNNNN。自社法人 × 会計年度）。
+ *   アプリは番号を渡さず、作った行の doc_ref を読み戻す。
+ * - 引数の poNumber は **id の姿**（`CKK~PO-2026-00001` — 法人コード付き）。
+ *   行は doc_ref で引く（番号だけでは法人が決まらない）。
  * - 金額はサーバー側で計算（amount = quantity × unitPrice、totalAmount = Σamount）。
  * - 承認フロー DRAFT→REQUESTED→APPROVED→ORDERED→COMPLETED（+CANCELLED）は
  *   指示書の承認と同型の row-workflow: 遷移列（at/by）+ history Json + audit。
@@ -35,10 +38,10 @@ import {
 } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import { companyForPurchase } from "@/lib/doc-company";
+import { docIdOf, docNo, parseDocKey } from "@/lib/doc-number";
 import { requireDocRef } from "@/lib/doc-ref";
 import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
-import { allocateDocumentKey, nextDocumentNumber } from "@/lib/numbering";
 import { learnPurchaseAliases } from "@/lib/purchase-intake";
 import {
   type ActionResult,
@@ -59,6 +62,14 @@ function revalidate(poNumber?: string) {
     revalidatePath(`${BASE_PATH}/${poNumber}`);
     revalidatePath(`${BASE_PATH}/${poNumber}/edit`);
   }
+}
+
+/**
+ * 画面から渡る id（`CKK~PO-2026-00001`）→ 行を引く where。
+ * 形が違う id（番号だけ・旧番号）はどの行にも当たらない参照にする = 対象なし。
+ */
+function wherePo(id: string): { docRef: string } {
+  return { docRef: parseDocKey(id, "PO")?.docRef ?? "(none)" };
 }
 
 // ── 入力スキーマ ─────────────────────────────────────────────────────────────
@@ -250,14 +261,13 @@ export async function createPurchaseOrder(
     const unitError = await unitMismatchMessage(v.items, tr);
     if (unitError) return actionError(unitError);
     const actor = await getCurrentActorId();
-    const poNumber = await nextDocumentNumber("PURCHASE");
     const creates = await buildItemCreates(v.items);
     const totalAmount = creates.reduce((sum, it) => sum + it.amount, 0);
 
-    await prisma.$transaction(async (tx) => {
-      await tx.materialPurchaseOrder.create({
+    // 発注番号は DB が払い出す（渡さない）。作った行の参照を読み戻す。
+    const created = await prisma.$transaction(async (tx) => {
+      return tx.materialPurchaseOrder.create({
         data: {
-          poNumber,
           ...(await companyForPurchase(
             { linePlantIds: creates.map((it) => it.plantId) },
             tx,
@@ -271,8 +281,10 @@ export async function createPurchaseOrder(
           history: toHistoryJson([entry("CREATE", actor)]),
           items: { create: creates },
         },
+        select: { docRef: true },
       });
     });
+    const poNumber = docIdOf(created);
 
     await recordAudit({
       action: "CREATE",
@@ -321,7 +333,7 @@ export async function updatePurchaseOrder(
   }
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
-      where: { poNumber },
+      where: wherePo(poNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -439,7 +451,7 @@ export async function requestPurchaseApproval(
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
-      where: { poNumber },
+      where: wherePo(poNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -531,7 +543,7 @@ export async function approvePurchaseOrder(
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
-      where: { poNumber },
+      where: wherePo(poNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -603,7 +615,7 @@ export async function rejectPurchaseOrder(
   if (!trimmed) return actionError(tr("common.enterAReasonForSendingIt"));
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
-      where: { poNumber },
+      where: wherePo(poNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -671,7 +683,7 @@ export async function orderPurchaseOrder(
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
-      where: { poNumber },
+      where: wherePo(poNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -754,7 +766,7 @@ export async function receivePurchaseOrderItems(
   }
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
-      where: { poNumber },
+      where: wherePo(poNumber),
       include: { items: { orderBy: { sortOrder: "asc" } } },
     });
     if (!prior)
@@ -770,13 +782,11 @@ export async function receivePurchaseOrderItems(
     const actor = await getCurrentActorId();
     const now = new Date();
     const receivedAt = todayJst();
-    // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。
     // **この入荷 1 回 = 伝票 1 枚**（受け取った明細が N 行ぶら下がる）。
-    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
+    // 伝票番号は DB が INSERT 時に払い出す。
 
     const result = await prisma.$transaction(async (tx) => {
       const openMovement = movementOpener(tx, {
-        key: movementKey,
         cause: "MATERIAL_RECEIPT",
         sourceType: "material_purchase_orders",
         sourceId: poNumber,
@@ -825,7 +835,7 @@ export async function receivePurchaseOrderItems(
             unit: it.unit,
             receivedAt,
             notes: tr("purchase.purchaseOrderActions.partialReceiptNote", {
-              poNumber,
+              poNumber: docNo(poNumber),
             }),
             createdBy: actor,
           },
@@ -870,7 +880,7 @@ export async function receivePurchaseOrderItems(
         action: "CREATE",
         tableName: "material_receipts",
         recordId: id,
-        after: { poNumber, source: "purchase_order_receive" },
+        after: { poNumber: docNo(poNumber), source: "purchase_order_receive" },
       });
     }
     if (result.completed) {
@@ -891,7 +901,7 @@ export async function receivePurchaseOrderItems(
           userIds: recipients,
           type: "PURCHASE",
           title: tr("purchase.purchaseOrderActions.receiptCompletedNotice", {
-            poNumber,
+            poNumber: docNo(poNumber),
           }),
           linkPath: `/purchase/purchase-orders/${encodeURIComponent(poNumber)}`,
         });
@@ -928,7 +938,7 @@ export async function completePurchaseOrder(
   try {
     // 残数量の一括入荷 = 分納ロジックへ委譲（監査 P2-5）
     const prior = await prisma.materialPurchaseOrder.findUnique({
-      where: { poNumber },
+      where: wherePo(poNumber),
       include: { items: { orderBy: { sortOrder: "asc" } } },
     });
     if (!prior)
@@ -992,7 +1002,7 @@ export async function closeShortPurchaseOrder(
   }
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
-      where: { poNumber },
+      where: wherePo(poNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -1056,7 +1066,7 @@ export async function cancelPurchaseOrder(
   if (!trimmed) return actionError(tr("common.enterAReasonForCancelling"));
   try {
     const prior = await prisma.materialPurchaseOrder.findUnique({
-      where: { poNumber },
+      where: wherePo(poNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -1155,7 +1165,7 @@ export async function learnMaterialOrderAliases(payload: {
   const authz = await checkPermission("purchase_order", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   const saved = await prisma.materialPurchaseOrder.findUnique({
-    where: { poNumber: payload.poNumber },
+    where: wherePo(payload.poNumber),
     select: {
       supplierBpId: true,
       createdBy: true,

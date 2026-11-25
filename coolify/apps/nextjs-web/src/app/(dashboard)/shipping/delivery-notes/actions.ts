@@ -54,7 +54,7 @@ async function deliveryNoteInScope(
 ): Promise<boolean> {
   if (access.kind === "ALL") return true;
   const row = await prisma.deliveryNote.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     select: {
       createdBy: true,
       deliveryOrder: { select: { fromPlantId: true } },
@@ -153,10 +153,10 @@ function toItemData(
  * 注文日 → 出荷日 → 今日 と、請求書とまったく同じ落ち方にする。
  */
 async function resolveNoteLineTax(
-  deliveryOrderKey: { yearMonth: string; seq: number } | null,
+  deliveryOrderId: string | null,
 ): Promise<(itemId: number) => { categoryId: number | null; rate: number }> {
   const catalog = await loadTaxCatalog();
-  if (deliveryOrderKey == null) {
+  if (deliveryOrderId == null) {
     // 出荷書が辿れない納品書（本来は作られない）。製品も注文日も引けないので、
     // 既定の区分・今日の率に落ちる。
     const fallback = resolveLineTax(catalog, {
@@ -167,7 +167,7 @@ async function resolveNoteLineTax(
     return () => fallback;
   }
   const order = await prisma.deliveryOrder.findUnique({
-    where: { yearMonth_seq: deliveryOrderKey },
+    where: { id: deliveryOrderId },
     select: {
       shippedAt: true,
       customerBp: {
@@ -258,15 +258,12 @@ export async function searchEndUserOptions(
  * 製品別 Σ数量 ≦ 出荷数量。違反行は製品名入りのエラー文字列を返す。
  */
 async function validateItemsAgainstShipment(
-  shpKey: { yearMonth: string; seq: number },
+  deliveryOrderId: string,
   items: { itemId: string | number; quantity: number }[],
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   const shipItems = await prisma.deliveryOrderItem.findMany({
-    where: {
-      deliveryOrderYearMonth: shpKey.yearMonth,
-      deliveryOrderSeq: shpKey.seq,
-    },
+    where: { deliveryOrderId },
     select: { itemId: true, quantity: true },
   });
   // 鍵は**品目 id**（items.id）— 出荷明細も納品明細も品目で製品を指す。
@@ -347,7 +344,7 @@ export async function updateDeliveryNote(
   }
   try {
     const prior = await prisma.deliveryNote.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: {
         id: true,
         deliveryMethod: true,
@@ -355,20 +352,16 @@ export async function updateDeliveryNote(
         endUserBpId: true,
         includePrice: true,
         notes: true,
-        deliveryOrderYearMonth: true,
-        deliveryOrderSeq: true,
+        deliveryOrderId: true,
         items: {
           orderBy: { sortOrder: "asc" },
           select: { itemId: true, quantity: true, notes: true },
         },
       },
     });
-    if (prior?.deliveryOrderYearMonth && prior.deliveryOrderSeq != null) {
+    if (prior) {
       const itemsError = await validateItemsAgainstShipment(
-        {
-          yearMonth: prior.deliveryOrderYearMonth,
-          seq: prior.deliveryOrderSeq,
-        },
+        prior.deliveryOrderId,
         v.items,
         tr,
       );
@@ -376,18 +369,11 @@ export async function updateDeliveryNote(
     }
     // 税はトランザクションの外で解決しておく（読むだけ・時間のかかる I/O を
     // トランザクションに入れない）。
-    const lineTaxOf = await resolveNoteLineTax(
-      prior?.deliveryOrderYearMonth && prior.deliveryOrderSeq != null
-        ? {
-            yearMonth: prior.deliveryOrderYearMonth,
-            seq: prior.deliveryOrderSeq,
-          }
-        : null,
-    );
+    const lineTaxOf = await resolveNoteLineTax(prior?.deliveryOrderId ?? null);
     await prisma.$transaction(async (tx) => {
       // status を where に含めた updateMany で原子的にガードする。
       const updated = await tx.deliveryNote.updateMany({
-        where: { ...key, status: "DRAFT" },
+        where: { docRef: key.docRef, status: "DRAFT" },
         data: {
           deliveryMethod: v.deliveryMethod,
           salesRepId: v.salesRepId?.trim() || null,
@@ -403,13 +389,10 @@ export async function updateDeliveryNote(
         );
       }
       // 明細は全置換（DRAFT のみのため参照はまだ無い）。
-      await tx.deliveryNoteItem.deleteMany({
-        where: {
-          deliveryNoteYearMonth: key.yearMonth,
-          deliveryNoteSeq: key.seq,
-        },
-      });
       if (!prior) throw new Error("delivery note not found");
+      await tx.deliveryNoteItem.deleteMany({
+        where: { deliveryNoteId: prior.id },
+      });
       await tx.deliveryNoteItem.createMany({
         data: v.items.map((it, i) => ({
           deliveryNoteId: prior.id,
@@ -466,7 +449,7 @@ export async function issueDeliveryNote(number: string): Promise<ActionResult> {
     // 出荷書（SHIPPED にならなかった側）の納品書が発行済みになると、取り消す
     // 経路が無い。納品済みにするときと同じ条件（下の markDelivered）。
     const note = await prisma.deliveryNote.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { deliveryOrder: { select: { status: true } } },
     });
     if (note && note.deliveryOrder.status !== "SHIPPED") {
@@ -475,7 +458,7 @@ export async function issueDeliveryNote(number: string): Promise<ActionResult> {
       );
     }
     const updated = await prisma.deliveryNote.updateMany({
-      where: { ...key, status: "DRAFT" },
+      where: { docRef: key.docRef, status: "DRAFT" },
       data: { status: "ISSUED" },
     });
     if (updated.count === 0) {
@@ -513,7 +496,7 @@ export async function markDelivered(number: string): Promise<ActionResult> {
   try {
     // 出荷書がまだ出ていない納品書を納品済みにはできない（出荷 → 納品の順）。
     const note = await prisma.deliveryNote.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { deliveryOrder: { select: { status: true } } },
     });
     if (note && note.deliveryOrder.status !== "SHIPPED") {
@@ -522,7 +505,7 @@ export async function markDelivered(number: string): Promise<ActionResult> {
       );
     }
     const updated = await prisma.deliveryNote.updateMany({
-      where: { ...key, status: "ISSUED" },
+      where: { docRef: key.docRef, status: "ISSUED" },
       data: { status: "DELIVERED", deliveredAt: new Date() },
     });
     if (updated.count === 0) {

@@ -39,20 +39,28 @@ import { type Prisma, prisma } from "@/lib/db";
 import { companyForAccountingDocument } from "@/lib/doc-company-core";
 import {
   type DocKey,
-  formatDocNumber,
-  legacyDocKey,
-  parseDocKey,
+  docIdOf,
+  docNumberOf,
+  docNumberParts,
 } from "@/lib/doc-number";
-import { allocateDocumentKey } from "@/lib/numbering";
+import { toDocRef } from "@/lib/doc-ref";
 import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
 
 export type { PersistedJournalLine } from "@/lib/accounting-documents-core";
 export { lineToJournalRow } from "@/lib/accounting-documents-core";
 
-/** 会計文書 1 行（画面の履歴パネル・一覧向け。明細行は持たない）。 */
+/**
+ * 会計文書 1 行（画面の履歴パネル・一覧向け。明細行は持たない）。
+ *
+ * `documentNumber` / `invoiceNumber` は **id の姿**（`CKK~ACC-2026-00001`）—
+ * 画面がリンクと Server Action にそのまま渡す。表示するときは `<DocNumber>` /
+ * `docNo()` で番号だけにする（lib/doc-number.ts）。
+ */
 export interface AccountingDocumentSummary {
   documentNumber: string;
   invoiceNumber: string;
+  /** 振り直し前の番号（旧 ACC-YYYYMM-NNNNN）。検索用。無ければ null。 */
+  legacyNumber: string | null;
   status: "POSTED" | "REVERSED";
   /** 反対仕訳文書か（`reversalOf` が入っているか）。 */
   isReversal: boolean;
@@ -72,26 +80,41 @@ export interface AccountingDocumentWithRows extends AccountingDocumentSummary {
 
 type DocumentRow = NonNullable<Awaited<ReturnType<typeof findDocumentRow>>>;
 
+const DOCUMENT_INCLUDE = {
+  lines: { orderBy: { sortOrder: "asc" } },
+  postedByUser: { select: { displayName: true } },
+  reversedByUser: { select: { displayName: true } },
+  // 元の請求書は uuid（invoice_id）で指す。番号は関連から読む。
+  invoice: { select: { docRef: true, legacyNumber: true } },
+} satisfies Prisma.AccountingDocumentInclude;
+
 function findDocumentRow(where: Prisma.AccountingDocumentWhereInput) {
   return prisma.accountingDocument.findFirst({
     where,
-    include: {
-      lines: { orderBy: { sortOrder: "asc" } },
-      postedByUser: { select: { displayName: true } },
-      reversedByUser: { select: { displayName: true } },
-    },
+    include: DOCUMENT_INCLUDE,
   });
+}
+
+/**
+ * 画面・Server Action が渡す会計文書の id（`CKK~ACC-…`・参照・番号だけ・旧番号）
+ * → 参照。見つからない・番号だけで 2 つの法人に当たるときは null。
+ */
+async function accountingDocRef(
+  documentNumber: string,
+): Promise<string | null> {
+  return toDocRef("accounting_documents", documentNumber).catch(() => null);
+}
+
+/** 請求書の連番（伝票番号の欄に出す）。番号 INV-FFFF-NNNNN の NNNNN。 */
+function invoiceSlipNo(invoiceKey: DocKey): number | null {
+  return docNumberParts(invoiceKey.docRef)?.seq ?? null;
 }
 
 function toSummary(row: DocumentRow): AccountingDocumentSummary {
   return {
-    documentNumber: formatDocNumber("ACC", {
-      yearMonth: row.yearMonth,
-      seq: row.seq,
-    }),
-    invoiceNumber: formatDocNumber("INV", {
-      ...legacyDocKey(row.invoiceYearMonth, row.invoiceSeq),
-    }),
+    documentNumber: docIdOf(row),
+    invoiceNumber: docIdOf(row.invoice),
+    legacyNumber: row.legacyNumber,
     status: row.status,
     isReversal: row.reversalOfId != null,
     postingDate: row.postingDate.toISOString(),
@@ -134,13 +157,13 @@ export async function fetchActiveAccountingDocument(
   invoiceKey: DocKey,
 ): Promise<AccountingDocumentWithRows | null> {
   const row = await findDocumentRow({
-    invoiceYearMonth: invoiceKey.yearMonth,
-    invoiceSeq: invoiceKey.seq,
+    invoice: { docRef: invoiceKey.docRef },
     status: "POSTED",
     reversalOfId: null,
   });
   if (!row) return null;
-  const invoiceNumber = formatDocNumber("INV", invoiceKey);
+  // CSV に出すのは番号（人と会計ソフトが読む姿）。
+  const invoiceNumber = docNumberOf(invoiceKey);
   const party = await fetchInvoiceAccountingPartyByInvoiceRow(row);
   const rows = row.lines.map((line) =>
     lineToJournalRow(toPersistedLine(line), {
@@ -148,7 +171,7 @@ export async function fetchActiveAccountingDocument(
       invoiceNumber,
       customerCode: party.customerCode ?? "",
       customerName: party.customerName,
-      slipNo: String(invoiceKey.seq),
+      slipNo: String(invoiceSlipNo(invoiceKey) ?? ""),
     }),
   );
   return { ...toSummary(row), rows };
@@ -159,27 +182,23 @@ export async function fetchAccountingDocumentHistory(
   invoiceKey: DocKey,
 ): Promise<AccountingDocumentSummary[]> {
   const rows = await prisma.accountingDocument.findMany({
-    where: {
-      invoiceYearMonth: invoiceKey.yearMonth,
-      invoiceSeq: invoiceKey.seq,
-    },
-    include: {
-      lines: { orderBy: { sortOrder: "asc" } },
-      postedByUser: { select: { displayName: true } },
-      reversedByUser: { select: { displayName: true } },
-    },
+    where: { invoice: { docRef: invoiceKey.docRef } },
+    include: DOCUMENT_INCLUDE,
     orderBy: { postedAt: "desc" },
   });
   return rows.map(toSummary);
 }
 
-/** 会計文書番号 → 文書番号だけ（一覧のリンク先に請求書番号が要るため）。 */
+/**
+ * 会計文書の id → 文書 1 件（一覧のリンク先に請求書番号が要るため）。
+ * id（`CKK~ACC-…`）・参照・番号だけ・旧番号のどれでも受ける。
+ */
 export async function fetchAccountingDocumentByNumber(
   documentNumber: string,
 ): Promise<AccountingDocumentSummary | null> {
-  const key = parseDocKey(documentNumber, "ACC");
-  if (!key) return null;
-  const row = await findDocumentRow({ yearMonth: key.yearMonth, seq: key.seq });
+  const docRef = await accountingDocRef(documentNumber);
+  if (!docRef) return null;
+  const row = await findDocumentRow({ docRef });
   return row ? toSummary(row) : null;
 }
 
@@ -189,24 +208,18 @@ export async function fetchAccountingDocuments(
 ): Promise<AccountingDocumentSummary[]> {
   const rows = await prisma.accountingDocument.findMany({
     where: status ? { status } : undefined,
-    include: {
-      lines: { orderBy: { sortOrder: "asc" } },
-      postedByUser: { select: { displayName: true } },
-      reversedByUser: { select: { displayName: true } },
-    },
+    include: DOCUMENT_INCLUDE,
     orderBy: { postedAt: "desc" },
     take: 1000,
   });
   return rows.map(toSummary);
 }
 
-/** `fetchInvoiceAccountingParty` を文書行（invoiceYearMonth/Seq）から呼ぶ薄いラッパ。 */
+/** `fetchInvoiceAccountingParty` を文書行（元の請求書の参照）から呼ぶ薄いラッパ。 */
 async function fetchInvoiceAccountingPartyByInvoiceRow(
-  row: Pick<DocumentRow, "invoiceYearMonth" | "invoiceSeq">,
+  row: Pick<DocumentRow, "invoice">,
 ): Promise<{ customerCode: string | null; customerName: string }> {
-  const invoice = await fetchInvoice({
-    ...legacyDocKey(row.invoiceYearMonth, row.invoiceSeq),
-  });
+  const invoice = await fetchInvoice({ docRef: row.invoice.docRef });
   const party = invoice
     ? await fetchInvoiceAccountingParty(invoice.customerBpId)
     : { customerCode: null };
@@ -228,19 +241,28 @@ export async function postAccountingDocument(
 ): Promise<ActionResult<AccountingDocumentWithRows>> {
   const invoice = await fetchInvoice(invoiceKey);
   if (!invoice)
-    return actionError(
-      `Invoice not found: ${formatDocNumber("INV", invoiceKey)}`,
-    );
+    return actionError(`Invoice not found: ${docNumberOf(invoiceKey)}`);
+  // 番号・旧番号・発行元は行から読む（画面の DTO の invoiceNumber は id の姿）。
+  const invoiceRow = await prisma.invoice.findUnique({
+    where: { docRef: invoiceKey.docRef },
+    select: { id: true, ownCompanyId: true, legacyNumber: true },
+  });
+  if (!invoiceRow)
+    return actionError(`Invoice not found: ${docNumberOf(invoiceKey)}`);
+  const invoiceNumber = docNumberOf(invoiceKey);
 
   const settings = await getAccountingSettings();
   const party = await fetchInvoiceAccountingParty(invoice.customerBpId);
   const input = {
-    invoiceNumber: invoice.invoiceNumber,
+    invoiceNumber,
+    // 振り直し前の番号（旧 INV-YYYYMM-NNNNN）。摘要に括弧で添える
+    // （accounting-export-core buildJournalRows）。
+    legacyInvoiceNumber: invoiceRow.legacyNumber,
     customerName: invoice.customerName,
     customerCode: party.customerCode,
     receivableAccountCode: party.receivableAccountCode,
     receivableSubAccountCode: party.receivableSubAccountCode,
-    slipNo: invoiceKey.seq,
+    slipNo: invoiceSlipNo(invoiceKey),
     date: invoice.issuedAt ?? new Date(),
     totalAmount: invoice.totalAmount,
     taxAmount: invoice.taxAmount,
@@ -249,7 +271,7 @@ export async function postAccountingDocument(
   const conflicts = conflictingTaxRates(input);
   if (conflicts.length > 0) {
     return actionError(
-      `Invoice ${invoice.invoiceNumber} has tax buckets whose account codes are ambiguous (rates: ${conflicts
+      `Invoice ${invoiceNumber} has tax buckets whose account codes are ambiguous (rates: ${conflicts
         .map((r) => `${Number((r * 100).toFixed(4))}%`)
         .join(
           ", ",
@@ -262,20 +284,12 @@ export async function postAccountingDocument(
   const settingsRevision = await getAccountingSettingsRevision();
   const postingDate = invoice.issuedAt ?? new Date();
 
-  const { yearMonth, seq } = await allocateDocumentKey("ACCOUNTING_DOC");
-  const documentNumber = formatDocNumber("ACC", { yearMonth, seq });
-
   let exportedClosingId: string | null = null;
-  await prisma.$transaction(async (tx) => {
+  // 番号（ACC-FFFF-NNNNN）は INSERT のときに DB が払い出す — 作った行から読む。
+  const created = await prisma.$transaction(async (tx) => {
     // 会計文書は請求書の発行元を継ぐ（lib/doc-company-core.ts）。
-    const invoiceRow = await tx.invoice.findUniqueOrThrow({
-      where: { yearMonth_seq: invoiceKey },
-      select: { id: true, ownCompanyId: true },
-    });
-    await tx.accountingDocument.create({
+    const doc = await tx.accountingDocument.create({
       data: {
-        yearMonth,
-        seq,
         invoiceId: invoiceRow.id,
         ownCompanyId: companyForAccountingDocument({
           invoiceCompanyId: invoiceRow.ownCompanyId,
@@ -304,18 +318,15 @@ export async function postAccountingDocument(
           })),
         },
       },
+      select: { docRef: true },
     });
     await tx.invoice.update({
-      where: { yearMonth_seq: invoiceKey },
+      where: { id: invoiceRow.id },
       data: { accountingExportedAt: new Date() },
     });
     // 締日 PROCESSED → EXPORTED（既存の route.ts の遷移をそのまま移植）。
     const closing = await tx.billingClosing.findFirst({
-      where: {
-        invoiceYearMonth: invoiceKey.yearMonth,
-        invoiceSeq: invoiceKey.seq,
-        status: "PROCESSED",
-      },
+      where: { invoiceId: invoiceRow.id, status: "PROCESSED" },
       select: { id: true },
     });
     if (closing) {
@@ -325,14 +336,16 @@ export async function postAccountingDocument(
       });
       if (updated.count === 1) exportedClosingId = closing.id;
     }
+    return doc;
   });
+  const documentNumber = docNumberOf(created);
 
   await recordAudit({
     action: "CREATE",
     tableName: "accounting_documents",
-    recordId: documentNumber,
+    recordId: created.docRef,
     after: {
-      invoiceNumber: invoice.invoiceNumber,
+      invoiceNumber,
       totalDebit,
       settingsRevision,
       lineCount: rows.length,
@@ -344,7 +357,7 @@ export async function postAccountingDocument(
       tableName: "billing_closings",
       recordId: exportedClosingId,
       before: { status: "PROCESSED" },
-      after: { status: "EXPORTED", invoiceNumber: invoice.invoiceNumber },
+      after: { status: "EXPORTED", invoiceNumber },
     });
   }
 
@@ -368,8 +381,8 @@ export async function reverseAccountingDocumentCore(
   actorId: string | null,
 ): Promise<ActionResult<{ documentNumber: string }>> {
   const tr = await getTranslations();
-  const key = parseDocKey(documentNumber, "ACC");
-  if (!key) {
+  const docRef = await accountingDocRef(documentNumber);
+  if (!docRef) {
     return actionError(tr("billing.accountingDocuments.invalidDocumentNumber"));
   }
   if (!reason.trim()) {
@@ -377,8 +390,7 @@ export async function reverseAccountingDocumentCore(
   }
 
   const original = await findDocumentRow({
-    yearMonth: key.yearMonth,
-    seq: key.seq,
+    docRef,
     status: "POSTED",
     reversalOfId: null,
   });
@@ -386,14 +398,10 @@ export async function reverseAccountingDocumentCore(
     return actionError(tr("billing.accountingDocuments.notActivePosted"));
   }
 
-  const { yearMonth, seq } = await allocateDocumentKey("ACCOUNTING_DOC");
-  const reversalNumber = formatDocNumber("ACC", { yearMonth, seq });
-
-  await prisma.$transaction(async (tx) => {
-    await tx.accountingDocument.create({
+  // 反対仕訳の番号も INSERT のときに DB が払い出す。
+  const reversal = await prisma.$transaction(async (tx) => {
+    const doc = await tx.accountingDocument.create({
       data: {
-        yearMonth,
-        seq,
         invoiceId: original.invoiceId,
         // 反対仕訳は元の文書と同じ法人（= 同じ請求書の発行元）。
         ownCompanyId: original.ownCompanyId,
@@ -423,6 +431,7 @@ export async function reverseAccountingDocumentCore(
           })),
         },
       },
+      select: { docRef: true },
     });
     await tx.accountingDocument.update({
       where: { id: original.id },
@@ -433,12 +442,14 @@ export async function reverseAccountingDocumentCore(
         reverseReason: reason,
       },
     });
+    return doc;
   });
+  const reversalNumber = docNumberOf(reversal);
 
   await recordAudit({
     action: "UPDATE",
     tableName: "accounting_documents",
-    recordId: documentNumber,
+    recordId: original.docRef,
     before: { status: "POSTED" },
     after: {
       status: "REVERSED",
@@ -449,12 +460,13 @@ export async function reverseAccountingDocumentCore(
   await recordAudit({
     action: "CREATE",
     tableName: "accounting_documents",
-    recordId: reversalNumber,
+    recordId: reversal.docRef,
     after: {
-      reversalOf: documentNumber,
+      reversalOf: docNumberOf(original),
       totalDebit: Number(original.totalDebit),
     },
   });
 
-  return actionOk({ documentNumber: reversalNumber });
+  // 画面へ返すのは id の姿（リンクにそのまま使える）。
+  return actionOk({ documentNumber: docIdOf(reversal) });
 }

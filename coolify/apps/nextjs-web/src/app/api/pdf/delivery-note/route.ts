@@ -16,7 +16,7 @@
 import { fetchDeliveryNoteForDocument } from "@/app/(dashboard)/shipping/delivery-notes/data";
 import { deliveryNoteTotals } from "@/components/shipping/delivery-notes/model";
 import { requirePermissionResponse } from "@/lib/authz";
-import { parseDocKey } from "@/lib/doc-number";
+import { docNo } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters, escapeHtml } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
@@ -32,6 +32,7 @@ import {
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
 import { getObject, putObject } from "@/lib/storage";
+import { docKeyFromRequest } from "../../doc-key";
 
 // Reads request query params → always rendered at request time.
 export const dynamic = "force-dynamic";
@@ -43,7 +44,7 @@ function pdfHeaders(deliveryNumber: string, download: boolean): HeadersInit {
   const disp = download ? "attachment" : "inline";
   return {
     "content-type": "application/pdf",
-    "content-disposition": `${disp}; filename="${deliveryNumber}.pdf"`,
+    "content-disposition": `${disp}; filename="${docNo(deliveryNumber)}.pdf"`,
   };
 }
 
@@ -58,7 +59,7 @@ export async function GET(request: Request): Promise<Response> {
     return new Response('Missing "id" query parameter', { status: 400 });
   }
 
-  const key = parseDocKey(id, "DRN");
+  const key = await docKeyFromRequest("delivery_notes", "DRN", id);
   const note = key ? await fetchDeliveryNoteForDocument(key) : null;
   if (!key || !note) {
     return new Response(`Delivery note not found: ${id}`, { status: 404 });
@@ -66,6 +67,9 @@ export async function GET(request: Request): Promise<Response> {
   // 閲覧は発行後のみ（下書きの納品書は PDF を出さない）。
   if (!isIssued(note.status)) return notIssuedResponse("納品書"); // i18n-ignore
 
+  // DTO の番号フィールドは id の姿（`CKK~…` — 法人まで運ぶ）。保管キーと
+  // QR は id のまま（番号は法人ごとの連番で、番号だけでは別法人の書類と
+  // 取り違える）。紙とファイル名に出すのは番号だけ。
   const storageKey = pdfStorageKey.deliveryNote(note.deliveryNumber);
 
   // Serve the stored copy if it exists (SeaweedFS), else generate + store.
@@ -106,9 +110,9 @@ export async function GET(request: Request): Promise<Response> {
     // 書類 QR（CKK:DRN:<番号>）。URL は入れない。
     doc_qr: documentQrSvg(QR_KINDS.DELIVERY_NOTE, note.deliveryNumber),
     doc: {
-      number: note.deliveryNumber,
+      number: docNo(note.deliveryNumber),
       issued_date: documentFormatters.date(note.createdAt),
-      shipping_number: note.deliveryOrderNumber,
+      shipping_number: docNo(note.deliveryOrderNumber),
       method: deliveryMethodLabelLocalized(note.deliveryMethod, lang),
     },
     price_head: note.includePrice

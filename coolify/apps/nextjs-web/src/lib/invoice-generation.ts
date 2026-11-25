@@ -34,13 +34,12 @@ import {
   type CustomerProductLabel,
   fetchCustomerProductLabels,
 } from "@/lib/customer-product-codes";
-import { prisma } from "@/lib/db";
+import { type Prisma, prisma } from "@/lib/db";
 import { ownCompanyData } from "@/lib/doc-company-core";
-import { formatDocNumber } from "@/lib/doc-number";
+import { docIdOf, docNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { label } from "@/lib/messages";
 import { lineAmountYen, type TaxBucket, totalsByRateYen } from "@/lib/money";
-import { allocateDocumentKey } from "@/lib/numbering";
 import { defaultOwnCompanyId, shipmentOwnCompanyId } from "@/lib/own-companies";
 import { groupByOwnCompany } from "@/lib/own-company-core";
 import { resolveSalesRepId } from "@/lib/sales-rep";
@@ -106,10 +105,9 @@ export function headerTaxSnapshot(
 
 /** 請求明細 1 行（製品 / 追加料金で同じ形）。 */
 interface InvoiceItemDraft {
-  deliveryOrderYearMonth: string | null;
-  deliveryOrderSeq: number | null;
-  deliveryNoteYearMonth: string | null;
-  deliveryNoteSeq: number | null;
+  /** 由来の出荷書・納品書（行の uuid）。手動費用は両方 null。 */
+  deliveryOrderId: string | null;
+  deliveryNoteId: string | null;
   orderLineId: string | null;
   chargeItemId: number | null;
   description: { ja: string; en: string };
@@ -198,10 +196,8 @@ async function buildInvoiceDraft(
         ),
       });
       return {
-        deliveryOrderYearMonth: s.yearMonth,
-        deliveryOrderSeq: s.seq,
-        deliveryNoteYearMonth: deliveryNote?.yearMonth ?? null,
-        deliveryNoteSeq: deliveryNote?.seq ?? null,
+        deliveryOrderId: s.id,
+        deliveryNoteId: deliveryNote?.id ?? null,
         orderLineId: it.orderLineId,
         chargeItemId: null,
         description: { ja, en },
@@ -231,12 +227,10 @@ async function buildInvoiceDraft(
         ),
       });
       return {
-        deliveryOrderYearMonth: s.yearMonth,
-        deliveryOrderSeq: s.seq,
-        deliveryNoteYearMonth: deliveryNote?.yearMonth ?? null,
-        deliveryNoteSeq: deliveryNote?.seq ?? null,
+        deliveryOrderId: s.id,
+        deliveryNoteId: deliveryNote?.id ?? null,
         orderLineId: null,
-        // 由来は料金マスタ（MS0G）— 手動費用の判定（deliveryOrderYearMonth が
+        // 由来は料金マスタ（MS0G）— 手動費用の判定（deliveryOrderId が
         // null かどうか）には効かないが、この行が MS0G のどの項目から
         // 来たのかの追跡には要る（tables.md invoice_items.charge_item_id）。
         chargeItemId: c.chargeItemId,
@@ -275,11 +269,11 @@ export interface GeneratedInvoice {
   invoices: { invoiceNumber: string; totalAmount: number }[];
 }
 
-/** 法人ごとに 1 通 — 採番と明細の組み立てまで済ませた請求書。 */
+/**
+ * 法人ごとに 1 通 — 明細の組み立てまで済ませた請求書（まだ行は無い）。
+ * 番号（INV-FFFF-NNNNN）は INSERT のときに DB が払い出すので、ここでは持たない。
+ */
 interface PreparedInvoice {
-  yearMonth: string;
-  seq: number;
-  invoiceNumber: string;
   ownCompanyId: number | null;
   customerBranchBpId: string | null;
   salesRepId: string | null;
@@ -287,7 +281,7 @@ interface PreparedInvoice {
 }
 
 /**
- * 出荷を**発行元の自社法人ごと**に束ね、束ごとに明細を組み立てて採番する。
+ * 出荷を**発行元の自社法人ごと**に束ね、束ごとに明細を組み立てる。
  * 法人の決め方は出荷書の出荷元拠点 → 明細の担当拠点 → 既定の法人
  * （lib/own-companies.ts shipmentOwnCompanyId）。SCHEDULED / MANUAL 共通。
  */
@@ -327,11 +321,7 @@ async function prepareInvoices(
       orderingCustomerBpId,
       null,
     );
-    const { yearMonth, seq } = await allocateDocumentKey("INVOICE");
     prepared.push({
-      yearMonth,
-      seq,
-      invoiceNumber: formatDocNumber("INV", { yearMonth, seq }),
       ownCompanyId: group.companyId,
       customerBranchBpId,
       salesRepId,
@@ -356,8 +346,6 @@ function invoiceCreateData(
 ) {
   const { draft } = p;
   return {
-    yearMonth: p.yearMonth,
-    seq: p.seq,
     customerBpId: common.billingPartyId,
     customerBranchBpId:
       common.billingPartyId === common.orderingCustomerBpId
@@ -389,13 +377,36 @@ function invoiceCreateData(
   };
 }
 
-/** 作った請求書の要約（戻り値）。 */
-function generatedSummary(prepared: PreparedInvoice[]): GeneratedInvoice {
+/** 作った請求書 — 準備した内容 + DB が払い出した番号（参照）と行の id。 */
+type CreatedInvoice = PreparedInvoice & { id: string; docRef: string };
+
+/** 準備した請求書を作り、DB が払い出した番号を読んで返す（tx の中で呼ぶ）。 */
+async function createInvoices(
+  tx: Prisma.TransactionClient,
+  prepared: PreparedInvoice[],
+  common: Parameters<typeof invoiceCreateData>[1],
+): Promise<CreatedInvoice[]> {
+  const created: CreatedInvoice[] = [];
+  for (const p of prepared) {
+    const row = await tx.invoice.create({
+      data: invoiceCreateData(p, common),
+      select: { id: true, docRef: true },
+    });
+    created.push({ ...p, ...row });
+  }
+  return created;
+}
+
+/**
+ * 作った請求書の要約（戻り値）。`invoiceNumber` は **id の姿**
+ * （`CKK~INV-2026-00001`）— 画面がそのままリンクに使う。
+ */
+function generatedSummary(created: CreatedInvoice[]): GeneratedInvoice {
   return {
-    invoiceNumber: prepared[0].invoiceNumber,
-    totalAmount: prepared.reduce((sum, p) => sum + p.draft.totalAmount, 0),
-    invoices: prepared.map((p) => ({
-      invoiceNumber: p.invoiceNumber,
+    invoiceNumber: docIdOf(created[0]),
+    totalAmount: created.reduce((sum, p) => sum + p.draft.totalAmount, 0),
+    invoices: created.map((p) => ({
+      invoiceNumber: docIdOf(p),
       totalAmount: p.draft.totalAmount,
     })),
   };
@@ -464,21 +475,15 @@ export async function generateInvoiceForClosing(
       dueDate,
       actorId,
     };
-    const first = prepared[0];
-    const summary = generatedSummary(prepared);
-
-    await prisma.$transaction(async (tx) => {
-      for (const p of prepared) {
-        await tx.invoice.create({ data: invoiceCreateData(p, common) });
-      }
+    const created = await prisma.$transaction(async (tx) => {
+      const rows = await createInvoices(tx, prepared, common);
       const updated = await tx.billingClosing.updateMany({
         where: { id: closingId, status: "PENDING" },
         data: {
           status: "PROCESSED",
           totalAmount: prepared.reduce((sum, p) => sum + p.draft.subtotal, 0),
           // 締日行が指すのは先頭の 1 通（法人が混ざるときだけ 2 通以上になる）。
-          invoiceYearMonth: first.yearMonth,
-          invoiceSeq: first.seq,
+          invoiceId: rows[0].id,
           processedAt: new Date(),
           processedBy: actorId,
         },
@@ -486,13 +491,16 @@ export async function generateInvoiceForClosing(
       if (updated.count === 0) {
         throw new Error(`GUARD:${tr("billing.closingActions.pendingOnly")}`);
       }
+      return rows;
     });
+    const first = created[0];
+    const summary = generatedSummary(created);
 
-    for (const p of prepared) {
+    for (const p of created) {
       await recordAudit({
         action: "CREATE",
         tableName: "invoices",
-        recordId: p.invoiceNumber,
+        recordId: p.docRef,
         after: {
           customerBpId: billingPartyId,
           orderingCustomerBpId: closing.customerBpId,
@@ -519,9 +527,9 @@ export async function generateInvoiceForClosing(
       before: { status: "PENDING" },
       after: {
         status: "PROCESSED",
-        invoiceNumber: first.invoiceNumber,
-        ...(prepared.length > 1
-          ? { invoiceNumbers: prepared.map((p) => p.invoiceNumber) }
+        invoiceNumber: docNumberOf(first),
+        ...(created.length > 1
+          ? { invoiceNumbers: created.map((p) => docNumberOf(p)) }
           : {}),
       },
     });
@@ -529,8 +537,8 @@ export async function generateInvoiceForClosing(
     revalidatePath(BASE_PATH);
     revalidatePath(`${BASE_PATH}/${closingId}`);
     revalidatePath(INVOICES_PATH);
-    for (const p of prepared) {
-      revalidatePath(`${INVOICES_PATH}/${p.invoiceNumber}`);
+    for (const p of created) {
+      revalidatePath(`${INVOICES_PATH}/${docIdOf(p)}`);
     }
     return actionOk(summary);
   } catch (e) {
@@ -601,10 +609,9 @@ export async function generateManualInvoice(input: {
       dueDate,
       actorId,
     };
-    const first = prepared[0];
-    const summary = generatedSummary(prepared);
-
-    const closingId = await prisma.$transaction(async (tx) => {
+    const { closingId, created } = await prisma.$transaction(async (tx) => {
+      // 請求書を先に作る — 締日行が指す先頭の 1 通の id が要る。
+      const rows = await createInvoices(tx, prepared, common);
       const closing = await tx.billingClosing.create({
         data: {
           customerBpId: input.customerBpId,
@@ -612,23 +619,21 @@ export async function generateManualInvoice(input: {
           kind: "MANUAL",
           status: "PROCESSED",
           totalAmount: prepared.reduce((sum, p) => sum + p.draft.subtotal, 0),
-          invoiceYearMonth: first.yearMonth,
-          invoiceSeq: first.seq,
+          invoiceId: rows[0].id,
           processedAt: new Date(),
           processedBy: actorId,
         },
       });
-      for (const p of prepared) {
-        await tx.invoice.create({ data: invoiceCreateData(p, common) });
-      }
-      return closing.id;
+      return { closingId: closing.id, created: rows };
     });
+    const first = created[0];
+    const summary = generatedSummary(created);
 
-    for (const p of prepared) {
+    for (const p of created) {
       await recordAudit({
         action: "CREATE",
         tableName: "invoices",
-        recordId: p.invoiceNumber,
+        recordId: p.docRef,
         after: {
           customerBpId: billingPartyId,
           orderingCustomerBpId: input.customerBpId,
@@ -653,9 +658,9 @@ export async function generateManualInvoice(input: {
         closingDate: closingDate.toISOString().slice(0, 10),
         kind: "MANUAL",
         status: "PROCESSED",
-        invoiceNumber: first.invoiceNumber,
-        ...(prepared.length > 1
-          ? { invoiceNumbers: prepared.map((p) => p.invoiceNumber) }
+        invoiceNumber: docNumberOf(first),
+        ...(created.length > 1
+          ? { invoiceNumbers: created.map((p) => docNumberOf(p)) }
           : {}),
       },
     });
@@ -663,8 +668,8 @@ export async function generateManualInvoice(input: {
     revalidatePath(BASE_PATH);
     revalidatePath(`${BASE_PATH}/${closingId}`);
     revalidatePath(INVOICES_PATH);
-    for (const p of prepared) {
-      revalidatePath(`${INVOICES_PATH}/${p.invoiceNumber}`);
+    for (const p of created) {
+      revalidatePath(`${INVOICES_PATH}/${docIdOf(p)}`);
     }
     return actionOk({ ...summary, closingId });
   } catch (e) {

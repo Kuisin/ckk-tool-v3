@@ -3,7 +3,8 @@ import { OrderLineDetail } from "@/components/sales/order-lines/OrderLineDetail"
 import { appLabelForKey } from "@/lib/app-list";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
-import { formatOrderLineNumber, parseOrderLineKey } from "@/lib/doc-number";
+import { docNo } from "@/lib/doc-number";
+import { orderLineKeyFromParam } from "@/lib/doc-param";
 import { listMemos } from "@/lib/document-memos";
 import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
@@ -23,27 +24,33 @@ export async function generateMetadata({
   return {
     title: formatDocPageTitle(
       appLabelForKey("order-lines", "注文明細", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
-      decodeURIComponent(id),
+      docNo(decodeURIComponent(id)),
     ),
   };
 }
 
-/** 注文明細 詳細 (SA25). URL id = 導出文書番号 ORD-YYYYMM-NNNNN-NN. */
+/** 注文明細 詳細 (SA25). URL id = 法人コード付きの番号（CKK~ORD-2026-00001-01）。 */
 export default async function ProductionOrderLinesDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("order-lines");
   if (denied) return denied;
   const { id } = await params;
-  const key = parseOrderLineKey(decodeURIComponent(id));
-  if (!key) notFound();
+  const key = await orderLineKeyFromParam(
+    id,
+    "/sales/order-lines",
+    "",
+    searchParams,
+  );
 
   const [order, auditEntries, memos] = await Promise.all([
     fetchOrderLine(key),
-    fetchAuditEntries("order_lines", formatOrderLineNumber(key)),
-    listMemos("order_lines", formatOrderLineNumber(key)),
+    fetchAuditEntries("order_lines", key.lineRef),
+    listMemos("order_lines", key.lineRef),
   ]);
   if (!order) notFound();
 

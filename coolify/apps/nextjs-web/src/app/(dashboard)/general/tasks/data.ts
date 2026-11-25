@@ -24,7 +24,7 @@ export interface MyPlanRow {
   stepName: string;
   stepStatus: string; // STEP_STATUS
   workOrderNumber: number;
-  /** 書類番号 WO-YYYYMM-NNNNN。 */
+  /** 書類番号 WOR-FFFF-NNNNN（表示専用 — 番号だけ）。 */
   docNumber: string;
   workOrderStatus: string; // WORK_ORDER_STATUS
   productName: string;
@@ -68,8 +68,7 @@ export async function fetchMyPendingPlans(): Promise<MyPlanRow[]> {
           workOrder: {
             select: {
               workOrderNumber: true,
-              yearMonth: true,
-              seq: true,
+              docRef: true,
               status: true,
               productItem: { select: { name: true } },
             },

@@ -20,7 +20,7 @@ const row = (over: Partial<BoardRow>): BoardRow => ({
   key: "p1",
   stepId: "s1",
   workOrderNumber: 100,
-  docNumber: "WOR-202611-00001",
+  docNumber: "WOR-2026-00001",
   productName: "ドリル",
   stepName: "研削",
   stepSortOrder: 0,

@@ -20,7 +20,7 @@ An app for dropping received **order documents (PDFs / scanned images)** into th
 - **Intake folder** … a watched folder on the server; anything placed there is automatically brought in as an order acceptance (environment variable `INTAKE_DIR`).
 - **Drop in** … placing a file into the folder from this screen. It **only places the file** — numbering and AI extraction happen automatically afterward.
 - **Scan** … the process that checks the folder's contents and brings in waiting files in order. It runs automatically at a set interval, and can also be triggered right away from this screen.
-- **Numbering** … assigning an order-acceptance number (`ORD-YYYYMM-NNNNN`) to a file once it has been brought in.
+- **Numbering** … assigning an order-acceptance number (such as `ORD-2026-00001`) to a file once it has been brought in.
 
 ## Before you start
 

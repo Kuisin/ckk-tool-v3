@@ -19,6 +19,7 @@ import { createStockTake } from "@/app/(dashboard)/inventory/stock-takes/actions
 import type { StorageLocationOption } from "@/app/(dashboard)/inventory/stock-takes/data";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { categoryLabel } from "@/lib/app-list";
+import { docNo } from "@/lib/doc-number";
 import { zodResolver } from "@/lib/form";
 import type { Locale } from "@/lib/i18n";
 
@@ -89,7 +90,7 @@ export function StockTakeForm({
         notifications.show({
           title: tr("production.stockTakes.form.created"),
           message: tr("production.stockTakes.form.createdBody", {
-            number: result.data.stockTakeNumber,
+            number: docNo(result.data.stockTakeNumber),
           }),
           color: "green",
         });

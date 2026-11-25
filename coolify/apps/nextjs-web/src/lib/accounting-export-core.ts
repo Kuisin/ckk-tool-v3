@@ -359,8 +359,16 @@ export function splitSalesByAccount(
 
 /** 請求書 1 件ぶんの入力（DB 非依存）。 */
 export interface JournalInvoiceInput {
-  /** 導出文書番号 INV-YYYYMM-NNNNN。 */
+  /** 請求書番号 INV-FFFF-NNNNN（番号だけ。法人コードは付けない）。 */
   invoiceNumber: string;
+  /**
+   * 振り直し前の番号（旧 INV-YYYYMM-NNNNN）。あれば**摘要に括弧で添える**
+   * （`INV-2026-00001（旧 INV-202607-00001） 顧客名`）。列を足さないのは、
+   * 会計ソフトの取込レイアウトが固定の列並びだから — 1 列増えると取込が
+   * ずれる。摘要は自由文なので、そこなら既存のレイアウトを壊さずに
+   * 旧番号で突き合わせられる。旧番号を持たない請求書では何も変わらない。
+   */
+  legacyInvoiceNumber?: string | null;
   /** 顧客名。 */
   customerName: string;
   /** 顧客コード（社内）。会計側の補助科目とは**別物**なので混同しない。 */
@@ -369,7 +377,7 @@ export interface JournalInvoiceInput {
   receivableAccountCode?: string | null;
   /** 売掛金の補助科目コード（取引先マスタ）。null = 空欄。 */
   receivableSubAccountCode?: string | null;
-  /** 伝票番号に使う連番（請求書の seq）。 */
+  /** 伝票番号に使う連番（請求書番号の連番部分 NNNNN — 法人 × 会計年度ごと）。 */
   slipNo?: number | null;
   /** 仕訳日付 = 発行日。ISO 文字列 or Date。 */
   date: string | Date;
@@ -443,7 +451,10 @@ export function buildJournalRows(
   // いるので、ここは念のための同じ丸め = 値は動かない）。
   const amount = roundYen(invoice.totalAmount);
   const tax = roundYen(invoice.taxAmount ?? 0);
-  const memoBase = `${invoice.invoiceNumber} ${invoice.customerName}`;
+  const legacy = invoice.legacyInvoiceNumber
+    ? `（旧 ${invoice.legacyInvoiceNumber}）`
+    : "";
+  const memoBase = `${invoice.invoiceNumber}${legacy} ${invoice.customerName}`;
   const a = settings.accounts;
 
   const debitAccountCode = pick(

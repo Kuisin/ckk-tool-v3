@@ -15,6 +15,7 @@
  */
 
 import { prisma } from "./db";
+import { docNumberOf } from "./doc-number";
 import { type LocalizedText, localized } from "./format";
 import type { Locale } from "./i18n";
 import { filterWoList, type WoListItem } from "./wo-list-core";
@@ -30,10 +31,6 @@ export interface WoListResult {
   plantName: string | null;
   /** 上限で切った（= 検索で絞ってほしい）。 */
   truncated: boolean;
-}
-
-function docNumber(yearMonth: string, seq: number): string {
-  return `WOR-${yearMonth}-${String(seq).padStart(5, "0")}`;
 }
 
 export async function listActiveWorkOrders(
@@ -53,8 +50,8 @@ export async function listActiveWorkOrders(
     },
     select: {
       workOrderNumber: true,
-      yearMonth: true,
-      seq: true,
+      docRef: true,
+      legacyNumber: true,
       status: true,
       plannedQuantity: true,
       productItem: { select: { code: true, name: true } },
@@ -68,7 +65,8 @@ export async function listActiveWorkOrders(
     const live = r.steps.filter((s) => s.status !== "CANCELLED");
     return {
       workOrderNumber: r.workOrderNumber,
-      docNumber: docNumber(r.yearMonth, r.seq),
+      docNumber: docNumberOf(r),
+      legacyNumber: r.legacyNumber,
       status: r.status,
       plannedQuantity: r.plannedQuantity,
       productCode: r.productItem.code,

@@ -10,6 +10,8 @@
 export interface WoListItem {
   workOrderNumber: number;
   docNumber: string;
+  /** 番号体系の切替前に刷られた書類番号（WOR-YYYYMM-NNNNN）。検索専用。 */
+  legacyNumber?: string | null;
   /** WORK_ORDER_STATUS（APPROVED | IN_PROGRESS）。 */
   status: string;
   plannedQuantity: number;
@@ -41,6 +43,7 @@ export function filterWoList(
         String(it.workOrderNumber),
         `#${it.workOrderNumber}`,
         it.docNumber,
+        it.legacyNumber ?? "",
         it.productCode ?? "",
         it.productName,
       ].join(" "),

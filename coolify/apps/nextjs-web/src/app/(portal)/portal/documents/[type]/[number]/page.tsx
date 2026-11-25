@@ -1,6 +1,12 @@
 /**
  * /portal/documents/[type]/[number] — 書類 1 件。
  *
+ * `[number]` は書類の id（`CKK~INV-2026-00001`）。番号は自社法人ごとの連番
+ * なので、2 つの法人と取引のある取引先には同じ番号の書類が 2 件あり得る —
+ * リンクは id で張り、**画面には番号だけを出す**（法人コードは見せない）。
+ * 番号だけ・旧番号で開かれたときは、このアカウントに**見える**書類の中から
+ * 探す: 1 件ならその書類の URL へ送り、複数なら選ばせる。
+ *
  * 認可は requirePortalView(target) が見る。**見えないものは 404**
  * （「権限がありません」だと、その書類が存在することを教えてしまう）。
  * 開いたことは portal_access_logs に残す。
@@ -15,7 +21,7 @@
 import { Anchor, Group, Stack, Text, Title } from "@mantine/core";
 import { IconFileTypePdf } from "@tabler/icons-react";
 import { headers } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import {
   PortalBackLink,
@@ -24,7 +30,6 @@ import {
   PortalLineItems,
   PortalRelatedDocuments,
 } from "@/components/portal/PortalDetail";
-import { parseDocKey } from "@/lib/doc-number";
 import { formatMoney } from "@/lib/format";
 import { recordPortalAccess } from "@/lib/portal-access-log";
 import {
@@ -33,7 +38,9 @@ import {
   portalDocumentLabel,
   portalTargetOf,
 } from "@/lib/portal-documents";
+import { PORTAL_DOCUMENT_PREFIX } from "@/lib/portal-documents-core";
 import { requirePortalView } from "@/lib/portal-page";
+import { portalDocCandidates } from "../../../doc-param";
 
 export const dynamic = "force-dynamic";
 
@@ -45,28 +52,80 @@ export default async function PortalDocumentPage({
   const tr = await getTranslations();
   const { type, number } = await params;
   if (!isPortalDocumentType(type)) notFound();
-  const key = parseDocKey(decodeURIComponent(number));
-  if (!key) notFound();
+  const { keys, canonical } = await portalDocCandidates(
+    type,
+    PORTAL_DOCUMENT_PREFIX[type],
+    number,
+  );
 
-  const target = await portalTargetOf(type, key.yearMonth, key.seq);
+  if (!canonical) {
+    // 番号だけ・旧番号。候補を**認可に通してから**数える — 見えない書類は
+    // 候補に無かったのと同じ（存在を漏らさない）。
+    const gate = await requirePortalView();
+    if (!gate.ok) return gate.view;
+    const visible = [];
+    for (const k of keys) {
+      const d = await getPortalDocument(gate.session, type, k);
+      if (d) visible.push(d);
+    }
+    if (visible.length === 0) notFound();
+    if (visible.length === 1) {
+      redirect(
+        `/portal/documents/${type}/${encodeURIComponent(visible[0].id)}`,
+      );
+    }
+    // 同じ番号の書類が複数見える（発行した法人が違う）。法人コードは出さず、
+    // 日付と金額で見分けてもらう。
+    return (
+      <Stack gap="md">
+        <PortalBackLink
+          href="/portal/documents"
+          label={tr("portal.documents.document")}
+        />
+        <Stack gap={4}>
+          <Title order={3}>{portalDocumentLabel(type, tr)}</Title>
+          <Text c="dimmed" ff="monospace" size="sm">
+            {visible[0].number}
+          </Text>
+        </Stack>
+        <Stack gap="xs">
+          {visible.map((d) => (
+            <Anchor
+              href={`/portal/documents/${type}/${encodeURIComponent(d.id)}`}
+              key={d.id}
+              size="sm"
+              w="fit-content"
+            >
+              {[
+                d.issuedOn?.slice(0, 10) ?? "—",
+                d.totalAmount
+                  ? formatMoney(Number(d.totalAmount), d.currency)
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" / ")}
+            </Anchor>
+          ))}
+        </Stack>
+      </Stack>
+    );
+  }
+
+  const key = keys[0];
+  const target = await portalTargetOf(type, key);
   // 存在しない書類も、見えない書類も同じ 404。
   const gate = await requirePortalView(target ?? undefined);
   if (!gate.ok) return gate.view;
   if (!target) notFound();
 
-  const doc = await getPortalDocument(
-    gate.session,
-    type,
-    key.yearMonth,
-    key.seq,
-  );
+  const doc = await getPortalDocument(gate.session, type, key);
   if (!doc) notFound();
 
   const h = await headers();
   await recordPortalAccess({
     session: gate.session,
     resourceType: type,
-    resourceId: doc.number,
+    resourceId: doc.id,
     action: "VIEW",
     ipAddress: h.get("x-forwarded-for"),
     userAgent: h.get("user-agent"),
@@ -154,7 +213,7 @@ export default async function PortalDocumentPage({
 
       {doc.hasPdf && doc.pdfFileId ? (
         <Anchor
-          href={`/portal/api/file/${doc.pdfFileId}?doc=${type}&no=${encodeURIComponent(doc.number)}`}
+          href={`/portal/api/file/${doc.pdfFileId}?doc=${type}&no=${encodeURIComponent(doc.id)}`}
           size="sm"
           target="_blank"
           w="fit-content"

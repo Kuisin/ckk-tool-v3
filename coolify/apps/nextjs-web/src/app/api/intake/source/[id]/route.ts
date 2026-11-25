@@ -1,5 +1,10 @@
 /**
- * GET /api/intake/source/[yearMonth]/[seq] — 注文請書の取込元ファイル配信。
+ * GET /api/intake/source/[id] — 注文請書の取込元ファイル配信。
+ *
+ * `[id]` は注文請書の id（`CKK~ORD-2026-00001` — lib/doc-number.ts の「id」の姿）。
+ * 番号は法人ごとの連番なので、番号だけでは請書が 1 つに決まらない。
+ * 古いリンクのために番号だけ・旧番号（`ORD-202607-00001`）も受けるが、
+ * 1 件に決まるときだけ返す（複数の法人に同じ番号があれば 404）。
  *
  * 取込元は files 行（source_file_id）+ SeaweedFS のオブジェクト —
  * 添付（document_attachments）ではないため /api/attachments では配信
@@ -10,11 +15,27 @@
 import { rowInScope } from "@ckk/authz-core";
 import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { parseDocKey } from "@/lib/doc-number";
+import { resolveDocId } from "@/lib/doc-ref";
 import { contentTypeForKey, getObject } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
-type Params = { params: Promise<{ yearMonth: string; seq: string }> };
+type Params = { params: Promise<{ id: string }> };
+
+/** パスの id → 注文請書の参照。決まらなければ null。 */
+async function acceptanceRef(raw: string): Promise<string | null> {
+  let id = raw;
+  try {
+    id = decodeURIComponent(raw);
+  } catch {
+    // 壊れた符号化はそのまま読む（どうせ番号の形に合わず 404 になる）
+  }
+  const key = parseDocKey(id, "ORD");
+  if (key) return key.docRef;
+  const resolved = await resolveDocId("order_acceptances", id);
+  return resolved.status === "ok" ? resolved.docRef : null;
+}
 
 export async function GET(
   _request: Request,
@@ -26,15 +47,13 @@ export async function GET(
     const status = (await sessionUserId()) ? 403 : 401;
     return Response.json({ error: authz.error }, { status });
   }
-  const { yearMonth, seq } = await params;
-  const seqNum = Number(seq);
-  if (!/^\d{6}$/.test(yearMonth) || !Number.isInteger(seqNum) || seqNum < 1) {
-    return new Response("Not found", { status: 404 });
-  }
+  const { id } = await params;
+  const docRef = await acceptanceRef(id).catch(() => null);
+  if (!docRef) return new Response("Not found", { status: 404 });
 
   const row = await prisma.orderAcceptance
     .findUnique({
-      where: { yearMonth_seq: { yearMonth, seq: seqNum } },
+      where: { docRef },
       select: {
         createdBy: true,
         sourceFile: {

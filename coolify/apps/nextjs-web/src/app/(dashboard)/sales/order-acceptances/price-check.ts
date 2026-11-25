@@ -91,7 +91,7 @@ export async function checkAcceptancePrices(
 ): Promise<AcceptancePriceCheck> {
   const tr = await getTranslations();
   const acceptance = await prisma.orderAcceptance.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     select: {
       customerBpId: true,
       items: {

@@ -10,7 +10,7 @@ import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { resolveItemSpec } from "@/lib/design-spec";
-import { formatPriceListNumber } from "@/lib/doc-number";
+import { docIdOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { listProductRoutes } from "@/lib/product-routes";
 import {
@@ -135,8 +135,8 @@ export default async function MasterProductsDetailPage({
     // 1 行 = 1 注文種別バリアント（期間・状態はバリアント単位）。
     priceListEntries: r.priceListEntryRefs.flatMap((e) =>
       e.variants.map((v) => ({
-        // 価格表番号 PRC-… — mirrors the price-list URL id format.
-        id: formatPriceListNumber({ yearMonth: e.yearMonth, seq: e.seq }),
+        // 価格表の id（`CKK~PRC-…`）— 価格表の URL id と同じ形。表示は docNo。
+        id: docIdOf(e),
         customerName: localized(e.customerBp.name as LocalizedText | null),
         orderType: v.orderType,
         validFrom: v.validFrom.toISOString(),

@@ -30,7 +30,6 @@ import {
   onOutsourceReturnTx,
   regrindOwnerBpIdTx,
 } from "@/lib/inventory";
-import { allocateDocumentKey } from "@/lib/numbering";
 import { fetchAllowedWorkLocationIds } from "@/lib/work-locations";
 import { submitFlowChange } from "@/lib/work-order-flow-changes";
 import { requiredPlanFields } from "@/lib/work-plan-core";
@@ -1148,25 +1147,18 @@ export async function saveOutsourceDates(
       step.outsourceReturnMovementId == null &&
       (postIssue || step.outsourceIssueMovementId != null);
 
-    // 採番はトランザクションの外（全書類共通の作法。ロールバックで番号は飛ぶ）。
-    const issueKey = postIssue
-      ? await allocateDocumentKey("INVENTORY_MOVEMENT")
-      : null;
-    const returnKey = postReturn
-      ? await allocateDocumentKey("INVENTORY_MOVEMENT")
-      : null;
-
+    // 入出庫伝票の番号は DB が INSERT 時に払い出す（アプリは採番しない）。
     await prisma.$transaction(async (tx) => {
       let issueMovementId: string | null = null;
       let returnMovementId: string | null = null;
       // 再研磨の指示書では預り品（顧客の物）を外注へ出す — 所有者を付けて
       // 「所有者バケット ⇄ 所有者 + 預け先バケット」の移動として書く。
       const ownerBpId =
-        woItem?.type === "REGRIND" && (issueKey || returnKey)
+        woItem?.type === "REGRIND" && (postIssue || postReturn)
           ? await regrindOwnerBpIdTx(tx, woItem.id)
           : null;
-      if (issueKey && supplierBpId && woItem) {
-        issueMovementId = await onOutsourceIssueTx(tx, issueKey, {
+      if (postIssue && supplierBpId && woItem) {
+        issueMovementId = await onOutsourceIssueTx(tx, {
           workOrderId: woItem.id,
           workOrderNumber: woItem.workOrderNumber,
           itemId: woItem.productItemId,
@@ -1176,8 +1168,8 @@ export async function saveOutsourceDates(
           ownerBpId,
         });
       }
-      if (returnKey && supplierBpId && woItem) {
-        returnMovementId = await onOutsourceReturnTx(tx, returnKey, {
+      if (postReturn && supplierBpId && woItem) {
+        returnMovementId = await onOutsourceReturnTx(tx, {
           workOrderId: woItem.id,
           workOrderNumber: woItem.workOrderNumber,
           itemId: woItem.productItemId,
@@ -1212,7 +1204,7 @@ export async function saveOutsourceDates(
       try {
         const wo = await prisma.workOrder.findUnique({
           where: { workOrderNumber: v.workOrderNumber },
-          select: { id: true, createdBy: true, yearMonth: true, seq: true },
+          select: { createdBy: true, docRef: true },
         });
         if (wo?.createdBy) {
           const { notify } = await import("@/lib/notifications");
@@ -1222,12 +1214,13 @@ export async function saveOutsourceDates(
             title: tr(
               "production.stepExecutionActions.notifyOutsourceReceived",
               {
-                // 通知は書類番号（WOR-YYYYMM-NNNNN）で読ませる — ロット番号
+                // 通知は書類番号（WOR-FFFF-NNNNN）で読ませる — ロット番号
                 // （v.workOrderNumber）は業務キーであって表示番号ではない。
                 workOrderNumber: formatDocNumber("WOR", wo),
               },
             ),
-            linkPath: `/production/work-orders/${wo.id}`,
+            // リンクはロット番号（指示書の URL の id。uuid では開けない）。
+            linkPath: `/production/work-orders/${v.workOrderNumber}`,
           });
         }
       } catch (e) {

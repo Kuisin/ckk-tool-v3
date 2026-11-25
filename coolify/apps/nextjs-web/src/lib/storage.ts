@@ -4,7 +4,7 @@
  * Per techstack: generated PDFs are stored in SeaweedFS and served for
  * view/download. We use SeaweedFS's native Filer HTTP API (PUT/GET/HEAD) over
  * `fetch` — no S3 SDK, so the lockfile stays frozen. Objects live under a flat
- * prefix, e.g. `pdfs/QOT-202602-00012.pdf`.
+ * prefix, e.g. `pdfs/QOT-2026-00012.pdf`.
  *
  * `SEAWEED_FILER_URL` points at the filer (default the in-stack service). When
  * storage is unreachable the callers fall back to on-the-fly generation, so a

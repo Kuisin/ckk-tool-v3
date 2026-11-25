@@ -1,8 +1,9 @@
 /**
  * data.ts — 設計依頼書 (SA06) ページのサーバーサイド取得・マッピング。
  *
- * app.design_requests は uuid PK + request_number（DSG-YYYYMM-NNNNN、保存済み）。
- * URL id = request_number。参照元（見積書/注文明細）の表示番号はキーから導出する。
+ * app.design_requests は uuid PK。依頼番号（DSG-FFFF-NNNNN）は DB が払い出し、行は
+ * 参照 doc_ref で引く。URL id と DTO の requestNumber は id の姿（CKK~DSG-2026-00001）。
+ * 参照元（見積書/注文明細）も id の姿で返す（表示は docNo() で番号だけ）。
  * history Json（{action,user,at,notes}）は displayName を解決して返す。
  * 担当者候補・注文明細の参照解決は work-orders の data.ts を再利用する。
  */
@@ -22,7 +23,15 @@ import type {
 import type { HistoryEntry } from "@/lib/approvals";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import { formatQuoteNumber, orderLineNumberOf } from "@/lib/doc-number";
+import {
+  type DocKey,
+  docIdOf,
+  docIdOrNull,
+  docNumberOf,
+  orderLineIdOf,
+  parseDocKey,
+} from "@/lib/doc-number";
+import { resolveDocId } from "@/lib/doc-ref";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 import { label } from "@/lib/messages";
@@ -51,6 +60,8 @@ const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
  */
 const LIST_INCLUDE = {
   orderLine: true,
+  // 参照元の見積書（番号は子の旧列ではなく、見積書の行から読む）。
+  quote: { select: { docRef: true } },
   item: true,
   // 版が載る系列（受注元）。一覧でも「誰向けの図面か」が要る。
   customerBp: { select: { name: true } },
@@ -78,9 +89,9 @@ const DETAIL_INCLUDE = {
 type DetailRow = NonNullable<Awaited<ReturnType<typeof findRow>>>;
 type ListRow = Awaited<ReturnType<typeof findListRows>>[number];
 
-function findRow(requestNumber: string) {
+function findRow(key: DocKey) {
   return prisma.designRequest.findUnique({
-    where: { requestNumber },
+    where: { docRef: key.docRef },
     include: DETAIL_INCLUDE,
   });
 }
@@ -90,7 +101,7 @@ function findListRows(where: Prisma.DesignRequestWhereInput = {}) {
     take: LIST_FETCH_CAP,
     where,
     include: LIST_INCLUDE,
-    orderBy: { requestNumber: "desc" },
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
   });
 }
 
@@ -108,17 +119,16 @@ function itemLabel(item: { name: unknown; code: string | null }): string {
  * 中継は要らなくなった。
  */
 function mapCommon(r: ListRow) {
+  const number = docIdOf(r);
   return {
-    id: r.requestNumber,
-    requestNumber: r.requestNumber,
+    id: number,
+    requestNumber: number,
+    legacyNumber: r.legacyNumber,
     uuid: r.id,
     trigger: r.trigger as DesignRequestTrigger,
-    quoteNumber:
-      r.quoteYearMonth && r.quoteSeq != null
-        ? formatQuoteNumber({ yearMonth: r.quoteYearMonth, seq: r.quoteSeq })
-        : null,
+    quoteNumber: docIdOrNull(r.quote),
     orderLineId: r.orderLineId,
-    orderLineNumber: r.orderLine ? orderLineNumberOf(r.orderLine) : null,
+    orderLineNumber: r.orderLine ? orderLineIdOf(r.orderLine) : null,
     itemId: r.itemId != null ? String(r.itemId) : null,
     productName: r.item ? itemLabel(r.item) : null,
     customerBpId: r.customerBpId,
@@ -203,7 +213,7 @@ export function designRequestInScope(
   return access.own && (row.createdBy === userId || row.assigneeId === userId);
 }
 
-/** 一覧 — 新しい依頼番号から順に（DSG-YYYYMM-NNNNN は文字列順 = 採番順）。 */
+/** 一覧 — 新しい依頼番号から順に（会計年度 → 連番）。 */
 export async function fetchDesignRequests(): Promise<DesignRequest[]> {
   const authz = await checkPermission("design_request", "READ");
   if (!authz.ok) return [];
@@ -219,14 +229,31 @@ export async function fetchDesignRequests(): Promise<DesignRequest[]> {
   }));
 }
 
-/** 1件取得 — 未存在・スコープ外は null。 */
+/**
+ * 設計依頼の id（CKK~DSG-…）→ 鍵。番号だけ・旧番号で渡された場合（PDF ルートの
+ * `?id=` など）は DB を引いて 1 件に決まるときだけ鍵になる。
+ */
+export async function designRequestKeyOf(id: string): Promise<DocKey | null> {
+  const key = parseDocKey(id, "DSG");
+  if (key) return key;
+  const r = await resolveDocId("design_requests", id);
+  return r.status === "ok" ? { docRef: r.docRef } : null;
+}
+
+/**
+ * 1件取得 — 未存在・スコープ外は null。
+ * `idOrKey` は鍵（詳細ページ）か、設計依頼の id（PDF ルートの `?id=`）。
+ */
 export async function fetchDesignRequest(
-  requestNumber: string,
+  idOrKey: string | DocKey,
   locale?: Locale,
 ): Promise<DesignRequest | null> {
   const authz = await checkPermission("design_request", "READ");
   if (!authz.ok) return null;
-  const row: DetailRow | null = await findRow(requestNumber);
+  const key =
+    typeof idOrKey === "string" ? await designRequestKeyOf(idOrKey) : idOrKey;
+  if (!key) return null;
+  const row: DetailRow | null = await findRow(key);
   if (!row) return null;
   if (!designRequestInScope(authz.access, row, authz.userId)) return null;
   return {
@@ -263,11 +290,11 @@ async function fetchLinks(
   const rows = await prisma.designRequest.findMany({
     where,
     include: { assigneeUser: { select: { displayName: true } } },
-    orderBy: { requestNumber: "desc" },
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
     take: 20,
   });
   return rows.map((r) => ({
-    requestNumber: r.requestNumber,
+    requestNumber: docIdOf(r),
     status: r.status as DesignRequestStatus,
     description: r.description,
     assigneeName: r.assigneeUser?.displayName ?? null,
@@ -276,13 +303,11 @@ async function fetchLinks(
 }
 
 /** 見積書に紐づく設計依頼（見積書詳細 関連タブ）。 */
-export function fetchDesignRequestsForQuote(key: {
-  yearMonth: string;
-  seq: number;
-}): Promise<DesignRequestLink[]> {
+export function fetchDesignRequestsForQuote(
+  key: DocKey,
+): Promise<DesignRequestLink[]> {
   return fetchLinks({
-    quoteYearMonth: key.yearMonth,
-    quoteSeq: key.seq,
+    quote: { docRef: key.docRef },
     status: { not: "CANCELLED" },
   });
 }
@@ -356,44 +381,44 @@ export async function fetchDesignKindContext(
 /**
  * 見積書リンク用の options（新規フォームの 見積書 Select）。
  * 見積マスタは注文明細ほど大きくないため、直近 50 件をサーバーで読み込んで
- * 通常の Select に渡す（value = 導出番号 QOT-YYYYMM-NNNNN）。
+ * 通常の Select に渡す（value = 見積書の id `CKK~QOT-…`、ラベルは番号）。
  */
 export async function fetchRecentQuoteOptions(): Promise<QuoteOption[]> {
   const rows = await prisma.quote.findMany({
     include: { customerBp: true },
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
     take: 50,
   });
-  return rows.map((r) => {
-    const number = formatQuoteNumber({ yearMonth: r.yearMonth, seq: r.seq });
-    return {
-      value: number,
-      label: `${number} ${localized(r.customerBp.name as LocalizedText | null)}`,
-    };
-  });
+  return rows.map((r) => ({
+    value: docIdOf(r),
+    label: `${docNumberOf(r)} ${localized(r.customerBp.name as LocalizedText | null)}`,
+  }));
 }
 
 /**
- * 見積書 1 件の参照解決（`?quote=QOT-…` プリフィル用）。
+ * 見積書 1 件の参照解決（`?quote=<見積書の id>` プリフィル用）。
  *
  * クエリ文字列をそのままフォームへ渡さず、実在を確かめてからラベル付きで渡す
- * （存在しない番号でトリガーだけ固定されるのを防ぐ）。
+ * （存在しない番号でトリガーだけ固定されるのを防ぐ）。番号だけ・旧番号で来た
+ * 場合は DB を引いて 1 件に決まるときだけ使う。
  */
 export async function fetchQuoteRef(
   quoteNumber: string,
 ): Promise<(QuoteOption & { customerBpId: string | null }) | null> {
-  const { parseDocKey } = await import("@/lib/doc-number");
-  const key = parseDocKey(quoteNumber, "QOT");
+  let key = parseDocKey(quoteNumber, "QOT");
+  if (!key) {
+    const resolved = await resolveDocId("quotes", quoteNumber);
+    if (resolved.status === "ok") key = { docRef: resolved.docRef };
+  }
   if (!key) return null;
   const r = await prisma.quote.findUnique({
-    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    where: { docRef: key.docRef },
     include: { customerBp: true },
   });
   if (!r) return null;
-  const number = formatQuoteNumber({ yearMonth: r.yearMonth, seq: r.seq });
   return {
-    value: number,
-    label: `${number} ${localized(r.customerBp.name as LocalizedText | null)}`,
+    value: docIdOf(r),
+    label: `${docNumberOf(r)} ${localized(r.customerBp.name as LocalizedText | null)}`,
     // 起票時に「版がどの系列に載るか」の既定を決めるために要る。
     customerBpId: r.customerBpId,
   };

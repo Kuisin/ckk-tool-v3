@@ -17,11 +17,7 @@ import type { DeliveryOrder } from "@/components/shipping/delivery-orders/model"
 import type { UnshippedOrderLineRow } from "@/components/shipping/pending-shipments/model";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import {
-  formatOrderLineNumber,
-  formatProductNumber,
-  legacyDocKey,
-} from "@/lib/doc-number";
+import { formatProductNumber, orderLineIdOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { LINE_CONSUMING_DELIVERY_ORDER_WHERE } from "@/lib/order-line-core";
 import { distributeFinished } from "@/lib/work-order-alloc-core";
@@ -122,15 +118,19 @@ export async function fetchUnshippedOrderLines(): Promise<
       },
     },
     orderBy: [
-      { acceptanceYearMonth: "desc" },
-      { acceptanceSeq: "desc" },
+      { acceptance: { fiscalYear: "desc" } },
+      { acceptance: { docSeq: "desc" } },
+      { acceptanceId: "desc" },
       { branch: "asc" },
     ],
   });
 
   const out: UnshippedOrderLineRow[] = [];
   for (const r of rows) {
-    if (r.branch == null) continue;
+    // 確定済みの明細は番号を持つ（line_ref は枝番と一緒に DB が付ける）。
+    // 画面の DTO は id（法人コード + 番号）で持つ。
+    const number = orderLineIdOf(r);
+    if (r.branch == null || number == null) continue;
     // 統合ロットでは 1 つの出来高を複数明細が二重取りしないよう、指示書の
     // 完成数を割当順に配分して自明細ぶんだけ数える。
     const finishedQuantity = r.workOrderLinks.reduce((sum, l) => {
@@ -151,10 +151,6 @@ export async function fetchUnshippedOrderLines(): Promise<
     const unshippedQuantity = finishedQuantity - shippedQuantity;
     // 出荷書に載りきっている明細はキューに出さない。
     if (unshippedQuantity <= 0) continue;
-    const number = formatOrderLineNumber({
-      ...legacyDocKey(r.acceptanceYearMonth, r.acceptanceSeq),
-      branch: r.branch,
-    });
     out.push({
       id: number,
       orderLineNumber: number,

@@ -21,7 +21,7 @@ const CUSTOMER = "bp-1";
 const PRODUCT = "1001";
 
 const entry = (over: Partial<PriceListEntry> = {}): PriceListEntry => ({
-  entryId: "PRC-202604-00001",
+  entryId: "CKK~PRC-2026-00001",
   customerId: CUSTOMER,
   customerName: "顧客",
   itemId: PRODUCT,
@@ -358,7 +358,7 @@ describe("再研磨の対象工具（工具一致 → 工具なし → 標準価
     over: Partial<PriceListEntry> = {},
   ): PriceListEntry =>
     entry({
-      entryId: `PRC-202604-0${price}`,
+      entryId: `CKK~PRC-2026-0${price}`,
       itemId: SERVICE,
       itemType: "REGRIND",
       toolItemId,

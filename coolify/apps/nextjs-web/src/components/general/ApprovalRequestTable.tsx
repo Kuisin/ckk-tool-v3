@@ -49,7 +49,7 @@ function targetHref(row: ApprovalRequestRow): string | null {
 }
 
 function targetLabel(row: ApprovalRequestRow): string {
-  // 指示書はサーバー側で書類番号 WO-YYYYMM-NNNNN へ解決済み。
+  // 指示書はサーバー側で書類番号 WOR-FFFF-NNNNN へ解決済み。
   return row.targetDisplay;
 }
 

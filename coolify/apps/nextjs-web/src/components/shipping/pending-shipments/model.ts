@@ -10,7 +10,7 @@
 
 /** 未手配タブの 1 行 — 完成分が出荷書に載っていない注文明細。 */
 export interface UnshippedOrderLineRow {
-  /** 行 id = 注文明細番号 ORD-YYYYMM-NNNNN-NN（URL id も同じ）。 */
+  /** 行 id = 注文明細の id（`CKK~ORD-2026-00001-01`。URL id も同じ）。 */
   id: string;
   orderLineNumber: string;
   /** 内部 uuid — 出荷書作成リンク `?orderLine=` に渡す。 */

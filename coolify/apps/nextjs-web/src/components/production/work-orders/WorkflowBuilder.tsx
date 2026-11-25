@@ -102,6 +102,7 @@ import { FormSection, FormShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 // type-only import — lib/atp は server-only（型はバンドルされない）。
 import type { MaterialAtp } from "@/lib/atp";
+import { docNo } from "@/lib/doc-number";
 import {
   orderTypeLabel,
   WORK_ORDER_TYPE_COLOR,
@@ -246,8 +247,8 @@ function initialAllocRows(
       quantity: l.allocatedQuantity,
       info: {
         id: l.orderLineId,
-        number: l.number,
-        label: `${l.number} ${workOrder.productName}（${l.lineQuantity}）`,
+        number: docNo(l.number),
+        label: `${docNo(l.number)} ${workOrder.productName}（${l.lineQuantity}）`,
         customerName: l.customerName ?? "",
         productName: workOrder.productName,
         itemId: workOrder.productItemId ?? 0,
@@ -1138,7 +1139,7 @@ export function WorkflowBuilder({
           title: tr("production.workOrders.cannotBeAllocated"),
           message: tr(
             "production.workflowBuilder.orderLineAlreadyFullyPlannedWithNumber",
-            { number: info.number },
+            { number: docNo(info.number) },
           ),
           color: "yellow",
         });
@@ -1550,7 +1551,7 @@ export function WorkflowBuilder({
                 }),
           color: "green",
         });
-        router.push(`${BASE_PATH}/${result.data.docNumber}`);
+        router.push(`${BASE_PATH}/${result.data.workOrderNumber}`);
       } else {
         notifications.show({
           title: tr("common.error2"),
@@ -1646,7 +1647,7 @@ export function WorkflowBuilder({
       isPending={isPending}
       onCancel={() =>
         router.push(
-          workOrder ? `${BASE_PATH}/${workOrder.docNumber}` : BASE_PATH,
+          workOrder ? `${BASE_PATH}/${workOrder.workOrderNumber}` : BASE_PATH,
         )
       }
       onSubmit={form.onSubmit(handleSubmit)}

@@ -32,6 +32,7 @@ import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docNo } from "@/lib/doc-number";
 import type { MaterialReceiptView } from "./model";
 
 const BASE_PATH = "/purchase/material-receipts";
@@ -66,7 +67,7 @@ export function MaterialReceiptTable({
       r.materialCode.includes(search) ||
       r.materialName.includes(search) ||
       (r.supplierName ?? "").includes(search) ||
-      (r.poNumber ?? "").includes(search);
+      (docNo(r.poNumber) ?? "").includes(search);
     const matchesSource =
       !source || (source === "po" ? r.poNumber != null : r.poNumber == null);
     return matchesSearch && matchesSource;
@@ -140,7 +141,7 @@ export function MaterialReceiptTable({
             size="sm"
           >
             <Text c="blue" className="tabular-nums" ff="mono" size="sm" span>
-              {r.poNumber}
+              {docNo(r.poNumber)}
             </Text>
           </Anchor>
         ) : (
@@ -227,7 +228,7 @@ export function MaterialReceiptTable({
             <Stack align="flex-end" className="shrink-0" gap={4}>
               {r.poNumber ? (
                 <Text c="dimmed" ff="mono" size="xs">
-                  {r.poNumber}
+                  {docNo(r.poNumber)}
                 </Text>
               ) : (
                 <Badge color="gray" variant="light">

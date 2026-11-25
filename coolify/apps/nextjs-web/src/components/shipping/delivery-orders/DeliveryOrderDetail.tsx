@@ -80,6 +80,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { ApprovalActionState, ApprovalTrailEntry } from "@/lib/approvals";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import {
   deliveryBillingPriceModeLabel,
@@ -170,7 +171,7 @@ function DeliveryOrderProcedurePanel({
           : null,
       items: order.orderLineNumbers.map((n) => ({
         key: n,
-        label: n,
+        label: docNo(n),
         href: `/sales/order-lines/${n}`,
       })),
       emptyNote: isStock
@@ -209,7 +210,7 @@ function DeliveryOrderProcedurePanel({
               : null,
           items: order.deliveryNotes.map((dn) => ({
             key: dn.deliveryNumber,
-            label: dn.deliveryNumber,
+            label: docNo(dn.deliveryNumber),
             href: `/shipping/delivery-notes/${dn.deliveryNumber}`,
             done: dn.status === "DELIVERED",
             note: tr("shipping.deliveryOrders.deliveryNoteNote", {
@@ -399,7 +400,7 @@ export function DeliveryOrderDetail({
       () => shipDeliveryOrder(order.deliveryOrderNumber),
       tr("shipping.deliveryOrders.shipped"),
       tr("shipping.deliveryOrders.shippedBody", {
-        number: order.deliveryOrderNumber,
+        number: docNo(order.deliveryOrderNumber),
       }),
     );
 
@@ -486,7 +487,7 @@ export function DeliveryOrderDetail({
       ]}
       createdAt={fmt.dateTime(order.createdAt)}
       status={<StatusBadge entity="DeliveryOrder" status={order.status} />}
-      title={order.deliveryOrderNumber}
+      title={docNo(order.deliveryOrderNumber)}
       updatedAt={fmt.dateTime(order.updatedAt)}
     >
       {/* ヘッダー直下 = ActionCard の定位置（design.md §8.2）。
@@ -503,6 +504,12 @@ export function DeliveryOrderDetail({
           label={tr("common.deliveryOrderNumber")}
           value={<DocNumber>{order.deliveryOrderNumber}</DocNumber>}
         />
+        {order.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={<DocNumber>{order.legacyNumber}</DocNumber>}
+          />
+        )}
         <FieldValue
           label={tr("common.orderLineNumber")}
           value={
@@ -796,7 +803,7 @@ export function DeliveryOrderDetail({
           needsApproval
             ? "shipping.deliveryOrders.confirmNeedsApprovalBody"
             : "shipping.deliveryOrders.confirmConfirmBody",
-          { number: order.deliveryOrderNumber },
+          { number: docNo(order.deliveryOrderNumber) },
         )}
         onClose={() => setConfirmOpen(false)}
         onConfirm={() =>
@@ -807,13 +814,13 @@ export function DeliveryOrderDetail({
               : tr("common.confirmed2"),
             needsApproval
               ? tr("shipping.deliveryOrders.approvalRequestedBody", {
-                  number: order.deliveryOrderNumber,
+                  number: docNo(order.deliveryOrderNumber),
                 })
               : tr(
                   order.type === "DISPATCH"
                     ? "shipping.deliveryOrders.confirmedBodyDispatch"
                     : "shipping.deliveryOrders.confirmedBody",
-                  { number: order.deliveryOrderNumber },
+                  { number: docNo(order.deliveryOrderNumber) },
                 ),
           )
         }
@@ -832,10 +839,10 @@ export function DeliveryOrderDetail({
         message={
           order.type === "DISPATCH"
             ? tr("shipping.deliveryOrders.confirmShipBodyDispatch", {
-                number: order.deliveryOrderNumber,
+                number: docNo(order.deliveryOrderNumber),
               })
             : tr("shipping.deliveryOrders.confirmShipBodyStock", {
-                number: order.deliveryOrderNumber,
+                number: docNo(order.deliveryOrderNumber),
               })
         }
         onClose={() => setShipOpen(false)}
@@ -870,7 +877,7 @@ export function DeliveryOrderDetail({
               }),
             tr("shipping.deliveryOrders.returnRecorded"),
             tr("shipping.deliveryOrders.returnRecordedBody", {
-              number: order.deliveryOrderNumber,
+              number: docNo(order.deliveryOrderNumber),
             }),
             () => setReturnOpen(false),
           )
@@ -881,7 +888,7 @@ export function DeliveryOrderDetail({
         confirmLabel={tr("common.cancelDocument")}
         loading={isPending}
         message={tr("shipping.deliveryOrders.confirmDeleteBody", {
-          number: order.deliveryOrderNumber,
+          number: docNo(order.deliveryOrderNumber),
         })}
         onClose={() => setCancelOpen(false)}
         onConfirm={() =>
@@ -889,7 +896,7 @@ export function DeliveryOrderDetail({
             () => deleteDeliveryOrder(order.deliveryOrderNumber),
             tr("common.cancelled"),
             tr("shipping.deliveryOrders.deletedBody", {
-              number: order.deliveryOrderNumber,
+              number: docNo(order.deliveryOrderNumber),
             }),
             () => router.push(BASE_PATH),
           )

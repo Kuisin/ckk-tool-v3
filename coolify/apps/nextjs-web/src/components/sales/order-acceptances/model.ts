@@ -23,7 +23,7 @@ export type IntakeSource = "FOLDER" | "UPLOAD" | "MANUAL";
  * fetchOrderAcceptancesForQuote。
  */
 export interface AcceptanceLink {
-  /** 表示番号 ORD-YYYYMM-NNNNN（URL id も同じ）。 */
+  /** 注文請書の id（法人コード + 番号 `CKK~ORD-2026-00001`。URL id と同じ）。 */
   number: string;
   status: OrderAcceptanceStatus;
   /** ぶら下がる注文明細の件数（確定前は下書き行の数）。 */
@@ -55,8 +55,13 @@ import type { FieldReview } from "@/lib/intake-review";
 
 /** 一覧（取込状況一覧）の 1 行。 */
 export interface OrderAcceptanceListRow {
-  /** 表示番号 ORD-YYYYMM-NNNNN（URL id 兼用）。 */
+  /**
+   * 注文請書の id（法人コード + 番号 `CKK~ORD-2026-00001`。URL id 兼用）。
+   * 表示するときは docNo() / <DocNumber> で番号だけにする。
+   */
   number: string;
+  /** 旧番号（ORD-YYYYMM-NNNNN）。番号設計の切り替え前に採番された書類だけ。 */
+  legacyNumber?: string | null;
   status: OrderAcceptanceStatus;
   source: IntakeSource;
   sourceFilename: string | null;
@@ -73,8 +78,8 @@ export interface OrderAcceptanceListRow {
 export interface OrderAcceptanceItemView {
   id: string;
   /**
-   * 注文明細番号 ORD-YYYYMM-NNNNN-NN（確定時に枝番を採番して生まれる導出番号）。
-   * 未確定（branch なし）の行は null — 明細表では番号なしで表示する。
+   * 注文明細の id（`CKK~ORD-2026-00001-01`。確定時に枝番を採番すると DB が番号を
+   * 導出する）。未確定（branch なし）の行は null — 明細表では番号なしで表示する。
    */
   lineNumber: string | null;
   /**
@@ -170,9 +175,10 @@ export interface OrderAcceptanceView {
    * どれがマスタに引けなかったかを画面に出すためのもの。手入力は空配列。
    */
   review: FieldReview[];
+  /** 注文請書の id（法人コード + 番号 `CKK~ORD-2026-00001`）。 */
   number: string;
-  yearMonth: string;
-  seq: number;
+  /** 旧番号（ORD-YYYYMM-NNNNN）。番号設計の切り替え前に採番された書類だけ。 */
+  legacyNumber?: string | null;
   status: OrderAcceptanceStatus;
   source: IntakeSource;
   sourceFilename: string | null;
@@ -214,7 +220,7 @@ export interface OrderAcceptanceView {
   orderDate: string | null; // yyyy-mm-dd
   notes: string | null;
   items: OrderAcceptanceItemView[];
-  /** 注文確定で生成された注文明細番号（ORD-…-NN、枝番順）。 */
+  /** 注文確定で生成された注文明細の id（`CKK~ORD-…-NN`、枝番順）。 */
   orderLineNumbers: string[];
   completedAt: string | null;
   archivedAt: string | null;
@@ -223,9 +229,6 @@ export interface OrderAcceptanceView {
 }
 
 /** 取込元ファイルの配信 URL（inline 表示）。 */
-export function sourceFileUrl(view: {
-  yearMonth: string;
-  seq: number;
-}): string {
-  return `/api/intake/source/${view.yearMonth}/${view.seq}`;
+export function sourceFileUrl(view: { number: string }): string {
+  return `/api/intake/source/${encodeURIComponent(view.number)}`;
 }

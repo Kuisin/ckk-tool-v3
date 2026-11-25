@@ -367,6 +367,12 @@ export function TrialEstimateDetail({
           label={tr("common.priceEstimateNumber")}
           value={<DocNumber>{record.estimateNumber}</DocNumber>}
         />
+        {record.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={record.legacyNumber}
+          />
+        )}
         <FieldValue
           label={tr("sales.trialEstimates.quoteRecipient")}
           value={record.customerName ?? "—"}

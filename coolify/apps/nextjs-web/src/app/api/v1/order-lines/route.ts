@@ -26,7 +26,8 @@ import { dateOnly, iso, localizedJson, num } from "@/lib/api-dto";
 import { invalidCursorResponse, parseListQuery, runList } from "@/lib/api-list";
 import { instanceOf } from "@/lib/api-problem";
 import { prisma } from "@/lib/db";
-import { formatDocNumber, legacyDocKey } from "@/lib/doc-number";
+import { docRefCompany } from "@/lib/doc-ref-core";
+import { relatedDocNumber } from "../doc-fields";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -54,8 +55,11 @@ export async function GET(request: Request): Promise<Response> {
         orderBy: orderBy as any,
         select: {
           id: true,
-          acceptanceYearMonth: true,
-          acceptanceSeq: true,
+          acceptanceId: true,
+          // 番号は DB が導出する（line_number。枝番の採番前は null）。
+          lineNumber: true,
+          // 請書の番号・法人は関係から読む（旧い複合キーの列は読まない）。
+          acceptance: { select: { docRef: true, legacyNumber: true } },
           branch: true,
           sortOrder: true,
           itemId: true,
@@ -87,16 +91,19 @@ export async function GET(request: Request): Promise<Response> {
     toCursor: (r) => ({ kind: "id", id: r.id, t: r.updatedAt.toISOString() }),
     toDto: (r) => ({
       id: r.id,
-      // 明細の公開識別子は `ORD-YYYYMM-NNNNN-NN`。未確定は枝番が無い。
-      number:
-        r.branch === null
-          ? null
-          : `${formatDocNumber("ORD", {
-              ...legacyDocKey(r.acceptanceYearMonth, r.acceptanceSeq),
-            })}-${String(r.branch).padStart(2, "0")}`,
-      acceptanceNumber: formatDocNumber("ORD", {
-        ...legacyDocKey(r.acceptanceYearMonth, r.acceptanceSeq),
-      }),
+      // 明細の番号は `ORD-FFFF-NNNNN-NN`。未確定は枝番が無いので null。
+      // **法人ごとの連番** — 同定は `id`（uuid）か `companyCode` + `number`。
+      number: r.lineNumber,
+      /** 発行した自社法人のコード（請書と同じ）。 */
+      companyCode: docRefCompany(r.acceptance.docRef),
+      /** 親の注文請書の uuid（`/order-acceptances` の `id`）。 */
+      acceptanceId: r.acceptanceId,
+      acceptanceNumber: relatedDocNumber(r.acceptance),
+      /** 旧番号 `ORD-YYYYMM-NNNNN-NN`（切り替え前に採番された明細だけ）。 */
+      legacyNumber:
+        r.acceptance.legacyNumber && r.branch !== null
+          ? `${r.acceptance.legacyNumber}-${String(r.branch).padStart(2, "0")}`
+          : null,
       branch: r.branch,
       sortOrder: r.sortOrder,
       status: r.status,

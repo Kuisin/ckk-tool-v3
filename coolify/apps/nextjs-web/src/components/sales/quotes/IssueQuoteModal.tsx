@@ -27,6 +27,7 @@ import {
 } from "@/app/(dashboard)/sales/quotes/actions";
 import { type ModalBaseProps, ModalShell } from "@/components/ui/modals";
 import type { PdfFileMeta } from "@/components/ui/PdfAttachmentPanel";
+import { docNo } from "@/lib/doc-number";
 
 export function IssueQuoteModal({
   opened,
@@ -93,7 +94,7 @@ export function IssueQuoteModal({
       notifications.show({
         title: tr("common.issued"),
         message: tr("sales.issueQuoteModal.issuedAndSaved", {
-          number: quoteNumber,
+          number: docNo(quoteNumber),
         }),
         color: "green",
       });
@@ -144,7 +145,7 @@ export function IssueQuoteModal({
       <Stack gap="sm">
         <Text size="sm">
           {tr("sales.issueQuoteModal.confirmIssueMessage", {
-            number: quoteNumber,
+            number: docNo(quoteNumber),
           })}
         </Text>
         <DatePickerInput

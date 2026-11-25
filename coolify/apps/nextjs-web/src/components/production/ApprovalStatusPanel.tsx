@@ -48,6 +48,7 @@ import {
   ProcedurePanel,
   procedureStages,
 } from "@/components/ui/ProcedurePanel";
+import { docNo } from "@/lib/doc-number";
 import { workOrderHistoryActionLabel } from "@/lib/enum-labels";
 import { statusLabel } from "@/lib/status-map";
 import type { PlanReadiness } from "@/lib/work-plan-core";
@@ -253,7 +254,7 @@ export function WorkOrderProcedurePanel({
           : null,
       items: wo.orderLines.map((l) => ({
         key: l.orderLineId,
-        label: l.number,
+        label: docNo(l.number),
         href: `/sales/order-lines/${l.number}`,
         note: tr("production.approvalStatusPanel.customerAllocatedOfOrdered", {
           customer: l.customerName ?? "—",
@@ -308,7 +309,7 @@ export function WorkOrderProcedurePanel({
           : null,
       items: wo.shipments.map((s, i) => ({
         key: `${s.number}-${i}`,
-        label: s.number,
+        label: docNo(s.number),
         href: `/shipping/delivery-orders/${s.number}`,
         done: s.status === "SHIPPED",
         note: tr("production.approvalStatusPanel.deliveryStatusQuantity", {

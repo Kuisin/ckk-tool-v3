@@ -86,8 +86,21 @@ model WorkOrder {
   // ロット番号 = 通し連番（在庫・QR・業務キーはこちら。不変）
   workOrderNumber Int     @unique @map("work_order_number")
   // 書類番号 WO-YYYYMM-NNNNN（月次リセット — 他書類と同形式。表示用の識別子）
-  yearMonth       String  @map("year_month") @db.Char(6)
-  seq             Int
+  /// 旧番号の年月と連番（PR-D で落とす）。新しい行は NULL — 旧番号の文字列は
+  /// legacy_number が持つ。SQL のシードはまだこの 2 列で書類を入れる。
+  legacyYearMonth String? @map("year_month") @db.Char(6)
+  legacySeq       Int?    @map("seq")
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
   /// **指示書が作る製品**の品目（app.items）。使う素材は materialItemId —
   /// 同じ表が品目を 2 つ指すので、どちらも裸の item_id にはしない。
   productItemId   Int     @map("product_item_id")
@@ -191,7 +204,10 @@ model WorkOrder {
 
   ownCompany OwnCompany @relation("WorkOrderOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
-  @@unique([yearMonth, seq])
+  @@unique([legacyYearMonth, legacySeq])
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
   @@index([status])
   @@index([approvalStatus])
   @@index([routeVersionId])
@@ -426,6 +442,7 @@ model WorkOrderStep {
   supplierBp  BusinessPartner?   @relation("StepSupplier", fields: [supplierBpId], references: [id])
   outsourceIssueMovement  InventoryMovement? @relation("StepOutsourceIssue", fields: [outsourceIssueMovementId], references: [id], onDelete: SetNull)
   outsourceReturnMovement InventoryMovement? @relation("StepOutsourceReturn", fields: [outsourceReturnMovementId], references: [id], onDelete: SetNull)
+  outsourceOrder OutsourceOrder?
   regrindReceiptMovement  InventoryMovement? @relation("StepRegrindReceipt", fields: [regrindReceiptMovementId], references: [id], onDelete: SetNull)
 
   outgoingLinks WorkOrderStepLink[] @relation("LinkSource")
@@ -678,5 +695,40 @@ model WorkOrderCharge {
   @@index([workOrderId, sortOrder])
   @@index([chargeItemId])
   @@map("work_order_charges")
+  @@schema("app")
+}
+
+// 外注依頼の書類番号（PU04。番号設計 PR-C）。
+//
+// 外注依頼は今も「指示書の外注工程の読み取りビュー」で、依頼日・入荷予定日・
+// 入荷日は工程（work_order_steps）が持つ。**この表が持つのは番号だけ** —
+// 番号は「自社法人 × 会計年度」の連番で、いったん払い出したら工程が消えても
+// 欠番にしない（再利用しない）ので、工程の列ではなく独立した行にした
+// （工程を消すと work_order_step_id が NULL になるだけで、行と番号は残る）。
+//
+// 行は **DB が作る**: 外注工程に依頼日（outsource_requested_at）が入った時点で
+// トリガー app.work_order_steps_outsource_order が 1 行足す。Web と共有端末の
+// どちらが依頼日を入れても同じ経路になる。
+model OutsourceOrder {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
+  workOrderStepId String? @unique @map("work_order_step_id") @db.Uuid
+
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  docRef       String  @unique @default("") @map("doc_ref")
+  legacyNumber String? @map("legacy_number")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  step       WorkOrderStep? @relation(fields: [workOrderStepId], references: [id], onDelete: SetNull)
+  ownCompany OwnCompany     @relation("OutsourceOrderOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
+  @@index([ownCompanyId])
+  @@map("outsource_orders")
   @@schema("app")
 }

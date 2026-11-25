@@ -17,11 +17,7 @@ import type {
 } from "@/components/inventory/stock-takes/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import {
-  formatDocNumber,
-  formatMovementNumber,
-  parseDocKey,
-} from "@/lib/doc-number";
+import { docIdOf, docIdOrNull, parseDocKey } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { storageLabelOf } from "../products/data";
 
@@ -80,10 +76,8 @@ export async function fetchStockTakes(): Promise<StockTakeRow[]> {
   });
   const names = await resolveUserNames(rows.map((r) => r.createdBy));
   return rows.map((r) => ({
-    stockTakeNumber: formatDocNumber("STK", {
-      yearMonth: r.yearMonth,
-      seq: r.seq,
-    }),
+    stockTakeNumber: docIdOf(r),
+    legacyNumber: r.legacyNumber,
     plantName: plantName(r.plant) ?? "—",
     storageLocationName: r.storageLocation
       ? localized(r.storageLocation.name as LocalizedText | null)
@@ -136,7 +130,7 @@ async function resolveLines(
     });
 }
 
-/** 棚卸 詳細（id = 表示番号 STK-YYYYMM-NNNNN）。未存在・スコープ外は null。 */
+/** 棚卸 詳細（id = `CKK~STK-2026-00001` — 法人コード付き）。未存在・スコープ外は null。 */
 export async function fetchStockTake(
   stockTakeNumber: string,
 ): Promise<StockTakeView | null> {
@@ -145,7 +139,7 @@ export async function fetchStockTake(
   const key = parseDocKey(stockTakeNumber, "STK");
   if (!key) return null;
   const r = await prisma.stockTake.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     include: {
       plant: true,
       storageLocation: true,
@@ -169,16 +163,14 @@ export async function fetchStockTake(
     r.movementId
       ? prisma.inventoryMovement.findUnique({
           where: { id: r.movementId },
-          select: { yearMonth: true, seq: true },
+          select: { docRef: true },
         })
       : null,
   ]);
 
   return {
-    stockTakeNumber: formatDocNumber("STK", {
-      yearMonth: r.yearMonth,
-      seq: r.seq,
-    }),
+    stockTakeNumber: docIdOf(r),
+    legacyNumber: r.legacyNumber,
     plantId: r.plantId,
     plantName: plantName(r.plant) ?? "—",
     storageLocationId: r.storageLocationId,
@@ -197,7 +189,7 @@ export async function fetchStockTake(
     confirmedByName: r.confirmedBy ? (names.get(r.confirmedBy) ?? null) : null,
     cancelledAt: r.cancelledAt?.toISOString() ?? null,
     cancelledByName: r.cancelledBy ? (names.get(r.cancelledBy) ?? null) : null,
-    movementNumber: movement ? formatMovementNumber(movement) : null,
+    movementNumber: docIdOrNull(movement),
     notes: r.notes,
     createdByName: r.createdBy ? (names.get(r.createdBy) ?? null) : null,
     createdAt: r.createdAt.toISOString(),

@@ -118,6 +118,20 @@ const bucket = (inventoryId: string): string =>
     `SELECT quantity::int||'/'||reserved_quantity::int FROM app.item_inventory WHERE id='${inventoryId}'`,
   );
 
+/**
+ * 保存後に飛ぶ指示書の詳細。URL の id はロット番号（通し連番）か書類番号で、
+ * 書類番号は DB が振る — URL からは読まず DB から引き直す。
+ */
+const DETAIL_URL = (u: URL): boolean =>
+  /\/production\/work-orders\/[^/]+$/.test(u.pathname) &&
+  !u.pathname.endsWith("/new");
+
+/** 書類番号（表示用。DB が振る）。 */
+const docNumberOf = (woNumber: number): string =>
+  sql(
+    `SELECT coalesce(doc_number,'') FROM app.work_orders WHERE work_order_number = ${woNumber}`,
+  );
+
 const latestWo = (): number =>
   Number(
     sql(
@@ -148,8 +162,8 @@ function planAllSteps(woNumber: number): void {
 }
 
 /** 承認依頼 → 段数ぶん承認（demo1 は fixtures で承認グループに入っている）。 */
-async function approve(page: Page, docNumber: string): Promise<void> {
-  const detail = `${APP}/production/work-orders/${docNumber}`;
+async function approve(page: Page, woNumber: number): Promise<void> {
+  const detail = `${APP}/production/work-orders/${woNumber}`;
   await page.goto(detail, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "承認依頼", exact: true }).click();
   await page.waitForTimeout(1500);
@@ -290,12 +304,9 @@ async function main(): Promise<void> {
   await shot(page, "02-builder-selected");
 
   await page.getByRole("button", { name: "保存" }).click();
-  await page.waitForURL(/\/production\/work-orders\/WOR-\d{6}-\d{5}/, {
-    timeout: 30_000,
-  });
-  const docNumber = new URL(page.url()).pathname.split("/").pop() ?? "";
+  await page.waitForURL(DETAIL_URL, { timeout: 30_000 });
   const wo = latestWo();
-  check("B5 指示書が作られる", wo > 0, `${docNumber} / ロット ${wo}`);
+  check("B5 指示書が作られる", wo > 0, `${docNumberOf(wo)} / ロット ${wo}`);
   check(
     "B6 工程は 半製品出し → 段加工 → 検査 → 承認（済んでいる 3 工程は載らない）",
     stepCodes(wo) ===
@@ -323,7 +334,7 @@ async function main(): Promise<void> {
   check("B9 保存しただけでは予約されない", bucket(BUCKET_EXACT) === "5/0", bucket(BUCKET_EXACT));
 
   // ── C. 指示書詳細の開始状態 ───────────────────────────────────────────────
-  await page.goto(`${APP}/production/work-orders/${docNumber}`, {
+  await page.goto(`${APP}/production/work-orders/${wo}`, {
     waitUntil: "networkidle",
   });
   const startWip = (
@@ -342,7 +353,7 @@ async function main(): Promise<void> {
   await shot(page, "03-detail-draft");
 
   // 編集で開き直しても選択が戻り、保存しても工程・版・投入が変わらない
-  await page.goto(`${APP}/production/work-orders/${docNumber}/edit`, {
+  await page.goto(`${APP}/production/work-orders/${wo}/edit`, {
     waitUntil: "networkidle",
   });
   await page.locator("[data-wip-summary]").waitFor({ timeout: 30_000 });
@@ -358,10 +369,7 @@ async function main(): Promise<void> {
   );
   await shot(page, "03b-edit");
   await page.getByRole("button", { name: "保存" }).click();
-  await page.waitForURL(
-    (u) => /\/work-orders\/WOR-\d{6}-\d{5}$/.test(u.pathname),
-    { timeout: 30_000 },
-  );
+  await page.waitForURL(DETAIL_URL, { timeout: 30_000 });
   check(
     "C3 編集して保存しても工程・投入・工程リストの版が変わらない",
     stepCodes(wo) ===
@@ -377,7 +385,7 @@ async function main(): Promise<void> {
 
   // ── D. 承認 → 予約 ────────────────────────────────────────────────────────
   planAllSteps(wo);
-  await approve(page, docNumber);
+  await approve(page, wo);
   const status = sql(
     `SELECT status||'/'||approval_status FROM app.work_orders WHERE work_order_number=${wo}`,
   );
@@ -393,7 +401,7 @@ async function main(): Promise<void> {
     reservation === "PRODUCT:5:RESERVED",
     reservation,
   );
-  await page.goto(`${APP}/production/work-orders/${docNumber}`, {
+  await page.goto(`${APP}/production/work-orders/${wo}`, {
     waitUntil: "networkidle",
   });
   check(
@@ -468,7 +476,9 @@ async function main(): Promise<void> {
   const movement = sql(
     `SELECT count(DISTINCT t.movement_id) FROM app.inventory_transactions t
        JOIN app.inventory_movements m ON m.id = t.movement_id
-      WHERE m.cause = 'WORK_ORDER_COMPLETION' AND m.source_id = '${wo}'`,
+       JOIN app.work_orders w ON w.doc_ref = m.source_id
+      WHERE m.cause = 'WORK_ORDER_COMPLETION' AND m.source_type = 'work_orders'
+        AND w.work_order_number = ${wo}`,
   );
   check("E7 完了の入出庫は 1 枚の伝票に入る", movement === "1", movement);
 
@@ -494,10 +504,7 @@ async function main(): Promise<void> {
     .getByLabel(/加工状態が合わない仕掛品を使う理由/)
     .fill("現物を確認。全長は仕上がっている");
   await page.getByRole("button", { name: "保存" }).click();
-  await page.waitForURL(/\/production\/work-orders\/WOR-\d{6}-\d{5}/, {
-    timeout: 30_000,
-  });
-  const docOther = new URL(page.url()).pathname.split("/").pop() ?? "";
+  await page.waitForURL(DETAIL_URL, { timeout: 30_000 });
   const woOther = latestWo();
   const otherRow = sql(
     `SELECT wip_override_reason FROM app.work_orders WHERE work_order_number=${woOther}`,
@@ -505,7 +512,7 @@ async function main(): Promise<void> {
   check(
     "F2 理由を入れると保存でき、指示書に残る",
     woOther > wo && otherRow === "現物を確認。全長は仕上がっている",
-    `${docOther} / ${otherRow}`,
+    `${docNumberOf(woOther)} / ${otherRow}`,
   );
   check(
     "F3 先頭から一致した 切断・センタレス だけを飛ばす（全長合わせ・段加工は残る）",
@@ -526,9 +533,9 @@ async function main(): Promise<void> {
 
   // ── G. 承認後にキャンセル → 予約解放 ─────────────────────────────────────
   planAllSteps(woOther);
-  await approve(page, docOther);
+  await approve(page, woOther);
   check("G1 承認で予約される", bucket(BUCKET_OTHER) === "3/3", bucket(BUCKET_OTHER));
-  await page.goto(`${APP}/production/work-orders/${docOther}`, {
+  await page.goto(`${APP}/production/work-orders/${woOther}`, {
     waitUntil: "networkidle",
   });
   await page.getByRole("button", { name: "操作メニュー" }).first().click().catch(() => undefined);

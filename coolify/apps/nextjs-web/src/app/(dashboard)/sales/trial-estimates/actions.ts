@@ -3,8 +3,8 @@
 /**
  * Server Actions — 価格試算 (SA01 価格試算).
  *
- * sales.estimates は複合キー (year_month, seq) — EST-YYYYMM-NNNNN は
- * lib/doc-number.ts で導出する。価格試算は任意で製品にリンクでき（1製品に複数可）、
+ * 番号（EST-FFFF-NNNNN）は DB が払い出し、行は参照 doc_ref で引く
+ * （lib/doc-number.ts）。価格試算は任意で製品にリンクでき（1製品に複数可）、
  * 確定後は価格表（顧客×製品）の作成時に基準単価ソースとして選択される
  * （初回使用時に REGISTERED へロック — sales/price-lists/actions.ts）。
  */
@@ -17,11 +17,7 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import { resolveIssuingCompany } from "@/lib/doc-company";
-import {
-  type DocKey,
-  formatEstimateNumber,
-  parseDocKey,
-} from "@/lib/doc-number";
+import { type DocKey, docIdOf, parseDocKey } from "@/lib/doc-number";
 import {
   canSeeEstimateKind,
   ESTIMATE_COST_PERMISSION,
@@ -37,7 +33,6 @@ import {
   type MaterialPricePoint,
   type ReferencePriceResult,
 } from "@/lib/material-pricing-core";
-import { allocateDocumentKey } from "@/lib/numbering";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
@@ -241,16 +236,14 @@ export async function createTrialEstimate(
     if (!company.ok) {
       return actionError(tr("common.issuingCompanyNotAllowed"));
     }
-    const { yearMonth, seq } = await allocateDocumentKey("ESTIMATE");
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
       v.customerBpId,
       null,
     );
-    await prisma.estimate.create({
+    // 番号は DB が払い出す（INSERT トリガー）— 作った行から読み戻す。
+    const created = await prisma.estimate.create({
       data: {
-        yearMonth,
-        seq,
         ...company.data,
         name: v.name,
         toolType: v.input.toolType,
@@ -271,8 +264,9 @@ export async function createTrialEstimate(
         result: buildPriceSnapshot(payload.input, settings),
         createdBy: authz.userId,
       },
+      select: { docRef: true },
     });
-    const number = formatEstimateNumber({ yearMonth, seq });
+    const number = docIdOf(created);
     await recordAudit({
       action: "CREATE",
       tableName: "estimates",
@@ -315,7 +309,7 @@ export async function linkTrialEstimateProduct(
   if (!authz.ok) return actionError(authz.error);
   try {
     const estimate = await prisma.estimate.findUnique({
-      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+      where: { docRef: key.docRef },
     });
     if (!estimate || !(await kindVisible(estimate.kind)))
       return actionError(tr("sales.trialEstimateActions.notFound"));
@@ -342,7 +336,7 @@ export async function linkTrialEstimateProduct(
     }
     if ((estimate.itemId ?? null) === idNum) return actionOk();
     await prisma.estimate.update({
-      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+      where: { docRef: key.docRef },
       data: { itemId: idNum },
     });
     await recordAudit({
@@ -378,7 +372,7 @@ export async function confirmTrialEstimate(
   if (!authz.ok) return actionError(authz.error);
   try {
     const estimate = await prisma.estimate.findUnique({
-      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+      where: { docRef: key.docRef },
     });
     if (!estimate || !(await kindVisible(estimate.kind)))
       return actionError(tr("sales.trialEstimateActions.notFound"));
@@ -397,7 +391,7 @@ export async function confirmTrialEstimate(
       settings,
     );
     await prisma.estimate.update({
-      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+      where: { docRef: key.docRef },
       data: { status: "CONFIRMED", result },
     });
     await recordAudit({

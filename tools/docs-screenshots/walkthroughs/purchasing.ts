@@ -6,6 +6,7 @@
  * 操作方法のページが説明する。
  */
 
+import { docUrl } from "../doc-number";
 import type { Walkthrough } from "./types";
 
 export const purchasing: Walkthrough = {
@@ -29,7 +30,7 @@ export const purchasing: Walkthrough = {
         await w.say("希望納期: いつまでに欲しいかの希望。確定した予定ではない。\n実際の入荷予定日は、発注書で仕入先と決める");
         await w.pickDate(p.getByRole("button", { name: /^希望納期/ }).first(), { nextMonthDay: 10 });
         await w.click(p.getByRole("button", { name: "保存", exact: true }));
-        await w.waitForUrl(/\/purchase\/purchase-requests\/PRQ-\d{6}-\d{5}$/);
+        await w.waitForUrl(docUrl("/purchase/purchase-requests", "PRQ"));
       },
     },
     {
@@ -60,7 +61,7 @@ export const purchasing: Walkthrough = {
         const dialog = p.getByRole("dialog").last();
         await w.pick(dialog.getByRole("combobox", { name: "仕入先" }), /デモ精密材料/, { search: "デモ精密" });
         await w.clickInDialog("変換する");
-        await w.waitForUrl(/\/purchase\/purchase-orders\/PO-\d{6}-\d{5}$/);
+        await w.waitForUrl(docUrl("/purchase/purchase-orders", "PO"));
         await w.see("承認依頼が必要です");
       },
     },
@@ -69,11 +70,11 @@ export const purchasing: Walkthrough = {
       run: async (w) => {
         const p = w.page;
         await w.click(p.getByRole("button", { name: "編集", exact: true }).first());
-        await w.waitForUrl(/\/purchase\/purchase-orders\/PO-\d{6}-\d{5}\/edit$/);
+        await w.waitForUrl(docUrl("/purchase/purchase-orders", "PO", "/edit"));
         await w.say("単価: 実際の取引価格を入れる。\nこの金額が、価格試算の材料費の参考価格として使われる");
         await w.fill(p.getByRole("textbox", { name: "単価" }).first(), "1250");
         await w.click(p.getByRole("button", { name: "保存", exact: true }));
-        await w.waitForUrl(/\/purchase\/purchase-orders\/PO-\d{6}-\d{5}$/);
+        await w.waitForUrl(docUrl("/purchase/purchase-orders", "PO"));
         await w.say("素材発注書も承認を通る。金額を確かめるのは承認者");
         await w.click(p.getByRole("button", { name: "承認依頼", exact: true }).first());
         await w.see("第一承認待ち");

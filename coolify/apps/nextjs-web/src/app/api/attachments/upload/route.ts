@@ -1,7 +1,8 @@
 /**
  * POST /api/attachments/upload — 証憑アップロード（multipart/form-data）。
  *
- * フィールド: ownerType（許可テーブルのみ）/ ownerId（業務キー）/
+ * フィールド: ownerType（許可テーブルのみ）/ ownerId（業務キー。書類は id
+ * `CKK~PO-2026-00001` — 番号は法人ごとの連番なので法人コードが要る）/
  * label（任意）/ file。検証・保存・監査は lib/attachments.saveAttachment。
  * 応答: { ok: true, id } | { ok: false, error }（400）。
  */
@@ -11,7 +12,8 @@ import { getTranslations } from "next-intl/server";
 import { MAX_ATTACHMENT_BYTES, saveAttachment } from "@/lib/attachments";
 import { requirePermissionResponse } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { parseDocKey } from "@/lib/doc-number";
+import { type DocPrefix, parseDocKey } from "@/lib/doc-number";
+import { resolveDocId } from "@/lib/doc-ref";
 
 export const dynamic = "force-dynamic";
 
@@ -31,17 +33,36 @@ function badRequest(error: string): NextResponse {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * 書類の ownerId → 参照（doc_ref）。画面は id（法人コード付き）を渡す。
+ * 番号だけ・旧番号は、1 件に決まるときだけ受ける（複数の法人に同じ番号が
+ * あれば「対象なし」— 黙ってどれかの法人の書類へ添付しない）。
+ */
+async function ownerDocRef(
+  ownerType: string,
+  prefix: DocPrefix,
+  ownerId: string,
+): Promise<string | null> {
+  const key = parseDocKey(ownerId, prefix);
+  if (key) return key.docRef;
+  const resolved = await resolveDocId(ownerType, ownerId);
+  return resolved.status === "ok" ? resolved.docRef : null;
+}
+
 /** ownerId が実在レコードを指すか（業務キーは各詳細画面と同じ形式）。 */
 async function ownerExists(
   ownerType: string,
   ownerId: string,
 ): Promise<boolean> {
   switch (ownerType) {
-    case "material_purchase_orders":
+    case "material_purchase_orders": {
+      const docRef = await ownerDocRef(ownerType, "PO", ownerId);
+      if (!docRef) return false;
       return !!(await prisma.materialPurchaseOrder.findUnique({
-        where: { poNumber: ownerId },
+        where: { docRef },
         select: { id: true },
       }));
+    }
     case "material_receipts":
       if (!UUID_RE.test(ownerId)) return false;
       return !!(await prisma.materialReceipt.findUnique({
@@ -49,11 +70,11 @@ async function ownerExists(
         select: { id: true },
       }));
     case "order_acceptances": {
-      const key = parseDocKey(ownerId, "ORD");
-      if (!key) return false;
+      const docRef = await ownerDocRef(ownerType, "ORD", ownerId);
+      if (!docRef) return false;
       return !!(await prisma.orderAcceptance.findUnique({
-        where: { yearMonth_seq: key },
-        select: { yearMonth: true },
+        where: { docRef },
+        select: { id: true },
       }));
     }
     case "form_responses":
@@ -66,8 +87,10 @@ async function ownerExists(
       // 差し戻し）と終わったあと（完了・キャンセル）に図面を足せてしまうと、
       // 承認した中身と完了時に版登録される中身がずれる。画面側の canAttachFiles
       // と同じ条件をここでも見る（UI のガードは飾りにしない）。
+      const docRef = await ownerDocRef(ownerType, "DSG", ownerId);
+      if (!docRef) return false;
       const row = await prisma.designRequest.findUnique({
-        where: { requestNumber: ownerId },
+        where: { docRef },
         select: { status: true },
       });
       return row?.status === "PENDING" || row?.status === "IN_PROGRESS";

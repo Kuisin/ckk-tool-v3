@@ -321,9 +321,12 @@ export interface WebhookEventPayload {
   occurredAt: string;
   resource: {
     type: string;
-    /** 書類番号（`ORD-202609-00042`）またはマスタの id。画面・API と同じ公開識別子。 */
+    /** 書類番号（`ORD-2026-00042`）またはマスタの id。画面・API と同じ公開識別子。 */
     id: string | null;
-    /** 安定キー（複合キーは `YYYYMM:seq`）。採番がリセットされても別の行を指さない。 */
+    /**
+     * 安定キー。番号を持つ書類は法人コード付きの参照（`CKK/ORD-2026-00042`）—
+     * 番号（id）は自社法人ごとの連番なので、番号だけでは書類が 1 つに決まらない。
+     */
     key: string | null;
   };
   /** status が変わったとき（`.status_changed`）だけ。値は enum のまま。 */

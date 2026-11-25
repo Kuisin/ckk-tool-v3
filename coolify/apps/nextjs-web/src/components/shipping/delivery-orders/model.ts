@@ -1,8 +1,10 @@
 /**
  * model.ts — 出荷書 (SH01) view-model types + pure helpers.
  *
- * Model (app.delivery_orders — 複合キー (year_month, seq)):
- *   表示番号 DOR-YYYYMM-NNNNN はキーから導出（保存しない）。URL id も導出番号。
+ * Model (app.delivery_orders):
+ *   出荷書番号 DOR-FFFF-NNNNN は DB が払い出す（法人 × 会計年度の連番）。
+ *   画面では id（法人コード + 番号 `CKK~DOR-2026-00001`）で持ち、URL id を兼ねる。
+ *   表示するときは `<DocNumber>` / `docNo()` で番号だけにする（lib/doc-number.ts）。
  *   ヘッダは**顧客**（必須）+ 任意で指示書・出荷元拠点を持ち、注文明細への
  *   紐付けは**明細行**にある — 1 出荷書に複数の注文明細を全量・部分数量で
  *   載せられる。明細は 注文明細 × 製品 × ロット（= 指示書番号）× 数量。
@@ -32,7 +34,7 @@ export interface DeliveryOrderItem {
   id: string;
   /** 出荷元の注文明細（DISPATCH では必須、在庫保管では null）。 */
   orderLineId: string | null;
-  /** 導出番号 ORD-YYYYMM-NNNNN-NN。 */
+  /** 注文明細の id（`CKK~ORD-2026-00001-01`）。未確定の明細は null。 */
   orderLineNumber: string | null;
   /** 製品の内部 id（連番）を文字列で保持 — SearchSelect の値と揃える。 */
   /** 製品 — 値は品目 id（items.id）。品目統合 第 2 段 C。 */
@@ -53,7 +55,7 @@ export interface DeliveryOrderItem {
 
 /** 詳細「納品書」タブの1行（delivery_notes の抜粋）。 */
 export interface DeliveryOrderDeliveryNoteRef {
-  /** 導出番号 DRN-YYYYMM-NNNNN。 */
+  /** 納品書の id（`CKK~DRN-2026-00001`）。 */
   deliveryNumber: string;
   /** DELIVERY_METHOD。 */
   deliveryMethod: string;
@@ -64,9 +66,11 @@ export interface DeliveryOrderDeliveryNoteRef {
 }
 
 export interface DeliveryOrder {
-  /** 導出文書番号 DOR-YYYYMM-NNNNN — URL id と同一。 */
+  /** 出荷書の id（`CKK~DOR-2026-00001`）— URL id と同一。 */
   id: string;
   deliveryOrderNumber: string;
+  /** 旧番号（DOR-YYYYMM-NNNNN）。番号設計の移行前に発行された書類だけが持つ。 */
+  legacyNumber: string | null;
   /** 顧客（ヘッダが権威 — 1 出荷書 = 1 顧客）。 */
   customerId: string;
   customerName: string;
@@ -78,7 +82,7 @@ export interface DeliveryOrder {
   salesRepNames: string[];
   /** 作成者の表示名。 */
   createdByName: string | null;
-  /** 束ねている注文明細の番号（重複なし）。 */
+  /** 束ねている注文明細の id（`CKK~ORD-…-NN`。重複なし）。 */
   orderLineNumbers: string[];
   /** ヘッダ紐付けの指示書番号（任意）。 */
   workOrderNumber: number | null;

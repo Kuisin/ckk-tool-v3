@@ -32,6 +32,13 @@ import { chromium, type Page } from "@playwright/test";
 
 const APP = process.env.APP_URL ?? "http://localhost:3105";
 const DB_CONTAINER = process.env.SHOT_DB_CONTAINER ?? "ckk-ship-db";
+/**
+ * 出荷書は**旧番号**で指す。画面に出る番号（`DOR-2026-000NN`）は DB が INSERT 時に
+ * 振り、流した順で変わる。fixtures / デモシードが入れた (year_month, seq) は
+ * 旧番号（legacy_number）として残るので:
+ *   URL … 旧番号のままでよい（詳細ページが正規の URL `CKK~DOR-…` へ送る）
+ *   SQL … legacy_number か app.to_doc_ref('delivery_orders', 旧番号) で引く
+ */
 /** 在庫の足りない出荷書（fixtures が作る）。品目 9003 × ロット 9999 × 4 本。 */
 const SHORT_DOR = process.env.SHORT_DOR ?? "DOR-209901-00001";
 /** 在庫が足りる出荷書（デモシード）。品目 9001 × ロット無し × 20 本。 */
@@ -128,7 +135,7 @@ async function main(): Promise<void> {
     await page.getByRole("button", { name: "キャンセル" }).click();
     await shortageDialog.waitFor({ state: "hidden", timeout: 10_000 });
     const statusAfterCancel = sql(
-      `SELECT status FROM app.delivery_orders WHERE year_month='209901' AND seq=1`,
+      `SELECT status FROM app.delivery_orders WHERE legacy_number='${SHORT_DOR}'`,
     );
     check(
       "A4 やめると出荷されない",
@@ -192,7 +199,7 @@ async function main(): Promise<void> {
     .waitFor({ state: "visible", timeout: 20_000 })
     .catch(() => undefined);
   const okStatus = sql(
-    `SELECT status FROM app.delivery_orders WHERE year_month='202607' AND seq=2`,
+    `SELECT status FROM app.delivery_orders WHERE legacy_number='${OK_DOR}'`,
   );
   check("B1b そのまま出荷される", okStatus === "SHIPPED", `status=${okStatus}`);
 

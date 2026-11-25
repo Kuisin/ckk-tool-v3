@@ -182,8 +182,8 @@ export function PortalRelatedDocuments({
         {related.map((r) => (
           <Anchor
             component={Link}
-            href={`/portal/documents/${r.type}/${encodeURIComponent(r.number)}`}
-            key={`${r.type}:${r.number}`}
+            href={`/portal/documents/${r.type}/${encodeURIComponent(r.id)}`}
+            key={`${r.type}:${r.id}`}
             size="sm"
           >
             <Group gap="xs" wrap="nowrap">

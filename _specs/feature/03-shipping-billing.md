@@ -25,7 +25,7 @@
 - 出荷タイプ: `STOCK_STORAGE`（在庫保管）/ `DISPATCH`（発送）
 - 在庫保管: 予備製作分。請求フロー外。在庫台帳を確定更新
 - 発送記録: 会計連携（§9）のトリガ
-- 納品書採番: `DRN-YYYYMM-NNNNN`（`lib/numbering.ts`）
+- 納品書採番: `DRN-FFFF-NNNNN`（DB が採番 — 05「採番ルール」）
 - 納品書 PDF 生成: `app/api/pdf/delivery-note/route.ts` → Gotenberg
 - 配送方法分岐:
   - `DIRECT_TO_USER`: 完了書に価格記載なし、納品書は受注先経由で別送
@@ -116,7 +116,7 @@
   作る。`billing_closings.kind = MANUAL` の行が 1 本残る（定期実行の行は
   `SCHEDULED`）。明細組み立て・税計算は締日処理と**同じ関数**
   （`lib/invoice-generation.ts`）を通るので、締め方によって請求額が変わらない。
-- 請求書採番: `INV-YYYYMM-NNNNN`（`lib/numbering.ts`）
+- 請求書採番: `INV-FFFF-NNNNN`（DB が採番 — 05「採番ルール」）
 - 請求書 PDF 生成: `app/api/pdf/invoice/route.ts` → Gotenberg
 - 会計連携 CSV エクスポート: `app/api/export/accounting/route.ts` → `lib/accounting-export-core.ts`
   （列の並び・文字コード・既定の科目コードは SY0J 会計連携 = `lib/accounting-settings.ts`）

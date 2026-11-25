@@ -4,8 +4,8 @@
  * Server Actions — 価格表 (sales.price_list_entries + variants + tiers +
  * discounts).
  *
- * Entries are keyed (year_month, seq) — 価格表番号 PRC-YYYYMM-NNNNN はキーから
- * 導出され URL id にも使う。自然キー（顧客, 製品）は UNIQUE として保持し、
+ * 価格表番号（PRC-FFFF-NNNNN）は DB が払い出し、行は参照 doc_ref で引く。URL id と
+ * Server Action の引数は法人コード付きの番号（CKK~PRC-2026-00001）。自然キー（顧客, 製品）は UNIQUE として保持し、
  * 識別（重複防止）にのみ使う。注文種別ごとの価格は price_list_variants で、
  * tiers/discounts は variant_id でぶら下がる。
  *
@@ -23,12 +23,7 @@ import { recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { resolveIssuingCompany } from "@/lib/doc-company";
-import {
-  type DocKey,
-  formatPriceListNumber,
-  parseDocKey,
-} from "@/lib/doc-number";
-import { allocateDocumentKey } from "@/lib/numbering";
+import { type DocKey, docIdOf, docNo, parseDocKey } from "@/lib/doc-number";
 import { priceListItemError } from "@/lib/sales-item-guard";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
@@ -55,7 +50,7 @@ async function entriesInScope(
 ): Promise<boolean> {
   if (access.kind === "ALL") return true;
   const rows = await prisma.priceListEntry.findMany({
-    where: { OR: keys.map((k) => ({ yearMonth: k.yearMonth, seq: k.seq })) },
+    where: { docRef: { in: keys.map((k) => k.docRef) } },
     select: { createdBy: true },
   });
   return rows.every((r) =>
@@ -124,7 +119,7 @@ function variantSchema(tr: Tr) {
     validFrom: z.string().min(1, tr("sales.priceLists.selectAStartDate")),
     validUntil: z.string().nullable(),
     isActive: z.boolean(),
-    /** 基準単価ソースの価格試算番号 EST-…（手動設定は null。新規バリアントのみ有効）。 */
+    /** 基準単価ソースの価格試算の id（手動設定は null。新規バリアントのみ有効）。 */
     estimateNumber: z.string().nullable(),
     tiers: z
       .array(tierSchema)
@@ -142,11 +137,11 @@ function keyOf(entryNumber: string): DocKey | null {
 }
 
 function whereKey(key: DocKey) {
-  return { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } };
+  return { docRef: key.docRef };
 }
 
 function variantWhere(key: DocKey) {
-  return { entryYearMonth: key.yearMonth, entrySeq: key.seq };
+  return { entry: { docRef: key.docRef } };
 }
 
 function revalidate(entryNumber?: string) {
@@ -193,7 +188,8 @@ async function resolveEstimateSource(
   estimateNumber: string,
   itemId: number,
 ): Promise<
-  { ok: true; key: DocKey; needsLock: boolean } | { ok: false; error: string }
+  | { ok: true; key: DocKey; estimateId: string; needsLock: boolean }
+  | { ok: false; error: string }
 > {
   const key = parseDocKey(estimateNumber, "EST");
   if (!key)
@@ -203,7 +199,7 @@ async function resolveEstimateSource(
     };
   const estimate = await prisma.estimate.findUnique({
     where: whereKey(key),
-    select: { status: true, itemId: true, kind: true },
+    select: { id: true, status: true, itemId: true, kind: true },
   });
   if (!estimate)
     return { ok: false, error: tr("sales.priceListsActions.estimateNotFound") };
@@ -224,7 +220,12 @@ async function resolveEstimateSource(
   if (estimate.itemId != null && estimate.itemId !== itemId) {
     return { ok: false, error: tr("sales.priceListsActions.estimateNotFound") };
   }
-  return { ok: true, key, needsLock: estimate.status === "CONFIRMED" };
+  return {
+    ok: true,
+    key,
+    estimateId: estimate.id,
+    needsLock: estimate.status === "CONFIRMED",
+  };
 }
 
 function tierData(t: z.infer<typeof tierSchema>, sortOrder: number) {
@@ -358,7 +359,8 @@ export async function createPriceEntry(
   try {
     // 価格試算ソースを検証（初回使用の価格試算はロック対象として控える）。
     const locks: { number: string; key: DocKey }[] = [];
-    const estimateKeys = new Map<string, DocKey>();
+    // 価格試算の id（画面から来た値）→ 行の uuid（バリアントの estimate_id）。
+    const estimateIds = new Map<string, string>();
     for (const variant of v.variants) {
       if (!variant.estimateNumber) continue;
       const source = await resolveEstimateSource(
@@ -367,12 +369,11 @@ export async function createPriceEntry(
         v.identity.itemId,
       );
       if (!source.ok) return actionError(source.error);
-      estimateKeys.set(variant.estimateNumber, source.key);
+      estimateIds.set(variant.estimateNumber, source.estimateId);
       if (source.needsLock) {
         locks.push({ number: variant.estimateNumber, key: source.key });
       }
     }
-    const key = await allocateDocumentKey("PRICE_LIST");
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
       v.identity.customerBpId,
@@ -383,11 +384,10 @@ export async function createPriceEntry(
       return actionError(tr("common.issuingCompanyNotAllowed"));
     }
     const company = issuing.data;
-    await prisma.$transaction([
+    // 番号は DB が払い出す（INSERT トリガー）— 作った行から読み戻す。
+    const [created] = await prisma.$transaction([
       prisma.priceListEntry.create({
         data: {
-          yearMonth: key.yearMonth,
-          seq: key.seq,
           ...company,
           customerBpId: v.identity.customerBpId,
           itemId: v.identity.itemId,
@@ -396,8 +396,8 @@ export async function createPriceEntry(
           createdBy: authz.userId,
           variants: {
             create: v.variants.map((variant) => {
-              const estKey = variant.estimateNumber
-                ? estimateKeys.get(variant.estimateNumber)
+              const estimateId = variant.estimateNumber
+                ? estimateIds.get(variant.estimateNumber)
                 : undefined;
               return {
                 orderType: variant.orderType,
@@ -407,13 +407,13 @@ export async function createPriceEntry(
                   ? new Date(variant.validUntil)
                   : null,
                 isActive: variant.isActive,
-                estimateYearMonth: estKey?.yearMonth ?? null,
-                estimateSeq: estKey?.seq ?? null,
+                estimateId: estimateId ?? null,
                 tiers: { create: tierCreates(variant.tiers) },
               };
             }),
           },
         },
+        select: { docRef: true },
       }),
       ...locks.map((l) =>
         prisma.estimate.update({
@@ -422,7 +422,8 @@ export async function createPriceEntry(
         }),
       ),
     ]);
-    const entryId = formatPriceListNumber(key);
+    const key: DocKey = { docRef: created.docRef };
+    const entryId = docIdOf(key);
     await recordAudit({
       action: "CREATE",
       tableName: "price_list_entries",
@@ -433,7 +434,7 @@ export async function createPriceEntry(
         toolItemId: v.identity.toolItemId,
         orderTypes: v.variants.map((x) => x.orderType),
         estimateSources: v.variants
-          .map((x) => x.estimateNumber)
+          .map((x) => docNo(x.estimateNumber))
           .filter(Boolean),
       },
     });
@@ -443,7 +444,7 @@ export async function createPriceEntry(
         tableName: "estimates",
         recordId: l.number,
         before: { status: "CONFIRMED" },
-        after: { status: "REGISTERED", priceListEntry: entryId },
+        after: { status: "REGISTERED", priceListEntry: docNo(entryId) },
       });
       revalidatePath(`/sales/trial-estimates/${l.number}`);
     }
@@ -511,7 +512,7 @@ export async function updatePriceEntry(
   if (variantError) return actionError(variantError);
   try {
     const entryItem = await prisma.priceListEntry.findUnique({
-      where: { yearMonth_seq: key },
+      where: whereKey(key),
       select: { itemId: true },
     });
     if (entryItem) {
@@ -568,7 +569,8 @@ export async function updatePriceEntry(
     if (!entry?.itemId)
       return actionError(tr("sales.priceListsActions.updateFailed"));
     const locks: { number: string; key: DocKey }[] = [];
-    const estimateKeys = new Map<string, DocKey>();
+    // 価格試算の id（画面から来た値）→ 行の uuid（バリアントの estimate_id）。
+    const estimateIds = new Map<string, string>();
     for (const variant of v.variants) {
       if (variant.id || !variant.estimateNumber) continue;
       const source = await resolveEstimateSource(
@@ -577,7 +579,7 @@ export async function updatePriceEntry(
         entry.itemId,
       );
       if (!source.ok) return actionError(source.error);
-      estimateKeys.set(variant.estimateNumber, source.key);
+      estimateIds.set(variant.estimateNumber, source.estimateId);
       if (source.needsLock) {
         locks.push({ number: variant.estimateNumber, key: source.key });
       }
@@ -650,8 +652,8 @@ export async function updatePriceEntry(
       ...v.variants
         .filter((x) => !x.id)
         .map((variant) => {
-          const estKey = variant.estimateNumber
-            ? estimateKeys.get(variant.estimateNumber)
+          const estimateId = variant.estimateNumber
+            ? estimateIds.get(variant.estimateNumber)
             : undefined;
           return prisma.priceListVariant.create({
             data: {
@@ -663,8 +665,7 @@ export async function updatePriceEntry(
                 ? new Date(variant.validUntil)
                 : null,
               isActive: variant.isActive,
-              estimateYearMonth: estKey?.yearMonth ?? null,
-              estimateSeq: estKey?.seq ?? null,
+              estimateId: estimateId ?? null,
               tiers: { create: tierCreates(variant.tiers) },
             },
           });
@@ -692,7 +693,7 @@ export async function updatePriceEntry(
         tableName: "estimates",
         recordId: l.number,
         before: { status: "CONFIRMED" },
-        after: { status: "REGISTERED", priceListEntry: v.entryNumber },
+        after: { status: "REGISTERED", priceListEntry: docNo(v.entryNumber) },
       });
       revalidatePath(`/sales/trial-estimates/${l.number}`);
     }
@@ -804,13 +805,9 @@ export async function changePriceEntryPeriod(payload: {
   try {
     const variant = await prisma.priceListVariant.findUnique({
       where: { id: payload.variantId },
-      select: { entryYearMonth: true, entrySeq: true, orderType: true },
+      select: { entry: { select: { docRef: true } }, orderType: true },
     });
-    if (
-      !variant ||
-      variant.entryYearMonth !== key.yearMonth ||
-      variant.entrySeq !== key.seq
-    ) {
+    if (!variant || variant.entry.docRef !== key.docRef) {
       return actionError(tr("sales.priceListsActions.invalidVariant"));
     }
     if (requiresEndDate(variant.orderType) && !payload.validUntil) {
@@ -989,13 +986,9 @@ export async function saveDiscountRule(
   try {
     const variant = await prisma.priceListVariant.findUnique({
       where: { id: v.variantId },
-      select: { entryYearMonth: true, entrySeq: true },
+      select: { entry: { select: { docRef: true } } },
     });
-    if (
-      !variant ||
-      variant.entryYearMonth !== key.yearMonth ||
-      variant.entrySeq !== key.seq
-    ) {
+    if (!variant || variant.entry.docRef !== key.docRef) {
       return actionError(tr("sales.priceListsActions.invalidVariant"));
     }
     if (v.id) {

@@ -29,6 +29,7 @@ import {
   useUrlStringState,
 } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docNo } from "@/lib/doc-number";
 import { deliveryOrderTypeOptions } from "@/lib/enum-labels";
 import { statusOptions } from "@/lib/status-map";
 import type { UnshippedOrderLineRow } from "./model";
@@ -63,7 +64,7 @@ export function PendingShipmentBoard({
   const filteredUnshipped = unshippedRows.filter((r) => {
     const matchesSearch =
       !search ||
-      r.orderLineNumber.includes(search) ||
+      docNo(r.orderLineNumber).includes(search) ||
       r.customerName.includes(search) ||
       r.productName.includes(search) ||
       r.completedLots.some((lot) => String(lot).includes(search));
@@ -73,8 +74,9 @@ export function PendingShipmentBoard({
   const filteredOpen = openRows.filter((o) => {
     const matchesSearch =
       !search ||
-      o.deliveryOrderNumber.includes(search) ||
-      o.orderLineNumbers.some((n) => n.includes(search)) ||
+      docNo(o.deliveryOrderNumber).includes(search) ||
+      (o.legacyNumber ?? "").includes(search) ||
+      o.orderLineNumbers.some((n) => docNo(n).includes(search)) ||
       o.customerName.includes(search);
     return (
       matchesSearch &&
@@ -91,7 +93,7 @@ export function PendingShipmentBoard({
       width: 190,
       render: (r) => (
         <Text className="tabular-nums" ff="mono" size="sm">
-          {r.orderLineNumber}
+          {docNo(r.orderLineNumber)}
         </Text>
       ),
     },
@@ -204,7 +206,7 @@ export function PendingShipmentBoard({
       width: 170,
       render: (o) => (
         <Text ff="mono" size="sm">
-          {o.deliveryOrderNumber}
+          {docNo(o.deliveryOrderNumber)}
         </Text>
       ),
     },
@@ -216,7 +218,7 @@ export function PendingShipmentBoard({
         <>
           <Text size="sm">{o.customerName}</Text>
           <Text c="dimmed" ff="mono" size="xs">
-            {o.orderLineNumbers.join(", ") || "—"}
+            {o.orderLineNumbers.map((n) => docNo(n)).join(", ") || "—"}
           </Text>
         </>
       ),
@@ -359,7 +361,7 @@ export function PendingShipmentBoard({
               <Group align="flex-start" justify="space-between" wrap="nowrap">
                 <Stack className="min-w-0" gap={3}>
                   <Text c="dimmed" ff="mono" size="xs">
-                    {r.orderLineNumber}
+                    {docNo(r.orderLineNumber)}
                   </Text>
                   <Text fw={600} size="sm" truncate>
                     {r.customerName}
@@ -399,13 +401,13 @@ export function PendingShipmentBoard({
               <Group align="flex-start" justify="space-between" wrap="nowrap">
                 <Stack className="min-w-0" gap={3}>
                   <Text c="dimmed" ff="mono" size="xs">
-                    {o.deliveryOrderNumber}
+                    {docNo(o.deliveryOrderNumber)}
                   </Text>
                   <Text fw={600} size="sm" truncate>
                     {o.customerName}
                   </Text>
                   <Text c="dimmed" ff="mono" size="xs" truncate>
-                    {o.orderLineNumbers.join(", ") || "—"}
+                    {o.orderLineNumbers.map((n) => docNo(n)).join(", ") || "—"}
                   </Text>
                   <Text c="dimmed" size="xs">
                     {o.totalQuantity} 本

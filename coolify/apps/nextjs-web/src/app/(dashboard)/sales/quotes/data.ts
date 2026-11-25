@@ -1,8 +1,8 @@
 /**
  * data.ts — server-side fetch/mapping for the 見積書 pages.
  *
- * sales.quotes is keyed (year_month, seq) — QOT-YYYYMM-NNNNN is derived and
- * doubles as the URL id.
+ * 番号（QOT-FFFF-NNNNN）は DB が払い出す。行は参照 doc_ref で引き、DTO の
+ * quoteNumber は id の姿（CKK~QOT-2026-00001 — URL・Server Action の引数）。
  */
 
 import { ownWhere, rowInScope } from "@ckk/authz-core";
@@ -10,11 +10,7 @@ import type { PriceListEntry } from "@/components/sales/price-lists/model";
 import type { Quote } from "@/components/sales/quotes/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import {
-  type DocKey,
-  formatProductNumber,
-  formatQuoteNumber,
-} from "@/lib/doc-number";
+import { type DocKey, docIdOf, formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { ENTRY_INCLUDE, mapEntry } from "../price-lists/data";
 
@@ -39,16 +35,17 @@ type QuoteRow = NonNullable<Awaited<ReturnType<typeof findQuoteRow>>>;
 
 function findQuoteRow(key: DocKey) {
   return prisma.quote.findUnique({
-    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    where: { docRef: key.docRef },
     include: QUOTE_INCLUDE,
   });
 }
 
 export function mapQuote(r: QuoteRow): Quote {
-  const number = formatQuoteNumber({ yearMonth: r.yearMonth, seq: r.seq });
+  const number = docIdOf(r);
   return {
     id: number,
     quoteNumber: number,
+    legacyNumber: r.legacyNumber,
     customerId: r.customerBpId,
     customerName: localized(r.customerBp.name as LocalizedText | null),
     customerBranchId: r.customerBranchBpId,
@@ -104,7 +101,7 @@ export async function fetchQuotes(): Promise<Quote[]> {
       "createdBy",
     ) as Prisma.QuoteWhereInput,
     include: QUOTE_INCLUDE,
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
   });
   return rows.map(mapQuote);
 }
@@ -128,7 +125,7 @@ export async function fetchEntriesForQuote(
   const tiers = await prisma.priceListTier.findMany({
     where: {
       quoteItems: {
-        some: { quoteYearMonth: key.yearMonth, quoteSeq: key.seq },
+        some: { quote: { docRef: key.docRef } },
       },
     },
     select: { variant: { select: { entryId: true } } },

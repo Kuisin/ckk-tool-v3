@@ -34,7 +34,7 @@ const settings = {
 };
 
 const invoice: JournalInvoiceInput = {
-  invoiceNumber: "INV-202607-00001",
+  invoiceNumber: "INV-2026-00001",
   customerName: "株式会社テスト工業",
   customerCode: "C-0001",
   slipNo: 1,
@@ -119,7 +119,7 @@ describe("lineToJournalRow — 保存済み行のラウンドトリップ", () =
       },
       {
         date: "2026-07-31",
-        invoiceNumber: "INV-202607-00001",
+        invoiceNumber: "INV-2026-00001",
         customerCode: "",
         customerName: "test",
         slipNo: "1",

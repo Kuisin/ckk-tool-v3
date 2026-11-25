@@ -19,8 +19,13 @@ import type { CatalogStep, CompositionIssue } from "@/lib/workflow-core";
 
 export interface WorkOrderRow {
   workOrderNumber: number;
-  /** 書類番号 WO-YYYYMM-NNNNN（一覧・リンクの表示identity）。 */
+  /**
+   * 書類番号 WOR-FFFF-NNNNN（**表示専用** — 番号だけ）。同じ番号が別の法人にも
+   * あり得るので、リンクと操作は workOrderNumber（ロット番号）で指す。
+   */
   docNumber: string;
+  /** 旧番号（WOR-YYYYMM-NNNNN）。検索用。 */
+  legacyNumber: string | null;
   createdAt: string;
   /**
    * 割当明細の表示ラベル（複数は「ORD-… ほか n 件」）。
@@ -89,6 +94,8 @@ export interface WorkOrderStepView {
   outputDefectSemiFinished: number | null;
   outputDefectScrap: number | null;
   outputDefectRework: number | null;
+  /** 外注依頼の番号（`OUT-2026-00001`）。未依頼の工程は null。 */
+  outsourceOrderNumber: string | null;
   outsourceRequestedAt: string | null;
   outsourceExpectedAt: string | null;
   completedAt: string | null;
@@ -121,7 +128,7 @@ export interface WorkOrderHistoryView {
 
 export interface WorkOrderCopyRef {
   workOrderNumber: number;
-  /** 書類番号 WO-YYYYMM-NNNNN。 */
+  /** 書類番号 WOR-FFFF-NNNNN（表示専用 — 番号だけ）。 */
   docNumber: string;
   status: string;
   createdAt: string;
@@ -156,7 +163,7 @@ export interface WorkOrderLineAllocView {
 
 /** この指示書のロットが載った出荷書（手続き状況の「次の書類へ」）。 */
 export interface WorkOrderShipmentView {
-  /** 書類番号 DOR-YYYYMM-NNNNN。 */
+  /** 出荷書の id（`CKK~DOR-2026-00001` — リンク用。表示は docNo）。 */
   number: string;
   type: string; // DELIVERY_ORDER_TYPE
   status: string; // DELIVERY_ORDER_STATUS
@@ -228,8 +235,10 @@ export interface WorkOrderWipDrawView {
 export interface WorkOrderView {
   id: string; // uuid（内部）— アクションは workOrderNumber を使う
   workOrderNumber: number;
-  /** 書類番号 WO-YYYYMM-NNNNN（ヘッダ・リンクの表示identity）。 */
+  /** 書類番号 WOR-FFFF-NNNNN（**表示専用** — リンクと操作は workOrderNumber）。 */
   docNumber: string;
+  /** 旧番号（番号設計の移行前の番号）。無ければ null。 */
+  legacyNumber: string | null;
   status: string;
   approvalStatus: string;
   /** 手続き状況（作成 → 承認 → 製造 → 完了）の日時。 */

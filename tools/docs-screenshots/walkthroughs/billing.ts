@@ -7,6 +7,7 @@
  * 会計連携CSV は場所を示すだけ（ダウンロードは録画に写らず、検査にもならない）。
  */
 
+import { docUrl } from "../doc-number";
 import type { Walkthrough } from "./types";
 
 export const billing: Walkthrough = {
@@ -34,7 +35,7 @@ export const billing: Walkthrough = {
         await w.say("請求書を生成すると、対象出荷が明細になった下書きができる。\n支払期日は 顧客の支払条件から自動で決まる");
         await w.click(w.page.getByRole("button", { name: "請求書を生成" }).first());
         await w.clickInDialog("請求書を生成");
-        await w.waitForUrl(/\/billing\/invoices\/INV-\d{6}-\d{5}$/);
+        await w.waitForUrl(docUrl("/billing/invoices", "INV"));
         await w.say("小計・消費税・合計を確かめる。\n税率は 製品と顧客の税区分、注文日で決まる");
         await w.see("合計金額（税込）");
       },

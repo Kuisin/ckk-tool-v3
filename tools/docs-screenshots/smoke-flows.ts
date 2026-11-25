@@ -23,6 +23,7 @@
  * 添えること。合否だけだと「なぜ」が残らない。
  */
 import { chromium, type Page } from "@playwright/test";
+import { gotoDoc } from "./doc-number";
 
 const APP = process.env.APP_URL ?? "http://localhost:3100";
 const results: string[] = [];
@@ -417,7 +418,8 @@ async function main(): Promise<void> {
   });
   await page.waitForTimeout(500);
   const fixedNotice = await page
-    .getByText("設計依頼 DSG-202607-00001 の成果物として登録します")
+    // 画面に出るのは DB が振った番号（DSG-FFFF-NNNNN）。旧番号では待たない。
+    .getByText(/設計依頼 DSG-\d{4}-\d{5} の成果物として登録します/)
     .count();
   // Mantine の Select は combobox（manifest の 材種 と同じ引き方）。
   const customerSelect = page.getByRole("combobox", { name: "受注元" });
@@ -468,7 +470,9 @@ async function main(): Promise<void> {
   //   設計依頼 … ownerId = 依頼番号（業務キー）/ COMMENT（スレッド）
   //   設計図   … ownerId = 版の uuid（業務キーが無い）/ MEMO（1 件の共有欄）
   const commentText = `E2E コメント ${Date.now()}`;
-  await page.goto(
+  // 旧番号の URL は正規の URL へ送られる（転送で ?tab= が落ちないよう gotoDoc）。
+  await gotoDoc(
+    page,
     `${APP}/sales/design-requests/DSG-202607-00001?tab=comments`,
     { waitUntil: "networkidle" },
   );

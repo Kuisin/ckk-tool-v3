@@ -55,7 +55,7 @@ export function ShippingBoard({
               fw={700}
               style={{ fontSize: "1.5rem", minWidth: "10ch" }}
             >
-              {row.documentNumber.replace(/^DOR-\d{6}-/, "")}
+              {row.documentNumber.replace(/^DOR-\d+-/, "")}
             </Text>
 
             <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>

@@ -6,6 +6,7 @@
  * （超硬エンドミル）は使えない。全部の書類をこの 1 本の中で新しく作る。
  */
 
+import { docUrl, orderLineNumber } from "../doc-number";
 import type { Walkthrough } from "./types";
 
 export const sales: Walkthrough = {
@@ -35,7 +36,7 @@ export const sales: Walkthrough = {
         await w.say("価格試算名: あとで探せる名前を付けて保存する");
         await w.fill(p.getByPlaceholder(/^例: 精密軸/), "リーマ φ8×70 CX400");
         await w.click(p.getByRole("button", { name: "保存", exact: true }));
-        await w.waitForUrl(/\/sales\/trial-estimates\/EST-\d{6}-\d{5}$/);
+        await w.waitForUrl(docUrl("/sales/trial-estimates", "EST"));
       },
     },
     {
@@ -60,7 +61,7 @@ export const sales: Walkthrough = {
         await w.say("数量の範囲ごとの倍率は初期値のまま。多く買うほど安くする\nなら 1 より小さい値にする。注文種別ごとに別の価格も持てる");
         await w.pickDate(p.getByRole("button", { name: /^有効開始日/ }), "today");
         await w.click(p.getByRole("button", { name: "保存", exact: true }));
-        await w.waitForUrl(/\/sales\/price-lists\/PRC-\d{6}-\d{5}$/);
+        await w.waitForUrl(docUrl("/sales/price-lists", "PRC"));
       },
     },
     {
@@ -78,7 +79,7 @@ export const sales: Walkthrough = {
         await w.see("単価（価格表）");
         await w.say("価格表に無い製品は単価が入らず、警告が出る。\nその場合は先に価格試算と価格表を作る");
         await w.click(p.getByRole("button", { name: "保存", exact: true }));
-        await w.waitForUrl(/\/sales\/quotes\/QOT-\d{6}-\d{5}$/);
+        await w.waitForUrl(docUrl("/sales/quotes", "QOT"));
       },
     },
     {
@@ -111,7 +112,7 @@ export const sales: Walkthrough = {
         await w.say("ユーザー直送はエンドユーザーの指定が必須。\n未指定のままだと承認依頼も確定もできない");
         await w.pickDate(p.getByRole("button", { name: "納期" }).first(), { nextMonthDay: 25 });
         await w.click(p.getByRole("button", { name: "下書きを作成" }));
-        await w.waitForUrl(/\/sales\/order-acceptances\/ORD-\d{6}-\d{5}/);
+        await w.waitForUrl(docUrl("/sales/order-acceptances", "ORD", "", true));
       },
     },
     {
@@ -138,7 +139,7 @@ export const sales: Walkthrough = {
         await w.say("確定すると、明細 1 行ごとに注文明細（ORD-…-01）ができる。\nここから指示書の作成や出荷書の作成へ進む");
         await w.click(w.page.getByRole("button", { name: "確定", exact: true }).first());
         await w.clickInDialog("展開する");
-        await w.see(/^ORD-\d{6}-\d{5}-01$/);
+        await w.see(orderLineNumber(1));
       },
     },
   ],

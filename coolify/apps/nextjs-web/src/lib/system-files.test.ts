@@ -4,8 +4,8 @@ import { isSystemFileKey } from "./system-files";
 describe("isSystemFileKey", () => {
   it("業務ファイル（PDF・添付・アップロード）はシステムファイルではない", () => {
     const keys = [
-      "pdfs/quotes/QOT-202608-00012.pdf",
-      "pdfs/invoices/INV-202608-00003.pdf",
+      "pdfs/quotes/QOT-2026-00012.pdf",
+      "pdfs/invoices/INV-2026-00003.pdf",
       "attachments/material_receipts/20260815-101500_ab3d_納品書.pdf",
       "uploads/20260815-101500_ab3d_図面.png",
       "intake/20260815-101500_ab3d_注文書.pdf",

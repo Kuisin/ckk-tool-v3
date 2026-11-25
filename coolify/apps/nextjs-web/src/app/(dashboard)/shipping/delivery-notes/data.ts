@@ -1,8 +1,9 @@
 /**
  * data.ts — 納品書 (SH02) ページのサーバーサイド取得・マッピング。
  *
- * app.delivery_notes は (year_month, seq) の複合キー — 表示番号
- * DRN-YYYYMM-NNNNN は導出（保存しない）で、URL id を兼ねる。
+ * 納品書番号 DRN-FFFF-NNNNN は DB が払い出す（法人 × 会計年度の連番）。行は
+ * 参照 doc_ref（`CKK/DRN-…`）で引き、画面の DTO は id（`CKK~DRN-…`）で持つ
+ * — URL id を兼ねる（lib/doc-number.ts）。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  */
 
@@ -18,10 +19,9 @@ import { fetchCustomerProductLabels } from "@/lib/customer-product-codes";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
-  formatDocNumber,
+  docIdOf,
   formatProductNumber,
-  legacyDocKey,
-  orderLineNumberOf,
+  orderLineIdOf,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -38,13 +38,7 @@ const DELIVERY_NOTE_INCLUDE = {
       customerBp: { select: { customerAttrs: { select: { taxType: true } } } },
       items: {
         select: {
-          orderLine: {
-            select: {
-              acceptanceYearMonth: true,
-              acceptanceSeq: true,
-              branch: true,
-            },
-          },
+          orderLine: { select: { lineRef: true } },
         },
       },
     },
@@ -65,7 +59,7 @@ type DeliveryNoteRow = NonNullable<Awaited<ReturnType<typeof findRow>>>;
 
 function findRow(key: DocKey) {
   return prisma.deliveryNote.findUnique({
-    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    where: { docRef: key.docRef },
     include: DELIVERY_NOTE_INCLUDE,
   });
 }
@@ -94,10 +88,8 @@ function mapDeliveryNote(
   r: DeliveryNoteRow,
   forDocument = false,
 ): DeliveryNote {
-  const number = formatDocNumber("DRN", {
-    yearMonth: r.yearMonth,
-    seq: r.seq,
-  });
+  // 画面の DTO は id（法人コード + 番号）で持つ — 表示側が番号だけにする。
+  const number = docIdOf(r);
   const recipientDocumentLocale =
     r.recipientBranchBp?.documentLocale ?? r.recipientBp.documentLocale ?? null;
   const loc = forDocument ? (recipientDocumentLocale ?? "ja") : "ja";
@@ -115,13 +107,12 @@ function mapDeliveryNote(
   return {
     id: number,
     deliveryNumber: number,
-    deliveryOrderNumber: formatDocNumber("DOR", {
-      ...legacyDocKey(r.deliveryOrderYearMonth, r.deliveryOrderSeq),
-    }),
+    legacyNumber: r.legacyNumber,
+    deliveryOrderNumber: docIdOf(r.deliveryOrder),
     orderLineNumbers: [
       ...new Set(
         r.deliveryOrder.items
-          .map((it) => (it.orderLine ? orderLineNumberOf(it.orderLine) : null))
+          .map((it) => (it.orderLine ? orderLineIdOf(it.orderLine) : null))
           .filter((n): n is string => n != null),
       ),
     ],
@@ -168,7 +159,7 @@ export async function fetchDeliveryNotes(): Promise<DeliveryNote[]> {
       ownColumn: "createdBy",
     }) as Prisma.DeliveryNoteWhereInput,
     include: DELIVERY_NOTE_INCLUDE,
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
   });
   // 引数付きで渡さない（`map(mapDeliveryNote)` は添字が第 2 引数に入るため）。
   return rows.map((r) => mapDeliveryNote(r));

@@ -10,8 +10,11 @@
 --      この行で、9101 は tool_item_id が指す。
 --   2. 共通の再研磨工程リスト 9101 v1 — 製品受入（再研磨）→ 外周研磨 → 出荷前検査。
 --      製品にも受注元にも紐づかない（DB の CHECK が守る）。
---   3. 確定済みの注文請書 ORD-209902-00001 と、その **注文種別 REGRIND の明細**
---      （他社製品 9101 × 10 本）。指示書はこの明細から作る。
+--   3. 確定済みの注文請書（旧番号 ORD-209902-00001）と、その **注文種別 REGRIND の
+--      明細**（他社製品 9101 × 10 本）。指示書はこの明細から作る。
+--      **画面に出る番号は DB が振る**（`ORD-2026-000NN` — 流した順で変わる）。
+--      ここで入れる (year_month, seq) は旧番号（legacy_number）として残り、
+--      旧番号の URL（/sales/order-lines/ORD-209902-00001-01）は正規の URL へ送られる。
 --   4. 顧客 × **9102** の価格表（REGRIND バリアント ¥1,500）— 標準価格 ¥1,200 を
 --      上書きすることと、出荷後の請求単価がそこから引かれることまで見るため。
 --
@@ -52,22 +55,49 @@ DELETE FROM app.work_order_order_lines l USING app.work_orders w
 DELETE FROM app.work_orders WHERE product_item_id = 9101;
 
 -- 出荷書を確定すると納品書が起きる（子から先に消す）。
+--
+-- ■ 親は旧番号（legacy_number）で探し、子は親の uuid で辿る
+-- 書類番号は DB が INSERT 時に振る（`DOR-2026-000NN` — 何番になるかは流した
+-- 順で変わる）。ここで入れる行は旧い形（year_month, seq）なので、その組が
+-- legacy_number（`DOR-209902-00001`）に残る — 探す鍵はそれ。
+-- **アプリが作った子**（確定で起きる納品書・その明細）は親の uuid しか
+-- 持たないので、旧い (…_year_month, …_seq) 列では辿らない。
 DELETE FROM app.delivery_note_items i
- USING app.delivery_notes n
- WHERE i.delivery_note_year_month = n.year_month
-   AND i.delivery_note_seq = n.seq
-   AND n.delivery_order_year_month = '209902';
-DELETE FROM app.delivery_notes WHERE delivery_order_year_month = '209902';
-DELETE FROM app.delivery_order_items
- WHERE delivery_order_year_month = '209902';
-DELETE FROM app.delivery_orders WHERE year_month = '209902';
-DELETE FROM app.order_lines WHERE acceptance_year_month = '209902';
-DELETE FROM app.order_acceptances WHERE year_month = '209902';
+ USING app.delivery_notes n, app.delivery_orders o
+ WHERE i.delivery_note_id = n.id
+   AND n.delivery_order_id = o.id
+   AND o.legacy_number LIKE 'DOR-209902-%';
+DELETE FROM app.delivery_notes n
+ USING app.delivery_orders o
+ WHERE n.delivery_order_id = o.id AND o.legacy_number LIKE 'DOR-209902-%';
+-- 出荷の伝票（source_id は新しい参照 = doc_ref に直っている）。
+DELETE FROM app.inventory_transactions t
+ USING app.inventory_movements m, app.delivery_orders o
+ WHERE t.movement_id = m.id
+   AND m.source_type = 'delivery_orders'
+   AND m.source_id = o.doc_ref
+   AND o.legacy_number LIKE 'DOR-209902-%';
+DELETE FROM app.inventory_movements m
+ USING app.delivery_orders o
+ WHERE m.source_type = 'delivery_orders'
+   AND m.source_id = o.doc_ref
+   AND o.legacy_number LIKE 'DOR-209902-%';
+DELETE FROM app.delivery_order_items i
+ USING app.delivery_orders o
+ WHERE i.delivery_order_id = o.id AND o.legacy_number LIKE 'DOR-209902-%';
+DELETE FROM app.delivery_orders WHERE legacy_number LIKE 'DOR-209902-%';
+DELETE FROM app.order_lines l
+ USING app.order_acceptances a
+ WHERE l.acceptance_id = a.id AND a.legacy_number LIKE 'ORD-209902-%';
+DELETE FROM app.order_acceptances WHERE legacy_number LIKE 'ORD-209902-%';
 
-DELETE FROM app.price_list_tiers t USING app.price_list_variants v
- WHERE t.variant_id = v.id AND v.entry_year_month = '209902';
-DELETE FROM app.price_list_variants WHERE entry_year_month = '209902';
-DELETE FROM app.price_list_entries WHERE year_month = '209902';
+DELETE FROM app.price_list_tiers t
+ USING app.price_list_variants v, app.price_list_entries e
+ WHERE t.variant_id = v.id AND v.entry_id = e.id AND e.legacy_number LIKE 'PRC-209902-%';
+DELETE FROM app.price_list_variants v
+ USING app.price_list_entries e
+ WHERE v.entry_id = e.id AND e.legacy_number LIKE 'PRC-209902-%';
+DELETE FROM app.price_list_entries WHERE legacy_number LIKE 'PRC-209902-%';
 
 DELETE FROM app.product_process_route_version_steps
  WHERE route_version_id = 'dc040000-0000-4000-8000-000000009101'::uuid;

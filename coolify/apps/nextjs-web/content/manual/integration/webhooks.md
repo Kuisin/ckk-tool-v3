@@ -56,8 +56,8 @@ webhook-signature: v1,K5oZfzN95Z9UhFK…=
   "occurredAt": "2026-09-10T04:11:52.881Z",
   "resource": {
     "type": "order_acceptance",
-    "id": "ORD-202609-00042",
-    "key": "202609:42"
+    "id": "ORD-2026-00042",
+    "key": "CKK/ORD-2026-00042"
   },
   "status": { "from": "DRAFT", "to": "CONFIRMED" },
   "links": {
@@ -68,7 +68,7 @@ webhook-signature: v1,K5oZfzN95Z9UhFK…=
 
 - `id` / `webhook-id` は**再送でも同じ**です。受け取り側の重複排除に使います。
 - `changedFields` は `.updated` のときだけ付き、**項目名だけ**（値は入りません）。`status` は `.status_changed` のときだけ付きます。
-- `resource.id` は画面と同じ書類番号です。**採番が戻って番号が再利用される場合に備え**、`resource.key` も渡します。突き合わせにはこちらが確実です。
+- `resource.id` は画面と同じ書類番号です。**同じ番号が別の発行会社（自社法人）にもあり得る**ので、会社コードを付けた `resource.key`（`<会社コード>/<書類番号>`）も渡します。突き合わせにはこちらを使ってください（番号の決まりは[書類番号のルール](/manual/ja/start#doc-number)）。
 - 本体が欲しいときは `links.list` を、API クライアントのトークンで GET します。
 
 ### イベントの種類

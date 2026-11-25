@@ -23,6 +23,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docNo } from "@/lib/doc-number";
 import { orderTypeLabel, orderTypeOptions } from "@/lib/enum-labels";
 import { statusOptions } from "@/lib/status-map";
 import type { OrderLine } from "./model";
@@ -50,7 +51,8 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
   const filtered = rows.filter((o) => {
     const matchesSearch =
       !search ||
-      o.orderNumber.includes(search) ||
+      docNo(o.orderNumber).includes(search) ||
+      (o.legacyNumber?.includes(search) ?? false) ||
       o.customerName.includes(search) ||
       o.productName.includes(search);
     const matchesStatus = !status || o.status === status;
@@ -65,7 +67,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
       sortable: true,
       render: (o) => (
         <Text ff="mono" size="sm">
-          {o.orderNumber}
+          {docNo(o.orderNumber)}
         </Text>
       ),
     },
@@ -197,7 +199,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                {o.orderNumber}
+                {docNo(o.orderNumber)}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {o.customerName}

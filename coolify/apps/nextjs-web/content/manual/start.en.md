@@ -61,6 +61,30 @@ For detailed steps and what each input field means, open **Operations** in the s
 - **Got a notification** — review it from the bell (top right).
 - **Change your own settings** — they all live in the top-right avatar menu: **Profile** for your notification email and password, **Home Screen Settings** for favorite apps and display mode, and **Display Settings** for the interface language, date/time format, time zone, text size and bold text (see the [User Settings Manual](/manual/en/user-settings)).
 
+## 6. Document number rules[#doc-number]
+
+Documents such as quotes, order acceptances and invoices are **numbered automatically by the system when they are created**. You cannot choose the number or change it afterwards.
+
+- **Format** — `QOT-2026-00001`: document prefix, fiscal year, 5-digit sequence. An order line is the order acceptance number plus a branch number (`ORD-2026-00001-01`).
+- **Fiscal year** — the four digits in the middle are the fiscal year, written as **the year in which that fiscal year starts**. With an April start, documents created from April 2026 to March 2027 are `2026`. The fiscal year is decided by **the date the document was created (Japan time)**, not by a shipping date or a closing date.
+- **Sequence** — counted from `00001` **per issuing company (own company) and per fiscal year**. It restarts at `00001` when the fiscal year changes (it no longer restarts every month).
+- **Numbers never change and are never reused.** A cancelled document keeps its number, and no other document will get it.
+- **Another issuing company can have the same number.** The company code is not part of the number. Screen URLs therefore carry "company code`~`number", for example `/sales/quotes/CKK~QOT-2026-00001`. If you open a bare number that matches documents of more than one company, the "Select the issuing company" screen appears.
+- **Legacy number** — documents created with the earlier format (a number containing year and month, such as `QOT-202607-00001`) were renumbered to the new format. The original number is shown on the detail screen as 「**旧番号**」 (Legacy number) and can be searched in lists. Opening a URL with a legacy number takes you to the screen for the new number.
+
+| Prefix | Document | Prefix | Document |
+|---|---|---|---|
+| `EST` | Price estimate | `WOR` | Work order (document number) |
+| `PRC` | Price list | `DOR` | Delivery order |
+| `QOT` | Quote | `DRN` | Delivery note |
+| `ORD` | Order acceptance (order lines add `-NN`) | `INV` | Invoice |
+| `DSG` | Design request | `MOV` | Stock movement |
+| `PRQ` | Purchase request | `STK` | Stocktaking |
+| `PO` | Material purchase order | `ACC` | Accounting document |
+| `OUT` | Outsource order (assigned when the request date is entered) | | |
+
+> 💡 These numbers are **not covered** by the rules above and work as before: the **lot number** (the serial number a work order gets, such as `#9001`), the **marking number**, **product codes** (`PRD-202607-0001`) and regrind item codes (`RGD-…`), form responses (`FRM-…`) and internal documents (`DOC-…`).
+
 ## Glossary
 
 - **Price Estimate** — computing a selling price from cost; the groundwork for a quote.

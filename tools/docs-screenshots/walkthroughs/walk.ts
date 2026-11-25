@@ -15,6 +15,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, type Locator, type Page } from "@playwright/test";
+import { gotoDoc } from "../doc-number";
 import type { WalkUser } from "./types";
 
 export type WalkMode = "check" | "record";
@@ -151,7 +152,7 @@ export class Walk {
   // ── 移動 ───────────────────────────────────────────────────────────────────
 
   async goto(path: string): Promise<void> {
-    await this.page.goto(path, { waitUntil: "load" });
+    await gotoDoc(this.page, path, { waitUntil: "load" });
     await this.afterNavigation();
   }
 

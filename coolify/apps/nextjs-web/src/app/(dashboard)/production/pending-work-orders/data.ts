@@ -16,9 +16,9 @@ import type { WorkOrderRow } from "@/components/production/work-orders/model";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
-  formatOrderLineNumber,
   formatProductNumber,
-  legacyDocKey,
+  orderLineIdOf,
+  orderLineNumberOf,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
@@ -102,8 +102,9 @@ export async function fetchUnplannedOrderLines(): Promise<
       },
     },
     orderBy: [
-      { acceptanceYearMonth: "desc" },
-      { acceptanceSeq: "desc" },
+      { acceptance: { fiscalYear: "desc" } },
+      { acceptance: { docSeq: "desc" } },
+      { acceptanceId: "desc" },
       { branch: "asc" },
     ],
   });
@@ -114,17 +115,16 @@ export async function fetchUnplannedOrderLines(): Promise<
 
   const out: UnplannedOrderLineRow[] = [];
   for (const r of rows) {
-    if (r.branch == null) continue;
+    // 確定済みの明細は番号（line_ref）を持つ。無い行は出さない。
+    const id = orderLineIdOf(r);
+    const number = orderLineNumberOf(r);
+    if (id == null || number == null) continue;
     const plannedQuantity = allocated.get(r.id) ?? 0;
     const unplannedQuantity = r.quantity - plannedQuantity;
     // 手配済み（あるいは超過手配）の明細はキューに出さない。
     if (unplannedQuantity <= 0) continue;
-    const number = formatOrderLineNumber({
-      ...legacyDocKey(r.acceptanceYearMonth, r.acceptanceSeq),
-      branch: r.branch,
-    });
     out.push({
-      id: number,
+      id,
       orderLineNumber: number,
       uuid: r.id,
       customerName: localized(

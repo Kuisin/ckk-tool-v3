@@ -62,6 +62,7 @@ import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import type { IssuingCompanyField } from "@/lib/doc-company";
+import { docNo } from "@/lib/doc-number";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
@@ -507,7 +508,7 @@ export function PriceListTypeForm({
 
   const sourceOptions: Option[] = sources.map((s) => ({
     value: s.number,
-    label: `${s.number} ${s.name}（${formatMoney(s.unitPrice)}）`,
+    label: `${docNo(s.number)} ${s.name}（${formatMoney(s.unitPrice)}）`,
   }));
 
   return (
@@ -646,7 +647,7 @@ export function PriceListTypeForm({
               href={`${BASE_PATH}/${duplicateEntry.entryId}/edit`}
               size="sm"
             >
-              {duplicateEntry.entryId}
+              {docNo(duplicateEntry.entryId)}
             </Anchor>{" "}
             {tr("sales.priceListTypeForm.duplicateEntrySuffix", {
               orderTypes: duplicateEntry.orderTypes
@@ -694,7 +695,9 @@ export function PriceListTypeForm({
               {savedVariant ? (
                 <FieldValue
                   label={tr("sales.priceLists.priceSourcePriceEstimate")}
-                  value={variant.sourceEstimate ?? tr("common.setManually")}
+                  value={
+                    docNo(variant.sourceEstimate) ?? tr("common.setManually")
+                  }
                 />
               ) : (
                 <Select

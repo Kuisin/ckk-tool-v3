@@ -63,6 +63,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import {
   acceptanceDeliveryMethodLabel,
@@ -151,7 +152,7 @@ function OrderLineProcedurePanel({
       items: [
         {
           key: order.acceptanceNumber,
-          label: order.acceptanceNumber,
+          label: docNo(order.acceptanceNumber),
           href: `/sales/order-acceptances/${order.acceptanceNumber}`,
           note: tr("sales.orderLines.parentDocumentOfThisLine"),
         },
@@ -166,7 +167,7 @@ function OrderLineProcedurePanel({
             items: [
               {
                 key: order.quoteNumber,
-                label: order.quoteNumber,
+                label: docNo(order.quoteNumber),
                 href: `/sales/quotes/${order.quoteNumber}`,
                 note: tr("sales.orderLines.quoteTheOrderAcceptanceCameFrom"),
               },
@@ -217,7 +218,7 @@ function OrderLineProcedurePanel({
       }),
       items: order.deliveryOrders.map((s, i) => ({
         key: `${s.number}-${i}`,
-        label: s.number,
+        label: docNo(s.number),
         href: `/shipping/delivery-orders/${s.number}`,
         done: s.status === "SHIPPED",
         note:
@@ -390,7 +391,7 @@ export function OrderLineDetail({
       ]}
       createdAt={fmt.dateTime(order.createdAt)}
       status={<StatusBadge entity="OrderLine" status={order.status} />}
-      title={order.orderNumber}
+      title={docNo(order.orderNumber)}
       updatedAt={fmt.dateTime(order.updatedAt)}
     >
       {/* 次のステップ — 未手配が残るうちは指示書の作成、手配し終えて
@@ -434,6 +435,12 @@ export function OrderLineDetail({
           label={tr("common.orderLineNumber")}
           value={<DocNumber>{order.orderNumber}</DocNumber>}
         />
+        {order.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={order.legacyNumber}
+          />
+        )}
         <FieldValue
           label={tr("common.customer")}
           value={
@@ -663,7 +670,9 @@ export function OrderLineDetail({
                     <Table.Tr
                       key={wo.workOrderNumber}
                       onClick={() =>
-                        router.push(`/production/work-orders/${wo.docNumber}`)
+                        router.push(
+                          `/production/work-orders/${wo.workOrderNumber}`,
+                        )
                       }
                       style={{ cursor: "pointer" }}
                     >

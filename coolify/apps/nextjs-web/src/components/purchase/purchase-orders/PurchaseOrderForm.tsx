@@ -47,6 +47,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { docNo } from "@/lib/doc-number";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
@@ -259,10 +260,10 @@ export function PurchaseOrderForm({
           message:
             mode === "edit"
               ? tr("purchase.purchaseOrderForm.updatedWithNumber", {
-                  poNumber: result.data.poNumber,
+                  poNumber: docNo(result.data.poNumber),
                 })
               : tr("purchase.purchaseOrderForm.createdWithNumber", {
-                  poNumber: result.data.poNumber,
+                  poNumber: docNo(result.data.poNumber),
                 }),
           color: "green",
         });
@@ -306,7 +307,7 @@ export function PurchaseOrderForm({
       title={
         mode === "edit"
           ? tr("purchase.purchaseOrderForm.editWithNumber", {
-              poNumber: poNumber ?? "",
+              poNumber: docNo(poNumber ?? ""),
             })
           : tr("purchase.purchaseOrders.newMaterialPurchaseOrder")
       }

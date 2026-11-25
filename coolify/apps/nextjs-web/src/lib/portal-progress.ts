@@ -20,8 +20,16 @@
 
 import "server-only";
 
-import { legacyDocKey } from "@/lib/doc-number";
 import { prisma } from "./db";
+import {
+  acceptanceKeyOfLine,
+  docIdOf,
+  docNumberOf,
+  type OrderLineKey,
+  orderLineIdOf,
+  orderLineNumberOf,
+  orderLineWhereKey,
+} from "./doc-number";
 import { type LocalizedTextInput, localized } from "./format";
 import { portalAccessFor, portalScopeFor } from "./portal-access";
 import type { PortalSession } from "./portal-auth";
@@ -35,11 +43,10 @@ import {
   portalProgressOf,
 } from "./portal-progress-core";
 
-// 純粋なもの（番号の組み立て・分解・集計）は core にある。ページからは
+// 純粋なもの（番号の組み立て・集計）は core にある。ページからは
 // このファイル 1 本を読めば済むように、そのまま通す。
 export {
   type PortalOrderSummary,
-  parsePortalOrderLineNumber,
   portalOrderLineNumber,
   summarizePortalOrders,
 } from "./portal-progress-core";
@@ -58,8 +65,10 @@ function iso(d: Date | null | undefined): string | null {
 }
 
 export interface PortalOrderLineRow extends PortalOrderLineDto {
-  /** 一覧の並び・リンク用（表示番号。内部 id は出さない）。 */
+  /** 一覧の並び・表示用（注文請書の表示番号。内部 id は出さない）。 */
   acceptanceNumber: string;
+  /** 注文請書へのリンク用の id（`CKK~ORD-2026-00001`）。 */
+  acceptanceId: string;
 }
 
 /**
@@ -97,8 +106,8 @@ export async function listPortalOrderLines(
     },
     // ★ 許可リスト。lot_number / is_locked / product_id は**取らない**。
     select: {
-      acceptanceYearMonth: true,
-      acceptanceSeq: true,
+      lineRef: true,
+      acceptance: { select: { docRef: true } },
       branch: true,
       quantity: true,
       unitPrice: true,
@@ -120,8 +129,9 @@ export async function listPortalOrderLines(
       },
     },
     orderBy: [
-      { acceptanceYearMonth: "desc" },
-      { acceptanceSeq: "desc" },
+      { acceptance: { fiscalYear: "desc" } },
+      { acceptance: { docSeq: "desc" } },
+      { acceptanceId: "desc" },
       { branch: "asc" },
     ],
     take: 300,
@@ -139,7 +149,10 @@ export async function listPortalOrderLines(
       .sort((a, b) => a.getTime() - b.getTime())[0];
 
     return {
-      acceptanceNumber: `ORD-${r.acceptanceYearMonth}-${String(r.acceptanceSeq).padStart(5, "0")}`,
+      acceptanceNumber: docNumberOf(r.acceptance),
+      acceptanceId: docIdOf(r.acceptance),
+      id: orderLineIdOf(r),
+      number: orderLineNumberOf(r),
       branch: r.branch,
       // 製品マスタに突合済みならその名称、未突合なら注文書に印字されていた
       // 品名（product_text）。**内部の id は出さない。**
@@ -170,18 +183,14 @@ export async function listPortalOrderLines(
  */
 export async function getPortalOrderLine(
   session: PortalSession,
-  yearMonth: string,
-  seq: number,
-  branch: number,
+  key: OrderLineKey,
 ): Promise<PortalOrderLineDetailDto | null> {
   // リンク限定セッションは進捗を持たない（その 1 件だけのスコープ）。
   if (session.linkId) return null;
 
   const row = await prisma.orderLine.findFirst({
     where: {
-      acceptanceYearMonth: yearMonth,
-      acceptanceSeq: seq,
-      branch,
+      ...orderLineWhereKey(key),
       status: { in: [...VISIBLE_LINE_STATUS] },
     },
     // ★ 許可リスト。lot_number / is_locked / product_id は取らない。
@@ -215,8 +224,7 @@ export async function getPortalOrderLine(
               shippedAt: true,
               deliveryNotes: {
                 select: {
-                  yearMonth: true,
-                  seq: true,
+                  docRef: true,
                   deliveredAt: true,
                   createdAt: true,
                 },
@@ -227,9 +235,9 @@ export async function getPortalOrderLine(
       },
       invoiceItems: {
         select: {
-          invoiceYearMonth: true,
-          invoiceSeq: true,
-          invoice: { select: { issuedAt: true, createdAt: true } },
+          invoice: {
+            select: { docRef: true, issuedAt: true, createdAt: true },
+          },
         },
       },
     },
@@ -247,7 +255,9 @@ export async function getPortalOrderLine(
   // 宛て先の集合は一覧の WHERE と同じ列から作る ⇒ 一覧に出た行は必ず開ける。
   const access = await portalAccessFor(session, {
     type: "order_lines",
-    id: `ORD-${yearMonth}-${String(seq).padStart(5, "0")}-${String(branch).padStart(2, "0")}`,
+    id: orderLineNumberOf(key) ?? key.lineRef,
+    // 付与・リンクとは法人コード付きの参照で突き合わせる（番号だけにしない）。
+    ref: key.lineRef,
     customerBpIds: [
       row.acceptance.customerBpId,
       row.acceptance.customerBranchBpId,
@@ -266,12 +276,12 @@ export async function getPortalOrderLine(
     .filter((d): d is Date => d != null)
     .sort((a, b) => a.getTime() - b.getTime())[0];
 
-  const acceptanceNumber = `ORD-${yearMonth}-${String(seq).padStart(5, "0")}`;
+  const acceptanceKey = acceptanceKeyOfLine(key);
+  const acceptanceNumber = docNumberOf(acceptanceKey);
   const refs: PortalRelatedRef[] = [
     {
       type: "order_acceptances",
-      yearMonth,
-      seq,
+      docRef: acceptanceKey.docRef,
       issuedOn:
         iso(row.acceptance.orderDate) ??
         row.acceptance.createdAt.toISOString().slice(0, 10),
@@ -281,8 +291,7 @@ export async function getPortalOrderLine(
     for (const n of di.deliveryOrder.deliveryNotes) {
       refs.push({
         type: "delivery_notes",
-        yearMonth: n.yearMonth,
-        seq: n.seq,
+        docRef: n.docRef,
         issuedOn: (n.deliveredAt ?? n.createdAt).toISOString().slice(0, 10),
       });
     }
@@ -290,7 +299,7 @@ export async function getPortalOrderLine(
   for (const ii of row.invoiceItems) {
     refs.push({
       type: "invoices",
-      ...legacyDocKey(ii.invoiceYearMonth, ii.invoiceSeq),
+      docRef: ii.invoice.docRef,
       issuedOn: (ii.invoice.issuedAt ?? ii.invoice.createdAt)
         .toISOString()
         .slice(0, 10),
@@ -299,6 +308,8 @@ export async function getPortalOrderLine(
 
   return {
     acceptanceNumber,
+    id: orderLineIdOf(key),
+    number: orderLineNumberOf(key),
     branch: row.branch,
     productName: row.item?.name
       ? localized(row.item.name as LocalizedTextInput)

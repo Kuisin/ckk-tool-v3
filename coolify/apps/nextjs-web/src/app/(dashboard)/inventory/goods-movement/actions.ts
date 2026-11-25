@@ -17,7 +17,7 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission, targetPlantsInScope } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { formatMovementNumber } from "@/lib/doc-number";
+import { docIdOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
   applyTransaction,
@@ -33,7 +33,6 @@ import {
   postingsFor,
   validateMovement,
 } from "@/lib/movement-type-core";
-import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
   actionError,
@@ -203,12 +202,11 @@ export async function postGoodsMovement(
     const movementPlantId =
       distinctPlants.length === 1 ? distinctPlants[0] : null;
 
-    const key = await allocateDocumentKey("INVENTORY_MOVEMENT");
     const note = v.notes.trim() || undefined;
 
-    await prisma.$transaction(async (tx) => {
+    // 伝票番号は DB が INSERT 時に払い出す — 計上し終えた伝票の参照を読み戻す。
+    const movement = await prisma.$transaction(async (tx) => {
       const movementId = await createMovement(tx, {
-        key,
         cause: MANUAL_CAUSE,
         movementTypeId: type.id,
         plantId: movementPlantId,
@@ -239,9 +237,14 @@ export async function postGoodsMovement(
           notes: note,
         });
       }
+      return tx.inventoryMovement.findUniqueOrThrow({
+        where: { id: movementId },
+        select: { docRef: true },
+      });
     });
 
-    const movementNumber = formatMovementNumber(key);
+    // 画面へ返すのは id の姿（`CKK~MOV-…` — 伝票へのリンクに使う）。
+    const movementNumber = docIdOf(movement);
     await recordAudit({
       action: "CREATE",
       tableName: "inventory_movements",

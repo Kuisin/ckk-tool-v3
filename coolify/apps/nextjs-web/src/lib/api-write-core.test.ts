@@ -49,7 +49,7 @@ describe("decideIdempotency", () => {
   const stored = {
     requestHash: requestFingerprint("POST", "/x", "{}"),
     responseStatus: 201,
-    responseBody: '{"number":"ORD-202609-00001"}',
+    responseBody: '{"number":"ORD-2026-00001"}',
   };
 
   it("初めての鍵は実行する", () => {

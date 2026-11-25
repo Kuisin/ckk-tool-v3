@@ -3,6 +3,8 @@ import { getTranslations } from "next-intl/server";
 import { isEditable } from "@/components/purchase/purchase-orders/model";
 import { PurchaseOrderForm } from "@/components/purchase/purchase-orders/PurchaseOrderForm";
 import { requireAppRead } from "@/lib/authz-page";
+import { docIdOf } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import {
   fetchPlantOptions,
   fetchPurchaseOrder,
@@ -19,13 +21,24 @@ export const dynamic = "force-dynamic";
  */
 export default async function PurchasePurchaseOrdersEditPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("purchase-orders");
   if (denied) return denied;
   const { id } = await params;
-  const poNumber = decodeURIComponent(id);
+  const poNumber = docIdOf(
+    await docKeyFromParam(
+      "material_purchase_orders",
+      "PO",
+      id,
+      "/purchase/purchase-orders",
+      "/edit",
+      searchParams,
+    ),
+  );
   const tr = await getTranslations();
 
   const [purchaseOrder, supplierOptions, plantOptions] = await Promise.all([

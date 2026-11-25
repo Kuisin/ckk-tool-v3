@@ -67,6 +67,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { docNo } from "@/lib/doc-number";
 import { downloadFile } from "@/lib/download";
 import { formatMoney } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
@@ -106,7 +107,7 @@ export function DeliveryNoteDetail({
 
   // PDF は発行後のみ閲覧できる（ルート側も 403 で拒否する）。
   const canViewPdf = note.status !== "DRAFT";
-  const pdfFilename = `${note.deliveryNumber}.pdf`;
+  const pdfFilename = `${docNo(note.deliveryNumber)}.pdf`;
   // ユーザー直送で価格記載ありの納品書は、最終需要家へ渡すと事故になる
   // （届けるべき相手は顧客）。開く／ダウンロードの前に一度確認を挟む。
   const showsPriceToDirectUser =
@@ -175,7 +176,7 @@ export function DeliveryNoteDetail({
       items: [
         {
           key: note.deliveryOrderNumber,
-          label: note.deliveryOrderNumber,
+          label: docNo(note.deliveryOrderNumber),
           href: `/shipping/delivery-orders/${note.deliveryOrderNumber}`,
           note: tr("shipping.deliveryNotes.whereThisDeliveryNoteShipsFrom"),
         },
@@ -191,7 +192,7 @@ export function DeliveryNoteDetail({
           : null,
       items: note.orderLineNumbers.map((n) => ({
         key: n,
-        label: n,
+        label: docNo(n),
         href: `/sales/order-lines/${n}`,
       })),
       emptyNote: tr("shipping.deliveryNotes.stockStorageEtcNotTiedTo"),
@@ -205,7 +206,7 @@ export function DeliveryNoteDetail({
       title: tr("common.invoice"),
       items: invoices.map((inv) => ({
         key: inv.number,
-        label: inv.number,
+        label: docNo(inv.number),
         href: `/billing/invoices/${inv.number}`,
         done: inv.status === "PAID",
         note: tr("shipping.deliveryNotes.invoiceNote", {
@@ -332,7 +333,7 @@ export function DeliveryNoteDetail({
       ]}
       createdAt={fmt.dateTime(note.createdAt)}
       status={<StatusBadge entity="DeliveryNote" status={note.status} />}
-      title={note.deliveryNumber}
+      title={docNo(note.deliveryNumber)}
       updatedAt={fmt.dateTime(note.updatedAt)}
     >
       {showsPriceToDirectUser && (
@@ -350,6 +351,12 @@ export function DeliveryNoteDetail({
           label={tr("common.deliveryNoteNumber")}
           value={<DocNumber>{note.deliveryNumber}</DocNumber>}
         />
+        {note.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={<DocNumber>{note.legacyNumber}</DocNumber>}
+          />
+        )}
         <FieldValue
           label={tr("common.deliveryOrderNumber")}
           value={
@@ -585,7 +592,7 @@ export function DeliveryNoteDetail({
         confirmLabel={tr("common.issue")}
         loading={isPending}
         message={tr("shipping.deliveryNotes.confirmIssueBody", {
-          number: note.deliveryNumber,
+          number: docNo(note.deliveryNumber),
         })}
         onClose={() => setIssueOpen(false)}
         onConfirm={() =>
@@ -593,7 +600,7 @@ export function DeliveryNoteDetail({
             () => issueDeliveryNote(note.deliveryNumber),
             tr("common.issued"),
             tr("shipping.deliveryNotes.issuedBody", {
-              number: note.deliveryNumber,
+              number: docNo(note.deliveryNumber),
             }),
           )
         }
@@ -605,7 +612,7 @@ export function DeliveryNoteDetail({
         confirmLabel={tr("shipping.deliveryNotes.markAsDelivered")}
         loading={isPending}
         message={tr("shipping.deliveryNotes.confirmDeliveredBody", {
-          number: note.deliveryNumber,
+          number: docNo(note.deliveryNumber),
         })}
         onClose={() => setDeliverOpen(false)}
         onConfirm={() =>
@@ -613,7 +620,7 @@ export function DeliveryNoteDetail({
             () => markDelivered(note.deliveryNumber),
             tr("shipping.deliveryNotes.markedAsDelivered"),
             tr("shipping.deliveryNotes.deliveredBody", {
-              number: note.deliveryNumber,
+              number: docNo(note.deliveryNumber),
             }),
           )
         }

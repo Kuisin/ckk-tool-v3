@@ -75,8 +75,21 @@ model Estimate {
   /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
   /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
   ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
-  yearMonth String @map("year_month") @db.Char(6)
-  seq       Int
+  /// 旧番号の年月と連番（PR-D で落とす）。新しい行は NULL — 旧番号の文字列は
+  /// legacy_number が持つ。SQL のシードはまだこの 2 列で書類を入れる。
+  legacyYearMonth String? @map("year_month") @db.Char(6)
+  legacySeq       Int?    @map("seq")
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
 
   name                String
   // 工具種 — 管理者定義（system_settings trial_pricing.tool_types）。
@@ -124,7 +137,10 @@ model Estimate {
 
   ownCompany OwnCompany @relation("EstimateOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
-  @@unique([yearMonth, seq])
+  @@unique([legacyYearMonth, legacySeq])
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
   @@index([itemId])
   @@index([ownCompanyId])
   @@map("estimates")
@@ -154,8 +170,21 @@ model PriceListEntry {
   /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
   /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
   ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
-  yearMonth String @map("year_month") @db.Char(6)
-  seq       Int
+  /// 旧番号の年月と連番（PR-D で落とす）。新しい行は NULL — 旧番号の文字列は
+  /// legacy_number が持つ。SQL のシードはまだこの 2 列で書類を入れる。
+  legacyYearMonth String? @map("year_month") @db.Char(6)
+  legacySeq       Int?    @map("seq")
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
 
   customerBpId String @map("customer_bp_id") @db.Uuid
   /// 統合品目（app.items）。価格表の対象品目。
@@ -193,7 +222,10 @@ model PriceListEntry {
 
   ownCompany OwnCompany @relation("PriceListEntryOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
-  @@unique([yearMonth, seq])
+  @@unique([legacyYearMonth, legacySeq])
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
   // 価格表の識別は (顧客 × 品目 × 対象工具)。作成後不変。工具は null を
   // 1 つの値として数える（工具なしの価格表は顧客 × 品目に 1 つだけ）— Prisma は
   // 部分 unique index を表現できないので、2 本の部分 unique index を
@@ -291,8 +323,21 @@ model Quote {
   /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
   /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
   ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
-  yearMonth String @map("year_month") @db.Char(6)
-  seq       Int
+  /// 旧番号の年月と連番（PR-D で落とす）。新しい行は NULL — 旧番号の文字列は
+  /// legacy_number が持つ。SQL のシードはまだこの 2 列で書類を入れる。
+  legacyYearMonth String? @map("year_month") @db.Char(6)
+  legacySeq       Int?    @map("seq")
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
 
   customerBpId       String      @map("customer_bp_id") @db.Uuid
   customerBranchBpId String?     @map("customer_branch_bp_id") @db.Uuid
@@ -320,9 +365,12 @@ model Quote {
 
   ownCompany OwnCompany @relation("QuoteOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
-  @@unique([yearMonth, seq])
+  @@unique([legacyYearMonth, legacySeq])
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
-  @@index([updatedAt, yearMonth, seq])
+  @@index([updatedAt, id])
   @@index([ownCompanyId])
   @@map("quotes")
   @@schema("app")

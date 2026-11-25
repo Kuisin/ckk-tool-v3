@@ -17,15 +17,16 @@ import { APPROVAL_TARGET, isApprovalTargetType } from "@/lib/approval-targets";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
-import { docDisplayId } from "@/lib/doc-ref";
+import { docDisplayId, docDisplayNumber } from "@/lib/doc-ref";
 import { localized } from "@/lib/format";
 
 /** 承認管理 (PD03) の 1 行（client-safe）。 */
 export interface ApprovalRequestRow {
   id: string;
   targetType: string; // work_orders | material_purchase_orders | order_acceptances | purchase_requests
-  targetId: string; // 業務キー（ロット番号 int / PO-… / ORD-…）
-  /** 表示用番号（指示書はロット番号 → 書類番号 WO-… へ解決済み）。 */
+  /** 書類を指す id（ロット番号 int / `CKK~PO-…` / `CKK~ORD-…` — リンクに使う）。 */
+  targetId: string;
+  /** 表示用番号（番号だけ。指示書はロット番号 → 書類番号 WOR-… へ解決済み）。 */
   targetDisplay: string;
   /** 何段目か（1 起点）と総段数 — 「2/3」と出す。 */
   stepNo: number;
@@ -107,7 +108,7 @@ export async function fetchPendingApprovalRequests(): Promise<
       ? (
           await prisma.workOrder.findMany({
             where: { workOrderNumber: { in: woNumbers } },
-            select: { workOrderNumber: true, yearMonth: true, seq: true },
+            select: { workOrderNumber: true, docRef: true },
           })
         ).map((w) => [String(w.workOrderNumber), formatDocNumber("WOR", w)])
       : [],
@@ -119,12 +120,13 @@ export async function fetchPendingApprovalRequests(): Promise<
     return {
       id: r.id,
       targetType: r.targetType,
-      // target_id は法人コード付きの参照（`CKK/ORD-…`）。画面とリンクは番号で扱う。
+      // target_id は法人コード付きの参照（`CKK/ORD-…`）。リンクには id の姿
+      // （`CKK~ORD-…`）で渡し、表示は番号だけにする。
       targetId: docDisplayId(r.targetType, r.targetId),
       targetDisplay:
         r.targetType === "work_orders"
           ? (woDocNumbers.get(r.targetId) ?? `#${r.targetId}`)
-          : docDisplayId(r.targetType, r.targetId),
+          : docDisplayNumber(r.targetType, r.targetId),
       stepNo: r.stepNo,
       stepCount: r.stepCount,
       stepLabel: step

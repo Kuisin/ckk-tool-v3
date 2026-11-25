@@ -56,8 +56,8 @@ webhook-signature: v1,K5oZfzN95Z9UhFK…=
   "occurredAt": "2026-09-10T04:11:52.881Z",
   "resource": {
     "type": "order_acceptance",
-    "id": "ORD-202609-00042",
-    "key": "202609:42"
+    "id": "ORD-2026-00042",
+    "key": "CKK/ORD-2026-00042"
   },
   "status": { "from": "DRAFT", "to": "CONFIRMED" },
   "links": {
@@ -68,7 +68,7 @@ webhook-signature: v1,K5oZfzN95Z9UhFK…=
 
 - `id` / `webhook-id` 在**重发时保持不变**，用于接收端去重。
 - `changedFields` 仅在 `.updated` 时出现，且**只有字段名**（不含数值）。`status` 仅在 `.status_changed` 时出现。
-- `resource.id` 是与画面一致的单据编号。为应对编号重置后被复用的情况，同时提供 `resource.key`，匹配时更可靠。
+- `resource.id` 是与画面一致的单据编号。**同一编号可能同时存在于另一家开具公司**，因此同时提供带公司代码的 `resource.key`（`<公司代码>/<单据编号>`），匹配时请使用它（编号规则见[单据编号规则](/manual/zh/start#doc-number)）。
 - 需要数据本身时，用 API 客户端的令牌 GET `links.list`。
 
 ### 事件类型

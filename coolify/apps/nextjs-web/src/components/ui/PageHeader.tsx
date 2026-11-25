@@ -23,6 +23,7 @@ import {
   isAppCategory,
   workprocessHomeHref,
 } from "@/lib/app-list";
+import { docNo } from "@/lib/doc-number";
 import type { Locale } from "@/lib/i18n";
 
 /** A breadcrumb: plain label, or a label that links to `href`. */
@@ -72,7 +73,10 @@ export function PageHeader({
   const { locale } = usePreferences();
   const items = [
     { label: tr("ui.pageHeader.home"), href: "/" },
-    ...breadcrumbs.map((c) => normalize(c, locale)),
+    // パンくずに書類の id を渡されても、表示は番号だけにする（リンク先は触らない）。
+    ...breadcrumbs
+      .map((c) => normalize(c, locale))
+      .map((c) => ({ ...c, label: docNo(c.label) })),
   ];
 
   return (
@@ -107,7 +111,9 @@ export function PageHeader({
         )}
         <Group align="end" className="min-w-0" gap="sm" wrap="nowrap">
           <Title className="min-w-0 flex-1 truncate" order={isMobile ? 3 : 2}>
-            {title}
+            {/* 書類の id（`CKK~QOT-2026-00001`）をそのまま渡されても、見出しには
+                番号だけを出す。番号でない文字列は docNo がそのまま返す。 */}
+            {docNo(title)}
           </Title>
           {status && <span className="shrink-0">{status}</span>}
         </Group>

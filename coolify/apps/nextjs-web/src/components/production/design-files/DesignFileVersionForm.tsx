@@ -27,6 +27,7 @@ import { useState } from "react";
 import { searchProductItemOptions } from "@/app/(dashboard)/_shared/option-search";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions, FormSection } from "@/components/ui/shells";
+import { docNo } from "@/lib/doc-number";
 import type { ProductItemDef, ResolvedProductType } from "@/lib/product-types";
 import { matchCustomerOption, type SxfDrawingReading } from "@/lib/sxf-core";
 import {
@@ -196,7 +197,7 @@ export function DesignFileVersionForm({
       {requestContext && (
         <Alert color="blue" icon={<IconInfoCircle size={16} />}>
           {tr("production.designFileVersionForm.registeringAsResultOfRequest", {
-            requestNumber: requestContext.requestNumber,
+            requestNumber: docNo(requestContext.requestNumber),
             productLabel: requestContext.productLabel,
             customerPart: requestContext.customerName
               ? tr("production.designFileVersionForm.andCustomerWithName", {

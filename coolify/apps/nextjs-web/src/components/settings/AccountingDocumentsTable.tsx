@@ -21,6 +21,7 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { AccountingDocumentSummary } from "@/lib/accounting-documents";
+import { docNo } from "@/lib/doc-number";
 import { statusOptions } from "@/lib/status-map";
 
 export function AccountingDocumentsTable({
@@ -44,8 +45,9 @@ export function AccountingDocumentsTable({
   const filtered = documents.filter((d) => {
     const matchesSearch =
       !search ||
-      d.documentNumber.includes(search) ||
-      d.invoiceNumber.includes(search);
+      docNo(d.documentNumber).includes(search) ||
+      (d.legacyNumber ?? "").includes(search) ||
+      docNo(d.invoiceNumber).includes(search);
     const matchesStatus = !status || d.status === status;
     return matchesSearch && matchesStatus;
   });
@@ -145,7 +147,7 @@ export function AccountingDocumentsTable({
             <div className="min-w-0">
               <DocNumber>{d.documentNumber}</DocNumber>
               <Text c="dimmed" size="xs">
-                {d.invoiceNumber}
+                {docNo(d.invoiceNumber)}
               </Text>
             </div>
             <Group gap="xs">

@@ -1,9 +1,9 @@
 /**
  * data.ts — 注文明細 (SA05) ページのサーバーサイド取得・マッピング。
  *
- * app.order_lines は注文請書キー (acceptance_year_month, acceptance_seq) +
- * 枝番 branch の複合キー — 表示番号 ORD-YYYYMM-NNNNN-NN は導出（保存しない）で、
- * URL id を兼ねる。枝番は確定時に採番されるため、**この画面は確定済み
+ * 注文明細の番号（ORD-FFFF-NNNNN-NN = 注文請書の番号 + 枝番）と参照 line_ref は、
+ * 枝番が入った時点で DB が導出する。行は line_ref で引き、DTO の orderNumber は
+ * id の姿（CKK~ORD-2026-00001-01 — URL id を兼ねる）。枝番は確定時に採番されるため、**この画面は確定済み
  * （branch != null）だけを扱う**。確定前の明細は注文請書 (SA04) の明細エディタ。
  *
  * 顧客・注文書番号・見積キー・作成者は行に複写せず、注文請書ヘッダから読む。
@@ -18,12 +18,12 @@ import type {
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import {
-  formatDocNumber,
-  formatOrderLineNumber,
+  docIdOf,
+  docIdOrNull,
+  docNumberOf,
   formatProductNumber,
-  formatQuoteNumber,
-  legacyDocKey,
   type OrderLineKey,
+  orderLineIdOf,
   orderLineWhereKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -41,6 +41,8 @@ const ORDER_LINE_INCLUDE = {
       // 営業担当・作成者は行に複写せずヘッダから読む（顧客と同じ扱い）。
       salesRep: { select: { displayName: true } },
       createdByUser: { select: { displayName: true } },
+      // 元の見積書（番号は見積書の行から読む）。
+      quote: { select: { docRef: true } },
     },
   },
   endUserBp: true,
@@ -74,8 +76,7 @@ const ORDER_LINE_INCLUDE = {
       quantity: true,
       deliveryOrder: {
         select: {
-          yearMonth: true,
-          seq: true,
+          docRef: true,
           type: true,
           status: true,
           shippedAt: true,
@@ -83,8 +84,9 @@ const ORDER_LINE_INCLUDE = {
       },
     },
     orderBy: [
-      { deliveryOrderYearMonth: "desc" as const },
-      { deliveryOrderSeq: "desc" as const },
+      { deliveryOrder: { fiscalYear: "desc" as const } },
+      { deliveryOrder: { docSeq: "desc" as const } },
+      { deliveryOrderId: "desc" as const },
     ],
   },
 };
@@ -131,18 +133,19 @@ function toolLabel(t: {
 
 function mapOrderLine(r: OrderLineRow): OrderLine {
   // この関数は確定済み行（branch != null）のみを受ける — 呼び出し側で絞る。
-  const number = formatOrderLineNumber({
-    ...legacyDocKey(r.acceptanceYearMonth, r.acceptanceSeq),
-    branch: r.branch ?? 0,
-  });
+  // line_ref が無い行はここへ来ない。
+  const number = orderLineIdOf(r) ?? "";
   const acc = r.acceptance;
   return {
     id: number,
     orderNumber: number,
     uuid: r.id,
-    acceptanceNumber: formatDocNumber("ORD", {
-      ...legacyDocKey(r.acceptanceYearMonth, r.acceptanceSeq),
-    }),
+    // 旧番号 = 注文請書の旧番号 + 枝番（切り替え前に採番された書類だけ）。
+    legacyNumber:
+      acc.legacyNumber && r.branch != null
+        ? `${acc.legacyNumber}-${String(r.branch).padStart(2, "0")}`
+        : null,
+    acceptanceNumber: docIdOf(acc),
     customerId: acc.customerBpId,
     customerName: localized(acc.customerBp?.name as LocalizedText | null),
     customerBranchId: acc.customerBranchBpId,
@@ -174,13 +177,7 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
       ? `${localized(r.shippingWorkLocation.group.name as LocalizedText | null)} / ${localized(r.shippingWorkLocation.name as LocalizedText | null)}`
       : null,
     customerOrderRef: acc.customerOrderRef,
-    quoteNumber:
-      acc.quoteYearMonth && acc.quoteSeq != null
-        ? formatQuoteNumber({
-            yearMonth: acc.quoteYearMonth,
-            seq: acc.quoteSeq,
-          })
-        : null,
+    quoteNumber: docIdOrNull(acc.quote),
     itemId: r.itemId == null ? null : String(r.itemId),
     productName: r.item ? productLabel(r.item) : (r.productText ?? "—"),
     toolName: r.toolItem ? toolLabel(r.toolItem) : null,
@@ -201,7 +198,8 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
     notes: r.notes,
     workOrders: r.workOrderLinks.map((l) => ({
       workOrderNumber: l.workOrder.workOrderNumber,
-      docNumber: formatDocNumber("WOR", l.workOrder),
+      // 指示書の書類番号は表示専用（URL・操作はロット番号）— 番号だけを持つ。
+      docNumber: docNumberOf(l.workOrder),
       type: l.workOrder.type,
       plannedQuantity: l.workOrder.plannedQuantity,
       allocatedQuantity: l.quantity,
@@ -217,10 +215,7 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
       )
       .reduce((sum, it) => sum + it.quantity, 0),
     deliveryOrders: r.deliveryItems.map((it) => ({
-      number: formatDocNumber("DOR", {
-        yearMonth: it.deliveryOrder.yearMonth,
-        seq: it.deliveryOrder.seq,
-      }),
+      number: docIdOf(it.deliveryOrder),
       type: it.deliveryOrder.type,
       status: it.deliveryOrder.status,
       quantity: it.quantity,
@@ -300,8 +295,9 @@ export async function fetchOrderLines(): Promise<OrderLine[]> {
     },
     include: ORDER_LINE_INCLUDE,
     orderBy: [
-      { acceptanceYearMonth: "desc" },
-      { acceptanceSeq: "desc" },
+      { acceptance: { fiscalYear: "desc" } },
+      { acceptance: { docSeq: "desc" } },
+      { acceptanceId: "desc" },
       { branch: "asc" },
     ],
   });

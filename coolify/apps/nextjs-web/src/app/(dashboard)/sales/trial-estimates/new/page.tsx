@@ -3,6 +3,7 @@ import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { issuingCompanyFieldForSession } from "@/lib/doc-company";
 import { parseDocKey } from "@/lib/doc-number";
+import { resolveDocId } from "@/lib/doc-ref";
 import {
   ESTIMATE_COST_PERMISSION,
   type EstimateKind,
@@ -27,8 +28,17 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/** クエリ文字列の価格試算 id → 鍵（番号だけ・旧番号は DB を引く）。 */
+async function estimateKeyFromQuery(id: string) {
+  const key = parseDocKey(id, "EST");
+  if (key) return key;
+  const r = await resolveDocId("estimates", id);
+  return r.status === "ok" ? { docRef: r.docRef } : null;
+}
+
 /**
- * 価格試算 新規 (SA51). `?from=EST-…` で複製して作り直す。
+ * 価格試算 新規 (SA51). `?from=<価格試算の id>` で複製して作り直す（番号だけ・
+ * 旧番号で来た場合は DB を引いて 1 件に決まるときだけ使う）。
  * `?kind=PRICE|COST` で種別の初期値を決める — 原価試算の詳細の「売価試算を作成」は
  * `?from=<原価試算>&kind=PRICE` で入力を複写した売価試算を開く。
  */
@@ -42,7 +52,7 @@ export default async function TrialEstimateNewPage({
   const { from, kind } = await searchParams;
   const initialKind =
     kind === "COST" || kind === "PRICE" ? (kind as EstimateKind) : undefined;
-  const fromKey = from ? parseDocKey(from, "EST") : null;
+  const fromKey = from ? await estimateKeyFromQuery(from) : null;
 
   const [
     customerOptions,
@@ -58,7 +68,7 @@ export default async function TrialEstimateNewPage({
     fetchMaterialTypeOptions(),
     fetchDiameterOptions(),
     fetchSurfaceFinishOptions(),
-    fromKey ? fetchTrialEstimate(fromKey.yearMonth, fromKey.seq) : null,
+    fromKey ? fetchTrialEstimate(fromKey) : null,
     getTrialPricingSettings(),
     getScalePreset(),
     checkPermission(ESTIMATE_COST_PERMISSION, "READ"),

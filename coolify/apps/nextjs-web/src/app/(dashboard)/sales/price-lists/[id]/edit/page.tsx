@@ -1,24 +1,32 @@
 import { notFound } from "next/navigation";
 import { PriceListTypeForm } from "@/components/sales/price-lists/PriceListTypeForm";
 import { requireAppRead } from "@/lib/authz-page";
-import { parseDocKey } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { getScalePreset } from "@/lib/price-scale-preset-store";
 import { fetchExistingEntryRefs } from "../../../trial-estimates/data";
 import { fetchEstimateBases, fetchPriceEntry } from "../../data";
 
 export const dynamic = "force-dynamic";
 
-/** 価格表 編集 (SA22 → edit). `id` は価格表番号 PRC-YYYYMM-NNNNN. */
+/** 価格表 編集 (SA22 → edit). `id` は法人コード付きの価格表番号（CKK~PRC-2026-00001）。 */
 export default async function PriceListEditPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("price-lists");
   if (denied) return denied;
   const { id } = await params;
-  const key = parseDocKey(decodeURIComponent(id), "PRC");
-  if (!key) notFound();
+  const key = await docKeyFromParam(
+    "price_list_entries",
+    "PRC",
+    id,
+    "/sales/price-lists",
+    "/edit",
+    searchParams,
+  );
 
   const [entry, existingEntries, scalePreset] = await Promise.all([
     fetchPriceEntry(key),

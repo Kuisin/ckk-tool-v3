@@ -34,8 +34,8 @@ describe("systematicFileName", () => {
   });
 
   it("prepends the label when given", () => {
-    expect(systematicFileName("納品書.pdf", "PO-202608-00001")).toMatch(
-      /^\d{8}-\d{6}_[a-z2-9]{6}_PO-202608-00001_納品書\.pdf$/,
+    expect(systematicFileName("納品書.pdf", "PO-2026-00001")).toMatch(
+      /^\d{8}-\d{6}_[a-z2-9]{6}_PO-2026-00001_納品書\.pdf$/,
     );
   });
 

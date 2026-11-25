@@ -64,7 +64,7 @@ export async function saveInvoiceCharges(
 
   try {
     const invoice = await prisma.invoice.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       include: { customerBp: { include: { customerAttrs: true } } },
     });
     if (!invoice) {
@@ -106,12 +106,8 @@ export async function saveInvoiceCharges(
     const [originItems, existingManualItems] = await Promise.all([
       prisma.invoiceItem.findMany({
         where: {
-          invoiceYearMonth: key.yearMonth,
-          invoiceSeq: key.seq,
-          OR: [
-            { deliveryOrderYearMonth: { not: null } },
-            { chargeItemId: null },
-          ],
+          invoiceId: invoice.id,
+          OR: [{ deliveryOrderId: { not: null } }, { chargeItemId: null }],
         },
         select: {
           amount: true,
@@ -122,9 +118,8 @@ export async function saveInvoiceCharges(
       }),
       prisma.invoiceItem.count({
         where: {
-          invoiceYearMonth: key.yearMonth,
-          invoiceSeq: key.seq,
-          deliveryOrderYearMonth: null,
+          invoiceId: invoice.id,
+          deliveryOrderId: null,
           chargeItemId: { not: null },
         },
       }),
@@ -200,9 +195,8 @@ export async function saveInvoiceCharges(
     await prisma.$transaction(async (tx) => {
       await tx.invoiceItem.deleteMany({
         where: {
-          invoiceYearMonth: key.yearMonth,
-          invoiceSeq: key.seq,
-          deliveryOrderYearMonth: null,
+          invoiceId: invoice.id,
+          deliveryOrderId: null,
           chargeItemId: { not: null },
         },
       });
@@ -222,7 +216,7 @@ export async function saveInvoiceCharges(
         });
       }
       await tx.invoiceTaxSummary.deleteMany({
-        where: { invoiceYearMonth: key.yearMonth, invoiceSeq: key.seq },
+        where: { invoiceId: invoice.id },
       });
       await tx.invoiceTaxSummary.createMany({
         data: buckets.map((b, i) => ({
@@ -235,7 +229,7 @@ export async function saveInvoiceCharges(
         })),
       });
       await tx.invoice.update({
-        where: { yearMonth_seq: key },
+        where: { docRef: key.docRef },
         data: {
           subtotal,
           taxAmount,

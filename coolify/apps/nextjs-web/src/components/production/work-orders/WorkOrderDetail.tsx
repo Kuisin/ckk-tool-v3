@@ -80,6 +80,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import { WORK_ORDER_TYPE_COLOR, workOrderTypeLabel } from "@/lib/enum-labels";
 import { FlowChangeCard, type PendingFlowChangeView } from "./FlowChangeCard";
@@ -150,7 +151,7 @@ export function WorkOrderDetail({
   );
 
   const wo = workOrder;
-  // 表示番号 YYYYMMDD-XXXXX（保存側は従来どおり通し連番の int）。
+  // 表示は書類番号 WOR-FFFF-NNNNN（リンクと操作は通し連番の int = ロット番号）。
   const woLabel = wo.docNumber;
   const isApproval = variant === "approval";
   const canEdit = wo.status === "DRAFT";
@@ -287,6 +288,12 @@ export function WorkOrderDetail({
 
   const summary = (
     <SummaryGrid>
+      {wo.legacyNumber && (
+        <FieldValue
+          label={tr("common.legacyNumber")}
+          value={<DocNumber>{wo.legacyNumber}</DocNumber>}
+        />
+      )}
       <FieldValue
         label={tr("common.orderLinesAllocated")}
         value={
@@ -951,7 +958,7 @@ export function WorkOrderDetail({
                   {wo.copies.map((c) => (
                     <Anchor
                       component={Link}
-                      href={`${BASE_PATH}/${c.docNumber}`}
+                      href={`${BASE_PATH}/${c.workOrderNumber}`}
                       key={c.workOrderNumber}
                       size="sm"
                     >
@@ -974,7 +981,7 @@ export function WorkOrderDetail({
                 </Text>
                 <Anchor
                   component={Link}
-                  href={`${BASE_PATH}/${wo.sourceWorkOrderDocNumber ?? wo.sourceWorkOrderNumber}`}
+                  href={`${BASE_PATH}/${wo.sourceWorkOrderNumber}`}
                   size="sm"
                 >
                   <DocNumber c="blue">
@@ -1030,7 +1037,7 @@ export function WorkOrderDetail({
               wo.orderLines.length > 0
                 ? {
                     value: wo.orderLines[0].orderLineId,
-                    label: `${wo.orderLines[0].number} ${wo.productName}（${wo.orderLines[0].lineQuantity}）`,
+                    label: `${docNo(wo.orderLines[0].number)} ${wo.productName}（${wo.orderLines[0].lineQuantity}）`,
                   }
                 : null
             }

@@ -12,8 +12,9 @@
  *   COMPLETED → requestAcceptanceCancel（キャンセル承認 → CANCELLED。
  *               明細単位のキャンセルは廃止 — lib/order-acceptance-cancel.ts）
  *
- * 注文確定は注文請書と同じ (year_month, seq) の order_lines 枝番 1..N を
- * $transaction で一括作成する（§2: 注文請書 1 → 注文明細 N）。承認は
+ * 注文確定は注文請書の明細（order_lines）に枝番 1..N を $transaction で一括
+ * 採番する（§2: 注文請書 1 → 注文明細 N）。明細番号（ORD-FFFF-NNNNN-NN）と
+ * 参照 line_ref は DB が導出する。承認は
  * lib/approvals（approval_requests / approval_records — FIRST 段のみ）。
  */
 
@@ -35,16 +36,16 @@ import {
 } from "@/lib/doc-company";
 import {
   type DocKey,
-  formatDocNumber,
-  formatOrderLineNumber,
-  legacyDocKey,
+  docIdOf,
+  docNo,
+  orderLineIdOf,
   parseDocKey,
 } from "@/lib/doc-number";
+import { resolveDocId } from "@/lib/doc-ref";
 import { enqueueExtraction } from "@/lib/intake";
 import { normalizeExtraction } from "@/lib/intake-core";
 import { aliasLearnings } from "@/lib/match-alias-core";
 import { saveAliasLearnings } from "@/lib/match-aliases";
-import { allocateDocumentKey } from "@/lib/numbering";
 import {
   applyApprovedAcceptanceCancel,
   closeAcceptanceCancelRequest,
@@ -89,7 +90,7 @@ const trimOrNull = (v: string | null | undefined) => {
   return t || null;
 };
 
-/** 番号（ORD-YYYYMM-NNNNN）→ 複合キー。不正は null。 */
+/** 注文請書の id（CKK~ORD-2026-00001）→ 鍵。法人なし・旧番号・不正は null。 */
 function keyOf(number: string): DocKey | null {
   return parseDocKey(number.trim(), "ORD");
 }
@@ -105,7 +106,7 @@ async function acceptanceInScope(
 ): Promise<boolean> {
   if (access.kind === "ALL") return true;
   const row = await prisma.orderAcceptance.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     select: { createdBy: true },
   });
   if (!row) return true;
@@ -179,7 +180,7 @@ function draftInputSchema(tr: Tr) {
     // 顧客が自前の納品書を用意しているか（出荷準備担当への目印。任意）。
     customerProvidesDeliveryNote: z.boolean().default(false),
     customerOrderRef: z.string().nullable(),
-    // 参照する見積書番号 QOT-YYYYMM-NNNNN（任意 — P2-2 トレーサビリティ）
+    // 参照する見積書の id（CKK~QOT-…。任意 — P2-2 トレーサビリティ）
     quoteNumber: z.string().nullable().optional(),
     orderDate: z.string().nullable(),
     notes: z.string().nullable(),
@@ -205,14 +206,27 @@ export type OrderAcceptanceManualInput = z.infer<
   ReturnType<typeof manualInputSchema>
 >;
 
-/** 見積書番号（QOT-…）→ 複合キー。空・不正は null。 */
-function quoteKeyOf(quoteNumber: string | null | undefined) {
+/**
+ * 見積書の id（CKK~QOT-…。入力欄から番号だけ・旧番号で来ても 1 件に決まれば可）
+ * → 鍵と行の uuid（order_acceptances.quote_id）。空・不正・該当なしは null。
+ */
+async function quoteLinkOf(
+  quoteNumber: string | null | undefined,
+): Promise<{ key: DocKey | null; quoteId: string | null }> {
+  const none = { key: null, quoteId: null };
   const trimmed = quoteNumber?.trim();
-  if (!trimmed) return { quoteYearMonth: null, quoteSeq: null };
-  const k = parseDocKey(trimmed, "QOT");
-  return k
-    ? { quoteYearMonth: k.yearMonth, quoteSeq: k.seq }
-    : { quoteYearMonth: null, quoteSeq: null };
+  if (!trimmed) return none;
+  let key = parseDocKey(trimmed, "QOT");
+  if (!key) {
+    const r = await resolveDocId("quotes", trimmed);
+    if (r.status === "ok") key = { docRef: r.docRef };
+  }
+  if (!key) return none;
+  const row = await prisma.quote.findUnique({
+    where: { docRef: key.docRef },
+    select: { id: true },
+  });
+  return row ? { key, quoteId: row.id } : none;
 }
 
 /** 配送（明細ごと）の入力 1 行分。lineRefsError が検証する形。 */
@@ -399,7 +413,7 @@ export async function retryExtraction(number: string): Promise<ActionResult> {
   }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { status: true },
     });
     if (!prior)
@@ -411,7 +425,7 @@ export async function retryExtraction(number: string): Promise<ActionResult> {
     }
     // 前回のエラー表示を消してから積む（画面上は「取込中」に戻る）。
     await prisma.orderAcceptance.update({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       data: { extractError: null },
     });
     enqueueExtraction(key);
@@ -448,7 +462,7 @@ export async function takeOverManually(number: string): Promise<ActionResult> {
   }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { status: true },
     });
     if (!prior)
@@ -459,7 +473,7 @@ export async function takeOverManually(number: string): Promise<ActionResult> {
       );
     }
     await prisma.orderAcceptance.update({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       // 抽出済みの値があればそれを残したまま編集させる（0 からとは限らない）。
       data: { status: "DRAFT", extractError: null },
     });
@@ -511,7 +525,7 @@ export async function saveDraft(
   const v = parsed.data;
   try {
     const prior = await prisma.orderAcceptance.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: {
         status: true,
         ownCompanyId: true,
@@ -554,27 +568,28 @@ export async function saveDraft(
       customerBpId,
       prior.customerBpId,
     );
+    const quoteLink = await quoteLinkOf(v.quoteNumber);
     let blocked: string | null = null;
     await prisma.$transaction(async (tx) => {
       // ラインチェック: 確定済みの明細は変更させない。tx 内で読むことで
       // 判定と削除の間に確定が割り込むのを防ぐ（判定は order-line-core に集約）。
       const lines = await tx.orderLine.findMany({
-        where: { acceptanceYearMonth: key.yearMonth, acceptanceSeq: key.seq },
+        where: { acceptance: { docRef: key.docRef } },
         select: { status: true, branch: true, isLocked: true },
       });
       blocked = linesReplaceBlockReason(prior.status, lines);
       if (blocked) return;
       await tx.orderLine.deleteMany({
-        where: { acceptanceYearMonth: key.yearMonth, acceptanceSeq: key.seq },
+        where: { acceptance: { docRef: key.docRef } },
       });
       await tx.orderAcceptance.update({
-        where: { yearMonth_seq: key },
+        where: { docRef: key.docRef },
         data: {
           customerBpId,
           salesRepId,
           customerProvidesDeliveryNote: v.customerProvidesDeliveryNote,
           customerOrderRef: trimOrNull(v.customerOrderRef),
-          ...quoteKeyOf(v.quoteNumber),
+          quoteId: quoteLink.quoteId,
           orderDate: v.orderDate ? new Date(v.orderDate) : null,
           notes: trimOrNull(v.notes),
           items: { create: creates },
@@ -669,7 +684,7 @@ export async function submitForApproval(
   }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: {
         status: true,
         customerBpId: true,
@@ -779,7 +794,7 @@ export async function submitForApproval(
     if (!started.ok)
       return actionError(started.error ?? tr("common.approvalRequestFailed"));
     await prisma.orderAcceptance.update({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       data: { status: "REQUESTED" },
     });
     await recordAudit({
@@ -833,12 +848,12 @@ async function applyFinalApproval(
 ): Promise<boolean> {
   if (from === "REQUESTED") {
     await prisma.orderAcceptance.update({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       data: { status: "APPROVED" },
     });
   } else {
     const res = await prisma.orderAcceptance.updateMany({
-      where: { yearMonth: key.yearMonth, seq: key.seq, status: "DRAFT" },
+      where: { docRef: key.docRef, status: "DRAFT" },
       data: { status: "APPROVED" },
     });
     if (res.count === 0) return false;
@@ -867,7 +882,7 @@ export async function approveAcceptance(number: string): Promise<ActionResult> {
   }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { status: true },
     });
     if (!prior)
@@ -924,7 +939,7 @@ export async function rejectAcceptance(
   }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { status: true },
     });
     if (!prior)
@@ -942,7 +957,7 @@ export async function rejectAcceptance(
       return actionError(acted.error ?? tr("common.noSendBackPermission"));
     }
     await prisma.orderAcceptance.update({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       data: { status: "DRAFT" },
     });
     await recordAudit({
@@ -965,7 +980,7 @@ export async function rejectAcceptance(
 
 /**
  * 注文確定 — 明細ごとに注文明細（order_lines）を作成する。
- * 注文請書と同じ (year_month, seq) を共有し、枝番 branch = 1..N。
+ * 枝番 branch = 1..N を採番する（明細番号 ORD-…-NN は DB が導出する）。
  * 全明細が製品特定済み + 単価入力済みであることが必要。
  */
 export async function confirmOrderLines(
@@ -985,7 +1000,7 @@ export async function confirmOrderLines(
   );
   try {
     const prior = await prisma.orderAcceptance.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       include: {
         items: {
           orderBy: { sortOrder: "asc" },
@@ -1029,7 +1044,7 @@ export async function confirmOrderLines(
     await prisma.$transaction(async (tx) => {
       // 二重確定ガード — APPROVED の行だけを原子的に COMPLETED へ。
       const updated = await tx.orderAcceptance.updateMany({
-        where: { ...key, status: "APPROVED" },
+        where: { docRef: key.docRef, status: "APPROVED" },
         data: { status: "COMPLETED", completedAt },
       });
       if (updated.count === 0) {
@@ -1057,17 +1072,28 @@ export async function confirmOrderLines(
       // この注文請書自体が下流の「次の書類へ」として見積詳細に出る）。
     });
 
-    const numbers = prior.items.map((_, i) =>
-      formatOrderLineNumber({ ...key, branch: i + 1 }),
+    // 明細番号と参照（line_ref）は枝番が入った時点で DB が導出する — 読み直す。
+    const confirmed = await prisma.orderLine.findMany({
+      where: { id: { in: prior.items.map((it) => it.id) } },
+      select: { id: true, lineRef: true },
+    });
+    const lineIdOf = new Map(
+      confirmed.map((l) => [l.id, orderLineIdOf(l)] as const),
     );
-    for (const [i, it] of prior.items.entries()) {
+    // 明細の id（CKK~ORD-…-NN）— 枝番順（= sortOrder 順）。
+    const numbers = prior.items
+      .map((it) => lineIdOf.get(it.id) ?? null)
+      .filter((n): n is string => n != null);
+    for (const it of prior.items) {
+      const lineId = lineIdOf.get(it.id);
+      if (!lineId) continue;
       await recordAudit({
         action: "CREATE",
         tableName: "order_lines",
-        recordId: numbers[i],
+        recordId: lineId,
         after: {
           note: tr("sales.orderAcceptanceActions.orderLineConfirmedNote", {
-            number,
+            number: docNo(number),
           }),
           customerBpId: prior.customerBpId,
           itemId: it.itemId,
@@ -1083,7 +1109,7 @@ export async function confirmOrderLines(
       tableName: "order_acceptances",
       recordId: number,
       before: { status: "APPROVED" },
-      after: { status: "COMPLETED", orderLines: numbers },
+      after: { status: "COMPLETED", orderLines: numbers.map(docNo) },
     });
     revalidate(number);
     revalidatePath(SALES_ORDERS_PATH);
@@ -1163,8 +1189,7 @@ export async function createManualAcceptance(
     const refsError = await lineRefsError(tr, v.items);
     if (refsError) return actionError(refsError);
     const actor = await getCurrentActorId();
-    const { yearMonth, seq } = await allocateDocumentKey("ORDER");
-    const number = `ORD-${yearMonth}-${String(seq).padStart(5, "0")}`;
+    const quoteLink = await quoteLinkOf(v.quoteNumber);
     // 新規は必ず顧客が変わる（prior = null）ので、未指定なら主担当が入る。
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
@@ -1174,12 +1199,7 @@ export async function createManualAcceptance(
     // 発行元の自社法人 — 作成時に決めて以後は変えない（lib/doc-company-core.ts）。
     const company = await companyForAcceptance({
       linePlantIds: v.items.map((it) => it.assignedPlantId),
-      quoteKey: (() => {
-        const q = quoteKeyOf(v.quoteNumber);
-        return q.quoteYearMonth != null && q.quoteSeq != null
-          ? { yearMonth: q.quoteYearMonth, seq: q.quoteSeq }
-          : null;
-      })(),
+      quoteKey: quoteLink.key,
     });
     if (company.ownCompanyId != null) {
       const companyError = await lineCompanyError(
@@ -1189,10 +1209,9 @@ export async function createManualAcceptance(
       );
       if (companyError) return actionError(companyError);
     }
-    await prisma.orderAcceptance.create({
+    // 番号は DB が払い出す（INSERT トリガー）— 作った行から読み戻す。
+    const created = await prisma.orderAcceptance.create({
       data: {
-        yearMonth,
-        seq,
         ...company,
         status: "DRAFT",
         source: "MANUAL",
@@ -1200,7 +1219,7 @@ export async function createManualAcceptance(
         salesRepId,
         customerProvidesDeliveryNote: v.customerProvidesDeliveryNote,
         customerOrderRef: trimOrNull(v.customerOrderRef),
-        ...quoteKeyOf(v.quoteNumber),
+        quoteId: quoteLink.quoteId,
         orderDate: v.orderDate ? new Date(v.orderDate) : null,
         notes: trimOrNull(v.notes),
         createdBy: actor,
@@ -1210,7 +1229,9 @@ export async function createManualAcceptance(
           ),
         },
       },
+      select: { docRef: true },
     });
+    const number = docIdOf(created);
     await recordAudit({
       action: "CREATE",
       tableName: "order_acceptances",
@@ -1246,7 +1267,7 @@ export async function createManualAcceptance(
  * ここで作り直す、という流れになる。キャンセルは配下の未着手指示書も連鎖で
  * 止めている（lib/order-line-cancel.ts）ので、作り直した側で改めて手配する。
  *
- * ★ **紐付けを残す**（replaces_year_month / replaces_seq）。これが無いと、
+ * ★ **紐付けを残す**（replaces_id）。これが無いと、
  *   キャンセルした請書は指示書も出荷も無い行き止まりに見え、「あの注文は
  *   どうなったのか」を追う手段が監査ログしか無くなる。
  *
@@ -1269,7 +1290,7 @@ export async function recreateFromCancelledAcceptance(
   if (!key) return actionError(tr("common.invalidInput"));
 
   const source = await prisma.orderAcceptance.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     include: { items: { orderBy: { sortOrder: "asc" } } },
   });
   if (!source) return actionError(tr("common.targetNotFound"));
@@ -1284,8 +1305,6 @@ export async function recreateFromCancelledAcceptance(
 
   try {
     const actor = await getCurrentActorId();
-    const { yearMonth, seq } = await allocateDocumentKey("ORDER");
-    const newNumber = formatDocNumber("ORD", { yearMonth, seq });
     // 顧客は変わらないので、引き継いだ担当をそのまま使う（resolveSalesRepId は
     // 「顧客が変わったときだけ主担当を入れる」— 空で引き継いだなら空のまま）。
     const salesRepId = await resolveSalesRepId(
@@ -1293,10 +1312,9 @@ export async function recreateFromCancelledAcceptance(
       source.customerBpId,
       source.customerBpId,
     );
-    await prisma.orderAcceptance.create({
+    // 番号は DB が払い出す（INSERT トリガー）— 作った行から読み戻す。
+    const created = await prisma.orderAcceptance.create({
       data: {
-        yearMonth,
-        seq,
         status: "DRAFT",
         // 原本の PDF は元の請書に残す。作り直した側は人が起こしたもの。
         source: "MANUAL",
@@ -1337,7 +1355,9 @@ export async function recreateFromCancelledAcceptance(
           })),
         },
       },
+      select: { docRef: true },
     });
+    const newNumber = docIdOf(created);
 
     await recordAudit({
       action: "CREATE",
@@ -1345,9 +1365,9 @@ export async function recreateFromCancelledAcceptance(
       recordId: newNumber,
       after: {
         note: tr("sales.orderAcceptanceActions.recreatedFromCancelled", {
-          number,
+          number: docNo(number),
         }),
-        replaces: number,
+        replaces: docNo(number),
         customerBpId: source.customerBpId,
         itemCount: source.items.length,
         status: "DRAFT",
@@ -1360,9 +1380,9 @@ export async function recreateFromCancelledAcceptance(
       recordId: number,
       after: {
         note: tr("sales.orderAcceptanceActions.recreatedAs", {
-          number: newNumber,
+          number: docNo(newNumber),
         }),
-        replacedBy: newNumber,
+        replacedBy: docNo(newNumber),
       },
     });
     revalidate(number);
@@ -1431,7 +1451,7 @@ export async function approveAcceptanceCancel(
   if (!authz.ok) return actionError(authz.error);
   const row = await prisma.orderAcceptanceCancelRequest.findUnique({
     where: { id: requestId },
-    select: { status: true, acceptanceYearMonth: true, acceptanceSeq: true },
+    select: { status: true, acceptance: { select: { docRef: true } } },
   });
   if (!row)
     return actionError(
@@ -1442,7 +1462,7 @@ export async function approveAcceptanceCancel(
       tr("sales.orderAcceptanceActions.cancelRequestNotPending"),
     );
   }
-  const key = legacyDocKey(row.acceptanceYearMonth, row.acceptanceSeq);
+  const key: DocKey = { docRef: row.acceptance.docRef };
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
     return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }
@@ -1455,7 +1475,7 @@ export async function approveAcceptanceCancel(
     if (!acted.ok)
       return actionError(acted.error ?? tr("common.noApprovalPermission"));
 
-    const number = formatDocNumber("ORD", key);
+    const number = docIdOf(key);
     if (!acted.flowCompleted) {
       revalidate(number);
       return actionOk({ completed: false, applied: false });
@@ -1490,7 +1510,7 @@ export async function rejectAcceptanceCancel(
   if (!trimmed) return actionError(tr("common.enterAReasonForSendingIt"));
   const row = await prisma.orderAcceptanceCancelRequest.findUnique({
     where: { id: requestId },
-    select: { status: true, acceptanceYearMonth: true, acceptanceSeq: true },
+    select: { status: true, acceptance: { select: { docRef: true } } },
   });
   if (!row)
     return actionError(
@@ -1501,7 +1521,7 @@ export async function rejectAcceptanceCancel(
       tr("sales.orderAcceptanceActions.cancelRequestNotPending"),
     );
   }
-  const key = legacyDocKey(row.acceptanceYearMonth, row.acceptanceSeq);
+  const key: DocKey = { docRef: row.acceptance.docRef };
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
     return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }
@@ -1516,7 +1536,7 @@ export async function rejectAcceptanceCancel(
       return actionError(acted.error ?? tr("common.noSendBackPermission"));
     }
     await closeAcceptanceCancelRequest(requestId, "REJECTED");
-    const number = formatDocNumber("ORD", key);
+    const number = docIdOf(key);
     await recordAudit({
       action: "UPDATE",
       tableName: "order_acceptances",
