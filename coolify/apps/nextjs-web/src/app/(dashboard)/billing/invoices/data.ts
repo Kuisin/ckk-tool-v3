@@ -42,6 +42,9 @@ const INVOICE_INCLUDE = {
         select: { taxCode: true, salesAccountCode: true, taxAccountCode: true },
       },
       chargeItem: { select: { name: true } },
+      // 注文種別は会計連携のためだけに読む — 再研磨など、種別ごとに売上高の
+      // 科目を分ける設定（SY0J）がある。
+      orderLine: { select: { orderType: true } },
     },
   },
   // 税率ごとの区分記載（適格請求書）。行が無い＝税区分マスタ以前の請求書で、
@@ -71,6 +74,28 @@ function accountingCodeKey(c: {
 }
 
 type InvoiceRow = NonNullable<Awaited<ReturnType<typeof findRow>>>;
+
+/**
+ * その率の明細を注文種別ごとに足し上げる（会計連携の売上科目の振り分け用）。
+ *
+ * 追加費用の行（料金マスタ由来 = chargeItemId あり）は入れない — 送料などは
+ * 注文明細の売上ではないので、種別の科目ではなく従来の科目へ落とす。
+ * 種別の分からない行も入れない（内訳に無い分は従来の科目へ落ちる）。
+ */
+function salesByOrderTypeFor(
+  items: InvoiceRow["items"],
+  rate: number,
+): { orderType: string; amount: number }[] {
+  const totals = new Map<string, number>();
+  for (const it of items) {
+    if (it.taxRate == null || Number(it.taxRate) !== rate) continue;
+    if (it.chargeItemId != null) continue;
+    const orderType = it.orderLine?.orderType;
+    if (!orderType) continue;
+    totals.set(orderType, (totals.get(orderType) ?? 0) + Number(it.amount));
+  }
+  return [...totals].map(([orderType, amount]) => ({ orderType, amount }));
+}
 
 function findRow(key: DocKey) {
   return prisma.invoice.findUnique({
@@ -184,6 +209,7 @@ function mapInvoice(r: InvoiceRow, forDocument = false): Invoice {
         taxAccountCode:
           b.taxCategory?.taxAccountCode ?? sole?.taxAccountCode ?? null,
         codeConflict: itemCodes.length > 1,
+        salesByOrderType: salesByOrderTypeFor(r.items, rate),
       };
     }),
     totalAmount: Number(r.totalAmount),

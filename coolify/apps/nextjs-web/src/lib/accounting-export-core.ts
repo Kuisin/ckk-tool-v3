@@ -112,6 +112,19 @@ export interface AccountingAccounts {
   taxCode: string;
 }
 
+/**
+ * 注文種別（`app.ORDER_TYPE`）。shared-db の enum と揃えること。
+ * 売上高の科目を種別で分けるため（再研磨の売上を製品の売上と別科目にする）。
+ */
+export const ACCOUNTING_ORDER_TYPES = [
+  "PRODUCTION",
+  "TEST",
+  "SAMPLE",
+  "REGRIND",
+  "OTHER",
+] as const;
+export type AccountingOrderType = (typeof ACCOUNTING_ORDER_TYPES)[number];
+
 export interface AccountingExportSettings {
   columns: AccountingColumn[];
   headerRow: boolean;
@@ -124,6 +137,12 @@ export interface AccountingExportSettings {
   filenameSuffix: string;
   accounts: AccountingAccounts;
   taxCodeRules: AccountingTaxCodeRule[];
+  /**
+   * 注文種別 → 売上高の科目コード。**ここに入っている種別だけ**が、税区分マスタ・
+   * 既定の売上高科目より先に効く（再研磨 REGRIND を製品と別の売上科目へ）。
+   * 空 `{}` が既定で、そのときの仕訳は導入前とバイト単位で同じ。
+   */
+  salesAccountByOrderType: Partial<Record<AccountingOrderType, string>>;
 }
 
 /**
@@ -167,6 +186,7 @@ export const DEFAULT_ACCOUNTING_EXPORT_SETTINGS: AccountingExportSettings = {
     taxCode: "",
   },
   taxCodeRules: [],
+  salesAccountByOrderType: {},
 };
 
 const columnSchema = z
@@ -223,6 +243,10 @@ export const accountingExportSettingsSchema = z.object({
       }),
     )
     .max(16),
+  salesAccountByOrderType: z.partialRecord(
+    z.enum(ACCOUNTING_ORDER_TYPES),
+    accountCodeSchema,
+  ),
 });
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -249,6 +273,88 @@ export interface TaxLineBreakdown {
    * （ルート）はこれが立っている請求書のエクスポートを拒否する。
    */
   codeConflict?: boolean;
+  /**
+   * この束の税抜金額のうち、注文種別ごとの内訳（請求明細 → 注文明細の種別）。
+   * 種別の分からない明細（手動の追加費用など）は入れなくてよい — 内訳に無い分は
+   * 従来どおりの科目（税区分 → 既定）へ落ちる。
+   */
+  salesByOrderType?: readonly OrderTypeAmount[];
+}
+
+/** 注文種別 1 つ分の税抜金額。 */
+export interface OrderTypeAmount {
+  orderType: string | null;
+  amount: number;
+}
+
+/** 売上行 1 本（科目 × 金額）。 */
+export interface SalesAccountSplit {
+  accountCode: string;
+  amount: number;
+}
+
+/**
+ * 税率の束 1 本の売上（税抜）を、売上高の科目ごとに分ける。
+ *
+ * 科目の決まり方（先に当たったものが勝つ）:
+ *   1. 明細の注文種別に `salesAccountByOrderType` の科目がある → その科目
+ *   2. 束の税区分の売上高科目（税区分マスタ MS0F）
+ *   3. 設定の既定の売上高科目
+ *
+ * 種別で科目が決まった明細の金額を抜き出し、**残りを 2→3 の科目へ**まとめる。
+ * 残りを差し引きで出すので、合計は必ず束の税抜金額と一致する（Σ借方 = 税込
+ * 合計の不変条件を崩さない）。同じ科目に落ちたものは 1 行にまとめる。
+ *
+ * ★ 種別の科目が 1 つも当たらなければ、従来と同じ 1 行だけを返す
+ *   （設定が空なら既存のエクスポートはバイト単位で変わらない）。
+ * ★ 抜き出す額が束の税抜金額を超える（明細と束が食い違っている）ときは、
+ *   科目を分けずに 1 行で返す — 合わない内訳で科目を割るより、従来の形で
+ *   出すほうが会計側で追える。
+ */
+export function splitSalesByAccount(
+  base: number,
+  line: Pick<TaxLineBreakdown, "salesAccountCode" | "salesByOrderType">,
+  settings: Pick<
+    AccountingExportSettings,
+    "accounts" | "salesAccountByOrderType"
+  >,
+): SalesAccountSplit[] {
+  const fallbackAccount = pick(
+    line.salesAccountCode,
+    settings.accounts.salesAccountCode,
+  );
+  const single = [{ accountCode: fallbackAccount, amount: base }];
+  const byType = settings.salesAccountByOrderType ?? {};
+  const mapped = new Map<string, number>();
+  let mappedTotal = 0;
+  for (const share of line.salesByOrderType ?? []) {
+    if (share.orderType == null) continue;
+    const code = byType[share.orderType as AccountingOrderType];
+    if (code == null || code === "") continue;
+    const amount = roundYen(share.amount);
+    mapped.set(code, (mapped.get(code) ?? 0) + amount);
+    mappedTotal += amount;
+  }
+  if (mapped.size === 0) return single;
+  if (Math.abs(mappedTotal) > Math.abs(base)) return single;
+  if (
+    mappedTotal !== 0 &&
+    base !== 0 &&
+    Math.sign(mappedTotal) !== Math.sign(base)
+  ) {
+    return single;
+  }
+
+  const totals = new Map<string, number>();
+  const rest = base - mappedTotal;
+  if (rest !== 0) totals.set(fallbackAccount, rest);
+  for (const [code, amount] of mapped) {
+    totals.set(code, (totals.get(code) ?? 0) + amount);
+  }
+  const out = [...totals]
+    .filter(([, amount]) => amount !== 0)
+    .map(([accountCode, amount]) => ({ accountCode, amount }));
+  return out.length > 0 ? out : single;
 }
 
 /** 請求書 1 件ぶんの入力（DB 非依存）。 */
@@ -402,15 +508,17 @@ export function buildJournalRows(
       const debitTaxCode = pick(rule?.debitTaxCode, a.taxCode);
       const creditTaxCode = pick(line.taxCode, rule?.creditTaxCode, a.taxCode);
       if (base !== 0) {
-        push(
-          "sales",
-          line.taxRate,
-          pick(line.salesAccountCode, a.salesAccountCode),
-          creditTaxCode,
-          debitTaxCode,
-          base,
-          `${memoBase}${suffix}`,
-        );
+        for (const split of splitSalesByAccount(base, line, settings)) {
+          push(
+            "sales",
+            line.taxRate,
+            split.accountCode,
+            creditTaxCode,
+            debitTaxCode,
+            split.amount,
+            `${memoBase}${suffix}`,
+          );
+        }
       }
       if (lineTax !== 0) {
         push(
