@@ -1,10 +1,9 @@
 -- 書類の uuid キー・子の <親>_id・発行元の自社法人の DB 側の試験
--- （20261126190000_doc_uuid_keys_own_company）。
+-- （20261126190000_doc_uuid_keys_own_company / 片付け 20261126280000_numbering_cleanup）。
 --
--- 番号設計 PR-D1 から、アプリもシードも旧い番号の列（(year_month, seq) /
--- 子の (…_year_month, …_seq)）を書かない — 行は id、子は <親>_id だけで繋ぐ。
--- ここも新しい形だけで試す（旧列と同期トリガーは、旧コンテナが居なくなってから
--- 後続の migration で落とす）。
+-- 番号設計 PR-D で旧い番号の列（(year_month, seq) / po_number / request_number /
+-- 子の (…_year_month, …_seq)）と、それを id と合わせていた同期トリガー
+-- app.sync_doc_parent_key は落とした。行は id、子は <親>_id だけで繋がる。
 --
 -- document-sequences.sql と同じく、まっさらな DB に migrate deploy した直後に
 -- `ON_ERROR_STOP=1` で流す。全体を 1 トランザクションにして最後に ROLLBACK する。
@@ -17,9 +16,27 @@ DECLARE
   a1 app.order_acceptances%ROWTYPE;
   a2 app.order_acceptances%ROWTYPE;
   r  app.order_acceptance_cancel_requests%ROWTYPE;
+  n  int;
   failed boolean;
 BEGIN
   ASSERT v_default IS NOT NULL, 'default own company exists';
+
+  -- ── 旧い番号の列・同期トリガーは残っていない ──────────────────────────────
+  SELECT count(*) INTO n FROM information_schema.columns
+   WHERE table_schema = 'app'
+     AND table_name IN ('estimates', 'price_list_entries', 'quotes', 'order_acceptances',
+                        'delivery_orders', 'delivery_notes', 'invoices', 'work_orders',
+                        'inventory_movements', 'stock_takes', 'accounting_documents',
+                        'material_purchase_orders', 'purchase_requests', 'design_requests')
+     AND column_name IN ('year_month', 'seq', 'po_number', 'request_number');
+  ASSERT n = 0, format('old number columns are gone (%s left)', n);
+  SELECT count(*) INTO n FROM information_schema.columns
+   WHERE table_schema = 'app'
+     AND column_name ~ '^(quote|entry|estimate|acceptance|replaces|delivery_order|delivery_note|invoice)_(year_month|seq)$';
+  ASSERT n = 0, format('old child key columns are gone (%s left)', n);
+  SELECT count(*) INTO n FROM pg_proc
+   WHERE pronamespace = 'app'::regnamespace AND proname = 'sync_doc_parent_key';
+  ASSERT n = 0, 'sync_doc_parent_key is gone';
 
   INSERT INTO app.order_acceptances (updated_at) VALUES (now()) RETURNING * INTO a1;
   INSERT INTO app.order_acceptances (updated_at) VALUES (now()) RETURNING * INTO a2;

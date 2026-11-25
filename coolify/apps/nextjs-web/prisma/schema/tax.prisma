@@ -105,8 +105,6 @@ model TaxCategoryRate {
 model InvoiceTaxSummary {
   id               String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   invoiceId String @map("invoice_id") @db.Uuid
-  invoiceYearMonth String? @map("invoice_year_month") @db.Char(6) @ignore
-  invoiceSeq       Int?    @map("invoice_seq") @ignore
 
   /// 束の区分が 1 つに定まるときだけ入る（ラベル表示用）。定まらなければ null。
   taxCategoryId Int?    @map("tax_category_id")
