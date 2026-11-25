@@ -24,6 +24,10 @@ import {
   orderLineNumberOf,
   parseDocKey,
 } from "@/lib/doc-number";
+import {
+  ESTIMATE_COST_PERMISSION,
+  estimateKindWhere,
+} from "@/lib/estimate-cost";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
   DOCUMENT_TYPE_PERMISSION,
@@ -185,8 +189,16 @@ export async function searchDocuments(
         });
       }
       case "estimate": {
+        // 原価試算は estimate_cost の持ち主にしか候補に出さない。
+        const costAuthz = await checkPermission(
+          ESTIMATE_COST_PERMISSION,
+          "READ",
+        );
         const rows = await prisma.estimate.findMany({
-          where: seq ? { seq } : undefined,
+          where: {
+            ...(seq ? { seq } : {}),
+            ...estimateKindWhere(costAuthz.ok),
+          },
           orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
           take: LIMIT,
         });

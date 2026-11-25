@@ -57,6 +57,7 @@ import {
   InspectionApprovalPanel,
   InspectionRecordForm,
 } from "@/components/production/InspectionRecordForm";
+import { StepDueDateBadge } from "@/components/production/StepDueDateBadge";
 import { StepPlanActualPanel } from "@/components/production/StepPlanActualPanel";
 import { StepQuantityForm } from "@/components/production/StepQuantityForm";
 import { WorkOrderFinalInspectionPanel } from "@/components/production/WorkOrderFinalInspectionPanel";
@@ -303,6 +304,7 @@ export function StepExecutionView({
                 count: data.plannedQuantity,
               })}
             </Text>
+            <StepDueDateBadge dueDate={step.dueDate} status={step.status} />
             {step.plannedWorkHours != null && (
               <Text c="dimmed" size="sm">
                 {tr("production.stepExecution.plannedWorkHours", {
@@ -665,6 +667,7 @@ export function StepExecutionView({
         actuals={data.actuals}
         canEditPlans={canEditPlans}
         canOperate={canOperate}
+        dueDate={step.dueDate}
         expectedInputQuantity={step.inputQuantity ?? data.expectedInputQuantity}
         plans={data.plans}
         requiredPlanFields={data.requiredPlanFields}

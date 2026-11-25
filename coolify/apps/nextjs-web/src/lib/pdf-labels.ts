@@ -14,8 +14,10 @@
  * ここが訳すのは**まわりの決まり文句だけ**。
  */
 
+import { escapeHtml } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 import { label, labelWith } from "@/lib/messages";
+import { multilineHtml } from "@/lib/pdf";
 
 interface CommonPdfLabels {
   /** 適格請求書発行事業者の登録番号ラベル。 */
@@ -308,4 +310,42 @@ export function taxBaseSuffixLocalized(
   locale: Locale,
 ): string {
   return label("pdf.TAX.BASE_SUFFIX", locale, "", { base: taxableBase });
+}
+
+/**
+ * 見積書の明細 1 行の**注意書き**（行の直下に刷る HTML 断片）。
+ *
+ * 載るのは 2 つ — どちらも無ければ空文字（行を足さない）:
+ *   - 値引き: 「※ {値引き名}: -¥{額}」。単価欄は値引き前、金額欄は値引き後
+ *     なので、その差がどこから来たのかをこの 1 行が説明する。値引き名が無い
+ *     行は「値引き」と刷る（額だけでは何の差か読めない）。
+ *   - 明細の備考: 複数行。改行は <br>、中身は必ずエスケープする
+ *     （`multilineHtml` — 備考は利用者が書く文字列。lib/pdf.ts 監査 H4）。
+ *
+ * 文言は受取先の言語（`locale`）で引く。`amount` は整形済みの金額文字列。
+ */
+export function quoteLineNoteHtml(
+  line: {
+    discountLabel: string | null;
+    discountAmount: number;
+    notes: string | null;
+  },
+  amount: string,
+  locale: Locale,
+): string {
+  const parts: string[] = [];
+  if (line.discountAmount > 0) {
+    const name =
+      line.discountLabel?.trim() || label("pdf.QUOTE.lineDiscount", locale);
+    const text = labelWith("pdf.QUOTE.lineDiscountNote", locale, {
+      label: name,
+      amount,
+    });
+    parts.push(`<div class="line-discount">${escapeHtml(text)}</div>`);
+  }
+  const notes = line.notes?.trim();
+  if (notes) {
+    parts.push(`<div class="line-notes">${multilineHtml(notes)}</div>`);
+  }
+  return parts.join("");
 }

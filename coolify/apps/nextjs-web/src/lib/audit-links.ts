@@ -194,6 +194,11 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     listPath: "/master/plants",
     directDetail: true,
   },
+  own_companies: {
+    appListKey: "master-own-companies",
+    listPath: "/master/own-companies",
+    directDetail: true,
+  },
   storage_locations: {
     appListKey: "master-plants",
     suffixKey: "suffixStorageLocation",

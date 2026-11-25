@@ -47,6 +47,9 @@ const TWINS = [
   "login-attempt-core.test.ts",
   "display-content.ts",
   "display-templates.ts",
+  // 工程納期の遅れ判定 — 共有端末の工程画面も同じ規則で赤くする。
+  "step-due-date-core.ts",
+  "step-due-date-core.test.ts",
   // 加工プログラムの選び方 — 工程実行画面は Web と共有端末の両方にある。
   "design-programs-core.ts",
   "design-programs-core.test.ts",

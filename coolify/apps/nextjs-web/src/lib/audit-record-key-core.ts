@@ -66,6 +66,8 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   material_types: "identity",
   material_type_prices: "identity",
   plants: "identity",
+  // 自社法人 (MS0I)。連番 int PK をそのまま record_id に入れる。
+  own_companies: "identity",
   regions: "identity",
   storage_shelves: "identity",
   storage_locations: "identity",

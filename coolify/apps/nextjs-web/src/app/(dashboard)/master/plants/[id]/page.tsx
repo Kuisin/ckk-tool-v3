@@ -6,7 +6,7 @@ import {
 } from "@/components/master/plants/PlantDetail";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import type { LocalizedText } from "@/lib/format";
+import { type LocalizedText, localized } from "@/lib/format";
 
 /** フロアマップタブ用 — 拠点のフロアマップ（端末管理 SY09 と共用の図面）。 */
 async function fetchPlantFloorMaps(
@@ -38,7 +38,10 @@ export default async function MasterPlantsDetailPage({
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
   const [r, floorMaps] = await Promise.all([
-    prisma.plant.findUnique({ where: { id } }),
+    prisma.plant.findUnique({
+      where: { id },
+      include: { ownCompany: { select: { code: true, name: true } } },
+    }),
     fetchPlantFloorMaps(id),
   ]);
   if (!r) notFound();
@@ -53,6 +56,9 @@ export default async function MasterPlantsDetailPage({
     nameEn: name?.en ?? "",
     nameKana: r.nameKana ?? "",
     countryCode: r.countryCode,
+    ownCompanyName: r.ownCompany
+      ? `${r.ownCompany.code} ${localized(r.ownCompany.name as LocalizedText | null)}`
+      : null,
     postalCode: r.postalCode ?? "",
     addressJa: address?.ja ?? "",
     addressEn: address?.en ?? "",

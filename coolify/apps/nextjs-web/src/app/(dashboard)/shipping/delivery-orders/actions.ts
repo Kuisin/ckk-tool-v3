@@ -1268,7 +1268,12 @@ async function resolveBillingUnitPrices(
           id: true,
           orderLineId: true,
           orderLine: {
-            select: { unitPrice: true, itemId: true, orderType: true },
+            select: {
+              unitPrice: true,
+              itemId: true,
+              toolItemId: true,
+              orderType: true,
+            },
           },
         },
       },
@@ -1322,6 +1327,7 @@ async function resolveBillingUnitPrices(
         itemId: String(line.itemId),
         orderType: line.orderType,
         quantity: delivered,
+        toolItemId: line.toolItemId,
         standardUnitPrice: standard.get(line.itemId) ?? null,
       },
       tr,

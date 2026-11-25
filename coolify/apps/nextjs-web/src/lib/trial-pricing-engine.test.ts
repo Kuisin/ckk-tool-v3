@@ -476,3 +476,62 @@ describe("原価の印（isCost）", () => {
     expect(runCriteriaEngine(base, { criteria }).costTotal).toBe(100);
   });
 });
+
+describe("原価のみに含める（costOnly）", () => {
+  const final: Criterion = {
+    id: "final",
+    name: "見積単価",
+    role: "final",
+    order: 999,
+    enabled: true,
+    expression: "subtotal * 2",
+  };
+  const comp = (
+    id: string,
+    value: number,
+    extra: Partial<Criterion> = {},
+  ): Criterion => ({
+    id,
+    name: id,
+    role: "component",
+    order: value,
+    enabled: true,
+    expression: String(value),
+    ...extra,
+  });
+
+  it("原価合計には数え、小計・見積単価には足さない", () => {
+    const criteria = [
+      comp("a", 100),
+      comp("overhead", 40, { isCost: true, costOnly: true }),
+      final,
+    ];
+    const res = runCriteriaEngine(base, { criteria });
+    expect(res.lots[0].minimumPrice).toBe(100);
+    expect(res.lots[0].estimateUnitPrice).toBe(200);
+    expect(res.costTotal).toBe(140);
+    const overhead = res.items?.find((i) => i.id === "overhead");
+    expect(overhead?.costOnly).toBe(true);
+    expect(overhead?.value).toBe(40);
+  });
+
+  it("原価に数えない基準の costOnly は無視する（売価に足す）", () => {
+    const criteria = [
+      comp("a", 100),
+      comp("b", 40, { isCost: false, costOnly: true }),
+      final,
+    ];
+    const res = runCriteriaEngine(base, { criteria });
+    expect(res.lots[0].minimumPrice).toBe(140);
+    expect(res.costTotal).toBe(100);
+    expect(res.items?.some((i) => i.costOnly)).toBe(false);
+  });
+
+  it("印を使わなければ結果は従来と同一（スナップショットにも costOnly が載らない）", () => {
+    for (const c of cases) {
+      const res = calcTrialPricing(c.input);
+      expect(res.items?.some((i) => "costOnly" in i)).toBe(false);
+      expect(res.lots).toEqual(calcTrialPricingLegacy(c.input).lots);
+    }
+  });
+});

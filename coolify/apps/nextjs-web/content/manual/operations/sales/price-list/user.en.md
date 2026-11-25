@@ -63,6 +63,20 @@ flowchart TD
   q2 -->|"No"| none["Price stays unresolved<br/>(no fallback to the standard price)"]
 ```
 
+### Pricing per tool [#tool-specific-price]
+
+Some customers pay **a different regrind price depending on which tool is reground**. For them, set a **[target tool](#field-target-tool)** on the regrind item's price list and make one price list per tool. The same customer × regrind item can have one any-tool price list plus any number of per-tool price lists.
+
+A regrind line on an order acceptance carries its "tool to regrind", so its price is looked up in this order:
+
+1. the price list for that tool
+2. the any-tool price list
+3. the item's standard price
+
+If the tool's price list is inactive, awaiting approval or outside its period, the lookup moves on to the next step. ⚠️ A missing quantity tier does not move on (same reason as above).
+
+> 💡 **Quote lines carry no tool, so quotes only use the any-tool price list.** Per-tool prices take effect on order acceptances.
+
 ## Before you start
 
 - The [customer](/manual/en/operations/masters/business-partner/user) and the [product](/manual/en/operations/masters/product/user) must already be registered.
@@ -187,6 +201,7 @@ Every field on the price list screen. The **?** next to a field in the app links
 |-------|----------|---------------|
 | [Customer](#field-customer) | Required | Who the price is for |
 | [Product](#field-product) | Required | Which product the price is for |
+| [Target tool](#field-target-tool) | Optional | The tool a regrind price is limited to (regrind items only) |
 | [Active (whole list)](#field-active) | — | Whether this price list is in use |
 | [Order type](#field-order-type) | Required | Production, test and so on |
 | [Price source (price estimate)](#field-estimate) | Optional | The estimate the base price comes from |
@@ -203,6 +218,10 @@ Who the price is for. **One price list covers one customer and one product**, an
 ### Product [#field-product]
 
 Which product the price is for. Like the customer, it cannot be changed after creation.
+
+### Target tool [#field-target-tool]
+
+Shown **only when a regrind item is selected**. Pick a tool when this regrind price applies only to regrinding that tool; leave it empty for a price list that applies to **any tool**. Like the customer and product, it cannot be changed after creation. See [Pricing per tool](#tool-specific-price) for how prices are looked up.
 
 ### Active (whole list) [#field-active]
 

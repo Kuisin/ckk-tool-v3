@@ -48,3 +48,37 @@ export function CostSummaryRows({
     </>
   );
 }
+
+/**
+ * CostOnlyTotalTable — 原価試算の結果。見積単価・粗利は出さず、原価合計だけを
+ * 1 行で出す。印以前のスナップショット（値なし）は「—」。
+ */
+export function CostOnlyTotalTable({
+  costTotal,
+}: {
+  costTotal: number | undefined;
+}) {
+  const tr = useTranslations();
+  return (
+    <Table>
+      <Table.Tbody>
+        <Table.Tr>
+          <Table.Td>
+            <Text fw={600} size="sm">
+              {tr("sales.trialEstimates.costTotal")}
+            </Text>
+          </Table.Td>
+          <Table.Td ta="right">
+            <Text fw={700} size="sm">
+              {costTotal === undefined ? (
+                "—"
+              ) : (
+                <MoneyText value={Math.round(costTotal)} />
+              )}
+            </Text>
+          </Table.Td>
+        </Table.Tr>
+      </Table.Tbody>
+    </Table>
+  );
+}

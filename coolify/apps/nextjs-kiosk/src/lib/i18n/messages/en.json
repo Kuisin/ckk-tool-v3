@@ -2,7 +2,8 @@
   "apps": {
     "stepExecution": "Step Execution",
     "woScan": "Work Order Scan",
-    "workLocation": "Work Location Steps"
+    "workLocation": "Work Location Steps",
+    "woList": "Work order list"
   },
   "userMenu": {
     "title": "User",
@@ -51,6 +52,17 @@
       "CANCELLED": "Cancelled"
     }
   },
+  "woList": {
+    "title": "Work order list",
+    "backToList": "Back to work orders",
+    "scopePlant": "Approved and in-progress work orders at {plant}",
+    "scopeAll": "Approved and in-progress work orders",
+    "searchPlaceholder": "Search by work order number or product",
+    "count": "{n} items",
+    "truncated": "Showing the newest up to the limit. Narrow it down with search",
+    "empty": "No approved or in-progress work orders",
+    "noMatch": "No matching work orders"
+  },
   "workLocationBoard": {
     "title": "Work Location Steps",
     "back": "Back to apps",
@@ -95,7 +107,8 @@
       "elapsed": "Worked {t}",
       "elapsedLabel": "Worked",
       "plannedHours": "Planned {h}h",
-      "lot": "Lot {t}"
+      "lot": "Lot {t}",
+      "dueDate": "Due {d}"
     },
     "state": {
       "startable": "Ready",

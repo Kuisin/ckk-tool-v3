@@ -26,6 +26,7 @@ import {
 import type { Locale } from "./i18n";
 import { missingInspectionSheets } from "./inspection-core";
 import { type PlanAssignee, stepOperability } from "./location-board-core";
+import { isStepOverdue } from "./step-due-date-core";
 import { allowedWorkLocationIdsForStep } from "./step-execution";
 import {
   accumulatedWorkMs,
@@ -89,6 +90,10 @@ export interface MyStepView {
   defectRework: number | null;
   /** 予定作業時間 (h) — 任意。 */
   plannedWorkHours: number | null;
+  /** 工程納期（YYYY-MM-DD・JST の暦日）— 任意。 */
+  dueDate: string | null;
+  /** 工程納期を過ぎて未完了か（サーバーが JST の今日で判定済み）。 */
+  dueOverdue: boolean;
   /** ロット/伝票コード入力の実効モード（上書き → カタログ既定）。 */
   lotInputMode: LotInputMode;
   /** 開始時に記録したロット/伝票コード。 */
@@ -343,6 +348,12 @@ async function hydrateSteps(
       defectRework: r.outputDefectRework,
       plannedWorkHours:
         r.plannedWorkHours == null ? null : Number(r.plannedWorkHours),
+      dueDate: r.dueDate ? r.dueDate.toISOString().slice(0, 10) : null,
+      dueOverdue: isStepOverdue(
+        r.dueDate ? r.dueDate.toISOString().slice(0, 10) : null,
+        r.status,
+        todayJst,
+      ),
       lotInputMode: effectiveLotInputMode(
         r.lotInputMode,
         r.processStep.lotInputMode,

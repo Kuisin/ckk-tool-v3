@@ -36,6 +36,7 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   items: true,
   material_types: true,
   plants: true,
+  own_companies: true,
   regions: true,
   storage_shelves: true, // name は nullable — 無ければ code へ落ちる
   storage_locations: true,

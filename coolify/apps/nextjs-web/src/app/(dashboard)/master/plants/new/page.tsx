@@ -1,5 +1,6 @@
 import { PlantForm } from "@/components/master/plants/PlantForm";
 import { requireAppRead } from "@/lib/authz-page";
+import { fetchOwnCompanyOptions } from "../../own-companies/data";
 import { fetchRegionOptions } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,14 @@ export const dynamic = "force-dynamic";
 export default async function MasterPlantsNewPage() {
   const denied = await requireAppRead("master-plants");
   if (denied) return denied;
-  const regionOptions = await fetchRegionOptions();
-  return <PlantForm regionOptions={regionOptions} />;
+  const [regionOptions, ownCompanyOptions] = await Promise.all([
+    fetchRegionOptions(),
+    fetchOwnCompanyOptions(),
+  ]);
+  return (
+    <PlantForm
+      ownCompanyOptions={ownCompanyOptions}
+      regionOptions={regionOptions}
+    />
+  );
 }

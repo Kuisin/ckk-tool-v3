@@ -73,7 +73,9 @@ async function richDescription(
         },
         include: { customerBp: true },
       });
-      if (!r) return null;
+      // 原価試算は estimate_cost の持ち主にしか見せない書類。ここは READ の
+      // 権限コード 1 つしか見ていないので、中身を語らず汎用文に落とす。
+      if (!r || r.kind === "COST") return null;
       const customer = r.customerBp
         ? localized(r.customerBp.name as LocalizedText | null)
         : "顧客未設定";

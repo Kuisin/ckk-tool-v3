@@ -479,6 +479,24 @@ body {
   text-align: right;
 }
 
+/* 明細直下の注意書き（見積書: 値引き + 明細の備考）。本体の行と 1 組に見える
+   よう、本体の下線を消して注意書きの行で閉じる。 */
+.items-table tr.has-line-note td {
+  border-bottom: none;
+  padding-bottom: 1pt;
+}
+
+.items-table tr.line-note td {
+  padding-top: 0;
+  font-size: 8pt;
+  color: #555;
+}
+
+.items-table tr.line-note .line-notes {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .items-table .center {
   text-align: center;
 }
