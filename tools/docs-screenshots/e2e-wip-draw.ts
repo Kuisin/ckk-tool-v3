@@ -476,9 +476,8 @@ async function main(): Promise<void> {
   const movement = sql(
     `SELECT count(DISTINCT t.movement_id) FROM app.inventory_transactions t
        JOIN app.inventory_movements m ON m.id = t.movement_id
-       JOIN app.work_orders w ON w.doc_ref = m.source_id
       WHERE m.cause = 'WORK_ORDER_COMPLETION' AND m.source_type = 'work_orders'
-        AND w.work_order_number = ${wo}`,
+        AND m.source_id = '${wo}'`,
   );
   check("E7 完了の入出庫は 1 枚の伝票に入る", movement === "1", movement);
 

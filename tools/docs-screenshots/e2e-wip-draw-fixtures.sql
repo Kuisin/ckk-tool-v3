@@ -23,18 +23,18 @@
 -- 作成者 a0b1c2d3-…-5107 / 準備工程リスト 9002。
 
 -- ── 後始末（前回の試験が作った指示書・伝票・予約も含めて消す）──────────────
--- 入出庫伝票の source_id は書類の参照（doc_ref）。書類番号は DB が振るので、
--- 指示書は製品（9201）で探す。
+-- 指示書の入出庫伝票の source_id はロット番号（指示書番号の通し連番）。書類番号は
+-- DB が振るので、指示書は製品（9201）で探す。
 DELETE FROM app.inventory_transactions t
  USING app.inventory_movements m, app.work_orders w
  WHERE t.movement_id = m.id
    AND m.source_type = 'work_orders'
-   AND m.source_id = w.doc_ref
+   AND m.source_id IN (w.work_order_number::text, w.doc_ref)
    AND w.product_item_id = 9201;
 DELETE FROM app.inventory_movements m
  USING app.work_orders w
  WHERE m.source_type = 'work_orders'
-   AND m.source_id = w.doc_ref
+   AND m.source_id IN (w.work_order_number::text, w.doc_ref)
    AND w.product_item_id = 9201;
 DELETE FROM app.inventory_reservations r
  USING app.work_orders w
