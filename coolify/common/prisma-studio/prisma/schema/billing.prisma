@@ -50,6 +50,9 @@ enum InvoiceApprovalStatus {
 }
 
 model Invoice {
+  /// 内部キー（uuid）。書類番号は法人ごとの連番になるので（番号設計 PR-C）、
+  /// 番号は行の識別にならない。子の表はこの id を FK で指す（PR-B）。
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   yearMonth String @map("year_month") @db.Char(6)
   seq       Int
 
@@ -86,7 +89,7 @@ model Invoice {
   closingKind         ClosingKind? @map("closing_kind")
   /// 発行元の自社法人のスナップショット（作成時に拠点から決めて焼く）。
   /// null = この列ができる前の請求書 → 既定の法人として刷る（従来どおり）。
-  ownCompanyId        Int?      @map("own_company_id")
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   /// 承認状態（発行前承認 / 入金前承認。上のコメント参照）。
   approvalStatus      InvoiceApprovalStatus @default(NONE) @map("approval_status")
   requestedAt         DateTime? @map("requested_at") @db.Timestamptz(6)
@@ -101,7 +104,7 @@ model Invoice {
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   salesRep        User?            @relation("InvoiceSalesRep", fields: [salesRepId], references: [id])
-  ownCompany      OwnCompany?      @relation("InvoiceOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+  ownCompany OwnCompany      @relation("InvoiceOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
   customerBp      BusinessPartner  @relation("InvoiceCustomer", fields: [customerBpId], references: [id])
   customerBranchBp BusinessPartner? @relation("InvoiceCustomerBranch", fields: [customerBranchBpId], references: [id])
   pdfFile         File?            @relation("InvoicePdf", fields: [pdfFileId], references: [id])
@@ -117,7 +120,9 @@ model Invoice {
   /// 転記した会計文書（元・反対仕訳・訂正後の複数本があり得る）。
   accountingDocuments AccountingDocument[] @relation("InvoiceAccountingDocuments")
 
-  @@id([yearMonth, seq])
+  billingClosings BillingClosing[] @relation("ClosingInvoice")
+
+  @@unique([yearMonth, seq])
   @@index([customerBpId])
   @@index([status])
   @@index([approvalStatus])
@@ -130,12 +135,15 @@ model Invoice {
 
 model InvoiceItem {
   id               String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  invoiceYearMonth String @map("invoice_year_month") @db.Char(6)
-  invoiceSeq       Int    @map("invoice_seq")
+  invoiceId String @map("invoice_id") @db.Uuid
+  invoiceYearMonth String? @map("invoice_year_month") @db.Char(6)
+  invoiceSeq       Int?    @map("invoice_seq")
 
   // 由来（任意）: 出荷書 / 納品書の複合キー
+  deliveryOrderId String? @map("delivery_order_id") @db.Uuid
   deliveryOrderYearMonth String? @map("delivery_order_year_month") @db.Char(6)
   deliveryOrderSeq       Int?    @map("delivery_order_seq")
+  deliveryNoteId String? @map("delivery_note_id") @db.Uuid
   deliveryNoteYearMonth  String? @map("delivery_note_year_month") @db.Char(6)
   deliveryNoteSeq        Int?    @map("delivery_note_seq")
   // 由来の注文明細（1 出荷書が複数明細を束ねるため、単価はこの行から取る）
@@ -159,10 +167,14 @@ model InvoiceItem {
   taxCategoryId Int?     @map("tax_category_id")
   taxRate       Decimal? @map("tax_rate") @db.Decimal(5, 4)
 
-  invoice     Invoice      @relation(fields: [invoiceYearMonth, invoiceSeq], references: [yearMonth, seq], onDelete: Cascade)
+  invoice     Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   orderLine   OrderLine?   @relation(fields: [orderLineId], references: [id])
   taxCategory TaxCategory? @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
   chargeItem  ChargeItem?  @relation(fields: [chargeItemId], references: [id], onDelete: SetNull)
+
+  deliveryOrder DeliveryOrder? @relation("InvoiceItemDeliveryOrder", fields: [deliveryOrderId], references: [id], onDelete: SetNull)
+
+  deliveryNote DeliveryNote? @relation("InvoiceItemDeliveryNote", fields: [deliveryNoteId], references: [id], onDelete: SetNull)
 
   @@index([invoiceYearMonth, invoiceSeq])
   @@index([orderLineId])
@@ -172,6 +184,9 @@ model InvoiceItem {
   /// 明細 1 行」を強制していたが、明細行も料金行も同じ出荷書キーを持つので
   /// 2 行目で請求書が作れなかった（#871）。20261113090000 で通常の index に戻した。
   @@index([deliveryOrderYearMonth, deliveryOrderSeq], map: "invoice_items_delivery_order_idx")
+  @@index([invoiceId])
+  @@index([deliveryOrderId])
+  @@index([deliveryNoteId])
   @@map("invoice_items")
   @@schema("app")
 }
@@ -188,6 +203,7 @@ model BillingClosing {
   status       ClosingStatus @default(PENDING)
   totalAmount  Decimal?      @map("total_amount") @db.Decimal(12, 2)
   // 生成した請求書（任意リンク）
+  invoiceId String? @map("invoice_id") @db.Uuid
   invoiceYearMonth String? @map("invoice_year_month") @db.Char(6)
   invoiceSeq       Int?    @map("invoice_seq")
   processedAt  DateTime? @map("processed_at") @db.Timestamptz(6)
@@ -204,9 +220,12 @@ model BillingClosing {
   // 定期の締めは 1 顧客 1 締日で冪等（部分 unique index — kind = 'SCHEDULED' の
   // ときだけ効く。Prisma では表現できないので migration.sql に直書きしてある。
   // 手動請求 (kind = MANUAL) は同じ顧客・同じ日に何本でも作れる）。
+  invoice Invoice? @relation("ClosingInvoice", fields: [invoiceId], references: [id], onDelete: SetNull)
+
   @@index([customerBpId, closingDate])
   @@index([status])
   @@index([updatedAt, id])
+  @@index([invoiceId])
   @@map("billing_closings")
   @@schema("app")
 }

@@ -47,6 +47,12 @@ enum OrderLineStatus {
 }
 
 model OrderAcceptance {
+  /// 内部キー（uuid）。書類番号は法人ごとの連番になるので（番号設計 PR-C）、
+  /// 番号は行の識別にならない。子の表はこの id を FK で指す（PR-B）。
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   yearMonth String @map("year_month") @db.Char(6)
   seq       Int
 
@@ -63,6 +69,7 @@ model OrderAcceptance {
   customerBranchBpId String? @map("customer_branch_bp_id") @db.Uuid
   customerOrderRef   String? @map("customer_order_ref") // 顧客注文書番号
   // 見積 → 受注のトレーサビリティ（監査 P2-2。QOT の複合キー参照）
+  quoteId String? @map("quote_id") @db.Uuid
   quoteYearMonth     String? @map("quote_year_month") @db.Char(6)
   quoteSeq           Int?    @map("quote_seq")
   orderDate          DateTime? @map("order_date") @db.Date
@@ -103,6 +110,7 @@ model OrderAcceptance {
   // 紐付けを残すのは「あの注文はどうなったのか」を後から追えるようにするため —
   // キャンセルした請書だけが残ると、指示書も出荷も無い行き止まりに見える。
   // 1 件を 2 件に割って作り直すこともあるので **1 対 N**（unique にしない）。
+  replacesId String? @map("replaces_id") @db.Uuid
   replacesYearMonth String? @map("replaces_year_month") @db.Char(6)
   replacesSeq       Int?    @map("replaces_seq")
   // 営業担当 — 作成時に顧客の主担当（bp_sales_reps.is_primary）を複写した
@@ -125,19 +133,26 @@ model OrderAcceptance {
 
   // 元は消えても作り直した側は残す（SetNull）— 紐付けが切れるだけで、
   // 作り直した請書そのものは業務データとして生きている。
-  replaces   OrderAcceptance?  @relation("AcceptanceReplaces", fields: [replacesYearMonth, replacesSeq], references: [yearMonth, seq], onDelete: SetNull, onUpdate: NoAction)
+  replaces   OrderAcceptance?  @relation("AcceptanceReplaces", fields: [replacesId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   replacedBy OrderAcceptance[] @relation("AcceptanceReplaces")
 
   items          OrderLine[]
   cancelRequests OrderAcceptanceCancelRequest[]
 
-  @@id([yearMonth, seq])
+  quote Quote? @relation("AcceptanceQuote", fields: [quoteId], references: [id], onDelete: SetNull)
+
+  ownCompany OwnCompany @relation("OrderAcceptanceOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@unique([yearMonth, seq])
   @@index([status])
   // 注文明細の顧客絞り込みはヘッダ経由になるため必須
   @@index([customerBpId])
   @@index([replacesYearMonth, replacesSeq])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, yearMonth, seq])
+  @@index([quoteId])
+  @@index([replacesId])
+  @@index([ownCompanyId])
   @@map("order_acceptances")
   @@schema("app")
 }
@@ -153,8 +168,9 @@ model OrderAcceptance {
 // 指すため FK は無い → AFTER DELETE トリガーで掃除（migration 参照）。
 model OrderAcceptanceCancelRequest {
   id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  acceptanceYearMonth String    @map("acceptance_year_month") @db.Char(6)
-  acceptanceSeq       Int       @map("acceptance_seq")
+  acceptanceId String @map("acceptance_id") @db.Uuid
+  acceptanceYearMonth String?    @map("acceptance_year_month") @db.Char(6)
+  acceptanceSeq       Int?       @map("acceptance_seq")
   /// 依頼理由（必須 — 確定済みの受注を取り消す例外操作のため）。
   reason              String
   /// PENDING | APPLIED | REJECTED | CANCELLED | FAILED（DB 側 CHECK）
@@ -166,11 +182,12 @@ model OrderAcceptanceCancelRequest {
   resolvedBy          String?   @map("resolved_by") @db.Uuid
   resolvedAt          DateTime? @map("resolved_at") @db.Timestamptz(6)
 
-  acceptance      OrderAcceptance @relation(fields: [acceptanceYearMonth, acceptanceSeq], references: [yearMonth, seq], onDelete: Cascade)
+  acceptance      OrderAcceptance @relation(fields: [acceptanceId], references: [id], onDelete: Cascade)
   requestedByUser User?           @relation("AcceptanceCancelRequestedBy", fields: [requestedBy], references: [id])
   resolvedByUser  User?           @relation("AcceptanceCancelResolvedBy", fields: [resolvedBy], references: [id])
 
   @@index([acceptanceYearMonth, acceptanceSeq, status])
+  @@index([acceptanceId])
   @@map("order_acceptance_cancel_requests")
   @@schema("app")
 }
@@ -186,8 +203,9 @@ model OrderAcceptanceCancelRequest {
 //         確定して status = CONFIRMED。以降 branch は不変。
 model OrderLine {
   id                  String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  acceptanceYearMonth String @map("acceptance_year_month") @db.Char(6)
-  acceptanceSeq       Int    @map("acceptance_seq")
+  acceptanceId String @map("acceptance_id") @db.Uuid
+  acceptanceYearMonth String? @map("acceptance_year_month") @db.Char(6)
+  acceptanceSeq       Int?    @map("acceptance_seq")
   // 枝番（ORD-YYYYMM-NNNNN-NN の NN）。確定時に採番、以後不変。
   branch              Int?
   sortOrder           Int    @default(0) @map("sort_order")
@@ -247,7 +265,7 @@ model OrderLine {
 
   // 顧客・注文書番号・見積キー・作成者はヘッダ（acceptance）から読む —
   // 行に複写すると乖離するため持たない。配送だけは例外（上のコメント参照）。
-  acceptance OrderAcceptance  @relation(fields: [acceptanceYearMonth, acceptanceSeq], references: [yearMonth, seq], onDelete: Restrict)
+  acceptance OrderAcceptance  @relation(fields: [acceptanceId], references: [id], onDelete: Restrict)
   item       Item?            @relation("OrderLineItem", fields: [itemId], references: [id], onDelete: Restrict)
   toolItem   Item?            @relation("OrderLineToolItem", fields: [toolItemId], references: [id], onDelete: Restrict)
   endUserBp  BusinessPartner? @relation("OrderLineEndUser", fields: [endUserBpId], references: [id])
@@ -261,7 +279,7 @@ model OrderLine {
   designRequests DesignRequest[]
   invoiceItems   InvoiceItem[]
 
-  @@unique([acceptanceYearMonth, acceptanceSeq, branch])
+  @@unique([acceptanceId, branch])
   @@index([status])
   @@index([lotNumber])
   @@index([shipToBpId])

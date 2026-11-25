@@ -14,7 +14,7 @@ import { iso, num } from "@/lib/api-dto";
 import { invalidCursorResponse, parseListQuery, runList } from "@/lib/api-list";
 import { instanceOf } from "@/lib/api-problem";
 import { prisma } from "@/lib/db";
-import { formatDocNumber } from "@/lib/doc-number";
+import { formatDocNumber, legacyDocKey } from "@/lib/doc-number";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -78,10 +78,10 @@ export async function GET(request: Request): Promise<Response> {
     }),
     toDto: (r) => ({
       number: formatDocNumber("DRN", r),
-      deliveryOrderNumber: formatDocNumber("DOR", {
-        seq: r.deliveryOrderSeq,
-        yearMonth: r.deliveryOrderYearMonth,
-      }),
+      deliveryOrderNumber: formatDocNumber(
+        "DOR",
+        legacyDocKey(r.deliveryOrderYearMonth, r.deliveryOrderSeq),
+      ),
       status: r.status,
       deliveryMethod: r.deliveryMethod,
       recipientId: r.recipientBpId,

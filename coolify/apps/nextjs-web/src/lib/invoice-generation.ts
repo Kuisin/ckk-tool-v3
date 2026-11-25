@@ -35,6 +35,7 @@ import {
   fetchCustomerProductLabels,
 } from "@/lib/customer-product-codes";
 import { prisma } from "@/lib/db";
+import { ownCompanyData } from "@/lib/doc-company-core";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { label } from "@/lib/messages";
@@ -364,7 +365,7 @@ function invoiceCreateData(
         : null,
     salesRepId: p.salesRepId,
     closingKind: common.closingKind,
-    ownCompanyId: p.ownCompanyId,
+    ...ownCompanyData(p.ownCompanyId),
     billingPeriodFrom: common.periodFrom,
     billingPeriodTo: common.closingDate,
     subtotal: draft.subtotal,

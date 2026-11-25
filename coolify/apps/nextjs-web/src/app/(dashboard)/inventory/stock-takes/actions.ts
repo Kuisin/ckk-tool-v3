@@ -32,6 +32,7 @@ import {
   targetPlantsInScope,
 } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { companyForPlant } from "@/lib/doc-company";
 import { parseDocKey } from "@/lib/doc-number";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
@@ -141,6 +142,7 @@ export async function createStockTake(
         data: {
           yearMonth: key.yearMonth,
           seq: key.seq,
+          ...(await companyForPlant({ plantId }, tx)),
           plantId,
           storageLocationId,
           status: "DRAFT",

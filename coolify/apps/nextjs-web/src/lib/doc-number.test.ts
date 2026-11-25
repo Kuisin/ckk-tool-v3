@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { splitDocNumber } from "./doc-number";
+import {
+  legacyDocKey,
+  orderLineNumberOf,
+  orderLineWhereKey,
+  splitDocNumber,
+} from "./doc-number";
 
 describe("splitDocNumber", () => {
   it("よくある書類番号を接頭辞と番号に分ける", () => {
@@ -38,5 +43,36 @@ describe("splitDocNumber", () => {
 
   it("ハイフンの後ろが空なら切らない", () => {
     expect(splitDocNumber("ORD-")).toEqual({ prefix: "", rest: "ORD-" });
+  });
+});
+
+describe("legacy child keys (番号設計 PR-B)", () => {
+  it("legacyDocKey returns the pair and refuses a missing one", () => {
+    expect(legacyDocKey("202607", 3)).toEqual({ yearMonth: "202607", seq: 3 });
+    expect(() => legacyDocKey(null, 3)).toThrow();
+    expect(() => legacyDocKey("202607", null)).toThrow();
+  });
+
+  it("orderLineNumberOf is null when the legacy key is not filled", () => {
+    expect(
+      orderLineNumberOf({
+        acceptanceYearMonth: "202607",
+        acceptanceSeq: 1,
+        branch: 2,
+      }),
+    ).toBe("ORD-202607-00001-02");
+    expect(
+      orderLineNumberOf({
+        acceptanceYearMonth: null,
+        acceptanceSeq: null,
+        branch: 2,
+      }),
+    ).toBeNull();
+  });
+
+  it("orderLineWhereKey looks the acceptance up through the relation", () => {
+    expect(
+      orderLineWhereKey({ yearMonth: "202607", seq: 1, branch: 2 }),
+    ).toEqual({ acceptance: { yearMonth: "202607", seq: 1 }, branch: 2 });
   });
 });

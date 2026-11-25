@@ -70,7 +70,7 @@ BEGIN
   WHERE EXISTS (
     SELECT 1 FROM app.price_list_entries WHERE year_month = v_ym AND seq = 90001
   )
-  ON CONFLICT (entry_year_month, entry_seq, order_type) DO NOTHING;
+  ON CONFLICT (entry_id, order_type) DO NOTHING;
 
   INSERT INTO app.price_list_tiers
     (variant_id, min_quantity, max_quantity, multiplier, sort_order)

@@ -20,6 +20,7 @@ import {
 import { recordAudit } from "@/lib/audit";
 import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { companyForUnplaced } from "@/lib/doc-company";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
 import { lineAmountYen, roundYen } from "@/lib/money";
 import { allocateDocumentKey } from "@/lib/numbering";
@@ -250,6 +251,7 @@ export async function createQuote(
       data: {
         yearMonth,
         seq,
+        ...(await companyForUnplaced()),
         customerBpId: v.customerBpId,
         customerBranchBpId: v.customerBranchBpId,
         salesRepId,

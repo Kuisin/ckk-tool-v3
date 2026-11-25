@@ -34,6 +34,7 @@ import {
   targetPlantsInScope,
 } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
+import { companyForPurchase } from "@/lib/doc-company";
 import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
 import { allocateDocumentKey, nextDocumentNumber } from "@/lib/numbering";
@@ -256,6 +257,10 @@ export async function createPurchaseOrder(
       await tx.materialPurchaseOrder.create({
         data: {
           poNumber,
+          ...(await companyForPurchase(
+            { linePlantIds: creates.map((it) => it.plantId) },
+            tx,
+          )),
           supplierBpId: v.supplierBpId,
           status: "DRAFT",
           totalAmount,

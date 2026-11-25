@@ -53,10 +53,13 @@ import {
   lineVariancePermitted,
   toleranceAllowance,
 } from "@/lib/delivery-variance-core";
+import { companyForDeliveryOrderDoc } from "@/lib/doc-company";
+import { deliveryOrderIdOf, deliveryOrderRefOf } from "@/lib/doc-ids";
 import {
   type DocKey,
   formatDocNumber,
   formatOrderLineNumber,
+  legacyDocKey,
   parseDocKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -392,13 +395,11 @@ export async function fetchDeliverySourceInfo(
     return {
       orderLineId: so.id,
       orderLineNumber: formatOrderLineNumber({
-        yearMonth: so.acceptanceYearMonth,
-        seq: so.acceptanceSeq,
+        ...legacyDocKey(so.acceptanceYearMonth, so.acceptanceSeq),
         branch: so.branch,
       }),
       acceptanceNumber: formatDocNumber("ORD", {
-        yearMonth: so.acceptanceYearMonth,
-        seq: so.acceptanceSeq,
+        ...legacyDocKey(so.acceptanceYearMonth, so.acceptanceSeq),
       }),
       customerBpId: so.acceptance.customerBpId,
       customerName: localized(
@@ -706,8 +707,7 @@ async function validateLineProducts(
       return tr("shipping.deliveryOrderActions.specifyAConfirmedOrderLine");
     }
     const number = formatOrderLineNumber({
-      yearMonth: line.acceptanceYearMonth,
-      seq: line.acceptanceSeq,
+      ...legacyDocKey(line.acceptanceYearMonth, line.acceptanceSeq),
       branch: line.branch,
     });
     if (!isLineShippable(line)) {
@@ -847,10 +847,10 @@ async function copyWorkOrderCharges(
     wo.charges.map((c) => ({ ...c, sourceWorkOrderId: wo.id })),
   );
   if (rows.length === 0) return 0;
+  const deliveryOrderId = await deliveryOrderIdOf(key);
   await prisma.deliveryOrderCharge.createMany({
     data: rows.map((r, i) => ({
-      deliveryOrderYearMonth: key.yearMonth,
-      deliveryOrderSeq: key.seq,
+      deliveryOrderId,
       chargeItemId: r.chargeItemId,
       sourceWorkOrderId: r.sourceWorkOrderId,
       description: r.description,
@@ -888,6 +888,7 @@ export async function saveDeliveryOrderCharges(
   const order = await prisma.deliveryOrder.findUnique({
     where: { yearMonth_seq: key },
     select: {
+      id: true,
       status: true,
       charges: {
         orderBy: { sortOrder: "asc" },
@@ -921,8 +922,7 @@ export async function saveDeliveryOrderCharges(
       if (prepared.rows.length > 0) {
         await tx.deliveryOrderCharge.createMany({
           data: prepared.rows.map((r) => ({
-            deliveryOrderYearMonth: key.yearMonth,
-            deliveryOrderSeq: key.seq,
+            deliveryOrderId: order.id,
             chargeItemId: r.chargeItemId,
             description: r.description,
             quantity: r.quantity,
@@ -1018,6 +1018,10 @@ export async function createDeliveryOrder(
       data: {
         yearMonth,
         seq,
+        ...(await companyForDeliveryOrderDoc({
+          fromPlantId: v.fromPlantId ? Number(v.fromPlantId) : null,
+          orderLineIds: v.items.map((it) => it.orderLineId),
+        })),
         customerBpId: v.customerBpId,
         customerBranchBpId: v.customerBranchBpId,
         workOrderId,
@@ -1189,10 +1193,10 @@ export async function updateDeliveryOrder(
           deliveryOrderSeq: key.seq,
         },
       });
+      const deliveryOrderId = await deliveryOrderIdOf(key, tx);
       await tx.deliveryOrderItem.createMany({
         data: v.items.map((it, i) => ({
-          deliveryOrderYearMonth: key.yearMonth,
-          deliveryOrderSeq: key.seq,
+          deliveryOrderId,
           orderLineId: it.orderLineId,
           itemId: Number(it.itemId),
           // 旧 product_id 列も橋渡しで埋める（落とすのは最後の段）。
@@ -1763,6 +1767,8 @@ export async function confirmDeliveryOrder(
         });
       }
       if (!plan) return;
+      // 納品書は出荷書の発行元を継ぐ（lib/doc-company-core.ts）。
+      const order = await deliveryOrderRefOf(key, tx);
       // 納品書は**発行済（ISSUED）で作る** — 下書きを経由しない。内容は
       // 出荷書と注文請書から機械的に決まる（planAutoDeliveryNotes）ので、
       // 人が直す段階を置くと、価格記載や宛先を確定後に書き換えられてしまう。
@@ -1775,8 +1781,8 @@ export async function confirmDeliveryOrder(
             yearMonth: noteKey.yearMonth,
             seq: noteKey.seq,
             status: "ISSUED",
-            deliveryOrderYearMonth: key.yearMonth,
-            deliveryOrderSeq: key.seq,
+            deliveryOrderId: order.id,
+            ownCompanyId: order.ownCompanyId,
             deliveryMethod: plan.deliveryMethod,
             recipientBpId: notePlan.recipientBpId,
             recipientBranchBpId: notePlan.recipientBranchBpId,
@@ -1958,8 +1964,7 @@ export async function shipDeliveryOrder(
           throw new Error(
             `GUARD:${tr("shipping.deliveryOrderActions.orderLineNotShippable", {
               number: formatOrderLineNumber({
-                yearMonth: line.acceptanceYearMonth,
-                seq: line.acceptanceSeq,
+                ...legacyDocKey(line.acceptanceYearMonth, line.acceptanceSeq),
                 branch: line.branch,
               }),
             })}`,
@@ -1975,8 +1980,7 @@ export async function shipDeliveryOrder(
         });
         const shipped = agg._sum?.quantity ?? 0;
         const lineNumber = formatOrderLineNumber({
-          yearMonth: line.acceptanceYearMonth,
-          seq: line.acceptanceSeq,
+          ...legacyDocKey(line.acceptanceYearMonth, line.acceptanceSeq),
           branch: line.branch,
         });
         // 累計出荷が受注数量を超える出荷を禁止（監査 P0-4 過出荷ガード）。

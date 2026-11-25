@@ -22,7 +22,9 @@ import {
   formatOrderLineNumber,
   formatProductNumber,
   formatQuoteNumber,
+  legacyDocKey,
   type OrderLineKey,
+  orderLineWhereKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -90,14 +92,8 @@ const ORDER_LINE_INCLUDE = {
 type OrderLineRow = NonNullable<Awaited<ReturnType<typeof findRow>>>;
 
 function findRow(key: OrderLineKey) {
-  return prisma.orderLine.findUnique({
-    where: {
-      acceptanceYearMonth_acceptanceSeq_branch: {
-        acceptanceYearMonth: key.yearMonth,
-        acceptanceSeq: key.seq,
-        branch: key.branch,
-      },
-    },
+  return prisma.orderLine.findFirst({
+    where: orderLineWhereKey(key),
     include: ORDER_LINE_INCLUDE,
   });
 }
@@ -136,8 +132,7 @@ function toolLabel(t: {
 function mapOrderLine(r: OrderLineRow): OrderLine {
   // この関数は確定済み行（branch != null）のみを受ける — 呼び出し側で絞る。
   const number = formatOrderLineNumber({
-    yearMonth: r.acceptanceYearMonth,
-    seq: r.acceptanceSeq,
+    ...legacyDocKey(r.acceptanceYearMonth, r.acceptanceSeq),
     branch: r.branch ?? 0,
   });
   const acc = r.acceptance;
@@ -146,8 +141,7 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
     orderNumber: number,
     uuid: r.id,
     acceptanceNumber: formatDocNumber("ORD", {
-      yearMonth: r.acceptanceYearMonth,
-      seq: r.acceptanceSeq,
+      ...legacyDocKey(r.acceptanceYearMonth, r.acceptanceSeq),
     }),
     customerId: acc.customerBpId,
     customerName: localized(acc.customerBp?.name as LocalizedText | null),

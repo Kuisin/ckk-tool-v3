@@ -344,8 +344,8 @@ function stepAssignees(
 function orderLineListLabel(
   links: readonly {
     orderLine: {
-      acceptanceYearMonth: string;
-      acceptanceSeq: number;
+      acceptanceYearMonth: string | null;
+      acceptanceSeq: number | null;
       branch: number | null;
     };
   }[],
@@ -369,8 +369,8 @@ function mapRow(
     seq: number;
     orderLineLinks: {
       orderLine: {
-        acceptanceYearMonth: string;
-        acceptanceSeq: number;
+        acceptanceYearMonth: string | null;
+        acceptanceSeq: number | null;
         branch: number | null;
       };
     }[];

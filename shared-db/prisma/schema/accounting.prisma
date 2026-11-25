@@ -26,12 +26,16 @@ enum AccountingDocumentStatus {
 /// マスタ（税区分・取引先の科目コード・SY0J 設定）が変わっても中身は動かない。
 model AccountingDocument {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
 
   yearMonth String @map("year_month") @db.Char(6)
   seq       Int
 
-  invoiceYearMonth String @map("invoice_year_month") @db.Char(6)
-  invoiceSeq       Int    @map("invoice_seq")
+  invoiceId String @map("invoice_id") @db.Uuid
+  invoiceYearMonth String? @map("invoice_year_month") @db.Char(6)
+  invoiceSeq       Int?    @map("invoice_seq")
 
   status AccountingDocumentStatus @default(POSTED)
   /// 仕訳日付 = 発行日（JST 暦日）。
@@ -56,18 +60,22 @@ model AccountingDocument {
   reversedAt     DateTime? @map("reversed_at") @db.Timestamptz(6)
   reverseReason  String?   @map("reverse_reason")
 
-  invoice        Invoice @relation("InvoiceAccountingDocuments", fields: [invoiceYearMonth, invoiceSeq], references: [yearMonth, seq])
+  invoice        Invoice @relation("InvoiceAccountingDocuments", fields: [invoiceId], references: [id])
   lines          AccountingDocumentLine[]
   reversalOf     AccountingDocument?  @relation("AccountingDocumentReversal", fields: [reversalOfId], references: [id])
   reversals      AccountingDocument[] @relation("AccountingDocumentReversal")
   postedByUser   User?  @relation("AccountingDocumentPostedBy", fields: [postedBy], references: [id])
   reversedByUser User?  @relation("AccountingDocumentReversedBy", fields: [reversedBy], references: [id])
 
+  ownCompany OwnCompany @relation("AccountingDocumentOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
   @@unique([yearMonth, seq])
   @@index([invoiceYearMonth, invoiceSeq])
   // 「請求書 1 通に有効な転記は 1 本だけ」の部分 unique index
   // (WHERE status = 'POSTED' AND reversal_of_id IS NULL) は Prisma で表現
   // できないので、マイグレーションに直書きする（前例: tax_categories.is_default）。
+  @@index([invoiceId])
+  @@index([ownCompanyId])
   @@map("accounting_documents")
   @@schema("app")
 }

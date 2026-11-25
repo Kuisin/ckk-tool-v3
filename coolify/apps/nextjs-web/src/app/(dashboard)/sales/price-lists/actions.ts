@@ -22,6 +22,7 @@ import { actOnCurrentStep } from "@/lib/approvals";
 import { recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { companyForUnplaced } from "@/lib/doc-company";
 import {
   type DocKey,
   formatPriceListNumber,
@@ -371,11 +372,13 @@ export async function createPriceEntry(
       v.identity.customerBpId,
       null,
     );
+    const company = await companyForUnplaced();
     await prisma.$transaction([
       prisma.priceListEntry.create({
         data: {
           yearMonth: key.yearMonth,
           seq: key.seq,
+          ...company,
           customerBpId: v.identity.customerBpId,
           itemId: v.identity.itemId,
           toolItemId: v.identity.toolItemId,
@@ -550,7 +553,7 @@ export async function updatePriceEntry(
     // 価格試算はこの価格表の製品にリンクされたものだけ（別製品の単価を混ぜない）。
     const entry = await prisma.priceListEntry.findUnique({
       where: whereKey(key),
-      select: { itemId: true },
+      select: { id: true, itemId: true },
     });
     if (!entry?.itemId)
       return actionError(tr("sales.priceListsActions.updateFailed"));
@@ -642,7 +645,7 @@ export async function updatePriceEntry(
             : undefined;
           return prisma.priceListVariant.create({
             data: {
-              ...variantWhere(key),
+              entryId: entry.id,
               orderType: variant.orderType,
               baseUnitPrice: variant.baseUnitPrice,
               validFrom: new Date(variant.validFrom),

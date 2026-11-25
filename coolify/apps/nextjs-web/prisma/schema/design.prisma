@@ -60,9 +60,13 @@ enum DesignPriority {
 
 model DesignRequest {
   id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   requestNumber String        @unique @map("request_number") // DSG-YYYYMM-NNNNN
   trigger       DesignTrigger
   // 見積時: 見積書（複合キー）/ 受注時: 注文明細
+  quoteId String? @map("quote_id") @db.Uuid
   quoteYearMonth String? @map("quote_year_month") @db.Char(6)
   quoteSeq       Int?    @map("quote_seq")
   orderLineId    String? @map("order_line_id") @db.Uuid
@@ -105,7 +109,7 @@ model DesignRequest {
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  quote           Quote?     @relation(fields: [quoteYearMonth, quoteSeq], references: [yearMonth, seq])
+  quote           Quote?     @relation(fields: [quoteId], references: [id])
   orderLine       OrderLine? @relation(fields: [orderLineId], references: [id])
   item            Item?      @relation("DesignRequestItem", fields: [itemId], references: [id], onDelete: Restrict)
   customerBp      BusinessPartner? @relation("DesignRequestCustomerBp", fields: [customerBpId], references: [id])
@@ -120,10 +124,14 @@ model DesignRequest {
   files    DesignFile[]    @relation("DesignRequestFiles")
   versions DesignVersion[] @relation("DesignRequestVersions")
 
+  ownCompany OwnCompany @relation("DesignRequestOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
   @@index([status])
   @@index([assigneeId, status])
   @@index([desiredAt])
   @@index([itemId])
+  @@index([quoteId])
+  @@index([ownCompanyId])
   @@map("design_requests")
   @@schema("app")
 }

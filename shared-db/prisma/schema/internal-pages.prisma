@@ -13,6 +13,9 @@
 
 model InternalPage {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   // 業務キー DOC-YYYYMM-NNNNN。承認依頼・監査・共有はこの文字列で紐づく。
   pageNumber String  @unique @map("page_number")
   title      String
@@ -39,8 +42,11 @@ model InternalPage {
   blame     InternalPageLineBlame[]
   comments  InternalPageLineComment[]
 
+  ownCompany OwnCompany @relation("InternalPageOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
   @@index([status, updatedAt])
   @@index([folder])
+  @@index([ownCompanyId])
   @@map("internal_pages")
   @@schema("app")
 }

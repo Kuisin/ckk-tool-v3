@@ -79,6 +79,12 @@ enum DeliveryStatus {
 }
 
 model DeliveryOrder {
+  /// 内部キー（uuid）。書類番号は法人ごとの連番になるので（番号設計 PR-C）、
+  /// 番号は行の識別にならない。子の表はこの id を FK で指す（PR-B）。
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   yearMonth String @map("year_month") @db.Char(6)
   seq       Int
 
@@ -132,20 +138,26 @@ model DeliveryOrder {
   deliveryNotes DeliveryNote[]
   charges       DeliveryOrderCharge[]
 
-  @@id([yearMonth, seq])
+  invoiceItems InvoiceItem[] @relation("InvoiceItemDeliveryOrder")
+
+  ownCompany OwnCompany @relation("DeliveryOrderOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@unique([yearMonth, seq])
   @@index([customerBpId])
   @@index([status])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, yearMonth, seq])
   @@index([approvalStatus])
+  @@index([ownCompanyId])
   @@map("delivery_orders")
   @@schema("app")
 }
 
 model DeliveryOrderItem {
   id                     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  deliveryOrderYearMonth String @map("delivery_order_year_month") @db.Char(6)
-  deliveryOrderSeq       Int    @map("delivery_order_seq")
+  deliveryOrderId String @map("delivery_order_id") @db.Uuid
+  deliveryOrderYearMonth String? @map("delivery_order_year_month") @db.Char(6)
+  deliveryOrderSeq       Int?    @map("delivery_order_seq")
 
   // 出荷元の注文明細。DISPATCH では必須（アプリで強制）、STOCK_STORAGE と
   // 独立在庫指示書由来では null。出荷書 ↔ 注文明細 m:n の行レベルリンク。
@@ -169,24 +181,32 @@ model DeliveryOrderItem {
   notes     String?
   sortOrder Int     @default(0) @map("sort_order")
 
-  deliveryOrder DeliveryOrder @relation(fields: [deliveryOrderYearMonth, deliveryOrderSeq], references: [yearMonth, seq], onDelete: Cascade)
+  deliveryOrder DeliveryOrder @relation(fields: [deliveryOrderId], references: [id], onDelete: Cascade)
   orderLine     OrderLine?    @relation(fields: [orderLineId], references: [id])
   item          Item          @relation("DeliveryOrderItemItem", fields: [itemId], references: [id], onDelete: Restrict)
 
   @@index([deliveryOrderYearMonth, deliveryOrderSeq])
   @@index([orderLineId])
   @@index([itemId])
+  @@index([deliveryOrderId])
   @@map("delivery_order_items")
   @@schema("app")
 }
 
 // 納品書 DRN-YYYYMM-NNNNN
 model DeliveryNote {
+  /// 内部キー（uuid）。書類番号は法人ごとの連番になるので（番号設計 PR-C）、
+  /// 番号は行の識別にならない。子の表はこの id を FK で指す（PR-B）。
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   yearMonth String @map("year_month") @db.Char(6)
   seq       Int
 
-  deliveryOrderYearMonth String @map("delivery_order_year_month") @db.Char(6)
-  deliveryOrderSeq       Int    @map("delivery_order_seq")
+  deliveryOrderId String @map("delivery_order_id") @db.Uuid
+  deliveryOrderYearMonth String? @map("delivery_order_year_month") @db.Char(6)
+  deliveryOrderSeq       Int?    @map("delivery_order_seq")
 
   deliveryMethod       DeliveryMethod @map("delivery_method")
   recipientBpId        String         @map("recipient_bp_id") @db.Uuid
@@ -204,7 +224,7 @@ model DeliveryNote {
   updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   salesRep          User?            @relation("DeliveryNoteSalesRep", fields: [salesRepId], references: [id])
-  deliveryOrder     DeliveryOrder    @relation(fields: [deliveryOrderYearMonth, deliveryOrderSeq], references: [yearMonth, seq])
+  deliveryOrder     DeliveryOrder    @relation(fields: [deliveryOrderId], references: [id])
   recipientBp       BusinessPartner  @relation("DeliveryNoteRecipient", fields: [recipientBpId], references: [id])
   recipientBranchBp BusinessPartner? @relation("DeliveryNoteRecipientBranch", fields: [recipientBranchBpId], references: [id])
   endUserBp         BusinessPartner? @relation("DeliveryNoteEndUser", fields: [endUserBpId], references: [id])
@@ -213,18 +233,25 @@ model DeliveryNote {
 
   items DeliveryNoteItem[]
 
-  @@id([yearMonth, seq])
+  invoiceItems InvoiceItem[] @relation("InvoiceItemDeliveryNote")
+
+  ownCompany OwnCompany @relation("DeliveryNoteOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@unique([yearMonth, seq])
   @@index([deliveryOrderYearMonth, deliveryOrderSeq])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, yearMonth, seq])
+  @@index([deliveryOrderId])
+  @@index([ownCompanyId])
   @@map("delivery_notes")
   @@schema("app")
 }
 
 model DeliveryNoteItem {
   id                    String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  deliveryNoteYearMonth String @map("delivery_note_year_month") @db.Char(6)
-  deliveryNoteSeq       Int    @map("delivery_note_seq")
+  deliveryNoteId String @map("delivery_note_id") @db.Uuid
+  deliveryNoteYearMonth String? @map("delivery_note_year_month") @db.Char(6)
+  deliveryNoteSeq       Int?    @map("delivery_note_seq")
 
   /// 統合品目（app.items）。納品明細の品目。
   itemId    Int      @map("item_id")
@@ -242,13 +269,14 @@ model DeliveryNoteItem {
   taxCategoryId Int?     @map("tax_category_id")
   taxRate       Decimal? @map("tax_rate") @db.Decimal(5, 4)
 
-  deliveryNote DeliveryNote @relation(fields: [deliveryNoteYearMonth, deliveryNoteSeq], references: [yearMonth, seq], onDelete: Cascade)
+  deliveryNote DeliveryNote @relation(fields: [deliveryNoteId], references: [id], onDelete: Cascade)
   item         Item         @relation("DeliveryNoteItemItem", fields: [itemId], references: [id], onDelete: Restrict)
   taxCategory  TaxCategory? @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
 
   @@index([deliveryNoteYearMonth, deliveryNoteSeq])
   @@index([taxCategoryId])
   @@index([itemId])
+  @@index([deliveryNoteId])
   @@map("delivery_note_items")
   @@schema("app")
 }
@@ -265,8 +293,9 @@ model DeliveryNoteItem {
 // 運んだ日の役務なので）。
 model DeliveryOrderCharge {
   id                     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  deliveryOrderYearMonth String @map("delivery_order_year_month") @db.Char(6)
-  deliveryOrderSeq       Int    @map("delivery_order_seq")
+  deliveryOrderId String @map("delivery_order_id") @db.Uuid
+  deliveryOrderYearMonth String? @map("delivery_order_year_month") @db.Char(6)
+  deliveryOrderSeq       Int?    @map("delivery_order_seq")
   chargeItemId           Int    @map("charge_item_id")
 
   /// 複写元の指示書（表示・追跡用。手で足した行は null）。
@@ -283,13 +312,14 @@ model DeliveryOrderCharge {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  deliveryOrder   DeliveryOrder @relation(fields: [deliveryOrderYearMonth, deliveryOrderSeq], references: [yearMonth, seq], onDelete: Cascade)
+  deliveryOrder   DeliveryOrder @relation(fields: [deliveryOrderId], references: [id], onDelete: Cascade)
   chargeItem      ChargeItem    @relation(fields: [chargeItemId], references: [id], onDelete: Restrict)
   sourceWorkOrder WorkOrder?    @relation("DeliveryOrderChargeSourceWo", fields: [sourceWorkOrderId], references: [id], onDelete: SetNull)
   createdByUser   User?         @relation("DeliveryOrderChargeCreatedBy", fields: [createdBy], references: [id])
 
   @@index([deliveryOrderYearMonth, deliveryOrderSeq, sortOrder])
   @@index([chargeItemId])
+  @@index([deliveryOrderId])
   @@map("delivery_order_charges")
   @@schema("app")
 }

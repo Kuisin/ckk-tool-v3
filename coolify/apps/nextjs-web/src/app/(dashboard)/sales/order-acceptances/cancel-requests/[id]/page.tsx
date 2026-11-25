@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import { formatDocNumber } from "@/lib/doc-number";
+import { formatDocNumber, legacyDocKey } from "@/lib/doc-number";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +27,7 @@ export default async function AcceptanceCancelRedirectPage({
   if (!row) notFound();
   redirect(
     `/sales/order-acceptances/${formatDocNumber("ORD", {
-      yearMonth: row.acceptanceYearMonth,
-      seq: row.acceptanceSeq,
+      ...legacyDocKey(row.acceptanceYearMonth, row.acceptanceSeq),
     })}`,
   );
 }

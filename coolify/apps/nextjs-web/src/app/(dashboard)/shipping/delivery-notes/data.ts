@@ -20,6 +20,7 @@ import {
   type DocKey,
   formatDocNumber,
   formatProductNumber,
+  legacyDocKey,
   orderLineNumberOf,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -115,8 +116,7 @@ function mapDeliveryNote(
     id: number,
     deliveryNumber: number,
     deliveryOrderNumber: formatDocNumber("DOR", {
-      yearMonth: r.deliveryOrderYearMonth,
-      seq: r.deliveryOrderSeq,
+      ...legacyDocKey(r.deliveryOrderYearMonth, r.deliveryOrderSeq),
     }),
     orderLineNumbers: [
       ...new Set(

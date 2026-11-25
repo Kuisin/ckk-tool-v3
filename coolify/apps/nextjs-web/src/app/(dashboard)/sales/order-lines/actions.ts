@@ -17,7 +17,7 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { formatOrderLineNumber } from "@/lib/doc-number";
+import { formatOrderLineNumber, legacyDocKey } from "@/lib/doc-number";
 import { reserveProductStock, type StockCheckResult } from "@/lib/inventory";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { isLineStockCheckable } from "@/lib/order-line-core";
@@ -116,8 +116,7 @@ export async function runStockCheck(
     const result = await reserveProductStock(orderLineId, movementKey);
     revalidate(
       formatOrderLineNumber({
-        yearMonth: line.acceptanceYearMonth,
-        seq: line.acceptanceSeq,
+        ...legacyDocKey(line.acceptanceYearMonth, line.acceptanceSeq),
         branch: line.branch,
       }),
     );

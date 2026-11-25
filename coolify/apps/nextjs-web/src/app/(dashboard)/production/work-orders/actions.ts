@@ -42,6 +42,7 @@ import {
   resolveSeriesCustomer,
 } from "@/lib/design-files-core";
 import { resolveItemSpec } from "@/lib/design-spec";
+import { companyForWorkOrderDoc } from "@/lib/doc-company";
 import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { movementOpener } from "@/lib/inventory";
@@ -814,6 +815,10 @@ export async function createWorkOrder(
           workOrderNumber,
           yearMonth: docKey.yearMonth,
           seq: docKey.seq,
+          ...(await companyForWorkOrderDoc(
+            { orderLineIds: v.allocations.map((a) => a.orderLineId) },
+            tx,
+          )),
           productItemId: itemId,
           type: v.type,
           plannedQuantity: v.plannedQuantity,
@@ -1339,6 +1344,10 @@ export async function copyWorkOrder(
           workOrderNumber,
           yearMonth: docKey.yearMonth,
           seq: docKey.seq,
+          ...(await companyForWorkOrderDoc(
+            { orderLineIds: allocations.map((a) => a.orderLineId) },
+            tx,
+          )),
           orderLineLinks: {
             create: allocations.map((a, i) => ({
               orderLineId: a.orderLineId,

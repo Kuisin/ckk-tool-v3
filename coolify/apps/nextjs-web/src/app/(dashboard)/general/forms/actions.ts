@@ -32,6 +32,7 @@ import {
 } from "@/lib/authz";
 import { generateCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
+import { companyForUnplaced } from "@/lib/doc-company";
 import {
   computeVisitedPath,
   type FormSectionDef,
@@ -814,6 +815,7 @@ export async function submitResponse(
       return tx.formResponse.create({
         data: {
           responseNumber,
+          ...(await companyForUnplaced(tx)),
           recordNo: bumped.recordSeq,
           formId: form.id,
           version: form.currentVersion,
