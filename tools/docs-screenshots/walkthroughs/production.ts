@@ -1,7 +1,8 @@
 /**
  * 生産の流れ（process/production）— 指示書の作成 → 承認（2 段）→ 工程の実行 → 完了・在庫。
  *
- * 始まり: シードの注文明細 ORD-202607-00003-01（受注 150 のうち 40 が未手配）。
+ * 始まり: シードの注文明細（旧番号 ORD-202607-00003-01 — 画面には DB が振った
+ * `ORD-2026-…-01` で出る。受注 150 のうち 40 が未手配）。
  * 工程は 7 つあり、全部を実行すると動画が長くなるので、最初の 1 工程を開始〜完了まで
  * 見せ、残りは同じ操作のくり返しとして、完了済みのシードの指示書 #9004 で
  * 「終わったあとの姿」を見せる。
@@ -10,6 +11,7 @@
  * （shared-db/sql/production-demo-seed.sql）。無いと工程構成のエラーで保存できない。
  */
 
+import { WORK_ORDER_URL } from "../doc-number";
 import type { Walkthrough } from "./types";
 
 export const production: Walkthrough = {
@@ -37,7 +39,7 @@ export const production: Walkthrough = {
           await w.pick(locations.nth(i), /./);
         }
         await w.click(p.getByRole("button", { name: "保存", exact: true }));
-        await w.waitForUrl(/\/production\/work-orders\/(WOR-\d{6}-\d{5}|\d+)$/);
+        await w.waitForUrl(WORK_ORDER_URL);
         await w.see("承認依頼が必要です");
       },
     },

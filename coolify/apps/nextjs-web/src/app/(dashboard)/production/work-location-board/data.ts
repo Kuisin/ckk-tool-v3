@@ -50,8 +50,7 @@ const STEP_SELECT = {
   workOrder: {
     select: {
       workOrderNumber: true,
-      yearMonth: true,
-      seq: true,
+      docRef: true,
       productItem: { select: { name: true } },
     },
   },

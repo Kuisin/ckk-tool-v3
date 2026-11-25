@@ -38,6 +38,7 @@ import {
   designFileSourceLabel,
   isVersionEditable,
 } from "@/lib/design-files-core";
+import { docNo } from "@/lib/doc-number";
 import type { DesignFileRole } from "./model";
 import { RoleBadge } from "./RoleBadge";
 
@@ -196,7 +197,7 @@ export function DesignFileList({
                   onClick={() => onOpenRequest(f.requestNumber ?? "")}
                   size="xs"
                 >
-                  {f.requestNumber}
+                  {docNo(f.requestNumber)}
                 </Anchor>
               )}
               {isViewable(f.filename, f.mimeType) && (
@@ -291,7 +292,7 @@ export function DesignFileList({
                       onClick={() => onOpenRequest(f.requestNumber ?? "")}
                       size="sm"
                     >
-                      {f.requestNumber}
+                      {docNo(f.requestNumber)}
                     </Anchor>
                   ) : (
                     <Text c="dimmed" size="sm">

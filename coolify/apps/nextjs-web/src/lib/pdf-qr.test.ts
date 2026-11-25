@@ -9,7 +9,7 @@ const TEMPLATES = path.join(process.cwd(), "src", "pdf-templates");
 
 describe("documentQrSvg", () => {
   it("番号があれば SVG を返す", () => {
-    const svg = documentQrSvg(QR_KINDS.INVOICE, "INV-202608-00001");
+    const svg = documentQrSvg(QR_KINDS.INVOICE, "INV-2026-00001");
     expect(svg).toContain("<svg");
     expect(svg).toContain("viewBox");
   });
@@ -29,12 +29,12 @@ describe("documentQrSvg", () => {
 describe("書類テンプレートへの差し込み", () => {
   // 各テンプレートの {{doc_qr}} に SVG が入り、URL は入らないこと。
   const cases: { file: string; kind: string; key: string }[] = [
-    { file: "quote.html", kind: QR_KINDS.QUOTE, key: "QOT-202608-00001" },
-    { file: "invoice.html", kind: QR_KINDS.INVOICE, key: "INV-202608-00002" },
+    { file: "quote.html", kind: QR_KINDS.QUOTE, key: "QOT-2026-00001" },
+    { file: "invoice.html", kind: QR_KINDS.INVOICE, key: "INV-2026-00002" },
     {
       file: "delivery-note.html",
       kind: QR_KINDS.DELIVERY_NOTE,
-      key: "DRN-202608-00003",
+      key: "DRN-2026-00003",
     },
     { file: "inspection-sheet.html", kind: QR_KINDS.WO, key: "1234" },
   ];
@@ -72,10 +72,11 @@ describe("書類テンプレートへの差し込み", () => {
 
   it("差し込む文字列は統一形式に復号できる", () => {
     // encode → parse の往復（QR 画像の復号は decode スクリプトで別途確認済み）
-    const payload = encodeQrPayload(QR_KINDS.QUOTE, "QOT-202608-00001");
+    // 帳票が渡すのは DB の参照（法人コード/番号）。QR には ~ の形で載る。
+    const payload = encodeQrPayload(QR_KINDS.QUOTE, "CKK/QOT-2026-00001");
     expect(parseQrPayload(payload)).toEqual({
       kind: "QOT",
-      key: "QOT-202608-00001",
+      key: "CKK~QOT-2026-00001",
     });
   });
 });

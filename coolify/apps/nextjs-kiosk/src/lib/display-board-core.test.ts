@@ -26,7 +26,7 @@ function row(over: Partial<BoardRow> = {}): BoardRow {
   return {
     workOrderId: over.workOrderId ?? "wo1",
     lotNumber: over.lotNumber ?? 1001,
-    documentNumber: over.documentNumber ?? "WOR-202608-00001",
+    documentNumber: over.documentNumber ?? "WOR-2026-00001",
     productName: over.productName ?? "テスト製品",
     plannedQuantity: over.plannedQuantity ?? 50,
     steps: over.steps ?? [],
@@ -188,7 +188,7 @@ describe("sortBoardEntries", () => {
   const make = (over: Partial<BoardEntry>): BoardEntry => ({
     workOrderId: over.workOrderId ?? "x",
     lotNumber: over.lotNumber ?? 1,
-    documentNumber: "WOR-202608-00001",
+    documentNumber: "WOR-2026-00001",
     productName: "p",
     plannedQuantity: 1,
     currentStepName: null,

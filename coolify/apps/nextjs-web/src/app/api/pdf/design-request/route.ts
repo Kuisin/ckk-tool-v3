@@ -21,6 +21,7 @@ import {
   isIssuedDesign,
 } from "@/components/sales/design-requests/model";
 import { requirePermissionResponse } from "@/lib/authz";
+import { docNo } from "@/lib/doc-number";
 import { pdfStorageKey } from "@/lib/document-pdf";
 import {
   designHistoryActionLabel,
@@ -52,7 +53,7 @@ function pdfHeaders(requestNumber: string, download: boolean): HeadersInit {
   const disp = download ? "attachment" : "inline";
   return {
     "content-type": "application/pdf",
-    "content-disposition": `${disp}; filename="${requestNumber}.pdf"`,
+    "content-disposition": `${disp}; filename="${docNo(requestNumber)}.pdf"`,
   };
 }
 
@@ -79,6 +80,9 @@ export async function GET(request: Request): Promise<Response> {
     });
   }
 
+  // DTO の番号フィールドは id の姿（`CKK~…` — 法人まで運ぶ）。保管キーと
+  // QR は id のまま（番号は法人ごとの連番で、番号だけでは別法人の書類と
+  // 取り違える）。紙とファイル名に出すのは番号だけ。
   const storageKey = pdfStorageKey.designRequest(req.requestNumber);
 
   // 完了して以降は内容が動かないので保管分を返してよい。それ以前は毎回組む。
@@ -96,8 +100,8 @@ export async function GET(request: Request): Promise<Response> {
   const reference = !hasSourceDocument(req.trigger)
     ? "なし（単独起票）" // i18n-ignore
     : req.trigger === "QUOTE"
-      ? (req.quoteNumber ?? "—")
-      : (req.orderLineNumber ?? "—");
+      ? (docNo(req.quoteNumber) ?? "—")
+      : (docNo(req.orderLineNumber) ?? "—");
 
   // 発行元（自社法人 MS0I）= 設計依頼書が持つ法人。社内向けの紙なので ja。
   const { issuer } = await issuerForDesignRequest(req.requestNumber, "ja");
@@ -109,7 +113,7 @@ export async function GET(request: Request): Promise<Response> {
     // 書類 QR（CKK:DSG:<番号>）。URL は入れない。
     doc_qr: documentQrSvg(QR_KINDS.DESIGN_REQUEST, req.requestNumber),
     doc: {
-      number: req.requestNumber,
+      number: docNo(req.requestNumber),
       status: STATUS_LABEL[req.status] ?? req.status,
       kind: designKindLabel(req.kind, "ja"),
       priority: designPriorityLabel(req.priority, "ja"),

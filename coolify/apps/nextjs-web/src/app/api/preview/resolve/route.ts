@@ -9,8 +9,14 @@
  * （Samba AD で本アプリの users.username と同一）を信頼して受け取る —
  * シークレットを知る Nextcloud サーバーのみが呼べる前提。
  *
+ * 書類の URL は id（`…/sales/quotes/CKK~QOT-2026-00001`）で書類を指す。
+ * 古いリンク（番号だけ `QOT-2026-00001`・旧番号 `QOT-202607-00001`）も受け、
+ * DB を引いて 1 件に決まればその書類を返す。同じ番号が複数の法人にあれば
+ * 中身は出さず、候補の法人コード（companyCodes）だけ返す。
+ *
  * 応答: 対象 URL でなければ { matched: false }。対象なら常に 200 で
- * { matched, allowed, title, description? } — `user_permissions` view に
+ * { matched, allowed, title, description?, companyCode?, companyCodes? } —
+ * `user_permissions` view に
  * 該当 permission_code の READ があるときだけ業務データ入りのリッチ文
  * (description) を含める。権限なし・ユーザー不明は汎用文（種別+番号のみ）。
  */
@@ -23,13 +29,14 @@ import {
 } from "@ckk/authz-core";
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { resolveDocId } from "@/lib/doc-ref";
+import { docRefCompany } from "@/lib/doc-ref-core";
 import type { LocalizedText } from "@/lib/format";
 import { formatMoney, localized } from "@/lib/format";
 import {
   type DocPreviewTarget,
   genericPreviewTitle,
   type MasterPreviewTarget,
-  type NumberedPreviewTarget,
   resolvePreviewTarget,
 } from "@/lib/link-preview";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
@@ -61,16 +68,12 @@ async function hasReadPermission(
 /** 権限ありユーザー向けのリッチ本文（見つからなければ null → 汎用文のみ）。 */
 async function richDescription(
   target: DocPreviewTarget | MasterPreviewTarget,
+  docRef: string,
 ): Promise<string | null> {
   switch (target.kind) {
     case "trial-estimate": {
       const r = await prisma.estimate.findUnique({
-        where: {
-          yearMonth_seq: {
-            yearMonth: target.docKey.yearMonth,
-            seq: target.docKey.seq,
-          },
-        },
+        where: { docRef },
         include: { customerBp: true },
       });
       // 原価試算は estimate_cost の持ち主にしか見せない書類。ここは READ の
@@ -83,12 +86,7 @@ async function richDescription(
     }
     case "price-list": {
       const r = await prisma.priceListEntry.findUnique({
-        where: {
-          yearMonth_seq: {
-            yearMonth: target.docKey.yearMonth,
-            seq: target.docKey.seq,
-          },
-        },
+        where: { docRef },
         include: {
           customerBp: true,
           // 品目統合 第 2 段 C — 価格表の製品名は品目側から読む。
@@ -106,12 +104,7 @@ async function richDescription(
     }
     case "quote": {
       const r = await prisma.quote.findUnique({
-        where: {
-          yearMonth_seq: {
-            yearMonth: target.docKey.yearMonth,
-            seq: target.docKey.seq,
-          },
-        },
+        where: { docRef },
         include: { customerBp: true, items: true },
       });
       if (!r) return null;
@@ -143,12 +136,7 @@ async function richDescription(
     }
     case "order-acceptance": {
       const r = await prisma.orderAcceptance.findUnique({
-        where: {
-          yearMonth_seq: {
-            yearMonth: target.docKey.yearMonth,
-            seq: target.docKey.seq,
-          },
-        },
+        where: { docRef },
         include: { customerBp: true },
       });
       if (!r) return null;
@@ -159,12 +147,7 @@ async function richDescription(
     }
     case "work-order": {
       const r = await prisma.workOrder.findUnique({
-        where: {
-          yearMonth_seq: {
-            yearMonth: target.docKey.yearMonth,
-            seq: target.docKey.seq,
-          },
-        },
+        where: { docRef },
         include: { productItem: true },
       });
       if (!r) return null;
@@ -173,12 +156,7 @@ async function richDescription(
     }
     case "delivery-order": {
       const r = await prisma.deliveryOrder.findUnique({
-        where: {
-          yearMonth_seq: {
-            yearMonth: target.docKey.yearMonth,
-            seq: target.docKey.seq,
-          },
-        },
+        where: { docRef },
         include: { customerBp: true },
       });
       if (!r) return null;
@@ -187,12 +165,7 @@ async function richDescription(
     }
     case "delivery-note": {
       const r = await prisma.deliveryNote.findUnique({
-        where: {
-          yearMonth_seq: {
-            yearMonth: target.docKey.yearMonth,
-            seq: target.docKey.seq,
-          },
-        },
+        where: { docRef },
         include: { recipientBp: true },
       });
       if (!r) return null;
@@ -201,29 +174,16 @@ async function richDescription(
     }
     case "invoice": {
       const r = await prisma.invoice.findUnique({
-        where: {
-          yearMonth_seq: {
-            yearMonth: target.docKey.yearMonth,
-            seq: target.docKey.seq,
-          },
-        },
+        where: { docRef },
         include: { customerBp: true },
       });
       if (!r) return null;
       const customer = localized(r.customerBp.name as LocalizedText | null);
       return `${customer} / 合計 ${formatMoney(Number(r.totalAmount))} / 状態: ${r.status}`;
     }
-  }
-}
-
-/** 番号列そのもので照会するテーブル（po_number / request_number）向け。 */
-async function richDescriptionByNumber(
-  target: NumberedPreviewTarget,
-): Promise<string | null> {
-  switch (target.kind) {
     case "purchase-order": {
       const r = await prisma.materialPurchaseOrder.findUnique({
-        where: { poNumber: target.docNumber },
+        where: { docRef },
         include: { supplierBp: true },
       });
       if (!r) return null;
@@ -232,14 +192,14 @@ async function richDescriptionByNumber(
     }
     case "purchase-request": {
       const r = await prisma.purchaseRequest.findUnique({
-        where: { requestNumber: target.docNumber },
+        where: { docRef },
       });
       if (!r) return null;
       return `${r.purpose ?? "目的未設定"} / 状態: ${r.status}`;
     }
     case "design-request": {
       const r = await prisma.designRequest.findUnique({
-        where: { requestNumber: target.docNumber },
+        where: { docRef },
         include: { item: true },
       });
       if (!r) return null;
@@ -249,6 +209,30 @@ async function richDescriptionByNumber(
       return `${product} / 状態: ${r.status}`;
     }
   }
+}
+
+/**
+ * 対象の書類を 1 件に決める。URL の id が法人コード付き（`CKK~QOT-2026-00001`）
+ * ならそのまま。番号だけ・旧番号（古いリンク）は DB を引く。
+ *
+ * 同じ番号が複数の法人にあるときは **決めない**（null）— 呼び出し元は
+ * 1 つの URL に 1 枚のプレビューしか描けないので、どれかを黙って選ぶと
+ * 別の法人の書類の中身を見せることになる。候補の法人コードだけ返して、
+ * 汎用文に添える。
+ */
+async function resolveTargetRef(
+  target: DocPreviewTarget,
+): Promise<{ docRef: string | null; companyCodes: string[] }> {
+  if (target.docKey) return { docRef: target.docKey.docRef, companyCodes: [] };
+  const r = await resolveDocId(target.table, target.rawId);
+  if (r.status === "ok") return { docRef: r.docRef, companyCodes: [] };
+  if (r.status === "ambiguous") {
+    return {
+      docRef: null,
+      companyCodes: r.docRefs.flatMap((x) => docRefCompany(x) ?? []),
+    };
+  }
+  return { docRef: null, companyCodes: [] };
 }
 
 export async function GET(request: NextRequest) {
@@ -279,17 +263,39 @@ export async function GET(request: NextRequest) {
   if (!allowed) {
     return NextResponse.json({ matched: true, allowed: false, title: generic });
   }
-  // NumberedPreviewTarget（po_number 等）は複合キーを持たないので別経路。
-  const description =
-    "docKey" in target
-      ? await richDescription(target)
-      : "docNumber" in target
-        ? await richDescriptionByNumber(target)
-        : await richDescription(target);
+  if (!("docKey" in target)) {
+    // マスタ（内部 id の URL）— 参照は使わない。
+    const description = await richDescription(target, "");
+    return NextResponse.json({
+      matched: true,
+      allowed: true,
+      title: generic,
+      ...(description ? { description } : {}),
+    });
+  }
+  const { docRef, companyCodes } = await resolveTargetRef(target);
+  if (!docRef) {
+    // 該当なし、または番号だけでは法人が決まらない。後者は候補の法人を
+    // 文で添える（`companyCodes` は新しい項目 — 古い provider は無視する）。
+    return NextResponse.json({
+      matched: true,
+      allowed: true,
+      title: generic,
+      ...(companyCodes.length > 0
+        ? {
+            description: `同じ番号の書類が複数の法人にあります（${companyCodes.join(" / ")}）`, // i18n-ignore
+            companyCodes,
+          }
+        : {}),
+    });
+  }
+  const description = await richDescription(target, docRef);
   return NextResponse.json({
     matched: true,
     allowed: true,
     title: generic,
+    // 発行した自社法人のコード（番号は法人ごとの連番）。
+    companyCode: docRefCompany(docRef),
     ...(description ? { description } : {}),
   });
 }

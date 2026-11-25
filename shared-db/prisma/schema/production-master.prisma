@@ -76,6 +76,7 @@ model OwnCompany {
   purchaseRequestDocs PurchaseRequest[] @relation("PurchaseRequestOwnCompany")
   designRequestDocs DesignRequest[] @relation("DesignRequestOwnCompany")
   workOrderDocs WorkOrder[] @relation("WorkOrderOwnCompany")
+  outsourceOrderDocs OutsourceOrder[] @relation("OutsourceOrderOwnCompany")
   formResponseDocs FormResponse[] @relation("FormResponseOwnCompany")
   internalPageDocs InternalPage[] @relation("InternalPageOwnCompany")
   inventoryMovementDocs InventoryMovement[] @relation("InventoryMovementOwnCompany")

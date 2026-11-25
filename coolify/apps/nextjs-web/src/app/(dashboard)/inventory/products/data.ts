@@ -17,7 +17,7 @@ import type {
 } from "@/components/inventory/products/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import { orderLineNumberOf } from "@/lib/doc-number";
+import { orderLineIdOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
 import {
@@ -191,11 +191,7 @@ async function fetchReservations(
     where: { inventoryType: "PRODUCT", inventoryId },
     include: {
       orderLine: {
-        select: {
-          acceptanceYearMonth: true,
-          acceptanceSeq: true,
-          branch: true,
-        },
+        select: { lineRef: true },
       },
       workOrder: { select: { workOrderNumber: true } },
     },
@@ -205,7 +201,8 @@ async function fetchReservations(
     id: r.id,
     quantity: Number(r.quantity),
     status: r.status,
-    orderLineNumber: r.orderLine ? orderLineNumberOf(r.orderLine) : null,
+    // 注文明細の id（`CKK~ORD-…-01`）— リンクにそのまま使う。表示は docNo。
+    orderLineNumber: r.orderLine ? orderLineIdOf(r.orderLine) : null,
     workOrderNumber: r.workOrder?.workOrderNumber ?? null,
     reservedAt: r.reservedAt?.toISOString() ?? null,
     confirmedAt: r.confirmedAt?.toISOString() ?? null,

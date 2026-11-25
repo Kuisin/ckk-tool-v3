@@ -23,8 +23,11 @@ import type {
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
+  docIdOf,
+  docNumberOf,
   formatDocNumber,
   formatMovementNumber,
+  orderLineIdOf,
   orderLineNumberOf,
 } from "@/lib/doc-number";
 import { itemTypeLabel } from "@/lib/enum-labels";
@@ -167,7 +170,7 @@ export async function fetchStockRequirements(
           // 分だけ全行の残高がずれ、最後の行が現在庫と合わなくなる。
           orderBy: { createdAt: "desc" },
           take: PAST_FETCH_CAP + 1,
-          include: { movement: { select: { yearMonth: true, seq: true } } },
+          include: { movement: { select: { docRef: true } } },
         });
   const truncated = txRows.length > PAST_FETCH_CAP;
   const pastMovements: PastMovementInput[] = txRows
@@ -182,7 +185,9 @@ export async function fetchStockRequirements(
           : "ADJUST",
         quantity: Number(t.quantity),
         ref: movNumber,
-        refHref: movNumber ? `/inventory/movements/${movNumber}` : null,
+        refHref: t.movement
+          ? `/inventory/movements/${docIdOf(t.movement)}`
+          : null,
         note: t.notes,
       };
     });
@@ -199,7 +204,7 @@ export async function fetchStockRequirements(
           plantId,
           purchaseOrder: { status: "ORDERED" },
         },
-        include: { purchaseOrder: { select: { poNumber: true } } },
+        include: { purchaseOrder: { select: { docRef: true } } },
       });
       for (const it of poItems) {
         const remaining = Number(it.quantity) - Number(it.receivedQuantity);
@@ -208,8 +213,8 @@ export async function fetchStockRequirements(
           kind: "supply",
           date: it.expectedAt ? it.expectedAt.toISOString().slice(0, 10) : null,
           quantity: remaining,
-          ref: it.purchaseOrder.poNumber,
-          refHref: `/purchase/purchase-orders/${it.purchaseOrder.poNumber}`,
+          ref: docNumberOf(it.purchaseOrder),
+          refHref: `/purchase/purchase-orders/${docIdOf(it.purchaseOrder)}`,
         });
       }
 
@@ -227,8 +232,7 @@ export async function fetchStockRequirements(
             workOrder: {
               select: {
                 workOrderNumber: true,
-                yearMonth: true,
-                seq: true,
+                docRef: true,
                 orderLineLinks: {
                   select: { orderLine: { select: { deliveryDate: true } } },
                 },
@@ -310,7 +314,7 @@ export async function fetchStockRequirements(
             : null,
           quantity: line.quantity,
           ref,
-          refHref: `/sales/order-lines/${ref}`,
+          refHref: `/sales/order-lines/${orderLineIdOf(line)}`,
         });
       }
     }

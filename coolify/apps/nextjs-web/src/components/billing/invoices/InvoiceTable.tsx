@@ -35,6 +35,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docNo } from "@/lib/doc-number";
 import type { Formatters } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import { statusOptions } from "@/lib/status-map";
@@ -69,7 +70,9 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
   const filtered = rows.filter((inv) => {
     const matchesSearch =
       !search ||
-      inv.invoiceNumber.includes(search) ||
+      // 番号だけで照合する。旧番号（INV-YYYYMM-NNNNN）でも探せる。
+      docNo(inv.invoiceNumber).includes(search) ||
+      (inv.legacyNumber ?? "").includes(search) ||
       inv.customerName.includes(search) ||
       (inv.customerBranchName ?? "").includes(search);
     const matchesStatus = !status || inv.status === status;
@@ -95,7 +98,9 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
         title: tr("billing.closings.someCouldNotBeProcessed", {
           count: failures.length,
         }),
-        message: failures.map((f) => `${f.number}: ${f.error}`).join(" / "),
+        message: failures
+          .map((f) => `${docNo(f.number)}: ${f.error}`)
+          .join(" / "),
         color: "red",
         autoClose: false,
       });
@@ -206,7 +211,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
       sortable: true,
       render: (inv) => (
         <Text ff="mono" size="sm">
-          {inv.invoiceNumber}
+          {docNo(inv.invoiceNumber)}
         </Text>
       ),
     },
@@ -341,7 +346,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                {inv.invoiceNumber}
+                {docNo(inv.invoiceNumber)}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {inv.customerName}

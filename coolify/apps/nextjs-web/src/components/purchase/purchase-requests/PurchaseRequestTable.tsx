@@ -18,6 +18,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docNo } from "@/lib/doc-number";
 import { statusOptions } from "@/lib/status-map";
 import type { PurchaseRequestRow } from "./model";
 
@@ -49,7 +50,8 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
-      r.requestNumber.includes(search) ||
+      docNo(r.requestNumber).includes(search) ||
+      (r.legacyNumber ?? "").includes(search) ||
       r.requesterName.includes(search) ||
       (r.primaryMaterial ?? "").includes(search);
     const matchesStatus = !status || r.status === status;
@@ -63,7 +65,7 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
       sortable: true,
       render: (r) => (
         <Text ff="mono" size="sm">
-          {r.requestNumber}
+          {docNo(r.requestNumber)}
         </Text>
       ),
     },
@@ -173,7 +175,7 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                {r.requestNumber}
+                {docNo(r.requestNumber)}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {materialSummary(r)}

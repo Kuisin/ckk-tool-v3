@@ -25,7 +25,7 @@ export interface InventoryReservationRow {
   quantity: number;
   /** RESERVED / CONFIRMED / RELEASED。 */
   status: string;
-  /** 関連注文明細番号（ORD-… 導出番号、リンク用）。 */
+  /** 関連注文明細の id（`CKK~ORD-…-01` — リンク用。表示は docNo）。 */
   orderLineNumber: string | null;
   /** 関連指示書番号（リンク用）。 */
   workOrderNumber: number | null;

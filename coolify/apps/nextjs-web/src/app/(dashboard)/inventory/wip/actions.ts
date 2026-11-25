@@ -9,8 +9,8 @@
  *
  * **分類は数量を書き換えない。** 未分類のバケットから OUT、分類先のバケットへ
  * IN を**同じ入出庫伝票 1 枚**に書く — 在庫の増減はすべて台帳の取引であること
- * （lib/inventory-writer-guard.test.ts）を保つため。伝票番号は他の書類と同じ
- * 採番（allocateDocumentKey）。
+ * （lib/inventory-writer-guard.test.ts）を保つため。伝票番号は他の書類と同じく
+ * DB が払い出す（番号設計 PR-C — 行を作って doc_ref を読み戻す）。
  *
  * 権限はどちらも在庫の調整と同じ `inventory:UPDATE`。
  */
@@ -34,7 +34,6 @@ import {
 import { inventoryTypeOf } from "@/lib/inventory-item-type";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
 import { inventoryNoteLabel } from "@/lib/inventory-note-labels";
-import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
   actionError,
@@ -182,7 +181,6 @@ export async function reclassifyWip(
       return actionError(tr("inventory.wip.reclassify.aimedMustBeProduct"));
     }
 
-    const key = await allocateDocumentKey("INVENTORY_MOVEMENT");
     const stateLabel =
       v.stepIds.length === 0
         ? tr("inventory.wip.unprocessed")
@@ -192,133 +190,142 @@ export async function reclassifyWip(
             )
             .join(" › ");
 
-    const targetInventoryId = await prisma.$transaction(async (tx) => {
-      // custody-scope: / owner-scope: / wip-scope: 上と同じ id の引き直し（tx の中）。
-      const src = await tx.itemInventory.findUnique({
-        where: { id: v.inventoryId },
-        include: {
-          item: { select: { id: true, code: true, itemType: true } },
-          wipState: { select: { isLegacy: true } },
-        },
-      });
-      if (!src) throw new ReclassifyRefused(tr("common.targetRecordNotFound"));
-      // 分類できるのは自社の「未分類」の行だけ。分類済みの仕掛品を別の状態へ
-      // 付け替える口にはしない（加工状態は工程の実績から決まるもの）。
-      if (
-        !src.wipState?.isLegacy ||
-        src.custodyBpId != null ||
-        src.ownerBpId != null
-      ) {
-        throw new ReclassifyRefused(tr("inventory.wip.reclassify.notLegacy"));
-      }
-      // 引当済みの分は動かせない（在庫移動と同じ — 引当が追えなくなる）。
-      const available = Number(src.quantity) - Number(src.reservedQuantity);
-      const checked = validateWipReclassify(
-        {
-          quantity: v.quantity,
-          materialTypeId: v.materialTypeId,
-          diameterMm: v.diameterMm,
-          lengthMm: v.lengthMm,
-          stepIds: v.stepIds,
-          finishedDiameterMm: v.finishedDiameterMm,
-          finishedLengthMm: v.finishedLengthMm,
-          // 目標製品の既定: 行が持つ目標製品 → 品目が製品ならその製品。
-          aimedItemId:
-            v.aimedItemId ??
-            src.aimedItemId ??
-            (src.item.itemType === "PRODUCT" ? src.item.id : null),
-        },
-        available,
-      );
-      if (!checked.value) {
-        throw new ReclassifyRefused(
-          tr(
-            `inventory.wip.reclassify.issue.${checked.issues[0]}` as never,
-            {
-              available,
-            } as never,
-          ),
+    const { targetInventoryId, movementNumber } = await prisma.$transaction(
+      async (tx) => {
+        // custody-scope: / owner-scope: / wip-scope: 上と同じ id の引き直し（tx の中）。
+        const src = await tx.itemInventory.findUnique({
+          where: { id: v.inventoryId },
+          include: {
+            item: { select: { id: true, code: true, itemType: true } },
+            wipState: { select: { isLegacy: true } },
+          },
+        });
+        if (!src)
+          throw new ReclassifyRefused(tr("common.targetRecordNotFound"));
+        // 分類できるのは自社の「未分類」の行だけ。分類済みの仕掛品を別の状態へ
+        // 付け替える口にはしない（加工状態は工程の実績から決まるもの）。
+        if (
+          !src.wipState?.isLegacy ||
+          src.custodyBpId != null ||
+          src.ownerBpId != null
+        ) {
+          throw new ReclassifyRefused(tr("inventory.wip.reclassify.notLegacy"));
+        }
+        // 引当済みの分は動かせない（在庫移動と同じ — 引当が追えなくなる）。
+        const available = Number(src.quantity) - Number(src.reservedQuantity);
+        const checked = validateWipReclassify(
+          {
+            quantity: v.quantity,
+            materialTypeId: v.materialTypeId,
+            diameterMm: v.diameterMm,
+            lengthMm: v.lengthMm,
+            stepIds: v.stepIds,
+            finishedDiameterMm: v.finishedDiameterMm,
+            finishedLengthMm: v.finishedLengthMm,
+            // 目標製品の既定: 行が持つ目標製品 → 品目が製品ならその製品。
+            aimedItemId:
+              v.aimedItemId ??
+              src.aimedItemId ??
+              (src.item.itemType === "PRODUCT" ? src.item.id : null),
+          },
+          available,
         );
-      }
-      const c = checked.value;
+        if (!checked.value) {
+          throw new ReclassifyRefused(
+            tr(
+              `inventory.wip.reclassify.issue.${checked.issues[0]}` as never,
+              {
+                available,
+              } as never,
+            ),
+          );
+        }
+        const c = checked.value;
 
-      // 仕掛ブランクと加工状態は DB の関数が寄せる（計上・移行と同じ作り方）。
-      const blankItemId = await wipBlankItemIdTx(tx, {
-        materialTypeId: c.materialTypeId,
-        diameterMm: c.diameterMm,
-        lengthMm: c.lengthMm,
-      });
-      const wipStateId = await wipStateIdTx(tx, c.stepIds);
-      // 場所・ロット・発生工程・単位はそのまま — 棚にある物は動いていない。
-      const targetId = await ensureItemInventory(tx, {
-        itemId: blankItemId,
-        unit: src.unit,
-        plantId: src.plantId,
-        storageLocationId: src.storageLocationId,
-        shelfId: src.shelfId,
-        lotNumber: src.lotNumber,
-        isSemiFinished: true,
-        sourceStepId: src.sourceStepId,
-        wipStateId,
-        aimedItemId: c.aimedItemId,
-        finishedDiameterMm: c.finishedDiameterMm,
-        finishedLengthMm: c.finishedLengthMm,
-      });
-
-      const note = tr("inventory.wip.reclassify.movementNote", {
-        size: `φ${trimNumber(c.diameterMm)} × ${trimNumber(c.lengthMm)}`,
-        state: stateLabel,
-      });
-      const movementId = await createMovement(tx, {
-        key,
-        // 業務の事由としては「その他」— 棚の付け替え（在庫移動）でも棚卸の
-        // 調整でもなく、同じ物の名乗りを直すだけ。中身は notes と取引の
-        // referenceType = wip_reclassify が持つ。
-        cause: "OTHER",
-        plantId: src.plantId,
-        notes: note,
-      });
-      const inventoryType = inventoryTypeOf(src.item.itemType);
-      await applyTransaction(tx, movementId, {
-        inventoryType,
-        inventoryId: src.id,
-        transactionType: "OUT",
-        quantity: c.quantity,
-        referenceType: "wip_reclassify",
-        referenceId: targetId,
-        notes: note,
-      });
-      await applyTransaction(tx, movementId, {
-        inventoryType,
-        inventoryId: targetId,
-        transactionType: "IN",
-        quantity: c.quantity,
-        referenceType: "wip_reclassify",
-        referenceId: src.id,
-        notes: note,
-      });
-
-      await recordAudit({
-        action: "UPDATE",
-        tableName: "item_inventory",
-        recordId: src.id,
-        after: {
-          note,
-          item: src.item.code,
-          quantity: c.quantity,
-          targetInventoryId: targetId,
+        // 仕掛ブランクと加工状態は DB の関数が寄せる（計上・移行と同じ作り方）。
+        const blankItemId = await wipBlankItemIdTx(tx, {
+          materialTypeId: c.materialTypeId,
+          diameterMm: c.diameterMm,
+          lengthMm: c.lengthMm,
+        });
+        const wipStateId = await wipStateIdTx(tx, c.stepIds);
+        // 場所・ロット・発生工程・単位はそのまま — 棚にある物は動いていない。
+        const targetId = await ensureItemInventory(tx, {
+          itemId: blankItemId,
+          unit: src.unit,
+          plantId: src.plantId,
+          storageLocationId: src.storageLocationId,
+          shelfId: src.shelfId,
+          lotNumber: src.lotNumber,
+          isSemiFinished: true,
+          sourceStepId: src.sourceStepId,
           wipStateId,
           aimedItemId: c.aimedItemId,
-        },
-      });
-      return targetId;
-    });
+          finishedDiameterMm: c.finishedDiameterMm,
+          finishedLengthMm: c.finishedLengthMm,
+        });
+
+        const note = tr("inventory.wip.reclassify.movementNote", {
+          size: `φ${trimNumber(c.diameterMm)} × ${trimNumber(c.lengthMm)}`,
+          state: stateLabel,
+        });
+        const movementId = await createMovement(tx, {
+          // 業務の事由としては「その他」— 棚の付け替え（在庫移動）でも棚卸の
+          // 調整でもなく、同じ物の名乗りを直すだけ。中身は notes と取引の
+          // referenceType = wip_reclassify が持つ。
+          cause: "OTHER",
+          plantId: src.plantId,
+          notes: note,
+        });
+        const inventoryType = inventoryTypeOf(src.item.itemType);
+        await applyTransaction(tx, movementId, {
+          inventoryType,
+          inventoryId: src.id,
+          transactionType: "OUT",
+          quantity: c.quantity,
+          referenceType: "wip_reclassify",
+          referenceId: targetId,
+          notes: note,
+        });
+        await applyTransaction(tx, movementId, {
+          inventoryType,
+          inventoryId: targetId,
+          transactionType: "IN",
+          quantity: c.quantity,
+          referenceType: "wip_reclassify",
+          referenceId: src.id,
+          notes: note,
+        });
+
+        await recordAudit({
+          action: "UPDATE",
+          tableName: "item_inventory",
+          recordId: src.id,
+          after: {
+            note,
+            item: src.item.code,
+            quantity: c.quantity,
+            targetInventoryId: targetId,
+            wipStateId,
+            aimedItemId: c.aimedItemId,
+          },
+        });
+        const movement = await tx.inventoryMovement.findUniqueOrThrow({
+          where: { id: movementId },
+          select: { docRef: true },
+        });
+        return {
+          targetInventoryId: targetId,
+          movementNumber: formatMovementNumber(movement),
+        };
+      },
+    );
 
     revalidatePath(BASE_PATH);
     revalidatePath("/inventory/stock");
     revalidatePath("/inventory/movements");
     return actionOk({
-      movementNumber: formatMovementNumber(key),
+      movementNumber,
       targetInventoryId,
     });
   } catch (e) {

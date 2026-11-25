@@ -25,11 +25,7 @@ import {
   priceListCustomValues,
 } from "@/lib/custom-value-approval-core";
 import { prisma } from "@/lib/db";
-import {
-  type DocKey,
-  formatEstimateNumber,
-  formatPriceListNumber,
-} from "@/lib/doc-number";
+import { type DocKey, docIdOf, docNumberOf } from "@/lib/doc-number";
 import { fetchEstimateBases } from "./data";
 
 export interface PriceEntryApprovalSync {
@@ -45,15 +41,14 @@ export async function loadPriceEntryCustomValues(
   key: DocKey,
 ): Promise<PriceListCustomValue[] | null> {
   const row = await prisma.priceListEntry.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     select: {
       variants: {
         select: {
           orderType: true,
           isActive: true,
           baseUnitPrice: true,
-          estimateYearMonth: true,
-          estimateSeq: true,
+          estimate: { select: { docRef: true } },
           tiers: {
             select: {
               minQuantity: true,
@@ -66,25 +61,23 @@ export async function loadPriceEntryCustomValues(
     },
   });
   if (!row) return null;
-  const numberOf = (v: (typeof row.variants)[number]) =>
-    v.estimateYearMonth && v.estimateSeq != null
-      ? formatEstimateNumber({
-          yearMonth: v.estimateYearMonth,
-          seq: v.estimateSeq,
-        })
-      : null;
+  // 見積単価は価格試算の id で引く。独自値（承認者に見せる内容・指紋）には
+  // 人が読む番号を入れる。
+  const idOf = (v: (typeof row.variants)[number]) =>
+    v.estimate ? docIdOf(v.estimate) : null;
   const bases = await fetchEstimateBases(
-    row.variants.map(numberOf).filter((n): n is string => n != null),
+    row.variants.map(idOf).filter((n): n is string => n != null),
   );
   return priceListCustomValues(
     row.variants.map((v) => {
-      const estimateNumber = numberOf(v);
+      const estimateId = idOf(v);
+      const estimateNumber = v.estimate ? docNumberOf(v.estimate) : null;
       return {
         orderType: v.orderType,
         isActive: v.isActive,
         baseUnitPrice: Number(v.baseUnitPrice),
         estimateNumber,
-        estimateBase: estimateNumber ? (bases[estimateNumber] ?? null) : null,
+        estimateBase: estimateId ? (bases[estimateId] ?? null) : null,
         tiers: v.tiers.map((t) => ({
           minQuantity: t.minQuantity,
           maxQuantity: t.maxQuantity,
@@ -105,10 +98,11 @@ export async function loadPriceEntryCustomValues(
 export async function syncPriceEntryApproval(
   key: DocKey,
 ): Promise<PriceEntryApprovalSync> {
-  const entryNumber = formatPriceListNumber(key);
+  // 承認依頼・監査は参照（法人コード付き）で指す。
+  const entryRef = key.docRef;
   const [entry, values, layerConfigured] = await Promise.all([
     prisma.priceListEntry.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { approvalStatus: true, customValueSignature: true },
     }),
     loadPriceEntryCustomValues(key),
@@ -131,16 +125,16 @@ export async function syncPriceEntryApproval(
       return { status, requested: false };
     await cancelApprovalFlow({
       targetType: "price_list_entries",
-      targetId: entryNumber,
+      targetId: entryRef,
     });
     await prisma.priceListEntry.update({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       data: { approvalStatus: "NONE", customValueSignature: null },
     });
     await recordAudit({
       action: "UPDATE",
       tableName: "price_list_entries",
-      recordId: entryNumber,
+      recordId: entryRef,
       before: { approvalStatus: status },
       after: { approvalStatus: "NONE" },
     });
@@ -152,15 +146,15 @@ export async function syncPriceEntryApproval(
   // 承認されていない独自値が価格の解決に流れず、次の保存で依頼し直される。
   await cancelApprovalFlow({
     targetType: "price_list_entries",
-    targetId: entryNumber,
+    targetId: entryRef,
   });
   await prisma.priceListEntry.update({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     data: { approvalStatus: "PENDING", customValueSignature: null },
   });
   const started = await startApprovalFlow({
     targetType: "price_list_entries",
-    targetId: entryNumber,
+    targetId: entryRef,
     customValues: true,
   });
   if (!started.ok) {
@@ -172,13 +166,13 @@ export async function syncPriceEntryApproval(
     };
   }
   await prisma.priceListEntry.update({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     data: { customValueSignature: nextSignature },
   });
   await recordAudit({
     action: "UPDATE",
     tableName: "price_list_entries",
-    recordId: entryNumber,
+    recordId: entryRef,
     before: { approvalStatus: status },
     after: {
       approvalStatus: "PENDING",

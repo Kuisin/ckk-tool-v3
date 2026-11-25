@@ -28,7 +28,7 @@ import { checkPermission, requireAnyRead } from "@/lib/authz";
 import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
 import { itemIdsByMaterialTypeCode, resolveItemSpecs } from "@/lib/design-spec";
-import { formatQuoteNumber } from "@/lib/doc-number";
+import { docIdOf, formatQuoteNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { regrindItemLabel } from "@/lib/regrind-item-label";
 import { listCustomerSalesReps } from "@/lib/sales-rep";
@@ -246,8 +246,8 @@ export async function searchPriceListItemOptions(
 /**
  * 見積書 — 注文請書から参照する見積を選ぶための検索。
  *
- * 値は表示番号（QOT-YYYYMM-NNNNN）。保存側はこの文字列を複合キーへ戻すので、
- * 手入力していたときと同じ形のまま扱える。
+ * 値は見積書の id（`CKK~QOT-2026-00001` — 法人コード付き）、ラベルは番号だけ。
+ * 保存側はこの id を鍵（doc_ref）へ戻す。
  *
  * `customerBpId` を渡すと **その顧客の見積だけ**に絞る。注文請書では顧客が
  * 先に決まっているので、関係ない見積を選んでしまう事故を防げる。
@@ -274,7 +274,7 @@ export async function searchQuoteOptions(
       ],
     },
     include: { customerBp: { select: { name: true } } },
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
     take: 200,
   });
   return rows
@@ -282,9 +282,11 @@ export async function searchQuoteOptions(
       const number = formatQuoteNumber(r);
       const customer = localized(r.customerBp?.name as LocalizedText | null);
       return {
-        value: number,
+        // 値は id（`CKK~QOT-…` — 法人まで運ぶ）、見せるのは番号だけ。
+        value: docIdOf(r),
         label: customerBpId ? number : `${number} — ${customer}`,
-        haystack: `${number} ${customer}`.toUpperCase(),
+        // 旧番号でも探せる。
+        haystack: `${number} ${r.legacyNumber ?? ""} ${customer}`.toUpperCase(),
       };
     })
     .filter((o) => !q || o.haystack.includes(q))
@@ -778,7 +780,7 @@ export async function searchUserOptions(
 
 /**
  * 出荷元の注文請書検索（出荷書フォーム）。展開済み（COMPLETED — 注文明細が
- * 確定済み）だけを候補にする。value = 表示番号 ORD-YYYYMM-NNNNN、
+ * 確定済み）だけを候補にする。value = 注文請書の id（`CKK~ORD-2026-00001`）、
  * label = 番号 + 顧客 + 明細件数。
  */
 export async function searchShippableAcceptanceOptions(
@@ -811,12 +813,13 @@ export async function searchShippableAcceptanceOptions(
       customerBp: { select: { name: true } },
       items: { select: { id: true }, where: { branch: { not: null } } },
     },
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
     take: LIMIT,
   });
-  const { formatDocNumber } = await import("@/lib/doc-number");
+  const { docIdOf, formatDocNumber } = await import("@/lib/doc-number");
   return rows.map((r) => ({
-    value: formatDocNumber("ORD", r),
+    // 値は id（`CKK~ORD-…` — 法人まで運ぶ）、見せるのは番号だけ。
+    value: docIdOf(r),
     label: `${formatDocNumber("ORD", r)} ${localized(
       r.customerBp?.name as LocalizedText | null,
     )}${tr("sales.orderAcceptances.itemCountSuffix", { count: r.items.length })}`,
@@ -861,8 +864,9 @@ export async function searchOrderLineOptions(
     // 品目統合 第 2 段 C — 注文明細の製品名は品目側から読む。
     include: { item: true },
     orderBy: [
-      { acceptanceYearMonth: "desc" },
-      { acceptanceSeq: "desc" },
+      { acceptance: { fiscalYear: "desc" } },
+      { acceptance: { docSeq: "desc" } },
+      { acceptanceId: "desc" },
       { branch: "asc" },
     ],
     take: LIMIT,

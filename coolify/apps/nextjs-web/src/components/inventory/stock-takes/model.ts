@@ -25,7 +25,10 @@ export type InventoryType = "PRODUCT" | "MATERIAL";
 
 /** 一覧 1 行分。 */
 export interface StockTakeRow {
+  /** id の姿（`CKK~STK-2026-00001`）。表示は docNo / <DocNumber>。 */
   stockTakeNumber: string;
+  /** 旧番号（STK-YYYYMM-NNNNN）。検索用。 */
+  legacyNumber: string | null;
   plantName: string;
   storageLocationName: string | null;
   status: "DRAFT" | "COUNTING" | "CONFIRMED" | "CANCELLED";
@@ -54,7 +57,10 @@ export interface StockTakeLineView {
 
 /** 詳細画面が必要とするものすべて。 */
 export interface StockTakeView {
+  /** id の姿（`CKK~STK-2026-00001`）。表示は docNo / <DocNumber>。 */
   stockTakeNumber: string;
+  /** 旧番号（番号設計の移行前の番号）。無ければ null。 */
+  legacyNumber: string | null;
   plantId: number;
   plantName: string;
   storageLocationId: number | null;
@@ -71,7 +77,7 @@ export interface StockTakeView {
   confirmedByName: string | null;
   cancelledAt: string | null;
   cancelledByName: string | null;
-  /** 確定時に発行した入出庫伝票の表示番号（MOV-…）。差異ゼロ確定なら null。 */
+  /** 確定時に発行した入出庫伝票（id の姿 `CKK~MOV-…`）。差異ゼロ確定なら null。 */
   movementNumber: string | null;
   notes: string | null;
   createdByName: string | null;

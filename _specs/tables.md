@@ -2742,22 +2742,38 @@ Table files {
 // 採番管理
 // ===========================
 
-// 採番フォーマット:
-//   EST-YYYYMM-NNNNN（価格試算）
-//   QOT-YYYYMM-NNNNN（見積書）
-//   ORD-YYYYMM-NNNNN（注文受取書）
-//   ORD-YYYYMM-NNNNN-NN（注文明細）
-//   DRN-YYYYMM-NNNNN（納品書）
-//   INV-YYYYMM-NNNNN（請求書）
-//   WOR-YYYYMM-NNNNN（指示書の書類番号 — 表示用。キーは WORK_ORDER_DOC）
+// 採番フォーマット（業務書類）: PREFIX-FFFF-NNNNN — **自社法人 × 会計年度**ごとの連番。
+//   FFFF = 会計年度（年度が始まる暦年。開始月は own_companies.fiscal_year_start_month）。
+//   法人は番号に入らない（同じ番号が 2 つの法人に存在し得る）。
+//   **DB が作成時に払い出す**（BEFORE INSERT トリガー app.assign_document_number →
+//   app.allocate_document_seq。番号表は下の document_sequences）。年度は起票日 =
+//   作成日時の日本時間の暦日で決まる。払い出した番号は変えない・使い回さない。
+//     EST 価格試算 / PRC 価格表 / QOT 見積書 / ORD 注文請書（注文明細は ORD-FFFF-NNNNN-NN）/
+//     PO 素材発注書 / PRQ 購買依頼 / DSG 設計依頼 / DOR 出荷書 / DRN 納品書 / INV 請求書 /
+//     WOR 指示書の書類番号 / ACC 会計文書 / MOV 入出庫伝票 / STK 棚卸 / OUT 外注依頼
+//   番号を持つ表は共通で次の列を持つ:
+//     fiscal_year int / doc_seq int / doc_number text … 番号の 3 つの姿（CHECK で互いに縛る）
+//     doc_ref text [unique] … `<法人コード>/<書類番号>`。行を引く鍵で、多態参照
+//                             （承認依頼・メモ・添付・ポータル・在庫の元書類・監査キー）が指す形
+//     legacy_number text    … 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送用
+//     UNIQUE (own_company_id, fiscal_year, doc_seq) / UNIQUE (own_company_id, doc_number)
+//   旧列（year_month / seq / po_number / request_number、子の表の …_year_month / …_seq）は
+//   PR-D で落とすまで残っているが、もう番号ではない（新しい行は NULL）。本書の各表の定義に
+//   残っている year_month / seq / *_number の記述は旧い形 — 正は Prisma スキーマ。
+//   order_lines は line_number（ORD-FFFF-NNNNN-NN）と line_ref を持つ（枝番が付くまで NULL。
+//   トリガーが注文請書の番号から導く）。
+//   外注依頼の番号は outsource_orders（番号だけの表。work_order_step_id は SET NULL —
+//   工程を消しても番号は残る）。外注工程に依頼日が入ったときにトリガーが 1 行作る。
+// 月次の通し番号のまま（numbering_sequences。lib/numbering.ts）:
+//   PRD-YYYYMM-NNNN（製品）/ RGD-YYYYMM-NNNN（再研磨品目）/ FRM-（フォーム回答）/ DOC-（社内文書）
 //   印字番号の基数（= order_lines.marking_base）: 通し連番 (int)。この表ではなく
 //     SEQUENCE app.marking_number_seq（DB のトリガーが確定時に振る）。
 //     200000 始まり・月次リセットなし。表示は A{base}-NNN / A{base}
 //   ロット番号（= work_orders.work_order_number）: 通し連番 (int) —
 //     在庫ロット・QR・承認/メモ/監査の業務キーはこちらのまま
 Table numbering_sequences {
-  key             varchar [pk]            // ESTIMATE, QUOTE, ORDER_ACCEPT, DELIVERY, INVOICE
-  prefix          varchar [not null]      // EST, QOT, ORD, DRN, INV
+  key             varchar [pk]            // PRODUCT, REGRIND_ITEM, FORM_RESPONSE, INTERNAL_PAGE, BP, WORK_ORDER（ロット）
+  prefix          varchar [not null]      // PRD, RGD, FRM, DOC, BP, WO
   last_year_month varchar                 // YYYYMM（月次リセット用）
   last_sequence   int [not null, default: 0]
   updated_at      timestamp
@@ -2779,6 +2795,21 @@ Table document_sequences {
   own_company_id  int  [not null, ref: > own_companies.id]
   fiscal_year     int  [not null]   // 4 桁（CHECK）
   last_seq        int  [not null]   // 1..99999（CHECK）
+
+  indexes {
+    (key, own_company_id, fiscal_year) [pk]
+  }
+}
+
+// 業務書類の番号表。1 行 = (書類の鍵, 自社法人, 会計年度) の最後の連番。
+// app.allocate_document_seq が呼び出し側のトランザクションの中で進める
+// （保存が巻き戻れば番号も戻る = 欠番なし）。行が 1 つでもある法人は
+// fiscal_year_start_month を変えられない（トリガー）。
+Table document_sequences {
+  key             text [not null]         // ESTIMATE, QUOTE, ORDER, … OUTSOURCE_ORDER
+  own_company_id  int  [not null, ref: > own_companies.id]
+  fiscal_year     int  [not null]
+  last_seq        int  [not null]         // 1..99999
 
   indexes {
     (key, own_company_id, fiscal_year) [pk]

@@ -63,7 +63,19 @@ model DesignRequest {
   /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
   /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
   ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
-  requestNumber String        @unique @map("request_number") // DSG-YYYYMM-NNNNN
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  requestNumber String @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
+  /// 旧番号の列（PR-D で落とす）。新しい行は NULL。
+  legacyRequestNumber String? @unique @map("request_number")
   trigger       DesignTrigger
   // 見積時: 見積書（複合キー）/ 受注時: 注文明細
   quoteId String? @map("quote_id") @db.Uuid
@@ -134,6 +146,10 @@ model DesignRequest {
   @@index([ownCompanyId])
   @@map("design_requests")
   @@schema("app")
+
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, requestNumber])
+  @@index([legacyNumber])
 }
 
 // 設計ファイルの役割。1 つの版は

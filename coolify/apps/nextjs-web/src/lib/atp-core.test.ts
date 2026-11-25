@@ -34,9 +34,9 @@ describe("buildAtpTimeline", () => {
       onHand: 10,
       reserved: 15,
       expectedReceipts: [
-        { date: "2026-08-01", quantity: 20, ref: "PO-202607-00002" },
-        { date: "2026-07-20", quantity: 5, ref: "PO-202607-00001" },
-        { date: "2026-08-01", quantity: 10, ref: "PO-202607-00003" },
+        { date: "2026-08-01", quantity: 20, ref: "PO-2026-00002" },
+        { date: "2026-07-20", quantity: 5, ref: "PO-2026-00001" },
+        { date: "2026-08-01", quantity: 10, ref: "PO-2026-00003" },
       ],
     });
     expect(t.map((p) => [p.date, p.delta, p.available])).toEqual([
@@ -44,7 +44,7 @@ describe("buildAtpTimeline", () => {
       ["2026-07-20", 5, 0],
       ["2026-08-01", 30, 30],
     ]);
-    expect(t[2].refs).toEqual(["PO-202607-00002", "PO-202607-00003"]);
+    expect(t[2].refs).toEqual(["PO-2026-00002", "PO-2026-00003"]);
   });
 
   it("日付未定は末尾（9999-12-31 マーカー）", () => {

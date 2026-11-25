@@ -11,15 +11,17 @@
  *
  * **すべての取引行は入出庫伝票（inventory_movements）に属する。** 伝票は在庫の
  * 増減と同じトランザクションで作られる — applyTransaction が伝票 id を必須で
- * 受け取るので、伝票の無い計上は型で書けない。番号だけは他の書類と同じく
- * トランザクションの外で採番し（allocateDocumentKey("INVENTORY_MOVEMENT")）、
- * 呼び出し側が MovementKey として渡す。
+ * 受け取るので、伝票の無い計上は型で書けない。伝票番号（MOV-FFFF-NNNNN）は
+ * 他の書類と同じく **DB が INSERT のときに払い出す**（番号設計 PR-C。トリガー
+ * app.assign_document_number）— アプリは採番しないし、番号を渡しもしない。
  */
 
 import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
+import type { DocKey } from "./doc-number";
 import { requireDocRef } from "./doc-ref";
+import { docRefNumber } from "./doc-ref-core";
 import {
   allocateFromBuckets,
   splitScrapShare,
@@ -66,18 +68,15 @@ export type MovementCause =
   | "REGRIND_RECEIPT"
   | "OTHER";
 
-/** allocateDocumentKey("INVENTORY_MOVEMENT") の戻り値。 */
-export interface MovementKey {
-  yearMonth: string;
-  seq: number;
-}
-
 export interface MovementInit {
-  key: MovementKey;
   cause: MovementCause;
   /** 元書類のテーブル名（audit_logs と同じ多態規約）。 */
   sourceType?: string | null;
-  /** 元書類の業務キー（詳細 URL の id と同じ文字列）。 */
+  /**
+   * 元書類の業務キー。番号を持つ書類は id（`CKK~PO-2026-00001`）か参照
+   * （`CKK/PO-…` = 行の docRef）で渡す — 番号だけでも引けるが、同じ番号が
+   * 2 つの法人にあると決まらない。保存は必ず参照（requireDocRef）。
+   */
   sourceId?: string | null;
   plantId?: number | null;
   /**
@@ -111,8 +110,6 @@ export async function createMovement(
       : null;
   const row = await tx.inventoryMovement.create({
     data: {
-      yearMonth: init.key.yearMonth,
-      seq: init.key.seq,
       ...(plant?.ownCompanyId != null
         ? { ownCompanyId: plant.ownCompanyId }
         : {}),
@@ -140,8 +137,8 @@ export type MovementOpener = () => Promise<string>;
 /**
  * 伝票の遅延生成。1 件も計上しなかった出来事（良品ゼロの完了、解放すべき予約が
  * 無いキャンセル）で**空の伝票を残さない**ため、最初の applyTransaction まで
- * INSERT を遅らせる。採番だけは先に済んでいるので、その番号は欠番になる
- * — 全書類共通の作法（ロールバックでも番号は飛ぶ）。
+ * INSERT を遅らせる。番号は INSERT のときに DB が払い出すので、起こさなかった
+ * 伝票のぶん番号が欠けることもない（tx が巻き戻れば番号も戻る）。
  */
 export function movementOpener(tx: Tx, init: MovementInit): MovementOpener {
   let id: string | null = null;
@@ -425,18 +422,17 @@ export interface DeliveryReturnLine {
  */
 export async function onDeliveryOrderReturnedTx(
   tx: Tx,
-  key: { yearMonth: string; seq: number },
-  movementKey: MovementKey,
+  key: DocKey,
   args: { lines: readonly DeliveryReturnLine[]; plantId: number | null },
 ): Promise<void> {
-  const ref = `DOR-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
-  // 在庫取引の reference_id も法人コード付きの参照で残す（番号だけにしない）。
-  const refId = await requireDocRef("delivery_orders", ref, tx);
+  // 備考に出すのは番号（人が読む姿）。在庫取引の reference_id と伝票の元書類は
+  // 法人コード付きの参照で残す（番号だけにしない）。
+  const ref = docRefNumber(key.docRef);
+  const refId = await requireDocRef("delivery_orders", key.docRef, tx);
   const openMovement = movementOpener(tx, {
-    key: movementKey,
     cause: "SALES_RETURN",
     sourceType: "delivery_orders",
-    sourceId: ref,
+    sourceId: refId,
     plantId: args.plantId,
   });
   for (const line of args.lines) {
@@ -570,12 +566,10 @@ async function ownerBucketHeld(
  */
 export async function onOutsourceIssueTx(
   tx: Tx,
-  movementKey: MovementKey,
   args: OutsourceMoveArgs,
 ): Promise<string | null> {
   if (args.quantity <= 0) return null;
   const openMovement = movementOpener(tx, {
-    key: movementKey,
     cause: "OUTSOURCE_ISSUE",
     sourceType: "work_orders",
     sourceId: String(args.workOrderNumber),
@@ -641,7 +635,6 @@ export async function onOutsourceIssueTx(
  */
 export async function onOutsourceReturnTx(
   tx: Tx,
-  movementKey: MovementKey,
   args: OutsourceMoveArgs,
 ): Promise<string | null> {
   if (args.quantity <= 0) return null;
@@ -669,7 +662,6 @@ export async function onOutsourceReturnTx(
     );
   }
   const openMovement = movementOpener(tx, {
-    key: movementKey,
     cause: "OUTSOURCE_RETURN",
     sourceType: "work_orders",
     sourceId: String(args.workOrderNumber),
@@ -756,7 +748,6 @@ export async function regrindOwnerBpIdTx(
  */
 export async function onRegrindReceiptTx(
   tx: Tx,
-  movementKey: MovementKey,
   args: {
     stepId: string;
     workOrderId: string;
@@ -777,7 +768,6 @@ export async function onRegrindReceiptTx(
   if (already?.regrindReceiptMovementId) return null;
   const ownerBpId = await regrindOwnerBpIdTx(tx, args.workOrderId);
   const openMovement = movementOpener(tx, {
-    key: movementKey,
     cause: "REGRIND_RECEIPT",
     sourceType: "work_orders",
     sourceId: String(args.workOrderNumber),
@@ -1125,12 +1115,9 @@ async function consumeSemiFinishedStock(
  *   して自ロットの IN と相殺する（付け替え — 二重計上を防ぐ）。
  *   在庫分は割当 1 件のみ（work-order-alloc-core の不変条件）。
  */
-export async function onWorkOrderCompleted(
-  workOrderId: string,
-  movementKey: MovementKey,
-): Promise<void> {
+export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    await onWorkOrderCompletedTx(tx, workOrderId, movementKey);
+    await onWorkOrderCompletedTx(tx, workOrderId);
   });
 }
 
@@ -1143,7 +1130,6 @@ export async function onWorkOrderCompleted(
 export async function onWorkOrderCompletedTx(
   tx: Tx,
   workOrderId: string,
-  movementKey: MovementKey,
 ): Promise<void> {
   const wo = await tx.workOrder.findUniqueOrThrow({
     where: { id: workOrderId },
@@ -1213,7 +1199,6 @@ export async function onWorkOrderCompletedTx(
   // この完了で動く在庫はすべて 1 枚の伝票に入る（完成品の入庫・半製品の入庫・
   // 材料の消費・在庫分の付け替え）。1 回の出来事だから 1 枚。
   const openMovement = movementOpener(tx, {
-    key: movementKey,
     cause: "WORK_ORDER_COMPLETION",
     sourceType: "work_orders",
     sourceId: String(wo.workOrderNumber),
@@ -1682,10 +1667,10 @@ async function planDispatchLines(
  */
 export async function previewDeliveryShortagesTx(
   tx: Tx,
-  key: { yearMonth: string; seq: number },
+  key: DocKey,
 ): Promise<ShipShortage[]> {
   const so = await tx.deliveryOrder.findUniqueOrThrow({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     include: {
       items: { include: { orderLine: { select: { orderType: true } } } },
     },
@@ -1710,12 +1695,9 @@ export async function previewDeliveryShortagesTx(
  * 保管入庫（予備製作分）。shipDeliveryOrder から呼ぶ。
  */
 export async function onDeliveryOrderShipped(
-  key: { yearMonth: string; seq: number },
-  movementKey: MovementKey,
+  key: DocKey,
 ): Promise<ShipShortage[]> {
-  return prisma.$transaction(async (tx) =>
-    onDeliveryOrderShippedTx(tx, key, movementKey),
-  );
+  return prisma.$transaction(async (tx) => onDeliveryOrderShippedTx(tx, key));
 }
 
 /**
@@ -1730,26 +1712,25 @@ export async function onDeliveryOrderShipped(
  */
 export async function onDeliveryOrderShippedTx(
   tx: Tx,
-  key: { yearMonth: string; seq: number },
-  movementKey: MovementKey,
+  key: DocKey,
 ): Promise<ShipShortage[]> {
   const so = await tx.deliveryOrder.findUniqueOrThrow({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     include: {
       items: { include: { orderLine: { select: { orderType: true } } } },
     },
   });
-  const ref = `DOR-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
-  // 在庫取引の reference_id も法人コード付きの参照で残す（番号だけにしない）。
-  const refId = await requireDocRef("delivery_orders", ref, tx);
+  // 備考に出すのは番号（人が読む姿）。在庫取引の reference_id と伝票の元書類は
+  // 法人コード付きの参照で残す（番号だけにしない）。
+  const ref = docRefNumber(key.docRef);
+  const refId = await requireDocRef("delivery_orders", key.docRef, tx);
   /** 台帳が足りないまま出した分。呼び出し側が利用者へ警告する。 */
   const shortages: ShipShortage[] = [];
   // 出庫・在庫保管の入庫・予約解除は 1 回の出荷の中身なので 1 枚にまとめる。
   const openMovement = movementOpener(tx, {
-    key: movementKey,
     cause: "DELIVERY_SHIPMENT",
     sourceType: "delivery_orders",
-    sourceId: ref,
+    sourceId: refId,
     plantId: so.fromPlantId,
   });
   // 発送の引き当ては**出荷前の確認と同じ関数**で計算する（planDispatchLines）。
@@ -2013,7 +1994,6 @@ export interface StockCheckResult {
  */
 export async function reserveProductStock(
   orderLineId: string,
-  movementKey: MovementKey,
 ): Promise<StockCheckResult> {
   const so = await prisma.orderLine.findUniqueOrThrow({
     where: { id: orderLineId },
@@ -2030,7 +2010,6 @@ export async function reserveProductStock(
 
   return prisma.$transaction(async (tx) => {
     const openMovement = movementOpener(tx, {
-      key: movementKey,
       cause: "STOCK_RESERVATION",
       sourceType: "order_lines",
       sourceId: orderLineId,
@@ -2112,10 +2091,12 @@ export async function reserveProductStock(
     await recordAudit({
       action: "UPDATE",
       tableName: "order_lines",
-      recordId: `ORD-${so.acceptanceYearMonth}-${String(so.acceptanceSeq).padStart(5, "0")}-${String(so.branch).padStart(2, "0")}`,
-      // so は findUniqueOrThrow 済みの行 — PK が既に手元にあるので直接渡す
+      // record_id は人が読む番号、record_key は法人コード付きの参照（line_ref）。
+      // so は findUniqueOrThrow 済みの行 — 参照が既に手元にあるので直接渡す
       // （キオスク側にはこのテーブル向けの解決レジストリが無いため必須）。
-      recordKey: so.id,
+      // 枝番の無い行は上で弾いているので line_ref は必ずある。
+      recordId: so.lineRef ? docRefNumber(so.lineRef) : so.id,
+      recordKey: so.lineRef ?? so.id,
       after: {
         note: encodeInventoryNote("stockCheckReservedAndShortage", {
           reservedNow,

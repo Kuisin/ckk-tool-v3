@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 /**
  * 素材発注書 新規作成 (PU12)。
  *
- * 保存時に nextDocumentNumber("PURCHASE") で PO-YYYYMM-NNNNN を採番し、
+ * 保存時に DB が発注番号（PO-FFFF-NNNNN）を払い出し、
  * 明細と合計金額をサーバー側で計算して作成する。保存後は詳細へ。
  *
  * 先頭に「AI で読み取る」パネルを置き、仕入先の見積書 / 注文請書 /

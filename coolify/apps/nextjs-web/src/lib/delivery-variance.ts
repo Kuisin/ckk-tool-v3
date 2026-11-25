@@ -21,7 +21,6 @@
 
 import "server-only";
 
-import { legacyDocKey } from "@/lib/doc-number";
 import { prisma } from "./db";
 import {
   DEFAULT_DELIVERY_TOLERANCE,
@@ -31,7 +30,7 @@ import {
   lineVariancePermitted,
 } from "./delivery-variance-core";
 import type { DocKey } from "./doc-number";
-import { formatOrderLineNumber } from "./doc-number";
+import { orderLineNumberOf } from "./doc-number";
 import { LINE_CONSUMING_DELIVERY_ORDER_WHERE } from "./order-line-core";
 
 /**
@@ -184,9 +183,7 @@ async function evaluateOneLine(
     where: { id: orderLineId },
     select: {
       quantity: true,
-      acceptanceYearMonth: true,
-      acceptanceSeq: true,
-      branch: true,
+      lineRef: true,
     },
   });
   if (!line) return null;
@@ -198,12 +195,7 @@ async function evaluateOneLine(
         orderLineId,
         deliveryOrder: LINE_CONSUMING_DELIVERY_ORDER_WHERE,
         ...(input.excludeKey
-          ? {
-              NOT: {
-                deliveryOrderYearMonth: input.excludeKey.yearMonth,
-                deliveryOrderSeq: input.excludeKey.seq,
-              },
-            }
+          ? { NOT: { deliveryOrder: { docRef: input.excludeKey.docRef } } }
           : {}),
       },
     }),
@@ -227,13 +219,8 @@ async function evaluateOneLine(
   });
   return {
     orderLineId,
-    orderLineNumber:
-      line.branch != null
-        ? formatOrderLineNumber({
-            ...legacyDocKey(line.acceptanceYearMonth, line.acceptanceSeq),
-            branch: line.branch,
-          })
-        : "",
+    // 文言に埋め込む表示用 — 番号だけ（法人コードは付けない）。
+    orderLineNumber: orderLineNumberOf(line) ?? "",
     orderedQuantity: line.quantity,
     thisQuantity,
     otherQuantity,

@@ -32,7 +32,7 @@ export interface BillingClosing {
   kind: ClosingKind;
   status: ClosingStatus;
   totalAmount: number | null;
-  /** 生成した請求書番号 INV-YYYYMM-NNNNN（未生成は null）。 */
+  /** 生成した請求書の id（`CKK~INV-2026-00001`。未生成は null）。 */
   invoiceNumber: string | null;
   processedAt: string | null;
   notes: string | null;
@@ -41,7 +41,7 @@ export interface BillingClosing {
 
 /** 詳細画面に出す期間内出荷 1 行。 */
 export interface ClosingShipmentRow {
-  /** 導出番号 DOR-YYYYMM-NNNNN。 */
+  /** 出荷書の id（`CKK~DOR-2026-00001`）。 */
   deliveryOrderNumber: string;
   shippedAt: string | null;
   quantity: number;
@@ -123,7 +123,7 @@ export interface ClosingSimulationRow {
   customerName: string;
   /** 締日（ISO）。 */
   closingDate: string;
-  /** 対象になる出荷書番号（DOR-YYYYMM-NNNNN）。 */
+  /** 対象になる出荷書番号（DOR-FFFF-NNNNN）。 */
   shipmentNumbers: string[];
   /** 対象出荷の合計金額（税抜）。 */
   totalAmount: number;

@@ -17,6 +17,7 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
 import { categoryLabel } from "@/lib/app-list";
 import { auditRecordLink } from "@/lib/audit-links";
+import { docNo } from "@/lib/doc-number";
 import {
   inventoryTypeLabel,
   movementCauseLabel,
@@ -59,6 +60,12 @@ export function MovementDetail({ movement }: { movement: MovementDetailData }) {
           label={tr("production.movements.movementNumber")}
           value={<DocNumber>{m.movementNumber}</DocNumber>}
         />
+        {m.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={<DocNumber>{m.legacyNumber}</DocNumber>}
+          />
+        )}
         <FieldValue
           label={tr("common.dateAndTime")}
           value={fmt.dateTime(m.createdAt)}
@@ -82,12 +89,12 @@ export function MovementDetail({ movement }: { movement: MovementDetailData }) {
               sourceLink ? (
                 <Anchor component={Link} href={sourceLink.href} size="sm">
                   <Text c="blue" size="sm" span>
-                    {sourceLink.appLabel} {m.sourceId}
+                    {sourceLink.appLabel} {docNo(m.sourceId)}
                   </Text>
                 </Anchor>
               ) : (
                 <Text size="sm" span>
-                  {m.sourceType} {m.sourceId}
+                  {m.sourceType} {docNo(m.sourceId)}
                 </Text>
               )
             ) : (

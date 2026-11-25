@@ -92,7 +92,7 @@ export function StepExecutionView({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { step, workOrderNumber } = data;
-  // 書類番号 WO-YYYYMM-NNNNN（内部キーは通し連番の int のまま）。
+  // 書類番号 WOR-FFFF-NNNNN（表示専用。内部キーは通し連番の int のまま）。
   const woLabel = data.workOrderDocNumber;
 
   // 中断 / 巻き戻し 理由モーダル
@@ -758,6 +758,13 @@ export function StepExecutionView({
                       supplier: step.supplierName ?? "—",
                       movement: step.outsourceIssueMovementNo,
                     })}
+              </Text>
+            ) : null}
+            {/* 外注依頼の番号（OUT-…）。依頼日を保存すると DB が払い出す。 */}
+            {step.outsourceOrderNumber ? (
+              <Text size="sm">
+                {tr("common.requestNumber")}{" "}
+                <DocNumber>{step.outsourceOrderNumber}</DocNumber>
               </Text>
             ) : null}
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">

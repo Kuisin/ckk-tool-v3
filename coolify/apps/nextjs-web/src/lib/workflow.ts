@@ -8,7 +8,6 @@
 import { getTranslations } from "next-intl/server";
 import { Prisma, prisma } from "./db";
 import { type LocalizedText, localized } from "./format";
-import { allocateDocumentKey } from "./numbering";
 import type { CatalogStep, ExecDep, UseDep } from "./workflow-core";
 
 type Tr = Awaited<ReturnType<typeof getTranslations>>;
@@ -670,14 +669,12 @@ export async function completeStepExecution(
     return { ok: false, errors: rIssues.map((i) => i.message) };
 
   // 製品受入（再研磨）の完了は預り品の入庫と**同じトランザクション**で行う。
-  // 印（regrindReceiptMovementId）が既にあれば二度目は載せない。採番は tx の外
-  // （全書類共通の作法 — 勝てなかったときは欠番になる）。
-  const receiptKey =
+  // 印（regrindReceiptMovementId）が既にあれば二度目は載せない。伝票番号は
+  // INSERT のときに DB が払い出す（勝てなかった要求は伝票を作らない = 欠番なし）。
+  const postsReceipt =
     isRegrindReceipt &&
     stepRow.regrindReceiptMovementId == null &&
-    persisted.inputQuantity > 0
-      ? await allocateDocumentKey("INVENTORY_MOVEMENT")
-      : null;
+    persisted.inputQuantity > 0;
 
   // **全量返却なら下流の未着手工程を畳む。** 研ぎ直せる物が 1 本も無いので
   // 後続は 0 本を受け取るだけ。放っておくと「意味のない工程を 0 で押していく」
@@ -743,9 +740,9 @@ export async function completeStepExecution(
       });
       folded = f.count;
     }
-    if (c.count === 1 && receiptKey) {
+    if (c.count === 1 && postsReceipt) {
       const { onRegrindReceiptTx } = await import("./inventory");
-      await onRegrindReceiptTx(tx, receiptKey, {
+      await onRegrindReceiptTx(tx, {
         stepId,
         workOrderId: stepRow.workOrderId,
         workOrderNumber: stepRow.workOrder.workOrderNumber,
@@ -782,10 +779,8 @@ export async function completeStepExecution(
   // （COMPLETED なのに在庫が無く、巻き戻しも拒否される状態を作らない）。
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
   if (isWorkOrderComplete(ctx)) {
-    // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。ここは
-    // 「本当に完了した」ときにしか通らないので、工程を 1 つ終えるたびに
-    // 番号を焼くことにはならない。勝者以外・計上ゼロでは欠番になる。
-    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
+    // 入出庫伝票の番号は伝票を起こすときに DB が払い出す — 勝者以外・計上ゼロ
+    // では伝票そのものを作らないので、番号も欠けない。
     await prisma.$transaction(async (tx) => {
       const flipped = await tx.workOrder.updateMany({
         where: { id: stepRow.workOrderId, status: { not: "COMPLETED" } },
@@ -793,7 +788,7 @@ export async function completeStepExecution(
       });
       if (flipped.count === 1) {
         const { onWorkOrderCompletedTx } = await import("./inventory");
-        await onWorkOrderCompletedTx(tx, stepRow.workOrderId, movementKey);
+        await onWorkOrderCompletedTx(tx, stepRow.workOrderId);
       }
     });
   }

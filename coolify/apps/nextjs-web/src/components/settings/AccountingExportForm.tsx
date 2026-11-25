@@ -65,7 +65,7 @@ import type { Locale } from "@/lib/i18n";
  * 言語に依らない）。
  */
 const sampleInvoice = (customerName: string): JournalInvoiceInput => ({
-  invoiceNumber: "INV-202607-00001",
+  invoiceNumber: "INV-2026-00001",
   customerName,
   customerCode: "C-0001",
   receivableSubAccountCode: "0123",

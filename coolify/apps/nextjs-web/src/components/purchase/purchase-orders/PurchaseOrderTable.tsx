@@ -19,6 +19,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docNo } from "@/lib/doc-number";
 import { statusOptions } from "@/lib/status-map";
 import type { PurchaseOrderRow } from "./model";
 
@@ -41,7 +42,10 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
 
   const filtered = rows.filter((o) => {
     const matchesSearch =
-      !search || o.poNumber.includes(search) || o.supplierName.includes(search);
+      !search ||
+      docNo(o.poNumber).includes(search) ||
+      (o.legacyNumber ?? "").includes(search) ||
+      o.supplierName.includes(search);
     const matchesStatus = !status || o.status === status;
     return matchesSearch && matchesStatus;
   });
@@ -53,7 +57,7 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
       sortable: true,
       render: (o) => (
         <Text ff="mono" size="sm">
-          {o.poNumber}
+          {docNo(o.poNumber)}
         </Text>
       ),
     },
@@ -151,7 +155,7 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                {o.poNumber}
+                {docNo(o.poNumber)}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {o.supplierName}

@@ -10,6 +10,7 @@ import { ownOrPlantWhere, rowInScope } from "@ckk/authz-core";
 import type { MaterialReceiptView } from "@/components/purchase/material-receipts/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
+import { docIdOrNull } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
@@ -28,7 +29,7 @@ const RECEIPT_INCLUDE = {
   supplierBp: true,
   createdByUser: { select: { displayName: true } },
   purchaseOrderItem: {
-    include: { purchaseOrder: { select: { poNumber: true } } },
+    include: { purchaseOrder: { select: { docRef: true } } },
   },
 };
 
@@ -56,7 +57,8 @@ function mapReceipt(r: ReceiptRow): MaterialReceiptView {
     quantity: Number(r.quantity),
     unit: r.unit,
     receivedAt: r.receivedAt.toISOString().slice(0, 10),
-    poNumber: r.purchaseOrderItem?.purchaseOrder.poNumber ?? null,
+    // 発注書の id（`CKK~PO-2026-00001`）— リンクにそのまま使う。表示は docNo。
+    poNumber: docIdOrNull(r.purchaseOrderItem?.purchaseOrder),
     createdByName: r.createdByUser?.displayName ?? null,
     notes: r.notes,
     createdAt: r.createdAt.toISOString(),

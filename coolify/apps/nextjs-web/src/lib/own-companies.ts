@@ -9,6 +9,7 @@ import "server-only";
 
 import { prisma } from "@/lib/db";
 import type { DocKey } from "@/lib/doc-number";
+import { toDocRef } from "@/lib/doc-ref";
 import type { LocalizedTextInput } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 import { label } from "@/lib/messages";
@@ -73,21 +74,30 @@ export async function issuerForQuote(
   lang: Locale,
 ): Promise<ResolvedIssuer> {
   const row = await prisma.quote.findUnique({
-    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    where: { docRef: key.docRef },
     select: { ownCompanyId: true },
   });
   return issuerForCompanyId(row?.ownCompanyId, lang);
 }
 
-/** 設計依頼書の発行元 — 依頼書が持つ法人（見積書 / 注文請書から継いだもの）。 */
+/**
+ * 設計依頼書の発行元 — 依頼書が持つ法人（見積書 / 注文請書から継いだもの）。
+ * `requestNumber` は id（`CKK~DSG-…`）・参照・番号だけ・旧番号のどれでもよい。
+ * 番号だけで 2 つの法人に当たるとき・見つからないときは既定の法人。
+ */
 export async function issuerForDesignRequest(
   requestNumber: string,
   lang: Locale,
 ): Promise<ResolvedIssuer> {
-  const row = await prisma.designRequest.findUnique({
-    where: { requestNumber },
-    select: { ownCompanyId: true },
-  });
+  const docRef = await toDocRef("design_requests", requestNumber).catch(
+    () => null,
+  );
+  const row = docRef
+    ? await prisma.designRequest.findUnique({
+        where: { docRef },
+        select: { ownCompanyId: true },
+      })
+    : null;
   return issuerForCompanyId(row?.ownCompanyId, lang);
 }
 
@@ -100,7 +110,7 @@ export async function issuerForDeliveryNote(
   lang: Locale,
 ): Promise<ResolvedIssuer> {
   const row = await prisma.deliveryNote.findUnique({
-    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    where: { docRef: key.docRef },
     select: {
       deliveryOrder: {
         select: {

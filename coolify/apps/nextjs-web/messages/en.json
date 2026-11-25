@@ -494,6 +494,7 @@
     "lineNotesOptional": "Line notes (optional)",
     "addLine": "Add line",
     "requestNumber": "Request number",
+    "legacyNumber": "Legacy number",
     "approvedAt": "Approved at",
     "requestedDate2": "Requested date",
     "searchProducts": "Search products",
@@ -820,7 +821,9 @@
     "priceListUnapproved": "Price list awaiting approval",
     "issuingCompany": "Issuing company",
     "issuingCompanyDesc": "The own company that issues this document. It cannot be changed after creation",
-    "issuingCompanyNotAllowed": "You cannot create documents for the selected issuing company. Select an own company your sites belong to"
+    "issuingCompanyNotAllowed": "You cannot create documents for the selected issuing company. Select an own company your sites belong to",
+    "selectIssuingCompany": "Select the issuing company",
+    "selectIssuingCompanyDesc": "More than one issuing company has a document with this number. Select the issuing company of the document to open."
   },
   "shell": {
     "appsLabel": "Apps",

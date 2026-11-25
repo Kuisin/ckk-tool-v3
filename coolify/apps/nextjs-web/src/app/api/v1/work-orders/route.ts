@@ -23,7 +23,7 @@ import { iso, localizedJson } from "@/lib/api-dto";
 import { invalidCursorResponse, parseListQuery, runList } from "@/lib/api-list";
 import { instanceOf } from "@/lib/api-problem";
 import { prisma } from "@/lib/db";
-import { formatDocNumber } from "@/lib/doc-number";
+import { DOC_FIELDS_SELECT, docFields } from "../doc-fields";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -55,10 +55,8 @@ export async function GET(request: Request): Promise<Response> {
         // biome-ignore lint/suspicious/noExplicitAny: 同上
         orderBy: orderBy as any,
         select: {
-          id: true,
+          ...DOC_FIELDS_SELECT,
           workOrderNumber: true,
-          yearMonth: true,
-          seq: true,
           productItemId: true,
           type: true,
           plannedQuantity: true,
@@ -107,11 +105,11 @@ export async function GET(request: Request): Promise<Response> {
     tiebreak: "id",
     toCursor: (r) => ({ kind: "id", id: r.id, t: r.updatedAt.toISOString() }),
     toDto: (r) => ({
-      id: r.id,
-      /** ロット番号 = 業務キー（QR `CKK:WO:<int>` と同じ値）。 */
+      // id / number（表示用の書類番号 WOR-FFFF-NNNNN）/ companyCode /
+      // fiscalYear / docNumber / legacyNumber
+      ...docFields(r),
+      /** ロット番号 = 業務キー（QR `CKK:WO:<int>` と同じ値。法人をまたいで一意）。 */
       lotNumber: r.workOrderNumber,
-      /** 表示用の書類番号。 */
-      number: formatDocNumber("WOR", r),
       status: r.status,
       approvalStatus: r.approvalStatus,
       type: r.type,

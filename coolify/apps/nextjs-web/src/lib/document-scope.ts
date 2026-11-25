@@ -27,10 +27,9 @@ import "server-only";
  */
 
 import { type Access, rowInScope } from "@ckk/authz-core";
-import { docDisplayId } from "@/lib/doc-ref";
+import { isDocRefType, toDocRef } from "@/lib/doc-ref";
 import { checkPermission } from "./authz";
 import { prisma } from "./db";
-import { parseDocKey } from "./doc-number";
 import { canSeeEstimateKind, ESTIMATE_COST_PERMISSION } from "./estimate-cost";
 
 /** OWN 判定用（拠点は持たない書類）。plantIds=[] なので PLANT 一致は起きない。 */
@@ -43,11 +42,10 @@ function ownScope(
 }
 
 /** 価格試算の種別がこの利用者に見えるか（原価試算は estimate_cost が要る）。 */
-async function estimateKindReadable(ownerId: string): Promise<boolean> {
-  const k = parseDocKey(ownerId);
-  if (!k) return true;
+async function estimateKindReadable(docRef: string | null): Promise<boolean> {
+  if (!docRef) return true;
   const e = await prisma.estimate.findUnique({
-    where: { yearMonth_seq: k },
+    where: { docRef },
     select: { kind: true },
   });
   if (!e || e.kind === "PRICE") return true;
@@ -61,11 +59,21 @@ export async function documentInScope(
   ownerType: string,
   rawOwnerId: string,
 ): Promise<boolean> {
-  // 法人コード付きの参照（DB から読んだ owner_id）でも番号だけでも受ける。
-  const ownerId = docDisplayId(ownerType, rawOwnerId);
+  // 番号を持つ書類は参照（doc_ref）で引く。owner_id は DB から読んだ参照でも、
+  // 画面の id（`CKK~QOT-…`）でも、番号だけ・旧番号でも受ける。
+  // **番号だけで 2 つの法人に当たるときは閉じる** — どちらの書類か決まらない
+  // まま片方の作成者で判定すると、もう片方を覗けてしまう。
+  let docRef: string | null = null;
+  if (isDocRefType(ownerType)) {
+    try {
+      docRef = await toDocRef(ownerType, rawOwnerId);
+    } catch {
+      return false;
+    }
+  }
   // 原価試算は estimate_cost の持ち主にしか存在しない（スコープ ALL でも）。
   // メモ・証憑の口から番号を推測して覗けないよう、ここで先に閉じる。
-  if (ownerType === "estimates" && !(await estimateKindReadable(ownerId))) {
+  if (ownerType === "estimates" && !(await estimateKindReadable(docRef))) {
     return false;
   }
   // ALL は無制限 — 書類を引く前に確定できる。
@@ -74,7 +82,7 @@ export async function documentInScope(
   switch (ownerType) {
     // ── PLANT（工程の実施拠点 ∪ 作成者）─────────────────────────────────
     case "work_orders": {
-      const n = Number(ownerId);
+      const n = Number(rawOwnerId);
       if (!Number.isInteger(n)) return true;
       const wo = await prisma.workOrder.findUnique({
         where: { workOrderNumber: n },
@@ -88,48 +96,43 @@ export async function documentInScope(
       );
     }
 
-    // ── OWN（作成者）── 単一ユニーク番号 ───────────────────────────────
+    // ── OWN（作成者）── 参照 doc_ref で行を引く。書類が無ければ従来どおり通す ──
     case "design_requests": {
+      if (!docRef) return true;
       const d = await prisma.designRequest.findUnique({
-        where: { requestNumber: ownerId },
+        where: { docRef },
         select: { createdBy: true },
       });
       return d ? ownScope(access, d.createdBy, userId) : true;
     }
-
-    // ── OWN（作成者）── 複合キー (year_month, seq)。表示番号を parseDocKey で割る ──
     case "quotes": {
-      const k = parseDocKey(ownerId);
-      if (!k) return true;
+      if (!docRef) return true;
       const q = await prisma.quote.findUnique({
-        where: { yearMonth_seq: k },
+        where: { docRef },
         select: { createdBy: true },
       });
       return q ? ownScope(access, q.createdBy, userId) : true;
     }
     case "order_acceptances": {
-      const k = parseDocKey(ownerId);
-      if (!k) return true;
+      if (!docRef) return true;
       const oa = await prisma.orderAcceptance.findUnique({
-        where: { yearMonth_seq: k },
+        where: { docRef },
         select: { createdBy: true },
       });
       return oa ? ownScope(access, oa.createdBy, userId) : true;
     }
     case "estimates": {
-      const k = parseDocKey(ownerId);
-      if (!k) return true;
+      if (!docRef) return true;
       const e = await prisma.estimate.findUnique({
-        where: { yearMonth_seq: k },
+        where: { docRef },
         select: { createdBy: true },
       });
       return e ? ownScope(access, e.createdBy, userId) : true;
     }
     case "price_list_entries": {
-      const k = parseDocKey(ownerId);
-      if (!k) return true;
+      if (!docRef) return true;
       const p = await prisma.priceListEntry.findUnique({
-        where: { yearMonth_seq: k },
+        where: { docRef },
         select: { createdBy: true },
       });
       return p ? ownScope(access, p.createdBy, userId) : true;

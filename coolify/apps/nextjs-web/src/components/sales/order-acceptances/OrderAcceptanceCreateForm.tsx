@@ -25,6 +25,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { docNo } from "@/lib/doc-number";
 import { fieldHelp } from "@/lib/field-help";
 import {
   type ItemRowForm,
@@ -91,7 +92,7 @@ export function OrderAcceptanceCreateForm({
         notifications.show({
           title: tr("common.created"),
           message: tr("sales.orderAcceptanceCreateForm.createdDraftMessage", {
-            number: result.data.number,
+            number: docNo(result.data.number),
           }),
           color: "green",
         });

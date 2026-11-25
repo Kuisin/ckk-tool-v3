@@ -6,14 +6,24 @@
  *
  *     CKK:<KIND>:<KEY>        例) CKK:WO:1234
  *                                 CKK:CARD:ABCD-EFGH-JKLM-NPQR
- *                                 CKK:INV:INV-202608-00001
+ *                                 CKK:INV:CKK~INV-2026-00001
  *
  * 決めごと:
  * - **URL は入れない**。長い URL は QR を細かくして現場の読み取りを落とすし、
  *   紙が外に出たときにホスト名を晒す。中身は業務キーだけに留める。
- * - KEY は書類の**表示番号**（人が読める番号）そのまま。紙と画面を突き合わせ
- *   られるし、内部 uuid を紙に出さずに済む。
- * - 区切りは `:`。KEY にはダッシュが入る（QOT-202608-00001）ので、分割は
+ * - KEY は業務キー（人が読める番号）。内部 uuid を紙に出さずに済む。
+ * - **書類番号を運ぶ QR の KEY は「法人コード~書類番号」**（lib/doc-number.ts の
+ *   「id」の姿。例 `CKK~INV-2026-00001`）。書類番号は自社法人ごとの連番なので
+ *   （番号設計 PR-C）、番号だけでは 2 つの法人の同じ番号を見分けられない。
+ *   区切りが `~` なのは、`/` を QR の英数字モードが持たず、`:` はこの形式の
+ *   区切りだから。先頭の `CKK`（形式のラベル）と法人コードは別物 — たまたま
+ *   同じ綴りになり得るだけ。
+ *   **番号設計 PR-C より前に刷った紙の QR は番号だけ**（`CKK:INV:INV-202608-00001`）。
+ *   パーサはどちらも通す — 読み手は {@link parseQrDocKey} で法人コードの有無を
+ *   見て、無ければ番号（旧番号を含む）から書類を引く。
+ * - ロット番号（`CKK:WO:<int>`）・カード・作業場所は法人をまたいで一意なので、
+ *   これまでどおり素のキー。
+ * - 区切りは `:`。KEY にはダッシュが入る（QOT-2026-00001）ので、分割は
  *   **先頭 2 つの `:` だけ**で行う。
  * - 大文字小文字は問わない（読み取り機のブレを吸収）。KIND は大文字へ正規化。
  *
@@ -21,6 +31,8 @@
  * いる。パーサはそれを壊さない — 呼び出し側が「プレフィクス無しなら従来の
  * 解釈」へフォールバックできるよう、判別できないときは null を返すだけにする。
  */
+
+import { docUrlId, isDocNumber, parseDocId } from "./doc-ref-core";
 
 /** 全ての社内 QR に付く先頭ラベル。 */
 export const QR_PREFIX = "CKK";
@@ -34,18 +46,18 @@ export const QR_KINDS = {
   CARD: "CARD",
   /**
    * 指示書。KEY = ロット番号（通し連番 int — キオスクの数値入力と互換）。
-   * 書類番号 WO-YYYYMM-NNNNN は表示用で、QR には入れない。
+   * 書類番号 WOR-FFFF-NNNNN は表示用で、QR には入れない。
    */
   WO: "WO",
-  /** 見積書。KEY = QOT-YYYYMM-NNNNN。 */
+  /** 見積書。KEY = 法人コード~QOT-FFFF-NNNNN（旧い紙は QOT-YYYYMM-NNNNN だけ）。 */
   QUOTE: "QOT",
-  /** 注文請書。KEY = ORD-YYYYMM-NNNNN。 */
+  /** 注文請書。KEY = 法人コード~ORD-FFFF-NNNNN（旧い紙は ORD-YYYYMM-NNNNN だけ）。 */
   ORDER_ACCEPTANCE: "ORD",
-  /** 素材発注書。KEY = PO-YYYYMM-NNNNN。 */
+  /** 素材発注書。KEY = 法人コード~PO-FFFF-NNNNN（旧い紙は PO-YYYYMM-NNNNN だけ）。 */
   PURCHASE_ORDER: "PO",
-  /** 納品書。KEY = DRN-YYYYMM-NNNNN。 */
+  /** 納品書。KEY = 法人コード~DRN-FFFF-NNNNN（旧い紙は DRN-YYYYMM-NNNNN だけ）。 */
   DELIVERY_NOTE: "DRN",
-  /** 請求書。KEY = INV-YYYYMM-NNNNN。 */
+  /** 請求書。KEY = 法人コード~INV-FFFF-NNNNN（旧い紙は INV-YYYYMM-NNNNN だけ）。 */
   INVOICE: "INV",
   /** 検査表。KEY = 検査表コード。 */
   INSPECTION: "INSP",
@@ -55,7 +67,7 @@ export const QR_KINDS = {
    * 作業場所を上書きできる（端末の既定作業場所より優先）。
    */
   WORK_LOCATION: "LOC",
-  /** 設計依頼書。KEY = DSG-YYYYMM-NNNNN。 */
+  /** 設計依頼書。KEY = 法人コード~DSG-FFFF-NNNNN（旧い紙は DSG-YYYYMM-NNNNN だけ）。 */
   DESIGN_REQUEST: "DSG",
 } as const;
 
@@ -71,10 +83,34 @@ export interface QrPayload {
 /**
  * 印刷する文字列を組み立てる。KEY 内の `:` は形式が壊れるので落とす
  * （業務キーに `:` は現れない — 現れたら採番規則の方を疑うこと）。
+ *
+ * 書類の KEY は id の姿（`CKK~INV-2026-00001`）で渡す。DB の参照
+ * （`CKK/INV-2026-00001`）をそのまま渡されたときは、ここで `~` へ揃える。
  */
 export function encodeQrPayload(kind: QrKind | string, key: string): string {
-  const safeKey = String(key).replace(/:/g, "").trim();
+  const raw = String(key).replace(/:/g, "").trim();
+  const { companyCode, number } = parseDocId(raw);
+  const safeKey =
+    companyCode && isDocNumber(number) ? docUrlId(companyCode, number) : raw;
   return `${QR_PREFIX}:${String(kind).toUpperCase()}:${safeKey}`;
+}
+
+/**
+ * 書類を運ぶ QR の KEY → 法人コードと書類番号。
+ *
+ *   `CKK~INV-2026-00001` → { companyCode: "CKK", number: "INV-2026-00001" }
+ *   `INV-202608-00001`   → { companyCode: null,  number: "INV-202608-00001" }
+ *                           （PR-C より前の紙。番号から書類を引く）
+ *
+ * 書類番号の形でない KEY（ロット番号・カード・作業場所コード）は null。
+ */
+export function parseQrDocKey(
+  key: string,
+): { companyCode: string | null; number: string } | null {
+  const { companyCode, number } = parseDocId(key);
+  const upper = number.toUpperCase();
+  if (!isDocNumber(upper)) return null;
+  return { companyCode, number: upper };
 }
 
 /**

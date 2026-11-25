@@ -9,7 +9,7 @@
  * **明細単位のキャンセルは廃止**。キャンセルは注文請書ごと依頼して承認を
  * 通す（SA24 の「キャンセル依頼」→ lib/order-acceptance-cancel.ts）。
  *
- * 表示番号 ORD-YYYYMM-NNNNN-NN は注文請書キー + 枝番から導出（保存しない）。
+ * 明細番号 ORD-FFFF-NNNNN-NN と参照 line_ref は、枝番が入った時点で DB が導出する。
  */
 
 import { type Access, rowInScope } from "@ckk/authz-core";
@@ -17,9 +17,8 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { formatOrderLineNumber, legacyDocKey } from "@/lib/doc-number";
+import { orderLineIdOf } from "@/lib/doc-number";
 import { reserveProductStock, type StockCheckResult } from "@/lib/inventory";
-import { allocateDocumentKey } from "@/lib/numbering";
 import { isLineStockCheckable } from "@/lib/order-line-core";
 import {
   type ActionResult,
@@ -37,9 +36,7 @@ const BASE_PATH = "/sales/order-lines";
 async function orderLineInScope(
   access: Access,
   userId: string,
-  where:
-    | { acceptanceYearMonth: string; acceptanceSeq: number; branch: number }
-    | { id: string },
+  where: { lineRef: string } | { id: string },
 ): Promise<boolean> {
   if (access.kind === "ALL") return true;
   const row = await prisma.orderLine.findFirst({
@@ -97,8 +94,7 @@ export async function runStockCheck(
       where: { id: orderLineId },
       select: {
         status: true,
-        acceptanceYearMonth: true,
-        acceptanceSeq: true,
+        lineRef: true,
         branch: true,
       },
     });
@@ -110,16 +106,9 @@ export async function runStockCheck(
     if (!isLineStockCheckable(line)) {
       return actionError(tr("sales.orderLinesActions.notStockCheckableStatus"));
     }
-    // 入出庫伝票の番号は tx の外で採番する（reserveProductStock が自前で tx を
-    // 開くので、鍵だけ渡して中で伝票を起こさせる）。
-    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
-    const result = await reserveProductStock(orderLineId, movementKey);
-    revalidate(
-      formatOrderLineNumber({
-        ...legacyDocKey(line.acceptanceYearMonth, line.acceptanceSeq),
-        branch: line.branch,
-      }),
-    );
+    // 入出庫伝票の番号は DB が払い出す（reserveProductStock の中で伝票を起こす）。
+    const result = await reserveProductStock(orderLineId);
+    revalidate(orderLineIdOf(line) ?? undefined);
     // 在庫台帳（予約数）が動くため在庫ページも再検証する。
     revalidatePath("/inventory");
     return actionOk(result);

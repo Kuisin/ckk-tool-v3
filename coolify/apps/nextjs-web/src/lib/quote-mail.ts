@@ -85,7 +85,7 @@ export type QuoteMailPlan =
 
 async function loadQuote(key: DocKey) {
   return prisma.quote.findUnique({
-    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    where: { docRef: key.docRef },
     select: {
       status: true,
       validUntil: true,
@@ -152,7 +152,7 @@ export async function sendQuoteMail(
   const minted = await mintPortalLink(
     {
       resourceType: "quotes",
-      resourceId: quoteNumber,
+      resourceId: key.docRef,
       policy: "VERIFY",
       boundEmail: normalizePortalEmail(recipient.email),
       label: `quote-mail ${quoteNumber}`,

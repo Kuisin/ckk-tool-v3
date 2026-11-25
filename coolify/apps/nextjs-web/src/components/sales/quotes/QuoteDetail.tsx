@@ -59,6 +59,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import { downloadFile } from "@/lib/download";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
@@ -113,7 +114,7 @@ export function QuoteDetail({
   const isExpired = displayStatus === "EXPIRED";
   // PDF は発行後のみ閲覧できる（ルート側も 403 で拒否する）。
   const canViewPdf = status !== "DRAFT";
-  const pdfFilename = `${quote.quoteNumber}.pdf`;
+  const pdfFilename = `${docNo(quote.quoteNumber)}.pdf`;
   const [pdfFile, setPdfFile] = useState<PdfFileMeta | null>(pdfMeta);
   const [issueOpen, setIssueOpen] = useState(false);
   // Bumped on 再生成 so the preview iframe reloads the regenerated PDF.
@@ -185,7 +186,7 @@ export function QuoteDetail({
           : null,
       items: acceptances.map((a) => ({
         key: a.number,
-        label: a.number,
+        label: docNo(a.number),
         href: `/sales/order-acceptances/${a.number}`,
         done: a.status === "COMPLETED" || a.status === "ARCHIVED",
         note:
@@ -249,7 +250,7 @@ export function QuoteDetail({
       children: (
         <Text size="sm">
           {tr("sales.issueQuoteModal.resendConfirm", {
-            number: quote.quoteNumber,
+            number: docNo(quote.quoteNumber),
             email,
           })}
         </Text>
@@ -350,7 +351,7 @@ export function QuoteDetail({
       ]}
       createdAt={fmt.dateTime(quote.createdAt)}
       status={<StatusBadge entity="Quote" status={displayStatus} />}
-      title={quote.quoteNumber}
+      title={docNo(quote.quoteNumber)}
       updatedAt={fmt.dateTime(quote.updatedAt)}
     >
       <SummaryGrid>
@@ -375,6 +376,12 @@ export function QuoteDetail({
           label={tr("common.totalAmountInclTax")}
           value={<MoneyText ta="left" value={totals.grandTotal} />}
         />
+        {quote.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={quote.legacyNumber}
+          />
+        )}
       </SummaryGrid>
 
       <ProcedurePanel

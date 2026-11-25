@@ -10,7 +10,7 @@ import type { TrialEstimateRecord } from "./types";
 export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
   {
     id: "te-0001",
-    estimateNumber: "EST-202605-00031",
+    estimateNumber: "CKK~EST-2026-00031",
     name: "精密軸 φ3×38 BAL ｱﾙｸﾛｰﾅ",
     status: "REGISTERED",
     kind: "PRICE",
@@ -55,7 +55,7 @@ export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
   },
   {
     id: "te-0002",
-    estimateNumber: "EST-202604-00018",
+    estimateNumber: "CKK~EST-2026-00018",
     name: "ロッド φ7×80 円筒 通常",
     status: "CONFIRMED",
     kind: "PRICE",
@@ -102,7 +102,7 @@ export const MOCK_TRIAL_ESTIMATES: TrialEstimateRecord[] = [
   },
   {
     id: "te-0003",
-    estimateNumber: "EST-202606-00007",
+    estimateNumber: "CKK~EST-2026-00007",
     name: "特殊加工品 φ5×60 BAL 再見積",
     status: "DRAFT",
     kind: "PRICE",

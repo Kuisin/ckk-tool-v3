@@ -69,6 +69,7 @@ import { ModalShell } from "@/components/ui/modals";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { docNo } from "@/lib/doc-number";
 import {
   deliveryBillingPriceModeLabel,
   deliveryMethodLabel,
@@ -355,7 +356,7 @@ export function DeliveryOrderForm({
       }
       const remaining = info.quantity - info.shippedQuantity;
       if (remaining <= 0) {
-        alreadyShipped.push(info.orderLineNumber);
+        alreadyShipped.push(docNo(info.orderLineNumber));
         continue;
       }
       // 未出荷数量を関連ロットへ自動割付（必要数までしか載せない）。
@@ -397,7 +398,7 @@ export function DeliveryOrderForm({
       if (usage.length > 0 && covered < remaining) {
         shortfalls.push(
           tr("shipping.deliveryOrderForm.shortfallLine", {
-            orderLineNumber: info.orderLineNumber,
+            orderLineNumber: docNo(info.orderLineNumber),
             remaining,
             covered,
           }),
@@ -444,7 +445,7 @@ export function DeliveryOrderForm({
       return;
     }
     setPendingPick(
-      option ?? { value: acceptanceNumber, label: acceptanceNumber },
+      option ?? { value: acceptanceNumber, label: docNo(acceptanceNumber) },
     );
     fetchDeliveryAcceptanceSourceInfo(acceptanceNumber).then((infos) => {
       if (infos.length === 0) {
@@ -582,7 +583,7 @@ export function DeliveryOrderForm({
     if (coveredOptions.some((o) => o.value === info.acceptanceNumber)) continue;
     coveredOptions.push({
       value: info.acceptanceNumber,
-      label: `${info.acceptanceNumber} ${info.customerName}`,
+      label: `${docNo(info.acceptanceNumber)} ${info.customerName}`,
     });
   }
   // 欄に出す値 — 選びかけがあればそれ、無ければ実際に載っている先頭。
@@ -615,7 +616,7 @@ export function DeliveryOrderForm({
         ).reduce((sum, u) => sum + u.quantity, 0);
         return [
           {
-            number: info.orderLineNumber,
+            number: docNo(info.orderLineNumber),
             total,
             remaining,
             coverable,
@@ -663,7 +664,7 @@ export function DeliveryOrderForm({
             mode === "edit"
               ? tr("shipping.deliveryOrders.theDeliveryOrderWasUpdated")
               : tr("shipping.deliveryOrderForm.createdWithNumber", {
-                  number: result.data.number,
+                  number: docNo(result.data.number),
                 }),
           color: "green",
         });
@@ -946,7 +947,7 @@ export function DeliveryOrderForm({
       title={
         mode === "edit"
           ? tr("shipping.deliveryOrderForm.editWithNumber", {
-              orderId: orderId ?? "",
+              orderId: docNo(orderId ?? ""),
             })
           : tr("shipping.deliveryOrders.newDeliveryOrder")
       }

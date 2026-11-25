@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { docNo } from "@/lib/doc-number";
 import { parseIntakeFileNumber } from "@/lib/intake-core";
 import { parseExtractError } from "@/lib/intake-extract-error";
 import type {
@@ -418,10 +419,12 @@ function DocumentCell({ row }: { row: FolderRow }) {
         <Anchor
           component={Link}
           ff="mono"
-          href={`${ACCEPTANCES_PATH}/${row.number}`}
+          // 書類が引けていればその id（法人コード付き）で開く。引けていない
+          // ときはファイル名の番号のまま（詳細ページが番号から探す）。
+          href={`${ACCEPTANCES_PATH}/${row.doc?.number ?? row.number}`}
           size="sm"
         >
-          {row.number}
+          {docNo(row.doc?.number ?? row.number)}
         </Anchor>
         {row.doc ? (
           <StatusBadge entity="OrderAcceptanceIntake" status={row.doc.status} />

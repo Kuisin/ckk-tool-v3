@@ -77,8 +77,21 @@ const DB_CONTAINER = process.env.SHOT_DB_CONTAINER ?? "ckk-regrind-db";
 const ITEM = 9101;
 /** 再研磨品目 = **売る役務**（fixtures）。値段はこちらに付く。 */
 const REGRIND_ITEM = 9102;
-/** 再研磨の注文明細（fixtures）。 */
+/**
+ * 再研磨の注文明細（fixtures）。**旧番号**で指す — 画面に出る番号
+ * （`ORD-2026-000NN-01`）は DB が INSERT 時に振り、fixtures を流すたびに変わる。
+ * 旧番号の URL は詳細ページが正規の URL（`CKK~ORD-…-01`）へ送る。
+ */
 const ORDER_LINE = "ORD-209902-00001-01";
+/** fixtures / この試験が旧い形で入れる出荷書の旧番号（同上 — URL は転送される）。 */
+const RETURN_DOR = "DOR-209902-00001";
+/**
+ * 指示書の詳細の URL。正規の id は**ロット番号**（通し連番 int）。書類番号
+ * （`WOR-2026-00001`、法人コード付きでも）で開くとロット番号の URL へ送られる。
+ */
+const WORK_ORDER_URL = /\/production\/work-orders\/(\d+|[^/]*WOR-\d{4,6}-\d{5})(\?|$)/;
+/** 指示書の書類番号（表示用）。`WOR-FFFF-NNNNN`（FFFF = 会計年度）。 */
+const WOR_NUMBER = /^WOR-\d{4}-\d{5}$/;
 const ORDER_LINE_UUID = "d6000000-0000-4000-8000-000000009101";
 /** 預り品の所有者 = 明細の顧客。 */
 const CUSTOMER = "d0000000-0000-4000-8000-000000000001";
@@ -328,19 +341,20 @@ async function main(): Promise<void> {
   );
 
   await page.getByRole("button", { name: "保存" }).click();
-  // 保存後は**書類番号**（WOR-YYYYMM-NNNNN）の詳細へ飛ぶ。台帳はロット番号
-  // （= 指示書番号の通し連番）で引くので、番号は DB から引き直す。
-  await page.waitForURL(/\/production\/work-orders\/WOR-\d{6}-\d{5}/, {
-    timeout: 30_000,
-  });
-  const docNumber = new URL(page.url()).pathname.split("/").pop() ?? "";
+  // 保存後は指示書の詳細へ飛ぶ。URL の id は**ロット番号**（= 指示書番号の
+  // 通し連番）で、書類番号（WOR-FFFF-NNNNN）は DB が振る表示用の番号 —
+  // URL からは読まず、どちらも DB から引き直す。
+  await page.waitForURL(WORK_ORDER_URL, { timeout: 30_000 });
   const woNumber = sql(
     `SELECT coalesce(max(work_order_number)::text,'0') FROM app.work_orders WHERE product_item_id=${ITEM}`,
   );
+  const docNumber = sql(
+    `SELECT coalesce(doc_number,'') FROM app.work_orders WHERE work_order_number = ${Number(woNumber) || 0}`,
+  );
   check(
     "C4a 指示書が作られる",
-    /^WOR-\d{6}-\d{5}$/.test(docNumber) && woNumber !== "0",
-    `${docNumber} / ロット ${woNumber}`,
+    WOR_NUMBER.test(docNumber) && woNumber !== "0",
+    `${docNumber} / ロット ${woNumber} / ${new URL(page.url()).pathname}`,
   );
 
   const woRow = sql(
@@ -542,7 +556,7 @@ async function main(): Promise<void> {
          VALUES ('dd000000-0000-4000-8000-000000009101'::uuid, '209902', 1,
            '${ORDER_LINE_UUID}'::uuid, ${ITEM}, ${lot === "-" ? "NULL" : lot}, 8, 0)`);
 
-    await page.goto(`${APP}/shipping/delivery-orders/DOR-209902-00001`, {
+    await page.goto(`${APP}/shipping/delivery-orders/${RETURN_DOR}`, {
       waitUntil: "networkidle",
     });
     // **確定を画面から押す** — 請求単価はここで焼き込まれる（H4 が見る値）。
@@ -595,7 +609,7 @@ async function main(): Promise<void> {
       `SELECT count(*) FROM app.inventory_transactions t
          JOIN app.inventory_movements m ON m.id=t.movement_id
          JOIN app.item_inventory i ON i.id=t.inventory_id
-        WHERE m.source_id=app.to_doc_ref('delivery_orders','DOR-209902-00001') AND t.transaction_type='OUT'
+        WHERE m.source_id=app.to_doc_ref('delivery_orders','${RETURN_DOR}') AND t.transaction_type='OUT'
           AND i.owner_bp_id='${CUSTOMER}'::uuid`,
     );
     check(
@@ -834,9 +848,7 @@ async function main(): Promise<void> {
   );
   await page.waitForTimeout(1500);
   await page.getByRole("button", { name: "保存" }).click();
-  await page.waitForURL(/\/production\/work-orders\/WOR-\d{6}-\d{5}/, {
-    timeout: 30_000,
-  });
+  await page.waitForURL(WORK_ORDER_URL, { timeout: 30_000 });
   const wo2 = sql(
     `SELECT coalesce(max(work_order_number)::text,'0') FROM app.work_orders WHERE product_item_id=${ITEM}`,
   );

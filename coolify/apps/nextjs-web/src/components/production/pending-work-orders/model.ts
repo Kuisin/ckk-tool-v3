@@ -9,8 +9,9 @@
 
 /** 未手配タブの 1 行 — 指示書がまだ足りていない注文明細。 */
 export interface UnplannedOrderLineRow {
-  /** 行 id = 注文明細番号 ORD-YYYYMM-NNNNN-NN（URL id も同じ）。 */
+  /** 行 id = 注文明細の id（`CKK~ORD-2026-00001-01`。URL id も同じ）。 */
   id: string;
+  /** 注文明細番号（`ORD-2026-00001-01` — 表示・検索用の番号だけ）。 */
   orderLineNumber: string;
   /** 内部 uuid — 指示書作成リンク `?orderLine=` に渡す。 */
   uuid: string;

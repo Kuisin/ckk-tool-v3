@@ -1,8 +1,9 @@
 /**
  * data.ts — 入出庫伝票 (PD07) のサーバーサイド取得・マッピング。
  *
- * inventory_movements は指示書と同型 — uuid を主キーに、表示番号
- * MOV-YYYYMM-NNNNN は (year_month, seq) から導出（lib/doc-number.ts）。
+ * inventory_movements は uuid を主キーに、伝票番号 MOV-FFFF-NNNNN を DB が
+ * INSERT 時に払い出す（自社法人 × 会計年度）。行は doc_ref で引き、画面の id は
+ * 法人コード付き（`CKK~MOV-2026-00001` — lib/doc-number.ts）。
  * 明細（inventory_transactions.movement_id 逆参照）の inventoryId は
  * product_inventory / material_inventory の**バケット id**を指す多態参照
  * （inventoryType が決める）なので、詳細では2回のバッチ findMany で解決する
@@ -20,6 +21,7 @@ import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
+  docIdOf,
   formatMovementNumber,
   parseDocKey,
 } from "@/lib/doc-number";
@@ -51,7 +53,7 @@ const MOVEMENT_INCLUDE = {
 
 function findRow(key: DocKey) {
   return prisma.inventoryMovement.findUnique({
-    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    where: { docRef: key.docRef },
     include: MOVEMENT_INCLUDE,
   });
 }
@@ -62,17 +64,17 @@ function mapMovement(
   r: MovementDbRow,
   createdByName: string | null,
 ): MovementRow {
-  const number = formatMovementNumber({ yearMonth: r.yearMonth, seq: r.seq });
   return {
-    id: number,
-    movementNumber: number,
+    id: docIdOf(r),
+    movementNumber: formatMovementNumber(r),
+    legacyNumber: r.legacyNumber,
     cause: r.cause,
     plantId: r.plantId,
     plantName: r.plant
       ? `${r.plant.code} ${localized(r.plant.name as LocalizedText | null)}`
       : null,
     sourceType: r.sourceType,
-    // 保存値は法人コード付きの参照。画面とリンクは番号で扱う。
+    // 保存値は法人コード付きの参照。画面には id の姿で渡す（表示は docNo）。
     sourceId:
       r.sourceType && r.sourceId
         ? docDisplayId(r.sourceType, r.sourceId)
@@ -114,7 +116,7 @@ export async function fetchInventoryMovements(): Promise<MovementListResult> {
       ownColumn: "createdBy",
     }) as Prisma.InventoryMovementWhereInput,
     include: MOVEMENT_INCLUDE,
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   });
   const names = await resolveCreatedByNames(rows.map((r) => r.createdBy));
   return {
@@ -123,7 +125,7 @@ export async function fetchInventoryMovements(): Promise<MovementListResult> {
   };
 }
 
-/** 詳細 (PD27) — id = 導出文書番号 MOV-YYYYMM-NNNNN。未存在・不正形式は null。 */
+/** 詳細 (PD27) — id = `CKK~MOV-2026-00001`（法人コード付き）。未存在・不正形式は null。 */
 export async function fetchInventoryMovement(
   id: string,
 ): Promise<MovementDetail | null> {

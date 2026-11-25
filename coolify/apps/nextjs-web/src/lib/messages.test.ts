@@ -113,9 +113,9 @@ describe("fallback の変数埋め", () => {
   it("鍵が無くても fallback の {name} を埋める", () => {
     expect(
       label("no.such.namespace.key", "ja", "注文請書 {number} を取込", {
-        number: "ORD-202609-00012",
+        number: "ORD-2026-00012",
       }),
-    ).toBe("注文請書 ORD-202609-00012 を取込");
+    ).toBe("注文請書 ORD-2026-00012 を取込");
   });
 
   it("値の無い穴はそのまま残す（消して意味を変えない）", () => {
@@ -134,9 +134,9 @@ describe("settings.orderIntake.pipeline", () => {
   it("通知の文言が鍵として登録されていて、変数が埋まる", () => {
     expect(
       label("settings.orderIntake.pipeline.intakeNotificationTitle", "ja", "", {
-        number: "ORD-202609-00012",
+        number: "ORD-2026-00012",
       }),
-    ).toBe("注文請書 ORD-202609-00012 を自動取込しました");
+    ).toBe("注文請書 ORD-2026-00012 を自動取込しました");
     expect(
       label(
         "settings.orderIntake.pipeline.intakeNotificationMessage",

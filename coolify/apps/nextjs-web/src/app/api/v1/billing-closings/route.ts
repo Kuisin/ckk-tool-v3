@@ -14,7 +14,7 @@ import { dateOnly, iso, num } from "@/lib/api-dto";
 import { invalidCursorResponse, parseListQuery, runList } from "@/lib/api-list";
 import { instanceOf } from "@/lib/api-problem";
 import { prisma } from "@/lib/db";
-import { formatDocNumber } from "@/lib/doc-number";
+import { relatedDocNumber } from "../doc-fields";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -41,8 +41,9 @@ export async function GET(request: Request): Promise<Response> {
           closingDate: true,
           status: true,
           totalAmount: true,
-          invoiceYearMonth: true,
-          invoiceSeq: true,
+          invoiceId: true,
+          // 請求書の番号は関係から読む（旧い複合キーの列は読まない）。
+          invoice: { select: { docRef: true } },
           processedAt: true,
           notes: true,
           createdAt: true,
@@ -58,13 +59,10 @@ export async function GET(request: Request): Promise<Response> {
       closingDate: dateOnly(r.closingDate),
       status: r.status,
       totalAmount: num(r.totalAmount),
-      invoiceNumber:
-        r.invoiceYearMonth && r.invoiceSeq !== null
-          ? formatDocNumber("INV", {
-              seq: r.invoiceSeq,
-              yearMonth: r.invoiceYearMonth,
-            })
-          : null,
+      /** 作られた請求書の uuid（`/invoices` の `id`）。未処理は null。 */
+      invoiceId: r.invoiceId,
+      /** 請求書の番号。法人ごとの連番なので、同定には `invoiceId` を使う。 */
+      invoiceNumber: relatedDocNumber(r.invoice),
       processedAt: iso(r.processedAt),
       notes: r.notes,
       createdAt: iso(r.createdAt),

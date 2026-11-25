@@ -56,8 +56,8 @@ webhook-signature: v1,K5oZfzN95Z9UhFK…=
   "occurredAt": "2026-09-10T04:11:52.881Z",
   "resource": {
     "type": "order_acceptance",
-    "id": "ORD-202609-00042",
-    "key": "202609:42"
+    "id": "ORD-2026-00042",
+    "key": "CKK/ORD-2026-00042"
   },
   "status": { "from": "DRAFT", "to": "CONFIRMED" },
   "links": {
@@ -68,7 +68,7 @@ webhook-signature: v1,K5oZfzN95Z9UhFK…=
 
 - `id` / `webhook-id` are **identical on every retry** — use them to deduplicate.
 - `changedFields` appears only on `.updated` and holds **field names only** (no values). `status` appears only on `.status_changed`.
-- `resource.id` is the document number you see on screen. Document numbers can be reused after a numbering reset, so `resource.key` is provided too — match on that when it matters.
+- `resource.id` is the document number you see on screen. **The same number can exist under another issuing company**, so `resource.key` (`<company code>/<document number>`) is provided too — match on that (see [Document number rules](/manual/en/start#doc-number)).
 - To get the row itself, GET `links.list` with the API client's token.
 
 ### Event types

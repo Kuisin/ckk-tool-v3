@@ -21,8 +21,23 @@ describe("カーソルの往復", () => {
     expect(decodeCursor(encodeCursor(c))).toEqual(c);
   });
 
-  it("doc 形は往復して同じになる", () => {
-    const c: Cursor = { kind: "doc", t: T, ym: "202609", seq: 42 };
+  // 書類は以前 (yearMonth, seq) で決着していた（kind:"doc"）。番号設計 PR-C で
+  // 行の id に揃えたので、旧いカーソルは無効として扱う（→ 400 invalid_cursor。
+  // 黙って先頭へ戻さない）。
+  it("旧い doc 形のカーソルは読めない（null）", () => {
+    const legacy = Buffer.from(
+      JSON.stringify({ kind: "doc", t: T, ym: "202609", seq: 42 }),
+      "utf8",
+    ).toString("base64url");
+    expect(decodeCursor(legacy)).toBeNull();
+  });
+
+  it("書類の決着キーは行の uuid（id 形）", () => {
+    const c: Cursor = {
+      kind: "id",
+      t: T,
+      id: "9a1c2e34-56f7-4890-abcd-ef0123456789",
+    };
     expect(decodeCursor(encodeCursor(c))).toEqual(c);
   });
 
@@ -55,10 +70,8 @@ describe("カーソルの往復", () => {
     ["JSON ではない", Buffer.from("nope").toString("base64url")],
     ["kind が無い", Buffer.from('{"t":"x"}').toString("base64url")],
     [
-      "seq が整数でない",
-      Buffer.from(`{"kind":"doc","t":"${T}","ym":"202609","seq":1.5}`).toString(
-        "base64url",
-      ),
+      "知らない kind",
+      Buffer.from(`{"kind":"other","t":"${T}","id":"x"}`).toString("base64url"),
     ],
     [
       "id が欠けている",
@@ -95,18 +108,12 @@ describe("cursorWhere — 同着を落とさない", () => {
     });
   });
 
-  it("doc 形: 同時刻なら (yearMonth, seq) で決着する", () => {
-    const w = cursorWhere({ kind: "doc", t: T, ym: "202609", seq: 7 });
+  it("同じ時刻・同じ番号でも id で決着する（法人をまたいで番号は重なる）", () => {
+    const w = cursorWhere({ kind: "id", t: T, id: "uuid-a" }, "updatedAt");
     expect(w).toEqual({
       OR: [
         { updatedAt: { gt: new Date(T) } },
-        {
-          updatedAt: new Date(T),
-          OR: [
-            { yearMonth: { gt: "202609" } },
-            { yearMonth: "202609", seq: { gt: 7 } },
-          ],
-        },
+        { updatedAt: new Date(T), id: { gt: "uuid-a" } },
       ],
     });
   });

@@ -1,10 +1,10 @@
 /**
  * data.ts — 注文請書 intake (SA04) のサーバーサイド取得・マッピング。
  *
- * app.order_acceptances は (year_month, seq) の複合キー — 表示番号
- * ORD-YYYYMM-NNNNN は導出（保存しない）で、URL id を兼ねる。
- * 注文確定後は同じ (year_month, seq) の order_lines 枝番 1..N を持つため、
- * 詳細では確定済み注文明細番号も併せて返す。
+ * 注文請書の番号（ORD-FFFF-NNNNN）は DB が払い出し、行は参照 doc_ref で引く。
+ * DTO の number は id の姿（CKK~ORD-2026-00001 — URL と Server Action の引数）。
+ * 注文確定後は order_lines が枝番 1..N を持つ（明細番号 line_number / 参照
+ * line_ref は DB が導出する）ため、詳細では確定済み注文明細の id も併せて返す。
  * Prisma Decimal はここで Number() へ、日付は ISO 文字列へ変換して渡す。
  */
 
@@ -22,9 +22,10 @@ import { loadCustomerProductCodes } from "@/lib/customer-product-codes";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
-  formatDocNumber,
-  formatOrderLineNumber,
+  docIdOf,
+  docIdOrNull,
   formatProductNumber,
+  orderLineIdOf,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { matchCustomer, suggestProducts } from "@/lib/intake";
@@ -86,10 +87,11 @@ export async function fetchOrderAcceptances(): Promise<
       customerBp: { select: { name: true } },
       _count: { select: { items: true } },
     },
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
   });
   return rows.map((r) => ({
-    number: formatDocNumber("ORD", r),
+    number: docIdOf(r),
+    legacyNumber: r.legacyNumber,
     status: r.status,
     source: r.source,
     sourceFilename: r.sourceFile?.filename ?? null,
@@ -112,7 +114,7 @@ export async function fetchOrderAcceptance(
   const authz = await checkPermission("order_acceptance", "READ");
   if (!authz.ok) return null;
   const r = await prisma.orderAcceptance.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     include: {
       sourceFile: { select: { filename: true, mimeType: true } },
       customerBp: { select: { name: true } },
@@ -121,9 +123,12 @@ export async function fetchOrderAcceptance(
       createdByUser: { select: { displayName: true } },
       // キャンセル → 作り直し の紐付け（両向き）。
       replacedBy: {
-        select: { yearMonth: true, seq: true },
-        orderBy: [{ yearMonth: "asc" }, { seq: "asc" }],
+        select: { docRef: true },
+        orderBy: [{ fiscalYear: "asc" }, { docSeq: "asc" }, { id: "asc" }],
       },
+      replaces: { select: { docRef: true } },
+      // 元の見積書（番号は子の旧列ではなく、見積書の行から読む）。
+      quote: { select: { docRef: true } },
       items: {
         orderBy: { sortOrder: "asc" },
         include: {
@@ -167,13 +172,9 @@ export async function fetchOrderAcceptance(
 
   // 確定済みの注文明細（枝番 1..N）。未確定行は公開番号を持たない。
   const orderLines = await prisma.orderLine.findMany({
-    where: {
-      acceptanceYearMonth: key.yearMonth,
-      acceptanceSeq: key.seq,
-      branch: { not: null },
-    },
+    where: { acceptanceId: r.id, branch: { not: null } },
     orderBy: { branch: "asc" },
-    select: { branch: true },
+    select: { lineRef: true },
   });
 
   // 製品が決まっていない行は、読み取った品名から候補を出す（1 クエリでまとめて）。
@@ -193,10 +194,8 @@ export async function fetchOrderAcceptance(
   const items: OrderAcceptanceItemView[] = r.items.map((it) => ({
     id: it.id,
     // 確定済みの行は注文明細番号（枝番）を持つ — 明細表から SA25 へリンクする。
-    lineNumber:
-      it.branch != null
-        ? formatOrderLineNumber({ ...key, branch: it.branch })
-        : null,
+    // id の姿（CKK~ORD-…-NN）。未確定の行は null。
+    lineNumber: orderLineIdOf(it),
     workOrders: it.workOrderLinks.map((l) => ({
       workOrderNumber: l.workOrder.workOrderNumber,
       quantity: l.quantity,
@@ -275,9 +274,8 @@ export async function fetchOrderAcceptance(
       },
       tr,
     ),
-    number: formatDocNumber("ORD", r),
-    yearMonth: r.yearMonth,
-    seq: r.seq,
+    number: docIdOf(r),
+    legacyNumber: r.legacyNumber,
     status: r.status,
     source: r.source,
     sourceFilename: r.sourceFile?.filename ?? null,
@@ -302,29 +300,15 @@ export async function fetchOrderAcceptance(
     salesRepName: r.salesRep?.displayName ?? null,
     createdByName: r.createdByUser?.displayName ?? null,
     customerOrderRef: r.customerOrderRef,
-    quoteNumber:
-      r.quoteYearMonth && r.quoteSeq != null
-        ? formatDocNumber("QOT", {
-            yearMonth: r.quoteYearMonth,
-            seq: r.quoteSeq,
-          })
-        : null,
-    replacesNumber:
-      r.replacesYearMonth && r.replacesSeq != null
-        ? formatDocNumber("ORD", {
-            yearMonth: r.replacesYearMonth,
-            seq: r.replacesSeq,
-          })
-        : null,
-    replacedByNumbers: r.replacedBy.map((x) =>
-      formatDocNumber("ORD", { yearMonth: x.yearMonth, seq: x.seq }),
-    ),
+    quoteNumber: docIdOrNull(r.quote),
+    replacesNumber: docIdOrNull(r.replaces),
+    replacedByNumbers: r.replacedBy.map(docIdOf),
     orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
     notes: r.notes,
     items,
-    orderLineNumbers: orderLines.map((l) =>
-      formatOrderLineNumber({ ...key, branch: l.branch as number }),
-    ),
+    orderLineNumbers: orderLines
+      .map(orderLineIdOf)
+      .filter((n): n is string => n != null),
     completedAt: r.completedAt?.toISOString() ?? null,
     archivedAt: r.archivedAt?.toISOString() ?? null,
     createdAt: r.createdAt.toISOString(),
@@ -356,28 +340,25 @@ export async function fetchPlantOptions(): Promise<
  * 1 見積書から複数回受注することがあるので配列。キャンセル済みは出さない
  * （設計依頼の fetchLinks と同じ方針 — 起票し直した跡が並ぶだけのため）。
  */
-export async function fetchOrderAcceptancesForQuote(key: {
-  yearMonth: string;
-  seq: number;
-}): Promise<AcceptanceLink[]> {
+export async function fetchOrderAcceptancesForQuote(
+  key: DocKey,
+): Promise<AcceptanceLink[]> {
   const rows = await prisma.orderAcceptance.findMany({
     where: {
-      quoteYearMonth: key.yearMonth,
-      quoteSeq: key.seq,
+      quote: { docRef: key.docRef },
       status: { not: "CANCELLED" },
     },
     select: {
-      yearMonth: true,
-      seq: true,
+      docRef: true,
       status: true,
       updatedAt: true,
       _count: { select: { items: true } },
     },
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
     take: 20,
   });
   return rows.map((r) => ({
-    number: formatDocNumber("ORD", { yearMonth: r.yearMonth, seq: r.seq }),
+    number: docIdOf(r),
     status: r.status as OrderAcceptanceStatus,
     orderLineCount: r._count.items,
     updatedAt: r.updatedAt.toISOString(),

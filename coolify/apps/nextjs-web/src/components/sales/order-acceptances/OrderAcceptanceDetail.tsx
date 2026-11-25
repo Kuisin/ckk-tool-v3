@@ -127,6 +127,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import {
   acceptanceDeliveryMethodLabel,
@@ -317,7 +318,7 @@ export function OrderAcceptanceDetail({
       items: [
         {
           key: a.quoteNumber,
-          label: a.quoteNumber,
+          label: docNo(a.quoteNumber),
           href: `/sales/quotes/${a.quoteNumber}`,
           note: tr("sales.orderAcceptances.quoteThisOrderAcceptanceCameFrom"),
         },
@@ -332,7 +333,7 @@ export function OrderAcceptanceDetail({
       items: [
         {
           key: a.replacesNumber,
-          label: a.replacesNumber,
+          label: docNo(a.replacesNumber),
           href: `${BASE_PATH}/${a.replacesNumber}`,
           note: tr("sales.orderAcceptances.theCancelledOrderAcceptance"),
         },
@@ -354,7 +355,7 @@ export function OrderAcceptanceDetail({
           : null,
       items: a.orderLineNumbers.map((n) => ({
         key: n,
-        label: n,
+        label: docNo(n),
         href: `${SALES_ORDERS_PATH}/${n}`,
         done: true,
         note: null,
@@ -376,7 +377,7 @@ export function OrderAcceptanceDetail({
       }),
       items: a.replacedByNumbers.map((n) => ({
         key: n,
-        label: n,
+        label: docNo(n),
         href: `${BASE_PATH}/${n}`,
         done: true,
         note: null,
@@ -418,7 +419,7 @@ export function OrderAcceptanceDetail({
         notifications.show({
           title: skipped ? tr("approvals.policy.approvedWithoutFlow") : done,
           message: tr("sales.orderAcceptanceDetail.orderAcceptanceWithNumber", {
-            number: a.number,
+            number: docNo(a.number),
           }),
           color: "green",
         });
@@ -445,7 +446,7 @@ export function OrderAcceptanceDetail({
         notifications.show({
           title: tr("common.confirmed2"),
           message: tr("sales.orderAcceptanceDetail.orderLinesCreatedMessage", {
-            numbers: result.data.numbers.join(", "),
+            numbers: result.data.numbers.map((n) => docNo(n)).join(", "),
           }),
           color: "green",
         });
@@ -561,7 +562,7 @@ export function OrderAcceptanceDetail({
         onReject={(reason) => rejectAcceptance(a.number, reason)}
         rejectReason={null}
         subject={tr("sales.orderAcceptanceDetail.orderAcceptanceWithNumber", {
-          number: a.number,
+          number: docNo(a.number),
         })}
       />
     );
@@ -672,7 +673,7 @@ export function OrderAcceptanceDetail({
       ]}
       createdAt={fmt.dateTime(a.createdAt)}
       status={<StatusBadge entity="OrderAcceptanceIntake" status={a.status} />}
-      title={a.number}
+      title={docNo(a.number)}
       updatedAt={fmt.dateTime(a.updatedAt)}
     >
       {/*
@@ -899,6 +900,12 @@ export function OrderAcceptanceDetail({
                     label={tr("common.number")}
                     value={<DocNumber>{a.number}</DocNumber>}
                   />
+                  {a.legacyNumber && (
+                    <FieldValue
+                      label={tr("common.legacyNumber")}
+                      value={a.legacyNumber}
+                    />
+                  )}
                   <FieldValue
                     label={tr("common.importedFrom")}
                     value={
@@ -1103,7 +1110,7 @@ export function OrderAcceptanceDetail({
                                     href={`${SALES_ORDERS_PATH}/${it.lineNumber}`}
                                     size="sm"
                                   >
-                                    {it.lineNumber}
+                                    {docNo(it.lineNumber)}
                                   </Anchor>
                                 ) : (
                                   <Text c="dimmed" size="sm">
@@ -1442,7 +1449,7 @@ export function OrderAcceptanceDetail({
         <Text size="sm">
           {tr("sales.orderAcceptanceDetail.confirmDeployMessage", {
             count: a.items.length,
-            number: a.number,
+            number: docNo(a.number),
             lastBranch: String(a.items.length).padStart(2, "0"),
           })}
         </Text>
@@ -1462,7 +1469,7 @@ export function OrderAcceptanceDetail({
       >
         <Text size="sm">
           {tr("sales.orderAcceptanceDetail.confirmArchiveMessage", {
-            number: a.number,
+            number: docNo(a.number),
           })}
         </Text>
       </ModalShell>
@@ -1482,7 +1489,7 @@ export function OrderAcceptanceDetail({
               notifications.show({
                 title: tr("common.created"),
                 message: tr("sales.orderAcceptances.recreatedAs", {
-                  number: result.data.number,
+                  number: docNo(result.data.number),
                 }),
                 color: "green",
               });
@@ -1503,14 +1510,14 @@ export function OrderAcceptanceDetail({
         <Stack gap="xs">
           <Text size="sm">
             {tr("sales.orderAcceptances.confirmRecreateMessage", {
-              number: a.number,
+              number: docNo(a.number),
             })}
           </Text>
           {a.replacedByNumbers.length > 0 && (
             <Alert color="orange" variant="light">
               <Text size="sm">
                 {tr("sales.orderAcceptances.alreadyRecreatedAs", {
-                  numbers: a.replacedByNumbers.join(" / "),
+                  numbers: a.replacedByNumbers.map((n) => docNo(n)).join(" / "),
                 })}
               </Text>
             </Alert>
@@ -1561,7 +1568,7 @@ export function OrderAcceptanceDetail({
       >
         <Text size="sm">
           {tr("sales.orderAcceptanceDetail.confirmCancelRequestMessage", {
-            number: a.number,
+            number: docNo(a.number),
           })}
         </Text>
         <Textarea
@@ -1677,7 +1684,7 @@ function DraftEditor({
         notifications.show({
           title: tr("common.saved2"),
           message: tr("sales.orderAcceptanceDetail.orderAcceptanceWithNumber", {
-            number: a.number,
+            number: docNo(a.number),
           }),
           color: "green",
         });
@@ -1779,7 +1786,7 @@ function DraftEditor({
               clearable
               initialOption={
                 a.quoteNumber
-                  ? { value: a.quoteNumber, label: a.quoteNumber }
+                  ? { value: a.quoteNumber, label: docNo(a.quoteNumber) }
                   : null
               }
               label={tr("common.quoteOptional")}

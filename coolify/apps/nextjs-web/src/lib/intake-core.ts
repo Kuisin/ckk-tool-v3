@@ -8,6 +8,7 @@
  * locale 明示 API を "ja" 固定で使う。
  */
 
+import { type DocKey, parseDocKey } from "./doc-number";
 import { label } from "./messages";
 
 export interface ExtractedItem {
@@ -30,42 +31,69 @@ export interface NormalizedExtraction {
 }
 
 /**
- * 取込フォルダのファイル名に焼き込む注文請書番号。
+ * 取込フォルダのファイル名に焼き込む注文請書の id。
  *
- * 採番して行を作った時点で `ORD-YYYYMM-NNNNN-<元のファイル名>` に改名する。
+ * 採番して行を作った時点で `CKK~ORD-2026-00001-<元のファイル名>` に改名する。
  * こうしておくと、失敗の再取込・孤児 .processing の回収でファイルがもう一度
  * スキャン対象に戻ったとき、**どの行の続きなのか**が名前だけで分かる
  * （分からないと採番からやり直して二重登録になる）。
+ *
+ * 焼き込むのは番号ではなく **id（法人コード + 番号）** — 番号は自社法人ごとの
+ * 連番なので、番号だけでは別の法人の同じ番号の行と見分けが付かない。
+ * 読むときは 3 つの形を受ける:
+ *   `CKK~ORD-2026-00001-…`  いまの形（法人コード付き）
+ *   `ORD-2026-00001-…`      法人コードなし（手で置かれた・改名された）
+ *   `ORD-202608-00003-…`    番号設計 PR-C より前に焼き込まれた旧番号
+ * 後ろの 2 つはどの行か決めるのに DB を引く必要がある
+ * （lib/doc-ref.ts resolveDocId — 呼び出し側が行う）。
+ *
+ * ■ 置かれたばかりの名前（`{yyyyMMdd-HHmmss}_{rand6}_{元名}`）は番号付きではない
+ * 取込フォルダへ置く口（lib/file-naming.ts systematicFileName・intake-gateway
+ * writer.py）は、元名の前に日時と乱数を付ける。法人コードは `~` と空白以外の
+ * 何でもよいので、元名が `CKK~ORD-2026-00001-x.pdf` だと先頭の日時ごと
+ * 「法人コード」に読めてしまう（旧い形は `^ORD-` だったので起きなかった）。
+ * 先頭が日時の名前は読まない。intake-gateway の writer.py（NUMBERED_NAME_RE）と
+ * 同じ形 — 変えるときは両方。
  */
-const INTAKE_NUMBER_RE = /^(ORD-(\d{6})-(\d{5}))-(.+)$/;
+const INTAKE_NUMBER_RE =
+  /^(?!\d{8}-\d{6}_)((?:([^~/\s]+)~)?(ORD-(?:\d{4}|\d{6})-\d{5}))-(.+)$/;
 
 export interface IntakeFileNumber {
-  /** ORD-YYYYMM-NNNNN */
+  /**
+   * 名前に焼き込まれていた id そのまま（`CKK~ORD-2026-00001`。旧い名前では
+   * `ORD-202608-00003`）。行を引く・リンクを張るのに使う。表示は {@link docNumber}。
+   */
   number: string;
-  yearMonth: string;
-  seq: number;
+  /** 番号だけ（法人コードを落としたもの）。表示用。 */
+  docNumber: string;
+  /**
+   * 行の鍵。法人コード付きの新しい番号のときだけ決まる。null のときは
+   * `number` を resolveDocId("order_acceptances", …) に渡して引く。
+   */
+  docKey: DocKey | null;
   /** 番号を除いた元のファイル名。 */
   rest: string;
 }
 
-/** `ORD-YYYYMM-NNNNN-<元名>` を分解する。番号が無ければ null。 */
+/** `CKK~ORD-2026-00001-<元名>` を分解する（旧い形も受ける）。番号が無ければ null。 */
 export function parseIntakeFileNumber(name: string): IntakeFileNumber | null {
   const m = INTAKE_NUMBER_RE.exec(name);
   if (!m) return null;
   return {
     number: m[1],
-    yearMonth: m[2],
-    seq: Number(m[3]),
+    docNumber: m[3],
+    docKey: parseDocKey(m[1], "ORD"),
     rest: m[4],
   };
 }
 
 /**
- * `ORD-YYYYMM-NNNNN-<元名>` を組み立てる。
+ * `CKK~ORD-2026-00001-<元名>` を組み立てる。`id` は注文請書の id
+ * （lib/doc-number.ts docIdOf）。
  * すでに番号付きの名前を渡しても二重に付かない（付け替える）。
  */
-export function intakeFileName(number: string, original: string): string {
-  return `${number}-${parseIntakeFileNumber(original)?.rest ?? original}`;
+export function intakeFileName(id: string, original: string): string {
+  return `${id}-${parseIntakeFileNumber(original)?.rest ?? original}`;
 }
 
 const s = (v: unknown): string | null =>

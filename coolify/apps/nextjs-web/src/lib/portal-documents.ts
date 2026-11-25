@@ -22,19 +22,15 @@ import "server-only";
 
 import { quoteDisplayStatus } from "@/components/sales/quotes/model";
 import { deliveryNoteTotals } from "@/components/shipping/delivery-notes/model";
-import { legacyDocKey } from "@/lib/doc-number";
 import { type Prisma, prisma } from "./db";
-import { formatDocNumber } from "./doc-number";
+import { type DocKey, docIdOf, docNumberOf } from "./doc-number";
 import { type LocalizedTextInput, localized } from "./format";
 import { portalAccessFor, portalScopeFor } from "./portal-access";
 import type { PortalResourceType, PortalTarget } from "./portal-access-core";
 import type { PortalSession } from "./portal-auth";
 // 種別とラベルは client-safe なほうに置いてある（このファイルは server-only なので
 // クライアント部品から値を import できない）。
-import {
-  PORTAL_DOCUMENT_PREFIX,
-  type PortalDocumentType,
-} from "./portal-documents-core";
+import type { PortalDocumentType } from "./portal-documents-core";
 import type {
   PortalDocumentDetailDto,
   PortalDocumentDto,
@@ -127,6 +123,13 @@ export interface PortalDocumentListItem extends PortalDocumentDto {
   type: PortalDocumentType;
 }
 
+/** 新しい順（会計年度 → 連番）。複数の自社法人の書類は混ざってよい。 */
+const NEWEST_FIRST = [
+  { fiscalYear: "desc" as const },
+  { docSeq: "desc" as const },
+  { id: "desc" as const },
+];
+
 /**
  * 一覧。**スコープが空なら DB を引かない**（`in: []` は全件ではなく 0 件だが、
  * 無駄なクエリを撃たない）。
@@ -159,17 +162,17 @@ export async function listPortalDocuments(
           ],
         },
         select: {
-          yearMonth: true,
-          seq: true,
+          docRef: true,
           createdAt: true,
           pdfFileId: true,
         },
-        orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+        orderBy: NEWEST_FIRST,
         take: 200,
       });
       return rows.map((r) => ({
         type,
-        number: formatDocNumber("QOT", r),
+        id: docIdOf(r),
+        number: docNumberOf(r),
         issuedOn: iso(r.createdAt),
         totalAmount: null, // 見積の合計は明細の集計。一覧では出さない。
         hasPdf: r.pdfFileId != null,
@@ -201,13 +204,14 @@ export async function listPortalDocuments(
               : []),
           ],
         },
-        select: { yearMonth: true, seq: true, createdAt: true },
-        orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+        select: { docRef: true, createdAt: true },
+        orderBy: NEWEST_FIRST,
         take: 200,
       });
       return rows.map((r) => ({
         type,
-        number: formatDocNumber("ORD", r),
+        id: docIdOf(r),
+        number: docNumberOf(r),
         issuedOn: iso(r.createdAt),
         totalAmount: null,
         hasPdf: false,
@@ -227,18 +231,18 @@ export async function listPortalDocuments(
           ],
         },
         select: {
-          yearMonth: true,
-          seq: true,
+          docRef: true,
           deliveredAt: true,
           createdAt: true,
           pdfFileId: true,
         },
-        orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+        orderBy: NEWEST_FIRST,
         take: 200,
       });
       return rows.map((r) => ({
         type,
-        number: formatDocNumber("DRN", r),
+        id: docIdOf(r),
+        number: docNumberOf(r),
         issuedOn: iso(r.deliveredAt ?? r.createdAt),
         // 金額は include_price に従う（詳細で出す。一覧では出さない）。
         totalAmount: null,
@@ -256,19 +260,19 @@ export async function listPortalDocuments(
           ],
         },
         select: {
-          yearMonth: true,
-          seq: true,
+          docRef: true,
           issuedAt: true,
           createdAt: true,
           totalAmount: true,
           pdfFileId: true,
         },
-        orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+        orderBy: NEWEST_FIRST,
         take: 200,
       });
       return rows.map((r) => ({
         type,
-        number: formatDocNumber("INV", r),
+        id: docIdOf(r),
+        number: docNumberOf(r),
         issuedOn: iso(r.issuedAt ?? r.createdAt),
         totalAmount: money(r.totalAmount),
         hasPdf: r.pdfFileId != null,
@@ -283,11 +287,13 @@ export async function listPortalDocuments(
  */
 export async function portalTargetOf(
   type: PortalDocumentType,
-  yearMonth: string,
-  seq: number,
+  docKey: DocKey,
 ): Promise<PortalTarget | null> {
-  const id = formatDocNumber(PORTAL_DOCUMENT_PREFIX[type], { yearMonth, seq });
-  const key = { yearMonth_seq: { yearMonth, seq } };
+  // id は番号（人が読む業務キー）、ref は法人コード付きの参照 — 付与・リンクの
+  // resource_id とは ref で突き合わせる（番号だけでは比べない）。
+  const id = docNumberOf(docKey);
+  const ref = docKey.docRef;
+  const key = { docRef: docKey.docRef };
 
   switch (type) {
     case "quotes": {
@@ -313,6 +319,7 @@ export async function portalTargetOf(
       return {
         type,
         id,
+        ref,
         customerBpIds: [r.customerBpId, r.customerBranchBpId].filter(
           (v): v is string => !!v,
         ),
@@ -335,6 +342,7 @@ export async function portalTargetOf(
       return {
         type,
         id,
+        ref,
         customerBpIds: [r.customerBpId, r.customerBranchBpId].filter(
           (v): v is string => !!v,
         ),
@@ -362,6 +370,7 @@ export async function portalTargetOf(
       return {
         type,
         id,
+        ref,
         customerBpIds: [r.recipientBpId, r.recipientBranchBpId].filter(
           (v): v is string => !!v,
         ),
@@ -378,6 +387,7 @@ export async function portalTargetOf(
       return {
         type,
         id,
+        ref,
         customerBpIds: [r.customerBpId, r.customerBranchBpId].filter(
           (v): v is string => !!v,
         ),
@@ -399,8 +409,8 @@ export type PortalDocumentDetail = PortalDocumentDetailDto;
  */
 export interface PortalRelatedRef {
   type: PortalDocumentType;
-  yearMonth: string;
-  seq: number;
+  /** 相手の書類の参照（行の doc_ref）。 */
+  docRef: string;
   issuedOn: string | null;
 }
 
@@ -421,7 +431,7 @@ export async function visiblePortalRelated(
   const seen = new Set<string>();
   const unique: PortalRelatedRef[] = [];
   for (const r of refs) {
-    const k = `${r.type}:${r.yearMonth}:${r.seq}`;
+    const k = `${r.type}:${r.docRef}`;
     if (seen.has(k)) continue;
     seen.add(k);
     unique.push(r);
@@ -430,11 +440,16 @@ export async function visiblePortalRelated(
 
   const resolved = await Promise.all(
     unique.map(async (r) => {
-      const target = await portalTargetOf(r.type, r.yearMonth, r.seq);
+      const target = await portalTargetOf(r.type, r);
       if (!target) return null;
       const access = await portalAccessFor(session, target);
       if (!access.canView) return null;
-      return { type: r.type, number: target.id, issuedOn: r.issuedOn };
+      return {
+        type: r.type,
+        id: docIdOf(r),
+        number: docNumberOf(r),
+        issuedOn: r.issuedOn,
+      };
     }),
   );
   return resolved.filter((r): r is PortalRelatedDocumentDto => r !== null);
@@ -460,18 +475,18 @@ function date(d: Date | null | undefined): string | null {
 export async function getPortalDocument(
   session: PortalSession,
   type: PortalDocumentType,
-  yearMonth: string,
-  seq: number,
+  docKey: DocKey,
 ): Promise<PortalDocumentDetail | null> {
-  const target = await portalTargetOf(type, yearMonth, seq);
+  const target = await portalTargetOf(type, docKey);
   if (!target) return null;
   const access = await portalAccessFor(session, target);
   if (!access.canView) return null;
 
-  const key = { yearMonth_seq: { yearMonth, seq } };
+  const key = { docRef: docKey.docRef };
   const base = {
     type,
-    number: target.id,
+    id: docIdOf(docKey),
+    number: docNumberOf(docKey),
     showsPrices: true,
     validUntil: null,
     customerOrderRef: null,
@@ -508,14 +523,13 @@ export async function getPortalDocument(
       if (!r) return null;
       // 見積から起こされた注文請書へ辿れるようにする（「この見積はどうなった？」）。
       const acceptances = await prisma.orderAcceptance.findMany({
-        where: { quoteYearMonth: yearMonth, quoteSeq: seq },
+        where: { quote: { docRef: docKey.docRef } },
         select: {
-          yearMonth: true,
-          seq: true,
+          docRef: true,
           orderDate: true,
           createdAt: true,
         },
-        orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+        orderBy: NEWEST_FIRST,
         take: MAX_RELATED,
       });
       const lineItems = r.items.map((it) => ({
@@ -539,8 +553,7 @@ export async function getPortalDocument(
           session,
           acceptances.map((a) => ({
             type: "order_acceptances" as const,
-            yearMonth: a.yearMonth,
-            seq: a.seq,
+            docRef: a.docRef,
             issuedOn: date(a.orderDate) ?? iso(a.createdAt),
           })),
         ),
@@ -555,8 +568,7 @@ export async function getPortalDocument(
           orderDate: true,
           customerOrderRef: true,
           currency: true,
-          quoteYearMonth: true,
-          quoteSeq: true,
+          quote: { select: { docRef: true } },
           items: {
             // ★ 許可リスト。lot_number / is_locked / item_id は取らない。
             select: {
@@ -573,8 +585,7 @@ export async function getPortalDocument(
                     select: {
                       deliveryNotes: {
                         select: {
-                          yearMonth: true,
-                          seq: true,
+                          docRef: true,
                           deliveredAt: true,
                           createdAt: true,
                         },
@@ -585,9 +596,9 @@ export async function getPortalDocument(
               },
               invoiceItems: {
                 select: {
-                  invoiceYearMonth: true,
-                  invoiceSeq: true,
-                  invoice: { select: { issuedAt: true, createdAt: true } },
+                  invoice: {
+                    select: { docRef: true, issuedAt: true, createdAt: true },
+                  },
                 },
               },
             },
@@ -602,21 +613,15 @@ export async function getPortalDocument(
       if (!r) return null;
 
       const refs: PortalRelatedRef[] = [];
-      if (r.quoteYearMonth && r.quoteSeq != null) {
-        refs.push({
-          type: "quotes",
-          yearMonth: r.quoteYearMonth,
-          seq: r.quoteSeq,
-          issuedOn: null,
-        });
+      if (r.quote) {
+        refs.push({ type: "quotes", docRef: r.quote.docRef, issuedOn: null });
       }
       for (const line of r.items) {
         for (const di of line.deliveryItems) {
           for (const n of di.deliveryOrder.deliveryNotes) {
             refs.push({
               type: "delivery_notes",
-              yearMonth: n.yearMonth,
-              seq: n.seq,
+              docRef: n.docRef,
               issuedOn: iso(n.deliveredAt ?? n.createdAt),
             });
           }
@@ -624,7 +629,7 @@ export async function getPortalDocument(
         for (const ii of line.invoiceItems) {
           refs.push({
             type: "invoices",
-            ...legacyDocKey(ii.invoiceYearMonth, ii.invoiceSeq),
+            docRef: ii.invoice.docRef,
             issuedOn: iso(ii.invoice.issuedAt ?? ii.invoice.createdAt),
           });
         }
@@ -680,10 +685,12 @@ export async function getPortalDocument(
                 select: {
                   orderLine: {
                     select: {
-                      acceptanceYearMonth: true,
-                      acceptanceSeq: true,
                       acceptance: {
-                        select: { orderDate: true, createdAt: true },
+                        select: {
+                          docRef: true,
+                          orderDate: true,
+                          createdAt: true,
+                        },
                       },
                     },
                   },
@@ -701,24 +708,24 @@ export async function getPortalDocument(
         if (!line) continue;
         refs.push({
           type: "order_acceptances",
-          ...legacyDocKey(line.acceptanceYearMonth, line.acceptanceSeq),
+          docRef: line.acceptance.docRef,
           issuedOn:
             date(line.acceptance.orderDate) ?? iso(line.acceptance.createdAt),
         });
       }
       const invoiced = await prisma.invoiceItem.findMany({
-        where: { deliveryNoteYearMonth: yearMonth, deliveryNoteSeq: seq },
+        where: { deliveryNote: { docRef: docKey.docRef } },
         select: {
-          invoiceYearMonth: true,
-          invoiceSeq: true,
-          invoice: { select: { issuedAt: true, createdAt: true } },
+          invoice: {
+            select: { docRef: true, issuedAt: true, createdAt: true },
+          },
         },
         take: MAX_RELATED,
       });
       for (const ii of invoiced) {
         refs.push({
           type: "invoices",
-          ...legacyDocKey(ii.invoiceYearMonth, ii.invoiceSeq),
+          docRef: ii.invoice.docRef,
           issuedOn: iso(ii.invoice.issuedAt ?? ii.invoice.createdAt),
         });
       }
@@ -767,8 +774,7 @@ export async function getPortalDocument(
               quantity: true,
               unitPrice: true,
               amount: true,
-              deliveryNoteYearMonth: true,
-              deliveryNoteSeq: true,
+              deliveryNote: { select: { docRef: true } },
             },
             orderBy: { sortOrder: "asc" },
           },
@@ -778,11 +784,10 @@ export async function getPortalDocument(
 
       const refs: PortalRelatedRef[] = [];
       for (const it of r.items) {
-        if (it.deliveryNoteYearMonth && it.deliveryNoteSeq != null) {
+        if (it.deliveryNote) {
           refs.push({
             type: "delivery_notes",
-            yearMonth: it.deliveryNoteYearMonth,
-            seq: it.deliveryNoteSeq,
+            docRef: it.deliveryNote.docRef,
             issuedOn: null,
           });
         }

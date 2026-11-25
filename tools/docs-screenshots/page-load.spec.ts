@@ -30,6 +30,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { isIgnoredConsole } from "./console-ignore";
+import { gotoDoc } from "./doc-number";
 import { shots } from "./manifest";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -81,7 +82,8 @@ async function visit(page: Page, url: string): Promise<Issue[]> {
   page.on("pageerror", onErr);
   page.on("console", onConsole);
   try {
-    const res = await page.goto(url, { waitUntil: "networkidle", timeout: 60_000 });
+    // manifest のパスはシードの書類を旧番号で指す（正規の URL へ送られる）。
+    const res = await gotoDoc(page, url, { waitUntil: "networkidle", timeout: 60_000 });
     const status = res?.status() ?? 0;
     if (status >= 400) issues.push({ kind: `http-${status}`, detail: url });
     await page.waitForTimeout(400);

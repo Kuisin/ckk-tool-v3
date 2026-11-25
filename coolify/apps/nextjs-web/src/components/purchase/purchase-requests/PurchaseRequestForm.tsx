@@ -39,6 +39,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { docNo } from "@/lib/doc-number";
 import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
@@ -159,10 +160,10 @@ export function PurchaseRequestForm({
           message:
             mode === "edit"
               ? tr("purchase.purchaseRequestForm.updatedWithNumber", {
-                  requestNumber: result.data.requestNumber,
+                  requestNumber: docNo(result.data.requestNumber),
                 })
               : tr("purchase.purchaseRequestForm.createdWithNumber", {
-                  requestNumber: result.data.requestNumber,
+                  requestNumber: docNo(result.data.requestNumber),
                 }),
           color: "green",
         });
@@ -201,7 +202,7 @@ export function PurchaseRequestForm({
       title={
         mode === "edit"
           ? tr("purchase.purchaseRequestForm.editWithNumber", {
-              requestNumber: requestNumber ?? "",
+              requestNumber: docNo(requestNumber ?? ""),
             })
           : tr("purchase.purchaseRequests.newPurchaseRequest")
       }

@@ -15,13 +15,35 @@
 --     NULL になり得る。INNER だと作成途中の行が黙って消える）。
 --   * 名前は文字列で公開: マスタは coalesce(x.name->>'ja', x.name->>'en')、
 --     人は users.display_name（plain text）。マスタは name_ja / name_en も分けて出す。
---   * 書類番号は既存 build-business-dashboards.py と同じ導出:
---     'ORD-'||year_month||'-'||lpad(seq,5,'0') など。注文明細は枝番 -NN を付与。
+--   * 書類番号は**DB が払い出した値をそのまま出す**（番号設計 PR-C,
+--     20261126230000_document_numbering）: 各書類の doc_number
+--     （PREFIX-FFFF-NNNNN。例 QOT-2026-00001 — 自社法人 × 会計年度の連番）、
+--     注文明細は order_lines.line_number（ORD-FFFF-NNNNN-NN。枝番が付く前 =
+--     未確定の明細は NULL なので、請書の番号 ORD-FFFF-NNNNN へ落とす）。
+--     ビュー側で year_month / seq から組み立てない。旧列 (year_month, seq) /
+--     po_number / request_number と、子の (…_year_month, …_seq) は新しい行では
+--     NULL で、PR-D で落とす — **番号の導出にも結合にも使わないこと**。
+--     親子は uuid（quote_id / acceptance_id / delivery_order_id …）で結ぶ。
+--   * 番号つき書類のビューは fiscal_year（会計年度）/ seq（年度内連番 = doc_seq）/
+--     company_code（発行した自社法人のコード。番号は法人ごとに 00001 から始まる
+--     ので、**法人が 2 つ以上あると番号だけでは一意にならない** — 番号 + これで
+--     一意）/ legacy_number（振り直し前の旧番号 PREFIX-YYYYMM-NNNNN。新しい行は
+--     NULL）を持つ。出力列名 po_number / request_number は互換のため据え置き
+--     （中身は doc_number）。
 --   * 列名は英 snake_case（日本語表示は Metabase 側 metabase-business-ja.sql で付ける）。
 --   * 冪等。列構成を変えるときは CREATE OR REPLACE では消せないので DROP VIEW してから。
+--     書類番号を出すビューは毎回 DROP VIEW IF EXISTS … CASCADE → CREATE で作り直す
+--     （CASCADE で落ちる依存ビュー v_order_lines_disp / v_invoices_disp も、この
+--     ファイルの後ろで必ず作り直している）。全体を 1 トランザクションで包むので、
+--     途中で落ちれば旧ビューがそのまま残り、作り直しの間にビューが消えて見える
+--     こともない。権限は既定権限（grants.sql の ALTER DEFAULT PRIVILEGES）で付く。
 --     権限は grants.sql（analytics ブロック）が付与する。
 --
 --   docker exec -i shared-db psql -U postgres -d ckk -v ON_ERROR_STOP=1 < analytics-views.sql
+
+BEGIN;
+-- DROP VIEW IF EXISTS / CASCADE の NOTICE でデプロイログを埋めない（この取引の間だけ）。
+SET LOCAL client_min_messages = warning;
 
 CREATE SCHEMA IF NOT EXISTS analytics;
 
@@ -47,10 +69,11 @@ FROM app.currencies c;
 -- 販売 (Sales)
 -- =====================================================================
 
+DROP VIEW IF EXISTS analytics.v_estimates CASCADE;
 CREATE OR REPLACE VIEW analytics.v_estimates WITH (security_invoker = true) AS
 SELECT
-  'EST-'||e.year_month||'-'||lpad(e.seq::text,5,'0') AS estimate_no,
-  e.year_month, e.seq, e.name, e.tool_type, e.status,
+  e.doc_number AS estimate_no,
+  e.fiscal_year, e.doc_seq AS seq, e.name, e.tool_type, e.status,
   coalesce(cust.name->>'ja', cust.name->>'en')   AS customer_name,
   coalesce(prod.name->>'ja', prod.name->>'en')   AS product_name,
   coalesce(mt.name->>'ja',   mt.name->>'en')      AS material_type_name,
@@ -69,8 +92,11 @@ SELECT
   CASE WHEN e.kind = 'PRICE'
        THEN (e.result->'lots'->0->>'estimateUnitPrice')::numeric
             - (e.result->>'costTotal')::numeric END     AS gross_margin,
-  e.kind
+  e.kind,
+  oc.code AS company_code,
+  e.legacy_number
 FROM app.estimates e
+LEFT JOIN app.own_companies oc       ON oc.id = e.own_company_id
 LEFT JOIN app.business_partners cust ON cust.id = e.customer_bp_id
 LEFT JOIN app.items prod             ON prod.id = e.item_id
 LEFT JOIN app.material_types mt      ON mt.id = e.material_type_id
@@ -82,10 +108,11 @@ LEFT JOIN app.users cu               ON cu.id = e.created_by;
 -- もので、あとで基準を直しても保存済みの行は動かない。見積単価（final）は含まない
 -- — それは v_estimates.estimate_unit_price。印を入れる前に保存した価格試算は
 -- result に items を持たないので、このビューに行が出ない。
+DROP VIEW IF EXISTS analytics.v_estimate_cost_items CASCADE;
 CREATE OR REPLACE VIEW analytics.v_estimate_cost_items WITH (security_invoker = true) AS
 SELECT
-  'EST-'||e.year_month||'-'||lpad(e.seq::text,5,'0') AS estimate_no,
-  e.year_month, e.tool_type, e.status,
+  e.doc_number AS estimate_no,
+  e.fiscal_year, e.tool_type, e.status,
   it.ord::int                    AS item_order,
   it.item->>'id'                 AS criterion_id,
   it.item->>'name'               AS criterion_name,
@@ -99,59 +126,69 @@ CROSS JOIN LATERAL jsonb_array_elements(
   CASE WHEN jsonb_typeof(e.result->'items') = 'array' THEN e.result->'items' ELSE '[]'::jsonb END
 ) WITH ORDINALITY AS it(item, ord);
 
+DROP VIEW IF EXISTS analytics.v_price_list_entries CASCADE;
 CREATE OR REPLACE VIEW analytics.v_price_list_entries WITH (security_invoker = true) AS
 SELECT
-  'PRC-'||pe.year_month||'-'||lpad(pe.seq::text,5,'0') AS price_list_no,
-  pe.year_month, pe.seq, pe.currency, pe.is_active,
+  pe.doc_number AS price_list_no,
+  pe.fiscal_year, pe.doc_seq AS seq, pe.currency, pe.is_active,
   coalesce(cust.name->>'ja', cust.name->>'en') AS customer_name,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
   su.display_name AS sales_staff,
-  pe.created_at, pe.updated_at
+  pe.created_at, pe.updated_at,
+  oc.code AS company_code,
+  pe.legacy_number
 FROM app.price_list_entries pe
+LEFT JOIN app.own_companies oc       ON oc.id = pe.own_company_id
 LEFT JOIN app.business_partners cust ON cust.id = pe.customer_bp_id
 LEFT JOIN app.items prod             ON prod.id = pe.item_id
 LEFT JOIN app.users su               ON su.id = pe.sales_rep_id;
 
+DROP VIEW IF EXISTS analytics.v_price_list_variants CASCADE;
 CREATE OR REPLACE VIEW analytics.v_price_list_variants WITH (security_invoker = true) AS
 SELECT
   v.id,
-  'PRC-'||v.entry_year_month||'-'||lpad(v.entry_seq::text,5,'0') AS price_list_no,
+  pe.doc_number AS price_list_no,
   coalesce(cust.name->>'ja', cust.name->>'en') AS customer_name,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
   v.order_type, v.base_unit_price, v.valid_from, v.valid_until,
-  CASE WHEN v.estimate_year_month IS NOT NULL
-       THEN 'EST-'||v.estimate_year_month||'-'||lpad(v.estimate_seq::text,5,'0') END AS estimate_no,
+  est.doc_number AS estimate_no,
   v.is_active, v.created_at, v.updated_at,
   pe.currency,
   round(v.base_unit_price * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                   AS base_unit_price_jpy,
   round(v.base_unit_price * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS base_unit_price_usd
 FROM app.price_list_variants v
-JOIN app.price_list_entries pe ON pe.year_month = v.entry_year_month AND pe.seq = v.entry_seq
+JOIN app.price_list_entries pe ON pe.id = v.entry_id
+LEFT JOIN app.estimates est          ON est.id = v.estimate_id
 LEFT JOIN app.business_partners cust ON cust.id = pe.customer_bp_id
 LEFT JOIN app.items prod             ON prod.id = pe.item_id
 LEFT JOIN app.currencies cur         ON cur.code = pe.currency
 LEFT JOIN app.currencies usd         ON usd.code = 'USD';
 
+DROP VIEW IF EXISTS analytics.v_quotes CASCADE;
 CREATE OR REPLACE VIEW analytics.v_quotes WITH (security_invoker = true) AS
 SELECT
-  'QOT-'||q.year_month||'-'||lpad(q.seq::text,5,'0') AS quote_no,
-  q.year_month, q.seq, q.status, q.valid_until,
+  q.doc_number AS quote_no,
+  q.fiscal_year, q.doc_seq AS seq, q.status, q.valid_until,
   coalesce(cust.name->>'ja', cust.name->>'en')   AS customer_name,
   coalesce(branch.name->>'ja', branch.name->>'en') AS customer_branch_name,
   su.display_name AS sales_staff,
   cu.display_name AS created_by_name,
   q.created_at, q.updated_at,
-  q.currency
+  q.currency,
+  oc.code AS company_code,
+  q.legacy_number
 FROM app.quotes q
+LEFT JOIN app.own_companies oc         ON oc.id = q.own_company_id
 LEFT JOIN app.business_partners cust   ON cust.id = q.customer_bp_id
 LEFT JOIN app.business_partners branch ON branch.id = q.customer_branch_bp_id
 LEFT JOIN app.users su ON su.id = q.sales_rep_id
 LEFT JOIN app.users cu ON cu.id = q.created_by;
 
+DROP VIEW IF EXISTS analytics.v_quote_items CASCADE;
 CREATE OR REPLACE VIEW analytics.v_quote_items WITH (security_invoker = true) AS
 SELECT
   qi.id,
-  'QOT-'||qi.quote_year_month||'-'||lpad(qi.quote_seq::text,5,'0') AS quote_no,
+  q.doc_number AS quote_no,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
   qi.order_type, qi.quantity, qi.unit_price, qi.discount_amount, qi.amount,
   qi.delivery_date, qi.sort_order,
@@ -162,21 +199,22 @@ SELECT
   round(qi.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)     AS amount_usd
 FROM app.quote_items qi
 LEFT JOIN app.items prod ON prod.id = qi.item_id
-LEFT JOIN app.quotes q ON q.year_month = qi.quote_year_month AND q.seq = qi.quote_seq
+LEFT JOIN app.quotes q ON q.id = qi.quote_id
 LEFT JOIN app.currencies cur ON cur.code = q.currency
 LEFT JOIN app.currencies usd ON usd.code = 'USD';
 
 -- ship_to_name / assigned_plant_name は @deprecated（order_line_delivery,
 -- 20261024090000）— 配送は明細ごとになったので、このヘッダ由来の 2 列は
--- このデプロイ以降アプリが書かなくなった時点の値のまま動かない。CREATE OR
--- REPLACE VIEW は列の削除・並べ替えを許さないため、ここでは残す。明細側の
+-- このデプロイ以降アプリが書かなくなった時点の値のまま動かない。保存済みの
+-- Metabase の質問が見ているので、列を落とすまでは残す。明細側の
 -- 値は v_order_lines の ship_to_name / delivery_method / assigned_plant_name
 -- を見ること。ヘッダ列は Phase 2（order_acceptances から DROP COLUMN する
 -- migration）と同じコミットで、この 2 列ごとビューから外す。
+DROP VIEW IF EXISTS analytics.v_order_acceptances CASCADE;
 CREATE OR REPLACE VIEW analytics.v_order_acceptances WITH (security_invoker = true) AS
 SELECT
-  'ORD-'||oa.year_month||'-'||lpad(oa.seq::text,5,'0') AS order_no,
-  oa.year_month, oa.seq, oa.status, oa.order_date, oa.customer_order_ref,
+  oa.doc_number AS order_no,
+  oa.fiscal_year, oa.doc_seq AS seq, oa.status, oa.order_date, oa.customer_order_ref,
   coalesce(cust.name->>'ja', cust.name->>'en')     AS customer_name,
   coalesce(branch.name->>'ja', branch.name->>'en') AS customer_branch_name,
   coalesce(ship.name->>'ja', ship.name->>'en')     AS ship_to_name,
@@ -185,9 +223,12 @@ SELECT
   coalesce(pl.name->>'ja', pl.name->>'en')         AS assigned_plant_name,
   oa.created_at, oa.updated_at,
   oa.currency,
-  CASE WHEN oa.quote_year_month IS NOT NULL THEN
-    'QOT-'||oa.quote_year_month||'-'||lpad(oa.quote_seq::text,5,'0') END AS quote_no
+  q.doc_number AS quote_no,
+  oc.code AS company_code,
+  oa.legacy_number
 FROM app.order_acceptances oa
+LEFT JOIN app.own_companies oc         ON oc.id = oa.own_company_id
+LEFT JOIN app.quotes q                 ON q.id = oa.quote_id
 LEFT JOIN app.business_partners cust   ON cust.id = oa.customer_bp_id
 LEFT JOIN app.business_partners branch ON branch.id = oa.customer_branch_bp_id
 LEFT JOIN app.business_partners ship   ON ship.id = oa.ship_to_bp_id
@@ -197,12 +238,12 @@ LEFT JOIN app.plants pl ON pl.id = oa.assigned_plant_id;
 
 -- 注文明細 — 報告された多段ケース（明細→請書ヘッダ→営業担当）。
 -- ⚠️ 列は必ず末尾に足すこと（v_design_requests と同じ注意）。
+DROP VIEW IF EXISTS analytics.v_order_lines CASCADE;
 CREATE OR REPLACE VIEW analytics.v_order_lines WITH (security_invoker = true) AS
 SELECT
   ol.id,
-  'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
-    || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END AS order_line_no,
-  ol.acceptance_year_month, ol.acceptance_seq, ol.branch,
+  coalesce(ol.line_number, oa.doc_number) AS order_line_no,
+  ol.branch,
   oa.status AS acceptance_status, oa.order_date, oa.customer_order_ref,
   coalesce(cust.name->>'ja', cust.name->>'en') AS customer_name,
   su.display_name                              AS sales_staff,
@@ -217,9 +258,8 @@ SELECT
   round(ol.unit_price * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)   AS unit_price_usd,
   round(ol.amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                         AS amount_jpy,
   round(ol.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)       AS amount_usd,
-  'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0') AS order_no,
-  CASE WHEN oa.quote_year_month IS NOT NULL THEN
-    'QOT-'||oa.quote_year_month||'-'||lpad(oa.quote_seq::text,5,'0') END AS quote_no,
+  oa.doc_number AS order_no,
+  q.doc_number AS quote_no,
   -- 配送（§2/§8）— 20261024090000 で明細ごとに移した。ヘッダ側
   -- （v_order_acceptances.ship_to_name / assigned_plant_name）はこの時点の
   -- 値のまま動かなくなるので、以後はこちらを読むこと。
@@ -227,8 +267,8 @@ SELECT
   ol.delivery_method,
   coalesce(plt.name->>'ja', plt.name->>'en')   AS assigned_plant_name
 FROM app.order_lines ol
-JOIN app.order_acceptances oa
-  ON oa.year_month = ol.acceptance_year_month AND oa.seq = ol.acceptance_seq
+JOIN app.order_acceptances oa ON oa.id = ol.acceptance_id
+LEFT JOIN app.quotes q               ON q.id = oa.quote_id
 LEFT JOIN app.business_partners cust ON cust.id = oa.customer_bp_id
 LEFT JOIN app.users su               ON su.id = oa.sales_rep_id
 LEFT JOIN app.items prod             ON prod.id = ol.item_id
@@ -238,18 +278,15 @@ LEFT JOIN app.currencies usd         ON usd.code = 'USD'
 LEFT JOIN app.business_partners ship ON ship.id = ol.ship_to_bp_id
 LEFT JOIN app.plants plt             ON plt.id = ol.assigned_plant_id;
 
+DROP VIEW IF EXISTS analytics.v_design_requests CASCADE;
 CREATE OR REPLACE VIEW analytics.v_design_requests WITH (security_invoker = true) AS
 SELECT
-  dr.id, dr.request_number, dr.trigger, dr.status,
+  dr.id, dr.doc_number AS request_number, dr.trigger, dr.status,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
   cu.display_name AS created_by_name,
   dr.completed_at, dr.created_at, dr.updated_at,
-  CASE WHEN ol.id IS NOT NULL THEN
-    'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
-      || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END
-  END AS order_line_no,
-  CASE WHEN dr.quote_year_month IS NOT NULL THEN
-    'QOT-'||dr.quote_year_month||'-'||lpad(dr.quote_seq::text,5,'0') END AS quote_no,
+  coalesce(ol.line_number, ola.doc_number) AS order_line_no,
+  q.doc_number AS quote_no,
   -- ⚠️ 列は必ず末尾に足すこと。CREATE OR REPLACE VIEW は既存列の並べ替え・改名を
   -- 拒否するので、途中に挿入すると db-migrate が ON_ERROR_STOP で落ち、
   -- デプロイ全体が失敗扱いになる。
@@ -263,30 +300,42 @@ SELECT
   dr.desired_at,
   dr.priority,
   dr.change_reason,
-  coalesce(cbp.name->>'ja', cbp.name->>'en') AS customer_name
+  coalesce(cbp.name->>'ja', cbp.name->>'en') AS customer_name,
+  dr.fiscal_year, dr.doc_seq AS seq,
+  oc.code AS company_code,
+  dr.legacy_number
 FROM app.design_requests dr
+LEFT JOIN app.own_companies oc ON oc.id = dr.own_company_id
+LEFT JOIN app.quotes q ON q.id = dr.quote_id
 LEFT JOIN app.items prod ON prod.id = dr.item_id
 LEFT JOIN app.users cu ON cu.id = dr.created_by
 LEFT JOIN app.users au ON au.id = dr.assignee_id
 LEFT JOIN app.business_partners cbp ON cbp.id = dr.customer_bp_id
-LEFT JOIN app.order_lines ol ON ol.id = dr.order_line_id;
+LEFT JOIN app.order_lines ol ON ol.id = dr.order_line_id
+LEFT JOIN app.order_acceptances ola ON ola.id = ol.acceptance_id;
 
 -- =====================================================================
 -- 購買 (Purchasing)
 -- =====================================================================
 
+DROP VIEW IF EXISTS analytics.v_purchase_requests CASCADE;
 CREATE OR REPLACE VIEW analytics.v_purchase_requests WITH (security_invoker = true) AS
 SELECT
-  pr.id, pr.request_number, pr.status, pr.purpose,
+  pr.id, pr.doc_number AS request_number, pr.status, pr.purpose,
   ru.display_name AS requested_by_name,
   au.display_name AS approved_by_name,
   pr.requested_at, pr.approved_at, pr.created_at, pr.updated_at,
-  po.po_number
+  po.doc_number AS po_number,
+  pr.fiscal_year, pr.doc_seq AS seq,
+  oc.code AS company_code,
+  pr.legacy_number
 FROM app.purchase_requests pr
+LEFT JOIN app.own_companies oc ON oc.id = pr.own_company_id
 LEFT JOIN app.users ru ON ru.id = pr.requested_by
 LEFT JOIN app.users au ON au.id = pr.approved_by
 LEFT JOIN app.material_purchase_orders po ON po.id = pr.purchase_order_id;
 
+DROP VIEW IF EXISTS analytics.v_purchase_request_items CASCADE;
 CREATE OR REPLACE VIEW analytics.v_purchase_request_items WITH (security_invoker = true) AS
 SELECT
   pri.id, pri.request_id,
@@ -295,15 +344,16 @@ SELECT
   pri.quantity, pri.unit, pri.desired_at,
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
   pri.sort_order,
-  pr.request_number
+  pr.doc_number AS request_number
 FROM app.purchase_request_items pri
 LEFT JOIN app.items m ON m.id = pri.item_id
 LEFT JOIN app.plants pl ON pl.id = pri.plant_id
 LEFT JOIN app.purchase_requests pr ON pr.id = pri.request_id;
 
+DROP VIEW IF EXISTS analytics.v_material_purchase_orders CASCADE;
 CREATE OR REPLACE VIEW analytics.v_material_purchase_orders WITH (security_invoker = true) AS
 SELECT
-  po.id, po.po_number, po.status,
+  po.id, po.doc_number AS po_number, po.status,
   coalesce(sup.name->>'ja', sup.name->>'en') AS supplier_name,
   po.total_amount, po.currency, po.purchase_date,
   ru.display_name AS requested_by_name,
@@ -312,8 +362,12 @@ SELECT
   po.requested_at, po.approved_at, po.ordered_at, po.completed_at,
   po.created_at, po.updated_at,
   round(po.total_amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                   AS total_amount_jpy,
-  round(po.total_amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS total_amount_usd
+  round(po.total_amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS total_amount_usd,
+  po.fiscal_year, po.doc_seq AS seq,
+  oc.code AS company_code,
+  po.legacy_number
 FROM app.material_purchase_orders po
+LEFT JOIN app.own_companies oc ON oc.id = po.own_company_id
 LEFT JOIN app.business_partners sup ON sup.id = po.supplier_bp_id
 LEFT JOIN app.users ru ON ru.id = po.requested_by
 LEFT JOIN app.users au ON au.id = po.approved_by
@@ -321,6 +375,7 @@ LEFT JOIN app.users ou ON ou.id = po.ordered_by
 LEFT JOIN app.currencies cur ON cur.code = po.currency
 LEFT JOIN app.currencies usd ON usd.code = 'USD';
 
+DROP VIEW IF EXISTS analytics.v_material_purchase_order_items CASCADE;
 CREATE OR REPLACE VIEW analytics.v_material_purchase_order_items WITH (security_invoker = true) AS
 SELECT
   poi.id, poi.purchase_order_id,
@@ -331,7 +386,7 @@ SELECT
   poi.received_quantity, poi.expected_at, poi.sort_order,
   round(poi.amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                   AS amount_jpy,
   round(poi.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS amount_usd,
-  po.po_number
+  po.doc_number AS po_number
 FROM app.material_purchase_order_items poi
 LEFT JOIN app.material_purchase_orders po ON po.id = poi.purchase_order_id
 LEFT JOIN app.items m ON m.id = poi.item_id
@@ -339,6 +394,7 @@ LEFT JOIN app.plants pl ON pl.id = poi.plant_id
 LEFT JOIN app.currencies cur ON cur.code = poi.currency
 LEFT JOIN app.currencies usd ON usd.code = 'USD';
 
+DROP VIEW IF EXISTS analytics.v_material_receipts CASCADE;
 CREATE OR REPLACE VIEW analytics.v_material_receipts WITH (security_invoker = true) AS
 SELECT
   mr.id,
@@ -349,7 +405,7 @@ SELECT
   mr.quantity, mr.unit, mr.received_at,
   cu.display_name AS created_by_name,
   mr.created_at,
-  po.po_number
+  po.doc_number AS po_number
 FROM app.material_receipts mr
 LEFT JOIN app.items m ON m.id = mr.item_id
 LEFT JOIN app.business_partners sup ON sup.id = mr.supplier_bp_id
@@ -362,11 +418,12 @@ LEFT JOIN app.material_purchase_orders po ON po.id = poi.purchase_order_id;
 -- 生産 (Production)
 -- =====================================================================
 
+DROP VIEW IF EXISTS analytics.v_work_orders CASCADE;
 CREATE OR REPLACE VIEW analytics.v_work_orders WITH (security_invoker = true) AS
 SELECT
-  'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') AS work_order_no,
+  wo.doc_number AS work_order_no,
   wo.work_order_number AS lot_number,
-  wo.year_month, wo.seq, wo.type, wo.status, wo.approval_status, wo.planned_quantity,
+  wo.fiscal_year, wo.doc_seq AS seq, wo.type, wo.status, wo.approval_status, wo.planned_quantity,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
   coalesce(m.name->>'ja', m.name->>'en')       AS material_name,
   coalesce(sl.name->>'ja', sl.name->>'en')     AS storage_location_name,
@@ -374,8 +431,11 @@ SELECT
   au.display_name AS approved_by_name,
   wo.approved_at, wo.started_at, wo.completed_at, wo.created_at, wo.updated_at,
   prod.currency,  -- 製品の通貨（指示書自体は通貨を持たない — フィルタ用）
-  ords.order_line_nos  -- 割当済み注文明細番号（ORD-…-NN。m:n — 複数はカンマ区切り、割当ゼロ = NULL）
+  ords.order_line_nos,  -- 割当済み注文明細番号（ORD-…-NN。m:n — 複数はカンマ区切り、割当ゼロ = NULL）
+  oc.code AS company_code,
+  wo.legacy_number
 FROM app.work_orders wo
+LEFT JOIN app.own_companies oc       ON oc.id = wo.own_company_id
 LEFT JOIN app.items prod             ON prod.id = wo.product_item_id
 LEFT JOIN app.items m                ON m.id = wo.material_item_id
 LEFT JOIN app.storage_locations sl   ON sl.id = wo.storage_location_id
@@ -383,18 +443,19 @@ LEFT JOIN app.users cu ON cu.id = wo.created_by
 LEFT JOIN app.users au ON au.id = wo.approved_by
 LEFT JOIN LATERAL (
   SELECT string_agg(
-           'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
-             || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END,
-           ', ' ORDER BY ol.acceptance_year_month, ol.acceptance_seq, ol.branch) AS order_line_nos
+           coalesce(ol.line_number, ola.doc_number),
+           ', ' ORDER BY coalesce(ol.line_number, ola.doc_number)) AS order_line_nos
   FROM app.work_order_order_lines wol
   JOIN app.order_lines ol ON ol.id = wol.order_line_id
+  JOIN app.order_acceptances ola ON ola.id = ol.acceptance_id
   WHERE wol.work_order_id = wo.id
 ) ords ON true;
 
+DROP VIEW IF EXISTS analytics.v_work_order_steps CASCADE;
 CREATE OR REPLACE VIEW analytics.v_work_order_steps WITH (security_invoker = true) AS
 SELECT
   wos.id,
-  'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') AS work_order_no,
+  wo.doc_number AS work_order_no,
   wo.work_order_number AS lot_number,
   coalesce(ps.name->>'ja', ps.name->>'en') AS process_step_name,
   ps.category AS process_category,
@@ -412,14 +473,15 @@ LEFT JOIN app.plants pl  ON pl.id = wos.plant_id
 LEFT JOIN app.business_partners sup ON sup.id = wos.supplier_bp_id
 LEFT JOIN LATERAL (
   SELECT string_agg(
-           'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
-             || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END,
-           ', ' ORDER BY ol.acceptance_year_month, ol.acceptance_seq, ol.branch) AS order_line_nos
+           coalesce(ol.line_number, ola.doc_number),
+           ', ' ORDER BY coalesce(ol.line_number, ola.doc_number)) AS order_line_nos
   FROM app.work_order_order_lines wol
   JOIN app.order_lines ol ON ol.id = wol.order_line_id
+  JOIN app.order_acceptances ola ON ola.id = ol.acceptance_id
   WHERE wol.work_order_id = wo.id
 ) ords ON true;
 
+DROP VIEW IF EXISTS analytics.v_work_order_step_plans CASCADE;
 CREATE OR REPLACE VIEW analytics.v_work_order_step_plans WITH (security_invoker = true) AS
 SELECT
   sp.id, sp.work_order_step_id,
@@ -428,7 +490,7 @@ SELECT
   coalesce(wl.name->>'ja', wl.name->>'en') AS work_location_name,
   sp.planned_date, sp.planned_start_at, sp.planned_end_at, sp.quantity,
   sp.created_at,
-  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
+  wo.doc_number AS work_order_no,
   wo.work_order_number AS lot_number
 FROM app.work_order_step_plans sp
 LEFT JOIN app.work_order_steps wos ON wos.id = sp.work_order_step_id
@@ -437,6 +499,7 @@ LEFT JOIN app.process_step_catalog ps ON ps.id = wos.process_step_id
 LEFT JOIN app.users u ON u.id = sp.user_id
 LEFT JOIN app.work_locations wl ON wl.id = sp.work_location_id;
 
+DROP VIEW IF EXISTS analytics.v_work_order_step_actuals CASCADE;
 CREATE OR REPLACE VIEW analytics.v_work_order_step_actuals WITH (security_invoker = true) AS
 SELECT
   sa.id, sa.work_order_step_id,
@@ -445,7 +508,7 @@ SELECT
   sa.worked_date, sa.started_at, sa.ended_at, sa.quantity,
   round(extract(epoch FROM (sa.ended_at - sa.started_at))/3600.0, 2) AS work_hours,
   sa.created_at,
-  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
+  wo.doc_number AS work_order_no,
   wo.work_order_number AS lot_number
 FROM app.work_order_step_actuals sa
 LEFT JOIN app.work_order_steps wos ON wos.id = sa.work_order_step_id
@@ -453,6 +516,7 @@ LEFT JOIN app.work_orders wo ON wo.id = wos.work_order_id
 LEFT JOIN app.process_step_catalog ps ON ps.id = wos.process_step_id
 LEFT JOIN app.users u ON u.id = sa.user_id;
 
+DROP VIEW IF EXISTS analytics.v_inspection_records CASCADE;
 CREATE OR REPLACE VIEW analytics.v_inspection_records WITH (security_invoker = true) AS
 SELECT
   ir.id, ir.work_order_step_id,
@@ -461,7 +525,7 @@ SELECT
   ru.display_name AS recorded_by_name,
   au.display_name AS approved_by_name,
   ir.recorded_at, ir.approved_at,
-  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
+  wo.doc_number AS work_order_no,
   wo.work_order_number AS lot_number
 FROM app.inspection_records ir
 LEFT JOIN app.inspection_templates it ON it.id = ir.template_id
@@ -470,6 +534,7 @@ LEFT JOIN app.users au ON au.id = ir.approved_by
 LEFT JOIN app.work_order_steps wos ON wos.id = ir.work_order_step_id
 LEFT JOIN app.work_orders wo ON wo.id = wos.work_order_id;
 
+DROP VIEW IF EXISTS analytics.v_defect_records CASCADE;
 CREATE OR REPLACE VIEW analytics.v_defect_records WITH (security_invoker = true) AS
 SELECT
   dr.id, dr.work_order_step_id,
@@ -477,7 +542,7 @@ SELECT
   dr.description,
   ru.display_name AS recorded_by_name,
   dr.recorded_at,
-  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
+  wo.doc_number AS work_order_no,
   wo.work_order_number AS lot_number
 FROM app.defect_records dr
 LEFT JOIN app.defect_types dt ON dt.id = dr.defect_type_id
@@ -529,7 +594,8 @@ FROM app.wip_states ws;
 -- （is_semi_finished で分けられる）。仕掛品だけを仕掛ブランクの軸で読みたいときは
 -- v_wip_inventory。
 -- 末尾の 4 列（wip_state / aimed_product_name / finished_*）は足しただけなので
--- CREATE OR REPLACE のまま（途中へ挿すと DROP が要る — ファイル冒頭の規約）。
+-- 列の追加だけ（途中へ挿すと DROP が要る — ファイル冒頭の規約）。
+DROP VIEW IF EXISTS analytics.v_product_inventory CASCADE;
 CREATE OR REPLACE VIEW analytics.v_product_inventory WITH (security_invoker = true) AS
 SELECT
   ii.id,
@@ -540,7 +606,7 @@ SELECT
   ii.lot_number, ii.quantity, ii.reserved_quantity, ii.is_semi_finished,
   ii.updated_at,
   prod.currency,  -- 品目の通貨（フィルタ用）
-  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
+  wo.doc_number AS work_order_no,
   -- 仕掛品の中身（完成品の行ではどれも NULL）。
   ws.state_label AS wip_state,
   CASE WHEN ii.aimed_item_id IS NOT NULL
@@ -637,7 +703,7 @@ SELECT
   ii.quantity - ii.reserved_quantity AS available_quantity,
   ii.unit,
   coalesce(ps.name->>'ja', ps.name->>'en') AS source_process_step_name,
-  CASE WHEN swo.id IS NOT NULL THEN 'WOR-'||swo.year_month||'-'||lpad(swo.seq::text,5,'0') END AS source_work_order_no,
+  swo.doc_number AS source_work_order_no,
   rcv.stocked_at,
   ((now() AT TIME ZONE 'Asia/Tokyo')::date
     - (rcv.stocked_at AT TIME ZONE 'Asia/Tokyo')::date) AS age_days,
@@ -711,6 +777,7 @@ WHERE ii.custody_bp_id IS NOT NULL;
 -- 預り品（顧客の工具 — 再研磨のために預かっている分）。自社在庫とは別のビュー
 -- （混ぜると合計に足される）。「どの顧客の工具を何本預かっているか」に答える。
 -- 外注へ出している分は custody_partner_name が入る。
+DROP VIEW IF EXISTS analytics.v_item_customer_owned_inventory CASCADE;
 CREATE OR REPLACE VIEW analytics.v_item_customer_owned_inventory WITH (security_invoker = true) AS
 SELECT
   ii.id,
@@ -726,7 +793,7 @@ SELECT
   ii.quantity,
   ii.unit,
   ii.updated_at,
-  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no
+  wo.doc_number AS work_order_no
 FROM app.item_inventory ii
 JOIN app.items i ON i.id = ii.item_id
 JOIN app.business_partners ob ON ob.id = ii.owner_bp_id
@@ -735,15 +802,16 @@ LEFT JOIN app.plants pl ON pl.id = ii.plant_id
 LEFT JOIN app.work_orders wo ON wo.work_order_number = ii.lot_number
 WHERE ii.owner_bp_id IS NOT NULL;
 
+DROP VIEW IF EXISTS analytics.v_inventory_reservations CASCADE;
 CREATE OR REPLACE VIEW analytics.v_inventory_reservations WITH (security_invoker = true) AS
 SELECT
   r.id, r.inventory_type, r.inventory_id, r.quantity, r.status,
-  'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
-    || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END AS order_line_no,
-  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
+  coalesce(ol.line_number, ola.doc_number) AS order_line_no,
+  wo.doc_number AS work_order_no,
   r.reserved_at, r.confirmed_at, r.released_at
 FROM app.inventory_reservations r
 LEFT JOIN app.order_lines ol ON ol.id = r.order_line_id
+LEFT JOIN app.order_acceptances ola ON ola.id = ol.acceptance_id
 LEFT JOIN app.work_orders wo ON wo.id = r.work_order_id;
 
 CREATE OR REPLACE VIEW analytics.v_inventory_transactions WITH (security_invoker = true) AS
@@ -761,27 +829,30 @@ LEFT JOIN app.users cu ON cu.id = t.created_by;
 
 -- 出荷書は営業担当スナップショット列を持たない — 明細の注文明細 → 注文請書
 -- ヘッダの sales_rep_id から導出する（担当が一意に定まるときだけ名前を出す）。
+DROP VIEW IF EXISTS analytics.v_delivery_orders CASCADE;
 CREATE OR REPLACE VIEW analytics.v_delivery_orders WITH (security_invoker = true) AS
 SELECT
-  'DOR-'||dor.year_month||'-'||lpad(dor.seq::text,5,'0') AS delivery_order_no,
-  dor.year_month, dor.seq, dor.type, dor.status,
+  dor.doc_number AS delivery_order_no,
+  dor.fiscal_year, dor.doc_seq AS seq, dor.type, dor.status,
   coalesce(cust.name->>'ja', cust.name->>'en')     AS customer_name,
   coalesce(branch.name->>'ja', branch.name->>'en') AS customer_branch_name,
   rep.sales_staff,
   coalesce(pl.name->>'ja', pl.name->>'en')         AS from_plant_name,
-  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
+  wo.doc_number AS work_order_no,
   dor.shipped_at, dor.created_at, dor.updated_at,
-  ords.order_line_nos  -- 明細が紐づく注文明細番号（ORD-…-NN。複数はカンマ区切り）
+  ords.order_line_nos,  -- 明細が紐づく注文明細番号（ORD-…-NN。複数はカンマ区切り）
+  oc.code AS company_code,
+  dor.legacy_number
 FROM app.delivery_orders dor
+LEFT JOIN app.own_companies oc ON oc.id = dor.own_company_id
 LEFT JOIN LATERAL (
   SELECT string_agg(DISTINCT
-           'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
-             || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END,
+           coalesce(ol.line_number, ola.doc_number),
            ', ') AS order_line_nos
   FROM app.delivery_order_items di2
   JOIN app.order_lines ol ON ol.id = di2.order_line_id
-  WHERE di2.delivery_order_year_month = dor.year_month
-    AND di2.delivery_order_seq = dor.seq
+  JOIN app.order_acceptances ola ON ola.id = ol.acceptance_id
+  WHERE di2.delivery_order_id = dor.id
 ) ords ON true
 LEFT JOIN app.business_partners cust   ON cust.id = dor.customer_bp_id
 LEFT JOIN app.business_partners branch ON branch.id = dor.customer_branch_bp_id
@@ -790,74 +861,79 @@ LEFT JOIN LATERAL (
               THEN max(su.display_name) END AS sales_staff
   FROM app.delivery_order_items di
   JOIN app.order_lines ol        ON ol.id = di.order_line_id
-  JOIN app.order_acceptances oa  ON oa.year_month = ol.acceptance_year_month
-                                AND oa.seq = ol.acceptance_seq
+  JOIN app.order_acceptances oa  ON oa.id = ol.acceptance_id
   LEFT JOIN app.users su         ON su.id = oa.sales_rep_id
-  WHERE di.delivery_order_year_month = dor.year_month
-    AND di.delivery_order_seq = dor.seq
+  WHERE di.delivery_order_id = dor.id
     AND oa.sales_rep_id IS NOT NULL
 ) rep ON true
 LEFT JOIN app.plants pl ON pl.id = dor.from_plant_id
 LEFT JOIN app.work_orders wo ON wo.id = dor.work_order_id;
 
+DROP VIEW IF EXISTS analytics.v_delivery_order_items CASCADE;
 CREATE OR REPLACE VIEW analytics.v_delivery_order_items WITH (security_invoker = true) AS
 SELECT
   di.id,
-  'DOR-'||di.delivery_order_year_month||'-'||lpad(di.delivery_order_seq::text,5,'0') AS delivery_order_no,
+  dor.doc_number AS delivery_order_no,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
   di.lot_number, di.quantity, di.sort_order,
-  CASE WHEN ol.id IS NOT NULL THEN
-    'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
-      || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END
-  END AS order_line_no
+  coalesce(ol.line_number, ola.doc_number) AS order_line_no
 FROM app.delivery_order_items di
+LEFT JOIN app.delivery_orders dor ON dor.id = di.delivery_order_id
 LEFT JOIN app.items prod ON prod.id = di.item_id
-LEFT JOIN app.order_lines ol ON ol.id = di.order_line_id;
+LEFT JOIN app.order_lines ol ON ol.id = di.order_line_id
+LEFT JOIN app.order_acceptances ola ON ola.id = ol.acceptance_id;
 
+DROP VIEW IF EXISTS analytics.v_delivery_notes CASCADE;
 CREATE OR REPLACE VIEW analytics.v_delivery_notes WITH (security_invoker = true) AS
 SELECT
-  'DRN-'||dn.year_month||'-'||lpad(dn.seq::text,5,'0') AS delivery_no,
-  dn.year_month, dn.seq, dn.delivery_method, dn.status, dn.include_price,
+  dn.doc_number AS delivery_no,
+  dn.fiscal_year, dn.doc_seq AS seq, dn.delivery_method, dn.status, dn.include_price,
   coalesce(rc.name->>'ja', rc.name->>'en')   AS recipient_name,
   coalesce(rb.name->>'ja', rb.name->>'en')   AS recipient_branch_name,
   coalesce(eu.name->>'ja', eu.name->>'en')   AS end_user_name,
   su.display_name AS sales_staff,
   dn.delivered_at, dn.created_at, dn.updated_at,
-  'DOR-'||dn.delivery_order_year_month||'-'||lpad(dn.delivery_order_seq::text,5,'0') AS delivery_order_no,
-  ords.order_line_nos  -- 出荷書経由で紐づく注文明細番号（ORD-…-NN）
+  dor.doc_number AS delivery_order_no,
+  ords.order_line_nos,  -- 出荷書経由で紐づく注文明細番号（ORD-…-NN）
+  oc.code AS company_code,
+  dn.legacy_number
 FROM app.delivery_notes dn
+LEFT JOIN app.own_companies oc ON oc.id = dn.own_company_id
+LEFT JOIN app.delivery_orders dor ON dor.id = dn.delivery_order_id
 LEFT JOIN app.business_partners rc ON rc.id = dn.recipient_bp_id
 LEFT JOIN app.business_partners rb ON rb.id = dn.recipient_branch_bp_id
 LEFT JOIN app.business_partners eu ON eu.id = dn.end_user_bp_id
 LEFT JOIN app.users su ON su.id = dn.sales_rep_id
 LEFT JOIN LATERAL (
   SELECT string_agg(DISTINCT
-           'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
-             || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END,
+           coalesce(ol.line_number, ola.doc_number),
            ', ') AS order_line_nos
   FROM app.delivery_order_items di
   JOIN app.order_lines ol ON ol.id = di.order_line_id
-  WHERE di.delivery_order_year_month = dn.delivery_order_year_month
-    AND di.delivery_order_seq = dn.delivery_order_seq
+  JOIN app.order_acceptances ola ON ola.id = ol.acceptance_id
+  WHERE di.delivery_order_id = dn.delivery_order_id
 ) ords ON true;
 
+DROP VIEW IF EXISTS analytics.v_delivery_note_items CASCADE;
 CREATE OR REPLACE VIEW analytics.v_delivery_note_items WITH (security_invoker = true) AS
 SELECT
   di.id,
-  'DRN-'||di.delivery_note_year_month||'-'||lpad(di.delivery_note_seq::text,5,'0') AS delivery_no,
+  dn.doc_number AS delivery_no,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
   di.quantity, di.unit_price, di.amount, di.sort_order
 FROM app.delivery_note_items di
+LEFT JOIN app.delivery_notes dn ON dn.id = di.delivery_note_id
 LEFT JOIN app.items prod ON prod.id = di.item_id;
 
 -- =====================================================================
 -- 請求 (Billing)
 -- =====================================================================
 
+DROP VIEW IF EXISTS analytics.v_invoices CASCADE;
 CREATE OR REPLACE VIEW analytics.v_invoices WITH (security_invoker = true) AS
 SELECT
-  'INV-'||i.year_month||'-'||lpad(i.seq::text,5,'0') AS invoice_no,
-  i.year_month, i.seq, i.status,
+  i.doc_number AS invoice_no,
+  i.fiscal_year, i.doc_seq AS seq, i.status,
   coalesce(cust.name->>'ja', cust.name->>'en')     AS customer_name,
   coalesce(branch.name->>'ja', branch.name->>'en') AS customer_branch_name,
   su.display_name AS sales_staff,
@@ -866,32 +942,33 @@ SELECT
   i.issued_at, i.due_date, i.sent_at, i.created_at, i.updated_at,
   i.currency,
   round(i.total_amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                   AS total_amount_jpy,
-  round(i.total_amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS total_amount_usd
+  round(i.total_amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS total_amount_usd,
+  oc.code AS company_code,
+  i.legacy_number
 FROM app.invoices i
+LEFT JOIN app.own_companies oc         ON oc.id = i.own_company_id
 LEFT JOIN app.business_partners cust   ON cust.id = i.customer_bp_id
 LEFT JOIN app.business_partners branch ON branch.id = i.customer_branch_bp_id
 LEFT JOIN app.users su ON su.id = i.sales_rep_id
 LEFT JOIN app.currencies cur ON cur.code = i.currency
 LEFT JOIN app.currencies usd ON usd.code = 'USD';
 
+DROP VIEW IF EXISTS analytics.v_invoice_items CASCADE;
 CREATE OR REPLACE VIEW analytics.v_invoice_items WITH (security_invoker = true) AS
 SELECT
   ii.id,
-  'INV-'||ii.invoice_year_month||'-'||lpad(ii.invoice_seq::text,5,'0') AS invoice_no,
+  inv.doc_number AS invoice_no,
   ii.description->>'ja' AS description,
   ii.quantity, ii.unit_price, ii.amount, ii.sort_order,
-  CASE WHEN ol.id IS NOT NULL THEN
-    'ORD-'||ol.acceptance_year_month||'-'||lpad(ol.acceptance_seq::text,5,'0')
-      || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END
-  END AS order_line_no,
-  CASE WHEN ii.delivery_order_year_month IS NOT NULL THEN
-    'DOR-'||ii.delivery_order_year_month||'-'||lpad(ii.delivery_order_seq::text,5,'0')
-  END AS delivery_order_no,
-  CASE WHEN ii.delivery_note_year_month IS NOT NULL THEN
-    'DRN-'||ii.delivery_note_year_month||'-'||lpad(ii.delivery_note_seq::text,5,'0')
-  END AS delivery_no
+  coalesce(ol.line_number, ola.doc_number) AS order_line_no,
+  dor.doc_number AS delivery_order_no,
+  dn.doc_number AS delivery_no
 FROM app.invoice_items ii
-LEFT JOIN app.order_lines ol ON ol.id = ii.order_line_id;
+LEFT JOIN app.invoices inv ON inv.id = ii.invoice_id
+LEFT JOIN app.delivery_orders dor ON dor.id = ii.delivery_order_id
+LEFT JOIN app.delivery_notes dn ON dn.id = ii.delivery_note_id
+LEFT JOIN app.order_lines ol ON ol.id = ii.order_line_id
+LEFT JOIN app.order_acceptances ola ON ola.id = ol.acceptance_id;
 
 CREATE OR REPLACE VIEW analytics.v_billing_closings WITH (security_invoker = true) AS
 SELECT
@@ -1093,10 +1170,11 @@ FROM app.defect_types dt;
 -- 合計すると二重計上）— ダッシュボード側は必須フィルタ（既定 JPY）で保証する。
 -- アドホック探索は通常の v_order_lines / v_invoices（*_jpy / *_usd 列）を使うこと。
 
+DROP VIEW IF EXISTS analytics.v_order_lines_disp CASCADE;
 CREATE OR REPLACE VIEW analytics.v_order_lines_disp WITH (security_invoker = true) AS
 SELECT
   ol.order_line_no, ol.order_no,
-  ol.acceptance_year_month, ol.acceptance_seq, ol.branch,
+  ol.branch,
   ol.status, ol.customer_name, ol.sales_staff, ol.product_name,
   ol.quantity, ol.currency, ol.created_at,
   d.display_currency,
@@ -1107,6 +1185,7 @@ SELECT
 FROM analytics.v_order_lines ol
 CROSS JOIN (VALUES ('JPY'), ('USD')) AS d(display_currency);
 
+DROP VIEW IF EXISTS analytics.v_invoices_disp CASCADE;
 CREATE OR REPLACE VIEW analytics.v_invoices_disp WITH (security_invoker = true) AS
 SELECT
   i.invoice_no, i.status, i.customer_name, i.customer_branch_name, i.sales_staff,
@@ -1228,3 +1307,5 @@ CROSS JOIN LATERAL (
 WHERE r.status <> 'DRAFT'
   -- 表示専用の項目は値を持たない
   AND fld.field_type <> 'related';
+
+COMMIT;

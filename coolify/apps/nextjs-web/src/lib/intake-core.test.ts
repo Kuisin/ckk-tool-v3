@@ -12,28 +12,97 @@ import {
 } from "./intake-core";
 
 describe("取込ファイル名の番号（二重登録の防止）", () => {
-  it("番号付きの名前を分解する", () => {
+  it("法人コード付きの id を分解する（いまの形）", () => {
+    expect(parseIntakeFileNumber("CKK~ORD-2026-00003-注文書 5.pdf")).toEqual({
+      number: "CKK~ORD-2026-00003",
+      docNumber: "ORD-2026-00003",
+      docKey: { docRef: "CKK/ORD-2026-00003" },
+      rest: "注文書 5.pdf",
+    });
+  });
+
+  it("同じ番号でも法人が違えば別の行を指す", () => {
+    const a = parseIntakeFileNumber("CKK~ORD-2026-00003-a.pdf");
+    const b = parseIntakeFileNumber("SUB~ORD-2026-00003-a.pdf");
+    expect(a?.docKey).toEqual({ docRef: "CKK/ORD-2026-00003" });
+    expect(b?.docKey).toEqual({ docRef: "SUB/ORD-2026-00003" });
+    expect(a?.docNumber).toBe(b?.docNumber);
+  });
+
+  it("法人コードの無い番号は鍵が決まらない（呼び出し側が DB で引く）", () => {
+    expect(parseIntakeFileNumber("ORD-2026-00003-注文書.pdf")).toEqual({
+      number: "ORD-2026-00003",
+      docNumber: "ORD-2026-00003",
+      docKey: null,
+      rest: "注文書.pdf",
+    });
+  });
+
+  it("番号設計 PR-C より前に焼き込まれた旧番号も読む", () => {
     expect(parseIntakeFileNumber("ORD-202608-00003-注文書 5.pdf")).toEqual({
       number: "ORD-202608-00003",
-      yearMonth: "202608",
-      seq: 3,
+      docNumber: "ORD-202608-00003",
+      docKey: null,
       rest: "注文書 5.pdf",
     });
   });
 
   it("番号が無い / 形が違う名前は null", () => {
     expect(parseIntakeFileNumber("注文書.pdf")).toBeNull();
+    expect(parseIntakeFileNumber("ORD-2026-3-注文書.pdf")).toBeNull();
     expect(parseIntakeFileNumber("ORD-202608-3-注文書.pdf")).toBeNull();
-    expect(parseIntakeFileNumber("ORD-202608-00003.pdf")).toBeNull();
+    expect(parseIntakeFileNumber("ORD-2026-00003.pdf")).toBeNull();
+    expect(parseIntakeFileNumber("CKK~QOT-2026-00003-見積.pdf")).toBeNull();
+    // 元のファイル名がたまたま ~ を含んでいても番号とは見なさない
+    expect(parseIntakeFileNumber("注文~書-2026.pdf")).toBeNull();
   });
 
-  it("番号は付け替える（重ねない）", () => {
-    expect(intakeFileName("ORD-202608-00003", "注文書.pdf")).toBe(
-      "ORD-202608-00003-注文書.pdf",
+  it("置かれたばかりの名前（日時_乱数_元名）は、元名が id で始まっていても番号付きではない", () => {
+    // 取込フォルダへ置く口は元名の前に日時と乱数を付ける。法人コードは ~ と空白
+    // 以外の何でもよいので、ここを弾かないと日時ごと「法人コード」に読める。
+    expect(
+      parseIntakeFileNumber(
+        "20260815-101500_ab3d2f_CKK~ORD-2026-00003-注文書.pdf",
+      ),
+    ).toBeNull();
+    expect(
+      parseIntakeFileNumber("20260815-101500_ab3d2f_mail_a-at-b.jp_x.pdf"),
+    ).toBeNull();
+    // 採番後に id を焼き込めば、その行の続きとして読める
+    expect(
+      parseIntakeFileNumber(
+        intakeFileName(
+          "CKK~ORD-2026-00004",
+          "20260815-101500_ab3d2f_CKK~ORD-2026-00003-注文書.pdf",
+        ),
+      ),
+    ).toMatchObject({
+      number: "CKK~ORD-2026-00004",
+      rest: "20260815-101500_ab3d2f_CKK~ORD-2026-00003-注文書.pdf",
+    });
+  });
+
+  it("id は付け替える（重ねない）", () => {
+    expect(intakeFileName("CKK~ORD-2026-00003", "注文書.pdf")).toBe(
+      "CKK~ORD-2026-00003-注文書.pdf",
     );
     expect(
-      intakeFileName("ORD-202608-00004", "ORD-202608-00003-注文書.pdf"),
-    ).toBe("ORD-202608-00004-注文書.pdf");
+      intakeFileName("CKK~ORD-2026-00004", "CKK~ORD-2026-00003-注文書.pdf"),
+    ).toBe("CKK~ORD-2026-00004-注文書.pdf");
+    // 旧番号付きの名前に新しい id を付けても重ならない
+    expect(
+      intakeFileName("CKK~ORD-2026-00004", "ORD-202608-00003-注文書.pdf"),
+    ).toBe("CKK~ORD-2026-00004-注文書.pdf");
+  });
+
+  it("組み立てた名前はそのまま読み戻せる", () => {
+    const name = intakeFileName("SUB~ORD-2026-00042", "PO 123.pdf");
+    expect(parseIntakeFileNumber(name)).toEqual({
+      number: "SUB~ORD-2026-00042",
+      docNumber: "ORD-2026-00042",
+      docKey: { docRef: "SUB/ORD-2026-00042" },
+      rest: "PO 123.pdf",
+    });
   });
 });
 

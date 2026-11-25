@@ -13,6 +13,7 @@ import { headers } from "next/headers";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { resolveDeviceContext } from "@/lib/device-signals";
+import { docNo } from "@/lib/doc-number";
 import type { LoginFailureReason } from "@/lib/login-attempt-core";
 import { recordLoginAttempt } from "@/lib/login-attempts";
 import { createPortalSession } from "@/lib/portal-auth";
@@ -81,7 +82,8 @@ export async function requestLinkOtp(
     const sent = await sendPortalOtpMail({
       to,
       code,
-      context: resolved.link.resourceId,
+      // 社外へ出るメールの文面 — 番号だけ（法人コードは見せない）。
+      context: docNo(resolved.link.resourceId),
     });
     if (sent !== "SENT") {
       void recordLoginAttempt({

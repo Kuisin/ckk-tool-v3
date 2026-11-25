@@ -6,6 +6,7 @@
 import "server-only";
 
 import { prisma } from "./db";
+import { docIdOf, docNo } from "./doc-number";
 import {
   type OpenPoLine,
   openPoConflicts,
@@ -29,14 +30,15 @@ export async function findOpenPoConflicts(
       receivedQuantity: true,
       unit: true,
       purchaseOrder: {
-        select: { id: true, poNumber: true, supplierBpId: true },
+        select: { id: true, docRef: true, supplierBpId: true },
       },
     },
   });
   return openPoConflicts(
     rows.map((r) => ({
       purchaseOrderId: r.purchaseOrder.id,
-      poNumber: r.purchaseOrder.poNumber,
+      // 画面がリンクに使うので id の姿（`CKK~PO-2026-00001`）。表示は docNo()。
+      poNumber: docIdOf(r.purchaseOrder),
       supplierBpId: r.purchaseOrder.supplierBpId,
       itemId: r.itemId,
       remaining: Number(r.quantity) - Number(r.receivedQuantity),
@@ -52,6 +54,6 @@ export function openPoErrorMessage(
   tr: (key: string, vars?: Record<string, string>) => string,
 ): string {
   return tr("purchase.materialReceipts.openPo.blocked", {
-    list: conflicts.map((c) => c.poNumber).join(", "),
+    list: conflicts.map((c) => docNo(c.poNumber)).join(", "),
   });
 }

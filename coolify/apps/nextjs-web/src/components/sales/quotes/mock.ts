@@ -111,8 +111,8 @@ function buildItem(
  * 各行の単価は (顧客 × 製品 × 注文種別 × 数量) の価格表 tier から解決される。
  */
 const TIERED_QUOTE: Quote = {
-  id: "QOT-202602-00012",
-  quoteNumber: "QOT-202602-00012",
+  id: "CKK~QOT-2026-00012",
+  quoteNumber: "CKK~QOT-2026-00012",
   customerId: "bp-001",
   customerName: "株式会社ABC製作所",
   customerBranchId: "bp-001-t",
@@ -188,8 +188,8 @@ const TIERED_QUOTE: Quote = {
 };
 
 const SINGLE_QUOTE: Quote = {
-  id: "QOT-202603-00021",
-  quoteNumber: "QOT-202603-00021",
+  id: "CKK~QOT-2026-00021",
+  quoteNumber: "CKK~QOT-2026-00021",
   customerId: "bp-002",
   customerName: "合同会社XYZ工業",
   customerBranchId: null,

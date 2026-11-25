@@ -1,9 +1,11 @@
 /**
  * data.ts — 請求書 (BL01) ページのサーバーサイド取得・マッピング。
  *
- * app.invoices は (year_month, seq) の複合キー — 表示番号 INV-YYYYMM-NNNNN は
- * 導出（保存しない）で、URL id を兼ねる。明細（invoice_items）は由来として
- * 出荷書 / 納品書の複合キーを持ち、画面では導出番号のリンクとして表示する。
+ * 請求書番号 INV-FFFF-NNNNN は DB が払い出す（法人 × 会計年度の連番）。行は
+ * 参照 doc_ref（`CKK/INV-…`）で引き、画面の DTO は id（`CKK~INV-…`）で持つ
+ * — URL id を兼ねる（lib/doc-number.ts）。明細（invoice_items）は由来として
+ * 出荷書 / 納品書の id（uuid の FK）を持ち、画面ではその書類へのリンクとして
+ * 表示する。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  */
 
@@ -18,7 +20,7 @@ import type {
 } from "@/components/billing/invoices/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import { type DocKey, formatDocNumber } from "@/lib/doc-number";
+import { type DocKey, docIdOf, docIdOrNull } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
@@ -47,6 +49,9 @@ const INVOICE_INCLUDE = {
       // 注文種別は会計連携のためだけに読む — 再研磨など、種別ごとに売上高の
       // 科目を分ける設定（SY0J）がある。
       orderLine: { select: { orderType: true } },
+      // 由来の書類（リンク用）。番号は関連から読む（子の旧キー列は読まない）。
+      deliveryOrder: { select: { docRef: true } },
+      deliveryNote: { select: { docRef: true } },
     },
   },
   // 税率ごとの区分記載（適格請求書）。行が無い＝税区分マスタ以前の請求書で、
@@ -101,19 +106,9 @@ function salesByOrderTypeFor(
 
 function findRow(key: DocKey) {
   return prisma.invoice.findUnique({
-    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    where: { docRef: key.docRef },
     include: INVOICE_INCLUDE,
   });
-}
-
-/** 由来キー（nullable ペア）→ 導出文書番号。片方でも欠ければ null。 */
-function provenanceNumber(
-  prefix: "DOR" | "DRN",
-  yearMonth: string | null,
-  seq: number | null,
-): string | null {
-  if (!yearMonth || seq == null) return null;
-  return formatDocNumber(prefix, { yearMonth, seq });
 }
 
 /**
@@ -123,7 +118,8 @@ function provenanceNumber(
  *   閲覧者の設定では変わらない）。画面は false のまま = 従来どおり。
  */
 function mapInvoice(r: InvoiceRow, forDocument = false): Invoice {
-  const number = formatDocNumber("INV", { yearMonth: r.yearMonth, seq: r.seq });
+  // 画面の DTO は id（法人コード + 番号）で持つ — 表示側が番号だけにする。
+  const number = docIdOf(r);
   const recipientDocumentLocale =
     r.customerBranchBp?.documentLocale ?? r.customerBp.documentLocale ?? null;
   // 帳票のときだけ受取先の言語。null（未設定）は localized 側で ja へ落ちる。
@@ -134,20 +130,11 @@ function mapInvoice(r: InvoiceRow, forDocument = false): Invoice {
     quantity: it.quantity,
     unitPrice: Number(it.unitPrice),
     amount: Number(it.amount),
-    deliveryOrderNumber: provenanceNumber(
-      "DOR",
-      it.deliveryOrderYearMonth,
-      it.deliveryOrderSeq,
-    ),
-    deliveryNoteNumber: provenanceNumber(
-      "DRN",
-      it.deliveryNoteYearMonth,
-      it.deliveryNoteSeq,
-    ),
+    deliveryOrderNumber: docIdOrNull(it.deliveryOrder),
+    deliveryNoteNumber: docIdOrNull(it.deliveryNote),
     // 手動費用 = 出荷書の由来が無く、料金マスタの由来が入っている行
     // （invoices/charge-actions.ts と同じ判定）。
-    isManualCharge:
-      it.deliveryOrderYearMonth == null && it.chargeItemId != null,
+    isManualCharge: it.deliveryOrderId == null && it.chargeItemId != null,
     chargeItemId: it.chargeItemId,
     chargeItemLabel: it.chargeItem
       ? localized(it.chargeItem.name as LocalizedText | null, loc)
@@ -156,6 +143,7 @@ function mapInvoice(r: InvoiceRow, forDocument = false): Invoice {
   return {
     id: number,
     invoiceNumber: number,
+    legacyNumber: r.legacyNumber,
     customerBpId: r.customerBpId,
     customerName: localized(r.customerBp.name as LocalizedText | null, loc),
     customerBranchName: r.customerBranchBp
@@ -255,7 +243,7 @@ export async function fetchInvoices(): Promise<Invoice[]> {
       "createdBy",
     ) as Prisma.InvoiceWhereInput,
     include: INVOICE_INCLUDE,
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
   });
   // 引数付きで渡さない（`map(mapInvoice)` は添字が第 2 引数に入るため）。
   return rows.map((r) => mapInvoice(r));
@@ -331,25 +319,19 @@ export async function fetchInvoicesForDeliveryNote(
 ): Promise<InvoiceLink[]> {
   const rows = await prisma.invoice.findMany({
     where: {
-      items: {
-        some: {
-          deliveryNoteYearMonth: key.yearMonth,
-          deliveryNoteSeq: key.seq,
-        },
-      },
+      items: { some: { deliveryNote: { docRef: key.docRef } } },
     },
     select: {
-      yearMonth: true,
-      seq: true,
+      docRef: true,
       status: true,
       totalAmount: true,
       issuedAt: true,
     },
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
     take: 20,
   });
   return rows.map((r) => ({
-    number: formatDocNumber("INV", { yearMonth: r.yearMonth, seq: r.seq }),
+    number: docIdOf(r),
     status: r.status as InvoiceStatus,
     totalAmount: Number(r.totalAmount),
     issuedAt: r.issuedAt?.toISOString() ?? null,

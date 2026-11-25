@@ -47,13 +47,15 @@ export async function generateMetadata({
 /** 指示書 詳細 (PD22). URL id = 指示書番号（通し連番 int = ロット番号）。 */
 export default async function ProductionWorkOrdersDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("work-orders");
   if (denied) return denied;
   const { id } = await params;
-  const workOrderNumber = await resolveWorkOrderIdParam(id);
+  const workOrderNumber = await resolveWorkOrderIdParam(id, "", searchParams);
   if (workOrderNumber == null) notFound();
   const locale = await getServerLocale();
 

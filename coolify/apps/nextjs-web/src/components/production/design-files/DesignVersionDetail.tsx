@@ -72,6 +72,7 @@ import {
 } from "@/components/ui/shells";
 import { canDeleteVersion, isVersionEditable } from "@/lib/design-files-core";
 import type { DesignProgramView } from "@/lib/design-programs";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import type { ProductItemDef, ResolvedProductType } from "@/lib/product-types";
 import type { SxfDrawingReading } from "@/lib/sxf-core";
@@ -302,7 +303,7 @@ export function DesignVersionDetail({
                 href={`/sales/design-requests/${encodeURIComponent(v.requestNumber)}`}
                 size="sm"
               >
-                {v.requestNumber}
+                {docNo(v.requestNumber)}
               </Anchor>
             ) : (
               tr("common.manual")

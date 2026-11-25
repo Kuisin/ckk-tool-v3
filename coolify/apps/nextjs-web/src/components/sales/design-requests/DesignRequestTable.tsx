@@ -21,6 +21,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docNo } from "@/lib/doc-number";
 import {
   designKindLabel,
   designKindOptions,
@@ -91,7 +92,8 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
-      r.requestNumber.includes(search) ||
+      docNo(r.requestNumber).includes(search) ||
+      (r.legacyNumber?.includes(search) ?? false) ||
       (r.productName ?? "").includes(search) ||
       (r.description ?? "").includes(search) ||
       (r.assigneeName ?? "").includes(search);
@@ -115,7 +117,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
       sortable: true,
       render: (r) => (
         <Text ff="mono" size="sm">
-          {r.requestNumber}
+          {docNo(r.requestNumber)}
         </Text>
       ),
     },
@@ -279,7 +281,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                {r.requestNumber}
+                {docNo(r.requestNumber)}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {r.productName ?? tr("sales.designRequests.noProductSpecified")}

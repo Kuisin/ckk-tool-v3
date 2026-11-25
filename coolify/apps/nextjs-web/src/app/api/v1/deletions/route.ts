@@ -33,6 +33,7 @@ import { parseLimit } from "@/lib/api-pagination-core";
 import { instanceOf } from "@/lib/api-problem";
 import { jsonOk } from "@/lib/api-response";
 import { prisma } from "@/lib/db";
+import { docNo } from "@/lib/doc-number";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -108,9 +109,13 @@ export async function GET(request: Request): Promise<Response> {
     data: data.map((r) => ({
       eventId: String(r.id),
       resource: r.tableName,
-      /** 表示番号（`DOR-202609-00003` など）。採番リセットで再利用されうる。 */
-      number: r.recordId,
-      /** 表の主キー。番号の再利用と区別したいときはこちらを見る。 */
+      /**
+       * 表示番号（`DOR-2026-00003` など）。**法人ごとの連番**なので、番号だけ
+       * では書類が決まらない（別の法人に同じ番号があり得る）。法人コード付きで
+       * 記録された行も、ここでは番号だけにして返す（契約を変えない）。
+       */
+      number: docNo(r.recordId),
+      /** 行を一意に指す鍵。同定はこちらで行う（番号は法人をまたいで重なる）。 */
       key: r.recordKey,
       deletedAt: r.createdAt.toISOString(),
     })),

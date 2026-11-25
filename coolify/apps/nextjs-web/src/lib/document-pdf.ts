@@ -3,9 +3,14 @@ import "server-only";
 /**
  * document-pdf.ts — 業務文書 PDF の保管キーと「発行済みか」の判定（server-only）。
  *
- * 生成 PDF は SeaweedFS に `pdfs/<種別>/<文書番号>.pdf` で保管する。キー生成を
- * ここに集約し、API ルート（生成・配信）と詳細ページ（PDF タブのメタ表示）が
- * 同じ 1 箇所を参照する。
+ * 生成 PDF は SeaweedFS に `pdfs/<種別>/<法人コード>/<文書番号>.pdf` で保管する。
+ * キー生成をここに集約し、API ルート（生成・配信）と詳細ページ（PDF タブの
+ * メタ表示）が同じ 1 箇所を参照する。
+ *
+ * **保管キーには法人コードを入れる** — 書類番号は自社法人ごとの連番なので
+ * （番号設計 PR-C）、番号だけのキーでは 2 つの法人の同じ番号の PDF が同じ
+ * オブジェクトを上書きし合う。取引先へ渡す**ファイル名**は番号だけのまま
+ * （法人コードは社内の区別で、相手に見せるものではない）。
  *
  * **閲覧は発行後のみ** — 下書き（DRAFT）の PDF は生成も閲覧もできない
  * （`isIssued`）。API ルートは 403 を返し、UI は PDF タブ / PDF ボタンを
@@ -22,16 +27,32 @@ import "server-only";
 
 import type { PdfFileMeta } from "@/components/ui/PdfAttachmentPanel";
 import { statObject } from "@/lib/storage";
+import { docRef, parseDocId } from "./doc-ref-core";
 import { label } from "./messages";
 
-/** 生成 PDF の保管キー（種別 → 文書番号 → key）。 */
+/**
+ * 書類の id → 保管キーの中の `<法人コード>/<文書番号>`。
+ *
+ * 受けるのは画面の DTO が持つ id（`CKK~QOT-2026-00001`）か参照
+ * （`CKK/QOT-2026-00001`）。法人コードの無い番号だけを渡されたときは番号だけの
+ * キーになる（番号設計 PR-C より前の置き場所と同じ形）— 呼び出し側は id を
+ * 渡すこと。
+ */
+export function docStoragePath(id: string): string {
+  const { companyCode, number } = parseDocId(id);
+  // `<法人コード>/<番号>` = 参照（doc_ref）と同じ文字列。
+  return companyCode ? docRef(companyCode, number) : number;
+}
+
+/** 生成 PDF の保管キー（種別 → 書類の id → key）。引数は id の姿で渡す。 */
 export const pdfStorageKey = {
-  quote: (quoteNumber: string) => `pdfs/quotes/${quoteNumber}.pdf`,
-  invoice: (invoiceNumber: string) => `pdfs/invoices/${invoiceNumber}.pdf`,
-  deliveryNote: (deliveryNumber: string) =>
-    `pdfs/delivery-notes/${deliveryNumber}.pdf`,
-  designRequest: (requestNumber: string) =>
-    `pdfs/design-requests/${requestNumber}.pdf`,
+  quote: (quoteId: string) => `pdfs/quotes/${docStoragePath(quoteId)}.pdf`,
+  invoice: (invoiceId: string) =>
+    `pdfs/invoices/${docStoragePath(invoiceId)}.pdf`,
+  deliveryNote: (deliveryNoteId: string) =>
+    `pdfs/delivery-notes/${docStoragePath(deliveryNoteId)}.pdf`,
+  designRequest: (requestId: string) =>
+    `pdfs/design-requests/${docStoragePath(requestId)}.pdf`,
 };
 
 /** 発行済み（= PDF を閲覧してよい）か。下書きのみ不可。 */

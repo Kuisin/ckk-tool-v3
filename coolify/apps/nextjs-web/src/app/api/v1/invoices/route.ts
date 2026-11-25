@@ -14,7 +14,7 @@ import { dateOnly, iso, num } from "@/lib/api-dto";
 import { invalidCursorResponse, parseListQuery, runList } from "@/lib/api-list";
 import { instanceOf } from "@/lib/api-problem";
 import { prisma } from "@/lib/db";
-import { formatDocNumber } from "@/lib/doc-number";
+import { DOC_FIELDS_SELECT, docFields } from "../doc-fields";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,8 +36,7 @@ export async function GET(request: Request): Promise<Response> {
         // biome-ignore lint/suspicious/noExplicitAny: 同上
         orderBy: orderBy as any,
         select: {
-          yearMonth: true,
-          seq: true,
+          ...DOC_FIELDS_SELECT,
           status: true,
           customerBpId: true,
           customerBranchBpId: true,
@@ -60,15 +59,11 @@ export async function GET(request: Request): Promise<Response> {
         },
       }),
     query,
-    tiebreak: "doc",
-    toCursor: (r) => ({
-      kind: "doc",
-      seq: r.seq,
-      t: r.updatedAt.toISOString(),
-      ym: r.yearMonth,
-    }),
+    // 決着キーは行の uuid（索引 (updated_at, id)）。番号は法人をまたいで重なる。
+    tiebreak: "id",
+    toCursor: (r) => ({ kind: "id", id: r.id, t: r.updatedAt.toISOString() }),
     toDto: (r) => ({
-      number: formatDocNumber("INV", r),
+      ...docFields(r),
       status: r.status,
       customerId: r.customerBpId,
       customerBranchId: r.customerBranchBpId,

@@ -48,6 +48,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docNo } from "@/lib/doc-number";
 import { parseExtractError } from "@/lib/intake-extract-error";
 import { statusOptions } from "@/lib/status-map";
 import { intakeSourceBadge, type OrderAcceptanceListRow } from "./model";
@@ -97,7 +98,7 @@ const UPLOAD_ACCEPT = ".pdf,.png,.jpg,.jpeg,.webp";
 /** アップロード API の応答（保存 + 採番まで — 抽出はまだ積まれていない）。 */
 interface UploadResult {
   ok?: boolean;
-  /** 採番された注文請書番号（ORD-YYYYMM-NNNNN）。 */
+  /** 採番された注文請書の id（`CKK~ORD-2026-00001` — そのまま抽出キューへ渡す）。 */
   number?: string;
   status?: string;
   error?: string;
@@ -154,7 +155,8 @@ export function OrderAcceptanceIntakeTable({
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
-      r.number.includes(search) ||
+      docNo(r.number).includes(search) ||
+      (r.legacyNumber?.includes(search) ?? false) ||
       (r.sourceFilename ?? "").includes(search) ||
       (r.customerName ?? "").includes(search);
     const matchesStatus = !status || r.status === status;
@@ -253,7 +255,11 @@ export function OrderAcceptanceIntakeTable({
           if (json.skipped && json.skipped.length > 0) {
             queueError = tr(
               "sales.orderAcceptanceIntakeTable.extractionCouldNotStartDocs",
-              { documents: json.skipped.join(` ${tr("common.s1")} `) },
+              {
+                documents: json.skipped
+                  .map((n) => docNo(n))
+                  .join(` ${tr("common.s1")} `),
+              },
             );
           }
         } else {
@@ -308,7 +314,7 @@ export function OrderAcceptanceIntakeTable({
       sortable: true,
       render: (r) => (
         <Text ff="mono" size="sm">
-          {r.number}
+          {docNo(r.number)}
         </Text>
       ),
     },
@@ -499,7 +505,7 @@ export function OrderAcceptanceIntakeTable({
               <Group align="flex-start" justify="space-between" wrap="nowrap">
                 <Stack className="min-w-0" gap={3}>
                   <Text c="dimmed" ff="mono" size="xs">
-                    {r.number}
+                    {docNo(r.number)}
                   </Text>
                   {r.customerName ? (
                     <Text fw={600} size="sm" truncate>

@@ -17,6 +17,8 @@
  * 呼び出し元は `approvalTargetLabel(targetType, locale)` を使うこと。
  */
 
+import { isNewDocNumber } from "./doc-number";
+import { docUrlId, parseDocId } from "./doc-ref-core";
 import type { Locale } from "./i18n";
 import { label } from "./messages";
 
@@ -302,14 +304,28 @@ export function approvalTargetLabel(
   );
 }
 
-/** 詳細ページの URL（未知の種別は null）。 */
+/**
+ * 詳細ページの URL（未知の種別は null）。
+ *
+ * `targetId` は DB の参照（`CKK/ORD-2026-00001`）のまま渡してよい — URL には
+ * `/` を使えないので、ここで id の姿（`CKK~ORD-2026-00001`）へ直す。
+ * フォーム回答・社内文書（番号が全社で一意のままの書類）は番号だけにする。
+ * uuid・ロット番号・すでに id の姿のものはそのまま。
+ */
 export function approvalTargetHref(
   targetType: string,
   targetId: string,
 ): string | null {
-  return isApprovalTargetType(targetType)
-    ? APPROVAL_TARGET[targetType].href(targetId)
-    : null;
+  if (!isApprovalTargetType(targetType)) return null;
+  const { companyCode, number } = parseDocId(targetId);
+  const id = !companyCode
+    ? targetId
+    : isNewDocNumber(number)
+      ? docUrlId(companyCode, number)
+      : targetType === "form_responses" || targetType === "internal_pages"
+        ? number
+        : targetId;
+  return APPROVAL_TARGET[targetType].href(id);
 }
 
 /** 承認に必要な権限コード（未知の種別は null）。 */

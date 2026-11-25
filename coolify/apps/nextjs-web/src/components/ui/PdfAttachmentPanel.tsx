@@ -45,6 +45,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docNo } from "@/lib/doc-number";
 import { downloadFile } from "@/lib/download";
 
 /** 保管済み PDF のメタ（SeaweedFS の stat 由来 — メタバーに表示）。 */
@@ -80,7 +81,7 @@ function withViewerHash(src: string): string {
 }
 
 export function PdfAttachmentPanel({
-  filename,
+  filename: rawFilename,
   file,
   previewSrc,
   downloadHref,
@@ -89,7 +90,11 @@ export function PdfAttachmentPanel({
   onDownload,
   onRegenerate,
 }: {
-  /** 表示・保存名（例 `QOT-202608-00001.pdf`）。 */
+  /**
+   * 表示・保存名（例 `QOT-2026-00001.pdf`）。書類の id から作った名前
+   * （`CKK~QOT-2026-00001.pdf`）を渡されても、法人コードは落として使う —
+   * 取引先へ渡るファイル名は番号だけ。
+   */
   filename: string;
   /** 保管済みメタ — null なら未生成（初回プレビュー時に生成される）。 */
   file: PdfFileMeta | null;
@@ -106,6 +111,8 @@ export function PdfAttachmentPanel({
   const tr = useTranslations();
   const fmt = useFormat();
   const isMobile = useIsMobile();
+  // 表示・保存名は番号だけ（法人コード付きの id から作られた名前でも）。
+  const filename = docNo(rawFilename);
 
   if (!previewSrc) {
     return (

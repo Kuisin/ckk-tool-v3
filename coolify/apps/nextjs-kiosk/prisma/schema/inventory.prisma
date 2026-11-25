@@ -348,8 +348,21 @@ model InventoryMovement {
   ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   // 伝票番号 MOV-YYYYMM-NNNNN は (year_month, seq) から導出する（lib/doc-number.ts）。
   // 指示書と同型 — uuid を主キーに、番号は一意制約で持つ。
-  yearMonth String @map("year_month") @db.Char(6)
-  seq       Int
+  /// 旧番号の年月と連番（PR-D で落とす）。新しい行は NULL — 旧番号の文字列は
+  /// legacy_number が持つ。SQL のシードはまだこの 2 列で書類を入れる。
+  legacyYearMonth String? @map("year_month") @db.Char(6)
+  legacySeq       Int?    @map("seq")
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
 
   cause InventoryMovementCause
   /// 手動入出庫で選んだ移動タイプ。自動生成の伝票では null（cause だけを持つ）。
@@ -377,7 +390,10 @@ model InventoryMovement {
 
   ownCompany OwnCompany @relation("InventoryMovementOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
-  @@unique([yearMonth, seq])
+  @@unique([legacyYearMonth, legacySeq])
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
   @@index([createdAt, id])
   @@index([sourceType, sourceId])
   @@index([cause, createdAt])
@@ -450,8 +466,21 @@ model StockTake {
   /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
   ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   // 棚卸番号 STK-YYYYMM-NNNNN は (year_month, seq) から導出する。
-  yearMonth String @map("year_month") @db.Char(6)
-  seq       Int
+  /// 旧番号の年月と連番（PR-D で落とす）。新しい行は NULL — 旧番号の文字列は
+  /// legacy_number が持つ。SQL のシードはまだこの 2 列で書類を入れる。
+  legacyYearMonth String? @map("year_month") @db.Char(6)
+  legacySeq       Int?    @map("seq")
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
 
   plantId Int @map("plant_id")
   /// 範囲を保管場所（さらに棚）まで絞った棚卸。null = 拠点まるごと。
@@ -487,7 +516,10 @@ model StockTake {
 
   ownCompany OwnCompany @relation("StockTakeOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
-  @@unique([yearMonth, seq])
+  @@unique([legacyYearMonth, legacySeq])
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
   @@index([status])
   @@index([plantId])
   @@index([updatedAt, id])

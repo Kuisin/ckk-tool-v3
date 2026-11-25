@@ -19,6 +19,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { categoryLabel } from "@/lib/app-list";
+import { docNo } from "@/lib/doc-number";
 import type { Locale } from "@/lib/i18n";
 import { statusOptions } from "@/lib/status-map";
 import type { StockTakeRow } from "./model";
@@ -43,7 +44,8 @@ export function StockTakeTable({ rows }: { rows: StockTakeRow[] }) {
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
-      r.stockTakeNumber.includes(search) ||
+      docNo(r.stockTakeNumber).includes(search) ||
+      (r.legacyNumber ?? "").includes(search) ||
       r.plantName.includes(search) ||
       (r.storageLocationName ?? "").includes(search);
     const matchesStatus = !status || r.status === status;
@@ -158,7 +160,7 @@ export function StockTakeTable({ rows }: { rows: StockTakeRow[] }) {
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                {r.stockTakeNumber}
+                {docNo(r.stockTakeNumber)}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {r.plantName}

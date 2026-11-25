@@ -74,8 +74,11 @@ export interface RunListOptions<Row, Dto> {
   toCursor: (row: Row) => Cursor;
   /** 行 → 応答の形。 */
   toDto: (row: Row) => Dto;
-  /** 決着キーの並び順（`id` か `yearMonth,seq`）。 */
-  tiebreak: "id" | "doc";
+  /**
+   * 決着キーの並び順。**行の `id` だけ**（書類も uuid の id で決着する —
+   * 番号は法人をまたいで重なり得るので決着に使えない）。省略可。
+   */
+  tiebreak?: "id";
 }
 
 export async function runList<Row, Dto>(
@@ -87,10 +90,10 @@ export async function runList<Row, Dto>(
     sinceWhere(o.query.since, orderField),
     cursorWhere(o.query.cursor, orderField),
   );
-  const orderBy: Record<string, "asc">[] =
-    o.tiebreak === "doc"
-      ? [{ [orderField]: "asc" }, { yearMonth: "asc" }, { seq: "asc" }]
-      : [{ [orderField]: "asc" }, { id: "asc" }];
+  const orderBy: Record<string, "asc">[] = [
+    { [orderField]: "asc" },
+    { id: "asc" },
+  ];
 
   // データと now() を同じトランザクションで。**呼び出し側の時計は使わない。**
   const [rows, clock] = await prisma.$transaction([

@@ -20,13 +20,13 @@ const BP_B = "bp-b";
 
 const invoiceForA: PortalTarget = {
   type: "invoices",
-  id: "INV-202609-00001",
+  id: "INV-2026-00001",
   customerBpIds: [BP_A],
   endUserBpIds: [],
 };
 const invoiceForB: PortalTarget = {
   type: "invoices",
-  id: "INV-202609-00002",
+  id: "INV-2026-00002",
   customerBpIds: [BP_B],
   endUserBpIds: [],
 };
@@ -125,7 +125,7 @@ describe("resolvePortalAccess — BP_SCOPE", () => {
 describe("resolvePortalAccess — 需要家（includeAsEndUser）", () => {
   const asEndUser: PortalTarget = {
     type: "order_acceptances",
-    id: "ORD-202609-00001",
+    id: "ORD-2026-00001",
     customerBpIds: [BP_B], // 顧客は別会社
     endUserBpIds: [BP_A], // 自社は需要家として載っているだけ
   };
@@ -152,7 +152,7 @@ describe("resolvePortalAccess — DOCUMENT", () => {
   const docGrant: PortalGrantRow = {
     kind: "DOCUMENT",
     resourceType: "invoices",
-    resourceId: "INV-202609-00002",
+    resourceId: "INV-2026-00002",
     expiresAt: null,
     revokedAt: null,
   };
@@ -172,7 +172,7 @@ describe("resolvePortalAccess — DOCUMENT", () => {
   it("種別が違えば効かない（id が同じでも）", () => {
     const sameIdOtherType: PortalTarget = {
       type: "quotes",
-      id: "INV-202609-00002",
+      id: "INV-2026-00002",
       customerBpIds: [],
     };
     expect(

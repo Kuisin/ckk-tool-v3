@@ -12,6 +12,7 @@
 
 import type { BoardRow, BoardStep } from "./display-board-core";
 import { displayDb } from "./display-db";
+import { docNumberOf, orderLineNumberOf } from "./doc-number";
 import { localized } from "./format";
 
 type LocalizedJson = { ja: string; en: string };
@@ -65,8 +66,7 @@ export async function loadProductionBoard(
     select: {
       id: true,
       workOrderNumber: true,
-      yearMonth: true,
-      seq: true,
+      docRef: true,
       plannedQuantity: true,
       productItem: { select: { name: true } },
       steps: {
@@ -111,7 +111,7 @@ export async function loadProductionBoard(
     return {
       workOrderId: wo.id,
       lotNumber: wo.workOrderNumber,
-      documentNumber: `WOR-${wo.yearMonth}-${String(wo.seq).padStart(5, "0")}`,
+      documentNumber: docNumberOf(wo),
       productName: name(wo.productItem.name),
       plannedQuantity: wo.plannedQuantity,
       steps,
@@ -158,9 +158,7 @@ export async function loadPendingBoard(
     },
     select: {
       id: true,
-      acceptanceYearMonth: true,
-      acceptanceSeq: true,
-      branch: true,
+      lineRef: true,
       quantity: true,
       deliveryDate: true,
       item: { select: { name: true } },
@@ -182,9 +180,8 @@ export async function loadPendingBoard(
         );
         return {
           id: l.id,
-          documentNumber: `ORD-${l.acceptanceYearMonth}-${String(l.acceptanceSeq).padStart(5, "0")}${
-            l.branch == null ? "" : `-${String(l.branch).padStart(2, "0")}`
-          }`,
+          // 枝番は確定時に付く。確定済み・製造中だけを引くので通常は必ずある
+          documentNumber: orderLineNumberOf(l) ?? "—",
           customerName: l.acceptance.customerBp
             ? name(l.acceptance.customerBp.name)
             : "—",
@@ -228,20 +225,20 @@ export async function loadShippingBoard(
       ...(filter.plantId ? { fromPlantId: filter.plantId } : {}),
     },
     select: {
-      yearMonth: true,
-      seq: true,
+      id: true,
+      docRef: true,
       status: true,
       customerBp: { select: { name: true } },
       fromPlant: { select: { name: true } },
       items: { select: { quantity: true } },
     },
-    orderBy: [{ yearMonth: "asc" }, { seq: "asc" }],
+    orderBy: [{ fiscalYear: "asc" }, { docSeq: "asc" }, { id: "asc" }],
     take: 100,
   });
 
   return orders.map((o) => ({
-    id: `${o.yearMonth}-${o.seq}`,
-    documentNumber: `DOR-${o.yearMonth}-${String(o.seq).padStart(5, "0")}`,
+    id: o.id,
+    documentNumber: docNumberOf(o),
     customerName: name(o.customerBp.name),
     status: o.status,
     itemCount: o.items.length,

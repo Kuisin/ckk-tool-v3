@@ -5,6 +5,10 @@
  * （work_order_steps.execution_location = OUTSOURCE）の読み取り専用ビュー。
  * 依頼日・入荷予定日・入荷日の編集は工程実行画面
  * （/production/work-orders/{n}/steps/{stepId}）で行う。
+ *
+ * 依頼番号（OUT-FFFF-NNNNN）だけは表 outsource_orders が持つ — 工程に依頼日が
+ * 入った時点で DB のトリガーが 1 行作って番号を払い出す（アプリは作らない）。
+ * 依頼日の無い工程は番号を持たない（null）。行を指す id は従来どおり工程の uuid。
  */
 
 import type { OutsourceStepRow } from "@/components/purchase/outsource-orders/model";
@@ -22,11 +26,13 @@ export async function fetchOutsourceSteps(): Promise<OutsourceStepRow[]> {
       workOrder: { include: { productItem: true } },
       processStep: true,
       supplierBp: true,
+      outsourceOrder: { select: { docNumber: true } },
     },
     orderBy: [{ workOrder: { workOrderNumber: "desc" } }, { sortOrder: "asc" }],
   });
   return rows.map((s) => ({
     stepId: s.id,
+    outsourceNumber: s.outsourceOrder?.docNumber ?? null,
     workOrderNumber: s.workOrder.workOrderNumber,
     productName: localized(
       s.workOrder.productItem.name as LocalizedText | null,

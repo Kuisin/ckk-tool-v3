@@ -70,6 +70,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { docNo } from "@/lib/doc-number";
 import type { ActionResult } from "@/lib/server-action";
 import {
   canRequestApproval,
@@ -160,7 +161,7 @@ export function PurchaseRequestDetail({
       if (result.ok) {
         notifications.show({
           title: done,
-          message: `${tr("common.purchaseRequest")} ${rq.requestNumber}`,
+          message: `${tr("common.purchaseRequest")} ${docNo(rq.requestNumber)}`,
           color: "green",
         });
         setCancelOpen(false);
@@ -196,7 +197,7 @@ export function PurchaseRequestDetail({
         notifications.show({
           title: tr("purchase.purchaseRequests.convertedToAPurchaseOrder"),
           message: tr("purchase.purchaseRequests.createdPurchaseOrder", {
-            number: result.data.poNumber,
+            number: docNo(result.data.poNumber),
           }),
           color: "green",
         });
@@ -255,7 +256,7 @@ export function PurchaseRequestDetail({
         ? [
             {
               key: rq.purchaseOrderNumber,
-              label: rq.purchaseOrderNumber,
+              label: docNo(rq.purchaseOrderNumber),
               href: `${PO_PATH}/${rq.purchaseOrderNumber}`,
               done: true,
               note: tr("purchase.purchaseRequests.generatedFromThisRequest"),
@@ -284,7 +285,7 @@ export function PurchaseRequestDetail({
         onReject={(reason) => rejectPurchaseRequest(rq.requestNumber, reason)}
         onRequest={() => requestPurchaseRequestApproval(rq.requestNumber)}
         rejectReason={lastReject?.notes ?? null}
-        subject={`${tr("common.purchaseRequest")} ${rq.requestNumber}`}
+        subject={`${tr("common.purchaseRequest")} ${docNo(rq.requestNumber)}`}
       />
     );
   } else if (rq.status === "APPROVED") {
@@ -339,7 +340,7 @@ export function PurchaseRequestDetail({
       ]}
       createdAt={fmt.dateTime(rq.createdAt)}
       status={<StatusBadge entity="PurchaseRequest" status={rq.status} />}
-      title={rq.requestNumber}
+      title={docNo(rq.requestNumber)}
       updatedAt={fmt.dateTime(rq.updatedAt)}
     >
       {actionCard}
@@ -349,6 +350,12 @@ export function PurchaseRequestDetail({
           label={tr("common.requestNumber")}
           value={<DocNumber>{rq.requestNumber}</DocNumber>}
         />
+        {rq.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={<DocNumber>{rq.legacyNumber}</DocNumber>}
+          />
+        )}
         <FieldValue label={tr("common.requester")} value={rq.requesterName} />
         <FieldValue
           label={tr("common.lineCount")}
@@ -528,7 +535,7 @@ export function PurchaseRequestDetail({
       >
         <Text size="sm">
           {tr("purchase.purchaseRequests.confirmCancelBody", {
-            number: rq.requestNumber,
+            number: docNo(rq.requestNumber),
           })}
         </Text>
         <Textarea
@@ -556,7 +563,7 @@ export function PurchaseRequestDetail({
       >
         <Text mb="sm" size="sm">
           {tr("purchase.purchaseRequests.confirmConvertBody", {
-            number: rq.requestNumber,
+            number: docNo(rq.requestNumber),
             count: rq.items.length,
           })}
         </Text>

@@ -6,8 +6,8 @@
  * - 作成/更新: 工程構成をサーバー側でも validateComposition で検証し、
  *   ブロッカー（AND 不足・排他違反）があれば保存を拒否する。工程の並びは
  *   defaultOrder（カタログ既定順）で採番する。
- * - 採番: 書類番号は allocateDocumentKey("WORK_ORDER_DOC")（WO-YYYYMM-NNNNN
- *   — 月次リセット・表示用）、ロット番号は nextSerialNumber("WORK_ORDER")
+ * - 採番: 書類番号（WOR-FFFF-NNNNN — 表示用）は DB が INSERT 時に払い出す
+ *   （アプリは渡さない）。ロット番号は nextSerialNumber("WORK_ORDER")
  *   （通し連番 — 在庫・QR・業務キー）。注文明細の lot_number が未採番なら
  *   ロット番号を書き込む。
  * - 承認: approval_status + 遷移列 + history Json（MaterialPurchaseOrder と
@@ -46,7 +46,7 @@ import { companyForWorkOrderDoc } from "@/lib/doc-company";
 import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { movementOpener } from "@/lib/inventory";
-import { allocateDocumentKey, nextSerialNumber } from "@/lib/numbering";
+import { nextSerialNumber } from "@/lib/numbering";
 import {
   copyRouteVersionToCustomerTx,
   fetchRouteVersionSteps,
@@ -128,18 +128,14 @@ async function workOrderInScope(
   );
 }
 
-function revalidate(workOrderNumber?: number, docNumber?: string | null) {
+function revalidate(workOrderNumber?: number) {
   revalidatePath(BASE_PATH);
   revalidatePath(APPROVALS_PATH);
   if (workOrderNumber != null) {
     revalidatePath(`${BASE_PATH}/${workOrderNumber}`);
     revalidatePath(`${BASE_PATH}/${workOrderNumber}/edit`);
   }
-  // 書類番号の URL でも同じページが出る（両形式を受ける）ため両方を再検証
-  if (docNumber) {
-    revalidatePath(`${BASE_PATH}/${docNumber}`);
-    revalidatePath(`${BASE_PATH}/${docNumber}/edit`);
-  }
+  // 書類番号の URL はロット番号の URL へ転送されるだけなので再検証は要らない。
 }
 
 // ── 入力スキーマ ─────────────────────────────────────────────────────────────
@@ -323,9 +319,7 @@ async function loadLineAllocInfos(
       where: { id: { in: orderLineIds } },
       select: {
         id: true,
-        acceptanceYearMonth: true,
-        acceptanceSeq: true,
-        branch: true,
+        lineRef: true,
         quantity: true,
         itemId: true,
         toolItemId: true,
@@ -792,8 +786,8 @@ export async function createWorkOrder(
     if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
-    const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
-    const docNumber = formatDocNumber("WOR", docKey);
+    // 書類番号は DB が払い出す — 作った行から読み戻す。
+    let docNumber = "";
     const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
     const resolvedVersions = await prisma.$transaction(async (tx) => {
       // 工程構成 → ルートバージョン解決（変更があれば新バージョンを自動保存）
@@ -813,8 +807,6 @@ export async function createWorkOrder(
       const created = await tx.workOrder.create({
         data: {
           workOrderNumber,
-          yearMonth: docKey.yearMonth,
-          seq: docKey.seq,
           ...(await companyForWorkOrderDoc(
             { orderLineIds: v.allocations.map((a) => a.orderLineId) },
             tx,
@@ -844,9 +836,11 @@ export async function createWorkOrder(
         },
         select: {
           id: true,
+          docRef: true,
           steps: { select: { id: true, processStepId: true } },
         },
       });
+      docNumber = formatDocNumber("WOR", created);
       // 作成時の作業計画（工程 × 計画日 × 作業場所、担当者は任意）。工程 id は作成結果から
       // 引き直す — 選択に無い工程の計画は黙って捨てる（UI 側で作れない形）。
       if (v.plans.length > 0) {
@@ -903,7 +897,7 @@ export async function createWorkOrder(
         planCount: v.plans.length,
       },
     });
-    revalidate(workOrderNumber, docNumber);
+    revalidate(workOrderNumber);
     // 製品マスタ (MS04) の URL は items.id（品目統合 第 3 段）。
     if (v.route != null) {
       revalidatePath(`/master/products/${itemId}`);
@@ -1113,11 +1107,8 @@ export async function updateWorkOrder(
         plansDropped,
       },
     });
-    const docNumber = formatDocNumber("WOR", {
-      yearMonth: prior.yearMonth,
-      seq: prior.seq,
-    });
-    revalidate(workOrderNumber, docNumber);
+    const docNumber = formatDocNumber("WOR", prior);
+    revalidate(workOrderNumber);
     // 製品マスタ (MS04) の URL は items.id（品目統合 第 3 段）。
     if (v.route != null) {
       revalidatePath(`/master/products/${itemId}`);
@@ -1330,8 +1321,8 @@ export async function copyWorkOrder(
       return actionError(tr("production.workOrderActions.productNotFound"));
     const actor = await getCurrentActorId();
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
-    const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
-    const docNumber = formatDocNumber("WOR", docKey);
+    // 書類番号は DB が払い出す — 作った行から読み戻す。
+    let docNumber = "";
     // 在庫分・再研磨のコピーは割当 = 予定数量の不変条件を保つため、受注残まで縮める
     const plannedQuantity =
       source.type !== "MANUFACTURE" && allocations.length > 0
@@ -1339,11 +1330,9 @@ export async function copyWorkOrder(
         : source.plannedQuantity;
 
     await prisma.$transaction(async (tx) => {
-      await tx.workOrder.create({
+      const copied = await tx.workOrder.create({
         data: {
           workOrderNumber,
-          yearMonth: docKey.yearMonth,
-          seq: docKey.seq,
           ...(await companyForWorkOrderDoc(
             { orderLineIds: allocations.map((a) => a.orderLineId) },
             tx,
@@ -1378,7 +1367,9 @@ export async function copyWorkOrder(
           ]),
           steps: { create: toWorkOrderStepCreates(built.creates) },
         },
+        select: { docRef: true },
       });
+      docNumber = formatDocNumber("WOR", copied);
       await assignLotNumbersTx(
         tx,
         allocations.map((a) => a.orderLineId),
@@ -1399,7 +1390,7 @@ export async function copyWorkOrder(
         stepCount: built.creates.length,
       },
     });
-    revalidate(workOrderNumber, docNumber);
+    revalidate(workOrderNumber);
     revalidate(sourceWorkOrderNumber);
     return actionOk({ workOrderNumber, docNumber });
   } catch (e) {
@@ -1440,8 +1431,6 @@ export async function saveWorkOrderCharges(
     select: {
       id: true,
       status: true,
-      yearMonth: true,
-      seq: true,
       charges: {
         orderBy: { sortOrder: "asc" },
         select: {
@@ -1501,7 +1490,7 @@ export async function saveWorkOrderCharges(
     },
     after: { charges: chargeAuditShape(prepared.rows) },
   });
-  revalidate(workOrderNumber, formatDocNumber("WOR", wo));
+  revalidate(workOrderNumber);
   return actionOk();
 }
 
@@ -1543,13 +1532,11 @@ export async function cancelWorkOrder(
     }
     const actor = await getCurrentActorId();
     const linkedLineIds = prior.orderLineLinks.map((l) => l.orderLineId);
-    // 入出庫伝票の番号は tx の外で採番する（全書類共通の作法）。解放すべき予約が
-    // 1 件も無ければ伝票は起こらない（番号だけ欠番になる）。
-    const cancelMovementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
+    // 解放すべき予約が 1 件も無ければ伝票は起こらない（伝票番号は DB が
+    // INSERT 時に払い出すので、欠番にもならない）。
     const { releasedReservations, lotCleared } = await prisma.$transaction(
       async (tx) => {
         const openMovement = movementOpener(tx, {
-          key: cancelMovementKey,
           cause: "RESERVATION_RELEASE",
           sourceType: "work_orders",
           sourceId: String(workOrderNumber),
@@ -1739,12 +1726,8 @@ async function applyFinalWorkOrderApproval(args: {
         where: { id: prior.materialItemId },
         select: { unit: true },
       });
-      // 伝票の番号はこの（承認とは別の）tx の外で採番する。
-      const reserveMovementKey =
-        await allocateDocumentKey("INVENTORY_MOVEMENT");
       await prisma.$transaction(async (tx) => {
         const openMovement = movementOpener(tx, {
-          key: reserveMovementKey,
           cause: "STOCK_RESERVATION",
           sourceType: "work_orders",
           sourceId: String(workOrderNumber),
@@ -2661,7 +2644,7 @@ export async function setWorkOrderDesignFile(
   try {
     const wo = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
-      select: { id: true, productItemId: true, yearMonth: true, seq: true },
+      select: { id: true, productItemId: true },
     });
     if (!wo)
       return actionError(tr("production.workOrderActions.workOrderNotFound"));
@@ -2708,7 +2691,7 @@ export async function setWorkOrderDesignFile(
         designFileId,
       },
     });
-    revalidate(workOrderNumber, formatDocNumber("WOR", wo));
+    revalidate(workOrderNumber);
     return actionOk();
   } catch (e) {
     return actionError(

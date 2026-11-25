@@ -14,7 +14,7 @@ import { iso, num } from "@/lib/api-dto";
 import { invalidCursorResponse, parseListQuery, runList } from "@/lib/api-list";
 import { instanceOf } from "@/lib/api-problem";
 import { prisma } from "@/lib/db";
-import { formatDocNumber, legacyDocKey } from "@/lib/doc-number";
+import { DOC_FIELDS_SELECT, docFields, relatedDocNumber } from "../doc-fields";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -40,10 +40,10 @@ export async function GET(request: Request): Promise<Response> {
         // biome-ignore lint/suspicious/noExplicitAny: 同上
         orderBy: orderBy as any,
         select: {
-          yearMonth: true,
-          seq: true,
-          deliveryOrderYearMonth: true,
-          deliveryOrderSeq: true,
+          ...DOC_FIELDS_SELECT,
+          deliveryOrderId: true,
+          // 親の出荷書の番号は関係から読む（旧い複合キーの列は読まない）。
+          deliveryOrder: { select: { docRef: true } },
           status: true,
           deliveryMethod: true,
           recipientBpId: true,
@@ -69,19 +69,15 @@ export async function GET(request: Request): Promise<Response> {
         },
       }),
     query,
-    tiebreak: "doc",
-    toCursor: (r) => ({
-      kind: "doc",
-      seq: r.seq,
-      t: r.updatedAt.toISOString(),
-      ym: r.yearMonth,
-    }),
+    // 決着キーは行の uuid（索引 (updated_at, id)）。番号は法人をまたいで重なる。
+    tiebreak: "id",
+    toCursor: (r) => ({ kind: "id", id: r.id, t: r.updatedAt.toISOString() }),
     toDto: (r) => ({
-      number: formatDocNumber("DRN", r),
-      deliveryOrderNumber: formatDocNumber(
-        "DOR",
-        legacyDocKey(r.deliveryOrderYearMonth, r.deliveryOrderSeq),
-      ),
+      ...docFields(r),
+      /** 親の出荷書の uuid（`/delivery-orders` の `id`）。 */
+      deliveryOrderId: r.deliveryOrderId,
+      /** 親の出荷書の番号。納品書と同じ法人の書類（`companyCode` が共通）。 */
+      deliveryOrderNumber: relatedDocNumber(r.deliveryOrder),
       status: r.status,
       deliveryMethod: r.deliveryMethod,
       recipientId: r.recipientBpId,

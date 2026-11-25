@@ -19,6 +19,7 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { categoryLabel } from "@/lib/app-list";
+import { docNo } from "@/lib/doc-number";
 import { movementCauseLabel, movementCauseOptions } from "@/lib/enum-labels";
 import type { Locale } from "@/lib/i18n";
 import { MOVEMENT_CAUSE_COLOR, type MovementRow } from "./model";
@@ -56,7 +57,8 @@ export function MovementTable({
     const matchesSearch =
       !search ||
       r.movementNumber.includes(search) ||
-      (r.sourceId ?? "").includes(search);
+      (r.legacyNumber ?? "").includes(search) ||
+      (docNo(r.sourceId) ?? "").includes(search);
     const matchesCause = !cause || r.cause === cause;
     const matchesPlant = !plantId || String(r.plantId) === plantId;
     return matchesSearch && matchesCause && matchesPlant;
@@ -120,7 +122,7 @@ export function MovementTable({
       render: (r) =>
         r.sourceId ? (
           <>
-            <Text size="sm">{r.sourceId}</Text>
+            <Text size="sm">{docNo(r.sourceId)}</Text>
             <Text c="dimmed" size="xs">
               {r.sourceType}
             </Text>

@@ -1,9 +1,8 @@
 /**
  * types.ts — 価格試算 (価格試算) view-model shared by the SA01 screens.
  *
- * Rows come from sales.estimates via Prisma (combined key year_month+seq);
- * `id` is the DERIVED document number (EST-YYYYMM-NNNNN) and doubles as the
- * URL id. `input` snapshots the full calc input so the detail page recomputes
+ * Rows come from sales.estimates via Prisma（行は参照 doc_ref で引く）;
+ * `id` は書類の id（法人コード + 番号 `CKK~EST-2026-00001`）で、URL id を兼ねる。 `input` snapshots the full calc input so the detail page recomputes
  * deterministically via `calcTrialPricing`.
  */
 
@@ -25,9 +24,14 @@ export type TrialPriceSnapshot = TrialResult & {
 export type EstimateStatus = "DRAFT" | "CONFIRMED" | "REGISTERED";
 
 export interface TrialEstimateRecord {
-  /** Derived document number EST-YYYYMM-NNNNN — also the URL id. */
+  /**
+   * 書類の id（法人コード + 番号 `CKK~EST-2026-00001`）— URL と Server Action の
+   * 引数。表示するときは docNo() / <DocNumber> で番号だけにする。
+   */
   id: string;
   estimateNumber: string;
+  /** 旧番号（EST-YYYYMM-NNNNN）。番号設計の切り替え前に採番された書類だけ。 */
+  legacyNumber?: string | null;
   name: string;
   status: EstimateStatus;
   /**

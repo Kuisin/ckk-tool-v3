@@ -17,8 +17,12 @@
  */
 
 import { getTranslations } from "next-intl/server";
-import { legacyDocKey } from "@/lib/doc-number";
-import { requireDocRef, toDocRef } from "@/lib/doc-ref";
+import {
+  docDisplayId,
+  docDisplayNumber,
+  requireDocRef,
+  toDocRef,
+} from "@/lib/doc-ref";
 import { docRefNumber } from "@/lib/doc-ref-core";
 import type { Prisma } from "../../generated/client/client";
 import {
@@ -54,7 +58,7 @@ import {
   appendCustomValueSteps,
 } from "./custom-value-approval-core";
 import { prisma } from "./db";
-import { formatDocNumber, parseDocKey } from "./doc-number";
+import { docNumberOf } from "./doc-number";
 import { type LocalizedText, localized } from "./format";
 import { notify, notifyApprovalGroup } from "./notifications";
 
@@ -84,6 +88,34 @@ async function storedTargetId(
   targetId: string,
 ): Promise<string> {
   return (await toDocRef(targetType, targetId)) ?? targetId;
+}
+
+/**
+ * 番号を持つ書類の参照（doc_ref）。targetId は id（`CKK~ORD-…`）・参照・
+ * 番号だけ・旧番号のどれでもよい。書類が無い・番号だけで 2 つの法人に当たる
+ * ときは null（呼び出し側は「書類が引けなかった」として扱う）。
+ */
+async function targetDocRef(
+  targetType: string,
+  targetId: string,
+): Promise<string | null> {
+  return toDocRef(targetType, targetId).catch(() => null);
+}
+
+/**
+ * 通知のリンクに使う id。番号を DB が払い出す書類は法人コード付きの id
+ * （`CKK~ORD-2026-00001`）— 同じ番号が 2 つの法人にあっても行き先が決まる。
+ * フォーム回答・社内文書は番号が全社で一意のまま（月次の通し番号）なので、
+ * 従来どおり番号だけで開く。uuid・ロット番号で指す対象はそのまま。
+ */
+async function targetLinkId(
+  targetType: string,
+  targetId: string,
+): Promise<string> {
+  if (targetType === "form_responses" || targetType === "internal_pages") {
+    return docRefNumber(targetId);
+  }
+  return docDisplayId(targetType, await storedTargetId(targetType, targetId));
 }
 /** history Json 配列への追記（不正形は作り直す）。 */
 export function appendHistory(
@@ -451,10 +483,10 @@ export async function fetchApprovalDocInfo(
 ): Promise<ApprovalDocInfo | null> {
   switch (targetType) {
     case "order_acceptances": {
-      const key = parseDocKey(targetId, "ORD");
-      if (!key) return null;
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.orderAcceptance.findUnique({
-        where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+        where: { docRef },
         select: {
           items: {
             select: {
@@ -501,24 +533,30 @@ export async function fetchApprovalDocInfo(
       return { type: row.type, planned_quantity: row.plannedQuantity };
     }
     case "material_purchase_orders": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.materialPurchaseOrder.findUnique({
-        where: { poNumber: docRefNumber(targetId) },
+        where: { docRef },
         select: { totalAmount: true },
       });
       if (!row) return null;
       return { total_amount: Number(row.totalAmount) };
     }
     case "purchase_requests": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.purchaseRequest.findUnique({
-        where: { requestNumber: docRefNumber(targetId) },
+        where: { docRef },
         select: { _count: { select: { items: true } } },
       });
       if (!row) return null;
       return { item_count: row._count.items };
     }
     case "design_requests": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.designRequest.findUnique({
-        where: { requestNumber: docRefNumber(targetId) },
+        where: { docRef },
         select: { trigger: true, kind: true, priority: true },
       });
       if (!row) return null;
@@ -589,10 +627,10 @@ export async function fetchApprovalDocInfo(
       };
     }
     case "delivery_orders": {
-      const key = parseDocKey(targetId, "DOR");
-      if (!key) return null;
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.deliveryOrder.findUnique({
-        where: { yearMonth_seq: key },
+        where: { docRef },
         select: {
           fromPlantId: true,
           items: { select: { quantity: true } },
@@ -606,10 +644,10 @@ export async function fetchApprovalDocInfo(
       };
     }
     case "stock_takes": {
-      const key = parseDocKey(targetId, "STK");
-      if (!key) return null;
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.stockTake.findUnique({
-        where: { yearMonth_seq: key },
+        where: { docRef },
         select: {
           plantId: true,
           lines: { select: { bookQuantity: true, countedQuantity: true } },
@@ -630,10 +668,10 @@ export async function fetchApprovalDocInfo(
     }
     case "invoices":
     case "invoice_payments": {
-      const key = parseDocKey(targetId, "INV");
-      if (!key) return null;
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.invoice.findUnique({
-        where: { yearMonth_seq: key },
+        where: { docRef },
         select: { totalAmount: true },
       });
       if (!row) return null;
@@ -832,10 +870,10 @@ async function targetCreatedAt(
 ): Promise<Date | null> {
   switch (targetType) {
     case "order_acceptances": {
-      const key = parseDocKey(targetId, "ORD");
-      if (!key) return null;
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.orderAcceptance.findUnique({
-        where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+        where: { docRef },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
@@ -850,22 +888,28 @@ async function targetCreatedAt(
       return row?.createdAt ?? null;
     }
     case "material_purchase_orders": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.materialPurchaseOrder.findUnique({
-        where: { poNumber: docRefNumber(targetId) },
+        where: { docRef },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
     }
     case "purchase_requests": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.purchaseRequest.findUnique({
-        where: { requestNumber: docRefNumber(targetId) },
+        where: { docRef },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
     }
     case "design_requests": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.designRequest.findUnique({
-        where: { requestNumber: docRefNumber(targetId) },
+        where: { docRef },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
@@ -901,29 +945,29 @@ async function targetCreatedAt(
       return row?.requestedAt ?? null;
     }
     case "delivery_orders": {
-      const key = parseDocKey(targetId, "DOR");
-      if (!key) return null;
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.deliveryOrder.findUnique({
-        where: { yearMonth_seq: key },
+        where: { docRef },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
     }
     case "stock_takes": {
-      const key = parseDocKey(targetId, "STK");
-      if (!key) return null;
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.stockTake.findUnique({
-        where: { yearMonth_seq: key },
+        where: { docRef },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
     }
     case "invoices":
     case "invoice_payments": {
-      const key = parseDocKey(targetId, "INV");
-      if (!key) return null;
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.invoice.findUnique({
-        where: { yearMonth_seq: key },
+        where: { docRef },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
@@ -937,10 +981,10 @@ async function targetCreatedAt(
       return row?.createdAt ?? null;
     }
     case "price_list_entries": {
-      const key = parseDocKey(targetId, "PRC");
-      if (!key) return null;
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.priceListEntry.findUnique({
-        where: { yearMonth_seq: key },
+        where: { docRef },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
@@ -954,7 +998,7 @@ async function targetCreatedAt(
  * 一致しない書類が 3 種類ある:
  *
  *   - 指示書（work_orders）: 業務キーはロット番号（int の通し連番。QR・監査・
- *     kiosk が使う）で、画面の表示番号は書類番号 WOR-YYYYMM-NNNNN
+ *     kiosk が使う）で、画面の表示番号は書類番号 WOR-FFFF-NNNNN
  *     （structure.md 「ロット番号は…／WO 番号は表示用」）。両者は別物。
  *   - 工程フロー変更依頼 / 注文請書キャンセル依頼: 業務キーは依頼行自体の
  *     uuid（対象書類ではなく依頼そのものを指す）。人が知りたいのは
@@ -975,27 +1019,23 @@ async function targetDisplayNumber(
       if (!Number.isInteger(workOrderNumber)) return targetId;
       const row = await prisma.workOrder.findUnique({
         where: { workOrderNumber },
-        select: { yearMonth: true, seq: true },
+        select: { docRef: true },
       });
-      return row ? formatDocNumber("WOR", row) : targetId;
+      return row ? docNumberOf(row) : targetId;
     }
     case "work_order_flow_changes": {
       const row = await prisma.workOrderFlowChange.findUnique({
         where: { id: targetId },
-        select: { workOrder: { select: { yearMonth: true, seq: true } } },
+        select: { workOrder: { select: { docRef: true } } },
       });
-      return row ? formatDocNumber("WOR", row.workOrder) : targetId;
+      return row ? docNumberOf(row.workOrder) : targetId;
     }
     case "order_acceptance_cancel_requests": {
       const row = await prisma.orderAcceptanceCancelRequest.findUnique({
         where: { id: targetId },
-        select: { acceptanceYearMonth: true, acceptanceSeq: true },
+        select: { acceptance: { select: { docRef: true } } },
       });
-      return row
-        ? formatDocNumber("ORD", {
-            ...legacyDocKey(row.acceptanceYearMonth, row.acceptanceSeq),
-          })
-        : targetId;
+      return row ? docNumberOf(row.acceptance) : targetId;
     }
     case "design_versions": {
       // 版の uuid は人が読む番号ではない — 「製品コード v版番号」にする。
@@ -1013,7 +1053,8 @@ async function targetDisplayNumber(
       return `${product} v${row.version}`;
     }
     default:
-      return targetId;
+      // 番号を持つ書類は法人コードを落として番号だけにする（人が読む姿）。
+      return docDisplayNumber(targetType, targetId);
   }
 }
 
@@ -1206,7 +1247,9 @@ async function notifyStepStart(
         : undefined,
       // 承認管理の一覧ではなく当の書類を開く（承認操作は書類詳細の
       // ActionCard にある — design.md §10.9）。承認結果通知と同じ行き先。
-      linkPath: APPROVAL_TARGET[targetType].href(docRefNumber(targetId)),
+      linkPath: APPROVAL_TARGET[targetType].href(
+        await targetLinkId(targetType, targetId),
+      ),
     };
     if (step.groupId == null) {
       // カスタム段 — 指名された人にだけ送る（代理はグループの仕組みなので無い）。
@@ -1517,7 +1560,7 @@ export async function actOnCurrentStep(input: {
               }),
         message: input.comment ?? undefined,
         linkPath: APPROVAL_TARGET[input.targetType].href(
-          docRefNumber(input.targetId),
+          await targetLinkId(input.targetType, input.targetId),
         ),
       });
     } catch (e) {

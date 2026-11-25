@@ -18,7 +18,7 @@ import { iso, num } from "@/lib/api-dto";
 import { invalidCursorResponse, parseListQuery, runList } from "@/lib/api-list";
 import { instanceOf } from "@/lib/api-problem";
 import { prisma } from "@/lib/db";
-import { docRefNumber } from "@/lib/doc-ref-core";
+import { docRefCompany, docRefNumber } from "@/lib/doc-ref-core";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -70,6 +70,14 @@ export async function GET(request: Request): Promise<Response> {
           r.referenceType === "stock_take")
           ? docRefNumber(r.referenceId)
           : r.referenceId,
+      // 番号は法人ごとの連番なので、書類を指す参照には法人コードを添える
+      // （書類でない参照 — uuid・ロット番号 — では null）。
+      referenceCompanyCode:
+        r.referenceId &&
+        (r.referenceType === "delivery_order" ||
+          r.referenceType === "stock_take")
+          ? docRefCompany(r.referenceId)
+          : null,
       notes: r.notes,
       createdAt: iso(r.createdAt),
     }),

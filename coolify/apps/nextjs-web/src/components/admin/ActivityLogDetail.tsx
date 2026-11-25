@@ -27,7 +27,14 @@ const BASE_PATH = "/settings/activity";
 export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
   const tr = useTranslations();
   const locale = useLocale() as Locale;
-  const link = auditRecordLink(entry.tableName, entry.recordId, locale);
+  // recordKey（法人コード付きの参照）を渡す — 番号は法人ごとの連番なので、
+  // 番号だけではどの法人の書類か決まらない。
+  const link = auditRecordLink(
+    entry.tableName,
+    entry.recordId,
+    locale,
+    entry.recordKey,
+  );
 
   return (
     <DetailShell
