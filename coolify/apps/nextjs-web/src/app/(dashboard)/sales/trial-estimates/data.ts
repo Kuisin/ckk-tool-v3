@@ -25,6 +25,7 @@ import {
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import type { TrialInput } from "@/lib/trial-pricing";
+import { ownCompanyLabel } from "../price-lists/data";
 
 /** estimate.result JSON → 価格スナップショット（lots を持つもののみ採用）。 */
 function toPriceSnapshot(value: unknown): TrialPriceSnapshot | null {
@@ -276,6 +277,7 @@ export async function fetchExistingEntryRefs(): Promise<EntryIdentity[]> {
   const rows = await prisma.priceListEntry.findMany({
     select: {
       docRef: true,
+      ownCompany: { select: { id: true, code: true, name: true } },
       customerBpId: true,
       itemId: true,
       toolItemId: true,
@@ -285,6 +287,9 @@ export async function fetchExistingEntryRefs(): Promise<EntryIdentity[]> {
   return rows
     .filter((r) => r.itemId != null)
     .map((r) => ({
+      ownCompanyId: r.ownCompany.id,
+      ownCompanyCode: r.ownCompany.code,
+      ownCompanyName: ownCompanyLabel(r.ownCompany),
       customerBpId: r.customerBpId,
       itemId: String(r.itemId),
       toolItemId: r.toolItemId != null ? String(r.toolItemId) : null,

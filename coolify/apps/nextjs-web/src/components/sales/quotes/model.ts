@@ -306,6 +306,8 @@ export interface Quote {
   quoteNumber: string;
   /** 旧番号（QOT-YYYYMM-NNNNN）。番号設計の切り替え前に採番された書類だけ。 */
   legacyNumber?: string | null;
+  /** 発行会社（自社法人 id）。価格はこの会社の価格表だけから引く。 */
+  ownCompanyId?: number;
   customerId: string;
   customerName: string;
   customerBranchId: string | null;

@@ -14,15 +14,26 @@
  */
 
 import { useEffect, useState } from "react";
-import { fetchAcceptancePriceEntries } from "@/app/(dashboard)/sales/order-acceptances/price-lookup";
+import {
+  type AcceptancePriceCompany,
+  fetchAcceptancePriceEntries,
+} from "@/app/(dashboard)/sales/order-acceptances/price-lookup";
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
 
 /**
- * 顧客の価格表エントリ。顧客未指定 / 取得前は空配列 — 画面は「価格表なし」
- * として自由入力に倒れる（誤って「価格表どおり」と見せない）。
+ * 顧客 × 発行会社の価格表エントリ。顧客未指定 / 取得前は空配列 — 画面は
+ * 「価格表なし」として自由入力に倒れる（誤って「価格表どおり」と見せない）。
+ *
+ * 価格表は会社ごとに別々なので、`company`（保存済みの請書 / 作成中の請書の
+ * 担当拠点・見積書）で引く会社を決める。中身が変わったときだけ取り直す。
  */
-export function usePriceEntries(customerBpId: string | null): PriceListEntry[] {
+export function usePriceEntries(
+  customerBpId: string | null,
+  company: AcceptancePriceCompany,
+): PriceListEntry[] {
   const [entries, setEntries] = useState<PriceListEntry[]>([]);
+  // company は毎描画で作り直されるので、中身（companyKey）が変わったときだけ取り直す。
+  const companyKey = JSON.stringify(company);
 
   useEffect(() => {
     if (!customerBpId) {
@@ -31,7 +42,10 @@ export function usePriceEntries(customerBpId: string | null): PriceListEntry[] {
     }
     let alive = true;
     // 顧客を続けて変えたとき、遅れて届いた前の顧客の結果で上書きしない。
-    fetchAcceptancePriceEntries(customerBpId)
+    fetchAcceptancePriceEntries(
+      customerBpId,
+      JSON.parse(companyKey) as AcceptancePriceCompany,
+    )
       .then((rows) => {
         if (alive) setEntries(rows);
       })
@@ -41,7 +55,7 @@ export function usePriceEntries(customerBpId: string | null): PriceListEntry[] {
     return () => {
       alive = false;
     };
-  }, [customerBpId]);
+  }, [customerBpId, companyKey]);
 
   return entries;
 }

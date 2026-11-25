@@ -22,7 +22,7 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   deletePriceEntries,
   setPriceEntriesActive,
@@ -42,6 +42,7 @@ import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/mock";
 import { CopyPriceListModal } from "./CopyPriceListModal";
 import { CreateQuoteModal } from "./CreateQuoteModal";
+import { companySyncState } from "./company-sync";
 import { DeletePriceListModal } from "./DeletePriceListModal";
 import { DuplicatePriceListModal } from "./DuplicatePriceListModal";
 import {
@@ -73,6 +74,32 @@ export function PriceListTable({
   const [customer, setCustomer] = useUrlSelectState("customer");
   const [product, setProduct] = useUrlSelectState("product");
   const [orderType, setOrderType] = useUrlSelectState("orderType");
+  const [company, setCompany] = useUrlSelectState("company");
+
+  // 発行会社 — 価格表は会社ごとに別々。2 社以上の価格表が見える人にだけ
+  // 発行会社の列と絞り込みを出す（1 社だけなら毎行同じ値が並ぶだけ）。
+  const companyOptions = useMemo(() => {
+    const seen = new Map<number, string>();
+    for (const e of entries) {
+      if (!seen.has(e.ownCompanyId))
+        seen.set(
+          e.ownCompanyId,
+          e.ownCompanyName !== e.ownCompanyCode
+            ? `${e.ownCompanyCode} ${e.ownCompanyName}`
+            : e.ownCompanyCode,
+        );
+    }
+    return [...seen.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value: String(value), label }));
+  }, [entries]);
+  const multiCompany = companyOptions.length > 1;
+  // 他社の価格表（同じ顧客 × 品目 × 工具）と中身が同じか — 行ごとに 1 回だけ数える。
+  const syncByEntry = useMemo(
+    () =>
+      new Map(entries.map((e) => [e.entryId, companySyncState(e, entries)])),
+    [entries],
+  );
 
   // Modal targets (null = closed).
   const [deleteTarget, setDeleteTarget] = useState<PriceListEntry | null>(null);
@@ -144,6 +171,7 @@ export function PriceListTable({
     setCustomer(null);
     setProduct(null);
     setOrderType(null);
+    setCompany(null);
   };
 
   const filtered = entries.filter((e) => {
@@ -156,10 +184,59 @@ export function PriceListTable({
     const matchesProduct = !product || e.itemId === product;
     const matchesType =
       !orderType || e.variants.some((v) => v.orderType === orderType);
-    return matchesSearch && matchesCustomer && matchesProduct && matchesType;
+    const matchesCompany = !company || String(e.ownCompanyId) === company;
+    return (
+      matchesSearch &&
+      matchesCustomer &&
+      matchesProduct &&
+      matchesType &&
+      matchesCompany
+    );
   });
 
   const columns: Column<PriceListEntry>[] = [
+    ...(multiCompany
+      ? [
+          {
+            key: "ownCompany",
+            header: tr("common.issuingCompany"),
+            width: 90,
+            sortValue: (e: PriceListEntry) => e.ownCompanyCode,
+            render: (e: PriceListEntry) => (
+              <Text ff="mono" size="sm">
+                {e.ownCompanyCode}
+              </Text>
+            ),
+          },
+          {
+            // 他社の価格表（同じ顧客 × 品目 × 工具・別の発行会社）との突き合わせ。
+            // 相手方が無ければ空。差分は詳細画面で見て、そこで同期する。
+            key: "companySync",
+            header: tr("sales.priceListCompanySync.column"),
+            width: 110,
+            hideable: true,
+            sortValue: (e: PriceListEntry) => {
+              const st = syncByEntry.get(e.entryId);
+              return st === "diff" ? 2 : st === "same" ? 1 : 0;
+            },
+            render: (e: PriceListEntry) => {
+              const st = syncByEntry.get(e.entryId);
+              if (!st) return null;
+              return (
+                <Badge
+                  color={st === "same" ? "green" : "orange"}
+                  size="xs"
+                  variant="light"
+                >
+                  {st === "same"
+                    ? tr("sales.priceListCompanySync.same")
+                    : tr("sales.priceListCompanySync.differs")}
+                </Badge>
+              );
+            },
+          },
+        ]
+      : []),
     {
       key: "customerName",
       header: tr("common.customer"),
@@ -340,6 +417,18 @@ export function PriceListTable({
       breadcrumbs={[tr("common.sales"), tr("common.priceList")]}
       filters={
         <>
+          {multiCompany && (
+            <Select
+              aria-label={tr("common.issuingCompany")}
+              clearable
+              data={companyOptions}
+              flex={isMobile ? 1 : undefined}
+              onChange={setCompany}
+              placeholder={tr("sales.priceListCompanySync.allCompanies")}
+              value={company}
+              w={isMobile ? undefined : 160}
+            />
+          )}
           <Select
             aria-label={tr("common.customer")}
             clearable

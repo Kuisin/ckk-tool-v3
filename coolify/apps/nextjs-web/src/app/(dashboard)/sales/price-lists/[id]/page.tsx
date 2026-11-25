@@ -3,6 +3,7 @@ import { PriceListDetail } from "@/components/sales/price-lists/PriceListDetail"
 import { appLabelForKey } from "@/lib/app-list";
 import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { docNo } from "@/lib/doc-number";
 import { docKeyFromParam } from "@/lib/doc-param";
@@ -11,6 +12,7 @@ import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
 import { fetchCustomerOptions } from "../../trial-estimates/data";
 import {
+  fetchCounterpartEntries,
   fetchPriceEntry,
   fetchPriceListItemOptions,
   fetchRelatedQuotes,
@@ -65,6 +67,8 @@ export default async function PriceListDetailPage({
     memos,
     approval,
     approvalTrail,
+    counterparts,
+    canUpdate,
   ] = await Promise.all([
     fetchRelatedQuotes(key),
     fetchCustomerOptions(),
@@ -74,6 +78,9 @@ export default async function PriceListDetailPage({
     // 独自値の追加承認（価格試算から引き継いでいない価格があるときだけ）
     fetchApprovalState("price_list_entries", entry.entryId),
     fetchApprovalTrail("price_list_entries", entry.entryId),
+    // 他社の価格表（同じ顧客 × 品目 × 工具・別の発行会社）との突き合わせ
+    fetchCounterpartEntries(entry),
+    checkPermission("price_list", "UPDATE"),
   ]);
 
   return (
@@ -81,6 +88,8 @@ export default async function PriceListDetailPage({
       approval={approval}
       approvalTrail={approvalTrail}
       auditEntries={auditEntries}
+      canSync={canUpdate.ok}
+      counterparts={counterparts}
       customerOptions={customerOptions}
       entry={entry}
       memos={memos}

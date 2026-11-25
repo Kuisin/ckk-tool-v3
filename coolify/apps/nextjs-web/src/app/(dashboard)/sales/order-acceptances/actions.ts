@@ -561,7 +561,7 @@ export async function saveDraft(
     // 価格表どおりの行の単価はここで確定する（クライアントの表示値は読まない）。
     // 顧客が変わった保存でも、新しい顧客の価格表で解決し直される。
     const creates = buildItemCreates(
-      await applyPriceListPrices(customerBpId, v.items, tr),
+      await applyPriceListPrices(customerBpId, prior.ownCompanyId, v.items, tr),
     );
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
@@ -1225,7 +1225,12 @@ export async function createManualAcceptance(
         createdBy: actor,
         items: {
           create: buildItemCreates(
-            await applyPriceListPrices(v.customerBpId, v.items, tr),
+            await applyPriceListPrices(
+              v.customerBpId,
+              company.ownCompanyId,
+              v.items,
+              tr,
+            ),
           ),
         },
       },
