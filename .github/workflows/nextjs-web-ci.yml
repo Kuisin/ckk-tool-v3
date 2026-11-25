@@ -158,6 +158,14 @@ jobs:
               | psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q
           done
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/analytics-views.sql
+      - name: DB 関数の試験（ci/sql-tests/*.sql — 各ファイルは自分で ROLLBACK する）
+        # DB 側にしか無い規則（採番関数・トリガー）の試験。TS の双子と同じ境界の
+        # 表を当てて、双子が割れていないことも見る。
+        run: |
+          for f in ci/sql-tests/*.sql; do
+            echo "==> $f"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$f"
+          done
       - name: schema と DB の差分が空であること
         run: pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema --exit-code
 

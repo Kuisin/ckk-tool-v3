@@ -2610,6 +2610,28 @@ Table numbering_sequences {
   updated_at      timestamp
 }
 
+// 書類番号の連番（新方式 PREFIX-FFFF-NNNNN、例 QOT-2026-00001）。
+// 連番は **自社法人 × 会計年度** ごと（numbering_sequences の月次リセットを
+// 置き換える予定。2026-11 時点では基盤だけで、書類はまだ旧方式で採番している）。
+//   - 年度のラベル = 年度が始まる暦年。開始月は own_companies.fiscal_year_start_month。
+//   - どの年度に入るかは**書類自身の日付**（無ければ作成日時）を**日本時間の暦日**に
+//     して決める（app.jst_date → app.fiscal_year_of。TS 双子は lib/fiscal-year-core.ts）。
+//   - **払い出すのは DB だけ**（app.allocate_document_seq）。呼び出し側の
+//     トランザクションの中で動くので、保存が巻き戻れば番号も戻る（欠番なし）。
+//     法人の行を FOR SHARE で掴み、開始月の変更と順序を付ける。
+//   - 1 行でもある法人は開始月を変えられない（トリガー own_companies_fiscal_month_lock）。
+//     変えると同じ日付の書類が別の年度に入り得る。画面 MS0I も同じ条件で欄を閉じる。
+Table document_sequences {
+  key             text [not null]   // 書類種別（QUOTE / INVOICE …）
+  own_company_id  int  [not null, ref: > own_companies.id]
+  fiscal_year     int  [not null]   // 4 桁（CHECK）
+  last_seq        int  [not null]   // 1..99999（CHECK）
+
+  indexes {
+    (key, own_company_id, fiscal_year) [pk]
+  }
+}
+
 // ===========================
 // フィーチャーフラグ
 // ===========================

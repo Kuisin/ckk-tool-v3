@@ -116,6 +116,28 @@ model NumberingSequence {
   @@schema("app")
 }
 
+// 書類番号の連番（PREFIX-FFFF-NNNNN）— 自社法人 × 会計年度ごと。
+// 払い出しは DB 関数 app.allocate_document_seq だけが行う（アプリから直接
+// 書かない）。呼び出し側のトランザクション内で動くので、巻き戻れば番号も戻る。
+// 1 行でもある法人は会計年度の開始月を変えられない（トリガー
+// own_companies_fiscal_month_lock）。範囲は CHECK（last_seq 1..99999 /
+// fiscal_year 4 桁）。年度の引き方は app.fiscal_year_of（TS 双子:
+// nextjs-web lib/fiscal-year-core.ts）。
+model DocumentSequence {
+  key          String
+  ownCompanyId Int    @map("own_company_id")
+  /// 会計年度のラベル = 年度が始まる暦年
+  fiscalYear   Int    @map("fiscal_year")
+  lastSeq      Int    @map("last_seq")
+
+  ownCompany OwnCompany @relation("DocumentSequenceOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@id([key, ownCompanyId, fiscalYear])
+  @@index([ownCompanyId])
+  @@map("document_sequences")
+  @@schema("app")
+}
+
 // フィーチャーフラグ（_specs/tables.md §Other）。アプリの環境別 ON/OFF に使用:
 // key = `app:<appKey>:<env>`（env = dev | main）。行が無ければ有効（デフォルト
 // ON — 既存挙動を変えない）。dev/main は同一 DB を共有するため env をキーに含める。

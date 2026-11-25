@@ -6853,6 +6853,8 @@
       "fiscalYearStartMonth": "会計年度の開始月",
       "fiscalYearStartMonthDesc": "書類番号を年度ごとに区切るときの境目（1〜12）",
       "invalidFiscalMonth": "開始月は 1〜12 で入力してください",
+      "fiscalYearLocked": "この法人はすでに書類番号を発行しているため、会計年度の開始月は変えられません（変えると年度の区切りが発行済みの番号と食い違います）",
+      "fiscalYearLockedError": "この法人はすでに書類番号を発行しているため、会計年度の開始月は変えられません",
       "monthValue": "{month} 月",
       "plants": "拠点",
       "plantCount": "拠点数",

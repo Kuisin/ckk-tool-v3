@@ -64,6 +64,11 @@ interface FormValues {
 
 export interface OwnCompanyFormInitial extends FormValues {
   id: number;
+  /**
+   * 会計年度の開始月が閉じているか（この法人がもう採番している）。閉じていれば
+   * 欄を無効にして理由を出す。DB のトリガーと Server Action も同じ条件で拒否する。
+   */
+  fiscalYearLocked?: boolean;
 }
 
 export function OwnCompanyForm({
@@ -78,6 +83,7 @@ export function OwnCompanyForm({
   const isEdit = !!initial;
   // 既定の法人は「別の法人を既定にする」ことでしか外せない（サーバーでも拒否）。
   const defaultLocked = !!initial?.isDefault;
+  const fiscalYearLocked = !!initial?.fiscalYearLocked;
 
   const schema = z.object({
     code: z.string().trim().min(1, tr("master.ownCompanies.enterCode")),
@@ -215,7 +221,12 @@ export function OwnCompanyForm({
           />
           <NumberInput
             allowDecimal={false}
-            description={tr("master.ownCompanies.fiscalYearStartMonthDesc")}
+            description={
+              fiscalYearLocked
+                ? tr("master.ownCompanies.fiscalYearLocked")
+                : tr("master.ownCompanies.fiscalYearStartMonthDesc")
+            }
+            disabled={fiscalYearLocked}
             label={tr("master.ownCompanies.fiscalYearStartMonth")}
             max={12}
             min={1}
