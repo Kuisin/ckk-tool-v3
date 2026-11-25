@@ -157,6 +157,13 @@ model WorkOrder {
   /// それ以外は null（DB の CHECK で空文字を拒む）。監査ログにも同じ文を残す。
   wipOverrideReason String? @map("wip_override_reason")
 
+  /// 打ち切り（進行中のまま止めて、品を仕掛品として在庫へ戻した）日時。
+  /// 打ち切った指示書の status は CANCELLED — 終わった指示書としての扱い
+  /// （再計画・割当の解放・現場の一覧から外す）はキャンセルと同じで、
+  /// 「着手前に取り消した」と「途中で止めた」の違いはこの列だけが持つ。
+  /// 何をどこへ戻したかは work_order_aborts（status = APPLIED）の行にある。
+  abortedAt DateTime? @map("aborted_at") @db.Timestamptz(6)
+
   // 承認遷移（MaterialPurchaseOrder と同型の row-workflow）。
   // 段ごとの日時・承認者は approval_requests / approval_records が持つ。
   requestedAt  DateTime? @map("requested_at") @db.Timestamptz(6)
@@ -191,6 +198,7 @@ model WorkOrder {
   steps               WorkOrderStep[]
   stepLinks           WorkOrderStepLink[]
   flowChanges         WorkOrderFlowChange[]
+  aborts              WorkOrderAbort[]
   deliveryOrders      DeliveryOrder[]
   reservations        InventoryReservation[]
 
@@ -340,6 +348,41 @@ model WorkOrderFlowChange {
 
   @@index([workOrderId, status])
   @@map("work_order_flow_changes")
+  @@schema("app")
+}
+
+// 打ち切りの申請（§7）— 進行中の指示書を止め、流れの途中にある良品を
+// 仕掛品として在庫へ戻す。work_order_flow_changes と同じ形（保留 → 承認 → 適用）:
+// 承認設定（MS0B）の「指示書の打ち切り」に段が 1 つでもあれば承認を通し、
+// 1 段も無ければ申請と同時に適用する（未設定 = 素通し）。
+//
+// 適用は承認後に**いまの工程の状態で計算し直して**突き合わせる — 申請してから
+// 工程が進んでいれば適用せず FAILED + error に残す（古い前提のまま戻さない）。
+// 位置ごとの数・加工状態・仕上がり寸法の規則は lib/wip-abort-core.ts。
+model WorkOrderAbort {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId String   @map("work_order_id") @db.Uuid
+  /// 打ち切る理由（必須。空白は DB の CHECK で拒む）。
+  reason      String
+  /// 位置ごとの戻す数・廃棄数・加工状態・仕上がり寸法（lib/wip-abort-core.ts
+  /// WorkOrderAbortPayload）。申請時点の各位置の数も持つ — 適用時の突き合わせ用。
+  payload     Json
+  /// PENDING | APPLIED | REJECTED | CANCELLED | FAILED（DB 側 CHECK）
+  status      String   @default("PENDING")
+  /// 承認後に適用できなかった理由（工程が進んだ等）。
+  error       String?
+  appliedAt   DateTime? @map("applied_at") @db.Timestamptz(6)
+  requestedBy String?  @map("requested_by") @db.Uuid
+  requestedAt DateTime @default(now()) @map("requested_at") @db.Timestamptz(6)
+  resolvedBy  String?  @map("resolved_by") @db.Uuid
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  workOrder       WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  requestedByUser User?     @relation("WorkOrderAbortRequestedBy", fields: [requestedBy], references: [id])
+  resolvedByUser  User?     @relation("WorkOrderAbortResolvedBy", fields: [resolvedBy], references: [id])
+
+  @@index([workOrderId, status])
+  @@map("work_order_aborts")
   @@schema("app")
 }
 

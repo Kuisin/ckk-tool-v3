@@ -109,6 +109,22 @@
 >   分析ビューは `analytics.v_wip_inventory`（1 行 = 1 バケット）と
 >   `analytics.v_wip_states`（加工状態の読める名前）。`v_product_inventory` /
 >   `v_item_inventory` にも加工状態・目標製品・仕上がり寸法の列が付く
+>
+>   **打ち切り（PR 6/7）**: 進行中の指示書を止め、流れの途中の良品を仕掛品として
+>   在庫へ戻す。`work_order_aborts`（申請 1 行 = 1 回の打ち切り。
+>   `work_order_flow_changes` と同じ形 — status PENDING / APPLIED / REJECTED /
+>   CANCELLED / FAILED、PENDING は指示書ごとに 1 件、`reason` は空白不可の CHECK、
+>   `error` = 適用できなかった理由）。`payload` は位置ごとの
+>   「申請時点の本数・戻す数・廃棄数・加工状態・仕上がり寸法」で、適用時に
+>   いまの工程の状態で数え直した位置と突き合わせる（崩れていれば FAILED）。
+>   承認は `approval_flows.target_type = 'work_order_aborts'`（段が無ければ
+>   申請と同時に適用）。申請行は多態参照の先なので `purge_children_after_delete`
+>   トリガー付き。打ち切った指示書は `status = CANCELLED` + `work_orders.aborted_at`
+>   — 新しい状態値は足さない（割当の解放・再計画・現場の一覧から外す扱いは
+>   キャンセルと同じで、違いはこの列だけが持つ）。戻した仕掛品は完了の計上と
+>   同じバケット（仕掛ブランク × 加工状態 × 目標製品 × 仕上がり寸法、ロット =
+>   指示書番号、発生工程 = 品がいた / 出てきた工程）で、伝票の事由は
+>   `INVENTORY_MOVEMENT_CAUSE.WORK_ORDER_ABORT`。規則は `lib/wip-abort-core.ts`
 > - `master.prisma`: `currencies` — 100 円基準の換算マスタ（rate_per_100_jpy =
 >   100 円で買えるその通貨量。JPY = 100）。shared-db スタックの fx-rates が日次自動更新。
 >   書類・製品の `currency` 列（products / quotes / order_acceptances / invoices に

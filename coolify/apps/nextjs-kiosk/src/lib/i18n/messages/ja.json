@@ -55,7 +55,10 @@
       "IN_PROGRESS": "進行中",
       "COMPLETED": "完了",
       "CANCELLED": "キャンセル"
-    }
+    },
+    "aborted": "打ち切り済",
+    "abortPending": "打ち切り承認依頼中",
+    "abortPendingNote": "この指示書は打ち切りの承認依頼中です。承認されると工程は閉じ、流れの途中の品は仕掛品として在庫へ戻ります。"
   },
   "woList": {
     "title": "指示書一覧",

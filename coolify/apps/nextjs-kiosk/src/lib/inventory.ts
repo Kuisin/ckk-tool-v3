@@ -28,6 +28,7 @@ import {
 } from "./inventory-availability-core";
 import { encodeInventoryNote } from "./inventory-note-core";
 import { ownerBucketFor } from "./inventory-owner-core";
+import type { AbortWipPosting } from "./wip-abort-core";
 import {
   mainlinePartChangingStepIds,
   orderSemiFinishedForConsumption,
@@ -52,6 +53,8 @@ type Tx = PrismaNS.TransactionClient;
 /** 入出庫伝票の事由。DB の app."INVENTORY_MOVEMENT_CAUSE" と同じ集合。 */
 export type MovementCause =
   | "WORK_ORDER_COMPLETION"
+  /// 指示書の打ち切り（流れの途中の品を仕掛品として入庫 + 材料消費）。
+  | "WORK_ORDER_ABORT"
   | "DELIVERY_SHIPMENT"
   | "MATERIAL_RECEIPT"
   | "STOCK_TRANSFER"
@@ -1414,6 +1417,43 @@ export async function onWorkOrderCompletedTx(
   tx: Tx,
   workOrderId: string,
 ): Promise<void> {
+  await settleWorkOrderTx(tx, workOrderId, null);
+}
+
+/** 打ち切りの計上の材料（lib/wip-abort-core.ts abortSettlement の結果）。 */
+export interface WorkOrderAbortSettlement {
+  /** 流れの途中から仕掛品として戻す分（位置 1 か所 = 1 本）。 */
+  postings: readonly AbortWipPosting[];
+  /** 戻さずに廃棄した本数（位置ごとの廃棄の合計）。 */
+  scrap: number;
+}
+
+/**
+ * 指示書の打ち切りの計上 — 打ち切りの遷移（CANCELLED + aborted_at）と**同一**
+ * トランザクションで呼ぶ。
+ *
+ * 完了の計上（onWorkOrderCompletedTx）と**同じ道**を通す: 完成数・工程に記録
+ * した半製品・素材の消費・投入した仕掛品の消費・外注の預けの戻しは、完了と
+ * まったく同じ規則で動く。違うのは 3 つだけ:
+ *   1. 流れの途中にいた品を、位置ごとに仕掛品として入れる（`postings`）
+ *   2. この指示書の予約は確定せず解除する（作り終えていない）
+ *   3. 伝票の事由が WORK_ORDER_ABORT
+ * 規則を 2 か所に書かないための形 — 打ち切りだけ素材を消費しない・仕掛品の
+ * 投入を落とさない、といったずれは在庫の二重計上に直結する。
+ */
+export async function onWorkOrderAbortedTx(
+  tx: Tx,
+  workOrderId: string,
+  abort: WorkOrderAbortSettlement,
+): Promise<void> {
+  await settleWorkOrderTx(tx, workOrderId, abort);
+}
+
+async function settleWorkOrderTx(
+  tx: Tx,
+  workOrderId: string,
+  abort: WorkOrderAbortSettlement | null,
+): Promise<void> {
   const wo = await tx.workOrder.findUniqueOrThrow({
     where: { id: workOrderId },
     // 工程はエンジンが読む列 + 入庫先の解決に使う plantId だけ
@@ -1481,16 +1521,16 @@ export async function onWorkOrderCompletedTx(
   // 現れる — 製造分の仕掛品は元々台帳に無いので、そこでの廃棄は在庫の
   // 出来事ではない（素材は予約ぶんを丸ごと消費済み。ここで廃棄も引くと
   // 二重に減る）。
-  const scrapTotal = wo.steps.reduce(
-    (sum, s) => sum + (s.outputDefectScrap ?? 0),
-    0,
-  );
+  // 打ち切りで戻さなかった分も廃棄（位置ごとに明示した数）。
+  const scrapTotal =
+    wo.steps.reduce((sum, s) => sum + (s.outputDefectScrap ?? 0), 0) +
+    (abort?.scrap ?? 0);
   const plantId = wo.steps.find((s) => s.plantId != null)?.plantId ?? null;
 
   // この完了で動く在庫はすべて 1 枚の伝票に入る（完成品の入庫・半製品の入庫・
-  // 材料の消費・在庫分の付け替え）。1 回の出来事だから 1 枚。
+  // 材料の消費・在庫分の付け替え）。1 回の出来事だから 1 枚。打ち切りも同じ。
   const openMovement = movementOpener(tx, {
-    cause: "WORK_ORDER_COMPLETION",
+    cause: abort ? "WORK_ORDER_ABORT" : "WORK_ORDER_COMPLETION",
     sourceType: "work_orders",
     sourceId: String(wo.workOrderNumber),
     plantId,
@@ -1532,14 +1572,25 @@ export async function onWorkOrderCompletedTx(
     // 仕掛品から始めた指示書の品は、投入した仕掛品で済んでいた工程も済んでいる。
     startStepIds,
   );
-  if (wipPostings.length > 0) {
+  // 打ち切りで流れの途中から戻す分（位置 1 か所 = 1 本）も同じ形で入れる。
+  const allWipPostings = [
+    ...wipPostings.map((p) => ({
+      ...p,
+      noteKey: "workOrderCompletedSemiFinished",
+    })),
+    ...(abort?.postings ?? []).map((p) => ({
+      ...p,
+      noteKey: "workOrderAbortedWip",
+    })),
+  ];
+  if (allWipPostings.length > 0) {
     // ブランクの行は目標製品の単位で数える（本数）。品目マスタのブランクの単位に
     // 任せると、製品の単位が違う指示書で旧来の行（製品の単位のまま移行した）と
     // 食い違う。
     const blankItemId = wipBlank
       ? await wipBlankItemIdTx(tx, wipBlank.size)
       : null;
-    for (const posting of wipPostings) {
+    for (const posting of allWipPostings) {
       const invId =
         blankItemId != null && wipBlank
           ? await ensureItemInventory(tx, {
@@ -1570,7 +1621,7 @@ export async function onWorkOrderCompletedTx(
         quantity: posting.quantity,
         referenceType: "work_order",
         referenceId: wo.id,
-        notes: encodeInventoryNote("workOrderCompletedSemiFinished", {
+        notes: encodeInventoryNote(posting.noteKey, {
           workOrderNumber: wo.workOrderNumber,
         }),
       });
@@ -1808,6 +1859,17 @@ export async function onWorkOrderCompletedTx(
         `[inventory] 在庫分消費を一部スキップ（引当/台帳不足 残 ${needed}）: WO #${wo.workOrderNumber}`,
       );
     }
+  } else if (abort) {
+    // 打ち切り: 作り終えていないので確定しない — この指示書の残りの予約
+    // （素材・投入する仕掛品は上で落としてある）を解除する。
+    await releaseWorkOrderReservations(
+      tx,
+      wo.id,
+      encodeInventoryNote("workOrderAbortedReservationReleased", {
+        workOrderNumber: wo.workOrderNumber,
+      }),
+      openMovement,
+    );
   } else {
     // 予約 → 確定（§7: 全工程完了時）。**この指示書の予約だけ**を確定する。
     // 割当明細（orderLineId）で広げてはいけない — 明細の製品在庫予約

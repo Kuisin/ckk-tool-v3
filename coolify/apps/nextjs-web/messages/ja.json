@@ -823,7 +823,8 @@
     "issuingCompanyDesc": "この書類を発行する自社法人。作成後は変えられません",
     "issuingCompanyNotAllowed": "選択した発行会社では書類を作成できません。所属拠点の自社法人から選択してください",
     "selectIssuingCompany": "発行会社を選択",
-    "selectIssuingCompanyDesc": "同じ番号の書類が複数の発行会社にあります。開く書類の発行会社を選んでください。"
+    "selectIssuingCompanyDesc": "同じ番号の書類が複数の発行会社にあります。開く書類の発行会社を選んでください。",
+    "workOrderAbort": "指示書の打ち切り"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -1180,7 +1181,8 @@
       "APPROVE_1ST": "第一承認",
       "APPROVE_2ND": "第二承認",
       "REJECT": "差し戻し",
-      "CANCEL": "キャンセル"
+      "CANCEL": "キャンセル",
+      "ABORT": "打ち切り"
     },
     "DESIGN_HISTORY_ACTION_LABEL": {
       "CREATE": "作成",
@@ -1236,7 +1238,8 @@
       "STOCK_RESERVATION": "引当予約",
       "RESERVATION_RELEASE": "予約解除",
       "ADJUSTMENT": "棚卸調整",
-      "OTHER": "不明（移行前）"
+      "OTHER": "不明（移行前）",
+      "WORK_ORDER_ABORT": "指示書打ち切り"
     },
     "TRANSACTION_TYPE_LABEL": {
       "IN": "入庫",
@@ -3744,6 +3747,56 @@
       "drawReserved": "予約済 {count} 本",
       "drawNotReserved": "未予約（承認のときに予約します）",
       "overrideReasonLabel": "加工状態が合わない仕掛品を使う理由: {reason}"
+    },
+    "workOrderAbort": {
+      "menu": "打ち切り",
+      "title": "指示書の打ち切り",
+      "description": "進行中の指示書を止め、流れの途中にある良品を仕掛品として在庫へ戻します。戻さない分は廃棄として記録します。指示書は打ち切り済み（キャンセル）になり、注文明細は未手配に戻ります。",
+      "noPositions": "流れの途中に良品はありません。打ち切ると在庫へ戻す品はなく、指示書だけが終わります。",
+      "inStep": "工程内",
+      "waiting": "工程待ち",
+      "waitingBetween": "{from} → {to}",
+      "atPosition": "{quantity} 本",
+      "returnQuantity": "仕掛品として戻す数",
+      "scrapQuantity": "廃棄",
+      "scrapHint": "戻さない分は廃棄として記録します",
+      "reason": "打ち切りの理由",
+      "reasonPlaceholder": "例: 受注の取り消し、図面の変更",
+      "approvalNote": "承認設定で「指示書の打ち切り」に段があるときは承認を経て適用されます。段が無ければすぐに適用されます。",
+      "confirm": "打ち切る",
+      "appliedToast": "打ち切りました",
+      "appliedToastMessage": "流れの途中の品を仕掛品として在庫へ戻しました",
+      "requestedToast": "打ち切りを申請しました",
+      "requestedToastMessage": "承認されると適用されます",
+      "appliedTitle": "打ち切り済み",
+      "appliedDescription": "{at} に打ち切りました。理由: {reason}。仕掛品として戻した数 {returned} 本 / 廃棄 {scrap} 本。",
+      "failedTitle": "打ち切りを適用できませんでした",
+      "failedDescription": "{error} 指示書は進行中のままです。いまの状態で打ち切りを申請し直してください。",
+      "pendingTitle": "打ち切り承認依頼中",
+      "approvalTitle": "打ち切りの承認",
+      "pendingDescription": "{requestedBy} さんの申請（{stepLabel}）。理由: {reason}。仕掛品として戻す数 {returned} 本 / 廃棄 {scrap} 本。承認されるまで指示書は進行中のままです。",
+      "rejectTitle": "打ち切りを差し戻す",
+      "rejectHelp": "差し戻すと申請は閉じ、指示書は進行中のまま続きます。",
+      "rejectedToastMessage": "指示書は進行中のままです",
+      "abortedBadge": "打ち切り",
+      "pendingBadge": "打ち切り承認依頼中",
+      "reasonRequired": "打ち切りの理由を入力してください",
+      "positionsChanged": "工程の状態が変わりました。画面を読み込み直してください",
+      "quantityMismatch": "戻す数と廃棄の合計を、その位置の本数に合わせてください",
+      "block": {
+        "notInProgress": "打ち切れるのは進行中の指示書だけです",
+        "typeNotAbortable": "打ち切れるのは製造分の指示書だけです",
+        "pending": "この指示書の打ち切りは承認依頼中です"
+      },
+      "requestedNote": "打ち切りを申請（理由: {reason}）",
+      "notFound": "打ち切りの申請が見つかりません",
+      "alreadyProcessed": "この打ち切りの申請は処理済みです",
+      "payloadBroken": "打ち切りの申請内容を読み取れません",
+      "premiseChanged": "申請してから工程が進んだため適用しませんでした（食い違い {count} 件）。",
+      "applyFailedNote": "打ち切りを適用できませんでした: {error}",
+      "appliedNote": "打ち切り（理由: {reason}）— 仕掛品として戻した数 {returned} 本 / 廃棄 {scrap} 本",
+      "applyFailedShort": "打ち切りに失敗しました",
+      "rejectedNote": "打ち切りの申請を差し戻し（理由: {reason}）"
     }
   },
   "purchase": {
@@ -9904,7 +9957,9 @@
     "finalInspectionShipmentAuthorized": "出荷前確認: 出荷許可者を記録",
     "finalInspectionShipDefectReviewed": "出荷時不良内容確認者印を記録",
     "inspectionApproved": "検査記録を承認",
-    "stockTakeAdjusted": "棚卸調整（実数 {book} → 実測 {counted}）"
+    "stockTakeAdjusted": "棚卸調整（実数 {book} → 実測 {counted}）",
+    "workOrderAbortedWip": "指示書 #{workOrderNumber} 打ち切りによる仕掛品入庫",
+    "workOrderAbortedReservationReleased": "指示書 #{workOrderNumber} 打ち切りによる予約解除"
   },
   "workflowCore": {
     "quantityLabels": {

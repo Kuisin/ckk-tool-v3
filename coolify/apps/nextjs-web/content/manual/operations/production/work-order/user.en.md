@@ -339,6 +339,31 @@ When a finished work order still has pieces that are not on any delivery order, 
 
 You cannot make one from a for-stock work order (one with no order line). In that case start from the delivery order side and pick the order acceptance there.
 
+## Stopping part-way (close-out)
+
+When an order is cancelled or the drawing changes and you want to **stop a work order in progress**, use close-out. The good parts in the flow **go back to stock as WIP**, and another work order can continue them later from "Usable WIP".
+
+Only a **work order in progress for manufacture** can be closed out. Before work starts, cancel it instead. From-stock and regrind work orders cannot be closed out.
+
+1. On the detail screen, open the three-dot button at the top right and choose "**Close out**".
+2. One box appears for each place where good parts sit.
+   - "**In step**" … parts accepted into a step in progress. That step counts as not done.
+   - "**Waiting**" … parts that left a completed step and are waiting for the next one.
+3. In each box, enter "**Return to stock as WIP**". The rest becomes "**Scrapped**" automatically and is recorded as scrap.
+4. For the parts you return, enter "**Finished diameter**" and "**Finished length**" (if no shaping step is done yet, leave them empty to use the WIP blank size). Where a branch merges before the step, also choose the "**Route taken**" (the main line is preselected).
+5. Enter the "**Reason for close-out**" (required) and press "**Close out**".
+
+If the [approval settings](/manual/en/operations/masters/approval-setting/user) have no steps for "**Work order close-out**", the work order is closed out right away. Otherwise it becomes an approval request and "**Close-out pending approval**" appears at the top of the screen. The work order stays in progress until approved.
+
+When a work order is closed out:
+
+- It becomes "**Cancelled**" with a "**Closed out**" mark. The remaining steps close and any work in progress ends at the close-out time.
+- The returned parts go to stock as WIP (lot number = this work order). You can see them on the "**WIP**" tab of Inventory. The stock movement cause is "**Work order close-out**".
+- Reserved material is consumed and any issued WIP is taken out of stock, the same as on completion.
+- The original order lines go back to not planned when no other live work order is attached, so you can create a new work order.
+
+**If the steps move on while the request waits for approval, the close-out is not applied.** If you see "Could not apply the close-out", request it again for the current state. If it is sent back, the work order simply continues.
+
 ## Other things you can do
 
 - **編集** (edit) … only while it is 「下書き」 (draft). Press 「**編集**」 (Edit) at the top right of the screen.

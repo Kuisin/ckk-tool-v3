@@ -46,6 +46,8 @@ export const LEGACY_EMPTY: Record<
   // 価格表は通常のフローを持たない（MS0B の一覧にも出さない）。承認が走るのは
   // 独自値の追加承認の段があるときだけで、段が無ければ素通し — なので skip。
   price_list_entries: "skip",
+  // 指示書の打ち切り — 段が無ければ申請と同時に適用する（工程フロー変更と同じ）。
+  work_order_aborts: "skip",
 };
 
 export function resolveApprovalNeed(input: {

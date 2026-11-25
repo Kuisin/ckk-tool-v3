@@ -320,6 +320,8 @@ model MovementType {
 // ロールバックで番号が飛ぶのは全書類共通の仕様）。
 enum InventoryMovementCause {
   WORK_ORDER_COMPLETION // 指示書完了（完成品・半製品の入庫 + 材料消費）
+  /// 指示書の打ち切り（流れの途中の品を仕掛品として入庫 + 材料消費）。
+  WORK_ORDER_ABORT
   DELIVERY_SHIPMENT // 出荷（出庫 / 在庫保管入庫 + 予約解除）
   MATERIAL_RECEIPT // 素材入荷
   STOCK_TRANSFER // 在庫移動（拠点・保管場所・棚）

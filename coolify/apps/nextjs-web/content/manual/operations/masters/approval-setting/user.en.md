@@ -48,10 +48,11 @@ The **Approval flows** tab lists the six targets that can go through approval.
 
 - The six are **Order acceptance**, **Work order**, **Material purchase order**, **Purchase request**, **Workflow change** and **Order acceptance cancellation**.
   - **Workflow change** … approval for adding, editing or removing step branches on an approved / in-progress work order.
+  - **Work order close-out** … approval for stopping a work order in progress and returning the parts in the flow to stock as WIP.
   - **Order acceptance cancellation** … approval for cancelling a confirmed order acceptance as a whole (there is no per-line cancellation).
 - Each card lists its steps as "1 First approval · Plant manager · Any one person".
 - A document with no approval flow is shown with a red border and the note that **no approval can be requested for it**. In that state the request button will not take you anywhere, so be sure to set one up.
-  - **Workflow change** and **Order acceptance cancellation** are exceptions: with no steps configured they are **applied immediately without approval** (so sites that do not run approvals are not blocked). Configure at least one step if you want them approved.
+  - **Workflow change**, **Work order close-out** and **Order acceptance cancellation** are exceptions: with no steps configured they are **applied immediately without approval** (so sites that do not run approvals are not blocked). Configure at least one step if you want them approved.
 - Each card also shows the **permission needed to approve** it — being able to **view or edit** that document (for example, an order acceptance needs read/edit rights for "Order acceptance"). There is no approve-action permission: **who can approve is decided solely by the approval groups on this screen**, and someone who cannot open the document cannot approve even when they are in the group.
 - Every step carries a badge for the people who can approve it right now.
   - **N can approve** (green) … everyone in the step has the permission.
@@ -125,6 +126,7 @@ Set this up in the "**条件付きフロー**" (conditional flows) section of th
   - **Material purchase order** … total amount
   - **Purchase request** … line count
   - **Workflow change** … the work order's type / the work order's planned quantity
+  - **Work order close-out** … the work order's type / the work order's planned quantity
   - **Order acceptance cancellation** … the order acceptance's total amount / the order acceptance's delivery method
 - Use "**条件付きフローを追加**" to add a rule with its name, conditions and steps. A rule with **no conditions matches every document** (rules below it and the default flow are never reached — mind the order).
 - Use **↑ ↓** to change the evaluation order and the switch to enable / disable a rule.

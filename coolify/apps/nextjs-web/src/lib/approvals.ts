@@ -593,6 +593,20 @@ export async function fetchApprovalDocInfo(
         wo_planned_quantity: row.workOrder.plannedQuantity,
       };
     }
+    case "work_order_aborts": {
+      if (!UUID_RE.test(targetId)) return null;
+      const row = await prisma.workOrderAbort.findUnique({
+        where: { id: targetId },
+        select: {
+          workOrder: { select: { type: true, plannedQuantity: true } },
+        },
+      });
+      if (!row) return null;
+      return {
+        wo_type: row.workOrder.type,
+        wo_planned_quantity: row.workOrder.plannedQuantity,
+      };
+    }
     case "order_acceptance_cancel_requests": {
       const row = await prisma.orderAcceptanceCancelRequest.findUnique({
         where: { id: targetId },
@@ -944,6 +958,14 @@ async function targetCreatedAt(
       });
       return row?.requestedAt ?? null;
     }
+    case "work_order_aborts": {
+      if (!UUID_RE.test(targetId)) return null;
+      const row = await prisma.workOrderAbort.findUnique({
+        where: { id: targetId },
+        select: { requestedAt: true },
+      });
+      return row?.requestedAt ?? null;
+    }
     case "delivery_orders": {
       const docRef = await targetDocRef(targetType, targetId);
       if (!docRef) return null;
@@ -1036,6 +1058,14 @@ async function targetDisplayNumber(
         select: { acceptance: { select: { docRef: true } } },
       });
       return row ? docNumberOf(row.acceptance) : targetId;
+    }
+    case "work_order_aborts": {
+      if (!UUID_RE.test(targetId)) return targetId;
+      const row = await prisma.workOrderAbort.findUnique({
+        where: { id: targetId },
+        select: { workOrder: { select: { docRef: true } } },
+      });
+      return row ? docNumberOf(row.workOrder) : targetId;
     }
     case "design_versions": {
       // 版の uuid は人が読む番号ではない — 「製品コード v版番号」にする。

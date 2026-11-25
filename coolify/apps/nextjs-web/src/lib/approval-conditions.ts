@@ -196,6 +196,20 @@ export function approvalConditionFields(
         unit: tr("master.approvalConditions.pcs"),
       },
     ],
+    work_order_aborts: [
+      {
+        key: "wo_type",
+        label: tr("master.approvalConditions.workOrderType"),
+        type: "select",
+        options: woTypeOpts,
+      },
+      {
+        key: "wo_planned_quantity",
+        label: tr("master.approvalConditions.workOrderPlannedQuantity"),
+        type: "number",
+        unit: tr("master.approvalConditions.pcs"),
+      },
+    ],
     // delivery_method も行ごと（上の order_acceptances と同じ理由・同じ規則）。
     order_acceptance_cancel_requests: [
       {

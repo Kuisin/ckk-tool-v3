@@ -55,7 +55,10 @@
       "IN_PROGRESS": "In progress",
       "COMPLETED": "Completed",
       "CANCELLED": "Cancelled"
-    }
+    },
+    "aborted": "Closed out",
+    "abortPending": "Close-out pending approval",
+    "abortPendingNote": "A close-out of this work order is pending approval. Once approved, its steps close and the parts in the flow return to stock as WIP."
   },
   "woList": {
     "title": "Work order list",

@@ -93,6 +93,8 @@ model User {
   flowChangesRequested    WorkOrderFlowChange[] @relation("FlowChangeRequestedBy")
   flowChangesResolved     WorkOrderFlowChange[] @relation("FlowChangeResolvedBy")
   flowChangesAcknowledged WorkOrderFlowChange[] @relation("FlowChangeAcknowledgedBy")
+  workOrderAbortsRequested WorkOrderAbort[]     @relation("WorkOrderAbortRequestedBy")
+  workOrderAbortsResolved  WorkOrderAbort[]     @relation("WorkOrderAbortResolvedBy")
   acceptanceCancelsRequested OrderAcceptanceCancelRequest[] @relation("AcceptanceCancelRequestedBy")
   acceptanceCancelsResolved  OrderAcceptanceCancelRequest[] @relation("AcceptanceCancelResolvedBy")
   routesCreated           ProductProcessRoute[]        @relation("RouteCreatedBy")
