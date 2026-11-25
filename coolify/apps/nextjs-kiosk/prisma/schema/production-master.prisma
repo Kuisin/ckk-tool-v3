@@ -175,20 +175,51 @@ model WorkLocation {
   sortOrder Int      @default(0) @map("sort_order")
   isActive  Boolean  @default(true) @map("is_active")
   notes     String?
+  /// 機種（machine_models）。null = 機種を持たない（エリア・作業台など）。
+  /// 加工プログラムはこの機種で機械に当たる（design_program_machine_models）。
+  machineModelId Int? @map("machine_model_id")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   group     WorkLocationGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  machineModel MachineModel?    @relation("WorkLocationMachineModel", fields: [machineModelId], references: [id], onDelete: SetNull)
   stepPlans WorkOrderStepPlan[] @relation("StepPlanWorkLocation")
   stepCatalogLinks ProcessStepWorkLocation[] @relation("StepAllowedWorkLocation")
   stepActuals WorkOrderStepActual[] @relation("StepActualWorkLocation")
   kioskDevices KioskDevice[] @relation("KioskDeviceDefaultWorkLocation")
   orderAcceptances OrderAcceptance[] @relation("AcceptanceShippingWorkLocation")
   orderLines       OrderLine[]       @relation("OrderLineShippingWorkLocation")
-  designPrograms   DesignProgram[]   @relation("DesignProgramWorkLocation")
 
   @@index([groupId, sortOrder])
+  @@index([machineModelId])
   @@map("work_locations")
+  @@schema("app")
+}
+
+// 機種（同じ型の機械をまとめる名前）。作業場所マスタ (MS0D) の中で管理する。
+//
+// 1 台の機械（work_locations）は機種を 0..1 持ち、加工プログラム
+// （design_programs）は機種を 0..N 持つ（design_program_machine_models）。
+// プログラムを機械 1 台ではなく機種に当てるのは、同じ型の機械が並ぶ現場で
+// 「NC-01 用」「NC-02 用」と同じプログラムを台数ぶん登録させないため。
+// 工程実行画面の「この機種用」の判定は lib/design-programs-core.ts
+// programsForStep が唯一の定義（共有端末と双子）。
+model MachineModel {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  name      Json // { ja, en, … }（多言語は LocalizedTextInput）
+  /// メーカー（任意・自由記入）。
+  maker     String?
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workLocations WorkLocation[]              @relation("WorkLocationMachineModel")
+  programs      DesignProgramMachineModel[] @relation("DesignProgramMachineModelModel")
+
+  @@map("machine_models")
   @@schema("app")
 }
 

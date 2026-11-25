@@ -253,6 +253,7 @@ model DesignVersion {
   createdByUser   User?            @relation("DesignVersionCreatedBy", fields: [createdBy], references: [id])
   files           DesignFile[]     @relation("DesignVersionFiles")
   programs        DesignProgram[]  @relation("DesignVersionPrograms")
+  programChanges  DesignProgramChange[] @relation("DesignVersionProgramChanges")
 
   // 系列内の版番号は一意（NULLS NOT DISTINCT index — migration で張る。汎用
   // 系列の customer_bp_id = null 同士も同じ系列として数える）。
@@ -333,24 +334,47 @@ model DesignFile {
 // N 工程を受け持つ**（荒・仕上げを 1 本で回す機械がある）ので、工程は子表
 // design_program_steps で持つ。
 //
-// **機械のマスタは作らない — 作業場所 (work_locations, MS0D) が機械そのもの。**
-// work_location_id は「この機械向けに書いたプログラム」の印で、工程実行画面では
-// 計画・実績の作業場所と一致するプログラムが先頭に並ぶ（並べ方は
-// lib/design-programs-core.ts が唯一の定義元 — 共有端末と双子）。
+// **プログラムは機種（machine_models — 作業場所 MS0D の中のマスタ）に当てる。**
+// 0..N 機種（design_program_machine_models）。0 = 機種を問わない。工程実行画面
+// では、計画・実績の作業場所（= 機械）の機種と一致するプログラムが先頭に並ぶ
+// （並べ方は lib/design-programs-core.ts が唯一の定義元 — 共有端末と双子）。
+// 以前は機械 1 台（work_location_id）に当てていたが、同型機が並ぶと同じ
+// プログラムを台数ぶん登録することになるので機種へ移した（列は @ignore で残置）。
 //
-// 編集できるのは版が編集できるあいだ（下書き・差し戻し）だけ。確定した版の
-// プログラムは動かない（図面と同じく「作った物の根拠」を後から書き換えさせない）。
-// 版を消すとプログラムも消える（cascade）。ファイル本体（files 行）は残す。
+// **1 行 = プログラムの 1 版。** program_key が版をまたいだ同一性で、revision が
+// その中の版番号（v1, v2 …）。superseded_at が null の行がそのプログラムの
+// 現行版。工程実行画面が新しい作業に出すのは現行版（廃止 retired_at を除く）。
+//
+// **使ったプログラムは書き換えない。** 工程を開始した時点で出ていた版を
+// work_order_step_programs に記録し、記録が 1 行でもある版は「使用済み」。
+// 使用済みの版を変えるには新しい版（revision + 1）を作る — 古い版はそのまま
+// 残り、その版で始めた工程は以後もその版を見る。未使用の版はその場で直せる。
+// どちらも承認を通す（design_program_changes / 承認設定 MS0B
+// 「加工プログラムの変更」— 段が無ければ申請と同時に当たる）。
+//
+// **図面の版の確定とは独立。** 確定で凍るのは図面（ファイル・仕様）で、
+// プログラムは上の規則で確定後も足し・直しができる。
+// 図面の版を消すとプログラムも消える（cascade）— ただし使用済みの版は
+// work_order_step_programs が RESTRICT で守る。
 model DesignProgram {
   id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   designVersionId String   @map("design_version_id") @db.Uuid
+  /// 版をまたいだプログラムの同一性（v1 の id を引き継ぐ）。
+  programKey      String   @map("program_key") @db.Uuid
+  /// プログラムの版番号（1, 2, …）。図面の版（design_versions.version）とは別。
+  revision        Int      @default(1)
+  /// 次の版ができた時刻。null = 現行版。
+  supersededAt    DateTime? @map("superseded_at") @db.Timestamptz(6)
+  /// 廃止した時刻（現行版に立てる）。廃止したプログラムは新しい工程に出さない。
+  retiredAt       DateTime? @map("retired_at") @db.Timestamptz(6)
   name            String
   /// 機械側のプログラム番号（O0001 等）。任意。
   programNumber   String?  @map("program_number")
   /// プログラム本体（files → SeaweedFS）。番号だけ控えて実体は機械側、もある。
   fileId          String?  @map("file_id") @db.Uuid
-  /// 対象の機械（= 作業場所）。null = 機械を問わない。
-  workLocationId  Int?     @map("work_location_id")
+  /// 旧: 対象の機械（= 作業場所）。機種（machineModels）へ移したので使わない。
+  /// 列は動いている旧アプリのために残置 — DROP は昇格後の後続 PR で。
+  workLocationId  Int?     @map("work_location_id") @ignore
   notes           String?
   sortOrder       Int      @default(0) @map("sort_order")
   createdBy       String?  @map("created_by") @db.Uuid
@@ -359,12 +383,32 @@ model DesignProgram {
 
   designVersion DesignVersion @relation("DesignVersionPrograms", fields: [designVersionId], references: [id], onDelete: Cascade)
   file          File?         @relation("DesignProgramFile", fields: [fileId], references: [id], onDelete: SetNull)
-  workLocation  WorkLocation? @relation("DesignProgramWorkLocation", fields: [workLocationId], references: [id], onDelete: SetNull)
   createdByUser User?         @relation("DesignProgramCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
   steps         DesignProgramStep[]
+  machineModels DesignProgramMachineModel[]
+  stepUses      WorkOrderStepProgram[]
+  changes       DesignProgramChange[] @relation("DesignProgramChangeBase")
+  appliedChanges DesignProgramChange[] @relation("DesignProgramChangeApplied")
 
+  @@unique([programKey, revision])
   @@index([designVersionId, sortOrder])
   @@map("design_programs")
+  @@schema("app")
+}
+
+// プログラムが対象とする機種。1 プログラム × N 機種。行が無い = 機種を問わない。
+// 機種側は RESTRICT — 機種を消すとプログラムが黙って「機種を問わない」に
+// 広がるので、使われている機種は消させない（lib/master-refs でも先に数える）。
+model DesignProgramMachineModel {
+  programId      String @map("program_id") @db.Uuid
+  machineModelId Int    @map("machine_model_id")
+
+  program      DesignProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  machineModel MachineModel  @relation("DesignProgramMachineModelModel", fields: [machineModelId], references: [id], onDelete: Restrict)
+
+  @@id([programId, machineModelId])
+  @@index([machineModelId])
+  @@map("design_program_machine_models")
   @@schema("app")
 }
 
@@ -379,5 +423,51 @@ model DesignProgramStep {
   @@id([programId, processStepId])
   @@index([processStepId])
   @@map("design_program_steps")
+  @@schema("app")
+}
+
+// 加工プログラムの変更申請（追加 / その場で直す / 新しい版 / 削除 / 廃止）。
+//
+// 形は工程フロー変更・指示書の打ち切りと同じ — 申請は保留され、承認設定
+// （MS0B）の「加工プログラムの変更」の最終承認で当たる。段が無ければ申請と
+// 同時に当たる（未設定 = 素通し）。当てるときに前提（基にした版がまだ現行版か・
+// 未使用か）を確かめ直し、崩れていれば FAILED + 理由で残す — 承認を待つあいだに
+// 工程が始まって使用済みになった版を、その場で書き換えないため。
+//
+// payload は lib/design-programs-core.ts ProgramContent（名前・番号・機種・工程・
+// 備考・ファイルの扱い）。新しく上げたファイルは申請時点で files に置き、
+// new_file_id で持つ（差し戻し・失敗のときに片付ける）。
+model DesignProgramChange {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  designVersionId String    @map("design_version_id") @db.Uuid
+  /// ADD | EDIT | REVISE | DELETE | RETIRE（DB 側 CHECK）
+  kind            String
+  /// 基にした版（ADD 以外）。当てる時点で現行版でなければ FAILED。
+  programId       String?   @map("program_id") @db.Uuid
+  payload         Json?
+  newFileId       String?   @map("new_file_id") @db.Uuid
+  /// 申請の理由・補足（任意）。
+  note            String?
+  /// PENDING | APPLIED | REJECTED | CANCELLED | FAILED（DB 側 CHECK）
+  status          String    @default("PENDING")
+  error           String?
+  /// 当てた結果の版（ADD / EDIT / REVISE）。
+  appliedProgramId String?  @map("applied_program_id") @db.Uuid
+  appliedAt       DateTime? @map("applied_at") @db.Timestamptz(6)
+  requestedBy     String?   @map("requested_by") @db.Uuid
+  requestedAt     DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
+  resolvedBy      String?   @map("resolved_by") @db.Uuid
+  resolvedAt      DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  designVersion   DesignVersion  @relation("DesignVersionProgramChanges", fields: [designVersionId], references: [id], onDelete: Cascade)
+  program         DesignProgram? @relation("DesignProgramChangeBase", fields: [programId], references: [id], onDelete: SetNull)
+  appliedProgram  DesignProgram? @relation("DesignProgramChangeApplied", fields: [appliedProgramId], references: [id], onDelete: SetNull)
+  newFile         File?          @relation("DesignProgramChangeFile", fields: [newFileId], references: [id], onDelete: SetNull)
+  requestedByUser User?          @relation("DesignProgramChangeRequestedBy", fields: [requestedBy], references: [id], onDelete: SetNull)
+  resolvedByUser  User?          @relation("DesignProgramChangeResolvedBy", fields: [resolvedBy], references: [id], onDelete: SetNull)
+
+  @@index([designVersionId, status])
+  @@index([programId])
+  @@map("design_program_changes")
   @@schema("app")
 }
