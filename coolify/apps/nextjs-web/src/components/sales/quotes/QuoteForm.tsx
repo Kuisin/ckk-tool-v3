@@ -27,7 +27,7 @@ import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { z } from "zod";
 import {
   createQuote,
@@ -40,9 +40,11 @@ import {
 import { useStandardPrices } from "@/components/sales/useStandardPrices";
 import { GhostButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
+import { IssuingCompanySelect } from "@/components/ui/IssuingCompanySelect";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import type { IssuingCompanyField } from "@/lib/doc-company";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
@@ -201,7 +203,10 @@ export function QuoteForm({
   taxCatalog,
   taxCategoryByCustomer,
   taxCategoryByProduct,
+  issuingCompany,
 }: {
+  /** 発行会社の欄（作成時のみ。所属拠点が複数の法人にまたがる人だけに出る）。 */
+  issuingCompany?: IssuingCompanyField;
   mode: "create" | "edit";
   /** Edit / 複製: the source quote (server-fetched view-model). */
   quote?: Quote | null;
@@ -225,6 +230,10 @@ export function QuoteForm({
   const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  // 発行会社は作成時にだけ決める（以後は変えられない）。
+  const [ownCompanyId, setOwnCompanyId] = useState<number | null>(
+    issuingCompany?.prefill ?? null,
+  );
   const quoteId = mode === "edit" ? quote?.id : undefined;
 
   const form = useForm<QuoteFormValues>({
@@ -293,6 +302,7 @@ export function QuoteForm({
 
   const handleSubmit = (values: QuoteFormValues) => {
     const payload = {
+      ownCompanyId,
       customerBpId: values.customerId,
       customerBranchBpId: values.customerBranchId,
       salesRepId: values.salesRepId,
@@ -385,6 +395,13 @@ export function QuoteForm({
             }
             {...form.getInputProps("customerBranchId")}
           />
+          {mode === "create" && (
+            <IssuingCompanySelect
+              field={issuingCompany}
+              onChange={setOwnCompanyId}
+              value={ownCompanyId}
+            />
+          )}
           <SalesRepSelect
             customerBpId={form.values.customerId || null}
             initial={

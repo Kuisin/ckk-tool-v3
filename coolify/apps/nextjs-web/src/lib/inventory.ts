@@ -19,6 +19,7 @@
 import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
+import { requireDocRef } from "./doc-ref";
 import {
   allocateFromBuckets,
   splitScrapShare,
@@ -117,7 +118,12 @@ export async function createMovement(
         : {}),
       cause: init.cause,
       sourceType: init.sourceType ?? null,
-      sourceId: init.sourceId ?? null,
+      // 番号を持つ書類は法人コード付きの参照で指す（lib/doc-ref-core.ts）—
+      // 番号だけを保存しない。ロット番号や uuid で指す元書類はそのまま。
+      sourceId:
+        init.sourceType && init.sourceId
+          ? await requireDocRef(init.sourceType, init.sourceId, tx)
+          : (init.sourceId ?? null),
       plantId: init.plantId ?? null,
       movementTypeId: init.movementTypeId ?? null,
       notes: init.notes,
@@ -424,6 +430,8 @@ export async function onDeliveryOrderReturnedTx(
   args: { lines: readonly DeliveryReturnLine[]; plantId: number | null },
 ): Promise<void> {
   const ref = `DOR-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
+  // 在庫取引の reference_id も法人コード付きの参照で残す（番号だけにしない）。
+  const refId = await requireDocRef("delivery_orders", ref, tx);
   const openMovement = movementOpener(tx, {
     key: movementKey,
     cause: "SALES_RETURN",
@@ -446,7 +454,7 @@ export async function onDeliveryOrderReturnedTx(
       transactionType: "IN",
       quantity: line.quantity,
       referenceType: "delivery_order",
-      referenceId: ref,
+      referenceId: refId,
       notes: encodeInventoryNote("salesReturned", { ref }),
     });
   }
@@ -1729,6 +1737,8 @@ export async function onDeliveryOrderShippedTx(
     },
   });
   const ref = `DOR-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
+  // 在庫取引の reference_id も法人コード付きの参照で残す（番号だけにしない）。
+  const refId = await requireDocRef("delivery_orders", ref, tx);
   /** 台帳が足りないまま出した分。呼び出し側が利用者へ警告する。 */
   const shortages: ShipShortage[] = [];
   // 出庫・在庫保管の入庫・予約解除は 1 回の出荷の中身なので 1 枚にまとめる。
@@ -1752,7 +1762,7 @@ export async function onDeliveryOrderShippedTx(
           transactionType: "OUT",
           quantity: step.take,
           referenceType: "delivery_order",
-          referenceId: ref,
+          referenceId: refId,
           notes: encodeInventoryNote("shipped", { ref }),
         });
       }
@@ -1777,7 +1787,7 @@ export async function onDeliveryOrderShippedTx(
           quantity: plan.shortfall,
           allowNegative: true,
           referenceType: "delivery_order",
-          referenceId: ref,
+          referenceId: refId,
           // 備考で普通の出庫と分ける。伝票を見れば「どの行が在庫無しで
           // 出たのか」が読める。
           notes: encodeInventoryNote("shippedWithoutStock", { ref }),
@@ -1803,7 +1813,7 @@ export async function onDeliveryOrderShippedTx(
         transactionType: "IN",
         quantity: item.quantity,
         referenceType: "delivery_order",
-        referenceId: ref,
+        referenceId: refId,
         notes: encodeInventoryNote("stockStorage", { ref }),
       });
     }
@@ -1843,7 +1853,7 @@ export async function onDeliveryOrderShippedTx(
           transactionType: "RELEASE",
           quantity: release,
           referenceType: "delivery_order",
-          referenceId: ref,
+          referenceId: refId,
           notes: encodeInventoryNote("shippedReservationReleased", { ref }),
         });
         if (release >= Number(r.quantity)) {

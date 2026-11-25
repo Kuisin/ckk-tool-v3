@@ -1,10 +1,15 @@
 import { Stack } from "@mantine/core";
 import { getLocale, getTranslations } from "next-intl/server";
+import { IntakeCompanyPanel } from "@/components/settings/order-intake/IntakeCompanyPanel";
 import { OrderIntakeFolderPanel } from "@/components/settings/order-intake/OrderIntakeFolderPanel";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
+import { localized } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
+import { getIntakeFolderCompanyId } from "@/lib/intake-company";
 import { readIntakeFolder } from "@/lib/intake-folder";
+import { loadOwnCompanies } from "@/lib/own-companies";
 import { fetchIntakeDocs } from "./data";
 
 export const dynamic = "force-dynamic";
@@ -27,12 +32,30 @@ export default async function OrderIntakeSettingsPage() {
 
   const status = await readIntakeFolder(locale);
   const docs = await fetchIntakeDocs(status);
+  // 取込口の自社法人 — 取込で作る注文請書の発行元（lib/intake-company.ts）。
+  const [intakeCompanyId, companies, canEdit] = await Promise.all([
+    getIntakeFolderCompanyId(),
+    loadOwnCompanies(),
+    checkPermission("system", "UPDATE").then((r) => r.ok),
+  ]);
+  const companyOptions = companies.map((c) => {
+    const name = c.name ? localized(c.name, locale) : "";
+    return {
+      value: String(c.id),
+      label: name && name !== "—" ? `${c.code} ${name}` : c.code,
+    };
+  });
 
   return (
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[tr("common.system"), tr("common.orderIntake")]}
         title={tr("common.orderIntake")}
+      />
+      <IntakeCompanyPanel
+        canEdit={canEdit}
+        companyId={intakeCompanyId}
+        options={companyOptions}
       />
       <OrderIntakeFolderPanel docs={docs} status={status} />
     </Stack>

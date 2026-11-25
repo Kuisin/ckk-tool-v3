@@ -11,6 +11,7 @@ import "server-only";
  * （twin は他のモジュールを import できない）。
  */
 
+import { sessionUserId } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   companyForDeliveryOrder,
@@ -20,9 +21,13 @@ import {
   companyForPurchaseDoc,
   companyForUnplacedDoc,
   companyForWorkOrder,
+  issuingCompanyChoice,
+  linesOutsideCompany,
   ownCompanyData,
+  resolveIssuingCompanyId,
 } from "@/lib/doc-company-core";
 import type { DocKey } from "@/lib/doc-number";
+import { type LocalizedTextInput, localized } from "@/lib/format";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -51,7 +56,90 @@ async function plantCompanies(
   return plantIds.map((id) => (id == null ? null : (byId.get(id) ?? null)));
 }
 
-/** 見積書・価格試算・価格表・フォーム回答・社内文書。 */
+/** 作成フォームへ渡す「発行会社」欄の材料（lib/doc-company-core.ts）。 */
+export interface IssuingCompanyField {
+  /** 欄を出すか（所属拠点が 2 つ以上の法人にまたがる人だけ）。 */
+  selectable: boolean;
+  /** 初期値（法人 id）。 */
+  prefill: number | null;
+  options: { value: string; label: string }[];
+}
+
+async function issuingChoiceFor(userId: string, db: Db) {
+  const plants = await db.userPlant.findMany({
+    where: { userId },
+    orderBy: { plantId: "asc" },
+    select: { plant: { select: { ownCompanyId: true } } },
+  });
+  return issuingCompanyChoice(
+    plants.map((p) => p.plant.ownCompanyId),
+    await defaultId(db),
+  );
+}
+
+/** 作成画面用 — その人が選べる発行会社。 */
+export async function issuingCompanyFieldFor(
+  userId: string,
+  db: Db = prisma,
+): Promise<IssuingCompanyField> {
+  const choice = await issuingChoiceFor(userId, db);
+  const companies = choice.selectable
+    ? await db.ownCompany.findMany({
+        where: { id: { in: choice.companyIds } },
+        select: { id: true, code: true, name: true },
+      })
+    : [];
+  const byId = new Map(companies.map((c) => [c.id, c]));
+  return {
+    selectable: choice.selectable,
+    prefill: choice.prefill,
+    options: choice.companyIds.flatMap((id) => {
+      const c = byId.get(id);
+      if (!c) return [];
+      const name = localized(c.name as LocalizedTextInput | null);
+      return [
+        {
+          value: String(id),
+          label: name && name !== "—" ? `${c.code} ${name}` : c.code,
+        },
+      ];
+    }),
+  };
+}
+
+/** 作成画面用 — いまログインしている人が選べる発行会社。 */
+export async function issuingCompanyFieldForSession(): Promise<IssuingCompanyField> {
+  const userId = await sessionUserId();
+  if (!userId) {
+    return {
+      selectable: false,
+      prefill: await defaultId(prisma),
+      options: [],
+    };
+  }
+  return issuingCompanyFieldFor(userId);
+}
+
+/**
+ * 拠点を持たない書類（見積書・価格試算・価格表）の発行会社を確定する。
+ * フォームの値をサーバーで検証する — 画面を通らない要求で、自分の属さない
+ * 法人の書類を作らせない。ok: false は「選べない法人」。
+ */
+export async function resolveIssuingCompany(
+  userId: string,
+  requested: number | null | undefined,
+  db: Db = prisma,
+): Promise<{ ok: true; data: { ownCompanyId?: number } } | { ok: false }> {
+  const resolved = resolveIssuingCompanyId(
+    await issuingChoiceFor(userId, db),
+    requested,
+  );
+  return resolved.ok
+    ? { ok: true, data: ownCompanyData(resolved.id) }
+    : { ok: false };
+}
+
+/** フォーム回答・社内文書（発行会社の欄を持たない書類）。 */
 export async function companyForUnplaced(db: Db = prisma) {
   return ownCompanyData(companyForUnplacedDoc(await defaultId(db)));
 }
@@ -85,6 +173,33 @@ export async function companyForAcceptance(
       await defaultId(db),
     ),
   );
+}
+
+/**
+ * 注文請書の法人と合わない担当拠点を持つ明細（1 始まりの行番号）と、請書の
+ * 法人の表示名。合っていれば rows は空。規則は lib/doc-company-core.ts
+ * linesOutsideCompany（注文請書 1 件 = 法人 1 つ）。
+ */
+export async function acceptanceLineCompanyMismatch(
+  orderCompanyId: number,
+  linePlantIds: readonly (number | null | undefined)[],
+  db: Db = prisma,
+): Promise<{ rows: number[]; companyCode: string }> {
+  const companies = await plantCompanies(linePlantIds, db);
+  const rows = linesOutsideCompany(
+    orderCompanyId,
+    linePlantIds.map((id, i) => ({
+      hasPlant: id != null,
+      plantCompanyId: companies[i],
+    })),
+    await defaultId(db),
+  );
+  if (rows.length === 0) return { rows, companyCode: "" };
+  const company = await db.ownCompany.findUnique({
+    where: { id: orderCompanyId },
+    select: { code: true },
+  });
+  return { rows, companyCode: company?.code ?? String(orderCompanyId) };
 }
 
 /** 設計依頼書。 */

@@ -166,7 +166,7 @@ async function main(): Promise<void> {
     const shortLines = sql(
       `SELECT count(*) FROM app.inventory_transactions t
          JOIN app.inventory_movements m ON m.id = t.movement_id
-        WHERE m.source_id='${SHORT_DOR}' AND t.notes LIKE '%shippedWithoutStock%'`,
+        WHERE m.source_id=app.to_doc_ref('delivery_orders','${SHORT_DOR}') AND t.notes LIKE '%shippedWithoutStock%'`,
     );
     check("A7b 伝票に「在庫不足のまま出庫」の行がある", shortLines === "1", `rows=${shortLines}`);
   }
@@ -208,7 +208,7 @@ async function main(): Promise<void> {
   const okShortLines = sql(
     `SELECT count(*) FROM app.inventory_transactions t
        JOIN app.inventory_movements m ON m.id = t.movement_id
-      WHERE m.source_id='${OK_DOR}' AND t.notes LIKE '%shippedWithoutStock%'`,
+      WHERE m.source_id=app.to_doc_ref('delivery_orders','${OK_DOR}') AND t.notes LIKE '%shippedWithoutStock%'`,
   );
   check(
     "B2b 足りているときは「在庫不足のまま出庫」の行が無い",

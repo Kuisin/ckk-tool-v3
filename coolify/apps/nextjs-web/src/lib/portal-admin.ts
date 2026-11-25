@@ -8,6 +8,7 @@
 
 import "server-only";
 
+import { docDisplayId } from "@/lib/doc-ref";
 import { prisma } from "./db";
 import { type LocalizedTextInput, localized } from "./format";
 import { maskEmail } from "./portal-mail-core";
@@ -141,14 +142,17 @@ export async function getPortalAccount(
       includeBranches: g.includeBranches,
       includeAsEndUser: g.includeAsEndUser,
       resourceType: g.resourceType,
-      resourceId: g.resourceId,
+      resourceId:
+        g.resourceType && g.resourceId
+          ? docDisplayId(g.resourceType, g.resourceId)
+          : g.resourceId,
       expiresAt: iso(g.expiresAt),
       revokedAt: iso(g.revokedAt),
     })),
     recentAccess: access.map((a) => ({
       id: a.id,
       resourceType: a.resourceType,
-      resourceId: a.resourceId,
+      resourceId: docDisplayId(a.resourceType, a.resourceId),
       action: a.action,
       ipAddress: a.ipAddress,
       createdAt: a.createdAt.toISOString(),

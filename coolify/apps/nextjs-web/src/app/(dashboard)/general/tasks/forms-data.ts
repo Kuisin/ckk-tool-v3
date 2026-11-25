@@ -11,6 +11,8 @@
 import { getTranslations } from "next-intl/server";
 import { sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { toDocRefs } from "@/lib/doc-ref";
+import { docRefNumber } from "@/lib/doc-ref-core";
 import {
   canEditResponse,
   editDeadlineOf,
@@ -139,12 +141,22 @@ export async function fetchFormTasks(): Promise<FormTasks> {
                 action: "APPROVED",
                 request: {
                   targetType: "form_responses",
-                  targetId: { in: requested.map((r) => r.responseNumber) },
+                  // target_id は法人コード付きの参照（lib/doc-ref-core.ts）。
+                  targetId: {
+                    in: [
+                      ...(
+                        await toDocRefs(
+                          "form_responses",
+                          requested.map((r) => r.responseNumber),
+                        )
+                      ).values(),
+                    ],
+                  },
                 },
               },
               select: { request: { select: { targetId: true } } },
             })
-          ).map((x) => x.request.targetId),
+          ).map((x) => docRefNumber(x.request.targetId)),
     );
 
     const mine = myResponses.map((r) => ({

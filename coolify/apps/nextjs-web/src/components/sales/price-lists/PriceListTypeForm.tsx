@@ -56,10 +56,12 @@ import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { customerF4, productItemF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
+import { IssuingCompanySelect } from "@/components/ui/IssuingCompanySelect";
 import { openConfirm } from "@/components/ui/modals";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import type { IssuingCompanyField } from "@/lib/doc-company";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
@@ -268,7 +270,10 @@ export function PriceListTypeForm({
   productOption,
   existingEntries,
   scalePreset = DEFAULT_SCALE_PRESET,
+  issuingCompany,
 }: {
+  /** 発行会社の欄（作成時のみ。所属拠点が複数の法人にまたがる人だけに出る）。 */
+  issuingCompany?: IssuingCompanyField;
   mode: "create" | "edit";
   /** Edit: the entry (server-fetched view-model). */
   entry?: PriceListEntry | null;
@@ -289,6 +294,10 @@ export function PriceListTypeForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const entryId = entry?.entryId;
+  // 発行会社は作成時にだけ決める（以後は変えられない）。
+  const [ownCompanyId, setOwnCompanyId] = useState<number | null>(
+    issuingCompany?.prefill ?? null,
+  );
 
   // 顧客/製品 are locked when editing or prefilled from an existing link.
   const lockCustomerProduct =
@@ -454,6 +463,7 @@ export function PriceListTypeForm({
               variants,
             })
           : await createPriceEntry({
+              ownCompanyId,
               identity: {
                 customerBpId: raw.customerId,
                 itemId: raw.itemId,
@@ -599,6 +609,13 @@ export function PriceListTypeForm({
                 value={form.values.toolItemId || null}
               />
             ))}
+          {mode === "create" && (
+            <IssuingCompanySelect
+              field={issuingCompany}
+              onChange={setOwnCompanyId}
+              value={ownCompanyId}
+            />
+          )}
           <SalesRepSelect
             customerBpId={form.values.customerId || null}
             initial={

@@ -27,6 +27,7 @@ import "server-only";
  */
 
 import { type Access, rowInScope } from "@ckk/authz-core";
+import { docDisplayId } from "@/lib/doc-ref";
 import { checkPermission } from "./authz";
 import { prisma } from "./db";
 import { parseDocKey } from "./doc-number";
@@ -58,8 +59,10 @@ export async function documentInScope(
   access: Access,
   userId: string,
   ownerType: string,
-  ownerId: string,
+  rawOwnerId: string,
 ): Promise<boolean> {
+  // 法人コード付きの参照（DB から読んだ owner_id）でも番号だけでも受ける。
+  const ownerId = docDisplayId(ownerType, rawOwnerId);
   // 原価試算は estimate_cost の持ち主にしか存在しない（スコープ ALL でも）。
   // メモ・証憑の口から番号を推測して覗けないよう、ここで先に閉じる。
   if (ownerType === "estimates" && !(await estimateKindReadable(ownerId))) {

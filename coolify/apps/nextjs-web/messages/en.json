@@ -817,7 +817,10 @@
     "invoicePayment": "Invoice payment",
     "notPendingApproval": "Not currently pending approval",
     "designVersion": "Drawing version",
-    "priceListUnapproved": "Price list awaiting approval"
+    "priceListUnapproved": "Price list awaiting approval",
+    "issuingCompany": "Issuing company",
+    "issuingCompanyDesc": "The own company that issues this document. It cannot be changed after creation",
+    "issuingCompanyNotAllowed": "You cannot create documents for the selected issuing company. Select an own company your sites belong to"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -4659,7 +4662,13 @@
         "orphanRecoveredLog": "[intake] Recovered an orphaned .processing file: {name}",
         "alreadyImportedSkipLog": "[intake] {name} → {number} (already imported, skipped)",
         "numberBurnFailedLog": "[intake] Could not write the number into the file: {name}"
-      }
+      },
+      "intakeCompanyTitle": "Own company of the intake channel",
+      "intakeCompany": "Own company",
+      "intakeCompanyDefault": "Default company",
+      "intakeCompanyDesc": "The issuer of order acceptances created from the intake folder (including intake by email and external integration). An order acceptance's own company cannot be changed after creation, so a change applies only to documents imported from now on. Files uploaded from the screen use the own company of the uploader's sites when it resolves to exactly one.",
+      "intakeCompanySaved": "Saved the own company of the intake channel",
+      "intakeCompanyInvalid": "Select an active own company"
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "The account was created (disabled by default)",
@@ -6956,7 +6965,8 @@
       "inUse": "Cannot be deleted because it is used by {plants} sites and {invoices} invoices",
       "createFailed": "Could not create the own company",
       "updateFailed": "Could not update the own company",
-      "deleteFailed": "Could not delete the own company"
+      "deleteFailed": "Could not delete the own company",
+      "codeInvalidChars": "The company code cannot contain \"/\", \"~\" or spaces"
     }
   },
   "manual": {
@@ -8469,7 +8479,8 @@
       "unitPriceMin0": "The unit price must be 0 or more",
       "onlyCancelledCanBeRecreated": "Only a cancelled order acceptance can be recreated",
       "recreatedFromCancelled": "Recreated from the cancelled {number}",
-      "recreatedAs": "Recreated as {number}"
+      "recreatedAs": "Recreated as {number}",
+      "linePlantOtherCompany": "Line {rows}: the assigned site does not belong to this order acceptance's own company ({company}). All lines of one order acceptance must use sites of the same own company"
     },
     "quoteActions": {
       "createFailed": "Could not create the quote",

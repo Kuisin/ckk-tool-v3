@@ -29,6 +29,7 @@ import {
   designTriggerLabel,
 } from "@/lib/enum-labels";
 import { documentFormatters } from "@/lib/format";
+import { issuerForDesignRequest } from "@/lib/own-companies";
 import { renderPdf } from "@/lib/pdf";
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
@@ -36,13 +37,6 @@ import { getObject, putObject } from "@/lib/storage";
 
 // Reads request query params → always rendered at request time.
 export const dynamic = "force-dynamic";
-
-// 発行元（CKK 本社）— 見積書テンプレートの issuer ブロックに対応。
-const ISSUER = {
-  name: "シー・ケィ・ケー株式会社", // i18n-ignore
-  address: "〒475-0823 愛知県半田市港町2丁目27番2", // i18n-ignore
-  tel: "TEL: 0569-21-6187　FAX: 0569-23-6427",
-};
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "下書き", // i18n-ignore
@@ -105,8 +99,11 @@ export async function GET(request: Request): Promise<Response> {
       ? (req.quoteNumber ?? "—")
       : (req.orderLineNumber ?? "—");
 
+  // 発行元（自社法人 MS0I）= 設計依頼書が持つ法人。社内向けの紙なので ja。
+  const { issuer } = await issuerForDesignRequest(req.requestNumber, "ja");
+
   const data = {
-    issuer: ISSUER,
+    issuer,
     assignee: { name: req.assigneeName ?? "（担当者未設定）" }, // i18n-ignore
     product: { name: req.productName ?? "（製品未指定）" }, // i18n-ignore
     // 書類 QR（CKK:DSG:<番号>）。URL は入れない。

@@ -17,6 +17,7 @@ import type { AuditQuery } from "@/lib/audit-filter-core";
 import { resolveAuditRecordKey } from "@/lib/audit-record-key";
 import { avatarUrl } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
+import { docDisplayId } from "@/lib/doc-ref";
 import type { Formatters } from "@/lib/format";
 import { zonedDayRange } from "@/lib/format";
 import type { Locale, Tr } from "@/lib/i18n";
@@ -122,7 +123,12 @@ export async function recordAudit(input: RecordAuditInput): Promise<void> {
         userId,
         action: input.action,
         tableName: input.tableName,
-        recordId: input.recordId,
+        // record_id は人が読む番号（法人コードは付けない）。法人まで含めた
+        // 一意な指し先は record_key が持つ。
+        recordId:
+          input.recordId == null
+            ? input.recordId
+            : docDisplayId(input.tableName, input.recordId),
         recordKey,
         beforeData: toJson(input.before),
         afterData: toJson(input.after),
@@ -358,13 +364,15 @@ export function actorAvatarUrl(user: {
  */
 export async function fetchAuditEntries(
   tableName: string,
-  recordId: string,
+  rawRecordId: string,
 ): Promise<AuditEntry[]> {
   try {
+    // 法人コード付きの参照で渡されても、record_id の突き合わせは番号で行う。
+    const recordId = docDisplayId(tableName, rawRecordId);
     const [fmt, tr, resolved] = await Promise.all([
       getServerFormatters(),
       getTranslations(),
-      resolveAuditRecordKey(tableName, recordId, { needSince: true }),
+      resolveAuditRecordKey(tableName, rawRecordId, { needSince: true }),
     ]);
     const where: Prisma.AuditLogWhereInput = resolved.key
       ? {

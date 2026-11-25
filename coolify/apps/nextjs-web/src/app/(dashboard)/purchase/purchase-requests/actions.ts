@@ -34,6 +34,7 @@ import {
 } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import { companyForPurchase } from "@/lib/doc-company";
+import { requireDocRef } from "@/lib/doc-ref";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -622,7 +623,7 @@ export async function cancelPurchaseRequest(
       await tx.approvalRequest.deleteMany({
         where: {
           targetType: "purchase_requests",
-          targetId: requestNumber,
+          targetId: await requireDocRef("purchase_requests", requestNumber, tx),
           status: "PENDING",
         },
       });
