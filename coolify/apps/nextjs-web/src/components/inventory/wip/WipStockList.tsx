@@ -285,7 +285,7 @@ export function WipStockList({
                         <Text c="dimmed" size="xs">
                           {storageLabel(tr, r)}
                           {r.lotNumber != null &&
-                            ` ・ ${tr("production.inventory.lotN", { number: r.lotNumber })}`}
+                            ` / ${tr("production.inventory.lotN", { number: r.lotNumber })}`}
                         </Text>
                         {r.aimedProductName && (
                           <Text c="dimmed" size="xs" truncate>
@@ -294,7 +294,7 @@ export function WipStockList({
                           </Text>
                         )}
                         <Text c="dimmed" size="xs">
-                          {tr("inventory.wip.sourceStep")}: {source(r)} ・{" "}
+                          {tr("inventory.wip.sourceStep")}: {source(r)} /{" "}
                           {tr("inventory.wip.age")}: {age(r)}
                         </Text>
                       </Stack>

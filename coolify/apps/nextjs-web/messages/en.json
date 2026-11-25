@@ -9549,6 +9549,7 @@
       "stock_take_lines": "Stocktaking line",
       "item_inventory": "Stock",
       "movement_types": "Movement type",
+      "wip_states": "Processing state",
       "items": "Items",
       "webhook_endpoints": "Webhook endpoint",
       "own_companies": "Own companies"
@@ -11078,7 +11079,6 @@
     "wip": {
       "inProcessTab": "In process",
       "searchPlaceholder": "Search by material type, target product or lot",
-      "searchInProcess": "Search by product name or work order number",
       "empty": "No WIP in stock",
       "state": "Processing state",
       "finishedSize": "Finished size",

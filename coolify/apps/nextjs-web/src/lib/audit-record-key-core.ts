@@ -142,6 +142,8 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   // 在庫バケット（uuid）と移動タイプ（連番）— どちらも id がそのまま record_id。
   item_inventory: "identity",
   movement_types: "identity",
+  // 加工状態（仕掛品）— 連番の id がそのまま record_id。
+  wip_states: "identity",
   stock_takes: "docKey",
   delivery_notes: "docKey",
   invoices: "docKey",

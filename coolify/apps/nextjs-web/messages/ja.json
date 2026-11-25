@@ -9549,6 +9549,7 @@
       "stock_take_lines": "棚卸明細",
       "item_inventory": "在庫",
       "movement_types": "移動タイプ",
+      "wip_states": "加工状態",
       "items": "品目",
       "webhook_endpoints": "Webhook 送信先",
       "own_companies": "自社法人"
@@ -11078,7 +11079,6 @@
     "wip": {
       "inProcessTab": "工程内",
       "searchPlaceholder": "材種・目標製品・ロットで検索",
-      "searchInProcess": "製品名・指示書番号で検索",
       "empty": "在庫に置いた仕掛品はありません",
       "state": "加工状態",
       "finishedSize": "仕上がり寸法",

@@ -9549,6 +9549,7 @@
       "stock_take_lines": "盘点明细",
       "item_inventory": "库存",
       "movement_types": "移动类型",
+      "wip_states": "加工状态",
       "items": "品目",
       "webhook_endpoints": "Webhook 接收地址",
       "own_companies": "本公司法人"
@@ -11078,7 +11079,6 @@
     "wip": {
       "inProcessTab": "工序内",
       "searchPlaceholder": "按材料类别、目标产品、批次搜索",
-      "searchInProcess": "按产品名称、工单编号搜索",
       "empty": "没有入库的在制品",
       "state": "加工状态",
       "finishedSize": "成品尺寸",
