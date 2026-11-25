@@ -37,6 +37,11 @@ export interface WorkOrderRow {
   plannedQuantity: number;
   approvalStatus: string; // WORK_ORDER_APPROVAL_STATUS
   status: string; // WORK_ORDER_STATUS
+  /**
+   * 打ち切り済み（work_orders.aborted_at あり）。status は CANCELLED のままなので、
+   * これが無いと一覧で普通のキャンセルと見分けられない。
+   */
+  aborted: boolean;
   /** 承認依頼日（承認管理 PD03 の列）。 */
   requestedAt: string | null;
   updatedAt: string;
