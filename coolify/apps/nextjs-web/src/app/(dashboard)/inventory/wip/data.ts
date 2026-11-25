@@ -2,7 +2,7 @@
  * data.ts — 在庫管理の「仕掛品」タブ（在庫に置いた仕掛品）のサーバーサイド取得。
  *
  * 読むのは app.item_inventory のうち**加工状態を持つ行**（wip_state_id IS NOT NULL
- * = 半製品。CHECK item_inventory_semi_finished_has_wip_state）。行スコープは
+ * = 半製品。それ以外の印は無い）。行スコープは
  * 製品・素材の一覧と同じ（保管拠点 = plantWhere）。
  *
  * 製品ごとの「使える仕掛品 n 本」もここで数える — 規則は lib/wip-state-core.ts
