@@ -6809,7 +6809,8 @@
       "zipEndNotFound": "未找到 ZIP 文件末尾标记",
       "zipDirectoryCorrupt": "ZIP 目录已损坏",
       "unsupportedCompression": "不支持的压缩方式 ({method})：{name}",
-      "noWorksheet": "未找到工作表"
+      "noWorksheet": "未找到工作表",
+      "tooLarge": "文件过大（超过解压后大小上限）"
     },
     "documentPdf": {
       "notIssuedYet": "尚未发行的{docType}无法查看 PDF"

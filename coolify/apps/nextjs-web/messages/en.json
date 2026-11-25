@@ -6809,7 +6809,8 @@
       "zipEndNotFound": "Could not find the end of the ZIP archive",
       "zipDirectoryCorrupt": "The ZIP directory is corrupt",
       "unsupportedCompression": "Unsupported compression method ({method}): {name}",
-      "noWorksheet": "No worksheet was found"
+      "noWorksheet": "No worksheet was found",
+      "tooLarge": "File is too large (exceeds the decompressed size limit)"
     },
     "documentPdf": {
       "notIssuedYet": "Cannot view a PDF for a {docType} that has not been issued yet"
