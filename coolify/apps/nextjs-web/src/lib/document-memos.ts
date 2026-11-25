@@ -74,6 +74,12 @@ const MEMO_OWNERS: Record<string, { permission: string; kind: MemoKind }> = {
   // 設計図は **メモ**（1 版 1 件の共有欄）— 「この版で何が変わったか」は
   // 版ごとに 1 つの事実で、書き換わってよい。ownerId は版の uuid。
   design_files: { permission: "design_file", kind: "MEMO" },
+  // 設計図の**系列**（製品 × 受注元）で共有するメモ — 版をまたいで残したい
+  // こと（この客先の癖・加工上の注意）は版ごとのメモに書くと改訂のたびに
+  // 埋もれる。版の変更点は版の notes が持つ。系列には行が無いので ownerId は
+  // `<品目 id>:<受注元 id | generic>`（lib/design-files-core designSeriesOwnerId）。
+  // 掃除は版の削除トリガー app.purge_design_series_memos（系列が空になったら）。
+  design_series: { permission: "design_file", kind: "MEMO" },
 };
 
 /** owner の種別（MEMO / COMMENT）。未登録なら null。 */

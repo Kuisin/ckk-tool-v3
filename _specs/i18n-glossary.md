@@ -331,6 +331,10 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 手入力（図面から読んだ値の上書き） | Manual / Edit manually | 手动输入 | 状態の印は Manual、切り替えボタンは Edit manually |
 | 図面の値に戻す | Revert to drawing value | 恢复为图纸的值 | 手入力をやめて読み取り専用へ戻す |
 | 汎用（受注元を限定しない図面） | Generic | 通用 |
+| 系列メモ（製品 × 受注元で共有するメモ） | Series memo | 系列备忘 |
+| 加工プログラム | Machining program | 加工程序 |
+| プログラム番号 | Program number | 程序编号 |
+| 機械（= 作業場所。加工プログラムの対象） | Machine | 机器 |
 | キーワード | Keywords | 关键词 |
 | 他社製品 | External product | 他社产品 | 他社が作った工具。再研磨専用の品目（製造・本番の明細では使えない） |
 | メーカー名（他社製品） | Maker | 制造商 | 自由記入。BP にはしない |

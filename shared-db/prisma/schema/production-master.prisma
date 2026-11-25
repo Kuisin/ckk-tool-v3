@@ -167,6 +167,7 @@ model WorkLocation {
   kioskDevices KioskDevice[] @relation("KioskDeviceDefaultWorkLocation")
   orderAcceptances OrderAcceptance[] @relation("AcceptanceShippingWorkLocation")
   orderLines       OrderLine[]       @relation("OrderLineShippingWorkLocation")
+  designPrograms   DesignProgram[]   @relation("DesignProgramWorkLocation")
 
   @@index([groupId, sortOrder])
   @@map("work_locations")
@@ -287,6 +288,7 @@ model ProcessStepCatalog {
   inspectionTemplates InspectionTemplate[]
   workOrderSteps      WorkOrderStep[]
   routeVersionSteps   ProductProcessRouteVersionStep[]
+  designProgramSteps  DesignProgramStep[] @relation("DesignProgramProcessStep")
 
   @@map("process_step_catalog")
   @@schema("app")

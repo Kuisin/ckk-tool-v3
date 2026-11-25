@@ -103,6 +103,9 @@ export const AUDIT_KEY_SHAPES: Record<string, AuditKeyShapeKind> = {
   design_files: "uuidOnly",
   // 設計図の版 — record_id は design_versions.id（版には業務キーが無い）。
   design_versions: "uuidOnly",
+  // 設計図の系列メモ — record_id は `<品目 id>:<受注元 id | generic>`
+  // （design-files-core designSeriesOwnerId）。それ自体が系列の鍵。
+  design_series: "identity",
   // bug-report-actions.ts の唯一の直書き。`bug-report:<uuid>` はそれ自体が
   // 一意で不変なので identity で足りる。
   system: "identity",

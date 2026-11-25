@@ -2949,7 +2949,9 @@
       "upTo20mbEach": "1 件 20MB まで",
       "registerAVersion": "版を登録",
       "whatChangedInThisVersion": "この版で何が変わったか",
-      "deleteTheDrawing": "設計図の削除"
+      "deleteTheDrawing": "設計図の削除",
+      "seriesMemo": "系列メモ",
+      "seriesMemoHint": "この製品・受注元の図面すべてに共通するメモ（客先の癖・加工上の注意など）。版ごとの変更点は版のメモ欄へ。"
     },
     "inventory": {
       "reservationsCount": "予約（{count}）",
@@ -3601,6 +3603,31 @@
       "empty": "この日の作業計画はありません",
       "noLocation": "作業場所なし",
       "count": "{count} 件"
+    },
+    "designPrograms": {
+      "title": "加工プログラム",
+      "description": "この版から起こした加工プログラム。機械は作業場所（MS0D）から選び、1 本が複数の工程を受け持てます。",
+      "none": "加工プログラムはありません",
+      "name": "プログラム名",
+      "programNumber": "プログラム番号",
+      "machine": "機械（作業場所）",
+      "machineHint": "工程実行画面では、計画・実績の作業場所と一致するプログラムが先頭に並びます",
+      "anyMachine": "機械を問わない",
+      "machineMatch": "この機械用",
+      "steps": "工程",
+      "file": "プログラムファイル",
+      "chooseFile": "ファイルを選択",
+      "noFile": "ファイルなし",
+      "removeFile": "ファイルを外す",
+      "keepFile": "ファイルを残す",
+      "add": "プログラムを追加",
+      "remove": "プログラムを削除",
+      "nameRequired": "プログラム名を入力してください",
+      "stepsRequired": "工程を選択してください",
+      "fromVersion": "設計図 v{version}",
+      "invalidPayload": "加工プログラムの内容が正しくありません",
+      "invalidReference": "存在しない工程または作業場所が選ばれています",
+      "savedAudit": "v{version} の加工プログラムを保存（{count} 本）"
     }
   },
   "purchase": {

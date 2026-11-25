@@ -2949,7 +2949,9 @@
       "upTo20mbEach": "Up to 20MB each",
       "registerAVersion": "Register a version",
       "whatChangedInThisVersion": "What changed in this version",
-      "deleteTheDrawing": "Delete the drawing"
+      "deleteTheDrawing": "Delete the drawing",
+      "seriesMemo": "Series memo",
+      "seriesMemoHint": "A memo shared by every version of this product and ordering customer (customer habits, machining notes). Write what changed in each version on that version."
     },
     "inventory": {
       "reservationsCount": "Reservations ({count})",
@@ -3601,6 +3603,31 @@
       "empty": "No work plans for this day",
       "noLocation": "No work location",
       "count": "{count} items"
+    },
+    "designPrograms": {
+      "title": "Machining programs",
+      "description": "Machining programs made from this version. Pick the machine from work locations (MS0D); one program can cover several steps.",
+      "none": "No machining programs",
+      "name": "Program name",
+      "programNumber": "Program number",
+      "machine": "Machine (work location)",
+      "machineHint": "On the step execution screen, programs for the planned or actual work location are listed first",
+      "anyMachine": "Any machine",
+      "machineMatch": "For this machine",
+      "steps": "Steps",
+      "file": "Program file",
+      "chooseFile": "Choose a file",
+      "noFile": "No file",
+      "removeFile": "Remove file",
+      "keepFile": "Keep file",
+      "add": "Add program",
+      "remove": "Remove program",
+      "nameRequired": "Enter a program name",
+      "stepsRequired": "Select at least one step",
+      "fromVersion": "Drawing v{version}",
+      "invalidPayload": "The machining programs are invalid",
+      "invalidReference": "A step or work location that does not exist is selected",
+      "savedAudit": "Saved machining programs for v{version} ({count})"
     }
   },
   "purchase": {
