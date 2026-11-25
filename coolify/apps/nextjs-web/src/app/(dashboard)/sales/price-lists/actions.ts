@@ -17,6 +17,11 @@ import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
+import {
+  sameCounterpartKey,
+  syncVariantsFrom,
+} from "@/components/sales/price-lists/company-sync";
+import type { PriceListEntry } from "@/components/sales/price-lists/model";
 import { requiresEndDate } from "@/components/sales/price-lists/model";
 import { actOnCurrentStep } from "@/lib/approvals";
 import { recordAudit } from "@/lib/audit";
@@ -33,7 +38,11 @@ import {
   prismaErrorMessage,
 } from "@/lib/server-action";
 import { syncPriceEntryApproval } from "./approval";
-import { type EstimateSource, fetchEstimateSourcesForProduct } from "./data";
+import {
+  type EstimateSource,
+  fetchEstimateSourcesForProduct,
+  fetchPriceEntry,
+} from "./data";
 
 type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
@@ -110,6 +119,35 @@ const tierSchema = z.object({
   priceOverride: z.number().min(0).nullable(),
 });
 
+/**
+ * 値引きルール 1 件（中身だけ）。**他社の価格表からのコピー・同期でだけ**送る —
+ * 通常の編集フォームは値引きを持たず（値引きは詳細画面のモーダルで 1 件ずつ）、
+ * 送らなければ既存の値引きには触らない。
+ */
+const discountContentSchema = z.object({
+  label: z.string().min(1),
+  discountType: z.enum(["RATE", "AMOUNT"]),
+  value: z.number().gt(0),
+  minQuantity: z.number().int().min(1),
+  maxQuantity: z.number().int().nullable(),
+  validFrom: z.string().min(1),
+  validUntil: z.string().nullable(),
+  isActive: z.boolean(),
+});
+
+function discountData(d: z.infer<typeof discountContentSchema>) {
+  return {
+    label: d.label,
+    discountType: d.discountType,
+    value: d.value,
+    minQuantity: d.minQuantity,
+    maxQuantity: d.maxQuantity,
+    validFrom: new Date(d.validFrom),
+    validUntil: d.validUntil ? new Date(d.validUntil) : null,
+    isActive: d.isActive,
+  };
+}
+
 function variantSchema(tr: Tr) {
   return z.object({
     /** price_list_variants.id — null = 新規バリアント。 */
@@ -124,6 +162,11 @@ function variantSchema(tr: Tr) {
     tiers: z
       .array(tierSchema)
       .min(1, tr("sales.priceListTypeForm.addAtLeastOneTier")),
+    /**
+     * 値引きルール一式（任意）。**送ったときだけ**このバリアントの値引きを
+     * まるごと置き換える（他社の価格表からのコピー・同期）。省略 = 触らない。
+     */
+    discounts: z.array(discountContentSchema).optional(),
   });
 }
 
@@ -300,6 +343,11 @@ function createInputSchema(tr: Tr) {
     ownCompanyId: z.number().int().positive().nullable().optional(),
     /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
     salesRepId: z.string().nullable().optional(),
+    /**
+     * 他社の価格表からコピーして作ったときの元（`TSP~PRC-…`）。監査に残すだけで、
+     * 中身は variants が運ぶ（元の価格表は読み直さない — 画面で見た内容を保存する）。
+     */
+    copiedFromEntryId: z.string().nullable().optional(),
     variants: z
       .array(variantSchema(tr))
       .min(1, tr("sales.priceListTypeForm.addAtLeastOneOrderTypePrice")),
@@ -409,6 +457,13 @@ export async function createPriceEntry(
                 isActive: variant.isActive,
                 estimateId: estimateId ?? null,
                 tiers: { create: tierCreates(variant.tiers) },
+                ...(variant.discounts?.length
+                  ? {
+                      discounts: {
+                        create: variant.discounts.map(discountData),
+                      },
+                    }
+                  : {}),
               };
             }),
           },
@@ -432,6 +487,8 @@ export async function createPriceEntry(
         customerBpId: v.identity.customerBpId,
         itemId: v.identity.itemId,
         toolItemId: v.identity.toolItemId,
+        ownCompanyId: company.ownCompanyId ?? null,
+        copiedFrom: v.copiedFromEntryId ? docNo(v.copiedFromEntryId) : null,
         orderTypes: v.variants.map((x) => x.orderType),
         estimateSources: v.variants
           .map((x) => docNo(x.estimateNumber))
@@ -647,6 +704,25 @@ export async function updatePriceEntry(
                 ]
               : [],
           ),
+          // 値引き一式が送られたとき（他社の価格表との同期）だけ置き換える。
+          // 値引きはどこからも参照されていないので、消して作り直してよい。
+          ...(variant.discounts
+            ? [
+                prisma.priceListDiscount.deleteMany({
+                  where: { variantId: variant.id },
+                }),
+                ...(variant.discounts.length
+                  ? [
+                      prisma.priceListDiscount.createMany({
+                        data: variant.discounts.map((d) => ({
+                          variantId: variant.id,
+                          ...discountData(d),
+                        })),
+                      }),
+                    ]
+                  : []),
+              ]
+            : []),
         ]),
       // 新規バリアント
       ...v.variants
@@ -667,6 +743,9 @@ export async function updatePriceEntry(
               isActive: variant.isActive,
               estimateId: estimateId ?? null,
               tiers: { create: tierCreates(variant.tiers) },
+              ...(variant.discounts?.length
+                ? { discounts: { create: variant.discounts.map(discountData) } }
+                : {}),
             },
           });
         }),
@@ -1205,4 +1284,78 @@ export async function rejectPriceEntry(
   } catch (e) {
     return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
   }
+}
+
+// ── 他社の価格表（相手方）からのコピー・同期 ────────────────────────────────────
+
+/**
+ * 作成フォームの「他社の価格表からコピー」— 相手方 1 件の中身を読む。
+ * 読む権限とスコープは詳細画面と同じ（fetchPriceEntry）。
+ */
+export async function fetchPriceEntryForCopy(
+  entryNumber: string,
+): Promise<PriceListEntry | null> {
+  const key = keyOf(entryNumber);
+  if (!key) return null;
+  return fetchPriceEntry(key);
+}
+
+/**
+ * 「〇〇社の内容で同期」— 相手方（同じ顧客 × 品目 × 工具の、別の発行会社の
+ * 価格表）の中身（注文種別ごとの基準単価・有効期間・状態、数量段階、
+ * 値引きルール）をこの価格表へ書き込む。
+ *
+ * **通常の保存（updatePriceEntry）を通す** — 段階の id の差分更新、価格試算の
+ * 検証、独自値の追加承認（承認設定 MS0B）がそのまま効く。同期だからといって
+ * 承認を素通りさせない。番号・発行会社・営業担当・状態（価格表全体の有効/無効）
+ * はこの価格表のまま。
+ */
+export async function syncPriceEntryFromCounterpart(payload: {
+  entryNumber: string;
+  counterpartEntryNumber: string;
+}): Promise<ActionResult<PriceEntrySaveResult>> {
+  const tr = await getTranslations();
+  const key = keyOf(payload.entryNumber);
+  const sourceKey = keyOf(payload.counterpartEntryNumber);
+  if (!(key && sourceKey))
+    return actionError(tr("sales.priceListsActions.invalidEntryNumber"));
+  const authz = await checkPermission("price_list", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await entriesInScope(authz.access, authz.userId, [key, sourceKey]))) {
+    return actionError(tr("common.scopeDenied"));
+  }
+  const [target, source] = await Promise.all([
+    fetchPriceEntry(key),
+    fetchPriceEntry(sourceKey),
+  ]);
+  if (!(target && source))
+    return actionError(tr("sales.priceListsActions.sourceEntryNotFound"));
+  // 相手方であること — 同じ顧客 × 品目 × 工具で、発行会社が違う。
+  if (
+    !sameCounterpartKey(target, source) ||
+    target.ownCompanyId === source.ownCompanyId
+  ) {
+    return actionError(tr("sales.priceListsActions.notACounterpart"));
+  }
+  const result = await updatePriceEntry({
+    entryNumber: target.entryId,
+    isActive: target.isActive,
+    salesRepId: target.salesRepId,
+    variants: syncVariantsFrom(target, source).map((v) => ({
+      ...v,
+      orderType: v.orderType as PriceVariantInput["orderType"],
+    })),
+  });
+  if (result.ok) {
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "price_list_entries",
+      recordId: target.entryId,
+      after: {
+        syncedFrom: docNo(source.entryId),
+        syncedFromCompany: source.ownCompanyCode,
+      },
+    });
+  }
+  return result;
 }

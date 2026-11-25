@@ -8612,7 +8612,8 @@
       "noApprovalNeeded": "此价格表无需审批：没有自定义值，或未设置自定义值追加审批级",
       "notFound": "未找到价格表",
       "notPendingApproval": "不在审批中",
-      "costEstimateNotUsable": "成本试算不能用作价格表的基准单价"
+      "costEstimateNotUsable": "成本试算不能用作价格表的基准单价",
+      "notACounterpart": "不是同一客户、品目的其他公司的价格表"
     },
     "designRequestActions": {
       "approvalRequestFailed": "审批申请失败",
@@ -8735,6 +8736,33 @@
       "contact": "负责人：{name}",
       "contactWithEmail": "负责人：{name}（{email}）",
       "linkNote": "打开链接后，我们会向本邮件地址发送验证码。链接有效期至：{date}"
+    },
+    "priceListCompanySync": {
+      "sectionTitle": "其他公司的价格表",
+      "sectionDescription": "其他开具公司也有同一客户 × 品目（× 刀具）的价格表。价格表按公司分别管理，报价单和订单确认书只使用其开具公司的价格表。",
+      "sameAs": "与 {company} 相同",
+      "differsFrom": "与 {company} 有差异",
+      "showDiff": "查看差异",
+      "hideDiff": "收起差异",
+      "syncFrom": "按 {company} 的内容同步",
+      "syncConfirmMessage": "将各订单类别的基准单价、有效期、状态、数量档和折扣规则改为与 {company} 的价格表 {number} 相同。仅本价格表有的订单类别将被删除。如有自定义值，仍需审批。",
+      "synced": "已同步",
+      "syncedMessage": "已按 {company} 的内容同步",
+      "thisPriceList": "本价格表",
+      "field": "项目",
+      "registered": "已登记",
+      "notRegistered": "无",
+      "tierRow": "数量档 {n}",
+      "discountRow": "折扣规则 {n}",
+      "column": "与其他公司对比",
+      "same": "相同",
+      "differs": "有差异",
+      "allCompanies": "全部开具公司",
+      "copyRecommendTitle": "其他公司已有此价格表",
+      "copyRecommendMessage": "其他开具公司已有同一客户 × 品目的价格表。建议复制其内容来创建（编号由本公司重新编号）。",
+      "copyFrom": "从 {company} 的价格表复制",
+      "copiedNotice": "已复制 {company} 的价格表 {number} 的内容。{count} 条折扣规则也会一起保存。保存前不会登记。",
+      "copyFailed": "无法读取复制来源的价格表"
     }
   },
   "shipping": {

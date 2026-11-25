@@ -1639,7 +1639,8 @@ function DraftEditor({
   // 明細の単価は既定で価格表が持つ（§2）。編集中の顧客の価格表を引いて、
   // 行ごとの単価をその場で解決する（保存済み結果の照合ではなく、いまの入力
   // に対する解決 — 顧客や数量を変えた瞬間に単価が追随する）。
-  const priceEntries = usePriceEntries(customerId);
+  // 引くのはこの請書の発行会社の価格表だけ（作成時に決まり、以後は変わらない）。
+  const priceEntries = usePriceEntries(customerId, { acceptanceId: a.number });
   // 標準価格（品目の定価）— 当たる価格表が無い行はこちらへ落ちる。
   // 画面と保存側で同じものを見ていないと「見えている単価」と
   // 「保存される単価」がずれる。

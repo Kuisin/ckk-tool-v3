@@ -25,6 +25,8 @@ import { calcTrialPricing, type TrialInput } from "@/lib/trial-pricing";
 import { toTrialPricingOptions } from "@/lib/trial-pricing-settings";
 
 export const ENTRY_INCLUDE = {
+  // 発行会社 — 価格表は会社ごとに別々（識別は 会社 × 顧客 × 品目 × 工具）。
+  ownCompany: { select: { id: true, code: true, name: true } },
   customerBp: true,
   // 品目統合 第 2 段 C — 表示・突合はすべて品目側。旧 product リレーションは
   // 自然キー (customer_bp_id, product_id) を保つためだけに残っている。
@@ -92,10 +94,19 @@ export async function fetchPriceListItemOptions(): Promise<
   });
 }
 
+/** 自社法人の表示名（名称が無ければコード）。 */
+export function ownCompanyLabel(c: { code: string; name: unknown }): string {
+  const name = localized(c.name as LocalizedText | null);
+  return name && name !== "—" ? name : c.code;
+}
+
 export function mapEntry(r: EntryRow): PriceListEntry {
   return {
     entryId: docIdOf(r),
     legacyNumber: r.legacyNumber,
+    ownCompanyId: r.ownCompanyId,
+    ownCompanyCode: r.ownCompany.code,
+    ownCompanyName: ownCompanyLabel(r.ownCompany),
     customerId: r.customerBpId,
     customerName: localized(r.customerBp.name as LocalizedText | null),
     itemId: String(r.itemId ?? ""),
@@ -193,6 +204,42 @@ export async function fetchPriceEntry(
     return null;
   }
   return mapEntry(row);
+}
+
+/**
+ * 相手方 — 同じ顧客 × 品目 × 工具を**別の発行会社**が持つ価格表（会社ごとの
+ * 価格表の突き合わせ・同期用。components/sales/price-lists/company-sync.ts）。
+ * 見えるのは読む権限のスコープ内の行だけ（OWN なら自分の作成分）。
+ */
+export async function fetchCounterpartEntries(
+  entry: Pick<
+    PriceListEntry,
+    "ownCompanyId" | "customerId" | "itemId" | "toolItemId"
+  >,
+): Promise<PriceListEntry[]> {
+  const authz = await checkPermission("price_list", "READ");
+  if (!authz.ok) return [];
+  const rows = await prisma.priceListEntry.findMany({
+    where: {
+      AND: [
+        ownWhere(
+          authz.access,
+          authz.userId,
+          "createdBy",
+        ) as Prisma.PriceListEntryWhereInput,
+        {
+          customerBpId: entry.customerId,
+          itemId: Number(entry.itemId),
+          toolItemId:
+            entry.toolItemId == null ? null : Number(entry.toolItemId),
+          ownCompanyId: { not: entry.ownCompanyId },
+        },
+      ],
+    },
+    include: ENTRY_INCLUDE,
+    orderBy: { ownCompany: { code: "asc" } },
+  });
+  return rows.map(mapEntry);
 }
 
 /** この価格表（の tier）から作成された見積書 — 関連タブ用の集計。 */

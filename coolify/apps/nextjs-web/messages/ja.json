@@ -8612,7 +8612,8 @@
       "noApprovalNeeded": "この価格表には独自値が無い（または追加承認の段が無い）ため、承認は要りません",
       "notFound": "価格表が見つかりません",
       "notPendingApproval": "承認依頼中ではありません",
-      "costEstimateNotUsable": "原価試算は価格表の基準単価にできません"
+      "costEstimateNotUsable": "原価試算は価格表の基準単価にできません",
+      "notACounterpart": "同じ顧客・品目の、他社の価格表ではありません"
     },
     "designRequestActions": {
       "approvalRequestFailed": "承認依頼に失敗しました",
@@ -8735,6 +8736,33 @@
       "contact": "担当: {name}",
       "contactWithEmail": "担当: {name}（{email}）",
       "linkNote": "リンクを開くと、このメールアドレス宛てに確認コードをお送りします。リンクの有効期限: {date}"
+    },
+    "priceListCompanySync": {
+      "sectionTitle": "他社の価格表",
+      "sectionDescription": "同じ顧客 × 品目（× 工具）の価格表を、別の発行会社も持っています。価格表は会社ごとに別々で、見積書・注文請書は発行会社の価格表だけを使います。",
+      "sameAs": "{company} と同じ",
+      "differsFrom": "{company} と差分あり",
+      "showDiff": "差分を見る",
+      "hideDiff": "差分を閉じる",
+      "syncFrom": "{company} の内容で同期",
+      "syncConfirmMessage": "注文種別ごとの基準単価・有効期間・状態、数量段階、値引きルールを {company} の価格表 {number} と同じにします。この価格表にしか無い注文種別は削除されます。独自値があれば承認を通ります。",
+      "synced": "同期しました",
+      "syncedMessage": "{company} の内容で同期しました",
+      "thisPriceList": "この価格表",
+      "field": "項目",
+      "registered": "登録あり",
+      "notRegistered": "なし",
+      "tierRow": "数量段階 {n}",
+      "discountRow": "値引きルール {n}",
+      "column": "他社との差分",
+      "same": "同じ",
+      "differs": "差分あり",
+      "allCompanies": "すべての発行会社",
+      "copyRecommendTitle": "他社の価格表があります",
+      "copyRecommendMessage": "同じ顧客 × 品目の価格表を別の発行会社が持っています。内容をコピーして作ることをおすすめします（番号はこの会社で新しく採番されます）。",
+      "copyFrom": "{company} の価格表からコピー",
+      "copiedNotice": "{company} の価格表 {number} の内容をコピーしました。値引きルール {count} 件も一緒に保存されます。保存するまでは登録されません。",
+      "copyFailed": "コピー元の価格表を読めませんでした"
     }
   },
   "shipping": {

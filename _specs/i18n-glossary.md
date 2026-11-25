@@ -382,6 +382,11 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 注文日 | Order date | 订货日 |
 | 通貨 / 円 | Currency / JPY | 币种 / 日元 |
 | 価格差異 | Price mismatch | 价格差异 |
+| 他社の価格表（同じ顧客 × 品目の、別の発行会社の価格表） | Other companies' price lists | 其他公司的价格表 |
+| 〇〇と同じ / 〇〇と差分あり | Same as 〇〇 / Differs from 〇〇 | 与〇〇相同 / 与〇〇有差异 |
+| 他社との差分（一覧の列） | Other companies | 与其他公司对比 |
+| 他社の価格表からコピー | Copy from another company's price list | 从其他公司的价格表复制 |
+| 〇〇の内容で同期 | Sync from 〇〇 | 按〇〇的内容同步 |
 | 仕訳 | Journal entry | 记账凭证 |
 | 勘定科目 | Account | 科目 |
 | 科目コード | Account code | 科目代码 |
