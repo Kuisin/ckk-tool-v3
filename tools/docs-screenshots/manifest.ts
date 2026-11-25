@@ -817,7 +817,9 @@ export const shots: Shot[] = [
   {
     id: "inventory-wip-01",
     docPage: "operations/production/material-inventory/user",
-    path: "/inventory?tab=wip",
+    // 進行中の指示書の工程別仕掛数 = 「工程内」タブ（旧「仕掛品」タブ。?tab=wip は
+    // 在庫に置いた仕掛品のタブになった）。
+    path: "/inventory?tab=in-process",
     steps: async (page) => {
       await page.getByText("9001").filter({ visible: true }).first().waitFor();
     },

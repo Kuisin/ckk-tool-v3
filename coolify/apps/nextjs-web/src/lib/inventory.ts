@@ -975,7 +975,10 @@ export async function workOrderWipBlankTx(
  * 仕掛ブランク品目（無ければ作る）。作り方は DB の app.wip_blank_item_id が
  * 唯一の定義（移行・旧来の計上と同じ関数 — コードと名前の付け方が割れない）。
  */
-async function wipBlankItemIdTx(tx: Tx, size: WipBlankSize): Promise<number> {
+export async function wipBlankItemIdTx(
+  tx: Tx,
+  size: WipBlankSize,
+): Promise<number> {
   const [row] = await tx.$queryRaw<{ id: number }[]>`
     SELECT app.wip_blank_item_id(${size.materialTypeId}::int,
                                  ${size.diameterMm}::numeric,
@@ -984,7 +987,7 @@ async function wipBlankItemIdTx(tx: Tx, size: WipBlankSize): Promise<number> {
 }
 
 /** 加工状態（署名で寄せる。無ければ作る）— DB の app.wip_state_id が唯一の定義。 */
-async function wipStateIdTx(
+export async function wipStateIdTx(
   tx: Tx,
   stepIds: readonly number[],
 ): Promise<number> {

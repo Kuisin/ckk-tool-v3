@@ -81,6 +81,7 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   material_receipts: false, // 入荷イベント行
   item_inventory: false, // 在庫バケット。単体の名前を持たない（品目 × 場所）
   movement_types: true, // 移動タイプは名前を持つ
+  wip_states: false, // 加工状態。呼び名は任意で、無い行が普通（工程の並びで表す）
   privileged_access_requests: false, // 申請行（code は権限コード、対象者ではない）
   user_change_requests: false, // 変更依頼行（targetUserId はあるが自表の名前ではない）
   portal_grants: false, // 共有範囲の付与行

@@ -14,15 +14,17 @@ This app shows **where and how much** product and material you have. Recording a
 - Check how much finished product and material you have, at which site and on which shelf.
 - See reserved (held) quantity separately from what is still freely available.
 - For materials, see **when and how much** an already-ordered quantity will arrive.
-- See how much is currently in progress, by work order and by process step (work in progress).
+- See goods that were processed partway and put into stock (WIP) — how far each has been processed and how many there are.
+- See how much is currently in progress, by work order and by process step (in process).
 - Record it when you move goods to a different shelf or a different warehouse.
 - Look back at the record of every stock movement (when, what, how much).
 
-The screen has 4 tabs.
+The screen has 5 tabs.
 
-- **製品** (Product) … finished-product and semi-finished-product stock.
+- **製品** (Product) … finished-product stock.
 - **素材** (Material) … material stock.
-- **仕掛品** (WIP) … the quantity currently in progress.
+- **仕掛品** (WIP) … goods processed partway and kept in stock.
+- **工程内** (In process) … the quantity currently in progress (not yet stock).
 - **ロケーション** (Location) … a view of "what is where", going site → storage location → shelf.
 
 > 💡 You cannot correct the stock quantity directly here. The quantity **moves automatically** along with everyday operations. The only manual operation on this screen is「**在庫移動**」(stock transfer — changing the storage location). To correct a discrepancy, recount with [Stock Take](/manual/en/operations/inventory/stock-takes/user) (ST05).
@@ -36,15 +38,18 @@ The screen has 4 tabs.
 - **ロット (Lot)** … the number attached to a batch of product made together. It is the same number as its work order.
 - **予約（取り置き）(Reserved/held)** … the portion set aside for a specific order. It cannot be used for another order.
 - **利用可能 (Available)** … the portion of stock not yet reserved — what you can actually use.
-- **半製品 (Semi-finished)** … goods returned to stock before completion.
-- **仕掛品 (WIP)** … goods that are still being made — partway through a process, not yet in stock.
+- **仕掛品 (WIP)** … goods processed partway and put into stock. Units sorted as "semi-finished" at a step become WIP. They can be used to continue another work order.
+- **仕掛ブランク (WIP blank)** … the unit WIP is grouped by: goods of the same material type, diameter and length.
+- **加工状態 (Processing state)** … how far the WIP has been processed, expressed as the list of completed part-changing steps.
+- **目標製品 (Target product)** … what the WIP was on its way to becoming.
+- **工程内 (In process)** … the quantity currently partway through a process. Not yet stock.
 - **次回入荷 (Next arrival)** … the date an already-ordered material is expected to arrive next.
 
 ## Where stock increases and decreases
 
 Stock does not move from this screen — it moves automatically along with everyday operations. Every movement is recorded as exactly one [Stock Movement](/manual/en/operations/inventory/inventory-movements/user) (ST04) slip.
 
-- **Product comes in** … when all the process steps on a [work order](/manual/en/operations/production/work-order/user) are complete, the good units go into stock with a lot number. Units sorted as "semi-finished" go into stock as semi-finished.
+- **Product comes in** … when all the process steps on a [work order](/manual/en/operations/production/work-order/user) are complete, the good units go into stock with a lot number. Units sorted as "semi-finished" go into stock as **WIP**, split by processing state.
 - **Material comes in** … registering a receipt in [Material Receipt](/manual/en/operations/purchasing/material-receipt/user) (PU03) increases stock at the receiving site.
 - **It gets reserved** … running「**在庫照合**」(stock check) on an order line, or approving a "to manufacture" work order, reserves the quantity (product or material) needed for that order/work order.
 - **Material decreases** … when all the process steps on that work order are complete, the reserved material is deducted as used.
@@ -55,7 +60,7 @@ As a diagram (dotted lines are reservations):
 ```mermaid
 flowchart TD
   rcpt["Register a material receipt"] -->|"Increases"| mat["Material stock"]
-  mat -->|"All steps of the work order complete<br/>(used material is deducted, good units come in)"| prod["Product / semi-finished stock"]
+  mat -->|"All steps of the work order complete<br/>(used material is deducted, good units come in)"| prod["Product / WIP stock"]
   prod -->|"Shipped with a delivery order"| out["Leaves stock<br/>(the reservation is released too)"]
   appr["A 製造分 (to manufacture) work order is approved"] -.->|"Reserved"| mat
   chk["「在庫照合」 (stock check) on an order line"] -.->|"Reserved"| prod
@@ -71,9 +76,9 @@ flowchart TD
 - **ロット (Lot)** … the lot number of that stock.
 - **在庫数 (On hand)** … the actual quantity present.
 - **利用可能 (Available)** … the freely usable portion of it. A badge like "予約 50" (reserved 50) appears when there is a reservation.
-- **区分 (Category)** … either 「**完成品**」(finished) or 「**半製品**」(semi-finished).
+- 「**使える仕掛品**」(usable WIP) … how many pieces of WIP could be used for that product (same material type; size exact, longer or larger in diameter; and a processing state that is a leading part of the product's steps). Click the quantity to open the WIP tab narrowed to just that WIP. "—" when there is none.
 - **移動 (Move)** … the button to press to change the storage location.
-- Search by product name or code in the box above. You can also narrow by 「**拠点**」(site) and 「**区分**」(category).
+- Search by product name or code in the box above. You can also narrow by 「**拠点**」(site).
 - Click a row to open that stock's detail screen.
 
 ### Viewing product detail
@@ -82,7 +87,7 @@ Clicking a row opens the detail screen for that one stock entry.
 
 ![Product stock detail screen](../../../assets/screenshots/inventory-product-detail-01.png)
 
-At the top: product, site, lot number, category, on-hand quantity, reserved quantity, available quantity, and storage location. For semi-finished stock, 「**発生工程**」(origin process) — which work order and step it came from — is also shown.
+At the top: product, site, lot number, category, on-hand quantity, reserved quantity, available quantity, and storage location. When opened from a WIP row, 「**発生工程**」(origin process) — which work order and step it came from — is also shown.
 
 Below are 2 tabs:
 
@@ -122,16 +127,58 @@ Below are 2 tabs:
 
 ## The WIP tab
 
+A screen for goods that were **processed partway and put into stock**. WIP is grouped by "WIP blank" (goods of the same material type, diameter and length) and then split by **how far it has been processed (the processing state)**.
+
+- The grey heading row is the **material type and diameter × length** (the WIP blank), with the total quantity on the right.
+- 「**加工状態**」(processing state) … the completed part-changing steps, in the order they were done, like "切断 › センタレス › 段加工". Goods with no completed step show 「**未加工**」(unprocessed). A processing state that has been given a name shows that name above the steps.
+- 「**仕上がり寸法**」(finished size) … the diameter × length after grinding. "—" when it was not recorded.
+- 「**数量**」/「**予約**」/「**利用可能**」 … the on-hand quantity, the reserved quantity, and the quantity still free to use.
+- 「**拠点 / 保管場所**」 … where it is.
+- 「**ロット**」 … the number of the work order the WIP came from.
+- 「**目標製品**」(target product) … what the goods were on their way to becoming. They can still be used for a different product.
+- 「**発生工程**」(source step) … which work order and step put them into stock.
+- 「**経過日数**」(age) … how many days they have been in stock.
+- Narrow the list with 「**材種**」(material type), 「**加工状態**」, 「**目標製品**」 and 「**拠点**」(site) above. The search box takes a material type, target product or lot number.
+- Click a row to open the detail screen for that stock (reservations and transaction history). Use 「**移動**」(Move) to change its storage location.
+
+### Naming a processing state
+
+A state that has a name on the shop floor (for example "stepped blank") can be given that name.
+
+1. Press the pencil button to the right of the processing state.
+2. Enter the 「**呼び名**」(name). Names in other languages go under 「**多言語**」(Translations).
+3. Press 「**保存**」(Save).
+
+Saving an empty name returns to showing the list of steps. The name is only a label to make states easier to tell apart — it changes neither the quantity nor which products the WIP can be used for.
+
+### Classifying unclassified WIP
+
+A heading 「**未分類**」(unclassified) may appear at the top. These are semi-finished goods that entered stock under the earlier mechanism and whose material type, size and processing state could not be determined automatically. Check the actual goods and classify them.
+
+1. Press 「**分類する**」(Classify) on the unclassified row.
+2. Enter the 「**分類する数量**」(quantity to classify) — you can classify only part of it.
+3. Enter the 「**材種**」(material type), 「**径**」(diameter) and 「**長**」(length).
+4. Pick the completed steps, in the order they were done, from 「**済んだ工程を追加**」(add a completed step). Pick none if nothing has been done (unprocessed).
+5. Enter the 「**仕上がり径**」(finished diameter) and 「**仕上がり長**」(finished length). They are required once you pick at least one step.
+6. Change the 「**目標製品**」(target product) if needed.
+7. Press 「**分類する**」.
+
+> 💡 Classifying **does not change the quantity**. Two lines — the issue from the unclassified stock and the receipt into the classified stock — are recorded on one [inventory movement](/manual/en/operations/inventory/inventory-movements/user) (ST04). The storage location and lot stay the same.
+
+> ⚠️ Reserved quantity cannot be classified. Only 「未分類」 rows can be classified; WIP that has been classified once cannot be moved to a different processing state.
+
+## The In-process tab
+
 A screen listing how much is currently in progress, by work order and by process step.
 
-![Inventory Management WIP tab](../../../assets/screenshots/inventory-wip-01.png)
+![Inventory Management In-process tab](../../../assets/screenshots/inventory-wip-01.png)
 
 - Grouped by product, with a running total like "計 51" (total 51).
 - Below that, 「**指示書番号**」(work order number) / 「**工程**」(process step) / 「**仕掛数**」(WIP quantity) are listed.
 - Click a work order number to open that [work order](/manual/en/operations/production/work-order/user)'s screen.
 - When no work order is in progress, it shows 「**進行中の仕掛品はありません**」(no work in progress).
 
-> ⚠️ WIP is not yet stock. It only becomes actual stock once all the process steps on the work order are complete. It does not appear on the Product tab.
+> ⚠️ In-process quantity is not yet stock. It only becomes actual stock once all the process steps on the work order are complete. It appears on neither the Product tab nor the WIP tab.
 
 ## Transaction history
 
@@ -151,7 +198,7 @@ A stock transfer leaves 2 rows: an "out" at the source and an "in" at the destin
 
 ## Changing the storage location (stock transfer)
 
-Use this operation to record it when you move goods to a different shelf or a different warehouse. The steps are the same for both product and material.
+Use this operation to record it when you move goods to a different shelf or a different warehouse. The steps are the same for product, material and WIP.
 
 1. Press the「**移動**」(Move) button at the right of the row in the list (also available from a chip on the Location tab).
 2. The "Stock Transfer" screen opens, showing the current location and the transferable quantity at the top.
@@ -229,7 +276,10 @@ A. You can only transfer up to the「利用可能」(available) quantity. Reserv
 A. Stock added automatically (e.g. by completing a work order) starts with no storage location decided. Once you place it on an actual shelf, record it with "Move".
 
 **Q. Product I'm still making does not show on the "製品" (Product) tab.**
-A. Quantity still being manufactured is not yet stock. Check the「**仕掛品**」(WIP) tab instead. It enters stock once all the process steps are complete.
+A. Quantity still being manufactured is not yet stock. Check the「**工程内**」(In process) tab instead. It enters stock once all the process steps are complete.
+
+**Q. Semi-finished goods do not show on the "製品" (Product) tab.**
+A. Semi-finished goods moved to the「**仕掛品**」(WIP) tab. Goods processed partway are listed as WIP, by processing state, rather than as product.
 
 **Q. The "次回入荷" (Next arrival) field is empty.**
 A. There is no ordered material purchase order for that material. If nothing has been ordered, no expected arrival is shown.
@@ -238,7 +288,7 @@ A. There is no ordered material purchase order for that material. If nothing has
 A. Either that site has no storage locations registered yet, or it has no stock. Ask an administrator to register storage locations.
 
 **Q. What is the difference between this app and [Stock Overview](/manual/en/operations/inventory/stock-overview/user) (ST02)?**
-A. Both look at the same stock, just from different directions. This app splits the view by kind of thing (product / material / WIP / location); Stock Overview shows "what is where" as a single flat list. Use Stock Overview when you want a quick count across locations.
+A. Both look at the same stock, just from different directions. This app splits the view by kind of thing (product / material / WIP / in process / location); Stock Overview shows "what is where" as a single flat list. Use Stock Overview when you want a quick count across locations.
 
 ## Other inventory apps
 

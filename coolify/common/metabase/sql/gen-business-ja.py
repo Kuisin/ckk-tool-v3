@@ -601,7 +601,9 @@ ANALYTICS_TABLES = {
     "v_work_order_steps": "指示書工程", "v_work_order_step_plans": "工程作業計画",
     "v_work_order_step_actuals": "工程作業実績", "v_inspection_records": "検査記録",
     "v_defect_records": "不良記録", "v_product_inventory": "製品在庫",
-    "v_material_inventory": "素材在庫", "v_inventory_reservations": "在庫予約",
+    "v_material_inventory": "素材在庫", "v_item_inventory": "在庫（統合）",
+    "v_wip_inventory": "仕掛品在庫", "v_wip_states": "加工状態",
+    "v_inventory_reservations": "在庫予約",
     "v_inventory_transactions": "在庫取引", "v_delivery_orders": "出荷書",
     "v_delivery_order_items": "出荷明細", "v_delivery_notes": "納品書",
     "v_delivery_note_items": "納品明細", "v_invoices": "請求書",
@@ -643,6 +645,15 @@ ANALYTICS_COLS = {
     "surface_finish_name": "黒皮研磨", "region_name": "地域",
     # 多言語マスタの分割列
     "name_ja": "名称(日本語)", "name_en": "名称(英語)",
+    # 仕掛品（途中まで加工して在庫に置いた品 — v_wip_inventory ほか在庫ビュー）
+    "wip_state": "加工状態", "state_label": "加工状態", "wip_step_count": "済んだ工程数",
+    "is_unclassified": "未分類", "aimed_product_id": "目標製品ID",
+    "aimed_product_name": "目標製品", "blank_item_id": "仕掛ブランクID",
+    "blank_code": "仕掛ブランクコード", "material_type_code": "材種コード",
+    "source_process_step_name": "発生工程", "source_work_order_no": "発生元指示書番号",
+    "stocked_at": "在庫に入った日時", "age_days": "経過日数",
+    "available_quantity": "利用可能数", "shelf_code": "棚",
+    "item_code": "品目コード", "item_name": "品目名", "item_type": "品目種別",
     # その他ビュー固有
     "acceptance_status": "請書状態", "roles": "ロール", "work_hours": "作業時間",
     "worked_date": "作業日",

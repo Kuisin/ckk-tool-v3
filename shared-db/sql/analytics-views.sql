@@ -502,6 +502,34 @@ LEFT JOIN app.work_orders wo ON wo.id = wos.work_order_id;
 --    いる分（再研磨の工具）は自社の物ではないので、合計に混ぜると在庫金額も
 --    回転率も狂う。預け分は v_item_custody_inventory、預り品は
 --    v_item_customer_owned_inventory。
+-- 加工状態（仕掛品の「どこまで加工したか」= 済んだ形を変える工程の並び）を
+-- 1 行 = 1 状態・読める名前付きで出す。在庫のビュー 3 本（製品 / 統合 / 仕掛品）が
+-- 同じ名前を引くための部品で、Metabase からもそのまま読める。
+--   state_label  呼び名（任意）があればそれ、無ければ工程名を「 › 」で並べたもの。
+--                形を変える工程が 1 つも済んでいなければ「未加工」。
+--   is_unclassified  移行で行き先を推定できなかった旧来の半製品が指す 1 行
+--                （「未分類」— 在庫管理の仕掛品タブで分類する）。
+CREATE OR REPLACE VIEW analytics.v_wip_states WITH (security_invoker = true) AS
+SELECT
+  ws.id,
+  coalesce(
+    nullif(ws.name->>'ja', ''), nullif(ws.name->>'en', ''),
+    (SELECT string_agg(coalesce(c.name->>'ja', c.name->>'en', '#'||s.step_id::text),
+                       ' › ' ORDER BY s.ord)
+       FROM unnest(ws.step_ids) WITH ORDINALITY AS s(step_id, ord)
+       LEFT JOIN app.process_step_catalog c ON c.id = s.step_id),
+    '未加工'
+  ) AS state_label,
+  coalesce(array_length(ws.step_ids, 1), 0) AS wip_step_count,
+  ws.is_legacy AS is_unclassified,
+  ws.created_at
+FROM app.wip_states ws;
+
+-- 製品在庫。**仕掛品（半製品）の行も含む** — 従来どおり目標製品の在庫として出す
+-- （is_semi_finished で分けられる）。仕掛品だけを仕掛ブランクの軸で読みたいときは
+-- v_wip_inventory。
+-- 末尾の 4 列（wip_state / aimed_product_name / finished_*）は足しただけなので
+-- CREATE OR REPLACE のまま（途中へ挿すと DROP が要る — ファイル冒頭の規約）。
 CREATE OR REPLACE VIEW analytics.v_product_inventory WITH (security_invoker = true) AS
 SELECT
   ii.id,
@@ -512,7 +540,13 @@ SELECT
   ii.lot_number, ii.quantity, ii.reserved_quantity, ii.is_semi_finished,
   ii.updated_at,
   prod.currency,  -- 品目の通貨（フィルタ用）
-  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no
+  CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no,
+  -- 仕掛品の中身（完成品の行ではどれも NULL）。
+  ws.state_label AS wip_state,
+  CASE WHEN ii.aimed_item_id IS NOT NULL
+       THEN coalesce(prod.name->>'ja', prod.name->>'en') END AS aimed_product_name,
+  ii.finished_diameter_mm,
+  ii.finished_length_mm
 FROM app.item_inventory ii
 -- 半製品は仕掛ブランクの行に移った（20261126200000_wip_backfill）— 品目は
 -- ブランクで、製品は目標製品（aimed_item_id）。従来どおり製品の在庫として出す。
@@ -523,6 +557,7 @@ JOIN app.items prod
 LEFT JOIN app.plants pl ON pl.id = ii.plant_id
 LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id
 LEFT JOIN app.work_orders wo ON wo.work_order_number = ii.lot_number
+LEFT JOIN analytics.v_wip_states ws ON ws.id = ii.wip_state_id
 WHERE ii.custody_bp_id IS NULL AND ii.owner_bp_id IS NULL;
 
 CREATE OR REPLACE VIEW analytics.v_material_inventory WITH (security_invoker = true) AS
@@ -539,7 +574,9 @@ LEFT JOIN app.plants pl ON pl.id = ii.plant_id
 LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id
 WHERE ii.custody_bp_id IS NULL AND ii.owner_bp_id IS NULL;
 
--- 統合在庫そのもの（種別を分けずに読みたいとき）。
+-- 統合在庫そのもの（種別を分けずに読みたいとき）。仕掛品の行は item_type = 'BLANK'
+-- （未分類だけ 'PRODUCT'）で、末尾の列に加工状態・目標製品・仕上がり寸法が入る。
+-- 末尾に足しただけなので CREATE OR REPLACE のまま。
 CREATE OR REPLACE VIEW analytics.v_item_inventory WITH (security_invoker = true) AS
 SELECT
   ii.id,
@@ -553,12 +590,93 @@ SELECT
   ii.lot_number, ii.is_semi_finished,
   ii.quantity, ii.reserved_quantity,
   ii.quantity - ii.reserved_quantity AS available_quantity,
-  ii.unit, ii.updated_at
+  ii.unit, ii.updated_at,
+  ws.state_label AS wip_state,
+  ii.aimed_item_id AS aimed_product_id,
+  coalesce(ap.name->>'ja', ap.name->>'en') AS aimed_product_name,
+  ii.finished_diameter_mm,
+  ii.finished_length_mm
 FROM app.item_inventory ii
 JOIN app.items i ON i.id = ii.item_id
 LEFT JOIN app.plants pl ON pl.id = ii.plant_id
 LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id
 LEFT JOIN app.storage_shelves sh ON sh.id = ii.shelf_id
+LEFT JOIN analytics.v_wip_states ws ON ws.id = ii.wip_state_id
+LEFT JOIN app.items ap ON ap.id = ii.aimed_item_id
+WHERE ii.custody_bp_id IS NULL AND ii.owner_bp_id IS NULL;
+
+-- 仕掛品（途中まで加工して在庫に置いた品）。1 行 = 1 バケットで、在庫管理の
+-- 「仕掛品」タブと同じ中身（自社の在庫だけ・空のバケットも含む）。
+--   仕掛ブランク = 材種 × 径 × 長（品目側）。未分類の行は品目が製品のままなので
+--   blank_* / material_type_* / diameter_mm / length_mm が NULL になる。
+--   stocked_at  在庫に入った時刻 = 発生工程の完了 → 最初の入庫 →
+--               分類元から引き継いだ時刻 → 更新日 の順。
+--   age_days    stocked_at からの経過日数（JST の暦日）。
+CREATE OR REPLACE VIEW analytics.v_wip_inventory WITH (security_invoker = true) AS
+SELECT
+  ii.id,
+  CASE WHEN i.item_type = 'BLANK' THEN i.id END AS blank_item_id,
+  CASE WHEN i.item_type = 'BLANK' THEN i.code END AS blank_code,
+  mt.code AS material_type_code,
+  coalesce(mt.name->>'ja', mt.name->>'en') AS material_type_name,
+  CASE WHEN i.item_type = 'BLANK' THEN i.diameter_mm END AS diameter_mm,
+  CASE WHEN i.item_type = 'BLANK' THEN i.length_mm END AS length_mm,
+  ii.wip_state_id,
+  ws.state_label AS wip_state,
+  ws.wip_step_count,
+  ws.is_unclassified,
+  ii.finished_diameter_mm,
+  ii.finished_length_mm,
+  ap.id AS aimed_product_id,
+  coalesce(ap.name->>'ja', ap.name->>'en') AS aimed_product_name,
+  coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
+  coalesce(sl.name->>'ja', sl.name->>'en') AS storage_location_name,
+  sh.code AS shelf_code,
+  ii.lot_number,
+  ii.quantity, ii.reserved_quantity,
+  ii.quantity - ii.reserved_quantity AS available_quantity,
+  ii.unit,
+  coalesce(ps.name->>'ja', ps.name->>'en') AS source_process_step_name,
+  CASE WHEN swo.id IS NOT NULL THEN 'WOR-'||swo.year_month||'-'||lpad(swo.seq::text,5,'0') END AS source_work_order_no,
+  rcv.stocked_at,
+  ((now() AT TIME ZONE 'Asia/Tokyo')::date
+    - (rcv.stocked_at AT TIME ZONE 'Asia/Tokyo')::date) AS age_days,
+  ii.updated_at
+FROM app.item_inventory ii
+JOIN app.items i ON i.id = ii.item_id
+JOIN analytics.v_wip_states ws ON ws.id = ii.wip_state_id
+LEFT JOIN app.material_types mt ON mt.id = i.material_type_id AND i.item_type = 'BLANK'
+-- 目標製品。未分類の行は品目が製品のままなので、それが目標製品。
+LEFT JOIN app.items ap
+  ON ap.id = coalesce(ii.aimed_item_id, CASE WHEN i.item_type = 'PRODUCT' THEN i.id END)
+LEFT JOIN app.plants pl ON pl.id = ii.plant_id
+LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id
+LEFT JOIN app.storage_shelves sh ON sh.id = ii.shelf_id
+LEFT JOIN app.work_order_steps wos ON wos.id = ii.source_step_id
+LEFT JOIN app.work_orders swo ON swo.id = wos.work_order_id
+LEFT JOIN app.process_step_catalog ps ON ps.id = wos.process_step_id
+-- 「分類する」（未分類 → 仕掛ブランク。reference_type = 'wip_reclassify'）の入庫は
+-- 名乗りを直しただけで、その時に在庫に入ったわけではない。分類元の行
+-- （reference_id）の最初の入庫を引き継ぐ — 画面（inventory/wip/data.ts）と同じ順。
+LEFT JOIN LATERAL (
+  SELECT coalesce(
+    wos.completed_at,
+    (SELECT min(t.created_at) FROM app.inventory_transactions t
+      WHERE t.inventory_id = ii.id AND t.transaction_type = 'IN'
+        AND t.reference_type IS DISTINCT FROM 'wip_reclassify'),
+    (SELECT min(o.created_at)
+       FROM app.inventory_transactions r
+       JOIN app.inventory_transactions o
+         ON o.inventory_id::text = r.reference_id
+        AND o.transaction_type = 'IN'
+        AND o.reference_type IS DISTINCT FROM 'wip_reclassify'
+      WHERE r.inventory_id = ii.id AND r.transaction_type = 'IN'
+        AND r.reference_type = 'wip_reclassify'),
+    (SELECT min(t.created_at) FROM app.inventory_transactions t
+      WHERE t.inventory_id = ii.id AND t.transaction_type = 'IN'),
+    ii.updated_at
+  ) AS stocked_at
+) rcv ON true
 WHERE ii.custody_bp_id IS NULL AND ii.owner_bp_id IS NULL;
 
 -- 預け在庫（外注が持っている分）。**自社在庫とは別のビュー**にしてあるのは、
