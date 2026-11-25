@@ -4187,8 +4187,12 @@
       "quantityPcs": "{quantity} 本",
       "description": "説明",
       "descriptionHint": "価格試算の画面で、この費目の横のヒントボタン（ⓘ）に表示されます。空欄ならボタンは出ません。",
-      "isCost": "原価に数える",
-      "isCostHint": "価格試算の結果に「原価合計」として残ります。見積単価の計算には影響しません。",
+      "costMode": "原価の扱い",
+      "costModeHint": "「原価と売価に数える」は原価合計に残り、小計に足す項目なら見積単価にも入ります。「原価のみに含める」は原価合計にだけ数え、最低単価・見積単価には足しません（小計に足す項目のときだけ選べます）。",
+      "costModeNone": "原価に数えない",
+      "costModeCostAndPrice": "原価と売価に数える",
+      "costModeCostOnly": "原価のみに含める",
+      "costOnlyBadge": "原価のみ",
       "costBadge": "原価"
     },
     "itemDefEditForm": {
@@ -8038,7 +8042,14 @@
       "scaleEstimateNote": "見積単価（基準）× 数量スケールの倍率で出した参考値です。実際の数量ごとの価格は価格表で決まります（この価格試算から価格表を作るときの初期値と同じ）。",
       "scaleEstimateTitle": "参考：数量ごとの単価",
       "costTotal": "原価合計",
-      "grossMargin": "粗利"
+      "grossMargin": "粗利",
+      "kind": "種別",
+      "kindPrice": "売価試算",
+      "kindCost": "原価試算",
+      "kindPriceHint": "見積単価まで出します。確定すると価格表の基準単価に選べます。",
+      "kindCostHint": "原価合計だけを出します。原価を見る権限のある人にしか見えず、価格表の基準単価にはできません。",
+      "createPriceEstimate": "売価試算を作成",
+      "costEstimateNotice": "これは原価試算です。原価合計だけを出し、価格表の基準単価にはできません。売価が必要なら「売価試算を作成」で入力を引き継いだ売価試算を作ってください。"
     },
     "orderLineDetail": {
       "designWithCount": "設計（{count}）",
@@ -8335,7 +8346,8 @@
       "deleteDiscountRuleFailed": "値引きルールの削除に失敗しました",
       "noApprovalNeeded": "この価格表には独自値が無い（または追加承認の段が無い）ため、承認は要りません",
       "notFound": "価格表が見つかりません",
-      "notPendingApproval": "承認依頼中ではありません"
+      "notPendingApproval": "承認依頼中ではありません",
+      "costEstimateNotUsable": "原価試算は価格表の基準単価にできません"
     },
     "designRequestActions": {
       "approvalRequestFailed": "承認依頼に失敗しました",
@@ -8386,7 +8398,8 @@
       "productNotFound": "製品が見つかりません",
       "purchaseHistoryFetchFailed": "仕入実績の取得に失敗しました",
       "saveFailed": "価格試算の保存に失敗しました",
-      "toolTypeNotDefined": "工具種「{toolType}」は定義されていません"
+      "toolTypeNotDefined": "工具種「{toolType}」は定義されていません",
+      "costEstimateNotPermitted": "原価試算を作る権限がありません"
     },
     "intakeReview": {
       "customer": "顧客",

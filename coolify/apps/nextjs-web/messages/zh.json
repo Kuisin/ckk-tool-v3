@@ -4187,8 +4187,12 @@
       "quantityPcs": "{quantity} 支",
       "description": "说明",
       "descriptionHint": "显示在价格试算画面中此费用项旁的提示按钮（ⓘ）里。留空则不显示按钮。",
-      "isCost": "计入成本",
-      "isCostHint": "作为“成本合计”记录在价格试算结果中，不影响试算单价。",
+      "costMode": "成本处理",
+      "costModeHint": "“计入成本和售价”记入成本合计；若是计入小计的项目，也计入试算单价。“仅计入成本”只记入成本合计，不计入最低单价和试算单价（仅限计入小计的项目）。",
+      "costModeNone": "不计入成本",
+      "costModeCostAndPrice": "计入成本和售价",
+      "costModeCostOnly": "仅计入成本",
+      "costOnlyBadge": "仅成本",
       "costBadge": "成本"
     },
     "itemDefEditForm": {
@@ -8038,7 +8042,14 @@
       "scaleEstimateNote": "这是用试算单价（基准）× 数量阶梯系数得出的参考值。实际按数量的价格由价格表决定（与用此价格试算创建价格表时的初始值相同）。",
       "scaleEstimateTitle": "参考：按数量的单价",
       "costTotal": "成本合计",
-      "grossMargin": "毛利"
+      "grossMargin": "毛利",
+      "kind": "类别",
+      "kindPrice": "售价试算",
+      "kindCost": "成本试算",
+      "kindPriceHint": "计算到试算单价。确定后可选作价格表的基准单价。",
+      "kindCostHint": "只显示成本合计。仅有查看成本权限的人可见，不能用作价格表的基准单价。",
+      "createPriceEstimate": "创建售价试算",
+      "costEstimateNotice": "这是成本试算。只显示成本合计，不能用作价格表的基准单价。需要售价时，请用“创建售价试算”沿用输入新建售价试算。"
     },
     "orderLineDetail": {
       "designWithCount": "设计（{count}）",
@@ -8335,7 +8346,8 @@
       "deleteDiscountRuleFailed": "折扣规则删除失败",
       "noApprovalNeeded": "此价格表无需审批：没有自定义值，或未设置自定义值追加审批级",
       "notFound": "未找到价格表",
-      "notPendingApproval": "不在审批中"
+      "notPendingApproval": "不在审批中",
+      "costEstimateNotUsable": "成本试算不能用作价格表的基准单价"
     },
     "designRequestActions": {
       "approvalRequestFailed": "审批申请失败",
@@ -8386,7 +8398,8 @@
       "productNotFound": "未找到该产品",
       "purchaseHistoryFetchFailed": "采购实绩获取失败",
       "saveFailed": "价格试算保存失败",
-      "toolTypeNotDefined": "未定义刀具类别“{toolType}”"
+      "toolTypeNotDefined": "未定义刀具类别“{toolType}”",
+      "costEstimateNotPermitted": "没有创建成本试算的权限"
     },
     "intakeReview": {
       "customer": "客户",

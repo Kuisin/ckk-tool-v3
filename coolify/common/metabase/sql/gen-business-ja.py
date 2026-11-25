@@ -463,6 +463,7 @@ COLS = {
     "cost_total": "原価合計", "gross_margin": "粗利",
     "item_order": "評価順", "criterion_id": "計算基準ID", "criterion_name": "計算基準",
     "criterion_role": "計算基準の役割", "is_cost": "原価",
+    "cost_only": "原価のみ",
     "outsource_requested_at": "外注依頼日",
     "outsource_expected_at": "外注入荷予定日",
     "outsource_received_at": "外注入荷日",

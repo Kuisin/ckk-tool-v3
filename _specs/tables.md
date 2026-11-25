@@ -598,6 +598,11 @@ Table estimates {
   name            varchar [not null]
   tool_type       varchar [not null]  // 工具種（管理者定義 — trial_pricing.tool_types。組み込み: ROUND_BAR/CYLINDER/OH）
   status          ESTIMATE_STATUS [not null, default: 'DRAFT']
+  // 種別。COST = 原価試算（原価合計だけを出す。権限 estimate_cost の持ち主にしか
+  // 一覧・詳細・検索とも行ごと見せず、価格表の基準単価ソースにはできない）/
+  // PRICE = 売価試算（従来の価格試算）。作成後は変えない — 売価が要るときは
+  // 詳細の「売価試算を作成」で入力を複写した別の PRICE 行を作る。
+  kind            ESTIMATE_KIND [not null, default: 'PRICE']
   customer_bp_id  uuid [ref: > business_partners.id]
   product_id      int [ref: > products.id]     // 対象製品（任意。1製品に複数価格試算可）
   // 材料は「材種 × 直径 × 黒皮/研磨」で指定する（特定 materials 行には紐付けない）
@@ -620,6 +625,17 @@ Table estimates {
     (year_month, seq) [pk]
   }
 }
+
+Enum ESTIMATE_KIND {
+  COST            // 原価試算
+  PRICE           // 売価試算（既定）
+}
+
+// 計算基準（system_settings trial_pricing.criteria）の原価の扱いは 3 状態:
+//   原価に数えない（isCost=false）/ 原価と売価に数える（isCost=true）/
+//   原価のみに含める（isCost=true + costOnly=true — component でだけ意味を持ち、
+//   原価合計には数えるが小計・見積単価には足さない）。
+// 判定は lib/trial-pricing-criteria.ts criterionCostMode / addsToSubtotal が唯一の定義。
 
 Enum ESTIMATE_STATUS {
   DRAFT           // 下書き

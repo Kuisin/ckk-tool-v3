@@ -137,6 +137,8 @@ export interface CriterionResult {
   name: string;
   role: "component" | "intermediate";
   isCost: boolean;
+  /** 原価のみに含めた（売価＝小計には足していない）。旧スナップショットには無い。 */
+  costOnly?: boolean;
   value: number;
 }
 
