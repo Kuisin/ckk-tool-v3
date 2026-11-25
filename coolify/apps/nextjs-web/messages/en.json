@@ -6880,6 +6880,8 @@
       "fiscalYearStartMonth": "Fiscal year start month",
       "fiscalYearStartMonthDesc": "Where document numbering rolls over to a new year (1–12)",
       "invalidFiscalMonth": "Enter a start month from 1 to 12",
+      "fiscalYearLocked": "This company has already issued document numbers, so its fiscal year start month can no longer change (changing it would split years differently from numbers already issued)",
+      "fiscalYearLockedError": "This company has already issued document numbers, so its fiscal year start month cannot be changed",
       "monthValue": "Month {month}",
       "plants": "Sites",
       "plantCount": "Sites",

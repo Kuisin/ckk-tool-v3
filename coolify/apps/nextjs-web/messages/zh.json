@@ -6880,6 +6880,8 @@
       "fiscalYearStartMonth": "会计年度开始月",
       "fiscalYearStartMonthDesc": "单据编号按年度划分时的分界（1〜12）",
       "invalidFiscalMonth": "请输入 1〜12 的开始月",
+      "fiscalYearLocked": "该法人已发行单据编号，会计年度开始月不可再更改（更改后年度划分将与已发行的编号不一致）",
+      "fiscalYearLockedError": "该法人已发行单据编号，无法更改会计年度开始月",
       "monthValue": "{month} 月",
       "plants": "据点",
       "plantCount": "据点数",
