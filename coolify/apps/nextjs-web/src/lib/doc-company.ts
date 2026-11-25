@@ -26,6 +26,7 @@ import {
   ownCompanyData,
   resolveIssuingCompanyId,
 } from "@/lib/doc-company-core";
+import type { DocCompanyViewer } from "@/lib/doc-company-view-core";
 import type { DocKey } from "@/lib/doc-number";
 import { type LocalizedTextInput, localized } from "@/lib/format";
 
@@ -304,4 +305,33 @@ export async function companyForPlant(
   return ownCompanyData(
     companyForPlantDoc({ plantCompanyId: plant }, await defaultId(db)),
   );
+}
+
+/**
+ * 「発行会社」バッジの判定材料（lib/doc-company-view-core.ts）— ダッシュボードの
+ * レイアウトで 1 回だけ作って画面へ配る。法人は数件しか無いので名前は全件渡す。
+ * 判定は作成画面の「発行会社」欄と同じ issuingCompanyChoice を通す（欄が出る人
+ * = 2 社のために書類を作れる人 = 全部の書類にバッジが出る人）。
+ */
+export async function viewerCompanyContext(
+  userId: string | null,
+  db: Db = prisma,
+): Promise<DocCompanyViewer> {
+  const [choice, companies] = await Promise.all([
+    userId
+      ? issuingChoiceFor(userId, db)
+      : defaultId(db).then((prefill) => ({ prefill, selectable: false })),
+    db.ownCompany.findMany({ select: { id: true, code: true, name: true } }),
+  ]);
+  const home = companies.find((c) => c.id === choice.prefill);
+  return {
+    multiCompany: choice.selectable,
+    homeCode: home?.code ?? null,
+    names: Object.fromEntries(
+      companies.map((c) => {
+        const name = localized(c.name as LocalizedTextInput | null);
+        return [c.code, name && name !== "—" ? name : c.code];
+      }),
+    ),
+  };
 }

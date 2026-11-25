@@ -13,12 +13,14 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { categoryLabel } from "@/lib/app-list";
+import { docCompanyCode, matchesDocCompany } from "@/lib/doc-company-view-core";
 import { docNo } from "@/lib/doc-number";
 import { docSortValue } from "@/lib/doc-sort";
 import type { Locale } from "@/lib/i18n";
@@ -45,6 +47,7 @@ export function StockTakeTable({ rows }: { rows: StockTakeRow[] }) {
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
+      matchesDocCompany(docCompanyCode(r.stockTakeNumber), search) ||
       docNo(r.stockTakeNumber).includes(search) ||
       (r.legacyNumber ?? "").includes(search) ||
       r.plantName.includes(search) ||
@@ -59,7 +62,11 @@ export function StockTakeTable({ rows }: { rows: StockTakeRow[] }) {
       header: tr("production.stockTakes.table.number"),
       sortable: true,
       sortValue: (r) => docSortValue(r.stockTakeNumber),
-      render: (r) => <DocNumber>{r.stockTakeNumber}</DocNumber>,
+      render: (r) => (
+        <WithDocCompany docId={r.stockTakeNumber}>
+          <DocNumber>{r.stockTakeNumber}</DocNumber>
+        </WithDocCompany>
+      ),
     },
     {
       key: "plantName",
@@ -161,9 +168,11 @@ export function StockTakeTable({ rows }: { rows: StockTakeRow[] }) {
         renderCard={(r) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
-              <Text c="dimmed" ff="mono" size="xs">
-                {docNo(r.stockTakeNumber)}
-              </Text>
+              <WithDocCompany docId={r.stockTakeNumber}>
+                <Text c="dimmed" ff="mono" size="xs">
+                  {docNo(r.stockTakeNumber)}
+                </Text>
+              </WithDocCompany>
               <Text fw={600} size="sm" truncate>
                 {r.plantName}
                 {r.storageLocationName ? ` / ${r.storageLocationName}` : ""}

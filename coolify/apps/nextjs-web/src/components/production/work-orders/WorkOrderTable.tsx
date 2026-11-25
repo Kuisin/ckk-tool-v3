@@ -19,11 +19,13 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { matchesDocCompany } from "@/lib/doc-company-view-core";
 import {
   WORK_ORDER_TYPE_COLOR,
   workOrderTypeLabel,
@@ -77,6 +79,7 @@ export function WorkOrderTable({
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
+      matchesDocCompany(r.companyCode, search) ||
       String(r.workOrderNumber).includes(search) ||
       r.docNumber.includes(search) ||
       (r.legacyNumber ?? "").includes(search) ||
@@ -96,9 +99,11 @@ export function WorkOrderTable({
       width: 150,
       sortValue: (r) => r.workOrderNumber,
       render: (r) => (
-        <Text className="tabular-nums" ff="mono" size="sm">
-          {r.docNumber}
-        </Text>
+        <WithDocCompany company={r.companyCode}>
+          <Text className="tabular-nums" ff="mono" size="sm">
+            {r.docNumber}
+          </Text>
+        </WithDocCompany>
       ),
     },
     {
@@ -274,9 +279,11 @@ export function WorkOrderTable({
         renderCard={(r) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
-              <Text c="dimmed" ff="mono" size="xs">
-                {r.docNumber} · {r.orderLineNumber ?? tr("common.forStock")}
-              </Text>
+              <WithDocCompany company={r.companyCode}>
+                <Text c="dimmed" ff="mono" size="xs">
+                  {r.docNumber} · {r.orderLineNumber ?? tr("common.forStock")}
+                </Text>
+              </WithDocCompany>
               <Text fw={600} size="sm" truncate>
                 {r.productName}
               </Text>

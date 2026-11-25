@@ -697,6 +697,7 @@ export function WorkOrderDetail({
               woLabel,
             ]
       }
+      company={wo.companyCode}
       createdAt={fmt.dateTime(wo.createdAt)}
       status={
         <>
