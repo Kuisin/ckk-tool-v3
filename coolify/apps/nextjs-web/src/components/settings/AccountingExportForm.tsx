@@ -52,38 +52,21 @@ import {
   type AccountingColumn,
   type AccountingExportSettings,
   type AccountingField,
+  accountingPreviewInvoice,
   buildAccountingCsvText,
-  type JournalInvoiceInput,
 } from "@/lib/accounting-export-core";
 import { orderTypeLabel } from "@/lib/enum-labels";
 import type { Locale } from "@/lib/i18n";
-
-/**
- * プレビュー用の作り話の請求書（10% と 8% が混ざった 1 通）。
- *
- * 顧客名だけは画面に出る文言なので呼び出し側から渡す（他は番号・金額なので
- * 言語に依らない）。
- */
-const sampleInvoice = (customerName: string): JournalInvoiceInput => ({
-  invoiceNumber: "INV-2026-00001",
-  customerName,
-  customerCode: "C-0001",
-  receivableSubAccountCode: "0123",
-  slipNo: 1,
-  date: "2026-07-31T00:00:00.000Z",
-  totalAmount: 18_600,
-  taxLines: [
-    { taxRate: 0.1, taxableBase: 12_000, taxAmount: 1_200 },
-    { taxRate: 0.08, taxableBase: 5_000, taxAmount: 400 },
-  ],
-});
 
 function CsvPreview({ settings }: { settings: AccountingExportSettings }) {
   const tr = useTranslations();
   const sampleCustomer = tr("settings.accounting.sampleCustomerName");
   const text = useMemo(() => {
     try {
-      return buildAccountingCsvText(sampleInvoice(sampleCustomer), settings);
+      return buildAccountingCsvText(
+        accountingPreviewInvoice(sampleCustomer, settings),
+        settings,
+      );
     } catch {
       return "";
     }

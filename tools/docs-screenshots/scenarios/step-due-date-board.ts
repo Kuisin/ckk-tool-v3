@@ -89,8 +89,14 @@ export const stepDueDateBoard: Scenario = {
       run: async (s) => {
         const p = s.page;
         const due = jstDate(1, 20);
+        const versionsBefore = s.sql("select count(*) from app.product_process_route_versions");
         await s.goto(`/production/work-orders/new?orderLine=${ORDER_LINE}`);
         await s.see("工程・作業時間");
+        // 工程リストの版をそのまま使っている — 何も変えていないのに「新バージョン
+        // として保存されます」と出て、保存で中身の同じ版が増えていた（版の側では
+        // 社内のみの工程にも拠点が入っていて、比べ方が保存の規則と違った）。
+        const banner = await p.getByText(/保存時に新バージョン v\d+ として保存されます/).count();
+        s.check("工程を触っていなければ「新バージョンとして保存」の案内は出ない", banner === 0, `${banner} 件`);
         const picker = p.getByRole("button", { name: "切断 の工程納期" });
         await picker.scrollIntoViewIfNeeded();
         await s.pickDate(picker, { nextMonthDay: 20 });
@@ -105,6 +111,8 @@ export const stepDueDateBoard: Scenario = {
         await s.waitForUrl(WORK_ORDER_URL);
         await s.see("工程ワークフロー");
         newWoNumber = new URL(p.url()).pathname.split("/").pop() ?? "";
+        const versionsAfter = s.sql("select count(*) from app.product_process_route_versions");
+        s.check("DB: 工程リストの版は増えていない（工程納期・作業計画は版の中身ではない）", versionsAfter === versionsBefore, `${versionsBefore} → ${versionsAfter}`);
 
         const db = s.sqlRows(
           `select c.code || '=' || coalesce(to_char(st.due_date, 'YYYY-MM-DD'), '-') from app.work_order_steps st

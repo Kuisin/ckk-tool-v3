@@ -95,21 +95,15 @@ async function saveSettings(s: Scn): Promise<void> {
 }
 
 /**
- * 閲覧モードの「注文種別ごとの売上高 科目コード」の 1 行の文字。保存の直後は画面が
- * サーバーの値を読み直すまで一瞬だけ前の値が残るので、期待の値になるのを少し待つ
- * （10 秒待っても変わらなければ、そのときの文字を返す = check が落ちる）。
+ * 閲覧モードの「注文種別ごとの売上高 科目コード」の 1 行の文字。**閲覧に戻った
+ * 瞬間に読む** — 待たない。以前は保存の直後、サーバーの値が届くまで一瞬だけ
+ * 前の値が出ていた（その頃はここで 10 秒待って逃げていた）。閲覧に戻った時点で
+ * 新しい値が出ていること自体を確かめる。
  */
-async function viewRow(s: Scn, orderType: string, expected: RegExp): Promise<string> {
+async function viewRow(s: Scn, orderType: string): Promise<string> {
+  await s.page.getByRole("button", { name: "編集", exact: true }).first().waitFor({ state: "visible", timeout: 20_000 });
   const row = s.page.getByRole("row", { name: new RegExp(`^${orderType}`) });
-  await row.waitFor({ state: "visible", timeout: 20_000 });
-  const read = async () => (await row.innerText()).replace(/\s+/g, " ");
-  const until = Date.now() + 10_000;
-  let text = await read();
-  while (!expected.test(text) && Date.now() < until) {
-    await s.page.waitForTimeout(250);
-    text = await read();
-  }
-  return text;
+  return (await row.innerText()).replace(/\s+/g, " ");
 }
 
 const savedByOrderType = (s: Scn) =>
@@ -158,9 +152,11 @@ export const regrindSalesAccount: Scenario = {
         s.check("断られた時点では何も保存されていない", ["(未保存)", "{}"].includes(savedByOrderType(s)), savedByOrderType(s));
 
         await s.fill(p.getByRole("textbox", { name: "再研磨", exact: true }), "4190");
+        const preview = (await p.locator("pre, code").filter({ hasText: "INV-2026-00001" }).first().innerText()).replace(/\r?\n/g, " ⏎ ");
+        s.check("プレビューに再研磨の売上高科目（4190）の行が出る", /,4190,/.test(preview) || /\b4190\b/.test(preview), preview);
         await s.shot("再研磨 = 4190 を入れたフォーム");
         await saveSettings(s);
-        const text = await viewRow(s, "再研磨", /再研磨 4190/);
+        const text = await viewRow(s, "再研磨");
         s.check("保存すると閲覧に戻り、再研磨の行に 4190 が出る", /再研磨 4190/.test(text), text);
         const other = (await p.getByRole("row", { name: /^本番/ }).innerText()).replace(/\s+/g, " ");
         s.check("入れていない種別（本番）は「税区分・既定に従う」のまま", /税区分・既定に従う/.test(other), other);
@@ -211,7 +207,7 @@ export const regrindSalesAccount: Scenario = {
         await openSettingsEditor(s);
         await s.fill(p.getByRole("textbox", { name: "再研磨", exact: true }), "");
         await saveSettings(s);
-        const text = await viewRow(s, "再研磨", /税区分・既定に従う/);
+        const text = await viewRow(s, "再研磨");
         s.check("再研磨の行が「税区分・既定に従う」に戻る", /税区分・既定に従う/.test(text), text);
         s.check("DB: 注文種別 → 科目は空", savedByOrderType(s).replace(/\s/g, "") === "{}", savedByOrderType(s));
 

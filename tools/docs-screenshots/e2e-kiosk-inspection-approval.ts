@@ -124,6 +124,11 @@ async function main() {
     sheet.includes("実測値") && /6\.01/.test(sheet),
     sheet.includes("実測値") ? "値が出ていない" : "見出しが出ていない",
   );
+  check(
+    "検査表の値は型どおりに読める（真偽 = はい・単一選択 = 選択肢の名前。生の true は出ない）",
+    /はい/.test(sheet) && /良/.test(sheet) && !/\btrue\b/.test(sheet),
+    sheet.match(/外観にキズがないこと.{0,40}|表面仕上げ.{0,40}/g)?.join(" | ") ?? "",
+  );
   await shot(p, "02-inspection-sheet");
   check(
     "検査表からそのまま承認できる",

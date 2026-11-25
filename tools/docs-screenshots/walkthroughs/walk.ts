@@ -267,9 +267,19 @@ export class Walk {
    */
   async pickDate(button: Locator, when: "today" | { nextMonthDay: number }): Promise<void> {
     await this.click(button);
-    const calendar = this.page.locator("[data-dates-dropdown], .mantine-DatePickerInput-calendarHeader").first();
-    await calendar.waitFor({ state: "visible", timeout: 10_000 });
-    const popover = this.page.locator(".mantine-Popover-dropdown:visible, .mantine-Modal-content:visible").last();
+    // 押したボタンが開いた吹き出しを、ボタンの aria-controls で名指しする。
+    // 「見えている吹き出しの最後」で探すと、直前に使った別の日付欄の吹き出しが
+    // 閉じる途中（フェードアウト中）でまだ見えていて、そちらの月送り・日付を
+    // 押していた（2 つ目の日付が 1 か月ずれた）。
+    const controls = await button.getAttribute("aria-controls").catch(() => null);
+    const popover = controls
+      ? this.page.locator(`[id="${controls}"]`)
+      : this.page.locator(".mantine-Popover-dropdown:visible, .mantine-Modal-content:visible").last();
+    await popover.waitFor({ state: "visible", timeout: 10_000 });
+    await popover
+      .locator("[data-dates-dropdown], .mantine-DatePickerInput-calendarHeader, button[data-direction]")
+      .first()
+      .waitFor({ state: "visible", timeout: 10_000 });
     if (when === "today") {
       await this.click(popover.locator("button[data-today]").first());
       return;
