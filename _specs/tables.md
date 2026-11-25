@@ -33,7 +33,14 @@
 >   （`lib/wip-state-core.ts` が唯一の定義）。既存の半製品行（`is_semi_finished`）は
 >   まだ `wip_state_id` が null — 埋めるのは次の段（backfill）で、それまでは
 >   `is_semi_finished = (wip_state_id IS NOT NULL)` を張れない。いま DB が守るのは
->   「加工状態を持つ行は顧客の預り品ではない」だけ
+>   「加工状態を持つ行は顧客の預り品ではない」だけ。
+>   **加工状態の決め方（利用者の決定 2026-11-25）**: (1) 工程の途中で半製品に
+>   振り分けた品（`output_defect_semi_finished`）は、その工程を**済んでいない**
+>   ものとして数える（済んだことにすると次の指示書が工程を飛ばす）。分岐終端で
+>   半製品在庫へ置いた品はその工程を済んでいる。(2) 発生元の手前に合流があり、
+>   合流してきた側を辿ると違う並びになるときは、**本流を辿った並びを推奨に
+>   して、利用者に確かめる**（`wipPathForSource` が `ambiguous` と別案
+>   `alternatives` を返す。計上の段 PR 3 で確認を出す）
 > - `master.prisma`: `currencies` — 100 円基準の換算マスタ（rate_per_100_jpy =
 >   100 円で買えるその通貨量。JPY = 100）。shared-db スタックの fx-rates が日次自動更新。
 >   書類・製品の `currency` 列（products / quotes / order_acceptances / invoices に

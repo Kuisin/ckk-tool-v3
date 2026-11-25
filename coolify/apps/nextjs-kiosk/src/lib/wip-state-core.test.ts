@@ -119,13 +119,20 @@ describe("wipPathForSource", () => {
   ];
 
   it("本流: 開始工程と検査を除いた、数える工程だけを早い順に", () => {
-    expect(wipPathForSource(main, [], "insp", affects)).toEqual([10, 20]);
-    expect(wipPathForSource(main, [], "cyl", affects)).toEqual([10, 20]);
+    expect(wipPathForSource(main, [], "insp", affects)).toEqual({
+      stepIds: [10, 20],
+      ambiguous: false,
+      alternatives: [],
+    });
+    expect(wipPathForSource(main, [], "cyl", affects).stepIds).toEqual([
+      10, 20,
+    ]);
   });
 
   it("includeSource=false は発生元を済んだことにしない", () => {
     expect(
-      wipPathForSource(main, [], "cyl", affects, { includeSource: false }),
+      wipPathForSource(main, [], "cyl", affects, { includeSource: false })
+        .stepIds,
     ).toEqual([10]);
   });
 
@@ -133,7 +140,7 @@ describe("wipPathForSource", () => {
     const steps = main.map((s) =>
       s.id === "cut" ? { ...s, status: "CANCELLED" as const } : s,
     );
-    expect(wipPathForSource(steps, [], "insp", affects)).toEqual([20]);
+    expect(wipPathForSource(steps, [], "insp", affects).stepIds).toEqual([20]);
   });
 
   it("分岐系列: 分岐元までの本流 + 系列内の工程", () => {
@@ -144,12 +151,14 @@ describe("wipPathForSource", () => {
       step("r2", 50, 60, "COMPLETED", { branchStock: "SEMI_FINISHED" }),
     ];
     const links = [link("cyl", "r1", 2), link("r1", "r2", 0)];
-    expect(wipPathForSource(steps, links, "r2", affects)).toEqual([
-      10, 20, 60, 50,
-    ]);
+    expect(wipPathForSource(steps, links, "r2", affects)).toEqual({
+      stepIds: [10, 20, 60, 50],
+      ambiguous: false,
+      alternatives: [],
+    });
   });
 
-  it("合流後の本流工程は合流してきた分岐を辿らない", () => {
+  it("合流後: 推奨は本流、合流してきた分岐の経路は別案として返す", () => {
     const steps = [
       step("s", 1, 0),
       step("cut", 10, 10),
@@ -158,13 +167,50 @@ describe("wipPathForSource", () => {
       step("r1", 60, 50),
     ];
     const links = [link("cyl", "r1", 2), link("r1", "stp", 0)];
-    expect(wipPathForSource(steps, links, "stp", affects)).toEqual([
-      10, 20, 30,
-    ]);
+    expect(wipPathForSource(steps, links, "stp", affects)).toEqual({
+      stepIds: [10, 20, 30],
+      ambiguous: true,
+      alternatives: [[10, 20, 60, 30]],
+    });
+  });
+
+  it("合流してきた経路が数える工程を含まなければ曖昧ではない", () => {
+    // 分岐側が検査（数えない）だけなら、どちらを辿っても同じ並び
+    const steps = [
+      step("s", 1, 0),
+      step("cut", 10, 10),
+      step("cyl", 20, 20),
+      step("stp", 30, 40),
+      step("r1", 40, 50),
+    ];
+    const links = [link("cyl", "r1", 2), link("r1", "stp", 0)];
+    expect(wipPathForSource(steps, links, "stp", affects)).toEqual({
+      stepIds: [10, 20, 30],
+      ambiguous: false,
+      alternatives: [],
+    });
+  });
+
+  it("合流より手前が発生元なら曖昧ではない", () => {
+    const steps = [
+      step("s", 1, 0),
+      step("cut", 10, 10),
+      step("cyl", 20, 20),
+      step("stp", 30, 40),
+      step("r1", 60, 50),
+    ];
+    const links = [link("cyl", "r1", 2), link("r1", "stp", 0)];
+    expect(wipPathForSource(steps, links, "cyl", affects).ambiguous).toBe(
+      false,
+    );
   });
 
   it("知らない工程 id は空", () => {
-    expect(wipPathForSource(main, [], "nope", affects)).toEqual([]);
+    expect(wipPathForSource(main, [], "nope", affects)).toEqual({
+      stepIds: [],
+      ambiguous: false,
+      alternatives: [],
+    });
   });
 });
 
@@ -250,7 +296,7 @@ describe("computeSemiFinishedSources", () => {
         links,
         { stepId: "b", kind: "DEFECT" },
         affects,
-      ),
+      ).stepIds,
     ).toEqual([10]);
     // 分岐終端は r を終えている
     expect(
@@ -259,7 +305,7 @@ describe("computeSemiFinishedSources", () => {
         links,
         { stepId: "r", kind: "BRANCH_TERMINAL" },
         affects,
-      ),
+      ).stepIds,
     ).toEqual([10, 60]);
   });
 });

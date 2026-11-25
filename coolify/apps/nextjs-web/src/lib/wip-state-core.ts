@@ -100,46 +100,58 @@ function ctxOf(
 }
 
 /**
- * 工程の「主たる手前の工程」— 品物がどこから来たか。
+ * 工程の手前の工程（品物がどこから来たか）。**先頭が推奨**で、残りは合流で
+ * 入ってくる別の経路。
  *
  * - 分岐系列の工程（オフメインライン）: 手前の工程から入るリンクの元。
- *   系列内の連鎖は動的リンク（routedQuantity = 0）なので、動的を優先する。
- * - 本流の工程: 直前の本流工程（CANCELLED と分岐系列は飛ばす）。
- *   **合流してくる分岐は辿らない** — 合流先から先の品は本流と同じ形に
- *   揃っている前提で（だから合流できる）、手直しの寄り道を状態に数えると
- *   本流の品と合流した品が別の状態に割れる。
+ *   系列内の連鎖は動的リンク（routedQuantity = 0）なので、動的を推奨にする。
+ * - 本流の工程: 推奨は直前の本流工程（CANCELLED と分岐系列は飛ばす）。
+ *   入ってくるリンク（合流してくる分岐）の元は別の経路として後ろに並ぶ —
+ *   分岐系列は本流より後ろに並ぶので、合流リンクの元は工程順では後ろにいる。
+ *   辿り返しの輪は呼び出し側（wipPathForSource）が切る。
+ *
+ * 推奨を本流にするのは利用者の決定（2026-11-25）: 合流先から先の品は本流と同じ
+ * 形に揃っている見込みが高い。ただし確実ではないので、別の経路も返して
+ * 呼び出し側（計上の段）が利用者に確かめられるようにする。
  */
-function primaryPredecessor(
+function predecessors(
   step: StepState,
   ctx: WorkflowCtx,
   byId: Map<string, StepState>,
-): StepState | null {
-  if (isOffMainline(step.id, ctx)) {
-    const incoming = ctx.links
-      .filter((l) => l.targetStepId === step.id)
-      .map((l) => ({ link: l, src: byId.get(l.sourceStepId) }))
-      .filter(
-        (x): x is { link: StepLinkState; src: StepState } =>
-          x.src != null &&
-          x.src.status !== "CANCELLED" &&
-          precedes(x.src, step),
-      )
-      .sort(
-        (a, b) =>
-          (a.link.routedQuantity <= 0 ? 0 : 1) -
-            (b.link.routedQuantity <= 0 ? 0 : 1) || orderKey(b.src, a.src),
-      );
-    return incoming[0]?.src ?? null;
-  }
-  const mainline = ctx.steps
+): StepState[] {
+  const incoming = ctx.links
+    .filter((l) => l.targetStepId === step.id)
+    .map((l) => ({ link: l, src: byId.get(l.sourceStepId) }))
     .filter(
-      (s) =>
-        s.status !== "CANCELLED" &&
-        !isOffMainline(s.id, ctx) &&
-        precedes(s, step),
+      (x): x is { link: StepLinkState; src: StepState } =>
+        x.src != null && x.src.status !== "CANCELLED",
     )
-    .sort(orderKey);
-  return mainline[mainline.length - 1] ?? null;
+    .sort(
+      (a, b) =>
+        (a.link.routedQuantity <= 0 ? 0 : 1) -
+          (b.link.routedQuantity <= 0 ? 0 : 1) || orderKey(b.src, a.src),
+    )
+    .map((x) => x.src);
+
+  let primary: StepState | null;
+  if (isOffMainline(step.id, ctx)) {
+    // 分岐系列に入ってきた元（手前に並ぶ工程）。後ろに並ぶ工程からのリンクは
+    // 別の系列が合流してきたもの。
+    primary = incoming.find((s) => precedes(s, step)) ?? null;
+  } else {
+    const mainline = ctx.steps
+      .filter(
+        (s) =>
+          s.status !== "CANCELLED" &&
+          !isOffMainline(s.id, ctx) &&
+          precedes(s, step),
+      )
+      .sort(orderKey);
+    primary = mainline[mainline.length - 1] ?? null;
+  }
+  const out: StepState[] = primary ? [primary] : [];
+  for (const s of incoming) if (!out.includes(s)) out.push(s);
+  return out;
 }
 
 export interface WipPathOptions {
@@ -149,18 +161,37 @@ export interface WipPathOptions {
    * 分岐系列の終端で「半製品在庫へ」置いた品はその工程を終えている（true）。
    * 工程の途中で半製品に振り分けた品（output_defect_semi_finished）は、その
    * 工程を**終えていない**（false）— 済んだことにすると、次の指示書がその
-   * 工程を飛ばして形の足りない品を流す。`semiFinishedSourcePath` はこの区別を
-   * 発生元の種類から決める。
+   * 工程を飛ばして形の足りない品を流す（利用者の決定 2026-11-25）。
+   * `semiFinishedSourcePath` はこの区別を発生元の種類から決める。
    */
   includeSource?: boolean;
 }
 
+/** 加工状態の推定結果。 */
+export interface WipPath {
+  /** 推奨の並び（合流では本流を辿ったもの）。 */
+  stepIds: number[];
+  /**
+   * 発生元の手前に合流があり、別の経路を辿ると**違う並び**になる。
+   * true のとき、計上の段は推奨を既定にして利用者に確かめること。
+   */
+  ambiguous: boolean;
+  /** 推奨と異なる並び（重複なし・見つかった順）。ambiguous=false なら空。 */
+  alternatives: number[][];
+}
+
+/** 経路の列挙の上限（合流が重なる指示書で組み合わせが爆発しないように）。 */
+const MAX_WIP_PATHS = 16;
+
 /**
  * 発生元の工程までに品物が通った、**加工状態に数える工程**（カタログ id）の並び。
  *
- * 開始工程から発生元まで「主たる手前の工程」を辿り（`primaryPredecessor`）、
+ * 開始工程から発生元まで手前の工程を辿り（`predecessors` — 先頭が推奨）、
  * 早い順に並べ、`affectsWipState` が true のカタログ工程だけを残す。
  * 手前の工程のうち未着手（PENDING）のものは品物が通っていないので数えない。
+ *
+ * 発生元の手前に合流があれば、合流してくる側を辿った並びも `alternatives` に
+ * 返す（推奨と同じ並びになるものは数えない — 違いが無ければ聞く必要も無い）。
  */
 export function wipPathForSource(
   steps: readonly StepState[],
@@ -168,33 +199,52 @@ export function wipPathForSource(
   sourceStepId: string,
   affectsWipState: (processStepId: number) => boolean,
   options: WipPathOptions = {},
-): number[] {
+): WipPath {
   const includeSource = options.includeSource ?? true;
   const ctx = ctxOf(steps, links);
   const byId = new Map(steps.map((s) => [s.id, s]));
   const source = byId.get(sourceStepId);
-  if (!source) return [];
+  if (!source) return { stepIds: [], ambiguous: false, alternatives: [] };
 
-  const chain: StepState[] = [];
-  const seen = new Set<string>();
-  let cur: StepState | null = source;
-  while (cur && !seen.has(cur.id)) {
-    seen.add(cur.id);
-    chain.push(cur);
-    cur = primaryPredecessor(cur, ctx, byId);
-  }
-  chain.reverse();
-
-  const out: number[] = [];
-  for (const s of chain) {
-    if (s.id === source.id) {
-      if (!includeSource) continue;
-    } else if (s.status === "PENDING" || s.status === "CANCELLED") {
-      continue;
+  const toStepIds = (chain: readonly StepState[]): number[] => {
+    const out: number[] = [];
+    for (const s of [...chain].reverse()) {
+      if (s.id === source.id) {
+        if (!includeSource) continue;
+      } else if (s.status === "PENDING" || s.status === "CANCELLED") {
+        continue;
+      }
+      if (affectsWipState(s.processStepId)) out.push(s.processStepId);
     }
-    if (affectsWipState(s.processStepId)) out.push(s.processStepId);
+    return out;
+  };
+
+  // 深さ優先で、推奨（先頭の手前工程）から順に経路を列挙する。
+  // 最初に見つかる経路が推奨の経路になる。
+  const chains: StepState[][] = [];
+  const walk = (cur: StepState, chain: StepState[]) => {
+    if (chains.length >= MAX_WIP_PATHS) return;
+    const next = [...chain, cur];
+    const preds = predecessors(cur, ctx, byId).filter((p) => !next.includes(p));
+    if (preds.length === 0) {
+      chains.push(next);
+      return;
+    }
+    for (const p of preds) walk(p, next);
+  };
+  walk(source, []);
+
+  const stepIds = toStepIds(chains[0] ?? [source]);
+  const seen = new Set([wipSignature(stepIds)]);
+  const alternatives: number[][] = [];
+  for (const chain of chains.slice(1)) {
+    const ids = toStepIds(chain);
+    const sig = wipSignature(ids);
+    if (seen.has(sig)) continue;
+    seen.add(sig);
+    alternatives.push(ids);
   }
-  return out;
+  return { stepIds, ambiguous: alternatives.length > 0, alternatives };
 }
 
 /** 半製品の発生元の種類。 */
@@ -271,7 +321,7 @@ export function semiFinishedSourcePath(
   links: readonly StepLinkState[],
   source: Pick<SemiFinishedSource, "stepId" | "kind">,
   affectsWipState: (processStepId: number) => boolean,
-): number[] {
+): WipPath {
   return wipPathForSource(steps, links, source.stepId, affectsWipState, {
     includeSource: source.kind === "BRANCH_TERMINAL",
   });
