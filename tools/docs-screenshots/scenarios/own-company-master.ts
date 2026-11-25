@@ -77,6 +77,11 @@ export const ownCompanyMaster: Scenario = {
         const month = p.getByRole("textbox", { name: "会計年度の開始月" });
         s.check("会計年度の開始月の初期値は 4", (await month.inputValue()) === "4", await month.inputValue());
         await s.shot("入力し終えたフォーム");
+        const toasts = p.locator(".mantine-Notification-root");
+        const redToasts = async () =>
+          (await toasts.evaluateAll((els) => els.map((e) => (e as HTMLElement).style.getPropertyValue("--notification-color")))).filter((c) => /red/.test(c)).length;
+        const redBefore = await redToasts();
+        s.check("保存の前は、断られたときのエラーの通知が出ている", redBefore >= 1, `${redBefore} 枚`);
         await s.click(p.getByRole("button", { name: "保存", exact: true }));
         await s.waitForUrl(/\/master\/own-companies\/\d+$/);
         await s.see(TSP_NAME);
@@ -84,9 +89,6 @@ export const ownCompanyMaster: Scenario = {
         await s.checkVisible("詳細に会計年度の開始月が出る", "4 月", { exact: true });
         // 不備 2 回 → 保存成功。成功の通知が出たら、前のエラーの通知は消える
         // （以前は詳細画面へ移っても赤 2 枚が緑 1 枚と並んで残っていた）。
-        const toasts = p.locator(".mantine-Notification-root");
-        const redToasts = async () =>
-          (await toasts.evaluateAll((els) => els.map((e) => (e as HTMLElement).style.getPropertyValue("--notification-color")))).filter((c) => /red/.test(c)).length;
         await p.waitForTimeout(800);
         s.check("保存に成功した画面に、前のエラーの通知が残っていない", (await redToasts()) === 0, await toasts.allInnerTexts());
         const row = s.sql(

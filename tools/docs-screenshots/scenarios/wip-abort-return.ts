@@ -169,15 +169,21 @@ export const wipAbortReturn: Scenario = {
       caption: "指示書の一覧（PD02）と注文明細の指示書タブ — 打ち切った指示書は詳細と同じく「キャンセル」+「打ち切り」で並び、ただのキャンセルと見分けが付く",
       run: async (s) => {
         const p = s.page;
+        // 見比べるために、下書きの #9003 を普通にキャンセルした状態にしておく（準備）。
+        s.sqlExec("update app.work_orders set status = 'CANCELLED' where work_order_number = 9003");
         await s.goto("/production/work-orders");
         const row = p.locator("table tbody tr", { hasText: "超硬エンドミル" }).filter({ hasText: /WOR-\d{4}-\d{5}/ });
         await row.first().waitFor();
         const texts = (await row.allInnerTexts()).map((t) => t.replace(/\s+/g, " "));
         const aborted = texts.filter((t) => t.includes("打ち切り"));
         s.check("一覧で打ち切った #9001 の行に「打ち切り」が出る", aborted.length === 1 && aborted[0].includes("キャンセル"), texts);
-        const plain = s.sql("select count(*) from app.work_orders where status = 'CANCELLED' and aborted_at is null");
+        const plain = texts.filter((t) => t.includes("キャンセル") && !t.includes("打ち切り"));
         const shownAborted = await p.getByText("打ち切り", { exact: true }).count();
-        s.check("「打ち切り」は打ち切った指示書だけに付く（普通のキャンセルには付かない）", shownAborted === 1, { 打ち切りの印: shownAborted, 普通のキャンセル: plain });
+        s.check(
+          "「打ち切り」は打ち切った指示書だけに付く（普通にキャンセルした #9003 には付かない）",
+          shownAborted === 1 && plain.length === 1,
+          { 打ち切りの印: shownAborted, 普通のキャンセルの行: plain },
+        );
         await s.shot("指示書の一覧（打ち切りの印）");
         const lineRef = s.sql("select line_ref from app.order_lines where id = 'e0000000-0000-4000-8000-000000000001'");
         await s.goto(`/sales/order-lines/${encodeURIComponent(lineRef.replace("/", "~"))}`);
