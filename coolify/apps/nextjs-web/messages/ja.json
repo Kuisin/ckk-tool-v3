@@ -2002,7 +2002,9 @@
       "amount": "金額 (円)",
       "deliveryDate": "納期",
       "tax": "消費税（10%）",
-      "validityStrip": "本見積書の有効期限は {validUntil} までとなります。期限内にご注文をお願いいたします。"
+      "validityStrip": "本見積書の有効期限は {validUntil} までとなります。期限内にご注文をお願いいたします。",
+      "lineDiscount": "値引き",
+      "lineDiscountNote": "※ {label}: -¥{amount}"
     },
     "DELIVERY_NOTE": {
       "regNumber": "登録番号:",
@@ -8354,7 +8356,8 @@
       "selectABranch": "支店を選択",
       "subtotalAmount": "小計 {amount}",
       "taxAmount": "消費税 {amount}",
-      "totalInclTaxAmount": "合計（税込） {amount}"
+      "totalInclTaxAmount": "合計（税込） {amount}",
+      "lineNotesDescription": "見積書 PDF の明細の下に印字されます"
     },
     "trialEstimateDetail": {
       "orderTypeTierCount": "{orderType}・{tierCount}段階",

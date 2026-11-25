@@ -2002,7 +2002,9 @@
       "amount": "金额（日元）",
       "deliveryDate": "交期",
       "tax": "税额（10%）",
-      "validityStrip": "本报价单有效期至 {validUntil}，请在此期限内下单。"
+      "validityStrip": "本报价单有效期至 {validUntil}，请在此期限内下单。",
+      "lineDiscount": "折扣",
+      "lineDiscountNote": "※ {label}：-¥{amount}"
     },
     "DELIVERY_NOTE": {
       "regNumber": "登记编号：",
@@ -8354,7 +8356,8 @@
       "selectABranch": "选择分公司",
       "subtotalAmount": "小计 {amount}",
       "taxAmount": "税额 {amount}",
-      "totalInclTaxAmount": "合计（含税） {amount}"
+      "totalInclTaxAmount": "合计（含税） {amount}",
+      "lineNotesDescription": "打印在报价单 PDF 的明细下方"
     },
     "trialEstimateDetail": {
       "orderTypeTierCount": "{orderType}・{tierCount} 档",
