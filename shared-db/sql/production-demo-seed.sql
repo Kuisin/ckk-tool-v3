@@ -604,7 +604,28 @@ ON CONFLICT (id) DO NOTHING;
 SELECT setval(pg_get_serial_sequence('app.storage_shelves', 'id'),
               GREATEST((SELECT MAX(id) FROM app.storage_shelves), 9121));
 
+-- ── 製品 9001 の要求素材（仕掛品の再設計 — 半製品の行き先を決める材料）────────
+-- 半製品は 材種 × 径 × 長 の仕掛ブランクに置く（20261126200000_wip_backfill）。
+-- 長さは製品の要求長から取るので、要求寸法が無い製品の半製品は「未分類」になる。
+-- 名前どおり φ6×60 の B01A0001 を要求させる（入っていれば触らない）。
+UPDATE app.items
+   SET requires_material_type_id = (SELECT id FROM app.material_types WHERE code = 'B01A0001'),
+       requires_diameter_mm = 6,
+       requires_length_mm = 60,
+       updated_at = '2026-07-01T09:10:00+09'
+ WHERE id = 9001 AND requires_length_mm IS NULL
+   AND EXISTS (SELECT 1 FROM app.material_types WHERE code = 'B01A0001');
+
 -- ── 製品在庫（完成品 / 半製品 / 未割当 / 移動先棚のバリエーション）─────────────
+--
+-- 半製品の行は**旧来の形**（item_id = 製品・加工状態なし）で書いてある。
+-- トリガー item_inventory_wip_legacy が移行と同じ関数で仕掛品の形
+-- （item_id = 仕掛ブランク・aimed_item_id = 製品・wip_state_id）へ書き換える
+-- ので、このシードを流すたびに移行の規則が通る:
+--   -0002 #9001 切断の途中で振り分け（DEFECT → 切断は済んでいない）→ φ6×60・状態 []
+--   -0006 #9004 段加工の終端（分岐終端 → 切断・センタレス・段加工 済）
+--         → φ6×60 で、製品 9001 の工程の先頭部分 = 使い回せる仕掛品
+--   -0007 ロットも発生工程も無い半製品 → 推定できず「未分類」（製品 9002 のまま）
 -- 在庫は app.item_inventory の 1 本（製品・素材の区別は品目が持つ）。
 -- 単位は行に持つ（旧 product_inventory は持たず、マスタから引いていた）。
 INSERT INTO app.item_inventory (id, item_id, plant_id, lot_number,
@@ -630,7 +651,17 @@ VALUES
    10, 0, false, NULL, 9101, 9112, '本', NULL, NULL, '2026-07-17T10:10:00+09'),
   ('dc050000-0000-4000-8000-000000000005'::uuid, 9003,
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL,
-   12, 0, false, NULL, 9102, 9121, '本', NULL, NULL, '2026-07-10T14:00:00+09')
+   12, 0, false, NULL, 9102, 9121, '本', NULL, NULL, '2026-07-10T14:00:00+09'),
+  -- #9004 段加工まで済んだ半製品（使い回せる仕掛品の例）
+  ('dc050000-0000-4000-8000-000000000006'::uuid, 9001,
+   (SELECT id FROM app.plants WHERE code = 'F01'), 9004,
+   3, 0, true, 'dc014000-0000-4000-8000-000000000004'::uuid,
+   9101, 9113, '本', NULL, NULL, '2026-07-18T16:05:00+09'),
+  -- 出どころの分からない半製品（「未分類」の例）
+  ('dc050000-0000-4000-8000-000000000007'::uuid, 9002,
+   (SELECT id FROM app.plants WHERE code = 'F01'), NULL,
+   4, 0, true, NULL, 9102, 9121, '本', NULL, '旧システムからの繰越',
+   '2026-07-05T10:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 素材在庫（予約 > 在庫 の ATP マイナス例を 1 行含む）───────────────────────

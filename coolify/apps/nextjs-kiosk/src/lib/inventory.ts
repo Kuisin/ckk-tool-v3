@@ -299,17 +299,49 @@ export async function ensureItemInventory(
      * **入れたバケットは自社在庫ではない**（読み出し側が `ownerBpId: null` で絞る）。
      */
     ownerBpId?: string | null;
+    /**
+     * 仕掛品の鍵（加工状態・目標製品・仕上がり寸法）。省略 = null。
+     * **鍵の一部なので、省略した呼び出しが仕掛品の行に当たることは無い**
+     * （値の入った行を null で探しても一致しない）。
+     *
+     * 半製品（isSemiFinished: true）で加工状態を渡さなかったときは、旧来の
+     * 「製品 × ロット × 発生工程」から DB の app.wip_legacy_bucket が行き先を
+     * 決める（20261126200000_wip_backfill — 移行と同じ関数。計上を仕掛品へ
+     * 切り替える次の段まで、旧来の呼び出しはこの道を通る）。
+     */
+    wipStateId?: number | null;
+    aimedItemId?: number | null;
+    finishedDiameterMm?: PrismaNS.Decimal | number | string | null;
+    finishedLengthMm?: PrismaNS.Decimal | number | string | null;
   },
 ): Promise<string> {
+  const isSemiFinished = data.isSemiFinished ?? false;
+  let itemId = data.itemId;
+  let wipStateId = data.wipStateId ?? null;
+  let aimedItemId = data.aimedItemId ?? null;
+  if (isSemiFinished && wipStateId == null) {
+    const [resolved] = await tx.$queryRaw<
+      { item_id: number; wip_state_id: number; aimed_item_id: number | null }[]
+    >`SELECT item_id, wip_state_id, aimed_item_id
+        FROM app.wip_legacy_bucket(${data.itemId}::int, ${data.lotNumber ?? null}::int,
+                                   ${data.sourceStepId ?? null}::uuid)`;
+    itemId = resolved.item_id;
+    wipStateId = resolved.wip_state_id;
+    aimedItemId = resolved.aimed_item_id;
+  }
   const bucket = {
-    itemId: data.itemId,
+    itemId,
     plantId: data.plantId,
     lotNumber: data.lotNumber ?? null,
-    isSemiFinished: data.isSemiFinished ?? false,
+    isSemiFinished,
     storageLocationId: data.storageLocationId ?? null,
     shelfId: data.shelfId ?? null,
     custodyBpId: data.custodyBpId ?? null,
     ownerBpId: data.ownerBpId ?? null,
+    wipStateId,
+    aimedItemId,
+    finishedDiameterMm: data.finishedDiameterMm ?? null,
+    finishedLengthMm: data.finishedLengthMm ?? null,
   };
 
   const unit =
@@ -908,7 +940,10 @@ async function consumeSemiFinishedStock(
 ): Promise<void> {
   const buckets = await tx.itemInventory.findMany({
     where: {
-      itemId: args.itemId,
+      // 半製品は仕掛ブランクの行に移った（20261126200000_wip_backfill）—
+      // 製品は目標製品（aimedItemId）として残る。推定できなかった「未分類」の
+      // 行は item_id も製品のまま。
+      OR: [{ itemId: args.itemId }, { aimedItemId: args.itemId }],
       isSemiFinished: true,
       quantity: { gt: 0 },
       // 自社の棚にある半製品だけ。外注が預かっている分・顧客の預り品は投入できない。

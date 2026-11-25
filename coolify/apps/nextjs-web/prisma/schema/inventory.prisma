@@ -141,10 +141,13 @@ model ItemInventory {
   /// **加工状態**（仕掛品の再設計）。値があるバケットは仕掛ブランクの在庫で、
   /// 済んだ形を変える工程の並びを指す（wip_states）。null = 加工状態を持たない。
   ///
-  /// 旧来の半製品（is_semi_finished = true）はまだ null のまま — 埋めるのは
-  /// 移行の次の段（backfill）で、それが終わってから
-  /// `is_semi_finished = (wip_state_id IS NOT NULL)` の CHECK を張る。
-  /// いま DB が守るのは「加工状態を持つ行は顧客の預り品ではない」だけ
+  /// **半製品 ⇔ 加工状態を持つ**（CHECK item_inventory_semi_finished_has_wip_state —
+  /// 20261126200000_wip_backfill で旧来の半製品を移してから張った）。
+  /// 加工状態の無い半製品を書くと、BEFORE トリガー item_inventory_wip_legacy が
+  /// app.wip_legacy_bucket（移行と同じ関数）で行き先を決めて書き換える —
+  /// 計上を仕掛品へ切り替えるまでの旧来の呼び出し（と旧アプリ）のための道。
+  /// 推定できなかった行は item_id が製品のまま、「未分類」（is_legacy）の状態を指す。
+  /// もう 1 つ、「加工状態を持つ行は顧客の預り品ではない」
   /// （CHECK item_inventory_wip_not_owned）— 預り品は顧客の物で、仕掛品として
   /// 別の製品へ回してよい在庫ではない。
   wipStateId         Int?     @map("wip_state_id")
