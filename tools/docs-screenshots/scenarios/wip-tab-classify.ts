@@ -169,6 +169,10 @@ export const wipTabClassify: Scenario = {
         await s.shot("仕上がり寸法が空のまま確定しようとしたところ");
         await s.fill(dialog.getByLabel(/仕上がり径/), "4");
         await s.fill(dialog.getByLabel(/仕上がり長/), "50");
+        const stillRed = await dialog.evaluate((d) =>
+          Array.from(d.querySelectorAll("input[data-error], .mantine-InputWrapper-error")).map((e) => e.textContent ?? e.outerHTML.slice(0, 80)),
+        );
+        s.check("入力を揃えると エラーの印（赤枠・文言）が消える", stillRed.length === 0, stillRed);
         await s.shot("入力を揃えた分類のモーダル（4 本すべてを分類する）");
         await s.clickInDialog("分類する");
         await s.toast("仕掛品を分類しました");
