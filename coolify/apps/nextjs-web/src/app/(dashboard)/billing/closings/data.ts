@@ -92,6 +92,9 @@ export async function fetchClosings(): Promise<BillingClosing[]> {
 const SHIPMENT_INCLUDE = {
   // 顧客はヘッダが権威。単価は明細行が参照する注文明細ごとに異なり得る。
   customerBp: { include: { customerAttrs: true } },
+  // 発行元の自社法人（MS0I）を決める材料 — 出荷元拠点 → 明細の担当拠点。
+  // 請求書は法人ごとに分けて作る（lib/invoice-generation.ts prepareInvoices）。
+  fromPlant: { select: { ownCompanyId: true } },
   items: {
     orderBy: { sortOrder: "asc" as const },
     include: {
@@ -102,6 +105,7 @@ const SHIPMENT_INCLUDE = {
       orderLine: {
         include: {
           acceptance: { select: { salesRepId: true, orderDate: true } },
+          assignedPlant: { select: { ownCompanyId: true } },
         },
       },
     },

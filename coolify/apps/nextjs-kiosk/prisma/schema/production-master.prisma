@@ -24,6 +24,52 @@ model Region {
   @@schema("app")
 }
 
+// ─── 自社法人（書類の発行元。拠点が 1 つの法人に属する） ─────────────────────
+//
+// CKK と TSP のように、同じグループでも書類を出す法人が別。見積書・納品書・
+// 請求書の発行元ブロック（社名・住所・電話・登録番号・社印）はここから刷る。
+// どの法人かは**拠点から決まる**（plants.own_company_id）— 書類ごとに法人を
+// 選ばせない。拠点の分からない書類は既定の法人（is_default、1 行だけ）。
+// 決め方の唯一の定義は nextjs-web の lib/own-company-core.ts resolveIssuer。
+model OwnCompany {
+  id                    Int      @id @default(autoincrement())
+  /// 作成後は変えられない（BEFORE UPDATE トリガー own_companies_code_immutable）—
+  /// 書類番号に埋め込まれる（例: CKK/QOT-2026-00001）
+  code                  String   @unique
+  name                  Json // { ja, en, … }
+  nameKana              String?  @map("name_kana")
+  postalCode            String?  @map("postal_code")
+  address               Json?
+  phone                 String?
+  fax                   String?
+  email                 String?
+  /// 適格請求書発行事業者登録番号（T + 13 桁）
+  invoiceRegistrationNo String?  @map("invoice_registration_no")
+  /// 社印（電子印影）の画像。null = 印影なし（既定の法人だけは同梱の印影へ落ちる）
+  sealFileId            String?  @map("seal_file_id") @db.Uuid
+  bankName              String?  @map("bank_name")
+  bankBranch            String?  @map("bank_branch")
+  bankAccountType       String?  @map("bank_account_type")
+  bankAccountNumber     String?  @map("bank_account_number")
+  bankAccountHolder     String?  @map("bank_account_holder")
+  /// 会計年度の開始月（1〜12。既定 4 = 4 月始まり）。法人ごとの採番の年度区切りに使う
+  /// （範囲は DB の CHECK own_companies_fiscal_year_start_month_check）
+  fiscalYearStartMonth  Int      @default(4) @map("fiscal_year_start_month") @db.SmallInt
+  /// 既定の法人（拠点の分からない書類の発行元）。部分 unique index で 1 行だけ
+  isDefault             Boolean  @default(false) @map("is_default")
+  isActive              Boolean  @default(true) @map("is_active")
+  notes                 String?
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sealFile File?     @relation("OwnCompanySeal", fields: [sealFileId], references: [id], onDelete: SetNull)
+  plants   Plant[]   @relation("PlantOwnCompany")
+  invoices Invoice[] @relation("InvoiceOwnCompany")
+
+  @@map("own_companies")
+  @@schema("app")
+}
+
 // ─── 拠点（製造・在庫・出荷の拠点。SCOPE.PLANT の実体） ────────────────────
 
 model Plant {
@@ -34,6 +80,8 @@ model Plant {
   // 国は拠点ごとに 1 つ（ISO 3166-1 alpha-2）
   countryCode   String?  @map("country_code") @db.VarChar(2)
   regionId      Int?     @map("region_id")
+  // 所属する自社法人（書類の発行元）。null = 既定の法人
+  ownCompanyId  Int?     @map("own_company_id")
   postalCode    String?  @map("postal_code")
   address       Json?
   phone         String?
@@ -44,7 +92,8 @@ model Plant {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  region Region? @relation("PlantRegion", fields: [regionId], references: [id])
+  region     Region?     @relation("PlantRegion", fields: [regionId], references: [id])
+  ownCompany OwnCompany? @relation("PlantOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
   workOrderSteps WorkOrderStep[]
   deliveryOrders DeliveryOrder[]
@@ -65,6 +114,7 @@ model Plant {
   itemInventory      ItemInventory[]     @relation("ItemInventoryPlant")
 
   @@index([regionId])
+  @@index([ownCompanyId])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, id])
   @@map("plants")

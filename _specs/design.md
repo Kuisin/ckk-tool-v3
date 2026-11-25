@@ -334,6 +334,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | E | 保管場所 | MS0E | — | — |
 | マスタ | G | 料金マスタ | MS0G | MS1G | — |
 | マスタ | H | 再研磨品目 | MS0H | MS1H | — |
+| マスタ | I | 自社法人 | MS0I | MS1I | MS2I |
 | ドキュメント | 1 | マニュアル | DC01 | — | — |
 | ドキュメント | 2 | 管理マニュアル | DC02 | — | — |
 | システム | 1 | ユーザー管理 | SY01 | — | — |
@@ -453,6 +454,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 拠点 | `IconBuildingWarehouse` |
 | 料金マスタ | `IconCoin` |
 | 再研磨品目 | `IconTool` |
+| 自社法人 | `IconBuildingBank` |
 | ユーザー管理 | `IconUserCog` |
 | 価格試算計算 | `IconMathFunction` |
 | 製品項目 | `IconListDetails` |
@@ -1577,6 +1579,7 @@ Row click navigates to detail page.
 | OutsourceOrder | 外注先 / 工程 / 依頼日 / 入荷予定日 / 入荷日 / 状態 |
 | BusinessPartner | BPコード / 名称 / ロール / 支店数 / 状態 / 更新日 |
 | Plant | コード / 名称 / 国 / 状態 / 更新日 |
+| OwnCompany | コード / 名称（+ 既定バッジ） / 登録番号 / 拠点数 / 状態 / 更新日 |
 | Product | 製品コード / 名称 / 材種（+ φ直径×全長） / 単位 / 状態 |
 | MaterialType | 材種コード / メーカー / 形状 / 名称 / 状態 |
 | Material | 素材コード / 材種 / 直径 / 全長 / 黒皮研磨 / 状態 |

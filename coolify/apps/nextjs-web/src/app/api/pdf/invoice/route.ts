@@ -18,6 +18,7 @@ import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters, escapeHtml } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
+import { issuerForCompanyId, ownCompanyStampImg } from "@/lib/own-companies";
 import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   invoicePdfLabels,
@@ -26,7 +27,6 @@ import {
   taxRowLabelLocalized,
 } from "@/lib/pdf-labels";
 import { documentQrSvg } from "@/lib/pdf-qr";
-import { companyStampImg } from "@/lib/pdf-stamp";
 import { QR_KINDS } from "@/lib/qr-payload";
 import { getObject, putObject } from "@/lib/storage";
 
@@ -34,14 +34,6 @@ import { getObject, putObject } from "@/lib/storage";
 export const dynamic = "force-dynamic";
 
 const yen = (n: number) => n.toLocaleString("ja-JP");
-
-// 発行元（CKK 本社）— delivery-note ルートの issuer ブロックと同一。
-const ISSUER = {
-  name: "シー・ケィ・ケー株式会社", // i18n-ignore
-  address: "〒475-0823 愛知県半田市港町2丁目27番2", // i18n-ignore
-  tel: "TEL: 0569-21-6187　FAX: 0569-23-6427",
-  invoice_reg: "T1234567890123",
-};
 
 /** Build the response headers for serving the PDF (inline vs attachment). */
 function pdfHeaders(invoiceNumber: string, download: boolean): HeadersInit {
@@ -96,10 +88,17 @@ export async function GET(request: Request): Promise<Response> {
   // 宛先メタ: 支店 + ご担当者。
   const metaLines = [pdfAttnLine(lang, invoice.customerBranchName)];
 
+  // 発行元（自社法人 MS0I）— 作成時に焼いたスナップショット。null はこの列が
+  // できる前の請求書で、既定の法人として刷る（従来どおり）。
+  const { issuer, company } = await issuerForCompanyId(
+    invoice.ownCompanyId,
+    lang,
+  );
+
   const data = {
     lang,
     labels,
-    issuer: ISSUER,
+    issuer,
     recipient: {
       name: invoice.customerName,
       meta: metaLines.map(escapeHtml).join("<br>"),
@@ -109,7 +108,7 @@ export async function GET(request: Request): Promise<Response> {
     // 社印。ここに来る時点で isIssued は真だが（69 行目のガード）、
     // companyStampImg 自身にも判定を持たせている（lib/pdf-stamp.ts の
     // コメント参照）ので、ここでも明示的に渡す。
-    stamp: await companyStampImg(isIssued(invoice.status), lang),
+    stamp: await ownCompanyStampImg(company, isIssued(invoice.status), lang),
     doc: {
       number: invoice.invoiceNumber,
       issued_date: documentFormatters.date(

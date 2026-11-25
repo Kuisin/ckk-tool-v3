@@ -31,6 +31,8 @@ const INVOICE_INCLUDE = {
   customerBranchBp: true,
   salesRep: { select: { id: true, displayName: true } },
   createdByUser: { select: { displayName: true } },
+  // 発行元の自社法人（作成時のスナップショット。MS0I）
+  ownCompany: { select: { name: true } },
   items: {
     orderBy: { sortOrder: "asc" as const },
     // 明細の税区分は**会計連携のためだけ**に読む — 束 (taxSummaries) の区分が
@@ -196,6 +198,10 @@ function mapInvoice(r: InvoiceRow, forDocument = false): Invoice {
     items,
     totalQuantity: items.reduce((sum, it) => sum + it.quantity, 0),
     closingKind: (r.closingKind as ClosingKind | null) ?? null,
+    ownCompanyId: r.ownCompanyId,
+    ownCompanyName: r.ownCompany
+      ? localized(r.ownCompany.name as LocalizedText | null)
+      : null,
     approvalStatus: r.approvalStatus as InvoiceApprovalStatus,
     requestedAt: r.requestedAt?.toISOString() ?? null,
     approvedAt: r.approvedAt?.toISOString() ?? null,

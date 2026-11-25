@@ -48,6 +48,11 @@ ON CONFLICT (key) DO UPDATE
 -- 追加料金を本番で使い始めるときは必ずこの行を有効にすること:
 --   ('app:master-charge-items:main', true, '料金マスタ 本番公開', now()),
 
+-- 自社法人（MS0I）も dev 検証後に本番公開する。公開しなくても書類は既定の法人
+-- （= 従来の発行元）で刷られ続けるので壊れはしないが、TSP など別法人の拠点を
+-- 付け替えるには本番で画面が要る。公開時は:
+--   ('app:master-own-companies:main', true, '自社法人 本番公開', now()),
+
 -- 端末管理（SY09）・キオスク設定（SY0A）は dev 検証後に本番公開する。
 -- 公開時にコメントを外して再適用:
 --   ('app:kiosk-devices:main',  true, '端末管理 本番公開',     now()),

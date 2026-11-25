@@ -432,6 +432,9 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     index: "H",
   },
 
+  // 自社法人（書類の発行元）— 一覧 / 新規 / 詳細の 3 コード。
+  ...makeResource("マスタ", "MS", "I", "自社法人", "/master/own-companies"),
+
   // ─── ドキュメント (DC) ───────────────────────────────────────────────────
   // マニュアル（/manual・fumadocs）— 単一画面, list コードのみ（旧 SY03）
   {

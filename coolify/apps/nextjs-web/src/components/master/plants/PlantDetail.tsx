@@ -37,6 +37,8 @@ export interface PlantDetailData {
   nameEn: string;
   nameKana: string;
   countryCode: string | null;
+  /** 所属する自社法人（コード + 名称）。null = 既定の法人。 */
+  ownCompanyName: string | null;
   postalCode: string;
   addressJa: string;
   addressEn: string;
@@ -117,6 +119,12 @@ export function PlantDetail({
           value={record.nameEn || "—"}
         />
         <FieldValue label={tr("common.kana2")} value={record.nameKana || "—"} />
+        <FieldValue
+          label={tr("master.plantForm.ownCompany")}
+          value={
+            record.ownCompanyName ?? tr("master.plantForm.ownCompanyDefault")
+          }
+        />
         <FieldValue
           label={tr("common.country")}
           value={

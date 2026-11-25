@@ -125,11 +125,14 @@ export async function runClosingBatch(
     if (!closingDateReached(c.closingDate, todayIso)) continue;
     const generated = await generateInvoiceForClosing(result.id);
     if (generated.ok) {
-      invoices.push({
-        invoiceNumber: generated.data.invoiceNumber,
-        customerName: c.customerName,
-        totalAmount: generated.data.totalAmount,
-      });
+      // 発行元の自社法人が混ざる締めは法人ごとに 1 通（通常は 1 通）。
+      for (const inv of generated.data.invoices) {
+        invoices.push({
+          invoiceNumber: inv.invoiceNumber,
+          customerName: c.customerName,
+          totalAmount: inv.totalAmount,
+        });
+      }
     } else {
       failures.push({ customerName: c.customerName, error: generated.error });
     }

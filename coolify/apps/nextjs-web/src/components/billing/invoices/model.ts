@@ -113,6 +113,9 @@ export interface Invoice {
   totalQuantity: number;
   /** 実行区分（締日処理か手動請求か）。承認導入以前の請求書は null。 */
   closingKind: ClosingKind | null;
+  /** 発行元の自社法人（作成時に拠点から決めたスナップショット）。null = 既定の法人。 */
+  ownCompanyId: number | null;
+  ownCompanyName: string | null;
   /** 発行前承認 / 入金前承認の状態（§9）。どちらの関門かは status から読む。 */
   approvalStatus: InvoiceApprovalStatus;
   requestedAt: string | null;
