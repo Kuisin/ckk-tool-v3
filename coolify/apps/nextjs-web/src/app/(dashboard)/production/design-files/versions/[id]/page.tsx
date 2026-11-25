@@ -14,7 +14,7 @@ import {
   getProductItemDefs,
   getResolvedProductTypes,
 } from "@/lib/product-settings";
-import { fetchWorkLocationOptions } from "@/lib/work-locations";
+import { fetchMachineModelOptions } from "@/lib/work-locations";
 import { fetchCatalogStepOptions } from "../../../work-orders/data";
 import { fetchDesignVersion } from "../../data";
 
@@ -50,7 +50,7 @@ export default async function ProductionDesignVersionPage({
     productTypes,
     itemDefs,
     programs,
-    workLocationOptions,
+    machineModelOptions,
     stepOptions,
   ] = await Promise.all([
     fetchDesignVersion(id),
@@ -63,10 +63,27 @@ export default async function ProductionDesignVersionPage({
     getResolvedProductTypes(),
     getProductItemDefs(),
     listDesignPrograms(id),
-    fetchWorkLocationOptions(),
+    fetchMachineModelOptions(),
     fetchCatalogStepOptions(),
   ]);
   if (!data) notFound();
+
+  // 保留中の加工プログラムの変更ごとの承認状態（カードの承認 / 差し戻し）。
+  const pendingChangeIds = [
+    ...programs.programs.flatMap((p) => (p.pending ? [p.pending.id] : [])),
+    ...programs.pendingAdds.map((c) => c.id),
+  ];
+  const changeApprovals = Object.fromEntries(
+    await Promise.all(
+      pendingChangeIds.map(
+        async (cid) =>
+          [
+            cid,
+            await fetchApprovalState("design_program_changes", cid),
+          ] as const,
+      ),
+    ),
+  );
 
   // ファイルごとのメモ（document_memos, ownerType "design_files"）を 1 回で引く。
   const memosByFile = await listMemosByOwnerIds(
@@ -81,15 +98,16 @@ export default async function ProductionDesignVersionPage({
       auditEntries={auditEntries}
       canDelete={del.ok}
       canManage={manage.ok}
+      changeApprovals={changeApprovals}
       flowConfigured={need.kind === "flow"}
       itemDefs={itemDefs}
+      machineModelOptions={machineModelOptions}
       memosByFile={memosByFile}
       productLabel={data.productLabel}
       productTypes={productTypes}
       programs={programs}
       stepOptions={stepOptions}
       version={data.view}
-      workLocationOptions={workLocationOptions}
     />
   );
 }

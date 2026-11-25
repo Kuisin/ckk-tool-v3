@@ -38,6 +38,7 @@ import {
   describeVersionLock,
   isVersionEditable,
 } from "@/lib/design-files-core";
+import { applyProgramChange, closeProgramChange } from "@/lib/design-programs";
 import { validateVersionSpec, versionSpecSchema } from "@/lib/design-spec";
 import {
   type ActionResult,
@@ -549,6 +550,109 @@ export async function rejectDesignVersion(
       after: { status: "REJECTED", rejectReason: trimmed },
     });
     revalidate(v);
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, tr("common.couldNotSendItBack"), tr),
+    );
+  }
+}
+
+// ─── 加工プログラムの変更（承認 / 差し戻し / 取り下げ） ──────────────────────
+//
+// 申請そのものは Route Handler（ファイルを伴う — POST
+// /api/design-files/versions/[id]/programs）。対象は申請（design_program_changes
+// の uuid）で、段数・承認者は承認設定（MS0B）の「加工プログラムの変更」が決める。
+// 最終承認で当て、前提が崩れていれば FAILED として残る（lib/design-programs）。
+
+async function programChangeTarget(changeId: string) {
+  if (!uuid.safeParse(changeId).success) return null;
+  return prisma.designProgramChange.findUnique({
+    where: { id: changeId },
+    select: {
+      status: true,
+      requestedBy: true,
+      designVersion: { select: { id: true, itemId: true } },
+    },
+  });
+}
+
+/** 加工プログラムの変更を承認する。最終承認なら、その場で当てる。 */
+export async function approveProgramChange(
+  changeId: string,
+): Promise<ActionResult<{ completed: boolean }>> {
+  const tr = await getTranslations();
+  const authz = await checkApprovalDocAccess("design_file");
+  if (!authz.ok) return actionError(authz.error);
+  const target = await programChangeTarget(changeId);
+  if (!target) {
+    return actionError(tr("production.designPrograms.changeNotFound"));
+  }
+  if (target.status !== "PENDING") {
+    return actionError(tr("approvals.engine.alreadyProcessed"));
+  }
+  try {
+    const acted = await actOnCurrentStep({
+      targetType: "design_program_changes",
+      targetId: changeId,
+      action: "APPROVED",
+    });
+    if (!acted.ok) {
+      return actionError(acted.error ?? tr("common.couldNotApprove"));
+    }
+    if (!acted.flowCompleted) {
+      revalidate(target.designVersion);
+      return actionOk({ completed: false });
+    }
+    const applied = await applyProgramChange(changeId);
+    revalidate(target.designVersion);
+    if (!applied.ok) {
+      return actionError(
+        applied.error ?? tr("production.designPrograms.applyFailed"),
+      );
+    }
+    return actionOk({ completed: true });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
+  }
+}
+
+/** 加工プログラムの変更を差し戻す（何も動かさない）。 */
+export async function rejectProgramChange(
+  changeId: string,
+  reason: string,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkApprovalDocAccess("design_file");
+  if (!authz.ok) return actionError(authz.error);
+  if (!reason.trim()) return actionError(tr("common.enterAReasonForSendingIt"));
+  const target = await programChangeTarget(changeId);
+  if (!target) {
+    return actionError(tr("production.designPrograms.changeNotFound"));
+  }
+  if (target.status !== "PENDING") {
+    return actionError(tr("approvals.engine.alreadyProcessed"));
+  }
+  try {
+    const acted = await actOnCurrentStep({
+      targetType: "design_program_changes",
+      targetId: changeId,
+      action: "REJECTED",
+      comment: reason,
+    });
+    if (!acted.ok) {
+      return actionError(acted.error ?? tr("common.couldNotSendItBack"));
+    }
+    await closeProgramChange(changeId, "REJECTED");
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "design_versions",
+      recordId: target.designVersion.id,
+      after: {
+        note: tr("production.designPrograms.rejectedAudit", { reason }),
+      },
+    });
+    revalidate(target.designVersion);
     return actionOk();
   } catch (e) {
     return actionError(

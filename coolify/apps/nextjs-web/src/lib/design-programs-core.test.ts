@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  currentPrograms,
   pickWorkOrderDesignVersion,
   programsForStep,
+  programsShownForStep,
   workOrderDesignCustomer,
 } from "./design-programs-core";
 
@@ -55,28 +57,28 @@ describe("programsForStep", () => {
       id: "p1",
       name: "荒",
       sortOrder: 0,
-      workLocationId: 10,
+      machineModelIds: [10],
       processStepIds: [1, 2],
     },
     {
       id: "p2",
       name: "仕上げ",
       sortOrder: 1,
-      workLocationId: 20,
+      machineModelIds: [20, 30],
       processStepIds: [2],
     },
     {
       id: "p3",
       name: "共通",
       sortOrder: 2,
-      workLocationId: null,
+      machineModelIds: [],
       processStepIds: [2],
     },
     {
       id: "p4",
       name: "別工程",
       sortOrder: 3,
-      workLocationId: 20,
+      machineModelIds: [20],
       processStepIds: [3],
     },
   ];
@@ -84,14 +86,90 @@ describe("programsForStep", () => {
   it("受け持ち工程に入っているものだけ", () => {
     expect(programsForStep(programs, 1, []).map((p) => p.id)).toEqual(["p1"]);
   });
-  it("作業場所（機械）が一致するものが先頭、残りは版の並び", () => {
-    const got = programsForStep(programs, 2, [20, null]);
+  it("機械の機種が一致するものが先頭、残りは版の並び", () => {
+    const got = programsForStep(programs, 2, [30, null]);
     expect(got.map((p) => p.id)).toEqual(["p2", "p1", "p3"]);
-    expect(got.map((p) => p.machineMatch)).toEqual([true, false, false]);
+    expect(got.map((p) => p.modelMatch)).toEqual([true, false, false]);
   });
-  it("機械を問わないものは一致扱いにしない", () => {
-    expect(programsForStep(programs, 2, []).every((p) => !p.machineMatch)).toBe(
+  it("複数機種のどれか 1 つが重なれば一致", () => {
+    const got = programsForStep(programs, 2, [10, 20]);
+    expect(got.filter((p) => p.modelMatch).map((p) => p.id)).toEqual([
+      "p1",
+      "p2",
+    ]);
+  });
+  it("機種を問わないものは一致扱いにしない", () => {
+    expect(programsForStep(programs, 2, []).every((p) => !p.modelMatch)).toBe(
       true,
     );
+  });
+});
+
+const rev = (
+  id: string,
+  programKey: string,
+  revision: number,
+  opts: { superseded?: boolean; retired?: boolean; steps?: number[] } = {},
+) => ({
+  id,
+  name: id,
+  sortOrder: 0,
+  machineModelIds: [] as number[],
+  processStepIds: opts.steps ?? [1],
+  programKey,
+  revision,
+  supersededAt: opts.superseded ? "2026-11-01T00:00:00Z" : null,
+  retiredAt: opts.retired ? "2026-11-02T00:00:00Z" : null,
+});
+
+describe("currentPrograms", () => {
+  it("プログラムごとの現行版だけ（古い版は出さない）", () => {
+    const got = currentPrograms([
+      rev("a1", "a", 1, { superseded: true }),
+      rev("a2", "a", 2),
+      rev("b1", "b", 1),
+    ]);
+    expect(got.map((p) => p.id).sort()).toEqual(["a2", "b1"]);
+  });
+  it("廃止したプログラムは出さない", () => {
+    expect(currentPrograms([rev("a1", "a", 1, { retired: true })])).toEqual([]);
+  });
+  it("現行版の印が 2 行に立っていても版番号の大きいほう 1 本", () => {
+    const got = currentPrograms([rev("a1", "a", 1), rev("a2", "a", 2)]);
+    expect(got.map((p) => p.id)).toEqual(["a2"]);
+  });
+});
+
+describe("programsShownForStep", () => {
+  const candidates = [
+    rev("a1", "a", 1, { superseded: true }),
+    rev("a2", "a", 2),
+  ];
+  it("未開始は現行版から選ぶ", () => {
+    const got = programsShownForStep(
+      { started: false, recorded: [], candidates },
+      1,
+      [],
+    );
+    expect(got.fromRecord).toBe(false);
+    expect(got.programs.map((p) => p.id)).toEqual(["a2"]);
+  });
+  it("開始済みは開始時に記録した版（古い版でも）", () => {
+    const got = programsShownForStep(
+      { started: true, recorded: [candidates[0]], candidates },
+      1,
+      [],
+    );
+    expect(got.fromRecord).toBe(true);
+    expect(got.programs.map((p) => p.id)).toEqual(["a1"]);
+  });
+  it("開始済みでも記録が無ければ現行版から選ぶ（この仕組みより前の工程）", () => {
+    const got = programsShownForStep(
+      { started: true, recorded: [], candidates },
+      1,
+      [],
+    );
+    expect(got.fromRecord).toBe(false);
+    expect(got.programs.map((p) => p.id)).toEqual(["a2"]);
   });
 });

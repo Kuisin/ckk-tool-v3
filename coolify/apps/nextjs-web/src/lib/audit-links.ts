@@ -244,6 +244,11 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     appListKey: "master-work-locations",
     listPath: "/master/work-locations",
   },
+  // 機種 — 作業場所マスタの「機種」タブ。
+  machine_models: {
+    appListKey: "master-work-locations",
+    listPath: "/master/work-locations",
+  },
   // システム
   feature_flags: {
     appListKey: "app-management",

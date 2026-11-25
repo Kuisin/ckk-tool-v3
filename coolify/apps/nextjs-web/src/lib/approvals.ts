@@ -58,6 +58,7 @@ import {
   appendCustomValueSteps,
 } from "./custom-value-approval-core";
 import { prisma } from "./db";
+import { designProgramChangeLabel } from "./design-program-changes-core";
 import { docNumberOf } from "./doc-number";
 import { type LocalizedText, localized } from "./format";
 import { notify, notifyApprovalGroup } from "./notifications";
@@ -700,6 +701,15 @@ export async function fetchApprovalDocInfo(
       // 条件に使う属性は無い（approvalConditionFields も空）。
       return row ? {} : null;
     }
+    case "design_program_changes": {
+      if (!UUID_RE.test(targetId)) return null;
+      const row = await prisma.designProgramChange.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      });
+      // 条件に使う属性は無い（approvalConditionFields も空）。
+      return row ? {} : null;
+    }
     // 価格表は通常のフローも条件付きフローも持たない（独自値の追加承認だけ）。
     case "price_list_entries":
       return null;
@@ -1002,6 +1012,14 @@ async function targetCreatedAt(
       });
       return row?.createdAt ?? null;
     }
+    case "design_program_changes": {
+      if (!UUID_RE.test(targetId)) return null;
+      const row = await prisma.designProgramChange.findUnique({
+        where: { id: targetId },
+        select: { requestedAt: true },
+      });
+      return row?.requestedAt ?? null;
+    }
     case "price_list_entries": {
       const docRef = await targetDocRef(targetType, targetId);
       if (!docRef) return null;
@@ -1081,6 +1099,25 @@ async function targetDisplayNumber(
       const product =
         row.item.code ?? localized(row.item.name as LocalizedText | null);
       return `${product} v${row.version}`;
+    }
+    case "design_program_changes": {
+      // 申請の uuid は人が読む番号ではない — 「製品コード v版 / プログラム名」。
+      if (!UUID_RE.test(targetId)) return targetId;
+      const row = await prisma.designProgramChange.findUnique({
+        where: { id: targetId },
+        select: {
+          payload: true,
+          program: { select: { name: true } },
+          designVersion: {
+            select: {
+              version: true,
+              item: { select: { code: true, name: true } },
+            },
+          },
+        },
+      });
+      if (!row) return targetId;
+      return designProgramChangeLabel(row);
     }
     default:
       // 番号を持つ書類は法人コードを落として番号だけにする（人が読む姿）。

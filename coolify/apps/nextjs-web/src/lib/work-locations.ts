@@ -91,6 +91,27 @@ export async function fetchWorkLocationOptions(): Promise<
 }
 
 /**
+ * 機種の Select 用（加工プログラムの対象機種など）。有効な機種のみ —
+ * ただし `include` に渡した id は無効でも残す（既存の割り当てを黙って
+ * 選択肢から落とさない）。ラベルは「名称（コード）」。
+ */
+export async function fetchMachineModelOptions(
+  include: readonly number[] = [],
+): Promise<{ value: string; label: string }[]> {
+  const rows = await prisma.machineModel.findMany({
+    where: {
+      OR: [{ isActive: true }, { id: { in: [...include] } }],
+    },
+    orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
+    select: { id: true, code: true, name: true },
+  });
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: `${localized(r.name as LocalizedText | null)}（${r.code}）`,
+  }));
+}
+
+/**
  * 拠点付きの作業場所 Select 用（SY09 端末の既定作業場所など）。
  * plantId はグループの拠点（null = 拠点指定なし — どの拠点でも選択可）。
  */

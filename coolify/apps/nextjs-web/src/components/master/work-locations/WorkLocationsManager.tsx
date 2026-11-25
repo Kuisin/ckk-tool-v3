@@ -8,6 +8,10 @@
  * 作業数）をテーブル表示し、すべてモーダルで追加・編集・削除する。
  * 種別（machine / area + 管理者定義）は「種別管理」モーダルで編集する。
  * 場所は指示書の作業計画（work_order_step_plans）から選択される。
+ *
+ * 「機種」タブ — 同じ型の機械をまとめる名前（machine_models）。機械 1 台は
+ * 機種を 0..1 持ち（場所の編集モーダルで選ぶ）、加工プログラムは機種を 0..N
+ * 持つ（設計図 PD06 の版）。工程実行画面の「この機種用」はこの対応で決まる。
  */
 
 import {
@@ -24,6 +28,7 @@ import {
   Stack,
   Switch,
   Table,
+  Tabs,
   Text,
   TextInput,
   Tooltip,
@@ -32,6 +37,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconAdjustments,
   IconBuildingFactory2,
+  IconCpu,
   IconDotsVertical,
   IconEdit,
   IconMapPin,
@@ -44,16 +50,21 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import {
   addWorkLocation,
+  createMachineModel,
   createWorkLocationGroup,
+  deleteMachineModel,
   deleteWorkLocation,
   deleteWorkLocationGroup,
+  type MachineModelInput,
   saveWorkLocationTypes,
+  updateMachineModel,
   updateWorkLocation,
   updateWorkLocationGroup,
   type WorkLocationGroupInput,
   type WorkLocationInput,
 } from "@/app/(dashboard)/master/work-locations/actions";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { AppTabs } from "@/components/ui/AppTabs";
 import {
   GhostButton,
   PrimaryButton,
@@ -91,6 +102,9 @@ export interface WorkLocationRow {
   nameEn: string;
   nameTranslations: Record<string, string>;
   capacity: number | null;
+  /** 機種（null = 機種を持たない）。 */
+  machineModelId: number | null;
+  machineModelName: string | null;
   sortOrder: number;
   isActive: boolean;
   notes: string;
@@ -113,6 +127,21 @@ export interface WorkLocationGroupRow {
   isActive: boolean;
   notes: string;
   locations: WorkLocationRow[];
+}
+
+export interface MachineModelRow {
+  id: number;
+  code: string;
+  nameJa: string;
+  nameTranslations: Record<string, string>;
+  maker: string;
+  sortOrder: number;
+  isActive: boolean;
+  notes: string;
+  /** この機種の機械（作業場所）の数。 */
+  machineCount: number;
+  /** この機種を対象にした加工プログラム（版）の数。 */
+  programCount: number;
 }
 
 export interface WorkLocationTypeRow {
@@ -326,11 +355,13 @@ function LocationModal({
   groupId,
   location,
   defaultSortOrder,
+  machineModels,
   onDone,
 }: ModalBaseProps & {
   groupId: number;
   location: WorkLocationRow | null;
   defaultSortOrder: number;
+  machineModels: MachineModelRow[];
   onDone: () => void;
 }) {
   const tr = useTranslations();
@@ -342,6 +373,7 @@ function LocationModal({
     Record<string, string>
   >({});
   const [capacity, setCapacity] = useState<number | null>(null);
+  const [machineModelId, setMachineModelId] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState(defaultSortOrder);
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState("");
@@ -352,6 +384,9 @@ function LocationModal({
     setNameJa(location?.nameJa ?? "");
     setNameTranslations(location?.nameTranslations ?? {});
     setCapacity(location?.capacity ?? null);
+    setMachineModelId(
+      location?.machineModelId != null ? String(location.machineModelId) : null,
+    );
     setSortOrder(location?.sortOrder ?? defaultSortOrder);
     setIsActive(location?.isActive ?? true);
     setNotes(location?.notes ?? "");
@@ -365,6 +400,7 @@ function LocationModal({
         nameJa,
         nameTranslations,
         capacity,
+        machineModelId: machineModelId ? Number(machineModelId) : null,
         sortOrder,
         isActive,
         notes,
@@ -424,6 +460,24 @@ function LocationModal({
             }
             value={capacity ?? ""}
           />
+          <Select
+            clearable
+            data={machineModels
+              // 無効な機種は新しく選ばせない（いま付いている分だけは残す）
+              .filter((m) => m.isActive || String(m.id) === machineModelId)
+              .map((m) => ({
+                value: String(m.id),
+                label: `${m.nameJa}（${m.code}）`,
+              }))}
+            description={tr("master.machineModels.locationHint")}
+            label={
+              <HelpLabel {...fieldHelp(tr, "workLocation", "machineModel")} />
+            }
+            onChange={setMachineModelId}
+            placeholder={tr("master.machineModels.none")}
+            searchable={machineModels.length > 5}
+            value={machineModelId}
+          />
           <NumberInput
             label={
               <HelpLabel
@@ -477,6 +531,319 @@ function LocationModal({
         />
       </Stack>
     </FormModal>
+  );
+}
+
+// ── 機種 追加/編集モーダル ───────────────────────────────────────────────────
+
+function MachineModelModal({
+  opened,
+  onClose,
+  model,
+  defaultSortOrder,
+  onDone,
+}: ModalBaseProps & {
+  model: MachineModelRow | null;
+  defaultSortOrder: number;
+  onDone: () => void;
+}) {
+  const tr = useTranslations();
+  const [isPending, startTransition] = useTransition();
+  const isEdit = !!model;
+  const [code, setCode] = useState("");
+  const [nameJa, setNameJa] = useState("");
+  const [nameTranslations, setNameTranslations] = useState<
+    Record<string, string>
+  >({});
+  const [maker, setMaker] = useState("");
+  const [sortOrder, setSortOrder] = useState(defaultSortOrder);
+  const [isActive, setIsActive] = useState(true);
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (!opened) return;
+    setCode(model?.code ?? "");
+    setNameJa(model?.nameJa ?? "");
+    setNameTranslations(model?.nameTranslations ?? {});
+    setMaker(model?.maker ?? "");
+    setSortOrder(model?.sortOrder ?? defaultSortOrder);
+    setIsActive(model?.isActive ?? true);
+    setNotes(model?.notes ?? "");
+  }, [opened, model, defaultSortOrder]);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    startTransition(async () => {
+      const input: MachineModelInput = {
+        code,
+        nameJa,
+        nameTranslations,
+        maker,
+        sortOrder,
+        isActive,
+        notes,
+      };
+      const result = isEdit
+        ? await updateMachineModel(model.id, input)
+        : await createMachineModel(input);
+      notifyResult(
+        tr,
+        result,
+        isEdit
+          ? tr("master.machineModels.updated")
+          : tr("master.machineModels.created"),
+        () => {
+          onClose();
+          onDone();
+        },
+      );
+    });
+  };
+
+  return (
+    <FormModal
+      loading={isPending}
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      opened={opened}
+      size="lg"
+      submitLabel={isEdit ? tr("common.save") : tr("common.add")}
+      title={
+        isEdit
+          ? tr("master.machineModels.editTitle")
+          : tr("master.machineModels.addTitle")
+      }
+    >
+      <Stack gap="sm">
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          <TextInput
+            label={
+              <HelpLabel
+                {...fieldHelp(tr, "workLocation", "machineModelCode")}
+              />
+            }
+            onChange={(e) => setCode(e.currentTarget.value)}
+            placeholder={tr("master.machineModels.codePlaceholder")}
+            value={code}
+            withAsterisk
+          />
+          <TextInput
+            label={
+              <HelpLabel
+                {...fieldHelp(tr, "workLocation", "machineModelMaker")}
+              />
+            }
+            onChange={(e) => setMaker(e.currentTarget.value)}
+            value={maker}
+          />
+          <NumberInput
+            label={
+              <HelpLabel
+                {...fieldHelp(tr, "workLocation", "sortOrder", {
+                  label: tr("common.sortOrder"),
+                })}
+              />
+            }
+            onChange={(v) =>
+              setSortOrder(v === "" || v == null ? 0 : Number(v))
+            }
+            value={sortOrder}
+          />
+          <Switch
+            checked={isActive}
+            label={
+              <HelpLabel
+                {...fieldHelp(tr, "workLocation", "sortOrder", {
+                  label: tr("common.enabled"),
+                })}
+              />
+            }
+            mt="lg"
+            onChange={(e) => setIsActive(e.currentTarget.checked)}
+          />
+        </SimpleGrid>
+        <LocalizedTextInput
+          help={fieldHelpTip(tr, "workLocation", "machineModelCode")}
+          jaProps={{
+            value: nameJa,
+            onChange: (e) => setNameJa(e.currentTarget.value),
+          }}
+          label={tr("common.name2")}
+          placeholder={tr("master.machineModels.namePlaceholder")}
+          required
+          translationsProps={{
+            value: nameTranslations,
+            onChange: setNameTranslations,
+          }}
+        />
+        <TextInput
+          label={tr("common.notes")}
+          onChange={(e) => setNotes(e.currentTarget.value)}
+          value={notes}
+        />
+      </Stack>
+    </FormModal>
+  );
+}
+
+/** 機種の一覧（閲覧。追加・編集はモーダル）。 */
+function MachineModelsList({
+  models,
+  onEdit,
+  onDelete,
+}: {
+  models: MachineModelRow[];
+  onEdit: (m: MachineModelRow) => void;
+  onDelete: (m: MachineModelRow) => void;
+}) {
+  const tr = useTranslations();
+  const isMobile = useIsMobile();
+  if (models.length === 0) {
+    return (
+      <EmptyState
+        icon={<IconCpu size={24} />}
+        message={tr("master.machineModels.empty")}
+      />
+    );
+  }
+  const usage = (m: MachineModelRow) =>
+    tr("master.machineModels.usage", {
+      machines: m.machineCount,
+      programs: m.programCount,
+    });
+  return (
+    <Paper p="md" radius="md" withBorder>
+      <Stack gap="sm">
+        <Text c="dimmed" size="xs">
+          {tr("master.machineModels.description")}
+        </Text>
+        {isMobile ? (
+          <Stack gap={0}>
+            {models.map((m, i) => (
+              <Box key={m.id}>
+                {i > 0 && <Divider />}
+                <Group align="flex-start" gap="sm" py="sm" wrap="nowrap">
+                  <Stack className="min-w-0 flex-1" gap={3}>
+                    <Group gap="xs" wrap="nowrap">
+                      <DocNumber>{m.code}</DocNumber>
+                      <ActiveBadge active={m.isActive} />
+                    </Group>
+                    <Text fw={500} size="sm">
+                      {m.nameJa}
+                    </Text>
+                    {m.maker && (
+                      <Text c="dimmed" size="xs">
+                        {m.maker}
+                      </Text>
+                    )}
+                    <Text c="dimmed" className="tabular-nums" size="xs">
+                      {usage(m)}
+                    </Text>
+                  </Stack>
+                  <Menu position="bottom-end" shadow="sm" withinPortal>
+                    <Menu.Target>
+                      <ActionIcon
+                        aria-label={tr("common.actions")}
+                        color="gray"
+                        style={{ flexShrink: 0 }}
+                        variant="subtle"
+                      >
+                        <IconDotsVertical size={16} />
+                      </ActionIcon>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item
+                        leftSection={<IconEdit size={14} />}
+                        onClick={() => onEdit(m)}
+                      >
+                        {tr("common.edit2")}
+                      </Menu.Item>
+                      <Menu.Divider />
+                      <Menu.Item
+                        color="red"
+                        leftSection={<IconTrash size={14} />}
+                        onClick={() => onDelete(m)}
+                      >
+                        {tr("common.delete")}
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                </Group>
+              </Box>
+            ))}
+          </Stack>
+        ) : (
+          <Table striped withTableBorder>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th w={140}>
+                  {tr("master.workLocationsManager.code")}
+                </Table.Th>
+                <Table.Th>{tr("common.name2")}</Table.Th>
+                <Table.Th w={180}>{tr("master.machineModels.maker")}</Table.Th>
+                <Table.Th w={200}>
+                  {tr("master.machineModels.usageHead")}
+                </Table.Th>
+                <Table.Th w={80}>{tr("common.status")}</Table.Th>
+                <Table.Th w={80} />
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {models.map((m) => (
+                <Table.Tr key={m.id}>
+                  <Table.Td>
+                    <DocNumber>{m.code}</DocNumber>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm">{m.nameJa}</Text>
+                    {m.notes && (
+                      <Text c="dimmed" size="xs">
+                        {m.notes}
+                      </Text>
+                    )}
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm">{m.maker || "—"}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text c="dimmed" className="tabular-nums" size="sm">
+                      {usage(m)}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <ActiveBadge active={m.isActive} />
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap={4} justify="flex-end" wrap="nowrap">
+                      <Tooltip label={tr("common.edit2")} withinPortal>
+                        <ActionIcon
+                          aria-label={tr("master.machineModels.editTitle")}
+                          color="gray"
+                          onClick={() => onEdit(m)}
+                          variant="subtle"
+                        >
+                          <IconEdit size={14} />
+                        </ActionIcon>
+                      </Tooltip>
+                      <Tooltip label={tr("common.delete")} withinPortal>
+                        <ActionIcon
+                          aria-label={tr("master.machineModels.deleteTitle")}
+                          color="red"
+                          onClick={() => onDelete(m)}
+                          variant="subtle"
+                        >
+                          <IconTrash size={14} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        )}
+      </Stack>
+    </Paper>
   );
 }
 
@@ -640,10 +1007,12 @@ function TypesModal({
 
 export function WorkLocationsManager({
   groups,
+  machineModels,
   types,
   plantOptions,
 }: {
   groups: WorkLocationGroupRow[];
+  machineModels: MachineModelRow[];
   types: WorkLocationTypeRow[];
   plantOptions: Option[];
 }) {
@@ -663,6 +1032,16 @@ export function WorkLocationsManager({
     defaultSortOrder: number;
   }>({ opened: false, groupId: 0, location: null, defaultSortOrder: 10 });
   const [typesOpen, setTypesOpen] = useState(false);
+  const [tab, setTab] = useState<string>("locations");
+  const [modelModal, setModelModal] = useState<{
+    opened: boolean;
+    model: MachineModelRow | null;
+  }>({ opened: false, model: null });
+  const [deleteModel, setDeleteModel] = useState<MachineModelRow | null>(null);
+  const nextModelSortOrder =
+    machineModels.length > 0
+      ? Math.max(...machineModels.map((m) => m.sortOrder)) + 10
+      : 10;
   const [deleteGroup, setDeleteGroup] = useState<WorkLocationGroupRow | null>(
     null,
   );
@@ -679,26 +1058,36 @@ export function WorkLocationsManager({
       <PageHeader
         actions={
           // 携帯では題と並ぶ 1 行に入らないので文字を詰める（SY09 と同じ流儀）。
-          <Group gap="xs" wrap="nowrap">
-            <SecondaryButton
-              leftSection={<IconAdjustments size={14} />}
-              onClick={() => setTypesOpen(true)}
-              px={isMobile ? "xs" : undefined}
-            >
-              {isMobile
-                ? tr("common.type2")
-                : tr("master.workLocations.typeManagement")}
-            </SecondaryButton>
+          tab === "models" ? (
             <PrimaryButton
               leftSection={<IconPlus size={14} />}
-              onClick={() => setGroupModal({ opened: true, group: null })}
+              onClick={() => setModelModal({ opened: true, model: null })}
               px={isMobile ? "xs" : undefined}
             >
-              {isMobile
-                ? tr("common.add")
-                : tr("master.workLocations.addAGroup2")}
+              {isMobile ? tr("common.add") : tr("master.machineModels.add")}
             </PrimaryButton>
-          </Group>
+          ) : (
+            <Group gap="xs" wrap="nowrap">
+              <SecondaryButton
+                leftSection={<IconAdjustments size={14} />}
+                onClick={() => setTypesOpen(true)}
+                px={isMobile ? "xs" : undefined}
+              >
+                {isMobile
+                  ? tr("common.type2")
+                  : tr("master.workLocations.typeManagement")}
+              </SecondaryButton>
+              <PrimaryButton
+                leftSection={<IconPlus size={14} />}
+                onClick={() => setGroupModal({ opened: true, group: null })}
+                px={isMobile ? "xs" : undefined}
+              >
+                {isMobile
+                  ? tr("common.add")
+                  : tr("master.workLocations.addAGroup2")}
+              </PrimaryButton>
+            </Group>
+          )
         }
         breadcrumbs={[
           tr("common.masterData"),
@@ -707,208 +1096,95 @@ export function WorkLocationsManager({
         title={tr("master.workLocationsManager.pageTitle")}
       />
 
-      {groups.length === 0 ? (
-        <EmptyState
-          icon={<IconMapPin size={24} />}
-          message={tr(
-            "master.workLocations.noWorkLocationsAreRegisteredCreate",
-          )}
-        />
-      ) : (
-        groups.map((group) => {
-          // 新しい場所の表示順（末尾 + 10）。操作は携帯のメニューと
-          // デスクトップのボタン列で共有するので、ここで 1 つだけ作る。
-          const nextSortOrder =
-            group.locations.length > 0
-              ? Math.max(...group.locations.map((l) => l.sortOrder)) + 10
-              : 10;
-          const addLocation = () =>
-            setLocationModal({
-              opened: true,
-              groupId: group.id,
-              location: null,
-              defaultSortOrder: nextSortOrder,
-            });
-          const editLocation = (loc: WorkLocationRow) =>
-            setLocationModal({
-              opened: true,
-              groupId: group.id,
-              location: loc,
-              defaultSortOrder: loc.sortOrder,
-            });
-          const noLocations = group.locations.length === 0;
+      <AppTabs onChange={(v) => v && setTab(v)} value={tab}>
+        <Tabs.List>
+          <Tabs.Tab leftSection={<IconMapPin size={14} />} value="locations">
+            {tr("master.machineModels.tabLocations")}
+          </Tabs.Tab>
+          <Tabs.Tab leftSection={<IconCpu size={14} />} value="models">
+            {tr("master.machineModels.tabModels")}
+          </Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel pt="md" value="models">
+          <MachineModelsList
+            models={machineModels}
+            onDelete={setDeleteModel}
+            onEdit={(m) => setModelModal({ opened: true, model: m })}
+          />
+        </Tabs.Panel>
+        <Tabs.Panel pt="md" value="locations">
+          <Stack gap="md">
+            {groups.length === 0 ? (
+              <EmptyState
+                icon={<IconMapPin size={24} />}
+                message={tr(
+                  "master.workLocations.noWorkLocationsAreRegisteredCreate",
+                )}
+              />
+            ) : (
+              groups.map((group) => {
+                // 新しい場所の表示順（末尾 + 10）。操作は携帯のメニューと
+                // デスクトップのボタン列で共有するので、ここで 1 つだけ作る。
+                const nextSortOrder =
+                  group.locations.length > 0
+                    ? Math.max(...group.locations.map((l) => l.sortOrder)) + 10
+                    : 10;
+                const addLocation = () =>
+                  setLocationModal({
+                    opened: true,
+                    groupId: group.id,
+                    location: null,
+                    defaultSortOrder: nextSortOrder,
+                  });
+                const editLocation = (loc: WorkLocationRow) =>
+                  setLocationModal({
+                    opened: true,
+                    groupId: group.id,
+                    location: loc,
+                    defaultSortOrder: loc.sortOrder,
+                  });
+                const noLocations = group.locations.length === 0;
 
-          return (
-            <Paper key={group.id} p="md" radius="md" withBorder>
-              <Stack gap="sm">
-                <Group align="flex-start" justify="space-between" wrap="nowrap">
-                  {/* 携帯では 5 つの情報が 1 行に入らないので折り返す。
+                return (
+                  <Paper key={group.id} p="md" radius="md" withBorder>
+                    <Stack gap="sm">
+                      <Group
+                        align="flex-start"
+                        justify="space-between"
+                        wrap="nowrap"
+                      >
+                        {/* 携帯では 5 つの情報が 1 行に入らないので折り返す。
                       truncate は横並びのときだけ効かせる（折り返す側で
                       切り詰めると名称が読めなくなる）。 */}
-                  <Group
-                    gap="xs"
-                    style={{ minWidth: 0 }}
-                    wrap={isMobile ? "wrap" : "nowrap"}
-                  >
-                    <DocNumber>{group.code}</DocNumber>
-                    <Text fw={600} size="sm" truncate={!isMobile}>
-                      {group.nameJa}
-                    </Text>
-                    <Badge color="grape" size="sm" variant="light">
-                      {typeLabel(group.typeKey)}
-                    </Badge>
-                    {group.plantName && (
-                      <Group gap={4} wrap="nowrap">
-                        <IconBuildingFactory2 size={14} />
-                        <Text c="dimmed" size="xs">
-                          {group.plantName}
-                        </Text>
-                      </Group>
-                    )}
-                    <ActiveBadge active={group.isActive} />
-                  </Group>
-                  {isMobile ? (
-                    // 操作 4 つを横に並べると幅を食い切るので「⋯」に畳む
-                    // （design.md §20.2 の「ボタン列 → メニュー」）。
-                    <Menu position="bottom-end" shadow="sm" withinPortal>
-                      <Menu.Target>
-                        <ActionIcon
-                          aria-label={tr("common.actions2")}
-                          color="gray"
-                          style={{ flexShrink: 0 }}
-                          variant="subtle"
-                        >
-                          <IconDotsVertical size={16} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item
-                          leftSection={<IconPlus size={14} />}
-                          onClick={addLocation}
-                        >
-                          {tr("master.workLocations.addALocation")}
-                        </Menu.Item>
-                        <Menu.Item
-                          disabled={noLocations}
-                          leftSection={<IconQrcode size={14} />}
-                          onClick={() =>
-                            openQrPrintSheet(group.locations.map((l) => l.id))
-                          }
-                        >
-                          {tr("master.workLocations.printTheQrCode")}
-                        </Menu.Item>
-                        <Menu.Item
-                          leftSection={<IconEdit size={14} />}
-                          onClick={() => setGroupModal({ opened: true, group })}
-                        >
-                          {tr("common.edit2")}
-                        </Menu.Item>
-                        <Menu.Divider />
-                        <Menu.Item
-                          color="red"
-                          leftSection={<IconTrash size={14} />}
-                          onClick={() => setDeleteGroup(group)}
-                        >
-                          {tr("common.delete")}
-                        </Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  ) : (
-                    <Group gap="xs" wrap="nowrap">
-                      <GhostButton
-                        leftSection={<IconPlus size={14} />}
-                        onClick={addLocation}
-                        size="xs"
-                      >
-                        {tr("master.workLocations.addALocation")}
-                      </GhostButton>
-                      <GhostButton
-                        disabled={noLocations}
-                        leftSection={<IconQrcode size={14} />}
-                        onClick={() =>
-                          openQrPrintSheet(group.locations.map((l) => l.id))
-                        }
-                        size="xs"
-                      >
-                        {tr("master.workLocations.printTheQrCode")}
-                      </GhostButton>
-                      <GhostButton
-                        leftSection={<IconEdit size={14} />}
-                        onClick={() => setGroupModal({ opened: true, group })}
-                        size="xs"
-                      >
-                        {tr("common.edit2")}
-                      </GhostButton>
-                      <GhostButton
-                        color="red"
-                        leftSection={<IconTrash size={14} />}
-                        onClick={() => setDeleteGroup(group)}
-                        size="xs"
-                      >
-                        {tr("common.delete")}
-                      </GhostButton>
-                    </Group>
-                  )}
-                </Group>
-
-                {noLocations ? (
-                  <Text c="dimmed" size="sm">
-                    {tr("master.workLocations.noLocationsAreRegisteredAddOne")}
-                  </Text>
-                ) : isMobile ? (
-                  // 6 列の表は 390px では 1 列 40px になって読めない。
-                  // 区切り線で分けた 1 行 = 1 件へ落とす（design.md §8.1）。
-                  <Stack gap={0}>
-                    {group.locations.map((loc, i) => (
-                      <Box key={loc.id}>
-                        {i > 0 && <Divider />}
                         <Group
-                          align="flex-start"
-                          gap="sm"
-                          py="sm"
-                          wrap="nowrap"
+                          gap="xs"
+                          style={{ minWidth: 0 }}
+                          wrap={isMobile ? "wrap" : "nowrap"}
                         >
-                          <Stack className="min-w-0 flex-1" gap={3}>
-                            <Group gap="xs" wrap="nowrap">
-                              <DocNumber>{loc.code}</DocNumber>
-                              <ActiveBadge active={loc.isActive} />
-                            </Group>
-                            <Text fw={500} size="sm">
-                              {loc.nameJa}
-                            </Text>
-                            {loc.notes && (
+                          <DocNumber>{group.code}</DocNumber>
+                          <Text fw={600} size="sm" truncate={!isMobile}>
+                            {group.nameJa}
+                          </Text>
+                          <Badge color="grape" size="sm" variant="light">
+                            {typeLabel(group.typeKey)}
+                          </Badge>
+                          {group.plantName && (
+                            <Group gap={4} wrap="nowrap">
+                              <IconBuildingFactory2 size={14} />
                               <Text c="dimmed" size="xs">
-                                {loc.notes}
-                              </Text>
-                            )}
-                            <Group gap="md" wrap="wrap">
-                              <Text
-                                c="dimmed"
-                                className="tabular-nums"
-                                size="xs"
-                              >
-                                {tr("master.workLocations.capacity")}{" "}
-                                {loc.capacity != null
-                                  ? tr(
-                                      "master.workLocationsManager.jobsWithCount",
-                                      { count: loc.capacity },
-                                    )
-                                  : tr("master.workLocations.noLimit")}
-                              </Text>
-                              <Text
-                                c="dimmed"
-                                className="tabular-nums"
-                                size="xs"
-                              >
-                                {tr("master.workLocations.plannedActual")}{" "}
-                                {loc.planCount} / {loc.actualCount}
+                                {group.plantName}
                               </Text>
                             </Group>
-                          </Stack>
+                          )}
+                          <ActiveBadge active={group.isActive} />
+                        </Group>
+                        {isMobile ? (
+                          // 操作 4 つを横に並べると幅を食い切るので「⋯」に畳む
+                          // （design.md §20.2 の「ボタン列 → メニュー」）。
                           <Menu position="bottom-end" shadow="sm" withinPortal>
                             <Menu.Target>
                               <ActionIcon
-                                aria-label={tr("common.actions")}
+                                aria-label={tr("common.actions2")}
                                 color="gray"
                                 style={{ flexShrink: 0 }}
                                 variant="subtle"
@@ -918,14 +1194,27 @@ export function WorkLocationsManager({
                             </Menu.Target>
                             <Menu.Dropdown>
                               <Menu.Item
-                                leftSection={<IconQrcode size={14} />}
-                                onClick={() => openQrPrintSheet([loc.id])}
+                                leftSection={<IconPlus size={14} />}
+                                onClick={addLocation}
                               >
-                                {tr("master.workLocations.printQrLabels")}
+                                {tr("master.workLocations.addALocation")}
+                              </Menu.Item>
+                              <Menu.Item
+                                disabled={noLocations}
+                                leftSection={<IconQrcode size={14} />}
+                                onClick={() =>
+                                  openQrPrintSheet(
+                                    group.locations.map((l) => l.id),
+                                  )
+                                }
+                              >
+                                {tr("master.workLocations.printTheQrCode")}
                               </Menu.Item>
                               <Menu.Item
                                 leftSection={<IconEdit size={14} />}
-                                onClick={() => editLocation(loc)}
+                                onClick={() =>
+                                  setGroupModal({ opened: true, group })
+                                }
                               >
                                 {tr("common.edit2")}
                               </Menu.Item>
@@ -933,119 +1222,303 @@ export function WorkLocationsManager({
                               <Menu.Item
                                 color="red"
                                 leftSection={<IconTrash size={14} />}
-                                onClick={() => setDeleteLocation(loc)}
+                                onClick={() => setDeleteGroup(group)}
                               >
                                 {tr("common.delete")}
                               </Menu.Item>
                             </Menu.Dropdown>
                           </Menu>
-                        </Group>
-                      </Box>
-                    ))}
-                  </Stack>
-                ) : (
-                  <Table striped withTableBorder>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th w={140}>
-                          {tr("master.workLocationsManager.code")}
-                        </Table.Th>
-                        <Table.Th>{tr("common.name2")}</Table.Th>
-                        <Table.Th w={120}>
-                          {tr("master.workLocations.capacity")}
-                        </Table.Th>
-                        <Table.Th w={110}>
-                          {tr("master.workLocations.plannedActual")}
-                        </Table.Th>
-                        <Table.Th w={80}>{tr("common.status")}</Table.Th>
-                        <Table.Th w={80} />
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {group.locations.map((loc) => (
-                        <Table.Tr key={loc.id}>
-                          <Table.Td>
-                            <DocNumber>{loc.code}</DocNumber>
-                          </Table.Td>
-                          <Table.Td>
-                            <Text size="sm">{loc.nameJa}</Text>
-                            {loc.notes && (
-                              <Text c="dimmed" size="xs">
-                                {loc.notes}
-                              </Text>
-                            )}
-                          </Table.Td>
-                          <Table.Td>
-                            <Text className="tabular-nums" size="sm">
-                              {loc.capacity != null
-                                ? tr(
-                                    "master.workLocationsManager.jobsWithCount",
-                                    { count: loc.capacity },
-                                  )
-                                : tr("master.workLocations.noLimit")}
-                            </Text>
-                          </Table.Td>
-                          <Table.Td>
-                            <Text c="dimmed" className="tabular-nums" size="sm">
-                              {loc.planCount} / {loc.actualCount}
-                            </Text>
-                          </Table.Td>
-                          <Table.Td>
-                            <ActiveBadge active={loc.isActive} />
-                          </Table.Td>
-                          <Table.Td>
-                            <Group gap={4} justify="flex-end" wrap="nowrap">
-                              <Tooltip
-                                label={tr("master.workLocations.printQrLabels")}
-                                withinPortal
+                        ) : (
+                          <Group gap="xs" wrap="nowrap">
+                            <GhostButton
+                              leftSection={<IconPlus size={14} />}
+                              onClick={addLocation}
+                              size="xs"
+                            >
+                              {tr("master.workLocations.addALocation")}
+                            </GhostButton>
+                            <GhostButton
+                              disabled={noLocations}
+                              leftSection={<IconQrcode size={14} />}
+                              onClick={() =>
+                                openQrPrintSheet(
+                                  group.locations.map((l) => l.id),
+                                )
+                              }
+                              size="xs"
+                            >
+                              {tr("master.workLocations.printTheQrCode")}
+                            </GhostButton>
+                            <GhostButton
+                              leftSection={<IconEdit size={14} />}
+                              onClick={() =>
+                                setGroupModal({ opened: true, group })
+                              }
+                              size="xs"
+                            >
+                              {tr("common.edit2")}
+                            </GhostButton>
+                            <GhostButton
+                              color="red"
+                              leftSection={<IconTrash size={14} />}
+                              onClick={() => setDeleteGroup(group)}
+                              size="xs"
+                            >
+                              {tr("common.delete")}
+                            </GhostButton>
+                          </Group>
+                        )}
+                      </Group>
+
+                      {noLocations ? (
+                        <Text c="dimmed" size="sm">
+                          {tr(
+                            "master.workLocations.noLocationsAreRegisteredAddOne",
+                          )}
+                        </Text>
+                      ) : isMobile ? (
+                        // 6 列の表は 390px では 1 列 40px になって読めない。
+                        // 区切り線で分けた 1 行 = 1 件へ落とす（design.md §8.1）。
+                        <Stack gap={0}>
+                          {group.locations.map((loc, i) => (
+                            <Box key={loc.id}>
+                              {i > 0 && <Divider />}
+                              <Group
+                                align="flex-start"
+                                gap="sm"
+                                py="sm"
+                                wrap="nowrap"
                               >
-                                <ActionIcon
-                                  aria-label={tr(
-                                    "master.workLocations.printWorkLocationQrLabels",
+                                <Stack className="min-w-0 flex-1" gap={3}>
+                                  <Group gap="xs" wrap="nowrap">
+                                    <DocNumber>{loc.code}</DocNumber>
+                                    <ActiveBadge active={loc.isActive} />
+                                  </Group>
+                                  <Text fw={500} size="sm">
+                                    {loc.nameJa}
+                                  </Text>
+                                  {loc.machineModelName && (
+                                    <Badge
+                                      color="indigo"
+                                      size="sm"
+                                      variant="light"
+                                    >
+                                      {loc.machineModelName}
+                                    </Badge>
                                   )}
-                                  color="gray"
-                                  onClick={() => openQrPrintSheet([loc.id])}
-                                  variant="subtle"
-                                >
-                                  <IconQrcode size={14} />
-                                </ActionIcon>
-                              </Tooltip>
-                              <Tooltip label={tr("common.edit2")} withinPortal>
-                                <ActionIcon
-                                  aria-label={tr(
-                                    "master.workLocations.editTheWorkLocation",
+                                  {loc.notes && (
+                                    <Text c="dimmed" size="xs">
+                                      {loc.notes}
+                                    </Text>
                                   )}
-                                  color="gray"
-                                  onClick={() => editLocation(loc)}
-                                  variant="subtle"
+                                  <Group gap="md" wrap="wrap">
+                                    <Text
+                                      c="dimmed"
+                                      className="tabular-nums"
+                                      size="xs"
+                                    >
+                                      {tr("master.workLocations.capacity")}{" "}
+                                      {loc.capacity != null
+                                        ? tr(
+                                            "master.workLocationsManager.jobsWithCount",
+                                            { count: loc.capacity },
+                                          )
+                                        : tr("master.workLocations.noLimit")}
+                                    </Text>
+                                    <Text
+                                      c="dimmed"
+                                      className="tabular-nums"
+                                      size="xs"
+                                    >
+                                      {tr("master.workLocations.plannedActual")}{" "}
+                                      {loc.planCount} / {loc.actualCount}
+                                    </Text>
+                                  </Group>
+                                </Stack>
+                                <Menu
+                                  position="bottom-end"
+                                  shadow="sm"
+                                  withinPortal
                                 >
-                                  <IconEdit size={14} />
-                                </ActionIcon>
-                              </Tooltip>
-                              <Tooltip label={tr("common.delete")} withinPortal>
-                                <ActionIcon
-                                  aria-label={tr(
-                                    "master.workLocations.deleteTheWorkLocation",
+                                  <Menu.Target>
+                                    <ActionIcon
+                                      aria-label={tr("common.actions")}
+                                      color="gray"
+                                      style={{ flexShrink: 0 }}
+                                      variant="subtle"
+                                    >
+                                      <IconDotsVertical size={16} />
+                                    </ActionIcon>
+                                  </Menu.Target>
+                                  <Menu.Dropdown>
+                                    <Menu.Item
+                                      leftSection={<IconQrcode size={14} />}
+                                      onClick={() => openQrPrintSheet([loc.id])}
+                                    >
+                                      {tr("master.workLocations.printQrLabels")}
+                                    </Menu.Item>
+                                    <Menu.Item
+                                      leftSection={<IconEdit size={14} />}
+                                      onClick={() => editLocation(loc)}
+                                    >
+                                      {tr("common.edit2")}
+                                    </Menu.Item>
+                                    <Menu.Divider />
+                                    <Menu.Item
+                                      color="red"
+                                      leftSection={<IconTrash size={14} />}
+                                      onClick={() => setDeleteLocation(loc)}
+                                    >
+                                      {tr("common.delete")}
+                                    </Menu.Item>
+                                  </Menu.Dropdown>
+                                </Menu>
+                              </Group>
+                            </Box>
+                          ))}
+                        </Stack>
+                      ) : (
+                        <Table striped withTableBorder>
+                          <Table.Thead>
+                            <Table.Tr>
+                              <Table.Th w={140}>
+                                {tr("master.workLocationsManager.code")}
+                              </Table.Th>
+                              <Table.Th>{tr("common.name2")}</Table.Th>
+                              <Table.Th w={160}>
+                                {tr("master.machineModels.column")}
+                              </Table.Th>
+                              <Table.Th w={120}>
+                                {tr("master.workLocations.capacity")}
+                              </Table.Th>
+                              <Table.Th w={110}>
+                                {tr("master.workLocations.plannedActual")}
+                              </Table.Th>
+                              <Table.Th w={80}>{tr("common.status")}</Table.Th>
+                              <Table.Th w={80} />
+                            </Table.Tr>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            {group.locations.map((loc) => (
+                              <Table.Tr key={loc.id}>
+                                <Table.Td>
+                                  <DocNumber>{loc.code}</DocNumber>
+                                </Table.Td>
+                                <Table.Td>
+                                  <Text size="sm">{loc.nameJa}</Text>
+                                  {loc.notes && (
+                                    <Text c="dimmed" size="xs">
+                                      {loc.notes}
+                                    </Text>
                                   )}
-                                  color="red"
-                                  onClick={() => setDeleteLocation(loc)}
-                                  variant="subtle"
-                                >
-                                  <IconTrash size={14} />
-                                </ActionIcon>
-                              </Tooltip>
-                            </Group>
-                          </Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                )}
-              </Stack>
-            </Paper>
-          );
-        })
-      )}
+                                </Table.Td>
+                                <Table.Td>
+                                  {loc.machineModelName ? (
+                                    <Badge
+                                      color="indigo"
+                                      size="sm"
+                                      variant="light"
+                                    >
+                                      {loc.machineModelName}
+                                    </Badge>
+                                  ) : (
+                                    <Text c="dimmed" size="sm">
+                                      —
+                                    </Text>
+                                  )}
+                                </Table.Td>
+                                <Table.Td>
+                                  <Text className="tabular-nums" size="sm">
+                                    {loc.capacity != null
+                                      ? tr(
+                                          "master.workLocationsManager.jobsWithCount",
+                                          { count: loc.capacity },
+                                        )
+                                      : tr("master.workLocations.noLimit")}
+                                  </Text>
+                                </Table.Td>
+                                <Table.Td>
+                                  <Text
+                                    c="dimmed"
+                                    className="tabular-nums"
+                                    size="sm"
+                                  >
+                                    {loc.planCount} / {loc.actualCount}
+                                  </Text>
+                                </Table.Td>
+                                <Table.Td>
+                                  <ActiveBadge active={loc.isActive} />
+                                </Table.Td>
+                                <Table.Td>
+                                  <Group
+                                    gap={4}
+                                    justify="flex-end"
+                                    wrap="nowrap"
+                                  >
+                                    <Tooltip
+                                      label={tr(
+                                        "master.workLocations.printQrLabels",
+                                      )}
+                                      withinPortal
+                                    >
+                                      <ActionIcon
+                                        aria-label={tr(
+                                          "master.workLocations.printWorkLocationQrLabels",
+                                        )}
+                                        color="gray"
+                                        onClick={() =>
+                                          openQrPrintSheet([loc.id])
+                                        }
+                                        variant="subtle"
+                                      >
+                                        <IconQrcode size={14} />
+                                      </ActionIcon>
+                                    </Tooltip>
+                                    <Tooltip
+                                      label={tr("common.edit2")}
+                                      withinPortal
+                                    >
+                                      <ActionIcon
+                                        aria-label={tr(
+                                          "master.workLocations.editTheWorkLocation",
+                                        )}
+                                        color="gray"
+                                        onClick={() => editLocation(loc)}
+                                        variant="subtle"
+                                      >
+                                        <IconEdit size={14} />
+                                      </ActionIcon>
+                                    </Tooltip>
+                                    <Tooltip
+                                      label={tr("common.delete")}
+                                      withinPortal
+                                    >
+                                      <ActionIcon
+                                        aria-label={tr(
+                                          "master.workLocations.deleteTheWorkLocation",
+                                        )}
+                                        color="red"
+                                        onClick={() => setDeleteLocation(loc)}
+                                        variant="subtle"
+                                      >
+                                        <IconTrash size={14} />
+                                      </ActionIcon>
+                                    </Tooltip>
+                                  </Group>
+                                </Table.Td>
+                              </Table.Tr>
+                            ))}
+                          </Table.Tbody>
+                        </Table>
+                      )}
+                    </Stack>
+                  </Paper>
+                );
+              })
+            )}
+          </Stack>
+        </Tabs.Panel>
+      </AppTabs>
 
       <GroupModal
         group={groupModal.group}
@@ -1059,9 +1532,54 @@ export function WorkLocationsManager({
         defaultSortOrder={locationModal.defaultSortOrder}
         groupId={locationModal.groupId}
         location={locationModal.location}
+        machineModels={machineModels}
         onClose={() => setLocationModal((s) => ({ ...s, opened: false }))}
         onDone={refresh}
         opened={locationModal.opened}
+      />
+      <MachineModelModal
+        defaultSortOrder={nextModelSortOrder}
+        model={modelModal.model}
+        onClose={() => setModelModal((s) => ({ ...s, opened: false }))}
+        onDone={refresh}
+        opened={modelModal.opened}
+      />
+      <ConfirmModal
+        confirmLabel={tr("common.delete2")}
+        message={
+          deleteModel
+            ? tr("master.machineModels.deleteConfirm", {
+                name: deleteModel.nameJa,
+              })
+            : ""
+        }
+        onClose={() => setDeleteModel(null)}
+        onConfirm={() => {
+          const target = deleteModel;
+          if (!target) return;
+          startTransition(async () => {
+            const result = await deleteMachineModel(target.id);
+            notifyResult(
+              tr,
+              result,
+              tr("master.machineModels.deleted", { name: target.nameJa }),
+              () => {
+                setDeleteModel(null);
+                refresh();
+              },
+            );
+          });
+        }}
+        opened={!!deleteModel}
+        title={tr("master.machineModels.deleteTitle")}
+        warning={
+          deleteModel && deleteModel.machineCount + deleteModel.programCount > 0
+            ? tr("master.machineModels.inUseWarning", {
+                machines: deleteModel.machineCount,
+                programs: deleteModel.programCount,
+              })
+            : undefined
+        }
       />
       <TypesModal
         onClose={() => setTypesOpen(false)}

@@ -77,8 +77,9 @@ The top part of the step screen gathers the information you need for the work.
 - **印字番号** (marking number) … shown as 「**印字番号 A200000-001 〜 A200000-150（明細ごと A200000）**」. It is the number laser-marked on the products. When marking each piece, use the consecutive numbers from `-001`; when marking one number per line, use the number in brackets. It is not shown for a work order that is not linked to an order (for stock).
 - **工程納期** (step due date) … shown as 「**工程納期 2026/08/10**」: by when this step should be finished. It turns **red and bold** if the date has passed and the step is not finished. It is not shown for a step with no due date.
 - **加工プログラム** (machining programs) … when programs used in this step are registered, they are listed under 「**加工プログラム**」.
-  - The program name and program number, and 「**機械: ◯◯**」 (which machine it is for; one for any machine shows 「**機械を問わない**」 (any machine)) are shown.
-  - A program for the same machine as the current work location (this tablet's default work location, or the planned or actual work location) gets a 「**この機械用**」 (for this machine) mark and is listed first.
+  - The program name, its version (such as 「**v2**」) and program number, and 「**機種: ◯◯**」 (which machine models it is for; one for any model shows 「**機種を問わない**」 (any machine model)) are shown.
+  - A program for the same machine model as the current machine (this tablet's default work location, or the planned or actual work location) gets a 「**この機種用**」 (for this machine model) mark and is listed first.
+  - **When the step is started, the program versions shown at that moment are recorded.** A started step keeps showing **the versions it was started with**, even if the office creates a new version later (so the program does not change in the middle of the work).
   - If a file is registered, press the file name to download it. One with only a number noted shows 「**ファイルなし**」 (no file).
 
 > 💡 Machining programs are registered by the office on a version of the [drawing](/manual/en/operations/production/design-file/user). If none appears or the content is wrong, please contact the office.

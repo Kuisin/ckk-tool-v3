@@ -237,6 +237,7 @@ export async function validateAndOrderSteps(
 // セッションロックの獲得は updateMany の WHERE 句による原子的クレーム。
 
 import { getCurrentActorId, recordAudit } from "./audit";
+import { recordStepProgramsTx } from "./design-programs";
 import { missingInspectionSheets } from "./inspection-core";
 import { resolveWipRecording } from "./wip-recording";
 import type { WipRecordingInput } from "./wip-state-core";
@@ -428,22 +429,29 @@ export async function startStepExecution(
 
   const input = expectedInput(stepId, ctx);
 
-  // 原子的クレーム: PENDING かつ未ロックの行だけを更新（同時開始の競合防止）
-  const claimed = await prisma.workOrderStep.updateMany({
-    where: {
-      id: stepId,
-      status: "PENDING",
-      OR: [{ sessionLockedBy: null }, { sessionLockedBy: actor }],
-    },
-    data: {
-      status: "IN_PROGRESS",
-      sessionLockedBy: actor,
-      sessionLockedAt: new Date(),
-      startedAt: new Date(),
-      startedBy: actor,
-      inputQuantity: input ?? undefined,
-      ...(lotMode !== "NONE" && lot != null ? { lotText: lot } : {}),
-    },
+  // 原子的クレーム: PENDING かつ未ロックの行だけを更新（同時開始の競合防止）。
+  // 同じトランザクションで「いま出ている加工プログラムの版」を記録する —
+  // 記録した版は使用済みになり、以後その場では書き換えられない
+  // （lib/design-programs recordStepProgramsTx。共有端末の開始も同じ）。
+  const claimed = await prisma.$transaction(async (tx) => {
+    const c = await tx.workOrderStep.updateMany({
+      where: {
+        id: stepId,
+        status: "PENDING",
+        OR: [{ sessionLockedBy: null }, { sessionLockedBy: actor }],
+      },
+      data: {
+        status: "IN_PROGRESS",
+        sessionLockedBy: actor,
+        sessionLockedAt: new Date(),
+        startedAt: new Date(),
+        startedBy: actor,
+        inputQuantity: input ?? undefined,
+        ...(lotMode !== "NONE" && lot != null ? { lotText: lot } : {}),
+      },
+    });
+    if (c.count === 1) await recordStepProgramsTx(tx, stepId);
+    return c;
   });
   if (claimed.count === 0) {
     return {

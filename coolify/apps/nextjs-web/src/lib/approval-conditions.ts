@@ -163,6 +163,8 @@ export function approvalConditionFields(
     internal_pages: [],
     // 設計図の版。条件に使う属性は今のところ無い（全版が同じ段を通る）。
     design_versions: [],
+    // 加工プログラムの変更 — 条件に使う属性は今のところ無い。
+    design_program_changes: [],
     // 価格表は通常のフローを持たない（独自値の追加承認だけ）— 条件付きフローも無い。
     price_list_entries: [],
     // フォーム申請 (CM02)。どのフォームの申請かで承認者を変えたい、が一番効くので

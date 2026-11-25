@@ -416,9 +416,10 @@
     },
     "programs": {
       "title": "加工プログラム",
-      "machine": "機械: {name}",
-      "anyMachine": "機械を問わない",
-      "machineMatch": "この機械用",
+      "machineModels": "機種: {names}",
+      "anyModel": "機種を問わない",
+      "modelMatch": "この機種用",
+      "revision": "v{revision}",
       "download": "ダウンロード",
       "noFile": "ファイルなし"
     },

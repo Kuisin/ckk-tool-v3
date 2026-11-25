@@ -824,7 +824,8 @@
     "issuingCompanyNotAllowed": "選択した発行会社では書類を作成できません。所属拠点の自社法人から選択してください",
     "selectIssuingCompany": "発行会社を選択",
     "selectIssuingCompanyDesc": "同じ番号の書類が複数の発行会社にあります。開く書類の発行会社を選んでください。",
-    "workOrderAbort": "指示書の打ち切り"
+    "workOrderAbort": "指示書の打ち切り",
+    "designProgramChange": "加工プログラムの変更"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -3633,28 +3634,85 @@
     },
     "designPrograms": {
       "title": "加工プログラム",
-      "description": "この版から起こした加工プログラム。機械は作業場所（MS0D）から選び、1 本が複数の工程を受け持てます。",
+      "description": "この版から起こした加工プログラム。対象の機種を選び、1 本が複数の工程を受け持てます。工程で使われたプログラムは直さず新しい版を作ります。変更は承認設定の「加工プログラムの変更」を通ります（段が無ければすぐ反映）。図面の確定後も変更できます。",
       "none": "加工プログラムはありません",
       "name": "プログラム名",
       "programNumber": "プログラム番号",
-      "machine": "機械（作業場所）",
-      "machineHint": "工程実行画面では、計画・実績の作業場所と一致するプログラムが先頭に並びます",
-      "anyMachine": "機械を問わない",
-      "machineMatch": "この機械用",
+      "machineModels": "機種",
+      "machineModelsHint": "空 = 機種を問わない。工程実行画面では、計画・実績の機械の機種と一致するプログラムが先頭に並びます",
+      "anyModel": "機種を問わない",
+      "modelMatch": "この機種用",
       "steps": "工程",
       "file": "プログラムファイル",
       "chooseFile": "ファイルを選択",
       "noFile": "ファイルなし",
-      "removeFile": "ファイルを外す",
-      "keepFile": "ファイルを残す",
+      "fileKept": "今のファイルのまま",
+      "currentFile": "今のファイル: {name}",
+      "keepFile": "そのまま",
+      "replaceFile": "差し替える",
+      "removeFile": "外す",
       "add": "プログラムを追加",
-      "remove": "プログラムを削除",
       "nameRequired": "プログラム名を入力してください",
       "stepsRequired": "工程を選択してください",
       "fromVersion": "設計図 v{version}",
+      "fromRecord": "この工程を開始したときの版を表示しています",
+      "revision": "v{revision}",
+      "used": "使用済み（{count} 工程）",
+      "unused": "未使用",
+      "retired": "廃止",
+      "pendingBadge": "承認依頼中",
+      "actionEdit": "直す",
+      "actionRevise": "新しい版を作る",
+      "actionDelete": "削除",
+      "actionRetire": "廃止する",
+      "usedHint": "この版は工程で使われているため直せません。変えるときは新しい版を作ってください（今の版はそのまま残ります）。",
+      "history": "過去の版（{count}）",
+      "supersededAt": "{at} まで",
+      "requestedBy": "{name}・{at} 申請",
+      "requestNote": "申請メモ",
+      "requestNoteHint": "何をなぜ変えるのか（承認者に見えます）",
+      "submitRequest": "申請する",
+      "requested": "承認を依頼しました",
+      "applied": "反映しました",
+      "failedTitle": "反映できなかった申請: {kind}「{name}」",
       "invalidPayload": "加工プログラムの内容が正しくありません",
-      "invalidReference": "存在しない工程または作業場所が選ばれています",
-      "savedAudit": "v{version} の加工プログラムを保存（{count} 本）"
+      "invalidReference": "存在しない工程または機種が選ばれています",
+      "fileMissing": "プログラムファイルを選んでください",
+      "alreadyPending": "このプログラムには承認待ちの申請があります",
+      "changeNotFound": "加工プログラムの変更申請が見つかりません",
+      "applyFailed": "加工プログラムの変更を反映できませんでした",
+      "requestedAudit": "加工プログラムの{kind}を申請「{name}」",
+      "appliedAudit": "v{version} の加工プログラム「{name}」の{kind}を反映",
+      "applyFailedAudit": "加工プログラムの変更を反映できませんでした: {error}",
+      "rejectedAudit": "加工プログラムの変更を差し戻し（理由: {reason}）",
+      "kind": {
+        "ADD": "追加",
+        "EDIT": "変更",
+        "REVISE": "新しい版",
+        "DELETE": "削除",
+        "RETIRE": "廃止"
+      },
+      "modalTitle": {
+        "ADD": "加工プログラムを追加",
+        "EDIT": "「{name}」を直す",
+        "REVISE": "「{name}」の新しい版（v{revision}）を作る",
+        "DELETE": "「{name}」を削除",
+        "RETIRE": "「{name}」を廃止"
+      },
+      "modalHint": {
+        "ADD": "新しいプログラム（v1）を申請します。",
+        "EDIT": "まだ工程で使われていない版を、その場で直します。",
+        "REVISE": "今の版は工程で使われているので残し、変更した内容で次の版を作ります。これから開始する工程には新しい版が出ます。",
+        "DELETE": "どの版もまだ工程で使われていないので、プログラムごと削除します。",
+        "RETIRE": "工程で使われた版があるので削除はできません。廃止すると、これから開始する工程には出なくなります（使った記録と版は残ります）。"
+      },
+      "premise": {
+        "notFound": "基にしたプログラムが見つかりません",
+        "notCurrent": "基にした版はもう最新ではありません（先に別の変更が反映されました）",
+        "retired": "このプログラムは廃止されています",
+        "used": "この版は工程で使われたため、その場では直せません。新しい版を作ってください",
+        "keyUsed": "工程で使われた版があるため削除できません。廃止してください"
+      }
     },
     "wipRecording": {
       "title": "在庫に置く仕掛品",
@@ -7103,6 +7161,32 @@
       "updateFailed": "自社法人を更新できませんでした",
       "deleteFailed": "自社法人を削除できませんでした",
       "codeInvalidChars": "法人コードに「/」「~」と空白は使えません"
+    },
+    "machineModels": {
+      "tabLocations": "作業場所",
+      "tabModels": "機種",
+      "column": "機種",
+      "add": "機種を追加",
+      "addTitle": "機種を追加",
+      "editTitle": "機種を編集",
+      "deleteTitle": "機種を削除",
+      "description": "同じ型の機械をまとめる名前です。機械（作業場所）ごとに 1 つ選び、加工プログラムは機種に当てます。",
+      "empty": "機種が未登録です。「機種を追加」から登録してください。",
+      "maker": "メーカー",
+      "usageHead": "機械 / プログラム",
+      "usage": "機械 {machines} 台 / プログラム {programs} 本",
+      "codePlaceholder": "例: NC-LATHE-A",
+      "namePlaceholder": "例: NC旋盤 A型",
+      "none": "機種なし",
+      "locationHint": "加工プログラムはこの機種で機械に当たります",
+      "created": "機種を追加しました",
+      "updated": "機種を更新しました",
+      "deleted": "機種「{name}」を削除しました",
+      "deleteConfirm": "機種「{name}」を削除しますか？",
+      "inUseWarning": "機械 {machines} 台・プログラム {programs} 本が使っています（削除できません — 無効化をご検討ください）。",
+      "inUseCannotDelete": "機械 {machines} 台・プログラム {programs} 本が使っているため削除できません（無効化してください）",
+      "saveFailed": "機種を保存できませんでした",
+      "deleteFailed": "機種を削除できませんでした"
     }
   },
   "manual": {
@@ -10935,6 +11019,18 @@
       "sortOrder": {
         "label": "表示順 / 有効 / 備考",
         "summary": "並び順・選択肢に出すか・補足です。"
+      },
+      "machineModel": {
+        "label": "機種",
+        "summary": "この機械の機種です。加工プログラムは機種に当てるので、ここで選んだ機種のプログラムが工程実行画面で「この機種用」として先頭に出ます。エリアや作業台は空のままにします。"
+      },
+      "machineModelCode": {
+        "label": "機種のコード / 名称",
+        "summary": "機種の管理番号と名前です。機械と加工プログラムの両方から選びます。"
+      },
+      "machineModelMaker": {
+        "label": "メーカー",
+        "summary": "機種のメーカーです（任意）。"
       }
     },
     "storageLocation": {

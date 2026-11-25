@@ -48,6 +48,8 @@ export const LEGACY_EMPTY: Record<
   price_list_entries: "skip",
   // 指示書の打ち切り — 段が無ければ申請と同時に適用する（工程フロー変更と同じ）。
   work_order_aborts: "skip",
+  // 加工プログラムの変更 — 段が無ければ申請と同時に当たる（同上）。
+  design_program_changes: "skip",
 };
 
 export function resolveApprovalNeed(input: {

@@ -3,8 +3,9 @@
 /**
  * StepProgramsSection — 共有端末の工程実行画面「この工程の加工プログラム」。
  *
- * 機械（= 作業場所）が一致するものが先頭（design-programs-core.ts programsForStep
- * — Web と同じ規則）。1 本も無ければ何も描かない。ファイルは
+ * 機械（= 作業場所）の機種が一致するものが先頭で「この機種用」
+ * （design-programs-core.ts — Web と同じ規則）。開始済みの工程は開始したときの
+ * 版を出す。1 本も無ければ何も描かない。ファイルは
  * /api/kiosk/steps/[stepId]/programs/[programId] から落とす。
  */
 
@@ -32,20 +33,28 @@ export function StepProgramsSection({
             <Stack gap={6}>
               <Group gap="xs" wrap="wrap">
                 <Text fw={600}>{p.name}</Text>
+                <Badge color="gray" variant="outline">
+                  {fillMessage(m.steps.programs.revision, {
+                    revision: String(p.revision),
+                  })}
+                </Badge>
                 {p.programNumber && (
                   <Text c="dimmed" ff="monospace" size="sm">
                     {p.programNumber}
                   </Text>
                 )}
-                {p.machineMatch && (
+                {p.modelMatch && (
                   <Badge color="green" variant="light">
-                    {m.steps.programs.machineMatch}
+                    {m.steps.programs.modelMatch}
                   </Badge>
                 )}
               </Group>
               <Text c="dimmed" size="sm">
-                {fillMessage(m.steps.programs.machine, {
-                  name: p.workLocationName ?? m.steps.programs.anyMachine,
+                {fillMessage(m.steps.programs.machineModels, {
+                  names:
+                    p.machineModelNames.length > 0
+                      ? p.machineModelNames.join("、")
+                      : m.steps.programs.anyModel,
                 })}
               </Text>
               {p.notes && (

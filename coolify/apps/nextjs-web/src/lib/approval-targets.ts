@@ -40,6 +40,7 @@ export const APPROVAL_TARGET_TYPES = [
   "design_versions",
   "price_list_entries",
   "work_order_aborts",
+  "design_program_changes",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -265,6 +266,17 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     appKey: "work-orders",
     approvePermission: "work_order",
   },
+  // 加工プログラムの変更（追加 / 直す / 新しい版 / 削除 / 廃止）— 対象は申請
+  // そのもの（uuid）。人が見たいのは図面の版（保留中の申請はその詳細に
+  // カードで出る）なので、版の詳細へ読み替えて 302 する中継ページを置く。
+  // 段が 1 つも無ければ申請と同時に当たる（未設定 = 素通し）。
+  design_program_changes: {
+    label: label("common.designProgramChange", "ja"),
+    color: "violet",
+    href: (id) => `/production/design-files/program-changes/${id}`,
+    appKey: "design-files",
+    approvePermission: "design_file",
+  },
   // 価格表は**独自値があるときだけ**承認を通る（価格試算から引き継いでいない
   // 基準単価・段階単価の上書き）。通常のフローは持たない。承認待ちの価格表は
   // 価格の解決に使われない。
@@ -299,6 +311,7 @@ const TARGET_LABEL_KEY: Record<ApprovalTargetType, string> = {
   design_versions: "common.designVersion",
   price_list_entries: "common.priceList",
   work_order_aborts: "common.workOrderAbort",
+  design_program_changes: "common.designProgramChange",
 };
 
 /**
