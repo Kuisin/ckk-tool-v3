@@ -53,11 +53,11 @@ export function storageLabelOf(r: {
  * 一覧（製品タブ）には仕掛品を出さない（仕掛品タブが持つ）。
  */
 function shownItem<T>(r: {
-  isSemiFinished: boolean;
+  wipStateId: number | null;
   item: T;
   aimedItem: T | null;
 }): T {
-  return r.isSemiFinished && r.aimedItem ? r.aimedItem : r.item;
+  return r.wipStateId != null && r.aimedItem ? r.aimedItem : r.item;
 }
 
 /** 製品在庫 一覧（更新日の新しい順）。 */
@@ -265,7 +265,7 @@ export async function fetchProductInventoryDetail(
     quantity: Number(r.quantity),
     reservedQuantity: Number(r.reservedQuantity),
     available: Number(r.quantity) - Number(r.reservedQuantity),
-    isSemiFinished: r.isSemiFinished,
+    isSemiFinished: r.wipStateId != null,
     storageLabel: storageLabelOf(r),
     location: r.location,
     sourceStepLabel,

@@ -181,7 +181,7 @@ async function main(): Promise<void> {
   // ── B. 在庫が足りているとき ──────────────────────────────────────────────
   const beforeOk = sql(
     `SELECT COALESCE(sum(quantity),0) FROM app.item_inventory
-      WHERE item_id=9001 AND custody_bp_id IS NULL AND is_semi_finished=false`,
+      WHERE item_id=9001 AND custody_bp_id IS NULL AND wip_state_id IS NULL`,
   );
   await pressShip(page, OK_DOR);
   const dialogB = await page
@@ -205,7 +205,7 @@ async function main(): Promise<void> {
 
   const afterOk = sql(
     `SELECT COALESCE(sum(quantity),0) FROM app.item_inventory
-      WHERE item_id=9001 AND custody_bp_id IS NULL AND is_semi_finished=false`,
+      WHERE item_id=9001 AND custody_bp_id IS NULL AND wip_state_id IS NULL`,
   );
   check(
     "B2a 出した分だけ在庫が減る",

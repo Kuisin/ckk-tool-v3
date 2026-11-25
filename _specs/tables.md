@@ -30,10 +30,14 @@
 >   添え、どれもバケットの一意キーに入る。**数量だけで原価は持たない**。
 >   突合（どの仕掛品をこの製品に使えるか）は 同じ材種 必須・加工状態が製品の
 >   工程の先頭部分、の上で **ちょうど / 長い / 太い の 3 区分に分けて**出す
->   （`lib/wip-state-core.ts` が唯一の定義）。既存の半製品行（`is_semi_finished`）は
->   まだ `wip_state_id` が null — 埋めるのは次の段（backfill）で、それまでは
->   `is_semi_finished = (wip_state_id IS NOT NULL)` を張れない。いま DB が守るのは
->   「加工状態を持つ行は顧客の預り品ではない」だけ。
+>   （`lib/wip-state-core.ts` が唯一の定義）。**半製品（仕掛品）かどうかの印は
+>   `wip_state_id` の有無だけ**（PR 7/7）。旧来の `is_semi_finished` 列は廃止予定で、
+>   アプリは読みも書きもしない（Prisma では `@ignore`）— DB の BEFORE トリガー
+>   `item_inventory_wip_legacy` が `wip_state_id IS NOT NULL` から埋め直すので
+>   CHECK `is_semi_finished = (wip_state_id IS NOT NULL)` は保たれる。列・CHECK・
+>   旧来の形を書き換える `app.wip_legacy_bucket` は、この版が両環境に出たあとの
+>   次の migration で落とす（expand / contract — 旧コンテナがまだ書く間は残す）。
+>   DB が守るもう 1 つは「加工状態を持つ行は顧客の預り品ではない」。
 >   **加工状態の決め方（利用者の決定 2026-11-25）**: (1) 工程の途中で半製品に
 >   振り分けた品（`output_defect_semi_finished`）は、その工程を**済んでいない**
 >   ものとして数える（済んだことにすると次の指示書が工程を飛ばす）。分岐終端で
@@ -46,7 +50,7 @@
 >   仕掛ブランク（材種・径 = 指示書の素材、長 = 製品の要求長）× 拠点 × ロット ×
 >   加工状態 × 目標製品（= 指示書の製品）× 仕上がり寸法で、`source_step_id` に
 >   発生元の工程が入る。ブランクが決まらない指示書（製品に要求素材が無い等）は
->   旧来の鍵のまま渡り、DB の `app.wip_legacy_bucket` が「未分類」へ寄せる
+>   製品の行のまま「未分類」の状態（`app.wip_unclassified_state_id`）を指して入る
 >   （数は失わない）。品物が工程を離れて在庫に入るとき — 半製品の数（> 0）を
 >   記録した工程・「半製品在庫へ」で終わる分岐の終端 — にだけ、工程
 >   （`work_order_steps`）へ仕上がり寸法と選んだ経路を記録する（下の表）。
@@ -1650,7 +1654,8 @@ Table defect_records {
 // ===========================
 
 // 在庫は**1 表**（品目統合。旧 product_inventory / material_inventory は落とした）。
-// 1 行 = 1 バケット = 品目 × 拠点 × 保管場所 × 棚 × ロット × 半製品 × 預け先。
+// 1 行 = 1 バケット = 品目 × 拠点 × 保管場所 × 棚 × ロット × 預け先 × 所有者
+// × 加工状態 × 目標製品 × 仕上がり寸法（仕掛品の列は上の注記）。
 // 数量は Decimal に寄せてある（製品は int、素材は Decimal だったため）。
 Table item_inventory {
   id              uuid [pk]
@@ -1659,7 +1664,7 @@ Table item_inventory {
   storage_location_id int [ref: > storage_locations.id]
   shelf_id        int [ref: > storage_shelves.id]
   lot_number      int [ref: > work_orders.work_order_number]  // 素材は null
-  is_semi_finished boolean [not null, default: false]
+  is_semi_finished boolean [not null, default: false]  // 廃止予定 — wip_state_id から DB が埋める。読まない
   source_step_id  uuid                                  // 半製品の発生工程
   // **マイナスになり得る。** 在庫が足りなくても出荷は止めない（物はもう
   // 出ている。記録だけ拒んでも現実は変わらず、見えない食い違いが残る）ので、
@@ -1693,7 +1698,7 @@ Table item_inventory {
   updated_at      timestamp
 
   indexes {
-    (item_id, plant_id, lot_number, is_semi_finished, storage_location_id, shelf_id, custody_bp_id, owner_bp_id) [unique, note: 'NULLS NOT DISTINCT']
+    (item_id, plant_id, lot_number, storage_location_id, shelf_id, custody_bp_id, owner_bp_id, wip_state_id, aimed_item_id, finished_diameter_mm, finished_length_mm) [unique, note: 'NULLS NOT DISTINCT']
   }
 }
 

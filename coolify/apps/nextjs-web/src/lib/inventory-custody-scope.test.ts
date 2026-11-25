@@ -72,9 +72,8 @@ const OWNER_AXIS: Axis = { token: "ownerBpId", comment: "owner-scope:" };
  * 仕掛品（加工状態を持つ行）の軸。仕掛品は完成していない品で、製品・素材の
  * 手持ち・引当・出荷に数えてはいけない。**品目で絞るだけでは足りない** —
  * 加工状態を推定できなかった「未分類」の仕掛品は製品の品目のまま残っている。
- * `isSemiFinished: false` は同じ意味（DB の CHECK で wip_state_id と一致する）
- * だが、印として認めるのは `wipStateId` だけにしてある — 旧来の半製品の印と
- * 仕掛品を別々に考えた頃のクエリを、1 つずつ見直した証拠にするため。
+ * 印は `wipStateId` だけ（旧 is_semi_finished は Prisma では @ignore —
+ * Client からは見えない廃止予定の列）。
  */
 const WIP_AXIS: Axis = { token: "wipStateId", comment: "wip-scope:" };
 

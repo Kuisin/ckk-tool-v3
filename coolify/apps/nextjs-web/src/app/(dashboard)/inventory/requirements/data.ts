@@ -318,7 +318,7 @@ export async function fetchStockRequirements(
         });
       }
     }
-    // 半製品（item_inventory の isSemiFinished バケット）はここでは
+    // 半製品（item_inventory の加工状態を持つバケット）はここでは
     // onHand/reserved の合計にそのまま含めている（分岐して除外していない）。
     // この画面には半製品が消費される OUT を明示的に立てる仕組みが無い
     // （§7 の分岐は半製品在庫を作るだけで、それを消費する側の取引が無い）ので、

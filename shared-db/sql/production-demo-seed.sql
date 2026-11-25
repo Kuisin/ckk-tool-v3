@@ -608,52 +608,90 @@ UPDATE app.items
    AND EXISTS (SELECT 1 FROM app.material_types WHERE code = 'B01A0001');
 
 -- ── 製品在庫（完成品 / 半製品 / 未割当 / 移動先棚のバリエーション）─────────────
---
--- 半製品の行は**旧来の形**（item_id = 製品・加工状態なし）で書いてある。
--- トリガー item_inventory_wip_legacy が移行と同じ関数で仕掛品の形
--- （item_id = 仕掛ブランク・aimed_item_id = 製品・wip_state_id）へ書き換える
--- ので、このシードを流すたびに移行の規則が通る:
---   -0002 #9001 切断の途中で振り分け（DEFECT → 切断は済んでいない）→ φ6×60・状態 []
---   -0006 #9004 段加工の終端（分岐終端 → 切断・センタレス・段加工 済）
---         → φ6×60 で、製品 9001 の工程の先頭部分 = 使い回せる仕掛品
---   -0007 ロットも発生工程も無い半製品 → 推定できず「未分類」（製品 9002 のまま）
 -- 在庫は app.item_inventory の 1 本（製品・素材の区別は品目が持つ）。
 -- 単位は行に持つ（旧 product_inventory は持たず、マスタから引いていた）。
 INSERT INTO app.item_inventory (id, item_id, plant_id, lot_number,
-  quantity, reserved_quantity, is_semi_finished, source_step_id,
+  quantity, reserved_quantity, source_step_id,
   storage_location_id, shelf_id, unit, location, notes, updated_at)
 VALUES
   -- #9004 完了ロットの完成品（受注 50 を予約中 → 利用可能 5）
   ('dc050000-0000-4000-8000-000000000001'::uuid, 9001,
    (SELECT id FROM app.plants WHERE code = 'F01'), 9004,
-   55, 50, false, NULL, 9101, 9111, '本', NULL, NULL, '2026-07-18T16:05:00+09'),
-  -- #9001 切断工程で発生した半製品（source_step = 切断）
-  ('dc050000-0000-4000-8000-000000000002'::uuid, 9001,
-   (SELECT id FROM app.plants WHERE code = 'F01'), 9001,
-   2, 0, true, 'dc011000-0000-4000-8000-000000000002'::uuid,
-   9101, 9113, '本', NULL, NULL, '2026-07-16T11:35:00+09'),
+   55, 50, NULL, 9101, 9111, '本', NULL, NULL, '2026-07-18T16:05:00+09'),
   -- 保管場所未割当の例（在庫移動の移動元）
   ('dc050000-0000-4000-8000-000000000003'::uuid, 9002,
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL,
-   30, 0, false, NULL, NULL, NULL, '本', NULL, NULL, '2026-07-17T10:10:00+09'),
+   30, 0, NULL, NULL, NULL, '本', NULL, NULL, '2026-07-17T10:10:00+09'),
   -- 未割当 → 第一倉庫 A-2 へ 10 本移動した移動先バケット
   ('dc050000-0000-4000-8000-000000000004'::uuid, 9002,
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL,
-   10, 0, false, NULL, 9101, 9112, '本', NULL, NULL, '2026-07-17T10:10:00+09'),
+   10, 0, NULL, 9101, 9112, '本', NULL, NULL, '2026-07-17T10:10:00+09'),
   ('dc050000-0000-4000-8000-000000000005'::uuid, 9003,
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL,
-   12, 0, false, NULL, 9102, 9121, '本', NULL, NULL, '2026-07-10T14:00:00+09'),
-  -- #9004 段加工まで済んだ半製品（使い回せる仕掛品の例）
-  ('dc050000-0000-4000-8000-000000000006'::uuid, 9001,
-   (SELECT id FROM app.plants WHERE code = 'F01'), 9004,
-   3, 0, true, 'dc014000-0000-4000-8000-000000000004'::uuid,
-   9101, 9113, '本', NULL, NULL, '2026-07-18T16:05:00+09'),
-  -- 出どころの分からない半製品（「未分類」の例）
-  ('dc050000-0000-4000-8000-000000000007'::uuid, 9002,
-   (SELECT id FROM app.plants WHERE code = 'F01'), NULL,
-   4, 0, true, NULL, 9102, 9121, '本', NULL, '旧システムからの繰越',
-   '2026-07-05T10:00:00+09')
+   12, 0, NULL, 9102, 9121, '本', NULL, NULL, '2026-07-10T14:00:00+09')
 ON CONFLICT (id) DO NOTHING;
+
+-- ── 仕掛品（半製品）──────────────────────────────────────────────────────────
+-- 仕掛品は 仕掛ブランク（材種 × 径 × 長）× 加工状態（済んだ形を変える工程の並び）
+-- × 目標製品 の行に置く。ブランクと加工状態は DB の関数で寄せる（アプリの計上と
+-- 同じ作り方）:
+--   -0002 #9001 切断の途中で振り分けた分 → 切断は済んでいない → φ6×60・状態 []
+--   -0006 #9004 段加工まで済んだ分 → 切断・センタレス・段加工 済 → φ6×60 で、
+--         製品 9001 の工程の先頭部分 = 使い回せる仕掛品
+--   -0007 ロットも発生工程も無い半製品 → 「未分類」（品目は製品 9002 のまま）
+-- 製品 9001 に要求寸法が無い DB（上の UPDATE が効かなかった）では -0002 / -0006 も
+-- 「未分類」に落ちる — アプリの計上（ブランクが決まらない指示書）と同じ扱い。
+WITH blank AS (
+  SELECT app.wip_blank_item_id(i.requires_material_type_id, i.requires_diameter_mm,
+                               i.requires_length_mm) AS id
+    FROM app.items i
+   WHERE i.id = 9001
+     AND i.requires_material_type_id IS NOT NULL
+     AND i.requires_diameter_mm IS NOT NULL
+     AND i.requires_length_mm IS NOT NULL
+),
+-- 発生工程までに済んだ、加工状態に数える工程（工程順）。
+-- upto_sort = その工程を含める位置（振り分けた分は発生工程を含めない）。
+src (inv_id, wo_id, lot, upto_sort, source_step_id, qty, updated_at) AS (
+  VALUES
+    ('dc050000-0000-4000-8000-000000000002'::uuid,
+     'dc000000-0000-4000-8000-000000009001'::uuid, 9001, 1,
+     'dc011000-0000-4000-8000-000000000002'::uuid, 2, '2026-07-16T11:35:00+09'::timestamptz),
+    ('dc050000-0000-4000-8000-000000000006'::uuid,
+     'dc000000-0000-4000-8000-000000009004'::uuid, 9004, 4,
+     'dc014000-0000-4000-8000-000000000004'::uuid, 3, '2026-07-18T16:05:00+09'::timestamptz)
+),
+path AS (
+  SELECT src.inv_id,
+         coalesce((SELECT array_agg(s.process_step_id ORDER BY s.sort_order)
+                     FROM app.work_order_steps s
+                     JOIN app.process_step_catalog c ON c.id = s.process_step_id
+                    WHERE s.work_order_id = src.wo_id
+                      AND s.sort_order <= src.upto_sort
+                      AND s.status = 'COMPLETED'
+                      AND c.affects_wip_state), '{}'::int[]) AS step_ids
+    FROM src
+)
+INSERT INTO app.item_inventory (id, item_id, plant_id, lot_number,
+  quantity, reserved_quantity, source_step_id, wip_state_id, aimed_item_id,
+  storage_location_id, shelf_id, unit, location, notes, updated_at)
+SELECT src.inv_id,
+       coalesce((SELECT id FROM blank), 9001),
+       (SELECT id FROM app.plants WHERE code = 'F01'), src.lot,
+       src.qty, 0, src.source_step_id,
+       CASE WHEN EXISTS (SELECT 1 FROM blank) THEN app.wip_state_id(path.step_ids)
+            ELSE app.wip_unclassified_state_id() END,
+       9001, 9101, 9113, '本', NULL, NULL, src.updated_at
+  FROM src JOIN path ON path.inv_id = src.inv_id
+ WHERE NOT EXISTS (SELECT 1 FROM app.item_inventory ii WHERE ii.id = src.inv_id)
+UNION ALL
+-- 出どころの分からない半製品（「未分類」の例）
+SELECT 'dc050000-0000-4000-8000-000000000007'::uuid, 9002,
+       (SELECT id FROM app.plants WHERE code = 'F01'), NULL,
+       4, 0, NULL, app.wip_unclassified_state_id(), 9002,
+       9102, 9121, '本', NULL, '旧システムからの繰越', '2026-07-05T10:00:00+09'
+ WHERE NOT EXISTS (SELECT 1 FROM app.item_inventory ii
+                    WHERE ii.id = 'dc050000-0000-4000-8000-000000000007'::uuid);
 
 -- ── 素材在庫（予約 > 在庫 の ATP マイナス例を 1 行含む）───────────────────────
 INSERT INTO app.item_inventory (id, item_id, plant_id,

@@ -244,17 +244,34 @@ BEGIN
   ASSERT b.aimed_item_id = 990001, 'blank input aims at the lot product';
 END $$;
 
--- 不変条件: 半製品 ⇔ 加工状態
+-- 不変条件: 半製品 ⇔ 加工状態（20261126270000_wip_cleanup から、印はトリガーが
+-- 加工状態から埋め直す — アプリは is_semi_finished を書かない）。
 DO $$
-DECLARE raised boolean := false;
+DECLARE
+  st int := (SELECT min(id) FROM app.wip_states);
+  v boolean;
 BEGIN
-  BEGIN
-    UPDATE app.item_inventory SET wip_state_id = (SELECT min(id) FROM app.wip_states)
-     WHERE id = 'e0000000-0000-4000-8000-000000000007';
-  EXCEPTION WHEN check_violation THEN
-    raised := true;
-  END;
-  ASSERT raised, 'non-semi row with a wip state is rejected';
+  -- 加工状態を付けると印が立つ（CHECK に当たらない）
+  UPDATE app.item_inventory SET wip_state_id = st
+   WHERE id = 'e0000000-0000-4000-8000-000000000007';
+  SELECT is_semi_finished INTO v FROM app.item_inventory
+   WHERE id = 'e0000000-0000-4000-8000-000000000007';
+  ASSERT v, 'wip state sets is_semi_finished';
+
+  -- 印を書かない新しい形の INSERT（既定 false で来る）でも印が立つ
+  INSERT INTO app.item_inventory (id, item_id, lot_number, wip_state_id, aimed_item_id,
+                                  quantity, unit, updated_at)
+  VALUES ('e0000000-0000-4000-8000-0000000000aa', 990002, 990199, st, 990002, 1, '本', now());
+  SELECT is_semi_finished INTO v FROM app.item_inventory
+   WHERE id = 'e0000000-0000-4000-8000-0000000000aa';
+  ASSERT v, 'new-shape insert gets is_semi_finished from wip_state_id';
+
+  -- 加工状態を外すと印も落ちる
+  UPDATE app.item_inventory SET wip_state_id = NULL, aimed_item_id = NULL
+   WHERE id = 'e0000000-0000-4000-8000-0000000000aa';
+  SELECT is_semi_finished INTO v FROM app.item_inventory
+   WHERE id = 'e0000000-0000-4000-8000-0000000000aa';
+  ASSERT NOT v, 'clearing the wip state clears is_semi_finished';
 END $$;
 
 ROLLBACK;

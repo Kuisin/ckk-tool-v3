@@ -185,7 +185,6 @@ export async function transferStock(
         itemId: src.itemId,
         plantId: v.targetPlantId,
         lotNumber: src.lotNumber,
-        isSemiFinished: src.isSemiFinished,
         storageLocationId: v.targetStorageLocationId,
         shelfId: v.targetShelfId,
         // 移した先は必ず手元（預け先なし）のバケット。
