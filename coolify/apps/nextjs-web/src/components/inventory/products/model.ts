@@ -2,8 +2,9 @@
  * model.ts — 製品在庫 (PD04) view-model types。pure / client-safe のみ。
  *
  * id = product_inventory.id (uuid) — URL id と同一。
- * 仕掛品（WIP）は在庫レコードではなく、進行中指示書の工程数量から
- * サーバー側で都度算出する（computeWipByStep）。
+ * 工程内（進行中の指示書に乗っている本数）は在庫レコードではなく、工程数量から
+ * サーバー側で都度算出する（computeWipByStep）。在庫に置いた仕掛品は
+ * ../wip/model.ts（一覧には出さない。詳細はこの画面を共用する）。
  */
 
 import type {
@@ -14,6 +15,8 @@ import type {
 /** 製品在庫 一覧 1 行。 */
 export interface ProductInventoryRow {
   id: string;
+  /** 製品（items.id）。「使える仕掛品」の突合の鍵。 */
+  itemId: number;
   productName: string;
   /** 製品コード（PRD-… 導出。レガシーは未採番 → null）。 */
   productCode: string | null;
@@ -31,12 +34,10 @@ export interface ProductInventoryRow {
   reservedQuantity: number;
   /** 利用可能数 = quantity − reservedQuantity。 */
   available: number;
-  /** 半製品フラグ（区分列: 半製品 orange バッジ）。 */
-  isSemiFinished: boolean;
   updatedAt: string;
 }
 
-/** 仕掛品 一覧 1 行（進行中指示書の工程別仕掛数）。 */
+/** 工程内 一覧 1 行（進行中指示書の工程別仕掛数）。 */
 export interface WipRow {
   /** work_order_steps.id — 行キー。 */
   stepId: string;

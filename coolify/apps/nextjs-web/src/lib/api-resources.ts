@@ -158,7 +158,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Product stock. quantity and reservedQuantity are returned raw — availability is decided by the app, not by subtracting these.",
+      "Product stock. quantity and reservedQuantity are returned raw — availability is decided by the app, not by subtracting these. WIP rows (isSemiFinished) carry wipState (completed part-changing steps), aimedProductId and finished dimensions; productId on those rows is the target product.",
     scope: "Storing plant.",
   },
   {
