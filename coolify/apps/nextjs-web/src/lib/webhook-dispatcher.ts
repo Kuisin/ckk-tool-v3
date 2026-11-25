@@ -28,7 +28,14 @@
 
 import "server-only";
 
+import type { LookupAddress } from "node:dns";
 import { lookup } from "node:dns/promises";
+import {
+  request as httpRequest,
+  type IncomingMessage,
+  type RequestOptions,
+} from "node:http";
+import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
 import {
   buildPermissionSet,
@@ -46,6 +53,7 @@ import {
   isBlockedAddress,
   isSuccessStatus,
   nextDelaySec,
+  pinnedLookup,
   resourceOfEventType,
   subscribes,
   summarizeError,
@@ -275,7 +283,10 @@ export async function sendSigned(args: {
   const check = validateWebhookUrl(args.url);
   if (!check.ok) return { ok: false, status: null, error: check.error };
 
+  // 送信先が DNS 名なら、送る直前に引いて解決後のアドレスを検査する。文字どおりの
+  // IP は validateWebhookUrl が既に弾いているので引き直さない。
   const host = check.url.hostname.replace(/^\[|\]$/g, "");
+  let pinned: LookupAddress[] | undefined;
   if (isIP(host) === 0) {
     try {
       const addrs = await lookup(host, { all: true });
@@ -289,40 +300,74 @@ export async function sendSigned(args: {
           error: "resolved to a blocked address",
         };
       }
+      // ★ DNS リバインディング（TOCTOU）対策: 検査と接続の間に DNS が差し替わっても
+      //   いま検査したアドレスへ繋ぐよう、解決結果を接続に固定する（下の postPinned）。
+      pinned = addrs;
     } catch (e) {
       return { ok: false, status: null, error: summarizeError(e) };
     }
   }
 
   try {
-    const res = await fetch(check.url, {
-      method: "POST",
-      headers: webhookHeaders(
-        args.secret,
-        args.messageId,
-        Math.floor(Date.now() / 1_000),
-        args.body,
-      ),
-      body: args.body,
-      redirect: "manual",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-    // 応答本文は読まない・保存しない（相手の内部情報が混ざりうる）。
-    await res.body?.cancel().catch(() => undefined);
-    if (isSuccessStatus(res.status)) {
-      return { ok: true, status: res.status, error: null };
-    }
+    const status = await postPinned(check.url, args, pinned);
+    if (isSuccessStatus(status)) return { ok: true, status, error: null };
     return {
       ok: false,
-      status: res.status,
+      status,
       error:
-        res.status >= 300 && res.status < 400
-          ? `redirect (${res.status}) is not followed`
-          : `HTTP ${res.status}`,
+        status >= 300 && status < 400
+          ? `redirect (${status}) is not followed`
+          : `HTTP ${status}`,
     };
   } catch (e) {
     return { ok: false, status: null, error: summarizeError(e) };
   }
+}
+
+/**
+ * POST 本体。**fetch ではなく `node:http` / `node:https`** を使う — こちらは
+ * `lookup` オプションで DNS 解決を差し替えられるので、送信直前に検査した
+ * アドレスへ接続を固定できる（fetch/undici にそのフックは無く、undici は依存
+ * にも入っていない）。URL はそのまま渡すのでホスト名は変わらず、TLS SNI・
+ * 証明書検証・`Host` ヘッダは正しいまま — IP へ書き換える案は https を壊すので
+ * 採らない。リダイレクトは node:http/https の既定どおり追わず（fetch の
+ * `redirect:"manual"` 相当）、応答本文は読まず破棄する。
+ */
+function postPinned(
+  url: URL,
+  args: { secret: string; messageId: string; body: string },
+  pinned: readonly LookupAddress[] | undefined,
+): Promise<number> {
+  const options: RequestOptions = {
+    method: "POST",
+    headers: webhookHeaders(
+      args.secret,
+      args.messageId,
+      Math.floor(Date.now() / 1_000),
+      args.body,
+    ),
+    // 検査したアドレスだけへ繋ぐ。IP 直指定のときは connect が lookup を呼ばない
+    // ので undefined でよい。
+    lookup: pinned ? pinnedLookup(pinned) : undefined,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  };
+  return new Promise<number>((resolve, reject) => {
+    const onResponse = (res: IncomingMessage) => {
+      // 応答本文は読まない・保存しない（相手の内部情報が混ざりうる）。破棄する。
+      // 破棄中に接続が切れても res の未処理 'error' でプロセスが落ちないよう先に
+      // 飲む（fetch 版の res.body.cancel().catch() と同じ安全性。dispatcher は
+      // 単一プロセスの setInterval で回るので uncaughtException は致命的）。
+      res.on("error", () => {});
+      res.resume();
+      resolve(res.statusCode ?? 0);
+    };
+    const req =
+      url.protocol === "https:"
+        ? httpsRequest(url, options, onResponse)
+        : httpRequest(url, options, onResponse);
+    req.on("error", reject);
+    req.end(args.body);
+  });
 }
 
 async function deliverOne(

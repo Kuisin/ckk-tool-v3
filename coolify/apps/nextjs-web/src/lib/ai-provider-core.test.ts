@@ -6,6 +6,7 @@ import {
   AI_PROVIDERS,
   type AiProviderSettings,
   aiProviderSettingsSchema,
+  baseUrlVerdict,
   DEFAULT_AI_PROVIDER_SETTINGS,
   encodeWireConfig,
   redactAiSettings,
@@ -109,6 +110,42 @@ describe("ai-provider-core", () => {
       expect(
         ok({ provider: "openai", baseUrl: "http://localhost:8000/v1" }),
       ).toBe(false);
+    });
+
+    // baseUrlVerdict を直接叩く — 数値 IP・別基数・IPv6 射影でメタデータ/
+    // ループバックへ回り込めないこと（L2）。ollama は許可リストが無いので、
+    // ここで弾けないと任意の内部アドレスへ書類を送れてしまう。
+    it("ループバック・未指定・リンクローカルは基数を問わず BLOCKED", () => {
+      // 既存の正確一致（従来どおり）
+      expect(baseUrlVerdict("ollama", "http://127.0.0.1/")).toBe("BLOCKED");
+      expect(baseUrlVerdict("ollama", "http://169.254.169.254/")).toBe(
+        "BLOCKED",
+      );
+      // ループバック /8 の別アドレス（従来は素通りしていた）
+      expect(baseUrlVerdict("ollama", "http://127.0.0.2/")).toBe("BLOCKED");
+      // 10 進・16 進・8 進の 127.0.0.1
+      expect(baseUrlVerdict("ollama", "http://2130706433/")).toBe("BLOCKED");
+      expect(baseUrlVerdict("ollama", "http://0x7f000001/")).toBe("BLOCKED");
+      expect(baseUrlVerdict("ollama", "http://0177.0.0.1/")).toBe("BLOCKED");
+      // 未指定 0/8・リンクローカル 169.254/16 の別アドレス
+      expect(baseUrlVerdict("ollama", "http://0.0.0.1/")).toBe("BLOCKED");
+      expect(baseUrlVerdict("ollama", "http://169.254.1.2/")).toBe("BLOCKED");
+      // 展開した IPv6 ループバックと IPv4 射影
+      expect(baseUrlVerdict("ollama", "http://[0:0:0:0:0:0:0:1]/")).toBe(
+        "BLOCKED",
+      );
+      expect(baseUrlVerdict("ollama", "http://[::ffff:127.0.0.1]/")).toBe(
+        "BLOCKED",
+      );
+    });
+
+    it("単一ラベルのコンテナ別名と RFC1918 の自社 GPU は OK", () => {
+      expect(baseUrlVerdict("ollama", "http://ollama:11434")).toBe("OK");
+      expect(baseUrlVerdict("ollama", "http://gpu-box:11434")).toBe("OK");
+      expect(baseUrlVerdict("ollama", "http://192.168.50.15:11434")).toBe("OK");
+      expect(baseUrlVerdict("ollama", "http://10.0.0.5/")).toBe("OK");
+      expect(baseUrlVerdict("ollama", "http://172.16.3.9/")).toBe("OK");
+      expect(baseUrlVerdict("ollama", "")).toBe("OK");
     });
 
     it("プロバイダは既知の 4 つだけ", () => {

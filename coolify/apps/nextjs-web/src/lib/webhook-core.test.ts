@@ -11,6 +11,7 @@ import {
   MAX_ATTEMPTS,
   nextDelaySec,
   normalizeEventTypes,
+  pinnedLookup,
   signWebhook,
   subscribes,
   validateWebhookUrl,
@@ -216,5 +217,44 @@ describe("validateWebhookUrl", () => {
     expect(isBlockedAddress("fe80::1")).toBe(true);
     expect(isBlockedAddress("10.1.2.3")).toBe(false);
     expect(isBlockedAddress("93.184.216.34")).toBe(false);
+  });
+});
+
+describe("pinnedLookup (DNS-rebinding pin)", () => {
+  const addrs = [
+    { address: "93.184.216.34", family: 4 },
+    { address: "2606:2800:220:1:248:1893:25c8:1946", family: 6 },
+  ];
+
+  it("hands back exactly the vetted addresses when all:true (Happy Eyeballs)", () => {
+    let got: unknown;
+    let err: unknown = "unset";
+    pinnedLookup(addrs)("example.com", { all: true }, (e, address) => {
+      err = e;
+      got = address;
+    });
+    // the connection can only go to an address we already screened — not a
+    // freshly re-resolved one
+    expect(err).toBeNull();
+    expect(got).toEqual(addrs);
+  });
+
+  it("hands back the first vetted address for a single lookup", () => {
+    let addr: unknown;
+    let fam: unknown;
+    pinnedLookup(addrs)("example.com", {}, (_e, address, family) => {
+      addr = address;
+      fam = family;
+    });
+    expect(addr).toBe("93.184.216.34");
+    expect(fam).toBe(4);
+  });
+
+  it("errors rather than falling back to a fresh resolve when empty", () => {
+    let err: unknown = "unset";
+    pinnedLookup([])("example.com", { all: true }, (e) => {
+      err = e;
+    });
+    expect(err).toBeInstanceOf(Error);
   });
 });

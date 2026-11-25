@@ -19,6 +19,8 @@
  */
 
 import { createHash, createHmac, randomBytes } from "node:crypto";
+import type { LookupAddress } from "node:dns";
+import type { LookupFunction } from "node:net";
 
 // ── 資源の登録簿 ─────────────────────────────────────────────────────────
 
@@ -560,4 +562,29 @@ export function validateWebhookUrl(raw: string): UrlCheck {
     };
   }
   return { ok: true, url };
+}
+
+/**
+ * DNS リバインディング（TOCTOU）対策の `lookup`。送信直前に名前を引いて
+ * `isBlockedAddress` で検査したアドレス**だけ**へ繋ぐために、`node:http` /
+ * `node:https` の `lookup` オプションへ渡す。これを使うと `connect` が名前を
+ * 引き直さないので、検査と接続の間に DNS が差し替わっても繋ぎ先は動かない。
+ *
+ * ホスト名は URL のまま残す（IP へ書き換えない）— そうすれば TLS の SNI・
+ * 証明書検証・`Host` ヘッダが正しいままで、正規の https 配送を壊さない。
+ * `all: true`（Happy Eyeballs / autoSelectFamily）でも単一でも応える。
+ */
+export function pinnedLookup(addrs: readonly LookupAddress[]): LookupFunction {
+  return (_hostname, options, callback) => {
+    const first = addrs[0];
+    if (!first) {
+      callback(new Error("no pinned address"), "", 0);
+      return;
+    }
+    if (options.all) {
+      callback(null, [...addrs]);
+    } else {
+      callback(null, first.address, first.family);
+    }
+  };
 }
