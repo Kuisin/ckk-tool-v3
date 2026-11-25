@@ -3568,6 +3568,36 @@
       },
       "seriesOption": "{name}（{count} 个版本）",
       "allSeries": "所有订货方"
+    },
+    "stepDueDate": {
+      "badge": "工序交期 {date}",
+      "label": "工序交期",
+      "labelWithStep": "{step} 的工序交期",
+      "builderHelp": "每道工序的截止日（可选）。超过交期且未完成的工序会在工序卡片和流程图中以红色显示。批准后可在工序执行画面的计划面板中修改。",
+      "panelHelp": "本工序应在何时前完成（可选）",
+      "notSet": "未设置",
+      "saved": "已保存工序交期",
+      "locked": "无法修改此工序的交期（工序已完成或已取消，或工单正在审批中）",
+      "couldNotSave": "无法保存工序交期",
+      "auditChanged": "工序交期改为 {date}"
+    },
+    "workLocationBoard": {
+      "title": "作业场所一览",
+      "date": "日期",
+      "today": "今天",
+      "time": "时间",
+      "workOrder": "工单",
+      "product": "产品",
+      "step": "工序",
+      "assignee": "负责人",
+      "status": "状态",
+      "carriedOver": "顺延（{date}）",
+      "working": "作业中",
+      "helpToday": "除今天的计划外，还显示之前顺延的未完成工序以及在该作业场所进行中的工序。",
+      "helpOtherDay": "按作业场所显示当天的作业计划。",
+      "empty": "当天没有作业计划",
+      "noLocation": "无作业场所",
+      "count": "{count} 条"
     }
   },
   "purchase": {

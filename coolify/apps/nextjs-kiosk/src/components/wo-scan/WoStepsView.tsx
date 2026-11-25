@@ -42,6 +42,8 @@ type Props = {
   workOrderNumber: number;
   /** null = 指示書が存在しない（「見つかりません」画面を出す）。 */
   overview: WorkOrderOverview | null;
+  /** 指示書一覧（/wo-list）から来た — 戻り先を一覧にする。 */
+  fromList?: boolean;
 };
 
 /** WORK_ORDER_STATUS → バッジ色（design.md §9 と同じ対応）。 */
@@ -54,9 +56,15 @@ const WO_STATUS_COLOR: Record<string, string> = {
   CANCELLED: "red",
 };
 
-export function WoStepsView({ workOrderNumber, overview }: Props) {
+export function WoStepsView({
+  workOrderNumber,
+  overview,
+  fromList = false,
+}: Props) {
   const router = useRouter();
   const { m } = useI18n();
+  const backHref = fromList ? "/wo-list" : "/wo-scan";
+  const backLabel = fromList ? m.woList.backToList : m.woScan.rescan;
   const [refreshing, setRefreshing] = useState(false);
 
   const refresh = () => {
@@ -90,10 +98,10 @@ export function WoStepsView({ workOrderNumber, overview }: Props) {
           <Group gap="sm" wrap="nowrap">
             <Button
               leftSection={<IconArrowLeft size={20} />}
-              onClick={() => router.push("/wo-scan")}
+              onClick={() => router.push(backHref)}
               variant="default"
             >
-              {m.woScan.rescan}
+              {backLabel}
             </Button>
             <Title order={3}>
               {fillMessage(m.woScan.workOrder, { n: workOrderNumber })}
@@ -129,9 +137,7 @@ export function WoStepsView({ workOrderNumber, overview }: Props) {
               <Text c="dimmed">
                 {fillMessage(m.woScan.notFound, { n: workOrderNumber })}
               </Text>
-              <Button onClick={() => router.push("/wo-scan")}>
-                {m.woScan.rescan}
-              </Button>
+              <Button onClick={() => router.push(backHref)}>{backLabel}</Button>
             </Stack>
           </Center>
         ) : (
@@ -258,6 +264,17 @@ function WoStepCard({
                 : ""}
             </Text>
             <Group gap="sm" mt={2} wrap="wrap">
+              {step.dueDate != null && (
+                <Text
+                  c={step.dueOverdue ? "red" : "dimmed"}
+                  fw={step.dueOverdue ? 700 : undefined}
+                  size="sm"
+                >
+                  {fillMessage(m.steps.card.dueDate, {
+                    d: step.dueDate.replaceAll("-", "/"),
+                  })}
+                </Text>
+              )}
               {step.inputQuantity != null ? (
                 <Text c="dimmed" size="sm">
                   {fillMessage(m.steps.card.inputRecorded, {

@@ -1090,6 +1090,11 @@ Table work_order_steps {
   outsource_requested_at date
   outsource_expected_at  date
   outsource_received_at  date
+  // 工程納期（JST の暦日・任意）。指示書全体の予定納期（割当明細の最早納期）とは
+  // 別の、工程ごとの締切。指示書ごとの値なので工程リストの版には載らない。
+  // 過ぎて未完了（COMPLETED / CANCELLED 以外）なら画面で赤くするだけで、実行可否
+  // の判定には使わない（判定は lib/step-due-date-core.ts — 共有端末と twin）。
+  due_date        date
   status          STEP_STATUS [not null, default: 'PENDING']
   // 工程間の数量受け渡し・不良振り分け
   input_quantity            int   // 前工程からの受入数

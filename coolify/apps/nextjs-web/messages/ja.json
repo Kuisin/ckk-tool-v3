@@ -3568,6 +3568,36 @@
       },
       "seriesOption": "{name}（{count} 版）",
       "allSeries": "すべての受注元"
+    },
+    "stepDueDate": {
+      "badge": "工程納期 {date}",
+      "label": "工程納期",
+      "labelWithStep": "{step} の工程納期",
+      "builderHelp": "工程ごとの締切（任意）。過ぎて未完了の工程は工程カードとフロー図で赤く表示されます。承認後は工程実行画面の計画パネルで直せます。",
+      "panelHelp": "この工程をいつまでに終えるか（任意）",
+      "notSet": "未設定",
+      "saved": "工程納期を保存しました",
+      "locked": "この工程の納期は変更できません（完了・キャンセル済み、または承認依頼中の指示書です）",
+      "couldNotSave": "工程納期を保存できませんでした",
+      "auditChanged": "工程納期を {date} に変更"
+    },
+    "workLocationBoard": {
+      "title": "作業場所一覧",
+      "date": "日付",
+      "today": "今日",
+      "time": "時刻",
+      "workOrder": "指示書",
+      "product": "製品",
+      "step": "工程",
+      "assignee": "担当者",
+      "status": "状態",
+      "carriedOver": "持ち越し（{date}）",
+      "working": "作業中",
+      "helpToday": "今日の計画に加え、前日以前から持ち越した未完了の工程と、その作業場所で作業中の工程も表示しています。",
+      "helpOtherDay": "この日の作業計画を作業場所ごとに表示しています。",
+      "empty": "この日の作業計画はありません",
+      "noLocation": "作業場所なし",
+      "count": "{count} 件"
     }
   },
   "purchase": {

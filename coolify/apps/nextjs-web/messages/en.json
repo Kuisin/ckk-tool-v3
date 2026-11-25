@@ -3568,6 +3568,36 @@
       },
       "seriesOption": "{name} ({count} versions)",
       "allSeries": "All ordering customers"
+    },
+    "stepDueDate": {
+      "badge": "Due {date}",
+      "label": "Step due date",
+      "labelWithStep": "Step due date for {step}",
+      "builderHelp": "Optional deadline per step. Steps past their due date and not completed are shown in red on the step cards and the workflow graph. After approval, change it in the plan panel on the step screen.",
+      "panelHelp": "When this step should be finished (optional)",
+      "notSet": "Not set",
+      "saved": "Step due date saved",
+      "locked": "This step's due date cannot be changed (the step is completed or cancelled, or the work order is pending approval)",
+      "couldNotSave": "Could not save the step due date",
+      "auditChanged": "Step due date changed to {date}"
+    },
+    "workLocationBoard": {
+      "title": "Work location board",
+      "date": "Date",
+      "today": "Today",
+      "time": "Time",
+      "workOrder": "Work order",
+      "product": "Product",
+      "step": "Step",
+      "assignee": "Assignee",
+      "status": "Status",
+      "carriedOver": "Carried over ({date})",
+      "working": "In progress here",
+      "helpToday": "Shows today's plans, plus unfinished steps carried over from earlier days and steps in progress at each location.",
+      "helpOtherDay": "Shows the work plans for this day by work location.",
+      "empty": "No work plans for this day",
+      "noLocation": "No work location",
+      "count": "{count} items"
     }
   },
   "purchase": {

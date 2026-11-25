@@ -131,6 +131,8 @@ export interface StepExecutionStepView {
   supplierName: string | null;
   /** 予定作業時間 (h) — 任意。 */
   plannedWorkHours: number | null;
+  /** 工程納期（YYYY-MM-DD・JST の暦日）— 任意。 */
+  dueDate: string | null;
   status: string; // STEP_STATUS
   inputQuantity: number | null;
   outputSuccessQuantity: number | null;

@@ -2,7 +2,8 @@
   "apps": {
     "stepExecution": "工程実行",
     "woScan": "指示書スキャン",
-    "workLocation": "作業場所の工程"
+    "workLocation": "作業場所の工程",
+    "woList": "指示書一覧"
   },
   "userMenu": {
     "title": "利用者",
@@ -51,6 +52,17 @@
       "CANCELLED": "キャンセル"
     }
   },
+  "woList": {
+    "title": "指示書一覧",
+    "backToList": "指示書一覧へ",
+    "scopePlant": "{plant} の承認済み・進行中の指示書",
+    "scopeAll": "承認済み・進行中の指示書",
+    "searchPlaceholder": "指示書番号・製品名で検索",
+    "count": "{n} 件",
+    "truncated": "新しい順に上限まで表示しています。検索で絞ってください",
+    "empty": "承認済み・進行中の指示書はありません",
+    "noMatch": "該当する指示書はありません"
+  },
   "workLocationBoard": {
     "title": "作業場所の工程",
     "back": "アプリ一覧へ",
@@ -95,7 +107,8 @@
       "elapsed": "作業 {t}",
       "elapsedLabel": "作業",
       "plannedHours": "予定 {h}h",
-      "lot": "ロット {t}"
+      "lot": "ロット {t}",
+      "dueDate": "工程納期 {d}"
     },
     "state": {
       "startable": "開始可",

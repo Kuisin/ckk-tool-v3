@@ -783,6 +783,7 @@ export async function fetchWorkOrder(
       supplierBpId: s.supplierBpId,
       plannedWorkHours:
         s.plannedWorkHours == null ? null : Number(s.plannedWorkHours),
+      dueDate: s.dueDate ? s.dueDate.toISOString().slice(0, 10) : null,
       lotInputMode: s.lotInputMode,
       lotText: s.lotText,
       supplierName: s.supplierBp
@@ -1273,6 +1274,7 @@ export async function fetchStepExecution(
         : null,
       plannedWorkHours:
         step.plannedWorkHours == null ? null : Number(step.plannedWorkHours),
+      dueDate: step.dueDate ? step.dueDate.toISOString().slice(0, 10) : null,
       status: step.status,
       inputQuantity: step.inputQuantity,
       outputSuccessQuantity: step.outputSuccessQuantity,
