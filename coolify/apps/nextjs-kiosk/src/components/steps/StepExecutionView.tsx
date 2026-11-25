@@ -302,7 +302,12 @@ export function StepExecutionView({
             <Text c="dimmed">{step.productName}</Text>
             {markings.map((mk) => (
               <Text ff="monospace" key={mk.perLine} size="sm">
-                {fillMessage(m.steps.card.marking, mk)}
+                {fillMessage(
+                  mk.split > 0
+                    ? m.steps.card.markingSplit
+                    : m.steps.card.marking,
+                  mk,
+                )}
               </Text>
             ))}
             <Group gap="md" mt="xs">

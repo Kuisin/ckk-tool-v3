@@ -203,6 +203,7 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
       type: l.workOrder.type,
       plannedQuantity: l.workOrder.plannedQuantity,
       allocatedQuantity: l.quantity,
+      markingSplit: l.markingSplit,
       approvalStatus: l.workOrder.approvalStatus,
       status: l.workOrder.status,
     })),

@@ -31,6 +31,11 @@ export interface OrderLineWorkOrderRef {
   plannedQuantity: number;
   /** この明細への割当数量（統合ロットでは予定数量より小さくなり得る）。 */
   allocatedQuantity: number;
+  /**
+   * 印字番号の分割番号（1.. = この割当は明細の一部 = 分割。0 / null = 分割で
+   * ない）。割当の作成時に DB が決めて凍結する（lib/marking-number.ts）。
+   */
+  markingSplit: number | null;
   /** WORK_ORDER_APPROVAL_STATUS。 */
   approvalStatus: string;
   /** WORK_ORDER_STATUS。 */

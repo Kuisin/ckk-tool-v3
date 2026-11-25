@@ -26,7 +26,7 @@ import {
 import type { Locale } from "./i18n";
 import { missingInspectionSheets } from "./inspection-core";
 import { type PlanAssignee, stepOperability } from "./location-board-core";
-import { markingRange } from "./marking-number";
+import { allocationMarkingRange } from "./marking-number";
 import { isStepOverdue } from "./step-due-date-core";
 import { allowedWorkLocationIdsForStep } from "./step-execution";
 import {
@@ -665,31 +665,45 @@ export interface WorkOrderOverview {
   steps: WorkOrderStepItem[];
 }
 
-/** 印字番号 1 明細ぶん（lib/marking-number.ts の markingRange）。 */
+/**
+ * 印字番号 1 割当ぶん（lib/marking-number.ts の allocationMarkingRange）。
+ * split = 分割番号（0 = 分割でない。fillMessage に渡すので null にしない）。
+ */
 export type MarkingView = {
   first: string;
   last: string;
   perLine: string;
+  split: number;
 };
 
 /**
  * 指示書に割り当てられた注文明細の印字番号（割当順・採番済みのみ）。
- * 範囲は**注文明細の受注数量**で引く — 番号は明細に対して振られていて、
- * 分割ロットでもどの番号を刻むかは明細全体の通し番号で決まるため。
+ * 明細の一部だけを割り当てた指示書（分割）は、分割の接頭辞 A{base}{分割番号}
+ * で割当数量ぶん（A2000001-001 〜 -055）。明細全部なら明細の基数で受注数量ぶん。
+ * 分割番号は割当の作成時に DB が振って凍結する（Web の指示書詳細と同じ規則）。
  */
 export async function getWorkOrderMarkings(
   workOrderNumber: number,
 ): Promise<MarkingView[]> {
   const links = await prisma.workOrderOrderLine.findMany({
     where: { workOrder: { workOrderNumber } },
-    select: { orderLine: { select: { quantity: true, markingBase: true } } },
+    select: {
+      quantity: true,
+      markingSplit: true,
+      orderLine: { select: { quantity: true, markingBase: true } },
+    },
     orderBy: { sortOrder: "asc" },
   });
-  return links.flatMap(({ orderLine }) =>
-    orderLine.markingBase == null
-      ? []
-      : [markingRange(orderLine.markingBase, orderLine.quantity)],
-  );
+  return links.flatMap(({ quantity, markingSplit, orderLine }) => {
+    if (orderLine.markingBase == null) return [];
+    const r = allocationMarkingRange({
+      base: orderLine.markingBase,
+      split: markingSplit,
+      lineQuantity: orderLine.quantity,
+      allocatedQuantity: quantity,
+    });
+    return [{ ...r, split: r.split ?? 0 }];
+  });
 }
 
 /** 指示書の開始状態（在庫の仕掛品から始めた指示書）。 */

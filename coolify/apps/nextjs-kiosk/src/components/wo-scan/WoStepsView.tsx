@@ -170,7 +170,10 @@ export function WoStepsView({
                 </Group>
                 {overview.markings.map((mk) => (
                   <Text ff="monospace" key={mk.perLine} size="sm">
-                    {fillMessage(m.woScan.marking, mk)}
+                    {fillMessage(
+                      mk.split > 0 ? m.woScan.markingSplit : m.woScan.marking,
+                      mk,
+                    )}
                   </Text>
                 ))}
                 {/* 開始状態 — 在庫の仕掛品から始めた指示書。紙の工程の並びと
