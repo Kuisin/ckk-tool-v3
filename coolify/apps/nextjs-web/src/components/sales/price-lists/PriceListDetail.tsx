@@ -74,6 +74,7 @@ import type { MemoView } from "@/lib/document-memos";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import { quoteDisplayStatus } from "../quotes/model";
+import { CompanySyncPanel } from "./CompanySyncPanel";
 import { CopyPriceListModal } from "./CopyPriceListModal";
 import { CreateQuoteModal } from "./CreateQuoteModal";
 import { DeletePriceListModal } from "./DeletePriceListModal";
@@ -103,8 +104,14 @@ export function PriceListDetail({
   memos,
   approval,
   approvalTrail,
+  counterparts = [],
+  canSync = false,
 }: {
   entry: PriceListEntry;
+  /** 他社の価格表（同じ顧客 × 品目 × 工具・別の発行会社）— 突き合わせ用。 */
+  counterparts?: PriceListEntry[];
+  /** 価格表の更新権限（「〇〇社の内容で同期」を出すか）。 */
+  canSync?: boolean;
   relatedQuotes: RelatedQuoteRow[];
   customerOptions: Option[];
   productOptions: Option[];
@@ -278,6 +285,14 @@ export function PriceListDetail({
         </>
       )}
       <SummaryGrid>
+        <FieldValue
+          label={tr("common.issuingCompany")}
+          value={
+            entry.ownCompanyName !== entry.ownCompanyCode
+              ? `${entry.ownCompanyCode} ${entry.ownCompanyName}`
+              : entry.ownCompanyCode
+          }
+        />
         <FieldValue label={tr("common.customer")} value={entry.customerName} />
         <FieldValue
           label={tr("common.product")}
@@ -365,6 +380,12 @@ export function PriceListDetail({
           />
         )}
       </SummaryGrid>
+
+      <CompanySyncPanel
+        canSync={canSync}
+        counterparts={counterparts}
+        entry={entry}
+      />
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>

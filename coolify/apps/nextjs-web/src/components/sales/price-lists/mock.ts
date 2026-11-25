@@ -16,6 +16,9 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
   {
     // 顧客×製品で 1 エントリ — 本番とサンプルは同一エントリ内のバリアント。
     entryId: "CKK~PRC-2026-00001",
+    ownCompanyId: 1,
+    ownCompanyCode: "CKK",
+    ownCompanyName: "CKK",
     customerId: "bp-001",
     customerName: "株式会社ABC製作所",
     itemId: "1001",
@@ -121,6 +124,9 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
   },
   {
     entryId: "CKK~PRC-2026-00003",
+    ownCompanyId: 1,
+    ownCompanyCode: "CKK",
+    ownCompanyName: "CKK",
     customerId: "bp-002",
     customerName: "合同会社XYZ工業",
     itemId: "2008",
@@ -173,6 +179,9 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
   },
   {
     entryId: "CKK~PRC-2026-00004",
+    ownCompanyId: 1,
+    ownCompanyCode: "CKK",
+    ownCompanyName: "CKK",
     customerId: "bp-003",
     customerName: "株式会社DEFエンジニアリング",
     itemId: "3012",

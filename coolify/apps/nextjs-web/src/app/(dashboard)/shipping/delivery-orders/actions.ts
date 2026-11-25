@@ -1271,6 +1271,8 @@ async function resolveBillingUnitPrices(
               itemId: true,
               toolItemId: true,
               orderType: true,
+              // 価格表は会社ごと — 引き直しは受注した注文請書の発行会社の価格表。
+              acceptance: { select: { ownCompanyId: true } },
             },
           },
         },
@@ -1289,8 +1291,22 @@ async function resolveBillingUnitPrices(
   }
 
   // 価格表（顧客ごと）と標準価格（品目の定価）— 保存・照合と同じ 2 段で引く。
-  const [entries, standard] = await Promise.all([
-    loadCustomerPriceEntries(row.customerBpId),
+  // 価格表は**発行会社ごと**に別々 — 明細ごとに、受注した注文請書の会社の
+  // 価格表から引き直す（他社の価格表へは落ちない）。
+  const companyIds = [
+    ...new Set(
+      row.items.flatMap((it) =>
+        it.orderLine ? [it.orderLine.acceptance.ownCompanyId] : [],
+      ),
+    ),
+  ];
+  const [entriesByCompany, standard] = await Promise.all([
+    Promise.all(
+      companyIds.map(
+        async (id) =>
+          [id, await loadCustomerPriceEntries(row.customerBpId, id)] as const,
+      ),
+    ).then((pairs) => new Map(pairs)),
     loadStandardUnitPrices(row.items.map((it) => it.orderLine?.itemId)),
   ]);
   // 注文明細ごとの累計納品数（この出荷書のぶんを含む — 確定の時点で既に
@@ -1319,7 +1335,7 @@ async function resolveBillingUnitPrices(
       continue;
     }
     const resolved = priceListUnitPrice(
-      entries,
+      entriesByCompany.get(line.acceptance.ownCompanyId) ?? [],
       row.customerBpId,
       {
         itemId: String(line.itemId),

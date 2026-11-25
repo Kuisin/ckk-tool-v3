@@ -20,7 +20,7 @@ Register a price here when you and the customer have agreed a price. From then o
 
 ## Words used on this page
 
-- **価格表 (price list)** … one record is "one customer × one product". You can only make one record for the same combination.
+- **価格表 (price list)** … one record is "issuing company × one customer × one product". Within one company, you can only make one record for the same combination.
 - **注文種別 (order type)** … the classes **本番 (production) / テスト (test) / サンプル (sample) / その他 (other)**. The same product can have a different price in each class.
 - **基準単価 (base unit price)** … the basic price for that order type. Normally it comes from the result of a [price estimate](/manual/en/operations/sales/trial-estimate/user).
 - **段階（数量段階）(quantity tier)** … a break by quantity, such as "1–49 pieces cost this much, 50–99 pieces cost this much".
@@ -153,6 +153,33 @@ When the price list steps are set under "**独自値の追加承認**" (custom v
 - **Until it is approved, the price list is not used to price quotes or order acceptances.** A "pending approval" card appears at the top of the screen, from which approvers can approve or send it back.
 - Saving again without changing the custom prices (for example, only the sales rep) does not restart the approval. Changing a price restarts it.
 - If it is sent back, fix it and save again, or press "**再承認依頼**" (request again) on the card.
+
+## Price lists per company [#per-company]
+
+Price lists are kept **separately for each issuing company (own company)**. The same customer and product can have one price list per company.
+
+- Prices on quotes, order acceptances and shipments come **only from the price list of that document's issuing company**. Another company's prices are never used.
+- Choose the issuing company with "**発行会社**" (Issuing company) on the create screen (it only appears for people whose sites belong to two or more companies). It cannot be changed afterwards.
+
+### Copying from another company's price list
+
+When you choose the customer and product on the create screen and another company already has a price list for that combination, "**他社の価格表があります**" (Another company already has this price list) appears.
+
+1. Press "**〇〇 の価格表からコピー**" (Copy from 〇〇's price list).
+2. The order types, base prices, valid periods and quantity tiers are filled in. The discount rules are created together when you save.
+3. Check the content and press "**保存**" (Save). A new number is issued for this company.
+
+Custom prices go through approval, just as when you make a price list from scratch.
+
+### Keeping companies in line
+
+When another company has a price list for the same customer and product, the price list screen shows a "**他社の価格表**" (Other companies' price lists) section.
+
+- It shows "**〇〇 と同じ**" (Same as 〇〇) when the content matches, and "**〇〇 と差分あり**" (Differs from 〇〇) when it does not. The comparison covers each order type's base price, valid period and status, the quantity tiers and the discount rules (numbers and dates of creation are not compared).
+- "**差分を見る**" (Show differences) shows what differs in a table.
+- "**〇〇 の内容で同期**" (Sync from 〇〇) makes this price list's content the same as that company's. Order types only in this price list are deleted. Custom prices go through approval.
+
+In the list, rows with another company's price list show "**同じ**" (Same) or "**差分あり**" (Differs). When there are two or more companies, you can filter by issuing company.
 
 ## Registering a discount rule
 

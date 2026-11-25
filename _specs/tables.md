@@ -823,9 +823,18 @@ Enum ESTIMATE_STATUS {
 // 価格表（§1）PRC-YYYYMM-NNNNN
 // ===========================
 
-// 価格表エントリ: 顧客 + 製品 = 1 エントリ（UNIQUE・作成後不変）。
+// 価格表エントリ: 発行会社 + 顧客 + 製品 = 1 エントリ（UNIQUE・作成後不変）。
+// **価格表は発行会社（自社法人）ごとに別々** — 同じ顧客 × 製品でも会社ごとに
+// 1 エントリ持てる。見積書・注文請書・出荷の引き直しは**書類の発行会社の
+// 価格表だけ**を引き、他社の価格表へは落ちない
+// （components/sales/price-lists/company-sync.ts entriesForCompany）。
+// 同じ顧客 × 製品（× 工具）の別会社のエントリ（相手方）とは、作成時に
+// コピーでき、詳細で中身（バリアント・段階・値引き・期間）の差分を見て
+// 同期できる — 比較は同じファイルの comparePriceContent が唯一の定義
+// （id・番号・日時・会社は比べない）。同期も通常の保存を通るので独自値の
+// 追加承認が効く。
 // 再研磨の品目（役務）だけは任意の対象工具 tool_item_id を持て、
-// 顧客 + 品目 + 工具 で 1 エントリになる（工具 NULL は 1 つの値として数える —
+// 発行会社 + 顧客 + 品目 + 工具 で 1 エントリになる（工具 NULL は 1 つの値として数える —
 // 部分 unique index 2 本。Prisma では表現できないのでマイグレーションに直書き）。
 // 再研磨の明細の単価は 工具一致 → 工具なし → 品目の標準価格 の順で引く
 // （components/sales/quotes/model.ts selectPriceEntries が唯一の定義）。
@@ -836,6 +845,7 @@ Enum ESTIMATE_STATUS {
 Table price_list_entries {
   year_month      char(6) [not null]
   seq             int [not null]
+  own_company_id  int [not null, ref: > own_companies.id]  // 発行会社（作成時に決めて不変）
   customer_bp_id  uuid [not null, ref: > business_partners.id]
   product_id      int [not null, ref: > products.id]
   tool_item_id    int [ref: > items.id]     // 対象工具（再研磨の品目だけ・任意）。null = 工具を問わない
@@ -856,8 +866,9 @@ Table price_list_entries {
   indexes {
     (year_month, seq) [pk]
     // 識別キー（作成後不変）。工具なし / 工具あり の 2 本の部分 unique index
-    (customer_bp_id, product_id) [unique]                // WHERE tool_item_id IS NULL
-    (customer_bp_id, product_id, tool_item_id) [unique]  // WHERE tool_item_id IS NOT NULL
+    // （20261126260000_price_list_identity_per_company で発行会社を足した）
+    (own_company_id, customer_bp_id, product_id) [unique]                // WHERE tool_item_id IS NULL
+    (own_company_id, customer_bp_id, product_id, tool_item_id) [unique]  // WHERE tool_item_id IS NOT NULL
   }
 }
 

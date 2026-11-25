@@ -35,7 +35,7 @@ import {
 import { loadStandardUnitPrices } from "@/lib/standard-price";
 import { loadTaxCatalog } from "@/lib/tax-categories";
 import { resolveLineTax } from "@/lib/tax-rate";
-import { fetchEntriesForCustomer } from "./data";
+import { fetchCompanyEntriesForCustomer } from "./data";
 
 const BASE_PATH = "/sales/quotes";
 
@@ -162,8 +162,13 @@ async function productTaxCategoryMap(
 async function resolveItems(
   v: QuoteInput,
   tr: Awaited<ReturnType<typeof getTranslations>>,
+  /** 見積書の発行会社 — その会社の価格表だけを引く。null = 既定の法人。 */
+  ownCompanyId: number | null | undefined,
 ) {
-  const entries = await fetchEntriesForCustomer(v.customerBpId);
+  const entries = await fetchCompanyEntriesForCustomer(
+    v.customerBpId,
+    ownCompanyId,
+  );
   // 税は**行ごと**（製品ごとに課税区分が違い得る）。見積書は印刷して外に出す書類
   // なので、単価・値引きと同じく保存時に凍結する — 発行後に税率マスタが変わっても
   // 刷り直した PDF が動いてはいけない。
@@ -244,11 +249,11 @@ export async function createQuote(
   if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
   try {
-    const items = await resolveItems(v, tr);
     const company = await resolveIssuingCompany(authz.userId, v.ownCompanyId);
     if (!company.ok) {
       return actionError(tr("common.issuingCompanyNotAllowed"));
     }
+    const items = await resolveItems(v, tr, company.data.ownCompanyId);
     // 新規は prior 顧客が無いので、未指定なら顧客の主担当が入る。
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
@@ -319,6 +324,7 @@ export async function updateQuote(
     const prior = await prisma.quote.findUnique({
       where: { docRef: key.docRef },
       select: {
+        ownCompanyId: true,
         customerBpId: true,
         salesRepId: true,
         status: true,
@@ -331,7 +337,7 @@ export async function updateQuote(
     if (prior.status !== "DRAFT") {
       return actionError(tr("sales.quoteActions.onlyDraftCanBeEdited"));
     }
-    const items = await resolveItems(v, tr);
+    const items = await resolveItems(v, tr, prior.ownCompanyId);
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
       v.customerBpId,

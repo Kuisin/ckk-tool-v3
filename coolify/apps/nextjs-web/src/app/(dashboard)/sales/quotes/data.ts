@@ -46,6 +46,7 @@ export function mapQuote(r: QuoteRow): Quote {
     id: number,
     quoteNumber: number,
     legacyNumber: r.legacyNumber,
+    ownCompanyId: r.ownCompanyId,
     customerId: r.customerBpId,
     customerName: localized(r.customerBp.name as LocalizedText | null),
     customerBranchId: r.customerBranchBpId,
@@ -139,7 +140,32 @@ export async function fetchEntriesForQuote(
   return rows.map(mapEntry);
 }
 
-/** 顧客の全価格表エントリ — 見積フォームのライブ価格解決用。 */
+/**
+ * 顧客 × **発行会社**の価格表エントリ — 保存時の価格解決用（見積書・注文請書・
+ * 出荷の引き直し）。価格表は会社ごとに別々なので、書類の発行会社の価格表だけを
+ * 引く。`ownCompanyId` が null / undefined のときは既定の法人（DB の列既定値と
+ * 同じ — 発行会社を決めずに作られた書類はそこへ入る）。
+ */
+export async function fetchCompanyEntriesForCustomer(
+  customerBpId: string,
+  ownCompanyId: number | null | undefined,
+): Promise<PriceListEntry[]> {
+  const rows = await prisma.priceListEntry.findMany({
+    where: {
+      customerBpId,
+      ...(ownCompanyId != null
+        ? { ownCompanyId }
+        : { ownCompany: { isDefault: true } }),
+    },
+    include: ENTRY_INCLUDE,
+  });
+  return rows.map(mapEntry);
+}
+
+/**
+ * 顧客の全価格表エントリ（全社分）— 見積フォームのライブ価格解決用。
+ * フォームは発行会社で絞ってから使う（price-lists/company-sync entriesForCompany）。
+ */
 export async function fetchEntriesForCustomer(
   customerBpId?: string,
 ): Promise<PriceListEntry[]> {

@@ -30,6 +30,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
   IconCalendar,
+  IconCopy,
   IconPencil,
   IconPlus,
   IconRestore,
@@ -47,6 +48,7 @@ import {
 import {
   createPriceEntry,
   fetchEstimateSources,
+  fetchPriceEntryForCopy,
   fetchPriceListItemType,
   type PriceVariantInput,
   updatePriceEntry,
@@ -74,6 +76,11 @@ import {
   scalePresetRanges,
 } from "@/lib/price-scale-preset";
 import { notifyPriceEntryApproval } from "./approval-notice";
+import {
+  type DiscountContent,
+  sameCounterpartKey,
+  syncVariantsFrom,
+} from "./company-sync";
 import {
   appendTierRange,
   type EntryIdentity,
@@ -342,6 +349,79 @@ export function PriceListTypeForm({
     };
   }, [itemId, mode]);
   const isRegrindItem = itemType === "REGRIND";
+
+  // ── 他社の価格表からコピー ──────────────────────────────────────────────────
+  // 価格表は発行会社ごとに別々。同じ顧客 × 品目（× 工具）を別の会社が既に
+  // 持っているなら、その中身（注文種別・基準単価・期間・数量段階・値引き）を
+  // コピーして作ることを勧める。番号はこの会社で新しく採番され、独自値の
+  // 承認も通常どおり効く（保存は createPriceEntry 1 本）。
+  const [copied, setCopied] = useState<{
+    entryId: string;
+    company: string;
+    discounts: Record<string, DiscountContent[]>;
+  } | null>(null);
+  const identityKey = {
+    customerId: form.values.customerId,
+    itemId: form.values.itemId,
+    toolItemId: isRegrindItem ? form.values.toolItemId || null : null,
+  };
+  // 識別を変えたらコピーの印は外す（値引きは別の価格表のものになるため）。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 識別（顧客・品目・工具）が変わったときだけ
+  useEffect(() => {
+    setCopied(null);
+  }, [identityKey.customerId, identityKey.itemId, identityKey.toolItemId]);
+  const copyCandidates =
+    mode === "create" && identityKey.customerId && identityKey.itemId
+      ? existingEntries.filter(
+          (e) =>
+            sameCounterpartKey(
+              { ...e, customerId: e.customerBpId },
+              identityKey,
+            ) &&
+            (ownCompanyId == null || e.ownCompanyId !== ownCompanyId),
+        )
+      : [];
+  const copyFrom = (candidate: EntryIdentity) =>
+    startTransition(async () => {
+      const source = await fetchPriceEntryForCopy(candidate.entryId);
+      if (!source) {
+        notifications.show({
+          title: tr("common.error2"),
+          message: tr("sales.priceListCompanySync.copyFailed"),
+          color: "red",
+        });
+        return;
+      }
+      const rows = syncVariantsFrom(null, source);
+      form.setFieldValue(
+        "variants",
+        rows.map((v) => {
+          const estimateBase = v.estimateNumber
+            ? (sources.find((x) => x.number === v.estimateNumber)?.unitPrice ??
+              null)
+            : null;
+          return {
+            id: null,
+            orderType: v.orderType as VariantForm["orderType"],
+            sourceEstimate: v.estimateNumber,
+            customBase:
+              estimateBase == null || estimateBase !== v.baseUnitPrice,
+            baseUnitPrice: v.baseUnitPrice,
+            validFrom: v.validFrom,
+            validUntil: v.validUntil,
+            isActive: v.isActive,
+            tiers: v.tiers.map((t) => ({ ...t, id: null })),
+          };
+        }),
+      );
+      setCopied({
+        entryId: source.entryId,
+        company: source.ownCompanyCode,
+        discounts: Object.fromEntries(
+          rows.map((v) => [v.orderType, v.discounts]),
+        ),
+      });
+    });
   useEffect(() => {
     if (!itemId) {
       setSources([]);
@@ -452,6 +532,10 @@ export function PriceListTypeForm({
         isActive: v.isActive,
         estimateNumber: v.sourceEstimate,
         tiers: v.tiers,
+        // 他社の価格表からコピーしたときだけ、その値引きルールも一緒に作る。
+        ...(mode === "create" && copied?.discounts[v.orderType]?.length
+          ? { discounts: copied.discounts[v.orderType] }
+          : {}),
       };
     });
     startTransition(async () => {
@@ -465,6 +549,7 @@ export function PriceListTypeForm({
             })
           : await createPriceEntry({
               ownCompanyId,
+              copiedFromEntryId: copied?.entryId ?? null,
               identity: {
                 customerBpId: raw.customerId,
                 itemId: raw.itemId,
@@ -499,6 +584,8 @@ export function PriceListTypeForm({
     mode === "create"
       ? (existingEntries.find(
           (e) =>
+            // 価格表は会社ごと — 重複は同じ発行会社の中でだけ。
+            (ownCompanyId == null || e.ownCompanyId === ownCompanyId) &&
             e.customerBpId === form.values.customerId &&
             e.itemId === form.values.itemId &&
             (e.toolItemId ?? null) ===
@@ -654,6 +741,42 @@ export function PriceListTypeForm({
                 .map((t) => ORDER_TYPE_LABEL[t] ?? t)
                 .join(tr("common.s1")),
             })}
+          </Alert>
+        )}
+        {!duplicateEntry && copyCandidates.length > 0 && (
+          <Alert
+            color="blue"
+            mt="sm"
+            title={tr("sales.priceListCompanySync.copyRecommendTitle")}
+            variant="light"
+          >
+            <Text size="sm">
+              {copied
+                ? tr("sales.priceListCompanySync.copiedNotice", {
+                    company: copied.company,
+                    number: docNo(copied.entryId) ?? copied.entryId,
+                    count: Object.values(copied.discounts).reduce(
+                      (n, d) => n + d.length,
+                      0,
+                    ),
+                  })
+                : tr("sales.priceListCompanySync.copyRecommendMessage")}
+            </Text>
+            <Group gap="xs" mt="xs">
+              {copyCandidates.map((c) => (
+                <SecondaryButton
+                  key={c.entryId}
+                  leftSection={<IconCopy size={14} />}
+                  loading={isPending}
+                  onClick={() => copyFrom(c)}
+                >
+                  {tr("sales.priceListCompanySync.copyFrom", {
+                    company: c.ownCompanyCode,
+                  })}{" "}
+                  ({docNo(c.entryId)})
+                </SecondaryButton>
+              ))}
+            </Group>
           </Alert>
         )}
         {form.values.itemId && sources.length === 0 && (

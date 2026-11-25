@@ -41,6 +41,8 @@ export default async function SalesQuotesNewPage({
     quantity?: string;
     delivery?: string;
     from?: string;
+    /** 発行会社（自社法人 id）— 価格表から開いたとき、その価格表の会社。 */
+    company?: string;
   }>;
 }) {
   const denied = await requireAppRead("quotes");
@@ -63,7 +65,16 @@ export default async function SalesQuotesNewPage({
     fetchCustomerTaxCategories(),
     loadTaxCatalog(),
   ]);
-  const issuingCompany = await issuingCompanyFieldForSession();
+  const sessionCompany = await issuingCompanyFieldForSession();
+  // 価格表は会社ごと — 価格表から開いた見積書は、その価格表の会社を初期値に
+  // する（選べる会社のときだけ。選べない会社はサーバーも断る）。複製は元の会社。
+  const wanted = sp.company ? Number(sp.company) : source?.ownCompanyId;
+  const issuingCompany =
+    wanted != null &&
+    sessionCompany.selectable &&
+    sessionCompany.options.some((o) => o.value === String(wanted))
+      ? { ...sessionCompany, prefill: wanted }
+      : sessionCompany;
   // 価格表に載っている製品だけ（フォームが選べるのはそれだけ）。
   const taxCategoryByProduct = await fetchProductTaxCategories(
     entries.map((e) => Number(e.itemId)),

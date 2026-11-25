@@ -7,7 +7,7 @@
  * 上書きが入っている行はそのまま人の値を保存する。
  *
  * 解決ロジックは見積書・価格照合と同一（components/sales/quotes/model の
- * pure 関数 + fetchEntriesForCustomer）— 「どこで見た単価か」で結果が変わって
+ * pure 関数 + fetchCompanyEntriesForCustomer）— 「どこで見た単価か」で結果が変わって
  * よい場所ではないので、実装を増やさない。
  *
  * サーバー専用（prisma 経由の読み込み）。actions.ts の保存と price-check.ts の
@@ -23,7 +23,7 @@ import {
   type PriceMissReason,
 } from "@/lib/order-acceptance-price-core";
 import { loadStandardUnitPrices } from "@/lib/standard-price";
-import { fetchEntriesForCustomer } from "../quotes/data";
+import { fetchCompanyEntriesForCustomer } from "../quotes/data";
 
 type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
@@ -52,14 +52,19 @@ export interface PriceResolvableItem {
 }
 
 /**
- * 顧客の価格表エントリ。顧客未特定は空 — 価格表は顧客ごとなので、
+ * 顧客 × **発行会社**の価格表エントリ。顧客未特定は空 — 価格表は顧客ごとなので、
  * 顧客が決まるまで単価は解決できない（照合も行われない）。
+ *
+ * 価格表は会社ごとに別々で、書類はその**発行会社の価格表だけ**を引く。
+ * `ownCompanyId` = null / undefined は既定の法人（発行会社を決めずに作った
+ * 書類が入る先 — DB の列既定値と同じ）。
  */
 export async function loadCustomerPriceEntries(
   customerBpId: string | null,
+  ownCompanyId: number | null | undefined,
 ): Promise<PriceListEntry[]> {
   if (!customerBpId) return [];
-  return fetchEntriesForCustomer(customerBpId);
+  return fetchCompanyEntriesForCustomer(customerBpId, ownCompanyId);
 }
 
 /** 価格表の解決に渡す工具 — 再研磨の行だけ。空は null。 */
@@ -135,13 +140,15 @@ type SaveItem = PriceResolvableItem & {
  */
 export async function applyPriceListPrices<T extends SaveItem>(
   customerBpId: string | null,
+  /** 注文請書の発行会社 — その会社の価格表だけを引く。 */
+  ownCompanyId: number | null | undefined,
   items: readonly T[],
   tr: Tr,
 ): Promise<(T & { unitPrice: number | null; priceOverridden: boolean })[]> {
   // 標準価格は行が指す品目から引く（顧客に依らない）。価格表と同じ 1 回の
   // 解決で使えるよう、ここでまとめて読む。
   const [entries, standard] = await Promise.all([
-    loadCustomerPriceEntries(customerBpId),
+    loadCustomerPriceEntries(customerBpId, ownCompanyId),
     loadStandardUnitPrices(items.map((it) => it.itemId)),
   ]);
   return items.map((it) => {

@@ -75,6 +75,9 @@ describe("価格試算 → 価格表 → 見積書 (constructed entry)", () => {
   };
   const entry: PriceListEntry = {
     entryId: "CKK~PRC-2026-00098",
+    ownCompanyId: 1,
+    ownCompanyCode: "CKK",
+    ownCompanyName: "CKK",
     customerId: "bp-002",
     customerName: "合同会社XYZ工業",
     itemId: "9002",

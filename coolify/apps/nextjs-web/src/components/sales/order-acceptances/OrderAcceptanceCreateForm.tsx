@@ -60,7 +60,13 @@ export function OrderAcceptanceCreateForm({
   const [items, setItems] = useState<ItemRowForm[]>([newItemRow()]);
   // 明細の単価は既定で価格表が持つ（§2）— 顧客が決まるとその顧客の
   // 価格表を引いて、行ごとの単価をその場で出す。
-  const priceEntries = usePriceEntries(customerId);
+  // 引くのは保存時に決まる発行会社の価格表（担当拠点 → 見積書 → 既定）。
+  const priceEntries = usePriceEntries(customerId, {
+    linePlantIds: items.map((r) =>
+      r.assignedPlantId ? Number(r.assignedPlantId) : null,
+    ),
+    quoteNumber: quoteNumber || null,
+  });
   // 標準価格（品目の定価）— 当たる価格表が無い行はこちらへ落ちる。
   // 画面と保存側で同じものを見ていないと「見えている単価」と
   // 「保存される単価」がずれる。
