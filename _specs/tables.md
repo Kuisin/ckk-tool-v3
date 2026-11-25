@@ -112,6 +112,16 @@
 >
 > 追記する場合は、スキーマからコピーせず**設計意図だけ**を書くこと。
 
+**書類のキーと発行元（番号設計 PR-B）** — 下の定義で `(year_month, seq)` を主キーに
+書いている 7 表（estimates / price_list_entries / quotes / order_acceptances /
+delivery_orders / delivery_notes / invoices）は、実装では **uuid の `id` が主キー**で、
+`(year_month, seq)` は UNIQUE。PR-C で番号が「自社法人 × 会計年度」の連番になり、
+同じ番号が 2 法人に存在し得るため。子の表は `<親>_id` の FK で指し、旧
+`(…_year_month, …_seq)` 列は NULL 可のまま DB トリガー `app.sync_doc_parent_key` が
+埋め続ける（PR-D で削除）。番号を持つ書類はすべて `own_company_id`（発行元の自社法人。
+NOT NULL・作成後は変更不可のトリガー `own_company_id_immutable`）を持ち、作成時に
+上流の書類 → 拠点 → 既定の法人 の順で決める（`lib/doc-company-core.ts`）。
+
 **営業担当（sales_rep_id）は書類ごとのスナップショット** — 顧客が持つ担当候補は
 `bp_sales_reps`（CUSTOMER ロール固有・複数可・主担当 1 名）で、書類側は
 `sales_rep_id` に**作成時点の 1 名を複写**する（`estimates` / `price_list_entries` /
