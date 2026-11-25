@@ -47,6 +47,19 @@ export function storageLabelOf(r: {
   return r.shelf ? `${loc} / ${r.shelf.code}` : loc;
 }
 
+/**
+ * 画面に出す品目。半製品（仕掛品）の行は品目が仕掛ブランクなので、目標製品が
+ * あればそちらを見せる — 仕掛品タブ（仕掛品の再設計 PR 4）ができるまで、
+ * 製品在庫の画面は移行前と同じ見え方を保つ。
+ */
+function shownItem<T>(r: {
+  isSemiFinished: boolean;
+  item: T;
+  aimedItem: T | null;
+}): T {
+  return r.isSemiFinished && r.aimedItem ? r.aimedItem : r.item;
+}
+
 /** 製品在庫 一覧（更新日の新しい順）。 */
 export async function fetchProductInventories(): Promise<
   ProductInventoryRow[]
@@ -61,18 +74,30 @@ export async function fetchProductInventories(): Promise<
         authz.access,
         "plantId",
       ) as Prisma.ItemInventoryWhereInput),
-      item: { itemType: "PRODUCT" },
+      // 半製品は仕掛ブランクの行に移った（20261126200000_wip_backfill）ので、
+      // 品目種別では拾えない。仕掛品タブ（次の段）ができるまでは、従来どおり
+      // 製品の行として目標製品の名前で並べる。
+      // （AND で包む — plantWhere の断片が自分の OR を持っていても潰さない）
+      AND: [
+        { OR: [{ item: { itemType: "PRODUCT" } }, { isSemiFinished: true }] },
+      ],
       // 自社の在庫だけ（外注へ預けている分・顧客の預り品は手持ちではない）。
       custodyBpId: null,
       ownerBpId: null,
     },
-    include: { item: true, plant: true, storageLocation: true, shelf: true },
+    include: {
+      item: true,
+      aimedItem: true,
+      plant: true,
+      storageLocation: true,
+      shelf: true,
+    },
     orderBy: { updatedAt: "desc" },
   });
   return rows.map((r) => ({
     id: r.id,
-    productName: localized(r.item.name as LocalizedText | null),
-    productCode: r.item.code,
+    productName: localized(shownItem(r).name as LocalizedText | null),
+    productCode: shownItem(r).code,
     plantId: r.plantId,
     plantName: plantName(r.plant),
     storageLocationId: r.storageLocationId,
@@ -200,7 +225,13 @@ export async function fetchProductInventoryDetail(
   if (!authz.ok) return null;
   const r = await prisma.itemInventory.findUnique({
     where: { id },
-    include: { item: true, plant: true, storageLocation: true, shelf: true },
+    include: {
+      item: true,
+      aimedItem: true,
+      plant: true,
+      storageLocation: true,
+      shelf: true,
+    },
   });
   if (!r) return null;
   // スコープ外の行は不可視（null → 呼び出し側の notFound に乗せる）。
@@ -233,8 +264,8 @@ export async function fetchProductInventoryDetail(
 
   return {
     id: r.id,
-    productName: localized(r.item.name as LocalizedText | null),
-    productCode: r.item.code,
+    productName: localized(shownItem(r).name as LocalizedText | null),
+    productCode: shownItem(r).code,
     plantName: plantName(r.plant),
     lotNumber: r.lotNumber,
     quantity: Number(r.quantity),

@@ -506,7 +506,7 @@ CREATE OR REPLACE VIEW analytics.v_product_inventory WITH (security_invoker = tr
 SELECT
   ii.id,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
-  ii.item_id AS product_id,
+  prod.id AS product_id,
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
   coalesce(sl.name->>'ja', sl.name->>'en') AS storage_location_name,
   ii.lot_number, ii.quantity, ii.reserved_quantity, ii.is_semi_finished,
@@ -514,7 +514,12 @@ SELECT
   prod.currency,  -- 品目の通貨（フィルタ用）
   CASE WHEN wo.id IS NOT NULL THEN 'WOR-'||wo.year_month||'-'||lpad(wo.seq::text,5,'0') END AS work_order_no
 FROM app.item_inventory ii
-JOIN app.items prod ON prod.id = ii.item_id AND prod.item_type = 'PRODUCT'
+-- 半製品は仕掛ブランクの行に移った（20261126200000_wip_backfill）— 品目は
+-- ブランクで、製品は目標製品（aimed_item_id）。従来どおり製品の在庫として出す。
+JOIN app.items prod
+  ON prod.id = CASE WHEN ii.is_semi_finished THEN coalesce(ii.aimed_item_id, ii.item_id)
+                    ELSE ii.item_id END
+ AND prod.item_type = 'PRODUCT'
 LEFT JOIN app.plants pl ON pl.id = ii.plant_id
 LEFT JOIN app.storage_locations sl ON sl.id = ii.storage_location_id
 LEFT JOIN app.work_orders wo ON wo.work_order_number = ii.lot_number
