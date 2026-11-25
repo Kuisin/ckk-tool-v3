@@ -45,6 +45,26 @@ export function withoutCostFlags(criteria: readonly Criterion[]): Criterion[] {
   );
 }
 
+/**
+ * 原価内訳の 1 行（基準の id）をどう出すか。
+ *
+ * 内訳は「足すと最低単価になる行」を並べる表なので、小計に足さない基準の行は
+ * 出さない（`hide`）。出すと合計が最低単価と合わず、原価を見る権限の無い人にも
+ * 「原価のみに含める」基準の額がそのまま見える — 権限の無い人へ渡す基準は
+ * `withoutCostFlags` が intermediate に読み替えてあるので、ここで `hide` になる。
+ * 原価を見られる人には、原価にだけ数える行を印つきで残す（`costOnly`）。
+ * 基準に無い行（形状出しの按分など）は常に出す。
+ */
+export function breakdownRowMode(
+  criteria: readonly Pick<Criterion, "id" | "role" | "isCost" | "costOnly">[],
+  id: string,
+): "show" | "costOnly" | "hide" {
+  const c = criteria.find((x) => x.id === id);
+  if (!c) return "show";
+  if (criterionCostMode(c) === "costOnly") return "costOnly";
+  return c.role === "component" ? "show" : "hide";
+}
+
 /** 価格試算の種別（DB の ESTIMATE_KIND）。 */
 export type EstimateKind = "COST" | "PRICE";
 

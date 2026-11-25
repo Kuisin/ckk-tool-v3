@@ -1,7 +1,7 @@
 ---
 title: "在庫管理 — 操作マニュアル"
 description: "製品・素材・仕掛品が、どこに何本あるかを確認できるアプリです。置き場所を変えたときの記録もここで行います。"
-screenshots: [inventory-products-01, inventory-product-detail-01, inventory-materials-01, inventory-material-detail-01, inventory-wip-01, inventory-transfer-01, inventory-locations-01, inventory-transactions-01]
+screenshots: [inventory-products-01, inventory-product-detail-01, inventory-materials-01, inventory-material-detail-01, inventory-wip-stock-01, inventory-wip-classify-01, inventory-wip-01, inventory-transfer-01, inventory-locations-01, inventory-transactions-01]
 ---
 製品・素材・作りかけの品物が **どこに何本あるか** を確認するアプリです。置き場所を変えたときの記録もここで行います。操作コードは `ST01` です。
 
@@ -129,6 +129,8 @@ flowchart TD
 
 途中まで加工して **在庫に置いてある品物** を見る画面です。仕掛品は「仕掛ブランク」（材種・径・長さが同じ品物のまとまり）ごとに、**どこまで加工したか（加工状態）** で分けて並びます。
 
+![在庫管理の仕掛品タブ](../../../assets/screenshots/inventory-wip-stock-01.png)
+
 - 灰色の見出し行が **材種・径 × 長さ**（仕掛ブランク）で、その右に合計の本数が出ます。
 - **加工状態** … 済んだ「形を変える工程」が、済んだ順に「切断 › センタレス › 段加工」のように並びます。何も済んでいないものは「**未加工**」と出ます。名前を付けた加工状態は、その名前が上に出ます。
 - **仕上がり寸法** … 研削したあとの径 × 長さです。記録が無いものは「—」です。
@@ -162,6 +164,8 @@ flowchart TD
 5. 「**仕上がり径**」「**仕上がり長**」を入れます。工程を 1 つでも選んだときは必ず入れます。
 6. 必要なら「**目標製品**」を選び直します。
 7. 「**分類する**」を押します。
+
+![未分類の仕掛品を分類する画面](../../../assets/screenshots/inventory-wip-classify-01.png)
 
 > 💡 分類しても **本数は変わりません**。未分類から出して分類先へ入れる、という 2 行が 1 枚の[入出庫伝票](/manual/ja/operations/inventory/inventory-movements/user)（ST04）に残ります。置き場所・ロットもそのままです。
 

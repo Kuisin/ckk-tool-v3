@@ -550,6 +550,7 @@
     "execDepIncomplete": "执行依赖未完成（工序 {stepId}）",
     "execDepOrIncomplete": "执行依赖（任一）均未完成",
     "branchSourceIncomplete": "分支来源工序尚未完成",
+    "startStepIncomplete": "起始工序（出库・交接）尚未完成",
     "precedingWorkOrderIncomplete": "前置工单 #{workOrderNumber} 尚未完成"
   },
   "common": {

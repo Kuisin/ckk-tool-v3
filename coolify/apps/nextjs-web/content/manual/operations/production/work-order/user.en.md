@@ -1,7 +1,7 @@
 ---
 title: "Work Order — User Manual"
 description: "An app for making the document that decides which product to make, how many, and in what order at the factory, and for recording everything from approval to the end of the work."
-screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-order-approval-01, work-order-steps-01, work-order-step-quantity-01, work-order-step-records-01]
+screenshots: [work-order-list-01, work-order-new-01, work-order-wip-candidates-01, work-order-detail-01, work-order-approval-01, work-order-steps-01, work-order-step-quantity-01, work-order-step-records-01, work-order-step-due-date-01, work-order-abort-01]
 ---
 This app is for making the document (**指示書**, work order) that decides which product to make, how many, and in what order at the factory, and for recording everything from approval to the end of the work. The operation code is `PD02`.
 
@@ -24,6 +24,8 @@ This app is for making the document (**指示書**, work order) that decides whi
 - **工程** (step) … one stage of the work, such as cutting, step machining, or inspection.
 - **工程リスト** (step list) … the order of steps, registered in advance. There are two: the **prep step list** (issue / handoff and material prep, one list shared by every product) and the **manufacturing step list** (machining onward, per product × customer). A work order combines both to build its step sequence.
 - **ロット番号** (lot number) … a serial number such as `#9001` given to a batch of products you made. It is assigned automatically when a work order is created, and is used to trace the lot through stock and shipping.
+- **印字番号** (marking number) … a serial number laser-marked on each piece (for example `A200000-001`). It is a different number from the lot number and belongs to the order line ([Check the marking number](#marking-number)).
+- **予定納期 / 工程納期** (planned delivery / step due date) … the planned delivery is the delivery date to the customer (the order line's delivery date); the step due date is an internal deadline set **per step** ([Set a step due date](#step-due-date)).
 - **受入数 / 良品数** (received quantity / good quantity) … the received quantity is how many pieces came into that step; the good quantity is how many pieces are fine to pass on.
 - **承認グループ** (approval group) … the list of people who are allowed to approve. Only people on this list can approve.
 
@@ -121,6 +123,8 @@ After saving, the work order detail screen shows 「**準備工程リスト**」
 
 Once the product and step lists are set, **Usable WIP** appears below them. It lists the parts that were processed part-way and put into stock (WIP) that **can be continued into this product**. Parts started for a different product also appear here when the material type, size and processing progress match.
 
+![「使える仕掛品」 (usable WIP) on the work order create screen](../../../assets/screenshots/work-order-wip-candidates-01.png)
+
 Candidates are split into three groups.
 
 | Group | What kind of WIP |
@@ -198,6 +202,8 @@ Once a preceding work order is connected, the first step here cannot start until
 
 At the bottom of the work order screen is 「**工程ワークフロー**」 (step workflow), where the steps are listed in order. Next to the heading is a 「**予定納期**」 (planned delivery) badge — the earliest delivery date among the allocated order lines (for a combined lot, whichever line is most urgent). It turns red if that date has passed and the work order is not yet finished. For a for-stock work order with no delivery date, the badge does not appear.
 
+Each step card and the flow chart also show a 「**工程納期 ◯/◯**」 (step due date) badge when one is set. This is the internal deadline of that step, and it turns red if the date has passed and the step is not finished ([Set a step due date](#step-due-date)).
+
 ![Work order detail screen and step workflow](../../../assets/screenshots/work-order-detail-01.png)
 
 Once approval is done, a link called 「**工程実行ビューを開く**」 (Open step execution view) appears at the top right. Pressing it opens a screen with the list of steps on the left and the work recording screen on the right. Before approval and after completion, the same screen can still be opened from 「**工程ビューを開く**」 (Open step view), but it is **view only** and the work cannot be operated (the link is marked 「（実行は承認後）」 — execution after approval — or 「（閲覧のみ）」 — view only).
@@ -228,6 +234,13 @@ Once you start a step, the 「**数量・不良**」 (quantity and defects) boxe
   - Number of pieces
   - Details (required) … describe in words what the defect was
 - Finally, press 「**工程完了**」 (Complete step).
+
+**When you put semi-finished pieces into stock** … when you enter 「半製品」 (semi-finished) on a defect row, a 「**在庫に置く仕掛品**」 (WIP going into stock) block appears below it, because semi-finished pieces go into stock as [WIP](/manual/en/operations/inventory/inventory-management/user), separated by processing state and finished size.
+
+- 「**加工状態**」 (processing state) shows the shape-changing steps completed so far (for checking only; you do not enter it).
+- Enter the actual current size in 「**仕上がり径 (mm)**」 (finished diameter) and 「**仕上がり長 (mm)**」 (finished length). They are **required** when at least one shape-changing step is completed. When none is completed yet you may leave them empty, and the WIP blank size is used (the size is shown under the fields).
+- At a step where a branch merges before it, also choose 「**通ってきた経路**」 (route taken); the main line is preselected.
+- The same block appears at the last step of a branch that ends in semi-finished stock.
 
 > ⚠️ **A step that has inspection sheets assigned to it cannot be completed until those sheets are saved.** While a sheet is still unsaved, 「工程完了」 is disabled and the names of the missing sheets are shown next to it. A sheet itself cannot be saved while any of its **required** items is empty, so the order is: required items filled → the sheet can be saved → the step can be completed.
 
@@ -260,6 +273,19 @@ Near the bottom of the step screen there are 「**作業計画**」 (work plans)
 - When a step is started or resumed from a shared floor tablet, the actual row is created automatically and its work location is filled with the tablet's **default work location** (or a scanned work-location QR)
 - Actuals entered by hand here can carry a work location the same way
 - **同時作業数** (concurrent work count) … an actual where one person was working on several steps at the same time gets a 「**同時 ◯**」 (concurrent ◯) badge. The working time is counted as the elapsed time divided by the number of concurrent steps (proration) — for example, two at once counts as half each
+
+### Set a step due date [#step-due-date]
+
+You can set a deadline for each step: by when it should be finished (the **step due date**). It is optional. Separately from the delivery date to the customer (planned delivery), it lets you see **whether an intermediate step is running late**.
+
+- **When creating or editing a work order** … enter a date per step in the 「**工程納期**」 (step due date) section of the create/edit screen.
+- **After approval** … change it with 「**工程納期**」 (step due date) above 「作業計画」 (work plan) on the step screen. It is saved as soon as you choose a date.
+
+![Step due date field on the step screen](../../../assets/screenshots/work-order-step-due-date-01.png)
+
+- When the step due date has passed and the step is not completed (or cancelled), it is shown **in red** on the step card, the flow chart, the [Work location board](/manual/en/operations/production/work-location-board/user) (`PD09`) and the shared shop-floor device. On the due date itself it is not red yet.
+- It can be changed while the step is not started or in progress. Completed and cancelled steps, and steps of a work order that is pending approval, cannot be changed.
+- The change is recorded on the 「履歴」 (History) tab.
 
 ### When you want to redo something
 
@@ -323,11 +349,11 @@ flowchart TD
 When all the steps are finished, the work order automatically becomes 「**完了**」 (finished).
 
 - The good pieces from the last step go into product stock, with the lot number.
-- Pieces marked as 「半製品」 (semi-finished) go into stock as semi-finished items.
+- Pieces marked as 「半製品」 (semi-finished) go into stock as **WIP**. They are entered separately per step they came from, by processing state and finished size.
 - The material that was set aside is taken out of stock as material used.
 - **A regrind work order does not add to our own stock.** Of the tools held as the customer's property, the pieces entered as 「返却（再研磨不可）」 (returned as-is) leave the customer-owned stock at this point; the reground pieces are returned to the customer with a [delivery order](/manual/en/operations/shipping/delivery-order/user).
 
-You can check stock in [inventory management](/manual/en/operations/inventory/inventory-management/user) (ST01). Pieces still being made are shown on the 「**仕掛品**」 (work in progress) tab of the same app.
+You can check stock in [inventory management](/manual/en/operations/inventory/inventory-management/user) (ST01). Pieces still being made are shown on the 「**工程内**」 (in process) tab of the same app, and WIP placed in stock on the 「**仕掛品**」 (WIP) tab.
 
 The stock movement at completion is kept as one slip under [stock movements](/manual/en/operations/inventory/inventory-movements/user) (reason 「指示書完了」 — work order completed). **For a work order made from semi-finished items, the semi-finished items used are taken out of stock at this point.**
 
@@ -353,6 +379,8 @@ Only a **work order in progress for manufacture** can be closed out. Before work
 4. For the parts you return, enter "**Finished diameter**" and "**Finished length**" (if no shaping step is done yet, leave them empty to use the WIP blank size). Where a branch merges before the step, also choose the "**Route taken**" (the main line is preselected).
 5. Enter the "**Reason for close-out**" (required) and press "**Close out**".
 
+![Work order close-out screen](../../../assets/screenshots/work-order-abort-01.png)
+
 If the [approval settings](/manual/en/operations/masters/approval-setting/user) have no steps for "**Work order close-out**", the work order is closed out right away. Otherwise it becomes an approval request and "**Close-out pending approval**" appears at the top of the screen. The work order stays in progress until approved.
 
 When a work order is closed out:
@@ -363,6 +391,20 @@ When a work order is closed out:
 - The original order lines go back to not planned when no other live work order is attached, so you can create a new work order.
 
 **If the steps move on while the request waits for approval, the close-out is not applied.** If you see "Could not apply the close-out", request it again for the current state. If it is sent back, the work order simply continues.
+
+## Check the marking number [#marking-number]
+
+The serial number laser-marked on the products (the **marking number**) is shown as 「**印字番号**」 (marking number) near the top of the work order detail screen.
+
+- The number belongs to the **order line** and is assigned automatically when the order acceptance is confirmed. The work order only displays the numbers of its allocated order lines.
+- Both forms are always shown. Which one to mark is decided on the shop floor.
+  - 「**1 本ずつ**」 (per piece) … consecutive numbers for the line quantity, such as `A200000-001 〜 A200000-150`.
+  - 「**明細ごと**」 (per line) … a single number with no suffix, such as `A200000`.
+- For a work order allocated to two or more order lines (a combined lot), the numbers are listed per order line.
+- 「**未採番（注文確定時に採番）**」 (not numbered — assigned at order confirmation) is shown for an order line that has no number yet.
+- A for-stock work order (not linked to an order line) has no marking number field.
+
+The marking number also appears on the strip print and on the step screens of the shared shop-floor device.
 
 ## Other things you can do
 
@@ -397,6 +439,7 @@ Every field on the work order screen. The order of the steps themselves is set i
 | [Lot input](#field-lot-input-mode) | Optional | How the lot / slip code is recorded per step |
 | [Work hours](#field-step-work-hours) | Optional | A rough estimate of the time each step takes |
 | [Work plans (assignees)](#field-step-plans) | Conditional | The person in charge, planned date and work location per step |
+| [Step due date](#field-step-due-date) | Optional | The deadline of each step |
 | [Notes](#field-notes) | Optional | Notes |
 
 ### Order line allocations [#field-order-line]
@@ -488,6 +531,10 @@ A rough estimate of the time each step takes, in hours. It is shown on the step 
 ### Work plans (assignees) [#field-step-plans]
 
 The person in charge, the planned date, and (for steps the process step master requires it) the work location for each step. **Whether each field is required is decided per step by the process step master** (the planned date alone is always required). The assignee is optional by default and can be left empty — filling it in creates a work plan, and the work appears in the 「工程実行」 (step execution) list on that person's floor tablet. To set times as well, add them in each step's plan table after creating the work order. To request approval, every in-house step needs at least one plan row with its required fields filled in (see "Getting approval" above).
+
+### Step due date [#field-step-due-date]
+
+The deadline of each step. It is optional. If it has passed and the step is not finished, the step card and flow chart show it in red. After approval it can be changed in the plan area of the step screen ([Set a step due date](#step-due-date)).
 
 ### Notes [#field-notes]
 

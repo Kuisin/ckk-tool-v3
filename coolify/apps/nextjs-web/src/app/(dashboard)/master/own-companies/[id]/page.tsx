@@ -31,6 +31,18 @@ export default async function MasterOwnCompaniesDetailPage({
     },
   });
   if (!r) notFound();
+  // 自社法人が未設定の拠点は既定の法人として扱う — 既定の法人の拠点タブにも並べる
+  // （一覧の拠点数と同じ数え方。並べないと、割り当て前の拠点がどこにも出ない）。
+  const unassigned = r.isDefault
+    ? await prisma.plant.findMany({
+        where: { ownCompanyId: null },
+        orderBy: { code: "asc" },
+        select: { id: true, code: true, name: true, isActive: true },
+      })
+    : [];
+  const plants = [...r.plants, ...unassigned].sort((a, b) =>
+    a.code.localeCompare(b.code),
+  );
 
   const name = r.name as LocalizedText | null;
   const address = r.address as LocalizedText | null;
@@ -75,7 +87,7 @@ export default async function MasterOwnCompaniesDetailPage({
     isDefault: r.isDefault,
     isActive: r.isActive,
     notes: r.notes ?? "",
-    plants: r.plants.map((p) => ({
+    plants: plants.map((p) => ({
       id: p.id,
       code: p.code,
       name: localized(p.name as LocalizedText | null),

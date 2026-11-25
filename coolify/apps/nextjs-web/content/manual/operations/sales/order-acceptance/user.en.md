@@ -148,6 +148,17 @@ At the top of the screen, 「**製品**」 (products), 「**明細数 / 合計�
 >
 > The orange「**価格差異**」(price difference) badge marks a row that differs from the price list **without** an override — for example because the price list changed after the draft was saved. A gray「**価格表なし**」(no price list) badge only means there is no price list yet for that customer and product — it is not a mistake, and the unit price on that row is free to enter. An orange「**数量段階なし**」(no quantity tier) badge marks a row whose price list exists but has no tier for that quantity. Its unit price is free to enter, but like a price difference it must be acknowledged before you request approval.
 
+## Which company the order acceptance belongs to (own company) [#own-company]
+
+When two or more companies issue documents ([own companies](/manual/en/operations/masters/own-company/user)), an order acceptance is also created as belonging to **one of them**. If you have only one company, you do not need to think about this.
+
+- **One order acceptance is one company.** Its number (`ORD-…`) is taken from that company's sequence, and unit prices come from that company's [price lists](/manual/en/operations/sales/price-list/user#per-company).
+- **It is decided when the document is created.** For an order acceptance made by hand, the system looks at the assigned site → the assigned site of the lines → the source quote, and the first company found wins. If none is found it is the default company. For an imported order acceptance it is decided by "own company of the intake channel" in [Order intake](/manual/en/operations/system/order-intake/user#intake-company).
+- **It cannot be changed afterwards.** If the company is wrong, cancel the order acceptance and create it again.
+- **A line's「担当拠点」(assigned site) must be a site of the same company.** Saving with a site of another company shows「**明細 ◯ 行目: 担当拠点がこの注文請書の自社法人（◯◯）に属していません。注文請書 1 件の明細は同じ自社法人の拠点にしてください**」(line ◯: the assigned site does not belong to this order acceptance's own company; keep the lines of one order acceptance within sites of the same own company). Split the order acceptance for the part handled at another company's site.
+
+You can tell which company an order acceptance belongs to from the company code at the start of the screen URL (`CKK` in `/sales/order-acceptances/CKK~ORD-2026-00001`).
+
 ## Asking for approval
 
 1. In view mode, press「**承認依頼**」(request approval) in the card at the very top of the screen. (The button is hidden while you are editing — save first.) The button stays disabled while something is missing: the card lists what it is (for example「顧客が未特定です」— no customer —,「明細 2 行目: 単価が未入力です」— no unit price on row 2 —, or「明細 2 行目: 研ぎ直す工具が未選択です」— no tool to regrind on row 2). Fix it with「**編集**」(edit) first.
@@ -176,7 +187,7 @@ Once approved, the card at the very top of the screen says「**確定できま�
 
 ![Deploy confirmation screen](../../../assets/screenshots/order-acceptance-deploy-01.png)
 
-One 注文明細 (order line) is made per line item. The numbers follow the order acceptance number with `-01`, `-02` and so on. You can open the order lines that were made from the「**生成された注文明細**」(generated order lines) links on the screen, or from「**注文明細一覧**」(order line list) at the top right of the list screen.
+One 注文明細 (order line) is made per line item. The numbers follow the order acceptance number with `-01`, `-02` and so on. At this point a **marking number** (the serial number laser-marked on the products, such as `A200000`) is also assigned automatically to each order line. You can check it on the [order line](/manual/en/operations/sales/order-line/user#marking-number) screen. You can open the order lines that were made from the「**生成された注文明細**」(generated order lines) links on the screen, or from「**注文明細一覧**」(order line list) at the top right of the list screen.
 
 If you chose a quote, this order acceptance appears on that [quote](/manual/en/operations/sales/quote/user) under 「**手続き状況**」(progress) → 「**次の書類へ**」(to). The quote's own status does not change — whether you won the order is read from whether an order acceptance exists.
 
@@ -335,7 +346,7 @@ That line's actual destination (end user). **Required when direct to user is sel
 
 ### Assigned plant [#field-assigned-plant]
 
-The site of your own company that mainly handles that line. Choose it when you want to make clear which site's work it is.
+The site of your own company that mainly handles that line. Choose it when you want to make clear which site's work it is. When there are two or more own companies, choose **a site that belongs to this order acceptance's company** ([Which company the order acceptance belongs to](#own-company)).
 
 ### Shipping work location [#field-shipping-work-location]
 

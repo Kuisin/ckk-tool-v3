@@ -129,7 +129,7 @@ export function StepExecutionView({
   // 指示書スキャン経由ならその指示書のビュー、作業場所の一覧経由ならその一覧へ
   const backHref =
     backTo === "workOrder"
-      ? `/wo-scan/${step.workOrderNumber}`
+      ? `/wo-scan/${step.workOrderNumber}${backParams}`
       : backTo === "location"
         ? `/work-location${backParams}`
         : "/steps";

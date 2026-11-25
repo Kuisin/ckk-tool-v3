@@ -253,6 +253,7 @@ import {
   isWorkOrderComplete,
   regrindFullyReturned,
   resolveReceivedQuantity,
+  START_STEP_CODES,
   STEP_LINK_STATE_SELECT,
   STEP_STATE_SELECT,
   type StepLinkState,
@@ -301,7 +302,14 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
       stepLinks: { select: STEP_LINK_STATE_SELECT },
     },
   });
-  const execDeps = await prisma.processStepExecDependency.findMany();
+  const [execDeps, startSteps] = await Promise.all([
+    prisma.processStepExecDependency.findMany(),
+    // 開始工程（出し・受渡し）— 終わるまで他の工程を開始させない（canStartStep）。
+    prisma.processStepCatalog.findMany({
+      where: { code: { in: [...START_STEP_CODES] } },
+      select: { id: true },
+    }),
+  ]);
   const steps: StepState[] = wo.steps.map(toStepState);
   const links: StepLinkState[] = wo.stepLinks;
   const woLinkCtx = await fetchIncomingWoLinks(workOrderId);
@@ -315,6 +323,7 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
         dependsOnStepId: d.dependsOnStepId,
         relation: d.relation,
       })),
+      startStepIds: startSteps.map((c) => c.id),
       ...woLinkCtx,
     },
     workOrder: {

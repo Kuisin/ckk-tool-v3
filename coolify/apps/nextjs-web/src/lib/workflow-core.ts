@@ -776,6 +776,17 @@ export interface WorkflowCtx {
    * 未完了があれば null）。先頭メインライン工程の想定受入に使う。
    */
   incomingWoQuantity?: number | null;
+  /**
+   * 開始工程（出し・受渡し・製品受入 — START_STEP_CODES）のカタログ id。
+   * 渡すと、この指示書の開始工程が終わるまで他の工程を開始できない。
+   *
+   * ふつうはカタログの実行依存がこの順を作る（切断 ← 素材出し …）。しかし
+   * 在庫の仕掛品から始める指示書は済んだ工程を構成から外すので、残った先頭の
+   * 工程（例: 段加工）の依存先がどれも不在 = 空真になり、半製品出しより先に
+   * 開始できてしまう。どの構成も開始工程ちょうど 1 つで始まる、という決まりを
+   * ここで直接見る。省略時は従来動作（見ない）。
+   */
+  startStepIds?: readonly number[];
 }
 
 /**
@@ -822,6 +833,19 @@ export function canStartStep(
     );
   if (step.sessionLockedBy && step.sessionLockedBy !== actorId)
     reasons.push(t("anotherUserSession", "別のユーザーがセッション中です")); // i18n-ignore
+
+  // 開始工程（出し・受渡し）が先 — 実行依存が不在で空真になる構成でも飛ばせない
+  const startIds = ctx.startStepIds ?? [];
+  if (!startIds.includes(step.processStepId)) {
+    for (const s of ctx.steps) {
+      if (s.id === stepId || !startIds.includes(s.processStepId)) continue;
+      if (s.status === "COMPLETED" || s.status === "CANCELLED") continue;
+      reasons.push(
+        t("startStepIncomplete", "開始工程（出し・受渡し）が未完了です"), // i18n-ignore
+      );
+      break;
+    }
+  }
 
   // カタログ実行依存 — 指示書内に存在する工程のみで評価
   const byCatalog = new Map<number, StepState[]>();

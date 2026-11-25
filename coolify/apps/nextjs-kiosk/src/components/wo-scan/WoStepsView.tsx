@@ -256,6 +256,7 @@ export function WoStepsView({
                 {overview.steps.map((item, i) => (
                   <WoStepCard
                     executable={executable}
+                    fromList={fromList}
                     index={i + 1}
                     item={item}
                     key={item.step.stepId}
@@ -274,8 +275,11 @@ function WoStepCard({
   item,
   index,
   executable,
+  fromList,
 }: {
   item: WorkOrderStepItem;
+  /** 指示書一覧から来ているか — 工程から戻ったあとも一覧へ戻れるよう持ち回る。 */
+  fromList: boolean;
   /** 工程順の表示番号（1..N — 紙の指示書との突き合わせ用）。 */
   index: number;
   /** 指示書が承認済み/進行中か（false のとき工程は開けない）。 */
@@ -295,7 +299,12 @@ function WoStepCard({
   return (
     <UnstyledButton
       disabled={!openable}
-      onClick={() => openable && router.push(`/steps/${step.stepId}?from=wo`)}
+      onClick={() =>
+        openable &&
+        router.push(
+          `/steps/${step.stepId}?from=wo${fromList ? "&via=list" : ""}`,
+        )
+      }
       style={{ opacity: openable ? 1 : 0.6 }}
     >
       <Paper p="md" radius="md" withBorder>

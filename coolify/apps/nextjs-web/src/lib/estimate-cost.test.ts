@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  breakdownRowMode,
   canSeeEstimateKind,
   estimateKindWhere,
   withoutCost,
@@ -70,6 +71,21 @@ describe("estimate-cost", () => {
     expect(calcTrialPricing(input, { criteria: stripped }).lots).toEqual(
       calcTrialPricing(input, { criteria }).lots,
     );
+  });
+
+  it("内訳の行: 小計に足さない基準は出さず、原価のみは印つきで出す", () => {
+    const criteria: Criterion[] = DEFAULT_CRITERIA.map((c) =>
+      c.id === "coating" ? { ...c, isCost: true, costOnly: true } : c,
+    );
+    // 原価を見られる人: 行は残り、原価のみの印が付く。
+    expect(breakdownRowMode(criteria, "coating")).toBe("costOnly");
+    expect(breakdownRowMode(criteria, "material")).toBe("show");
+    // 権限の無い人へ渡す基準では、その行ごと消える（額を見せない）。
+    const stripped = withoutCostFlags(criteria);
+    expect(breakdownRowMode(stripped, "coating")).toBe("hide");
+    expect(breakdownRowMode(stripped, "material")).toBe("show");
+    // 基準に無い行（形状出しの按分）は常に出す。
+    expect(breakdownRowMode(stripped, "shapeOutPerPiece")).toBe("show");
   });
 
   it("原価試算は estimate_cost の無い人には見えない", () => {

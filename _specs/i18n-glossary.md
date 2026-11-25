@@ -286,6 +286,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 発行元（書類の） | Issuer | 开具方 |
 | 発行会社（作成フォームの欄） | Issuing company | 开具公司 |
 | 取込口（注文書の入口 — 取込フォルダ・メール・外部連携） | Intake channel | 导入渠道 |
+| 取込口の自社法人（注文書取込 SY0C の設定） | Own company of the intake channel | 导入渠道的本公司法人 |
+| 法人コード（自社法人を見分ける短い文字。書類の URL に入る） | Company code | 法人编号 |
 | 適格請求書発行事業者登録番号 | Invoice registration number | 合格请款单发行事业者登记号 |
 | 社印 | Company seal | 公司印章 |
 | 会計年度の開始月 | Fiscal year start month | 会计年度开始月 |
@@ -422,6 +424,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 工程リスト | Step list | 工序清单 | 製品工程ルート（product_process_routes）の画面語 |
 | 工程納期 | Step due date | 工序交期 | 工程ごとの締切（work_order_steps.due_date）。指示書の「予定納期」とは別 |
 | 持ち越し | Carried over | 顺延 | 前日以前の計画で、まだ終わっていない工程（作業場所一覧 PD09） |
+| 作業中（作業場所一覧の印 — その場所で実績を記録した進行中の工程） | In progress here | 作业中 | 作業場所一覧 PD09。工程の状態「進行中」とは別の印 |
+| 作業場所なし（作業場所一覧の枠） | No work location | 无作业场所 | 作業計画に作業場所が入っていない工程をまとめる枠（PD09） |
 | 使える指示書種別 | Work order types | 可用的工单类别 | 工程マスタ (MS08) の設定 — この工程を載せてよい指示書種別。開始工程（製品出し（在庫）/ 製品受入（再研磨））だけは固定で選べない |
 | 準備工程 / 製造工程 | Preparation step / Manufacturing step | 准备工序 / 制造工序 | 工程リストの 2 種別（§7）。準備 = 〇〇出し・受渡し + 材料準備 |
 | 準備工程リスト / 製造工程リスト | Preparation step list / Manufacturing step list | 准备工序清单 / 制造工序清单 | 前者は共通、後者は 製品 × 受注元 |

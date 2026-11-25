@@ -324,6 +324,31 @@ describe("canStartStep", () => {
     expect(canStartStep("b", ctx).ok).toBe(false);
   });
 
+  it("開始工程が終わるまで、依存先が不在の工程も開始できない（仕掛品から始める構成）", () => {
+    // 150 半製品出し（開始工程）→ 400 段加工。段加工の依存先（300 検査）は、
+    // 済んだ工程として構成から外れている = 実行依存だけだと空真で開始できてしまう。
+    const base: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [step("issue", 150, 10), step("grind", 400, 20)],
+      links: [],
+      execDeps: [edep(400, 300)],
+    };
+    // 開始工程を渡さなければ従来どおり（空真）。
+    expect(canStartStep("grind", base).ok).toBe(true);
+    const ctx: WorkflowCtx = { ...base, startStepIds: [100, 150] };
+    expect(canStartStep("grind", ctx).ok).toBe(false);
+    // 開始工程そのものは開始できる。
+    expect(canStartStep("issue", ctx).ok).toBe(true);
+    // 終われば（あるいは取り消されていれば）先へ進める。
+    for (const done of ["COMPLETED", "CANCELLED"] as const) {
+      const after: WorkflowCtx = {
+        ...ctx,
+        steps: [step("issue", 150, 10, done), step("grind", 400, 20)],
+      };
+      expect(canStartStep("grind", after).ok).toBe(true);
+    }
+  });
+
   it("依存先がワークフローに不在なら空真（素材属性・省略工程）", () => {
     const ctx: WorkflowCtx = {
       plannedQuantity: 10,

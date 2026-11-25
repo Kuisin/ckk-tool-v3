@@ -70,6 +70,19 @@ Once you start, the status changes to 「作業中」 (in progress) and the work
 
 > 💡 You can also work on several steps at the same time. While you do, the working time is **divided by the number of steps you are working on at once** and recorded on each step (for example, two at once means the time counts half for each).
 
+## What you can check on the step screen
+
+The top part of the step screen gathers the information you need for the work.
+
+- **印字番号** (marking number) … shown as 「**印字番号 A200000-001 〜 A200000-150（明細ごと A200000）**」. It is the number laser-marked on the products. When marking each piece, use the consecutive numbers from `-001`; when marking one number per line, use the number in brackets. It is not shown for a work order that is not linked to an order (for stock).
+- **工程納期** (step due date) … shown as 「**工程納期 2026/08/10**」: by when this step should be finished. It turns **red and bold** if the date has passed and the step is not finished. It is not shown for a step with no due date.
+- **加工プログラム** (machining programs) … when programs used in this step are registered, they are listed under 「**加工プログラム**」.
+  - The program name and program number, and 「**機械: ◯◯**」 (which machine it is for; one for any machine shows 「**機械を問わない**」 (any machine)) are shown.
+  - A program for the same machine as the current work location (this tablet's default work location, or the planned or actual work location) gets a 「**この機械用**」 (for this machine) mark and is listed first.
+  - If a file is registered, press the file name to download it. One with only a number noted shows 「**ファイルなし**」 (no file).
+
+> 💡 Machining programs are registered by the office on a version of the [drawing](/manual/en/operations/production/design-file/user). If none appears or the content is wrong, please contact the office.
+
 ## Stopping partway and restarting
 
 - To stop partway, for example for a lunch break, press 「**一時停止**」 (Pause). The work time stops being counted.
@@ -100,9 +113,18 @@ The step screen has a 「**作業場所**」 (work location) box: **which machin
    - **不良種類** (defect type, required) … choose from the defect types registered in advance
    - **本数** (number of pieces)
    - **詳細** (details, required) … describe in words what the defect was
-4. Press 「**完了する**」 (Complete).
+4. If a row has the type 「**半製品**」 (semi-finished), a 「**在庫に置く仕掛品**」 (WIP going to stock) block appears. Enter the actual current size in 「**仕上がり径 (mm)**」 (finished diameter) and 「**仕上がり長 (mm)**」 (finished length) (see "When you put semi-finished pieces into stock" below).
+5. Press 「**完了する**」 (Complete).
 
 > ⚠️ If the defects add up to more than the received quantity, you see 「**不良の合計（n）が受入数（n）を超えています**」 (the defect total, n, is more than the received quantity, n) and you cannot finish. Please check the numbers again. Also, if a defect line is missing its type or details, you see 「**不良の各行に種類と詳細を入力してください**」 (enter a type and details on every defect line). Fill in every line before finishing.
+
+### When you put semi-finished pieces into stock
+
+Pieces assigned to semi-finished go into stock as **WIP**. So that they can be used later to continue another work order, they are entered separately by **how far they were processed (processing state)** and **their current size (finished size)**. That is why you are asked for the size when completing.
+
+- 「**加工状態**」 (processing state) … shows the shape-changing steps completed so far. It is for checking only; you do not enter it.
+- 「**仕上がり径 (mm)**」 (finished diameter) and 「**仕上がり長 (mm)**」 (finished length) … **must be entered** when at least one shape-changing step is completed. Without them 「**仕上がり径を入力してください**」 (enter the finished diameter) is shown and you cannot complete. When none is completed yet you may leave them empty, and the WIP blank size shown under the fields is used.
+- 「**通ってきた経路**」 (route taken) … appears only at a step where a branch merges before it. Choose the route the pieces actually came through (the main line is preselected).
 
 ## Inspection steps
 

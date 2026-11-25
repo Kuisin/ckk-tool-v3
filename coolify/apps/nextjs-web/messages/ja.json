@@ -8363,7 +8363,10 @@
       "kindPriceHint": "見積単価まで出します。確定すると価格表の基準単価に選べます。",
       "kindCostHint": "原価合計だけを出します。原価を見る権限のある人にしか見えず、価格表の基準単価にはできません。",
       "createPriceEstimate": "売価試算を作成",
-      "costEstimateNotice": "これは原価試算です。原価合計だけを出し、価格表の基準単価にはできません。売価が必要なら「売価試算を作成」で入力を引き継いだ売価試算を作ってください。"
+      "costEstimateNotice": "これは原価試算です。原価合計だけを出し、価格表の基準単価にはできません。売価が必要なら「売価試算を作成」で入力を引き継いだ売価試算を作ってください。",
+      "costEstimateConfirmed": "原価試算を確定しました。価格表の基準単価にはできません",
+      "linkedToTheProductCostEstimate": "製品にリンクしました",
+      "costOnlyRow": "原価のみ"
     },
     "orderLineDetail": {
       "designWithCount": "設計（{count}）",
@@ -10026,6 +10029,7 @@
     "execDepIncomplete": "実行依存が未完了です（工程 {stepId}）",
     "execDepOrIncomplete": "実行依存（いずれか）が未完了です",
     "branchSourceIncomplete": "分岐元の工程が未完了です",
+    "startStepIncomplete": "開始工程（出し・受渡し）が未完了です",
     "precedingWorkOrderIncomplete": "先行指示書 #{workOrderNumber} が未完了です",
     "quantityNegative": "{label}は 0 以上で入力してください",
     "quantityConservationInspection": "合格 + 不合格（半製品・廃棄・工程分岐）の合計（{sum}）が検査数（{input}）と一致しません",
@@ -10072,7 +10076,7 @@
       },
       "notes": {
         "label": "備考",
-        "summary": "社内向けの補足です。見積書の PDF には出ません。"
+        "summary": "見積書全体についての補足です。見積書の PDF の「備考」欄に印字されます。"
       }
     },
     "priceList": {
@@ -11148,7 +11152,7 @@
     "quantityTimesUnitPrice": "{quantity} × ¥{unitPrice}",
     "copiedFromWorkOrder": "指示書 #{number} から複写",
     "couldNotSave": "追加料金の保存に失敗しました",
-    "workOrderHelp": "送料など、製品の代金以外に請求するもの。ここは**予定**で、出荷書を作るときに複写されます。請求されるのは出荷書側の行です。",
+    "workOrderHelp": "送料など、製品の代金以外に請求するもの。ここは予定で、出荷書を作るときに複写されます。請求されるのは出荷書側の行です。",
     "deliveryOrderHelp": "この出荷で請求する追加料金。確定すると締日処理が請求書の明細にします。直せるのは下書きのうちだけです。",
     "workOrderClosedForCharges": "完了・キャンセルした指示書の追加料金は変更できません。出荷書側で直してください",
     "deliveryOrderClosedForCharges": "追加料金を変更できるのは下書きの出荷書だけです"

@@ -126,7 +126,12 @@ export async function GET(request: Request): Promise<Response> {
         line_note_row: note
           ? `<tr class="line-note"><td colspan="6">${note}</td></tr>`
           : "",
-        name: it.productName,
+        // 画面用の品名は「名称 コード」。帳票はコードを名称の下に別の行で刷るので、
+        // そのまま渡すとコードが 2 回出る — 末尾のコードを落として名称だけにする。
+        name:
+          it.productCode && it.productName.endsWith(` ${it.productCode}`)
+            ? it.productName.slice(0, -(it.productCode.length + 1))
+            : it.productName,
         // 製品コード（PRD-YYYYMM-NNNN）。**採番前のレガシー品目は空欄で刷る** —
         // 以前ここは内部の連番 id を刷っていた（品目統合で本来の製品コードへ）。
         code: it.productCode ?? "",

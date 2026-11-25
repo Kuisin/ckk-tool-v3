@@ -132,7 +132,7 @@ This screen has no input boxes. What to close and for which dates follows **the 
 
 ### Close [#field-process]
 
-Gathers what was shipped in the period (「発送」 dispatch delivery orders that became 「出荷済」 shipped) and creates **one invoice per customer.**
+Gathers what was shipped in the period (「発送」 dispatch delivery orders that became 「出荷済」 shipped) and creates **one invoice per customer.** When two or more companies issue documents ([own companies](/manual/en/operations/masters/own-company/user)) and the shipments of the period span more than one of them, the invoices are split into **one per company** (one invoice can print only one issuer).
 
 Before closing, check that every shipment in the period has been recorded. **A shipment added afterwards does not join a closed invoice** — it moves to the next period.
 

@@ -17,10 +17,34 @@
  *   3. nextjs-kiosk を本番ビルドして :3101 で起動
  *   4. pnpm exec tsx e2e-kiosk-inspection-approval.ts
  */
+import { mkdirSync } from "node:fs";
 import { chromium, type Page } from "@playwright/test";
 
-const KIOSK = "http://localhost:3101";
+const KIOSK = process.env.KIOSK_URL ?? "http://localhost:3101";
 const STEP = "dc011000-0000-4000-8000-000000000006";
+/** 画面の写しを残す先（省略時は残さない）。 */
+const SHOT_DIR = process.env.SHOT_DIR;
+async function shot(page: Page, name: string): Promise<void> {
+  if (!SHOT_DIR) return;
+  mkdirSync(SHOT_DIR, { recursive: true });
+  const path = `${SHOT_DIR}/${name}.png`;
+  // モーダルが開いている間は表示領域ぶんで撮る。
+  const overlay = await page.locator(".mantine-Modal-content:visible").count();
+  const size = page.viewportSize();
+  if (overlay > 0 || !size) {
+    if (overlay > 0) await page.waitForTimeout(400); // 開く・入れ替わるアニメーションが終わってから
+    await page.screenshot({ path });
+    return;
+  }
+  // 全高で撮る。**fullPage: true は使わない** — Playwright は撮る前に表示領域を一瞬
+  // 1×1 にするので、幅で配置を切り替える画面（工程実行の 2 ペイン = MasterDetailShell）
+  // が作り直され、開いたばかりのモーダルや入力途中の値が消える（実際に踏んだ）。
+  // 幅は変えずに高さだけ伸ばして撮り、元に戻す。
+  const height = await page.evaluate(() => document.documentElement.scrollHeight);
+  await page.setViewportSize({ width: size.width, height: Math.min(Math.max(size.height, height), 8000) });
+  await page.screenshot({ path });
+  await page.setViewportSize(size);
+}
 let fails = 0;
 function check(n: string, ok: boolean, d = "") {
   if (!ok) fails++;
@@ -60,6 +84,7 @@ async function main() {
   await login(p);
   await p.goto(`${KIOSK}/steps/${STEP}`, { waitUntil: "networkidle" });
   await p.waitForTimeout(1200);
+  await shot(p, "01-step-approval-pending");
 
   // 1. 仕事が完了ボタンより上に来ているか（Y 座標で見る）
   const yApproval = await p.getByText("検査承認").first().boundingBox();
@@ -99,7 +124,7 @@ async function main() {
     sheet.includes("実測値") && /6\.01/.test(sheet),
     sheet.includes("実測値") ? "値が出ていない" : "見出しが出ていない",
   );
-  await p.screenshot({ path: "/tmp/k-sheet.png", fullPage: true });
+  await shot(p, "02-inspection-sheet");
   check(
     "検査表からそのまま承認できる",
     (await p.getByRole("button", { name: "承認する" }).count()) > 0,
@@ -113,6 +138,7 @@ async function main() {
   // 5. 実際に承認する
   await p.getByRole("button", { name: "承認する" }).click();
   await p.waitForTimeout(2500);
+  await shot(p, "03-all-approved");
   check(
     "承認するとすべて承認しましたになる",
     (await p.getByText("すべて承認しました").count()) > 0,
@@ -132,7 +158,7 @@ async function main() {
     "開くと済み・対象外が読める",
     (await p.getByText("不合格のため承認できません").count()) > 0,
   );
-  await p.screenshot({ path: "/tmp/k-approved.png", fullPage: true });
+  await shot(p, "04-approved-and-excluded-open");
 
   // 7. 完了ボタンまで届くか（内側スクロール）
   const sc = await p.evaluate(() => {
@@ -147,6 +173,7 @@ async function main() {
   console.log("scroll container:", JSON.stringify(sc));
   await p.getByRole("button", { name: "工程完了" }).scrollIntoViewIfNeeded();
   await p.waitForTimeout(300);
+  await shot(p, "05-complete-button-reachable");
   check(
     "完了ボタンまでスクロールできる",
     await p.getByRole("button", { name: "工程完了" }).isVisible(),

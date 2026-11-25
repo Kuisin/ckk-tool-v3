@@ -11,11 +11,35 @@
  * Run against the throwaway seeded DB (tools/docs-screenshots recipe):
  *   pnpm exec tsx e2e-inspection-and-material.ts
  */
+import { mkdirSync } from "node:fs";
 import { chromium, type Page } from "@playwright/test";
 
 const APP = process.env.APP_URL ?? "http://localhost:3100";
 const results: string[] = [];
 let failed = 0;
+/** 画面の写しを残す先（省略時は残さない）。 */
+const SHOT_DIR = process.env.SHOT_DIR;
+async function shot(page: Page, name: string): Promise<void> {
+  if (!SHOT_DIR) return;
+  mkdirSync(SHOT_DIR, { recursive: true });
+  const path = `${SHOT_DIR}/${name}.png`;
+  // モーダルが開いている間は表示領域ぶんで撮る。
+  const overlay = await page.locator(".mantine-Modal-content:visible").count();
+  const size = page.viewportSize();
+  if (overlay > 0 || !size) {
+    if (overlay > 0) await page.waitForTimeout(400); // 開く・入れ替わるアニメーションが終わってから
+    await page.screenshot({ path });
+    return;
+  }
+  // 全高で撮る。**fullPage: true は使わない** — Playwright は撮る前に表示領域を一瞬
+  // 1×1 にするので、幅で配置を切り替える画面（工程実行の 2 ペイン = MasterDetailShell）
+  // が作り直され、開いたばかりのモーダルや入力途中の値が消える（実際に踏んだ）。
+  // 幅は変えずに高さだけ伸ばして撮り、元に戻す。
+  const height = await page.evaluate(() => document.documentElement.scrollHeight);
+  await page.setViewportSize({ width: size.width, height: Math.min(Math.max(size.height, height), 8000) });
+  await page.screenshot({ path });
+  await page.setViewportSize(size);
+}
 
 function check(name: string, ok: boolean, detail = ""): void {
   if (!ok) failed++;
@@ -73,6 +97,7 @@ async function main(): Promise<void> {
     .getByText("選択中の素材は製品の想定材種", { exact: false })
     .count();
   check("プリフィル直後は想定外の警告が出ない", mismatchBefore === 0);
+  await shot(page, "01-material-prefilled");
 
   // 想定外の材種（B04A0001 系）へ手動で変更 → 警告が出る
   await materialInput.click();
@@ -85,6 +110,7 @@ async function main(): Promise<void> {
     .getByText("選択中の素材は製品の想定材種", { exact: false })
     .count();
   check("想定外の材種へ変えると警告が出る", mismatchAfter > 0);
+  await shot(page, "02-material-mismatch-warning");
 
   // ═══════════════════════════════════════════════════════════════════════
   // 2. 検査表ポップアップ — 見る/編集モード・保存を押すまで書き込まない
@@ -102,9 +128,11 @@ async function main(): Promise<void> {
     (await page.getByText("検査表が割り当てられていません").count()) > 0,
   );
 
+  await shot(page, "03-step-inspection-unassigned");
   await page.getByRole("button", { name: "検査表を見る" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.waitFor({ state: "visible" });
+  await shot(page, "04-popup-view-mode");
   check(
     "ポップアップは既定で閲覧モードで開く（未割当の空状態を表示）",
     (await dialog.getByText("検査表が割り当てられていません").count()) > 0,
@@ -123,6 +151,7 @@ async function main(): Promise<void> {
   await page.keyboard.press("Escape"); // MultiSelect のドロップダウンを閉じる
   await page.waitForTimeout(200);
 
+  await shot(page, "05-popup-edit-draft");
   // ここではまだ書いただけ — キャンセルで下書きを捨てる（保存されない）
   await dialog.getByRole("button", { name: "キャンセル", exact: true }).click();
   await page.waitForTimeout(300);
@@ -149,6 +178,7 @@ async function main(): Promise<void> {
   await page.waitForTimeout(200);
   await dialog.getByRole("button", { name: "保存" }).click();
   await page.waitForTimeout(1200);
+  await shot(page, "06-popup-saved");
   check(
     "保存を押すと閲覧モードへ戻り、割り当てた検査表が表示される",
     (await dialog.getByText(/DEMO-INS-01/).count()) > 0,
@@ -157,6 +187,7 @@ async function main(): Promise<void> {
   await dialog.waitFor({ state: "hidden" });
 
   await page.reload({ waitUntil: "networkidle" });
+  await shot(page, "07-step-inspection-assigned");
   check(
     "リロード後も保存した検査表の割当が残る（サーバーに永続化された）",
     (await page.locator("text=/DEMO-INS-01/").count()) > 0,
@@ -164,7 +195,8 @@ async function main(): Promise<void> {
 
   // ── 結果 ──────────────────────────────────────────────────────────────
   console.log("");
-  console.log(results.join("\n"));
+  // 結果は check() が 1 件ずつ出している（ここで並べ直すと、標準出力を読む側 —
+  // scripts/scenarios.ts — が同じチェックを 2 回数える）。
   console.log("");
   console.log(failed === 0 ? `ALL PASS (${results.length})` : `${failed} FAILED / ${results.length}`);
   await browser.close();

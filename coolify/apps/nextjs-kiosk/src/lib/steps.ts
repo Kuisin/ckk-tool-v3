@@ -44,6 +44,7 @@ import {
   expectedInput,
   type LotInputMode,
   type QuantityTrackingMode,
+  START_STEP_CODES,
   type StepLinkState,
   type StepState,
   type WorkflowCtx,
@@ -151,38 +152,46 @@ async function buildContexts(
   workOrderIds: string[],
 ): Promise<Map<string, WorkflowCtx>> {
   if (workOrderIds.length === 0) return new Map();
-  const [workOrders, siblings, links, execDeps] = await Promise.all([
-    prisma.workOrder.findMany({
-      where: { id: { in: workOrderIds } },
-      select: { id: true, plannedQuantity: true },
-    }),
-    prisma.workOrderStep.findMany({
-      where: { workOrderId: { in: workOrderIds } },
-      select: {
-        id: true,
-        workOrderId: true,
-        processStepId: true,
-        status: true,
-        sortOrder: true,
-        inputQuantity: true,
-        outputSuccessQuantity: true,
-        outputDefectSemiFinished: true,
-        outputDefectScrap: true,
-        outputDefectRework: true,
-        sessionLockedBy: true,
-      },
-    }),
-    prisma.workOrderStepLink.findMany({
-      where: { workOrderId: { in: workOrderIds } },
-      select: {
-        workOrderId: true,
-        sourceStepId: true,
-        targetStepId: true,
-        routedQuantity: true,
-      },
-    }),
-    prisma.processStepExecDependency.findMany(),
-  ]);
+  const [workOrders, siblings, links, execDeps, startSteps] = await Promise.all(
+    [
+      prisma.workOrder.findMany({
+        where: { id: { in: workOrderIds } },
+        select: { id: true, plannedQuantity: true },
+      }),
+      prisma.workOrderStep.findMany({
+        where: { workOrderId: { in: workOrderIds } },
+        select: {
+          id: true,
+          workOrderId: true,
+          processStepId: true,
+          status: true,
+          sortOrder: true,
+          inputQuantity: true,
+          outputSuccessQuantity: true,
+          outputDefectSemiFinished: true,
+          outputDefectScrap: true,
+          outputDefectRework: true,
+          sessionLockedBy: true,
+        },
+      }),
+      prisma.workOrderStepLink.findMany({
+        where: { workOrderId: { in: workOrderIds } },
+        select: {
+          workOrderId: true,
+          sourceStepId: true,
+          targetStepId: true,
+          routedQuantity: true,
+        },
+      }),
+      prisma.processStepExecDependency.findMany(),
+      // 開始工程（出し・受渡し）— 終わるまで他の工程を開始させない（canStartStep）。
+      prisma.processStepCatalog.findMany({
+        where: { code: { in: [...START_STEP_CODES] } },
+        select: { id: true },
+      }),
+    ],
+  );
+  const startStepIds = startSteps.map((c) => c.id);
 
   const deps = execDeps.map((d) => ({
     stepId: d.stepId,
@@ -225,6 +234,7 @@ async function buildContexts(
       steps: stepsByWo.get(wo.id) ?? [],
       links: linksByWo.get(wo.id) ?? [],
       execDeps: deps,
+      startStepIds,
     });
   }
   return result;

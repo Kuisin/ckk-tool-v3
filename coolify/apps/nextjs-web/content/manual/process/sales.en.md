@@ -60,6 +60,8 @@ One price list is built for a customer × product combination. It can hold a sep
 
 Choosing the customer and the product fills in the unit price automatically from the price list. **A product not in the price list gets no unit price and shows a warning** — in that case you must first make a price estimate and a price list. Issuing saves the PDF and puts it in a state ready to give to the customer (steps … [Standard flow §3](/manual/en/process/default-flow#stage-3)).
 
+When two or more companies issue documents ([own companies](/manual/en/operations/masters/own-company/user)), the **issuing company** is decided when the quote is created (the field is shown only to people whose assigned sites span more than one company). Unit prices come from that company's price lists and the number from that company's sequence. A line with a discount gets a discount note, and line notes are printed as written, right under the line on the PDF.
+
 ![Quote issue modal. The issue button is highlighted with a red box](../assets/screenshots/flow-quote-issue-01.png)
 
 ### 4. Receiving the order (order acceptance)
@@ -93,6 +95,8 @@ flowchart TD
 ### 5–6. Confirming the order and instructing manufacturing (order lines, work order)
 
 Confirming the order acceptance creates an **order line** for each line item. Next, a **work order** is made against that order line. See [Production flow](/manual/en/process/production) for how the stock portion and the manufactured portion are split, and the fixed composition of the stock portion. From a confirmed order acceptance you can also go straight on to **making a delivery order** (steps … [Standard flow §5](/manual/en/process/default-flow#stage-5) / [§6](/manual/en/process/default-flow#stage-6)).
+
+On confirmation, a **marking number** (the serial number laser-marked on the products, such as `A200000`) is also assigned automatically to each order line. One order acceptance belongs to one own company, and sites of another company cannot be mixed into the assigned sites of its lines.
 
 ![Confirmation modal. The expand button is highlighted with a red box](../assets/screenshots/flow-order-deploy-01.png)
 

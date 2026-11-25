@@ -25,6 +25,7 @@ When an order acceptance is confirmed, each of its detail rows becomes an **orde
 - **Branch number** — the trailing `-01` in `ORD-2026-00012-01`. It says which row of the order acceptance this is.
 - **Reservation** — setting stock aside for this order so another order cannot take it.
 - **Lot number** — the serial number of a production batch (e.g. `#9001`). It is assigned automatically when a work order is created (it is separate from the work order's document number `WOR-…`).
+- **Marking number** — the serial number laser-marked on the products (e.g. `A200000-001`). It is assigned automatically to each order line when the order is confirmed.
 
 ## Reading the number
 
@@ -82,6 +83,17 @@ Select a row to open its detail screen.
 A "**Next step**" card appears at the top of the screen. While unallocated pieces remain it points to **creating a work order**; once allocation is done and unshipped pieces remain it points to **creating a delivery order**. Pressing the button on the card opens the [work order](/manual/en/operations/production/work-order/user) or [delivery order](/manual/en/operations/shipping/delivery-order/user) creation screen with this order line already selected.
 
 The three-dot "**…**" menu at the top right also always lists "**Create work order**" and "**Create delivery order**". Actions you cannot use right now are grayed out, with the reason shown (for example "available once the order acceptance is deployed").
+
+### Check the marking number [#marking-number]
+
+"**Marking number**" is shown near the top of the detail screen. It is the number laser-marked on the products, and one is assigned automatically to each order line **when the order acceptance is confirmed**. You cannot enter it yourself or change it later.
+
+- The number is based on `A` followed by a six-digit serial number (starting at `A200000`). It is a separate sequence from lot numbers and order line numbers, and does not reset when the month or fiscal year changes.
+- Both forms are always shown. Which one to mark is decided on the shop floor.
+  - "**Per piece**" — the range to use when marking a different number on each piece. For a quantity of 150 it shows `A200000-001 – A200000-150` (for 1,000 pieces or more, the suffix gets as many digits as the quantity needs).
+  - "**Per line**" — the number to use when marking the same number on every piece of that line (`A200000`).
+- "**Not numbered (numbered when the order is confirmed)**" is shown for an order line that has no number yet.
+- The same number also appears on the screen and strip print of the [work order](/manual/en/operations/production/work-order/user#marking-number) allocated to this order line, and on the step screens of the shared shop-floor device.
 
 ### Check the delivery destination
 

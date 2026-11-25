@@ -979,7 +979,9 @@ export async function createWorkOrder(
             {
               stepId,
               userId: p.userId,
-              plannedDate: new Date(`${p.date}T00:00:00+09:00`),
+              // 日付だけの列（@db.Date）は UTC の 0 時で渡す。JST の 0 時（+09:00）で
+              // 渡すと UTC では前日になり、選んだ日の 1 日前が保存される。
+              plannedDate: new Date(`${p.date}T00:00:00.000Z`),
               workLocationId: p.workLocationId,
               createdBy: actor,
             },

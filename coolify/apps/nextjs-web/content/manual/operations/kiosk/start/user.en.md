@@ -71,10 +71,11 @@ On the app list screen you can switch the **screen language** (日本語 / Engli
 
 ## Starting your work
 
-The app list has the following three apps.
+The app list has the following four apps.
 
 - 「**工程実行**」 (Run step) … opens the list of the work given to you. For how to use it, see [Recording Work](/manual/en/operations/kiosk/steps/user).
 - 「**指示書スキャン**」 (Scan work order) … scan the QR code printed on a work order with the camera (you can also type the number by hand), and **all the steps** of that work order appear in step order. Choose a step and the same recording screen as 「工程実行」 opens. Steps given to someone else show 「**他の担当者の工程です**」 (This step belongs to another person) and only that person can operate them.
+- 「**指示書一覧**」 (Work order list) … when you do not have the paper work order at hand, pick a running work order (approved or in progress) from a list and open the same step list as 「指示書スキャン」. For how to use it, see [Work Order List](/manual/en/operations/kiosk/wo-list/user).
 - 「**作業場所の工程**」 (Work location steps) … shows the steps waiting at **this machine, this place** rather than steps assigned to you. Use it to find work that was only planned with a date and a location and given to no one in particular. For how to use it, see [Work Location Steps](/manual/en/operations/kiosk/work-location/user).
 
 ## When you have finished
