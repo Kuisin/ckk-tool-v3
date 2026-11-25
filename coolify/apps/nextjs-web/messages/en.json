@@ -3682,7 +3682,7 @@
       "changeNotFound": "Machining program change request not found",
       "applyFailed": "Could not apply the machining program change",
       "requestedAudit": "Requested machining program change ({kind}) \"{name}\"",
-      "appliedAudit": "Applied machining program change ({kind}) \"{name}\" on v{version}",
+      "appliedAudit": "Applied machining program change ({kind}) \"{name}\" on drawing v{version}",
       "applyFailedAudit": "Could not apply the machining program change: {error}",
       "rejectedAudit": "Sent back the machining program change (reason: {reason})",
       "kind": {

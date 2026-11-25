@@ -171,7 +171,7 @@ export const designProgramsMemo: Scenario = {
         s.check("DB: 申請 2 件とも ADD で APPLIED（段なし = 申請と同時に反映）", changes === "ADD:APPLIED,ADD:APPLIED", changes);
         // 履歴に反映の記録が残る。
         await p.reload();
-        await s.checkVisible("履歴に「v2 の加工プログラム「段加工 仕上げ（NC旋盤）」の追加を反映」", "v2 の加工プログラム「段加工 仕上げ（NC旋盤）」の追加を反映", { wait: 10_000 });
+        await s.checkVisible("履歴に「設計図 v2：加工プログラム「段加工 仕上げ（NC旋盤）」の追加を反映」", "設計図 v2：加工プログラム「段加工 仕上げ（NC旋盤）」の追加を反映", { wait: 10_000 });
         await top(s);
       },
     },

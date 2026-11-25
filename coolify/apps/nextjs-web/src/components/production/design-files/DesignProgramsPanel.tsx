@@ -136,7 +136,7 @@ function ProgramTitle({
       <Text fw={600} size="sm">
         {p.name}
       </Text>
-      <Badge color="gray" size="xs" variant="outline">
+      <Badge color="gray" size="xs" tt="none" variant="outline">
         {tr("production.designPrograms.revision", { revision: p.revision })}
       </Badge>
       {p.programNumber && (
@@ -194,7 +194,8 @@ function ChangeSummary({ change }: { change: ProgramChangeView }) {
   const c = change.content;
   return (
     <Stack gap={2}>
-      <Text size="xs">
+      {/* Badge は div — p（Text）の中に置くと HTML が不正になり hydration が割れる */}
+      <Text component="div" size="xs">
         <Badge color="yellow" mr={6} size="xs" variant="light">
           {tr(`production.designPrograms.kind.${change.kind}`)}
         </Badge>

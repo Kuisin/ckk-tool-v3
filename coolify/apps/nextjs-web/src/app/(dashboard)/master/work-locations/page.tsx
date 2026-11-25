@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 export default async function MasterWorkLocationsPage() {
   const denied = await requireAppRead("master-work-locations");
   if (denied) return denied;
-  const [groups, types, plants, models] = await Promise.all([
+  const [groups, types, plants, models, modelPrograms] = await Promise.all([
     prisma.workLocationGroup.findMany({
       include: {
         plant: { select: { name: true } },
@@ -39,11 +39,24 @@ export default async function MasterWorkLocationsPage() {
     }),
     prisma.machineModel.findMany({
       include: {
-        _count: { select: { workLocations: true, programs: true } },
+        _count: { select: { workLocations: true } },
       },
       orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
     }),
+    // プログラムは版ごとに行があるので、機種ごとの本数はプログラム（program_key）で数える。
+    prisma.designProgramMachineModel.findMany({
+      select: {
+        machineModelId: true,
+        program: { select: { programKey: true } },
+      },
+    }),
   ]);
+  const programKeysByModel = new Map<number, Set<string>>();
+  for (const r of modelPrograms) {
+    const set = programKeysByModel.get(r.machineModelId) ?? new Set<string>();
+    set.add(r.program.programKey);
+    programKeysByModel.set(r.machineModelId, set);
+  }
   const modelName = new Map(
     models.map((m) => [m.id, localized(m.name as LocalizedText | null)]),
   );
@@ -59,7 +72,7 @@ export default async function MasterWorkLocationsPage() {
       isActive: m.isActive,
       notes: m.notes ?? "",
       machineCount: m._count.workLocations,
-      programCount: m._count.programs,
+      programCount: programKeysByModel.get(m.id)?.size ?? 0,
     };
   });
 

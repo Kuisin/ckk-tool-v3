@@ -30,7 +30,7 @@ async function openModelsTab(s: Scn): Promise<void> {
 
 const usage = (code: string) =>
   `select (select count(*) from app.work_locations wl where wl.machine_model_id = m.id) || '/' ||
-          (select count(*) from app.design_program_machine_models pm where pm.machine_model_id = m.id)
+          (select count(distinct p.program_key) from app.design_program_machine_models pm join app.design_programs p on p.id = pm.program_id where pm.machine_model_id = m.id)
      from app.machine_models m where m.code = '${code}'`;
 
 export const machineModelsMaster: Scenario = {
@@ -74,7 +74,7 @@ export const machineModelsMaster: Scenario = {
         await s.toast(/コード|入力/);
         s.check("空のままでは追加されない", s.sql("select count(*) from app.machine_models") === "3");
         await s.fill(dlg.getByRole("textbox", { name: /機種のコード/ }), "LATHE-B");
-        await s.fill(dlg.getByRole("textbox", { name: "名称" }).first(), "NC旋盤 B型");
+        await s.fill(dlg.getByRole("textbox", { name: /^名称（日本語）/ }), "NC旋盤 B型");
         await s.fill(dlg.getByRole("textbox", { name: /メーカー/ }), "デモ工機");
         await s.shot("機種の追加（入力済み）");
         await s.click(dlg.getByRole("button", { name: "追加", exact: true }));

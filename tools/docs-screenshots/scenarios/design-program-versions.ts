@@ -222,7 +222,7 @@ export const designProgramVersions: Scenario = {
           SELECT 'da000000-0000-4000-8000-0000000000f1', id FROM app.process_step_catalog WHERE code = 'STEP_MACHINING';
         `);
         await p.reload();
-        await programsPanel(s).scrollIntoViewIfNeeded();
+        await card(s, "面取り（試作）").waitFor({ state: "visible", timeout: 20_000 });
         await s.click(card(s, "面取り（試作）").getByRole("button", { name: "直す" }));
         const dlg = p.getByRole("dialog");
         await dlg.getByRole("textbox", { name: "プログラム番号" }).waitFor({ state: "visible" });

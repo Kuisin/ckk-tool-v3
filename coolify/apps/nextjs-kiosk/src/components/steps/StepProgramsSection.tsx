@@ -33,7 +33,7 @@ export function StepProgramsSection({
             <Stack gap={6}>
               <Group gap="xs" wrap="wrap">
                 <Text fw={600}>{p.name}</Text>
-                <Badge color="gray" variant="outline">
+                <Badge color="gray" tt="none" variant="outline">
                   {fillMessage(m.steps.programs.revision, {
                     revision: String(p.revision),
                   })}

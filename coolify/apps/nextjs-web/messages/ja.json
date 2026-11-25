@@ -3682,7 +3682,7 @@
       "changeNotFound": "加工プログラムの変更申請が見つかりません",
       "applyFailed": "加工プログラムの変更を反映できませんでした",
       "requestedAudit": "加工プログラムの{kind}を申請「{name}」",
-      "appliedAudit": "v{version} の加工プログラム「{name}」の{kind}を反映",
+      "appliedAudit": "設計図 v{version}：加工プログラム「{name}」の{kind}を反映",
       "applyFailedAudit": "加工プログラムの変更を反映できませんでした: {error}",
       "rejectedAudit": "加工プログラムの変更を差し戻し（理由: {reason}）",
       "kind": {

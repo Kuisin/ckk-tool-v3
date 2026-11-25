@@ -3682,7 +3682,7 @@
       "changeNotFound": "未找到加工程序变更申请",
       "applyFailed": "未能应用加工程序变更",
       "requestedAudit": "申请加工程序{kind}「{name}」",
-      "appliedAudit": "已应用 v{version} 的加工程序「{name}」{kind}",
+      "appliedAudit": "已应用图纸 v{version} 的加工程序「{name}」{kind}",
       "applyFailedAudit": "未能应用加工程序变更：{error}",
       "rejectedAudit": "退回加工程序变更（理由：{reason}）",
       "kind": {

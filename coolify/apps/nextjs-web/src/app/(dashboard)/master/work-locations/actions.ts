@@ -607,11 +607,15 @@ export async function deleteMachineModel(id: number): Promise<ActionResult> {
     // 広がらないように。無効化はできる）。
     const refs = await countMasterReferences("machineModel", [id]);
     if (refs.total > 0) {
+      // プログラムは版ごとに行があるので、本数はプログラム（program_key）で数える。
+      const programs = await prisma.designProgramMachineModel.findMany({
+        where: { machineModelId: id },
+        select: { program: { select: { programKey: true } } },
+      });
       return actionError(
         tr("master.machineModels.inUseCannotDelete", {
           machines: refs.byTable["WorkLocation.machineModelId"] ?? 0,
-          programs:
-            refs.byTable["DesignProgramMachineModel.machineModelId"] ?? 0,
+          programs: new Set(programs.map((p) => p.program.programKey)).size,
         }),
       );
     }
