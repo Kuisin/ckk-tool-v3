@@ -226,12 +226,13 @@ model PriceListEntry {
   @@unique([ownCompanyId, fiscalYear, docSeq])
   @@unique([ownCompanyId, docNumber])
   @@index([legacyNumber])
-  // 価格表の識別は (顧客 × 品目 × 対象工具)。作成後不変。工具は null を
-  // 1 つの値として数える（工具なしの価格表は顧客 × 品目に 1 つだけ）— Prisma は
-  // 部分 unique index を表現できないので、2 本の部分 unique index を
-  // マイグレーション 20261126140000_price_list_tool_item に直書きしている:
-  //   tool_item_id IS NULL     → (customer_bp_id, item_id)
-  //   tool_item_id IS NOT NULL → (customer_bp_id, item_id, tool_item_id)
+  // 価格表の識別は (発行会社 × 顧客 × 品目 × 対象工具)。作成後不変。価格表は
+  // 会社ごとに別々に持つ（同じ顧客 × 品目でも会社ごとに 1 本ずつ）。工具は null を
+  // 1 つの値として数える（工具なしの価格表は会社 × 顧客 × 品目に 1 つだけ）—
+  // Prisma は部分 unique index を表現できないので、2 本の部分 unique index を
+  // マイグレーション 20261126260000_price_list_identity_per_company に直書きしている:
+  //   tool_item_id IS NULL     → (own_company_id, customer_bp_id, item_id)
+  //   tool_item_id IS NOT NULL → (own_company_id, customer_bp_id, item_id, tool_item_id)
   @@index([itemId])
   @@index([toolItemId])
   @@index([ownCompanyId])

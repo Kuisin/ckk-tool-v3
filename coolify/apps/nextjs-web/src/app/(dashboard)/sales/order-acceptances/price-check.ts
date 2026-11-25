@@ -93,6 +93,7 @@ export async function checkAcceptancePrices(
   const acceptance = await prisma.orderAcceptance.findUnique({
     where: { docRef: key.docRef },
     select: {
+      ownCompanyId: true,
       customerBpId: true,
       items: {
         orderBy: { sortOrder: "asc" },
@@ -113,7 +114,7 @@ export async function checkAcceptancePrices(
   const customerBpId = acceptance.customerBpId;
   // 価格表（顧客ごと）と標準価格（品目の定価）— 照合も保存と同じ 2 段で見る。
   const [entries, standard] = await Promise.all([
-    loadCustomerPriceEntries(customerBpId),
+    loadCustomerPriceEntries(customerBpId, acceptance.ownCompanyId),
     loadStandardUnitPrices(acceptance.items.map((it) => it.itemId)),
   ]);
 

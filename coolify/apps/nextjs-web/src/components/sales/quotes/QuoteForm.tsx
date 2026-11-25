@@ -27,7 +27,7 @@ import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { z } from "zod";
 import {
   createQuote,
@@ -51,6 +51,7 @@ import { formatMoney } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import { totalsByRateYen } from "@/lib/money";
 import { resolveLineTax, type TaxCatalog } from "@/lib/tax-rate";
+import { entriesForCompany } from "../price-lists/company-sync";
 import { isoDateJst, type PriceListEntry } from "../price-lists/model";
 import { type Quote, resolveUnitPriceFromEntries } from "./model";
 
@@ -235,10 +236,18 @@ export function QuoteForm({
     issuingCompany?.prefill ?? null,
   );
   const quoteId = mode === "edit" ? quote?.id : undefined;
+  // 価格は**見積書の発行会社の価格表だけ**から引く（価格表は会社ごとに別々）。
+  // 編集では作成時に決まった会社、作成・複製では選んでいる会社。
+  const pricingCompanyId =
+    mode === "edit" ? (quote?.ownCompanyId ?? null) : ownCompanyId;
+  const companyEntries = useMemo(
+    () => entriesForCompany(entries, pricingCompanyId),
+    [entries, pricingCompanyId],
+  );
 
   const form = useForm<QuoteFormValues>({
     validate: zodResolver(buildSchema(tr)),
-    initialValues: buildInitial(quote, prefill, entries, tr),
+    initialValues: buildInitial(quote, prefill, companyEntries, tr),
   });
 
   const branches = branchesByCustomer[form.values.customerId] ?? [];
@@ -250,16 +259,14 @@ export function QuoteForm({
     form.values.items.map((it) => it.itemId),
   );
 
-  /** Changing 顧客 → re-resolve every line's 単価・値引き against the new customer's 価格表. */
-  const onCustomerChange = (customerId: string) => {
-    form.setFieldValue("customerId", customerId);
-    form.setFieldValue("customerBranchId", null);
+  /** 全行の単価・値引きを、指定の顧客 × 価格表で引き直す。 */
+  const reresolveItems = (customerId: string, priceEntries: PriceListEntry[]) =>
     form.setFieldValue(
       "items",
       form.values.items.map((it) => {
         const r = it.itemId
           ? resolveUnitPriceFromEntries(
-              entries,
+              priceEntries,
               customerId,
               it.itemId,
               it.orderType,
@@ -278,6 +285,18 @@ export function QuoteForm({
         };
       }),
     );
+
+  /** Changing 顧客 → re-resolve every line's 単価・値引き against the new customer's 価格表. */
+  const onCustomerChange = (customerId: string) => {
+    form.setFieldValue("customerId", customerId);
+    form.setFieldValue("customerBranchId", null);
+    reresolveItems(customerId, companyEntries);
+  };
+
+  /** 発行会社を変えたら、その会社の価格表で引き直す（他社の価格は載せない）。 */
+  const onCompanyChange = (id: number | null) => {
+    setOwnCompanyId(id);
+    reresolveItems(form.values.customerId, entriesForCompany(entries, id));
   };
 
   // ライブ計算も保存時と**同じ関数**を通す（lib/tax-rate.ts / lib/money.ts）。
@@ -398,7 +417,7 @@ export function QuoteForm({
           {mode === "create" && (
             <IssuingCompanySelect
               field={issuingCompany}
-              onChange={setOwnCompanyId}
+              onChange={onCompanyChange}
               value={ownCompanyId}
             />
           )}
@@ -442,7 +461,7 @@ export function QuoteForm({
                     designRequestHref={(itemId) =>
                       `/sales/design-requests/new?item=${encodeURIComponent(itemId)}`
                     }
-                    entries={entries}
+                    entries={companyEntries}
                     onChange={(next: ResolverValue) => {
                       form.setFieldValue(`items.${ri}.itemId`, next.itemId);
                       form.setFieldValue(

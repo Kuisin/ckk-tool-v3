@@ -94,6 +94,14 @@ export interface PriceListEntry {
   entryId: string;
   /** 旧番号（PRC-YYYYMM-NNNNN）。番号設計の切り替え前に採番された書類だけ。 */
   legacyNumber?: string | null;
+  /**
+   * 発行会社（自社法人 id / コード / 表示名）。**価格表は会社ごとに別々**で、
+   * 識別は (発行会社, 顧客, 品目, 工具)。価格の解決は書類の発行会社の価格表だけを
+   * 引く（`entriesForCompany`）。作成後は変えない（DB トリガー）。
+   */
+  ownCompanyId: number;
+  ownCompanyCode: string;
+  ownCompanyName: string;
   customerId: string;
   customerName: string;
   /**
@@ -161,6 +169,11 @@ export function requiresEndDate(orderType: string): boolean {
  * `itemId` は品目 id（`PriceListEntry.itemId` と同じ空間）。
  */
 export interface EntryIdentity {
+  /** 発行会社（自社法人 id）— 識別の一部。 */
+  ownCompanyId: number;
+  /** 発行会社のコード・表示名（他社の価格表からコピーの案内に出す）。 */
+  ownCompanyCode: string;
+  ownCompanyName: string;
   customerBpId: string;
   itemId: string;
   /** 対象工具（null = 工具を問わない価格表）。識別の一部。 */

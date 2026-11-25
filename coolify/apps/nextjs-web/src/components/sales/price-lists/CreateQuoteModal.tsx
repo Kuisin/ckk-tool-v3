@@ -91,6 +91,8 @@ export function CreateQuoteModal({
           product: source.itemId,
           orderType: variant.orderType,
           quantity: String(quantity),
+          // 価格表は会社ごと — 見積書もこの価格表の会社で作る。
+          company: String(source.ownCompanyId),
         });
         if (deliveryDate) params.set("delivery", deliveryDate);
         handleClose();

@@ -22,6 +22,9 @@ const PRODUCT = "1001";
 
 const entry = (over: Partial<PriceListEntry> = {}): PriceListEntry => ({
   entryId: "CKK~PRC-2026-00001",
+  ownCompanyId: 1,
+  ownCompanyCode: "CKK",
+  ownCompanyName: "CKK",
   customerId: CUSTOMER,
   customerName: "顧客",
   itemId: PRODUCT,
