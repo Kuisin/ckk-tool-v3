@@ -29,6 +29,9 @@ TABLES = {
     "files": "ファイル",
     "system_settings": "システム設定",
     "numbering_sequences": "採番シーケンス",
+    "document_sequences": "書類番号の連番（自社法人×会計年度）",
+    "own_companies": "自社法人",
+    "outsource_orders": "外注依頼",
     "match_aliases": "照合エイリアス（学習）",
     "notifications": "通知",
     "push_subscriptions": "プッシュ購読",
@@ -372,8 +375,20 @@ COLS = {
     "recorded_by": "記録者",
     # 試算・価格・見積
     "tool_type": "工具種",
+    # 旧番号の部品（PREFIX-YYYYMM-NNNNN）。新しい行は NULL — 番号設計 PR-C 以降は
+    # 下の fiscal_year / doc_seq / doc_number が正。analytics ビューの seq は doc_seq。
     "year_month": "年月",
     "seq": "連番",
+    # 書類番号（PREFIX-FFFF-NNNNN。自社法人 × 会計年度の連番を DB が払い出す）
+    "fiscal_year": "会計年度",
+    "doc_seq": "年度内連番",
+    "doc_number": "書類番号",
+    "doc_ref": "書類参照（法人コード/書類番号）",
+    "legacy_number": "旧番号",
+    "line_number": "注文明細番号",
+    "line_ref": "注文明細参照（法人コード/明細番号）",
+    "own_company_id": "発行会社ID",
+    "last_seq": "最終連番",
     "reference_unit_price": "参照単価",
     "reference_date": "参照日",
     "reference_overridden": "参照単価上書き",
@@ -625,6 +640,8 @@ ANALYTICS_COLS = {
     "order_line_nos": "注文明細番号(一覧)", "work_order_no": "指示書番号",
     "delivery_order_no": "出荷書番号", "delivery_no": "納品番号", "invoice_no": "請求番号",
     "lot_number": "ロット番号",
+    # 発行した自社法人のコード（番号は法人ごとに 00001 から — 番号 + これで一意）
+    "company_code": "発行会社コード",
     # 解決した名前（人）
     "sales_staff": "営業担当", "created_by_name": "作成者", "approved_by_name": "承認者",
     "requested_by_name": "依頼者", "ordered_by_name": "発注者", "processed_by_name": "処理者",
