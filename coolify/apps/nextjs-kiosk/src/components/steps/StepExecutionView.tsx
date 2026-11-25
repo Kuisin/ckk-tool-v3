@@ -287,6 +287,17 @@ export function StepExecutionView({
                   {fillMessage(m.steps.card.lot, { t: step.lotText })}
                 </Text>
               )}
+              {step.dueDate != null && (
+                <Text
+                  c={step.dueOverdue ? "red" : "dimmed"}
+                  fw={step.dueOverdue ? 700 : undefined}
+                  size="sm"
+                >
+                  {fillMessage(m.steps.card.dueDate, {
+                    d: step.dueDate.replaceAll("-", "/"),
+                  })}
+                </Text>
+              )}
               {step.plannedWorkHours != null && (
                 <Text c="dimmed" size="sm">
                   {fillMessage(m.steps.card.plannedHours, {

@@ -36,7 +36,11 @@ export async function updateAccountingSettings(
     // 科目コード・消費税コードの形（ACCOUNT_CODE_PATTERN）に外れたときは、
     // zod の英語の定型文ではなく MS0F / MS01 と同じ案内を返す。
     const head = issue?.path[0];
-    if (head === "accounts" || head === "taxCodeRules") {
+    if (
+      head === "accounts" ||
+      head === "taxCodeRules" ||
+      head === "salesAccountByOrderType"
+    ) {
       return actionError(tr("settings.accounting.accountCodeHint"));
     }
     return actionError(issue?.message ?? tr("common.invalidInput"));

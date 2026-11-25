@@ -204,11 +204,14 @@ export async function processClosings(
   for (const row of rows) {
     const result = await generateInvoiceForClosing(row.id);
     if (result.ok && result.data) {
-      invoices.push({
-        invoiceNumber: result.data.invoiceNumber,
-        customerName: nameById.get(row.id) ?? row.id,
-        totalAmount: result.data.totalAmount,
-      });
+      // 発行元の自社法人が混ざる締めは法人ごとに 1 通（通常は 1 通）。
+      for (const inv of result.data.invoices) {
+        invoices.push({
+          invoiceNumber: inv.invoiceNumber,
+          customerName: nameById.get(row.id) ?? row.id,
+          totalAmount: inv.totalAmount,
+        });
+      }
     } else if (!result.ok) {
       failures.push({
         id: row.id,

@@ -144,6 +144,14 @@ When you want to calculate again with only small changes, copy it instead of mak
 
 「（作り直し）」(re-estimate) is added to the estimate name automatically, and a new number is given. You can do the same from「**…**」on a row in the list.
 
+## Estimating cost only (cost estimate)
+
+People with the「**価格試算の原価**」(price estimate cost) permission can choose「**原価試算**」(cost estimate) under「**種別**」(type) when creating one (the default is「**売価試算**」(selling-price estimate) = the usual price estimate).
+
+- A cost estimate shows only the「**原価合計**」(total cost). No estimated unit price, gross margin or per-quantity prices are shown.
+- Cost estimates appear in the list and detail only for people with this permission.
+- A cost estimate cannot be chosen as a price list base price. When you need a selling price, open the cost estimate and press「**売価試算を作成**」(create selling-price estimate) from「**…**」at the top right: an input screen for a selling-price estimate opens with the same inputs (the original cost estimate stays as it is).
+
 ## Input fields
 
 Every field on the price estimate screen. There are many, so they are grouped by **which cost they affect**. The **?** next to a field in the app links straight to its description here.

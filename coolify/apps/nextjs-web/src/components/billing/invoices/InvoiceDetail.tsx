@@ -482,6 +482,10 @@ export function InvoiceDetail({
           }
         />
         <FieldValue
+          label={tr("billing.invoices.issuingCompany")}
+          value={invoice.ownCompanyName}
+        />
+        <FieldValue
           label={tr("common.salesRep")}
           value={invoice.salesRepName}
         />

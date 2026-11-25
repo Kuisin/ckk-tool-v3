@@ -2007,7 +2007,9 @@
       "amount": "Amount (¥)",
       "deliveryDate": "Delivery date",
       "tax": "Tax (10%)",
-      "validityStrip": "This quote is valid until {validUntil}. Please place your order within this period."
+      "validityStrip": "This quote is valid until {validUntil}. Please place your order within this period.",
+      "lineDiscount": "Discount",
+      "lineDiscountNote": "* {label}: -¥{amount}"
     },
     "DELIVERY_NOTE": {
       "regNumber": "Registration No.:",
@@ -2214,7 +2216,8 @@
       "unbilledShipments": "Unbilled shipments",
       "noUnbilledShipmentsForCustomer": "No unbilled shipments",
       "createInvoiceFromSelection": "Create invoice",
-      "someShipmentsNoLongerAvailable": "Some of the selected shipments are already used by another invoice. Please select again."
+      "someShipmentsNoLongerAvailable": "Some of the selected shipments are already used by another invoice. Please select again.",
+      "issuingCompany": "Issuer"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "This issues invoice {invoiceNumber}. The issue date is recorded as today.",
@@ -3574,6 +3577,36 @@
       },
       "seriesOption": "{name} ({count} versions)",
       "allSeries": "All ordering customers"
+    },
+    "stepDueDate": {
+      "badge": "Due {date}",
+      "label": "Step due date",
+      "labelWithStep": "Step due date for {step}",
+      "builderHelp": "Optional deadline per step. Steps past their due date and not completed are shown in red on the step cards and the workflow graph. After approval, change it in the plan panel on the step screen.",
+      "panelHelp": "When this step should be finished (optional)",
+      "notSet": "Not set",
+      "saved": "Step due date saved",
+      "locked": "This step's due date cannot be changed (the step is completed or cancelled, or the work order is pending approval)",
+      "couldNotSave": "Could not save the step due date",
+      "auditChanged": "Step due date changed to {date}"
+    },
+    "workLocationBoard": {
+      "title": "Work location board",
+      "date": "Date",
+      "today": "Today",
+      "time": "Time",
+      "workOrder": "Work order",
+      "product": "Product",
+      "step": "Step",
+      "assignee": "Assignee",
+      "status": "Status",
+      "carriedOver": "Carried over ({date})",
+      "working": "In progress here",
+      "helpToday": "Shows today's plans, plus unfinished steps carried over from earlier days and steps in progress at each location.",
+      "helpOtherDay": "Shows the work plans for this day by work location.",
+      "empty": "No work plans for this day",
+      "noLocation": "No work location",
+      "count": "{count} items"
     }
   },
   "purchase": {
@@ -4193,8 +4226,12 @@
       "quantityPcs": "{quantity} pcs",
       "description": "Description",
       "descriptionHint": "Shown by the hint button (ⓘ) next to this cost item on the price estimate screens. Leave blank to hide the button.",
-      "isCost": "Count as cost",
-      "isCostHint": "Recorded in the price estimate as part of the total cost. It does not change the estimated unit price.",
+      "costMode": "Cost handling",
+      "costModeHint": "\"Cost and price\" is recorded in the total cost and, for a component added to the subtotal, also in the estimated unit price. \"Cost only\" counts toward the total cost but is never added to the minimum or estimated unit price (available only for components added to the subtotal).",
+      "costModeNone": "Not a cost",
+      "costModeCostAndPrice": "Cost and price",
+      "costModeCostOnly": "Cost only",
+      "costOnlyBadge": "Cost only",
       "costBadge": "Cost"
     },
     "itemDefEditForm": {
@@ -5159,6 +5196,10 @@
       "taxAccountCode": "Tax suspense account code",
       "deptCode": "Department code",
       "defaultTaxCode": "Default tax code",
+      "salesByOrderType": "Sales account code by order type",
+      "salesByOrderTypeDescription": "Use this to book sales to a different account per order type (for example, regrind sales separately from products). Only the order types you fill in take priority over the tax category and the default account; blank order types work as before.",
+      "orderType": "Order type",
+      "followTaxCategory": "Follow tax category / default",
       "taxCodeRules": "Tax codes by rate",
       "taxCodeRulesDescription": "Looked up by rate when the tax category has no tax code.",
       "taxRate": "Tax rate",
@@ -6248,7 +6289,11 @@
     "plantForm": {
       "enterSiteCode": "Enter a site code",
       "siteUpdatedMessage": "Updated the site",
-      "editTitle": "Edit site — {code}"
+      "editTitle": "Edit site — {code}",
+      "ownCompany": "Own company",
+      "ownCompanyDesc": "The company that issues documents (quotes, delivery notes, invoices). Empty means the default company",
+      "ownCompanyPlaceholder": "Default company",
+      "ownCompanyDefault": "Default company"
     },
     "materialTypeForm": {
       "selectAManufacturer2": "Select a manufacturer",
@@ -6793,6 +6838,70 @@
       "notSet": "Not set (no additional approval)",
       "describePriceList": "Custom values: a base unit price not taken from a price estimate, a base unit price different from the estimate, or an overridden tier price (enabled order types only). Until approved, the price list is not used to price quotes or order acceptances.",
       "describeOrderAcceptance": "Custom values: line unit prices that are not from the price list (overridden, differing from the price list, no price list, or no quantity tier)."
+    },
+    "ownCompanies": {
+      "title": "Own companies",
+      "newTitle": "New own company",
+      "editTitle": "Edit {code}",
+      "empty": "No own companies",
+      "code": "Company code",
+      "codeDesc": "A unique code for the company. It goes into document numbers, so it cannot be changed after creation",
+      "codePlaceholder": "e.g. CKK",
+      "enterCode": "Enter a company code",
+      "default": "Default",
+      "defaultCompany": "Default company",
+      "defaultDesc": "The issuer of documents with no site (such as quotes). There is always exactly one",
+      "registrationNo": "Registration no.",
+      "registrationNoLabel": "Invoice registration number",
+      "registrationNoDesc": "Printed in the issuer block of quotes, delivery notes and invoices",
+      "registrationNoPlaceholder": "e.g. T1234567890123",
+      "invalidRegistrationNo": "Enter the registration number as T followed by 13 digits",
+      "fiscalYearStartMonth": "Fiscal year start month",
+      "fiscalYearStartMonthDesc": "Where document numbering rolls over to a new year (1–12)",
+      "invalidFiscalMonth": "Enter a start month from 1 to 12",
+      "monthValue": "Month {month}",
+      "plants": "Sites",
+      "plantCount": "Sites",
+      "plantsDesc": "Sites that belong to this company. Change a site's company in the sites master (MS0C)",
+      "noPlants": "No sites belong to this company",
+      "fax": "Fax",
+      "contact": "Contact and address",
+      "bank": "Bank account",
+      "bankName": "Bank",
+      "bankBranch": "Branch",
+      "bankAccountType": "Account type",
+      "bankAccountNumber": "Account number",
+      "bankAccountHolder": "Account holder",
+      "seal": "Company seal",
+      "sealDesc": "The seal image printed on issued invoices (PNG / JPG, up to 2 MB)",
+      "uploadSeal": "Upload seal",
+      "removeSeal": "Remove seal",
+      "sealDefaultFallback": "Not set, so the existing seal is used",
+      "sealNoneFallback": "Not set, so no seal is printed on invoices",
+      "sealTooLarge": "The image must be 2 MB or smaller",
+      "sealSaveFailed": "Could not save the seal",
+      "sealUploaded": "Seal saved",
+      "sealRemoved": "Seal removed",
+      "issuerPreview": "Document issuer",
+      "issuerPreviewDesc": "Printed exactly like this in the issuer block of quotes, delivery notes and invoices",
+      "created": "Own company created",
+      "updated": "Own company updated",
+      "deleted": "Own company deleted",
+      "deleteTitle": "Delete own company",
+      "deleteConfirm": "Delete own company \"{name}\". This cannot be undone.",
+      "deleteWarning": "A company used by sites or invoices, and the default company, cannot be deleted.",
+      "disableTitle": "Disable own company",
+      "enableTitle": "Enable own company",
+      "disableConfirm": "Disable own company \"{name}\". It will no longer be offered for sites.",
+      "enableConfirm": "Enable own company \"{name}\".",
+      "notFound": "Own company not found",
+      "cannotUnsetDefault": "The default company cannot be unset. Make another company the default instead",
+      "cannotDisableDefault": "The default company cannot be disabled",
+      "cannotDeleteDefault": "The default company cannot be deleted",
+      "inUse": "Cannot be deleted because it is used by {plants} sites and {invoices} invoices",
+      "createFailed": "Could not create the own company",
+      "updateFailed": "Could not update the own company",
+      "deleteFailed": "Could not delete the own company"
     }
   },
   "manual": {
@@ -7911,7 +8020,7 @@
       "testAndSampleEntriesNeedAn": "Test and sample entries need an end date",
       "theBaseForThePriceList": "The base for the price list. It defaults to the estimated unit price. Each tier = base × multiplier.",
       "theBasePriceComesFromThe": "The base price comes from the estimate's unit price. Manual override only with custom explicitly enabled (with a confirmation). Each tier = base × multiplier.",
-      "theCustomerAndProductCannotBe": "The customer and product cannot be changed once created.",
+      "theCustomerAndProductCannotBe": "The customer, product and target tool cannot be changed once created.",
       "theMaximumQuantityMustBeAt": "The maximum quantity must be at or above the minimum",
       "theMinimumQuantityThisRuleApplies": "The minimum quantity this rule applies from. Leave the maximum blank for no limit.",
       "theMultiplierPerTierEG": "The multiplier per tier (e.g. ×1.05 = 5% above the base). Price = base × multiplier.",
@@ -7923,7 +8032,9 @@
       "theValidPeriodWasChanged": "The valid period was changed",
       "thereAreNoDiscountRules": "There are no discount rules.",
       "thereIsNoPriceListPick": "There is no price list — pick a customer × product to create one",
-      "thereIsOnePriceListPer": "There is one price list per customer × product. Add per-order-type prices below.",
+      "thereIsOnePriceListPer": "There is one price list per customer × product (regrind items can also have one per target tool). Add per-order-type prices below.",
+      "targetTool": "Target tool",
+      "anyTool": "Any tool",
       "tickingItDropsTheAutomaticCalculation": "Press Custom to drop the automatic calculation and fix this tier's price by hand (with a confirmation).",
       "tiers": "Tiers",
       "unitPriceRange": "Unit price range",
@@ -8044,7 +8155,14 @@
       "scaleEstimateNote": "A reference value: the estimated unit price (base) × the quantity-scale multiplier. The actual price per quantity is set in the price list (these are the starting tiers when a price list is made from this estimate).",
       "scaleEstimateTitle": "Reference: unit price by quantity",
       "costTotal": "Total cost",
-      "grossMargin": "Gross margin"
+      "grossMargin": "Gross margin",
+      "kind": "Type",
+      "kindPrice": "Selling-price estimate",
+      "kindCost": "Cost estimate",
+      "kindPriceHint": "Calculates up to the estimated unit price. Once confirmed it can be chosen as a price list base price.",
+      "kindCostHint": "Shows the total cost only. Visible only to people allowed to see costs, and cannot be used as a price list base price.",
+      "createPriceEstimate": "Create selling-price estimate",
+      "costEstimateNotice": "This is a cost estimate. It shows the total cost only and cannot be used as a price list base price. To get a selling price, use \"Create selling-price estimate\" to start one from the same inputs."
     },
     "orderLineDetail": {
       "designWithCount": "Design ({count})",
@@ -8218,7 +8336,9 @@
       "confirmDeleteOrderTypeMessage": "This deletes the price for {orderType} (including quantity tiers and discount rules). It takes effect when you save.",
       "confirmUseCustomBaseMessage": "This will stop using the price estimate's unit price ({price}) and set the base unit price manually. Continue?",
       "confirmUseCustomTierMessage": "This will stop using this tier's automatically calculated unit price ({price} = base unit price × multiplier) and set the price manually.",
-      "duplicateEntryPrefix": "The price list for this customer × product",
+      "duplicateEntryPrefix": "The price list for this customer × product (× target tool)",
+      "targetToolDescription": "Select only when this regrind price applies to one tool. Leave empty for a price that applies to any tool (lookup order: tool price list → any-tool price list → standard price).",
+      "searchTools": "Search tools",
       "duplicateEntrySuffix": "already exists ({orderTypes}). To add an order type, edit the existing price list.",
       "editTitle": "Edit price list",
       "manualWithEstimateValue": "Manually set (price estimate value: {price})",
@@ -8242,7 +8362,8 @@
       "selectABranch": "Select a branch",
       "subtotalAmount": "Subtotal {amount}",
       "taxAmount": "Tax {amount}",
-      "totalInclTaxAmount": "Total (incl. tax) {amount}"
+      "totalInclTaxAmount": "Total (incl. tax) {amount}",
+      "lineNotesDescription": "Printed under the line on the quote PDF"
     },
     "trialEstimateDetail": {
       "orderTypeTierCount": "{orderType} · {tierCount} tiers",
@@ -8329,7 +8450,7 @@
       "invalidVariant": "Invalid variant",
       "invalidTier": "Invalid quantity tier",
       "createFailed": "Could not create the price list",
-      "duplicateEntry": "A price list for this customer and product already exists. Edit the existing price list instead.",
+      "duplicateEntry": "A price list for this customer, product and target tool already exists. Edit the existing price list instead.",
       "invalidEntryNumber": "Invalid price list number",
       "updateFailed": "Could not update the price list",
       "invalidSourceEntryNumber": "Invalid source price list number",
@@ -8341,7 +8462,8 @@
       "deleteDiscountRuleFailed": "Could not delete the discount rule",
       "noApprovalNeeded": "This price list needs no approval: it has no custom values, or no custom value approval steps are set",
       "notFound": "Price list not found",
-      "notPendingApproval": "Not pending approval"
+      "notPendingApproval": "Not pending approval",
+      "costEstimateNotUsable": "A cost estimate cannot be used as a price list base price"
     },
     "designRequestActions": {
       "approvalRequestFailed": "Could not request approval",
@@ -8392,7 +8514,8 @@
       "productNotFound": "The product was not found",
       "purchaseHistoryFetchFailed": "Could not fetch the purchase history",
       "saveFailed": "Could not save the price estimate",
-      "toolTypeNotDefined": "Tool type \"{toolType}\" is not defined"
+      "toolTypeNotDefined": "Tool type \"{toolType}\" is not defined",
+      "costEstimateNotPermitted": "You do not have permission to create cost estimates"
     },
     "intakeReview": {
       "customer": "Customer",
@@ -8449,7 +8572,9 @@
       "externalProductHasNoPriceList": "An external product cannot have a price list. It is held for regrinding, not sold",
       "materialHasNoPriceList": "A material cannot have a price list",
       "regrindItemOnlyRegrindVariant": "A regrind item can only carry the order type \"Regrind\"",
-      "productHasNoRegrindVariant": "A product cannot carry the order type \"Regrind\". The regrind price belongs to the regrind item"
+      "productHasNoRegrindVariant": "A product cannot carry the order type \"Regrind\". The regrind price belongs to the regrind item",
+      "priceListToolOnlyForRegrind": "A target tool can be set only on a regrind item’s price list",
+      "priceListToolMustBeProduct": "Select a product (including external products) as the target tool"
     },
     "quoteMail": {
       "subject": "Quote {number}",
@@ -9359,7 +9484,8 @@
       "item_inventory": "Stock",
       "movement_types": "Movement type",
       "items": "Items",
-      "webhook_endpoints": "Webhook endpoint"
+      "webhook_endpoints": "Webhook endpoint",
+      "own_companies": "Own companies"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -9720,6 +9846,10 @@
       "product": {
         "label": "Product",
         "summary": "The product this pricing applies to. Like the customer, this cannot be changed after creation."
+      },
+      "targetTool": {
+        "label": "Target tool",
+        "summary": "Select only when this regrind price applies to one tool. Leave empty for a price that applies to any tool. Prices are looked up in the order: tool price list → any-tool price list → standard price."
       },
       "orderType": {
         "label": "Order type",

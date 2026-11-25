@@ -128,6 +128,51 @@ export interface Criterion {
    * 未設定（旧データ）は role から決める — `isCostCriterion` が唯一の判定。
    */
   isCost?: boolean;
+  /**
+   * 原価**のみ**に含める（売価には入れない）。`isCost` が立っている `component`
+   * にだけ意味がある — 原価合計には数えるが、小計（最低単価）にも見積単価にも
+   * 足さない。社内の間接費のように「原価としては把握したいが、価格には転嫁しない」
+   * 項目のための印。値は従来どおり `r.<id>` として後続の基準から読める。
+   * 判定は `criterionCostMode` / `addsToSubtotal` が唯一の定義。
+   */
+  costOnly?: boolean;
+}
+
+/**
+ * 基準の原価の扱い（3 状態）。
+ * - `none`         … 原価に数えない
+ * - `costAndPrice` … 原価に数え、`component` なら売価（小計）にも足す（従来の「原価」）
+ * - `costOnly`     … 原価にだけ数え、売価には足さない
+ *
+ * `costOnly` は `component` でしか成り立たない（`intermediate` は元から小計に
+ * 足さないので、印を立てても `costAndPrice` と同じ — 区別しない）。
+ */
+export type CriterionCostMode = "none" | "costAndPrice" | "costOnly";
+
+export function criterionCostMode(
+  c: Pick<Criterion, "role" | "isCost" | "costOnly">,
+): CriterionCostMode {
+  if (!isCostCriterion(c)) return "none";
+  return c.role === "component" && c.costOnly ? "costOnly" : "costAndPrice";
+}
+
+/** 3 状態を保存形（isCost / costOnly）へ戻す。 */
+export function costModeFlags(
+  mode: CriterionCostMode,
+): Pick<Criterion, "isCost" | "costOnly"> {
+  if (mode === "none") return { isCost: false, costOnly: undefined };
+  if (mode === "costOnly") return { isCost: true, costOnly: true };
+  return { isCost: true, costOnly: undefined };
+}
+
+/**
+ * 基準の値を小計（最低単価 → 見積単価）へ足すか。`component` だけが足し、
+ * そのうち「原価のみに含める」ものは足さない。
+ */
+export function addsToSubtotal(
+  c: Pick<Criterion, "role" | "isCost" | "costOnly">,
+): boolean {
+  return c.role === "component" && criterionCostMode(c) !== "costOnly";
 }
 
 /**
@@ -193,6 +238,7 @@ export function criterionSchema(tr: Tr) {
     // 工具種は管理者定義（値は文字列）。undefined = 全工具種 / 空 = 適用なし。
     toolTypes: z.array(z.string()).optional(),
     isCost: z.boolean().optional(),
+    costOnly: z.boolean().optional(),
   });
 }
 

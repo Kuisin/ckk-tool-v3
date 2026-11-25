@@ -99,6 +99,7 @@ export async function checkAcceptancePrices(
         select: {
           id: true,
           itemId: true,
+          toolItemId: true,
           orderType: true,
           quantity: true,
           unitPrice: true,
@@ -126,6 +127,7 @@ export async function checkAcceptancePrices(
         itemId,
         orderType: it.orderType,
         quantity: it.quantity,
+        toolItemId: it.toolItemId,
         standardUnitPrice:
           it.itemId != null ? (standard.get(it.itemId) ?? null) : null,
       },

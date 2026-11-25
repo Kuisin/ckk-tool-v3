@@ -32,6 +32,17 @@ enum EstimateStatus {
   @@schema("app")
 }
 
+/// 価格試算の種別。PRICE = 売価試算（見積単価まで出す — 従来の価格試算）、
+/// COST = 原価試算（原価合計だけを出す。権限 estimate_cost を持つ人にしか
+/// 見えず、価格表の基準単価ソースにはできない）。
+enum EstimateKind {
+  COST
+  PRICE
+
+  @@map("ESTIMATE_KIND")
+  @@schema("app")
+}
+
 // 見積書の状態は DRAFT / ISSUED の 2 つだけ保存する。ACCEPTED / REJECTED は
 // 廃止（受諾したかどうかは下流の注文請書の有無で読む — 手続き状況の
 // 「次の書類へ」）。EXPIRED は保存しない — 発行済みで有効期限
@@ -66,6 +77,9 @@ model Estimate {
   // 組み込み: ROUND_BAR / CYLINDER / OH（旧 TRIAL_TOOL_TYPE enum）。
   toolType            String         @map("tool_type") @db.VarChar(64)
   status              EstimateStatus @default(DRAFT)
+  // 種別 — 原価試算 / 売価試算。作成後は変えない（売価試算にしたいときは
+  // 「売価試算を作成」で入力を複写した別の PRICE 行を作る）。
+  kind                EstimateKind   @default(PRICE)
   customerBpId        String?        @map("customer_bp_id") @db.Uuid
   // 対象品目（任意）。1 品目に複数の価格試算を紐付け可。価格表作成時の
   // 基準単価ソース候補はこのリンクで解決する。
@@ -131,6 +145,12 @@ model PriceListEntry {
   customerBpId String @map("customer_bp_id") @db.Uuid
   /// 統合品目（app.items）。価格表の対象品目。
   itemId       Int    @map("item_id")
+  /// 対象工具（任意）。**再研磨の品目（役務）の価格表だけ**が持てる — 同じ
+  /// 研ぎ直しでも、どの工具を研ぐかで顧客ごとの値段が違うことがあるため。
+  /// null = その役務の「工具を問わない」価格。解決は 工具一致 → 工具なし →
+  /// 標準価格 の順（components/sales/quotes/model.ts selectPriceEntry）。
+  /// 製品（PRODUCT）でも他社製品でもよい（lib/sales-item-guard.ts）。
+  toolItemId   Int?   @map("tool_item_id")
 
   currency  String   @default("JPY")
   isActive  Boolean  @default(true) @map("is_active")
@@ -152,13 +172,19 @@ model PriceListEntry {
   salesRep      User?              @relation("PriceListEntrySalesRep", fields: [salesRepId], references: [id])
   customerBp    BusinessPartner    @relation("PriceListEntryCustomer", fields: [customerBpId], references: [id])
   item          Item               @relation("PriceListEntryItem", fields: [itemId], references: [id], onDelete: Restrict)
+  toolItem      Item?              @relation("PriceListEntryToolItem", fields: [toolItemId], references: [id], onDelete: Restrict)
   createdByUser User?              @relation("PriceListEntryCreatedBy", fields: [createdBy], references: [id])
   variants      PriceListVariant[]
 
   @@id([yearMonth, seq])
-  // 価格表の識別は (顧客 × 品目)。作成後不変（lib/price-list）。
-  @@unique([customerBpId, itemId])
+  // 価格表の識別は (顧客 × 品目 × 対象工具)。作成後不変。工具は null を
+  // 1 つの値として数える（工具なしの価格表は顧客 × 品目に 1 つだけ）— Prisma は
+  // 部分 unique index を表現できないので、2 本の部分 unique index を
+  // マイグレーション 20261126140000_price_list_tool_item に直書きしている:
+  //   tool_item_id IS NULL     → (customer_bp_id, item_id)
+  //   tool_item_id IS NOT NULL → (customer_bp_id, item_id, tool_item_id)
   @@index([itemId])
+  @@index([toolItemId])
   @@map("price_list_entries")
   @@schema("app")
 }

@@ -84,6 +84,9 @@ model Invoice {
   /// 出すために持つ表示用の複写。締日行自体は消えても請求書からは読めるように、
   /// FK ではなく値そのものを持つ（billing_closings と invoices は緩い結びつき）。
   closingKind         ClosingKind? @map("closing_kind")
+  /// 発行元の自社法人のスナップショット（作成時に拠点から決めて焼く）。
+  /// null = この列ができる前の請求書 → 既定の法人として刷る（従来どおり）。
+  ownCompanyId        Int?      @map("own_company_id")
   /// 承認状態（発行前承認 / 入金前承認。上のコメント参照）。
   approvalStatus      InvoiceApprovalStatus @default(NONE) @map("approval_status")
   requestedAt         DateTime? @map("requested_at") @db.Timestamptz(6)
@@ -98,6 +101,7 @@ model Invoice {
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   salesRep        User?            @relation("InvoiceSalesRep", fields: [salesRepId], references: [id])
+  ownCompany      OwnCompany?      @relation("InvoiceOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
   customerBp      BusinessPartner  @relation("InvoiceCustomer", fields: [customerBpId], references: [id])
   customerBranchBp BusinessPartner? @relation("InvoiceCustomerBranch", fields: [customerBranchBpId], references: [id])
   pdfFile         File?            @relation("InvoicePdf", fields: [pdfFileId], references: [id])
@@ -117,6 +121,7 @@ model Invoice {
   @@index([customerBpId])
   @@index([status])
   @@index([approvalStatus])
+  @@index([ownCompanyId])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, yearMonth, seq])
   @@map("invoices")

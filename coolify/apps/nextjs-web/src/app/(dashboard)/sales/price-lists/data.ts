@@ -3,7 +3,8 @@
  *
  * sales.price_list_entries is keyed (year_month, seq) — the URL id is the
  * derived 価格表番号 PRC-YYYYMM-NNNNN (lib/doc-number). 自然キー
- * (customer_bp_id, product_id) は UNIQUE の識別用。注文種別ごとの価格は
+ * (customer_bp_id, item_id, tool_item_id) は UNIQUE の識別用（工具は再研磨だけの
+ * 任意の欄で、null を 1 つの値として数える — 部分 unique index 2 本）。注文種別ごとの価格は
  * price_list_variants（基準単価・期間・価格試算リンク + tiers/discounts）。
  */
 
@@ -28,6 +29,8 @@ export const ENTRY_INCLUDE = {
   // 品目統合 第 2 段 C — 表示・突合はすべて品目側。旧 product リレーションは
   // 自然キー (customer_bp_id, product_id) を保つためだけに残っている。
   item: true,
+  // 対象工具（再研磨の価格表だけが持つ任意の欄）。
+  toolItem: { select: { id: true, code: true, name: true } },
   salesRep: { select: { id: true, displayName: true } },
   createdByUser: { select: { displayName: true } },
   variants: {
@@ -104,6 +107,13 @@ export function mapEntry(r: EntryRow): PriceListEntry {
       return code ? `${nm} ${code}` : nm;
     })(),
     itemType: r.item?.itemType === "REGRIND" ? "REGRIND" : "PRODUCT",
+    toolItemId: r.toolItemId != null ? String(r.toolItemId) : null,
+    toolName: r.toolItem
+      ? (() => {
+          const nm = localized(r.toolItem.name as LocalizedText | null);
+          return r.toolItem.code ? `${nm} ${r.toolItem.code}` : nm;
+        })()
+      : null,
     standardUnitPrice:
       r.item?.standardUnitPrice == null
         ? null
@@ -299,7 +309,13 @@ export async function fetchEstimateSourcesForProduct(
   const [settings, rows] = await Promise.all([
     getTrialPricingSettings(),
     prisma.estimate.findMany({
-      where: { itemId, status: { in: ["CONFIRMED", "REGISTERED"] } },
+      // 原価試算（kind = COST）は売価を持たないので候補に出さない
+      // （保存側の resolveEstimateSource でも拒否する）。
+      where: {
+        itemId,
+        kind: "PRICE",
+        status: { in: ["CONFIRMED", "REGISTERED"] },
+      },
       include: { customerBp: true },
       orderBy: { updatedAt: "desc" },
     }),

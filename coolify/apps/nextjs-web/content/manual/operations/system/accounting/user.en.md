@@ -81,6 +81,15 @@ flowchart TD
 
 The sub-account code has no default — it differs per business partner, so enter it on [Business partners](/manual/en/operations/masters/business-partner/user) (`MS01`).
 
+### Sales account code by order type
+
+Use this when you want to **book sales to a different account per order type**. For example, to book **regrind** sales to a different account from product sales, enter an account code in the "Regrind" field.
+
+- Only the order types you fill in are used **before** the sales account of the [tax category](/manual/en/operations/masters/tax-category/user) (`MS0F`) and the default account above.
+- Blank order types are decided as before: tax category, then the default. If every field is blank, nothing in the export changes.
+- When one invoice mixes products and regrind, **the sales row is split per account** (the tax row stays one row per tax rate).
+- Extra charge rows such as shipping have no order type, so they go to the usual account.
+
 ### Tax codes by rate
 
 Looked up by rate when the tax category has no tax code. Add a row for each rate you use, such as 10% and 8%.

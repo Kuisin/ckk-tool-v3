@@ -78,11 +78,11 @@ import {
   toToolTypeOptions,
   toTrialPricingOptions,
 } from "@/lib/trial-pricing-settings";
-import { CostSummaryRows } from "./CostSummaryRows";
+import { CostOnlyTotalTable, CostSummaryRows } from "./CostSummaryRows";
 import { criterionDescription, LabelWithHint } from "./CriterionHint";
 import { MaterialPriceChart } from "./MaterialPriceChart";
 import { ScaleEstimateTable } from "./ScaleEstimateTable";
-import type { TrialEstimateRecord } from "./types";
+import type { EstimateKind, TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
 const toData = (o: readonly { value: string; label: string }[]) =>
@@ -101,6 +101,7 @@ export function TrialEstimateForm({
   /** 複製元（?from= で開いたとき）— 全入力を引き継いだ新規 DRAFT を作る。 */
   source,
   canViewCost = false,
+  initialKind,
 }: {
   customerOptions: Option[];
   /** 材種・直径・黒皮/研磨 の選択肢（材料は 3 要素で指定）. */
@@ -116,6 +117,11 @@ export function TrialEstimateForm({
   source?: TrialEstimateRecord | null;
   /** 原価合計・粗利を見せるか（権限 estimate_cost — lib/estimate-cost.ts）。 */
   canViewCost?: boolean;
+  /**
+   * 種別の初期値。「売価試算を作成」（原価試算からの複写）では PRICE が来る。
+   * 未指定なら複製元の種別、それも無ければ PRICE。
+   */
+  initialKind?: EstimateKind;
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -125,6 +131,12 @@ export function TrialEstimateForm({
   const [isPricingLoading, startPricingTransition] = useTransition();
 
   const src = source?.input;
+  // 種別 — 原価試算 / 売価試算。原価試算は estimate_cost の持ち主しか作れない
+  // （サーバーでも拒否する）ので、持たない人には選択肢ごと出さない。
+  const [kind, setKind] = useState<EstimateKind>(
+    canViewCost ? (initialKind ?? source?.kind ?? "PRICE") : "PRICE",
+  );
+  const isCostEstimate = kind === "COST";
 
   // ── inputs ──────────────────────────────────────────────────────────────
   const [toolType, setToolType] = useState<ToolType>(
@@ -324,6 +336,7 @@ export function TrialEstimateForm({
     }
     startTransition(async () => {
       const res = await createTrialEstimate({
+        kind,
         salesRepId,
         name: name.trim(),
         customerBpId: customerId,
@@ -393,6 +406,32 @@ export function TrialEstimateForm({
           <Stack gap="md">
             <FormSection title={tr("sales.trialEstimates.basic")}>
               <Stack gap="sm">
+                {canViewCost && (
+                  <Stack gap={4}>
+                    <Text fw={500} size="sm">
+                      {tr("sales.trialEstimates.kind")}
+                    </Text>
+                    <SegmentedControl
+                      data={[
+                        {
+                          value: "PRICE",
+                          label: tr("sales.trialEstimates.kindPrice"),
+                        },
+                        {
+                          value: "COST",
+                          label: tr("sales.trialEstimates.kindCost"),
+                        },
+                      ]}
+                      onChange={(v) => setKind(v as EstimateKind)}
+                      value={kind}
+                    />
+                    <Text c="dimmed" size="xs">
+                      {isCostEstimate
+                        ? tr("sales.trialEstimates.kindCostHint")
+                        : tr("sales.trialEstimates.kindPriceHint")}
+                    </Text>
+                  </Stack>
+                )}
                 <SegmentedControl
                   data={toToolTypeOptions(settings, tr)}
                   onChange={(v) => setToolType(v as ToolType)}
@@ -894,6 +933,7 @@ export function TrialEstimateForm({
             <ResultsPanel
               breakdown={result.breakdown}
               correctionFactor={Number(customValues.correctionFactor ?? 1.25)}
+              costOnlyView={isCostEstimate}
               costTotal={canViewCost ? result.costTotal : undefined}
               criteria={settings.criteria}
               lot={result.lots[0] ?? null}
@@ -980,6 +1020,7 @@ export function TrialEstimateForm({
 function ResultsPanel({
   breakdown,
   costTotal,
+  costOnlyView = false,
   lot,
   correctionFactor,
   warnings,
@@ -989,6 +1030,8 @@ function ResultsPanel({
   breakdown: CostBreakdown;
   /** 原価合計（原価の印を付けた基準の和）。 */
   costTotal: number | undefined;
+  /** 原価試算 — 見積単価・粗利・数量スケールを出さず、原価合計だけを出す。 */
+  costOnlyView?: boolean;
   /** 計算基準（ヒントボタンの説明を引く）。 */
   criteria: Criterion[];
   /** 基準数量での計算結果（単一）. */
@@ -1095,9 +1138,13 @@ function ResultsPanel({
 
           <div>
             <Text c="dimmed" mb={4} size="xs">
-              {tr("common.baseUnitPriceQuantityScalingIs")}
+              {costOnlyView
+                ? tr("sales.trialEstimates.kindCost")
+                : tr("common.baseUnitPriceQuantityScalingIs")}
             </Text>
-            {lot ? (
+            {costOnlyView ? (
+              <CostOnlyTotalTable costTotal={costTotal} />
+            ) : lot ? (
               <Table>
                 <Table.Tbody>
                   <Table.Tr>
@@ -1140,7 +1187,7 @@ function ResultsPanel({
             ) : null}
           </div>
         </SimpleGrid>
-        {lot && (
+        {lot && !costOnlyView && (
           <ScaleEstimateTable
             baseUnitPrice={lot.estimateUnitPrice}
             preset={scalePreset}

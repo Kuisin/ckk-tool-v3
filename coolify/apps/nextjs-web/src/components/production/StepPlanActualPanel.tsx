@@ -41,6 +41,7 @@ import {
   deleteStepActual,
   deleteStepPlan,
   type StepPlanInput,
+  updateStepDueDate,
 } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import type {
@@ -422,12 +423,68 @@ function RecordSection({
   );
 }
 
+/**
+ * 工程納期の編集。作業計画と同じ窓（計画を触れる間）で直せる。読むだけの
+ * ときは工程の見出しにバッジが出ているので、ここは編集できるときだけ出す。
+ */
+function StepDueDateEditor({
+  workOrderNumber,
+  stepId,
+  dueDate,
+}: {
+  workOrderNumber: number;
+  stepId: string;
+  dueDate: string | null;
+}) {
+  const tr = useTranslations();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const save = (next: string | null) => {
+    startTransition(async () => {
+      const res = await updateStepDueDate(workOrderNumber, stepId, next);
+      if (!res.ok) {
+        notifications.show({
+          title: tr("common.error"),
+          message: (res.errors ?? []).join(" / "),
+          color: "red",
+        });
+        return;
+      }
+      notifications.show({
+        title: tr("common.saved"),
+        message: tr("production.stepDueDate.saved"),
+        color: "green",
+      });
+      router.refresh();
+    });
+  };
+  return (
+    <Paper p="md" radius="md" withBorder>
+      <Group align="flex-end" gap="sm" wrap="wrap">
+        <DatePickerInput
+          clearable
+          description={tr("production.stepDueDate.panelHelp")}
+          disabled={isPending}
+          label={tr("production.stepDueDate.label")}
+          leftSection={<IconCalendar size={14} />}
+          onChange={(v) => save(v)}
+          placeholder={tr("production.stepDueDate.notSet")}
+          value={dueDate}
+          valueFormat="YYYY/MM/DD"
+          w={220}
+        />
+      </Group>
+    </Paper>
+  );
+}
+
 export function StepPlanActualPanel({
   workOrderNumber,
   stepId,
   stepStatus,
   canOperate,
   canEditPlans,
+  dueDate = null,
   plans,
   actuals,
   expectedInputQuantity,
@@ -444,6 +501,8 @@ export function StepPlanActualPanel({
    * 条件なので、承認前に入れられなければならない。省略時は canOperate。
    */
   canEditPlans?: boolean;
+  /** 工程納期（YYYY-MM-DD）。計画を触れる間はここで直せる。 */
+  dueDate?: string | null;
   plans: StepPlanView[];
   actuals: StepActualView[];
   expectedInputQuantity: number | null;
@@ -460,6 +519,13 @@ export function StepPlanActualPanel({
 
   return (
     <>
+      {planEditable && (
+        <StepDueDateEditor
+          dueDate={dueDate}
+          stepId={stepId}
+          workOrderNumber={workOrderNumber}
+        />
+      )}
       <RecordSection
         canEdit={planEditable}
         description={tr("production.stepPlanActualPanel.youCanSplitThePlanBy")}

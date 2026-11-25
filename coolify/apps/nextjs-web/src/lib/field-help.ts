@@ -86,6 +86,7 @@ export const FIELD_HELP = {
   priceList: {
     customer: {},
     product: {},
+    targetTool: {},
     orderType: {},
     basePrice: {},
     validFrom: {},

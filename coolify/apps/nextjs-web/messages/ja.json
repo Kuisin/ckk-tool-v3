@@ -2007,7 +2007,9 @@
       "amount": "金額 (円)",
       "deliveryDate": "納期",
       "tax": "消費税（10%）",
-      "validityStrip": "本見積書の有効期限は {validUntil} までとなります。期限内にご注文をお願いいたします。"
+      "validityStrip": "本見積書の有効期限は {validUntil} までとなります。期限内にご注文をお願いいたします。",
+      "lineDiscount": "値引き",
+      "lineDiscountNote": "※ {label}: -¥{amount}"
     },
     "DELIVERY_NOTE": {
       "regNumber": "登録番号:",
@@ -2214,7 +2216,8 @@
       "unbilledShipments": "未請求の出荷",
       "noUnbilledShipmentsForCustomer": "未請求の出荷がありません",
       "createInvoiceFromSelection": "請求書を作成",
-      "someShipmentsNoLongerAvailable": "選んだ出荷の一部が、すでに他の請求で使われています。もう一度選び直してください。"
+      "someShipmentsNoLongerAvailable": "選んだ出荷の一部が、すでに他の請求で使われています。もう一度選び直してください。",
+      "issuingCompany": "発行元"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "請求書 {invoiceNumber} を発行します。発行日は本日で記録されます。",
@@ -3574,6 +3577,36 @@
       },
       "seriesOption": "{name}（{count} 版）",
       "allSeries": "すべての受注元"
+    },
+    "stepDueDate": {
+      "badge": "工程納期 {date}",
+      "label": "工程納期",
+      "labelWithStep": "{step} の工程納期",
+      "builderHelp": "工程ごとの締切（任意）。過ぎて未完了の工程は工程カードとフロー図で赤く表示されます。承認後は工程実行画面の計画パネルで直せます。",
+      "panelHelp": "この工程をいつまでに終えるか（任意）",
+      "notSet": "未設定",
+      "saved": "工程納期を保存しました",
+      "locked": "この工程の納期は変更できません（完了・キャンセル済み、または承認依頼中の指示書です）",
+      "couldNotSave": "工程納期を保存できませんでした",
+      "auditChanged": "工程納期を {date} に変更"
+    },
+    "workLocationBoard": {
+      "title": "作業場所一覧",
+      "date": "日付",
+      "today": "今日",
+      "time": "時刻",
+      "workOrder": "指示書",
+      "product": "製品",
+      "step": "工程",
+      "assignee": "担当者",
+      "status": "状態",
+      "carriedOver": "持ち越し（{date}）",
+      "working": "作業中",
+      "helpToday": "今日の計画に加え、前日以前から持ち越した未完了の工程と、その作業場所で作業中の工程も表示しています。",
+      "helpOtherDay": "この日の作業計画を作業場所ごとに表示しています。",
+      "empty": "この日の作業計画はありません",
+      "noLocation": "作業場所なし",
+      "count": "{count} 件"
     }
   },
   "purchase": {
@@ -4193,8 +4226,12 @@
       "quantityPcs": "{quantity} 本",
       "description": "説明",
       "descriptionHint": "価格試算の画面で、この費目の横のヒントボタン（ⓘ）に表示されます。空欄ならボタンは出ません。",
-      "isCost": "原価に数える",
-      "isCostHint": "価格試算の結果に「原価合計」として残ります。見積単価の計算には影響しません。",
+      "costMode": "原価の扱い",
+      "costModeHint": "「原価と売価に数える」は原価合計に残り、小計に足す項目なら見積単価にも入ります。「原価のみに含める」は原価合計にだけ数え、最低単価・見積単価には足しません（小計に足す項目のときだけ選べます）。",
+      "costModeNone": "原価に数えない",
+      "costModeCostAndPrice": "原価と売価に数える",
+      "costModeCostOnly": "原価のみに含める",
+      "costOnlyBadge": "原価のみ",
       "costBadge": "原価"
     },
     "itemDefEditForm": {
@@ -5159,6 +5196,10 @@
       "taxAccountCode": "仮受消費税 科目コード",
       "deptCode": "部門コード",
       "defaultTaxCode": "既定の消費税コード",
+      "salesByOrderType": "注文種別ごとの売上高 科目コード",
+      "salesByOrderTypeDescription": "注文種別ごとに売上高の科目を分けるときに使う（再研磨の売上を製品と別の科目へ、など）。入れた種別だけが税区分マスタ・既定の科目より先に効く。空欄の種別は従来どおり。",
+      "orderType": "注文種別",
+      "followTaxCategory": "税区分・既定に従う",
       "taxCodeRules": "税率別の消費税コード",
       "taxCodeRulesDescription": "税区分マスタに消費税コードが入っていないときに、税率から引く。",
       "taxRate": "税率",
@@ -6248,7 +6289,11 @@
     "plantForm": {
       "enterSiteCode": "拠点コードを入力してください",
       "siteUpdatedMessage": "拠点を更新しました",
-      "editTitle": "拠点 編集 — {code}"
+      "editTitle": "拠点 編集 — {code}",
+      "ownCompany": "自社法人",
+      "ownCompanyDesc": "書類（見積書・納品書・請求書）の発行元になる法人。未設定は既定の法人",
+      "ownCompanyPlaceholder": "既定の法人",
+      "ownCompanyDefault": "既定の法人"
     },
     "materialTypeForm": {
       "selectAManufacturer2": "メーカーを選択してください",
@@ -6793,6 +6838,70 @@
       "notSet": "未設定（追加の承認なし）",
       "describePriceList": "独自値: 価格試算を使わない基準単価、価格試算の見積単価と違う基準単価、数量段階の単価の上書き（有効な注文種別のみ）。承認されるまで、この価格表は見積書・注文請書の価格に使われません。",
       "describeOrderAcceptance": "独自値: 価格表どおりでない明細の単価（上書き・価格表との差異・価格表なし・数量段階なし）。"
+    },
+    "ownCompanies": {
+      "title": "自社法人",
+      "newTitle": "自社法人 新規作成",
+      "editTitle": "{code} を編集",
+      "empty": "自社法人がありません",
+      "code": "法人コード",
+      "codeDesc": "法人を識別する一意のコード。書類番号に入るため作成後は変えられません",
+      "codePlaceholder": "例: CKK",
+      "enterCode": "法人コードを入力してください",
+      "default": "既定",
+      "defaultCompany": "既定の法人",
+      "defaultDesc": "拠点の分からない書類（見積書など）の発行元。常に 1 社だけです",
+      "registrationNo": "登録番号",
+      "registrationNoLabel": "適格請求書発行事業者登録番号",
+      "registrationNoDesc": "見積書・納品書・請求書の発行元欄に刷られます",
+      "registrationNoPlaceholder": "例: T1234567890123",
+      "invalidRegistrationNo": "登録番号は T + 13 桁で入力してください",
+      "fiscalYearStartMonth": "会計年度の開始月",
+      "fiscalYearStartMonthDesc": "書類番号を年度ごとに区切るときの境目（1〜12）",
+      "invalidFiscalMonth": "開始月は 1〜12 で入力してください",
+      "monthValue": "{month} 月",
+      "plants": "拠点",
+      "plantCount": "拠点数",
+      "plantsDesc": "この法人に属する拠点。付け替えは拠点マスタ（MS0C）で行います",
+      "noPlants": "この法人に属する拠点はありません",
+      "fax": "FAX",
+      "contact": "連絡先・住所",
+      "bank": "振込先",
+      "bankName": "金融機関",
+      "bankBranch": "支店",
+      "bankAccountType": "口座種別",
+      "bankAccountNumber": "口座番号",
+      "bankAccountHolder": "口座名義",
+      "seal": "社印",
+      "sealDesc": "発行済みの請求書に刷られる印影（PNG / JPG、2MB まで）",
+      "uploadSeal": "印影をアップロード",
+      "removeSeal": "印影を外す",
+      "sealDefaultFallback": "未設定のため、従来の印影を使います",
+      "sealNoneFallback": "未設定のため、請求書に印影は刷られません",
+      "sealTooLarge": "画像は 2MB までです",
+      "sealSaveFailed": "印影を保存できませんでした",
+      "sealUploaded": "印影を保存しました",
+      "sealRemoved": "印影を外しました",
+      "issuerPreview": "書類の発行元",
+      "issuerPreviewDesc": "見積書・納品書・請求書の発行元欄にこのとおり刷られます",
+      "created": "自社法人を作成しました",
+      "updated": "自社法人を更新しました",
+      "deleted": "自社法人を削除しました",
+      "deleteTitle": "自社法人の削除",
+      "deleteConfirm": "自社法人「{name}」を削除します。この操作は取り消せません。",
+      "deleteWarning": "拠点・請求書に使われている法人と既定の法人は削除できません。",
+      "disableTitle": "自社法人の無効化",
+      "enableTitle": "自社法人の有効化",
+      "disableConfirm": "自社法人「{name}」を無効にします。拠点の選択肢から外れます。",
+      "enableConfirm": "自社法人「{name}」を有効にします。",
+      "notFound": "自社法人が見つかりません",
+      "cannotUnsetDefault": "既定の法人は外せません。別の法人を既定にしてください",
+      "cannotDisableDefault": "既定の法人は無効にできません",
+      "cannotDeleteDefault": "既定の法人は削除できません",
+      "inUse": "拠点 {plants} 件・請求書 {invoices} 件で使われているため削除できません",
+      "createFailed": "自社法人を作成できませんでした",
+      "updateFailed": "自社法人を更新できませんでした",
+      "deleteFailed": "自社法人を削除できませんでした"
     }
   },
   "manual": {
@@ -7911,7 +8020,7 @@
       "testAndSampleEntriesNeedAn": "テスト・サンプルは終了日が必須",
       "theBaseForThePriceList": "価格表の基準になる単価。既定は価格試算の見積単価。各数量帯の単価 = 基準単価 × 倍率。",
       "theBasePriceComesFromThe": "基準単価は価格試算の見積単価から取得します。手動上書きは明示的にカスタムを有効化した場合のみ（確認あり）。各段階の単価 = 基準単価 × 倍率。",
-      "theCustomerAndProductCannotBe": "顧客・製品は作成後に変更できません。",
+      "theCustomerAndProductCannotBe": "顧客・製品・対象工具は作成後に変更できません。",
       "theMaximumQuantityMustBeAt": "数量上限は下限以上を入力してください",
       "theMinimumQuantityThisRuleApplies": "このルールが適用される最小数量。上限は空欄で無制限。",
       "theMultiplierPerTierEG": "数量帯ごとの掛け率（例 ×1.05 = 基準単価の5%増し）。単価 = 基準単価 × 倍率。",
@@ -7923,7 +8032,9 @@
       "theValidPeriodWasChanged": "有効期間を変更しました",
       "thereAreNoDiscountRules": "値引きルールがありません。",
       "thereIsNoPriceListPick": "価格表がありません — 顧客×製品を選んで作成します",
-      "thereIsOnePriceListPer": "1つの顧客×製品につき価格表は1件です。注文種別ごとの価格は下で追加します。",
+      "thereIsOnePriceListPer": "1つの顧客×製品につき価格表は1件です（再研磨の品目は対象工具ごとにも作れます）。注文種別ごとの価格は下で追加します。",
+      "targetTool": "対象工具",
+      "anyTool": "工具を問わない",
       "tickingItDropsTheAutomaticCalculation": "「カスタム」を押すと自動計算を使わず、この数量帯だけ手動の固定単価にできます（確認あり）。",
       "tiers": "段階数",
       "unitPriceRange": "単価範囲",
@@ -8044,7 +8155,14 @@
       "scaleEstimateNote": "見積単価（基準）× 数量スケールの倍率で出した参考値です。実際の数量ごとの価格は価格表で決まります（この価格試算から価格表を作るときの初期値と同じ）。",
       "scaleEstimateTitle": "参考：数量ごとの単価",
       "costTotal": "原価合計",
-      "grossMargin": "粗利"
+      "grossMargin": "粗利",
+      "kind": "種別",
+      "kindPrice": "売価試算",
+      "kindCost": "原価試算",
+      "kindPriceHint": "見積単価まで出します。確定すると価格表の基準単価に選べます。",
+      "kindCostHint": "原価合計だけを出します。原価を見る権限のある人にしか見えず、価格表の基準単価にはできません。",
+      "createPriceEstimate": "売価試算を作成",
+      "costEstimateNotice": "これは原価試算です。原価合計だけを出し、価格表の基準単価にはできません。売価が必要なら「売価試算を作成」で入力を引き継いだ売価試算を作ってください。"
     },
     "orderLineDetail": {
       "designWithCount": "設計（{count}）",
@@ -8218,7 +8336,9 @@
       "confirmDeleteOrderTypeMessage": "{orderType} の価格（数量段階・値引きルール含む）を削除します。保存時に反映されます。",
       "confirmUseCustomBaseMessage": "価格試算の見積単価（{price}）を使わず、基準単価を手動で設定します。よろしいですか？",
       "confirmUseCustomTierMessage": "この数量帯の自動計算単価（{price} = 基準単価 × 倍率）を使わず、手動で単価を設定します。",
-      "duplicateEntryPrefix": "この顧客×製品の価格表",
+      "duplicateEntryPrefix": "この顧客×製品（×対象工具）の価格表",
+      "targetToolDescription": "再研磨の値段をこの工具に限るときだけ選びます。未選択は工具を問わない価格です（工具の価格表 → 工具を問わない価格表 → 標準価格 の順に引きます）。",
+      "searchTools": "工具を検索",
       "duplicateEntrySuffix": "が既に存在します（{orderTypes}）。注文種別の追加は既存の価格表を編集してください。",
       "editTitle": "価格表 編集",
       "manualWithEstimateValue": "手動設定（価格試算値: {price}）",
@@ -8242,7 +8362,8 @@
       "selectABranch": "支店を選択",
       "subtotalAmount": "小計 {amount}",
       "taxAmount": "消費税 {amount}",
-      "totalInclTaxAmount": "合計（税込） {amount}"
+      "totalInclTaxAmount": "合計（税込） {amount}",
+      "lineNotesDescription": "見積書 PDF の明細の下に印字されます"
     },
     "trialEstimateDetail": {
       "orderTypeTierCount": "{orderType}・{tierCount}段階",
@@ -8329,7 +8450,7 @@
       "invalidVariant": "バリアントが不正です",
       "invalidTier": "段階が不正です",
       "createFailed": "価格表の作成に失敗しました",
-      "duplicateEntry": "同一の顧客・製品の価格表が既に存在します。既存の価格表を編集してください。",
+      "duplicateEntry": "同一の顧客・製品・対象工具の価格表が既に存在します。既存の価格表を編集してください。",
       "invalidEntryNumber": "価格表番号が不正です",
       "updateFailed": "価格表の更新に失敗しました",
       "invalidSourceEntryNumber": "コピー元の価格表番号が不正です",
@@ -8341,7 +8462,8 @@
       "deleteDiscountRuleFailed": "値引きルールの削除に失敗しました",
       "noApprovalNeeded": "この価格表には独自値が無い（または追加承認の段が無い）ため、承認は要りません",
       "notFound": "価格表が見つかりません",
-      "notPendingApproval": "承認依頼中ではありません"
+      "notPendingApproval": "承認依頼中ではありません",
+      "costEstimateNotUsable": "原価試算は価格表の基準単価にできません"
     },
     "designRequestActions": {
       "approvalRequestFailed": "承認依頼に失敗しました",
@@ -8392,7 +8514,8 @@
       "productNotFound": "製品が見つかりません",
       "purchaseHistoryFetchFailed": "仕入実績の取得に失敗しました",
       "saveFailed": "価格試算の保存に失敗しました",
-      "toolTypeNotDefined": "工具種「{toolType}」は定義されていません"
+      "toolTypeNotDefined": "工具種「{toolType}」は定義されていません",
+      "costEstimateNotPermitted": "原価試算を作る権限がありません"
     },
     "intakeReview": {
       "customer": "顧客",
@@ -8449,7 +8572,9 @@
       "externalProductHasNoPriceList": "他社製品には価格表を作れません（預かるだけで売る物ではありません）",
       "materialHasNoPriceList": "素材には価格表を作れません",
       "regrindItemOnlyRegrindVariant": "再研磨の品目が持てるのは注文種別「再研磨」だけです",
-      "productHasNoRegrindVariant": "製品に注文種別「再研磨」の価格は作れません。再研磨の値段は再研磨の品目が持ちます"
+      "productHasNoRegrindVariant": "製品に注文種別「再研磨」の価格は作れません。再研磨の値段は再研磨の品目が持ちます",
+      "priceListToolOnlyForRegrind": "対象工具は再研磨の品目の価格表にだけ設定できます",
+      "priceListToolMustBeProduct": "対象工具には製品（他社製品を含む）を選びます"
     },
     "quoteMail": {
       "subject": "見積書 {number} のご送付",
@@ -9359,7 +9484,8 @@
       "item_inventory": "在庫",
       "movement_types": "移動タイプ",
       "items": "品目",
-      "webhook_endpoints": "Webhook 送信先"
+      "webhook_endpoints": "Webhook 送信先",
+      "own_companies": "自社法人"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -9720,6 +9846,10 @@
       "product": {
         "label": "製品",
         "summary": "価格を決める製品です。顧客と同じく、作った後は変えられません。"
+      },
+      "targetTool": {
+        "label": "対象工具",
+        "summary": "再研磨の値段をこの工具に限るときだけ選びます。空なら工具を問わない価格です。単価は 工具の価格表 → 工具を問わない価格表 → 標準価格 の順に引きます。"
       },
       "orderType": {
         "label": "注文種別",

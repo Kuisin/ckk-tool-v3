@@ -57,7 +57,7 @@
     </thead>
     <tbody>
       {{#each items}}
-      <tr>
+      <tr class="{{row_class}}">
         <td>{{name}}<br><span class="sub">{{code}}</span></td>
         <td>{{order_type}}</td>
         <td class="right">{{quantity}}</td>
@@ -65,6 +65,7 @@
         <td class="right">{{amount}}</td>
         <td>{{delivery_date}}</td>
       </tr>
+      {{{line_note_row}}}
       {{/each}}
     </tbody>
   </table>

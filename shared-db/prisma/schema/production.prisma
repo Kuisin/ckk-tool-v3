@@ -306,6 +306,11 @@ model WorkOrderStep {
   plannedWorkHours Decimal?   @map("planned_work_hours") @db.Decimal(6, 2) // 予定作業時間 (h) — 任意
   lotInputMode  LotInputMode? @map("lot_input_mode") // 実行時のロット入力（null = 工程マスタの既定を継承）
   lotText       String?       @map("lot_text") // 素材ロット・伝票コード等（開始時に記録）
+  /// 工程納期 — この工程をいつまでに終えるか（JST の暦日・任意）。
+  /// 指示書全体の予定納期（割当明細の最早納期）とは別に、工程ごとの締切を持つ。
+  /// 過ぎて未完了（COMPLETED / CANCELLED 以外）なら画面で赤くするだけで、
+  /// 実行可否の判定には使わない。
+  dueDate       DateTime?     @map("due_date") @db.Date
 
   outsourceRequestedAt DateTime? @map("outsource_requested_at") @db.Date
   outsourceExpectedAt  DateTime? @map("outsource_expected_at") @db.Date

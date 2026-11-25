@@ -150,7 +150,8 @@ export function PriceListTable({
     const matchesSearch =
       !search ||
       e.customerName.includes(search) ||
-      e.productName.includes(search);
+      e.productName.includes(search) ||
+      (e.toolName ?? "").includes(search);
     const matchesCustomer = !customer || e.customerId === customer;
     const matchesProduct = !product || e.itemId === product;
     const matchesType =
@@ -178,7 +179,15 @@ export function PriceListTable({
               {tr("enum.ITEM_TYPE_LABEL.REGRIND")}
             </Badge>
           )}
-          <span>{e.productName}</span>
+          <Stack gap={0}>
+            <span>{e.productName}</span>
+            {/* 対象工具 — 工具ごとの再研磨価格だけが持つ。工具なしは出さない。 */}
+            {e.toolName && (
+              <Text c="dimmed" size="xs">
+                {tr("sales.priceLists.targetTool")}: {e.toolName}
+              </Text>
+            )}
+          </Stack>
         </Group>
       ),
     },
@@ -417,6 +426,11 @@ export function PriceListTable({
                 <Text c="dimmed" size="xs" truncate>
                   {e.productName}
                 </Text>
+                {e.toolName && (
+                  <Text c="dimmed" size="xs" truncate>
+                    {tr("sales.priceLists.targetTool")}: {e.toolName}
+                  </Text>
+                )}
                 <Group gap="xs">
                   {e.variants.map((v) => (
                     <Badge color="gray" key={v.id} size="xs" variant="light">

@@ -42,10 +42,12 @@ import { z } from "zod";
 import {
   searchCustomerOptions,
   searchPriceListItemOptions,
+  searchProductItemOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   createPriceEntry,
   fetchEstimateSources,
+  fetchPriceListItemType,
   type PriceVariantInput,
   updatePriceEntry,
 } from "@/app/(dashboard)/sales/price-lists/actions";
@@ -132,6 +134,11 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
         .min(1, tr("sales.orderAcceptances.selectACustomer")),
       /** 対象製品 — 値は品目 id（items.id）。 */
       itemId: z.string().min(1, tr("common.selectAProduct")),
+      /**
+       * 対象工具（品目 id）— 再研磨の品目の価格表だけが持てる任意の欄。
+       * null = 工具を問わない価格表。識別の一部で、作成後は変えない。
+       */
+      toolItemId: z.string().nullable(),
       /** 営業担当 — 顧客の担当一覧から選ぶ（未設定なら主担当が既定で入る）。 */
       salesRepId: z.string().nullable(),
       isActive: z.boolean(),
@@ -214,6 +221,7 @@ function buildInitial(args: {
     return {
       customerId: entry.customerId,
       itemId: entry.itemId,
+      toolItemId: entry.toolItemId ?? null,
       salesRepId: entry.salesRepId,
       isActive: entry.isActive,
       variants: entry.variants.map((v) => {
@@ -243,6 +251,7 @@ function buildInitial(args: {
   return {
     customerId: args.lockedCustomerId ?? "",
     itemId: args.lockedProductId ?? "",
+    toolItemId: null,
     salesRepId: null,
     isActive: true,
     variants: [emptyVariant("PRODUCTION", args.scalePreset)],
@@ -299,6 +308,30 @@ export function PriceListTypeForm({
   // ── 製品にリンクされた価格試算（基準単価ソース候補）────────────────────────────
   const [sources, setSources] = useState<EstimateSource[]>([]);
   const itemId = form.values.itemId;
+
+  // ── 品目の種別 — 再研磨の品目のときだけ「対象工具」を出す ──────────────────────
+  const [itemType, setItemType] = useState<"PRODUCT" | "REGRIND" | null>(
+    entry?.itemType ?? null,
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 品目が変わったときだけ読み直す（form は useForm の安定参照）
+  useEffect(() => {
+    if (mode === "edit") return; // 識別は不変 — 種別も entry のまま
+    if (!itemId) {
+      setItemType(null);
+      return;
+    }
+    let cancelled = false;
+    fetchPriceListItemType(itemId).then((t) => {
+      if (cancelled) return;
+      setItemType(t);
+      // 製品に切り替えたら工具は外す（工具は再研磨の価格表だけが持つ）。
+      if (t !== "REGRIND") form.setFieldValue("toolItemId", null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [itemId, mode]);
+  const isRegrindItem = itemType === "REGRIND";
   useEffect(() => {
     if (!itemId) {
       setSources([]);
@@ -424,6 +457,7 @@ export function PriceListTypeForm({
               identity: {
                 customerBpId: raw.customerId,
                 itemId: raw.itemId,
+                toolItemId: isRegrindItem ? raw.toolItemId || null : null,
               },
               salesRepId: raw.salesRepId,
               variants,
@@ -455,7 +489,9 @@ export function PriceListTypeForm({
       ? (existingEntries.find(
           (e) =>
             e.customerBpId === form.values.customerId &&
-            e.itemId === form.values.itemId,
+            e.itemId === form.values.itemId &&
+            (e.toolItemId ?? null) ===
+              (isRegrindItem ? form.values.toolItemId || null : null),
         ) ?? null)
       : null;
 
@@ -534,6 +570,35 @@ export function PriceListTypeForm({
               withAsterisk
             />
           )}
+          {/*
+            対象工具 — 再研磨の品目の価格表だけが持てる任意の欄。同じ顧客 ×
+            役務でも、研ぐ工具で値段が違うときに工具ごとの価格表を作る。
+            解決は 工具一致 → 工具なし → 標準価格（quotes/model selectPriceEntries）。
+          */}
+          {isRegrindItem &&
+            (mode === "edit" ? (
+              <FieldValue
+                label={tr("sales.priceLists.targetTool")}
+                value={entry?.toolName ?? tr("sales.priceLists.anyTool")}
+              />
+            ) : (
+              <SearchSelect
+                description={tr(
+                  "sales.priceListTypeForm.targetToolDescription",
+                )}
+                label={
+                  <HelpLabel {...fieldHelp(tr, "priceList", "targetTool")} />
+                }
+                onChange={(v) => form.setFieldValue("toolItemId", v ?? null)}
+                // 預かる工具の大半は他社製 — 他社製品も候補に入れる。
+                onSearch={(q) =>
+                  searchProductItemOptions(q, { includeExternal: true })
+                }
+                placeholder={tr("sales.priceListTypeForm.searchTools")}
+                storageKey="price-list-tool-item"
+                value={form.values.toolItemId || null}
+              />
+            ))}
           <SalesRepSelect
             customerBpId={form.values.customerId || null}
             initial={

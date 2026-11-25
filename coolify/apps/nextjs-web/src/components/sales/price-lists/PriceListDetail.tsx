@@ -292,6 +292,16 @@ export function PriceListDetail({
           }
         />
         {/*
+          対象工具 — 再研磨の価格表だけが持つ任意の欄。工具なしの価格表は
+          「工具を問わない」と出す（どの工具の研ぎ直しにも当たる、と読めるように）。
+        */}
+        {entry.itemType === "REGRIND" && (
+          <FieldValue
+            label={tr("sales.priceLists.targetTool")}
+            value={entry.toolName ?? tr("sales.priceLists.anyTool")}
+          />
+        )}
+        {/*
           標準価格は**この画面では読むだけ**。持ち主は品目マスタ（再研磨品目
           MS0H）で、直すのはあちら — 値段の持ち主を 2 か所にしない。ここに
           出すのは「当たる価格表が無いときいくらで売れるのか」が価格表の画面

@@ -22,6 +22,7 @@ model File {
   userAvatars      User[]               @relation("UserAvatarFile")
   userAvatarThumbs User[]               @relation("UserAvatarThumbFile")
   inspectionTemplateImages InspectionTemplate[] @relation("InspectionTemplateImage")
+  ownCompanySeals  OwnCompany[]         @relation("OwnCompanySeal")
 
   @@map("files")
   @@schema("app")

@@ -40,6 +40,8 @@ import { type LocalizedText, localized } from "@/lib/format";
 import { label } from "@/lib/messages";
 import { lineAmountYen, type TaxBucket, totalsByRateYen } from "@/lib/money";
 import { allocateDocumentKey } from "@/lib/numbering";
+import { defaultOwnCompanyId, shipmentOwnCompanyId } from "@/lib/own-companies";
+import { groupByOwnCompany } from "@/lib/own-company-core";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
@@ -261,8 +263,141 @@ async function buildInvoiceDraft(
 }
 
 export interface GeneratedInvoice {
+  /** 先頭の請求書（既定の法人の分が先）。締日行が指すのもこれ。 */
   invoiceNumber: string;
+  /** 作った全請求書の税込合計。 */
   totalAmount: number;
+  /**
+   * 作った請求書の全部。**発行元の自社法人ごとに 1 通**（法人をまたいで
+   * 1 通にしない — 発行元は 1 通に 1 社しか刷れない）。通常は 1 通。
+   */
+  invoices: { invoiceNumber: string; totalAmount: number }[];
+}
+
+/** 法人ごとに 1 通 — 採番と明細の組み立てまで済ませた請求書。 */
+interface PreparedInvoice {
+  yearMonth: string;
+  seq: number;
+  invoiceNumber: string;
+  ownCompanyId: number | null;
+  customerBranchBpId: string | null;
+  salesRepId: string | null;
+  draft: Awaited<ReturnType<typeof buildInvoiceDraft>>;
+}
+
+/**
+ * 出荷を**発行元の自社法人ごと**に束ね、束ごとに明細を組み立てて採番する。
+ * 法人の決め方は出荷書の出荷元拠点 → 明細の担当拠点 → 既定の法人
+ * （lib/own-companies.ts shipmentOwnCompanyId）。SCHEDULED / MANUAL 共通。
+ */
+async function prepareInvoices(
+  closingDate: Date,
+  orderingCustomerBpId: string,
+  customerAttrs: ClosingCustomerAttrsRef | null,
+  shipments: BillableShipment[],
+): Promise<PreparedInvoice[]> {
+  const defaultId = await defaultOwnCompanyId();
+  const groups = groupByOwnCompany(
+    shipments,
+    (s) => shipmentOwnCompanyId(s, null),
+    defaultId,
+  );
+  const prepared: PreparedInvoice[] = [];
+  for (const group of groups) {
+    const draft = await buildInvoiceDraft(
+      closingDate,
+      customerAttrs,
+      group.items,
+    );
+    const branchIds = new Set(
+      group.items.map((s) => s.customerBranchBpId ?? ""),
+    );
+    const customerBranchBpId =
+      branchIds.size === 1 ? branchIds.values().next().value || null : null;
+    const repIds = new Set(
+      group.items.flatMap((s) =>
+        s.items.map((it) => it.orderLine?.acceptance.salesRepId ?? ""),
+      ),
+    );
+    const inheritedSalesRepId =
+      repIds.size === 1 ? repIds.values().next().value || null : null;
+    const salesRepId = await resolveSalesRepId(
+      inheritedSalesRepId,
+      orderingCustomerBpId,
+      null,
+    );
+    const { yearMonth, seq } = await allocateDocumentKey("INVOICE");
+    prepared.push({
+      yearMonth,
+      seq,
+      invoiceNumber: formatDocNumber("INV", { yearMonth, seq }),
+      ownCompanyId: group.companyId,
+      customerBranchBpId,
+      salesRepId,
+      draft,
+    });
+  }
+  return prepared;
+}
+
+/** prisma.invoice.create の data（SCHEDULED / MANUAL 共通）。 */
+function invoiceCreateData(
+  p: PreparedInvoice,
+  common: {
+    billingPartyId: string;
+    orderingCustomerBpId: string;
+    closingKind: "SCHEDULED" | "MANUAL";
+    periodFrom: Date;
+    closingDate: Date;
+    dueDate: Date;
+    actorId: string | null;
+  },
+) {
+  const { draft } = p;
+  return {
+    yearMonth: p.yearMonth,
+    seq: p.seq,
+    customerBpId: common.billingPartyId,
+    customerBranchBpId:
+      common.billingPartyId === common.orderingCustomerBpId
+        ? p.customerBranchBpId
+        : null,
+    salesRepId: p.salesRepId,
+    closingKind: common.closingKind,
+    ownCompanyId: p.ownCompanyId,
+    billingPeriodFrom: common.periodFrom,
+    billingPeriodTo: common.closingDate,
+    subtotal: draft.subtotal,
+    taxAmount: draft.taxAmount,
+    totalAmount: draft.totalAmount,
+    taxType: draft.taxType,
+    taxRate: draft.taxRate,
+    status: "DRAFT" as const,
+    dueDate: common.dueDate,
+    createdBy: common.actorId,
+    items: { create: draft.items },
+    taxSummaries: {
+      create: draft.buckets.map((b, i) => ({
+        taxCategoryId: bucketCategoryId(draft.items, b.taxRate),
+        taxRate: b.taxRate,
+        taxableBase: b.taxableBase,
+        taxAmount: b.taxAmount,
+        sortOrder: i,
+      })),
+    },
+  };
+}
+
+/** 作った請求書の要約（戻り値）。 */
+function generatedSummary(prepared: PreparedInvoice[]): GeneratedInvoice {
+  return {
+    invoiceNumber: prepared[0].invoiceNumber,
+    totalAmount: prepared.reduce((sum, p) => sum + p.draft.totalAmount, 0),
+    invoices: prepared.map((p) => ({
+      invoiceNumber: p.invoiceNumber,
+      totalAmount: p.draft.totalAmount,
+    })),
+  };
 }
 
 /**
@@ -298,13 +433,13 @@ export async function generateInvoiceForClosing(
       return actionError(tr("billing.closings.thereAreNoShipmentsToBill"));
     }
 
-    const draft = await buildInvoiceDraft(
-      closing.closingDate,
+    const closingDate = closing.closingDate;
+    const prepared = await prepareInvoices(
+      closingDate,
+      closing.customerBpId,
       closing.customerBp.customerAttrs,
       shipments,
     );
-
-    const closingDate = closing.closingDate;
     const periodFrom = await resolveBillingPeriodStart(
       closing.customerBpId,
       closingDate,
@@ -317,65 +452,32 @@ export async function generateInvoiceForClosing(
       closing.customerBpId,
       closing.customerBp.customerAttrs?.billingBpId,
     );
-    const branchIds = new Set(shipments.map((s) => s.customerBranchBpId ?? ""));
-    const customerBranchBpId =
-      branchIds.size === 1 ? branchIds.values().next().value || null : null;
-    const repIds = new Set(
-      shipments.flatMap((s) =>
-        s.items.map((it) => it.orderLine?.acceptance.salesRepId ?? ""),
-      ),
-    );
-    const inheritedSalesRepId =
-      repIds.size === 1 ? repIds.values().next().value || null : null;
-    const salesRepId = await resolveSalesRepId(
-      inheritedSalesRepId,
-      closing.customerBpId,
-      null,
-    );
 
     const actorId = await getCurrentActorId();
-    const { yearMonth, seq } = await allocateDocumentKey("INVOICE");
-    const invoiceNumber = formatDocNumber("INV", { yearMonth, seq });
+    const common = {
+      billingPartyId,
+      orderingCustomerBpId: closing.customerBpId,
+      closingKind: "SCHEDULED" as const,
+      periodFrom,
+      closingDate,
+      dueDate,
+      actorId,
+    };
+    const first = prepared[0];
+    const summary = generatedSummary(prepared);
 
     await prisma.$transaction(async (tx) => {
-      await tx.invoice.create({
-        data: {
-          yearMonth,
-          seq,
-          customerBpId: billingPartyId,
-          customerBranchBpId:
-            billingPartyId === closing.customerBpId ? customerBranchBpId : null,
-          salesRepId,
-          closingKind: "SCHEDULED",
-          billingPeriodFrom: periodFrom,
-          billingPeriodTo: closingDate,
-          subtotal: draft.subtotal,
-          taxAmount: draft.taxAmount,
-          totalAmount: draft.totalAmount,
-          taxType: draft.taxType,
-          taxRate: draft.taxRate,
-          status: "DRAFT",
-          dueDate,
-          createdBy: actorId,
-          items: { create: draft.items },
-          taxSummaries: {
-            create: draft.buckets.map((b, i) => ({
-              taxCategoryId: bucketCategoryId(draft.items, b.taxRate),
-              taxRate: b.taxRate,
-              taxableBase: b.taxableBase,
-              taxAmount: b.taxAmount,
-              sortOrder: i,
-            })),
-          },
-        },
-      });
+      for (const p of prepared) {
+        await tx.invoice.create({ data: invoiceCreateData(p, common) });
+      }
       const updated = await tx.billingClosing.updateMany({
         where: { id: closingId, status: "PENDING" },
         data: {
           status: "PROCESSED",
-          totalAmount: draft.subtotal,
-          invoiceYearMonth: yearMonth,
-          invoiceSeq: seq,
+          totalAmount: prepared.reduce((sum, p) => sum + p.draft.subtotal, 0),
+          // 締日行が指すのは先頭の 1 通（法人が混ざるときだけ 2 通以上になる）。
+          invoiceYearMonth: first.yearMonth,
+          invoiceSeq: first.seq,
           processedAt: new Date(),
           processedBy: actorId,
         },
@@ -385,40 +487,51 @@ export async function generateInvoiceForClosing(
       }
     });
 
-    await recordAudit({
-      action: "CREATE",
-      tableName: "invoices",
-      recordId: invoiceNumber,
-      after: {
-        customerBpId: billingPartyId,
-        orderingCustomerBpId: closing.customerBpId,
-        billingPeriodFrom: periodFrom.toISOString(),
-        billingPeriodTo: closingDate.toISOString(),
-        subtotal: draft.subtotal,
-        taxAmount: draft.taxAmount,
-        totalAmount: draft.totalAmount,
-        taxType: draft.taxType,
-        taxRate: draft.taxRate,
-        taxBuckets: draft.buckets,
-        status: "DRAFT",
-        dueDate: dueDate.toISOString(),
-        itemCount: draft.items.length,
-        closingId,
-      },
-    });
+    for (const p of prepared) {
+      await recordAudit({
+        action: "CREATE",
+        tableName: "invoices",
+        recordId: p.invoiceNumber,
+        after: {
+          customerBpId: billingPartyId,
+          orderingCustomerBpId: closing.customerBpId,
+          ownCompanyId: p.ownCompanyId,
+          billingPeriodFrom: periodFrom.toISOString(),
+          billingPeriodTo: closingDate.toISOString(),
+          subtotal: p.draft.subtotal,
+          taxAmount: p.draft.taxAmount,
+          totalAmount: p.draft.totalAmount,
+          taxType: p.draft.taxType,
+          taxRate: p.draft.taxRate,
+          taxBuckets: p.draft.buckets,
+          status: "DRAFT",
+          dueDate: dueDate.toISOString(),
+          itemCount: p.draft.items.length,
+          closingId,
+        },
+      });
+    }
     await recordAudit({
       action: "UPDATE",
       tableName: "billing_closings",
       recordId: closingId,
       before: { status: "PENDING" },
-      after: { status: "PROCESSED", invoiceNumber },
+      after: {
+        status: "PROCESSED",
+        invoiceNumber: first.invoiceNumber,
+        ...(prepared.length > 1
+          ? { invoiceNumbers: prepared.map((p) => p.invoiceNumber) }
+          : {}),
+      },
     });
 
     revalidatePath(BASE_PATH);
     revalidatePath(`${BASE_PATH}/${closingId}`);
     revalidatePath(INVOICES_PATH);
-    revalidatePath(`${INVOICES_PATH}/${invoiceNumber}`);
-    return actionOk({ invoiceNumber, totalAmount: draft.totalAmount });
+    for (const p of prepared) {
+      revalidatePath(`${INVOICES_PATH}/${p.invoiceNumber}`);
+    }
+    return actionOk(summary);
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("GUARD:")) {
       return actionError(e.message.slice("GUARD:".length));
@@ -457,8 +570,9 @@ export async function generateManualInvoice(input: {
     // 落とすので、ほかの経路（締日行の closingDate）と同じ形で下流へ渡る。
     const closingDate = new Date(`${isoDateJst(new Date())}T00:00:00Z`);
 
-    const draft = await buildInvoiceDraft(
+    const prepared = await prepareInvoices(
       closingDate,
+      input.customerBpId,
       input.customerAttrs,
       input.shipments,
     );
@@ -475,27 +589,19 @@ export async function generateManualInvoice(input: {
       input.customerBpId,
       input.customerAttrs?.billingBpId,
     );
-    const branchIds = new Set(
-      input.shipments.map((s) => s.customerBranchBpId ?? ""),
-    );
-    const customerBranchBpId =
-      branchIds.size === 1 ? branchIds.values().next().value || null : null;
-    const repIds = new Set(
-      input.shipments.flatMap((s) =>
-        s.items.map((it) => it.orderLine?.acceptance.salesRepId ?? ""),
-      ),
-    );
-    const inheritedSalesRepId =
-      repIds.size === 1 ? repIds.values().next().value || null : null;
-    const salesRepId = await resolveSalesRepId(
-      inheritedSalesRepId,
-      input.customerBpId,
-      null,
-    );
 
     const actorId = await getCurrentActorId();
-    const { yearMonth, seq } = await allocateDocumentKey("INVOICE");
-    const invoiceNumber = formatDocNumber("INV", { yearMonth, seq });
+    const common = {
+      billingPartyId,
+      orderingCustomerBpId: input.customerBpId,
+      closingKind: "MANUAL" as const,
+      periodFrom,
+      closingDate,
+      dueDate,
+      actorId,
+    };
+    const first = prepared[0];
+    const summary = generatedSummary(prepared);
 
     const closingId = await prisma.$transaction(async (tx) => {
       const closing = await tx.billingClosing.create({
@@ -504,64 +610,39 @@ export async function generateManualInvoice(input: {
           closingDate,
           kind: "MANUAL",
           status: "PROCESSED",
-          totalAmount: draft.subtotal,
-          invoiceYearMonth: yearMonth,
-          invoiceSeq: seq,
+          totalAmount: prepared.reduce((sum, p) => sum + p.draft.subtotal, 0),
+          invoiceYearMonth: first.yearMonth,
+          invoiceSeq: first.seq,
           processedAt: new Date(),
           processedBy: actorId,
         },
       });
-      await tx.invoice.create({
-        data: {
-          yearMonth,
-          seq,
-          customerBpId: billingPartyId,
-          customerBranchBpId:
-            billingPartyId === input.customerBpId ? customerBranchBpId : null,
-          salesRepId,
-          closingKind: "MANUAL",
-          billingPeriodFrom: periodFrom,
-          billingPeriodTo: closingDate,
-          subtotal: draft.subtotal,
-          taxAmount: draft.taxAmount,
-          totalAmount: draft.totalAmount,
-          taxType: draft.taxType,
-          taxRate: draft.taxRate,
-          status: "DRAFT",
-          dueDate,
-          createdBy: actorId,
-          items: { create: draft.items },
-          taxSummaries: {
-            create: draft.buckets.map((b, i) => ({
-              taxCategoryId: bucketCategoryId(draft.items, b.taxRate),
-              taxRate: b.taxRate,
-              taxableBase: b.taxableBase,
-              taxAmount: b.taxAmount,
-              sortOrder: i,
-            })),
-          },
-        },
-      });
+      for (const p of prepared) {
+        await tx.invoice.create({ data: invoiceCreateData(p, common) });
+      }
       return closing.id;
     });
 
-    await recordAudit({
-      action: "CREATE",
-      tableName: "invoices",
-      recordId: invoiceNumber,
-      after: {
-        customerBpId: billingPartyId,
-        orderingCustomerBpId: input.customerBpId,
-        billingPeriodFrom: periodFrom.toISOString(),
-        billingPeriodTo: closingDate.toISOString(),
-        subtotal: draft.subtotal,
-        taxAmount: draft.taxAmount,
-        totalAmount: draft.totalAmount,
-        itemCount: draft.items.length,
-        closingId,
-        closingKind: "MANUAL",
-      },
-    });
+    for (const p of prepared) {
+      await recordAudit({
+        action: "CREATE",
+        tableName: "invoices",
+        recordId: p.invoiceNumber,
+        after: {
+          customerBpId: billingPartyId,
+          orderingCustomerBpId: input.customerBpId,
+          ownCompanyId: p.ownCompanyId,
+          billingPeriodFrom: periodFrom.toISOString(),
+          billingPeriodTo: closingDate.toISOString(),
+          subtotal: p.draft.subtotal,
+          taxAmount: p.draft.taxAmount,
+          totalAmount: p.draft.totalAmount,
+          itemCount: p.draft.items.length,
+          closingId,
+          closingKind: "MANUAL",
+        },
+      });
+    }
     await recordAudit({
       action: "CREATE",
       tableName: "billing_closings",
@@ -571,19 +652,20 @@ export async function generateManualInvoice(input: {
         closingDate: closingDate.toISOString().slice(0, 10),
         kind: "MANUAL",
         status: "PROCESSED",
-        invoiceNumber,
+        invoiceNumber: first.invoiceNumber,
+        ...(prepared.length > 1
+          ? { invoiceNumbers: prepared.map((p) => p.invoiceNumber) }
+          : {}),
       },
     });
 
     revalidatePath(BASE_PATH);
     revalidatePath(`${BASE_PATH}/${closingId}`);
     revalidatePath(INVOICES_PATH);
-    revalidatePath(`${INVOICES_PATH}/${invoiceNumber}`);
-    return actionOk({
-      invoiceNumber,
-      totalAmount: draft.totalAmount,
-      closingId,
-    });
+    for (const p of prepared) {
+      revalidatePath(`${INVOICES_PATH}/${p.invoiceNumber}`);
+    }
+    return actionOk({ ...summary, closingId });
   } catch (e) {
     return actionError(
       prismaErrorMessage(
