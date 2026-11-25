@@ -38,7 +38,9 @@ export default async function DocChoosePage({
 }) {
   const { type, number, base, suffix = "" } = await searchParams;
   // 転送先はアプリ内のパスだけ（外部へ飛ばす口にしない）。
-  if (!type || !number || !base || !/^\/[a-z0-9/-]*$/.test(base)) notFound();
+  // 何も指さずに開かれた（URL を直に打った等）— 選ぶものが無いのでホームへ。
+  if (!type || !number || !base) redirect("/");
+  if (!/^\/[a-z0-9/-]*$/.test(base)) notFound();
   if (suffix && !/^\/[a-z0-9/-]*$/.test(suffix)) notFound();
   const app = appList.find((a) => a.href === base);
   if (!app) notFound();
