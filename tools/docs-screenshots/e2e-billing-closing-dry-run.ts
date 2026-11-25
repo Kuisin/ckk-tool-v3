@@ -171,7 +171,7 @@ async function main(): Promise<void> {
         "-U",
         "postgres",
         "-d",
-        "ckk",
+        process.env.DB_NAME ?? "ckk",
         "-tAc",
         "select count(*) from app.billing_closings",
       ])

@@ -54,7 +54,7 @@ function check(name: string, ok: boolean, actual?: unknown): void {
 function psql(args: string[], input?: string): string {
   return execFileSync(
     "docker",
-    ["exec", "-i", DB_CONTAINER, "psql", "-U", "postgres", "-d", "ckk", ...args],
+    ["exec", "-i", DB_CONTAINER, "psql", "-U", "postgres", "-d", process.env.DB_NAME ?? "ckk", ...args],
     { input, encoding: "utf8" },
   ).trim();
 }

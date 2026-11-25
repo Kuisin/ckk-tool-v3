@@ -7,6 +7,7 @@
  */
 
 import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { chromium } from "@playwright/test";
 
 const APP_URL = process.env.APP_URL ?? "http://localhost:3100";
@@ -20,6 +21,10 @@ const ADMIN_PASSWORD = process.env.SHOT_ADMIN_PASSWORD ?? "demo2026";
 // 「誰が承認するのか」が動画から読み取れない。承認グループに居ない人を別に使う。
 const STAFF_USERNAME = process.env.SHOT_STAFF_USERNAME ?? "demo2";
 const STAFF_PASSWORD = process.env.SHOT_STAFF_PASSWORD ?? "demo2026";
+// storageState の置き場。既定 .auth。**並列に走らせるときは 1 本ごとに分ける**
+// （scripts/scenarios.ts）— セッションは DB にあるので、別の DB に向いたアプリの
+// ログインを使い回せず、同じファイルへ書くと互いのログインを上書きする。
+export const AUTH_DIR = process.env.SHOT_AUTH_DIR ?? ".auth";
 
 async function loginAndSave(
   browser: Awaited<ReturnType<typeof chromium.launch>>,
@@ -40,10 +45,10 @@ async function loginAndSave(
 }
 
 export default async function globalSetup(): Promise<void> {
-  mkdirSync(".auth", { recursive: true });
+  mkdirSync(AUTH_DIR, { recursive: true });
   const browser = await chromium.launch();
-  await loginAndSave(browser, USERNAME, PASSWORD, ".auth/state.json");
-  await loginAndSave(browser, ADMIN_USERNAME, ADMIN_PASSWORD, ".auth/admin.json");
-  await loginAndSave(browser, STAFF_USERNAME, STAFF_PASSWORD, ".auth/staff.json");
+  await loginAndSave(browser, USERNAME, PASSWORD, join(AUTH_DIR, "state.json"));
+  await loginAndSave(browser, ADMIN_USERNAME, ADMIN_PASSWORD, join(AUTH_DIR, "admin.json"));
+  await loginAndSave(browser, STAFF_USERNAME, STAFF_PASSWORD, join(AUTH_DIR, "staff.json"));
   await browser.close();
 }

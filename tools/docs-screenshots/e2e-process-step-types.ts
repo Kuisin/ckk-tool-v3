@@ -14,7 +14,7 @@ const check = (name: string, ok: boolean, detail = "") => {
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`);
 };
 const sql = (q: string): string =>
-  execFileSync("docker", ["exec", "-i", DB, "psql", "-U", "postgres", "-d", "ckk", "-t", "-A", "-c", q])
+  execFileSync("docker", ["exec", "-i", DB, "psql", "-U", "postgres", "-d", process.env.DB_NAME ?? "ckk", "-t", "-A", "-c", q])
     .toString().trim();
 
 async function login(page: Page): Promise<void> {

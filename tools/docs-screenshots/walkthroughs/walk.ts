@@ -13,18 +13,21 @@
  */
 
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { resolve } from "node:path";
 import { expect, type Locator, type Page } from "@playwright/test";
 import { gotoDoc } from "../doc-number";
 import type { WalkUser } from "./types";
 
 export type WalkMode = "check" | "record";
 
+/** storageState の置き場（global-setup.ts と同じ env。並列実行では 1 本ごとに分ける）。 */
+const AUTH_DIR = process.env.SHOT_AUTH_DIR ?? ".auth";
+
 /** storageState のファイル（global-setup.ts が作る）。 */
 export const AUTH_STATE: Record<WalkUser, string> = {
-  staff: ".auth/staff.json",
-  approver: ".auth/state.json",
-  admin: ".auth/admin.json",
+  staff: `${AUTH_DIR}/staff.json`,
+  approver: `${AUTH_DIR}/state.json`,
+  admin: `${AUTH_DIR}/admin.json`,
 };
 
 /** 各役のユーザー名。global-setup.ts がログインに使うものと同じ env を読む。 */
@@ -322,7 +325,7 @@ export class Walk {
    * 動画が途切れないよう、同じコンテキストのまま切り替える。
    */
   async switchUser(user: WalkUser, path: string): Promise<void> {
-    const state = JSON.parse(readFileSync(join(process.cwd(), AUTH_STATE[user]), "utf8")) as {
+    const state = JSON.parse(readFileSync(resolve(process.cwd(), AUTH_STATE[user]), "utf8")) as {
       cookies: Parameters<ReturnType<Page["context"]>["addCookies"]>[0];
     };
     const context = this.page.context();

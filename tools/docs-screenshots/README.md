@@ -137,6 +137,73 @@ pnpm e2e:pages -- --reuse      # APP_URL（既定 :3100）の起動済みスタ�
 — 同じ機械で別のワークツリーが撮影中でも互いのコンテナを消さないため。
 結果は `/tmp/page-load-report.json`（`PAGES_REPORT` で変更可）。
 
+## 機能ごとの通し確認と画面の記録（scenarios）
+
+**1 つの機能が、実際の画面でそう動くこと**を確かめ、**手順ごとの画面を残す**。
+合否だけでなく、人（と AI）が後から目で見て確かめるためのもの。
+
+```bash
+pnpm scenarios                      # 全部を並列に（既定 4 並列）→ .verify-out/scenarios/index.html
+pnpm scenarios --only a,b           # その id だけ（他の前回結果はレポートに残る）
+pnpm scenarios --no-build           # .next が今の変更で作られているとき
+pnpm scenarios --list               # 登録されている id
+pnpm scenarios --inline             # 画像を埋め込んだ 1 ファイル（report.html）も書く
+pnpm scenarios --serve --only <id>  # 走らせずに、その 1 本ぶんの DB とアプリだけ立てて待つ
+```
+
+仕組み（`scripts/scenarios.ts`）:
+
+1. ひな形の DB を 1 つ用意する（使い捨て Postgres + デモシード。起動済みなら使い回す —
+   マイグレーションやシードを変えたら `--fresh`）
+2. シナリオ 1 本ごとに `CREATE DATABASE … TEMPLATE` で**複製**し、その DB に向けた
+   アプリを空きポートで起動して走らせ、終わったら消す
+
+だから各シナリオは**シード直後の状態から始まり、互いに独立**で、並列に走らせても
+何度流しても同じ結果になる（複製は 1 秒かからない）。`pdf: true` のシナリオがあれば
+Gotenberg も起動し、PDF を実際に描いて 1 ページ目を画像にする（要 `pdftotext` / `gs`）。
+`kiosk: true` なら共有端末アプリも同じ DB で起動する。
+
+書き方（`scenarios/<id>.ts` → 分野ごとの `scenarios/group-*.ts` に登録）:
+
+```ts
+export const markingNumber: Scenario = {
+  id: "marking-number",
+  title: "印字通し番号 — 確定で採番される",
+  feature: "A 印字通し番号 (#974)",
+  user: "staff",                       // staff = demo2 / approver = demo_shot / admin = demo1
+  fixtures: ["scenarios/fixtures/marking-number.sql"],  // この 1 本の DB にだけ流す SQL（任意）
+  steps: [
+    {
+      caption: "注文請書を確定する — 明細ごとに印字番号が振られる",
+      run: async (s) => {
+        await s.goto("/sales/order-acceptances/…");
+        await s.click(s.page.getByRole("button", { name: "確定", exact: true }));
+        await s.shot("確定の確認");                       // 途中の画面を撮る
+        s.check("印字番号は 200000 から", s.sql("select …") === "200000", s.sql("select …"));
+      },
+    },
+  ],
+};
+```
+
+`s` は `Walk`（`click` / `fill` / `pick` / `pickDate` / `menu` / `see` / `switchUser` …）に
+`shot` / `check` / `checkVisible` / `sql` / `sqlRows` / `sqlExec` / `pdf` / `openKiosk` を
+足したもの（`scenarios/scn.ts`）。決まりごと:
+
+- **手順の終わりには自動で 1 枚撮る。** 途中（入力し終えたフォーム・開いたモーダル）を
+  見せたいときだけ `s.shot("ラベル")`。
+- **`s.check` は落ちても止めない**（1 回で問題を全部並べる）。第 3 引数に実測値を渡す。
+  先へ進めないときは throw する（`s.see` は出なければ throw）— 残りの手順は skipped。
+- **確かめる対象の操作は画面で行う。** 準備（別の法人・在庫・進んだ状態の指示書）は
+  fixtures の SQL でよいが、機能そのものを SQL で済ませない。
+- 番号は決め打ちしない（`doc-number.ts` の `docNumber("QOT")` / `docUrl(…)`）。
+- **不具合を見つけたら、正しい挙動を確かめる check のまま残す**（通るように弱めない）。
+- 既存の `e2e-*.ts` は `kind: "script"` で 1 本として登録できる（標準出力の
+  `PASS` / `FAIL` 行と `SHOT_DIR` の画像を拾う）。
+
+出力は `.verify-out/scenarios/<id>/`（`NN.jpg`・`result.json`・`run.log`・`app.log`・
+止まった手順の `step-N-aria.txt`）。CI では動かさない — 直したあと人が流して見る。
+
 ## 業務の通し操作と動画（walk:check / docs:videos）
 
 販売 / 購買 / 生産 / 出荷 / 請求 の流れを、マニュアルのプロセス編と同じ順に

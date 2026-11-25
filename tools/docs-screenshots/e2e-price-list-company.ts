@@ -41,7 +41,7 @@ function sql(query: string): string {
       "-U",
       "postgres",
       "-d",
-      "ckk",
+      process.env.DB_NAME ?? "ckk",
       "-tAc",
       query,
     ],

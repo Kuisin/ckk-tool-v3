@@ -59,7 +59,7 @@ function check(name: string, ok: boolean, detail = ""): void {
 function sql(query: string): string {
   return execFileSync(
     "docker",
-    ["exec", "-i", DB_CONTAINER, "psql", "-U", "postgres", "-d", "ckk", "-tAc", query],
+    ["exec", "-i", DB_CONTAINER, "psql", "-U", "postgres", "-d", process.env.DB_NAME ?? "ckk", "-tAc", query],
     { encoding: "utf8" },
   ).trim();
 }
