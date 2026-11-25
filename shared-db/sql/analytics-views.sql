@@ -61,11 +61,15 @@ SELECT
   -- 結果スナップショット（estimates.result）から。cost_total は計算基準の「原価」の
   -- 印（SY02）を付けた基準の和で、印を入れる前に保存した価格試算は NULL のまま
   -- （推測で埋めない）。列は末尾に足すこと — CREATE OR REPLACE は途中に挿せない。
-  (e.result->'lots'->0->>'estimateUnitPrice')::numeric AS estimate_unit_price,
+  -- 原価試算（kind = COST）は見積単価・粗利を出さない（画面と同じ規則）。
+  CASE WHEN e.kind = 'PRICE'
+       THEN (e.result->'lots'->0->>'estimateUnitPrice')::numeric END AS estimate_unit_price,
   (e.result->'lots'->0->>'minimumPrice')::numeric      AS minimum_price,
   (e.result->>'costTotal')::numeric                     AS cost_total,
-  (e.result->'lots'->0->>'estimateUnitPrice')::numeric
-    - (e.result->>'costTotal')::numeric                 AS gross_margin
+  CASE WHEN e.kind = 'PRICE'
+       THEN (e.result->'lots'->0->>'estimateUnitPrice')::numeric
+            - (e.result->>'costTotal')::numeric END     AS gross_margin,
+  e.kind
 FROM app.estimates e
 LEFT JOIN app.business_partners cust ON cust.id = e.customer_bp_id
 LEFT JOIN app.items prod             ON prod.id = e.item_id
@@ -87,7 +91,9 @@ SELECT
   it.item->>'name'               AS criterion_name,
   it.item->>'role'               AS criterion_role,
   (it.item->>'isCost')::boolean  AS is_cost,
-  (it.item->>'value')::numeric   AS value
+  (it.item->>'value')::numeric   AS value,
+  -- 「原価のみに含める」（売価＝小計に足していない）。印以前の行は false。
+  coalesce((it.item->>'costOnly')::boolean, false) AS cost_only
 FROM app.estimates e
 CROSS JOIN LATERAL jsonb_array_elements(
   CASE WHEN jsonb_typeof(e.result->'items') = 'array' THEN e.result->'items' ELSE '[]'::jsonb END

@@ -102,6 +102,7 @@ flowchart TD
 3. You can change the displayed name in 「**基準名**」 (Criterion name). In 「**説明**」 (Description) you can write what the cost counts; it is shown when someone presses the **ⓘ** next to the row on the price estimate screens (no button if left blank).
 4. If you turn off the 「**有効**」 (Enabled) switch, that criterion is no longer used in the calculation.
    - A criterion with 「**原価に数える**」 (Count as cost) turned on is recorded in the price estimate result as part of the 「**原価合計**」 (Total cost), and the difference from the estimated unit price is shown as 「**粗利**」 (Gross margin). It is a marker for analyzing cost later and **does not change the estimated unit price**. It starts on for the 「加算」 criteria (it cannot be set on the 「見積単価」 criterion).
+   - Choose one of three for「**原価の扱い**」(cost handling):「**原価に数えない**」(not a cost) /「**原価と売価に数える**」(cost and price — the cost marker above; for an add criterion it also goes into the estimated unit price) /「**原価のみに含める**」(cost only — counted in the total cost but never added to the minimum or estimated unit price; use it for items such as in-house overhead that you want to track as cost but not pass on in the price; available only for add criteria). The list shows them with the「**原価**」/「**原価のみ**」badges.
    - Only people with the 「**価格試算の原価**」 (Price estimate cost) permission see the total cost and gross margin (for now, only the manager role). Other people do not see them on screen.
 5. In 「**適用工具種**」 (Applicable tool types), choose which kinds of tool it is used for.
 6. Press 「**保存**」 (Save).

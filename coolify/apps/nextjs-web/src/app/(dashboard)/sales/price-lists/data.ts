@@ -309,7 +309,13 @@ export async function fetchEstimateSourcesForProduct(
   const [settings, rows] = await Promise.all([
     getTrialPricingSettings(),
     prisma.estimate.findMany({
-      where: { itemId, status: { in: ["CONFIRMED", "REGISTERED"] } },
+      // 原価試算（kind = COST）は売価を持たないので候補に出さない
+      // （保存側の resolveEstimateSource でも拒否する）。
+      where: {
+        itemId,
+        kind: "PRICE",
+        status: { in: ["CONFIRMED", "REGISTERED"] },
+      },
       include: { customerBp: true },
       orderBy: { updatedAt: "desc" },
     }),

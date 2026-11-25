@@ -4217,8 +4217,12 @@
       "quantityPcs": "{quantity} pcs",
       "description": "Description",
       "descriptionHint": "Shown by the hint button (ⓘ) next to this cost item on the price estimate screens. Leave blank to hide the button.",
-      "isCost": "Count as cost",
-      "isCostHint": "Recorded in the price estimate as part of the total cost. It does not change the estimated unit price.",
+      "costMode": "Cost handling",
+      "costModeHint": "\"Cost and price\" is recorded in the total cost and, for a component added to the subtotal, also in the estimated unit price. \"Cost only\" counts toward the total cost but is never added to the minimum or estimated unit price (available only for components added to the subtotal).",
+      "costModeNone": "Not a cost",
+      "costModeCostAndPrice": "Cost and price",
+      "costModeCostOnly": "Cost only",
+      "costOnlyBadge": "Cost only",
       "costBadge": "Cost"
     },
     "itemDefEditForm": {
@@ -8074,7 +8078,14 @@
       "scaleEstimateNote": "A reference value: the estimated unit price (base) × the quantity-scale multiplier. The actual price per quantity is set in the price list (these are the starting tiers when a price list is made from this estimate).",
       "scaleEstimateTitle": "Reference: unit price by quantity",
       "costTotal": "Total cost",
-      "grossMargin": "Gross margin"
+      "grossMargin": "Gross margin",
+      "kind": "Type",
+      "kindPrice": "Selling-price estimate",
+      "kindCost": "Cost estimate",
+      "kindPriceHint": "Calculates up to the estimated unit price. Once confirmed it can be chosen as a price list base price.",
+      "kindCostHint": "Shows the total cost only. Visible only to people allowed to see costs, and cannot be used as a price list base price.",
+      "createPriceEstimate": "Create selling-price estimate",
+      "costEstimateNotice": "This is a cost estimate. It shows the total cost only and cannot be used as a price list base price. To get a selling price, use \"Create selling-price estimate\" to start one from the same inputs."
     },
     "orderLineDetail": {
       "designWithCount": "Design ({count})",
@@ -8373,7 +8384,8 @@
       "deleteDiscountRuleFailed": "Could not delete the discount rule",
       "noApprovalNeeded": "This price list needs no approval: it has no custom values, or no custom value approval steps are set",
       "notFound": "Price list not found",
-      "notPendingApproval": "Not pending approval"
+      "notPendingApproval": "Not pending approval",
+      "costEstimateNotUsable": "A cost estimate cannot be used as a price list base price"
     },
     "designRequestActions": {
       "approvalRequestFailed": "Could not request approval",
@@ -8424,7 +8436,8 @@
       "productNotFound": "The product was not found",
       "purchaseHistoryFetchFailed": "Could not fetch the purchase history",
       "saveFailed": "Could not save the price estimate",
-      "toolTypeNotDefined": "Tool type \"{toolType}\" is not defined"
+      "toolTypeNotDefined": "Tool type \"{toolType}\" is not defined",
+      "costEstimateNotPermitted": "You do not have permission to create cost estimates"
     },
     "intakeReview": {
       "customer": "Customer",

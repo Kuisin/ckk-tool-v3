@@ -728,6 +728,11 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 材料原価 | Material cost | 材料成本 |
 | 原価 / 原価に数える | Cost / Count as cost | 成本 / 计入成本 |
 | 原価合計 / 粗利 | Total cost / Gross margin | 成本合计 / 毛利 |
+| 原価の扱い | Cost handling | 成本处理 |
+| 原価に数えない / 原価と売価に数える / 原価のみに含める | Not a cost / Cost and price / Cost only | 不计入成本 / 计入成本和售价 / 仅计入成本 |
+| 原価試算（価格試算の種別。原価合計だけを出す） | Cost estimate | 成本试算 |
+| 売価試算（価格試算の種別。見積単価まで出す — 従来の価格試算） | Selling-price estimate | 售价试算 |
+| 売価試算を作成 | Create selling-price estimate | 创建售价试算 |
 | 段加工費 / 段加工長 | Step machining cost / Step length | 阶梯加工费 / 阶梯加工长度 |
 | 首下 | Neck length | 颈下长度 |
 | 加工単価 | Machining rate | 加工单价 |

@@ -32,6 +32,17 @@ enum EstimateStatus {
   @@schema("app")
 }
 
+/// 価格試算の種別。PRICE = 売価試算（見積単価まで出す — 従来の価格試算）、
+/// COST = 原価試算（原価合計だけを出す。権限 estimate_cost を持つ人にしか
+/// 見えず、価格表の基準単価ソースにはできない）。
+enum EstimateKind {
+  COST
+  PRICE
+
+  @@map("ESTIMATE_KIND")
+  @@schema("app")
+}
+
 // 見積書の状態は DRAFT / ISSUED の 2 つだけ保存する。ACCEPTED / REJECTED は
 // 廃止（受諾したかどうかは下流の注文請書の有無で読む — 手続き状況の
 // 「次の書類へ」）。EXPIRED は保存しない — 発行済みで有効期限
@@ -66,6 +77,9 @@ model Estimate {
   // 組み込み: ROUND_BAR / CYLINDER / OH（旧 TRIAL_TOOL_TYPE enum）。
   toolType            String         @map("tool_type") @db.VarChar(64)
   status              EstimateStatus @default(DRAFT)
+  // 種別 — 原価試算 / 売価試算。作成後は変えない（売価試算にしたいときは
+  // 「売価試算を作成」で入力を複写した別の PRICE 行を作る）。
+  kind                EstimateKind   @default(PRICE)
   customerBpId        String?        @map("customer_bp_id") @db.Uuid
   // 対象品目（任意）。1 品目に複数の価格試算を紐付け可。価格表作成時の
   // 基準単価ソース候補はこのリンクで解決する。

@@ -41,9 +41,11 @@ import { localized } from "@/lib/format";
 import type { ToolType, TrialInput } from "@/lib/trial-pricing";
 import {
   type Criterion,
+  type CriterionCostMode,
   type CriterionRole,
   type CustomInputDef,
-  isCostCriterion,
+  costModeFlags,
+  criterionCostMode,
   type LookupTable,
   type ToolTypeDef,
 } from "@/lib/trial-pricing-criteria";
@@ -178,6 +180,25 @@ export function CriterionEditForm({
   const router = useRouter();
 
   const set = (p: Partial<Criterion>) => setCriterion((c) => ({ ...c, ...p }));
+
+  // 原価の扱い（3 状態）。「原価のみ」は小計に足す項目（component）でしか
+  // 意味を持たないので、それ以外では選択肢に出さない。
+  const costMode = criterionCostMode(criterion);
+  const COST_MODE_OPTIONS: { value: CriterionCostMode; label: string }[] = [
+    { value: "none", label: tr("settings.criterionEditForm.costModeNone") },
+    {
+      value: "costAndPrice",
+      label: tr("settings.criterionEditForm.costModeCostAndPrice"),
+    },
+    ...(criterion.role === "component"
+      ? [
+          {
+            value: "costOnly" as const,
+            label: tr("settings.criterionEditForm.costModeCostOnly"),
+          },
+        ]
+      : []),
+  ];
 
   // 式エディタの「利用可能な変数」パレット。
   const variableGroups: VariableGroup[] = useMemo(() => {
@@ -353,9 +374,15 @@ export function CriterionEditForm({
             <Select
               data={ROLE_OPTIONS}
               label={tr("common.role2")}
-              onChange={(v) =>
-                set({ role: (v as CriterionRole) ?? "component" })
-              }
+              onChange={(v) => {
+                const role = (v as CriterionRole) ?? "component";
+                // 「原価のみ」は component 専用 — 役割を変えたら印を外す。
+                set(
+                  role === "component"
+                    ? { role }
+                    : { role, costOnly: undefined },
+                );
+              }}
               value={criterion.role}
             />
           </SimpleGrid>
@@ -365,14 +392,20 @@ export function CriterionEditForm({
               label={tr("common.enabled")}
               onChange={(e) => set({ enabled: e.currentTarget.checked })}
             />
-            <Switch
-              checked={isCostCriterion(criterion)}
-              description={tr("settings.criterionEditForm.isCostHint")}
-              disabled={criterion.role === "final"}
-              label={tr("settings.criterionEditForm.isCost")}
-              onChange={(e) => set({ isCost: e.currentTarget.checked })}
-            />
           </Group>
+          {criterion.role !== "final" && (
+            <Select
+              allowDeselect={false}
+              data={COST_MODE_OPTIONS}
+              description={tr("settings.criterionEditForm.costModeHint")}
+              label={tr("settings.criterionEditForm.costMode")}
+              maw={360}
+              onChange={(v) =>
+                set(costModeFlags((v as CriterionCostMode) ?? "none"))
+              }
+              value={costMode}
+            />
+          )}
 
           <Textarea
             autosize

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { withoutCost, withoutCostFlags } from "./estimate-cost";
+import {
+  canSeeEstimateKind,
+  estimateKindWhere,
+  withoutCost,
+  withoutCostFlags,
+} from "./estimate-cost";
 import { calcTrialPricing, type TrialInput } from "./trial-pricing";
-import { DEFAULT_CRITERIA } from "./trial-pricing-criteria";
+import { type Criterion, DEFAULT_CRITERIA } from "./trial-pricing-criteria";
 
 const input: TrialInput = {
   toolType: "ROUND_BAR",
@@ -42,5 +47,36 @@ describe("estimate-cost", () => {
     expect(calcTrialPricing(input, { criteria: stripped }).lots).toEqual(
       calcTrialPricing(input, { criteria }).lots,
     );
+  });
+
+  it("withoutCostFlags は「原価のみ」の基準を intermediate に読み替え、見積単価を保つ", () => {
+    const criteria: Criterion[] = [
+      ...DEFAULT_CRITERIA,
+      {
+        id: "overhead",
+        name: "間接費",
+        role: "component",
+        order: 50,
+        enabled: true,
+        expression: "500",
+        isCost: true,
+        costOnly: true,
+      },
+    ];
+    const stripped = withoutCostFlags(criteria);
+    const overhead = stripped.find((c) => c.id === "overhead");
+    expect(overhead?.role).toBe("intermediate");
+    expect(overhead && "costOnly" in overhead).toBe(false);
+    expect(calcTrialPricing(input, { criteria: stripped }).lots).toEqual(
+      calcTrialPricing(input, { criteria }).lots,
+    );
+  });
+
+  it("原価試算は estimate_cost の無い人には見えない", () => {
+    expect(canSeeEstimateKind("PRICE", false)).toBe(true);
+    expect(canSeeEstimateKind("COST", false)).toBe(false);
+    expect(canSeeEstimateKind("COST", true)).toBe(true);
+    expect(estimateKindWhere(false)).toEqual({ kind: "PRICE" });
+    expect(estimateKindWhere(true)).toEqual({});
   });
 });

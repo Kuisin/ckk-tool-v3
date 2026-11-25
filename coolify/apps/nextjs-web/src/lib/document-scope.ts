@@ -27,8 +27,10 @@ import "server-only";
  */
 
 import { type Access, rowInScope } from "@ckk/authz-core";
+import { checkPermission } from "./authz";
 import { prisma } from "./db";
 import { parseDocKey } from "./doc-number";
+import { canSeeEstimateKind, ESTIMATE_COST_PERMISSION } from "./estimate-cost";
 
 /** OWN 判定用（拠点は持たない書類）。plantIds=[] なので PLANT 一致は起きない。 */
 function ownScope(
@@ -39,12 +41,30 @@ function ownScope(
   return rowInScope(access, { plantIds: [], createdBy }, userId);
 }
 
+/** 価格試算の種別がこの利用者に見えるか（原価試算は estimate_cost が要る）。 */
+async function estimateKindReadable(ownerId: string): Promise<boolean> {
+  const k = parseDocKey(ownerId);
+  if (!k) return true;
+  const e = await prisma.estimate.findUnique({
+    where: { yearMonth_seq: k },
+    select: { kind: true },
+  });
+  if (!e || e.kind === "PRICE") return true;
+  const costAuthz = await checkPermission(ESTIMATE_COST_PERMISSION, "READ");
+  return canSeeEstimateKind(e.kind, costAuthz.ok);
+}
+
 export async function documentInScope(
   access: Access,
   userId: string,
   ownerType: string,
   ownerId: string,
 ): Promise<boolean> {
+  // 原価試算は estimate_cost の持ち主にしか存在しない（スコープ ALL でも）。
+  // メモ・証憑の口から番号を推測して覗けないよう、ここで先に閉じる。
+  if (ownerType === "estimates" && !(await estimateKindReadable(ownerId))) {
+    return false;
+  }
   // ALL は無制限 — 書類を引く前に確定できる。
   if (access.kind === "ALL") return true;
 

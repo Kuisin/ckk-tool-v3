@@ -74,7 +74,7 @@ import {
   type TrialPricingOptions,
   toolTypeOptionsFallback,
 } from "@/lib/trial-pricing";
-import { CostSummaryRows } from "./CostSummaryRows";
+import { CostOnlyTotalTable, CostSummaryRows } from "./CostSummaryRows";
 import { criterionDescription, LabelWithHint } from "./CriterionHint";
 import { MaterialPriceChart } from "./MaterialPriceChart";
 import { ScaleEstimateTable } from "./ScaleEstimateTable";
@@ -138,63 +138,86 @@ export function TrialEstimateDetail({
   const history = priceHistory;
   const [isPending, startTransition] = useTransition();
   const status = record.status;
+  // 原価試算 — 原価合計だけを出し、価格表には使えない（一覧・詳細とも
+  // estimate_cost の持ち主にしか届かない行）。
+  const isCostEstimate = record.kind === "COST";
   // 製品リンク モーダル（REGISTERED は価格表が参照済みのため変更不可）
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkItemId, setLinkItemId] = useState<string | null>(null);
 
   // ── 手続き状況（下書き → 確定 → 価格表登録済）───────────────────────────
   // 確定済みは「確定」が済んだ段。次は価格表で使われること（2）。
-  const stages = procedureStages(
-    [
-      {
-        key: "draft",
-        label: tr("common.draft"),
-        description: fmt.date(record.createdAt),
-      },
-      {
-        key: "confirmed",
-        label: tr("common.confirmed"),
-        description:
-          status === "DRAFT"
-            ? tr("sales.trialEstimateDetail.readyForPriceListBase")
-            : tr("sales.trialEstimates.confirmed"),
-      },
-      {
-        key: "registered",
-        label: tr("sales.trialEstimates.registered"),
-        description: record.registeredAt
-          ? fmt.date(record.registeredAt)
-          : tr("sales.trialEstimates.confirmedOnceUsedInAPrice"),
-      },
-    ],
-    status === "DRAFT" ? 0 : status === "CONFIRMED" ? 2 : 3,
-  );
+  // 原価試算は価格表に使えないので「価格表登録済」の段を持たない。
+  const stages = isCostEstimate
+    ? procedureStages(
+        [
+          {
+            key: "draft",
+            label: tr("common.draft"),
+            description: fmt.date(record.createdAt),
+          },
+          {
+            key: "confirmed",
+            label: tr("common.confirmed"),
+            description:
+              status === "DRAFT" ? "" : tr("sales.trialEstimates.confirmed"),
+          },
+        ],
+        status === "DRAFT" ? 0 : 2,
+      )
+    : procedureStages(
+        [
+          {
+            key: "draft",
+            label: tr("common.draft"),
+            description: fmt.date(record.createdAt),
+          },
+          {
+            key: "confirmed",
+            label: tr("common.confirmed"),
+            description:
+              status === "DRAFT"
+                ? tr("sales.trialEstimateDetail.readyForPriceListBase")
+                : tr("sales.trialEstimates.confirmed"),
+          },
+          {
+            key: "registered",
+            label: tr("sales.trialEstimates.registered"),
+            description: record.registeredAt
+              ? fmt.date(record.registeredAt)
+              : tr("sales.trialEstimates.confirmedOnceUsedInAPrice"),
+          },
+        ],
+        status === "DRAFT" ? 0 : status === "CONFIRMED" ? 2 : 3,
+      );
 
   // 下流 = この価格試算を基準単価ソースにした価格表（1 価格試算が複数に使われ得る）。
-  const handoffGroups: HandoffGroup[] = [
-    {
-      key: "price-lists",
-      title: tr("common.priceList"),
-      summary:
-        linkedEntries.length > 0
-          ? tr("common.itemsCount", { count: linkedEntries.length })
-          : null,
-      items: linkedEntries.map((e) => ({
-        key: e.entryId,
-        label: `${e.customerName} × ${e.productName}`,
-        href: `/sales/price-lists/${e.entryId}`,
-        done: true,
-        note: tr("sales.trialEstimateDetail.orderTypeTierCount", {
-          orderType: ORDER_TYPE_LABEL[e.orderType] ?? e.orderType,
-          tierCount: e.tierCount,
-        }),
-      })),
-      emptyNote:
-        status === "CONFIRMED"
-          ? tr("sales.trialEstimates.unusedSelectableAsABasePrice")
-          : tr("sales.trialEstimates.unusedOnceConfirmedItCanBe"),
-    },
-  ];
+  const handoffGroups: HandoffGroup[] = isCostEstimate
+    ? []
+    : [
+        {
+          key: "price-lists",
+          title: tr("common.priceList"),
+          summary:
+            linkedEntries.length > 0
+              ? tr("common.itemsCount", { count: linkedEntries.length })
+              : null,
+          items: linkedEntries.map((e) => ({
+            key: e.entryId,
+            label: `${e.customerName} × ${e.productName}`,
+            href: `/sales/price-lists/${e.entryId}`,
+            done: true,
+            note: tr("sales.trialEstimateDetail.orderTypeTierCount", {
+              orderType: ORDER_TYPE_LABEL[e.orderType] ?? e.orderType,
+              tierCount: e.tierCount,
+            }),
+          })),
+          emptyNote:
+            status === "CONFIRMED"
+              ? tr("sales.trialEstimates.unusedSelectableAsABasePrice")
+              : tr("sales.trialEstimates.unusedOnceConfirmedItCanBe"),
+        },
+      ];
 
   const openProductLink = () => {
     setLinkItemId(record.itemId);
@@ -277,6 +300,19 @@ export function TrialEstimateDetail({
               icon: <IconCopy size={14} />,
               onClick: () => router.push(`${BASE_PATH}/new?from=${record.id}`),
             },
+            // 原価試算 → 入力を複写した売価試算を作る（元の原価試算は残る）。
+            ...(isCostEstimate
+              ? [
+                  {
+                    label: tr("sales.trialEstimates.createPriceEstimate"),
+                    icon: <IconCalculator size={14} />,
+                    onClick: () =>
+                      router.push(
+                        `${BASE_PATH}/new?from=${record.id}&kind=PRICE`,
+                      ),
+                  },
+                ]
+              : []),
           ]}
         />
       }
@@ -289,6 +325,11 @@ export function TrialEstimateDetail({
       status={
         <Group gap="xs">
           <StatusBadge entity="Estimate" status={status} />
+          {isCostEstimate && (
+            <Badge color="orange" variant="light">
+              {tr("sales.trialEstimates.kindCost")}
+            </Badge>
+          )}
           <Badge color="gray" variant="light">
             {toolLabel(record.input.toolType)}
           </Badge>
@@ -307,7 +348,16 @@ export function TrialEstimateDetail({
           {tr("sales.trialEstimates.thisEstimateIsAlreadyUsedIn")}
         </Alert>
       )}
-      {status === "CONFIRMED" && (
+      {isCostEstimate && (
+        <Alert
+          color="orange"
+          icon={<IconInfoCircle size={16} />}
+          variant="light"
+        >
+          {tr("sales.trialEstimates.costEstimateNotice")}
+        </Alert>
+      )}
+      {status === "CONFIRMED" && !isCostEstimate && (
         <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
           {tr("sales.trialEstimates.confirmedThisEstimateCanBeChosen")}
         </Alert>
@@ -376,54 +426,63 @@ export function TrialEstimateDetail({
 
         <Tabs.Panel pt="md" value="result">
           <Stack gap="md">
-            <div>
-              <Text c="dimmed" mb={4} size="xs">
-                {tr("common.baseUnitPriceQuantityScalingIs")}
-              </Text>
-              <Table>
-                <Table.Tbody>
-                  {result.lots[0] && (
-                    <>
-                      <Table.Tr>
-                        <Table.Td>{tr("common.minimumUnitPrice")}</Table.Td>
-                        <Table.Td ta="right">
-                          <MoneyText
-                            value={Math.round(result.lots[0].minimumPrice)}
-                          />
-                        </Table.Td>
-                      </Table.Tr>
-                      <Table.Tr>
-                        <Table.Td>
-                          <Text fw={600} size="sm">
-                            <LabelWithHint
-                              description={criterionDescription(
-                                pricingOptions.criteria,
-                                "final",
-                              )}
-                              label={tr("common.estimatedUnitPriceBase")}
-                            />
-                          </Text>
-                        </Table.Td>
-                        <Table.Td ta="right">
-                          <Text fw={700} size="sm">
+            {isCostEstimate ? (
+              <div>
+                <Text c="dimmed" mb={4} size="xs">
+                  {tr("sales.trialEstimates.kindCost")}
+                </Text>
+                <CostOnlyTotalTable costTotal={result.costTotal} />
+              </div>
+            ) : (
+              <div>
+                <Text c="dimmed" mb={4} size="xs">
+                  {tr("common.baseUnitPriceQuantityScalingIs")}
+                </Text>
+                <Table>
+                  <Table.Tbody>
+                    {result.lots[0] && (
+                      <>
+                        <Table.Tr>
+                          <Table.Td>{tr("common.minimumUnitPrice")}</Table.Td>
+                          <Table.Td ta="right">
                             <MoneyText
-                              value={result.lots[0].estimateUnitPrice}
+                              value={Math.round(result.lots[0].minimumPrice)}
                             />
-                          </Text>
-                        </Table.Td>
-                      </Table.Tr>
-                      {canViewCost && (
-                        <CostSummaryRows
-                          costTotal={result.costTotal}
-                          estimateUnitPrice={result.lots[0].estimateUnitPrice}
-                        />
-                      )}
-                    </>
-                  )}
-                </Table.Tbody>
-              </Table>
-            </div>
-            {result.lots[0] && (
+                          </Table.Td>
+                        </Table.Tr>
+                        <Table.Tr>
+                          <Table.Td>
+                            <Text fw={600} size="sm">
+                              <LabelWithHint
+                                description={criterionDescription(
+                                  pricingOptions.criteria,
+                                  "final",
+                                )}
+                                label={tr("common.estimatedUnitPriceBase")}
+                              />
+                            </Text>
+                          </Table.Td>
+                          <Table.Td ta="right">
+                            <Text fw={700} size="sm">
+                              <MoneyText
+                                value={result.lots[0].estimateUnitPrice}
+                              />
+                            </Text>
+                          </Table.Td>
+                        </Table.Tr>
+                        {canViewCost && (
+                          <CostSummaryRows
+                            costTotal={result.costTotal}
+                            estimateUnitPrice={result.lots[0].estimateUnitPrice}
+                          />
+                        )}
+                      </>
+                    )}
+                  </Table.Tbody>
+                </Table>
+              </div>
+            )}
+            {result.lots[0] && !isCostEstimate && (
               <ScaleEstimateTable
                 baseUnitPrice={result.lots[0].estimateUnitPrice}
                 preset={scalePreset}

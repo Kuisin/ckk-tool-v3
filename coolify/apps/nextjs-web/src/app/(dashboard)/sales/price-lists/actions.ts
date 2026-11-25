@@ -202,10 +202,17 @@ async function resolveEstimateSource(
     };
   const estimate = await prisma.estimate.findUnique({
     where: whereKey(key),
-    select: { status: true, itemId: true },
+    select: { status: true, itemId: true, kind: true },
   });
   if (!estimate)
     return { ok: false, error: tr("sales.priceListsActions.estimateNotFound") };
+  // 原価試算は見積単価を出さない — 基準単価のソースにはできない。
+  if (estimate.kind === "COST") {
+    return {
+      ok: false,
+      error: tr("sales.priceListsActions.costEstimateNotUsable"),
+    };
+  }
   if (estimate.status === "DRAFT") {
     return {
       ok: false,
