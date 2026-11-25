@@ -371,9 +371,14 @@ export function findEntryByCustomerProduct(
   entries: PriceListEntry[],
 ): PriceListEntry | null {
   if (!(customerId && itemId)) return null;
+  // 工具を問わないエントリだけ（工具付きは再研磨の工具ごとの値段 — 別の識別）。
   return (
-    entries.find((e) => e.customerId === customerId && e.itemId === itemId) ??
-    null
+    entries.find(
+      (e) =>
+        e.customerId === customerId &&
+        e.itemId === itemId &&
+        (e.toolItemId ?? null) == null,
+    ) ?? null
   );
 }
 
