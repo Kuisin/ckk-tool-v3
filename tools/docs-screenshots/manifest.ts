@@ -27,9 +27,21 @@
  *    同じ文字列のまま描画されるので、直書きのままでよい。
  *  - 直していないエントリは en/zh 撮影では失敗しうる（README・
  *    scripts/orchestrate.ts の既知の制約）。
+ *
+ * 書類番号の注意（番号は DB が振る）:
+ *  - シードは書類を旧い形（year_month, seq）で入れる。DB は INSERT 時に新しい番号
+ *    （`QOT-2026-00001` — 自社法人 × 会計年度の連番。**流した順で決まる**）を振り、
+ *    もとの `QOT-202607-00001` は旧番号（legacy_number）として残す。
+ *  - `path` は**旧番号の URL のまま**でよい（`/sales/quotes/QOT-202607-00001`）。
+ *    詳細ページが旧番号から書類を引いて、正規の URL（`/sales/quotes/CKK~QOT-2026-00001`）
+ *    へ送る。旧番号はシードの (year_month, seq) そのものなので、流す順が変わっても
+ *    同じ書類を指す — 新しい番号を決め打ちしないこと。
+ *  - **画面に出るのは新しい番号**。`steps` で番号の文字を待つときは決め打ちせず、
+ *    形で待つ（`anyDocNumber("QOT")` / `ANY_ORDER_LINE_NUMBER` — doc-number.ts）。
  */
 
 import type { Page } from "@playwright/test";
+import { ANY_ORDER_LINE_NUMBER, anyDocNumber } from "./doc-number";
 import { currentLocale, text } from "./i18n-text";
 
 /**
@@ -135,7 +147,7 @@ export const shots: Shot[] = [
     docPage: "operations/sales/trial-estimate/user",
     path: "/sales/trial-estimates",
     steps: async (page) => {
-      await page.getByText("EST-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("EST")).first().waitFor();
     },
   },
   {
@@ -179,7 +191,7 @@ export const shots: Shot[] = [
     docPage: "operations/sales/price-list/user",
     path: "/sales/price-lists/PRC-202607-00001",
     steps: async (page) => {
-      await page.getByText("EST-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("EST")).first().waitFor();
     },
   },
   {
@@ -246,7 +258,7 @@ export const shots: Shot[] = [
     docPage: "operations/sales/order-acceptance/user",
     path: "/sales/order-acceptances",
     steps: async (page) => {
-      await page.getByText("ORD-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("ORD")).first().waitFor();
     },
   },
   {
@@ -272,7 +284,7 @@ export const shots: Shot[] = [
     docPage: "operations/sales/design-request/user",
     path: "/sales/design-requests",
     steps: async (page) => {
-      await page.getByText("DSG-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("DSG")).first().waitFor();
     },
   },
   {
@@ -449,7 +461,7 @@ export const shots: Shot[] = [
     docPage: "operations/purchasing/purchase-request/user",
     path: "/purchase/purchase-requests",
     steps: async (page) => {
-      await page.getByText("PRQ-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("PRQ")).first().waitFor();
     },
   },
   {
@@ -466,7 +478,7 @@ export const shots: Shot[] = [
     docPage: "operations/purchasing/purchase-order/user",
     path: "/purchase/purchase-orders",
     steps: async (page) => {
-      await page.getByText("PO-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("PO")).first().waitFor();
     },
   },
   {
@@ -751,7 +763,7 @@ export const shots: Shot[] = [
     docPage: "operations/production/product-inventory/user",
     path: "/inventory/products/dc050000-0000-4000-8000-000000000001",
     steps: async (page) => {
-      await page.getByText("ORD-202607-00003-01").first().waitFor();
+      await page.getByText(ANY_ORDER_LINE_NUMBER).first().waitFor();
     },
   },
   {
@@ -778,7 +790,7 @@ export const shots: Shot[] = [
     docPage: "operations/production/material-inventory/user",
     path: "/inventory/materials/dc051000-0000-4000-8000-000000000002",
     steps: async (page) => {
-      await page.getByText("PO-202607-90102").first().waitFor();
+      await page.getByText(anyDocNumber("PO")).first().waitFor();
     },
   },
   {
@@ -828,7 +840,7 @@ export const shots: Shot[] = [
     docPage: "operations/shipping/delivery-order/user",
     path: "/shipping/delivery-orders",
     steps: async (page) => {
-      await page.getByText("DOR-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("DOR")).first().waitFor();
     },
   },
   {
@@ -852,7 +864,7 @@ export const shots: Shot[] = [
     docPage: "operations/shipping/delivery-note/user",
     path: "/shipping/delivery-notes",
     steps: async (page) => {
-      await page.getByText("DRN-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("DRN")).first().waitFor();
     },
   },
   {
@@ -869,7 +881,7 @@ export const shots: Shot[] = [
     docPage: "operations/billing/invoice/user",
     path: "/billing/invoices",
     steps: async (page) => {
-      await page.getByText("INV-202606-00001").first().waitFor();
+      await page.getByText(anyDocNumber("INV")).first().waitFor();
     },
   },
   {
@@ -932,7 +944,7 @@ export const shots: Shot[] = [
     docPage: "operations/shipping/delivery-order/user",
     path: "/shipping/delivery-orders/DOR-202607-00001?tab=delivery-notes",
     steps: async (page) => {
-      await page.getByText("DRN-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("DRN")).first().waitFor();
     },
   },
   {
@@ -951,7 +963,7 @@ export const shots: Shot[] = [
     docPage: "operations/billing/invoice/user",
     path: "/billing/invoices/INV-202606-00001",
     steps: async (page) => {
-      await page.getByText("DOR-202606-00001").first().waitFor();
+      await page.getByText(anyDocNumber("DOR")).first().waitFor();
     },
   },
   {
@@ -998,7 +1010,7 @@ export const shots: Shot[] = [
     docPage: "operations/billing/billing-closing/user",
     path: "/billing/closings/dd000000-0000-4000-8000-000000000042",
     steps: async (page) => {
-      await page.getByText("INV-202606-00001").first().waitFor();
+      await page.getByText(anyDocNumber("INV")).first().waitFor();
     },
   },
   // 製品項目・製品種別（SY03/SY04）は system 権限 — 管理者で撮影
@@ -2339,7 +2351,7 @@ export const shots: Shot[] = [
     docPage: "process/default-flow",
     path: "/shipping/delivery-orders/DOR-202607-00002?tab=delivery-notes",
     steps: async (page) => {
-      await page.getByText("DRN-202607-00003").first().waitFor();
+      await page.getByText(anyDocNumber("DRN")).first().waitFor();
     },
   },
   {
@@ -2545,7 +2557,7 @@ export const shots: Shot[] = [
     docPage: "process/billing",
     path: "/billing/invoices/INV-202606-00001",
     steps: async (page) => {
-      await page.getByText("DOR-202606-00001").first().waitFor();
+      await page.getByText(anyDocNumber("DOR")).first().waitFor();
     },
     highlight: [{ text: /合計/ }],
   },

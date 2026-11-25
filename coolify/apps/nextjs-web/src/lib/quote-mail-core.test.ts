@@ -108,7 +108,7 @@ describe("buildQuoteMail", () => {
   it("担当者宛は会社名 + 担当者名、担当者の連絡先を最後に添える", () => {
     const m = buildQuoteMail(
       {
-        quoteNumber: "QOT-202611-00001",
+        quoteNumber: "QOT-2026-00001",
         linkUrl: "https://app.example/portal/d/TOKEN",
         linkExpires: "2026/12/31",
         recipient: {
@@ -122,7 +122,7 @@ describe("buildQuoteMail", () => {
       },
       t,
     );
-    expect(m.subject).toBe('subject{"number":"QOT-202611-00001"}');
+    expect(m.subject).toBe('subject{"number":"QOT-2026-00001"}');
     const lines = m.text.split("\n");
     expect(lines[0]).toBe(
       'salutationPerson{"company":"株式会社テスト","person":"鈴木"}',
@@ -139,7 +139,7 @@ describe("buildQuoteMail", () => {
   it("会社宛・期限なし・担当なしでも組み立てられる", () => {
     const m = buildQuoteMail(
       {
-        quoteNumber: "QOT-202611-00002",
+        quoteNumber: "QOT-2026-00002",
         linkUrl: "https://app.example/portal/d/TOKEN2",
         linkExpires: "2026/12/01",
         recipient: {

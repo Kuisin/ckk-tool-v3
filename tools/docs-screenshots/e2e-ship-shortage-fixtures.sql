@@ -5,19 +5,37 @@
 -- DOR-202607-00002 だけ）。見たいのはまさに足りないときの挙動なので、ここで
 -- 1 通だけ作る:
 --
---   DOR-209901-00001 … 品目 9003（超硬リーマ）× ロット 9999 × 4 本。
+--   旧番号 DOR-209901-00001 … 品目 9003（超硬リーマ）× ロット 9999 × 4 本。
+--   **画面に出る番号は DB が振る**（`DOR-2026-000NN` — 流した順で変わる）。
+--   ここで入れる (year_month, seq) は旧番号（legacy_number）として残り、
+--   旧番号の URL（/shipping/delivery-orders/DOR-209901-00001）は正規の URL へ
+--   送られる。DB から引くときは legacy_number か app.to_doc_ref() を使う。
 --   **ロット 9999 のバケットは存在しない** — 利用者が dev で踏んだ形
 --   （「品目 … に在庫台帳がありません」）と同じ。
 --
 -- 何度流しても同じ結果になるよう、先に消してから作る。
+-- 伝票の source_id は**新しい参照**（doc_ref = `CKK/DOR-2026-000NN`）。旧番号の
+-- 文字列では当たらないので、出荷書を旧番号で探してその doc_ref で引く。
 DELETE FROM app.inventory_transactions t
- USING app.inventory_movements m
- WHERE t.movement_id = m.id AND m.source_id IN ('DOR-209901-00001', 'CKK/DOR-209901-00001');
-DELETE FROM app.inventory_movements WHERE source_id IN ('DOR-209901-00001', 'CKK/DOR-209901-00001');
+ USING app.inventory_movements m, app.delivery_orders o
+ WHERE t.movement_id = m.id
+   AND m.source_type = 'delivery_orders'
+   AND m.source_id = o.doc_ref
+   AND o.legacy_number = 'DOR-209901-00001';
+DELETE FROM app.inventory_movements m
+ USING app.delivery_orders o
+ WHERE m.source_type = 'delivery_orders'
+   AND m.source_id = o.doc_ref
+   AND o.legacy_number = 'DOR-209901-00001';
 DELETE FROM app.item_inventory WHERE item_id = 9003 AND lot_number = 9999;
-DELETE FROM app.delivery_order_items
- WHERE delivery_order_year_month = '209901' AND delivery_order_seq = 1;
-DELETE FROM app.delivery_orders WHERE year_month = '209901' AND seq = 1;
+-- 出荷で起きる納品書があれば先に消す（出荷書への FK が RESTRICT）。
+DELETE FROM app.delivery_notes n
+ USING app.delivery_orders o
+ WHERE n.delivery_order_id = o.id AND o.legacy_number = 'DOR-209901-00001';
+DELETE FROM app.delivery_order_items i
+ USING app.delivery_orders o
+ WHERE i.delivery_order_id = o.id AND o.legacy_number = 'DOR-209901-00001';
+DELETE FROM app.delivery_orders WHERE legacy_number = 'DOR-209901-00001';
 
 INSERT INTO app.delivery_orders (year_month, seq, customer_bp_id, work_order_id, from_plant_id,
   type, status, shipped_at, notes, created_by, created_at, updated_at)
@@ -36,5 +54,6 @@ VALUES ('dd000000-0000-4000-8000-0000000099e1'::uuid, '209901', 1,
 
 -- 確認用（流したときに目で見える）
 SELECT 'fixture' AS tag,
-       (SELECT count(*) FROM app.delivery_orders WHERE year_month='209901') AS orders,
+       (SELECT count(*) FROM app.delivery_orders WHERE legacy_number='DOR-209901-00001') AS orders,
+       (SELECT doc_number FROM app.delivery_orders WHERE legacy_number='DOR-209901-00001') AS shown_as,
        (SELECT count(*) FROM app.item_inventory WHERE item_id=9003 AND lot_number=9999) AS buckets_for_lot;

@@ -54,6 +54,10 @@ describe("proxy matcher — 内部ページは守られる", () => {
   const internal = [
     "/",
     "/sales/quotes",
+    // 書類の URL は id（法人コード~番号）。番号だけ・旧番号の URL も来る
+    // （詳細ページが正規の URL へ送る）ので、3 つとも守られていること。
+    "/sales/quotes/CKK~QOT-2026-00001",
+    "/sales/quotes/QOT-2026-00001",
     "/sales/quotes/QOT-202609-00001",
     "/billing/invoices",
     "/settings/users",
@@ -127,6 +131,7 @@ describe("proxy matcher — 取引先ポータル（社外向け）", () => {
       "/portal",
       "/portal/login",
       "/portal/documents",
+      "/portal/documents/invoices/CKK~INV-2026-00001",
       "/portal/documents/invoices/INV-202609-00001",
       "/portal/d/sometoken",
       "/portal/api/otp",

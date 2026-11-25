@@ -12,6 +12,7 @@ from gateway.writer import (
     IntakeWriteError,
     ensure_writable,
     is_intake_file,
+    looks_numbered,
     unique_name,
     write_to_intake,
 )
@@ -49,6 +50,32 @@ class TestWriter(unittest.TestCase):
     def test_ORDで始まらない(self):
         name = write_to_intake(self.dir, "ORD-202608-00001-x.pdf", b"x")
         self.assertFalse(name.startswith("ORD-"), name)
+
+    def test_採番済みの続きに見える名前を作らない(self):
+        # 元名が 3 つの形（いまの形 / 法人コードなし / 旧番号）のどれでも、
+        # 置かれる名前は日付始まりで、続きの目印にはならない。
+        for original in (
+            "CKK~ORD-2026-00001-x.pdf",
+            "ORD-2026-00001-x.pdf",
+            "ORD-202608-00001-x.pdf",
+        ):
+            name = write_to_intake(self.dir, original, b"x")
+            self.assertFalse(looks_numbered(name), name)
+
+    def test_looks_numbered_は3つの形を見分ける(self):
+        # nextjs-web lib/intake-core.ts INTAKE_NUMBER_RE と同じ集合
+        self.assertTrue(looks_numbered("CKK~ORD-2026-00001-注文書.pdf"))
+        self.assertTrue(looks_numbered("ORD-2026-00001-注文書.pdf"))
+        self.assertTrue(looks_numbered("ORD-202608-00003-注文書.pdf"))
+        # 目印ではないもの
+        self.assertFalse(looks_numbered("20260815-101500_ab3d2f_注文書.pdf"))
+        self.assertFalse(looks_numbered("mail_a-at-b.jp_ORD-2026-00001-x.pdf"))
+        # 置かれたばかりの名前は、元名が id で始まっていても目印ではない
+        # （日時ごと「法人コード」に読まない）。
+        self.assertFalse(
+            looks_numbered("20260815-101500_ab3d2f_CKK~ORD-2026-00001-x.pdf")
+        )
+        self.assertFalse(looks_numbered("CKK~QOT-2026-00001-x.pdf"))
 
     def test_対象外の拡張子は書かずに例外(self):
         with self.assertRaises(IntakeWriteError):

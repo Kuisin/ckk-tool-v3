@@ -821,7 +821,9 @@
     "priceListUnapproved": "価格表が承認待ち",
     "issuingCompany": "発行会社",
     "issuingCompanyDesc": "この書類を発行する自社法人。作成後は変えられません",
-    "issuingCompanyNotAllowed": "選択した発行会社では書類を作成できません。所属拠点の自社法人から選択してください"
+    "issuingCompanyNotAllowed": "選択した発行会社では書類を作成できません。所属拠点の自社法人から選択してください",
+    "selectIssuingCompany": "発行会社を選択",
+    "selectIssuingCompanyDesc": "同じ番号の書類が複数の発行会社にあります。開く書類の発行会社を選んでください。"
   },
   "shell": {
     "appsLabel": "アプリ",

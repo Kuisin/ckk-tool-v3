@@ -1,6 +1,9 @@
 import { Anchor, Paper, Stack, Text, Title } from "@mantine/core";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import { appList } from "@/lib/app-list";
+import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { docIdOf } from "@/lib/doc-number";
 import { resolveDocId } from "@/lib/doc-ref";
@@ -16,6 +19,12 @@ export const dynamic = "force-dynamic";
  *
  * ここでは書類の中身を一切見せない（番号と法人名だけ）。開いた先の詳細ページが
  * 通常どおり権限を見る。
+ *
+ * ■ READ ゲート
+ * この画面自体は app-list に載らないが、「その番号の書類がどの法人に在るか」は
+ * 見せるので、**転送元のアプリ**（`base` = そのアプリの一覧のパス）の READ を
+ * 要求する。`base` が app-list のどのアプリの一覧でもなければ 404 —
+ * 転送先を app-list にあるパスだけへ絞ることにもなる。
  */
 export default async function DocChoosePage({
   searchParams,
@@ -31,6 +40,10 @@ export default async function DocChoosePage({
   // 転送先はアプリ内のパスだけ（外部へ飛ばす口にしない）。
   if (!type || !number || !base || !/^\/[a-z0-9/-]*$/.test(base)) notFound();
   if (suffix && !/^\/[a-z0-9/-]*$/.test(suffix)) notFound();
+  const app = appList.find((a) => a.href === base);
+  if (!app) notFound();
+  const denied = await requireAppRead(app.key);
+  if (denied) return denied;
 
   const r = await resolveDocId(type, number);
   if (r.status === "notFound") notFound();
@@ -38,6 +51,7 @@ export default async function DocChoosePage({
     redirect(`${base}/${docIdOf({ docRef: r.docRef })}${suffix}`);
   }
 
+  const tr = await getTranslations();
   const companies = await prisma.ownCompany.findMany({
     select: { code: true, name: true },
   });
@@ -49,9 +63,9 @@ export default async function DocChoosePage({
 
   return (
     <Stack gap="md" maw={560} p="md">
-      <Title order={3}>発行会社を選択</Title>
+      <Title order={3}>{tr("common.selectIssuingCompany")}</Title>
       <Text c="dimmed" size="sm">
-        同じ番号の書類が複数の発行会社にあります。開く書類の発行会社を選んでください。
+        {tr("common.selectIssuingCompanyDesc")}
       </Text>
       <Stack gap="xs">
         {r.docRefs.map((ref) => {

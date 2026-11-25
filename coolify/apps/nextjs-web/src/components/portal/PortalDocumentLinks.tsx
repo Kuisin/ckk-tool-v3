@@ -63,9 +63,7 @@ export function PortalDocumentLinks({
     <PortalList
       columns={columns}
       empty={tr("portal.home.nothingToShow")}
-      href={(d) =>
-        `/portal/documents/${d.type}/${encodeURIComponent(d.number)}`
-      }
+      href={(d) => `/portal/documents/${d.type}/${encodeURIComponent(d.id)}`}
       mobile={(d) => (
         <Group align="flex-start" justify="space-between" wrap="nowrap">
           <div style={{ minWidth: 0 }}>
@@ -84,7 +82,7 @@ export function PortalDocumentLinks({
           ) : null}
         </Group>
       )}
-      rowKey={(d) => `${d.type}:${d.number}`}
+      rowKey={(d) => `${d.type}:${d.id}`}
       rows={items}
     />
   );

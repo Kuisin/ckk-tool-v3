@@ -23,7 +23,7 @@ function row(over: Partial<AuditRowLike>): AuditRowLike {
     id: BigInt(10),
     action: "UPDATE",
     tableName: "order_acceptances",
-    recordId: "ORD-202609-00042",
+    recordId: "ORD-2026-00042",
     recordKey: "202609:42",
     beforeData: {},
     afterData: {},

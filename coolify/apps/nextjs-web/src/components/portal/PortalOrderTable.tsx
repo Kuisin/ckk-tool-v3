@@ -17,13 +17,10 @@ import {
 import { PortalProgressBadge } from "@/components/portal/PortalProgress";
 import { formatMoney } from "@/lib/format";
 import type { PortalOrderLineRow } from "@/lib/portal-progress";
-import { portalOrderLineNumber } from "@/lib/portal-progress-core";
 
 /** 表示番号。枝番が無い行（確定前）は請書の番号のまま出し、開かせない。 */
 function lineNumber(r: PortalOrderLineRow): string {
-  return (
-    portalOrderLineNumber(r.acceptanceNumber, r.branch) ?? r.acceptanceNumber
-  );
+  return r.number ?? r.acceptanceNumber;
 }
 
 export function PortalOrderTable({ rows }: { rows: PortalOrderLineRow[] }) {
@@ -68,8 +65,10 @@ export function PortalOrderTable({ rows }: { rows: PortalOrderLineRow[] }) {
     <PortalList
       columns={columns}
       empty={tr("portal.orders.thereAreNoOrdersToShow")}
+      // リンクは id（`CKK~ORD-2026-00001-01`）で張る — 同じ番号の明細が別の
+      // 自社法人にもあり得る。表示は番号だけ。
       href={(r) =>
-        r.branch == null ? null : `/portal/orders/${lineNumber(r)}`
+        r.id == null ? null : `/portal/orders/${encodeURIComponent(r.id)}`
       }
       mobile={(r) => (
         <Group
@@ -104,7 +103,7 @@ export function PortalOrderTable({ rows }: { rows: PortalOrderLineRow[] }) {
           </Stack>
         </Group>
       )}
-      rowKey={(r) => lineNumber(r)}
+      rowKey={(r) => r.id ?? `${r.acceptanceId}:${lineNumber(r)}`}
       rows={rows}
     />
   );

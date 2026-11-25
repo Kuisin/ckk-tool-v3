@@ -22,8 +22,12 @@ import {
   portalDocumentLabel,
 } from "@/lib/portal-documents-core";
 
-function href(type: PortalDocumentType, number: string): string {
-  return `/portal/documents/${type}/${encodeURIComponent(number)}`;
+/**
+ * リンクは id（`CKK~QOT-2026-00001`）で張る。番号は自社法人ごとの連番で、
+ * 番号だけでは書類が決まらない。画面に出すのは番号（`number`）だけ。
+ */
+function href(type: PortalDocumentType, id: string): string {
+  return `/portal/documents/${type}/${encodeURIComponent(id)}`;
 }
 
 export function PortalDocumentTabs({
@@ -89,7 +93,7 @@ export function PortalDocumentTabs({
             empty={tr("portal.documents.noneToShow", {
               document: portalDocumentLabel(g.type, tr),
             })}
-            href={(d) => href(g.type, d.number)}
+            href={(d) => href(g.type, d.id)}
             mobile={(d) => (
               <>
                 <Text ff="monospace" fw={600} size="sm">
@@ -103,7 +107,7 @@ export function PortalDocumentTabs({
                 </Text>
               </>
             )}
-            rowKey={(d) => d.number}
+            rowKey={(d) => d.id}
             rows={g.items}
           />
         </Tabs.Panel>

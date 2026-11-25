@@ -15,7 +15,7 @@ const variant = (
   orderType: "PRODUCTION",
   isActive: true,
   baseUnitPrice: 1000,
-  estimateNumber: "EST-202610-00001",
+  estimateNumber: "EST-2026-00001",
   estimateBase: 1000,
   tiers: [{ minQuantity: 1, maxQuantity: null, priceOverride: null }],
   ...over,
@@ -80,7 +80,7 @@ describe("priceListCustomValues", () => {
         kind: "baseDiffersFromEstimate",
         orderType: "PRODUCTION",
         baseUnitPrice: 1100,
-        estimateNumber: "EST-202610-00001",
+        estimateNumber: "EST-2026-00001",
         estimateBase: 1000,
       },
     ]);

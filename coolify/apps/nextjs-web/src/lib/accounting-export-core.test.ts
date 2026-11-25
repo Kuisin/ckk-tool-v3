@@ -36,7 +36,7 @@ const settings: AccountingExportSettings = {
 };
 
 const base: JournalInvoiceInput = {
-  invoiceNumber: "INV-202607-00001",
+  invoiceNumber: "INV-2026-00001",
   customerName: "株式会社テスト工業",
   date: "2026-07-31T00:00:00.000Z",
   totalAmount: 250_000,
@@ -84,7 +84,7 @@ describe("buildJournalRows — 旧実装から変えていない部分", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].debit.amount).toBe(250_000);
     expect(rows[0].credit.amount).toBe(250_000);
-    expect(rows[0].memo).toBe("INV-202607-00001 株式会社テスト工業");
+    expect(rows[0].memo).toBe("INV-2026-00001 株式会社テスト工業");
   });
 
   it("税額があれば 売上 + 消費税 の 2 行に分かれる", () => {
@@ -93,7 +93,7 @@ describe("buildJournalRows — 旧実装から変えていない部分", () => {
       settings,
     );
     expect(rows.map((r) => r.debit.amount)).toEqual([250_000, 25_000]);
-    expect(rows[1].memo).toBe("INV-202607-00001 株式会社テスト工業 消費税");
+    expect(rows[1].memo).toBe("INV-2026-00001 株式会社テスト工業 消費税");
   });
 
   it("税額 0 は 1 行のまま（消費税行を出さない）", () => {
@@ -131,8 +131,8 @@ describe("buildJournalRows — 旧実装から変えていない部分", () => {
       },
       settings,
     );
-    expect(single[0].memo).toBe("INV-202607-00001 株式会社テスト工業");
-    expect(single[1].memo).toBe("INV-202607-00001 株式会社テスト工業 消費税");
+    expect(single[0].memo).toBe("INV-2026-00001 株式会社テスト工業");
+    expect(single[1].memo).toBe("INV-2026-00001 株式会社テスト工業 消費税");
 
     const mixed = buildJournalRows(
       {
@@ -146,10 +146,10 @@ describe("buildJournalRows — 旧実装から変えていない部分", () => {
       settings,
     );
     expect(mixed.map((r) => r.memo)).toEqual([
-      "INV-202607-00001 株式会社テスト工業 10%",
-      "INV-202607-00001 株式会社テスト工業 消費税10%",
-      "INV-202607-00001 株式会社テスト工業 8%",
-      "INV-202607-00001 株式会社テスト工業 消費税8%",
+      "INV-2026-00001 株式会社テスト工業 10%",
+      "INV-2026-00001 株式会社テスト工業 消費税10%",
+      "INV-2026-00001 株式会社テスト工業 8%",
+      "INV-2026-00001 株式会社テスト工業 消費税8%",
     ]);
   });
 
@@ -510,7 +510,7 @@ describe("csvField — 数式インジェクション対策", () => {
         columns: [{ id: "m", field: "memo", header: "摘要" }],
       },
     ).trimEnd();
-    expect(line).toBe('"INV-202607-00001 株式会社テスト, 工業"');
+    expect(line).toBe('"INV-2026-00001 株式会社テスト, 工業"');
   });
 });
 

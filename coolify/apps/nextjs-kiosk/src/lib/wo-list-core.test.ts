@@ -3,7 +3,7 @@ import { filterWoList, normalizeQuery, type WoListItem } from "./wo-list-core";
 
 const item = (over: Partial<WoListItem>): WoListItem => ({
   workOrderNumber: 1201,
-  docNumber: "WOR-202611-00012",
+  docNumber: "WOR-2026-00012",
   status: "APPROVED",
   plannedQuantity: 10,
   productCode: "PRD-202610-0003",
@@ -17,7 +17,7 @@ const items = [
   item({}),
   item({
     workOrderNumber: 1305,
-    docNumber: "WOR-202611-00020",
+    docNumber: "WOR-2026-00020",
     productCode: "PRD-202611-0009",
     productName: "エンドミル 4枚刃",
   }),
@@ -42,7 +42,14 @@ describe("filterWoList", () => {
     ]);
   });
   it("書類番号・製品コード・製品名で引ける", () => {
-    expect(filterWoList(items, "wor-202611-00020")).toHaveLength(1);
+    expect(filterWoList(items, "wor-2026-00020")).toHaveLength(1);
+    // 旧番号（切替前に刷った紙）でも引ける
+    expect(
+      filterWoList(
+        [{ ...items[0], legacyNumber: "WOR-202611-00012" }],
+        "wor-202611",
+      ),
+    ).toHaveLength(1);
     expect(filterWoList(items, "prd-202610")).toHaveLength(1);
     expect(filterWoList(items, "エンドミル")).toHaveLength(1);
   });

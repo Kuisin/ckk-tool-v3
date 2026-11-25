@@ -46,8 +46,17 @@ export interface NormalizedExtraction {
  *   `ORD-202608-00003-…`    番号設計 PR-C より前に焼き込まれた旧番号
  * 後ろの 2 つはどの行か決めるのに DB を引く必要がある
  * （lib/doc-ref.ts resolveDocId — 呼び出し側が行う）。
+ *
+ * ■ 置かれたばかりの名前（`{yyyyMMdd-HHmmss}_{rand6}_{元名}`）は番号付きではない
+ * 取込フォルダへ置く口（lib/file-naming.ts systematicFileName・intake-gateway
+ * writer.py）は、元名の前に日時と乱数を付ける。法人コードは `~` と空白以外の
+ * 何でもよいので、元名が `CKK~ORD-2026-00001-x.pdf` だと先頭の日時ごと
+ * 「法人コード」に読めてしまう（旧い形は `^ORD-` だったので起きなかった）。
+ * 先頭が日時の名前は読まない。intake-gateway の writer.py（NUMBERED_NAME_RE）と
+ * 同じ形 — 変えるときは両方。
  */
-const INTAKE_NUMBER_RE = /^((?:([^~/\s]+)~)?(ORD-(?:\d{4}|\d{6})-\d{5}))-(.+)$/;
+const INTAKE_NUMBER_RE =
+  /^(?!\d{8}-\d{6}_)((?:([^~/\s]+)~)?(ORD-(?:\d{4}|\d{6})-\d{5}))-(.+)$/;
 
 export interface IntakeFileNumber {
   /**

@@ -821,7 +821,9 @@
     "priceListUnapproved": "价格表待审批",
     "issuingCompany": "开具公司",
     "issuingCompanyDesc": "开具此单据的本公司法人。创建后无法更改",
-    "issuingCompanyNotAllowed": "无法以所选开具公司创建单据。请从所属据点的本公司法人中选择"
+    "issuingCompanyNotAllowed": "无法以所选开具公司创建单据。请从所属据点的本公司法人中选择",
+    "selectIssuingCompany": "选择开具公司",
+    "selectIssuingCompanyDesc": "多家开具公司存在相同编号的单据。请选择要打开的单据的开具公司。"
   },
   "shell": {
     "appsLabel": "应用",

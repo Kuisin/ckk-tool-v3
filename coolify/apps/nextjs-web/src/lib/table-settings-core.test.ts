@@ -8,17 +8,24 @@ import {
 
 describe("normalizeTablePath", () => {
   it("レコードを指す区切り（数字を含む）は * に潰す", () => {
-    expect(normalizeTablePath("/sales/quotes/QOT-202608-00001")).toBe(
+    expect(normalizeTablePath("/sales/quotes/QOT-2026-00001")).toBe(
       "sales/quotes/*",
     );
+    // 書類の URL は id（法人コード~番号）。保存キーに ~ を残さない。
+    expect(normalizeTablePath("/sales/quotes/CKK~QOT-2026-00001")).toBe(
+      "sales/quotes/*",
+    );
+    expect(
+      isTableSettingKey(tableSettingKey("/sales/quotes/CKK~QOT-2026-00001")),
+    ).toBe(true);
     expect(normalizeTablePath("/production/work-orders/1234/steps/ab12")).toBe(
       "production/work-orders/*/steps/*",
     );
   });
 
   it("同じ画面なら別レコードでも同じキーになる", () => {
-    expect(normalizeTablePath("/sales/quotes/QOT-202608-00001")).toBe(
-      normalizeTablePath("/sales/quotes/QOT-202609-00042"),
+    expect(normalizeTablePath("/sales/quotes/QOT-2026-00001")).toBe(
+      normalizeTablePath("/sales/quotes/QOT-2026-00042"),
     );
   });
 

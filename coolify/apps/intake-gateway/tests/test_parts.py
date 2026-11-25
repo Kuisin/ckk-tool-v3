@@ -227,6 +227,9 @@ class TestFilename(unittest.TestCase):
         name = inbound_filename("a@b.jp", "ORD-202608-00001-x.pdf")
         self.assertTrue(name.startswith("mail_"))
         self.assertFalse(name.startswith("ORD-"))
+        # いまの形（法人コード~番号）の添付でも同じ — 先頭は必ず mail_。
+        name = inbound_filename("a@b.jp", "CKK~ORD-2026-00001-x.pdf")
+        self.assertTrue(name.startswith("mail_"))
 
     def test_パス区切りと制御文字を落とす(self):
         name = inbound_filename("a@b.jp", "../../etc/passwd.pdf")

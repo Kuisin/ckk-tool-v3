@@ -15,7 +15,7 @@ import {
 
 const line = (over: Partial<LineAllocInfo> = {}): LineAllocInfo => ({
   orderLineId: "L1",
-  number: "ORD-202607-00001-01",
+  number: "ORD-2026-00001-01",
   lineQuantity: 100,
   otherAllocated: 0,
   itemId: 9001,

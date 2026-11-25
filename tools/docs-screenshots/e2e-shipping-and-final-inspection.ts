@@ -141,7 +141,7 @@ async function main(): Promise<void> {
     const v = await acceptanceFieldValue(page);
     check(
       "B2 指示書から: 注文請書の欄が埋まる",
-      /^ORD-\d{6}-\d{5}/.test(v),
+      /^ORD-\d{4}-\d{5}\b/.test(v),
       `value="${v}"`,
     );
     // 本文一致だと「まとめますか」モーダルの明細番号を拾ってしまうので、
@@ -223,7 +223,7 @@ async function main(): Promise<void> {
     const v = await acceptanceFieldValue(page);
     check(
       "B4 注文明細から: 注文請書の欄が埋まる",
-      /^ORD-\d{6}-\d{5}/.test(v),
+      /^ORD-\d{4}-\d{5}\b/.test(v),
       `from=${olUrl} value="${v}"`,
     );
   }
@@ -250,7 +250,7 @@ async function main(): Promise<void> {
       const v = await acceptanceFieldValue(page);
       check(
         "B5 注文請書から: 注文請書の欄が埋まる",
-        /^ORD-\d{6}-\d{5}/.test(v),
+        /^ORD-\d{4}-\d{5}\b/.test(v),
         `value="${v}"`,
       );
     } else {

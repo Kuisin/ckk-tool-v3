@@ -26,7 +26,6 @@ import { prisma } from "./db";
 import { jstDateOnly } from "./format";
 import { missingInspectionSheets } from "./inspection-core";
 import { encodeInventoryNote } from "./inventory-note-core";
-import { allocateDocumentKey } from "./numbering";
 import {
   canStartStep,
   computeFinishedQuantity,
@@ -810,13 +809,12 @@ export async function completeStepExecution(
 
   const now = new Date();
   // 製品受入（再研磨）の完了は預り品の入庫と**同じトランザクション**で行う。
-  // 印（regrindReceiptMovementId）が既にあれば二度目は載せない。採番は tx の外。
-  const receiptKey =
+  // 印（regrindReceiptMovementId）が既にあれば二度目は載せない。伝票番号は
+  // INSERT 時に DB が振る。
+  const postsReceipt =
     isRegrindReceipt &&
     stepRow.regrindReceiptMovementId == null &&
-    persisted.inputQuantity > 0
-      ? await allocateDocumentKey("INVENTORY_MOVEMENT")
-      : null;
+    persisted.inputQuantity > 0;
   // **全量返却なら下流の未着手工程を畳む**（nextjs-web completeStepExecution と
   // 同じ規則）。研ぎ直せる物が 1 本も無いので後続は 0 本を受け取るだけで、
   // 放っておくと意味のない工程を 0 で押していくまで指示書が閉じない。
@@ -875,9 +873,9 @@ export async function completeStepExecution(
         },
       });
     }
-    if (receiptKey) {
+    if (postsReceipt) {
       const { onRegrindReceiptTx } = await import("./inventory");
-      await onRegrindReceiptTx(tx, receiptKey, {
+      await onRegrindReceiptTx(tx, {
         stepId,
         workOrderId: stepRow.workOrderId,
         workOrderNumber: stepRow.workOrder.workOrderNumber,
@@ -924,10 +922,9 @@ export async function completeStepExecution(
   // （nextjs-web completeStepExecution と同じ規則）。
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
   if (isWorkOrderComplete(ctx)) {
-    // 入出庫伝票の番号は tx の外で採番する（web と同じ作法）。バッチ完了でも
+    // 入出庫伝票の番号は INSERT 時に DB が振る。バッチ完了でも
     // completeStepExecution は 1 指示書ずつ別々の tx で走るので、ここは
     // **1 指示書 = 伝票 1 枚** になる（バッチ 1 回で 1 枚にはならない）。
-    const movementKey = await allocateDocumentKey("INVENTORY_MOVEMENT");
     await prisma.$transaction(async (tx) => {
       const flipped = await tx.workOrder.updateMany({
         where: { id: stepRow.workOrderId, status: { not: "COMPLETED" } },
@@ -935,7 +932,7 @@ export async function completeStepExecution(
       });
       if (flipped.count === 1) {
         const { onWorkOrderCompletedTx } = await import("./inventory");
-        await onWorkOrderCompletedTx(tx, stepRow.workOrderId, movementKey);
+        await onWorkOrderCompletedTx(tx, stepRow.workOrderId);
       }
     });
   }

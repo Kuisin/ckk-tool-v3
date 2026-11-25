@@ -57,6 +57,31 @@ describe("取込ファイル名の番号（二重登録の防止）", () => {
     expect(parseIntakeFileNumber("注文~書-2026.pdf")).toBeNull();
   });
 
+  it("置かれたばかりの名前（日時_乱数_元名）は、元名が id で始まっていても番号付きではない", () => {
+    // 取込フォルダへ置く口は元名の前に日時と乱数を付ける。法人コードは ~ と空白
+    // 以外の何でもよいので、ここを弾かないと日時ごと「法人コード」に読める。
+    expect(
+      parseIntakeFileNumber(
+        "20260815-101500_ab3d2f_CKK~ORD-2026-00003-注文書.pdf",
+      ),
+    ).toBeNull();
+    expect(
+      parseIntakeFileNumber("20260815-101500_ab3d2f_mail_a-at-b.jp_x.pdf"),
+    ).toBeNull();
+    // 採番後に id を焼き込めば、その行の続きとして読める
+    expect(
+      parseIntakeFileNumber(
+        intakeFileName(
+          "CKK~ORD-2026-00004",
+          "20260815-101500_ab3d2f_CKK~ORD-2026-00003-注文書.pdf",
+        ),
+      ),
+    ).toMatchObject({
+      number: "CKK~ORD-2026-00004",
+      rest: "20260815-101500_ab3d2f_CKK~ORD-2026-00003-注文書.pdf",
+    });
+  });
+
   it("id は付け替える（重ねない）", () => {
     expect(intakeFileName("CKK~ORD-2026-00003", "注文書.pdf")).toBe(
       "CKK~ORD-2026-00003-注文書.pdf",

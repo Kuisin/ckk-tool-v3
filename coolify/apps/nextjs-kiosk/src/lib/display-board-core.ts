@@ -31,7 +31,7 @@ export type BoardRow = {
   workOrderId: string;
   /** ロット番号（現場が口にする番号）。 */
   lotNumber: number;
-  /** 書類番号 WOR-YYYYMM-NNNNN。 */
+  /** 書類番号 WOR-FFFF-NNNNN（FFFF = 年度）。 */
   documentNumber: string;
   productName: string;
   plannedQuantity: number;

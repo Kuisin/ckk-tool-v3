@@ -22,7 +22,7 @@ export const sampleProductionEntries: BoardEntry[] = [
   {
     workOrderId: "s1",
     lotNumber: 10842,
-    documentNumber: "WOR-202609-00081",
+    documentNumber: "WOR-2026-00081",
     productName: "超硬ドリル φ8.3×330 OH付",
     plannedQuantity: 50,
     currentStepName: "円筒加工",
@@ -37,7 +37,7 @@ export const sampleProductionEntries: BoardEntry[] = [
   {
     workOrderId: "s2",
     lotNumber: 10843,
-    documentNumber: "WOR-202609-00082",
+    documentNumber: "WOR-2026-00082",
     productName: "リーマ φ12.0×200",
     plannedQuantity: 30,
     currentStepName: "研磨",
@@ -53,7 +53,7 @@ export const sampleProductionEntries: BoardEntry[] = [
   {
     workOrderId: "s3",
     lotNumber: 10844,
-    documentNumber: "WOR-202609-00083",
+    documentNumber: "WOR-2026-00083",
     // 長い名前で truncate の効きを見る
     productName: "特殊形状エンドミル 4枚刃 コーティング付 φ6.0×80 テーパー",
     plannedQuantity: 120,
@@ -70,7 +70,7 @@ export const sampleProductionEntries: BoardEntry[] = [
   {
     workOrderId: "s4",
     lotNumber: 10845,
-    documentNumber: "WOR-202609-00084",
+    documentNumber: "WOR-2026-00084",
     productName: "センタドリル φ3.0",
     plannedQuantity: 200,
     currentStepName: "検査",
@@ -94,7 +94,7 @@ function daysFromNow(days: number): Date {
 export const samplePendingRows: PendingRow[] = [
   {
     id: "p1",
-    documentNumber: "ORD-202608-00214-01",
+    documentNumber: "ORD-2026-00214-01",
     customerName: "株式会社 中央製作所",
     productName: "超硬ドリル φ6.0×150",
     quantity: 80,
@@ -104,7 +104,7 @@ export const samplePendingRows: PendingRow[] = [
   },
   {
     id: "p2",
-    documentNumber: "ORD-202609-00003-02",
+    documentNumber: "ORD-2026-00003-02",
     customerName: "東海精密工業 株式会社",
     productName: "リーマ φ10.0×180",
     quantity: 40,
@@ -114,7 +114,7 @@ export const samplePendingRows: PendingRow[] = [
   },
   {
     id: "p3",
-    documentNumber: "ORD-202609-00007-01",
+    documentNumber: "ORD-2026-00007-01",
     customerName: "北陸ツール",
     productName: "エンドミル φ4.0×60",
     quantity: 150,
@@ -128,7 +128,7 @@ export const samplePendingRows: PendingRow[] = [
 export const sampleShippingRows: ShippingRow[] = [
   {
     id: "d1",
-    documentNumber: "DOR-202609-00042",
+    documentNumber: "DOR-2026-00042",
     customerName: "株式会社 中央製作所",
     status: "CONFIRMED",
     itemCount: 3,
@@ -137,7 +137,7 @@ export const sampleShippingRows: ShippingRow[] = [
   },
   {
     id: "d2",
-    documentNumber: "DOR-202609-00043",
+    documentNumber: "DOR-2026-00043",
     customerName: "東海精密工業 株式会社",
     status: "DRAFT",
     itemCount: 1,
