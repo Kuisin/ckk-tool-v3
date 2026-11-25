@@ -38,6 +38,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { runStockCheck } from "@/app/(dashboard)/sales/order-lines/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { WorkOrderAbortedBadge } from "@/components/production/work-orders/WorkOrderAbortedBadge";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
 import type { DesignRequestLink } from "@/components/sales/design-requests/model";
 import { AppTabs } from "@/components/ui/AppTabs";
@@ -697,7 +698,10 @@ export function OrderLineDetail({
                         />
                       </Table.Td>
                       <Table.Td>
-                        <StatusBadge entity="WorkOrder" status={wo.status} />
+                        <Group gap={4} wrap="nowrap">
+                          <StatusBadge entity="WorkOrder" status={wo.status} />
+                          {wo.aborted && <WorkOrderAbortedBadge />}
+                        </Group>
                       </Table.Td>
                     </Table.Tr>
                   ))}

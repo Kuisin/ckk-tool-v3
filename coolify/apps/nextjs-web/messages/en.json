@@ -5404,7 +5404,7 @@
       "creditTaxCode": "Credit tax code",
       "addTaxCodeRule": "Add a rate",
       "preview": "Preview",
-      "previewNote": "One made-up invoice mixing 10% and 8%, written with the current settings.",
+      "previewNote": "One made-up invoice mixing 10% and 8%, written with the current settings. If you set a sales account per order type (such as regrind), the sample also includes one line of each such type.",
       "saved": "Accounting export settings updated",
       "sampleCustomerName": "Sample Industries, Inc."
     },

@@ -14,7 +14,7 @@ import type { Tr } from "./i18n";
 import {
   type RouteStepSnapshot,
   type RouteView,
-  routeStepsEqual,
+  routeStepsEquivalent,
 } from "./product-routes-core";
 import type { ProcessRouteKind } from "./workflow-core";
 
@@ -266,6 +266,24 @@ export interface RouteResolveScope {
 }
 
 /**
+ * 版の工程と指示書の工程が同じ構成か — 保存の規則（社内のみの工程は拠点・外注先を
+ * 持たない）に揃えてから比べる（product-routes-core normalizeRouteSteps）。
+ * 揃えずに比べると、規則より前の版では何も変えていなくても新しい版ができる。
+ */
+export async function routeStepsSameTx(
+  tx: Tx,
+  base: readonly RouteStepSnapshot[],
+  steps: readonly RouteStepSnapshot[],
+): Promise<boolean> {
+  const ids = [...new Set([...base, ...steps].map((s) => s.processStepId))];
+  const editable = await tx.processStepCatalog.findMany({
+    where: { id: { in: ids }, executionLocation: "INTERNAL_OR_OUTSOURCE" },
+    select: { id: true },
+  });
+  return routeStepsEquivalent(base, steps, new Set(editable.map((c) => c.id)));
+}
+
+/**
  * 指示書の工程構成 → ルートバージョンの解決（「変更は常に新バージョン保存」）。
  * - null: ルートを使わない（ad-hoc 構成、保存しない）→ null
  * - existing: 基準バージョンと同一なら再利用、違えば新バージョンを作成
@@ -336,7 +354,9 @@ export async function resolveRouteVersionTx(
       workHours: s.workHours == null ? null : Number(s.workHours),
       lotInputMode: s.lotInputMode,
     }));
-  if (routeStepsEqual(baseSteps, steps)) return input.baseVersionId;
+  if (await routeStepsSameTx(tx, baseSteps, steps)) {
+    return input.baseVersionId;
+  }
   const created = await createRouteVersionTx(tx, {
     routeId: input.routeId,
     steps,

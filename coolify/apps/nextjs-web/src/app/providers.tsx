@@ -21,6 +21,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { ReactNode } from "react";
 import { PullToRefresh } from "@/components/layout/PullToRefresh";
+import { ToastHygiene } from "@/components/layout/ToastHygiene";
 import { getQueryClient } from "@/lib/query-client";
 import ja from "../../messages/ja.json";
 import { theme } from "./theme";
@@ -57,6 +58,9 @@ export function Providers({ children }: { children: ReactNode }) {
           <DatesProvider settings={{ locale: "ja", firstDayOfWeek: 0 }}>
             <ModalsProvider>
               <Notifications position="top-right" />
+              {/* 成功の通知が出たら前のエラーの通知を消す（全画面共通の規則 —
+                  lib/toast-hygiene-core.ts）。 */}
+              <ToastHygiene />
               <PullToRefresh />
               {/* URL search params の state（hooks/useUrlState.ts）。画面は nuqs を
                   直接呼ばず、あのフックだけを通す。 */}
