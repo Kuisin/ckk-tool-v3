@@ -95,6 +95,9 @@ export function CreateQuoteModal({
           company: String(source.ownCompanyId),
         });
         if (deliveryDate) params.set("delivery", deliveryDate);
+        // 工具ごとの価格表から開いたら、その工具を研ぐ見積にする（工具を
+        // 入れないと工具を問わない値段になる）。
+        if (source.toolItemId) params.set("tool", source.toolItemId);
         handleClose();
         router.push(`/sales/quotes/new?${params.toString()}`);
       }}

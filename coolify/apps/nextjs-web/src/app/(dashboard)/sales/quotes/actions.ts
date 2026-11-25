@@ -14,6 +14,7 @@ import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { isoDateJst } from "@/components/sales/price-lists/model";
 import {
+  lineToolItemId,
   type PriceMissReason,
   resolvePriceFromEntries,
 } from "@/components/sales/quotes/model";
@@ -68,6 +69,11 @@ function itemInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
     /** 製品 — 値は品目 id（items.id、`itemType: "PRODUCT"`）。 */
     itemId: z.string().min(1, tr("common.selectAProduct")),
     orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "REGRIND", "OTHER"]),
+    /**
+     * 研ぎ直す工具（品目 id の文字列）。再研磨の明細だけが持つ — それ以外の
+     * 種別では保存時に落とす（`lineToolItemId`）。再研磨では必須（下の検査）。
+     */
+    toolItemId: z.string().nullable().optional(),
     quantity: z.number().int().min(1, tr("sales.quoteActions.quantityMinOne")),
     deliveryDate: z.string().nullable(),
     notes: z.string().nullable(),
@@ -182,12 +188,28 @@ async function resolveItems(
     ]);
   // 明細の品目が種別と噛み合っているか（他社製品は売り物にならない・
   // 再研磨の行は再研磨の品目を指す）。
-  const itemError = await salesLineItemError(v.items, tr);
+  // 工具は再研磨の行だけが持つ（他の種別で送られてきても持たない）。
+  const lines = v.items.map((it) => ({
+    ...it,
+    toolItemId: lineToolItemId(it),
+  }));
+  const itemError = await salesLineItemError(lines, tr);
   if (itemError) throw new LineItemResolveError(itemError);
+  // 再研磨の行は「どの工具を研ぐのか」が決まっていないと値段が決まらない —
+  // 工具ごとの価格表があれば、工具なしの値段で見積ると注文請書と食い違う。
+  const noTool = lines.findIndex(
+    (it) => it.orderType === "REGRIND" && it.toolItemId == null,
+  );
+  if (noTool >= 0) {
+    throw new LineItemResolveError(
+      tr("sales.quoteActions.regrindToolRequired", { line: noTool + 1 }),
+    );
+  }
   // 基準日は見積の作成日（まだ注文日が無い）。
   const basisDate = isoDateJst(new Date());
 
-  const resolved = v.items.map((it, i) => {
+  const resolved = lines.map((it, i) => {
+    // 注文請書と同じ 1 本の解決（工具一致 → 工具なし → 標準価格）。
     const resolution = resolvePriceFromEntries(
       entries,
       v.customerBpId,
@@ -197,6 +219,7 @@ async function resolveItems(
       tr,
       new Date(),
       standard.get(Number(it.itemId)) ?? null,
+      it.toolItemId,
     );
     if (!resolution.ok) {
       throw new LineItemResolveError(
@@ -213,6 +236,7 @@ async function resolveItems(
     const itemId = Number(it.itemId);
     return {
       itemId,
+      toolItemId: it.toolItemId != null ? Number(it.toolItemId) : null,
       orderType: it.orderType,
       quantity: it.quantity,
       unitPrice: r.unitPrice,

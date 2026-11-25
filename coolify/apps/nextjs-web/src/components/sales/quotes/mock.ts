@@ -92,6 +92,8 @@ function buildItem(
     // （採番前のレガシー品目と同じ形 = 欄が空で刷られる）。
     productCode: null,
     productName,
+    toolItemId: null,
+    toolLabel: null,
     orderType,
     quantity,
     unitPrice,

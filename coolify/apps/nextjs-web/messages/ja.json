@@ -2019,7 +2019,8 @@
       "tax": "消費税（10%）",
       "validityStrip": "本見積書の有効期限は {validUntil} までとなります。期限内にご注文をお願いいたします。",
       "lineDiscount": "値引き",
-      "lineDiscountNote": "※ {label}: -¥{amount}"
+      "lineDiscountNote": "※ {label}: -¥{amount}",
+      "toolLine": "研ぎ直す工具: {tool}"
     },
     "DELIVERY_NOTE": {
       "regNumber": "登録番号:",
@@ -7919,7 +7920,8 @@
     "productPriceResolverInput": {
       "resolvedAutomaticallyFromThePriceList": "顧客×製品×注文種別×数量の価格表から自動解決（基準単価 × 数量倍率、行の手動上書きがあればそれ）。",
       "appliedAutomaticallyFromThePriceList": "価格表の値引きルール（期間・数量条件）から自動適用。複数該当時は値引き額が最大のルール。",
-      "discountAutomatic": "値引き（自動）"
+      "discountAutomatic": "値引き（自動）",
+      "targetToolPrice": "対象工具の価格表"
     },
     "designRequests": {
       "start": "着手",
@@ -8518,7 +8520,9 @@
       "searchTheRegrindItems": "再研磨品目を検索",
       "toolToRegrind": "研ぎ直す工具",
       "searchTheToolBeingHeld": "預かる工具を検索（他社製品を含む）",
-      "standardPrice": "標準価格 {price}"
+      "standardPrice": "標準価格 {price}",
+      "toolPriceListPrice": "価格表（対象工具）{price}",
+      "toolPriceListPriceWithTier": "価格表（対象工具）{price}（{tier}）"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "「{label}」を削除します。この操作は取り消せません。",
@@ -8567,7 +8571,8 @@
       "subtotalAmount": "小計 {amount}",
       "taxAmount": "消費税 {amount}",
       "totalInclTaxAmount": "合計（税込） {amount}",
-      "lineNotesDescription": "見積書 PDF の明細の下に印字されます"
+      "lineNotesDescription": "見積書 PDF の明細の下に印字されます",
+      "selectTheToolToRegrind": "研ぎ直す工具を選択してください"
     },
     "trialEstimateDetail": {
       "orderTypeTierCount": "{orderType}・{tierCount}段階",
@@ -8637,7 +8642,8 @@
       "priceListExpired": "明細{line}: 価格表の有効期間外です",
       "validUntilRequired": "有効期限を入力してください",
       "validUntilInPast": "有効期限は本日以降の日付にしてください",
-      "priceListUnapproved": "明細{line}: 価格表が承認されていません（独自値の追加承認）"
+      "priceListUnapproved": "明細{line}: 価格表が承認されていません（独自値の追加承認）",
+      "regrindToolRequired": "明細 {line} 行目: 研ぎ直す工具を選択してください"
     },
     "orderLinesActions": {
       "invalidOrderLine": "注文明細が不正です",
@@ -10077,6 +10083,10 @@
       "notes": {
         "label": "備考",
         "summary": "見積書全体についての補足です。見積書の PDF の「備考」欄に印字されます。"
+      },
+      "tool": {
+        "label": "研ぎ直す工具",
+        "summary": "お客様から預かって研ぎ直す工具そのものです。注文種別が「再研磨」の行だけに出て、必須です。この工具を対象にした価格表があればその単価、無ければ工具を問わない価格表、それも無ければ再研磨品目の標準価格になります（注文請書と同じ順）。"
       }
     },
     "priceList": {

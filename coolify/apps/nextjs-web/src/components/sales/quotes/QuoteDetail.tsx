@@ -427,6 +427,15 @@ export function QuoteDetail({
                         {/* 品名は「名称 コード」。内部の品目 id は出さない
                             （以前は名称の下に連番の id が出ていた）。 */}
                         <Text size="sm">{it.productName}</Text>
+                        {/* 再研磨の明細: 売っているのは役務で、研ぐのはこの工具。 */}
+                        {it.toolLabel && (
+                          <Text c="dimmed" mt={2} size="xs">
+                            {tr(
+                              "sales.orderAcceptanceItemsEditor.toolToRegrind",
+                            )}
+                            : {it.toolLabel}
+                          </Text>
+                        )}
                         {it.notes && (
                           <Text
                             c="dimmed"
@@ -476,9 +485,18 @@ export function QuoteDetail({
                       <Table.Td>{fmt.date(it.deliveryDate)}</Table.Td>
                       <Table.Td>
                         {tierRef ? (
-                          <Text className="tabular-nums" ff="mono" size="xs">
-                            {tierRef.label}
-                          </Text>
+                          <>
+                            <Text className="tabular-nums" ff="mono" size="xs">
+                              {tierRef.label}
+                            </Text>
+                            {tierRef.toolSpecific && (
+                              <Text c="blue" size="xs">
+                                {tr(
+                                  "sales.productPriceResolverInput.targetToolPrice",
+                                )}
+                              </Text>
+                            )}
+                          </>
                         ) : (
                           <Text c="orange" size="xs">
                             {tr("common.noPriceList")}
