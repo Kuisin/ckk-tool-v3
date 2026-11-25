@@ -3293,6 +3293,17 @@
       "invalidTarget": "对象无效",
       "materialReserveFailedLog": "[work-order] 材料预留失败：",
       "materialReserveNote": "因批准工单 #{number} 而预留材料",
+      "wipReserveFailedLog": "[work-order] 在制品预留失败: ",
+      "wipDrawOnlyManufacture": "只有制造分的工单可以投入在制品",
+      "wipSemiIssueStepMissing": "工序主数据中没有“半成品领用”（请确认是否已停用）",
+      "wipDrawNotACandidate": "所选在制品已不是本产品的可用候选，请重新选择",
+      "wipDrawDuplicate": "同一在制品被选择了两次",
+      "wipDrawQuantityInvalid": "请输入 1 以上的整数作为在制品投入数",
+      "wipDrawQuantityExceedsAvailable": "在制品投入数超过可用数",
+      "wipDrawMixedStates": "加工状态不同的在制品不能混在同一张工单中",
+      "wipDrawOverrideReasonRequired": "请输入使用加工状态不符的在制品的理由",
+      "wipDrawNoLongerAvailable": "所选投入的在制品已不足（{details}）。请编辑工单重新选择",
+      "wipDrawShortageDetail": "需要 {requested} 支，可用 {available} 支",
       "notPendingApproval": "此工单不在审批中",
       "orderLineFullyAllocated": "订单明细 {number} 已全部安排（剩余 0）",
       "orderLineNotFound": "未找到目标订单明细",
@@ -3664,6 +3675,75 @@
         "pathChoiceRequired": "请选择物品经过的路径",
         "pathChoiceInvalid": "所选路径不在此工序的候选中，请重新加载页面"
       }
+    },
+    "wipDraw": {
+      "title": "可用在制品",
+      "description": "库存中可继续加工成本产品的在制品。选择后，将跳过其加工状态已完成的工序，工单从半成品领用开始。目标产品不同的在制品也可以使用。",
+      "group": {
+        "exact": {
+          "title": "尺寸一致",
+          "description": "直径和长度都相同的在制品"
+        },
+        "longer": {
+          "title": "较长",
+          "description": "直径相同但较长的在制品（切断后使用）"
+        },
+        "largerDiameter": {
+          "title": "较粗",
+          "description": "直径较粗的在制品（磨削后使用，长度足够）"
+        },
+        "other": {
+          "title": "加工状态不符",
+          "description": "尺寸可用，但已完成的工序不是本产品工序的开头部分"
+        }
+      },
+      "available": "可用数",
+      "reservedNote": "预留 {count}",
+      "pendingElsewhere": "其他工单已选择 {count} 支（未审批）",
+      "blankSize": "坯料 {size}",
+      "skippedSteps": "跳过的工序",
+      "noSkip": "没有跳过的工序",
+      "drawQuantity": "投入数（支）",
+      "selectRow": "投入批次 {lot} 的在制品",
+      "mixedStatesHint": "加工状态不同的在制品不能混在同一张工单中",
+      "notPermitted": "没有查看库存的权限，无法显示在制品候选。",
+      "productNotReady": "本产品未设置所需材料（材料类别・直径・长度），无法查找可用在制品。",
+      "empty": "库存中没有可用于本产品的在制品。",
+      "onlyOther": "没有加工状态与本产品工序相符的在制品。",
+      "showOther": "显示加工状态不符的在制品（{count} 件）",
+      "hideOther": "隐藏加工状态不符的在制品",
+      "otherWarning": "这些在制品已完成本产品工序中没有的加工，或工序顺序不同。使用前请确认实物并填写理由（将记入操作历史）。",
+      "summary": "投入 {total} 支 / 计划数量 {planned} 支",
+      "lessThanPlanned": "少于计划数量",
+      "moreThanPlanned": "多于计划数量",
+      "startsFromSemiIssue": "本工单从半成品领用开始，不使用材料（也不预留材料）。所选在制品在审批时预留，完成时从库存扣减。",
+      "willSkip": "在制品已完成、本工单不再进行的工序",
+      "redo": "需要再次进行的工序",
+      "redoHelp": "在制品已完成但本工单仍要进行的工序（例如将较长的在制品重新切断）。",
+      "oversizeHint": "已选择较长或较粗的在制品。请确认本工单中保留了调整尺寸的工序（切断・磨削）。已完成但需重做的工序请在“需要再次进行的工序”中选择。",
+      "overrideReason": "使用加工状态不符的在制品的理由",
+      "overrideReasonHelp": "将记入操作历史，并显示给审批人。",
+      "missingSelection": "所选在制品中有 {count} 件已不在候选中（库存已无，或工序构成已变更）。",
+      "dropMissing": "从选择中移除",
+      "skippedBadge": "在制品已完成",
+      "fixBeforeSaving": "“可用在制品”的选择有误，请消除红色提示。",
+      "issue": {
+        "notACandidate": "选择了不在候选中的在制品",
+        "duplicate": "同一在制品被选择了两次",
+        "quantityInvalid": "请输入 1 以上的整数作为投入数",
+        "quantityExceedsAvailable": "投入数超过可用数",
+        "mixedStates": "加工状态不同的在制品不能混在同一张工单中",
+        "overrideReasonRequired": "请输入理由"
+      },
+      "startState": "开始状态",
+      "startStateHelp": "本工单从库存的在制品开始。该加工状态已完成的工序不再进行。",
+      "skippedInThisOrder": "已跳过的工序",
+      "drawsTitle": "投入的在制品",
+      "drawLine": "{blank} ／ 批次 {lot} ／ {quantity} 支",
+      "drawAimed": "目标产品: {product}",
+      "drawReserved": "已预留 {count} 支",
+      "drawNotReserved": "未预留（审批时预留）",
+      "overrideReasonLabel": "使用加工状态不符的在制品的理由: {reason}"
     }
   },
   "purchase": {
@@ -9781,6 +9861,10 @@
     "fromStockScrapped": "工单 #{workOrderNumber} 库存分报废",
     "semiFinishedConsumed": "工单 #{workOrderNumber} 半成品领用（转记到批次 #{workOrderNumber}）",
     "semiFinishedScrapped": "工单 #{workOrderNumber} 半成品报废",
+    "wipDrawReserved": "工单 #{workOrderNumber} 审批后预留在制品",
+    "wipDrawReservationReleased": "工单 #{workOrderNumber} 完成后解除在制品预留",
+    "wipDrawConsumed": "工单 #{workOrderNumber} 投入在制品（转记到批次 #{workOrderNumber}）",
+    "wipDrawScrapped": "工单 #{workOrderNumber} 投入的在制品报废",
     "outsourceIssued": "工单 #{workOrderNumber} 发往外协（转为寄存库存）",
     "outsourceReturned": "工单 #{workOrderNumber} 从外协返回",
     "outsourceReturnedOnCompletion": "工单 #{workOrderNumber} 完成时从外协返回",

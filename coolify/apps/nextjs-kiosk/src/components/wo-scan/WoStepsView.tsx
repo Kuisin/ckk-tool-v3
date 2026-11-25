@@ -166,6 +166,48 @@ export function WoStepsView({
                     {fillMessage(m.woScan.marking, mk)}
                   </Text>
                 ))}
+                {/* 開始状態 — 在庫の仕掛品から始めた指示書。紙の工程の並びと
+                    画面の工程が違う理由（済んでいる工程は載っていない）を示す。 */}
+                {overview.startWip && (
+                  <Stack data-start-wip gap={4} mt={2}>
+                    <Group gap="xs" wrap="wrap">
+                      <Badge color="violet" size="lg" variant="filled">
+                        {m.woScan.startState}
+                      </Badge>
+                      {overview.startWip.stateName && (
+                        <Text fw={600} size="sm">
+                          {overview.startWip.stateName}
+                        </Text>
+                      )}
+                      {overview.startWip.stepNames.length === 0 ? (
+                        <Badge color="gray" size="lg" variant="light">
+                          {m.woScan.startStateUnprocessed}
+                        </Badge>
+                      ) : (
+                        overview.startWip.stepNames.map((n, i) => (
+                          <Badge
+                            color="violet"
+                            // 同じ工程が 2 回入り得るので位置も鍵に入れる
+                            key={`${i}:${n}`}
+                            size="lg"
+                            variant="light"
+                          >
+                            {n}
+                          </Badge>
+                        ))
+                      )}
+                    </Group>
+                    <Text c="dimmed" size="sm">
+                      {overview.startWip.skippedStepNames.length > 0
+                        ? fillMessage(m.woScan.startStateSkipped, {
+                            names: overview.startWip.skippedStepNames.join(
+                              ` ${m.common.separator} `,
+                            ),
+                          })
+                        : m.woScan.startStateNoSkip}
+                    </Text>
+                  </Stack>
+                )}
                 {countable.length > 0 && (
                   <Group align="center" gap="sm" mt={2} wrap="nowrap">
                     <Progress

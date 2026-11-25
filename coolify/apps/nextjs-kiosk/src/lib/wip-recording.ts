@@ -49,6 +49,8 @@ export async function loadWipRecording(
           type: true,
           productItemId: true,
           materialItemId: true,
+          // 在庫の仕掛品から始めた指示書の開始状態（済んでいた工程）。
+          startWipState: { select: { stepIds: true } },
           steps: {
             select: {
               ...STEP_STATE_SELECT,
@@ -66,15 +68,28 @@ export async function loadWipRecording(
     wo.steps.map((s) => [s.processStepId, s.processStep.affectsWipState]),
   );
   const affects = (id: number) => affectsMap.get(id) ?? false;
+  const startStepIds = wo.startWipState?.stepIds ?? [];
   const path = wipRecordingPath(
     wo.steps.map(toStepState),
     wo.stepLinks,
     step.id,
     affects,
+    // 投入した仕掛品で済んでいた工程も、この品では済んでいる。
+    startStepIds,
   );
   const blank = await workOrderWipBlankTx(prisma, wo);
   const stepNames: Record<number, unknown> = {};
   for (const s of wo.steps) stepNames[s.processStepId] = s.processStep.name;
+  // 開始状態の工程は指示書の工程に載っていない（作成時に落としてある）ので、
+  // 名前は工程マスタから引く。
+  const missing = startStepIds.filter((id) => !(id in stepNames));
+  if (missing.length > 0) {
+    const catalog = await prisma.processStepCatalog.findMany({
+      where: { id: { in: missing } },
+      select: { id: true, name: true },
+    });
+    for (const c of catalog) stepNames[c.id] = c.name;
+  }
   return {
     path,
     sourceAffects: affects(step.processStepId),

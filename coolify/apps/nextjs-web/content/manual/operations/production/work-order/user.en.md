@@ -117,6 +117,32 @@ You pick steps from a checklist. **Only manufacturing steps can be picked here**
 
 After saving, the work order detail screen shows 「**準備工程リスト**」 (prep step list) and 「**工程ルート**」 (step route, the manufacturing step list), each with the name and version used, for example "standard steps v1". If a newer version than the one used has been registered, a 「**最新 v◯ あり**」 (newer v◯ available) badge appears, so you can tell it is not reflected in this work order. You can open the prep step list in the process step master, or the product's manufacturing step list, from there.
 
+#### Starting from WIP in stock (Usable WIP)
+
+Once the product and step lists are set, **Usable WIP** appears below them. It lists the parts that were processed part-way and put into stock (WIP) that **can be continued into this product**. Parts started for a different product also appear here when the material type, size and processing progress match.
+
+Candidates are split into three groups.
+
+| Group | What kind of WIP |
+|---|---|
+| **Exact** | Same diameter and length |
+| **Longer** | Same diameter but longer (cut to length) |
+| **Larger diameter** | Larger diameter (ground down; the length is sufficient) |
+
+Each row shows the **processing state** (the steps already completed), **finished size**, **target product** (what it was originally being made into), **lot**, **available** quantity and **skipped steps**.
+
+To use one, tick the checkbox on the left of the row and enter the **Issue quantity (pcs)**.
+
+- Once selected, the steps that WIP has already been through are **not performed in this work order**. They stay in the step list in grey marked **Done in WIP**, and the work order starts from “Semi-finished issue (stock)”.
+- Only the **already-completed steps** are skipped. When you select longer or larger-diameter WIP, check that the steps that bring it to size (cutting, grinding) remain. To redo a completed step (for example, re-cutting a longer blank), choose it under **Steps to perform again**.
+- **WIP in different processing states cannot be mixed in one work order.** You can select several items in the same processing state.
+- A work order that starts from WIP **does not use a material** (the field disappears and no material is reserved).
+- The selected WIP is **reserved on approval** and can no longer be used by other work orders. It is deducted from stock **when all steps are completed**. If another work order used it before approval, “The WIP selected for issue is no longer sufficient” appears — edit the work order and select again.
+
+Click **Show WIP whose processing state does not match** below the list to also see WIP whose size is usable but whose completed steps do not fit this product's steps. Using it **requires a reason** after checking the actual parts, and the reason is recorded in the activity log.
+
+After saving, the work order detail screen shows **Start state**: the processing state of the WIP to issue, the skipped steps, and the WIP to issue with its reservation status.
+
 #### Regrind step list (shared)
 
 The one list used only by regrind work orders. It starts with 「製品受入（再研磨）」 (tool receipt) and lines up grinding steps (OD, flute, tip, radius, chamfer, cut-off) and, if needed, coating, inspection and pre-ship inspection. Like the prep step list it is tied to neither product nor customer, and **the latest version is always used**. See "[Regrind work orders](#regrind-work-orders)".

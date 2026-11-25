@@ -179,6 +179,8 @@ model ItemInventory {
   custodyBp       BusinessPartner? @relation("ItemInventoryCustody", fields: [custodyBpId], references: [id])
   ownerBp         BusinessPartner? @relation("ItemInventoryOwner", fields: [ownerBpId], references: [id], onDelete: Restrict)
   wipState        WipState?        @relation(fields: [wipStateId], references: [id], onDelete: Restrict)
+  /// この仕掛品を投入する指示書（work_order_wip_draws）。
+  wipDraws        WorkOrderWipDraw[] @relation("WorkOrderWipDrawInventory")
   aimedItem       Item?            @relation("ItemInventoryAimedItem", fields: [aimedItemId], references: [id], onDelete: Restrict)
 
   // 一意バケット（NULLS NOT DISTINCT index — migration で張る）
@@ -220,6 +222,8 @@ model WipState {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   inventory ItemInventory[]
+  /// この状態の仕掛品から始めた指示書（work_orders.start_wip_state_id）。
+  workOrders WorkOrder[] @relation("WorkOrderStartWipState")
 
   @@map("wip_states")
   @@schema("app")

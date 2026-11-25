@@ -3293,6 +3293,17 @@
       "invalidTarget": "Invalid target",
       "materialReserveFailedLog": "[work-order] Failed to reserve material: ",
       "materialReserveNote": "Material reserved by approval of work order #{number}",
+      "wipReserveFailedLog": "[work-order] failed to reserve WIP: ",
+      "wipDrawOnlyManufacture": "Only manufacturing work orders can issue WIP",
+      "wipSemiIssueStepMissing": "The process step master has no “Semi-finished issue” step (check that it is not disabled)",
+      "wipDrawNotACandidate": "The selected WIP is no longer a candidate for this product. Select again",
+      "wipDrawDuplicate": "The same WIP item is selected twice",
+      "wipDrawQuantityInvalid": "Enter a WIP issue quantity of 1 or more (whole number)",
+      "wipDrawQuantityExceedsAvailable": "The WIP issue quantity exceeds the available quantity",
+      "wipDrawMixedStates": "WIP in different processing states cannot be mixed in one work order",
+      "wipDrawOverrideReasonRequired": "Enter a reason for using WIP whose processing state does not match",
+      "wipDrawNoLongerAvailable": "The WIP selected for issue is no longer sufficient ({details}). Edit the work order and select again",
+      "wipDrawShortageDetail": "{requested} pcs needed, {available} pcs available",
       "notPendingApproval": "This work order is not pending approval",
       "orderLineFullyAllocated": "Order line {number} is already fully allocated (0 remaining)",
       "orderLineNotFound": "The order line was not found",
@@ -3664,6 +3675,75 @@
         "pathChoiceRequired": "Select the route the parts took",
         "pathChoiceInvalid": "The selected route is not available for this step. Reload the page"
       }
+    },
+    "wipDraw": {
+      "title": "Usable WIP",
+      "description": "WIP in stock that can be continued into this product. Selecting some skips the steps its processing state already covers, and the work order starts from the semi-finished issue step. WIP aimed at a different product can be used too.",
+      "group": {
+        "exact": {
+          "title": "Exact",
+          "description": "WIP with the same diameter and length"
+        },
+        "longer": {
+          "title": "Longer",
+          "description": "WIP with the same diameter but longer (cut to length)"
+        },
+        "largerDiameter": {
+          "title": "Larger diameter",
+          "description": "WIP with a larger diameter (ground down; the length is sufficient)"
+        },
+        "other": {
+          "title": "Processing state does not match",
+          "description": "The size is usable, but the completed steps are not a leading part of this product's steps"
+        }
+      },
+      "available": "Available",
+      "reservedNote": "Reserved {count}",
+      "pendingElsewhere": "{count} pcs selected by other work orders (not yet approved)",
+      "blankSize": "Blank {size}",
+      "skippedSteps": "Skipped steps",
+      "noSkip": "No steps are skipped",
+      "drawQuantity": "Issue quantity (pcs)",
+      "selectRow": "Issue WIP from lot {lot}",
+      "mixedStatesHint": "WIP in different processing states cannot be mixed in one work order",
+      "notPermitted": "You do not have permission to view stock, so WIP candidates cannot be shown.",
+      "productNotReady": "This product has no required material (material type, diameter, length), so usable WIP cannot be searched.",
+      "empty": "There is no WIP in stock that can be used for this product.",
+      "onlyOther": "No WIP has a processing state that matches this product's steps.",
+      "showOther": "Show WIP whose processing state does not match ({count})",
+      "hideOther": "Hide WIP whose processing state does not match",
+      "otherWarning": "These WIP items have had processing that is not in this product's steps, or in a different order. Check the actual parts and enter a reason to use them (it is recorded in the activity log).",
+      "summary": "Issue {total} pcs / planned quantity {planned} pcs",
+      "lessThanPlanned": "Less than planned",
+      "moreThanPlanned": "More than planned",
+      "startsFromSemiIssue": "This work order starts from the semi-finished issue step. No material is used (and none is reserved). The selected WIP is reserved on approval and deducted from stock on completion.",
+      "willSkip": "Steps already covered by the WIP and not performed in this work order",
+      "redo": "Steps to perform again",
+      "redoHelp": "Steps the WIP has already been through but that this work order performs again (for example, re-cutting a longer blank).",
+      "oversizeHint": "You selected longer or larger-diameter WIP. Check that the steps that bring it to size (cutting, grinding) remain in this work order. Choose any already-completed steps to redo under “Steps to perform again”.",
+      "overrideReason": "Reason for using WIP whose processing state does not match",
+      "overrideReasonHelp": "Recorded in the activity log and shown to approvers.",
+      "missingSelection": "{count} of the selected WIP items are no longer candidates (out of stock, or the step composition changed).",
+      "dropMissing": "Remove from selection",
+      "skippedBadge": "Done in WIP",
+      "fixBeforeSaving": "There is a problem with the Usable WIP selection. Clear the red warnings.",
+      "issue": {
+        "notACandidate": "A WIP item that is not a candidate is selected",
+        "duplicate": "The same WIP item is selected twice",
+        "quantityInvalid": "Enter an issue quantity of 1 or more (whole number)",
+        "quantityExceedsAvailable": "The issue quantity exceeds the available quantity",
+        "mixedStates": "WIP in different processing states cannot be mixed in one work order",
+        "overrideReasonRequired": "Enter a reason"
+      },
+      "startState": "Start state",
+      "startStateHelp": "This work order starts from WIP in stock. Steps covered by this processing state are not performed.",
+      "skippedInThisOrder": "Skipped steps",
+      "drawsTitle": "WIP to issue",
+      "drawLine": "{blank} / lot {lot} / {quantity} pcs",
+      "drawAimed": "Target product: {product}",
+      "drawReserved": "{count} pcs reserved",
+      "drawNotReserved": "Not reserved (reserved on approval)",
+      "overrideReasonLabel": "Reason for using WIP whose processing state does not match: {reason}"
     }
   },
   "purchase": {
@@ -9781,6 +9861,10 @@
     "fromStockScrapped": "Work order #{workOrderNumber} — from-stock units scrapped",
     "semiFinishedConsumed": "Work order #{workOrderNumber} — semi-finished issued (reassigned to lot #{workOrderNumber})",
     "semiFinishedScrapped": "Work order #{workOrderNumber} — semi-finished units scrapped",
+    "wipDrawReserved": "Work order #{workOrderNumber} — WIP reserved on approval",
+    "wipDrawReservationReleased": "Work order #{workOrderNumber} — WIP reservation released on completion",
+    "wipDrawConsumed": "Work order #{workOrderNumber} — WIP issued (reassigned to lot #{workOrderNumber})",
+    "wipDrawScrapped": "Work order #{workOrderNumber} — issued WIP scrapped",
     "outsourceIssued": "Work order #{workOrderNumber} — issued to subcontractor (held by them)",
     "outsourceReturned": "Work order #{workOrderNumber} — returned from subcontractor",
     "outsourceReturnedOnCompletion": "Work order #{workOrderNumber} — returned from subcontractor on completion",

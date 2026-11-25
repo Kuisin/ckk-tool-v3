@@ -7,11 +7,15 @@ import {
   mainlinePartChangingStepIds,
   matchWip,
   orderSemiFinishedForConsumption,
+  planWipDrawConsumption,
   planWipPostings,
+  planWipStart,
   semiFinishedSourcePath,
   storesWip,
+  validateWipDraws,
   validateWipRecording,
   type WipBucket,
+  type WipDrawCandidate,
   type WipMatchProduct,
   type WipPostingStep,
   type WipRecordingView,
@@ -19,6 +23,7 @@ import {
   wipPathForSource,
   wipRecordingPath,
   wipSignature,
+  wipStartSkippedStepIds,
   wipStateForSource,
 } from "./wip-state-core";
 import {
@@ -963,5 +968,265 @@ describe("checkWipRecordingDraft", () => {
         input: r.input,
       }).issues,
     );
+  });
+});
+
+describe("planWipStart", () => {
+  // 素材出し(1・開始) → 切断(10) → 円筒(20) → 検査(40・数えない) → 段加工(30)
+  //   → 検査(41・数えない) → コーティング(50)
+  const route = [
+    { processStepId: 1, affectsWipState: false, isStart: true },
+    { processStepId: 10, affectsWipState: true, isStart: false },
+    { processStepId: 20, affectsWipState: true, isStart: false },
+    { processStepId: 40, affectsWipState: false, isStart: false },
+    { processStepId: 30, affectsWipState: true, isStart: false },
+    { processStepId: 41, affectsWipState: false, isStart: false },
+    { processStepId: 50, affectsWipState: true, isStart: false },
+  ];
+
+  it("未加工の仕掛品（空の状態）は何も飛ばさない", () => {
+    expect(planWipStart(route, [])).toEqual({
+      isPrefix: true,
+      matched: 0,
+      skippableStepIds: [],
+      skippedStepIds: [],
+    });
+  });
+
+  it("状態で済んでいる工程までを飛ばす（開始工程は飛ばさない）", () => {
+    const r = planWipStart(route, [10, 20]);
+    expect(r.isPrefix).toBe(true);
+    expect(r.skippedStepIds).toEqual([10, 20]);
+  });
+
+  it("手前に挟まる検査は飛ばし、最後に済んだ工程より後ろの検査は残す", () => {
+    const r = planWipStart(route, [10, 20, 30]);
+    // 40（円筒のあとの検査）は品物がもう通り過ぎている。41（段加工のあとの検査）は
+    // 済んだかどうか分からないので残す。
+    expect(r.skippedStepIds).toEqual([10, 20, 40, 30]);
+    expect(r.skippedStepIds).not.toContain(41);
+    expect(r.skippedStepIds).not.toContain(1);
+  });
+
+  it("もう一度行うと選んだ工程は残す（長い仕掛品を切り直す等）", () => {
+    const r = planWipStart(route, [10, 20], [10]);
+    expect(r.skippableStepIds).toEqual([10, 20]);
+    expect(r.skippedStepIds).toEqual([20]);
+  });
+
+  it("状態に入っていない工程は飛ばさない — 長い・太い仕掛品でも規則は同じ", () => {
+    // 切断だけ済んだ太いブランク: 円筒（径を落とす工程）は状態に無いので残る。
+    expect(planWipStart(route, [10]).skippedStepIds).toEqual([10]);
+  });
+
+  it("先頭部分になっていない状態は、一致したところまでしか飛ばさない", () => {
+    // 製品の工程に無い手直し研削(60) が済んでいる。
+    const r = planWipStart(route, [10, 60]);
+    expect(r.isPrefix).toBe(false);
+    expect(r.matched).toBe(1);
+    expect(r.skippedStepIds).toEqual([10]);
+    // 順序が違う（円筒が先）なら 1 つも一致しない。
+    expect(planWipStart(route, [20, 10])).toMatchObject({
+      isPrefix: false,
+      matched: 0,
+      skippedStepIds: [],
+    });
+  });
+
+  it("状態が工程より長いときも先頭部分ではない", () => {
+    const short = route.slice(0, 3);
+    const r = planWipStart(short, [10, 20, 30]);
+    expect(r.isPrefix).toBe(false);
+    expect(r.skippedStepIds).toEqual([10, 20]);
+  });
+});
+
+describe("wipRecordingPath / planWipPostings — 開始状態を頭に付ける", () => {
+  // 仕掛品 [切断, 円筒] から始めた指示書: 半製品出し(2) → 段加工(30) → コーティング(50)
+  const steps: WipPostingStep[] = [
+    step("s0", 2, 0, "COMPLETED", { inputQuantity: 10, outputSuccess: 10 }),
+    step("s1", 30, 1, "COMPLETED", {
+      inputQuantity: 10,
+      outputSuccess: 8,
+      defectSemiFinished: 2,
+    }),
+    step("s2", 50, 2, "COMPLETED", { inputQuantity: 8, outputSuccess: 8 }),
+  ];
+
+  it("記録する経路に開始状態が付く", () => {
+    expect(
+      wipRecordingPath(steps, [], "s2", affects, [10, 20]).stepIds,
+    ).toEqual([10, 20, 30]);
+    // 開始状態が無ければ従来どおり。
+    expect(wipRecordingPath(steps, [], "s2", affects).stepIds).toEqual([30]);
+  });
+
+  it("途中で在庫に置いた分は、開始状態 + この指示書で済んだ工程で入る", () => {
+    const postings = planWipPostings(steps, [], affects, null, [10, 20]);
+    expect(postings).toHaveLength(1);
+    // 段加工の途中で振り分けた分 — 段加工は済んでいないが、切断・円筒は済んでいる。
+    expect(postings[0].stepIds).toEqual([10, 20]);
+    expect(postings[0].quantity).toBe(2);
+  });
+
+  it("工程に記録した経路はそのまま使う（二重に付けない）", () => {
+    const recorded = steps.map((s) =>
+      s.id === "s1" ? { ...s, wipPathStepIds: [10, 20] } : s,
+    );
+    const postings = planWipPostings(recorded, [], affects, null, [10, 20]);
+    expect(postings[0].stepIds).toEqual([10, 20]);
+  });
+});
+
+describe("wipStartSkippedStepIds", () => {
+  it("開始状態の工程のうち、指示書に載っていないものが飛ばした工程", () => {
+    // 状態 [切断, 円筒, 段加工] / 指示書は 半製品出し(2) → コーティング(50)
+    expect(wipStartSkippedStepIds([10, 20, 30], [2, 50])).toEqual([10, 20, 30]);
+  });
+
+  it("もう一度行うと選んで指示書に載せた工程は、飛ばした工程に出ない", () => {
+    expect(wipStartSkippedStepIds([10, 20], [2, 10, 30])).toEqual([20]);
+  });
+
+  it("未加工（空の状態）なら飛ばした工程は無い", () => {
+    expect(wipStartSkippedStepIds([], [2, 10])).toEqual([]);
+  });
+});
+
+describe("validateWipDraws", () => {
+  const candidates: WipDrawCandidate[] = [
+    { inventoryId: "a", wipStateId: 1, group: "exact", available: 5 },
+    { inventoryId: "b", wipStateId: 1, group: "longer", available: 3 },
+    { inventoryId: "c", wipStateId: 2, group: "largerDiameter", available: 4 },
+    { inventoryId: "o", wipStateId: 1, group: "other", available: 9 },
+  ];
+
+  it("同じ加工状態のバケットを複数選べる", () => {
+    const r = validateWipDraws(
+      [
+        { inventoryId: "a", quantity: 5 },
+        { inventoryId: "b", quantity: 2 },
+      ],
+      candidates,
+      null,
+    );
+    expect(r).toEqual({
+      issues: [],
+      wipStateId: 1,
+      needsOverride: false,
+      total: 7,
+    });
+  });
+
+  it("何も選ばなければ仕掛品を使わない指示書", () => {
+    expect(validateWipDraws([], candidates, null)).toEqual({
+      issues: [],
+      wipStateId: null,
+      needsOverride: false,
+      total: 0,
+    });
+  });
+
+  it("使える数を超えた数量・0 以下・小数を拒む", () => {
+    expect(
+      validateWipDraws([{ inventoryId: "a", quantity: 6 }], candidates, null)
+        .issues,
+    ).toEqual(["quantityExceedsAvailable"]);
+    expect(
+      validateWipDraws([{ inventoryId: "a", quantity: 0 }], candidates, null)
+        .issues,
+    ).toEqual(["quantityInvalid"]);
+    expect(
+      validateWipDraws([{ inventoryId: "a", quantity: 1.5 }], candidates, null)
+        .issues,
+    ).toEqual(["quantityInvalid"]);
+  });
+
+  it("加工状態の違う仕掛品は混ぜられない", () => {
+    const r = validateWipDraws(
+      [
+        { inventoryId: "a", quantity: 1 },
+        { inventoryId: "c", quantity: 1 },
+      ],
+      candidates,
+      null,
+    );
+    expect(r.issues).toEqual(["mixedStates"]);
+    expect(r.wipStateId).toBeNull();
+  });
+
+  it("候補に無いバケット・同じバケットの重複を拒む", () => {
+    expect(
+      validateWipDraws([{ inventoryId: "zz", quantity: 1 }], candidates, null)
+        .issues,
+    ).toEqual(["notACandidate"]);
+    expect(
+      validateWipDraws(
+        [
+          { inventoryId: "a", quantity: 1 },
+          { inventoryId: "a", quantity: 1 },
+        ],
+        candidates,
+        null,
+      ).issues,
+    ).toEqual(["duplicate"]);
+  });
+
+  it("加工状態が合わない仕掛品は理由が要る（空白だけは理由ではない）", () => {
+    const draws = [{ inventoryId: "o", quantity: 1 }];
+    expect(validateWipDraws(draws, candidates, "  ").issues).toEqual([
+      "overrideReasonRequired",
+    ]);
+    const ok = validateWipDraws(draws, candidates, "現物を確認済み");
+    expect(ok.issues).toEqual([]);
+    expect(ok.needsOverride).toBe(true);
+  });
+});
+
+describe("planWipDrawConsumption", () => {
+  const d = (
+    inventoryId: string,
+    reserved: number,
+    onHand: number,
+    reservedTotal = reserved,
+  ) => ({ inventoryId, reserved, onHand, reservedTotal });
+
+  it("選んだ順に、予約した数まで落とす", () => {
+    expect(planWipDrawConsumption([d("a", 5, 5), d("b", 3, 8)], 7)).toEqual({
+      lines: [
+        { inventoryId: "a", release: 5, out: 5 },
+        { inventoryId: "b", release: 3, out: 2 },
+      ],
+      shortage: 0,
+    });
+  });
+
+  it("出した数が少なくても予約は全部ほどく", () => {
+    const r = planWipDrawConsumption([d("a", 5, 5), d("b", 3, 8)], 4);
+    expect(r.lines).toEqual([
+      { inventoryId: "a", release: 5, out: 4 },
+      { inventoryId: "b", release: 3, out: 0 },
+    ]);
+    expect(r.shortage).toBe(0);
+  });
+
+  it("予約より多く出したら、同じバケットの空きから足す", () => {
+    // a: 手持ち 10・自分の予約 5・他の指示書の予約 2 → 空きは 3。
+    const r = planWipDrawConsumption([d("a", 5, 10, 7)], 9);
+    expect(r.lines).toEqual([{ inventoryId: "a", release: 5, out: 8 }]);
+    expect(r.shortage).toBe(1);
+  });
+
+  it("台帳が足りなければあるだけ落とし、残りは不足として返す", () => {
+    const r = planWipDrawConsumption([d("a", 5, 2)], 5);
+    expect(r.lines).toEqual([{ inventoryId: "a", release: 5, out: 2 }]);
+    expect(r.shortage).toBe(3);
+  });
+
+  it("出した数が 0 でも予約はほどく（落とさない）", () => {
+    expect(planWipDrawConsumption([d("a", 5, 5)], 0)).toEqual({
+      lines: [{ inventoryId: "a", release: 5, out: 0 }],
+      shortage: 0,
+    });
   });
 });

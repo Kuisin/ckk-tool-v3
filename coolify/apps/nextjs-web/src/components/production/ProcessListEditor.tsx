@@ -141,6 +141,8 @@ export function ProcessListView({
   plantOptions,
   supplierOptions,
   onEdit,
+  skippedStepIds,
+  replacedStart,
 }: {
   selected: number[];
   locations: Record<number, StepLocation>;
@@ -149,6 +151,13 @@ export function ProcessListView({
   supplierOptions: Option[];
   /** 「工程を編集」— エディタ表示へ切り替える。 */
   onEdit: () => void;
+  /**
+   * 在庫の仕掛品で済んでいて、この指示書では行わない工程（灰色で見せる）。
+   * 工程リストの構成そのものは変えない — 飛ばすのはこの指示書だけ。
+   */
+  skippedStepIds?: readonly number[];
+  /** 開始工程を半製品出しへ差し替えるとき、その名前（開始工程の行に添える）。 */
+  replacedStart?: { stepIds: readonly number[]; name: string } | null;
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -168,6 +177,10 @@ export function ProcessListView({
   const orderedSelected = useMemo(
     () => defaultOrder(selected, catalogSteps),
     [selected, catalogSteps],
+  );
+  const skipped = useMemo(
+    () => new Set(skippedStepIds ?? []),
+    [skippedStepIds],
   );
 
   return (
@@ -204,8 +217,24 @@ export function ProcessListView({
                 : loc?.plantId
                   ? plantLabel.get(loc.plantId)
                   : null;
+            const isSkipped = skipped.has(stepId);
+            const replaced =
+              replacedStart?.stepIds.includes(stepId) === true
+                ? replacedStart.name
+                : null;
             return (
-              <Paper key={stepId} p="sm" radius="sm" withBorder>
+              <Paper
+                bg={
+                  isSkipped
+                    ? "light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6))"
+                    : undefined
+                }
+                data-skipped={isSkipped || undefined}
+                key={stepId}
+                p="sm"
+                radius="sm"
+                withBorder
+              >
                 <Group
                   align={isMobile ? "flex-start" : "center"}
                   justify="space-between"
@@ -215,13 +244,28 @@ export function ProcessListView({
                     <Text c="dimmed" className="tabular-nums" size="xs" w={20}>
                       {i + 1}
                     </Text>
-                    <Text fw={600} size="sm">
+                    <Text
+                      c={isSkipped ? "dimmed" : undefined}
+                      fw={600}
+                      size="sm"
+                      td={isSkipped || replaced ? "line-through" : undefined}
+                    >
                       {cat.nameJa}
                     </Text>
+                    {replaced && (
+                      <Text fw={600} size="sm">
+                        {replaced}
+                      </Text>
+                    )}
                     <Text c="dimmed" size="xs">
                       {processCategoryLabel(cat.category, locale) ??
                         cat.category}
                     </Text>
+                    {isSkipped && (
+                      <Badge color="gray" size="xs" variant="light">
+                        {tr("production.wipDraw.skippedBadge")}
+                      </Badge>
+                    )}
                   </Group>
                   <Group gap="sm" wrap="nowrap">
                     <Text className="tabular-nums" size="xs">

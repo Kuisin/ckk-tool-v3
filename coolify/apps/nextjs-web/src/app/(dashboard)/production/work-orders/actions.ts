@@ -85,6 +85,12 @@ import {
   addWorkOrderLink as addWoLink,
   removeWorkOrderLink as removeWoLink,
 } from "@/lib/work-order-links";
+import {
+  loadWipCandidates,
+  type ResolvedWipStart,
+  resolveWipStart,
+  type WipCandidatesView,
+} from "@/lib/work-order-wip";
 import { planReadiness } from "@/lib/work-plan-core";
 import {
   loadCatalog,
@@ -270,6 +276,25 @@ function workOrderInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
        */
       regrindRouteId: z.number().int().positive().nullable().optional(),
       plans: z.array(planInputSchema(tr)),
+      /**
+       * 投入する仕掛品（在庫バケット × 数量）— 在庫の仕掛品から始める指示書。
+       * 空 = 素材から作る（従来どおり）。選ぶと、その加工状態で済んでいる工程を
+       * 落とし、開始工程を半製品出しへ差し替える（lib/work-order-wip.ts）。
+       * `steps` は**飛ばす前の全体**を送る — 工程リストの版はそこから決める。
+       */
+      wipDraws: z
+        .array(
+          z.object({
+            inventoryId: z.string().uuid(),
+            quantity: z.number().int().min(1),
+          }),
+        )
+        .max(50)
+        .default([]),
+      /** 加工状態が製品の工程の先頭部分になっていない仕掛品を使う理由。 */
+      wipOverrideReason: z.string().max(500).nullable().optional(),
+      /** 仕掛品で済んでいるが、この指示書でもう一度行う工程（カタログ id）。 */
+      wipRedoStepIds: z.array(z.number().int().positive()).max(100).default([]),
     })
     .superRefine((v, refCtx) => {
       // 製造工程リストが要るのは製造分だけ。在庫分は固定構成、再研磨は共通の
@@ -748,6 +773,68 @@ async function resolveRouteVersionsTx(
   return { routeVersionId, prepRouteVersionId: input.prepRouteVersionId };
 }
 
+/**
+ * 投入する仕掛品の選択を検証して、指示書の工程を組み替える（作成・編集の共通）。
+ * 何も選んでいなければ start = null。規則は lib/work-order-wip.ts と
+ * lib/wip-state-core.ts — ここは失敗を画面の言葉へ直すだけ。
+ */
+async function resolveWipStartForInput(
+  v: WorkOrderInput,
+  steps: readonly StepInput[],
+  itemId: number,
+  excludeWorkOrderId: string | null,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Promise<
+  { ok: false; error: string } | { ok: true; start: ResolvedWipStart | null }
+> {
+  const resolved = await resolveWipStart({
+    type: v.type,
+    itemId,
+    steps,
+    draws: v.wipDraws,
+    overrideReason: v.wipOverrideReason,
+    redoStepIds: v.wipRedoStepIds,
+    excludeWorkOrderId,
+  });
+  if (resolved == null) return { ok: true, start: null };
+  if (!("error" in resolved)) return { ok: true, start: resolved };
+  const e = resolved.error;
+  if (e.kind === "onlyManufacture") {
+    return {
+      ok: false,
+      error: tr("production.workOrderActions.wipDrawOnlyManufacture"),
+    };
+  }
+  if (e.kind === "semiIssueStepMissing") {
+    return {
+      ok: false,
+      error: tr("production.workOrderActions.wipSemiIssueStepMissing"),
+    };
+  }
+  const DRAW_ISSUE_KEY = {
+    notACandidate: "production.workOrderActions.wipDrawNotACandidate",
+    duplicate: "production.workOrderActions.wipDrawDuplicate",
+    quantityInvalid: "production.workOrderActions.wipDrawQuantityInvalid",
+    quantityExceedsAvailable:
+      "production.workOrderActions.wipDrawQuantityExceedsAvailable",
+    mixedStates: "production.workOrderActions.wipDrawMixedStates",
+    overrideReasonRequired:
+      "production.workOrderActions.wipDrawOverrideReasonRequired",
+  } as const;
+  return { ok: false, error: tr(DRAW_ISSUE_KEY[e.issue]) };
+}
+
+/** 監査行に残す「仕掛品から始める」の中身（無ければ null）。 */
+function wipStartAudit(start: ResolvedWipStart | null) {
+  if (!start) return null;
+  return {
+    startWipStateId: start.startWipStateId,
+    draws: start.draws,
+    skippedStepIds: start.skippedStepIds,
+    overrideReason: start.overrideReason,
+  };
+}
+
 export async function createWorkOrder(
   payload: WorkOrderInput,
 ): Promise<ActionResult<{ workOrderNumber: number; docNumber: string }>> {
@@ -771,8 +858,9 @@ export async function createWorkOrder(
       tr,
     );
     if (!regrind.ok) return actionError(regrind.error);
-    const built = await validateAndOrderSteps(regrind.steps, v.type);
-    if (!built.ok) return actionError(built.error);
+    // 工程の**全体**（仕掛品で飛ばす前）。工程リストの版はここから決める。
+    const builtFull = await validateAndOrderSteps(regrind.steps, v.type);
+    if (!builtFull.ok) return actionError(builtFull.error);
     const target = await resolveWorkOrderTarget(v, tr);
     if (typeof target === "string") return actionError(target);
     // 再研磨は顧客の工具を返すので完成品の保管場所を持たない。
@@ -784,11 +872,29 @@ export async function createWorkOrder(
     if (externalError) return actionError(externalError);
     const designError = await validateDesignFile(v.designFileId, itemId, tr);
     if (designError) return actionError(designError);
+    // 在庫の仕掛品から始める指示書: 済んでいる工程を落とし、開始工程を半製品出しへ。
+    const wip = await resolveWipStartForInput(
+      v,
+      regrind.steps,
+      itemId,
+      null,
+      tr,
+    );
+    if (!wip.ok) return actionError(wip.error);
+    const wipStart = wip.start;
+    const built = wipStart
+      ? await validateAndOrderSteps(wipStart.steps, v.type, undefined, {
+          satisfiedStepIds: wipStart.satisfiedStepIds,
+        })
+      : builtFull;
+    if (!built.ok) return actionError(built.error);
     const actor = await getCurrentActorId();
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
     // 書類番号は DB が払い出す — 作った行から読み戻す。
     let docNumber = "";
-    const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
+    // 仕掛品から始める指示書は素材を使わない（素材の予約も取らない）。
+    const materialItemId =
+      v.type === "MANUFACTURE" && !wipStart ? v.materialItemId : null;
     const resolvedVersions = await prisma.$transaction(async (tx) => {
       // 工程構成 → ルートバージョン解決（変更があれば新バージョンを自動保存）
       const resolved = await resolveRouteVersionsTx(tx, {
@@ -796,7 +902,7 @@ export async function createWorkOrder(
         prepRouteVersionId: prep.prepRouteVersionId,
         regrindRouteVersionId: regrind.regrindRouteVersionId,
         type: v.type,
-        steps: built.creates,
+        steps: builtFull.creates,
         actor,
         itemId,
         tr,
@@ -820,6 +926,15 @@ export async function createWorkOrder(
           designFileId: v.designFileId ?? null,
           routeVersionId: resolved.routeVersionId,
           prepRouteVersionId: resolved.prepRouteVersionId,
+          startWipStateId: wipStart?.startWipStateId ?? null,
+          wipOverrideReason: wipStart?.overrideReason ?? null,
+          wipDraws: {
+            create: (wipStart?.draws ?? []).map((d, i) => ({
+              inventoryId: d.inventoryId,
+              quantity: d.quantity,
+              sortOrder: i,
+            })),
+          },
           status: "DRAFT",
           approvalStatus: "NONE",
           notes: v.notes.trim() || null,
@@ -848,7 +963,12 @@ export async function createWorkOrder(
           created.steps.map((s) => [s.processStepId, s.id]),
         );
         const rows = v.plans.flatMap((p) => {
-          const stepId = stepIdByProcess.get(p.processStepId);
+          // 半製品出しへ差し替えた開始工程の計画は、半製品出しへ付け替える。
+          const processStepId =
+            wipStart && p.processStepId === wipStart.replacedStartStepId
+              ? wipStart.semiIssueStepId
+              : p.processStepId;
+          const stepId = stepIdByProcess.get(processStepId);
           if (!stepId) return [];
           return [
             {
@@ -895,6 +1015,7 @@ export async function createWorkOrder(
           0,
         ),
         planCount: v.plans.length,
+        wipStart: wipStartAudit(wipStart),
       },
     });
     revalidate(workOrderNumber);
@@ -951,8 +1072,9 @@ export async function updateWorkOrder(
       tr,
     );
     if (!regrind.ok) return actionError(regrind.error);
-    const built = await validateAndOrderSteps(regrind.steps, v.type);
-    if (!built.ok) return actionError(built.error);
+    // 工程の**全体**（仕掛品で飛ばす前）。工程リストの版はここから決める。
+    const builtFull = await validateAndOrderSteps(regrind.steps, v.type);
+    if (!builtFull.ok) return actionError(builtFull.error);
     const target = await resolveWorkOrderTarget(v, tr, workOrderNumber);
     if (typeof target === "string") return actionError(target);
     // 再研磨は顧客の工具を返すので完成品の保管場所を持たない。
@@ -964,8 +1086,25 @@ export async function updateWorkOrder(
     if (externalError) return actionError(externalError);
     const designError = await validateDesignFile(v.designFileId, itemId, tr);
     if (designError) return actionError(designError);
+    const wip = await resolveWipStartForInput(
+      v,
+      regrind.steps,
+      itemId,
+      prior.id,
+      tr,
+    );
+    if (!wip.ok) return actionError(wip.error);
+    const wipStart = wip.start;
+    const built = wipStart
+      ? await validateAndOrderSteps(wipStart.steps, v.type, undefined, {
+          satisfiedStepIds: wipStart.satisfiedStepIds,
+        })
+      : builtFull;
+    if (!built.ok) return actionError(built.error);
     const actor = await getCurrentActorId();
-    const materialItemId = v.type === "MANUFACTURE" ? v.materialItemId : null;
+    // 仕掛品から始める指示書は素材を使わない（素材の予約も取らない）。
+    const materialItemId =
+      v.type === "MANUFACTURE" && !wipStart ? v.materialItemId : null;
     let plansKept = 0;
     let plansDropped = 0;
 
@@ -975,7 +1114,7 @@ export async function updateWorkOrder(
         prepRouteVersionId: prep.prepRouteVersionId,
         regrindRouteVersionId: regrind.regrindRouteVersionId,
         type: v.type,
-        steps: built.creates,
+        steps: builtFull.creates,
         actor,
         itemId,
         tr,
@@ -1025,6 +1164,10 @@ export async function updateWorkOrder(
       await tx.workOrderOrderLine.deleteMany({
         where: { workOrderId: prior.id },
       });
+      // 投入する仕掛品も選び直し（下書きなので予約はまだ無い）。
+      await tx.workOrderWipDraw.deleteMany({
+        where: { workOrderId: prior.id },
+      });
       const updated = await tx.workOrder.update({
         where: { id: prior.id },
         data: {
@@ -1037,6 +1180,15 @@ export async function updateWorkOrder(
           designFileId: v.designFileId ?? null,
           routeVersionId: resolved.routeVersionId,
           prepRouteVersionId: resolved.prepRouteVersionId,
+          startWipStateId: wipStart?.startWipStateId ?? null,
+          wipOverrideReason: wipStart?.overrideReason ?? null,
+          wipDraws: {
+            create: (wipStart?.draws ?? []).map((d, i) => ({
+              inventoryId: d.inventoryId,
+              quantity: d.quantity,
+              sortOrder: i,
+            })),
+          },
           notes: v.notes.trim() || null,
           history: toHistoryJson(
             appendHistory(prior.history, entry("UPDATE", actor)),
@@ -1092,6 +1244,7 @@ export async function updateWorkOrder(
         storageLocationId: prior.storageLocationId,
         allowQuantityVariance: prior.allowQuantityVariance,
         routeVersionId: prior.routeVersionId,
+        startWipStateId: prior.startWipStateId,
       },
       after: {
         allocations: v.allocations,
@@ -1105,6 +1258,7 @@ export async function updateWorkOrder(
         stepCount: built.creates.length,
         plansKept,
         plansDropped,
+        wipStart: wipStartAudit(wipStart),
       },
     });
     const docNumber = formatDocNumber("WOR", prior);
@@ -1231,6 +1385,7 @@ export async function copyWorkOrder(
           },
         },
         stepLinks: { select: STEP_LINK_STATE_SELECT },
+        startWipState: { select: { stepIds: true } },
       },
     });
     if (!source)
@@ -1261,7 +1416,16 @@ export async function copyWorkOrder(
           (t) => t.inspectionTemplateId,
         ),
       }));
-    const built = await validateAndOrderSteps(composition, source.type);
+    // 仕掛品から始めた指示書の複写は、開始状態（済んでいた工程）を引き継ぐ —
+    // 工程は飛ばした形のまま複写されるので、引き継がないと「済んでいる工程が
+    // 無い」構成になる。**投入する仕掛品そのものは引き継がない**（同じバケットは
+    // 元の指示書が使う）。複写した下書きを編集して選び直す。
+    const built = await validateAndOrderSteps(
+      composition,
+      source.type,
+      undefined,
+      { satisfiedStepIds: source.startWipState?.stepIds ?? [] },
+    );
     if (!built.ok) return actionError(built.error);
     if (!targetOrderLineId && source.type === "FROM_STOCK") {
       return actionError(
@@ -1354,6 +1518,8 @@ export async function copyWorkOrder(
           approvalStatus: "NONE",
           sourceWorkOrderId: source.id,
           routeVersionId: source.routeVersionId,
+          startWipStateId: source.startWipStateId,
+          wipOverrideReason: source.wipOverrideReason,
           notes: source.notes,
           createdBy: actor,
           history: toHistoryJson([
@@ -1768,6 +1934,34 @@ async function applyFinalWorkOrderApproval(args: {
       );
     }
   }
+  // 仕掛品の予約: 投入に選んだ仕掛品（work_order_wip_draws）を RESERVE —
+  // 在庫管理の仕掛品タブと、ほかの指示書の「使える仕掛品」から空きが減る。
+  // 足りるかどうかは承認の前に確かめてある（wipDrawShortageMessage）。ここで
+  // 足りなくなるのは、その後に別の指示書が先に承認された一瞬の競合だけ —
+  // 承認は既に確定済みなので止めず、記録だけ残す（完了のときは選んだバケットの
+  // 空きから落とす）。
+  let wipReserved: number | null = null;
+  const wipDrawCount = await prisma.workOrderWipDraw.count({
+    where: { workOrderId: prior.id },
+  });
+  if (wipDrawCount > 0) {
+    try {
+      const { reserveWipDrawsTx } = await import("@/lib/inventory");
+      wipReserved = await prisma.$transaction(async (tx) => {
+        const openMovement = movementOpener(tx, {
+          cause: "STOCK_RESERVATION",
+          sourceType: "work_orders",
+          sourceId: String(workOrderNumber),
+        });
+        return reserveWipDrawsTx(tx, openMovement, {
+          id: prior.id,
+          workOrderNumber,
+        });
+      });
+    } catch (err) {
+      console.error(tr("production.workOrderActions.wipReserveFailedLog"), err);
+    }
+  }
   await recordAudit({
     action: "UPDATE",
     tableName: "work_orders",
@@ -1777,7 +1971,33 @@ async function applyFinalWorkOrderApproval(args: {
       status: "APPROVED",
       approvalStatus: "APPROVED",
       ...(auditNote ? { note: auditNote } : {}),
+      ...(wipDrawCount > 0 ? { wipDrawsReserved: wipReserved } : {}),
     },
+  });
+}
+
+/**
+ * 投入に選んだ仕掛品がいま足りるか。足りなければ画面に出す文を返す（足りれば null）。
+ *
+ * 承認依頼と承認の**前**に確かめる — 承認の記録を書いてから足りないと分かると、
+ * 承認フローは閉じたのに指示書は承認済みにならない、という戻せない状態になる。
+ */
+async function wipDrawShortageMessage(
+  workOrderId: string,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Promise<string | null> {
+  const { wipDrawShortages } = await import("@/lib/inventory");
+  const shortages = await wipDrawShortages(prisma, workOrderId);
+  if (shortages.length === 0) return null;
+  return tr("production.workOrderActions.wipDrawNoLongerAvailable", {
+    details: shortages
+      .map((s) =>
+        tr("production.workOrderActions.wipDrawShortageDetail", {
+          requested: s.requested,
+          available: s.available,
+        }),
+      )
+      .join(tr("common.s1")),
   });
 }
 
@@ -1854,6 +2074,9 @@ export async function requestApproval(
         }),
       );
     }
+    // 投入に選んだ仕掛品がもう足りないなら、依頼を出す前に止める（選び直す）。
+    const wipShortage = await wipDrawShortageMessage(prior.id, tr);
+    if (wipShortage) return actionError(wipShortage);
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
     const need = await approvalNeed("work_orders");
     if (need.kind === "blocked") return actionError(need.error);
@@ -1984,6 +2207,10 @@ export async function approveWorkOrder(
     if (prior.approvalStatus !== "PENDING") {
       return actionError(tr("production.workOrderActions.notPendingApproval"));
     }
+    // 投入に選んだ仕掛品がもう足りないなら、承認の記録を書く前に止める
+    // （差し戻して選び直してもらう）。
+    const wipShortage = await wipDrawShortageMessage(prior.id, tr);
+    if (wipShortage) return actionError(wipShortage);
     // 承認権限（本人 or 代理）を検証しつつ承認記録を書き、段を進める。
     const acted = await actOnCurrentStep({
       targetType: "work_orders",
@@ -2139,6 +2366,42 @@ export async function rejectWorkOrder(
 }
 
 // ── ビルダー補助 ─────────────────────────────────────────────────────────────
+
+/**
+ * 指示書ビルダーの「使える仕掛品」— 製品に使える在庫の仕掛品の候補。
+ *
+ * `stepIds` = いま組んである工程の全体（準備 + 製造。飛ばす前）。突合の規則は
+ * lib/wip-state-core.ts matchWip、行の読み出しは在庫管理の仕掛品タブと同じ。
+ */
+export async function getWipCandidatesForWorkOrder(input: {
+  itemId: number;
+  stepIds: number[];
+  /** 編集中の指示書（自分の選択を「ほかの指示書の選択」に数えない）。 */
+  workOrderNumber?: number | null;
+}): Promise<WipCandidatesView | null> {
+  if (!(await checkPermission("work_order", "READ")).ok) return null;
+  const parsed = z
+    .object({
+      itemId: z.number().int().positive(),
+      stepIds: z.array(z.number().int().positive()).max(500),
+      workOrderNumber: z.number().int().positive().nullable().optional(),
+    })
+    .safeParse(input);
+  if (!parsed.success) return null;
+  const own =
+    parsed.data.workOrderNumber != null
+      ? await prisma.workOrder.findUnique({
+          where: { workOrderNumber: parsed.data.workOrderNumber },
+          select: { id: true },
+        })
+      : null;
+  const { view } = await loadWipCandidates({
+    itemId: parsed.data.itemId,
+    stepIds: parsed.data.stepIds,
+    excludeWorkOrderId: own?.id ?? null,
+  });
+  return view;
+}
 
 /** 注文明細選択時の情報取得（製品・数量表示 + 予定数量の既定値）。 */
 export async function getOrderLineInfo(

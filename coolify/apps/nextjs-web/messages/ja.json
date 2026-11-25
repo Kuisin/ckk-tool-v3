@@ -3293,6 +3293,17 @@
       "invalidTarget": "対象が不正です",
       "materialReserveFailedLog": "[work-order] 素材予約に失敗: ",
       "materialReserveNote": "指示書 #{number} 承認による素材予約",
+      "wipReserveFailedLog": "[work-order] 仕掛品の予約に失敗: ",
+      "wipDrawOnlyManufacture": "仕掛品を投入できるのは製造分の指示書だけです",
+      "wipSemiIssueStepMissing": "工程マスタに「半製品出し」がありません（無効になっていないか確認してください）",
+      "wipDrawNotACandidate": "選んだ仕掛品は、もうこの製品に使える候補にありません。選び直してください",
+      "wipDrawDuplicate": "同じ仕掛品が 2 回選ばれています",
+      "wipDrawQuantityInvalid": "仕掛品の投入数は 1 以上の整数で入力してください",
+      "wipDrawQuantityExceedsAvailable": "仕掛品の投入数が利用可能数を超えています",
+      "wipDrawMixedStates": "加工状態の違う仕掛品は 1 枚の指示書に混ぜられません",
+      "wipDrawOverrideReasonRequired": "加工状態が合わない仕掛品を使う理由を入力してください",
+      "wipDrawNoLongerAvailable": "投入に選んだ仕掛品がもう足りません（{details}）。指示書を編集して選び直してください",
+      "wipDrawShortageDetail": "必要 {requested} 本に対して利用可能 {available} 本",
       "notPendingApproval": "承認依頼中の指示書ではありません",
       "orderLineFullyAllocated": "注文明細 {number} は受注数量まで手配済みです（残 0）",
       "orderLineNotFound": "対象の注文明細が見つかりません",
@@ -3664,6 +3675,75 @@
         "pathChoiceRequired": "品物が通ってきた経路を選択してください",
         "pathChoiceInvalid": "選択した経路がこの工程の候補にありません。画面を読み込み直してください"
       }
+    },
+    "wipDraw": {
+      "title": "使える仕掛品",
+      "description": "在庫に置いてある仕掛品のうち、この製品の続きに使えるものです。選ぶと、その加工状態で済んでいる工程を飛ばし、半製品出しから始まる指示書になります。目標製品が違う仕掛品も使えます。",
+      "group": {
+        "exact": {
+          "title": "ちょうど",
+          "description": "径も長さも同じ仕掛品"
+        },
+        "longer": {
+          "title": "長い",
+          "description": "径は同じで長い仕掛品（切って使う）"
+        },
+        "largerDiameter": {
+          "title": "太い",
+          "description": "径が太い仕掛品（削って使う。長さは足りている）"
+        },
+        "other": {
+          "title": "加工状態が合わない",
+          "description": "寸法は使えるが、済んだ工程がこの製品の工程の先頭部分になっていない"
+        }
+      },
+      "available": "利用可能数",
+      "reservedNote": "予約 {count}",
+      "pendingElsewhere": "ほかの指示書が {count} 本を選択中（未承認）",
+      "blankSize": "ブランク {size}",
+      "skippedSteps": "飛ばす工程",
+      "noSkip": "飛ばす工程はありません",
+      "drawQuantity": "投入数（本）",
+      "selectRow": "ロット {lot} の仕掛品を投入する",
+      "mixedStatesHint": "加工状態の違う仕掛品は 1 枚の指示書に混ぜられません",
+      "notPermitted": "在庫を閲覧する権限がないため、仕掛品の候補を表示できません。",
+      "productNotReady": "この製品には要求素材（材種・径・長）が設定されていないため、使える仕掛品を探せません。",
+      "empty": "この製品に使える仕掛品は在庫にありません。",
+      "onlyOther": "加工状態がこの製品の工程に合う仕掛品はありません。",
+      "showOther": "加工状態が合わない仕掛品（{count} 件）を表示",
+      "hideOther": "加工状態が合わない仕掛品を隠す",
+      "otherWarning": "これらの仕掛品は、この製品の工程に無い加工が済んでいるか、工程の順序が違います。使うには現物を確かめたうえで理由を入力してください（操作履歴に残ります）。",
+      "summary": "投入 {total} 本 / 予定数量 {planned} 本",
+      "lessThanPlanned": "予定数量より少ない",
+      "moreThanPlanned": "予定数量より多い",
+      "startsFromSemiIssue": "この指示書は半製品出しから始まります。使用素材は使いません（素材の予約も取りません）。選んだ仕掛品は承認のときに予約され、完了のときに在庫から落ちます。",
+      "willSkip": "仕掛品で済んでいるので、この指示書では行わない工程",
+      "redo": "もう一度行う工程",
+      "redoHelp": "仕掛品では済んでいるが、この指示書でも行う工程（長い仕掛品を切り直す、など）。",
+      "oversizeHint": "長い・太い仕掛品を選んでいます。寸法を合わせる工程（切断・研削）がこの指示書に残っているか確かめてください。済んでいる工程でやり直すものは「もう一度行う工程」で選びます。",
+      "overrideReason": "加工状態が合わない仕掛品を使う理由",
+      "overrideReasonHelp": "操作履歴に残り、承認者にも表示されます。",
+      "missingSelection": "選んでいた仕掛品のうち {count} 件が、もう候補にありません（在庫が無くなったか、工程の構成が変わりました）。",
+      "dropMissing": "選択から外す",
+      "skippedBadge": "仕掛品で済み",
+      "fixBeforeSaving": "「使える仕掛品」の選択に不備があります。赤い表示を解消してください。",
+      "issue": {
+        "notACandidate": "候補に無い仕掛品が選ばれています",
+        "duplicate": "同じ仕掛品が 2 回選ばれています",
+        "quantityInvalid": "投入数は 1 以上の整数で入力してください",
+        "quantityExceedsAvailable": "投入数が利用可能数を超えています",
+        "mixedStates": "加工状態の違う仕掛品は 1 枚の指示書に混ぜられません",
+        "overrideReasonRequired": "理由を入力してください"
+      },
+      "startState": "開始状態",
+      "startStateHelp": "在庫の仕掛品から始める指示書です。この加工状態で済んでいる工程は行いません。",
+      "skippedInThisOrder": "飛ばした工程",
+      "drawsTitle": "投入する仕掛品",
+      "drawLine": "{blank} ／ ロット {lot} ／ {quantity} 本",
+      "drawAimed": "目標製品: {product}",
+      "drawReserved": "予約済 {count} 本",
+      "drawNotReserved": "未予約（承認のときに予約します）",
+      "overrideReasonLabel": "加工状態が合わない仕掛品を使う理由: {reason}"
     }
   },
   "purchase": {
@@ -9781,6 +9861,10 @@
     "fromStockScrapped": "指示書 #{workOrderNumber} 在庫分の廃棄",
     "semiFinishedConsumed": "指示書 #{workOrderNumber} 半製品出し（ロット #{workOrderNumber} へ付け替え）",
     "semiFinishedScrapped": "指示書 #{workOrderNumber} 半製品出しの廃棄",
+    "wipDrawReserved": "指示書 #{workOrderNumber} 承認による仕掛品の予約",
+    "wipDrawReservationReleased": "指示書 #{workOrderNumber} 完了による仕掛品の予約解除",
+    "wipDrawConsumed": "指示書 #{workOrderNumber} 仕掛品の投入（ロット #{workOrderNumber} へ付け替え）",
+    "wipDrawScrapped": "指示書 #{workOrderNumber} 投入した仕掛品の廃棄",
     "outsourceIssued": "指示書 #{workOrderNumber} 外注へ出し（預け在庫へ）",
     "outsourceReturned": "指示書 #{workOrderNumber} 外注から戻り",
     "outsourceReturnedOnCompletion": "指示書 #{workOrderNumber} 完了により外注から戻し",

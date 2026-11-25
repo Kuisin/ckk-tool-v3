@@ -43,6 +43,10 @@
     "unplanned": "Unassigned",
     "plannedForOthers": "Planned for another operator",
     "notExecutable": "This work order is not approved/in progress, so steps cannot be operated",
+    "startState": "Start state",
+    "startStateUnprocessed": "Unprocessed",
+    "startStateSkipped": "Steps already done in the WIP and not performed: {names}",
+    "startStateNoSkip": "Starts from WIP in stock (no steps are skipped)",
     "backToWorkOrder": "Back to work order",
     "status": {
       "DRAFT": "Draft",
