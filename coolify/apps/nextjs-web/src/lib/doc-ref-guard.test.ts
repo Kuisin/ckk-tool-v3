@@ -83,6 +83,8 @@ const ALLOWED: Record<string, string> = {
   "app/(dashboard)/production/work-orders/actions.ts":
     "指示書はロット番号（通し連番）で指す — 法人をまたいで重ならない",
   "app/api/attachments/[id]/route.ts": "添付の id（uuid）で引くだけ",
+  "lib/work-order-aborts.ts":
+    "打ち切りの適用で、保留中の工程フロー変更（uuid）の承認依頼を取り下げるだけ",
 };
 
 describe("polymorphic document references go through docRef", () => {

@@ -823,7 +823,8 @@
     "issuingCompanyDesc": "The own company that issues this document. It cannot be changed after creation",
     "issuingCompanyNotAllowed": "You cannot create documents for the selected issuing company. Select an own company your sites belong to",
     "selectIssuingCompany": "Select the issuing company",
-    "selectIssuingCompanyDesc": "More than one issuing company has a document with this number. Select the issuing company of the document to open."
+    "selectIssuingCompanyDesc": "More than one issuing company has a document with this number. Select the issuing company of the document to open.",
+    "workOrderAbort": "Work order close-out"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -1180,7 +1181,8 @@
       "APPROVE_1ST": "First approval",
       "APPROVE_2ND": "Second approval",
       "REJECT": "Sent back",
-      "CANCEL": "Cancelled"
+      "CANCEL": "Cancelled",
+      "ABORT": "Closed out"
     },
     "DESIGN_HISTORY_ACTION_LABEL": {
       "CREATE": "Created",
@@ -1236,7 +1238,8 @@
       "STOCK_RESERVATION": "Stock reservation",
       "RESERVATION_RELEASE": "Reservation released",
       "ADJUSTMENT": "Adjustment",
-      "OTHER": "Unknown (pre-migration)"
+      "OTHER": "Unknown (pre-migration)",
+      "WORK_ORDER_ABORT": "Work order close-out"
     },
     "TRANSACTION_TYPE_LABEL": {
       "IN": "In",
@@ -3744,6 +3747,56 @@
       "drawReserved": "{count} pcs reserved",
       "drawNotReserved": "Not reserved (reserved on approval)",
       "overrideReasonLabel": "Reason for using WIP whose processing state does not match: {reason}"
+    },
+    "workOrderAbort": {
+      "menu": "Close out",
+      "title": "Close out work order",
+      "description": "Stop this work order in progress and return the good parts in the flow to stock as WIP. Parts not returned are recorded as scrapped. The work order becomes closed out (cancelled) and its order lines go back to not planned.",
+      "noPositions": "There are no good parts in the flow. Closing out returns nothing to stock and only ends the work order.",
+      "inStep": "In step",
+      "waiting": "Waiting",
+      "waitingBetween": "{from} → {to}",
+      "atPosition": "{quantity} pcs",
+      "returnQuantity": "Return to stock as WIP",
+      "scrapQuantity": "Scrapped",
+      "scrapHint": "Parts not returned are recorded as scrapped",
+      "reason": "Reason for close-out",
+      "reasonPlaceholder": "e.g. order cancelled, drawing changed",
+      "approvalNote": "If the approval settings have steps for work order close-out, it is applied after approval. Otherwise it is applied right away.",
+      "confirm": "Close out",
+      "appliedToast": "Closed out",
+      "appliedToastMessage": "The parts in the flow were returned to stock as WIP",
+      "requestedToast": "Close-out requested",
+      "requestedToastMessage": "It is applied once approved",
+      "appliedTitle": "Closed out",
+      "appliedDescription": "Closed out on {at}. Reason: {reason}. Returned as WIP: {returned} pcs / scrapped: {scrap} pcs.",
+      "failedTitle": "Could not apply the close-out",
+      "failedDescription": "{error} The work order is still in progress. Request the close-out again for the current state.",
+      "pendingTitle": "Close-out pending approval",
+      "approvalTitle": "Approve close-out",
+      "pendingDescription": "Requested by {requestedBy} ({stepLabel}). Reason: {reason}. Return as WIP: {returned} pcs / scrap: {scrap} pcs. The work order stays in progress until approved.",
+      "rejectTitle": "Send back the close-out",
+      "rejectHelp": "Sending it back closes the request and the work order continues.",
+      "rejectedToastMessage": "The work order is still in progress",
+      "abortedBadge": "Closed out",
+      "pendingBadge": "Close-out pending approval",
+      "reasonRequired": "Enter the reason for the close-out",
+      "positionsChanged": "The steps have changed. Reload the page",
+      "quantityMismatch": "Make the returned and scrapped quantities add up to the quantity at that point",
+      "block": {
+        "notInProgress": "Only a work order in progress can be closed out",
+        "typeNotAbortable": "Only a manufacture work order can be closed out",
+        "pending": "A close-out of this work order is pending approval"
+      },
+      "requestedNote": "Close-out requested (reason: {reason})",
+      "notFound": "Close-out request not found",
+      "alreadyProcessed": "This close-out request has already been processed",
+      "payloadBroken": "The close-out request could not be read",
+      "premiseChanged": "Not applied because the steps moved on after the request ({count} differences).",
+      "applyFailedNote": "Could not apply the close-out: {error}",
+      "appliedNote": "Closed out (reason: {reason}) — returned as WIP: {returned} pcs / scrapped: {scrap} pcs",
+      "applyFailedShort": "Could not close out",
+      "rejectedNote": "Close-out request sent back (reason: {reason})"
     }
   },
   "purchase": {
@@ -9932,7 +9985,9 @@
     "finalInspectionShipmentAuthorized": "Pre-shipment check: recorded shipment authorized by",
     "finalInspectionShipDefectReviewed": "Recorded the checked-by stamp for defects at shipping",
     "inspectionApproved": "Approved the inspection record",
-    "stockTakeAdjusted": "Stocktaking adjustment (on hand {book} → counted {counted})"
+    "stockTakeAdjusted": "Stocktaking adjustment (on hand {book} → counted {counted})",
+    "workOrderAbortedWip": "Work order #{workOrderNumber} — WIP received on close-out",
+    "workOrderAbortedReservationReleased": "Work order #{workOrderNumber} — reservation released on close-out"
   },
   "workflowCore": {
     "quantityLabels": {

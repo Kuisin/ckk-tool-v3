@@ -68,6 +68,11 @@ import {
   prismaErrorMessage,
 } from "@/lib/server-action";
 import { workLocationsConfigured } from "@/lib/work-locations";
+import {
+  applyWorkOrderAbort,
+  closeWorkOrderAbort,
+  submitWorkOrderAbort,
+} from "@/lib/work-order-aborts";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import {
   type AllocationInput,
@@ -2878,6 +2883,176 @@ export async function rejectFlowChange(
       },
     });
     revalidate(change.workOrder.workOrderNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, tr("common.couldNotSendItBack"), tr),
+    );
+  }
+}
+
+// ── 打ち切り（進行中の指示書を止め、品を仕掛品として在庫へ戻す） ──────────
+//
+// 対象は指示書ではなく「申請」（work_order_aborts の id）。段数・承認者は
+// 承認設定（MS0B）の「指示書の打ち切り」フローが決め、段が無ければ申請と
+// 同時に適用する（lib/work-order-aborts.ts）。理由は常に必須。
+
+const abortInputSchema = z.object({
+  key: z.string().min(1).max(200),
+  returnQuantity: z.number().int().min(0),
+  scrapQuantity: z.number().int().min(0),
+  pathStepIds: z.array(z.number().int().positive()).nullable().optional(),
+  finishedDiameterMm: z.number().positive().nullable().optional(),
+  finishedLengthMm: z.number().positive().nullable().optional(),
+});
+
+/** 打ち切りを申請する（承認設定に段が無ければその場で適用）。 */
+export async function requestWorkOrderAbort(
+  workOrderNumber: number,
+  reason: string,
+  inputs: unknown,
+): Promise<ActionResult<{ pending: boolean; applied: boolean }>> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
+    return actionError(tr("common.scopeDenied"));
+  }
+  const parsed = z.array(abortInputSchema).max(500).safeParse(inputs);
+  if (!parsed.success) {
+    return actionError(tr("production.workOrderAbort.quantityMismatch"));
+  }
+  const wo = await prisma.workOrder.findUnique({
+    where: { workOrderNumber },
+    select: { id: true },
+  });
+  if (!wo)
+    return actionError(tr("production.workOrderActions.workOrderNotFound"));
+  try {
+    const result = await submitWorkOrderAbort({
+      workOrderId: wo.id,
+      reason: reason ?? "",
+      inputs: parsed.data,
+    });
+    revalidate(workOrderNumber);
+    if (!result.ok) {
+      return actionError(
+        result.errors?.join(" / ") ??
+          tr("production.workOrderAbort.applyFailedShort"),
+      );
+    }
+    return actionOk({
+      pending: result.pending === true,
+      applied: result.applied === true,
+    });
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("production.workOrderAbort.applyFailedShort"),
+        tr,
+      ),
+    );
+  }
+}
+
+async function abortTarget(abortId: string) {
+  return prisma.workOrderAbort.findUnique({
+    where: { id: abortId },
+    select: {
+      status: true,
+      workOrder: { select: { workOrderNumber: true } },
+    },
+  });
+}
+
+/** 打ち切りを承認する。最終承認なら、その場で適用する。 */
+export async function approveWorkOrderAbort(
+  abortId: string,
+): Promise<ActionResult<{ completed: boolean; applied: boolean }>> {
+  const tr = await getTranslations();
+  const authz = await checkApprovalDocAccess("work_order");
+  if (!authz.ok) return actionError(authz.error);
+  const target = await abortTarget(abortId);
+  if (!target) return actionError(tr("production.workOrderAbort.notFound"));
+  if (target.status !== "PENDING") {
+    return actionError(tr("production.workOrderAbort.alreadyProcessed"));
+  }
+  const workOrderNumber = target.workOrder.workOrderNumber;
+  if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
+    return actionError(tr("common.scopeDenied"));
+  }
+  try {
+    const acted = await actOnCurrentStep({
+      targetType: "work_order_aborts",
+      targetId: abortId,
+      action: "APPROVED",
+    });
+    if (!acted.ok)
+      return actionError(
+        acted.error ??
+          tr("production.workOrderActions.approvePermissionDeniedFallback"),
+      );
+    if (!acted.flowCompleted) {
+      revalidate(workOrderNumber);
+      return actionOk({ completed: false, applied: false });
+    }
+    // 最終承認 — いまの工程の状態で突き合わせてから適用する（崩れていれば
+    // FAILED として残り、ここではその理由を返す）。
+    const applied = await applyWorkOrderAbort(abortId);
+    revalidate(workOrderNumber);
+    if (!applied.ok) {
+      return actionError(
+        applied.errors?.join(" / ") ??
+          tr("production.workOrderAbort.applyFailedShort"),
+      );
+    }
+    return actionOk({ completed: true, applied: true });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
+  }
+}
+
+/** 打ち切りを差し戻す（指示書は進行中のまま）。 */
+export async function rejectWorkOrderAbort(
+  abortId: string,
+  reason: string,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkApprovalDocAccess("work_order");
+  if (!authz.ok) return actionError(authz.error);
+  if (!reason.trim()) return actionError(tr("common.enterAReasonForSendingIt"));
+  const target = await abortTarget(abortId);
+  if (!target) return actionError(tr("production.workOrderAbort.notFound"));
+  if (target.status !== "PENDING") {
+    return actionError(tr("production.workOrderAbort.alreadyProcessed"));
+  }
+  const workOrderNumber = target.workOrder.workOrderNumber;
+  if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
+    return actionError(tr("common.scopeDenied"));
+  }
+  try {
+    const acted = await actOnCurrentStep({
+      targetType: "work_order_aborts",
+      targetId: abortId,
+      action: "REJECTED",
+      comment: reason,
+    });
+    if (!acted.ok)
+      return actionError(
+        acted.error ??
+          tr("production.workOrderActions.rejectPermissionDeniedFallback"),
+      );
+    await closeWorkOrderAbort(abortId, "REJECTED");
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(workOrderNumber),
+      after: {
+        note: tr("production.workOrderAbort.rejectedNote", { reason }),
+      },
+    });
+    revalidate(workOrderNumber);
     return actionOk();
   } catch (e) {
     return actionError(

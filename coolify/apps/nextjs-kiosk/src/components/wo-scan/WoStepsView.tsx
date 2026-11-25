@@ -112,7 +112,14 @@ export function WoStepsView({
                 size="lg"
                 variant="light"
               >
-                {statusLabel(overview.status)}
+                {overview.abort === "ABORTED"
+                  ? m.woScan.aborted
+                  : statusLabel(overview.status)}
+              </Badge>
+            )}
+            {overview?.abort === "PENDING" && (
+              <Badge color="yellow" size="lg" variant="light">
+                {m.woScan.abortPending}
               </Badge>
             )}
           </Group>
@@ -230,6 +237,11 @@ export function WoStepsView({
             {!executable && (
               <Alert color="orange" icon={<IconAlertTriangle size={20} />}>
                 {m.woScan.notExecutable}
+              </Alert>
+            )}
+            {overview.abort === "PENDING" && (
+              <Alert color="yellow" icon={<IconAlertTriangle size={20} />}>
+                {m.woScan.abortPendingNote}
               </Alert>
             )}
 
