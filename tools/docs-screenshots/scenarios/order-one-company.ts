@@ -168,6 +168,15 @@ export const orderOneCompany: Scenario = {
         await s.click(options);
         const labels = await s.page.getByRole("option").allInnerTexts();
         s.check("選べるのは自分の所属拠点の法人（CKK と TSP）", labels.length === 2 && labels.some((l) => l.startsWith("CKK ")) && labels.some((l) => l.startsWith("TSP ")), labels.join(" / "));
+        await s.page.keyboard.press("Escape");
+
+        // 一覧では、番号の隣の発行会社バッジでどちらの法人の書類かが読める。
+        await s.goto("/sales/order-acceptances");
+        await s.see(docNumber("ORD"));
+        const tsp = await s.page.locator('tbody [data-doc-company="TSP"]').count();
+        const ckk = await s.page.locator('tbody [data-doc-company="CKK"]').count();
+        s.check("注文請書の一覧に TSP と CKK のバッジが出る（2 社にまたがる人）", tsp > 0 && ckk > 0, `TSP ${tsp} / CKK ${ckk}`);
+        await s.shot("注文請書の一覧 — 発行会社のバッジ（2 社にまたがる人）");
       },
     },
     {
@@ -198,6 +207,14 @@ export const orderOneCompany: Scenario = {
         await s.waitForUrl(docUrl("/sales/quotes", "QOT"));
         await s.see(docNumber("QOT"));
         s.check("欄が無くても、見積書は担当者の法人（CKK）で作られる", idFromUrl(s).startsWith("CKK~QOT-"), p.url());
+        const detailBadges = await p.locator("[data-doc-company]").count();
+        s.check("1 社だけの人の詳細には発行会社のバッジが出ない", detailBadges === 0, `${detailBadges} 個`);
+
+        await s.goto("/sales/quotes");
+        await s.see(docNumber("QOT"));
+        const listCkk = await p.locator('[data-doc-company="CKK"]').count();
+        s.check("1 社だけの人の一覧には、自分の法人（CKK）のバッジは出ない", listCkk === 0, `${listCkk} 個`);
+        await s.shot("見積書の一覧（1 社にしか属さない人）");
       },
     },
   ],
