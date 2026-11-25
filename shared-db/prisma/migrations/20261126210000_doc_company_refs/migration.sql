@@ -358,3 +358,15 @@ $$;
 DROP TRIGGER IF EXISTS "purge_children_after_delete" ON "app"."delivery_notes";
 CREATE TRIGGER "purge_children_after_delete" AFTER DELETE ON "app"."delivery_notes"
   FOR EACH ROW EXECUTE FUNCTION "app"."purge_document_children"('delivery_notes', 'doc', 'DRN');
+
+-- ════════════════════════════════════════════════════════════════════════
+-- 5. 法人コードに区切り文字を使わせない
+-- ════════════════════════════════════════════════════════════════════════
+-- 参照は `<法人コード>/<番号>`、URL では `<法人コード>~<番号>`。区切りと紛れる
+-- 文字（/ ~ 空白）がコードに入ると参照が割れなくなる。画面（MS0I）の入力検証と
+-- 同じ規則（lib/doc-ref-core.ts OWN_COMPANY_CODE_FORBIDDEN）。
+-- NOT VALID — 既存の行は検査しない（万一合わないコードがあっても、この
+-- マイグレーションで本番を止めない。新しい行と、その行の更新には効く）。
+ALTER TABLE "app"."own_companies"
+  ADD CONSTRAINT "own_companies_code_chars_check"
+  CHECK ("code" !~ '[/~[:space:]]') NOT VALID;

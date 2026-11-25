@@ -169,7 +169,8 @@ export async function getFormApprovalFlow(
   responseNumber: string,
 ): Promise<FlowStepDef[]> {
   const response = await prisma.formResponse.findUnique({
-    where: { responseNumber },
+    // 法人コード付きの参照で渡されても番号で引く。
+    where: { responseNumber: docRefNumber(responseNumber) },
     select: { formId: true },
   });
   if (!response) return [];

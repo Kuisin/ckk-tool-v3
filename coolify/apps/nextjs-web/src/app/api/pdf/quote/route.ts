@@ -15,7 +15,7 @@ import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
-import { issuerForCompanyId } from "@/lib/own-companies";
+import { issuerForQuote } from "@/lib/own-companies";
 import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   orderTypeLabelLocalized,
@@ -56,7 +56,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const key = parseDocKey(id, "QOT");
   const quote = key ? await fetchQuote(key) : null;
-  if (!quote) {
+  if (!key || !quote) {
     return new Response(`Quote not found: ${id}`, { status: 404 });
   }
   // 閲覧は発行後のみ（下書きの見積書は PDF を出さない）。
@@ -92,9 +92,9 @@ export async function GET(request: Request): Promise<Response> {
     tax: yen(b.taxAmount),
   }));
 
-  // 発行元（自社法人 MS0I）。見積書は拠点を持たないので既定の法人
-  // （lib/own-company-core.ts resolveIssuer — 拠点が無ければ既定）。
-  const { issuer } = await issuerForCompanyId(null, lang);
+  // 発行元（自社法人 MS0I）= 見積書が持つ法人。見積書は拠点を持たないので、
+  // 法人は作成時の「発行会社」で決まり、以後は変わらない（own_company_id）。
+  const { issuer } = await issuerForQuote(key, lang);
 
   const data = {
     lang,

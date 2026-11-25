@@ -65,6 +65,33 @@ export async function issuerForCompanyId(
 }
 
 /**
+ * 見積書の発行元 — 見積書が持つ法人（作成時に決めた own_company_id）。
+ * 見積書は拠点を持たないので、法人は作成フォームの「発行会社」で決まる。
+ */
+export async function issuerForQuote(
+  key: DocKey,
+  lang: Locale,
+): Promise<ResolvedIssuer> {
+  const row = await prisma.quote.findUnique({
+    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    select: { ownCompanyId: true },
+  });
+  return issuerForCompanyId(row?.ownCompanyId, lang);
+}
+
+/** 設計依頼書の発行元 — 依頼書が持つ法人（見積書 / 注文請書から継いだもの）。 */
+export async function issuerForDesignRequest(
+  requestNumber: string,
+  lang: Locale,
+): Promise<ResolvedIssuer> {
+  const row = await prisma.designRequest.findUnique({
+    where: { requestNumber },
+    select: { ownCompanyId: true },
+  });
+  return issuerForCompanyId(row?.ownCompanyId, lang);
+}
+
+/**
  * 納品書の発行元 — 出荷書の出荷元拠点が先、無ければ明細の注文明細の担当拠点。
  * どちらも無ければ既定の法人（= 自社法人マスタ導入前と同じ発行元）。
  */

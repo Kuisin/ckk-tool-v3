@@ -29,7 +29,10 @@ import {
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { companyForAcceptance } from "@/lib/doc-company";
+import {
+  acceptanceLineCompanyMismatch,
+  companyForAcceptance,
+} from "@/lib/doc-company";
 import {
   type DocKey,
   formatDocNumber,
@@ -219,6 +222,26 @@ interface LineDeliveryInput {
   endUserBpId?: string | null;
   assignedPlantId?: number | null;
   shippingWorkLocationId?: number | null;
+}
+
+/**
+ * 注文請書 1 件 = 法人 1 つ（利用者の決定）。明細の担当拠点がどれも請書の法人に
+ * 属しているかを確かめる。合わない行があれば行番号つきのエラー文。
+ */
+async function lineCompanyError(
+  tr: Tr,
+  orderCompanyId: number,
+  items: readonly LineDeliveryInput[],
+): Promise<string | null> {
+  const { rows, companyCode } = await acceptanceLineCompanyMismatch(
+    orderCompanyId,
+    items.map((it) => it.assignedPlantId),
+  );
+  if (rows.length === 0) return null;
+  return tr("sales.orderAcceptanceActions.linePlantOtherCompany", {
+    rows: rows.join(", "),
+    company: companyCode,
+  });
 }
 
 /**
@@ -491,6 +514,7 @@ export async function saveDraft(
       where: { yearMonth_seq: key },
       select: {
         status: true,
+        ownCompanyId: true,
         customerBpId: true,
         salesRepId: true,
         customerProvidesDeliveryNote: true,
@@ -509,6 +533,12 @@ export async function saveDraft(
       return actionError(tr("sales.orderAcceptanceActions.targetNotFound"));
     const refsError = await lineRefsError(tr, v.items);
     if (refsError) return actionError(refsError);
+    const companyError = await lineCompanyError(
+      tr,
+      prior.ownCompanyId,
+      v.items,
+    );
+    if (companyError) return actionError(companyError);
     // 明細の品目が種別と噛み合っているか（他社製品は売り物にならない・
     // 再研磨の行は再研磨の品目を指し、工具は工具の欄に載る）。
     const itemError = await salesLineItemError(v.items, tr);
@@ -1151,6 +1181,14 @@ export async function createManualAcceptance(
           : null;
       })(),
     });
+    if (company.ownCompanyId != null) {
+      const companyError = await lineCompanyError(
+        tr,
+        company.ownCompanyId,
+        v.items,
+      );
+      if (companyError) return actionError(companyError);
+    }
     await prisma.orderAcceptance.create({
       data: {
         yearMonth,

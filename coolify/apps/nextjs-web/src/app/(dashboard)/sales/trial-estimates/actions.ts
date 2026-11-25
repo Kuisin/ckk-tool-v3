@@ -16,7 +16,7 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import { companyForUnplaced } from "@/lib/doc-company";
+import { resolveIssuingCompany } from "@/lib/doc-company";
 import {
   type DocKey,
   formatEstimateNumber,
@@ -150,6 +150,12 @@ function createInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
     /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
     salesRepId: z.string().nullable().optional(),
     /**
+     * 発行会社（自社法人 id）。拠点を持たない書類なので作成フォームで決める。
+     * 未指定は初期値（所属拠点の法人が 1 つならそれ、でなければ既定の法人）。
+     * 選べる法人かどうかはサーバーが検証する（lib/doc-company-core.ts）。
+     */
+    ownCompanyId: z.number().int().positive().nullable().optional(),
+    /**
      * 対象製品（任意）— 価格表作成時の基準単価ソース候補になる。
      * 値は品目 id（items.id、`itemType: "PRODUCT"`）。
      */
@@ -231,6 +237,10 @@ export async function createTrialEstimate(
       );
     }
     const itemId = v.itemId ? Number(v.itemId) : null;
+    const company = await resolveIssuingCompany(authz.userId, v.ownCompanyId);
+    if (!company.ok) {
+      return actionError(tr("common.issuingCompanyNotAllowed"));
+    }
     const { yearMonth, seq } = await allocateDocumentKey("ESTIMATE");
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
@@ -241,7 +251,7 @@ export async function createTrialEstimate(
       data: {
         yearMonth,
         seq,
-        ...(await companyForUnplaced()),
+        ...company.data,
         name: v.name,
         toolType: v.input.toolType,
         status: "DRAFT",

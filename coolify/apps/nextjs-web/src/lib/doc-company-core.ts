@@ -46,6 +46,52 @@ export function companyForOrderAcceptance(
   );
 }
 
+/**
+ * 注文請書 1 件 = 法人 1 つ（利用者の決定）。明細の担当拠点は、どれも注文請書の
+ * 法人に属していなければならない — 番号も発行元も請書ごとに 1 つなので、
+ * 別の法人の拠点が混ざると、その行だけ「誰の書類か」が食い違う。
+ *
+ * 戻り値: 法人が合わない明細の行番号（1 始まり）。拠点の無い行は見ない。
+ * 拠点が法人に属していない（null）ときは既定の法人として比べる
+ * （書類の発行元の決め方と同じ — lib/own-company-core.ts）。
+ */
+export function linesOutsideCompany(
+  orderCompanyId: number,
+  lines: readonly { hasPlant: boolean; plantCompanyId?: Id }[],
+  defaultId: number | null,
+): number[] {
+  const out: number[] = [];
+  lines.forEach((line, i) => {
+    if (!line.hasPlant) return;
+    const companyId = line.plantCompanyId ?? defaultId;
+    if (companyId !== orderCompanyId) out.push(i + 1);
+  });
+  return out;
+}
+
+/**
+ * 取込（IMPORT）で作る注文請書。取込の時点では担当拠点も明細も無いので、
+ * **取込口**が法人を決める（利用者の決定: 取込口ごとに自社法人 1 つ）。
+ *   フォルダ取込（メール・外部連携を含む）… 取込口の法人 → 既定
+ *   画面からのアップロード … 入れた人の法人（所属拠点が 1 社に決まるとき）
+ *                              → 取込口の法人 → 既定
+ */
+export function companyForIntake(
+  input: {
+    source: "FOLDER" | "UPLOAD";
+    channelCompanyId?: Id;
+    uploaderCompanyId?: Id;
+  },
+  defaultId: number | null,
+): number | null {
+  return resolveOwnCompanyId(
+    input.source === "UPLOAD"
+      ? [input.uploaderCompanyId, input.channelCompanyId]
+      : [input.channelCompanyId],
+    defaultId,
+  );
+}
+
 /** 設計依頼書: 見積書 → 注文明細の注文請書 → 既定。 */
 export function companyForDesignRequest(
   input: { quoteCompanyId?: Id; orderAcceptanceCompanyId?: Id },
@@ -108,6 +154,61 @@ export function companyForPlantDoc(
   defaultId: number | null,
 ): number | null {
   return resolveOwnCompanyId([input.plantCompanyId], defaultId);
+}
+
+// ── 発行会社（拠点を持たない書類）───────────────────────────────────────────
+//
+// 見積書・価格試算・価格表は拠点を持たないので、拠点から法人を決められない。
+// 利用者の決定: 作成フォームに「発行会社」を置く。
+//   - 初期値: 作成者の所属拠点の法人が 1 つならそれ、そうでなければ既定の法人
+//   - 欄を出すのは、所属拠点が**2 つ以上の法人にまたがる人だけ**（1 社にしか
+//     属さない人には選ぶものが無い）
+//   - サーバーが検証する（画面を通らない要求で他社の書類を作らせない）
+
+export interface IssuingCompanyChoice {
+  /** 選べる法人（作成者の所属拠点の法人。重複なし・出現順）。 */
+  companyIds: number[];
+  /** 初期値。既定の法人も無ければ null（DB の既定値に任せる）。 */
+  prefill: number | null;
+  /** 欄を出すか（2 つ以上の法人にまたがるときだけ）。 */
+  selectable: boolean;
+}
+
+/**
+ * 作成者の所属拠点の法人 id（拠点の並び順。法人に属さない拠点は null）→ 選択肢。
+ * 法人に属さない拠点は既定の法人として数える（書類の発行元の決め方と同じ）。
+ */
+export function issuingCompanyChoice(
+  userPlantCompanyIds: readonly Id[],
+  defaultId: number | null,
+): IssuingCompanyChoice {
+  const companyIds: number[] = [];
+  for (const raw of userPlantCompanyIds) {
+    const id = raw ?? defaultId;
+    if (id != null && !companyIds.includes(id)) companyIds.push(id);
+  }
+  return {
+    companyIds,
+    prefill: companyIds.length === 1 ? companyIds[0] : defaultId,
+    selectable: companyIds.length > 1,
+  };
+}
+
+/**
+ * フォームから来た発行会社を検証して確定する。
+ *   - 未指定 … 初期値
+ *   - 選べる人 … 自分の所属拠点の法人のどれか
+ *   - 選べない人 … 初期値と同じ値だけ（別の法人を指定してきたら拒否）
+ */
+export function resolveIssuingCompanyId(
+  choice: IssuingCompanyChoice,
+  requested: Id,
+): { ok: true; id: number | null } | { ok: false } {
+  if (requested == null) return { ok: true, id: choice.prefill };
+  const allowed = choice.selectable ? choice.companyIds : [choice.prefill];
+  return allowed.includes(requested)
+    ? { ok: true, id: requested }
+    : { ok: false };
 }
 
 /**

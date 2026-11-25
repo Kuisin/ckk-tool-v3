@@ -122,6 +122,21 @@ delivery_orders / delivery_notes / invoices）は、実装では **uuid の `id`
 NOT NULL・作成後は変更不可のトリガー `own_company_id_immutable`）を持ち、作成時に
 上流の書類 → 拠点 → 既定の法人 の順で決める（`lib/doc-company-core.ts`）。
 
+**多態参照は「法人コード/書類番号」**（番号設計 PR-B 後半）— 承認依頼
+（`approval_requests.target_id`）・メモ / メモ改訂・添付（`owner_id`）・ポータルの
+リンク / 付与 / アクセス記録（`resource_id`）・入出庫伝票の元書類（`source_id`）・
+在庫取引（`reference_id`）・監査キー（`audit_logs.record_key`）は、**番号を持つ書類**を
+`CKK/QOT-2026-00001` の形で指す。下の定義で「業務キー」と書いてある列は、番号を持つ
+書類についてはこの形が入る（uuid・ロット番号・マスタの id で指す対象はそのまま）。
+番号だけにしないのは、番号が法人ごとの連番になり同じ番号が 2 法人に存在し得るため。
+組み立ては `lib/doc-ref-core.ts` の `docRef` だけ。DB 側は BEFORE トリガー
+`qualify_doc_ref` が番号だけで書かれた値を参照へ直し、`purge_document_children()` は
+消える行の法人から参照を組み立てて子を消す。`audit_logs.record_id` は人が読む番号の
+まま。**発行会社**: 拠点を持たない書類（見積書・価格試算・価格表）は作成フォームの
+「発行会社」で `own_company_id` を決める（所属拠点が複数の法人にまたがる人にだけ出る。
+`lib/doc-company-core.ts`）。**注文請書 1 件 = 法人 1 つ** — 明細の担当拠点はどれも
+請書の法人に属すること（保存時に検証）。
+
 **営業担当（sales_rep_id）は書類ごとのスナップショット** — 顧客が持つ担当候補は
 `bp_sales_reps`（CUSTOMER ロール固有・複数可・主担当 1 名）で、書類側は
 `sales_rep_id` に**作成時点の 1 名を複写**する（`estimates` / `price_list_entries` /

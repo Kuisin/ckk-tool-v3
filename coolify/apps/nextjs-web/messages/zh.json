@@ -817,7 +817,10 @@
     "invoicePayment": "请款单入款",
     "notPendingApproval": "目前不在待审批状态",
     "designVersion": "图纸版本",
-    "priceListUnapproved": "价格表待审批"
+    "priceListUnapproved": "价格表待审批",
+    "issuingCompany": "开具公司",
+    "issuingCompanyDesc": "开具此单据的本公司法人。创建后无法更改",
+    "issuingCompanyNotAllowed": "无法以所选开具公司创建单据。请从所属据点的本公司法人中选择"
   },
   "shell": {
     "appsLabel": "应用",
@@ -4636,7 +4639,13 @@
         "orphanRecoveredLog": "[intake] 回收孤立的 .processing 文件：{name}",
         "alreadyImportedSkipLog": "[intake] {name} → {number}（已导入・跳过）",
         "numberBurnFailedLog": "[intake] 编号写入失败：{name}"
-      }
+      },
+      "intakeCompanyTitle": "导入渠道的本公司法人",
+      "intakeCompany": "本公司法人",
+      "intakeCompanyDefault": "默认法人",
+      "intakeCompanyDesc": "由导入文件夹（含邮件和外部对接导入）创建的订单确认书的开具方。订单确认书的本公司法人创建后无法更改，因此更改仅对此后导入的单据生效。从画面上传的文件，在上传者所属据点的本公司法人唯一时使用该法人。",
+      "intakeCompanySaved": "已保存导入渠道的本公司法人",
+      "intakeCompanyInvalid": "请选择有效的本公司法人"
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "已创建账户（默认为停用）",
@@ -6933,7 +6942,8 @@
       "inUse": "因被 {plants} 个据点、{invoices} 张请款单使用，无法删除",
       "createFailed": "本公司法人创建失败",
       "updateFailed": "本公司法人更新失败",
-      "deleteFailed": "本公司法人删除失败"
+      "deleteFailed": "本公司法人删除失败",
+      "codeInvalidChars": "法人编号不能包含“/”“~”和空格"
     }
   },
   "manual": {
@@ -8446,7 +8456,8 @@
       "unitPriceMin0": "单价须为 0 以上",
       "onlyCancelledCanBeRecreated": "只有已取消的订单确认书才能重新创建",
       "recreatedFromCancelled": "由已取消的 {number} 重新创建",
-      "recreatedAs": "已重新创建为 {number}"
+      "recreatedAs": "已重新创建为 {number}",
+      "linePlantOtherCompany": "第 {rows} 行明细：负责据点不属于此订单确认书的本公司法人（{company}）。同一订单确认书的明细须使用同一本公司法人的据点"
     },
     "quoteActions": {
       "createFailed": "报价单创建失败",

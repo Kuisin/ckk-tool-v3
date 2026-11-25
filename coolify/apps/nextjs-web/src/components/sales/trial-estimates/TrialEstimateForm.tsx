@@ -46,12 +46,14 @@ import { AppTabs } from "@/components/ui/AppTabs";
 import { EditButton } from "@/components/ui/buttons";
 import { productItemF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
+import { IssuingCompanySelect } from "@/components/ui/IssuingCompanySelect";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions, FormSection } from "@/components/ui/shells";
+import type { IssuingCompanyField } from "@/lib/doc-company";
 import { fieldHelp } from "@/lib/field-help";
 import type { Option } from "@/lib/mock";
 import type { ScalePresetRow } from "@/lib/price-scale-preset";
@@ -102,7 +104,10 @@ export function TrialEstimateForm({
   source,
   canViewCost = false,
   initialKind,
+  issuingCompany,
 }: {
+  /** 発行会社の欄（所属拠点が複数の法人にまたがる人だけに出る）。 */
+  issuingCompany?: IssuingCompanyField;
   customerOptions: Option[];
   /** 材種・直径・黒皮/研磨 の選択肢（材料は 3 要素で指定）. */
   materialTypeOptions: Option[];
@@ -149,6 +154,10 @@ export function TrialEstimateForm({
   );
   const [customerId, setCustomerId] = useState<string | null>(
     source?.customerId ?? null,
+  );
+  // 発行会社は作成時にだけ決める（以後は変えられない）。
+  const [ownCompanyId, setOwnCompanyId] = useState<number | null>(
+    issuingCompany?.prefill ?? null,
   );
   const [salesRepId, setSalesRepId] = useState<string | null>(
     source?.salesRepId ?? null,
@@ -337,6 +346,7 @@ export function TrialEstimateForm({
     startTransition(async () => {
       const res = await createTrialEstimate({
         kind,
+        ownCompanyId,
         salesRepId,
         name: name.trim(),
         customerBpId: customerId,
@@ -450,6 +460,11 @@ export function TrialEstimateForm({
                     placeholder={tr("common.customer")}
                     searchable
                     value={customerId}
+                  />
+                  <IssuingCompanySelect
+                    field={issuingCompany}
+                    onChange={setOwnCompanyId}
+                    value={ownCompanyId}
                   />
                   <SalesRepSelect
                     customerBpId={customerId}

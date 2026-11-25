@@ -1,5 +1,6 @@
 import { PriceListTypeForm } from "@/components/sales/price-lists/PriceListTypeForm";
 import { requireAppRead } from "@/lib/authz-page";
+import { issuingCompanyFieldForSession } from "@/lib/doc-company";
 import { getScalePreset } from "@/lib/price-scale-preset-store";
 import {
   fetchCustomerOption,
@@ -33,10 +34,13 @@ export default async function PriceListNewPage({
       getScalePreset(),
     ]);
 
+  const issuingCompany = await issuingCompanyFieldForSession();
+
   return (
     <PriceListTypeForm
       customerOption={customerOption}
       existingEntries={existingEntries}
+      issuingCompany={issuingCompany}
       lockedCustomerId={customer}
       lockedProductId={product}
       mode="create"
