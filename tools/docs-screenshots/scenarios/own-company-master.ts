@@ -82,6 +82,13 @@ export const ownCompanyMaster: Scenario = {
         await s.see(TSP_NAME);
         await s.checkVisible("詳細に登録番号が出る", TSP_REG_NO);
         await s.checkVisible("詳細に会計年度の開始月が出る", "4 月", { exact: true });
+        // 不備 2 回 → 保存成功。成功の通知が出たら、前のエラーの通知は消える
+        // （以前は詳細画面へ移っても赤 2 枚が緑 1 枚と並んで残っていた）。
+        const toasts = p.locator(".mantine-Notification-root");
+        const redToasts = async () =>
+          (await toasts.evaluateAll((els) => els.map((e) => (e as HTMLElement).style.getPropertyValue("--notification-color")))).filter((c) => /red/.test(c)).length;
+        await p.waitForTimeout(800);
+        s.check("保存に成功した画面に、前のエラーの通知が残っていない", (await redToasts()) === 0, await toasts.allInnerTexts());
         const row = s.sql(
           "select code, invoice_registration_no, fiscal_year_start_month, is_default, is_active from app.own_companies where code = 'TSP'",
         );
