@@ -321,6 +321,11 @@ migrate_fresh() {
     sed '/CREATE EXTENSION IF NOT EXISTS pg_cron;/d' "$f" | psql_in "$DB_FRESH"
   done
   psql_in "$DB_FRESH" < sql/analytics-views.sql
+  # DB 関数の試験（各ファイルは自分で ROLLBACK する。CI の migrate-deploy と同じ）
+  for f in ci/sql-tests/*.sql; do
+    echo "==> $f"
+    psql_in "$DB_FRESH" < "$f"
+  done
   pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema --exit-code
 }
 migrate_with_data() {

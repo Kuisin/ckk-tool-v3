@@ -9,6 +9,7 @@ import { notFound, redirect } from "next/navigation";
 import { I18nProvider } from "@/components/I18nProvider";
 import { StepExecutionView } from "@/components/steps/StepExecutionView";
 import { readableCodes } from "@/lib/authz";
+import { getStepPrograms } from "@/lib/design-programs";
 import { resolveBoardLocationByCode } from "@/lib/device-work-location";
 import { getSession } from "@/lib/kiosk-auth";
 import { boardQuery, parseScope } from "@/lib/location-board-core";
@@ -48,6 +49,13 @@ export default async function StepExecutionPage({
 
   // 工程マスタの許可作業場所 × この端末（表示用 — 権威は API 側）
   const locationGate = await getStepLocationGate(
+    step.stepId,
+    session.deviceId,
+    session.locale,
+  );
+
+  // この工程の加工プログラム（図面の版から。機械一致が先頭）
+  const programs = await getStepPrograms(
     step.stepId,
     session.deviceId,
     session.locale,
@@ -93,6 +101,7 @@ export default async function StepExecutionPage({
         backTo={backTo}
         initialWorkLocationCode={boardLocationCode}
         locationGate={locationGate}
+        programs={programs}
         recording={recording}
         step={step}
       />

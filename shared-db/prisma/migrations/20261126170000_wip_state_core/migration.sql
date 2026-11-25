@@ -15,7 +15,7 @@
 --
 -- 新しい enum 値（BLANK）はこの migration の中で使わない — Prisma は 1 ファイルを
 -- 1 トランザクションに包み、ADD VALUE した値はコミットまで使えない。BLANK だけの
--- 部分 unique index は次の migration（20261126150001_wip_state_blank_index）。
+-- 部分 unique index は次の migration（20261126170001_wip_state_blank_index）。
 
 ALTER TYPE "app"."ITEM_TYPE" ADD VALUE IF NOT EXISTS 'BLANK';
 

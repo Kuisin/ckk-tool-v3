@@ -2255,6 +2255,43 @@ Enum DESIGN_STATUS {
 // item_id / customer_bp_id / version / design_request_id は版 (design_versions) の写し
 // （版の系列と番号は作成後に変わらないので写してもずれない）。
 // **is_latest は確定した版のファイルにだけ立つ** — 下書きの図面を指示書が拾わない。
+// 加工プログラム（設計図の版ごと）。1 本が N 工程（工程マスタ）を受け持つので、
+// 工程は子表 design_program_steps に持つ。**機械のマスタは作らない — 作業場所
+// (work_locations, MS0D) が機械そのもの**で、work_location_id が「この機械向け」の印
+// （null = 機械を問わない）。番号だけ控えて本体は機械側、もあるので file_id は任意。
+// 編集できるのは版が確定前（下書き・差し戻し）のあいだだけ。版を消すと消える。
+//
+// 工程実行画面（Web / 共有端末）は、指示書が使う版 — ピン留めがあればその版、
+// 無ければ受注元の系列の確定済み最新 → 汎用の確定済み最新（他の受注元へは
+// 落ちない）— から、その工程を受け持つプログラムを出し、計画・実績の作業場所と
+// 一致するものを先頭に並べる。判断は lib/design-programs-core.ts（twin file）。
+Table design_programs {
+  id                uuid [pk]
+  design_version_id uuid [not null, ref: > design_versions.id]  // cascade
+  name              varchar [not null]
+  program_number    varchar     // 機械側のプログラム番号（O0001 等）
+  file_id           uuid [ref: > files.id]
+  work_location_id  int [ref: > work_locations.id]  // = 機械
+  notes             text
+  sort_order        int [not null, default: 0]
+  created_by        uuid [ref: > users.id]
+  created_at        timestamp
+  updated_at        timestamp
+}
+
+Table design_program_steps {
+  program_id      uuid [not null, ref: > design_programs.id]
+  process_step_id int  [not null, ref: > process_step_catalog.id]
+  indexes {
+    (program_id, process_step_id) [pk]
+  }
+}
+
+// 系列（製品 × 受注元）で共有するメモは document_memos の owner_type
+// 'design_series'、owner_id '<item_id>:<customer_bp_id | generic>'。系列に行が
+// 無いので FK も purge_document_children も張れず、版の削除トリガー
+// app.purge_design_series_memos が「系列に版が残らなかったら」消す。
+
 Table design_files {
   id              uuid [pk]
   design_version_id uuid [not null, ref: > design_versions.id]
@@ -2636,6 +2673,28 @@ Table numbering_sequences {
   last_year_month varchar                 // YYYYMM（月次リセット用）
   last_sequence   int [not null, default: 0]
   updated_at      timestamp
+}
+
+// 書類番号の連番（新方式 PREFIX-FFFF-NNNNN、例 QOT-2026-00001）。
+// 連番は **自社法人 × 会計年度** ごと（numbering_sequences の月次リセットを
+// 置き換える予定。2026-11 時点では基盤だけで、書類はまだ旧方式で採番している）。
+//   - 年度のラベル = 年度が始まる暦年。開始月は own_companies.fiscal_year_start_month。
+//   - どの年度に入るかは**書類自身の日付**（無ければ作成日時）を**日本時間の暦日**に
+//     して決める（app.jst_date → app.fiscal_year_of。TS 双子は lib/fiscal-year-core.ts）。
+//   - **払い出すのは DB だけ**（app.allocate_document_seq）。呼び出し側の
+//     トランザクションの中で動くので、保存が巻き戻れば番号も戻る（欠番なし）。
+//     法人の行を FOR SHARE で掴み、開始月の変更と順序を付ける。
+//   - 1 行でもある法人は開始月を変えられない（トリガー own_companies_fiscal_month_lock）。
+//     変えると同じ日付の書類が別の年度に入り得る。画面 MS0I も同じ条件で欄を閉じる。
+Table document_sequences {
+  key             text [not null]   // 書類種別（QUOTE / INVOICE …）
+  own_company_id  int  [not null, ref: > own_companies.id]
+  fiscal_year     int  [not null]   // 4 桁（CHECK）
+  last_seq        int  [not null]   // 1..99999（CHECK）
+
+  indexes {
+    (key, own_company_id, fiscal_year) [pk]
+  }
 }
 
 // ===========================

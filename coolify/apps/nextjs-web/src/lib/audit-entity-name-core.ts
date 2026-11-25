@@ -95,6 +95,8 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   feature_flags: false,
   approval_flows: false,
   system: false,
+  // 設計図の系列メモ — 系列（製品 × 受注元）は行を持たない。
+  design_series: false,
 };
 
 /** その表に名前を探しに行く価値があるか。 */

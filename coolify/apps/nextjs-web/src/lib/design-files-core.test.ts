@@ -9,11 +9,13 @@ import {
   type DesignVersionStatus,
   describeVersionLock,
   designFileSource,
+  designSeriesOwnerId,
   groupBySeries,
   groupVersionsBySeries,
   isVersionEditable,
   matchesSeriesParam,
   nextDesignVersion,
+  parseDesignSeriesOwnerId,
   pickSpecVersion,
   pickThumbFile,
   resolveLatestFile,
@@ -341,5 +343,21 @@ describe("系列の URL 値（?series=）", () => {
     expect(matchesSeriesParam(A, "generic")).toBe(false);
     expect(matchesSeriesParam(A, A)).toBe(true);
     expect(matchesSeriesParam(B, A)).toBe(false);
+  });
+});
+
+describe("designSeriesOwnerId", () => {
+  it("汎用は generic、受注元は id で、逆変換できる", () => {
+    expect(designSeriesOwnerId(12, null)).toBe("12:generic");
+    expect(designSeriesOwnerId(12, "abc")).toBe("12:abc");
+    expect(parseDesignSeriesOwnerId("12:generic")).toEqual({
+      itemId: 12,
+      customerBpId: null,
+    });
+    expect(parseDesignSeriesOwnerId("12:abc")).toEqual({
+      itemId: 12,
+      customerBpId: "abc",
+    });
+    expect(parseDesignSeriesOwnerId("x:abc")).toBeNull();
   });
 });

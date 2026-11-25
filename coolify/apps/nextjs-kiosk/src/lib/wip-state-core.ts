@@ -33,7 +33,7 @@ export const WIP_STATE_DEFAULT_CATEGORIES = [
 
 /**
  * 工程マスタ（MS08）の `affects_wip_state` の既定 — 新しく作る工程の初期値と、
- * migration の埋め戻し（20261126150000_wip_state_core）が同じ規則。
+ * migration の埋め戻し（20261126170000_wip_state_core）が同じ規則。
  *
  * 開始工程（出し・受渡し・製品受入）は在庫を動かすだけなので、カテゴリが
  * 材料準備でも数えない。検査・承認・出荷・再研磨は品物の形を変えない

@@ -162,6 +162,29 @@ In the file list on the version screen, selecting **Memo** on a row opens a memo
 - **It can be written even on a confirmed version.** What freezes is the drawing itself, not the notes about it.
 - **Memos are internal.** They never appear on a printed document (PDF).
 
+## Series memo (shared by product × ordering customer)
+
+On the product screen, each ordering-customer section has a **Series memo**. Use it for **what applies to every drawing of that product and customer** (customer habits, machining notes and so on).
+
+- **The series memo carries over** when a version is revised. Write what changed in a version in that version's memo.
+- The generic series has one too.
+- Deleting every version of a series also deletes its series memo.
+
+## Machining programs
+
+The **Machining programs** panel on the version screen holds the programs made from that version. Select **Edit** to start editing; saving returns to the view.
+
+- **One program can cover several steps** (for example roughing and finishing in one program). Steps are picked from the process step master.
+- **The machine is picked from [work locations](/manual/en/operations/masters/work-location/user).** There is no separate machine master — a work location is the machine. Leave it empty for a program that runs on any machine.
+- The program number (such as O0001) and the file are both optional. You can record only the number and keep the program on the machine.
+- **Only versions that are not yet confirmed (draft or sent back) can be edited.** Programs on a confirmed version do not change; create a new version to change them.
+
+The **step execution screen** of a work order (on the web and on shared devices) lists the programs that cover that step.
+
+- The version used is the one pinned on the work order; otherwise **the latest confirmed version in the work order's ordering-customer series, then the latest confirmed generic version.** It never falls back to another customer's drawings.
+- **Programs for the planned or actual work location come first**, marked **For this machine**. On a shared device, the device's default work location also counts as the machine.
+- The file can be downloaded right there.
+
 ## Questions and problems
 
 **Q. The version went back to v1 on the same product**

@@ -2950,7 +2950,9 @@
       "upTo20mbEach": "每件最大 20MB",
       "registerAVersion": "登记版本",
       "whatChangedInThisVersion": "此版本变更了什么",
-      "deleteTheDrawing": "删除图纸"
+      "deleteTheDrawing": "删除图纸",
+      "seriesMemo": "系列备忘",
+      "seriesMemoHint": "该产品与订货方的所有图纸版本共用的备忘（客户习惯、加工注意事项等）。各版本的变更点请写在该版本的备忘中。"
     },
     "inventory": {
       "reservationsCount": "预留（{count}）",
@@ -3602,6 +3604,31 @@
       "empty": "当天没有作业计划",
       "noLocation": "无作业场所",
       "count": "{count} 条"
+    },
+    "designPrograms": {
+      "title": "加工程序",
+      "description": "由此版本编制的加工程序。机器从作业场所（MS0D）中选择，一个程序可对应多个工序。",
+      "none": "没有加工程序",
+      "name": "程序名称",
+      "programNumber": "程序编号",
+      "machine": "机器（作业场所）",
+      "machineHint": "在工序执行画面中，与计划或实绩作业场所一致的程序排在最前",
+      "anyMachine": "不限机器",
+      "machineMatch": "本机用",
+      "steps": "工序",
+      "file": "程序文件",
+      "chooseFile": "选择文件",
+      "noFile": "无文件",
+      "removeFile": "移除文件",
+      "keepFile": "保留文件",
+      "add": "添加程序",
+      "remove": "删除程序",
+      "nameRequired": "请输入程序名称",
+      "stepsRequired": "请选择工序",
+      "fromVersion": "图纸 v{version}",
+      "invalidPayload": "加工程序内容不正确",
+      "invalidReference": "选择了不存在的工序或作业场所",
+      "savedAudit": "已保存 v{version} 的加工程序（{count} 个）"
     }
   },
   "purchase": {
@@ -6856,6 +6883,8 @@
       "fiscalYearStartMonth": "会计年度开始月",
       "fiscalYearStartMonthDesc": "单据编号按年度划分时的分界（1〜12）",
       "invalidFiscalMonth": "请输入 1〜12 的开始月",
+      "fiscalYearLocked": "该法人已发行单据编号，会计年度开始月不可再更改（更改后年度划分将与已发行的编号不一致）",
+      "fiscalYearLockedError": "该法人已发行单据编号，无法更改会计年度开始月",
       "monthValue": "{month} 月",
       "plants": "据点",
       "plantCount": "据点数",

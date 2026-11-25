@@ -120,6 +120,7 @@ model User {
   designRequestsCancelled DesignRequest[]       @relation("DesignRequestCancelledBy")
   designFilesCreated      DesignFile[]          @relation("DesignFileCreatedBy")
   designVersionsCreated   DesignVersion[]       @relation("DesignVersionCreatedBy")
+  designProgramsCreated   DesignProgram[]       @relation("DesignProgramCreatedBy")
   designVersionsRequested DesignVersion[]       @relation("DesignVersionRequestedBy")
   designVersionsConfirmed DesignVersion[]       @relation("DesignVersionConfirmedBy")
   attachmentsUploaded     DocumentAttachment[]  @relation("AttachmentUploadedBy")

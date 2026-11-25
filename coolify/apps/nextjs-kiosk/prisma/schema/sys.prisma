@@ -23,6 +23,7 @@ model File {
   userAvatarThumbs User[]               @relation("UserAvatarThumbFile")
   inspectionTemplateImages InspectionTemplate[] @relation("InspectionTemplateImage")
   ownCompanySeals  OwnCompany[]         @relation("OwnCompanySeal")
+  designPrograms   DesignProgram[]      @relation("DesignProgramFile")
 
   @@map("files")
   @@schema("app")
@@ -113,6 +114,28 @@ model NumberingSequence {
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("numbering_sequences")
+  @@schema("app")
+}
+
+// 書類番号の連番（PREFIX-FFFF-NNNNN）— 自社法人 × 会計年度ごと。
+// 払い出しは DB 関数 app.allocate_document_seq だけが行う（アプリから直接
+// 書かない）。呼び出し側のトランザクション内で動くので、巻き戻れば番号も戻る。
+// 1 行でもある法人は会計年度の開始月を変えられない（トリガー
+// own_companies_fiscal_month_lock）。範囲は CHECK（last_seq 1..99999 /
+// fiscal_year 4 桁）。年度の引き方は app.fiscal_year_of（TS 双子:
+// nextjs-web lib/fiscal-year-core.ts）。
+model DocumentSequence {
+  key          String
+  ownCompanyId Int    @map("own_company_id")
+  /// 会計年度のラベル = 年度が始まる暦年
+  fiscalYear   Int    @map("fiscal_year")
+  lastSeq      Int    @map("last_seq")
+
+  ownCompany OwnCompany @relation("DocumentSequenceOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@id([key, ownCompanyId, fiscalYear])
+  @@index([ownCompanyId])
+  @@map("document_sequences")
   @@schema("app")
 }
 
