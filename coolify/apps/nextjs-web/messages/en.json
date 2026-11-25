@@ -2002,7 +2002,9 @@
       "amount": "Amount (¥)",
       "deliveryDate": "Delivery date",
       "tax": "Tax (10%)",
-      "validityStrip": "This quote is valid until {validUntil}. Please place your order within this period."
+      "validityStrip": "This quote is valid until {validUntil}. Please place your order within this period.",
+      "lineDiscount": "Discount",
+      "lineDiscountNote": "* {label}: -¥{amount}"
     },
     "DELIVERY_NOTE": {
       "regNumber": "Registration No.:",
@@ -8236,7 +8238,8 @@
       "selectABranch": "Select a branch",
       "subtotalAmount": "Subtotal {amount}",
       "taxAmount": "Tax {amount}",
-      "totalInclTaxAmount": "Total (incl. tax) {amount}"
+      "totalInclTaxAmount": "Total (incl. tax) {amount}",
+      "lineNotesDescription": "Printed under the line on the quote PDF"
     },
     "trialEstimateDetail": {
       "orderTypeTierCount": "{orderType} · {tierCount} tiers",

@@ -367,3 +367,18 @@ export function priceEntriesForQuoteIn(
   );
   return entries.filter((e) => entryIds.has(e.entryId));
 }
+
+/**
+ * 明細で品目を選んだとき、品目マスタの備考を下書きとして入れてよいか。
+ * 入れるのは**別の品目に変わり**、かつ**明細の備考が空**のときだけ —
+ * 数量や種別を変えただけの再描画や、利用者が書いた備考を上書きしない。
+ */
+export function shouldPrefillLineNotes(
+  prevItemId: string,
+  nextItemId: string,
+  currentNotes: string,
+): boolean {
+  return (
+    nextItemId !== "" && nextItemId !== prevItemId && currentNotes.trim() === ""
+  );
+}

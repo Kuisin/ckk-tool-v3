@@ -19,6 +19,7 @@ import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   orderTypeLabelLocalized,
   pdfAttnLine,
+  quoteLineNoteHtml,
   quotePdfLabels,
   taxBaseSuffixLocalized,
   taxRowLabelLocalized,
@@ -116,17 +117,25 @@ export async function GET(request: Request): Promise<Response> {
       // 営業担当が未設定の見積は作成者を出す（従来の挙動へのフォールバック）。
       sales_rep: quote.salesRepName ?? quote.createdBy,
     },
-    items: quote.items.map((it) => ({
-      name: it.productName,
-      // 製品コード（PRD-YYYYMM-NNNN）。**採番前のレガシー品目は空欄で刷る** —
-      // 以前ここは内部の連番 id を刷っていた（品目統合で本来の製品コードへ）。
-      code: it.productCode ?? "",
-      order_type: orderTypeLabelLocalized(it.orderType, lang),
-      quantity: yen(it.quantity),
-      unit_price: yen(it.unitPrice),
-      amount: yen(it.amount),
-      delivery_date: documentFormatters.date(it.deliveryDate),
-    })),
+    items: quote.items.map((it) => {
+      // 値引きの注意書き + 明細の備考（受取先の言語）。空なら行を足さない。
+      const note = quoteLineNoteHtml(it, yen(it.discountAmount), lang);
+      return {
+        row_class: note ? "has-line-note" : "",
+        line_note_row: note
+          ? `<tr class="line-note"><td colspan="6">${note}</td></tr>`
+          : "",
+        name: it.productName,
+        // 製品コード（PRD-YYYYMM-NNNN）。**採番前のレガシー品目は空欄で刷る** —
+        // 以前ここは内部の連番 id を刷っていた（品目統合で本来の製品コードへ）。
+        code: it.productCode ?? "",
+        order_type: orderTypeLabelLocalized(it.orderType, lang),
+        quantity: yen(it.quantity),
+        unit_price: yen(it.unitPrice),
+        amount: yen(it.amount),
+        delivery_date: documentFormatters.date(it.deliveryDate),
+      };
+    }),
     tax_rows: taxRows,
     totals: {
       subtotal: yen(totals.subtotal),

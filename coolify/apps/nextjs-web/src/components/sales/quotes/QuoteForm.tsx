@@ -27,8 +27,9 @@ import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useTransition } from "react";
+import { useEffect, useTransition } from "react";
 import { z } from "zod";
+import { fetchItemNotes } from "@/app/(dashboard)/_shared/item-notes-lookup";
 import {
   createQuote,
   updateQuote,
@@ -50,7 +51,11 @@ import type { Option } from "@/lib/mock";
 import { totalsByRateYen } from "@/lib/money";
 import { resolveLineTax, type TaxCatalog } from "@/lib/tax-rate";
 import { isoDateJst, type PriceListEntry } from "../price-lists/model";
-import { type Quote, resolveUnitPriceFromEntries } from "./model";
+import {
+  type Quote,
+  resolveUnitPriceFromEntries,
+  shouldPrefillLineNotes,
+} from "./model";
 
 /**
  * バリデーションメッセージが訳を必要とするため、スキーマはコンポーネント内で
@@ -71,6 +76,8 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
       discountAmount: z.number().min(0),
       discountLabel: z.string().nullable(),
       deliveryDate: z.string().nullable(),
+      /** 明細の備考（複数行）。見積書 PDF の明細の下に刷る。 */
+      notes: z.string(),
     })
     // 見積書は価格表からのみ価格を解決する — 未解決の行は保存できない。
     .refine((it) => it.priceTierId != null, {
@@ -104,6 +111,7 @@ const emptyItem = (): ItemForm => ({
   discountAmount: 0,
   discountLabel: null,
   deliveryDate: null,
+  notes: "",
 });
 
 /**
@@ -183,6 +191,7 @@ function toFormValues(q: Quote): QuoteFormValues {
       discountAmount: it.discountAmount,
       discountLabel: it.discountLabel,
       deliveryDate: it.deliveryDate,
+      notes: it.notes ?? "",
     })),
   };
 }
@@ -236,6 +245,31 @@ export function QuoteForm({
   const standardPrices = useStandardPrices(
     form.values.items.map((it) => it.itemId),
   );
+
+  /**
+   * 品目を選んだ行の備考が空なら、品目マスタの備考を下書きとして入れる。
+   * 届くまでに利用者が書き始めた・品目を選び直した場合は上書きしない。
+   */
+  const prefillLineNotes = (ri: number, itemId: string) => {
+    fetchItemNotes([itemId])
+      .then((notes) => {
+        const master = notes[itemId];
+        const current = form.getValues().items[ri];
+        if (!master || !current) return;
+        if (current.itemId !== itemId || current.notes.trim()) return;
+        form.setFieldValue(`items.${ri}.notes`, master);
+      })
+      .catch(() => {
+        // 下書きが入らないだけ — 保存には影響しない。
+      });
+  };
+
+  // 価格表「見積書を作成」から品目付きで開いたときも、1 行目に同じ下書きを入れる。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 初回表示の 1 回だけ
+  useEffect(() => {
+    if (quote || !prefill?.itemId) return;
+    prefillLineNotes(0, prefill.itemId);
+  }, []);
 
   /** Changing 顧客 → re-resolve every line's 単価・値引き against the new customer's 価格表. */
   const onCustomerChange = (customerId: string) => {
@@ -304,7 +338,7 @@ export function QuoteForm({
           | "OTHER",
         quantity: it.quantity,
         deliveryDate: it.deliveryDate,
-        notes: null,
+        notes: it.notes.trim() ? it.notes : null,
       })),
     };
     startTransition(async () => {
@@ -423,6 +457,15 @@ export function QuoteForm({
                     }
                     entries={entries}
                     onChange={(next: ResolverValue) => {
+                      if (
+                        shouldPrefillLineNotes(
+                          item.itemId,
+                          next.itemId,
+                          item.notes,
+                        )
+                      ) {
+                        prefillLineNotes(ri, next.itemId);
+                      }
                       form.setFieldValue(`items.${ri}.itemId`, next.itemId);
                       form.setFieldValue(
                         `items.${ri}.productName`,
@@ -476,6 +519,15 @@ export function QuoteForm({
                 placeholder={tr("common.pickADate")}
                 valueFormat="YYYY/MM/DD"
                 {...form.getInputProps(`items.${ri}.deliveryDate`)}
+              />
+              <Textarea
+                autosize
+                description={tr("sales.quoteForm.lineNotesDescription")}
+                label={tr("common.notes")}
+                maxRows={8}
+                minRows={1}
+                mt="xs"
+                {...form.getInputProps(`items.${ri}.notes`)}
               />
             </Box>
           ))}
