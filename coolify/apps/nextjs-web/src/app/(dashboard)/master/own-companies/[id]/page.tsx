@@ -6,7 +6,7 @@ import {
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
-import { issuerBlock } from "@/lib/own-company-core";
+import { brandLogoSource, issuerBlock } from "@/lib/own-company-core";
 
 export const dynamic = "force-dynamic";
 
@@ -58,10 +58,14 @@ export default async function MasterOwnCompaniesDetailPage({
       fax: r.fax,
       invoiceRegistrationNo: r.invoiceRegistrationNo,
       sealFileId: r.sealFileId,
+      logoFileId: r.logoFileId,
       isDefault: r.isDefault,
     },
     "ja",
   );
+  // 見出しのロゴ（PDF と同じ決め方 — lib/own-company-core.ts brandLogoSource）。
+  // 画像の読み出しまではしない（読めないときの PDF は「ロゴなし」側へ落ちる）。
+  const logoSource = brandLogoSource(r, r.logoFileId != null);
 
   const record: OwnCompanyDetailData = {
     id: r.id,
@@ -84,6 +88,9 @@ export default async function MasterOwnCompaniesDetailPage({
     fiscalYearStartMonth: r.fiscalYearStartMonth,
     hasSeal: r.sealFileId != null,
     sealVersion: r.sealFileId,
+    hasLogo: r.logoFileId != null,
+    logoVersion: r.logoFileId,
+    logoSource,
     isDefault: r.isDefault,
     isActive: r.isActive,
     notes: r.notes ?? "",

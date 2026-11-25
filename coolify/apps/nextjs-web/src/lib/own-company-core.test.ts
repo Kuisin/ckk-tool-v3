@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  brandLogoHtml,
+  brandLogoSource,
   groupByOwnCompany,
   issuerBlock,
   isValidInvoiceRegistrationNo,
@@ -20,6 +22,7 @@ const CKK: OwnCompanyRecord = {
   fax: "0569-23-6427",
   invoiceRegistrationNo: "T1234567890123",
   sealFileId: null,
+  logoFileId: null,
   isDefault: true,
 };
 
@@ -33,6 +36,7 @@ const TSP: OwnCompanyRecord = {
   fax: null,
   invoiceRegistrationNo: "T9999999999999",
   sealFileId: null,
+  logoFileId: null,
   isDefault: false,
 };
 
@@ -111,5 +115,25 @@ describe("isValidInvoiceRegistrationNo", () => {
     expect(isValidInvoiceRegistrationNo("")).toBe(true);
     expect(isValidInvoiceRegistrationNo("1234567890123")).toBe(false);
     expect(isValidInvoiceRegistrationNo("T123")).toBe(false);
+  });
+});
+
+describe("brandLogoSource / brandLogoHtml", () => {
+  it("自分のロゴが読めればそれ", () => {
+    expect(brandLogoSource(TSP, true)).toBe("own");
+    expect(brandLogoSource(CKK, true)).toBe("own");
+  });
+  it("ロゴの無い既定の法人は同梱の logo.svg（今日と同じ見た目）", () => {
+    expect(brandLogoSource(CKK, false)).toBe("bundled");
+    expect(brandLogoSource(null, false)).toBe("bundled");
+  });
+  it("ロゴの無い他の法人は刷らない（CKK のマークを刷らない）", () => {
+    expect(brandLogoSource(TSP, false)).toBe("none");
+  });
+  it("alt はその法人名で、エスケープされる", () => {
+    expect(brandLogoHtml("logo.svg", "A&B <株>")).toBe(
+      '<img class="brand-logo" src="logo.svg" alt="A&amp;B &lt;株&gt;" />',
+    );
+    expect(brandLogoHtml(null, "TSP")).toBe("");
   });
 });

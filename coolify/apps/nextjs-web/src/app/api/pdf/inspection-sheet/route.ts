@@ -28,6 +28,7 @@ import {
   templateImageHtml,
 } from "@/lib/inspection-sheet-pdf";
 import { templateImageDataUri } from "@/lib/inspection-template-image";
+import { ownCompanyLogoForWorkOrder } from "@/lib/own-companies";
 import { renderPdf } from "@/lib/pdf";
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
@@ -119,35 +120,43 @@ export async function GET(request: Request): Promise<Response> {
       : null;
 
   const image = await templateImageDataUri(template.imageFileId);
+  // 見出しのロゴは指示書の法人のもの。白紙（指示書なし）は既定の法人。
+  const logo = await ownCompanyLogoForWorkOrder(workOrderNumber);
 
-  const pdf = await renderPdf("inspection-sheet.html", {
-    // 検査表は指示書に属する紙なので QR は指示書番号（CKK:WO:<番号>）。
-    // 指示書の無い白紙（マスタ印刷）では空 = QR を描かない。
-    doc_qr: documentQrSvg(QR_KINDS.WO, workOrderNumber),
-    template: sheetTemplateHead(template, lotQuantity),
-    meta: {
-      work_order: workOrderNumber != null ? `#${workOrderNumber}` : BLANK_LINE,
-      lot_quantity: lotQuantity != null ? `${lotQuantity} 本` : BLANK_LINE, // i18n-ignore
-      inspected_at: BLANK_LINE,
-      recorded_by: BLANK_LINE,
-      confirmed: BLANK_LINE,
-      produced_by: BLANK_LINE,
-      approved: BLANK_LINE,
+  const pdf = await renderPdf(
+    "inspection-sheet.html",
+    {
+      brand_logo: logo.html,
+      // 検査表は指示書に属する紙なので QR は指示書番号（CKK:WO:<番号>）。
+      // 指示書の無い白紙（マスタ印刷）では空 = QR を描かない。
+      doc_qr: documentQrSvg(QR_KINDS.WO, workOrderNumber),
+      template: sheetTemplateHead(template, lotQuantity),
+      meta: {
+        work_order:
+          workOrderNumber != null ? `#${workOrderNumber}` : BLANK_LINE,
+        lot_quantity: lotQuantity != null ? `${lotQuantity} 本` : BLANK_LINE, // i18n-ignore
+        inspected_at: BLANK_LINE,
+        recorded_by: BLANK_LINE,
+        confirmed: BLANK_LINE,
+        produced_by: BLANK_LINE,
+        approved: BLANK_LINE,
+      },
+      template_image_html: templateImageHtml(
+        image?.dataUri ?? null,
+        image?.filename ?? null,
+      ),
+      grid_html,
+      counts_table_html,
+      shape_html: shapeSectionHtml(template.items),
+      overall: { judgement: "合格 ・ 不合格" }, // i18n-ignore
+      footer_note:
+        esc(
+          `* は必須項目。抜取の欄数はロット数量からの要求サンプル数（上限 10 欄）。${overflowNote}`, // i18n-ignore
+        ) + equipmentLegendNote(template.items),
+      final_inspection_html: finalInspectionSectionHtml(finalInspection),
     },
-    template_image_html: templateImageHtml(
-      image?.dataUri ?? null,
-      image?.filename ?? null,
-    ),
-    grid_html,
-    counts_table_html,
-    shape_html: shapeSectionHtml(template.items),
-    overall: { judgement: "合格 ・ 不合格" }, // i18n-ignore
-    footer_note:
-      esc(
-        `* は必須項目。抜取の欄数はロット数量からの要求サンプル数（上限 10 欄）。${overflowNote}`, // i18n-ignore
-      ) + equipmentLegendNote(template.items),
-    final_inspection_html: finalInspectionSectionHtml(finalInspection),
-  });
+    { assets: logo.assets },
+  );
 
   const filename = `inspection-${template.code}-v${template.version}.pdf`;
   return new Response(pdf, {
