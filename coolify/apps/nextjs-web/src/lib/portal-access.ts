@@ -13,6 +13,7 @@
 import "server-only";
 
 import { cache } from "react";
+import { toDocRef } from "@/lib/doc-ref";
 import { prisma } from "./db";
 import {
   type PortalAccess,
@@ -98,8 +99,17 @@ const DENIED: PortalAccess = {
  */
 export async function portalAccessFor(
   session: PortalSession,
-  target: PortalTarget,
+  rawTarget: PortalTarget,
 ): Promise<PortalAccess> {
+  // 付与・リンクは書類を法人コード付きの参照で指す（lib/doc-ref-core.ts）。
+  // 突き合わせも参照で行う — 番号だけで比べない。
+  const target: PortalTarget = {
+    ...rawTarget,
+    ref:
+      rawTarget.ref ??
+      (await toDocRef(rawTarget.type, rawTarget.id).catch(() => null)) ??
+      rawTarget.id,
+  };
   if (session.linkId) {
     const link = await prisma.portalDocumentLink
       .findUnique({
@@ -109,7 +119,7 @@ export async function portalAccessFor(
       .catch(() => null);
     if (!link || link.revokedAt) return DENIED;
     const match =
-      link.resourceType === target.type && link.resourceId === target.id;
+      link.resourceType === target.type && link.resourceId === target.ref;
     return match
       ? {
           canView: true,

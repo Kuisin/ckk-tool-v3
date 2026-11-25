@@ -48,6 +48,7 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { companyForAcceptance } from "@/lib/doc-company";
+import { requireDocRef } from "@/lib/doc-ref";
 import { PERIODIC_LOCKS, withAdvisoryLock } from "./advisory-lock";
 import { AiProviderConfigError, aiConfigHeaders } from "./ai-provider";
 import { APPROVAL_TARGET } from "./approval-targets";
@@ -327,7 +328,10 @@ async function ingestFile(input: {
   await prisma.documentAttachment.create({
     data: {
       ownerType: "order_acceptances",
-      ownerId: formatDocNumber("ORD", { yearMonth, seq }),
+      ownerId: await requireDocRef(
+        "order_acceptances",
+        formatDocNumber("ORD", { yearMonth, seq }),
+      ),
       fileId: fileRow.id,
       label: L(
         "settings.orderIntake.pipeline.sourceAttachmentLabel",

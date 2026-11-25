@@ -595,7 +595,7 @@ async function main(): Promise<void> {
       `SELECT count(*) FROM app.inventory_transactions t
          JOIN app.inventory_movements m ON m.id=t.movement_id
          JOIN app.item_inventory i ON i.id=t.inventory_id
-        WHERE m.source_id='DOR-209902-00001' AND t.transaction_type='OUT'
+        WHERE m.source_id=app.to_doc_ref('delivery_orders','DOR-209902-00001') AND t.transaction_type='OUT'
           AND i.owner_bp_id='${CUSTOMER}'::uuid`,
     );
     check(

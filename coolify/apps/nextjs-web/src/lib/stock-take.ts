@@ -7,6 +7,7 @@ import "server-only";
  * ここは DB の読み書きと、確定時の入出庫伝票の発行だけ。
  */
 
+import { requireDocRef } from "@/lib/doc-ref";
 import type { Prisma as PrismaNS } from "../../generated/client/client";
 import type { MovementKey } from "./inventory";
 import { applyTransaction, movementOpener } from "./inventory";
@@ -99,6 +100,8 @@ export async function confirmStockTakeTx(
     },
   });
   const number = `STK-${take.yearMonth}-${String(take.seq).padStart(5, "0")}`;
+  // 在庫取引の reference_id は法人コード付きの参照で残す（lib/doc-ref-core.ts）。
+  const refId = await requireDocRef("stock_takes", number, tx);
 
   const openMovement = movementOpener(tx, {
     key: movementKey,
@@ -143,7 +146,7 @@ export async function confirmStockTakeTx(
       transactionType: "ADJUST",
       quantity: diff,
       referenceType: "stock_take",
-      referenceId: number,
+      referenceId: refId,
       notes: encodeInventoryNote("stockTakeAdjusted", {
         counted: input.countedQuantity,
         book: input.liveQuantity,

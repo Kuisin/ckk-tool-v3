@@ -1,0 +1,192 @@
+/**
+ * doc-number.ts — combined-key document numbers (client-safe, pure).
+ *
+ * 価格試算/見積書 rows are keyed (year_month, seq) — the display number
+ * EST-YYYYMM-NNNNN / QOT-YYYYMM-NNNNN is DERIVED from the key, never stored.
+ * URL ids use the formatted number; `parseDocKey` maps it back to the key.
+ */
+
+import { docRefNumber } from "./doc-ref-core";
+
+export interface DocKey {
+  yearMonth: string;
+  seq: number;
+}
+
+const DOC_FORMATS = {
+  EST: { digits: 5 },
+  QOT: { digits: 5 },
+  PRC: { digits: 5 },
+  PRD: { digits: 4 },
+  DOR: { digits: 5 },
+  DRN: { digits: 5 },
+  INV: { digits: 5 },
+  ORD: { digits: 5 }, // 注文請書（注文明細の枝番なし基底番号）
+  WOR: { digits: 5 }, // 指示書（書類番号 — ロット番号は別の通し連番 int）
+  PO: { digits: 5 }, // 素材発注書（po_number に文字列そのまま保存）
+  PRQ: { digits: 5 }, // 購買依頼（request_number に文字列そのまま保存）
+  DSG: { digits: 5 }, // 設計依頼書（request_number に文字列そのまま保存）
+  MOV: { digits: 5 }, // 入出庫伝票（PD07 — 在庫が動くたびに 1 枚）
+  STK: { digits: 5 }, // 棚卸（PD08）
+  ACC: { digits: 5 }, // 会計文書（転記・反対仕訳。請求書番号とは別採番）
+} as const;
+
+export type DocPrefix = keyof typeof DOC_FORMATS;
+
+/** (yearMonth, seq) → "EST-202607-00001". */
+export function formatDocNumber(prefix: DocPrefix, key: DocKey): string {
+  const { digits } = DOC_FORMATS[prefix];
+  return `${prefix}-${key.yearMonth}-${String(key.seq).padStart(digits, "0")}`;
+}
+
+export const formatEstimateNumber = (key: DocKey) =>
+  formatDocNumber("EST", key);
+export const formatQuoteNumber = (key: DocKey) => formatDocNumber("QOT", key);
+/** 価格表番号 PRC-YYYYMM-NNNNN — URL id にも使用。 */
+export const formatPriceListNumber = (key: DocKey) =>
+  formatDocNumber("PRC", key);
+/** 入出庫伝票番号 MOV-YYYYMM-NNNNN — URL id にも使用。 */
+export const formatMovementNumber = (key: DocKey) =>
+  formatDocNumber("MOV", key);
+/** 棚卸番号 STK-YYYYMM-NNNNN — URL id にも使用。 */
+export const formatStockTakeNumber = (key: DocKey) =>
+  formatDocNumber("STK", key);
+/** 会計文書番号 ACC-YYYYMM-NNNNN。 */
+export const formatAccountingDocNumber = (key: DocKey) =>
+  formatDocNumber("ACC", key);
+
+/**
+ * 製品コード PRD-YYYYMM-NNNN — (year_month, seq) から導出。
+ * レガシー取込の製品はコード未採番（yearMonth/seq が null）→ null を返す。
+ */
+export function formatProductNumber(
+  yearMonth: string | null,
+  seq: number | null,
+): string | null {
+  if (!yearMonth || seq == null) return null;
+  return formatDocNumber("PRD", { yearMonth, seq });
+}
+
+/**
+ * "EST-202607-00001" (or a bare "202607-00001") → { yearMonth, seq }.
+ * Returns null when the string is not a valid document id.
+ */
+export function parseDocKey(id: string, prefix?: DocPrefix): DocKey | null {
+  // 法人コード付きの参照（`CKK/QOT-…` / URL 形 `CKK~QOT-…`）も受ける —
+  // 番号の部分だけを読む。法人が合っているかはここでは見ない（純粋関数。
+  // 照合は lib/doc-ref.ts）。
+  // プレフィクスは 2〜4 文字（WO / PO / EST / …）
+  const m = /^(?:([A-Z]{2,4})-)?(\d{6})-(\d{1,6})$/.exec(docRefNumber(id));
+  if (!m) return null;
+  if (prefix && m[1] && m[1] !== prefix) return null;
+  const seq = Number(m[3]);
+  if (!Number.isInteger(seq) || seq < 1) return null;
+  return { yearMonth: m[2], seq };
+}
+
+// ─── 注文明細番号（3 パート: ORD-YYYYMM-NNNNN-NN） ────────────────────────────
+
+export interface OrderLineKey {
+  yearMonth: string;
+  seq: number;
+  branch: number;
+}
+
+/** (yearMonth, seq, branch) → "ORD-202607-00001-01"。URL id にも使用。 */
+export function formatOrderLineNumber(key: OrderLineKey): string {
+  return `ORD-${key.yearMonth}-${String(key.seq).padStart(5, "0")}-${String(key.branch).padStart(2, "0")}`;
+}
+
+/**
+ * DB 行（注文請書キー + 枝番）→ 表示番号。枝番は確定時に採番されるため、
+ * 未確定の行は番号を持たない → null。
+ */
+export function orderLineNumberOf(row: {
+  // 旧列（番号設計 PR-B 以降は NULL 可。DB トリガーが acceptance_id から埋める）
+  acceptanceYearMonth: string | null;
+  acceptanceSeq: number | null;
+  branch: number | null;
+}): string | null {
+  if (row.branch == null) return null;
+  if (row.acceptanceYearMonth == null || row.acceptanceSeq == null) return null;
+  return formatOrderLineNumber({
+    yearMonth: row.acceptanceYearMonth,
+    seq: row.acceptanceSeq,
+    branch: row.branch,
+  });
+}
+
+/**
+ * 注文明細番号 → Prisma の where（確定済みのみ）。注文請書を番号で引き、
+ * その中の枝番を指す。一意なので findFirst で 1 行に決まる — 一意制約は
+ * (acceptance_id, branch) にある（番号設計 PR-B で注文請書のキーが uuid に
+ * なったため、番号の 3 列そのものの複合ユニークは無くなった）。
+ */
+export function orderLineWhereKey(key: OrderLineKey) {
+  return {
+    acceptance: { yearMonth: key.yearMonth, seq: key.seq },
+    branch: key.branch,
+  };
+}
+
+/**
+ * 子の表の旧 (…_year_month, …_seq) 列 → DocKey。
+ *
+ * 番号設計 PR-B で子の表は親を uuid（…_id）で指すようになり、旧 2 列は
+ * NULL 可になった。値は DB トリガー app.sync_doc_parent_key が id から必ず
+ * 埋めるので、**必須の参照**の旧列が NULL なのは DB が壊れているときだけ —
+ * 黙って別の番号を作らずに落とす。旧列は PR-D で消える。
+ */
+export function legacyDocKey(
+  yearMonth: string | null | undefined,
+  seq: number | null | undefined,
+): DocKey {
+  if (yearMonth == null || seq == null) {
+    throw new Error("legacy document key is missing (sync_doc_parent_key)");
+  }
+  return { yearMonth, seq };
+}
+
+const ORDER_LINE_RE = /^(?:ORD-)?(\d{6})-(\d{1,6})-(\d{1,2})$/i;
+
+/** "ORD-202607-00001-01"（prefix 省略可）→ キー。不一致は null。 */
+export function parseOrderLineKey(id: string): OrderLineKey | null {
+  // 法人コード付きの参照も受ける（parseDocKey と同じ）。
+  const m = ORDER_LINE_RE.exec(docRefNumber(id));
+  if (!m) return null;
+  const seq = Number(m[2]);
+  const branch = Number(m[3]);
+  if (!Number.isInteger(seq) || seq < 1) return null;
+  if (!Number.isInteger(branch) || branch < 1) return null;
+  return { yearMonth: m[1], seq, branch };
+}
+
+// ── 表示: 接頭辞と番号を分ける ───────────────────────────────────────────────
+
+/**
+ * 接頭辞は「大文字 2〜4 文字 + ハイフン」だけを認める（QOT- / ORD- / DRN- …）。
+ */
+const DISPLAY_PREFIX = /^([A-Z]{2,4}-)(.+)$/;
+
+export interface SplitDocNumber {
+  /** `ORD-` の部分。無ければ空文字。 */
+  prefix: string;
+  /** 残り（実際に見分けたいところ）。 */
+  rest: string;
+}
+
+/**
+ * 書類番号を「接頭辞」と「番号」に分ける（表示を分けるためだけのもの）。
+ *
+ * 一覧に `ORD-202609-00042` が縦に並ぶと、**どの行も左端の 4 文字が同じ**なので、
+ * 目が最初に当たる場所に情報が無い。実際に見分けたいのは後ろの番号のほう。
+ * 接頭辞を薄くして番号を主役にするために、ここで切る。
+ *
+ * 分けられないものはそのまま返す（`rest` に全部）。ロット番号のような
+ * **接頭辞を持たない番号**もこの経路に来るので、無理に切らないこと —
+ * 切ると数字の頭が薄くなって読み違える。
+ */
+export function splitDocNumber(value: string): SplitDocNumber {
+  const m = DISPLAY_PREFIX.exec(value);
+  return m ? { prefix: m[1], rest: m[2] } : { prefix: "", rest: value };
+}

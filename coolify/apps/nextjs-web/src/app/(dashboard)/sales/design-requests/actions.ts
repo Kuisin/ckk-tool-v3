@@ -41,6 +41,7 @@ import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { companyForDesign } from "@/lib/doc-company";
 import { parseDocKey } from "@/lib/doc-number";
+import { requireDocRef } from "@/lib/doc-ref";
 import { type NotificationType, notify } from "@/lib/notifications";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
@@ -863,6 +864,7 @@ export async function cancelDesign(
       );
     }
     const actor = await getCurrentActorId();
+    const targetRef = await requireDocRef("design_requests", number);
     await prisma.$transaction([
       prisma.designRequest.update({
         where: { id: prior.id },
@@ -881,7 +883,7 @@ export async function cancelDesign(
       prisma.approvalRequest.deleteMany({
         where: {
           targetType: "design_requests",
-          targetId: number,
+          targetId: targetRef,
           status: "PENDING",
         },
       }),

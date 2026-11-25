@@ -25,7 +25,11 @@ import { parseDocKey } from "./doc-number";
  * 表ごとの解決方法。
  *  - identity      … record_id がそのままキー（uuid / 連番 int / 文字列 PK）。
  *                    uuid・sequence 由来の int は再利用されない。
- *  - docKey        … `PFX-YYYYMM-NNNNN` ⇄ `"YYYYMM:seq"`（doc-number.ts と可逆）。
+ *  - docKey        … 書類番号 `PFX-YYYYMM-NNNNN` で指す書類。キーは法人コード
+ *                    付きの参照 `"<法人コード>/<番号>"`（lib/doc-ref-core.ts）—
+ *                    番号は法人ごとの連番になるので、番号だけでは書類が
+ *                    1 つに決まらない。法人を引くのに 1 クエリが要る
+ *                    （audit-record-key.ts 側で解決）。
  *  - numberToUuid  … 保存済みの一意な番号 → uuid PK。1 クエリが要る
  *                    （audit-record-key.ts 側で解決）。
  *  - stripPrefix   … `"<enum>#<int>"` → 最後の `#` の後ろ。
@@ -203,10 +207,9 @@ export function resolveAuditRecordKeySync(
   switch (shape) {
     case "identity":
       return recordId;
-    case "docKey": {
-      const key = parseDocKey(recordId);
-      return key ? compositeKey(key.yearMonth, key.seq) : null;
-    }
+    case "docKey":
+      // 番号の形でなければ解決できない。形が合えば法人を引きに行く。
+      return parseDocKey(recordId) ? undefined : null;
     case "stripPrefix": {
       const idx = recordId.lastIndexOf("#");
       if (idx < 0) return null;

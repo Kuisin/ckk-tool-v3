@@ -36,13 +36,14 @@ describe("resolveAuditRecordKeySync", () => {
     ).toBe("kiosk.unlock_pin");
   });
 
-  it("docKey 形は複合キー文字列へ変換する（padding なし）", () => {
-    expect(resolveAuditRecordKeySync("quotes", "QOT-202608-00003")).toBe(
-      "202608:3",
-    );
-    expect(resolveAuditRecordKeySync("estimates", "EST-202608-00001")).toBe(
-      "202608:1",
-    );
+  it("docKey 形は法人を引く 1 クエリへ委ねる（undefined）", () => {
+    expect(
+      resolveAuditRecordKeySync("quotes", "QOT-202608-00003"),
+    ).toBeUndefined();
+    // 法人コード付きの参照で渡されても同じ
+    expect(
+      resolveAuditRecordKeySync("estimates", "CKK/EST-202608-00001"),
+    ).toBeUndefined();
   });
 
   it("docKey 形は不正な record_id で null を返す", () => {

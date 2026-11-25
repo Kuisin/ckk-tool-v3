@@ -24,6 +24,7 @@ import {
   parseDocKey,
   parseOrderLineKey,
 } from "./doc-number";
+import { toDocRef } from "./doc-ref";
 
 export interface AuditKeyResolution {
   key: string | null;
@@ -189,16 +190,16 @@ export async function resolveAuditRecordKey(
   if (recordId == null || recordId.length === 0) return { key: null };
   try {
     const sync = resolveAuditRecordKeySync(tableName, recordId);
-    if (sync !== undefined) {
-      if (
-        sync !== null &&
-        opts.needSince &&
-        auditKeyShape(tableName) === "docKey"
-      ) {
-        const since = await docKeyCreatedAt(tableName, recordId);
-        return { key: sync, since };
-      }
-      return { key: sync };
+    if (sync !== undefined) return { key: sync };
+    if (auditKeyShape(tableName) === "docKey") {
+      // 書類番号で指す書類 — キーは法人コード付きの参照（lib/doc-ref-core.ts）。
+      // 書類が見つからなければ null（削除済み。record_id だけで残る）。
+      const key = await toDocRef(tableName, recordId);
+      if (key == null) return { key: null };
+      const since = opts.needSince
+        ? await docKeyCreatedAt(tableName, recordId)
+        : undefined;
+      return { key, since };
     }
     return await resolveLookupKey(tableName, recordId, opts.needSince ?? false);
   } catch (e) {

@@ -12,8 +12,8 @@
 -- 何度流しても同じ結果になるよう、先に消してから作る。
 DELETE FROM app.inventory_transactions t
  USING app.inventory_movements m
- WHERE t.movement_id = m.id AND m.source_id = 'DOR-209901-00001';
-DELETE FROM app.inventory_movements WHERE source_id = 'DOR-209901-00001';
+ WHERE t.movement_id = m.id AND m.source_id IN ('DOR-209901-00001', 'CKK/DOR-209901-00001');
+DELETE FROM app.inventory_movements WHERE source_id IN ('DOR-209901-00001', 'CKK/DOR-209901-00001');
 DELETE FROM app.item_inventory WHERE item_id = 9003 AND lot_number = 9999;
 DELETE FROM app.delivery_order_items
  WHERE delivery_order_year_month = '209901' AND delivery_order_seq = 1;

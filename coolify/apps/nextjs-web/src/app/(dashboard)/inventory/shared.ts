@@ -12,6 +12,7 @@
 import type { InventoryTransactionRow } from "@/components/inventory/model";
 import { prisma } from "@/lib/db";
 import { orderLineNumberOf } from "@/lib/doc-number";
+import { docRefNumber } from "@/lib/doc-ref-core";
 
 /** 在庫行 1 件分の取引履歴（新しい順）を参照ラベル解決済みで返す。 */
 export async function fetchInventoryTransactions(
@@ -65,7 +66,11 @@ export async function fetchInventoryTransactions(
       return n != null ? `#${n}` : id;
     }
     if (type === "order_line") return soNumber.get(id) ?? id;
-    // delivery_order は DOR-… 文字列で保存済み。その他はそのまま。
+    // delivery_order / stock_take は法人コード付きの参照（`CKK/DOR-…`）で
+    // 保存している — 表示は番号。その他はそのまま。
+    if (type === "delivery_order" || type === "stock_take") {
+      return docRefNumber(id);
+    }
     return id;
   };
 
