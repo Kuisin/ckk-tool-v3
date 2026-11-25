@@ -83,17 +83,17 @@ VALUES
 -- ── 2. 仕掛品（仕掛ブランク × 加工状態。目標製品は 9201 ではない）──────────
 -- ブランク品目と加工状態は DB の関数で引く（無ければ作る）— アプリの計上と同じ入口。
 INSERT INTO app.item_inventory
-  (id, item_id, plant_id, lot_number, is_semi_finished, quantity, reserved_quantity, unit,
+  (id, item_id, plant_id, lot_number, quantity, reserved_quantity, unit,
    wip_state_id, aimed_item_id, finished_diameter_mm, finished_length_mm, updated_at)
 VALUES
   ('dc0f0000-0000-4000-8000-000000000001',
-   app.wip_blank_item_id(1, 6::numeric, 60::numeric), 1, 9004, true, 5, 0, '本',
+   app.wip_blank_item_id(1, 6::numeric, 60::numeric), 1, 9004, 5, 0, '本',
    app.wip_state_id(ARRAY[5, 6, 10]), 9001, 6, 60, now() - interval '9 days'),
   ('dc0f0000-0000-4000-8000-000000000002',
-   app.wip_blank_item_id(1, 6::numeric, 80::numeric), 1, 9004, true, 4, 0, '本',
+   app.wip_blank_item_id(1, 6::numeric, 80::numeric), 1, 9004, 4, 0, '本',
    app.wip_state_id(ARRAY[5, 6]), 9001, 6, 80, now() - interval '6 days'),
   ('dc0f0000-0000-4000-8000-000000000003',
-   app.wip_blank_item_id(1, 8::numeric, 60::numeric), 1, 9001, true, 3, 0, '本',
+   app.wip_blank_item_id(1, 8::numeric, 60::numeric), 1, 9001, 3, 0, '本',
    app.wip_state_id(ARRAY[5]), 9003, 8, 60, now() - interval '3 days');
 
 -- ── 3. 承認まで画面で通すため、demo1 を指示書の承認グループへ ────────────────

@@ -342,10 +342,10 @@ export interface WipBlankSize {
 /**
  * 指示書の仕掛ブランク — 材種・径は指示書の素材から、長さは製品の要求長から。
  * 指示書に素材が無ければ（または素材に材種・径が無ければ）製品の要求素材へ落ちる。
- * どれかが決まらなければ null（計上は旧来の「未分類」へ落ちる）。
+ * どれかが決まらなければ null（計上は製品の行のまま「未分類」へ落ちる）。
  *
- * DB の app.wip_legacy_bucket（20261126200000_wip_backfill）と**同じ規則**。
- * 片方を直したらもう片方も直すこと。
+ * 移行（20261126200000_wip_backfill の app.wip_legacy_bucket）もこの規則で
+ * 既存の半製品を振り分けた。
  */
 export function wipBlankFor(args: {
   material: { materialTypeId: number | null; diameterMm: number | null } | null;

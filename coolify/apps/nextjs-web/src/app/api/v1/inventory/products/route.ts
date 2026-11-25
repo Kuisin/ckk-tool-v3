@@ -49,11 +49,15 @@ export async function GET(request: Request): Promise<Response> {
               ownerBpId: null,
               // 半製品は仕掛ブランクの行に移った（20261126200000_wip_backfill）。
               // 契約は変えない — 製品の在庫として、目標製品の id で返す。
-              // wip-scope: **仕掛品も返す**（isSemiFinished: true の行）。この
-              // エンドポイントは前から半製品を印付きで返していて、完成品だけが
-              // 欲しい側は isSemiFinished で落とす契約。
+              // wip-scope: **仕掛品も返す**（加工状態を持つ行 — DTO では
+              // isSemiFinished: true）。このエンドポイントは前から半製品を印付きで
+              // 返していて、完成品だけが欲しい側は isSemiFinished で落とす契約。
+              // 印は DB の列ではなく wipStateId から導く（契約の形は変えない）。
               // （断片と AND で重ねる — 断片自身の AND / OR を潰さない）
-              OR: [{ item: { itemType: "PRODUCT" } }, { isSemiFinished: true }],
+              OR: [
+                { item: { itemType: "PRODUCT" } },
+                { wipStateId: { not: null } },
+              ],
             },
           ],
         },
@@ -63,6 +67,7 @@ export async function GET(request: Request): Promise<Response> {
         select: {
           id: true,
           itemId: true,
+          wipStateId: true,
           aimedItemId: true,
           finishedDiameterMm: true,
           finishedLengthMm: true,
@@ -73,7 +78,6 @@ export async function GET(request: Request): Promise<Response> {
           lotNumber: true,
           quantity: true,
           reservedQuantity: true,
-          isSemiFinished: true,
           storageLocationId: true,
           shelfId: true,
           notes: true,
@@ -83,37 +87,41 @@ export async function GET(request: Request): Promise<Response> {
     query,
     tiebreak: "id",
     toCursor: (r) => ({ kind: "id", id: r.id, t: r.updatedAt.toISOString() }),
-    toDto: (r) => ({
-      id: r.id,
-      productId: r.isSemiFinished ? (r.aimedItemId ?? r.itemId) : r.itemId,
-      plantId: r.plantId,
-      /** ロット = 指示書番号（QR `CKK:WO:<int>` と同じ値）。 */
-      lotNumber: r.lotNumber,
-      quantity: r.quantity,
-      reservedQuantity: r.reservedQuantity,
-      isSemiFinished: r.isSemiFinished,
-      /**
-       * 加工状態（仕掛品だけ。完成品は null）。`stepIds` は済んだ形を変える工程
-       * （process_step_catalog.id、早い順）。`isLegacy` = 未分類（移行で行き先を
-       * 推定できなかった旧来の半製品）。`name` は任意の呼び名（多言語 JSON）。
-       */
-      wipState: r.wipState
-        ? {
-            id: r.wipState.id,
-            stepIds: r.wipState.stepIds,
-            name: r.wipState.name,
-            isLegacy: r.wipState.isLegacy,
-          }
-        : null,
-      /** 目標製品（items.id）。仕掛品だけ。 */
-      aimedProductId: r.isSemiFinished ? r.aimedItemId : null,
-      /** 研削後の仕上がり寸法（mm）。記録が無ければ null。 */
-      finishedDiameterMm: r.finishedDiameterMm,
-      finishedLengthMm: r.finishedLengthMm,
-      storageLocationId: r.storageLocationId,
-      shelfId: r.shelfId,
-      notes: r.notes,
-      updatedAt: iso(r.updatedAt),
-    }),
+    toDto: (r) => {
+      const isSemiFinished = r.wipStateId != null;
+      return {
+        id: r.id,
+        productId: isSemiFinished ? (r.aimedItemId ?? r.itemId) : r.itemId,
+        plantId: r.plantId,
+        /** ロット = 指示書番号（QR `CKK:WO:<int>` と同じ値）。 */
+        lotNumber: r.lotNumber,
+        quantity: r.quantity,
+        reservedQuantity: r.reservedQuantity,
+        /** 半製品（仕掛品）か — 加工状態を持つ行。DB の列ではなく導いた値。 */
+        isSemiFinished,
+        /**
+         * 加工状態（仕掛品だけ。完成品は null）。`stepIds` は済んだ形を変える工程
+         * （process_step_catalog.id、早い順）。`isLegacy` = 未分類（移行で行き先を
+         * 推定できなかった旧来の半製品）。`name` は任意の呼び名（多言語 JSON）。
+         */
+        wipState: r.wipState
+          ? {
+              id: r.wipState.id,
+              stepIds: r.wipState.stepIds,
+              name: r.wipState.name,
+              isLegacy: r.wipState.isLegacy,
+            }
+          : null,
+        /** 目標製品（items.id）。仕掛品だけ。 */
+        aimedProductId: isSemiFinished ? r.aimedItemId : null,
+        /** 研削後の仕上がり寸法（mm）。記録が無ければ null。 */
+        finishedDiameterMm: r.finishedDiameterMm,
+        finishedLengthMm: r.finishedLengthMm,
+        storageLocationId: r.storageLocationId,
+        shelfId: r.shelfId,
+        notes: r.notes,
+        updatedAt: iso(r.updatedAt),
+      };
+    },
   });
 }

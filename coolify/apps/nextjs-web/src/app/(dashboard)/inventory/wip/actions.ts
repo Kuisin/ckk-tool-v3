@@ -257,7 +257,6 @@ export async function reclassifyWip(
           storageLocationId: src.storageLocationId,
           shelfId: src.shelfId,
           lotNumber: src.lotNumber,
-          isSemiFinished: true,
           sourceStepId: src.sourceStepId,
           wipStateId,
           aimedItemId: c.aimedItemId,

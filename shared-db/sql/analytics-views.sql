@@ -591,7 +591,8 @@ SELECT
 FROM app.wip_states ws;
 
 -- 製品在庫。**仕掛品（半製品）の行も含む** — 従来どおり目標製品の在庫として出す
--- （is_semi_finished で分けられる）。仕掛品だけを仕掛ブランクの軸で読みたいときは
+-- （is_semi_finished で分けられる — 加工状態を持つ行。列ではなく wip_state_id から
+-- 導いた値で、名前は Metabase の既存の問いのために残している）。仕掛品だけを仕掛ブランクの軸で読みたいときは
 -- v_wip_inventory。
 -- 末尾の 4 列（wip_state / aimed_product_name / finished_*）は足しただけなので
 -- 列の追加だけ（途中へ挿すと DROP が要る — ファイル冒頭の規約）。
@@ -603,7 +604,8 @@ SELECT
   prod.id AS product_id,
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
   coalesce(sl.name->>'ja', sl.name->>'en') AS storage_location_name,
-  ii.lot_number, ii.quantity, ii.reserved_quantity, ii.is_semi_finished,
+  ii.lot_number, ii.quantity, ii.reserved_quantity,
+  (ii.wip_state_id IS NOT NULL) AS is_semi_finished,
   ii.updated_at,
   prod.currency,  -- 品目の通貨（フィルタ用）
   wo.doc_number AS work_order_no,
@@ -617,7 +619,7 @@ FROM app.item_inventory ii
 -- 半製品は仕掛ブランクの行に移った（20261126200000_wip_backfill）— 品目は
 -- ブランクで、製品は目標製品（aimed_item_id）。従来どおり製品の在庫として出す。
 JOIN app.items prod
-  ON prod.id = CASE WHEN ii.is_semi_finished THEN coalesce(ii.aimed_item_id, ii.item_id)
+  ON prod.id = CASE WHEN ii.wip_state_id IS NOT NULL THEN coalesce(ii.aimed_item_id, ii.item_id)
                     ELSE ii.item_id END
  AND prod.item_type = 'PRODUCT'
 LEFT JOIN app.plants pl ON pl.id = ii.plant_id
@@ -653,7 +655,7 @@ SELECT
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
   coalesce(sl.name->>'ja', sl.name->>'en') AS storage_location_name,
   sh.code AS shelf_code,
-  ii.lot_number, ii.is_semi_finished,
+  ii.lot_number, (ii.wip_state_id IS NOT NULL) AS is_semi_finished,
   ii.quantity, ii.reserved_quantity,
   ii.quantity - ii.reserved_quantity AS available_quantity,
   ii.unit, ii.updated_at,

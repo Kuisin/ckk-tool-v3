@@ -357,7 +357,6 @@ export async function fetchDeliverySourceInfo(
         prisma.itemInventory.findMany({
           where: {
             itemId,
-            isSemiFinished: false,
             // 仕掛品は出荷できない（完成していない）。
             wipStateId: null,
             lotNumber: { not: null },
@@ -544,7 +543,6 @@ async function validateDispatchLots(
       where: {
         itemId,
         lotNumber: lot,
-        isSemiFinished: false,
         // 仕掛品は出荷できる在庫に数えない。
         wipStateId: null,
         // 同上 — 預けている分を数えると「在庫あり」と言って出荷で落ちる。

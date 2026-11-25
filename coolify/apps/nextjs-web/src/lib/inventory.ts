@@ -293,7 +293,6 @@ export async function ensureItemInventory(
     unit?: string;
     /** ロット = 指示書番号（素材は null）。 */
     lotNumber?: number | null;
-    isSemiFinished?: boolean;
     sourceStepId?: string | null;
     /** 省略 = 未割当。手動入出庫だけが指定する。 */
     storageLocationId?: number | null;
@@ -315,10 +314,8 @@ export async function ensureItemInventory(
      * **鍵の一部なので、省略した呼び出しが仕掛品の行に当たることは無い**
      * （値の入った行を null で探しても一致しない）。
      *
-     * 半製品（isSemiFinished: true）で加工状態を渡さなかったときは、旧来の
-     * 「製品 × ロット × 発生工程」から DB の app.wip_legacy_bucket が行き先を
-     * 決める（20261126200000_wip_backfill — 移行と同じ関数。計上を仕掛品へ
-     * 切り替える次の段まで、旧来の呼び出しはこの道を通る）。
+     * **加工状態を持つ = 半製品（仕掛品）。** それ以外の印は無い（旧
+     * is_semi_finished は DB のトリガーが加工状態から埋めるだけの廃止予定の列）。
      */
     wipStateId?: number | null;
     aimedItemId?: number | null;
@@ -326,31 +323,16 @@ export async function ensureItemInventory(
     finishedLengthMm?: PrismaNS.Decimal | number | string | null;
   },
 ): Promise<string> {
-  const isSemiFinished = data.isSemiFinished ?? false;
-  let itemId = data.itemId;
-  let wipStateId = data.wipStateId ?? null;
-  let aimedItemId = data.aimedItemId ?? null;
-  if (isSemiFinished && wipStateId == null) {
-    const [resolved] = await tx.$queryRaw<
-      { item_id: number; wip_state_id: number; aimed_item_id: number | null }[]
-    >`SELECT item_id, wip_state_id, aimed_item_id
-        FROM app.wip_legacy_bucket(${data.itemId}::int, ${data.lotNumber ?? null}::int,
-                                   ${data.sourceStepId ?? null}::uuid)`;
-    itemId = resolved.item_id;
-    wipStateId = resolved.wip_state_id;
-    aimedItemId = resolved.aimed_item_id;
-  }
   const bucket = {
-    itemId,
+    itemId: data.itemId,
     plantId: data.plantId,
     lotNumber: data.lotNumber ?? null,
-    isSemiFinished,
     storageLocationId: data.storageLocationId ?? null,
     shelfId: data.shelfId ?? null,
     custodyBpId: data.custodyBpId ?? null,
     ownerBpId: data.ownerBpId ?? null,
-    wipStateId,
-    aimedItemId,
+    wipStateId: data.wipStateId ?? null,
+    aimedItemId: data.aimedItemId ?? null,
     finishedDiameterMm: data.finishedDiameterMm ?? null,
     finishedLengthMm: data.finishedLengthMm ?? null,
   };
@@ -445,7 +427,6 @@ export async function onDeliveryOrderReturnedTx(
       itemId: line.itemId,
       plantId: args.plantId,
       lotNumber: line.lotNumber,
-      isSemiFinished: false,
       ownerBpId: line.ownerBpId ?? null,
     });
     await applyTransaction(tx, await openMovement(), {
@@ -924,8 +905,8 @@ function parseLotHint(lotText: string | null | undefined): number | null {
 
 /**
  * 指示書の仕掛ブランク（材種 × 径 × 長）と、その行を数える単位。
- * 決まらなければ null — 計上は旧来の鍵のまま「未分類」へ落ちる。
- * 規則は wip-state-core wipBlankFor（DB の app.wip_legacy_bucket と同じ）。
+ * 決まらなければ null — 計上は製品の行のまま「未分類」の状態へ落ちる
+ * （wipUnclassifiedStateIdTx）。規則は wip-state-core wipBlankFor。
  */
 export async function workOrderWipBlankTx(
   tx: Tx | typeof prisma,
@@ -967,7 +948,7 @@ export async function workOrderWipBlankTx(
 
 /**
  * 仕掛ブランク品目（無ければ作る）。作り方は DB の app.wip_blank_item_id が
- * 唯一の定義（移行・旧来の計上と同じ関数 — コードと名前の付け方が割れない）。
+ * 唯一の定義（移行と同じ関数 — コードと名前の付け方が割れない）。
  */
 export async function wipBlankItemIdTx(
   tx: Tx,
@@ -977,6 +958,18 @@ export async function wipBlankItemIdTx(
     SELECT app.wip_blank_item_id(${size.materialTypeId}::int,
                                  ${size.diameterMm}::numeric,
                                  ${size.lengthMm}::numeric) AS id`;
+  return row.id;
+}
+
+/**
+ * 「未分類」の加工状態（is_legacy の 1 行）— DB の app.wip_unclassified_state_id が
+ * 唯一の定義。ブランクが決まらない指示書（製品に要求素材・寸法が無い等）の
+ * 半製品は、製品の行のままここを指して入る。数は失わず、突合（matchWip）は
+ * is_legacy の行を人の判断に回す。
+ */
+export async function wipUnclassifiedStateIdTx(tx: Tx): Promise<number> {
+  const [row] = await tx.$queryRaw<{ id: number }[]>`
+    SELECT app.wip_unclassified_state_id() AS id`;
   return row.id;
 }
 
@@ -1036,8 +1029,7 @@ async function consumeSemiFinishedStock(
       // 半製品は仕掛ブランクの行にある（製品は目標製品 aimedItemId）。
       // 推定できなかった「未分類」の行は item_id も製品のまま。
       OR: [{ itemId: args.itemId }, { aimedItemId: args.itemId }],
-      isSemiFinished: true,
-      // wip-scope: 仕掛品だけを読む（is_semi_finished = (wip_state_id IS NOT NULL)）。
+      // wip-scope: 仕掛品だけを読む（加工状態を持つ行 = 半製品）。
       wipStateId: { not: null },
       quantity: { gt: 0 },
       // 自社の棚にある半製品だけ。外注が預かっている分・顧客の預り品は投入できない。
@@ -1548,7 +1540,6 @@ async function settleWorkOrderTx(
       itemId: wo.productItemId,
       plantId,
       lotNumber: wo.workOrderNumber,
-      isSemiFinished: false,
     });
     await applyTransaction(tx, await openMovement(), {
       inventoryType: "PRODUCT",
@@ -1598,21 +1589,21 @@ async function settleWorkOrderTx(
               unit: wipBlank.unit,
               plantId,
               lotNumber: wo.workOrderNumber,
-              isSemiFinished: true,
               sourceStepId: posting.sourceStepId,
               wipStateId: await wipStateIdTx(tx, posting.stepIds),
               aimedItemId: wo.productItemId,
               finishedDiameterMm: posting.finishedDiameterMm,
               finishedLengthMm: posting.finishedLengthMm,
             })
-          : // ブランクが決まらない（製品に要求素材が無い等）— 旧来の鍵で渡し、
-            // DB の app.wip_legacy_bucket が「未分類」へ寄せる。数は失わない。
+          : // ブランクが決まらない（製品に要求素材が無い等）— 製品の行のまま
+            // 「未分類」の状態へ寄せる。数は失わない。
             await ensureItemInventory(tx, {
               itemId: wo.productItemId,
               plantId,
               lotNumber: wo.workOrderNumber,
-              isSemiFinished: true,
               sourceStepId: posting.sourceStepId,
+              wipStateId: await wipUnclassifiedStateIdTx(tx),
+              aimedItemId: wo.productItemId,
             });
       await applyTransaction(tx, await openMovement(), {
         inventoryType: "PRODUCT",
@@ -1970,7 +1961,6 @@ async function planDispatchLines(
           ...(anyLot && so.fromPlantId != null
             ? { plantId: so.fromPlantId }
             : {}),
-          isSemiFinished: false,
           // 仕掛品は出荷できない（完成していない）。
           wipStateId: null,
           // 外注が預かっている分からは出荷できない（手元に無い）。
@@ -2127,7 +2117,6 @@ export async function onDeliveryOrderShippedTx(
             itemId: item.itemId,
             plantId: so.fromPlantId,
             lotNumber: item.lotNumber,
-            isSemiFinished: false,
             ownerBpId: plan.ownerBpId,
           }));
         await applyTransaction(tx, await openMovement(), {
@@ -2155,7 +2144,6 @@ export async function onDeliveryOrderShippedTx(
         itemId: item.itemId,
         plantId: so.fromPlantId,
         lotNumber: item.lotNumber,
-        isSemiFinished: false,
       });
       await applyTransaction(tx, await openMovement(), {
         inventoryType: "PRODUCT",
@@ -2384,8 +2372,7 @@ export async function reserveProductStock(
     // ロック取得後に読む値が確定値になる。
     await tx.$queryRaw`
       SELECT id FROM app.item_inventory
-      WHERE item_id = ${itemId} AND is_semi_finished = false
-        AND wip_state_id IS NULL
+      WHERE item_id = ${itemId} AND wip_state_id IS NULL
         AND custody_bp_id IS NULL AND owner_bp_id IS NULL
       FOR UPDATE`;
     const rows = (
@@ -2393,7 +2380,6 @@ export async function reserveProductStock(
         // 引き当てられるのは自社の在庫だけ（預け中・顧客の預り品は除く）。
         where: {
           itemId,
-          isSemiFinished: false,
           // 仕掛品は受注へ引き当てられない（完成していない）。
           wipStateId: null,
           custodyBpId: null,
