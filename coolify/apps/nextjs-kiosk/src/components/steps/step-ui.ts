@@ -46,6 +46,12 @@ export interface StepActionRequest {
     reason: string;
     count: number;
   }[];
+  /** COMPLETE のみ: 仕掛品として在庫に置く分の記録（仕上がり寸法・選んだ経路）。 */
+  wipRecording?: {
+    finishedDiameterMm?: number | null;
+    finishedLengthMm?: number | null;
+    pathStepIds?: number[] | null;
+  } | null;
   /** INSPECTION のみ — サンプル値: SELECT_MULTI は value[]、他は文字列 */
   templateId?: number;
   items?: {

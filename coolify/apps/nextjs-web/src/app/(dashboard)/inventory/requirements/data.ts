@@ -137,7 +137,16 @@ export async function fetchStockRequirements(
   // shared-db/prisma/schema/inventory.prisma のコメントに同旨あり）。
   const buckets = await prisma.itemInventory.findMany({
     // 手持ちとして数えるのは自社の分だけ。
-    where: { itemId, plantId, custodyBpId: null, ownerBpId: null },
+    // 仕掛品は製品・素材の手持ちではない（「未分類」の仕掛品は製品の品目の
+    // ままなので、品目で絞るだけでは混ざる）。仕掛ブランクそのものを開いた
+    // ときだけ、その在庫（= 仕掛品）を数える。
+    where: {
+      itemId,
+      plantId,
+      custodyBpId: null,
+      ownerBpId: null,
+      ...(item.itemType === "BLANK" ? {} : { wipStateId: null }),
+    },
   });
   const bucketIds = buckets.map((b) => b.id);
   const onHand = buckets.reduce((s, b) => s + Number(b.quantity), 0);

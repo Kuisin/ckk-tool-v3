@@ -3638,6 +3638,29 @@
       "invalidPayload": "加工程序内容不正确",
       "invalidReference": "选择了不存在的工序或作业场所",
       "savedAudit": "已保存 v{version} 的加工程序（{count} 个）"
+    },
+    "wipRecording": {
+      "title": "入库的在制品",
+      "description": "作为半成品入库的部分，按加工状态和成品尺寸分别入库。",
+      "state": "加工状态",
+      "stateUnprocessed": "未加工（无成形工序）",
+      "kindDefect": "转为半成品的部分",
+      "kindBranchTerminal": "分支末端（入半成品库存）",
+      "finishedDiameter": "成品直径 (mm)",
+      "finishedLength": "成品长度 (mm)",
+      "finishedSize": "成品尺寸",
+      "defaultsToBlank": "尚未完成成形工序，未填写时采用在制坯料的尺寸（φ{diameter} × {length}）。",
+      "path": "经过的路径",
+      "pathHint": "此工序之前有分支汇合，加工状态无法唯一确定。请确认物品经过的路径。",
+      "recommended": "推荐（主线）",
+      "issues": {
+        "finishedDiameterRequired": "请输入成品直径",
+        "finishedLengthRequired": "请输入成品长度",
+        "finishedDiameterInvalid": "成品直径请输入大于 0 的数值",
+        "finishedLengthInvalid": "成品长度请输入大于 0 的数值",
+        "pathChoiceRequired": "请选择物品经过的路径",
+        "pathChoiceInvalid": "所选路径不在此工序的候选中，请重新加载页面"
+      }
     }
   },
   "purchase": {

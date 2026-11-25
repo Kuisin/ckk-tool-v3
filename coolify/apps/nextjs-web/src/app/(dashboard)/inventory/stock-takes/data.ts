@@ -108,6 +108,7 @@ async function resolveLines(
   const buckets = bucketIds.length
     ? // custody-scope: / owner-scope: 棚卸行が指しているバケットを引くだけ
       // （行を作る側で自社在庫に絞ってある — lib/stock-take.ts）。
+      // wip-scope: 同じく、指しているバケットを引くだけ（仕掛品の行も棚卸の対象）。
       await prisma.itemInventory.findMany({
         where: { id: { in: bucketIds } },
         include: { item: true, storageLocation: true, shelf: true },

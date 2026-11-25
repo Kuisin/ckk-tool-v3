@@ -52,6 +52,8 @@ import type { MarkingView, MyStepView, StepLocationGate } from "@/lib/steps";
 import {
   cleanReasonEntries,
   type DefectReasonEntry,
+  deriveSuccessFromList,
+  dispositionTotals,
   quantitiesFromList,
 } from "@/lib/steps-core";
 import { REGRIND_RECEIPT_STEP_CODE } from "@/lib/workflow-core";
@@ -66,6 +68,12 @@ import { StepInspectionApprovalPanel } from "./StepInspectionApprovalPanel";
 import { StepInspectionForm } from "./StepInspectionForm";
 import { StepProgramsSection } from "./StepProgramsSection";
 import { isQuantityFormValid, StepQuantityForm } from "./StepQuantityForm";
+import {
+  EMPTY_WIP_DRAFT,
+  type KioskWipRecordingView,
+  StepWipRecordingForm,
+  wipRecordingCheck,
+} from "./StepWipRecordingForm";
 import {
   callStepAction,
   stateColor,
@@ -95,6 +103,11 @@ type Props = {
   markings?: MarkingView[];
   /** この工程の加工プログラム（機械一致が先頭）。 */
   programs?: KioskStepProgram[];
+  /**
+   * 仕掛品として在庫に置く分を記録するための材料（経路の候補・ブランクの寸法・
+   * 工程名）。再研磨の指示書では null。
+   */
+  wipRecording?: KioskWipRecordingView | null;
 };
 
 type Phase = "IDLE" | "STARTING" | "COMPLETING";
@@ -108,6 +121,7 @@ export function StepExecutionView({
   backParams = "",
   initialWorkLocationCode = null,
   programs = [],
+  wipRecording = null,
 }: Props) {
   const router = useRouter();
   const { m } = useI18n();
@@ -172,6 +186,17 @@ export function StepExecutionView({
     step.expectedInputQuantity ??
     step.workOrderPlannedQuantity;
 
+  // 仕掛品として在庫に置く分（半製品の数 / 半製品で終わる分岐の終端の良品）。
+  // 数量記録なしの工程は受入数がそのまま良品数になる。
+  const [wipDraft, setWipDraft] = useState(EMPTY_WIP_DRAFT);
+  const wipQuantities = {
+    defectSemiFinished: isNone ? 0 : dispositionTotals(defects).semi,
+    outputSuccess: isNone
+      ? completeInput
+      : deriveSuccessFromList(completeInput, defects),
+  };
+  const wipCheck = wipRecordingCheck(wipRecording, wipQuantities, wipDraft);
+
   const run = async (
     body: Parameters<typeof callStepAction>[1],
     onDone?: () => void,
@@ -234,6 +259,7 @@ export function StepExecutionView({
         // 区分列・良品はリストから導出して送る（サーバーもリストから再計算）
         quantities: isNone ? null : quantitiesFromList(completeInput, defects),
         defectReasons: isNone ? undefined : cleanReasonEntries(defects),
+        wipRecording: wipCheck.input,
       },
       () => {
         playLogoutSound();
@@ -595,6 +621,13 @@ export function StepExecutionView({
                       stepCode={step.stepCode}
                     />
                   )}
+                  <StepWipRecordingForm
+                    defectSemiFinished={wipQuantities.defectSemiFinished}
+                    draft={wipDraft}
+                    onChange={setWipDraft}
+                    outputSuccess={wipQuantities.outputSuccess}
+                    view={wipRecording}
+                  />
                   <Group grow>
                     <Button
                       disabled={busy}
@@ -608,6 +641,7 @@ export function StepExecutionView({
                       color="green"
                       disabled={
                         inspectionBlocked ||
+                        wipCheck.issues.length > 0 ||
                         (!isNone &&
                           !isQuantityFormValid(
                             defects,

@@ -42,6 +42,9 @@ export async function GET(request: Request): Promise<Response> {
               ownerBpId: null,
               // 半製品は仕掛ブランクの行に移った（20261126200000_wip_backfill）。
               // 契約は変えない — 製品の在庫として、目標製品の id で返す。
+              // wip-scope: **仕掛品も返す**（isSemiFinished: true の行）。この
+              // エンドポイントは前から半製品を印付きで返していて、完成品だけが
+              // 欲しい側は isSemiFinished で落とす契約。
               // （断片と AND で重ねる — 断片自身の AND / OR を潰さない）
               OR: [{ item: { itemType: "PRODUCT" } }, { isSemiFinished: true }],
             },

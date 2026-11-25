@@ -77,6 +77,9 @@ export async function fetchProductInventories(): Promise<
       // 半製品は仕掛ブランクの行に移った（20261126200000_wip_backfill）ので、
       // 品目種別では拾えない。仕掛品タブ（次の段）ができるまでは、従来どおり
       // 製品の行として目標製品の名前で並べる。
+      // wip-scope: **ここは仕掛品も読む** — 行は「半製品」の印（isSemiFinished）を
+      // 付けて出るので、製品の手持ちと混ざっては見えない。数える側（引当・出荷・
+      // 所要量）はそれぞれ wipStateId: null で外している。
       // （AND で包む — plantWhere の断片が自分の OR を持っていても潰さない）
       AND: [
         { OR: [{ item: { itemType: "PRODUCT" } }, { isSemiFinished: true }] },

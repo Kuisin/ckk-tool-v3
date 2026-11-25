@@ -60,6 +60,8 @@ const TWINS = [
   // 仕掛品の加工状態と突合 — 共有端末も工程完了で仕掛品を入庫する。
   "wip-state-core.ts",
   "wip-state-core.test.ts",
+  // 仕掛品として在庫に置く分の記録（読み出しと検証）— 工程完了は両方にある。
+  "wip-recording.ts",
   // 工程納期の遅れ判定 — 共有端末の工程画面も同じ規則で赤くする。
   "step-due-date-core.ts",
   "step-due-date-core.test.ts",

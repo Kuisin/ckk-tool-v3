@@ -45,6 +45,8 @@ export async function fetchMaterialInventories(): Promise<
       // 自社の在庫だけ（外注へ預けている分・顧客の預り品は手持ちではない）。
       custodyBpId: null,
       ownerBpId: null,
+      // 仕掛品は素材の手持ちではない（仕掛ブランクの行にあるが、念のため明示）。
+      wipStateId: null,
     },
     include: { item: true, plant: true, storageLocation: true, shelf: true },
     orderBy: { updatedAt: "desc" },

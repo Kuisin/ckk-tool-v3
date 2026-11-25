@@ -47,6 +47,7 @@ import {
 } from "@/lib/inspection-core";
 import { markingRange } from "@/lib/marking-number";
 import { sumActualWorkHours } from "@/lib/step-work-hours";
+import { loadWipRecording } from "@/lib/wip-recording";
 import {
   fetchAllowedWorkLocationIds,
   fetchWorkLocationOptions,
@@ -1272,6 +1273,7 @@ export async function fetchStepExecution(
     concurrentCount: a.concurrentCount,
   }));
 
+  const wipRecording = await loadWipRecording(step.id);
   return {
     actorId,
     workOrderNumber,
@@ -1326,6 +1328,12 @@ export async function fetchStepExecution(
       outsourceReceivedAt: dateOnly(step.outsourceReceivedAt),
       outsourceCost:
         step.outsourceCost != null ? Number(step.outsourceCost) : null,
+      finishedDiameterMm:
+        step.finishedDiameterMm != null
+          ? Number(step.finishedDiameterMm)
+          : null,
+      finishedLengthMm:
+        step.finishedLengthMm != null ? Number(step.finishedLengthMm) : null,
       outsourceIssueMovementNo: step.outsourceIssueMovement
         ? formatMovementNumber(step.outsourceIssueMovement)
         : null,
@@ -1335,6 +1343,17 @@ export async function fetchStepExecution(
     },
     canStart: canStartStep(step.id, ctx, actorId, workflowCoreT(tr)),
     expectedInputQuantity: expectedInput(step.id, ctx),
+    wipRecording: wipRecording
+      ? {
+          ...wipRecording,
+          stepNames: Object.fromEntries(
+            Object.entries(wipRecording.stepNames).map(([id, name]) => [
+              id,
+              localized(name as LocalizedText | null, locale),
+            ]),
+          ),
+        }
+      : null,
     templates,
     templateOptions,
     stepRecords: step.inspectionRecords.map((r) => mapRecord(r, null)),

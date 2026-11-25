@@ -27,7 +27,16 @@ import {
 import { encodeInventoryNote } from "./inventory-note-core";
 import { ownerBucketFor } from "./inventory-owner-core";
 import {
-  computeBranchSemiFinishedQuantity,
+  mainlinePartChangingStepIds,
+  orderSemiFinishedForConsumption,
+  parseWipPathStepIds,
+  planWipPostings,
+  type WipBlankSize,
+  type WipPostingStep,
+  wipBlankFor,
+  wipSignature,
+} from "./wip-state-core";
+import {
   computeFinishedQuantity,
   SEMI_FINISHED_ISSUE_STEP_CODE,
   STEP_LINK_STATE_SELECT,
@@ -222,6 +231,7 @@ export async function applyTransaction(
   //
   // custody-scope: / owner-scope: id 1 件への加減算。どのバケットかは呼び出し側が
   // 決めている（預けバケット・預り品バケットへの計上もここを通る）。
+  // wip-scope: 同上 — 仕掛品のバケットへの計上もここを通る。
   const updated = await tx.itemInventory.updateMany({
     where: { id: input.inventoryId, ...guard },
     data,
@@ -367,6 +377,8 @@ export async function ensureItemInventory(
 
   // custody-scope: / owner-scope: `bucket` に custodyBpId と ownerBpId が
   // 入っている（省略時は null = 自社）。鍵そのものなので、ここで別に絞る余地は無い。
+  // wip-scope: 同じく `bucket` に加工状態（省略時は null = 仕掛品ではない）が
+  // 入っている。
   const existing = await tx.itemInventory.findFirst({
     where: bucket,
     select: { id: true, unit: true },
@@ -381,7 +393,7 @@ export async function ensureItemInventory(
   } catch (e) {
     // 同時 ensure の一意制約競合（NULLS NOT DISTINCT index）→ 再取得
     if ((e as { code?: string }).code === "P2002") {
-      // custody-scope: / owner-scope: 同上（同じ鍵での引き直し）。
+      // custody-scope: / owner-scope: / wip-scope: 同上（同じ鍵での引き直し）。
       const again = await tx.itemInventory.findFirst({
         where: bucket,
         select: { id: true, unit: true },
@@ -525,6 +537,8 @@ async function ownerBucketHeld(
     ownerBpId: string;
   },
 ): Promise<{ id: string; held: number }> {
+  // wip-scope: 預り品（ownerBpId あり）は仕掛品になれない（DB の CHECK
+  // item_inventory_wip_not_owned）。
   const owned = await tx.itemInventory.findMany({
     where: {
       itemId: args.itemId,
@@ -808,6 +822,7 @@ async function completeRegrindTx(
 ): Promise<void> {
   const ownerBpId = await regrindOwnerBpIdTx(tx, wo.id);
   // owner-scope: この所有者・このロットの預けバケットだけ（custody 付き）。
+  // wip-scope: 預り品は仕掛品になれない（CHECK item_inventory_wip_not_owned）。
   const openCustody = await tx.itemInventory.findMany({
     where: {
       itemId: wo.productItemId,
@@ -860,6 +875,7 @@ async function completeRegrindTx(
   }
   if (returnedAsIs <= 0) return;
   // owner-scope: 手元の所有者バケット（custody 無し）だけ。
+  // wip-scope: 預り品は仕掛品になれない（CHECK item_inventory_wip_not_owned）。
   const owned = await tx.itemInventory.findMany({
     where: {
       itemId: wo.productItemId,
@@ -913,6 +929,73 @@ function parseLotHint(lotText: string | null | undefined): number | null {
 }
 
 /**
+ * 指示書の仕掛ブランク（材種 × 径 × 長）と、その行を数える単位。
+ * 決まらなければ null — 計上は旧来の鍵のまま「未分類」へ落ちる。
+ * 規則は wip-state-core wipBlankFor（DB の app.wip_legacy_bucket と同じ）。
+ */
+export async function workOrderWipBlankTx(
+  tx: Tx | typeof prisma,
+  wo: { productItemId: number; materialItemId: number | null },
+): Promise<{ size: WipBlankSize; unit: string } | null> {
+  const product = await tx.item.findUnique({
+    where: { id: wo.productItemId },
+    select: {
+      unit: true,
+      requiresMaterialTypeId: true,
+      requiresDiameterMm: true,
+      requiresLengthMm: true,
+    },
+  });
+  if (!product) return null;
+  const material =
+    wo.materialItemId == null
+      ? null
+      : await tx.item.findUnique({
+          where: { id: wo.materialItemId },
+          select: { materialTypeId: true, diameterMm: true },
+        });
+  const num = (v: unknown): number | null => (v == null ? null : Number(v));
+  const size = wipBlankFor({
+    material: material
+      ? {
+          materialTypeId: material.materialTypeId,
+          diameterMm: num(material.diameterMm),
+        }
+      : null,
+    product: {
+      requiresMaterialTypeId: product.requiresMaterialTypeId,
+      requiresDiameterMm: num(product.requiresDiameterMm),
+      requiresLengthMm: num(product.requiresLengthMm),
+    },
+  });
+  return size ? { size, unit: product.unit } : null;
+}
+
+/**
+ * 仕掛ブランク品目（無ければ作る）。作り方は DB の app.wip_blank_item_id が
+ * 唯一の定義（移行・旧来の計上と同じ関数 — コードと名前の付け方が割れない）。
+ */
+async function wipBlankItemIdTx(tx: Tx, size: WipBlankSize): Promise<number> {
+  const [row] = await tx.$queryRaw<{ id: number }[]>`
+    SELECT app.wip_blank_item_id(${size.materialTypeId}::int,
+                                 ${size.diameterMm}::numeric,
+                                 ${size.lengthMm}::numeric) AS id`;
+  return row.id;
+}
+
+/** 加工状態（署名で寄せる。無ければ作る）— DB の app.wip_state_id が唯一の定義。 */
+async function wipStateIdTx(
+  tx: Tx,
+  stepIds: readonly number[],
+): Promise<number> {
+  // 配列をそのまま渡さず署名（"10,20"）で渡す — 空の配列の型をドライバに
+  // 推測させない。string_to_array('', ',') は空の配列。
+  const [row] = await tx.$queryRaw<{ id: number }[]>`
+    SELECT app.wip_state_id(string_to_array(${wipSignature(stepIds)}, ',')::int[]) AS id`;
+  return row.id;
+}
+
+/**
  * 半製品在庫からの投入分を落とす（完了時）。
  *
  * 取り方は **狙いのロット優先 → 古いロットから**（ロット番号 = 指示書番号なので
@@ -924,6 +1007,12 @@ function parseLotHint(lotText: string | null | undefined): number | null {
  *
  * 台帳が足りないときは**あるだけ落として完了は止めない** — 素材消費と同じ方針。
  * 止めると、現場では終わっている指示書が画面の上だけ終われなくなる。
+ *
+ * **どの仕掛品から落とすか**（wip-state-core orderSemiFinishedForConsumption）:
+ * 狙いのロット → この指示書のブランクに載っていて加工状態が工程の先頭部分に
+ * なっているもの（続きから作れる）→ 同じ目標製品の残り（未分類・状態が
+ * 合わないもの — 第 2 段までの「同じ製品の半製品」の振る舞いを保つ）。
+ * 別の製品を目標にした仕掛品を引くのは後の段。
  */
 async function consumeSemiFinishedStock(
   tx: Tx,
@@ -936,32 +1025,58 @@ async function consumeSemiFinishedStock(
     quantity: number;
     scrap: number;
     lotHint: number | null;
+    /** この指示書のブランク（決まらなければ null）。 */
+    blank: WipBlankSize | null;
+    /** この指示書の本流の、形を変える工程（カタログ id）の並び。 */
+    routeStepIds: readonly number[];
   },
 ): Promise<void> {
   const buckets = await tx.itemInventory.findMany({
     where: {
-      // 半製品は仕掛ブランクの行に移った（20261126200000_wip_backfill）—
-      // 製品は目標製品（aimedItemId）として残る。推定できなかった「未分類」の
-      // 行は item_id も製品のまま。
+      // 半製品は仕掛ブランクの行にある（製品は目標製品 aimedItemId）。
+      // 推定できなかった「未分類」の行は item_id も製品のまま。
       OR: [{ itemId: args.itemId }, { aimedItemId: args.itemId }],
       isSemiFinished: true,
+      // wip-scope: 仕掛品だけを読む（is_semi_finished = (wip_state_id IS NOT NULL)）。
+      wipStateId: { not: null },
       quantity: { gt: 0 },
       // 自社の棚にある半製品だけ。外注が預かっている分・顧客の預り品は投入できない。
       custodyBpId: null,
       ownerBpId: null,
       ...(args.plantId != null ? { plantId: args.plantId } : {}),
     },
-    select: { id: true, lotNumber: true, quantity: true },
+    select: {
+      id: true,
+      itemId: true,
+      lotNumber: true,
+      quantity: true,
+      wipState: { select: { stepIds: true, isLegacy: true } },
+    },
     orderBy: [{ lotNumber: "asc" }, { updatedAt: "asc" }],
   });
-  const ordered =
-    args.lotHint == null
-      ? buckets
-      : [...buckets].sort(
-          (a, b) =>
-            Number(b.lotNumber === args.lotHint) -
-            Number(a.lotNumber === args.lotHint),
-        );
+  // ブランクは**探すだけ**（作らない）— 無ければ「続きから作れる」ものも無い。
+  const blankItem = args.blank
+    ? await tx.item.findFirst({
+        where: {
+          itemType: "BLANK",
+          materialTypeId: args.blank.materialTypeId,
+          diameterMm: args.blank.diameterMm,
+          lengthMm: args.blank.lengthMm,
+        },
+        select: { id: true },
+      })
+    : null;
+  const ordered = orderSemiFinishedForConsumption(
+    buckets.map((b) => ({
+      ...b,
+      stepIds: !b.wipState || b.wipState.isLegacy ? null : b.wipState.stepIds,
+    })),
+    {
+      blankItemId: blankItem?.id ?? null,
+      routeStepIds: args.routeStepIds,
+      lotHint: args.lotHint,
+    },
+  );
 
   let left = args.quantity;
   let reassignLeft = Math.max(0, args.quantity - args.scrap);
@@ -1041,7 +1156,11 @@ export async function onWorkOrderCompletedTx(
           // lotText はどのロットを出したかの手掛かり（自由記入なので当たれば
           // 優先する程度に使う）。
           lotText: true,
-          processStep: { select: { code: true } },
+          // 仕掛品として在庫に置く分の記録（工程完了のときに入れた値）。
+          finishedDiameterMm: true,
+          finishedLengthMm: true,
+          wipPathStepIds: true,
+          processStep: { select: { code: true, affectsWipState: true } },
         },
         orderBy: { sortOrder: "asc" },
       },
@@ -1060,12 +1179,24 @@ export async function onWorkOrderCompletedTx(
   const engineSteps = wo.steps.map(toStepState);
   const engineLinks = wo.stepLinks;
   const finishedQty = computeFinishedQuantity(engineSteps, engineLinks);
-  // 半製品 = 全工程の半製品バケット合計 + 「半製品在庫で終わる分岐」の終端良品。
-  // 後者は完成数に入らない（computeFinishedQuantity が除外している）ので、
-  // ここで拾わないと行き場を失う。
-  const semiTotal =
-    wo.steps.reduce((sum, s) => sum + (s.outputDefectSemiFinished ?? 0), 0) +
-    computeBranchSemiFinishedQuantity(engineSteps, engineLinks);
+  // 半製品（仕掛品）= 工程の途中で半製品に振り分けた分 + 「半製品在庫で終わる
+  // 分岐」の終端良品。後者は完成数に入らない（computeFinishedQuantity が除外
+  // している）ので、ここで拾わないと行き場を失う。
+  // **発生元の工程ごとに 1 本** — 発生元が違えば済んだ工程（加工状態）が違う。
+  // 合計は 1 本にまとめていた頃と同じ（wip-state-core.test.ts が縛っている）。
+  const affectsWipState = new Map(
+    wo.steps.map((s) => [s.processStepId, s.processStep.affectsWipState]),
+  );
+  const affects = (processStepId: number) =>
+    affectsWipState.get(processStepId) ?? false;
+  const wipSteps: WipPostingStep[] = wo.steps.map((s) => ({
+    ...toStepState(s),
+    finishedDiameterMm:
+      s.finishedDiameterMm == null ? null : Number(s.finishedDiameterMm),
+    finishedLengthMm:
+      s.finishedLengthMm == null ? null : Number(s.finishedLengthMm),
+    wipPathStepIds: parseWipPathStepIds(s.wipPathStepIds),
+  }));
   // 廃棄された数（全工程の合計）。**在庫から投入した指示書でだけ**台帳に
   // 現れる — 製造分の仕掛品は元々台帳に無いので、そこでの廃棄は在庫の
   // 出来事ではない（素材は予約ぶんを丸ごと消費済み。ここで廃棄も引くと
@@ -1112,28 +1243,57 @@ export async function onWorkOrderCompletedTx(
       }),
     });
   }
-  if (semiTotal > 0) {
-    const semiStep =
-      wo.steps.find((s) => (s.outputDefectSemiFinished ?? 0) > 0) ??
-      wo.steps.find((s) => s.branchStockDisposition === "SEMI_FINISHED");
-    const invId = await ensureItemInventory(tx, {
-      itemId: wo.productItemId,
-      plantId,
-      lotNumber: wo.workOrderNumber,
-      isSemiFinished: true,
-      sourceStepId: semiStep?.id ?? null,
-    });
-    await applyTransaction(tx, await openMovement(), {
-      inventoryType: "PRODUCT",
-      inventoryId: invId,
-      transactionType: "IN",
-      quantity: semiTotal,
-      referenceType: "work_order",
-      referenceId: wo.id,
-      notes: encodeInventoryNote("workOrderCompletedSemiFinished", {
-        workOrderNumber: wo.workOrderNumber,
-      }),
-    });
+  // 再研磨は上で抜けている — ここから下は自社の製品を作る指示書だけ。
+  const wipBlank = await workOrderWipBlankTx(tx, wo);
+  const wipPostings = planWipPostings(
+    wipSteps,
+    engineLinks,
+    affects,
+    wipBlank?.size ?? null,
+  );
+  if (wipPostings.length > 0) {
+    // ブランクの行は目標製品の単位で数える（本数）。品目マスタのブランクの単位に
+    // 任せると、製品の単位が違う指示書で旧来の行（製品の単位のまま移行した）と
+    // 食い違う。
+    const blankItemId = wipBlank
+      ? await wipBlankItemIdTx(tx, wipBlank.size)
+      : null;
+    for (const posting of wipPostings) {
+      const invId =
+        blankItemId != null && wipBlank
+          ? await ensureItemInventory(tx, {
+              itemId: blankItemId,
+              unit: wipBlank.unit,
+              plantId,
+              lotNumber: wo.workOrderNumber,
+              isSemiFinished: true,
+              sourceStepId: posting.sourceStepId,
+              wipStateId: await wipStateIdTx(tx, posting.stepIds),
+              aimedItemId: wo.productItemId,
+              finishedDiameterMm: posting.finishedDiameterMm,
+              finishedLengthMm: posting.finishedLengthMm,
+            })
+          : // ブランクが決まらない（製品に要求素材が無い等）— 旧来の鍵で渡し、
+            // DB の app.wip_legacy_bucket が「未分類」へ寄せる。数は失わない。
+            await ensureItemInventory(tx, {
+              itemId: wo.productItemId,
+              plantId,
+              lotNumber: wo.workOrderNumber,
+              isSemiFinished: true,
+              sourceStepId: posting.sourceStepId,
+            });
+      await applyTransaction(tx, await openMovement(), {
+        inventoryType: "PRODUCT",
+        inventoryId: invId,
+        transactionType: "IN",
+        quantity: posting.quantity,
+        referenceType: "work_order",
+        referenceId: wo.id,
+        notes: encodeInventoryNote("workOrderCompletedSemiFinished", {
+          workOrderNumber: wo.workOrderNumber,
+        }),
+      });
+    }
   }
   // ── 半製品からの投入を在庫から落とす ─────────────────────────────────
   //
@@ -1158,6 +1318,12 @@ export async function onWorkOrderCompletedTx(
       quantity: semiIssueQty,
       scrap: scrapTotal,
       lotHint: parseLotHint(semiIssueStep.lotText),
+      blank: wipBlank?.size ?? null,
+      routeStepIds: mainlinePartChangingStepIds(
+        engineSteps,
+        engineLinks,
+        affects,
+      ),
     });
   }
 
@@ -1174,8 +1340,10 @@ export async function onWorkOrderCompletedTx(
       itemId: wo.productItemId,
       lotNumber: wo.workOrderNumber,
       custodyBpId: { not: null },
-      // 自社の仕掛品だけ（顧客の預り品は再研磨側 completeRegrindTx が扱う）。
+      // 自社の物だけ（顧客の預り品は再研磨側 completeRegrindTx が扱う）。
       ownerBpId: null,
+      // 外注へ預けた分は加工状態を持たない行（在庫の仕掛品とは別物）。
+      wipStateId: null,
       quantity: { gt: 0 },
     },
     select: { id: true, quantity: true },
@@ -1449,6 +1617,8 @@ async function planDispatchLines(
             ? { plantId: so.fromPlantId }
             : {}),
           isSemiFinished: false,
+          // 仕掛品は出荷できない（完成していない）。
+          wipStateId: null,
           // 外注が預かっている分からは出荷できない（手元に無い）。
           custodyBpId: null,
           // 自社在庫か、この顧客の預り品か（再研磨）。混ぜない。
@@ -1867,6 +2037,7 @@ export async function reserveProductStock(
     await tx.$queryRaw`
       SELECT id FROM app.item_inventory
       WHERE item_id = ${itemId} AND is_semi_finished = false
+        AND wip_state_id IS NULL
         AND custody_bp_id IS NULL AND owner_bp_id IS NULL
       FOR UPDATE`;
     const rows = (
@@ -1875,6 +2046,8 @@ export async function reserveProductStock(
         where: {
           itemId,
           isSemiFinished: false,
+          // 仕掛品は受注へ引き当てられない（完成していない）。
+          wipStateId: null,
           custodyBpId: null,
           ownerBpId: null,
         },

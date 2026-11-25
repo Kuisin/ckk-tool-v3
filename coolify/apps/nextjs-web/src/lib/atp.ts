@@ -40,6 +40,8 @@ export async function materialAtp(
         itemId,
         custodyBpId: null,
         ownerBpId: null,
+        // 仕掛品は約束に使える手持ちではない。
+        wipStateId: null,
         ...(plantId != null ? { plantId } : {}),
       },
     }),
