@@ -50,6 +50,17 @@ enum ItemType {
   /// 「何をいくらでやるか」だけを表す。旧 FileMaker の 再研マスタ
   /// （材料 × 加工箇所 × 刃数 × サイズ帯 → 金額）が 1 行 1 品目になったもの。
   REGRIND
+  /// 仕掛ブランク（途中まで加工した品の入れ物）。**材種 × 径 × 長 で 1 行**、
+  /// 必要になったときに自動で作る（人がマスタ画面で作る品目ではないので、
+  /// MS04 / MS06 / MS0H の一覧には出さない）。
+  ///
+  /// どこまで加工したかは品目ではなく在庫バケット側（item_inventory.wip_state_id）
+  /// が持つ — 同じ素材から別の製品へ向かう途中の品が、加工状態ごとに品目を
+  /// 増やさずに済むように。径・長は requires_* ではなく素材と同じ
+  /// material_type_id / diameter_mm / length_mm（「である」寸法）に入れる。
+  /// 一意性は部分 unique index（item_type = 'BLANK' の行だけ — migration で張る）。
+  /// 在庫台帳上は製品と同じ「本」で数える（lib/inventory-item-type.ts）。
+  BLANK
 
   @@map("ITEM_TYPE")
   @@schema("app")
@@ -143,6 +154,8 @@ model Item {
 
 
   inventory ItemInventory[]
+  /// 仕掛品バケットが「この製品を目指して加工していた」と指している分（目標製品）。
+  aimedByInventory ItemInventory[] @relation("ItemInventoryAimedItem")
   poItems          MaterialPurchaseOrderItem[] @relation("MaterialPurchaseOrderItemItem")
   receipts         MaterialReceipt[]           @relation("MaterialReceiptItem")
   purchaseReqItems PurchaseRequestItem[]       @relation("PurchaseRequestItemItem")

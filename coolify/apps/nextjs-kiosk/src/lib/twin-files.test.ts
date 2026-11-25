@@ -47,6 +47,9 @@ const TWINS = [
   "login-attempt-core.test.ts",
   "display-content.ts",
   "display-templates.ts",
+  // 仕掛品の加工状態と突合 — 共有端末も工程完了で仕掛品を入庫する。
+  "wip-state-core.ts",
+  "wip-state-core.test.ts",
 ];
 
 describe("twin files (nextjs-web ⇄ nextjs-kiosk)", () => {

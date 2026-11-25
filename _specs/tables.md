@@ -18,6 +18,22 @@
 > - `directory.prisma`: `employee_directory` / `ldap_sync_log`
 > - `intake.prisma`: （`order_lines` は本書に記載済み）
 > - `inventory.prisma`: `storage_locations` / `storage_shelves`
+>   / `wip_states` — **仕掛品の加工状態**（仕掛品の再設計、PR 1/7 で入れ物だけ）。
+>   途中まで加工した品は、製品の品目に印を付けて積むのではなく、材種 × 径 × 長 の
+>   **仕掛ブランク**（`items.item_type = 'BLANK'`、部分 unique index で 1 組 1 行・
+>   自動作成・品目マスタ画面には出さない）に置き、どこまで加工したかを
+>   `item_inventory.wip_state_id` → `wip_states`（済んだ**形を変える工程**の並び。
+>   順序つき・同じ並びは 1 行）で持つ。どの工程が「形を変える」かは工程マスタの
+>   `process_step_catalog.affects_wip_state`（既定: 材料準備・加工・コーティング、
+>   開始工程は除く）が決める。バケットには研削後の仕上がり寸法
+>   （`finished_diameter_mm` / `finished_length_mm`）と目標製品（`aimed_item_id`）も
+>   添え、どれもバケットの一意キーに入る。**数量だけで原価は持たない**。
+>   突合（どの仕掛品をこの製品に使えるか）は 同じ材種 必須・加工状態が製品の
+>   工程の先頭部分、の上で **ちょうど / 長い / 太い の 3 区分に分けて**出す
+>   （`lib/wip-state-core.ts` が唯一の定義）。既存の半製品行（`is_semi_finished`）は
+>   まだ `wip_state_id` が null — 埋めるのは次の段（backfill）で、それまでは
+>   `is_semi_finished = (wip_state_id IS NOT NULL)` を張れない。いま DB が守るのは
+>   「加工状態を持つ行は顧客の預り品ではない」だけ
 > - `master.prisma`: `currencies` — 100 円基準の換算マスタ（rate_per_100_jpy =
 >   100 円で買えるその通貨量。JPY = 100）。shared-db スタックの fx-rates が日次自動更新。
 >   書類・製品の `currency` 列（products / quotes / order_acceptances / invoices に
@@ -1009,6 +1025,11 @@ Table process_step_catalog {
   // 共有端末の行レベル判定（canOperateStep）では担当者なしの計画行は誰も縛らない。
   plan_assignee_required boolean [not null, default: false]
   plan_time_required     boolean [not null, default: false]
+  // 仕掛品の加工状態（wip_states）に数える工程か — 品物の形を変える工程だけを
+  // 数える（検査・承認を数えると同じ形の品が別の状態に割れる）。既定は種別から
+  // （材料準備・加工・コーティング = true、開始工程は常に false）、例外は工程ごとに
+  // ここで上書きする。新規行の DB 既定は false。
+  affects_wip_state      boolean [not null, default: false]
   // **この工程を載せてよい指示書種別**（在庫分 / 製造分 / 再研磨）。空は不可
   // （CHECK process_step_catalog_work_order_types_not_empty）。既定は製造分だけ —
   // 値を渡さずに作られた行が「どこでも使える」に倒れると、気づかないまま
