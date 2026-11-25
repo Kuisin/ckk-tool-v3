@@ -195,6 +195,12 @@ export async function transferStock(
         custodyBpId: null,
         // 所有者は動かさない — 顧客の預り品を棚から棚へ移しても顧客の物のまま。
         ownerBpId: src.ownerBpId,
+        // 仕掛品の鍵も動かさない — 棚を変えても加工状態・目標製品・仕上がり
+        // 寸法は同じ品（落とすと半製品 ⇔ 加工状態の CHECK に当たる）。
+        wipStateId: src.wipStateId,
+        aimedItemId: src.aimedItemId,
+        finishedDiameterMm: src.finishedDiameterMm,
+        finishedLengthMm: src.finishedLengthMm,
       };
       // custody-scope: / owner-scope: `bucket` は custodyBpId: null と
       // 元の ownerBpId を含む（移した先は必ず手元のバケット、所有者は同じ）。

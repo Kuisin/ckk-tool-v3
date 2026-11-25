@@ -33,12 +33,19 @@ export async function GET(request: Request): Promise<Response> {
       prisma.itemInventory.findMany({
         // custodyBpId: null = **自社の在庫だけ**（外注への預けは手持ちでない）。
         where: {
-          // biome-ignore lint/suspicious/noExplicitAny: 断片は authz-core / pagination が組む
-          ...(where as any),
-          custodyBpId: null,
-          // ownerBpId: null = 顧客の預り品（再研磨）も外す。
-          ownerBpId: null,
-          item: { itemType: "PRODUCT" },
+          AND: [
+            // biome-ignore lint/suspicious/noExplicitAny: 断片は authz-core / pagination が組む
+            where as any,
+            {
+              custodyBpId: null,
+              // ownerBpId: null = 顧客の預り品（再研磨）も外す。
+              ownerBpId: null,
+              // 半製品は仕掛ブランクの行に移った（20261126200000_wip_backfill）。
+              // 契約は変えない — 製品の在庫として、目標製品の id で返す。
+              // （断片と AND で重ねる — 断片自身の AND / OR を潰さない）
+              OR: [{ item: { itemType: "PRODUCT" } }, { isSemiFinished: true }],
+            },
+          ],
         },
         take,
         // biome-ignore lint/suspicious/noExplicitAny: 同上
@@ -46,6 +53,7 @@ export async function GET(request: Request): Promise<Response> {
         select: {
           id: true,
           itemId: true,
+          aimedItemId: true,
           plantId: true,
           lotNumber: true,
           quantity: true,
@@ -62,7 +70,7 @@ export async function GET(request: Request): Promise<Response> {
     toCursor: (r) => ({ kind: "id", id: r.id, t: r.updatedAt.toISOString() }),
     toDto: (r) => ({
       id: r.id,
-      productId: r.itemId,
+      productId: r.isSemiFinished ? (r.aimedItemId ?? r.itemId) : r.itemId,
       plantId: r.plantId,
       /** ロット = 指示書番号（QR `CKK:WO:<int>` と同じ値）。 */
       lotNumber: r.lotNumber,
