@@ -34,8 +34,8 @@ const APP = process.env.APP_URL ?? "http://localhost:3105";
 const DB_CONTAINER = process.env.SHOT_DB_CONTAINER ?? "ckk-ship-db";
 /**
  * 出荷書は**旧番号**で指す。画面に出る番号（`DOR-2026-000NN`）は DB が INSERT 時に
- * 振り、流した順で変わる。fixtures / デモシードが入れた (year_month, seq) は
- * 旧番号（legacy_number）として残るので:
+ * 振り、流した順で変わる。fixtures / デモシードは旧番号（legacy_number）を
+ * 付けて入れるので:
  *   URL … 旧番号のままでよい（詳細ページが正規の URL `CKK~DOR-…` へ送る）
  *   SQL … legacy_number か app.to_doc_ref('delivery_orders', 旧番号) で引く
  */

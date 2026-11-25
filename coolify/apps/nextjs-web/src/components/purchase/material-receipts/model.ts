@@ -23,6 +23,8 @@ export interface MaterialReceiptView {
   receivedAt: string;
   /** 紐付く素材発注書（発注入荷のみ。直接調達は null）。id の姿（`CKK~PO-…`）。 */
   poNumber: string | null;
+  /** その発注書の旧番号（振り直し前の PO-YYYYMM-NNNNN）。検索に使う。 */
+  poLegacyNumber: string | null;
   /** 作成者の表示名（システム作成は null）。 */
   createdByName: string | null;
   notes: string | null;

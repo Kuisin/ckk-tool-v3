@@ -1,8 +1,8 @@
 /**
  * model.ts — 入出庫伝票 (PD07) view-model types + pure ラベル定義。
  *
- * Model (app.inventory_movements — uuid PK, 表示番号は (year_month, seq) から
- * 導出。明細は app.inventory_transactions の movement_id 逆参照):
+ * Model (app.inventory_movements — uuid PK, 表示番号 MOV-FFFF-NNNNN は DB が
+ * 払い出す（doc_number）。明細は app.inventory_transactions の movement_id 逆参照):
  *   在庫が動いた出来事 1 回 = 1 枚。読み取り専用（作る画面は無い — 伝票は
  *   在庫を動かした処理が自分で起こすもので、人が手で起こすものではない）。
  *

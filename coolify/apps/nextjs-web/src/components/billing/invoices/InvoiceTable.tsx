@@ -36,6 +36,7 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import type { Formatters } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import { statusOptions } from "@/lib/status-map";
@@ -209,6 +210,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
       key: "invoiceNumber",
       header: tr("common.invoiceNumber"),
       sortable: true,
+      sortValue: (inv) => docSortValue(inv.invoiceNumber),
       render: (inv) => (
         <Text ff="mono" size="sm">
           {docNo(inv.invoiceNumber)}

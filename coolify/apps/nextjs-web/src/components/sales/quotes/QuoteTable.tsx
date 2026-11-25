@@ -21,6 +21,7 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import type { Option } from "@/lib/mock";
 import { statusOptions } from "@/lib/status-map";
 import { isoDateJst } from "../price-lists/model";
@@ -72,6 +73,7 @@ export function QuoteTable({
       key: "quoteNumber",
       header: tr("common.quoteNumber"),
       sortable: true,
+      sortValue: (q) => docSortValue(q.quoteNumber),
       render: (q) => (
         <Text ff="mono" size="sm">
           {docNo(q.quoteNumber)}

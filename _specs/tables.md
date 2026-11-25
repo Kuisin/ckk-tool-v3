@@ -200,13 +200,13 @@
 >
 > 追記する場合は、スキーマからコピーせず**設計意図だけ**を書くこと。
 
-**書類のキーと発行元（番号設計 PR-B）** — 下の定義で `(year_month, seq)` を主キーに
-書いている 7 表（estimates / price_list_entries / quotes / order_acceptances /
+**書類のキーと発行元（番号設計 PR-B / PR-D）** — 下の定義で `(year_month, seq)` を
+主キーに書いている 7 表（estimates / price_list_entries / quotes / order_acceptances /
 delivery_orders / delivery_notes / invoices）は、実装では **uuid の `id` が主キー**で、
-`(year_month, seq)` は UNIQUE。PR-C で番号が「自社法人 × 会計年度」の連番になり、
-同じ番号が 2 法人に存在し得るため。子の表は `<親>_id` の FK で指し、旧
-`(…_year_month, …_seq)` 列は NULL 可のまま DB トリガー `app.sync_doc_parent_key` が
-埋め続ける（PR-D で削除）。番号を持つ書類はすべて `own_company_id`（発行元の自社法人。
+`(year_month, seq)` 列は PR-D1 から**アプリから見えない**（Prisma の `@ignore`）。列は
+旧コンテナが居なくなってから後続の migration で落とす。番号が「自社法人 × 会計年度」の連番になり、同じ番号が 2 法人に存在し得るため。
+子の表は `<親>_id` の FK だけで指す（旧 `(…_year_month, …_seq)` 列と同期トリガー
+`app.sync_doc_parent_key` も同じ後続で削除する）。番号を持つ書類はすべて `own_company_id`（発行元の自社法人。
 NOT NULL・作成後は変更不可のトリガー `own_company_id_immutable`）を持ち、作成時に
 上流の書類 → 拠点 → 既定の法人 の順で決める（`lib/doc-company-core.ts`）。
 
@@ -217,9 +217,11 @@ NOT NULL・作成後は変更不可のトリガー `own_company_id_immutable`）
 `CKK/QOT-2026-00001` の形で指す。下の定義で「業務キー」と書いてある列は、番号を持つ
 書類についてはこの形が入る（uuid・ロット番号・マスタの id で指す対象はそのまま）。
 番号だけにしないのは、番号が法人ごとの連番になり同じ番号が 2 法人に存在し得るため。
-組み立ては `lib/doc-ref-core.ts` の `docRef` だけ。DB 側は BEFORE トリガー
-`qualify_doc_ref` が番号だけで書かれた値を参照へ直し、`purge_document_children()` は
-消える行の法人から参照を組み立てて子を消す。`audit_logs.record_id` は人が読む番号の
+組み立ては `lib/doc-ref-core.ts` の `docRef` だけで、**書き手が参照を書く**（番号だけの
+値を保存時に直す BEFORE トリガー `qualify_doc_ref` / `qualify_audit_record_key` は移行用で、
+後続の migration で削除する — SQL のシードも PR-D1 から参照を書く）。DB に残るのは参照を引く関数
+（`app.to_doc_ref` / `app.resolve_doc_ref` — 旧番号でも引ける）と、消える行の参照で子を
+消す `purge_document_children()`。`audit_logs.record_id` は人が読む番号の
 まま。**発行会社**: 拠点を持たない書類（見積書・価格試算・価格表）は作成フォームの
 「発行会社」で `own_company_id` を決める（所属拠点が複数の法人にまたがる人にだけ出る。
 `lib/doc-company-core.ts`）。**注文請書 1 件 = 法人 1 つ** — 明細の担当拠点はどれも
@@ -2823,8 +2825,9 @@ Table files {
 //     legacy_number text    … 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送用
 //     UNIQUE (own_company_id, fiscal_year, doc_seq) / UNIQUE (own_company_id, doc_number)
 //   旧列（year_month / seq / po_number / request_number、子の表の …_year_month / …_seq）は
-//   PR-D で落とすまで残っているが、もう番号ではない（新しい行は NULL）。本書の各表の定義に
-//   残っている year_month / seq / *_number の記述は旧い形 — 正は Prisma スキーマ。
+//   PR-D1 でアプリから見えなくし（@ignore）、後続の migration で削除する。本書の各表の定義に残っている
+//   year_month / seq / *_number の記述は旧い形 — 正は Prisma スキーマ。
+//   SQL のシードは旧番号を残したいとき legacy_number を明示して書く（採番は DB のまま）。
 //   order_lines は line_number（ORD-FFFF-NNNNN-NN）と line_ref を持つ（枝番が付くまで NULL。
 //   トリガーが注文請書の番号から導く）。
 //   外注依頼の番号は outsource_orders（番号だけの表。work_order_step_id は SET NULL —

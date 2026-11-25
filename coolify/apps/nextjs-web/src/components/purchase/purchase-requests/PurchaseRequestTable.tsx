@@ -19,6 +19,7 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import { statusOptions } from "@/lib/status-map";
 import type { PurchaseRequestRow } from "./model";
 
@@ -63,6 +64,7 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
       key: "requestNumber",
       header: tr("common.requestNumber"),
       sortable: true,
+      sortValue: (r) => docSortValue(r.requestNumber),
       render: (r) => (
         <Text ff="mono" size="sm">
           {docNo(r.requestNumber)}

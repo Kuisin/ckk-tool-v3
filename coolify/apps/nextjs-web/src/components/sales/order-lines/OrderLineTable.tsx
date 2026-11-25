@@ -24,6 +24,7 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import { orderTypeLabel, orderTypeOptions } from "@/lib/enum-labels";
 import { statusOptions } from "@/lib/status-map";
 import type { OrderLine } from "./model";
@@ -65,6 +66,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
       key: "orderNumber",
       header: tr("common.orderLineNumber"),
       sortable: true,
+      sortValue: (o) => docSortValue(o.orderNumber),
       render: (o) => (
         <Text ff="mono" size="sm">
           {docNo(o.orderNumber)}

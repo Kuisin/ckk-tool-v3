@@ -19,9 +19,9 @@
 -- 冪等: 全行固定 UUID（db… プレフィクス）/ 固定日付 2026-07 + ON CONFLICT。
 -- 「今日」に依存する値を持たない（撮り直しでピクセルが変わらない）。
 --
--- numbering_sequences は更新しない — PRQ/PO の採番（lib/numbering.ts）は
--- year_month で月次リセットされるため、撮影時点（2026-07 以外の月）に UI から
--- 新規作成しても PRQ-<当月>-00001 となり本シードの 202607 番号とは衝突しない。
+-- 書類番号は DB が INSERT 時に払い出す（app.assign_document_number）。ここで
+-- 書く PRQ-202607-… / PO-202607-… は旧番号（legacy_number）で、撮影は旧番号の
+-- URL で開く（詳細ページが正規の URL へ送る）。
 -- また撮影は閲覧のみでフォーム送信を行わない。
 
 BEGIN;
@@ -45,7 +45,7 @@ ON CONFLICT (key) DO UPDATE
 -- uuid（表示側 data.ts が displayName へ解決）。action キーは
 -- PURCHASE_REQUEST_HISTORY_ACTION_LABEL（CREATE/UPDATE/REQUEST_APPROVAL/
 -- APPROVE/REJECT/CONVERT/CANCEL）に一致させる。
-INSERT INTO app.purchase_requests (id, request_number, status, purpose,
+INSERT INTO app.purchase_requests (id, legacy_number, status, purpose,
   requested_at, requested_by, approved_at, approved_by, history, notes,
   created_by, created_at, updated_at)
 VALUES
@@ -106,7 +106,7 @@ ON CONFLICT (id) DO NOTHING;
 -- history の action キーは PURCHASE_HISTORY_ACTION_LABEL（CREATE/UPDATE/
 -- REQUEST_APPROVAL/APPROVE/REJECT/ORDER/COMPLETE/CANCEL）に一致させる。
 -- total_amount = Σ items.amount（amount = quantity × unit_price）。
-INSERT INTO app.material_purchase_orders (id, po_number, supplier_bp_id, status,
+INSERT INTO app.material_purchase_orders (id, legacy_number, supplier_bp_id, status,
   total_amount, currency, purchase_date,
   requested_at, requested_by, approved_at, approved_by, ordered_at, ordered_by,
   history, notes, created_by, created_at, updated_at)
@@ -216,7 +216,11 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO app.approval_requests (id, target_type, target_id, step_no, step_count,
   group_id, mode, flow_snapshot, status, requested_by, requested_at, notes)
 SELECT
-  v.id::uuid, v.target_type, v.target_id, 1, 1,
+  v.id::uuid, v.target_type,
+  CASE v.target_type
+    WHEN 'purchase_requests' THEN (SELECT r.doc_ref FROM app.purchase_requests r WHERE r.legacy_number = v.target_id)
+    ELSE (SELECT o.doc_ref FROM app.material_purchase_orders o WHERE o.legacy_number = v.target_id)
+  END, 1, 1,
   g.id, 'ANY'::app."APPROVAL_MODE",
   jsonb_build_array(jsonb_build_object(
     'stepNo', 1,

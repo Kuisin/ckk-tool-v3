@@ -20,6 +20,7 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { categoryLabel } from "@/lib/app-list";
 import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import type { Locale } from "@/lib/i18n";
 import { statusOptions } from "@/lib/status-map";
 import type { StockTakeRow } from "./model";
@@ -57,6 +58,7 @@ export function StockTakeTable({ rows }: { rows: StockTakeRow[] }) {
       key: "stockTakeNumber",
       header: tr("production.stockTakes.table.number"),
       sortable: true,
+      sortValue: (r) => docSortValue(r.stockTakeNumber),
       render: (r) => <DocNumber>{r.stockTakeNumber}</DocNumber>,
     },
     {

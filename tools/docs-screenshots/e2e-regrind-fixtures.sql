@@ -13,7 +13,7 @@
 --   3. 確定済みの注文請書（旧番号 ORD-209902-00001）と、その **注文種別 REGRIND の
 --      明細**（他社製品 9101 × 10 本）。指示書はこの明細から作る。
 --      **画面に出る番号は DB が振る**（`ORD-2026-000NN` — 流した順で変わる）。
---      ここで入れる (year_month, seq) は旧番号（legacy_number）として残り、
+--      ここで入れる旧番号（legacy_number = ORD-209902-00001）で、
 --      旧番号の URL（/sales/order-lines/ORD-209902-00001-01）は正規の URL へ送られる。
 --   4. 顧客 × **9102** の価格表（REGRIND バリアント ¥1,500）— 標準価格 ¥1,200 を
 --      上書きすることと、出荷後の請求単価がそこから引かれることまで見るため。
@@ -58,10 +58,8 @@ DELETE FROM app.work_orders WHERE product_item_id = 9101;
 --
 -- ■ 親は旧番号（legacy_number）で探し、子は親の uuid で辿る
 -- 書類番号は DB が INSERT 時に振る（`DOR-2026-000NN` — 何番になるかは流した
--- 順で変わる）。ここで入れる行は旧い形（year_month, seq）なので、その組が
--- legacy_number（`DOR-209902-00001`）に残る — 探す鍵はそれ。
--- **アプリが作った子**（確定で起きる納品書・その明細）は親の uuid しか
--- 持たないので、旧い (…_year_month, …_seq) 列では辿らない。
+-- 順で変わる）。ここで入れる行は旧番号を legacy_number（`DOR-209902-00001`）に
+-- 持たせてある — 探す鍵はそれ。子は親の uuid（<親>_id）で辿る。
 DELETE FROM app.delivery_note_items i
  USING app.delivery_notes n, app.delivery_orders o
  WHERE i.delivery_note_id = n.id
@@ -163,9 +161,9 @@ VALUES
    'INTERNAL'::app."STEP_EXECUTION", (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0.3);
 
 -- ── 3. 確定済みの注文請書 + 再研磨の明細 ────────────────────────────────────
-INSERT INTO app.order_acceptances (year_month, seq, status, source, source_file_id,
+INSERT INTO app.order_acceptances (id, legacy_number, status, source, source_file_id,
   customer_bp_id, customer_order_ref, order_date, notes, created_by, created_at, updated_at)
-VALUES ('209902', 1, 'COMPLETED'::app."ORDER_ACCEPTANCE_STATUS", 'MANUAL'::app."INTAKE_SOURCE", NULL,
+VALUES ('e5490000-0000-4000-8000-000000209902'::uuid, 'ORD-209902-00001', 'COMPLETED'::app."ORDER_ACCEPTANCE_STATUS", 'MANUAL'::app."INTAKE_SOURCE", NULL,
   'd0000000-0000-4000-8000-000000000001'::uuid, 'D-2699-0001', '2026-09-01',
   'e2e: 再研磨', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid, now(), now());
 
@@ -173,10 +171,10 @@ VALUES ('209902', 1, 'COMPLETED'::app."ORDER_ACCEPTANCE_STATUS", 'MANUAL'::app."
 -- （CHECK order_lines_confirmed_complete）。
 -- **品目を 2 つ指す**: item_id = 売る役務（再研磨品目 9102）、
 -- tool_item_id = 預かって研いで返す工具（他社製品 9101）。
-INSERT INTO app.order_lines (id, acceptance_year_month, acceptance_seq, branch, sort_order,
+INSERT INTO app.order_lines (id, acceptance_id, branch, sort_order,
   item_id, tool_item_id, product_text, order_type, quantity, unit_price, amount, delivery_date,
   status, confirmed_at, delivery_method, assigned_plant_id, created_at, updated_at)
-VALUES ('d6000000-0000-4000-8000-000000009101'::uuid, '209902', 1, 1, 0,
+VALUES ('d6000000-0000-4000-8000-000000009101'::uuid, 'e5490000-0000-4000-8000-000000209902'::uuid, 1, 0,
   9102, 9101, '日研 超硬エンドミル φ10 再研磨', 'REGRIND'::app."ORDER_TYPE", 10, 1500, 15000, '2026-10-01',
   'CONFIRMED'::app."ORDER_LINE_STATUS", now(), 'NORMAL'::app."DELIVERY_METHOD",
   (SELECT id FROM app.plants WHERE code = 'F01'), now(), now());
@@ -184,14 +182,14 @@ VALUES ('d6000000-0000-4000-8000-000000009101'::uuid, '209902', 1, 1, 0,
 -- ── 4. 価格表（顧客 × 再研磨品目 — 再研磨のバリアントだけ）──────────────────
 -- 再研磨品目の価格表は REGRIND しか持てない（保存側が拒否する）。標準価格
 -- ¥1,200 を ¥1,500 で上書きし、出荷後の請求単価がそこから引かれるのを見る。
-INSERT INTO app.price_list_entries (year_month, seq, customer_bp_id, item_id, currency,
+INSERT INTO app.price_list_entries (id, legacy_number, customer_bp_id, item_id, currency,
   is_active, created_by, created_at, updated_at)
-VALUES ('209902', 1, 'd0000000-0000-4000-8000-000000000001'::uuid, 9102, 'JPY',
+VALUES ('e5290000-0000-4000-8000-000000209902'::uuid, 'PRC-209902-00001', 'd0000000-0000-4000-8000-000000000001'::uuid, 9102, 'JPY',
   true, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid, now(), now());
 
-INSERT INTO app.price_list_variants (id, entry_year_month, entry_seq, order_type,
+INSERT INTO app.price_list_variants (id, entry_id, order_type,
   base_unit_price, valid_from, valid_until, is_active, created_at, updated_at)
-VALUES ('d7000000-0000-4000-8000-000000009101'::uuid, '209902', 1,
+VALUES ('d7000000-0000-4000-8000-000000009101'::uuid, 'e5290000-0000-4000-8000-000000209902'::uuid,
   'REGRIND'::app."ORDER_TYPE", 1500, '2026-01-01', NULL, true, now(), now());
 
 INSERT INTO app.price_list_tiers (id, variant_id, min_quantity, max_quantity,
@@ -205,6 +203,6 @@ SELECT 'fixture' AS tag,
   (SELECT count(*) FROM app.items WHERE id = 9102 AND item_type = 'REGRIND') AS regrind_item,
   (SELECT count(*) FROM app.product_process_route_version_steps
      WHERE route_version_id = 'dc040000-0000-4000-8000-000000009101'::uuid) AS regrind_route_steps,
-  (SELECT count(*) FROM app.order_lines WHERE acceptance_year_month = '209902'
+  (SELECT count(*) FROM app.order_lines WHERE acceptance_id = 'e5490000-0000-4000-8000-000000209902'::uuid
      AND order_type = 'REGRIND') AS regrind_lines,
   (SELECT count(*) FROM app.defect_types WHERE code = 'REGRIND_RETURN') AS return_defect_type;

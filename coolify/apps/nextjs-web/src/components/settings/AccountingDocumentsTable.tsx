@@ -22,6 +22,7 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { AccountingDocumentSummary } from "@/lib/accounting-documents";
 import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import { statusOptions } from "@/lib/status-map";
 
 export function AccountingDocumentsTable({
@@ -57,6 +58,7 @@ export function AccountingDocumentsTable({
       key: "documentNumber",
       header: tr("billing.accountingDocuments.documentNumber"),
       sortable: true,
+      sortValue: (d) => docSortValue(d.documentNumber),
       render: (d) => <DocNumber>{d.documentNumber}</DocNumber>,
     },
     {

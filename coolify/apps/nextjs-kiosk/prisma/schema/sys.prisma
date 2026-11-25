@@ -158,7 +158,7 @@ model FeatureFlag {
 // 監査ログ（業務操作履歴）。各レコードの CREATE/UPDATE/DELETE を before/after
 // JSON 付きで記録し、詳細画面の「履歴」タブと管理者向け操作履歴一覧で表示する。
 // record_id は業務識別子（文書番号 QOT-… / EST-…、価格表エントリキー、
-// マスタの文字列 id）を格納する TEXT — 文書テーブルが複合キーのため uuid ではない。
+// マスタの文字列 id）を格納する TEXT。一意な指し先は record_key。
 // user_id は認証実装後に実ユーザーへ解決する弱参照（現状は null 可）。
 model AuditLog {
   id         BigInt   @id @default(autoincrement())
@@ -167,7 +167,7 @@ model AuditLog {
   tableName  String   @map("table_name") // quotes / estimates / price_list_entries / products …
   recordId   String?  @map("record_id") // 業務識別子（文書番号・エントリキー・id。表示用）
   // レコードの安定キー（record_id とは別物 — こちらは機械用）。uuid / int /
-  // 文字列 PK はそのまま、複合 PK は "YYYYMM:seq"。record_id は表示用の
+  // 文字列 PK はそのまま、番号を持つ書類は参照（doc_ref = `CKK/QOT-…`）。record_id は表示用の
   // 業務識別子（QOT-… / ロット番号）のまま残す。採番リセットで番号が
   // 再利用されても、この列は別の書類を指す（approval_requests で実際に
   // 起きた穴と同じ考え方を audit_logs にも入れる）。

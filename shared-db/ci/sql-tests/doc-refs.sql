@@ -1,7 +1,6 @@
 -- 多態参照「法人コード/番号」（20261126210000_doc_company_refs）の DB 側の試験。
--- 番号設計 PR-C（20261126230000_document_numbering）以降、書類は旧い形
--- （year_month + seq）で入れても新しい番号が払い出され、旧番号で書いた参照は
--- 新しい参照（doc_ref）へ繋がる。ここの INSERT はその経路を通っている。
+-- 書き手（アプリ・共有端末・シード）は自分で参照（doc_ref）を書く（番号設計 PR-D1
+-- からシードも）。ここも参照を書いて試す。旧番号からは app.to_doc_ref で引く。
 --
 -- document-sequences.sql と同じく、まっさらな DB に migrate deploy した直後に
 -- `ON_ERROR_STOP=1` で流す。全体を 1 トランザクションにして最後に ROLLBACK する。
@@ -35,10 +34,11 @@ BEGIN
   ASSERT app.doc_ref_table('work_orders') IS NULL, 'work orders are not refs';
 
   -- ── 書類の法人で参照を作る ──────────────────────────────────────────────
-  INSERT INTO app.order_acceptances (year_month, seq, updated_at)
-  VALUES ('209901', 1, now()) RETURNING * INTO a1;
-  INSERT INTO app.order_acceptances (year_month, seq, own_company_id, updated_at)
-  VALUES ('209901', 2, v_other, now()) RETURNING * INTO a2;
+  -- 旧番号（legacy_number）付きで入れる — 引く関数が旧番号でも当たることを見る
+  INSERT INTO app.order_acceptances (legacy_number, updated_at)
+  VALUES ('ORD-209901-00001', now()) RETURNING * INTO a1;
+  INSERT INTO app.order_acceptances (legacy_number, own_company_id, updated_at)
+  VALUES ('ORD-209901-00002', v_other, now()) RETURNING * INTO a2;
 
   ASSERT app.to_doc_ref('order_acceptances', 'ORD-209901-00001') = a1.doc_ref,
     'ref uses the document company (default)';
@@ -57,44 +57,31 @@ BEGIN
   ASSERT app.to_doc_ref('order_acceptances', 'ORD-209901-00099') = v_code || '/ORD-209901-00099',
     'missing document falls back to the default company';
 
-  -- ── 保存時に参照へ直す（番号だけで書くシード・旧コンテナ）────────────────
+  -- ── 多態参照を書く ──────────────────────────────────────────────────────
+  -- 参照は書き手が組み立てて書く（アプリは lib/doc-ref の requireDocRef）
   INSERT INTO app.approval_requests (target_type, target_id, step_no, step_count, flow_snapshot)
-  VALUES ('order_acceptances', 'ORD-209901-00002', 1, 1, '[]')
+  VALUES ('order_acceptances', a2.doc_ref, 1, 1, '[]')
   RETURNING target_id INTO v_id;
-  ASSERT v_id = a2.doc_ref, 'approval target is qualified on insert';
-
-  INSERT INTO app.approval_requests (target_type, target_id, step_no, step_count, flow_snapshot)
-  VALUES ('work_orders', '4711', 1, 1, '[]')
-  RETURNING target_id INTO v_id;
-  ASSERT v_id = '4711', 'work-order target stays a lot number';
+  ASSERT v_id = a2.doc_ref, 'approval target is stored as written';
 
   INSERT INTO app.document_memos (owner_type, owner_id, kind, content, plain_text, updated_at)
-  VALUES ('order_acceptances', 'ORD-209901-00002', 'MEMO', '{}', '', now())
+  VALUES ('order_acceptances', app.to_doc_ref('order_acceptances', 'ORD-209901-00002'), 'MEMO', '{}', '', now())
   RETURNING owner_id INTO v_id;
-  ASSERT v_id = a2.doc_ref, 'memo owner is qualified on insert';
+  ASSERT v_id = a2.doc_ref, 'a ref looked up from the legacy number';
 
   INSERT INTO app.files (storage_key, filename, mime_type)
   VALUES ('t/doc-refs', 't.pdf', 'application/pdf') RETURNING id INTO v_file;
   INSERT INTO app.document_attachments (owner_type, owner_id, file_id)
-  VALUES ('order_acceptances', 'ORD-209901-00001', v_file)
+  VALUES ('order_acceptances', a1.doc_ref, v_file)
   RETURNING owner_id INTO v_id;
-  ASSERT v_id = a1.doc_ref, 'attachment owner is qualified on insert';
+  ASSERT v_id = a1.doc_ref, 'attachment owner';
 
-  INSERT INTO app.inventory_movements (year_month, seq, cause, source_type, source_id)
-  VALUES ('209901', 1, 'MANUAL', 'order_acceptances', 'ORD-209901-00002')
+  INSERT INTO app.inventory_movements (cause, source_type, source_id)
+  VALUES ('MANUAL', 'order_acceptances', a2.doc_ref)
   RETURNING source_id INTO v_id;
-  ASSERT v_id = a2.doc_ref, 'movement source is qualified on insert';
+  ASSERT v_id = a2.doc_ref, 'movement source';
 
-  -- 監査キー: 旧コンテナが書く "YYYYMM:seq" も、キー無しも、参照になる
-  INSERT INTO app.audit_logs (action, table_name, record_id, record_key)
-  VALUES ('UPDATE', 'order_acceptances', 'ORD-209901-00002', '209901:2')
-  RETURNING record_key INTO v_id;
-  ASSERT v_id = a2.doc_ref, 'legacy composite audit key is rewritten';
-  INSERT INTO app.audit_logs (action, table_name, record_id)
-  VALUES ('UPDATE', 'order_acceptances', 'ORD-209901-00001')
-  RETURNING record_key INTO v_id;
-  ASSERT v_id = a1.doc_ref, 'missing audit key is filled';
-  -- 番号を持たない表のキーには触らない
+  -- 番号を持たない表の監査キーはそのまま
   INSERT INTO app.audit_logs (action, table_name, record_id, record_key)
   VALUES ('UPDATE', 'plants', '1', '1')
   RETURNING record_key INTO v_id;

@@ -1,7 +1,7 @@
 // 設計依頼 (_specs/tables.md §10): 設計依頼書 / 設計ファイル。
 //
-// トリガ: 見積時（§1 並行）or 受注時（§3 並行）。番号 DSG-YYYYMM-NNNNN は
-// numbering_sequences（DESIGN）で採番し request_number に保存する。
+// トリガ: 見積時（§1 並行）or 受注時（§3 並行）。番号 DSG-FFFF-NNNNN は
+// DB が作成時に払い出す（doc_number — Prisma では requestNumber）。
 //
 // 承認フローを持つ（購買依頼 PU01 と同型の row-workflow）。
 // approval_flows.target_type = 'design_requests' で MS0B から段構成を組み、
@@ -74,13 +74,13 @@ model DesignRequest {
   docRef       String  @unique @default("") @map("doc_ref")
   /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
   legacyNumber String? @map("legacy_number")
-  /// 旧番号の列（PR-D で落とす）。新しい行は NULL。
-  legacyRequestNumber String? @unique @map("request_number")
+  /// 旧番号の列。**@ignore — アプリからは見えない**（番号設計 PR-D1。後続で落とす）。
+  legacyRequestNumber String? @unique @map("request_number") @ignore
   trigger       DesignTrigger
-  // 見積時: 見積書（複合キー）/ 受注時: 注文明細
+  // 見積時: 見積書 / 受注時: 注文明細
   quoteId String? @map("quote_id") @db.Uuid
-  quoteYearMonth String? @map("quote_year_month") @db.Char(6)
-  quoteSeq       Int?    @map("quote_seq")
+  quoteYearMonth String? @map("quote_year_month") @db.Char(6) @ignore
+  quoteSeq       Int?    @map("quote_seq") @ignore
   orderLineId    String? @map("order_line_id") @db.Uuid
   // アプリ側では必須（区分の自動判定に要る）。DB は nullable のまま —
   // 製品未指定の既存行があるので NOT NULL にすると移行が落ちるうえ、

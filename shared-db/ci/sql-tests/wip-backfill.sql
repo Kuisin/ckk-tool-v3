@@ -40,9 +40,9 @@ SELECT 990003, 'MATERIAL', 'WIPT-M1', '{"ja":"試験素材"}', '本', c.mt, 6.2,
 -- 指示書を 1 本作る小道具（工程は呼び出し側）
 CREATE FUNCTION pg_temp.wo(p_id uuid, p_no int, p_product int, p_material int) RETURNS void
 LANGUAGE sql AS $$
-  INSERT INTO app.work_orders (id, work_order_number, year_month, seq, product_item_id,
+  INSERT INTO app.work_orders (id, work_order_number, product_item_id,
                                material_item_id, type, planned_quantity, updated_at)
-  VALUES (p_id, p_no, '209901', p_no, p_product, p_material, 'MANUFACTURE', 10, now())
+  VALUES (p_id, p_no, p_product, p_material, 'MANUFACTURE', 10, now())
 $$;
 CREATE FUNCTION pg_temp.st(p_wo uuid, p_id uuid, p_cat int, p_sort int, p_status text,
                            p_defect_semi int DEFAULT NULL) RETURNS void

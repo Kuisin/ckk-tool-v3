@@ -19,6 +19,7 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import {
   deliveryOrderTypeLabel,
   deliveryOrderTypeOptions,
@@ -75,6 +76,7 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
       key: "deliveryOrderNumber",
       header: tr("common.deliveryOrderNumber"),
       sortable: true,
+      sortValue: (o) => docSortValue(o.deliveryOrderNumber),
       render: (o) => (
         <Text ff="mono" size="sm">
           {docNo(o.deliveryOrderNumber)}

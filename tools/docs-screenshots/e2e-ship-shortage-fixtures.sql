@@ -7,7 +7,7 @@
 --
 --   旧番号 DOR-209901-00001 … 品目 9003（超硬リーマ）× ロット 9999 × 4 本。
 --   **画面に出る番号は DB が振る**（`DOR-2026-000NN` — 流した順で変わる）。
---   ここで入れる (year_month, seq) は旧番号（legacy_number）として残り、
+--   ここで入れる旧番号（legacy_number = DOR-209901-00001）で、
 --   旧番号の URL（/shipping/delivery-orders/DOR-209901-00001）は正規の URL へ
 --   送られる。DB から引くときは legacy_number か app.to_doc_ref() を使う。
 --   **ロット 9999 のバケットは存在しない** — 利用者が dev で踏んだ形
@@ -37,9 +37,9 @@ DELETE FROM app.delivery_order_items i
  WHERE i.delivery_order_id = o.id AND o.legacy_number = 'DOR-209901-00001';
 DELETE FROM app.delivery_orders WHERE legacy_number = 'DOR-209901-00001';
 
-INSERT INTO app.delivery_orders (year_month, seq, customer_bp_id, work_order_id, from_plant_id,
+INSERT INTO app.delivery_orders (id, legacy_number, customer_bp_id, work_order_id, from_plant_id,
   type, status, shipped_at, notes, created_by, created_at, updated_at)
-VALUES ('209901', 1, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
+VALUES ('e5590000-0000-4000-8000-000000209901'::uuid, 'DOR-209901-00001', 'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
   (SELECT id FROM app.plants WHERE code = 'F01'),
   'DISPATCH'::app."DELIVERY_ORDER_TYPE", 'CONFIRMED'::app."DELIVERY_ORDER_STATUS",
   NULL, 'e2e: 在庫不足の出荷',
@@ -47,9 +47,9 @@ VALUES ('209901', 1, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
 
 -- 注文明細には紐づけない（在庫向けの出荷。過不足の判定を巻き込まずに、
 -- 在庫が足りないことだけを見たいため）。
-INSERT INTO app.delivery_order_items (id, delivery_order_year_month, delivery_order_seq,
+INSERT INTO app.delivery_order_items (id, delivery_order_id,
   order_line_id, item_id, lot_number, quantity, notes, sort_order)
-VALUES ('dd000000-0000-4000-8000-0000000099e1'::uuid, '209901', 1,
+VALUES ('dd000000-0000-4000-8000-0000000099e1'::uuid, 'e5590000-0000-4000-8000-000000209901'::uuid,
   NULL, 9003, 9999, 4, NULL, 0);
 
 -- 確認用（流したときに目で見える）

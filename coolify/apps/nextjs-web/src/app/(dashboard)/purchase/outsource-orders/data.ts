@@ -48,3 +48,21 @@ export async function fetchOutsourceSteps(): Promise<OutsourceStepRow[]> {
     status: s.status,
   }));
 }
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * 外注工程（詳細 URL の id = 工程の uuid）の依頼番号（OUT-FFFF-NNNNN）。
+ * 依頼日の無い工程・uuid でない id は null。
+ */
+export async function fetchOutsourceNumber(
+  stepId: string,
+): Promise<string | null> {
+  if (!UUID_RE.test(stepId)) return null;
+  const row = await prisma.outsourceOrder.findUnique({
+    where: { workOrderStepId: stepId },
+    select: { docNumber: true },
+  });
+  return row?.docNumber ?? null;
+}

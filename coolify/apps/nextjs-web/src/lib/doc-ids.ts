@@ -3,7 +3,7 @@ import "server-only";
 /**
  * doc-ids.ts — 書類の鍵（参照 doc_ref）→ 行の uuid。server-only.
  *
- * 番号設計 PR-B で、(year_month, seq) を主キーにしていた 7 表（価格試算・
+ * 番号設計 PR-B で、年月 + 連番を主キーにしていた 7 表（価格試算・
  * 価格表・見積書・注文請書・出荷書・納品書・請求書）は uuid の id を主キーに
  * 持ち、子の表はその id を FK で指すようになった。画面・URL は書類を
  * 「法人コード + 番号」（lib/doc-number.ts DocKey = doc_ref）で指すので、
