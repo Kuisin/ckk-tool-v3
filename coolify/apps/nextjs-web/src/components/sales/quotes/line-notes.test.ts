@@ -1,29 +1,11 @@
 /**
  * line-notes.test.ts — 見積書の明細備考と値引きの注意書き。
  *
- * - 品目マスタの備考を下書きに入れる条件（shouldPrefillLineNotes）
- * - PDF の明細直下に刷る断片（quoteLineNoteHtml）: 受取先の言語・エスケープ・改行
+ * PDF の明細直下に刷る断片（quoteLineNoteHtml）: 受取先の言語・エスケープ・改行
  */
 
 import { describe, expect, it } from "vitest";
 import { quoteLineNoteHtml } from "@/lib/pdf-labels";
-import { shouldPrefillLineNotes } from "./model";
-
-describe("shouldPrefillLineNotes", () => {
-  it("品目が変わり備考が空なら入れる", () => {
-    expect(shouldPrefillLineNotes("", "12", "")).toBe(true);
-    expect(shouldPrefillLineNotes("11", "12", "  \n")).toBe(true);
-  });
-  it("同じ品目（数量・種別の変更）では入れない", () => {
-    expect(shouldPrefillLineNotes("12", "12", "")).toBe(false);
-  });
-  it("利用者が書いた備考は上書きしない", () => {
-    expect(shouldPrefillLineNotes("11", "12", "特急")).toBe(false);
-  });
-  it("品目を外したときは入れない", () => {
-    expect(shouldPrefillLineNotes("12", "", "")).toBe(false);
-  });
-});
 
 describe("quoteLineNoteHtml", () => {
   const none = { discountLabel: null, discountAmount: 0, notes: null };

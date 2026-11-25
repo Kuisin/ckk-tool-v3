@@ -27,9 +27,8 @@ import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useTransition } from "react";
+import { useTransition } from "react";
 import { z } from "zod";
-import { fetchItemNotes } from "@/app/(dashboard)/_shared/item-notes-lookup";
 import {
   createQuote,
   updateQuote,
@@ -51,11 +50,7 @@ import type { Option } from "@/lib/mock";
 import { totalsByRateYen } from "@/lib/money";
 import { resolveLineTax, type TaxCatalog } from "@/lib/tax-rate";
 import { isoDateJst, type PriceListEntry } from "../price-lists/model";
-import {
-  type Quote,
-  resolveUnitPriceFromEntries,
-  shouldPrefillLineNotes,
-} from "./model";
+import { type Quote, resolveUnitPriceFromEntries } from "./model";
 
 /**
  * バリデーションメッセージが訳を必要とするため、スキーマはコンポーネント内で
@@ -246,31 +241,6 @@ export function QuoteForm({
     form.values.items.map((it) => it.itemId),
   );
 
-  /**
-   * 品目を選んだ行の備考が空なら、品目マスタの備考を下書きとして入れる。
-   * 届くまでに利用者が書き始めた・品目を選び直した場合は上書きしない。
-   */
-  const prefillLineNotes = (ri: number, itemId: string) => {
-    fetchItemNotes([itemId])
-      .then((notes) => {
-        const master = notes[itemId];
-        const current = form.getValues().items[ri];
-        if (!master || !current) return;
-        if (current.itemId !== itemId || current.notes.trim()) return;
-        form.setFieldValue(`items.${ri}.notes`, master);
-      })
-      .catch(() => {
-        // 下書きが入らないだけ — 保存には影響しない。
-      });
-  };
-
-  // 価格表「見積書を作成」から品目付きで開いたときも、1 行目に同じ下書きを入れる。
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 初回表示の 1 回だけ
-  useEffect(() => {
-    if (quote || !prefill?.itemId) return;
-    prefillLineNotes(0, prefill.itemId);
-  }, []);
-
   /** Changing 顧客 → re-resolve every line's 単価・値引き against the new customer's 価格表. */
   const onCustomerChange = (customerId: string) => {
     form.setFieldValue("customerId", customerId);
@@ -457,15 +427,6 @@ export function QuoteForm({
                     }
                     entries={entries}
                     onChange={(next: ResolverValue) => {
-                      if (
-                        shouldPrefillLineNotes(
-                          item.itemId,
-                          next.itemId,
-                          item.notes,
-                        )
-                      ) {
-                        prefillLineNotes(ri, next.itemId);
-                      }
                       form.setFieldValue(`items.${ri}.itemId`, next.itemId);
                       form.setFieldValue(
                         `items.${ri}.productName`,
