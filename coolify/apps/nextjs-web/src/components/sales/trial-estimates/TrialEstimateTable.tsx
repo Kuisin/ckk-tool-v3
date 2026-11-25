@@ -24,6 +24,7 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import { statusOptions } from "@/lib/status-map";
 import {
   calcTrialPricing,
@@ -87,7 +88,7 @@ export function TrialEstimateTable({
       header: tr("common.priceEstimateNumber"),
       width: 170,
       sortable: true,
-      sortValue: (r) => r.estimateNumber,
+      sortValue: (r) => docSortValue(r.estimateNumber),
       render: (r) => <DocNumber>{r.estimateNumber}</DocNumber>,
     },
     {

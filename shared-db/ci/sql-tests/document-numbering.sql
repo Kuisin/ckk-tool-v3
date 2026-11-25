@@ -9,8 +9,8 @@
 --   3. 保存が巻き戻れば番号も戻る（欠番なし）
 --   4. 払い出した番号は変えられない / 形の合わない番号は入らない
 --   5. 注文明細番号は注文請書の番号 + 枝番
---   6. 旧い形（year_month + seq）で入れた書類は旧番号を legacy_number に持ち、
---      旧番号で書いた参照は新しい参照へ繋がる（書類より先に入った参照も）
+--   6. 旧番号（legacy_number）を付けて入れた書類は旧番号を保ったまま新しい番号を
+--      受け取り、旧番号から参照を引ける（app.to_doc_ref / app.resolve_doc_ref）
 --   7. 外注依頼の番号は、外注工程に依頼日が入った時点で 1 回だけ払い出される
 --   8. 振り直し（app.renumber_documents）は、起票日時の順に 1 件ずつ作ったときと
 --      同じ番号を出す
@@ -47,7 +47,7 @@ BEGIN
   ASSERT a.fiscal_year = 2030 AND a.doc_seq = 1, 'caller-supplied number is overwritten';
   ASSERT a.doc_number = 'ORD-2030-00001', 'doc number format';
   ASSERT a.doc_ref = v_code || '/ORD-2030-00001', 'doc ref carries the company code';
-  ASSERT a.legacy_number IS NULL AND a.year_month IS NULL AND a.seq IS NULL, 'no legacy for new rows';
+  ASSERT a.legacy_number IS NULL, 'no legacy for new rows';
 
   INSERT INTO app.order_acceptances (own_company_id, created_at, updated_at)
   VALUES (v_other, '2030-06-01 03:00:00+00', now()) RETURNING * INTO b;
@@ -150,46 +150,20 @@ BEGIN
   ASSERT app.resolve_doc_ref('order_acceptances', 'ORD-2030-00002') = v_code || '/ORD-2030-00002',
     'a number that exists once resolves';
 
-  -- ── 6. 旧い形で入れた書類と、旧番号の参照 ───────────────────────────────
-  -- 書類より先に、旧番号で参照が入っている（シードの順序）
-  INSERT INTO app.document_memos (owner_type, owner_id, kind, content, plain_text, updated_at)
-  VALUES ('order_acceptances', 'ORD-209901-00007', 'MEMO', '{}', '', now())
-  RETURNING owner_id INTO v_id;
-  ASSERT v_id = v_code || '/ORD-209901-00007', 'dangling legacy ref is parked on the default company';
-  INSERT INTO app.notifications (user_id, type, title, link_path)
-  SELECT u.id, 'SYSTEM', 't', '/sales/order-acceptances/ORD-209901-00007?tab=memo'
-    FROM app.users u LIMIT 1;
-
-  INSERT INTO app.order_acceptances (year_month, seq, created_at, updated_at)
-  VALUES ('209901', 7, '2031-05-01 03:00:00+00', now()) RETURNING * INTO c;
-  ASSERT c.legacy_number = 'ORD-209901-00007', 'legacy number is captured from the old columns';
+  -- ── 6. 旧番号付きで入れた書類と、旧番号からの参照の引き方 ───────────────
+  INSERT INTO app.order_acceptances (legacy_number, created_at, updated_at)
+  VALUES ('ORD-209901-00007', '2031-05-01 03:00:00+00', now()) RETURNING * INTO c;
+  ASSERT c.legacy_number = 'ORD-209901-00007', 'legacy number is kept as written';
   ASSERT c.doc_number = 'ORD-2031-00004', 'and a new number is allocated';
-  ASSERT c.year_month = '209901' AND c.seq = 7, 'old columns are kept as written';
 
-  SELECT owner_id INTO v_id FROM app.document_memos
-   WHERE owner_type = 'order_acceptances' AND owner_id LIKE '%ORD-2031-00004';
-  ASSERT v_id = c.doc_ref, 'the dangling ref is re-pointed when the document arrives';
-  SELECT count(*) INTO n FROM app.notifications
-   WHERE link_path = '/sales/order-acceptances/' || v_code || '~ORD-2031-00004?tab=memo';
-  ASSERT n = (SELECT count(*) FROM app.notifications WHERE title = 't' AND type = 'SYSTEM'
-               AND link_path LIKE '/sales/order-acceptances/%'),
-    'notification links are rewritten to the canonical id';
-
-  -- 書類のあとから旧番号で書いた参照も新しい参照になる
   ASSERT app.to_doc_ref('order_acceptances', 'ORD-209901-00007') = c.doc_ref, 'bare legacy number';
   ASSERT app.to_doc_ref('order_acceptances', v_code || '/ORD-209901-00007') = c.doc_ref, 'qualified legacy number';
-  INSERT INTO app.audit_logs (action, table_name, record_id)
-  VALUES ('UPDATE', 'order_acceptances', 'ORD-209901-00007')
-  RETURNING record_key INTO v_id;
-  ASSERT v_id = c.doc_ref, 'audit key written with a legacy number';
-  SELECT record_id INTO v_id FROM app.audit_logs WHERE record_key = c.doc_ref LIMIT 1;
-  ASSERT v_id = 'ORD-2031-00004', 'audit record id follows the new number';
+  ASSERT app.resolve_doc_ref('order_acceptances', 'ORD-209901-00007') = c.doc_ref, 'resolve by legacy number';
 
-  -- 子の表: 旧 2 列だけで書いた行は、旧番号の親へ繋がる（番号設計 PR-B の同期）
-  INSERT INTO app.order_lines (acceptance_year_month, acceptance_seq, branch, quantity)
-  VALUES ('209901', 7, 1, 1) RETURNING * INTO l;
-  ASSERT l.acceptance_id = c.id, 'child written with legacy columns finds its parent';
-  ASSERT l.line_number = 'ORD-2031-00004-01', 'and gets the new line number';
+  -- 注文明細: 旧番号 = 注文請書の旧番号 + 枝番
+  INSERT INTO app.order_lines (acceptance_id, branch, quantity)
+  VALUES (c.id, 1, 1) RETURNING * INTO l;
+  ASSERT l.line_number = 'ORD-2031-00004-01', 'the line gets the new line number';
   ASSERT app.to_doc_ref('order_lines', 'ORD-209901-00007-01') = l.line_ref, 'legacy line number resolves';
 
   -- ── 7. 外注依頼の番号 ───────────────────────────────────────────────────

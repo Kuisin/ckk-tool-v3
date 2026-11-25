@@ -137,8 +137,7 @@ describe("isUuid", () => {
 
 describe("番号を DB が払い出す表のキーは参照（docKey 形）", () => {
   it("指示書・外注依頼を除く全ての表が docKey 形で登録されている", () => {
-    // 指示書はロット番号で、外注依頼は工程の id で指される（migration
-    // 20261126230000 の app.qualify_audit_record_key と同じ除外）。
+    // 指示書はロット番号で、外注依頼は工程の id で指される。
     const byOtherKey = new Set(["work_orders", "outsource_orders"]);
     for (const table of Object.keys(DOC_TABLE_PREFIX)) {
       if (byOtherKey.has(table)) continue;

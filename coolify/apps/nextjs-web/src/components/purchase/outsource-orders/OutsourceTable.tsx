@@ -23,6 +23,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docSortValue } from "@/lib/doc-sort";
 import { statusOptions } from "@/lib/status-map";
 import type { OutsourceStepRow } from "./model";
 
@@ -75,7 +76,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
       header: tr("common.requestNumber"),
       width: 150,
       sortable: true,
-      sortValue: (r) => r.outsourceNumber ?? "",
+      sortValue: (r) => docSortValue(r.outsourceNumber),
       // 依頼日が入るまで番号は無い（DB が依頼時に払い出す）。
       render: (r) =>
         r.outsourceNumber ? <DocNumber>{r.outsourceNumber}</DocNumber> : "—",

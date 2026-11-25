@@ -69,7 +69,7 @@ ON CONFLICT (user_id, plant_id) DO NOTHING;
 -- 旧モデルで「下書きの明細（order_acceptance_items）」と「確定した受注
 -- （sales_orders）」が別テーブルだったものが 1 テーブルに寄った形で、
 -- 画面上も 下書き 1 行 + 確定 2 行 として並ぶ。
-INSERT INTO app.order_lines (id, acceptance_year_month, acceptance_seq, branch,
+INSERT INTO app.order_lines (id, acceptance_id, branch,
   sort_order, item_id, product_text, order_type, quantity, unit_price, amount,
   delivery_date, status, lot_number, is_locked, end_user_bp_id, confirmed_at,
   created_at, updated_at)
@@ -80,12 +80,12 @@ VALUES
   -- 「次のステップ: 出荷書の作成」が出るのに出荷書フォームは「受注数量まで
   -- 出荷済みです」と断る、という食い違いをデモデータ自身が作っていた。
   -- 割当（work_order_order_lines）の合計 110 本も受注数以下に収まる。
-  ('e0000000-0000-4000-8000-000000000001'::uuid, '202607', 3, 1, 1,
+  ('e0000000-0000-4000-8000-000000000001'::uuid, 'e5400000-0000-4000-8000-000000000003'::uuid, 1, 1,
    9001, NULL, 'PRODUCTION'::app."ORDER_TYPE", 150, 3220, 483000,
    '2026-08-20', 'IN_PRODUCTION'::app."ORDER_LINE_STATUS", 9001, false, NULL,
    '2026-07-14T09:30:00+09',
    '2026-07-14T09:30:00+09', '2026-07-16T08:30:00+09'),
-  ('e0000000-0000-4000-8000-000000000002'::uuid, '202607', 3, 2, 2,
+  ('e0000000-0000-4000-8000-000000000002'::uuid, 'e5400000-0000-4000-8000-000000000003'::uuid, 2, 2,
    9002, NULL, 'PRODUCTION'::app."ORDER_TYPE", 100, 1850, 185000,
    '2026-09-15', 'CONFIRMED'::app."ORDER_LINE_STATUS", 9002, false, NULL,
    '2026-07-14T09:35:00+09',
@@ -195,13 +195,13 @@ ON CONFLICT (id) DO NOTHING;
 --   requested_1st_* → requested_*、approved_1st/2nd_* → approved_*（最終）
 --   approval_status の PENDING_1ST → PENDING
 -- 各段の記録は approval_requests / approval_records 側にある。
-INSERT INTO app.work_orders (id, work_order_number, year_month, seq, product_item_id, type,
+INSERT INTO app.work_orders (id, work_order_number, legacy_number, product_item_id, type,
   planned_quantity, material_item_id, status, approval_status, route_version_id,
   requested_at, requested_by, approved_at, approved_by, started_at, completed_at,
   history, notes, created_by, created_at, updated_at)
 VALUES
   -- #9001: 進行中（受注 50 + 予備 5 = 55。承認記録あり・工程は下の steps 参照）
-  ('dc000000-0000-4000-8000-000000009001'::uuid, 9001, '202607', 9001,
+  ('dc000000-0000-4000-8000-000000009001'::uuid, 9001, 'WOR-202607-09001',
    9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
    55, (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
    'IN_PROGRESS'::app."WORK_ORDER_STATUS", 'APPROVED'::app."WORK_ORDER_APPROVAL_STATUS",
@@ -217,7 +217,7 @@ VALUES
    NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    '2026-07-14T10:30:00+09', '2026-07-21T09:00:00+09'),
   -- #9002: 承認依頼中（PENDING_1ST — PD03 の主役。approval_requests 行あり）
-  ('dc000000-0000-4000-8000-000000009002'::uuid, 9002, '202607', 9002,
+  ('dc000000-0000-4000-8000-000000009002'::uuid, 9002, 'WOR-202607-09002',
    9002, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
    100, (SELECT id FROM app.items WHERE code = 'B04A0001-B040-310' AND item_type = 'MATERIAL'),
    'PENDING_APPROVAL'::app."WORK_ORDER_STATUS", 'PENDING'::app."WORK_ORDER_APPROVAL_STATUS",
@@ -229,7 +229,7 @@ VALUES
    NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    '2026-07-19T15:00:00+09', '2026-07-20T09:30:00+09'),
   -- #9003: 下書き（在庫分 — 編集・コピー・キャンセル可の状態バリエーション）
-  ('dc000000-0000-4000-8000-000000009003'::uuid, 9003, '202607', 9003,
+  ('dc000000-0000-4000-8000-000000009003'::uuid, 9003, 'WOR-202607-09003',
    9001, 'FROM_STOCK'::app."WORK_ORDER_TYPE",
    10, NULL,
    'DRAFT'::app."WORK_ORDER_STATUS", 'NONE'::app."WORK_ORDER_APPROVAL_STATUS",
@@ -238,7 +238,7 @@ VALUES
    NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    '2026-07-19T16:20:00+09', '2026-07-19T16:20:00+09'),
   -- #9004: 完了（全工程完了 → 良品 55 を製品在庫ロット 9004 として入庫済み）
-  ('dc000000-0000-4000-8000-000000009004'::uuid, 9004, '202607', 9004,
+  ('dc000000-0000-4000-8000-000000009004'::uuid, 9004, 'WOR-202607-09004',
    9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
    60, (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
    'COMPLETED'::app."WORK_ORDER_STATUS", 'APPROVED'::app."WORK_ORDER_APPROVAL_STATUS",
@@ -269,18 +269,6 @@ INSERT INTO app.numbering_sequences (key, prefix, last_year_month, last_sequence
 VALUES ('WORK_ORDER', 'WO', NULL, 9004, '2026-07-21T09:00:00+09')
 ON CONFLICT (key) DO UPDATE
   SET last_sequence = GREATEST(app.numbering_sequences.last_sequence, 9004),
-      updated_at = EXCLUDED.updated_at;
-
--- 書類番号（WOR-YYYYMM-NNNNN）の採番も固定 seq へ追従
-INSERT INTO app.numbering_sequences (key, prefix, last_year_month, last_sequence, updated_at)
-VALUES ('WORK_ORDER_DOC', 'WOR', '202607', 9004, '2026-07-21T09:00:00+09')
-ON CONFLICT (key) DO UPDATE
-  SET last_year_month = GREATEST(app.numbering_sequences.last_year_month, EXCLUDED.last_year_month),
-      last_sequence = CASE
-        WHEN app.numbering_sequences.last_year_month >= EXCLUDED.last_year_month
-          THEN app.numbering_sequences.last_sequence
-        ELSE EXCLUDED.last_sequence
-      END,
       updated_at = EXCLUDED.updated_at;
 
 -- ── 工程ステップ ─────────────────────────────────────────────────────────────
@@ -471,6 +459,49 @@ VALUES
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-21T09:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 
+-- ── 素材発注書（PD03 の種別バリエーション + 素材タブ「次回入荷」/ATP 入荷行）──
+-- 90101 = 承認依頼中（PD03 に teal バッジで並ぶ）/ 90102 = 発注済（入荷予定）。
+-- 番号は DB が払い出す。旧番号（legacy_number）は 90xxx 帯のまま — 撮影の URL が
+-- 旧番号で開くため。承認依頼が参照（doc_ref）を引くので、承認依頼より先に入れる。
+INSERT INTO app.material_purchase_orders (id, legacy_number, supplier_bp_id, status,
+  total_amount, currency, purchase_date, requested_at, requested_by,
+  approved_at, approved_by, ordered_at, ordered_by, history, notes,
+  created_by, created_at, updated_at)
+VALUES
+  ('dc060000-0000-4000-8000-000000000001'::uuid, 'PO-202607-90101',
+   (SELECT id FROM app.business_partners WHERE bp_code = 'BP-90004'),
+   'REQUESTED'::app."PURCHASE_STATUS", 124250, 'JPY', NULL,
+   '2026-07-21T10:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   NULL, NULL, NULL, NULL,
+   '[{"action": "CREATE", "user": "a0b1c2d3-0000-4000-8000-000000005107", "at": "2026-07-21T09:50:00+09:00"},
+     {"action": "REQUEST", "user": "a0b1c2d3-0000-4000-8000-000000005107", "at": "2026-07-21T10:00:00+09:00"}]'::jsonb,
+   NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   '2026-07-21T09:50:00+09', '2026-07-21T10:00:00+09'),
+  ('dc060000-0000-4000-8000-000000000002'::uuid, 'PO-202607-90102',
+   (SELECT id FROM app.business_partners WHERE bp_code = 'BP-90004'),
+   'ORDERED'::app."PURCHASE_STATUS", 220000, 'JPY', '2026-07-15',
+   '2026-07-14T11:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   '2026-07-14T15:00:00+09', '00000000-0000-0000-0000-000000000000'::uuid,
+   '2026-07-15T09:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   '[{"action": "ORDER", "user": "a0b1c2d3-0000-4000-8000-000000005107", "at": "2026-07-15T09:00:00+09:00"}]'::jsonb,
+   NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   '2026-07-14T10:50:00+09', '2026-07-15T09:00:00+09')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO app.material_purchase_order_items (id, purchase_order_id, item_id,
+  quantity, unit, unit_price, amount, currency, expected_at, received_quantity,
+  plant_id, notes, sort_order)
+VALUES
+  ('dc061000-0000-4000-8000-000000000001'::uuid, 'dc060000-0000-4000-8000-000000000001'::uuid,
+   (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
+   50, '本', 2485, 124250, 'JPY', '2026-08-20', 0,
+   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0),
+  ('dc061000-0000-4000-8000-000000000002'::uuid, 'dc060000-0000-4000-8000-000000000002'::uuid,
+   (SELECT id FROM app.items WHERE code = 'B04A0001-B040-310' AND item_type = 'MATERIAL'),
+   200, '本', 1100, 220000, 'JPY', '2026-08-10', 0,
+   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0)
+ON CONFLICT (id) DO NOTHING;
+
 -- ── 承認依頼・承認記録（PD03 横断受信箱 + 指示書の承認記録リスト）──────────────
 -- targetType = @@map 名 / targetId = 業務キー（指示書 = 番号文字列, PO = PO-…,
 -- 注文請書 = ORD-…）。ORD-202607-00003 は sales-demo-seed の REQUESTED 行に対応。
@@ -517,9 +548,11 @@ FROM snap s CROSS JOIN (VALUES
    'APPROVED', '2026-07-15T10:00:00+09', NULL),
   ('dc030000-0000-4000-8000-000000000003', 'work_orders', '9002', 1, 2,
    'PENDING',  '2026-07-20T09:30:00+09', '納期優先でお願いします'),
-  ('dc030000-0000-4000-8000-000000000004', 'order_acceptances', 'ORD-202607-00003', 1, 1,
+  ('dc030000-0000-4000-8000-000000000004', 'order_acceptances',
+   (SELECT doc_ref FROM app.order_acceptances WHERE id = 'e5400000-0000-4000-8000-000000000003'), 1, 1,
    'PENDING',  '2026-07-07T13:50:00+09', NULL),
-  ('dc030000-0000-4000-8000-000000000005', 'material_purchase_orders', 'PO-202607-90101', 1, 1,
+  ('dc030000-0000-4000-8000-000000000005', 'material_purchase_orders',
+   (SELECT doc_ref FROM app.material_purchase_orders WHERE id = 'dc060000-0000-4000-8000-000000000001'), 1, 1,
    'PENDING',  '2026-07-21T10:00:00+09', NULL)
 ) AS v(id, target_type, target_id, step_no, step_count, status, requested_at, notes)
 ON CONFLICT (id) DO NOTHING;
@@ -533,48 +566,6 @@ VALUES
   ('dc031000-0000-4000-8000-000000000002'::uuid, 'dc030000-0000-4000-8000-000000000002'::uuid,
    '00000000-0000-0000-0000-000000000000'::uuid, NULL,
    'APPROVED'::app."APPROVAL_ACTION", NULL, '2026-07-15T14:00:00+09')
-ON CONFLICT (id) DO NOTHING;
-
--- ── 素材発注書（PD03 の種別バリエーション + 素材タブ「次回入荷」/ATP 入荷行）──
--- 90101 = 承認依頼中（PD03 に teal バッジで並ぶ）/ 90102 = 発注済（入荷予定）。
--- 番号は 90xxx 帯 — 購買デモシードのアプリ採番帯（00001〜）と衝突しない。
-INSERT INTO app.material_purchase_orders (id, po_number, supplier_bp_id, status,
-  total_amount, currency, purchase_date, requested_at, requested_by,
-  approved_at, approved_by, ordered_at, ordered_by, history, notes,
-  created_by, created_at, updated_at)
-VALUES
-  ('dc060000-0000-4000-8000-000000000001'::uuid, 'PO-202607-90101',
-   (SELECT id FROM app.business_partners WHERE bp_code = 'BP-90004'),
-   'REQUESTED'::app."PURCHASE_STATUS", 124250, 'JPY', NULL,
-   '2026-07-21T10:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
-   NULL, NULL, NULL, NULL,
-   '[{"action": "CREATE", "user": "a0b1c2d3-0000-4000-8000-000000005107", "at": "2026-07-21T09:50:00+09:00"},
-     {"action": "REQUEST", "user": "a0b1c2d3-0000-4000-8000-000000005107", "at": "2026-07-21T10:00:00+09:00"}]'::jsonb,
-   NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
-   '2026-07-21T09:50:00+09', '2026-07-21T10:00:00+09'),
-  ('dc060000-0000-4000-8000-000000000002'::uuid, 'PO-202607-90102',
-   (SELECT id FROM app.business_partners WHERE bp_code = 'BP-90004'),
-   'ORDERED'::app."PURCHASE_STATUS", 220000, 'JPY', '2026-07-15',
-   '2026-07-14T11:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
-   '2026-07-14T15:00:00+09', '00000000-0000-0000-0000-000000000000'::uuid,
-   '2026-07-15T09:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
-   '[{"action": "ORDER", "user": "a0b1c2d3-0000-4000-8000-000000005107", "at": "2026-07-15T09:00:00+09:00"}]'::jsonb,
-   NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
-   '2026-07-14T10:50:00+09', '2026-07-15T09:00:00+09')
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO app.material_purchase_order_items (id, purchase_order_id, item_id,
-  quantity, unit, unit_price, amount, currency, expected_at, received_quantity,
-  plant_id, notes, sort_order)
-VALUES
-  ('dc061000-0000-4000-8000-000000000001'::uuid, 'dc060000-0000-4000-8000-000000000001'::uuid,
-   (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
-   50, '本', 2485, 124250, 'JPY', '2026-08-20', 0,
-   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0),
-  ('dc061000-0000-4000-8000-000000000002'::uuid, 'dc060000-0000-4000-8000-000000000002'::uuid,
-   (SELECT id FROM app.items WHERE code = 'B04A0001-B040-310' AND item_type = 'MATERIAL'),
-   200, '本', 1100, 220000, 'JPY', '2026-08-10', 0,
-   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0)
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 保管場所 × 棚（ロケーションタブ・保管場所列・在庫移動の前提）──────────────

@@ -8,7 +8,7 @@
  *   画面の文字    … `docNumber("QOT")`（= /^QOT-\d{4}-\d{5}$/）や `anyDocNumber("QOT")`
  *   詳細の URL    … `docUrl("/sales/quotes", "QOT")`
  *                   正規の URL は id（法人コード~番号 — `/sales/quotes/CKK~QOT-2026-00001`）
- *   行き先の指定  … シードが旧い形（year_month, seq）で入れた書類は**旧番号の URL**
+ *   行き先の指定  … シードが旧番号（legacy_number）を付けて入れた書類は**旧番号の URL**
  *                   （`/sales/quotes/QOT-202607-00001`）で開ける。詳細ページが
  *                   legacy_number から引いて正規の URL へ送る。
  *

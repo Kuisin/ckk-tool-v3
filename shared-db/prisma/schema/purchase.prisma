@@ -16,7 +16,7 @@ enum PurchaseStatus {
   @@schema("app")
 }
 
-// 素材発注書: PO-YYYYMM-NNNNN（承認フロー: 依頼→承認→発注→入荷）
+// 素材発注書: PO-FFFF-NNNNN（承認フロー: 依頼→承認→発注→入荷）
 model MaterialPurchaseOrder {
   id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
@@ -33,8 +33,6 @@ model MaterialPurchaseOrder {
   docRef       String  @unique @default("") @map("doc_ref")
   /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
   legacyNumber String? @map("legacy_number")
-  /// 旧番号の列（PR-D で落とす）。新しい行は NULL。
-  legacyPoNumber String? @unique @map("po_number")
   supplierBpId String         @map("supplier_bp_id") @db.Uuid
   status       PurchaseStatus @default(DRAFT)
   totalAmount  Decimal        @default(0) @map("total_amount") @db.Decimal(12, 2)
@@ -152,7 +150,7 @@ enum PurchaseRequestStatus {
   @@schema("app")
 }
 
-// 購買依頼: PRQ-YYYYMM-NNNNN。誰でも起票 → §6 承認（targetType
+// 購買依頼: PRQ-FFFF-NNNNN。誰でも起票 → §6 承認（targetType
 // "purchase_requests"）→ 承認後「発注書へ変換」で material_purchase_orders の
 // DRAFT を生成し purchase_order_id で紐付ける（単価・仕入先は発注側で確定）。
 model PurchaseRequest {
@@ -171,8 +169,6 @@ model PurchaseRequest {
   docRef       String  @unique @default("") @map("doc_ref")
   /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
   legacyNumber String? @map("legacy_number")
-  /// 旧番号の列（PR-D で落とす）。新しい行は NULL。
-  legacyRequestNumber String? @unique @map("request_number")
   status        PurchaseRequestStatus @default(DRAFT)
   purpose       String? // 依頼理由・用途
   requestedAt   DateTime?             @map("requested_at") @db.Timestamptz(6)

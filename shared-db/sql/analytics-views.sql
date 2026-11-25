@@ -20,16 +20,16 @@
 --     （PREFIX-FFFF-NNNNN。例 QOT-2026-00001 — 自社法人 × 会計年度の連番）、
 --     注文明細は order_lines.line_number（ORD-FFFF-NNNNN-NN。枝番が付く前 =
 --     未確定の明細は NULL なので、請書の番号 ORD-FFFF-NNNNN へ落とす）。
---     ビュー側で year_month / seq から組み立てない。旧列 (year_month, seq) /
---     po_number / request_number と、子の (…_year_month, …_seq) は新しい行では
---     NULL で、PR-D で落とす — **番号の導出にも結合にも使わないこと**。
---     親子は uuid（quote_id / acceptance_id / delivery_order_id …）で結ぶ。
+--     旧い番号の列（(year_month, seq) / po_number / request_number / 子の
+--     (…_year_month, …_seq)）は番号設計 PR-D（20261126280000_numbering_cleanup）で
+--     落とした。親子は uuid（quote_id / acceptance_id / delivery_order_id …）で結ぶ。
 --   * 番号つき書類のビューは fiscal_year（会計年度）/ seq（年度内連番 = doc_seq）/
 --     company_code（発行した自社法人のコード。番号は法人ごとに 00001 から始まる
 --     ので、**法人が 2 つ以上あると番号だけでは一意にならない** — 番号 + これで
 --     一意）/ legacy_number（振り直し前の旧番号 PREFIX-YYYYMM-NNNNN。新しい行は
---     NULL）を持つ。出力列名 po_number / request_number は互換のため据え置き
---     （中身は doc_number）。
+--     NULL）を持つ。明細のビュー（v_quote_items / v_order_lines / v_invoice_items …）
+--     も親の company_code を末尾に持つ。出力列名 po_number / request_number は
+--     互換のため据え置き（中身は doc_number）。
 --   * 列名は英 snake_case（日本語表示は Metabase 側 metabase-business-ja.sql で付ける）。
 --   * 冪等。列構成を変えるときは CREATE OR REPLACE では消せないので DROP VIEW してから。
 --     書類番号を出すビューは毎回 DROP VIEW IF EXISTS … CASCADE → CREATE で作り直す
@@ -120,7 +120,9 @@ SELECT
   (it.item->>'isCost')::boolean  AS is_cost,
   (it.item->>'value')::numeric   AS value,
   -- 「原価のみに含める」（売価＝小計に足していない）。印以前の行は false。
-  coalesce((it.item->>'costOnly')::boolean, false) AS cost_only
+  coalesce((it.item->>'costOnly')::boolean, false) AS cost_only,
+  -- 親の書類を発行した自社法人（番号は法人ごとなので、番号 + これで一意）
+  (SELECT oc.code FROM app.own_companies oc WHERE oc.id = e.own_company_id) AS company_code
 FROM app.estimates e
 CROSS JOIN LATERAL jsonb_array_elements(
   CASE WHEN jsonb_typeof(e.result->'items') = 'array' THEN e.result->'items' ELSE '[]'::jsonb END
@@ -155,7 +157,9 @@ SELECT
   v.is_active, v.created_at, v.updated_at,
   pe.currency,
   round(v.base_unit_price * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                   AS base_unit_price_jpy,
-  round(v.base_unit_price * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS base_unit_price_usd
+  round(v.base_unit_price * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS base_unit_price_usd,
+  -- 親の書類を発行した自社法人（番号は法人ごとなので、番号 + これで一意）
+  (SELECT oc.code FROM app.own_companies oc WHERE oc.id = pe.own_company_id) AS company_code
 FROM app.price_list_variants v
 JOIN app.price_list_entries pe ON pe.id = v.entry_id
 LEFT JOIN app.estimates est          ON est.id = v.estimate_id
@@ -196,7 +200,9 @@ SELECT
   round(qi.unit_price * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                   AS unit_price_jpy,
   round(qi.unit_price * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS unit_price_usd,
   round(qi.amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                       AS amount_jpy,
-  round(qi.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)     AS amount_usd
+  round(qi.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2)     AS amount_usd,
+  -- 親の書類を発行した自社法人（番号は法人ごとなので、番号 + これで一意）
+  (SELECT oc.code FROM app.own_companies oc WHERE oc.id = q.own_company_id) AS company_code
 FROM app.quote_items qi
 LEFT JOIN app.items prod ON prod.id = qi.item_id
 LEFT JOIN app.quotes q ON q.id = qi.quote_id
@@ -265,7 +271,9 @@ SELECT
   -- 値のまま動かなくなるので、以後はこちらを読むこと。
   coalesce(ship.name->>'ja', ship.name->>'en') AS ship_to_name,
   ol.delivery_method,
-  coalesce(plt.name->>'ja', plt.name->>'en')   AS assigned_plant_name
+  coalesce(plt.name->>'ja', plt.name->>'en')   AS assigned_plant_name,
+  -- 親の書類を発行した自社法人（番号は法人ごとなので、番号 + これで一意）
+  (SELECT oc.code FROM app.own_companies oc WHERE oc.id = oa.own_company_id) AS company_code
 FROM app.order_lines ol
 JOIN app.order_acceptances oa ON oa.id = ol.acceptance_id
 LEFT JOIN app.quotes q               ON q.id = oa.quote_id
@@ -344,7 +352,9 @@ SELECT
   pri.quantity, pri.unit, pri.desired_at,
   coalesce(pl.name->>'ja', pl.name->>'en') AS plant_name,
   pri.sort_order,
-  pr.doc_number AS request_number
+  pr.doc_number AS request_number,
+  -- 親の書類を発行した自社法人（番号は法人ごとなので、番号 + これで一意）
+  (SELECT oc.code FROM app.own_companies oc WHERE oc.id = pr.own_company_id) AS company_code
 FROM app.purchase_request_items pri
 LEFT JOIN app.items m ON m.id = pri.item_id
 LEFT JOIN app.plants pl ON pl.id = pri.plant_id
@@ -386,7 +396,9 @@ SELECT
   poi.received_quantity, poi.expected_at, poi.sort_order,
   round(poi.amount * 100 / nullif(cur.rate_per_100_jpy, 0), 2)                   AS amount_jpy,
   round(poi.amount * usd.rate_per_100_jpy / nullif(cur.rate_per_100_jpy, 0), 2) AS amount_usd,
-  po.doc_number AS po_number
+  po.doc_number AS po_number,
+  -- 親の書類を発行した自社法人（番号は法人ごとなので、番号 + これで一意）
+  (SELECT oc.code FROM app.own_companies oc WHERE oc.id = po.own_company_id) AS company_code
 FROM app.material_purchase_order_items poi
 LEFT JOIN app.material_purchase_orders po ON po.id = poi.purchase_order_id
 LEFT JOIN app.items m ON m.id = poi.item_id
@@ -876,7 +888,9 @@ SELECT
   dor.doc_number AS delivery_order_no,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
   di.lot_number, di.quantity, di.sort_order,
-  coalesce(ol.line_number, ola.doc_number) AS order_line_no
+  coalesce(ol.line_number, ola.doc_number) AS order_line_no,
+  -- 親の書類を発行した自社法人（番号は法人ごとなので、番号 + これで一意）
+  (SELECT oc.code FROM app.own_companies oc WHERE oc.id = dor.own_company_id) AS company_code
 FROM app.delivery_order_items di
 LEFT JOIN app.delivery_orders dor ON dor.id = di.delivery_order_id
 LEFT JOIN app.items prod ON prod.id = di.item_id
@@ -920,7 +934,9 @@ SELECT
   di.id,
   dn.doc_number AS delivery_no,
   coalesce(prod.name->>'ja', prod.name->>'en') AS product_name,
-  di.quantity, di.unit_price, di.amount, di.sort_order
+  di.quantity, di.unit_price, di.amount, di.sort_order,
+  -- 親の書類を発行した自社法人（番号は法人ごとなので、番号 + これで一意）
+  (SELECT oc.code FROM app.own_companies oc WHERE oc.id = dn.own_company_id) AS company_code
 FROM app.delivery_note_items di
 LEFT JOIN app.delivery_notes dn ON dn.id = di.delivery_note_id
 LEFT JOIN app.items prod ON prod.id = di.item_id;
@@ -962,7 +978,9 @@ SELECT
   ii.quantity, ii.unit_price, ii.amount, ii.sort_order,
   coalesce(ol.line_number, ola.doc_number) AS order_line_no,
   dor.doc_number AS delivery_order_no,
-  dn.doc_number AS delivery_no
+  dn.doc_number AS delivery_no,
+  -- 親の書類を発行した自社法人（番号は法人ごとなので、番号 + これで一意）
+  (SELECT oc.code FROM app.own_companies oc WHERE oc.id = inv.own_company_id) AS company_code
 FROM app.invoice_items ii
 LEFT JOIN app.invoices inv ON inv.id = ii.invoice_id
 LEFT JOIN app.delivery_orders dor ON dor.id = ii.delivery_order_id

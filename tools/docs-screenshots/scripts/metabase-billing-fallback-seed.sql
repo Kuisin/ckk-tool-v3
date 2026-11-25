@@ -14,17 +14,18 @@ BEGIN
     RETURN;
   END IF;
 
-  INSERT INTO app.invoices (year_month, seq, customer_bp_id, billing_period_from, billing_period_to,
+  -- 番号は DB が払い出す。legacy_number は items から引くための目印。
+  INSERT INTO app.invoices (legacy_number, customer_bp_id, billing_period_from, billing_period_to,
     subtotal, tax_amount, total_amount, status, issued_at, due_date, currency, created_at, updated_at)
   SELECT * FROM (VALUES
-    ('202606'::char(6), 1, bp1.id, '2026-06-01'::date, '2026-06-30'::date,
+    ('INV-202606-00001'::text, bp1.id, '2026-06-01'::date, '2026-06-30'::date,
      180000::numeric, 18000::numeric, 198000::numeric, 'PAID'::app."INVOICE_STATUS",
      '2026-06-05 10:00+09'::timestamptz, '2026-06-30'::date, 'JPY', now(), now()),
-    ('202607', 1, bp2.id, '2026-07-01', '2026-07-31',
+    ('INV-202607-00001', bp2.id, '2026-07-01', '2026-07-31',
      95000, 9500, 104500, 'SENT', '2026-07-05 10:00+09', '2026-07-31', 'JPY', now(), now()),
-    ('202608', 1, bp1.id, '2026-08-01', '2026-08-31',
+    ('INV-202608-00001', bp1.id, '2026-08-01', '2026-08-31',
      142000, 14200, 156200, 'ISSUED', '2026-08-05 10:00+09', '2026-08-31', 'JPY', now(), now()),
-    ('202608', 2, bp2.id, '2026-08-01', '2026-08-31',
+    ('INV-202608-00002', bp2.id, '2026-08-01', '2026-08-31',
      60000, 6000, 66000, 'DRAFT', NULL, NULL, 'JPY', now(), now())
   ) AS v
   CROSS JOIN LATERAL (
@@ -40,12 +41,15 @@ BEGIN
     ORDER BY bp.id LIMIT 1 OFFSET 1
   ) AS bp2;
 
-  INSERT INTO app.invoice_items (invoice_year_month, invoice_seq, description, quantity, unit_price, amount, sort_order)
-  VALUES
-    ('202606', 1, '{"ja": "デモ用テスト製品 #001", "en": "Demo Test Product #001"}', 10, 18000, 180000, 0),
-    ('202607', 1, '{"ja": "デモ用テスト製品 #002", "en": "Demo Test Product #002"}', 5, 19000, 95000, 0),
-    ('202608', 1, '{"ja": "テスト製品1", "en": "Test Product 1"}', 8, 17750, 142000, 0),
-    ('202608', 2, '{"ja": "テスト製品1", "en": "Test Product 1"}', 3, 20000, 60000, 0);
+  INSERT INTO app.invoice_items (invoice_id, description, quantity, unit_price, amount, sort_order)
+  SELECT i.id, v.description::jsonb, v.quantity, v.unit_price, v.amount, 0
+  FROM (VALUES
+    ('INV-202606-00001', '{"ja": "デモ用テスト製品 #001", "en": "Demo Test Product #001"}', 10, 18000, 180000),
+    ('INV-202607-00001', '{"ja": "デモ用テスト製品 #002", "en": "Demo Test Product #002"}', 5, 19000, 95000),
+    ('INV-202608-00001', '{"ja": "テスト製品1", "en": "Test Product 1"}', 8, 17750, 142000),
+    ('INV-202608-00002', '{"ja": "テスト製品1", "en": "Test Product 1"}', 3, 20000, 60000)
+  ) AS v(legacy, description, quantity, unit_price, amount)
+  JOIN app.invoices i ON i.legacy_number = v.legacy;
 
   RAISE NOTICE 'billing fallback seed inserted (4 invoices)';
 END $$;

@@ -29,7 +29,9 @@ const RECEIPT_INCLUDE = {
   supplierBp: true,
   createdByUser: { select: { displayName: true } },
   purchaseOrderItem: {
-    include: { purchaseOrder: { select: { docRef: true } } },
+    include: {
+      purchaseOrder: { select: { docRef: true, legacyNumber: true } },
+    },
   },
 };
 
@@ -59,6 +61,7 @@ function mapReceipt(r: ReceiptRow): MaterialReceiptView {
     receivedAt: r.receivedAt.toISOString().slice(0, 10),
     // 発注書の id（`CKK~PO-2026-00001`）— リンクにそのまま使う。表示は docNo。
     poNumber: docIdOrNull(r.purchaseOrderItem?.purchaseOrder),
+    poLegacyNumber: r.purchaseOrderItem?.purchaseOrder?.legacyNumber ?? null,
     createdByName: r.createdByUser?.displayName ?? null,
     notes: r.notes,
     createdAt: r.createdAt.toISOString(),

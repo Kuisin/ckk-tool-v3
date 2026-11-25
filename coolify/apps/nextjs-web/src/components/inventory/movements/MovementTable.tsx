@@ -20,6 +20,7 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { categoryLabel } from "@/lib/app-list";
 import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import { movementCauseLabel, movementCauseOptions } from "@/lib/enum-labels";
 import type { Locale } from "@/lib/i18n";
 import { MOVEMENT_CAUSE_COLOR, type MovementRow } from "./model";
@@ -69,7 +70,7 @@ export function MovementTable({
       key: "movementNumber",
       header: tr("production.movements.movementNumber"),
       sortable: true,
-      sortValue: (r) => r.movementNumber,
+      sortValue: (r) => docSortValue(r.movementNumber),
       render: (r) => <DocNumber c="blue">{r.movementNumber}</DocNumber>,
     },
     {

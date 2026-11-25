@@ -49,6 +49,7 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import { parseExtractError } from "@/lib/intake-extract-error";
 import { statusOptions } from "@/lib/status-map";
 import { intakeSourceBadge, type OrderAcceptanceListRow } from "./model";
@@ -312,6 +313,7 @@ export function OrderAcceptanceIntakeTable({
       key: "number",
       header: tr("common.number"),
       sortable: true,
+      sortValue: (r) => docSortValue(r.number),
       render: (r) => (
         <Text ff="mono" size="sm">
           {docNo(r.number)}

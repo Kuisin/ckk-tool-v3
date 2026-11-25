@@ -352,12 +352,8 @@ model InventoryMovement {
   /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
   /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
   ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
-  // 伝票番号 MOV-YYYYMM-NNNNN は (year_month, seq) から導出する（lib/doc-number.ts）。
+  // 伝票番号 MOV-FFFF-NNNNN は DB が作成時に払い出す（doc_number）。
   // 指示書と同型 — uuid を主キーに、番号は一意制約で持つ。
-  /// 旧番号の年月と連番（PR-D で落とす）。新しい行は NULL — 旧番号の文字列は
-  /// legacy_number が持つ。SQL のシードはまだこの 2 列で書類を入れる。
-  legacyYearMonth String? @map("year_month") @db.Char(6)
-  legacySeq       Int?    @map("seq")
   /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
   /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
   /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
@@ -396,7 +392,6 @@ model InventoryMovement {
 
   ownCompany OwnCompany @relation("InventoryMovementOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
-  @@unique([legacyYearMonth, legacySeq])
   @@unique([ownCompanyId, fiscalYear, docSeq])
   @@unique([ownCompanyId, docNumber])
   @@index([legacyNumber])
@@ -471,11 +466,7 @@ model StockTake {
   /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
   /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
   ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
-  // 棚卸番号 STK-YYYYMM-NNNNN は (year_month, seq) から導出する。
-  /// 旧番号の年月と連番（PR-D で落とす）。新しい行は NULL — 旧番号の文字列は
-  /// legacy_number が持つ。SQL のシードはまだこの 2 列で書類を入れる。
-  legacyYearMonth String? @map("year_month") @db.Char(6)
-  legacySeq       Int?    @map("seq")
+  // 棚卸番号 STK-FFFF-NNNNN は DB が作成時に払い出す（doc_number）。
   /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
   /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
   /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
@@ -522,7 +513,6 @@ model StockTake {
 
   ownCompany OwnCompany @relation("StockTakeOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
-  @@unique([legacyYearMonth, legacySeq])
   @@unique([ownCompanyId, fiscalYear, docSeq])
   @@unique([ownCompanyId, docNumber])
   @@index([legacyNumber])

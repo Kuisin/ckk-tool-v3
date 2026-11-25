@@ -10,9 +10,10 @@
  * そのファイルが参照の組み立て（toDocRef / toDocRefs / requireDocRef）を
  * 使っていることを確かめる。新しく書き込み口を足して参照を通し忘れると落ちる。
  *
- * DB 側にも保険がある（BEFORE トリガー app.qualify_doc_ref が番号だけの値を
- * 参照へ直す）が、あれは「書いたあと見つからない」を防ぐだけで、**検索**は
- * アプリが参照で引かなければ当たらない。
+ * DB 側に保険は**無い**。番号だけの値を保存時に参照へ直していた BEFORE トリガー
+ * app.qualify_doc_ref は番号設計 PR-D（20261126280000_numbering_cleanup）で
+ * 落とした — 番号だけで書けば、その値のまま残って誰からも引けなくなる。
+ * 書き口はこの試験だけが守っている。
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";

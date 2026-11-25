@@ -19,6 +19,7 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import { deliveryMethodLabel, deliveryMethodOptions } from "@/lib/enum-labels";
 import { statusOptions } from "@/lib/status-map";
 import type { DeliveryNote } from "./model";
@@ -75,6 +76,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
       key: "deliveryNumber",
       header: tr("common.deliveryNoteNumber"),
       sortable: true,
+      sortValue: (n) => docSortValue(n.deliveryNumber),
       render: (n) => (
         <Text ff="mono" size="sm">
           {docNo(n.deliveryNumber)}

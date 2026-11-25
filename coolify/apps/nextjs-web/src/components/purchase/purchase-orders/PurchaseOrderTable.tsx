@@ -20,6 +20,7 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import { statusOptions } from "@/lib/status-map";
 import type { PurchaseOrderRow } from "./model";
 
@@ -55,6 +56,7 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
       key: "poNumber",
       header: tr("common.pONumber"),
       sortable: true,
+      sortValue: (o) => docSortValue(o.poNumber),
       render: (o) => (
         <Text ff="mono" size="sm">
           {docNo(o.poNumber)}

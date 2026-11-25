@@ -545,15 +545,15 @@ async function main(): Promise<void> {
         WHERE item_id=${ITEM} AND owner_bp_id='${CUSTOMER}'::uuid AND custody_bp_id IS NULL
         ORDER BY quantity DESC LIMIT 1`,
     );
-    sql(`INSERT INTO app.delivery_orders (year_month, seq, customer_bp_id, from_plant_id,
+    sql(`INSERT INTO app.delivery_orders (id, legacy_number, customer_bp_id, from_plant_id,
            type, status, notes, created_by, created_at, updated_at)
-         VALUES ('209902', 1, '${CUSTOMER}'::uuid,
+         VALUES ('e5590000-0000-4000-8000-000000209902'::uuid, 'DOR-209902-00001', '${CUSTOMER}'::uuid,
            (SELECT id FROM app.plants WHERE code='F01'),
            'DISPATCH'::app."DELIVERY_ORDER_TYPE", 'DRAFT'::app."DELIVERY_ORDER_STATUS",
            'e2e: 再研磨の返却', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid, now(), now())`);
-    sql(`INSERT INTO app.delivery_order_items (id, delivery_order_year_month, delivery_order_seq,
+    sql(`INSERT INTO app.delivery_order_items (id, delivery_order_id,
            order_line_id, item_id, lot_number, quantity, sort_order)
-         VALUES ('dd000000-0000-4000-8000-000000009101'::uuid, '209902', 1,
+         VALUES ('dd000000-0000-4000-8000-000000009101'::uuid, 'e5590000-0000-4000-8000-000000209902'::uuid,
            '${ORDER_LINE_UUID}'::uuid, ${ITEM}, ${lot === "-" ? "NULL" : lot}, 8, 0)`);
 
     await page.goto(`${APP}/shipping/delivery-orders/${RETURN_DOR}`, {
@@ -624,7 +624,7 @@ async function main(): Promise<void> {
     // 標準価格 ¥1,200 ではなく価格表の ¥1,500 が勝つことも同時に見ている。
     const billed = sql(
       `SELECT coalesce(unit_price::text,'-') FROM app.delivery_order_items
-        WHERE delivery_order_year_month='209902' AND delivery_order_seq=1`,
+        WHERE delivery_order_id='e5590000-0000-4000-8000-000000209902'::uuid`,
     );
     check(
       "H4 請求単価が再研磨品目の価格表から引かれる（標準価格 1200 ではなく 1500）",
