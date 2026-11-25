@@ -90,6 +90,22 @@ const bodySchema = z.object({
     )
     .max(100)
     .optional(),
+  /**
+   * COMPLETE のみ: 仕掛品として在庫に置く分の記録（仕上がり寸法・選んだ経路）。
+   * 形だけ見る — 必須かどうかは completeStepExecution が決める。
+   */
+  wipRecording: z
+    .object({
+      finishedDiameterMm: z.number().finite().nullable().optional(),
+      finishedLengthMm: z.number().finite().nullable().optional(),
+      pathStepIds: z
+        .array(z.number().int().positive())
+        .max(200)
+        .nullable()
+        .optional(),
+    })
+    .nullable()
+    .optional(),
   /** INSPECTION のみ — サンプル値: SELECT_MULTI は value[]、他は文字列 */
   templateId: z.number().int().positive().optional(),
   items: z
@@ -174,6 +190,7 @@ export async function POST(
     workLocationCode,
     quantities,
     defectReasons,
+    wipRecording,
     templateId,
     items,
     defects,
@@ -368,6 +385,7 @@ export async function POST(
             actor,
             quantities ?? null,
             defectReasons ?? null,
+            wipRecording ?? null,
           );
         case "SET_LOCATION":
           // scannedLocationId は上で必須検証済み

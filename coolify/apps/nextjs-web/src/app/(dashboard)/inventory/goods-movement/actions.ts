@@ -94,6 +94,8 @@ export async function fetchItemOwnerOptions(
   const authz = await checkPermission("inventory", "READ");
   if (!authz.ok) return [];
   if (!Number.isInteger(itemId) || itemId <= 0) return [];
+  // wip-scope: 預り品（ownerBpId あり）は仕掛品になれない（DB の CHECK
+  // item_inventory_wip_not_owned）ので、ここに仕掛品の行は来ない。
   const rows = await prisma.itemInventory.findMany({
     where: { itemId, ownerBpId: { not: null }, custodyBpId: null },
     select: { ownerBpId: true, ownerBp: { select: { name: true } } },

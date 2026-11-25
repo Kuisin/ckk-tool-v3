@@ -238,6 +238,17 @@ const defectReasonsInput = z
   )
   .max(100);
 
+/** 仕掛品として在庫に置く分の記録（形だけ — 規則は completeStepExecution）。 */
+const wipRecordingInput = z.object({
+  finishedDiameterMm: z.number().finite().nullable().optional(),
+  finishedLengthMm: z.number().finite().nullable().optional(),
+  pathStepIds: z
+    .array(z.number().int().positive())
+    .max(200)
+    .nullable()
+    .optional(),
+});
+
 /**
  * 工程完了（数量整合はサーバー側でも検証される）。
  * 数量管理なし（NONE）の工程は quantities = null で呼ぶ — サーバーが
@@ -249,10 +260,18 @@ export async function completeStep(
   stepId: string,
   quantities: z.infer<typeof quantitiesInput> | null,
   defectReasons?: z.infer<typeof defectReasonsInput>,
+  wipRecording?: z.infer<typeof wipRecordingInput> | null,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
+  const parsedWip = wipRecordingInput.nullish().safeParse(wipRecording);
+  if (!parsedWip.success) {
+    return {
+      ok: false,
+      errors: [tr("production.stepExecutionActions.invalidQuantityInput")],
+    };
+  }
   const parsed = quantitiesInput.nullable().safeParse(quantities);
   if (!parsed.success) {
     return {
@@ -279,6 +298,7 @@ export async function completeStep(
       stepId,
       parsed.data,
       parsedReasons.data ?? null,
+      parsedWip.data ?? null,
     );
     if (result.ok) revalidate(workOrderNumber, stepId);
     return result;

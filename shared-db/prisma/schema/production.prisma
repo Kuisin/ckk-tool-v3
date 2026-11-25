@@ -369,6 +369,19 @@ model WorkOrderStep {
   // 良品数が指定の在庫へ入る（onWorkOrderCompleted が入庫する）。
   branchStockDisposition BranchStockDisposition? @map("branch_stock_disposition")
 
+  // ── 仕掛品として在庫に置く分の記録（20261126220000_wip_posting）──────────────
+  // 品物が工程を離れて在庫に入るとき（半製品の数を記録した / 「半製品在庫へ」で
+  // 終わる分岐の終端）だけ入る。指示書の完了で、この値が仕掛品バケットの鍵
+  // （item_inventory.finished_* / wip_state_id）へ運ばれる。
+  //   finished_*          研削後の仕上がり寸法。
+  //   wip_path_step_ids   手前に合流があって加工状態が一通りに決まらないとき、
+  //                       記録した人が選んだ並び（カタログ id の JSON 配列・この工程自身は
+  //                       含めない形）。null = 推奨（本流）のまま。
+  // 規則は lib/wip-state-core.ts（wipRecordingFor / validateWipRecording）が唯一の定義。
+  finishedDiameterMm Decimal? @map("finished_diameter_mm") @db.Decimal(8, 3)
+  finishedLengthMm   Decimal? @map("finished_length_mm") @db.Decimal(10, 3)
+  wipPathStepIds     Json?    @map("wip_path_step_ids")
+
   sessionLockedBy String?   @map("session_locked_by") @db.Uuid
   sessionLockedAt DateTime? @map("session_locked_at") @db.Timestamptz(6)
 

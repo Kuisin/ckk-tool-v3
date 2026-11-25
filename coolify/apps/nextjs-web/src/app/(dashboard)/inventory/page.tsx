@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import { fetchMaterialInventories } from "./materials/data";
 import { fetchProductInventories, fetchWipRows } from "./products/data";
+import { fetchWipStock } from "./wip/data";
 
 export const dynamic = "force-dynamic";
 
@@ -54,22 +55,25 @@ async function fetchPlantStorageOptions(): Promise<TransferPlantOption[]> {
   }));
 }
 
-/** 在庫管理 (PD04) — 製品・素材・仕掛品・ロケーションの統合ビュー。 */
+/** 在庫管理 (PD04) — 製品・素材・仕掛品・工程内・ロケーションの統合ビュー。 */
 export default async function UnifiedInventoryPage() {
   const denied = await requireAppRead("inventory");
   if (denied) return denied;
-  const [productRows, materialRows, wipRows, plants] = await Promise.all([
+  const [productRows, materialRows, inProcessRows, plants] = await Promise.all([
     fetchProductInventories(),
     fetchMaterialInventories(),
     fetchWipRows(),
     fetchPlantStorageOptions(),
   ]);
+  // 在庫に置いた仕掛品 + 製品タブに並ぶ製品ごとの「使える仕掛品」。
+  const wip = await fetchWipStock(productRows.map((r) => r.itemId));
   return (
     <UnifiedInventory
+      inProcessRows={inProcessRows}
       materialRows={materialRows}
       plants={plants}
       productRows={productRows}
-      wipRows={wipRows}
+      wip={wip}
     />
   );
 }

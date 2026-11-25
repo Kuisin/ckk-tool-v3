@@ -7,13 +7,16 @@
  * （旧 PD04 製品在庫 / PD05 素材在庫 は本アプリへ統合 — 旧 URL はリダイレクト）。
  * - 製品 / 素材: 一覧 + 行アクション「移動」（在庫移動 = 拠点・保管場所・棚の
  *   間の移動。StockTransferModal）
- * - 仕掛品: 進行中指示書の工程別仕掛数（旧 PD04 の WIP ビュー）
+ * - 仕掛品: 在庫に置いた仕掛品（仕掛ブランク × 加工状態）。材種 / 径 / 長 →
+ *   加工状態でまとめる（wip/WipStockList）。未分類の行は「分類する」で
+ *   仕掛ブランクへ移す
+ * - 工程内: 進行中指示書の工程別仕掛数（在庫ではない — 旧「仕掛品」タブ）
  * - ロケーション: 拠点 → 保管場所 → 棚 の在庫を視覚表示
  */
 
 import {
+  Alert,
   Anchor,
-  Badge,
   Group,
   Paper,
   Select,
@@ -28,6 +31,7 @@ import {
   IconArrowsExchange,
   IconBoxSeam,
   IconBuildingWarehouse,
+  IconListDetails,
   IconMap2,
   IconProgress,
   IconSearch,
@@ -36,7 +40,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useRef, useState } from "react";
+import { type ReactNode, useMemo, useRef, useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { InventoryBadge } from "@/components/production/InventoryBadge";
 import { AppTabs } from "@/components/ui/AppTabs";
@@ -60,6 +64,16 @@ import {
   type TransferPlantOption,
   type TransferSource,
 } from "./StockTransferModal";
+import type { WipStockData, WipStockRow } from "./wip/model";
+import { WipReclassifyModal } from "./wip/WipReclassifyModal";
+import { WipStateNameModal } from "./wip/WipStateNameModal";
+import { WipStockList, wipTransferLabel } from "./wip/WipStockList";
+
+/**
+ * 仕掛品タブは絞り込みが 4 つある。モバイルで 1 行に並べると 1 つ 40px ほどに
+ * なり何を選んでいるか読めないので、2 つずつ折り返す。
+ */
+const MOBILE_FILTER_FLEX = "1 1 40%";
 
 /** 保管場所 / 棚 のセル表示。 */
 function storageCell(
@@ -78,20 +92,20 @@ function storageCell(
 export function UnifiedInventory({
   productRows,
   materialRows,
-  wipRows,
+  wip,
+  inProcessRows,
   plants,
 }: {
   productRows: ProductInventoryRow[];
   materialRows: MaterialInventoryRow[];
-  wipRows: WipRow[];
+  /** 在庫に置いた仕掛品（仕掛ブランク × 加工状態）と、製品ごとの使える本数。 */
+  wip: WipStockData;
+  /** 進行中の指示書に乗っている本数（在庫ではない）。 */
+  inProcessRows: WipRow[];
   plants: TransferPlantOption[];
 }) {
   const tr = useTranslations();
   const locale = useLocale() as Locale;
-  const KIND_OPTIONS = [
-    { value: "FINISHED", label: tr("common.finishedGoods") },
-    { value: "SEMI_FINISHED", label: tr("common.semiFinished") },
-  ];
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -99,23 +113,75 @@ export function UnifiedInventory({
   const [tab, setTab] = useTabParam("products");
   const [search, setSearch] = useUrlStringState("q");
   const [plant, setPlant] = useUrlSelectState("plant");
-  const [kind, setKind] = useUrlSelectState("kind");
+  // 仕掛品タブの絞り込み（材種・加工状態・目標製品）と、製品タブの
+  // 「使える仕掛品」から来たときの絞り込み（for = 製品の items.id）。
+  const [wipMaterialType, setWipMaterialType] = useUrlSelectState("mt");
+  const [wipState, setWipState] = useUrlSelectState("state");
+  const [wipAimed, setWipAimed] = useUrlSelectState("aimed");
+  const [usableFor, setUsableFor] = useUrlSelectState("for");
   const [transferSource, setTransferSource] = useState<TransferSource | null>(
     null,
   );
+  const [reclassifyRow, setReclassifyRow] = useState<WipStockRow | null>(null);
+  const [renameRow, setRenameRow] = useState<WipStockRow | null>(null);
 
   const reset = () => {
     setSearch(null);
     setPlant(null);
-    setKind(null);
+    setWipMaterialType(null);
+    setWipState(null);
+    setWipAimed(null);
+    setUsableFor(null);
   };
 
   const plantOptions = useMemo(() => {
     const names = new Set<string>();
     for (const r of productRows) if (r.plantName) names.add(r.plantName);
     for (const r of materialRows) if (r.plantName) names.add(r.plantName);
+    for (const r of wip.rows) if (r.plantName) names.add(r.plantName);
     return [...names].sort((a, b) => a.localeCompare(b, "ja"));
-  }, [productRows, materialRows]);
+  }, [productRows, materialRows, wip.rows]);
+
+  // 仕掛品タブの選択肢は、いま在庫にあるものから作る（無いものを選ばせない）。
+  const wipOptions = useMemo(() => {
+    const materialTypes = new Map<string, string>();
+    const states = new Map<string, string>();
+    const aimed = new Map<string, string>();
+    for (const r of wip.rows) {
+      if (r.materialTypeId != null && r.materialTypeLabel) {
+        materialTypes.set(String(r.materialTypeId), r.materialTypeLabel);
+      }
+      states.set(
+        String(r.wipStateId),
+        r.isLegacy
+          ? tr("inventory.wip.unclassified")
+          : (r.stateName ??
+              (r.stepNames.length > 0
+                ? r.stepNames.join(" › ")
+                : tr("inventory.wip.unprocessed"))),
+      );
+      if (r.aimedItemId != null && r.aimedProductName) {
+        aimed.set(
+          String(r.aimedItemId),
+          r.aimedProductCode
+            ? `${r.aimedProductName}（${r.aimedProductCode}）`
+            : r.aimedProductName,
+        );
+      }
+    }
+    const toData = (m: Map<string, string>) =>
+      [...m]
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label, "ja"));
+    return {
+      materialTypes: toData(materialTypes),
+      states: toData(states),
+      aimed: toData(aimed),
+    };
+  }, [wip.rows, tr]);
+
+  const usable =
+    usableFor != null ? (wip.usableByProduct[Number(usableFor)] ?? null) : null;
 
   const filteredProducts = productRows.filter((r) => {
     const matchesSearch =
@@ -123,10 +189,7 @@ export function UnifiedInventory({
       r.productName.includes(search) ||
       (r.productCode ?? "").includes(search);
     const matchesPlant = !plant || r.plantName === plant;
-    const matchesKind =
-      !kind ||
-      (kind === "SEMI_FINISHED" ? r.isSemiFinished : !r.isSemiFinished);
-    return matchesSearch && matchesPlant && matchesKind;
+    return matchesSearch && matchesPlant;
   });
 
   const filteredMaterials = materialRows.filter((r) => {
@@ -138,13 +201,73 @@ export function UnifiedInventory({
     return matchesSearch && matchesPlant;
   });
 
-  const filteredWip = wipRows.filter(
+  const filteredInProcess = inProcessRows.filter(
     (r) =>
       !search ||
       r.productName.includes(search) ||
       (r.productCode ?? "").includes(search) ||
       String(r.workOrderNumber).includes(search),
   );
+
+  const usableIds = usable ? new Set(usable.inventoryIds) : null;
+  const filteredWip = wip.rows.filter((r) => {
+    // 「使える仕掛品」から来たとき: その製品に使える行だけ。製品が見つからない
+    // （もう 0 本になった・URL が古い）なら 1 行も出さない — 全件を出すと
+    // 「全部使える」と読めてしまう。
+    if (usableFor != null && !(usableIds?.has(r.id) ?? false)) return false;
+    if (plant && r.plantName !== plant) return false;
+    if (wipMaterialType && String(r.materialTypeId) !== wipMaterialType) {
+      return false;
+    }
+    if (wipState && String(r.wipStateId) !== wipState) return false;
+    if (wipAimed && String(r.aimedItemId) !== wipAimed) return false;
+    if (!search) return true;
+    return [
+      r.itemName,
+      r.itemCode ?? "",
+      r.materialTypeLabel ?? "",
+      r.aimedProductName ?? "",
+      r.aimedProductCode ?? "",
+      r.stateName ?? "",
+      r.stepNames.join(" "),
+      r.lotNumber != null ? String(r.lotNumber) : "",
+    ].some((v) => v.includes(search));
+  });
+
+  const wipTransferSource = (r: WipStockRow): TransferSource => ({
+    inventoryType: "PRODUCT",
+    inventoryId: r.id,
+    label: wipTransferLabel(tr, r),
+    detail:
+      r.lotNumber != null
+        ? tr("production.inventory.lotN", { number: r.lotNumber })
+        : null,
+    available: r.available,
+    unit: r.unit,
+    integerOnly: true,
+    currentLabel: `${r.plantName ?? tr("production.inventory.noSiteSet")} / ${storageCell(tr, r)}`,
+  });
+
+  /** 製品に使える仕掛品（ちょうど + 長い + 太い）。0 本なら出さない。 */
+  const usableHint = (r: ProductInventoryRow): ReactNode => {
+    const u = wip.usableByProduct[r.itemId];
+    if (!u) return null;
+    const count = u.quantity.toLocaleString("ja-JP");
+    return (
+      <Anchor
+        aria-label={tr("inventory.wip.usableLinkLabel", {
+          product: r.productName,
+          count,
+        })}
+        component={Link}
+        href={`/inventory?tab=wip&for=${r.itemId}`}
+        onClick={(e) => e.stopPropagation()}
+        size="sm"
+      >
+        {tr("inventory.wip.usableCount", { count })}
+      </Anchor>
+    );
+  };
 
   const transferButton = (source: TransferSource) => (
     <GhostButton
@@ -239,20 +362,14 @@ export function UnifiedInventory({
       ),
     },
     {
-      key: "kind",
-      header: tr("common.type"),
-      width: 85,
-      sortValue: (r) => (r.isSemiFinished ? 1 : 0),
-      render: (r) =>
-        r.isSemiFinished ? (
-          <Badge color="orange" variant="light">
-            {tr("common.semiFinished")}
-          </Badge>
-        ) : (
-          <Badge color="gray" variant="light">
-            {tr("common.finishedGoods")}
-          </Badge>
-        ),
+      // この製品に回せる仕掛品の本数（ちょうど + 長い + 太い）。押すと
+      // 仕掛品タブがその行だけに絞られる。
+      key: "usableWip",
+      header: tr("inventory.wip.usableColumn"),
+      width: 110,
+      sortable: true,
+      sortValue: (r) => wip.usableByProduct[r.itemId]?.quantity ?? 0,
+      render: (r) => usableHint(r) ?? "—",
     },
     {
       key: "updatedAt",
@@ -400,6 +517,15 @@ export function UnifiedInventory({
     },
   ];
 
+  const searchLabel =
+    tab === "materials"
+      ? tr("production.inventory.searchByMaterialCodeOrName")
+      : tab === "wip"
+        ? tr("inventory.wip.searchPlaceholder")
+        : tab === "in-process"
+          ? tr("production.inventory.searchByProductNameOrWork")
+          : tr("production.inventory.searchByProductNameOrCode");
+
   return (
     <ListShell
       breadcrumbs={[
@@ -407,30 +533,57 @@ export function UnifiedInventory({
         tr("common.inventory"),
       ]}
       filters={
-        tab === "products" || tab === "materials" ? (
+        tab === "products" || tab === "materials" || tab === "wip" ? (
           <>
+            {tab === "wip" && (
+              <>
+                <Select
+                  aria-label={tr("inventory.wip.materialType")}
+                  clearable
+                  data={wipOptions.materialTypes}
+                  flex={isMobile ? MOBILE_FILTER_FLEX : undefined}
+                  onChange={setWipMaterialType}
+                  placeholder={tr("inventory.wip.materialType")}
+                  searchable
+                  value={wipMaterialType}
+                  w={isMobile ? undefined : 180}
+                />
+                <Select
+                  aria-label={tr("inventory.wip.state")}
+                  clearable
+                  data={wipOptions.states}
+                  flex={isMobile ? MOBILE_FILTER_FLEX : undefined}
+                  onChange={setWipState}
+                  placeholder={tr("inventory.wip.state")}
+                  searchable
+                  value={wipState}
+                  w={isMobile ? undefined : 180}
+                />
+                <Select
+                  aria-label={tr("inventory.wip.aimedProduct")}
+                  clearable
+                  data={wipOptions.aimed}
+                  flex={isMobile ? MOBILE_FILTER_FLEX : undefined}
+                  onChange={setWipAimed}
+                  placeholder={tr("inventory.wip.aimedProduct")}
+                  searchable
+                  value={wipAimed}
+                  w={isMobile ? undefined : 180}
+                />
+              </>
+            )}
             <Select
               aria-label={tr("common.site")}
               clearable
               data={plantOptions}
-              flex={isMobile ? 1 : undefined}
+              flex={
+                isMobile ? (tab === "wip" ? MOBILE_FILTER_FLEX : 1) : undefined
+              }
               onChange={setPlant}
               placeholder={tr("common.site")}
               value={plant}
               w={isMobile ? undefined : 160}
             />
-            {tab === "products" && (
-              <Select
-                aria-label={tr("common.type")}
-                clearable
-                data={KIND_OPTIONS}
-                flex={isMobile ? 1 : undefined}
-                onChange={setKind}
-                placeholder={tr("common.type")}
-                value={kind}
-                w={isMobile ? undefined : 130}
-              />
-            )}
           </>
         ) : undefined
       }
@@ -438,22 +591,10 @@ export function UnifiedInventory({
       search={
         tab === "locations" ? undefined : (
           <TextInput
-            aria-label={
-              tab === "materials"
-                ? tr("production.inventory.searchByMaterialCodeOrName")
-                : tab === "wip"
-                  ? tr("production.inventory.searchByProductNameOrWork")
-                  : tr("production.inventory.searchByProductNameOrCode")
-            }
+            aria-label={searchLabel}
             leftSection={<IconSearch size={14} />}
             onChange={(e) => setSearch(e.currentTarget.value)}
-            placeholder={
-              tab === "materials"
-                ? tr("production.inventory.searchByMaterialCodeOrName")
-                : tab === "wip"
-                  ? tr("production.inventory.searchByProductNameOrWork")
-                  : tr("production.inventory.searchByProductNameOrCode")
-            }
+            placeholder={searchLabel}
             value={search}
           />
         )
@@ -470,6 +611,12 @@ export function UnifiedInventory({
           </Tabs.Tab>
           <Tabs.Tab leftSection={<IconProgress size={14} />} value="wip">
             {tr("production.inventory.wIP")}
+          </Tabs.Tab>
+          <Tabs.Tab
+            leftSection={<IconListDetails size={14} />}
+            value="in-process"
+          >
+            {tr("inventory.wip.inProcessTab")}
           </Tabs.Tab>
           <Tabs.Tab
             leftSection={<IconBuildingWarehouse size={14} />}
@@ -511,13 +658,13 @@ export function UnifiedInventory({
                     在庫 {r.quantity.toLocaleString("ja-JP")} / 利用可能{" "}
                     {r.available.toLocaleString("ja-JP")}
                   </Text>
+                  {wip.usableByProduct[r.itemId] && (
+                    <Text size="xs">
+                      {tr("inventory.wip.usableColumn")}: {usableHint(r)}
+                    </Text>
+                  )}
                 </Stack>
                 <Stack align="flex-end" className="shrink-0" gap={4}>
-                  {r.isSemiFinished && (
-                    <Badge color="orange" variant="light">
-                      {tr("common.semiFinished")}
-                    </Badge>
-                  )}
                   <Text c="dimmed" size="xs">
                     {fmt.date(r.updatedAt)}
                   </Text>
@@ -567,7 +714,34 @@ export function UnifiedInventory({
         </Tabs.Panel>
 
         <Tabs.Panel value="wip">
-          <WipList rows={filteredWip} />
+          {usableFor != null && (
+            <Alert
+              closeButtonLabel={tr("inventory.wip.clearUsableFilter")}
+              color="blue"
+              mb="sm"
+              onClose={() => setUsableFor(null)}
+              title={
+                usable
+                  ? tr("inventory.wip.usableFor", { product: usable.label })
+                  : tr("inventory.wip.empty")
+              }
+              variant="light"
+              withCloseButton
+            >
+              {tr("inventory.wip.usableForHelp")}
+            </Alert>
+          )}
+          <WipStockList
+            canAdjust={wip.canAdjust}
+            onReclassify={setReclassifyRow}
+            onRename={setRenameRow}
+            onTransfer={(r) => setTransferSource(wipTransferSource(r))}
+            rows={filteredWip}
+          />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="in-process">
+          <InProcessList rows={filteredInProcess} />
         </Tabs.Panel>
 
         <Tabs.Panel value="locations">
@@ -576,9 +750,35 @@ export function UnifiedInventory({
             onTransfer={setTransferSource}
             plants={plants}
             productRows={productRows}
+            wipItems={wip.rows.map((r) => ({
+              row: r,
+              source: wipTransferSource(r),
+            }))}
           />
         </Tabs.Panel>
       </AppTabs>
+
+      {reclassifyRow && (
+        <WipReclassifyModal
+          onClose={() => setReclassifyRow(null)}
+          onDone={() => {
+            setReclassifyRow(null);
+            router.refresh();
+          }}
+          row={reclassifyRow}
+          stepOptions={wip.stepOptions}
+        />
+      )}
+      {renameRow && (
+        <WipStateNameModal
+          onClose={() => setRenameRow(null)}
+          onDone={() => {
+            setRenameRow(null);
+            router.refresh();
+          }}
+          row={renameRow}
+        />
+      )}
 
       {transferSource && (
         <StockTransferModal
@@ -595,8 +795,11 @@ export function UnifiedInventory({
   );
 }
 
-/** 仕掛品リスト — 製品ごとにグループ化した工程別仕掛数テーブル（旧 PD04）。 */
-function WipList({ rows }: { rows: WipRow[] }) {
+/**
+ * 工程内リスト — 製品ごとにグループ化した工程別仕掛数テーブル。進行中の指示書に
+ * 乗っている本数で、在庫ではない（在庫に置いた仕掛品は wip/WipStockList）。
+ */
+function InProcessList({ rows }: { rows: WipRow[] }) {
   const tr = useTranslations();
   if (rows.length === 0) {
     return (
@@ -691,7 +894,7 @@ function WipGroupRows({
 /** 在庫 1 アイテムのチップ（ロケーションビュー内）。 */
 interface LocationStockItem {
   key: string;
-  kind: "PRODUCT" | "MATERIAL";
+  kind: "PRODUCT" | "MATERIAL" | "WIP";
   label: string;
   sub: string | null;
   quantity: number;
@@ -707,11 +910,14 @@ function LocationView({
   plants,
   productRows,
   materialRows,
+  wipItems,
   onTransfer,
 }: {
   plants: TransferPlantOption[];
   productRows: ProductInventoryRow[];
   materialRows: MaterialInventoryRow[];
+  /** 在庫に置いた仕掛品（棚に実物があるので、ロケーションにも出す）。 */
+  wipItems: { row: WipStockRow; source: TransferSource }[];
   onTransfer: (source: TransferSource) => void;
 }) {
   const tr = useTranslations();
@@ -741,6 +947,9 @@ function LocationView({
     ),
     materials: materialRows.filter(
       (r) => r.plantId === selected.id && r.quantity !== 0,
+    ),
+    wip: wipItems.filter(
+      (w) => w.row.plantId === selected.id && w.row.quantity !== 0,
     ),
   };
 
@@ -814,6 +1023,22 @@ function LocationView({
         (r) => r.storageLocationId === locationId && r.shelfId === shelfId,
       )
       .map((r) => itemOf(r, "MATERIAL")),
+    ...inPlant.wip
+      .filter(
+        (w) =>
+          w.row.storageLocationId === locationId && w.row.shelfId === shelfId,
+      )
+      .map(
+        (w): LocationStockItem => ({
+          key: `w:${w.row.id}`,
+          kind: "WIP",
+          label: w.source.label,
+          sub: w.source.detail,
+          quantity: w.row.quantity,
+          unit: w.row.unit,
+          source: w.source,
+        }),
+      ),
   ];
 
   const unassigned = itemsAt(null, null);
@@ -823,6 +1048,8 @@ function LocationView({
       <Group gap={6} wrap="nowrap">
         {item.kind === "PRODUCT" ? (
           <IconBoxSeam color="var(--mantine-color-violet-6)" size={13} />
+        ) : item.kind === "WIP" ? (
+          <IconProgress color="var(--mantine-color-orange-6)" size={13} />
         ) : (
           <IconStack2 color="var(--mantine-color-teal-6)" size={13} />
         )}

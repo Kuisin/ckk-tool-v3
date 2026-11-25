@@ -156,6 +156,7 @@ export async function fetchInventoryMovement(
   const buckets = bucketIds.length
     ? // custody-scope: / owner-scope: 伝票の明細が指しているバケットを引くだけ。
       // 外注の預けバケットも顧客の預り品もそのまま出す（伝票がそれを指している）。
+      // wip-scope: 同じ理由で仕掛品のバケットもそのまま出す。
       await prisma.itemInventory.findMany({
         where: { id: { in: bucketIds } },
         include: { item: true, storageLocation: true, shelf: true },

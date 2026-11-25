@@ -1,8 +1,8 @@
 /**
  * data.ts — 製品在庫 (PD04) のサーバーサイド取得・マッピング。
  *
- * - 一覧: product_inventory（完成品 + 半製品）。
- * - 仕掛品: 進行中（IN_PROGRESS）指示書ごとに WorkflowCtx を組み立てて
+ * - 一覧: 製品の在庫（完成品）。在庫に置いた仕掛品は inventory/wip/data.ts。
+ * - 工程内: 進行中（IN_PROGRESS）指示書ごとに WorkflowCtx を組み立てて
  *   computeWipByStep で工程別仕掛数を算出する（在庫レコードは作らない — §7
  *   実在庫は全工程完了時にのみ動く）。
  * - 詳細: 在庫行 + 引当予約 + 取引履歴（Decimal → Number 変換済み）。
@@ -48,9 +48,9 @@ export function storageLabelOf(r: {
 }
 
 /**
- * 画面に出す品目。半製品（仕掛品）の行は品目が仕掛ブランクなので、目標製品が
- * あればそちらを見せる — 仕掛品タブ（仕掛品の再設計 PR 4）ができるまで、
- * 製品在庫の画面は移行前と同じ見え方を保つ。
+ * 詳細に出す品目。仕掛品（半製品）の行は品目が仕掛ブランクなので、目標製品が
+ * あればそちらを名乗る — 詳細画面は仕掛品タブの行からも開く。
+ * 一覧（製品タブ）には仕掛品を出さない（仕掛品タブが持つ）。
  */
 function shownItem<T>(r: {
   isSemiFinished: boolean;
@@ -74,20 +74,17 @@ export async function fetchProductInventories(): Promise<
         authz.access,
         "plantId",
       ) as Prisma.ItemInventoryWhereInput),
-      // 半製品は仕掛ブランクの行に移った（20261126200000_wip_backfill）ので、
-      // 品目種別では拾えない。仕掛品タブ（次の段）ができるまでは、従来どおり
-      // 製品の行として目標製品の名前で並べる。
-      // （AND で包む — plantWhere の断片が自分の OR を持っていても潰さない）
-      AND: [
-        { OR: [{ item: { itemType: "PRODUCT" } }, { isSemiFinished: true }] },
-      ],
+      item: { itemType: "PRODUCT" },
+      // 仕掛品（加工状態を持つ行）はここに出さない — 仕掛品タブ
+      // （inventory/wip/data.ts）が持つ。「未分類」の行は品目が製品のままなので、
+      // 品目種別だけでは外れない。
+      wipStateId: null,
       // 自社の在庫だけ（外注へ預けている分・顧客の預り品は手持ちではない）。
       custodyBpId: null,
       ownerBpId: null,
     },
     include: {
       item: true,
-      aimedItem: true,
       plant: true,
       storageLocation: true,
       shelf: true,
@@ -96,8 +93,9 @@ export async function fetchProductInventories(): Promise<
   });
   return rows.map((r) => ({
     id: r.id,
-    productName: localized(shownItem(r).name as LocalizedText | null),
-    productCode: shownItem(r).code,
+    itemId: r.itemId,
+    productName: localized(r.item.name as LocalizedText | null),
+    productCode: r.item.code,
     plantId: r.plantId,
     plantName: plantName(r.plant),
     storageLocationId: r.storageLocationId,
@@ -110,13 +108,12 @@ export async function fetchProductInventories(): Promise<
     quantity: Number(r.quantity),
     reservedQuantity: Number(r.reservedQuantity),
     available: Number(r.quantity) - Number(r.reservedQuantity),
-    isSemiFinished: r.isSemiFinished,
     updatedAt: r.updatedAt.toISOString(),
   }));
 }
 
 /**
- * 仕掛品 一覧 — 進行中指示書 × 工程の仕掛数（製品順 → 指示書番号順）。
+ * 工程内 一覧 — 進行中指示書 × 工程の仕掛数（製品順 → 指示書番号順）。
  * 実行依存・カタログは 1 回だけロードし、指示書ごとに ctx を組み立てる。
  */
 export async function fetchWipRows(): Promise<WipRow[]> {

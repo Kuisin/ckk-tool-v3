@@ -34,6 +34,8 @@ export async function GET(request: Request): Promise<Response> {
           ...(where as any),
           custodyBpId: null,
           ownerBpId: null,
+          // 仕掛品は素材の手持ちではない。
+          wipStateId: null,
           item: { itemType: "MATERIAL" },
         },
         take,

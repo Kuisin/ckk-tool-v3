@@ -11,6 +11,7 @@ import { StepExecutionView } from "@/components/steps/StepExecutionView";
 import { readableCodes } from "@/lib/authz";
 import { getStepPrograms } from "@/lib/design-programs";
 import { resolveBoardLocationByCode } from "@/lib/device-work-location";
+import { type LocalizedText, localized } from "@/lib/format";
 import { getSession } from "@/lib/kiosk-auth";
 import { boardQuery, parseScope } from "@/lib/location-board-core";
 import { getStepRecordingData } from "@/lib/step-records";
@@ -19,6 +20,7 @@ import {
   getStepLocationGate,
   getWorkOrderMarkings,
 } from "@/lib/steps";
+import { loadWipRecording } from "@/lib/wip-recording";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +69,10 @@ export default async function StepExecutionPage({
     session.locale,
   );
 
+  // 仕掛品として在庫に置く分を記録するための材料（半製品を記録するときに
+  // 加工状態を見せ、仕上がり寸法を入れてもらう）。
+  const wipRecording = await loadWipRecording(step.stepId);
+
   // 来た経路で戻り先を決める。**任意 URL は受けない** — 決め打ちの値のときだけ
   // 固定の遷移先を組み立て、クエリの中身もサーバー側で検証してから使う。
   //   from=wo  → その指示書のビュー
@@ -111,6 +117,19 @@ export default async function StepExecutionPage({
         programs={programs}
         recording={recording}
         step={step}
+        wipRecording={
+          wipRecording
+            ? {
+                ...wipRecording,
+                stepNames: Object.fromEntries(
+                  Object.entries(wipRecording.stepNames).map(([id, name]) => [
+                    id,
+                    localized(name as LocalizedText | null, session.locale),
+                  ]),
+                ),
+              }
+            : null
+        }
       />
     </I18nProvider>
   );

@@ -60,6 +60,11 @@ import {
 import { StepDueDateBadge } from "@/components/production/StepDueDateBadge";
 import { StepPlanActualPanel } from "@/components/production/StepPlanActualPanel";
 import { StepQuantityForm } from "@/components/production/StepQuantityForm";
+import {
+  EMPTY_WIP_DRAFT,
+  WipRecordingFields,
+  wipRecordingCheck,
+} from "@/components/production/WipRecordingFields";
 import { WorkOrderFinalInspectionPanel } from "@/components/production/WorkOrderFinalInspectionPanel";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -194,10 +199,27 @@ export function StepExecutionView({
     });
   };
 
+  // 数量管理なし（NONE）の工程でも、「半製品在庫へ」で終わる分岐の終端なら
+  // 良品がそのまま仕掛品として在庫に入る — 仕上がり寸法はここで記録する。
+  const passThroughQuantity =
+    step.inputQuantity ?? data.expectedInputQuantity ?? data.plannedQuantity;
+  const [wipDraft, setWipDraft] = useState(EMPTY_WIP_DRAFT);
+  const passThroughWipCheck = wipRecordingCheck(
+    data.wipRecording,
+    { defectSemiFinished: 0, outputSuccess: passThroughQuantity },
+    wipDraft,
+  );
+
   /** 数量管理なし（NONE）工程の完了 — 数量はサーバーがパススルー生成する。 */
   const handleCompleteWithoutQuantities = () => {
     startTransition(async () => {
-      const result = await completeStep(workOrderNumber, step.id, null);
+      const result = await completeStep(
+        workOrderNumber,
+        step.id,
+        null,
+        undefined,
+        passThroughWipCheck.input,
+      );
       notifyResult(
         result,
         tr("common.stepCompleted"),
@@ -457,6 +479,14 @@ export function StepExecutionView({
                     step.inputQuantity ?? data.expectedInputQuantity ?? "—",
                 })}
               </Text>
+              <WipRecordingFields
+                defectSemiFinished={0}
+                disabled={!canOperate}
+                draft={wipDraft}
+                onChange={setWipDraft}
+                outputSuccess={passThroughQuantity}
+                view={data.wipRecording}
+              />
               {completeBlockedReason && (
                 <Alert
                   color="orange"
@@ -468,7 +498,11 @@ export function StepExecutionView({
               )}
               <Button
                 color="green"
-                disabled={!canOperate || completeBlockedReason != null}
+                disabled={
+                  !canOperate ||
+                  completeBlockedReason != null ||
+                  passThroughWipCheck.issues.length > 0
+                }
                 leftSection={<IconCheck size={16} />}
                 loading={isPending}
                 onClick={handleCompleteWithoutQuantities}
@@ -487,9 +521,21 @@ export function StepExecutionView({
             mode={step.quantityTracking}
             stepCode={step.code}
             stepId={step.id}
+            wipRecording={data.wipRecording}
             workOrderNumber={workOrderNumber}
           />
         ))}
+
+      {/* ── COMPLETED: 仕掛品として在庫に置いた分の仕上がり寸法 ── */}
+      {step.status === "COMPLETED" &&
+        (step.finishedDiameterMm != null || step.finishedLengthMm != null) && (
+          <Paper p="md" radius="md" withBorder>
+            <FieldValue
+              label={`${tr("production.wipRecording.title")} — ${tr("production.wipRecording.finishedSize")}`}
+              value={`φ${step.finishedDiameterMm ?? "—"} × ${step.finishedLengthMm ?? "—"}`}
+            />
+          </Paper>
+        )}
 
       {/* ── COMPLETED: 数量サマリ（読み取り専用） ── */}
       {step.status === "COMPLETED" &&
