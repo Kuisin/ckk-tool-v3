@@ -14,6 +14,7 @@
  *   APP_URL=http://localhost:3171 pnpm exec tsx e2e-url-state.ts
  */
 
+import { mkdirSync } from "node:fs";
 import { type CDPSession, chromium, type Page } from "@playwright/test";
 
 const APP_URL = process.env.APP_URL ?? "http://localhost:3100";
@@ -21,6 +22,29 @@ const USERNAME = process.env.SHOT_ADMIN_USERNAME ?? "demo1";
 const PASSWORD = process.env.SHOT_ADMIN_PASSWORD ?? "demo2026";
 
 let failed = 0;
+/** 画面の写しを残す先（省略時は残さない）。 */
+const SHOT_DIR = process.env.SHOT_DIR;
+async function shot(page: Page, name: string): Promise<void> {
+  if (!SHOT_DIR) return;
+  mkdirSync(SHOT_DIR, { recursive: true });
+  const path = `${SHOT_DIR}/${name}.png`;
+  // モーダルが開いている間は表示領域ぶんで撮る。
+  const overlay = await page.locator(".mantine-Modal-content:visible").count();
+  const size = page.viewportSize();
+  if (overlay > 0 || !size) {
+    if (overlay > 0) await page.waitForTimeout(400); // 開く・入れ替わるアニメーションが終わってから
+    await page.screenshot({ path });
+    return;
+  }
+  // 全高で撮る。**fullPage: true は使わない** — Playwright は撮る前に表示領域を一瞬
+  // 1×1 にするので、幅で配置を切り替える画面（工程実行の 2 ペイン = MasterDetailShell）
+  // が作り直され、開いたばかりのモーダルや入力途中の値が消える（実際に踏んだ）。
+  // 幅は変えずに高さだけ伸ばして撮り、元に戻す。
+  const height = await page.evaluate(() => document.documentElement.scrollHeight);
+  await page.setViewportSize({ width: size.width, height: Math.min(Math.max(size.height, height), 8000) });
+  await page.screenshot({ path });
+  await page.setViewportSize(size);
+}
 function check(name: string, ok: boolean, actual?: unknown): void {
   if (!ok) failed += 1;
   console.log(
@@ -72,6 +96,7 @@ async function main(): Promise<void> {
   await imeType(cdp, ["こ", "こう", "こうぎょう"], "工業");
   check("IME: 続けて変換しても追記にならない", (await search().inputValue()) === "朝日工業", await search().inputValue());
   await settle(page);
+  await shot(page, "01-ime-search-in-url");
   check("URL に検索語が載る", query(page).get("q") === "朝日工業", page.url());
   check("フィルタ変更で page が落ちる", !query(page).has("page"), page.url());
   check("無関係なパラメータは残る", query(page).get("keep") === "1", page.url());
@@ -88,6 +113,7 @@ async function main(): Promise<void> {
   await settle(page);
   await page.goto(`${LIST}?q=xyz`, { waitUntil: "networkidle" });
   await page.goBack({ waitUntil: "networkidle" });
+  await shot(page, "02-back-restores-query");
   check("戻るで前の値に戻る", (await search().inputValue()) === "abcd", await search().inputValue());
 
   // ── 4. ソート・ページ ────────────────────────────────────────────────
@@ -109,6 +135,7 @@ async function main(): Promise<void> {
   await settle(page);
   check("ソートは 列.向き の書式", query(page).get("sort") === "name.asc", query(page).get("sort"));
   const asc = await firstCodes();
+  await shot(page, "03-sorted-asc");
   check("並びが実際に変わる", asc[0] < asc[asc.length - 1], [asc[0], asc[asc.length - 1]]);
 
   // ── 5. タブ ──────────────────────────────────────────────────────────
@@ -122,6 +149,7 @@ async function main(): Promise<void> {
     await tabs.nth(1).click();
     check("タブは押した瞬間に切り替わる", (await tabs.nth(1).getAttribute("aria-selected")) === "true");
     await settle(page);
+    await shot(page, "04-detail-second-tab");
     check("2 枚目のタブは ?tab= に載る", query(page).has("tab"), page.url());
     await tabs.nth(0).click();
     await settle(page);
@@ -140,6 +168,7 @@ async function main(): Promise<void> {
   await imeType(cdp, ["み", "みつ", "みつもり"], "見積");
   check("server モード: IME で壊れない", (await search().inputValue()) === "見積", await search().inputValue());
   await page.waitForTimeout(1500);
+  await shot(page, "05-server-mode-search");
   check("server モード: URL に載る", query(page).get("q") === "見積", page.url());
   check("server モード: RSC を取り直す", rsc > 0, rsc);
   check("server モード: 取り直し後も入力欄が保たれる", (await search().inputValue()) === "見積", await search().inputValue());

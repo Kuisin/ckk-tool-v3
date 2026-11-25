@@ -35,6 +35,9 @@ const OVERLAY = [
   .map((s) => `${s}:visible`)
   .join(", ");
 
+/** 全高で撮るときの高さの上限（px）。これより長い画面は先頭からここまで。 */
+const MAX_SHOT_HEIGHT = 9000;
+
 /** 撮影用の端末トークンとカード（shared-db/sql/kiosk-shot-seed.sql）。 */
 const KIOSK_DEVICE_TOKEN = "ckk-shot-device-token-fixed-0001";
 const KIOSK_CARD_ID = "SHT1234567890ABC";
@@ -76,11 +79,25 @@ export class Scn extends Walk {
     const path = join(this.env.outDir, file);
     try {
       const overlay = await target.locator(OVERLAY).count();
-      if (overlay > 0) {
+      const size = target.viewportSize();
+      if (overlay > 0 || !size) {
         await target.screenshot({ path, type: "jpeg", quality: 72 });
       } else {
+        // 全高は **幅をそのままに、表示領域の高さだけ伸ばして**撮る。
+        // Playwright の `fullPage: true` は撮る瞬間に表示領域を作り直すので、
+        // 幅で出し分けている画面（768px 未満 = 携帯の並び）が一瞬切り替わり、
+        // 入力途中の値が消えることがある（工程の実行画面で実際に消えた）。
+        // 高さだけなら並びは変わらない。固定ヘッダーが途中に写ることも無い。
         const style = await target.addStyleTag({ content: FULL_HEIGHT_CSS }).catch(() => null);
-        await target.screenshot({ path, type: "jpeg", quality: 72, fullPage: true });
+        const { height, scrollY } = await target.evaluate(() => ({
+          height: document.documentElement.scrollHeight,
+          scrollY: window.scrollY,
+        }));
+        const tall = Math.min(Math.max(size.height, height), MAX_SHOT_HEIGHT);
+        if (tall !== size.height) await target.setViewportSize({ width: size.width, height: tall });
+        await target.screenshot({ path, type: "jpeg", quality: 72 });
+        if (tall !== size.height) await target.setViewportSize(size);
+        if (scrollY > 0) await target.evaluate((y) => window.scrollTo(0, y), scrollY).catch(() => undefined);
         await style?.evaluate((el) => (el as Element).remove()).catch(() => undefined);
       }
       this.shots.push({ file, label });

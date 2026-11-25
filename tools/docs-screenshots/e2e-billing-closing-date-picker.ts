@@ -16,11 +16,35 @@
  * Run against the throwaway seeded DB (tools/docs-screenshots recipe):
  *   pnpm exec tsx e2e-billing-closing-date-picker.ts
  */
+import { mkdirSync } from "node:fs";
 import { chromium, type Page } from "@playwright/test";
 
 const APP = process.env.APP_URL ?? "http://localhost:3100";
 const results: string[] = [];
 let failed = 0;
+/** 画面の写しを残す先（省略時は残さない）。 */
+const SHOT_DIR = process.env.SHOT_DIR;
+async function shot(page: Page, name: string): Promise<void> {
+  if (!SHOT_DIR) return;
+  mkdirSync(SHOT_DIR, { recursive: true });
+  const path = `${SHOT_DIR}/${name}.png`;
+  // モーダルが開いている間は表示領域ぶんで撮る。
+  const overlay = await page.locator(".mantine-Modal-content:visible").count();
+  const size = page.viewportSize();
+  if (overlay > 0 || !size) {
+    if (overlay > 0) await page.waitForTimeout(400); // 開く・入れ替わるアニメーションが終わってから
+    await page.screenshot({ path });
+    return;
+  }
+  // 全高で撮る。**fullPage: true は使わない** — Playwright は撮る前に表示領域を一瞬
+  // 1×1 にするので、幅で配置を切り替える画面（工程実行の 2 ペイン = MasterDetailShell）
+  // が作り直され、開いたばかりのモーダルや入力途中の値が消える（実際に踏んだ）。
+  // 幅は変えずに高さだけ伸ばして撮り、元に戻す。
+  const height = await page.evaluate(() => document.documentElement.scrollHeight);
+  await page.setViewportSize({ width: size.width, height: Math.min(Math.max(size.height, height), 8000) });
+  await page.screenshot({ path });
+  await page.setViewportSize(size);
+}
 
 function check(name: string, ok: boolean, detail = ""): void {
   if (!ok) failed++;
@@ -61,6 +85,7 @@ async function main(): Promise<void> {
   // ═══════════════════════════════════════════════════════════════════════
   await page.goto(`${APP}/billing/closings`, { waitUntil: "networkidle" });
 
+  await shot(page, "01-closings-list");
   await page.getByRole("button", { name: "締日処理を実行" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.waitFor({ state: "visible" });
@@ -77,6 +102,7 @@ async function main(): Promise<void> {
     `initial = "${initialText}"`,
   );
 
+  await shot(page, "02-run-modal-today");
   // カレンダーを開く
   await dateField.click();
 
@@ -91,11 +117,13 @@ async function main(): Promise<void> {
     exact: true,
   });
   await targetDayButton.waitFor({ state: "visible", timeout: 5_000 });
+  await shot(page, "03-calendar-open");
   await targetDayButton.click();
 
   // ポップオーバーは選択で閉じる（closeOnChange 既定 true）
   await targetDayButton.waitFor({ state: "hidden", timeout: 5_000 }).catch(() => {});
 
+  await shot(page, "04-date-picked");
   const updatedText = (await dateField.textContent())?.trim() ?? "";
   const expectedText = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(targetDay).padStart(2, "0")}`;
   check(
@@ -121,7 +149,8 @@ async function main(): Promise<void> {
 
   // ── 結果 ──────────────────────────────────────────────────────────────
   console.log("");
-  console.log(results.join("\n"));
+  // 結果は check() が 1 件ずつ出している（ここで並べ直すと、標準出力を読む側 —
+  // scripts/scenarios.ts — が同じチェックを 2 回数える）。
   console.log("");
   console.log(failed === 0 ? `ALL PASS (${results.length})` : `${failed} FAILED / ${results.length}`);
   await browser.close();

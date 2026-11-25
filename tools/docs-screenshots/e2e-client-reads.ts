@@ -13,6 +13,7 @@
  *   APP_URL=http://localhost:3172 pnpm exec tsx e2e-client-reads.ts
  */
 
+import { mkdirSync } from "node:fs";
 import { chromium, type Page, type Request } from "@playwright/test";
 
 const APP_URL = process.env.APP_URL ?? "http://localhost:3100";
@@ -20,6 +21,29 @@ const USERNAME = process.env.SHOT_ADMIN_USERNAME ?? "demo1";
 const PASSWORD = process.env.SHOT_ADMIN_PASSWORD ?? "demo2026";
 
 let failed = 0;
+/** 画面の写しを残す先（省略時は残さない）。 */
+const SHOT_DIR = process.env.SHOT_DIR;
+async function shot(page: Page, name: string): Promise<void> {
+  if (!SHOT_DIR) return;
+  mkdirSync(SHOT_DIR, { recursive: true });
+  const path = `${SHOT_DIR}/${name}.png`;
+  // モーダルが開いている間は表示領域ぶんで撮る。
+  const overlay = await page.locator(".mantine-Modal-content:visible").count();
+  const size = page.viewportSize();
+  if (overlay > 0 || !size) {
+    if (overlay > 0) await page.waitForTimeout(400); // 開く・入れ替わるアニメーションが終わってから
+    await page.screenshot({ path });
+    return;
+  }
+  // 全高で撮る。**fullPage: true は使わない** — Playwright は撮る前に表示領域を一瞬
+  // 1×1 にするので、幅で配置を切り替える画面（工程実行の 2 ペイン = MasterDetailShell）
+  // が作り直され、開いたばかりのモーダルや入力途中の値が消える（実際に踏んだ）。
+  // 幅は変えずに高さだけ伸ばして撮り、元に戻す。
+  const height = await page.evaluate(() => document.documentElement.scrollHeight);
+  await page.setViewportSize({ width: size.width, height: Math.min(Math.max(size.height, height), 8000) });
+  await page.screenshot({ path });
+  await page.setViewportSize(size);
+}
 function check(name: string, ok: boolean, actual?: unknown): void {
   if (!ok) failed += 1;
   console.log(
@@ -94,6 +118,7 @@ async function main(): Promise<void> {
   await customer.pressSequentially(two.slice(1));
   await page.waitForTimeout(900);
   const listTwo = await options(page).allInnerTexts();
+  await shot(page, "01-searchselect-typed");
   check("打つと候補が変わる", listTwo.length > 0 && !same(initial, listTwo), listTwo.length);
 
   // 追い越し: 1 文字目の応答を遅らせ、打ち切った入力の結果だけが残ること。
@@ -145,6 +170,7 @@ async function main(): Promise<void> {
 
   await options(page).first().click();
   const picked = await customer.inputValue();
+  await shot(page, "02-searchselect-picked");
   check("候補を選べる", picked.length > 0, picked);
 
   // ── 2. F4（詳細検索）──────────────────────────────────────────────────
@@ -154,6 +180,7 @@ async function main(): Promise<void> {
   await page.waitForTimeout(1200);
   const rows = dialog.locator("tbody tr");
   const allRows = await rows.count();
+  await shot(page, "03-f4-open");
   check("F4: 開くと先頭の一覧が出る", allRows > 1, allRows);
   const firstCell = (await rows.first().locator("td").nth(1).innerText()).trim();
   const probe = firstCell.slice(0, 2);
@@ -170,9 +197,11 @@ async function main(): Promise<void> {
   f4Actions.stop();
   check("F4: 同じ条件でもう一度押すと取り直す", f4Actions.n === 2, f4Actions.n);
   const filtered = await rows.count();
+  await shot(page, "04-f4-filtered");
   check("F4: 条件で絞れる", filtered >= 1 && filtered <= allRows, { before: allRows, after: filtered });
   await rows.first().click();
   await dialog.waitFor({ state: "hidden" });
+  await shot(page, "05-f4-picked");
   check("F4: 行で選ぶと欄に入る", (await customer.inputValue()).length > 0, await customer.inputValue());
 
   // ── 3. ファイル管理（SY06）────────────────────────────────────────────
@@ -189,6 +218,7 @@ async function main(): Promise<void> {
   );
   await page.getByRole("button", { name: "更新", exact: true }).click();
   await page.waitForTimeout(1000);
+  await shot(page, "06-file-manager");
   check("ファイル管理: 更新で取り直す", listings === 2, listings);
 
   check("画面エラーなし", pageErrors.length === 0, pageErrors.slice(0, 3));

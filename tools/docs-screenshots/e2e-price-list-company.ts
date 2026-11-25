@@ -14,16 +14,31 @@
  *   G. 画面が壊れていない（pageerror）
  *
  * 使い方（CI では動かさない）:
- *   pnpm check -- --keep で残したアプリと DB に対して:
+ *   pnpm scenarios --only price-list-company        （シナリオとして — 推奨。
+ *     DB の複製とアプリの起動まで面倒を見て、画面を .verify-out/scenarios/ に残す）
+ *   pnpm check -- --keep で残したアプリと DB に対して手で流すなら:
  *   APP_URL=http://localhost:3489 SHOT_DB_CONTAINER=ckk-lc189-app \
  *     pnpm exec tsx e2e-price-list-company.ts
+ *
+ * 環境変数: APP_URL / SHOT_DB_CONTAINER / DB_NAME（既定 ckk）/
+ *   SHOT_DIR（画面の書き出し先。既定 /tmp）
  */
 
 import { execFileSync } from "node:child_process";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { chromium, type Page } from "@playwright/test";
 
 const APP = process.env.APP_URL ?? "http://localhost:3489";
 const DB_CONTAINER = process.env.SHOT_DB_CONTAINER ?? "ckk-lc189-app";
+/** 画面の書き出し先。シナリオとして走るときは scripts/scenarios.ts が渡す。 */
+const SHOT_DIR = process.env.SHOT_DIR ?? "/tmp";
+mkdirSync(SHOT_DIR, { recursive: true });
+
+/** 画面を撮る（ファイル名の先頭の番号 = レポートに並ぶ順）。 */
+async function shot(page: Page, name: string, fullPage = true): Promise<void> {
+  await page.screenshot({ path: join(SHOT_DIR, `${name}.png`), fullPage });
+}
 
 const results: { name: string; ok: boolean; detail: string }[] = [];
 function check(name: string, ok: boolean, detail = "") {
@@ -153,11 +168,12 @@ async function main() {
     body.includes("他社の価格表があります"),
     body.slice(0, 0),
   );
+  await shot(page, "01-B-発行会社をTSPにすると他社の価格表を勧める");
   await page.getByRole("button", { name: /CKK の価格表からコピー/ }).click();
   await page.waitForTimeout(1500);
   body = await bodyText(page);
   check("B コピーした旨と値引きの件数が出る", /値引きルール \d+ 件/.test(body));
-  await page.screenshot({ path: "/tmp/plc-new-copied.png", fullPage: true });
+  await shot(page, "02-B-CKKの価格表からコピーした新規作成");
 
   // ── C. 保存 → TSP の価格表 ────────────────────────────────────────────────
   await page.getByRole("button", { name: "保存", exact: true }).click();
@@ -185,6 +201,7 @@ async function main() {
   await page.waitForLoadState("networkidle");
   body = await bodyText(page);
   check("C 詳細に「CKK と同じ」", body.includes("CKK と同じ"));
+  await shot(page, "03-C-TSPの価格表の詳細（CKKと同じ）");
 
   // ── D. 段階の倍率を変える → 差分あり ──────────────────────────────────────
   sql(`UPDATE app.price_list_tiers SET multiplier = multiplier + 0.07
@@ -196,10 +213,15 @@ async function main() {
   await page.getByRole("button", { name: "差分を見る" }).click();
   body = await bodyText(page);
   check("D 差分の表に数量段階が出る", body.includes("数量段階 1"));
-  await page.screenshot({ path: "/tmp/plc-detail-diff.png", fullPage: true });
+  await shot(page, "04-D-差分あり（差分の表）");
 
   // ── E. 同期 ──────────────────────────────────────────────────────────────
   await page.getByRole("button", { name: "CKK の内容で同期" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "CKK の内容で同期" })
+    .waitFor({ state: "visible" });
+  await shot(page, "05-E-同期の確認", false);
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "CKK の内容で同期" })
@@ -220,7 +242,7 @@ async function main() {
     `SELECT count(*) FROM app.audit_logs WHERE table_name = 'price_list_entries' AND after_data::text LIKE '%syncedFrom%'`,
   );
   check("E 監査に同期元が残る", Number(audit) >= 1, audit);
-  await page.screenshot({ path: "/tmp/plc-detail-synced.png", fullPage: true });
+  await shot(page, "06-E-同期後の詳細（CKKと同じ）");
 
   // ── F. 一覧 ──────────────────────────────────────────────────────────────
   await page.goto(`${APP}/sales/price-lists`, { waitUntil: "networkidle" });
@@ -229,7 +251,7 @@ async function main() {
     "F 一覧に発行会社・他社との差分の列",
     body.includes("発行会社") && body.includes("他社との差分"),
   );
-  await page.screenshot({ path: "/tmp/plc-list.png", fullPage: false });
+  await shot(page, "07-F-一覧（発行会社・他社との差分の列）");
 
   check("G pageerror なし", errors.length === 0, errors.join(" / "));
   await browser.close();

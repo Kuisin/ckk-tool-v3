@@ -28,6 +28,7 @@
  * **2 は必須** — デモシードには在庫の足りない確定済み出荷書が無い。
  */
 import { execFileSync } from "node:child_process";
+import { mkdirSync } from "node:fs";
 import { chromium, type Page } from "@playwright/test";
 
 const APP = process.env.APP_URL ?? "http://localhost:3105";
@@ -46,6 +47,29 @@ const OK_DOR = process.env.OK_DOR ?? "DOR-202607-00002";
 
 const results: string[] = [];
 let failed = 0;
+/** 画面の写しを残す先（省略時は残さない）。 */
+const SHOT_DIR = process.env.SHOT_DIR;
+async function shot(page: Page, name: string): Promise<void> {
+  if (!SHOT_DIR) return;
+  mkdirSync(SHOT_DIR, { recursive: true });
+  const path = `${SHOT_DIR}/${name}.png`;
+  // モーダルが開いている間は表示領域ぶんで撮る。
+  const overlay = await page.locator(".mantine-Modal-content:visible").count();
+  const size = page.viewportSize();
+  if (overlay > 0 || !size) {
+    if (overlay > 0) await page.waitForTimeout(400); // 開く・入れ替わるアニメーションが終わってから
+    await page.screenshot({ path });
+    return;
+  }
+  // 全高で撮る。**fullPage: true は使わない** — Playwright は撮る前に表示領域を一瞬
+  // 1×1 にするので、幅で配置を切り替える画面（工程実行の 2 ペイン = MasterDetailShell）
+  // が作り直され、開いたばかりのモーダルや入力途中の値が消える（実際に踏んだ）。
+  // 幅は変えずに高さだけ伸ばして撮り、元に戻す。
+  const height = await page.evaluate(() => document.documentElement.scrollHeight);
+  await page.setViewportSize({ width: size.width, height: Math.min(Math.max(size.height, height), 8000) });
+  await page.screenshot({ path });
+  await page.setViewportSize(size);
+}
 const pageErrors: string[] = [];
 
 function check(name: string, ok: boolean, detail = ""): void {
@@ -111,6 +135,7 @@ async function main(): Promise<void> {
     .then(() => true)
     .catch(() => false);
   check("A1 在庫が足りないと確認ダイアログが出る", appeared);
+  await shot(page, "01-shortage-dialog");
 
   if (appeared) {
     const body = (await shortageDialog.innerText()).replace(/\s+/g, " ");
@@ -134,6 +159,7 @@ async function main(): Promise<void> {
     // A4: やめる → 出荷されていない
     await page.getByRole("button", { name: "キャンセル" }).click();
     await shortageDialog.waitFor({ state: "hidden", timeout: 10_000 });
+    await shot(page, "02-cancelled-still-confirmed");
     const statusAfterCancel = sql(
       `SELECT status FROM app.delivery_orders WHERE legacy_number='${SHORT_DOR}'`,
     );
@@ -163,6 +189,7 @@ async function main(): Promise<void> {
       .then(() => true)
       .catch(() => false);
     check("A6 出荷後に注意が出る", warned);
+    await shot(page, "03-shipped-with-shortage-warning");
 
     // A7: 台帳の裏取り
     const bucket = sql(
@@ -183,6 +210,10 @@ async function main(): Promise<void> {
     `SELECT COALESCE(sum(quantity),0) FROM app.item_inventory
       WHERE item_id=9001 AND custody_bp_id IS NULL AND wip_state_id IS NULL`,
   );
+  await page.goto(`${APP}/shipping/delivery-orders/${OK_DOR}`, {
+    waitUntil: "networkidle",
+  });
+  await shot(page, "04-enough-stock-before-ship");
   await pressShip(page, OK_DOR);
   const dialogB = await page
     .getByRole("dialog", { name: "在庫が足りません" })
@@ -202,6 +233,7 @@ async function main(): Promise<void> {
     `SELECT status FROM app.delivery_orders WHERE legacy_number='${OK_DOR}'`,
   );
   check("B1b そのまま出荷される", okStatus === "SHIPPED", `status=${okStatus}`);
+  await shot(page, "05-enough-stock-shipped");
 
   const afterOk = sql(
     `SELECT COALESCE(sum(quantity),0) FROM app.item_inventory

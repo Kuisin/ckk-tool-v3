@@ -64,7 +64,7 @@
  * **2 は必須** — デモシードには他社製品も再研磨工程リストも再研磨の明細も無い。
  */
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "@playwright/test";
 
@@ -99,6 +99,29 @@ const CUSTOMER = "d0000000-0000-4000-8000-000000000001";
 const results: string[] = [];
 let failed = 0;
 const pageErrors: string[] = [];
+/** 画面の写しを残す先（省略時は残さない）。 */
+const SHOT_DIR = process.env.SHOT_DIR;
+async function shot(page: Page, name: string): Promise<void> {
+  if (!SHOT_DIR) return;
+  mkdirSync(SHOT_DIR, { recursive: true });
+  const path = `${SHOT_DIR}/${name}.png`;
+  // モーダルが開いている間は表示領域ぶんで撮る。
+  const overlay = await page.locator(".mantine-Modal-content:visible").count();
+  const size = page.viewportSize();
+  if (overlay > 0 || !size) {
+    if (overlay > 0) await page.waitForTimeout(400); // 開く・入れ替わるアニメーションが終わってから
+    await page.screenshot({ path });
+    return;
+  }
+  // 全高で撮る。**fullPage: true は使わない** — Playwright は撮る前に表示領域を一瞬
+  // 1×1 にするので、幅で配置を切り替える画面（工程実行の 2 ペイン = MasterDetailShell）
+  // が作り直され、開いたばかりのモーダルや入力途中の値が消える（実際に踏んだ）。
+  // 幅は変えずに高さだけ伸ばして撮り、元に戻す。
+  const height = await page.evaluate(() => document.documentElement.scrollHeight);
+  await page.setViewportSize({ width: size.width, height: Math.min(Math.max(size.height, height), 8000) });
+  await page.screenshot({ path });
+  await page.setViewportSize(size);
+}
 
 function check(name: string, ok: boolean, detail = ""): void {
   if (!ok) failed++;
@@ -253,6 +276,7 @@ async function main(): Promise<void> {
     /\s+/g,
     " ",
   );
+  await shot(page, "01-external-product-detail");
   check(
     "A1 他社製バッジとメーカー名が出る",
     productBody.includes("他社製") && productBody.includes("日研ツール"),
@@ -269,6 +293,7 @@ async function main(): Promise<void> {
     waitUntil: "networkidle",
   });
   const stockCheckBtn = page.getByRole("button", { name: "在庫照合" });
+  await shot(page, "02-regrind-order-line");
   check(
     "B1 再研磨の明細に在庫照合が出ない",
     (await stockCheckBtn.count()) === 0,
@@ -318,6 +343,7 @@ async function main(): Promise<void> {
   const otherTypeOffered =
     (await page.getByRole("radio", { name: "製造分", exact: true }).count()) +
     (await page.getByRole("radio", { name: "在庫分", exact: true }).count());
+  await shot(page, "03-builder-regrind-from-line");
   check(
     "C1 種別が明細から再研磨に決まり、選択肢が出ない",
     /再研磨/.test(typeHead.slice(0, 200)) &&
@@ -351,6 +377,7 @@ async function main(): Promise<void> {
   const docNumber = sql(
     `SELECT coalesce(doc_number,'') FROM app.work_orders WHERE work_order_number = ${Number(woNumber) || 0}`,
   );
+  await shot(page, "04-work-order-created");
   check(
     "C4a 指示書が作られる",
     WOR_NUMBER.test(docNumber) && woNumber !== "0",
@@ -410,6 +437,7 @@ async function main(): Promise<void> {
       /\s+/g,
       " ",
     );
+    await shot(page, "05-receipt-step-quantities");
     check(
       "D1 数量欄が受入本数 / 再研磨する本数になっている",
       stepBody.includes("受入本数") && stepBody.includes("再研磨する本数"),
@@ -452,6 +480,7 @@ async function main(): Promise<void> {
       `SELECT coalesce(sum(quantity),0)::text FROM app.item_inventory
         WHERE item_id=${ITEM} AND owner_bp_id='${CUSTOMER}'::uuid AND custody_bp_id IS NULL`,
     );
+    await shot(page, "06-receipt-step-completed");
     check(
       "E1 預り品バケットに 10 本入る",
       Number(owned) === 10,
@@ -527,6 +556,7 @@ async function main(): Promise<void> {
       /\s+/g,
       " ",
     );
+    await shot(page, "07-work-order-completed-quantities");
     check(
       "F4 詳細に 再研磨数量 受入 10 / 返却 2 / 完成 8 が出る",
       /再研磨数量/.test(detail) &&
@@ -589,6 +619,7 @@ async function main(): Promise<void> {
       `SELECT coalesce(sum(quantity),0)::text FROM app.item_inventory
         WHERE item_id=${ITEM} AND owner_bp_id='${CUSTOMER}'::uuid AND custody_bp_id IS NULL`,
     );
+    await shot(page, "08-return-delivery-shipped");
     check(
       "H1 出荷で預り品が 8 → 0 になる",
       Number(ownedShipped) === 0,
@@ -641,6 +672,7 @@ async function main(): Promise<void> {
     /\s+/g,
     " ",
   );
+  await shot(page, "09-regrind-items-list");
   check(
     "I1 一覧に条件と標準価格が出る",
     masterBody.includes("RGD-209902-0001") &&
@@ -672,6 +704,7 @@ async function main(): Promise<void> {
     `SELECT coalesce(code,'-')||'|'||coalesce(standard_unit_price::text,'-')
        FROM app.items WHERE item_type='REGRIND' AND name->>'ja' = 'e2e 再研磨 溝のみ 2枚刃'`,
   );
+  await shot(page, "10-regrind-item-created");
   check(
     "I2 新規作成でコードが RGD- で採番され標準価格が入る",
     /^RGD-\d{6}-\d{4}\|540/.test(created),
@@ -697,6 +730,7 @@ async function main(): Promise<void> {
     /\s+/g,
     " ",
   );
+  await shot(page, "11-acceptance-editor-regrind-line");
   check(
     "J1 再研磨の行は 再研磨品目 + 研ぎ直す工具 の 2 欄になる",
     editorBody.includes("再研磨品目") && editorBody.includes("研ぎ直す工具"),
@@ -741,6 +775,7 @@ async function main(): Promise<void> {
     /\s+/g,
     " ",
   );
+  await shot(page, "12-acceptance-editor-standard-price");
   check(
     "J2 価格表を持たない顧客でも標準価格 ¥1,200 が画面に出る",
     /標準価格\s*￥?1,200/.test(pricedBody) && !/価格表なし/.test(pricedBody),
@@ -792,6 +827,7 @@ async function main(): Promise<void> {
       .catch(() => undefined);
     await page.waitForTimeout(300);
   }
+  await shot(page, "13-manual-movement-owner");
   check(
     "K1 預り品のある品目を選ぶと「所有者」が出て、預け主が候補に並ぶ",
     ownerShown && ownerOpts.some((o) => o.includes("デモ商事")),
@@ -885,6 +921,7 @@ async function main(): Promise<void> {
          JOIN app.work_orders w ON w.id = s.work_order_id
         WHERE w.work_order_number = ${Number(wo2)} AND c.code <> 'REGRIND_RECEIPT'`,
     );
+    await shot(page, "14-all-returned-work-order-closed");
     check(
       "L1 下流の未着手工程が CANCELLED になる",
       folded.length > 0 && !/=PENDING/.test(folded),

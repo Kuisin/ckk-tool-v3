@@ -17,12 +17,36 @@
  *   APP_URL=http://localhost:3137 pnpm exec tsx e2e-billing-closing-dry-run.ts
  */
 import { execFileSync } from "node:child_process";
+import { mkdirSync } from "node:fs";
 import { chromium, type Page } from "@playwright/test";
 
 const APP = process.env.APP_URL ?? "http://localhost:3100";
 const DB_CONTAINER = process.env.SHOT_DB_CONTAINER ?? "ckk-shots-db";
 const results: string[] = [];
 let failed = 0;
+/** 画面の写しを残す先（省略時は残さない）。 */
+const SHOT_DIR = process.env.SHOT_DIR;
+async function shot(page: Page, name: string): Promise<void> {
+  if (!SHOT_DIR) return;
+  mkdirSync(SHOT_DIR, { recursive: true });
+  const path = `${SHOT_DIR}/${name}.png`;
+  // モーダルが開いている間は表示領域ぶんで撮る。
+  const overlay = await page.locator(".mantine-Modal-content:visible").count();
+  const size = page.viewportSize();
+  if (overlay > 0 || !size) {
+    if (overlay > 0) await page.waitForTimeout(400); // 開く・入れ替わるアニメーションが終わってから
+    await page.screenshot({ path });
+    return;
+  }
+  // 全高で撮る。**fullPage: true は使わない** — Playwright は撮る前に表示領域を一瞬
+  // 1×1 にするので、幅で配置を切り替える画面（工程実行の 2 ペイン = MasterDetailShell）
+  // が作り直され、開いたばかりのモーダルや入力途中の値が消える（実際に踏んだ）。
+  // 幅は変えずに高さだけ伸ばして撮り、元に戻す。
+  const height = await page.evaluate(() => document.documentElement.scrollHeight);
+  await page.setViewportSize({ width: size.width, height: Math.min(Math.max(size.height, height), 8000) });
+  await page.screenshot({ path });
+  await page.setViewportSize(size);
+}
 
 function check(name: string, ok: boolean, detail = ""): void {
   if (!ok) failed++;
@@ -78,6 +102,7 @@ async function main(): Promise<void> {
     exact: true,
   });
   await tomorrowInRun.waitFor({ state: "visible", timeout: 5_000 });
+  await shot(page, "01-run-modal-tomorrow-disabled");
   check(
     "実行モーダル: 明日（未来日）は選べない（maxDate = 今日）",
     await tomorrowInRun.isDisabled(),
@@ -115,6 +140,7 @@ async function main(): Promise<void> {
     exact: true,
   });
   await tomorrowInSim.waitFor({ state: "visible", timeout: 5_000 });
+  await shot(page, "02-simulate-modal-tomorrow-enabled");
   check(
     "試算モーダル: 明日（未来日）を選べる（ここだけ未来を許す）",
     !(await tomorrowInSim.isDisabled()),
@@ -128,6 +154,7 @@ async function main(): Promise<void> {
       expectedText,
   );
 
+  await shot(page, "03-simulate-future-date-picked");
   // 試算を実行（サーバーアクション simulateClosing）
   await simDialog.getByRole("button", { name: "試算", exact: true }).click();
   // 結果は 件数サマリ か「締まる分はありません」のどちらかが必ず出る
@@ -137,6 +164,7 @@ async function main(): Promise<void> {
     summary.waitFor({ state: "visible", timeout: 20_000 }).catch(() => {}),
     nothing.waitFor({ state: "visible", timeout: 20_000 }).catch(() => {}),
   ]);
+  await shot(page, "04-simulate-result");
   const hasSummary = (await summary.count()) > 0;
   const hasNothing = (await nothing.count()) > 0;
   check(
@@ -182,6 +210,7 @@ async function main(): Promise<void> {
   await simDialog.getByRole("button", { name: "試算", exact: true }).click();
   await page.waitForTimeout(2_000);
   const after = countClosings();
+  await shot(page, "05-simulate-second-run");
   check(
     "試算を 2 回走らせても締日行は DB 上で増えない（読むだけ）",
     before === after && Number.isFinite(before),
@@ -189,7 +218,8 @@ async function main(): Promise<void> {
   );
 
   console.log("");
-  console.log(results.join("\n"));
+  // 結果は check() が 1 件ずつ出している（ここで並べ直すと、標準出力を読む側 —
+  // scripts/scenarios.ts — が同じチェックを 2 回数える）。
   console.log("");
   console.log(
     failed === 0 ? `ALL PASS (${results.length})` : `${failed} FAILED / ${results.length}`,

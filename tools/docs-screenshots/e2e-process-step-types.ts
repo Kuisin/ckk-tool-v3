@@ -4,10 +4,34 @@
  * 変わる、という一連はここでしか確かめられない。
  */
 import { execFileSync } from "node:child_process";
+import { mkdirSync } from "node:fs";
 import { chromium, type Page } from "@playwright/test";
 
 const APP = process.env.APP_URL ?? "http://localhost:3126";
 const DB = process.env.SHOT_DB_CONTAINER ?? "ckk-wotype-db";
+/** 画面の写しを残す先（省略時は残さない）。 */
+const SHOT_DIR = process.env.SHOT_DIR;
+async function shot(page: Page, name: string): Promise<void> {
+  if (!SHOT_DIR) return;
+  mkdirSync(SHOT_DIR, { recursive: true });
+  const path = `${SHOT_DIR}/${name}.png`;
+  // モーダルが開いている間は表示領域ぶんで撮る。
+  const overlay = await page.locator(".mantine-Modal-content:visible").count();
+  const size = page.viewportSize();
+  if (overlay > 0 || !size) {
+    if (overlay > 0) await page.waitForTimeout(400); // 開く・入れ替わるアニメーションが終わってから
+    await page.screenshot({ path });
+    return;
+  }
+  // 全高で撮る。**fullPage: true は使わない** — Playwright は撮る前に表示領域を一瞬
+  // 1×1 にするので、幅で配置を切り替える画面（工程実行の 2 ペイン = MasterDetailShell）
+  // が作り直され、開いたばかりのモーダルや入力途中の値が消える（実際に踏んだ）。
+  // 幅は変えずに高さだけ伸ばして撮り、元に戻す。
+  const height = await page.evaluate(() => document.documentElement.scrollHeight);
+  await page.setViewportSize({ width: size.width, height: Math.min(Math.max(size.height, height), 8000) });
+  await page.screenshot({ path });
+  await page.setViewportSize(size);
+}
 let failed = 0;
 const check = (name: string, ok: boolean, detail = "") => {
   if (!ok) failed++;
@@ -33,11 +57,23 @@ async function login(page: Page): Promise<void> {
 async function offeredOnRegrindBuilder(
   page: Page,
   stepName: string,
+  shotName: string,
 ): Promise<boolean> {
-  await page.goto(`${APP}/production/work-orders/new?type=REGRIND`, {
+  // URL の `?type=REGRIND` はもう効かない（a947c649「指示書の種別を注文明細から
+  // 決める」— URL の type は 在庫分 / 製造分 の希望だけを伝える）。注文明細を
+  // 連れていないビルダーでは種別を画面で選べるので、そこで「再研磨」を選ぶ。
+  await page.goto(`${APP}/production/work-orders/new`, {
     waitUntil: "networkidle",
   });
-  await page.waitForTimeout(1800);
+  await page.getByText("再研磨", { exact: true }).first().click();
+  // 再研磨に切り替わると、再研磨でしか使えない工程（製品受入）が候補に出る。
+  await page
+    .locator("label")
+    .filter({ hasText: "製品受入（再研磨）" })
+    .first()
+    .waitFor({ timeout: 15_000 });
+  await page.waitForTimeout(500);
+  await shot(page, shotName);
   // 候補のラベルは「工程名 + バッジ（同期 / 社内 / 要: …）」なので、
   // 名前そのものではなく**先頭の語**で照合する（exact 一致は必ず外れる）。
   const labels = await page.locator("label").allInnerTexts();
@@ -80,6 +116,7 @@ async function main(): Promise<void> {
       !codes.includes("PRODUCT_ISSUE"),
     `${codes.length} 行: ${codes.slice(0, 8).join(", ")}`,
   );
+  await shot(page, "01-list-filtered-regrind");
 
   // ── B. 編集画面に 3 つのチェックボックスが出る ──────────────────────────
   await page.goto(`${APP}/master/process-steps/${cylId}/edit`, { waitUntil: "networkidle" });
@@ -90,6 +127,7 @@ async function main(): Promise<void> {
     cylBody.includes("使える指示書種別") && !(await boxes.first().isChecked()),
     cylBody.slice(cylBody.indexOf("使える指示書種別"), cylBody.indexOf("使える指示書種別") + 90),
   );
+  await shot(page, "02-edit-cylinder-machining");
 
   // ── C. 開始工程は選ばせない ──────────────────────────────────────────────
   await page.goto(`${APP}/master/process-steps/${issueId}/edit`, { waitUntil: "networkidle" });
@@ -100,11 +138,12 @@ async function main(): Promise<void> {
     (await issueBox.isDisabled()) && issueBody.includes("開始工程"),
     issueBody.slice(issueBody.indexOf("使える指示書種別"), issueBody.indexOf("使える指示書種別") + 120),
   );
+  await shot(page, "03-edit-start-step-locked");
 
   // ── D. 変える前: 再研磨の指示書に円筒加工は出ない ───────────────────────
   check(
     "D1 変更前は再研磨の候補に円筒加工が無い",
-    !(await offeredOnRegrindBuilder(page, "円筒加工")),
+    !(await offeredOnRegrindBuilder(page, "円筒加工", "04-regrind-builder-before")),
   );
 
   // ── E. マスタで再研磨を許す → 候補に出る ────────────────────────────────
@@ -121,7 +160,7 @@ async function main(): Promise<void> {
   check("E1 保存できて行に入る", saved.includes("REGRIND") && saved.includes("MANUFACTURE"), saved);
   check(
     "E2 設定を変えると再研磨の候補に円筒加工が出る",
-    await offeredOnRegrindBuilder(page, "円筒加工"),
+    await offeredOnRegrindBuilder(page, "円筒加工", "05-regrind-builder-after"),
   );
 
   // ── F. 空にはできない ────────────────────────────────────────────────────
@@ -132,6 +171,7 @@ async function main(): Promise<void> {
   }
   await page.getByRole("button", { name: "保存" }).click();
   await page.waitForTimeout(1200);
+  await shot(page, "06-empty-types-rejected");
   const stillEditing = new URL(page.url()).pathname.endsWith("/edit");
   const afterEmpty = sql(`SELECT array_to_string(allowed_work_order_types,',') FROM app.process_step_catalog WHERE id=${cylId}`);
   check(
