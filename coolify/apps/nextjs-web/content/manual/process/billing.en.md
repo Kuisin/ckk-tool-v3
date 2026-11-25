@@ -52,6 +52,8 @@ To bill without waiting for the closing, use「**手動請求**」(Manual invoic
 
 Check the line items and amounts (subtotal, tax, total) of the invoice that was created, and issue it. Issuing saves the PDF. Only invoices with manually added extra charges need approval before they are issued. Set it to「送付済」(sent) once it has been sent to the customer — **the app sends no email**; it only records that and when it was sent. Set it to「支払済」(paid) once payment is confirmed; if a payment approval flow is set up, the final approval makes it paid. Both approvals pass straight through when no steps are configured in the approval settings. **These states are money management itself**, so change them only after confirming the actual payment.
 
+Invoices are created **per own company**. Even for the same customer and the same closing, when the shipments span more than one [own company](/manual/en/operations/masters/own-company/user), they are split into one invoice per company, and the number is taken from that company's sequence. The issuer block (name, address, registration number) and the company seal on the PDF are those of the invoice's issuer company.
+
 ![Invoice line items and amounts. The total is highlighted with a red box](../assets/screenshots/flow-invoice-check-01.png)
 
 ![Invoice actions menu. Mark as sent is highlighted with a red box](../assets/screenshots/flow-invoice-send-01.png)
@@ -59,6 +61,8 @@ Check the line items and amounts (subtotal, tax, total) of the invoice that was 
 ### 6. Handing over to accounting
 
 An issued invoice can be exported **per invoice** as a journal CSV for the accounting software (TKC FX4 Cloud) (the invoice's「…」→「会計連携CSV」(Accounting CSV); not from the billing closing screen). The first export posts an accounting document that freezes its content, and the billing closing that created that invoice moves from「処理済」(processed) to「**エクスポート済**」(exported). Later downloads return the same CSV. Draft invoices cannot be exported. To correct a mistake, cancel it with「反対仕訳を作成」(Create reversal — a reason is required) and export again.
+
+The sales account is normally the one from the tax category (or the default if none). **To book regrind sales to a different account from product sales**, enter the regrind account under "sales account code by order type" in [Accounting export](/manual/en/operations/system/accounting/user) (`SY0J`). When one invoice mixes products and regrinding, the sales rows are exported split by account.
 
 ![Invoice actions menu. Accounting CSV is highlighted with a red box](../assets/screenshots/flow-invoice-csv-01.png)
 

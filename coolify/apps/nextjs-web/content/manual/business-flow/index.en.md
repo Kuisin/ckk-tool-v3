@@ -99,6 +99,9 @@ This process sets the unit price of what we sell, registers it in a per-customer
 - A price estimate records its result twice — on save and on confirm — with the pricing settings (SY02) of that moment. Changing those settings later does not move recorded estimates.
 - A draft quote can be edited freely, but an issued quote can be **neither edited nor un-issued**. If one was issued by mistake, duplicate it and send the correct one; the wrong one expires on its valid-until date.
 - Choosing a regrind item on a quote line prices it at the standard price even without a customer price list. The customer's own tool (an external product) is not something we sell, so it never appears in price lists or as a quote item.
+- When two or more companies issue documents (own companies), the "**issuing company**" is decided when a price estimate, price list or quote is created (the field is shown only to people who can choose). Price lists are separate per company, and quote unit prices come only from the issuing company's price lists. Document numbers run per company and per fiscal year.
+- On the quote PDF, a discount note is printed under a line with a discount, and line notes are printed under a line that has them. Notes for the whole quote are printed on the PDF too.
+- A "**cost estimate**", which estimates cost only, can be created and viewed only by people with the "price estimate cost" permission. It cannot be the base unit price of a price list; when a selling price is needed, copy it with "Create selling-price estimate".
 
 ## 2. Order intake — from receiving the order to confirming order lines [#order]
 
@@ -153,6 +156,8 @@ This process imports a customer's order as an order acceptance, checks its conte
 - Work orders that survive a cancellation: completed ones, and combined lots that also serve other active order lines.
 - Order line statuses in this process are only Confirmed and Cancelled. In production follows from work order approval; Partially shipped / Shipped follow from shipping.
 - No single order line can be cancelled or edited. To change a confirmed order, cancel the whole order acceptance and recreate it.
+- On confirmation, a **marking number** (the serial number marked on the products, starting at `A200000`) is also assigned automatically to each order line. It is a separate sequence from lot numbers and document numbers, and does not reset when the fiscal year changes.
+- When two or more companies issue documents (own companies), one order acceptance belongs to **one company**. For imported orders the company is decided by "own company of the intake channel" in Order intake (`SY0C`) and cannot be changed afterwards. Sites of another company cannot be mixed into the assigned sites of the lines.
 
 ## 3. Design — from design request to registering the drawing [#design]
 
@@ -247,6 +252,8 @@ Covers checking product stock for confirmed order lines, turning what must be ma
 - Cancelling a work order returns its quantity to "Not planned" in `PD05`. Quantity missing after a completed work order with defects also returns there.
 - When a whole order acceptance is cancelled (an [Order](#order) operation) and approved, work orders not yet completed are cancelled in a chain — except merged lots that also make other lines.
 - A "preceding work order" (start from another work order's finished goods) can be linked on the work order detail before or after approval; it takes effect in [Production](#production).
+- When partly processed pieces are in stock (**WIP**), you can choose them from "usable WIP" on the work order create screen and continue from there. The steps already done are not performed and no material is used. WIP in different processing states cannot be mixed in one work order. The chosen WIP is reserved at approval.
+- The per-step deadline (**step due date**) is entered on the work order create/edit screen and changed on the step screen after approval. It is kept separately from the delivery date to the customer (planned delivery).
 
 ## 5. Manufacturing — from running steps to finished goods in stock [#production]
 
@@ -293,9 +300,14 @@ How the steps of an approved work order are started and completed on the shop-fl
 - Start and completion are recorded conditionally, so if two people press at the same time only one succeeds ("Another user is in session" / "This step is already completed").
 - Steps that do not track quantities complete without asking, passing the received quantity on. Inspection approval steps do not ask for quantities either.
 - A newly set PIN has 6 digits and may not be a repeated digit or a sequence like 123456 (existing 4-digit PINs keep working).
-- For a work order made from semi-finished stock, the semi-finished pieces used leave stock when the work order completes.
+- For a work order started from WIP in stock, the WIP put in leaves stock when the work order completes.
 - In regrind, the semi-finished type cannot be used and "scrapped" means "Returned as-is (not regrindable)". The reground quantity goes back to the customer on a delivery order in [Shipping](#shipping).
 - A completed work order, or a completed "Tool receipt (regrind)" step, has already posted stock and cannot be rolled back. Correct differences with manual goods movements or stocktaking in [Inventory](#inventory).
+- Pieces classified as "semi-finished" in the defect category go into stock as **WIP**. They are separated by how far they were processed (processing state) and by finished size, so the finished diameter and length are entered when completing the step (required once a shape-changing step is done).
+- To stop an in-progress manufacturing work order partway, use "**close out**". Good pieces in the middle of the flow go back to stock as WIP, and the rest is scrapped. A reason is required, and if the approval settings have steps for "Work order close-out" it is applied after approval. It is not applied if steps progress while approval is pending.
+- A step past its deadline (**step due date**) and not finished is shown in red on the step card, the flow chart, the Work location board (`PD09`) and the shared device.
+- On the shared device, even without the paper work order you can pick an approved or in-progress work order from the "**Work order list**" and open its steps. The steps you can operate after opening are the same as with Work order scan.
+- The step screen shows the **machining programs** for that step (registered on the drawing version) and the **marking number**.
 
 ## 6. Purchasing — from requesting material to receiving it [#purchasing]
 
@@ -495,6 +507,8 @@ Covers closing the Shipped dispatch deliveries on each customer's closing day, i
 - The journal CSV is exported per invoice. The closing row becomes Exported only on that invoice's first posting; re-exporting after a reversal does not change it.
 - If tax categories with different account codes share one tax rate, the journal cannot be fixed and no CSV is produced. Align the account codes on the tax categories first.
 - There is no way to delete an invoice or return a closing row to Unprocessed. Trace mistakes back through the delivery orders.
+- When two or more companies issue documents (own companies), invoices are created **separately per company**. Even for the same customer and closing, shipments spanning more than one company become one invoice per company, and the issuer block and company seal printed are those of that company.
+- To book regrind sales to a separate account, enter it under "sales account code by order type" in Accounting export (`SY0J`). On an invoice that mixes products and regrinding, the sales rows are split by account.
 
 ## Related pages [#related]
 

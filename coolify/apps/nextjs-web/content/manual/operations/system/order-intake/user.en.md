@@ -32,7 +32,7 @@ Press **注文書取込** (Order Document Intake) inside 「システム」 (Sys
 
 ## How to read the screen
 
-From top to bottom there are four blocks: "Drop into folder", "Waiting", "Failed", and "Processed".
+At the very top is the 「**取込口の自社法人**」 (own company of the intake channel) box ([Own company of the intake channel](#intake-company)), and below it four blocks: "Drop into folder", "Waiting", "Failed", and "Processed".
 
 - **フォルダへ投入** (Drop into folder) … a button to choose files, a button to scan right away, and the intake folder's path and auto-scan interval.
 - **取込待ち** (Waiting) … files not yet brought in. The one file currently being extracted also stays here.
@@ -95,6 +95,20 @@ Files that arrived by email are named `mail_sender_originalname`. For example
 If one email carries three order documents, you get **three order acceptances**
 (one document = one record). Images embedded in the signature — company logos
 and the like — are not taken in.
+
+## Own company of the intake channel [#intake-company]
+
+When two or more companies issue documents ([own companies](/manual/en/operations/masters/own-company/user)), this setting decides **which company's order acceptance an imported order becomes**. If you have only one company, leave it at 「既定の法人」 (default company).
+
+1. In the 「**取込口の自社法人**」 (own company of the intake channel) box at the very top of the screen, press 「**編集**」 (Edit).
+2. Choose 「**自社法人**」 (own company).
+3. Press 「**保存**」 (Save).
+
+- Files that enter the intake folder (including those dropped in from this screen, and those from email and external integrations) become order acceptances of **the company chosen here**. Their numbers are also taken from that company's sequence.
+- **Files uploaded with 「優先取込」 (priority import) on the [order acceptance](/manual/en/operations/sales/order-acceptance/user) screen** become order acceptances of the uploader's company, if the uploader's assigned sites resolve to exactly one company. When they do not (the assigned sites span two or more companies, or there are none), the company chosen here is used.
+- The company of an order acceptance cannot be changed after it is created, so **changing the setting only affects files imported from now on**. Order acceptances already imported keep their company.
+
+> 💡 There is one intake channel, so only one company can be chosen. For orders addressed to the other company, have someone who belongs to that company upload them with 「優先取込」 (priority import), or create the [order acceptance](/manual/en/operations/sales/order-acceptance/user) by hand.
 
 ## Dropping in files
 

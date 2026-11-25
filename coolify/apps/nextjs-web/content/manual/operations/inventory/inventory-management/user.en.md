@@ -1,7 +1,7 @@
 ---
 title: "Inventory Management — User Manual"
 description: "See how much product, material, and work in progress you have and where it is. Recording a change of storage location is also done here."
-screenshots: [inventory-products-01, inventory-product-detail-01, inventory-materials-01, inventory-material-detail-01, inventory-wip-01, inventory-transfer-01, inventory-locations-01, inventory-transactions-01]
+screenshots: [inventory-products-01, inventory-product-detail-01, inventory-materials-01, inventory-material-detail-01, inventory-wip-stock-01, inventory-wip-classify-01, inventory-wip-01, inventory-transfer-01, inventory-locations-01, inventory-transactions-01]
 ---
 This app shows **where and how much** product and material you have. Recording a change of storage location is also done here. The operation code is `ST01`.
 
@@ -129,6 +129,8 @@ Below are 2 tabs:
 
 A screen for goods that were **processed partway and put into stock**. WIP is grouped by "WIP blank" (goods of the same material type, diameter and length) and then split by **how far it has been processed (the processing state)**.
 
+![WIP tab of inventory management](../../../assets/screenshots/inventory-wip-stock-01.png)
+
 - The grey heading row is the **material type and diameter × length** (the WIP blank), with the total quantity on the right.
 - 「**加工状態**」(processing state) … the completed part-changing steps, in the order they were done, like "切断 › センタレス › 段加工". Goods with no completed step show 「**未加工**」(unprocessed). A processing state that has been given a name shows that name above the steps.
 - 「**仕上がり寸法**」(finished size) … the diameter × length after grinding. "—" when it was not recorded.
@@ -162,6 +164,8 @@ A heading 「**未分類**」(unclassified) may appear at the top. These are sem
 5. Enter the 「**仕上がり径**」(finished diameter) and 「**仕上がり長**」(finished length). They are required once you pick at least one step.
 6. Change the 「**目標製品**」(target product) if needed.
 7. Press 「**分類する**」.
+
+![Screen for classifying unclassified WIP](../../../assets/screenshots/inventory-wip-classify-01.png)
 
 > 💡 Classifying **does not change the quantity**. Two lines — the issue from the unclassified stock and the receipt into the classified stock — are recorded on one [inventory movement](/manual/en/operations/inventory/inventory-movements/user) (ST04). The storage location and lot stay the same.
 

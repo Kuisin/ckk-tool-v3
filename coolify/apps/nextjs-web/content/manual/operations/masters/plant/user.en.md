@@ -66,10 +66,11 @@ When you open the app, a list of the registered sites is shown.
 2. Enter a short text that stands for this site in 「**拠点コード**」 (site code), for example `F01`.
 3. Enter the name of the site in the Japanese box of 「**名称**」 (name), for example 本社工場 (head office plant).
 4. Enter how it is read in 「**よみがな**」 (reading), for example ほんしゃこうじょう.
-5. Choose 「**国**」 (country) under 「**連絡先・住所**」 (contact and address). 日本 (Japan) is filled in at the start.
-6. Choose 「**地域**」 (region). If you have not registered any, you can leave it empty.
-7. Enter 「**郵便番号**」 (postal code), 「**住所**」 (address), 「**電話番号**」 (phone number), 「**メールアドレス**」 (email address) and 「**担当者**」 (contact person).
-8. Press 「**保存**」 (Save).
+5. When two or more companies issue documents, choose the company this site belongs to in 「**自社法人**」 (own company). With only one company, you can leave it at 「既定の法人」 (default company).
+6. Choose 「**国**」 (country) under 「**連絡先・住所**」 (contact and address). 日本 (Japan) is filled in at the start.
+7. Choose 「**地域**」 (region). If you have not registered any, you can leave it empty.
+8. Enter 「**郵便番号**」 (postal code), 「**住所**」 (address), 「**電話番号**」 (phone number), 「**メールアドレス**」 (email address) and 「**担当者**」 (contact person).
+9. Press 「**保存**」 (Save).
 
 ![New entry form for a site](../../../assets/screenshots/master-plant-new-01.png)
 
@@ -132,6 +133,7 @@ Every field on the site screen.
 |-------|----------|---------------|
 | [Site code](#field-code) | Required | The site's reference code |
 | [Name / kana](#field-name) | Required | The site name |
+| [Own company](#field-own-company) | Optional | The company that issues this site's documents |
 | [Country / region](#field-region) | Optional | Used to scope permissions |
 | [Postcode / address](#field-address) | Optional | Location |
 | [Phone / email / contact](#field-contact) | Optional | Contact details |
@@ -145,6 +147,10 @@ The site's reference code, used on stock and shipping screens.
 ### Name / kana [#field-name]
 
 The site name — the "where" on stock, receipts and shipments.
+
+### Own company [#field-own-company]
+
+The company this site belongs to ([own company](/manual/en/operations/masters/own-company/user)). **The issuer of documents handled at this site (order acceptances, delivery orders, delivery notes, invoices and so on), and the sequence their document numbers come from, are those of the company chosen here.** If none is chosen it is the default company. Changing it does not change the company of documents already created (it applies to documents created afterwards).
 
 ### Country / region [#field-region]
 

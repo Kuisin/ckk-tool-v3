@@ -54,6 +54,10 @@ Make a work order for each of the stock portion and the manufactured portion. It
 
 **Regrinding** (an order to regrind tools the customer has used — ours or another maker's) is made as a **regrind work order** from an order line whose order type is regrind. Nothing is manufactured, so it has no material and no storage location; its steps come from the latest version of the shared **regrind step list** (tool receipt → grinding → optional coating / inspection), tied to neither product nor customer. Recording the number of tools that arrived on the first step, tool receipt, books them as the customer's stock (separate from our own). Another maker's tool is registered in the product master as an external product first.
 
+**Starting from WIP** — when partly processed pieces are in stock (WIP), you can choose them from "usable WIP" on the work order create screen and continue from there. Candidates are shown in three groups: exact size, longer, and larger diameter. When chosen, the steps already done are not performed in that work order, and no material is used. The chosen WIP is reserved at approval.
+
+**Step due date** — an internal deadline can be set per step (optional). A step that is past it and not finished is shown in red on the step card, the flow chart, the [Work location board](/manual/en/operations/production/work-location-board/user) (`PD09`) and the shop-floor tablet.
+
 ![New work order screen made from an order line. The save button is highlighted with a red box](../assets/screenshots/flow-work-order-new-01.png)
 
 ### 4. Approval
@@ -86,9 +90,15 @@ flowchart TD
 
 ![Quantity/defect input screen. The complete button is highlighted with a red box](../assets/screenshots/flow-step-complete-01.png)
 
+**Semi-finished pieces go into stock as WIP** — pieces classified as "semi-finished" in the defect category go into stock as WIP when the work order is completed. They are entered separately by how far they were processed (processing state) and by finished size, so the finished diameter and finished length are entered when completing the step (required once a shape-changing step is done).
+
+**Seeing what is waiting where** — from the office, the [Work location board](/manual/en/operations/production/work-location-board/user) (`PD09`) shows that day's plans, carried-over steps and steps being worked on, per work location, all at once. On the shop floor, when the paper work order is not at hand, the "[Work order list](/manual/en/operations/kiosk/wo-list/user)" on the shop-floor tablet lets you pick an approved or in-progress work order and open its steps.
+
 ### 6. Completing
 
 Once every step is done, that work order's product goes into stock, and you can go on to [Shipping flow](/manual/en/process/shipping). **A regrind work order does not add to our own stock** — the received tools are recorded as the customer's property, and the reground pieces are returned with a delivery order.
+
+**Close-out** — when an in-progress manufacturing work order has to be stopped partway because the order was cancelled or the drawing changed, use "close out". Good pieces in the middle of the flow go back into stock as WIP (the rest is recorded as scrap) and the work order becomes cancelled. A reason is required, and if the [approval settings](/manual/en/operations/masters/approval-setting/user) have steps for "Work order close-out", it is applied after approval. The original order lines go back to not planned.
 
 ![Product stock transaction history. The stock-in record is highlighted with a red box](../assets/screenshots/flow-inventory-in-01.png)
 

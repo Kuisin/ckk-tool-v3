@@ -1,6 +1,6 @@
 ---
 title: "Drawing — user guide"
-screenshots: [design-file-list-01, design-file-detail-01, design-file-new-01]
+screenshots: [design-file-list-01, design-file-detail-01, design-version-programs-01, design-file-new-01]
 description: "Register product drawings as versions and manage them separately per customer."
 ---
 Register product drawings **as versions** and keep them **separate per ordering customer**. The operation code is `PD06`.
@@ -173,6 +173,8 @@ On the product screen, each ordering-customer section has a **Series memo**. Use
 ## Machining programs
 
 The **Machining programs** panel on the version screen holds the programs made from that version. Select **Edit** to start editing; saving returns to the view.
+
+![Drawing version screen. Each machining program lists its machine (work location) and the steps it covers](../../../assets/screenshots/design-version-programs-01.png)
 
 - **One program can cover several steps** (for example roughing and finishing in one program). Steps are picked from the process step master.
 - **The machine is picked from [work locations](/manual/en/operations/masters/work-location/user).** There is no separate machine master — a work location is the machine. Leave it empty for a program that runs on any machine.

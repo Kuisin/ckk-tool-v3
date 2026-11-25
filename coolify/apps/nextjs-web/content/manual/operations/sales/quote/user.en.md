@@ -49,12 +49,15 @@ When you open the app, you see a list of the quotes made so far.
 6. On the line item row, choose「**製品**」(product),「**注文種別**」(order type) and「**数量**」(quantity).
 7. As you enter them, **the unit price, discount and amount appear automatically**. You do not need to correct the amount by hand.
 8. If a delivery date is fixed for the product, also enter「**納期**」(delivery date).
-9. To add another row, press「**明細を追加**」(add line item).
-10. Finally press「**保存**」(save).
+9. If there is something to tell the customer about that line, write it in the line's「**備考**」(notes) — as many lines as you like. It is printed right under that line on the quote PDF.
+10. To add another row, press「**明細を追加**」(add line item).
+11. Finally press「**保存**」(save).
 
 ![New quote form](../../../assets/screenshots/quote-new-01.png)
 
 Once saved, the quote is registered as 「下書き」(draft) and the detail screen opens.
+
+> 💡 **Some people also see a「発行会社」(issuing company) field.** For people whose assigned sites span two or more [own companies](/manual/en/operations/masters/own-company/user), 「**発行会社**」 appears after「支店」(branch). Choose which company issues this quote. Unit prices come from that company's price lists, so **changing the issuing company re-resolves the unit prices**. The issuing company cannot be changed after the quote is created (it is not on the edit screen).
 
 > 💡 Amounts come automatically from the price list for that customer. To change a price, do not change it here — change the [price list](/manual/en/operations/sales/price-list/user) instead.
 
@@ -91,6 +94,12 @@ The screen of a saved quote has five tabs.
 After issuing, the status changes to「**発行済**」(issued) and **the PDF is made for you automatically**.
 
 ![PDF tab](../../../assets/screenshots/quote-pdf-01.png)
+
+The PDF carries these notes per line.
+
+- **Discount note** … a line with a discount has「**※ discount name: -¥amount**」printed right under it (for example「※ 夏季キャンペーン（5%）: -¥16,100」). The unit price column is before the discount and the amount column is after it, so the note shows the customer where the difference comes from. A discount with no name is printed as "Discount".
+- **Line notes** … what you wrote in the line's「備考」(notes) is printed under the discount note, keeping the line breaks.
+- A line with neither gets nothing added. The wording of the notes follows the customer's **document language**.
 
 Open the PDF tab to view the finished quote, or download it and print it. After issuing, you can also save it from「**PDFをダウンロード**」(download PDF) in the「**…**」menu at the top right.
 
@@ -145,6 +154,7 @@ Every field on the quote screen. The **?** next to a field in the app links stra
 |-------|----------|---------------|
 | [Customer](#field-customer) | Required | The customer the quote is for |
 | [Branch](#field-customer-branch) | Optional | The branch it is addressed to, if any |
+| [Issuing company](#field-issuing-company) | Conditional | The own company that issues this quote (shown only to people who can choose) |
 | [Sales rep](#field-sales-rep) | Optional | Your company's sales rep for this quote |
 | [Valid until](#field-valid-until) | Required to issue | Last day the quote is valid |
 | [Status](#field-status) | — | Where the quote stands now |
@@ -154,7 +164,8 @@ Every field on the quote screen. The **?** next to a field in the app links stra
 | [Unit price (price list)](#field-unit-price) | Automatic | Filled in from the price list |
 | [Discount (automatic)](#field-discount) | Automatic | Result of the price list's discount rules |
 | [Delivery date](#field-delivery-date) | Optional | Planned delivery date for that line |
-| [Notes](#field-notes) | Optional | Internal notes |
+| [Line notes](#field-item-notes) | Optional | Notes about that line (printed under the line on the PDF) |
+| [Notes](#field-notes) | Optional | Notes about the whole quote (printed in the notes block of the PDF) |
 
 ### Customer [#field-customer]
 
@@ -163,6 +174,10 @@ The customer the quote is for. **The unit price comes from this customer's price
 ### Branch [#field-customer-branch]
 
 The branch the quote is addressed to. If no branch is registered for that customer you cannot choose one — leaving it empty is fine.
+
+### Issuing company [#field-issuing-company]
+
+The [own company](/manual/en/operations/masters/own-company/user) that issues this quote. The field is shown **only to people whose assigned sites span two or more companies**; people who belong to one company do not see it (that company is filled in automatically). The quote number is taken from the sequence of the company chosen here, and that company is printed in the issuer block of the PDF. It cannot be changed after the quote is created.
 
 ### Sales rep [#field-sales-rep]
 
@@ -200,9 +215,13 @@ The amount deducted automatically when a discount rule on the price list applies
 
 The planned delivery date for that line. It can be set per line, and left empty if not yet decided.
 
+### Line notes [#field-item-notes]
+
+Notes per line. You can write as many lines as you like. **They are printed right under that line on the quote PDF** (the customer sees them). Write internal-only notes on the 「メモ」(memo) tab.
+
 ### Notes [#field-notes]
 
-Internal notes. They do not appear on the quote PDF.
+Notes about the whole quote. **They are printed in the 「備考」(notes) block of the quote PDF** (the customer sees them). Write internal-only notes on the 「メモ」(memo) tab, not here.
 
 ## Questions and problems
 

@@ -70,6 +70,8 @@ Every time you enter something,「**価格試算結果**」(estimate result) nea
 - **見積単価（基準）(quoted unit price, base)** … the base selling price per piece.
 - **参考：数量ごとの単価 (reference: unit price by quantity)** … the table below it shows the base price times each quantity-scale multiplier, per quantity range.
 
+> 💡 **Some people also see a 「発行会社」 (issuing company) field.** For people whose assigned sites span two or more [own companies](/manual/en/operations/masters/own-company/user), 「**発行会社**」 appears on the create screen. Choose which company this price estimate belongs to. Its number (`EST-…`) is taken from that company's sequence and cannot be changed afterwards. People who belong to one company do not see the field; that company is filled in automatically.
+
 > 💡 The discount for large quantities (the setting that makes each piece cheaper) is not made on this screen. It is made in the [price list](/manual/en/operations/sales/price-list/user). A price estimate only gives the base price for one piece.
 
 ## When you want to change the material price

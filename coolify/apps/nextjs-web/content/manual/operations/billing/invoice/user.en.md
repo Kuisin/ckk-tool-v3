@@ -51,8 +51,9 @@ When you open the app, you see a list of the invoices made so far.
 
 ![Invoice detail screen](../../../assets/screenshots/invoice-detail-01.png)
 
-At the top you see the invoice number, customer, billing period, subtotal, consumption tax, total with tax, payment due date, and issue date.
+At the top you see the invoice number, customer, issuer, billing period, subtotal, consumption tax, total with tax, payment due date, and issue date.
 
+- **発行元** (issuer) … your own company that issues this invoice ([own company](/manual/en/operations/masters/own-company/user)). It is decided from the site of the underlying shipments when the invoice is created, and does not change afterwards. Even for the same customer and period, shipments of different companies become **separate invoices per company**.
 - **支払期限 (Payment due date)** … Filled in for you. If a **payment day** (paid on day N of the month) is registered for the customer, it is the first payment day on or after the cut-off date plus the payment-terms days (at least 1 day). Without a payment day, it is the cut-off date plus the payment-terms days (30 days if nothing was agreed).
 - **会計連携日時 (Accounting export date)** … The date and time the file for the accounting software was made. If it has not been made yet, it shows 「**未エクスポート**」 (Not exported).
 
@@ -130,6 +131,8 @@ If one fails, the others are still processed.
 You can see the PDF **only after issuing**. While it is a draft the PDF has not been made yet, and the 「**PDF**」 tab shows 「発行後に PDF を閲覧できます。」 (the PDF can be viewed after issuing).
 
 After issuing, press 「**PDF**」 at the top right of the screen and the invoice PDF opens in another tab; from there you can print it or save it. The 「**PDF**」 tab also shows it right on the screen.
+
+The issuer block at the top right of the PDF prints the name, address, phone number and invoice registration number of the invoice's **issuer** company. The company seal printed is also the one registered for that company. To correct these details or register a seal, use [Own companies](/manual/en/operations/masters/own-company/user) (`MS0I`).
 
 ## Making the file for the accounting software
 

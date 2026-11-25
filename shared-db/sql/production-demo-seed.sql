@@ -33,7 +33,10 @@ BEGIN;
 INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:work-orders:main', true, '指示書（マニュアル撮影用）', now()),
   ('app:my-tasks:main',    true, '未処理一覧（マニュアル撮影用）', now()),
-  ('app:inventory:main',   true, '在庫管理（マニュアル撮影用）', now())
+  ('app:inventory:main',   true, '在庫管理（マニュアル撮影用）', now()),
+  -- 自社法人 (MS0I) と 作業場所一覧 (PD09) — main での公開は未定。撮影 DB に限り有効化。
+  ('app:master-own-companies:main', true, '自社法人（マニュアル撮影用）', now()),
+  ('app:work-location-board:main',  true, '作業場所一覧（マニュアル撮影用）', now())
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
 
@@ -784,5 +787,47 @@ VALUES
    '在庫移動: 未割当 → 第一倉庫 / A-2', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    '2026-07-17T10:10:00+09')
 ON CONFLICT (id) DO NOTHING;
+
+-- ── 工程納期（工程ごとの期限）────────────────────────────────────────────────
+-- 指示書 #9001 の段加工と段加工検査に入れておく。無いと、工程カード・フロー図・
+-- 作業場所一覧 (PD09)・共有端末のどこにも納期の印が出ず、画面で確かめられない。
+-- デモの日付（2026-07）に合わせた固定値なので、いまは「期限超過」の赤い印になる。
+UPDATE app.work_order_steps SET due_date = '2026-07-25'
+ WHERE id = 'dc011000-0000-4000-8000-000000000004'::uuid AND due_date IS NULL;
+UPDATE app.work_order_steps SET due_date = '2026-07-28'
+ WHERE id = 'dc011000-0000-4000-8000-000000000005'::uuid AND due_date IS NULL;
+
+-- ── 加工プログラム（設計図の版ごと）────────────────────────────────────────
+-- デモ商事向けの系列（9001 × デモ商事 v1）= 指示書 #9001 が使う版。ここに置くと、
+-- 設計図の版の画面・指示書の工程の実行画面・共有端末の工程画面に出る。
+-- 1 本のプログラムが複数の工程を受け持てる（切断 + センタレス）。機械 = 作業場所。
+-- ファイルは付けない（番号だけ控えて実体は機械側、という使い方）。
+-- 作業場所（masters-demo-seed）が要るので、設計図の版を入れる sales-demo-seed ではなくここに置く。
+INSERT INTO app.design_programs (id, design_version_id, name, program_number,
+  work_location_id, notes, sort_order, created_by, created_at, updated_at)
+SELECT v.id, 'd9000000-0000-4000-8000-000000000003'::uuid, v.name, v.program_number,
+       (SELECT id FROM app.work_locations WHERE code = v.location), v.notes, v.sort_order,
+       'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+       '2026-07-05T13:00:00+09', '2026-07-05T13:00:00+09'
+  FROM (VALUES
+    ('da000000-0000-4000-8000-000000000001'::uuid, '素材の切断・外径', 'O1001', 'NC-01',
+     '突き出し 65mm。チャック圧は低めに。', 0),
+    ('da000000-0000-4000-8000-000000000002'::uuid, '段加工（荒・仕上げ）', 'O1201', 'NC-01',
+     '仕上げ代 0.05mm。', 1),
+    ('da000000-0000-4000-8000-000000000003'::uuid, '段加工（2 号機用）', 'O2201', 'NC-02',
+     NULL, 2)
+  ) AS v(id, name, program_number, location, notes, sort_order)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO app.design_program_steps (program_id, process_step_id)
+SELECT v.program_id, c.id
+  FROM (VALUES
+    ('da000000-0000-4000-8000-000000000001'::uuid, 'CUTTING'),
+    ('da000000-0000-4000-8000-000000000001'::uuid, 'CENTERLESS'),
+    ('da000000-0000-4000-8000-000000000002'::uuid, 'STEP_MACHINING'),
+    ('da000000-0000-4000-8000-000000000003'::uuid, 'STEP_MACHINING')
+  ) AS v(program_id, code)
+  JOIN app.process_step_catalog c ON c.code = v.code
+ON CONFLICT DO NOTHING;
 
 COMMIT;

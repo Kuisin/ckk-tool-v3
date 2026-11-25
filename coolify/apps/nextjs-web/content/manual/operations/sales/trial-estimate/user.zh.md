@@ -72,6 +72,8 @@ screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-
 
 > 💡 数量多时的折扣（让每支更便宜的设定）不在这个画面设置，而是在[价格表](/manual/zh/operations/sales/price-list/user)里设置。价格试算只给出每支的基准价格。
 
+> 💡 **有些人还会看到「発行会社」（开具公司）栏。** 所属据点跨 2 个以上[本公司法人](/manual/zh/operations/masters/own-company/user)的人，新建画面上会出现「**発行会社**」。请选择这份价格试算属于哪家公司。编号（`EST-…`）取自该公司的流水号，创建后不能更改。只属于 1 家的人看不到该栏，系统会自动填入该公司。
+
 ## 想改材料价格时
 
 参考单价平时会自动带入，直接使用即可。只有在行情变化等想手动重新输入时，才做下面的操作。

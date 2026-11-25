@@ -1,6 +1,6 @@
 ---
 title: "設計図 — 操作マニュアル"
-screenshots: [design-file-list-01, design-file-detail-01, design-file-new-01]
+screenshots: [design-file-list-01, design-file-detail-01, design-version-programs-01, design-file-new-01]
 description: "製品の図面を版（バージョン）ごとに登録し、受注元ごとに分けて管理するアプリです。"
 ---
 製品の図面を **版（バージョン）ごと** に登録し、**受注元ごとに分けて** 管理するアプリです。操作コードは `PD06` です。
@@ -173,6 +173,8 @@ flowchart TD
 ## 加工プログラム
 
 版の画面の「**加工プログラム**」に、その版から起こしたプログラムを登録できます。「編集」を押すと編集が始まり、保存すると閲覧に戻ります。
+
+![設計図の版の画面。加工プログラムごとに機械（作業場所）と受け持つ工程が並ぶ](../../../assets/screenshots/design-version-programs-01.png)
 
 - **1 本のプログラムが複数の工程を受け持てます**（荒・仕上げを 1 本で回す場合など）。工程は工程マスタから選びます。
 - **機械は作業場所（[作業場所](/manual/ja/operations/masters/work-location/user)）から選びます。** 機械だけのマスタはありません — 作業場所がそのまま機械です。機械を問わないプログラムは空欄のままにします。

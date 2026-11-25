@@ -103,7 +103,7 @@ By the way, this delivery note's number appears later as the "source" on the lin
 
 ## Printing (PDF)
 
-The PDF is available from the moment the delivery note is created.
+The PDF is available from the moment the delivery note is created. The issuer block (company name, address, phone number and registration number) prints the details of the same [own company](/manual/en/operations/masters/own-company/user) as the underlying delivery order.
 
 - The 「**PDF**」 tab shows the PDF right on the screen. To make it again, press 「**再生成**」 (Regenerate).
 - Choose 「**PDFをダウンロード**」 (Download PDF) from the 「**…**」 button (the three dots) at the top right of the screen to save it as a file. Print from there.

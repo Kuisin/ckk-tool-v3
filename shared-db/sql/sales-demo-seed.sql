@@ -400,4 +400,24 @@ INSERT INTO app.match_aliases (target_type, target_id, alias, alias_key, hit_cou
 VALUES ('business_partners', 'd0000000-0000-4000-8000-000000000001', 'デモ商事（株）', 'デモ商事', 3, '2026-07-10T02:00:00+09', '2026-07-01T02:00:00+09', '2026-07-10T02:00:00+09')
 ON CONFLICT (target_type, alias_key) DO NOTHING;
 
+-- ── 見積書の明細備考（行ごと・複数行）────────────────────────────────────────
+-- 値引きのある QOT-202607-00002 の行に入れる。PDF では値引きの注意書きの下に
+-- 改行ごと刷られる（無いと、明細備考がどう出るのかを画面でも帳票でも見られない）。
+UPDATE app.quote_items
+   SET notes = E'刃先はシャープエッジ指定。\n10 本ずつ防錆紙で包んで納品。'
+ WHERE id = 'd4000000-0000-4000-8000-000000000003'::uuid AND notes IS NULL;
+
+-- 系列メモ — その製品 × 受注元の図面すべてに共通すること。版を改訂しても引き継ぐ。
+-- owner_id は「品目 id : 受注元（汎用は空）」（lib/design-files-core.ts seriesMemoOwnerId）。
+INSERT INTO app.document_memos (owner_type, owner_id, kind, content, plain_text,
+  created_by, updated_by, created_at, updated_at)
+SELECT 'design_series', '9001:d0000000-0000-4000-8000-000000000001', 'MEMO',
+       '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"首下の逃がしは客先図面の指示を優先する。刃先の面取りは不要（客先確認済み）。"}]}]}'::jsonb,
+       '首下の逃がしは客先図面の指示を優先する。刃先の面取りは不要（客先確認済み）。',
+       'a0b1c2d3-0000-4000-8000-000000005107'::uuid, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+       '2026-07-05T13:10:00+09', '2026-07-05T13:10:00+09'
+ WHERE NOT EXISTS (SELECT 1 FROM app.document_memos
+                    WHERE owner_type = 'design_series'
+                      AND owner_id = '9001:d0000000-0000-4000-8000-000000000001');
+
 COMMIT;

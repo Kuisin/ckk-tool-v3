@@ -1,7 +1,7 @@
 ---
 title: "库存管理 — 操作手册"
 description: "查看产品、材料、在制品在哪些地方各有多少库存的应用。变更存放位置时也在这里记录。"
-screenshots: [inventory-products-01, inventory-product-detail-01, inventory-materials-01, inventory-material-detail-01, inventory-wip-01, inventory-transfer-01, inventory-locations-01, inventory-transactions-01]
+screenshots: [inventory-products-01, inventory-product-detail-01, inventory-materials-01, inventory-material-detail-01, inventory-wip-stock-01, inventory-wip-classify-01, inventory-wip-01, inventory-transfer-01, inventory-locations-01, inventory-transactions-01]
 ---
 用于确认产品・材料 **在哪些地方各有多少库存** 的应用。变更存放位置时也在这里记录。操作码是 `ST01`。
 
@@ -129,6 +129,8 @@ flowchart TD
 
 查看 **加工到一半后入库的物品** 的画面。在制品按「在制坯料」（材料类别・直径・长度相同的一组物品）汇总，再按 **加工到哪一步（加工状态）** 分开排列。
 
+![库存管理的在制品标签页](../../../assets/screenshots/inventory-wip-stock-01.png)
+
 - 灰色的标题行是 **材料类别・直径 × 长度**（在制坯料），右侧显示合计数量。
 - 「**加工状態**」（加工状态）… 已完成的「改变形状的工序」，按完成顺序排列，如「切断 › センタレス › 段加工」。什么都没完成的显示「**未加工**」。已命名的加工状态，会在上方显示该名称。
 - 「**仕上がり寸法**」（成品尺寸）… 磨削后的直径 × 长度。没有记录时显示「—」。
@@ -162,6 +164,8 @@ flowchart TD
 5. 输入「**仕上がり径**」（成品直径）「**仕上がり長**」（成品长度）。只要选了一道工序就必须输入。
 6. 如有需要，重新选择「**目標製品**」（目标产品）。
 7. 点击「**分類する**」。
+
+![对未分类在制品进行分类的画面](../../../assets/screenshots/inventory-wip-classify-01.png)
 
 > 💡 分类 **不会改变数量**。从未分类出库、入库到分类目标这两行，会记录在同一张[出入库单](/manual/zh/operations/inventory/inventory-movements/user)（ST04）上。存放位置和批次保持不变。
 

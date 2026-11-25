@@ -1,6 +1,6 @@
 ---
 title: "图纸 — 操作手册"
-screenshots: [design-file-list-01, design-file-detail-01, design-file-new-01]
+screenshots: [design-file-list-01, design-file-detail-01, design-version-programs-01, design-file-new-01]
 description: "按版本登记产品图纸，并按接单方分别管理。"
 ---
 **按版本** 登记产品图纸，并 **按订货方分别** 管理。操作代码为 `PD06`。
@@ -173,6 +173,8 @@ flowchart TD
 ## 加工程序
 
 版本画面的「**加工程序**」中可以登记由该版本编制的程序。点击「编辑」开始编辑，保存后回到查看状态。
+
+![图纸版本画面。每个加工程序列出机床（作业场所）和负责的工序](../../../assets/screenshots/design-version-programs-01.png)
 
 - **一个程序可对应多个工序**（例如粗加工和精加工用同一个程序）。工序从工序主数据中选择。
 - **机器从[作业场所](/manual/zh/operations/masters/work-location/user)中选择。** 没有单独的机器主数据 — 作业场所就是机器。不限机器的程序请留空。

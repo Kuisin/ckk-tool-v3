@@ -88,6 +88,10 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
     app: "pending-work-orders",
   },
   { path: "operations/production/design-file/user", app: "design-files" },
+  {
+    path: "operations/production/work-location-board/user",
+    app: "work-location-board",
+  },
   // ── 在庫 ────────────────────────────────────────────────────────────────
   {
     path: "operations/inventory/inventory-management/user",
@@ -175,6 +179,10 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
     path: "operations/masters/regrind-item/user",
     app: "master-regrind-items",
   },
+  {
+    path: "operations/masters/own-company/user",
+    app: "master-own-companies",
+  },
   // ── システム ────────────────────────────────────────────────────────────
   { path: "operations/system/user-management/user", app: "user-management" },
   { path: "operations/system/app-management/user", app: "app-management" },
@@ -205,6 +213,7 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
   // ログイン画面。QRカードと PIN があれば入れる — 権限の話ではない。
   { path: "operations/kiosk/start/user", code: null },
   { path: "operations/kiosk/steps/user", code: "work_order" },
+  { path: "operations/kiosk/wo-list/user", code: "work_order" },
   { path: "operations/kiosk/work-location/user", code: "work_order" },
 ];
 
