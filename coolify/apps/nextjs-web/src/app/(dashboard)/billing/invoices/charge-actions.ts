@@ -209,8 +209,7 @@ export async function saveInvoiceCharges(
       if (manualDrafts.length > 0) {
         await tx.invoiceItem.createMany({
           data: manualDrafts.map((d) => ({
-            invoiceYearMonth: key.yearMonth,
-            invoiceSeq: key.seq,
+            invoiceId: invoice.id,
             chargeItemId: d.chargeItemId,
             description: d.description,
             quantity: d.quantity,
@@ -227,8 +226,7 @@ export async function saveInvoiceCharges(
       });
       await tx.invoiceTaxSummary.createMany({
         data: buckets.map((b, i) => ({
-          invoiceYearMonth: key.yearMonth,
-          invoiceSeq: key.seq,
+          invoiceId: invoice.id,
           taxCategoryId: bucketCategoryId(allForTotals, b.taxRate),
           taxRate: b.taxRate,
           taxableBase: b.taxableBase,

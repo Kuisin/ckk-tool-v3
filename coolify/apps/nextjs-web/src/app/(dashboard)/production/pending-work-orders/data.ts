@@ -15,7 +15,11 @@ import type { UnplannedOrderLineRow } from "@/components/production/pending-work
 import type { WorkOrderRow } from "@/components/production/work-orders/model";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { formatOrderLineNumber, formatProductNumber } from "@/lib/doc-number";
+import {
+  formatOrderLineNumber,
+  formatProductNumber,
+  legacyDocKey,
+} from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import { orderLineScopeWhere } from "../../sales/order-lines/data";
@@ -116,8 +120,7 @@ export async function fetchUnplannedOrderLines(): Promise<
     // 手配済み（あるいは超過手配）の明細はキューに出さない。
     if (unplannedQuantity <= 0) continue;
     const number = formatOrderLineNumber({
-      yearMonth: r.acceptanceYearMonth,
-      seq: r.acceptanceSeq,
+      ...legacyDocKey(r.acceptanceYearMonth, r.acceptanceSeq),
       branch: r.branch,
     });
     out.push({

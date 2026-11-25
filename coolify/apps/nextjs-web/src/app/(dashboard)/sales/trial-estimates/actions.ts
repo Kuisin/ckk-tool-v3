@@ -16,6 +16,7 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
+import { companyForUnplaced } from "@/lib/doc-company";
 import {
   type DocKey,
   formatEstimateNumber,
@@ -240,6 +241,7 @@ export async function createTrialEstimate(
       data: {
         yearMonth,
         seq,
+        ...(await companyForUnplaced()),
         name: v.name,
         toolType: v.input.toolType,
         status: "DRAFT",

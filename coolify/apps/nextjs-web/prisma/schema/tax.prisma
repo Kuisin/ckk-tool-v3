@@ -104,8 +104,9 @@ model TaxCategoryRate {
 /// ヘッダ (tax_type / tax_rate / subtotal / tax_amount) から 1 本の束を合成する。
 model InvoiceTaxSummary {
   id               String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  invoiceYearMonth String @map("invoice_year_month") @db.Char(6)
-  invoiceSeq       Int    @map("invoice_seq")
+  invoiceId String @map("invoice_id") @db.Uuid
+  invoiceYearMonth String? @map("invoice_year_month") @db.Char(6)
+  invoiceSeq       Int?    @map("invoice_seq")
 
   /// 束の区分が 1 つに定まるときだけ入る（ラベル表示用）。定まらなければ null。
   taxCategoryId Int?    @map("tax_category_id")
@@ -115,10 +116,10 @@ model InvoiceTaxSummary {
   taxAmount     Decimal @map("tax_amount") @db.Decimal(12, 2)
   sortOrder     Int     @default(0) @map("sort_order")
 
-  invoice     Invoice      @relation(fields: [invoiceYearMonth, invoiceSeq], references: [yearMonth, seq], onDelete: Cascade)
+  invoice     Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   taxCategory TaxCategory? @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
 
-  @@unique([invoiceYearMonth, invoiceSeq, taxRate])
+  @@unique([invoiceId, taxRate])
   @@map("invoice_tax_summaries")
   @@schema("app")
 }

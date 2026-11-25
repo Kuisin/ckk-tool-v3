@@ -29,10 +29,12 @@ import {
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { companyForAcceptance } from "@/lib/doc-company";
 import {
   type DocKey,
   formatDocNumber,
   formatOrderLineNumber,
+  legacyDocKey,
   parseDocKey,
 } from "@/lib/doc-number";
 import { enqueueExtraction } from "@/lib/intake";
@@ -1139,10 +1141,21 @@ export async function createManualAcceptance(
       v.customerBpId,
       null,
     );
+    // 発行元の自社法人 — 作成時に決めて以後は変えない（lib/doc-company-core.ts）。
+    const company = await companyForAcceptance({
+      linePlantIds: v.items.map((it) => it.assignedPlantId),
+      quoteKey: (() => {
+        const q = quoteKeyOf(v.quoteNumber);
+        return q.quoteYearMonth != null && q.quoteSeq != null
+          ? { yearMonth: q.quoteYearMonth, seq: q.quoteSeq }
+          : null;
+      })(),
+    });
     await prisma.orderAcceptance.create({
       data: {
         yearMonth,
         seq,
+        ...company,
         status: "DRAFT",
         source: "MANUAL",
         customerBpId: v.customerBpId,
@@ -1249,15 +1262,15 @@ export async function recreateFromCancelledAcceptance(
         status: "DRAFT",
         // 原本の PDF は元の請書に残す。作り直した側は人が起こしたもの。
         source: "MANUAL",
-        replacesYearMonth: key.yearMonth,
-        replacesSeq: key.seq,
+        // 作り直した請書は元の請書の発行元を継ぐ（同じ注文の続き）。
+        ownCompanyId: source.ownCompanyId,
+        replacesId: source.id,
         customerBpId: source.customerBpId,
         customerBranchBpId: source.customerBranchBpId,
         salesRepId,
         customerProvidesDeliveryNote: source.customerProvidesDeliveryNote,
         customerOrderRef: source.customerOrderRef,
-        quoteYearMonth: source.quoteYearMonth,
-        quoteSeq: source.quoteSeq,
+        quoteId: source.quoteId,
         orderDate: source.orderDate,
         currency: source.currency,
         notes: source.notes,
@@ -1391,7 +1404,7 @@ export async function approveAcceptanceCancel(
       tr("sales.orderAcceptanceActions.cancelRequestNotPending"),
     );
   }
-  const key = { yearMonth: row.acceptanceYearMonth, seq: row.acceptanceSeq };
+  const key = legacyDocKey(row.acceptanceYearMonth, row.acceptanceSeq);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
     return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }
@@ -1450,7 +1463,7 @@ export async function rejectAcceptanceCancel(
       tr("sales.orderAcceptanceActions.cancelRequestNotPending"),
     );
   }
-  const key = { yearMonth: row.acceptanceYearMonth, seq: row.acceptanceSeq };
+  const key = legacyDocKey(row.acceptanceYearMonth, row.acceptanceSeq);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
     return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }

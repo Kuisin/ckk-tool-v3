@@ -22,6 +22,7 @@ import "server-only";
 
 import { quoteDisplayStatus } from "@/components/sales/quotes/model";
 import { deliveryNoteTotals } from "@/components/shipping/delivery-notes/model";
+import { legacyDocKey } from "@/lib/doc-number";
 import { type Prisma, prisma } from "./db";
 import { formatDocNumber } from "./doc-number";
 import { type LocalizedTextInput, localized } from "./format";
@@ -623,8 +624,7 @@ export async function getPortalDocument(
         for (const ii of line.invoiceItems) {
           refs.push({
             type: "invoices",
-            yearMonth: ii.invoiceYearMonth,
-            seq: ii.invoiceSeq,
+            ...legacyDocKey(ii.invoiceYearMonth, ii.invoiceSeq),
             issuedOn: iso(ii.invoice.issuedAt ?? ii.invoice.createdAt),
           });
         }
@@ -701,8 +701,7 @@ export async function getPortalDocument(
         if (!line) continue;
         refs.push({
           type: "order_acceptances",
-          yearMonth: line.acceptanceYearMonth,
-          seq: line.acceptanceSeq,
+          ...legacyDocKey(line.acceptanceYearMonth, line.acceptanceSeq),
           issuedOn:
             date(line.acceptance.orderDate) ?? iso(line.acceptance.createdAt),
         });
@@ -719,8 +718,7 @@ export async function getPortalDocument(
       for (const ii of invoiced) {
         refs.push({
           type: "invoices",
-          yearMonth: ii.invoiceYearMonth,
-          seq: ii.invoiceSeq,
+          ...legacyDocKey(ii.invoiceYearMonth, ii.invoiceSeq),
           issuedOn: iso(ii.invoice.issuedAt ?? ii.invoice.createdAt),
         });
       }

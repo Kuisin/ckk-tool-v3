@@ -21,6 +21,7 @@ import {
   type DocKey,
   formatDocNumber,
   formatProductNumber,
+  legacyDocKey,
   orderLineNumberOf,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -330,8 +331,7 @@ export async function fetchWorkOrderDeliverySeed(
       ...new Set(
         lines.map((l) =>
           formatDocNumber("ORD", {
-            yearMonth: l.acceptanceYearMonth,
-            seq: l.acceptanceSeq,
+            ...legacyDocKey(l.acceptanceYearMonth, l.acceptanceSeq),
           }),
         ),
       ),

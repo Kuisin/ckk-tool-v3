@@ -16,6 +16,8 @@
 import "server-only";
 
 import { getTranslations } from "next-intl/server";
+import { orderAcceptanceIdOf } from "@/lib/doc-ids";
+import { legacyDocKey } from "@/lib/doc-number";
 import { approvalNeed, startApprovalFlow } from "./approvals";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
@@ -127,8 +129,7 @@ export async function submitAcceptanceCancelRequest(input: {
   const actor = await getCurrentActorId();
   const row = await prisma.orderAcceptanceCancelRequest.create({
     data: {
-      acceptanceYearMonth: key.yearMonth,
-      acceptanceSeq: key.seq,
+      acceptanceId: await orderAcceptanceIdOf(key),
       reason,
       requestedBy: actor,
     },
@@ -181,7 +182,7 @@ export async function applyApprovedAcceptanceCancel(
       errors: [tr("orderAcceptanceActions.cancelRequestNotPending")],
     };
   }
-  const key = { yearMonth: row.acceptanceYearMonth, seq: row.acceptanceSeq };
+  const key = legacyDocKey(row.acceptanceYearMonth, row.acceptanceSeq);
   const actor = await getCurrentActorId();
   const result = await applyCancel(key, row.reason);
   await prisma.orderAcceptanceCancelRequest.update({

@@ -21,6 +21,7 @@
 
 import "server-only";
 
+import { legacyDocKey } from "@/lib/doc-number";
 import { prisma } from "./db";
 import {
   DEFAULT_DELIVERY_TOLERANCE,
@@ -229,8 +230,7 @@ async function evaluateOneLine(
     orderLineNumber:
       line.branch != null
         ? formatOrderLineNumber({
-            yearMonth: line.acceptanceYearMonth,
-            seq: line.acceptanceSeq,
+            ...legacyDocKey(line.acceptanceYearMonth, line.acceptanceSeq),
             branch: line.branch,
           })
         : "",

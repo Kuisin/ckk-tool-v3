@@ -97,11 +97,13 @@ export function formatOrderLineNumber(key: OrderLineKey): string {
  * 未確定の行は番号を持たない → null。
  */
 export function orderLineNumberOf(row: {
-  acceptanceYearMonth: string;
-  acceptanceSeq: number;
+  // 旧列（番号設計 PR-B 以降は NULL 可。DB トリガーが acceptance_id から埋める）
+  acceptanceYearMonth: string | null;
+  acceptanceSeq: number | null;
   branch: number | null;
 }): string | null {
   if (row.branch == null) return null;
+  if (row.acceptanceYearMonth == null || row.acceptanceSeq == null) return null;
   return formatOrderLineNumber({
     yearMonth: row.acceptanceYearMonth,
     seq: row.acceptanceSeq,
@@ -109,15 +111,35 @@ export function orderLineNumberOf(row: {
   });
 }
 
-/** 注文明細行 → Prisma の複合ユニークキー（確定済みのみ）。 */
+/**
+ * 注文明細番号 → Prisma の where（確定済みのみ）。注文請書を番号で引き、
+ * その中の枝番を指す。一意なので findFirst で 1 行に決まる — 一意制約は
+ * (acceptance_id, branch) にある（番号設計 PR-B で注文請書のキーが uuid に
+ * なったため、番号の 3 列そのものの複合ユニークは無くなった）。
+ */
 export function orderLineWhereKey(key: OrderLineKey) {
   return {
-    acceptanceYearMonth_acceptanceSeq_branch: {
-      acceptanceYearMonth: key.yearMonth,
-      acceptanceSeq: key.seq,
-      branch: key.branch,
-    },
+    acceptance: { yearMonth: key.yearMonth, seq: key.seq },
+    branch: key.branch,
   };
+}
+
+/**
+ * 子の表の旧 (…_year_month, …_seq) 列 → DocKey。
+ *
+ * 番号設計 PR-B で子の表は親を uuid（…_id）で指すようになり、旧 2 列は
+ * NULL 可になった。値は DB トリガー app.sync_doc_parent_key が id から必ず
+ * 埋めるので、**必須の参照**の旧列が NULL なのは DB が壊れているときだけ —
+ * 黙って別の番号を作らずに落とす。旧列は PR-D で消える。
+ */
+export function legacyDocKey(
+  yearMonth: string | null | undefined,
+  seq: number | null | undefined,
+): DocKey {
+  if (yearMonth == null || seq == null) {
+    throw new Error("legacy document key is missing (sync_doc_parent_key)");
+  }
+  return { yearMonth, seq };
 }
 
 const ORDER_LINE_RE = /^(?:ORD-)?(\d{6})-(\d{1,6})-(\d{1,2})$/i;

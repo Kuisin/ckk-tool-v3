@@ -349,6 +349,7 @@ export async function updateDeliveryNote(
     const prior = await prisma.deliveryNote.findUnique({
       where: { yearMonth_seq: key },
       select: {
+        id: true,
         deliveryMethod: true,
         salesRepId: true,
         endUserBpId: true,
@@ -408,10 +409,10 @@ export async function updateDeliveryNote(
           deliveryNoteSeq: key.seq,
         },
       });
+      if (!prior) throw new Error("delivery note not found");
       await tx.deliveryNoteItem.createMany({
         data: v.items.map((it, i) => ({
-          deliveryNoteYearMonth: key.yearMonth,
-          deliveryNoteSeq: key.seq,
+          deliveryNoteId: prior.id,
           ...toItemData(it, i, v.includePrice, lineTaxOf(Number(it.itemId))),
         })),
       });

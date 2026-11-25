@@ -20,6 +20,7 @@
 
 import "server-only";
 
+import { legacyDocKey } from "@/lib/doc-number";
 import { prisma } from "./db";
 import { type LocalizedTextInput, localized } from "./format";
 import { portalAccessFor, portalScopeFor } from "./portal-access";
@@ -289,8 +290,7 @@ export async function getPortalOrderLine(
   for (const ii of row.invoiceItems) {
     refs.push({
       type: "invoices",
-      yearMonth: ii.invoiceYearMonth,
-      seq: ii.invoiceSeq,
+      ...legacyDocKey(ii.invoiceYearMonth, ii.invoiceSeq),
       issuedOn: (ii.invoice.issuedAt ?? ii.invoice.createdAt)
         .toISOString()
         .slice(0, 10),

@@ -69,6 +69,12 @@ enum PriceDiscountType {
 // 試算 (SA05 見積試算) — 計算入力のスナップショット + 参照価格。
 // 文書番号 EST-{year_month}-{seq:5桁} はキーから導出。
 model Estimate {
+  /// 内部キー（uuid）。書類番号は法人ごとの連番になるので（番号設計 PR-C）、
+  /// 番号は行の識別にならない。子の表はこの id を FK で指す（PR-B）。
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   yearMonth String @map("year_month") @db.Char(6)
   seq       Int
 
@@ -116,8 +122,11 @@ model Estimate {
 
   priceListVariants PriceListVariant[]
 
-  @@id([yearMonth, seq])
+  ownCompany OwnCompany @relation("EstimateOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@unique([yearMonth, seq])
   @@index([itemId])
+  @@index([ownCompanyId])
   @@map("estimates")
   @@schema("app")
 }
@@ -139,6 +148,12 @@ enum PriceListApprovalStatus {
 }
 
 model PriceListEntry {
+  /// 内部キー（uuid）。書類番号は法人ごとの連番になるので（番号設計 PR-C）、
+  /// 番号は行の識別にならない。子の表はこの id を FK で指す（PR-B）。
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   yearMonth String @map("year_month") @db.Char(6)
   seq       Int
 
@@ -176,7 +191,9 @@ model PriceListEntry {
   createdByUser User?              @relation("PriceListEntryCreatedBy", fields: [createdBy], references: [id])
   variants      PriceListVariant[]
 
-  @@id([yearMonth, seq])
+  ownCompany OwnCompany @relation("PriceListEntryOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@unique([yearMonth, seq])
   // 価格表の識別は (顧客 × 品目 × 対象工具)。作成後不変。工具は null を
   // 1 つの値として数える（工具なしの価格表は顧客 × 品目に 1 つだけ）— Prisma は
   // 部分 unique index を表現できないので、2 本の部分 unique index を
@@ -185,6 +202,7 @@ model PriceListEntry {
   //   tool_item_id IS NOT NULL → (customer_bp_id, item_id, tool_item_id)
   @@index([itemId])
   @@index([toolItemId])
+  @@index([ownCompanyId])
   @@map("price_list_entries")
   @@schema("app")
 }
@@ -194,26 +212,29 @@ model PriceListEntry {
 // （TEST/SAMPLE は終了日必須）。tiers / discounts はバリアント配下。
 model PriceListVariant {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  entryYearMonth String    @map("entry_year_month") @db.Char(6)
-  entrySeq       Int       @map("entry_seq")
+  entryId String @map("entry_id") @db.Uuid
+  entryYearMonth String?    @map("entry_year_month") @db.Char(6)
+  entrySeq       Int?       @map("entry_seq")
   orderType      OrderType @map("order_type")
 
   baseUnitPrice     Decimal   @default(0) @map("base_unit_price") @db.Decimal(12, 2)
   validFrom         DateTime  @map("valid_from") @db.Date
   validUntil        DateTime? @map("valid_until") @db.Date
+  estimateId String? @map("estimate_id") @db.Uuid
   estimateYearMonth String?   @map("estimate_year_month") @db.Char(6)
   estimateSeq       Int?      @map("estimate_seq")
   isActive          Boolean   @default(true) @map("is_active")
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  entry    PriceListEntry @relation(fields: [entryYearMonth, entrySeq], references: [yearMonth, seq])
-  estimate Estimate?      @relation(fields: [estimateYearMonth, estimateSeq], references: [yearMonth, seq])
+  entry    PriceListEntry @relation(fields: [entryId], references: [id])
+  estimate Estimate?      @relation(fields: [estimateId], references: [id])
 
   tiers     PriceListTier[]
   discounts PriceListDiscount[]
 
-  @@unique([entryYearMonth, entrySeq, orderType])
+  @@unique([entryId, orderType])
+  @@index([estimateId])
   @@map("price_list_variants")
   @@schema("app")
 }
@@ -264,6 +285,12 @@ model PriceListDiscount {
 // 見積書 — 文書番号 QOT-{year_month}-{seq:5桁} はキーから導出。
 // 価格は価格表からのみ解決（手入力なし・印刷用文書）。
 model Quote {
+  /// 内部キー（uuid）。書類番号は法人ごとの連番になるので（番号設計 PR-C）、
+  /// 番号は行の識別にならない。子の表はこの id を FK で指す（PR-B）。
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   yearMonth String @map("year_month") @db.Char(6)
   seq       Int
 
@@ -289,17 +316,23 @@ model Quote {
   items            QuoteItem[]
   designRequests   DesignRequest[]
 
-  @@id([yearMonth, seq])
+  orderAcceptances OrderAcceptance[] @relation("AcceptanceQuote")
+
+  ownCompany OwnCompany @relation("QuoteOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@unique([yearMonth, seq])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, yearMonth, seq])
+  @@index([ownCompanyId])
   @@map("quotes")
   @@schema("app")
 }
 
 model QuoteItem {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  quoteYearMonth String    @map("quote_year_month") @db.Char(6)
-  quoteSeq       Int       @map("quote_seq")
+  quoteId String @map("quote_id") @db.Uuid
+  quoteYearMonth String?    @map("quote_year_month") @db.Char(6)
+  quoteSeq       Int?       @map("quote_seq")
   /// 統合品目（app.items）。見積明細の品目。
   itemId         Int       @map("item_id")
   orderType      OrderType @map("order_type")
@@ -321,13 +354,14 @@ model QuoteItem {
   taxCategoryId Int?     @map("tax_category_id")
   taxRate       Decimal? @map("tax_rate") @db.Decimal(5, 4)
 
-  quote         Quote          @relation(fields: [quoteYearMonth, quoteSeq], references: [yearMonth, seq])
+  quote         Quote          @relation(fields: [quoteId], references: [id])
   item          Item           @relation("QuoteItemItem", fields: [itemId], references: [id], onDelete: Restrict)
   priceListTier PriceListTier? @relation(fields: [priceListTierId], references: [id])
   taxCategory   TaxCategory?   @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
 
   @@index([taxCategoryId])
   @@index([itemId])
+  @@index([quoteId])
   @@map("quote_items")
   @@schema("app")
 }

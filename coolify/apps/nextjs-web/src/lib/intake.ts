@@ -47,6 +47,7 @@ import {
   utimes,
 } from "node:fs/promises";
 import path from "node:path";
+import { companyForAcceptance } from "@/lib/doc-company";
 import { PERIODIC_LOCKS, withAdvisoryLock } from "./advisory-lock";
 import { AiProviderConfigError, aiConfigHeaders } from "./ai-provider";
 import { APPROVAL_TARGET } from "./approval-targets";
@@ -306,10 +307,15 @@ async function ingestFile(input: {
     },
     select: { id: true },
   });
+  // 取込の時点では担当拠点も明細もまだ無い → 既定の法人（lib/doc-company-core.ts
+  // companyForOrderAcceptance の最後の候補）。発行元は作成後に変えられない
+  // ので、取込口ごとの法人分けが要るなら取込口の側に法人を持たせる（未対応）。
+  const company = await companyForAcceptance({});
   await prisma.orderAcceptance.create({
     data: {
       yearMonth,
       seq,
+      ...company,
       status: "IMPORT",
       source: input.source,
       sourceFileId: fileRow.id,

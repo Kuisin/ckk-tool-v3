@@ -19,6 +19,9 @@ enum PurchaseStatus {
 // 素材発注書: PO-YYYYMM-NNNNN（承認フロー: 依頼→承認→発注→入荷）
 model MaterialPurchaseOrder {
   id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   poNumber     String         @unique @map("po_number")
   supplierBpId String         @map("supplier_bp_id") @db.Uuid
   status       PurchaseStatus @default(DRAFT)
@@ -56,8 +59,11 @@ model MaterialPurchaseOrder {
   // この発注書を生成した購買依頼（PU04 変換元、1:1）
   sourceRequest PurchaseRequest? @relation("PrqPurchaseOrder")
 
+  ownCompany OwnCompany @relation("MaterialPurchaseOrderOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
   @@index([status])
   @@index([supplierBpId])
+  @@index([ownCompanyId])
   @@map("material_purchase_orders")
   @@schema("app")
 }
@@ -135,6 +141,9 @@ enum PurchaseRequestStatus {
 // DRAFT を生成し purchase_order_id で紐付ける（単価・仕入先は発注側で確定）。
 model PurchaseRequest {
   id            String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   requestNumber String                @unique @map("request_number") // PRQ-YYYYMM-NNNNN
   status        PurchaseRequestStatus @default(DRAFT)
   purpose       String? // 依頼理由・用途
@@ -165,7 +174,10 @@ model PurchaseRequest {
 
   items PurchaseRequestItem[]
 
+  ownCompany OwnCompany @relation("PurchaseRequestOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
   @@index([status])
+  @@index([ownCompanyId])
   @@map("purchase_requests")
   @@schema("app")
 }
