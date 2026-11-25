@@ -206,6 +206,7 @@ function mapOrderLine(r: OrderLineRow): OrderLine {
       markingSplit: l.markingSplit,
       approvalStatus: l.workOrder.approvalStatus,
       status: l.workOrder.status,
+      aborted: l.workOrder.abortedAt != null,
     })),
     // 出荷済み数量 = SHIPPED な発送（DISPATCH）出荷書における**この明細ぶん**の合計
     shippedQuantity: r.deliveryItems

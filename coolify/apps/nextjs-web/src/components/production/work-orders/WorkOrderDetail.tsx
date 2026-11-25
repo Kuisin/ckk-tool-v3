@@ -91,6 +91,7 @@ import type {
 import { FlowChangeCard, type PendingFlowChangeView } from "./FlowChangeCard";
 import type { WorkOrderView } from "./model";
 import { WorkOrderAbortCard, WorkOrderAbortModal } from "./WorkOrderAbortCard";
+import { WorkOrderAbortedBadge } from "./WorkOrderAbortedBadge";
 import { WorkOrderLinksCard } from "./WorkOrderLinksCard";
 
 const BASE_PATH = "/production/work-orders";
@@ -709,11 +710,7 @@ export function WorkOrderDetail({
               status={wo.approvalStatus}
             />
           )}
-          {abort?.status === "APPLIED" && (
-            <Badge color="red" size="sm" variant="light">
-              {tr("production.workOrderAbort.abortedBadge")}
-            </Badge>
-          )}
+          {abort?.status === "APPLIED" && <WorkOrderAbortedBadge />}
           {abort?.status === "PENDING" && (
             <Badge color="yellow" size="sm" variant="light">
               {tr("production.workOrderAbort.pendingBadge")}

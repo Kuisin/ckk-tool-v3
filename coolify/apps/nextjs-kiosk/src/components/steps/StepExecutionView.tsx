@@ -269,6 +269,10 @@ export function StepExecutionView({
       () => {
         playLogoutSound();
         router.replace(backHref);
+        // 遷移だけでは layout（隅の「作業中 n 件」）がサーバーで描き直されない —
+        // layout は遷移をまたいで使い回されるので、完了した工程が丸薬に残っていた。
+        // ルーターの操作は順に処理されるので、この refresh は戻った先で効く。
+        router.refresh();
       },
     );
 

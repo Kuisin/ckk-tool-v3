@@ -143,11 +143,16 @@ export const numberingOtherDocs: Scenario = {
         await s.pickDate(requested, "today");
         const picked = (await requested.innerText()).trim();
         s.check("依頼日の欄に今日の日付が入った", /^\d{4}\/\d{2}\/\d{2}$/.test(picked), picked);
-        // ここでは保存前に撮らない: 全高で撮ると表示領域の高さが変わり、この画面は
-        // 未保存の入力（依頼日）を初期値へ戻してしまう。保存したあとの画面を撮る。
+        // 保存前に撮る — 全高で撮ると表示領域の高さが変わる。高さが変わっただけで
+        // 未保存の入力（依頼日）が初期値へ戻り、空のまま保存されたことがある。
+        await s.shot("外注工程に依頼日を入れた（保存前）");
+        const afterShot = (await requested.innerText()).trim();
+        s.check("表示領域の高さが変わっても未保存の依頼日が残る", afterShot === picked, { picked, afterShot });
         await s.click(p.getByRole("button", { name: "外注日程を保存" }));
         await s.toast("外注日程を保存しました");
         await s.shot("外注工程に依頼日を入れて保存した");
+        const saved = s.sql(`select to_char(outsource_requested_at, 'YYYY/MM/DD') from app.work_order_steps where id = '${OUTSOURCE_STEP}'`);
+        s.check("保存した依頼日が DB に入る（空で保存されない）", saved === picked, { picked, saved });
 
         const out = s.sql(
           `select c.code || '~' || o.doc_number from app.outsource_orders o join app.own_companies c on c.id = o.own_company_id where o.work_order_step_id = '${OUTSOURCE_STEP}'`,
@@ -250,6 +255,11 @@ export const numberingOtherDocs: Scenario = {
         await s.shot("共有端末 — 工程を完了する", kiosk);
         await kiosk.getByRole("button", { name: "完了する" }).click();
         await kiosk.getByText("完了 6 / 6 工程").waitFor({ state: "visible", timeout: 30_000 });
+        // 隅の「作業中 n 件」は layout が描く — 戻っただけでは描き直されず、
+        // 完了した工程が残っていた。消えるのを少し待ってから確かめる。
+        const pill = kiosk.getByText(/^作業中 \d+ 件$/);
+        await pill.waitFor({ state: "hidden", timeout: 10_000 }).catch(() => undefined);
+        s.check("最後の工程を完了すると 隅の「作業中 n 件」が消える", (await pill.count()) === 0, await pill.allInnerTexts());
         await s.shot("共有端末 — 指示書が完了した", kiosk);
         await kiosk.close();
 

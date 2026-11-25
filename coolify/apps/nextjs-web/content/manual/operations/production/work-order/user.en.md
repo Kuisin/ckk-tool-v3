@@ -385,7 +385,7 @@ If the [approval settings](/manual/en/operations/masters/approval-setting/user) 
 
 When a work order is closed out:
 
-- It becomes "**Cancelled**" with a "**Closed out**" mark. The remaining steps close and any work in progress ends at the close-out time.
+- It becomes "**Cancelled**" with a "**Closed out**" mark. The mark also shows in the work order list and on the order line's "Work orders" tab, so it can be told apart from a plain cancellation. The remaining steps close and any work in progress ends at the close-out time.
 - The returned parts go to stock as WIP (lot number = this work order). You can see them on the "**WIP**" tab of Inventory. The stock movement cause is "**Work order close-out**".
 - Reserved material is consumed and any issued WIP is taken out of stock, the same as on completion.
 - The original order lines go back to not planned when no other live work order is attached, so you can create a new work order.

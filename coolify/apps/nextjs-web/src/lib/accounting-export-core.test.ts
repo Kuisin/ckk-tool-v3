@@ -8,6 +8,7 @@ import {
   ACCOUNTING_FIELD_IDS,
   type AccountingExportSettings,
   accountingExportSettingsSchema,
+  accountingPreviewInvoice,
   buildAccountingCsvText,
   buildJournalRows,
   conflictingTaxRates,
@@ -711,5 +712,31 @@ describe("注文種別ごとの売上高科目（再研磨を製品と別の売�
         salesAccountByOrderType: { REGRIND: "売上" },
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("accountingPreviewInvoice（SY0J のプレビュー）", () => {
+  it("種別ごとの売上科目が無ければ、売上は税率ごとに 1 行ずつ（従来どおり）", () => {
+    const rows = buildJournalRows(
+      accountingPreviewInvoice("顧客", settings),
+      settings,
+    ).filter((r) => r.kind === "sales");
+    expect(rows.map((r) => r.credit.accountCode)).toEqual(["5000", "5000"]);
+  });
+
+  it("再研磨の売上科目を入れると、プレビューに再研磨の科目の行が出る", () => {
+    const withRegrind: AccountingExportSettings = {
+      ...settings,
+      salesAccountByOrderType: { REGRIND: "5100" },
+    };
+    const rows = buildJournalRows(
+      accountingPreviewInvoice("顧客", withRegrind),
+      withRegrind,
+    ).filter((r) => r.kind === "sales");
+    const regrind = rows.filter((r) => r.credit.accountCode === "5100");
+    expect(regrind).toHaveLength(1);
+    // 合計は束の税抜金額のまま（科目を分けても額は動かない）
+    const total = rows.reduce((a, r) => a + r.credit.amount, 0);
+    expect(total).toBe(17_000);
   });
 });

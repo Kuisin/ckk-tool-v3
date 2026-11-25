@@ -40,6 +40,8 @@ export interface OrderLineWorkOrderRef {
   approvalStatus: string;
   /** WORK_ORDER_STATUS。 */
   status: string;
+  /** 打ち切り済み（status は CANCELLED のまま — 普通のキャンセルと分ける）。 */
+  aborted: boolean;
 }
 
 export interface OrderLine {

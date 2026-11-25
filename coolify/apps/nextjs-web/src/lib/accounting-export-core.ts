@@ -769,3 +769,38 @@ export function conflictingTaxRates(
     .filter((l) => l.codeConflict)
     .map((l) => l.taxRate);
 }
+
+/**
+ * プレビュー用の作り話の請求書（10% と 8% が混ざった 1 通）。
+ *
+ * 顧客名だけは画面に出る文言なので呼び出し側から渡す（他は番号・金額なので
+ * 言語に依らない）。SY0J のプレビュー用。
+ */
+export const accountingPreviewInvoice = (
+  customerName: string,
+  settings: Pick<AccountingExportSettings, "salesAccountByOrderType">,
+): JournalInvoiceInput => ({
+  invoiceNumber: "INV-2026-00001",
+  customerName,
+  customerCode: "C-0001",
+  receivableSubAccountCode: "0123",
+  slipNo: 1,
+  date: "2026-07-31T00:00:00.000Z",
+  totalAmount: 18_600,
+  taxLines: [
+    {
+      taxRate: 0.1,
+      taxableBase: 12_000,
+      taxAmount: 1_200,
+      // 種別ごとの売上科目（再研磨など）を入れた種別だけ、その種別の明細を
+      // 2,000 円ずつ混ぜる — 入れないとプレビューにその科目の行が出ず、設定が
+      // 効いているのかが見えない。何も入れていなければ従来と同じ 1 行。
+      // 5 種別ぜんぶでも 10,000 円で、束の 12,000 円を超えない（超えると分けずに
+      // 1 行に戻る規則 — splitSalesByAccount）。
+      salesByOrderType: ACCOUNTING_ORDER_TYPES.filter(
+        (t) => (settings.salesAccountByOrderType?.[t] ?? "") !== "",
+      ).map((orderType) => ({ orderType, amount: 2_000 })),
+    },
+    { taxRate: 0.08, taxableBase: 5_000, taxAmount: 400 },
+  ],
+});

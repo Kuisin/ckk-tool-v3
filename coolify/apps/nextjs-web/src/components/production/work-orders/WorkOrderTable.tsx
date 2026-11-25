@@ -31,6 +31,7 @@ import {
 } from "@/lib/enum-labels";
 import { statusOptions } from "@/lib/status-map";
 import type { WorkOrderRow } from "./model";
+import { WorkOrderAbortedBadge } from "./WorkOrderAbortedBadge";
 
 const WORK_ORDERS_PATH = "/production/work-orders";
 const APPROVALS_PATH = "/production/approvals";
@@ -174,9 +175,14 @@ export function WorkOrderTable({
           {
             key: "status",
             header: tr("common.status"),
-            width: 110,
+            width: 190,
             sortValue: (r) => r.status,
-            render: (r) => <StatusBadge entity="WorkOrder" status={r.status} />,
+            render: (r) => (
+              <Group gap={4} wrap="nowrap">
+                <StatusBadge entity="WorkOrder" status={r.status} />
+                {r.aborted && <WorkOrderAbortedBadge />}
+              </Group>
+            ),
           } satisfies Column<WorkOrderRow>,
           {
             key: "updatedAt",
@@ -301,6 +307,7 @@ export function WorkOrderTable({
               ) : (
                 <>
                   <StatusBadge entity="WorkOrder" status={r.status} />
+                  {r.aborted && <WorkOrderAbortedBadge />}
                   {r.approvalStatus !== "NONE" && (
                     <StatusBadge
                       entity="WorkOrderApproval"
