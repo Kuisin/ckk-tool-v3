@@ -9803,7 +9803,8 @@
       "wip_states": "加工状態",
       "items": "品目",
       "webhook_endpoints": "Webhook 送信先",
-      "own_companies": "自社法人"
+      "own_companies": "自社法人",
+      "machine_models": "機種"
     },
     "change": {
       "pair": "{label}: {before} → {after}",

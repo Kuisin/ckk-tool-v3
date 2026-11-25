@@ -9803,7 +9803,8 @@
       "wip_states": "加工状态",
       "items": "品目",
       "webhook_endpoints": "Webhook 接收地址",
-      "own_companies": "本公司法人"
+      "own_companies": "本公司法人",
+      "machine_models": "机型"
     },
     "change": {
       "pair": "{label}: {before} → {after}",

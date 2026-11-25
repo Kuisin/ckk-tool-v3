@@ -9803,7 +9803,8 @@
       "wip_states": "Processing state",
       "items": "Items",
       "webhook_endpoints": "Webhook endpoint",
-      "own_companies": "Own companies"
+      "own_companies": "Own companies",
+      "machine_models": "Machine models"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
