@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { resolveUnitPriceFromEntries } from "../quotes/model";
 import {
   companySyncState,
   comparePriceContent,
@@ -7,7 +8,6 @@ import {
   entriesForCompany,
   syncVariantsFrom,
 } from "./company-sync";
-import { resolveUnitPriceFromEntries } from "../quotes/model";
 import type { PriceListEntry, PriceVariant } from "./model";
 
 const variant = (over: Partial<PriceVariant> = {}): PriceVariant => ({

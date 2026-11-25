@@ -208,6 +208,33 @@ export function PriceListTable({
               </Text>
             ),
           },
+          {
+            // 他社の価格表（同じ顧客 × 品目 × 工具・別の発行会社）との突き合わせ。
+            // 相手方が無ければ空。差分は詳細画面で見て、そこで同期する。
+            key: "companySync",
+            header: tr("sales.priceListCompanySync.column"),
+            width: 110,
+            hideable: true,
+            sortValue: (e: PriceListEntry) => {
+              const st = syncByEntry.get(e.entryId);
+              return st === "diff" ? 2 : st === "same" ? 1 : 0;
+            },
+            render: (e: PriceListEntry) => {
+              const st = syncByEntry.get(e.entryId);
+              if (!st) return null;
+              return (
+                <Badge
+                  color={st === "same" ? "green" : "orange"}
+                  size="xs"
+                  variant="light"
+                >
+                  {st === "same"
+                    ? tr("sales.priceListCompanySync.same")
+                    : tr("sales.priceListCompanySync.differs")}
+                </Badge>
+              );
+            },
+          },
         ]
       : []),
     {
@@ -382,37 +409,6 @@ export function PriceListTable({
       sortValue: (e) => (e.isActive ? 1 : 0),
       render: (e) => <EntryStatusBadges entry={e} />,
     },
-    ...(multiCompany
-      ? [
-          {
-            // 他社の価格表（同じ顧客 × 品目 × 工具・別の発行会社）との突き合わせ。
-            // 相手方が無ければ空。差分は詳細画面で見て、そこで同期する。
-            key: "companySync",
-            header: tr("sales.priceListCompanySync.column"),
-            width: 110,
-            hideable: true,
-            sortValue: (e: PriceListEntry) => {
-              const st = syncByEntry.get(e.entryId);
-              return st === "diff" ? 2 : st === "same" ? 1 : 0;
-            },
-            render: (e: PriceListEntry) => {
-              const st = syncByEntry.get(e.entryId);
-              if (!st) return null;
-              return (
-                <Badge
-                  color={st === "same" ? "green" : "orange"}
-                  size="xs"
-                  variant="light"
-                >
-                  {st === "same"
-                    ? tr("sales.priceListCompanySync.same")
-                    : tr("sales.priceListCompanySync.differs")}
-                </Badge>
-              );
-            },
-          },
-        ]
-      : []),
   ];
 
   return (

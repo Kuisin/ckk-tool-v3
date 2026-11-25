@@ -1295,6 +1295,10 @@ export async function rejectPriceEntry(
 export async function fetchPriceEntryForCopy(
   entryNumber: string,
 ): Promise<PriceListEntry | null> {
+  // 作る人のための読み取り — 作成権限を持つ人だけ（読む権限とスコープは
+  // fetchPriceEntry がもう一度見る）。
+  const authz = await checkPermission("price_list", "CREATE");
+  if (!authz.ok) return null;
   const key = keyOf(entryNumber);
   if (!key) return null;
   return fetchPriceEntry(key);
