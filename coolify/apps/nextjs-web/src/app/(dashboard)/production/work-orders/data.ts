@@ -47,12 +47,12 @@ import {
 } from "@/lib/inspection-core";
 import { markingRange } from "@/lib/marking-number";
 import { sumActualWorkHours } from "@/lib/step-work-hours";
+import { loadWipRecording } from "@/lib/wip-recording";
 import {
   fetchAllowedWorkLocationIds,
   fetchWorkLocationOptions,
   workLocationsConfigured,
 } from "@/lib/work-locations";
-import { loadWipRecording } from "@/lib/wip-recording";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import { shippableQuantity } from "@/lib/work-order-shipping-core";
 import { planReadiness, requiredPlanFields } from "@/lib/work-plan-core";

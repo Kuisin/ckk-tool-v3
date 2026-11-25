@@ -15,12 +15,12 @@ import { type LocalizedText, localized } from "@/lib/format";
 import { getSession } from "@/lib/kiosk-auth";
 import { boardQuery, parseScope } from "@/lib/location-board-core";
 import { getStepRecordingData } from "@/lib/step-records";
-import { loadWipRecording } from "@/lib/wip-recording";
 import {
   getMyStep,
   getStepLocationGate,
   getWorkOrderMarkings,
 } from "@/lib/steps";
+import { loadWipRecording } from "@/lib/wip-recording";
 
 export const dynamic = "force-dynamic";
 

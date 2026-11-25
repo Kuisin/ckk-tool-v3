@@ -223,6 +223,8 @@ export async function validateAndOrderSteps(
 
 import { getCurrentActorId, recordAudit } from "./audit";
 import { missingInspectionSheets } from "./inspection-core";
+import { resolveWipRecording } from "./wip-recording";
+import type { WipRecordingInput } from "./wip-state-core";
 import {
   type BranchStockDisposition,
   branchableQuantity,
@@ -248,8 +250,6 @@ import {
   type WorkflowCtx,
 } from "./workflow-core";
 import { workflowCoreT } from "./workflow-core-labels";
-import { resolveWipRecording } from "./wip-recording";
-import type { WipRecordingInput } from "./wip-state-core";
 
 export interface StepQuantities {
   inputQuantity: number;
