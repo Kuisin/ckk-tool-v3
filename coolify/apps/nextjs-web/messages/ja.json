@@ -436,6 +436,11 @@
     "workOrderNumber": "指示書番号",
     "reserved": "予約数",
     "lotNumber": "ロット番号",
+    "markingNumber": "印字番号",
+    "markingPerPiece": "1 本ずつ",
+    "markingPerLine": "明細ごと",
+    "markingRange": "{first} 〜 {last}",
+    "markingNotIssued": "未採番（注文確定時に採番）",
     "orderLineNumber": "注文明細番号",
     "notPlanned": "未手配",
     "forStock": "在庫向け",
@@ -3110,7 +3115,8 @@
     "workOrderStripSheets": {
       "noWorkOrdersToPrint": "印刷対象の指示書がありません。",
       "actualSizeCheck50mm": "50mm（原寸確認 / 用紙 A4・倍率 100%）",
-      "forStockNoOrderLine": "在庫向け（注文明細なし）"
+      "forStockNoOrderLine": "在庫向け（注文明細なし）",
+      "moreMarkings": "ほか {count} 明細"
     },
     "designFileTable": {
       "byCustomer": "顧客別",

@@ -47,6 +47,9 @@ const TWINS = [
   "login-attempt-core.test.ts",
   "display-content.ts",
   "display-templates.ts",
+  // 印字番号の整形 — 工程画面にも同じ番号を出す。
+  "marking-number.ts",
+  "marking-number.test.ts",
 ];
 
 describe("twin files (nextjs-web ⇄ nextjs-kiosk)", () => {

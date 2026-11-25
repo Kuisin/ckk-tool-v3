@@ -155,6 +155,11 @@ export function WoStepsView({ workOrderNumber, overview }: Props) {
                     </Text>
                   )}
                 </Group>
+                {overview.markings.map((mk) => (
+                  <Text ff="monospace" key={mk.perLine} size="sm">
+                    {fillMessage(m.woScan.marking, mk)}
+                  </Text>
+                ))}
                 {countable.length > 0 && (
                   <Group align="center" gap="sm" mt={2} wrap="nowrap">
                     <Progress

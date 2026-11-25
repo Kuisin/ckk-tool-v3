@@ -34,6 +34,7 @@
     "workOrder": "指示書 #{n}",
     "plannedQty": "予定数量 {n} 本",
     "material": "素材: {name}",
+    "marking": "印字番号 {first} 〜 {last}（明細ごと {perLine}）",
     "progress": "完了 {done} / {total} 工程",
     "stepsTitle": "工程",
     "noSteps": "この指示書に工程はありません",
@@ -95,7 +96,8 @@
       "elapsed": "作業 {t}",
       "elapsedLabel": "作業",
       "plannedHours": "予定 {h}h",
-      "lot": "ロット {t}"
+      "lot": "ロット {t}",
+      "marking": "印字番号 {first} 〜 {last}（明細ごと {perLine}）"
     },
     "state": {
       "startable": "開始可",

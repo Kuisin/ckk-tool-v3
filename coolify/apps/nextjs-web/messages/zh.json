@@ -436,6 +436,11 @@
     "workOrderNumber": "工单编号",
     "reserved": "预留数",
     "lotNumber": "批次号",
+    "markingNumber": "打标编号",
+    "markingPerPiece": "逐支",
+    "markingPerLine": "按明细",
+    "markingRange": "{first} 〜 {last}",
+    "markingNotIssued": "未编号（订单确定时编号）",
     "orderLineNumber": "订单明细编号",
     "notPlanned": "未安排",
     "forStock": "备库存",
@@ -3110,7 +3115,8 @@
     "workOrderStripSheets": {
       "noWorkOrdersToPrint": "没有可打印的工单。",
       "actualSizeCheck50mm": "50mm（实际尺寸核对 / A4 纸・100% 比例）",
-      "forStockNoOrderLine": "库存用（无订单明细）"
+      "forStockNoOrderLine": "库存用（无订单明细）",
+      "moreMarkings": "另 {count} 条明细"
     },
     "designFileTable": {
       "byCustomer": "按客户",

@@ -13,7 +13,11 @@ import { resolveBoardLocationByCode } from "@/lib/device-work-location";
 import { getSession } from "@/lib/kiosk-auth";
 import { boardQuery, parseScope } from "@/lib/location-board-core";
 import { getStepRecordingData } from "@/lib/step-records";
-import { getMyStep, getStepLocationGate } from "@/lib/steps";
+import {
+  getMyStep,
+  getStepLocationGate,
+  getWorkOrderMarkings,
+} from "@/lib/steps";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +56,8 @@ export default async function StepExecutionPage({
     session.deviceId,
     session.locale,
   );
+
+  const markings = await getWorkOrderMarkings(step.workOrderNumber);
 
   // 来た経路で戻り先を決める。**任意 URL は受けない** — 決め打ちの値のときだけ
   // 固定の遷移先を組み立て、クエリの中身もサーバー側で検証してから使う。
@@ -93,6 +99,7 @@ export default async function StepExecutionPage({
         backTo={backTo}
         initialWorkLocationCode={boardLocationCode}
         locationGate={locationGate}
+        markings={markings}
         recording={recording}
         step={step}
       />

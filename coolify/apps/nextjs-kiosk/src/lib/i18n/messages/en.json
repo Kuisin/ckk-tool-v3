@@ -34,6 +34,7 @@
     "workOrder": "Work order #{n}",
     "plannedQty": "Planned quantity: {n} pcs",
     "material": "Material: {name}",
+    "marking": "Marking number {first} – {last} (per line {perLine})",
     "progress": "{done} / {total} steps completed",
     "stepsTitle": "Steps",
     "noSteps": "This work order has no steps",
@@ -95,7 +96,8 @@
       "elapsed": "Worked {t}",
       "elapsedLabel": "Worked",
       "plannedHours": "Planned {h}h",
-      "lot": "Lot {t}"
+      "lot": "Lot {t}",
+      "marking": "Marking number {first} – {last} (per line {perLine})"
     },
     "state": {
       "startable": "Ready",

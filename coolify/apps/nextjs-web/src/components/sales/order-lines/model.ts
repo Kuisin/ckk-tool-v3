@@ -87,6 +87,8 @@ export interface OrderLine {
   deliveryDate: string | null;
   /** ロット番号（指示書番号と共用）。指示書作成時に採番 — それまで null。 */
   lotNumber: number | null;
+  /** 印字番号の基数（A{base}-NNN）。確定時に採番 — 確定前・旧明細は null。 */
+  markingBase: number | null;
   status: OrderLineStatus;
   /** 承認依頼中ロック — true の間は編集不可。 */
   isLocked: boolean;

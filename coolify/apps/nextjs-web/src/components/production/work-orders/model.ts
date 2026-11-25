@@ -146,6 +146,8 @@ export interface WorkOrderLineAllocView {
   customerName: string | null;
   status: string;
   lotNumber: number | null;
+  /** 印字番号の基数（A{base}-NNN）。注文確定時に採番 — 旧明細は null。 */
+  markingBase: number | null;
   /** 明細の納期（ISO 日付）。工程ワークフローの見出しに「予定納期」として出す。 */
   deliveryDate: string | null;
 }
