@@ -74,6 +74,10 @@ model Estimate {
   /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
   /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
   ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
+  /// 旧番号の年月と連番。**@ignore — アプリからは見えない**（番号設計 PR-D1）。
+  /// 列は、これを SELECT する旧コンテナが居なくなってから後続の migration で落とす。
+  legacyYearMonth String? @map("year_month") @db.Char(6) @ignore
+  legacySeq       Int?    @map("seq") @ignore
   /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
   /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
   /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
@@ -132,6 +136,7 @@ model Estimate {
 
   ownCompany OwnCompany @relation("EstimateOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
+  @@unique([legacyYearMonth, legacySeq])
   @@unique([ownCompanyId, fiscalYear, docSeq])
   @@unique([ownCompanyId, docNumber])
   @@index([legacyNumber])
@@ -164,6 +169,10 @@ model PriceListEntry {
   /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
   /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
   ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
+  /// 旧番号の年月と連番。**@ignore — アプリからは見えない**（番号設計 PR-D1）。
+  /// 列は、これを SELECT する旧コンテナが居なくなってから後続の migration で落とす。
+  legacyYearMonth String? @map("year_month") @db.Char(6) @ignore
+  legacySeq       Int?    @map("seq") @ignore
   /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
   /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
   /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
@@ -212,15 +221,17 @@ model PriceListEntry {
 
   ownCompany OwnCompany @relation("PriceListEntryOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
+  @@unique([legacyYearMonth, legacySeq])
   @@unique([ownCompanyId, fiscalYear, docSeq])
   @@unique([ownCompanyId, docNumber])
   @@index([legacyNumber])
-  // 価格表の識別は (顧客 × 品目 × 対象工具)。作成後不変。工具は null を
-  // 1 つの値として数える（工具なしの価格表は顧客 × 品目に 1 つだけ）— Prisma は
-  // 部分 unique index を表現できないので、2 本の部分 unique index を
-  // マイグレーション 20261126140000_price_list_tool_item に直書きしている:
-  //   tool_item_id IS NULL     → (customer_bp_id, item_id)
-  //   tool_item_id IS NOT NULL → (customer_bp_id, item_id, tool_item_id)
+  // 価格表の識別は (発行会社 × 顧客 × 品目 × 対象工具)。作成後不変。価格表は
+  // 会社ごとに別々に持つ（同じ顧客 × 品目でも会社ごとに 1 本ずつ）。工具は null を
+  // 1 つの値として数える（工具なしの価格表は会社 × 顧客 × 品目に 1 つだけ）—
+  // Prisma は部分 unique index を表現できないので、2 本の部分 unique index を
+  // マイグレーション 20261126260000_price_list_identity_per_company に直書きしている:
+  //   tool_item_id IS NULL     → (own_company_id, customer_bp_id, item_id)
+  //   tool_item_id IS NOT NULL → (own_company_id, customer_bp_id, item_id, tool_item_id)
   @@index([itemId])
   @@index([toolItemId])
   @@index([ownCompanyId])
@@ -234,12 +245,16 @@ model PriceListEntry {
 model PriceListVariant {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   entryId String @map("entry_id") @db.Uuid
+  entryYearMonth String?    @map("entry_year_month") @db.Char(6) @ignore
+  entrySeq       Int?       @map("entry_seq") @ignore
   orderType      OrderType @map("order_type")
 
   baseUnitPrice     Decimal   @default(0) @map("base_unit_price") @db.Decimal(12, 2)
   validFrom         DateTime  @map("valid_from") @db.Date
   validUntil        DateTime? @map("valid_until") @db.Date
   estimateId String? @map("estimate_id") @db.Uuid
+  estimateYearMonth String?   @map("estimate_year_month") @db.Char(6) @ignore
+  estimateSeq       Int?      @map("estimate_seq") @ignore
   isActive          Boolean   @default(true) @map("is_active")
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -308,6 +323,10 @@ model Quote {
   /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
   /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
   ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
+  /// 旧番号の年月と連番。**@ignore — アプリからは見えない**（番号設計 PR-D1）。
+  /// 列は、これを SELECT する旧コンテナが居なくなってから後続の migration で落とす。
+  legacyYearMonth String? @map("year_month") @db.Char(6) @ignore
+  legacySeq       Int?    @map("seq") @ignore
   /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
   /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
   /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
@@ -346,6 +365,7 @@ model Quote {
 
   ownCompany OwnCompany @relation("QuoteOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
+  @@unique([legacyYearMonth, legacySeq])
   @@unique([ownCompanyId, fiscalYear, docSeq])
   @@unique([ownCompanyId, docNumber])
   @@index([legacyNumber])
@@ -359,6 +379,8 @@ model Quote {
 model QuoteItem {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   quoteId String @map("quote_id") @db.Uuid
+  quoteYearMonth String?    @map("quote_year_month") @db.Char(6) @ignore
+  quoteSeq       Int?       @map("quote_seq") @ignore
   /// 統合品目（app.items）。見積明細の品目。
   itemId         Int       @map("item_id")
   orderType      OrderType @map("order_type")

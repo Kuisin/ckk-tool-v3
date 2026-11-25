@@ -33,6 +33,8 @@ model MaterialPurchaseOrder {
   docRef       String  @unique @default("") @map("doc_ref")
   /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
   legacyNumber String? @map("legacy_number")
+  /// 旧番号の列。**@ignore — アプリからは見えない**（番号設計 PR-D1。後続で落とす）。
+  legacyPoNumber String? @unique @map("po_number") @ignore
   supplierBpId String         @map("supplier_bp_id") @db.Uuid
   status       PurchaseStatus @default(DRAFT)
   totalAmount  Decimal        @default(0) @map("total_amount") @db.Decimal(12, 2)
@@ -169,6 +171,8 @@ model PurchaseRequest {
   docRef       String  @unique @default("") @map("doc_ref")
   /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
   legacyNumber String? @map("legacy_number")
+  /// 旧番号の列。**@ignore — アプリからは見えない**（番号設計 PR-D1。後続で落とす）。
+  legacyRequestNumber String? @unique @map("request_number") @ignore
   status        PurchaseRequestStatus @default(DRAFT)
   purpose       String? // 依頼理由・用途
   requestedAt   DateTime?             @map("requested_at") @db.Timestamptz(6)

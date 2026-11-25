@@ -10,10 +10,10 @@
  * そのファイルが参照の組み立て（toDocRef / toDocRefs / requireDocRef）を
  * 使っていることを確かめる。新しく書き込み口を足して参照を通し忘れると落ちる。
  *
- * DB 側に保険は**無い**。番号だけの値を保存時に参照へ直していた BEFORE トリガー
- * app.qualify_doc_ref は番号設計 PR-D（20261126280000_numbering_cleanup）で
- * 落とした — 番号だけで書けば、その値のまま残って誰からも引けなくなる。
- * 書き口はこの試験だけが守っている。
+ * DB 側の保険（番号だけの値を保存時に参照へ直す BEFORE トリガー
+ * app.qualify_doc_ref）は移行用で、番号設計の後続 migration で落とす —
+ * 番号だけで書けばその値のまま残って誰からも引けなくなる。書き口を守るのは
+ * この試験。
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";

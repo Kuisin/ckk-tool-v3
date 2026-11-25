@@ -30,6 +30,10 @@ model AccountingDocument {
   /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
   ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
 
+  /// 旧番号の年月と連番。**@ignore — アプリからは見えない**（番号設計 PR-D1）。
+  /// 列は、これを SELECT する旧コンテナが居なくなってから後続の migration で落とす。
+  legacyYearMonth String? @map("year_month") @db.Char(6) @ignore
+  legacySeq       Int?    @map("seq") @ignore
   /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
   /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
   /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
@@ -43,6 +47,8 @@ model AccountingDocument {
   legacyNumber String? @map("legacy_number")
 
   invoiceId String @map("invoice_id") @db.Uuid
+  invoiceYearMonth String? @map("invoice_year_month") @db.Char(6) @ignore
+  invoiceSeq       Int?    @map("invoice_seq") @ignore
 
   status AccountingDocumentStatus @default(POSTED)
   /// 仕訳日付 = 発行日（JST 暦日）。
@@ -76,9 +82,11 @@ model AccountingDocument {
 
   ownCompany OwnCompany @relation("AccountingDocumentOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
+  @@unique([legacyYearMonth, legacySeq])
   @@unique([ownCompanyId, fiscalYear, docSeq])
   @@unique([ownCompanyId, docNumber])
   @@index([legacyNumber])
+  @@index([invoiceYearMonth, invoiceSeq])
   // 「請求書 1 通に有効な転記は 1 本だけ」の部分 unique index
   // (WHERE status = 'POSTED' AND reversal_of_id IS NULL) は Prisma で表現
   // できないので、マイグレーションに直書きする（前例: tax_categories.is_default）。

@@ -1,9 +1,6 @@
 -- 多態参照「法人コード/番号」（20261126210000_doc_company_refs）の DB 側の試験。
--- 番号設計 PR-D（20261126280000_numbering_cleanup）で、番号だけの値を保存時に
--- 参照へ直していたトリガー（qualify_doc_ref / qualify_audit_record_key）は落とした
--- — 書き手（アプリ・共有端末・シード）は自分で参照（doc_ref）を書く。残るのは
--- 参照を**引く**ための関数（app.to_doc_ref / app.resolve_doc_ref）と、書類を
--- 消したときの子の掃除。
+-- 書き手（アプリ・共有端末・シード）は自分で参照（doc_ref）を書く（番号設計 PR-D1
+-- からシードも）。ここも参照を書いて試す。旧番号からは app.to_doc_ref で引く。
 --
 -- document-sequences.sql と同じく、まっさらな DB に migrate deploy した直後に
 -- `ON_ERROR_STOP=1` で流す。全体を 1 トランザクションにして最後に ROLLBACK する。
@@ -60,12 +57,7 @@ BEGIN
   ASSERT app.to_doc_ref('order_acceptances', 'ORD-209901-00099') = v_code || '/ORD-209901-00099',
     'missing document falls back to the default company';
 
-  -- ── 保存時に書き換えない（番号だけの値を直すトリガーは無い）─────────────
-  SELECT count(*) INTO n FROM pg_trigger
-   WHERE tgname IN ('qualify_doc_ref', 'qualify_audit_record_key', 'rewrite_legacy_doc_refs',
-                    'rewrite_legacy_line_refs') AND NOT tgisinternal;
-  ASSERT n = 0, format('legacy compat triggers are gone (%s left)', n);
-
+  -- ── 多態参照を書く ──────────────────────────────────────────────────────
   -- 参照は書き手が組み立てて書く（アプリは lib/doc-ref の requireDocRef）
   INSERT INTO app.approval_requests (target_type, target_id, step_no, step_count, flow_snapshot)
   VALUES ('order_acceptances', a2.doc_ref, 1, 1, '[]')

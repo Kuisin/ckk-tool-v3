@@ -21,8 +21,8 @@
 --     注文明細は order_lines.line_number（ORD-FFFF-NNNNN-NN。枝番が付く前 =
 --     未確定の明細は NULL なので、請書の番号 ORD-FFFF-NNNNN へ落とす）。
 --     旧い番号の列（(year_month, seq) / po_number / request_number / 子の
---     (…_year_month, …_seq)）は番号設計 PR-D（20261126280000_numbering_cleanup）で
---     落とした。親子は uuid（quote_id / acceptance_id / delivery_order_id …）で結ぶ。
+--     (…_year_month, …_seq)）は後続の migration で落とす — **番号の導出にも結合にも
+--     使わないこと**。親子は uuid（quote_id / acceptance_id / delivery_order_id …）で結ぶ。
 --   * 番号つき書類のビューは fiscal_year（会計年度）/ seq（年度内連番 = doc_seq）/
 --     company_code（発行した自社法人のコード。番号は法人ごとに 00001 から始まる
 --     ので、**法人が 2 つ以上あると番号だけでは一意にならない** — 番号 + これで
