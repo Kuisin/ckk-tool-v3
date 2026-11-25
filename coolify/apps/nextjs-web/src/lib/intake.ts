@@ -47,7 +47,8 @@ import {
   utimes,
 } from "node:fs/promises";
 import path from "node:path";
-import { companyForAcceptance } from "@/lib/doc-company";
+import { requireDocRef } from "@/lib/doc-ref";
+import { companyForIntakeAcceptance } from "@/lib/intake-company";
 import { PERIODIC_LOCKS, withAdvisoryLock } from "./advisory-lock";
 import { AiProviderConfigError, aiConfigHeaders } from "./ai-provider";
 import { APPROVAL_TARGET } from "./approval-targets";
@@ -307,10 +308,12 @@ async function ingestFile(input: {
     },
     select: { id: true },
   });
-  // 取込の時点では担当拠点も明細もまだ無い → 既定の法人（lib/doc-company-core.ts
-  // companyForOrderAcceptance の最後の候補）。発行元は作成後に変えられない
-  // ので、取込口ごとの法人分けが要るなら取込口の側に法人を持たせる（未対応）。
-  const company = await companyForAcceptance({});
+  // 取込の時点では担当拠点も明細もまだ無いので、取込口が法人を決める
+  // （SY0C の設定 — lib/intake-company.ts）。発行元は作成後に変えられない。
+  const company = await companyForIntakeAcceptance({
+    source: input.source,
+    uploaderId: actor,
+  });
   await prisma.orderAcceptance.create({
     data: {
       yearMonth,
@@ -327,7 +330,10 @@ async function ingestFile(input: {
   await prisma.documentAttachment.create({
     data: {
       ownerType: "order_acceptances",
-      ownerId: formatDocNumber("ORD", { yearMonth, seq }),
+      ownerId: await requireDocRef(
+        "order_acceptances",
+        formatDocNumber("ORD", { yearMonth, seq }),
+      ),
       fileId: fileRow.id,
       label: L(
         "settings.orderIntake.pipeline.sourceAttachmentLabel",

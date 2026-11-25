@@ -26,6 +26,7 @@
 import "server-only";
 
 import { getTranslations } from "next-intl/server";
+import { docDisplayId, requireDocRef, toDocRef } from "@/lib/doc-ref";
 import { prisma } from "./db";
 import { correlationRef } from "./login-attempts";
 import { mintToken, sha256hex } from "./portal-auth";
@@ -110,7 +111,8 @@ export async function mintPortalLink(
     data: {
       tokenHash: hash,
       resourceType: input.resourceType,
-      resourceId: input.resourceId,
+      // 保存するのは法人コード付きの参照（番号だけを保存しない）。
+      resourceId: await requireDocRef(input.resourceType, input.resourceId),
       policy: input.policy,
       portalAccountId: input.portalAccountId ?? null,
       boundEmail: email,
@@ -189,7 +191,8 @@ export async function resolvePortalLink(token: string): Promise<ResolveResult> {
     link: {
       id: row.id,
       resourceType: row.resourceType as PortalDocumentType,
-      resourceId: row.resourceId,
+      // 画面と URL は番号で扱う（保存値は法人コード付きの参照）。
+      resourceId: docDisplayId(row.resourceType, row.resourceId),
       policy: row.policy as PortalLinkPolicy,
       boundEmail: row.boundEmail ?? row.account?.email ?? null,
       portalAccountId: row.portalAccountId,
@@ -249,7 +252,11 @@ export async function listPortalLinks(filter: {
   const rows = await prisma.portalDocumentLink.findMany({
     where: {
       resourceType: filter.resourceType,
-      resourceId: filter.resourceId,
+      resourceId:
+        filter.resourceType && filter.resourceId
+          ? ((await toDocRef(filter.resourceType, filter.resourceId)) ??
+            filter.resourceId)
+          : filter.resourceId,
       portalAccountId: filter.portalAccountId,
     },
     select: {
@@ -275,7 +282,7 @@ export async function listPortalLinks(filter: {
     return {
       id: r.id,
       resourceType: r.resourceType,
-      resourceId: r.resourceId,
+      resourceId: docDisplayId(r.resourceType, r.resourceId),
       policy: r.policy as PortalLinkPolicy,
       label: r.label,
       maskedEmail: email ? maskEmail(email) : null,

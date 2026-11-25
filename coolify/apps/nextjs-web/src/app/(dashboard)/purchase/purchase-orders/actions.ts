@@ -35,6 +35,7 @@ import {
 } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import { companyForPurchase } from "@/lib/doc-company";
+import { requireDocRef } from "@/lib/doc-ref";
 import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
 import { allocateDocumentKey, nextDocumentNumber } from "@/lib/numbering";
@@ -1098,7 +1099,11 @@ export async function cancelPurchaseOrder(
       await tx.approvalRequest.deleteMany({
         where: {
           targetType: "material_purchase_orders",
-          targetId: poNumber,
+          targetId: await requireDocRef(
+            "material_purchase_orders",
+            poNumber,
+            tx,
+          ),
           status: "PENDING",
         },
       });

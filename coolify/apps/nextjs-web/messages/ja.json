@@ -817,7 +817,10 @@
     "invoicePayment": "請求書の入金",
     "notPendingApproval": "承認依頼中ではありません",
     "designVersion": "設計図の版",
-    "priceListUnapproved": "価格表が承認待ち"
+    "priceListUnapproved": "価格表が承認待ち",
+    "issuingCompany": "発行会社",
+    "issuingCompanyDesc": "この書類を発行する自社法人。作成後は変えられません",
+    "issuingCompanyNotAllowed": "選択した発行会社では書類を作成できません。所属拠点の自社法人から選択してください"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -4636,7 +4639,13 @@
         "orphanRecoveredLog": "[intake] 孤児 .processing を回収: {name}",
         "alreadyImportedSkipLog": "[intake] {name} → {number} (取込済み・スキップ)",
         "numberBurnFailedLog": "[intake] 番号の焼き込みに失敗: {name}"
-      }
+      },
+      "intakeCompanyTitle": "取込口の自社法人",
+      "intakeCompany": "自社法人",
+      "intakeCompanyDefault": "既定の法人",
+      "intakeCompanyDesc": "取込フォルダ（メール・外部連携からの取込を含む）で作る注文請書の発行元です。注文請書の自社法人は作成後に変えられないので、変更はこれから取り込む分にだけ効きます。画面からアップロードした分は、アップロードした人の所属拠点の自社法人が 1 つに決まればそれを使います。",
+      "intakeCompanySaved": "取込口の自社法人を保存しました",
+      "intakeCompanyInvalid": "有効な自社法人を選択してください"
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "アカウントを作成しました（既定は無効です）",
@@ -6933,7 +6942,8 @@
       "inUse": "拠点 {plants} 件・請求書 {invoices} 件で使われているため削除できません",
       "createFailed": "自社法人を作成できませんでした",
       "updateFailed": "自社法人を更新できませんでした",
-      "deleteFailed": "自社法人を削除できませんでした"
+      "deleteFailed": "自社法人を削除できませんでした",
+      "codeInvalidChars": "法人コードに「/」「~」と空白は使えません"
     }
   },
   "manual": {
@@ -8446,7 +8456,8 @@
       "unitPriceMin0": "単価は0以上",
       "onlyCancelledCanBeRecreated": "作り直せるのはキャンセル済みの注文請書だけです",
       "recreatedFromCancelled": "キャンセル済みの {number} から作り直しました",
-      "recreatedAs": "{number} として作り直しました"
+      "recreatedAs": "{number} として作り直しました",
+      "linePlantOtherCompany": "明細 {rows} 行目: 担当拠点がこの注文請書の自社法人（{company}）に属していません。注文請書 1 件の明細は同じ自社法人の拠点にしてください"
     },
     "quoteActions": {
       "createFailed": "見積書の作成に失敗しました",

@@ -15,6 +15,7 @@ import { getTranslations } from "next-intl/server";
 import type { AttachmentView } from "@/components/ui/AttachmentsPanel";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
+import { toDocRef } from "@/lib/doc-ref";
 import { systematicFileName } from "@/lib/file-naming";
 import {
   type ActionResult,
@@ -149,9 +150,12 @@ export async function listAttachments(
   ownerId: string,
 ): Promise<AttachmentView[]> {
   try {
+    // 書類は法人コード付きの参照で指す（lib/doc-ref-core.ts）。
+    const ownerRef = await toDocRef(ownerType, ownerId);
+    if (ownerRef == null) return [];
     const [rows, tr] = await Promise.all([
       prisma.documentAttachment.findMany({
-        where: { ownerType, ownerId },
+        where: { ownerType, ownerId: ownerRef },
         orderBy: { createdAt: "desc" },
         include: {
           file: true,
@@ -216,6 +220,11 @@ export async function saveAttachment(
   const { name, type, bytes } = input.file;
   const checked = validateFile(name, type, bytes.byteLength, tr);
   if (!checked.ok) return actionError(checked.error);
+  // 保存するのは法人コード付きの参照。対象の書類が無ければ保存しない。
+  const ownerRef = await toDocRef(ownerType, ownerId);
+  if (ownerRef == null) {
+    return actionError(tr("common.attachmentTargetNotSpecified"));
+  }
 
   // 系統的リネーム（lib/file-naming）: 時刻+乱数で一意、業務キーで判別可能。
   const storageKey = `attachments/${ownerType}/${systematicFileName(name, ownerId)}`;
@@ -240,7 +249,7 @@ export async function saveAttachment(
       return tx.documentAttachment.create({
         data: {
           ownerType,
-          ownerId,
+          ownerId: ownerRef,
           label: input.label?.trim() || null,
           uploadedBy: actor,
           fileId: file.id,

@@ -17,6 +17,7 @@ import { APPROVAL_TARGET, isApprovalTargetType } from "@/lib/approval-targets";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
+import { docDisplayId } from "@/lib/doc-ref";
 import { localized } from "@/lib/format";
 
 /** 承認管理 (PD03) の 1 行（client-safe）。 */
@@ -118,11 +119,12 @@ export async function fetchPendingApprovalRequests(): Promise<
     return {
       id: r.id,
       targetType: r.targetType,
-      targetId: r.targetId,
+      // target_id は法人コード付きの参照（`CKK/ORD-…`）。画面とリンクは番号で扱う。
+      targetId: docDisplayId(r.targetType, r.targetId),
       targetDisplay:
         r.targetType === "work_orders"
           ? (woDocNumbers.get(r.targetId) ?? `#${r.targetId}`)
-          : r.targetId,
+          : docDisplayId(r.targetType, r.targetId),
       stepNo: r.stepNo,
       stepCount: r.stepCount,
       stepLabel: step

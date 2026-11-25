@@ -6,6 +6,8 @@
  * URL ids use the formatted number; `parseDocKey` maps it back to the key.
  */
 
+import { docRefNumber } from "./doc-ref-core";
+
 export interface DocKey {
   yearMonth: string;
   seq: number;
@@ -70,8 +72,11 @@ export function formatProductNumber(
  * Returns null when the string is not a valid document id.
  */
 export function parseDocKey(id: string, prefix?: DocPrefix): DocKey | null {
+  // 法人コード付きの参照（`CKK/QOT-…` / URL 形 `CKK~QOT-…`）も受ける —
+  // 番号の部分だけを読む。法人が合っているかはここでは見ない（純粋関数。
+  // 照合は lib/doc-ref.ts）。
   // プレフィクスは 2〜4 文字（WO / PO / EST / …）
-  const m = /^(?:([A-Z]{2,4})-)?(\d{6})-(\d{1,6})$/.exec(id);
+  const m = /^(?:([A-Z]{2,4})-)?(\d{6})-(\d{1,6})$/.exec(docRefNumber(id));
   if (!m) return null;
   if (prefix && m[1] && m[1] !== prefix) return null;
   const seq = Number(m[3]);
@@ -146,7 +151,8 @@ const ORDER_LINE_RE = /^(?:ORD-)?(\d{6})-(\d{1,6})-(\d{1,2})$/i;
 
 /** "ORD-202607-00001-01"（prefix 省略可）→ キー。不一致は null。 */
 export function parseOrderLineKey(id: string): OrderLineKey | null {
-  const m = ORDER_LINE_RE.exec(id.trim());
+  // 法人コード付きの参照も受ける（parseDocKey と同じ）。
+  const m = ORDER_LINE_RE.exec(docRefNumber(id));
   if (!m) return null;
   const seq = Number(m[2]);
   const branch = Number(m[3]);

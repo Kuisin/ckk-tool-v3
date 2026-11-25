@@ -34,6 +34,7 @@ import {
 import { prisma } from "@/lib/db";
 import { companyForPlant } from "@/lib/doc-company";
 import { parseDocKey } from "@/lib/doc-number";
+import { requireDocRef } from "@/lib/doc-ref";
 import { allocateDocumentKey } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -564,7 +565,7 @@ export async function cancelStockTake(
         await tx.approvalRequest.deleteMany({
           where: {
             targetType: TARGET_TYPE,
-            targetId: stockTakeNumber,
+            targetId: await requireDocRef(TARGET_TYPE, stockTakeNumber, tx),
             status: "PENDING",
           },
         });

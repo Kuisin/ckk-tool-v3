@@ -22,7 +22,7 @@ import { actOnCurrentStep } from "@/lib/approvals";
 import { recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { companyForUnplaced } from "@/lib/doc-company";
+import { resolveIssuingCompany } from "@/lib/doc-company";
 import {
   type DocKey,
   formatPriceListNumber,
@@ -291,6 +291,12 @@ export async function fetchPriceListItemType(
 function createInputSchema(tr: Tr) {
   return z.object({
     identity: identitySchema(tr),
+    /**
+     * 発行会社（自社法人 id）。拠点を持たない書類なので作成フォームで決める。
+     * 未指定は初期値（所属拠点の法人が 1 つならそれ、でなければ既定の法人）。
+     * 選べる法人かどうかはサーバーが検証する（lib/doc-company-core.ts）。
+     */
+    ownCompanyId: z.number().int().positive().nullable().optional(),
     /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
     salesRepId: z.string().nullable().optional(),
     variants: z
@@ -372,7 +378,11 @@ export async function createPriceEntry(
       v.identity.customerBpId,
       null,
     );
-    const company = await companyForUnplaced();
+    const issuing = await resolveIssuingCompany(authz.userId, v.ownCompanyId);
+    if (!issuing.ok) {
+      return actionError(tr("common.issuingCompanyNotAllowed"));
+    }
+    const company = issuing.data;
     await prisma.$transaction([
       prisma.priceListEntry.create({
         data: {

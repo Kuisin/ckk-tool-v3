@@ -1,6 +1,7 @@
 import { TrialEstimateForm } from "@/components/sales/trial-estimates/TrialEstimateForm";
 import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
+import { issuingCompanyFieldForSession } from "@/lib/doc-company";
 import { parseDocKey } from "@/lib/doc-number";
 import {
   ESTIMATE_COST_PERMISSION,
@@ -94,6 +95,8 @@ export default async function TrialEstimateNewPage({
     ),
   };
 
+  const issuingCompany = await issuingCompanyFieldForSession();
+
   return (
     <TrialEstimateForm
       canViewCost={canViewCost}
@@ -101,6 +104,7 @@ export default async function TrialEstimateNewPage({
       diameterOptions={diameterOptions}
       initialKind={initialKind}
       initialPricing={initialPricing}
+      issuingCompany={issuingCompany}
       materialTypeOptions={materialTypeOptions}
       scalePreset={scalePreset}
       settings={

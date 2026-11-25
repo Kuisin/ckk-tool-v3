@@ -1,5 +1,6 @@
 import { QuoteForm } from "@/components/sales/quotes/QuoteForm";
 import { requireAppRead } from "@/lib/authz-page";
+import { issuingCompanyFieldForSession } from "@/lib/doc-company";
 import { parseDocKey } from "@/lib/doc-number";
 import { loadTaxCatalog } from "@/lib/tax-categories";
 import { fetchCustomerOptions } from "../../trial-estimates/data";
@@ -52,6 +53,7 @@ export default async function SalesQuotesNewPage({
     fetchCustomerTaxCategories(),
     loadTaxCatalog(),
   ]);
+  const issuingCompany = await issuingCompanyFieldForSession();
   // 価格表に載っている製品だけ（フォームが選べるのはそれだけ）。
   const taxCategoryByProduct = await fetchProductTaxCategories(
     entries.map((e) => Number(e.itemId)),
@@ -76,6 +78,7 @@ export default async function SalesQuotesNewPage({
       branchesByCustomer={branchesByCustomer}
       customerOptions={customerOptions}
       entries={entries}
+      issuingCompany={issuingCompany}
       mode="create"
       prefill={prefill}
       quote={duplicated}

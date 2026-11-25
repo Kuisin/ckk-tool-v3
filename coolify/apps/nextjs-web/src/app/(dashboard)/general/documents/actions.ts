@@ -27,6 +27,7 @@ import {
 } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { companyForUnplaced } from "@/lib/doc-company";
+import { requireDocRef } from "@/lib/doc-ref";
 import {
   PAGE_OWNER_TYPE,
   parsePublishRevisionNote,
@@ -577,7 +578,11 @@ async function actOnPage(
   // 申請時に頼まれた版。1 段目の依頼行にだけ notes が載る（次段へは複写されない）
   // ので、この文書の最新の 1 段目を読む。無い（旧データ）なら latest に落ちる。
   const firstStep = await prisma.approvalRequest.findFirst({
-    where: { targetType: "internal_pages", targetId: pageNumber, stepNo: 1 },
+    where: {
+      targetType: "internal_pages",
+      targetId: await requireDocRef("internal_pages", pageNumber),
+      stepNo: 1,
+    },
     orderBy: { requestedAt: "desc" },
     select: { notes: true },
   });

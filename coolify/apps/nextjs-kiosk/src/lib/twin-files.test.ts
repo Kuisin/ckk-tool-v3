@@ -27,6 +27,13 @@ const TWINS = [
   "inventory.ts",
   // 採番 — 共有端末も工程完了で入出庫伝票を起こす（番号が要る）。
   "numbering.ts",
+  // 書類の多態参照（法人コード/番号）— inventory.ts が入出庫伝票の元書類を
+  // 参照へ直すのに使う。
+  "doc-number.ts",
+  "doc-number.test.ts",
+  "doc-ref-core.ts",
+  "doc-ref-core.test.ts",
+  "doc-ref.ts",
   "inventory-availability-core.ts",
   "inventory-availability-core.test.ts",
   "inventory-note-core.ts",

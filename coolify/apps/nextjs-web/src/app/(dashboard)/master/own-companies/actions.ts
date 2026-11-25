@@ -15,6 +15,7 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
+import { OWN_COMPANY_CODE_FORBIDDEN } from "@/lib/doc-ref-core";
 import { isValidInvoiceRegistrationNo } from "@/lib/own-company-core";
 import {
   type ActionResult,
@@ -31,7 +32,16 @@ const BASE_PATH = "/master/own-companies";
 
 function inputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
-    code: z.string().trim().min(1, tr("master.ownCompanies.enterCode")),
+    code: z
+      .string()
+      .trim()
+      .min(1, tr("master.ownCompanies.enterCode"))
+      // 書類の参照は `<法人コード>/<番号>`（URL では `~`）。区切りと紛れる文字は
+      // コードに使わせない（lib/doc-ref-core.ts）。
+      .refine(
+        (v) => !OWN_COMPANY_CODE_FORBIDDEN.test(v),
+        tr("master.ownCompanies.codeInvalidChars"),
+      ),
     nameJa: z.string().min(1, tr("common.nameJaRequired")),
     nameTranslations: z.record(z.string(), z.string()).optional(),
     nameKana: z.string().optional(),

@@ -18,6 +18,7 @@ import { iso, num } from "@/lib/api-dto";
 import { invalidCursorResponse, parseListQuery, runList } from "@/lib/api-list";
 import { instanceOf } from "@/lib/api-problem";
 import { prisma } from "@/lib/db";
+import { docRefNumber } from "@/lib/doc-ref-core";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -61,7 +62,14 @@ export async function GET(request: Request): Promise<Response> {
       transactionType: r.transactionType,
       quantity: num(r.quantity),
       referenceType: r.referenceType,
-      referenceId: r.referenceId,
+      // 書類を指す参照は法人コード付きで保存している — API は番号で返す
+      // （契約を変えない）。
+      referenceId:
+        r.referenceId &&
+        (r.referenceType === "delivery_order" ||
+          r.referenceType === "stock_take")
+          ? docRefNumber(r.referenceId)
+          : r.referenceId,
       notes: r.notes,
       createdAt: iso(r.createdAt),
     }),

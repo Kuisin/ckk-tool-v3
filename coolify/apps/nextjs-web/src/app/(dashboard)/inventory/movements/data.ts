@@ -23,6 +23,7 @@ import {
   formatMovementNumber,
   parseDocKey,
 } from "@/lib/doc-number";
+import { docDisplayId } from "@/lib/doc-ref";
 import { type LocalizedText, localized } from "@/lib/format";
 import { storageLabelOf } from "../products/data";
 
@@ -71,7 +72,11 @@ function mapMovement(
       ? `${r.plant.code} ${localized(r.plant.name as LocalizedText | null)}`
       : null,
     sourceType: r.sourceType,
-    sourceId: r.sourceId,
+    // 保存値は法人コード付きの参照。画面とリンクは番号で扱う。
+    sourceId:
+      r.sourceType && r.sourceId
+        ? docDisplayId(r.sourceType, r.sourceId)
+        : r.sourceId,
     lineCount: r._count.lines,
     notes: r.notes,
     createdByName,

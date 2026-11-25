@@ -80,6 +80,13 @@ export interface PortalTarget {
   type: PortalResourceType;
   /** 業務キー（QOT-… / ORD-… / DRN-… / INV-… / forms.code）。 */
   id: string;
+  /**
+   * 付与・リンクの resource_id と突き合わせる値。番号を持つ書類は法人コード
+   * 付きの参照（`CKK/QOT-…` — lib/doc-ref-core.ts）で、**番号だけでは比べない**
+   * （同じ番号が別の法人にもあり得る）。呼び出し側（portal-access.ts）が入れる。
+   * 無ければ id で比べる（フォームなど、法人で分かれない対象）。
+   */
+  ref?: string;
   /** その書類が「宛て先」として持つ BP（顧客・その支店）。 */
   customerBpIds?: readonly string[];
   /** 需要家・出荷先として持つ BP。 */
@@ -146,7 +153,10 @@ function matches(row: PortalGrantRow, target: PortalTarget): boolean {
     }
     case "DOCUMENT":
       // **BP 一致は要求しない** —「指定された 1 件だけ」を表すため。
-      return row.resourceType === target.type && row.resourceId === target.id;
+      return (
+        row.resourceType === target.type &&
+        row.resourceId === (target.ref ?? target.id)
+      );
     case "FORM":
       return target.type === "forms" && row.resourceId === target.id;
     default:

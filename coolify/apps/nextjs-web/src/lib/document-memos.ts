@@ -26,6 +26,7 @@ import { getTranslations } from "next-intl/server";
 import { actorAvatarUrl, getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { toDocRef, toDocRefs } from "@/lib/doc-ref";
 import { documentInScope } from "@/lib/document-scope";
 import {
   findBlockedLinks,
@@ -217,10 +218,15 @@ export async function listMemosByOwnerIds(
   const ids = [...new Set(ownerIds)];
   if (!owner || ids.length === 0) return {};
   try {
+    // 書類は法人コード付きの参照で指す（lib/doc-ref-core.ts）。呼び出し側の
+    // id（番号）→ 参照 に直して引き、結果は呼び出し側の id で返す。
+    const refs = await toDocRefs(ownerType, ids);
+    const idOfRef = new Map([...refs].map(([id, ref]) => [ref, id]));
+    if (refs.size === 0) return {};
     const [rows, actorId, canUpdate, canDelete, isAdmin, tr] =
       await Promise.all([
         prisma.documentMemo.findMany({
-          where: { ownerType, ownerId: { in: ids } },
+          where: { ownerType, ownerId: { in: [...refs.values()] } },
           // COMMENT は新しい順。MEMO は 1 件なので実質どちらでも同じ。
           orderBy: { createdAt: "desc" },
           include: {
@@ -248,8 +254,9 @@ export async function listMemosByOwnerIds(
     for (const r of rows) {
       const mine = mayMutate(r.kind, r.createdBy, actor);
       const doc = r.content as unknown as RichTextDoc;
-      const bucket = byOwner[r.ownerId] ?? [];
-      byOwner[r.ownerId] = bucket;
+      const inputId = idOfRef.get(r.ownerId) ?? r.ownerId;
+      const bucket = byOwner[inputId] ?? [];
+      byOwner[inputId] = bucket;
       bucket.push({
         id: r.id,
         // 保存時に parseRichText を通した doc のみが入る。万一壊れた行があっても
@@ -315,6 +322,9 @@ export async function saveMemo(
   });
   if (!auth.ok) return actionError(auth.error);
   const actor = auth.actor;
+  // 保存するのは法人コード付きの参照。対象の書類が無ければ保存しない。
+  const ownerRef = await toDocRef(ownerType, ownerId);
+  if (ownerRef == null) return actionError(tr("common.invalidMemoTarget"));
 
   const parsed = parseRichText(input.content);
   if (!parsed.ok) {
@@ -366,7 +376,7 @@ export async function saveMemo(
         ? await tx.documentMemo.findUnique({ where: { id: input.id } })
         : owner.kind === "MEMO"
           ? await tx.documentMemo.findFirst({
-              where: { ownerType, ownerId, kind: "MEMO" },
+              where: { ownerType, ownerId: ownerRef, kind: "MEMO" },
               orderBy: { createdAt: "asc" },
             })
           : null;
@@ -375,7 +385,7 @@ export async function saveMemo(
         const row = await tx.documentMemo.create({
           data: {
             ownerType,
-            ownerId,
+            ownerId: ownerRef,
             kind: owner.kind,
             content,
             plainText: parsed.plainText,
@@ -389,7 +399,7 @@ export async function saveMemo(
           data: {
             memoId: row.id,
             ownerType,
-            ownerId,
+            ownerId: ownerRef,
             kind: owner.kind,
             action: "CREATE",
             content,
@@ -400,7 +410,7 @@ export async function saveMemo(
         return { created: true as const, id: row.id, before: null };
       }
 
-      if (existing.ownerType !== ownerType || existing.ownerId !== ownerId) {
+      if (existing.ownerType !== ownerType || existing.ownerId !== ownerRef) {
         throw new MemoError(tr("common.memoTargetMismatch"));
       }
       if (!mayMutate(existing.kind, existing.createdBy, actor)) {
@@ -415,7 +425,7 @@ export async function saveMemo(
         data: {
           memoId: row.id,
           ownerType,
-          ownerId,
+          ownerId: ownerRef,
           kind: existing.kind,
           action: "UPDATE",
           content,

@@ -13,7 +13,12 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
+import { prisma } from "@/lib/db";
 import type { Locale } from "@/lib/i18n";
+import {
+  getIntakeFolderCompanyId,
+  setIntakeFolderCompanyId,
+} from "@/lib/intake-company";
 import { retryFailedIntake } from "@/lib/intake-folder";
 import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
 
@@ -41,6 +46,47 @@ export async function scanIntakeFolderNow(): Promise<ActionResult> {
   } catch (e) {
     console.error("[order-intake] scan", e);
     return actionError(tr("settings.orderIntakeActions.scanStartFailed"));
+  }
+}
+
+/**
+ * 取込口の自社法人を保存する（null = 既定の法人に従う）。
+ *
+ * 取込で作る注文請書は作成時にこの法人を持ち、以後は変えられない。変更が
+ * 効くのは**これから取り込む分**だけ（取込済みの請書は動かない）。
+ */
+export async function updateIntakeCompany(
+  ownCompanyId: number | null,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("system", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = z.number().int().positive().nullable().safeParse(ownCompanyId);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
+  try {
+    if (parsed.data != null) {
+      const company = await prisma.ownCompany.findUnique({
+        where: { id: parsed.data },
+        select: { isActive: true },
+      });
+      if (!company?.isActive) {
+        return actionError(tr("settings.orderIntake.intakeCompanyInvalid"));
+      }
+    }
+    const before = await getIntakeFolderCompanyId();
+    await setIntakeFolderCompanyId(parsed.data);
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "system_settings",
+      recordId: "intake.folder_own_company_id",
+      before: { ownCompanyId: before },
+      after: { ownCompanyId: parsed.data },
+    });
+    revalidatePath(BASE_PATH);
+    return actionOk();
+  } catch (e) {
+    console.error("[order-intake] company", e);
+    return actionError(tr("common.saveFailed"));
   }
 }
 

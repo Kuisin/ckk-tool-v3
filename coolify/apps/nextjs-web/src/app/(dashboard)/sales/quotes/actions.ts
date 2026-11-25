@@ -20,7 +20,7 @@ import {
 import { recordAudit } from "@/lib/audit";
 import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { companyForUnplaced } from "@/lib/doc-company";
+import { resolveIssuingCompany } from "@/lib/doc-company";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
 import { lineAmountYen, roundYen } from "@/lib/money";
 import { allocateDocumentKey } from "@/lib/numbering";
@@ -84,6 +84,12 @@ function quoteInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
     // 営業担当 — 顧客の担当一覧（bp_sales_reps）から選ぶ。未指定で顧客が
     // 変わったときは主担当が既定で入る（lib/sales-rep resolveSalesRepId）。
     salesRepId: z.string().nullable().optional(),
+    /**
+     * 発行会社（自社法人 id）。拠点を持たない書類なので作成フォームで決める。
+     * 未指定は初期値（所属拠点の法人が 1 つならそれ、でなければ既定の法人）。
+     * 選べる法人かどうかはサーバーが検証する（lib/doc-company-core.ts）。
+     */
+    ownCompanyId: z.number().int().positive().nullable().optional(),
     validUntil: z.string().nullable(),
     notes: z.string(),
     items: z
@@ -240,6 +246,10 @@ export async function createQuote(
   const v = parsed.data;
   try {
     const items = await resolveItems(v, tr);
+    const company = await resolveIssuingCompany(authz.userId, v.ownCompanyId);
+    if (!company.ok) {
+      return actionError(tr("common.issuingCompanyNotAllowed"));
+    }
     const { yearMonth, seq } = await allocateDocumentKey("QUOTE");
     // 新規は prior 顧客が無いので、未指定なら顧客の主担当が入る。
     const salesRepId = await resolveSalesRepId(
@@ -251,7 +261,7 @@ export async function createQuote(
       data: {
         yearMonth,
         seq,
-        ...(await companyForUnplaced()),
+        ...company.data,
         customerBpId: v.customerBpId,
         customerBranchBpId: v.customerBranchBpId,
         salesRepId,
