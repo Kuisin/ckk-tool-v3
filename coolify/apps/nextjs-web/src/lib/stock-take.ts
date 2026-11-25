@@ -38,6 +38,8 @@ export async function snapshotStockTakeLines(
   const buckets = await tx.itemInventory.findMany({
     // 数えに行けるのは自社の棚だけ。外注が持っている分は棚卸の対象外
     // （拠点を持たないので plantId でも落ちるが、意図を書いて残す）。
+    // wip-scope: **仕掛品も数える** — 棚に実物がある在庫はすべて棚卸の対象で、
+    // 外すと仕掛品の帳簿と実物を合わせる手段が無くなる。
     where: { plantId, custodyBpId: null, ownerBpId: null, ...locationFilter },
     select: { id: true, quantity: true, item: { select: { itemType: true } } },
     orderBy: { id: "asc" },

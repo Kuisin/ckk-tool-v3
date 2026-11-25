@@ -301,7 +301,13 @@
       "STAGE_OUT_OF_ORDER": "前の段を先に記録してください",
       "INSPECTION_REQUIRED": "検査記録が未入力の検査表があります。検査表を保存してから完了してください",
       "INSPECTION_NOT_PASS": "合格した検査記録だけ承認できます",
-      "NOT_APPROVER": "この検査表の承認者ではありません"
+      "NOT_APPROVER": "この検査表の承認者ではありません",
+      "WIP_DIAMETER_REQUIRED": "仕上がり径を入力してください",
+      "WIP_LENGTH_REQUIRED": "仕上がり長を入力してください",
+      "WIP_DIAMETER_INVALID": "仕上がり径は 0 より大きい数値を入力してください",
+      "WIP_LENGTH_INVALID": "仕上がり長は 0 より大きい数値を入力してください",
+      "WIP_PATH_REQUIRED": "品物が通ってきた経路を選択してください",
+      "WIP_PATH_INVALID": "選択した経路がこの工程の候補にありません。画面を読み込み直してください"
     },
     "finalInspection": {
       "title": "最終検査・出荷前確認",
@@ -408,6 +414,20 @@
       "machineMatch": "この機械用",
       "download": "ダウンロード",
       "noFile": "ファイルなし"
+    },
+    "wip": {
+      "title": "在庫に置く仕掛品",
+      "description": "半製品として在庫に置く分は、加工状態と仕上がり寸法ごとに分けて在庫に入ります。",
+      "state": "加工状態",
+      "stateUnprocessed": "未加工（形を変える工程なし）",
+      "kindDefect": "半製品に振り分けた分",
+      "kindBranchTerminal": "分岐の終端（半製品在庫へ）",
+      "finishedDiameter": "仕上がり径 (mm)",
+      "finishedLength": "仕上がり長 (mm)",
+      "defaultsToBlank": "形を変える工程が済んでいないため、未入力なら仕掛ブランクの寸法（φ{diameter} × {length}）になります。",
+      "path": "通ってきた経路",
+      "pathHint": "手前に合流があるため、加工状態が一通りに決まりません。品物が通ってきた経路を確かめてください。",
+      "recommended": "推奨（本流）"
     }
   },
   "deviceError": {

@@ -21,6 +21,8 @@
  */
 
 import type { Prisma as PrismaNS } from "../../generated/client/client";
+import { resolveWipRecording } from "./wip-recording";
+import type { WipRecordingInput, WipRecordingIssue } from "./wip-state-core";
 import { recordAudit } from "./audit";
 import { prisma } from "./db";
 import { jstDateOnly } from "./format";
@@ -93,7 +95,24 @@ export type StepErrorCode =
   | "INSPECTION_REQUIRED"
   // 検査承認: 合格していない記録を承認しようとした / 承認者ではない
   | "INSPECTION_NOT_PASS"
-  | "NOT_APPROVER";
+  | "NOT_APPROVER"
+  // 仕掛品として在庫に置く分の記録（仕上がり寸法・通ってきた経路）
+  | "WIP_DIAMETER_REQUIRED"
+  | "WIP_LENGTH_REQUIRED"
+  | "WIP_DIAMETER_INVALID"
+  | "WIP_LENGTH_INVALID"
+  | "WIP_PATH_REQUIRED"
+  | "WIP_PATH_INVALID";
+
+/** wip-state-core の不備 → 端末が翻訳して出すコード。 */
+const WIP_ISSUE_CODE: Record<WipRecordingIssue, StepErrorCode> = {
+  finishedDiameterRequired: "WIP_DIAMETER_REQUIRED",
+  finishedLengthRequired: "WIP_LENGTH_REQUIRED",
+  finishedDiameterInvalid: "WIP_DIAMETER_INVALID",
+  finishedLengthInvalid: "WIP_LENGTH_INVALID",
+  pathChoiceRequired: "WIP_PATH_REQUIRED",
+  pathChoiceInvalid: "WIP_PATH_INVALID",
+};
 
 export interface StepActionResult {
   ok: boolean;
@@ -634,6 +653,12 @@ export async function completeStepExecution(
   actorId: string,
   quantities: StepQuantities | null,
   defectReasons: StepDefectReason[] | null = null,
+  /**
+   * 仕掛品として在庫に置く分の記録（仕上がり寸法・選んだ経路）。品物が工程を
+   * 離れて在庫に入る完了でだけ読む（nextjs-web completeStepExecution と同じ —
+   * 規則は twin の lib/wip-recording.ts）。
+   */
+  wipRecording: WipRecordingInput | null = null,
 ): Promise<StepActionResult> {
   const stepRow = await prisma.workOrderStep.findUnique({
     where: { id: stepId },
@@ -798,6 +823,21 @@ export async function completeStepExecution(
     };
   }
 
+  // 仕掛品として在庫に置く分（半製品の数 / 半製品で終わる分岐の終端）は、
+  // 仕上がり寸法と — 手前に合流があれば — 通ってきた経路を記録する。
+  // 在庫に置かない完了では 3 つとも null になる（入力は捨てる）。
+  const wip = await resolveWipRecording(
+    stepId,
+    {
+      defectSemiFinished: persisted.outputDefectSemiFinished,
+      outputSuccess: persisted.outputSuccessQuantity,
+    },
+    wipRecording,
+  );
+  if (wip.issues.length > 0) {
+    return { ok: false, codes: wip.issues.map((i) => WIP_ISSUE_CODE[i]) };
+  }
+
   // 不良の内訳（{種別, 種類, 詳細, 数}）— 有効行のみ。空なら列を触らない。
   const cleanedReasons = (defectReasons ?? [])
     .filter((r) => Number.isFinite(r.count) && r.count > 0)
@@ -855,6 +895,11 @@ export async function completeStepExecution(
         outputDefectScrap: persisted.outputDefectScrap,
         outputDefectRework: persisted.outputDefectRework,
         ...(cleanedReasons.length > 0 ? { defectReasons: cleanedReasons } : {}),
+        finishedDiameterMm: wip.value.finishedDiameterMm,
+        finishedLengthMm: wip.value.finishedLengthMm,
+        ...(wip.value.pathStepIds
+          ? { wipPathStepIds: wip.value.pathStepIds }
+          : {}),
         completedAt: now,
         completedBy: actorId,
         sessionLockedBy: null,

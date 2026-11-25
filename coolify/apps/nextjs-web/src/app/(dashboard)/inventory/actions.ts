@@ -204,6 +204,8 @@ export async function transferStock(
       };
       // custody-scope: / owner-scope: `bucket` は custodyBpId: null と
       // 元の ownerBpId を含む（移した先は必ず手元のバケット、所有者は同じ）。
+      // wip-scope: `bucket` は元の行の加工状態・目標製品・仕上がり寸法も含む —
+      // 場所を移しても仕掛品は仕掛品のまま、製品は製品のまま。
       let target = await tx.itemInventory.findFirst({
         where: bucket,
         select: { id: true },

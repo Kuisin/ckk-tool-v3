@@ -163,6 +163,8 @@ export async function fetchStockOverview(
   // 唯一の場所で、絞り込み（既定は自社の物だけ）は画面側が持っている。行は
   // 預け先・所有者を名乗って出てくる（custodyBpName / ownerBpName）ので、自社の
   // 在庫と混ざって見えることはない。
+  // wip-scope: 仕掛品も読む — この画面はバケットをそのまま並べる台帳で、行は
+  // 半製品の印を名乗って出てくる。
   const rows = await prisma.itemInventory.findMany({
     take: LIST_FETCH_CAP,
     where,

@@ -248,6 +248,8 @@ import {
   type WorkflowCtx,
 } from "./workflow-core";
 import { workflowCoreT } from "./workflow-core-labels";
+import { resolveWipRecording } from "./wip-recording";
+import type { WipRecordingInput } from "./wip-state-core";
 
 export interface StepQuantities {
   inputQuantity: number;
@@ -462,6 +464,12 @@ export async function completeStepExecution(
   stepId: string,
   quantities: StepQuantities | null,
   defectReasons: StepDefectReason[] | null = null,
+  /**
+   * 仕掛品として在庫に置く分の記録（仕上がり寸法・選んだ経路）。品物が工程を
+   * 離れて在庫に入る完了（半製品の数 > 0 / 半製品で終わる分岐の終端）でだけ
+   * 読む — それ以外の完了では無視する。規則は lib/wip-recording.ts。
+   */
+  wipRecording: WipRecordingInput | null = null,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
   const actor = await getCurrentActorId();
@@ -618,6 +626,24 @@ export async function completeStepExecution(
       return { ok: false, errors: qIssues.map((i) => i.message) };
   }
 
+  // 仕掛品として在庫に置く分（半製品の数 / 半製品で終わる分岐の終端）は、
+  // 仕上がり寸法と — 手前に合流があれば — 通ってきた経路を記録する。
+  // 在庫に置かない完了では 3 つとも null になる（入力は捨てる）。
+  const wip = await resolveWipRecording(
+    stepId,
+    {
+      defectSemiFinished: persisted.outputDefectSemiFinished,
+      outputSuccess: persisted.outputSuccessQuantity,
+    },
+    wipRecording,
+  );
+  if (wip.issues.length > 0) {
+    return {
+      ok: false,
+      errors: wip.issues.map((i) => tr(`production.wipRecording.issues.${i}`)),
+    };
+  }
+
   // 不良の内訳（{種別, 種類, 詳細, 数}）— 有効行のみ。空なら列を触らない。
   const cleanedReasons = (defectReasons ?? [])
     .filter((r) => Number.isFinite(r.count) && r.count > 0)
@@ -693,6 +719,9 @@ export async function completeStepExecution(
         outputDefectScrap: persisted.outputDefectScrap,
         outputDefectRework: persisted.outputDefectRework,
         ...(cleanedReasons.length > 0 ? { defectReasons: cleanedReasons } : {}),
+        finishedDiameterMm: wip.value.finishedDiameterMm,
+        finishedLengthMm: wip.value.finishedLengthMm,
+        wipPathStepIds: wip.value.pathStepIds ?? Prisma.DbNull,
         completedAt: new Date(),
         completedBy: actor,
         sessionLockedBy: null,
@@ -904,6 +933,10 @@ export async function rollbackStepExecution(
         // 不良の内訳も完了時の記録なので数量と一緒に消す（残すと次の完了で
         // 区分列と食い違う）。ロット/伝票コード（lotText）は開始時の記録なので残す。
         defectReasons: Prisma.DbNull,
+        // 在庫に置く分の記録も完了時のもの — 数量と一緒に消す。
+        finishedDiameterMm: null,
+        finishedLengthMm: null,
+        wipPathStepIds: Prisma.DbNull,
         completedAt: null,
         completedBy: null,
         cancelReason: reason,

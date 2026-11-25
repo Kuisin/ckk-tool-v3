@@ -41,6 +41,22 @@
 >   合流してきた側を辿ると違う並びになるときは、**本流を辿った並びを推奨に
 >   して、利用者に確かめる**（`wipPathForSource` が `ambiguous` と別案
 >   `alternatives` を返す。計上の段 PR 3 で確認を出す）
+>   **計上（PR 3/7）**: 指示書の完了で、半製品は**発生元の工程ごとに 1 本**の IN に
+>   なる（従来は 1 本にまとめていた。合計は同じ）。行き先のバケットは
+>   仕掛ブランク（材種・径 = 指示書の素材、長 = 製品の要求長）× 拠点 × ロット ×
+>   加工状態 × 目標製品（= 指示書の製品）× 仕上がり寸法で、`source_step_id` に
+>   発生元の工程が入る。ブランクが決まらない指示書（製品に要求素材が無い等）は
+>   旧来の鍵のまま渡り、DB の `app.wip_legacy_bucket` が「未分類」へ寄せる
+>   （数は失わない）。品物が工程を離れて在庫に入るとき — 半製品の数（> 0）を
+>   記録した工程・「半製品在庫へ」で終わる分岐の終端 — にだけ、工程
+>   （`work_order_steps`）へ仕上がり寸法と選んだ経路を記録する（下の表）。
+>   半製品の投入（`consumeSemiFinishedStock`）は 狙いのロット → 指示書のブランクに
+>   載っていて加工状態が工程の先頭部分のもの → 同じ目標製品の残り、の順に落とす
+>   （別の製品を目標にした仕掛品を引くのは後の段）。
+>   **製品・素材の手持ちを数える読み出しは `wip_state_id IS NULL` で仕掛品を外す**
+>   （引当・ATP・出荷のロット選択・所要量。「未分類」の仕掛品は製品の品目のまま
+>   なので品目で絞るだけでは混ざる）。棚卸と在庫台帳は仕掛品も読む（実物が棚に
+>   ある）。絞り忘れは `lib/inventory-custody-scope.test.ts` の 3 つめの軸が止める
 > - `master.prisma`: `currencies` — 100 円基準の換算マスタ（rate_per_100_jpy =
 >   100 円で買えるその通貨量。JPY = 100）。shared-db スタックの fx-rates が日次自動更新。
 >   書類・製品の `currency` 列（products / quotes / order_acceptances / invoices に
@@ -1218,6 +1234,22 @@ Table work_order_steps {
   output_defect_semi_finished int // 半製品在庫へ
   output_defect_scrap       int   // 廃棄
   output_defect_rework      int   // 手直し・追加工程へ
+  // ── 仕掛品として在庫に置く分の記録（仕掛品の再設計 PR 3/7）──────────────
+  // 品物が工程を離れて在庫に入る完了でだけ入る: 半製品の数（> 0）を記録した /
+  // 「半製品在庫へ」で終わる分岐の終端で良品がある。指示書の完了で仕掛品
+  // バケットの鍵（item_inventory.finished_* / wip_state_id）へ運ばれる。
+  //   仕上がり寸法: 形を変える工程が加工状態に 1 つでも入っていれば必須。
+  //     1 つも無ければ（切り出しただけ等）未入力で仕掛ブランクの寸法になる。
+  //   経路: 手前に合流があって加工状態が一通りに決まらないとき、記録した人が
+  //     選んだ並び（推奨 = 本流が既定）。**この工程自身を含めない形**で持つ —
+  //     途中で振り分けた分はこれがそのまま加工状態、分岐の終端はこれに自分を
+  //     足したものが加工状態。null = 推奨のまま（曖昧でなければ保存しない）。
+  // 規則は lib/wip-state-core.ts（validateWipRecording / planWipPostings）が
+  // 唯一の定義で、Web と共有端末の工程完了が同じ関数を通す（twin）。
+  // 巻き戻し（完了 → 未着手）で数量と一緒に消す。
+  finished_diameter_mm numeric(8,3)
+  finished_length_mm   numeric(10,3)
+  wip_path_step_ids    jsonb          // 工程カタログ id の配列
   session_locked_by uuid [ref: > users.id]       // セッションロック（同時実行防止）
   session_locked_at timestamp
   started_at      timestamp

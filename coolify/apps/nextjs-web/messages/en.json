@@ -3635,6 +3635,29 @@
       "invalidPayload": "The machining programs are invalid",
       "invalidReference": "A step or work location that does not exist is selected",
       "savedAudit": "Saved machining programs for v{version} ({count})"
+    },
+    "wipRecording": {
+      "title": "WIP going to stock",
+      "description": "Semi-finished parts go to stock separately by processing state and finished size.",
+      "state": "Processing state",
+      "stateUnprocessed": "Unprocessed (no shaping step done)",
+      "kindDefect": "Set aside as semi-finished",
+      "kindBranchTerminal": "Branch end (to semi-finished stock)",
+      "finishedDiameter": "Finished diameter (mm)",
+      "finishedLength": "Finished length (mm)",
+      "finishedSize": "Finished size",
+      "defaultsToBlank": "No shaping step is done yet, so the WIP blank size (φ{diameter} × {length}) is used when left empty.",
+      "path": "Route taken",
+      "pathHint": "A branch merges before this step, so the processing state is not unique. Confirm the route the parts took.",
+      "recommended": "Recommended (main line)",
+      "issues": {
+        "finishedDiameterRequired": "Enter the finished diameter",
+        "finishedLengthRequired": "Enter the finished length",
+        "finishedDiameterInvalid": "Enter a finished diameter greater than 0",
+        "finishedLengthInvalid": "Enter a finished length greater than 0",
+        "pathChoiceRequired": "Select the route the parts took",
+        "pathChoiceInvalid": "The selected route is not available for this step. Reload the page"
+      }
     }
   },
   "purchase": {

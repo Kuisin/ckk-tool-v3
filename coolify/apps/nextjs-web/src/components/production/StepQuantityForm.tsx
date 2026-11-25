@@ -37,7 +37,15 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { completeStep } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
-import type { SelectOption } from "@/components/production/step-execution/model";
+import type {
+  SelectOption,
+  StepWipRecordingView,
+} from "@/components/production/step-execution/model";
+import {
+  EMPTY_WIP_DRAFT,
+  WipRecordingFields,
+  wipRecordingCheck,
+} from "@/components/production/WipRecordingFields";
 import {
   checkDefectList,
   cleanReasonEntries,
@@ -61,6 +69,7 @@ export function StepQuantityForm({
   mode = "FLOW",
   stepCode = null,
   hideSemi = false,
+  wipRecording = null,
 }: {
   workOrderNumber: number;
   stepId: string;
@@ -82,6 +91,11 @@ export function StepQuantityForm({
    * ならない — サーバーも同じ規則で弾く（こちらは説明用）。
    */
   hideSemi?: boolean;
+  /**
+   * 仕掛品として在庫に置く分を記録するための材料。半製品の数を入れたとき
+   * （と、半製品で終わる分岐の終端）にだけ記録欄が出る。
+   */
+  wipRecording?: StepWipRecordingView | null;
 }) {
   const tr = useTranslations();
   const router = useRouter();
@@ -94,6 +108,12 @@ export function StepQuantityForm({
   const total = defectListTotal(defects);
   const success = deriveSuccessFromList(input, defects);
   const totals = dispositionTotals(defects);
+  const [wipDraft, setWipDraft] = useState(EMPTY_WIP_DRAFT);
+  const wipCheck = wipRecordingCheck(
+    wipRecording,
+    { defectSemiFinished: totals.semi, outputSuccess: success },
+    wipDraft,
+  );
 
   // 不良種類はマスタ FK（value = defect_types.id の文字列）で保持・保存する。
   const typeData = defectTypeOptions.map((o) => ({
@@ -113,6 +133,7 @@ export function StepQuantityForm({
         stepId,
         quantitiesFromList(input, defects),
         cleanReasonEntries(defects),
+        wipCheck.input,
       );
       if (result.ok) {
         notifications.show({
@@ -306,6 +327,15 @@ export function StepQuantityForm({
           {tr("production.stepQuantityForm.addDefect")}
         </Button>
 
+        <WipRecordingFields
+          defectSemiFinished={totals.semi}
+          disabled={disabled}
+          draft={wipDraft}
+          onChange={setWipDraft}
+          outputSuccess={success}
+          view={wipRecording}
+        />
+
         {issue && (
           <Alert
             color="orange"
@@ -336,7 +366,12 @@ export function StepQuantityForm({
         <Group justify="center" mt="sm">
           <Button
             color="green"
-            disabled={disabled || issue != null || blockedReason != null}
+            disabled={
+              disabled ||
+              issue != null ||
+              blockedReason != null ||
+              wipCheck.issues.length > 0
+            }
             leftSection={<IconCheck size={20} />}
             loading={isPending}
             onClick={handleComplete}

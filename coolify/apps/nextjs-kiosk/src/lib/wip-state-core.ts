@@ -9,12 +9,15 @@
  * **nextjs-web が原本で、nextjs-kiosk へ逐語コピーする twin file**
  * （共有端末も工程完了で仕掛品を入庫する）。直したら `pnpm twin:sync`。
  *
- * この段（仕掛品の再設計 PR 1）では**誰もまだ呼ばない** — 計上の切り替えは
- * 後の段。既存の半製品の計上（lib/inventory.ts onWorkOrderCompletedTx）は
- * このファイルとは無関係に従来どおり動く。
+ * 計上（lib/inventory.ts onWorkOrderCompletedTx）は第 3 段からここを通る:
+ * 発生元ごとの行き先は `planWipPostings`、工程完了のときに記録する仕上がり寸法と
+ * 経路の確認は `validateWipRecording`、半製品の投入の順は
+ * `orderSemiFinishedForConsumption`。画面（Web・共有端末）はこの 3 つの結果を
+ * 見せるだけで、規則を持たない。
  */
 
 import {
+  type BranchStockDisposition,
   isOffMainline,
   START_STEP_CODES,
   type StepLinkState,
@@ -325,6 +328,453 @@ export function semiFinishedSourcePath(
   return wipPathForSource(steps, links, source.stepId, affectsWipState, {
     includeSource: source.kind === "BRANCH_TERMINAL",
   });
+}
+
+// ─── 在庫に置くときの記録（仕上がり寸法・経路の確認）と計上の行き先 ────────
+
+/** 仕掛ブランクの寸法（材種 × 径 × 長）。 */
+export interface WipBlankSize {
+  materialTypeId: number;
+  diameterMm: number;
+  lengthMm: number;
+}
+
+/**
+ * 指示書の仕掛ブランク — 材種・径は指示書の素材から、長さは製品の要求長から。
+ * 指示書に素材が無ければ（または素材に材種・径が無ければ）製品の要求素材へ落ちる。
+ * どれかが決まらなければ null（計上は旧来の「未分類」へ落ちる）。
+ *
+ * DB の app.wip_legacy_bucket（20261126200000_wip_backfill）と**同じ規則**。
+ * 片方を直したらもう片方も直すこと。
+ */
+export function wipBlankFor(args: {
+  material: { materialTypeId: number | null; diameterMm: number | null } | null;
+  product: {
+    requiresMaterialTypeId: number | null;
+    requiresDiameterMm: number | null;
+    requiresLengthMm: number | null;
+  };
+}): WipBlankSize | null {
+  let mt = args.material?.materialTypeId ?? null;
+  let d = args.material?.diameterMm ?? null;
+  if (mt == null || d == null) {
+    mt = args.product.requiresMaterialTypeId;
+    d = args.product.requiresDiameterMm;
+  }
+  const l = args.product.requiresLengthMm;
+  if (mt == null || d == null || l == null) return null;
+  return { materialTypeId: mt, diameterMm: d, lengthMm: l };
+}
+
+/**
+ * 工程に記録する経路（`work_order_steps.wip_path_step_ids`）の形 —
+ * **発生元の工程そのものを含めない**並び。途中で振り分けた分（DEFECT）は
+ * これがそのまま加工状態で、分岐の終端（BRANCH_TERMINAL）はこれに発生元を
+ * 足したものが加工状態（`wipStateForSource`）。含めない形で 1 つだけ持てば、
+ * 同じ工程から両方の種類が出ても 1 列で足りる。
+ */
+export function wipRecordingPath(
+  steps: readonly StepState[],
+  links: readonly StepLinkState[],
+  stepId: string,
+  affectsWipState: (processStepId: number) => boolean,
+): WipPath {
+  return wipPathForSource(steps, links, stepId, affectsWipState, {
+    includeSource: false,
+  });
+}
+
+/** 経路（発生元を含めない並び）から、発生元の種類に応じた加工状態を作る。 */
+export function wipStateForSource(
+  upstreamStepIds: readonly number[],
+  sourceProcessStepId: number,
+  kind: SemiFinishedSourceKind,
+  affectsWipState: (processStepId: number) => boolean,
+): number[] {
+  return kind === "BRANCH_TERMINAL" && affectsWipState(sourceProcessStepId)
+    ? [...upstreamStepIds, sourceProcessStepId]
+    : [...upstreamStepIds];
+}
+
+/**
+ * 工程 1 件の「在庫に置く分」を記録するための材料 — サーバー（lib/wip-recording.ts）
+ * が揃えて画面へ渡す形（シリアライズ可能）。画面はこれとこのファイルの関数だけで描く。
+ */
+export interface WipRecordingView {
+  /**
+   * 経路（この工程自身を含めない、済んだ形を変える工程の並び）。
+   * `stepIds` が推奨、`alternatives` が合流してきた側を辿った別案。
+   */
+  path: WipPath;
+  /** この工程自身が加工状態に数える工程か（工程マスタ affects_wip_state）。 */
+  sourceAffects: boolean;
+  /** この工程のカタログ id（分岐の終端では加工状態の末尾に入る）。 */
+  sourceProcessStepId: number;
+  /** 分岐系列の終端処理（SEMI_FINISHED なら良品が仕掛品として在庫に入る）。 */
+  branchStock: BranchStockDisposition | null;
+  /** 仕掛ブランクの寸法（仕上がり寸法の既定）。決まらなければ null。 */
+  blank: { diameterMm: number; lengthMm: number } | null;
+  /** 工程名（カタログ id → 多言語名の JSON）— 加工状態のラベルを組むのに使う。 */
+  stepNames: Record<number, unknown>;
+}
+
+/** `validateWipRecording` が返す不備（文言は各アプリが自分の辞書で当てる）。 */
+export type WipRecordingIssue =
+  | "finishedDiameterRequired"
+  | "finishedLengthRequired"
+  | "finishedDiameterInvalid"
+  | "finishedLengthInvalid"
+  | "pathChoiceRequired"
+  | "pathChoiceInvalid";
+
+export interface WipRecordingInput {
+  finishedDiameterMm?: number | null;
+  finishedLengthMm?: number | null;
+  /** 選んだ経路（発生元を含めない並び）。曖昧でなければ無視する。 */
+  pathStepIds?: number[] | null;
+}
+
+export interface WipRecordingValue {
+  finishedDiameterMm: number | null;
+  finishedLengthMm: number | null;
+  /** 工程に保存する経路。曖昧でなければ null（推奨のまま）。 */
+  pathStepIds: number[] | null;
+}
+
+/** 仕上がり寸法の上限（mm）— 桁あふれと打ち間違いを止めるだけの緩い上限。 */
+const MAX_FINISHED_DIAMETER_MM = 9999;
+const MAX_FINISHED_LENGTH_MM = 99999;
+
+function validDimension(v: number | null | undefined, max: number): boolean {
+  return v != null && Number.isFinite(v) && v > 0 && v <= max;
+}
+
+/**
+ * 品物が工程を離れて在庫に入るか — 半製品の数を記録した（> 0）か、
+ * 「半製品在庫へ」で終わる分岐の終端で良品がある。**仕上がり寸法と経路の確認が
+ * 要るのはこのときだけ**（利用者の決定 2026-11-25）。
+ */
+export function storesWip(q: {
+  defectSemiFinished: number | null;
+  outputSuccess: number | null;
+  branchStock?: string | null;
+}): boolean {
+  return (
+    (q.defectSemiFinished ?? 0) > 0 ||
+    (q.branchStock === "SEMI_FINISHED" && (q.outputSuccess ?? 0) > 0)
+  );
+}
+
+/**
+ * この完了で在庫に入る仕掛品の加工状態（発生元の種類ごと）。画面はこれで
+ * 「この数はこの加工状態で在庫に入る」を見せ、仕上がり寸法が必須か
+ * （どれかの加工状態に形を変える工程が入っているか）を決める。
+ * 在庫に置かない完了なら空。
+ */
+export function wipRecordingStates(
+  q: { defectSemiFinished: number | null; outputSuccess: number | null },
+  source: {
+    branchStock?: string | null;
+    sourceAffects: boolean;
+    sourceProcessStepId: number;
+  },
+  upstreamStepIds: readonly number[],
+): { kind: SemiFinishedSourceKind; stepIds: number[] }[] {
+  const out: { kind: SemiFinishedSourceKind; stepIds: number[] }[] = [];
+  if ((q.defectSemiFinished ?? 0) > 0) {
+    out.push({ kind: "DEFECT", stepIds: [...upstreamStepIds] });
+  }
+  if (source.branchStock === "SEMI_FINISHED" && (q.outputSuccess ?? 0) > 0) {
+    out.push({
+      kind: "BRANCH_TERMINAL",
+      stepIds: wipStateForSource(
+        upstreamStepIds,
+        source.sourceProcessStepId,
+        "BRANCH_TERMINAL",
+        () => source.sourceAffects,
+      ),
+    });
+  }
+  return out;
+}
+
+/**
+ * 工程完了のときに記録する「在庫に置く分」の検証 — Web と共有端末の両方が
+ * これを通す（規則を 2 か所に書かない）。
+ *
+ * - 在庫に置かない（`stores` = false）なら何も要らない。入力は捨てる。
+ * - **経路**: 手前に合流があって加工状態が一通りに決まらないとき
+ *   （`path.ambiguous`）は、記録する人が選ぶ（推奨 = 本流が既定で選ばれている）。
+ *   選んだ並びは候補（推奨 + 別案）のどれかでなければならない。
+ *   曖昧でなければ保存しない（null = 推奨のまま）。
+ * - **仕上がり寸法**: 形を変える工程が加工状態に 1 つでも入っていれば必須。
+ *   1 つも無ければ（切り出しただけ等）ブランクの寸法を既定にする —
+ *   入力があればそれを優先する。ブランクが決まらない指示書では空のまま通す。
+ *
+ * `sourceCountsAsDone` = この工程自身が加工状態に入るか（分岐の終端で、
+ * 工程が加工状態に数える工程のとき）。
+ */
+export function validateWipRecording(args: {
+  stores: boolean;
+  path: WipPath;
+  sourceCountsAsDone: boolean;
+  blank: Pick<WipBlankSize, "diameterMm" | "lengthMm"> | null;
+  input: WipRecordingInput | null | undefined;
+}): { issues: WipRecordingIssue[]; value: WipRecordingValue } {
+  const empty: WipRecordingValue = {
+    finishedDiameterMm: null,
+    finishedLengthMm: null,
+    pathStepIds: null,
+  };
+  if (!args.stores) return { issues: [], value: empty };
+
+  const issues: WipRecordingIssue[] = [];
+  const input = args.input ?? {};
+
+  let upstream = args.path.stepIds;
+  let pathStepIds: number[] | null = null;
+  if (args.path.ambiguous) {
+    if (input.pathStepIds == null) {
+      issues.push("pathChoiceRequired");
+    } else {
+      let sig: string | null = null;
+      try {
+        sig = wipSignature(input.pathStepIds);
+      } catch {
+        sig = null;
+      }
+      const options = [args.path.stepIds, ...args.path.alternatives];
+      const hit =
+        sig == null ? undefined : options.find((o) => wipSignature(o) === sig);
+      if (!hit) issues.push("pathChoiceInvalid");
+      else {
+        upstream = hit;
+        pathStepIds = [...hit];
+      }
+    }
+  }
+
+  const shaped = upstream.length > 0 || args.sourceCountsAsDone;
+  let d = input.finishedDiameterMm ?? null;
+  let l = input.finishedLengthMm ?? null;
+  if (d == null) {
+    if (shaped) issues.push("finishedDiameterRequired");
+    else d = args.blank?.diameterMm ?? null;
+  } else if (!validDimension(d, MAX_FINISHED_DIAMETER_MM)) {
+    issues.push("finishedDiameterInvalid");
+  }
+  if (l == null) {
+    if (shaped) issues.push("finishedLengthRequired");
+    else l = args.blank?.lengthMm ?? null;
+  } else if (!validDimension(l, MAX_FINISHED_LENGTH_MM)) {
+    issues.push("finishedLengthInvalid");
+  }
+
+  return {
+    issues,
+    value:
+      issues.length > 0
+        ? empty
+        : { finishedDiameterMm: d, finishedLengthMm: l, pathStepIds },
+  };
+}
+
+/** 画面の入力（下書き）。経路は候補の番号で持つ（0 = 推奨）。 */
+export interface WipRecordingDraft {
+  finishedDiameterMm: number | null;
+  finishedLengthMm: number | null;
+  pathIndex: number;
+}
+
+/** 経路の候補 — 先頭が推奨（本流）。 */
+export function wipPathOptions(path: WipPath): number[][] {
+  return [path.stepIds, ...path.alternatives];
+}
+
+/**
+ * 画面の下書きを、サーバーと**同じ規則**で確かめる（Web と共有端末の入力欄が
+ * 使う）。返す `input` をそのまま完了の要求に載せる。
+ *
+ * - `states` が空 = この完了では在庫に置かない → 入力欄を出さない。
+ * - `dimensionsRequired` = どれかの加工状態に形を変える工程が入っている。
+ * - `issues` があれば完了ボタンを止める（サーバーも同じ理由で拒む）。
+ */
+export function checkWipRecordingDraft(
+  view: WipRecordingView,
+  q: { defectSemiFinished: number | null; outputSuccess: number | null },
+  draft: WipRecordingDraft,
+): {
+  states: { kind: SemiFinishedSourceKind; stepIds: number[] }[];
+  dimensionsRequired: boolean;
+  input: WipRecordingInput | null;
+  issues: WipRecordingIssue[];
+} {
+  const options = wipPathOptions(view.path);
+  const upstream = options[draft.pathIndex] ?? options[0];
+  const states = wipRecordingStates(q, view, upstream);
+  if (states.length === 0) {
+    return { states, dimensionsRequired: false, input: null, issues: [] };
+  }
+  const input: WipRecordingInput = {
+    finishedDiameterMm: draft.finishedDiameterMm,
+    finishedLengthMm: draft.finishedLengthMm,
+    pathStepIds: view.path.ambiguous ? [...upstream] : null,
+  };
+  const { issues } = validateWipRecording({
+    stores: true,
+    path: view.path,
+    sourceCountsAsDone: states.some(
+      (s) => s.kind === "BRANCH_TERMINAL" && view.sourceAffects,
+    ),
+    blank: view.blank,
+    input,
+  });
+  return {
+    states,
+    dimensionsRequired: states.some((s) => s.stepIds.length > 0),
+    input,
+    issues,
+  };
+}
+
+/**
+ * `work_order_steps.wip_path_step_ids`（JSON 配列）を読む。正の整数の配列で
+ * なければ null（= 推奨のまま）— 壊れた値で計上を止めない。
+ */
+export function parseWipPathStepIds(value: unknown): number[] | null {
+  if (!Array.isArray(value)) return null;
+  const ids: number[] = [];
+  for (const v of value) {
+    if (typeof v !== "number" || !Number.isInteger(v) || v <= 0) return null;
+    ids.push(v);
+  }
+  return ids;
+}
+
+/** 計上が読む工程 — エンジンの状態に、工程に記録した 3 つを足したもの。 */
+export interface WipPostingStep extends StepState {
+  finishedDiameterMm?: number | null;
+  finishedLengthMm?: number | null;
+  /** 記録した経路（発生元を含めない並び）。null = 推奨のまま。 */
+  wipPathStepIds?: readonly number[] | null;
+}
+
+/** 指示書の完了で入れる仕掛品 1 本（発生元 1 件 = 1 本）。 */
+export interface WipPosting {
+  sourceStepId: string;
+  kind: SemiFinishedSourceKind;
+  quantity: number;
+  /** 加工状態（wip_states.step_ids）。 */
+  stepIds: number[];
+  finishedDiameterMm: number | null;
+  finishedLengthMm: number | null;
+}
+
+/**
+ * 指示書の完了で入れる仕掛品の一覧 — **発生元ごとに 1 本**。
+ *
+ * 数は `computeSemiFinishedSources` そのまま（合計は従来の 1 本にまとめた計上と
+ * 同じ — 試験で縛ってある）。加工状態は工程に記録した経路があればそれ、無ければ
+ * 推奨（本流）。仕上がり寸法は工程に記録した値、無ければ「形を変える工程が
+ * 1 つも済んでいない」ときだけブランクの寸法。
+ *
+ * **ここは落とさない。** 記録が欠けている（旧アプリが完了させた工程・一括完了）
+ * からといって指示書の完了を止めると、現場では終わっている指示書が画面の上だけ
+ * 終われなくなる。必須の検証は工程完了の入口（validateWipRecording）の仕事。
+ */
+export function planWipPostings(
+  steps: readonly WipPostingStep[],
+  links: readonly StepLinkState[],
+  affectsWipState: (processStepId: number) => boolean,
+  blank: Pick<WipBlankSize, "diameterMm" | "lengthMm"> | null,
+): WipPosting[] {
+  const byId = new Map(steps.map((s) => [s.id, s]));
+  const out: WipPosting[] = [];
+  for (const source of computeSemiFinishedSources(steps, links)) {
+    const step = byId.get(source.stepId);
+    if (!step) continue;
+    const upstream =
+      step.wipPathStepIds ??
+      wipRecordingPath(steps, links, step.id, affectsWipState).stepIds;
+    const stepIds = wipStateForSource(
+      upstream,
+      step.processStepId,
+      source.kind,
+      affectsWipState,
+    );
+    const unshaped = stepIds.length === 0;
+    out.push({
+      sourceStepId: step.id,
+      kind: source.kind,
+      quantity: source.quantity,
+      stepIds,
+      finishedDiameterMm:
+        step.finishedDiameterMm ??
+        (unshaped ? (blank?.diameterMm ?? null) : null),
+      finishedLengthMm:
+        step.finishedLengthMm ?? (unshaped ? (blank?.lengthMm ?? null) : null),
+    });
+  }
+  return out;
+}
+
+/**
+ * 指示書の工程のうち、形を変える工程（カタログ id）の並び — 本流だけ、工程順。
+ * 半製品を投入する指示書が「どの加工状態の仕掛品なら続きから作れるか」を
+ * 判定するのに使う（`isWipPrefix` の相手）。
+ */
+export function mainlinePartChangingStepIds(
+  steps: readonly StepState[],
+  links: readonly StepLinkState[],
+  affectsWipState: (processStepId: number) => boolean,
+): number[] {
+  const ctx = ctxOf(steps, links);
+  return [...steps]
+    .filter((s) => s.status !== "CANCELLED" && !isOffMainline(s.id, ctx))
+    .sort(orderKey)
+    .map((s) => s.processStepId)
+    .filter(affectsWipState);
+}
+
+/**
+ * 半製品の投入で、どのバケットから先に落とすか。
+ *
+ * 1. 狙いのロット（工程の伝票欄から読めたもの）
+ * 2. **この指示書のブランク**に載っていて、加工状態が指示書の工程の先頭部分に
+ *    なっているもの（続きから作れる）
+ * 3. それ以外（同じ目標製品の残り — 未分類・状態が合わないもの）
+ *
+ * 同じ段の中は渡された順（呼び出し側が古い順に並べて渡す）を保つ。
+ * 別の製品を目標にした仕掛品を引くのは後の段（PR 5）— ここには渡されない。
+ */
+export function orderSemiFinishedForConsumption<
+  T extends {
+    itemId: number;
+    lotNumber: number | null;
+    /** 加工状態の並び。未分類（is_legacy）は null。 */
+    stepIds: readonly number[] | null;
+  },
+>(
+  buckets: readonly T[],
+  args: {
+    blankItemId: number | null;
+    routeStepIds: readonly number[];
+    lotHint: number | null;
+  },
+): T[] {
+  const score = (b: T): number => {
+    if (args.lotHint != null && b.lotNumber === args.lotHint) return 0;
+    const compatible =
+      args.blankItemId != null &&
+      b.itemId === args.blankItemId &&
+      b.stepIds != null &&
+      isWipPrefix(b.stepIds, args.routeStepIds);
+    return compatible ? 1 : 2;
+  };
+  return buckets
+    .map((b, i) => ({ b, i, s: score(b) }))
+    .sort((x, y) => x.s - y.s || x.i - y.i)
+    .map((x) => x.b);
 }
 
 // ─── 突合（どの仕掛品をこの製品に使えるか） ───────────────────────────────

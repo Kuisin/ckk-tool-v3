@@ -468,6 +468,11 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 加工状態 | Processing state | 加工状态 |
 | 加工状態に数える（工程マスタの印） | Counts toward processing state | 计入加工状态 |
 | 目標製品 | Target product | 目标产品 |
+| 仕上がり径 / 仕上がり長（仕掛品の研削後の寸法） | Finished diameter / Finished length | 成品直径 / 成品长度 |
+| 仕上がり寸法 | Finished size | 成品尺寸 |
+| 通ってきた経路（合流の後で仕掛品の加工状態を確かめる欄） | Route taken | 经过的路径 |
+| 推奨（本流） | Recommended (main line) | 推荐（主线） |
+| 未加工（形を変える工程が済んでいない仕掛品） | Unprocessed | 未加工 |
 | 打ち切り（進行中の指示書を止め、品を仕掛品として在庫へ戻す） | Close out | 中止 |
 | ちょうど / 長い / 太い（仕掛品の突合の区分） | Exact / Longer / Larger diameter | 尺寸一致 / 较长 / 较粗 |
 | 予約 / 引当 / 予約解除 | Reserved / Allocated / Released | 预留 / 已分配 / 解除预留 |

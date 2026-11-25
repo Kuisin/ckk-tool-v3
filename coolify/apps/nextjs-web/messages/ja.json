@@ -3635,6 +3635,29 @@
       "invalidPayload": "加工プログラムの内容が正しくありません",
       "invalidReference": "存在しない工程または作業場所が選ばれています",
       "savedAudit": "v{version} の加工プログラムを保存（{count} 本）"
+    },
+    "wipRecording": {
+      "title": "在庫に置く仕掛品",
+      "description": "半製品として在庫に置く分は、加工状態と仕上がり寸法ごとに分けて在庫に入ります。",
+      "state": "加工状態",
+      "stateUnprocessed": "未加工（形を変える工程なし）",
+      "kindDefect": "半製品に振り分けた分",
+      "kindBranchTerminal": "分岐の終端（半製品在庫へ）",
+      "finishedDiameter": "仕上がり径 (mm)",
+      "finishedLength": "仕上がり長 (mm)",
+      "finishedSize": "仕上がり寸法",
+      "defaultsToBlank": "形を変える工程が済んでいないため、未入力なら仕掛ブランクの寸法（φ{diameter} × {length}）になります。",
+      "path": "通ってきた経路",
+      "pathHint": "手前に合流があるため、加工状態が一通りに決まりません。品物が通ってきた経路を確かめてください。",
+      "recommended": "推奨（本流）",
+      "issues": {
+        "finishedDiameterRequired": "仕上がり径を入力してください",
+        "finishedLengthRequired": "仕上がり長を入力してください",
+        "finishedDiameterInvalid": "仕上がり径は 0 より大きい数値を入力してください",
+        "finishedLengthInvalid": "仕上がり長は 0 より大きい数値を入力してください",
+        "pathChoiceRequired": "品物が通ってきた経路を選択してください",
+        "pathChoiceInvalid": "選択した経路がこの工程の候補にありません。画面を読み込み直してください"
+      }
     }
   },
   "purchase": {

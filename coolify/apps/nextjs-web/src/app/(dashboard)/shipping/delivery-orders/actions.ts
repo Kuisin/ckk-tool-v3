@@ -352,6 +352,8 @@ export async function fetchDeliverySourceInfo(
           where: {
             itemId,
             isSemiFinished: false,
+            // 仕掛品は出荷できない（完成していない）。
+            wipStateId: null,
             lotNumber: { not: null },
             // 外注へ預けている分は出荷に載せられない（手元に無い）。
             custodyBpId: null,
@@ -537,6 +539,8 @@ async function validateDispatchLots(
         itemId,
         lotNumber: lot,
         isSemiFinished: false,
+        // 仕掛品は出荷できる在庫に数えない。
+        wipStateId: null,
         // 同上 — 預けている分を数えると「在庫あり」と言って出荷で落ちる。
         custodyBpId: null,
         ownerBpId: lotOwnerBpId,

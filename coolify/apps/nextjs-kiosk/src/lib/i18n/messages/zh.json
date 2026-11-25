@@ -301,7 +301,13 @@
       "STAGE_OUT_OF_ORDER": "请先记录上一阶段",
       "INSPECTION_REQUIRED": "有检查表尚未填写记录。请先保存检查表再完成工序",
       "INSPECTION_NOT_PASS": "只有合格的检查记录才能批准",
-      "NOT_APPROVER": "您不是该检查表的批准人"
+      "NOT_APPROVER": "您不是该检查表的批准人",
+      "WIP_DIAMETER_REQUIRED": "请输入成品直径",
+      "WIP_LENGTH_REQUIRED": "请输入成品长度",
+      "WIP_DIAMETER_INVALID": "成品直径请输入大于 0 的数值",
+      "WIP_LENGTH_INVALID": "成品长度请输入大于 0 的数值",
+      "WIP_PATH_REQUIRED": "请选择物品经过的路径",
+      "WIP_PATH_INVALID": "所选路径不在此工序的候选中，请重新加载页面"
     },
     "finalInspection": {
       "title": "最终检查与出货前确认",
@@ -408,6 +414,20 @@
       "machineMatch": "本机用",
       "download": "下载",
       "noFile": "无文件"
+    },
+    "wip": {
+      "title": "入库的在制品",
+      "description": "作为半成品入库的部分，按加工状态和成品尺寸分别入库。",
+      "state": "加工状态",
+      "stateUnprocessed": "未加工（无成形工序）",
+      "kindDefect": "转为半成品的部分",
+      "kindBranchTerminal": "分支末端（入半成品库存）",
+      "finishedDiameter": "成品直径 (mm)",
+      "finishedLength": "成品长度 (mm)",
+      "defaultsToBlank": "尚未完成成形工序，未填写时采用在制坯料的尺寸（φ{diameter} × {length}）。",
+      "path": "经过的路径",
+      "pathHint": "此工序之前有分支汇合，加工状态无法唯一确定。请确认物品经过的路径。",
+      "recommended": "推荐（主线）"
     }
   },
   "deviceError": {

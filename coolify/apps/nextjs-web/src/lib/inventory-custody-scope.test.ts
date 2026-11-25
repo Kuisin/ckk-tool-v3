@@ -9,6 +9,9 @@
  * 増え、引当が通り、最悪、社外にある品や顧客の物が出荷できてしまう。型では
  * 止まらない（列を書かないのが既定の意味になる）ので、ここで止める。
  *
+ * 3 つめの軸は**仕掛品**（`wip_state_id` 付き — 途中まで加工した品）。完成して
+ * いないので製品・素材の手持ちに数えてはいけない（下の WIP_AXIS）。
+ *
  * 軸ごとに規則はどちらか:
  *   1. クエリのどこかにその軸の列名（`custodyBpId` / `ownerBpId`）が出てくる
  *      （自社だけに絞る / 預け・預り品だけを読む / 画面側で分ける、のいずれかを
@@ -65,6 +68,15 @@ interface Axis {
 
 const CUSTODY_AXIS: Axis = { token: "custodyBpId", comment: "custody-scope:" };
 const OWNER_AXIS: Axis = { token: "ownerBpId", comment: "owner-scope:" };
+/**
+ * 仕掛品（加工状態を持つ行）の軸。仕掛品は完成していない品で、製品・素材の
+ * 手持ち・引当・出荷に数えてはいけない。**品目で絞るだけでは足りない** —
+ * 加工状態を推定できなかった「未分類」の仕掛品は製品の品目のまま残っている。
+ * `isSemiFinished: false` は同じ意味（DB の CHECK で wip_state_id と一致する）
+ * だが、印として認めるのは `wipStateId` だけにしてある — 旧来の半製品の印と
+ * 仕掛品を別々に考えた頃のクエリを、1 つずつ見直した証拠にするため。
+ */
+const WIP_AXIS: Axis = { token: "wipStateId", comment: "wip-scope:" };
 
 function findOffenders(axis: Axis): Offender[] {
   const offenders: Offender[] = [];
@@ -84,8 +96,11 @@ function findOffenders(axis: Axis): Offender[] {
         const start = node.getStart();
         // 直前 500 文字に書かれた免除の理由（コメント）。
         const before = text.slice(Math.max(0, start - 500), start);
+        // 理由のコメントは where 句の中（絞る条件のすぐ横）に書いてもよい。
         const exempt =
-          call.includes(axis.token) || before.includes(axis.comment);
+          call.includes(axis.token) ||
+          call.includes(axis.comment) ||
+          before.includes(axis.comment);
         if (!exempt) {
           const { line } = sf.getLineAndCharacterOfPosition(start);
           offenders.push({
@@ -114,5 +129,28 @@ describe("預け在庫（外注が持っている分）の絞り込み", () => {
 
   it("item_inventory を探しに行くクエリは、自社か顧客の預り品かを必ず言っている", () => {
     expect(findOffenders(OWNER_AXIS)).toEqual([]);
+  });
+
+  it("item_inventory を探しに行くクエリは、仕掛品を含むか否かを必ず言っている", () => {
+    expect(findOffenders(WIP_AXIS)).toEqual([]);
+  });
+
+  it("仕掛品の軸: 製品の手持ちを数える主要なクエリが実際に絞っている", () => {
+    // 規則 2（コメントでの免除）に逃げていないことを、数える側の代表で固定する。
+    for (const file of [
+      "src/lib/atp.ts",
+      "src/app/(dashboard)/shipping/delivery-orders/actions.ts",
+      "src/app/(dashboard)/inventory/requirements/data.ts",
+      "src/app/api/v1/inventory/materials/route.ts",
+    ]) {
+      expect(fs.readFileSync(file, "utf8")).toContain("wipStateId: null");
+    }
+    const inventory = fs.readFileSync("src/lib/inventory.ts", "utf8");
+    // 出荷（planDispatchLines）・引当（reserveProductStock）・外注戻し
+    expect(inventory.match(/wipStateId: null/g)?.length).toBeGreaterThanOrEqual(
+      3,
+    );
+    // 引当の行ロック（生 SQL）も同じ範囲
+    expect(inventory).toContain("AND wip_state_id IS NULL");
   });
 });
