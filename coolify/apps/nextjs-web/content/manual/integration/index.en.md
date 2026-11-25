@@ -22,7 +22,7 @@ flowchart TD
 
 ## Design principles
 
-- **A webhook is a signal, not the data.** It says "order acceptance `ORD-202609-00042` went from `DRAFT` to `CONFIRMED`" — and never carries **values** such as amounts or addresses. The receiver pulls values through the API. Authorization, row scope and output shape therefore live in **one place (the API)**, and webhooks never become a second leak path.
+- **A webhook is a signal, not the data.** It says "order acceptance `ORD-2026-00042` went from `DRAFT` to `CONFIRMED`" — and never carries **values** such as amounts or addresses. The receiver pulls values through the API. Authorization, row scope and output shape therefore live in **one place (the API)**, and webhooks never become a second leak path.
 - **Webhooks are allowed to be lossy.** Whether a delivery is missed, reordered or duplicated, API incremental sync always lets you catch up. Webhooks are the fast path; the API is the source of truth.
 - **Permissions come from the API client.** Each endpoint is bound to an API client and receives **only events for resources that client can read**. Remove the permission and delivery stops, even without deleting the endpoint.
 - **Only to places n8n can be reached.** Endpoint URLs must be https, or http to internal hosts (Docker service names, private IPs, `.loc`).

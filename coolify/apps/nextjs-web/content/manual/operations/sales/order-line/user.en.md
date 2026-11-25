@@ -22,7 +22,7 @@ When an order acceptance is confirmed, each of its detail rows becomes an **orde
 - **Order acceptance** — one order received from a customer.
 - **Order line** — a single detail row of an order acceptance. That one row ("which product, how many") is what production and shipping work from.
 - **Confirmation** — the step that finalises an approved order acceptance and assigns numbers to its lines.
-- **Branch number** — the trailing `-01` in `ORD-202608-00012-01`. It says which row of the order acceptance this is.
+- **Branch number** — the trailing `-01` in `ORD-2026-00012-01`. It says which row of the order acceptance this is.
 - **Reservation** — setting stock aside for this order so another order cannot take it.
 - **Lot number** — the serial number of a production batch (e.g. `#9001`). It is assigned automatically when a work order is created (it is separate from the work order's document number `WOR-…`).
 
@@ -32,7 +32,7 @@ An order line number is the order acceptance number plus a branch number.
 
 ```mermaid
 flowchart TD
-  num["ORD-202608-00012-01"] --> head["ORD-202608-00012<br/>Order acceptance number"]
+  num["ORD-2026-00012-01"] --> head["ORD-2026-00012<br/>Order acceptance number"]
   num --> br["-01<br/>Branch number (which row)"]
 ```
 

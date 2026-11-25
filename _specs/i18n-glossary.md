@@ -240,6 +240,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 指示書番号 | Work order number | 工单编号 | |
 | ロット番号 | Lot number | 批次号 | |
 | 旧番号 | Legacy number | 旧编号 | 振り直し前の書類番号（PREFIX-YYYYMM-NNNNN）。詳細画面と検索に出る |
+| 会計年度 | Fiscal year | 会计年度 | 書類番号 `PREFIX-FFFF-NNNNN` の FFFF。年度が始まる年で表す |
 | 発行会社を選択 | Select the issuing company | 选择开具公司 | 同じ番号が複数の自社法人にあるときの選択画面（/doc/choose） |
 | 印字番号 | Marking number | 打标编号 | 製品にレーザーで刻む通し番号 `A{基数}-{NNN}`（明細ごとなら `A{基数}`）。ロット番号とは別系列 |
 | 枝番 | Line branch no. | 分项号 | |

@@ -42,7 +42,8 @@ Physical deletions are **invisible** to `updatedSince`. Also read `GET /api/v1/d
 
 ## Value shapes
 
-- Identifiers are document numbers (`ORD-202609-00042`), the same as on screens and printouts.
+- Document numbers (`number`) look like `ORD-2026-00042`, the same as on screens and printouts. **A number alone does not identify a document** — the sequence runs per issuing company and per fiscal year, so another company can hold the same number. Match and store on `id` (the row uuid) or on the pair `companyCode` + `number`.
+- Documents created with the earlier format (`ORD-202609-00042`) were renumbered; the original is in `legacyNumber`. See [Document number rules](/manual/en/start#doc-number).
 - Statuses are the raw DB values (`CONFIRMED`); no Japanese labels.
 - Multilingual columns are `{ "ja": "…", "en": "…" }`. Amounts are numbers with a separate currency field. Timestamps are RFC 3339 UTC.
 - **New values can appear** (for example the `REGRIND` order type). Always give a `switch` a default branch.
