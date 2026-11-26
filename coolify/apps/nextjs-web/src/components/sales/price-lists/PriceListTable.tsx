@@ -31,6 +31,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { CreateButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
@@ -38,6 +39,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { matchesDocCompany } from "@/lib/doc-company-view-core";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/mock";
 import { CopyPriceListModal } from "./CopyPriceListModal";
@@ -77,7 +79,9 @@ export function PriceListTable({
   const [company, setCompany] = useUrlSelectState("company");
 
   // 発行会社 — 価格表は会社ごとに別々。2 社以上の価格表が見える人にだけ
-  // 発行会社の列と絞り込みを出す（1 社だけなら毎行同じ値が並ぶだけ）。
+  // 発行会社の絞り込みと他社との突き合わせ列を出す（1 社だけなら毎行同じ値が
+  // 並ぶだけ）。行ごとの発行会社は顧客名の隣のバッジ（DocCompanyBadge — 全書類
+  // 共通の出し方）。
   const companyOptions = useMemo(() => {
     const seen = new Map<number, string>();
     for (const e of entries) {
@@ -177,6 +181,7 @@ export function PriceListTable({
   const filtered = entries.filter((e) => {
     const matchesSearch =
       !search ||
+      matchesDocCompany(e.ownCompanyCode, search) ||
       e.customerName.includes(search) ||
       e.productName.includes(search) ||
       (e.toolName ?? "").includes(search);
@@ -197,17 +202,6 @@ export function PriceListTable({
   const columns: Column<PriceListEntry>[] = [
     ...(multiCompany
       ? [
-          {
-            key: "ownCompany",
-            header: tr("common.issuingCompany"),
-            width: 90,
-            sortValue: (e: PriceListEntry) => e.ownCompanyCode,
-            render: (e: PriceListEntry) => (
-              <Text ff="mono" size="sm">
-                {e.ownCompanyCode}
-              </Text>
-            ),
-          },
           {
             // 他社の価格表（同じ顧客 × 品目 × 工具・別の発行会社）との突き合わせ。
             // 相手方が無ければ空。差分は詳細画面で見て、そこで同期する。
@@ -241,7 +235,14 @@ export function PriceListTable({
       key: "customerName",
       header: tr("common.customer"),
       sortable: true,
-      render: (e) => e.customerName,
+      // 価格表は番号の列を持たないので、発行会社のバッジは顧客名に添える。
+      render: (e) => (
+        <WithDocCompany company={e.ownCompanyCode}>
+          <Text size="sm" truncate>
+            {e.customerName}
+          </Text>
+        </WithDocCompany>
+      ),
     },
     {
       key: "productName",
@@ -522,9 +523,11 @@ export function PriceListTable({
           return (
             <Group align="flex-start" justify="space-between" wrap="nowrap">
               <Stack className="min-w-0" gap={3}>
-                <Text fw={600} size="sm" truncate>
-                  {e.customerName}
-                </Text>
+                <WithDocCompany company={e.ownCompanyCode}>
+                  <Text fw={600} size="sm" truncate>
+                    {e.customerName}
+                  </Text>
+                </WithDocCompany>
                 <Text c="dimmed" size="xs" truncate>
                   {e.productName}
                 </Text>

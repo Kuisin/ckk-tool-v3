@@ -47,6 +47,7 @@ export function MovementDetail({ movement }: { movement: MovementDetailData }) {
         { label: tr("common.stockMovement"), href: BASE_PATH },
         tr("common.detail"),
       ]}
+      company={m.id}
       createdAt={fmt.dateTime(m.createdAt)}
       status={
         <Badge color={MOVEMENT_CAUSE_COLOR[m.cause] ?? "gray"} variant="light">

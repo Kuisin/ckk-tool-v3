@@ -80,11 +80,21 @@ body {
   display: flex;
   align-items: center;
   gap: 14pt;
+  /* 書類名は折り返させない側に倒す — 横長のロゴが入ると、既定の縮み方では書類名が
+     1 文字ずつ折り返していた。発行元の欄のほうが折り返す（長い書類名だけは
+     半分を超えたところで折り返す）。 */
+  flex: 0 0 auto;
+  max-width: 55%;
 }
 
+/* 法人ごとのロゴ（MS0I）は横長のこともある — 高さを揃えたうえで幅に上限を置き、
+   書類名と発行元の欄を押し潰さない（縦横比は保つ）。 */
 .brand-logo {
   height: 46pt;
   width: auto;
+  max-width: 120pt;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .doc-title {

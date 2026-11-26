@@ -102,13 +102,21 @@ export function ShipShortageModal({
                       別タブで開く。ここで画面を離れると、出荷するかどうかの
                       判断をやり直すことになる。
                     */}
+                    {/* 文字とアイコンを 1 つの塊にする — 列が狭いとアイコンだけが
+                        次の行へ落ちていた。 */}
                     <Anchor
                       href={stockHref(s.itemId, fromPlantId)}
                       rel="noopener noreferrer"
                       size="sm"
+                      style={{
+                        alignItems: "center",
+                        display: "inline-flex",
+                        gap: 4,
+                        whiteSpace: "nowrap",
+                      }}
                       target="_blank"
                     >
-                      {tr("shipping.deliveryOrders.viewStock")}{" "}
+                      {tr("shipping.deliveryOrders.viewStock")}
                       <IconExternalLink size={12} />
                     </Anchor>
                   </Table.Td>

@@ -2647,6 +2647,28 @@ export const shots: Shot[] = [
     },
   },
   {
+    // ロゴタブ（PDF の見出しに刷るロゴ。アップロードのボタンは master:UPDATE の人だけ）
+    id: "master-own-company-logo-01",
+    docPage: "operations/masters/own-company/user",
+    user: "admin",
+    path: "/master/own-companies",
+    steps: async (page) => {
+      await page.getByText("シー・ケィ・ケー株式会社").first().click();
+      await page
+        .getByRole("tab", {
+          name: text(currentLocale(), "master.ownCompanies.logo"),
+        })
+        .first()
+        .click();
+      await page
+        .getByRole("button", {
+          name: text(currentLocale(), "master.ownCompanies.uploadLogo"),
+        })
+        .first()
+        .waitFor();
+    },
+  },
+  {
     // 今日の一覧（持ち越し・作業中の印が出る）。日付欄だけが実時刻由来なので塗る。
     // 行はシードの計画（2026-07-21 / 07-22）が「持ち越し」として出る。
     id: "work-location-board-01",

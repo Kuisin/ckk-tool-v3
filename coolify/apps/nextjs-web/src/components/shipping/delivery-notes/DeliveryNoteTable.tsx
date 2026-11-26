@@ -13,11 +13,13 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docCompanyCode, matchesDocCompany } from "@/lib/doc-company-view-core";
 import { docNo } from "@/lib/doc-number";
 import { docSortValue } from "@/lib/doc-sort";
 import { deliveryMethodLabel, deliveryMethodOptions } from "@/lib/enum-labels";
@@ -60,6 +62,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
   const filtered = rows.filter((n) => {
     const matchesSearch =
       !search ||
+      matchesDocCompany(docCompanyCode(n.deliveryNumber), search) ||
       // 番号だけで照合する。旧番号（DRN-YYYYMM-NNNNN）でも探せる。
       docNo(n.deliveryNumber).includes(search) ||
       (n.legacyNumber ?? "").includes(search) ||
@@ -78,9 +81,11 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
       sortable: true,
       sortValue: (n) => docSortValue(n.deliveryNumber),
       render: (n) => (
-        <Text ff="mono" size="sm">
-          {docNo(n.deliveryNumber)}
-        </Text>
+        <WithDocCompany docId={n.deliveryNumber}>
+          <Text ff="mono" size="sm">
+            {docNo(n.deliveryNumber)}
+          </Text>
+        </WithDocCompany>
       ),
     },
     {
@@ -195,9 +200,11 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
         renderCard={(n) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
-              <Text c="dimmed" ff="mono" size="xs">
-                {docNo(n.deliveryNumber)}
-              </Text>
+              <WithDocCompany docId={n.deliveryNumber}>
+                <Text c="dimmed" ff="mono" size="xs">
+                  {docNo(n.deliveryNumber)}
+                </Text>
+              </WithDocCompany>
               <Text fw={600} size="sm" truncate>
                 {n.recipientName}
               </Text>

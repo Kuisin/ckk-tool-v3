@@ -45,7 +45,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 
 ![订单确认书列表画面](../../../assets/screenshots/order-acceptance-list-01.zh.png)
 
-- **「番号」（编号）** … 以 `ORD-` 开头的编号，导入后会自动编上。
+- **「番号」（编号）** … 以 `ORD-` 开头的编号，导入后会自动编上。处理 2 个以上本公司法人单据的人，会在编号旁看到开具公司编号的小标记（例 `TSP`）（[开具公司标记](/manual/zh/operations/masters/own-company/user#company-badge)）。
 - **「取込元」（导入来源）** … 是怎么登记进来的，为「監視フォルダ」（监视文件夹）、「優先取込」（优先导入）、「手入力」（手动输入）之一。
 - **「顧客」（客户）** … 显示橙色「未特定」（未确定）徽章的，表示客户还没有定下来。
 - **「状態」（状态）** … 用彩色徽章显示目前的情况。

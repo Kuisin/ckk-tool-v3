@@ -338,6 +338,7 @@ export function PurchaseRequestDetail({
         { label: tr("common.purchaseRequest"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={rq.requestNumber}
       createdAt={fmt.dateTime(rq.createdAt)}
       status={<StatusBadge entity="PurchaseRequest" status={rq.status} />}
       title={docNo(rq.requestNumber)}

@@ -9,7 +9,7 @@
  * （invoices.own_company_id のスナップショット）は必ずこれを通る。
  */
 
-import { type LocalizedTextInput, localized } from "./format";
+import { escapeHtml, type LocalizedTextInput, localized } from "./format";
 
 /** 発行元ブロックに要る自社法人の列（DB の own_companies 1 行）。 */
 export interface OwnCompanyRecord {
@@ -22,6 +22,7 @@ export interface OwnCompanyRecord {
   fax: string | null;
   invoiceRegistrationNo: string | null;
   sealFileId: string | null;
+  logoFileId: string | null;
   isDefault: boolean;
 }
 
@@ -110,6 +111,40 @@ export function issuerBlock(
     tel,
     invoice_reg: company.invoiceRegistrationNo?.trim() ?? "",
   };
+}
+
+/**
+ * PDF 見出しのロゴをどこから取るか。
+ *   own     … 法人が自分のロゴ（logo_file_id）を持ち、画像が読めた
+ *   bundled … 同梱の logo.svg（CKK のマーク）— **既定の法人だけ**
+ *             （法人マスタが空のときも、旧来どおりこれ）
+ *   none    … 刷らない — 他の法人の書類に CKK のマークを刷らないため
+ *
+ * 画像が読めなかった（SeaweedFS が落ちている・オブジェクトが消えた）ときは
+ * `hasOwnLogo = false` で呼ぶ — 帳票は止めず、ロゴの無い（既定の法人なら同梱の）
+ * 見出しで刷る。社印（lib/own-companies.ts ownCompanyStampImg）と同じ考え方。
+ */
+export type BrandLogoSource = "own" | "bundled" | "none";
+
+export function brandLogoSource(
+  company: Pick<OwnCompanyRecord, "isDefault"> | null,
+  hasOwnLogo: boolean,
+): BrandLogoSource {
+  if (hasOwnLogo) return "own";
+  return company == null || company.isDefault ? "bundled" : "none";
+}
+
+/** 同梱のロゴ（テンプレートと一緒に Gotenberg へ送る src/pdf-templates/logo.svg）。 */
+export const BUNDLED_LOGO_FILE = "logo.svg";
+
+/**
+ * 見出しのロゴの `<img>`（テンプレートの `{{{brand_logo}}}` に渡す生の HTML）。
+ * `file` は Gotenberg へ一緒に送るファイル名。alt は**その書類の法人名**
+ * （以前は CKK の社名を直書きしていた）。null なら何も刷らない。
+ */
+export function brandLogoHtml(file: string | null, alt: string): string {
+  if (!file) return "";
+  return `<img class="brand-logo" src="${escapeHtml(file)}" alt="${escapeHtml(alt)}" />`;
 }
 
 /**

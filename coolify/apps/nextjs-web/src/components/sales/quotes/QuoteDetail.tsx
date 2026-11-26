@@ -353,6 +353,7 @@ export function QuoteDetail({
         { label: tr("common.quote"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={quote.quoteNumber}
       createdAt={fmt.dateTime(quote.createdAt)}
       status={<StatusBadge entity="Quote" status={displayStatus} />}
       title={docNo(quote.quoteNumber)}

@@ -23,7 +23,7 @@
 import { requirePermissionResponse } from "@/lib/authz";
 import { isDevFeatureEnabled } from "@/lib/dev-features";
 import { escapeHtml } from "@/lib/format";
-import { issuerForCompanyId } from "@/lib/own-companies";
+import { issuerForCompanyId, ownCompanyLogo } from "@/lib/own-companies";
 import { renderPdf } from "@/lib/pdf";
 import { portalGuidePdfLabels } from "@/lib/pdf-labels";
 import {
@@ -150,17 +150,23 @@ export async function GET(request: Request): Promise<Response> {
   // 発行元（自社法人 MS0I）。ご案内はポータルのアカウント宛てで、書類でも
   // 拠点でもないので法人を持たない → 既定の法人（マスタの値。コードに直書き
   // しない）。登録番号は載せない（税務書類ではない — テンプレートが出さない）。
-  const { issuer } = await issuerForCompanyId(null, document.locale);
+  const { issuer, company } = await issuerForCompanyId(null, document.locale);
+  const logo = await ownCompanyLogo(company, document.locale);
 
   let pdf: ArrayBuffer;
   try {
-    pdf = await renderPdf("portal-guide.html", {
-      lang: document.locale,
-      issuer,
-      // `<title>` はループの外なので根にも 1 つ要る（中身は同じ見出し）。
-      labels: pages[0]?.labels,
-      pages,
-    });
+    pdf = await renderPdf(
+      "portal-guide.html",
+      {
+        lang: document.locale,
+        issuer,
+        brand_logo: logo.html,
+        // `<title>` はループの外なので根にも 1 つ要る（中身は同じ見出し）。
+        labels: pages[0]?.labels,
+        pages,
+      },
+      { assets: logo.assets },
+    );
   } catch (err) {
     console.error("[pdf/portal-guide]", err);
     return Response.json({ error: "PDF generation failed" }, { status: 502 });

@@ -485,6 +485,7 @@ export function DeliveryOrderDetail({
         { label: tr("common.deliveryOrder"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={order.deliveryOrderNumber}
       createdAt={fmt.dateTime(order.createdAt)}
       status={<StatusBadge entity="DeliveryOrder" status={order.status} />}
       title={docNo(order.deliveryOrderNumber)}

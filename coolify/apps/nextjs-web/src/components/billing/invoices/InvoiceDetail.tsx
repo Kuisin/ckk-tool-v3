@@ -455,6 +455,7 @@ export function InvoiceDetail({
         { label: tr("common.invoice"), href: BASE_PATH },
         tr("common.detail"),
       ]}
+      company={invoice.invoiceNumber}
       createdAt={fmt.dateTime(invoice.createdAt)}
       status={<StatusBadge entity="Invoice" status={invoice.status} />}
       title={docNo(invoice.invoiceNumber)}
@@ -487,10 +488,6 @@ export function InvoiceDetail({
               ? `${invoice.customerName} / ${invoice.customerBranchName}`
               : invoice.customerName
           }
-        />
-        <FieldValue
-          label={tr("billing.invoices.issuingCompany")}
-          value={invoice.ownCompanyName}
         />
         <FieldValue
           label={tr("common.salesRep")}

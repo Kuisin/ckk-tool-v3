@@ -24,6 +24,8 @@ export interface WorkOrderRow {
    * あり得るので、リンクと操作は workOrderNumber（ロット番号）で指す。
    */
   docNumber: string;
+  /** 発行会社（自社法人）のコード。番号の隣のバッジ・検索用。 */
+  companyCode: string | null;
   /** 旧番号（WOR-YYYYMM-NNNNN）。検索用。 */
   legacyNumber: string | null;
   createdAt: string;
@@ -37,6 +39,11 @@ export interface WorkOrderRow {
   plannedQuantity: number;
   approvalStatus: string; // WORK_ORDER_APPROVAL_STATUS
   status: string; // WORK_ORDER_STATUS
+  /**
+   * 打ち切り済み（work_orders.aborted_at あり）。status は CANCELLED のままなので、
+   * これが無いと一覧で普通のキャンセルと見分けられない。
+   */
+  aborted: boolean;
   /** 承認依頼日（承認管理 PD03 の列）。 */
   requestedAt: string | null;
   updatedAt: string;
@@ -237,6 +244,8 @@ export interface WorkOrderView {
   workOrderNumber: number;
   /** 書類番号 WOR-FFFF-NNNNN（**表示専用** — リンクと操作は workOrderNumber）。 */
   docNumber: string;
+  /** 発行会社（自社法人）のコード。見出しのバッジ用。 */
+  companyCode: string | null;
   /** 旧番号（番号設計の移行前の番号）。無ければ null。 */
   legacyNumber: string | null;
   status: string;

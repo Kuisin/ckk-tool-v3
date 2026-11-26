@@ -34,7 +34,7 @@ When you open the app, you see a list of the quotes made so far.
 
 ![Quote list screen](../../../assets/screenshots/quote-list-01.en.png)
 
-- **見積番号 (quote number)** … a number starting with `QOT-`. The system adds it for you.
+- **見積番号 (quote number)** … a number starting with `QOT-`. The system adds it for you. People who handle documents of two or more [own companies](/manual/en/operations/masters/own-company/user) see the issuing company's code (for example `TSP`) as a small badge next to the number ([Issuing company badge](/manual/en/operations/masters/own-company/user#company-badge)). Typing a company code in the search box narrows the list to that company's quotes.
 - **状態 (status)** … a colored badge shows where the quote stands. Gray is 「下書き」(draft), blue is 「発行済」(issued), orange is 「期限切れ」(expired — issued and past its valid-until date).
 - Type a quote number or a customer name in the search box at the top to narrow down the list.
 - Click a row to open the detail screen for that quote.

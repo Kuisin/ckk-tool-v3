@@ -40,6 +40,7 @@
 
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createServer as createHttpServer, type Server } from "node:http";
 import { createServer } from "node:net";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -233,9 +234,57 @@ interface Stack {
   databaseUrl: string;
 }
 
+/**
+ * `storage: true` のシナリオ用の、メモリだけの SeaweedFS Filer もどき。
+ * アプリ（lib/storage.ts）が使うのは Filer の HTTP API の PUT / GET / HEAD /
+ * DELETE だけなので、それだけを持つ。1 本ごとに別のポートで立て、終わったら閉じる
+ * — 本物の SeaweedFS を足すより軽く、シナリオ同士が中身を共有しない。
+ */
+const filers = new Map<string, Server>();
+
+async function startFiler(dbName: string): Promise<string> {
+  const objects = new Map<string, { type: string; body: Buffer }>();
+  const server = createHttpServer((req, res) => {
+    const key = decodeURIComponent((req.url ?? "/").split("?")[0]);
+    if (req.method === "PUT" || req.method === "POST") {
+      const chunks: Buffer[] = [];
+      req.on("data", (c: Buffer) => chunks.push(c));
+      req.on("end", () => {
+        objects.set(key, {
+          type: String(req.headers["content-type"] ?? "application/octet-stream"),
+          body: Buffer.concat(chunks),
+        });
+        res.writeHead(201).end();
+      });
+      return;
+    }
+    const obj = objects.get(key);
+    if (req.method === "DELETE") {
+      objects.delete(key);
+      res.writeHead(obj ? 204 : 404).end();
+      return;
+    }
+    if (!obj) {
+      res.writeHead(404).end();
+      return;
+    }
+    res.writeHead(200, { "content-type": obj.type, "content-length": obj.body.length });
+    res.end(req.method === "HEAD" ? undefined : obj.body);
+  });
+  const port = await freePort();
+  await new Promise<void>((ok) => server.listen(port, "127.0.0.1", ok));
+  filers.set(dbName, server);
+  return `http://127.0.0.1:${port}`;
+}
+
+function stopFiler(dbName: string): void {
+  filers.get(dbName)?.close();
+  filers.delete(dbName);
+}
+
 /** 1 本ぶんの DB（複製 + fixtures）とアプリを立てる。止めるのは呼び出し側（procs / dbName）。 */
 async function startStack(
-  sc: Pick<AnyScenario, "id" | "fixtures" | "kiosk" | "pdf">,
+  sc: Pick<AnyScenario, "id" | "fixtures" | "kiosk" | "pdf" | "storage">,
   dbName: string,
   outDir: string,
   procs: ChildProcess[],
@@ -243,6 +292,7 @@ async function startStack(
   const databaseUrl = `postgresql://postgres:shots@127.0.0.1:${DB_PORT}/${dbName}`;
   await cloneDb(dbName, sc.fixtures ?? []);
 
+  const filerUrl = sc.storage ? await startFiler(dbName) : undefined;
   const appPort = await freePort();
   const appUrl = `http://localhost:${appPort}`;
   const appLog = createWriteStream(join(outDir, "app.log"));
@@ -258,6 +308,7 @@ async function startStack(
       NODE_ENV: "production",
       KIOSK_WS_SECRET: "docs-screenshots-fixed-ws-secret",
       ...(sc.pdf ? { GOTENBERG_URL: `http://127.0.0.1:${GOTENBERG_PORT}` } : {}),
+      ...(filerUrl ? { SEAWEED_FILER_URL: filerUrl } : {}),
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -293,7 +344,7 @@ async function startStack(
 }
 
 /** --serve: 走らせずに、1 本ぶんの DB とアプリだけ立てて待つ。 */
-async function serve(sc: Pick<AnyScenario, "id" | "fixtures" | "kiosk" | "pdf">): Promise<void> {
+async function serve(sc: Pick<AnyScenario, "id" | "fixtures" | "kiosk" | "pdf" | "storage">): Promise<void> {
   const outDir = join(OUT_DIR, `serve-${sc.id}`);
   mkdirSync(outDir, { recursive: true });
   const dbName = `scn_serve_${sc.id.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_${process.pid}`;
@@ -424,6 +475,7 @@ async function runOne(sc: AnyScenario): Promise<ScenarioResult> {
     log(`${sc.id}: 残した — ${appUrl} / docker exec -it ${DB_CONTAINER} psql -U postgres -d ${dbName}`);
   } else {
     for (const p of procs) killTree(p);
+    stopFiler(dbName);
     await sleep(300);
     dropDb(dbName);
   }
@@ -434,6 +486,7 @@ async function runOne(sc: AnyScenario): Promise<ScenarioResult> {
 function cleanupAll(): void {
   for (const h of running) {
     for (const p of h.procs) killTree(p);
+    stopFiler(h.db);
     dropDb(h.db);
   }
 }

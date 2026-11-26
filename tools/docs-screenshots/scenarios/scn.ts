@@ -57,6 +57,8 @@ export class Scn extends Walk {
   shots: ShotResult[] = [];
   private shotNo = 0;
   private kioskContext?: BrowserContext;
+  /** 直前の `pdf()` で取った PDF のバイト列（画像の有無など、文字にならないものを調べる用）。 */
+  lastPdf: Buffer | null = null;
 
   constructor(
     page: Page,
@@ -73,6 +75,11 @@ export class Scn extends Walk {
    * 全高（下が切れると「保存したあと何が出たか」が読めない）。
    * `target` に別のページ（共有端末）を渡すとそちらを撮る。
    */
+  /**
+   * 撮るのは**落ち着いた画面** — `animations: "disabled"` で CSS の遷移を終わらせて
+   * から撮る。入力した直後に撮ると、エラーの赤枠が消えていく途中（border-color の
+   * 遷移）が写り、直ったはずの入力欄が赤いままに見えた（分類する のモーダル）。
+   */
   async shot(label: string, target: Page = this.page): Promise<void> {
     this.shotNo += 1;
     const file = `${String(this.shotNo).padStart(2, "0")}.jpg`;
@@ -81,7 +88,7 @@ export class Scn extends Walk {
       const overlay = await target.locator(OVERLAY).count();
       const size = target.viewportSize();
       if (overlay > 0 || !size) {
-        await target.screenshot({ path, type: "jpeg", quality: 72 });
+        await target.screenshot({ path, type: "jpeg", quality: 72, animations: "disabled" });
       } else {
         // 全高は **幅をそのままに、表示領域の高さだけ伸ばして**撮る。
         // Playwright の `fullPage: true` は撮る瞬間に表示領域を作り直すので、
@@ -95,7 +102,7 @@ export class Scn extends Walk {
         }));
         const tall = Math.min(Math.max(size.height, height), MAX_SHOT_HEIGHT);
         if (tall !== size.height) await target.setViewportSize({ width: size.width, height: tall });
-        await target.screenshot({ path, type: "jpeg", quality: 72 });
+        await target.screenshot({ path, type: "jpeg", quality: 72, animations: "disabled" });
         if (tall !== size.height) await target.setViewportSize(size);
         if (scrollY > 0) await target.evaluate((y) => window.scrollTo(0, y), scrollY).catch(() => undefined);
         await style?.evaluate((el) => (el as Element).remove()).catch(() => undefined);
@@ -170,6 +177,7 @@ export class Scn extends Walk {
   async pdf(label: string, path: string): Promise<string> {
     const res = await this.page.request.get(path, { timeout: 60_000 });
     const type = res.headers()["content-type"] ?? "";
+    this.lastPdf = null;
     if (!res.ok() || !type.includes("pdf")) {
       this.check(`PDF を取得: ${label}`, false, `${res.status()} ${type} ${(await res.text().catch(() => "")).slice(0, 200)}`);
       return "";
@@ -177,7 +185,8 @@ export class Scn extends Walk {
     this.shotNo += 1;
     const base = String(this.shotNo).padStart(2, "0");
     const pdfPath = join(this.env.outDir, `${base}.pdf`);
-    writeFileSync(pdfPath, await res.body());
+    this.lastPdf = await res.body();
+    writeFileSync(pdfPath, this.lastPdf);
     let text = "";
     try {
       text = execFileSync("pdftotext", ["-layout", pdfPath, "-"], { encoding: "utf8" });

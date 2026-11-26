@@ -15,6 +15,8 @@ export interface OutsourceStepRow {
    * 払い出す。まだ依頼していない工程は null。
    */
   outsourceNumber: string | null;
+  /** 発行会社（自社法人）のコード。番号の隣のバッジ・検索用。 */
+  companyCode: string | null;
   /** 指示書番号（通し連番 int）。 */
   workOrderNumber: number;
   productName: string;

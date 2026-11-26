@@ -6,12 +6,14 @@
 import { numberingOtherDocs } from "./numbering-other-docs";
 import { numberingPerCompany } from "./numbering-per-company";
 import { orderOneCompany } from "./order-one-company";
+import { ownCompanyLogo } from "./own-company-logo";
 import { ownCompanyMaster } from "./own-company-master";
 import { regrindSalesAccount } from "./regrind-sales-account";
 import type { AnyScenario } from "./types";
 
 export const companyScenarios: AnyScenario[] = [
   ownCompanyMaster,
+  ownCompanyLogo,
   numberingPerCompany,
   numberingOtherDocs,
   orderOneCompany,

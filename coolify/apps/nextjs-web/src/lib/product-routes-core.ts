@@ -49,6 +49,48 @@ export function routeStepsEqual(
   });
 }
 
+/**
+ * 工程スナップショットを**保存の規則**に揃える（比較の前に両辺へ掛ける）。
+ *
+ * 実施場所を選べるのは工程マスタが「社内・外注」の工程だけで、それ以外は常に
+ * 社内・拠点なし・外注先なしで保存される（ビルダーの toStepSnapshots と同じ規則）。
+ * 版のほうには、規則ができる前の行やシードで「社内のみ」の工程に拠点が入って
+ * いることがある。そのまま比べると、何も触っていない指示書でも「工程構成が
+ * 変更されています」になり、保存のたびに中身の同じ新しい版が増えていた。
+ *
+ * `editableStepIds` = 工程マスタの実施場所が INTERNAL_OR_OUTSOURCE の工程。
+ */
+export function normalizeRouteSteps(
+  steps: readonly RouteStepSnapshot[],
+  editableStepIds: ReadonlySet<number>,
+): RouteStepSnapshot[] {
+  return steps.map((s) => {
+    if (!editableStepIds.has(s.processStepId)) {
+      return {
+        ...s,
+        executionLocation: "INTERNAL",
+        plantId: null,
+        supplierBpId: null,
+      };
+    }
+    return s.executionLocation === "OUTSOURCE"
+      ? { ...s, plantId: null }
+      : { ...s, supplierBpId: null };
+  });
+}
+
+/** 保存の規則に揃えてから比べる（routeStepsEqual + normalizeRouteSteps）。 */
+export function routeStepsEquivalent(
+  a: readonly RouteStepSnapshot[],
+  b: readonly RouteStepSnapshot[],
+  editableStepIds: ReadonlySet<number>,
+): boolean {
+  return routeStepsEqual(
+    normalizeRouteSteps(a, editableStepIds),
+    normalizeRouteSteps(b, editableStepIds),
+  );
+}
+
 // ── client-safe view 型（server の listProductRoutes → client panel/builder） ──
 
 export interface RouteVersionStepView {

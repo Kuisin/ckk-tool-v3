@@ -41,6 +41,12 @@ interface ScenarioBase {
   kiosk?: boolean;
   /** PDF を実際に描く（Gotenberg を起動して GOTENBERG_URL を渡す）。`s.pdf()`。 */
   pdf?: boolean;
+  /**
+   * ファイルの保存先（SeaweedFS）を、メモリだけの Filer もどきで用意して
+   * SEAWEED_FILER_URL を渡す（画像のアップロード → PDF に刷る、を通しで確かめる）。
+   * 無ければ保存先は無い — アップロードは失敗し、生成済み PDF は保存されない。
+   */
+  storage?: boolean;
 }
 
 /** 画面を操作する 1 本（scenarios.spec.ts が走らせる）。 */

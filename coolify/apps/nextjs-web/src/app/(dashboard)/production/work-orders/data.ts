@@ -407,6 +407,7 @@ function mapRow(
     plannedQuantity: number;
     approvalStatus: string;
     status: string;
+    abortedAt: Date | null;
     requestedAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
@@ -416,6 +417,7 @@ function mapRow(
   return {
     workOrderNumber: r.workOrderNumber,
     docNumber: formatDocNumber("WOR", r),
+    companyCode: parseDocId(r.docRef).companyCode,
     legacyNumber: r.legacyNumber,
     createdAt: r.createdAt.toISOString(),
     orderLineNumber: orderLineListLabel(r.orderLineLinks, tr),
@@ -424,6 +426,7 @@ function mapRow(
     plannedQuantity: r.plannedQuantity,
     approvalStatus: r.approvalStatus,
     status: r.status,
+    aborted: r.abortedAt != null,
     requestedAt: iso(r.requestedAt),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -728,6 +731,7 @@ export async function fetchWorkOrder(
     id: r.id,
     workOrderNumber: r.workOrderNumber,
     docNumber: formatDocNumber("WOR", r),
+    companyCode: parseDocId(r.docRef).companyCode,
     legacyNumber: r.legacyNumber,
     status: r.status,
     approvalStatus: r.approvalStatus,
