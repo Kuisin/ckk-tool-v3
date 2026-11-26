@@ -91,6 +91,11 @@ export const MASTER_REFERENCES: Record<
     ref("QuoteItem", "itemId"),
     ref("OrderLine", "itemId"),
     ref("Estimate", "itemId"),
+    // 再研磨の「研ぎ直す工具」（他社製品を含む製品）— 価格表の対象工具・
+    // 見積書と注文明細の工具の欄。
+    ref("PriceListEntry", "toolItemId"),
+    ref("QuoteItem", "toolItemId"),
+    ref("OrderLine", "toolItemId"),
     // 出荷
     ref("DeliveryOrderItem", "itemId"),
     ref("DeliveryNoteItem", "itemId"),

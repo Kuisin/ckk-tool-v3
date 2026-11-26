@@ -57,7 +57,10 @@ import {
 } from "@/app/(dashboard)/_shared/option-search";
 import type { OrderAcceptanceDraftInput } from "@/app/(dashboard)/sales/order-acceptances/actions";
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
-import { resolvePriceFromEntries } from "@/components/sales/quotes/model";
+import {
+  lineToolItemId,
+  resolvePriceFromEntries,
+} from "@/components/sales/quotes/model";
 import { GhostButton } from "@/components/ui/buttons";
 import { productItemF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
@@ -161,6 +164,11 @@ export interface RowPrice {
    * 「価格表 ¥1,200（標準価格）」にしないための印 — あれは嘘になる。
    */
   fromStandard: boolean;
+  /**
+   * 当たったのが**対象工具つき**の価格表か（再研磨の工具一致）。バッジで
+   * 「工具を問わない値段」と言い分ける — 同じ ¥ でも出どころが違う。
+   */
+  toolSpecific: boolean;
   /** 単価を価格表が持っている行か（= 単価欄は読み取り専用）。 */
   locked: boolean;
   /** 上書きを入れられる行か（価格表がある行だけ）。 */
@@ -191,7 +199,7 @@ export function rowPrice(
           new Date(),
           (row.itemId ? ctx.standardPrices[row.itemId] : undefined) ?? null,
           // 再研磨は研ぐ工具で値段が変わり得る（工具一致 → 工具なし → 標準価格）。
-          row.orderType === "REGRIND" ? row.toolItemId || null : null,
+          lineToolItemId(row),
         )
       : null;
   const resolved = resolution?.ok ? resolution.price : null;
@@ -211,6 +219,7 @@ export function rowPrice(
     expected,
     tierLabel: resolved?.tierLabel ?? null,
     fromStandard: expected != null && resolved?.tierId == null,
+    toolSpecific: resolved?.toolSpecific === true,
     locked: expected != null && !overridden,
     overridable: expected != null,
     effective,
@@ -453,15 +462,20 @@ export function OrderAcceptanceItemsEditor({
                       })
                     : price.tierLabel
                       ? tr(
-                          "sales.orderAcceptanceItemsEditor.priceListPriceWithTier",
+                          price.toolSpecific
+                            ? "sales.orderAcceptanceItemsEditor.toolPriceListPriceWithTier"
+                            : "sales.orderAcceptanceItemsEditor.priceListPriceWithTier",
                           {
                             price: formatMoney(price.expected),
                             tier: price.tierLabel,
                           },
                         )
-                      : tr("sales.orderAcceptanceItemsEditor.priceListPrice", {
-                          price: formatMoney(price.expected),
-                        })}
+                      : tr(
+                          price.toolSpecific
+                            ? "sales.orderAcceptanceItemsEditor.toolPriceListPrice"
+                            : "sales.orderAcceptanceItemsEditor.priceListPrice",
+                          { price: formatMoney(price.expected) },
+                        )}
                 </Badge>
               )}
               {replaced != null && (

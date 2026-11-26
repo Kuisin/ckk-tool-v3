@@ -45,7 +45,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 
 ![注文請書の一覧画面](../../../assets/screenshots/order-acceptance-list-01.png)
 
-- **番号** … `ORD-` で始まる番号です。取り込むと自動で付きます。
+- **番号** … `ORD-` で始まる番号です。取り込むと自動で付きます。2 社以上の自社法人の書類を扱う人には、番号の横に発行会社のコード（例 `TSP`）が小さく出ます（[発行会社のバッジ](/manual/ja/operations/masters/own-company/user#company-badge)）。
 - **取込元** … どうやって登録されたかです。「監視フォルダ」「優先取込」「手入力」のどれかです。
 - **顧客** … オレンジの「未特定」バッジが出ているものは、お客様が決まっていません。
 - **状態** … 色つきのバッジで今の状況がわかります。

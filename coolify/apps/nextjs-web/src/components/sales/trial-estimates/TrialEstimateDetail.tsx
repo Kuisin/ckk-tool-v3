@@ -327,6 +327,7 @@ export function TrialEstimateDetail({
         { label: tr("common.priceEstimate"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={record.estimateNumber}
       createdAt={fmt.dateTime(record.createdAt)}
       status={
         <Group gap="xs">

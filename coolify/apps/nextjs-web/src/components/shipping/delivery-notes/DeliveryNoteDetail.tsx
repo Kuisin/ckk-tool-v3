@@ -331,6 +331,7 @@ export function DeliveryNoteDetail({
         { label: tr("common.deliveryNote"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={note.deliveryNumber}
       createdAt={fmt.dateTime(note.createdAt)}
       status={<StatusBadge entity="DeliveryNote" status={note.status} />}
       title={docNo(note.deliveryNumber)}

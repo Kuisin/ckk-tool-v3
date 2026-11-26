@@ -31,6 +31,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 import { matchCustomer, suggestProducts } from "@/lib/intake";
 import { normalizeExtraction } from "@/lib/intake-core";
 import { reviewIntake } from "@/lib/intake-review";
+import { toolLabel } from "@/lib/tool-label";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
@@ -50,22 +51,6 @@ function productLabel(p: {
   const code = p.code ?? formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
   return code ? `${name} ${code}` : name;
-}
-
-/**
- * 工具ラベル: メーカー名（他社製品のみ）+ 名称 + 品目コード。
- * 誰が作った工具なのかは預かるときに最初に要る情報なので先頭に置く。
- */
-function toolLabel(t: {
-  name: unknown;
-  code: string | null;
-  isExternalProduct: boolean;
-  makerName: string | null;
-}): string {
-  const maker = t.isExternalProduct ? t.makerName?.trim() : null;
-  return [maker, localized(t.name as LocalizedText | null), t.code]
-    .filter((x): x is string => !!x)
-    .join(" ");
 }
 
 /** 一覧 — 新しい採番から順（取込状況一覧）。 */

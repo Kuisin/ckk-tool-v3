@@ -13,12 +13,14 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docCompanyCode, matchesDocCompany } from "@/lib/doc-company-view-core";
 import { docNo } from "@/lib/doc-number";
 import { docSortValue } from "@/lib/doc-sort";
 import { statusOptions } from "@/lib/status-map";
@@ -44,6 +46,7 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
   const filtered = rows.filter((o) => {
     const matchesSearch =
       !search ||
+      matchesDocCompany(docCompanyCode(o.poNumber), search) ||
       docNo(o.poNumber).includes(search) ||
       (o.legacyNumber ?? "").includes(search) ||
       o.supplierName.includes(search);
@@ -58,9 +61,11 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
       sortable: true,
       sortValue: (o) => docSortValue(o.poNumber),
       render: (o) => (
-        <Text ff="mono" size="sm">
-          {docNo(o.poNumber)}
-        </Text>
+        <WithDocCompany docId={o.poNumber}>
+          <Text ff="mono" size="sm">
+            {docNo(o.poNumber)}
+          </Text>
+        </WithDocCompany>
       ),
     },
     {
@@ -156,9 +161,11 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
         renderCard={(o) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
-              <Text c="dimmed" ff="mono" size="xs">
-                {docNo(o.poNumber)}
-              </Text>
+              <WithDocCompany docId={o.poNumber}>
+                <Text c="dimmed" ff="mono" size="xs">
+                  {docNo(o.poNumber)}
+                </Text>
+              </WithDocCompany>
               <Text fw={600} size="sm" truncate>
                 {o.supplierName}
               </Text>

@@ -410,6 +410,7 @@ export function OrderLineDetail({
         { label: tr("common.orderLine"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={order.orderNumber}
       createdAt={fmt.dateTime(order.createdAt)}
       status={<StatusBadge entity="OrderLine" status={order.status} />}
       title={docNo(order.orderNumber)}

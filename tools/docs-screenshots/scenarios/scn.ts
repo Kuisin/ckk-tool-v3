@@ -57,6 +57,8 @@ export class Scn extends Walk {
   shots: ShotResult[] = [];
   private shotNo = 0;
   private kioskContext?: BrowserContext;
+  /** 直前の `pdf()` で取った PDF のバイト列（画像の有無など、文字にならないものを調べる用）。 */
+  lastPdf: Buffer | null = null;
 
   constructor(
     page: Page,
@@ -175,6 +177,7 @@ export class Scn extends Walk {
   async pdf(label: string, path: string): Promise<string> {
     const res = await this.page.request.get(path, { timeout: 60_000 });
     const type = res.headers()["content-type"] ?? "";
+    this.lastPdf = null;
     if (!res.ok() || !type.includes("pdf")) {
       this.check(`PDF を取得: ${label}`, false, `${res.status()} ${type} ${(await res.text().catch(() => "")).slice(0, 200)}`);
       return "";
@@ -182,7 +185,8 @@ export class Scn extends Walk {
     this.shotNo += 1;
     const base = String(this.shotNo).padStart(2, "0");
     const pdfPath = join(this.env.outDir, `${base}.pdf`);
-    writeFileSync(pdfPath, await res.body());
+    this.lastPdf = await res.body();
+    writeFileSync(pdfPath, this.lastPdf);
     let text = "";
     try {
       text = execFileSync("pdftotext", ["-layout", pdfPath, "-"], { encoding: "utf8" });

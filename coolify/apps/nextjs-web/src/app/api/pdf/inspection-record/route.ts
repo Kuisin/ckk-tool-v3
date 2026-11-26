@@ -34,6 +34,7 @@ import {
 } from "@/lib/inspection-sheet-pdf";
 import { templateImageDataUri } from "@/lib/inspection-template-image";
 import { label } from "@/lib/messages";
+import { ownCompanyLogoForWorkOrder } from "@/lib/own-companies";
 import { renderPdf } from "@/lib/pdf";
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
@@ -149,55 +150,64 @@ export async function GET(request: Request): Promise<Response> {
   );
 
   const image = await templateImageDataUri(record.template.imageFileId);
+  // 見出しのロゴは指示書の法人のもの（他の法人の紙に CKK のマークを刷らない）。
+  const logo = await ownCompanyLogoForWorkOrder(
+    record.step.workOrder.workOrderNumber,
+  );
 
-  const pdf = await renderPdf("inspection-sheet.html", {
-    // 検査表は指示書に属する紙なので QR は指示書番号（CKK:WO:<番号>）。
-    doc_qr: documentQrSvg(QR_KINDS.WO, record.step.workOrder.workOrderNumber),
-    template: sheetTemplateHead(record.template, lotQuantity),
-    meta: {
-      work_order: `#${record.step.workOrder.workOrderNumber}`,
-      lot_quantity: label(
-        "pdf.inspectionRecord.lotQuantity",
-        "ja",
-        "{quantity} 本", // i18n-ignore
-        {
-          quantity: lotQuantity,
-        },
-      ),
-      inspected_at: record.recordedAt
-        ? esc(documentFormatters.dateTime(record.recordedAt.toISOString()))
-        : "—",
-      recorded_by: esc(nameOf(record.recordedBy)),
-      confirmed: record.confirmedAt
-        ? esc(
-            `${nameOf(record.confirmedBy)}（${documentFormatters.dateTime(record.confirmedAt.toISOString())}）`,
-          )
-        : "—",
-      produced_by: esc(nameOf(record.step.completedBy)),
-      approved: record.approvedAt
-        ? esc(
-            `${nameOf(record.approvedBy)}（${documentFormatters.dateTime(record.approvedAt.toISOString())}）`,
-          )
-        : "—",
-    },
-    template_image_html: templateImageHtml(
-      image?.dataUri ?? null,
-      image?.filename ?? null,
-    ),
-    grid_html,
-    counts_table_html,
-    shape_html: shapeSectionHtml(items, shapeValues),
-    overall: { judgement: STATUS_LABEL[record.status] ?? record.status },
-    footer_note:
-      esc(
-        label(
-          "pdf.inspectionRecord.footerNote",
+  const pdf = await renderPdf(
+    "inspection-sheet.html",
+    {
+      brand_logo: logo.html,
+      // 検査表は指示書に属する紙なので QR は指示書番号（CKK:WO:<番号>）。
+      doc_qr: documentQrSvg(QR_KINDS.WO, record.step.workOrder.workOrderNumber),
+      template: sheetTemplateHead(record.template, lotQuantity),
+      meta: {
+        work_order: `#${record.step.workOrder.workOrderNumber}`,
+        lot_quantity: label(
+          "pdf.inspectionRecord.lotQuantity",
           "ja",
-          "* は必須項目。実測値はサンプルごとの記録値。", // i18n-ignore
+          "{quantity} 本", // i18n-ignore
+          {
+            quantity: lotQuantity,
+          },
         ),
-      ) + equipmentLegendNote(items),
-    final_inspection_html: finalInspectionSectionHtml(finalInspection),
-  });
+        inspected_at: record.recordedAt
+          ? esc(documentFormatters.dateTime(record.recordedAt.toISOString()))
+          : "—",
+        recorded_by: esc(nameOf(record.recordedBy)),
+        confirmed: record.confirmedAt
+          ? esc(
+              `${nameOf(record.confirmedBy)}（${documentFormatters.dateTime(record.confirmedAt.toISOString())}）`,
+            )
+          : "—",
+        produced_by: esc(nameOf(record.step.completedBy)),
+        approved: record.approvedAt
+          ? esc(
+              `${nameOf(record.approvedBy)}（${documentFormatters.dateTime(record.approvedAt.toISOString())}）`,
+            )
+          : "—",
+      },
+      template_image_html: templateImageHtml(
+        image?.dataUri ?? null,
+        image?.filename ?? null,
+      ),
+      grid_html,
+      counts_table_html,
+      shape_html: shapeSectionHtml(items, shapeValues),
+      overall: { judgement: STATUS_LABEL[record.status] ?? record.status },
+      footer_note:
+        esc(
+          label(
+            "pdf.inspectionRecord.footerNote",
+            "ja",
+            "* は必須項目。実測値はサンプルごとの記録値。", // i18n-ignore
+          ),
+        ) + equipmentLegendNote(items),
+      final_inspection_html: finalInspectionSectionHtml(finalInspection),
+    },
+    { assets: logo.assets },
+  );
 
   const filename = `inspection-record-${record.step.workOrder.workOrderNumber}-${record.template.code}.pdf`;
   return new Response(pdf, {

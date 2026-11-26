@@ -416,6 +416,7 @@ export function PurchaseOrderDetail({
         { label: tr("common.materialPurchaseOrder"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={po.poNumber}
       createdAt={fmt.dateTime(po.createdAt)}
       status={<StatusBadge entity="MaterialPurchaseOrder" status={po.status} />}
       title={docNo(po.poNumber)}

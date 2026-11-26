@@ -381,8 +381,15 @@ model QuoteItem {
   quoteId String @map("quote_id") @db.Uuid
   quoteYearMonth String?    @map("quote_year_month") @db.Char(6) @ignore
   quoteSeq       Int?       @map("quote_seq") @ignore
-  /// 統合品目（app.items）。見積明細の品目。
+  /// 統合品目（app.items）。見積明細の品目。再研磨の明細では再研磨の品目（役務）。
   itemId         Int       @map("item_id")
+  /// 研ぎ直す工具（app.items の PRODUCT。他社製品のこともある）。
+  ///
+  /// **再研磨の明細だけが持つ**（order_lines.tool_item_id と同じ規約 — DB の CHECK
+  /// quote_items_tool_only_for_regrind）。価格表は 工具一致 → 工具なし → 標準価格
+  /// の順で引くので、工具が無いと工具ごとの価格表が見積書に当たらない。
+  /// 注文請書を見積書から作るとき、明細の工具もここから写す。
+  toolItemId     Int?      @map("tool_item_id")
   orderType      OrderType @map("order_type")
   quantity       Int
   unitPrice      Decimal   @map("unit_price") @db.Decimal(12, 2)
@@ -404,11 +411,13 @@ model QuoteItem {
 
   quote         Quote          @relation(fields: [quoteId], references: [id])
   item          Item           @relation("QuoteItemItem", fields: [itemId], references: [id], onDelete: Restrict)
+  toolItem      Item?          @relation("QuoteItemToolItem", fields: [toolItemId], references: [id], onDelete: Restrict)
   priceListTier PriceListTier? @relation(fields: [priceListTierId], references: [id])
   taxCategory   TaxCategory?   @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
 
   @@index([taxCategoryId])
   @@index([itemId])
+  @@index([toolItemId])
   @@index([quoteId])
   @@map("quote_items")
   @@schema("app")

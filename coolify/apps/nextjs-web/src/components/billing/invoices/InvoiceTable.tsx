@@ -29,12 +29,14 @@ import {
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { CreateButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docCompanyCode, matchesDocCompany } from "@/lib/doc-company-view-core";
 import { docNo } from "@/lib/doc-number";
 import { docSortValue } from "@/lib/doc-sort";
 import type { Formatters } from "@/lib/format";
@@ -71,6 +73,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
   const filtered = rows.filter((inv) => {
     const matchesSearch =
       !search ||
+      matchesDocCompany(docCompanyCode(inv.invoiceNumber), search) ||
       // 番号だけで照合する。旧番号（INV-YYYYMM-NNNNN）でも探せる。
       docNo(inv.invoiceNumber).includes(search) ||
       (inv.legacyNumber ?? "").includes(search) ||
@@ -212,9 +215,11 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
       sortable: true,
       sortValue: (inv) => docSortValue(inv.invoiceNumber),
       render: (inv) => (
-        <Text ff="mono" size="sm">
-          {docNo(inv.invoiceNumber)}
-        </Text>
+        <WithDocCompany docId={inv.invoiceNumber}>
+          <Text ff="mono" size="sm">
+            {docNo(inv.invoiceNumber)}
+          </Text>
+        </WithDocCompany>
       ),
     },
     {
@@ -347,9 +352,11 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
         renderCard={(inv) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
-              <Text c="dimmed" ff="mono" size="xs">
-                {docNo(inv.invoiceNumber)}
-              </Text>
+              <WithDocCompany docId={inv.invoiceNumber}>
+                <Text c="dimmed" ff="mono" size="xs">
+                  {docNo(inv.invoiceNumber)}
+                </Text>
+              </WithDocCompany>
               <Text fw={600} size="sm" truncate>
                 {inv.customerName}
               </Text>

@@ -118,6 +118,21 @@ export interface RenderPdfOptions {
    */
   paperWidth?: string;
   paperHeight?: string;
+  /**
+   * テンプレートと一緒に Gotenberg へ送るファイル（自社法人のロゴなど —
+   * `<img src="company-logo.png">` が解決できるように）。Gotenberg は
+   * `file:///tmp/.*` しか読まないので、DB や SeaweedFS にある画像は URL ではなく
+   * ここでバイト列として渡す（同梱の SVG・フォントと同じ経路）。
+   */
+  assets?: readonly PdfAsset[];
+}
+
+/** {@link RenderPdfOptions.assets} の 1 件。 */
+export interface PdfAsset {
+  /** テンプレートから参照する名前（パス区切りを含まない）。 */
+  filename: string;
+  data: Uint8Array | ArrayBuffer;
+  type: string;
 }
 
 /** Render `<template>.html` with `data` and convert it to a PDF via Gotenberg. */
@@ -150,6 +165,21 @@ export async function renderPdf(
     if (!asset.toLowerCase().endsWith(".woff2")) continue;
     const font = await readFile(path.join(TEMPLATES_DIR, asset));
     form.append("files", new Blob([font], { type: "font/woff2" }), asset);
+  }
+  // 呼び出し側が持ってきたファイル（自社法人のロゴなど）。
+  for (const asset of options.assets ?? []) {
+    if (path.basename(asset.filename) !== asset.filename) {
+      throw new Error(`Invalid asset name: ${asset.filename}`);
+    }
+    const bytes =
+      asset.data instanceof Uint8Array
+        ? asset.data
+        : new Uint8Array(asset.data);
+    form.append(
+      "files",
+      new Blob([bytes as Uint8Array<ArrayBuffer>], { type: asset.type }),
+      asset.filename,
+    );
   }
   // A4 (210mm × 297mm); Gotenberg otherwise defaults to US Letter.
   form.append("paperWidth", options.paperWidth ?? "210mm");

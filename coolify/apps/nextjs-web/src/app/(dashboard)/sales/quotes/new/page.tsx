@@ -40,6 +40,8 @@ export default async function SalesQuotesNewPage({
     orderType?: string;
     quantity?: string;
     delivery?: string;
+    /** 研ぎ直す工具（品目 id）— 工具ごとの価格表から開いたとき。 */
+    tool?: string;
     from?: string;
     /** 発行会社（自社法人 id）— 価格表から開いたとき、その価格表の会社。 */
     company?: string;
@@ -88,6 +90,7 @@ export default async function SalesQuotesNewPage({
         orderType: sp.orderType,
         quantity: sp.quantity ? Number(sp.quantity) : undefined,
         deliveryDate: sp.delivery ?? null,
+        toolItemId: sp.tool ?? null,
       }
     : undefined;
 

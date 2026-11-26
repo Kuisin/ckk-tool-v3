@@ -15,12 +15,13 @@ import { docNo } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
-import { issuerForQuote } from "@/lib/own-companies";
+import { issuerForQuote, ownCompanyLogo } from "@/lib/own-companies";
 import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   orderTypeLabelLocalized,
   pdfAttnLine,
   quoteLineNoteHtml,
+  quoteLineToolHtml,
   quotePdfLabels,
   taxBaseSuffixLocalized,
   taxRowLabelLocalized,
@@ -98,12 +99,15 @@ export async function GET(request: Request): Promise<Response> {
 
   // 発行元（自社法人 MS0I）= 見積書が持つ法人。見積書は拠点を持たないので、
   // 法人は作成時の「発行会社」で決まり、以後は変わらない（own_company_id）。
-  const { issuer } = await issuerForQuote(key, lang);
+  const { issuer, company } = await issuerForQuote(key, lang);
+  // 見出しのロゴもその法人のもの（他の法人の書類に CKK のマークを刷らない）。
+  const logo = await ownCompanyLogo(company, lang);
 
   const data = {
     lang,
     labels,
     issuer,
+    brand_logo: logo.html,
     recipient: {
       name: quote.customerName,
       contact: pdfAttnLine(lang, quote.customerBranchName),
@@ -135,6 +139,8 @@ export async function GET(request: Request): Promise<Response> {
         // 製品コード（PRD-YYYYMM-NNNN）。**採番前のレガシー品目は空欄で刷る** —
         // 以前ここは内部の連番 id を刷っていた（品目統合で本来の製品コードへ）。
         code: it.productCode ?? "",
+        // 再研磨の明細: 研ぎ直す工具（売っているのは役務、研ぐのはこの工具）。
+        tool_html: quoteLineToolHtml(it.toolLabel, lang),
         order_type: orderTypeLabelLocalized(it.orderType, lang),
         quantity: yen(it.quantity),
         unit_price: yen(it.unitPrice),
@@ -153,7 +159,7 @@ export async function GET(request: Request): Promise<Response> {
 
   let pdf: ArrayBuffer;
   try {
-    pdf = await renderPdf("quote.html", data);
+    pdf = await renderPdf("quote.html", data, { assets: logo.assets });
   } catch (err) {
     console.error("[pdf/quote]", err);
     return new Response("PDF generation failed", { status: 502 });

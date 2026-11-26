@@ -257,6 +257,7 @@ export function PriceListDetail({
         { label: tr("common.priceList"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={entry.entryId}
       createdAt={fmt.dateTime(entry.createdAt)}
       status={<ActiveBadge active={entry.isActive} />}
       title={tr("sales.priceLists.priceListDetails")}
@@ -285,14 +286,6 @@ export function PriceListDetail({
         </>
       )}
       <SummaryGrid>
-        <FieldValue
-          label={tr("common.issuingCompany")}
-          value={
-            entry.ownCompanyName !== entry.ownCompanyCode
-              ? `${entry.ownCompanyCode} ${entry.ownCompanyName}`
-              : entry.ownCompanyCode
-          }
-        />
         <FieldValue label={tr("common.customer")} value={entry.customerName} />
         <FieldValue
           label={tr("common.product")}

@@ -24,6 +24,8 @@ export interface WorkOrderRow {
    * あり得るので、リンクと操作は workOrderNumber（ロット番号）で指す。
    */
   docNumber: string;
+  /** 発行会社（自社法人）のコード。番号の隣のバッジ・検索用。 */
+  companyCode: string | null;
   /** 旧番号（WOR-YYYYMM-NNNNN）。検索用。 */
   legacyNumber: string | null;
   createdAt: string;
@@ -248,6 +250,8 @@ export interface WorkOrderView {
   workOrderNumber: number;
   /** 書類番号 WOR-FFFF-NNNNN（**表示専用** — リンクと操作は workOrderNumber）。 */
   docNumber: string;
+  /** 発行会社（自社法人）のコード。見出しのバッジ用。 */
+  companyCode: string | null;
   /** 旧番号（番号設計の移行前の番号）。無ければ null。 */
   legacyNumber: string | null;
   status: string;

@@ -286,12 +286,13 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 自社法人 | Own company | 本公司法人 |
 | 既定の法人 | Default company | 默认法人 |
 | 発行元（書類の） | Issuer | 开具方 |
-| 発行会社（作成フォームの欄） | Issuing company | 开具公司 |
+| 発行会社（作成フォームの欄 / 一覧・詳細の法人コードのバッジ） | Issuing company | 开具公司 |
 | 取込口（注文書の入口 — 取込フォルダ・メール・外部連携） | Intake channel | 导入渠道 |
 | 取込口の自社法人（注文書取込 SY0C の設定） | Own company of the intake channel | 导入渠道的本公司法人 |
 | 法人コード（自社法人を見分ける短い文字。書類の URL に入る） | Company code | 法人编号 |
 | 適格請求書発行事業者登録番号 | Invoice registration number | 合格请款单发行事业者登记号 |
 | 社印 | Company seal | 公司印章 |
+| ロゴ（自社法人の。PDF の見出しに刷る） | Logo | 标志 |
 | 会計年度の開始月 | Fiscal year start month | 会计年度开始月 |
 | 地域 / 国 | Region / Country | 地区 / 国家 |
 | ロール | Role | 角色 |

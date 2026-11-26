@@ -7,6 +7,7 @@ import {
 } from "@/components/layout/AppFlags";
 import { DashboardShell } from "@/components/layout/AppShell";
 import { DisplayPreferencesStyle } from "@/components/layout/DisplayPreferencesStyle";
+import { DocCompanyProvider } from "@/components/layout/DocCompanyProvider";
 import { NavigationGuardProvider } from "@/components/layout/NavigationGuard";
 import { PreferencesProvider } from "@/components/layout/PreferencesProvider";
 import { PwaRegister } from "@/components/layout/PwaRegister";
@@ -14,6 +15,7 @@ import { TableSettingsProvider } from "@/components/layout/TableSettingsProvider
 import { currentAppEnv, getDisabledAppKeys } from "@/lib/app-flags";
 import { appList } from "@/lib/app-list";
 import { getVisibleAppKeys, sessionUserId } from "@/lib/authz";
+import { viewerCompanyContext } from "@/lib/doc-company";
 import { getCurrentProfile, isPasswordChangeRequired } from "@/lib/profile";
 import {
   sanitizeHiddenColumns,
@@ -45,19 +47,29 @@ export default async function DashboardLayout({
   // null のアプリ（未処理一覧 / フォーム / ファイル管理 …）は requireAppRead が
   // 「ログインのみ」で通すので、ここで止めないと未認証で描画される。
   if (!userId) redirect("/login");
-  const [disabledKeys, unreleasedKeys, profile, visibleKeys, prefs, tableRows] =
-    await Promise.all([
-      getDisabledAppKeys(),
-      isDevEnv ? getDisabledAppKeys("main") : Promise.resolve([]),
-      getCurrentProfile(),
-      getVisibleAppKeys(appList),
-      // 表示設定（言語・日付・時刻・タイムゾーン）— 画面全体の日時整形と
-      // UI 文言がこれを見る。SSR と同じ値をクライアントへ渡す。
-      getCurrentPreferences(),
-      // 一覧表の「表示する列」— 画面ごとに引くと表の数だけ往復するので、
-      // ここで 1 回だけまとめて読んでクライアントへ配る。
-      readViewSettings(userId, TABLE_SETTING_PREFIX),
-    ]);
+  const [
+    disabledKeys,
+    unreleasedKeys,
+    profile,
+    visibleKeys,
+    prefs,
+    tableRows,
+    companyViewer,
+  ] = await Promise.all([
+    getDisabledAppKeys(),
+    isDevEnv ? getDisabledAppKeys("main") : Promise.resolve([]),
+    getCurrentProfile(),
+    getVisibleAppKeys(appList),
+    // 表示設定（言語・日付・時刻・タイムゾーン）— 画面全体の日時整形と
+    // UI 文言がこれを見る。SSR と同じ値をクライアントへ渡す。
+    getCurrentPreferences(),
+    // 一覧表の「表示する列」— 画面ごとに引くと表の数だけ往復するので、
+    // ここで 1 回だけまとめて読んでクライアントへ配る。
+    readViewSettings(userId, TABLE_SETTING_PREFIX),
+    // 書類の「発行会社」バッジを出すか（lib/doc-company-view-core.ts）—
+    // 15 種類の書類の一覧・詳細が同じ値を見るので、ここで 1 回だけ作る。
+    viewerCompanyContext(userId),
+  ]);
   const tableSettings = Object.fromEntries(
     Object.entries(tableRows).map(([key, value]) => [
       key,
@@ -107,11 +119,13 @@ export default async function DashboardLayout({
       <NextIntlClientProvider>
         <PreferencesProvider prefs={prefs}>
           <TableSettingsProvider initial={tableSettings}>
-            <NavigationGuardProvider>
-              <DashboardShell isDev={isDevEnv} user={headerUser}>
-                <AppAvailabilityGuard>{children}</AppAvailabilityGuard>
-              </DashboardShell>
-            </NavigationGuardProvider>
+            <DocCompanyProvider viewer={companyViewer}>
+              <NavigationGuardProvider>
+                <DashboardShell isDev={isDevEnv} user={headerUser}>
+                  <AppAvailabilityGuard>{children}</AppAvailabilityGuard>
+                </DashboardShell>
+              </NavigationGuardProvider>
+            </DocCompanyProvider>
           </TableSettingsProvider>
         </PreferencesProvider>
       </NextIntlClientProvider>

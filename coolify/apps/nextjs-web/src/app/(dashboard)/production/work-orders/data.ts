@@ -417,6 +417,7 @@ function mapRow(
   return {
     workOrderNumber: r.workOrderNumber,
     docNumber: formatDocNumber("WOR", r),
+    companyCode: parseDocId(r.docRef).companyCode,
     legacyNumber: r.legacyNumber,
     createdAt: r.createdAt.toISOString(),
     orderLineNumber: orderLineListLabel(r.orderLineLinks, tr),
@@ -740,6 +741,7 @@ export async function fetchWorkOrder(
     id: r.id,
     workOrderNumber: r.workOrderNumber,
     docNumber: formatDocNumber("WOR", r),
+    companyCode: parseDocId(r.docRef).companyCode,
     legacyNumber: r.legacyNumber,
     status: r.status,
     approvalStatus: r.approvalStatus,
