@@ -36,6 +36,7 @@
     "plannedQty": "予定数量 {n} 本",
     "material": "素材: {name}",
     "marking": "印字番号 {first} 〜 {last}（明細ごと {perLine}）",
+    "markingSplit": "印字番号 {first} 〜 {last}（分割 {split}・分割ごと {perLine}）",
     "progress": "完了 {done} / {total} 工程",
     "stepsTitle": "工程",
     "noSteps": "この指示書に工程はありません",
@@ -117,6 +118,7 @@
       "plannedHours": "予定 {h}h",
       "lot": "ロット {t}",
       "marking": "印字番号 {first} 〜 {last}（明細ごと {perLine}）",
+      "markingSplit": "印字番号 {first} 〜 {last}（分割 {split}・分割ごと {perLine}）",
       "dueDate": "工程納期 {d}"
     },
     "state": {
@@ -422,6 +424,11 @@
       "revision": "v{revision}",
       "download": "ダウンロード",
       "noFile": "ファイルなし"
+    },
+    "seriesMemo": {
+      "title": "系列メモ",
+      "hint": "図面（{series}）の全版に共通するメモ",
+      "generic": "汎用"
     },
     "wip": {
       "title": "在庫に置く仕掛品",

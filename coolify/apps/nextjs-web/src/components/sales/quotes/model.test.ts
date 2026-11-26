@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
 import type { Tr } from "@/lib/i18n";
 import {
+  lineToolItemId,
   resolvePriceFromEntries,
   resolveUnitPriceFromEntries,
   selectPriceEntries,
@@ -472,6 +473,31 @@ describe("再研磨の対象工具（工具一致 → 工具なし → 標準価
     // 別の顧客・別の品目は混ざらない。
     expect(selectPriceEntries(all, "bp-other", SERVICE, TOOL_A)).toEqual([]);
     expect(selectPriceEntries(all, CUSTOMER, PRODUCT, TOOL_A)).toEqual([]);
+  });
+
+  it("当たったのが工具の価格表かどうかを返す（画面の言い分け用）", () => {
+    const entries = [regrind(1000, null), regrind(1500, TOOL_A)];
+    const flag = (r: ReturnType<typeof resolve>) =>
+      r.ok ? r.price.toolSpecific : r.reason;
+    expect(flag(resolve(entries, TOOL_A))).toBe(true);
+    expect(flag(resolve(entries, TOOL_B))).toBe(false);
+    // 標準価格も「工具の価格表」ではない。
+    expect(flag(resolve([], TOOL_A))).toBe(false);
+  });
+
+  it("lineToolItemId は再研磨の行の工具だけを返す（空・他種別は null）", () => {
+    expect(lineToolItemId({ orderType: "REGRIND", toolItemId: "3001" })).toBe(
+      "3001",
+    );
+    expect(lineToolItemId({ orderType: "REGRIND", toolItemId: 3001 })).toBe(
+      "3001",
+    );
+    expect(lineToolItemId({ orderType: "REGRIND", toolItemId: "" })).toBe(null);
+    expect(lineToolItemId({ orderType: "REGRIND" })).toBe(null);
+    // 種別を再研磨から切り替えた行に工具が残っていても効かない。
+    expect(
+      lineToolItemId({ orderType: "PRODUCTION", toolItemId: "3001" }),
+    ).toBe(null);
   });
 
   it("工具の欄を持たない旧データ（undefined）も工具なしとして扱う", () => {

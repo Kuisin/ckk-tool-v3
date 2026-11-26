@@ -49,6 +49,23 @@ function sqlError(s: Scn, script: string): string | null {
   }
 }
 
+/**
+ * 見出しの「発行会社」バッジ（components/ui/DocCompanyBadge）が出ていて、
+ * 指すと法人名が読めるか。
+ */
+async function checkCompanyBadge(s: Scn, name: string, code: string, companyName: string): Promise<void> {
+  const badge = s.page.locator(`[data-doc-company="${code}"]`).first();
+  const visible = await badge
+    .waitFor({ state: "visible", timeout: 8000 })
+    .then(() => true)
+    .catch(() => false);
+  s.check(`${name} — バッジ ${code}`, visible, visible ? code : `バッジが無い @ ${s.page.url()}`);
+  if (!visible) return;
+  await badge.hover();
+  await s.checkVisible(`${name} — 指すと法人名（${companyName}）`, `発行会社: ${companyName}`, { wait: 3000 });
+  await s.page.mouse.move(0, 0); // ツールチップを閉じる（次の撮影に被せない）
+}
+
 /** 見積書を 1 件作る（顧客 = デモ商事 / 製品 = 超硬エンドミル 30 本）。発行会社は渡したときだけ選ぶ。 */
 async function createQuote(s: Scn, company?: RegExp): Promise<void> {
   const p = s.page;
@@ -111,7 +128,7 @@ export const numberingPerCompany: Scenario = {
         await s.waitForUrl(docUrl("/sales/price-lists", "PRC"));
         const expected = `PRC-${fy}-00001`;
         s.check(`URL は TSP~${expected}`, idFromUrl(s) === `TSP~${expected}`, p.url());
-        await s.checkVisible("詳細に発行会社（TSP）が出る", new RegExp(`TSP ${TSP_NAME}`));
+        await checkCompanyBadge(s, "詳細の見出しに発行会社（TSP）が出る", "TSP", TSP_NAME);
         s.check("document_sequences（PRICE_LIST × TSP）= 1", lastSeq(s, "PRICE_LIST", "TSP") === 1, String(lastSeq(s, "PRICE_LIST", "TSP")));
         s.check("CKK の連番は動かない", lastSeq(s, "PRICE_LIST", "CKK") === ckkBefore, `${ckkBefore} → ${lastSeq(s, "PRICE_LIST", "CKK")}`);
       },
@@ -135,7 +152,8 @@ export const numberingPerCompany: Scenario = {
         s.check("DB: TSP の 1 番・参照は TSP/番号", row === `TSP|${expected}|1|TSP/${expected}`, row);
         s.check("document_sequences（QUOTE × TSP）= 1", lastSeq(s, "QUOTE", "TSP") === 1, String(lastSeq(s, "QUOTE", "TSP")));
         s.check("CKK の連番は動かない", lastSeq(s, "QUOTE", "CKK") === ckkBefore, `${ckkBefore} → ${lastSeq(s, "QUOTE", "CKK")}`);
-        await s.checkVisible("見積書の詳細で、どの法人の書類かが読める（発行会社 / 発行元）", new RegExp(`${TSP_NAME}|TSP `), { wait: 3000 });
+        await checkCompanyBadge(s, "見積書の詳細で、どの法人の書類かが読める（見出しの発行会社）", "TSP", TSP_NAME);
+        await s.shot("見積書の詳細 — 見出しに発行会社のバッジ");
 
         const number = sqlError(s, `update app.quotes set doc_number = 'QOT-${fy}-09999' where doc_ref = 'TSP/${expected}'`);
         s.check("DB に直接 UPDATE しても番号は変わらない", number !== null, number ?? "UPDATE が通ってしまった");
@@ -201,6 +219,15 @@ export const numberingPerCompany: Scenario = {
           texts.join(" ‖ "),
         );
         await s.shot("一覧 — 同じ番号が 2 行");
+        await s.fill(p.getByRole("textbox", { name: "見積番号・顧客で検索" }), "tsp");
+        await s.see(/1–\d+ \/ \d+件/);
+        const tspOnly = await p.locator("tbody tr").allInnerTexts();
+        s.check(
+          "一覧の検索は法人コードにも当たる（tsp → TSP の見積書だけ）",
+          tspOnly.length > 0 && tspOnly.every((t) => t.includes("TSP")),
+          tspOnly.map((t) => t.replace(/\s+/g, " ")).join(" ‖ "),
+        );
+        await s.shot("一覧 — 法人コードで検索");
 
         await s.goto(`/sales/quotes/${number}`);
         s.check("番号だけの URL は /doc/choose へ送られる", new URL(p.url()).pathname === "/doc/choose", p.url());

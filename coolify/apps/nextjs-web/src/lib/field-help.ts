@@ -79,6 +79,7 @@ export const FIELD_HELP = {
     status: {},
     product: {},
     orderType: {},
+    tool: {},
     quantity: {},
     deliveryDate: {},
     notes: {},

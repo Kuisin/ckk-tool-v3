@@ -1,6 +1,6 @@
 ---
 title: "Drawing — user guide"
-screenshots: [design-file-list-01, design-file-detail-01, design-version-programs-01, design-file-new-01]
+screenshots: [design-file-list-01, design-file-detail-01, design-version-programs-01, design-version-series-memo-01, work-order-step-series-memo-01, design-file-new-01]
 description: "Register product drawings as versions and manage them separately per customer."
 ---
 Register product drawings **as versions** and keep them **separate per ordering customer**. The operation code is `PD06`.
@@ -169,6 +169,16 @@ On the product screen, each ordering-customer section has a **Series memo**. Use
 - **The series memo carries over** when a version is revised. Write what changed in a version in that version's memo.
 - The generic series has one too.
 - Deleting every version of a series also deletes its series memo.
+
+Besides the product screen, the series memo also appears on the following screens. It is the same single memo wherever you see it.
+
+- **The version screen** … a **Series memo** box below "Machining programs"; you can write it here too. This works even for a confirmed version (confirming freezes only the drawing itself). Someone who opened the version from a work order's drawing link can read the series notes here.
+- **The step execution screen** (a work order step opened on the web) and **the step screen of the shared shop-floor device** … read-only. Which series is shown follows the same rule as machining programs — the drawing of the work order's customer series, otherwise the generic one. **Another customer's series memo never appears.** "Open in Drawings" takes you to where it is edited (that series on the product screen).
+- If the series has no memo, the step screens show no series memo box.
+
+![Series memo on the version screen. The same memo as on the product screen, editable here too](../../../assets/screenshots/design-version-series-memo-01.png)
+
+![Series memo on the step execution screen. Read-only, with whose drawing it is and "Open in Drawings"](../../../assets/screenshots/work-order-step-series-memo-01.png)
 
 ## Machining programs
 

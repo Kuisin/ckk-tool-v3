@@ -57,6 +57,7 @@ import {
   SaveButton,
   SecondaryButton,
 } from "./buttons";
+import { DocCompanyBadge } from "./DocCompanyBadge";
 import { HelpLabel } from "./HelpLabel";
 import { ModalShell } from "./modals";
 import { type Crumb, PageHeader } from "./PageHeader";
@@ -301,6 +302,7 @@ export function DetailShell({
   breadcrumbs,
   title,
   status,
+  company,
   actions,
   children,
   createdAt,
@@ -309,6 +311,13 @@ export function DetailShell({
   breadcrumbs: Crumb[];
   title: string;
   status?: ReactNode;
+  /**
+   * 書類の発行会社 — 書類の id / 参照（`CKK~QOT-…` / `CKK/QOT-…`）か、
+   * 法人コードそのもの（`CKK`）。見出しの
+   * 状態バッジの隣に法人コードのバッジを出す（出すかどうかは
+   * DocCompanyBadge が見ている人で決める。1 社だけの人には出ない）。
+   */
+  company?: string | null;
   actions?: ReactNode;
   children: ReactNode;
   createdAt?: string;
@@ -322,7 +331,16 @@ export function DetailShell({
         actions={actions}
         align="flex-start"
         breadcrumbs={breadcrumbs}
-        status={status}
+        status={
+          company ? (
+            <Group component="span" gap={6} wrap="nowrap">
+              <DocCompanyBadge docId={company} size="sm" />
+              {status}
+            </Group>
+          ) : (
+            status
+          )
+        }
         title={title}
       />
       {children}

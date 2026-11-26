@@ -30,7 +30,7 @@ import {
   designTriggerLabel,
 } from "@/lib/enum-labels";
 import { documentFormatters } from "@/lib/format";
-import { issuerForDesignRequest } from "@/lib/own-companies";
+import { issuerForDesignRequest, ownCompanyLogo } from "@/lib/own-companies";
 import { renderPdf } from "@/lib/pdf";
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
@@ -104,10 +104,16 @@ export async function GET(request: Request): Promise<Response> {
       : (docNo(req.orderLineNumber) ?? "—");
 
   // 発行元（自社法人 MS0I）= 設計依頼書が持つ法人。社内向けの紙なので ja。
-  const { issuer } = await issuerForDesignRequest(req.requestNumber, "ja");
+  const { issuer, company } = await issuerForDesignRequest(
+    req.requestNumber,
+    "ja",
+  );
+  // 見出しのロゴもその法人のもの（他の法人の書類に CKK のマークを刷らない）。
+  const logo = await ownCompanyLogo(company, "ja");
 
   const data = {
     issuer,
+    brand_logo: logo.html,
     assignee: { name: req.assigneeName ?? "（担当者未設定）" }, // i18n-ignore
     product: { name: req.productName ?? "（製品未指定）" }, // i18n-ignore
     // 書類 QR（CKK:DSG:<番号>）。URL は入れない。
@@ -148,7 +154,9 @@ export async function GET(request: Request): Promise<Response> {
 
   let pdf: ArrayBuffer;
   try {
-    pdf = await renderPdf("design-request.html", data);
+    pdf = await renderPdf("design-request.html", data, {
+      assets: logo.assets,
+    });
   } catch (err) {
     console.error("[pdf/design-request]", err);
     return new Response("PDF generation failed", { status: 502 });

@@ -324,6 +324,30 @@ export function taxBaseSuffixLocalized(
  *
  * 文言は受取先の言語（`locale`）で引く。`amount` は整形済みの金額文字列。
  */
+/**
+ * 帳票の円記号は半角 `¥`（合計欄の `¥ 215,010`・値引きの `-¥12,000`）。
+ * 画面用に整形された文字列（Intl の ja-JP は全角 `￥` を出す）を帳票へ流す
+ * ときはここを通す。
+ */
+export function pdfYenSign(text: string): string {
+  return text.replaceAll("\uFFE5", "\u00A5");
+}
+
+/**
+ * 見積書の明細: 再研磨の行の「研ぎ直す工具」を品名の下に刷る断片
+ * （`{{{tool_html}}}`）。工具が無い行は空 — 行を増やさない。
+ * 文言は受取先の言語、工具名は必ずエスケープする（品目名は利用者が書く文字列）。
+ */
+export function quoteLineToolHtml(
+  toolLabel: string | null | undefined,
+  locale: Locale,
+): string {
+  const tool = toolLabel?.trim();
+  if (!tool) return "";
+  const text = labelWith("pdf.QUOTE.toolLine", locale, { tool });
+  return `<br><span class="sub line-tool">${escapeHtml(text)}</span>`;
+}
+
 export function quoteLineNoteHtml(
   line: {
     discountLabel: string | null;
@@ -335,8 +359,12 @@ export function quoteLineNoteHtml(
 ): string {
   const parts: string[] = [];
   if (line.discountAmount > 0) {
-    const name =
-      line.discountLabel?.trim() || label("pdf.QUOTE.lineDiscount", locale);
+    // 値引きの名前は保存時のスナップショット（「まとめ買い値引き（￥200/本）」）で、
+    // 画面の金額書式（Intl の ja-JP は全角の ￥）のまま入っている。帳票の金額は
+    // 半角の ¥ で刷るので、1 行の中で全角と半角が混ざらないよう揃える。
+    const name = pdfYenSign(
+      line.discountLabel?.trim() || label("pdf.QUOTE.lineDiscount", locale),
+    );
     const text = labelWith("pdf.QUOTE.lineDiscountNote", locale, {
       label: name,
       amount,

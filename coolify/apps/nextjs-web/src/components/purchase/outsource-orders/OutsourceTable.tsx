@@ -18,11 +18,13 @@ import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { matchesDocCompany } from "@/lib/doc-company-view-core";
 import { docSortValue } from "@/lib/doc-sort";
 import { statusOptions } from "@/lib/status-map";
 import type { OutsourceStepRow } from "./model";
@@ -60,6 +62,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
+      matchesDocCompany(r.companyCode, search) ||
       (r.outsourceNumber ?? "").includes(search) ||
       String(r.workOrderNumber).includes(search) ||
       r.productName.includes(search) ||
@@ -79,7 +82,13 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
       sortValue: (r) => docSortValue(r.outsourceNumber),
       // 依頼日が入るまで番号は無い（DB が依頼時に払い出す）。
       render: (r) =>
-        r.outsourceNumber ? <DocNumber>{r.outsourceNumber}</DocNumber> : "—",
+        r.outsourceNumber ? (
+          <WithDocCompany company={r.companyCode}>
+            <DocNumber>{r.outsourceNumber}</DocNumber>
+          </WithDocCompany>
+        ) : (
+          "—"
+        ),
     },
     {
       key: "workOrderNumber",
@@ -225,10 +234,12 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
         renderCard={(r) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
-              <Text c="dimmed" ff="mono" size="xs">
-                {r.outsourceNumber ? `${r.outsourceNumber} · ` : ""}#
-                {r.workOrderNumber}
-              </Text>
+              <WithDocCompany company={r.companyCode}>
+                <Text c="dimmed" ff="mono" size="xs">
+                  {r.outsourceNumber ? `${r.outsourceNumber} · ` : ""}#
+                  {r.workOrderNumber}
+                </Text>
+              </WithDocCompany>
               <Text fw={600} size="sm" truncate>
                 {r.processName}
               </Text>

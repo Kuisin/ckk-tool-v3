@@ -366,8 +366,10 @@ export function WorkOrderDetail({
                     <DocNumber>{l.number}</DocNumber>
                   )}
                   <MarkingNumber
+                    allocatedQuantity={l.allocatedQuantity}
                     base={l.markingBase}
                     quantity={l.lineQuantity}
+                    split={l.markingSplit}
                   />
                 </Stack>
               ))}
@@ -698,6 +700,7 @@ export function WorkOrderDetail({
               woLabel,
             ]
       }
+      company={wo.companyCode}
       createdAt={fmt.dateTime(wo.createdAt)}
       status={
         <>

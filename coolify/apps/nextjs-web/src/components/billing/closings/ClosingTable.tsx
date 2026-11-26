@@ -46,6 +46,7 @@ import {
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
@@ -53,6 +54,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docCompanyCode, matchesDocCompany } from "@/lib/doc-company-view-core";
 import { statusOptions } from "@/lib/status-map";
 import {
   type BillingClosing,
@@ -421,7 +423,11 @@ export function ClosingTable({
   };
 
   const filtered = rows.filter((c) => {
-    const matchesSearch = !search || c.customerName.includes(search);
+    const matchesSearch =
+      !search ||
+      // 締日処理は自分の番号を持たない — 法人は生成した請求書のもの。
+      matchesDocCompany(docCompanyCode(c.invoiceNumber), search) ||
+      c.customerName.includes(search);
     const matchesStatus = !status || c.status === status;
     return matchesSearch && matchesStatus;
   });
@@ -470,7 +476,11 @@ export function ClosingTable({
       key: "customerName",
       header: tr("common.customer"),
       sortable: true,
-      render: (c) => <Text size="sm">{c.customerName}</Text>,
+      render: (c) => (
+        <WithDocCompany docId={c.invoiceNumber}>
+          <Text size="sm">{c.customerName}</Text>
+        </WithDocCompany>
+      ),
     },
     {
       key: "closingDate",
@@ -589,9 +599,11 @@ export function ClosingTable({
         renderCard={(c) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
-              <Text fw={600} size="sm" truncate>
-                {c.customerName}
-              </Text>
+              <WithDocCompany docId={c.invoiceNumber}>
+                <Text fw={600} size="sm" truncate>
+                  {c.customerName}
+                </Text>
+              </WithDocCompany>
               <Text c="dimmed" size="xs">
                 {tr("common.closingDay")}: {fmt.date(c.closingDate)}
                 {" · "}

@@ -53,7 +53,11 @@ import { totalsByRateYen } from "@/lib/money";
 import { resolveLineTax, type TaxCatalog } from "@/lib/tax-rate";
 import { entriesForCompany } from "../price-lists/company-sync";
 import { isoDateJst, type PriceListEntry } from "../price-lists/model";
-import { type Quote, resolveUnitPriceFromEntries } from "./model";
+import {
+  lineToolItemId,
+  type Quote,
+  resolveUnitPriceFromEntries,
+} from "./model";
 
 /**
  * バリデーションメッセージが訳を必要とするため、スキーマはコンポーネント内で
@@ -66,6 +70,9 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
       /** 製品 — 値は品目 id（items.id）。 */
       itemId: z.string().min(1, tr("common.selectAProduct")),
       productName: z.string(),
+      /** 研ぎ直す工具（品目 id）— 再研磨の行だけ。必須（下の refine）。 */
+      toolItemId: z.string().nullable(),
+      toolLabel: z.string().nullable(),
       orderType: z.string().min(1),
       quantity: z.number().int().min(1, tr("sales.quoteForm.atLeast1")),
       // 単価・値引きは価格表から自動解決される（手入力なし）。
@@ -81,6 +88,12 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
     .refine((it) => it.priceTierId != null, {
       message: tr("sales.quoteForm.noMatchingPriceList"),
       path: ["itemId"],
+    })
+    // 再研磨の行は研ぐ工具で値段が変わり得る — 工具が決まらないと単価が
+    // 注文請書と食い違う（保存側も同じ検査をする）。
+    .refine((it) => it.orderType !== "REGRIND" || Boolean(it.toolItemId), {
+      message: tr("sales.quoteForm.selectTheToolToRegrind"),
+      path: ["toolItemId"],
     });
 
   return z.object({
@@ -102,6 +115,8 @@ const BASE_PATH = "/sales/quotes";
 const emptyItem = (): ItemForm => ({
   itemId: "",
   productName: "",
+  toolItemId: null,
+  toolLabel: null,
   orderType: "PRODUCTION",
   quantity: 1,
   unitPrice: 0,
@@ -123,6 +138,8 @@ export interface QuotePrefill {
   orderType?: string;
   quantity?: number;
   deliveryDate?: string | null;
+  /** 研ぎ直す工具（品目 id）— 工具ごとの価格表から開いたとき（再研磨のみ）。 */
+  toolItemId?: string | null;
 }
 
 function buildInitial(
@@ -144,6 +161,10 @@ function buildInitial(
     // 価格表から起動 — 単価・値引きを価格表から解決して1行目に流し込む。
     const orderType = prefill.orderType ?? "PRODUCTION";
     const quantity = prefill.quantity ?? 1;
+    const toolItemId = lineToolItemId({
+      orderType,
+      toolItemId: prefill.toolItemId,
+    });
     const resolved = resolveUnitPriceFromEntries(
       entries,
       prefill.customerId,
@@ -151,6 +172,9 @@ function buildInitial(
       orderType,
       quantity,
       tr,
+      new Date(),
+      null,
+      toolItemId,
     );
     base.items = [
       {
@@ -159,6 +183,11 @@ function buildInitial(
         productName:
           entries.find((e) => e.itemId === prefill.itemId)?.productName ??
           prefill.itemId,
+        toolItemId,
+        toolLabel: toolItemId
+          ? (entries.find((e) => e.toolItemId === toolItemId)?.toolName ??
+            toolItemId)
+          : null,
         orderType,
         quantity,
         unitPrice: resolved?.unitPrice ?? 0,
@@ -182,6 +211,9 @@ function toFormValues(q: Quote): QuoteFormValues {
     items: q.items.map((it) => ({
       itemId: it.itemId,
       productName: it.productName,
+      // 複製・編集でも研ぎ直す工具を引き継ぐ（値段もこの工具で引き直る）。
+      toolItemId: it.toolItemId,
+      toolLabel: it.toolLabel,
       orderType: it.orderType,
       quantity: it.quantity,
       unitPrice: it.unitPrice,
@@ -274,6 +306,7 @@ export function QuoteForm({
               tr,
               new Date(),
               standardPrices[it.itemId] ?? null,
+              lineToolItemId(it),
             )
           : null;
         return {
@@ -335,6 +368,7 @@ export function QuoteForm({
           | "SAMPLE"
           | "REGRIND"
           | "OTHER",
+        toolItemId: lineToolItemId(it),
         quantity: it.quantity,
         deliveryDate: it.deliveryDate,
         notes: it.notes.trim() ? it.notes : null,
@@ -469,6 +503,14 @@ export function QuoteForm({
                         next.productName,
                       );
                       form.setFieldValue(
+                        `items.${ri}.toolItemId`,
+                        next.toolItemId,
+                      );
+                      form.setFieldValue(
+                        `items.${ri}.toolLabel`,
+                        next.toolLabel,
+                      );
+                      form.setFieldValue(
                         `items.${ri}.orderType`,
                         next.orderType,
                       );
@@ -491,6 +533,7 @@ export function QuoteForm({
                       );
                     }}
                     standardPrices={standardPrices}
+                    toolError={form.errors[`items.${ri}.toolItemId`]}
                     value={item}
                   />
                 </Box>

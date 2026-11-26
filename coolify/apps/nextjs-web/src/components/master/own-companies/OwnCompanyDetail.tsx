@@ -4,12 +4,13 @@
  * OwnCompanyDetail.tsx — 自社法人 詳細 (MS2I, design.md §8.2).
  *
  * サマリーに連絡先・登録番号。タブは 概要（書類にどう刷られるか + 備考）/
- * 拠点（この法人に属する拠点。付け替えは拠点マスタ MS0C）/ 振込先 / 社印。
+ * 拠点（この法人に属する拠点。付け替えは拠点マスタ MS0C）/ 振込先 / 社印 / ロゴ。
  */
 
 import {
   Anchor,
   Badge,
+  Box,
   Group,
   Image,
   Paper,
@@ -35,7 +36,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
-import type { IssuerBlock } from "@/lib/own-company-core";
+import type { BrandLogoSource, IssuerBlock } from "@/lib/own-company-core";
 import type { ActionResult } from "@/lib/server-action";
 import {
   DeleteOwnCompanyModal,
@@ -66,6 +67,11 @@ export interface OwnCompanyDetailData {
   hasSeal: boolean;
   /** 印影のファイル id — 差し替えたときに画像のキャッシュを外すためだけに使う。 */
   sealVersion: string | null;
+  hasLogo: boolean;
+  /** ロゴのファイル id — 同じくキャッシュを外すためだけ。 */
+  logoVersion: string | null;
+  /** PDF の見出しにどのロゴが刷られるか（lib/own-company-core.ts brandLogoSource）。 */
+  logoSource: BrandLogoSource;
   isDefault: boolean;
   isActive: boolean;
   notes: string;
@@ -76,14 +82,17 @@ export interface OwnCompanyDetailData {
   updatedAt: string;
 }
 
-/** 印影の送信（Route Handler — 画像は Server Action の上限に掛かり得る）。 */
-async function sendSeal(
+type ImageKind = "seal" | "logo";
+
+/** 画像（印影・ロゴ）の送信（Route Handler — 画像は Server Action の上限に掛かり得る）。 */
+async function sendImage(
+  kind: ImageKind,
   id: number,
   file: File | null,
   failMessage: string,
 ): Promise<ActionResult> {
   try {
-    const url = `/api/master/own-companies/${id}/seal`;
+    const url = `/api/master/own-companies/${id}/${kind}`;
     let res: Response;
     if (file) {
       const body = new FormData();
@@ -100,36 +109,55 @@ async function sendSeal(
   return { ok: false, error: failMessage };
 }
 
-export function OwnCompanyDetail({ record }: { record: OwnCompanyDetailData }) {
+/**
+ * 社印・ロゴのタブ 1 枚。2 つは置き場所と文言が違うだけで、操作（差し替え /
+ * 外す）も既定の法人だけ同梱の画像へ落ちる約束も同じ。
+ */
+function CompanyImagePanel({
+  kind,
+  record,
+}: {
+  kind: ImageKind;
+  record: OwnCompanyDetailData;
+}) {
   const tr = useTranslations();
-  const fmt = useFormat();
   const router = useRouter();
-  const [tab, setTab] = useTabParam("overview");
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [toggleOpen, setToggleOpen] = useState(false);
-  const [sealPending, startSeal] = useTransition();
+  const [pending, start] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const t =
+    kind === "seal"
+      ? {
+          title: tr("master.ownCompanies.seal"),
+          desc: tr("master.ownCompanies.sealDesc"),
+          upload: tr("master.ownCompanies.uploadSeal"),
+          remove: tr("master.ownCompanies.removeSeal"),
+          defaultFallback: tr("master.ownCompanies.sealDefaultFallback"),
+          noneFallback: tr("master.ownCompanies.sealNoneFallback"),
+          saveFailed: tr("master.ownCompanies.sealSaveFailed"),
+          uploaded: tr("master.ownCompanies.sealUploaded"),
+          removed: tr("master.ownCompanies.sealRemoved"),
+        }
+      : {
+          title: tr("master.ownCompanies.logo"),
+          desc: tr("master.ownCompanies.logoDesc"),
+          upload: tr("master.ownCompanies.uploadLogo"),
+          remove: tr("master.ownCompanies.removeLogo"),
+          defaultFallback: tr("master.ownCompanies.logoDefaultFallback"),
+          noneFallback: tr("master.ownCompanies.logoNoneFallback"),
+          saveFailed: tr("master.ownCompanies.logoSaveFailed"),
+          uploaded: tr("master.ownCompanies.logoUploaded"),
+          removed: tr("master.ownCompanies.logoRemoved"),
+        };
+  const has = kind === "seal" ? record.hasSeal : record.hasLogo;
+  const version = kind === "seal" ? record.sealVersion : record.logoVersion;
 
-  const target = {
-    id: record.id,
-    code: record.code,
-    name: record.nameJa,
-    isActive: record.isActive,
-  };
-
-  const runSeal = (file: File | null) => {
-    startSeal(async () => {
-      const result = await sendSeal(
-        record.id,
-        file,
-        tr("master.ownCompanies.sealSaveFailed"),
-      );
+  const run = (file: File | null) => {
+    start(async () => {
+      const result = await sendImage(kind, record.id, file, t.saveFailed);
       if (result.ok) {
         notifications.show({
           title: tr("common.saved2"),
-          message: file
-            ? tr("master.ownCompanies.sealUploaded")
-            : tr("master.ownCompanies.sealRemoved"),
+          message: file ? t.uploaded : t.removed,
           color: "green",
         });
         router.refresh();
@@ -141,6 +169,76 @@ export function OwnCompanyDetail({ record }: { record: OwnCompanyDetailData }) {
         });
       }
     });
+  };
+
+  return (
+    <Stack gap="sm">
+      <Text c="dimmed" size="xs">
+        {t.desc}
+      </Text>
+      {has ? (
+        <Image
+          alt={t.title}
+          fit="contain"
+          h={120}
+          src={`/api/master/own-companies/${record.id}/${kind}?v=${version ?? ""}`}
+          w={kind === "seal" ? 120 : 240}
+        />
+      ) : (
+        <Text c="dimmed" size="sm">
+          {record.isDefault ? t.defaultFallback : t.noneFallback}
+        </Text>
+      )}
+      <Group gap="xs">
+        <GhostButton
+          leftSection={<IconPhotoUp size={14} />}
+          loading={pending}
+          onClick={() => fileInputRef.current?.click()}
+          size="xs"
+        >
+          {t.upload}
+        </GhostButton>
+        {has && (
+          <GhostButton
+            color="red"
+            leftSection={<IconTrash size={14} />}
+            loading={pending}
+            onClick={() => run(null)}
+            size="xs"
+          >
+            {t.remove}
+          </GhostButton>
+        )}
+        <input
+          accept="image/png,image/jpeg"
+          aria-label={t.upload}
+          hidden
+          onChange={(e) => {
+            const file = e.currentTarget.files?.[0] ?? null;
+            e.currentTarget.value = "";
+            if (file) run(file);
+          }}
+          ref={fileInputRef}
+          type="file"
+        />
+      </Group>
+    </Stack>
+  );
+}
+
+export function OwnCompanyDetail({ record }: { record: OwnCompanyDetailData }) {
+  const tr = useTranslations();
+  const fmt = useFormat();
+  const router = useRouter();
+  const [tab, setTab] = useTabParam("overview");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [toggleOpen, setToggleOpen] = useState(false);
+
+  const target = {
+    id: record.id,
+    code: record.code,
+    name: record.nameJa,
+    isActive: record.isActive,
   };
 
   const dash = (v: string) => v || "—";
@@ -246,6 +344,7 @@ export function OwnCompanyDetail({ record }: { record: OwnCompanyDetailData }) {
           <Tabs.Tab value="plants">{tr("master.ownCompanies.plants")}</Tabs.Tab>
           <Tabs.Tab value="bank">{tr("master.ownCompanies.bank")}</Tabs.Tab>
           <Tabs.Tab value="seal">{tr("master.ownCompanies.seal")}</Tabs.Tab>
+          <Tabs.Tab value="logo">{tr("master.ownCompanies.logo")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
@@ -257,16 +356,38 @@ export function OwnCompanyDetail({ record }: { record: OwnCompanyDetailData }) {
               <Text c="dimmed" mb="sm" size="xs">
                 {tr("master.ownCompanies.issuerPreviewDesc")}
               </Text>
-              <Stack gap={2}>
-                <Text fw={700} size="sm">
-                  {record.issuerPreview.name}
-                </Text>
-                <Text size="sm">{dash(record.issuerPreview.address)}</Text>
-                <Text size="sm">{dash(record.issuerPreview.tel)}</Text>
-                <Text ff="mono" size="sm">
-                  {dash(record.issuerPreview.invoice_reg)}
-                </Text>
-              </Stack>
+              {/* PDF の見出しと同じ並び — 左にロゴ、右に発行元。 */}
+              <Group align="flex-start" gap="lg" justify="space-between">
+                <Box data-logo-source={record.logoSource} miw={0}>
+                  {record.logoSource === "none" ? (
+                    <Text c="dimmed" size="xs">
+                      {tr("master.ownCompanies.previewNoLogo")}
+                    </Text>
+                  ) : (
+                    <Image
+                      alt={record.issuerPreview.name}
+                      fit="contain"
+                      h={48}
+                      src={
+                        record.logoSource === "own"
+                          ? `/api/master/own-companies/${record.id}/logo?v=${record.logoVersion ?? ""}`
+                          : "/design-assets/logo.svg"
+                      }
+                      w="auto"
+                    />
+                  )}
+                </Box>
+                <Stack gap={2}>
+                  <Text fw={700} size="sm">
+                    {record.issuerPreview.name}
+                  </Text>
+                  <Text size="sm">{dash(record.issuerPreview.address)}</Text>
+                  <Text size="sm">{dash(record.issuerPreview.tel)}</Text>
+                  <Text ff="mono" size="sm">
+                    {dash(record.issuerPreview.invoice_reg)}
+                  </Text>
+                </Stack>
+              </Group>
             </Paper>
             <FieldValue label={tr("common.notes")} value={dash(record.notes)} />
           </Stack>
@@ -325,58 +446,11 @@ export function OwnCompanyDetail({ record }: { record: OwnCompanyDetailData }) {
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="seal">
-          <Stack gap="sm">
-            <Text c="dimmed" size="xs">
-              {tr("master.ownCompanies.sealDesc")}
-            </Text>
-            {record.hasSeal ? (
-              <Image
-                alt={tr("master.ownCompanies.seal")}
-                fit="contain"
-                h={120}
-                src={`/api/master/own-companies/${record.id}/seal?v=${record.sealVersion ?? ""}`}
-                w={120}
-              />
-            ) : (
-              <Text c="dimmed" size="sm">
-                {record.isDefault
-                  ? tr("master.ownCompanies.sealDefaultFallback")
-                  : tr("master.ownCompanies.sealNoneFallback")}
-              </Text>
-            )}
-            <Group gap="xs">
-              <GhostButton
-                leftSection={<IconPhotoUp size={14} />}
-                loading={sealPending}
-                onClick={() => fileInputRef.current?.click()}
-                size="xs"
-              >
-                {tr("master.ownCompanies.uploadSeal")}
-              </GhostButton>
-              {record.hasSeal && (
-                <GhostButton
-                  color="red"
-                  leftSection={<IconTrash size={14} />}
-                  loading={sealPending}
-                  onClick={() => runSeal(null)}
-                  size="xs"
-                >
-                  {tr("master.ownCompanies.removeSeal")}
-                </GhostButton>
-              )}
-              <input
-                accept="image/png,image/jpeg"
-                hidden
-                onChange={(e) => {
-                  const file = e.currentTarget.files?.[0] ?? null;
-                  e.currentTarget.value = "";
-                  if (file) runSeal(file);
-                }}
-                ref={fileInputRef}
-                type="file"
-              />
-            </Group>
-          </Stack>
+          <CompanyImagePanel kind="seal" record={record} />
+        </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="logo">
+          <CompanyImagePanel kind="logo" record={record} />
         </Tabs.Panel>
       </AppTabs>
 

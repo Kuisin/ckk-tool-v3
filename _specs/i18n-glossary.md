@@ -243,6 +243,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 会計年度 | Fiscal year | 会计年度 | 書類番号 `PREFIX-FFFF-NNNNN` の FFFF。年度が始まる年で表す |
 | 発行会社を選択 | Select the issuing company | 选择开具公司 | 同じ番号が複数の自社法人にあるときの選択画面（/doc/choose） |
 | 印字番号 | Marking number | 打标编号 | 製品にレーザーで刻む通し番号 `A{基数}-{NNN}`（明細ごとなら `A{基数}`）。ロット番号とは別系列 |
+| 分割番号 / 分割 {n} | Split number / Split {n} | 分割号 / 分割 {n} | 1 明細を複数の指示書に分けたときの印字番号の枝。接頭辞は `A{基数}{分割番号}`、枝番は分割の中で 001 から（`A2000001-001`）。割当の作成時に決まり、変わらない |
+| 分割ごと | Per split | 按分割 | 印字番号の「明細ごと」に対応する、分割 1 つに 1 つ刻むときの番号（`A2000001`） |
 | 枝番 | Line branch no. | 分项号 | |
 | 採番 / 未採番 | Numbering / Not numbered | 编号 / 未编号 | |
 | 帳票・書類 | Document | 单据 | |
@@ -284,12 +286,13 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 自社法人 | Own company | 本公司法人 |
 | 既定の法人 | Default company | 默认法人 |
 | 発行元（書類の） | Issuer | 开具方 |
-| 発行会社（作成フォームの欄） | Issuing company | 开具公司 |
+| 発行会社（作成フォームの欄 / 一覧・詳細の法人コードのバッジ） | Issuing company | 开具公司 |
 | 取込口（注文書の入口 — 取込フォルダ・メール・外部連携） | Intake channel | 导入渠道 |
 | 取込口の自社法人（注文書取込 SY0C の設定） | Own company of the intake channel | 导入渠道的本公司法人 |
 | 法人コード（自社法人を見分ける短い文字。書類の URL に入る） | Company code | 法人编号 |
 | 適格請求書発行事業者登録番号 | Invoice registration number | 合格请款单发行事业者登记号 |
 | 社印 | Company seal | 公司印章 |
+| ロゴ（自社法人の。PDF の見出しに刷る） | Logo | 标志 |
 | 会計年度の開始月 | Fiscal year start month | 会计年度开始月 |
 | 地域 / 国 | Region / Country | 地区 / 国家 |
 | ロール | Role | 角色 |

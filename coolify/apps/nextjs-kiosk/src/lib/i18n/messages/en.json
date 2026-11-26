@@ -36,6 +36,7 @@
     "plannedQty": "Planned quantity: {n} pcs",
     "material": "Material: {name}",
     "marking": "Marking number {first} – {last} (per line {perLine})",
+    "markingSplit": "Marking number {first} – {last} (split {split}, per split {perLine})",
     "progress": "{done} / {total} steps completed",
     "stepsTitle": "Steps",
     "noSteps": "This work order has no steps",
@@ -117,6 +118,7 @@
       "plannedHours": "Planned {h}h",
       "lot": "Lot {t}",
       "marking": "Marking number {first} – {last} (per line {perLine})",
+      "markingSplit": "Marking number {first} – {last} (split {split}, per split {perLine})",
       "dueDate": "Due {d}"
     },
     "state": {
@@ -422,6 +424,11 @@
       "revision": "v{revision}",
       "download": "Download",
       "noFile": "No file"
+    },
+    "seriesMemo": {
+      "title": "Series memo",
+      "hint": "Shared by every version of the drawing ({series})",
+      "generic": "Generic"
     },
     "wip": {
       "title": "WIP going to stock",

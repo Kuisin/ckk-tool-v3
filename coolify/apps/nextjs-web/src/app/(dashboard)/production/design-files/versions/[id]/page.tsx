@@ -9,6 +9,7 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { listDesignPrograms } from "@/lib/design-programs";
+import { fetchSeriesMemo } from "@/lib/design-series-memo";
 import { listMemosByOwnerIds } from "@/lib/document-memos";
 import {
   getProductItemDefs,
@@ -86,10 +87,14 @@ export default async function ProductionDesignVersionPage({
   );
 
   // ファイルごとのメモ（document_memos, ownerType "design_files"）を 1 回で引く。
-  const memosByFile = await listMemosByOwnerIds(
-    "design_files",
-    data.view.files.map((f) => f.id),
-  );
+  // 系列メモ（この版が属する 製品 × 受注元 の全版で共通）も一緒に。
+  const [memosByFile, seriesMemos] = await Promise.all([
+    listMemosByOwnerIds(
+      "design_files",
+      data.view.files.map((f) => f.id),
+    ),
+    fetchSeriesMemo(data.view.itemId, data.view.customerBpId ?? null),
+  ]);
 
   return (
     <DesignVersionDetail
@@ -106,6 +111,7 @@ export default async function ProductionDesignVersionPage({
       productLabel={data.productLabel}
       productTypes={productTypes}
       programs={programs}
+      seriesMemos={seriesMemos}
       stepOptions={stepOptions}
       version={data.view}
     />

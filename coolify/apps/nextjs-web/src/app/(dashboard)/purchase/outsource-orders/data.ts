@@ -13,6 +13,7 @@
 
 import type { OutsourceStepRow } from "@/components/purchase/outsource-orders/model";
 import { prisma } from "@/lib/db";
+import { docRefCompany } from "@/lib/doc-ref-core";
 import { type LocalizedText, localized } from "@/lib/format";
 
 const dateOnly = (d: Date | null | undefined) =>
@@ -26,13 +27,15 @@ export async function fetchOutsourceSteps(): Promise<OutsourceStepRow[]> {
       workOrder: { include: { productItem: true } },
       processStep: true,
       supplierBp: true,
-      outsourceOrder: { select: { docNumber: true } },
+      outsourceOrder: { select: { docNumber: true, docRef: true } },
     },
     orderBy: [{ workOrder: { workOrderNumber: "desc" } }, { sortOrder: "asc" }],
   });
   return rows.map((s) => ({
     stepId: s.id,
     outsourceNumber: s.outsourceOrder?.docNumber ?? null,
+    // 依頼番号が無い（依頼日前の）工程も、指示書の法人のもの。
+    companyCode: docRefCompany(s.outsourceOrder?.docRef ?? s.workOrder.docRef),
     workOrderNumber: s.workOrder.workOrderNumber,
     productName: localized(
       s.workOrder.productItem.name as LocalizedText | null,

@@ -299,6 +299,24 @@ model WorkOrderOrderLine {
   orderLineId String @map("order_line_id") @db.Uuid
   quantity    Int
   sortOrder   Int    @default(0) @map("sort_order")
+  /// 印字番号の分割番号（A{base}{split}-NNN の split）。**作成時に 1 度だけ
+  /// DB が決めて凍結する**（BEFORE INSERT トリガー
+  /// work_order_order_lines_marking_split）:
+  ///   0   … 作成時に明細の受注数量ぶん全部を割り当てた（分割でない）。
+  ///         印字番号は明細の基数のまま A{base}-001..
+  ///   1.. … 作成時に一部だけ（割当数量 < 受注数量）= 分割。明細ごとの
+  ///         通し番号（order_lines.marking_split_issued を +1）で、
+  ///         A{base}{split}-001..{割当数量}
+  /// あとで割当数量を直して全量/一部が入れ替わっても**番号は変えない**
+  /// （刻んだ・刷った番号が後から動かないこと優先。変更はトリガーが拒否）。
+  /// 割当を消した番号は再利用しない。アプリはこの列を書かない —
+  /// 下書きの保存も割当を消して作り直さず、同じ明細の行は更新で残す。
+  /// null は残らない（トリガーが必ず埋め、移行前の行も移行で埋めた）。
+  /// Prisma 上は省略可能にしてある — 値を渡すとトリガーの判定を奪うため。
+  /// (order_line_id, split)
+  /// は split > 0 のとき一意（部分 unique index — マイグレーションに直書き）。
+  /// 整形は lib/marking-number.ts。
+  markingSplit Int?  @map("marking_split")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)

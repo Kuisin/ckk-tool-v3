@@ -16,7 +16,10 @@
 
 import type { getTranslations } from "next-intl/server";
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
-import { resolvePriceFromEntries } from "@/components/sales/quotes/model";
+import {
+  lineToolItemId,
+  resolvePriceFromEntries,
+} from "@/components/sales/quotes/model";
 import {
   effectiveUnitPrice,
   normalizeOverride,
@@ -65,16 +68,6 @@ export async function loadCustomerPriceEntries(
 ): Promise<PriceListEntry[]> {
   if (!customerBpId) return [];
   return fetchCompanyEntriesForCustomer(customerBpId, ownCompanyId);
-}
-
-/** 価格表の解決に渡す工具 — 再研磨の行だけ。空は null。 */
-export function lineToolItemId(item: {
-  orderType: string;
-  toolItemId?: string | number | null;
-}): string | null {
-  if (item.orderType !== "REGRIND") return null;
-  const t = item.toolItemId;
-  return t == null || t === "" ? null : String(t);
 }
 
 /** 1 行の価格表単価と、引けなかったときの理由。 */

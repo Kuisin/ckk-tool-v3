@@ -24,6 +24,8 @@ export interface WorkOrderRow {
    * あり得るので、リンクと操作は workOrderNumber（ロット番号）で指す。
    */
   docNumber: string;
+  /** 発行会社（自社法人）のコード。番号の隣のバッジ・検索用。 */
+  companyCode: string | null;
   /** 旧番号（WOR-YYYYMM-NNNNN）。検索用。 */
   legacyNumber: string | null;
   createdAt: string;
@@ -162,6 +164,12 @@ export interface WorkOrderLineAllocView {
   lotNumber: number | null;
   /** 印字番号の基数（A{base}-NNN）。注文確定時に採番 — 旧明細は null。 */
   markingBase: number | null;
+  /**
+   * 印字番号の分割番号（work_order_order_lines.marking_split）。1.. = この
+   * 割当は明細の一部（分割）で、接頭辞 A{base}{split}・枝番は割当数量ぶん。
+   * 0 / null = 分割でない（明細の基数・受注数量ぶん）。lib/marking-number.ts。
+   */
+  markingSplit: number | null;
   /** 明細の納期（ISO 日付）。工程ワークフローの見出しに「予定納期」として出す。 */
   deliveryDate: string | null;
 }
@@ -242,6 +250,8 @@ export interface WorkOrderView {
   workOrderNumber: number;
   /** 書類番号 WOR-FFFF-NNNNN（**表示専用** — リンクと操作は workOrderNumber）。 */
   docNumber: string;
+  /** 発行会社（自社法人）のコード。見出しのバッジ用。 */
+  companyCode: string | null;
   /** 旧番号（番号設計の移行前の番号）。無ければ null。 */
   legacyNumber: string | null;
   status: string;

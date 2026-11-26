@@ -10,6 +10,8 @@
  *       #9001 の工程実行画面に、その工程のプログラムが機種一致を先頭にして出る。
  * 承認設定（MS0B）の「加工プログラムの変更」は段なし = 申請と同時に反映。
  * 段あり・使用済みの版・新しい版は design-program-versions が見る。
+ * 系列メモは製品の画面だけでなく、版の詳細（書ける）・Web の工程実行画面と
+ * 共有端末の工程画面（読むだけ）にも出る — 指示書が見る系列はプログラムと同じ規則。
  * ファイルは上げない（この環境にオブジェクトストレージが無い）。
  */
 
@@ -75,6 +77,7 @@ export const designProgramsMemo: Scenario = {
   title: "設計図 — 加工プログラム（機種に当てる）と系列メモ、工程実行画面への表示",
   feature: "E 加工プログラム・系列メモ (#972) / 機種",
   user: "staff",
+  kiosk: true,
   fixtures: ["scenarios/fixtures/design-programs-memo.sql"],
   steps: [
     {
@@ -209,18 +212,46 @@ export const designProgramsMemo: Scenario = {
         await top(s);
         await s.shot("兼房の系列 — 系列メモなし");
 
-        // 版の詳細からは見えるか（合否ではなく、どこに出るかの記録）。
+        await top(s);
+      },
+    },
+    {
+      caption: "版の詳細（v1 / v2）にも同じ系列メモが出て、そこからも書ける — 汎用の版には出ない",
+      run: async (s) => {
+        const p = s.page;
+        /** 版の詳細の「系列メモ」の枠。 */
+        const seriesPanel = () => p.locator("[data-series-memo]");
         await s.goto(`/production/design-files/versions/${DEMO_V1}`);
         await s.see("手続き状況");
-        const onV1 = await p.getByText(MEMO).count();
+        await seriesPanel().scrollIntoViewIfNeeded();
+        s.check("確定済みの v1: 系列メモの枠に同じメモが出る", (await seriesPanel().getByText(MEMO).count()) === 1, await seriesPanel().innerText().catch(() => "枠が無い"));
+        s.check("確定済みの版でも系列メモは書ける（凍るのは図面の中身だけ）— 編集のアイコンがある", (await seriesPanel().getByRole("button", { name: "編集" }).count()) === 1, await seriesPanel().getByRole("button").count());
+        await s.shot("版の詳細（デモ商事 v1）— 系列メモ");
+
         await s.goto(`/production/design-files/versions/${DRAFT_V2}`);
         await s.see("手続き状況");
-        const onV2 = await p.getByText(MEMO).count();
-        s.check(
-          "（観察・合否なし）版の詳細画面（v1 / v2）に系列メモは出るか",
-          true,
-          onV1 + onV2 > 0 ? `出る（v1=${onV1} v2=${onV2}）` : "出ない — 系列メモが読めるのは製品の画面（系列の枠）だけ。版の詳細・工程実行画面・共有端末からは見えない",
-        );
+        s.check("下書きの v2: 同じメモが出る（版をまたいで 1 件）", (await seriesPanel().getByText(MEMO).count()) === 1, await seriesPanel().innerText().catch(() => "枠が無い"));
+
+        // 版の詳細から書き直すと、製品の画面の系列の枠にも同じ内容が出る（同じ 1 件）。
+        const added = "（版の詳細から追記）";
+        await s.click(seriesPanel().getByRole("button", { name: "編集" }));
+        const editor = seriesPanel().locator(".ProseMirror");
+        await editor.waitFor({ state: "visible", timeout: 20_000 });
+        await editor.click();
+        await p.keyboard.press("ControlOrMeta+a");
+        await p.keyboard.type(MEMO + added);
+        await s.click(seriesPanel().getByRole("button", { name: "保存", exact: true }));
+        await s.toast("メモを更新しました");
+        const rows = s.sqlRows(`select plain_text from app.document_memos where owner_type = 'design_series' and owner_id = '${ITEM}:${DEMO}'`);
+        s.check("DB: 系列メモは 1 件のまま、追記が入る", rows.length === 1 && rows[0].includes(added), rows);
+        await s.goto(`/production/design-files/${ITEM}?series=${DEMO}`);
+        await s.see("系列メモ");
+        await s.checkVisible("製品の画面（デモ商事の系列の枠）にも追記が出る", added, { exact: false });
+
+        const generic = s.sql(`select id from app.design_versions where item_id = ${ITEM} and customer_bp_id is null order by version desc limit 1`);
+        await s.goto(`/production/design-files/versions/${generic}`);
+        await s.see("手続き状況");
+        s.check("汎用の版: 系列メモの枠はあるが、デモ商事のメモは出ない", (await seriesPanel().count()) === 1 && (await p.getByText(MEMO).count()) === 0 && (await seriesPanel().getByText("メモはまだありません").count()) === 1, { panel: await seriesPanel().count(), memo: await p.getByText(MEMO).count() });
         await top(s);
       },
     },
@@ -284,6 +315,40 @@ export const designProgramsMemo: Scenario = {
         await s.see("作業計画");
         s.check("切断: 受け持つプログラムが無いので枠ごと出ない", (await p.getByRole("heading", { name: "加工プログラム", exact: true }).count()) === 0, await p.getByRole("heading", { name: "加工プログラム", exact: true }).count());
         await top(s);
+      },
+    },
+    {
+      caption: "工程実行画面（Web・共有端末）に系列メモが読むだけで出る — 指示書の顧客（デモ商事）の系列のもの",
+      run: async (s) => {
+        const p = s.page;
+        const seriesPanel = p.locator("[data-series-memo]");
+        await s.goto(`/production/work-orders/9001/steps/${STEP_MACHINING}`);
+        await s.see("作業計画");
+        await seriesPanel.waitFor({ state: "visible", timeout: 20_000 });
+        await seriesPanel.scrollIntoViewIfNeeded();
+        const text = (await seriesPanel.innerText()).replace(/\s+/g, " ");
+        s.check("Web の工程画面: 系列メモの枠にデモ商事の系列のメモが出る", text.includes("系列メモ") && text.includes(MEMO) && text.includes("デモ商事株式会社"), text);
+        s.check("読むだけ — 編集のボタンも入力欄も無い", (await seriesPanel.getByRole("button").count()) === 0 && (await seriesPanel.locator(".ProseMirror").count()) === 0, await seriesPanel.getByRole("button").count());
+        const link = seriesPanel.getByRole("link", { name: "設計図で開く" });
+        const href = (await link.getAttribute("href").catch(() => "")) ?? "";
+        s.check("書き直し先（設計図のデモ商事の系列）へのリンク", href === `/production/design-files/${ITEM}?series=${DEMO}#series-${DEMO}`, href);
+        await s.shot("Web の工程実行画面 — 系列メモ（読むだけ）");
+
+        // 切断の工程にもプログラムは無いが、系列メモは指示書の図面ごとなので出る。
+        await s.goto(`/production/work-orders/9001/steps/${STEP_CUTTING}`);
+        await s.see("作業計画");
+        s.check("プログラムの無い工程（切断）でも系列メモは出る", (await p.locator("[data-series-memo]").getByText(MEMO).count()) === 1, await p.locator("[data-series-memo]").count());
+
+        // 共有端末の工程画面。
+        const kiosk = await s.openKiosk(`/steps/${STEP_MACHINING}?from=wo`);
+        const kPanel = kiosk.locator("[data-series-memo]");
+        await kPanel.waitFor({ state: "visible", timeout: 20_000 });
+        const kText = (await kPanel.innerText()).replace(/\s+/g, " ");
+        s.check("共有端末の工程画面: 系列メモ（デモ商事の系列）が出る", kText.includes("系列メモ") && kText.includes(MEMO) && kText.includes("デモ商事株式会社"), kText);
+        s.check("共有端末: 読むだけ（ボタンなし）", (await kPanel.getByRole("button").count()) === 0, await kPanel.getByRole("button").count());
+        await kPanel.scrollIntoViewIfNeeded();
+        await s.shot("共有端末の工程画面 — 系列メモ", kiosk);
+        await kiosk.close();
       },
     },
   ],

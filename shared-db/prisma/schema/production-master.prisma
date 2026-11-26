@@ -47,6 +47,9 @@ model OwnCompany {
   invoiceRegistrationNo String?  @map("invoice_registration_no")
   /// 社印（電子印影）の画像。null = 印影なし（既定の法人だけは同梱の印影へ落ちる）
   sealFileId            String?  @map("seal_file_id") @db.Uuid
+  /// PDF の見出しに刷るロゴ画像（PNG / JPG）。null = ロゴなし（既定の法人だけは
+  /// 同梱の logo.svg へ落ちる — 他の法人の書類に CKK のマークを刷らないため）
+  logoFileId            String?  @map("logo_file_id") @db.Uuid
   bankName              String?  @map("bank_name")
   bankBranch            String?  @map("bank_branch")
   bankAccountType       String?  @map("bank_account_type")
@@ -64,6 +67,7 @@ model OwnCompany {
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   sealFile          File?              @relation("OwnCompanySeal", fields: [sealFileId], references: [id], onDelete: SetNull)
+  logoFile          File?              @relation("OwnCompanyLogo", fields: [logoFileId], references: [id], onDelete: SetNull)
   plants            Plant[]            @relation("PlantOwnCompany")
   invoices          Invoice[]          @relation("InvoiceOwnCompany")
   estimateDocs Estimate[] @relation("EstimateOwnCompany")

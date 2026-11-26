@@ -23,6 +23,7 @@ model File {
   userAvatarThumbs User[]               @relation("UserAvatarThumbFile")
   inspectionTemplateImages InspectionTemplate[] @relation("InspectionTemplateImage")
   ownCompanySeals  OwnCompany[]         @relation("OwnCompanySeal")
+  ownCompanyLogos  OwnCompany[]         @relation("OwnCompanyLogo")
   designPrograms   DesignProgram[]      @relation("DesignProgramFile")
   designProgramChanges DesignProgramChange[] @relation("DesignProgramChangeFile")
 

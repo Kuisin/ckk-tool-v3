@@ -441,6 +441,8 @@
     "markingPerLine": "Per line",
     "markingRange": "{first} – {last}",
     "markingNotIssued": "Not numbered (numbered when the order is confirmed)",
+    "markingPerSplit": "Per split",
+    "markingSplit": "Split {split}",
     "orderLineNumber": "Order line number",
     "notPlanned": "Not planned",
     "forStock": "For stock",
@@ -2020,7 +2022,8 @@
       "tax": "Tax (10%)",
       "validityStrip": "This quote is valid until {validUntil}. Please place your order within this period.",
       "lineDiscount": "Discount",
-      "lineDiscountNote": "* {label}: -¥{amount}"
+      "lineDiscountNote": "* {label}: -¥{amount}",
+      "toolLine": "Tool to regrind: {tool}"
     },
     "DELIVERY_NOTE": {
       "regNumber": "Registration No.:",
@@ -2967,7 +2970,9 @@
       "whatChangedInThisVersion": "What changed in this version",
       "deleteTheDrawing": "Delete the drawing",
       "seriesMemo": "Series memo",
-      "seriesMemoHint": "A memo shared by every version of this product and ordering customer (customer habits, machining notes). Write what changed in each version on that version."
+      "seriesMemoHint": "A memo shared by every version of this product and ordering customer (customer habits, machining notes). Write what changed in each version on that version.",
+      "seriesMemoReadOnlyHint": "Shared by every version of the drawing this work order uses ({series}). Edit it in Drawings.",
+      "seriesMemoOpen": "Open in Drawings"
     },
     "inventory": {
       "reservationsCount": "Reservations ({count})",
@@ -7140,6 +7145,17 @@
       "sealSaveFailed": "Could not save the seal",
       "sealUploaded": "Seal saved",
       "sealRemoved": "Seal removed",
+      "logo": "Logo",
+      "logoDesc": "The logo printed at the top of PDFs such as quotes, delivery notes and invoices (PNG / JPG, up to 2 MB)",
+      "uploadLogo": "Upload logo",
+      "removeLogo": "Remove logo",
+      "logoDefaultFallback": "Not set, so the existing logo is used",
+      "logoNoneFallback": "Not set, so no logo is printed on documents",
+      "logoTooLarge": "The image must be 2 MB or smaller",
+      "logoSaveFailed": "Could not save the logo",
+      "logoUploaded": "Logo saved",
+      "logoRemoved": "Logo removed",
+      "previewNoLogo": "No logo",
       "issuerPreview": "Document issuer",
       "issuerPreviewDesc": "Printed exactly like this in the issuer block of quotes, delivery notes and invoices",
       "created": "Own company created",
@@ -8003,7 +8019,8 @@
     "productPriceResolverInput": {
       "resolvedAutomaticallyFromThePriceList": "Resolved automatically from the price list by customer × product × order type × quantity (base × tier multiplier, or the row's manual override).",
       "appliedAutomaticallyFromThePriceList": "Applied automatically from the price list's discount rules (period and quantity). If several match, the largest discount wins.",
-      "discountAutomatic": "Discount (automatic)"
+      "discountAutomatic": "Discount (automatic)",
+      "targetToolPrice": "Target tool price list"
     },
     "designRequests": {
       "start": "Start",
@@ -8210,6 +8227,8 @@
       "notAllocatedAllocateViaTheStock": "Not allocated (allocate via the stock check)",
       "shipped": "Shipped",
       "thereIsNoWorkOrderFor": "There is no work order for this order line yet",
+      "markingSplits": "Work orders made separately (numbers per split)",
+      "markingSplitOf": "{docNumber} ({quantity} pcs)",
       "allocatedQuantity": "Allocated quantity",
       "thereIsNoDeliveryOrderFor": "There is no delivery order for this order line yet",
       "stockCheckResult": "Stock check result",
@@ -8602,7 +8621,9 @@
       "searchTheRegrindItems": "Search regrind items",
       "toolToRegrind": "Tool to regrind",
       "searchTheToolBeingHeld": "Search the tool held (external products included)",
-      "standardPrice": "Standard price {price}"
+      "standardPrice": "Standard price {price}",
+      "toolPriceListPrice": "Price list (target tool) {price}",
+      "toolPriceListPriceWithTier": "Price list (target tool) {price} ({tier})"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "Deletes \"{label}\". This cannot be undone.",
@@ -8651,7 +8672,8 @@
       "subtotalAmount": "Subtotal {amount}",
       "taxAmount": "Tax {amount}",
       "totalInclTaxAmount": "Total (incl. tax) {amount}",
-      "lineNotesDescription": "Printed under the line on the quote PDF"
+      "lineNotesDescription": "Printed under the line on the quote PDF",
+      "selectTheToolToRegrind": "Select the tool to regrind"
     },
     "trialEstimateDetail": {
       "orderTypeTierCount": "{orderType} · {tierCount} tiers",
@@ -8721,7 +8743,8 @@
       "priceListExpired": "Line {line}: the price list is outside its valid period",
       "validUntilRequired": "Enter the valid-until date",
       "validUntilInPast": "The valid-until date must be today or later",
-      "priceListUnapproved": "Line {line}: the price list has not been approved (custom value approval)"
+      "priceListUnapproved": "Line {line}: the price list has not been approved (custom value approval)",
+      "regrindToolRequired": "Line {line}: select the tool to regrind"
     },
     "orderLinesActions": {
       "invalidOrderLine": "Invalid order line",
@@ -10162,6 +10185,10 @@
       "notes": {
         "label": "Notes",
         "summary": "Notes about the whole quote. They are printed in the notes block of the quote PDF."
+      },
+      "tool": {
+        "label": "Tool to regrind",
+        "summary": "The customer's own tool that is held and reground. It appears only on rows whose order type is regrind, and is required. If a price list targets this tool its price is used; otherwise the price list for any tool, and failing that the regrind item's standard price (the same order as on order acceptances)."
       }
     },
     "priceList": {

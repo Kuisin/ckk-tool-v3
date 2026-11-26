@@ -16,7 +16,8 @@ import type { Scn } from "./scn";
 import type { Scenario } from "./types";
 
 const STEP_9001_MACHINING = "dc011000-0000-4000-8000-000000000004";
-const MARKING = "印字番号 A200000-001 〜 A200000-150（明細ごと A200000）";
+// #9001 は受注 150 本の明細（基番 200000）から 50 本を分けた指示書（分割 1）。
+const MARKING = "印字番号 A2000001-001 〜 A2000001-050（分割 1・分割ごと A2000001）";
 
 let kiosk: Page;
 
@@ -148,13 +149,13 @@ export const kioskWoList: Scenario = {
         s.check("URL は /wo-scan/9001?from=list", /\/wo-scan\/9001\?from=list$/.test(kiosk.url()), kiosk.url());
 
         const marking = await kiosk.getByText(/^印字番号/).allInnerTexts();
-        s.check("印字番号（割当の注文明細: 基番 200000・受注 150 本）が出る", marking.length === 1 && marking[0] === MARKING, marking);
+        s.check("印字番号（基番 200000・受注 150 本のうち 50 本 = 分割 1）が出る", marking.length === 1 && marking[0] === MARKING, marking);
         const base = s.sql(
-          `select ol.marking_base || '/' || ol.quantity from app.work_order_order_lines l
+          `select ol.marking_base || '/' || ol.quantity || '/' || l.quantity || '/' || l.marking_split from app.work_order_order_lines l
              join app.order_lines ol on ol.id = l.order_line_id
              join app.work_orders w on w.id = l.work_order_id where w.work_order_number = 9001`,
         );
-        s.check("DB の marking_base / 受注数量 と一致", base === "200000/150", base);
+        s.check("DB の marking_base / 受注数量 / 割当数量 / 分割番号 と一致", base === "200000/150/50/1", base);
 
         const card = await kiosk.getByRole("button", { name: /^4\. 段加工/ }).innerText();
         const due = s.sql(`select to_char(due_date, 'YYYY/MM/DD') from app.work_order_steps where id = '${STEP_9001_MACHINING}'`);

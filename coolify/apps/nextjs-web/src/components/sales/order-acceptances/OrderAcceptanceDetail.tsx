@@ -671,6 +671,7 @@ export function OrderAcceptanceDetail({
         { label: tr("common.orderAcceptance"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={a.number}
       createdAt={fmt.dateTime(a.createdAt)}
       status={<StatusBadge entity="OrderAcceptanceIntake" status={a.status} />}
       title={docNo(a.number)}

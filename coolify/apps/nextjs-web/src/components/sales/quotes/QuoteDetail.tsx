@@ -166,7 +166,11 @@ export function QuoteDetail({
             summary: tr("common.itemsCount", { count: relatedEntries.length }),
             items: relatedEntries.map((e) => ({
               key: e.entryId,
-              label: `${e.customerName} × ${e.productName}`,
+              // 同じ顧客 × 再研磨品目に工具なし・工具ありが並び得るので、
+              // 対象工具も書く（書かないと同じ見出しの行が 2 つ並ぶ）。
+              label: e.toolName
+                ? `${e.customerName} × ${e.productName}（${tr("sales.priceLists.targetTool")}: ${e.toolName}）`
+                : `${e.customerName} × ${e.productName}`,
               href: `/sales/price-lists/${e.entryId}`,
               note: tr("sales.quotes.whereTheUnitPriceCameFrom"),
             })),
@@ -349,6 +353,7 @@ export function QuoteDetail({
         { label: tr("common.quote"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={quote.quoteNumber}
       createdAt={fmt.dateTime(quote.createdAt)}
       status={<StatusBadge entity="Quote" status={displayStatus} />}
       title={docNo(quote.quoteNumber)}
@@ -427,6 +432,15 @@ export function QuoteDetail({
                         {/* 品名は「名称 コード」。内部の品目 id は出さない
                             （以前は名称の下に連番の id が出ていた）。 */}
                         <Text size="sm">{it.productName}</Text>
+                        {/* 再研磨の明細: 売っているのは役務で、研ぐのはこの工具。 */}
+                        {it.toolLabel && (
+                          <Text c="dimmed" mt={2} size="xs">
+                            {tr(
+                              "sales.orderAcceptanceItemsEditor.toolToRegrind",
+                            )}
+                            : {it.toolLabel}
+                          </Text>
+                        )}
                         {it.notes && (
                           <Text
                             c="dimmed"
@@ -476,9 +490,18 @@ export function QuoteDetail({
                       <Table.Td>{fmt.date(it.deliveryDate)}</Table.Td>
                       <Table.Td>
                         {tierRef ? (
-                          <Text className="tabular-nums" ff="mono" size="xs">
-                            {tierRef.label}
-                          </Text>
+                          <>
+                            <Text className="tabular-nums" ff="mono" size="xs">
+                              {tierRef.label}
+                            </Text>
+                            {tierRef.toolSpecific && (
+                              <Text c="blue" size="xs">
+                                {tr(
+                                  "sales.productPriceResolverInput.targetToolPrice",
+                                )}
+                              </Text>
+                            )}
+                          </>
                         ) : (
                           <Text c="orange" size="xs">
                             {tr("common.noPriceList")}
@@ -587,7 +610,11 @@ export function QuoteDetail({
                       }
                       size="sm"
                     >
-                      {e.customerName} × {e.productName}（
+                      {e.customerName} × {e.productName}
+                      {e.toolName
+                        ? ` ${tr("sales.priceLists.targetTool")}: ${e.toolName}`
+                        : ""}
+                      （
                       {tr("sales.quoteDetail.orderTypesAndTierCount", {
                         orderTypes: e.variants
                           .map(

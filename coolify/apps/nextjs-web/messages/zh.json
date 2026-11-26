@@ -441,6 +441,8 @@
     "markingPerLine": "按明细",
     "markingRange": "{first} 〜 {last}",
     "markingNotIssued": "未编号（订单确定时编号）",
+    "markingPerSplit": "按分割",
+    "markingSplit": "分割 {split}",
     "orderLineNumber": "订单明细编号",
     "notPlanned": "未安排",
     "forStock": "备库存",
@@ -2020,7 +2022,8 @@
       "tax": "税额（10%）",
       "validityStrip": "本报价单有效期至 {validUntil}，请在此期限内下单。",
       "lineDiscount": "折扣",
-      "lineDiscountNote": "※ {label}：-¥{amount}"
+      "lineDiscountNote": "※ {label}：-¥{amount}",
+      "toolLine": "要研磨的刀具：{tool}"
     },
     "DELIVERY_NOTE": {
       "regNumber": "登记编号：",
@@ -2967,7 +2970,9 @@
       "whatChangedInThisVersion": "此版本变更了什么",
       "deleteTheDrawing": "删除图纸",
       "seriesMemo": "系列备忘",
-      "seriesMemoHint": "该产品与订货方的所有图纸版本共用的备忘（客户习惯、加工注意事项等）。各版本的变更点请写在该版本的备忘中。"
+      "seriesMemoHint": "该产品与订货方的所有图纸版本共用的备忘（客户习惯、加工注意事项等）。各版本的变更点请写在该版本的备忘中。",
+      "seriesMemoReadOnlyHint": "本工单所用图纸（{series}）各版本共用的备忘。修改请在图纸中进行。",
+      "seriesMemoOpen": "在图纸中打开"
     },
     "inventory": {
       "reservationsCount": "预留（{count}）",
@@ -7140,6 +7145,17 @@
       "sealSaveFailed": "印章保存失败",
       "sealUploaded": "已保存印章",
       "sealRemoved": "已移除印章",
+      "logo": "标志",
+      "logoDesc": "打印在报价单、送货单、请款单等 PDF 抬头的标志（PNG / JPG，最大 2MB）",
+      "uploadLogo": "上传标志",
+      "removeLogo": "移除标志",
+      "logoDefaultFallback": "未设置，使用原有标志",
+      "logoNoneFallback": "未设置，单据上不打印标志",
+      "logoTooLarge": "图像最大 2MB",
+      "logoSaveFailed": "标志保存失败",
+      "logoUploaded": "已保存标志",
+      "logoRemoved": "已移除标志",
+      "previewNoLogo": "无标志",
       "issuerPreview": "单据开具方",
       "issuerPreviewDesc": "将按此内容打印在报价单、送货单、请款单的开具方栏",
       "created": "已创建本公司法人",
@@ -8003,7 +8019,8 @@
     "productPriceResolverInput": {
       "resolvedAutomaticallyFromThePriceList": "根据客户×产品×订单类别×数量从价格表自动解析（基准单价 × 数量系数，若有行的手动覆盖则取该值）。",
       "appliedAutomaticallyFromThePriceList": "根据价格表的折扣规则（期间・数量条件）自动适用。多条匹配时取折扣额最大的规则。",
-      "discountAutomatic": "折扣（自动）"
+      "discountAutomatic": "折扣（自动）",
+      "targetToolPrice": "适用刀具的价格表"
     },
     "designRequests": {
       "start": "开工",
@@ -8210,6 +8227,8 @@
       "notAllocatedAllocateViaTheStock": "未分配（通过库存核对分配）",
       "shipped": "已出货",
       "thereIsNoWorkOrderFor": "此订单明细尚无工单",
+      "markingSplits": "分开制作的工单（各分割的编号）",
+      "markingSplitOf": "{docNumber}（{quantity} 支）",
       "allocatedQuantity": "分配数量",
       "thereIsNoDeliveryOrderFor": "此订单明细尚无出货单",
       "stockCheckResult": "库存核对结果",
@@ -8602,7 +8621,9 @@
       "searchTheRegrindItems": "搜索再研磨服务",
       "toolToRegrind": "要研磨的刀具",
       "searchTheToolBeingHeld": "搜索寄存的刀具（含他社产品）",
-      "standardPrice": "标准价格 {price}"
+      "standardPrice": "标准价格 {price}",
+      "toolPriceListPrice": "价格表（适用刀具）{price}",
+      "toolPriceListPriceWithTier": "价格表（适用刀具）{price}（{tier}）"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "将删除“{label}”。此操作无法撤销。",
@@ -8651,7 +8672,8 @@
       "subtotalAmount": "小计 {amount}",
       "taxAmount": "税额 {amount}",
       "totalInclTaxAmount": "合计（含税） {amount}",
-      "lineNotesDescription": "打印在报价单 PDF 的明细下方"
+      "lineNotesDescription": "打印在报价单 PDF 的明细下方",
+      "selectTheToolToRegrind": "请选择要研磨的刀具"
     },
     "trialEstimateDetail": {
       "orderTypeTierCount": "{orderType}・{tierCount} 档",
@@ -8721,7 +8743,8 @@
       "priceListExpired": "明细 {line}：价格表不在有效期内",
       "validUntilRequired": "请输入有效期",
       "validUntilInPast": "有效期必须为今天或之后的日期",
-      "priceListUnapproved": "明细{line}：价格表尚未批准（自定义值追加审批）"
+      "priceListUnapproved": "明细{line}：价格表尚未批准（自定义值追加审批）",
+      "regrindToolRequired": "第 {line} 行：请选择要研磨的刀具"
     },
     "orderLinesActions": {
       "invalidOrderLine": "订单明细无效",
@@ -10162,6 +10185,10 @@
       "notes": {
         "label": "备注",
         "summary": "关于整张报价单的补充说明，会印在报价单 PDF 的备注栏中。"
+      },
+      "tool": {
+        "label": "要研磨的刀具",
+        "summary": "从客户处寄存并研磨的刀具本身。仅出现在订单类别为「再研磨」的行，且为必填。若有以该刀具为适用刀具的价格表则用其单价，否则用不限刀具的价格表，再没有则用再研磨服务的标准价格（与订单确认书相同的顺序）。"
       }
     },
     "priceList": {

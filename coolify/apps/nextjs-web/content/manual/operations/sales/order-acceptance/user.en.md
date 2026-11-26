@@ -45,7 +45,7 @@ When you open the app, you see the list of the order forms that have been import
 
 ![Order acceptance list screen](../../../assets/screenshots/order-acceptance-list-01.en.png)
 
-- **番号 (number)** … a number starting with `ORD-`. It is added automatically when the form is imported.
+- **番号 (number)** … a number starting with `ORD-`. It is added automatically when the form is imported. People who handle documents of two or more own companies see the issuing company's code (for example `TSP`) as a small badge next to the number ([Issuing company badge](/manual/en/operations/masters/own-company/user#company-badge)).
 - **取込元 (source)** … how it was registered. It is one of 「監視フォルダ」(watched folder), 「優先取込」(priority import) or 「手入力」(typed in).
 - **顧客 (customer)** … rows with an orange 「未特定」(not identified) badge have no customer decided yet.
 - **状態 (status)** … a colored badge shows where it stands now.
