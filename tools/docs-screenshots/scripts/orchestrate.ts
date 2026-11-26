@@ -325,6 +325,9 @@ function buildApp(): void {
     cwd: HERE,
     stdio: "inherit",
   });
+  // マニュアルの生成物（.source）を先に作る（まっさらなチェックアウトでは無いまま
+  // next build が落ちることがある — scripts/scenarios.ts と同じ手当て）。
+  execFileSync("pnpm", ["exec", "fumadocs-mdx"], { cwd: NEXTJS_WEB, stdio: "inherit" });
   log("next build (production)");
   execFileSync("pnpm", ["run", "build"], {
     cwd: NEXTJS_WEB,
