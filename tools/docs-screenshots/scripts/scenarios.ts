@@ -516,6 +516,11 @@ async function main(): Promise<void> {
 
   if (!flag("--no-build")) {
     const databaseUrl = `postgresql://postgres:shots@127.0.0.1:${DB_PORT}/${TEMPLATE_DB}`;
+    // マニュアルの生成物（.source）を先に作る。まっさらなチェックアウトでは、
+    // これが無いまま next build が manual-source.ts の import を解決しに行って
+    // 落ちることがある（2 回目のビルドでは通る — 1 回目が途中で作るため）。
+    log("fumadocs-mdx（マニュアルの生成物）");
+    execFileSync("pnpm", ["exec", "fumadocs-mdx"], { cwd: NEXTJS_WEB, stdio: "inherit" });
     log("next build（nextjs-web）");
     execFileSync("pnpm", ["build"], { cwd: NEXTJS_WEB, stdio: "inherit", env: { ...process.env, DATABASE_URL: databaseUrl, NEXT_PUBLIC_APP_VERSION: APP_VERSION } });
     if (selected.some((s) => s.kiosk)) {

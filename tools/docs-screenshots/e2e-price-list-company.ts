@@ -247,11 +247,19 @@ async function main() {
   // ── F. 一覧 ──────────────────────────────────────────────────────────────
   await page.goto(`${APP}/sales/price-lists`, { waitUntil: "networkidle" });
   body = await bodyText(page);
+  // 発行会社は列ではなく番号の横のバッジ（#995 — 2 社にまたがる人にだけ出る）。
+  // 他社との差分は列のまま。
+  const badges = await page
+    .locator("table tbody tr")
+    .getByText(/^(CKK|TSP)$/)
+    .allInnerTexts();
   check(
-    "F 一覧に発行会社・他社との差分の列",
-    body.includes("発行会社") && body.includes("他社との差分"),
+    "F 一覧の番号の横に発行会社のバッジ（CKK と TSP）",
+    badges.includes("CKK") && badges.includes("TSP"),
+    badges.join(","),
   );
-  await shot(page, "07-F-一覧（発行会社・他社との差分の列）");
+  check("F 一覧に「他社との差分」の列", body.includes("他社との差分"));
+  await shot(page, "07-F-一覧（発行会社のバッジ・他社との差分の列）");
 
   check("G pageerror なし", errors.length === 0, errors.join(" / "));
   await browser.close();
