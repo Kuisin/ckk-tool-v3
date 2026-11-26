@@ -166,6 +166,8 @@ export const quoteDiscountNotes: Scenario = {
         const text = await s.pdf("見積書", `/api/pdf/quote?id=${encodeURIComponent(id)}&force=1`);
         const flat = text.replace(/[ \t]+/g, " ");
         s.check("PDF に値引きの注意書き「※ まとめ買い値引き（…）: -¥12,000」", /※\s*まとめ買い値引き（[^）]*200[^）]*）\s*[:：]\s*-¥12,000/.test(flat), (flat.match(/※.{0,60}/) ?? ["※ の行が無い"])[0]);
+        const noteLine = (flat.match(/※.{0,60}/) ?? [""])[0];
+        s.check("注意書きの円記号は半角の ¥ だけ（全角の ￥ と混ざらない — 合計欄と同じ書式）", noteLine.includes("¥") && !noteLine.includes("￥"), noteLine);
         const lines = flat.split("\n").map((l) => l.trim());
         const idx = NOTE_LINES.map((n) => lines.findIndex((l) => l.includes(n)));
         s.check("PDF に備考の 3 行が、行を分けて順に刷られる", idx.every((i) => i >= 0) && (idx[0] ?? 0) < (idx[1] ?? 0) && (idx[1] ?? 0) < (idx[2] ?? 0), idx);

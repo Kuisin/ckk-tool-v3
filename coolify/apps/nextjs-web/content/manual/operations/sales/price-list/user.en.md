@@ -67,7 +67,7 @@ flowchart TD
 
 Some customers pay **a different regrind price depending on which tool is reground**. For them, set a **[target tool](#field-target-tool)** on the regrind item's price list and make one price list per tool. The same customer × regrind item can have one any-tool price list plus any number of per-tool price lists.
 
-A regrind line on an order acceptance carries its "tool to regrind", so its price is looked up in this order:
+Regrind lines on quotes and order acceptances carry their "tool to regrind", so the price is looked up in this order (the same on both documents):
 
 1. the price list for that tool
 2. the any-tool price list
@@ -75,7 +75,7 @@ A regrind line on an order acceptance carries its "tool to regrind", so its pric
 
 If the tool's price list is inactive, awaiting approval or outside its period, the lookup moves on to the next step. ⚠️ A missing quantity tier does not move on (same reason as above).
 
-> 💡 **Quote lines carry no tool, so quotes only use the any-tool price list.** Per-tool prices take effect on order acceptances.
+> 💡 **The same tool gets the same unit price on the quote and on the order acceptance.** A price that comes from a per-tool price list is marked — on the quote with「対象工具の価格表」(target tool price list) under the unit price, on the order acceptance with the badge「価格表（対象工具）¥…」(price list (target tool)) — so it can be told apart from an any-tool price.
 
 ## Before you start
 
@@ -208,7 +208,7 @@ To change a rule press the pencil mark, and to remove it press the bin mark.
 
 ![Screen for creating a quote](../../../assets/screenshots/price-list-quote-01.png)
 
-The [quote](/manual/en/operations/sales/quote/user) creation screen opens with the contents already filled in. You can do the same from「**…**」on a row in the list.
+The [quote](/manual/en/operations/sales/quote/user) creation screen opens with the contents already filled in. You can do the same from「**…**」on a row in the list. When you start from a price list that has a target tool, that tool is also filled into the line's「研ぎ直す工具」(tool to regrind).
 
 ## Other things you can do
 

@@ -46,6 +46,12 @@ export interface ResolvedPrice {
   discountId: string | null;
   /** e.g. "夏季キャンペーン（5%）" — null when no rule applies. */
   discountLabel: string | null;
+  /**
+   * 当たったのが**対象工具つき**の価格表か（再研磨の工具一致）。画面の
+   * 「価格表 ¥900（21〜30本）」が、工具ごとの値段なのか工具を問わない値段なのかを
+   * 言い分けるための印。標準価格・工具なしの価格表では false。
+   */
+  toolSpecific: boolean;
 }
 
 /**
@@ -58,6 +64,20 @@ export interface ResolvedPrice {
 export type PriceResolution =
   | { ok: true; price: ResolvedPrice }
   | { ok: false; reason: PriceMissReason };
+
+/**
+ * 価格表の解決に渡す工具 — **再研磨の行だけ**。空は null。
+ * 見積書・注文請書の画面と保存側が同じこの 1 つを通る（種別を再研磨から
+ * 切り替えた行に工具が残っていても、値段の解決には効かない）。
+ */
+export function lineToolItemId(item: {
+  orderType: string;
+  toolItemId?: string | number | null;
+}): string | null {
+  if (item.orderType !== "REGRIND") return null;
+  const t = item.toolItemId;
+  return t == null || t === "" ? null : String(t);
+}
 
 /**
  * 価格表の候補 — 引く順に並べたエントリ（0〜2 件）。
@@ -134,6 +154,7 @@ function resolveFromEntry(
       discountLabel: discount
         ? `${discount.label}（${discountValueLabel(discount, tr)}）`
         : null,
+      toolSpecific: entry.toolItemId != null,
     },
   };
 }
@@ -197,6 +218,7 @@ export function resolvePriceFromEntries(
         discountAmount: 0,
         discountId: null,
         discountLabel: null,
+        toolSpecific: false,
       },
     };
   };
@@ -270,6 +292,13 @@ export interface QuoteItem {
    */
   productCode: string | null;
   productName: string;
+  /**
+   * 研ぎ直す工具（品目 id の文字列）。**再研磨の明細だけ**が持つ —
+   * 価格は 工具一致 → 工具なし → 標準価格 の順で引く（注文明細と同じ）。
+   */
+  toolItemId: string | null;
+  /** 研ぎ直す工具の表示名（名称 + コード）。 */
+  toolLabel: string | null;
   orderType: string;
   quantity: number;
   unitPrice: number;
@@ -400,6 +429,8 @@ export interface PriceTierRef {
   estimateNumber: string | null;
   /** e.g. "1〜9本 ¥8,000" */
   label: string;
+  /** 対象工具つきの価格表の段か（再研磨の工具一致）。 */
+  toolSpecific: boolean;
 }
 
 export function findPriceTierRefIn(
@@ -416,6 +447,7 @@ export function findPriceTierRefIn(
           entryId: entry.entryId,
           estimateNumber: variant.estimateNumber,
           label: `${tierLabel(tier, tr)} ${formatMoney(tierUnitPrice(variant, tier))}`,
+          toolSpecific: entry.toolItemId != null,
         };
       }
     }

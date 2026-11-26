@@ -47,6 +47,7 @@ When you open the app, you see a list of the quotes made so far.
 4. Check「**営業担当**」(sales rep). Choosing the customer fills in their primary rep automatically — change it if needed.
 5. Enter the date this quote is valid until in「**有効期限**」(valid until). While the quote is a draft you can leave it empty and still save, but **it is required when you issue**.
 6. On the line item row, choose「**製品**」(product),「**注文種別**」(order type) and「**数量**」(quantity).
+   - On a row whose order type is「**再研磨**」(regrind), choose a「**再研磨品目**」(regrind item) instead of a product, then choose the customer's tool in「**研ぎ直す工具**」(tool to regrind) below it (required; other makers' products can be chosen too). The regrind price can differ by tool ([Tool to regrind](#field-tool)).
 7. As you enter them, **the unit price, discount and amount appear automatically**. You do not need to correct the amount by hand.
 8. If a delivery date is fixed for the product, also enter「**納期**」(delivery date).
 9. If there is something to tell the customer about that line, write it in the line's「**備考**」(notes) — as many lines as you like. It is printed right under that line on the quote PDF.
@@ -69,6 +70,8 @@ Once saved, the quote is registered as 「下書き」(draft) and the detail scr
 > - **No quantity tier** … no quantity tier matches the quantity entered. Review the quantity or add a tier to the price list.
 >
 > For regrind items only, the item's **standard price** is used in the first three cases (no price list / disabled / outside the valid period). With "no quantity tier" it does not fall back to the standard price.
+
+> 💡 **A regrind unit price is looked up in the order "this tool → any tool → standard price"** (the same order as on order acceptances). If a price list targets the chosen tool ([Target tool](/manual/en/operations/sales/price-list/user#field-target-tool)) its price is used; otherwise the price list for any tool, and failing that the regrind item's standard price. When the price comes from the tool's price list,「**対象工具の価格表**」(target tool price list) appears under the unit price. Choosing a different tool looks the price up again.
 
 ## Checking the contents
 
@@ -144,7 +147,7 @@ When a new quote is almost the same as an old one, you can copy it instead of ty
 2. From「**…**」at the top right, press「**複製**」(duplicate).
 3. A draft with the same contents is created. Change only what you need and save.
 
-A new quote number is added automatically.
+A new quote number is added automatically. On regrind lines **the tool to regrind is carried over too**, and the unit price is looked up again from the price list for that tool.
 
 ## Input fields
 
@@ -160,6 +163,7 @@ Every field on the quote screen. The **?** next to a field in the app links stra
 | [Status](#field-status) | — | Where the quote stands now |
 | [Product](#field-product) | Required | The product being quoted |
 | [Order type](#field-order-type) | Required | Production, test, sample or other |
+| [Tool to regrind](#field-tool) | Required on regrind rows | The customer's tool that is held and reground |
 | [Quantity](#field-quantity) | Required | Number of pieces |
 | [Unit price (price list)](#field-unit-price) | Automatic | Filled in from the price list |
 | [Discount (automatic)](#field-discount) | Automatic | Result of the price list's discount rules |
@@ -198,6 +202,14 @@ The product being quoted. Choosing it fills in the unit price that matches the c
 ### Order type [#field-order-type]
 
 Production, test, sample or other. **The price differs by type even for the same product**, so choose the one that matches the real order. (For samples, the practice is to set the unit price to zero in the price list.)
+
+### Tool to regrind [#field-tool]
+
+Shown only on rows whose order type is「**再研磨**」(regrind). Choose **the customer's own tool that is held and reground** (your own products and other makers' products can both be chosen). It is required on regrind rows. What is sold is the regrinding service (the regrind item); this field points at the physical thing that is worked on.
+
+The unit price is taken from a price list that targets this tool if there is one, otherwise from the price list for any tool, and failing that from the regrind item's standard price. This is the same order as on order acceptance lines, so **the same tool gets the same unit price on the quote and on the order acceptance**. The chosen tool is also shown on the quote detail screen (under the item name) and on the PDF (under the item name and code, as "Tool to regrind: …").
+
+> 💡 When you make an order acceptance from a quote, choosing the quote in the order acceptance's「見積書」(quote) field links the two documents, but **the lines are not copied**. Choose the tool to regrind again on the order acceptance's regrind lines.
 
 ### Quantity [#field-quantity]
 

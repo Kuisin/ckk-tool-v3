@@ -5,7 +5,11 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { quoteLineNoteHtml } from "@/lib/pdf-labels";
+import {
+  pdfYenSign,
+  quoteLineNoteHtml,
+  quoteLineToolHtml,
+} from "@/lib/pdf-labels";
 
 describe("quoteLineNoteHtml", () => {
   const none = { discountLabel: null, discountAmount: 0, notes: null };
@@ -71,5 +75,45 @@ describe("quoteLineNoteHtml", () => {
     expect(html.indexOf("line-discount")).toBeLessThan(
       html.indexOf("line-notes"),
     );
+  });
+});
+
+describe("PDF の円記号は半角にそろえる", () => {
+  it("値引き名に入った全角の ￥（画面の金額書式）を半角の ¥ にする", () => {
+    const html = quoteLineNoteHtml(
+      {
+        discountLabel: "まとめ買い値引き（￥200/本）",
+        discountAmount: 12000,
+        notes: null,
+      },
+      "12,000",
+      "ja",
+    );
+    expect(html).toContain("※ まとめ買い値引き（¥200/本）: -¥12,000");
+    expect(html).not.toContain("￥");
+  });
+
+  it("pdfYenSign は全角の ￥ だけを置き換える", () => {
+    expect(pdfYenSign("￥1,000 / ¥2,000")).toBe("¥1,000 / ¥2,000");
+  });
+});
+
+describe("quoteLineToolHtml — 再研磨の明細の研ぎ直す工具", () => {
+  it("工具が無い行は空（行を増やさない）", () => {
+    expect(quoteLineToolHtml(null, "ja")).toBe("");
+    expect(quoteLineToolHtml("  ", "ja")).toBe("");
+  });
+
+  it("受取先の言語で刷り、工具名はエスケープする", () => {
+    expect(quoteLineToolHtml("日研 エンドミル", "ja")).toContain(
+      "研ぎ直す工具: 日研 エンドミル",
+    );
+    expect(quoteLineToolHtml("Tool X", "en")).toContain(
+      "Tool to regrind: Tool X",
+    );
+    expect(quoteLineToolHtml("刀具", "zh")).toContain("要研磨的刀具：刀具");
+    const html = quoteLineToolHtml("<b>x</b>", "ja");
+    expect(html).toContain("&lt;b&gt;x&lt;/b&gt;");
+    expect(html).not.toContain("<b>");
   });
 });

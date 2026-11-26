@@ -2019,7 +2019,8 @@
       "tax": "Tax (10%)",
       "validityStrip": "This quote is valid until {validUntil}. Please place your order within this period.",
       "lineDiscount": "Discount",
-      "lineDiscountNote": "* {label}: -¥{amount}"
+      "lineDiscountNote": "* {label}: -¥{amount}",
+      "toolLine": "Tool to regrind: {tool}"
     },
     "DELIVERY_NOTE": {
       "regNumber": "Registration No.:",
@@ -7930,7 +7931,8 @@
     "productPriceResolverInput": {
       "resolvedAutomaticallyFromThePriceList": "Resolved automatically from the price list by customer × product × order type × quantity (base × tier multiplier, or the row's manual override).",
       "appliedAutomaticallyFromThePriceList": "Applied automatically from the price list's discount rules (period and quantity). If several match, the largest discount wins.",
-      "discountAutomatic": "Discount (automatic)"
+      "discountAutomatic": "Discount (automatic)",
+      "targetToolPrice": "Target tool price list"
     },
     "designRequests": {
       "start": "Start",
@@ -8529,7 +8531,9 @@
       "searchTheRegrindItems": "Search regrind items",
       "toolToRegrind": "Tool to regrind",
       "searchTheToolBeingHeld": "Search the tool held (external products included)",
-      "standardPrice": "Standard price {price}"
+      "standardPrice": "Standard price {price}",
+      "toolPriceListPrice": "Price list (target tool) {price}",
+      "toolPriceListPriceWithTier": "Price list (target tool) {price} ({tier})"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "Deletes \"{label}\". This cannot be undone.",
@@ -8578,7 +8582,8 @@
       "subtotalAmount": "Subtotal {amount}",
       "taxAmount": "Tax {amount}",
       "totalInclTaxAmount": "Total (incl. tax) {amount}",
-      "lineNotesDescription": "Printed under the line on the quote PDF"
+      "lineNotesDescription": "Printed under the line on the quote PDF",
+      "selectTheToolToRegrind": "Select the tool to regrind"
     },
     "trialEstimateDetail": {
       "orderTypeTierCount": "{orderType} · {tierCount} tiers",
@@ -8648,7 +8653,8 @@
       "priceListExpired": "Line {line}: the price list is outside its valid period",
       "validUntilRequired": "Enter the valid-until date",
       "validUntilInPast": "The valid-until date must be today or later",
-      "priceListUnapproved": "Line {line}: the price list has not been approved (custom value approval)"
+      "priceListUnapproved": "Line {line}: the price list has not been approved (custom value approval)",
+      "regrindToolRequired": "Line {line}: select the tool to regrind"
     },
     "orderLinesActions": {
       "invalidOrderLine": "Invalid order line",
@@ -10088,6 +10094,10 @@
       "notes": {
         "label": "Notes",
         "summary": "Notes about the whole quote. They are printed in the notes block of the quote PDF."
+      },
+      "tool": {
+        "label": "Tool to regrind",
+        "summary": "The customer's own tool that is held and reground. It appears only on rows whose order type is regrind, and is required. If a price list targets this tool its price is used; otherwise the price list for any tool, and failing that the regrind item's standard price (the same order as on order acceptances)."
       }
     },
     "priceList": {

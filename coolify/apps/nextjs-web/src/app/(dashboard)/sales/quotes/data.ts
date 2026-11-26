@@ -12,6 +12,7 @@ import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import { type DocKey, docIdOf, formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { TOOL_LABEL_SELECT, toolLabel } from "@/lib/tool-label";
 import { ENTRY_INCLUDE, mapEntry } from "../price-lists/data";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
@@ -27,7 +28,8 @@ const QUOTE_INCLUDE = {
   items: {
     orderBy: { sortOrder: "asc" as const },
     // 品目統合 第 2 段 C — 名称・コードは品目側から読む。
-    include: { item: true },
+    // 再研磨の明細は研ぎ直す工具も（他社製品はメーカー名から出す）。
+    include: { item: true, toolItem: { select: TOOL_LABEL_SELECT } },
   },
 };
 
@@ -71,6 +73,8 @@ export function mapQuote(r: QuoteRow): Quote {
         const nm = localized(it.item?.name as LocalizedText | null);
         return code ? `${nm} ${code}` : nm;
       })(),
+      toolItemId: it.toolItemId != null ? String(it.toolItemId) : null,
+      toolLabel: it.toolItem ? toolLabel(it.toolItem) : null,
       orderType: it.orderType,
       quantity: it.quantity,
       unitPrice: Number(it.unitPrice),

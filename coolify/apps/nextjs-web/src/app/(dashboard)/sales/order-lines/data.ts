@@ -27,6 +27,7 @@ import {
   orderLineWhereKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { toolLabel } from "@/lib/tool-label";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
@@ -116,19 +117,6 @@ function productLabel(p: {
   const code = p.code ?? formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
   return code ? `${name} ${code}` : name;
-}
-
-/** 工具ラベル: メーカー名（他社製品のみ）+ 名称 + コード。 */
-function toolLabel(t: {
-  name: unknown;
-  code: string | null;
-  isExternalProduct: boolean;
-  makerName: string | null;
-}): string {
-  const maker = t.isExternalProduct ? t.makerName?.trim() : null;
-  return [maker, localized(t.name as LocalizedText | null), t.code]
-    .filter((x): x is string => !!x)
-    .join(" ");
 }
 
 function mapOrderLine(r: OrderLineRow): OrderLine {

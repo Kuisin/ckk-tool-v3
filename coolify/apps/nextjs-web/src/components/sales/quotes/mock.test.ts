@@ -93,6 +93,8 @@ describe("quoteTotals — 小計 / 消費税10% / 合計", () => {
     id: "i",
     itemId: "p",
     productCode: null,
+    toolItemId: null,
+    toolLabel: null,
     productName: "p",
     orderType: "PRODUCTION",
     quantity: 1,

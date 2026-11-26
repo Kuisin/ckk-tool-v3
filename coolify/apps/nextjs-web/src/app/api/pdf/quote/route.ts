@@ -21,6 +21,7 @@ import {
   orderTypeLabelLocalized,
   pdfAttnLine,
   quoteLineNoteHtml,
+  quoteLineToolHtml,
   quotePdfLabels,
   taxBaseSuffixLocalized,
   taxRowLabelLocalized,
@@ -138,6 +139,8 @@ export async function GET(request: Request): Promise<Response> {
         // 製品コード（PRD-YYYYMM-NNNN）。**採番前のレガシー品目は空欄で刷る** —
         // 以前ここは内部の連番 id を刷っていた（品目統合で本来の製品コードへ）。
         code: it.productCode ?? "",
+        // 再研磨の明細: 研ぎ直す工具（売っているのは役務、研ぐのはこの工具）。
+        tool_html: quoteLineToolHtml(it.toolLabel, lang),
         order_type: orderTypeLabelLocalized(it.orderType, lang),
         quantity: yen(it.quantity),
         unit_price: yen(it.unitPrice),
