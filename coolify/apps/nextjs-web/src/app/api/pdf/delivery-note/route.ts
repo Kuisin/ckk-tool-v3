@@ -20,7 +20,7 @@ import { docNo } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters, escapeHtml } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
-import { issuerForDeliveryNote } from "@/lib/own-companies";
+import { issuerForDeliveryNote, ownCompanyLogo } from "@/lib/own-companies";
 import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   deliveryMethodLabelLocalized,
@@ -96,13 +96,16 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   // 発行元（自社法人 MS0I）— 出荷元拠点 → 明細の担当拠点 → 既定の法人。
-  const { issuer } = await issuerForDeliveryNote(key, lang);
+  const { issuer, company } = await issuerForDeliveryNote(key, lang);
+  // 見出しのロゴもその法人のもの（他の法人の書類に CKK のマークを刷らない）。
+  const logo = await ownCompanyLogo(company, lang);
 
   // 価格記載（includePrice）に応じて 単価/金額 列・合計ブロックを注入する。
   const data = {
     lang,
     labels,
     issuer,
+    brand_logo: logo.html,
     recipient: {
       name: note.recipientName,
       meta: metaLines.map(escapeHtml).join("<br>"),
@@ -156,7 +159,9 @@ export async function GET(request: Request): Promise<Response> {
 
   let pdf: ArrayBuffer;
   try {
-    pdf = await renderPdf("delivery-note.html", data);
+    pdf = await renderPdf("delivery-note.html", data, {
+      assets: logo.assets,
+    });
   } catch (err) {
     console.error("[pdf/delivery-note]", err);
     return new Response("PDF generation failed", { status: 502 });

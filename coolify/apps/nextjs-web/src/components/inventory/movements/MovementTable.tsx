@@ -14,11 +14,13 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { categoryLabel } from "@/lib/app-list";
+import { docCompanyCode, matchesDocCompany } from "@/lib/doc-company-view-core";
 import { docNo } from "@/lib/doc-number";
 import { docSortValue } from "@/lib/doc-sort";
 import { movementCauseLabel, movementCauseOptions } from "@/lib/enum-labels";
@@ -57,6 +59,7 @@ export function MovementTable({
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
+      matchesDocCompany(docCompanyCode(r.id), search) ||
       r.movementNumber.includes(search) ||
       (r.legacyNumber ?? "").includes(search) ||
       (docNo(r.sourceId) ?? "").includes(search);
@@ -71,7 +74,11 @@ export function MovementTable({
       header: tr("production.movements.movementNumber"),
       sortable: true,
       sortValue: (r) => docSortValue(r.movementNumber),
-      render: (r) => <DocNumber c="blue">{r.movementNumber}</DocNumber>,
+      render: (r) => (
+        <WithDocCompany docId={r.id}>
+          <DocNumber c="blue">{r.movementNumber}</DocNumber>
+        </WithDocCompany>
+      ),
     },
     {
       key: "createdAt",
@@ -192,9 +199,11 @@ export function MovementTable({
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
           <Stack className="min-w-0" gap={3}>
-            <Text c="dimmed" ff="mono" size="xs">
-              {r.movementNumber}
-            </Text>
+            <WithDocCompany docId={r.id}>
+              <Text c="dimmed" ff="mono" size="xs">
+                {r.movementNumber}
+              </Text>
+            </WithDocCompany>
             <Text fw={600} size="sm">
               {fmt.dateTime(r.createdAt)}
             </Text>

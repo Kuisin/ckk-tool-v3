@@ -18,7 +18,11 @@ import { docNo } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters, escapeHtml } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
-import { issuerForCompanyId, ownCompanyStampImg } from "@/lib/own-companies";
+import {
+  issuerForCompanyId,
+  ownCompanyLogo,
+  ownCompanyStampImg,
+} from "@/lib/own-companies";
 import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   invoicePdfLabels,
@@ -98,11 +102,14 @@ export async function GET(request: Request): Promise<Response> {
     invoice.ownCompanyId,
     lang,
   );
+  // 見出しのロゴもその法人のもの（他の法人の書類に CKK のマークを刷らない）。
+  const logo = await ownCompanyLogo(company, lang);
 
   const data = {
     lang,
     labels,
     issuer,
+    brand_logo: logo.html,
     recipient: {
       name: invoice.customerName,
       meta: metaLines.map(escapeHtml).join("<br>"),
@@ -151,7 +158,7 @@ export async function GET(request: Request): Promise<Response> {
 
   let pdf: ArrayBuffer;
   try {
-    pdf = await renderPdf("invoice.html", data);
+    pdf = await renderPdf("invoice.html", data, { assets: logo.assets });
   } catch (err) {
     console.error("[pdf/invoice]", err);
     return new Response("PDF generation failed", { status: 502 });

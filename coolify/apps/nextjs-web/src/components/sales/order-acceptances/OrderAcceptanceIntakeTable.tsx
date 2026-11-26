@@ -43,11 +43,13 @@ import { useEffect, useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docCompanyCode, matchesDocCompany } from "@/lib/doc-company-view-core";
 import { docNo } from "@/lib/doc-number";
 import { docSortValue } from "@/lib/doc-sort";
 import { parseExtractError } from "@/lib/intake-extract-error";
@@ -156,6 +158,7 @@ export function OrderAcceptanceIntakeTable({
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
+      matchesDocCompany(docCompanyCode(r.number), search) ||
       docNo(r.number).includes(search) ||
       (r.legacyNumber?.includes(search) ?? false) ||
       (r.sourceFilename ?? "").includes(search) ||
@@ -315,9 +318,11 @@ export function OrderAcceptanceIntakeTable({
       sortable: true,
       sortValue: (r) => docSortValue(r.number),
       render: (r) => (
-        <Text ff="mono" size="sm">
-          {docNo(r.number)}
-        </Text>
+        <WithDocCompany docId={r.number}>
+          <Text ff="mono" size="sm">
+            {docNo(r.number)}
+          </Text>
+        </WithDocCompany>
       ),
     },
     {
@@ -506,9 +511,11 @@ export function OrderAcceptanceIntakeTable({
             return (
               <Group align="flex-start" justify="space-between" wrap="nowrap">
                 <Stack className="min-w-0" gap={3}>
-                  <Text c="dimmed" ff="mono" size="xs">
-                    {docNo(r.number)}
-                  </Text>
+                  <WithDocCompany docId={r.number}>
+                    <Text c="dimmed" ff="mono" size="xs">
+                      {docNo(r.number)}
+                    </Text>
+                  </WithDocCompany>
                   {r.customerName ? (
                     <Text fw={600} size="sm" truncate>
                       {r.customerName}

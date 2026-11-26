@@ -179,7 +179,7 @@ When another company has a price list for the same customer and product, the pri
 - "**差分を見る**" (Show differences) shows what differs in a table.
 - "**〇〇 の内容で同期**" (Sync from 〇〇) makes this price list's content the same as that company's. Order types only in this price list are deleted. Custom prices go through approval.
 
-In the list, rows with another company's price list show "**同じ**" (Same) or "**差分あり**" (Differs). When there are two or more companies, you can filter by issuing company.
+In the list, rows with another company's price list show "**同じ**" (Same) or "**差分あり**" (Differs). When there are two or more companies, you can filter by issuing company. The company-code badge next to the customer name (for example `TSP`) tells you whose price list it is ([Issuing company badge](/manual/en/operations/masters/own-company/user#company-badge)).
 
 ## Registering a discount rule
 

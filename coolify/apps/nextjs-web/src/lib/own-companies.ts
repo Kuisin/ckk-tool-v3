@@ -14,12 +14,16 @@ import type { LocalizedTextInput } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 import { label } from "@/lib/messages";
 import {
+  BUNDLED_LOGO_FILE,
+  brandLogoHtml,
+  brandLogoSource,
   type IssuerBlock,
   issuerBlock,
   type OwnCompanyRecord,
   resolveIssuer,
   resolveOwnCompanyId,
 } from "@/lib/own-company-core";
+import type { PdfAsset } from "@/lib/pdf";
 import { companyStampImg } from "@/lib/pdf-stamp";
 import { getObject } from "@/lib/storage";
 
@@ -36,6 +40,7 @@ export async function loadOwnCompanies(): Promise<OwnCompanyRecord[]> {
     fax: r.fax,
     invoiceRegistrationNo: r.invoiceRegistrationNo,
     sealFileId: r.sealFileId,
+    logoFileId: r.logoFileId,
     isDefault: r.isDefault,
   }));
 }
@@ -191,4 +196,73 @@ export async function ownCompanyStampImg(
     return companyStampImg(true, lang);
   }
   return "";
+}
+
+/** PDF 見出しのロゴ: テンプレートの `{{{brand_logo}}}` と、一緒に送るファイル。 */
+export interface BrandLogo {
+  /** `<img class="brand-logo" …>`。刷らないときは空文字。 */
+  html: string;
+  /** renderPdf の `assets` に渡す（同梱の logo.svg は renderPdf が自分で送る）。 */
+  assets: PdfAsset[];
+}
+
+const LOGO_EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+};
+
+/**
+ * その書類の法人のロゴ。決め方は lib/own-company-core.ts brandLogoSource —
+ * 自分のロゴ → （既定の法人だけ）同梱の logo.svg → 刷らない。
+ *
+ * **画像が読めなくても帳票は止めない**（SeaweedFS が落ちている・オブジェクトが
+ * 消えた）。そのときは「ロゴを持たない法人」と同じ扱いに落ちる — 社印
+ * （ownCompanyStampImg）と同じ考え方。alt はその法人の名前（受取先の言語）。
+ */
+export async function ownCompanyLogo(
+  company: OwnCompanyRecord | null,
+  lang: Locale,
+): Promise<BrandLogo> {
+  const alt = issuerBlock(company, lang).name;
+  if (company?.logoFileId) {
+    const file = await prisma.file
+      .findUnique({
+        where: { id: company.logoFileId },
+        select: { storageKey: true, mimeType: true },
+      })
+      .catch(() => null);
+    const ext = file ? LOGO_EXT[file.mimeType] : undefined;
+    const bytes =
+      file && ext ? await getObject(file.storageKey).catch(() => null) : null;
+    if (file && ext && bytes) {
+      const filename = `company-logo.${ext}`;
+      return {
+        html: brandLogoHtml(filename, alt),
+        assets: [{ filename, data: bytes, type: file.mimeType }],
+      };
+    }
+  }
+  const source = brandLogoSource(company, false);
+  return {
+    html: brandLogoHtml(source === "bundled" ? BUNDLED_LOGO_FILE : null, alt),
+    assets: [],
+  };
+}
+
+/**
+ * 指示書に属する紙（検査表・検査記録）のロゴ — 指示書の法人。指示書の無い
+ * 白紙（マスタからの印刷）は既定の法人。社内の紙なので ja。
+ */
+export async function ownCompanyLogoForWorkOrder(
+  workOrderNumber: number | null | undefined,
+): Promise<BrandLogo> {
+  const row =
+    workOrderNumber != null
+      ? await prisma.workOrder.findUnique({
+          where: { workOrderNumber },
+          select: { ownCompanyId: true },
+        })
+      : null;
+  const { company } = await issuerForCompanyId(row?.ownCompanyId, "ja");
+  return ownCompanyLogo(company, "ja");
 }

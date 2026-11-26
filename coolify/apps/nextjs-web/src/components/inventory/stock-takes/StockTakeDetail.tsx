@@ -523,6 +523,7 @@ export function StockTakeDetail({
         { label: tr("common.stockTake"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={v.stockTakeNumber}
       createdAt={fmt.dateTime(v.createdAt)}
       status={<StatusBadge entity="StockTake" status={v.status} />}
       title={docNo(v.stockTakeNumber)}

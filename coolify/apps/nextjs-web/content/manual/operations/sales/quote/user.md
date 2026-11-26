@@ -34,7 +34,7 @@ screenshots: [quote-list-01, quote-new-01, quote-detail-01, quote-issue-01, quot
 
 ![見積書の一覧画面](../../../assets/screenshots/quote-list-01.png)
 
-- **見積番号** … `QOT-` で始まる番号です。システムが自動で付けます。
+- **見積番号** … `QOT-` で始まる番号です。システムが自動で付けます。2 社以上の[自社法人](/manual/ja/operations/masters/own-company/user)の書類を扱う人には、番号の横に発行会社のコード（例 `TSP`）が小さく出ます（[発行会社のバッジ](/manual/ja/operations/masters/own-company/user#company-badge)）。検索欄に法人コードを入れると、その会社の見積書に絞り込めます。
 - **状態** … 色つきのバッジで今の状況がわかります。灰色は「下書き」、青は「発行済」、オレンジは「期限切れ」（発行済で有効期限を過ぎたもの）です。
 - 上の検索欄に見積番号やお客様の名前を入れると、探している見積書を絞り込めます。
 - 行をクリックすると、その見積書の詳しい画面が開きます。

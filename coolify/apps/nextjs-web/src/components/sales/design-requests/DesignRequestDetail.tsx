@@ -591,6 +591,7 @@ export function DesignRequestDetail({
         { label: tr("common.designRequest2"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={request.requestNumber}
       createdAt={fmt.dateTime(request.createdAt)}
       status={<StatusBadge entity="DesignRequest" status={request.status} />}
       title={docNo(request.requestNumber)}

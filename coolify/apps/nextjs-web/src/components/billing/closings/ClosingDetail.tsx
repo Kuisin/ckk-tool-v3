@@ -216,6 +216,7 @@ export function ClosingDetail({
         { label: tr("common.billingClosing"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={closing.invoiceNumber}
       createdAt={fmt.dateTime(closing.createdAt)}
       status={<StatusBadge entity="BillingClosing" status={closing.status} />}
       title={tr("billing.closings.titleWithClosingDate", {
