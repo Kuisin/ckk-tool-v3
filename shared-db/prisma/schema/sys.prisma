@@ -25,6 +25,7 @@ model File {
   ownCompanySeals  OwnCompany[]         @relation("OwnCompanySeal")
   ownCompanyLogos  OwnCompany[]         @relation("OwnCompanyLogo")
   designPrograms   DesignProgram[]      @relation("DesignProgramFile")
+  designProgramChanges DesignProgramChange[] @relation("DesignProgramChangeFile")
 
   @@map("files")
   @@schema("app")

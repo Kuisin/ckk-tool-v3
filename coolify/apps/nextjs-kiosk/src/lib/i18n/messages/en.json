@@ -418,9 +418,10 @@
     },
     "programs": {
       "title": "Machining programs",
-      "machine": "Machine: {name}",
-      "anyMachine": "Any machine",
-      "machineMatch": "For this machine",
+      "machineModels": "Machine models: {names}",
+      "anyModel": "Any machine model",
+      "modelMatch": "For this machine model",
+      "revision": "v{revision}",
       "download": "Download",
       "noFile": "No file"
     },

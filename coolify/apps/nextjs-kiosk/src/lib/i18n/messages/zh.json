@@ -418,9 +418,10 @@
     },
     "programs": {
       "title": "加工程序",
-      "machine": "机器：{name}",
-      "anyMachine": "不限机器",
-      "machineMatch": "本机用",
+      "machineModels": "机型：{names}",
+      "anyModel": "不限机型",
+      "modelMatch": "本机型用",
+      "revision": "v{revision}",
       "download": "下载",
       "noFile": "无文件"
     },

@@ -7,6 +7,10 @@
  * 場所をモーダルで CRUD する。種別は system_settings `work_location.types`
  * の管理者定義（lib/work-locations.ts — 組み込み machine/area は削除不可）。
  * 作業計画（work_order_step_plans）が参照する場所は削除できない（P2003）。
+ *
+ * 機種（machine_models）もこの画面で管理する（「機種」タブ）。機械 1 台は機種を
+ * 0..1 持ち、加工プログラムは機種を 0..N 持つ。使われている機種は削除できない
+ * （lib/master-refs — 無効化はできる）。
  */
 
 import { revalidatePath } from "next/cache";
@@ -89,11 +93,32 @@ function locationInputSchema(tr: Tr) {
     nameJa: z.string().min(1, tr("common.enterNameInJapanese")),
     nameTranslations: z.record(z.string(), z.string()).optional(),
     capacity: z.number().int().min(1).nullable(),
+    /** 機種（null = 機種を持たない — エリア・作業台など）。 */
+    machineModelId: z.number().int().positive().nullable().optional(),
     sortOrder: z.number().int(),
     isActive: z.boolean(),
     notes: z.string().optional(),
   });
 }
+
+function machineModelInputSchema(tr: Tr) {
+  return z.object({
+    code: z
+      .string()
+      .min(1, tr("common.codeRequired"))
+      .regex(codePattern, tr("master.workLocationsActions.codePatternHint")),
+    nameJa: z.string().min(1, tr("common.enterNameInJapanese")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    maker: z.string().max(200).optional(),
+    sortOrder: z.number().int(),
+    isActive: z.boolean(),
+    notes: z.string().optional(),
+  });
+}
+
+export type MachineModelInput = z.infer<
+  ReturnType<typeof machineModelInputSchema>
+>;
 
 export type WorkLocationGroupInput = z.infer<
   ReturnType<typeof groupInputSchema>
@@ -269,6 +294,7 @@ export async function addWorkLocation(
         code: v.code.trim(),
         name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         capacity: v.capacity,
+        machineModelId: v.machineModelId ?? null,
         sortOrder: v.sortOrder,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
@@ -325,6 +351,7 @@ export async function updateWorkLocation(
         code: v.code.trim(),
         name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         capacity: v.capacity,
+        machineModelId: v.machineModelId ?? null,
         sortOrder: v.sortOrder,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
@@ -483,6 +510,126 @@ export async function saveWorkLocationTypes(
         tr("master.workLocationsActions.saveTypesFailed"),
         tr,
       ),
+    );
+  }
+}
+
+// ── 機種（machine_models） ───────────────────────────────────────────────────
+
+export async function createMachineModel(
+  input: MachineModelInput,
+): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = machineModelInputSchema(tr).safeParse(input);
+  if (!parsed.success) {
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
+  }
+  const v = parsed.data;
+  try {
+    const created = await prisma.machineModel.create({
+      data: {
+        code: v.code.trim(),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
+        maker: v.maker?.trim() || null,
+        sortOrder: v.sortOrder,
+        isActive: v.isActive,
+        notes: v.notes?.trim() || null,
+      },
+      select: { id: true },
+    });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "machine_models",
+      recordId: String(created.id),
+      after: { code: v.code.trim(), nameJa: v.nameJa },
+    });
+    revalidate();
+    return actionOk({ id: created.id });
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, tr("master.machineModels.saveFailed"), tr),
+    );
+  }
+}
+
+export async function updateMachineModel(
+  id: number,
+  input: MachineModelInput,
+): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = machineModelInputSchema(tr).safeParse(input);
+  if (!parsed.success) {
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
+  }
+  const v = parsed.data;
+  try {
+    await prisma.machineModel.update({
+      where: { id },
+      data: {
+        code: v.code.trim(),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
+        maker: v.maker?.trim() || null,
+        sortOrder: v.sortOrder,
+        isActive: v.isActive,
+        notes: v.notes?.trim() || null,
+      },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "machine_models",
+      recordId: String(id),
+      after: { code: v.code.trim(), nameJa: v.nameJa, isActive: v.isActive },
+    });
+    revalidate();
+    return actionOk({ id });
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, tr("master.machineModels.saveFailed"), tr),
+    );
+  }
+}
+
+export async function deleteMachineModel(id: number): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("master", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    // 機械の機種は SET NULL、プログラムの対象機種は RESTRICT — どちらも
+    // ここで先に数えて止める（プログラムが黙って「機種を問わない」に
+    // 広がらないように。無効化はできる）。
+    const refs = await countMasterReferences("machineModel", [id]);
+    if (refs.total > 0) {
+      // プログラムは版ごとに行があるので、本数はプログラム（program_key）で数える。
+      const programs = await prisma.designProgramMachineModel.findMany({
+        where: { machineModelId: id },
+        select: { program: { select: { programKey: true } } },
+      });
+      return actionError(
+        tr("master.machineModels.inUseCannotDelete", {
+          machines: refs.byTable["WorkLocation.machineModelId"] ?? 0,
+          programs: new Set(programs.map((p) => p.program.programKey)).size,
+        }),
+      );
+    }
+    await prisma.machineModel.delete({ where: { id } });
+    await recordAudit({
+      action: "DELETE",
+      tableName: "machine_models",
+      recordId: String(id),
+    });
+    revalidate();
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, tr("master.machineModels.deleteFailed"), tr),
     );
   }
 }

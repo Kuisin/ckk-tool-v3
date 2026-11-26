@@ -78,8 +78,9 @@ The top part of the step screen gathers the information you need for the work.
   - When an order line is made by several work orders, each work order gets a split number and the line reads 「**印字番号 A2000001-001 〜 A2000001-050（分割 1・分割ごと A2000001）**」 (split 1, per split A2000001). This range is what this work order marks.
 - **工程納期** (step due date) … shown as 「**工程納期 2026/08/10**」: by when this step should be finished. It turns **red and bold** if the date has passed and the step is not finished. It is not shown for a step with no due date.
 - **加工プログラム** (machining programs) … when programs used in this step are registered, they are listed under 「**加工プログラム**」.
-  - The program name and program number, and 「**機械: ◯◯**」 (which machine it is for; one for any machine shows 「**機械を問わない**」 (any machine)) are shown.
-  - A program for the same machine as the current work location (this tablet's default work location, or the planned or actual work location) gets a 「**この機械用**」 (for this machine) mark and is listed first.
+  - The program name, its version (such as 「**v2**」) and program number, and 「**機種: ◯◯**」 (which machine models it is for; one for any model shows 「**機種を問わない**」 (any machine model)) are shown.
+  - A program for the same machine model as the current machine (this tablet's default work location, or the planned or actual work location) gets a 「**この機種用**」 (for this machine model) mark and is listed first.
+  - **When the step is started, the program versions shown at that moment are recorded.** A started step keeps showing **the versions it was started with**, even if the office creates a new version later (so the program does not change in the middle of the work).
   - If a file is registered, press the file name to download it. One with only a number noted shows 「**ファイルなし**」 (no file).
 - **系列メモ** (series memo) … if notes shared by every drawing of this product and customer (customer habits, machining notes) have been written, they appear under 「**系列メモ**」. It also says whose drawing it belongs to, such as 「図面（◯◯株式会社）の全版に共通するメモ」. On this screen it is read-only.
 

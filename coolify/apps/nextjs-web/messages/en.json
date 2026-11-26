@@ -826,7 +826,8 @@
     "issuingCompanyNotAllowed": "You cannot create documents for the selected issuing company. Select an own company your sites belong to",
     "selectIssuingCompany": "Select the issuing company",
     "selectIssuingCompanyDesc": "More than one issuing company has a document with this number. Select the issuing company of the document to open.",
-    "workOrderAbort": "Work order close-out"
+    "workOrderAbort": "Work order close-out",
+    "designProgramChange": "Machining program change"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -3638,28 +3639,85 @@
     },
     "designPrograms": {
       "title": "Machining programs",
-      "description": "Machining programs made from this version. Pick the machine from work locations (MS0D); one program can cover several steps.",
+      "description": "Machining programs made from this version. Pick the machine models they are for; one program can cover several steps. A program used by a step is not edited — create a new version instead. Changes go through the \"Machining program change\" approval (applied at once if no steps are configured), and are allowed after the drawing is confirmed.",
       "none": "No machining programs",
       "name": "Program name",
       "programNumber": "Program number",
-      "machine": "Machine (work location)",
-      "machineHint": "On the step execution screen, programs for the planned or actual work location are listed first",
-      "anyMachine": "Any machine",
-      "machineMatch": "For this machine",
+      "machineModels": "Machine models",
+      "machineModelsHint": "Empty = any machine model. On the step execution screen, programs for the model of the planned or actual machine are listed first",
+      "anyModel": "Any machine model",
+      "modelMatch": "For this machine model",
       "steps": "Steps",
       "file": "Program file",
       "chooseFile": "Choose a file",
       "noFile": "No file",
-      "removeFile": "Remove file",
-      "keepFile": "Keep file",
+      "fileKept": "Keep the current file",
+      "currentFile": "Current file: {name}",
+      "keepFile": "Keep",
+      "replaceFile": "Replace",
+      "removeFile": "Remove",
       "add": "Add program",
-      "remove": "Remove program",
       "nameRequired": "Enter a program name",
       "stepsRequired": "Select at least one step",
       "fromVersion": "Drawing v{version}",
-      "invalidPayload": "The machining programs are invalid",
-      "invalidReference": "A step or work location that does not exist is selected",
-      "savedAudit": "Saved machining programs for v{version} ({count})"
+      "fromRecord": "Showing the versions this step was started with",
+      "revision": "v{revision}",
+      "used": "Used ({count} steps)",
+      "unused": "Not used",
+      "retired": "Retired",
+      "pendingBadge": "Pending approval",
+      "actionEdit": "Edit",
+      "actionRevise": "Create new version",
+      "actionDelete": "Delete",
+      "actionRetire": "Retire",
+      "usedHint": "This version has been used by a step, so it cannot be edited. Create a new version to change it (this version stays as it is).",
+      "history": "Earlier versions ({count})",
+      "supersededAt": "until {at}",
+      "requestedBy": "Requested by {name} at {at}",
+      "requestNote": "Request note",
+      "requestNoteHint": "What you are changing and why (shown to approvers)",
+      "submitRequest": "Submit",
+      "requested": "Approval requested",
+      "applied": "Applied",
+      "failedTitle": "Request not applied: {kind} \"{name}\"",
+      "invalidPayload": "The machining program is invalid",
+      "invalidReference": "A step or machine model that does not exist is selected",
+      "fileMissing": "Choose a program file",
+      "alreadyPending": "This program already has a request pending approval",
+      "changeNotFound": "Machining program change request not found",
+      "applyFailed": "Could not apply the machining program change",
+      "requestedAudit": "Requested machining program change ({kind}) \"{name}\"",
+      "appliedAudit": "Applied machining program change ({kind}) \"{name}\" on drawing v{version}",
+      "applyFailedAudit": "Could not apply the machining program change: {error}",
+      "rejectedAudit": "Sent back the machining program change (reason: {reason})",
+      "kind": {
+        "ADD": "Add",
+        "EDIT": "Edit",
+        "REVISE": "New version",
+        "DELETE": "Delete",
+        "RETIRE": "Retire"
+      },
+      "modalTitle": {
+        "ADD": "Add machining program",
+        "EDIT": "Edit \"{name}\"",
+        "REVISE": "Create version v{revision} of \"{name}\"",
+        "DELETE": "Delete \"{name}\"",
+        "RETIRE": "Retire \"{name}\""
+      },
+      "modalHint": {
+        "ADD": "Requests a new program (v1).",
+        "EDIT": "Edits a version that no step has used yet, in place.",
+        "REVISE": "The current version has been used by a step, so it is kept and the changes become the next version. Steps started from now on get the new version.",
+        "DELETE": "No version has been used by a step yet, so the whole program is deleted.",
+        "RETIRE": "A version has been used by a step, so it cannot be deleted. Once retired, it is no longer shown to steps started from now on (the versions and usage records are kept)."
+      },
+      "premise": {
+        "notFound": "The program this was based on was not found",
+        "notCurrent": "The version this was based on is no longer the latest (another change was applied first)",
+        "retired": "This program has been retired",
+        "used": "This version has been used by a step, so it cannot be edited in place. Create a new version",
+        "keyUsed": "A version has been used by a step, so it cannot be deleted. Retire it instead"
+      }
     },
     "wipRecording": {
       "title": "WIP going to stock",
@@ -7119,6 +7177,32 @@
       "updateFailed": "Could not update the own company",
       "deleteFailed": "Could not delete the own company",
       "codeInvalidChars": "The company code cannot contain \"/\", \"~\" or spaces"
+    },
+    "machineModels": {
+      "tabLocations": "Work locations",
+      "tabModels": "Machine models",
+      "column": "Machine model",
+      "add": "Add machine model",
+      "addTitle": "Add machine model",
+      "editTitle": "Edit machine model",
+      "deleteTitle": "Delete machine model",
+      "description": "A name that groups machines of the same type. Pick one per machine (work location); machining programs are assigned to machine models.",
+      "empty": "No machine models yet. Register one with \"Add machine model\".",
+      "maker": "Maker",
+      "usageHead": "Machines / programs",
+      "usage": "{machines} machines / {programs} programs",
+      "codePlaceholder": "e.g. NC-LATHE-A",
+      "namePlaceholder": "e.g. NC lathe type A",
+      "none": "No machine model",
+      "locationHint": "Machining programs reach this machine through its machine model",
+      "created": "Machine model added",
+      "updated": "Machine model updated",
+      "deleted": "Deleted machine model \"{name}\"",
+      "deleteConfirm": "Delete machine model \"{name}\"?",
+      "inUseWarning": "Used by {machines} machines and {programs} programs (cannot be deleted — consider disabling it).",
+      "inUseCannotDelete": "Used by {machines} machines and {programs} programs, so it cannot be deleted (disable it instead)",
+      "saveFailed": "Could not save the machine model",
+      "deleteFailed": "Could not delete the machine model"
     }
   },
   "manual": {
@@ -9742,7 +9826,8 @@
       "wip_states": "Processing state",
       "items": "Items",
       "webhook_endpoints": "Webhook endpoint",
-      "own_companies": "Own companies"
+      "own_companies": "Own companies",
+      "machine_models": "Machine models"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -10962,6 +11047,18 @@
       "sortOrder": {
         "label": "Sort order / Enabled / Notes",
         "summary": "The display order, whether it appears as an option, and any additional notes."
+      },
+      "machineModel": {
+        "label": "Machine model",
+        "summary": "The machine model of this machine. Machining programs are assigned to machine models, so programs for the model chosen here are shown first as \"For this machine model\" on the step execution screen. Leave it empty for areas and benches."
+      },
+      "machineModelCode": {
+        "label": "Machine model code / name",
+        "summary": "The machine model's code and name, chosen from both machines and machining programs."
+      },
+      "machineModelMaker": {
+        "label": "Maker",
+        "summary": "The maker of the machine model (optional)."
       }
     },
     "storageLocation": {

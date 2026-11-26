@@ -16,6 +16,7 @@ import { stepFromSnapshot } from "@/lib/approval-flow";
 import { APPROVAL_TARGET, isApprovalTargetType } from "@/lib/approval-targets";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { designProgramChangeLabel } from "@/lib/design-program-changes-core";
 import { formatDocNumber } from "@/lib/doc-number";
 import { docDisplayId, docDisplayNumber } from "@/lib/doc-ref";
 import { localized } from "@/lib/format";
@@ -119,26 +120,44 @@ export async function fetchPendingApprovalRequests(): Promise<
   // （行のリンクは中継ページが親へ送るので、欠けているのは表示だけ）。
   const idsOf = (type: string) =>
     requests.filter((r) => r.targetType === type).map((r) => r.targetId);
-  const [flowChanges, aborts, cancelRequests] = await Promise.all([
-    idsOf("work_order_flow_changes").length
-      ? prisma.workOrderFlowChange.findMany({
-          where: { id: { in: idsOf("work_order_flow_changes") } },
-          select: { id: true, workOrder: { select: { docRef: true } } },
-        })
-      : [],
-    idsOf("work_order_aborts").length
-      ? prisma.workOrderAbort.findMany({
-          where: { id: { in: idsOf("work_order_aborts") } },
-          select: { id: true, workOrder: { select: { docRef: true } } },
-        })
-      : [],
-    idsOf("order_acceptance_cancel_requests").length
-      ? prisma.orderAcceptanceCancelRequest.findMany({
-          where: { id: { in: idsOf("order_acceptance_cancel_requests") } },
-          select: { id: true, acceptance: { select: { docRef: true } } },
-        })
-      : [],
-  ]);
+  const [flowChanges, aborts, cancelRequests, programChanges] =
+    await Promise.all([
+      idsOf("work_order_flow_changes").length
+        ? prisma.workOrderFlowChange.findMany({
+            where: { id: { in: idsOf("work_order_flow_changes") } },
+            select: { id: true, workOrder: { select: { docRef: true } } },
+          })
+        : [],
+      idsOf("work_order_aborts").length
+        ? prisma.workOrderAbort.findMany({
+            where: { id: { in: idsOf("work_order_aborts") } },
+            select: { id: true, workOrder: { select: { docRef: true } } },
+          })
+        : [],
+      idsOf("order_acceptance_cancel_requests").length
+        ? prisma.orderAcceptanceCancelRequest.findMany({
+            where: { id: { in: idsOf("order_acceptance_cancel_requests") } },
+            select: { id: true, acceptance: { select: { docRef: true } } },
+          })
+        : [],
+      // 加工プログラムの変更 — 「製品コード v図面の版 / プログラム名」で出す。
+      idsOf("design_program_changes").length
+        ? prisma.designProgramChange.findMany({
+            where: { id: { in: idsOf("design_program_changes") } },
+            select: {
+              id: true,
+              payload: true,
+              program: { select: { name: true } },
+              designVersion: {
+                select: {
+                  version: true,
+                  item: { select: { code: true, name: true } },
+                },
+              },
+            },
+          })
+        : [],
+    ]);
   const parentDocNumbers = new Map<string, string>([
     ...flowChanges.map(
       (c) =>
@@ -152,6 +171,13 @@ export async function fetchPendingApprovalRequests(): Promise<
         [
           `work_order_aborts:${a.id}`,
           formatDocNumber("WOR", a.workOrder),
+        ] as const,
+    ),
+    ...programChanges.map(
+      (c) =>
+        [
+          `design_program_changes:${c.id}`,
+          designProgramChangeLabel(c),
         ] as const,
     ),
     ...cancelRequests.map(

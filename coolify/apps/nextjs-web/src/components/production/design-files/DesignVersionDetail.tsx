@@ -71,7 +71,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { canDeleteVersion, isVersionEditable } from "@/lib/design-files-core";
-import type { DesignProgramView } from "@/lib/design-programs";
+import type { DesignProgramsData } from "@/lib/design-programs";
 import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import type { ProductItemDef, ResolvedProductType } from "@/lib/product-types";
@@ -115,8 +115,9 @@ export function DesignVersionDetail({
   itemDefs,
   memosByFile = {},
   seriesMemos = [],
-  programs = [],
-  workLocationOptions = [],
+  programs = { programs: [], pendingAdds: [], failed: [] },
+  changeApprovals = {},
+  machineModelOptions = [],
   stepOptions = [],
 }: {
   version: DesignVersionView;
@@ -136,10 +137,12 @@ export function DesignVersionDetail({
   memosByFile?: Record<string, MemoView[]>;
   /** 系列メモ（この版が属する 製品 × 受注元 の全版で共通。製品の設計図画面と同じ 1 件）。 */
   seriesMemos?: MemoView[];
-  /** 加工プログラム（版ごと）。 */
-  programs?: DesignProgramView[];
-  /** 作業場所（= 機械）の選択肢。 */
-  workLocationOptions?: { value: string; label: string }[];
+  /** 加工プログラム（版ごと — 現行版 + 過去の版 + 保留中の申請）。 */
+  programs?: DesignProgramsData;
+  /** 保留中の変更申請ごとの承認状態（申請 id → 状態）。 */
+  changeApprovals?: Record<string, ApprovalActionState>;
+  /** 機種の選択肢（作業場所マスタ MS0D の中の機種）。 */
+  machineModelOptions?: { value: string; label: string }[];
   /** 工程マスタの選択肢。 */
   stepOptions?: { value: string; label: string }[];
 }) {
@@ -409,13 +412,15 @@ export function DesignVersionDetail({
       </Paper>
 
       <Paper p="md" radius="md" withBorder>
+        {/* 加工プログラムは図面の確定とは独立 — 確定後も申請で足し・直しが
+            できる（使用済みの版は新しい版を作る）。canManage だけで決める。 */}
         <DesignProgramsPanel
-          canEdit={canManage && editable}
-          onSaved={() => router.refresh()}
-          programs={programs}
+          canManage={canManage}
+          changeApprovals={changeApprovals}
+          data={programs}
+          machineModelOptions={machineModelOptions}
           stepOptions={stepOptions}
           versionId={v.id}
-          workLocationOptions={workLocationOptions}
         />
       </Paper>
 

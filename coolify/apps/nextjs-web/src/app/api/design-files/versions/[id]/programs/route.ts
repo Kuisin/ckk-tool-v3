@@ -1,24 +1,38 @@
 /**
- * POST /api/design-files/versions/[id]/programs — 版の加工プログラムを丸ごと
- * 置き換える（multipart/form-data）。
+ * POST /api/design-files/versions/[id]/programs — 加工プログラムの変更を
+ * 申請する（multipart/form-data）。1 回 = 1 件（追加 / 直す / 新しい版 /
+ * 削除 / 廃止）。
  *
  * フィールド:
- *   programs   … JSON 配列（lib/design-programs programsPayloadSchema）
- *   <fileField> … 各行の fileField に書いた名前でプログラム本体を 1 枚ずつ
+ *   change … JSON { kind, programId?, content?, note? }
+ *            （content は lib/design-program-changes-core programContentSchema）
+ *   file   … content.file = "new" のときのプログラム本体
  *
+ * 承認設定（MS0B）の「加工プログラムの変更」に段があれば保留して承認依頼、
+ * 無ければその場で当てる（lib/design-programs requestProgramChange）。
+ * 図面の版の確定とは独立 — 確定した版でも申請できる。
  * ファイルを含むので Server Action にしない（本文 1MB の上限 — app CLAUDE.md）。
- * 版が編集できない状態（確定・承認依頼中）なら lib 側が拒否する。
  */
 
 import { NextResponse } from "next/server";
 import { getTranslations } from "next-intl/server";
+import { z } from "zod";
 import { MAX_ATTACHMENT_BYTES } from "@/lib/attachments";
 import { requirePermissionResponse } from "@/lib/authz";
 import type { UploadedFile } from "@/lib/design-files";
 import {
-  programsPayloadSchema,
-  saveDesignPrograms,
-} from "@/lib/design-programs";
+  PROGRAM_CHANGE_KINDS,
+  programContentSchema,
+} from "@/lib/design-program-changes-core";
+import { requestProgramChange } from "@/lib/design-programs";
+
+const changeSchema = z.object({
+  kind: z.enum(PROGRAM_CHANGE_KINDS),
+  programId: z.string().uuid().nullish(),
+  content: programContentSchema.nullish(),
+  note: z.string().trim().max(2000).nullish(),
+});
+
 import { UUID_RE } from "../../../_uploads";
 
 export const dynamic = "force-dynamic";
@@ -53,33 +67,42 @@ export async function POST(
 
   let raw: unknown;
   try {
-    raw = JSON.parse(String(form.get("programs") ?? "[]"));
+    raw = JSON.parse(String(form.get("change") ?? "null"));
   } catch {
     return badRequest(tr("production.designPrograms.invalidPayload"));
   }
-  const parsed = programsPayloadSchema.safeParse(raw);
+  const parsed = changeSchema.safeParse(raw);
   if (!parsed.success) {
     return badRequest(tr("production.designPrograms.invalidPayload"));
   }
 
-  const uploads: Record<string, UploadedFile> = {};
-  for (const row of parsed.data) {
-    if (!row.fileField) continue;
-    const f = form.get(row.fileField);
-    if (!(f instanceof File) || f.size === 0) continue;
+  let upload: UploadedFile | null = null;
+  const f = form.get("file");
+  if (f instanceof File && f.size > 0) {
     if (f.size > MAX_ATTACHMENT_BYTES) {
       return badRequest(
         tr("production.designFilesUpload.isTooLargeMax20mb", { name: f.name }),
       );
     }
-    uploads[row.fileField] = {
-      name: f.name,
-      type: f.type,
-      bytes: await f.arrayBuffer(),
-    };
+    upload = { name: f.name, type: f.type, bytes: await f.arrayBuffer() };
   }
 
-  const result = await saveDesignPrograms(id, parsed.data, uploads);
-  if (!result.ok) return badRequest(result.error);
-  return NextResponse.json({ ok: true });
+  const result = await requestProgramChange({
+    versionId: id,
+    kind: parsed.data.kind,
+    programId: parsed.data.programId ?? null,
+    content: parsed.data.content ?? null,
+    note: parsed.data.note ?? null,
+    upload,
+  });
+  if (!result.ok) {
+    return badRequest(
+      result.error ?? tr("production.designPrograms.applyFailed"),
+    );
+  }
+  return NextResponse.json({
+    ok: true,
+    pending: result.pending === true,
+    applied: result.applied === true,
+  });
 }

@@ -182,19 +182,45 @@ Besides the product screen, the series memo also appears on the following screen
 
 ## Machining programs
 
-The **Machining programs** panel on the version screen holds the programs made from that version. Select **Edit** to start editing; saving returns to the view.
+The **Machining programs** panel on the version screen holds the programs made from that version.
 
-![Drawing version screen. Each machining program lists its machine (work location) and the steps it covers](../../../assets/screenshots/design-version-programs-01.png)
+![Drawing version screen. Each machining program lists its version, machine models and the steps it covers](../../../assets/screenshots/design-version-programs-01.png)
 
 - **One program can cover several steps** (for example roughing and finishing in one program). Steps are picked from the process step master.
-- **The machine is picked from [work locations](/manual/en/operations/masters/work-location/user).** There is no separate machine master — a work location is the machine. Leave it empty for a program that runs on any machine.
+- **A program is assigned to machine models (any number).** Machine models are registered on the **Machine models** tab of [work locations](/manual/en/operations/masters/work-location/user#machine-models), where each machine is given its model. However many machines of the same type you have, one program is enough. Leave it empty for a program that runs on any machine model.
 - The program number (such as O0001) and the file are both optional. You can record only the number and keep the program on the machine.
-- **Only versions that are not yet confirmed (draft or sent back) can be edited.** Programs on a confirmed version do not change; create a new version to change them.
+- **Programs can be added and changed even after the drawing is confirmed.** Confirming freezes only the drawing (files and specification).
+
+### Program versions and "used"
+
+A program has **versions (v1, v2 …)**. **When a step of a work order is started, the program versions shown at that moment are recorded, and those versions become "used".** Each card shows **Used (N steps)** or **Not used**.
+
+| Program state | What you can do |
+|---------------|-----------------|
+| Version not used | **Edit** (change that version in place), **Delete** |
+| Version used | **Create new version** (keep this version and make the next one with the changes), **Retire** |
+
+- A used version cannot be edited. After a new version is created, **steps started from then on get the new version.** Steps already started keep seeing the version they were started with.
+- Earlier versions can be read under **Earlier versions** on the card (their files can be downloaded too).
+- A **retired** program is no longer shown to steps started from then on. Its versions and usage records are kept. A program with a used version cannot be deleted — retire it instead.
+
+### Changes go through approval
+
+Adding, editing, creating a new version, deleting and retiring are all **requests**. If the **Machining program change** flow in [approval settings](/manual/en/operations/masters/approval-setting/user) has steps, the request goes for approval and is applied on the final approval. **With no steps, it is applied at the moment it is requested.**
+
+1. Press **Edit**, **Create new version** or the like on the card (for a new program, **Add program** at the top right).
+2. Enter the content, write what you are changing and why in **Request note**, and press **Submit**.
+3. While it waits, the card shows **Pending approval** and the request. Approvers get approve / send back buttons there (it is also listed in the [pending list](/manual/en/operations/general/my-tasks/user)).
+
+> ⚠️ A step may start while the request waits, making the version used. Then an **Edit** request is not applied and shows as **Request not applied** with the reason. Request again with **Create new version**.
+
+### On the step execution screen
 
 The **step execution screen** of a work order (on the web and on shared devices) lists the programs that cover that step.
 
-- The version used is the one pinned on the work order; otherwise **the latest confirmed version in the work order's ordering-customer series, then the latest confirmed generic version.** It never falls back to another customer's drawings.
-- **Programs for the planned or actual work location come first**, marked **For this machine**. On a shared device, the device's default work location also counts as the machine.
+- The drawing version used is the one pinned on the work order; otherwise **the latest confirmed version in the work order's ordering-customer series, then the latest confirmed generic version.** It never falls back to another customer's drawings.
+- Each program's **latest version** is shown (retired ones are left out). **A step that has started shows the versions recorded when it started.**
+- **Programs for the machine model of the planned or actual machine come first**, marked **For this machine model**. On a shared device, the model of the device's default work location counts the same way.
 - The file can be downloaded right there.
 
 ## Questions and problems

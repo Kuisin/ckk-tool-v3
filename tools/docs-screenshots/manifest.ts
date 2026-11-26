@@ -453,6 +453,9 @@ export const shots: Shot[] = [
     docPage: "operations/production/design-file/user",
     path: "/production/design-files/versions/d9000000-0000-4000-8000-000000000003",
     steps: async (page) => {
+      // 現行 v2 と、開いた「過去の版」の v1（使用済み）を一緒に写す。
+      await page.getByText("O1202").first().waitFor();
+      await page.getByRole("button", { name: /過去の版/ }).first().click();
       await page.getByText("O1201").first().waitFor();
     },
     mask: ['[title$="を拡大"]'],
@@ -1794,6 +1797,26 @@ export const shots: Shot[] = [
       await page.getByText("第二工場").first().click();
       await page.getByRole("tab", { name: "フロアマップ" }).first().click();
       await page.getByRole("button", { name: "フロアを追加" }).first().waitFor();
+    },
+  },
+  {
+    // 「機種」タブ — 機種ごとの機械・プログラムの数（加工プログラムは機種に当てる）
+    id: "master-work-location-models-01",
+    docPage: "operations/masters/work-location/user",
+    path: "/master/work-locations",
+    steps: async (page) => {
+      await page.getByRole("tab", { name: "機種" }).first().click();
+      await page.getByText("NC旋盤 A型").first().waitFor();
+    },
+  },
+  {
+    id: "master-work-location-model-new-01",
+    docPage: "operations/masters/work-location/user",
+    path: "/master/work-locations",
+    steps: async (page) => {
+      await page.getByRole("tab", { name: "機種" }).first().click();
+      await page.getByRole("button", { name: "機種を追加" }).first().click();
+      await page.getByRole("dialog").getByText("メーカー").first().waitFor();
     },
   },
   {

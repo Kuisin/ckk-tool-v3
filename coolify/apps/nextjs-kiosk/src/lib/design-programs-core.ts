@@ -9,8 +9,14 @@
  *
  * 前提:
  *   - 1 本のプログラムは N 工程（工程マスタ process_step_catalog.id）を受け持つ。
- *   - 機械のマスタは無い。**作業場所 (work_locations) が機械そのもの**で、
- *     プログラムの workLocationId は「この機械向け」の印。
+ *   - プログラムは**機種**（machine_models）を 0..N 持つ。0 = 機種を問わない。
+ *     機械（= 作業場所 work_locations）は機種を 0..1 持ち、「この機種用」は
+ *     工程の計画・実績（共有端末では端末の既定も）の作業場所の機種と、
+ *     プログラムの機種が 1 つでも重なること。
+ *   - DB の 1 行 = プログラムの 1 版。programKey が版をまたいだ同一性で、
+ *     新しい作業に出すのは現行版（supersededAt = null）のうち廃止していないもの。
+ *     **開始済みの工程は、開始したときに記録した版**（work_order_step_programs）
+ *     を出す — あとで版が上がっても、その工程が何で始めたかは変わらない。
  */
 
 /** 指示書が見る図面の版を決めるための、版 1 つ分。 */
@@ -71,43 +77,127 @@ export interface ProgramLike {
   id: string;
   name: string;
   sortOrder: number;
-  workLocationId: number | null;
+  /** 対象の機種（machine_models.id）。空 = 機種を問わない。 */
+  machineModelIds: readonly number[];
   /** 受け持つ工程（工程マスタ id）。 */
   processStepIds: readonly number[];
 }
 
 export type ProgramForStep<T extends ProgramLike> = T & {
-  /** 計画・実績の作業場所（= 機械）と一致したか。 */
-  machineMatch: boolean;
+  /** 計画・実績の機械（作業場所）の機種と一致したか。 */
+  modelMatch: boolean;
 };
+
+/** 並べ方: 機種一致が先頭、その中・外は版での並び（sortOrder → 名前）。 */
+function sortForStep<T extends ProgramLike>(
+  rows: ProgramForStep<T>[],
+): ProgramForStep<T>[] {
+  return rows.sort(
+    (a, b) =>
+      Number(b.modelMatch) - Number(a.modelMatch) ||
+      a.sortOrder - b.sortOrder ||
+      a.name.localeCompare(b.name, "ja"),
+  );
+}
+
+function withMatch<T extends ProgramLike>(
+  p: T,
+  models: ReadonlySet<number>,
+): ProgramForStep<T> {
+  return {
+    ...p,
+    modelMatch: p.machineModelIds.some((id) => models.has(id)),
+  };
+}
+
+function modelSet(
+  machineModelIds: readonly (number | null | undefined)[],
+): Set<number> {
+  return new Set(machineModelIds.filter((id): id is number => id != null));
+}
 
 /**
  * この工程で使うプログラムを選んで並べる。
  *
  * - 工程マスタ id がプログラムの受け持ち工程に入っているものだけ。
- * - その工程の計画・実績の作業場所（= 機械）と一致するものが**先頭**。
+ * - その工程の計画・実績の機械の**機種**と一致するものが**先頭**。
  *   一致の中・不一致の中は版での並び（sortOrder → 名前）を保つ。
- *   機械を問わない（workLocationId = null）ものは一致扱いにしない —
- *   「この機械向けに書いた」ものを先に見せるための並びなので。
+ *   機種を問わない（機種が空）ものは一致扱いにしない —
+ *   「この機種向けに書いた」ものを先に見せるための並びなので。
  */
 export function programsForStep<T extends ProgramLike>(
   programs: readonly T[],
   processStepId: number,
-  workLocationIds: readonly (number | null | undefined)[],
+  machineModelIds: readonly (number | null | undefined)[],
 ): ProgramForStep<T>[] {
-  const machines = new Set(
-    workLocationIds.filter((id): id is number => id != null),
+  const models = modelSet(machineModelIds);
+  return sortForStep(
+    programs
+      .filter((p) => p.processStepIds.includes(processStepId))
+      .map((p) => withMatch(p, models)),
   );
-  return programs
-    .filter((p) => p.processStepIds.includes(processStepId))
-    .map((p) => ({
-      ...p,
-      machineMatch: p.workLocationId != null && machines.has(p.workLocationId),
-    }))
-    .sort(
-      (a, b) =>
-        Number(b.machineMatch) - Number(a.machineMatch) ||
-        a.sortOrder - b.sortOrder ||
-        a.name.localeCompare(b.name, "ja"),
-    );
+}
+
+/** 版の情報（DB の 1 行 = 1 版）。 */
+export interface ProgramRevisionLike {
+  programKey: string;
+  revision: number;
+  /** 次の版ができた時刻。null = 現行版。 */
+  supersededAt: Date | string | null;
+  /** 廃止した時刻（現行版に立つ）。 */
+  retiredAt: Date | string | null;
+}
+
+/**
+ * 新しい作業に出す版 — プログラムごとの現行版のうち、廃止していないもの。
+ * 現行版の印（supersededAt = null）が万一 2 行に立っていても、版番号の
+ * 大きいほうを 1 本だけ出す（同じプログラムを 2 回並べない）。
+ */
+export function currentPrograms<T extends ProgramRevisionLike>(
+  rows: readonly T[],
+): T[] {
+  const byKey = new Map<string, T>();
+  for (const r of rows) {
+    if (r.supersededAt != null) continue;
+    const prev = byKey.get(r.programKey);
+    if (!prev || r.revision > prev.revision) byKey.set(r.programKey, r);
+  }
+  return [...byKey.values()].filter((r) => r.retiredAt == null);
+}
+
+/**
+ * 工程実行画面に出すプログラム。
+ *
+ * - **開始済みで、開始時の記録があれば記録した版**（いまの現行版ではない）。
+ *   記録は開始の時点で「この工程に出ていた版」なので、工程での絞り込みは
+ *   済んでいる（並べ方だけ揃える）。
+ * - 未開始、または記録の無い工程（この仕組みより前に始めた工程・開始時に
+ *   1 本も無かった工程）は、現行版から programsForStep で選ぶ。
+ */
+export function programsShownForStep<
+  T extends ProgramLike & ProgramRevisionLike,
+>(
+  input: {
+    started: boolean;
+    recorded: readonly T[];
+    candidates: readonly T[];
+  },
+  processStepId: number,
+  machineModelIds: readonly (number | null | undefined)[],
+): { programs: ProgramForStep<T>[]; fromRecord: boolean } {
+  if (input.started && input.recorded.length > 0) {
+    const models = modelSet(machineModelIds);
+    return {
+      programs: sortForStep(input.recorded.map((p) => withMatch(p, models))),
+      fromRecord: true,
+    };
+  }
+  return {
+    programs: programsForStep(
+      currentPrograms(input.candidates),
+      processStepId,
+      machineModelIds,
+    ),
+    fromRecord: false,
+  };
 }

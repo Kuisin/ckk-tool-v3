@@ -23,6 +23,7 @@
 import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { recordAudit } from "./audit";
 import { prisma } from "./db";
+import { recordStepProgramsTx } from "./design-programs";
 import { jstDateOnly } from "./format";
 import { missingInspectionSheets } from "./inspection-core";
 import { encodeInventoryNote } from "./inventory-note-core";
@@ -401,6 +402,9 @@ export async function startStepExecution(
       },
     });
     if (openBefore > 0) await resegmentOpenActuals(tx, actorId, now);
+    // この工程に出ていた加工プログラムの版を記録する（= 使用済み。Web の
+    // 開始と同じ規則 — 作業セッション行の作業場所の機種まで入れて選ぶ）。
+    await recordStepProgramsTx(tx, stepId, null);
     return c.count;
   });
   if (claimed === 0) {
@@ -536,6 +540,9 @@ export async function resumeStepExecution(
       },
     });
     if (openBefore > 0) await resegmentOpenActuals(tx, actorId, now);
+    // この工程に出ていた加工プログラムの版を記録する（= 使用済み。Web の
+    // 開始と同じ規則 — 作業セッション行の作業場所の機種まで入れて選ぶ）。
+    await recordStepProgramsTx(tx, stepId, null);
     return c.count;
   });
   if (claimed === 0) {

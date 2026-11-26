@@ -826,7 +826,8 @@
     "issuingCompanyNotAllowed": "无法以所选开具公司创建单据。请从所属据点的本公司法人中选择",
     "selectIssuingCompany": "选择开具公司",
     "selectIssuingCompanyDesc": "多家开具公司存在相同编号的单据。请选择要打开的单据的开具公司。",
-    "workOrderAbort": "工单中止"
+    "workOrderAbort": "工单中止",
+    "designProgramChange": "加工程序变更"
   },
   "shell": {
     "appsLabel": "应用",
@@ -3638,28 +3639,85 @@
     },
     "designPrograms": {
       "title": "加工程序",
-      "description": "由此版本编制的加工程序。机器从作业场所（MS0D）中选择，一个程序可对应多个工序。",
+      "description": "由此版本编制的加工程序。选择适用的机型，一个程序可对应多个工序。已被工序使用的程序不直接修改，而是创建新版本。变更需经过审批设置中的「加工程序变更」（未设置审批级则立即生效）。图纸确定后也可变更。",
       "none": "没有加工程序",
       "name": "程序名称",
       "programNumber": "程序编号",
-      "machine": "机器（作业场所）",
-      "machineHint": "在工序执行画面中，与计划或实绩作业场所一致的程序排在最前",
-      "anyMachine": "不限机器",
-      "machineMatch": "本机用",
+      "machineModels": "机型",
+      "machineModelsHint": "留空 = 不限机型。在工序执行画面中，与计划或实绩机器的机型一致的程序排在最前",
+      "anyModel": "不限机型",
+      "modelMatch": "本机型用",
       "steps": "工序",
       "file": "程序文件",
       "chooseFile": "选择文件",
       "noFile": "无文件",
-      "removeFile": "移除文件",
-      "keepFile": "保留文件",
+      "fileKept": "保留当前文件",
+      "currentFile": "当前文件：{name}",
+      "keepFile": "保留",
+      "replaceFile": "替换",
+      "removeFile": "移除",
       "add": "添加程序",
-      "remove": "删除程序",
       "nameRequired": "请输入程序名称",
       "stepsRequired": "请选择工序",
       "fromVersion": "图纸 v{version}",
+      "fromRecord": "显示该工序开始时的版本",
+      "revision": "v{revision}",
+      "used": "已使用（{count} 个工序）",
+      "unused": "未使用",
+      "retired": "已废止",
+      "pendingBadge": "审批中",
+      "actionEdit": "修改",
+      "actionRevise": "创建新版本",
+      "actionDelete": "删除",
+      "actionRetire": "废止",
+      "usedHint": "此版本已被工序使用，不能修改。如需变更请创建新版本（当前版本保持不变）。",
+      "history": "历史版本（{count}）",
+      "supersededAt": "至 {at}",
+      "requestedBy": "{name}・{at} 申请",
+      "requestNote": "申请备注",
+      "requestNoteHint": "变更内容和原因（审批人可见）",
+      "submitRequest": "申请",
+      "requested": "已提交审批",
+      "applied": "已生效",
+      "failedTitle": "未能生效的申请：{kind}「{name}」",
       "invalidPayload": "加工程序内容不正确",
-      "invalidReference": "选择了不存在的工序或作业场所",
-      "savedAudit": "已保存 v{version} 的加工程序（{count} 个）"
+      "invalidReference": "选择了不存在的工序或机型",
+      "fileMissing": "请选择程序文件",
+      "alreadyPending": "此程序已有待审批的申请",
+      "changeNotFound": "未找到加工程序变更申请",
+      "applyFailed": "未能应用加工程序变更",
+      "requestedAudit": "申请加工程序{kind}「{name}」",
+      "appliedAudit": "已应用图纸 v{version} 的加工程序「{name}」{kind}",
+      "applyFailedAudit": "未能应用加工程序变更：{error}",
+      "rejectedAudit": "退回加工程序变更（理由：{reason}）",
+      "kind": {
+        "ADD": "添加",
+        "EDIT": "修改",
+        "REVISE": "新版本",
+        "DELETE": "删除",
+        "RETIRE": "废止"
+      },
+      "modalTitle": {
+        "ADD": "添加加工程序",
+        "EDIT": "修改「{name}」",
+        "REVISE": "创建「{name}」的新版本（v{revision}）",
+        "DELETE": "删除「{name}」",
+        "RETIRE": "废止「{name}」"
+      },
+      "modalHint": {
+        "ADD": "申请新程序（v1）。",
+        "EDIT": "直接修改尚未被工序使用的版本。",
+        "REVISE": "当前版本已被工序使用，予以保留，并以变更内容创建下一个版本。之后开始的工序将显示新版本。",
+        "DELETE": "所有版本均未被工序使用，删除整个程序。",
+        "RETIRE": "已有版本被工序使用，不能删除。废止后，之后开始的工序不再显示（版本与使用记录保留）。"
+      },
+      "premise": {
+        "notFound": "未找到作为依据的程序",
+        "notCurrent": "作为依据的版本已不是最新（其他变更已先生效）",
+        "retired": "此程序已废止",
+        "used": "此版本已被工序使用，不能直接修改。请创建新版本",
+        "keyUsed": "已有版本被工序使用，不能删除。请废止"
+      }
     },
     "wipRecording": {
       "title": "入库的在制品",
@@ -7119,6 +7177,32 @@
       "updateFailed": "本公司法人更新失败",
       "deleteFailed": "本公司法人删除失败",
       "codeInvalidChars": "法人编号不能包含“/”“~”和空格"
+    },
+    "machineModels": {
+      "tabLocations": "作业场所",
+      "tabModels": "机型",
+      "column": "机型",
+      "add": "添加机型",
+      "addTitle": "添加机型",
+      "editTitle": "编辑机型",
+      "deleteTitle": "删除机型",
+      "description": "把同型号机器归为一类的名称。每台机器（作业场所）选择一个机型，加工程序按机型分配。",
+      "empty": "尚未登记机型。请通过「添加机型」登记。",
+      "maker": "制造商",
+      "usageHead": "机器 / 程序",
+      "usage": "机器 {machines} 台 / 程序 {programs} 个",
+      "codePlaceholder": "例：NC-LATHE-A",
+      "namePlaceholder": "例：数控车床 A 型",
+      "none": "无机型",
+      "locationHint": "加工程序通过此机型对应到机器",
+      "created": "已添加机型",
+      "updated": "已更新机型",
+      "deleted": "已删除机型「{name}」",
+      "deleteConfirm": "要删除机型「{name}」吗？",
+      "inUseWarning": "有 {machines} 台机器和 {programs} 个程序在使用（不能删除 — 请考虑停用）。",
+      "inUseCannotDelete": "有 {machines} 台机器和 {programs} 个程序在使用，不能删除（请停用）",
+      "saveFailed": "未能保存机型",
+      "deleteFailed": "未能删除机型"
     }
   },
   "manual": {
@@ -9742,7 +9826,8 @@
       "wip_states": "加工状态",
       "items": "品目",
       "webhook_endpoints": "Webhook 接收地址",
-      "own_companies": "本公司法人"
+      "own_companies": "本公司法人",
+      "machine_models": "机型"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -10962,6 +11047,18 @@
       "sortOrder": {
         "label": "显示顺序 / 启用 / 备注",
         "summary": "显示顺序、是否作为选项显示，以及补充说明。"
+      },
+      "machineModel": {
+        "label": "机型",
+        "summary": "这台机器的机型。加工程序按机型分配，因此此处所选机型的程序会在工序执行画面中作为「本机型用」排在最前。区域或工作台请留空。"
+      },
+      "machineModelCode": {
+        "label": "机型编码 / 名称",
+        "summary": "机型的管理编号和名称，机器和加工程序都从这里选择。"
+      },
+      "machineModelMaker": {
+        "label": "制造商",
+        "summary": "机型的制造商（可选）。"
       }
     },
     "storageLocation": {

@@ -333,7 +333,10 @@ export const FIELD_HELP = {
     code: {},
     type: {},
     capacity: {},
+    machineModel: {},
     sortOrder: {},
+    machineModelCode: {},
+    machineModelMaker: {},
   },
   storageLocation: {
     plant: {},

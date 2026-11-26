@@ -227,6 +227,17 @@ async function lookupEntityNamesForTable(
       }
       break;
     }
+    case "machine_models": {
+      const rows = await prisma.machineModel.findMany({
+        where: { id: { in: ids.map(Number) } },
+        select: { id: true, name: true },
+      });
+      for (const r of rows) {
+        const n = jaOf(r.name);
+        if (n) out.set(String(r.id), n);
+      }
+      break;
+    }
     case "own_companies": {
       const rows = await prisma.ownCompany.findMany({
         where: { id: { in: ids.map(Number) } },

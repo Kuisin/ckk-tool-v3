@@ -5,6 +5,7 @@
  * 準備（fixtures/kiosk-wo-list.sql）:
  *   #9101 承認済み・本社工場 → 出る / #9102 承認済み・第二工場だけ → 出ない
  *   #9001 段加工 に工程納期（来月 20 日）、#9001 が使う図面の版に加工プログラム 2 本
+ *   （マシニング V5 用 / NC旋盤 A型 用 — 端末の作業場所 NC-01 は NC旋盤 A型）
  * シードのまま: #9001 進行中（出る）/ #9002 承認依頼中・#9003 下書き・#9004 完了（出ない）
  *
  * 各手順の最後の 1 枚（「手順の終わり」）は Web 側の同じ対象の画面 — 共有端末と見比べるため。
@@ -171,7 +172,7 @@ export const kioskWoList: Scenario = {
       },
     },
     {
-      caption: "工程（段加工）を開く — 印字番号・工程納期と、この工程の加工プログラムが出る。機械が一致する方が先頭",
+      caption: "工程（段加工）を開く — 印字番号・工程納期と、この工程の加工プログラムが出る。機種が一致する方が先頭",
       run: async (s) => {
         await kiosk.getByRole("button", { name: /^4\. 段加工/ }).click();
         await kiosk.waitForURL(new RegExp(`/steps/${STEP_9001_MACHINING}`), { timeout: 20_000 });
@@ -188,13 +189,13 @@ export const kioskWoList: Scenario = {
         const flat = cards.map((c) => c.replace(/\s+/g, " "));
         s.check("加工プログラムが 2 本出る", cards.length === 2, flat);
         s.check(
-          "先頭は端末の作業場所（NC旋盤 1号機）用 — 「この機械用」の印つき",
-          /段加工 仕上げ（NC旋盤）/.test(flat[0] ?? "") && /この機械用/.test(flat[0] ?? "") && /O1001/.test(flat[0] ?? "") && /機械: NC旋盤 1号機/.test(flat[0] ?? ""),
+          "先頭は端末の作業場所（NC旋盤 1号機 = NC旋盤 A型）の機種用 — 「この機種用」の印つき",
+          /段加工 仕上げ（NC旋盤）/.test(flat[0] ?? "") && /この機種用/.test(flat[0] ?? "") && /O1001/.test(flat[0] ?? "") && /機種: NC旋盤 A型/.test(flat[0] ?? ""),
           flat[0],
         );
         s.check(
-          "2 本目は別の機械（マシニング 1号機）用 — 印なし",
-          /段加工 荒取り（マシニング）/.test(flat[1] ?? "") && !/この機械用/.test(flat[1] ?? "") && /機械: マシニング 1号機/.test(flat[1] ?? ""),
+          "2 本目は別の機種（マシニング V5）用 — 印なし",
+          /段加工 荒取り（マシニング）/.test(flat[1] ?? "") && !/この機種用/.test(flat[1] ?? "") && /機種: マシニング V5/.test(flat[1] ?? ""),
           flat[1],
         );
         s.check("備考が出る（主軸 3000rpm…）", /主軸 3000rpm/.test(flat[0] ?? ""), flat[0]);

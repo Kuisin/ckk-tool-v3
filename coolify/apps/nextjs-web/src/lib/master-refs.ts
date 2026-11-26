@@ -35,6 +35,7 @@ export type MasterTarget =
   | "MaterialType"
   | "StorageLocation"
   | "WorkLocation"
+  | "MachineModel"
   | "ApprovalGroup";
 
 /**
@@ -54,6 +55,7 @@ export type MasterKind =
   | "storageLocation"
   | "workLocation"
   | "workLocationGroup"
+  | "machineModel"
   | "approvalGroup";
 
 export const KIND_TARGET: Record<MasterKind, MasterTarget> = {
@@ -66,6 +68,7 @@ export const KIND_TARGET: Record<MasterKind, MasterTarget> = {
   storageLocation: "StorageLocation",
   workLocation: "WorkLocation",
   workLocationGroup: "WorkLocation",
+  machineModel: "MachineModel",
   approvalGroup: "ApprovalGroup",
 };
 
@@ -206,8 +209,14 @@ export const MASTER_REFERENCES: Record<
     ref("OrderLine", "shippingWorkLocationId"),
     // CASCADE — 工程の許可作業場所リンクが黙って消える
     ref("ProcessStepWorkLocation", "workLocationId"),
-    // SET NULL — 加工プログラムの対象機械（作業場所 = 機械）が黙って外れる
-    ref("DesignProgram", "workLocationId"),
+  ],
+  // 機種（作業場所マスタ MS0D の中）。
+  MachineModel: [
+    // SET NULL — 機械の機種が黙って外れ、「この機種用」の並びが崩れる。
+    ref("WorkLocation", "machineModelId"),
+    // RESTRICT — 加工プログラムの対象機種。消すとプログラムが黙って
+    // 「機種を問わない」に広がるので、DB も止めるが先に同じ文言で止める。
+    ref("DesignProgramMachineModel", "machineModelId"),
   ],
   ApprovalGroup: [ref("InspectionTemplate", "approvalGroupId")],
 };

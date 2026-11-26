@@ -44,6 +44,7 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   product_process_routes: true,
   defect_types: true,
   work_location_groups: true,
+  machine_models: true,
   tax_categories: true,
   charge_items: true,
   // 率の行は「2026-10-01 から 10%」であって名前を持たない。推測で区分名を

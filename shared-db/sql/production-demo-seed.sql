@@ -800,23 +800,37 @@ UPDATE app.work_order_steps SET due_date = '2026-07-28'
 -- ── 加工プログラム（設計図の版ごと）────────────────────────────────────────
 -- デモ商事向けの系列（9001 × デモ商事 v1）= 指示書 #9001 が使う版。ここに置くと、
 -- 設計図の版の画面・指示書の工程の実行画面・共有端末の工程画面に出る。
--- 1 本のプログラムが複数の工程を受け持てる（切断 + センタレス）。機械 = 作業場所。
+-- 1 本のプログラムが複数の工程を受け持てる（切断 + センタレス）。対象は機種
+-- （masters-demo-seed の machine_models — NC旋盤 1・2 号機は同じ NC旋盤 A型）。
 -- ファイルは付けない（番号だけ控えて実体は機械側、という使い方）。
--- 作業場所（masters-demo-seed）が要るので、設計図の版を入れる sales-demo-seed ではなくここに置く。
-INSERT INTO app.design_programs (id, design_version_id, name, program_number,
-  work_location_id, notes, sort_order, created_by, created_at, updated_at)
-SELECT v.id, 'd9000000-0000-4000-8000-000000000003'::uuid, v.name, v.program_number,
-       (SELECT id FROM app.work_locations WHERE code = v.location), v.notes, v.sort_order,
+--
+-- 版と使用記録のデモ:
+--   - 段加工（荒・仕上げ）は v1 が #9001 の段加工（進行中）で使われ、そのあと
+--     v2 を作った形 — 版の画面では v2 が現行版、v1 が「過去の版」に「使用済み」で
+--     並び、#9001 の段加工の実行画面には**開始したときの v1** が出続ける。
+--   - 素材の切断・外径は #9001 の切断（完了）で使用済み。
+--   - 段加工（マシニング用）は未使用（その場で直せる・削除できる）。
+INSERT INTO app.design_programs (id, design_version_id, program_key, revision,
+  superseded_at, name, program_number, notes, sort_order, created_by,
+  created_at, updated_at)
+SELECT v.id, 'd9000000-0000-4000-8000-000000000003'::uuid, v.program_key, v.revision,
+       v.superseded_at::timestamptz, v.name, v.program_number, v.notes, v.sort_order,
        'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
-       '2026-07-05T13:00:00+09', '2026-07-05T13:00:00+09'
+       v.created_at::timestamptz, v.created_at::timestamptz
   FROM (VALUES
-    ('da000000-0000-4000-8000-000000000001'::uuid, '素材の切断・外径', 'O1001', 'NC-01',
-     '突き出し 65mm。チャック圧は低めに。', 0),
-    ('da000000-0000-4000-8000-000000000002'::uuid, '段加工（荒・仕上げ）', 'O1201', 'NC-01',
-     '仕上げ代 0.05mm。', 1),
-    ('da000000-0000-4000-8000-000000000003'::uuid, '段加工（2 号機用）', 'O2201', 'NC-02',
-     NULL, 2)
-  ) AS v(id, name, program_number, location, notes, sort_order)
+    ('da000000-0000-4000-8000-000000000001'::uuid, 'da000000-0000-4000-8000-000000000001'::uuid, 1,
+     NULL, '素材の切断・外径', 'O1001', '突き出し 65mm。チャック圧は低めに。', 0,
+     '2026-07-05T13:00:00+09'),
+    ('da000000-0000-4000-8000-000000000002'::uuid, 'da000000-0000-4000-8000-000000000002'::uuid, 1,
+     '2026-07-22T10:00:00+09', '段加工（荒・仕上げ）', 'O1201', '仕上げ代 0.05mm。', 1,
+     '2026-07-05T13:00:00+09'),
+    ('da000000-0000-4000-8000-000000000004'::uuid, 'da000000-0000-4000-8000-000000000002'::uuid, 2,
+     NULL, '段加工（荒・仕上げ）', 'O1202', '仕上げ代 0.03mm に変更（v2）。', 1,
+     '2026-07-22T10:00:00+09'),
+    ('da000000-0000-4000-8000-000000000003'::uuid, 'da000000-0000-4000-8000-000000000003'::uuid, 1,
+     NULL, '段加工（マシニング用）', 'O2201', NULL, 2,
+     '2026-07-05T13:00:00+09')
+  ) AS v(id, program_key, revision, superseded_at, name, program_number, notes, sort_order, created_at)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO app.design_program_steps (program_id, process_step_id)
@@ -825,9 +839,32 @@ SELECT v.program_id, c.id
     ('da000000-0000-4000-8000-000000000001'::uuid, 'CUTTING'),
     ('da000000-0000-4000-8000-000000000001'::uuid, 'CENTERLESS'),
     ('da000000-0000-4000-8000-000000000002'::uuid, 'STEP_MACHINING'),
+    ('da000000-0000-4000-8000-000000000004'::uuid, 'STEP_MACHINING'),
     ('da000000-0000-4000-8000-000000000003'::uuid, 'STEP_MACHINING')
   ) AS v(program_id, code)
   JOIN app.process_step_catalog c ON c.code = v.code
+ON CONFLICT DO NOTHING;
+
+INSERT INTO app.design_program_machine_models (program_id, machine_model_id)
+SELECT v.program_id, mm.id
+  FROM (VALUES
+    ('da000000-0000-4000-8000-000000000001'::uuid, 'NC-LATHE-A'),
+    ('da000000-0000-4000-8000-000000000002'::uuid, 'NC-LATHE-A'),
+    ('da000000-0000-4000-8000-000000000004'::uuid, 'NC-LATHE-A'),
+    ('da000000-0000-4000-8000-000000000003'::uuid, 'MC-V5')
+  ) AS v(program_id, code)
+  JOIN app.machine_models mm ON mm.code = v.code
+ON CONFLICT DO NOTHING;
+
+-- 使用記録（工程を開始したときに出ていた版）。
+INSERT INTO app.work_order_step_programs (step_id, program_id, recorded_at)
+VALUES
+  ('dc011000-0000-4000-8000-000000000002'::uuid, 'da000000-0000-4000-8000-000000000001'::uuid,
+   '2026-07-16T09:10:00+09'),
+  ('dc011000-0000-4000-8000-000000000004'::uuid, 'da000000-0000-4000-8000-000000000002'::uuid,
+   '2026-07-21T09:00:00+09'),
+  ('dc011000-0000-4000-8000-000000000004'::uuid, 'da000000-0000-4000-8000-000000000003'::uuid,
+   '2026-07-21T09:00:00+09')
 ON CONFLICT DO NOTHING;
 
 COMMIT;

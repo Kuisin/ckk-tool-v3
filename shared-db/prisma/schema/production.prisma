@@ -404,6 +404,27 @@ model WorkOrderAbort {
   @@schema("app")
 }
 
+// 工程を開始したときに出ていた加工プログラムの版（1 工程 × N 版）。
+//
+// 「使用済み」の唯一の根拠 — 行が 1 つでもある版はその場で書き換えない
+// （新しい版を作る）。開始済みの工程の実行画面はいまの現行版ではなく、ここに
+// 記録された版を出す（後から版が上がっても、その工程が何を見て始めたかは
+// 変わらない）。Web と共有端末の両方の開始処理が書く。
+// 版の側は RESTRICT — 使った版の行を消させない。
+model WorkOrderStepProgram {
+  stepId     String   @map("step_id") @db.Uuid
+  programId  String   @map("program_id") @db.Uuid
+  recordedAt DateTime @default(now()) @map("recorded_at") @db.Timestamptz(6)
+
+  step    WorkOrderStep @relation("WorkOrderStepPrograms", fields: [stepId], references: [id], onDelete: Cascade)
+  program DesignProgram @relation(fields: [programId], references: [id], onDelete: Restrict)
+
+  @@id([stepId, programId])
+  @@index([programId])
+  @@map("work_order_step_programs")
+  @@schema("app")
+}
+
 // 検査工程ステップに紐付く検査表テンプレート（複数可）。
 // 旧: 指示書単位（work_order_inspection_templates）— 検査工程が複数ある
 // 指示書でどの検査表がどの工程のものか曖昧だったため、工程単位へ移行した。
@@ -514,6 +535,7 @@ model WorkOrderStep {
   plans               WorkOrderStepPlan[]
   actuals             WorkOrderStepActual[]
   inspectionTemplates WorkOrderStepInspectionTemplate[]
+  programUses         WorkOrderStepProgram[] @relation("WorkOrderStepPrograms")
 
   @@index([workOrderId, sortOrder])
   @@index([status])

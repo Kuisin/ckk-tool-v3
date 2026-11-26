@@ -8,10 +8,14 @@
 -- 工程画面で確かめるもの:
 --   #9001 段加工 に工程納期（未来）               → 工程カードに「工程納期」
 --   デモ商事の系列 v1（確定済み — #9001 が使う版）に加工プログラム 2 本
---     MC-01 用（段加工 + 段加工検査）/ NC-01 用（段加工）→ NC-01 用が先頭
+--     マシニング V5 用（段加工 + 段加工検査）/ NC旋盤 A型 用（段加工）
+--     → 端末・計画・実績の機械 NC-01 は NC旋盤 A型 なので NC旋盤 A型 用が先頭
 BEGIN;
 
 -- デモシードが見本として入れている加工プログラムを外す（この 1 本が置く 2 本だけを見る）。
+-- 使用記録（work_order_step_programs）は版を RESTRICT で守っているので先に外す。
+-- 記録が無くなった #9001 段加工（開始済み）は、記録の無い工程として現行版を出す。
+DELETE FROM app.work_order_step_programs;
 DELETE FROM app.design_programs;
 
 
@@ -48,16 +52,16 @@ UPDATE app.work_order_steps
 
 -- 加工プログラム — #9001（顧客 = デモ商事）が見る版 = デモ商事の系列の確定済み最新（v1）。
 -- 並び（sort_order）は MC-01 用が先。工程画面では機械が一致する NC-01 用が先頭に来るはず。
-INSERT INTO app.design_programs (id, design_version_id, name, program_number, work_location_id,
+INSERT INTO app.design_programs (id, design_version_id, program_key, revision, name, program_number,
   notes, sort_order, created_by, created_at, updated_at)
 VALUES
   ('d6000000-0000-4000-8000-000000000001', 'd9000000-0000-4000-8000-000000000003',
-   '段加工 荒取り（マシニング）', 'O2001',
-   (SELECT id FROM app.work_locations WHERE code = 'MC-01'), NULL, 0,
+   'd6000000-0000-4000-8000-000000000001', 1,
+   '段加工 荒取り（マシニング）', 'O2001', NULL, 0,
    'a0b1c2d3-0000-4000-8000-000000005107', now(), now()),
   ('d6000000-0000-4000-8000-000000000002', 'd9000000-0000-4000-8000-000000000003',
-   '段加工 仕上げ（NC旋盤）', 'O1001',
-   (SELECT id FROM app.work_locations WHERE code = 'NC-01'), '主軸 3000rpm。首下は客先指定の寸法に注意', 1,
+   'd6000000-0000-4000-8000-000000000002', 1,
+   '段加工 仕上げ（NC旋盤）', 'O1001', '主軸 3000rpm。首下は客先指定の寸法に注意', 1,
    'a0b1c2d3-0000-4000-8000-000000005107', now(), now());
 
 INSERT INTO app.design_program_steps (program_id, process_step_id)
@@ -65,6 +69,11 @@ VALUES
   ('d6000000-0000-4000-8000-000000000001', (SELECT id FROM app.process_step_catalog WHERE code = 'STEP_MACHINING')),
   ('d6000000-0000-4000-8000-000000000001', (SELECT id FROM app.process_step_catalog WHERE code = 'STEP_INSPECTION')),
   ('d6000000-0000-4000-8000-000000000002', (SELECT id FROM app.process_step_catalog WHERE code = 'STEP_MACHINING'));
+
+INSERT INTO app.design_program_machine_models (program_id, machine_model_id)
+VALUES
+  ('d6000000-0000-4000-8000-000000000001', (SELECT id FROM app.machine_models WHERE code = 'MC-V5')),
+  ('d6000000-0000-4000-8000-000000000002', (SELECT id FROM app.machine_models WHERE code = 'NC-LATHE-A'));
 
 COMMIT;
 
