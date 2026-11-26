@@ -498,6 +498,57 @@ async function assignLotNumbersTx(
 }
 
 /**
+ * 下書きの保存で、指示書の割当（work_order_order_lines）を入力どおりに揃える。
+ * 消えた明細の行は消し、残る明細の行は**更新で**数量と並びを直し、増えた明細は
+ * 作る。消して作り直さないのは、割当の作成時に DB が 1 度だけ振る印字番号の
+ * 分割番号（marking_split）を保存のたびに進めないため — 同じ明細の割当は
+ * 同じ番号のまま。数量を直して全量 ⇄ 一部が入れ替わっても番号は作成時のまま
+ * （刷った番号を後から動かさない。トリガーが変更を拒否する）。
+ */
+async function syncWorkOrderAllocationsTx(
+  tx: Prisma.TransactionClient,
+  workOrderId: string,
+  allocations: readonly { orderLineId: string; quantity: number }[],
+): Promise<void> {
+  await tx.workOrderOrderLine.deleteMany({
+    where: {
+      workOrderId,
+      orderLineId: { notIn: allocations.map((a) => a.orderLineId) },
+    },
+  });
+  // upsert は使わない — Prisma は INSERT … ON CONFLICT で実行することがあり、
+  // そのとき衝突より先に BEFORE INSERT トリガーが走って分割番号を 1 つ
+  // 空払い出ししてしまう（番号は欠けるだけで重複はしないが、無駄に進む）。
+  const existing = new Set(
+    (
+      await tx.workOrderOrderLine.findMany({
+        where: { workOrderId },
+        select: { orderLineId: true },
+      })
+    ).map((l) => l.orderLineId),
+  );
+  for (const [i, a] of allocations.entries()) {
+    if (existing.has(a.orderLineId)) {
+      await tx.workOrderOrderLine.update({
+        where: {
+          workOrderId_orderLineId: { workOrderId, orderLineId: a.orderLineId },
+        },
+        data: { quantity: a.quantity, sortOrder: i },
+      });
+    } else {
+      await tx.workOrderOrderLine.create({
+        data: {
+          workOrderId,
+          orderLineId: a.orderLineId,
+          quantity: a.quantity,
+          sortOrder: i,
+        },
+      });
+    }
+  }
+}
+
+/**
  * 共通の工程 create 行 → work_order_steps 行（workHours → planned_work_hours、
  * 検査表はネスト作成で工程に紐付ける）。
  */
@@ -1166,9 +1217,10 @@ export async function updateWorkOrder(
         },
       });
       await tx.workOrderStep.deleteMany({ where: { workOrderId: prior.id } });
-      await tx.workOrderOrderLine.deleteMany({
-        where: { workOrderId: prior.id },
-      });
+      // 割当は消して作り直さない — 同じ明細の行は更新で残す。印字番号の
+      // 分割番号（work_order_order_lines.marking_split）は割当の作成時に DB が
+      // 1 度だけ決めるので、作り直すと下書きを保存するたびに番号が進んでしまう。
+      await syncWorkOrderAllocationsTx(tx, prior.id, v.allocations);
       // 投入する仕掛品も選び直し（下書きなので予約はまだ無い）。
       await tx.workOrderWipDraw.deleteMany({
         where: { workOrderId: prior.id },
@@ -1198,13 +1250,6 @@ export async function updateWorkOrder(
           history: toHistoryJson(
             appendHistory(prior.history, entry("UPDATE", actor)),
           ),
-          orderLineLinks: {
-            create: v.allocations.map((a, i) => ({
-              orderLineId: a.orderLineId,
-              quantity: a.quantity,
-              sortOrder: i,
-            })),
-          },
           steps: { create: toWorkOrderStepCreates(built.creates) },
         },
         select: { steps: { select: { id: true, processStepId: true } } },

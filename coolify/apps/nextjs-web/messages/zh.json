@@ -441,6 +441,8 @@
     "markingPerLine": "按明细",
     "markingRange": "{first} 〜 {last}",
     "markingNotIssued": "未编号（订单确定时编号）",
+    "markingPerSplit": "按分割",
+    "markingSplit": "分割 {split}",
     "orderLineNumber": "订单明细编号",
     "notPlanned": "未安排",
     "forStock": "备库存",
@@ -2967,7 +2969,9 @@
       "whatChangedInThisVersion": "此版本变更了什么",
       "deleteTheDrawing": "删除图纸",
       "seriesMemo": "系列备忘",
-      "seriesMemoHint": "该产品与订货方的所有图纸版本共用的备忘（客户习惯、加工注意事项等）。各版本的变更点请写在该版本的备忘中。"
+      "seriesMemoHint": "该产品与订货方的所有图纸版本共用的备忘（客户习惯、加工注意事项等）。各版本的变更点请写在该版本的备忘中。",
+      "seriesMemoReadOnlyHint": "本工单所用图纸（{series}）各版本共用的备忘。修改请在图纸中进行。",
+      "seriesMemoOpen": "在图纸中打开"
     },
     "inventory": {
       "reservationsCount": "预留（{count}）",
@@ -8139,6 +8143,8 @@
       "notAllocatedAllocateViaTheStock": "未分配（通过库存核对分配）",
       "shipped": "已出货",
       "thereIsNoWorkOrderFor": "此订单明细尚无工单",
+      "markingSplits": "分开制作的工单（各分割的编号）",
+      "markingSplitOf": "{docNumber}（{quantity} 支）",
       "allocatedQuantity": "分配数量",
       "thereIsNoDeliveryOrderFor": "此订单明细尚无出货单",
       "stockCheckResult": "库存核对结果",

@@ -10,6 +10,9 @@
  *   - 2 明細は連続した別々の基数になる（SEQUENCE がちょうど 2 つ進む）
  *   - 注文明細の詳細（SA25）・指示書の詳細・指示書ストリップ・共有端末に同じ番号が出る
  *   - 一度振った基数は DB が変えさせない
+ *   - 明細の一部だけの指示書（分割）は分割番号を持ち、A{基数}{分割番号}-001 から
+ *     割当数量ぶん（A2000001-001 〜 -050）。番号は割当の作成時に DB が振って凍結し、
+ *     下書きの保存し直しでも進まず、消しても再利用しない
  *
  * デモシードの確定済み明細が 200000 / 200001 を使っているので、この 1 本が
  * 作る明細は「その続き」になる（何番かは決め打ちせず、SEQUENCE から読む）。
@@ -160,20 +163,115 @@ export const markingNumber: Scenario = {
       },
     },
     {
-      caption: "分割した指示書と共有端末 — 範囲は指示書の数量ではなく注文明細の受注数量で出る",
+      caption: "この明細の指示書は明細全部（3 本）なので分割ではない — 分割番号 0・印字番号は明細の基数のまま",
       run: async (s) => {
-        // シードの指示書 #9003 は、受注 150 本の明細（基数 200000）から 10 本だけを割り当てたもの。
+        const split = s.sql(
+          `select l.marking_split || '|' || ol.marking_split_issued from app.work_order_order_lines l
+             join app.order_lines ol on ol.id = l.order_line_id
+            where l.order_line_id = '${ctx.lineIds[0]}'`,
+        );
+        s.check("DB: 割当の分割番号 0（明細全部）・明細の払い出し数 0", split === "0|0", split);
+      },
+    },
+    {
+      caption: "分割した指示書 — 明細の一部だけの指示書は分割番号を持ち、A{基数}{分割番号}-001 から割当数量ぶん",
+      run: async (s) => {
+        // シードの受注 150 本の明細（基数 200000）は 3 本の指示書に分けてある:
+        //   #9001 = 50 本 / #9003 = 10 本 / #9004 = 50 本（割当の作成順に分割 1, 2, 3）
+        const splits = s.sqlRows(
+          `select w.work_order_number || '=' || l.quantity || ':' || l.marking_split from app.work_order_order_lines l
+             join app.work_orders w on w.id = l.work_order_id
+            where l.order_line_id = 'e0000000-0000-4000-8000-000000000001' order by l.marking_split`,
+        );
+        s.check("DB: 3 本の割当に分割 1, 2, 3（作成順）", splits.join(",") === "9001=50:1,9003=10:2,9004=50:3", splits);
+        const issued = s.sql("select marking_split_issued from app.order_lines where id = 'e0000000-0000-4000-8000-000000000001'");
+        s.check("DB: 明細の払い出し数は 3", issued === "3", issued);
+
         await s.goto("/production/work-orders/9003");
         await s.see("印字番号");
-        await s.checkVisible("割当 10 本の指示書でも、範囲は明細の 150 本ぶん（A200000-001 〜 A200000-150）", "A200000-001 〜 A200000-150");
-        await s.shot("分割した指示書 #9003 の印字番号");
+        await s.checkVisible("#9003（10 本・分割 2）: A2000002-001 〜 A2000002-010", "A2000002-001 〜 A2000002-010");
+        await s.checkVisible("#9003: 分割ごとの番号 A2000002", "A2000002", { exact: true });
+        await s.checkVisible("#9003: 「分割 2」の印", "分割 2", { exact: true });
+        await s.checkHidden("#9003: 明細全体の範囲（〜 A200000-150）はもう出ない", "A200000-001 〜 A200000-150");
+        await s.shot("分割した指示書 #9003 の印字番号（分割 2）");
 
-        // 共有端末: 進行中の指示書 #9001（同じ明細）を開く。
+        await s.goto("/production/work-orders/9001");
+        await s.see("印字番号");
+        await s.checkVisible("#9001（50 本・分割 1）: A2000001-001 〜 A2000001-050", "A2000001-001 〜 A2000001-050");
+
+        // 注文明細の詳細（SA25）: 分割ごとの範囲と指示書が並ぶ。
+        const lineRef = s.sql("select line_ref from app.order_lines where id = 'e0000000-0000-4000-8000-000000000001'");
+        await s.goto(`/sales/order-lines/${encodeURIComponent(lineRef.replace("/", "~"))}`);
+        await s.see("印字番号");
+        await s.checkVisible("SA25: 明細全体 A200000-001 〜 A200000-150", "A200000-001 〜 A200000-150");
+        await s.checkVisible("SA25: 「分けて作った指示書」の見出し", "分けて作った指示書（分割ごとの番号）");
+        for (const [split, range] of [
+          [1, "A2000001-001 〜 A2000001-050"],
+          [2, "A2000002-001 〜 A2000002-010"],
+          [3, "A2000003-001 〜 A2000003-050"],
+        ] as const) {
+          await s.checkVisible(`SA25: 分割 ${split} の範囲 ${range}`, range);
+        }
+        await s.checkVisible("SA25: 分割ごとに指示書番号と割当数量（例: …（10 本））", /^WOR-\S+（10 本）$/);
+        await s.shot("注文明細（受注 150 本）— 分割ごとの印字番号と指示書");
+
+        // 共有端末: 指示書 #9001（分割 1）を開く。
         const kiosk = await s.openKiosk("/wo-scan/9001");
         const text = (await kiosk.locator("body").innerText()).replace(/\s+/g, " ");
-        s.check("共有端末の指示書画面に「印字番号 A200000-001 〜 A200000-150（明細ごと A200000）」", text.includes("印字番号 A200000-001 〜 A200000-150（明細ごと A200000）"), (text.match(/印字番号.{0,60}/) ?? [`印字番号が無い @ ${kiosk.url()}`])[0]);
-        await s.shot("共有端末の指示書画面（印字番号）", kiosk);
+        s.check("共有端末の指示書画面に「印字番号 A2000001-001 〜 A2000001-050（分割 1・分割ごと A2000001）」", text.includes("印字番号 A2000001-001 〜 A2000001-050（分割 1・分割ごと A2000001）"), (text.match(/印字番号.{0,60}/) ?? [`印字番号が無い @ ${kiosk.url()}`])[0]);
+        await s.shot("共有端末の指示書画面（印字番号・分割 1）", kiosk);
         await kiosk.close();
+      },
+    },
+    {
+      caption: "残り 40 本で指示書をもう 1 本作る（分割 4）— 下書きを保存し直しても番号は進まず、DB は分割番号を変えさせない",
+      run: async (s) => {
+        const p = s.page;
+        await s.goto("/production/work-orders/new?orderLine=e0000000-0000-4000-8000-000000000001");
+        await s.see("工程・作業時間");
+        const locations = p.getByRole("combobox", { name: "作業場所" });
+        const n = await locations.count();
+        for (let i = 0; i < n; i++) await s.pick(locations.nth(i), /./);
+        await s.click(p.getByRole("button", { name: "保存", exact: true }));
+        await s.waitForUrl(WORK_ORDER_URL);
+        const wo = new URL(p.url()).pathname.split("/").pop() ?? "";
+        const alloc = () =>
+          s.sql(
+            `select l.quantity || ':' || l.marking_split || '|' || ol.marking_split_issued from app.work_order_order_lines l
+               join app.work_orders w on w.id = l.work_order_id join app.order_lines ol on ol.id = l.order_line_id
+              where w.work_order_number = ${Number(wo)}`,
+          );
+        const created = alloc();
+        s.check("DB: 残り 40 本の割当は分割 4（払い出し数 4）", created === "40:4|4", created);
+        await s.see("印字番号");
+        await s.checkVisible("指示書の詳細: A2000004-001 〜 A2000004-040", "A2000004-001 〜 A2000004-040");
+
+        // 下書きを編集画面から保存し直す — 割当を消して作り直さないので番号は同じ。
+        await s.goto(`/production/work-orders/${wo}/edit`);
+        await s.see("工程・作業時間");
+        await s.click(p.getByRole("button", { name: "保存", exact: true }));
+        await s.waitForUrl(new RegExp(`/production/work-orders/${wo}$`));
+        const resaved = alloc();
+        s.check("下書きを保存し直しても分割 4 のまま・払い出し数も 4 のまま", resaved === "40:4|4", resaved);
+
+        // DB の約束: 分割番号は変えられない / 数量だけを直すのは通るが番号は動かない。
+        let changeError = "";
+        try {
+          s.sqlExec(`update app.work_order_order_lines set marking_split = 9 where order_line_id = 'e0000000-0000-4000-8000-000000000001' and marking_split = 4`);
+        } catch (e) {
+          changeError = String((e as { stderr?: string }).stderr ?? e);
+        }
+        s.check("分割番号の書き換えは DB が拒否する", /immutable once issued/.test(changeError), changeError.replace(/\s+/g, " ").slice(0, 160) || "拒否されなかった");
+        s.sqlExec(`update app.work_order_order_lines set quantity = 30 where order_line_id = 'e0000000-0000-4000-8000-000000000001' and marking_split = 4`);
+        s.check("数量だけを直すと通り、分割番号は 4 のまま", alloc() === "30:4|4", alloc());
+
+        // 割当を消しても番号は再利用しない（次の分割は 5）。
+        s.sqlExec(`delete from app.work_order_order_lines where order_line_id = 'e0000000-0000-4000-8000-000000000001' and marking_split = 4`);
+        s.sqlExec(
+          `insert into app.work_order_order_lines (work_order_id, order_line_id, quantity, sort_order)
+           select id, 'e0000000-0000-4000-8000-000000000001', 30, 0 from app.work_orders where work_order_number = ${Number(wo)}`,
+        );
+        s.check("割当を消して作り直すと次の番号（分割 5）— 4 は再利用しない", alloc() === "30:5|5", alloc());
       },
     },
     {

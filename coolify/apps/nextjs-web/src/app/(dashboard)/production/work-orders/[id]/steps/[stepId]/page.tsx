@@ -4,6 +4,7 @@ import { StepExecutionView } from "@/components/production/step-execution/StepEx
 import { appLabelForKey } from "@/lib/app-list";
 import { requireAppRead } from "@/lib/authz-page";
 import { fetchStepPrograms } from "@/lib/design-programs";
+import { fetchStepSeriesMemo } from "@/lib/design-series-memo";
 import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
 import { fetchStepExecution, resolveWorkOrderIdParam } from "../../../data";
@@ -55,7 +56,16 @@ export default async function WorkOrderStepExecutionPage({
     decodeURIComponent(stepId),
   );
   if (!data) notFound();
-  const programs = await fetchStepPrograms(data.step.id);
+  const [programs, seriesMemo] = await Promise.all([
+    fetchStepPrograms(data.step.id),
+    fetchStepSeriesMemo(data.step.id),
+  ]);
 
-  return <StepExecutionView data={data} programs={programs} />;
+  return (
+    <StepExecutionView
+      data={data}
+      programs={programs}
+      seriesMemo={seriesMemo}
+    />
+  );
 }

@@ -36,6 +36,7 @@
     "plannedQty": "计划数量 {n} 支",
     "material": "材料: {name}",
     "marking": "打标编号 {first} 〜 {last}（按明细 {perLine}）",
+    "markingSplit": "打标编号 {first} 〜 {last}（分割 {split}・按分割 {perLine}）",
     "progress": "已完成 {done} / {total} 道工序",
     "stepsTitle": "工序",
     "noSteps": "该工单没有工序",
@@ -117,6 +118,7 @@
       "plannedHours": "计划 {h}h",
       "lot": "批次 {t}",
       "marking": "打标编号 {first} 〜 {last}（按明细 {perLine}）",
+      "markingSplit": "打标编号 {first} 〜 {last}（分割 {split}・按分割 {perLine}）",
       "dueDate": "工序交期 {d}"
     },
     "state": {
@@ -421,6 +423,11 @@
       "machineMatch": "本机用",
       "download": "下载",
       "noFile": "无文件"
+    },
+    "seriesMemo": {
+      "title": "系列备忘",
+      "hint": "图纸（{series}）各版本共用的备忘",
+      "generic": "通用"
     },
     "wip": {
       "title": "入库的在制品",

@@ -27,33 +27,30 @@ export const workOrderMarkingPrint: Scenario = {
   fixtures: ["scenarios/fixtures/work-order-marking-print.sql"],
   steps: [
     {
-      caption: "指示書 #9001 の詳細 — 割当の注文明細の印字番号（1 本ずつの範囲と、明細ごとの番号）が出る",
+      caption: "指示書 #9001 の詳細 — 受注 150 本の明細から 50 本を分けた指示書なので、分割の番号（A2000001-001 〜 -050）が出る",
       run: async (s) => {
         await s.goto("/production/work-orders/9001");
         await s.see("工程ワークフロー");
         const line = s.sql(
-          `select ol.marking_base || '|' || ol.quantity || '|' || l.quantity from app.work_order_order_lines l
+          `select ol.marking_base || '|' || ol.quantity || '|' || l.quantity || '|' || l.marking_split from app.work_order_order_lines l
              join app.order_lines ol on ol.id = l.order_line_id join app.work_orders w on w.id = l.work_order_id
             where w.work_order_number = 9001`,
         );
-        s.check("前提（DB）: 基番 200000・受注 150 本・この指示書への割当 50 本", line === "200000|150|50", line);
+        s.check("前提（DB）: 基番 200000・受注 150 本・この指示書への割当 50 本・分割 1", line === "200000|150|50|1", line);
         const field = await markingField(s);
-        s.check("印字番号: 1 本ずつ A200000-001 〜 A200000-150", !!field && field.includes("1 本ずつ") && field.includes("A200000-001 〜 A200000-150"), field);
-        s.check("印字番号: 明細ごと A200000", !!field && /明細ごと\s?A200000$/.test(field), field);
+        s.check("印字番号: 分割 1・1 本ずつ A2000001-001 〜 A2000001-050（割当 50 本ぶん）", !!field && field.includes("分割 1") && field.includes("1 本ずつ") && field.includes("A2000001-001 〜 A2000001-050"), field);
+        s.check("印字番号: 分割ごと A2000001", !!field && /分割ごと\s?A2000001$/.test(field), field);
         const sharing = s.sqlRows(
-          `select w.work_order_number || '=' || l.quantity from app.work_order_order_lines l
+          `select w.work_order_number || '=' || l.quantity || ':' || l.marking_split from app.work_order_order_lines l
              join app.work_orders w on w.id = l.work_order_id
             where l.order_line_id = 'e0000000-0000-4000-8000-000000000001' order by 1`,
         );
-        s.check(
-          "（観察・合否なし）同じ明細を分けた指示書どうしで、出る範囲は同じか",
-          true,
-          `同じ — 範囲は注文明細の受注数量（150 本）ぶんで、割当数量（${sharing.join(" / ")}）では区切られない。どの指示書が何番から何番を刻むかは画面からは決まらない`,
-        );
+        s.check("同じ明細を分けた指示書は、それぞれ別の分割番号（#9001=1 / #9003=2 / #9004=3）", sharing.join(",") === "9001=50:1,9003=10:2,9004=50:3", sharing);
+        await s.shot("指示書 #9001 — 分割 1 の印字番号");
       },
     },
     {
-      caption: "受注 1200 本の明細（#9002）は枝番が 4 桁に広がる。注文明細の割当が無い指示書（#9101）には印字番号の欄が出ない",
+      caption: "受注 1200 本の明細（#9002・明細全部の割当 = 分割なし）は枝番が 4 桁に広がる。注文明細の割当が無い指示書（#9101）には印字番号の欄が出ない",
       run: async (s) => {
         await s.goto("/production/work-orders/9002");
         await s.see("工程ワークフロー");
@@ -85,7 +82,7 @@ export const workOrderMarkingPrint: Scenario = {
         await s.see("指示書ストリップ（3枚）", { exact: false });
         const strips = (await p.locator(".wo-strip-body").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim());
         s.check("帯が 3 本", strips.length === 3, strips);
-        s.check("#9001 の帯: 印字番号 A200000-001 〜 A200000-150 ／ A200000", /印字番号 A200000-001 〜 A200000-150 ／ A200000/.test(strips[0] ?? ""), strips[0]);
+        s.check("#9001 の帯（分割 1）: 印字番号 A2000001-001 〜 A2000001-050 ／ A2000001", /印字番号 A2000001-001 〜 A2000001-050 ／ A2000001/.test(strips[0] ?? ""), strips[0]);
         s.check("#9002 の帯: 印字番号 A200001-0001 〜 A200001-1200 ／ A200001", /印字番号 A200001-0001 〜 A200001-1200 ／ A200001/.test(strips[1] ?? ""), strips[1]);
         s.check("#9101 の帯（在庫向け）: 印字番号の行が無い", !!strips[2] && !strips[2].includes("印字番号") && strips[2].includes("在庫向け"), strips[2]);
         await s.shot("ストリップ印刷の画面（3 本）");
@@ -101,7 +98,7 @@ export const workOrderMarkingPrint: Scenario = {
           ]);
           s.shots.push({ file: "print-strips.jpg", label: "ブラウザ印刷で刷った 1 ページ目（A4）" });
           const flat = text.replace(/\s+/g, " ");
-          s.check("刷った紙に #9001 の印字番号が載る", flat.includes("A200000-001") && flat.includes("A200000-150"), flat.slice(0, 400));
+          s.check("刷った紙に #9001 の印字番号（分割 1）が載る", flat.includes("A2000001-001") && flat.includes("A2000001-050"), flat.slice(0, 400));
           s.check("刷った紙に画面用の「印刷」ボタンは載らない", !/指示書ストリップ（3枚）/.test(flat), flat.slice(0, 120));
           const pages = execFileSync("gs", ["-q", "-dNODISPLAY", "-dNOSAFER", "-c", `(${pdfPath}) (r) file runpdfbegin pdfpagecount = quit`], { encoding: "utf8" }).trim();
           s.check("3 本は A4 1 枚に収まる", pages === "1", pages);

@@ -441,6 +441,8 @@
     "markingPerLine": "Per line",
     "markingRange": "{first} – {last}",
     "markingNotIssued": "Not numbered (numbered when the order is confirmed)",
+    "markingPerSplit": "Per split",
+    "markingSplit": "Split {split}",
     "orderLineNumber": "Order line number",
     "notPlanned": "Not planned",
     "forStock": "For stock",
@@ -2967,7 +2969,9 @@
       "whatChangedInThisVersion": "What changed in this version",
       "deleteTheDrawing": "Delete the drawing",
       "seriesMemo": "Series memo",
-      "seriesMemoHint": "A memo shared by every version of this product and ordering customer (customer habits, machining notes). Write what changed in each version on that version."
+      "seriesMemoHint": "A memo shared by every version of this product and ordering customer (customer habits, machining notes). Write what changed in each version on that version.",
+      "seriesMemoReadOnlyHint": "Shared by every version of the drawing this work order uses ({series}). Edit it in Drawings.",
+      "seriesMemoOpen": "Open in Drawings"
     },
     "inventory": {
       "reservationsCount": "Reservations ({count})",
@@ -8139,6 +8143,8 @@
       "notAllocatedAllocateViaTheStock": "Not allocated (allocate via the stock check)",
       "shipped": "Shipped",
       "thereIsNoWorkOrderFor": "There is no work order for this order line yet",
+      "markingSplits": "Work orders made separately (numbers per split)",
+      "markingSplitOf": "{docNumber} ({quantity} pcs)",
       "allocatedQuantity": "Allocated quantity",
       "thereIsNoDeliveryOrderFor": "There is no delivery order for this order line yet",
       "stockCheckResult": "Stock check result",

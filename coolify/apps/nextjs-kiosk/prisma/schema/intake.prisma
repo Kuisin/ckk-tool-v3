@@ -285,6 +285,12 @@ model OrderLine {
   /// 1 本ずつ刻むなら A{base}-001..A{base}-{数量}、明細ごとなら A{base} —
   /// どちらも導けるので「どちらで刻むか」の列は持たない（lib/marking-number.ts）。
   markingBase Int?            @unique @map("marking_base")
+  /// 印字番号の分割番号をいくつ払い出したか（work_order_order_lines.marking_split
+  /// の採番カウンタ）。**DB が書く** — 割当の INSERT で BEFORE トリガー
+  /// work_order_order_lines_marking_split がこの行を +1 して値を受け取る
+  /// （行ロックで並行の払い出しが直列になる）。割当を消しても戻さないので、
+  /// 一度使った分割番号は二度と出ない。アプリはこの列を書かない。
+  markingSplitIssued Int    @default(0) @map("marking_split_issued")
   isLocked    Boolean         @default(false) @map("is_locked") // 承認依頼中ロック
   endUserBpId String?         @map("end_user_bp_id") @db.Uuid // 最終需要家は行ごとに異なり得る
   confirmedAt DateTime?       @map("confirmed_at") @db.Timestamptz(6)

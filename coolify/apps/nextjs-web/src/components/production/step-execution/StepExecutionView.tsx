@@ -52,6 +52,7 @@ import {
 } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DefectRecordForm } from "@/components/production/DefectRecordForm";
+import { SeriesMemoReadOnly } from "@/components/production/design-files/SeriesMemoSection";
 import { StepProgramsPanel } from "@/components/production/design-files/StepProgramsPanel";
 import {
   InspectionApprovalPanel,
@@ -72,6 +73,7 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { StepProgramsView } from "@/lib/design-programs";
+import type { SeriesMemoView } from "@/lib/design-series-memo";
 import { missingInspectionSheets } from "@/lib/inspection-core";
 import { localizedQuantityLabels } from "@/lib/workflow-core-labels";
 import type { StepExecutionData } from "./model";
@@ -82,10 +84,13 @@ const BASE_PATH = "/production/work-orders";
 export function StepExecutionView({
   data,
   programs,
+  seriesMemo,
 }: {
   data: StepExecutionData;
   /** この工程の加工プログラム（指示書の図面の版から）。 */
   programs?: StepProgramsView;
+  /** この指示書が使う図面系列のメモ（加工プログラムと同じ規則で選んだ系列）。 */
+  seriesMemo?: SeriesMemoView | null;
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -707,6 +712,9 @@ export function StepExecutionView({
 
       {/* ── 加工プログラム（図面の版から。機械一致が先頭） ── */}
       {programs && <StepProgramsPanel data={programs} />}
+
+      {/* ── 系列メモ（図面の全版で共通。読むだけ — 書き直しは設計図で） ── */}
+      {seriesMemo && <SeriesMemoReadOnly {...seriesMemo} />}
 
       {/* ── 作業計画 / 実績（分割記録・担当者・日付/時刻） ── */}
       <StepPlanActualPanel

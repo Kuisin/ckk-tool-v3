@@ -43,6 +43,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { KioskStepProgram } from "@/lib/design-programs";
+import type { KioskSeriesMemo } from "@/lib/design-series-memo";
 import { fillMessage } from "@/lib/i18n";
 import { missingInspectionSheets } from "@/lib/inspection-core";
 import { QR_KINDS, qrKeyOfKind } from "@/lib/qr-payload";
@@ -68,6 +69,7 @@ import { StepInspectionApprovalPanel } from "./StepInspectionApprovalPanel";
 import { StepInspectionForm } from "./StepInspectionForm";
 import { StepProgramsSection } from "./StepProgramsSection";
 import { isQuantityFormValid, StepQuantityForm } from "./StepQuantityForm";
+import { StepSeriesMemoSection } from "./StepSeriesMemoSection";
 import {
   EMPTY_WIP_DRAFT,
   type KioskWipRecordingView,
@@ -103,6 +105,8 @@ type Props = {
   markings?: MarkingView[];
   /** この工程の加工プログラム（機械一致が先頭）。 */
   programs?: KioskStepProgram[];
+  /** 図面系列のメモ（加工プログラムと同じ規則で選んだ系列。無ければ null）。 */
+  seriesMemo?: KioskSeriesMemo | null;
   /**
    * 仕掛品として在庫に置く分を記録するための材料（経路の候補・ブランクの寸法・
    * 工程名）。再研磨の指示書では null。
@@ -121,6 +125,7 @@ export function StepExecutionView({
   backParams = "",
   initialWorkLocationCode = null,
   programs = [],
+  seriesMemo = null,
   wipRecording = null,
 }: Props) {
   const router = useRouter();
@@ -306,7 +311,12 @@ export function StepExecutionView({
             <Text c="dimmed">{step.productName}</Text>
             {markings.map((mk) => (
               <Text ff="monospace" key={mk.perLine} size="sm">
-                {fillMessage(m.steps.card.marking, mk)}
+                {fillMessage(
+                  mk.split > 0
+                    ? m.steps.card.markingSplit
+                    : m.steps.card.marking,
+                  mk,
+                )}
               </Text>
             ))}
             <Group gap="md" mt="xs">
@@ -356,6 +366,9 @@ export function StepExecutionView({
 
         {/* 加工プログラム — 指示書の図面の版から、この工程の分（機械一致が先頭） */}
         <StepProgramsSection programs={programs} stepId={step.stepId} />
+
+        {/* 系列メモ — 図面（製品 × 受注元）の全版で共通の注意。読むだけ */}
+        <StepSeriesMemoSection memo={seriesMemo} />
 
         {/* 作業場所の制限 — この端末の場所では実行できない工程 */}
         {locationBlocked && !working && (

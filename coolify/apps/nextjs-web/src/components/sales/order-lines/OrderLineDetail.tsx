@@ -74,6 +74,7 @@ import {
 } from "@/lib/enum-labels";
 // type-only import — lib/inventory は server-only（型はバンドルされない）。
 import type { StockCheckResult } from "@/lib/inventory";
+import { allocationMarkingRange, isMarkingSplit } from "@/lib/marking-number";
 import { isLineStockCheckable } from "@/lib/order-line-core";
 import { statusLabel } from "@/lib/status-map";
 import type { OrderLine } from "./model";
@@ -275,6 +276,25 @@ export function OrderLineDetail({
     .filter((w) => w.status !== "CANCELLED")
     .reduce((sum, w) => sum + w.allocatedQuantity, 0);
   const remainingToAllocate = Math.max(0, order.quantity - activeAllocated);
+  // 分けて作った指示書（分割番号付きの割当）の印字番号 — 分割番号順。
+  const markingBase = order.markingBase;
+  const markingSplits =
+    markingBase == null
+      ? []
+      : order.workOrders
+          .filter((w) => isMarkingSplit(w.markingSplit))
+          .map((w) => ({
+            workOrderNumber: w.workOrderNumber,
+            docNumber: w.docNumber,
+            quantity: w.allocatedQuantity,
+            ...allocationMarkingRange({
+              base: markingBase,
+              split: w.markingSplit,
+              lineQuantity: order.quantity,
+              allocatedQuantity: w.allocatedQuantity,
+            }),
+          }))
+          .sort((a, b) => (a.split ?? 0) - (b.split ?? 0));
   const woCreatable =
     !order.isLocked &&
     (order.status === "CONFIRMED" || order.status === "IN_PRODUCTION") &&
@@ -516,7 +536,40 @@ export function OrderLineDetail({
         <FieldValue
           label={tr("common.markingNumber")}
           value={
-            <MarkingNumber base={order.markingBase} quantity={order.quantity} />
+            <Stack gap={6}>
+              <MarkingNumber
+                base={order.markingBase}
+                quantity={order.quantity}
+              />
+              {/* 分けて作った指示書は、それぞれ分割の接頭辞で刻む
+                  （A{base}{分割番号}-001..）。どの指示書が何番かをここで読む。 */}
+              {order.markingBase != null && markingSplits.length > 0 && (
+                <Stack gap={2}>
+                  <Text c="dimmed" size="xs">
+                    {tr("sales.orderLines.markingSplits")}
+                  </Text>
+                  {markingSplits.map((s) => (
+                    <Group gap={6} key={s.workOrderNumber} wrap="wrap">
+                      <Badge color="grape" size="xs" variant="light">
+                        {tr("common.markingSplit", { split: s.split ?? 0 })}
+                      </Badge>
+                      <DocNumber>
+                        {tr("common.markingRange", {
+                          first: s.first,
+                          last: s.last,
+                        })}
+                      </DocNumber>
+                      <Text c="dimmed" size="xs">
+                        {tr("sales.orderLines.markingSplitOf", {
+                          docNumber: s.docNumber,
+                          quantity: s.quantity,
+                        })}
+                      </Text>
+                    </Group>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
           }
         />
         <FieldValue
@@ -651,7 +704,7 @@ export function OrderLineDetail({
               message={tr("sales.orderLines.thereIsNoWorkOrderFor")}
             />
           ) : (
-            <Table.ScrollContainer minWidth={640}>
+            <Table.ScrollContainer minWidth={820}>
               <Table highlightOnHover>
                 <Table.Thead>
                   <Table.Tr>
@@ -663,6 +716,7 @@ export function OrderLineDetail({
                     <Table.Th ta="right">
                       {tr("common.plannedQuantity")}
                     </Table.Th>
+                    <Table.Th>{tr("common.markingNumber")}</Table.Th>
                     <Table.Th>{tr("common.approvalStatus")}</Table.Th>
                     <Table.Th>{tr("common.status")}</Table.Th>
                   </Table.Tr>
@@ -691,6 +745,26 @@ export function OrderLineDetail({
                       </Table.Td>
                       <Table.Td className="tabular-nums" ta="right">
                         {wo.plannedQuantity}
+                      </Table.Td>
+                      <Table.Td>
+                        {order.markingBase == null ? (
+                          "—"
+                        ) : (
+                          <DocNumber>
+                            {(() => {
+                              const r = allocationMarkingRange({
+                                base: order.markingBase,
+                                split: wo.markingSplit,
+                                lineQuantity: order.quantity,
+                                allocatedQuantity: wo.allocatedQuantity,
+                              });
+                              return tr("common.markingRange", {
+                                first: r.first,
+                                last: r.last,
+                              });
+                            })()}
+                          </DocNumber>
+                        )}
                       </Table.Td>
                       <Table.Td>
                         <StatusBadge

@@ -54,7 +54,7 @@ import {
   parseStoredSamples,
   samplingSpecFromRow,
 } from "@/lib/inspection-core";
-import { markingRange } from "@/lib/marking-number";
+import { allocationMarkingRange } from "@/lib/marking-number";
 import { sumActualWorkHours } from "@/lib/step-work-hours";
 import { loadWipRecording } from "@/lib/wip-recording";
 import { wipSizeLabel } from "@/lib/wip-stock-core";
@@ -518,19 +518,27 @@ export interface WorkOrderStripView {
   createdAt: string;
 }
 
-/** 帯に載せる印字番号 — 採番済みの先頭明細 + 残り件数。 */
+/**
+ * 帯に載せる印字番号 — 採番済みの先頭明細 + 残り件数。分割した割当なら
+ * 分割の接頭辞で割当数量ぶん（lib/marking-number.ts allocationMarkingRange）。
+ */
 function stripMarking(
   links: readonly {
+    quantity: number;
+    markingSplit: number | null;
     orderLine: { quantity: number; markingBase: number | null };
   }[],
 ): WorkOrderStripView["marking"] {
   const numbered = links.filter((l) => l.orderLine.markingBase != null);
-  const head = numbered[0]?.orderLine;
-  if (!head || head.markingBase == null) return null;
-  return {
-    ...markingRange(head.markingBase, head.quantity),
-    moreLines: numbered.length - 1,
-  };
+  const head = numbered[0];
+  if (!head || head.orderLine.markingBase == null) return null;
+  const { split: _split, ...range } = allocationMarkingRange({
+    base: head.orderLine.markingBase,
+    split: head.markingSplit,
+    lineQuantity: head.orderLine.quantity,
+    allocatedQuantity: head.quantity,
+  });
+  return { ...range, moreLines: numbered.length - 1 };
 }
 
 /**
@@ -554,6 +562,8 @@ export async function fetchWorkOrderStrips(
       materialItem: { select: { code: true } },
       orderLineLinks: {
         select: {
+          quantity: true,
+          markingSplit: true,
           orderLine: {
             select: {
               lineRef: true,
@@ -764,6 +774,7 @@ export async function fetchWorkOrder(
       status: l.orderLine.status,
       lotNumber: l.orderLine.lotNumber,
       markingBase: l.orderLine.markingBase,
+      markingSplit: l.markingSplit,
     })),
     createdByName: r.createdByUser?.displayName ?? null,
     productName: localized(r.productItem.name as LocalizedText | null),

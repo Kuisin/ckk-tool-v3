@@ -89,6 +89,7 @@ import {
 } from "./DesignSpecFields";
 import { DesignSpecView } from "./DesignSpecView";
 import type { DesignVersionView } from "./model";
+import { SeriesMemoEditor } from "./SeriesMemoSection";
 import {
   appendFileSlots,
   EMPTY_FILE_SLOTS,
@@ -113,6 +114,7 @@ export function DesignVersionDetail({
   productTypes,
   itemDefs,
   memosByFile = {},
+  seriesMemos = [],
   programs = [],
   workLocationOptions = [],
   stepOptions = [],
@@ -132,6 +134,8 @@ export function DesignVersionDetail({
   itemDefs: ProductItemDef[];
   /** ファイル id → メモ（リッチテキスト。確定後も書ける — 凍るのは図面の中身だけ）。 */
   memosByFile?: Record<string, MemoView[]>;
+  /** 系列メモ（この版が属する 製品 × 受注元 の全版で共通。製品の設計図画面と同じ 1 件）。 */
+  seriesMemos?: MemoView[];
   /** 加工プログラム（版ごと）。 */
   programs?: DesignProgramView[];
   /** 作業場所（= 機械）の選択肢。 */
@@ -414,6 +418,14 @@ export function DesignVersionDetail({
           workLocationOptions={workLocationOptions}
         />
       </Paper>
+
+      {/* 系列メモ — 版をまたいで共通（製品の設計図画面の系列の枠と同じ 1 件）。
+          指示書の「設計図」リンクから版へ来た人にも見えるようにここにも置く。 */}
+      <SeriesMemoEditor
+        customerBpId={v.customerBpId}
+        itemId={v.itemId}
+        memos={seriesMemos}
+      />
 
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
