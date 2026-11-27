@@ -17,7 +17,7 @@ The computer reads the order form sent by the customer (a PDF or a scanned image
 - If a row differs from the price list **without** an override, **the screen tells you**.
 - After you get your manager's approval, you can make the **注文明細 (order lines)** all at once — one per line item.
 - If there is no order form file, you can register it by typing it in.
-- From a deployed order acceptance you can go straight on to **creating the delivery order**.
+- From a confirmed order acceptance you can go straight on to **creating the delivery order**.
 - When an order is withdrawn, you can **request cancellation of the whole order acceptance** (it goes through approval).
 
 Use this when an order form arrives from a customer by fax or email.
@@ -27,10 +27,10 @@ Use this when an order form arrives from a customer by fax or email.
 - **注文請書 (order acceptance)** … the record of one order received from a customer. This is what this app handles.
 - **注文明細 (order line)** … the internal slip made for each line item of an order acceptance. It is the basis for manufacturing and shipping.
 - **明細 (line item)** … one row inside the order. It says which product and how many pieces.
-- **注文確定 (deploy)** … the action of making the order lines from an order acceptance all at once.
+- **注文確定 (confirm)** … the action of making the order lines from an order acceptance all at once.
 - **価格差異 (price difference)** … when the unit price on a row that has no override differs from the price on the price list.
 - **単価を上書き (override the unit price)** … taking that row's unit price off the price list and setting it yourself. It is a deliberate price, so it is not a price difference (the approver still sees it).
-- **取込中 (importing) / 下書き (draft) / 承認依頼中 (pending approval) / 承認済 (approved) / 確定済 (deployed) / アーカイブ (archived) / キャンセル (cancelled)** … where the order acceptance stands now.
+- **取込中 (importing) / 下書き (draft) / 承認依頼中 (pending approval) / 承認済 (approved) / 確定 (confirmed) / アーカイブ (archived) / キャンセル (cancelled)** … where the order acceptance stands now.
 
 ## Before you start
 
@@ -60,7 +60,7 @@ flowchart TD
   imp("取込中<br/>Importing"):::gray -->|"Reading finished"| draft("下書き<br/>Draft"):::blue
   draft -->|"Request approval"| req("承認依頼中<br/>Pending approval"):::yellow
   req -->|"Approve"| appr("承認済<br/>Approved"):::green
-  appr -->|"Confirm"| confd("確定済<br/>Confirmed"):::teal
+  appr -->|"Confirm"| confd("確定<br/>Confirmed"):::teal
   confd -->|"Archive (optional)"| arch("アーカイブ<br/>Archived"):::dark
   req -.->|"Send back"| draft
   confd -.-> ol["Order lines are created"]
@@ -107,11 +107,12 @@ Put the file in the import folder on the server and it is imported automatically
 1. Press「**手入力で新規**」(new, typed in) at the top right of the list screen.
 2. Choose the「**顧客**」(customer). This one is required. Choosing it fills「**営業担当**」(sales rep) with that customer's primary rep automatically — change it if needed.
 3. Fill in「**顧客注文書番号**」(customer order form number),「**注文日**」(order date) and so on, as far as you know them.
-4. Choose the「**配送方法**」(delivery method) — normal delivery or direct to user. With direct to user, the「**エンドユーザー**」(end user) must also be chosen.
-5. If the destination or the site in charge is decided, also choose「**出荷先**」(ship-to),「**担当拠点**」(assigned plant) and「**出荷作業場所**」(shipping work location). All of them are optional and can be entered later.
-6. On the line item row, enter「**製品**」(product),「**種別**」(type) and「**数量**」(quantity). You can enter the unit price later.
-7. To add another row, press「**明細を追加**」(add line item).
-8. Press「**下書きを作成**」(create draft).
+4. On the line item row, enter「**製品**」(product),「**種別**」(type) and「**数量**」(quantity). You can enter the unit price later.
+5. To set where it goes, press「**配送**」(delivery) on that row to open it.
+6. Choose the「**配送方法**」(delivery method) — normal delivery or direct to user. With direct to user, the「**エンドユーザー**」(end user) must also be chosen.
+7. If they are decided, also choose「**出荷先**」(ship-to),「**担当拠点**」(assigned site) and「**出荷作業場所**」(shipping work location). All of them are optional and can be entered later.
+8. To add another row, press「**明細を追加**」(add line item).
+9. Press「**下書きを作成**」(create draft).
 
 ![Order acceptance manual entry screen](../../../assets/screenshots/order-acceptance-new-01.png)
 
@@ -121,16 +122,15 @@ When the reading finishes, the status becomes「**下書き**」(draft). This is
 
 A draft opens in **view mode** (read only). Switch to「**編集**」(edit) only when you need to change something.
 
-1. Click the row you want in the list. What was read is listed for you to compare against the original order form.
+1. Click the row you want in the list. What was read is listed for you to compare against the original order form. The result of the reading is shown at the top of the screen. A green「**全項目を特定できました**」(every field was identified) means every field was matched to the master data. An orange「**確認が必要な項目 N 件**」(N fields need checking) means some were not — press「**内訳を見る**」(view the breakdown) to list the fields that were not in the master data (「**マスタに無い**」) or could not be read (「**読み取れず**」).
 2. To change anything, press「**編集**」(edit) at the top right of the screen. The screen turns into input fields.
 3. In「**基本情報**」(basic information), check the customer, the customer order form number and the order date.
 4. If no customer is set, search for one in the「**顧客**」(customer) field and choose it. Choosing the customer fills「**営業担当**」(sales rep) with that customer's primary rep automatically — change it if needed.
 5. If the order follows on from a quote, search for the original quote in the「**見積書（任意）**」(quote, optional) field and choose it (with a customer chosen, only that customer's quotes are listed).
-6. Check the「**配送方法**」(delivery method). With direct to user, the「**エンドユーザー**」(end user) must also be chosen.
-7. Choose「**出荷先**」(ship-to),「**担当拠点**」(assigned plant) and「**出荷作業場所**」(shipping work location) if needed. They are optional.
-8. In「**明細**」(line items), check the product, type, quantity, unit price and delivery date.
-9. On a row with an orange「**製品未特定**」(product not identified) badge, choose the correct product in the「**製品**」(product) field. If candidates are offered under the field as「**もしかして**」(did you mean), one press fills it.
-10. Press「**保存**」(save) at the very bottom of the screen. Saving returns you to view mode.
+6. In「**明細**」(line items), check the product, type, quantity, unit price and delivery date.
+7. On a row with an orange「**製品未特定**」(product not identified) badge, choose the correct product in the「**製品**」(product) field. If candidates are offered under the field as「**もしかして**」(did you mean), one press fills it.
+8. Open「**配送**」(delivery) on each row and check the「**配送方法**」(delivery method). With direct to user, the「**エンドユーザー**」(end user) must also be chosen. Choose「**出荷先**」(ship-to),「**担当拠点**」(assigned site) and「**出荷作業場所**」(shipping work location) too if needed (optional).
+9. Press「**保存**」(save) at the very bottom of the screen. Saving returns you to view mode.
 
 To stop editing, press「**キャンセル**」(cancel); if you changed something you are asked to confirm, and「**変更を破棄**」(discard changes) returns you to view mode. A draft that has no line items yet (for example one you just created by hand) opens in edit mode straight away.
 
@@ -144,16 +144,16 @@ At the top of the screen, 「**製品**」 (products), 「**明細数 / 合計�
 
 > ⚠️ The total amount adds up **only the lines that have a unit price**. When some lines are still empty it says 「**単価未入力 N 件を除く**」 (excluding N lines with no unit price) — fill those in and it becomes the full amount.
 
-> 💡 On a row that has a price list, the unit price **comes from the price list and cannot be edited as-is** (the blue「**価格表 ￥…**」badge also shows which quantity tier applies). To accept it at a different price, turn on「**単価を上書き**」(override the unit price) on the right of that row and then edit it. An overridden row shows a violet「**上書き**」badge next to the price-list price, and「**単価の上書き N 件**」(N overridden unit prices) appears at the top of the screen.
+> 💡 On a row that has a price list, the unit price **comes from the price list and cannot be edited as-is** (the blue「**価格表 ￥…**」badge also shows which quantity tier applies). To accept it at a different price, turn on「**単価を上書き**」(override the unit price) on the right of that row and then edit it. An overridden row shows a violet「**上書き（価格表 ￥…）**」(overridden, price list ￥…) badge, and「**単価の上書き N 件**」(N overridden unit prices) appears at the top of the screen.
 >
-> The orange「**価格差異**」(price difference) badge marks a row that differs from the price list **without** an override — for example because the price list changed after the draft was saved. A gray「**価格表なし**」(no price list) badge only means there is no price list yet for that customer and product — it is not a mistake, and the unit price on that row is free to enter. An orange「**数量段階なし**」(no quantity tier) badge marks a row whose price list exists but has no tier for that quantity. Its unit price is free to enter, but like a price difference it must be acknowledged before you request approval.
+> The orange「**価格差異**」(price difference) badge marks a row that differs from the price list **without** an override — for example because the price list changed after the draft was saved. A gray「**価格表なし**」(no price list) badge only means there is no price list yet for that customer and product (or the price list is still awaiting approval and cannot be used yet) — it is not a mistake, and the unit price on that row is free to enter. An orange「**数量段階なし**」(no quantity tier) badge marks a row whose price list exists but has no tier for that quantity. Its unit price is free to enter, but like a price difference it must be acknowledged before you request approval.
 
 ## Which company the order acceptance belongs to (own company) [#own-company]
 
 When two or more companies issue documents ([own companies](/manual/en/operations/masters/own-company/user)), an order acceptance is also created as belonging to **one of them**. If you have only one company, you do not need to think about this.
 
 - **One order acceptance is one company.** Its number (`ORD-…`) is taken from that company's sequence, and unit prices come from that company's [price lists](/manual/en/operations/sales/price-list/user#per-company).
-- **It is decided when the document is created.** For an order acceptance made by hand, the system looks at the assigned site → the assigned site of the lines → the source quote, and the first company found wins. If none is found it is the default company. For an imported order acceptance it is decided by "own company of the intake channel" in [Order intake](/manual/en/operations/system/order-intake/user#intake-company).
+- **It is decided when the document is created.** For an order acceptance made by hand, the system looks at the assigned site of the lines → the source quote, and the first company found wins. If none is found it is the default company. For an imported order acceptance it is decided by "own company of the intake channel" in [Order intake](/manual/en/operations/system/order-intake/user#intake-company).
 - **It cannot be changed afterwards.** If the company is wrong, cancel the order acceptance and create it again.
 - **A line's「担当拠点」(assigned site) must be a site of the same company.** Saving with a site of another company shows「**明細 ◯ 行目: 担当拠点がこの注文請書の自社法人（◯◯）に属していません。注文請書 1 件の明細は同じ自社法人の拠点にしてください**」(line ◯: the assigned site does not belong to this order acceptance's own company; keep the lines of one order acceptance within sites of the same own company). Split the order acceptance for the part handled at another company's site.
 
@@ -164,11 +164,11 @@ You can tell which company an order acceptance belongs to from the company code 
 1. In view mode, press「**承認依頼**」(request approval) in the card at the very top of the screen. (The button is hidden while you are editing — save first.) The button stays disabled while something is missing: the card lists what it is (for example「顧客が未特定です」— no customer —,「明細 2 行目: 単価が未入力です」— no unit price on row 2 —, or「明細 2 行目: 研ぎ直す工具が未選択です」— no tool to regrind on row 2). Fix it with「**編集**」(edit) first.
 2. If there is a price difference (or a row with「数量段階なし」(no quantity tier)), a screen called「価格差異の確認」(check the price difference) appears. Check the contents and press「**差異を確認して依頼**」(confirm the difference and request). Rows with an overridden unit price **do not stop the request** (the price is deliberate), but the approver also sees them as「単価の上書き N 件」(N overridden unit prices).
 
-The status changes to「**承認依頼中**」(pending approval).
+The status changes to「**承認依頼中**」(pending approval). If「**承認を使う**」(use approval) is turned off for order acceptances in the [approval settings](/manual/en/operations/masters/approval-setting/user#approval-policy), no request is made and it becomes「**承認済**」(approved) right away (the message「承認なしで承認済にしました」— approved without approval — appears).
 
 > ⚠️ If the「**注文請書**」(order acceptance) flow in [approval settings](/manual/en/operations/masters/approval-setting/user) has no steps at all, approval cannot be requested (a message says the order acceptance approval flow is not set up). Ask an administrator to add steps. Note that this differs from the cancellation flow, which cancels at once when it has no steps.
 
-> 💡 How many approval steps there are and who approves is decided in the [approval settings](/manual/en/operations/masters/approval-setting/user). Depending on conditions such as the total amount, the delivery method or the assigned plant, the number and makeup of the steps can differ from document to document.
+> 💡 How many approval steps there are and who approves is decided in the [approval settings](/manual/en/operations/masters/approval-setting/user). Depending on conditions such as the total amount, the delivery method or the assigned site, the number and makeup of the steps can differ from document to document. If even one row has an overridden unit price, a price difference, 「価格表なし」(no price list) or「数量段階なし」(no quantity tier), the steps of「**独自値の追加承認**」(extra approval for custom values) in the approval settings may be added at the end.
 
 ![Order acceptance pending approval](../../../assets/screenshots/order-acceptance-detail-03.png)
 
@@ -176,33 +176,35 @@ The person who approves presses「**承認**」(approve) or「**差し戻し**�
 
 > ⚠️「**承認依頼**」(request approval) is not shown while you are editing. Press「**保存**」(save) to return to view mode, then request approval.
 
-## Making the order lines (注文確定 / deploy)
+## Making the order lines (注文確定 / confirm)
 
-Once approved, the card at the very top of the screen says「**確定できます**」(ready to deploy) and a「**確定**」(deploy) button appears.
+Once approved, the card at the very top of the screen says「**確定できます**」(ready to confirm) and a「**確定**」(confirm) button appears.
 
 ![Approved order acceptance](../../../assets/screenshots/order-acceptance-detail-02.png)
 
-1. Press「**確定**」(deploy).
-2. On the screen called「**確定の確認**」(confirm deployment), check how many will be made and press「**展開する**」(deploy).
+1. Press「**確定**」(confirm).
+2. On the screen called「**確定の確認**」(confirmation), check how many will be made and press「**展開する**」(deploy).
 
 ![Deploy confirmation screen](../../../assets/screenshots/order-acceptance-deploy-01.png)
 
-One 注文明細 (order line) is made per line item. The numbers follow the order acceptance number with `-01`, `-02` and so on. At this point a **marking number** (the serial number laser-marked on the products, such as `A200000`) is also assigned automatically to each order line. You can check it on the [order line](/manual/en/operations/sales/order-line/user#marking-number) screen. You can open the order lines that were made from the「**生成された注文明細**」(generated order lines) links on the screen, or from「**注文明細一覧**」(order line list) at the top right of the list screen.
+One 注文明細 (order line) is made per line item. The numbers follow the order acceptance number with `-01`, `-02` and so on. At this point a **marking number** (the serial number laser-marked on the products, such as `A200000`) is also assigned automatically to each order line. You can check it on the [order line](/manual/en/operations/sales/order-line/user#marking-number) screen. You can open the order lines that were made from the「**注文明細**」(order line) links under「**手続き状況**」(progress) →「**次の書類へ**」(to), from the「**注文明細**」(order line) column of the item table, or from「**注文明細一覧**」(order line list) at the top right of the list screen.
 
 If you chose a quote, this order acceptance appears on that [quote](/manual/en/operations/sales/quote/user) under 「**手続き状況**」(progress) → 「**次の書類へ**」(to). The quote's own status does not change — whether you won the order is read from whether an order acceptance exists.
 
-After deployment, a card 「**次のステップ: 出荷書の作成**」 (next step: create the delivery order) appears at the top. Pressing 「**出荷書を作成**」 opens the [delivery order](/manual/en/operations/shipping/delivery-order/user) form with this order acceptance's shippable lines already loaded.
+After confirmation, a card 「**次のステップ: 出荷書の作成**」 (next step: create the delivery order) appears at the top. Pressing 「**出荷書を作成**」 opens the [delivery order](/manual/en/operations/shipping/delivery-order/user) form with this order acceptance's shippable lines already loaded.
 
-The 「…」 menu at the top right always lists 「**出荷書を作成**」 (create delivery order), 「**アーカイブ**」 (archive) and 「**キャンセル依頼**」 (request cancellation). Actions you cannot use right now are grayed out with the reason underneath. When the work is finished, press 「**アーカイブ**」 to put it away (optional). Archived records cannot be edited after that.
+The 「…」 menu at the top right always lists 「**出荷書を作成**」 (create delivery order), 「**アーカイブ**」 (archive), 「**この注文請書から作り直す**」 (recreate from this order acceptance) and 「**キャンセル依頼**」 (request cancellation). Actions you cannot use right now are grayed out with the reason underneath (for example 「確定後に作成できます」 — available after confirmation). When the work is finished, press 「**アーカイブ**」, then 「**アーカイブする**」 (archive) on the confirmation screen, to put it away (optional). Archived records cannot be edited after that.
+
+The tabs at the bottom of the detail screen show, besides the line items, 「**添付**」 (attachments — related files), 「**メモ**」 (memo — internal notes) and 「**履歴**」 (history — who changed what and when).
 
 ## Requesting a cancellation
 
 When an order is withdrawn, you cancel the **whole order acceptance** (there is no per-line cancellation).
 
-1. On a deployed order acceptance, choose 「**キャンセル依頼**」 (request cancellation) from the 「…」 menu.
+1. On a confirmed order acceptance, choose 「**キャンセル依頼**」 (request cancellation) from the 「…」 menu.
 2. Enter the **reason** (required) and press 「**キャンセルを依頼する**」.
 
-If the 「**注文請書キャンセル**」 (order acceptance cancellation) flow in the [approval settings](/manual/en/operations/masters/approval-setting/user) has steps, **nothing changes until approval finishes**. A pending card appears at the top of the screen; approvers see 「**承認**」 (approve) and 「**差し戻し**」 (send back) buttons there (they can also act from the [approval management](/manual/en/operations/general/my-tasks/user) list). With no steps configured, the cancellation applies immediately.
+If the 「**注文請書キャンセル**」 (order acceptance cancellation) flow in the [approval settings](/manual/en/operations/masters/approval-setting/user) has steps, **nothing changes until approval finishes**. A card appears at the top of the screen. People who can approve see 「**注文請書キャンセルの承認**」 (approve the order acceptance cancellation) with 「**承認**」 (approve) and 「**差し戻し**」 (send back) buttons; everyone else sees 「**注文請書キャンセルの承認依頼中**」 (order acceptance cancellation pending approval). Approvers can also act from the [pending list](/manual/en/operations/general/my-tasks/user). With no steps configured, or with 「**承認を使う**」 (use approval) turned off, the cancellation applies immediately (if 「承認を使う」 is turned on but there are no steps, the request cannot be made).
 
 On final approval, the following happens automatically:
 
@@ -256,11 +258,11 @@ Every field on the order acceptance screen. What the AI read from the order land
 | [Ship-to](#field-ship-to) | Optional (standard delivery only) | Where that line is delivered |
 | [Delivery method](#field-delivery-method) | Required | Normal delivery / direct to end user (per line) |
 | [End user](#field-end-user) | Required for direct | Where a direct shipment goes (the end user, per line) |
-| [Assigned plant](#field-assigned-plant) | Optional | The site that handles that line |
+| [Assigned site](#field-assigned-plant) | Optional | The site that handles that line |
 | [Shipping work location](#field-shipping-work-location) | Optional | Where the shipping work is done (per line) |
 | [Line notes](#field-item-notes) | Optional | Notes for that line only |
 
-**Ship-to, delivery method, end user, assigned plant and shipping work location are all per-line fields.** Some orders ship different lines to different destinations, so delivery is set line by line rather than once for the whole acceptance. They live in a collapsed "Delivery" section by default and open automatically once a value is set. When several lines share the same destination, fill in the first line and use "**Apply line 1's delivery to all lines**" to copy it to the rest.
+**Ship-to, delivery method, end user, assigned site and shipping work location are all per-line fields.** Some orders ship different lines to different destinations, so delivery is set line by line rather than once for the whole acceptance. They live in a collapsed 「配送」 (delivery) section by default, which is shown open once a value is set. When several lines share the same destination, fill in the first line and use「**先頭行の配送を全行へ適用**」(apply line 1's delivery to all lines) to copy it to the rest.
 
 ### Customer [#field-customer]
 
@@ -326,6 +328,8 @@ To accept the order at a different price, turn on「**単価を上書き**」(ov
 
 For a customer and product with no price list, the field is free to enter from the start (there is no override switch).
 
+On a row whose order type is 「再研磨」 (regrind), the unit price is looked up in this order: a price list for that specific tool, a price list for any tool, then the standard price of the [regrind item](/manual/en/operations/masters/regrind-item/user). A price list for the tool shows a「**価格表（対象工具）￥…**」(price list for the tool) badge; the standard price shows a gray「**標準価格 ￥…**」(standard price) badge. Either way, to accept a different price, turn on「**単価を上書き**」(override the unit price) and edit it.
+
 ### Delivery date [#field-delivery-date]
 
 The delivery date for that line. It is set per line — there is no shared default for the whole acceptance.
@@ -344,7 +348,7 @@ How that line's products are delivered. **Normal delivery** goes to the customer
 
 That line's actual destination (end user). **Required when direct to user is selected**; with normal delivery it can be recorded optionally. Choose from business partners registered with the end-user role.
 
-### Assigned plant [#field-assigned-plant]
+### Assigned site [#field-assigned-plant]
 
 The site of your own company that mainly handles that line. Choose it when you want to make clear which site's work it is. When there are two or more own companies, choose **a site that belongs to this order acceptance's company** ([Which company the order acceptance belongs to](#own-company)).
 
@@ -367,19 +371,19 @@ A. The company name on the order form could not be matched to the business partn
 > 💡 **Your correction is remembered.** When you pick a customer (or a product) by hand and save, the system records "this wording on the order form means this record" and **matches it automatically the next time the same wording arrives**. For a customer who sends the same format every month, you only fix it once. Pick a different record later and it re-learns that one instead.
 
 **Q. I cannot press「承認依頼」(request approval).**
-A. Requesting approval needs **a customer, at least one line item, and a product and a unit price on every row** (plus the **tool to regrind** on every row whose order type is regrind). Whatever is missing is listed in the card at the very top of the screen (for example「顧客が未特定です / 明細 2 行目: 単価が未入力です」). Fix it with「**編集**」(edit) and press「**保存**」(save), and the button becomes available.
+A. Requesting approval needs **a customer, at least one line item, and a product and a unit price on every row** (plus the **tool to regrind** on every row whose order type is regrind, and the **end user** on every row whose delivery method is direct to user). Whatever is missing is listed in the card at the very top of the screen (for example「顧客が未特定です / 明細 2 行目: 単価が未入力です」). Fix it with「**編集**」(edit) and press「**保存**」(save), and the button becomes available.
 
-**Q. On deploy it says「確定できません: 明細 2 行目: 製品が未特定です」(cannot deploy: the product on line item row 2 is not identified).**
+**Q. On confirming it says「確定できません: 明細 2 行目: 製品が未特定です」(cannot confirm: the product on line item row 2 is not identified).**
 A. The product or the unit price on the row shown is empty. The same check runs when approval is requested, so this is rare — if it does happen, it has to go back to a draft, so ask the person who approved it to do「**差し戻し**」(send back), correct that row, and go on from there.
 
 **Q. The approve button does not appear.**
 A. Only people in the approval group can approve or send back. The screen shows 「◯◯ のメンバーのみ承認・差し戻しできます」 with the name of that step's approval group (only members of that group can approve or send back). Please ask the person in charge.
 
 **Q. I cannot change the contents of a draft.**
-A. A draft opens read only — press「**編集**」(edit) first (top right of the screen). You can only change the contents while the status is 「下書き」(draft). You cannot change them while it is pending approval, approved or deployed. If you see 「下書きの注文請書のみ編集できます」(only draft order acceptances can be edited), ask for it to be sent back.
+A. A draft opens read only — press「**編集**」(edit) first (top right of the screen). You can only change the contents while the status is 「下書き」(draft). You cannot change them while it is pending approval, approved or confirmed. If you see 「下書きの注文請書のみ編集できます」(only draft order acceptances can be edited), ask for it to be sent back.
 
 **Q. The import does not finish.**
-A. Reading takes about 1 to 3 minutes per file. When you choose several files, they are handled one after another, so it takes that much longer.
+A. Reading takes about 1 to 3 minutes per file. When you choose several files, they are handled one after another, so it takes that much longer. If it still shows「**抽出処理中**」(extracting) after a while, open that order acceptance and press「**抽出を実行**」(run extraction) to start reading again. To type it in without waiting, press「**手入力に切り替え**」(switch to manual entry).
 
 <!-- permissions:start -->
 ## Permissions required

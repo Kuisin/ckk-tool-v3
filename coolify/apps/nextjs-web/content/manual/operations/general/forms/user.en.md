@@ -5,6 +5,8 @@ screenshots: []
 ---
 Build your own survey or request/report sheets and collect the answers. The operation code is `CM02`.
 
+> ⚠️ This app is still being prepared, so it may not appear on the live system yet. If you cannot find it, please ask the person in charge at your company.
+
 ## What you can do
 
 - Lay out your own questions to build a **form**.
@@ -27,23 +29,78 @@ Build your own survey or request/report sheets and collect the answers. The oper
 
 ## Before you start
 
-You need permission to create forms. If you cannot find the buttons, ask an administrator.
+You need permission to create forms. If you cannot find the **"New"** button on the list, ask an administrator. Exporting answers in bulk also needs the export permission.
 
 To collect answers you need **both** to set the form to "published" **and** to set up sharing. If either is missing, people will not see the form even with the URL.
 
 ## Reading the screen
 
-Opening the app shows a list of the forms you have made. Click a row to open that form.
+Opening the app shows the forms you have made and the forms shared with you. The list shows "Title", "Kind", "Reception" (scheduled / open / closed), "Status" (Draft / Published / Archived), "Responses", "Closed" and "Updated". Click a row to open that form.
 
-The detail screen is split into tabs.
+The top of the detail screen shows the kind, reception, form code, open period, share URL and so on. Below that, the screen is split into tabs.
 
-- **Fields** … the questions in the form. Press "Edit" at the top right to change them.
-- **Responses** … the answers collected. Exporting starts here.
+- **Fields** … the questions in the form. Press **"Edit"** at the top right of the screen to change them.
+- **Responses** … the answers collected. The summary and exports start here.
 - **Approval** … only for request-report forms. Sets who approves.
 - **Sharing** … who may see or answer.
 - **History** … who did what, and when.
 
-> 💡 Tabs open in read-only mode. Press **Edit** at the top right of a tab to change it, then press Save.
+> 💡 The "Approval" and "Sharing" tabs open in read-only mode. Press **Edit** at the top right of the tab to change it, then press Save.
+
+## Create a form [#create]
+
+1. Press **"New"** at the top right of the list.
+2. Under **"Basic settings"**, enter a "Title". Add a "Description" if needed (it appears at the top of the respondent's screen).
+3. Under "Kind", choose "Survey (collect responses)" or "Request or report (approval steps can be added)".
+4. Choose "Show respondents". Even with "Do not show respondents (summarize anonymously)", the system still records who answered.
+5. If needed, fill in "Opens" and "Closed" under **"Open period"**. Left empty, the form accepts answers from the moment it is published.
+6. Under "Editing by the respondent", choose whether respondents can change an answer after submitting it.
+7. Press **"Save"**. The screen switches to the edit screen.
+8. Under **"Item"**, add questions and arrange them.
+9. Press **"Save"**.
+
+For request-report forms, tick **"Use an approval flow"** to send submitted answers to approval. The approval steps are set afterwards on the form's **"Approval"** tab. To let each person answer only once, tick **"Allow only one response per person"**.
+
+> 💡 If you change the fields after publishing, they are published as a new version. Answers already submitted keep the fields as they were when answered.
+
+To bring a form over from another environment, choose **"Export the definition (.txt)"** from "⋯" on the detail screen, then press **"Import"** on the list in the destination and load that file. Answers and sharing settings are not carried over.
+
+## Publish and stop accepting answers [#publish]
+
+A newly made form is a **"Draft"** and nobody can answer it yet.
+
+1. On the form's detail screen, press **"⋯"** at the top right.
+2. Choose **"Publish"**.
+
+The status becomes **"Published"**. A form with no fields cannot be published.
+
+- To pause answers, choose **"Return to draft"** from "⋯". The share URL no longer accepts answers (existing answers stay).
+- When a form is finished with, choose **"Archive"** from "⋯". It stops accepting answers, but the answers and summary remain.
+- If you set a "Closed" date and time, answers stop automatically once it passes.
+
+## Set up sharing [#share]
+
+1. Open the **"Sharing"** tab.
+2. Press **"Edit"**.
+3. Press **"Add a share"**.
+4. Under "Target", choose All, Site, Role or User, then choose who.
+5. Choose the "Permission".
+   - **Respond only** … can only answer. Cannot see other people's answers.
+   - **View** … can see the answers. With "Narrow which responses are shown", you can show only the answers that match a condition.
+   - **Edit** … can change the form's fields and settings.
+   - **Manage** … can also change the sharing settings.
+6. For request-report forms, people ticked with **"Notify when completed"** receive a notice when a request is completed. The notice also appears under "Completed requests" in their [Pending list](/manual/en/operations/general/my-tasks/user) (CM01).
+7. Press **"Save"**.
+
+## Answering a form (the respondent's screen) [#respond]
+
+Open the share URL, or open the form from "Unanswered forms" in the [Pending list](/manual/en/operations/general/my-tasks/user) (CM01).
+
+1. Answer the questions.
+2. To stop partway, press **"Save as draft"**. You can continue the draft later.
+3. When you are done, press **"Send"**.
+
+On forms that can be answered more than once, press **"Respond once more"** after sending to write another answer.
 
 ## Splitting questions into pages and branching on answers [#sections]
 
@@ -51,7 +108,7 @@ A form with many questions can be split into **sections**, answered one page at 
 
 ### Splitting into pages
 
-1. On the form's 「項目」(fields) tab, press 「**編集**」(edit).
+1. On the form's detail screen, press 「**編集**」(edit) at the top right.
 2. Turn on 「**セクションに分ける**」(split into sections). Your current fields are gathered into "Section 1".
 3. Press 「**＋ セクションを追加**」(add a section) for each further page and give it a title.
 4. Drag a field into the section it belongs to (press and hold first on a phone). Sections themselves can be dragged to reorder.
@@ -65,10 +122,10 @@ Each section can carry **branching rules**.
 
 1. Under 「**分岐ルール**」(branching rules) for that section, press 「**ルールを追加**」(add a rule).
 2. Press 「**条件を追加**」(add a condition) and choose a field, an operator and a value.
-3. In 「**遷移先**」(go to), choose the section to jump to when the condition matches. Choosing **submit** ends the response there.
+3. In 「**遷移先**」(go to), choose the section to jump to when the condition matches. Choosing 「**送信して終了**」(submit and finish) ends the response there.
 4. Press 「**保存**」(save).
 
-Rules are read **top to bottom and the first match wins**. If nothing matches, the respondent simply continues to the next section in order — which is also what happens when there are no rules at all.
+When a rule has two or more conditions, it applies **only when all of them match**. Rules are read **top to bottom and the first match wins**. If nothing matches, the respondent simply continues to the next section in order — which is also what happens when there are no rules at all.
 
 As a diagram:
 
@@ -78,7 +135,7 @@ flowchart TD
   q -->|"Yes (the first match)"| t{"Where does it go?"}
   q -->|"No"| n["Continue to the next<br/>section in order"]
   t -->|"A section"| j["Jump to that section"]
-  t -->|"送信 (submit)"| e["The response ends there"]
+  t -->|"送信して終了 (submit and finish)"| e["The response ends there"]
 ```
 
 - Only 「**ドロップダウン（1つ選択）**」(dropdown) and 「**数値**」(number) fields can be used in a condition. Other types do not appear.
@@ -99,14 +156,14 @@ Use this when you want to work with the collected answers in a spreadsheet.
 1. Open the **Responses** tab.
 2. Press **Export**.
 3. Narrow it down if you need to. Leave it alone to export everything.
-   - **Status** … for example only "Approved".
+   - **Status** … for example only "Approved". Drafts cannot be exported.
    - **Submitted date** … for example only March.
    - **Fields to export** … which questions become columns. All are ticked at first.
 4. Press **Download as Excel**.
 
 One row is one response and one column is one field. Numeric questions stay numeric, so you can total and sort them in Excel straight away.
 
-> ⚠️ Answers contain what people wrote personally. Be careful where you save the file and who you send it to. **Every export is recorded.**
+> ⚠️ Answers contain what people wrote personally. Be careful where you save the file and who you send it to. **Every export is recorded.** Exporting needs the export permission.
 
 ## Print answers as PDF [#export-pdf]
 
@@ -135,7 +192,7 @@ skipped question from a printing fault.
 
 ## Summarise the answers [#summary]
 
-Press **View summary** on the Responses tab. Each question gets the chart that
+Press **View the summary** on the Responses tab (or **Summarize the responses** under "⋯" at the top right). Each question gets the chart that
 suits its type.
 
 | Question type | What you get |
@@ -150,10 +207,10 @@ suits its type.
 Each question shows **Answered N / Unanswered M**. On optional questions, how many
 people skipped it is a result too, so the denominator is shown alongside the count.
 
-- **Most first / Definition order** changes how the choices are sorted. Definition
+- **Most first / Definition order** under "Option order" changes how the choices are sorted. Definition
   order reads better when the order means something (a 1–5 rating scale).
-- **Auto / Pie / Bar** picks the chart shape for choice questions.
-- **Monthly / Daily** changes how submissions over time are grouped.
+- **Auto / Pie / Bar** under "Option chart" picks the chart shape for choice questions.
+- **Monthly / Daily** under "How dates are grouped" changes how submissions over time are grouped.
 - **CSV** saves the numbers behind the charts.
 
 > 💡 **Pick-several questions never get a pie chart.** One person can tick two
@@ -197,7 +254,7 @@ This screen only shows the breakdown of one question at a time. For cross-questi
 ## Questions and problems
 
 **Q. I shared the URL but people say they cannot open it.**
-A. Check the Sharing tab to confirm they are covered. A form with no sharing set is visible only to you and administrators. Also check that the form is published.
+A. Check the Sharing tab to confirm they are covered. A form with no sharing set is visible only to you and administrators. Also check that the form's status is "Published" and that it is currently open.
 
 **Q. The Excel file has a column for a question I deleted.**
 A. That is expected. Deleting a question does not delete the answers given before that. Dropping the column would make those responses unreadable.
@@ -215,7 +272,7 @@ A. Forms with no submitted answers do not appear. Metabase data can also lag sli
 A. Form answer details has one row per question per response. To count responses, use Form responses, or count distinct response numbers.
 
 **Q. I want to correct an answer I submitted.**
-A. You can edit your own answer within the window the form allows. Open it and press Edit on the Answer tab. Once approval has progressed you cannot — ask an approver to send it back.
+A. You can edit your own answer within the window the form allows. Open it and press Edit on the Answer tab. Approved answers, and answers whose approval has progressed, cannot be changed — ask an approver to send it back. An answer that was sent back can be fixed and resubmitted regardless of the window.
 
 <!-- permissions:start -->
 ## Permissions required

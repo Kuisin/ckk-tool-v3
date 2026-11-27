@@ -36,7 +36,9 @@ When you open the app, you see a list of the quotes made so far.
 
 - **見積番号 (quote number)** … a number starting with `QOT-`. The system adds it for you. People who handle documents of two or more [own companies](/manual/en/operations/masters/own-company/user) see the issuing company's code (for example `TSP`) as a small badge next to the number ([Issuing company badge](/manual/en/operations/masters/own-company/user#company-badge)). Typing a company code in the search box narrows the list to that company's quotes.
 - **状態 (status)** … a colored badge shows where the quote stands. Gray is 「下書き」(draft), blue is 「発行済」(issued), orange is 「期限切れ」(expired — issued and past its valid-until date).
-- Type a quote number or a customer name in the search box at the top to narrow down the list.
+- The list shows「**見積番号**」(quote number),「**顧客**」(customer),「**有効期限**」(valid until),「**合計金額**」(total amount),「**状態**」(status) and「**更新日**」(updated).
+- Type a quote number or a customer name in the search box at the top (「見積番号・顧客で検索」, search by quote number or customer) to narrow down the list. The number from the previous system (legacy number) also works.
+- Use the「**顧客**」(customer) and「**状態**」(status) fields to narrow the list by customer or status. 「期限切れ」(expired) can be chosen too. Press「**リセット**」(reset) to clear the filters.
 - Click a row to open the detail screen for that quote.
 
 ## Making a quote
@@ -62,14 +64,17 @@ Once saved, the quote is registered as 「下書き」(draft) and the detail scr
 
 > 💡 Amounts come automatically from the price list for that customer. To change a price, do not change it here — change the [price list](/manual/en/operations/sales/price-list/user) instead.
 
-> ⚠️ A line whose unit price cannot be found in the price list cannot be saved. There are four reasons:
+> ⚠️ A line whose unit price cannot be found in the price list shows the reason in orange in the unit price column and cannot be saved as it is. There are five reasons:
 >
-> - **No price list** … there is no price list yet for that customer, product and order type. Register the price list first.
-> - **Price list disabled** … the price list (or its setting for that order type) is disabled.
-> - **Outside the valid period** … today is not within the price list's valid period.
-> - **No quantity tier** … no quantity tier matches the quantity entered. Review the quantity or add a tier to the price list.
+> -「**価格表なし**」(no price list) … there is no price list yet for that customer, product and order type. Register the price list first.
+> -「**価格表が無効**」(price list disabled) … the price list (or its setting for that order type) is disabled.
+> -「**価格表の有効期間外**」(outside the price list's valid period) … today is not within the price list's valid period.
+> -「**価格表が承認待ち**」(price list pending approval) … the price list's prices are waiting for approval ([approval of custom prices](/manual/en/operations/sales/price-list/user)). It can be used once approved.
+> -「**数量段階なし**」(no quantity tier) … no quantity tier matches the quantity entered. Review the quantity or add a tier to the price list.
 >
-> For regrind items only, the item's **standard price** is used in the first three cases (no price list / disabled / outside the valid period). With "no quantity tier" it does not fall back to the standard price.
+> Except for "no quantity tier", a「**設計依頼を起票**」(raise a design request) link also appears under the reason. For a new product that has no drawing yet, you can create a [design request](/manual/en/operations/sales/design-request/user) from there.
+>
+> For regrind items only, the item's **standard price** is used in the four cases other than "no quantity tier". With "no quantity tier" it does not fall back to the standard price.
 
 > 💡 **A regrind unit price is looked up in the order "this tool → any tool → standard price"** (the same order as on order acceptances). If a price list targets the chosen tool ([Target tool](/manual/en/operations/sales/price-list/user#field-target-tool)) its price is used; otherwise the price list for any tool, and failing that the regrind item's standard price. When the price comes from the tool's price list,「**対象工具の価格表**」(target tool price list) appears under the unit price. Choosing a different tool looks the price up again.
 
@@ -81,7 +86,7 @@ The screen of a saved quote has five tabs.
 
 - **明細 (line items)** … the list of products, pieces and amounts. The subtotal, consumption tax and total are shown below.
 - **PDF** … after issuing, you can view or download the PDF here.
-- **関連 (related)** … you can check which price list and which price estimate the amounts came from.
+- **関連 (related)** … you can check which price list and which price estimate the amounts came from. Design requests and order acceptances made from this quote are listed here too.
 - **メモ (memo)** … you can leave internal notes about this quote.
 - **履歴 (history)** … the record of who changed what, and when.
 
@@ -104,7 +109,11 @@ The PDF carries these notes per line.
 - **Line notes** … what you wrote in the line's「備考」(notes) is printed under the discount note, keeping the line breaks.
 - A line with neither gets nothing added. The wording of the notes follows the customer's **document language**.
 
+If a logo is registered for the issuing [own company](/manual/en/operations/masters/own-company/user), it is printed in the PDF header.
+
 Open the PDF tab to view the finished quote, or download it and print it. After issuing, you can also save it from「**PDFをダウンロード**」(download PDF) in the「**…**」menu at the top right.
+
+> 💡 If issuing shows「発行しました（PDF 生成に失敗）」(issued, PDF generation failed), press「**再生成**」(regenerate) on the PDF tab to make it again.
 
 ## Notifying the customer by email
 
@@ -161,7 +170,7 @@ Every field on the quote screen. The **?** next to a field in the app links stra
 | [Sales rep](#field-sales-rep) | Optional | Your company's sales rep for this quote |
 | [Valid until](#field-valid-until) | Required to issue | Last day the quote is valid |
 | [Status](#field-status) | — | Where the quote stands now |
-| [Product](#field-product) | Required | The product being quoted |
+| [Product](#field-product) | Required | The product being quoted (a regrind item on a regrind row) |
 | [Order type](#field-order-type) | Required | Production, test, sample or other |
 | [Tool to regrind](#field-tool) | Required on regrind rows | The customer's tool that is held and reground |
 | [Quantity](#field-quantity) | Required | Number of pieces |
@@ -201,7 +210,7 @@ The product being quoted. Choosing it fills in the unit price that matches the c
 
 ### Order type [#field-order-type]
 
-Production, test, sample or other. **The price differs by type even for the same product**, so choose the one that matches the real order. (For samples, the practice is to set the unit price to zero in the price list.)
+Production, test, sample, regrind or other. **The price differs by type even for the same product**, so choose the one that matches the real order. (For samples, the practice is to set the unit price to zero in the price list.)
 
 ### Tool to regrind [#field-tool]
 

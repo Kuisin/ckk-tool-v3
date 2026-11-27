@@ -24,23 +24,27 @@ An app for **writing and sharing documents inside the company** — procedures, 
 ## Before you start
 
 - Creating a document needs the Create permission (without it, the 「文書を作る」 (Create document) button does not appear).
+- The list shows only documents you can read. It shows 「タイトル」 (Title), 「状態」 (Status: Draft / Pending publish approval / Published), 「公開版」 (Published version), 「未解決」 (Unresolved — the number of comments not yet resolved) and 「更新日」 (Updated).
 - If publishing is to use approval, set up the steps in [Approval settings](/manual/en/operations/masters/approval-setting/user) beforehand.
 
 ## Creating a document
 
 1. Press 「**文書を作る**」 (Create document) on the list.
-2. Enter the 「タイトル」 (Title). **You can build a hierarchy by separating with slashes** (for example `手順書/出荷`).
-3. If needed, turn on 「**公開に承認を必要とする**」 (Require approval to publish).
-4. Write the content in 「本文（Markdown）」 (Body (Markdown)).
-5. Press 「**本文を保存（新しいリビジョン）**」 (Save body (new revision)).
+2. Enter the 「**タイトル**」 (Title) (required).
+3. If needed, enter the 「**フォルダ**」 (Folder). **You can build a hierarchy by separating with slashes** (for example `手順書/出荷`).
+4. If needed, enter the 「**概要**」 (Overview).
+5. If needed, tick 「**公開に承認を必要とする**」 (Require approval to publish).
+6. Press 「**保存**」 (Save). The screen switches to the body editor.
+7. Write the content in 「本文（Markdown）」 (Body (Markdown)).
+8. Press 「**本文を保存（新しいリビジョン）**」 (Save the body (new revision)).
 
-When you save, 「リビジョン 1 として保存しました」 (Saved as revision 1) is shown. Saving alone does **not publish it yet**.
+When you save, 「リビジョン 1 として保存しました」 (Saved as revision 1) is shown. Saving alone does **not publish it yet**. To change it later, press 「**編集**」 (Edit) at the top right of the document screen.
 
 > 💡 Writing "a word about what you fixed" in the change-reason box makes it easier to find in the history later.
 
 ## How to write (Markdown)
 
-- Headings, bullet lists and tables can be used. 「太字」 (Bold), 「斜体」 (Italic) and 「箇条書き」 (Bullet list) can be inserted from the toolbar.
+- Headings, bullet lists and tables can be used. 「太字」 (Bold), 「斜体」 (Italic), 「コード」 (Code), 「見出し」 (Heading), 「箇条書き」 (Bulleted list) and 「リンク」 (Link) can be inserted from the toolbar.
 - You can switch between 「編集」 (Edit), 「プレビュー」 (Preview) and 「分割」 (Split). On a narrow screen it becomes a toggle.
 - **Only images posted inside the company** are shown. Images from outside sites are not displayed.
 - A link to an external site goes through a confirmation page when pressed.
@@ -49,26 +53,37 @@ When you save, 「リビジョン 1 として保存しました」 (Saved as rev
 
 ## Deciding who it is shared with
 
-Under 「共有」 (Sharing), decide who can read the document. It can be specified in four ways: the whole company, a site, a role, or individuals.
+1. On the document screen, open the 「**共有**」 (Sharing) tab.
+2. Press 「**編集**」 (Edit).
+3. Press 「**共有先を追加**」 (Add a share) and choose who: the whole company, a site, a role, or an individual.
+4. Choose the permission: 「閲覧」 (View), 「編集」 (Edit) or 「管理」 (Manage). People with Manage can also change the sharing settings.
+5. Press 「**保存**」 (Save).
 
 > ⚠️ **A document with no one to share with can be read only by the person who created it and administrators.** Just writing it does not deliver it to anyone.
 
 ## Getting it reviewed
 
-1. Open 「レビュー」 (Review).
-2. Select a line of the body and write 「**{n} 行目にコメント**」 (Comment on line {n}).
-3. Once the author has fixed it, press 「**解決にする**」 (Mark as resolved).
-4. To see resolved comments as well, turn on 「**解決済みも表示**」 (Show resolved too).
+1. Press 「**⋯**」 at the top right of the document screen and choose 「**レビュー**」 (Review). The latest revision (including content not yet published) is shown line by line.
+2. Press the comment button of the line you want to comment on.
+3. Write the comment and press 「**コメントする**」 (Comment).
+4. Once the author has fixed it, press 「**解決にする**」 (Mark as resolved).
+5. To see resolved comments as well, tick 「**解決済みも表示**」 (Include resolved).
 
-Comments appear **on the review screen only**. People reading the published document do not see them.
+You can also 「**返信**」 (Reply) to a comment. Comments appear **on the review screen only**. People reading the published document do not see them.
+
+Unresolved comments on documents you created or edited are also listed under "Document comments" in the [Pending list](/manual/en/operations/general/my-tasks/user) (CM01).
 
 ## Publishing
 
-1. On the card at the top of the detail screen, press 「**公開を申請**」 (Request publish — for documents that need approval) or 「公開」 (Publish).
-2. If there are unresolved comments, their number is shown. You can still go ahead.
-3. For a document that needs approval, the published version is replaced once it is approved.
+When there are unpublished changes, a card saying 「**公開されていない変更があります**」 (There are unpublished changes) appears at the top of the document screen.
 
-If you change the body after publishing, 「**未公開の変更あり**」 (Unpublished changes) is shown. Publish again and that version takes its place.
+1. On the card, press 「**公開を申請**」 (Request to publish — for documents that need approval) or 「**公開する**」 (Publish).
+2. A confirmation appears. If there are unresolved comments, their number is shown. You can still go ahead.
+3. Press 「**申請する**」 (Request) or 「**公開する**」 (Publish).
+
+For a document that needs approval, the status becomes 「**公開承認依頼中**」 (Pending publish approval), and the published version is replaced once it is approved. Approvers see 「承認」 (Approve) and 「差し戻し」 (Send back) buttons in the same place. Documents waiting for approval also appear under "Pending approval" in the [Pending list](/manual/en/operations/general/my-tasks/user) (CM01). While approval is pending, the body cannot be edited.
+
+If you change the body after publishing, 「**未公開の変更あり**」 (Has unpublished changes) is shown next to the published version. Publish again and that version takes its place.
 
 As a diagram, from writing to being published:
 
@@ -77,7 +92,7 @@ flowchart TD
   save["Save the body<br/>(new revision, not yet published)"] -.->|"If needed"| rev["Review<br/>(comment on lines → resolve)"]
   save --> q{"Does publishing<br/>need approval?"}
   rev -.-> q
-  q -->|"No"| pub["Press 公開 (Publish)"]
+  q -->|"No"| pub["Press 公開する (Publish)"]
   q -->|"Yes"| req["公開を申請 (Request publish)<br/>→ approved"]
   pub --> live["The published version is replaced"]
   req --> live
@@ -86,9 +101,11 @@ flowchart TD
 
 ## Comparing and restoring versions
 
-- In 「版一覧」 (Version list) you can check which version changed when, and by whom.
-- With 「**差分**」 (Diff) you can compare any two versions. Only the surroundings of the changed lines are shown.
-- To go back to earlier content, press 「**復元**」 (Restore). The history is not rewound: **a new version is created with that content**, so you return by moving forward.
+Press 「**⋯**」 at the top right of the document screen and choose 「**履歴・差分**」 (History and diff).
+
+- On the 「**版一覧**」 (Versions) tab you can check which version changed when, and by whom.
+- On the 「**差分**」 (Diff) tab, pick any two versions under 「比較元」 (Compare from) and 「比較先」 (Compare to). Only the surroundings of the changed lines are shown.
+- To go back to earlier content, press 「**復元**」 (Restore) on that version in the version list. The history is not rewound: **a new version is created with that content**, so you return by moving forward.
 
 ## Questions and problems
 
@@ -102,7 +119,10 @@ A. That is how it is designed. Saving only adds a version; the published version
 A. No. Comments belong to the review screen only.
 
 **Q. I want to delete a document.**
-A. Archive a document you no longer use. Its versions and history are kept.
+A. For now there is no screen operation to delete or archive a document. If you no longer want people to read it, remove its shares on the 「共有」 (Sharing) tab (only the creator and administrators can read it then).
+
+**Q. When I tried to edit the body, it said the body cannot be edited while a publish approval is pending.**
+A. The body cannot be changed while publishing is waiting for approval. Wait for the decision, or ask an approver to send it back, then edit it.
 
 <!-- permissions:start -->
 ## Permissions required

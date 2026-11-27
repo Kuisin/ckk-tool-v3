@@ -99,13 +99,18 @@ flowchart TD
 
 1. Click the criterion you want to edit in the list.
 2. Its content appears on the right.
-3. You can change the displayed name in 「**基準名**」 (Criterion name). In 「**説明**」 (Description) you can write what the cost counts; it is shown when someone presses the **ⓘ** next to the row on the price estimate screens (no button if left blank).
-4. If you turn off the 「**有効**」 (Enabled) switch, that criterion is no longer used in the calculation.
-   - A criterion with 「**原価に数える**」 (Count as cost) turned on is recorded in the price estimate result as part of the 「**原価合計**」 (Total cost), and the difference from the estimated unit price is shown as 「**粗利**」 (Gross margin). It is a marker for analyzing cost later and **does not change the estimated unit price**. It starts on for the 「加算」 criteria (it cannot be set on the 「見積単価」 criterion).
-   - Choose one of three for「**原価の扱い**」(cost handling):「**原価に数えない**」(not a cost) /「**原価と売価に数える**」(cost and price — the cost marker above; for an add criterion it also goes into the estimated unit price) /「**原価のみに含める**」(cost only — counted in the total cost but never added to the minimum or estimated unit price; use it for items such as in-house overhead that you want to track as cost but not pass on in the price; available only for add criteria). The list shows them with the「**原価**」/「**原価のみ**」badges.
-   - Only people with the 「**価格試算の原価**」 (Price estimate cost) permission see the total cost and gross margin (for now, only the manager role). Other people do not see them on screen.
-5. In 「**適用工具種**」 (Applicable tool types), choose which kinds of tool it is used for.
-6. Press 「**保存**」 (Save).
+3. You can change the displayed name in 「**基準名**」 (Criterion name).
+4. In 「**役割**」 (Role), choose how the criterion is used: 「**加算（合計に足す）**」 (add to total), 「**中間（r.<id> で参照）**」 (intermediate — not added to the total, only used by other expressions) or 「**見積単価（最終）**」 (estimated unit price, final).
+5. If you turn off the 「**有効**」 (Enabled) switch, that criterion is no longer used in the calculation.
+6. Choose one of three for 「**原価の扱い**」 (Cost handling). It does not appear for a criterion whose role is 「見積単価（最終）」.
+   - 「**原価に数えない**」 (not a cost) … not included in the total cost.
+   - 「**原価と売価に数える**」 (cost and price) … included in the 「**原価合計**」 (Total cost) of the price estimate result, and the difference from the estimated unit price is shown as 「**粗利**」 (Gross margin). If the role is 「加算」 (add), it also goes into the estimated unit price.
+   - 「**原価のみに含める**」 (cost only) … counted in the total cost only, never added to the minimum or estimated unit price. Use it for items such as in-house overhead that you want to track as cost but not add to the price. Available only when the role is 「加算」.
+7. In 「**説明**」 (Description), write what the cost counts. It is shown when someone presses the **ⓘ** next to the row on the price estimate screens (no button if left blank).
+8. In 「**適用工具種**」 (Applicable tool types), choose which kinds of tool it is used for.
+9. Press 「**保存**」 (Save) at the bottom of the screen.
+
+In the list, a criterion set to 「原価と売価に数える」 carries the 「**原価**」 (cost) badge, and one set to 「原価のみに含める」 carries the 「**原価のみ**」 (cost only) badge. Only people with the 「**価格試算の原価**」 (Price estimate cost) permission see the total cost and gross margin (for now, only the manager role). Other people do not see them on screen.
 
 > ⚠️ If **you do not select even one** 「**適用工具種**」**, that criterion is not used anywhere.** If you forget to select, red text appears saying 「**⚠ 未選択 — この基準はどの工具種にも適用されません**」 (Not selected — this criterion is not applied to any tool type). If you want it used everywhere, press 「**全選択**」 (Select all).
 
@@ -117,11 +122,11 @@ When you have edited an expression, you can check the result on the spot before 
 
 1. Choose the kind of tool you want to try in 「**テスト工具種**」 (Test tool type).
 2. Press 「**テスト実行**」 (Run test).
-3. A table of 「**ロット**」 (Lot) and 「**見積単価**」 (Quoted unit price) appears — check that the amounts are what you expect.
+3. 「**この基準の値:**」 (Value of this criterion) and 「**見積単価**」 (Estimated unit price) appear — check that the amounts are what you expect. They are calculated with sample inputs.
 
 ### Adding and deleting
 
-- To create a new one, press 「**基準を追加**」 (Add criterion) above the list.
+- To create a new one, press 「**基準を追加**」 (Add criterion) above the list. Enter an 「**ID**」 (the code used to call this criterion inside expressions), fill in the other fields, and press 「**保存**」 (Save). **The ID cannot be changed after it is created.**
 - To remove one, press 「**削除**」 (Delete) on that criterion's screen. **Deletion cannot be undone.**
 
 ## 工具種管理 (Tool type management) — the kinds of tool
@@ -141,7 +146,7 @@ When you open 「工具種管理」, the registered kinds of tool are listed.
 3. In 「**表示名**」 (Display name), enter the name shown on screen (for example ボールエンド / ball end).
 4. Press 「**追加**」 (Add).
 
-The added type becomes selectable on the price estimate input screen. Criteria set to 「全工具種」 (all tool types) are attached to the new type automatically.
+The added type becomes selectable on the price estimate input screen. Its input fields are the same as for 「丸棒」 (round bar) — the material price comes from the reference unit price. Criteria set to 「全工具種」 (all tool types) are attached to the new type automatically. After adding it, open the type and check which criteria apply.
 
 ### Settings for each type
 
@@ -150,13 +155,15 @@ Click a type in the list to open its settings screen.
 - 「**適用する計算基準**」 (Applicable calculation criteria) … tick the parts used in price estimates for that type.
 - 「**使用する見積単価**」 (Quoted unit price to use) … choose one part that wraps everything up at the end. **Exactly one is required for each type.**
 
+When you are done, press 「**保存**」 (Save).
+
 The settings here are simply another view of the same content as 「適用工具種」 on the calculation criteria screen. Editing on either side gives the same result.
 
 ### When deletion is possible
 
 - The three 「組み込み」 (built-in) types cannot be deleted.
 - A type you added can be deleted **only when there is not a single price estimate of that type**.
-- Deleting it also removes that type from every calculation criterion.
+- To delete it, press 「**削除**」 (Delete) on that type's settings screen. Deleting it also removes that type from every calculation criterion. **Deletion cannot be undone.**
 
 ## 材料参照価格ポリシー (Material reference price policy) — how the material price is decided
 
@@ -176,11 +183,12 @@ Decide how the material price used in a price estimate is taken from actual purc
 
 ## 数量スケール (Quantity scale) — the starting quantity breaks for price lists
 
-The table that gives the first values of the quantity breaks and multipliers when a new order type is created in a price list. It replaces the "lot discount rate" that used to be built into the price estimate, and can now be edited freely here.
+The table that gives the first values of the quantity breaks and multipliers when a new order type is created in a price list. The 「**参考：数量ごとの単価**」 (reference: unit price by quantity) table on the [price estimate](/manual/en/operations/sales/trial-estimate/user) screen also comes from this table.
 
 - Each row has only a「**開始数量**」(from quantity) and a「**倍率**」(multiplier). The end of a range follows from the next row's start, so there are no gaps or overlaps. The first row starts at 1.
 - The「**単価**」(unit price) column is a sample: the「**試算用の基準単価**」(sample base unit price) entered at the top times the multiplier. It is not saved.
-- Press「**範囲を追加**」(add a range) to add a row and「**初期値に戻す**」(restore defaults) to go back to the standard table. Nothing takes effect until you save.
+- Press「**範囲を追加**」(add a range) to add a row and「**初期値に戻す**」(restore defaults) to go back to the standard table.
+- When you are done, press「**保存**」(Save). Nothing takes effect until you save.
 - **Price lists that already exist do not change.** Only order types created from now on start from this table.
 
 ## カスタム入力項目 (Custom input fields) — input boxes and fixed values
