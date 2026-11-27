@@ -48,6 +48,7 @@ When you open the app, you see a list of the delivery orders made so far.
 - **状態 (Status)** … Grey is 「下書き」 (Draft), blue is 「確定」 (Confirmed), green is 「出荷済」 (Shipped).
 - In the search box at the top you can type a delivery order number, a order line number, or a customer name to narrow the list. This box is for **finding delivery orders you have already made**; it is a different box from the one for picking a order line when you make a new delivery order.
 - The list shows **delivery orders sent from the site you belong to**.
+- If you handle documents of two or more of our companies, a small badge with the company code (for example `TSP`) appears next to the delivery order number ([company badge](/manual/en/operations/masters/own-company/user#company-badge)).
 - Click a row to open the detail screen for that delivery order.
 
 ## Making a delivery order
@@ -91,11 +92,26 @@ After you save, it is registered as a 「**下書き**」 (Draft) and the detail
 
 ![Delivery order detail screen](../../../assets/screenshots/delivery-order-detail-01.png)
 
-At the top you see the delivery order number, order line number, customer, product, type, shipping site, quantity, and shipping date.
+At the top you see the delivery order number, order line number, customer, sales rep, type, shipping site, total quantity, shipping date, and work order. When the type is 「発送」 (Dispatch), 「請求単価」 (Billing unit price) and 「この出荷で注文明細を締める」 (Close the order lines with this shipment) are also shown.
 
-- **数量合計 (Total quantity)** … Shown as "30 / 受注 50", so you can see the pieces being sent next to the pieces that were ordered.
+- **数量合計 (Total quantity)** … The total number of pieces sent on this delivery order. When it differs from the ordered quantity, the 「過不足」 (Variance) table shows the difference ([Shipping with a delivery quantity variance](#shipping-with-a-delivery-quantity-variance)).
 - The 「明細」 (Lines) area below shows the product, lot, quantity, and notes.
-- There are four tabs. **概要** (Overview) shows the notes, **納品書** (Delivery notes) shows the delivery notes made from this delivery order, **メモ** (Memo) is a shared internal memo, and **履歴** (History) shows a record of who changed what and when.
+- The tabs are **概要** (Overview: additional charges and notes), **納品書** (Delivery notes: the delivery notes made from this delivery order), **メモ** (Memo: a shared internal memo), and **履歴** (History: who changed what and when). An **承認** (Approval) tab also appears only when there are approval records.
+
+## Adding charges such as shipping
+
+When you want to bill the customer for something besides the product, such as shipping, add an **additional charge** to the delivery order. After the delivery order is confirmed, billing closing turns the charge into a line on the [invoice](/manual/en/operations/billing/invoice/user).
+
+1. On a 「下書き」 (Draft) delivery order, open the 「**概要**」 (Overview) tab.
+2. Press 「**編集**」 (Edit) on the 「**追加料金**」 (Additional charges) panel.
+3. Press 「**料金を追加**」 (Add charge).
+4. Choose the 「**料金項目**」 (Charge item). Items are registered in the [charge item master](/manual/en/operations/masters/charge-item/user).
+5. If needed, enter a note (such as "○○ Transport, cash on delivery"), the quantity, and the unit price. For items whose amount is fixed in the charge item master, you cannot change the unit price.
+6. Press 「**保存**」 (Save).
+
+If the [work order](/manual/en/operations/production/work-order/user) of a lot on the lines has planned additional charges, they are copied when the delivery order is made (「**指示書 #◯ から複写**」 (copied from work order #◯) is shown). However many lines carry lots of the same work order, they are copied only once.
+
+> ⚠️ You can change additional charges only while the delivery order is 「下書き」 (Draft). After confirming, they cannot be changed.
 
 ## The three stages before shipping
 
@@ -173,9 +189,9 @@ flowchart TD
   req -.->|"Sent back"| fix["Fix the contents<br/>and confirm again"]
 ```
 
-If you can approve it, a green 「**承認**」 (Approve) card appears at the top of the screen, where you can approve or send it back on the spot. If you cannot, a gray 「**承認待ち**」 (Awaiting approval) card appears instead. A rejection turns the card red — 「**差し戻されました**」 (Sent back) — so fix the contents and confirm again.
+If you can approve it, a green 「**承認**」 (Approve) card appears at the top of the screen, where you can approve or send it back on the spot. If you cannot, a gray 「**承認依頼中**」 (Pending approval) card appears instead. A rejection turns the card red — 「**差し戻されました**」 (Sent back) — so fix the contents and confirm again.
 
-> 💡 Whether approval is needed comes from the business partner's settings (set separately for **inside** and **outside** the tolerance). **In an environment where no approval flow has been set up at all, no approval is requested and it confirms straight away.**
+> 💡 Whether approval is needed comes from the business partner's settings (set separately for **inside** and **outside** the tolerance). **In an environment where no approval flow has been set up at all, or when "use approval" is turned off for delivery orders in [approval settings](/manual/en/operations/masters/approval-setting/user), no approval is requested and it confirms straight away.**
 
 ### Checking it on the detail screen
 

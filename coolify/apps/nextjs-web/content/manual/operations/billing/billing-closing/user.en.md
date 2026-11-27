@@ -56,6 +56,7 @@ When you open the app, you see a list of the closes done so far. One row is "one
 - **状態 (Status)** … Grey is 「未処理」 (Not processed — no invoice made yet), blue is 「処理済」 (Processed — invoice made), green is 「エクスポート済」 (Exported — the accounting CSV for its invoice has been exported).
 - **実行区分 (Run type)** … 「手動」 (Manual) is a close run from the screen; 「定期」 (Scheduled) is one made by the daily automatic run.
 - In the search box at the top you can type a customer name to narrow the list.
+- If you handle documents of two or more of our companies, a small badge with the company code (for example `TSP`) appears next to the customer name ([company badge](/manual/en/operations/masters/own-company/user#company-badge)).
 - Click a row to open the detail screen for that close.
 
 ## Running the monthly billing close
@@ -92,7 +93,7 @@ Click a close row in the list to open the detail screen.
 
 ![Monthly billing close detail screen](../../../assets/screenshots/billing-closing-detail-01.png)
 
-- At the top you see the customer, cut-off date, total before tax, and status.
+- At the top you see the customer, cut-off date, total before tax, status, run type, generated invoice, processed date, bill-to, and payment due date. Once an invoice is made, 「**生成請求書**」 (Generated invoice) becomes a link to it.
 - The 「**対象出荷**」 (Shipments included) table lists the gathered delivery orders one per row (delivery order number, shipping date, quantity, amount).
 - Click the blue delivery order number to open that [delivery order](/manual/en/operations/shipping/delivery-order/user) and check its contents.
 - At the bottom of the table you see the totals for quantity and amount.

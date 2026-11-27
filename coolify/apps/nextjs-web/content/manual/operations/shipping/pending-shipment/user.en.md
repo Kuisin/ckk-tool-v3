@@ -4,6 +4,8 @@ description: "A work queue that shows, on one screen, the order lines whose fini
 ---
 This is the **未処理出荷書** (pending delivery orders) app, where you check together "orders that are finished but do not have a delivery order yet" and "delivery orders that were made but have not gone out yet". The operation code is `SH03`.
 
+> ⚠️ This app is still being prepared, so it may not appear on the live system yet. If you cannot find it, please ask the person in charge at your company.
+
 > This app belongs to … [Shipping flow](/manual/en/process/shipping)
 
 ## What you can do with this app
@@ -18,7 +20,7 @@ This is the **未処理出荷書** (pending delivery orders) app, where you chec
 - **注文明細 (order line)** … one line of an order acceptance. It is the unit of an order: "this many pieces of this product".
 - **出荷書 (delivery order)** … the shipping document that decides which product to send and how many.
 - **完成数 (finished quantity)** … the number of good pieces actually produced by completed work orders. Pieces lost to defects are not included.
-- **未手配 (unarranged)** … the finished quantity that is not yet on a delivery order. It is calculated as **unarranged = finished quantity − arranged for shipping**.
+- **未手配 (unarranged)** … the finished quantity that is not yet on a delivery order. It is what remains of the finished quantity after taking away the pieces already put on delivery orders.
 
 ## How to open it
 
@@ -42,7 +44,7 @@ Order lines that have at least one completed work order, and whose finished quan
 - **完了ロット** (completed lots) … the lot numbers of the completed work orders (shown like `#123`).
 - **完成数** (finished quantity) … the number of pieces actually produced by the completed work orders. It is the real output, not the planned quantity, so pieces lost to defects are not included.
 - **出荷手配済** (arranged for shipping) … the total quantity already put on delivery orders. Quantities on draft delivery orders also count as arranged.
-- **未手配** (unarranged) … finished quantity − arranged for shipping, shown as an orange badge.
+- **未手配** (unarranged) … the part of the finished quantity not yet on a delivery order, shown as an orange badge.
 - **納期 / 状態** (delivery date / status) … the planned delivery date and the line's status (confirmed, in production, partially shipped).
 
 ### The preparing-to-ship tab

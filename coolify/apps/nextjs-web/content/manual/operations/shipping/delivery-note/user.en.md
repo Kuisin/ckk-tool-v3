@@ -39,6 +39,7 @@ When you open the app, you see a list of the delivery notes made so far.
 - **状態 (Status)** … Blue is 「発行済」 (Issued), green is 「納品済」 (Delivered). An automatically created delivery note starts as "Issued".
 - In the search box at the top you can type a delivery number, a delivery order number, or the name of the receiver or the end user to narrow the list.
 - The list shows **delivery notes sent from the site you belong to** and **delivery notes you made yourself**.
+- If you handle documents of two or more of our companies, a small badge with the company code (for example `TSP`) appears next to the delivery note number ([company badge](/manual/en/operations/masters/own-company/user#company-badge)).
 - Click a row to open the detail screen for that delivery note.
 
 ## How a delivery note gets made
@@ -92,8 +93,8 @@ flowchart TD
 ```
 
 1. Press 「**…**」 at the top right.
-2. Choose 「**納品済みにする**」 (Mark as delivered).
-3. 「納品の確認」 (Delivery check) appears. Press 「**納品済みにする**」 (Mark as delivered).
+2. Choose 「**納品済にする**」 (Mark as delivered).
+3. 「納品の確認」 (Delivery check) appears. Press 「**納品済にする**」 (Mark as delivered).
 
 Today's date is recorded as the **納品日 (delivery date)** and the status becomes 「**納品済**」 (Delivered).
 
@@ -184,7 +185,7 @@ A. The delivery destination is decided by the customer on the order line behind 
 A. A direct-to-end-user shipment makes two. Give the price-free one to the end user and the priced one to the customer. A normal delivery makes only one priced note.
 
 **Q. I see "The delivery order must be shipped before the note can be marked delivered".**
-A. The original delivery order is not 「出荷済」 (Shipped) yet. Record the shipment on the [delivery order](/manual/en/operations/shipping/delivery-order/user) screen, then press 「納品済みにする」 (Mark as delivered) again.
+A. The original delivery order is not 「出荷済」 (Shipped) yet. Record the shipment on the [delivery order](/manual/en/operations/shipping/delivery-order/user) screen, then press 「納品済にする」 (Mark as delivered) again.
 
 **Q. The delivery note has a mistake in it.**
 A. A delivery note cannot be edited afterwards, and there is no way to undo an issue. It has to be re-created from the correct order acceptance / delivery order, so ask your administrator. Do not hand the wrong one to the customer.

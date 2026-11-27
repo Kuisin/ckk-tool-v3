@@ -63,6 +63,7 @@ When you open the app, you see a list of the purchase requests made so far.
 - **状態** (status) … a coloured badge shows the current situation. Grey is 「下書き」 (draft), yellow is 「承認依頼中」 (pending approval), blue is 「承認済」 (approved), purple is 「発注済」 (ordered), and red is 「差し戻し」 (sent back) or 「キャンセル」 (cancelled).
 - **主要素材** (main material) … the material on the first line. If there are more lines, it adds something like 「他 2 件」 (2 more).
 - Type a request number, a requester, or a material code into the search box at the top to narrow down the list.
+- If you handle documents of two or more of our companies, a small badge with the company code (for example `TSP`) appears next to the request number ([company badge](/manual/en/operations/masters/own-company/user#company-badge)).
 - The 「状態」 (status) box on the right lets you show only the ones pending approval.
 - Click a row to open the detail screen for that request.
 
@@ -91,9 +92,11 @@ Once you have checked the content, ask your manager to look at it.
 1. Open the request screen.
 2. Press 「**承認依頼**」 (Request approval) on the 「**承認依頼が必要です**」 (approval request needed) card near the top of the screen.
 
-The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/general/my-tasks/user) screen.
+The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [pending list](/manual/en/operations/general/my-tasks/user) (`CM01`) screen.
 
 > ⚠️ The approval steps are decided in [approval settings](/manual/en/operations/masters/approval-setting/user) (`MS0B`). If the purchase request approval flow has no steps, you cannot request approval (a message such as "the approval flow is not configured" is shown). Ask an administrator to set up the approval settings.
+
+> 💡 If "use approval" is turned off for purchase requests in the approval settings, pressing 「**承認依頼**」 (Request approval) makes the request 「**承認済**」 (approved) straight away (the message 「**承認なしで承認済にしました**」 (approved without approval) is shown). You can then convert it to a purchase order.
 
 ![Purchase request pending approval](../../../assets/screenshots/purchase-request-detail-02.png)
 
@@ -176,7 +179,7 @@ How much you want. The same quantity carries over to the purchase order.
 
 ### Unit [#field-unit]
 
-Pieces, kg, m and so on. Choosing the material fills in its default unit.
+Pieces, kg, m and so on. It starts as 「本」 (pieces). Choosing the material does not change it. A purchase order can only use the unit registered in the material master, so pick the unit that matches the material.
 
 ### Requested date [#field-desired-date]
 
