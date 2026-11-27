@@ -10160,7 +10160,7 @@
       },
       "validUntil": {
         "label": "Valid until",
-        "summary": "The last day this quote is valid. Quotes past this date can be treated as \"Expired\" in the list."
+        "summary": "The last day this quote is valid. Issued quotes past this date are shown as \"Expired\" automatically. A draft can be saved without it, but issuing requires today or a later date."
       },
       "status": {
         "label": "Status",
@@ -10172,7 +10172,7 @@
       },
       "orderType": {
         "label": "Order type",
-        "summary": "Classifies the order as Production, Test, Sample, or Other. Even for the same product, prices differ by type, so choose according to the actual order (samples are treated as ¥0)."
+        "summary": "Classifies the order as Production, Test, Sample, Regrind, or Other. Even for the same product, prices differ by type, so choose according to the actual order (for samples, set the unit price to 0 in the price list)."
       },
       "quantity": {
         "label": "Quantity",
@@ -10218,7 +10218,7 @@
       },
       "validUntil": {
         "label": "Valid until",
-        "summary": "The date this price stops being effective. Leave blank for no end date."
+        "summary": "The date this price stops being effective. Leave blank for no end date. Test and sample prices require an end date."
       },
       "multiplier": {
         "label": "Multiplier",
@@ -10240,7 +10240,7 @@
       },
       "quoteNumber": {
         "label": "Quote",
-        "summary": "The quote this order is based on. If specified, that issued quote is automatically set to \"Accepted\" when this order is confirmed."
+        "summary": "The quote this order is based on. Search and select it (if a customer is selected, only that customer's quotes are shown). Once linked, you can reach this order acceptance from the quote's Progress panel."
       },
       "orderDate": {
         "label": "Order date",
@@ -10248,11 +10248,11 @@
       },
       "shipTo": {
         "label": "Ship-to",
-        "summary": "The delivery destination for the product. Select this when delivering to a different company or branch than the customer who placed the order. Leaving it blank means delivery to the customer. It applies to standard delivery only — with direct-to-end-user it is disabled, because the end user is the destination."
+        "summary": "The delivery destination for this line. Select this when delivering to a different company or branch than the customer who placed the order. Leaving it blank means delivery to the customer."
       },
       "deliveryMethod": {
         "label": "Delivery method",
-        "summary": "Standard delivery — delivers to the ordering customer (or its ship-to). Direct to end user — delivers directly to the end user. A delivery order can only combine orders with the same ship-to and delivery method."
+        "summary": "How this line's product is delivered. Standard delivery — to the ordering customer (or the chosen ship-to). Direct to end user — directly to the end user. A delivery order can only combine lines with the same customer, ship-to and delivery method."
       },
       "endUser": {
         "label": "End user",
@@ -10260,11 +10260,11 @@
       },
       "assignedPlant": {
         "label": "Assigned site",
-        "summary": "The site primarily responsible for handling this order. Select this to clarify which site the work belongs to."
+        "summary": "The site primarily responsible for handling this line. Select this to clarify which site the work belongs to."
       },
       "shippingWorkLocation": {
         "label": "Shipping work location",
-        "summary": "The location where shipping work (packing, loading, etc.) is performed. Select from the work location master."
+        "summary": "The location where shipping work (packing, loading, etc.) for this line is performed. Select from the work location master."
       },
       "customerProvidesDeliveryNote": {
         "label": "Customer-supplied delivery note",
@@ -10280,7 +10280,7 @@
       },
       "orderType": {
         "label": "Order type",
-        "summary": "Classifies the order as Production, Test, Sample, or Other. Prices differ by this classification."
+        "summary": "Classifies the order as Production, Test, Sample, Regrind, or Other. Prices differ by this classification."
       },
       "tool": {
         "label": "Tool to regrind",
@@ -10296,7 +10296,7 @@
       },
       "deliveryDate": {
         "label": "Delivery date",
-        "summary": "The delivery date for this line item. If not specified on the line item, the header's requested delivery date is used."
+        "summary": "The delivery date for this line. Set it on each line (there is no shared default date for the whole order)."
       },
       "itemNotes": {
         "label": "Line item notes",
@@ -10380,11 +10380,11 @@
       },
       "stepMachining": {
         "label": "Step machining length (mm) / Step machining type",
-        "summary": "The length and type of step machining. Cost is determined by the combination of length and type."
+        "summary": "The length and type of step machining. Cost is determined by the combination of length and type. If not performed, set the type to 「無」 (none)."
       },
       "neckMachining": {
         "label": "Neck machining length (mm) / Neck machining type",
-        "summary": "The length and type of neck machining. As with step machining, leave blank if not performed."
+        "summary": "The length and type of neck machining. If not performed, set the type to 「無」 (none)."
       },
       "machiningTime": {
         "label": "Machining time (min)",
@@ -10430,7 +10430,7 @@
       },
       "unit": {
         "label": "Unit",
-        "summary": "The unit of measure, such as pcs, kg, or m. Selecting a material fills in its default unit."
+        "summary": "The unit of measure, such as pcs, kg, or m. It starts as pcs and does not change when you select a material. A purchase order only accepts the unit registered in the material master, so choose that material's unit."
       },
       "desiredDate": {
         "label": "Requested date",
@@ -10468,7 +10468,7 @@
       },
       "unit": {
         "label": "Unit",
-        "summary": "The unit of measure, such as pcs, kg, or m. Selecting a material fills in its default unit."
+        "summary": "The unit of measure, such as pcs, kg, or m. Selecting a material fills in the unit registered in the material master. This field cannot be edited."
       },
       "unitPrice": {
         "label": "Unit price",
@@ -10502,11 +10502,11 @@
       },
       "quantity": {
         "label": "Quantity",
-        "summary": "The quantity actually received. It does not need to match the ordered quantity — if delivered in separate batches, record only the amount received."
+        "summary": "The quantity actually received. For direct procurement delivered in batches, record only the amount received."
       },
       "unit": {
         "label": "Unit",
-        "summary": "The unit of measure, such as pcs, kg, or m. Selecting a material fills in its default unit."
+        "summary": "The unit of measure, such as pcs, kg, or m. Selecting a material fills in the unit registered in the material master. This field cannot be edited."
       },
       "notes": {
         "label": "Notes",
@@ -10574,7 +10574,7 @@
       },
       "quantity": {
         "label": "Quantity",
-        "summary": "The quantity to transfer. It cannot exceed the amount available at the source."
+        "summary": "The quantity to transfer. It cannot exceed the source's available quantity (reserved stock cannot be moved)."
       },
       "notes": {
         "label": "Notes",
@@ -10706,7 +10706,7 @@
       },
       "taxType": {
         "label": "Tax type",
-        "summary": "How consumption tax is treated. Used in invoice calculations."
+        "summary": "How consumption tax is treated. Used in invoice and quote calculations."
       },
       "invoiceMethod": {
         "label": "Invoice delivery method",
@@ -10842,7 +10842,7 @@
       },
       "category": {
         "label": "Category",
-        "summary": "The classification: material prep, machining, coating, inspection, inspection approval, or shipping."
+        "summary": "The classification: material prep, machining, regrind, coating, inspection, inspection approval, or shipping."
       },
       "execution": {
         "label": "Execution location",
@@ -10884,7 +10884,7 @@
       },
       "processStep": {
         "label": "Related step",
-        "summary": "The step this inspection sheet is used for. Specifying it makes the sheet easier to select on that step's execution screen."
+        "summary": "The step this inspection sheet is used for. When a work order includes that step, this sheet is assigned automatically (a template with a target product is assigned only on work orders for that product)."
       },
       "active": {
         "label": "Enabled",
@@ -11038,11 +11038,11 @@
       },
       "type": {
         "label": "Type",
-        "summary": "The category of the work location. Used to filter the list."
+        "summary": "The category of the group (machine, area, etc.). Also used in the process step master to choose, by type, which work locations a step may use."
       },
       "capacity": {
         "label": "Capacity",
-        "summary": "A rough guide to how much this location can handle at once. Enter 1 for a single machine, or the number of items that can be placed at once for an area."
+        "summary": "How many jobs can be assigned at the same time. Leave blank for no limit. Enter 1 for a machine that runs one job at a time."
       },
       "sortOrder": {
         "label": "Sort order / Enabled / Notes",
@@ -11142,11 +11142,11 @@
     "productType": {
       "itemName": {
         "label": "Item name (Japanese / English)",
-        "summary": "The name of the field shown on the product screen. Enter both Japanese and English."
+        "summary": "The name of the field shown on the product screen. Japanese is required; English is optional."
       },
       "key": {
         "label": "Key (identifier)",
-        "summary": "The alphanumeric name used to store this field. Decide it at registration — changing it later will disconnect it from values already entered."
+        "summary": "The alphanumeric name used to store this field. It cannot be changed once saved, so decide it at registration."
       },
       "type": {
         "label": "Type",
