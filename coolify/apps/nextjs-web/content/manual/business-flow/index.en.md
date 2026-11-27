@@ -207,6 +207,7 @@ Covers raising a design request when a drawing is needed, through approval, star
 - Only one unconfirmed version per series → a series with a Draft, Pending approval or Sent back version cannot get a new one. Confirm it or delete the draft first.
 - A series with no ordering customer is "generic" → used by work orders of customers without their own drawing. New / revision is judged per series (a version for customer A does not make customer B a revision).
 - The PDF form opens only after approval (Not started, In progress, Completed) → an internal document handed to manufacturing on paper.
+- Adding, fixing, new versions, deleting and retiring machining programs (registered on drawing versions) go through approval when Approval settings has steps for "加工プログラムの変更" (machining program change). With no steps, the change applies as soon as it is requested (not set up = passes straight through).
 
 ## 4. Production planning — from checking stock to approving the work order [#planning]
 
@@ -308,6 +309,7 @@ How the steps of an approved work order are started and completed on the shop-fl
 - A step past its deadline (**step due date**) and not finished is shown in red on the step card, the flow chart, the Work location board (`PD09`) and the shared device.
 - On the shared device, even without the paper work order you can pick an approved or in-progress work order from the "**Work order list**" and open its steps. The steps you can operate after opening are the same as with Work order scan.
 - The step screen shows the **machining programs** for that step (registered on the drawing version) and the **marking number**.
+- When one order line is made over several work orders, each work order's marking numbers get a split number (`A2000001-001` …). The shop floor marks only that work order's range.
 
 ## 6. Purchasing — from requesting material to receiving it [#purchasing]
 

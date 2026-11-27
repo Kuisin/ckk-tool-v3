@@ -1,9 +1,9 @@
 ---
 title: "User Settings Manual"
-description: "Settings for your own account. Open them from the avatar menu (top right) → Profile / Notification Settings / Home Screen Settings / Display Settings."
+description: "Settings for your own account. Open them from the avatar menu (top right) → Profile / Notification Settings / Home Screen Settings / Display Settings / My permissions."
 screenshots: [profile-home-01, profile-preferences-01]
 ---
-Settings for your own account. Open them from the avatar menu (top right) → **Profile** / **Notification Settings** / **Home Screen Settings** / **Display Settings**.
+Settings for your own account. Open them from the avatar menu (top right) → **Profile** / **Notification Settings** / **Home Screen Settings** / **Display Settings** / **My permissions**.
 
 > 💡 All of your personal settings live in that avatar menu. There is no settings button on the home screen.
 
@@ -22,25 +22,25 @@ Settings for your own account. Open them from the avatar menu (top right) → **
 ## Password
 
 - If you sign in with SSO, your password is managed by your company account.
-- To change a system-account password, use **Profile → Change password**: enter your current password and the new password (twice).
+- To change a system-account password, use the 「**パスワード変更**」 (Change password) box on the profile screen. Enter 「現在のパスワード」 (current password) and the new password twice (8 characters or more), then press 「**パスワードを変更**」 (Change the password). This box is shown only for accounts that have a password in this system.
 
 ## Notifications
 
 - **In-app**: delivered to the bell in the header. Use "Mark all read" to clear them.
 - **Email**: sent to the address on your profile.
-- **Push**: enable per device under **Profile → Notifications** to receive lock-screen / desktop notifications.
-- **Channel toggles**: at the top of **Profile → Notifications** are on/off switches for "Email notifications" and "Push notifications". Turning email notifications off stops approval-request and other emails.
+- **Push**: enable per device under **Notification Settings** in the avatar menu to receive lock-screen / desktop notifications.
+- **Channel toggles**: under 「**通知チャネル**」 (Notification channels) at the top of **Notification Settings** are on/off switches for "Email notifications" and "Push notifications". Turning email notifications off stops approval-request and other emails.
 
 ## Enabling push per platform
 
-- **Chrome / Edge (desktop)**: **Profile → Notifications** → "Enable on this device", then choose **Allow** in the browser permission prompt.
+- **Chrome / Edge (desktop)**: **Notification Settings** in the avatar menu → "Enable on this device", then choose **Allow** in the browser permission prompt.
 - **Android (Chrome)**: same steps. If an "Install app" button appears, installing adds a home-screen icon (optional). Chrome's notifications must also be allowed in the OS settings.
 - **iPhone / iPad (iOS 16.4+)**: push cannot be enabled from a Safari tab. Use Safari's Share button → **Add to Home Screen**, reopen the app from the "CKK" home-screen icon, then press "Enable on this device".
 - If you blocked notifications by mistake, set the site's notification permission back to **Allow** in the browser settings, then enable again.
 
 ## Registered devices
 
-- Under **Profile → Notifications → Registered devices**, review and remove devices where push is enabled. Remove any device you no longer use.
+- Under **Notification Settings → Registered devices**, review and remove devices where push is enabled. The profile screen has the same list under 「**プッシュ通知の登録デバイス**」 (Devices registered for push), where 「**解除**」 (Release) removes one. Remove any device you no longer use.
 
 ## Home screen settings
 
@@ -84,6 +84,17 @@ What is *not* translated is **the data you enter in the master screens** — pro
 ### PDFs do not follow these settings
 
 Quotes, delivery notes, invoices and other PDFs are always printed with **Japan time and the same format for everyone**, so a finished document never shows different dates depending on who opens it.
+
+## My permissions
+
+Open **My permissions** (「自分の権限」) in the avatar menu to check which permissions you hold and which you do not. Anyone who is logged in can open it.
+
+- For each permission, the actions you hold (view, create, and so on) are shown as badges. Permissions you do not hold are also listed, faintly, as 「**権限なし**」 (No permission), so you can tell "I do not have it" apart from "it does not exist".
+- Permissions limited to a range show 「**範囲: …**」 (Scope: …). Permissions that let you approve carry 「**承認できる**」 (Can approve).
+- Privileged operations (operations that need another person's approval, such as showing a PIN) show 「**申請が必要**」 (Request required) even if you hold the permission. While an approved grant is in use, the time left is shown.
+- Administrators see an 「**管理者**」 (Administrator) note.
+
+For how permissions work, see [Permissions and roles](/manual/en/permissions).
 
 ## Manual language
 

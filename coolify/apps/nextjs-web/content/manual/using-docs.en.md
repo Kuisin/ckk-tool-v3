@@ -28,7 +28,22 @@ You can read the user manuals for every app in the system without leaving the sy
 - Type a keyword to search the full text of all manuals. Click a result to jump to that page.
 - Search covers the manuals in the currently displayed language.
 
+## Enlarging images
+
+- Press a screenshot in the text to open it full screen.
+- Zoom in with the mouse wheel, a pinch, or a double-click, and drag to move it. You can also use the 「拡大」 (Zoom in), 「縮小」 (Zoom out) and 「元のサイズに戻す」 (Reset zoom) buttons at the top right of the image.
+- To close it, press the × at the top right or the Esc key.
+
+## Watching videos
+
+- Some pages (such as the process flows) have a recording of the actual operation. A 「**Steps**」 list appears below the video; press an item to jump to that scene. The videos were recorded with the Japanese interface.
+- In environments with no video, the video frame is not shown at all. The pages are written so that the pictures and text alone are enough.
+
+## Back to the app
+
+- Press 「**Back to the app**」 in the sidebar (the menu on mobile) to return to the home screen of the business app.
+
 ## FAQ
 
-- **A screen described in a manual is missing** … Some apps are available in the development (dev) environment only. Check the notice at the top of the manual. Apps you have no permission for are also hidden from your home screen.
+- **A screen described in a manual is missing** … Some apps may not be published in every environment (production / development). Apps you have no permission for are also hidden from your home screen.
 - **The manual differs from the actual screen** … Screens can change ahead of the manuals when the system is updated. Please report anything you notice to an administrator.
