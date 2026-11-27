@@ -6,7 +6,8 @@ Access in this system is managed through **roles** (bundles of job duties).
 Permissions are never granted to a user directly — you assign roles. A user can
 hold several roles, in which case their access is the **union** of all of them.
 
-> This page reflects the **live data in the dev database**. For the latest full
+> This page is written by hand (not generated) from the **live data in the dev
+> database** as of 2026-11-27. For the latest full
 > listing see `_docs/rbac-role-matrix.xlsx`. To check one person's effective
 > permissions, open their detail page in **SY01 User management**.
 
@@ -16,13 +17,13 @@ A permission answers "**who** (role) may do **what** (action) to **which area**
 (permission code)", optionally limited by "**how far**" (scope).
 
 - **Permission code** — one business area. Not necessarily one app (`master`
-  covers all 12 master-data apps; `order_acceptance` covers both SA04 and SA05).
+  covers all 16 master-data apps; `order_acceptance` covers both SA04 and SA05).
 - **Action** — R=read / C=create / U=update / D=delete / E=export / A=approve /
   ◎=ADMIN (every action on that code). **Approving a document is not an action** —
   who can approve is decided solely by approval-group membership in **MS0B
   approval settings**. A appears only for **privileged-access decisions**
   (SY0G), on the five privileged codes (`kiosk_secret`, `kiosk_device`,
-  `kiosk_card`, `personal_data`, `user_admin`) and `portal_admin`.
+  `kiosk_card`, `personal_data`, `user_admin`), `portal_admin` and `api_client`.
 - **Scope** — how far the action reaches. Blank means **ALL** (every row).
   - **OWN** — only rows the user created
   - **PLANT** — only rows of the user's assigned plants (set in SY01)
@@ -48,8 +49,8 @@ flowchart TD
 
 | Role | rolename | Purpose |
 |---|---|---|
-| Administrator | `admin` | Everything. The only role that passes the privileged-access gates without an approval |
-| Manager (approver) | `manager` | Read and export across every area — for cross-department approvers (whether they can approve is decided by MS0B group membership) |
+| Administrator | `admin` | Everything (it holds `system` ◎, so even codes it has no row for are allowed). The only role that runs privileged operations without an approval |
+| Manager (approver) | `manager` | Read and export across every area + read price-estimate cost (`estimate_cost`) — for cross-department approvers (whether they can approve is decided by MS0B group membership) |
 | Sales manager | `sales_manager` | Full control of sales data + read everywhere |
 | Sales | `sales` | Create and edit sales data, **own records only** (OWN) |
 | Sales assistant | `sales_assistant` | Read-only across sales data. No create, edit or approve |
@@ -65,7 +66,7 @@ flowchart TD
 | Accounting | `accounting` | Invoices, monthly closing, accounting CSV |
 | Master data editor | `master_editor` | Master data only. Holds no business-document grants, so pair it with a department role |
 | Viewer | `viewer` | Read-only across every area (executives, audit) |
-| Staff | `staff` | Transitional catch-all — everything except system and kiosk. **Replace with department roles in production** |
+| Staff | `staff` | Transitional catch-all — everything except system, shared devices, the admin manual, privileged codes and cost. **Replace with department roles in production** |
 
 ### Privileged roles (assigned separately from business roles)
 
@@ -82,7 +83,7 @@ list that they cannot approve their own request.
 | User operator | `user_operator` | Account handling for joiners and leavers. Suspend, restore, change plants or roles go through a change request |
 | User approver | `user_approver` | Approves user change requests and personal-data access. **Cannot perform them** |
 | Security auditor | `security_auditor` | Investigates login history and the activity log. Detail views and cross-document search need approval |
-| Privileged operator | `privileged_operator` | Older role that can request every privileged code at once. Prefer the five role-specific ones above |
+| Privileged operator | `privileged_operator` | Older role that can request every privileged code at once (partner portal and external API included). Prefer the five role-specific ones above |
 | Privileged approver | `privileged_approver` | The same, for approving |
 
 > These are **not granted to business roles** (`manager`, `*_manager`, `viewer`
@@ -102,18 +103,18 @@ list that they cannot approve their own request.
 | `purchase_order` | Material purchase / purchase request | PU01 Purchase requests / PU02 Material purchase orders |
 | `material_receipt` | Material receipt | PU03 Material receipts |
 | `outsource_order` | Outsource order | PU04 Outsource orders |
-| `work_order` | Work order | PD02 Work orders / PD05 Pending work orders (also the kiosk's step execution and WO scan) |
-| `approve` | Approval | **No app** (formerly PD03; CM01 Pending list needs no permission) |
-| `inventory` | Inventory | PD04 Inventory |
+| `work_order` | Work order | PD02 Work orders / PD05 Pending work orders / PD09 Work location board (also the shared device's step execution and WO scan) |
+| `approve` | Approval | **No app** (formerly PD03). Only decides whether CM01 Pending list shows the approval-request section (CM01 itself needs no permission) |
+| `inventory` | Inventory | The 7 apps of the inventory category — ST01 Inventory / ST02 Stock overview / ST03 Stock / requirements / ST04 Stock movement / ST05 Stocktaking / ST06 Goods movement / ST09 Movement types |
 | `delivery_order` | Delivery order | SH01 Delivery orders / SH03 Pending shipments |
 | `delivery_note` | Delivery note | SH02 Delivery notes |
 | `invoice` | Invoice | BL01 Invoices |
 | `billing_closing` | Billing closing | BL02 Billing closing (the accounting CSV export is E) |
-| `master` | Master data | All 12 master apps, MS01 and MS04–MS0E |
+| `master` | Master data | All 16 master apps, MS01 and MS04–MS0I |
 | `form` | Forms | **The app itself needs no permission** (CM02 opens for anyone). C / U are needed to create or edit a form |
 | `internal_page` | Internal documents | CM03 Internal documents |
 | `admin_manual` | Admin manual | DC02 Admin manual (this page) |
-| `system` | System admin | SY02 Price estimate engine / SY03 Product items / SY04 Product types / SY05 Apps / SY0B Links / SY0C Order intake / SY0E AI provider / SY0F Notification email |
+| `system` | System admin | SY02 Price estimate engine / SY03 Product items / SY04 Product types / SY05 Apps / SY0B Links / SY0C Order intake / SY0E AI provider / SY0F Notification email / SY0J Accounting export |
 | `kiosk` | Shared device admin | SY09 Devices / SY0A Shared device settings |
 | `kiosk_secret` | Shared device secrets | Revealing the exit PIN, PIN history, device setup code (**privileged**) |
 | `kiosk_device` | Granting device access | Enrolling and revoking devices (**privileged**) |
@@ -121,6 +122,8 @@ list that they cannot approve their own request.
 | `personal_data` | Personal data access | SY07 Activity log / SY0D Login history (**privileged**) |
 | `user_admin` | User and permission changes | SY01 Users (**privileged**) |
 | `portal_admin` | Partner portal admin | SY0H Partner portal |
+| `api_client` | External API client admin | SY0I API clients |
+| `estimate_cost` | Price estimate cost | Not an app but part of SA01 Price estimate — creating and viewing cost estimates, and showing total cost and gross profit. Without it, cost estimates do not exist for you |
 
 **Some apps need no permission at all**: CM01 Pending list, CM02 Forms
 (the app itself), DC01 Manual, SY06 Files, SY0G Privileged access. They are built
@@ -176,16 +179,23 @@ to show only what concerns you, so the door is left open.
 
 ### Privileged and system (never given to business roles)
 
-| Role | System | Shared device | Device secrets | Device access | QR cards | Personal data | User admin | Portal |
-|---|---|---|---|---|---|---|---|---|
-| **Administrator**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | — |
-| **Kiosk operator**<br/>`kiosk_operator` | — | RU | RU | RCU | RCU | — | — | — |
-| **Kiosk approver**<br/>`kiosk_approver` | — | — | A | A | A | — | — | — |
-| **User operator**<br/>`user_operator` | — | — | — | — | — | — | RU | — |
-| **User approver**<br/>`user_approver` | — | — | — | — | — | A | A | — |
-| **Security auditor**<br/>`security_auditor` | — | — | — | — | — | R | — | — |
-| **Privileged operator**<br/>`privileged_operator` | — | R | RU | RCU | RCU | R | RU | RCU |
-| **Privileged approver**<br/>`privileged_approver` | — | — | A | A | A | A | A | A |
+| Role | System | Shared device | Device secrets | Device access | QR cards | Personal data | User admin | Portal | External API |
+|---|---|---|---|---|---|---|---|---|---|
+| **Administrator**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | (◎) | (◎) |
+| **Kiosk operator**<br/>`kiosk_operator` | — | RU | RU | RCU | RCU | — | — | — | — |
+| **Kiosk approver**<br/>`kiosk_approver` | — | — | A | A | A | — | — | — | — |
+| **User operator**<br/>`user_operator` | — | — | — | — | — | — | RU | — | — |
+| **User approver**<br/>`user_approver` | — | — | — | — | — | A | A | — | — |
+| **Security auditor**<br/>`security_auditor` | — | — | — | — | — | R | — | — | — |
+| **Privileged operator**<br/>`privileged_operator` | — | R | RU | RCU | RCU | R | RU | RCU | RCU |
+| **Privileged approver**<br/>`privileged_approver` | — | — | A | A | A | A | A | A | A |
+
+(◎) — the administrator role has no row for this code, but anyone holding
+`system` ◎ has full rights on every code, so it works in practice.
+
+**Price estimate cost (`estimate_cost`)** is not in the tables above. Only the
+administrator (◎) and the manager role `manager` (R) hold it; no other role
+receives it.
 
 ## How to read this
 
@@ -233,8 +243,9 @@ flowchart TD
   ap --> use["Works only for the approved period<br/>clock starts on first use"]
 ```
 
-None of this is granted to business roles: `system`, `kiosk` and the five
-privileged codes are all excluded from the bulk grant in `roles-seed.sql`.
+None of this is granted to business roles: `system`, `kiosk`, the five
+privileged codes, `portal_admin`, `api_client` and `estimate_cost` are all
+excluded from the bulk grants in both seeds.
 
 File management (SY06) **opens for anyone, no permission required**: what is
 visible is decided by folder grants (individual) and by the business apps the
@@ -250,22 +261,34 @@ up empty.
 
 ## Changing the permissions themselves
 
-The role contents (which code gets which action) live in SQL seeds, which are the
-source of truth:
+In the production and dev databases the role contents (which code gets which
+action) are owned by **migrations**. To change permissions, add a new migration
+in `shared-db` and merge it into `dev` — merging applies it automatically.
+**Never run SQL against the database by hand** (that is how production and dev
+drift apart).
 
-- `shared-db/sql/rbac-seed.sql` — the 27 permission codes + `admin` / `staff`
-- `shared-db/sql/roles-seed.sql` — the permission matrix for the 15 business roles
-- migration `20260920090000_privileged_roles` — the 5 privileged roles
+- `shared-db/sql/rbac-seed.sql` — the 29 permission codes + `admin` / `staff`
+- `shared-db/sql/roles-seed.sql` — the permission matrix for the 16 business roles
+  (including `master_editor`). **It builds the throwaway screenshot database**
+  and is not run against production or dev
+- migrations `20260919090000_privileged_access` / `20260920090000_privileged_roles` —
+  the 7 privileged roles (`privileged_operator` / `privileged_approver` and the
+  five role-specific ones)
+- codes added from 2026-09-03 on (`form` / `internal_page` / `admin_manual` /
+  `design_file` / the privileged codes / `portal_admin` / `api_client` /
+  `estimate_cost`) and the `master_editor` grants are handed out by their own
+  migrations too
 
 > **Adding a code means checking the exclusion lists in both seeds.**
-> `roles-seed.sql` grants `manager` / `viewer` / the six `*_manager` roles with
-> `CROSS JOIN app.permissions`, so a new code goes to all of them unless you
-> exclude it (this actually happened once, with `kiosk`).
+> `roles-seed.sql` grants `manager` / `viewer` / five `*_manager` roles (all but
+> the sales manager) with `CROSS JOIN app.permissions`, so a new code goes to all
+> of them unless you exclude it (this actually happened once, with `kiosk`).
+> Migrations follow the same rule: codes not meant for business roles are
+> removed from them explicitly.
 
-After editing, apply them (both are idempotent) and rebuild the Excel version:
+Once the change is on dev, rebuild the Excel version:
 
 ```bash
 cd shared-db
-./scripts/remote-db.sh sh -c 'psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/roles-seed.sql'
 ./scripts/remote-db.sh python3 ../tools/rbac-matrix/build_rbac_xlsx.py
 ```

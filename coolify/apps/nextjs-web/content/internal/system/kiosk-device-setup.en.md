@@ -43,6 +43,8 @@ Once the app starts, register the device with the system.
 3. Scan or type that code in SY09 to link it to the profile
 4. **Activate** the linked device — QR-card login is now available on the tablet
 
+> Creating the profile, linking and activating (and unlinking during recovery) are privileged operations (`kiosk_device`). They can be done only during a period approved in [Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G). Request it before going on site.
+
 ## Installing on an unlocked tablet (for testing)
 
 To try the app without kiosk lock, open the APK URL in Chrome on the tablet, allow installs from the source, and install.

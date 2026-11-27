@@ -50,12 +50,26 @@ The search box matches username, display name, email, and role name. The **group
 
 ## User detail
 
-The detail page has four blocks.
+The detail page has the following blocks (top to bottom).
 
 - **Summary** — username, group, email, login method (**password + SSO** or **SSO only**), last login, and employee ID.
 - **Role assignments** — the assignment history: role name, rolename (internal system name), status (active/inactive), assigned date, and deactivation time. Past, deactivated assignments are also shown. People holding `user_admin` see an "編集" (Edit) button (`updateUserRoles`). **A removed role is not deleted — its row is set to `is_active = false` + `deactivate_at`**, so the history shows when it was removed.
 - **Assigned sites** — the sites that "site" / "region"-scoped permissions apply to. People holding `user_admin` see an "編集" (Edit) button (`updateUserPlants`). Users without the permission see badges only.
-- **Effective permissions** — what this user can do right now. **One row per permission code** (e.g. `quote`, `master`, `system`), with the actions (READ / CREATE / UPDATE, …) as badges inside it and the **widest scope** shown (`groupPermissionsByCode` — `@ckk/authz-core`). Scopes are written per action only when they differ between actions.
+- **Effective permissions** — what this user can do right now. **One row per permission code**, showing the display name (`permission-labels.ts`) first and the code (e.g. `quote`, `master`, `system`) in small text below it, with the actions (READ / CREATE / UPDATE, …) as badges inside it and the **widest scope** shown (`groupPermissionsByCode` — `@ckk/authz-core`). Scopes are written per action only when they differ between actions.
+- **ログイン履歴（直近 30 日）** (Login history, last 30 days) — this user's authentication events (both success and failure, up to 30). Outcome, method, failure reason, date/time, source IP.
+- **登録端末（Web）** (Registered devices, web) — `user_devices` (the device ledger upserted on successful logins). Label, start of the signature, UA, login count, last seen, last IP, ownership badge. It is a hint for "is this their usual device", not device identification.
+- **利用停止** (Suspend) — temporary (a scheduled release time is required) or indefinite. Administrators may leave the reason empty; everyone else must give one and it becomes a change request. It runs after a confirmation modal. **You cannot suspend yourself or the last administrator** (`canSuspend` — `lib/user-suspension-core.ts`).
+
+> **Login history and registered devices do not go through a privileged operation.** SY0D's detail (IP, device signature) needs approval for `personal_data.login_history_detail`, but SY01's detail shows similar information (IP, start of signature, ownership) with only `user_admin` (READ).
+
+### Initial administrator (`admin`)
+
+Only when you open the detail of the local initial administrator `admin` (created in a fresh DB) does a dedicated card appear at the top (decided by `lib/bootstrap-admin-core.ts`). This account has no suspension section.
+
+- If it still has the default password, a strong warning 「**既定パスワードのままです**」 (The password is still the default) is shown.
+- If there is no other active administrator (`system:ADMIN`), it shows 「**先に実ユーザーへ管理者権限を割り当ててください**」 (Assign administrator rights to a real user first) and cannot be disabled (disabling it would leave no administrator, recoverable only via psql).
+- If another administrator exists, it shows 「**初期管理者を無効化できます**」 (You can disable the initial administrator), and someone holding `system:ADMIN` can press 「**初期管理者を無効化**」 (Disable the initial administrator) — recommended.
+- After that it shows 「**初期管理者は無効化済み**」 (The initial administrator is disabled).
 
 ## How to read effective permissions
 

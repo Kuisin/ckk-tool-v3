@@ -38,15 +38,21 @@ flowchart TD
   q -->|"External service"| ext["Processed by the external AI service<br/>images and extracted results<br/>are sent outside the company"]
 ```
 
+## Reading the screen
+
+When you open the screen, the current settings are shown (provider, base URL, image-reading model, structuring model, maximum output tokens, API token). Blank items are shown as 「(既定)」 (default). Only the last 4 characters of the API token are visible.
+
 ## Changing where it connects
 
-1. Choose the 「**プロバイダ**」 (Provider): ローカル (Ollama) (local) / OpenAI 互換 (OpenAI-compatible) / Anthropic (Claude) / Google Gemini.
-2. If needed, enter the 「ベース URL」 (Base URL). If left blank, that provider's default is used.
-3. Enter a model name in 「**画像読み取りモデル**」 (Image-reading model).
-4. Enter the 「**構造化モデル**」 (Structuring model). If left blank, the same model as the image-reading model is used.
-5. For an external service, paste the 「**API トークン**」 (API token).
-6. Press 「**接続テスト**」 (Test connection) and check that both respond.
-7. Press 「保存」 (Save).
+1. Press 「**編集**」 (Edit).
+2. Choose the 「**プロバイダ**」 (Provider): ローカル (Ollama) (local) / OpenAI 互換 (OpenAI-compatible) / Anthropic (Claude) / Google Gemini.
+3. If needed, enter the 「ベース URL」 (Base URL). If left blank, that provider's default is used.
+4. Enter a model name in 「**画像読み取りモデル**」 (Image-reading model).
+5. Enter the 「**構造化モデル**」 (Structuring model). If left blank, the same model as the image-reading model is used.
+6. For an external service, paste the 「**API トークン**」 (API token). To keep a token that is already registered, leave this blank.
+7. If needed, change 「**最大出力トークン**」 (Maximum output tokens — the upper limit on the length of one response). Anthropic always uses this value.
+8. Press 「**接続テスト**」 (Test connection) and check that both respond.
+9. Press 「保存」 (Save).
 
 When you choose an external service, the screen shows 「**外部の AI サービスを使用します。注文書の画像と読み取り結果が社外へ送信されます。**」 (An external AI service will be used. Order document images and extracted results will be sent outside the company.).
 
@@ -54,7 +60,9 @@ When you choose an external service, the screen shows 「**外部の AI サー�
 
 ## Going back to in-house
 
-Press 「**既定に戻す**」 (Reset to default) to go back to the in-house Ollama. **When you save, the registered token is deleted as well.**
+Press 「**編集**」 (Edit), then 「**既定に戻す**」 (Reset to default) to go back to the in-house Ollama. **When you save, the registered token is deleted as well.**
+
+To delete only the token, press 「**トークンを削除**」 (Delete token) while editing, then save. To change your mind, press 「取り消す」 (Undo) before saving.
 
 ## What the connection test tells you
 

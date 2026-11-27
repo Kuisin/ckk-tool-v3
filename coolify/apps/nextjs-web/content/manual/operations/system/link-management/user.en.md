@@ -27,7 +27,7 @@ Press **リンク管理** (Link Management) inside 「システム」 (System) o
 
 ## How to read the screen
 
-The screen has two tabs: 「索引」 (Index) and 「ブロック」 (Blocked).
+The screen has two tabs: 「**索引**」 (Index) and 「**ブロック**」 (Blocked). The number in brackets next to each tab name is how many entries it has.
 
 ### Index tab
 
@@ -49,23 +49,24 @@ A list of blocked hostnames and a field for adding a new one.
 - **理由** (Reason) … an optional note (e.g. "reported as phishing").
 - **該当リンク** (Matching links) … the number of already-indexed links that match this block. Use it as a rough gauge of the impact.
 - **有効** (Active) … a switch to turn the block on or off temporarily. Turning it off stops the block without deleting it.
+- **登録** (Registered) … when the block was added, and who added it.
 
 ## Adding a block
 
 1. Open the 「**ブロック**」 (Blocked) tab.
 2. Enter the address of the site you want to block in 「**ホスト名**」 (Hostname). Pasting a full URL is fine — only the hostname is taken.
-3. Enter a 「**理由**」 (Reason) if needed.
+3. Enter a 「**理由（任意）**」 (Reason (optional)) if needed.
 4. Press 「**追加**」 (Add).
 
 Once added, links to that host show as blocked **the moment the confirmation page is opened**. This also takes effect immediately on links that were already posted in existing documents.
 
 ## Removing a block
 
-To stop a block temporarily, turn off that row's 「**有効**」 (Active) switch. To remove it completely, choose 「**削除**」 (Delete) from that row's actions. After deletion, links to that host can be opened normally again.
+To stop a block temporarily, turn off that row's 「**有効**」 (Active) switch. To remove it completely, choose 「**削除**」 (Delete) from that row's actions. When the 「**ブロック指定の削除**」 (Remove the block) confirmation appears, press 「**削除**」. After deletion, links to that host can be opened normally again.
 
 ## What happens on the viewer's side
 
-When someone pastes an external URL into a memo or comment and saves it, it is automatically replaced with a short link. When another person clicks it, the confirmation page opens first, showing the destination site's name and URL, and only after pressing 「**続行して移動**」 (Continue) do they move to the external site. If the host is blocked, the confirmation page shows "cannot move" along with the reason, and stops there.
+When someone pastes an external URL into a memo or comment and saves it, it is automatically replaced with a short link. When another person clicks it, the confirmation page opens first, showing the destination site's name and URL, and only after pressing 「**続行して移動**」 (Continue) do they move to the external site. If the host is blocked, the confirmation page shows 「**このリンクはブロックされています**」 (This link is blocked) with the blocked hostname and the reason, and stops there.
 
 As a diagram:
 
@@ -74,7 +75,7 @@ flowchart TD
   p["Paste an external URL into<br/>a memo or comment and save"] --> s["Replaced with a short link"]
   s -->|"Someone clicks the link"| c{"Confirmation page<br/>Is the host blocked?"}
   c -->|"No"| g["Pressing 続行して移動 (Continue)<br/>moves to the external site"]
-  c -->|"Yes"| x["Shows 'cannot move' with the reason<br/>and stops there"]
+  c -->|"Yes"| x["Shows このリンクはブロックされています<br/>(This link is blocked) and stops there"]
 ```
 
 ## Questions and problems

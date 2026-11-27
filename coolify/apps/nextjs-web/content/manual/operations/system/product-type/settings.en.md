@@ -21,7 +21,7 @@ These settings let you prepare, in advance, the input boxes that appear when you
 ## Words used on this page
 
 - **項目 (item)** … One input box. For example, "surface treatment" or "hardness".
-- **キー (key)** … The name the system uses to tell that input box apart. It does not appear on the screen.
+- **キー (key)** … The name the system uses to tell that input box apart. It does not appear on the product registration screen.
 - **型 (type)** … The kind of value the box accepts. If you set it to "number", nothing but digits can be entered.
 - **製品種別 (product type)** … A product template made from a group of input boxes. For example, "standard item".
 - **割り当て (assignment)** … Putting an input box into a template.
@@ -30,7 +30,7 @@ These settings let you prepare, in advance, the input boxes that appear when you
 ## Before you start
 
 - First make the input boxes under 「**製品項目**」 (Product items), then combine them under 「**製品種別**」 (Product types). In the other order there are no input boxes to assign.
-- To open it, choose 「**製品項目**」 (Product items) under System on the home screen, or type `SY03` in the search box at the top.
+- To open it, choose 「**製品項目**」 (Product items) or 「**製品種別**」 (Product types) under System on the home screen, or type `SY03` (Product items) or `SY04` (Product types) in the search box at the top.
 - You can move between the two screens with the 「**製品種別へ**」 (To product types) and 「**製品項目へ**」 (To product items) buttons at the top right of each.
 
 As a diagram, the three screens connect like this:
@@ -46,7 +46,7 @@ flowchart TD
 
 ![Product items list screen](../../../assets/screenshots/product-items-01.png)
 
-The list shows the input boxes made so far. Click a row's name to open its edit screen.
+The list shows the input boxes made so far. The grey badge next to the name is the type (the kind of value it takes), and a red-outlined 「**必須**」 (Required) means the box must be filled in. The 「key」 appears under the name. Click a row's name to open its edit screen.
 
 - The switch on the left turns that input box **on or off**. When it is off, the row turns pale.
 - The **↑ ↓** on the right change the order.
@@ -57,7 +57,7 @@ The list shows the input boxes made so far. Click a row's name to open its edit 
 
 1. Press 「**項目を追加**」 (Add item) at the top right of the list.
 2. In 「**項目名（日本語）**」 (Item name (Japanese)), type the name you want on the screen (for example, 表面処理 / surface treatment).
-3. In 「**項目名（英語）**」 (Item name (English)), type the same meaning in English.
+3. If it is also used on English screens, type the same meaning in English in 「**項目名（英語）**」 (Item name (English)) (you can save with it empty).
 4. In 「**キー（識別子）**」 (Key (identifier)), type a name that starts with a single-byte letter or an underscore (`_`). From the second character on, digits can be used too (for example, `surfaceTreatment`).
 5. In 「**型**」 (Type), choose the kind of value it takes.
 6. If there is a value you want filled in from the start, put it in 「**既定値（基本）**」 (Default value (base)).
@@ -91,7 +91,7 @@ This list works the same way as product items. The switch turns it on or off, th
 
 1. Press 「**種別を追加**」 (Add type) at the top right of the list.
 2. In 「**種別名（日本語）**」 (Type name (Japanese)), type a name (for example, 標準品 / standard item).
-3. In 「**種別名（英語）**」 (Type name (English)), type the same meaning in English.
+3. If it is also used on English screens, type the same meaning in English in 「**種別名（英語）**」 (Type name (English)) (you can save with it empty).
 4. Write in 「**説明**」 (Description) when this template is used (it can be left blank).
 5. Press 「**項目を割り当て**」 (Assign item).
 6. In the 「**項目**」 (Item) box that appears, choose the input box you want to build in.
@@ -128,7 +128,7 @@ This screen has two halves: **product items** (the fields themselves) and **prod
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
-| [Item name (Japanese / English)](#field-item-name) | Required | The field name shown on products |
+| [Item name (Japanese / English)](#field-item-name) | Japanese required | The field name shown on products |
 | [Key (identifier)](#field-key) | Required | The alphanumeric name used to store it |
 | [Type](#field-type) | Required | Text, number, and so on |
 | [Default value (base)](#field-default) | Optional | Used when nothing is entered |
@@ -139,11 +139,11 @@ This screen has two halves: **product items** (the fields themselves) and **prod
 
 ### Item name (Japanese / English) [#field-item-name]
 
-The field name shown on the product screen. Fill in both Japanese and English.
+The field name shown on the product screen. Japanese is required; English is optional.
 
 ### Key (identifier) [#field-key]
 
-The alphanumeric name used to store the field. **Changing it later disconnects the values already entered**, so decide it at registration.
+The alphanumeric name used to store the field. **It cannot be changed once saved**, so decide it at registration.
 
 ### Type [#field-type]
 
@@ -175,7 +175,7 @@ For numeric items, the range that can be entered.
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
-| [Type name (Japanese / English)](#field-type-name) | Required | The name picked when creating a product |
+| [Type name (Japanese / English)](#field-type-name) | Japanese required | The name picked when creating a product |
 | [Description](#field-type-description) | Optional | What kind of product it is for |
 | [Active](#field-type-active) | — | Whether it appears when creating products |
 | [Items](#field-type-items) | Optional | The product items this type uses |

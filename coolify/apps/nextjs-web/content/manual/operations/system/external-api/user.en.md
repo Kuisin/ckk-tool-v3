@@ -59,7 +59,7 @@ If any client has an issued token, a separate **token list** appears below the c
 
 ## Creating a client
 
-1. Press 「**新規作成**」 (New) at the top right of the screen.
+1. Press 「**新規**」 (New) at the top right of the screen.
 2. Enter a 「**名前**」 (Name) — required.
 3. Write a 「**説明**」 (Description) explaining what it is for — optional.
 4. Enter the 「**許可 IP 範囲**」 (Allowed IP ranges) as comma-separated CIDRs (for example, `10.0.0.0/8, 203.0.113.0/24`). Leave it empty for no restriction.

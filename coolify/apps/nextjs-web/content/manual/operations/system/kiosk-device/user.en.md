@@ -15,6 +15,7 @@ You can also check on this screen which tablets are running right now and who is
 - Handle broken or replaced tablets.
 - Place tablets on a **フロアマップ** (floor map — the layout drawing of the site).
 - See a history of who used which tablet, and when.
+- Decide what the floor TVs (**displays**) show (currently a test-environment-only feature).
 
 ## Terms used on this page
 
@@ -26,7 +27,9 @@ You can also check on this screen which tablets are running right now and who is
 
 ## Before you start
 
-- You need the **kiosk management permission** to use this app. If you cannot open it, please ask your system administrator.
+- To open this app you need the **Shared device admin** (共有端末管理) permission. If you cannot open it, please ask your system administrator.
+- Even with the permission, **creating a slot, linking, activating, re-enabling, unlinking, revoking, key reset, and showing or regenerating PINs and setting codes** cannot be done straight away. First request them in [Privileged Access](/manual/en/operations/system/privileged-access/user) (`SY0G`) and have someone else approve. At the very top of the screen, two bands — 「共有端末の秘密」 (Shared device secrets) and 「端末アクセスの付与」 (Device access) — show which operations you can use on this screen right now under an approval.
+- This app is not yet published in the production environment (it is currently available in the test environment). If it does not appear on the home screen, please ask your system administrator.
 - Preparing the tablet itself (installing the dedicated app, connecting it to the network) cannot be done from this screen. Please see your company's internal procedure document.
 - For employees to log in, a card must first be issued in [QR Card Management](/manual/en/operations/system/kiosk-card/user).
 
@@ -36,7 +39,7 @@ On the home screen, press **端末管理** (Device Management) under 「シス�
 
 ## Reading the screen
 
-When you open the app, the registered tablets are listed.
+When you open the app, the registered tablets are listed. In the test environment, two tabs appear at the top: 「**共有端末**」 (Shared device) and 「**ディスプレイ**」 (Display) — for displays see "[Displays (test environment only)](#display)" below. In the production environment there are no tabs; only the tablet list is shown.
 
 ![Device Management list screen](../../../assets/screenshots/kiosk-devices-01.png)
 
@@ -49,6 +52,7 @@ When you open the app, the registered tablets are listed.
   - **有効** (Active) … ready to use.
   - **無効** (Disabled) … temporarily stopped. This can be undone.
   - **取り消し** (Revoked) … made completely unusable. This cannot be undone.
+- **端末区分** (Device type) … whether it is a company device, as judged automatically by the system. One of 「**会社（管理端末）**」 (Company (managed device)), 「**会社（社内NW）**」 (Company (in-house network)), 「**未管理**」 (Unmanaged), or 「**未判定**」 (Undetermined) is shown. Hover over the badge to see the basis of the judgment. 「会社（社内NW）」 only means it connects from the company network — it is not proof that the device belongs to the company.
 - **リンク** (Linked) … the date and time it was connected to a tablet. Before that, it shows 「**未リンク**」 (Not linked).
 - **オンライン** (Online) … if it is connected right now, a green dot with 「**オンライン**」 (Online); if it is not, a gray dot with 「**オフライン**」 (Offline).
 - **利用者** (User) … the person currently logged in on that tablet.
@@ -74,7 +78,7 @@ flowchart TD
 ### Step 1 — Create the registration slot
 
 1. Press 「**端末プロファイル作成**」 (Create device profile) at the top right of the screen.
-2. Enter an easy-to-understand name in 「**端末名**」 (Device name) — for example, 1F Machining Tablet 1.
+2. Enter an easy-to-understand name in 「**端末名**」 (Device name) — for example, 1F Machining Tablet 1. Names in languages other than Japanese go in through the 「**多言語**」 (Translations) button next to it (optional).
 3. Choose the 「**拠点**」 (Site).
 4. Enter a note about where it is placed in 「**場所**」 (Location). This is optional — for example, Inspection room entrance.
 5. Press 「**作成**」 (Create).
@@ -82,6 +86,8 @@ flowchart TD
 ![Screen for creating a device profile](../../../assets/screenshots/kiosk-devices-create-01.png)
 
 A row with the status 「**リンク待ち**」 (Awaiting link) is created.
+
+> 💡 Steps 1–3 (create, link, activate) are all **operations that need approval**. Request them in Privileged Access in advance so you do not have to wait on site.
 
 ### Step 2 — Connect the tablet
 
@@ -108,8 +114,10 @@ The status changes to 「**有効**」 (Active), and **the tablet's screen autom
 ## Changing the name or location
 
 1. From 「**…**」 on that row, choose 「**編集**」 (Edit).
-2. Correct 「**端末名**」 (Device name), 「**拠点**」 (Site), and 「**場所**」 (Location).
+2. Correct 「**端末名**」 (Device name), 「**拠点**」 (Site), 「**場所**」 (Location), 「**既定の作業場所**」 (Default work location), and 「**ログイン画面の言語**」 (Login screen language).
 3. Press 「**保存**」 (Save).
+
+「**ログイン画面の言語**」 (Login screen language) is the language of the screens before login (QR code login, device linking). When left blank, it is Japanese. After login, the person's own display-settings language is used.
 
 > ⚠️ **If you change the site, the pin placed on the floor map is removed.** This is because the layout drawings are separated by site. After changing the site, please place the pin again on the new site's floor map.
 
@@ -117,10 +125,11 @@ The status changes to 「**有効**」 (Active), and **the tablet's screen autom
 
 From 「**…**」 on the row, you can do the following, depending on your situation.
 
-- 「**無効化**」 (Disable) … temporarily makes it unusable. You can undo this with 「**再有効化**」 (Re-enable). Use it while the tablet is out for repair, for example.
-- 「**再有効化**」 (Re-enable) … makes a stopped tablet usable again.
+- 「**利用履歴**」 (Usage history) … opens the record of who logged in to that tablet, and when.
+- 「**無効化**」 (Disable) … temporarily makes it unusable. You can undo this with 「**再有効化**」 (Re-enable). Use it while the tablet is out for repair, for example. Disabling works immediately without approval (so a suspicious tablet can be stopped right away).
+- 「**再有効化**」 (Re-enable) … makes a stopped tablet usable again. This one needs approval.
 - 「**リンク解除**」 (Unlink) … removes the connection between the tablet and the registration slot, and returns it to "Awaiting link". The name, site, location, and floor-map pin all stay as they are. **Use this when you replace a tablet with a new machine.** You can connect the new tablet to the same slot again.
-- 「**鍵リセット**」 (Key reset) … use this when you have factory-reset or replaced a tablet. After you press it, the tablet's app is registered afresh the next time it connects.
+- 「**鍵リセット**」 (Key reset) … use this when you have factory-reset or replaced a tablet. After you press it, the tablet's app is registered afresh the next time it connects. It appears only when the tablet's key has been registered.
 - 「**削除**」 (Delete) … you can only delete registration slots that have not been connected yet (Awaiting link).
 - 「**取り消し**」 (Revoke) … makes the tablet completely unusable.
 
@@ -132,14 +141,15 @@ Click a row in the list to open the screen for that one tablet.
 
 ![Device detail screen](../../../assets/screenshots/kiosk-devices-detail-01.png)
 
-Near the top you will see the online status, the user, the site, the location, the link date and time, and so on.
+Near the top you will see online, user, last activity, site, location, link date and time, activation (date and time, and who activated it), device type, created at, and GPS position (latest).
 
-- 「**アテステーション鍵**」 (Attestation key) … something like a per-tablet password, used to confirm that the tablet is the genuine one. When it has not been decided yet, it shows 「**未束縛**」 (Not bound).
-- 「**GPS 位置（最新）**」 (GPS position (latest)) … the newest position received from the tablet. When nothing has been received, it shows 「**未取得**」 (Not received).
+- 「**GPS 位置（最新）**」 (GPS position (latest)) … the newest position received from the tablet. Press it to open a map. When nothing has been received, it shows 「**未取得**」 (Not received).
+
+Below that are four tabs: 「**PIN・設定コード**」 (PIN and settings code), 「**端末情報**」 (Device information), 「**利用状況**」 (Usage), and 「**認証エラー**」 (Authentication errors).
 
 ### PIN and setting codes
 
-There are 2 numbers for operating the tablet on the floor. Both are normally hidden as "••••••", and you can see them by pressing 「**表示**」 (Show). They hide again after 60 seconds.
+There are 2 numbers for operating the tablet on the floor. Both are normally hidden as "••••••"; to see one, press 「**表示**」 (Show), then press 「**表示**」 again on the confirmation screen. They hide again after 60 seconds. Seeing them needs approval.
 
 - 「**メンテナンス PIN（全端末共通・毎日 4:00 自動更新）**」 (Maintenance PIN (same for all devices, updated automatically at 4:00 every day)) … a number that temporarily removes the tablet's screen lock so it can be used freely. Use it when changing Wi-Fi settings, for example. Tap the **top right** of the device screen 5 times in a row and an input box appears.
 - 「**端末設定コード（この端末・左下 5 タップ用）**」 (Device setting code (this device only, for 5 taps at the bottom left)) … a number for that one tablet only. Tap the **bottom left** of the device screen 5 times in a row and the device settings screen opens; unlock it with this number. Use it when resetting a device or connecting it again. Press 「**再生成**」 (Regenerate) to get a new number — **the previous number then stops working**.
@@ -162,10 +172,23 @@ Pressing 「**履歴**」 (History) still lists the past numbers with the period
 - 400 days are kept. A tablet that has been off longer than that cannot be opened with a PIN — connect it to a PC over USB to release it, or set it up again from scratch.
 - Pressing 「**表示**」 and 「**履歴**」 is also recorded.
 
-### Usage records
+### Device information
+
+The tablet's identity is listed here.
+
+- 「**端末区分**」 (Device type) and 「**判定根拠**」 (Basis for the decision) … the automatic judgment of whether it is a company device, and its basis.
+- 「**鍵フィンガープリント**」 (Key fingerprint) … the mark of the per-device key used to confirm that the tablet is the genuine one. When it has not been decided yet, it shows 「**未束縛**」 (Not bound).
+- 「**最終 IP（最後に観測）**」 (Last IP (most recently seen)) and 「**リンク時 IP**」 (IP when linked) … the address (IP address) the tablet connected from.
+- 「**プロファイル取得**」 (Fetch the profile) … information sent by the dedicated app (v0.6.0 or later), such as manufacturer, model, app version, and USB debugging state. If a setting needs attention, 「**この端末で気をつける点**」 (Things to watch for on this device) appears. On tablets with an older app it stays blank.
+
+### Usage
 
 - 「**最近の利用者**」 (Recent users) … the people who use that tablet often, and how many times.
 - 「**利用履歴**」 (Usage history) … a list of who logged in and when, and when they logged out. When it has not been used yet, it shows 「**利用履歴はまだありません**」 (No usage history yet).
+
+### Authentication errors
+
+A list of **logins that were rejected** on that tablet (wrong PIN, unusable card, and so on). Successful logins appear under 「利用状況」 (Usage), failed ones here. When there are none, 「**この端末で弾かれた認証はありません**」 (No authentication was rejected on this device) is shown.
 
 ## Floor map (placing tablets on the layout drawing)
 
@@ -185,40 +208,60 @@ Turn on the 「**編集モード**」 (Edit mode) switch at the top of the scree
 - Click a tablet in 「**未配置の端末**」 (Unplaced devices) on the right and it is placed in the middle of the drawing. After that, drag it into place.
 - To remove a tablet you have placed, press the mark on its row under 「**配置済み**」 (Placed) on the right — 「**ピンを解除**」 (Remove pin).
 - Add floors with 「**フロアを追加**」 (Add floor). Change a floor's name with 「**名称変更**」 (Rename).
-- Put in an image of the layout drawing with 「**図面をアップロード**」 (Upload drawing) or 「**図面を差し替え**」 (Replace drawing) — PNG / JPG / WEBP / SVG, up to 10 MB.
+- Put in an image of the layout drawing with 「**図面をアップロード**」 (Upload drawing) or 「**図面を差し替え**」 (Replace drawing) — PNG / JPG / WEBP, up to 10 MB.
 - Delete a floor with 「**フロアを削除**」 (Delete floor). However, you cannot delete a floor that has tablets or storage locations placed on it. Remove those pins first.
 
 At a site that does not have a layout drawing yet, 「**この拠点にはフロアマップがありません。**」 (This site has no floor map.) is shown. Turn on edit mode and create one from 「**フロアを追加**」.
+
+## Displays (test environment only) [#display]
+
+**This feature is currently available only in the test environment.** In the production environment the tab itself does not appear.
+
+This registers the TVs hung on the floor walls (**displays**) to show production status, shipping schedules, and so on. The procedure is the same 3 stages as for tablets (create → link → activate).
+
+1. Open the 「**ディスプレイ**」 (Display) tab and press 「**ディスプレイを追加**」 (Add a display).
+2. Decide 「**名前**」 (Name), 「**設置場所**」 (Location), 「**拠点**」 (Site), and 「**映す画面**」 (Screen to show), then press 「**作成**」 (Create). The status is 「**リンク待ち**」 (Awaiting link).
+3. From 「**…**」 on the row, choose 「**ディスプレイをリンク**」 (Link the display). Read the QR shown on the TV with 「**ディスプレイのQRをスキャン**」 (Scan the display's QR code), or enter the 12-character 「**リンクコード**」 (Link code), then press 「**リンク**」 (Link).
+4. From 「**…**」 on the row, choose 「**有効化**」 (Activate). The TV starts showing.
+
+Click a row to open the display's detail screen. It has three tabs: 「**表示内容**」 (What to show), 「**設定**」 (Settings), and 「**履歴**」 (History). 「表示内容」 and 「設定」 are changed after pressing 「**編集**」 (Edit).
+
+- 「**表示内容**」 (What to show) … what is shown. Choose 「**アプリの画面**」 (An app screen — production status, pending / awaiting arrangement, shipping schedule, quality / defects, announcement) or 「**画像**」 (Image). When you save, the TV display switches on the spot.
+- 「**設定**」 (Settings) … name, location, site, 「**表示倍率**」 (Zoom, 50–200%), and 「**この画面の表示言語**」 (Display language for this screen).
+
+With the buttons at the top right of the screen you can, depending on the status, 「**一時停止**」 (Pause), 「**再開**」 (Resume), 「**リンク解除**」 (Unlink), 「**失効**」 (Revoke), or 「**削除**」 (Delete). A paused TV shows 「この画面は一時停止されています。」 (This screen has been paused). Link, activate, unlink, revoke, and delete need approval.
+
+For preparing the TV side (Raspberry Pi), see your company's internal procedure document.
 
 ## Input fields
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
 | [Device name (Japanese / English)](#field-name) | Required | The name shown in lists and logs |
-| [Plant](#field-plant) | Required | Where the device lives |
-| [Location](#field-location) | Optional | Where within that plant |
+| [Site](#field-plant) | Required | Where the device lives |
+| [Location](#field-location) | Optional | Where within that site |
 | [Default work location](#field-default-work-location) | Optional | Work location auto-recorded on actuals from this device |
 | [Link code](#field-link-code) | Required | The code shown on the tablet |
 
 ### Device name (Japanese / English) [#field-name]
 
-The name shown in the list, on the floor map, and on activity-log badges. Use a name that **lets someone find the physical device**, such as "Plant 1 entrance". Fill in both Japanese and English.
+The name shown in the list, on the floor map, and on activity-log badges. Use a name that **lets someone find the physical device**, such as "Plant 1 entrance". Only the Japanese name is needed. Names in English and other languages can be entered through the 「**多言語**」 (Translations) button (optional).
 
-### Plant [#field-plant]
+### Site [#field-plant]
 
-Where the device lives. Devices are listed per plant.
+The site where the device is placed. Devices are listed per site.
 
 ### Location [#field-location]
 
-Where it sits inside the plant. Placing a pin on the floor map also shows its position on screen.
+Where it sits inside the site. Placing a pin on the floor map also shows its position on screen.
 
 ### Default work location [#field-default-work-location]
 
 ![The device edit modal (default work location)](../../../assets/screenshots/kiosk-devices-edit-01.png)
 
-The work location (machine / area) automatically recorded on work actuals when a step is **started or resumed** on this tablet. Set it to where the tablet is physically placed. Only work locations belonging to the device's plant (or groups with no plant) can be selected.
+The work location (machine / area) automatically recorded on work actuals when a step is **started or resumed** on this tablet. Set it to where the tablet is physically placed. Only work locations belonging to the device's site (or groups with no site) can be selected.
 
-- Changing the plant clears the default work location
+- Changing the site clears the default work location
 - It can also be changed from the tablet's **device settings screen** (tap the bottom left 5 times → settings code). The "restrict work location" toggle on the same screen, when ON, only lets the device start/resume steps whose allowed work locations include the device's default
 - If work actually happened elsewhere, scanning a work-location QR code on the step execution screen overrides the location on that actual record
 
@@ -231,7 +274,7 @@ The device settings screen on the tablet looks like this (it opens after enterin
 The code shown on the tablet's own screen. **Create the device entry here first**, then scan (or type) the code from the tablet to tie that entry to the physical device.
 
 - An entry that is not tied to a device **cannot be activated**
-- To swap a device, **unlink** it. The name, plant and pin stay, so a new device can be tied to the same entry
+- To swap a device, **unlink** it. The name, site and pin stay, so a new device can be tied to the same entry
 
 ## FAQ and troubleshooting
 
@@ -249,6 +292,9 @@ A. Press 「**リンク解除**」 (Unlink) on that device. The name, site, loca
 
 **Q. The camera cannot read the QR code.**
 A. If 「**カメラを起動できません。カメラ権限と HTTPS 接続を確認してください。**」 (The camera cannot be started. Please check the camera permission and the HTTPS connection.) is shown, allow the browser to use the camera. If that does not work, you can also register by typing the 12-character code by hand.
+
+**Q. I get 「この操作には承認が必要です（…）。特権アクセス（SY0G）から申請してください」 ("This operation needs approval (…). Please request it from Privileged Access (SY0G)").**
+A. That operation can only be done during an approved period. Request it with 「**特権アクセスを申請する**」 (Request privileged access) in the band at the top of the screen, and wait for approval. Editing the name and other details, disabling, and placing pins on the floor map can be done without approval.
 
 **Q. I changed the site, and the tablet disappeared from the floor map.**
 A. That is normal behavior. The layout drawings are separated by site, so changing the site removes the pin. Please place it again on the new site's floor map.

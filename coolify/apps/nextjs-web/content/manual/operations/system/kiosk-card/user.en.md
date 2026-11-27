@@ -20,12 +20,13 @@ An employee holds the card up to the tablet and enters a PIN that they chose the
 
 - **QR card** … a card with a QR code printed on it, held up to the tablet to log in.
 - **PIN** … a secret number that only the person themselves knows. It stops someone else from using the card if it is picked up.
-- **Kiosk device** … the shared tablet placed on the factory floor.
+- **Shared device** … the shared tablet placed on the factory floor.
 - **Temporary card** … a card that only works for a limited period. Login is blocked outside that period.
 
 ## Before you start
 
-- You need the **kiosk management permission** to use this app. If you cannot open it, please ask your system administrator.
+- To open this app you need the **Shared device card issuance** (QRカードの発行・PIN) permission. If you cannot open it, please ask your system administrator.
+- Even with the permission, **issuing, assigning, printing and revoking cards, resetting or unlocking PINs, and changing the validity period or the concurrent login limit** cannot be done straight away. First request them in [Privileged Access](/manual/en/operations/system/privileged-access/user) (`SY0G`) and have someone else approve (see "About operations that need approval" below).
 - You can only give a card to someone who is **registered in this system and in an active state**. People who are not registered yet cannot be assigned a card.
 - The tablet side also has to be prepared (registered in [Device Management](/manual/en/operations/system/kiosk-device/user)).
 
@@ -35,7 +36,7 @@ On the home screen, under 「システム」 (System), press **QRカード管理
 
 ## Reading the screen
 
-When you open the app, the cards that have been issued are listed.
+When you open the app, the cards that have been issued are listed. The band at the very top shows how many operations you can use on this screen right now under an approval, and the time left (with no approval it says 「承認された操作はありません」 (No operations are approved)).
 
 ![QR Card Management list screen](../../../assets/screenshots/kiosk-cards-01.png)
 
@@ -100,6 +101,8 @@ The cards always print **at actual size (91×55 mm)**. The only thing to check i
 
 To print just one card, choose 「**印刷**」 (Print) from the 「**…**」 menu on that row.
 
+> ⚠️ Opening the print sheet also needs an **approval** (the "Print the card sheet" operation). Without one, the print sheet does not open.
+
 > 💡 The card ID shown in the list is **only the last 8 characters** (the front part is hidden behind "*"). The printed QR code contains all of the information, so please handle printed cards with care.
 
 ## After you hand the card to the employee
@@ -107,8 +110,10 @@ To print just one card, choose 「**印刷**」 (Print) from the 「**…**」 m
 Give the printed card to the person. The rest is done by them on the tablet.
 
 1. They hold the QR code up to the tablet.
-2. The first time they use it, they **choose their own PIN** on the spot.
+2. The first time they use it, they **choose their own PIN** on the spot. The PIN is **6 digits**. A run of the same digit such as "111111", a sequence such as "123456", or a repeat such as "121212" is not accepted.
 3. From then on, they log in by holding up the card and entering their PIN.
+
+> 💡 **If they used the same tablet within the last 48 hours**, holding up the card is enough and the PIN is not asked. On a tablet they have never used, the PIN is always asked. Even with continued use, the PIN is always asked **once every 2 weeks**.
 
 Only the person knows their PIN. **An administrator cannot see it or choose one on their behalf.**
 
@@ -118,9 +123,11 @@ From the 「**…**」 menu on a card's row, you can do the following.
 
 - 「**PINロック解除**」 (Unlock PIN) … use this for someone who is locked out after entering the wrong PIN repeatedly. Pressing it lets them use the card again straight away. Their PIN stays the same.
 - 「**PINリセット**」 (Reset PIN) … use this for someone who has forgotten their PIN. The current PIN is erased, and they choose a new one at their next login.
-- 「**一時停止**」 (Suspend) … temporarily stops logins with that card. 「**再開**」 (Resume) puts it back.
+- 「**一時停止**」 (Suspend) … temporarily stops logins with that card. The moment you press it, any tablet currently logged in with that card is logged out on the spot. 「**再開**」 (Resume) puts it back.
 - 「**再開**」 (Resume) … makes a suspended card usable again.
 - 「**取り消し**」 (Revoke) … makes the card permanently unusable.
+
+「PINロック解除」 (Unlock PIN) appears only for a card whose PIN is locked, and 「PINリセット」 (Reset PIN) only for a card whose PIN has been set.
 
 > ⚠️ 「**取り消し**」 (Revoke) **cannot be undone**. The moment you press it, any tablet currently logged in with that card is logged out on the spot. Use it when a card has been lost, or the person has left the company.
 
@@ -141,10 +148,14 @@ Clicking a row in the list opens the screen for that single card.
 
 ![Card detail screen](../../../assets/screenshots/kiosk-cards-detail-01.png)
 
-The upper part shows the assigned user, validity period, PIN, last used, use count, and so on. The 「**操作**」 (Actions) area has these buttons.
+The upper part shows the assigned user, validity period, PIN, concurrent login limit, last used, use count, PIN last verified (when the PIN was last entered), assignment (when and by whom it was assigned), and issued at. A revoked card also shows when and by whom it was revoked.
+
+A card whose validity period has ended, or has not started yet, shows a warning band at the top.
+
+The 「**操作**」 (Actions) area has these buttons (a revoked card has no 「操作」 area).
 
 - 「**有効期間を編集**」 (Edit validity period) … extend or shorten the usable period, or set it back to unlimited.
-- 「**同時ログイン上限**」 (Concurrent login limit) … decides how many tablets can be logged in at the same time with one card (1–10). When the limit is exceeded, the oldest device is logged out automatically.
+- 「**同時ログイン上限**」 (Concurrent login limit) … decides how many tablets can be logged in at the same time with one card (1–10). When the limit is exceeded, the oldest device is logged out automatically. Lowering the limit does not log out devices that are already logged in straight away (they are tidied up at the next login).
 - 「印刷」 (Print), 「一時停止」 (Suspend), 「再開」 (Resume), 「PINロック解除」 (Unlock PIN), 「PINリセット」 (Reset PIN), and 「取り消し」 (Revoke) can also be done here.
 
 At the very bottom, 「**最近のログイン**」 (Recent logins) lets you check which tablet the card was used on, and when.
@@ -185,11 +196,23 @@ A. That person already has another card. Only one card per person is allowed, so
 **Q. A card shows 「期限切れ」 (Expired) and the employee cannot log in.**
 A. The card's validity period has ended. Extend the end date with 「**有効期間を編集**」 (Edit validity period) on the detail screen, or switch to a new card.
 
+**Q. I get the message 「この操作には承認が必要です（…）。特権アクセス（SY0G）から申請してください」 ("This operation needs approval (…). Please request it from Privileged Access (SY0G)").**
+A. That operation can only be done during an approved period. Request it with 「**特権アクセスを申請する**」 (Request privileged access) in the band at the top of the screen, and wait for approval. Only 「一時停止」 (Suspend) and 「再開」 (Resume) can be done without approval.
+
 **Q. The person I want to assign the card to does not appear in the list of choices.**
 A. That person is either not registered in the system, or is currently in an unusable state. Check their status in [User Management](/manual/en/operations/system/user-management/user).
 
 **Q. I want to move a card to a different person.**
 A. You cannot change who a card is assigned to. Set the current card to 「**取り消し**」 (Revoke) and assign a new card to that person.
+
+## About operations that need approval
+
+Most operations in this app **cannot be done just by holding the permission**. You request them in [Privileged Access](/manual/en/operations/system/privileged-access/user) (`SY0G`), and can do them only during the period someone else approved.
+
+- Needs approval … issuing / assigning / printing / revoking cards, resetting / unlocking PINs, changing the validity period, changing the concurrent login limit
+- No approval needed … suspend / resume (done with the Update permission of 「共有端末管理」 (Shared device admin))
+
+The approved time starts counting **from your first operation, not from the moment of approval**.
 
 <!-- permissions:start -->
 ## Permissions required

@@ -21,7 +21,8 @@ You can also check the login rules for the tablets here (for example, how many h
 
 ## Before you start
 
-- You need the **kiosk management permission** to use this app. If you cannot open it, please ask your system administrator.
+- You need the **Shared device admin** (共有端末管理) permission to use this app. If you cannot open it, please ask your system administrator.
+- This app is not yet published in the production environment (it is currently available in the test environment). If it does not appear on the home screen, please ask your system administrator.
 - The tablets themselves are registered in [Device Management](/manual/en/operations/system/kiosk-device/user), and the cards used to log in are made in [QR Card Management](/manual/en/operations/system/kiosk-card/user).
 
 ## How to open it
@@ -51,7 +52,9 @@ You are done when 「**保存しました**」 (Saved) and 「**共有端末の�
 
 > ⚠️ If you turn a switch off, **the app also disappears for people who have permission to use it.** You cannot use this to show an app to only some people.
 
-Right now there are 2 apps available on the tablets: 「**工程実行**」 (Step Execution) and 「**指示書スキャン**」 (Work Order Scan). As more apps are added, they will appear in this list.
+The apps you can choose in this list are these 3: 「**工程実行**」 (Step execution), 「**指示書スキャン**」 (Work order scan), and 「**作業場所の工程**」 (Work location steps). As more apps are added, they will appear in this list.
+
+> 💡 The tablets also have another app, 「**指示書一覧**」 (Work order list). It is not in this list, so it cannot be hidden here. It is always shown to people who have the permission.
 
 Under each app name you will see text such as 「**権限コード: work_order**」 (Permission code: work_order). This tells you which permission a person needs in order to use that app. Even if the switch is on, the app will not appear for a person who does not have that permission.
 

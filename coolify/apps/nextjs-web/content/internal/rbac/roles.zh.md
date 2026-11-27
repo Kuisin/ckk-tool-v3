@@ -5,7 +5,7 @@ description: "系统中所有角色与权限代码的一览：谁能做什么，
 本系统的访问控制以 **角色**（职责集合）为单位管理。权限不会直接授予个人，而是
 通过分配角色实现。一个用户可以拥有多个角色，此时其权限为 **所有角色的并集**。
 
-> 本页依据 **dev 数据库中的实际数据** 生成。需要最新完整清单时请查看
+> 本页依据 **dev 数据库中的实际数据**（截至 2026-11-27）手工编写（并非自动生成）。需要最新完整清单时请查看
 > `_docs/rbac-role-matrix.xlsx`。查看某位用户的实际权限，请打开
 > **SY01 用户管理** 的详情页面。
 
@@ -14,13 +14,13 @@ description: "系统中所有角色与权限代码的一览：谁能做什么，
 权限描述的是「**谁**（角色）对 **哪个领域**（权限代码）能做 **什么操作**（动作）」，
 必要时再加上 「**范围**」（作用域）。
 
-- **权限代码** … 一个业务领域，未必等于一个应用（`master` 覆盖 12 个主数据应用，
+- **权限代码** … 一个业务领域，未必等于一个应用（`master` 覆盖 16 个主数据应用，
   `order_acceptance` 同时覆盖 SA04 与 SA05）。
 - **动作** … R=查看 / C=新建 / U=修改 / D=删除 / E=导出 / A=审批 /
   ◎=ADMIN（该代码的全部动作）。**单据的审批不是动作** — 谁能审批仅由
   **MS0B 审批设定** 的审批组成员资格决定。带 A 的只有**特权访问（SY0G）的
   决裁**，对象仅限下面的 5 个特权代码（`kiosk_secret` / `kiosk_device` /
-  `kiosk_card` / `personal_data` / `user_admin`）与 `portal_admin`。
+  `kiosk_card` / `personal_data` / `user_admin`）与 `portal_admin` / `api_client`。
 - **作用域** … 操作可及的范围。留空表示 **ALL（全部数据）**。
   - **OWN** … 仅本人创建的数据
   - **PLANT** … 仅本人所属据点的数据（在 SY01 中设置所属据点）
@@ -45,8 +45,8 @@ flowchart TD
 
 | 角色 | rolename | 用途 |
 |---|---|---|
-| 管理员 | `admin` | 全部权限。唯一无需审批即可通过特权访问关卡的角色 |
-| 管理层（审批人） | `manager` | 全业务的查看・导出，面向跨部门审批者（能否审批由 MS0B 审批组成员资格决定） |
+| 管理员 | `admin` | 全部权限（持有 `system` 的 ◎，因此没有记录的代码也全部可用）。唯一无需审批即可执行特权操作的角色 |
+| 管理层（审批人） | `manager` | 全业务的查看・导出 + 价格试算成本（`estimate_cost`）的查看，面向跨部门审批者（能否审批由 MS0B 审批组成员资格决定） |
 | 销售部长 | `sales_manager` | 销售数据全量完整操作 + 全业务查看 |
 | 销售 | `sales` | 销售数据 **仅限本人创建的部分** 新建・修改（OWN） |
 | 销售助理 | `sales_assistant` | 销售数据仅查看，不可新建・修改・审批 |
@@ -62,7 +62,7 @@ flowchart TD
 | 会计 | `accounting` | 请款单・月度结算・会计对接 CSV |
 | 主数据管理 | `master_editor` | 仅主数据的新建与修改。不含业务单据权限，需与部门角色一并分配 |
 | 只读 | `viewer` | 全业务仅查看（面向管理层・审计） |
-| 通用 | `staff` | 过渡期的临时角色，除系统与终端外均可操作。**生产环境建议改用部门角色** |
+| 通用 | `staff` | 过渡期的临时角色，除系统・共用终端・管理手册・特权代码・成本外均可操作。**生产环境建议改用部门角色** |
 
 ### 特权角色（与业务角色分开分配）
 
@@ -77,7 +77,7 @@ flowchart TD
 | 用户运维（申请） | `user_operator` | 入职离职相关的账号运维。停用・恢复・变更所属据点或角色需提交变更申请 |
 | 用户运维（审批） | `user_approver` | 审批用户变更申请与个人数据查看。**本人无法执行** |
 | 审计（历史查看） | `security_auditor` | 调查登录历史与操作历史。详情与跨单据检索需申请并获批 |
-| 特权操作（申请） | `privileged_operator` | 可一次性申请全部特权代码的旧角色。推荐使用上面按职责细分的 5 个 |
+| 特权操作（申请） | `privileged_operator` | 可一次性申请全部特权代码（含客户门户・外部 API）的旧角色。推荐使用上面按职责细分的 5 个 |
 | 特权操作（审批） | `privileged_approver` | 同上，用于审批 |
 
 > 这些**不会分配给业务角色**（`manager` / `*_manager` / `viewer` 等）。
@@ -96,18 +96,18 @@ flowchart TD
 | `purchase_order` | 材料采购・采购申请 | PU01 采购申请 / PU02 材料采购单 |
 | `material_receipt` | 材料到货 | PU03 材料到货 |
 | `outsource_order` | 外协委托 | PU04 外协委托单 |
-| `work_order` | 工单 | PD02 工单 / PD05 未处理工单（共用终端的工序执行・工单扫描也用此代码） |
-| `approve` | 审批 | **无对应应用**（原 PD03。未处理列表 CM01 无需权限即可打开） |
-| `inventory` | 库存 | PD04 库存管理 |
+| `work_order` | 工单 | PD02 工单 / PD05 未处理工单 / PD09 作业场所一览（共用终端的工序执行・工单扫描也用此代码） |
+| `approve` | 审批 | **无对应应用**（原 PD03）。仅用于决定 CM01 未处理列表是否显示审批申请栏（CM01 本身无需权限即可打开） |
+| `inventory` | 库存 | 库存类别的 7 个应用 — ST01 库存管理 / ST02 库存总览 / ST03 库存与需求 / ST04 出入库单 / ST05 盘点 / ST06 手动出入库 / ST09 移动类型 |
 | `delivery_order` | 出货单 | SH01 出货单 / SH03 未处理出货 |
 | `delivery_note` | 送货单 | SH02 送货单 |
 | `invoice` | 请款单 | BL01 请款单 |
 | `billing_closing` | 结算处理 | BL02 结算处理（会计对接 CSV 导出为 E） |
-| `master` | 主数据管理 | MS01・MS04〜MS0E 共 12 个主数据应用 |
+| `master` | 主数据管理 | MS01・MS04〜MS0I 共 16 个主数据应用 |
 | `form` | 表单 | **入口无需权限**（CM02 任何人都能打开）。创建・修改表单需要 C / U |
 | `internal_page` | 内部文档 | CM03 内部文档 |
 | `admin_manual` | 管理手册 | DC02 管理手册（本页） |
-| `system` | 系统管理 | SY02 价格试算计算 / SY03 产品项目 / SY04 产品类别 / SY05 应用管理 / SY0B 链接管理 / SY0C 订单导入 / SY0E AI 服务商 / SY0F 通知邮件 |
+| `system` | 系统管理 | SY02 价格试算计算 / SY03 产品项目 / SY04 产品类别 / SY05 应用管理 / SY0B 链接管理 / SY0C 订单导入 / SY0E AI 服务商 / SY0F 通知邮件 / SY0J 会计对接 |
 | `kiosk` | 共用终端管理 | SY09 终端管理 / SY0A 共用终端设置 |
 | `kiosk_secret` | 共用终端的机密 | 公开退出 PIN・PIN 历史・终端设置代码（**特权**） |
 | `kiosk_device` | 终端访问的授予 | 登记・失效终端（**特权**） |
@@ -115,6 +115,8 @@ flowchart TD
 | `personal_data` | 个人数据的查看 | SY07 操作历史 / SY0D 登录历史（**特权**） |
 | `user_admin` | 用户・权限的变更 | SY01 用户管理（**特权**） |
 | `portal_admin` | 客户门户的管理 | SY0H 客户门户 |
+| `api_client` | 外部 API 客户端的管理 | SY0I API 客户端 |
+| `estimate_cost` | 价格试算的成本 | 不是应用，而是 SA01 价格试算中的一部分 — 成本试算的新建・查看，以及成本合计・毛利的显示。没有此权限的人看不到成本试算本身 |
 
 **也有无需权限的应用**：CM01 未处理列表 / CM02 表单（入口） / DC01 操作手册 /
 SY06 文件管理 / SY0G 特权访问。它们的内容本身只显示与本人相关的部分，因此入口
@@ -170,16 +172,22 @@ SY06 文件管理 / SY0G 特权访问。它们的内容本身只显示与本人�
 
 ### 特权・系统（不发给业务角色）
 
-| 角色 | 系统 | 共用终端 | 终端机密 | 终端访问 | 二维码卡 | 个人数据 | 用户权限 | 门户 |
-|---|---|---|---|---|---|---|---|---|
-| **管理员**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | — |
-| **终端运维（申请）**<br/>`kiosk_operator` | — | RU | RU | RCU | RCU | — | — | — |
-| **终端运维（审批）**<br/>`kiosk_approver` | — | — | A | A | A | — | — | — |
-| **用户运维（申请）**<br/>`user_operator` | — | — | — | — | — | — | RU | — |
-| **用户运维（审批）**<br/>`user_approver` | — | — | — | — | — | A | A | — |
-| **审计（历史查看）**<br/>`security_auditor` | — | — | — | — | — | R | — | — |
-| **特权操作（申请）**<br/>`privileged_operator` | — | R | RU | RCU | RCU | R | RU | RCU |
-| **特权操作（审批）**<br/>`privileged_approver` | — | — | A | A | A | A | A | A |
+| 角色 | 系统 | 共用终端 | 终端机密 | 终端访问 | 二维码卡 | 个人数据 | 用户权限 | 门户 | 外部 API |
+|---|---|---|---|---|---|---|---|---|---|
+| **管理员**<br/>`admin` | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | ◎ | （◎） | （◎） |
+| **终端运维（申请）**<br/>`kiosk_operator` | — | RU | RU | RCU | RCU | — | — | — | — |
+| **终端运维（审批）**<br/>`kiosk_approver` | — | — | A | A | A | — | — | — | — |
+| **用户运维（申请）**<br/>`user_operator` | — | — | — | — | — | — | RU | — | — |
+| **用户运维（审批）**<br/>`user_approver` | — | — | — | — | — | A | A | — | — |
+| **审计（历史查看）**<br/>`security_auditor` | — | — | — | — | — | R | — | — | — |
+| **特权操作（申请）**<br/>`privileged_operator` | — | R | RU | RCU | RCU | R | RU | RCU | RCU |
+| **特权操作（审批）**<br/>`privileged_approver` | — | — | A | A | A | A | A | A | A |
+
+（◎）… 管理员角色没有该代码的记录，但持有 `system` 的 ◎ 的人对所有代码都拥有
+全部权限，因此实际上可以使用。
+
+**价格试算的成本（`estimate_cost`）** 未列入上表。只有管理员（◎）与管理层
+`manager`（R）持有，不分配给其他角色。
 
 ## 阅读时的注意事项
 
@@ -222,8 +230,8 @@ flowchart TD
   ap --> use["仅在获批期间内可执行<br/>计时从首次使用开始"]
 ```
 
-以上都不会分配给业务角色：`system`、`kiosk` 与 5 个特权代码，都已从
-`roles-seed.sql` 的批量授予中排除。
+以上都不会分配给业务角色：`system`、`kiosk`、5 个特权代码以及 `portal_admin` /
+`api_client` / `estimate_cost`，都已从两个种子文件的批量授予中排除。
 
 另外文件管理（SY06）**无需权限，任何人都能打开** — 可见范围由文件夹权限
 （单独授予）与业务应用的查看权限（该应用生成的 PDF）决定，没有权限时只会
@@ -238,21 +246,28 @@ flowchart TD
 
 ## 修改权限本身
 
-角色的内容（哪个代码授予哪些动作）以 SQL 种子文件为准：
+在生产与 dev 数据库中，角色的内容（哪个代码授予哪些动作）由**迁移**负责。
+修改权限时，在 `shared-db` 中新增迁移并合并到 `dev` — 合并后会自动应用。
+**不要手动对数据库执行 SQL**（这会导致生产与 dev 不一致）。
 
-- `shared-db/sql/rbac-seed.sql` … 27 个权限代码 + `admin` / `staff`
-- `shared-db/sql/roles-seed.sql` … 15 个业务角色的权限矩阵
-- 迁移 `20260920090000_privileged_roles` … 5 个特权角色
+- `shared-db/sql/rbac-seed.sql` … 29 个权限代码 + `admin` / `staff`
+- `shared-db/sql/roles-seed.sql` … 16 个业务角色（含 `master_editor`）的权限矩阵。
+  **用于构建截图用的一次性数据库**，不会对生产・dev 执行
+- 迁移 `20260919090000_privileged_access` / `20260920090000_privileged_roles` …
+  7 个特权角色（`privileged_operator` / `privileged_approver` 与按职责细分的 5 个）
+- 2026-09-03 之后新增的代码（`form` / `internal_page` / `admin_manual` /
+  `design_file` / 特权代码 / `portal_admin` / `api_client` / `estimate_cost`）以及
+  `master_editor` 的权限，也都由各自的迁移授予
 
 > **新增代码时，必须同时检查两个种子文件的排除列表。**
 > `roles-seed.sql` 通过 `CROSS JOIN app.permissions` 向 `manager` / `viewer` /
-> 6 个 `*_manager` 授予权限，不排除的话新代码会发给所有人（`kiosk` 就曾实际
-> 发生过）。
+> 5 个 `*_manager`（销售部长除外）授予权限，不排除的话新代码会发给所有人
+> （`kiosk` 就曾实际发生过）。迁移也遵循同样的规则：不应分配给业务角色的代码会被
+> 明确排除。
 
-修改后需应用到数据库（均为幂等），并重新生成 Excel 版：
+变更进入 dev 后，重新生成 Excel 版：
 
 ```bash
 cd shared-db
-./scripts/remote-db.sh sh -c 'psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/roles-seed.sql'
 ./scripts/remote-db.sh python3 ../tools/rbac-matrix/build_rbac_xlsx.py
 ```

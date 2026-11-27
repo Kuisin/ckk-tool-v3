@@ -67,7 +67,17 @@ Top to bottom is the first column, the second column, and so on. Each row sets a
 
 ### Default account codes
 
-Used when the master has no code. **Left blank, the field is written empty.**
+On screen this is the 「**既定の科目コード**」 (Default account codes) box. Used when the master has no code. **Left blank, the field is written empty.**
+
+| Item | What it is for |
+| --- | --- |
+| 売掛金 科目コード (Accounts receivable code) | The debit (accounts receivable) account. |
+| 売上高 科目コード (Sales account code) | The credit account for sales. |
+| 仮受消費税 科目コード (Consumption tax received code) | The credit account for consumption tax. |
+| 部門コード (Department code) | The same department code is written on every row. It is not held in any master. |
+| 既定の消費税コード (Default tax code) | Used when neither the tax category nor the tax-code-by-rate table below has a tax code. |
+
+Codes are half-width letters and digits, up to 16 characters.
 
 As a diagram, the code is chosen in this order:
 
@@ -92,7 +102,7 @@ Use this when you want to **book sales to a different account per order type**. 
 
 ### Tax codes by rate
 
-Looked up by rate when the tax category has no tax code. Add a row for each rate you use, such as 10% and 8%.
+Looked up by rate when the tax category has no tax code. Press 「**税率を追加**」 (Add tax rate) and add a row for each rate you use, such as 10% and 8%. On each row, enter 「税率(%)」 (Tax rate %), 「借方 消費税コード」 (Debit tax code) and 「貸方 消費税コード」 (Credit tax code).
 
 ## Frequently asked questions
 

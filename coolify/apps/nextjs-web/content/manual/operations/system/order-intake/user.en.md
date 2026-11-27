@@ -56,6 +56,10 @@ Each row shows:
 - **注文請書** (Order acceptance) … if numbered, the number, a status badge, the customer name, and the item count. If not yet numbered, it shows 「**未採番**」 (Not yet numbered).
 - **ファイル** (File) … the original file name (the number portion is stripped from the display).
 - **サイズ / 更新** (Size / Updated) … the file's size and last-modified time.
+- **「抽出中」** (Extracting) … shown on the file the AI is reading right now. It stays in "awaiting import" until it finishes (about 1–3 minutes).
+- **「再試行中」** (Retrying, orange) … extraction failed, so it is being retried automatically after a pause. Just wait. A file that still cannot be read after the retries becomes 「**抽出失敗**」 (Extraction failed, red). Hover the badge to see the reason and a hint on what to do.
+
+When there are many files, only the newest ones are shown and 「新しい ○ 件を表示（全 ○ 件）」 (Showing the newest ○ of ○) appears. The 「**注文請書へ**」 / 「**注文請書一覧へ**」 (To order acceptances) buttons take you to the [order acceptance](/manual/en/operations/sales/order-acceptance/user) list.
 
 While at least one file is waiting, the screen refreshes itself automatically every 30 seconds.
 
@@ -120,7 +124,7 @@ Files dropped in this way are handled through exactly the same path as if they h
 
 ## Scanning right away
 
-If you want to bring files in without waiting for the automatic scan, press 「**今すぐスキャン**」 (Scan now). Extraction takes about 30–60 seconds per file, so a large batch will take a while. The screen only reports that the scan has started — check the result by refreshing this screen or looking at the order-acceptance list.
+If you want to bring files in without waiting for the automatic scan, press 「**今すぐスキャン**」 (Scan now). Extraction takes about 1–3 minutes per file, so a large batch will take a while. The screen only reports that the scan has started — check the result by refreshing this screen or looking at the order-acceptance list.
 
 ## Retrying a failed file
 
@@ -144,7 +148,7 @@ A. The dropped file is saved under a unique name, so it won't overwrite anything
 A. Yes. Dropping a file in from this screen and placing one directly into the shared folder are handled through exactly the same path.
 
 **Q. An order sent by email was not taken in.**
-A. Check, in order: (1) whether that sender is on the allow list (ask a system administrator); (2) whether the attachment is PDF, PNG, JPG or WEBP — anything else is skipped; (3) whether the message is marked read in the mailbox. Read but not taken in means it was attempted and failed. **Failed messages are not retried automatically**, to avoid registering the same order twice. Ask the sender to resend, or save the attachment and use "Priority intake".
+A. Check, in order: (1) whether that sender is on the allow list (ask a system administrator); (2) whether the attachment is PDF, PNG, JPG, WEBP or TIFF (TIFF is converted to PDF before it is taken in) — anything else is skipped; (3) whether the message is marked read in the mailbox. Read but not taken in means it was attempted and failed. **Failed messages are not retried automatically**, to avoid registering the same order twice. Ask the sender to resend, or save the attachment and use "Priority intake".
 
 **Q. Can faxes be taken in automatically?**
 A. Not today. Scan the received fax on the MFP and upload it via "Priority intake". If you later subscribe to a fax-to-email service, those messages will ride the email route with no further change.

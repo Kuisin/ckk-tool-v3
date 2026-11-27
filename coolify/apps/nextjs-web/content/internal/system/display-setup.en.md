@@ -87,6 +87,10 @@ The screen appears after a while. The first start takes 2–3 minutes.
 
 This is the only step that needs the keyboard.
 
+> ⚠️ The display registration screen (the "Displays" tab of Devices) currently exists **only in
+> the test environment (dev)**. Production Devices does not have the tab yet, so for now use the
+> **test-environment line** under "For the IT team" at the end of this page instead of the line below.
+
 1. Press the black square icon (Terminal) at the top left of the screen.
    If you cannot see it, press `Ctrl`, `Alt` and `T` together.
 2. When the black window opens, type this line **exactly as shown**.
@@ -121,10 +125,10 @@ On a PC, open **Devices (SY09)** and go to the "Displays" tab.
 2. Enter a name people on the floor will use (for example `Line A entrance`).
 3. Choose the location, site and screen, then press "Create".
    (A new display starts on "Production status"; you can change it later.)
-4. Press "Link" on the new row in the list.
+4. Press "…" on the new row in the list and choose "Link the display".
 5. Press "Scan the display's QR" and scan the QR shown on the TV.
    (If it will not scan, type the 12 characters into the box instead.)
-6. When the state becomes "Awaiting activation", press "Activate".
+6. When the state becomes "Awaiting activation", choose "Activate" from the row's "…" menu.
 
 The TV changes within a few seconds. The display is now set up.
 
@@ -207,7 +211,7 @@ Without the numbers, both windows share one registration and show the same thing
 | What you want | How |
 |---|---|
 | Change what it shows | Open the display, "Content" tab, Edit, pick, press Save |
-| Fix the name or location | Open the display, edit, press Save |
+| Fix the name or location | Open the display, "Settings" tab, Edit, fix, press Save |
 | Stop it for now | Open the display, press "Disable" |
 | Move it elsewhere | Open the display, press "Unlink" (settings are kept) |
 | Stop using it | Open the display, press "Revoke" |
@@ -227,8 +231,12 @@ A. Check the LAN cable. The normal display comes back on its own once the
 network returns. You do not have to do anything.
 
 **Q. It went back to the link code screen**
-A. That display has been revoked or disabled. Check its state in the Displays
+A. That display has been revoked or unlinked. Check its state in the Displays
 tab of Devices (SY09). To use it again, register it with the code shown.
+
+**Q. It says 「この画面は一時停止されています。」 (This screen has been paused)**
+A. It was paused in Devices (SY09). It cannot be re-registered from this screen.
+Open the display in the Displays tab of Devices and press "Resume".
 
 **Q. The power went off. Do I have to set it up again?**
 A. No. Switch it on and it returns to the same display by itself.

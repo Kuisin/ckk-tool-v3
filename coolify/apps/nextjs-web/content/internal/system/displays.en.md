@@ -11,10 +11,11 @@ and the registration steps are the same (create, link, activate).
 > This app is currently published on the **test environment (dev) only**. Screens
 > and steps may still change before it goes live.
 
-> This app requires the **shared-device management** permission. **Linking**,
-> **activating** and **revoking** are privileged operations — they work only for the period another
-> person has approved (Privileged access, SY0G). Every action is recorded in the
-> audit log.
+> This app requires the **shared-device management** permission. **Linking** and
+> **activating** (privileged operation "register a display") and **unlinking**, **revoking** and
+> **deleting** ("revoke a display") work only for the period another person has approved
+> (Privileged access, SY0G). Creating, changing settings and pausing / resuming need no
+> approval. Every action is recorded in the audit log.
 
 ## What you can do here
 
@@ -44,7 +45,7 @@ and the registration steps are the same (create, link, activate).
 | Awaiting link | Created, but not yet tied to a TV |
 | Awaiting activation | Tied to a TV. Press "Activate" to start showing |
 | Active | Normal |
-| Disabled | Stopped from here. The TV shows the link screen |
+| Disabled | Stopped from here. The TV shows 「この画面は一時停止されています。」 (This screen has been paused) — no link code is shown, so it cannot be re-registered on site |
 | Revoked | Registration cancelled. Register again to reuse it |
 
 Online / offline is separate from the state — it means whether the screen has
@@ -68,10 +69,10 @@ Exactly the same as a shared tablet.
 
 1. **Create** — "Add a display", then set the name, location, site and screen.
    It is not tied to a TV yet (awaiting link).
-2. **Link** — press "Link" in the list and **scan the QR shown on the TV**
+2. **Link** — choose "Link the display" from the row's "…" menu and **scan the QR shown on the TV**
    ("Scan the display's QR"); typing the 12 characters works too. It is read
    exactly the way a shared tablet is.
-3. **Activate** — press "Activate" and the TV starts showing.
+3. **Activate** — press "Activate" in the row's "…" menu (or on the detail page) and the TV starts showing.
 
 Step 1 can be done before the TV is ready, leaving only linking and activating
 for the site visit.
@@ -85,9 +86,13 @@ How large text needs to be depends on the TV and how far away people stand.
 A 43-inch screen at arm's length and a 65-inch screen 10 m away are not the same.
 
 1. Press the display in the list.
-2. On the "Settings" tab, use "Display scale" — press Smaller / Normal / Larger,
+2. On the "Settings" tab, press "Edit".
+3. In "Display scale", press Smaller / Normal / Larger,
    or use the slider for finer steps (50–200%).
-3. Press "Save".
+4. Press "Save".
+
+The same "Settings" tab also changes the name, location, site and the **display language
+for this screen** (the language of the board and the link-code screen; Japanese when unset).
 
 The TV changes immediately. **Adjust while looking at the wall** — there is no
 single correct percentage.
@@ -101,9 +106,9 @@ What is shown is chosen **per display**.
 
 1. Press the display in the list.
 2. On the "Content" tab, press "Edit".
-3. Choose the screen to show. **Each one has a small preview**, so you are not
-   choosing from names alone.
-4. Set that screen's options (site, rows, and so on).
+3. Under "What to show", choose "**An app screen**" or "**Image**".
+4. For an app screen, choose the screen to show. **Each one has a small preview**, so you are not
+   choosing from names alone. Then set that screen's options (site, rows, and so on).
 5. Press "Save".
 
 The TV changes immediately. **You do not need to go to the machine.**
@@ -120,23 +125,27 @@ The screens you can choose, and their settings:
 
 Every setting is a choice — there is no special format to type.
 
-"Refresh interval" is how often the display re-reads what it shows. Set it to
+"Refresh interval" is how often the display re-reads what it shows (app screens only). Set it to
 `0` and it will only change when you change it here.
+
+Choosing **Image** shows a single image (a notice or poster). PNG / JPG / WEBP / GIF,
+up to 10 MB. Pick how it fits: "Show the whole image", "Fill the screen" or "Stretch".
 
 > 💡 The figures in the previews are **made up for illustration**. They are not
 > real orders or work orders.
 
 ### When showing a dashboard
 
-The analytics tool needs setting up too. For each dashboard, enable embedding
-and **set the site and line filters to "locked"**. Without locking, a shop-floor
-screen could be made to show another site's data. Ask the IT team how.
+An analytics dashboard (Metabase embed) **cannot currently be chosen on this screen** (only an app
+screen or an image can). When it becomes selectable, enable embedding for each dashboard in the
+analytics tool and **set the site and line filters to "locked"**. Without locking, a shop-floor
+screen could be made to show another site's data.
 
 ## Disabling and revoking
 
 | What you want | How | Reversible |
 |---|---|---|
-| Stop it for now | "Disable" on the detail page | Yes, press "Enable" |
+| Stop it for now | "Pause" on the detail page | Yes, press "Resume" |
 | Swap the hardware | "Unlink" on the detail page | Name and screen are kept |
 | Stop using it | "Revoke" on the detail page | Needs registering again |
 | Remove the record | Revoke (or unlink), then "Delete" | No |
