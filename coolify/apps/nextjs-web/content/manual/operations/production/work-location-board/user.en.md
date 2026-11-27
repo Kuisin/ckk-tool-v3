@@ -5,6 +5,8 @@ screenshots: [work-location-board-01]
 ---
 This app lets you check, for a chosen day, **which steps are waiting at which work location (machine)**, across all work locations at once. The operation code is `PD09`.
 
+> ⚠️ This app is still being prepared, so it may not appear on the live system yet. If you cannot find it, please ask the person in charge at your company.
+
 > The flow this app belongs to … [Production flow](/manual/en/process/production)
 
 ## What you can do with this app
