@@ -11,6 +11,9 @@ You line up the approval steps a document must pass before it can be confirmed, 
 
 - Set an **approval flow** per document (which group approves at which step).
 - Choose per step whether **any one person** is enough, or **everyone** must approve.
+- Turn **approval on or off** per document type.
+- Change the steps depending on the document's contents, such as the amount (**conditional flows**).
+- Add approval steps only when a value was not carried over from the previous document (**custom value approval**).
 - Make **groups** of people who approve.
 - Add and remove **members** in a group — permanent members, or members **for a set period**.
 - When the person in charge is away on a business trip or on holiday, register a **stand-in** (a person who approves instead) for a set period.
@@ -35,37 +38,42 @@ You line up the approval steps a document must pass before it can be confirmed, 
 
 ## How the screen is laid out
 
-Opening the app shows two tabs.
+Opening the app shows three tabs.
 
 - **Approval flows** … the approval steps per document (the tab that opens first).
+- **Custom value approval** … approval steps added only when a value was not carried over from the previous document.
 - **Approval groups** … the list of groups of people who can approve.
 
 ## Setting an approval flow
 
-The **Approval flows** tab lists the six targets that can go through approval.
+The 「**承認フロー**」 (Approval flows) tab shows one card for each type of document that can go through approval.
 
 > 📷 A screenshot of this screen will be added at the next capture run.
 
-- The six are **Order acceptance**, **Work order**, **Material purchase order**, **Purchase request**, **Workflow change** and **Order acceptance cancellation**.
+- There are 15 types: **Order acceptance**, **Work order**, **Material purchase order**, **Purchase request**, **Workflow change**, **Order acceptance cancellation request**, **Internal documents**, **Design request**, **Delivery order**, **Stock-take**, **Invoice**, **Invoice payment**, **Drawing version**, **Work order close-out** and **Machining program change**. Some of them go through approval only in particular situations.
   - **Workflow change** … approval for adding, editing or removing step branches on an approved / in-progress work order.
+  - **Order acceptance cancellation request** … approval for cancelling a confirmed order acceptance as a whole (there is no per-line cancellation).
+  - **Delivery order** … approval only when shipping more or fewer than ordered (a quantity variance). A shipment of exactly the ordered quantity does not go through approval.
+  - **Invoice** … approval only when issuing an invoice with extra charges added from the charge items master.
+  - **Invoice payment** … approval for marking an invoice as paid.
   - **Work order close-out** … approval for stopping a work order in progress and returning the parts in the flow to stock as WIP.
-  - **Order acceptance cancellation** … approval for cancelling a confirmed order acceptance as a whole (there is no per-line cancellation).
   - **Machining program change** … approval for adding, editing, versioning, deleting or retiring the machining programs of a drawing version ([drawings](/manual/en/operations/production/design-file/user)).
-- Each card lists its steps as "1 First approval · Plant manager · Any one person".
-- A document with no approval flow is shown with a red border and the note that **no approval can be requested for it**. In that state the request button will not take you anywhere, so be sure to set one up.
-  - **Workflow change**, **Work order close-out**, **Order acceptance cancellation** and **Machining program change** are exceptions: with no steps configured they are **applied immediately without approval** (so sites that do not run approvals are not blocked). Configure at least one step if you want them approved.
+- **Price lists** and **forms** are not on this tab. Price lists are set in the 「**独自値の追加承認**」 (custom value approval) tab (see [custom value approval](#custom-value-approval)). Approval for a form is set per form, on the [forms](/manual/en/operations/general/forms/user) screen.
+- Each card lists its steps as "1 First approval Plant manager · Any one person". A card with conditional flows shows 「**条件付き N 本**」 (N conditional flows).
+- A document with no steps, which therefore cannot request approval, gets a red line on the left of its card and the note 「**未設定 — この書類は承認依頼を出せません**」 (not set — approval cannot be requested for this document). In that state the request button will not take you anywhere, so set up steps or turn off 「承認を使う」 (use approval) (see [Documents that do not use approval](#approval-policy)).
+- A card for a document that proceeds without approval shows 「**承認なし**」 (no approval). Workflow change, order acceptance cancellation request, delivery order, stock-take, invoice, invoice payment, drawing version, work order close-out and machining program change start with no steps, so they are **applied immediately without approval** (so sites that do not run approvals are not blocked). Set up steps if you want them approved.
 - Each card also shows the **permission needed to approve** it — being able to **view or edit** that document (for example, an order acceptance needs read/edit rights for "Order acceptance"). There is no approve-action permission: **who can approve is decided solely by the approval groups on this screen**, and someone who cannot open the document cannot approve even when they are in the group.
 - Every step carries a badge for the people who can approve it right now.
   - **N can approve** (green) … everyone in the step has the permission.
   - **N of N without permission** (red) … those people are turned away when they press Approve. Hover the badge to see their names.
   - **No members** (red) … nobody can approve that step at the moment, so a request would stall there.
   - **N can approve (N limited)** (yellow) … they have the permission, but only for their own sites, so documents outside that range cannot be approved by them.
-- A card with any of these problems is bordered in red, the same as an unconfigured one.
+- A card with any of these problems also gets the red line on the left (except cards whose 「承認を使う」 is off).
 
 To set it up, press **Edit** on the card (**Set up** when it is empty).
 
 1. Press **Add step** to add one approval step.
-2. Enter a **Name** for the step (for example First approval, Department approval).
+2. Enter the step's name in 「**名称（日本語）**」 (name in Japanese) (for example First approval, Department approval). It starts filled in as 「第N承認」 (Nth approval).
 3. Choose the **Approval group** that approves that step.
 4. Choose **Any one person** or **Everyone**.
    - **Any one person** … the step passes as soon as one person in the group approves.
@@ -73,6 +81,8 @@ To set it up, press **Edit** on the card (**Set up** when it is empty).
 5. To change the order, swap steps with the **↑** and **↓** buttons. The step numbers are renumbered for you.
 6. Remove a step you do not need with the **bin** button.
 7. Press **Save**.
+
+You cannot save with no steps at all (「**承認ステップを 1 段以上設定してください**」, set at least one approval step, appears). To stop approval, turn off 「承認を使う」 (use approval) instead of removing the steps. Choosing a disabled group, or a group with nobody who can approve right now, shows 「**第 N 段の承認グループは無効、または今承認できるメンバーがいません**」 (the approval group of step N is disabled or has no member who can approve now) and the flow is not saved.
 
 Once a group is chosen, the same badge and the member names appear below it as **people who can approve this step** — so you can check before saving that the group you picked really can approve.
 
@@ -108,7 +118,7 @@ Each card on the 「承認フロー」 (approval flow) tab has a 「**承認を�
 
 - **When it is off**, pressing 「**承認依頼**」 (request approval) on that document puts it straight into the same state as after approval (approved, etc.). Whatever normally happens on approval — reserving stock, notifying the next step — still happens. The history records 「**承認なし（承認設定で OFF）**」 (no approval — turned off in approval settings).
 - The steps are not deleted. If you turn it back on, the remaining steps are used as they are.
-- A document type whose switch has never been touched **behaves as before** (the card says 「まだ設定していません」, not set yet). Until now, some types could not request approval without steps (order acceptance, work order, purchase request, material purchase order, design request, internal documents) and others passed through without approval when there were no steps (delivery quantity variance, invoice, payment, drawing versions, process flow changes, order acceptance cancellation, stock-take). Once the switch is changed, the table above applies.
+- A document type whose switch has never been touched **behaves as before** (the card says 「**まだ設定していません（いまの動きを表示しています）**」, not set yet — showing the current behaviour). Until now, some types could not request approval without steps (order acceptance, work order, purchase request, material purchase order, design request, internal documents) and others passed through without approval when there were no steps (delivery quantity variance, invoice, invoice payment, drawing versions, process flow changes, order acceptance cancellation, stock-take, work order close-out, machining program change). Once the switch is changed, the table above applies.
 - Only people who can edit master data can move the switch. Each change is recorded in the activity log.
 
 > ⚠️ A document already part-way through approval is not stopped by changing the switch. It finishes with the approval it was requested under.
@@ -128,7 +138,12 @@ Set this up in the "**条件付きフロー**" (conditional flows) section of th
   - **Purchase request** … line count
   - **Workflow change** … the work order's type / the work order's planned quantity
   - **Work order close-out** … the work order's type / the work order's planned quantity
-  - **Order acceptance cancellation** … the order acceptance's total amount / the order acceptance's delivery method
+  - **Order acceptance cancellation request** … the order acceptance's total amount / the order acceptance's delivery method
+  - **Design request** … trigger / request kind / priority
+  - **Delivery order** … total shipped quantity / ship-from site
+  - **Stock-take** … site / number of differences
+  - **Invoice** / **Invoice payment** … total amount
+  - **Internal documents** / **Drawing version** / **Machining program change** … no fields can be used as conditions
 - Use "**条件付きフローを追加**" to add a rule with its name, conditions and steps. A rule with **no conditions matches every document** (rules below it and the default flow are never reached — mind the order).
 - Use **↑ ↓** to change the evaluation order and the switch to enable / disable a rule.
 - Conditional flows **replace** the default flow; they do not create an approval gate on their own. A document type with no default flow cannot submit approval requests even if rules exist — always configure the default flow too.
@@ -144,9 +159,9 @@ flowchart TD
 
 > ⚠️ As with the default flow, **changes take effect from the next approval request**. Documents already in approval are unaffected.
 
-## Adding approval only for custom values (custom value approval)
+## Adding approval only for custom values (custom value approval) [#custom-value-approval]
 
-This adds approval steps **at the end** only when a document has **values not carried over from the previous document** (custom values). It is set **separately** from the regular approval flow, per document — open it from the "**独自値の追加承認**" (custom value approval) tab of the approval settings.
+This adds approval steps **at the end** only when a document has **values not carried over from the previous document** (custom values). It is set **separately** from the regular approval flow, per document. The 「**独自値の追加承認**」 (custom value approval) tab of the approval settings shows cards for price lists and order acceptances; press 「**設定**」 (Set up) — or 「**編集**」 (Edit) once set — on a card to build the steps. Steps are built the same way as in an approval flow.
 
 - **Price list** … a base unit price not taken from a price estimate, a base unit price different from the estimate, or a manually set tier price (custom) counts as a custom value. Price lists have no regular approval flow, so they go through these steps only when they have custom values. Saving submits the approval request automatically, and **until it is approved the price list is not used to price quotes or order acceptances**.
 - **Order acceptance** … line unit prices that are not from the price list (overridden, differing from the price list, no price list, or no quantity tier) count as custom values. If even one line has one, these steps are added **after** the regular flow (or the matching conditional flow) when the approval request is submitted.
@@ -159,8 +174,9 @@ Open the **Approval groups** tab and press **New** at the top right.
 
 ![Approval group list screen](../../../assets/screenshots/master-approval-setting-list-01.png)
 
-1. Enter the group's name in the Japanese field of **Name** (for example Plant manager, Manufacturing manager). English can be left empty.
-2. Press **Save**.
+1. Enter the group's name in 「**名称（日本語）**」 (name in Japanese) (for example Plant manager, Manufacturing manager). English and Chinese names can be entered from the 「**多言語**」 (Translations) button beside it. They can be left empty.
+2. Leave 「**有効**」 (enabled) on.
+3. Press **Save**.
 
 ![Approval group creation form](../../../assets/screenshots/master-approval-setting-new-01.png)
 
@@ -194,7 +210,7 @@ The **Approval permission** column shows one badge per document this group appro
 
 > 💡 The same column appears for stand-ins on the **Stand-ins** tab. A stand-in approves with **their own** permission, so they also need approval rights for the document.
 
-The buttons on the right of each row let you **change the term**, stop that member temporarily (**Disable member**), or take them out of the group (**Remove member**).
+The buttons on the right of each row let you **change the term**, stop that member temporarily (**Disable**), or take them out of the group (**Delete**).
 
 > 💡 Use "Disable" for stepping away from approvals for a while, "Remove" when the person is no longer involved, and "Fixed term" when the end is known in advance.
 
@@ -303,7 +319,7 @@ A. The real approver you want covered is not a member of this group, or is disab
 A. The same person is chosen for both. Choose someone else as the person who approves instead.
 
 **Q. I cannot delete a group.**
-A. It cannot be deleted while it is used by a step of an approval flow, or while approval requests that used it remain. Take it out of the approval flow first, or use **Disable** instead of deleting. Disabling stops it being used for new approvals and leaves the existing records as they are.
+A. It cannot be deleted while it is used by a step of an approval flow (including conditional flows, custom value approval and form approval), or while an [inspection template](/manual/en/operations/masters/inspection-template/user) names it as its approval group. Take it out of those first, or use **Disable** instead of deleting. Disabling stops it being used for new approvals and leaves the existing records as they are.
 
 <!-- permissions:start -->
 ## Permissions required

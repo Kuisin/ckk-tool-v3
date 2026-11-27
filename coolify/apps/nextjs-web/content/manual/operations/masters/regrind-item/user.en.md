@@ -69,7 +69,8 @@ flowchart TD
 4. Fill in 「**刃数**」 (flutes). Leave it empty if the price does not depend on the flute count.
 5. Fill in 「**サイズ下限**」 and 「**サイズ上限**」 (lower / upper size bound, mm). One side alone is fine.
 6. Fill in 「**標準価格**」 (standard price) and 「**単位**」 (unit). The unit is required and starts as 本 (pcs).
-7. Add keywords and notes if you want, then press Save.
+7. Add keywords and notes if you want.
+8. Press Save.
 
 > ⚠️ **The upper bound must be larger than the lower bound.** Enter them the wrong way round and you get 「サイズ上限はサイズ下限より大きくしてください」 (the upper size bound must be larger than the lower one) and it will not save. If it saved reversed, you would quietly create **a band no tool can ever fall into**.
 
@@ -84,6 +85,8 @@ The list shows **code / name / tool class / ground area / flutes / size band / s
 It reads the same way the old FileMaker 再研マスタ did — one row per combination of conditions, each row carrying one price.
 
 The filters at the top are tool class, ground area and status. Their options are built from **the values actually registered**. The search box covers code, name, tool class and ground area.
+
+Tick the boxes at the left of the rows to run 「**一括有効化**」 (bulk enable), 「**一括無効化**」 (bulk disable) or 「**一括削除**」 (bulk delete) on the chosen items together.
 
 > 💡 **There is no detail page for this screen.** Clicking a row opens the edit dialog directly (the same build as the [charge items master](/manual/en/operations/masters/charge-item/user)).
 

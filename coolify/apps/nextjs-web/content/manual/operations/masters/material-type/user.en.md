@@ -51,10 +51,11 @@ When you open the app, a list of the registered material types is shown.
 ![Material type list screen](../../../assets/screenshots/master-material-type-list-01.en.png)
 
 - **材種コード (Material type code)** … the 8-character number.
-- **メーカー / 形状 (Maker / Shape)** … shows what you chose.
+- **名称 / メーカー / 形状 (Name / Maker / Shape)** … shows the material type's name and what you chose.
 - **状態 (Status)** … the green 「**有効**」 (Active) means a material type you can still use. The gray 「**無効**」 (Inactive) means one you can no longer choose.
-- Use the search box at the top (「**材種コード・名称で検索**」 / Search by material type code or name) to narrow the list.
+- Use the search box at the top (「**材種コード・名称で検索**」 / Search by material type code or name) to narrow the list. You can also show only active or inactive ones with the 「**状態**」 (Status) field.
 - Click a row to open the detail screen for that material type.
+- Tick the boxes on the left of the rows to 「**一括有効化**」 (Bulk enable), 「**一括無効化**」 (Bulk disable) or 「**一括削除**」 (Bulk delete) the selected material types together.
 
 > 💡 Some material types brought over from the old system do not have a code yet. Those rows show 「**未変換**」 (Not converted) in gray. You can correct the name and so on, but **you cannot choose them when you make a [Material](/manual/en/operations/masters/material/user).** If you choose 「未変換」 (Not converted) in the 「**変換状態**」 (Conversion status) field, only those material types are shown.
 
@@ -101,12 +102,13 @@ flowchart TD
   q2 -->|"Empty"| c["The material cost<br/>cannot be worked out"]
 ```
 
-1. On the material type screen, open the 「**既定単価**」 (Default unit price) tab.
-2. Press 「**直径を追加**」 (Add diameter). One row is added.
-3. In the 「**直径**」 (Diameter) field of the new row, choose the diameter.
-4. Enter the price in the field for each surface finish (「黒皮」 black skin, 「研磨」 ground, 「研磨済黒皮」 ground black skin). There is one column for each registered surface finish.
-5. To add more diameters, press 「**直径を追加**」 (Add diameter) again.
-6. Finally, press 「**既定単価を保存**」 (Save default unit prices).
+1. On the material type screen, open the 「**既定単価**」 (Default unit price) tab. The registered prices are shown in a table.
+2. Press 「**編集**」 (Edit).
+3. Press 「**直径を追加**」 (Add diameter). One row is added.
+4. In the 「**直径**」 (Diameter) field of the new row, choose the diameter.
+5. Enter the price in the field for each surface finish (「黒皮」 black skin, 「研磨」 ground, 「研磨済黒皮」 ground black skin). There is one column for each registered surface finish.
+6. To add more diameters, press 「**直径を追加**」 (Add diameter) again.
+7. Finally, press 「**既定単価を保存**」 (Save default unit prices). After saving, the view-only table comes back.
 
 ![Default unit price tab of the material type screen](../../../assets/screenshots/master-material-type-prices-01.png)
 
@@ -115,7 +117,7 @@ flowchart TD
 
 > 💡 For a combination with no decided price, **please leave the field empty**. An empty field is treated as "no price".
 
-To remove a row you no longer need, press 「**行を削除**」 (Delete row) and then press 「既定単価を保存」 (Save default unit prices).
+To remove a row you no longer need, press 「**行を削除**」 (Delete row) and then press 「既定単価を保存」 (Save default unit prices). To stop without saving, press 「**キャンセル**」 (Cancel).
 
 ## What to do with a material type you no longer use
 
@@ -180,8 +182,8 @@ A. The Japanese name field is empty. Enter the name of the material type (for ex
 **Q. I cannot correct the maker or the shape on the edit screen.**
 A. That is how it works. They are part of the code, so they cannot be changed after you save. The screen also says 「コード構成は作成後変更できません。」 (The code structure cannot be changed after creation.) If you chose the wrong one, please register a new material type instead.
 
-**Q. When I try to delete, I see 「この材種に紐づく素材が存在するため削除できません。無効化を検討してください。」 (This material type cannot be deleted because materials linked to it exist. Please consider deactivating it instead).**
-A. Materials made from that material type already exist, so it cannot be deleted. This is normal. Please use 「無効化」 (Deactivate).
+**Q. When I try to delete, I see 「この材種を参照するデータ（素材・製品・価格試算・既定単価）が存在するため削除できません。無効化を検討してください。」 (This material type cannot be deleted because data that refers to it — materials, products, price estimates, default unit prices — exists. Please consider deactivating it instead).**
+A. Materials, products or price estimates that use that material type, or default unit prices registered for it, already exist, so it cannot be deleted. This is normal. Please use 「無効化」 (Deactivate).
 
 **Q. When I try to save default unit prices, I see 「同一の直径 × 黒皮/研磨 の行が重複しています」 (There are duplicate rows with the same diameter and black skin / ground).**
 A. You have made two rows with the same diameter. Remove one of them with 「行を削除」 (Delete row) and save again.
