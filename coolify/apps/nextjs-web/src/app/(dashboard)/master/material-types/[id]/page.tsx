@@ -4,6 +4,7 @@ import {
   type MaterialTypeDetailData,
 } from "@/components/master/material-types/MaterialTypeDetail";
 import { fetchAuditEntries } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -21,32 +22,35 @@ export default async function MasterMaterialTypesDetailPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const [r, auditEntries, diameters, surfaces, priceRows] = await Promise.all([
-    prisma.materialType.findUnique({
-      where: { id },
-      include: {
-        manufacturer: true,
-        grade: true,
-        shape: true,
-        // この材種の素材。行クリックの遷移先は素材マスタ (MS26) で、URL の id は
-        // items.id（品目統合 第 3 段）なので、旧 materials ではなく品目を読む。
-        itemsByType: {
-          where: { itemType: "MATERIAL" },
-          orderBy: { code: "asc" },
+  const [r, auditEntries, diameters, surfaces, priceRows, canEditPrices] =
+    await Promise.all([
+      prisma.materialType.findUnique({
+        where: { id },
+        include: {
+          manufacturer: true,
+          grade: true,
+          shape: true,
+          // この材種の素材。行クリックの遷移先は素材マスタ (MS26) で、URL の id は
+          // items.id（品目統合 第 3 段）なので、旧 materials ではなく品目を読む。
+          itemsByType: {
+            where: { itemType: "MATERIAL" },
+            orderBy: { code: "asc" },
+          },
         },
-      },
-    }),
-    fetchAuditEntries("material_types", String(id)),
-    prisma.materialDiameter.findMany({
-      where: { isActive: true },
-      orderBy: { diameterMm: "asc" },
-    }),
-    prisma.materialSurfaceFinish.findMany({
-      where: { isActive: true },
-      orderBy: { code: "asc" },
-    }),
-    prisma.materialTypePrice.findMany({ where: { materialTypeId: id } }),
-  ]);
+      }),
+      fetchAuditEntries("material_types", String(id)),
+      prisma.materialDiameter.findMany({
+        where: { isActive: true },
+        orderBy: { diameterMm: "asc" },
+      }),
+      prisma.materialSurfaceFinish.findMany({
+        where: { isActive: true },
+        orderBy: { code: "asc" },
+      }),
+      prisma.materialTypePrice.findMany({ where: { materialTypeId: id } }),
+      // 既定単価の保存（saveMaterialTypePrices）と同じ権限。
+      checkPermission("master", "UPDATE").then((res) => res.ok),
+    ]);
   if (!r) notFound();
 
   const diameterOptions = diameters.map((d) => ({
@@ -104,6 +108,7 @@ export default async function MasterMaterialTypesDetailPage({
   return (
     <MaterialTypeDetail
       auditEntries={auditEntries}
+      canEditPrices={canEditPrices}
       diameterOptions={diameterOptions}
       prices={prices}
       record={record}

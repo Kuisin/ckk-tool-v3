@@ -43,7 +43,7 @@ import {
 } from "@/app/(dashboard)/sales/trial-estimates/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
-import { EditButton } from "@/components/ui/buttons";
+import { EditButton, GhostButton } from "@/components/ui/buttons";
 import { productItemF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { IssuingCompanySelect } from "@/components/ui/IssuingCompanySelect";
@@ -686,14 +686,13 @@ export function TrialEstimateForm({
                     size="sm"
                   />
                   {customMode ? (
-                    <Text
-                      c="dimmed"
-                      className="cursor-pointer"
+                    <GhostButton
+                      color="gray"
                       onClick={resetToPolicy}
-                      size="xs"
+                      size="compact-xs"
                     >
                       {tr("sales.trialEstimates.backToThePolicyValue")}
-                    </Text>
+                    </GhostButton>
                   ) : (
                     <EditButton onClick={promptCustomPrice} size="compact-xs">
                       {tr("sales.trialEstimates.editTheUnitPrice")}

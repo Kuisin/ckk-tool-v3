@@ -53,8 +53,11 @@ export function TrialEstimateTable({
   rows,
   pricingOptions = {},
   toolTypeOptions,
+  canOpenSettings = false,
 }: {
   rows: TrialEstimateRecord[];
+  /** 価格試算計算 (SY02, system 権限) を開けるか — 「設定」ボタンの表示。 */
+  canOpenSettings?: boolean;
   /** 価格試算エンジンのオプション（係数・カスタム計算）— 画面間で単価を一致させる。 */
   pricingOptions?: TrialPricingOptions;
   /** 工具種の選択肢（管理者定義。未指定は組み込み 3 種）. */
@@ -185,12 +188,14 @@ export function TrialEstimateTable({
     <ListShell
       action={
         <Group gap="xs">
-          <SecondaryButton
-            href="/settings/apps/trial-estimate"
-            leftSection={<IconSettings size={16} />}
-          >
-            {tr("common.settings")}
-          </SecondaryButton>
+          {canOpenSettings && (
+            <SecondaryButton
+              href="/settings/trial-pricing-engine"
+              leftSection={<IconSettings size={16} />}
+            >
+              {tr("common.settings")}
+            </SecondaryButton>
+          )}
           <NewButton href={`${BASE_PATH}/new`} />
         </Group>
       }
@@ -266,6 +271,11 @@ export function TrialEstimateTable({
                 <Badge color="gray" size="xs" variant="light">
                   {toolLabel(r.input.toolType)}
                 </Badge>
+                {r.kind === "COST" && (
+                  <Badge color="orange" size="xs" variant="light">
+                    {tr("sales.trialEstimates.kindCost")}
+                  </Badge>
+                )}
                 {r.isCustomPrice && (
                   <Badge color="orange" size="xs" variant="light">
                     {tr("common.custom")}
@@ -275,9 +285,19 @@ export function TrialEstimateTable({
             </Stack>
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <StatusBadge entity="Estimate" size="xs" status={r.status} />
-              <Text fw={700} size="sm">
-                <MoneyText value={headlinePrice(r, pricingOptions)} />
-              </Text>
+              {/* 原価試算は見積単価を持たない — 一覧（デスクトップ）と同じく原価合計 */}
+              {r.kind === "COST" ? (
+                <Text c="dimmed" size="sm">
+                  {`${tr("sales.trialEstimates.costTotal")} `}
+                  <MoneyText
+                    value={Math.round(headlineCost(r, pricingOptions))}
+                  />
+                </Text>
+              ) : (
+                <Text fw={700} size="sm">
+                  <MoneyText value={headlinePrice(r, pricingOptions)} />
+                </Text>
+              )}
               <Text c="dimmed" size="xs">
                 {fmt.dateTime(r.updatedAt)}
               </Text>

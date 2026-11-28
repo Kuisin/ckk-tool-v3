@@ -279,7 +279,14 @@ function CategoryModal({
         </SimpleGrid>
         <Switch
           checked={isDefault}
-          description={tr("master.taxCategories.isDefaultHint")}
+          description={
+            category?.isDefault
+              ? tr("master.taxCategories.cannotUnsetDefault")
+              : tr("master.taxCategories.isDefaultHint")
+          }
+          // 既定の区分からは外せない（既定が 1 つも無くなる）。既定を移すのは
+          // 別の区分を既定にする側の操作で、サーバーも同じ規則で止める。
+          disabled={category?.isDefault === true}
           label={tr("master.taxCategories.isDefault")}
           onChange={(e) => setIsDefault(e.currentTarget.checked)}
         />

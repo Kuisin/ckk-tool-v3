@@ -4,13 +4,16 @@
  * InventoryTransactionsTable — 在庫取引履歴テーブル（PD24/PD25 共通）。
  *
  * 列: 日時 / 種別（IN=緑 入庫・OUT=赤 出庫・RESERVE=橙・RELEASE=灰・
- * ADJUST=紫）/ 数量 / 参照（DOR-・指示書番号などを mono 表示）/ 備考。
+ * ADJUST=紫）/ 数量 / 伝票番号（入出庫伝票 ST04 へのリンク）/
+ * 参照（DOR-・指示書番号などを mono 表示）/ 備考。
  */
 
-import { Badge, Table, Text } from "@mantine/core";
+import { Anchor, Badge, Table, Text } from "@mantine/core";
 import { IconArrowsExchange } from "@tabler/icons-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { inventoryNoteLabel } from "@/lib/inventory-note-labels";
 import {
@@ -39,7 +42,7 @@ export function InventoryTransactionsTable({
   }
 
   return (
-    <Table.ScrollContainer minWidth={640}>
+    <Table.ScrollContainer minWidth={760}>
       <Table>
         <Table.Thead>
           <Table.Tr>
@@ -48,6 +51,7 @@ export function InventoryTransactionsTable({
             <Table.Th ta="right" w={110}>
               {tr("common.quantity")}
             </Table.Th>
+            <Table.Th>{tr("production.movements.movementNumber")}</Table.Th>
             <Table.Th>{tr("common.reference")}</Table.Th>
             <Table.Th>{tr("common.notes")}</Table.Th>
           </Table.Tr>
@@ -72,6 +76,17 @@ export function InventoryTransactionsTable({
                 </Table.Td>
                 <Table.Td className="tabular-nums" ta="right">
                   {t.quantity.toLocaleString("ja-JP")} {unit}
+                </Table.Td>
+                <Table.Td>
+                  {t.movementNumber && t.movementHref ? (
+                    <Anchor component={Link} href={t.movementHref} size="sm">
+                      <DocNumber c="blue">{t.movementNumber}</DocNumber>
+                    </Anchor>
+                  ) : (
+                    <Text c="dimmed" size="sm">
+                      —
+                    </Text>
+                  )}
                 </Table.Td>
                 <Table.Td>
                   {t.referenceLabel ? (

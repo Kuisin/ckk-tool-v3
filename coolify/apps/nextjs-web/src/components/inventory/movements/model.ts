@@ -70,5 +70,6 @@ export const MOVEMENT_CAUSE_COLOR: Record<string, string> = {
   OUTSOURCE_ISSUE: "indigo",
   OUTSOURCE_RETURN: "indigo",
   SALES_RETURN: "pink",
+  WIP_RECLASSIFY: "lime",
   OTHER: "gray",
 };

@@ -268,7 +268,7 @@ export async function saveStockTakeCounts(
  */
 export async function submitStockTake(
   stockTakeNumber: string,
-): Promise<ActionResult<{ confirmed: boolean }>> {
+): Promise<ActionResult<{ confirmed: boolean; approvedWithoutFlow?: true }>> {
   const tr = await getTranslations();
   const authz = await checkPermission("inventory", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
@@ -366,7 +366,9 @@ export async function submitStockTake(
       },
     });
     revalidate(stockTakeNumber);
-    return actionOk({ confirmed: true });
+    // 他の書類と同じ印 — ApprovalActionCard が「承認依頼しました」ではなく
+    // 「承認なしで承認済にしました」と出す（実際は依頼せずに確定している）。
+    return actionOk({ confirmed: true, approvedWithoutFlow: true });
   } catch (e) {
     return actionError(
       unwrapGuard(e, tr, tr("production.stockTakes.actions.submitFailed")),

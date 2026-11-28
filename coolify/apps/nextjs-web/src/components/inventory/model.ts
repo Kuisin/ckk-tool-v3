@@ -16,6 +16,9 @@ export interface InventoryTransactionRow {
   referenceType: string | null;
   /** 解決済み参照ラベル（指示書 #N・ORD-…・DOR-… 等、mono 表示）。 */
   referenceLabel: string | null;
+  /** 入出庫伝票の番号（表示用）と詳細へのリンク。伝票の無い行は null。 */
+  movementNumber: string | null;
+  movementHref: string | null;
   notes: string | null;
 }
 

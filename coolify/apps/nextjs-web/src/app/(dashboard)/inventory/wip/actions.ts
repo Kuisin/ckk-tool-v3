@@ -269,10 +269,10 @@ export async function reclassifyWip(
           state: stateLabel,
         });
         const movementId = await createMovement(tx, {
-          // 業務の事由としては「その他」— 棚の付け替え（在庫移動）でも棚卸の
-          // 調整でもなく、同じ物の名乗りを直すだけ。中身は notes と取引の
-          // referenceType = wip_reclassify が持つ。
-          cause: "OTHER",
+          // 専用の事由 — 棚の付け替え（在庫移動）でも棚卸の調整でもなく、
+          // 同じ物の名乗りを直すだけ。OTHER は移行前の行のための値なので
+          // 使わない（伝票一覧に「不明（移行前）」と出てしまう）。
+          cause: "WIP_RECLASSIFY",
           plantId: src.plantId,
           notes: note,
         });

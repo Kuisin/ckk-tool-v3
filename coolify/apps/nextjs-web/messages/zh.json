@@ -1234,6 +1234,7 @@
       "OUTSOURCE_RETURN": "外协返回",
       "SALES_RETURN": "销售退货",
       "REGRIND_RECEIPT": "再研磨接收",
+      "WIP_RECLASSIFY": "在制品分类",
       "WORK_ORDER_COMPLETION": "工单完成",
       "DELIVERY_SHIPMENT": "出货",
       "MATERIAL_RECEIPT": "材料到货",
@@ -2488,7 +2489,10 @@
       "savedRevisionNote": "已保存修订版 {revision}",
       "shareSettingsUpdatedNote": "已更新共享设置（{count} 项）",
       "titleRequired": "请输入标题",
-      "updateFailed": "更新失败"
+      "updateFailed": "更新失败",
+      "archiveBlockedWhilePending": "发布审批中无法归档（请等待审批结果，或退回后再操作）",
+      "archivedNote": "已归档",
+      "unarchivedNote": "已取消归档"
     },
     "formSchema": {
       "oneLineText": "单行文本",
@@ -3112,7 +3116,7 @@
       "allowQuantityVariance": "允许交付不足或超出的数量",
       "allowQuantityVarianceHelp": "允许该批次即使与订货数量不一致也能出货。可偏离的范围与是否需要审批由业务伙伴主数据决定。",
       "workLocationRequiredPlaceholder": "作业场所（必填）",
-      "timeQuantityInPanelLater": "本工序的计划还需要时间・数量 — 创建后请在工序的计划面板中填写",
+      "timeQuantityInPanelLater": "本工序的计划还需要时间 — 创建后请在工序的计划面板中填写",
       "assigneeRequiredPlaceholder": "负责人（必填）",
       "planNeedsAssignee": "以下工序需要负责人：{steps}",
       "prepRouteUsesLatest": "使用最新的 v{version}（{date}）",
@@ -3602,7 +3606,7 @@
         "revert": "恢复为图纸的值",
         "summaryTitle": "已从图纸“{file}”读取",
         "summaryCounts": "读取了 {read} 个项目（手动输入 {overridden} 个）· {at}",
-        "summaryHint": "从图纸读取的栏位为只读。点击栏位的“手动输入”即可覆盖，图纸的值会保留在栏位下方。",
+        "summaryHint": "从图纸读取的栏位为只读。点击栏位的“手动输入”即可覆盖，图纸的值会保留在输入框上方（栏位说明处）。",
         "detach": "解除读取",
         "viewSummary": "来自图纸“{file}”的 {read} 个项目（手动输入 {overridden} 个）· {at}"
       },
@@ -5732,7 +5736,7 @@
       "newApprovalGroup": "新建审批组",
       "whichDocumentAndWhichStepIt": "在哪种单据的第几级使用，由「审批流程」决定。",
       "deleteTheApprovalGroup": "删除审批组",
-      "itCannotBeDeletedWhileApproval": "存在引用此分组的审批申请・代理设置时无法删除。请考虑停用。",
+      "itCannotBeDeletedWhileApproval": "在审批流程的级（包括条件流程、自定义值追加审批和表单审批）或检查表模板中使用的分组无法删除。请考虑停用。成员和代理设置会随分组一起删除。",
       "enableTheApprovalGroup": "启用审批组",
       "timeLimited": "限期",
       "theyCanApproveAsAMember": "仅在此期间内可作为此分组的成员进行审批。期间外不会出现在审批人中。",
@@ -6099,7 +6103,7 @@
     "materials": {
       "nominalDiameter": "公称直径",
       "productsUsingIt": "使用产品",
-      "productsSpecifyMaterialAsTypeDiameter": "产品以「材料类别 + 直径 + 全长」指定材料，因此不直接关联特定材料。此材料用于库存管理。",
+      "productsSpecifyMaterialAsTypeDiameter": "产品的材料由图纸版本（PD06）以「材料类别 + 直径 + 全长」指定，因此不直接关联特定材料。此材料用于库存管理。",
       "nominalDiameterMm": "公称直径 (mm)",
       "theMaterialWasCreated": "已创建材料",
       "newMaterial": "新建材料",
@@ -6375,7 +6379,7 @@
       "groupDeleted": "已删除分组“{name}”",
       "deleteWorkLocationConfirm": "将删除作业场所“{name}”。此操作无法撤销。",
       "workLocationDeleted": "已删除作业场所“{name}”",
-      "workLocationInUse": "该场所被 {planCount} 个作业计划 / {actualCount} 个作业实绩引用，无法删除——请考虑改为停用。",
+      "workLocationInUse": "该场所被{details}引用，无法删除——请考虑改为停用。",
       "jobsWithCount": "{count} 项作业"
     },
     "bpModals": {
@@ -6574,7 +6578,7 @@
       "siteUpdatedMessage": "已更新据点",
       "editTitle": "编辑据点 — {code}",
       "ownCompany": "本公司法人",
-      "ownCompanyDesc": "作为单据（报价单、送货单、请款单）开具方的法人。未设置时为默认法人",
+      "ownCompanyDesc": "该据点所属的法人。带据点的单据（订单确认书、出货单、材料采购单、出入库单等）以此法人为开具方。报价单由创建时选择的开具公司（或默认法人）决定，与据点无关。未设置时为默认法人",
       "ownCompanyPlaceholder": "默认法人",
       "ownCompanyDefault": "默认法人"
     },
@@ -6780,7 +6784,8 @@
       "auditWorkLocationUpdated": "已更新作业场所「{name}」",
       "auditWorkLocationDeleted": "已删除作业场所",
       "usedByOrderAcceptances": "订单确认书的出货作业场所 {count} 件",
-      "usedByProcessSteps": "工序的允许作业场所 {count} 件"
+      "usedByProcessSteps": "工序的允许作业场所 {count} 件",
+      "usedByOrderLines": "订单明细的出货作业场所 {count} 件"
     },
     "storageLocationActions": {
       "codeFormat": "编号请使用字母、数字、连字符和下划线",
@@ -6943,7 +6948,7 @@
       "newRegrindRoute": "新建再研磨工序清单",
       "intro": "接收客户刀具并进行再研磨的工序（产品接收（再研磨）→ 研磨 → 涂层（可选）→ 检查（可选））。不绑定产品或客户的公共清单，再研磨工单始终使用其最新版本。本公司库存不变动，接收的刀具记为客户寄存品。",
       "empty": "尚未登记再研磨工序清单",
-      "editorHelp": "只能选择可用于再研磨工单的工序。开始工序为 产品接收（再研磨），不能包含材料准备・加工工序。涂层・检查・发货前检查为可选。"
+      "editorHelp": "只能选择工序主数据（MS08）中「可用的工单类别」包含再研磨的工序。开始工序为 产品接收（再研磨）。"
     },
     "taxCategories": {
       "title": "税种",
@@ -6997,7 +7002,8 @@
       "accountCodeHint": "仅限半角字母、数字、- 和 _，最多 16 位（可留空）",
       "taxCode": "税代码",
       "salesAccountCode": "销售收入 科目代码",
-      "taxAccountCode": "暂收消费税 科目代码"
+      "taxAccountCode": "暂收消费税 科目代码",
+      "cannotUnsetDefault": "无法取消默认税种。请先将其他税种设为默认。"
     },
     "chargeItems": {
       "pageTitle": "费用项目",
@@ -7474,7 +7480,11 @@
       "bodyText": "正文",
       "itIsNotPublishedYetEdit": "尚未发布。编辑并发布后，正文将显示在此处。草稿内容可从「审阅」查看。",
       "required": "需要",
-      "hasUnpublishedChangesRevision": "有未发布的更改（r{revision}）"
+      "hasUnpublishedChangesRevision": "有未发布的更改（r{revision}）",
+      "archiveConfirm": "将文档作为使用完毕而归档。发布版、历史和评论将保留，共享对象仍可阅读。",
+      "unarchive": "取消归档",
+      "unarchiveConfirm": "取消归档。如有发布版则恢复为发布中，否则恢复为草稿。",
+      "unarchived": "已取消归档"
     },
     "documentEditor": {
       "editTheDocument": "编辑文档",
@@ -8086,7 +8096,7 @@
       "enterAReasonForTheChange": "修订时请输入变更理由",
       "theDesignRequestWasUpdated": "已更新设计委托单",
       "newDesignRequest": "新建设计委托单",
-      "theTriggerAtQuoteOrAt": "触发（报价时／接单时）和引用来源在创建后无法更改。保存时将编排申请编号 DSG-YYYYMM-NNNNN。",
+      "theTriggerAtQuoteOrAt": "触发（报价时 / 接单时 / 独立）和引用来源在创建后无法更改。申请编号（例：DSG-2026-00001，年份为会计年度）在保存时编排。",
       "n1TheSourceQuoteWhenDesign": "§1 与报价并行委托设计时的报价来源（可选）",
       "chooseFromRecentQuotes": "从最近的报价单中选择",
       "n3TheOrderLineWhenDesign": "§3 与接单并行委托设计时的订单明细（可选）",
@@ -8293,7 +8303,6 @@
       "discountAppliedAutomatically": "折扣（自动适用）",
       "discountRules": "折扣设置",
       "discountType": "折扣类别",
-      "duplicateWithADifferentValidPeriod": "更改有效期并复制",
       "eGSummerCampaign": "例：夏季活动",
       "editOnItemMaster": "在品目主数据中修改",
       "editTheDiscountRule": "编辑折扣规则",
@@ -8800,7 +8809,8 @@
       "notFound": "未找到价格表",
       "notPendingApproval": "不在审批中",
       "costEstimateNotUsable": "成本试算不能用作价格表的基准单价",
-      "notACounterpart": "不是同一客户、品目的其他公司的价格表"
+      "notACounterpart": "不是同一客户、品目的其他公司的价格表",
+      "estimateNotLinkedToProduct": "只有关联到该产品的价格试算可作为基准单价来源（请在价格试算（SA01）中指定产品并确定）"
     },
     "designRequestActions": {
       "approvalRequestFailed": "审批申请失败",

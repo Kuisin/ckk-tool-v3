@@ -8,9 +8,18 @@
  */
 
 import { Alert, Badge, Group, Tabs } from "@mantine/core";
-import { IconEye, IconGitCompare, IconMessage } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
+import {
+  IconArchive,
+  IconArchiveOff,
+  IconEye,
+  IconGitCompare,
+  IconMessage,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useTransition } from "react";
+import { setPageArchived } from "@/app/(dashboard)/general/documents/actions";
 import {
   type RoleOption,
   ShareGrantsPanel,
@@ -20,6 +29,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { EditablePanel } from "@/components/ui/EditablePanel";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { openConfirm } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
@@ -67,6 +77,30 @@ export function DocumentDetail({
   const router = useRouter();
   const hasUnpublished =
     page.latestRevision > 0 && page.publishedRevision !== page.latestRevision;
+  const isArchived = page.status === "ARCHIVED";
+  const [archivePending, startArchive] = useTransition();
+
+  /** アーカイブ / 解除。公開の承認依頼中はサーバーが止める（理由はトーストで出る）。 */
+  const applyArchived = (archived: boolean) =>
+    startArchive(async () => {
+      const result = await setPageArchived(page.pageNumber, archived);
+      notifications.show(
+        result.ok
+          ? {
+              title: archived
+                ? tr("common.archived")
+                : tr("documents.documentDetail.unarchived"),
+              message: page.title,
+              color: "green",
+            }
+          : {
+              title: tr("common.error2"),
+              message: result.error,
+              color: "red",
+            },
+      );
+      if (result.ok) router.refresh();
+    });
 
   return (
     <DetailShell
@@ -86,6 +120,51 @@ export function DocumentDetail({
               onClick: () =>
                 router.push(`/general/documents/${page.pageNumber}/revisions`),
             },
+            ...(canEdit
+              ? [
+                  isArchived
+                    ? {
+                        label: tr("documents.documentDetail.unarchive"),
+                        icon: <IconArchiveOff size={14} />,
+                        disabled: archivePending,
+                        divider: true,
+                        onClick: () =>
+                          openConfirm({
+                            title: tr("documents.documentDetail.unarchive"),
+                            message: tr(
+                              "documents.documentDetail.unarchiveConfirm",
+                            ),
+                            confirmLabel: tr(
+                              "documents.documentDetail.unarchive",
+                            ),
+                            onConfirm: () => applyArchived(false),
+                          }),
+                      }
+                    : {
+                        label: tr("common.archive"),
+                        icon: <IconArchive size={14} />,
+                        color: "red",
+                        // 承認依頼中はサーバーも止める。押せない理由は隠さず残す。
+                        disabled: archivePending || page.status === "PENDING",
+                        disabledReason:
+                          page.status === "PENDING"
+                            ? tr(
+                                "general.documentActions.archiveBlockedWhilePending",
+                              )
+                            : undefined,
+                        divider: true,
+                        onClick: () =>
+                          openConfirm({
+                            title: tr("common.archive"),
+                            message: tr(
+                              "documents.documentDetail.archiveConfirm",
+                            ),
+                            confirmLabel: tr("common.archive"),
+                            onConfirm: () => applyArchived(true),
+                          }),
+                      },
+                ]
+              : []),
           ]}
           onEdit={
             canEdit
@@ -104,15 +183,18 @@ export function DocumentDetail({
       title={page.title}
       updatedAt={fmt.dateTime(page.updatedAt)}
     >
-      <PagePublishCard
-        approvalRequired={page.approvalRequired}
-        canApprove={canApprove}
-        canEdit={canEdit}
-        hasUnpublishedChanges={hasUnpublished}
-        openComments={openComments}
-        pageNumber={page.pageNumber}
-        status={page.status}
-      />
+      {/* アーカイブ中は公開の操作を出さない（解除してから公開する）。 */}
+      {!isArchived && (
+        <PagePublishCard
+          approvalRequired={page.approvalRequired}
+          canApprove={canApprove}
+          canEdit={canEdit}
+          hasUnpublishedChanges={hasUnpublished}
+          openComments={openComments}
+          pageNumber={page.pageNumber}
+          status={page.status}
+        />
+      )}
 
       <SummaryGrid>
         <FieldValue

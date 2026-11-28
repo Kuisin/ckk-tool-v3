@@ -259,9 +259,14 @@ async function resolveEstimateSource(
       error: tr("sales.priceListsActions.onlyConfirmedEstimateUsable"),
     };
   }
-  // 別製品にリンクされた価格試算は基準単価ソースにできない（製品未リンクは可）。
-  if (estimate.itemId != null && estimate.itemId !== itemId) {
-    return { ok: false, error: tr("sales.priceListsActions.estimateNotFound") };
+  // この製品にリンクされた価格試算だけが基準単価ソースになる（_specs/feature
+  // §1 / 画面の候補 fetchEstimateSourcesForProduct と同じ規則）。製品未リンクの
+  // 価格試算は、どの製品の単価として算出したのかが分からないので受けない。
+  if (estimate.itemId !== itemId) {
+    return {
+      ok: false,
+      error: tr("sales.priceListsActions.estimateNotLinkedToProduct"),
+    };
   }
   return {
     ok: true,

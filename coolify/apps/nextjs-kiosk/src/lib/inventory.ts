@@ -70,6 +70,8 @@ export type MovementCause =
   | "SALES_RETURN"
   /// 再研磨のために顧客の工具を受け入れた（預り品バケットへ IN）。
   | "REGRIND_RECEIPT"
+  /// 仕掛品の「分類する」— 同じ物の品目・加工状態を付け直す（棚の物は動かない）。
+  | "WIP_RECLASSIFY"
   | "OTHER";
 
 export interface MovementInit {

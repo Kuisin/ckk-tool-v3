@@ -63,7 +63,11 @@ export interface AttachmentView {
   isLocked?: boolean;
 }
 
-/** アップロード可能な拡張子（lib/attachments.ts のホワイトリストと同一）。 */
+/**
+ * ファイル選択で既定に出す拡張子（書類の控え・証憑向け）。**受付の制限ではない** —
+ * サーバー（lib/attachments.ts validateFile）は形式で弾かず、危険な形式は配信時に
+ * ダウンロード扱いにする。図面・3D・CAD を添える画面は `acceptAnyFile` で外す。
+ */
 export const ATTACHMENT_ACCEPT = ".pdf,.png,.jpg,.jpeg,.webp,.heic,.xlsx,.csv";
 
 /** 最大ファイルサイズ（lib/attachments.ts の MAX_ATTACHMENT_BYTES と同一）。 */
@@ -99,6 +103,7 @@ export function AttachmentsPanel({
   canUpload = false,
   canDelete = false,
   title: titleProp,
+  acceptAnyFile = false,
 }: {
   /** 添付対象のテーブル名（@@map 値）。例: "material_purchase_orders" */
   ownerType: string;
@@ -108,6 +113,11 @@ export function AttachmentsPanel({
   canUpload?: boolean;
   canDelete?: boolean;
   title?: string;
+  /**
+   * ファイル選択の拡張子を絞らない（設計依頼の作業ファイル — CAD / 3D モデルなど。
+   * 設計図 PD06 の版の登録と同じく何でも受ける）。
+   */
+  acceptAnyFile?: boolean;
 }) {
   const tr = useTranslations();
   const title = titleProp ?? tr("ui.attachmentsPanel.defaultTitle");
@@ -226,7 +236,10 @@ export function AttachmentsPanel({
           )}
         </Title>
         {canUpload && (
-          <FileButton accept={ATTACHMENT_ACCEPT} onChange={selectFile}>
+          <FileButton
+            accept={acceptAnyFile ? undefined : ATTACHMENT_ACCEPT}
+            onChange={selectFile}
+          >
             {(props) => (
               <SecondaryButton
                 leftSection={<IconUpload size={14} />}

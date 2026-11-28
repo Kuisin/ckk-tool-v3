@@ -12,7 +12,7 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconCopy,
+  IconCalendar,
   IconCopyPlus,
   IconCurrencyYen,
   IconFileText,
@@ -565,8 +565,10 @@ export function PriceListTable({
             onAction: () => setQuoteTarget(e),
           },
           {
-            label: tr("sales.priceLists.duplicateWithADifferentValidPeriod"),
-            icon: <IconCopy size={14} />,
+            // 複製ではない — (顧客, 製品) は一意なので、選んだ注文種別の
+            // 有効期間を付け替える（DuplicatePriceListModal）。
+            label: tr("common.changeTheValidPeriod"),
+            icon: <IconCalendar size={14} />,
             onAction: () => setDuplicateTarget(e),
           },
           {

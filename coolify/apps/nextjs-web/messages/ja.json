@@ -1234,6 +1234,7 @@
       "OUTSOURCE_RETURN": "外注戻り",
       "SALES_RETURN": "返品",
       "REGRIND_RECEIPT": "再研磨受入",
+      "WIP_RECLASSIFY": "仕掛品の分類",
       "WORK_ORDER_COMPLETION": "指示書完了",
       "DELIVERY_SHIPMENT": "出荷",
       "MATERIAL_RECEIPT": "素材入荷",
@@ -2488,7 +2489,10 @@
       "savedRevisionNote": "リビジョン {revision} を保存",
       "shareSettingsUpdatedNote": "共有設定を更新（{count} 件）",
       "titleRequired": "タイトルを入力してください",
-      "updateFailed": "更新に失敗しました"
+      "updateFailed": "更新に失敗しました",
+      "archiveBlockedWhilePending": "公開の承認依頼中はアーカイブできません（決裁を待つか、差し戻してから操作してください）",
+      "archivedNote": "アーカイブ",
+      "unarchivedNote": "アーカイブを解除"
     },
     "formSchema": {
       "oneLineText": "1行テキスト",
@@ -3112,7 +3116,7 @@
       "allowQuantityVariance": "不足 / 超過分も納品してよい",
       "allowQuantityVarianceHelp": "このロットを受注数量ちょうどでなくても出荷できるようにする。どこまでずれてよいかと承認の要否は取引先マスタが決める。",
       "workLocationRequiredPlaceholder": "作業場所（必須）",
-      "timeQuantityInPanelLater": "この工程の計画には時刻・数量も必要です — 作成後に工程の計画パネルで入れてください",
+      "timeQuantityInPanelLater": "この工程の計画には時刻も必要です — 作成後に工程の計画パネルで入れてください",
       "assigneeRequiredPlaceholder": "担当者（必須）",
       "planNeedsAssignee": "担当者が必要な工程があります: {steps}",
       "prepRouteUsesLatest": "最新 v{version}（{date}）を使います",
@@ -3602,7 +3606,7 @@
         "revert": "図面の値に戻す",
         "summaryTitle": "図面「{file}」から読み取りました",
         "summaryCounts": "{read} 項目を読み取り（手入力 {overridden} 項目）・{at}",
-        "summaryHint": "図面から読んだ欄は読み取り専用です。欄の「手入力」で上書きでき、図面の値は欄の下に残ります。",
+        "summaryHint": "図面から読んだ欄は読み取り専用です。欄の「手入力」で上書きでき、図面の値は入力欄の上（欄の説明）に残ります。",
         "detach": "読み取りを外す",
         "viewSummary": "図面「{file}」から {read} 項目（手入力 {overridden} 項目）・{at}"
       },
@@ -5732,7 +5736,7 @@
       "newApprovalGroup": "承認グループ 新規作成",
       "whichDocumentAndWhichStepIt": "どの書類の何段目で使うかは「承認フロー」で決めます。",
       "deleteTheApprovalGroup": "承認グループの削除",
-      "itCannotBeDeletedWhileApproval": "このグループを参照する承認依頼・代理設定が存在する場合は削除できません。無効化をご検討ください。",
+      "itCannotBeDeletedWhileApproval": "承認フローの段（条件付きフロー・独自値の追加承認・フォームの承認を含む）や検査表テンプレートで使われているグループは削除できません。無効化をご検討ください。メンバー・代理設定はグループと一緒に削除されます。",
       "enableTheApprovalGroup": "承認グループの有効化",
       "timeLimited": "期間限定",
       "theyCanApproveAsAMember": "この期間だけこのグループの一員として承認できます。期間外は承認者に\n            出てきません。",
@@ -6099,7 +6103,7 @@
     "materials": {
       "nominalDiameter": "呼び径",
       "productsUsingIt": "使用製品",
-      "productsSpecifyMaterialAsTypeDiameter": "製品は「材種 + 直径 + 全長」で素材を指定するため、特定の素材には\n              直接紐付きません。この素材は在庫管理で使用します。",
+      "productsSpecifyMaterialAsTypeDiameter": "製品の素材は設計図の版（PD06）が「材種 + 直径 + 全長」で指定するため、特定の素材には直接紐付きません。この素材は在庫管理で使用します。",
       "nominalDiameterMm": "呼び径 (mm)",
       "theMaterialWasCreated": "素材を作成しました",
       "newMaterial": "素材 新規作成",
@@ -6375,7 +6379,7 @@
       "groupDeleted": "グループ「{name}」を削除しました",
       "deleteWorkLocationConfirm": "作業場所「{name}」を削除します。この操作は取り消せません。",
       "workLocationDeleted": "作業場所「{name}」を削除しました",
-      "workLocationInUse": "この場所は 作業計画 {planCount} 件 / 作業実績 {actualCount} 件 から参照されています（削除できません — 無効化をご検討ください）。",
+      "workLocationInUse": "この場所は {details} から参照されています（削除できません — 無効化をご検討ください）。",
       "jobsWithCount": "{count} 作業"
     },
     "bpModals": {
@@ -6574,7 +6578,7 @@
       "siteUpdatedMessage": "拠点を更新しました",
       "editTitle": "拠点 編集 — {code}",
       "ownCompany": "自社法人",
-      "ownCompanyDesc": "書類（見積書・納品書・請求書）の発行元になる法人。未設定は既定の法人",
+      "ownCompanyDesc": "この拠点が属する法人。拠点を持つ書類（注文請書・出荷書・素材発注書・入出庫伝票など）はこの法人を発行元にします。見積書は作成時の発行会社（または既定の法人）で決まり、拠点では決まりません。未設定は既定の法人",
       "ownCompanyPlaceholder": "既定の法人",
       "ownCompanyDefault": "既定の法人"
     },
@@ -6780,7 +6784,8 @@
       "auditWorkLocationUpdated": "作業場所「{name}」を更新",
       "auditWorkLocationDeleted": "作業場所を削除",
       "usedByOrderAcceptances": "注文請書の出荷作業場所 {count} 件",
-      "usedByProcessSteps": "工程の許可作業場所 {count} 件"
+      "usedByProcessSteps": "工程の許可作業場所 {count} 件",
+      "usedByOrderLines": "注文明細の出荷作業場所 {count} 件"
     },
     "storageLocationActions": {
       "codeFormat": "コードは英数字・ハイフン・アンダースコアで入力",
@@ -6943,7 +6948,7 @@
       "newRegrindRoute": "再研磨工程リスト 新規作成",
       "intro": "顧客の工具を預かって研ぎ直す手順（製品受入（再研磨）→ 研磨 → コーティング（任意）→ 検査（任意））。製品にも受注元にも紐づかない共通のリストで、再研磨の指示書は常にここの最新版を使います。自社在庫は動かず、受け入れた工具は顧客の預り品として記録されます。",
       "empty": "再研磨工程リストは未登録です",
-      "editorHelp": "再研磨の指示書で使える工程だけを選びます。開始工程は 製品受入（再研磨）で、材料準備・加工の工程は入れられません。コーティング・検査・出荷前検査は任意です。"
+      "editorHelp": "選べるのは、工程マスタ（MS08）の「使える指示書種別」に再研磨を含む工程だけです。開始工程は 製品受入（再研磨）です。"
     },
     "taxCategories": {
       "title": "税区分",
@@ -6997,7 +7002,8 @@
       "accountCodeHint": "半角英数字・16 桁まで（空欄可）",
       "taxCode": "消費税コード",
       "salesAccountCode": "売上高 科目コード",
-      "taxAccountCode": "仮受消費税 科目コード"
+      "taxAccountCode": "仮受消費税 科目コード",
+      "cannotUnsetDefault": "既定の税区分は外せません。先に別の税区分を既定にしてください。"
     },
     "chargeItems": {
       "pageTitle": "料金マスタ",
@@ -7474,7 +7480,11 @@
       "bodyText": "本文",
       "itIsNotPublishedYetEdit": "まだ公開されていません。編集して公開すると、ここに本文が出ます。\n              下書きの内容は「レビュー」から読めます。",
       "required": "必要",
-      "hasUnpublishedChangesRevision": "未公開の変更あり（r{revision}）"
+      "hasUnpublishedChangesRevision": "未公開の変更あり（r{revision}）",
+      "archiveConfirm": "使い終わった文書として片付けます。公開版・履歴・コメントは残り、共有先からはそのまま読めます。",
+      "unarchive": "アーカイブを解除",
+      "unarchiveConfirm": "アーカイブを解除します。公開版があればその版の公開中に、無ければ下書きに戻ります。",
+      "unarchived": "アーカイブを解除しました"
     },
     "documentEditor": {
       "editTheDocument": "文書を編集",
@@ -8086,7 +8096,7 @@
       "enterAReasonForTheChange": "改訂のときは変更理由を入力してください",
       "theDesignRequestWasUpdated": "設計依頼書を更新しました",
       "newDesignRequest": "設計依頼書 新規作成",
-      "theTriggerAtQuoteOrAt": "トリガー（見積時 / 受注時）と参照元は作成後に変更できません。保存時に依頼番号 DSG-YYYYMM-NNNNN が採番されます。",
+      "theTriggerAtQuoteOrAt": "トリガー（見積時 / 受注時 / 単独）と参照元は作成後に変更できません。依頼番号（例: DSG-2026-00001。年は会計年度）は保存時に採番されます。",
       "n1TheSourceQuoteWhenDesign": "§1 見積と並行して設計を依頼する場合の見積元（任意）",
       "chooseFromRecentQuotes": "直近の見積書から選択",
       "n3TheOrderLineWhenDesign": "§3 受注と並行して設計を依頼する場合の注文明細（任意）",
@@ -8293,7 +8303,6 @@
       "discountAppliedAutomatically": "値引き（自動適用）",
       "discountRules": "値引き設定",
       "discountType": "値引き種別",
-      "duplicateWithADifferentValidPeriod": "有効期間を変えて複製",
       "eGSummerCampaign": "例: 夏季キャンペーン",
       "editOnItemMaster": "品目マスタで直す",
       "editTheDiscountRule": "値引きルールを編集",
@@ -8800,7 +8809,8 @@
       "notFound": "価格表が見つかりません",
       "notPendingApproval": "承認依頼中ではありません",
       "costEstimateNotUsable": "原価試算は価格表の基準単価にできません",
-      "notACounterpart": "同じ顧客・品目の、他社の価格表ではありません"
+      "notACounterpart": "同じ顧客・品目の、他社の価格表ではありません",
+      "estimateNotLinkedToProduct": "この製品にリンクされた価格試算だけを基準単価ソースにできます（価格試算（SA01）で製品を指定して確定してください）"
     },
     "designRequestActions": {
       "approvalRequestFailed": "承認依頼に失敗しました",
