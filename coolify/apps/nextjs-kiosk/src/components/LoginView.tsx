@@ -25,6 +25,7 @@ import { useI18n } from "@/components/I18nProvider";
 import { PinKeypad } from "@/components/PinKeypad";
 import { QrScannerView } from "@/components/QrScannerView";
 import { fillMessage } from "@/lib/i18n";
+import type { PinVerifyReason } from "@/lib/kiosk-auth-core";
 import { beginUserPageTracking } from "@/lib/last-page";
 import { playLoginSound } from "@/lib/sound";
 import {
@@ -37,7 +38,7 @@ type LoginState =
   | { phase: "checking" }
   | { phase: "scanning" }
   | { phase: "pin_setup"; ticket: string; firstPin?: string }
-  | { phase: "pin_verify"; ticket: string }
+  | { phase: "pin_verify"; ticket: string; pinReason?: PinVerifyReason }
   | { phase: "locked"; until: string | null }
   | { phase: "attest_blocked"; outcome: AttestOutcome };
 
@@ -135,6 +136,7 @@ export function LoginView() {
           until?: string;
           reason?: string;
           userId?: string;
+          pinReason?: PinVerifyReason;
         };
         switch (data.state) {
           case "OK":
@@ -145,7 +147,11 @@ export function LoginView() {
             setState({ phase: "pin_setup", ticket: data.ticket ?? "" });
             return;
           case "PIN_REQUIRED":
-            setState({ phase: "pin_verify", ticket: data.ticket ?? "" });
+            setState({
+              phase: "pin_verify",
+              ticket: data.ticket ?? "",
+              pinReason: data.pinReason,
+            });
             return;
           case "LOCKED":
             setState({ phase: "locked", until: data.until ?? null });
@@ -230,7 +236,13 @@ export function LoginView() {
               title: m.login.pinIncorrectTitle,
               message: m.login.pinIncorrectMessage,
             });
-            setState({ phase: "pin_verify", ticket: data.ticket ?? "" });
+            // 説明文（なぜ PIN を求めたか）は最初の画面のものを引き継ぐ。
+            setState((prev) => ({
+              phase: "pin_verify",
+              ticket: data.ticket ?? "",
+              pinReason:
+                prev.phase === "pin_verify" ? prev.pinReason : undefined,
+            }));
             return;
           case "PIN_WEAK":
             notifications.show({
@@ -335,7 +347,13 @@ export function LoginView() {
                 void submitPin("PIN_VERIFY", state.ticket, pin)
               }
               submitting={busy}
-              subtitle={m.login.pinVerifySubtitle}
+              subtitle={
+                state.pinReason === "PERIODIC"
+                  ? m.login.pinVerifySubtitlePeriodic
+                  : state.pinReason === "DEVICE_IDLE"
+                    ? m.login.pinVerifySubtitleDeviceIdle
+                    : m.login.pinVerifySubtitle
+              }
               title={m.login.pinVerifyTitle}
             />
           )}

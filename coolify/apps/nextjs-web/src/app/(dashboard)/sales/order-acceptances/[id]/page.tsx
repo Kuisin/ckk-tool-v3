@@ -10,6 +10,7 @@ import { docKeyFromParam } from "@/lib/doc-param";
 import { listMemos } from "@/lib/document-memos";
 import { fetchPendingAcceptanceCancel } from "@/lib/order-acceptance-cancel";
 import { formatDocPageTitle } from "@/lib/page-title";
+import { loadPortalShare } from "@/lib/portal-share";
 import { getServerLocale } from "@/lib/user-preferences";
 import { fetchWorkLocationOptions } from "@/lib/work-locations";
 import { fetchOrderAcceptance, fetchPlantOptions } from "../data";
@@ -77,6 +78,12 @@ export default async function OrderLineAcceptancesDetailPage({
     fetchPendingAcceptanceCancel(key),
   ]);
   if (!acceptance) notFound();
+  // 取引先ポータルの書類リンク（機能・権限・状態が揃ったときだけ出す）。
+  const portalShare = await loadPortalShare(
+    "order_acceptances",
+    key.docRef,
+    acceptance.status,
+  );
   // 保留中のキャンセル依頼があれば、その依頼自体の承認状態も引く
   const cancelApproval = cancelRequest
     ? await fetchApprovalState(
@@ -104,6 +111,7 @@ export default async function OrderLineAcceptancesDetailPage({
       cancelRequest={cancelRequest}
       memos={memos}
       plantOptions={plantOptions}
+      portalShare={portalShare}
       priceCheck={priceCheck}
       workLocationOptions={workLocationOptions}
     />

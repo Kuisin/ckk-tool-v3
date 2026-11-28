@@ -54,6 +54,7 @@ import {
   ChargesPanel,
 } from "@/components/charges/ChargesPanel";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { PortalShareCard } from "@/components/settings/portal/PortalShareCard";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -84,6 +85,7 @@ import type { ApprovalActionState, ApprovalTrailEntry } from "@/lib/approvals";
 import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import { downloadFile } from "@/lib/download";
+import type { PortalShareProps } from "@/lib/portal-share";
 import type { ActionResult } from "@/lib/server-action";
 import { InvoiceApprovalCard } from "./InvoiceApprovalCard";
 import {
@@ -98,6 +100,7 @@ import {
 const BASE_PATH = "/billing/invoices";
 
 export function InvoiceDetail({
+  portalShare = null,
   invoice,
   approval,
   approvalTrail,
@@ -130,6 +133,8 @@ export function InvoiceDetail({
   accountingDocument: AccountingDocumentSummary | null;
   /** その請求書に紐づく全会計文書（元・反対仕訳・訂正後）。新しい順。 */
   accountingHistory: AccountingDocumentSummary[];
+  /** ポータル共有（取引先ポータルの書類リンク）。出せないときは null。 */
+  portalShare?: PortalShareProps | null;
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -717,6 +722,11 @@ export function InvoiceDetail({
             <Tabs.Tab value="approval">{tr("common.approve")}</Tabs.Tab>
           )}
           <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
+          {portalShare && (
+            <Tabs.Tab value="portal">
+              {tr("settings.portal.portalSharing")}
+            </Tabs.Tab>
+          )}
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
@@ -810,6 +820,12 @@ export function InvoiceDetail({
             ownerType="invoices"
           />
         </Tabs.Panel>
+
+        {portalShare && (
+          <Tabs.Panel pt="md" value="portal">
+            <PortalShareCard {...portalShare} />
+          </Tabs.Panel>
+        )}
 
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />

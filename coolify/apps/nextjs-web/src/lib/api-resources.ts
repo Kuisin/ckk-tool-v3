@@ -38,7 +38,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Order acceptances (注文請書). `id` is `<companyCode>~<number>` and identifies the document; `number` (`ORD-2026-00042`) is sequential per issuing company and fiscal year, so it is unique only together with `companyCode`. `legacyNumber` is the pre-renumbering number. Totals are derived from the lines, not stored. shipToId/endUserId/assignedPlantId/deliveryMethod are also derived from the lines (§8: delivery is per-line) — the header's value only when all lines agree, else null.", // i18n-ignore
+      "Order acceptances (注文請書). `id` is the row UUID — stable, use it to match rows across syncs. `number` (`ORD-2026-00042`) is sequential per issuing company and fiscal year, so it is unique only together with `companyCode`; webhook events and /deletions identify the document by `key` = `<companyCode>/<number>`. `legacyNumber` is the pre-renumbering number. Totals are derived from the lines, not stored. shipToId/endUserId/assignedPlantId/deliveryMethod are also derived from the lines (§8: delivery is per-line) — the header's value only when all lines agree, else null.", // i18n-ignore
     scope: "Creator (OWN) when the grant is scoped.",
   },
   {
@@ -47,7 +47,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Order lines (注文明細). The execution unit; created via the acceptance. `companyCode` + `number` (`ORD-2026-00042-01`) identify the line; `acceptanceId` is the parent acceptance's `id`; `legacyNumber` is the pre-renumbering number. shipToId/deliveryMethod/assignedPlantId/endUserId hold the line's own delivery destination (§8).", // i18n-ignore
+      "Order lines (注文明細). The execution unit; created via the acceptance. `companyCode` + `number` (`ORD-2026-00042-01`) identify the line; `acceptanceId` is the parent acceptance's `id` (UUID); `legacyNumber` is the pre-renumbering number. shipToId/deliveryMethod/assignedPlantId/endUserId hold the line's own delivery destination (§8).", // i18n-ignore
     scope: "Inherited from the parent acceptance's creator.",
   },
   {
@@ -64,7 +64,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Quotes (見積書). `id` is `<companyCode>~<number>`; `number` is unique only together with `companyCode`; `fiscalYear`, `docNumber` and `legacyNumber` are also returned. EXPIRED is not stored — derive it from status ISSUED plus validUntil.", // i18n-ignore
+      "Quotes (見積書). `id` is the row UUID — stable, use it to match rows across syncs; `number` is unique only together with `companyCode` (webhook events and /deletions identify the document by `key` = `<companyCode>/<number>`); `fiscalYear`, `docNumber` and `legacyNumber` are also returned. EXPIRED is not stored — derive it from status ISSUED plus validUntil.", // i18n-ignore
     scope: "Creator (OWN) only; quotes have no path to a plant.",
   },
   {
@@ -73,7 +73,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Delivery orders (出荷書) with their items. `id` is `<companyCode>~<number>`; `number` is unique only together with `companyCode`. The only resource that is ever hard-deleted — poll /deletions too.", // i18n-ignore
+      "Delivery orders (出荷書) with their items. `id` is the row UUID — stable, use it to match rows across syncs; `number` is unique only together with `companyCode` (webhook events and /deletions identify the document by `key` = `<companyCode>/<number>`). The only resource that is ever hard-deleted — poll /deletions too.", // i18n-ignore
     scope: "Shipping plant, or creator.",
   },
   {
@@ -82,7 +82,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Delivery notes (納品書) with their items. `id` is `<companyCode>~<number>`; `number` is unique only together with `companyCode`. `deliveryOrderId` is the parent delivery order's `id`.", // i18n-ignore
+      "Delivery notes (納品書) with their items. `id` is the row UUID — stable, use it to match rows across syncs; `number` is unique only together with `companyCode` (webhook events and /deletions identify the document by `key` = `<companyCode>/<number>`). `deliveryOrderId` is the parent delivery order's `id` (UUID).", // i18n-ignore
     scope: "Plant of the parent delivery order, or creator.",
   },
   {
@@ -91,7 +91,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Invoices (請求書). `id` is `<companyCode>~<number>`; `number` is unique only together with `companyCode`. taxType and taxRate are a snapshot taken at issue time.", // i18n-ignore
+      "Invoices (請求書). `id` is the row UUID — stable, use it to match rows across syncs; `number` is unique only together with `companyCode` (webhook events and /deletions identify the document by `key` = `<companyCode>/<number>`). taxType and taxRate are a snapshot taken at issue time.", // i18n-ignore
     scope: "Creator (OWN) only.",
   },
   {
@@ -100,7 +100,7 @@ export const API_RESOURCES: readonly ApiResource[] = [
     orderField: "updatedAt",
     tiebreak: "id",
     summary:
-      "Billing closings (締日処理). `invoiceId` is the `id` (`<companyCode>~<number>`) of the first invoice generated by the closing.", // i18n-ignore
+      "Billing closings (締日処理). `invoiceId` is the `id` (UUID) of the first invoice generated by the closing.", // i18n-ignore
     scope: "Unscoped.",
   },
   {

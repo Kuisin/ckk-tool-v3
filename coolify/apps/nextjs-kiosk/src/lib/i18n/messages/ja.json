@@ -470,7 +470,7 @@
     "pinMismatchTitle": "PIN が一致しません",
     "pinMismatchMessage": "最初から入力し直してください。",
     "pinVerifyTitle": "PIN を入力",
-    "pinVerifySubtitle": "3日以上利用がなかったため、本人確認が必要です。",
+    "pinVerifySubtitle": "本人確認のため、PIN を入力してください。",
     "pinIncorrectTitle": "PIN が違います",
     "pinIncorrectMessage": "もう一度入力してください。",
     "pinWeakTitle": "その PIN は使えません",
@@ -486,7 +486,9 @@
     "retry": "再試行",
     "lockedMessage": "PIN の入力に複数回失敗したため、一時的にロックされています。",
     "lockedUntil": " 解除予定: {time}",
-    "backToScan": "スキャンに戻る"
+    "backToScan": "スキャンに戻る",
+    "pinVerifySubtitleDeviceIdle": "この端末で 48 時間以上使われていない（または初めて使う）ため、本人確認が必要です。",
+    "pinVerifySubtitlePeriodic": "前回の PIN 確認から 2 週間たったため、本人確認が必要です。"
   },
   "setup": {
     "couldNotIssueCode": "コードを発行できませんでした",

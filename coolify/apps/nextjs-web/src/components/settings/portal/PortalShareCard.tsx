@@ -23,6 +23,7 @@ import {
 } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
@@ -49,6 +50,7 @@ export function PortalShareCard({
   canMintLinkOnly: boolean;
 }) {
   const tr = useTranslations();
+  const router = useRouter();
   const [pending, start] = useTransition();
   const [policy, setPolicy] = useState<"VERIFY" | "LINK_ONLY">("VERIFY");
   const [email, setEmail] = useState("");
@@ -56,6 +58,8 @@ export function PortalShareCard({
   const [url, setUrl] = useState<string | null>(null);
 
   function notify(res: { ok: boolean; error?: string }, ok: string) {
+    // 発行・失効した行を下の一覧へ出す（書類詳細はこのカードの外で描いている）。
+    if (res.ok) router.refresh();
     notifications.show(
       res.ok
         ? { color: "green", message: ok, title: tr("common.completed") }

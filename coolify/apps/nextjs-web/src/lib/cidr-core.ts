@@ -268,6 +268,27 @@ export function ipInCidr(ip: unknown, cidr: unknown): boolean {
   );
 }
 
+/**
+ * `inner` の範囲が `outer` にまるごと含まれるか（同じ範囲も含む）。
+ * 版が違う・どちらかが解析できないときは false。
+ */
+export function cidrContains(outer: unknown, inner: unknown): boolean {
+  const o = parseCidr(outer);
+  const i = parseCidr(inner);
+  if (!o || !i || o.version !== i.version) return false;
+  if (i.prefix < o.prefix) return false;
+  // inner のネットワーク先頭が outer の中なら、inner 全体が outer の中。
+  const ip = i.version === 4 ? [...i.bytes].join(".") : null;
+  if (ip !== null) return ipInCidr(ip, outer);
+  const hex: string[] = [];
+  for (let k = 0; k < 16; k += 2) {
+    hex.push(
+      (((i.bytes[k] as number) << 8) | (i.bytes[k + 1] as number)).toString(16),
+    );
+  }
+  return ipInCidr(hex.join(":"), outer);
+}
+
 /** どれか 1 つの CIDR に入れば true。空リストは常に false。 */
 export function ipInAnyCidr(ip: unknown, cidrs: readonly unknown[]): boolean {
   if (!Array.isArray(cidrs)) return false;

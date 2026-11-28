@@ -4582,8 +4582,7 @@
       "notificationTypesSentImmediately": "Notification types sent immediately",
       "theMaximumListedInOneEmail": "The maximum listed in one email. Anything over is folded into \"and N more\" (folded notifications count as sent and do not reappear next time).",
       "itemsPerEmail": "Items per email",
-      "maxItems": "Max items",
-      "resetToDefault": "Reset to default"
+      "maxItems": "Max items"
     },
     "productTypeEditForm": {
       "enterTheTypeNameInJapanese": "Enter the type name in Japanese",
@@ -4923,7 +4922,9 @@
       "revokingTheLinkClosesTheSession": "Revoking also ends any session opened with that link.",
       "viewingHistory": "Viewing history",
       "nothingHasBeenViewedYet": "Nothing has been viewed yet.",
-      "ipAddress": "IP address"
+      "ipAddress": "IP address",
+      "documentLinks": "Document links",
+      "documentLinksIntro": "Shows the latest 100 links, including those not tied to an account (issued from a document's Portal sharing or by emailing a quote)."
     },
     "privileged": {
       "approveTab": "Approve",
@@ -5137,7 +5138,8 @@
       "appNotFound": "App not found",
       "flagDescription": "{env} display for {label} ({operationCode})",
       "invalidEnv": "Invalid environment",
-      "updateFailed": "Could not update the flag"
+      "updateFailed": "Could not update the flag",
+      "lockedByFeature": "This app belongs to a feature under development and cannot be switched in this environment"
     },
     "displaysActions": {
       "activateFailed": "Could not activate",
@@ -5426,7 +5428,8 @@
     "kioskSettings": {
       "stepExecution": "Step execution",
       "workOrderScan": "Work order scan",
-      "workLocationBoard": "Work location steps"
+      "workLocationBoard": "Work location steps",
+      "workOrderList": "Work order list"
     },
     "portalGuide": {
       "guide": "Guide",
@@ -7335,8 +7338,7 @@
       "suffixStorageLocation": " (storage location)",
       "suffixFloorMap": " (map)",
       "suffixDisplay": " (display)",
-      "formResponsesLabel": "Form responses",
-      "actionWithRaw": "{label} ({raw})"
+      "formResponsesLabel": "Form responses"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "{label} was set to {v2} in {env}",
@@ -7346,7 +7348,10 @@
       "operationCode": "Operation code",
       "apps": "Apps",
       "searchByAppNameOrOperation": "Search by app name or operation code",
-      "thereAreNoApps": "There are no apps"
+      "thereAreNoApps": "There are no apps",
+      "devVerification": "dev (staging)",
+      "lockedByFeature": "This is a feature under development, so it is hidden in this environment by code (dev-features.json). Publishing it requires a PR and a deploy",
+      "locked": "Locked"
     },
     "fileManager": {
       "uploaded": "Uploaded",
@@ -11279,7 +11284,17 @@
     "webhookDuplicateName": "This API client already has an endpoint with that name.",
     "webhookNotFound": "Endpoint not found.",
     "webhookSecretUnavailable": "The signing secret could not be opened. Rotate the signing secret.",
-    "webhookNotRedeliverable": "Only failed deliveries can be redelivered."
+    "webhookNotRedeliverable": "Only failed deliveries can be redelivered.",
+    "editTitle": "Edit API client",
+    "editHint": "On an enabled client, allowed IP ranges and the expiry can only be narrowed. To widen them, disable the client, change them, then re-enable it with approval.",
+    "expiresAt": "Expires",
+    "noExpiry": "No end date",
+    "noCidrLimit": "No IP restriction",
+    "widenRequiresInactive": "The allowed IP ranges and expiry of an enabled client cannot be widened. Disable it, make the change, then re-enable it with approval.",
+    "alreadyRevoked": "This client has already been revoked",
+    "revokeClientTitle": "Revoke API client",
+    "revokeClientConfirm": "Revoke \"{name}\". All of its active tokens are revoked as well. This cannot be undone.",
+    "revokeReason": "Reason"
   },
   "charges": {
     "title": "Additional charges",
