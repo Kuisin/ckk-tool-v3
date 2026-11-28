@@ -7,7 +7,7 @@
  * DRAFT の注文請書を直接作成し、詳細ページへ遷移する。
  */
 
-import { SimpleGrid, TextInput } from "@mantine/core";
+import { Checkbox, SimpleGrid, TextInput } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar } from "@tabler/icons-react";
@@ -57,6 +57,9 @@ export function OrderAcceptanceCreateForm({
   const [quoteNumber, setQuoteNumber] = useState("");
   const [orderDate, setOrderDate] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  // 下書きの編集（OrderAcceptanceDetail）と同じ欄 — 作成時から付けられる。
+  const [customerProvidesDeliveryNote, setCustomerProvidesDeliveryNote] =
+    useState(false);
   const [items, setItems] = useState<ItemRowForm[]>([newItemRow()]);
   // 明細の単価は既定で価格表が持つ（§2）— 顧客が決まるとその顧客の
   // 価格表を引いて、行ごとの単価をその場で出す。
@@ -87,7 +90,7 @@ export function OrderAcceptanceCreateForm({
       const result = await createManualAcceptance({
         customerBpId: customerId,
         salesRepId,
-        customerProvidesDeliveryNote: false,
+        customerProvidesDeliveryNote,
         customerOrderRef: customerOrderRef || null,
         quoteNumber: quoteNumber || null,
         orderDate,
@@ -121,7 +124,8 @@ export function OrderAcceptanceCreateForm({
         customerOrderRef ||
         quoteNumber ||
         orderDate ||
-        notes,
+        notes ||
+        customerProvidesDeliveryNote,
     ) ||
     items.length > 1 ||
     items.some(
@@ -234,6 +238,21 @@ export function OrderAcceptanceCreateForm({
             onChange={(e) => setNotes(e.currentTarget.value)}
             placeholder={tr("common.notesOptional")}
             value={notes}
+          />
+          <Checkbox
+            checked={customerProvidesDeliveryNote}
+            label={
+              <HelpLabel
+                {...fieldHelp(
+                  tr,
+                  "orderAcceptance",
+                  "customerProvidesDeliveryNote",
+                )}
+              />
+            }
+            onChange={(e) =>
+              setCustomerProvidesDeliveryNote(e.currentTarget.checked)
+            }
           />
         </SimpleGrid>
       </FormSection>
