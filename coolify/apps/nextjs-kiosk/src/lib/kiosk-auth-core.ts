@@ -62,19 +62,36 @@ export function needsPinVerify(
   lastUsedOnDeviceAt: Date | null,
   pinLastVerifiedAt: Date | null,
 ): boolean {
+  return pinVerifyReason(now, lastUsedOnDeviceAt, pinLastVerifiedAt) !== null;
+}
+
+/**
+ * PIN を求める理由（null = 求めない）。画面の説明文を出し分けるためのもので、
+ * 判定は needsPinVerify と同じ（あちらはこれを呼ぶだけ）。両方が成り立つときは
+ * 端末側（DEVICE_IDLE）を返す — 先に評価する条件と同じ順。
+ *   DEVICE_IDLE … この端末で 48 時間使っていない（初めて使う端末を含む）
+ *   PERIODIC    … 最後の PIN 確認から 2 週間たった（定期の確認）
+ */
+export type PinVerifyReason = "DEVICE_IDLE" | "PERIODIC";
+
+export function pinVerifyReason(
+  now: Date,
+  lastUsedOnDeviceAt: Date | null,
+  pinLastVerifiedAt: Date | null,
+): PinVerifyReason | null {
   if (
     !lastUsedOnDeviceAt ||
     now.getTime() - lastUsedOnDeviceAt.getTime() >= PIN_REVERIFY_DEVICE_IDLE_MS
   ) {
-    return true;
+    return "DEVICE_IDLE";
   }
   if (
     !pinLastVerifiedAt ||
     now.getTime() - pinLastVerifiedAt.getTime() >= PIN_REVERIFY_MAX_MS
   ) {
-    return true;
+    return "PERIODIC";
   }
-  return false;
+  return null;
 }
 
 /**
