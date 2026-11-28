@@ -1854,7 +1854,7 @@
       "kiosk_secret": {
         "reveal_unlock_pin": {
           "label": "查看维护退出 PIN",
-          "description": "以明文显示全终端通用的退出 PIN。知道它的人可以在任何终端退出自助模式进入 Android 设置。"
+          "description": "以明文显示全终端通用的退出 PIN。知道它的人可以在任何终端退出共用终端应用进入 Android 设置。"
         },
         "reveal_pin_history": {
           "label": "查看 PIN 历史",
@@ -1896,7 +1896,7 @@
         },
         "unlink": {
           "label": "解除关联",
-          "description": "销毁终端令牌、会话与认证密钥，并将配置清空。名称与基地保留。"
+          "description": "销毁终端令牌、会话与认证密钥，并将配置清空。名称与据点保留。"
         },
         "revoke": {
           "label": "注销终端",

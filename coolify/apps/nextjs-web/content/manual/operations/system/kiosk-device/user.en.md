@@ -243,7 +243,7 @@ For preparing the TV side (Raspberry Pi), see your company's internal procedure 
 | [Default work location](#field-default-work-location) | Optional | Work location auto-recorded on actuals from this device |
 | [Link code](#field-link-code) | Required | The code shown on the tablet |
 
-### Device name (Japanese / English) [#field-name]
+### Device name [#field-name]
 
 The name shown in the list, on the floor map, and on activity-log badges. Use a name that **lets someone find the physical device**, such as "Plant 1 entrance". Only the Japanese name is needed. Names in English and other languages can be entered through the 「**多言語**」 (Translations) button (optional).
 
@@ -320,7 +320,7 @@ Holding the permission is not enough for the operations below. You **request the
 
 | Operation | Permission | What it unlocks |
 | --- | --- | --- |
-| Reveal maintenance PIN | Shared device secrets（`kiosk_secret`）— View | Shows the shared maintenance-exit PIN in clear text. It exits kiosk mode on every device. |
+| Reveal maintenance PIN | Shared device secrets（`kiosk_secret`）— View | Shows the shared maintenance-exit PIN in clear text. With it, anyone can leave the shared-device app for Android settings on any device. |
 | Reveal PIN history | Shared device secrets（`kiosk_secret`）— View | Lists up to 400 days of past exit PINs — needed for offline devices, but broader than the current value. |
 | Reveal the PIN a device holds | Shared device secrets（`kiosk_secret`）— View | Shows the exit PIN last delivered to that device — used to open an offline tablet. |
 | Reveal device settings code | Shared device secrets（`kiosk_secret`）— View | Shows the code that unlocks that device's hidden settings screen. |

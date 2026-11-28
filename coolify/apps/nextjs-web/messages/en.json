@@ -1854,7 +1854,7 @@
       "kiosk_secret": {
         "reveal_unlock_pin": {
           "label": "Reveal maintenance PIN",
-          "description": "Shows the shared maintenance-exit PIN in clear text. It exits kiosk mode on every device."
+          "description": "Shows the shared maintenance-exit PIN in clear text. With it, anyone can leave the shared-device app for Android settings on any device."
         },
         "reveal_pin_history": {
           "label": "Reveal PIN history",
