@@ -9,9 +9,17 @@
  * 消え、URL 直アクセスもガードされる。
  */
 
-import { Badge, Select, Switch, Text, TextInput } from "@mantine/core";
+import {
+  Badge,
+  Group,
+  Select,
+  Switch,
+  Text,
+  TextInput,
+  Tooltip,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconApps, IconSearch } from "@tabler/icons-react";
+import { IconApps, IconLock, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
@@ -96,21 +104,54 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
   const envSwitch = (env: AppEnv) => ({
     key: env,
     header:
-      env === "dev" ? "dev（検証）" : tr("admin.appFlagsTable.mainProduction"),
+      env === "dev"
+        ? tr("admin.appFlagsTable.devVerification")
+        : tr("admin.appFlagsTable.mainProduction"),
     width: 130,
-    render: (r: AppFlagRow) => (
-      <Switch
-        aria-label={tr("admin.appFlagsTable.enableLabelInEnv", {
-          label: r.label,
-          env: env,
-        })}
-        checked={enabledValue(r, env)}
-        color={env === "main" ? "blue" : "teal"}
-        onChange={(e) => toggle(r, env, e.currentTarget.checked)}
-        onClick={(e) => e.stopPropagation()}
-        size="sm"
-      />
-    ),
+    render: (r: AppFlagRow) => {
+      // 開発中機能（dev-features.json）で固定されている環境は切り替えても
+      // 表示が変わらない。押せるスイッチを置くと「有効にしたのに出ない」になる。
+      if (r.lockedByFeature[env]) {
+        return (
+          <Tooltip
+            label={tr("admin.appFlagsTable.lockedByFeature")}
+            maw={280}
+            multiline
+            withinPortal
+          >
+            <Group gap={6} onClick={(e) => e.stopPropagation()} wrap="nowrap">
+              <Switch
+                aria-label={tr("admin.appFlagsTable.enableLabelInEnv", {
+                  label: r.label,
+                  env: env,
+                })}
+                checked={false}
+                disabled
+                readOnly
+                size="sm"
+              />
+              <IconLock size={14} />
+              <Text c="dimmed" size="xs">
+                {tr("admin.appFlagsTable.locked")}
+              </Text>
+            </Group>
+          </Tooltip>
+        );
+      }
+      return (
+        <Switch
+          aria-label={tr("admin.appFlagsTable.enableLabelInEnv", {
+            label: r.label,
+            env: env,
+          })}
+          checked={enabledValue(r, env)}
+          color={env === "main" ? "blue" : "teal"}
+          onChange={(e) => toggle(r, env, e.currentTarget.checked)}
+          onClick={(e) => e.stopPropagation()}
+          size="sm"
+        />
+      );
+    },
   });
 
   const columns: Column<AppFlagRow>[] = [

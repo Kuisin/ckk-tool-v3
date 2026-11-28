@@ -35,6 +35,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
 import type { DesignRequestLink } from "@/components/sales/design-requests/model";
 import type { AcceptanceLink } from "@/components/sales/order-acceptances/model";
+import { PortalShareCard } from "@/components/settings/portal/PortalShareCard";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -63,6 +64,7 @@ import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import { downloadFile } from "@/lib/download";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import type { PortalShareProps } from "@/lib/portal-share";
 import { statusLabel } from "@/lib/status-map";
 import { entrySummary, type PriceListEntry } from "../price-lists/model";
 import { IssueQuoteModal } from "./IssueQuoteModal";
@@ -78,6 +80,7 @@ import {
 const BASE_PATH = "/sales/quotes";
 
 export function QuoteDetail({
+  portalShare = null,
   quote,
   pdfMeta,
   relatedEntries,
@@ -99,6 +102,8 @@ export function QuoteDetail({
   memos: MemoView[];
   /** この見積から起きた注文請書（手続き状況の「次の書類へ」）。 */
   acceptances?: AcceptanceLink[];
+  /** ポータル共有（取引先ポータルの書類リンク）。出せないときは null。 */
+  portalShare?: PortalShareProps | null;
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -401,6 +406,11 @@ export function QuoteDetail({
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
           <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
           <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
+          {portalShare && (
+            <Tabs.Tab value="portal">
+              {tr("settings.portal.portalSharing")}
+            </Tabs.Tab>
+          )}
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
@@ -684,6 +694,12 @@ export function QuoteDetail({
             ownerType="quotes"
           />
         </Tabs.Panel>
+
+        {portalShare && (
+          <Tabs.Panel pt="md" value="portal">
+            <PortalShareCard {...portalShare} />
+          </Tabs.Panel>
+        )}
 
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />

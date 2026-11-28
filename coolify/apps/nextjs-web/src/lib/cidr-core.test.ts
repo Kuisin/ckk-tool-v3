@@ -14,6 +14,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  cidrContains,
   clientIpFromForwardedFor,
   ipInAnyCidr,
   ipInCidr,
@@ -196,5 +197,21 @@ describe("clientIpFromForwardedFor", () => {
     expect(clientIpFromForwardedFor("bogus", 0)).toBeNull();
     expect(clientIpFromForwardedFor(chain, Number.NaN)).toBe("10.0.0.2");
     expect(clientIpFromForwardedFor(chain, -5)).toBe("10.0.0.2");
+  });
+});
+
+describe("cidrContains", () => {
+  it("同じ範囲・内側の範囲は含む", () => {
+    expect(cidrContains("10.0.0.0/8", "10.0.0.0/8")).toBe(true);
+    expect(cidrContains("10.0.0.0/8", "10.1.0.0/16")).toBe(true);
+    expect(cidrContains("10.0.0.0/8", "10.1.2.3")).toBe(true);
+    expect(cidrContains("2001:db8::/32", "2001:db8:1::/48")).toBe(true);
+  });
+  it("外側・別の範囲・版違い・不正値は含まない", () => {
+    expect(cidrContains("10.1.0.0/16", "10.0.0.0/8")).toBe(false);
+    expect(cidrContains("10.0.0.0/8", "192.168.0.0/16")).toBe(false);
+    expect(cidrContains("10.0.0.0/8", "2001:db8::/32")).toBe(false);
+    expect(cidrContains("2001:db8::/32", "2001:db9::/48")).toBe(false);
+    expect(cidrContains("nope", "10.0.0.0/8")).toBe(false);
   });
 });

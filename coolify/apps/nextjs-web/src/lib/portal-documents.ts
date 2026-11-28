@@ -30,20 +30,18 @@ import type { PortalResourceType, PortalTarget } from "./portal-access-core";
 import type { PortalSession } from "./portal-auth";
 // 種別とラベルは client-safe なほうに置いてある（このファイルは server-only なので
 // クライアント部品から値を import できない）。
-import type { PortalDocumentType } from "./portal-documents-core";
+import {
+  type PortalDocumentType,
+  VISIBLE_ACCEPTANCE_STATUS,
+  VISIBLE_DELIVERY_NOTE_STATUS,
+  VISIBLE_INVOICE_STATUS,
+  VISIBLE_QUOTE_STATUS,
+} from "./portal-documents-core";
 import type {
   PortalDocumentDetailDto,
   PortalDocumentDto,
   PortalRelatedDocumentDto,
 } from "./portal-progress-core";
-
-/**
- * 見積書は社外に見せてよい状態だけ。DRAFT（下書き）・期限切れは出さない。
- * EXPIRED は保存しない派生状態（components/sales/quotes/model.ts
- * quoteDisplayStatus）なので、ここでは validUntil を直接条件に入れる
- * （下の quoteVisibleWhere）。
- */
-const VISIBLE_QUOTE_STATUS = ["ISSUED"] as const;
 
 /** 「発行済み × 期限切れでない」— 見積の一覧・単件アクセス判定で共有する条件。 */
 function quoteVisibleWhere(now: Date = new Date()): Prisma.QuoteWhereInput {
@@ -52,15 +50,6 @@ function quoteVisibleWhere(now: Date = new Date()): Prisma.QuoteWhereInput {
     OR: [{ validUntil: null }, { validUntil: { gte: now } }],
   };
 }
-/** 注文請書は「確定して先へ進んだもの」だけ。IMPORT / DRAFT は取込の途中。 */
-const VISIBLE_ACCEPTANCE_STATUS = [
-  "APPROVED",
-  "COMPLETED",
-  "ARCHIVED",
-] as const;
-/** 納品書・請求書は発行済み以降。 */
-const VISIBLE_DELIVERY_NOTE_STATUS = ["ISSUED", "DELIVERED"] as const;
-const VISIBLE_INVOICE_STATUS = ["ISSUED", "SENT", "PAID"] as const;
 
 function iso(d: Date | null | undefined): string | null {
   return d ? d.toISOString() : null;

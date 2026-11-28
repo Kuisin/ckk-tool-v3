@@ -31,7 +31,7 @@ import {
   extractCardId,
   isCardWithinValidPeriod,
   isPinLocked,
-  needsPinVerify,
+  pinVerifyReason,
 } from "@/lib/kiosk-auth-core";
 import {
   attemptContext,
@@ -125,13 +125,12 @@ export async function POST(req: Request) {
     orderBy: { lastActivityAt: "desc" },
     select: { lastActivityAt: true },
   });
-  if (
-    !needsPinVerify(
-      now,
-      lastDeviceSession?.lastActivityAt ?? null,
-      card.pinLastVerifiedAt,
-    )
-  ) {
+  const pinReason = pinVerifyReason(
+    now,
+    lastDeviceSession?.lastActivityAt ?? null,
+    card.pinLastVerifiedAt,
+  );
+  if (pinReason === null) {
     await prisma.kioskCard.update({
       where: { id: card.id },
       data: { lastUsedAt: now, useCount: { increment: 1 } },
@@ -151,5 +150,10 @@ export async function POST(req: Request) {
     // ロックと同じ扱いで弾く（画面は「ロック中」を出す）。
     return deny(ctx, "LOCKED", 429, detail, { until: card.pinLockedUntil });
   }
-  return NextResponse.json({ state: "PIN_REQUIRED", ticket });
+  // pinReason は画面の説明文の出し分けだけに使う（認証の判断には使わない）。
+  return NextResponse.json({
+    state: "PIN_REQUIRED",
+    ticket,
+    pinReason,
+  });
 }

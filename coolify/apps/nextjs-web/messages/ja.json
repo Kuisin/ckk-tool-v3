@@ -1234,6 +1234,7 @@
       "OUTSOURCE_RETURN": "外注戻り",
       "SALES_RETURN": "返品",
       "REGRIND_RECEIPT": "再研磨受入",
+      "WIP_RECLASSIFY": "仕掛品の分類",
       "WORK_ORDER_COMPLETION": "指示書完了",
       "DELIVERY_SHIPMENT": "出荷",
       "MATERIAL_RECEIPT": "素材入荷",
@@ -2488,7 +2489,10 @@
       "savedRevisionNote": "リビジョン {revision} を保存",
       "shareSettingsUpdatedNote": "共有設定を更新（{count} 件）",
       "titleRequired": "タイトルを入力してください",
-      "updateFailed": "更新に失敗しました"
+      "updateFailed": "更新に失敗しました",
+      "archiveBlockedWhilePending": "公開の承認依頼中はアーカイブできません（決裁を待つか、差し戻してから操作してください）",
+      "archivedNote": "アーカイブ",
+      "unarchivedNote": "アーカイブを解除"
     },
     "formSchema": {
       "oneLineText": "1行テキスト",
@@ -2828,7 +2832,9 @@
       "lotInputWithName": "{name} のロット入力",
       "defaultWithLabel": "既定（{label}）",
       "workHoursWithName": "{name} の作業時間 (h)",
-      "site": "拠点"
+      "site": "拠点",
+      "addRequiredSteps": "必須工程を自動追加（{count}件）",
+      "requiredStepsAdded": "必須工程を自動追加しました: {steps}"
     },
     "stepCard": {
       "othersCount": "ほか {count} 名",
@@ -3110,7 +3116,7 @@
       "allowQuantityVariance": "不足 / 超過分も納品してよい",
       "allowQuantityVarianceHelp": "このロットを受注数量ちょうどでなくても出荷できるようにする。どこまでずれてよいかと承認の要否は取引先マスタが決める。",
       "workLocationRequiredPlaceholder": "作業場所（必須）",
-      "timeQuantityInPanelLater": "この工程の計画には時刻・数量も必要です — 作成後に工程の計画パネルで入れてください",
+      "timeQuantityInPanelLater": "この工程の計画には時刻も必要です — 作成後に工程の計画パネルで入れてください",
       "assigneeRequiredPlaceholder": "担当者（必須）",
       "planNeedsAssignee": "担当者が必要な工程があります: {steps}",
       "prepRouteUsesLatest": "最新 v{version}（{date}）を使います",
@@ -3600,7 +3606,7 @@
         "revert": "図面の値に戻す",
         "summaryTitle": "図面「{file}」から読み取りました",
         "summaryCounts": "{read} 項目を読み取り（手入力 {overridden} 項目）・{at}",
-        "summaryHint": "図面から読んだ欄は読み取り専用です。欄の「手入力」で上書きでき、図面の値は欄の下に残ります。",
+        "summaryHint": "図面から読んだ欄は読み取り専用です。欄の「手入力」で上書きでき、図面の値は入力欄の上（欄の説明）に残ります。",
         "detach": "読み取りを外す",
         "viewSummary": "図面「{file}」から {read} 項目（手入力 {overridden} 項目）・{at}"
       },
@@ -4322,7 +4328,11 @@
       "loginScreenLanguageDefault": "既定（日本語）",
       "hoursValue": "{n} 時間",
       "minutesValue": "{n} 分",
-      "daysValue": "{n} 日"
+      "daysValue": "{n} 日",
+      "mapShort": "マップ",
+      "inUseBy": "{name} が利用中",
+      "lastActivityAt": "最終アクティビティ {at}",
+      "androidApiWithPatch": "API {sdk}（パッチ {patch}）"
     },
     "links": {
       "links": "リンク管理",
@@ -4576,8 +4586,7 @@
       "notificationTypesSentImmediately": "即時に送る通知の種別",
       "theMaximumListedInOneEmail": "1 通に並べる件数の上限。超えた分は「ほか N 件」に畳まれます（畳まれた通知も送信済みとして扱われ、次の回には載りません）。",
       "itemsPerEmail": "1 通の件数",
-      "maxItems": "最大件数",
-      "resetToDefault": "元に戻す"
+      "maxItems": "最大件数"
     },
     "productTypeEditForm": {
       "enterTheTypeNameInJapanese": "種別名（日本語）を入力してください",
@@ -4917,7 +4926,9 @@
       "revokingTheLinkClosesTheSession": "失効させると、そのリンクで開いているセッションも終わります。",
       "viewingHistory": "閲覧記録",
       "nothingHasBeenViewedYet": "まだ何も閲覧されていません。",
-      "ipAddress": "IP アドレス"
+      "ipAddress": "IP アドレス",
+      "documentLinks": "書類リンク",
+      "documentLinksIntro": "アカウントに紐づかないリンク（書類の「ポータル共有」や見積書のメール送付で発行したもの）も含め、直近 100 件を表示します。"
     },
     "privileged": {
       "approveTab": "承認する",
@@ -4990,10 +5001,10 @@
       "thereAreNoMatchingLoginRecords": "該当するログイン記録がありません",
       "thereAreOlderRecordsNarrowThe": "さらに古い記録があります。期間や絞り込みを狭めてください。",
       "thereAreNoRegisteredDevices": "登録された端末はありません",
-      "deviceLoginCount": "{count} 回",
-      "deviceLastSeen": "最終 {date}",
       "unknownDevice": "不明な端末",
-      "success": "成功"
+      "success": "成功",
+      "loginCount": "{count} 回",
+      "lastSeenAt": "最終 {at}"
     },
     "displayContentEditor": {
       "templateSettings": "{name}の設定",
@@ -5076,7 +5087,8 @@
     "loginAttemptDrawer": {
       "theAutomationFlagNavigatorwebdriverIs": "自動操作フラグ（navigator.webdriver）が立っています",
       "theDeviceSClockIsMinutes": "端末の時計がサーバーと {minutes} 分ずれています",
-      "scanKindContentNotStored": "{scanKind}（内容は保存していません）"
+      "scanKindContentNotStored": "{scanKind}（内容は保存していません）",
+      "collectedSignals": "収集シグネチャ（v{version}）"
     },
     "kioskDeviceLogsModal": {
       "durationMinutes": "{minutes}分",
@@ -5130,7 +5142,8 @@
       "appNotFound": "対象のアプリが見つかりません",
       "flagDescription": "{label}（{operationCode}）の {env} 表示",
       "invalidEnv": "環境の指定が不正です",
-      "updateFailed": "フラグの更新に失敗しました"
+      "updateFailed": "フラグの更新に失敗しました",
+      "lockedByFeature": "このアプリは開発中の機能のため、この環境では切り替えられません"
     },
     "displaysActions": {
       "activateFailed": "有効化に失敗しました",
@@ -5420,7 +5433,8 @@
     "kioskSettings": {
       "stepExecution": "工程実行",
       "workOrderScan": "指示書スキャン",
-      "workLocationBoard": "作業場所の工程"
+      "workLocationBoard": "作業場所の工程",
+      "workOrderList": "指示書一覧"
     },
     "portalGuide": {
       "guide": "案内",
@@ -5689,7 +5703,16 @@
         "offBadge": "承認なし",
         "notSetYet": "まだ設定していません（いまの動きを表示しています）",
         "saveFailed": "承認の使用設定を保存できませんでした"
-      }
+      },
+      "stepNumber": "第{n}段",
+      "ruleCountBadge": "条件付き {count} 本",
+      "requiredPermissionLine": "承認に必要な権限: {permission} の閲覧または編集",
+      "setUp": "設定",
+      "permissionNote": "{target}の承認・差し戻しには、「{permission}」を閲覧または編集できる権限（<mono>{code}:READ / UPDATE</mono>）が要ります。誰が承認するかは、この画面で指定した{who}だけで決まります。書類を開けない人は、指定しても承認できません（権限はユーザー管理 SY01 のロールで決まります）。",
+      "noConditionalFlows": "条件付きフローはありません。すべての{target}が既定フローで進みます。",
+      "priorityBadge": "優先 {n}",
+      "stepsLine": "段: {steps}",
+      "catchAll": "条件なし — すべての{target}に一致します（キャッチオール）。"
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "このグループはどの承認フローにも使われていません（承認設定の「承認フロー」で段に割り当てます）。",
@@ -5714,7 +5737,7 @@
       "newApprovalGroup": "承認グループ 新規作成",
       "whichDocumentAndWhichStepIt": "どの書類の何段目で使うかは「承認フロー」で決めます。",
       "deleteTheApprovalGroup": "承認グループの削除",
-      "itCannotBeDeletedWhileApproval": "このグループを参照する承認依頼・代理設定が存在する場合は削除できません。無効化をご検討ください。",
+      "itCannotBeDeletedWhileApproval": "承認フローの段（条件付きフロー・独自値の追加承認・フォームの承認を含む）や検査表テンプレートで使われているグループは削除できません。無効化をご検討ください。メンバー・代理設定はグループと一緒に削除されます。",
       "enableTheApprovalGroup": "承認グループの有効化",
       "timeLimited": "期間限定",
       "theyCanApproveAsAMember": "この期間だけこのグループの一員として承認できます。期間外は承認者に\n            出てきません。",
@@ -5822,20 +5845,20 @@
       "theBusinessPartnerWasCreated": "取引先を作成しました",
       "newBusinessPartner": "取引先 新規作成",
       "formatBpNnnnnNumberedAutomatically": "形式: BP-NNNNN（自動採番）",
-      "chooseInWhatCapacityThisPartner": "この取引先をどの立場で使うかを選ぶ（bp_role_assignments）。複数選択でき、後から付け外しできる。",
+      "chooseInWhatCapacityThisPartner": "この取引先をどの立場で使うかを選ぶ。複数選択でき、後から付け外しできる。",
       "youCanRegisterItWithNo": "ロール未設定でも登録できます。書類で選べるようにするには、あとで\n            ロールを付けてください。",
-      "closingDayPaymentTermsAndInvoice": "締日・支払条件・請求方法（bp_customer_attrs）。",
+      "closingDayPaymentTermsAndInvoice": "締日・支払条件・請求方法。",
       "customerInformation": "顧客情報",
       "legacyCustomerCodeOptional": "旧顧客コード（任意）",
       "billThisPartnerItself": "この取引先自身に請求",
       "n31EndOfMonth": "31 = 月末",
       "paymentTermsDays": "支払サイト（日数）",
       "consigneeForConsignmentSales": "委託先（委託販売の対象）",
-      "theSalesRepsForThisCustomer": "この顧客を担当する営業（bp_sales_reps）。複数登録でき、見積書・注文請書などの営業担当はこの一覧から選ぶ。主担当が新規書類の既定値になる。",
-      "endUserSpecificAttributesBpEnd": "需要家固有属性（bp_end_user_attrs）。",
+      "theSalesRepsForThisCustomer": "この顧客を担当する営業。複数登録でき、見積書・注文請書などの営業担当はこの一覧から選ぶ。主担当が新規書類の既定値になる。",
+      "endUserSpecificAttributesBpEnd": "最終需要家としての情報。",
       "endUserInformation": "最終需要家情報",
       "automotiveParts": "自動車部品",
-      "typePaymentTermsAndStandardLead": "種別・支払条件・標準リードタイム（bp_vendor_attrs）。",
+      "typePaymentTermsAndStandardLead": "種別・支払条件・標準リードタイム。",
       "supplierAndSubcontractorInformation": "仕入先・外注先情報",
       "legacySupplierCodeOptional": "旧仕入先コード（任意）",
       "bankAccountForPayments": "支払振込先の口座情報。",
@@ -6018,7 +6041,8 @@
       "templateCountValue": "{count}件の検査表",
       "toggleRequiredFor": "{name} の 必須 / 任意 を切り替える",
       "markedRequired": "必須にしました",
-      "markedOptional": "任意にしました"
+      "markedOptional": "任意にしました",
+      "autoComputedRange": "自動計算: 下限 {min} 〜 上限 {max}{unit}"
     },
     "materialNumbering": {
       "theComponentWasAdded": "構成要素を追加しました",
@@ -6030,10 +6054,6 @@
       "disable": "無効化する",
       "thereAreNoComponents": "構成要素がありません",
       "codeNumbering": "採番構成",
-      "materialTypeCode": "材種コード =",
-      "manufacturerGrade2ShapeKind4": "[メーカー][材種2桁][形状][種類4桁]",
-      "materialTypeFinishDia103": "[材種]-[黒皮研磨][径×10 3桁]-[全長3桁]",
-      "codesAreEmbeddedInCompositeCodes": "。\n          コードは合成コードに埋め込まれるため削除できません（無効化のみ）。\n          直径・全長は素材作成時にも自動登録されます。",
       "addDiameter": "直径の追加",
       "addKind": "種類の追加",
       "addLengthVariant": "全長の追加",
@@ -6041,7 +6061,8 @@
       "addManufacturerGrade": "メーカー材種の追加",
       "addShape": "形状の追加",
       "addSurfaceFinish": "黒皮・研磨区分の追加",
-      "codePreview": "コード: {code}"
+      "codePreview": "コード: {code}",
+      "codeStructureNote": "材種コード = <doc>[メーカー][材種2桁][形状][種類4桁]</doc>、素材コード = <doc>[材種]-[黒皮研磨][径×10 3桁]-[全長3桁]</doc>。コードは合成コードに埋め込まれるため削除できません（無効化のみ）。直径・全長は素材作成時にも自動登録されます。"
     },
     "materialTypes": {
       "notConvertedLegacy": "未変換（レガシー）",
@@ -6083,7 +6104,7 @@
     "materials": {
       "nominalDiameter": "呼び径",
       "productsUsingIt": "使用製品",
-      "productsSpecifyMaterialAsTypeDiameter": "製品は「材種 + 直径 + 全長」で素材を指定するため、特定の素材には\n              直接紐付きません。この素材は在庫管理で使用します。",
+      "productsSpecifyMaterialAsTypeDiameter": "製品の素材は設計図の版（PD06）が「材種 + 直径 + 全長」で指定するため、特定の素材には直接紐付きません。この素材は在庫管理で使用します。",
       "nominalDiameterMm": "呼び径 (mm)",
       "theMaterialWasCreated": "素材を作成しました",
       "newMaterial": "素材 新規作成",
@@ -6119,7 +6140,7 @@
       "eGF01": "例: F01",
       "eGHonshaKojo": "例: ほんしゃこうじょう",
       "contactAndAddress": "連絡先・住所",
-      "regionsCoveredByRegionScopePermissions": "REGION スコープ権限の対象地域",
+      "regionsCoveredByRegionScopePermissions": "地域単位の権限で、この拠点が含まれる地域",
       "selectARegion": "地域を選択",
       "eG1234567": "例: 123-4567",
       "eG0312345678": "例: 03-1234-5678",
@@ -6133,7 +6154,7 @@
       "thereAreNoSites": "拠点がありません",
       "theRegionWasAdded": "地域を追加しました",
       "addARegion": "地域の追加",
-      "itCannotBeChangedBecauseRegion": "REGION スコープ権限（scope_values）が参照する識別子のため変更できません",
+      "itCannotBeChangedBecauseRegion": "地域単位の権限設定がこのコードを参照しているため変更できません",
       "eGJp": "例: jp",
       "eGJapan": "例: 日本",
       "theRegionWasEnabled": "地域を有効化しました",
@@ -6142,7 +6163,7 @@
       "addARegion2": "地域を追加",
       "sites": "拠点数",
       "thereAreNoRegionsCreateOne": "地域がありません — 「地域を追加」から作成してください",
-      "theRegionCodeIsTheIdentifier": "地域コードは REGION スコープ権限（scope_values）が参照する識別子のため\n        作成後は変更できません。削除は拠点から参照されていない地域のみ可能です。",
+      "theRegionCodeIsTheIdentifier": "地域コードは地域単位の権限設定から参照されるため、作成後は変更できません。削除は拠点から参照されていない地域のみ可能です。",
       "deleteConfirm": "拠点「{name}」を削除します。この操作は取り消せません。",
       "deleteRegionConfirm": "地域「{code} {name}」を削除します。この操作は取り消せません。",
       "deleted": "拠点「{name}」を削除しました",
@@ -6359,7 +6380,7 @@
       "groupDeleted": "グループ「{name}」を削除しました",
       "deleteWorkLocationConfirm": "作業場所「{name}」を削除します。この操作は取り消せません。",
       "workLocationDeleted": "作業場所「{name}」を削除しました",
-      "workLocationInUse": "この場所は 作業計画 {planCount} 件 / 作業実績 {actualCount} 件 から参照されています（削除できません — 無効化をご検討ください）。",
+      "workLocationInUse": "この場所は {details} から参照されています（削除できません — 無効化をご検討ください）。",
       "jobsWithCount": "{count} 作業"
     },
     "bpModals": {
@@ -6477,7 +6498,10 @@
       "unsupportedFormat": "この形式は取り込めません（{reason}）。書き出したファイルをそのまま入れてください",
       "formatMismatch": "形式が違います",
       "noTemplatesToExport": "書き出す検査表がありません",
-      "relatedStepNotFound": "関連工程「{code}」が見つかりません"
+      "relatedStepNotFound": "関連工程「{code}」が見つかりません",
+      "exportUseCase": "別の環境へ持っていくときや、控えを取るときに使います。",
+      "createdItem": "{code}（v{version}・項目 {items} 件）",
+      "rowError": "{row} 行目: {message}"
     },
     "bpBaseFields": {
       "kanaPlaceholder": "エービーシーセイサクショ"
@@ -6555,7 +6579,7 @@
       "siteUpdatedMessage": "拠点を更新しました",
       "editTitle": "拠点 編集 — {code}",
       "ownCompany": "自社法人",
-      "ownCompanyDesc": "書類（見積書・納品書・請求書）の発行元になる法人。未設定は既定の法人",
+      "ownCompanyDesc": "この拠点が属する法人。拠点を持つ書類（注文請書・出荷書・素材発注書・入出庫伝票など）はこの法人を発行元にします。見積書は作成時の発行会社（または既定の法人）で決まり、拠点では決まりません。未設定は既定の法人",
       "ownCompanyPlaceholder": "既定の法人",
       "ownCompanyDefault": "既定の法人"
     },
@@ -6761,7 +6785,8 @@
       "auditWorkLocationUpdated": "作業場所「{name}」を更新",
       "auditWorkLocationDeleted": "作業場所を削除",
       "usedByOrderAcceptances": "注文請書の出荷作業場所 {count} 件",
-      "usedByProcessSteps": "工程の許可作業場所 {count} 件"
+      "usedByProcessSteps": "工程の許可作業場所 {count} 件",
+      "usedByOrderLines": "注文明細の出荷作業場所 {count} 件"
     },
     "storageLocationActions": {
       "codeFormat": "コードは英数字・ハイフン・アンダースコアで入力",
@@ -6924,7 +6949,7 @@
       "newRegrindRoute": "再研磨工程リスト 新規作成",
       "intro": "顧客の工具を預かって研ぎ直す手順（製品受入（再研磨）→ 研磨 → コーティング（任意）→ 検査（任意））。製品にも受注元にも紐づかない共通のリストで、再研磨の指示書は常にここの最新版を使います。自社在庫は動かず、受け入れた工具は顧客の預り品として記録されます。",
       "empty": "再研磨工程リストは未登録です",
-      "editorHelp": "再研磨の指示書で使える工程だけを選びます。開始工程は 製品受入（再研磨）で、材料準備・加工の工程は入れられません。コーティング・検査・出荷前検査は任意です。"
+      "editorHelp": "選べるのは、工程マスタ（MS08）の「使える指示書種別」に再研磨を含む工程だけです。開始工程は 製品受入（再研磨）です。"
     },
     "taxCategories": {
       "title": "税区分",
@@ -6978,7 +7003,8 @@
       "accountCodeHint": "半角英数字・16 桁まで（空欄可）",
       "taxCode": "消費税コード",
       "salesAccountCode": "売上高 科目コード",
-      "taxAccountCode": "仮受消費税 科目コード"
+      "taxAccountCode": "仮受消費税 科目コード",
+      "cannotUnsetDefault": "既定の税区分は外せません。先に別の税区分を既定にしてください。"
     },
     "chargeItems": {
       "pageTitle": "料金マスタ",
@@ -7291,14 +7317,15 @@
       "linkNotFound": "リンクが見つかりません",
       "thisLinkWasDeletedOrThe": "このリンクは削除されたか、URL が正しくありません。",
       "thisLinkIsBlocked": "このリンクはブロックされています",
-      "anAdministrator": "管理者が",
       "ifThisWasNotYouContact": "心当たりがない場合はシステム管理者に連絡してください。",
       "youAreLeavingForAnExternal": "外部サイトへ移動します",
       "thisLinkLeavesTheInternalSystem": "このリンクは社内システムの外へ移動します。移動先を確認してください。",
       "destination": "移動先",
       "doNotEnterInternalPasswordsOr": "社内のパスワードや業務データを、移動先のサイトへ入力しないでください。",
       "continueAndLeave": "続行して移動",
-      "goToAnExternalSite": "外部サイトへ移動"
+      "goToAnExternalSite": "外部サイトへ移動",
+      "blockedHostMessage": "管理者が <strong>{hostname}</strong> への移動を禁止しています。",
+      "reasonLabel": "理由: {reason}"
     }
   },
   "admin": {
@@ -7318,8 +7345,7 @@
       "suffixStorageLocation": "（保管場所）",
       "suffixFloorMap": "（マップ）",
       "suffixDisplay": "（ディスプレイ）",
-      "formResponsesLabel": "フォーム回答",
-      "actionWithRaw": "{label}（{raw}）"
+      "formResponsesLabel": "フォーム回答"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "{label} を {env} で{v2}にしました",
@@ -7329,7 +7355,10 @@
       "operationCode": "操作コード",
       "apps": "アプリ管理",
       "searchByAppNameOrOperation": "アプリ名・操作コードで検索",
-      "thereAreNoApps": "アプリがありません"
+      "thereAreNoApps": "アプリがありません",
+      "devVerification": "dev（検証）",
+      "lockedByFeature": "開発中の機能のため、この環境ではコードで非表示に固定されています（dev-features.json）。公開するには PR とデプロイが必要です",
+      "locked": "固定"
     },
     "fileManager": {
       "uploaded": "アップロードしました",
@@ -7452,7 +7481,11 @@
       "bodyText": "本文",
       "itIsNotPublishedYetEdit": "まだ公開されていません。編集して公開すると、ここに本文が出ます。\n              下書きの内容は「レビュー」から読めます。",
       "required": "必要",
-      "hasUnpublishedChangesRevision": "未公開の変更あり（r{revision}）"
+      "hasUnpublishedChangesRevision": "未公開の変更あり（r{revision}）",
+      "archiveConfirm": "使い終わった文書として片付けます。公開版・履歴・コメントは残り、共有先からはそのまま読めます。",
+      "unarchive": "アーカイブを解除",
+      "unarchiveConfirm": "アーカイブを解除します。公開版があればその版の公開中に、無ければ下書きに戻ります。",
+      "unarchived": "アーカイブを解除しました"
     },
     "documentEditor": {
       "editTheDocument": "文書を編集",
@@ -7930,15 +7963,14 @@
       "myPermissions": "自分の権限",
       "administrator": "管理者",
       "theyHoldEveryPermissionTheyCan": "すべての権限を持っています。特権操作も申請なしで実行できますが、\n            その場合は「管理者権限で実行した」ことが操作履歴に残ります。",
-      "permissionsAndRolesInTheManual": "マニュアルの「権限とロール」",
-      "isWhereItLives": "にあります。",
       "evenIfYouHoldThePermission": "ここにある操作は、権限を持っていても",
       "itCannotBeRunAsIt": "そのままでは実行できません",
       "andCanOnlyBeDoneFor": "で申請し、別の人の承認を受けた期間だけ行えます。",
       "remainingHoursMinutes": "残り {hours} 時間 {minutes} 分",
       "remainingMinutes": "残り {minutes} 分",
       "requestRequired": "申請が必要",
-      "scopeLabel": "範囲: {scopes}"
+      "scopeLabel": "範囲: {scopes}",
+      "grantedSummary": "いま持っているのは {total} 件中 <b>{granted} 件</b>です。権限は役割（ロール）を通して付きます。足りないときは管理者に相談してください。読み方は<link>マニュアルの「権限とロール」</link>にあります。"
     },
     "notificationSettingsForm": {
       "theNotificationSettingsWereUpdated": "通知設定を更新しました",
@@ -8065,7 +8097,7 @@
       "enterAReasonForTheChange": "改訂のときは変更理由を入力してください",
       "theDesignRequestWasUpdated": "設計依頼書を更新しました",
       "newDesignRequest": "設計依頼書 新規作成",
-      "theTriggerAtQuoteOrAt": "トリガー（見積時 / 受注時）と参照元は作成後に変更できません。保存時に依頼番号 DSG-YYYYMM-NNNNN が採番されます。",
+      "theTriggerAtQuoteOrAt": "トリガー（見積時 / 受注時 / 単独）と参照元は作成後に変更できません。依頼番号（例: DSG-2026-00001。年は会計年度）は保存時に採番されます。",
       "n1TheSourceQuoteWhenDesign": "§1 見積と並行して設計を依頼する場合の見積元（任意）",
       "chooseFromRecentQuotes": "直近の見積書から選択",
       "n3TheOrderLineWhenDesign": "§3 受注と並行して設計を依頼する場合の注文明細（任意）",
@@ -8272,7 +8304,6 @@
       "discountAppliedAutomatically": "値引き（自動適用）",
       "discountRules": "値引き設定",
       "discountType": "値引き種別",
-      "duplicateWithADifferentValidPeriod": "有効期間を変えて複製",
       "eGSummerCampaign": "例: 夏季キャンペーン",
       "editOnItemMaster": "品目マスタで直す",
       "editTheDiscountRule": "値引きルールを編集",
@@ -8779,7 +8810,8 @@
       "notFound": "価格表が見つかりません",
       "notPendingApproval": "承認依頼中ではありません",
       "costEstimateNotUsable": "原価試算は価格表の基準単価にできません",
-      "notACounterpart": "同じ顧客・品目の、他社の価格表ではありません"
+      "notACounterpart": "同じ顧客・品目の、他社の価格表ではありません",
+      "estimateNotLinkedToProduct": "この製品にリンクされた価格試算だけを基準単価ソースにできます（価格試算（SA01）で製品を指定して確定してください）"
     },
     "designRequestActions": {
       "approvalRequestFailed": "承認依頼に失敗しました",
@@ -11122,7 +11154,7 @@
     },
     "kioskDevice": {
       "name": {
-        "label": "端末名（日本語 / English）",
+        "label": "端末名",
         "summary": "一覧・フロアマップ・操作履歴のバッジに出る名前です。「第一工場 入口」のように、現物を探せる名前にしてください。"
       },
       "plant": {
@@ -11263,7 +11295,17 @@
     "webhookDuplicateName": "同じ API クライアントに同じ名前の送信先があります。",
     "webhookNotFound": "送信先が見つかりません。",
     "webhookSecretUnavailable": "署名鍵を開けませんでした。署名鍵を再発行してください。",
-    "webhookNotRedeliverable": "失敗した配送だけ再送できます。"
+    "webhookNotRedeliverable": "失敗した配送だけ再送できます。",
+    "editTitle": "API クライアントを編集",
+    "editHint": "有効なクライアントでは、許可 IP 範囲と有効期限を広げられません（狭めるのは可）。広げるときは無効化してから変更し、承認を受けて再有効化してください。",
+    "expiresAt": "有効期限",
+    "noExpiry": "無期限",
+    "noCidrLimit": "IP 制限なし",
+    "widenRequiresInactive": "有効なクライアントの許可 IP 範囲・有効期限は広げられません。無効化してから変更し、承認を受けて再有効化してください。",
+    "alreadyRevoked": "このクライアントは失効済みです",
+    "revokeClientTitle": "API クライアントの失効",
+    "revokeClientConfirm": "「{name}」を失効します。有効なトークンもすべて失効し、元には戻せません。",
+    "revokeReason": "理由"
   },
   "charges": {
     "title": "追加料金",

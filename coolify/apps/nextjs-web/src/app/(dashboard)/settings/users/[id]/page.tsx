@@ -25,7 +25,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * ユーザー管理（SY01）— ユーザー詳細（ロール割当・実効権限・所属拠点）。
- * 閲覧は system 権限（READ）、ロール割当と所属拠点の変更は user_admin。
+ * 入口（閲覧）は user_admin（app-list の requiredPermission）。利用停止 / 復帰 /
+ * 所属拠点 / ロール割当の変更は方式 B の変更依頼（user_admin）を通る。
  */
 export default async function UserDetailPage({
   params,

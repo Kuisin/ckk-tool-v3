@@ -7,15 +7,17 @@
 -- ファイルは知らない。それでも流されたときに消してしまわないよう、下の DELETE は
 -- それらのコードを除外し、INSERT は ON CONFLICT DO NOTHING で重複を無視する。
 --
--- 前提: rbac-seed.sql（permissions 18 コード + admin/staff ロール）適用済み。
+-- 前提: rbac-seed.sql（permissions 29 コード — 2026-11 時点 + admin/staff ロール）適用済み。
 -- 本番ではここで定義するロールを実ユーザーへ割り当てる（user_role_relation）。
 -- 承認は権限アクションでは管理しない — APPROVE グラントは全廃（rbac-seed.sql が
 -- 削除する）。承認できる人は承認設定（MS0B）の承認グループ所属だけが決め、
 -- RBAC 側の要件はその書類の READ / UPDATE（閲覧または編集）のみ。
 --
 -- 管理系コードは業務ロールに配らない:
---   system — システム管理（SY01–SY0C）。admin のみ。
---   kiosk  — 共有端末の管理（SY08–SY0A）。admin のみ（CLAUDE.md「admin-only」）。
+--   system — システム設定（SY02–SY05 / SY0B / SY0C / SY0E / SY0F / SY0J）。admin のみ。
+--            SY01 ユーザー管理の入口は user_admin、SY07 / SY0D は personal_data。
+--   kiosk  — 共有端末の管理（SY09 / SY0A）。admin のみ（CLAUDE.md「admin-only」）。
+--            SY08 QRカード管理の入口は kiosk_card。
 --            以前は「system 以外の全コード READ」の一括付与に kiosk が混ざり、
 --            管理職・部門長・閲覧ロールに QRカード/端末管理の READ が付いていた。
 --   kiosk_secret / kiosk_device / kiosk_card / personal_data / user_admin

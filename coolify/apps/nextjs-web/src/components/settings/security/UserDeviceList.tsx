@@ -58,13 +58,11 @@ export function UserDeviceList({ devices }: { devices: UserDeviceRow[] }) {
           </div>
           <div className="shrink-0 text-right">
             <Text className="tabular-nums" size="xs">
-              {tr("settings.security.deviceLoginCount", {
-                count: d.loginCount,
-              })}
+              {tr("settings.security.loginCount", { count: d.loginCount })}
             </Text>
             <Text c="dimmed" size="xs">
-              {tr("settings.security.deviceLastSeen", {
-                date: fmt.dateTime(d.lastSeenAt),
+              {tr("settings.security.lastSeenAt", {
+                at: fmt.dateTime(d.lastSeenAt),
               })}
             </Text>
             {d.lastIpAddress && (

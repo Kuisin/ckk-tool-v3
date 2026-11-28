@@ -3,6 +3,9 @@
 /**
  * SY0I の一覧 + 作成・有効化 / 無効化・トークンの発行と失効。
  *
+ * 一覧が閲覧の形で、編集（説明・許可 IP 範囲・有効期限）と失効はそれぞれ
+ * モーダルから始める。失効は取り消せないので赤い確認を挟む。
+ *
  * **発行したトークンは 1 回だけ表示する。** 閉じたらどこからも読めない
  * （DB は sha256 のみ）。ポータルのバックアップコードと同じ扱い。
  */
@@ -21,17 +24,21 @@ import {
   TextInput,
   Tooltip,
 } from "@mantine/core";
+import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconPlus } from "@tabler/icons-react";
+import { IconAlertTriangle, IconCalendar, IconPlus } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   createApiClientAction,
   issueApiTokenAction,
+  revokeApiClientAction,
   revokeApiTokenAction,
   setApiClientActiveAction,
+  updateApiClientAction,
 } from "@/app/(dashboard)/settings/api-clients/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { ConfirmModal } from "@/components/ui/modals";
 import type { ActionResult } from "@/lib/server-action";
 
 export interface ApiTokenView {
@@ -59,6 +66,26 @@ export interface ApiClientView {
   tokens: ApiTokenView[];
 }
 
+/** ISO 日時 → DatePickerInput の値（ブラウザ TZ の YYYY-MM-DD）。 */
+function isoToDateValue(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** 有効期限はその日の終わりまで。 */
+function dayEndIso(date: string | null): string | null {
+  return date ? new Date(`${date}T23:59:59.999`).toISOString() : null;
+}
+
+interface EditDraft {
+  client: ApiClientView;
+  description: string;
+  cidrs: string;
+  expiry: string | null;
+}
+
 interface Props {
   clients: ApiClientView[];
   canIssueToken: boolean;
@@ -77,6 +104,9 @@ export function ApiClientsTable({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [cidrs, setCidrs] = useState("");
+  const [editing, setEditing] = useState<EditDraft | null>(null);
+  const [revoking, setRevoking] = useState<ApiClientView | null>(null);
+  const [revokeReason, setRevokeReason] = useState("");
   /** 発行直後の生トークン。閉じたら二度と出ない。 */
   const [issued, setIssued] = useState<{ raw: string; name: string } | null>(
     null,
@@ -116,6 +146,51 @@ export function ApiClientsTable({
         });
       }
     });
+  }
+
+  function openEdit(client: ApiClientView) {
+    setEditing({
+      client,
+      cidrs: client.allowedCidrs.join(", "),
+      description: client.description ?? "",
+      expiry: isoToDateValue(client.expiresAt),
+    });
+  }
+
+  function saveEdit() {
+    if (!editing) return;
+    const { client } = editing;
+    // 日付を触っていなければ元の時刻をそのまま返す。日の終わりへ丸め直すと、
+    // 変えていないのに「期限を延ばした」と判定されることがある。
+    const expiresAt =
+      editing.expiry === isoToDateValue(client.expiresAt)
+        ? client.expiresAt
+        : dayEndIso(editing.expiry);
+    start(async () => {
+      const r = await updateApiClientAction(client.id, {
+        allowedCidrs: editing.cidrs,
+        description: editing.description || null,
+        expiresAt,
+      });
+      if (r.ok) {
+        setEditing(null);
+        notifications.show({ color: "green", message: tr("common.saved") });
+      } else {
+        notifications.show({
+          color: "red",
+          message: r.error,
+          title: tr("common.error"),
+        });
+      }
+    });
+  }
+
+  function confirmRevoke() {
+    if (!revoking) return;
+    const id = revoking.id;
+    const reason = revokeReason;
+    setRevokeReason("");
+    run(() => revokeApiClientAction(id, reason));
   }
 
   function issue(client: ApiClientView) {
@@ -168,6 +243,18 @@ export function ApiClientsTable({
                   </Text>
                   <Text c="dimmed" ff="mono" size="xs">
                     {c.username}
+                  </Text>
+                  <Text c="dimmed" size="xs">
+                    {tr("apiClients.allowedCidrs")}:{" "}
+                    {c.allowedCidrs.length > 0
+                      ? c.allowedCidrs.join(", ")
+                      : tr("apiClients.noCidrLimit")}
+                  </Text>
+                  <Text c="dimmed" size="xs">
+                    {tr("apiClients.expiresAt")}:{" "}
+                    {c.expiresAt
+                      ? fmt.date(new Date(c.expiresAt))
+                      : tr("apiClients.noExpiry")}
                   </Text>
                 </Stack>
               </Table.Td>
@@ -235,6 +322,23 @@ export function ApiClientsTable({
                     variant="default"
                   >
                     {c.isActive ? tr("common.disable") : tr("common.enable")}
+                  </Button>
+                  <Button
+                    disabled={pending || c.revoked}
+                    onClick={() => openEdit(c)}
+                    size="xs"
+                    variant="default"
+                  >
+                    {tr("common.edit")}
+                  </Button>
+                  <Button
+                    color="red"
+                    disabled={pending || c.revoked}
+                    onClick={() => setRevoking(c)}
+                    size="xs"
+                    variant="subtle"
+                  >
+                    {tr("apiClients.revoke")}
                   </Button>
                 </Group>
               </Table.Td>
@@ -355,6 +459,85 @@ export function ApiClientsTable({
           </Group>
         </Stack>
       </Modal>
+
+      <Modal
+        onClose={() => setEditing(null)}
+        opened={editing !== null}
+        title={tr("apiClients.editTitle")}
+      >
+        {editing && (
+          <Stack gap="sm">
+            <Text fw={600} size="sm">
+              {editing.client.name}
+            </Text>
+            <Textarea
+              autosize
+              label={tr("common.description")}
+              minRows={2}
+              onChange={(e) => {
+                const description = e.currentTarget.value;
+                setEditing((d) => (d ? { ...d, description } : d));
+              }}
+              value={editing.description}
+            />
+            <TextInput
+              description={tr("apiClients.allowedCidrsHelp")}
+              label={tr("apiClients.allowedCidrs")}
+              onChange={(e) => {
+                const cidrs = e.currentTarget.value;
+                setEditing((d) => (d ? { ...d, cidrs } : d));
+              }}
+              placeholder="10.0.0.0/8, 203.0.113.0/24"
+              value={editing.cidrs}
+            />
+            <DatePickerInput
+              clearable
+              label={tr("apiClients.expiresAt")}
+              leftSection={<IconCalendar size={14} />}
+              onChange={(expiry) =>
+                setEditing((d) => (d ? { ...d, expiry } : d))
+              }
+              placeholder={tr("common.leaveBlankForNoEndDate")}
+              value={editing.expiry}
+              valueFormat="YYYY/MM/DD"
+            />
+            {editing.client.isActive && (
+              <Alert color="blue" variant="light">
+                {tr("apiClients.editHint")}
+              </Alert>
+            )}
+            <Group justify="flex-end">
+              <Button onClick={() => setEditing(null)} variant="default">
+                {tr("common.cancel")}
+              </Button>
+              <Button loading={pending} onClick={saveEdit}>
+                {tr("common.save")}
+              </Button>
+            </Group>
+          </Stack>
+        )}
+      </Modal>
+
+      <ConfirmModal
+        confirmLabel={tr("apiClients.revoke")}
+        details={
+          <Textarea
+            autosize
+            label={tr("apiClients.revokeReason")}
+            minRows={2}
+            onChange={(e) => setRevokeReason(e.currentTarget.value)}
+            value={revokeReason}
+          />
+        }
+        loading={pending}
+        message={tr("apiClients.revokeClientConfirm", {
+          name: revoking?.name ?? "",
+        })}
+        onClose={() => setRevoking(null)}
+        onConfirm={confirmRevoke}
+        opened={revoking !== null}
+        title={tr("apiClients.revokeClientTitle")}
+      />
 
       <Modal
         onClose={() => setIssued(null)}

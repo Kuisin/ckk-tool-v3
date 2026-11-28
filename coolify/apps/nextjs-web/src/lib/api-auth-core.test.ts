@@ -5,9 +5,10 @@ import {
   cidrAllowed,
   DENY_ORDER,
   isExpired,
+  widensApiClientAccess,
 } from "./api-auth-core";
 import { unauthorizedProblem } from "./api-problem-core";
-import { ipInAnyCidr } from "./cidr-core";
+import { cidrContains, ipInAnyCidr } from "./cidr-core";
 
 const NOW = new Date("2026-09-10T00:00:00.000Z");
 const PAST = new Date("2026-09-09T23:59:59.000Z");
@@ -147,5 +148,56 @@ describe("拒否理由は応答から区別できない", () => {
     for (const reason of DENY_ORDER) {
       expect(body.toUpperCase()).not.toContain(reason);
     }
+  });
+});
+
+describe("widensApiClientAccess", () => {
+  const d = (iso: string) => new Date(iso);
+  const w = (
+    before: { allowedCidrs: string[]; expiresAt: Date | null },
+    after: { allowedCidrs: string[]; expiresAt: Date | null },
+  ) => widensApiClientAccess(before, after, cidrContains);
+
+  it("制限なしから制限ありは狭める", () => {
+    expect(
+      w(
+        { allowedCidrs: [], expiresAt: null },
+        { allowedCidrs: ["10.0.0.0/8"], expiresAt: null },
+      ),
+    ).toBe(false);
+  });
+  it("制限を外す・範囲の外を足すのは広げる", () => {
+    const before = { allowedCidrs: ["10.0.0.0/8"], expiresAt: null };
+    expect(w(before, { allowedCidrs: [], expiresAt: null })).toBe(true);
+    expect(
+      w(before, {
+        allowedCidrs: ["10.0.0.0/8", "192.168.0.0/16"],
+        expiresAt: null,
+      }),
+    ).toBe(true);
+  });
+  it("内側へ絞るのは狭める", () => {
+    expect(
+      w(
+        { allowedCidrs: ["10.0.0.0/8"], expiresAt: null },
+        { allowedCidrs: ["10.1.0.0/16"], expiresAt: null },
+      ),
+    ).toBe(false);
+  });
+  it("期限を外す・延ばすのは広げる、早めるのは狭める", () => {
+    const before = { allowedCidrs: [], expiresAt: d("2026-12-01T00:00:00Z") };
+    expect(w(before, { allowedCidrs: [], expiresAt: null })).toBe(true);
+    expect(
+      w(before, { allowedCidrs: [], expiresAt: d("2027-01-01T00:00:00Z") }),
+    ).toBe(true);
+    expect(
+      w(before, { allowedCidrs: [], expiresAt: d("2026-11-01T00:00:00Z") }),
+    ).toBe(false);
+    expect(
+      w(
+        { allowedCidrs: [], expiresAt: null },
+        { allowedCidrs: [], expiresAt: d("2026-11-01T00:00:00Z") },
+      ),
+    ).toBe(false);
   });
 });

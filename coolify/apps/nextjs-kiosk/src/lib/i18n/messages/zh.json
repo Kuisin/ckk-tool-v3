@@ -470,7 +470,7 @@
     "pinMismatchTitle": "PIN 不一致",
     "pinMismatchMessage": "请重新输入。",
     "pinVerifyTitle": "输入 PIN",
-    "pinVerifySubtitle": "由于超过 3 天未使用，需要进行身份验证。",
+    "pinVerifySubtitle": "为确认身份，请输入 PIN。",
     "pinIncorrectTitle": "PIN 错误",
     "pinIncorrectMessage": "请重新输入。",
     "pinWeakTitle": "该 PIN 无法使用",
@@ -486,7 +486,9 @@
     "retry": "重试",
     "lockedMessage": "由于多次输入 PIN 错误，已被临时锁定。",
     "lockedUntil": " 预计解锁时间：{time}",
-    "backToScan": "返回扫描"
+    "backToScan": "返回扫描",
+    "pinVerifySubtitleDeviceIdle": "由于此卡在本终端上已超过 48 小时未使用（或首次在此使用），需要进行身份验证。",
+    "pinVerifySubtitlePeriodic": "由于距上次 PIN 确认已过两周，需要进行身份验证。"
   },
   "setup": {
     "couldNotIssueCode": "无法发放代码",

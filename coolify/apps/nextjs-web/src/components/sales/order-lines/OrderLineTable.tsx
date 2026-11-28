@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OrderLineTable — 注文明細 一覧 (PD01, design.md §8.1 / §14).
+ * OrderLineTable — 注文明細 一覧 (SA05, design.md §8.1 / §14).
  *
  * Columns: 注文明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態。
  * フィルタ: 検索（番号・顧客・製品）+ 状態 + 注文種別。行クリック → 詳細。

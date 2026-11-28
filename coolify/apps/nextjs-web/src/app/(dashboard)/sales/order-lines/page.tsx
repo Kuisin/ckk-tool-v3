@@ -4,7 +4,7 @@ import { fetchOrderLines } from "./data";
 
 export const dynamic = "force-dynamic";
 
-/** 注文明細 一覧 (PD01). ランチャー非掲載 — 権限は指示書と同じ work_order。 */
+/** 注文明細 一覧 (SA05). 権限は注文請書と同じ order_acceptance（lib/app-list.ts）。 */
 export default async function ProductionOrderLinesPage() {
   const denied = await requireAppRead("order-lines");
   if (denied) return denied;

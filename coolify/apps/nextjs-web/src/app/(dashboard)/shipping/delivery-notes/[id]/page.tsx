@@ -7,6 +7,7 @@ import { docNo } from "@/lib/doc-number";
 import { docKeyFromParam } from "@/lib/doc-param";
 import { isIssued, pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
 import { formatDocPageTitle } from "@/lib/page-title";
+import { loadPortalShare } from "@/lib/portal-share";
 import { getServerLocale } from "@/lib/user-preferences";
 import { fetchInvoicesForDeliveryNote } from "../../../billing/invoices/data";
 import { fetchDeliveryNote } from "../data";
@@ -57,6 +58,12 @@ export default async function ShippingDeliveryNotesDetailPage({
     fetchInvoicesForDeliveryNote(key),
   ]);
   if (!note) notFound();
+  // 取引先ポータルの書類リンク（機能・権限・状態が揃ったときだけ出す）。
+  const portalShare = await loadPortalShare(
+    "delivery_notes",
+    key.docRef,
+    note.status,
+  );
 
   // 保管済み PDF のメタ（発行済みのみ。未生成なら null → 初回表示時に生成）。
   const pdfMeta = isIssued(note.status)
@@ -69,6 +76,7 @@ export default async function ShippingDeliveryNotesDetailPage({
       invoices={invoices}
       note={note}
       pdfMeta={pdfMeta}
+      portalShare={portalShare}
     />
   );
 }

@@ -139,7 +139,9 @@ export function ApprovalFlowOverview({
                   </Badge>
                   {r.ruleCount > 0 && (
                     <Badge color="indigo" size="xs" variant="light">
-                      条件付き {r.ruleCount} 本
+                      {tr("master.approvalFlows.ruleCountBadge", {
+                        count: r.ruleCount,
+                      })}
                     </Badge>
                   )}
                   {r.need === "blocked" && (
@@ -159,7 +161,9 @@ export function ApprovalFlowOverview({
                 <Group c="dimmed" gap={6} wrap="nowrap">
                   <IconShieldCheck size={14} />
                   <Text size="xs">
-                    承認に必要な権限: {r.permissionLabel} の閲覧または編集
+                    {tr("master.approvalFlows.requiredPermissionLine", {
+                      permission: r.permissionLabel,
+                    })}
                   </Text>
                   <Text ff="mono" size="xs">
                     {r.permissionCode}:READ / UPDATE
@@ -220,7 +224,7 @@ export function ApprovalFlowOverview({
                 fullWidth={isMobile}
                 href={`${BASE_PATH}/flows/${r.targetType}`}
               >
-                {empty ? "設定" : tr("common.edit2")}
+                {empty ? tr("master.approvalFlows.setUp") : tr("common.edit2")}
               </EditButton>
             </Group>
           </Paper>
