@@ -5128,7 +5128,8 @@
       "appNotFound": "未找到目标应用",
       "flagDescription": "{label}（{operationCode}）的 {env} 显示",
       "invalidEnv": "环境指定无效",
-      "updateFailed": "标志更新失败"
+      "updateFailed": "标志更新失败",
+      "lockedByFeature": "此应用属于开发中的功能，无法在此环境中切换"
     },
     "displaysActions": {
       "activateFailed": "启用失败",
@@ -7326,7 +7327,10 @@
       "operationCode": "操作代码",
       "apps": "应用管理",
       "searchByAppNameOrOperation": "按应用名称或操作代码搜索",
-      "thereAreNoApps": "没有应用"
+      "thereAreNoApps": "没有应用",
+      "devVerification": "dev（验证）",
+      "lockedByFeature": "这是开发中的功能，在此环境中已由代码固定为隐藏（dev-features.json）。要发布需要 PR 和部署",
+      "locked": "已固定"
     },
     "fileManager": {
       "uploaded": "已上传",

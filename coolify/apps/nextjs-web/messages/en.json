@@ -5128,7 +5128,8 @@
       "appNotFound": "App not found",
       "flagDescription": "{env} display for {label} ({operationCode})",
       "invalidEnv": "Invalid environment",
-      "updateFailed": "Could not update the flag"
+      "updateFailed": "Could not update the flag",
+      "lockedByFeature": "This app belongs to a feature under development and cannot be switched in this environment"
     },
     "displaysActions": {
       "activateFailed": "Could not activate",
@@ -7326,7 +7327,10 @@
       "operationCode": "Operation code",
       "apps": "Apps",
       "searchByAppNameOrOperation": "Search by app name or operation code",
-      "thereAreNoApps": "There are no apps"
+      "thereAreNoApps": "There are no apps",
+      "devVerification": "dev (staging)",
+      "lockedByFeature": "This is a feature under development, so it is hidden in this environment by code (dev-features.json). Publishing it requires a PR and a deploy",
+      "locked": "Locked"
     },
     "fileManager": {
       "uploaded": "Uploaded",

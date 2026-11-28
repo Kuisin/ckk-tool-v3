@@ -5128,7 +5128,8 @@
       "appNotFound": "対象のアプリが見つかりません",
       "flagDescription": "{label}（{operationCode}）の {env} 表示",
       "invalidEnv": "環境の指定が不正です",
-      "updateFailed": "フラグの更新に失敗しました"
+      "updateFailed": "フラグの更新に失敗しました",
+      "lockedByFeature": "このアプリは開発中の機能のため、この環境では切り替えられません"
     },
     "displaysActions": {
       "activateFailed": "有効化に失敗しました",
@@ -7326,7 +7327,10 @@
       "operationCode": "操作コード",
       "apps": "アプリ管理",
       "searchByAppNameOrOperation": "アプリ名・操作コードで検索",
-      "thereAreNoApps": "アプリがありません"
+      "thereAreNoApps": "アプリがありません",
+      "devVerification": "dev（検証）",
+      "lockedByFeature": "開発中の機能のため、この環境ではコードで非表示に固定されています（dev-features.json）。公開するには PR とデプロイが必要です",
+      "locked": "固定"
     },
     "fileManager": {
       "uploaded": "アップロードしました",
