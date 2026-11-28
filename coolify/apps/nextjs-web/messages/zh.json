@@ -1234,6 +1234,7 @@
       "OUTSOURCE_RETURN": "外协返回",
       "SALES_RETURN": "销售退货",
       "REGRIND_RECEIPT": "再研磨接收",
+      "WIP_RECLASSIFY": "在制品分类",
       "WORK_ORDER_COMPLETION": "工单完成",
       "DELIVERY_SHIPMENT": "出货",
       "MATERIAL_RECEIPT": "材料到货",

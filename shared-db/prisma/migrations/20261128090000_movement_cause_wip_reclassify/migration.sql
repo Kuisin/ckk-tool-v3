@@ -1,0 +1,11 @@
+-- 仕掛品の「分類する」（名乗りの付け直し）の事由を足す。
+--
+-- これまでは OTHER で記録していたため、入出庫伝票（ST04）に「不明（移行前）」と
+-- 出ていた。OTHER は移行前の行のための値で、新規では使わない約束。
+-- 在庫移動（STOCK_TRANSFER）でも棚卸調整（ADJUSTMENT）でもない — 棚の物は
+-- 動いておらず、同じ物の品目・加工状態を直すだけ。
+--
+-- 値を**増やす**だけなので旧アプリは壊れない（新アプリだけが書く）。
+-- 既存の OTHER 伝票は書き換えない（どれが分類だったかは取引の
+-- reference_type = wip_reclassify で読めるが、伝票は記録のまま残す）。
+ALTER TYPE "app"."INVENTORY_MOVEMENT_CAUSE" ADD VALUE IF NOT EXISTS 'WIP_RECLASSIFY' AFTER 'REGRIND_RECEIPT';

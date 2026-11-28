@@ -1234,6 +1234,7 @@
       "OUTSOURCE_RETURN": "Returned from subcontractor",
       "SALES_RETURN": "Sales return",
       "REGRIND_RECEIPT": "Regrind receipt",
+      "WIP_RECLASSIFY": "WIP classification",
       "WORK_ORDER_COMPLETION": "Work order completed",
       "DELIVERY_SHIPMENT": "Shipment",
       "MATERIAL_RECEIPT": "Material receipt",

@@ -1234,6 +1234,7 @@
       "OUTSOURCE_RETURN": "外注戻り",
       "SALES_RETURN": "返品",
       "REGRIND_RECEIPT": "再研磨受入",
+      "WIP_RECLASSIFY": "仕掛品の分類",
       "WORK_ORDER_COMPLETION": "指示書完了",
       "DELIVERY_SHIPMENT": "出荷",
       "MATERIAL_RECEIPT": "素材入荷",
