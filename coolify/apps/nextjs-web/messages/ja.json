@@ -8272,7 +8272,6 @@
       "discountAppliedAutomatically": "値引き（自動適用）",
       "discountRules": "値引き設定",
       "discountType": "値引き種別",
-      "duplicateWithADifferentValidPeriod": "有効期間を変えて複製",
       "eGSummerCampaign": "例: 夏季キャンペーン",
       "editOnItemMaster": "品目マスタで直す",
       "editTheDiscountRule": "値引きルールを編集",
@@ -8779,7 +8778,8 @@
       "notFound": "価格表が見つかりません",
       "notPendingApproval": "承認依頼中ではありません",
       "costEstimateNotUsable": "原価試算は価格表の基準単価にできません",
-      "notACounterpart": "同じ顧客・品目の、他社の価格表ではありません"
+      "notACounterpart": "同じ顧客・品目の、他社の価格表ではありません",
+      "estimateNotLinkedToProduct": "この製品にリンクされた価格試算だけを基準単価ソースにできます（価格試算（SA01）で製品を指定して確定してください）"
     },
     "designRequestActions": {
       "approvalRequestFailed": "承認依頼に失敗しました",

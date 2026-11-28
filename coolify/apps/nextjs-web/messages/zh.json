@@ -8272,7 +8272,6 @@
       "discountAppliedAutomatically": "折扣（自动适用）",
       "discountRules": "折扣设置",
       "discountType": "折扣类别",
-      "duplicateWithADifferentValidPeriod": "更改有效期并复制",
       "eGSummerCampaign": "例：夏季活动",
       "editOnItemMaster": "在品目主数据中修改",
       "editTheDiscountRule": "编辑折扣规则",
@@ -8779,7 +8778,8 @@
       "notFound": "未找到价格表",
       "notPendingApproval": "不在审批中",
       "costEstimateNotUsable": "成本试算不能用作价格表的基准单价",
-      "notACounterpart": "不是同一客户、品目的其他公司的价格表"
+      "notACounterpart": "不是同一客户、品目的其他公司的价格表",
+      "estimateNotLinkedToProduct": "只有关联到该产品的价格试算可作为基准单价来源（请在价格试算（SA01）中指定产品并确定）"
     },
     "designRequestActions": {
       "approvalRequestFailed": "审批申请失败",

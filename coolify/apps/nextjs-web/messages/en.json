@@ -8272,7 +8272,6 @@
       "discountAppliedAutomatically": "Discount (applied automatically)",
       "discountRules": "Discount rules",
       "discountType": "Discount type",
-      "duplicateWithADifferentValidPeriod": "Duplicate with a different valid period",
       "eGSummerCampaign": "e.g. Summer campaign",
       "editOnItemMaster": "Edit on the item master",
       "editTheDiscountRule": "Edit the discount rule",
@@ -8779,7 +8778,8 @@
       "notFound": "Price list not found",
       "notPendingApproval": "Not pending approval",
       "costEstimateNotUsable": "A cost estimate cannot be used as a price list base price",
-      "notACounterpart": "That is not another company's price list for the same customer and item"
+      "notACounterpart": "That is not another company's price list for the same customer and item",
+      "estimateNotLinkedToProduct": "Only a price estimate linked to this product can be the base price source (set the product on the price estimate (SA01) and confirm it)"
     },
     "designRequestActions": {
       "approvalRequestFailed": "Could not request approval",
