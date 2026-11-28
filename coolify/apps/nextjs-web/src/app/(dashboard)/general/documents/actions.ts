@@ -62,6 +62,13 @@ const TASKS_PATH = "/general/tasks";
  */
 class EditBlockedWhilePendingError extends Error {}
 
+/**
+ * アーカイブ中（status = ARCHIVED）の文書を編集しようとした。保存は状態を
+ * DRAFT へ戻すので、通すと**黙ってアーカイブが解除される**。解除は
+ * setPageArchived の明示操作だけに寄せる（解除してから編集する）。
+ */
+class EditBlockedWhileArchivedError extends Error {}
+
 function revalidate(pageNumber?: string) {
   revalidatePath(BASE_PATH);
   revalidatePath(TASKS_PATH);
@@ -205,8 +212,8 @@ export async function updatePageSettings(
     );
 
   try {
-    await prisma.internalPage.update({
-      where: { pageNumber },
+    const moved = await prisma.internalPage.updateMany({
+      where: { pageNumber, status: { not: "ARCHIVED" } },
       data: {
         title: parsed.data.title,
         summary: parsed.data.summary || null,
@@ -215,6 +222,10 @@ export async function updatePageSettings(
         updatedBy: await getCurrentActorId(),
       },
     });
+    if (moved.count === 0)
+      return actionError(
+        tr("general.documentActions.editBlockedWhileArchived"),
+      );
     await recordAudit({
       action: "UPDATE",
       tableName: "internal_pages",
@@ -263,6 +274,9 @@ export async function savePageBody(
   });
   if (current?.status === "PENDING") {
     return actionError(tr("general.documentActions.editBlockedWhilePending"));
+  }
+  if (current?.status === "ARCHIVED") {
+    return actionError(tr("general.documentActions.editBlockedWhileArchived"));
   }
 
   try {
@@ -352,15 +366,24 @@ export async function savePageBody(
       // 公開版より新しい編集が入ったので下書きへ戻す（公開版はそのまま残る）。
       // ただし承認依頼中（PENDING）なら戻さない — 上の事前確認と publishPage の
       // 間に割り込まれても、ここの条件付き UPDATE が 0 件になって tx ごと戻る。
+      // アーカイブ中も同じ — 状態を DRAFT へ戻すと黙ってアーカイブが外れる。
       const moved = await tx.internalPage.updateMany({
-        where: { id: pageId, status: { not: "PENDING" } },
+        where: { id: pageId, status: { notIn: ["PENDING", "ARCHIVED"] } },
         data: {
           title: parsed.data.title,
           updatedBy: actor,
           status: "DRAFT",
         },
       });
-      if (moved.count === 0) throw new EditBlockedWhilePendingError();
+      if (moved.count === 0) {
+        const now = await tx.internalPage.findUnique({
+          where: { id: pageId },
+          select: { status: true },
+        });
+        throw now?.status === "ARCHIVED"
+          ? new EditBlockedWhileArchivedError()
+          : new EditBlockedWhilePendingError();
+      }
       return next;
     });
 
@@ -390,6 +413,11 @@ export async function savePageBody(
   } catch (e) {
     if (e instanceof EditBlockedWhilePendingError) {
       return actionError(tr("general.documentActions.editBlockedWhilePending"));
+    }
+    if (e instanceof EditBlockedWhileArchivedError) {
+      return actionError(
+        tr("general.documentActions.editBlockedWhileArchived"),
+      );
     }
     return actionError(prismaErrorMessage(e, tr("common.saveFailed"), tr));
   }
@@ -442,6 +470,8 @@ export async function publishPage(
   if (!page) return actionError(tr("general.documentActions.pageNotFound"));
   if (page.status === "PENDING")
     return actionError(tr("general.documentActions.alreadyPendingPublish"));
+  if (page.status === "ARCHIVED")
+    return actionError(tr("general.documentActions.editBlockedWhileArchived"));
 
   const latest = await prisma.internalPageRevision.findFirst({
     where: { pageId: page.id },

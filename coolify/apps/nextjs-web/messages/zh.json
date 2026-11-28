@@ -2466,6 +2466,7 @@
       "commentTooLong": "评论过长",
       "createFailed": "创建失败",
       "editBlockedWhilePending": "发布审批中无法编辑正文（请先退回后再编辑，或等待决裁）",
+      "editBlockedWhileArchived": "已归档的文档无法编辑。请先取消归档后再编辑",
       "editPermissionDenied": "没有权限编辑此文档",
       "invalidShareSettings": "共享设置无效",
       "loginRequired": "请登录",
@@ -11070,7 +11071,7 @@
         "summary": "该作业场所所属的据点。选择工序的实施场所时，只会显示该据点下的作业场所作为候选。"
       },
       "code": {
-        "label": "编号 / 名称（日语・英语）",
+        "label": "编号 / 名称",
         "summary": "作业场所的管理编号和名称。可作为工序的实施场所进行选择。"
       },
       "type": {
@@ -11104,7 +11105,7 @@
         "summary": "该位置所属的据点与楼层。库存以此位置为单位记录存放地点。"
       },
       "code": {
-        "label": "编号 / 名称（日语・英语）",
+        "label": "编号 / 名称",
         "summary": "该位置的管理编号和名称。登记后即可作为库存的存放位置进行选择。"
       },
       "sortOrder": {

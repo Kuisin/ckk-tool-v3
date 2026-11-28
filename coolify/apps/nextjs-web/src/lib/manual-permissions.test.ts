@@ -8,6 +8,7 @@ import {
   buildPermissionBlock,
   buildPermissionsReferencePage,
   extractPermissionBlock,
+  KIOSK_APP_PERMISSION,
   MANUAL_PAGES,
   pageCode,
 } from "./manual-permissions";
@@ -49,6 +50,26 @@ describe("マニュアルの「必要な権限」", () => {
       (p) => p.app && !appList.some((a) => a.key === p.app),
     ).map((p) => p.app);
     expect(unknown).toEqual([]);
+  });
+
+  it("共有端末のアプリの権限が nextjs-kiosk の app-list と一致する", () => {
+    // アプリは別アプリなので import できない。登録簿の原文を読んで突き合わせる。
+    const src = readFileSync(
+      join(__dirname, "../../../nextjs-kiosk/src/lib/app-list.ts"),
+      "utf8",
+    );
+    const codes = [...src.matchAll(/requiredPermission:\s*"([^"]+)"/g)].map(
+      (m) => m[1],
+    );
+    expect(codes.length).toBeGreaterThan(0);
+    expect([...new Set(codes)]).toEqual([KIOSK_APP_PERMISSION]);
+  });
+
+  it("操作ごとの権限（actionRows）のコードもラベル登録簿にある", () => {
+    const unknown = MANUAL_PAGES.flatMap((p) => p.actionRows ?? [])
+      .map((r) => r.code)
+      .filter((c) => !permissionMeta(c));
+    expect([...new Set(unknown)]).toEqual([]);
   });
 
   it("要求する権限コードはラベル登録簿にある", () => {
@@ -191,10 +212,21 @@ describe("buildPermissionBlock", () => {
   });
 
   it("権限の要らない画面はその旨だけ出す", () => {
-    const kiosk = page((p) => p.path.endsWith("kiosk/start/user"));
-    const md = buildPermissionBlock(kiosk, "ja");
+    const tasks = page((p) => p.app === "my-tasks");
+    const md = buildPermissionBlock(tasks, "ja");
     expect(md).toContain("特別な権限は要りません");
     expect(md).not.toContain("| したいこと |");
+  });
+
+  it("開くのは自由でも、操作ごとに要る権限は表にする", () => {
+    const forms = page((p) => p.app === "forms");
+    const md = buildPermissionBlock(forms, "ja");
+    expect(md).toContain("### 操作ごとに要る権限");
+    expect(md).toContain("（`form`）— 作成 |");
+    expect(md).toContain("（`form`）— 書き出し |");
+    // 共有端末のログイン画面: ログインは自由、アプリは work_order
+    const kiosk = page((p) => p.path.endsWith("kiosk/start/user"));
+    expect(buildPermissionBlock(kiosk, "ja")).toContain("（`work_order`）");
   });
 
   it("承認が要る操作は権限とセットで並ぶ", () => {
