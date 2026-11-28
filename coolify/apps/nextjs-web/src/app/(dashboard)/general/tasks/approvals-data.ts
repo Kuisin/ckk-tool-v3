@@ -2,8 +2,11 @@
  * approvals-data.ts — 未処理一覧 (CM01) の承認セクションのデータソース
  * （旧 承認管理 PD03 の横断一覧）。
  *
- * PENDING の approval_requests を対象種別（注文請書 / 指示書 / 素材発注書 /
- * 購買依頼）横断で一覧する。
+ * PENDING の approval_requests のうち、**自分が承認する番のもの**を対象種別
+ * （注文請書 / 指示書 / 素材発注書 / 購買依頼 …）横断で一覧する。絞り込みの
+ * 定義は lib/approval-inbox-core.ts（承認ボタンの判定 resolveApprover と同じ）。
+ * `approve:READ` はこのタブを出すかどうかの門で、行を見せる根拠ではない —
+ * 以前は全件を出していて、他部門の依頼まで誰にでも見えていた。
  *
  * 旧データ補完（依頼行のない承認依頼中を行ワークフロー列から合成していた分岐）は
  * 廃止した — マイグレーション 20260908090000_approval_flows が進行中の全書類に
@@ -13,8 +16,10 @@
 import { getTranslations } from "next-intl/server";
 import { appList } from "@/lib/app-list";
 import { stepFromSnapshot } from "@/lib/approval-flow";
+import { approvalInboxWhere } from "@/lib/approval-inbox-core";
 import { APPROVAL_TARGET, isApprovalTargetType } from "@/lib/approval-targets";
-import { checkPermission } from "@/lib/authz";
+import { actableApprovalGroupIds } from "@/lib/approvals";
+import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { designProgramChangeLabel } from "@/lib/design-program-changes-core";
 import { formatDocNumber } from "@/lib/doc-number";
@@ -83,13 +88,16 @@ async function readableTargetTypes(
   return readable;
 }
 
-/** 承認依頼中一覧 (PD03) — PENDING の承認依頼。依頼日時の昇順。 */
+/** 承認依頼中一覧 (PD03) — 自分が承認する番の PENDING の依頼。依頼日時の昇順。 */
 export async function fetchPendingApprovalRequests(): Promise<
   ApprovalRequestRow[]
 > {
   const tr = await getTranslations();
+  const userId = await sessionUserId();
+  if (!userId) return [];
+  const groupIds = await actableApprovalGroupIds(userId);
   const requests = await prisma.approvalRequest.findMany({
-    where: { status: "PENDING" },
+    where: approvalInboxWhere(userId, groupIds),
     include: {
       requestedByUser: { select: { displayName: true } },
       approvers: { select: { actedAt: true } },
