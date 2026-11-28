@@ -147,7 +147,8 @@ function deletionsSchema() {
             eventId: { type: "string" },
             resource: {
               type: "string",
-              description: "Table name of the deleted row (`delivery_orders`, `plants` …).",
+              description:
+                "Table name of the deleted row (`delivery_orders`, `plants` …).",
             },
             id: {
               type: ["string", "integer", "null"],
