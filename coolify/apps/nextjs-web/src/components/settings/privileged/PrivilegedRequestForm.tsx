@@ -23,10 +23,11 @@ import {
 import { DateTimePicker } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { requestPrivilegedAccess } from "@/app/(dashboard)/settings/privileged-access/actions";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { normalizeLocale } from "@/lib/i18n";
 import {
   MAX_DURATION_MINUTES,
   MAX_WINDOW_DAYS,
@@ -48,6 +49,7 @@ export function PrivilegedRequestForm({
   codes: ElevationCode[];
 }) {
   const tr = useTranslations();
+  const locale = normalizeLocale(useLocale());
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [code, setCode] = useState<ElevationCode | null>(codes[0] ?? null);
@@ -152,7 +154,7 @@ export function PrivilegedRequestForm({
         <Select
           data={codes.map((c) => ({
             value: c,
-            label: ELEVATION_CODE_LABEL[c].ja,
+            label: ELEVATION_CODE_LABEL[c][locale],
           }))}
           label={tr("common.permission")}
           onChange={(v) => {
@@ -174,9 +176,9 @@ export function PrivilegedRequestForm({
           <Stack gap="sm">
             {ops.map((op) => (
               <Checkbox
-                description={op.description.ja}
+                description={op.description[locale]}
                 key={op.key}
-                label={op.label.ja}
+                label={op.label[locale]}
                 value={op.key}
               />
             ))}

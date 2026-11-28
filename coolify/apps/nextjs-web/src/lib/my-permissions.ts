@@ -13,12 +13,14 @@ import "server-only";
  */
 
 import { isSuperuser } from "@ckk/authz-core";
+import { getLocale } from "next-intl/server";
 import { getPermissionSet, getScopeContext } from "@/lib/authz";
 import {
   PERMISSION_GROUP_ORDER,
   PERMISSIONS,
   type PermissionGroup,
 } from "@/lib/permission-labels";
+import { normalizeLocale } from "@/lib/i18n";
 import { peekElevations } from "@/lib/privileged-access";
 import {
   isElevationCode,
@@ -86,6 +88,7 @@ export async function getMyPermissions(): Promise<MyPermissionsView | null> {
   if (!set || !ctx) return null;
 
   const superuser = isSuperuser(set);
+  const locale = normalizeLocale(await getLocale());
 
   // 特権操作の状態はまとめて 1 回だけ引く（コードごとに引くとクエリが増える）。
   const opStates = await peekElevations(
@@ -105,8 +108,8 @@ export async function getMyPermissions(): Promise<MyPermissionsView | null> {
           const v = opStates[op.key];
           return {
             key: op.key,
-            label: op.label.ja,
-            description: op.description.ja,
+            label: op.label[locale],
+            description: op.description[locale],
             allowed: v?.allowed ?? false,
             canRequest: v?.canRequest ?? false,
             pending: v?.pending ?? false,
@@ -119,8 +122,8 @@ export async function getMyPermissions(): Promise<MyPermissionsView | null> {
 
     return {
       code: meta.code,
-      label: meta.label.ja,
-      summary: meta.summary.ja,
+      label: meta.label[locale],
+      summary: meta.summary[locale],
       group: meta.group,
       granted: superuser || grants.length > 0,
       actions: superuser && actions.length === 0 ? ["ADMIN"] : actions,

@@ -7930,15 +7930,14 @@
       "myPermissions": "我的权限",
       "administrator": "管理员",
       "theyHoldEveryPermissionTheyCan": "拥有全部权限。也可无需申请执行特权操作，但操作历史中会记录「以管理员权限执行」。",
-      "permissionsAndRolesInTheManual": "操作手册的「权限与角色」",
-      "isWhereItLives": "中。",
       "evenIfYouHoldThePermission": "此处的操作，即使拥有权限",
       "itCannotBeRunAsIt": "保持原样无法执行",
       "andCanOnlyBeDoneFor": "申请后，仅在他人批准的期间内可执行。",
       "remainingHoursMinutes": "剩余 {hours} 小时 {minutes} 分钟",
       "remainingMinutes": "剩余 {minutes} 分钟",
       "requestRequired": "需要申请",
-      "scopeLabel": "范围：{scopes}"
+      "scopeLabel": "范围：{scopes}",
+      "grantedSummary": "当前拥有 {total} 项中的 <b>{granted} 项</b>。权限通过角色授予。不足时请联系管理员。阅读方法见<link>操作手册的「权限与角色」</link>。"
     },
     "notificationSettingsForm": {
       "theNotificationSettingsWereUpdated": "已更新通知设置",

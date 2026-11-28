@@ -4992,7 +4992,7 @@
       "thereAreNoRegisteredDevices": "There are no registered devices",
       "unknownDevice": "Unknown device",
       "success": "Success",
-      "loginCount": "{count, plural, one {# login} other {# logins}}",
+      "loginCount": "Logins: {count}",
       "lastSeenAt": "Last seen {at}"
     },
     "displayContentEditor": {
@@ -7930,15 +7930,14 @@
       "myPermissions": "My permissions",
       "administrator": "Administrator",
       "theyHoldEveryPermissionTheyCan": "They hold every permission. They can run privileged operations without a request, but the activity log records that it was done with administrator rights.",
-      "permissionsAndRolesInTheManual": "\"Permissions and roles\" in the manual",
-      "isWhereItLives": "is where it lives.",
       "evenIfYouHoldThePermission": "Even if you hold the permission, the operations here",
       "itCannotBeRunAsIt": "It cannot be run as it is",
       "andCanOnlyBeDoneFor": "and can only be done for the period another person has approved.",
       "remainingHoursMinutes": "{hours}h {minutes}m remaining",
       "remainingMinutes": "{minutes}m remaining",
       "requestRequired": "Request required",
-      "scopeLabel": "Scope: {scopes}"
+      "scopeLabel": "Scope: {scopes}",
+      "grantedSummary": "You hold <b>{granted} of {total}</b> permissions. Permissions come through roles. If something is missing, ask an administrator. See <link>\"Permissions and roles\" in the manual</link> for how to read this."
     },
     "notificationSettingsForm": {
       "theNotificationSettingsWereUpdated": "The notification settings were updated",

@@ -7930,15 +7930,14 @@
       "myPermissions": "自分の権限",
       "administrator": "管理者",
       "theyHoldEveryPermissionTheyCan": "すべての権限を持っています。特権操作も申請なしで実行できますが、\n            その場合は「管理者権限で実行した」ことが操作履歴に残ります。",
-      "permissionsAndRolesInTheManual": "マニュアルの「権限とロール」",
-      "isWhereItLives": "にあります。",
       "evenIfYouHoldThePermission": "ここにある操作は、権限を持っていても",
       "itCannotBeRunAsIt": "そのままでは実行できません",
       "andCanOnlyBeDoneFor": "で申請し、別の人の承認を受けた期間だけ行えます。",
       "remainingHoursMinutes": "残り {hours} 時間 {minutes} 分",
       "remainingMinutes": "残り {minutes} 分",
       "requestRequired": "申請が必要",
-      "scopeLabel": "範囲: {scopes}"
+      "scopeLabel": "範囲: {scopes}",
+      "grantedSummary": "いま持っているのは {total} 件中 <b>{granted} 件</b>です。権限は役割（ロール）を通して付きます。足りないときは管理者に相談してください。読み方は<link>マニュアルの「権限とロール」</link>にあります。"
     },
     "notificationSettingsForm": {
       "theNotificationSettingsWereUpdated": "通知設定を更新しました",

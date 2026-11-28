@@ -31,8 +31,9 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { ListShell } from "@/components/ui/shells";
+import { normalizeLocale } from "@/lib/i18n";
 import type {
   MyPermissionRow,
   MyPermissionsView as View,
@@ -176,6 +177,7 @@ function PermissionCard({ row }: { row: MyPermissionRow }) {
 
 export function MyPermissionsView({ view }: { view: View }) {
   const tr = useTranslations();
+  const locale = normalizeLocale(useLocale());
   return (
     <ListShell
       breadcrumbs={[
@@ -204,14 +206,14 @@ export function MyPermissionsView({ view }: { view: View }) {
           variant="light"
         >
           <Text size="sm">
-            いま持っているのは {view.totalCount} 件中{" "}
-            <b>{view.grantedCount} 件</b>
-            です。権限は役割（ロール）を通して付きます。足りないときは管理者に
-            相談してください。読み方は{" "}
-            <Link href="/manual/ja/permissions">
-              {tr("profile.myPermissionsView.permissionsAndRolesInTheManual")}
-            </Link>
-            {tr("profile.myPermissionsView.isWhereItLives")}
+            {tr.rich("profile.myPermissionsView.grantedSummary", {
+              total: view.totalCount,
+              granted: view.grantedCount,
+              b: (chunks) => <b>{chunks}</b>,
+              link: (chunks) => (
+                <Link href={`/manual/${locale}/permissions`}>{chunks}</Link>
+              ),
+            })}
           </Text>
         </Alert>
       )}
@@ -221,7 +223,7 @@ export function MyPermissionsView({ view }: { view: View }) {
           <Stack gap="xs" key={group}>
             <Group gap="xs">
               <Title c="dimmed" order={5}>
-                {PERMISSION_GROUP_LABEL[group].ja}
+                {PERMISSION_GROUP_LABEL[group][locale]}
               </Title>
               <Text c="dimmed" size="xs">
                 {rows.filter((r) => r.granted).length} / {rows.length}
