@@ -65,4 +65,75 @@ ON CONFLICT (id) DO UPDATE SET
   pin_locked_until = NULL,
   pin_last_verified_at = EXCLUDED.pin_last_verified_at;
 
+-- ── 指示書 #9005（共有端末の「検査承認」「最終検査・出荷前確認」の撮影用）────
+-- デモシードの進行中の指示書（#9001）は段加工の途中なので、検査承認・最終検査の
+-- 工程を作業中にできない（#9001 を動かすと Web 側の撮影がずれる）。そこで
+-- 撮影専用の在庫向け指示書を 1 本足す:
+--   検査（段加工検査）✓ — 合格の検査記録 1 件（承認待ち）
+--   → 検査承認 ●（一時停止中 = 作業中・ロックなし）
+--   → 出荷前検査 ●（一時停止中。最終検査の工程）
+-- 工程は拠点なし・作業計画なし — 共有端末の指示書一覧（端末の拠点で絞る）と
+-- 作業場所の一覧に出さず、既存の撮影を変えないため。作業計画が無い工程は
+-- 誰でも開ける（canOperateStep）ので、/steps/<id> で直接開いて撮る。
+INSERT INTO app.work_orders (id, work_order_number, legacy_number, product_item_id, type,
+  planned_quantity, status, approval_status,
+  requested_at, requested_by, approved_at, approved_by, started_at,
+  history, created_by, created_at, updated_at)
+VALUES
+  ('dc000000-0000-4000-8000-000000009005'::uuid, 9005, 'WOR-202607-09005',
+   9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE", 20,
+   'IN_PROGRESS'::app."WORK_ORDER_STATUS", 'APPROVED'::app."WORK_ORDER_APPROVAL_STATUS",
+   '2026-07-16T09:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   '2026-07-16T14:00:00+09', '00000000-0000-0000-0000-000000000000'::uuid,
+   '2026-07-17T08:30:00+09',
+   '[{"action": "CREATE", "user": "a0b1c2d3-0000-4000-8000-000000005107", "at": "2026-07-16T08:30:00+09:00"},
+     {"action": "APPROVE_FINAL", "user": "00000000-0000-0000-0000-000000000000", "at": "2026-07-16T14:00:00+09:00"},
+     {"action": "START", "user": "a0b1c2d3-0000-4000-8000-000000005107", "at": "2026-07-17T08:30:00+09:00"}]'::jsonb,
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   '2026-07-16T08:30:00+09', '2026-07-21T09:00:00+09')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO app.numbering_sequences (key, prefix, last_year_month, last_sequence, updated_at)
+VALUES ('WORK_ORDER', 'WO', NULL, 9005, '2026-07-21T09:00:00+09')
+ON CONFLICT (key) DO UPDATE
+  SET last_sequence = GREATEST(app.numbering_sequences.last_sequence, 9005);
+
+INSERT INTO app.work_order_steps (id, work_order_id, process_step_id, sort_order,
+  execution_location, status, input_quantity, output_success_quantity,
+  output_defect_semi_finished, output_defect_scrap, output_defect_rework,
+  started_at, started_by, completed_at, completed_by)
+VALUES
+  ('dc015000-0000-4000-8000-000000000001'::uuid, 'dc000000-0000-4000-8000-000000009005'::uuid,
+   (SELECT id FROM app.process_step_catalog WHERE code = 'STEP_INSPECTION'), 1,
+   'INTERNAL'::app."STEP_EXECUTION", 'COMPLETED'::app."STEP_STATUS", 20, 20, 0, 0, 0,
+   '2026-07-17T08:30:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   '2026-07-17T10:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid),
+  ('dc015000-0000-4000-8000-000000000002'::uuid, 'dc000000-0000-4000-8000-000000009005'::uuid,
+   (SELECT id FROM app.process_step_catalog WHERE code = 'STEP_INSPECTION_APPROVAL'), 2,
+   'INTERNAL'::app."STEP_EXECUTION", 'IN_PROGRESS'::app."STEP_STATUS", 20, NULL, NULL, NULL, NULL,
+   '2026-07-17T10:30:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid, NULL, NULL),
+  ('dc015000-0000-4000-8000-000000000003'::uuid, 'dc000000-0000-4000-8000-000000009005'::uuid,
+   (SELECT id FROM app.process_step_catalog WHERE code = 'PRE_SHIP_INSPECTION'), 3,
+   'INTERNAL'::app."STEP_EXECUTION", 'IN_PROGRESS'::app."STEP_STATUS", 20, NULL, NULL, NULL, NULL,
+   '2026-07-17T11:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid, NULL, NULL)
+ON CONFLICT (id) DO NOTHING;
+
+-- 合格の検査記録（承認待ち）と、その記入内容（「検査表を見る」で読める中身）
+INSERT INTO app.inspection_records (id, work_order_step_id, template_id, status, recorded_by, recorded_at)
+VALUES ('dc016000-0000-4000-8000-000000000001'::uuid, 'dc015000-0000-4000-8000-000000000001'::uuid,
+        9102, 'PASS'::app."INSPECTION_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+        '2026-07-17T09:50:00+09')
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO app.inspection_record_items (inspection_record_id, template_item_id, measured_value, measured_values, is_pass)
+SELECT 'dc016000-0000-4000-8000-000000000001'::uuid, i.id, NULL,
+       CASE i.input_type
+         WHEN 'NUMBER' THEN '["6.01","5.99"]'::jsonb
+         WHEN 'SELECT_SINGLE' THEN jsonb_build_array(i.options->0->>'value')
+         ELSE '["true"]'::jsonb
+       END, true
+FROM app.inspection_template_items i WHERE i.template_id = 9102
+  -- 行に一意キーが無いので、流し直しで重複しないよう記録単位で止める
+  AND NOT EXISTS (SELECT 1 FROM app.inspection_record_items x
+                   WHERE x.inspection_record_id = 'dc016000-0000-4000-8000-000000000001'::uuid);
+
 COMMIT;
