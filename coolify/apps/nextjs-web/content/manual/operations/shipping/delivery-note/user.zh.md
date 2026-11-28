@@ -1,7 +1,7 @@
 ---
 title: "送货单 — 操作手册"
 description: "查看出货单确定时自动生成的送货单，并可以转成 PDF 打印。"
-screenshots: [delivery-note-list-01, delivery-note-detail-noprice-01, delivery-note-detail-01]
+screenshots: [delivery-note-list-01, delivery-note-detail-noprice-01, delivery-note-detail-01, delivery-note-pdf-01]
 ---
 用来查看随发货产品一起送达的 **送货单**（納品書，出货单确定时自动生成，**生成时即为已发行**）。操作代码是 `SH02`。
 
@@ -108,6 +108,8 @@ flowchart TD
 
 - 可以在「**PDF**」标签页里直接在画面中查看 PDF。想重新生成时点「**再生成**」（重新生成）。
 - 从画面右上角的「**…**」（三个点的按钮）选择「**PDFをダウンロード**」（下载 PDF），可以保存为文件。打印请从这里进行。
+
+![送货单的 PDF 标签页](../../../assets/screenshots/delivery-note-pdf-01.png)
 
 ![送货单详细界面](../../../assets/screenshots/delivery-note-detail-01.png)
 

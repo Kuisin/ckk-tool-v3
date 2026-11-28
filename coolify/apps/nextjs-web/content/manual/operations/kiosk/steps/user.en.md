@@ -1,7 +1,7 @@
 ---
 title: "Shop-floor Tablet — Recording Work"
 description: "How to check today's work on the tablet and record the start, the finish, and the number of pieces."
-screenshots: [kiosk-steps-01, kiosk-step-detail-01, kiosk-step-location-01]
+screenshots: [kiosk-steps-01, kiosk-step-detail-01, kiosk-step-location-01, kiosk-step-inspection-approval-01, kiosk-step-final-inspection-01, kiosk-step-defect-01]
 ---
 In 「**工程実行**」 (Run step) on the tablet, you check the work given to you and record when you start and finish it.
 
@@ -153,6 +153,8 @@ When you open an inspection approval step, the 「**検査承認**」 (Inspectio
 3. Press 「**承認する**」 (Approve). The count goes down by one.
 4. At 0, 「**すべて承認しました**」 (All approved) appears.
 
+![Inspection approval panel](../../../assets/screenshots/kiosk-step-inspection-approval-01.png)
+
 - Only **records that passed** can be approved. A failed record shows 「**不合格のため承認できません**」 (Cannot approve because it failed).
 - Who can approve is set for each inspection sheet. Records you are not an approver for show 「**承認者ではありません**」 (You are not an approver).
 - Records already approved and records you cannot press are grouped under 「**承認済み・対象外（n 件）**」 (Approved / not for you). Press it to open.
@@ -166,6 +168,8 @@ On a step that does the final inspection, such as the pre-shipment inspection, t
 3. Under 「**出荷前確認（棚包 → 納品書発行 → 出荷許可）**」 (Pre-shipment checks: packing → delivery note issued → shipment authorised), press 「**記録する**」 (Record) in the order the work is done. If the previous stage is not done, 「**前の段が済んでから**」 (After the previous stage) is shown and you cannot press it.
 4. If there was a defect or similar at the pre-shipment inspection, write it in 「**出荷時不良内容確認者印**」 (Shipment defect check stamp) and press 「**確認する**」 (Confirm) (optional).
 
+![Final inspection / pre-shipment check panel](../../../assets/screenshots/kiosk-step-final-inspection-01.png)
+
 ## Recording defects (on any step)
 
 Apart from the defect breakdown when you complete, you can write down defects on **any step**. Quantities and stock do not change. You can use it while the step is in progress or paused.
@@ -173,6 +177,8 @@ Apart from the defect breakdown when you complete, you can write down defects on
 1. Press 「**不良を記録**」 (Record defects).
 2. Choose 「**不良種類**」 (Defect type) and write 「**内容**」 (Description). To add more, press 「**行を追加**」 (Add row).
 3. Press 「**不良記録を保存**」 (Save defect record).
+
+![Defect record panel](../../../assets/screenshots/kiosk-step-defect-01.png)
 
 Saved records are listed under 「**記録済みの不良**」 (Recorded defects).
 

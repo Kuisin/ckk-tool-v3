@@ -1,6 +1,7 @@
 ---
 title: "Shop-floor Tablet — Work Location Steps"
 description: "An app for finding and recording the steps waiting at this machine or this place, rather than steps assigned to you."
+screenshots: [kiosk-work-location-01]
 ---
 In 「**作業場所の工程**」 (Work location steps) on the tablet, you find and record **the steps waiting at the machine or place you are at now**, rather than steps assigned to you.
 
@@ -47,6 +48,8 @@ Press 「**作業場所の工程**」 (Work location steps) in the app list.
 When you open it, the steps waiting at **this tablet's default work location** are listed. Just as in 「工程実行」, they are split into three groups: **遅延** (late), **本日** (today), and **予定** (upcoming).
 
 Near the top of the screen, the name of the work location you are currently viewing is shown. To its right is a switch between 「**この作業場所**」 (This location) and 「**グループ全体（group name）**」 (Whole group), and choosing the whole group shows steps from every work location in the same group at once.
+
+![Steps at a work location](../../../assets/screenshots/kiosk-work-location-01.png)
 
 Each card shows the step name, work order number, product name, assignee (「担当: name」 if one is set, or 「**担当未設定**」 (No assignee) if not), work location name, and quantity. The status label on the right is the same as in 「工程実行」 (can start, in progress, paused, finished, and so on).
 

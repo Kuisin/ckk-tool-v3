@@ -1,7 +1,7 @@
 ---
 title: "Design Request — User Manual"
 description: "An app for asking the design department to make a drawing, and for keeping each version of the finished drawing file."
-screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-detail-03, design-request-files-01]
+screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-detail-03, design-request-files-01, design-request-pdf-01]
 ---
 An app for asking the design department to make a drawing, and for **keeping each version** of the finished drawing file. The operation code is `SA06`.
 
@@ -227,6 +227,8 @@ Write what you want designed in the 依頼内容 (request details) field. Commen
 After approval (未着手, 進行中 or 完了) the「**PDF**」tab on the request screen shows the design request as a printable document. The「**PDF**」button at the top right opens it too.
 
 The document carries the request number, **kind (new/revision)**, status, assignee, **requested date**, priority, trigger and reference, the target product, **the base drawing and change reason** on a revision, the **request details**, the list of drawing file versions, and the approval and work history. It is an internal document meant to be handed to manufacturing on paper — do not send it outside the company.
+
+![Design request form (PDF tab)](../../../assets/screenshots/design-request-pdf-01.png)
 
 While the contents can still change (未着手, 進行中) it is rebuilt fresh each time you open it. Once the request is completed nothing moves any more, so the stored copy is shown as is.
 

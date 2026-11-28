@@ -1,7 +1,7 @@
 ---
 title: "請求書 — 操作マニュアル"
 description: "お客様へお金を請求する請求書を確認し、発行・送付・入金の記録をするアプリです。"
-screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu-01, invoice-sent-01]
+screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu-01, invoice-sent-01, invoice-pdf-01]
 ---
 お客様へお金を請求する **請求書** を確認して、発行・送付・入金までを記録するアプリです。操作コードは `BL01` です。
 
@@ -132,6 +132,8 @@ flowchart TD
 PDF を見られるのは **発行したあと** です。下書きのあいだは PDF はまだ作られておらず、「**PDF**」タブには「発行後に PDF を閲覧できます。」と表示されます。
 
 発行後は、画面右上の「**PDF**」を押すと請求書の PDF が別のタブで開き、そこから印刷したり保存したりできます。「**PDF**」タブでも画面の中でそのまま確認できます。
+
+![請求書の PDF タブ](../../../assets/screenshots/invoice-pdf-01.png)
 
 PDF の右上の発行元欄には、その請求書の **発行元** の会社の名称・住所・電話番号・適格請求書発行事業者登録番号が印字されます。社印（印影）も、その会社に登録されたものが印字されます。内容を直したいとき・印影を登録したいときは、[自社法人](/manual/ja/operations/masters/own-company/user)（`MS0I`）で行います。
 

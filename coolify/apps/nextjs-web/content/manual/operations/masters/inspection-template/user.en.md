@@ -1,7 +1,7 @@
 ---
 title: "Inspection Sheet Template — User Manual"
 description: "An app for making a template of the inspection sheet, deciding in advance what will be measured. The floor records inspections by following this template."
-screenshots: [master-inspection-template-list-01, master-inspection-template-new-01, master-inspection-template-detail-01, master-inspection-template-items-01, master-inspection-template-item-modal-01, master-inspection-template-versions-01]
+screenshots: [master-inspection-template-list-01, master-inspection-template-new-01, master-inspection-template-detail-01, master-inspection-template-items-01, master-inspection-template-item-modal-01, master-inspection-template-versions-01, master-inspection-template-image-01, master-inspection-template-sheet-01, master-inspection-template-groups-01, master-inspection-template-transfer-01]
 ---
 This app is for making a **template** of the inspection sheet, deciding in advance **what will be measured**. The operation code is `MS09`.
 
@@ -101,6 +101,8 @@ When you save, the detail screen for that template opens. Near the top, 「**コ
 
 In the 「**参考画像**」 (reference image) area of the 「**テンプレート情報**」 (template information) tab, you can attach a drawing of where to measure or a photo of the real part. The image is also printed on the blank sheet and the filled-in sheet PDFs.
 
+![Reference image field on the template information tab](../../../assets/screenshots/master-inspection-template-image-01.png)
+
 1. Open the 「**テンプレート情報**」 (template information) tab.
 2. Press 「**アップロード**」 (Upload).
 3. Choose an image file (PNG, JPEG or WebP, up to 5MB).
@@ -195,6 +197,8 @@ The 「検査承認の宛先」 (inspection approver) is handled separately from
 
 Press 「**空欄シート**」 (Blank sheet) at the top right of the detail screen and a blank PDF with only the inspection items lined up is produced. You can print it when you want to write by hand on the floor. If a reference image is attached, it is printed too.
 
+![Blank sheet for handwriting (PDF)](../../../assets/screenshots/master-inspection-template-sheet-01.png)
+
 ## Sort into groups
 
 When you have many templates, sorting them into **groups** makes them easier to find in the list. Groups are used only for narrowing and headings in the list; they have nothing to do with pass/fail judgement or the PDF.
@@ -203,6 +207,8 @@ When you have many templates, sorting them into **groups** makes them easier to 
 2. Enter a group name in the 「**新しいグループ**」 (new group) box, for example 製品検査記録 (product inspection record).
 3. Press 「**追加**」 (Add).
 4. Press 「**閉じる**」 (Close).
+
+![Inspection sheet group management](../../../assets/screenshots/master-inspection-template-groups-01.png)
 
 The groups you made can be chosen in 「**グループ**」 (group) on the new and edit screens of a template. In 「グループ管理」 you can also change a group's name, its order (「**上へ**」 up / 「**下へ**」 down) and whether it is active. A group that still contains inspection sheets cannot be deleted.
 
@@ -213,6 +219,8 @@ Use this to take inspection sheets to another environment, or to bring in inspec
 1. Press 「**書き出し / 取込**」 (export / import) at the top right of the list screen.
 2. To export, press 「**JSON で書き出す**」 (export as JSON). All active inspection sheets are exported (if you tick rows in the list and press 「**選択を書き出し**」 (export selection) first, only those are exported).
 3. To import, press 「**ファイルを選ぶ**」 (choose a file) and choose an exported JSON file or a file written in the Excel template. Get the Excel template with 「**Excel の雛形を落とす**」 (download the Excel template).
+
+![Export / import inspection sheets](../../../assets/screenshots/master-inspection-template-transfer-01.png)
 
 When an inspection sheet with the same code already exists, the import is added as a new version (existing versions are not rewritten). If some could not be imported, the count and 「**読めなかった行**」 (rows that could not be read) are shown.
 

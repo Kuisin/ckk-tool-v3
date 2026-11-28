@@ -1,7 +1,7 @@
 ---
 title: "出货单 — 操作手册"
 description: "把做好的产品发给客户时，用来记录发了什么、发了多少的单据。"
-screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-detail-01, delivery-order-menu-01, delivery-order-confirm-01, delivery-order-delivery-notes-01]
+screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-detail-01, delivery-order-menu-01, delivery-order-confirm-01, delivery-order-delivery-notes-01, delivery-order-charges-01]
 ---
 把做好的产品发给客户时，用来记录 **发了什么、发了多少** 的 **出货单**（出荷書）。操作代码是 `SH01`。
 
@@ -108,6 +108,8 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 4. 选择「**料金項目**」（费用项目）（项目在[费用主数据](/manual/zh/operations/masters/charge-item/user)中登记）。
 5. 需要时，输入备注（如「○○运输 到付」）、数量、单价。费用主数据中金额固定的项目，单价不能修改。
 6. 点击「**保存**」（保存）。
+
+![出货单概要标签页中的追加费用](../../../assets/screenshots/delivery-order-charges-01.png)
 
 明细上所载批次的[工单](/manual/zh/operations/production/work-order/user)中如果写有附加费用的预定，做出货单时会自动复制过来（显示「**指示書 #◯ から複写**」（从工单 #◯ 复制））。同一工单的批次无论载了几行，都只复制 1 次。
 

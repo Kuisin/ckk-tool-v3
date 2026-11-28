@@ -1,6 +1,7 @@
 ---
 title: "费用项目 — 操作手册"
 description: "用于登记运费、包装费等产品货款以外的请款项目的应用。"
+screenshots: [master-charge-item-list-01]
 ---
 这是用于登记运费、包装费、垫付款等 **产品货款以外的请款内容** 的应用。操作代码是 `MS0G`。
 
@@ -14,6 +15,8 @@ description: "用于登记运费、包装费等产品货款以外的请款项目
 - 可以按项目决定金额是每次输入，还是使用固定的金额。
 - 可以按项目决定税种（消费税的区分，例如应税・免税）。
 - 可以把不再使用的项目停用。
+
+![费用项目列表](../../../assets/screenshots/master-charge-item-list-01.png)
 
 > 💡 这里登记的项目，会出现在[工单](/manual/zh/operations/production/work-order/user)（预定）、[出货单](/manual/zh/operations/shipping/delivery-order/user)（确定）、[请款单](/manual/zh/operations/billing/invoice/user)的附加费用选项中。
 

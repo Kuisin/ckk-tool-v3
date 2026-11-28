@@ -1,7 +1,7 @@
 ---
 title: "Invoice — User Manual"
 description: "Check the invoice you send to a customer for payment, and record issuing, sending, and payment received."
-screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu-01, invoice-sent-01]
+screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu-01, invoice-sent-01, invoice-pdf-01]
 ---
 This app is where you check the **invoice** (請求書) you send to a customer to ask for payment, and record everything from issuing it to receiving the money. The operation code is `BL01`.
 
@@ -132,6 +132,8 @@ If one fails, the others are still processed.
 You can see the PDF **only after issuing**. While it is a draft the PDF has not been made yet, and the 「**PDF**」 tab shows 「発行後に PDF を閲覧できます。」 (the PDF can be viewed after issuing).
 
 After issuing, press 「**PDF**」 at the top right of the screen and the invoice PDF opens in another tab; from there you can print it or save it. The 「**PDF**」 tab also shows it right on the screen.
+
+![PDF tab of an invoice](../../../assets/screenshots/invoice-pdf-01.png)
 
 The issuer block at the top right of the PDF prints the name, address, phone number and invoice registration number of the invoice's **issuer** company. The company seal printed is also the one registered for that company. To correct these details or register a seal, use [Own companies](/manual/en/operations/masters/own-company/user) (`MS0I`).
 

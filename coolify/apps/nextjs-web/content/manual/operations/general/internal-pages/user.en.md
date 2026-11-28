@@ -1,6 +1,7 @@
 ---
 title: "Internal Documents — Operation Manual"
 description: "An app for writing and sharing procedures and notices inside the company. Versions are kept, and a document can go through review and approval before it is published."
+screenshots: [internal-pages-list-01, internal-page-detail-01, internal-page-archived-01, internal-page-archive-01]
 ---
 An app for **writing and sharing documents inside the company** — procedures, cautions, handover notes and the like. The operation code is `CM03`.
 
@@ -28,6 +29,8 @@ An app for **writing and sharing documents inside the company** — procedures, 
 - The list shows only documents you can read. It shows 「タイトル」 (Title), 「状態」 (Status: Draft / Pending publish approval / Published / Archived), 「公開版」 (Published version), 「未解決」 (Unresolved — the number of comments not yet resolved) and 「更新日」 (Updated).
 - If publishing is to use approval, set up the steps in [Approval settings](/manual/en/operations/masters/approval-setting/user) beforehand.
 
+![Internal document list](../../../assets/screenshots/internal-pages-list-01.png)
+
 ## Creating a document
 
 1. Press 「**文書を作る**」 (Create document) on the list.
@@ -40,6 +43,8 @@ An app for **writing and sharing documents inside the company** — procedures, 
 8. Press 「**本文を保存（新しいリビジョン）**」 (Save the body (new revision)).
 
 When you save, 「リビジョン 1 として保存しました」 (Saved as revision 1) is shown. Saving alone does **not publish it yet**. To change it later, press 「**編集**」 (Edit) at the top right of the document screen.
+
+![A published document](../../../assets/screenshots/internal-page-detail-01.png)
 
 > 💡 Writing "a word about what you fixed" in the change-reason box makes it easier to find in the history later.
 
@@ -116,9 +121,13 @@ A document you have finished with can be put away by making it 「**アーカイ
 2. Choose 「**アーカイブする**」 (Archive).
 3. On the confirmation screen, press 「**アーカイブする**」 (Archive).
 
+![Archive in the ⋯ menu](../../../assets/screenshots/internal-page-archive-01.png)
+
 - Only people who can edit the document can do this (people with the "update" permission for internal documents who are its creator or in a share that allows editing).
 - It cannot be pressed while publishing is pending approval (the screen shows 「**公開の承認依頼中はアーカイブできません（決裁を待つか、差し戻してから操作してください）**」 (Cannot archive while publishing is pending approval (wait for the decision, or send it back first))).
 - While it is archived, the publishing card (「公開する」 (Publish), 「公開を申請」 (Request publishing) and so on) does not appear. Unarchive it first if you want to publish.
+
+![An archived document](../../../assets/screenshots/internal-page-archived-01.png)
 
 To bring it back, choose 「**アーカイブを解除**」 (Unarchive) from the same 「**⋯**」, then press 「**アーカイブを解除**」 on the confirmation screen. If the published version is the newest version, it returns to 「**公開中**」 (Published); if there is no published version, or there are edits made after publishing, it returns to 「**下書き**」 (Draft).
 

@@ -1,6 +1,7 @@
 ---
 title: "料金マスタ — 操作マニュアル"
 description: "送料や梱包費など、製品の代金以外に請求する項目を登録するアプリです。"
+screenshots: [master-charge-item-list-01]
 ---
 送料・梱包費・立替金など、**製品の代金以外に請求するもの** を登録しておくアプリです。操作コードは `MS0G` です。
 
@@ -14,6 +15,8 @@ description: "送料や梱包費など、製品の代金以外に請求する項
 - 金額を毎回入れるのか、決まった額にするのかを項目ごとに決められます。
 - 項目ごとに税区分（消費税の区分。課税・非課税など）を決められます。
 - 使わなくなった項目を無効にできます。
+
+![料金マスタの一覧](../../../assets/screenshots/master-charge-item-list-01.png)
 
 > 💡 ここで登録した項目は、[指示書](/manual/ja/operations/production/work-order/user)（予定）・[出荷書](/manual/ja/operations/shipping/delivery-order/user)（確定）・[請求書](/manual/ja/operations/billing/invoice/user)の追加費用の選択肢に出ます。
 

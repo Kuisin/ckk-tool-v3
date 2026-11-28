@@ -1,7 +1,7 @@
 ---
 title: "設計依頼書 — 操作マニュアル"
 description: "設計部門に図面の作成をお願いし、できあがった図面ファイルを版ごとに残しておくアプリです。"
-screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-detail-03, design-request-files-01]
+screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-detail-03, design-request-files-01, design-request-pdf-01]
 ---
 設計部門に図面の作成をお願いし、できあがった図面ファイルを **版（バージョン）ごとに残しておく** アプリです。操作コードは `SA06` です。
 
@@ -241,6 +241,8 @@ sequenceDiagram
 対象製品・**元図面と変更理由**（改訂のとき）・**依頼内容**・
 設計ファイルの版一覧・承認と作業の履歴 が載ります。製造へ紙で渡す前提の
 社内文書なので、社外には出さないでください。
+
+![設計依頼書の帳票（PDF タブ）](../../../assets/screenshots/design-request-pdf-01.png)
 
 内容が変わりうるあいだ（未着手・進行中）は、開くたびに最新の内容で作り直します。
 完了したあとは中身が動かないので、保存されたものをそのまま表示します。

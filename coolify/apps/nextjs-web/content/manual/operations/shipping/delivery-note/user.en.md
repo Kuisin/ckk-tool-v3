@@ -1,7 +1,7 @@
 ---
 title: "Delivery Note — User Manual"
 description: "Review the delivery note that is created automatically when a delivery order is confirmed, turn it into a PDF, and print it."
-screenshots: [delivery-note-list-01, delivery-note-detail-noprice-01, delivery-note-detail-01]
+screenshots: [delivery-note-list-01, delivery-note-detail-noprice-01, delivery-note-detail-01, delivery-note-pdf-01]
 ---
 This app is for reviewing the **delivery note** (納品書) that goes together with the products you ship (it is created automatically when a delivery order is confirmed, and is **already issued** at that moment). The operation code is `SH02`.
 
@@ -108,6 +108,8 @@ The PDF is available from the moment the delivery note is created. The issuer bl
 
 - The 「**PDF**」 tab shows the PDF right on the screen. To make it again, press 「**再生成**」 (Regenerate).
 - Choose 「**PDFをダウンロード**」 (Download PDF) from the 「**…**」 button (the three dots) at the top right of the screen to save it as a file. Print from there.
+
+![PDF tab of a delivery note](../../../assets/screenshots/delivery-note-pdf-01.png)
 
 ![Delivery note detail screen](../../../assets/screenshots/delivery-note-detail-01.png)
 

@@ -1,7 +1,7 @@
 ---
 title: "检查表模板 — 操作手册"
 description: "用于事先决定检查时测量什么的「检查表样板」的应用。现场按照这个样板记录检查结果。"
-screenshots: [master-inspection-template-list-01, master-inspection-template-new-01, master-inspection-template-detail-01, master-inspection-template-items-01, master-inspection-template-item-modal-01, master-inspection-template-versions-01]
+screenshots: [master-inspection-template-list-01, master-inspection-template-new-01, master-inspection-template-detail-01, master-inspection-template-items-01, master-inspection-template-item-modal-01, master-inspection-template-versions-01, master-inspection-template-image-01, master-inspection-template-sheet-01, master-inspection-template-groups-01, master-inspection-template-transfer-01]
 ---
 这是用于事先决定 **检查时测量什么** 的检查表 **样板** 的应用。操作代码是 `MS09`。
 
@@ -101,6 +101,8 @@ screenshots: [master-inspection-template-list-01, master-inspection-template-new
 
 在「**テンプレート情報**」（模板信息）标签页的「**参考画像**」（参考图片）栏中，可以附上表示测量位置的图或实物照片。附上的图片也会打印在空白表和已填写表的 PDF 上。
 
+![模板信息标签页中的参考图片栏](../../../assets/screenshots/master-inspection-template-image-01.png)
+
 1. 打开「**テンプレート情報**」（模板信息）标签页。
 2. 点击「**アップロード**」（上传）。
 3. 选择图片文件（PNG・JPEG・WebP，最大 5MB）。
@@ -195,6 +197,8 @@ flowchart TD
 
 点击详细界面右上角的「**空欄シート**」（空白表），会生成只排列检查项目的空白 PDF。想在现场手写时，可以打印使用。如已附上参考图片，也会一起打印。
 
+![手写用空白检查表（PDF）](../../../assets/screenshots/master-inspection-template-sheet-01.png)
+
 ## 按分组整理
 
 样板变多后，分到**分组**中，在列表里会更容易找到。分组只用于列表的筛选和标题区分，与合格・不合格的判定以及 PDF 无关。
@@ -203,6 +207,8 @@ flowchart TD
 2. 在「**新しいグループ**」（新分组）栏中输入分组名（例 製品検査記録 / 产品检查记录）。
 3. 点击「**追加**」（添加）。
 4. 点击「**閉じる**」（关闭）。
+
+![检查表分组管理](../../../assets/screenshots/master-inspection-template-groups-01.png)
 
 建好的分组可以在样板新建・编辑界面的「**グループ**」（分组）中选择。分组的名称、顺序（「**上へ**」上移 /「**下へ**」下移）以及有效・无效，也可以在「グループ管理」中修改。还有检查表属于其中的分组无法删除。
 
@@ -213,6 +219,8 @@ flowchart TD
 1. 点击列表界面右上角的「**書き出し / 取込**」（导出 / 导入）。
 2. 导出时，点击「**JSON で書き出す**」（以 JSON 导出）。会导出所有有效的检查表（先在列表中勾选再点击「**選択を書き出し**」（导出所选），就只导出所选部分）。
 3. 导入时，点击「**ファイルを選ぶ**」（选择文件），选择导出的 JSON 或按 Excel 模板填写的文件。Excel 模板可以用「**Excel の雛形を落とす**」（下载 Excel 模板）获取。
+
+![检查表的导出 / 导入](../../../assets/screenshots/master-inspection-template-transfer-01.png)
 
 已有相同代码的检查表时，会作为新版本追加（不会改写现有版本）。有无法导入的内容时，会显示件数和「**読めなかった行**」（无法读取的行）。
 

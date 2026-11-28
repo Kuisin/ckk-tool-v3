@@ -1,7 +1,7 @@
 ---
 title: "请款单 — 操作手册"
 description: "确认向客户请款的请款单，并记录发行、寄送、收款的情况。"
-screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu-01, invoice-sent-01]
+screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu-01, invoice-sent-01, invoice-pdf-01]
 ---
 用来确认向客户请款的 **请款单**（請求書），并记录发行、寄送、收款全过程的应用。操作代码是 `BL01`。
 
@@ -132,6 +132,8 @@ flowchart TD
 能看到 PDF 的是 **发行之后**。草稿期间 PDF 还没有生成，「**PDF**」标签页会显示「発行後に PDF を閲覧できます。」（发行后即可查看 PDF）。
 
 发行后，点界面右上角的「**PDF**」，请求书的 PDF 会在新标签页里打开，可以从那里打印或保存。在「**PDF**」标签页里也可以直接在画面中查看。
+
+![请款单的 PDF 标签页](../../../assets/screenshots/invoice-pdf-01.png)
 
 PDF 右上方的开具方栏中，印的是该请款单 **开具方** 公司的名称・地址・电话号码・合格请款单发行事业者登记号。公司印章（印影）也使用该公司登记的印章。想修改这些内容或登记印章时，请在[本公司法人](/manual/zh/operations/masters/own-company/user)（`MS0I`）中操作。
 

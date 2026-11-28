@@ -1,6 +1,7 @@
 ---
 title: "Pending list — User guide"
 description: "A single screen for your own work: work plans, pending approvals, privileged access requests, unanswered forms, completed requests, and document comments."
+screenshots: [my-tasks-01]
 ---
 A single screen for the things you personally need to do. The operation code is `CM01`. It used to be a separate app called "Approval management" (`PD03`), which has been merged with the work plans here.
 
@@ -39,6 +40,8 @@ Each row shows the planned date, time, step name, step status, work order number
 ## Pending approval
 
 Lists the documents waiting for approval, across document types — think of it as your approval inbox. **This tab does not appear at all if you don't have approval permission.**
+
+![Pending approval tab of the pending list](../../../assets/screenshots/my-tasks-01.png)
 
 > 💡 This list shows **only documents whose current approval step is yours** (you are in that step's approval group, or you are standing in as someone's delegate). On steps that need all members, a document disappears once you have approved it.
 

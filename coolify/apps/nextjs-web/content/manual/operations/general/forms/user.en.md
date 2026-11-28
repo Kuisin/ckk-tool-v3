@@ -1,7 +1,7 @@
 ---
 title: "Forms — User Manual"
 description: "Build your own survey or request/report sheets, then collect, summarise and export the answers."
-screenshots: []
+screenshots: [forms-detail-01, forms-list-01, forms-responses-01]
 ---
 Build your own survey or request/report sheets and collect the answers. The operation code is `CM02`.
 
@@ -37,6 +37,8 @@ To collect answers you need **both** to set the form to "published" **and** to s
 
 Opening the app shows the forms you have made and the forms shared with you. The list shows "Title", "Kind", "Reception" (scheduled / open / closed), "Status" (Draft / Published / Archived), "Responses", "Closed" and "Updated". Click a row to open that form.
 
+![Form list](../../../assets/screenshots/forms-list-01.png)
+
 The top of the detail screen shows the kind, reception, form code, open period, share URL and so on. Below that, the screen is split into tabs.
 
 - **Fields** … the questions in the form. Press **"Edit"** at the top right of the screen to change them.
@@ -44,6 +46,8 @@ The top of the detail screen shows the kind, reception, form code, open period, 
 - **Approval** … only for request-report forms. Sets who approves.
 - **Sharing** … who may see or answer.
 - **History** … who did what, and when.
+
+![Form details (Fields tab)](../../../assets/screenshots/forms-detail-01.png)
 
 > 💡 The "Approval" and "Sharing" tabs open in read-only mode. Press **Edit** at the top right of the tab to change it, then press Save.
 
@@ -194,6 +198,8 @@ skipped question from a printing fault.
 
 Press **View the summary** on the Responses tab (or **Summarize the responses** under "⋯" at the top right). Each question gets the chart that
 suits its type.
+
+![Responses tab (view summary, export)](../../../assets/screenshots/forms-responses-01.png)
 
 | Question type | What you get |
 |---|---|

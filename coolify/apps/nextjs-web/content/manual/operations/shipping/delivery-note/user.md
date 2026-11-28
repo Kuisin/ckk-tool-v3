@@ -1,7 +1,7 @@
 ---
 title: "納品書 — 操作マニュアル"
 description: "出荷書の確定で自動的にできる納品書を確認し、PDF にして印刷できるアプリです。"
-screenshots: [delivery-note-list-01, delivery-note-detail-noprice-01, delivery-note-detail-01]
+screenshots: [delivery-note-list-01, delivery-note-detail-noprice-01, delivery-note-detail-01, delivery-note-pdf-01]
 ---
 出荷した製品に添えてお届けする **納品書** を確認するアプリです（作成は出荷書の確定で自動的に行われ、**できた時点で発行済**です）。操作コードは `SH02` です。
 
@@ -110,6 +110,8 @@ PDF は、納品書ができた時点から見られます。発行元欄（会�
 
 - 「**PDF**」タブで、画面の中で PDF をそのまま確認できます。作り直したいときは「**再生成**」を押します。
 - 画面右上の「**…**」（点が 3 つのボタン）から「**PDFをダウンロード**」を選ぶと、ファイルとして保存できます。印刷はここから行ってください。
+
+![納品書の PDF タブ](../../../assets/screenshots/delivery-note-pdf-01.png)
 
 ![納品書の詳しい画面](../../../assets/screenshots/delivery-note-detail-01.png)
 

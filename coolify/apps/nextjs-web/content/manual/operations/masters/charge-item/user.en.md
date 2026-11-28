@@ -1,6 +1,7 @@
 ---
 title: "Charge items — User Manual"
 description: "An app for registering the things you bill for other than the price of the product, such as shipping and packing."
+screenshots: [master-charge-item-list-01]
 ---
 This app is for registering **the things you bill for other than the price of the product**, such as shipping, packing and costs paid on the customer's behalf. The operation code is `MS0G`.
 
@@ -14,6 +15,8 @@ This app is for registering **the things you bill for other than the price of th
 - For each item you can decide whether the amount is entered every time or is a set amount.
 - For each item you can decide the tax category (the consumption-tax category, such as taxable or tax exempt).
 - You can disable an item you no longer use.
+
+![Charge item list](../../../assets/screenshots/master-charge-item-list-01.png)
 
 > 💡 The items registered here appear as the choices for additional charges on the [指示書 (work order)](/manual/en/operations/production/work-order/user) (planned), the [出荷書 (delivery order)](/manual/en/operations/shipping/delivery-order/user) (final) and the [請求書 (invoice)](/manual/en/operations/billing/invoice/user).
 

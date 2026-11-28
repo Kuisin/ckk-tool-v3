@@ -1,6 +1,7 @@
 ---
 title: "Order Lines — User Guide"
 description: "Track each confirmed order line across all order acceptances, reserve stock, and follow production and shipping progress."
+screenshots: [order-line-list-01, order-line-detail-01]
 ---
 When an order acceptance is confirmed, each of its detail rows becomes an **order line**. This app lists those order lines across all order acceptances so you can follow **how far stock reservation, production and shipping have progressed**. The operation code is `SA05`.
 
@@ -53,6 +54,8 @@ Opening the app shows a list of confirmed order lines.
 - **納期 (Delivery date)** — the date promised to the customer.
 - **状態 (Status)** — a coloured badge showing where the line is.
 
+![Order line list](../../../assets/screenshots/order-line-list-01.png)
+
 Type an order line number, customer or product in the search box at the top to narrow the list. You can also filter with「**状態**」(Status) and「**注文種別**」(Order type) on the right. The「**注文請書一覧**」(order acceptances) button at the top right takes you to the [order acceptance](/manual/en/operations/sales/order-acceptance/user) list.
 
 Lines that have not been confirmed do not appear here, because they have no number yet. To see those, open the [order acceptance](/manual/en/operations/sales/order-acceptance/user).
@@ -89,6 +92,8 @@ Select a row to open its detail screen.
 At the top you see the order line number, customer (and branch), customer order ref., product, order type, quantity, unit price, amount, delivery date, lot number, marking number, source quote, delivery destination, sales rep, created by, reserved stock and shipped quantity. Below that,「**手続き状況**」(Progress) shows how far it has got through create → confirm → manufacture → ship, and links to the source order acceptance and quote, and to this line's work orders and delivery orders.
 
 At the bottom are the tabs「**概要**」(Overview — notes),「**指示書**」(Work orders),「**出荷**」(Shipping),「**設計**」(Design),「**メモ**」(Memo) and「**履歴**」(History).
+
+![Order line details](../../../assets/screenshots/order-line-detail-01.png)
 
 - Until a work order is created, the lot number reads「**未採番（指示書作成時に採番）**」(not numbered — numbered when the work order is created).
 - On a [regrind](/manual/en/operations/sales/order-acceptance/user#field-order-type) order line,「**再研磨品目**」(regrind item) is shown instead of the product, with「**研ぎ直す工具**」(tool to regrind) below it.

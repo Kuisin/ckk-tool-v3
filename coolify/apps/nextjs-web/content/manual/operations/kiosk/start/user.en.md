@@ -1,7 +1,7 @@
 ---
 title: "Shop-floor Tablet — Getting Started"
 description: "How to log in with your QR card and start using the shared tablet in the factory."
-screenshots: [kiosk-login-01, kiosk-home-01]
+screenshots: [kiosk-login-01, kiosk-home-01, kiosk-header-menu-01]
 ---
 This page is about the **shared tablet** in the factory (the shop-floor device). It is not a PC. It is a tablet that stays in the work area.
 
@@ -66,6 +66,8 @@ The bar at the very top shows the following.
 - Left … the name of the person logged in. Press it to switch 「**文字の大きさ**」 (Text size) and 「**言語**」 (Language), or to 「**ログアウト**」 (Log out). When nobody is logged in it shows 「**未ログイン**」 (Not logged in).
 - Centre … today's date and the time.
 - Right … a dot for the connection status and the name of this tablet (for example "1F 加工場 タブレット"). When a work location is set for this tablet, its name appears next to it. A green dot means all is well. Orange means the tablet is opened in a browser instead of the dedicated app, grey means it is not connected, and red means the tablet is not registered. A blinking dot means the connection is unstable.
+
+![Menu that opens when you tap your name (text size, language, log out)](../../../assets/screenshots/kiosk-header-menu-01.png)
 
 The battery left is shown at the right end of the bar at the very bottom.
 

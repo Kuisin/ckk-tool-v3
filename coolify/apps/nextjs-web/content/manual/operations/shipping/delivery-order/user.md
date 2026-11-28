@@ -1,7 +1,7 @@
 ---
 title: "出荷書 — 操作マニュアル"
 description: "できあがった製品をお客様へ送るときに、何をいくつ送ったかを記録する書類です。"
-screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-detail-01, delivery-order-menu-01, delivery-order-confirm-01, delivery-order-delivery-notes-01]
+screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-detail-01, delivery-order-menu-01, delivery-order-confirm-01, delivery-order-delivery-notes-01, delivery-order-charges-01]
 ---
 できあがった製品をお客様へ送るときに、**何をいくつ送ったか** を記録する **出荷書** を作るアプリです。操作コードは `SH01` です。
 
@@ -108,6 +108,8 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 4. 「**料金項目**」を選びます（項目は[料金マスタ](/manual/ja/operations/masters/charge-item/user)で登録します）。
 5. 必要なら、但し書き（「○○運輸 着払い」など）・数量・単価を入れます。料金マスタで金額が決まっている項目は、単価を直せません。
 6. 「**保存**」を押します。
+
+![出荷書の概要タブの追加料金](../../../assets/screenshots/delivery-order-charges-01.png)
 
 明細に載せたロットの[指示書](/manual/ja/operations/production/work-order/user)に追加料金の予定が書いてあると、出荷書を作ったときに自動で写されます（「**指示書 #◯ から複写**」と出ます）。同じ指示書のロットを何行載せても、写るのは 1 回だけです。
 

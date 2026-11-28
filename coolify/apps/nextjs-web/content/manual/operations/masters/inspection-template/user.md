@@ -1,7 +1,7 @@
 ---
 title: "検査表テンプレート — 操作マニュアル"
 description: "検査で何を測るかをあらかじめ決めておく「検査表のひな形」を作るアプリです。現場はこのひな形にそって検査を記録します。"
-screenshots: [master-inspection-template-list-01, master-inspection-template-new-01, master-inspection-template-detail-01, master-inspection-template-items-01, master-inspection-template-item-modal-01, master-inspection-template-versions-01]
+screenshots: [master-inspection-template-list-01, master-inspection-template-new-01, master-inspection-template-detail-01, master-inspection-template-items-01, master-inspection-template-item-modal-01, master-inspection-template-versions-01, master-inspection-template-image-01, master-inspection-template-sheet-01, master-inspection-template-groups-01, master-inspection-template-transfer-01]
 ---
 検査で **何を測るか** をあらかじめ決めておく、検査表の **ひな形** を作るアプリです。操作コードは `MS09` です。
 
@@ -101,6 +101,8 @@ screenshots: [master-inspection-template-list-01, master-inspection-template-new
 
 「**テンプレート情報**」タブの「**参考画像**」の欄で、測る場所の図や現物の写真を付けられます。付けた画像は、空欄シートと記入済みシートの PDF にも印刷されます。
 
+![テンプレート情報タブの参考画像の欄](../../../assets/screenshots/master-inspection-template-image-01.png)
+
 1. 「**テンプレート情報**」タブを開きます。
 2. 「**アップロード**」を押します。
 3. 画像のファイルを選びます（PNG・JPEG・WebP、5MB まで）。
@@ -195,6 +197,8 @@ flowchart TD
 
 詳しい画面の右上にある「**空欄シート**」を押すと、検査項目だけを並べた空欄の PDF が出ます。現場で手書きしたいときに印刷して使えます。参考画像を付けてあれば、それも一緒に印刷されます。
 
+![手書き用の空欄シート（PDF）](../../../assets/screenshots/master-inspection-template-sheet-01.png)
+
 ## グループで分ける
 
 ひな形が増えてきたら、**グループ**に分けておくと一覧で探しやすくなります。グループは一覧の絞り込みと見出し分けにだけ使うもので、合格・不合格の判定や PDF には関係しません。
@@ -203,6 +207,8 @@ flowchart TD
 2. 「**新しいグループ**」の欄にグループ名を入れます（例 製品検査記録）。
 3. 「**追加**」を押します。
 4. 「**閉じる**」を押します。
+
+![検査表グループの管理](../../../assets/screenshots/master-inspection-template-groups-01.png)
 
 できたグループは、ひな形の新規作成・編集の画面の「**グループ**」で選べます。グループの名前や並び順（「**上へ**」「**下へ**」）、有効・無効も「グループ管理」で直せます。検査表が入っているグループは削除できません。
 
@@ -213,6 +219,8 @@ flowchart TD
 1. 一覧画面の右上にある「**書き出し / 取込**」を押します。
 2. 書き出すときは「**JSON で書き出す**」を押します。有効な検査表がすべて書き出されます（一覧でチェックを入れてから「**選択を書き出し**」を押すと、その分だけになります）。
 3. 取り込むときは「**ファイルを選ぶ**」を押して、書き出した JSON か、Excel の雛形に書いたファイルを選びます。Excel の雛形は「**Excel の雛形を落とす**」で手に入ります。
+
+![検査表の書き出し / 取込](../../../assets/screenshots/master-inspection-template-transfer-01.png)
 
 同じコードの検査表がすでにあるときは、新しいバージョンとして追加されます（いまある版は書き換えません）。取り込めなかったものがあるときは、件数と「**読めなかった行**」が表示されます。
 

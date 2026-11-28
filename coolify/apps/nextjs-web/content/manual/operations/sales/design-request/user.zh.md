@@ -1,7 +1,7 @@
 ---
 title: "设计委托单 — 操作手册"
 description: "委托设计部门制作图纸，并把做好的图纸文件按版本保存下来的应用。"
-screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-detail-03, design-request-files-01]
+screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-detail-03, design-request-files-01, design-request-pdf-01]
 ---
 委托设计部门制作图纸，并把做好的图纸文件 **按版本（バージョン）保存下来** 的应用。操作码是 `SA06`。
 
@@ -237,6 +237,8 @@ sequenceDiagram
 对象产品・修订时的 **原图纸与变更理由**・**委托内容**・
 图纸文件的版本一览・审批和作业履历。这是准备用纸交给制造的内部文件，
 请不要外发。
+
+![设计委托单的单据（PDF 标签页）](../../../assets/screenshots/design-request-pdf-01.png)
 
 内容还可能变动的期间（未着手・進行中），每次打开都会用最新内容重新生成。
 完成之后内容不再变动，会直接显示已保存的那份。

@@ -1,7 +1,7 @@
 ---
 title: "Delivery Order — User Manual"
 description: "A document that records what products you sent, and how many, when you ship finished products to a customer."
-screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-detail-01, delivery-order-menu-01, delivery-order-confirm-01, delivery-order-delivery-notes-01]
+screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-detail-01, delivery-order-menu-01, delivery-order-confirm-01, delivery-order-delivery-notes-01, delivery-order-charges-01]
 ---
 This app creates a **delivery order** (出荷書) — a document that records **what you sent and how many** when finished products go out to a customer. The operation code is `SH01`.
 
@@ -108,6 +108,8 @@ When you want to bill the customer for something besides the product, such as sh
 4. Choose the 「**料金項目**」 (Charge item). Items are registered in the [charge item master](/manual/en/operations/masters/charge-item/user).
 5. If needed, enter a note (such as "○○ Transport, cash on delivery"), the quantity, and the unit price. For items whose amount is fixed in the charge item master, you cannot change the unit price.
 6. Press 「**保存**」 (Save).
+
+![Additional charges on the Overview tab of a delivery order](../../../assets/screenshots/delivery-order-charges-01.png)
 
 If the [work order](/manual/en/operations/production/work-order/user) of a lot on the lines has planned additional charges, they are copied when the delivery order is made (「**指示書 #◯ から複写**」 (copied from work order #◯) is shown). However many lines carry lots of the same work order, they are copied only once.
 
