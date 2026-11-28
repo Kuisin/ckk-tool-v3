@@ -56,11 +56,11 @@ flowchart TD
 - **角色分配** … 分配历史列表：角色名、rolename（系统内部名）、状态（有效/无效）、分配日期、解除时间。已解除的历史分配也会显示。持有 `user_admin` 的人会看到「編集」（编辑）按钮（`updateUserRoles`）。**被移除的角色不会整行删除，而是置为 `is_active = false` + `deactivate_at`**，因此何时被移除会留在历史中。
 - **所属据点** … 「据点」「地区」范围的权限所适用的据点。持有 `user_admin` 的人会看到「編集」（编辑）按钮（`updateUserPlants`）。没有该权限的用户只显示徽章。
 - **有效权限** … "该用户当前能做什么"的清单。**每个权限代码 1 行**，以显示名称（`permission-labels.ts`）为主，其下以小字显示代码（如 `quote`、`master`、`system`），行内以徽章排列操作（READ / CREATE / UPDATE 等），并显示**最宽的范围**（`groupPermissionsByCode` — `@ckk/authz-core`）。只有当范围因操作而异时，才按操作分别标注。
-- **ログイン履歴（直近 30 日）**（登录历史，最近 30 天）… 该用户的认证事件（成功・失败两者，最多 30 条）。结果・方式・失败理由・日期时间・来源 IP。
-- **登録端末（Web）**（已登记终端，Web）… `user_devices`（成功登录时 upsert 的终端台账）。标识・指纹开头・UA・登录次数・最后使用・最后 IP・归属徽章。这是「是否为平时使用的终端」的参考，并非终端识别。
+- **ログイン履歴（直近 30 日）**（登录历史，最近 30 天）… 该用户的认证事件（成功・失败两者，最多 30 条）。结果・方式・失败理由・日期时间（IP・UA・终端指纹・关联键已由 `toEmbeddedLoginAttemptRow` 去掉）。
+- **登録端末（Web）**（已登记终端，Web）… `user_devices`（成功登录时 upsert 的终端台账）。标识・登录次数・最后使用・归属徽章（指纹・UA・最后 IP 已由 `toEmbeddedUserDeviceRow` 去掉）。这是「是否为平时使用的终端」的参考，并非终端识别。
 - **利用停止**（停用）… 临时停用（必须填写预定解除时间）/ 无期限停用。管理员可不填理由，其他人必须填写理由，并成为变更申请。经确认对话框后执行。**无法停用自己和最后一位管理员**（`canSuspend` — `lib/user-suspension-core.ts`）。
 
-> **登录历史与已登记终端不经过特权操作。** SY0D 的详情（IP・终端指纹）需要 `personal_data.login_history_detail` 的审批，但在 SY01 的详情中只需 `user_admin`（READ）即可看到同类信息（IP・指纹开头・归属）。
+> **登录历史与已登记终端只对拥有 `personal_data:READ` 的查看者**由服务器读取并传递（与 SY0D 的入口相同；`system:ADMIN` 照常放行）。没有该权限的查看者不会收到任何行，改为显示提示和前往 SY0D 的链接。即使有该权限，这里也不显示 IP・终端指纹・UA，只能在 SY0D 的详情抽屉（特权操作 `personal_data.login_history_detail`）中查看。仅显示不会启动提权计时（不调用 `useElevation`）。
 
 ### 初始管理员（`admin`）
 

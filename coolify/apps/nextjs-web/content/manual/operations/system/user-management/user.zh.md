@@ -97,8 +97,10 @@ screenshots: [settings-users-list-01, settings-users-detail-01, settings-users-r
 
 这个人的登录记录。最近 30 天内成功和失败的记录都会按从新到旧的顺序排列。
 
+> 💡 此栏与下面的「登録端末（Web）」只对拥有「个人数据查看」权限的人显示。没有该权限的人会看到「查看登录历史与已登记终端需要“个人数据查看”（personal_data）权限。」的提示，以及前往[登录历史](/manual/zh/operations/system/login-history/user)（`SY0D`）的链接。
+
 - 显示「**成功**」（绿色）或「**失敗**」（失败，红色）以及登录方式。失败时还会显示原因。
-- 右侧是日期时间，下方是连接来源（IP 地址）。
+- 右侧是日期时间。连接来源（IP 地址）等详细内容，请在[登录历史](/manual/zh/operations/system/login-history/user)（`SY0D`）获得审批后查看。
 - 若失败持续发生，可以借此确认是本人输错，还是有人在尝试登录。要统一查看所有人的记录时，请使用[登录历史](/manual/zh/operations/system/login-history/user)（`SY0D`）。
 - 没有记录时显示「**この期間のログイン記録はありません**」（此期间没有登录记录）。
 
@@ -106,7 +108,7 @@ screenshots: [settings-users-list-01, settings-users-detail-01, settings-users-r
 
 这个人从电脑等浏览器登录时使用过的终端一览。这是判断「是否为平时使用的终端」的参考，并不能确定是哪一台终端。
 
-- 显示终端的标识（如「Chrome / Windows 11」）、登录次数、最后使用时间和连接来源。
+- 显示终端的标识（如「Chrome / Windows 11」）、登录次数和最后使用时间。
 - 还会附带是否为公司终端的自动判定（终端区分）徽章。含义请参见[登录历史](/manual/zh/operations/system/login-history/user)中的「终端区分」。
 - 没有内容时显示「**登録された端末はありません**」（没有已登记的终端）。
 

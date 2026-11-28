@@ -97,8 +97,10 @@ When there is nothing, 「**権限がありません**」 (No permissions) is sh
 
 The person's login records. Both successful and failed logins from the last 30 days are listed, newest first.
 
+> 💡 This block and 「登録端末（Web）」 below are shown only to people with the "Personal data access" permission. Others see the notice "Viewing login history and registered devices requires the "Personal data access" permission (personal_data)." and a link to [Login history](/manual/en/operations/system/login-history/user) (`SY0D`).
+
 - Each line shows 「**成功**」 (Success, green) or 「**失敗**」 (Failure, red) and how they logged in. For a failure, the reason is shown too.
-- The date and time are on the right, and where they connected from (IP address) is below.
+- The date and time are on the right. Details such as where they connected from (IP address) are checked in [Login history](/manual/en/operations/system/login-history/user) (`SY0D`) after approval.
 - If failures keep happening, it is a cue to check whether the person is mistyping or whether someone else is trying. To look at everyone at once, use [Login history](/manual/en/operations/system/login-history/user) (`SY0D`).
 - When there are no records, 「**この期間のログイン記録はありません**」 (There are no login records in this period) is shown.
 
@@ -106,7 +108,7 @@ The person's login records. Both successful and failed logins from the last 30 d
 
 The devices the person used when logging in from a browser, such as on a PC. It is a guide to "is this the device they usually use"; it does not identify a device for certain.
 
-- Each device shows a label (such as "Chrome / Windows 11"), how many times they logged in, when it was last used, and where it connected from.
+- Each device shows a label (such as "Chrome / Windows 11"), how many times they logged in, and when it was last used.
 - A badge shows the automatic check of whether it is a company device (device type). For what it means, see "Device type" in [Login history](/manual/en/operations/system/login-history/user).
 - When there is nothing, 「**登録された端末はありません**」 (There are no registered devices) is shown.
 
