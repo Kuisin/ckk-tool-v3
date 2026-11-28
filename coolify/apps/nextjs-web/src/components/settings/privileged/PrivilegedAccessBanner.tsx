@@ -1,6 +1,7 @@
 import { Alert, Anchor, Badge, Group, Stack, Text } from "@mantine/core";
 import { IconShieldCheck, IconShieldLock } from "@tabler/icons-react";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import { normalizeLocale } from "@/lib/i18n";
 import { peekElevations } from "@/lib/privileged-access";
 import {
   ELEVATION_CODE_LABEL,
@@ -23,7 +24,8 @@ export async function PrivilegedAccessBanner({
 }: {
   code: ElevationCode;
 }) {
-  const tr = await getTranslations();
+  const [tr, rawLocale] = await Promise.all([getTranslations(), getLocale()]);
+  const locale = normalizeLocale(rawLocale);
   const ops = operationsForCode(code);
   const views = await peekElevations(ops.map((o) => o.key));
   const entries = ops.map((o) => ({ op: o, view: views[o.key] }));
@@ -34,7 +36,7 @@ export async function PrivilegedAccessBanner({
 
   const allowed = entries.filter((e) => e.view?.allowed);
   const pending = entries.filter((e) => e.view?.pending);
-  const label = ELEVATION_CODE_LABEL[code].ja;
+  const label = ELEVATION_CODE_LABEL[code][locale];
 
   // 未使用の付与では remainingMs が窓の終わりまでを指す。持ち時間と取り違え
   // られるので、時計が動いてから（ACTIVE）だけ残りを出す。
@@ -88,7 +90,7 @@ export async function PrivilegedAccessBanner({
               key={op.key}
               variant={view?.allowed ? "filled" : "light"}
             >
-              {op.label.ja}
+              {op.label[locale]}
               {view?.allowed && remainingLabel(view.remainingMs, view.state)
                 ? `（${remainingLabel(view.remainingMs, view.state)}）`
                 : view?.pending

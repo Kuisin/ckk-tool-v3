@@ -2828,7 +2828,9 @@
       "lotInputWithName": "{name} のロット入力",
       "defaultWithLabel": "既定（{label}）",
       "workHoursWithName": "{name} の作業時間 (h)",
-      "site": "拠点"
+      "site": "拠点",
+      "addRequiredSteps": "必須工程を自動追加（{count}件）",
+      "requiredStepsAdded": "必須工程を自動追加しました: {steps}"
     },
     "stepCard": {
       "othersCount": "ほか {count} 名",
@@ -4322,7 +4324,11 @@
       "loginScreenLanguageDefault": "既定（日本語）",
       "hoursValue": "{n} 時間",
       "minutesValue": "{n} 分",
-      "daysValue": "{n} 日"
+      "daysValue": "{n} 日",
+      "mapShort": "マップ",
+      "inUseBy": "{name} が利用中",
+      "lastActivityAt": "最終アクティビティ {at}",
+      "androidApiWithPatch": "API {sdk}（パッチ {patch}）"
     },
     "links": {
       "links": "リンク管理",
@@ -4991,7 +4997,9 @@
       "thereAreOlderRecordsNarrowThe": "さらに古い記録があります。期間や絞り込みを狭めてください。",
       "thereAreNoRegisteredDevices": "登録された端末はありません",
       "unknownDevice": "不明な端末",
-      "success": "成功"
+      "success": "成功",
+      "loginCount": "{count} 回",
+      "lastSeenAt": "最終 {at}"
     },
     "displayContentEditor": {
       "templateSettings": "{name}の設定",
@@ -5074,7 +5082,8 @@
     "loginAttemptDrawer": {
       "theAutomationFlagNavigatorwebdriverIs": "自動操作フラグ（navigator.webdriver）が立っています",
       "theDeviceSClockIsMinutes": "端末の時計がサーバーと {minutes} 分ずれています",
-      "scanKindContentNotStored": "{scanKind}（内容は保存していません）"
+      "scanKindContentNotStored": "{scanKind}（内容は保存していません）",
+      "collectedSignals": "収集シグネチャ（v{version}）"
     },
     "kioskDeviceLogsModal": {
       "durationMinutes": "{minutes}分",
@@ -5686,7 +5695,16 @@
         "offBadge": "承認なし",
         "notSetYet": "まだ設定していません（いまの動きを表示しています）",
         "saveFailed": "承認の使用設定を保存できませんでした"
-      }
+      },
+      "stepNumber": "第{n}段",
+      "ruleCountBadge": "条件付き {count} 本",
+      "requiredPermissionLine": "承認に必要な権限: {permission} の閲覧または編集",
+      "setUp": "設定",
+      "permissionNote": "{target}の承認・差し戻しには、「{permission}」を閲覧または編集できる権限（<mono>{code}:READ / UPDATE</mono>）が要ります。誰が承認するかは、この画面で指定した{who}だけで決まります。書類を開けない人は、指定しても承認できません（権限はユーザー管理 SY01 のロールで決まります）。",
+      "noConditionalFlows": "条件付きフローはありません。すべての{target}が既定フローで進みます。",
+      "priorityBadge": "優先 {n}",
+      "stepsLine": "段: {steps}",
+      "catchAll": "条件なし — すべての{target}に一致します（キャッチオール）。"
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "このグループはどの承認フローにも使われていません（承認設定の「承認フロー」で段に割り当てます）。",
@@ -5819,20 +5837,20 @@
       "theBusinessPartnerWasCreated": "取引先を作成しました",
       "newBusinessPartner": "取引先 新規作成",
       "formatBpNnnnnNumberedAutomatically": "形式: BP-NNNNN（自動採番）",
-      "chooseInWhatCapacityThisPartner": "この取引先をどの立場で使うかを選ぶ（bp_role_assignments）。複数選択でき、後から付け外しできる。",
+      "chooseInWhatCapacityThisPartner": "この取引先をどの立場で使うかを選ぶ。複数選択でき、後から付け外しできる。",
       "youCanRegisterItWithNo": "ロール未設定でも登録できます。書類で選べるようにするには、あとで\n            ロールを付けてください。",
-      "closingDayPaymentTermsAndInvoice": "締日・支払条件・請求方法（bp_customer_attrs）。",
+      "closingDayPaymentTermsAndInvoice": "締日・支払条件・請求方法。",
       "customerInformation": "顧客情報",
       "legacyCustomerCodeOptional": "旧顧客コード（任意）",
       "billThisPartnerItself": "この取引先自身に請求",
       "n31EndOfMonth": "31 = 月末",
       "paymentTermsDays": "支払サイト（日数）",
       "consigneeForConsignmentSales": "委託先（委託販売の対象）",
-      "theSalesRepsForThisCustomer": "この顧客を担当する営業（bp_sales_reps）。複数登録でき、見積書・注文請書などの営業担当はこの一覧から選ぶ。主担当が新規書類の既定値になる。",
-      "endUserSpecificAttributesBpEnd": "需要家固有属性（bp_end_user_attrs）。",
+      "theSalesRepsForThisCustomer": "この顧客を担当する営業。複数登録でき、見積書・注文請書などの営業担当はこの一覧から選ぶ。主担当が新規書類の既定値になる。",
+      "endUserSpecificAttributesBpEnd": "最終需要家としての情報。",
       "endUserInformation": "最終需要家情報",
       "automotiveParts": "自動車部品",
-      "typePaymentTermsAndStandardLead": "種別・支払条件・標準リードタイム（bp_vendor_attrs）。",
+      "typePaymentTermsAndStandardLead": "種別・支払条件・標準リードタイム。",
       "supplierAndSubcontractorInformation": "仕入先・外注先情報",
       "legacySupplierCodeOptional": "旧仕入先コード（任意）",
       "bankAccountForPayments": "支払振込先の口座情報。",
@@ -6015,7 +6033,8 @@
       "templateCountValue": "{count}件の検査表",
       "toggleRequiredFor": "{name} の 必須 / 任意 を切り替える",
       "markedRequired": "必須にしました",
-      "markedOptional": "任意にしました"
+      "markedOptional": "任意にしました",
+      "autoComputedRange": "自動計算: 下限 {min} 〜 上限 {max}{unit}"
     },
     "materialNumbering": {
       "theComponentWasAdded": "構成要素を追加しました",
@@ -6027,10 +6046,6 @@
       "disable": "無効化する",
       "thereAreNoComponents": "構成要素がありません",
       "codeNumbering": "採番構成",
-      "materialTypeCode": "材種コード =",
-      "manufacturerGrade2ShapeKind4": "[メーカー][材種2桁][形状][種類4桁]",
-      "materialTypeFinishDia103": "[材種]-[黒皮研磨][径×10 3桁]-[全長3桁]",
-      "codesAreEmbeddedInCompositeCodes": "。\n          コードは合成コードに埋め込まれるため削除できません（無効化のみ）。\n          直径・全長は素材作成時にも自動登録されます。",
       "addDiameter": "直径の追加",
       "addKind": "種類の追加",
       "addLengthVariant": "全長の追加",
@@ -6038,7 +6053,8 @@
       "addManufacturerGrade": "メーカー材種の追加",
       "addShape": "形状の追加",
       "addSurfaceFinish": "黒皮・研磨区分の追加",
-      "codePreview": "コード: {code}"
+      "codePreview": "コード: {code}",
+      "codeStructureNote": "材種コード = <doc>[メーカー][材種2桁][形状][種類4桁]</doc>、素材コード = <doc>[材種]-[黒皮研磨][径×10 3桁]-[全長3桁]</doc>。コードは合成コードに埋め込まれるため削除できません（無効化のみ）。直径・全長は素材作成時にも自動登録されます。"
     },
     "materialTypes": {
       "notConvertedLegacy": "未変換（レガシー）",
@@ -6116,7 +6132,7 @@
       "eGF01": "例: F01",
       "eGHonshaKojo": "例: ほんしゃこうじょう",
       "contactAndAddress": "連絡先・住所",
-      "regionsCoveredByRegionScopePermissions": "REGION スコープ権限の対象地域",
+      "regionsCoveredByRegionScopePermissions": "地域単位の権限で、この拠点が含まれる地域",
       "selectARegion": "地域を選択",
       "eG1234567": "例: 123-4567",
       "eG0312345678": "例: 03-1234-5678",
@@ -6130,7 +6146,7 @@
       "thereAreNoSites": "拠点がありません",
       "theRegionWasAdded": "地域を追加しました",
       "addARegion": "地域の追加",
-      "itCannotBeChangedBecauseRegion": "REGION スコープ権限（scope_values）が参照する識別子のため変更できません",
+      "itCannotBeChangedBecauseRegion": "地域単位の権限設定がこのコードを参照しているため変更できません",
       "eGJp": "例: jp",
       "eGJapan": "例: 日本",
       "theRegionWasEnabled": "地域を有効化しました",
@@ -6139,7 +6155,7 @@
       "addARegion2": "地域を追加",
       "sites": "拠点数",
       "thereAreNoRegionsCreateOne": "地域がありません — 「地域を追加」から作成してください",
-      "theRegionCodeIsTheIdentifier": "地域コードは REGION スコープ権限（scope_values）が参照する識別子のため\n        作成後は変更できません。削除は拠点から参照されていない地域のみ可能です。",
+      "theRegionCodeIsTheIdentifier": "地域コードは地域単位の権限設定から参照されるため、作成後は変更できません。削除は拠点から参照されていない地域のみ可能です。",
       "deleteConfirm": "拠点「{name}」を削除します。この操作は取り消せません。",
       "deleteRegionConfirm": "地域「{code} {name}」を削除します。この操作は取り消せません。",
       "deleted": "拠点「{name}」を削除しました",
@@ -6474,7 +6490,10 @@
       "unsupportedFormat": "この形式は取り込めません（{reason}）。書き出したファイルをそのまま入れてください",
       "formatMismatch": "形式が違います",
       "noTemplatesToExport": "書き出す検査表がありません",
-      "relatedStepNotFound": "関連工程「{code}」が見つかりません"
+      "relatedStepNotFound": "関連工程「{code}」が見つかりません",
+      "exportUseCase": "別の環境へ持っていくときや、控えを取るときに使います。",
+      "createdItem": "{code}（v{version}・項目 {items} 件）",
+      "rowError": "{row} 行目: {message}"
     },
     "bpBaseFields": {
       "kanaPlaceholder": "エービーシーセイサクショ"
@@ -7288,14 +7307,15 @@
       "linkNotFound": "リンクが見つかりません",
       "thisLinkWasDeletedOrThe": "このリンクは削除されたか、URL が正しくありません。",
       "thisLinkIsBlocked": "このリンクはブロックされています",
-      "anAdministrator": "管理者が",
       "ifThisWasNotYouContact": "心当たりがない場合はシステム管理者に連絡してください。",
       "youAreLeavingForAnExternal": "外部サイトへ移動します",
       "thisLinkLeavesTheInternalSystem": "このリンクは社内システムの外へ移動します。移動先を確認してください。",
       "destination": "移動先",
       "doNotEnterInternalPasswordsOr": "社内のパスワードや業務データを、移動先のサイトへ入力しないでください。",
       "continueAndLeave": "続行して移動",
-      "goToAnExternalSite": "外部サイトへ移動"
+      "goToAnExternalSite": "外部サイトへ移動",
+      "blockedHostMessage": "管理者が <strong>{hostname}</strong> への移動を禁止しています。",
+      "reasonLabel": "理由: {reason}"
     }
   },
   "admin": {
@@ -7927,15 +7947,14 @@
       "myPermissions": "自分の権限",
       "administrator": "管理者",
       "theyHoldEveryPermissionTheyCan": "すべての権限を持っています。特権操作も申請なしで実行できますが、\n            その場合は「管理者権限で実行した」ことが操作履歴に残ります。",
-      "permissionsAndRolesInTheManual": "マニュアルの「権限とロール」",
-      "isWhereItLives": "にあります。",
       "evenIfYouHoldThePermission": "ここにある操作は、権限を持っていても",
       "itCannotBeRunAsIt": "そのままでは実行できません",
       "andCanOnlyBeDoneFor": "で申請し、別の人の承認を受けた期間だけ行えます。",
       "remainingHoursMinutes": "残り {hours} 時間 {minutes} 分",
       "remainingMinutes": "残り {minutes} 分",
       "requestRequired": "申請が必要",
-      "scopeLabel": "範囲: {scopes}"
+      "scopeLabel": "範囲: {scopes}",
+      "grantedSummary": "いま持っているのは {total} 件中 <b>{granted} 件</b>です。権限は役割（ロール）を通して付きます。足りないときは管理者に相談してください。読み方は<link>マニュアルの「権限とロール」</link>にあります。"
     },
     "notificationSettingsForm": {
       "theNotificationSettingsWereUpdated": "通知設定を更新しました",
@@ -11119,7 +11138,7 @@
     },
     "kioskDevice": {
       "name": {
-        "label": "端末名（日本語 / English）",
+        "label": "端末名",
         "summary": "一覧・フロアマップ・操作履歴のバッジに出る名前です。「第一工場 入口」のように、現物を探せる名前にしてください。"
       },
       "plant": {

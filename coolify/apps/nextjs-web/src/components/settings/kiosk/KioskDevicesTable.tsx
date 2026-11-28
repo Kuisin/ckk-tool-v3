@@ -654,14 +654,16 @@ export function KioskDevicesTable({
             leftSection={<IconMap2 size={14} />}
             style={{ flexShrink: 0 }}
           >
-            {isMobile ? "マップ" : tr("common.floorMap")}
+            {isMobile ? tr("settings.kiosk.mapShort") : tr("common.floorMap")}
           </SecondaryButton>
           <CreateButton
             loading={isPending}
             onClick={() => setCreateOpen(true)}
             style={{ flexShrink: 0 }}
           >
-            {isMobile ? "作成" : tr("settings.kiosk.createADeviceProfile")}
+            {isMobile
+              ? tr("common.create2")
+              : tr("settings.kiosk.createADeviceProfile")}
           </CreateButton>
         </Group>
       }
@@ -728,12 +730,14 @@ export function KioskDevicesTable({
                 {r.status === "ACTIVE" && <OnlineDot online={online} />}
                 {userName && (
                   <Text c="blue" size="xs" truncate>
-                    {userName} が利用中
+                    {tr("settings.kiosk.inUseBy", { name: userName })}
                   </Text>
                 )}
               </Group>
               <Text c="dimmed" size="xs">
-                最終アクティビティ {lastAt ? fmt.dateTime(lastAt) : "—"}
+                {tr("settings.kiosk.lastActivityAt", {
+                  at: lastAt ? fmt.dateTime(lastAt) : "—",
+                })}
               </Text>
             </Stack>
           );

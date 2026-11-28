@@ -334,8 +334,9 @@ export function ApprovalFlowRulesSection({
         <Stack gap="sm">
           {rules.length === 0 && (
             <Text c="dimmed" size="sm">
-              条件付きフローはありません。すべての{targetLabel}
-              が既定フローで進みます。
+              {tr("master.approvalFlows.noConditionalFlows", {
+                target: targetLabel,
+              })}
             </Text>
           )}
           {rules.map((rule, i) => (
@@ -344,7 +345,7 @@ export function ApprovalFlowRulesSection({
                 <Stack gap={4} style={{ minWidth: 0 }}>
                   <Group gap="xs" wrap="wrap">
                     <Badge color="indigo" size="sm" variant="light">
-                      優先 {i + 1}
+                      {tr("master.approvalFlows.priorityBadge", { n: i + 1 })}
                     </Badge>
                     <Text fw={600} size="sm">
                       {rule.nameJa}
@@ -365,9 +366,11 @@ export function ApprovalFlowRulesSection({
                     )}
                   </Text>
                   <Text c="dimmed" size="xs">
-                    段:{" "}
-                    {rule.steps.map((s) => s.nameJa).join(" → ") ||
-                      tr("common.notSet")}
+                    {tr("master.approvalFlows.stepsLine", {
+                      steps:
+                        rule.steps.map((s) => s.nameJa).join(" → ") ||
+                        tr("common.notSet"),
+                    })}
                   </Text>
                 </Stack>
                 <Group gap={4} wrap="nowrap">
@@ -481,7 +484,7 @@ export function ApprovalFlowRulesSection({
             </Text>
             {conditions.length === 0 && (
               <Text c="dimmed" size="xs">
-                条件なし — すべての{targetLabel}に一致します（キャッチオール）。
+                {tr("master.approvalFlows.catchAll", { target: targetLabel })}
               </Text>
             )}
             {conditions.map((c) => {
@@ -579,7 +582,7 @@ export function ApprovalFlowRulesSection({
                   wrap={isMobile ? "wrap" : "nowrap"}
                 >
                   <Badge color="blue" mb={6} size="sm" variant="light">
-                    第{i + 1}段
+                    {tr("master.approvalFlows.stepNumber", { n: i + 1 })}
                   </Badge>
                   <Box flex={1} miw={0}>
                     <LocalizedTextInput
