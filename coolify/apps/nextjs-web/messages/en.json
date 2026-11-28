@@ -4576,8 +4576,7 @@
       "notificationTypesSentImmediately": "Notification types sent immediately",
       "theMaximumListedInOneEmail": "The maximum listed in one email. Anything over is folded into \"and N more\" (folded notifications count as sent and do not reappear next time).",
       "itemsPerEmail": "Items per email",
-      "maxItems": "Max items",
-      "resetToDefault": "Reset to default"
+      "maxItems": "Max items"
     },
     "productTypeEditForm": {
       "enterTheTypeNameInJapanese": "Enter the type name in Japanese",

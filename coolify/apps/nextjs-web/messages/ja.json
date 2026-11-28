@@ -4576,8 +4576,7 @@
       "notificationTypesSentImmediately": "即時に送る通知の種別",
       "theMaximumListedInOneEmail": "1 通に並べる件数の上限。超えた分は「ほか N 件」に畳まれます（畳まれた通知も送信済みとして扱われ、次の回には載りません）。",
       "itemsPerEmail": "1 通の件数",
-      "maxItems": "最大件数",
-      "resetToDefault": "元に戻す"
+      "maxItems": "最大件数"
     },
     "productTypeEditForm": {
       "enterTheTypeNameInJapanese": "種別名（日本語）を入力してください",

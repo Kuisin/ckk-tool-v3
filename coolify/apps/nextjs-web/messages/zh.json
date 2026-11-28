@@ -4576,8 +4576,7 @@
       "notificationTypesSentImmediately": "立即发送的通知类别",
       "theMaximumListedInOneEmail": "单封邮件中列出的上限件数。超出部分将折叠为「其他 N 件」（折叠的通知也视为已发送，下次不再列出）。",
       "itemsPerEmail": "每封件数",
-      "maxItems": "最多件数",
-      "resetToDefault": "恢复默认"
+      "maxItems": "最多件数"
     },
     "productTypeEditForm": {
       "enterTheTypeNameInJapanese": "请输入类别名称（日语）",
