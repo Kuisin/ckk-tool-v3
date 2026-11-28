@@ -167,7 +167,9 @@ export function DocumentDetail({
               : []),
           ]}
           onEdit={
-            canEdit
+            // アーカイブ中は編集を出さない — 保存すると状態が下書きへ戻り、
+            // 黙ってアーカイブが外れるため（サーバーも止める）。理由は下の Alert。
+            canEdit && !isArchived
               ? () => router.push(`/general/documents/${page.pageNumber}/edit`)
               : undefined
           }
@@ -183,6 +185,11 @@ export function DocumentDetail({
       title={page.title}
       updatedAt={fmt.dateTime(page.updatedAt)}
     >
+      {canEdit && isArchived && (
+        <Alert color="gray" variant="light">
+          {tr("general.documentActions.editBlockedWhileArchived")}
+        </Alert>
+      )}
       {/* アーカイブ中は公開の操作を出さない（解除してから公開する）。 */}
       {!isArchived && (
         <PagePublishCard

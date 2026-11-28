@@ -320,6 +320,21 @@ export function localized(
 }
 
 /**
+ * フォームの「ja 欄 + 多言語ポップアップ」の形（`nameJa` + `nameTranslations`）を
+ * 表示言語で引く。`localized()` と同じ規則で落ちるが、何も入っていなければ
+ * `"—"` ではなく空文字を返す（呼び出し側が既定の表示に差し替えられるように）。
+ */
+export function localizedDraft(
+  ja: string,
+  translations: Record<string, string> | null | undefined,
+  locale: Locale | string = "ja",
+): string {
+  const value: LocalizedTextInput = { ...(translations ?? {}), ja };
+  const text = localized(value, locale);
+  return text === "—" && !Object.values(value).some(Boolean) ? "" : text;
+}
+
+/**
  * 編集フォーム用: 保存済みの `{ ja, en, ... }` から「日本語以外」を
  * `Record<言語コード, 値>` として取り出す（`LocalizedTextInput` の多言語
  * ポップアップの初期値）。`localizedInput` が未入力の英語を自動で日本語と

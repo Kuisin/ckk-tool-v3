@@ -146,7 +146,13 @@ A. That tablet has not been registered yet, or its registration has been removed
 <!-- permissions:start -->
 ## Permissions required
 
-This screen needs no special permission — being signed in is enough.
+Opening this screen needs no special permission, but the operations below each need one.
+
+### Permissions per operation
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Use the apps after logging in (step execution, work order scan, work order list, work location) | Work order（`work_order`）— View |
 
 Permissions come through roles. If something is missing, ask an administrator.
 

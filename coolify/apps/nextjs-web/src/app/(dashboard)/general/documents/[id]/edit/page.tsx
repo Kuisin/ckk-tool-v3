@@ -21,14 +21,19 @@ export default async function EditDocumentPage({
   if (!page) notFound();
 
   const access = await pageAccess(page);
-  if (!access.canEdit) {
+  // アーカイブ中は編集させない（保存で黙ってアーカイブが外れるため）。
+  if (!access.canEdit || page.status === "ARCHIVED") {
     return (
       <AccessDenied
         breadcrumbs={[
           tr("common.general"),
           { label: tr("common.internalDocuments"), href: "/general/documents" },
         ]}
-        message={tr("general.documents.youDoNotHavePermissionTo")}
+        message={
+          access.canEdit
+            ? tr("general.documentActions.editBlockedWhileArchived")
+            : tr("general.documents.youDoNotHavePermissionTo")
+        }
         title={page.title}
       />
     );

@@ -38,7 +38,8 @@ export default async function RevisionsPage({
   return (
     <RevisionsView
       bodies={bodies}
-      canEdit={access.canEdit}
+      // アーカイブ中は「この版に戻す」も出さない（保存と同じ経路を通るため）。
+      canEdit={access.canEdit && page.status !== "ARCHIVED"}
       pageNumber={page.pageNumber}
       pageTitle={page.title}
       revisions={revisions.slice(0, 30)}

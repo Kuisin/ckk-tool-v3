@@ -2466,6 +2466,7 @@
       "commentTooLong": "The comment is too long",
       "createFailed": "Could not create",
       "editBlockedWhilePending": "The body cannot be edited while a publish approval is pending (have it sent back first, or wait for the decision)",
+      "editBlockedWhileArchived": "Archived documents cannot be edited. Unarchive the document first",
       "editPermissionDenied": "You do not have permission to edit this document",
       "invalidShareSettings": "Invalid sharing settings",
       "loginRequired": "Please log in",
@@ -11070,7 +11071,7 @@
         "summary": "The site this work location belongs to. When selecting a step's execution location, only work locations at this site appear as options."
       },
       "code": {
-        "label": "Code / Name (Japanese / English)",
+        "label": "Code / Name",
         "summary": "The management number and name of the work location. It can be selected as a step's execution location."
       },
       "type": {
@@ -11104,7 +11105,7 @@
         "summary": "The site and floor this location belongs to. Inventory is tracked by storage location at this level."
       },
       "code": {
-        "label": "Code / Name (Japanese / English)",
+        "label": "Code / Name",
         "summary": "The management number and name of the location. Once registered, it can be selected as a storage location for inventory."
       },
       "sortOrder": {

@@ -20,6 +20,7 @@ import {
   type FlowApprover,
 } from "@/components/master/approval-flows/ApproverPermissionBadge";
 import { approvalModeLabel } from "@/lib/enum-labels";
+import { localizedDraft } from "@/lib/format";
 import type { FormFlowStep } from "./FormApprovalPanel";
 
 export function FormFlowSummary({
@@ -85,7 +86,7 @@ export function FormFlowSummary({
                 {i + 1}
               </Badge>
               <Text fw={600} size="sm">
-                {step.nameJa ||
+                {localizedDraft(step.nameJa, step.nameTranslations, locale) ||
                   tr("master.approvalFlowEditor.nthApproval", { n: i + 1 })}
               </Text>
               <IconArrowRight size={14} />
