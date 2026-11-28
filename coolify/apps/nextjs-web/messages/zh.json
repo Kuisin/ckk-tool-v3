@@ -4322,7 +4322,11 @@
       "loginScreenLanguageDefault": "默认（日语）",
       "hoursValue": "{n} 小时",
       "minutesValue": "{n} 分钟",
-      "daysValue": "{n} 天"
+      "daysValue": "{n} 天",
+      "mapShort": "地图",
+      "inUseBy": "{name} 正在使用",
+      "lastActivityAt": "最后活动 {at}",
+      "androidApiWithPatch": "API {sdk}（补丁 {patch}）"
     },
     "links": {
       "links": "链接管理",

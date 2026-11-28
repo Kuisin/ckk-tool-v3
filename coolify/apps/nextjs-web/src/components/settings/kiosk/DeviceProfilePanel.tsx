@@ -136,7 +136,12 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
               label="Android"
               value={
                 profile.sdkInt
-                  ? `API ${profile.sdkInt}${profile.securityPatch ? `（パッチ ${profile.securityPatch}）` : ""}`
+                  ? profile.securityPatch
+                    ? tr("settings.kiosk.androidApiWithPatch", {
+                        sdk: profile.sdkInt,
+                        patch: profile.securityPatch,
+                      })
+                    : `API ${profile.sdkInt}`
                   : "—"
               }
             />
@@ -146,7 +151,7 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
             />
             <FieldValue
               label={tr("settings.kiosk.deviceOwner")}
-              value={profile.isDeviceOwner ? "はい" : tr("settings.kiosk.no")}
+              value={profile.isDeviceOwner ? tr("common.yes") : tr("settings.kiosk.no")}
             />
             <FieldValue
               label="Lock Task"

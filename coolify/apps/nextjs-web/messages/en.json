@@ -4322,7 +4322,11 @@
       "loginScreenLanguageDefault": "Default (Japanese)",
       "hoursValue": "{n} hours",
       "minutesValue": "{n} min",
-      "daysValue": "{n} days"
+      "daysValue": "{n} days",
+      "mapShort": "Map",
+      "inUseBy": "In use by {name}",
+      "lastActivityAt": "Last activity {at}",
+      "androidApiWithPatch": "API {sdk} (patch {patch})"
     },
     "links": {
       "links": "Links",
