@@ -4698,6 +4698,8 @@
       "loginHistoryLast30Days": "登录历史（最近 30 天）",
       "thereAreNoLoginRecordsIn": "此期间没有登录记录",
       "registeredDevicesWeb": "已登记终端（Web）",
+      "loginHistoryNeedsPersonalData": "查看登录历史与已登记终端需要“个人数据查看”（personal_data）权限。",
+      "openLoginHistory": "打开登录历史（SY0D）",
       "passwordAndSso": "密码 + SSO",
       "plantLabelDisabled": "{label}（已停用）",
       "requestApprovalButton": "申请审批",

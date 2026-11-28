@@ -4698,6 +4698,8 @@
       "loginHistoryLast30Days": "ログイン履歴（直近 30 日）",
       "thereAreNoLoginRecordsIn": "この期間のログイン記録はありません",
       "registeredDevicesWeb": "登録端末（Web）",
+      "loginHistoryNeedsPersonalData": "ログイン履歴と登録端末を見るには「個人データの閲覧」（personal_data）の権限が必要です。",
+      "openLoginHistory": "ログイン履歴（SY0D）を開く",
       "passwordAndSso": "パスワード + SSO",
       "plantLabelDisabled": "{label}（無効）",
       "requestApprovalButton": "承認を依頼",
