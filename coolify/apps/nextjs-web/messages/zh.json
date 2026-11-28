@@ -2466,6 +2466,7 @@
       "commentTooLong": "评论过长",
       "createFailed": "创建失败",
       "editBlockedWhilePending": "发布审批中无法编辑正文（请先退回后再编辑，或等待决裁）",
+      "editBlockedWhileArchived": "已归档的文档无法编辑。请先取消归档后再编辑",
       "editPermissionDenied": "没有权限编辑此文档",
       "invalidShareSettings": "共享设置无效",
       "loginRequired": "请登录",

@@ -2466,6 +2466,7 @@
       "commentTooLong": "コメントが長すぎます",
       "createFailed": "作成に失敗しました",
       "editBlockedWhilePending": "公開の承認依頼中は本文を編集できません（差し戻してから編集するか、決裁を待ってください）",
+      "editBlockedWhileArchived": "アーカイブ中の文書は編集できません。アーカイブを解除してから編集してください",
       "editPermissionDenied": "この文書を編集する権限がありません",
       "invalidShareSettings": "共有設定が不正です",
       "loginRequired": "ログインしてください",
