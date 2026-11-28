@@ -10,6 +10,7 @@ import {
   listLoginAttempts,
   listUserDevices,
   toEmbeddedLoginAttemptRow,
+  toEmbeddedUserDeviceRow,
 } from "@/lib/login-attempts";
 import {
   getAdminCoverage,
@@ -46,8 +47,7 @@ export default async function UserDetailPage({
     bootstrap,
     actorId,
     coverage,
-    attempts,
-    devices,
+    personalDataAuthz,
   ] = await Promise.all([
     getAdminUser(id),
     listActivePlantOptions(),
@@ -58,10 +58,20 @@ export default async function UserDetailPage({
     getBootstrapAdminSnapshot(),
     sessionUserId(),
     getAdminCoverage(id),
-    listLoginAttempts({ userId: id, days: 30, take: 30 }),
-    listUserDevices(id),
+    checkPermission("personal_data", "READ"),
   ]);
   if (!user) notFound();
+
+  // ログイン履歴と登録端末は個人データ。SY0D ログイン履歴の入口と同じく
+  // personal_data:READ を持つ人にだけ読み込んで渡す（system:ADMIN は decide() が
+  // 通す）。持たない人には行そのものを渡さず、画面は案内文に差し替える。
+  // ここは表示だけなので特権操作の時計は動かさない（useElevation は呼ばない）。
+  const [attempts, devices] = personalDataAuthz.ok
+    ? await Promise.all([
+        listLoginAttempts({ userId: id, days: 30, take: 30 }),
+        listUserDevices(id),
+      ])
+    : [null, null];
 
   // 利用停止 / 復帰 / 所属拠点 / ロール割当の変更は特権操作（user_admin）。管理者は素通しで
   // 直接適用でき、それ以外は変更依頼を出して承認を待つ。画面は同じボタンを出す
@@ -93,7 +103,7 @@ export default async function UserDetailPage({
         // 自分のロールは自分で変えられない（canUpdateRoles と同じ条件）。
         // ここで編集ボタンごと出さないのは、押せない操作を置かないため。
         canEditRoles={canChangeUser && actorId !== user.id}
-        loginAttempts={attempts.rows.map(toEmbeddedLoginAttemptRow)}
+        loginAttempts={attempts?.rows.map(toEmbeddedLoginAttemptRow) ?? null}
         plantOptions={plantOptions}
         requiresApproval={requiresApproval}
         roleGuard={{
@@ -104,7 +114,7 @@ export default async function UserDetailPage({
         }}
         roleOptions={roleOptions}
         user={user}
-        userDevices={devices}
+        userDevices={devices?.map(toEmbeddedUserDeviceRow) ?? null}
       />
       {/* 初期管理者は専用カード（BootstrapAdminCard）が担当するので二重に出さない。 */}
       {bootstrapState.status === "not-bootstrap" && actorId && (

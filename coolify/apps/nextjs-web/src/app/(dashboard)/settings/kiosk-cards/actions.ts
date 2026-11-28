@@ -207,13 +207,18 @@ export async function assignCard(raw: {
         tr("settings.kioskCardActions.targetUserNotFoundOrInactive"),
       );
     }
+    // 1 ユーザー 1 枚は「取り消していないカード」で数える。一時停止中のカードは
+    // 再開できる = まだその人のカードなので、ここで割り当てを許すと 2 枚目が生まれ、
+    // 再開しようとした瞬間に部分 unique index（status='ASSIGNED'）で落ちる。
     const existing = await prisma.kioskCard.findFirst({
-      where: { userId, status: "ASSIGNED" },
-      select: { id: true },
+      where: { userId, status: { in: ["ASSIGNED", "SUSPENDED"] } },
+      select: { status: true },
     });
     if (existing) {
       return actionError(
-        tr("settings.kioskCardActions.userAlreadyHasAssignedCardLong"),
+        existing.status === "SUSPENDED"
+          ? tr("settings.kioskCardActions.userHasSuspendedCard")
+          : tr("settings.kioskCardActions.userAlreadyHasAssignedCardLong"),
       );
     }
     // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
@@ -269,7 +274,11 @@ async function transitionCard(
   note: string,
 ): Promise<ActionResult> {
   const tr = await getTranslations();
-  const authz = await checkPermission("kiosk", "UPDATE");
+  // SY08 の権限は kiosk_card（kiosk は SY09 端末管理）。一時停止・再開は
+  // 特権操作の登録簿（lib/privileged-operations.ts）に入れていない —
+  // アクセスを減らす操作を承認待ちにしない判断で、再開は承認を経た割当を
+  // 元へ戻すだけなので素の kiosk_card:UPDATE で足りる。
+  const authz = await checkPermission("kiosk_card", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = cardIdSchema(tr).safeParse(cardId);
   if (!parsed.success) return actionError(tr("common.invalidInput"));
@@ -311,12 +320,17 @@ async function transitionCard(
     revalidate(parsed.data);
     return actionOk();
   } catch (e) {
+    // 再開で部分 unique index（user_id WHERE status='ASSIGNED'）に当たる =
+    // 割当チェックが一時停止中のカードを数えていなかった頃に 2 枚目が割り当てられた。
+    const message = prismaErrorMessage(
+      e,
+      tr("settings.kioskCardActions.transitionFailed", { note }),
+      tr,
+    );
     return actionError(
-      prismaErrorMessage(
-        e,
-        tr("settings.kioskCardActions.transitionFailed", { note }),
-        tr,
-      ),
+      message === tr("common.duplicateCodeExists")
+        ? tr("settings.kioskCardActions.userAlreadyHasAssignedCardLong")
+        : message,
     );
   }
 }

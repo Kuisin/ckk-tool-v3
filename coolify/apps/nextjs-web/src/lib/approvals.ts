@@ -826,6 +826,51 @@ export async function resolveApprover(
   return { ok: false, delegateForId: null };
 }
 
+/**
+ * actor が**いま**承認できるグループの id（resolveApprover のグループ宛の判定を
+ * 一覧向けにまとめて引いたもの）。本人が実効メンバーのグループ + 期間内代理を
+ * 任されていて、原承認者が今も実効メンバーのグループ。条件を変えるときは
+ * resolveApprover と必ず一緒に直すこと（一覧と承認ボタンの答えが割れる）。
+ */
+export async function actableApprovalGroupIds(
+  userId: string,
+): Promise<number[]> {
+  const now = new Date();
+  const effective = effectiveMemberWhere(now);
+  const [direct, delegations] = await Promise.all([
+    prisma.approvalGroupMember.findMany({
+      where: { userId, group: { isActive: true }, ...effective },
+      select: { groupId: true },
+    }),
+    prisma.approvalDelegate.findMany({
+      where: {
+        delegateId: userId,
+        validFrom: { lte: now },
+        validUntil: { gte: now },
+        group: { isActive: true },
+      },
+      select: {
+        groupId: true,
+        delegator: {
+          select: {
+            approvalGroupMembers: {
+              where: { group: { isActive: true }, ...effective },
+              select: { groupId: true },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+  const ids = new Set(direct.map((m) => m.groupId));
+  for (const d of delegations) {
+    if (d.delegator.approvalGroupMembers.some((m) => m.groupId === d.groupId)) {
+      ids.add(d.groupId);
+    }
+  }
+  return [...ids];
+}
+
 // ─── 画面向けの状態 ─────────────────────────────────────────────────────────
 
 /**
