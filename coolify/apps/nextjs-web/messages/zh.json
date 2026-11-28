@@ -4991,7 +4991,9 @@
       "thereAreOlderRecordsNarrowThe": "还有更早的记录。请缩小期间或筛选条件。",
       "thereAreNoRegisteredDevices": "没有已登记的终端",
       "unknownDevice": "未知终端",
-      "success": "成功"
+      "success": "成功",
+      "loginCount": "{count} 次",
+      "lastSeenAt": "最近 {at}"
     },
     "displayContentEditor": {
       "templateSettings": "{name} 设置",
@@ -5074,7 +5076,8 @@
     "loginAttemptDrawer": {
       "theAutomationFlagNavigatorwebdriverIs": "检测到自动化标志（navigator.webdriver）",
       "theDeviceSClockIsMinutes": "设备时钟与服务器相差 {minutes} 分钟",
-      "scanKindContentNotStored": "{scanKind}（未保存内容）"
+      "scanKindContentNotStored": "{scanKind}（未保存内容）",
+      "collectedSignals": "收集的指纹（v{version}）"
     },
     "kioskDeviceLogsModal": {
       "durationMinutes": "{minutes} 分钟",

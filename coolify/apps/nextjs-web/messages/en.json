@@ -4991,7 +4991,9 @@
       "thereAreOlderRecordsNarrowThe": "There are older records. Narrow the period or the filters.",
       "thereAreNoRegisteredDevices": "There are no registered devices",
       "unknownDevice": "Unknown device",
-      "success": "Success"
+      "success": "Success",
+      "loginCount": "{count, plural, one {# login} other {# logins}}",
+      "lastSeenAt": "Last seen {at}"
     },
     "displayContentEditor": {
       "templateSettings": "{name} settings",
@@ -5074,7 +5076,8 @@
     "loginAttemptDrawer": {
       "theAutomationFlagNavigatorwebdriverIs": "The automation flag (navigator.webdriver) is set",
       "theDeviceSClockIsMinutes": "The device's clock is {minutes} minutes off from the server",
-      "scanKindContentNotStored": "{scanKind} (content is not stored)"
+      "scanKindContentNotStored": "{scanKind} (content is not stored)",
+      "collectedSignals": "Collected signature (v{version})"
     },
     "kioskDeviceLogsModal": {
       "durationMinutes": "{minutes}m",

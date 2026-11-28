@@ -4991,7 +4991,9 @@
       "thereAreOlderRecordsNarrowThe": "さらに古い記録があります。期間や絞り込みを狭めてください。",
       "thereAreNoRegisteredDevices": "登録された端末はありません",
       "unknownDevice": "不明な端末",
-      "success": "成功"
+      "success": "成功",
+      "loginCount": "{count} 回",
+      "lastSeenAt": "最終 {at}"
     },
     "displayContentEditor": {
       "templateSettings": "{name}の設定",
@@ -5074,7 +5076,8 @@
     "loginAttemptDrawer": {
       "theAutomationFlagNavigatorwebdriverIs": "自動操作フラグ（navigator.webdriver）が立っています",
       "theDeviceSClockIsMinutes": "端末の時計がサーバーと {minutes} 分ずれています",
-      "scanKindContentNotStored": "{scanKind}（内容は保存していません）"
+      "scanKindContentNotStored": "{scanKind}（内容は保存していません）",
+      "collectedSignals": "収集シグネチャ（v{version}）"
     },
     "kioskDeviceLogsModal": {
       "durationMinutes": "{minutes}分",

@@ -52,10 +52,12 @@ export function UserDeviceList({ devices }: { devices: UserDeviceRow[] }) {
           </div>
           <div className="shrink-0 text-right">
             <Text className="tabular-nums" size="xs">
-              {d.loginCount} 回
+              {tr("settings.security.loginCount", { count: d.loginCount })}
             </Text>
             <Text c="dimmed" size="xs">
-              最終 {fmt.dateTime(d.lastSeenAt)}
+              {tr("settings.security.lastSeenAt", {
+                at: fmt.dateTime(d.lastSeenAt),
+              })}
             </Text>
             <Text c="dimmed" ff="mono" size="xs">
               {d.lastIpAddress ?? "—"}

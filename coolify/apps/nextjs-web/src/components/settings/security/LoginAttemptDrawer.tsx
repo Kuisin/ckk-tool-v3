@@ -144,10 +144,12 @@ export function LoginAttemptDrawer({
               color={row.outcome === "SUCCESS" ? "green" : "red"}
               variant="light"
             >
-              {row.outcome === "SUCCESS" ? "成功" : tr("common.failure")}
+              {row.outcome === "SUCCESS"
+                ? tr("settings.security.success")
+                : tr("common.failure")}
             </Badge>
             <Badge color="gray" variant="light">
-              {row.app === "KIOSK" ? "共有端末" : "Web"}
+              {row.app === "KIOSK" ? tr("common.sharedDevice") : "Web"}
             </Badge>
             <OwnershipBadge
               size="sm"
@@ -233,7 +235,9 @@ export function LoginAttemptDrawer({
           {signals && (
             <Stack gap={4}>
               <Text c="dimmed" size="xs">
-                収集シグネチャ（v{row.signalsVersion ?? "?"}）
+                {tr("settings.loginAttemptDrawer.collectedSignals", {
+                  version: row.signalsVersion ?? "?",
+                })}
               </Text>
               <Code block>{JSON.stringify(signals, null, 2)}</Code>
             </Stack>
