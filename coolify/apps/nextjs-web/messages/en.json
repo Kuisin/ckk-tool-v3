@@ -2489,7 +2489,10 @@
       "savedRevisionNote": "Saved revision {revision}",
       "shareSettingsUpdatedNote": "Updated sharing settings ({count})",
       "titleRequired": "Enter a title",
-      "updateFailed": "Could not update"
+      "updateFailed": "Could not update",
+      "archiveBlockedWhilePending": "Cannot archive while publishing is pending approval (wait for the decision, or send it back first)",
+      "archivedNote": "Archived",
+      "unarchivedNote": "Unarchived"
     },
     "formSchema": {
       "oneLineText": "Short text",
@@ -7452,7 +7455,11 @@
       "bodyText": "Body text",
       "itIsNotPublishedYetEdit": "It is not published yet. Edit and publish, and the body appears here. You can read the draft under Review.",
       "required": "Required",
-      "hasUnpublishedChangesRevision": "Has unpublished changes (r{revision})"
+      "hasUnpublishedChangesRevision": "Has unpublished changes (r{revision})",
+      "archiveConfirm": "Puts the document away as finished with. The published version, history and comments remain, and people it is shared with can still read it.",
+      "unarchive": "Unarchive",
+      "unarchiveConfirm": "Unarchives the document. It returns to published if it has a published version, otherwise to draft.",
+      "unarchived": "Unarchived"
     },
     "documentEditor": {
       "editTheDocument": "Edit the document",

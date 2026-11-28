@@ -2489,7 +2489,10 @@
       "savedRevisionNote": "リビジョン {revision} を保存",
       "shareSettingsUpdatedNote": "共有設定を更新（{count} 件）",
       "titleRequired": "タイトルを入力してください",
-      "updateFailed": "更新に失敗しました"
+      "updateFailed": "更新に失敗しました",
+      "archiveBlockedWhilePending": "公開の承認依頼中はアーカイブできません（決裁を待つか、差し戻してから操作してください）",
+      "archivedNote": "アーカイブ",
+      "unarchivedNote": "アーカイブを解除"
     },
     "formSchema": {
       "oneLineText": "1行テキスト",
@@ -7452,7 +7455,11 @@
       "bodyText": "本文",
       "itIsNotPublishedYetEdit": "まだ公開されていません。編集して公開すると、ここに本文が出ます。\n              下書きの内容は「レビュー」から読めます。",
       "required": "必要",
-      "hasUnpublishedChangesRevision": "未公開の変更あり（r{revision}）"
+      "hasUnpublishedChangesRevision": "未公開の変更あり（r{revision}）",
+      "archiveConfirm": "使い終わった文書として片付けます。公開版・履歴・コメントは残り、共有先からはそのまま読めます。",
+      "unarchive": "アーカイブを解除",
+      "unarchiveConfirm": "アーカイブを解除します。公開版があればその版の公開中に、無ければ下書きに戻ります。",
+      "unarchived": "アーカイブを解除しました"
     },
     "documentEditor": {
       "editTheDocument": "文書を編集",

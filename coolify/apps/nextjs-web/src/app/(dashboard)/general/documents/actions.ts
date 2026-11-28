@@ -672,6 +672,75 @@ export async function rejectPagePublish(
   return actOnPage(pageNumber, "REJECTED", trimmed);
 }
 
+/**
+ * アーカイブ / 解除（使い終わった文書を片付ける。フォーム CM02 の ARCHIVED と同じ考え方）。
+ * 公開版・リビジョン・コメント・共有はそのまま残す — 状態だけを動かす。
+ * 解除は公開版が最新版と一致していれば PUBLISHED、そうでなければ DRAFT に戻す
+ * （DRAFT = 公開版が無い / 公開版より新しい編集がある、の定義どおり）。
+ * 公開の承認依頼中（PENDING）は動かさない — 承認が下りた瞬間に公開へ進むため。
+ */
+export async function setPageArchived(
+  pageNumber: string,
+  archived: boolean,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const gate = await requirePageEdit(pageNumber, tr);
+  if (!gate.ok) return actionError(gate.error);
+  try {
+    const page = await prisma.internalPage.findUnique({
+      where: { id: gate.page.id },
+      select: {
+        status: true,
+        publishedRevision: true,
+        revisions: {
+          orderBy: { revision: "desc" },
+          take: 1,
+          select: { revision: true },
+        },
+      },
+    });
+    if (!page) return actionError(tr("general.documentActions.pageNotFound"));
+    if (archived === (page.status === "ARCHIVED")) return actionOk();
+    if (page.status === "PENDING")
+      return actionError(
+        tr("general.documentActions.archiveBlockedWhilePending"),
+      );
+    const latest = page.revisions[0]?.revision ?? null;
+    const next = archived
+      ? "ARCHIVED"
+      : page.publishedRevision != null && page.publishedRevision === latest
+        ? "PUBLISHED"
+        : "DRAFT";
+    // 読んでから書くまでに承認依頼中へ動いていたら当てない。
+    const moved = await prisma.internalPage.updateMany({
+      where: { id: gate.page.id, status: page.status },
+      data: { status: next, updatedBy: await getCurrentActorId() },
+    });
+    if (moved.count === 0)
+      return actionError(
+        tr("general.documentActions.archiveBlockedWhilePending"),
+      );
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "internal_pages",
+      recordId: pageNumber,
+      before: { status: page.status },
+      after: {
+        status: next,
+        note: archived
+          ? tr("general.documentActions.archivedNote")
+          : tr("general.documentActions.unarchivedNote"),
+      },
+    });
+    revalidate(pageNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, tr("general.documentActions.updateFailed"), tr),
+    );
+  }
+}
+
 export async function savePageShareGrants(
   pageNumber: string,
   grants: z.infer<typeof shareGrantInput>[],

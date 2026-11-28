@@ -2489,7 +2489,10 @@
       "savedRevisionNote": "已保存修订版 {revision}",
       "shareSettingsUpdatedNote": "已更新共享设置（{count} 项）",
       "titleRequired": "请输入标题",
-      "updateFailed": "更新失败"
+      "updateFailed": "更新失败",
+      "archiveBlockedWhilePending": "发布审批中无法归档（请等待审批结果，或退回后再操作）",
+      "archivedNote": "已归档",
+      "unarchivedNote": "已取消归档"
     },
     "formSchema": {
       "oneLineText": "单行文本",
@@ -7452,7 +7455,11 @@
       "bodyText": "正文",
       "itIsNotPublishedYetEdit": "尚未发布。编辑并发布后，正文将显示在此处。草稿内容可从「审阅」查看。",
       "required": "需要",
-      "hasUnpublishedChangesRevision": "有未发布的更改（r{revision}）"
+      "hasUnpublishedChangesRevision": "有未发布的更改（r{revision}）",
+      "archiveConfirm": "将文档作为使用完毕而归档。发布版、历史和评论将保留，共享对象仍可阅读。",
+      "unarchive": "取消归档",
+      "unarchiveConfirm": "取消归档。如有发布版则恢复为发布中，否则恢复为草稿。",
+      "unarchived": "已取消归档"
     },
     "documentEditor": {
       "editTheDocument": "编辑文档",
