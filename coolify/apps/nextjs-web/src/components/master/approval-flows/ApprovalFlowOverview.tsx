@@ -224,9 +224,7 @@ export function ApprovalFlowOverview({
                 fullWidth={isMobile}
                 href={`${BASE_PATH}/flows/${r.targetType}`}
               >
-                {empty
-                  ? tr("master.approvalFlows.setUp")
-                  : tr("common.edit2")}
+                {empty ? tr("master.approvalFlows.setUp") : tr("common.edit2")}
               </EditButton>
             </Group>
           </Paper>

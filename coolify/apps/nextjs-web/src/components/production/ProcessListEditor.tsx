@@ -543,14 +543,14 @@ export function ProcessListEditor({
           >
             {tr("production.processListEditor.requiredStepsAdded", {
               steps: autoAdded
-              .map(
-                (id) =>
-                  stepById.get(id)?.nameJa ??
-                  tr("production.processListEditor.stepFallbackWithId", {
-                    id,
-                  }),
-              )
-              .join(tr("common.s1")),
+                .map(
+                  (id) =>
+                    stepById.get(id)?.nameJa ??
+                    tr("production.processListEditor.stepFallbackWithId", {
+                      id,
+                    }),
+                )
+                .join(tr("common.s1")),
             })}
           </Alert>
         )}

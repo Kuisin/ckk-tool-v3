@@ -15,12 +15,12 @@ import "server-only";
 import { isSuperuser } from "@ckk/authz-core";
 import { getLocale } from "next-intl/server";
 import { getPermissionSet, getScopeContext } from "@/lib/authz";
+import { normalizeLocale } from "@/lib/i18n";
 import {
   PERMISSION_GROUP_ORDER,
   PERMISSIONS,
   type PermissionGroup,
 } from "@/lib/permission-labels";
-import { normalizeLocale } from "@/lib/i18n";
 import { peekElevations } from "@/lib/privileged-access";
 import {
   isElevationCode,

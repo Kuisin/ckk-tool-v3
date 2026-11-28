@@ -151,7 +151,11 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
             />
             <FieldValue
               label={tr("settings.kiosk.deviceOwner")}
-              value={profile.isDeviceOwner ? tr("common.yes") : tr("settings.kiosk.no")}
+              value={
+                profile.isDeviceOwner
+                  ? tr("common.yes")
+                  : tr("settings.kiosk.no")
+              }
             />
             <FieldValue
               label="Lock Task"
