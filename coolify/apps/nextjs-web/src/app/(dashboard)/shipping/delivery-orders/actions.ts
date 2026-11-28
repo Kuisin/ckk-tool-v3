@@ -2324,10 +2324,18 @@ export async function deleteDeliveryOrder(
     return actionError(tr("common.outOfScope"));
   }
   try {
-    const deleted = await prisma.deliveryOrder.deleteMany({
+    // 行の uuid を監査行に残す — 外部 API の /deletions が、一覧・詳細と同じ
+    // `id` で「どの行が消えたか」を返すため（番号は法人をまたいで重なる）。
+    const target = await prisma.deliveryOrder.findFirst({
       where: { docRef: key.docRef, status: "DRAFT" },
+      select: { id: true },
     });
-    if (deleted.count === 0) {
+    const deleted = target
+      ? await prisma.deliveryOrder.deleteMany({
+          where: { id: target.id, status: "DRAFT" },
+        })
+      : { count: 0 };
+    if (!target || deleted.count === 0) {
       return actionError(
         tr("shipping.deliveryOrderActions.onlyDraftCanBeCancelled"),
       );
@@ -2336,7 +2344,7 @@ export async function deleteDeliveryOrder(
       action: "DELETE",
       tableName: "delivery_orders",
       recordId: number,
-      before: { status: "DRAFT" },
+      before: { id: target.id, status: "DRAFT" },
     });
     revalidate(number);
     return actionOk();

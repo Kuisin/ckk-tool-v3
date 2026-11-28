@@ -133,6 +133,50 @@ function envelopeSchema() {
   };
 }
 
+function deletionsSchema() {
+  return {
+    type: "object",
+    required: ["data", "lastEventId", "hasMore"],
+    properties: {
+      data: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["eventId", "resource", "id", "number", "key", "deletedAt"],
+          properties: {
+            eventId: { type: "string" },
+            resource: {
+              type: "string",
+              description: "Table name of the deleted row (`delivery_orders`, `plants` …).",
+            },
+            id: {
+              type: ["string", "integer", "null"],
+              description:
+                "The deleted row's `id` — the same value the list and detail endpoints return (row UUID for documents, the primary key for master data). Match your synced rows by this. null only for deletions recorded before this field existed; fall back to `key` then.",
+            },
+            number: {
+              type: ["string", "null"],
+              description:
+                "Display number (`DOR-2026-00003`). Unique only together with the issuing company — do not identify rows by it.",
+            },
+            key: {
+              type: ["string", "null"],
+              description:
+                "Stable key: `<companyCode>/<number>` for documents, the primary key for master data. Same as the webhook `resource.key`.",
+            },
+            deletedAt: { type: "string", format: "date-time" },
+          },
+        },
+      },
+      lastEventId: {
+        type: "string",
+        description: "Pass back as ?sinceEventId= next time.",
+      },
+      hasMore: { type: "boolean" },
+    },
+  };
+}
+
 const ERROR_RESPONSES = {
   "400": {
     description: `${PROBLEM_TITLES.invalid_cursor} (${PROBLEM_STATUS.invalid_cursor})`,
@@ -375,6 +419,11 @@ export function buildOpenApiDocument(version: string): Record<string, unknown> {
         responses: {
           "200": {
             description: "Deletion events the caller is allowed to see.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Deletions" },
+              },
+            },
           },
           ...ERROR_RESPONSES,
         },
@@ -442,6 +491,7 @@ export function buildOpenApiDocument(version: string): Record<string, unknown> {
         Problem: problemSchema(),
         Envelope: envelopeSchema(),
         WebhookEvent: webhookEventSchema(),
+        Deletions: deletionsSchema(),
       },
     },
     paths,

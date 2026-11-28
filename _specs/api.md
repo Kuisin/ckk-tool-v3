@@ -173,6 +173,13 @@ IP 範囲外 / 背後のユーザーが利用停止 — **どれも同じ本文�
 `audit_logs.id` は単調増加の BigInt なので、そのままカーソルになる。
 **psql から直に消した行は観測できない** — これは仕様として明記する。
 
+1 件の形は `{ eventId, resource, id, number, key, deletedAt }`。**`id` は一覧・
+詳細が返す `id` と同じ値**（書類は行の uuid、マスタは主キー）で、連携先はこれで
+行を突き合わせる。書類の uuid は削除時に監査行の `before_data.id` に残し
+（`deleteDeliveryOrder`）、マスタは `record_key` がそのまま主キー
+（`lib/api-deletions-core.ts`）。`before_data.id` を書く前に記録された削除だけは
+`id` が `null` で、そのときは `key` で同定する。
+
 ## 6. 値の形
 
 | 対象 | 返し方 |

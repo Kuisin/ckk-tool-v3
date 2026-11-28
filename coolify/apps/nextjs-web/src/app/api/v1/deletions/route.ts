@@ -28,6 +28,7 @@
  */
 
 import { apiEffectivePermissions, requireApiAuth } from "@/lib/api-authz";
+import { deletedRowId } from "@/lib/api-deletions-core";
 import { invalidCursorResponse } from "@/lib/api-list";
 import { parseLimit } from "@/lib/api-pagination-core";
 import { instanceOf } from "@/lib/api-problem";
@@ -97,6 +98,7 @@ export async function GET(request: Request): Promise<Response> {
       tableName: true,
       recordId: true,
       recordKey: true,
+      beforeData: true,
       createdAt: true,
     },
   });
@@ -109,6 +111,12 @@ export async function GET(request: Request): Promise<Response> {
     data: data.map((r) => ({
       eventId: String(r.id),
       resource: r.tableName,
+      /**
+       * 消えた行の主キー — 一覧・詳細の `id` と同じ値（書類は uuid、マスタは
+       * int / uuid）。連携先はこれで行を突き合わせる。記録が古く分からない
+       * 行は `null`（そのときは `key` で同定する）。
+       */
+      id: deletedRowId(r.tableName, r.recordKey, r.beforeData),
       /**
        * 表示番号（`DOR-2026-00003` など）。**法人ごとの連番**なので、番号だけ
        * では書類が決まらない（別の法人に同じ番号があり得る）。法人コード付きで
