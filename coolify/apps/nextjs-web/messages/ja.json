@@ -6357,7 +6357,7 @@
       "groupDeleted": "グループ「{name}」を削除しました",
       "deleteWorkLocationConfirm": "作業場所「{name}」を削除します。この操作は取り消せません。",
       "workLocationDeleted": "作業場所「{name}」を削除しました",
-      "workLocationInUse": "この場所は 作業計画 {planCount} 件 / 作業実績 {actualCount} 件 から参照されています（削除できません — 無効化をご検討ください）。",
+      "workLocationInUse": "この場所は {details} から参照されています（削除できません — 無効化をご検討ください）。",
       "jobsWithCount": "{count} 作業"
     },
     "bpModals": {
@@ -6759,7 +6759,8 @@
       "auditWorkLocationUpdated": "作業場所「{name}」を更新",
       "auditWorkLocationDeleted": "作業場所を削除",
       "usedByOrderAcceptances": "注文請書の出荷作業場所 {count} 件",
-      "usedByProcessSteps": "工程の許可作業場所 {count} 件"
+      "usedByProcessSteps": "工程の許可作業場所 {count} 件",
+      "usedByOrderLines": "注文明細の出荷作業場所 {count} 件"
     },
     "storageLocationActions": {
       "codeFormat": "コードは英数字・ハイフン・アンダースコアで入力",

@@ -6357,7 +6357,7 @@
       "groupDeleted": "Deleted group \"{name}\"",
       "deleteWorkLocationConfirm": "This deletes work location \"{name}\". This cannot be undone.",
       "workLocationDeleted": "Deleted work location \"{name}\"",
-      "workLocationInUse": "This location is referenced by {planCount} work plan(s) / {actualCount} actual(s) and cannot be deleted — consider disabling it instead.",
+      "workLocationInUse": "This location is referenced by {details} and cannot be deleted — consider disabling it instead.",
       "jobsWithCount": "{count} jobs"
     },
     "bpModals": {
@@ -6759,7 +6759,8 @@
       "auditWorkLocationUpdated": "Updated work location \"{name}\"",
       "auditWorkLocationDeleted": "Deleted work location",
       "usedByOrderAcceptances": "Shipping work location on {count} order acceptances",
-      "usedByProcessSteps": "Allowed work location on {count} process steps"
+      "usedByProcessSteps": "Allowed work location on {count} process steps",
+      "usedByOrderLines": "Shipping work location on {count} order lines"
     },
     "storageLocationActions": {
       "codeFormat": "Use letters, numbers, hyphens, and underscores for the code",
