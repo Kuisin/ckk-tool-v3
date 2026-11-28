@@ -3114,7 +3114,7 @@
       "allowQuantityVariance": "Allow delivering short or excess quantity",
       "allowQuantityVarianceHelp": "Lets this lot ship even when it does not match the ordered quantity. How far it may differ, and whether that needs approval, is set on the business partner.",
       "workLocationRequiredPlaceholder": "Work location (required)",
-      "timeQuantityInPanelLater": "This step's plan also needs times / quantity — add them in the step's plan panel after creating the work order",
+      "timeQuantityInPanelLater": "This step's plan also needs times — add them in the step's plan panel after creating the work order",
       "assigneeRequiredPlaceholder": "Assignee (required)",
       "planNeedsAssignee": "These steps require an assignee: {steps}",
       "prepRouteUsesLatest": "Uses the latest, v{version} ({date})",
@@ -3604,7 +3604,7 @@
         "revert": "Revert to drawing value",
         "summaryTitle": "Read from drawing \"{file}\"",
         "summaryCounts": "{read} fields read ({overridden} edited manually) · {at}",
-        "summaryHint": "Fields read from the drawing are read-only. Use \"Edit manually\" on a field to overwrite it; the drawing value stays shown below the field.",
+        "summaryHint": "Fields read from the drawing are read-only. Use \"Edit manually\" on a field to overwrite it; the drawing value stays shown above the input (in the field's description).",
         "detach": "Detach drawing values",
         "viewSummary": "{read} fields from drawing \"{file}\" ({overridden} edited manually) · {at}"
       },
@@ -5715,7 +5715,7 @@
       "newApprovalGroup": "New approval group",
       "whichDocumentAndWhichStepIt": "Which document and which step it is used at is set under \"Approval flow\".",
       "deleteTheApprovalGroup": "Delete the approval group",
-      "itCannotBeDeletedWhileApproval": "It cannot be deleted while approval requests or delegations reference this group. Consider disabling it.",
+      "itCannotBeDeletedWhileApproval": "A group used in an approval flow step (including conditional flows, custom value approval and form approvals) or by an inspection template cannot be deleted. Consider disabling it. Members and delegations are deleted with the group.",
       "enableTheApprovalGroup": "Enable the approval group",
       "timeLimited": "Time-limited",
       "theyCanApproveAsAMember": "They can approve as a member of this group only during this period. Outside it they do not appear as an approver.",
@@ -6084,7 +6084,7 @@
     "materials": {
       "nominalDiameter": "Nominal diameter",
       "productsUsingIt": "Products using it",
-      "productsSpecifyMaterialAsTypeDiameter": "Products specify material as type + diameter + length, so they are not tied to a specific material. This material is used for inventory.",
+      "productsSpecifyMaterialAsTypeDiameter": "A product's material is specified by its drawing version (PD06) as type + diameter + length, so it is not tied to a specific material. This material is used for inventory.",
       "nominalDiameterMm": "Nominal diameter (mm)",
       "theMaterialWasCreated": "The material was created",
       "newMaterial": "New material",
@@ -6556,7 +6556,7 @@
       "siteUpdatedMessage": "Updated the site",
       "editTitle": "Edit site — {code}",
       "ownCompany": "Own company",
-      "ownCompanyDesc": "The company that issues documents (quotes, delivery notes, invoices). Empty means the default company",
+      "ownCompanyDesc": "The company this site belongs to. Documents that carry a site (order acceptances, delivery orders, material purchase orders, stock movements, etc.) are issued by this company. Quotes are issued by the company chosen when they are created (or the default company), not by the site. Empty means the default company",
       "ownCompanyPlaceholder": "Default company",
       "ownCompanyDefault": "Default company"
     },
@@ -6926,7 +6926,7 @@
       "newRegrindRoute": "New regrind step list",
       "intro": "The steps for regrinding tools received from a customer (tool receipt (regrind) → grinding → coating (optional) → inspection (optional)). A common list tied to neither product nor customer; regrind work orders always use its latest version. Our own stock never moves — the received tools are booked as customer-owned stock.",
       "empty": "No regrind step list is registered",
-      "editorHelp": "Only steps usable on regrind work orders can be chosen. The start step is tool receipt (regrind); material prep and machining steps are not allowed. Coating, inspection and pre-shipment inspection are optional."
+      "editorHelp": "Only steps whose \"Work order types\" in the process step master (MS08) include regrind can be chosen. The start step is tool receipt (regrind)."
     },
     "taxCategories": {
       "title": "Tax categories",

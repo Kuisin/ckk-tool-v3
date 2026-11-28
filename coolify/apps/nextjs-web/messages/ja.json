@@ -3114,7 +3114,7 @@
       "allowQuantityVariance": "不足 / 超過分も納品してよい",
       "allowQuantityVarianceHelp": "このロットを受注数量ちょうどでなくても出荷できるようにする。どこまでずれてよいかと承認の要否は取引先マスタが決める。",
       "workLocationRequiredPlaceholder": "作業場所（必須）",
-      "timeQuantityInPanelLater": "この工程の計画には時刻・数量も必要です — 作成後に工程の計画パネルで入れてください",
+      "timeQuantityInPanelLater": "この工程の計画には時刻も必要です — 作成後に工程の計画パネルで入れてください",
       "assigneeRequiredPlaceholder": "担当者（必須）",
       "planNeedsAssignee": "担当者が必要な工程があります: {steps}",
       "prepRouteUsesLatest": "最新 v{version}（{date}）を使います",
@@ -3604,7 +3604,7 @@
         "revert": "図面の値に戻す",
         "summaryTitle": "図面「{file}」から読み取りました",
         "summaryCounts": "{read} 項目を読み取り（手入力 {overridden} 項目）・{at}",
-        "summaryHint": "図面から読んだ欄は読み取り専用です。欄の「手入力」で上書きでき、図面の値は欄の下に残ります。",
+        "summaryHint": "図面から読んだ欄は読み取り専用です。欄の「手入力」で上書きでき、図面の値は入力欄の上（欄の説明）に残ります。",
         "detach": "読み取りを外す",
         "viewSummary": "図面「{file}」から {read} 項目（手入力 {overridden} 項目）・{at}"
       },
@@ -5715,7 +5715,7 @@
       "newApprovalGroup": "承認グループ 新規作成",
       "whichDocumentAndWhichStepIt": "どの書類の何段目で使うかは「承認フロー」で決めます。",
       "deleteTheApprovalGroup": "承認グループの削除",
-      "itCannotBeDeletedWhileApproval": "このグループを参照する承認依頼・代理設定が存在する場合は削除できません。無効化をご検討ください。",
+      "itCannotBeDeletedWhileApproval": "承認フローの段（条件付きフロー・独自値の追加承認・フォームの承認を含む）や検査表テンプレートで使われているグループは削除できません。無効化をご検討ください。メンバー・代理設定はグループと一緒に削除されます。",
       "enableTheApprovalGroup": "承認グループの有効化",
       "timeLimited": "期間限定",
       "theyCanApproveAsAMember": "この期間だけこのグループの一員として承認できます。期間外は承認者に\n            出てきません。",
@@ -6084,7 +6084,7 @@
     "materials": {
       "nominalDiameter": "呼び径",
       "productsUsingIt": "使用製品",
-      "productsSpecifyMaterialAsTypeDiameter": "製品は「材種 + 直径 + 全長」で素材を指定するため、特定の素材には\n              直接紐付きません。この素材は在庫管理で使用します。",
+      "productsSpecifyMaterialAsTypeDiameter": "製品の素材は設計図の版（PD06）が「材種 + 直径 + 全長」で指定するため、特定の素材には直接紐付きません。この素材は在庫管理で使用します。",
       "nominalDiameterMm": "呼び径 (mm)",
       "theMaterialWasCreated": "素材を作成しました",
       "newMaterial": "素材 新規作成",
@@ -6556,7 +6556,7 @@
       "siteUpdatedMessage": "拠点を更新しました",
       "editTitle": "拠点 編集 — {code}",
       "ownCompany": "自社法人",
-      "ownCompanyDesc": "書類（見積書・納品書・請求書）の発行元になる法人。未設定は既定の法人",
+      "ownCompanyDesc": "この拠点が属する法人。拠点を持つ書類（注文請書・出荷書・素材発注書・入出庫伝票など）はこの法人を発行元にします。見積書は作成時の発行会社（または既定の法人）で決まり、拠点では決まりません。未設定は既定の法人",
       "ownCompanyPlaceholder": "既定の法人",
       "ownCompanyDefault": "既定の法人"
     },
@@ -6926,7 +6926,7 @@
       "newRegrindRoute": "再研磨工程リスト 新規作成",
       "intro": "顧客の工具を預かって研ぎ直す手順（製品受入（再研磨）→ 研磨 → コーティング（任意）→ 検査（任意））。製品にも受注元にも紐づかない共通のリストで、再研磨の指示書は常にここの最新版を使います。自社在庫は動かず、受け入れた工具は顧客の預り品として記録されます。",
       "empty": "再研磨工程リストは未登録です",
-      "editorHelp": "再研磨の指示書で使える工程だけを選びます。開始工程は 製品受入（再研磨）で、材料準備・加工の工程は入れられません。コーティング・検査・出荷前検査は任意です。"
+      "editorHelp": "選べるのは、工程マスタ（MS08）の「使える指示書種別」に再研磨を含む工程だけです。開始工程は 製品受入（再研磨）です。"
     },
     "taxCategories": {
       "title": "税区分",

@@ -3114,7 +3114,7 @@
       "allowQuantityVariance": "允许交付不足或超出的数量",
       "allowQuantityVarianceHelp": "允许该批次即使与订货数量不一致也能出货。可偏离的范围与是否需要审批由业务伙伴主数据决定。",
       "workLocationRequiredPlaceholder": "作业场所（必填）",
-      "timeQuantityInPanelLater": "本工序的计划还需要时间・数量 — 创建后请在工序的计划面板中填写",
+      "timeQuantityInPanelLater": "本工序的计划还需要时间 — 创建后请在工序的计划面板中填写",
       "assigneeRequiredPlaceholder": "负责人（必填）",
       "planNeedsAssignee": "以下工序需要负责人：{steps}",
       "prepRouteUsesLatest": "使用最新的 v{version}（{date}）",
@@ -3604,7 +3604,7 @@
         "revert": "恢复为图纸的值",
         "summaryTitle": "已从图纸“{file}”读取",
         "summaryCounts": "读取了 {read} 个项目（手动输入 {overridden} 个）· {at}",
-        "summaryHint": "从图纸读取的栏位为只读。点击栏位的“手动输入”即可覆盖，图纸的值会保留在栏位下方。",
+        "summaryHint": "从图纸读取的栏位为只读。点击栏位的“手动输入”即可覆盖，图纸的值会保留在输入框上方（栏位说明处）。",
         "detach": "解除读取",
         "viewSummary": "来自图纸“{file}”的 {read} 个项目（手动输入 {overridden} 个）· {at}"
       },
@@ -5715,7 +5715,7 @@
       "newApprovalGroup": "新建审批组",
       "whichDocumentAndWhichStepIt": "在哪种单据的第几级使用，由「审批流程」决定。",
       "deleteTheApprovalGroup": "删除审批组",
-      "itCannotBeDeletedWhileApproval": "存在引用此分组的审批申请・代理设置时无法删除。请考虑停用。",
+      "itCannotBeDeletedWhileApproval": "在审批流程的级（包括条件流程、自定义值追加审批和表单审批）或检查表模板中使用的分组无法删除。请考虑停用。成员和代理设置会随分组一起删除。",
       "enableTheApprovalGroup": "启用审批组",
       "timeLimited": "限期",
       "theyCanApproveAsAMember": "仅在此期间内可作为此分组的成员进行审批。期间外不会出现在审批人中。",
@@ -6084,7 +6084,7 @@
     "materials": {
       "nominalDiameter": "公称直径",
       "productsUsingIt": "使用产品",
-      "productsSpecifyMaterialAsTypeDiameter": "产品以「材料类别 + 直径 + 全长」指定材料，因此不直接关联特定材料。此材料用于库存管理。",
+      "productsSpecifyMaterialAsTypeDiameter": "产品的材料由图纸版本（PD06）以「材料类别 + 直径 + 全长」指定，因此不直接关联特定材料。此材料用于库存管理。",
       "nominalDiameterMm": "公称直径 (mm)",
       "theMaterialWasCreated": "已创建材料",
       "newMaterial": "新建材料",
@@ -6556,7 +6556,7 @@
       "siteUpdatedMessage": "已更新据点",
       "editTitle": "编辑据点 — {code}",
       "ownCompany": "本公司法人",
-      "ownCompanyDesc": "作为单据（报价单、送货单、请款单）开具方的法人。未设置时为默认法人",
+      "ownCompanyDesc": "该据点所属的法人。带据点的单据（订单确认书、出货单、材料采购单、出入库单等）以此法人为开具方。报价单由创建时选择的开具公司（或默认法人）决定，与据点无关。未设置时为默认法人",
       "ownCompanyPlaceholder": "默认法人",
       "ownCompanyDefault": "默认法人"
     },
@@ -6926,7 +6926,7 @@
       "newRegrindRoute": "新建再研磨工序清单",
       "intro": "接收客户刀具并进行再研磨的工序（产品接收（再研磨）→ 研磨 → 涂层（可选）→ 检查（可选））。不绑定产品或客户的公共清单，再研磨工单始终使用其最新版本。本公司库存不变动，接收的刀具记为客户寄存品。",
       "empty": "尚未登记再研磨工序清单",
-      "editorHelp": "只能选择可用于再研磨工单的工序。开始工序为 产品接收（再研磨），不能包含材料准备・加工工序。涂层・检查・发货前检查为可选。"
+      "editorHelp": "只能选择工序主数据（MS08）中「可用的工单类别」包含再研磨的工序。开始工序为 产品接收（再研磨）。"
     },
     "taxCategories": {
       "title": "税种",
