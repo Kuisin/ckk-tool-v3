@@ -186,7 +186,16 @@ async function rasterizePdfFrames(page: Page, maskBottom = 0): Promise<void> {
       .filter((s) => s.startsWith("/api/")),
   );
   for (const src of srcs) {
-    const dataUrl = await pdfFirstPage(page, src.split("#")[0], maskBottom);
+    // 埋め込みの中身が PDF ではない・取れない（ファイル保存先の無い撮影環境で
+    // 添付や図面を開いている画面など）ときは、差し替えずに元のまま撮る —
+    // それは以前からの見え方で、PDF タブの撮影ではない。
+    let dataUrl: string;
+    try {
+      dataUrl = await pdfFirstPage(page, src.split("#")[0], maskBottom);
+    } catch (e) {
+      console.warn(`[shots] PDF の差し替えをしない: ${String(e).slice(0, 160)}`);
+      continue;
+    }
     await page.evaluate(
       ({ src, dataUrl }) =>
         new Promise<void>((done) => {
