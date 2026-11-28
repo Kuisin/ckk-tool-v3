@@ -7319,8 +7319,7 @@
       "suffixStorageLocation": "（存放位置）",
       "suffixFloorMap": "（地图）",
       "suffixDisplay": "（显示屏）",
-      "formResponsesLabel": "表单回答",
-      "actionWithRaw": "{label}（{raw}）"
+      "formResponsesLabel": "表单回答"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "已在 {env} 中将 {label} 设为{v2}",

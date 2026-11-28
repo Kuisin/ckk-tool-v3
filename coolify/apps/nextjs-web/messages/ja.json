@@ -7319,8 +7319,7 @@
       "suffixStorageLocation": "（保管場所）",
       "suffixFloorMap": "（マップ）",
       "suffixDisplay": "（ディスプレイ）",
-      "formResponsesLabel": "フォーム回答",
-      "actionWithRaw": "{label}（{raw}）"
+      "formResponsesLabel": "フォーム回答"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "{label} を {env} で{v2}にしました",

@@ -7319,8 +7319,7 @@
       "suffixStorageLocation": " (storage location)",
       "suffixFloorMap": " (map)",
       "suffixDisplay": " (display)",
-      "formResponsesLabel": "Form responses",
-      "actionWithRaw": "{label} ({raw})"
+      "formResponsesLabel": "Form responses"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "{label} was set to {v2} in {env}",
