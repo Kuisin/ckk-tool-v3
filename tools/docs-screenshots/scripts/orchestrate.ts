@@ -125,6 +125,10 @@ const SEED_FILES_POST = [
   "sql/purchase-demo-seed.sql",
   "sql/production-demo-seed.sql",
   "sql/shipping-billing-demo-seed.sql",
+  // 一般カテゴリ（CM02 フォーム / CM03 社内文書）。作成者が demo_shot なので
+  // screenshot-user-seed（PRE）の後ならどこでもよいが、system-demo-seed の
+  // 監査ログ正規化より前に置く。
+  "sql/general-demo-seed.sql",
   "sql/system-demo-seed.sql",
   // 再研磨品目（MS0H）だけ。工程リスト・注文・価格表は**作らない** —
   // 理由はシードの頭に書いてある（既存の撮影がずれる / e2e の自動選択が止まる）。
@@ -562,6 +566,10 @@ async function main(): Promise<void> {
 
 main().catch((e) => {
   console.error(e);
+  // --reuse / --seed-only は**借りているスタック**（自分で立てていない DB・
+  // Gotenberg）に対して動く。撮影が 1 枚落ちただけでそれを消すと、手元で
+  // 撮り直しを回している最中に DB ごと失う（実際に踏んだ）。
+  if (flag("--reuse") || flag("--seed-only")) process.exit(1);
   stopKiosk();
   stopApp();
   stopGotenberg();
