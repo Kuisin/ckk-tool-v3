@@ -1,7 +1,7 @@
 ---
 title: "Invoice — User Manual"
 description: "Check the invoice you send to a customer for payment, and record issuing, sending, and payment received."
-screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu-01, invoice-sent-01]
+screenshots: [invoice-list-01, invoice-detail-01, invoice-items-01, invoice-menu-01, invoice-sent-01, invoice-pdf-01]
 ---
 This app is where you check the **invoice** (請求書) you send to a customer to ask for payment, and record everything from issuing it to receiving the money. The operation code is `BL01`.
 
@@ -44,6 +44,7 @@ When you open the app, you see a list of the invoices made so far.
 - **請求番号 (Invoice number)** … A number that starts with `INV-`. The system adds it for you.
 - **状態 (Status)** … Grey is 「下書き」 (Draft), blue is 「発行済」 (Issued), purple is 「送付済」 (Sent), green is 「支払済」 (Paid).
 - In the search box at the top you can type an invoice number or a customer name to narrow the list.
+- If you handle documents of two or more of our companies, a small badge with the company code (for example `TSP`) appears next to the invoice number.
 - Click a row to open the detail screen for that invoice.
 - When there are none yet, you see 「**請求書がありません（締日処理から生成します）**」 (No invoices — generate them from monthly billing close).
 
@@ -53,7 +54,7 @@ When you open the app, you see a list of the invoices made so far.
 
 At the top you see the invoice number, customer, billing period, subtotal, consumption tax, total with tax, payment due date, and issue date.
 
-- **発行元** (issuer) … your own company that issues this invoice ([own company](/manual/en/operations/masters/own-company/user)). People who handle documents of two or more companies see it as a company-code badge (for example `TSP`) next to the invoice number in the heading ([Issuing company badge](/manual/en/operations/masters/own-company/user#company-badge)). It is decided from the site of the underlying shipments when the invoice is created, and does not change afterwards. Even for the same customer and period, shipments of different companies become **separate invoices per company**.
+- **発行元** (issuer) … your own company that issues this invoice ([own company](/manual/en/operations/masters/own-company/user)). There is no separate field for it on the screen. Only people who handle documents of two or more companies see it, as a company-code badge (for example `TSP`) next to the invoice number in the heading ([Issuing company badge](/manual/en/operations/masters/own-company/user#company-badge)). It is decided from the site of the underlying shipments when the invoice is created, and does not change afterwards. Even for the same customer and period, shipments of different companies become **separate invoices per company**.
 - **支払期限 (Payment due date)** … Filled in for you. If a **payment day** (paid on day N of the month) is registered for the customer, it is the first payment day on or after the cut-off date plus the payment-terms days (at least 1 day). Without a payment day, it is the cut-off date plus the payment-terms days (30 days if nothing was agreed).
 - **会計連携日時 (Accounting export date)** … The date and time the file for the accounting software was made. If it has not been made yet, it shows 「**未エクスポート**」 (Not exported).
 
@@ -65,7 +66,7 @@ The 「明細」 (Lines) area below lists each line you are billing.
 - **由来 (Source)** … Click the blue text to open the [delivery order](/manual/en/operations/shipping/delivery-order/user) or [delivery note](/manual/en/operations/shipping/delivery-note/user) it came from.
 - At the bottom you see the subtotal, the consumption tax, and the total with tax.
 
-Below the lines there are four tabs. 「**概要**」 (Overview) shows the date and time it was sent to the customer plus the notes, 「**PDF**」 shows the invoice PDF after issuing, 「**メモ**」 (Memo) holds a shared internal memo, and 「**履歴**」 (History) shows who moved this invoice along and when.
+Below the lines there are tabs. 「**概要**」 (Overview) shows the extra charges, the date and time it was sent to the customer, and the notes, 「**PDF**」 shows the invoice PDF after issuing, 「**メモ**」 (Memo) holds a shared internal memo, and 「**履歴**」 (History) shows who moved this invoice along and when. An 「**承認**」 (Approval) tab also appears only when there are approval records.
 
 > 💡 If you want to make sure the amount is right, open the original delivery order from the "由来" (Source) link — you can check there and then how many pieces were sent and when.
 
@@ -94,7 +95,7 @@ flowchart TD
 
 Today's date is recorded as the **発行日 (issue date)**.
 
-> 💡 Only an invoice with **extra charges** (costs added from the [charge item master](/manual/en/operations/masters/charge-item/user) `MS0G`) needs approval before it is issued. Pressing 「発行」 (Issue) sends an approval request, and the approval status appears at the very top of the screen. Once it is approved, press 「発行」 (Issue) again. Changing the extra charges after approval resets the approval. If no steps are set up in [approval settings](/manual/en/operations/masters/approval-setting/user), it is issued straight away without approval.
+> 💡 Only an invoice with **extra charges** (costs added from the [charge item master](/manual/en/operations/masters/charge-item/user) `MS0G`) needs approval before it is issued. Pressing 「発行」 (Issue) sends an approval request, and the approval status appears at the very top of the screen. Once it is approved, press 「発行」 (Issue) again. Changing the extra charges after approval resets the approval. If no steps are set up in [approval settings](/manual/en/operations/masters/approval-setting/user), or "use approval" is turned off for invoices, it is issued straight away without approval.
 
 ### 2. When you have sent it to the customer
 
@@ -114,7 +115,7 @@ Today's date is recorded as the **発行日 (issue date)**.
 
 The status becomes 「**支払済**」 (Paid) and that invoice is finished.
 
-> 💡 If your company has set up a **payment approval flow**, pressing 「入金済みにする」 (Mark as paid) sends an approval request, and the invoice becomes 「**支払済**」 (Paid) when the final approval is given. With no steps in the approval settings, it becomes paid on the spot.
+> 💡 If your company has set up a **payment approval flow**, pressing 「入金済みにする」 (Mark as paid) sends an approval request, and the invoice becomes 「**支払済**」 (Paid) when the final approval is given. With no steps in the approval settings, or with "use approval" turned off for payments, it becomes paid on the spot.
 
 ### Doing several at once
 
@@ -131,6 +132,8 @@ If one fails, the others are still processed.
 You can see the PDF **only after issuing**. While it is a draft the PDF has not been made yet, and the 「**PDF**」 tab shows 「発行後に PDF を閲覧できます。」 (the PDF can be viewed after issuing).
 
 After issuing, press 「**PDF**」 at the top right of the screen and the invoice PDF opens in another tab; from there you can print it or save it. The 「**PDF**」 tab also shows it right on the screen.
+
+![PDF tab of an invoice](../../../assets/screenshots/invoice-pdf-01.png)
 
 The issuer block at the top right of the PDF prints the name, address, phone number and invoice registration number of the invoice's **issuer** company. The company seal printed is also the one registered for that company. To correct these details or register a seal, use [Own companies](/manual/en/operations/masters/own-company/user) (`MS0I`).
 

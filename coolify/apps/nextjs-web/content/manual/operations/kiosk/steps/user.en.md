@@ -1,7 +1,7 @@
 ---
 title: "Shop-floor Tablet — Recording Work"
 description: "How to check today's work on the tablet and record the start, the finish, and the number of pieces."
-screenshots: [kiosk-steps-01, kiosk-step-detail-01, kiosk-step-location-01]
+screenshots: [kiosk-steps-01, kiosk-step-detail-01, kiosk-step-location-01, kiosk-step-inspection-approval-01, kiosk-step-final-inspection-01, kiosk-step-defect-01]
 ---
 In 「**工程実行**」 (Run step) on the tablet, you check the work given to you and record when you start and finish it.
 
@@ -37,12 +37,12 @@ Each card shows the work order number, the site, the step name, the product name
 - **開始可** (can start) … you can start right away.
 - **前工程待ち** (waiting for the previous step) … the work before it is not finished. You cannot start.
 - **作業中** (in progress) … you are working on it now.
-- **一時停止中** (paused) … it is stopped. Press 「再開」 (Restart) to carry on from where you were.
+- **一時停止中** (paused) … it is stopped. Press 「再開」 (Resume) to carry on from where you were.
 - **◯◯ さんが作業中** (◯◯ is working on it) … someone else is working on that step. You cannot operate it until they finish or pause it.
 - **完了** (finished) … the work is done.
 - **キャンセル** (cancelled) … work that was called off.
 
-> 💡 You can hide finished work from the list with 「**完了した工程を隠す**」 (Hide finished steps). Use it when there are too many items on the screen.
+> 💡 Finished work is normally not shown in the list. To see it, press 「**完了した工程を表示（n）**」 (Show finished steps (n)) below the list. To hide it again, press 「**完了した工程を隠す**」 (Hide finished steps).
 
 The status moves as follows.
 
@@ -51,7 +51,7 @@ flowchart TD
   wait("前工程待ち<br/>Waiting for the previous step") -->|"Previous step finished"| ready("開始可<br/>Can start")
   ready -->|"工程開始<br/>Start step"| work("作業中<br/>In progress")
   work -->|"一時停止<br/>Pause"| pause("一時停止中<br/>Paused")
-  pause -->|"再開<br/>Restart"| work
+  pause -->|"再開<br/>Resume"| work
   work -->|"工程完了<br/>Complete step"| done("完了<br/>Finished")
 ```
 
@@ -89,7 +89,7 @@ The top part of the step screen gathers the information you need for the work.
 ## Stopping partway and restarting
 
 - To stop partway, for example for a lunch break, press 「**一時停止**」 (Pause). The work time stops being counted.
-- To carry on, press 「**再開**」 (Restart).
+- To carry on, press 「**再開**」 (Resume).
 
 Even if you pause, the work time so far is kept. You can stop and restart as many times as you like.
 
@@ -140,6 +140,48 @@ On inspection steps, you enter the inspection record before you finish.
 
 > ⚠️ A step that has an inspection sheet **cannot be completed until the sheet is saved**. If you press「**工程完了**」(Complete step) without saving, you see「**検査記録が未入力の検査表があります。検査表を保存してから完了してください**」(Some inspection sheets have no record yet. Save them before completing the step). The same applies when completing several at once — that step goes to the list of steps that cannot be grouped.
 
+### Inspection sheet check
+
+Saved inspection records are listed under 「**記録済みの検査**」 (Recorded inspections). When another person has checked what was written, press 「**検査表確認**」 (Inspection sheet check) on that record. A mark 「検査表確認 date name」 is kept. It only means "someone looked at the contents" and is separate from approval.
+
+## Approving inspections (inspection approval step)
+
+When you open an inspection approval step, the 「**検査承認**」 (Inspection approval) box lists **all inspection records of that work order**. You can press the buttons while the step is in progress or paused.
+
+1. Check the count 「**承認依頼中 n 件**」 (n pending approval).
+2. Press 「**検査表を見る**」 (View inspection sheet) and check what was written.
+3. Press 「**承認する**」 (Approve). The count goes down by one.
+4. At 0, 「**すべて承認しました**」 (All approved) appears.
+
+![Inspection approval panel](../../../assets/screenshots/kiosk-step-inspection-approval-01.png)
+
+- Only **records that passed** can be approved. A failed record shows 「**不合格のため承認できません**」 (Cannot approve because it failed).
+- Who can approve is set for each inspection sheet. Records you are not an approver for show 「**承認者ではありません**」 (You are not an approver).
+- Records already approved and records you cannot press are grouped under 「**承認済み・対象外（n 件）**」 (Approved / not for you). Press it to open.
+
+## Final inspection and pre-shipment checks (final inspection step)
+
+On a step that does the final inspection, such as the pre-shipment inspection, the 「**最終検査・出荷前確認**」 (Final inspection and pre-shipment checks) box appears. It is recorded **only once per work order**. You can record it while the step is in progress or paused.
+
+1. For each of the three check items (「図面・ラベル・膜厚・寸法と間違いがないか」 drawing, label, coating thickness and size are correct / 「保護キャップ使用しているか（φ0.6以下）」 a protective cap is used (φ0.6 or less) / 「完成本数は合っているか」 the finished quantity is correct), press 「**○**」 or 「**×**」. The name of the person who pressed it and the time are kept.
+2. Under 「**予備在庫**」 (Spare stock), tick what applies (「**予備在庫使用**」 spare stock used / 「**予備在庫入庫**」 put into spare stock).
+3. Under 「**出荷前確認（棚包 → 納品書発行 → 出荷許可）**」 (Pre-shipment checks: packing → delivery note issued → shipment authorised), press 「**記録する**」 (Record) in the order the work is done. If the previous stage is not done, 「**前の段が済んでから**」 (After the previous stage) is shown and you cannot press it.
+4. If there was a defect or similar at the pre-shipment inspection, write it in 「**出荷時不良内容確認者印**」 (Shipment defect check stamp) and press 「**確認する**」 (Confirm) (optional).
+
+![Final inspection / pre-shipment check panel](../../../assets/screenshots/kiosk-step-final-inspection-01.png)
+
+## Recording defects (on any step)
+
+Apart from the defect breakdown when you complete, you can write down defects on **any step**. Quantities and stock do not change. You can use it while the step is in progress or paused.
+
+1. Press 「**不良を記録**」 (Record defects).
+2. Choose 「**不良種類**」 (Defect type) and write 「**内容**」 (Description). To add more, press 「**行を追加**」 (Add row).
+3. Press 「**不良記録を保存**」 (Save defect record).
+
+![Defect record panel](../../../assets/screenshots/kiosk-step-defect-01.png)
+
+Saved records are listed under 「**記録済みの不良**」 (Recorded defects).
+
 ## Recording several steps at once
 
 When one machine is running the same step for several work orders, you don't have to open each one — you can start, pause, or finish them together.
@@ -185,7 +227,7 @@ When you have two or more running at once, you see the note 「**n 件同時の�
 
 ## Input fields
 
-Which quantities you are asked for depends on the step. Steps that do not track quantity only have start and complete.
+Which quantities you are asked for depends on the step. Steps that do not track quantity only have start and complete. On the receiving step of a regrind work order, 「受入数」 is called 「**受入本数**」 (pieces received), 「良品数」 is called 「**再研磨する本数**」 (pieces to regrind), and 「廃棄」 is called 「**返却（再研磨不可）**」 (returned, cannot be reground). 「半製品」 (semi-finished) cannot be chosen on a regrind work order.
 
 | Field | Required | What to enter |
 |-------|----------|---------------|

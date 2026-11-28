@@ -26,7 +26,7 @@ There are three apps about places, and they are easy to mix up. Please take care
 - For each site, you can register warehouses and storage areas (storage locations).
 - You can register the **shelves** inside them.
 - You can place a **mark** (a pin) for a storage location on the drawing of the site (the floor map).
-- The storage locations and shelves you register become selectable as the place where stock is kept.
+- The storage locations and shelves you register become selectable as the place where stock is kept. They can also be chosen as 「**保管場所**」 (storage location — where the finished products are put) on a [work order](/manual/en/operations/production/work-order/user#field-storage-location).
 
 ## Words used on this page
 
@@ -95,7 +95,7 @@ When you choose a site, the screen becomes the one where you manage that site's 
 
 1. On the card of the storage location you want to add a shelf to, press 「**棚を追加**」 (Add shelf).
 2. Enter text that stands for the shelf in 「**棚コード**」 (shelf code), for example `A-1`.
-3. If you want to give it a name, enter it in 「**名称（日本語・任意）**」 (name, Japanese, optional). It can be left empty.
+3. If you want to give it a name, enter it in 「**名称（任意）（日本語）**」 (name, optional, Japanese). It can be left empty.
 4. Enter a number in 「**表示順**」 (display order).
 5. Press 「**保存**」 (Save).
 
@@ -121,7 +121,7 @@ Every field on the Storage location screen.
 | Field | What to enter |
 |-------|---------------|
 | [Site / floor](#field-plant) | Which site and floor the location is on |
-| [Code / name (ja, en)](#field-code) | The location's code and name |
+| [Code / name](#field-code) | The location's code and name |
 | [Sort order](#field-sort-order) | Order in the pick list |
 | [Active / notes](#field-active) | Turning it off removes it from storage pick lists |
 
@@ -129,7 +129,7 @@ Every field on the Storage location screen.
 
 Which site and floor the location is on. **Stock is located down to this level.**
 
-### Code / name (ja, en) [#field-code]
+### Code / name [#field-code]
 
 The location's code and name. Once registered, it can be picked as where stock is kept.
 
@@ -143,8 +143,8 @@ Turning it off removes it from storage pick lists. Notes are free text.
 
 ## Questions and problems
 
-**Q. I see 「この保管場所を参照する在庫があるため削除できません（在庫移動で空にするか、無効化してください）」 (this storage location cannot be deleted because stock refers to it; empty it with a stock transfer, or deactivate it).**
-A. There is still stock in that place. Either move the contents to another place with a stock transfer in [inventory management (在庫管理)](/manual/en/operations/inventory/inventory-management/user) to empty it, or turn off 「**有効**」 (active) on the edit screen to make it inactive. It is the same when you delete a shelf.
+**Q. I see 「この保管場所を参照するデータ（在庫・指示書）が存在するため削除できません（在庫移動で空にするか、無効化してください）」 (this storage location cannot be deleted because data (stock, work orders) refers to it; empty it with a stock transfer, or deactivate it).**
+A. There is still stock in that place, or a work order has that place chosen as its 「**保管場所**」 (storage location). Either move the contents to another place with a stock transfer in [inventory management (在庫管理)](/manual/en/operations/inventory/inventory-management/user) to empty it, or turn off 「**有効**」 (active) on the edit screen to make it inactive. When you delete a shelf, the message is 「**この棚を参照する在庫があるため削除できません（在庫移動で空にするか、無効化してください）**」 (this shelf cannot be deleted because stock refers to it). Handle it the same way.
 
 **Q. If I delete a storage location, what happens to the shelves inside it?**
 A. They are deleted with it. The confirmation screen shows how many shelves will be deleted. This cannot be undone.

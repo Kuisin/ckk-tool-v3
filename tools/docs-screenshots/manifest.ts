@@ -71,6 +71,19 @@ export interface Shot {
   app?: "kiosk";
   /** ページ到達後の操作（モーダルを開く・フォームに入力する等）。 */
   steps?: (page: Page) => Promise<void>;
+  /**
+   * PDF の URL（`/api/pdf/…`）— 指定時は `path` を開いて `steps` を済ませたあと、
+   * **画面ではなくその PDF の 1 ページ目**を撮る（灰色の台に A4 を 1 枚）。
+   * 画面に PDF の埋め込みプレビューを持たない帳票用。埋め込みプレビュー
+   * （PDF タブ）は指定しなくても自動で 1 ページ目の画像に差し替わる
+   * （screenshots.spec.ts rasterizePdfFrames — ヘッドレスは iframe の PDF を描かない）。
+   */
+  pdf?: string;
+  /**
+   * PDF の 1 ページ目の下端をこの割合（0〜1）だけ白で塗る。フッターに出力時刻が
+   * 刷られる帳票（設計依頼書）を決定的に撮るため。
+   */
+  pdfMaskBottom?: number;
   /** CSS セレクタ — 指定時はその要素だけを撮る。 */
   clip?: string;
   /**
@@ -2832,6 +2845,259 @@ export const shots: Shot[] = [
     steps: async (page) => {
       await page.getByRole("button", { name: "分類する" }).first().click();
       await page.getByRole("dialog").getByText("分類する数量").first().waitFor();
+    },
+  },
+  // ── PDF（埋め込みプレビューは screenshots.spec.ts が 1 ページ目の画像に差し替える）──
+  {
+    id: "delivery-note-pdf-01",
+    docPage: "operations/shipping/delivery-note/user",
+    path: "/shipping/delivery-notes/DRN-202607-00001?tab=pdf",
+    steps: async (page) => {
+      await page.locator("iframe").first().waitFor();
+    },
+  },
+  {
+    id: "invoice-pdf-01",
+    docPage: "operations/billing/invoice/user",
+    path: "/billing/invoices/INV-202606-00001?tab=pdf",
+    steps: async (page) => {
+      await page.locator("iframe").first().waitFor();
+    },
+  },
+  {
+    // 承認済み（未着手）の設計依頼の帳票
+    id: "design-request-pdf-01",
+    docPage: "operations/sales/design-request/user",
+    path: "/sales/design-requests/DSG-202607-00003?tab=pdf",
+    // フッターに「出力: <今の時刻>」が刷られる — 撮るたびに変わるので消す
+    pdfMaskBottom: 0.056,
+    steps: async (page) => {
+      await page.locator("iframe").first().waitFor();
+    },
+  },
+  {
+    // 手書き用の空欄シート — 画面に埋め込みが無いので PDF そのものを撮る
+    id: "master-inspection-template-sheet-01",
+    docPage: "operations/masters/inspection-template/user",
+    path: "/master/inspection-templates/9102",
+    pdf: "/api/pdf/inspection-sheet?templateId=9102",
+  },
+  // ── マスタ: 検査表テンプレート（MS09）の追加分 ──────────────────────────────
+  {
+    // テンプレート情報タブの「参考画像」の欄（付け替えは master:UPDATE の人だけ）
+    id: "master-inspection-template-image-01",
+    docPage: "operations/masters/inspection-template/user",
+    path: "/master/inspection-templates/9102",
+    user: "admin",
+    steps: async (page) => {
+      await page.getByText("参考画像", { exact: true }).first().waitFor();
+    },
+    highlight: [{ text: "参考画像", exact: true }],
+  },
+  {
+    id: "master-inspection-template-groups-01",
+    docPage: "operations/masters/inspection-template/user",
+    path: "/master/inspection-templates",
+    user: "admin",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "グループ管理" }).click();
+      await page.getByRole("dialog").waitFor();
+    },
+  },
+  {
+    id: "master-inspection-template-transfer-01",
+    docPage: "operations/masters/inspection-template/user",
+    path: "/master/inspection-templates",
+    user: "admin",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "書き出し / 取込" }).click();
+      await page.getByRole("dialog").getByText("JSON で書き出す").first().waitFor();
+    },
+  },
+  // ── 共有端末: 追加分 ────────────────────────────────────────────────────────
+  {
+    // 上の帯の名前を押したメニュー（文字の大きさ・言語・ログアウト）
+    id: "kiosk-header-menu-01",
+    mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
+    docPage: "operations/kiosk/start/user",
+    app: "kiosk",
+    path: "/login",
+    fullPage: false,
+    steps: async (page) => {
+      await kioskLogin(page);
+      await page.goto("/", { waitUntil: "networkidle" });
+      await page.getByText("工程実行").first().waitFor();
+      await page.getByRole("button", { name: "利用者" }).first().click();
+      await page.getByText("ログアウト").first().waitFor();
+    },
+  },
+  {
+    // 工程の画面で「不良を記録」を開いたところ（段加工 = demo_shot が作業中）
+    id: "kiosk-step-defect-01",
+    mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
+    docPage: "operations/kiosk/steps/user",
+    app: "kiosk",
+    path: "/login",
+    steps: async (page) => {
+      await kioskLogin(page);
+      await page.goto("/steps/dc011000-0000-4000-8000-000000000004", { waitUntil: "networkidle" });
+      await page.getByRole("button", { name: "不良を記録" }).first().click();
+      await page.getByText("不良記録を保存").first().waitFor();
+    },
+  },
+  {
+    // 作業場所の工程 — 端末の既定の作業場所（NC旋盤 1号機）に待っている工程
+    id: "kiosk-work-location-01",
+    mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
+    docPage: "operations/kiosk/work-location/user",
+    app: "kiosk",
+    path: "/login",
+    steps: async (page) => {
+      await kioskLogin(page);
+      await page.goto("/work-location", { waitUntil: "networkidle" });
+      await page.getByText("NC旋盤 1号機").first().waitFor();
+    },
+  },
+  // ── 一般: 未処理一覧（CM01）────────────────────────────────────────────────
+  {
+    // 承認できる人（demo1）で開く — 承認依頼中のタブに書類が並ぶ
+    id: "my-tasks-01",
+    docPage: "operations/general/my-tasks/user",
+    path: "/general/tasks",
+    user: "admin",
+    steps: async (page) => {
+      await page.getByRole("tab", { name: /^承認依頼中/ }).click();
+      await page.getByText(anyDocNumber("WOR")).first().waitFor();
+    },
+  },
+  // ── 販売: 注文明細（SA05）──────────────────────────────────────────────────
+  {
+    id: "order-line-list-01",
+    docPage: "operations/sales/order-line/user",
+    path: "/sales/order-lines",
+    steps: async (page) => {
+      await page.getByText(ANY_ORDER_LINE_NUMBER).first().waitFor();
+    },
+  },
+  {
+    id: "order-line-detail-01",
+    docPage: "operations/sales/order-line/user",
+    path: "/sales/order-lines",
+    steps: async (page) => {
+      await page.getByText(ANY_ORDER_LINE_NUMBER).first().click();
+      await page.waitForURL(/\/sales\/order-lines\/[^/?]+$/);
+      await page.getByText("手続き状況").first().waitFor();
+    },
+  },
+  // ── 共有端末: 検査承認 / 最終検査（kiosk-shot-seed の指示書 #9005）─────────
+  {
+    id: "kiosk-step-inspection-approval-01",
+    mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
+    docPage: "operations/kiosk/steps/user",
+    app: "kiosk",
+    path: "/login",
+    steps: async (page) => {
+      await kioskLogin(page);
+      await page.goto("/steps/dc015000-0000-4000-8000-000000000002", { waitUntil: "networkidle" });
+      await page.getByText(/承認依頼中 \d+ 件/).first().waitFor();
+    },
+  },
+  {
+    id: "kiosk-step-final-inspection-01",
+    mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
+    docPage: "operations/kiosk/steps/user",
+    app: "kiosk",
+    path: "/login",
+    steps: async (page) => {
+      await kioskLogin(page);
+      await page.goto("/steps/dc015000-0000-4000-8000-000000000003", { waitUntil: "networkidle" });
+      await page.getByText("最終検査・出荷前確認").first().waitFor();
+    },
+  },
+  // ── 一般: フォーム（CM02）/ 社内文書（CM03）— general-demo-seed ──────────
+  {
+    id: "forms-list-01",
+    docPage: "operations/general/forms/user",
+    path: "/general/forms",
+    steps: async (page) => {
+      await page.getByText("社員食堂アンケート").first().waitFor();
+    },
+  },
+  {
+    id: "forms-detail-01",
+    docPage: "operations/general/forms/user",
+    path: "/general/forms/DEMOFRM1",
+    mask: ["text=/^https?:\\/\\/localhost:\\d+/"],
+    steps: async (page) => {
+      await page.getByText("満足度").first().waitFor();
+    },
+  },
+  {
+    // 回答タブ（回答 3 件 — 集計と書き出しの入口）
+    id: "forms-responses-01",
+    docPage: "operations/general/forms/user",
+    path: "/general/forms/DEMOFRM1",
+    // 共有 URL は撮影ポートで変わる（localhost:<SHOT_APP_PORT>）ので塗る
+    mask: ["text=/^https?:\\/\\/localhost:\\d+/"],
+    steps: async (page) => {
+      await page.getByRole("tab", { name: /^回答/ }).click();
+      await page.getByText(/FRM-\d{4}/).first().waitFor();
+    },
+  },
+  {
+    id: "internal-pages-list-01",
+    docPage: "operations/general/internal-pages/user",
+    path: "/general/documents",
+    steps: async (page) => {
+      await page.getByText("出荷前チェックの手順").first().waitFor();
+    },
+  },
+  {
+    id: "internal-page-detail-01",
+    docPage: "operations/general/internal-pages/user",
+    path: "/general/documents/DOC-202607-00001",
+    steps: async (page) => {
+      await page.getByText("φ0.6 以下は保護キャップ", { exact: false }).first().waitFor();
+    },
+  },
+  {
+    // 「⋯」のメニュー — アーカイブする（編集できる人 = demo1 で開く）
+    id: "internal-page-archive-01",
+    docPage: "operations/general/internal-pages/user",
+    path: "/general/documents/DOC-202607-00001",
+    user: "admin",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "アーカイブする" }).waitFor();
+    },
+    highlight: [{ role: "menuitem", name: "アーカイブする" }],
+  },
+  {
+    // アーカイブ済みの文書（公開のカードが出ない）
+    id: "internal-page-archived-01",
+    docPage: "operations/general/internal-pages/user",
+    path: "/general/documents/DOC-202607-00002",
+    steps: async (page) => {
+      await page.getByText("緩衝材を詰める").first().waitFor();
+    },
+  },
+  // ── 出荷: 出荷書の追加料金 / マスタ: 料金マスタ（MS0G）─────────────────────
+  {
+    // 下書きの出荷書の概要タブ — 追加料金（送料 1 行）
+    id: "delivery-order-charges-01",
+    docPage: "operations/shipping/delivery-order/user",
+    path: "/shipping/delivery-orders/DOR-202607-00003",
+    steps: async (page) => {
+      await page.getByText("○○運輸 元払い").first().waitFor();
+    },
+    highlight: [{ text: "○○運輸 元払い" }],
+  },
+  {
+    id: "master-charge-item-list-01",
+    docPage: "operations/masters/charge-item/user",
+    path: "/master/charge-items",
+    steps: async (page) => {
+      await page.getByText("梱包料").first().waitFor();
     },
   },
   {

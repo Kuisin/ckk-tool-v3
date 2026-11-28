@@ -53,6 +53,8 @@ Stock does not move from this screen — it moves automatically along with every
 - **Material comes in** … registering a receipt in [Material Receipt](/manual/en/operations/purchasing/material-receipt/user) (PU03) increases stock at the receiving site.
 - **It gets reserved** … running「**在庫照合**」(stock check) on an order line, or approving a "to manufacture" work order, reserves the quantity (product or material) needed for that order/work order.
 - **Material decreases** … when all the process steps on that work order are complete, the reserved material is deducted as used.
+- **WIP gets used** … for a work order started from WIP in stock, approving it reserves that WIP, and completing all its process steps deducts it.
+- **Partly made items come back** … when an in-progress work order is stopped with「**打ち切り**」(abort), the partly processed items go back into stock as **WIP**, split by processing state.
 - **Product goes out** … shipping via a [delivery order](/manual/en/operations/shipping/delivery-order/user) removes it from stock and releases the reservation.
 
 As a diagram (dotted lines are reservations):
@@ -77,6 +79,7 @@ flowchart TD
 - **在庫数 (On hand)** … the actual quantity present.
 - **利用可能 (Available)** … the freely usable portion of it. A badge like "予約 50" (reserved 50) appears when there is a reservation.
 - 「**使える仕掛品**」(usable WIP) … how many pieces of WIP could be used for that product (same material type; size exact, longer or larger in diameter; and a processing state that is a leading part of the product's steps). Click the quantity to open the WIP tab narrowed to just that WIP. "—" when there is none.
+- **更新日 (Updated)** … the date that stock last moved.
 - **移動 (Move)** … the button to press to change the storage location.
 - Search by product name or code in the box above. You can also narrow by 「**拠点**」(site).
 - Click a row to open that stock's detail screen.
@@ -104,6 +107,7 @@ Below are 2 tabs:
 - **在庫数 (On hand)** … the actual quantity present (shown with its unit).
 - **利用可能 (Available)** … the portion not reserved — what you can actually use.
 - **次回入荷 (Next arrival)** … the expected date the next ordered quantity arrives.
+- **更新日 (Updated)** … the date that stock last moved.
 - **移動 (Move)** … the button to press to change the storage location.
 - Search by material code or name in the box above. You can also narrow by 「**拠点**」(site).
 - Click a row to open that material stock's detail screen.
@@ -186,7 +190,7 @@ A screen listing how much is currently in progress, by work order and by process
 
 ## Transaction history
 
-Both the product and the material detail screens have a "取引履歴" (transaction history) tab, listing the record of stock movements (date/time, type, quantity, reference, notes).
+Both the product and the material detail screens have a "取引履歴" (transaction history) tab, listing the record of stock movements (date/time, type, quantity, movement number, reference, notes). Press the 「**伝票番号**」 (Movement no.) to open that movement's [inventory movement](/manual/en/operations/inventory/inventory-movements/user) (ST04). Old records without a slip show 「—」.
 
 ![Transaction history tab](../../../assets/screenshots/inventory-transactions-01.png)
 
@@ -198,7 +202,7 @@ There are 5 「**種別**」(types):
 - **予約解除 (Release)** … when the hold was released.
 - **棚卸調整 (Adjustment)** … when a stock take corrected the quantity.
 
-A stock transfer leaves 2 rows: an "out" at the source and an "in" at the destination. From either one you can trace which [Stock Movement](/manual/en/operations/inventory/inventory-movements/user) (ST04) slip it belongs to.
+A stock transfer leaves 2 rows: an "out" at the source and an "in" at the destination. Both rows go on the same single [Stock Movement](/manual/en/operations/inventory/inventory-movements/user) (ST04) slip. You cannot jump from this table to the slip, so look for it in the Stock Movement list.
 
 ## Changing the storage location (stock transfer)
 

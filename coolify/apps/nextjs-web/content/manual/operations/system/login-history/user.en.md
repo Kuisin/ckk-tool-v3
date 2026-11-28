@@ -4,7 +4,7 @@ description: "Look up who signed in, when, from where, and on which device — i
 ---
 This app shows **who signed in, when, from where, and on which device**, together with **the attempts that did not work**. Its operation code is `SY0D`.
 
-Sign-ins from PCs (Web) and from the shared tablets on the floor (kiosk) appear together in the same list.
+Sign-ins from PCs (Web), from the shared tablets on the floor (shared device), and by outside people entering the [Partner portal](/manual/en/operations/system/portal/user) appear together in the same list.
 
 This is a view-only app. You cannot correct or erase records from this screen.
 
@@ -25,7 +25,7 @@ This is a view-only app. You cannot correct or erase records from this screen.
 ## Before you start
 
 - You need the **Personal data access** (`personal_data`) permission to open this app. If you cannot open it, please ask your system administrator.
-- The permission alone lets you see the list, but **opening the details of one record needs an approval**. Request "**Login history detail**" in [Privileged access](/manual/en/operations/system/privileged-access/user) (`SY0G`); you can open details only during the period another person approves. Each time you open one, it is recorded as a "view" in the [Activity log](/manual/en/operations/system/activity-log/user).
+- The permission alone lets you see the list, but **opening the details of one record needs an approval**. Request "**Login history detail**" in [Privileged access](/manual/en/operations/system/privileged-access/user) (`SY0G`); you can open details only during the period another person approves. After approval, your time starts counting down from the first time you open a detail. Each time you open one, it is recorded as a "view" in the [Activity log](/manual/en/operations/system/activity-log/user).
 - The records include connection origins and PC characteristics. They exist **so that you can investigate when you need to**, not for routinely watching what people do.
 - Records are removed automatically: **successes after 180 days, failures after 400 days**.
 
@@ -73,19 +73,21 @@ The summary for the last 24 hours sits at the top, with the list of records belo
 - **24時間の失敗** (failures in 24h) — how many attempts failed. If this is higher than usual, look through the list below.
 - **24時間の成功** (successes in 24h) — how many succeeded.
 - **失敗の多い IP（24h）** — the connection origins where failures are concentrated.
-- **失敗の多い相手（24h）** — the users where failures are concentrated. When someone tries a username that does not exist, it shows as **(未解決)** — "unresolved" — with a marker instead of the text.
+- **失敗の多い相手（24h）** — the users where failures are concentrated. When someone tries a username that does not exist, it shows as **未解決** (unresolved) with a marker (8 letters and digits) instead of the text.
 
 ### List
 
 - **日時** — when the attempt happened.
 - **結果** — success (green) or failure (red).
-- **アプリ** — Web (PC) or kiosk (shared tablet).
+- **アプリ** — 「**Web**」 (PC), 「**共有端末**」 (Shared device — a shared tablet) or 「**取引先ポータル**」 (Partner portal — the entrance for outside people).
 - **方式** — how they tried to sign in (password / single sign-on / QR card + PIN, and so on).
-- **ユーザー** — whose attempt it was. If the username did not exist, only "**未解決**" (unresolved) and a marker appear — **the characters typed in are deliberately not saved**.
+- **ユーザー** — whose attempt it was. For the partner portal, a 「**社外**」 (External) badge and the person's name are shown. If the username did not exist, only "**未解決**" (unresolved) and a marker appear — **the characters typed in are deliberately not saved**.
 - **理由** — why it failed (password mismatch, card invalid, PIN mismatch, and so on).
 - **IP** — where the connection came from.
 - **端末区分** — the automatic judgement described above.
 - **端末** — the device name for a shared tablet, or a marker such as "Chrome / Windows 11" for a PC.
+
+The list shows at most the 50 newest matching records. When there are older ones, 「**さらに古い記録があります。期間や絞り込みを狭めてください。**」 (There are older records. Narrow the period or filters.) appears below the table.
 
 ## Searching and narrowing down
 
@@ -93,7 +95,7 @@ Use the controls at the top to narrow the range.
 
 1. **期間** (period) — 24 hours / 7 days / 30 days / 90 days / all. It starts at 7 days.
 2. **結果** (outcome) — failures only, or successes only. When investigating, choosing "失敗" (failure) first makes things much easier to read.
-3. **アプリ** — Web only, or kiosk only.
+3. **アプリ** — Web only, shared device only, or partner portal only.
 4. **端末区分** — for example, show only "未管理" (unmanaged).
 5. **Search box (IP / CIDR)** — type an IP address directly, or **give a whole range**. For example `192.168.50.0/24` covers everything from `192.168.50.1` to `192.168.50.254`.
 6. To clear every condition, press **リセット** (reset).
@@ -103,10 +105,12 @@ Use the controls at the top to narrow the range.
 Click a row and the details open on the right.
 
 - **注意すべき兆候** (signs worth noting) — appears in orange at the top only when there is something to flag. For example "the automation flag is set (this may be a program rather than a person)" or "the device clock is far off".
-- **日時・方式・理由・ユーザー** — the same content as the list.
+- **日時・方式・理由・ユーザー** — the same content as the list. If the username did not exist, 「**解決できず（入力値は保存していません）**」 (Could not be resolved — the input is not saved) is shown, with 「**入力の相関キー**」 (Input correlation key — a marker that tells whether the same text was tried again).
 - **送信元 IP** and **プロキシチェーン** — where the connection came from and the route it took.
 - **判定理由** — the basis for the device category (`wrapper:device-owner`, `cidr:inside`, and so on). It stays in English; system administrators use it when tracing a cause.
 - **端末シグネチャ** — the marker built from the browser's characteristics. Comparing it with the same person's other records hints at whether this was the usual PC.
+- **共有端末** / **読み取り種別** (Shared device / Scan type) — for a record from a shared tablet, the device name and the kind of QR that was scanned (its contents are not saved).
+- **User-Agent** — how the browser describes itself.
 - **収集シグネチャ** — the full set of information used for the judgement. You do not normally need to read it.
 
 > 💡 Opening the details is itself recorded in [Activity Log](/manual/en/operations/system/activity-log/user), so that there is a record of who looked at the contents. Simply browsing the list is not recorded.
@@ -127,7 +131,7 @@ Login History is a **view-only screen**. There is nothing to fill in — you onl
 |--------|-----------------|
 | [Period](#field-days) | How many days of records to show |
 | [Outcome](#field-outcome) | Successes only or failures only |
-| [App](#field-app) | Web only or kiosk only |
+| [App](#field-app) | Web only, shared device only, or partner portal only |
 | [Device category](#field-ownership) | Narrow by whether it is a company device |
 | [IP / CIDR](#field-ip) | Narrow by connection origin (ranges allowed) |
 
@@ -141,7 +145,7 @@ Narrow to successes only or failures only. When investigating, choose failures f
 
 ### App [#field-app]
 
-Narrow to sign-ins from PCs (Web) or from the shared tablets on the floor (kiosk).
+Narrow to sign-ins from PCs (Web), from the shared tablets on the floor (shared device), or to the partner portal.
 
 ### Device category [#field-ownership]
 
@@ -169,7 +173,7 @@ A. "Unmanaged" means "no evidence that this is a company device". It is not a st
 A. This screen only covers the sign-in itself. For what happened afterwards, use [Activity Log](/manual/en/operations/system/activity-log/user) (`SY07`).
 
 **Q. I only want records from the shared tablets.**
-A. Set "アプリ" to kiosk. To look at one specific tablet, the device detail page in [Device Management](/manual/en/operations/system/kiosk-device/user) (`SY09`) has an authentication-error list.
+A. Set "アプリ" to 共有端末 (Shared device). To look at one specific tablet, the device detail page in [Device Management](/manual/en/operations/system/kiosk-device/user) (`SY09`) has an authentication-error list.
 
 **Q. Older records do not appear.**
 A. Records are removed automatically (successes after 180 days, failures after 400 days). If you need to investigate something older, please ask your system administrator.

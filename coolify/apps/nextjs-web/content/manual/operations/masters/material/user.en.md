@@ -31,7 +31,7 @@ To register a material, the **[Material Type](/manual/en/operations/masters/mate
 
 You also need **master data permission** to use this app. If the screen does not open, please ask your administrator.
 
-Please note that a [Product](/manual/en/operations/masters/product/user) sets its material as "material type + diameter + length". **A product is not tied to one particular material.** This ledger is only for buying and stock.
+Please note that a [Product](/manual/en/operations/masters/product/user) sets its material as "material type + diameter + length" in a version of [Drawing](/manual/en/operations/production/design-file/user). **A product is not tied to one particular material.** This ledger is only for buying and stock.
 
 As a diagram, material types, materials and products relate like this:
 
@@ -65,11 +65,12 @@ When you open the app, a list of the registered materials is shown.
 ![Material list screen](../../../assets/screenshots/master-material-list-01.en.png)
 
 - **素材コード (Material code)** … the number joined with hyphens.
-- **材種 / 直径 / 全長 / 黒皮研磨 (Material type / Diameter / Length / Surface finish)** … the content of that material, split into columns.
+- **材種 / 名称 / 直径 / 全長 / 黒皮研磨 (Material type / Name / Diameter / Length / Surface finish)** … the content of that material, split into columns.
 - **状態 (Status)** … the green 「**有効**」 (Active) means a material you can still use. The gray 「**無効**」 (Inactive) means one you can no longer choose.
-- Use the search box at the top (「**素材コード・名称で検索**」 / Search by material code or name) to narrow the list.
-- In the 「**材種**」 (Material type) and 「**黒皮研磨**」 (Surface finish) fields you can show only one material type or one surface finish.
+- Use the search box at the top (「**素材コード・名称・キーワードで検索**」 / Search by material code, name or keyword) to narrow the list. Other names registered as keywords also work.
+- In the 「**材種**」 (Material type), 「**黒皮研磨**」 (Surface finish) and 「**状態**」 (Status) fields you can show only one material type, one surface finish, or only active / inactive materials.
 - Click a row to open the detail screen for that material.
+- Tick the boxes on the left of the rows to 「**一括有効化**」 (Bulk enable), 「**一括無効化**」 (Bulk disable) or 「**一括削除**」 (Bulk delete) the selected materials together.
 
 ## Registering a material
 
@@ -112,7 +113,7 @@ The screen of a saved material has three tabs.
 
 At the top of the screen you see the material code, material type, surface finish, diameter, length, kind, nominal diameter, maker model and unit.
 
-- **概要** (Overview) … the name (Japanese and English) and the notes.
+- **概要** (Overview) … the name (Japanese and English), the keywords and the notes.
 - **関連** (Related) … an explanation of how it connects to products.
 - **履歴** (History) … the record of when and who changed this registration.
 
@@ -219,8 +220,8 @@ A. Please enter a diameter between 0.1 and 99.9. The length must be between 1 an
 **Q. I cannot correct the diameter or the length on the edit screen.**
 A. That is how it works. They are part of the code, so they cannot be changed after you save. If you entered something wrong, please register a new material instead.
 
-**Q. When I try to delete, I see 「関連するデータが存在するため実行できません」 (This cannot be done because related data exists).**
-A. Purchase or stock records that use that material already exist, so it cannot be deleted. This is normal. Please use 「無効化」 (Deactivate).
+**Q. When I try to delete, I see 「この素材を参照するデータ（指示書・発注・入荷・在庫）が存在するため削除できません。無効化を検討してください。」 (This material cannot be deleted because data that refers to it — work orders, purchases, receipts, stock — exists. Please consider deactivating it instead).**
+A. Work order, purchase, receipt or stock records that use that material already exist, so it cannot be deleted. This is normal. Please use 「無効化」 (Deactivate).
 
 <!-- permissions:start -->
 ## Permissions required

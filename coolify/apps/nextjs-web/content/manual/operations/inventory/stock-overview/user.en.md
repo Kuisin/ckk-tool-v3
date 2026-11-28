@@ -23,8 +23,8 @@ This app is **a view of "what is where" from the location's side**. To see "is t
 - **拠点 (Site)** … a large-scale location, such as a factory or a warehouse.
 - **保管場所 / 棚 (Storage location / shelf)** … a place within a site.
 - **ロット (Lot)** … the number attached to a batch of product made together.
-- **手持ち (On hand)** … the quantity actually present.
-- **予約 (Reserved)** … the portion held for a specific order or work order.
+- **在庫数 (On hand)** … the quantity actually present.
+- **予約数 (Reserved)** … the portion held for a specific order or work order.
 - **利用可能 (Available)** … the portion of on-hand stock not yet reserved.
 - **預り品 (Customer-owned stock)** … tools received from a customer for regrinding. They are the customer's property, so they are counted apart from our own stock and hidden by default; switch the 「**所有者**」 (owner) filter to see them (rows carry an 「預り品: ○○」 badge).
 
@@ -32,11 +32,11 @@ This app is **a view of "what is where" from the location's side**. To see "is t
 
 - **品目 (Item)** … the item's name, with a badge for "製品" (Product) or "素材" (Material).
 - **コード (Code)** … the item code.
-- **拠点 (Site)** … which site it is at.
+- **拠点 (Site)** … which site it is at. Stock left with a subcontractor gets a "○○ が保管" (held by ○○) badge, and stock held for a customer gets a "預り品: ○○" (held for customer) badge.
 - **保管場所・棚 (Storage location / shelf)** … shown as "location name / shelf code". Not yet decided shows "**未割当**" (unassigned).
 - **ロット (Lot)** … the lot number, for product rows.
-- **手持ち (On hand)** … the quantity actually present. A **red negative number** means more was shipped than the ledger held (a [delivery order](/manual/en/operations/shipping/delivery-order/user) is not stopped when stock is short).
-- **予約 (Reserved)** … how much of it is reserved (this column can be hidden).
+- **在庫数 (On hand)** … the quantity actually present. A **red negative number** means more was shipped than the ledger held (a [delivery order](/manual/en/operations/shipping/delivery-order/user) is not stopped when stock is short).
+- **予約数 (Reserved)** … how much of it is reserved (this column can be hidden).
 - **利用可能 (Available)** … on-hand minus reserved — what you can actually use.
 - **単位 (Unit)** … the unit of quantity (this column can be hidden).
 - **更新日 (Updated)** … the date that row's stock last moved.

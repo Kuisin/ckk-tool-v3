@@ -14,6 +14,9 @@ This is the public manual for the CKK business management system. Use the sideba
 
 ## Contents
 
-- **Operations** — step-by-step instructions and what each input field means, grouped by category: sales, purchasing, production, shipping, billing, master data, system and shop-floor tablet
+- **Operations** — step-by-step instructions and what each input field means, grouped by category: general, sales, purchasing, production, inventory, shipping, billing, master data, system and shop-floor tablet
 - **Process** — how the business flows from order to shipment, and which app is used at each stage. A good place to start is [The standard flow](/manual/en/process/default-flow), which follows a single order end to end from price estimate to invoice
+- **[Business Flow](/manual/en/business-flow)** — the business split into 9 processes, with each step's branches and the app used, on one page
+- **[Permissions and roles](/manual/en/permissions)** — how login and permissions decide what you can do
+- **[Integration (API and webhooks)](/manual/en/integration)** — how to connect outside systems such as n8n
 - **[Analytics dashboards](/manual/en/analytics)** — how to use Metabase, the analytics tool with charts for sales, production, billing, inventory, and attendance

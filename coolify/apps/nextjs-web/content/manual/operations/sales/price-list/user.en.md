@@ -89,12 +89,17 @@ When you open the app, the registered price lists are shown as a list. One row i
 
 ![Price list screen](../../../assets/screenshots/price-list-list-01.png)
 
+- **顧客 (customer)** … the customer's name. When there are two or more companies, an issuing-company badge appears next to the name.
+- **製品 (product)** … the product's name. Regrind rows carry a「再研磨」(regrind) badge, and when there is a target tool it is shown underneath as「対象工具: …」(target tool).
+- **標準価格 (standard price)** … the item's list price (only for items that have one, such as regrind items).
 - **注文種別 (order type)** … the classes registered on that price list, shown as badges.
 - **段階 (tiers)** … how many quantity breaks there are.
 - **単価 (unit price)** … the range from the cheapest price to the most expensive one.
 - **値引き (discount)** … the number on the pink badge is how many discount rules can be used.
 - **価格試算元 (source estimate)** … which estimate the price was taken from. 「手動」(manual) means it was typed in by hand.
-- **状態 (status)** … 「有効」(active) or 「無効」(inactive) shows whether it can be used.
+- **状態 (status)** … 「有効」(active) or 「無効」(inactive) shows whether it can be used. While approval is not finished, a「承認依頼中」(pending approval) or「差し戻し」(sent back) badge is shown too.
+- **他社との差分 (difference from other companies)** … a column shown only when there are two or more companies (see [Price lists per company](#per-company)).
+- Use the fields above the list to filter by customer, product or order type, or to search with「顧客・製品で検索」(search by customer or product).
 - Click a row to open the detail screen.
 
 ## Making a price list
@@ -102,14 +107,15 @@ When you open the app, the registered price lists are shown as a list. One row i
 1. Press「**新規作成**」(New) at the top right of the list screen.
 2. Click the「**顧客**」(customer) field and choose the customer.
 3. Click the「**製品**」(product) field and choose the product.
-4. Choose a class in「**注文種別**」(order type). It starts at 「本番」(production).
-5. Click the「**価格ソース（価格試算）**」(price source, estimate) field and choose the estimate to base the price on. The amount then fills in automatically in「**基準単価**」(base unit price).
-6. Choose「**有効開始日**」(valid from).
-7. For テスト (test) and サンプル (sample), you must also choose「**有効終了日**」(valid until).
-8. In the quantity table, enter「**最小数量**」(minimum quantity),「**最大数量**」(maximum quantity) and「**倍率**」(multiplier).
-9. To add another break, press「**範囲を追加**」(add a range). When you add a new order type, its quantity breaks start out filled from the [quantity scale](/manual/en/operations/sales/trial-estimate/settings) (the table of "from how many pieces, at what multiplier" that an administrator maintains). Press「**プリセットに戻す**」(reset to preset) to put that order type's breaks back to that table (ranges you added by hand and custom prices are lost).
-10. To register a price for another class too, press「**注文種別を追加**」(add order type) and repeat steps 5 to 9.
-11. Press「**保存**」(save).
+4. Check「**営業担当**」(sales rep). When you choose the customer, that customer's main sales rep is filled in automatically.
+5. Choose a class in「**注文種別**」(order type). It starts at 「本番」(production). For a regrind item, choose「再研磨」(regrind).
+6. Click the「**価格ソース（価格試算）**」(price source, estimate) field and choose the estimate to base the price on. The amount then fills in automatically in「**基準単価**」(base unit price).
+7. Choose「**有効開始日**」(valid from).
+8. For テスト (test) and サンプル (sample), you must also choose「**有効終了日**」(valid until).
+9. In the quantity table, enter「**最小数量**」(minimum quantity),「**最大数量**」(maximum quantity) and「**倍率**」(multiplier).
+10. To add another break, press「**範囲を追加**」(add a range). When you add a new order type, its quantity breaks start out filled from the [quantity scale](/manual/en/operations/sales/trial-estimate/settings) (the table of "from how many pieces, at what multiplier" that an administrator maintains). Press「**プリセットに戻す**」(reset to preset) to put that order type's breaks back to that table (ranges you added by hand and custom prices are lost).
+11. To register a price for another class too, press「**注文種別を追加**」(add order type) and repeat steps 5 to 10.
+12. Press「**保存**」(save).
 
 ![New price list form](../../../assets/screenshots/price-list-new-01.png)
 
@@ -121,13 +127,14 @@ When you enter a multiplier, the amount appears on the spot in「**自動計算�
 
 ## Looking at what you registered
 
-The price list screen has five tabs.
+The price list screen has five tabs (a sixth,「**承認**」(approval), is added when there are approval records).
 
 ![Price list detail screen](../../../assets/screenshots/price-list-detail-01.en.png)
 
-- **価格設定 (price settings)** … the base unit price, the valid period, and the price per quantity, for each order type.
+- **価格設定 (price settings)** … the base unit price, the valid period, and the price per quantity, for each order type. Press「**注文種別を追加**」(add order type) to open the edit screen.
 - **値引き設定 (discount settings)** … the list of discount rules.
 - **関連 (related)** … which estimate the price came from, and the quotes made from this price list.
+- **承認 (approval)** … the approval records for custom prices (shown only when there are records).
 - **コメント (comments)** … a thread where you can post exchanges about this price list.
 - **履歴 (history)** … the record of who changed what, and when.
 
@@ -143,6 +150,8 @@ In the quantity table, a row with an orange「**手動**」(manual) badge uses a
 
 - **The customer and the product cannot be changed after the record is made.** If you need a different combination, make a new record.
 - A saved order type, and the estimate its price came from, also cannot be changed.
+- Turn off「**有効**」(active) on an order type to stop using only that order type's prices. Press the bin mark to remove that order type (it is removed when you save).
+- To stop using the whole price list, turn off「**有効（価格表全体）**」(active, whole price list). This switch is only on the edit screen.
 - To give one quantity break a special price, press「**カスタム**」(custom) on that row and enter the amount. A confirmation screen appears — press「**カスタム設定する**」(use a custom setting). Press「**自動に戻す**」(back to auto) to return to the automatic calculation.
 
 ## Custom prices go through approval
@@ -214,9 +223,9 @@ The [quote](/manual/en/operations/sales/quote/user) creation screen opens with t
 
 From「**…**」at the top right of the price list screen, you can also do the following.
 
-- **有効期間を変更 (change the valid period)** … keeps the prices and moves them to a new period.
+- **有効期間を変更 (change the valid period)** … choose one order type; its prices stay the same and only the period moves to a new one. The same 「**有効期間を変更**」 is also on a row's「**…**」in the list (no new price list is made).
 - **別の顧客・製品へコピー (copy to another customer or product)** … copies the same price settings to another customer or product. The link to the estimate is dropped, and the copy is treated as typed in by hand.
-- **削除 (delete)** … deletes that price list. This cannot be undone.
+- **削除 (delete)** … deletes that price list. This cannot be undone. Quotes made from this price list can no longer fill in the unit price automatically.
 
 In the list, you can also tick the checkboxes on the left of several rows and then use「**有効化**」(activate),「**無効化**」(deactivate) or「**一括削除**」(delete all selected).
 
@@ -252,7 +261,7 @@ Shown **only when a regrind item is selected**. Pick a tool when this regrind pr
 
 ### Active (whole list) [#field-active]
 
-Whether this price list is used. **When it is turned off, quotes and order acceptances can no longer take a unit price from it** ("price list disabled" is shown). Turn off price lists you no longer use.
+Whether this price list is used (shown only on the edit screen). **When it is turned off, quotes and order acceptances can no longer take a unit price from it** ("price list disabled" is shown). Turn off price lists you no longer use.
 
 ### Order type [#field-order-type]
 
@@ -260,7 +269,7 @@ Production, test, sample or other. **The same customer and product can hold a di
 
 ### Price source (price estimate) [#field-estimate]
 
-The price estimate the base price comes from. **Only confirmed estimates can be chosen.** Choosing one copies its quoted unit price into the base price and locks that estimate as registered, so past prices cannot change afterwards. Leave it unset to enter the price by hand.
+The price estimate the base price comes from. **Only confirmed estimates linked to this product can be chosen.** Estimates with no product, or for another product, cannot be chosen. Cost-only estimates cannot be chosen either. Choosing one copies its quoted unit price into the base price and locks that estimate as registered, so past prices cannot change afterwards. Leave it unset to enter the price by hand.
 
 ### Base price [#field-base-price]
 
@@ -272,7 +281,7 @@ The day this price starts to apply. **If a quote or order acceptance is saved be
 
 ### Valid until [#field-valid-until]
 
-When it stops applying. **After this date, quotes and order acceptances no longer use this price** ("outside the price list's valid period" is shown). Leave it empty for no end date. **Test and sample prices are normally given an end date.**
+When it stops applying. **After this date, quotes and order acceptances no longer use this price** ("outside the price list's valid period" is shown). Leave it empty for no end date. **Test and sample prices require an end date** — they cannot be saved without one.
 
 ### Multiplier [#field-multiplier]
 
@@ -284,7 +293,7 @@ Sets one tier's price by hand. When set, it takes precedence over the multiplier
 
 ## Questions and problems
 
-**Q. It says「同一の顧客・製品の価格表が既に存在します。既存の価格表を編集してください。」(a price list for the same customer and product already exists; please edit the existing one).**
+**Q. It says「同一の顧客・製品・対象工具の価格表が既に存在します。既存の価格表を編集してください。」(a price list for the same customer, product and target tool already exists; please edit the existing one).**
 A. A price list for that customer and that product already exists. Do not make a new one — open the existing price list and add the order type or the price from「編集」(edit). The creation screen also shows a red note and a link to the existing price list when there is a duplicate.
 
 **Q. The customer and product fields are gray and I cannot choose anything.**
@@ -296,7 +305,7 @@ A. Prices for テスト (test) and サンプル (sample) always need an end date
 **Q. I cannot type a number into the base unit price field.**
 A. When the price is taken from an estimate, the rule is that the base unit price stays as the amount from the estimate. To use a different amount, tick「**カスタム単価を使用**」(use a custom price). A confirmation screen appears.
 
-**Q. On a quote it says「この数量に該当する価格段階がありません」(there is no price tier for this quantity).**
+**Q. On the「見積書を作成」(create a quote) screen it says「この数量に該当する価格段階がありません」(there is no price tier for this quantity).**
 A. The price list has no quantity break that covers the number of pieces you entered. From「編集」(edit), add a tier that includes that number. Leaving「最大数量」(maximum quantity) empty on the top tier means no upper limit.
 
 **Q. I changed the price list, but the amount on a quote I made earlier did not change.**

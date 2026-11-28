@@ -28,7 +28,7 @@ It holds the files you uploaded yourself, and also the PDFs the system made for 
 - However, **different people see different files**. Only the files that concern you are shown. What you see depends on the following.
   1. System administrators … see every file.
   2. People who have been allowed a folder … see what is inside that folder.
-  3. People who have permission for an app … see the PDFs that app made. For example, someone who can use quotes sees the quote PDFs.
+  3. People who have permission for an app … see that app's files (the PDFs that app made, attachments added to its documents, and so on). For example, someone who can use quotes sees the quote PDFs.
 
 As a diagram, what you can see is decided like this:
 
@@ -38,7 +38,7 @@ flowchart TD
   q1 -->|"No"| q2{"Allowed<br/>a folder"}
   q1 -->|"No"| q3{"Has permission<br/>for an app"}
   q2 -->|"Yes"| f["Sees what is inside<br/>that folder"]
-  q3 -->|"Yes"| p["Sees the PDFs<br/>that app made"]
+  q3 -->|"Yes"| p["Sees that app's<br/>files"]
 ```
 
 ## How to open it
@@ -51,7 +51,7 @@ On the home screen, under 「システム」 (System), press **ファイル管�
 - 「**名前**」 (Name) … the name of the file or folder. PDFs get a red mark, images a blue one.
 - 「**サイズ**」 (Size) … how big the file is.
 - 「**更新日時**」 (Updated) … when it was last saved.
-- A file with a grey 「**システム**」 (System) mark next to its name was made automatically by the system.
+- A file with a grey 「**システム**」 (System) mark next to its name is a system file (leftover clutter made by a computer or a tool on its own). Files with this mark are shown only when you turn on the 「**システムファイル**」 (System files) switch at the top of the screen. The number next to the switch is how many system files are hidden.
 - Click a folder to go inside it. Click a file and its contents appear on the right.
 
 At the top right of the screen you will find these buttons.
@@ -169,6 +169,9 @@ A. You are not allowed to put files into the folder you have open. Move to a dif
 
 **Q. I got 「アップロード失敗」 (Upload failed).**
 A. If it appears together with 「**このフォルダへのアップロード権限がありません**」 (You do not have permission to upload to this folder), you are not allowed to put files into that folder. Otherwise it may be a connection problem. Please try again.
+
+**Q. I got 「ファイルが大きすぎます（上限 20 MB）」 (The file is too large (limit 20 MB)).**
+A. You can upload files of up to 20 MB each from this screen. Please make the file smaller and try again.
 
 **Q. I deleted a file by mistake.**
 A. It cannot be brought back from this screen. Please ask your system administrator about restoring it from a backup.

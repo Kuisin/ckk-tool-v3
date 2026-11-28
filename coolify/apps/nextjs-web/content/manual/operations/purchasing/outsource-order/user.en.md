@@ -50,6 +50,7 @@ When you open the app, you see a list of the steps that have been sent out for o
 
 ![Outsourcing order list](../../../assets/screenshots/outsource-order-list-01.png)
 
+- **依頼番号** (request number) … a number starting with `OUT-`. The system adds it when a 「依頼日」 (requested date) is entered for the step. Rows without a requested date show 「—」.
 - **指示書番号** (work order number) … a blue number. Click it to open the [work order](/manual/en/operations/production/work-order/user) screen.
 - **製品** (product) … the name of the product being made by that work.
 - **工程名** (step name) … the name of the work you asked for, such as centreless grinding.
@@ -57,7 +58,9 @@ When you open the app, you see a list of the steps that have been sent out for o
 - **依頼日 / 入荷予定日 / 入荷日** (sent date / expected return date / return date) … the day you sent it, the day it should come back, and the day it actually came back. Dates that have not happened yet are shown as 「—」.
 - **状態** (status) … grey is 「未着手」 (not started), blue is 「進行中」 (in progress), green is 「完了」 (finished), and red is 「キャンセル」 (cancelled).
 
-Type a work order number, a product, a step, or a partner into the search box at the top to narrow down the list. You can also narrow it down with 「**外注先**」 (outsourcing partner) and 「**状態**」 (status) on the right.
+Type a request number, a work order number, a product, a step, or a partner into the search box at the top to narrow down the list. You can also narrow it down with 「**外注先**」 (outsourcing partner) and 「**状態**」 (status) on the right.
+
+If you handle documents of two or more of our companies, a small badge with the company code (for example `TSP`) appears next to the number ([company badge](/manual/en/operations/masters/own-company/user#company-badge)).
 
 ![Outsourcing order list narrowed down by status](../../../assets/screenshots/outsource-order-list-02.png)
 
@@ -84,7 +87,7 @@ You cannot enter the sent date, expected return date, or return date in this lis
 
 ![The 「外注日程」 box on the step work screen](../../../assets/screenshots/outsource-order-step-01.png)
 
-Once you save, the dates also appear in the outsourcing order list.
+Once you save, the dates also appear in the outsourcing order list. When you enter the requested date for the first time, a number appears in the list's 「**依頼番号**」 (request number) column.
 
 ## Input fields
 
@@ -95,8 +98,8 @@ The details (supplier, request date, expected date, received date) are entered o
 | Filter | What it changes |
 |--------|-----------------|
 | [Supplier](#field-supplier) | Which company's work is shown |
-| [Status](#field-status) | Narrow by requested, received, and so on |
-| [Search](#field-search) | Find by work order number, product, step or supplier |
+| [Status](#field-status) | Narrow by how far the step has got (not started, in progress, completed, cancelled) |
+| [Search](#field-search) | Find by request number, work order number, product, step or supplier |
 
 ### Supplier [#field-supplier]
 
@@ -104,11 +107,11 @@ Which company's work is shown.
 
 ### Status [#field-status]
 
-Narrows by status such as requested or received. Use it to find **work that is past its expected date but has not come back.**
+Narrows by how far the step has got (not started, in progress, completed, cancelled). To find **work that is past its expected date but has not come back**, narrow the status to 「進行中」 (in progress) or similar, sort by the 「入荷予定日」 (expected date) column, and look at rows whose 「入荷日」 (received date) is 「—」.
 
 ### Search [#field-search]
 
-Finds by work order number, product, step or supplier. Clicking a row opens the work order that holds the step.
+Finds by request number, work order number, product, step or supplier. Clicking a row opens the work screen of that step (click the blue work order number to open the work order screen).
 
 ## Questions and problems
 

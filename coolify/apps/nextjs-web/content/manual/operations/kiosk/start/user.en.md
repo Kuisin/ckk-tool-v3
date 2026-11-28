@@ -1,7 +1,7 @@
 ---
 title: "Shop-floor Tablet — Getting Started"
 description: "How to log in with your QR card and start using the shared tablet in the factory."
-screenshots: [kiosk-login-01, kiosk-home-01]
+screenshots: [kiosk-login-01, kiosk-home-01, kiosk-header-menu-01]
 ---
 This page is about the **shared tablet** in the factory (the shop-floor device). It is not a PC. It is a tablet that stays in the work area.
 
@@ -63,11 +63,15 @@ flowchart TD
 
 The bar at the very top shows the following.
 
-- Left … the name of this tablet (for example "1F 加工場 タブレット") and the battery left.
+- Left … the name of the person logged in. Press it to switch 「**文字の大きさ**」 (Text size) and 「**言語**」 (Language), or to 「**ログアウト**」 (Log out). When nobody is logged in it shows 「**未ログイン**」 (Not logged in).
 - Centre … today's date and the time.
-- Right … the connection status. When it is orange or red, the signal may not be reaching the tablet.
+- Right … a dot for the connection status and the name of this tablet (for example "1F 加工場 タブレット"). When a work location is set for this tablet, its name appears next to it. A green dot means all is well. Orange means the tablet is opened in a browser instead of the dedicated app, grey means it is not connected, and red means the tablet is not registered. A blinking dot means the connection is unstable.
 
-On the app list screen you can switch the **screen language** (日本語 / English / 中文) at the top right. Switching it does not change what gets recorded.
+![Menu that opens when you tap your name (text size, language, log out)](../../../assets/screenshots/kiosk-header-menu-01.png)
+
+The battery left is shown at the right end of the bar at the very bottom.
+
+On the app list screen, your name appears just below the top bar as 「〇〇 さん」. To the right of it you can switch the **screen language** (日本語 / English / 中文). Switching it does not change what gets recorded.
 
 ## Starting your work
 
@@ -81,7 +85,8 @@ The app list has the following four apps.
 ## When you have finished
 
 - Press 「**ログアウト**」 (Log out) at the top right of the app list screen.
-- Even if you forget to press it, you are **logged out automatically after some time with no use**. The next person should log in with their own card.
+- You can also press your name at the left of the top bar and choose 「**ログアウト**」.
+- Even if you forget to press it, you are **logged out automatically after 5 minutes with no use**. When little time is left, 「**あと … で自動ログアウト**」 (Automatic logout in …) is shown. The next person should log in with their own card.
 
 > ⚠️ This is a shared tablet. Please **log out when your work is done**. If you stay logged in, the next person's work is recorded under your name.
 
@@ -104,7 +109,13 @@ The number you chose. A new PIN has **6 digits**; the same digit repeated, a run
 You are always asked for it when:
 
 - you use the card on **that tablet for the first time**
+- you have not used the card on that tablet for **48 hours or more**
 - **two weeks** have passed since you last entered it
+
+The text on the PIN screen tells you why you are being asked:
+
+- 「**この端末で 48 時間以上使われていない（または初めて使う）ため、本人確認が必要です。**」 (Identity verification is required because this card has not been used on this device for 48 hours or more (or this is its first use here).) … the first or second case above
+- 「**前回の PIN 確認から 2 週間たったため、本人確認が必要です。**」 (Identity verification is required because two weeks have passed since your last PIN check.) … only the third case above
 
 Otherwise, holding up the card is enough. **Five wrong tries in a row locks it for 15 minutes.** If you forget it, ask an administrator to reset it.
 
@@ -127,7 +138,7 @@ A. You cannot restore it yourself. Please ask an administrator to reset your PIN
 A. Your PIN is needed when you use that tablet for the first time, when you have not used that tablet for a while (more than 48 hours), and when 2 weeks have passed since you last entered your PIN.
 
 **Q. Someone else is still logged in.**
-A. They are logged out automatically after a while. If you are in a hurry, ask that person to log out.
+A. They are logged out automatically after 5 minutes with no use. If you are in a hurry, ask that person to log out.
 
 **Q. The screen says 「この端末は登録されていません」 (This device is not registered).**
 A. That tablet has not been registered yet, or its registration has been removed. Please contact an administrator.

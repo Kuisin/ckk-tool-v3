@@ -4,7 +4,7 @@ description: "Operation code SY08. Issues and manages the QR cards employees use
 ---
 Operation code **SY08**. Issues and manages the **QR cards** employees use to log in to shared plant-floor tablets (kiosk devices).
 
-> The entry permission for this app is the code **`kiosk_card`** (not `kiosk`). Listing, details and suspend / resume need only `kiosk_card`, but **issuing, assigning to a user, revoking, resetting / unlocking the PIN, changing the validity period, changing the concurrent-login limit and printing cards** are privileged operations (`kiosk_card.*`): request them in [Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G) and you can perform them only during the period another person approves (system administrators pass straight through). All operations are recorded in the audit log.
+> The entry permission for this app is the code **`kiosk_card`** (not `kiosk`). Listing and details need only `kiosk_card`. **Suspend / resume need no approval, but they check `kiosk` (Shared device admin) UPDATE rather than `kiosk_card`** (`transitionCard`). **issuing, assigning to a user, revoking, resetting / unlocking the PIN, changing the validity period, changing the concurrent-login limit and printing cards** are privileged operations (`kiosk_card.*`): request them in [Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G) and you can perform them only during the period another person approves (system administrators pass straight through). All operations are recorded in the audit log.
 
 ## What you can do here
 
@@ -43,13 +43,13 @@ flowchart TD
 **Print from that screen's 「印刷」 (browser print).** The sheet declares its paper size as *lengths* — `@page { size: 210mm 297mm }` — which is an *absolute* page box the UA must not scale to fit, so it always comes out at actual size. (A keyword such as `size: A4` is "scalable" instead, and is what made the old implementation shrink.) The only thing to check in the print dialog is that the paper is A4.
 
 「PDFで保存」 (Save as PDF) is for archiving and sending. **Once it is a PDF the CSS absolute size no longer applies** and a viewer's "fit to printable area" can shrink it a few percent (the PDF route also keeps its page box slightly smaller than A4 to counter this, but it is viewer-dependent). Do not print business-card stock via the PDF.
-4. Hand the printed card to the employee. They hold the QR up to the tablet and set a **PIN** (4–6 digits) on first login.
+4. Hand the printed card to the employee. They hold the QR up to the tablet and set a **PIN** (6 digits) on first login.
 
 For security, the list shows only the **last 8 characters** of each card ID. The full ID exists only inside the QR on the print sheet.
 
 ## How PINs work
 
-- The employee sets their own PIN (4–6 digits) at first login on the tablet. Administrators can never see or set the PIN value.
+- The employee sets their own PIN at first login on the tablet (**6 digits**; runs of one digit, ascending / descending sequences and 2–3-digit repeats such as `121212` / `123123` are rejected. Older 4-digit PINs keep working; the rule applies from the next reset). Administrators can never see or set the PIN value.
 - If the card was used **on that same device within 48 hours** and the last PIN verification was **within 2 weeks**, scanning the QR alone is enough. Otherwise the PIN is asked again (the first login on a new device always asks for the PIN).
 - **5 consecutive** wrong PIN entries lock the card for **15 minutes**. The PIN column then shows "ロック中" (Locked).
 - **PINロック解除** (Clear PIN lock) … clears only the lock; the PIN itself is kept.
@@ -77,7 +77,7 @@ After login, sessions end automatically after **5 minutes** of inactivity, with 
 
 ## Suspending and revoking
 
-- **一時停止** (Suspend) … blocks login with this card. Reversible via **再開** (Resume).
+- **一時停止** (Suspend) … blocks login with this card. Kiosk sessions open with this card are also invalidated immediately. Reversible via **再開** (Resume).
 - **取り消し** (Revoke) … permanently disables the card. **Cannot be undone.** Any open kiosk sessions on that card are terminated immediately.
 
 To move a card to a different user, **revoke** the existing card first, then assign a new (or unassigned) card. An assigned card cannot be transferred directly to another user.
@@ -85,7 +85,8 @@ To move a card to a different user, **revoke** the existing card first, then ass
 ## List and search
 
 - Search by card ID or user name; filter by status.
-- Columns: card ID / assigned user / status / PIN (set, not set, locked) / last used / use count.
+- Columns: card ID / assigned user / status / PIN (set, not set, locked) / validity period (expired / not-yet-started badges) / last used / use count.
+- The band at the top shows how many operations the `kiosk_card` approval currently allows and the time left (showing the band does not consume time).
 
 ## Related pages
 

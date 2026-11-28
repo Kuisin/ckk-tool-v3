@@ -10,21 +10,21 @@ It is a view-only app. You cannot correct or erase any record from this screen.
 ## What you can do with this app
 
 - See the change records from every app together, in time order.
-- Search by a document number or by the name of the person who made the change.
-- Pick one record and compare **what the data looked like before and after** the change.
+- Search by a document number or by the name of the person who made the change. You can also narrow down by period, by who did it, by the kind of operation, and by the kind of data.
+- Pick one record and see in a table **which fields changed, from what to what**.
 - Jump straight from a record to the screen of the document that was changed.
 - Use it when you want to find out "who changed this number?" or "when did the amount change?"
 
 ## Terms used on this page
 
-- **レコード** (Record) … one item of data. One quotation, one product, and so on. On this screen it is shown by that document's number (for example `QOT-…`).
-- **対象** (Target) … what kind of data it is. Quotation, trial estimate, price list, site, and so on.
+- **レコード** (Record) … one item of data. One quote, one product, and so on. On this screen it is shown by that document's number (for example `QOT-…`).
+- **対象** (Target) … what kind of data it is. Quote, price estimate, price list, site, and so on.
 - **変更内容** (Changes) … a short summary of which fields changed and how.
 
 ## Before you start
 
 - You need the **Personal data access** (`personal_data`) permission to open this app. If it will not open, please ask your system administrator.
-- Holding the permission is not enough to open the list (the cross-document search) or the details of one record. Request "**Cross-document activity search**" and "**Activity log detail**" in [Privileged access](/manual/en/operations/system/privileged-access/user) (`SY0G`); you can use them only during the period another person approves.
+- Holding the permission is not enough to open the list (the cross-document search) or the details of one record. Request "**Cross-document activity search**" and "**Activity log detail**" in [Privileged access](/manual/en/operations/system/privileged-access/user) (`SY0G`); you can use them only during the period another person approves. After approval, your time starts counting down **from the first time you open this screen**.
 - The 「**履歴**」 (History) tab on each document's own screen does not need this approval.
 - If you only want the history of one particular document, the **「履歴」 (History) tab on that document's own screen** will find it faster. The contents are the same.
 
@@ -41,7 +41,9 @@ A record is created automatically **when data is saved**.
 - **削除** (Delete) … when data was erased.
 - **初期データ** (Seed data) / **マイグレーション** (Migration) … records of the system putting data in at the start, or moving data over in bulk. These are not actions by a person.
 
-On the other hand, **actions where you only looked at something are not recorded**. Opening a screen, logging in, or downloading a PDF will not appear here.
+**Actions where you only looked at something are not recorded** — opening an ordinary screen, logging in, or downloading a document's PDF will not appear here.
+
+However, some operations that involve secrets or personal information are recorded even when you only look. For example, showing a shared-device PIN, opening the detail of a login record, or an outside person viewing a document in the partner portal is recorded as 「**閲覧**」 (View), and exporting form responses or printing QR cards is recorded as 「**書き出し**」 (Export).
 
 ## Reading the screen
 
@@ -49,21 +51,23 @@ When you open the app, the records are listed newest first.
 
 ![The Activity Log list screen](../../../assets/screenshots/settings-activity-01.png)
 
-- **日時** (Date/time) … when the action took place.
-- **操作** (Operation) … normally one of 作成 (create) / 更新 (update) / 削除 (delete). For work done by the system rather than a person, it can also show 「**初期データ**」 (seed data) or 「**マイグレーション**」 (migration).
-- **対象** (Target) … what kind of data it is (quotation, trial estimate, price list, and so on).
+- **日時** (Date/time) … when the action took place. Press the column heading to switch between oldest first and newest first.
+- **操作** (Operation) … normally one of 作成 (create) / 更新 (update) / 削除 (delete). It can also show 「**閲覧**」 (view) or 「**書き出し**」 (export), and for work done by the system rather than a person, 「**初期データ**」 (seed data) or 「**マイグレーション**」 (migration).
+- **対象** (Target) … what kind of data it is (quote, price estimate, price list, and so on).
 - **レコード** (Record) … the number of that document. For data with no number, "—" is shown.
 - **ユーザー** (User) … the name of the person who did it. Work done by the system rather than a person is shown as 「**システム**」 (System). Actions performed from a shared shop-floor tablet also carry a **device-name badge** under the name showing which device they came from (actions from a PC have none).
 - **変更内容** (Changes) … a summary of what changed and how. It is listed in the form "field name: before → after".
 
-> 💡 This screen shows up to the **300 newest** records. If you need to look into anything older than that, please ask your system administrator.
+The records are shown one page at a time. Below the table you can move between pages and change how many rows a page shows (10 / 20 / 50 / 100). Older records can be found by turning pages or narrowing down.
 
 ## Searching and narrowing down
 
-1. Type a document number or a person's name into the search box at the top, 「**レコード・ユーザー・内容で検索**」 (Search by record, user, or content).
-2. Use 「**操作**」 (Operation) to narrow down to one kind of operation. Create, update, and delete are the usual choices; when the system has done work of its own, 「初期データ」 (seed data) and 「マイグレーション」 (migration) can be chosen too.
-3. Use 「**対象**」 (Target) to narrow down to a kind of data, such as quotations or products.
-4. To clear all of the conditions, press 「**リセット**」 (Reset).
+1. Type a document number or a person's name into the search box at the top, 「**レコード・ユーザーで検索**」 (Search by record or user).
+2. Choose the period with 「**開始日**」 (Start date) and 「**終了日**」 (End date).
+3. Use 「**操作**」 (Operation) to narrow down to one kind of operation.
+4. Use 「**対象**」 (Target) to narrow down to a kind of data, such as quotes or products.
+5. Use 「**ユーザー**」 (User) to narrow down to the person who acted.
+6. To clear all of the conditions, press 「**リセット**」 (Reset).
 
 ![Narrowing down by operation and target](../../../assets/screenshots/settings-activity-filter-01.png)
 
@@ -75,7 +79,7 @@ Click a row in the list and the screen for that single record opens.
 
 ![The Activity Log detail screen](../../../assets/screenshots/settings-activity-detail-01.png)
 
-Near the top you will see the date/time, operation, target, record, and user.
+At the very top, one sentence says who did what. Below it you will see the date/time, operation, target, record, user, and related page.
 
 - Click the name under 「**ユーザー**」 (User) and that person's details open in [ユーザー管理](/manual/en/operations/system/user-management/user) (User Management).
 - When a document name appears under 「**関連ページ**」 (Related page), you can move to that document's screen.
@@ -83,17 +87,15 @@ Near the top you will see the date/time, operation, target, record, and user.
 
 ## Comparing before and after
 
-Lower down on the detail screen, the recorded contents are shown just as they are.
+Lower down on the detail screen, 「**変更内容**」 (Changes) shows in a table what changed.
 
 ![The contents before and after the change](../../../assets/screenshots/settings-activity-diff-01.png)
 
-- 「**変更内容（要約）**」 (Changes — summary) … a short summary of only the fields that changed. Normally this is all you need to look at.
-- 「**変更前（before）**」 (Before) … the contents before the correction.
-- 「**変更後（after）**」 (After) … the contents after the correction.
+- For an update, only the changed fields are listed in three columns: 「**項目**」 (Item), 「**変更前**」 (Before) and 「**変更後**」 (After).
+- For something newly made or deleted, the contents at that time are listed in two columns: 「**項目**」 (Item) and 「**値**」 (Value).
+- When no field changed, 「**変更点はありません**」 (No changes) is shown.
 
-For a record of something newly made, 「変更前（before）」 shows 「**なし**」 (none). For a record of a deletion, 「変更後（after）」 shows 「**なし**」.
-
-> 💡 The contents of 「変更前」 and 「変更後」 are shown in the form the system stores them in. English field names and symbols are mixed in, but there is nothing wrong. The easy way to check what changed is 「変更内容（要約）」.
+> 💡 Press 「**生データを表示**」 (Show the raw data) under the table to open 「**変更前（before）**」 and 「**変更後（after）**」 in the form the system stores them in. English field names and symbols are mixed in, but there is nothing wrong. Normally the table above is all you need. Press 「**生データを隠す**」 (Hide the raw data) to close it.
 
 ## Input fields
 
@@ -101,32 +103,42 @@ Activity log is a **read-only screen**. There is nothing to type — you only ch
 
 | Filter | What it changes |
 |--------|-----------------|
-| [Search](#field-user) | Search by document number, a person's name, or words in the changes |
+| [Search](#field-user) | Search by document number or a person's name |
+| [Period](#field-date-range) | From when to when the records are shown |
 | [Operation](#field-period) | Narrow down by the kind of operation — create, update, delete and so on |
 | [Target](#field-target) | Which documents or master data are shown |
+| [User](#field-actor) | Whose actions are shown |
 
 ### Search [#field-user]
 
-The search box 「**レコード・ユーザー・内容で検索**」 (Search by record, user, or content). You can search by any of a document number (`QOT-…` and so on), the name of the person who acted, or words contained in the changes.
+The search box 「**レコード・ユーザーで検索**」 (Search by record or user). You can search by a document number (`QOT-…` and so on) or by the name of the person who acted. Words inside the changes cannot be searched.
+
+### Period [#field-date-range]
+
+Use 「**開始日**」 (Start date) and 「**終了日**」 (End date) to set the period of records to show. You may set just one of them.
 
 ### Operation [#field-period]
 
-Narrows down by the kind of operation — create, update, delete. When the system has done work of its own, 「初期データ」 (seed data) and 「マイグレーション」 (migration) can be chosen too.
+Narrows down by the kind of operation — create, update, delete, view, export, seed data, or migration.
 
 ### Target [#field-target]
 
 Filters by what the record is about, such as quotes or work orders. Clicking a row opens the detail with **before and after** side by side.
 
+### User [#field-actor]
+
+Choose the person who acted to show only their records. You can type a name to find them.
+
 ## Frequently asked questions and troubleshooting
 
-**Q. I only want to see the history of one particular quotation.**
-A. The quickest way is to open that quotation's screen and look at the 「**履歴**」 (History) tab. If you want to look here instead, type the quotation number into the search box.
+**Q. I only want to see the history of one particular quote.**
+A. The quickest way is to open that quote's screen and look at the 「**履歴**」 (History) tab. If you want to look here instead, type the quote number into the search box.
 
 **Q. The old record I am looking for does not appear.**
-A. This screen shows only the 300 newest records. If you need anything earlier than that, please ask your system administrator.
+A. Set a period with 「**開始日**」 (Start date) and 「**終了日**」 (End date), or move to later pages below the table. Also check that you have not set too many conditions.
 
 **Q. I want to know who logged in.**
-A. You cannot tell from this screen. Only records of data being made, corrected, or erased are kept here. Sign-in records live in [Login History](/manual/en/operations/system/login-history/user) (`SY0D`).
+A. You cannot tell from this screen. Sign-in records live in [Login History](/manual/en/operations/system/login-history/user) (`SY0D`).
 
 **Q. 「ユーザー」 says 「システム」. Who did it?**
 A. It was not a person — the system did it automatically. Overnight automatic processing and data imports are examples of this.

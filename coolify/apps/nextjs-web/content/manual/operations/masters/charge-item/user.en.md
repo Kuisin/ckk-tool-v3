@@ -1,6 +1,7 @@
 ---
 title: "Charge items — User Manual"
 description: "An app for registering the things you bill for other than the price of the product, such as shipping and packing."
+screenshots: [master-charge-item-list-01]
 ---
 This app is for registering **the things you bill for other than the price of the product**, such as shipping, packing and costs paid on the customer's behalf. The operation code is `MS0G`.
 
@@ -12,8 +13,10 @@ This app is for registering **the things you bill for other than the price of th
 
 - You can register the items that can be added to a bill (shipping and so on).
 - For each item you can decide whether the amount is entered every time or is a set amount.
-- For each item you can decide the tax category (taxable or tax exempt).
+- For each item you can decide the tax category (the consumption-tax category, such as taxable or tax exempt).
 - You can disable an item you no longer use.
+
+![Charge item list](../../../assets/screenshots/master-charge-item-list-01.png)
 
 > 💡 The items registered here appear as the choices for additional charges on the [指示書 (work order)](/manual/en/operations/production/work-order/user) (planned), the [出荷書 (delivery order)](/manual/en/operations/shipping/delivery-order/user) (final) and the [請求書 (invoice)](/manual/en/operations/billing/invoice/user).
 
@@ -36,7 +39,7 @@ flowchart TD
 
 - **Code** … a mark in letters that tells the items apart (for example `SHIPPING`). It cannot be changed after the item is created.
 - **How the amount is decided** … either 「固定」 (fixed) or 「可変」 (variable). Explained below.
-- **Tax category** … whether consumption tax is added to that item.
+- **Tax category** (税区分) … whether consumption tax is added to that item, and at what %. You choose one of those registered in [Tax categories](/manual/en/operations/masters/tax-category/user).
 
 ## Two ways the amount is decided
 
@@ -54,18 +57,29 @@ flowchart TD
 3. Enter the 「名称」 (name). This is the name that appears on the invoice.
 4. Choose 「**金額の決まり方**」 (how the amount is decided).
 5. Enter the 「金額」 (amount) for a fixed item, or the 「既定の金額」 (default amount) for a variable item.
-6. Choose the 「課税区分」 (tax category).
-7. Press 「保存」 (Save).
+6. Choose the 「税区分」 (tax category). If you leave it empty, it becomes 「既定に従う」 (use the default).
+7. If needed, enter 「表示順」 (sort order) and 「備考」 (notes). 「表示順」 is the order in which the item appears among the choices.
+8. Press 「保存」 (Save).
+
+## Correcting a registered item
+
+1. In the list, press the row of the item you want to correct.
+2. The 「料金項目を編集」 (edit charge item) screen opens. The 「コード」 (code) cannot be changed.
+3. Rewrite the fields you want to correct.
+4. Press 「保存」 (Save).
+
+Correcting the amount does not change the amount on lines already written on work orders or delivery orders.
 
 ## How the tax category is decided
 
-It is decided **item by item** — shipping is taxable, revenue stamps are tax exempt, and so on. However, if a tax category is set on the customer, **the customer's takes priority** (a tax-exempt business partner, for example).
+It is decided **item by item** — shipping is taxable, revenue stamps are tax exempt, and so on. When the item's tax category is empty, the default category set in [Tax categories](/manual/en/operations/masters/tax-category/user) is used. However, if a tax category is set on the customer, **the customer's takes priority** (a tax-exempt business partner, for example).
 
 ## Items you no longer use
 
 - **An item that is not in use can be deleted.**
 - An item **already used** on a work order or a delivery order cannot be deleted (the counts are shown, as in 「指示書 3 件・出荷書 5 件で使われているため削除できません」 — it cannot be deleted because it is used on 3 work orders and 5 delivery orders).
-- **Disable** it instead with 「**無効化**」. From then on the item can no longer be chosen for new lines, but **the lines already written stay as they are**.
+- **Disable** it instead with 「**無効化**」 (disable). Press 「︙」 at the right end of the row and choose 「無効化」. To disable several at once, tick the boxes on the left of the rows and press 「一括無効化」 (bulk disable).
+- A disabled item can no longer be chosen for new lines, but **the lines already written stay as they are**. To use it again, press 「有効化」 (enable) in the same menu.
 
 ## Questions and problems
 

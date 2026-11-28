@@ -15,8 +15,12 @@
 >
 > ```bash
 > SHOT_DB_CONTAINER=ckk-shots-db-2 SHOT_DB_PORT=55433 \
->   SHOT_APP_PORT=3110 SHOT_KIOSK_PORT=3111 pnpm docs:shots
+>   SHOT_APP_PORT=3110 SHOT_KIOSK_PORT=3111 SHOT_GOTENBERG_PORT=3112 pnpm docs:shots
 > ```
+>
+> PDF タブを撮るために **Gotenberg も一緒に起動する**（`<SHOT_DB_CONTAINER>-gotenberg`、
+> 既定 :3102）。以前は起動しておらず、PDF の画像が「PDF generation failed」のまま
+> コミットされていた。
 
 ## 使い方
 

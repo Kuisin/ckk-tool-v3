@@ -107,7 +107,7 @@ Once every step is done, that work order's product goes into stock, and you can 
 | Document | How the state moves |
 |----------|----------------------|
 | Order line | Draft → Confirmed → In production → Partially shipped → Shipped (can only be cancelled via a request → approval made per order acceptance) |
-| Work order | Draft → Pending approval → Approved → In progress → Completed (can be cancelled until work starts — while draft, pending approval, or approved with no step started) |
+| Work order | Draft → Pending approval → Approved → In progress → Completed (can be cancelled until work starts — while draft, pending approval, or approved with no step started. An in-progress manufacture work order becomes cancelled through "打ち切り" (stop partway)) |
 | Work order approval | Pending approval → Approved (can be sent back). Which step it is on now is shown in the Pending list (`CM01`) and on the work order screen |
 | Step | Not started → In progress → Completed (can be cancelled; while paused it stays in progress) |
 

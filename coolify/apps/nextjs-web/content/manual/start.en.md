@@ -27,7 +27,7 @@ These three connect in order: **Price Estimate → Price List → Quote** (see "
 
 - Click the **logo (top left)** → the app launcher opens.
 - **Search box (top right, desktop only)** — type an app name or an "operation code" (e.g. `SA01`) and press Enter to jump straight to that screen. It is not shown on narrow screens such as phones; the same search sits inside the app launcher above.
-- **Bell (top right)** — notifications. **Avatar** — Profile, Notification Settings, Home Screen Settings, Display Settings, Sign out.
+- **Bell (top right)** — notifications. **Avatar** — Profile, Notification Settings, Home Screen Settings, Display Settings, My permissions, Sign out.
 - **Home** — available apps grouped by category (choose "Custom (by group)" in Home Screen Settings to arrange them by the groups you create instead). Apps you lack permission for are hidden, and the set of published apps also differs per environment (production / development).
 
 ![App launcher](./assets/screenshots/launcher-01.png)
@@ -59,7 +59,7 @@ For detailed steps and what each input field means, open **Operations** in the s
 
 - **Can't find a screen** — you may lack the required permission; ask an administrator.
 - **Got a notification** — review it from the bell (top right).
-- **Change your own settings** — they all live in the top-right avatar menu: **Profile** for your notification email and password, **Home Screen Settings** for favorite apps and display mode, and **Display Settings** for the interface language, date/time format, time zone, text size and bold text (see the [User Settings Manual](/manual/en/user-settings)).
+- **Change your own settings** — they all live in the top-right avatar menu: **Profile** for your notification email and password, **Home Screen Settings** for favorite apps and display mode, and **Display Settings** for the interface language, date/time format, time zone, text size and bold text. **My permissions** shows which permissions you hold (see the [User Settings Manual](/manual/en/user-settings)).
 
 ## 6. Document number rules[#doc-number]
 

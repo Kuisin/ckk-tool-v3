@@ -69,7 +69,7 @@ When you open the app, the arrival records are listed with the newest first.
 4. Choose the site that received the material in 「**入荷先拠点**」 (receiving site).
 5. Check the 「**入荷日**」 (arrival date). It starts with today's date.
 6. Enter how many pieces arrived in 「**数量**」 (quantity).
-7. Check the 「**単位**」 (unit). It starts with 「本」 (pieces).
+7. Check the 「**単位**」 (unit). It is filled in from the material master when you choose the material, and cannot be changed.
 8. To keep a copy of the delivery note with the record, press 「**ファイルを選択**」 (Choose file) under 「**証憑（任意）**」 (supporting document, optional) and choose the file.
 9. Finally, press 「**登録**」 (Register).
 
@@ -87,11 +87,11 @@ When the delivery note for material bought without a purchase order arrives, you
 
 1. Press 「**納品書から登録**」 (From a delivery note) on the list screen.
 2. Choose the delivery note (PDF or image) in the 「**AI で読み取る**」 (Read with AI) panel and press 「**AI で読み取る**」 (Read with AI). Price columns are not read.
-3. The supplier and line items that were read are shown. 「**入荷先拠点**」 (Receiving site) and 「**入荷日**」 (Received date) apply to all lines (you can also change them per line).
+3. The supplier and line items that were read are shown. The 「**入荷拠点**」 (Receiving site) and 「**入荷日**」 (Received date) at the top apply to all lines (you can also change them per line). The received date starts as the date read from the delivery note.
 4. For lines whose material could not be identified, pick it from the candidates. For lines you do not want to register, choose 「**この行を登録しない**」 (Do not register this line). The unit comes from the material master.
 5. Press 「**選択した ◯ 件を登録**」 (Register ◯ selected).
 
-The selected lines are registered **together in one go**. If even one line fails, none of them is registered (you never end up with only half registered). You cannot register while a line still has no material. The system remembers the material names you picked, so the next delivery note in the same supplier's format is matched more easily.
+The selected lines are registered **together in one go**. If even one line fails, none of them is registered (you never end up with only half registered). You cannot register while a line still has no material. The delivery note you read is attached automatically to each registered receipt as 「**取込元（原本）**」 (source original). The system remembers the material names you picked, so the next delivery note in the same supplier's format is matched more easily.
 
 > ⚠️ Receipts registered here are not linked to a purchase order either. Record delivery notes for material ordered with a purchase order with 「**分割入荷**」 (Partial receipt) or 「**入荷完了**」 (Receiving complete) on the [material purchase order](/manual/en/operations/purchasing/purchase-order/user), not on this screen.
 
@@ -145,7 +145,7 @@ How much actually arrived. If a direct purchase arrives in parts, record what ar
 
 ### Unit [#field-unit]
 
-Pieces, kg, m and so on. Choosing the material fills in its default unit.
+Pieces, kg, m and so on. Choosing the material fills in the unit registered in the material master. This box cannot be changed.
 
 ### Notes [#field-notes]
 

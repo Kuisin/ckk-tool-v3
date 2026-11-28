@@ -45,6 +45,10 @@
  *   SHOT_DB_PORT       DB のホスト側ポート（既定 55432）
  *   SHOT_APP_PORT      nextjs-web のポート（既定 3100）
  *   SHOT_KIOSK_PORT    nextjs-kiosk のポート（既定 3101）
+ *   SHOT_GOTENBERG_PORT PDF レンダラ（Gotenberg）のポート（既定 3102）。
+ *                      コンテナ名は `<SHOT_DB_CONTAINER>-gotenberg`。これが無いと
+ *                      PDF タブの撮影が「PDF generation failed」の画像になる
+ *                      （実際に quote-pdf-01 がその画像のままコミットされていた）。
  *
  *   SHOT_DATABASE_URL  **docker を使わず、この DB へシードする**（外部 DB モード）。
  *                      コンテナの中から走らせるとき用（録画用の
@@ -80,6 +84,10 @@ const KIOSK_URL = process.env.KIOSK_URL ?? `http://localhost:${KIOSK_PORT}`;
 // 名前も逃がして、SHOT_* を揃えて渡せば完全に独立して回せるようにする。
 const DB_CONTAINER = process.env.SHOT_DB_CONTAINER ?? "ckk-shots-db";
 const DB_IMAGE = "groonga/pgroonga:4.0.6-alpine-17";
+const GOTENBERG_CONTAINER = `${DB_CONTAINER}-gotenberg`;
+const GOTENBERG_PORT = Number(process.env.SHOT_GOTENBERG_PORT ?? 3102);
+const GOTENBERG_IMAGE = "gotenberg/gotenberg:8.17";
+const GOTENBERG_URL = `http://127.0.0.1:${GOTENBERG_PORT}`;
 const EXTERNAL_DATABASE_URL = process.env.SHOT_DATABASE_URL;
 const DATABASE_URL = EXTERNAL_DATABASE_URL ?? `postgresql://postgres:shots@127.0.0.1:${DB_PORT}/ckk`;
 const AUTH_SECRET = "docs-screenshots-fixed-secret-not-production";
@@ -117,6 +125,10 @@ const SEED_FILES_POST = [
   "sql/purchase-demo-seed.sql",
   "sql/production-demo-seed.sql",
   "sql/shipping-billing-demo-seed.sql",
+  // 一般カテゴリ（CM02 フォーム / CM03 社内文書）。作成者が demo_shot なので
+  // screenshot-user-seed（PRE）の後ならどこでもよいが、system-demo-seed の
+  // 監査ログ正規化より前に置く。
+  "sql/general-demo-seed.sql",
   "sql/system-demo-seed.sql",
   // 再研磨品目（MS0H）だけ。工程リスト・注文・価格表は**作らない** —
   // 理由はシードの頭に書いてある（既存の撮影がずれる / e2e の自動選択が止まる）。
@@ -230,6 +242,26 @@ async function startDb(): Promise<void> {
     }
   }
   throw new Error("postgres did not become ready in 60s");
+}
+
+function startGotenberg(): void {
+  if (EXTERNAL_DATABASE_URL) return; // 外部 DB モード（コンテナ内実行）では docker が無い
+  try {
+    sh("docker", ["rm", "-f", GOTENBERG_CONTAINER]);
+  } catch {
+    /* none */
+  }
+  log(`PDF renderer ${GOTENBERG_CONTAINER} on :${GOTENBERG_PORT}`);
+  sh("docker", ["run", "-d", "--name", GOTENBERG_CONTAINER, "-p", `${GOTENBERG_PORT}:3000`, GOTENBERG_IMAGE]);
+}
+
+function stopGotenberg(): void {
+  if (EXTERNAL_DATABASE_URL) return;
+  try {
+    sh("docker", ["rm", "-f", GOTENBERG_CONTAINER]);
+  } catch {
+    /* already gone */
+  }
 }
 
 function stopDb(): void {
@@ -398,6 +430,7 @@ async function startApp(): Promise<void> {
       DATABASE_URL,
       AUTH_SECRET,
       AUTH_URL: APP_URL,
+      ...(EXTERNAL_DATABASE_URL ? {} : { GOTENBERG_URL }),
       NODE_ENV: "production",
       // 本番相当の見た目で撮る: 開発環境バー非表示 + リリース済みアプリのみ表示
       APP_ENV: "main",
@@ -510,6 +543,7 @@ async function main(): Promise<void> {
     seed();
     setLocale();
     buildApp();
+    startGotenberg();
     await startApp();
     // キオスク（現場タブレット）マニュアル用。--no-kiosk で省略できる
     // （web だけ撮り直したいときはビルド 1 本ぶん速い）。
@@ -525,14 +559,20 @@ async function main(): Promise<void> {
   } finally {
     stopKiosk();
     stopApp();
+    stopGotenberg();
     stopDb();
   }
 }
 
 main().catch((e) => {
   console.error(e);
+  // --reuse / --seed-only は**借りているスタック**（自分で立てていない DB・
+  // Gotenberg）に対して動く。撮影が 1 枚落ちただけでそれを消すと、手元で
+  // 撮り直しを回している最中に DB ごと失う（実際に踏んだ）。
+  if (flag("--reuse") || flag("--seed-only")) process.exit(1);
   stopKiosk();
   stopApp();
+  stopGotenberg();
   stopDb();
   process.exit(1);
 });

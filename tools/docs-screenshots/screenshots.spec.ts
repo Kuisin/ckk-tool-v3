@@ -19,7 +19,9 @@
  * 「同じ画面の言語違いを別ファイルとして残す」ことだけを担う。
  */
 
-import { mkdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Page, test } from "@playwright/test";
@@ -95,6 +97,140 @@ async function settle(page: Page): Promise<void> {
   await page.waitForTimeout(150);
   // スクロールで始まった取得（画像・プレビュー）を撮る前に終わらせる。
   await page.waitForLoadState("networkidle");
+}
+
+/**
+ * PDF の 1 ページ目を PNG の data URL にする。
+ *
+ * **ヘッドレス Chromium は iframe の中の PDF を描かない**（PDF ビューアは
+ * ヘッドフル専用のプラグイン）。そのままだと PDF タブの撮影は白い紙 1 枚に
+ * なる（quote-pdf-01 が長らくそうだった）。そこで PDF を撮影ユーザーの
+ * cookie のまま取り直し、poppler の pdftoppm（無ければ Ghostscript）で
+ * 1 ページ目を画像にする — scenarios/scn.ts の `pdf()` と同じ手当て。
+ *
+ * 解像度は 192dpi: 画面の A4 枠（最大 794 CSS px = 210mm @96dpi）を
+ * deviceScaleFactor 2 で撮るので、その 2 倍 = 192dpi で 1:1 になる。
+ * 同じ PDF からは同じ画像が出る（docs:verify の決定性を崩さない）。
+ */
+async function pdfFirstPage(
+  page: Page,
+  url: string,
+  maskBottom = 0,
+): Promise<string> {
+  const res = await page.request.get(url, { timeout: 60_000 });
+  const type = res.headers()["content-type"] ?? "";
+  if (!res.ok() || !type.includes("pdf")) {
+    throw new Error(
+      `PDF を取得できない: ${url} → ${res.status()} ${type} ${(await res.text().catch(() => "")).slice(0, 200)}`,
+    );
+  }
+  const dir = mkdtempSync(join(tmpdir(), "ckk-shot-pdf-"));
+  try {
+    const pdf = join(dir, "doc.pdf");
+    writeFileSync(pdf, await res.body());
+    const out = join(dir, "page");
+    try {
+      execFileSync("pdftoppm", ["-png", "-r", "192", "-f", "1", "-l", "1", "-singlefile", pdf, out]);
+    } catch {
+      execFileSync("gs", [
+        "-q", "-dNOPAUSE", "-dBATCH", "-dSAFER", "-sDEVICE=png16m", "-r192",
+        "-dTextAlphaBits=4", "-dGraphicsAlphaBits=4",
+        "-dFirstPage=1", "-dLastPage=1", `-sOutputFile=${out}.png`, pdf,
+      ]);
+    }
+    const dataUrl = `data:image/png;base64,${readFileSync(`${out}.png`).toString("base64")}`;
+    return maskBottom > 0 ? await whiteOutBottom(page, dataUrl, maskBottom) : dataUrl;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * 画像の下端 `fraction` を白で塗る（manifest の `pdfMaskBottom`）。
+ * 帳票によってはフッターに**出力した時刻**が刷られる（設計依頼書の
+ * 「出力: yyyy/MM/dd HH:mm」）。それが写ると撮るたびに画像が変わるので、
+ * 紙の地の色（白）で消す — マスクの灰色帯よりも紙の見た目を崩さない。
+ */
+async function whiteOutBottom(page: Page, dataUrl: string, fraction: number): Promise<string> {
+  return page.evaluate(
+    ({ dataUrl, fraction }) =>
+      new Promise<string>((done) => {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement("canvas");
+          c.width = img.naturalWidth;
+          c.height = img.naturalHeight;
+          const g = c.getContext("2d")!;
+          g.drawImage(img, 0, 0);
+          g.fillStyle = "#ffffff";
+          const h = Math.round(c.height * fraction);
+          g.fillRect(0, c.height - h, c.width, h);
+          done(c.toDataURL("image/png"));
+        };
+        img.src = dataUrl;
+      }),
+    { dataUrl, fraction },
+  );
+}
+
+/**
+ * 画面に埋め込まれた PDF プレビュー（PdfAttachmentPanel の iframe）を、
+ * その PDF の 1 ページ目の画像に差し替える。iframe の寸法・影はそのまま
+ * 引き継ぐので、画面の見た目（灰色の台に A4 が 1 枚）は変わらない。
+ */
+async function rasterizePdfFrames(page: Page, maskBottom = 0): Promise<void> {
+  const srcs = await page.evaluate(() =>
+    [...document.querySelectorAll("iframe")]
+      .filter((f) => f.getBoundingClientRect().width > 0)
+      .map((f) => f.getAttribute("src") ?? "")
+      .filter((s) => s.startsWith("/api/")),
+  );
+  for (const src of srcs) {
+    // 埋め込みの中身が PDF ではない・取れない（ファイル保存先の無い撮影環境で
+    // 添付や図面を開いている画面など）ときは、差し替えずに元のまま撮る —
+    // それは以前からの見え方で、PDF タブの撮影ではない。
+    let dataUrl: string;
+    try {
+      dataUrl = await pdfFirstPage(page, src.split("#")[0], maskBottom);
+    } catch (e) {
+      console.warn(`[shots] PDF の差し替えをしない: ${String(e).slice(0, 160)}`);
+      continue;
+    }
+    await page.evaluate(
+      ({ src, dataUrl }) =>
+        new Promise<void>((done) => {
+          const frame = [...document.querySelectorAll("iframe")].find(
+            (f) => f.getAttribute("src") === src,
+          );
+          if (!frame) return done();
+          const img = document.createElement("img");
+          img.style.cssText = frame.style.cssText;
+          img.style.aspectRatio = "";
+          img.style.height = "auto";
+          img.alt = frame.title;
+          img.onload = () => done();
+          img.src = dataUrl;
+          frame.replaceWith(img);
+        }),
+      { src, dataUrl },
+    );
+  }
+}
+
+/**
+ * manifest の `pdf` 指定 — 画面ではなく PDF そのもの（1 ページ目）を撮る。
+ * 指示書の検査表のように、画面に埋め込みプレビューを持たない帳票用。
+ * 灰色の台に A4 を 1 枚置いた、PDF タブと同じ見た目の 1 枚にする。
+ */
+async function showPdfAlone(page: Page, url: string, maskBottom = 0): Promise<void> {
+  const dataUrl = await pdfFirstPage(page, url, maskBottom);
+  await page.setContent(
+    `<!doctype html><html><body style="margin:0;background:#e9ecef">
+      <div id="shot-pdf" style="padding:16px;width:fit-content;margin:0 auto;background:#e9ecef">
+        <img src="${dataUrl}" style="display:block;width:794px;background:white;box-shadow:0 2px 16px rgba(0,0,0,0.15)">
+      </div></body></html>`,
+    { waitUntil: "load" },
+  );
 }
 
 /** 撮り方 — 要素 1 つ / 表示領域ぶん / 全高。 */
@@ -203,7 +339,12 @@ for (const shot of shots.filter((s) => !s.external)) {
     // 旧番号の URL（シードの書類）は正規の URL へ送られる。?tab= を落とさない。
     await gotoDoc(page, shot.path, { waitUntil: "networkidle" });
     if (shot.steps) await shot.steps(page);
-    const framing = await decideFraming(page, shot.clip, shot.fullPage);
+    // PDF は画像に差し替えてから撮る（ヘッドレスは iframe の PDF を描かない）。
+    if (shot.pdf) await showPdfAlone(page, shot.pdf, shot.pdfMaskBottom);
+    else await rasterizePdfFrames(page, shot.pdfMaskBottom);
+    const framing = shot.pdf
+      ? ({ mode: "element", selector: "#shot-pdf" } as const)
+      : await decideFraming(page, shot.clip, shot.fullPage);
     if (framing.mode === "full") {
       // 下端まで中身を埋めてから、固定・下貼り付きの要素を流れに戻す。
       await settle(page);

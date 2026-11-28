@@ -92,7 +92,7 @@ Permissions fall into four kinds. To see which you hold, open [My permissions](/
 | Delivery note | `delivery_note` | Work with delivery notes. |
 | Invoice | `invoice` | Work with invoices. |
 | Billing closing | `billing_closing` | Run billing closings and export for accounting. |
-| Approvals | `approve` | See the pending-approval list. Whether you may actually approve is decided by 承認設定 (MS0B), not by this permission. |
+| Approvals | `approve` | Open the 承認依頼中 tab of the pending list; it shows only requests whose step is yours. Whether you may actually approve is decided by 承認設定 (MS0B), not by this permission. |
 | Forms | `form` | Create and edit forms and read every response. Who may respond is set per form. |
 | Internal documents | `internal_page` | Use the internal-documents app. Visibility of each document is set per document. |
 

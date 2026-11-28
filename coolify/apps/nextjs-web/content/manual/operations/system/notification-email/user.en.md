@@ -4,7 +4,7 @@ description: "Settings for how notifications are bundled when they are sent by e
 ---
 Settings that decide **how notifications are bundled when they are sent by email**. The operation code is `SY0F`.
 
-> ⚠️ For now this app is available **in the test environment only**. Screens and steps may change before it becomes available in production.
+> ⚠️ This app is still being prepared, so it may not appear on the live system yet. If you cannot find it, please ask the person in charge at your company. Even while it is not shown, notification emails are still bundled using the initial settings described below.
 
 > ⚠️ This screen is for system administrators. The settings apply to everyone.
 
@@ -43,12 +43,15 @@ flowchart TD
 
 ## How to set it up
 
-1. Turn on 「**見逃した未読をまとめて送る**」 (Digest missed unread notifications). When it is off, notifications arrive one by one.
-2. In 「**猶予（分）**」 (Grace period (min)), enter how long to wait before a notification counts as missed (0–1440 minutes). Notifications read within this time are not emailed.
+When you open the screen, the current settings are shown. To change them:
+
+1. Press 「**編集**」 (Edit).
+2. Turn on 「**見逃した未読をまとめて送る**」 (Digest missed unread notifications). When it is off, notifications arrive one by one, and the other boxes cannot be changed.
 3. In 「**送信間隔（分）**」 (Send interval (min)), enter the time during which no further email is sent to the same person (5–1440 minutes).
-4. In 「**最大件数**」 (Max items), enter the maximum number of items listed in one email.
+4. In 「**猶予（分）**」 (Grace period (min)), enter how long to wait before a notification counts as missed (0–1440 minutes). Notifications read within this time are not emailed.
 5. If needed, choose 「**即時に送る通知の種別**」 (Notification types to send immediately).
-6. Press 「保存」 (Save).
+6. In 「**最大件数**」 (Max items), enter the maximum number of items listed in one email (1–100).
+7. Press 「**保存**」 (Save).
 
 > 💡 The default for "types to send immediately" is **none**. Add one only when something comes up that should not be kept waiting.
 
@@ -65,8 +68,8 @@ A. The send interval is a lower limit — "never send more often than this". If 
 **Q. When do changed settings take effect?**
 A. From the next send. The app does not need to be restarted.
 
-**Q. I want to go back to the original settings.**
-A. Press 「**元に戻す**」 (Reset to default) to return to the initial settings.
+**Q. I want to go back to the initial settings.**
+A. There is no 「**元に戻す**」 (Reset to default) button. Press 「**編集**」 (Edit) and enter these values again: 「見逃した未読をまとめて送る」 on, 「送信間隔（分）」 60, 「猶予（分）」 15, 「即時に送る通知の種別」 none, 「最大件数」 20.
 
 <!-- permissions:start -->
 ## Permissions required

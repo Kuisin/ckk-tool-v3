@@ -94,13 +94,14 @@ To correct the content, press 「**編集**」 (Edit) at the top right. From the
 When you want to group several sites together, register a region. You can make a group such as "all the sites in Kanto".
 
 1. Press 「**地域管理**」 (Manage regions) at the top right of the list screen.
-2. In the bottom row of the table, enter a 「**コード**」 (code), for example `jp`.
-3. Enter 「**名称（日本語）**」 (name in Japanese), for example 日本, and 「**名称（英語）**」 (name in English), for example Japan.
-4. Press 「**追加**」 (Add).
+2. Press 「**地域を追加**」 (Add region) at the top right.
+3. On the 「**地域の追加**」 (Add region) screen, enter a 「**コード**」 (code), for example `jp`.
+4. Enter the 「**名称（日本語）**」 (name in Japanese), for example 日本. To give it a name in English or another language as well, press 「**多言語**」 (Translations) next to it and enter it there.
+5. Press 「**作成**」 (Create).
 
 ![Region management screen](../../../assets/screenshots/master-plant-regions-01.png)
 
-The table has the columns **コード** (code) / **名称（日本語）** (name in Japanese) / **名称（英語）** (name in English) / **拠点数** (number of sites) / **状態** (status) / **操作** (actions). 「**拠点数**」 (number of sites) is the number of sites that have chosen that region. Use the buttons at the right of a row to edit, deactivate or delete it.
+The table has the columns **コード** (code) / **名称** (name) / **拠点数** (number of sites) / **状態** (status) / **操作** (actions). 「**拠点数**」 (number of sites) is the number of sites that have chosen that region. Use the 「**編集**」 (Edit), 「**無効化**」 (Disable) and 「**削除**」 (Delete) buttons at the right of a row.
 
 The regions you register become selectable in 「**地域**」 (region) on the site edit screen.
 
@@ -132,7 +133,7 @@ Every field on the site screen.
 | Field | Required | What to enter |
 |-------|----------|---------------|
 | [Site code](#field-code) | Required | The site's reference code |
-| [Name / kana](#field-name) | Required | The site name |
+| [Name / kana](#field-name) | Name required (kana optional) | The site name |
 | [Own company](#field-own-company) | Optional | The company that issues this site's documents |
 | [Country / region](#field-region) | Optional | Used to scope permissions |
 | [Postcode / address](#field-address) | Optional | Location |

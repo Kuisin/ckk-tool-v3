@@ -4,6 +4,8 @@ description: "A work queue that shows, on one screen, the order lines that do no
 ---
 This is the **未処理指示書** (pending work orders) app, where you check together "orders that do not have a work order yet" and "work orders that were made but are not finished yet". The operation code is `PD05`.
 
+> ⚠️ This app is still being prepared, so it may not appear on the live system yet. If you cannot find it, please ask the person in charge at your company.
+
 > This app belongs to … [Production flow](/manual/en/process/production)
 
 ## What you can do with this app
@@ -18,7 +20,7 @@ This is the **未処理指示書** (pending work orders) app, where you check to
 - **注文明細 (order line)** … one line of an order acceptance. It is the unit of an order: "this many pieces of this product".
 - **指示書 (work order)** … the manufacturing instruction that says "make this many of this product".
 - **手配 (arranging)** … making work orders for an order line. One line can also be split across several work orders.
-- **未手配 (unarranged)** … the quantity ordered that has not become a work order yet. It is calculated as **unarranged = ordered quantity − arranged quantity**.
+- **未手配 (unarranged)** … the quantity ordered that has not become a work order yet. It is what remains of the ordered quantity after taking away the arranged quantity.
 
 ## How to open it
 
@@ -40,8 +42,8 @@ Confirmed order lines whose work order quantity has not reached the ordered quan
 - **注文明細番号** (order line number) … click it to open the [order line](/manual/en/operations/sales/order-line/user) detail.
 - **顧客 / 製品** (customer / product) … whose order it is and which product.
 - **受注数** (ordered quantity) … the number of pieces ordered.
-- **手配済** (arranged) … the total quantity already allocated to work orders. Cancelled work orders are not counted. Also, if a completed work order fell short because of defects, the shortfall returns to unarranged.
-- **未手配** (unarranged) … ordered quantity − arranged quantity, shown as an orange badge.
+- **手配済** (arranged) … the total quantity already allocated to work orders. Cancelled work orders (including work orders that were closed out) are not counted. Also, if a completed work order fell short because of defects, the shortfall returns to unarranged (except regrind work orders).
+- **未手配** (unarranged) … the quantity not yet on a work order, shown as an orange badge.
 - **在庫引当** (stock reserved) … the quantity already reserved from product stock. This amount can go into a "from stock" work order.
 - **納期 / 状態** (delivery date / status) … the planned delivery date and the line's status (confirmed, in production, partially shipped).
 
@@ -68,7 +70,7 @@ Orders and work orders move between the two tabs like this:
 
 ```mermaid
 flowchart TD
-  line["Confirmed order line"] --> un["「未手配」 tab (not arranged)<br/>not arranged = ordered − arranged"]
+  line["Confirmed order line"] --> un["「未手配」 tab (not arranged)<br/>quantity not yet on a work order"]
   un -->|"指示書作成<br/>Create work order"| wo["「進行中」 tab (in progress)<br/>work orders not finished yet"]
   wo -->|"Work order completed"| done["Leaves this screen<br/>(see the work order list, PD02)"]
   wo -.->|"Work order cancelled<br/>(its quantity returns to not arranged)"| un
@@ -80,8 +82,8 @@ flowchart TD
 **Q. An order line that was in the list has disappeared.**
 A. The whole ordered quantity has been allocated to work orders (the unarranged quantity became zero). You can find the work orders you made on the in-flight tab or in the work order list (`PD02`).
 
-**Q. I cancelled a work order and the order came back to the unarranged tab.**
-A. That is the correct behaviour. The quantity of a cancelled work order is removed from the arranged quantity, so that amount returns to unarranged and can be arranged again.
+**Q. I cancelled (or closed out) a work order and the order came back to the unarranged tab.**
+A. That is the correct behaviour. The quantity of a cancelled or closed-out work order is removed from the arranged quantity, so that amount returns to unarranged and can be arranged again.
 
 **Q. The unarranged tab says 「指示書待ちの注文明細はありません」 (there are no order lines waiting for a work order).**
 A. It means there is no order line that needs a work order right now. Order lines appear here once they are confirmed (once they get a branch number).

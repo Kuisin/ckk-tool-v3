@@ -56,7 +56,7 @@ flowchart TD
   kd["Kind"] -.->|"Chosen when registering a material"| mc
 ```
 
-On every tab, the table has the columns 「**コード**」 (Code), 「**名称**」 (Name), 「**状態**」 (Status) and 「**更新日**」 (Updated). The 「メーカー材種」 (Maker grade) tab also has a 「**メーカー**」 (Maker) column showing which maker it belongs to, and the 「種類」 (Kind) tab has a 「**形状**」 (Shape) column.
+On every tab, the table has the columns 「**コード**」 (Code), 「**名称**」 (Name), 「**状態**」 (Status) and 「**更新日**」 (Updated). The 「メーカー材種」 (Maker grade) tab also has a 「**メーカー**」 (Maker) column showing which maker it belongs to, and the 「種類」 (Kind) tab has a 「**形状**」 (Shape) column. The 「直径」 (Diameter) tab has a 「**直径 (mm)**」 (Diameter mm) column, and the 「全長」 (Length) tab has a 「**全長 (mm)**」 (Length mm) column.
 
 ![Maker grade tab of the numbering setup screen](../../../assets/screenshots/master-material-numbering-grades-01.png)
 
@@ -78,6 +78,8 @@ On every tab, the table has the columns 「**コード**」 (Code), 「**名称*
 | 黒皮・研磨 (Black skin / Ground) | One capital letter in 「**コード**」 (Code) and 「**名称（日本語）**」 (Name in Japanese) |
 | 直径 (Diameter) | Only 「**直径 (mm)**」 (Diameter in mm), from 0.1 to 99.9. The code is decided automatically |
 | 全長 (Length) | 「**全長 (mm)**」 (Length in mm), from 1 to 999, and 「**カスタム識別（任意）**」 (Custom label, optional) if you need it — for example 特注 330L |
+
+On every tab other than 「直径」 (Diameter) and 「全長」 (Length), you can also enter an English name in 「**名称（English）**」 (Name in English) if you need one (it can be left empty).
 
 > 💡 On the 「直径」 (Diameter) and 「全長」 (Length) tabs, **you do not need to decide the code yourself**. When you enter a number, the 3 digits decided automatically are shown under the input field as 「コード:」 (Code).
 

@@ -28,6 +28,7 @@ See **each individual record of stock moving** as a slip. The operation code is 
 | Cause | What creates it |
 |---|---|
 | 指示書完了 (Work order completed) | All process steps of a [work order](/manual/en/operations/production/work-order/user) complete, and good (or semi-finished) units enter stock |
+| 指示書打ち切り (Work order aborted) | Stopping an in-progress [work order](/manual/en/operations/production/work-order/user) with 「打ち切り」(abort), so the partly processed items go back into stock as WIP |
 | 出荷 (Shipment) | Dispatching via a [delivery order](/manual/en/operations/shipping/delivery-order/user) |
 | 素材入荷 (Material receipt) | Registering a receipt in [Material Receipt](/manual/en/operations/purchasing/material-receipt/user) (PU03) |
 | 在庫移動 (Stock transfer) | Changing storage location via "Move" in [Inventory Management](/manual/en/operations/inventory/inventory-management/user) (ST01) |
@@ -39,6 +40,7 @@ See **each individual record of stock moving** as a slip. The operation code is 
 | 外注戻り (Returned from subcontractor) | Work coming back from a subcontractor (stock held by the partner decreases) |
 | 返品 (Sales return) | A customer returning goods after dispatch (stock comes back; the delivery order and the billing do not change) |
 | 再研磨受入 (Regrind receipt) | Completing 「製品受入（再研磨）」 on a [work order](/manual/en/operations/production/work-order/user), so tools received from the customer enter as **customer-owned stock** (never into our own stock) |
+| 仕掛品の分類 (WIP classification) | Using 「分類する」(classify) on the WIP tab of [Inventory](/manual/en/operations/inventory/inventory-management/user) (ST01). Nothing physically moves; only the item and machining state it is recorded as change |
 | 不明（移行前） (Unknown, pre-migration) | An old record from before the stock system was rebuilt, whose cause is unknown |
 
 ## The screen
@@ -52,21 +54,21 @@ The list has these columns:
 - **明細数 (Line count)** … how many lines are on that slip.
 - **元書類 (Source document)** … a reference to the originating business document.
 
-Filter using the search box above (searches by slip number or the source document reference), 「**事由**」(cause), and 「**拠点**」(site). When there are too many rows and the list is **capped at 1000 rows**, an orange notice says so.
+Filter using the search box above (searches by slip number, old number, or the source document number), 「**事由**」(cause), and 「**拠点**」(site). When there are too many rows and the list is **capped at 1000 rows**, an orange notice says so.
 
 ## The detail screen
 
 Clicking a slip number opens that slip's detail screen.
 
-At the top: slip number, date/time, cause, site, source document (linked), creator, and notes.
+At the top: slip number, date/time, cause, site, source document (linked), creator, and notes. A slip created under the earlier numbering also shows 「**旧番号**」(old number).
 
 Below is a table of lines:
 
-- **種別 (Type)** … a badge for in / out / reserve / release / adjustment.
-- **区分 (Category)** … product or material.
-- **品目名 (Item name)** … the name of the item that moved.
-- **ロット (Lot)** … the lot number, for a product.
-- **保管場所 (Storage location)** … that line's storage location.
+- **区分 (Type)** … a badge for in / out / reserve / release / adjustment.
+- **種類 (Kind)** … product or material.
+- **項目名 (Item name)** … the name of the item that moved.
+- **ロット番号 (Lot number)** … the lot number, for a product.
+- **保管場所・棚 (Storage location / shelf)** … that line's storage location and shelf.
 - **数量 (Quantity)** … how much moved.
 - **備考 (Notes)** … notes on that line. A line showing 「**在庫不足のまま出庫**」 (issued while stock was short) means more was shipped than the ledger held (a [delivery order](/manual/en/operations/shipping/delivery-order/user) is not stopped when stock is short). That item's stock has gone negative, so bring it back with a [Stock Take](/manual/en/operations/inventory/stock-takes/user) (ST05) or a [Manual Stock Movement](/manual/en/operations/inventory/goods-movement/user) (ST06).
 

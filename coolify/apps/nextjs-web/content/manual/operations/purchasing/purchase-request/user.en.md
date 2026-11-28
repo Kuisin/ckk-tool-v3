@@ -63,6 +63,7 @@ When you open the app, you see a list of the purchase requests made so far.
 - **状態** (status) … a coloured badge shows the current situation. Grey is 「下書き」 (draft), yellow is 「承認依頼中」 (pending approval), blue is 「承認済」 (approved), purple is 「発注済」 (ordered), and red is 「差し戻し」 (sent back) or 「キャンセル」 (cancelled).
 - **主要素材** (main material) … the material on the first line. If there are more lines, it adds something like 「他 2 件」 (2 more).
 - Type a request number, a requester, or a material code into the search box at the top to narrow down the list.
+- If you handle documents of two or more of our companies, a small badge with the company code (for example `TSP`) appears next to the request number ([company badge](/manual/en/operations/masters/own-company/user#company-badge)).
 - The 「状態」 (status) box on the right lets you show only the ones pending approval.
 - Click a row to open the detail screen for that request.
 
@@ -73,7 +74,7 @@ When you open the app, you see a list of the purchase requests made so far.
 3. Click the 「**素材**」 (material) box on the line item, search by material code or name, and choose one.
 4. Choose the site that will receive it in 「**入荷先拠点**」 (receiving site). You can also leave it blank and still save.
 5. Enter how many pieces you need in 「**数量**」 (quantity).
-6. Check 「**単位**」 (unit). It starts with 「本」 (pieces).
+6. Check 「**単位**」 (unit). When you choose the material, the unit from the material master is filled in automatically and cannot be changed.
 7. Enter the date you want the material by in 「**希望納期**」 (requested delivery date). You may leave it blank.
 8. To add another material, press 「**明細を追加**」 (Add line item) and repeat steps 3 to 7.
 9. Finally, press 「**保存**」 (Save).
@@ -91,9 +92,11 @@ Once you have checked the content, ask your manager to look at it.
 1. Open the request screen.
 2. Press 「**承認依頼**」 (Request approval) on the 「**承認依頼が必要です**」 (approval request needed) card near the top of the screen.
 
-The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/general/my-tasks/user) screen.
+The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [pending list](/manual/en/operations/general/my-tasks/user) (`CM01`) screen.
 
 > ⚠️ The approval steps are decided in [approval settings](/manual/en/operations/masters/approval-setting/user) (`MS0B`). If the purchase request approval flow has no steps, you cannot request approval (a message such as "the approval flow is not configured" is shown). Ask an administrator to set up the approval settings.
+
+> 💡 If "use approval" is turned off for purchase requests in the approval settings, pressing 「**承認依頼**」 (Request approval) makes the request 「**承認済**」 (approved) straight away (the message 「**承認なしで承認済にしました**」 (approved without approval) is shown). You can then convert it to a purchase order.
 
 ![Purchase request pending approval](../../../assets/screenshots/purchase-request-detail-02.png)
 
@@ -125,7 +128,7 @@ An approved request becomes a purchase order, which is what you send to the supp
 
 ![Confirm conversion to purchase order screen](../../../assets/screenshots/purchase-request-convert-01.png)
 
-A [material purchase order](/manual/en/operations/purchasing/purchase-order/user) is created as a draft with the same line items, and you move to its screen. The request becomes 「**発注済**」 (ordered) and shows a link to the new purchase order number.
+A [material purchase order](/manual/en/operations/purchasing/purchase-order/user) is created as a draft with the same line items, and you move to its screen. The purchase order uses the material master's unit as of the conversion. The request becomes 「**発注済**」 (ordered) and shows a link to the new purchase order number.
 
 > 💡 On the new purchase order, **every unit price is 0 yen**. Please open 「編集」 (Edit) on the purchase order, enter the prices, and then request approval for the purchase order.
 
@@ -150,7 +153,7 @@ Every field on the purchase request screen. The **?** next to a field in the app
 | [Material](#field-material) | Required | The material you want |
 | [Receiving site](#field-plant) | Optional | Where it will be received |
 | [Quantity](#field-quantity) | Required | How much you want |
-| [Unit](#field-unit) | Required | Pieces, kg and so on |
+| [Unit](#field-unit) | Automatic | The material master's unit (pieces, kg and so on) |
 | [Requested date](#field-desired-date) | Optional | When you need it by |
 | [Line notes](#field-item-notes) | Optional | Notes for that material only |
 
@@ -176,7 +179,7 @@ How much you want. The same quantity carries over to the purchase order.
 
 ### Unit [#field-unit]
 
-Pieces, kg, m and so on. Choosing the material fills in its default unit.
+Pieces, kg, m and so on. When you choose the material, the unit registered for it in the material master is filled in automatically (the field's note says 「**素材マスタの単位で登録します**」 (Registered in the material's unit)). The field is read-only and cannot be changed by hand. If you choose a different material, the unit is filled in again.
 
 ### Requested date [#field-desired-date]
 

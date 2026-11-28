@@ -8,7 +8,7 @@ Operation code **SY09**. Registers and manages the shared plant-floor tablets (k
 
 > The entry permission for this app is the code **`kiosk`**. Listing, details, editing names etc. and placing floor-map pins need only `kiosk`. The following are privileged operations: request them in [Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G) and you can perform them only during the period another person approves (system administrators pass straight through).
 >
-> - **`kiosk_device`** — creating a profile, linking, activating, disabling / re-enabling, unlinking, revoking (also pairing and revoking management displays)
+> - **`kiosk_device`** — creating a profile, linking, activating, **re-enabling**, unlinking, revoking (also linking / activating management displays, and unlinking / revoking / deleting them). **Disabling needs no approval** (it reduces access, so it passes straight through — a suspicious device can be stopped at once; `kiosk_device` UPDATE is still required). **Deleting** an awaiting-link profile also needs no approval (`kiosk` DELETE)
 > - **`kiosk_secret`** — revealing the exit PIN, the PIN history, the PIN a device holds and the device settings code; regenerating the settings code; resetting the device key
 >
 >  All operations are recorded in the audit log.
@@ -74,11 +74,13 @@ If the code expires, have the tablet display it again and retry. Only profiles i
 - **Online** … a green / gray dot showing the connection state of active devices. Normally updated in real time (WebSocket); when that is unavailable it falls back to a 30-second auto refresh, or to activity within the last 5 minutes.
 - **利用者 (Current user)** … the user currently logged in on that device.
 - The value with a 🔑 under the device name is the device app's **attestation key** (fingerprint).
-- Click a row to open the **device detail** page with recent users and usage history. The row menu's **利用履歴** (Usage history) opens the same history.
+- **端末区分** (Device type) … the automatic ownership judgment (Company (managed device) / Company (in-house network) / Unmanaged / Undetermined). The tooltip shows the basis. Display only — never used for access control.
+- Click a row to open the **device detail** page. Its tabs are 「PIN・設定コード」 (PIN and settings code), 「端末情報」 (Device information — ownership and its basis, key fingerprint, last IP / IP when linked, signed device profile), 「利用状況」 (Usage — recent users, usage history), and 「認証エラー」 (Authentication errors — logins rejected on this device). The row menu's **利用履歴** (Usage history) also opens the history.
+- Two bands at the top show the approval status for `kiosk_secret` and `kiosk_device`.
 
 ## Editing and the device settings code
 
-- **編集** (Edit) changes the name, plant, location, and **default work location**. **Changing the plant removes the pin from the floor map** (maps are per plant).
+- **編集** (Edit) changes the name (Japanese + 「多言語」 translations), site, location, **default work location**, and **login screen language** (the language of the pre-login screens; Japanese when unset). **Changing the site removes the pin from the floor map** (maps are per site).
 - **Default work location** (optional) … the work location recorded automatically onto the work actuals from this device when a step is started or resumed. Only **work locations of the device's plant** (plus locations in groups with no plant set) can be chosen, and it is **cleared when the plant is changed**.
 - The **device settings code** (6 digits) and the **maintenance PIN** (shared by all devices, auto-rotated daily at 4:00) are shown on the **device detail page under "PIN・設定コード"**. Revealing them requires a confirmation and **is recorded in the audit log** (auto-hidden after 60 s). The settings code can also be **regenerated** there.
 - Device settings such as the default work location can also be changed from the tablet-side **device settings screen** (5 taps at the bottom left of the screen → unlock with the device settings code). When the 「**作業場所の制限**」 (restrict work location) toggle on the same screen is ON, steps whose work locations are restricted in the process-step master **can only be started / resumed when this device's default work location is among the allowed ones** (they are blocked at non-allowed locations; even when OFF, a non-allowed location is never recorded onto the actuals).
@@ -87,7 +89,7 @@ If the code expires, have the tablet display it again and retry. Only profiles i
 
 - **リンク解除** (Unlink) … detaches the tablet from the profile and returns it to "Awaiting link". Name, plant, location, and the map pin are kept; sessions, the device token, and the attestation key are destroyed. Use this to replace a broken tablet, then re-link the new one to the same profile.
 - **鍵リセット** (Key reset) … clears only the attestation key. The next time that device's app connects, a new key is bound (use after re-initializing a tablet).
-- **無効化 / 再有効化** (Disable / Re-enable) … temporarily stop / resume use. A disabled device cannot be used as a kiosk.
+- **無効化 / 再有効化** (Disable / Re-enable) … temporarily stop / resume use. A disabled device cannot be used as a shared device. Disabling needs no approval; re-enabling does.
 - **取り消し** (Revoke) … permanently disables the device. **Cannot be undone.** The device token is destroyed and open sessions are terminated; re-registration via a new profile is required to use the tablet again.
 - **削除** (Delete) … only profiles that have never been linked ("Awaiting link") can be deleted.
 
@@ -105,7 +107,7 @@ In edit mode (toggle switch) you can:
 - Click an unplaced device in the sidebar to drop it at the center, then drag to adjust.
 - Remove a pin with **解除** (Unpin) on a placed device.
 - **Add, rename, and delete** floors (a floor with placed devices or **storage locations** cannot be deleted — remove the pins first).
-- Upload or replace the **floor drawing image** (PNG / JPG / WEBP / SVG, up to 10MB).
+- Upload or replace the **floor drawing image** (PNG / JPG / WEBP, up to 10MB. SVG is not accepted because it can contain scripts).
 
 ## Related pages
 

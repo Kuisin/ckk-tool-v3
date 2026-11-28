@@ -21,7 +21,7 @@ description: "Recount the physical stock by site and storage location, and, wher
 
 - **棚卸 (Stock take)** … the work of counting physical stock and checking it against the book quantity.
 - **帳簿数 (Book quantity)** … the quantity that was recorded in the system when the stock take was started.
-- **記入数 (Counted quantity)** … the quantity actually counted.
+- **実測数 (Counted quantity)** … the quantity actually counted.
 - **差異 (Difference)** … counted quantity minus book quantity. This is only a guide at the time of entry — what actually gets applied is the difference at the moment of confirmation (see "What happens on confirming" below).
 - **下書き / 記入中 / 確定 / キャンセル (Draft / Counting / Confirmed / Cancelled)** … the status of the stock take itself.
 - **承認依頼中 / 承認済 / 差し戻し (Pending approval / Approved / Sent back)** … the status when approval is required.
@@ -32,7 +32,7 @@ description: "Recount the physical stock by site and storage location, and, wher
 2. Choose a 「**拠点**」(site) — required.
 3. To limit counting to one storage location, also choose 「**保管場所**」(storage location) — optional; leaving it empty targets the whole site.
 4. Add 「**備考**」(notes) if needed.
-5. Press 「**作成**」(Create).
+5. Press 「**登録**」(Register).
 
 Creating it automatically adds **every stock bucket** at that site (and location) as a line to count, at that moment. **This includes locations with zero stock, and stock with no assigned location** — so that you can find both "supposed to be here, but nothing was there" and "not supposed to be here, but something was". If there is nothing to target (no stock at all at that site), it cannot be created.
 
@@ -41,37 +41,38 @@ Creating it automatically adds **every stock bucket** at that site (and location
 Enter the actual counted quantities on the detail screen's entry grid.
 
 - **種別 (Type)** … a badge for product or material.
-- **品目名 (Item name)** … the item being counted.
+- **対象 (Target)** … the item being counted.
 - **保管場所 (Storage location)** … where that stock is placed.
 - **ロット (Lot)** … the lot number, for a product.
 - **帳簿数 (Book quantity)** … the recorded quantity when the stock take was started (cannot be edited).
-- **記入数 (Counted quantity)** … enter the actual count here.
+- **実測数 (Counted quantity)** … enter the actual count here.
 - **差異 (Difference)** … counted minus book. Blue when higher, orange when lower; a line not yet counted shows 「**未カウント**」(not counted).
 - **備考 (Notes)** … notes on that line.
 
-A summary at the top shows things like "◯ / ◯ counted" and "◯ discrepancies".
+A summary above the table reads like 「記入 ◯/◯ 件・差異 ◯ 件（過 +◯ ・ 不足 −◯）」(counted ◯/◯, ◯ discrepancies (over +◯, short −◯)).
 
 Pressing 「**保存**」(Save) keeps what has been entered so far. **The first save flips the stock take's status from "下書き" (Draft) to "記入中" (Counting).** You can save as many times as you like, so you don't have to finish counting in one sitting.
 
 ## Submitting
 
-Once at least one line is counted, you can press 「**提出**」(Submit).
+Once at least one line is counted, you can press 「**承認依頼**」(Request approval) on the card at the top of the detail screen. This page calls that "submitting".
 
 - If the "棚卸" (Stock Take) flow in Approval Settings (MS0B) has **1 or more steps**, this becomes an approval request. The stock take's status stays "記入中" (Counting), and the approval status becomes 「**承認依頼中**」(pending approval).
-- If it has **no steps**, submitting confirms it right away.
+- If it has **no steps**, submitting confirms it right away. The same happens when 「**承認を使う**」(use approval) is turned off for stock takes in Approval Settings. In these cases the screen shows 「**承認なしで承認済にしました**」 (Approved without an approval flow).
+- If 「承認を使う」 is on but there are no steps, you cannot submit (a message says the stock take approval flow is not set up).
 
 Once submitted, you cannot resume entering counts while it is awaiting approval (the entry grid becomes uneditable while pending).
 
 ## Approving
 
-Someone with approval permission can press 「**承認**」(Approve) or 「**差し戻し**」(Send back) from the card at the top of the detail screen. **A reason is required** to send it back (it cannot be sent back with the reason left empty). Sending it back returns it to the pre-submit state, so it can be re-entered and resubmitted. Once every step is approved, it proceeds to confirmation.
+Someone with approval permission can press 「**承認**」(Approve) or 「**差し戻し**」(Send back) from the card at the top of the detail screen. **A reason is required** to send it back (it cannot be sent back with the reason left empty). Sending it back returns it to the pre-submit state, so it can be re-entered and sent again with 「**再承認依頼**」(request approval again). Once every step is approved, it proceeds to confirmation.
 
 As a diagram, from creation to confirmation:
 
 ```mermaid
 flowchart TD
   draft("下書き<br/>Draft"):::gray -->|"First save"| cnt("記入中<br/>Counting"):::blue
-  cnt -->|"提出<br/>Submit"| q{"Does the 「棚卸」 (Stock Take) flow<br/>have approval steps?"}
+  cnt -->|"承認依頼<br/>Request approval"| q{"Does the 「棚卸」 (Stock Take) flow<br/>have approval steps?"}
   q -->|"No"| conf("確定<br/>Confirmed"):::green
   q -->|"Yes"| req("承認依頼中<br/>Pending approval"):::yellow
   req -->|"Every step approved"| conf

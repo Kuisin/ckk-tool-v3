@@ -29,7 +29,7 @@ This is the first app you use when you decide the price of a new product.
 
 ## Before you start
 
-- The **material you want to calculate with (材種 material type, 直径 diameter, and 黒皮/研磨 black skin or ground — three items)** must already be decided.
+- The **material you want to calculate with (材種 material type, 直径 diameter, and 黒皮/研磨 surface finish — three items)** must already be decided.
 - Have the **machining conditions** at hand: machining time, coating, whether an inspection certificate is needed, and so on.
 - If you plan to use the result in a [price list](/manual/en/operations/sales/price-list/user), register the [product](/manual/en/operations/masters/product/user) first. If no product is set on the estimate, you cannot choose it in the price list.
 
@@ -42,23 +42,32 @@ When you open the app, you see a list of the estimates made so far.
 - **価格試算番号 (estimate number)** … a number starting with `EST-`. It is added automatically when you save.
 - **状態 (status)** … a colored badge shows where the estimate stands. Gray is 「下書き」(draft), blue is 「確定」(confirmed), green is 「価格表登録済」(used in a price list).
 - **カスタム (custom)** … an estimate with an orange badge is one where the material price was typed in by hand.
+- **代表見積単価 (representative estimated unit price)** … the selling price per piece of that estimate. On a row with the orange「原価試算」(cost estimate) badge, the「原価合計」(total cost) is shown instead of a selling price (see "Estimating cost only" below).
 - Type an estimate number, a name, or a customer name in the search box at the top to narrow down the list. You can also narrow it down with「状態」(status) and「工具種」(tool type) on the right.
 - Click a row to open the detail screen for that estimate.
+- Press「**設定**」(settings) at the top right to open the [Price estimate engine](/manual/en/operations/sales/trial-estimate/settings) (SY02), which decides how the price is calculated. This button is shown only to people with the system administration permission.
 
 ## Making an estimate
 
 1. Press「**新規作成**」(New) at the top right of the list screen.
 2. At the top of the screen, choose the tool shape from the ones listed there. The standard ones are「**丸棒**」(round bar),「**円筒**」(cylinder) and「**OH付**」(with OH); at some companies other classes are listed as well.
 3. Choose the customer in「**見積り先**」(quote for). You can also calculate with this left empty.
-4. Choose the product in「**製品**」(product). Be sure to choose one if you will use this in a price list later.
-5. Enter the tool sizes in「**最大径 (mm)**」(max diameter) and「**全長 (mm)**」(total length).
-6. In the「**素材**」(material) area, choose「**材種**」(material type),「**直径**」(diameter) and「**黒皮/研磨**」(black skin / ground) in that order.
-7. Once all three are chosen, the material price is filled in automatically in「**参照単価（¥/1000mm）**」(reference unit price).
-8. In the「**加工**」(machining) area, enter the length and kind of the step machining and the neck machining, and the「**加工時間 (分)**」(machining time in minutes).
-9. In the「**コート・処理**」(coating and treatment) area, choose「**コート**」(coating),「**ラップ処理**」(lapping) and「**検査成績書**」(inspection certificate).
-10. If there is LD machining, turn on「**LD加工あり**」(has LD machining) and enter the position, outer diameter and blade length.
-11. Finally enter a name in「**価格試算名**」(estimate name). This one is required.
-12. Press「**保存**」(save) at the top right of the screen.
+4. When you choose a customer, that customer's main sales rep is filled in automatically in「**営業担当**」(sales rep). Choose again if you want someone else.
+5. Choose the product in「**製品**」(product). Be sure to choose one if you will use this in a price list later.
+6. Enter the tool sizes in「**最大径 (mm)**」(max diameter) and「**全長 (mm)**」(total length).
+7. In the「**素材**」(material) area, choose「**材種**」(material type),「**直径**」(diameter) and「**黒皮/研磨**」(surface finish) in that order.
+8. Once all three are chosen, the material price is filled in automatically in「**参照単価（¥/1000mm）**」(reference unit price).
+9. If you use black-skin bar, turn on「**黒皮材（センタレス加算）**」(black-skin bar, centerless addition).
+10. In the「**加工**」(machining) area, enter the length and kind of the step machining and the neck machining, and the「**加工時間 (分)**」(machining time in minutes).
+11. In the「**コート・処理**」(coating and treatment) area, choose「**コート**」(coating),「**ラップ処理**」(lapping) and「**検査成績書**」(inspection certificate).
+12. If there is LD machining, turn on「**LD加工あり**」(has LD machining) in the「**LD**」area and enter the position, outer diameter and blade length.
+13. If a「**カスタム項目**」(custom fields) area is shown, fill in those fields too (they are fields your company added in the [Price estimate engine](/manual/en/operations/sales/trial-estimate/settings)).
+14. Finally enter a name in「**価格試算名**」(estimate name). This one is required.
+15. Press「**保存**」(save) at the very bottom of the screen.
+
+When you choose「**円筒**」(cylinder),「**素材価格（手入力 ¥/本）**」(material price, entered by hand, ¥ per piece) and「**円筒種類**」(cylinder type) appear instead of the reference unit price and the black-skin bar switch. Enter the price of one bar yourself and choose the cylinder type.
+
+To stop and go back to the list, press「**一覧へ**」(back to list) next to「保存」.
 
 ![New price estimate form](../../../assets/screenshots/trial-estimate-new-01.png)
 
@@ -78,7 +87,7 @@ Every time you enter something,「**価格試算結果**」(estimate result) nea
 
 The reference unit price is normally filled in for you, and you can just use it as it is. Only do the following when you want to type it in yourself, for example when the market price has changed.
 
-1. Press「**単価を編集**」(edit unit price) at the bottom right of the reference unit price.
+1. Press「**単価を編集**」(edit unit price) below the reference unit price field, at the right end.
 2. A confirmation screen called「材料単価のカスタム設定」(custom material price setting) appears. Press「**カスタム設定する**」(use a custom setting).
 3. Type a number into the reference unit price field.
 4. To go back to the automatic value, press「**ポリシー値に戻す**」(return to the policy value).
@@ -127,7 +136,7 @@ The screen of a saved estimate has five tabs.
 
 ![Price estimate detail screen](../../../assets/screenshots/trial-estimate-detail-01.png)
 
-- **価格試算結果 (estimate result)** … the quoted unit price and the cost breakdown. The prices from the time you saved stay as they are.
+- **価格試算結果 (estimate result)** … the quoted unit price and the cost breakdown. The prices from the time you saved stay as they are (after confirming, the prices from the time you confirmed).
 - **素材価格推移 (material price history)** … a graph of how the purchase price of that material changed over time.
 - **関連 (related)** … the list of price lists that use this estimate.
 - **コメント (comments)** … a thread where you can post exchanges about this estimate.
@@ -152,7 +161,8 @@ People with the「**価格試算の原価**」(price estimate cost) permission c
 
 - A cost estimate shows only the「**原価合計**」(total cost). No estimated unit price, gross margin or per-quantity prices are shown.
 - Cost estimates appear in the list and detail only for people with this permission.
-- A cost estimate cannot be chosen as a price list base price. When you need a selling price, open the cost estimate and press「**売価試算を作成**」(create selling-price estimate) from「**…**」at the top right: an input screen for a selling-price estimate opens with the same inputs (the original cost estimate stays as it is).
+- In the list and the detail screen you can tell them apart by the orange「**原価試算**」(cost estimate) badge. In the list, the「代表見積単価」column shows the「原価合計」(total cost). On a smartphone, too, a cost-estimate row in the list shows the「原価試算」badge and the「**原価合計**」(total cost) amount.
+- A cost estimate can also be confirmed, but even when confirmed it cannot be chosen as a price list base price. When you need a selling price, open the cost estimate and press「**売価試算を作成**」(create selling-price estimate) from「**…**」at the top right: an input screen for a selling-price estimate opens with the same inputs (the original cost estimate stays as it is).
 
 ## Input fields
 
@@ -161,15 +171,16 @@ Every field on the price estimate screen. There are many, so they are grouped by
 | Field | Required | What to enter |
 |-------|----------|---------------|
 | [Quoted for](#field-customer) | Optional | Who the estimate is for |
+| Sales rep | Optional | Our person in charge (the customer's main rep is filled in automatically) |
 | [Product](#field-product) | Optional | Which product it is for |
 | [Max diameter (mm)](#field-max-diameter) | Required | The product's largest diameter |
 | [Length (mm)](#field-length) | Required | The product's length |
 | [Material type](#field-material-type) | Required | The material grade used |
 | [Diameter](#field-diameter) | Required | The stock diameter |
-| [Black/ground](#field-surface-finish) | Required | The stock surface condition |
+| [Surface finish](#field-surface-finish) | Required | The stock surface condition |
 | [Reference price (¥/1000mm)](#field-reference-price) | Automatic | Material price from purchase history |
-| [Material price (manual, ¥/pc)](#field-manual-material-price) | Optional | Price when not using the reference |
-| [Black bar (centreless addition)](#field-centerless) | Optional | Extra machining for black bar |
+| [Material price (manual, ¥/pc)](#field-manual-material-price) | Conditional | Price of one bar, for cylinder tools |
+| [Black bar (centreless addition)](#field-centerless) | Optional | Extra machining for black bar (not for cylinder) |
 | [Cylinder type](#field-cylinder-type) | Conditional | For cylinder tools |
 | [Step length / type](#field-step-machining) | Optional | Step machining length and type |
 | [Neck length / type](#field-neck-machining) | Optional | Neck machining length and type |
@@ -178,6 +189,7 @@ Every field on the price estimate screen. There are many, so they are grouped by
 | [Lapping](#field-lapping) | Optional | Whether lapping is applied |
 | [Inspection report](#field-inspection-report) | Optional | Whether a report is supplied |
 | [LD machining / area / OD / flute length](#field-ld) | Optional | LD machining conditions |
+| Estimate name | Required | A name that is easy to find later |
 
 ### Quoted for [#field-customer]
 
@@ -203,7 +215,7 @@ The material grade used, chosen from the registered manufacturer and grade combi
 
 The stock diameter. Choose one larger than the product's maximum diameter.
 
-### Black/ground [#field-surface-finish]
+### Surface finish (black skin / ground) [#field-surface-finish]
 
 The stock surface condition. **Black bar is cheaper but may require a centreless grinding addition.**
 
@@ -213,7 +225,7 @@ The price derived **automatically from purchase history** for that material type
 
 ### Material price (manual, ¥/pc) [#field-manual-material-price]
 
-Used when you want to set the price yourself instead of the reference — **for special purchases, or material with no history yet.**
+Shown only when the tool type is 円筒 (cylinder), in place of the reference price. **You enter the price of one bar yourself.** The purchase history can still be seen for reference on the 「素材価格推移」(material price history) tab. To set the material price by hand for other tool types, use「単価を編集」(edit unit price) on the reference price.
 
 ### Black bar (centreless addition) [#field-centerless]
 
@@ -225,11 +237,11 @@ Chosen when the tool type is cylinder. The type changes the machining cost.
 
 ### Step length / type [#field-step-machining]
 
-The length and type of step machining. Cost comes from the combination. Leave empty if there is none.
+The length and type of step machining. Cost comes from the combination. If there is none, set the type to 「無」 (none).
 
 ### Neck length / type [#field-neck-machining]
 
-The length and type of neck machining. Leave empty if there is none.
+The length and type of neck machining. If there is none, set the type to 「無」 (none) here too.
 
 ### Machining time (min) [#field-machining-time]
 
@@ -265,8 +277,8 @@ A. Only **estimates that have a product set and whose status is 確定 (confirme
 **Q. It says「下書きの価格試算のみ確定できます」(only draft estimates can be confirmed).**
 A. That estimate is already confirmed, or already used in a price list. You do not need to confirm it again.
 
-**Q. It says「価格表で使用済みの価格試算は製品リンクを変更できません」(the product link cannot be changed on an estimate already used in a price list).**
-A. An estimate used in a price list (status 「価格表登録済」) cannot be changed. To calculate for a different product, make a new one with「複製して作り直す」(copy and re-estimate).
+**Q. It says「価格表で使用済みの価格試算は製品リンクを変更できません（複製して作り直してください）」(the product link cannot be changed on an estimate already used in a price list — copy and re-estimate).**
+A. An estimate used in a price list (status 「価格表登録済」) cannot be changed, including its product link. To calculate for a different product, make a new one with「複製して作り直す」(copy and re-estimate).
 
 **Q. The reference unit price shows「既定価格」(default price). The amount looks different from the real one.**
 A. There are no purchase records for that material yet, so the material type's default price is used (or, if that is not set, the 「既定材料単価」(default material unit price) in SY02). If you know the real price, enter it with「**単価を編集**」(edit unit price).

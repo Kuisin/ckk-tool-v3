@@ -7,6 +7,8 @@ This app is for registering **your own company (legal entity) that issues docume
 
 Use it when two or more companies in the same group issue documents (for example CKK and TSP). The **issuer** on quotes, delivery notes and invoices, and **how document numbers are counted**, are decided per company registered here. If you have only one company, the one that is already registered is all you need — there is nothing to do.
 
+> ⚠️ This app is still being prepared, so it may not appear on the live system yet. If you cannot find it, please ask the person in charge at your company. While it is not shown, documents are issued by the default company that is registered from the start.
+
 ## What you can do with this app
 
 - You can register a company's name, address, phone number and invoice registration number. These are printed in the issuer block of documents.
@@ -172,7 +174,7 @@ Every field on the own company screen.
 | Field | Required | What to enter |
 |-------|----------|---------------|
 | [Company code](#field-code) | Required | A short text that identifies the company |
-| [Name / kana](#field-name) | Required | The official company name |
+| [Name / kana](#field-name) | Name required (kana optional) | The official company name |
 | [Invoice registration number](#field-registration-no) | Optional | The registration number printed in the issuer block |
 | [Fiscal year start month](#field-fiscal-year-start-month) | Required | The boundary that divides document numbers by year |
 | [Default company](#field-default) | — | Whether it issues documents whose company cannot be decided |

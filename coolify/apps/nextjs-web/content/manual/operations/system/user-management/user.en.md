@@ -60,7 +60,7 @@ Click a row in the list to open that person's screen. The basic information is l
 - **ユーザー名** / **区分** / **メール** / **最終ログイン** / **社員 ID** (Employee ID) … the same as in the list.
 - **ログイン方式** (Login method) … 「**パスワード + SSO**」 (Password + SSO) means the person can sign in either with a password for this system or with the company's shared login. 「**SSO のみ**」 (SSO only) means the person signs in with the company's shared login only.
 
-Below that, three tables are lined up.
+Below that come, in this order: 「**ロール割当**」 (Role assignments), 「**所属拠点**」 (Assigned sites), 「**実効権限**」 (Effective permissions), 「**ログイン履歴（直近 30 日）**」 (Login history, last 30 days), 「**登録端末（Web）**」 (Registered devices, web) and 「**利用停止**」 (Suspend).
 
 ### ロール割当 (Role assignments) — which roles the person has
 
@@ -69,7 +69,7 @@ Below that, three tables are lined up.
 - 「**ロール**」 shows the name of the role, and 「**状態**」 shows whether it is in effect now.
 - Roles that were taken away in the past stay on record. A row with a date in 「**解除日時**」 (Removed on) is not in effect now.
 - When there is nothing, 「**ロールが割り当てられていません**」 (No roles are assigned) is shown. This person cannot do anything yet.
-- People with permission see an 「**編集**」 (Edit) button. See "[Changing ロール (roles)](#changing-ロール-roles)" for how.
+- People with permission see an 「**編集**」 (Edit) button (it does not appear on your own screen). See "[Changing ロール (roles)](#changing-ロール-roles)" for how.
 
 ### 所属拠点 (Assigned sites) — which site the person belongs to
 
@@ -87,11 +87,30 @@ This is the list of what the person can actually do right now. However many role
 
 Here is how to read the table.
 
-- 「**権限コード**」 (Permission code) … which app it is about (`quote` is 見積書 (quotes), `master` is マスタ (master data), `system` is system administration, and so on).
+- 「**権限コード**」 (Permission code) … which permission it is. The permission's name (for example 見積書 (quotes) or システム管理 (system administration)) is shown on top, with its short code (`quote`, `system` and so on) in small letters below. When you ask about it, either one is fine.
 - 「**アクション**」 (Action) … what the person may do: 閲覧 (look only), 作成 (create), 更新 (change), 削除 (remove), 書き出し (export), and 管理 (operations for administrators). Note that whether someone can **approve** documents is not decided here — who can approve is decided by the approval groups in [承認設定](/manual/en/operations/masters/approval-setting/user) (Approval Settings, MS0B).
 - 「**スコープ**」 (Scope) … how far the permission reaches: 全社 (the whole company), 拠点 (their own site only), 地域 (their own region only), 自分の担当 (only the data they are responsible for), and so on. For site and region, the targets follow in brackets.
 
 When there is nothing, 「**権限がありません**」 (No permissions) is shown.
+
+### ログイン履歴（直近 30 日） (Login history, last 30 days)
+
+The person's login records. Both successful and failed logins from the last 30 days are listed, newest first.
+
+> 💡 This block and 「登録端末（Web）」 below are shown only to people with the "Personal data access" permission. Others see the notice "Viewing login history and registered devices requires the "Personal data access" permission (personal_data)." and a link to [Login history](/manual/en/operations/system/login-history/user) (`SY0D`).
+
+- Each line shows 「**成功**」 (Success, green) or 「**失敗**」 (Failure, red) and how they logged in. For a failure, the reason is shown too.
+- The date and time are on the right. Details such as where they connected from (IP address) are checked in [Login history](/manual/en/operations/system/login-history/user) (`SY0D`) after approval.
+- If failures keep happening, it is a cue to check whether the person is mistyping or whether someone else is trying. To look at everyone at once, use [Login history](/manual/en/operations/system/login-history/user) (`SY0D`).
+- When there are no records, 「**この期間のログイン記録はありません**」 (There are no login records in this period) is shown.
+
+### 登録端末（Web） (Registered devices, web)
+
+The devices the person used when logging in from a browser, such as on a PC. It is a guide to "is this the device they usually use"; it does not identify a device for certain.
+
+- Each device shows a label (such as "Chrome / Windows 11"), how many times they logged in, and when it was last used.
+- A badge shows the automatic check of whether it is a company device (device type). For what it means, see "Device type" in [Login history](/manual/en/operations/system/login-history/user).
+- When there is nothing, 「**登録された端末はありません**」 (There are no registered devices) is shown.
 
 ## Changing ロール (roles)
 
@@ -122,7 +141,7 @@ flowchart TD
 
 > ⚠️ When there is only one administrator, you cannot take the admin role away from them — nobody could make anyone an administrator again. 「**最後の管理者から管理者ロールを外すことはできません**」 (The admin role cannot be removed from the last admin) is shown.
 
-> 💡 You cannot change your own roles. Please ask someone else.
+> 💡 You cannot change your own roles (the 「**編集**」 (Edit) button does not appear on your own screen). Please ask someone else.
 
 Removed roles stay on record. A date appears in 「**解除日時**」 (Removed on) in the table, so you can read later when it was taken away.
 
@@ -148,10 +167,13 @@ Use this to stop a person from logging in, for example when they leave or go on 
 
 1. Open the detail screen of the person you want to suspend.
 2. In 「**利用停止**」, choose 「**一時停止**」 (Temporary suspension) or 「**無期限停止**」 (Suspended indefinitely). For a temporary suspension, also enter 「**解除予定日時**」 (Scheduled to be released at).
-3. Write the reason (「**停止の理由**」 (Reason for suspension) is required when approval is needed).
+3. Write the reason. A system administrator sees 「**理由（任意）**」 (Reason (optional)) and may leave it empty. When approval is needed, 「**停止の理由**」 (Reason for suspension) is required.
 4. Press 「**停止する**」 (Suspend) — or 「**停止の承認を依頼**」 (Request suspension approval) when approval is needed.
+5. A confirmation screen appears. Press 「**停止**」 (Suspend) — or 「**依頼する**」 (Submit request) when approval is needed. To stop, press 「**戻る**」 (Back).
 
-A suspended person's section shows 「**停止中**」 (Suspended). A temporary suspension ends by itself once the scheduled time has passed (it can take up to 1 minute). To restore the person without waiting, press 「**いま復帰させる**」 (Restore now) — or 「**復帰の承認を依頼**」 (Request restoration approval) when approval is needed.
+A suspended person's section shows 「**停止中（一時）**」 (Suspended (temporary)) or 「**停止中（無期限）**」 (Suspended (indefinite)), together with the scheduled release time and the reason. A temporary suspension ends by itself once the scheduled time has passed (it can take up to 1 minute). To restore the person without waiting, press 「**いま復帰させる**」 (Restore now) — or, when approval is needed, write 「**復帰の理由**」 (Reason for restoring) and press 「**復帰の承認を依頼**」 (Request restoration approval).
+
+> ⚠️ You cannot suspend yourself or the last remaining administrator. In that case the section shows 「**自分自身は停止できません。別の管理者に依頼してください。**」 (You cannot suspend yourself. Ask another admin to do it.) or 「**最後の管理者は停止できません。先に他のユーザーへ管理者権限を割り当ててください。**」 (The last admin cannot be suspended. Assign admin rights to another user first.), and the controls are disabled.
 
 As with roles and sites, anyone who is not a system administrator submits a request, and the suspension or restoration **takes effect when another person approves it**. Until then, the person can still log in.
 

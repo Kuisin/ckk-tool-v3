@@ -25,6 +25,8 @@ A company with no role **does not appear as a choice** on screens such as the qu
 - You can register **branches** under a company.
 - You can register any number of **contacts** (the people you talk to at that company) for each company.
 - You can keep trade terms such as the closing day, the payment period, the bank account for transfers and the standard lead time.
+- For each customer you can register your own company's **sales reps**.
+- For each company you can decide which language quotes, delivery notes and invoices are issued in (the **document language**).
 - When business with a company ends, you can set it to **無効** (Inactive) instead of deleting it.
 
 ## Words used on this page
@@ -78,12 +80,16 @@ For example, choosing 仕入先・外注先 in the 「ロール」 (Role) field 
 
 1. Press 「**新規作成**」 (New) at the top right of the list screen.
 2. Enter the company name in 「**名称（日本語）**」 (Name in Japanese). **This one field must always be filled in.**
-3. Fill in 「**名称（English）**」 (Name in English), 「**フリガナ**」 (Kana reading), 「**略称**」 (Short name) and 「**法人番号**」 (Corporate number) as far as you know them (you can save with them empty).
-4. In the 「**住所・連絡先**」 (Address and contact) area, enter the postal code, address, phone number, fax and email address.
+3. If you also want to register the company name in English or another language, press 「**多言語**」 (Translations) next to it and enter it there (you can save with it empty).
+4. Fill in 「**フリガナ**」 (Kana reading), 「**略称**」 (Short name) and 「**法人番号**」 (Corporate number) as far as you know them (you can save with them empty).
+5. When quotes, delivery notes and invoices should be issued in a language other than Japanese — for an overseas customer, for example — choose the language in 「**書類の言語**」 (Document language). If you leave it empty, they are issued in 「既定言語（日本語）」 (Default language, Japanese).
+6. In the 「**住所・連絡先**」 (Address and contact) area, enter the postal code, address, phone number, fax and email address.
 
 ![New business partner form](../../../assets/screenshots/master-bp-new-01.png)
 
 > 💡 You cannot type in the 「**BPコード**」 (BP code) field. As the screen says 「保存時に自動採番」 (numbered automatically on save), a number such as `BP-00001` is added by itself when you save.
+
+Under the 「**AI照合名**」 (AI match names) field, a box called 「**AI 照合名の推奨**」 (Suggested AI match names) may appear. It lists other ways of writing the name made from the company name and kana (hiragana, katakana, romaji and so on); press one you want to use and it is added. Press 「**すべて追加**」 (Add all) to add them all at once.
 
 ### 2. Choose the roles
 
@@ -128,6 +134,16 @@ A 「**顧客情報**」 (Customer information) area appears.
 > 💡 If you enter `31` in 「**締日**」 (Closing day), it means "end of month". The screen also shows 「31 = 月末」 (31 = end of month) under the field. The closing day you set here is used by the [Monthly Billing Close](/manual/en/operations/billing/billing-closing/user).
 
 > ⚠️ Choose a company in 「**請求先（別法人の場合）**」 (Billing party, if a different company) only when the invoice goes to another company. If you leave it empty, the invoice goes to this company itself.
+
+Two more areas follow:
+
+- 「**会計連携**」 (Accounting export) … enter the 「**売掛金 科目コード**」 (Accounts receivable code) and the 「**補助科目コード（得意先）**」 (Sub-account code, customer) that go into the journal CSV handed to the accounting software. Check the values with the accounting staff. If left empty, the default in [Accounting export](/manual/en/operations/system/accounting/user) is used.
+- 「**営業担当**」 (Sales rep) … register your own company's sales staff in charge of this customer. The steps are:
+  1. Press 「**営業担当を追加**」 (Add a sales rep).
+  2. In the field that appears, choose the employee in charge.
+  3. You can add as many as you like. When there are two or more, choose one **primary** person with the round mark on the left.
+
+The primary person is entered first as the sales rep when you make a new quote, order acceptance and so on for this customer.
 
 ### 4. Set the delivery quantity variance tolerance (when 顧客 is ticked)
 
@@ -278,6 +294,7 @@ A business partner has **fields common to every company** and **fields that appe
 | [Country](#field-country) | Optional | The partner's country |
 | [Corporate number](#field-tax-number) | Optional | Corporate or tax number |
 | [AI matching names](#field-match-names) | Optional | Other spellings used on documents |
+| [Document language](#field-document-locale) | Optional | Which language quotes, delivery notes and invoices are issued in |
 | [Postal code / address](#field-address) | Optional | Where they are |
 | [Phone / fax / email / website](#field-contact) | Optional | Contact details |
 | [Active](#field-active) | — | Whether it appears in pick lists |
@@ -306,6 +323,10 @@ A corporate or tax identification number. It is used when matching up billing an
 ### AI matching names [#field-match-names]
 
 Other spellings that should be **recognised as the same company** when a received document is read automatically. Listing former names and different ways of writing the company suffix makes intake less likely to pick the wrong company.
+
+### Document language [#field-document-locale]
+
+Which language quotes, delivery notes and invoices are issued in. If empty, they are issued in Japanese. If a branch has its own setting, the branch's is used; otherwise the head company's. It does not change with the display language of the person who opens the document.
 
 ### Postal code / address [#field-address]
 
@@ -338,6 +359,8 @@ Notes. Writing down why something was decided, or anything to watch out for, hel
 | [Tolerance basis](#field-tolerance-basis) | Optional | Measure the variance in percent or in quantity |
 | [Under-delivery tolerance / Over-delivery tolerance](#field-tolerance-range) | Optional | How far the delivered quantity may vary from the order |
 | [Require approval within tolerance / Require approval outside tolerance](#field-variance-approval) | — | Whether a variance needs approval before confirming a shipment |
+| [Accounts receivable code / Sub-account code (customer)](#field-receivable-account) | Optional | Account codes for the journal handed to the accounting software |
+| [Sales rep](#field-sales-reps) | Optional | Your own company's sales staff in charge of this customer |
 
 ### Billing partner (if different) [#field-billing-bp]
 
@@ -376,6 +399,14 @@ How far the delivered quantity may vary from the ordered quantity. Shortage and 
 ### Require approval within tolerance / Require approval outside tolerance [#field-variance-approval]
 
 Whether a [delivery order](/manual/en/operations/shipping/delivery-order/user) with a quantity variance must go through approval before it can be confirmed. You set this separately for **inside** and **outside** the tolerance range. The default — no approval inside, approval required outside — is fine for most customers.
+
+### Accounts receivable code / Sub-account code (customer) [#field-receivable-account]
+
+Numbers used when the journal CSV for the accounting software is exported from invoices. Up to 16 half-width letters and digits; you can save with them empty. If the accounts receivable code is empty, the default in [Accounting export](/manual/en/operations/system/accounting/user) is used. The sub-account code is the customer number on the accounting software side, and is not the same as your in-house customer code.
+
+### Sales rep [#field-sales-reps]
+
+Your own company's sales staff in charge of this customer. You can register any number, and the sales rep on quotes, order acceptances and so on is chosen from them. The one **primary** person is entered first on new documents.
 
 ---
 
@@ -422,7 +453,7 @@ What industry the company is in. **Only the larger end users need registering** 
 
 Branches are registered under a company (**two levels at most**) and use the same fields as the common ones above.
 
-A contact takes a name plus department, title, email and phone. Marking one as the **primary contact** makes them the first suggestion when addressing documents.
+A contact takes a name plus department, title, email and phone. Marking one as the **primary contact** makes them the first choice of recipient when a quote is sent by email (only active contacts with an email address count).
 
 ## Questions and problems
 

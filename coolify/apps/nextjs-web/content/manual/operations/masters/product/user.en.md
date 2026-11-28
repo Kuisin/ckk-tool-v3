@@ -14,6 +14,7 @@ This is a ledger for the products you make. The operation code is `MS04`.
 - You can check the product's **specification** (material type, diameter, length, hardness, tolerance and so on) from the confirmed version in [Drawing](/manual/en/operations/production/design-file/user).
 - You can register the **order of the process steps** used to make that product.
 - You can **copy** a similar product and change only the parts you need.
+- You can also register **other-company products**: tools made by another company that customers leave with you for regrinding.
 
 ## Words used on this page
 
@@ -48,8 +49,10 @@ When you open the app, a list of the registered products is shown.
 - **製品コード (Product code)** … a control number that starts with `PRD-`. The system adds it automatically.
 - **材種 (Material type)** … shows what material the product is made from, in the form "material type code — material type name φdiameter×length" (taken from the confirmed drawing version). A product with no confirmed version shows "—".
 - **状態 (Status)** … the green 「**有効**」 (Active) means a product you can still use. The gray 「**無効**」 (Inactive) means a product you can no longer choose.
-- In the search box at the top (「**製品コード・名称・材種で検索**」 / Search by product code, name or material type) you can search **not only by product name but also by material type**.
+- A product with the orange 「**他社製**」 (Other company) badge next to its name is an other-company product held for regrinding (see "[Registering other-company products](#registering-other-company-products)").
+- In the search box at the top (「**製品コード・名称・材種・キーワードで検索**」 / Search by product code, name, material type or keyword) you can search **not only by product name but also by material type, keywords and customer product codes**. You can find a product even when you only know the customer's code.
 - Click a row to open the detail screen for that product.
+- Tick the boxes on the left of the rows to 「**一括有効化**」 (Bulk enable), 「**一括無効化**」 (Bulk disable) or 「**一括削除**」 (Bulk delete) the selected products together.
 
 > 💡 Some products brought over from the old system have no product code. Those rows show 「**未採番**」 (Not numbered) in gray. You can use them as they are.
 
@@ -68,13 +71,24 @@ When you open the app, a list of the registered products is shown.
 
 > ⚠️ You cannot type in the 「**製品コード**」 (Product code) field. As the screen says 「保存時に自動採番」 (numbered automatically on save), a number such as `PRD-202607-0001` is added by itself when you save.
 
+### Registering other-company products
+
+Customers sometimes leave tools made by another company with you for regrinding. Register such a tool as a product too.
+
+1. On the new product screen, enter the name and the unit.
+2. Turn on the 「**他社製品**」 (Other-company product) switch.
+3. In 「**メーカー名**」 (Maker name), which appears now, enter the name of the company that made the tool.
+4. Press 「**保存**」 (Save).
+
+An other-company product is for regrinding only. It cannot be chosen in a manufacturing process route, a 製造分 (Manufacture) work order, or a production / test / sample line, and you cannot make a price list for it. For the regrinding flow, see [Work Order](/manual/en/operations/production/work-order/user#regrind-work-orders).
+
 ### Entering the specification (in Drawing)
 
 Material type, diameter, length, product type and product items are entered by registering a version in [Drawing](/manual/en/operations/production/design-file/user). 「**設計図で仕様を登録**」 (Register the specification in Drawing) on the product's 「概要」 (Overview) tab opens the registration form with that product already selected. Choosing a Zunou RAPID SXF (.sfc) file fills them in automatically from the title block and dimensions.
 
 ## Looking at what you registered
 
-The screen of a saved product has five tabs.
+The screen of a saved product has five tabs (an other-company product has no 「工程」 (Processes) tab, so it has four).
 
 ![Product detail screen](../../../assets/screenshots/master-product-detail-01.png)
 
@@ -84,7 +98,7 @@ The screen of a saved product has five tabs.
 - **関連** (Related) … this product's drawings (one series per ordering customer), design requests and price lists, listed per customer. Click one to open it.
 - **履歴** (History) … the record of when and who changed this registration.
 
-To correct the content, press 「**編集**」 (Edit) at the top right of the screen.
+To correct the content, press 「**編集**」 (Edit) at the top right of the screen. When you need a drawing made, 「**設計依頼を起票**」 (Raise a design request) in the menu at the top right (the button with three dots) opens a new [design request](/manual/en/operations/sales/design-request/user) with this product already chosen.
 
 ## Registering customer product codes
 
@@ -93,15 +107,15 @@ The "顧客品番" (customer product codes) tab lets you register the code each 
 - When an order document from that customer prints this product under that code, the [order acceptance](/manual/en/operations/sales/order-acceptance/user)'s AI import can match it to this product **from the code alone**.
 - The [delivery note](/manual/en/operations/shipping/delivery-note/user) and [invoice](/manual/en/operations/billing/invoice/user) item line can print that customer's own code alongside your product name.
 
-The tab opens read-only by default. Press 「**編集**」(Edit) to switch to a table of one row per customer, where you can add or remove rows.
+The tab opens read-only by default. Press 「**編集**」(Edit) to switch to a table of one row per customer, where you can add a row with 「**顧客を追加**」 (Add customer) or remove rows.
 
-- **Customer** (required) … the customer this code belongs to.
-- **Code** (required) … the code that customer uses for this product.
-- **Name** (optional) … what that customer calls this product.
-- **Aliases** (optional) … any other spellings you see on that customer's orders besides the code itself. Used as extra matching candidates.
-- **Status** … active / inactive. Deactivate a code that is no longer used instead of deleting it.
+- 「**顧客**」 (Customer, required) … the customer this code belongs to.
+- 「**顧客品番**」 (Customer product code, required) … the code that customer uses for this product.
+- 「**顧客品名**」 (Customer product name, optional) … what that customer calls this product.
+- 「**別表記**」 (Other spellings, optional) … other ways it is written on that customer's orders, such as an old code. Used for matching only; never printed on documents.
+- 「**有効**」 (Active) … turn the switch off for a code that is no longer used instead of deleting it.
 
-The same customer cannot appear on two rows (one code per customer).
+The same customer cannot appear on two rows (one code per customer). A code already registered on another product for the same customer cannot be used either.
 
 ## Viewing drawings
 
@@ -124,17 +138,18 @@ On the 「工程」 (Processes) tab you can register the order of the process st
 2. Press 「**ルート新規作成**」 (New route).
 3. Enter 「**ルート名（日本語）**」 (Route name in Japanese) — for example, 標準工程 (standard process). **This field must always be filled in.**
 4. To make the route for a specific customer, choose that customer in 「**対象顧客**」 (Target customer). Left empty, it becomes 「**汎用**」 (generic — usable for any customer). A route with a customer set is chosen first when making a work order for the same customer × the same product.
-5. In 「**工程選択**」 (Choose steps), tick the steps you use.
-6. The steps you ticked are listed in 「**選択済み工程・実施場所**」 (Chosen steps and where they are done).
-7. For a step that can be done in-house or outside, choose 「**社内**」 (In-house) or 「**外注**」 (Outsourced).
-8. When you choose 「**外注**」 (Outsourced), also choose 「**仕入先（外注先）**」 (Supplier / outsourcing company).
-9. For the steps you know, enter 「**作業時間**」 (Work time) (you can leave it empty).
-10. If you need to, add a note in 「**備考**」 (Notes).
-11. Press 「**保存**」 (Save).
+5. If you need to, add a note in 「**備考**」 (Notes).
+6. In 「**工程選択**」 (Choose steps), tick the steps you use.
+7. The steps you ticked are listed in 「**選択済み工程・実施場所**」 (Chosen steps and where they are done).
+8. For a step that can be done in-house or outside, choose 「**社内**」 (In-house) or 「**外注**」 (Outsourced).
+9. For 「**社内**」 choose 「**拠点**」 (Site); for 「**外注**」 choose 「**仕入先（外注先）**」 (Supplier / outsourcing company). Either can be left empty.
+10. For the steps you know, enter 「**作業時間**」 (Work time) (left empty, the default time from the process step master is used).
+11. To change lot number entry for a step, choose 「**ロット必須**」 (Lot required), 「**ロット任意**」 (Lot optional) or 「**ロットなし**」 (No lot) in its lot field (left as it is, the process step master's default applies).
+12. Press 「**保存**」 (Save).
 
 ![New process route screen](../../../assets/screenshots/master-product-route-new-01.png)
 
-> 💡 Some steps, such as inspection and approval, are always needed together with another step. Those steps are added automatically when you choose the other one. A blue bar tells you: 「必須工程を自動追加しました」 (Required steps were added automatically).
+> 💡 Some steps, such as inspection and approval, are always needed together with another step. Those steps are added automatically when you choose the other one. A blue bar tells you: 「必須工程を自動追加しました」 (Required steps were added automatically). Material preparation steps (such as 「〇〇出し」 issue steps) do not appear here. They are kept in the prep step list shared by all products (see [Process Steps](/manual/en/operations/masters/process-step/user#manage-the-prep-step-list)).
 
 ### When you want to change the order of the steps
 
@@ -154,7 +169,7 @@ When you add a product that is almost the same as one you registered before, you
 4. Check 「**単位**」 (Unit).
 5. Press 「**複製して新規作成**」 (Copy and create).
 
-A new product code is added automatically. **The specification (material type, diameter, length, product items) is not copied** — it belongs to the drawing version, so register a drawing for the new product in Drawing.
+A new product code is added automatically. The tax category and whether it is an other-company product are the same as the original. **Keywords are not copied** (if the same word is on two products, neither can be chosen). **The specification (material type, diameter, length, product items) is not copied either** — it belongs to the drawing version, so register a drawing for the new product in Drawing.
 
 ## What to do with a product you no longer make
 
@@ -178,6 +193,8 @@ Every field on the product screen.
 | [Tax category](#field-tax-category) | Optional | Consumption tax category (empty = use the default) |
 | [キーワード (keywords)](#field-keywords) | Optional | Other ways this product is written (search + AI intake) |
 | [Active](#field-active) | — | Whether it appears in pick lists |
+| [Other-company product](#field-external-product) | — | Whether it is another company's tool held for regrinding |
+| [Maker name](#field-maker-name) | Optional | The company that made the other-company product |
 | [Notes](#field-notes) | Optional | Notes |
 
 ### Product code [#field-code]
@@ -219,6 +236,14 @@ If the same word is put on two products, neither can be chosen. Use words that p
 
 Turning it off removes the product from pick lists on quotes and price lists.
 
+### Other-company product [#field-external-product]
+
+Marks the item as another company's tool held for regrinding. Once on, it cannot be chosen in a manufacturing process route, a 製造分 (Manufacture) work order, or a production / test / sample line (it is for regrinding only). A product that has a manufacturing process route cannot be switched to an other-company product.
+
+### Maker name [#field-maker-name]
+
+Shown only for an other-company product. The name of the company that made the tool.
+
 ### Notes [#field-notes]
 
 Notes. Writing down why something was decided, or anything to watch out for, helps whoever reads it later.
@@ -231,11 +256,14 @@ A. 「単位」 (Unit) in 「基本情報」 (Basic information) has not been ch
 **Q. There is no field for the material type or diameter.**
 A. The specification belongs to the version in [Drawing](/manual/en/operations/production/design-file/user), so the product master has no fields for it. Register a version in Drawing and confirm it.
 
-**Q. When I try to delete, I see 「この製品を参照するデータ（価格表・見積書）が存在するため削除できません。無効化を検討してください。」 (This product cannot be deleted because data that refers to it — price lists, quotes — exists. Please consider deactivating it instead).**
-A. Price lists or quotes that use that product already exist, so it cannot be deleted. This is normal. Please use 「無効化」 (Deactivate).
+**Q. When I try to delete, I see 「この製品を参照するデータ（価格表・見積書・注文明細・設計・検査表など）が存在するため削除できません。無効化を検討してください。」 (This product cannot be deleted because data that refers to it — price lists, quotes, order lines, designs, inspection sheets and so on — exists. Please consider deactivating it instead).**
+A. Price lists, quotes or other data that use that product already exist, so it cannot be deleted. This is normal. Please use 「無効化」 (Deactivate).
 
 **Q. When I try to save a process route, I see 「工程を1つ以上選択してください」 (Please choose at least one step).**
 A. No step is ticked. Please tick the steps you use in 「工程選択」 (Choose steps).
+
+**Q. When I try to switch to an other-company product, I see 「他社製品には製造工程リストを作れません（再研磨専用の品目です）」 (An other-company product cannot have a manufacturing process route — it is for regrinding only).**
+A. That product has a manufacturing process route. An other-company product is for regrinding only, so it cannot be switched while the route exists.
 
 **Q. When I try to save a new version, I see 「最新バージョン v◯ と同じ構成です（変更がありません）」 (This is the same as the latest version v◯ — there is no change).**
 A. The steps are exactly the same as the earlier version. Change something before saving, or press 「キャンセル」 (Cancel) to go back if it is fine as it is.

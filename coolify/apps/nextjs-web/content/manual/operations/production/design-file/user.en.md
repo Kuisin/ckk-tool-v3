@@ -12,7 +12,7 @@ Register product drawings **as versions** and keep them **separate per ordering 
 - Register a product drawing **as a version**. One registration is one version.
 - Put a **2D drawing, 3D model, preview (STL and similar) and reference files** on one version. All of them are optional.
 - Keep versions **separate per ordering customer**. The same product can grow a different drawing for each customer.
-- Hold the product's **specification** (material type, diameter, length, product items) and its **title block** (part name, material, flutes …) on each version.
+- Hold the product's **specification** (product type, material type, diameter, length, product items) and its **title block** (part name, material, flutes …) on each version.
 - Choose a **Zunou RAPID SXF (.sfc)** file and the title block and dimensions are read to fill in the specification automatically.
 - A version moves **Draft → (approval) → Confirmed**. Until it is confirmed you can correct it as many times as you like.
 - Open a registered version on screen (PDF and images render directly; 3D models such as STL can be rotated).
@@ -47,6 +47,9 @@ A work order picks its drawing in this order: the series whose ordering customer
 
 **Approval is optional.** It only goes through approval when steps are set up for "**Drawing version**" in [Approval settings](/manual/en/operations/masters/approval-setting/user) (MS0B). With no steps, one **Confirm** button confirms it.
 
+- If you turn off "**Use approval**" (承認を使う) on the same card in approval settings, the version is confirmed without approval even when steps exist ([Turning approval off for a document type](/manual/en/operations/masters/approval-setting/user#approval-policy)).
+- If "Use approval" is on but there are no steps at all, the version cannot be confirmed. If you see "approval flow is not set up" (承認フローが未設定です), ask an administrator to set up the steps.
+
 As a diagram, the status moves like this:
 
 ```mermaid
@@ -68,10 +71,12 @@ The list shows **one row per series**. Listing every version would repeat the sa
 |----|------|
 | Product | The product the drawing is for |
 | Ordering customer | The customer. Blank series show as "Generic" |
-| Latest version | The newest version number and its status. When it is a draft, the confirmed version is shown too |
+| Latest version | The newest version number and its status. When it is not confirmed yet, the confirmed version (or "No confirmed version") is shown too. With two or more versions, "N versions in total" is shown as well |
 | Role | The file types on the latest version |
 | Source | "Request" if any version came from a design request, otherwise "Manual" |
 | Updated | The date the newest version was updated |
+
+You can narrow the list with the search box (product, ordering customer) and with "**Ordering customer**" (Generic / By customer) and "**Source**" (Has a request / Manual only).
 
 Clicking a row opens that product's drawings **filtered to the row's series**. Use the "**Ordering customer**" dropdown at the top to switch to another series, or clear it to list **all series** by ordering customer. Each series shows a thumbnail of its latest confirmed version and a list of versions (status, spec summary, files). Click a version to open its screen. While filtered by an ordering customer, "**Register a version**" opens the registration screen with that customer already selected.
 
@@ -130,10 +135,10 @@ There is no format restriction (20MB per file). However, only PDF, images and so
 
 The version screen can be corrected while the version is unconfirmed (Draft or Sent back).
 
-- **Specification** … select **Edit** to correct the title block, material type, diameter, length, product items and memo. **Save** returns you to viewing.
-- **Files** … add them with **Add files** (adding an SXF file updates the specification). Remove one with **Delete** on its row.
+- **Specification** … select **Edit** to correct the title block, product type, material type, diameter, length, product items and memo. **Save** returns you to viewing.
+- **Files** … add them with **Add files** (adding an SXF file updates the specification). Change a file's description with **Notes** on its row, and remove it with **Delete** on its row.
 - **Confirm** … select **Confirm** when there are no approval steps, or **Approval request** when there are.
-- **Delete version** … while it is a draft, the whole version can be deleted.
+- **Delete version** … while it is a draft or sent back, the whole version can be deleted with **Delete version** at the top right.
 
 **A confirmed version cannot be corrected.** Changing a drawing means creating a new version; rewriting a past version would make it impossible to trace what something was made from.
 
@@ -186,6 +191,7 @@ The **Machining programs** panel on the version screen holds the programs made f
 
 ![Drawing version screen. Each machining program lists its version, machine models and the steps it covers](../../../assets/screenshots/design-version-programs-01.png)
 
+- **The program name and at least one step are required.**
 - **One program can cover several steps** (for example roughing and finishing in one program). Steps are picked from the process step master.
 - **A program is assigned to machine models (any number).** Machine models are registered on the **Machine models** tab of [work locations](/manual/en/operations/masters/work-location/user#machine-models), where each machine is given its model. However many machines of the same type you have, one program is enough. Leave it empty for a program that runs on any machine model.
 - The program number (such as O0001) and the file are both optional. You can record only the number and keep the program on the machine.
@@ -197,16 +203,17 @@ A program has **versions (v1, v2 …)**. **When a step of a work order is starte
 
 | Program state | What you can do |
 |---------------|-----------------|
-| Version not used | **Edit** (change that version in place), **Delete** |
+| Version not used | **Edit** (change that version in place), **Delete** (if an earlier version was used, **Retire** instead of Delete) |
 | Version used | **Create new version** (keep this version and make the next one with the changes), **Retire** |
 
 - A used version cannot be edited. After a new version is created, **steps started from then on get the new version.** Steps already started keep seeing the version they were started with.
 - Earlier versions can be read under **Earlier versions** on the card (their files can be downloaded too).
 - A **retired** program is no longer shown to steps started from then on. Its versions and usage records are kept. A program with a used version cannot be deleted — retire it instead.
+- While a request is waiting for approval, and for a retired program, these buttons are not shown.
 
 ### Changes go through approval
 
-Adding, editing, creating a new version, deleting and retiring are all **requests**. If the **Machining program change** flow in [approval settings](/manual/en/operations/masters/approval-setting/user) has steps, the request goes for approval and is applied on the final approval. **With no steps, it is applied at the moment it is requested.**
+Adding, editing, creating a new version, deleting and retiring are all **requests**. If the **Machining program change** flow in [approval settings](/manual/en/operations/masters/approval-setting/user) has steps, the request goes for approval and is applied on the final approval. **With no steps, it is applied at the moment it is requested.** It is also applied immediately when "**Use approval**" (承認を使う) is turned off on that card in approval settings (if it is on and there are no steps, you cannot submit the request).
 
 1. Press **Edit**, **Create new version** or the like on the card (for a new program, **Add program** at the top right).
 2. Enter the content, write what you are changing and why in **Request note**, and press **Submit**.

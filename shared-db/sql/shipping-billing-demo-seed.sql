@@ -183,4 +183,14 @@ VALUES
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, NULL, '2026-06-30T06:10:00+09')
 ON CONFLICT (customer_bp_id, closing_date) WHERE kind = 'SCHEDULED' DO NOTHING;
 
+-- ── 出荷書の追加料金（下書きの DOR-202607-00003 に送料 1 行）────────────────
+-- 撮影用（出荷書の「追加料金」パネル）。料金項目は masters-demo-seed の 9001 送料。
+INSERT INTO app.delivery_order_charges (id, delivery_order_id, charge_item_id,
+  description, quantity, unit_price, amount, sort_order, created_by, created_at, updated_at)
+VALUES
+  ('e5800000-0000-4000-8000-000000000001'::uuid, 'e5500000-0000-4000-8000-000000000003'::uuid, 9001,
+   '○○運輸 元払い', 1, 1800, 1800, 0,
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-20T10:00:00+09', '2026-07-20T10:00:00+09')
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;

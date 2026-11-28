@@ -73,9 +73,9 @@ First make the container that brings the machines together.
 1. Press 「**グループ追加**」 (Add group) at the top right of the screen.
 2. Enter text that stands for this group in 「**コード**」 (code), for example `NC-LATHE`.
 3. Choose 「**種別**」 (type): machine, area, or a type you added yourself.
-4. Enter the name of the group in 「**名称（日本語）**」 (name, Japanese), for example NC旋盤 (NC lathe).
-5. In 「**拠点**」 (site), choose the site this group is in.
-6. Enter a number in 「**表示順**」 (display order). A smaller number comes higher.
+4. In 「**拠点**」 (site), choose the site this group is in.
+5. Enter a number in 「**表示順**」 (display order). A smaller number comes higher.
+6. Enter the name of the group in 「**名称（日本語）**」 (name, Japanese), for example NC旋盤 (NC lathe).
 7. Press 「**作成**」 (Create).
 
 ![Screen for adding a group](../../../assets/screenshots/master-work-location-group-new-01.png)
@@ -88,8 +88,8 @@ Once the group is made, register the machines inside it one at a time.
 2. Enter text that stands for this machine in 「**コード**」 (code), for example `NC-01`.
 3. Enter the number of jobs that can be on it at the same time in 「**キャパシティ**」 (capacity). If it is one at a time on one machine, that is `1`. Leave it empty for "no limit".
 4. In 「**機種**」 (machine model), choose this machine's model (register the [machine models](#machine-models) first). Leave it empty for places without a model, such as areas or benches.
-5. Enter the name of the machine in 「**名称（日本語）**」 (name, Japanese), for example NC旋盤 1号機 (NC lathe no. 1).
-6. Enter a number in 「**表示順**」 (display order).
+5. Enter a number in 「**表示順**」 (display order).
+6. Enter the name of the machine in 「**名称（日本語）**」 (name, Japanese), for example NC旋盤 1号機 (NC lathe no. 1).
 7. Press 「**追加**」 (Add).
 
 ![Screen for adding a work location](../../../assets/screenshots/master-work-location-add-01.png)
@@ -123,7 +123,7 @@ The table lists **code / name / maker / number of machines and programs / status
 You can add your own divisions for sorting the groups. Use this when you want groupings such as 「ライン」 (line) or 「検査室」 (inspection room).
 
 1. Press 「**種別管理**」 (Manage types) at the top right of the screen.
-2. Press 「**追加**」 (Add) at the bottom to add a row.
+2. Press 「**種別を追加**」 (Add a type) at the bottom to add a row.
 3. In the left box, enter text that stands for the division, for example `line`. Small letters, numbers, hyphens and underscores can be used.
 4. In the middle box, enter the Japanese display name, for example ライン (line).
 5. Press 「**保存**」 (Save).
@@ -157,7 +157,9 @@ When a step is started or resumed from a shared floor tablet, the tablet's **def
 
 [Process steps](/manual/en/operations/masters/process-step/user#field-allowed-locations) can also restrict which work locations a step may use, by type or by individual location.
 
-Usage counts appear in the 「**計画 / 実績**」 (plans / actuals) column of the work location table. A place where either count is not 0 is still in use (places in use cannot be deleted — deactivate them instead).
+On the lines of an [order acceptance](/manual/en/operations/sales/order-acceptance/user#field-shipping-work-location), you can choose the place where shipping work is done as 「**出荷作業場所**」 (shipping work location). To see, for each work location, which steps are waiting on a given day, use the [work location board](/manual/en/operations/production/work-location-board/user).
+
+Usage counts appear in the 「**計画 / 実績**」 (plans / actuals) column of the work location table. A place where either count is not 0 is still in use. A place is also treated as in use when it is the default work location of a shared device, the shipping work location of an order acceptance or of an order line, or an allowed work location of a process step. Places in use cannot be deleted — deactivate them instead. When you try to delete one, the confirmation screen lists every place it is used and how many times.
 
 ## Input fields
 
@@ -166,7 +168,7 @@ Every field on the Work location screen.
 | Field | What to enter |
 |-------|---------------|
 | [Site](#field-plant) | Which site the work location belongs to |
-| [Code / name (ja, en)](#field-code) | The work location's code and name, selectable as where a step is carried out |
+| [Code / name](#field-code) | The work location's code and name, selectable as where a step is carried out |
 | [Type](#field-type) | The kind of work location |
 | [Capacity](#field-capacity) | A guide to how much it can handle at once |
 | [Machine model](#field-machine-model) | The machine model of this machine |
@@ -178,17 +180,17 @@ Every field on the Work location screen.
 
 Which site the work location belongs to. When picking where a step runs, **only that site's work locations** are offered.
 
-### Code / name (ja, en) [#field-code]
+### Code / name [#field-code]
 
 The work location's code and name, selectable as where a step is carried out.
 
 ### Type [#field-type]
 
-The kind of work location. It is used to narrow the list.
+The kind of group (machine, area, and so on). It is also used when you decide, in process steps, which work locations a step may use by type.
 
 ### Capacity [#field-capacity]
 
-A guide to how much it can handle at once. Enter 1 for a single machine, or how many fit at once for an area.
+How many jobs can be on it at the same time. Leave it empty for no limit. Enter 1 for a single machine that does one job at a time.
 
 ### Machine model [#field-machine-model]
 
@@ -211,11 +213,11 @@ The maker of the machine model (optional).
 **Q. I want to add a machine, but I cannot find the 「場所を追加」 (Add location) button.**
 A. This button is inside a group card. When there is no group at all yet, make one first with 「**グループ追加**」 (Add group).
 
-**Q. I see 「この場所は 作業計画 3 件 / 作業実績 1 件 から参照されています（削除できません — 無効化をご検討ください）。」 (this location is referred to by 3 work plans / 1 work actual; it cannot be deleted, please consider deactivating it).**
-A. That machine is in use in the work plans or work actuals of a work order. Do not delete it. Turn off 「**有効**」 (active) on the edit screen to make it inactive. Once it is inactive it can no longer be chosen in plans made from now on.
+**Q. I see 「この場所は 作業計画 3 件 / 注文明細の出荷作業場所 1 件 から参照されています（削除できません — 無効化をご検討ください）。」 (this location is referred to by 3 work plans / 1 order-line shipping work location; it cannot be deleted, please consider deactivating it).**
+A. That machine is in use in the places listed in the message (work plans, work actuals, a shared device's default, the shipping work location of an order acceptance or order line, or a process step's allowed work locations). Do not delete it. Turn off 「**有効**」 (active) on the edit screen to make it inactive. Once it is inactive it can no longer be chosen in plans made from now on.
 
-**Q. I see 「グループの削除に失敗しました（作業計画で使用中の場所が含まれる場合は削除できません）」 (deleting the group failed; it cannot be deleted if it contains a location in use in a work plan).**
-A. That group still contains a machine that is in use. Check which machine is in use, do not delete the whole group, and make that machine inactive instead.
+**Q. I see 「使用中の作業場所は削除できません（作業計画 2 件 / 共有端末の既定 1 台）」 (a work location in use cannot be deleted; 2 work plans / default of 1 shared device).**
+A. The place you tried to delete (or, when deleting a group, a machine inside it) is still used somewhere. The parentheses show where and how many. Do not delete it. Turn off 「**有効**」 (active) on the edit screen to make it inactive.
 
 **Q. If I delete a group, what happens to the machines inside it?**
 A. They are deleted with it. The confirmation screen shows how many machines will be deleted. This cannot be undone.
@@ -226,7 +228,7 @@ A. There is a group that has chosen that type. First change 「**種別**」 (ty
 **Q. I see 「存在しない種別です（先に種別を追加してください）」 (this type does not exist; please add the type first).**
 A. The type you tried to choose is not registered yet. Add it in 「**種別管理**」 (Manage types) and then save the group.
 
-**Q. I see that a machine model cannot be deleted because machines or programs use it.**
+**Q. I see 「機械 2 台・プログラム 1 本が使っているため削除できません（無効化してください）」 (it cannot be deleted because 2 machines and 1 program use it; please deactivate it).**
 A. Some machines have that model selected, or some machining programs are assigned to it. Do not delete it — turn off 「**有効**」 (active) on the machine model's edit screen instead.
 
 **Q. I want to register warehouses and shelves. Is this the right place?**

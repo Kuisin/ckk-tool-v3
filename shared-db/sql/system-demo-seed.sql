@@ -27,7 +27,13 @@ INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:user-management:main', true, 'ユーザー管理（マニュアル撮影用）',   now()),
   ('app:kiosk-cards:main',     true, 'QRカード管理（マニュアル撮影用）',   now()),
   ('app:kiosk-devices:main',   true, '端末管理（マニュアル撮影用）',       now()),
-  ('app:kiosk-settings:main',  true, 'キオスク設定（マニュアル撮影用）',   now())
+  ('app:kiosk-settings:main',  true, 'キオスク設定（マニュアル撮影用）',   now()),
+  -- 準備中（main 未公開）だがマニュアルに操作ページがあるアプリ。main では
+  -- 未公開アプリの画面は「この機能は現在利用できません」になるため、撮影 DB に限り開ける。
+  ('app:order-lines:main',          true, '注文明細（マニュアル撮影用）',     now()),
+  ('app:forms:main',                true, 'フォーム（マニュアル撮影用）',     now()),
+  ('app:internal-pages:main',       true, '社内文書（マニュアル撮影用）',     now()),
+  ('app:master-charge-items:main',  true, '料金マスタ（マニュアル撮影用）',   now())
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
 

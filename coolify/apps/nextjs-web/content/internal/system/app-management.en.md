@@ -37,6 +37,10 @@ flowchart TD
 
 In other words, **turning the main switch ON is the production release itself**. Before flipping it, make sure the app has been verified on dev.
 
+On the dev screen, apps whose **main row in the dev DB** is OFF (including no row) get an orange 「**DEV**」 badge on their home-screen card (a not-yet-released marker). On the dev screen, the main switch only decides whether this badge is shown.
+
+**Apps that belong to an in-development feature (`src/config/dev-features.json`) stay hidden regardless of the switch.** Currently 「取引先ポータル」 (Partner portal, SY0H) and 「API クライアント」 (API clients, SY0I) are dev-only — turning their main switch ON does not show them in production (opening them there needs a PR and a deploy).
+
 ## What happens when an app is OFF
 
 - The app disappears from the launcher, the home screen, and the operation-code search.

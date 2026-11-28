@@ -1,7 +1,7 @@
 ---
 title: "送货单 — 操作手册"
 description: "查看出货单确定时自动生成的送货单，并可以转成 PDF 打印。"
-screenshots: [delivery-note-list-01, delivery-note-detail-noprice-01, delivery-note-detail-01]
+screenshots: [delivery-note-list-01, delivery-note-detail-noprice-01, delivery-note-detail-01, delivery-note-pdf-01]
 ---
 用来查看随发货产品一起送达的 **送货单**（納品書，出货单确定时自动生成，**生成时即为已发行**）。操作代码是 `SH02`。
 
@@ -39,6 +39,7 @@ screenshots: [delivery-note-list-01, delivery-note-detail-noprice-01, delivery-n
 - **状態（状态）** … 蓝色是「発行済」（已发行），绿色是「納品済」（已送达）。自动生成的送货单一开始就是「已发行」。
 - 上面的搜索框里可以输入送货单号、出货单号、送货对象或最终需求方的名称来筛选。
 - 一览里显示的是 **从自己所属据点发出的送货单** 和 **自己做的送货单**。
+- 处理 2 家以上本公司法人单据的人，会在送货单号旁看到法人代码的小徽章（例如 `TSP`）（[发行公司徽章](/manual/zh/operations/masters/own-company/user#company-badge)）。
 - 点一行就能打开这张送货单的详细界面。
 
 ## 送货单是怎么生成的
@@ -92,8 +93,8 @@ flowchart TD
 ```
 
 1. 点右上角的「**…**」。
-2. 选「**納品済みにする**」（标记为已送达）。
-3. 弹出「納品の確認」（送达确认）后，点「**納品済みにする**」（标记为已送达）。
+2. 选「**納品済にする**」（标记为已送达）。
+3. 弹出「納品の確認」（送达确认）后，点「**納品済にする**」（标记为已送达）。
 
 当天的日期会记为 **納品日（送达日）**，状态变成「**納品済**」（已送达）。
 
@@ -107,6 +108,8 @@ flowchart TD
 
 - 可以在「**PDF**」标签页里直接在画面中查看 PDF。想重新生成时点「**再生成**」（重新生成）。
 - 从画面右上角的「**…**」（三个点的按钮）选择「**PDFをダウンロード**」（下载 PDF），可以保存为文件。打印请从这里进行。
+
+![送货单的 PDF 标签页](../../../assets/screenshots/delivery-note-pdf-01.png)
 
 ![送货单详细界面](../../../assets/screenshots/delivery-note-detail-01.png)
 
@@ -184,7 +187,7 @@ A. 送货对象是根据出货单表头的客户自动决定的，在这个界�
 A. 直送最终需求方时会生成两份。无价格的交给最终需求方，含价格的交给客户。普通送货只生成含价格的一份。
 
 **Q. 显示「出货单变为已出货之前，无法标记为已交货」。**
-A. 原出货单还不是「出荷済」（已出货）。请在[出货单](/manual/zh/operations/shipping/delivery-order/user)画面登记出货后，再点击「納品済みにする」（标记为已送达）。
+A. 原出货单还不是「出荷済」（已出货）。请在[出货单](/manual/zh/operations/shipping/delivery-order/user)画面登记出货后，再点击「納品済にする」（标记为已送达）。
 
 **Q. 送货单的内容有错。**
 A. 送货单之后不能修改，也没有撤销发行的操作。需要从正确的订单确认书 / 出货单重新生成，请联系管理员。弄错的那张不要交给客户。

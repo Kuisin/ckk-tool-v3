@@ -85,6 +85,8 @@ The step list screen is the same as when opened from 「指示書スキャン」
 
 - Starting, pausing, completing and entering quantities work the same as on the [Recording Work](/manual/en/operations/kiosk/steps/user) page.
 - Steps assigned to someone else show 「**他の担当者の工程です**」 (This step belongs to another person), and only that person can operate them. **Opening from the list does not change which steps you can operate.**
+- For a work order that starts from work in progress in stock (pieces partly processed and kept in stock), 「**開始状態**」 (Starting state) appears on the top card. Steps already done at the work-in-progress stage are shown as 「**仕掛品で済んでいるので行わない工程: ◯◯**」 (Steps skipped because the WIP has already done them: ◯◯).
+- A work order waiting for approval to be stopped partway shows 「**打ち切り承認依頼中**」 (Stop pending approval). Once approved, its steps close and the pieces partway through go back into stock as work in progress.
 - Press 「**指示書一覧へ**」 (Back to work orders) at the top left to return to the list.
 
 ## Questions and problems

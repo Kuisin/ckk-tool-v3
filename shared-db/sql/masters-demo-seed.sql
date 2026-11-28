@@ -271,4 +271,25 @@ UPDATE app.material_type_prices          SET created_at='2026-07-01T09:00:00+09'
 UPDATE app.items                         SET created_at='2026-07-01T09:00:00+09', updated_at='2026-07-01T09:00:00+09';
 UPDATE app.plants                        SET created_at='2026-07-01T09:00:00+09', updated_at='2026-07-01T09:00:00+09'
   WHERE updated_at > '2026-07-31T00:00:00+09';
+
+-- ── 料金マスタ（MS0G — 送料などの追加料金の項目）──────────────────────────────────────────
+-- 出荷書の「追加料金」と料金マスタの撮影用。固定 id（9xxx）+ ON CONFLICT で冪等。
+--   9001 送料（VARIABLE — 使うたびに運賃を入れる。既定値は目安）
+--   9002 梱包料（FIXED — マスタの金額で固定）
+--   9003 特急手数料（FIXED）
+INSERT INTO app.charge_items (id, code, name, amount_mode, default_amount,
+  tax_category_id, is_active, sort_order, notes, created_at, updated_at)
+VALUES
+  (9001, 'SHIPPING', '{"ja": "送料", "en": "Shipping"}'::jsonb, 'VARIABLE'::app."CHARGE_AMOUNT_MODE", 1500,
+   (SELECT id FROM app.tax_categories WHERE code = 'TAXABLE'), true, 1, '運送会社の運賃を都度入れる',
+   '2026-07-01T09:00:00+09', '2026-07-01T09:00:00+09'),
+  (9002, 'PACKING', '{"ja": "梱包料", "en": "Packing"}'::jsonb, 'FIXED'::app."CHARGE_AMOUNT_MODE", 800,
+   (SELECT id FROM app.tax_categories WHERE code = 'TAXABLE'), true, 2, NULL,
+   '2026-07-01T09:00:00+09', '2026-07-01T09:00:00+09'),
+  (9003, 'EXPRESS', '{"ja": "特急手数料", "en": "Express fee"}'::jsonb, 'FIXED'::app."CHARGE_AMOUNT_MODE", 5000,
+   (SELECT id FROM app.tax_categories WHERE code = 'TAXABLE'), true, 3, NULL,
+   '2026-07-01T09:00:00+09', '2026-07-01T09:00:00+09')
+ON CONFLICT (id) DO NOTHING;
+SELECT setval('app.charge_items_id_seq', GREATEST((SELECT MAX(id) FROM app.charge_items), 9003));
+
 COMMIT;

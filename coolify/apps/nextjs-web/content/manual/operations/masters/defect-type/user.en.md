@@ -5,7 +5,7 @@ screenshots: [master-defect-type-list-01, master-defect-type-new-01, master-defe
 ---
 This app is for registering the **categories** you choose when a defect appears, such as 「キズ」 (scratch), 「欠け」 (chip) and 「寸法不良」 (wrong size). The operation code is `MS0A`.
 
-The categories registered here become the choices when a defect is recorded on a step of a [指示書 (work order)](/manual/en/operations/production/work-order/user). Defects are recorded one line at a time with a type, a defect type, details, and a count, and **the defect type must always be chosen**. The step cannot be completed until every line is filled in, and the defect totals are calculated automatically from these records.
+The categories registered here become the choices when a defect is recorded on a step of a [指示書 (work order)](/manual/en/operations/production/work-order/user). Defects are recorded one line at a time with 「種別」 (kind), 「不良種類」 (defect type), 「詳細」 (details) and 「本数」 (count), and **the defect type must always be chosen**. The step cannot be completed until every line is filled in, and the defect totals are calculated automatically from these records.
 
 > ⚠️ This app is in trial release. Depending on your environment, it may not be shown yet.
 
@@ -24,7 +24,8 @@ The categories registered here become the choices when a defect is recorded on a
 ## Before you start
 
 - You need the **master permission** to use this app.
-- The categories used most often (wrong size, scratch, chip, breakage, coating defect, other) are already registered. First look at the list and check that the same one does not already exist.
+- In the test environment, the categories used most often (wrong size, scratch, chip, breakage, coating defect, returned as-is (not regrindable), other) are already registered. First look at the list and check that the same one does not already exist.
+- If you handle regrinding (sharpening customers' tools again), prepare the category 「**返却（再研磨不可）**」 (returned as-is, not regrindable). Tools that cannot be reground and go back as they are get recorded with this category on the work order.
 
 ## How to read the screen
 
@@ -41,9 +42,10 @@ This is a small app that holds only a code, a name and an order, so **there is n
 
 1. Press 「**新規作成**」 (New) at the top right of the list screen.
 2. Enter text that stands for this category in 「**コード**」 (code), for example `SCRATCH`.
-3. Enter the words used on the floor in the Japanese box of 「**名称**」 (name), for example キズ (scratch). You can save with the English box left empty.
+3. Enter the words used on the floor in 「**名称（日本語）**」 (name in Japanese), for example キズ (scratch). English and Chinese names can be entered from the 「**多言語**」 (Translations) button beside it. You can save with them left empty.
 4. Enter a number in 「**表示順**」 (display order). Whole numbers of 0 or more can be used.
-5. Press 「**保存**」 (Save).
+5. Leave 「**有効**」 (enabled) on (if it is off, the category does not appear as a choice from the start).
+6. Press 「**保存**」 (Save).
 
 ![New entry form for a defect type](../../../assets/screenshots/master-defect-type-new-01.png)
 

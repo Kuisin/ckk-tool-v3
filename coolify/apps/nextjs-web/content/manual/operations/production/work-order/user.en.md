@@ -41,12 +41,15 @@ When you open the app, you see a list of the work orders made so far.
 
 ![Work order list](../../../assets/screenshots/work-order-list-01.en.png)
 
-- **指示書番号** (work order number) … a number such as `WOR-2026-00001`, in the same format as other documents (quotes, order acceptances, …), counted from 1 per issuing company and per fiscal year (see [Document number rules](/manual/en/start#doc-number)). The lot number (a serial number such as `#9001`) is assigned separately and shown on the detail screen.
+- **指示書番号** (work order number) … a number such as `WOR-2026-00001`, in the same format as other documents (quotes, order acceptances, …), counted from 1 per issuing company and per fiscal year (see [Document number rules](/manual/en/start#doc-number)). The lot number (a serial number such as `#9001`) is assigned separately and shown on the detail screen. People who handle documents of two or more [own companies](/manual/en/operations/masters/own-company/user) see a small badge with the issuing company's code (for example `TSP`) next to the number ([Issuing company badge](/manual/en/operations/masters/own-company/user#company-badge)).
+- **注文明細番号** (order line number) … the number of the order line the work order was made from. A work order not linked to an order line shows 「**在庫向け**」 (for stock).
+- **製品** (product) … the product to be made.
 - **種別** (type) … 「**在庫分**」 (from stock — using stock you already have), 「**製造分**」 (to make — making new pieces) or 「**再研磨**」 (regrind — regrinding tools received from the customer).
 - **予定数量** (planned quantity) … how many pieces you plan to make.
 - **承認状態** (approval status) … a coloured badge shows 「承認依頼中」 (pending approval), 「承認済」 (approved) or 「差し戻し」 (sent back). Which step it is currently on is shown on the card on the detail screen.
-- **状態** (status) … one of 「下書き」 (draft), 「承認依頼中」 (pending approval), 「承認済」 (approved), 「進行中」 (in progress), 「完了」 (finished), or 「キャンセル」 (cancelled).
-- Type a work order number, a order line number, or a product name into the search box at the top to find one. You can also narrow it down with 「**種別**」 (type) and 「**状態**」 (status).
+- **状態** (status) … one of 「下書き」 (draft), 「承認依頼中」 (pending approval), 「承認済」 (approved), 「進行中」 (in progress), 「完了」 (finished), or 「キャンセル」 (cancelled). A closed-out work order also carries a 「**打ち切り**」 (closed out) mark (see "Stopping partway (close-out)" below).
+- **更新日** (updated) … the date it was last changed.
+- Type a work order number, an order line number, or a product name into the search box at the top to find one (the issuing company's code also works). You can also narrow it down with 「**種別**」 (type) and 「**状態**」 (status).
 - Click a row to open the detail screen for that work order.
 
 The status moves as follows.
@@ -61,6 +64,8 @@ flowchart TD
   draft -.->|"Cancel document"| can("キャンセル<br/>Cancelled"):::red
   req -.->|"Cancel document"| can
   appr -.->|"Cancel document (no step started)"| can
+  draft -.->|"Approval request (approval switched off)"| appr
+  prog -.->|"Close out"| can
 ```
 
 ## Creating a work order
@@ -170,7 +175,7 @@ Work cannot start on a work order until it is approved. **How many approval stag
 
 > ⚠️ **Work plans must be complete before you can request approval.** Every in-house step needs at least one work plan with a planned date plus whatever that step requires (assignee, work location, and so on — see "Work plans and work actuals" below). If they are not complete, the 「**承認依頼**」 button is disabled and you see a note such as 「**作業計画が揃っていません: ◯◯（作業場所 なし）**」 (work plans are incomplete: ◯◯ (missing work location)) listing which steps are missing what. Outsourced steps and cancelled steps are not counted.
 
-> ⚠️ If the work order approval flow in [approval settings](/manual/en/operations/masters/approval-setting/user) has no steps at all, the approval request is refused with「**指示書の承認フローが未設定です（承認設定 MS0B で設定してください）**」(The approval flow for work orders is not configured). Ask an administrator to set up the steps.
+> ⚠️ If the work order approval flow in [approval settings](/manual/en/operations/masters/approval-setting/user) has no steps at all, the approval request is refused with「**指示書の承認フローが未設定です（承認設定 MS0B で設定してください）**」(The approval flow for work orders is not configured). Ask an administrator to set up the steps. If 「**承認を使う**」 (use approval) is switched off for work orders in the approval settings, pressing 「承認依頼」 (request approval) makes the work order 「**承認済**」 (approved) right away (the message 「承認なしで承認済にしました」 appears; see [Turning approval off for a document type](/manual/en/operations/masters/approval-setting/user#approval-policy)).
 
 1. On the work order screen, press 「**承認依頼**」 (Request approval) on the card at the very top.
 2. The status changes to 「**承認依頼中**」 (pending approval). From this point, the original order line can no longer be edited.
@@ -258,6 +263,8 @@ Pressing 「**検査表を見る**」 (view the sheet) opens **the inspection sh
 **An inspection approval step does not ask for quantities.** It approves the inspection sheet of an earlier step rather than working on the pieces, so the quantity passes straight through.
 - **最終検査・出荷前確認** (final inspection and pre-shipment checks) … on a step flagged as a 「**最終検査工程**」 (final inspection step) — 「出荷前検査」 (pre-shipment inspection) by default — you record the three checks (drawing and label, protective cap, finished quantity) plus spare stock, packing → delivery note → shipping approval, and the checked-by stamp for defects at shipping. The packing → delivery note → shipping approval chain follows the order on paper: you cannot record a stage until the previous one is recorded. **There is one record per work order**, so a work order whose step list has no flagged step has no final inspection at all.
 - **不良記録（任意）** (defect record, optional) … you can write down the defect type and what happened.
+- **加工プログラム** (machining programs) … if the version of the [drawing](/manual/en/operations/production/design-file/user) this work order uses has machining programs for this step, a 「**加工プログラム**」 box appears (if not, the box is not shown at all). Programs for the machine model of the work location in the work plans / work records come first and carry a 「**この機種用**」 (for this model) mark. For a step that has already started, the **program version recorded when the step was started** is shown (the note 「この工程を開始したときの版を表示しています」 appears).
+- **系列メモ** (series memo) … if the drawing has a series memo (a memo shared by every version of that drawing), its box appears. It is read-only here. To rewrite it, use 「**設計図で開く**」 (open in drawings) to go to the drawing screen.
 - **作業計画 / 作業実績** (work plan / work result) … you can record who, when and where the work is planned (or was done). Plans carry the person in charge, date, time and work place; actuals add the **quantity** (see "Work plans and work actuals" below).
 - **外注日程** (outsourcing schedule) … on outsourced steps, you can record 「依頼日」 (sent date), 「入荷予定日」 (expected return date), 「入荷日」 (return date), and 「外注費」 (outsourcing cost). **Entering the sent date records those pieces as "held by the subcontractor"** (shown under 「預け先」 (held by) on the [stock overview](/manual/en/operations/inventory/stock-overview/user)). Entering the return date brings them back. Each of the two creates one [stock movement](/manual/en/operations/inventory/inventory-movements/user) slip, and you can follow its number from the step screen. Pieces held by the subcontractor are not counted as our own stock, so they are not used for shipping or for reservations.
 
@@ -329,7 +336,7 @@ If you add, change, or delete a branch on an approved or in-progress work order,
 - **事前承認** (approval first) … the change is held, and is applied to the steps only after approval is done. While it is held, a card appears at the top of the work order screen (people who can approve see approve / send-back buttons).
 - **事後承認** (approval afterwards) … the change is applied to the steps right away, and the approval happens afterwards. If it is sent back later, the steps are not put back automatically, so a red notice appears on the screen. Check the steps, fix them by hand if needed, and press 「**確認済みにする**」 (Mark as checked).
 
-If the approval settings have no 「工程フロー変更」 (step flow change) stage at all, the change is applied as it is, without approval.
+If the approval settings have no 「工程フロー変更」 (step flow change) stage at all, or 「**承認を使う**」 (use approval) is switched off for it, the change is applied as it is, without approval. However, if 「承認を使う」 is switched on but there are no stages, the change is refused (a message says the approval flow is not configured).
 
 As a diagram:
 
@@ -381,7 +388,7 @@ Only a **work order in progress for manufacture** can be closed out. Before work
 
 ![Work order close-out screen](../../../assets/screenshots/work-order-abort-01.png)
 
-If the [approval settings](/manual/en/operations/masters/approval-setting/user) have no steps for "**Work order close-out**", the work order is closed out right away. Otherwise it becomes an approval request and "**Close-out pending approval**" appears at the top of the screen. The work order stays in progress until approved.
+If the [approval settings](/manual/en/operations/masters/approval-setting/user) have no steps for "**Work order close-out**", or 「**承認を使う**」 (use approval) is switched off for it, the work order is closed out right away (if 「承認を使う」 is switched on but there are no steps, a message says the approval flow is not configured and it cannot be closed out). Otherwise it becomes an approval request and "**Close-out pending approval**" appears at the top of the screen. The work order stays in progress until approved.
 
 When a work order is closed out:
 
@@ -423,7 +430,8 @@ The marking number also appears on the strip print and on the step screens of th
 - **キャンセル** (cancel document) … possible until work starts — while it is 「下書き」 (draft) or 「承認依頼中」 (pending approval), or 「承認済」 (approved) with no step started yet. Choose 「**キャンセル**」 (Cancel) from the button with three dots at the top right. Cancelling releases the reservations taken at approval (materials and so on) and withdraws a pending approval request. The original order line goes back to 「確定」 (confirmed) if no other live work order covers it, and its lot number is removed.
 - **コピー** (copy) … choose 「**コピー**」 (Copy) from the button with three dots at the top right, then choose the order line to use. You get a draft that keeps the steps, the places where they are done, and the inspection sheets. Where it was copied from stays on the detail screen as 「**コピー元**」 (copied from). If there is a newer version than the one you copied, a note suggests copying the latest version.
 - **ストリップ印刷** (strip print) … choose 「**ストリップ印刷**」 (Strip print) from the button with three dots at the top right to print strips with the key points of the work order and a QR code (6 strips on a plain A4 sheet). You can stick them on the pieces or the boxes.
-- The tabs on the detail screen are 「**概要**」 (overview — steps and notes), 「**関連**」 (related — the original order line and where it was copied from), and 「**履歴**」 (history — who changed what and when).
+- **出荷書を作成** (create delivery order) … choose 「**出荷書を作成**」 from the button with three dots at the top right to open a new delivery order. It can be chosen only when the work order is finished and some finished pieces are not yet on a delivery order (the same as "Next step: make a delivery order" above).
+- The tabs on the detail screen are 「**概要**」 (overview — steps and notes), 「**図面**」 (drawing — which drawing version is used, and pinning / unpinning it), 「**関連**」 (related — the original order line and where it was copied from), 「**メモ**」 (memo — internal notes), and 「**履歴**」 (history — who changed what and when).
 
 You need work order permission to use this app.
 

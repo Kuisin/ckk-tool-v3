@@ -1,6 +1,7 @@
 ---
 title: "Shop-floor Tablet — Work Location Steps"
 description: "An app for finding and recording the steps waiting at this machine or this place, rather than steps assigned to you."
+screenshots: [kiosk-work-location-01]
 ---
 In 「**作業場所の工程**」 (Work location steps) on the tablet, you find and record **the steps waiting at the machine or place you are at now**, rather than steps assigned to you.
 
@@ -31,7 +32,7 @@ flowchart TD
 - **作業場所** (work location) … a machine, area, or similar place where a step is carried out. It has a QR label on it (set up in the work location master, `MS0D`).
 - **既定の作業場所** (default work location) … the usual work location set for this tablet. A system administrator sets this per device.
 - **グループ** (group) … a set of work locations bundled together (for example, machines on the same island). Choosing the whole group shows steps from every work location inside it.
-- **未計画** (unplanned) … a work plan made with only a date and a work location, and no assignee. Anyone standing at that place can operate it.
+- **担当未設定** (no assignee) … a work plan made with only a date and a work location, and no assignee. Anyone standing at that place can operate it.
 
 ## Before you start
 
@@ -48,11 +49,13 @@ When you open it, the steps waiting at **this tablet's default work location** a
 
 Near the top of the screen, the name of the work location you are currently viewing is shown. To its right is a switch between 「**この作業場所**」 (This location) and 「**グループ全体（group name）**」 (Whole group), and choosing the whole group shows steps from every work location in the same group at once.
 
-Each card shows the step name, work order number, product name, assignee (a name if one is set, or 「未計画」 (Unplanned) if not), work location name, and quantity. The status label on the right is the same as in 「工程実行」 (can start, in progress, paused, finished, and so on).
+![Steps at a work location](../../../assets/screenshots/kiosk-work-location-01.png)
 
-A card for a step that is **already assigned to someone else** is shown dimmed, with 「**他の担当者の工程です**」 (This step belongs to another person), and cannot be opened. A step with no assignee can be opened by anyone.
+Each card shows the step name, work order number, product name, assignee (「担当: name」 if one is set, or 「**担当未設定**」 (No assignee) if not), work location name, and quantity. The status label on the right is the same as in 「工程実行」 (can start, in progress, paused, finished, and so on).
 
-> 💡 Press 「**読み込み直す**」 (Refresh) at the top right of the list to update to the latest state. Changes made on another tablet (for example, someone else completing a step) show up when you press this, or when you leave and come back to the screen.
+A card for a step that is **already assigned to someone else** is shown dimmed, with 「**他の担当者の工程です**」 (This step belongs to another person), and cannot be opened. A step with no assignee can be opened by anyone. Cards for steps waiting for the previous step or already finished are also dimmed and cannot be opened.
+
+> 💡 Press 「**更新**」 (Refresh) at the top right of the list to reload the latest state. Changes made on another tablet (for example, someone else completing a step) show up when you press this, or when you leave and come back to the screen.
 
 ## Viewing a different location
 
@@ -70,7 +73,7 @@ If you scan a code that is not registered, you see 「**この作業場所コー
 
 Press a card in the list to open the same recording screen as 「工程実行」. Starting, pausing, finishing, entering quantities, recording defects, and recording inspections all work exactly as described in [Recording Work](/manual/en/operations/kiosk/steps/user).
 
-Pressing 「**戻る**」 (Back) on the recording screen returns you to the work-location list you were just viewing (same location, same scope).
+Pressing 「**作業場所の一覧へ**」 (Back to the work-location list) at the top left of the recording screen returns you to the work-location list you were just viewing (same location, same scope).
 
 ## Frequently asked questions
 
@@ -81,7 +84,7 @@ A. This tablet has no default work location set yet. Scan the work-location QR l
 A. The work location (or group) you are viewing has no waiting steps. Try scanning a different work location, or switch to "Whole group" to check more broadly.
 
 **Q. A card is dimmed and I cannot press it.**
-A. That step is already assigned to someone else. A step marked 「他の担当者の工程です」 cannot be operated until that person finishes or pauses it.
+A. A step marked 「他の担当者の工程です」 is assigned to someone else, so only that person can operate it. If that mark is not shown, the previous step is not finished yet, or the step is already finished.
 
 **Q. I got "この作業場所コードは見つかりません" (That work-location code was not found).**
 A. The code on the scanned label is not registered. It may be damaged or on the wrong machine — check with your administrator.
@@ -90,7 +93,7 @@ A. The code on the scanned label is not registered. It may be damaged or on the 
 A. The work location in the actual results is decided when the step is **started or resumed**. If you opened it from this list and started it, it is the location you were viewing; if it was started or resumed from「工程実行」(Step execution) or from another tablet, it is that tablet's default work location. If the location is wrong, scan the work location again from inside the step's own screen.
 
 **Q. What is the difference from 「工程実行」 (Run step)?**
-A. 「工程実行」 only shows work **assigned to you**. 「作業場所の工程」 finds work by **place**, so it also finds work that was planned with no assignee (unplanned). The same step shows up in 「工程実行」 for whoever it is assigned to, and in 「作業場所の工程」 if it is assigned to no one.
+A. 「工程実行」 only shows work **assigned to you**. 「作業場所の工程」 finds work by **place**, so it also finds work that was planned with no assignee (担当未設定). The same step shows up in 「工程実行」 for whoever it is assigned to, and in 「作業場所の工程」 if it is assigned to no one.
 
 <!-- permissions:start -->
 ## Permissions required

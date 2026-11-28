@@ -21,8 +21,9 @@ This app is **a view of "is there enough of this item" from the item's side**. T
 - **品目 (Item)** … a product or a material.
 - **手持ち (On hand)** … the quantity actually present.
 - **予約 (Reserved)** … the portion held for a specific order or work order.
-- **利用可能（現時点） (Available, now)** … on-hand minus reserved, right now.
+- **利用可能 (Available)** … on-hand minus reserved, right now.
 - **次回入荷 (Next arrival)** — for materials, the date the next already-ordered quantity is expected.
+- **仕掛ブランク (WIP blank)** … an item that groups partly processed items (WIP) by material type, diameter and length.
 
 ## How to use it
 
@@ -34,20 +35,20 @@ The chosen item and site stay in the URL, so reloading the page keeps the same i
 
 ## The screen
 
-The summary at the top shows the item (with a type badge), site, on-hand quantity, reserved quantity, available quantity (now), and next arrival.
+The summary at the top shows the item (with a type badge), site, 「**手持ち**」(on hand), 「**予約**」(reserved), 「**利用可能**」(available) and 「**次回入荷**」(next arrival). A product's on-hand quantity does not include WIP (partly processed items). To see WIP, choose the WIP blank item instead.
 
-Below it is a single chronological table.
+Below it is a single chronological table. Its columns are 「**日付**」(date), 「**区分**」(kind), 「**参照**」(reference), 「**数量**」(quantity) and 「**残高**」(balance). The 「区分」 badge tells you what kind of row it is.
 
-- **過去 (Past)** … the actual record of stock movements. One row is added for every in/out/reserve/release/adjustment. From a row, you can go to the [Stock Movement](/manual/en/operations/inventory/inventory-movements/user) (ST04) slip it came from (a record with no slip number has a reason shown in its place).
-- **現在庫 (Current)** … the 「**今日**」 (today) row. Above it are actual records; below it are projections.
-- **未来 (Future)** … the arrivals, shipments and usage expected from here on. What shows depends on the item's type.
+- **実績 (Actual)** … the actual record of stock movements. One row is added for every in/out/reserve/release/adjustment. From a row, you can go to the [Stock Movement](/manual/en/operations/inventory/inventory-movements/user) (ST04) slip it came from (a record with no slip number has a reason shown in its place).
+- **いま (Now)** … the current stock row. Above it are actual records; below it are projections.
+- **供給予定 / 需要予定 (Planned supply / Planned demand)** … the arrivals and completions (planned supply) and the shipments and usage (planned demand) expected from here on. Rows with no date yet show 「**未定**」(undecided). What shows depends on the item's type.
   - **For a material** … lines from an ordered but not-yet-received [Material Purchase Order](/manual/en/operations/purchasing/purchase-order/user) (PU02) (with an expected date) show as an arrival (increase); the still-unused reserved quantity of a work order shows as usage (decrease, dated by the earliest delivery date among that work order's allocated order lines).
-  - **For a product** … the planned quantity of an approved or in-progress [work order](/manual/en/operations/production/work-order/user) shows as completion (increase); the unshipped portion of a confirmed / in-production / partially-shipped [order line](/manual/en/operations/sales/order-line/user) shows as shipment (decrease). From a row, you can go to the source work order or order line.
-  - **For a semi-finished item** … expected arrivals show, but **future consumption is not modeled** (when and what a semi-finished item will be used for cannot be predicted ahead of time).
+  - **For a product** … the planned quantity of an approved or in-progress [work order](/manual/en/operations/production/work-order/user) shows as completion (increase); the ordered quantity of a confirmed / in-production / partially-shipped [order line](/manual/en/operations/sales/order-line/user) shows as shipment (decrease). From a row, you can go to the source work order or order line.
+  - **For a WIP blank** … only on-hand and actual rows show. **No expected increases or decreases show** (when and what WIP will be used for cannot be predicted ahead of time).
 
-**A row that runs short is highlighted red.** If any running balance goes negative, a warning banner also appears at the top of the screen — don't miss it.
+**A row that runs short is highlighted red.** The first row where the balance goes negative gets a red background, and negative balances show as red numbers. If any running balance goes negative, a 「**在庫不足の見込み**」(expected shortage) banner also appears at the top of the screen — don't miss it.
 
-When there are too many past rows and they are **capped at 300**, an orange notice says so.
+When there are too many actual rows and they are **capped at 300**, an orange notice says so.
 
 This app is **view-only**. You cannot arrive, ship, or transfer stock from here — use the original screen for each ([Material Purchase Order](/manual/en/operations/purchasing/purchase-order/user), [work order](/manual/en/operations/production/work-order/user), [delivery order](/manual/en/operations/shipping/delivery-order/user), etc.).
 
@@ -58,8 +59,8 @@ Using this app requires the inventory permission.
 **Q. I chose an item and a site, but nothing shows.**
 A. If there is no stock record for that item/site combination, the table is empty — meaning there has been no movement in the past. Check that you chose the right item and site.
 
-**Q. For a semi-finished item, the future rows only show arrivals (increases). Where do I see planned decreases?**
-A. This app deliberately does not look ahead for when/what a semi-finished item will be used for. Once a plan to use it is decided, it will show up as a "past" row at that point.
+**Q. When I choose a WIP blank, no future rows show at all.**
+A. This app deliberately does not look ahead for when/what WIP will be used for. Once it is actually used, it is recorded at that point as an 「実績」(actual) row.
 
 **Q. The full planned quantity shows under "shipment", without deducting the part already partially shipped.**
 A. Even for an order line already partially shipped, the unshipped portion shows as the **full order quantity** (it is not calculated by subtracting what has already gone out). Check the actual remaining quantity on the [order line](/manual/en/operations/sales/order-line/user) screen.
@@ -67,7 +68,7 @@ A. Even for an order line already partially shipped, the unshipped portion shows
 **Q. A negative warning is showing. What should I do?**
 A. It means that, by that date, on-hand plus expected arrivals will fall short of what's reserved or planned for use. For a material, consider ordering more; for a product, consider reviewing the work order.
 
-**Q. The past rows are cut off at 300.**
+**Q. The actual rows are cut off at 300.**
 A. Older records are not shown. If you need more detailed history, use the "取引履歴" (transaction history) tab in [Inventory Management](/manual/en/operations/inventory/inventory-management/user) (ST01) or the [Stock Movement](/manual/en/operations/inventory/inventory-movements/user) (ST04) list.
 
 <!-- permissions:start -->

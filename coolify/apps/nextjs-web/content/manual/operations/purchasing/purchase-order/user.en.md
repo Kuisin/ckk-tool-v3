@@ -66,6 +66,8 @@ When you open the app, you see a list of the material purchase orders made so fa
 - **発注番号** (order number) … a number starting with `PO-`. The system adds it for you.
 - **状態** (status) … a coloured badge shows the current situation. Grey is 「下書き」 (draft), yellow is 「承認依頼中」 (pending approval), blue is 「承認済」 (approved), purple is 「発注済」 (ordered), green is 「入荷完了」 (receiving complete), and red is 「キャンセル」 (cancelled).
 - Type an order number or a supplier name into the search box at the top to narrow down the list.
+- The 「**状態**」 (status) box on the right lets you show, for example, only the ordered ones.
+- If you handle documents of two or more of our companies, a small badge with the company code (for example `TSP`) appears next to the order number ([company badge](/manual/en/operations/masters/own-company/user#company-badge)).
 - Click a row to open the detail screen for that purchase order.
 
 ## Creating a material purchase order
@@ -79,7 +81,7 @@ There are three ways to make one.
 3. Enter the 「**発注日**」 (order date). You may leave it blank.
 4. Click the 「**素材**」 (material) box on the line item, search by material code or name, and choose one.
 5. Choose the site that will receive it in 「**入荷先拠点**」 (receiving site). You may leave it blank.
-6. Enter the 「**数量**」 (quantity) and the 「**単位**」 (unit).
+6. Enter the 「**数量**」 (quantity). The 「**単位**」 (unit) is filled in from the material master when you choose the material, and cannot be changed.
 7. Enter the price for one piece in 「**単価**」 (unit price).
 8. Enter the date the material should arrive in 「**入荷予定日**」 (expected arrival date). You may leave it blank.
 9. To add another material, press 「**明細を追加**」 (Add line item) and repeat steps 4 to 8.
@@ -105,7 +107,7 @@ If you have the supplier's quote, order acknowledgement or a copy of the purchas
 4. Press 「**フォームに反映**」 (Fill in the form) to copy the content into the purchase order form below.
 5. Check and correct the content, then press 「**保存**」 (Save).
 
-Reading alone saves nothing. The system remembers the material names you picked, so the next document in the same supplier's format is matched more easily.
+Reading alone saves nothing. When you save, the document you read is attached automatically to the purchase order's 「**証憑**」 (supporting documents) tab as 「**取込元（原本）**」 (source original). The system remembers the material names you picked, so the next document in the same supplier's format is matched more easily.
 
 ## Asking for approval
 
@@ -114,9 +116,11 @@ Reading alone saves nothing. The system remembers the material names you picked,
 
 ![Draft material purchase order](../../../assets/screenshots/purchase-order-detail-02.png)
 
-The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/general/my-tasks/user) screen.
+The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [pending list](/manual/en/operations/general/my-tasks/user) (`CM01`) screen.
 
 > ⚠️ The approval steps are decided in [approval settings](/manual/en/operations/masters/approval-setting/user) (`MS0B`). If the material purchase order approval flow has no steps, you cannot request approval (a message such as "the approval flow is not configured" is shown). Ask an administrator to set up the approval settings.
+
+> 💡 If "use approval" is turned off for material purchase orders in the approval settings, pressing 「**承認依頼**」 (Request approval) makes the order 「**承認済**」 (approved) straight away (the message 「**承認なしで承認済にしました**」 (approved without approval) is shown). You can then place the order.
 
 ## Approving or sending back (for the approver)
 
@@ -251,7 +255,7 @@ How much to order. **Arrivals can be recorded in parts** when the delivery arriv
 
 ### Unit [#field-unit]
 
-Pieces, kg, m and so on. Choosing the material fills in its default unit.
+Pieces, kg, m and so on. Choosing the material fills in the unit registered in the material master. This box cannot be changed.
 
 ### Unit price [#field-unit-price]
 
@@ -290,6 +294,9 @@ A. The material purchase order approval flow has no steps. Ask an administrator 
 
 **Q. I see 「未入荷の明細がありません」 (There are no line items still to arrive).**
 A. All the quantity is already treated as arrived. There is nothing left to do on this purchase order.
+
+**Q. I see 「明細（…）の単位が素材マスタの単位（…）と一致しません」 (the line's unit does not match the material master's unit) and cannot save.**
+A. This happens on a purchase order converted from a purchase request, when the unit chosen in the request differs from the material master's unit. Delete that line and add the same material again with 「**明細を追加**」 (Add line). The material master's unit is filled in again.
 
 <!-- permissions:start -->
 ## Permissions required
