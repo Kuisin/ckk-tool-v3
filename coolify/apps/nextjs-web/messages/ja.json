@@ -5233,6 +5233,7 @@
       "cardAlreadyAssigned": "このカードは割当済です。別のユーザーに割り当てるには先に取り消してください",
       "onlyUnassignedCardsCanBeAssigned": "未割当のカードのみ割り当てできます",
       "targetUserNotFoundOrInactive": "対象のユーザーが見つかりません（無効ユーザー不可）",
+      "userHasSuspendedCard": "このユーザーには一時停止中のカードがあります。再開するか、取り消してから割り当ててください",
       "userAlreadyHasAssignedCardLong": "このユーザーには既に割当済のカードがあります。先に既存カードを取り消してください",
       "assignFailed": "カードの割当に失敗しました",
       "userAlreadyHasAssignedCardShort": "このユーザーには既に割当済のカードがあります",

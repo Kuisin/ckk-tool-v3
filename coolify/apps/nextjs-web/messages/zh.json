@@ -5233,6 +5233,7 @@
       "cardAlreadyAssigned": "该卡片已分配。若要分配给其他用户，请先撤销",
       "onlyUnassignedCardsCanBeAssigned": "只能分配未分配的卡片",
       "targetUserNotFoundOrInactive": "未找到该用户（不可为已停用用户）",
+      "userHasSuspendedCard": "该用户有已停用的卡片，请恢复该卡片，或撤销后再分配",
       "userAlreadyHasAssignedCardLong": "该用户已有分配的卡片，请先撤销现有卡片",
       "assignFailed": "卡片分配失败",
       "userAlreadyHasAssignedCardShort": "该用户已有分配的卡片",

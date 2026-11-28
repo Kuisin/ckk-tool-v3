@@ -5233,6 +5233,7 @@
       "cardAlreadyAssigned": "This card is already assigned. To assign it to another user, revoke it first",
       "onlyUnassignedCardsCanBeAssigned": "Only unassigned cards can be assigned",
       "targetUserNotFoundOrInactive": "User not found (disabled users are not allowed)",
+      "userHasSuspendedCard": "This user has a suspended card. Resume it, or revoke it before assigning another",
       "userAlreadyHasAssignedCardLong": "This user already has an assigned card. Revoke the existing card first",
       "assignFailed": "Could not assign the card",
       "userAlreadyHasAssignedCardShort": "This user already has an assigned card",
