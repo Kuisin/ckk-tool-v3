@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import type { FlowOverviewRow } from "@/components/master/approval-flows/ApprovalFlowOverview";
 import { ApprovalSettingsView } from "@/components/master/approval-flows/ApprovalSettingsView";
 import type { CustomValueOverviewRow } from "@/components/master/approval-flows/CustomValueOverview";
@@ -28,6 +28,8 @@ export default async function MasterApprovalSettingsPage() {
   if (denied) return denied;
 
   const now = new Date();
+  // 段名・グループ名は DB の多言語 JSON — 見ている人の言語で引く（無ければ ja）。
+  const locale = await getLocale();
   const permissionCodes = [
     ...new Set(
       SETTINGS_TARGET_TYPES.map((t) => APPROVAL_TARGET[t].approvePermission),
@@ -74,8 +76,8 @@ export default async function MasterApprovalSettingsPage() {
   const toOverviewSteps = (rows: StepRow[], code: string) =>
     rows.map((s) => ({
       stepNo: s.stepNo,
-      label: localized(s.name as LocalizedText | null),
-      groupLabel: localized(s.group.name as LocalizedText | null),
+      label: localized(s.name as LocalizedText | null, locale),
+      groupLabel: localized(s.group.name as LocalizedText | null, locale),
       mode: s.mode as "ANY" | "ALL",
       approvers: (approversByGroup.get(s.groupId) ?? []).map((a) => ({
         userId: a.userId,
@@ -134,7 +136,7 @@ export default async function MasterApprovalSettingsPage() {
 
   const groups: ApprovalGroupRow[] = groupRecords.map((r) => ({
     id: r.id,
-    name: localized(r.name as LocalizedText | null),
+    name: localized(r.name as LocalizedText | null, locale),
     memberCount: r._count.members,
     isActive: r.isActive,
   }));

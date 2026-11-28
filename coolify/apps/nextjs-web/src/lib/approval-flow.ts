@@ -162,6 +162,27 @@ export function validateFlowSteps(
   return issues;
 }
 
+/**
+ * 新しく足した段の既定名。段名は **DB の多言語データ**（承認設定で保存される）
+ * なので、ja 欄には見ている人の言語に依らず日本語の「第N承認」を入れる —
+ * 以前は画面の言語で `tr()` した値を ja 欄に入れていたので、英語の画面で
+ * 足すと ja に "Approval 2" が保存されていた。見ている人が ja 以外なら、
+ * その言語の既定名を多言語の欄に添える（表示は localized() でその言語になる）。
+ */
+export function defaultStepName(
+  n: number,
+  locale: string,
+  tr: Tr,
+): { nameJa: string; nameTranslations: Record<string, string> } {
+  return {
+    nameJa: `第${n}承認`, // i18n-ignore — DB データ（多言語 JSON 名称欄）の ja 既定値（_specs/i18n-glossary.md §1）
+    nameTranslations:
+      locale === "ja"
+        ? {}
+        : { [locale]: tr("master.approvalFlowEditor.nthApproval", { n }) },
+  };
+}
+
 /** flow_snapshot（Json）から 1 段を取り出す。範囲外・壊れた値は null。 */
 export function stepFromSnapshot(
   snapshot: unknown,

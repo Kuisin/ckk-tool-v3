@@ -55,7 +55,7 @@ export function FlowChangeCard({
   const canAct = approval.canAct;
   const stepLabel =
     approval.stepCount > 0
-      ? `${approval.stepLabel || `第${approval.stepNo}承認`}（${approval.stepNo}/${approval.stepCount}）`
+      ? `${approval.stepLabel || tr("master.approvalFlowEditor.nthApproval", { n: approval.stepNo })}（${approval.stepNo}/${approval.stepCount}）`
       : tr("common.pendingApproval");
 
   const handleApprove = () => {

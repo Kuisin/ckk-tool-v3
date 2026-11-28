@@ -56,7 +56,11 @@ import {
   LocalizedTextInput,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
+import {
+  type ApprovalMode,
+  defaultStepName,
+  validateFlowSteps,
+} from "@/lib/approval-flow";
 import { approvalModeOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import {
@@ -201,10 +205,7 @@ export function ApprovalFlowEditor({
       ...prev,
       {
         key: nextKey(),
-        nameJa: tr("master.approvalFlowEditor.nthApproval", {
-          n: prev.length + 1,
-        }),
-        nameTranslations: {},
+        ...defaultStepName(prev.length + 1, locale, tr),
         groupId: null,
         mode: "ANY",
       },

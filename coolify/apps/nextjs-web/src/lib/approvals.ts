@@ -16,7 +16,7 @@
  * 置いてあり、画面と共用する。
  */
 
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import {
   docDisplayId,
   docDisplayNumber,
@@ -868,11 +868,15 @@ const EMPTY_STATE: ApprovalActionState = {
   steps: [],
 };
 
-function snapshotSteps(snapshot: unknown) {
+/**
+ * 段名・グループ名は DB の多言語 JSON（承認設定で「多言語」に入れたもの）。
+ * 見ている人の言語で引く — 訳が無ければ ja へ落ちる（localized の規則）。
+ */
+function snapshotSteps(snapshot: unknown, locale: string) {
   return stepsFromSnapshot(snapshot).map((s) => ({
     stepNo: s.stepNo,
-    label: localized(s.name),
-    groupLabel: localized(s.groupName),
+    label: localized(s.name, locale),
+    groupLabel: localized(s.groupName, locale),
     mode: s.mode,
   }));
 }
@@ -1150,6 +1154,7 @@ export async function fetchApprovalState(
   userId?: string | null,
 ): Promise<ApprovalActionState> {
   const actor = userId ?? (await getCurrentActorId());
+  const locale = await getLocale();
   const scope = await targetScope(targetType, targetId);
   const pending = await prisma.approvalRequest.findFirst({
     where: { ...scope, status: "PENDING" },
@@ -1168,15 +1173,15 @@ export async function fetchApprovalState(
       orderBy: [{ stepNo: "desc" }, { requestedAt: "desc" }],
     });
     if (!last) return EMPTY_STATE;
-    const steps = snapshotSteps(last.flowSnapshot);
+    const steps = snapshotSteps(last.flowSnapshot, locale);
     const step = stepFromSnapshot(last.flowSnapshot, last.stepNo);
     return {
       ...EMPTY_STATE,
       phase: last.status === "REJECTED" ? "REJECTED" : "APPROVED",
       stepNo: last.stepNo,
       stepCount: last.stepCount,
-      stepLabel: step ? localized(step.name) : "",
-      groupLabel: step ? localized(step.groupName) : "",
+      stepLabel: step ? localized(step.name, locale) : "",
+      groupLabel: step ? localized(step.groupName, locale) : "",
       mode: last.mode as ApprovalMode,
       steps,
     };
@@ -1197,8 +1202,8 @@ export async function fetchApprovalState(
     phase: "PENDING",
     stepNo: pending.stepNo,
     stepCount: pending.stepCount,
-    stepLabel: step ? localized(step.name) : "",
-    groupLabel: step ? localized(step.groupName) : "",
+    stepLabel: step ? localized(step.name, locale) : "",
+    groupLabel: step ? localized(step.groupName, locale) : "",
     mode,
     canAct,
     alreadyActed,
@@ -1208,7 +1213,7 @@ export async function fetchApprovalState(
             .filter((a) => a.actedAt == null)
             .map((a) => ({ userId: a.userId, name: a.user.displayName }))
         : [],
-    steps: snapshotSteps(pending.flowSnapshot),
+    steps: snapshotSteps(pending.flowSnapshot, locale),
   };
 }
 
@@ -1307,7 +1312,7 @@ async function notifyStepStart(
       title: tr("approvals.engine.approvalRequestTitle", {
         doc: APPROVAL_TARGET[targetType].label,
         targetId: displayNumber,
-        stepName: localized(step.name),
+        stepName: localized(step.name, await getLocale()),
       }),
       message: requesterName
         ? tr("approvals.engine.requesterMessage", { name: requesterName })
@@ -1682,6 +1687,7 @@ export async function fetchApprovalTrail(
   targetId: string,
 ): Promise<ApprovalTrailEntry[]> {
   const tr = await getTranslations();
+  const locale = await getLocale();
   const rows = await prisma.approvalRequest.findMany({
     where: await targetScope(targetType, targetId),
     include: {
@@ -1702,7 +1708,7 @@ export async function fetchApprovalTrail(
     return {
       stepNo: r.stepNo,
       stepLabel: step
-        ? localized(step.name)
+        ? localized(step.name, locale)
         : tr("approvals.engine.stepOrdinal", { n: r.stepNo }),
       status: r.status,
       mode,
