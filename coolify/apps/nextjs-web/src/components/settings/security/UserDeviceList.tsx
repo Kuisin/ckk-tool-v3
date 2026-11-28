@@ -43,12 +43,18 @@ export function UserDeviceList({ devices }: { devices: UserDeviceRow[] }) {
             <Text fw={600} size="sm">
               {d.label ?? tr("settings.security.unknownDevice")}
             </Text>
-            <Text c="dimmed" ff="mono" size="xs" truncate>
-              {d.fingerprint.slice(0, 24)}…
-            </Text>
-            <Text c="dimmed" size="xs" truncate>
-              {d.userAgent ?? "—"}
-            </Text>
+            {/* シグネチャ・UA・IP は埋め込み先（SY01）では落としてある
+                （toEmbeddedUserDeviceRow）。値があるときだけ出す。 */}
+            {d.fingerprint && (
+              <Text c="dimmed" ff="mono" size="xs" truncate>
+                {d.fingerprint.slice(0, 24)}…
+              </Text>
+            )}
+            {d.userAgent && (
+              <Text c="dimmed" size="xs" truncate>
+                {d.userAgent}
+              </Text>
+            )}
           </div>
           <div className="shrink-0 text-right">
             <Text className="tabular-nums" size="xs">
@@ -59,9 +65,11 @@ export function UserDeviceList({ devices }: { devices: UserDeviceRow[] }) {
                 at: fmt.dateTime(d.lastSeenAt),
               })}
             </Text>
-            <Text c="dimmed" ff="mono" size="xs">
-              {d.lastIpAddress ?? "—"}
-            </Text>
+            {d.lastIpAddress && (
+              <Text c="dimmed" ff="mono" size="xs">
+                {d.lastIpAddress}
+              </Text>
+            )}
             <OwnershipBadge source={d.ownershipSource} value={d.ownership} />
           </div>
         </Group>
