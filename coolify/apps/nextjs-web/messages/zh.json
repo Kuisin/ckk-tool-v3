@@ -7295,14 +7295,15 @@
       "linkNotFound": "未找到链接",
       "thisLinkWasDeletedOrThe": "此链接已被删除，或 URL 不正确。",
       "thisLinkIsBlocked": "此链接已被阻止",
-      "anAdministrator": "管理员",
       "ifThisWasNotYouContact": "如非本人操作，请联系系统管理员。",
       "youAreLeavingForAnExternal": "将跳转到外部网站",
       "thisLinkLeavesTheInternalSystem": "此链接将跳出内部系统。请确认跳转目标。",
       "destination": "目标位置",
       "doNotEnterInternalPasswordsOr": "请勿在跳转目标网站输入内部密码或业务数据。",
       "continueAndLeave": "继续并离开",
-      "goToAnExternalSite": "前往外部网站"
+      "goToAnExternalSite": "前往外部网站",
+      "blockedHostMessage": "管理员已禁止跳转至 <strong>{hostname}</strong>。",
+      "reasonLabel": "理由：{reason}"
     }
   },
   "admin": {

@@ -7295,14 +7295,15 @@
       "linkNotFound": "リンクが見つかりません",
       "thisLinkWasDeletedOrThe": "このリンクは削除されたか、URL が正しくありません。",
       "thisLinkIsBlocked": "このリンクはブロックされています",
-      "anAdministrator": "管理者が",
       "ifThisWasNotYouContact": "心当たりがない場合はシステム管理者に連絡してください。",
       "youAreLeavingForAnExternal": "外部サイトへ移動します",
       "thisLinkLeavesTheInternalSystem": "このリンクは社内システムの外へ移動します。移動先を確認してください。",
       "destination": "移動先",
       "doNotEnterInternalPasswordsOr": "社内のパスワードや業務データを、移動先のサイトへ入力しないでください。",
       "continueAndLeave": "続行して移動",
-      "goToAnExternalSite": "外部サイトへ移動"
+      "goToAnExternalSite": "外部サイトへ移動",
+      "blockedHostMessage": "管理者が <strong>{hostname}</strong> への移動を禁止しています。",
+      "reasonLabel": "理由: {reason}"
     }
   },
   "admin": {

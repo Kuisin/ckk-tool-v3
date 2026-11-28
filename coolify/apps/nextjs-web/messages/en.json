@@ -7295,14 +7295,15 @@
       "linkNotFound": "Link not found",
       "thisLinkWasDeletedOrThe": "This link was deleted, or the URL is wrong.",
       "thisLinkIsBlocked": "This link is blocked",
-      "anAdministrator": "An administrator",
       "ifThisWasNotYouContact": "If this was not you, contact a system administrator.",
       "youAreLeavingForAnExternal": "You are leaving for an external site",
       "thisLinkLeavesTheInternalSystem": "This link leaves the internal system. Check where it goes.",
       "destination": "Destination",
       "doNotEnterInternalPasswordsOr": "Do not enter internal passwords or business data on the site you are going to.",
       "continueAndLeave": "Continue and leave",
-      "goToAnExternalSite": "Go to an external site"
+      "goToAnExternalSite": "Go to an external site",
+      "blockedHostMessage": "An administrator has blocked navigation to <strong>{hostname}</strong>.",
+      "reasonLabel": "Reason: {reason}"
     }
   },
   "admin": {
