@@ -11068,7 +11068,7 @@
         "summary": "The site this work location belongs to. When selecting a step's execution location, only work locations at this site appear as options."
       },
       "code": {
-        "label": "Code / Name (Japanese / English)",
+        "label": "Code / Name",
         "summary": "The management number and name of the work location. It can be selected as a step's execution location."
       },
       "type": {
@@ -11102,7 +11102,7 @@
         "summary": "The site and floor this location belongs to. Inventory is tracked by storage location at this level."
       },
       "code": {
-        "label": "Code / Name (Japanese / English)",
+        "label": "Code / Name",
         "summary": "The management number and name of the location. Once registered, it can be selected as a storage location for inventory."
       },
       "sortOrder": {
