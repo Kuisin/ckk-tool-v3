@@ -2828,7 +2828,9 @@
       "lotInputWithName": "{name} lot input",
       "defaultWithLabel": "Default ({label})",
       "workHoursWithName": "{name} work hours (h)",
-      "site": "Site"
+      "site": "Site",
+      "addRequiredSteps": "Add required steps automatically ({count})",
+      "requiredStepsAdded": "Added required steps automatically: {steps}"
     },
     "stepCard": {
       "othersCount": "and {count} more",
@@ -5693,7 +5695,16 @@
         "offBadge": "No approval",
         "notSetYet": "Not set yet (showing the current behaviour)",
         "saveFailed": "Could not save the approval setting"
-      }
+      },
+      "stepNumber": "Step {n}",
+      "ruleCountBadge": "Conditional: {count}",
+      "requiredPermissionLine": "Permission required to approve: view or edit {permission}",
+      "setUp": "Set up",
+      "permissionNote": "Approving or sending back a {target} requires permission to view or edit \"{permission}\" (<mono>{code}:READ / UPDATE</mono>). Who approves is decided only by what you specify on this screen ({who}). People who cannot open the document cannot approve it even if specified (permissions come from roles in Users, SY01).",
+      "noConditionalFlows": "There are no conditional flows. Every {target} follows the default flow.",
+      "priorityBadge": "Priority {n}",
+      "stepsLine": "Steps: {steps}",
+      "catchAll": "No conditions — matches every {target} (catch-all)."
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "This group is not used in any approval flow (assign it to a step under Approval settings).",
@@ -6022,7 +6033,8 @@
       "templateCountValue": "{count} inspection sheet(s)",
       "toggleRequiredFor": "Toggle required / optional for {name}",
       "markedRequired": "Marked as required",
-      "markedOptional": "Marked as optional"
+      "markedOptional": "Marked as optional",
+      "autoComputedRange": "Auto-calculated: lower {min} to upper {max}{unit}"
     },
     "materialNumbering": {
       "theComponentWasAdded": "The component was added",
@@ -6034,10 +6046,6 @@
       "disable": "Disable",
       "thereAreNoComponents": "There are no components",
       "codeNumbering": "Code numbering",
-      "materialTypeCode": "Material type code =",
-      "manufacturerGrade2ShapeKind4": "[manufacturer][grade 2][shape][kind 4]",
-      "materialTypeFinishDia103": "[material type]-[finish][dia.×10, 3 digits]-[length, 3 digits]",
-      "codesAreEmbeddedInCompositeCodes": ". Codes are embedded in composite codes and so cannot be deleted (only disabled). Diameters and lengths are also registered automatically when a material is created.",
       "addDiameter": "Add diameter",
       "addKind": "Add kind",
       "addLengthVariant": "Add overall length",
@@ -6045,7 +6053,8 @@
       "addManufacturerGrade": "Add manufacturer grade",
       "addShape": "Add shape",
       "addSurfaceFinish": "Add surface finish",
-      "codePreview": "Code: {code}"
+      "codePreview": "Code: {code}",
+      "codeStructureNote": "Material type code = <doc>[manufacturer][grade 2][shape][kind 4]</doc>, material code = <doc>[material type]-[finish][dia.×10, 3 digits]-[length, 3 digits]</doc>. Codes are embedded in composite codes and so cannot be deleted (only disabled). Diameters and lengths are also registered automatically when a material is created."
     },
     "materialTypes": {
       "notConvertedLegacy": "Not converted (legacy)",
@@ -6481,7 +6490,10 @@
       "unsupportedFormat": "This format cannot be imported ({reason}). Use the exported file as-is.",
       "formatMismatch": "Format mismatch",
       "noTemplatesToExport": "No exportable inspection sheets were found",
-      "relatedStepNotFound": "The related step \"{code}\" was not found"
+      "relatedStepNotFound": "The related step \"{code}\" was not found",
+      "exportUseCase": "Use it to move sheets to another environment or to keep a copy.",
+      "createdItem": "{code} (v{version}, {items} items)",
+      "rowError": "Row {row}: {message}"
     },
     "bpBaseFields": {
       "kanaPlaceholder": "Example: ABC Manufacturing"

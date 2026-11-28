@@ -108,8 +108,8 @@ export function InspectionTemplateIoModal({
                 })
               : tr(
                   "master.inspectionTemplates.exportsEveryActiveInspectionSheetSelecting",
-                )}
-            別の環境へ持っていくときや、控えを取るときに使います。
+                )}{" "}
+            {tr("master.inspectionTemplateIoModal.exportUseCase")}
           </Text>
           <Group>
             <SecondaryButton
@@ -177,7 +177,11 @@ export function InspectionTemplateIoModal({
                 <List size="sm">
                   {outcome.created.map((c) => (
                     <List.Item key={`${c.code}-${c.version}`}>
-                      {c.code}（v{c.version}・項目 {c.items} 件）
+                      {tr("master.inspectionTemplateIoModal.createdItem", {
+                        code: c.code,
+                        version: c.version,
+                        items: c.items,
+                      })}
                     </List.Item>
                   ))}
                 </List>
@@ -207,7 +211,10 @@ export function InspectionTemplateIoModal({
                 <List size="sm">
                   {outcome.rowErrors.map((e) => (
                     <List.Item key={`${e.row}-${e.message}`}>
-                      {e.row} 行目: {e.message}
+                      {tr("master.inspectionTemplateIoModal.rowError", {
+                        row: e.row,
+                        message: e.message,
+                      })}
                     </List.Item>
                   ))}
                 </List>

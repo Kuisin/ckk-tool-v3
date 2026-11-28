@@ -2828,7 +2828,9 @@
       "lotInputWithName": "{name} 的批次录入",
       "defaultWithLabel": "默认（{label}）",
       "workHoursWithName": "{name} 的作业时间 (h)",
-      "site": "据点"
+      "site": "据点",
+      "addRequiredSteps": "自动添加必需工序（{count} 项）",
+      "requiredStepsAdded": "已自动添加必需工序：{steps}"
     },
     "stepCard": {
       "othersCount": "另有 {count} 人",
@@ -5693,7 +5695,16 @@
         "offBadge": "无需审批",
         "notSetYet": "尚未设置（显示当前的行为）",
         "saveFailed": "无法保存审批使用设置"
-      }
+      },
+      "stepNumber": "第 {n} 级",
+      "ruleCountBadge": "条件流程 {count} 条",
+      "requiredPermissionLine": "审批所需权限：查看或编辑{permission}",
+      "setUp": "设置",
+      "permissionNote": "批准或退回{target}需要可查看或编辑「{permission}」的权限（<mono>{code}:READ / UPDATE</mono>）。由谁审批仅由此画面中指定的{who}决定。无法打开单据的人即使被指定也无法审批（权限由用户管理 SY01 中的角色决定）。",
+      "noConditionalFlows": "没有条件流程。所有{target}均按默认流程进行。",
+      "priorityBadge": "优先 {n}",
+      "stepsLine": "级：{steps}",
+      "catchAll": "无条件 — 匹配所有{target}（兜底）。"
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "此分组未用于任何审批流程（请在审批设置的「审批流程」中分配到级别）。",
@@ -6022,7 +6033,8 @@
       "templateCountValue": "{count} 份检查表",
       "toggleRequiredFor": "切换{name}的必填 / 可选",
       "markedRequired": "已设为必填",
-      "markedOptional": "已设为可选"
+      "markedOptional": "已设为可选",
+      "autoComputedRange": "自动计算：下限 {min} 〜 上限 {max}{unit}"
     },
     "materialNumbering": {
       "theComponentWasAdded": "已添加构成要素",
@@ -6034,10 +6046,6 @@
       "disable": "停用",
       "thereAreNoComponents": "没有构成要素",
       "codeNumbering": "编号构成",
-      "materialTypeCode": "材料类别编号 =",
-      "manufacturerGrade2ShapeKind4": "[制造商][牌号 2 位][形状][种类 4 位]",
-      "materialTypeFinishDia103": "[材料类别]-[表面处理][径×10 3 位]-[全长 3 位]",
-      "codesAreEmbeddedInCompositeCodes": "。编号会嵌入合成编号中，因此无法删除（仅可停用）。直径・全长在创建材料时也会自动登记。",
       "addDiameter": "添加直径",
       "addKind": "添加种类",
       "addLengthVariant": "添加全长",
@@ -6045,7 +6053,8 @@
       "addManufacturerGrade": "添加制造商牌号",
       "addShape": "添加形状",
       "addSurfaceFinish": "添加表面处理",
-      "codePreview": "编号：{code}"
+      "codePreview": "编号：{code}",
+      "codeStructureNote": "材料类别编号 = <doc>[制造商][牌号 2 位][形状][种类 4 位]</doc>，材料编号 = <doc>[材料类别]-[表面处理][径×10 3 位]-[全长 3 位]</doc>。编号会嵌入合成编号中，因此无法删除（仅可停用）。直径・全长在创建材料时也会自动登记。"
     },
     "materialTypes": {
       "notConvertedLegacy": "未转换（旧）",
@@ -6481,7 +6490,10 @@
       "unsupportedFormat": "无法导入此格式（{reason}）。请直接使用导出的文件。",
       "formatMismatch": "格式不匹配",
       "noTemplatesToExport": "没有可导出的检查表",
-      "relatedStepNotFound": "未找到关联工序「{code}」"
+      "relatedStepNotFound": "未找到关联工序「{code}」",
+      "exportUseCase": "用于迁移到其他环境或留存备份。",
+      "createdItem": "{code}（v{version}・项目 {items} 项）",
+      "rowError": "第 {row} 行：{message}"
     },
     "bpBaseFields": {
       "kanaPlaceholder": "例：ABC 制作所"

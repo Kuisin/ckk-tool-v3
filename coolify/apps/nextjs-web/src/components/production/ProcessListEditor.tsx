@@ -525,7 +525,9 @@ export function ProcessListEditor({
                   leftSection={<IconWand size={14} />}
                   onClick={addCompanions}
                 >
-                  必須工程を自動追加（{missingCompanions.length}件）
+                  {tr("production.processListEditor.addRequiredSteps", {
+                    count: missingCompanions.length,
+                  })}
                 </SecondaryButton>
               </Group>
             )}
@@ -539,8 +541,8 @@ export function ProcessListEditor({
             p="xs"
             variant="light"
           >
-            必須工程を自動追加しました:{" "}
-            {autoAdded
+            {tr("production.processListEditor.requiredStepsAdded", {
+              steps: autoAdded
               .map(
                 (id) =>
                   stepById.get(id)?.nameJa ??
@@ -548,7 +550,8 @@ export function ProcessListEditor({
                     id,
                   }),
               )
-              .join(tr("common.s1"))}
+              .join(tr("common.s1")),
+            })}
           </Alert>
         )}
         {error && (
