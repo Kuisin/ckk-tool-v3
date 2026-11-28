@@ -16,6 +16,7 @@ import { appList } from "@/lib/app-list";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { hiddenDevFeatureAppKeys } from "@/lib/dev-features";
 import {
   type ActionResult,
   actionError,
@@ -45,6 +46,11 @@ export async function setAppEnabled(raw: {
   if (!app) return actionError(tr("settings.appsActions.appNotFound"));
   if (!APP_ENVS.includes(env))
     return actionError(tr("settings.appsActions.invalidEnv"));
+  // 開発中機能（dev-features.json）に属するアプリは、この環境ではコードが
+  // 非表示に固定している。行を書いても表示は変わらない（getDisabledAppKeys が
+  // コード側を合流させる）ので、成功を返して嘘をつかないよう拒否する。
+  if (hiddenDevFeatureAppKeys(env).includes(appKey))
+    return actionError(tr("settings.appsActions.lockedByFeature"));
 
   const key = appFlagKey(appKey, env);
   try {

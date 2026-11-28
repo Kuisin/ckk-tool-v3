@@ -1772,6 +1772,7 @@ Enum INVENTORY_MOVEMENT_CAUSE {
   OUTSOURCE_ISSUE   // 外注へ出した（預け在庫が増える）
   OUTSOURCE_RETURN  // 外注から戻った（預け在庫が減る）
   SALES_RETURN      // 出荷後の返品（在庫が戻る）
+  WIP_RECLASSIFY    // 仕掛品の「分類する」（同じ物の品目・加工状態を付け直す）
   OTHER   // 移行前の行に後から付けた伝票。新規では使わない
 }
 

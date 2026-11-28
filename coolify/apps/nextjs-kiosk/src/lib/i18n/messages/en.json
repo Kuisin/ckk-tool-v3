@@ -470,7 +470,7 @@
     "pinMismatchTitle": "PINs do not match",
     "pinMismatchMessage": "Please start over.",
     "pinVerifyTitle": "Enter PIN",
-    "pinVerifySubtitle": "Identity verification is required after 3+ days of inactivity.",
+    "pinVerifySubtitle": "Enter your PIN to verify your identity.",
     "pinIncorrectTitle": "Incorrect PIN",
     "pinIncorrectMessage": "Please enter it again.",
     "pinWeakTitle": "That PIN cannot be used",
@@ -486,7 +486,9 @@
     "retry": "Retry",
     "lockedMessage": "Temporarily locked after multiple incorrect PIN attempts.",
     "lockedUntil": " Unlocks at: {time}",
-    "backToScan": "Back to scan"
+    "backToScan": "Back to scan",
+    "pinVerifySubtitleDeviceIdle": "Identity verification is required because this card has not been used on this device for 48 hours or more (or this is its first use here).",
+    "pinVerifySubtitlePeriodic": "Identity verification is required because two weeks have passed since your last PIN check."
   },
   "setup": {
     "couldNotIssueCode": "Could not issue a code",

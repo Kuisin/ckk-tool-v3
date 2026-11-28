@@ -219,6 +219,11 @@ export async function updateTaxCategory(
     },
   });
   if (prior == null) return actionError(tr("common.targetRecordNotFound"));
+  // 既定を外すだけだと既定の区分が 1 つも無くなる（削除と同じ理由で止める）。
+  // 既定を移すのは「別の区分を既定にする」側の操作 — そちらが自動で降ろす。
+  if (prior.isDefault && !v.isDefault) {
+    return actionError(tr("master.taxCategories.cannotUnsetDefault"));
+  }
   try {
     await prisma.$transaction(async (tx) => {
       if (v.isDefault) await clearOtherDefaults(tx, id);

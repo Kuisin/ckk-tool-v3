@@ -123,7 +123,7 @@ export const appList: AppEntry[] = [
   },
   {
     // 注文請書 intake（§2）— 監視フォルダ / 優先取込の取込状況一覧が本体。
-    // 展開後の注文明細管理（PD01）は /sales/order-lines
+    // 展開後の注文明細管理（SA05）は /sales/order-lines
     // （取込一覧のヘッダーからリンク）。
     key: "order-acceptances",
     label: "注文請書",

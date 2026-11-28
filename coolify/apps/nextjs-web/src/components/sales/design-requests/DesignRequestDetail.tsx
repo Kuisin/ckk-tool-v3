@@ -435,7 +435,9 @@ export function DesignRequestDetail({
               {
                 key: "product",
                 label: request.productName,
-                href: `/production/design-files/${request.itemId}`,
+                // 見出しどおり製品マスタ (MS24) へ — 最新図面はそこに出る。
+                // 設計図 (PD06) へは「設計図で管理」ボタンから行ける。
+                href: `/master/products/${request.itemId}`,
                 note: tr("sales.designRequests.whereTheLatestDrawingApplies"),
               },
             ],
@@ -861,6 +863,7 @@ export function DesignRequestDetail({
               </Stack>
             )}
             <AttachmentsPanel
+              acceptAnyFile
               attachments={attachments}
               canDelete={canAttachFiles(request)}
               canUpload={canAttachFiles(request)}

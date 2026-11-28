@@ -188,7 +188,7 @@ export function ComponentTable({
       )}
       rowActions={(row) => [
         {
-          label: row.isActive ? "無効化" : tr("common.enable"),
+          label: row.isActive ? tr("common.disable") : tr("common.enable"),
           icon: <IconCircleMinus size={14} />,
           onAction: toggle,
         },

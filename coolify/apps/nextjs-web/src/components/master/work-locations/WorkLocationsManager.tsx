@@ -112,6 +112,12 @@ export interface WorkLocationRow {
   planCount: number;
   /** この場所を参照する作業実績数（削除可否の目安）。 */
   actualCount: number;
+  /**
+   * 削除を止めている参照（「作業計画 3 件」などの文言。空 = 削除できる）。
+   * 削除の Server Action と同じ数え方（lib/work-location-usage）で、計画・実績の
+   * ほかに共有端末の既定・注文請書/注文明細の出荷作業場所・工程の許可場所も含む。
+   */
+  deleteBlockers: string[];
 }
 
 export interface WorkLocationGroupRow {
@@ -1651,11 +1657,9 @@ export function WorkLocationsManager({
         opened={!!deleteLocation}
         title={tr("master.workLocations.deleteTheWorkLocation2")}
         warning={
-          deleteLocation &&
-          deleteLocation.planCount + deleteLocation.actualCount > 0
+          deleteLocation && deleteLocation.deleteBlockers.length > 0
             ? tr("master.workLocationsManager.workLocationInUse", {
-                planCount: deleteLocation.planCount,
-                actualCount: deleteLocation.actualCount,
+                details: deleteLocation.deleteBlockers.join(" / "),
               })
             : undefined
         }

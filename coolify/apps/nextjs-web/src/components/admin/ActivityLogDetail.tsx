@@ -70,10 +70,8 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
         <FieldValue label={tr("common.dateAndTime")} value={entry.at} />
         <FieldValue
           label={tr("common.actions")}
-          value={tr("admin.activityLogDetail.actionWithRaw", {
-            label: entry.action,
-            raw: entry.actionRaw,
-          })}
+          // 訳したラベルだけを出す（DB の値 CREATE / UPDATE は機械向けの識別子）。
+          value={entry.action}
         />
         <FieldValue label={tr("common.target")} value={entry.tableLabel} />
         <FieldValue

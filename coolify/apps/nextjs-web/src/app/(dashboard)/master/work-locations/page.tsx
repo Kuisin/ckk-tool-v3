@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import {
   type MachineModelRow,
   type WorkLocationGroupRow,
@@ -10,6 +11,7 @@ import {
   localized,
   localizedTranslations,
 } from "@/lib/format";
+import { workLocationUsage } from "@/lib/work-location-usage";
 import { readWorkLocationTypes } from "@/lib/work-locations";
 
 export const dynamic = "force-dynamic";
@@ -18,13 +20,25 @@ export const dynamic = "force-dynamic";
 export default async function MasterWorkLocationsPage() {
   const denied = await requireAppRead("master-work-locations");
   if (denied) return denied;
+  const tr = await getTranslations();
   const [groups, types, plants, models, modelPrograms] = await Promise.all([
     prisma.workLocationGroup.findMany({
       include: {
         plant: { select: { name: true } },
         locations: {
           include: {
-            _count: { select: { stepPlans: true, stepActuals: true } },
+            // 削除を止める参照（lib/master-refs の WorkLocation と同じ 6 本）。
+            // 削除確認で「なぜ消せないか」を先に出すために数える。
+            _count: {
+              select: {
+                stepPlans: true,
+                stepActuals: true,
+                kioskDevices: true,
+                orderAcceptances: true,
+                orderLines: true,
+                stepCatalogLinks: true,
+              },
+            },
           },
           orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
         },
@@ -111,6 +125,15 @@ export default async function MasterWorkLocationsPage() {
           notes: l.notes ?? "",
           planCount: l._count.stepPlans,
           actualCount: l._count.stepActuals,
+          // 削除の Server Action と同じ文言（lib/work-location-usage）。
+          deleteBlockers: workLocationUsage(tr, {
+            "WorkOrderStepPlan.workLocationId": l._count.stepPlans,
+            "WorkOrderStepActual.workLocationId": l._count.stepActuals,
+            "KioskDevice.defaultWorkLocationId": l._count.kioskDevices,
+            "OrderAcceptance.shippingWorkLocationId": l._count.orderAcceptances,
+            "OrderLine.shippingWorkLocationId": l._count.orderLines,
+            "ProcessStepWorkLocation.workLocationId": l._count.stepCatalogLinks,
+          }),
         };
       }),
     };

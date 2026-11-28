@@ -18,6 +18,7 @@ import {
   PIN_TICKET_MAX_PER_WINDOW,
   PIN_TICKET_WINDOW_MS,
   pinFailureStateAfter,
+  pinVerifyReason,
   withinPinTicketLimit,
 } from "./kiosk-auth-core";
 
@@ -70,6 +71,27 @@ describe("needsPinVerify (端末別 48h + 2 週間キャップ)", () => {
   });
   it("PIN 検証記録なしは要 PIN", () => {
     expect(needsPinVerify(at(60_000), T0, null)).toBe(true);
+  });
+});
+
+describe("pinVerifyReason（説明文の出し分け）", () => {
+  it("初めての端末・48h 未使用は DEVICE_IDLE", () => {
+    expect(pinVerifyReason(T0, null, T0)).toBe("DEVICE_IDLE");
+    expect(pinVerifyReason(at(PIN_REVERIFY_DEVICE_IDLE_MS), T0, T0)).toBe(
+      "DEVICE_IDLE",
+    );
+  });
+  it("端末は使っているが 2 週間たったら PERIODIC", () => {
+    const now = at(PIN_REVERIFY_MAX_MS);
+    expect(pinVerifyReason(now, at(PIN_REVERIFY_MAX_MS - 60_000), T0)).toBe(
+      "PERIODIC",
+    );
+  });
+  it("両方成り立つときは DEVICE_IDLE、どちらも無ければ null", () => {
+    expect(pinVerifyReason(at(PIN_REVERIFY_MAX_MS), T0, T0)).toBe(
+      "DEVICE_IDLE",
+    );
+    expect(pinVerifyReason(at(60_000), T0, T0)).toBeNull();
   });
 });
 

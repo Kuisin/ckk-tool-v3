@@ -27,6 +27,7 @@ import {
   localizedInput,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { workLocationUsage } from "@/lib/work-location-usage";
 import {
   BUILTIN_TYPES,
   readWorkLocationTypes,
@@ -36,35 +37,6 @@ import {
 type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
 const BASE_PATH = "/master/work-locations";
-
-/**
- * 作業場所の使用状況を人が読む形に（グループ削除・場所削除で同じ数え方）。
- * lib/master-refs の WorkLocation の関連 5 本すべてに 1 行ずつ対応させる —
- * total > 0 なのに文言が空、という取りこぼしを作らない。
- */
-function workLocationUsage(tr: Tr, byTable: Record<string, number>): string[] {
-  const used: string[] = [];
-  const add = (key: string, text: (count: number) => string) => {
-    const count = byTable[key] ?? 0;
-    if (count > 0) used.push(text(count));
-  };
-  add("WorkOrderStepPlan.workLocationId", (count) =>
-    tr("master.workLocationsActions.usedByStepPlans", { count }),
-  );
-  add("WorkOrderStepActual.workLocationId", (count) =>
-    tr("master.workLocationsActions.usedByStepActuals", { count }),
-  );
-  add("KioskDevice.defaultWorkLocationId", (count) =>
-    tr("master.workLocationsActions.usedByKioskDevices", { count }),
-  );
-  add("OrderAcceptance.shippingWorkLocationId", (count) =>
-    tr("master.workLocationsActions.usedByOrderAcceptances", { count }),
-  );
-  add("ProcessStepWorkLocation.workLocationId", (count) =>
-    tr("master.workLocationsActions.usedByProcessSteps", { count }),
-  );
-  return used;
-}
 
 const codePattern = /^[A-Za-z0-9_-]+$/;
 

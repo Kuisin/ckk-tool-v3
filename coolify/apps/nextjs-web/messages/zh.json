@@ -1234,6 +1234,7 @@
       "OUTSOURCE_RETURN": "外协返回",
       "SALES_RETURN": "销售退货",
       "REGRIND_RECEIPT": "再研磨接收",
+      "WIP_RECLASSIFY": "在制品分类",
       "WORK_ORDER_COMPLETION": "工单完成",
       "DELIVERY_SHIPMENT": "出货",
       "MATERIAL_RECEIPT": "材料到货",
@@ -2488,7 +2489,10 @@
       "savedRevisionNote": "已保存修订版 {revision}",
       "shareSettingsUpdatedNote": "已更新共享设置（{count} 项）",
       "titleRequired": "请输入标题",
-      "updateFailed": "更新失败"
+      "updateFailed": "更新失败",
+      "archiveBlockedWhilePending": "发布审批中无法归档（请等待审批结果，或退回后再操作）",
+      "archivedNote": "已归档",
+      "unarchivedNote": "已取消归档"
     },
     "formSchema": {
       "oneLineText": "单行文本",
@@ -2828,7 +2832,9 @@
       "lotInputWithName": "{name} 的批次录入",
       "defaultWithLabel": "默认（{label}）",
       "workHoursWithName": "{name} 的作业时间 (h)",
-      "site": "据点"
+      "site": "据点",
+      "addRequiredSteps": "自动添加必需工序（{count} 项）",
+      "requiredStepsAdded": "已自动添加必需工序：{steps}"
     },
     "stepCard": {
       "othersCount": "另有 {count} 人",
@@ -3110,7 +3116,7 @@
       "allowQuantityVariance": "允许交付不足或超出的数量",
       "allowQuantityVarianceHelp": "允许该批次即使与订货数量不一致也能出货。可偏离的范围与是否需要审批由业务伙伴主数据决定。",
       "workLocationRequiredPlaceholder": "作业场所（必填）",
-      "timeQuantityInPanelLater": "本工序的计划还需要时间・数量 — 创建后请在工序的计划面板中填写",
+      "timeQuantityInPanelLater": "本工序的计划还需要时间 — 创建后请在工序的计划面板中填写",
       "assigneeRequiredPlaceholder": "负责人（必填）",
       "planNeedsAssignee": "以下工序需要负责人：{steps}",
       "prepRouteUsesLatest": "使用最新的 v{version}（{date}）",
@@ -3600,7 +3606,7 @@
         "revert": "恢复为图纸的值",
         "summaryTitle": "已从图纸“{file}”读取",
         "summaryCounts": "读取了 {read} 个项目（手动输入 {overridden} 个）· {at}",
-        "summaryHint": "从图纸读取的栏位为只读。点击栏位的“手动输入”即可覆盖，图纸的值会保留在栏位下方。",
+        "summaryHint": "从图纸读取的栏位为只读。点击栏位的“手动输入”即可覆盖，图纸的值会保留在输入框上方（栏位说明处）。",
         "detach": "解除读取",
         "viewSummary": "来自图纸“{file}”的 {read} 个项目（手动输入 {overridden} 个）· {at}"
       },
@@ -4322,7 +4328,11 @@
       "loginScreenLanguageDefault": "默认（日语）",
       "hoursValue": "{n} 小时",
       "minutesValue": "{n} 分钟",
-      "daysValue": "{n} 天"
+      "daysValue": "{n} 天",
+      "mapShort": "地图",
+      "inUseBy": "{name} 正在使用",
+      "lastActivityAt": "最后活动 {at}",
+      "androidApiWithPatch": "API {sdk}（补丁 {patch}）"
     },
     "links": {
       "links": "链接管理",
@@ -4576,8 +4586,7 @@
       "notificationTypesSentImmediately": "立即发送的通知类别",
       "theMaximumListedInOneEmail": "单封邮件中列出的上限件数。超出部分将折叠为「其他 N 件」（折叠的通知也视为已发送，下次不再列出）。",
       "itemsPerEmail": "每封件数",
-      "maxItems": "最多件数",
-      "resetToDefault": "恢复默认"
+      "maxItems": "最多件数"
     },
     "productTypeEditForm": {
       "enterTheTypeNameInJapanese": "请输入类别名称（日语）",
@@ -4917,7 +4926,9 @@
       "revokingTheLinkClosesTheSession": "失效后，使用该链接打开的会话也会结束。",
       "viewingHistory": "浏览记录",
       "nothingHasBeenViewedYet": "尚未浏览任何内容。",
-      "ipAddress": "IP 地址"
+      "ipAddress": "IP 地址",
+      "documentLinks": "单据链接",
+      "documentLinksIntro": "显示最近 100 条链接，包括未关联账号的链接（从单据的“门户共享”或报价单邮件发送中发行的链接）。"
     },
     "privileged": {
       "approveTab": "批准",
@@ -4991,7 +5002,9 @@
       "thereAreOlderRecordsNarrowThe": "还有更早的记录。请缩小期间或筛选条件。",
       "thereAreNoRegisteredDevices": "没有已登记的终端",
       "unknownDevice": "未知终端",
-      "success": "成功"
+      "success": "成功",
+      "loginCount": "{count} 次",
+      "lastSeenAt": "最近 {at}"
     },
     "displayContentEditor": {
       "templateSettings": "{name} 设置",
@@ -5074,7 +5087,8 @@
     "loginAttemptDrawer": {
       "theAutomationFlagNavigatorwebdriverIs": "检测到自动化标志（navigator.webdriver）",
       "theDeviceSClockIsMinutes": "设备时钟与服务器相差 {minutes} 分钟",
-      "scanKindContentNotStored": "{scanKind}（未保存内容）"
+      "scanKindContentNotStored": "{scanKind}（未保存内容）",
+      "collectedSignals": "收集的指纹（v{version}）"
     },
     "kioskDeviceLogsModal": {
       "durationMinutes": "{minutes} 分钟",
@@ -5128,7 +5142,8 @@
       "appNotFound": "未找到目标应用",
       "flagDescription": "{label}（{operationCode}）的 {env} 显示",
       "invalidEnv": "环境指定无效",
-      "updateFailed": "标志更新失败"
+      "updateFailed": "标志更新失败",
+      "lockedByFeature": "此应用属于开发中的功能，无法在此环境中切换"
     },
     "displaysActions": {
       "activateFailed": "启用失败",
@@ -5417,7 +5432,8 @@
     "kioskSettings": {
       "stepExecution": "工序执行",
       "workOrderScan": "工单扫描",
-      "workLocationBoard": "作业场所工序"
+      "workLocationBoard": "作业场所工序",
+      "workOrderList": "工单列表"
     },
     "portalGuide": {
       "guide": "指南",
@@ -5686,7 +5702,16 @@
         "offBadge": "无需审批",
         "notSetYet": "尚未设置（显示当前的行为）",
         "saveFailed": "无法保存审批使用设置"
-      }
+      },
+      "stepNumber": "第 {n} 级",
+      "ruleCountBadge": "条件流程 {count} 条",
+      "requiredPermissionLine": "审批所需权限：查看或编辑{permission}",
+      "setUp": "设置",
+      "permissionNote": "批准或退回{target}需要可查看或编辑「{permission}」的权限（<mono>{code}:READ / UPDATE</mono>）。由谁审批仅由此画面中指定的{who}决定。无法打开单据的人即使被指定也无法审批（权限由用户管理 SY01 中的角色决定）。",
+      "noConditionalFlows": "没有条件流程。所有{target}均按默认流程进行。",
+      "priorityBadge": "优先 {n}",
+      "stepsLine": "级：{steps}",
+      "catchAll": "无条件 — 匹配所有{target}（兜底）。"
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "此分组未用于任何审批流程（请在审批设置的「审批流程」中分配到级别）。",
@@ -5711,7 +5736,7 @@
       "newApprovalGroup": "新建审批组",
       "whichDocumentAndWhichStepIt": "在哪种单据的第几级使用，由「审批流程」决定。",
       "deleteTheApprovalGroup": "删除审批组",
-      "itCannotBeDeletedWhileApproval": "存在引用此分组的审批申请・代理设置时无法删除。请考虑停用。",
+      "itCannotBeDeletedWhileApproval": "在审批流程的级（包括条件流程、自定义值追加审批和表单审批）或检查表模板中使用的分组无法删除。请考虑停用。成员和代理设置会随分组一起删除。",
       "enableTheApprovalGroup": "启用审批组",
       "timeLimited": "限期",
       "theyCanApproveAsAMember": "仅在此期间内可作为此分组的成员进行审批。期间外不会出现在审批人中。",
@@ -5819,20 +5844,20 @@
       "theBusinessPartnerWasCreated": "已创建业务伙伴",
       "newBusinessPartner": "新建业务伙伴",
       "formatBpNnnnnNumberedAutomatically": "格式：BP-NNNNN（自动编号）",
-      "chooseInWhatCapacityThisPartner": "选择以何种身份使用此业务伙伴（bp_role_assignments）。可多选，之后也可增删。",
+      "chooseInWhatCapacityThisPartner": "选择以何种身份使用此业务伙伴。可多选，之后也可增删。",
       "youCanRegisterItWithNo": "未设置角色也可登记。若要在单据中可选，请之后添加角色。",
-      "closingDayPaymentTermsAndInvoice": "结算日・付款条件・请款方式（bp_customer_attrs）。",
+      "closingDayPaymentTermsAndInvoice": "结算日・付款条件・请款方式。",
       "customerInformation": "客户信息",
       "legacyCustomerCodeOptional": "旧客户编号（可选）",
       "billThisPartnerItself": "向该业务伙伴本身请款",
       "n31EndOfMonth": "31 = 月末",
       "paymentTermsDays": "账期（天数）",
       "consigneeForConsignmentSales": "委托对象（寄售对象）",
-      "theSalesRepsForThisCustomer": "负责此客户的销售（bp_sales_reps）。可登记多名，报价单・订单确认书等的销售负责人从此列表中选择。主负责人为新单据的默认值。",
-      "endUserSpecificAttributesBpEnd": "最终用户特有属性（bp_end_user_attrs）。",
+      "theSalesRepsForThisCustomer": "负责此客户的销售。可登记多名，报价单・订单确认书等的销售负责人从此列表中选择。主负责人为新单据的默认值。",
+      "endUserSpecificAttributesBpEnd": "作为最终用户时的信息。",
       "endUserInformation": "最终用户信息",
       "automotiveParts": "汽车零部件",
-      "typePaymentTermsAndStandardLead": "类别・付款条件・标准交货周期（bp_vendor_attrs）。",
+      "typePaymentTermsAndStandardLead": "类别・付款条件・标准交货周期。",
       "supplierAndSubcontractorInformation": "供应商・外协厂商信息",
       "legacySupplierCodeOptional": "旧供应商编号（可选）",
       "bankAccountForPayments": "付款汇款账户信息。",
@@ -6015,7 +6040,8 @@
       "templateCountValue": "{count} 份检查表",
       "toggleRequiredFor": "切换{name}的必填 / 可选",
       "markedRequired": "已设为必填",
-      "markedOptional": "已设为可选"
+      "markedOptional": "已设为可选",
+      "autoComputedRange": "自动计算：下限 {min} 〜 上限 {max}{unit}"
     },
     "materialNumbering": {
       "theComponentWasAdded": "已添加构成要素",
@@ -6027,10 +6053,6 @@
       "disable": "停用",
       "thereAreNoComponents": "没有构成要素",
       "codeNumbering": "编号构成",
-      "materialTypeCode": "材料类别编号 =",
-      "manufacturerGrade2ShapeKind4": "[制造商][牌号 2 位][形状][种类 4 位]",
-      "materialTypeFinishDia103": "[材料类别]-[表面处理][径×10 3 位]-[全长 3 位]",
-      "codesAreEmbeddedInCompositeCodes": "。编号会嵌入合成编号中，因此无法删除（仅可停用）。直径・全长在创建材料时也会自动登记。",
       "addDiameter": "添加直径",
       "addKind": "添加种类",
       "addLengthVariant": "添加全长",
@@ -6038,7 +6060,8 @@
       "addManufacturerGrade": "添加制造商牌号",
       "addShape": "添加形状",
       "addSurfaceFinish": "添加表面处理",
-      "codePreview": "编号：{code}"
+      "codePreview": "编号：{code}",
+      "codeStructureNote": "材料类别编号 = <doc>[制造商][牌号 2 位][形状][种类 4 位]</doc>，材料编号 = <doc>[材料类别]-[表面处理][径×10 3 位]-[全长 3 位]</doc>。编号会嵌入合成编号中，因此无法删除（仅可停用）。直径・全长在创建材料时也会自动登记。"
     },
     "materialTypes": {
       "notConvertedLegacy": "未转换（旧）",
@@ -6080,7 +6103,7 @@
     "materials": {
       "nominalDiameter": "公称直径",
       "productsUsingIt": "使用产品",
-      "productsSpecifyMaterialAsTypeDiameter": "产品以「材料类别 + 直径 + 全长」指定材料，因此不直接关联特定材料。此材料用于库存管理。",
+      "productsSpecifyMaterialAsTypeDiameter": "产品的材料由图纸版本（PD06）以「材料类别 + 直径 + 全长」指定，因此不直接关联特定材料。此材料用于库存管理。",
       "nominalDiameterMm": "公称直径 (mm)",
       "theMaterialWasCreated": "已创建材料",
       "newMaterial": "新建材料",
@@ -6116,7 +6139,7 @@
       "eGF01": "例：F01",
       "eGHonshaKojo": "例：本社工厂读音",
       "contactAndAddress": "联系方式与地址",
-      "regionsCoveredByRegionScopePermissions": "REGION 范围权限的对象地区",
+      "regionsCoveredByRegionScopePermissions": "按地区授予权限时此据点所属的地区",
       "selectARegion": "选择地区",
       "eG1234567": "例：123-4567",
       "eG0312345678": "例：03-1234-5678",
@@ -6130,7 +6153,7 @@
       "thereAreNoSites": "没有据点",
       "theRegionWasAdded": "已添加地区",
       "addARegion": "添加地区",
-      "itCannotBeChangedBecauseRegion": "REGION 范围权限（scope_values）引用此标识符，无法更改",
+      "itCannotBeChangedBecauseRegion": "地区范围的权限设置引用此编号，无法更改",
       "eGJp": "例：jp",
       "eGJapan": "例：日本",
       "theRegionWasEnabled": "已启用地区",
@@ -6139,7 +6162,7 @@
       "addARegion2": "添加地区",
       "sites": "据点数",
       "thereAreNoRegionsCreateOne": "没有地区 — 请从「添加地区」创建",
-      "theRegionCodeIsTheIdentifier": "地区编号是 REGION 范围权限（scope_values）引用的标识符，因此创建后无法更改。仅可删除未被据点引用的地区。",
+      "theRegionCodeIsTheIdentifier": "地区编号被地区范围的权限设置引用，因此创建后无法更改。仅可删除未被据点引用的地区。",
       "deleteConfirm": "将删除据点“{name}”。此操作无法撤销。",
       "deleteRegionConfirm": "将删除地区“{code} {name}”。此操作无法撤销。",
       "deleted": "已删除据点“{name}”",
@@ -6356,7 +6379,7 @@
       "groupDeleted": "已删除分组“{name}”",
       "deleteWorkLocationConfirm": "将删除作业场所“{name}”。此操作无法撤销。",
       "workLocationDeleted": "已删除作业场所“{name}”",
-      "workLocationInUse": "该场所被 {planCount} 个作业计划 / {actualCount} 个作业实绩引用，无法删除——请考虑改为停用。",
+      "workLocationInUse": "该场所被{details}引用，无法删除——请考虑改为停用。",
       "jobsWithCount": "{count} 项作业"
     },
     "bpModals": {
@@ -6474,7 +6497,10 @@
       "unsupportedFormat": "无法导入此格式（{reason}）。请直接使用导出的文件。",
       "formatMismatch": "格式不匹配",
       "noTemplatesToExport": "没有可导出的检查表",
-      "relatedStepNotFound": "未找到关联工序「{code}」"
+      "relatedStepNotFound": "未找到关联工序「{code}」",
+      "exportUseCase": "用于迁移到其他环境或留存备份。",
+      "createdItem": "{code}（v{version}・项目 {items} 项）",
+      "rowError": "第 {row} 行：{message}"
     },
     "bpBaseFields": {
       "kanaPlaceholder": "例：ABC 制作所"
@@ -6552,7 +6578,7 @@
       "siteUpdatedMessage": "已更新据点",
       "editTitle": "编辑据点 — {code}",
       "ownCompany": "本公司法人",
-      "ownCompanyDesc": "作为单据（报价单、送货单、请款单）开具方的法人。未设置时为默认法人",
+      "ownCompanyDesc": "该据点所属的法人。带据点的单据（订单确认书、出货单、材料采购单、出入库单等）以此法人为开具方。报价单由创建时选择的开具公司（或默认法人）决定，与据点无关。未设置时为默认法人",
       "ownCompanyPlaceholder": "默认法人",
       "ownCompanyDefault": "默认法人"
     },
@@ -6758,7 +6784,8 @@
       "auditWorkLocationUpdated": "已更新作业场所「{name}」",
       "auditWorkLocationDeleted": "已删除作业场所",
       "usedByOrderAcceptances": "订单确认书的出货作业场所 {count} 件",
-      "usedByProcessSteps": "工序的允许作业场所 {count} 件"
+      "usedByProcessSteps": "工序的允许作业场所 {count} 件",
+      "usedByOrderLines": "订单明细的出货作业场所 {count} 件"
     },
     "storageLocationActions": {
       "codeFormat": "编号请使用字母、数字、连字符和下划线",
@@ -6921,7 +6948,7 @@
       "newRegrindRoute": "新建再研磨工序清单",
       "intro": "接收客户刀具并进行再研磨的工序（产品接收（再研磨）→ 研磨 → 涂层（可选）→ 检查（可选））。不绑定产品或客户的公共清单，再研磨工单始终使用其最新版本。本公司库存不变动，接收的刀具记为客户寄存品。",
       "empty": "尚未登记再研磨工序清单",
-      "editorHelp": "只能选择可用于再研磨工单的工序。开始工序为 产品接收（再研磨），不能包含材料准备・加工工序。涂层・检查・发货前检查为可选。"
+      "editorHelp": "只能选择工序主数据（MS08）中「可用的工单类别」包含再研磨的工序。开始工序为 产品接收（再研磨）。"
     },
     "taxCategories": {
       "title": "税种",
@@ -6975,7 +7002,8 @@
       "accountCodeHint": "仅限半角字母、数字、- 和 _，最多 16 位（可留空）",
       "taxCode": "税代码",
       "salesAccountCode": "销售收入 科目代码",
-      "taxAccountCode": "暂收消费税 科目代码"
+      "taxAccountCode": "暂收消费税 科目代码",
+      "cannotUnsetDefault": "无法取消默认税种。请先将其他税种设为默认。"
     },
     "chargeItems": {
       "pageTitle": "费用项目",
@@ -7288,14 +7316,15 @@
       "linkNotFound": "未找到链接",
       "thisLinkWasDeletedOrThe": "此链接已被删除，或 URL 不正确。",
       "thisLinkIsBlocked": "此链接已被阻止",
-      "anAdministrator": "管理员",
       "ifThisWasNotYouContact": "如非本人操作，请联系系统管理员。",
       "youAreLeavingForAnExternal": "将跳转到外部网站",
       "thisLinkLeavesTheInternalSystem": "此链接将跳出内部系统。请确认跳转目标。",
       "destination": "目标位置",
       "doNotEnterInternalPasswordsOr": "请勿在跳转目标网站输入内部密码或业务数据。",
       "continueAndLeave": "继续并离开",
-      "goToAnExternalSite": "前往外部网站"
+      "goToAnExternalSite": "前往外部网站",
+      "blockedHostMessage": "管理员已禁止跳转至 <strong>{hostname}</strong>。",
+      "reasonLabel": "理由：{reason}"
     }
   },
   "admin": {
@@ -7315,8 +7344,7 @@
       "suffixStorageLocation": "（存放位置）",
       "suffixFloorMap": "（地图）",
       "suffixDisplay": "（显示屏）",
-      "formResponsesLabel": "表单回答",
-      "actionWithRaw": "{label}（{raw}）"
+      "formResponsesLabel": "表单回答"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "已在 {env} 中将 {label} 设为{v2}",
@@ -7326,7 +7354,10 @@
       "operationCode": "操作代码",
       "apps": "应用管理",
       "searchByAppNameOrOperation": "按应用名称或操作代码搜索",
-      "thereAreNoApps": "没有应用"
+      "thereAreNoApps": "没有应用",
+      "devVerification": "dev（验证）",
+      "lockedByFeature": "这是开发中的功能，在此环境中已由代码固定为隐藏（dev-features.json）。要发布需要 PR 和部署",
+      "locked": "已固定"
     },
     "fileManager": {
       "uploaded": "已上传",
@@ -7449,7 +7480,11 @@
       "bodyText": "正文",
       "itIsNotPublishedYetEdit": "尚未发布。编辑并发布后，正文将显示在此处。草稿内容可从「审阅」查看。",
       "required": "需要",
-      "hasUnpublishedChangesRevision": "有未发布的更改（r{revision}）"
+      "hasUnpublishedChangesRevision": "有未发布的更改（r{revision}）",
+      "archiveConfirm": "将文档作为使用完毕而归档。发布版、历史和评论将保留，共享对象仍可阅读。",
+      "unarchive": "取消归档",
+      "unarchiveConfirm": "取消归档。如有发布版则恢复为发布中，否则恢复为草稿。",
+      "unarchived": "已取消归档"
     },
     "documentEditor": {
       "editTheDocument": "编辑文档",
@@ -7927,15 +7962,14 @@
       "myPermissions": "我的权限",
       "administrator": "管理员",
       "theyHoldEveryPermissionTheyCan": "拥有全部权限。也可无需申请执行特权操作，但操作历史中会记录「以管理员权限执行」。",
-      "permissionsAndRolesInTheManual": "操作手册的「权限与角色」",
-      "isWhereItLives": "中。",
       "evenIfYouHoldThePermission": "此处的操作，即使拥有权限",
       "itCannotBeRunAsIt": "保持原样无法执行",
       "andCanOnlyBeDoneFor": "申请后，仅在他人批准的期间内可执行。",
       "remainingHoursMinutes": "剩余 {hours} 小时 {minutes} 分钟",
       "remainingMinutes": "剩余 {minutes} 分钟",
       "requestRequired": "需要申请",
-      "scopeLabel": "范围：{scopes}"
+      "scopeLabel": "范围：{scopes}",
+      "grantedSummary": "当前拥有 {total} 项中的 <b>{granted} 项</b>。权限通过角色授予。不足时请联系管理员。阅读方法见<link>操作手册的「权限与角色」</link>。"
     },
     "notificationSettingsForm": {
       "theNotificationSettingsWereUpdated": "已更新通知设置",
@@ -8062,7 +8096,7 @@
       "enterAReasonForTheChange": "修订时请输入变更理由",
       "theDesignRequestWasUpdated": "已更新设计委托单",
       "newDesignRequest": "新建设计委托单",
-      "theTriggerAtQuoteOrAt": "触发（报价时／接单时）和引用来源在创建后无法更改。保存时将编排申请编号 DSG-YYYYMM-NNNNN。",
+      "theTriggerAtQuoteOrAt": "触发（报价时 / 接单时 / 独立）和引用来源在创建后无法更改。申请编号（例：DSG-2026-00001，年份为会计年度）在保存时编排。",
       "n1TheSourceQuoteWhenDesign": "§1 与报价并行委托设计时的报价来源（可选）",
       "chooseFromRecentQuotes": "从最近的报价单中选择",
       "n3TheOrderLineWhenDesign": "§3 与接单并行委托设计时的订单明细（可选）",
@@ -8269,7 +8303,6 @@
       "discountAppliedAutomatically": "折扣（自动适用）",
       "discountRules": "折扣设置",
       "discountType": "折扣类别",
-      "duplicateWithADifferentValidPeriod": "更改有效期并复制",
       "eGSummerCampaign": "例：夏季活动",
       "editOnItemMaster": "在品目主数据中修改",
       "editTheDiscountRule": "编辑折扣规则",
@@ -8776,7 +8809,8 @@
       "notFound": "未找到价格表",
       "notPendingApproval": "不在审批中",
       "costEstimateNotUsable": "成本试算不能用作价格表的基准单价",
-      "notACounterpart": "不是同一客户、品目的其他公司的价格表"
+      "notACounterpart": "不是同一客户、品目的其他公司的价格表",
+      "estimateNotLinkedToProduct": "只有关联到该产品的价格试算可作为基准单价来源（请在价格试算（SA01）中指定产品并确定）"
     },
     "designRequestActions": {
       "approvalRequestFailed": "审批申请失败",
@@ -11119,7 +11153,7 @@
     },
     "kioskDevice": {
       "name": {
-        "label": "终端名称（日语 / 英语）",
+        "label": "终端名称",
         "summary": "在列表、平面图和操作历史徽章中显示的名称。请使用能够找到实物的名称，例如“一号工厂 入口”。"
       },
       "plant": {
@@ -11260,7 +11294,17 @@
     "webhookDuplicateName": "该 API 客户端下已有同名接收地址。",
     "webhookNotFound": "未找到接收地址。",
     "webhookSecretUnavailable": "无法打开签名密钥。请重新签发签名密钥。",
-    "webhookNotRedeliverable": "只能重发失败的发送记录。"
+    "webhookNotRedeliverable": "只能重发失败的发送记录。",
+    "editTitle": "编辑 API 客户端",
+    "editHint": "已启用的客户端只能收窄允许的 IP 范围和有效期限。要放宽时，请先停用，修改后再经审批重新启用。",
+    "expiresAt": "有效期限",
+    "noExpiry": "无期限",
+    "noCidrLimit": "无 IP 限制",
+    "widenRequiresInactive": "无法放宽已启用客户端的允许 IP 范围和有效期限。请先停用，修改后再经审批重新启用。",
+    "alreadyRevoked": "此客户端已撤销",
+    "revokeClientTitle": "撤销 API 客户端",
+    "revokeClientConfirm": "将撤销“{name}”。其所有有效令牌也会一并撤销，且无法恢复。",
+    "revokeReason": "理由"
   },
   "charges": {
     "title": "附加费用",

@@ -312,17 +312,19 @@ export function ApprovalFlowEditor({
         variant="light"
       >
         <Text size="sm">
-          {targetLabel}の承認・差し戻しには、「{permissionLabel}
-          」を閲覧または編集できる権限（
-          <Text component="span" ff="mono" size="sm">
-            {permissionCode}:READ / UPDATE
-          </Text>
-          ）が要ります。誰が承認するかは、この画面で指定した
-          {allowIndividual
-            ? tr("master.approvalFlowEditor.approvalGroupAndApprovers")
-            : tr("common.approvalGroup")}
-          だけで決まります。書類を開けない人は、指定しても承認できません
-          （権限はユーザー管理 SY01 のロールで決まります）。
+          {tr.rich("master.approvalFlows.permissionNote", {
+            target: targetLabel,
+            permission: permissionLabel,
+            code: permissionCode,
+            who: allowIndividual
+              ? tr("master.approvalFlowEditor.approvalGroupAndApprovers")
+              : tr("common.approvalGroup"),
+            mono: (chunks) => (
+              <Text component="span" ff="mono" size="sm">
+                {chunks}
+              </Text>
+            ),
+          })}
         </Text>
       </Alert>
 
@@ -342,7 +344,7 @@ export function ApprovalFlowEditor({
                 variant="light"
                 w={isMobile ? undefined : 60}
               >
-                第{i + 1}段
+                {tr("master.approvalFlows.stepNumber", { n: i + 1 })}
               </Badge>
             );
             const nameField = (

@@ -1234,6 +1234,7 @@
       "OUTSOURCE_RETURN": "Returned from subcontractor",
       "SALES_RETURN": "Sales return",
       "REGRIND_RECEIPT": "Regrind receipt",
+      "WIP_RECLASSIFY": "WIP classification",
       "WORK_ORDER_COMPLETION": "Work order completed",
       "DELIVERY_SHIPMENT": "Shipment",
       "MATERIAL_RECEIPT": "Material receipt",
@@ -2488,7 +2489,10 @@
       "savedRevisionNote": "Saved revision {revision}",
       "shareSettingsUpdatedNote": "Updated sharing settings ({count})",
       "titleRequired": "Enter a title",
-      "updateFailed": "Could not update"
+      "updateFailed": "Could not update",
+      "archiveBlockedWhilePending": "Cannot archive while publishing is pending approval (wait for the decision, or send it back first)",
+      "archivedNote": "Archived",
+      "unarchivedNote": "Unarchived"
     },
     "formSchema": {
       "oneLineText": "Short text",
@@ -2828,7 +2832,9 @@
       "lotInputWithName": "{name} lot input",
       "defaultWithLabel": "Default ({label})",
       "workHoursWithName": "{name} work hours (h)",
-      "site": "Site"
+      "site": "Site",
+      "addRequiredSteps": "Add required steps automatically ({count})",
+      "requiredStepsAdded": "Added required steps automatically: {steps}"
     },
     "stepCard": {
       "othersCount": "and {count} more",
@@ -3110,7 +3116,7 @@
       "allowQuantityVariance": "Allow delivering short or excess quantity",
       "allowQuantityVarianceHelp": "Lets this lot ship even when it does not match the ordered quantity. How far it may differ, and whether that needs approval, is set on the business partner.",
       "workLocationRequiredPlaceholder": "Work location (required)",
-      "timeQuantityInPanelLater": "This step's plan also needs times / quantity — add them in the step's plan panel after creating the work order",
+      "timeQuantityInPanelLater": "This step's plan also needs times — add them in the step's plan panel after creating the work order",
       "assigneeRequiredPlaceholder": "Assignee (required)",
       "planNeedsAssignee": "These steps require an assignee: {steps}",
       "prepRouteUsesLatest": "Uses the latest, v{version} ({date})",
@@ -3600,7 +3606,7 @@
         "revert": "Revert to drawing value",
         "summaryTitle": "Read from drawing \"{file}\"",
         "summaryCounts": "{read} fields read ({overridden} edited manually) · {at}",
-        "summaryHint": "Fields read from the drawing are read-only. Use \"Edit manually\" on a field to overwrite it; the drawing value stays shown below the field.",
+        "summaryHint": "Fields read from the drawing are read-only. Use \"Edit manually\" on a field to overwrite it; the drawing value stays shown above the input (in the field's description).",
         "detach": "Detach drawing values",
         "viewSummary": "{read} fields from drawing \"{file}\" ({overridden} edited manually) · {at}"
       },
@@ -4214,7 +4220,7 @@
       "usage": "Usage",
       "authenticationError": "Authentication error",
       "maintenancePinSameOnEveryDevice": "Maintenance PIN (same on every device, rotated daily at 4:00)",
-      "fiveTapsTopRightOnThe": "Five taps top-right on the device → this PIN temporarily releases the kiosk lock (to change Wi-Fi, etc.)",
+      "fiveTapsTopRightOnThe": "Five taps top-right on the device → this PIN temporarily releases the device lock (to change Wi-Fi, etc.)",
       "anOfflineDeviceCannotSyncThe": "An offline device cannot sync the PIN, so",
       "thePinAsOfTheLast": "The PIN as of the last successful sync",
       "isTheOnlyOneItAccepts": "is the only one it accepts. To unlock it, use \"the PIN this device is holding\" on the right",
@@ -4322,7 +4328,11 @@
       "loginScreenLanguageDefault": "Default (Japanese)",
       "hoursValue": "{n} hours",
       "minutesValue": "{n} min",
-      "daysValue": "{n} days"
+      "daysValue": "{n} days",
+      "mapShort": "Map",
+      "inUseBy": "In use by {name}",
+      "lastActivityAt": "Last activity {at}",
+      "androidApiWithPatch": "API {sdk} (patch {patch})"
     },
     "links": {
       "links": "Links",
@@ -4576,8 +4586,7 @@
       "notificationTypesSentImmediately": "Notification types sent immediately",
       "theMaximumListedInOneEmail": "The maximum listed in one email. Anything over is folded into \"and N more\" (folded notifications count as sent and do not reappear next time).",
       "itemsPerEmail": "Items per email",
-      "maxItems": "Max items",
-      "resetToDefault": "Reset to default"
+      "maxItems": "Max items"
     },
     "productTypeEditForm": {
       "enterTheTypeNameInJapanese": "Enter the type name in Japanese",
@@ -4917,7 +4926,9 @@
       "revokingTheLinkClosesTheSession": "Revoking also ends any session opened with that link.",
       "viewingHistory": "Viewing history",
       "nothingHasBeenViewedYet": "Nothing has been viewed yet.",
-      "ipAddress": "IP address"
+      "ipAddress": "IP address",
+      "documentLinks": "Document links",
+      "documentLinksIntro": "Shows the latest 100 links, including those not tied to an account (issued from a document's Portal sharing or by emailing a quote)."
     },
     "privileged": {
       "approveTab": "Approve",
@@ -4991,7 +5002,9 @@
       "thereAreOlderRecordsNarrowThe": "There are older records. Narrow the period or the filters.",
       "thereAreNoRegisteredDevices": "There are no registered devices",
       "unknownDevice": "Unknown device",
-      "success": "Success"
+      "success": "Success",
+      "loginCount": "Logins: {count}",
+      "lastSeenAt": "Last seen {at}"
     },
     "displayContentEditor": {
       "templateSettings": "{name} settings",
@@ -5074,7 +5087,8 @@
     "loginAttemptDrawer": {
       "theAutomationFlagNavigatorwebdriverIs": "The automation flag (navigator.webdriver) is set",
       "theDeviceSClockIsMinutes": "The device's clock is {minutes} minutes off from the server",
-      "scanKindContentNotStored": "{scanKind} (content is not stored)"
+      "scanKindContentNotStored": "{scanKind} (content is not stored)",
+      "collectedSignals": "Collected signature (v{version})"
     },
     "kioskDeviceLogsModal": {
       "durationMinutes": "{minutes}m",
@@ -5128,7 +5142,8 @@
       "appNotFound": "App not found",
       "flagDescription": "{env} display for {label} ({operationCode})",
       "invalidEnv": "Invalid environment",
-      "updateFailed": "Could not update the flag"
+      "updateFailed": "Could not update the flag",
+      "lockedByFeature": "This app belongs to a feature under development and cannot be switched in this environment"
     },
     "displaysActions": {
       "activateFailed": "Could not activate",
@@ -5417,7 +5432,8 @@
     "kioskSettings": {
       "stepExecution": "Step execution",
       "workOrderScan": "Work order scan",
-      "workLocationBoard": "Work location steps"
+      "workLocationBoard": "Work location steps",
+      "workOrderList": "Work order list"
     },
     "portalGuide": {
       "guide": "Guide",
@@ -5686,7 +5702,16 @@
         "offBadge": "No approval",
         "notSetYet": "Not set yet (showing the current behaviour)",
         "saveFailed": "Could not save the approval setting"
-      }
+      },
+      "stepNumber": "Step {n}",
+      "ruleCountBadge": "Conditional: {count}",
+      "requiredPermissionLine": "Permission required to approve: view or edit {permission}",
+      "setUp": "Set up",
+      "permissionNote": "Approving or sending back a {target} requires permission to view or edit \"{permission}\" (<mono>{code}:READ / UPDATE</mono>). Who approves is decided only by what you specify on this screen ({who}). People who cannot open the document cannot approve it even if specified (permissions come from roles in Users, SY01).",
+      "noConditionalFlows": "There are no conditional flows. Every {target} follows the default flow.",
+      "priorityBadge": "Priority {n}",
+      "stepsLine": "Steps: {steps}",
+      "catchAll": "No conditions — matches every {target} (catch-all)."
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "This group is not used in any approval flow (assign it to a step under Approval settings).",
@@ -5711,7 +5736,7 @@
       "newApprovalGroup": "New approval group",
       "whichDocumentAndWhichStepIt": "Which document and which step it is used at is set under \"Approval flow\".",
       "deleteTheApprovalGroup": "Delete the approval group",
-      "itCannotBeDeletedWhileApproval": "It cannot be deleted while approval requests or delegations reference this group. Consider disabling it.",
+      "itCannotBeDeletedWhileApproval": "A group used in an approval flow step (including conditional flows, custom value approval and form approvals) or by an inspection template cannot be deleted. Consider disabling it. Members and delegations are deleted with the group.",
       "enableTheApprovalGroup": "Enable the approval group",
       "timeLimited": "Time-limited",
       "theyCanApproveAsAMember": "They can approve as a member of this group only during this period. Outside it they do not appear as an approver.",
@@ -5819,20 +5844,20 @@
       "theBusinessPartnerWasCreated": "The business partner was created",
       "newBusinessPartner": "New business partner",
       "formatBpNnnnnNumberedAutomatically": "Format: BP-NNNNN (numbered automatically)",
-      "chooseInWhatCapacityThisPartner": "Choose in what capacity this partner is used (bp_role_assignments). Several can apply, and they can be added or removed later.",
+      "chooseInWhatCapacityThisPartner": "Choose in what capacity this partner is used. Several can apply, and they can be added or removed later.",
       "youCanRegisterItWithNo": "You can register it with no role. To make it selectable on documents, add a role later.",
-      "closingDayPaymentTermsAndInvoice": "Closing day, payment terms and invoice method (bp_customer_attrs).",
+      "closingDayPaymentTermsAndInvoice": "Closing day, payment terms and invoice method.",
       "customerInformation": "Customer information",
       "legacyCustomerCodeOptional": "Legacy customer code (optional)",
       "billThisPartnerItself": "Bill this partner itself",
       "n31EndOfMonth": "31 = end of month",
       "paymentTermsDays": "Payment terms (days)",
       "consigneeForConsignmentSales": "Consignee (for consignment sales)",
-      "theSalesRepsForThisCustomer": "The sales reps for this customer (bp_sales_reps). Several can be registered, and documents pick from this list. The primary is the default for new documents.",
-      "endUserSpecificAttributesBpEnd": "End-user specific attributes (bp_end_user_attrs).",
+      "theSalesRepsForThisCustomer": "The sales reps for this customer. Several can be registered, and documents pick from this list. The primary is the default for new documents.",
+      "endUserSpecificAttributesBpEnd": "Information used when this partner is an end user.",
       "endUserInformation": "End user information",
       "automotiveParts": "Automotive parts",
-      "typePaymentTermsAndStandardLead": "Type, payment terms and standard lead time (bp_vendor_attrs).",
+      "typePaymentTermsAndStandardLead": "Type, payment terms and standard lead time.",
       "supplierAndSubcontractorInformation": "Supplier and subcontractor information",
       "legacySupplierCodeOptional": "Legacy supplier code (optional)",
       "bankAccountForPayments": "Bank account for payments.",
@@ -6015,7 +6040,8 @@
       "templateCountValue": "{count} inspection sheet(s)",
       "toggleRequiredFor": "Toggle required / optional for {name}",
       "markedRequired": "Marked as required",
-      "markedOptional": "Marked as optional"
+      "markedOptional": "Marked as optional",
+      "autoComputedRange": "Auto-calculated: lower {min} to upper {max}{unit}"
     },
     "materialNumbering": {
       "theComponentWasAdded": "The component was added",
@@ -6027,10 +6053,6 @@
       "disable": "Disable",
       "thereAreNoComponents": "There are no components",
       "codeNumbering": "Code numbering",
-      "materialTypeCode": "Material type code =",
-      "manufacturerGrade2ShapeKind4": "[manufacturer][grade 2][shape][kind 4]",
-      "materialTypeFinishDia103": "[material type]-[finish][dia.×10, 3 digits]-[length, 3 digits]",
-      "codesAreEmbeddedInCompositeCodes": ". Codes are embedded in composite codes and so cannot be deleted (only disabled). Diameters and lengths are also registered automatically when a material is created.",
       "addDiameter": "Add diameter",
       "addKind": "Add kind",
       "addLengthVariant": "Add overall length",
@@ -6038,7 +6060,8 @@
       "addManufacturerGrade": "Add manufacturer grade",
       "addShape": "Add shape",
       "addSurfaceFinish": "Add surface finish",
-      "codePreview": "Code: {code}"
+      "codePreview": "Code: {code}",
+      "codeStructureNote": "Material type code = <doc>[manufacturer][grade 2][shape][kind 4]</doc>, material code = <doc>[material type]-[finish][dia.×10, 3 digits]-[length, 3 digits]</doc>. Codes are embedded in composite codes and so cannot be deleted (only disabled). Diameters and lengths are also registered automatically when a material is created."
     },
     "materialTypes": {
       "notConvertedLegacy": "Not converted (legacy)",
@@ -6080,7 +6103,7 @@
     "materials": {
       "nominalDiameter": "Nominal diameter",
       "productsUsingIt": "Products using it",
-      "productsSpecifyMaterialAsTypeDiameter": "Products specify material as type + diameter + length, so they are not tied to a specific material. This material is used for inventory.",
+      "productsSpecifyMaterialAsTypeDiameter": "A product's material is specified by its drawing version (PD06) as type + diameter + length, so it is not tied to a specific material. This material is used for inventory.",
       "nominalDiameterMm": "Nominal diameter (mm)",
       "theMaterialWasCreated": "The material was created",
       "newMaterial": "New material",
@@ -6116,7 +6139,7 @@
       "eGF01": "e.g. F01",
       "eGHonshaKojo": "e.g. honsha kojo",
       "contactAndAddress": "Contact and address",
-      "regionsCoveredByRegionScopePermissions": "Regions covered by REGION-scope permissions",
+      "regionsCoveredByRegionScopePermissions": "The region this site belongs to for region-wide permissions",
       "selectARegion": "Select a region",
       "eG1234567": "e.g. 123-4567",
       "eG0312345678": "e.g. 03-1234-5678",
@@ -6130,7 +6153,7 @@
       "thereAreNoSites": "There are no sites",
       "theRegionWasAdded": "The region was added",
       "addARegion": "Add a region",
-      "itCannotBeChangedBecauseRegion": "It cannot be changed because REGION-scope permissions (scope_values) refer to this identifier",
+      "itCannotBeChangedBecauseRegion": "It cannot be changed because region-wide permission settings refer to this code",
       "eGJp": "e.g. jp",
       "eGJapan": "e.g. Japan",
       "theRegionWasEnabled": "The region was enabled",
@@ -6139,7 +6162,7 @@
       "addARegion2": "Add a region",
       "sites": "Sites",
       "thereAreNoRegionsCreateOne": "There are no regions — create one under \"Add a region\"",
-      "theRegionCodeIsTheIdentifier": "The region code is the identifier REGION-scope permissions (scope_values) refer to, so it cannot be changed after creation. Only regions no site refers to can be deleted.",
+      "theRegionCodeIsTheIdentifier": "The region code is referenced by region-wide permission settings, so it cannot be changed after creation. Only regions no site refers to can be deleted.",
       "deleteConfirm": "This will delete site \"{name}\". This cannot be undone.",
       "deleteRegionConfirm": "This will delete region \"{code} {name}\". This cannot be undone.",
       "deleted": "Deleted site \"{name}\"",
@@ -6356,7 +6379,7 @@
       "groupDeleted": "Deleted group \"{name}\"",
       "deleteWorkLocationConfirm": "This deletes work location \"{name}\". This cannot be undone.",
       "workLocationDeleted": "Deleted work location \"{name}\"",
-      "workLocationInUse": "This location is referenced by {planCount} work plan(s) / {actualCount} actual(s) and cannot be deleted — consider disabling it instead.",
+      "workLocationInUse": "This location is referenced by {details} and cannot be deleted — consider disabling it instead.",
       "jobsWithCount": "{count} jobs"
     },
     "bpModals": {
@@ -6474,7 +6497,10 @@
       "unsupportedFormat": "This format cannot be imported ({reason}). Use the exported file as-is.",
       "formatMismatch": "Format mismatch",
       "noTemplatesToExport": "No exportable inspection sheets were found",
-      "relatedStepNotFound": "The related step \"{code}\" was not found"
+      "relatedStepNotFound": "The related step \"{code}\" was not found",
+      "exportUseCase": "Use it to move sheets to another environment or to keep a copy.",
+      "createdItem": "{code} (v{version}, {items} items)",
+      "rowError": "Row {row}: {message}"
     },
     "bpBaseFields": {
       "kanaPlaceholder": "Example: ABC Manufacturing"
@@ -6552,7 +6578,7 @@
       "siteUpdatedMessage": "Updated the site",
       "editTitle": "Edit site — {code}",
       "ownCompany": "Own company",
-      "ownCompanyDesc": "The company that issues documents (quotes, delivery notes, invoices). Empty means the default company",
+      "ownCompanyDesc": "The company this site belongs to. Documents that carry a site (order acceptances, delivery orders, material purchase orders, stock movements, etc.) are issued by this company. Quotes are issued by the company chosen when they are created (or the default company), not by the site. Empty means the default company",
       "ownCompanyPlaceholder": "Default company",
       "ownCompanyDefault": "Default company"
     },
@@ -6758,7 +6784,8 @@
       "auditWorkLocationUpdated": "Updated work location \"{name}\"",
       "auditWorkLocationDeleted": "Deleted work location",
       "usedByOrderAcceptances": "Shipping work location on {count} order acceptances",
-      "usedByProcessSteps": "Allowed work location on {count} process steps"
+      "usedByProcessSteps": "Allowed work location on {count} process steps",
+      "usedByOrderLines": "Shipping work location on {count} order lines"
     },
     "storageLocationActions": {
       "codeFormat": "Use letters, numbers, hyphens, and underscores for the code",
@@ -6921,7 +6948,7 @@
       "newRegrindRoute": "New regrind step list",
       "intro": "The steps for regrinding tools received from a customer (tool receipt (regrind) → grinding → coating (optional) → inspection (optional)). A common list tied to neither product nor customer; regrind work orders always use its latest version. Our own stock never moves — the received tools are booked as customer-owned stock.",
       "empty": "No regrind step list is registered",
-      "editorHelp": "Only steps usable on regrind work orders can be chosen. The start step is tool receipt (regrind); material prep and machining steps are not allowed. Coating, inspection and pre-shipment inspection are optional."
+      "editorHelp": "Only steps whose \"Work order types\" in the process step master (MS08) include regrind can be chosen. The start step is tool receipt (regrind)."
     },
     "taxCategories": {
       "title": "Tax categories",
@@ -6975,7 +7002,8 @@
       "accountCodeHint": "Letters, digits, - and _ only, up to 16 (may be blank)",
       "taxCode": "Tax code",
       "salesAccountCode": "Sales account code",
-      "taxAccountCode": "Tax suspense account code"
+      "taxAccountCode": "Tax suspense account code",
+      "cannotUnsetDefault": "The default tax category cannot be unset. Make another category the default first."
     },
     "chargeItems": {
       "pageTitle": "Charge items",
@@ -7288,14 +7316,15 @@
       "linkNotFound": "Link not found",
       "thisLinkWasDeletedOrThe": "This link was deleted, or the URL is wrong.",
       "thisLinkIsBlocked": "This link is blocked",
-      "anAdministrator": "An administrator",
       "ifThisWasNotYouContact": "If this was not you, contact a system administrator.",
       "youAreLeavingForAnExternal": "You are leaving for an external site",
       "thisLinkLeavesTheInternalSystem": "This link leaves the internal system. Check where it goes.",
       "destination": "Destination",
       "doNotEnterInternalPasswordsOr": "Do not enter internal passwords or business data on the site you are going to.",
       "continueAndLeave": "Continue and leave",
-      "goToAnExternalSite": "Go to an external site"
+      "goToAnExternalSite": "Go to an external site",
+      "blockedHostMessage": "An administrator has blocked navigation to <strong>{hostname}</strong>.",
+      "reasonLabel": "Reason: {reason}"
     }
   },
   "admin": {
@@ -7315,8 +7344,7 @@
       "suffixStorageLocation": " (storage location)",
       "suffixFloorMap": " (map)",
       "suffixDisplay": " (display)",
-      "formResponsesLabel": "Form responses",
-      "actionWithRaw": "{label} ({raw})"
+      "formResponsesLabel": "Form responses"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "{label} was set to {v2} in {env}",
@@ -7326,7 +7354,10 @@
       "operationCode": "Operation code",
       "apps": "Apps",
       "searchByAppNameOrOperation": "Search by app name or operation code",
-      "thereAreNoApps": "There are no apps"
+      "thereAreNoApps": "There are no apps",
+      "devVerification": "dev (staging)",
+      "lockedByFeature": "This is a feature under development, so it is hidden in this environment by code (dev-features.json). Publishing it requires a PR and a deploy",
+      "locked": "Locked"
     },
     "fileManager": {
       "uploaded": "Uploaded",
@@ -7449,7 +7480,11 @@
       "bodyText": "Body text",
       "itIsNotPublishedYetEdit": "It is not published yet. Edit and publish, and the body appears here. You can read the draft under Review.",
       "required": "Required",
-      "hasUnpublishedChangesRevision": "Has unpublished changes (r{revision})"
+      "hasUnpublishedChangesRevision": "Has unpublished changes (r{revision})",
+      "archiveConfirm": "Puts the document away as finished with. The published version, history and comments remain, and people it is shared with can still read it.",
+      "unarchive": "Unarchive",
+      "unarchiveConfirm": "Unarchives the document. It returns to published if it has a published version, otherwise to draft.",
+      "unarchived": "Unarchived"
     },
     "documentEditor": {
       "editTheDocument": "Edit the document",
@@ -7927,15 +7962,14 @@
       "myPermissions": "My permissions",
       "administrator": "Administrator",
       "theyHoldEveryPermissionTheyCan": "They hold every permission. They can run privileged operations without a request, but the activity log records that it was done with administrator rights.",
-      "permissionsAndRolesInTheManual": "\"Permissions and roles\" in the manual",
-      "isWhereItLives": "is where it lives.",
       "evenIfYouHoldThePermission": "Even if you hold the permission, the operations here",
       "itCannotBeRunAsIt": "It cannot be run as it is",
       "andCanOnlyBeDoneFor": "and can only be done for the period another person has approved.",
       "remainingHoursMinutes": "{hours}h {minutes}m remaining",
       "remainingMinutes": "{minutes}m remaining",
       "requestRequired": "Request required",
-      "scopeLabel": "Scope: {scopes}"
+      "scopeLabel": "Scope: {scopes}",
+      "grantedSummary": "You hold <b>{granted} of {total}</b> permissions. Permissions come through roles. If something is missing, ask an administrator. See <link>\"Permissions and roles\" in the manual</link> for how to read this."
     },
     "notificationSettingsForm": {
       "theNotificationSettingsWereUpdated": "The notification settings were updated",
@@ -8062,7 +8096,7 @@
       "enterAReasonForTheChange": "Enter a reason for the change when revising",
       "theDesignRequestWasUpdated": "The design request was updated",
       "newDesignRequest": "New design request",
-      "theTriggerAtQuoteOrAt": "The trigger (at quote or at order) and the source cannot be changed after creation. A request number DSG-YYYYMM-NNNNN is assigned on save.",
+      "theTriggerAtQuoteOrAt": "The trigger (at quote / at order / standalone) and the source cannot be changed after creation. A request number (e.g. DSG-2026-00001; the year is the fiscal year) is assigned on save.",
       "n1TheSourceQuoteWhenDesign": "§1 The source quote when design is requested alongside quoting (optional)",
       "chooseFromRecentQuotes": "Choose from recent quotes",
       "n3TheOrderLineWhenDesign": "§3 The order line when design is requested alongside the order (optional)",
@@ -8269,7 +8303,6 @@
       "discountAppliedAutomatically": "Discount (applied automatically)",
       "discountRules": "Discount rules",
       "discountType": "Discount type",
-      "duplicateWithADifferentValidPeriod": "Duplicate with a different valid period",
       "eGSummerCampaign": "e.g. Summer campaign",
       "editOnItemMaster": "Edit on the item master",
       "editTheDiscountRule": "Edit the discount rule",
@@ -8776,7 +8809,8 @@
       "notFound": "Price list not found",
       "notPendingApproval": "Not pending approval",
       "costEstimateNotUsable": "A cost estimate cannot be used as a price list base price",
-      "notACounterpart": "That is not another company's price list for the same customer and item"
+      "notACounterpart": "That is not another company's price list for the same customer and item",
+      "estimateNotLinkedToProduct": "Only a price estimate linked to this product can be the base price source (set the product on the price estimate (SA01) and confirm it)"
     },
     "designRequestActions": {
       "approvalRequestFailed": "Could not request approval",
@@ -11119,7 +11153,7 @@
     },
     "kioskDevice": {
       "name": {
-        "label": "Device name (Japanese / English)",
+        "label": "Device name",
         "summary": "The name shown in the list, on the floor map, and on activity-log badges. Use a name that lets people locate the physical device, such as \"Plant 1 entrance\"."
       },
       "plant": {
@@ -11260,7 +11294,17 @@
     "webhookDuplicateName": "This API client already has an endpoint with that name.",
     "webhookNotFound": "Endpoint not found.",
     "webhookSecretUnavailable": "The signing secret could not be opened. Rotate the signing secret.",
-    "webhookNotRedeliverable": "Only failed deliveries can be redelivered."
+    "webhookNotRedeliverable": "Only failed deliveries can be redelivered.",
+    "editTitle": "Edit API client",
+    "editHint": "On an enabled client, allowed IP ranges and the expiry can only be narrowed. To widen them, disable the client, change them, then re-enable it with approval.",
+    "expiresAt": "Expires",
+    "noExpiry": "No end date",
+    "noCidrLimit": "No IP restriction",
+    "widenRequiresInactive": "The allowed IP ranges and expiry of an enabled client cannot be widened. Disable it, make the change, then re-enable it with approval.",
+    "alreadyRevoked": "This client has already been revoked",
+    "revokeClientTitle": "Revoke API client",
+    "revokeClientConfirm": "Revoke \"{name}\". All of its active tokens are revoked as well. This cannot be undone.",
+    "revokeReason": "Reason"
   },
   "charges": {
     "title": "Additional charges",

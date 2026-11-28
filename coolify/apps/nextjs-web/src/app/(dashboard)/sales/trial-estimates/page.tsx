@@ -20,11 +20,13 @@ export const dynamic = "force-dynamic";
 export default async function TrialEstimatesPage() {
   const denied = await requireAppRead("trial-estimates");
   if (denied) return denied;
-  const [rows, settings, tr, costAuthz] = await Promise.all([
+  const [rows, settings, tr, costAuthz, canOpenSettings] = await Promise.all([
     fetchTrialEstimates(),
     getTrialPricingSettings(),
     getTranslations(),
     checkPermission(ESTIMATE_COST_PERMISSION, "READ"),
+    // 「設定」= 価格試算計算 (SY02)。開けない人にはボタンを出さない。
+    checkPermission("system", "READ").then((r) => r.ok),
   ]);
   // 原価は権限の無い人にはサーバーから出さない（詳細ページと同じ規則）。
   // 一覧は client component に全行の結果スナップショットを渡すので、
@@ -34,6 +36,7 @@ export default async function TrialEstimatesPage() {
 
   return (
     <TrialEstimateTable
+      canOpenSettings={canOpenSettings}
       pricingOptions={
         canViewCost
           ? pricingOptions

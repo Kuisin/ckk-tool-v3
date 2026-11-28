@@ -701,8 +701,11 @@ export function InspectionTemplateItemModal({
             </SimpleGrid>
             {computedRange && (
               <Text c="dimmed" size="xs">
-                自動計算: 下限 {computedRange.min} 〜 上限 {computedRange.max}
-                {unit ? ` ${unit}` : ""}
+                {tr("master.inspectionTemplates.autoComputedRange", {
+                  min: computedRange.min,
+                  max: computedRange.max,
+                  unit: unit ? ` ${unit}` : "",
+                })}
               </Text>
             )}
           </Stack>
