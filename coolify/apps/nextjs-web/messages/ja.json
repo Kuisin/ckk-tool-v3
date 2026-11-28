@@ -11264,7 +11264,17 @@
     "webhookDuplicateName": "同じ API クライアントに同じ名前の送信先があります。",
     "webhookNotFound": "送信先が見つかりません。",
     "webhookSecretUnavailable": "署名鍵を開けませんでした。署名鍵を再発行してください。",
-    "webhookNotRedeliverable": "失敗した配送だけ再送できます。"
+    "webhookNotRedeliverable": "失敗した配送だけ再送できます。",
+    "editTitle": "API クライアントを編集",
+    "editHint": "有効なクライアントでは、許可 IP 範囲と有効期限を広げられません（狭めるのは可）。広げるときは無効化してから変更し、承認を受けて再有効化してください。",
+    "expiresAt": "有効期限",
+    "noExpiry": "無期限",
+    "noCidrLimit": "IP 制限なし",
+    "widenRequiresInactive": "有効なクライアントの許可 IP 範囲・有効期限は広げられません。無効化してから変更し、承認を受けて再有効化してください。",
+    "alreadyRevoked": "このクライアントは失効済みです",
+    "revokeClientTitle": "API クライアントの失効",
+    "revokeClientConfirm": "「{name}」を失効します。有効なトークンもすべて失効し、元には戻せません。",
+    "revokeReason": "理由"
   },
   "charges": {
     "title": "追加料金",

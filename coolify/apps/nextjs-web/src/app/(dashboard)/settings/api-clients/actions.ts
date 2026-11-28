@@ -7,7 +7,9 @@
  *   `api_client.issue_token` … 鍵を刷る
  *   `api_client.activate`    … 何も通らない状態から通る状態にする
  * 作成（無効・トークン無し）・説明の変更・**無効化**・**トークンの失効**・
- * 許可 IP を狭める操作は素の `api_client` で足りる。アクセスを減らす操作を
+ * 許可 IP を狭める操作は素の `api_client` で足りる。有効なクライアントの
+ * 許可 IP・有効期限を**広げる**変更は受け付けない（無効化してから変え、
+ * 承認つきで再有効化する — `widensApiClientAccess`）。アクセスを減らす操作を
  * 承認待ちにしない、という portal / kiosk と同じ約束。
  *
  * ■ ロールの割り当ては**ここに無い**
@@ -22,8 +24,10 @@
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
+import { widensApiClientAccess } from "@/lib/api-auth-core";
 import {
   createApiClient,
+  getApiClientAccess,
   issueToken,
   revokeApiClient,
   revokeToken,
@@ -32,7 +36,7 @@ import {
 } from "@/lib/api-clients-admin";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
-import { parseCidrList } from "@/lib/cidr-core";
+import { cidrContains, parseCidrList } from "@/lib/cidr-core";
 import { isDevFeatureEnabled } from "@/lib/dev-features";
 import {
   checkOperationPermission,
@@ -258,6 +262,10 @@ export async function revokeApiClientAction(
   const tr = await getTranslations();
   const authz = await checkPermission("api_client", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  const current = await getApiClientAccess(id);
+  if (!current) return actionError(tr("apiClients.clientNotFound"));
+  // 失効は終端。二度押しで失効日時・理由を上書きしない。
+  if (current.revoked) return actionError(tr("apiClients.alreadyRevoked"));
   try {
     await revokeApiClient(id, authz.userId, reason.trim() || null);
     await recordAudit({
@@ -294,18 +302,35 @@ export async function updateApiClientAction(
     );
   }
   const v = parsed.data;
+  const current = await getApiClientAccess(id);
+  if (!current) return actionError(tr("apiClients.clientNotFound"));
+  if (current.revoked) return actionError(tr("apiClients.alreadyRevoked"));
+  const allowedCidrs = parseCidrList(v.allowedCidrs ?? "");
+  const expiresAt = parseExpiry(v.expiresAt);
+  // 有効なクライアントのアクセスを広げる変更は、承認（api_client.activate）を
+  // 経ないと通さない — 無効化（承認不要）→ 変更 → 承認つきで再有効化、の順。
+  // 狭める変更・無効なクライアントへの変更は素の api_client:UPDATE で足りる。
+  if (
+    current.isActive &&
+    widensApiClientAccess(current, { allowedCidrs, expiresAt }, cidrContains)
+  ) {
+    return actionError(tr("apiClients.widenRequiresInactive"));
+  }
   try {
-    const allowedCidrs = parseCidrList(v.allowedCidrs ?? "");
     await updateApiClient(id, {
       description: v.description ?? null,
       allowedCidrs,
-      expiresAt: parseExpiry(v.expiresAt),
+      expiresAt,
     });
     await recordAudit({
       action: "UPDATE",
       tableName: "api_clients",
       recordId: id,
-      after: { allowedCidrs, expiresAt: v.expiresAt ?? null },
+      before: {
+        allowedCidrs: current.allowedCidrs,
+        expiresAt: current.expiresAt?.toISOString() ?? null,
+      },
+      after: { allowedCidrs, expiresAt: expiresAt?.toISOString() ?? null },
     });
     revalidate();
     return actionOk();

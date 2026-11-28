@@ -288,6 +288,31 @@ export async function revokeApiClient(
   ]);
 }
 
+/** 編集の前に読む現在値（広げる変更かどうかの判定に使う）。無ければ null。 */
+export async function getApiClientAccess(id: string): Promise<{
+  isActive: boolean;
+  revoked: boolean;
+  allowedCidrs: string[];
+  expiresAt: Date | null;
+} | null> {
+  const row = await prisma.apiClient.findUnique({
+    where: { id },
+    select: {
+      isActive: true,
+      revokedAt: true,
+      allowedCidrs: true,
+      expiresAt: true,
+    },
+  });
+  if (!row) return null;
+  return {
+    isActive: row.isActive,
+    revoked: row.revokedAt !== null,
+    allowedCidrs: row.allowedCidrs,
+    expiresAt: row.expiresAt,
+  };
+}
+
 export interface UpdateApiClientInput {
   description?: string | null;
   allowedCidrs?: string[];

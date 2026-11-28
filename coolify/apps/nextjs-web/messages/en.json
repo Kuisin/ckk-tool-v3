@@ -11264,7 +11264,17 @@
     "webhookDuplicateName": "This API client already has an endpoint with that name.",
     "webhookNotFound": "Endpoint not found.",
     "webhookSecretUnavailable": "The signing secret could not be opened. Rotate the signing secret.",
-    "webhookNotRedeliverable": "Only failed deliveries can be redelivered."
+    "webhookNotRedeliverable": "Only failed deliveries can be redelivered.",
+    "editTitle": "Edit API client",
+    "editHint": "On an enabled client, allowed IP ranges and the expiry can only be narrowed. To widen them, disable the client, change them, then re-enable it with approval.",
+    "expiresAt": "Expires",
+    "noExpiry": "No end date",
+    "noCidrLimit": "No IP restriction",
+    "widenRequiresInactive": "The allowed IP ranges and expiry of an enabled client cannot be widened. Disable it, make the change, then re-enable it with approval.",
+    "alreadyRevoked": "This client has already been revoked",
+    "revokeClientTitle": "Revoke API client",
+    "revokeClientConfirm": "Revoke \"{name}\". All of its active tokens are revoked as well. This cannot be undone.",
+    "revokeReason": "Reason"
   },
   "charges": {
     "title": "Additional charges",

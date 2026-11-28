@@ -11264,7 +11264,17 @@
     "webhookDuplicateName": "该 API 客户端下已有同名接收地址。",
     "webhookNotFound": "未找到接收地址。",
     "webhookSecretUnavailable": "无法打开签名密钥。请重新签发签名密钥。",
-    "webhookNotRedeliverable": "只能重发失败的发送记录。"
+    "webhookNotRedeliverable": "只能重发失败的发送记录。",
+    "editTitle": "编辑 API 客户端",
+    "editHint": "已启用的客户端只能收窄允许的 IP 范围和有效期限。要放宽时，请先停用，修改后再经审批重新启用。",
+    "expiresAt": "有效期限",
+    "noExpiry": "无期限",
+    "noCidrLimit": "无 IP 限制",
+    "widenRequiresInactive": "无法放宽已启用客户端的允许 IP 范围和有效期限。请先停用，修改后再经审批重新启用。",
+    "alreadyRevoked": "此客户端已撤销",
+    "revokeClientTitle": "撤销 API 客户端",
+    "revokeClientConfirm": "将撤销“{name}”。其所有有效令牌也会一并撤销，且无法恢复。",
+    "revokeReason": "理由"
   },
   "charges": {
     "title": "附加费用",
