@@ -11,7 +11,11 @@
 
 import type { InventoryTransactionRow } from "@/components/inventory/model";
 import { prisma } from "@/lib/db";
-import { orderLineNumberOf } from "@/lib/doc-number";
+import {
+  docIdOf,
+  formatMovementNumber,
+  orderLineNumberOf,
+} from "@/lib/doc-number";
 import { docRefNumber } from "@/lib/doc-ref-core";
 
 /** 在庫行 1 件分の取引履歴（新しい順）を参照ラベル解決済みで返す。 */
@@ -22,6 +26,8 @@ export async function fetchInventoryTransactions(
   const rows = await prisma.inventoryTransaction.findMany({
     where: { inventoryType, inventoryId },
     orderBy: { createdAt: "desc" },
+    // 入出庫伝票（ST04）へのリンク用 — 在庫・所要量 (ST03) と同じ。
+    include: { movement: { select: { docRef: true } } },
   });
 
   // 参照 uuid → 文書番号の一括解決（work_order / order_line のみ uuid 保存）
@@ -79,6 +85,10 @@ export async function fetchInventoryTransactions(
     quantity: Number(r.quantity),
     referenceType: r.referenceType,
     referenceLabel: referenceLabel(r.referenceType, r.referenceId),
+    movementNumber: r.movement ? formatMovementNumber(r.movement) : null,
+    movementHref: r.movement
+      ? `/inventory/movements/${docIdOf(r.movement)}`
+      : null,
     notes: r.notes,
   }));
 }
