@@ -10,6 +10,7 @@ import {
   listLoginAttempts,
   listUserDevices,
   toEmbeddedLoginAttemptRow,
+  toEmbeddedUserDeviceRow,
 } from "@/lib/login-attempts";
 import {
   getAdminCoverage,
@@ -103,7 +104,7 @@ export default async function UserDetailPage({
         }}
         roleOptions={roleOptions}
         user={user}
-        userDevices={devices}
+        userDevices={devices.map(toEmbeddedUserDeviceRow)}
       />
       {/* 初期管理者は専用カード（BootstrapAdminCard）が担当するので二重に出さない。 */}
       {bootstrapState.status === "not-bootstrap" && actorId && (

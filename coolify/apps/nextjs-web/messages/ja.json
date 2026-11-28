@@ -4990,6 +4990,8 @@
       "thereAreNoMatchingLoginRecords": "該当するログイン記録がありません",
       "thereAreOlderRecordsNarrowThe": "さらに古い記録があります。期間や絞り込みを狭めてください。",
       "thereAreNoRegisteredDevices": "登録された端末はありません",
+      "deviceLoginCount": "{count} 回",
+      "deviceLastSeen": "最終 {date}",
       "unknownDevice": "不明な端末",
       "success": "成功"
     },

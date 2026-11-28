@@ -4990,6 +4990,8 @@
       "thereAreNoMatchingLoginRecords": "There are no matching login records",
       "thereAreOlderRecordsNarrowThe": "There are older records. Narrow the period or the filters.",
       "thereAreNoRegisteredDevices": "There are no registered devices",
+      "deviceLoginCount": "{count} logins",
+      "deviceLastSeen": "Last {date}",
       "unknownDevice": "Unknown device",
       "success": "Success"
     },

@@ -4990,6 +4990,8 @@
       "thereAreNoMatchingLoginRecords": "没有匹配的登录记录",
       "thereAreOlderRecordsNarrowThe": "还有更早的记录。请缩小期间或筛选条件。",
       "thereAreNoRegisteredDevices": "没有已登记的终端",
+      "deviceLoginCount": "{count} 次",
+      "deviceLastSeen": "最后 {date}",
       "unknownDevice": "未知终端",
       "success": "成功"
     },
