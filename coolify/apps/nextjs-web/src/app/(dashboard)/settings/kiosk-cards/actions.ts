@@ -269,7 +269,11 @@ async function transitionCard(
   note: string,
 ): Promise<ActionResult> {
   const tr = await getTranslations();
-  const authz = await checkPermission("kiosk", "UPDATE");
+  // SY08 の権限は kiosk_card（kiosk は SY09 端末管理）。一時停止・再開は
+  // 特権操作の登録簿（lib/privileged-operations.ts）に入れていない —
+  // アクセスを減らす操作を承認待ちにしない判断で、再開は承認を経た割当を
+  // 元へ戻すだけなので素の kiosk_card:UPDATE で足りる。
+  const authz = await checkPermission("kiosk_card", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = cardIdSchema(tr).safeParse(cardId);
   if (!parsed.success) return actionError(tr("common.invalidInput"));
