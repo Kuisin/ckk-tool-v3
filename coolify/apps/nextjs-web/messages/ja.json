@@ -8065,7 +8065,7 @@
       "enterAReasonForTheChange": "改訂のときは変更理由を入力してください",
       "theDesignRequestWasUpdated": "設計依頼書を更新しました",
       "newDesignRequest": "設計依頼書 新規作成",
-      "theTriggerAtQuoteOrAt": "トリガー（見積時 / 受注時）と参照元は作成後に変更できません。保存時に依頼番号 DSG-YYYYMM-NNNNN が採番されます。",
+      "theTriggerAtQuoteOrAt": "トリガー（見積時 / 受注時 / 単独）と参照元は作成後に変更できません。依頼番号（例: DSG-2026-00001。年は会計年度）は保存時に採番されます。",
       "n1TheSourceQuoteWhenDesign": "§1 見積と並行して設計を依頼する場合の見積元（任意）",
       "chooseFromRecentQuotes": "直近の見積書から選択",
       "n3TheOrderLineWhenDesign": "§3 受注と並行して設計を依頼する場合の注文明細（任意）",

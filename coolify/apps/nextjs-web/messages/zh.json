@@ -8065,7 +8065,7 @@
       "enterAReasonForTheChange": "修订时请输入变更理由",
       "theDesignRequestWasUpdated": "已更新设计委托单",
       "newDesignRequest": "新建设计委托单",
-      "theTriggerAtQuoteOrAt": "触发（报价时／接单时）和引用来源在创建后无法更改。保存时将编排申请编号 DSG-YYYYMM-NNNNN。",
+      "theTriggerAtQuoteOrAt": "触发（报价时 / 接单时 / 独立）和引用来源在创建后无法更改。申请编号（例：DSG-2026-00001，年份为会计年度）在保存时编排。",
       "n1TheSourceQuoteWhenDesign": "§1 与报价并行委托设计时的报价来源（可选）",
       "chooseFromRecentQuotes": "从最近的报价单中选择",
       "n3TheOrderLineWhenDesign": "§3 与接单并行委托设计时的订单明细（可选）",
