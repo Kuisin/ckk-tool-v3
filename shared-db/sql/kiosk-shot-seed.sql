@@ -118,10 +118,13 @@ VALUES
    '2026-07-17T11:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid, NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
 
--- 合格の検査記録（承認待ち）と、その記入内容（「検査表を見る」で読める中身）
+-- 合格の検査記録（承認待ち）と、その記入内容（「検査表を見る」で読める中身）。
+-- 検査表は**旧版 v1（9101）**を使う — 記録が付いた版は使用中になって項目を
+-- 足せなくなるので、最新版 9102 に付けると検査表テンプレートの撮影
+-- （項目の追加モーダル）が止まる。
 INSERT INTO app.inspection_records (id, work_order_step_id, template_id, status, recorded_by, recorded_at)
 VALUES ('dc016000-0000-4000-8000-000000000001'::uuid, 'dc015000-0000-4000-8000-000000000001'::uuid,
-        9102, 'PASS'::app."INSPECTION_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+        9101, 'PASS'::app."INSPECTION_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
         '2026-07-17T09:50:00+09')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO app.inspection_record_items (inspection_record_id, template_item_id, measured_value, measured_values, is_pass)
@@ -131,7 +134,7 @@ SELECT 'dc016000-0000-4000-8000-000000000001'::uuid, i.id, NULL,
          WHEN 'SELECT_SINGLE' THEN jsonb_build_array(i.options->0->>'value')
          ELSE '["true"]'::jsonb
        END, true
-FROM app.inspection_template_items i WHERE i.template_id = 9102
+FROM app.inspection_template_items i WHERE i.template_id = 9101
   -- 行に一意キーが無いので、流し直しで重複しないよう記録単位で止める
   AND NOT EXISTS (SELECT 1 FROM app.inspection_record_items x
                    WHERE x.inspection_record_id = 'dc016000-0000-4000-8000-000000000001'::uuid);
