@@ -124,24 +124,27 @@
       <div class="doc-qr">{{{doc_qr}}}</div>
     </div>
     <div class="issuer">
-      <strong>{{template.name}}</strong><br>
-      {{template.code}}　{{template.version}}<br>
-      関連工程: {{template.related_step}}
+      <strong>{{{template.name}}}</strong><br>
+      {{{template.code}}}　{{{template.version}}}<br>
+      関連工程: {{{template.related_step}}}
     </div>
   </div>
 
+  <!-- template.* / meta.* はコード側（sheetTemplateHead・各 route）で esc() 済み、
+       空欄は <span class="blank-line"> の HTML なので {{{ }}} で差し込む。
+       {{ }} にすると二重にエスケープされ、空欄シートにタグが文字のまま刷られる。 -->
   <div class="meta-row insp-meta">
     <div class="doc-info">
       <table>
-        <tr><td>指示書番号</td><td>{{meta.work_order}}</td></tr>
-        <tr><td>ロット数量</td><td>{{meta.lot_quantity}}</td></tr>
-        <tr><td>検査対象</td><td>{{template.sampling}}</td></tr>
-        <tr><td>記録方式</td><td>{{template.record_style}}</td></tr>
-        <tr><td>検査日</td><td>{{meta.inspected_at}}</td></tr>
-        <tr><td>検査者</td><td>{{meta.recorded_by}}</td></tr>
-        <tr><td>検査表確認</td><td>{{meta.confirmed}}</td></tr>
-        <tr><td>製作者</td><td>{{meta.produced_by}}</td></tr>
-        <tr><td>検収印</td><td>{{meta.approved}}</td></tr>
+        <tr><td>指示書番号</td><td>{{{meta.work_order}}}</td></tr>
+        <tr><td>ロット数量</td><td>{{{meta.lot_quantity}}}</td></tr>
+        <tr><td>検査対象</td><td>{{{template.sampling}}}</td></tr>
+        <tr><td>記録方式</td><td>{{{template.record_style}}}</td></tr>
+        <tr><td>検査日</td><td>{{{meta.inspected_at}}}</td></tr>
+        <tr><td>検査者</td><td>{{{meta.recorded_by}}}</td></tr>
+        <tr><td>検査表確認</td><td>{{{meta.confirmed}}}</td></tr>
+        <tr><td>製作者</td><td>{{{meta.produced_by}}}</td></tr>
+        <tr><td>検収印</td><td>{{{meta.approved}}}</td></tr>
       </table>
     </div>
   </div>
