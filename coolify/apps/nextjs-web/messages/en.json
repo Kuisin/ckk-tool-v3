@@ -1759,7 +1759,7 @@
       },
       "approve": {
         "label": "Approvals",
-        "summary": "See the pending-approval list. Whether you may actually approve is decided by 承認設定 (MS0B), not by this permission."
+        "summary": "Open the 承認依頼中 tab of the pending list; it shows only requests whose step is yours. Whether you may actually approve is decided by 承認設定 (MS0B), not by this permission."
       },
       "form": {
         "label": "Forms",

@@ -72,7 +72,7 @@ When 「**発行しました**」 (Issued) appears, you are done. All the new ca
 
 The status changes to 「**割当済**」 (Assigned).
 
-> ⚠️ **One person can hold only one card.** You cannot assign a card to someone who already has one. To swap a card, first set the old card to 「取り消し」 (Revoked).
+> ⚠️ **One person can hold only one card.** You cannot assign a card to someone who already has one (**including a suspended card**). To swap a card, first set the old card to 「取り消し」 (Revoked).
 
 ### When you want a card limited to a set period
 

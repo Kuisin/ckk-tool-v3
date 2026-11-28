@@ -11,7 +11,7 @@ A single screen for the things you personally need to do. The operation code is 
 Tabs bring together:
 
 - **Work plans** — your assigned work steps that are not yet finished.
-- **Pending approval** — documents waiting for approval (shown only if you have approval permission).
+- **Pending approval** — documents whose current approval step is yours (shown only if you have approval permission).
 - **Privileged access** — privileged access requests waiting for your decision (shown only if you can decide them).
 - **Unanswered forms** — forms shared with you that you have not submitted yet.
 - **Answered forms** — your own form responses.
@@ -40,7 +40,7 @@ Each row shows the planned date, time, step name, step status, work order number
 
 Lists the documents waiting for approval, across document types — think of it as your approval inbox. **This tab does not appear at all if you don't have approval permission.**
 
-> 💡 This list shows **every document waiting for approval**. Whether you are an approver for its current step becomes clear on the document's own screen (if it is your turn, an "Approve" button appears).
+> 💡 This list shows **only documents whose current approval step is yours** (you are in that step's approval group, or you are standing in as someone's delegate). On steps that need all members, a document disappears once you have approved it.
 
 The following document types can appear. Which documents go through approval is decided in Approval settings (`MS0B`).
 
