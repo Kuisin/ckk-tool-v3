@@ -122,15 +122,29 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
   }));
 }
 
-/** 明細入力 → create データ。 */
-function buildItemCreates(items: PurchaseRequestInput["items"]) {
+/**
+ * 素材の単位を素材マスタから引く（id → unit）。依頼の単位は**マスタの単位で
+ * 固定**する — 発注書（PU02）はマスタと違う単位を拒むので、依頼で違う単位を
+ * 通すと「発注書へ変換」した発注書が保存できなくなる。
+ */
+async function materialUnits(itemIds: number[]): Promise<Map<number, string>> {
+  const rows = await prisma.item.findMany({
+    where: { id: { in: [...new Set(itemIds)] }, itemType: "MATERIAL" },
+    select: { id: true, unit: true },
+  });
+  return new Map(rows.map((r) => [r.id, r.unit]));
+}
+
+/** 明細入力 → create データ。単位は素材マスタの単位を採る。 */
+async function buildItemCreates(items: PurchaseRequestInput["items"]) {
+  const units = await materialUnits(items.map((it) => Number(it.itemId)));
   return items.map((it, i) => {
     const itemId = Number(it.itemId);
     return {
       itemId,
       plantId: it.plantId ? Number(it.plantId) : null,
       quantity: it.quantity,
-      unit: it.unit,
+      unit: units.get(itemId) ?? it.unit,
       desiredAt: it.desiredAt ? new Date(it.desiredAt) : null,
       notes: it.notes?.trim() || null,
       sortOrder: i,
@@ -706,6 +720,10 @@ export async function convertToPurchaseOrder(
     // 人が読む文面（備考・履歴）には番号だけを書く。
     const requestNo = docNo(requestNumber);
 
+    // 単位は変換時点の素材マスタの単位で複写する（発注書の保存はマスタと
+    // 違う単位を拒む）。単位の固定より前に作られた依頼もこれで通る。
+    const units = await materialUnits(prior.items.map((it) => it.itemId));
+
     const poNumber = await prisma.$transaction(async (tx) => {
       // 発注番号は DB が払い出す（渡さない）。作った行の参照を読み戻す。
       const po = await tx.materialPurchaseOrder.create({
@@ -733,7 +751,7 @@ export async function convertToPurchaseOrder(
               itemId: it.itemId,
               plantId: it.plantId,
               quantity: it.quantity,
-              unit: it.unit,
+              unit: units.get(it.itemId) ?? it.unit,
               unitPrice: 0,
               amount: 0,
               expectedAt: it.desiredAt,
