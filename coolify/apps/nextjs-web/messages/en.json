@@ -1854,7 +1854,7 @@
       "kiosk_secret": {
         "reveal_unlock_pin": {
           "label": "Reveal maintenance PIN",
-          "description": "Shows the shared maintenance-exit PIN in clear text. It exits kiosk mode on every device."
+          "description": "Shows the maintenance-exit PIN shared by every device in clear text. Anyone who knows it can leave shared-device mode on any device and open the Android settings."
         },
         "reveal_pin_history": {
           "label": "Reveal PIN history",
@@ -4216,7 +4216,7 @@
       "usage": "Usage",
       "authenticationError": "Authentication error",
       "maintenancePinSameOnEveryDevice": "Maintenance PIN (same on every device, rotated daily at 4:00)",
-      "fiveTapsTopRightOnThe": "Five taps top-right on the device → this PIN temporarily releases the kiosk lock (to change Wi-Fi, etc.)",
+      "fiveTapsTopRightOnThe": "Five taps top-right on the device → this PIN temporarily releases the device lock (to change Wi-Fi, etc.)",
       "anOfflineDeviceCannotSyncThe": "An offline device cannot sync the PIN, so",
       "thePinAsOfTheLast": "The PIN as of the last successful sync",
       "isTheOnlyOneItAccepts": "is the only one it accepts. To unlock it, use \"the PIN this device is holding\" on the right",
@@ -11138,7 +11138,7 @@
     },
     "kioskDevice": {
       "name": {
-        "label": "Device name (Japanese / English)",
+        "label": "Device name",
         "summary": "The name shown in the list, on the floor map, and on activity-log badges. Use a name that lets people locate the physical device, such as \"Plant 1 entrance\"."
       },
       "plant": {
